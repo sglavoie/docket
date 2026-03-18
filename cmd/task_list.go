@@ -87,9 +87,9 @@ func runTaskList(cmd *cobra.Command, args []string) error {
 
 	if len(tasks) == 0 {
 		if len(project.Tasks) == 0 {
-			fmt.Println("No tasks yet. Add one with: tt task add <title>")
+			fmt.Println(NoItemsMsg("tasks", "tt task add <title>"))
 		} else {
-			fmt.Println("No tasks match the filters.")
+			fmt.Println("No tasks match the current filters.")
 		}
 		return nil
 	}

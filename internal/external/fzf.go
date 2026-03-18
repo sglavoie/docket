@@ -2,11 +2,13 @@ package external
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"os"
 	"os/exec"
 	"strings"
+	"time"
 
 	"github.com/sglavoie/tt/internal/models"
 )
@@ -36,7 +38,10 @@ func FzfSelectProject(projects []*models.Project, prompt string) (*models.Projec
 	input := strings.Join(lines, "\n")
 
 	// Run fzf
-	cmd := exec.Command("fzf",
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	cmd := exec.CommandContext(ctx, "fzf",
 		"--prompt", prompt+" ",
 		"--height", "40%",
 		"--reverse",
@@ -121,7 +126,10 @@ func FzfSelectTask(tasks []*models.Task, prompt string, previewCmd string) (*mod
 		)
 	}
 
-	cmd := exec.Command("fzf", args...)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	cmd := exec.CommandContext(ctx, "fzf", args...)
 	cmd.Stdin = strings.NewReader(input)
 	cmd.Stderr = os.Stderr
 
@@ -177,7 +185,10 @@ func FzfMultiSelectProjects(projects []*models.Project, prompt string, preselect
 
 	input := strings.Join(lines, "\n")
 
-	cmd := exec.Command("fzf",
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	cmd := exec.CommandContext(ctx, "fzf",
 		"--prompt", prompt+" ",
 		"--height", "50%",
 		"--reverse",
@@ -253,7 +264,10 @@ func FzfMultiSelectTasks(tasks []*models.Task, prompt string) ([]*models.Task, e
 
 	input := strings.Join(lines, "\n")
 
-	cmd := exec.Command("fzf",
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	cmd := exec.CommandContext(ctx, "fzf",
 		"--prompt", prompt+" ",
 		"--height", "50%",
 		"--reverse",

@@ -48,7 +48,7 @@ func runTaskMoveTo(cmd *cobra.Command, args []string) error {
 
 	sourceProject := cfg.GetCurrentProject()
 	if sourceProject == nil {
-		return fmt.Errorf("%w. Select one with: tt select", tterrors.ErrNoCurrentProject)
+		return NoCurrentProjectError()
 	}
 
 	if loadErr := storage.LoadProject(sourceProject); loadErr != nil {
@@ -62,7 +62,7 @@ func runTaskMoveTo(cmd *cobra.Command, args []string) error {
 	} else {
 		// Interactive selection
 		if len(sourceProject.Tasks) == 0 {
-			return fmt.Errorf("no tasks in current project")
+			return fmt.Errorf("%s", NoItemsMsg("tasks", "tt task add <title>"))
 		}
 		items := TasksToSelectorItems(sourceProject.Tasks)
 		selected, selErr := tui.RunSelector("Select task to move:", items)
@@ -112,7 +112,7 @@ func runTaskMoveTo(cmd *cobra.Command, args []string) error {
 			}
 		}
 		if len(candidates) == 0 {
-			return fmt.Errorf("no other projects available. Create one with: tt project new <name>")
+			return fmt.Errorf("%s", NoItemsMsg("other projects", "tt project new <name>"))
 		}
 
 		// Build selector items

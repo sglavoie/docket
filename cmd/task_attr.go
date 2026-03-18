@@ -84,12 +84,16 @@ func runTaskAttr(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("no attribute flags provided; use --help to see available options")
 	}
 
+	var changes []string
 	updatedTask, err := WithTaskUpdate(taskID, func(task *models.Task) error {
 		// Handle clear flag
 		if attrClear {
 			task.ClearTypeAttrs()
 			return nil
 		}
+
+		// Capture old values for delta output
+		changes = collectAttrDeltas(task, attrTypeAttrs, cmd)
 
 		attrTypeAttrs.IdeaValidatedSet = cmd.Flags().Changed("idea.validated")
 		attrTypeAttrs.StoryPointsSet = cmd.Flags().Changed("story.points")
@@ -113,7 +117,132 @@ func runTaskAttr(cmd *cobra.Command, args []string) error {
 			updatedTask.Type.HeadingPrefix(),
 			updatedTask.ShortID,
 			updatedTask.Title)
+		for _, c := range changes {
+			fmt.Printf("  %s\n", c)
+		}
 	}
 
 	return nil
+}
+
+// collectAttrDeltas captures the old values for attributes that are about to change
+// and returns formatted "field: old -> new" strings.
+func collectAttrDeltas(task *models.Task, vals TypeAttrValues, cmd *cobra.Command) []string {
+	var deltas []string
+	delta := func(name, oldVal, newVal string) {
+		if oldVal == "" {
+			oldVal = "(none)"
+		}
+		deltas = append(deltas, fmt.Sprintf("%s: %s -> %s", name, oldVal, newVal))
+	}
+
+	// Bug
+	if vals.BugReproducible != "" {
+		old := ""
+		if task.BugAttrs != nil {
+			old = string(task.BugAttrs.Reproducible)
+		}
+		delta("reproducible", old, vals.BugReproducible)
+	}
+	if vals.BugSeverity != "" {
+		old := ""
+		if task.BugAttrs != nil {
+			old = string(task.BugAttrs.Severity)
+		}
+		delta("severity", old, vals.BugSeverity)
+	}
+	if vals.BugWorkaround != "" {
+		old := ""
+		if task.BugAttrs != nil {
+			old = task.BugAttrs.Workaround
+		}
+		delta("workaround", old, vals.BugWorkaround)
+	}
+
+	// Idea
+	if vals.IdeaCategory != "" {
+		old := ""
+		if task.IdeaAttrs != nil {
+			old = string(task.IdeaAttrs.Category)
+		}
+		delta("category", old, vals.IdeaCategory)
+	}
+	if vals.IdeaEffort != "" {
+		old := ""
+		if task.IdeaAttrs != nil {
+			old = string(task.IdeaAttrs.Effort)
+		}
+		delta("effort", old, vals.IdeaEffort)
+	}
+	if vals.IdeaValue != "" {
+		old := ""
+		if task.IdeaAttrs != nil {
+			old = string(task.IdeaAttrs.Value)
+		}
+		delta("value", old, vals.IdeaValue)
+	}
+	if cmd.Flags().Changed("idea.validated") {
+		old := "false"
+		if task.IdeaAttrs != nil && task.IdeaAttrs.Validated {
+			old = "true"
+		}
+		delta("validated", old, fmt.Sprintf("%t", vals.IdeaValidated))
+	}
+
+	// Task
+	if vals.TaskEffort != "" {
+		old := ""
+		if task.TaskAttrs != nil {
+			old = string(task.TaskAttrs.Effort)
+		}
+		delta("effort", old, vals.TaskEffort)
+	}
+	if vals.TaskWorkType != "" {
+		old := ""
+		if task.TaskAttrs != nil {
+			old = string(task.TaskAttrs.WorkType)
+		}
+		delta("worktype", old, vals.TaskWorkType)
+	}
+
+	// Story
+	if cmd.Flags().Changed("story.points") {
+		old := "0"
+		if task.StoryAttrs != nil {
+			old = fmt.Sprintf("%d", task.StoryAttrs.StoryPoints)
+		}
+		delta("points", old, fmt.Sprintf("%d", vals.StoryPoints))
+	}
+	if vals.StoryPersona != "" {
+		old := ""
+		if task.StoryAttrs != nil {
+			old = task.StoryAttrs.Persona
+		}
+		delta("persona", old, vals.StoryPersona)
+	}
+
+	// Epic
+	if vals.EpicScope != "" {
+		old := ""
+		if task.EpicAttrs != nil {
+			old = string(task.EpicAttrs.Scope)
+		}
+		delta("scope", old, vals.EpicScope)
+	}
+	if vals.EpicMilestone != "" {
+		old := ""
+		if task.EpicAttrs != nil {
+			old = task.EpicAttrs.Milestone
+		}
+		delta("milestone", old, vals.EpicMilestone)
+	}
+	if vals.EpicMetrics != "" {
+		old := ""
+		if task.EpicAttrs != nil {
+			old = task.EpicAttrs.SuccessMetrics
+		}
+		delta("metrics", old, vals.EpicMetrics)
+	}
+
+	return deltas
 }

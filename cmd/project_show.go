@@ -77,7 +77,7 @@ func runProjectShow(cmd *cobra.Command, args []string) error {
 	fmt.Println(titleStyle.Render("Tasks"))
 
 	if len(project.Tasks) == 0 {
-		fmt.Println("No tasks yet.")
+		fmt.Println(NoItemsMsg("tasks", "tt task add <title>"))
 		return nil
 	}
 

@@ -492,3 +492,49 @@ func TestOutdentTaskReturnsErrorAtRoot(t *testing.T) {
 		t.Error("expected error when outdenting root task, got nil")
 	}
 }
+
+func TestBuildTaskTree_OrphanedDependencyCleanup(t *testing.T) {
+	project := NewProject("test", "Test", "/tmp/test")
+
+	task1, err := NewTask("task-1", 1, TaskTypeTask, "Task 1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	task2, err := NewTask("task-2", 2, TaskTypeTask, "Task 2")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// task1 depends on task2 (valid) and a nonexistent task (orphaned)
+	task1.DependsOn = []string{task2.ID, "nonexistent-task-id"}
+
+	// task1 also has a cross-project dependency (should be preserved)
+	crossRef := "other-project:other-task"
+	task1.DependsOn = append(task1.DependsOn, crossRef)
+
+	project.Tasks = []*Task{task1, task2}
+	project.BuildTaskTree()
+
+	// Should have 2 dependencies: task2 (valid) and cross-project ref (preserved)
+	if len(task1.DependsOn) != 2 {
+		t.Fatalf("expected 2 dependencies after cleanup, got %d: %v", len(task1.DependsOn), task1.DependsOn)
+	}
+
+	// Valid same-project dep should remain
+	foundValid := false
+	foundCross := false
+	for _, dep := range task1.DependsOn {
+		if dep == task2.ID {
+			foundValid = true
+		}
+		if dep == crossRef {
+			foundCross = true
+		}
+	}
+	if !foundValid {
+		t.Error("expected valid dependency on task2 to be preserved")
+	}
+	if !foundCross {
+		t.Error("expected cross-project dependency to be preserved")
+	}
+}

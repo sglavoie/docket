@@ -52,7 +52,7 @@ func runTaskArchive(cmd *cobra.Command, args []string) error {
 	}
 
 	// Confirmation unless --force
-	if !ConfirmStrict(fmt.Sprintf("Archive %s to completed.md?", Pluralize(len(completedTasks), "completed task", "completed tasks")), archiveForce) {
+	if !ConfirmYN(fmt.Sprintf("Archive %s to completed.md? [y/N] ", Pluralize(len(completedTasks), "completed task", "completed tasks")), archiveForce) {
 		fmt.Println("Canceled")
 		return nil
 	}
@@ -88,9 +88,11 @@ func runTaskArchiveAll() error {
 
 	projects := cfg.GetActiveProjects()
 	totalArchived := 0
+	var failures []string
 
 	for _, project := range projects {
 		if err := storage.LoadProject(project); err != nil {
+			failures = append(failures, fmt.Sprintf("[%s] load failed: %v", project.Name, err))
 			continue
 		}
 
@@ -99,19 +101,19 @@ func runTaskArchiveAll() error {
 			continue
 		}
 
-		if !ConfirmStrict(fmt.Sprintf("[%s] Archive %s?", project.Name, Pluralize(len(completedTasks), "completed task", "completed tasks")), archiveForce) {
+		if !ConfirmYN(fmt.Sprintf("[%s] Archive %s? [y/N] ", project.Name, Pluralize(len(completedTasks), "completed task", "completed tasks")), archiveForce) {
 			fmt.Printf("[%s] Skipped.\n", project.Name)
 			continue
 		}
 
 		if backupErr := storage.BackupProject(project); backupErr != nil {
-			fmt.Printf("[%s] Backup failed: %v\n", project.Name, backupErr)
+			failures = append(failures, fmt.Sprintf("[%s] backup failed: %v", project.Name, backupErr))
 			continue
 		}
 
 		count, err := storage.ArchiveTasks(project)
 		if err != nil {
-			fmt.Printf("[%s] Archive failed: %v\n", project.Name, err)
+			failures = append(failures, fmt.Sprintf("[%s] archive failed: %v", project.Name, err))
 			continue
 		}
 
@@ -120,5 +122,11 @@ func runTaskArchiveAll() error {
 	}
 
 	fmt.Printf("\nTotal: archived %s across all projects\n", Pluralize(totalArchived, "task", "tasks"))
+	if len(failures) > 0 {
+		fmt.Printf("\n%d project(s) had errors:\n", len(failures))
+		for _, f := range failures {
+			fmt.Printf("  %s\n", f)
+		}
+	}
 	return nil
 }

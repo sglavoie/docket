@@ -103,6 +103,15 @@ func LoadProjectWithWarnings(project *models.Project) (*ProjectLoadResult, error
 	// Build the tree structure
 	project.BuildTaskTree()
 
+	// Populate project warnings for TUI display
+	var repairWarnings []string
+	for _, w := range result.Warnings {
+		if w.Type == format.WarningDataCorrection {
+			repairWarnings = append(repairWarnings, w.Message)
+		}
+	}
+	project.Warnings = repairWarnings
+
 	// Warn on tasks whose section doesn't match any project-defined section
 	sections := project.GetSections()
 	sectionSet := make(map[string]bool, len(sections))
@@ -239,10 +248,7 @@ func writeTaskPreservingOrder(b *strings.Builder, task *models.Task, allTasks []
 
 	// Clamp heading level to the maximum supported by the parser regex.
 	// The parent: metadata key preserves the true hierarchy even when headings are flat.
-	writeLevel := level
-	if writeLevel > maxHeadingLevel {
-		writeLevel = maxHeadingLevel
-	}
+	writeLevel := min(level, maxHeadingLevel)
 
 	// Write heading
 	hashes := strings.Repeat("#", writeLevel)

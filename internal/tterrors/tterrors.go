@@ -49,7 +49,7 @@ var (
 // NewTaskNotFoundError creates a task not found error with the specified task identifier.
 // Use this for consistent error messaging across the codebase.
 func NewTaskNotFoundError(taskID any) error {
-	return fmt.Errorf("%w: '%v'", ErrTaskNotFound, taskID)
+	return fmt.Errorf("%w: '%v' (tried short ID, UUID, and title prefix)", ErrTaskNotFound, taskID)
 }
 
 // NewParentTaskNotFoundError creates a parent task not found error with the specified task identifier.

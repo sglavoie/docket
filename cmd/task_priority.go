@@ -84,7 +84,12 @@ func runTaskPriority(cmd *cobra.Command, args []string) error {
 
 	if len(errs) > 0 {
 		if succeeded > 0 {
+			// Partial success: print failures as warnings but exit 0
 			fmt.Printf("\n%d succeeded, %d failed:\n", succeeded, len(errs))
+			for _, e := range errs {
+				fmt.Printf("  %s\n", e)
+			}
+			return nil
 		}
 		return fmt.Errorf("%s", strings.Join(errs, "\n"))
 	}

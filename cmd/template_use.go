@@ -68,7 +68,7 @@ func init() {
 	templateCmd.AddCommand(templateUseCmd)
 
 	templateUseCmd.Flags().BoolVar(&templateUseSkipOptional, "skip-optional", false, "don't create optional children")
-	templateUseCmd.Flags().StringVarP(&templateUseParent, "parent", "p", "", "parent task ID or short ID")
+	templateUseCmd.Flags().StringVar(&templateUseParent, "parent", "", "parent task ID or short ID")
 	templateUseCmd.Flags().StringArrayVar(&templateUseVars, "var", nil, "set template variable (name=value), repeatable")
 }
 

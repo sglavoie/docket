@@ -36,6 +36,7 @@ type Project struct {
 	NextShortID   int               `json:"-"`
 	Sections      []string          `json:"-"` // Project-level section definitions
 	SectionColors map[string]string `json:"-"` // Section name -> color name mapping
+	Warnings      []string          `json:"-"` // Data repair warnings from last load
 }
 
 const (

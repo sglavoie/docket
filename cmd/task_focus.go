@@ -51,7 +51,7 @@ func runTaskFocus(cmd *cobra.Command, args []string) error {
 
 		task, err := SelectTask(project, args,
 			func(t *models.Task) bool { return t.Status.IsActive() },
-			"Select task to toggle focus:", "no active tasks available. Add one with: tt task add <title>")
+			"Select task to toggle focus:", NoItemsMsg("active tasks", "tt task add <title>"))
 		if err != nil {
 			return err
 		}

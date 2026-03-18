@@ -53,6 +53,20 @@ func RunApp(cfg *config.Config, manager *config.Manager, opts ...AppOption) erro
 			startupResult.ModifiedTasks, startupResult.RulesApplied)
 	}
 
+	// Show data repair notification for current project
+	if model.statusMessage == "" {
+		if current := cfg.GetCurrentProject(); current != nil {
+			// Ensure project is loaded (may have been loaded by workflow eval already)
+			if len(current.Tasks) == 0 && current.Path != "" {
+				_ = storage.LoadProject(current)
+			}
+			if n := len(current.Warnings); n > 0 {
+				model.statusMessage = fmt.Sprintf("%d data issue(s) auto-repaired (run tt doctor for details)", n)
+				model.statusIsInfo = true
+			}
+		}
+	}
+
 	p := tea.NewProgram(model, tea.WithAltScreen())
 
 	// Recover from panics to restore terminal state before crashing.

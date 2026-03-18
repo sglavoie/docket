@@ -93,3 +93,37 @@ func TestNewProjectHasNextSection(t *testing.T) {
 		t.Errorf("expected first section to be Next, got %s", project.Sections[0])
 	}
 }
+
+func TestMutateTask_NotFound(t *testing.T) {
+	project := NewProject("test", "Test", "/tmp/test")
+
+	task, err := NewTask("task-1", 1, TaskTypeTask, "Task 1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	project.Tasks = []*Task{task}
+
+	// Mutate with nonexistent ID should return false
+	found := project.MutateTask("nonexistent-id", func(t *Task) {
+		t.Title = "Should not change"
+	})
+	if found {
+		t.Error("MutateTask should return false for nonexistent task ID")
+	}
+
+	// Verify existing task was not modified
+	if task.Title != "Task 1" {
+		t.Errorf("expected title 'Task 1', got '%s'", task.Title)
+	}
+
+	// Mutate with existing ID should return true
+	found = project.MutateTask(task.ID, func(t *Task) {
+		t.Title = "Updated Title"
+	})
+	if !found {
+		t.Error("MutateTask should return true for existing task ID")
+	}
+	if task.Title != "Updated Title" {
+		t.Errorf("expected title 'Updated Title', got '%s'", task.Title)
+	}
+}

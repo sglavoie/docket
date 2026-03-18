@@ -50,7 +50,7 @@ func displayDashboard(cfg *config.Config) {
 		Foreground(lipgloss.Color("39"))
 
 	subtitleStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color("241"))
+		Foreground(lipgloss.Color("248"))
 
 	fmt.Println(titleStyle.Render("tt - Task Tracker"))
 	fmt.Println()
@@ -58,7 +58,7 @@ func displayDashboard(cfg *config.Config) {
 	// Active projects summary
 	activeProjects := cfg.GetActiveProjects()
 	if len(activeProjects) == 0 {
-		fmt.Println(subtitleStyle.Render("No projects yet. Create one with: tt project new <name>"))
+		fmt.Println(subtitleStyle.Render(NoItemsMsg("projects", "tt project new <name>")))
 		return
 	}
 
@@ -106,7 +106,7 @@ func displayProjectsSummary(projects []*models.Project) {
 func displayRecentTasks(project *models.Project) {
 	recentTasks := storage.GetRecentTasks(project.Tasks, 5)
 	if len(recentTasks) == 0 {
-		fmt.Println(lipgloss.NewStyle().Foreground(lipgloss.Color("241")).Render("No tasks yet."))
+		fmt.Println(lipgloss.NewStyle().Foreground(lipgloss.Color("248")).Render(NoItemsMsg("tasks", "tt task add <title>")))
 		return
 	}
 
@@ -162,7 +162,7 @@ func displayTaskStats(project *models.Project) {
 		}
 	}
 
-	statStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("244"))
+	statStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("248"))
 	fmt.Println(statStyle.Render(fmt.Sprintf("Types: %s", strings.Join(typeStats, " "))))
 	fmt.Println(statStyle.Render(fmt.Sprintf("Status: %s", strings.Join(statusStats, " "))))
 }

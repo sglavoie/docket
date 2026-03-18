@@ -434,6 +434,46 @@ func TestDiffTaskSource(t *testing.T) {
 	}
 }
 
+func TestDiffAndRecordActivity_PrunesExcessEntries(t *testing.T) {
+	// Create "old" snapshot with a task that already has many activity entries
+	old, err := models.NewTask("1", 1, models.TaskTypeTask, "Test")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Create "new" snapshot of the same task with 60 pre-existing entries
+	newT, err := models.NewTask("1", 1, models.TaskTypeTask, "Test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for i := range 60 {
+		newT.Activity = append(newT.Activity, &models.ActivityEntry{
+			Timestamp: time.Now().Add(time.Duration(i) * time.Minute),
+			Field:     "status",
+			OldValue:  "old",
+			NewValue:  "new",
+		})
+	}
+
+	// Change status to trigger one more activity entry
+	old.Status = models.StatusTodo
+	newT.Status = models.StatusInProgress
+
+	maxEntries := 10
+	DiffAndRecordActivity([]*models.Task{old}, []*models.Task{newT}, maxEntries)
+
+	// Should be capped at maxEntries
+	if len(newT.Activity) != maxEntries {
+		t.Errorf("expected %d activity entries after pruning, got %d", maxEntries, len(newT.Activity))
+	}
+
+	// The newest entry should be the status change we just triggered
+	newest := newT.Activity[len(newT.Activity)-1]
+	if newest.Field != "status" || newest.NewValue != "in_progress" {
+		t.Errorf("expected newest entry to be status change, got field=%q new=%q", newest.Field, newest.NewValue)
+	}
+}
+
 func findActivity(task *models.Task, field string) *models.ActivityEntry {
 	for _, e := range task.Activity {
 		if e.Field == field {

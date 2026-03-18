@@ -34,11 +34,11 @@ var (
 	ColorSuccess     = lipgloss.Color("42")      // Green
 	ColorWarning     = lipgloss.Color("214")     // Orange
 	ColorError       = lipgloss.Color("196")     // Red
-	ColorMuted       = lipgloss.Color("241")     // Gray
+	ColorMuted       = lipgloss.Color("248")     // Gray
 	ColorHighlight   = lipgloss.Color("#f2eb16") // Bright yellow
 	ColorBackground  = lipgloss.Color("236")     // Dark gray
-	ColorBorder      = lipgloss.Color("240")     // Border gray
-	ColorDiffContext = lipgloss.Color("245")     // Diff context gray
+	ColorBorder      = lipgloss.Color("244")     // Border gray
+	ColorDiffContext = lipgloss.Color("249")     // Diff context gray
 	ColorPrefixPopup = lipgloss.Color("226")     // Yellow for prefix popup border
 	ColorSelectedBg  = lipgloss.Color("#4c0163") // Light purple background for selections
 	ColorSelectedFg  = lipgloss.Color("#fbeeff") // Dark purple foreground for selections
@@ -179,13 +179,13 @@ var (
 	NoteBadgeStyle  = makeBadgeStyle("248", "237") // Gray
 
 	// Task status badge styles (icon with background for visual distinction)
-	TodoBadgeStyle       = makeBadgeStyle("241", "236")                 // Gray
+	TodoBadgeStyle       = makeBadgeStyle("248", "236")                 // Gray
 	InProgressBadgeStyle = makeBadgeStyle("214", "94")                  // Orange
 	ReviewBadgeStyle     = makeBadgeStyle(string(ColorSecondary), "17") // Blue
 	DoneBadgeStyle       = makeBadgeStyle("42", "22")                   // Green
 	BlockedBadgeStyle    = makeBadgeStyle("196", "52")                  // Red
 	StandbyBadgeStyle    = makeBadgeStyle("141", "53")                  // Violet
-	CanceledBadgeStyle   = makeBadgeStyle("241", "236")                 // Gray
+	CanceledBadgeStyle   = makeBadgeStyle("248", "236")                 // Gray
 	StageBadgeStyle      = makeBadgeStyle("183", "236")                 // Lavender on dark gray
 
 	// Container styles
@@ -373,7 +373,7 @@ var (
 
 	FilterBadgeInactiveStyle = lipgloss.NewStyle().
 					Background(lipgloss.Color("236")). // Dark gray (matches SectionBadgeStyle)
-					Foreground(lipgloss.Color("245")). // Gray text
+					Foreground(lipgloss.Color("249")). // Gray text
 					Padding(0, 1)
 
 	FilterViewBoxStyle = lipgloss.NewStyle().
@@ -485,7 +485,7 @@ var (
 
 	// Section badge style for tree view
 	SectionBadgeStyle = lipgloss.NewStyle().
-				Foreground(lipgloss.Color("245")). // Gray text
+				Foreground(lipgloss.Color("249")). // Gray text
 				Background(lipgloss.Color("236"))  // Dark gray background
 
 	// Children in other sections badge (shown on parent when children are hidden by view filter)

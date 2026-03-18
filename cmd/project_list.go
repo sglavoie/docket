@@ -96,7 +96,7 @@ func runProjectList(cmd *cobra.Command, args []string) error {
 	}
 
 	if len(projects) == 0 {
-		fmt.Println("No projects found. Create one with: tt project new <name>")
+		fmt.Println(NoItemsMsg("projects", "tt project new <name>"))
 		return nil
 	}
 

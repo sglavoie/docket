@@ -41,7 +41,7 @@ func runProjectDelete(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("cannot delete the sandbox project; use 'tt sandbox reset' to clear its contents instead")
 	}
 
-	if !ConfirmYN(fmt.Sprintf("Delete project '%s'? It will be moved to trash. [y/N] ", project.Name), projectDeleteForce) {
+	if !ConfirmStrict(fmt.Sprintf("Delete project '%s'? It will be moved to trash.", project.Name), projectDeleteForce) {
 		fmt.Println("Canceled")
 		return nil
 	}

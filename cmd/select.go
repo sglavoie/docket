@@ -47,7 +47,7 @@ func runSelect(cmd *cobra.Command, args []string) error {
 		// Interactive selection
 		projects := cfg.GetActiveProjects()
 		if len(projects) == 0 {
-			return fmt.Errorf("no projects available. Create one with: tt project new <name>")
+			return fmt.Errorf("%s", NoItemsMsg("projects", "tt project new <name>"))
 		}
 
 		// Load projects to get task counts

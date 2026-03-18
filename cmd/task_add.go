@@ -62,7 +62,7 @@ func init() {
 	taskCmd.AddCommand(taskAddCmd)
 
 	taskAddCmd.Flags().StringVarP(&taskTypeFlag, "type", "t", "", "task type (epic, story, task, bug, idea)")
-	taskAddCmd.Flags().StringVarP(&taskParentFlag, "parent", "p", "", "parent task ID or short ID")
+	taskAddCmd.Flags().StringVar(&taskParentFlag, "parent", "", "parent task ID or short ID")
 	taskAddCmd.Flags().IntVar(&taskPriority, "priority", 3, "priority (1=highest, 5=lowest)")
 	taskAddCmd.Flags().StringSliceVarP(&taskTags, "tags", "T", nil, "tags for the task")
 
@@ -70,7 +70,7 @@ func init() {
 	taskAddCmd.Flags().BoolVar(&isStory, "story", false, "create a story")
 	taskAddCmd.Flags().BoolVar(&isBug, "bug", false, "create a bug")
 	taskAddCmd.Flags().BoolVar(&isIdea, "idea", false, "create an idea")
-	taskAddCmd.Flags().StringVarP(&taskSectionFlag, "section", "s", "", "section for the task (default: project's first section)")
+	taskAddCmd.Flags().StringVar(&taskSectionFlag, "section", "", "section for the task (default: project's first section)")
 	taskAddCmd.Flags().StringVar(&taskStageFlag, "stage", "", "workflow stage (e.g., Brainstorm, Design, Implement)")
 	taskAddCmd.Flags().StringVar(&taskRecurFlag, "recur", "", "recurrence pattern (daily, weekly, monthly, yearly, Nd, Nw, Nm, Ny)")
 	taskAddCmd.Flags().StringVar(&taskTemplateFlag, "template", "", "create from template (ID or name)")
@@ -177,8 +177,8 @@ func runTaskAdd(cmd *cobra.Command, args []string) error {
 		task.AddTag(tag)
 	}
 
-	// Handle section (flag overrides template)
-	if taskSectionFlag != "" {
+	// Handle section (explicit flag overrides template, using Changed() for consistency)
+	if cmd.Flags().Changed("section") {
 		project.EnsureSection(taskSectionFlag)
 		task.Section = taskSectionFlag
 	} else if tmpl != nil && tmpl.Section != "" {

@@ -34,6 +34,20 @@ var Deps = Dependencies{
 	Repository: storage.DefaultRepository,
 }
 
+// NoItemsMsg returns a standardized "no <thing> found" message with an actionable hint.
+// Use this for empty-state messages across all commands.
+func NoItemsMsg(thing, hint string) string {
+	if hint != "" {
+		return fmt.Sprintf("No %s found. Create one with: %s", thing, hint)
+	}
+	return fmt.Sprintf("No %s found.", thing)
+}
+
+// NoCurrentProjectError returns a standardized error for when no project is selected.
+func NoCurrentProjectError() error {
+	return fmt.Errorf("%w. Select one with: tt select, or specify with --project", tterrors.ErrNoCurrentProject)
+}
+
 // Debugf prints a formatted message to stderr if verbose mode is enabled.
 func Debugf(format string, args ...any) {
 	if IsVerbose() {
@@ -132,7 +146,7 @@ func LoadCurrentProject() (*models.Project, *config.Config, *config.Manager, err
 
 	project := cfg.GetCurrentProject()
 	if project == nil {
-		return nil, nil, nil, fmt.Errorf("%w. Select one with: tt select, or specify with --project", tterrors.ErrNoCurrentProject)
+		return nil, nil, nil, NoCurrentProjectError()
 	}
 
 	Debugf("loading project: %s (%s)", project.Name, project.Path)
@@ -219,7 +233,7 @@ func LoadConfigAndProjectOrCurrent(args []string) (*models.Project, *config.Conf
 	} else {
 		project = cfg.GetCurrentProject()
 		if project == nil {
-			return nil, nil, nil, fmt.Errorf("%w. Select one with: tt select, or specify with --project", tterrors.ErrNoCurrentProject)
+			return nil, nil, nil, NoCurrentProjectError()
 		}
 	}
 	return project, cfg, mgr, nil
