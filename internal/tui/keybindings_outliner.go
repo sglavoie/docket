@@ -156,5 +156,6 @@ func (r *KeybindingRegistry) registerCrossProjectOutlinerBindings() {
 
 		// Other
 		Keybinding{Key: "ctrl+R", Description: "Refresh from disk", Category: "Other", Views: views},
+		Keybinding{Key: "u", Description: "Undo last change", Category: "Other", Views: views},
 	)
 }
