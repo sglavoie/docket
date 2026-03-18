@@ -340,6 +340,11 @@ func (m *OutlinerModel) renderCrossProjectContent() string {
 
 			projBadge := ""
 			if row.ProjectID != "" {
+				// Intentional: badge is built inline here using projectBadgeColor()
+				// rather than delegating to RenderCrossProjectTaskLine. This is a
+				// deliberate bypass documented in cross_project_colors.go. If badge
+				// style ever changes, update both this path and RenderCrossProjectTaskLine
+				// to avoid visual drift between views.
 				projName := m.projectNameByID(row.ProjectID)
 				badgeStyle := lipgloss.NewStyle().Foreground(projectBadgeColor(projName))
 				projBadge = badgeStyle.Render("["+projName+"]") + " "

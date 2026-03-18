@@ -94,6 +94,7 @@ const (
 	ViewScoringProfilePicker
 	ViewFocusBoard
 	ViewOutliner
+	ViewTemporaryOutliner
 	ViewCrossProjectOutliner
 	ViewColumnPicker
 	ViewFilterBuilder

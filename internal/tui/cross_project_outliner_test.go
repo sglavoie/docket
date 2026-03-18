@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 )
@@ -149,9 +150,11 @@ func TestBuildCrossProjectRowsMultiProjectMerging(t *testing.T) {
 		t.Errorf("shared section header should have empty ProjectID, got %q", headers[0].ProjectID)
 	}
 
-	// The shared header CollapseKey must be the section name only (not composite).
-	if len(headers) == 1 && headers[0].CollapseKey != models.SectionNext {
-		t.Errorf("shared header CollapseKey: want %q, got %q", models.SectionNext, headers[0].CollapseKey)
+	// The shared header CollapseKey must be namespaced with "_xp:" prefix to
+	// prevent single-project collapse state from bleeding into the cross-project view.
+	wantCollapseKey := "_xp:" + models.SectionNext
+	if len(headers) == 1 && headers[0].CollapseKey != wantCollapseKey {
+		t.Errorf("shared header CollapseKey: want %q, got %q", wantCollapseKey, headers[0].CollapseKey)
 	}
 
 	// The shared header SectionCount must reflect all tasks across both projects.
@@ -492,7 +495,7 @@ func TestCrossProjectUndoOrchestration(t *testing.T) {
 		PrimaryViewBundle: PrimaryViewBundle{
 			projectService: NewProjectService(),
 			bulkOp:         NewBulkOperationComponent(),
-			quickEdit:       NewQuickEditComponent(),
+			quickEdit:      NewQuickEditComponent(),
 		},
 		collapsedSections: make(map[string]bool),
 		expandedNodes:     make(map[string]bool),
@@ -1402,6 +1405,166 @@ func TestSearchTagOnlyMatchConsistency(t *testing.T) {
 	}
 	if crossTaskTitles[untaggedTask.Title] {
 		t.Error("cross-project outliner: untagged task should not appear when query matches neither its title nor tags")
+	}
+}
+
+// TestCrossHandleEnterKeyCollapseTogglesRows verifies that pressing Enter on a
+// section header collapses the section (hiding task rows) and pressing Enter
+// again expands it (restoring task rows). This guards against the memoization
+// guard in crossProjectRebuildRows short-circuiting without updating m.rows.
+func TestCrossHandleEnterKeyCollapseTogglesRows(t *testing.T) {
+	proj := &models.Project{
+		ID:   "proj-toggle",
+		Name: "Toggle",
+		Tasks: []*models.Task{
+			makeTask("t1", "Task one", models.SectionInbox),
+			makeTask("t2", "Task two", models.SectionInbox),
+		},
+	}
+	proj.BuildTaskTree()
+
+	m := &OutlinerModel{
+		collapsedSections: make(map[string]bool),
+		expandedNodes:     make(map[string]bool),
+		MultiSelectState:  MultiSelectState{selectedTasks: make(map[string]bool)},
+		activePerspective: PerspectiveAll,
+		loadedProjects:    []*models.Project{proj},
+	}
+	// Initial build so rows are populated.
+	m.crossForceRebuild = true
+	m.crossProjectRebuildRows()
+
+	// Count task rows before any toggle.
+	countTaskRows := func() int {
+		n := 0
+		for _, r := range m.rows {
+			if !r.IsSectionHeader && !r.IsSeparator && r.task != nil {
+				n++
+			}
+		}
+		return n
+	}
+
+	initialTaskRows := countTaskRows()
+	if initialTaskRows == 0 {
+		t.Fatal("expected at least one task row after initial build")
+	}
+
+	// Find the section header row and place the cursor there.
+	headerIdx := -1
+	for i, r := range m.rows {
+		if r.IsSectionHeader {
+			headerIdx = i
+			break
+		}
+	}
+	if headerIdx == -1 {
+		t.Fatal("no section header row found; cannot test collapse toggle")
+	}
+	m.cursor = headerIdx
+
+	// First Enter: collapse the section — task rows should disappear.
+	_, _, handled := m.crossHandleEnterKey()
+	if !handled {
+		t.Fatal("crossHandleEnterKey returned handled=false on section header")
+	}
+	afterCollapse := countTaskRows()
+	if afterCollapse >= initialTaskRows {
+		t.Errorf("after collapse: want fewer than %d task rows, got %d", initialTaskRows, afterCollapse)
+	}
+
+	// Restore cursor to the header (it may have shifted).
+	for i, r := range m.rows {
+		if r.IsSectionHeader {
+			m.cursor = i
+			break
+		}
+	}
+
+	// Second Enter: expand the section — task rows should be restored.
+	_, _, handled = m.crossHandleEnterKey()
+	if !handled {
+		t.Fatal("crossHandleEnterKey returned handled=false on second toggle")
+	}
+	afterExpand := countTaskRows()
+	if afterExpand != initialTaskRows {
+		t.Errorf("after expand: want %d task rows, got %d", initialTaskRows, afterExpand)
+	}
+}
+
+// ── q-key close path ─────────────────────────────────────────────────────────
+
+// TestCrossProjectOutlinerQAtRootEmitsCloseCrossOutlinerMsg verifies that
+// pressing 'q' when the cross-project outliner is at root level (m.project==nil,
+// crossZoomStack empty) emits CloseCrossOutlinerMsg, not CloseOutlinerMsg.
+// This guards against the regression where the single-project branch at
+// outliner_keys.go was reached, nil'ing m.outliner and calling popView().
+func TestCrossProjectOutlinerQAtRootEmitsCloseCrossOutlinerMsg(t *testing.T) {
+	app := newTestAppModel()
+	// project == nil: cross-project mode; crossZoomStack is empty (root level)
+	m := NewOutlinerModel(nil, app.config, app.configManager)
+
+	key := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'q'}}
+	_, cmd := m.handleKeyMsg(key)
+	if cmd == nil {
+		t.Fatal("expected a command from 'q' at cross-project root, got nil")
+	}
+	msg := cmd()
+	if _, ok := msg.(CloseCrossOutlinerMsg); !ok {
+		t.Errorf("expected CloseCrossOutlinerMsg, got %T", msg)
+	}
+}
+
+// TestCloseCrossOutlinerMsgPreservesOutliner verifies that when the cross-project
+// outliner emits CloseCrossOutlinerMsg (the fixed 'q' path), the AppModel:
+//   (a) leaves the view stack at an anchor view
+//   (b) does not nil m.crossOutliner
+//   (c) does not nil m.outliner (the single-project outliner session)
+//
+// With the old bug (CloseOutlinerMsg), m.outliner was cleared and a non-anchor
+// view could be left exposed on the stack.
+func TestCloseCrossOutlinerMsgPreservesOutliner(t *testing.T) {
+	app, project := newTestAppModelWithProject()
+
+	// Register a project outliner as the anchor below the cross-project one.
+	projectOutliner := NewOutlinerModel(project, app.config, app.configManager)
+	app.outliner = projectOutliner
+	app.views.Register(ViewOutliner, projectOutliner)
+	app.viewStack = append(app.viewStack, ViewOutliner)
+
+	// Push the cross-project outliner on top.
+	crossOutliner := NewOutlinerModel(nil, app.config, app.configManager)
+	app.crossOutliner = crossOutliner
+	app.views.Register(ViewCrossProjectOutliner, crossOutliner)
+	app.viewStack = append(app.viewStack, ViewCrossProjectOutliner)
+	// Stack: [ViewDashboard, ViewOutliner, ViewCrossProjectOutliner]
+
+	// Dispatch the message that the fixed 'q' handler now emits.
+	handled, _ := app.handleViewMessages(CloseCrossOutlinerMsg{})
+	if !handled {
+		t.Fatal("CloseCrossOutlinerMsg should be handled by the app")
+	}
+
+	// (a) View stack must be at an anchor view (not a dangling non-anchor).
+	current := app.currentView()
+	switch current {
+	case ViewDashboard, ViewProjectTree, ViewOutliner, ViewCrossProjectOutliner:
+		// OK — stack is clean
+	default:
+		t.Errorf("view stack should be at an anchor view after CloseCrossOutlinerMsg, got %v", current)
+	}
+
+	// (b) m.crossOutliner must be preserved (not nil'd).
+	if app.crossOutliner == nil {
+		t.Error("m.crossOutliner must not be nil after CloseCrossOutlinerMsg")
+	}
+
+	// (c) m.outliner must still be valid — CloseOutlinerMsg would have nil'd it.
+	if app.outliner == nil {
+		t.Error("m.outliner must not be nil after CloseCrossOutlinerMsg")
+	}
+	if app.views.Get(ViewOutliner) == nil {
+		t.Error("ViewOutliner registry entry must not be nil after CloseCrossOutlinerMsg")
 	}
 }
 

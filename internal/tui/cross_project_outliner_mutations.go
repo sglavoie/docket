@@ -219,11 +219,11 @@ func (m *OutlinerModel) crossHandlePriorityMutation(key string) (tea.Cmd, bool) 
 // applies a snooze date mutation, and forces a row rebuild via rebuildRows.
 // It is called from handlePrefixKey when prefix="s" and m.project==nil.
 //
-// "sd" emits SetSnoozeDateMsg (date picker). All other recognised snooze keys
+// "sd" emits SetSnoozeDateMsg (date picker). All other recognized snooze keys
 // mutate in-place, call Backup() then Save(), and rebuild rows synchronously.
 //
 // Returns (cmd, true) when the key was consumed.
-// Returns (nil, false) when the key is not a recognised snooze sub-key.
+// Returns (nil, false) when the key is not a recognized snooze sub-key.
 func (m *OutlinerModel) crossHandleSnoozeMutation(key string) (tea.Cmd, bool) {
 	if key == "d" {
 		row, proj, valid := m.crossGetMutationTarget()

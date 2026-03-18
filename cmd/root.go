@@ -78,7 +78,9 @@ func initConfig() {
 
 func initNoColor() {
 	if noColor || os.Getenv("NO_COLOR") != "" {
-		os.Setenv("NO_COLOR", "1")
+		if err := os.Setenv("NO_COLOR", "1"); err != nil {
+			fmt.Fprintf(os.Stderr, "failed to set NO_COLOR: %v\n", err)
+		}
 	}
 }
 

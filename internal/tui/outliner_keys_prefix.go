@@ -186,6 +186,11 @@ func (m *OutlinerModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 			return m, nil
 		case "M":
 			// Collapse all - mark all parent tasks as collapsed
+			if m.project == nil {
+				m.expandedNodes = make(map[string]bool)
+				m.rebuildRows()
+				return m, nil
+			}
 			m.ensureExpandedNodes()
 			m.collapseAllParents(m.project.GetRootTasks())
 			m.rebuildRows()

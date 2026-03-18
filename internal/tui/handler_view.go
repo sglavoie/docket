@@ -710,7 +710,7 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 				// single-project session is preserved.
 				fresh := NewOutlinerModel(msg.Project, m.config, m.configManager)
 				fresh.OpenAtTask = msg.OpenAtTask
-				m.showView(ViewOutliner, fresh)
+				m.showView(ViewTemporaryOutliner, fresh)
 				return true, nil
 			}
 			replacing := m.isOnProjectView()
@@ -746,6 +746,8 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 	case ShowGlobalOutlinerMsg:
 		if m.crossOutliner == nil {
 			m.crossOutliner = NewOutlinerModel(nil, m.config, m.configManager)
+			m.showView(ViewCrossProjectOutliner, m.crossOutliner)
+			return true, m.crossOutliner.Init()
 		}
 		// If already viewing the cross-project outliner, reload in-place without
 		// pushing a duplicate onto the view stack.
@@ -753,13 +755,13 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 			return true, m.crossOutliner.reloadCrossProjects()
 		}
 		m.showView(ViewCrossProjectOutliner, m.crossOutliner)
-		return true, nil
+		return true, m.crossOutliner.reloadCrossProjects()
 
 	case CloseGlobalOutlinerMsg:
 		m.popToAnchorView()
 		return true, nil
 
-	// CloseCrossOutlinerMsg produces identical runtime behaviour to
+	// CloseCrossOutlinerMsg produces identical runtime behavior to
 	// CloseGlobalOutlinerMsg (pop to anchor, preserve m.crossOutliner) but
 	// is a semantically distinct message so callers can target the
 	// cross-project outliner specifically without coupling to the global one.

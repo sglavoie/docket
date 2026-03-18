@@ -27,7 +27,7 @@ type outlinerRow struct {
 	IsSectionHeader bool   // True if this row is a section header (not a task)
 	SectionName     string // Section name for header rows
 	SectionCount    int    // Number of tasks in this section
-	CollapseKey     string // Key for collapsedSections map; composite "projectID:sectionName" in cross-project mode, empty in single-project mode
+	CollapseKey     string // Key for collapsedSections map; "_xp:sectionName" sentinel in All-perspective cross-project mode (shared headers, no per-project prefix needed), empty in single-project mode
 	ProjectID       string // Project that owns this row; set on task rows and cross-project section headers
 	IsSeparator     bool   // True if this row is a visual separator between projects
 }
@@ -423,7 +423,12 @@ func (m *OutlinerModel) renderOutlinerTreeContent(width int) string {
 		// cross-project rows lives in renderCrossProjectContent
 		// (cross_project_outliner.go).
 		projBadge := ""
-		if row.ProjectID != "" {
+		if m.project == nil {
+			// Unreachable: View() dispatches to crossProjectView() before reaching
+			// this function whenever m.project == nil. The block below is kept as
+			// scaffolding but must not be edited expecting it to affect cross-project
+			// badge rendering — changes there belong in renderCrossProjectContent.
+		} else if row.ProjectID != "" {
 			projName := m.projectNameByID(row.ProjectID)
 			badgeStyle := lipgloss.NewStyle().Foreground(projectBadgeColor(projName))
 			projBadge = badgeStyle.Render("["+projName+"]") + " "

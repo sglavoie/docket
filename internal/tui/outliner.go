@@ -111,6 +111,9 @@ func (m *OutlinerModel) getCursorTask() *models.Task {
 	return nil
 }
 func (m *OutlinerModel) reloadFromDisk() tea.Cmd {
+	if m.project == nil {
+		return m.reloadCrossProjects()
+	}
 	if err := storage.LoadProject(m.project); err != nil {
 		logging.Warn("failed to load project %s: %v", m.project.Name, err)
 		m.rebuildRows()
@@ -351,11 +354,7 @@ func (m *OutlinerModel) buildRowsWithSectionHeaders(tasks []*models.Task) {
 	// Group tasks by section
 	tasksBySection := m.groupTasksBySection(tasks)
 
-	// Define section order: Active, Inbox, Next, Waiting, Someday, Review
-	// (excluding Completed as per All view convention)
-	sectionOrder := []string{"", models.SectionInbox, models.SectionNext, models.SectionWaiting, models.SectionReview, models.SectionStandby, models.SectionSomeday}
-
-	for _, sectionName := range sectionOrder {
+	for _, sectionName := range SectionOrder {
 		sectionTasks := tasksBySection[sectionName]
 		if len(sectionTasks) == 0 {
 			continue
@@ -483,7 +482,7 @@ func (m *OutlinerModel) contentHeight() int {
 	if m.customSectionTabs() != nil {
 		headerLines += 2 // custom section tab bar (text + bottom border)
 	}
-	if len(m.zoomStack) > 0 {
+	if (m.project != nil && len(m.zoomStack) > 0) || (m.project == nil && len(m.crossZoomStack) > 0) {
 		headerLines++ // breadcrumb
 	}
 	h := m.height - headerLines
@@ -575,7 +574,7 @@ func (m *OutlinerModel) toggleMultiSelectMode() {
 // selectAllVisible adds all currently visible rows to the selection.
 func (m *OutlinerModel) selectAllVisible() {
 	for _, row := range m.rows {
-		if row.IsSectionHeader {
+		if row.IsSectionHeader || row.IsSeparator || row.task == nil {
 			continue
 		}
 		m.selectedTasks[row.task.ID] = true
@@ -585,7 +584,7 @@ func (m *OutlinerModel) selectAllVisible() {
 // deselectAllVisible removes all currently visible rows from the selection.
 func (m *OutlinerModel) deselectAllVisible() {
 	for _, row := range m.rows {
-		if row.IsSectionHeader {
+		if row.IsSectionHeader || row.IsSeparator || row.task == nil {
 			continue
 		}
 		delete(m.selectedTasks, row.task.ID)

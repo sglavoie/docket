@@ -49,7 +49,16 @@ func (m *OutlinerModel) buildCrossProjectRowsWithSectionHeaders(groups []project
 		for _, pg := range projGroups {
 			totalCount += m.countTasksRecursive(pg.tasks)
 		}
-		collapseKey := sectionName
+		// "_xp:" is the authoritative sentinel prefix for All-perspective
+		// cross-project section headers. Because each section header is shared
+		// across all projects (one header per canonical section, no per-project
+		// sub-header), a fixed namespace is sufficient and avoids collision with
+		// single-project keys (which fall back to bare sectionName). This diverges
+		// from the "projectID:sectionName" composite described in design decision
+		// 019cfd3c014f7003, which applies to non-All perspectives where per-project
+		// grouping would require distinct keys — not to the shared All-perspective
+		// headers here.
+		collapseKey := "_xp:" + sectionName
 		m.rows = append(m.rows, outlinerRow{
 			IsSectionHeader: true,
 			SectionName:     sectionName,

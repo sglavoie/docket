@@ -146,6 +146,13 @@ func (m *OutlinerModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.cursor = top.CursorIndex
 			return m, nil
 		}
+		// Cross-project at root: use the dedicated close message so
+		// popToAnchorView is called and m.crossOutliner is not nil'd.
+		if m.project == nil {
+			return m, func() tea.Msg {
+				return CloseCrossOutlinerMsg{}
+			}
+		}
 		if len(m.zoomStack) == 0 {
 			return m, func() tea.Msg {
 				return CloseOutlinerMsg{}
@@ -318,8 +325,8 @@ func (m *OutlinerModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 		// Handle section header toggle
 		if row.IsSectionHeader {
-			key := row.effectiveCollapseKey()
-			m.collapsedSections[key] = !m.collapsedSections[key]
+			keyCollapse := row.effectiveCollapseKey()
+			m.collapsedSections[keyCollapse] = !m.collapsedSections[keyCollapse]
 			m.rebuildRows()
 			return m, nil
 		}

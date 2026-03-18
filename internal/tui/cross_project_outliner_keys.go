@@ -163,7 +163,13 @@ func (m *OutlinerModel) crossHandleEnterKey() (tea.Model, tea.Cmd, bool) {
 		return m, nil, true
 	}
 	row := m.rows[m.cursor]
-	if row.IsSeparator || row.IsSectionHeader {
+	if row.IsSeparator {
+		return m, nil, true
+	}
+	if row.IsSectionHeader {
+		key := row.effectiveCollapseKey()
+		m.collapsedSections[key] = !m.collapsedSections[key]
+		m.rebuildRows()
 		return m, nil, true
 	}
 	task := row.task
@@ -193,6 +199,7 @@ func (m *OutlinerModel) crossHandleUndo(key string) (tea.Model, tea.Cmd, bool) {
 
 	ids := m.crossUndoCtx.ProjectIDs
 	if len(ids) == 0 {
+		m.statusMessage = "Nothing to undo"
 		return m, nil, true
 	}
 
