@@ -1077,6 +1077,75 @@ func TestCrossProjectRebuildRowsPerspectiveRouting(t *testing.T) {
 	})
 }
 
+// TestCrossProjectGroupingByPerspective verifies the grouping contract:
+// All perspective → section-grouped rows (IsSectionHeader present, no IsSeparator);
+// non-All perspectives → project-grouped rows (IsSeparator between groups, no IsSectionHeader).
+func TestCrossProjectGroupingByPerspective(t *testing.T) {
+	// Two projects, each with a task in the active section, so non-All filtering
+	// keeps both groups non-empty and produces a separator between them.
+	task1 := makeTask("g1", "Task 1", "")
+	task1.Status = models.StatusInProgress
+	proj1 := &models.Project{ID: "grp-p1", Name: "P1", Tasks: []*models.Task{task1}}
+	proj1.BuildTaskTree()
+
+	task2 := makeTask("g2", "Task 2", "")
+	task2.Status = models.StatusInProgress
+	proj2 := &models.Project{ID: "grp-p2", Name: "P2", Tasks: []*models.Task{task2}}
+	proj2.BuildTaskTree()
+
+	newModel := func(perspective int) *OutlinerModel {
+		return &OutlinerModel{
+			collapsedSections: make(map[string]bool),
+			expandedNodes:     make(map[string]bool),
+			MultiSelectState:  MultiSelectState{selectedTasks: make(map[string]bool)},
+			activePerspective: perspective,
+			loadedProjects:    []*models.Project{proj1, proj2},
+		}
+	}
+
+	t.Run("All perspective produces section-grouped rows", func(t *testing.T) {
+		m := newModel(PerspectiveAll)
+		m.crossProjectRebuildRows()
+
+		var sectionHeaders, separators int
+		for _, row := range m.rows {
+			if row.IsSectionHeader {
+				sectionHeaders++
+			}
+			if row.IsSeparator {
+				separators++
+			}
+		}
+		if sectionHeaders == 0 {
+			t.Error("expected IsSectionHeader rows for All perspective, got none")
+		}
+		if separators != 0 {
+			t.Errorf("expected no IsSeparator rows for All perspective, got %d", separators)
+		}
+	})
+
+	t.Run("non-All perspective produces project-grouped rows with IsSeparator", func(t *testing.T) {
+		m := newModel(PerspectiveAll + 1) // Active perspective
+		m.crossProjectRebuildRows()
+
+		var sectionHeaders, separators int
+		for _, row := range m.rows {
+			if row.IsSectionHeader {
+				sectionHeaders++
+			}
+			if row.IsSeparator {
+				separators++
+			}
+		}
+		if separators == 0 {
+			t.Error("expected IsSeparator rows between project groups for non-All perspective, got none")
+		}
+		if sectionHeaders != 0 {
+			t.Errorf("expected no IsSectionHeader rows for non-All perspective, got %d", sectionHeaders)
+		}
+	})
+}
+
 // BenchmarkCrossProjectLoadAndRebuild measures the end-to-end cost of loading
 // two realistic projects from disk and rebuilding the cross-project row list.
 // Each project contains 20 tasks arranged in a multi-level hierarchy
