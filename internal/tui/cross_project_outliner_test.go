@@ -702,6 +702,74 @@ func TestValidateCrossZoomStackProjectIDScoping(t *testing.T) {
 	}
 }
 
+// TestCrossProjectStatePreservationAfterReload verifies that activePerspective,
+// collapsedSections, and cursor position survive a cross-project reload cycle.
+// After handleCrossProjectsLoaded processes new project data, activePerspective
+// and collapsedSections must remain exactly as set, and the cursor must fall
+// within the valid index range for the rebuilt row list.
+func TestCrossProjectStatePreservationAfterReload(t *testing.T) {
+	const collapsedSection = models.SectionNext
+
+	proj := &models.Project{
+		ID:   "proj-reload",
+		Name: "Reload",
+		Tasks: []*models.Task{
+			makeTask("r1", "Next task 1", models.SectionNext),
+			makeTask("r2", "Next task 2", models.SectionNext),
+			makeTask("r3", "Inbox task", models.SectionInbox),
+		},
+	}
+	proj.BuildTaskTree()
+
+	m := &OutlinerModel{
+		collapsedSections: map[string]bool{collapsedSection: true},
+		expandedNodes:     make(map[string]bool),
+		MultiSelectState:  MultiSelectState{selectedTasks: make(map[string]bool)},
+		activePerspective: 3,
+		crossLoadGen:      0, // generation 0 — msg must match
+	}
+	m.cursor = 1
+
+	// New project data arrives via a completed async load (same generation).
+	newProj := &models.Project{
+		ID:   "proj-reload-2",
+		Name: "Reload2",
+		Tasks: []*models.Task{
+			makeTask("n1", "New task", models.SectionNext),
+		},
+	}
+	newProj.BuildTaskTree()
+
+	msg := crossProjectsLoadedMsg{
+		projects:   []*models.Project{newProj},
+		generation: 0,
+	}
+
+	m.handleCrossProjectsLoaded(msg) //nolint:errcheck — returns tea.Cmd, not needed here
+
+	// activePerspective must be unchanged.
+	if m.activePerspective != 3 {
+		t.Errorf("activePerspective: want 3, got %d", m.activePerspective)
+	}
+
+	// collapsedSections must be unchanged.
+	if !m.collapsedSections[collapsedSection] {
+		t.Errorf("collapsedSections[%q] should still be true after reload", collapsedSection)
+	}
+
+	// cursor must be within valid bounds: [0, len(rows)-1] or 0 when rows is empty.
+	rowCount := len(m.rows)
+	if rowCount == 0 {
+		if m.cursor != 0 {
+			t.Errorf("cursor must be 0 when no rows exist, got %d", m.cursor)
+		}
+	} else {
+		if m.cursor < 0 || m.cursor >= rowCount {
+			t.Errorf("cursor %d is out of bounds for %d rows", m.cursor, rowCount)
+		}
+	}
+}
+
 // readCrossTestFile reads a file's contents for integration test assertions.
 func readCrossTestFile(t *testing.T, path string) string {
 	t.Helper()
