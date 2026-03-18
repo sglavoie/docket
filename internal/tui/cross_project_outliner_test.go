@@ -634,6 +634,74 @@ func TestValidateCrossZoomStackContextChange(t *testing.T) {
 	}
 }
 
+// TestValidateCrossZoomStackProjectIDScoping verifies that validateCrossZoomStack
+// resolves zoom entries by ProjectID, not by searching the global task list.
+// Two projects share the same task UUID; a CrossProjectZoomEntry is scoped to
+// one project. The test confirms:
+//   - The stack is preserved when the scoped project contains the task.
+//   - The stack is cleared when the scoped project is removed from loadedProjects,
+//     even though the duplicate UUID still exists in the other project.
+func TestValidateCrossZoomStackProjectIDScoping(t *testing.T) {
+	const sharedUUID = "shared-task-uuid"
+
+	projA := &models.Project{
+		ID:    "proj-a",
+		Name:  "Alpha",
+		Tasks: []*models.Task{makeTask(sharedUUID, "Task in Alpha", "")},
+	}
+	projA.BuildTaskTree()
+
+	projB := &models.Project{
+		ID:    "proj-b",
+		Name:  "Beta",
+		Tasks: []*models.Task{makeTask(sharedUUID, "Task in Beta", "")},
+	}
+	projB.BuildTaskTree()
+
+	// ── Part 1: Stack is preserved when scoped project is present ─────────────
+	m := &OutlinerModel{
+		collapsedSections: make(map[string]bool),
+		expandedNodes:     make(map[string]bool),
+		MultiSelectState:  MultiSelectState{selectedTasks: make(map[string]bool)},
+		loadedProjects:    []*models.Project{projA, projB},
+		crossZoomStack: []CrossProjectZoomEntry{
+			{TaskID: sharedUUID, ProjectID: "proj-a", CursorIndex: 3},
+		},
+	}
+	m.cursor = 3
+
+	m.validateCrossZoomStack()
+
+	if len(m.crossZoomStack) != 1 {
+		t.Errorf("stack should be preserved when scoped project has the task: got %d entries", len(m.crossZoomStack))
+	}
+	if m.cursor != 3 {
+		t.Errorf("cursor should be unchanged when stack is valid: want 3, got %d", m.cursor)
+	}
+
+	// ── Part 2: Stack is cleared when scoped project is removed ───────────────
+	// proj-b still has sharedUUID, but the entry is scoped to proj-a (now gone).
+	m2 := &OutlinerModel{
+		collapsedSections: make(map[string]bool),
+		expandedNodes:     make(map[string]bool),
+		MultiSelectState:  MultiSelectState{selectedTasks: make(map[string]bool)},
+		loadedProjects:    []*models.Project{projB}, // proj-a removed
+		crossZoomStack: []CrossProjectZoomEntry{
+			{TaskID: sharedUUID, ProjectID: "proj-a", CursorIndex: 3},
+		},
+	}
+	m2.cursor = 3
+
+	m2.validateCrossZoomStack()
+
+	if len(m2.crossZoomStack) != 0 {
+		t.Errorf("stack should be cleared when scoped project is absent, even if UUID exists elsewhere: got %d entries", len(m2.crossZoomStack))
+	}
+	if m2.cursor != 0 {
+		t.Errorf("cursor should reset to 0 after stack cleared: got %d", m2.cursor)
+	}
+}
+
 // readCrossTestFile reads a file's contents for integration test assertions.
 func readCrossTestFile(t *testing.T, path string) string {
 	t.Helper()
