@@ -1191,6 +1191,80 @@ func BenchmarkCrossProjectLoadAndRebuild(b *testing.B) {
 	}
 }
 
+// TestSearchTagOnlyMatchConsistency is a regression test that pins the shared
+// matchesSearch behavior between the single-project and cross-project outliner
+// row builders.
+//
+// A task whose title does NOT match the query but whose tag DOES must appear
+// in the rebuilt rows for both outliners. This test would fail if either
+// outliner reverted to title-only matching.
+func TestSearchTagOnlyMatchConsistency(t *testing.T) {
+	// Task title is "Unrelated title"; the query "backend" only matches the tag.
+	taggedTask := makeTask("tag-task-1", "Unrelated title", "")
+	taggedTask.Tags = []string{"backend", "api"}
+
+	untaggedTask := makeTask("tag-task-2", "Another unrelated title", "")
+
+	proj := &models.Project{
+		ID:    "proj-tag-test",
+		Name:  "TagTest",
+		Tasks: []*models.Task{taggedTask, untaggedTask},
+	}
+	proj.BuildTaskTree()
+
+	const query = "backend"
+
+	// ── Single-project outliner ───────────────────────────────────────────────
+	singleM := &OutlinerModel{
+		collapsedSections: make(map[string]bool),
+		expandedNodes:     make(map[string]bool),
+		MultiSelectState:  MultiSelectState{selectedTasks: make(map[string]bool)},
+		activePerspective: PerspectiveAll,
+		project:           proj,
+	}
+	singleM.SetSearchQuery(query)
+	singleM.rebuildRows()
+
+	singleTaskTitles := make(map[string]bool)
+	for _, row := range singleM.rows {
+		if !row.IsSectionHeader && !row.IsSeparator && row.task != nil {
+			singleTaskTitles[row.task.Title] = true
+		}
+	}
+
+	if !singleTaskTitles[taggedTask.Title] {
+		t.Error("single-project outliner: tag-matched task not found in rows (tag-only search returned no match)")
+	}
+	if singleTaskTitles[untaggedTask.Title] {
+		t.Error("single-project outliner: untagged task should not appear when query matches neither its title nor tags")
+	}
+
+	// ── Cross-project outliner ────────────────────────────────────────────────
+	crossM := &OutlinerModel{
+		collapsedSections: make(map[string]bool),
+		expandedNodes:     make(map[string]bool),
+		MultiSelectState:  MultiSelectState{selectedTasks: make(map[string]bool)},
+		activePerspective: PerspectiveAll,
+		loadedProjects:    []*models.Project{proj},
+	}
+	crossM.SetSearchQuery(query)
+	crossM.crossProjectRebuildRows()
+
+	crossTaskTitles := make(map[string]bool)
+	for _, row := range crossM.rows {
+		if !row.IsSectionHeader && !row.IsSeparator && row.task != nil {
+			crossTaskTitles[row.task.Title] = true
+		}
+	}
+
+	if !crossTaskTitles[taggedTask.Title] {
+		t.Error("cross-project outliner: tag-matched task not found in rows (tag-only search returned no match)")
+	}
+	if crossTaskTitles[untaggedTask.Title] {
+		t.Error("cross-project outliner: untagged task should not appear when query matches neither its title nor tags")
+	}
+}
+
 // readCrossTestFile reads a file's contents for integration test assertions.
 func readCrossTestFile(t *testing.T, path string) string {
 	t.Helper()
