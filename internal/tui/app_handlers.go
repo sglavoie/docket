@@ -181,6 +181,11 @@ func (m *AppModel) applyTagsToTask(task *models.Task, project *models.Project, s
 		m.outliner.setUndoContext("Set Tags", fmt.Sprintf("#%d %s", task.ShortID, task.Title))
 		m.outliner.rebuildRows()
 	}
+	if m.crossOutliner != nil {
+		m.crossOutliner.crossUndoCtx.Set("Set Tags", fmt.Sprintf("#%d %s", task.ShortID, task.Title))
+		m.crossOutliner.crossUndoCtx.ProjectIDs = []string{project.ID}
+		m.crossOutliner.rebuildRows()
+	}
 
 	return nil
 }

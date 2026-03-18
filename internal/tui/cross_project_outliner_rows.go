@@ -11,11 +11,11 @@ type projectTasksGroup struct {
 }
 
 // buildCrossProjectRowsWithSectionHeaders groups tasks from multiple projects
-// under canonical GTD section headers. Each project gets its own section header
-// per section so that collapse state is tracked independently per project using
-// composite "projectID:sectionName" keys. Empty sections are skipped. Task rows
-// carry the ProjectID of their owning project; header rows carry the ProjectID
-// of the owning project for context rendering.
+// under canonical GTD section headers. One shared header is emitted per
+// section; tasks from all projects in that section appear underneath it.
+// Empty sections are skipped. Task rows carry the ProjectID of their owning
+// project (for color badge rendering); header rows have no ProjectID so that
+// no per-project label is rendered on the shared header.
 func (m *OutlinerModel) buildCrossProjectRowsWithSectionHeaders(groups []projectTasksGroup) {
 	// sectionOrder defines the canonical display order for the All perspective.
 	sectionOrder := []string{
@@ -53,19 +53,23 @@ func (m *OutlinerModel) buildCrossProjectRowsWithSectionHeaders(groups []project
 			continue
 		}
 
+		// Emit ONE shared section header for all projects in this section.
+		// Per requirements, tasks from multiple projects appear under the same
+		// shared section header; per-row project identity uses color badges only.
+		totalCount := 0
 		for _, pg := range projGroups {
-			collapseKey := pg.projectID + ":" + sectionName
+			totalCount += m.countTasksRecursive(pg.tasks)
+		}
+		collapseKey := sectionName
+		m.rows = append(m.rows, outlinerRow{
+			IsSectionHeader: true,
+			SectionName:     sectionName,
+			SectionCount:    totalCount,
+			CollapseKey:     collapseKey,
+		})
 
-			count := m.countTasksRecursive(pg.tasks)
-			m.rows = append(m.rows, outlinerRow{
-				IsSectionHeader: true,
-				SectionName:     sectionName,
-				SectionCount:    count,
-				CollapseKey:     collapseKey,
-				ProjectID:       pg.projectID,
-			})
-
-			if !m.collapsedSections[collapseKey] {
+		if !m.collapsedSections[collapseKey] {
+			for _, pg := range projGroups {
 				m.flattenTaskTreeWithFoldsAndProjectID(pg.tasks, nil, pg.projectID, &m.rows)
 			}
 		}

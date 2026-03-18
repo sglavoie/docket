@@ -110,9 +110,9 @@ func TestBuildCrossProjectRowsEmptySectionSkipped(t *testing.T) {
 }
 
 // TestBuildCrossProjectRowsMultiProjectMerging verifies that tasks from two
-// different projects in the same section each get a separate section header
-// (with its own collapse key) and that every task row carries the correct
-// ProjectID.
+// different projects in the same section appear under ONE shared section header
+// (no per-project sub-headers), and that every task row carries the correct
+// ProjectID for color-badge rendering.
 func TestBuildCrossProjectRowsMultiProjectMerging(t *testing.T) {
 	m := minimalOutliner()
 
@@ -129,8 +129,6 @@ func TestBuildCrossProjectRowsMultiProjectMerging(t *testing.T) {
 
 	m.buildCrossProjectRowsWithSectionHeaders(groups)
 
-	// Both projects share the same section name, so there should be two
-	// section headers — one per project.
 	var headers []outlinerRow
 	var taskRows []outlinerRow
 	for _, row := range m.rows {
@@ -141,26 +139,36 @@ func TestBuildCrossProjectRowsMultiProjectMerging(t *testing.T) {
 		}
 	}
 
-	if len(headers) != 2 {
-		t.Errorf("expected 2 section headers for 2 projects, got %d", len(headers))
+	// Both projects share the same section — only ONE shared header expected.
+	if len(headers) != 1 {
+		t.Errorf("expected 1 shared section header for 2 projects in same section, got %d", len(headers))
 	}
 
-	// Each header must have a composite collapse key and a non-empty ProjectID.
-	for _, h := range headers {
-		if h.ProjectID == "" {
-			t.Error("section header has empty ProjectID")
-		}
-		expectedKey := h.ProjectID + ":" + h.SectionName
-		if h.CollapseKey != expectedKey {
-			t.Errorf("header CollapseKey: want %q, got %q", expectedKey, h.CollapseKey)
-		}
+	// The shared header must have no ProjectID (no per-project label rendered).
+	if len(headers) == 1 && headers[0].ProjectID != "" {
+		t.Errorf("shared section header should have empty ProjectID, got %q", headers[0].ProjectID)
 	}
 
-	// Task rows must carry their project ID.
+	// The shared header CollapseKey must be the section name only (not composite).
+	if len(headers) == 1 && headers[0].CollapseKey != models.SectionNext {
+		t.Errorf("shared header CollapseKey: want %q, got %q", models.SectionNext, headers[0].CollapseKey)
+	}
+
+	// The shared header SectionCount must reflect all tasks across both projects.
+	if len(headers) == 1 && headers[0].SectionCount != 2 {
+		t.Errorf("shared header SectionCount: want 2, got %d", headers[0].SectionCount)
+	}
+
+	// Task rows must carry their respective project IDs for badge rendering.
+	projectIDs := make(map[string]bool)
 	for _, row := range taskRows {
 		if row.ProjectID == "" {
 			t.Errorf("task row %q has empty ProjectID", row.task.Title)
 		}
+		projectIDs[row.ProjectID] = true
+	}
+	if !projectIDs["proj-a"] || !projectIDs["proj-b"] {
+		t.Error("expected task rows from both proj-a and proj-b")
 	}
 }
 
@@ -578,6 +586,51 @@ func TestCrossProjectUndoOrchestration(t *testing.T) {
 	// Undo context should be cleared after a successful undo.
 	if got := len(m.crossUndoCtx.ProjectIDs); got != 0 {
 		t.Errorf("undo context should be cleared after undo, got %d IDs", got)
+	}
+}
+
+// TestValidateCrossZoomStackContextChange verifies that when the context changes
+// and the zoomed project is no longer in loadedProjects, validateCrossZoomStack
+// pops the stale entry and resets the cursor to 0. After the reset, rebuilding
+// rows from the remaining loaded projects produces a non-empty row list.
+func TestValidateCrossZoomStackContextChange(t *testing.T) {
+	// Set up an outliner zoomed into proj-a, but loadedProjects only has proj-b
+	// (simulating a context change that removed proj-a from the active context).
+	projB := &models.Project{
+		ID:    "proj-b",
+		Name:  "Beta",
+		Tasks: []*models.Task{makeTask("tb1", "Beta task", "")},
+	}
+	projB.BuildTaskTree()
+
+	m := &OutlinerModel{
+		collapsedSections: make(map[string]bool),
+		expandedNodes:     make(map[string]bool),
+		MultiSelectState:  MultiSelectState{selectedTasks: make(map[string]bool)},
+		loadedProjects:    []*models.Project{projB},
+		crossZoomStack: []CrossProjectZoomEntry{
+			{TaskID: "ta1", ProjectID: "proj-a", CursorIndex: 5},
+		},
+	}
+	m.cursor = 5
+
+	m.validateCrossZoomStack()
+
+	// Zoom stack must be cleared: proj-a is not in loadedProjects.
+	if len(m.crossZoomStack) != 0 {
+		t.Errorf("expected empty zoom stack after context change removed zoomed project, got %d entries", len(m.crossZoomStack))
+	}
+
+	// Cursor must reset to 0.
+	if m.cursor != 0 {
+		t.Errorf("expected cursor=0 after zoom stack reset, got %d", m.cursor)
+	}
+
+	// Row rebuild from the remaining project must produce a non-empty list.
+	m.activePerspective = 1 // All perspective
+	m.crossProjectRebuildRows()
+	if len(m.rows) == 0 {
+		t.Error("expected non-empty rows from remaining loaded project after zoom stack reset")
 	}
 }
 

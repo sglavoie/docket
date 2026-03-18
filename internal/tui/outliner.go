@@ -102,8 +102,11 @@ func (m *OutlinerModel) getProject() *models.Project       { return m.project }
 func (m *OutlinerModel) getConfig() *config.Config         { return m.config }
 func (m *OutlinerModel) getConfigManager() *config.Manager { return m.configManager }
 func (m *OutlinerModel) getCursorTask() *models.Task {
-	if len(m.rows) > 0 && m.cursor >= 0 && m.cursor < len(m.rows) && !m.rows[m.cursor].IsSectionHeader {
-		return m.rows[m.cursor].task
+	if len(m.rows) > 0 && m.cursor >= 0 && m.cursor < len(m.rows) {
+		row := m.rows[m.cursor]
+		if !row.IsSectionHeader && !row.IsSeparator {
+			return row.task
+		}
 	}
 	return nil
 }
@@ -170,14 +173,12 @@ func (m *OutlinerModel) validateCrossZoomStack() {
 	}
 
 	taskExists := func(entry CrossProjectZoomEntry) bool {
-		if m.config == nil {
-			return false
+		for _, proj := range m.loadedProjects {
+			if proj.ID == entry.ProjectID {
+				return proj.GetTaskByID(entry.TaskID) != nil
+			}
 		}
-		proj := m.config.GetProject(entry.ProjectID)
-		if proj == nil {
-			return false
-		}
-		return proj.GetTaskByID(entry.TaskID) != nil
+		return false
 	}
 
 	// Find the deepest valid entry (walking from the top).
@@ -536,10 +537,22 @@ func (m *OutlinerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 // taskOpsView implementation for OutlinerModel.
 
 func (m *OutlinerModel) getTaskRef() (*models.Task, *models.Project) {
-	if len(m.rows) == 0 || m.cursor < 0 || m.cursor >= len(m.rows) || m.rows[m.cursor].IsSectionHeader {
+	if len(m.rows) == 0 || m.cursor < 0 || m.cursor >= len(m.rows) {
 		return nil, nil
 	}
-	return m.rows[m.cursor].task, m.project
+	row := m.rows[m.cursor]
+	if row.IsSectionHeader || row.IsSeparator {
+		return nil, nil
+	}
+	if m.project == nil {
+		for _, proj := range m.loadedProjects {
+			if proj.ID == row.ProjectID {
+				return row.task, proj
+			}
+		}
+		return nil, nil
+	}
+	return row.task, m.project
 }
 
 func (m *OutlinerModel) getPersister() Persister { return m.projectService }
@@ -579,8 +592,22 @@ func (m *OutlinerModel) deselectAllVisible() {
 	}
 }
 
-// getSelectedTasks returns a slice of selected tasks from the project.
+// getSelectedTasks returns a slice of selected tasks.
+// In cross-project mode (m.project == nil), tasks are collected from m.rows
+// to avoid a nil dereference on m.project.
 func (m *OutlinerModel) getSelectedTasks() []*models.Task {
+	if m.project == nil {
+		var tasks []*models.Task
+		for _, row := range m.rows {
+			if row.IsSectionHeader || row.IsSeparator || row.task == nil {
+				continue
+			}
+			if m.selectedTasks[row.task.ID] {
+				tasks = append(tasks, row.task)
+			}
+		}
+		return tasks
+	}
 	var tasks []*models.Task
 	for _, task := range m.project.Tasks {
 		if m.selectedTasks[task.ID] {

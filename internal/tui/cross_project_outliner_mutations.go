@@ -6,7 +6,6 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/storage"
 )
 
 // crossResolveProject returns the loaded project matching the given ID by
@@ -45,7 +44,7 @@ func (m *OutlinerModel) crossGetMutationTarget() (row outlinerRow, proj *models.
 // crossPersistFn returns a persistFn scoped to the given project. It calls
 // Backup() on the project before the mutation and Save() after, ensuring only
 // the owning project is written to disk.
-func (m *OutlinerModel) crossPersistFn(proj *models.Project) persistFn {
+func (m *OutlinerModel) crossPersistFn(_ *models.Project) persistFn {
 	svc := m.projectService
 	return func(project *models.Project, taskID string, mutate func(*models.Task)) TaskOpResult {
 		if project.GetTaskByID(taskID) == nil {
@@ -95,6 +94,8 @@ func (m *OutlinerModel) crossHandleStatusMutation(key string) (tea.Model, tea.Cm
 	if result.StatusMessage != "" {
 		m.statusMessage = result.StatusMessage
 	}
+	m.crossUndoCtx.Set(StatusVerb(status)+" Task", row.task.Title)
+	m.crossUndoCtx.ProjectIDs = []string{proj.ID}
 	m.rebuildRows()
 	return m, result.Cmd, true
 }
@@ -156,17 +157,14 @@ func (m *OutlinerModel) crossExecutePendingBulkStatus() (tea.Model, tea.Cmd) {
 
 	svc := m.projectService
 	var projectIDs []string
-	var backupPaths []string
 
 	for _, projID := range projectOrder {
 		group := grouped[projID]
-		backupPath := storage.GetBackupFilePath(group.proj)
 		if err := svc.Backup(group.proj); err != nil {
 			m.bulkOp.Clear()
 			return m, func() tea.Msg { return ErrorMsg{Err: fmt.Errorf("backup failed: %w", err)} }
 		}
 		projectIDs = append(projectIDs, projID)
-		backupPaths = append(backupPaths, backupPath)
 		for _, task := range group.tasks {
 			group.proj.MutateTask(task.ID, func(t *models.Task) {
 				t.ApplyTransition(status)
@@ -181,7 +179,6 @@ func (m *OutlinerModel) crossExecutePendingBulkStatus() (tea.Model, tea.Cmd) {
 
 	m.crossUndoCtx.Set("Bulk Status Change", fmt.Sprintf("%d tasks -> %s", len(tasks), status))
 	m.crossUndoCtx.ProjectIDs = projectIDs
-	m.crossUndoCtx.BackupPaths = backupPaths
 
 	m.statusMessage = fmt.Sprintf("Changed %d tasks to %s", len(tasks), status)
 	m.bulkOp.Clear()
@@ -212,6 +209,8 @@ func (m *OutlinerModel) crossHandlePriorityMutation(key string) (tea.Cmd, bool) 
 	if result.StatusMessage != "" {
 		m.statusMessage = result.StatusMessage
 	}
+	m.crossUndoCtx.Set("Set Priority", row.task.Title)
+	m.crossUndoCtx.ProjectIDs = []string{proj.ID}
 	m.rebuildRows()
 	return result.Cmd, true
 }
@@ -256,6 +255,9 @@ func (m *OutlinerModel) crossHandleSnoozeMutation(key string) (tea.Cmd, bool) {
 		return func() tea.Msg { return ErrorMsg{Err: fmt.Errorf("save failed: %w", err)} }, true
 	}
 	_ = m.projectService.Load(proj)
+
+	m.crossUndoCtx.Set("Snooze", row.task.Title)
+	m.crossUndoCtx.ProjectIDs = []string{proj.ID}
 
 	if snoozeDate == nil {
 		m.statusMessage = "Snooze cleared"
@@ -320,6 +322,8 @@ func (m *OutlinerModel) crossExecuteDelete() (tea.Model, tea.Cmd) {
 		m.err = result.Err
 		return m, func() tea.Msg { return ErrorMsg{Err: result.Err} }
 	}
+	m.crossUndoCtx.Set("Delete Task", task.Title)
+	m.crossUndoCtx.ProjectIDs = []string{proj.ID}
 	m.rebuildRows()
 	return m, result.Cmd
 }

@@ -351,10 +351,12 @@ func CycleTab(current *int, count, delta int) {
 // UndoContext tracks the action label and description for the next undo snapshot.
 // Embed this in views that support undo to avoid duplicating fields and methods.
 type UndoContext struct {
-	Action      string   // e.g. "Complete Task", "Set Priority"
-	Context     string   // e.g. task title or "3 tasks"
-	ProjectIDs  []string // Affected project IDs (cross-project bulk operations)
-	BackupPaths []string // Backup file paths (cross-project bulk operations)
+	Action     string   // e.g. "Complete Task", "Set Priority"
+	Context    string   // e.g. task title or "3 tasks"
+	ProjectIDs []string // Affected project IDs (cross-project operations)
+	// BackupPaths is intentionally omitted: storage.RestoreFromBackup derives
+	// the backup path from the project automatically, so callers never need to
+	// store it. Use crossHandleUndo → RestoreFromBackup for all undo operations.
 }
 
 // Set records the action and context for the next undo snapshot.
@@ -368,7 +370,6 @@ func (u *UndoContext) Clear() {
 	u.Action = ""
 	u.Context = ""
 	u.ProjectIDs = nil
-	u.BackupPaths = nil
 }
 
 // DetailsPaneState manages state for a split-pane details view.
