@@ -166,6 +166,10 @@ func NewOutlinerModel(project *models.Project, cfg *config.Config, cfgManager *c
 		if cfg.CrossOutlinerSidebarEnabled != nil {
 			m.sidebar.SetEnabled(*cfg.CrossOutlinerSidebarEnabled)
 		}
+		// Restore persisted collapsed sections for cross-project outliner
+		if len(cfg.CrossOutlinerCollapsedSections) > 0 {
+			maps.Copy(m.collapsedSections, cfg.CrossOutlinerCollapsedSections)
+		}
 	}
 	return m
 }

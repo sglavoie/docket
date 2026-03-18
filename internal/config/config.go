@@ -147,7 +147,8 @@ type Config struct {
 	OutlinerCollapsedSections   map[string]bool              `json:"outliner_collapsed_sections,omitempty"`    // Default collapsed sections in outliner All perspective
 	TreeDefaultColumns          map[string]bool              `json:"tree_default_columns,omitempty"`           // Global default column visibility for tree view
 	OutlinerDefaultColumns      map[string]bool              `json:"outliner_default_columns,omitempty"`       // Global default column visibility for outliner view
-	CrossOutlinerSidebarEnabled *bool                        `json:"cross_outliner_sidebar_enabled,omitempty"` // nil=true; default sidebar state for cross-project outliner
+	CrossOutlinerSidebarEnabled    *bool           `json:"cross_outliner_sidebar_enabled,omitempty"`    // nil=true; default sidebar state for cross-project outliner
+	CrossOutlinerCollapsedSections map[string]bool `json:"cross_outliner_collapsed_sections,omitempty"` // Persisted collapsed sections for cross-project outliner
 	TreePriorityMode            string                       `json:"tree_priority_mode,omitempty"`             // Global priority display mode for tree view
 	OutlinerPriorityMode        string                       `json:"outliner_priority_mode,omitempty"`         // Global priority display mode for outliner view
 	Stages                      []string                     `json:"stages,omitempty"`                         // Workflow stages (e.g., Brainstorm, Design, Implement)

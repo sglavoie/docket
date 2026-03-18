@@ -758,6 +758,7 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 		return true, m.crossOutliner.reloadCrossProjects()
 
 	case CloseGlobalOutlinerMsg:
+		m.saveCrossOutlinerState()
 		m.popToAnchorView()
 		return true, nil
 
@@ -766,6 +767,7 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 	// is a semantically distinct message so callers can target the
 	// cross-project outliner specifically without coupling to the global one.
 	case CloseCrossOutlinerMsg:
+		m.saveCrossOutlinerState()
 		m.popToAnchorView()
 		return true, nil
 

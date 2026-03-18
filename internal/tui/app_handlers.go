@@ -28,6 +28,18 @@ func (m *AppModel) restoreOutlinerToggleState() {
 	}
 }
 
+// saveCrossOutlinerState persists the cross-project outliner's collapsed
+// sections to config so they survive app restarts.
+func (m *AppModel) saveCrossOutlinerState() {
+	if m.crossOutliner == nil {
+		return
+	}
+	m.config.CrossOutlinerCollapsedSections = maps.Clone(m.crossOutliner.collapsedSections)
+	if err := m.configManager.Save(m.config); err != nil {
+		logging.Warn("failed to save cross-outliner state: %v", err)
+	}
+}
+
 // saveOutlinerFilterState persists the current outliner filter state to config.
 func (m *AppModel) saveOutlinerFilterState() {
 	if m.outliner == nil || m.outliner.project == nil {
@@ -226,6 +238,7 @@ func (m *AppModel) processMessage(msg tea.Msg) (bool, tea.Cmd) {
 	if _, ok := msg.(QuitMsg); ok {
 		m.saveProjectTreeState()
 		m.saveOutlinerFilterState()
+		m.saveCrossOutlinerState()
 		m.quitting = true
 		return true, tea.Quit
 	}

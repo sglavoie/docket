@@ -96,6 +96,7 @@ func (m *AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "ctrl+c":
 			m.saveProjectTreeState()
 			m.saveOutlinerFilterState()
+			m.saveCrossOutlinerState()
 			m.quitting = true
 			return m, tea.Quit
 		case "alt+o":
@@ -149,6 +150,7 @@ func (m *AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.currentView() == ViewDashboard {
 				m.saveProjectTreeState()
 				m.saveOutlinerFilterState()
+				m.saveCrossOutlinerState()
 				m.quitting = true
 				return m, tea.Quit
 			}
@@ -182,6 +184,7 @@ func (m *AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case QuitMsg:
 		m.saveProjectTreeState()
 		m.saveOutlinerFilterState()
+		m.saveCrossOutlinerState()
 		m.quitting = true
 		return m, tea.Quit
 
