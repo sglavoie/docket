@@ -964,6 +964,119 @@ func TestCrossProjectRebuildRowsProjectIDInvariant(t *testing.T) {
 	}
 }
 
+// TestCrossProjectRebuildRowsPerspectiveRouting verifies that activePerspective==All
+// routes to buildCrossProjectRowsWithSectionHeaders (produces IsSectionHeader rows,
+// no IsSeparator rows) and that any non-All perspective routes to
+// buildProjectGroupedRows (produces IsSeparator rows, no IsSectionHeader rows).
+func TestCrossProjectRebuildRowsPerspectiveRouting(t *testing.T) {
+	projAlpha := &models.Project{
+		ID:   "route-alpha",
+		Name: "Alpha",
+		Tasks: []*models.Task{
+			makeTask("ra1", "Alpha task", ""),
+		},
+	}
+	projAlpha.BuildTaskTree()
+
+	projBeta := &models.Project{
+		ID:   "route-beta",
+		Name: "Beta",
+		Tasks: []*models.Task{
+			makeTask("rb1", "Beta task", ""),
+		},
+	}
+	projBeta.BuildTaskTree()
+
+	t.Run("All perspective routes to buildCrossProjectRowsWithSectionHeaders", func(t *testing.T) {
+		m := &OutlinerModel{
+			collapsedSections: make(map[string]bool),
+			expandedNodes:     make(map[string]bool),
+			MultiSelectState:  MultiSelectState{selectedTasks: make(map[string]bool)},
+			activePerspective: PerspectiveAll,
+			loadedProjects:    []*models.Project{projAlpha, projBeta},
+		}
+
+		m.crossProjectRebuildRows()
+
+		if len(m.rows) == 0 {
+			t.Fatal("expected non-empty rows for All perspective")
+		}
+
+		sectionHeaderCount := 0
+		separatorCount := 0
+		for _, row := range m.rows {
+			if row.IsSectionHeader {
+				sectionHeaderCount++
+			}
+			if row.IsSeparator {
+				separatorCount++
+			}
+		}
+
+		if sectionHeaderCount == 0 {
+			t.Error("All perspective: expected at least one IsSectionHeader row")
+		}
+		if separatorCount != 0 {
+			t.Errorf("All perspective: expected zero IsSeparator rows, got %d", separatorCount)
+		}
+	})
+
+	t.Run("non-All perspective routes to buildProjectGroupedRows", func(t *testing.T) {
+		// Use the Active perspective (index 2) which filters for in_progress tasks.
+		// Both projects have an in_progress task so each produces a non-empty group,
+		// guaranteeing one separator row appears between them.
+		p1task := makeTask("np1", "P1 active task", "")
+		p1task.Status = models.StatusInProgress
+		p1 := &models.Project{
+			ID:    "nonall-p1",
+			Name:  "P1",
+			Tasks: []*models.Task{p1task},
+		}
+		p1.BuildTaskTree()
+
+		p2task := makeTask("np2", "P2 active task", "")
+		p2task.Status = models.StatusInProgress
+		p2 := &models.Project{
+			ID:    "nonall-p2",
+			Name:  "P2",
+			Tasks: []*models.Task{p2task},
+		}
+		p2.BuildTaskTree()
+
+		m := &OutlinerModel{
+			collapsedSections: make(map[string]bool),
+			expandedNodes:     make(map[string]bool),
+			MultiSelectState:  MultiSelectState{selectedTasks: make(map[string]bool)},
+			activePerspective: PerspectiveAll + 1, // index 2 = "Active" — non-All
+			loadedProjects:    []*models.Project{p1, p2},
+		}
+
+		m.crossProjectRebuildRows()
+
+		if len(m.rows) == 0 {
+			t.Fatal("expected non-empty rows for non-All perspective with two projects")
+		}
+
+		sectionHeaderCount := 0
+		separatorCount := 0
+		for _, row := range m.rows {
+			if row.IsSectionHeader {
+				sectionHeaderCount++
+			}
+			if row.IsSeparator {
+				separatorCount++
+			}
+		}
+
+		if separatorCount == 0 {
+			t.Error("non-All perspective with two projects: expected at least one IsSeparator row")
+		}
+		if sectionHeaderCount != 0 {
+			t.Errorf("non-All perspective: expected zero IsSectionHeader rows, got %d", sectionHeaderCount)
+		}
+	})
+}
+
 // BenchmarkCrossProjectLoadAndRebuild measures the end-to-end cost of loading
 // two realistic projects from disk and rebuilding the cross-project row list.
 // Each project contains 20 tasks arranged in a multi-level hierarchy
