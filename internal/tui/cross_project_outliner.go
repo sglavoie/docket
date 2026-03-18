@@ -9,7 +9,6 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 
-	"github.com/sglavoie/tt/internal/fuzzy"
 	"github.com/sglavoie/tt/internal/models"
 )
 
@@ -186,14 +185,9 @@ func (m *OutlinerModel) crossProjectRebuildRows() {
 
 		tasks := filterTaskTree(roots, p.Filter)
 
-		// Apply search filter against task titles only (per req body). This
-		// intentionally excludes tags, description, and comments — unlike
-		// TaskMatchesSearch which matches all fields. The "consistent with
-		// single-project" AC (ac-5d7b136df1a59124f0004eea4f72aa31) is
-		// superseded by the explicit title-only wording in the requirement.
 		if q := m.SearchQuery(); q != "" {
 			tasks = filterTaskTree(tasks, func(t *models.Task) bool {
-				return fuzzy.MatchTerms(t.Title, q)
+				return matchesSearch(t, q)
 			})
 		}
 
