@@ -770,6 +770,123 @@ func TestCrossProjectStatePreservationAfterReload(t *testing.T) {
 	}
 }
 
+// TestProjectIDPopulationInvariant verifies the core ProjectID invariant across
+// both row-building functions:
+//   - Every task row carries a non-empty ProjectID that matches its source project.
+//   - Every IsSectionHeader row has an empty ProjectID.
+//   - Every IsSeparator row has an empty ProjectID.
+//
+// This is tested for both buildCrossProjectRowsWithSectionHeaders (GTD-section
+// mode) and buildProjectGroupedRows (project-grouped mode).
+func TestProjectIDPopulationInvariant(t *testing.T) {
+	groups := []projectTasksGroup{
+		{
+			projectID: "proj-alpha",
+			tasks: []*models.Task{
+				makeTask("ta1", "Alpha active", ""),
+				makeTask("ta2", "Alpha next", models.SectionNext),
+			},
+		},
+		{
+			projectID: "proj-beta",
+			tasks: []*models.Task{
+				makeTask("tb1", "Beta next", models.SectionNext),
+				makeTask("tb2", "Beta inbox", models.SectionInbox),
+			},
+		},
+	}
+
+	t.Run("buildCrossProjectRowsWithSectionHeaders", func(t *testing.T) {
+		m := minimalOutliner()
+		m.buildCrossProjectRowsWithSectionHeaders(groups)
+
+		if len(m.rows) == 0 {
+			t.Fatal("expected non-empty rows")
+		}
+
+		for i, row := range m.rows {
+			switch {
+			case row.IsSectionHeader:
+				if row.ProjectID != "" {
+					t.Errorf("row[%d] IsSectionHeader but has non-empty ProjectID %q", i, row.ProjectID)
+				}
+			case row.IsSeparator:
+				if row.ProjectID != "" {
+					t.Errorf("row[%d] IsSeparator but has non-empty ProjectID %q", i, row.ProjectID)
+				}
+			default:
+				// task row
+				if row.ProjectID == "" {
+					title := ""
+					if row.task != nil {
+						title = row.task.Title
+					}
+					t.Errorf("row[%d] task row %q has empty ProjectID", i, title)
+				}
+				// ProjectID must match the source project for this task.
+				if row.task != nil {
+					var wantProjectID string
+					for _, g := range groups {
+						for _, task := range g.tasks {
+							if task.ID == row.task.ID {
+								wantProjectID = g.projectID
+							}
+						}
+					}
+					if wantProjectID != "" && row.ProjectID != wantProjectID {
+						t.Errorf("row[%d] task %q: ProjectID want %q, got %q", i, row.task.Title, wantProjectID, row.ProjectID)
+					}
+				}
+			}
+		}
+	})
+
+	t.Run("buildProjectGroupedRows", func(t *testing.T) {
+		m := minimalOutliner()
+		m.buildProjectGroupedRows(groups)
+
+		if len(m.rows) == 0 {
+			t.Fatal("expected non-empty rows")
+		}
+
+		for i, row := range m.rows {
+			switch {
+			case row.IsSectionHeader:
+				if row.ProjectID != "" {
+					t.Errorf("row[%d] IsSectionHeader but has non-empty ProjectID %q", i, row.ProjectID)
+				}
+			case row.IsSeparator:
+				if row.ProjectID != "" {
+					t.Errorf("row[%d] IsSeparator but has non-empty ProjectID %q", i, row.ProjectID)
+				}
+			default:
+				// task row
+				if row.ProjectID == "" {
+					title := ""
+					if row.task != nil {
+						title = row.task.Title
+					}
+					t.Errorf("row[%d] task row %q has empty ProjectID", i, title)
+				}
+				// ProjectID must match the source project for this task.
+				if row.task != nil {
+					var wantProjectID string
+					for _, g := range groups {
+						for _, task := range g.tasks {
+							if task.ID == row.task.ID {
+								wantProjectID = g.projectID
+							}
+						}
+					}
+					if wantProjectID != "" && row.ProjectID != wantProjectID {
+						t.Errorf("row[%d] task %q: ProjectID want %q, got %q", i, row.task.Title, wantProjectID, row.ProjectID)
+					}
+				}
+			}
+		}
+	})
+}
+
 // readCrossTestFile reads a file's contents for integration test assertions.
 func readCrossTestFile(t *testing.T, path string) string {
 	t.Helper()
