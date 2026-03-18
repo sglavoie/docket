@@ -4,6 +4,18 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 )
 
+// SectionOrder is the canonical GTD display order used by the All perspective
+// in the cross-project outliner.
+var SectionOrder = []string{
+	"",
+	models.SectionInbox,
+	models.SectionNext,
+	models.SectionWaiting,
+	models.SectionReview,
+	models.SectionStandby,
+	models.SectionSomeday,
+}
+
 // Perspective defines a named filter+sort preset for the outliner view.
 // The Filter predicate returns true for tasks that should be visible.
 // A nil Filter means all tasks are shown (no filtering).

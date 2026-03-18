@@ -17,17 +17,6 @@ type projectTasksGroup struct {
 // project (for color badge rendering); header rows have no ProjectID so that
 // no per-project label is rendered on the shared header.
 func (m *OutlinerModel) buildCrossProjectRowsWithSectionHeaders(groups []projectTasksGroup) {
-	// sectionOrder defines the canonical display order for the All perspective.
-	sectionOrder := []string{
-		"",
-		models.SectionInbox,
-		models.SectionNext,
-		models.SectionWaiting,
-		models.SectionReview,
-		models.SectionStandby,
-		models.SectionSomeday,
-	}
-
 	// Bucket tasks by section within each project, preserving project identity.
 	type sectionGroup struct {
 		projectID string
@@ -47,7 +36,7 @@ func (m *OutlinerModel) buildCrossProjectRowsWithSectionHeaders(groups []project
 		}
 	}
 
-	for _, sectionName := range sectionOrder {
+	for _, sectionName := range SectionOrder {
 		projGroups := sectionsPerProject[sectionName]
 		if len(projGroups) == 0 {
 			continue
