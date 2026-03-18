@@ -964,6 +964,120 @@ func TestCrossProjectRebuildRowsProjectIDInvariant(t *testing.T) {
 	}
 }
 
+// BenchmarkCrossProjectLoadAndRebuild measures the end-to-end cost of loading
+// two realistic projects from disk and rebuilding the cross-project row list.
+// Each project contains 20 tasks arranged in a multi-level hierarchy
+// (epics → stories → leaf tasks, plus standalone tasks across several sections).
+// A single iteration should complete well under 500ms on a development machine.
+func BenchmarkCrossProjectLoadAndRebuild(b *testing.B) {
+	strPtr := func(s string) *string { return &s }
+
+	// ── Build Alpha: 2 epics × (1 story × 3 leaf tasks) + 6 standalone ───────
+	// Total: 2 + 2 + 6 + 6 + 4 = 20 tasks
+	alphaDir := b.TempDir()
+	var alphaTasks []*models.Task
+	seq := 1
+	sections := []string{"", models.SectionNext, models.SectionInbox, models.SectionWaiting, models.SectionSomeday}
+	for epicIdx := range 2 {
+		epicID := fmt.Sprintf("alpha-epic-%03d", seq)
+		epic, _ := models.NewTask(epicID, seq, models.TaskTypeEpic, fmt.Sprintf("Epic %d: Auth Module", epicIdx+1))
+		seq++
+		alphaTasks = append(alphaTasks, epic)
+
+		storyID := fmt.Sprintf("alpha-story-%03d", seq)
+		story, _ := models.NewTask(storyID, seq, models.TaskTypeStory, fmt.Sprintf("Story %d: Login Flow", epicIdx+1))
+		story.ParentID = strPtr(epicID)
+		seq++
+		alphaTasks = append(alphaTasks, story)
+
+		for leafIdx := range 3 {
+			leafID := fmt.Sprintf("alpha-task-%03d", seq)
+			leaf, _ := models.NewTask(leafID, seq, models.TaskTypeTask, fmt.Sprintf("Implement endpoint %d-%d", epicIdx+1, leafIdx+1))
+			leaf.ParentID = strPtr(storyID)
+			seq++
+			alphaTasks = append(alphaTasks, leaf)
+		}
+	}
+	// 6 standalone tasks spread across sections
+	for i := range 6 {
+		id := fmt.Sprintf("alpha-task-%03d", seq)
+		t, _ := models.NewTask(id, seq, models.TaskTypeTask, fmt.Sprintf("Alpha standalone %d", i+1))
+		t.Section = sections[i%len(sections)]
+		seq++
+		alphaTasks = append(alphaTasks, t)
+	}
+
+	alpha := &models.Project{ID: "bench-alpha", Name: "Alpha", Path: alphaDir}
+	alpha.Tasks = alphaTasks
+	alpha.BuildTaskTree()
+	if err := storage.SaveProject(alpha); err != nil {
+		b.Fatalf("save alpha: %v", err)
+	}
+
+	// ── Build Beta: 2 parents × 3 children + 8 standalone ────────────────────
+	// Total: 2 + 6 + 8 + 4 = 20 tasks
+	betaDir := b.TempDir()
+	var betaTasks []*models.Task
+	seq = 1
+	for parentIdx := range 2 {
+		parentID := fmt.Sprintf("beta-task-%03d", seq)
+		parent, _ := models.NewTask(parentID, seq, models.TaskTypeTask, fmt.Sprintf("Setup pipeline %d", parentIdx+1))
+		seq++
+		betaTasks = append(betaTasks, parent)
+
+		for childIdx := range 3 {
+			childID := fmt.Sprintf("beta-task-%03d", seq)
+			child, _ := models.NewTask(childID, seq, models.TaskTypeTask, fmt.Sprintf("Configure step %d-%d", parentIdx+1, childIdx+1))
+			child.ParentID = strPtr(parentID)
+			seq++
+			betaTasks = append(betaTasks, child)
+		}
+	}
+	for i := range 12 {
+		id := fmt.Sprintf("beta-task-%03d", seq)
+		t, _ := models.NewTask(id, seq, models.TaskTypeTask, fmt.Sprintf("Beta standalone %d", i+1))
+		t.Section = sections[i%len(sections)]
+		seq++
+		betaTasks = append(betaTasks, t)
+	}
+
+	beta := &models.Project{ID: "bench-beta", Name: "Beta", Path: betaDir}
+	beta.Tasks = betaTasks
+	beta.BuildTaskTree()
+	if err := storage.SaveProject(beta); err != nil {
+		b.Fatalf("save beta: %v", err)
+	}
+
+	b.ResetTimer()
+
+	for b.Loop() {
+		// Reload both projects from disk on each iteration.
+		alphaLoad := &models.Project{ID: "bench-alpha", Name: "Alpha", Path: alphaDir}
+		betaLoad := &models.Project{ID: "bench-beta", Name: "Beta", Path: betaDir}
+
+		if err := storage.LoadProject(alphaLoad); err != nil {
+			b.Fatalf("load alpha: %v", err)
+		}
+		if err := storage.LoadProject(betaLoad); err != nil {
+			b.Fatalf("load beta: %v", err)
+		}
+
+		m := &OutlinerModel{
+			collapsedSections: make(map[string]bool),
+			expandedNodes:     make(map[string]bool),
+			MultiSelectState:  MultiSelectState{selectedTasks: make(map[string]bool)},
+			activePerspective: 1, // All perspective — shows every task across sections
+			loadedProjects:    []*models.Project{alphaLoad, betaLoad},
+		}
+
+		m.crossProjectRebuildRows()
+
+		if len(m.rows) == 0 {
+			b.Fatal("crossProjectRebuildRows produced no rows")
+		}
+	}
+}
+
 // readCrossTestFile reads a file's contents for integration test assertions.
 func readCrossTestFile(t *testing.T, path string) string {
 	t.Helper()
