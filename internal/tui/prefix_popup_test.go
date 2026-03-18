@@ -137,6 +137,8 @@ func TestStatusPrefixHints_Contents(t *testing.T) {
 		"o": "reopen",
 		"r": "review",
 		"S": "standby",
+		"k": "skip",
+		"D": "defer",
 	}
 
 	for _, hint := range StatusPrefixHints {

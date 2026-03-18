@@ -20,6 +20,16 @@ func (m *OutlinerModel) GetPrefixPopupInfo() *PrefixPopupInfo {
 var OutlinerNavigationPrefixHints = []PrefixHint{
 	{Key: "g", Description: "first", Detail: "Jump to first item"},
 	{Key: "h", Description: "history", Detail: "Show task activity log"},
+	{Key: "l", Description: "activity", Detail: "Show project recent activity"},
+	{Key: "d", Description: "due date", Detail: "Cycle due date filter"},
+	{Key: "z", Description: "snoozed", Detail: "Jump to Snoozed perspective"},
+}
+
+// CrossProjectNavigationPrefixHints contains "g" prefix hints for the cross-project outliner.
+var CrossProjectNavigationPrefixHints = []PrefixHint{
+	{Key: "g", Description: "first", Detail: "Jump to first item"},
+	{Key: "o", Description: "drill down", Detail: "Open task's project outliner"},
+	{Key: "d", Description: "due date", Detail: "Cycle due date filter"},
 	{Key: "z", Description: "snoozed", Detail: "Jump to Snoozed perspective"},
 }
 
@@ -46,7 +56,11 @@ func (m *OutlinerModel) buildPrefixHints() PrefixHints {
 	hints := CommonTaskActionPrefixHints(m.config.Stages, currentStage)
 	hints["t"] = TaskPrefixHints
 	hints["b"] = BlockerPrefixHints
-	hints["g"] = OutlinerNavigationPrefixHints
+	if m.project == nil {
+		hints["g"] = CrossProjectNavigationPrefixHints
+	} else {
+		hints["g"] = OutlinerNavigationPrefixHints
+	}
 	hints["m"] = ProjectTreeMovePrefixHints // override: outliner uses tree moves
 	hints["z"] = OutlinerFoldPrefixHints
 
@@ -94,14 +108,19 @@ func (m *OutlinerModel) buildPrefixHints() PrefixHints {
 	// Add saved filter sub-prefix hints
 	hints["Fv"] = SavedFilterPrefixHints
 
-	// Annotate current task's status as active in status hints
+	// Annotate current task's status as active in status hints and dim recurrence hints
 	if m.pendingPrefix == "," && len(m.rows) > 0 && m.cursor < len(m.rows) && m.rows[m.cursor].task != nil {
 		task := m.rows[m.cursor].task
 		currentStatus := string(task.Status)
+		notRecurring := task.Recurrence == nil
 		annotated := make([]PrefixHint, len(StatusPrefixHints))
 		copy(annotated, StatusPrefixHints)
 		for i := range annotated {
-			if statusForHint, ok := StatusForPrefixKey(annotated[i].Key); ok {
+			if annotated[i].Key == "k" || annotated[i].Key == "D" {
+				if notRecurring {
+					annotated[i].Disabled = true
+				}
+			} else if statusForHint, ok := StatusForPrefixKey(annotated[i].Key); ok {
 				if string(statusForHint) == currentStatus {
 					annotated[i].Active = true
 				}

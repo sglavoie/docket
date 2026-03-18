@@ -403,7 +403,7 @@ func (m *OutlinerModel) renderCrossProjectContent() string {
 				indicators = " " + indicators
 			}
 
-			line := fmt.Sprintf("  %s%s%s%s%s%s %s%s",
+			line := fmt.Sprintf("  %s%s%s%s%s %s %s%s",
 				row.prefix, foldIndicator, projBadge, shortIDStr, typeIcon, statusIcon, task.Title, indicators)
 
 			if selected {

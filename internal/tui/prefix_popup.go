@@ -16,6 +16,7 @@ type PrefixHint struct {
 	Description string
 	Detail      string
 	Active      bool // When true, description and detail are rendered in orange
+	Disabled    bool // When true, all columns are rendered dimmed (muted)
 }
 
 // PrefixHints maps prefix characters to their available key hints.
@@ -141,9 +142,14 @@ func RenderPrefixPopup(prefix string, hints PrefixHints, width, height int) stri
 
 		contentWidth := 0
 		for _, h := range keyHints {
+			keyStyle := PrefixKeyStyle
 			descStyle := PrefixDescStyle
 			detailStyle := MutedStyle
-			if h.Active {
+			if h.Disabled {
+				keyStyle = MutedStyle
+				descStyle = MutedStyle
+				detailStyle = MutedStyle
+			} else if h.Active {
 				descStyle = activeDescStyle
 				detailStyle = activeDetailStyle
 			}
@@ -152,12 +158,12 @@ func RenderPrefixPopup(prefix string, hints PrefixHints, width, height int) stri
 			var rendered string
 			if hasDetail {
 				line = fmt.Sprintf("%-*s  %-*s  %s", maxKeyWidth, h.Key, maxDescWidth, h.Description, h.Detail)
-				rendered = PrefixKeyStyle.Render(fmt.Sprintf("%-*s", maxKeyWidth, h.Key)) + "  " +
+				rendered = keyStyle.Render(fmt.Sprintf("%-*s", maxKeyWidth, h.Key)) + "  " +
 					descStyle.Render(fmt.Sprintf("%-*s", maxDescWidth, h.Description)) + "  " +
 					detailStyle.Render(h.Detail)
 			} else {
 				line = fmt.Sprintf("%-*s  %s", maxKeyWidth, h.Key, h.Description)
-				rendered = PrefixKeyStyle.Render(fmt.Sprintf("%-*s", maxKeyWidth, h.Key)) + "  " + descStyle.Render(h.Description)
+				rendered = keyStyle.Render(fmt.Sprintf("%-*s", maxKeyWidth, h.Key)) + "  " + descStyle.Render(h.Description)
 			}
 			contentLines = append(contentLines, rendered)
 			if len(line) > contentWidth {
@@ -377,6 +383,8 @@ var (
 		{Key: "o", Description: "reopen", Detail: "Reopen a closed task"},
 		{Key: "r", Description: "review", Detail: "Send task to review"},
 		{Key: "S", Description: "standby", Detail: "Put task on standby"},
+		{Key: "k", Description: "skip", Detail: "Skip next recurrence"},
+		{Key: "D", Description: "defer", Detail: "Defer recurrence"},
 	}
 
 	// FoldPrefixHints contains hints for the "z" (fold) prefix.
@@ -419,6 +427,7 @@ var (
 		{Key: "v", Description: "view-cycle", Detail: "Cycle through view modes"},
 		{Key: "h", Description: "history", Detail: "Show task history"},
 		{Key: "X", Description: "deselect", Detail: "Clear selection"},
+		{Key: "l", Description: "activity", Detail: "Show project recent activity"},
 	}
 
 	// ProjectTreeMovePrefixHints contains "m" prefix hints for project tree move operations.
@@ -671,6 +680,7 @@ var (
 		{Key: "l", Description: "latest activity", Detail: "Recently modified tasks"},
 		{Key: "m", Description: "metrics", Detail: "Completion rates and throughput"},
 		{Key: "n", Description: "notifications", Detail: "Open Notification Center"},
+		{Key: "o", Description: "outliner", Detail: "Cross-project outliner"},
 		{Key: "s", Description: "settings", Detail: "Open Settings"},
 		{Key: "w", Description: "weekly review", Detail: "Open Weekly Review"},
 		{Key: "B", Description: "global blockers", Detail: "Blockers across all projects"},

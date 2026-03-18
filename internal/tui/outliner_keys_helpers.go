@@ -13,7 +13,13 @@ import (
 func (m *OutlinerModel) ensureExpandedNodes() {
 	if len(m.expandedNodes) == 0 {
 		m.expandedNodes = make(map[string]bool)
-		m.markAllExpanded(m.project.GetRootTasks())
+		if m.project != nil {
+			m.markAllExpanded(m.project.GetRootTasks())
+		} else {
+			for _, p := range m.loadedProjects {
+				m.markAllExpanded(p.GetRootTasks())
+			}
+		}
 	}
 }
 

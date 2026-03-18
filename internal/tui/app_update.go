@@ -302,9 +302,6 @@ func (m *AppModel) handleEscKey() (bool, tea.Cmd) {
 	if caps := m.currentViewCapabilities(); caps != nil && caps.ShouldCaptureEsc() {
 		return false, nil
 	}
-	if m.currentView() == ViewCrossProjectOutliner {
-		return false, nil
-	}
 	if m.currentView() != ViewDashboard {
 		closingView := m.currentView()
 		var cmd tea.Cmd

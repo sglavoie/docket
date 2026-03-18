@@ -275,6 +275,9 @@ func (m *OutlinerModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 			m.cursor = 0
 			return m, flashIfJumped(old, m.cursor, &m.cursorFlash)
 		case "h":
+			if m.project == nil {
+				return m, nil
+			}
 			if cursorTask != nil {
 				task := cursorTask
 				project := m.project
@@ -300,6 +303,9 @@ func (m *OutlinerModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 			m.rebuildRows()
 			return m, nil
 		case "l":
+			if m.project == nil {
+				return m, nil
+			}
 			// Go to project recent activity
 			project := m.project
 			return m, func() tea.Msg {
