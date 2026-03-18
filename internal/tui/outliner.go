@@ -774,11 +774,31 @@ func (m *OutlinerModel) archiveProject() tea.Cmd {
 	}
 }
 
+// resolveProjectForRow returns the project that owns the given row.
+// In single-project mode it returns m.project; in cross-project mode it
+// resolves via crossResolveProject using the row's ProjectID.
+func (m *OutlinerModel) resolveProjectForRow(row outlinerRow) *models.Project {
+	if m.project != nil {
+		return m.project
+	}
+	return m.crossResolveProject(row.ProjectID)
+}
+
 // SidebarHost interface implementation for OutlinerModel.
 
 // SidebarProject returns the project for sidebar display.
 func (m *OutlinerModel) SidebarProject() *models.Project {
-	return m.project
+	if m.project != nil {
+		return m.project
+	}
+	// Cross-project: resolve from cursor row.
+	if m.cursor >= 0 && m.cursor < len(m.rows) {
+		row := m.rows[m.cursor]
+		if row.ProjectID != "" {
+			return m.crossResolveProject(row.ProjectID)
+		}
+	}
+	return nil
 }
 
 // SidebarConfig returns the config for sidebar display.

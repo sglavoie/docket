@@ -79,9 +79,11 @@ func (m *OutlinerModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.sidebar.CycleState(task)
 		// When entering focused state, start in first non-empty linked section
 		if m.sidebar.IsFocused() && task != nil {
-			sections := sidebarGetAvailableSections(m.project, task)
-			if len(sections) > 0 {
-				m.sidebar.SetDependencySection(sections[0])
+			if proj := m.SidebarProject(); proj != nil {
+				sections := sidebarGetAvailableSections(proj, task)
+				if len(sections) > 0 {
+					m.sidebar.SetDependencySection(sections[0])
+				}
 			}
 		}
 		return m, nil

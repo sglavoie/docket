@@ -187,7 +187,15 @@ func (m *OutlinerModel) breadcrumb(maxWidth int) string {
 // prefixes computed on each render pass from the project's task hierarchy.
 func (m *OutlinerModel) View() string {
 	if m.project == nil {
-		return m.crossProjectView()
+		// Spinner/loading states handled by crossProjectView.
+		if m.crossSpinnerVisible || m.crossLoading {
+			return m.crossProjectView()
+		}
+		m.crossProjectRebuildRows()
+		if m.sidebar.IsEnabled() {
+			return m.renderWithSidebar()
+		}
+		return m.renderOutlinerTreeContent(m.width)
 	}
 
 	// Rebuild flat row list with perspective filter and clamp cursor.
@@ -262,7 +270,12 @@ func (m *OutlinerModel) renderOutlinerTreeContent(width int) string {
 		currentStyle.Render("@ "+perspective.Name) + " " +
 		MutedStyle.Render(nextName+" ›")
 
-	bc := m.breadcrumb(width)
+	var bc string
+	if m.project == nil {
+		bc = m.crossProjectBreadcrumb(width)
+	} else {
+		bc = m.breadcrumb(width)
+	}
 
 	// Build search indicator (stays inline on title)
 	searchIndicator := ""
@@ -273,15 +286,30 @@ func (m *OutlinerModel) renderOutlinerTreeContent(width int) string {
 	}
 
 	if len(m.rows) == 0 {
-		titleParams := &TitleParams{
-			FilterParts:   m.activeFilterParts(),
-			SortField:     m.sort.Field,
-			SortAscending: m.sort.Ascending,
-			Width:         width,
+		var headerStr string
+		if m.project == nil {
+			projectCount := len(m.loadedProjects)
+			headerStr = fmt.Sprintf("Cross-project outliner (%d project", projectCount)
+			if projectCount != 1 {
+				headerStr += "s"
+			}
+			headerStr += ")"
+		} else {
+			titleParams := &TitleParams{
+				FilterParts:   m.activeFilterParts(),
+				SortField:     m.sort.Field,
+				SortAscending: m.sort.Ascending,
+				Width:         width,
+			}
+			headerStr = renderProjectTitle(m.project, m.config, titleParams)
 		}
-		header := renderProjectTitle(m.project, m.config, titleParams) + perspectiveLabel + searchIndicator
+		header := headerStr + perspectiveLabel + searchIndicator
 		emptyMsg := EmptyStateNoTasks + " Press a to add one."
-		if perspective.Name != "All" && len(m.zoomStack) > 0 {
+		if m.project == nil && len(m.loadedProjects) == 0 {
+			emptyMsg = "No projects in current context. Press C to switch context."
+		} else if m.project == nil {
+			emptyMsg = "No tasks found."
+		} else if perspective.Name != "All" && len(m.zoomStack) > 0 && m.project != nil {
 			topID := m.zoomStack[len(m.zoomStack)-1].TaskID
 			if t := m.project.GetTaskByID(topID); t != nil {
 				emptyMsg = fmt.Sprintf("No tasks match the %s perspective within %q. Try switching perspectives with [/].", perspective.Name, t.Title)
@@ -292,8 +320,10 @@ func (m *OutlinerModel) renderOutlinerTreeContent(width int) string {
 			emptyMsg = fmt.Sprintf("No tasks match the %s perspective. Try switching perspectives with [/].", perspective.Name)
 		}
 		result := header + "\n"
-		if tabs := m.customSectionTabs(); tabs != nil {
-			result += RenderColoredTabBar(tabs, m.customSectionTabIndex(), width, 1, m.project.SectionColors) + "\n"
+		if m.project != nil {
+			if tabs := m.customSectionTabs(); tabs != nil {
+				result += RenderColoredTabBar(tabs, m.customSectionTabIndex(), width, 1, m.project.SectionColors) + "\n"
+			}
 		}
 		if bc != "" {
 			result += bc + "\n"
@@ -306,13 +336,23 @@ func (m *OutlinerModel) renderOutlinerTreeContent(width int) string {
 	}
 
 	var b strings.Builder
-	titleParams := &TitleParams{
-		FilterParts:   m.activeFilterParts(),
-		SortField:     m.sort.Field,
-		SortAscending: m.sort.Ascending,
-		Width:         width,
+	if m.project == nil {
+		projectCount := len(m.loadedProjects)
+		headerStr := fmt.Sprintf("Cross-project outliner (%d project", projectCount)
+		if projectCount != 1 {
+			headerStr += "s"
+		}
+		headerStr += ")"
+		b.WriteString(headerStr)
+	} else {
+		titleParams := &TitleParams{
+			FilterParts:   m.activeFilterParts(),
+			SortField:     m.sort.Field,
+			SortAscending: m.sort.Ascending,
+			Width:         width,
+		}
+		b.WriteString(renderProjectTitle(m.project, m.config, titleParams))
 	}
-	b.WriteString(renderProjectTitle(m.project, m.config, titleParams))
 	b.WriteString(perspectiveLabel)
 	b.WriteString(searchIndicator)
 	if m.multiSelectMode {
@@ -322,10 +362,12 @@ func (m *OutlinerModel) renderOutlinerTreeContent(width int) string {
 	}
 	b.WriteString("\n")
 
-	// Custom section tab bar
-	if tabs := m.customSectionTabs(); tabs != nil {
-		b.WriteString(RenderColoredTabBar(tabs, m.customSectionTabIndex(), width, 1, m.project.SectionColors))
-		b.WriteString("\n")
+	// Custom section tab bar (single-project only)
+	if m.project != nil {
+		if tabs := m.customSectionTabs(); tabs != nil {
+			b.WriteString(RenderColoredTabBar(tabs, m.customSectionTabIndex(), width, 1, m.project.SectionColors))
+			b.WriteString("\n")
+		}
 	}
 
 	if bc != "" {
@@ -349,10 +391,25 @@ func (m *OutlinerModel) renderOutlinerTreeContent(width int) string {
 	startIdx := calcScrollOffset(m.cursor, visibleRows)
 	endIdx := min(startIdx+visibleRows, len(m.rows))
 
+	// Reserve 1 column for the scrollbar when content overflows the viewport.
+	rowWidth := width
+	if len(m.rows) > visibleRows {
+		rowWidth = width - 1
+	}
+
 	var rowBuilder strings.Builder
 	for i := startIdx; i < endIdx; i++ {
 		row := m.rows[i]
 		selected := i == m.cursor
+
+		// Handle visual separator rows (cross-project mode)
+		if row.IsSeparator {
+			rowBuilder.WriteString("")
+			if i < endIdx-1 {
+				rowBuilder.WriteString("\n")
+			}
+			continue
+		}
 
 		// Handle section header rows
 		if row.IsSectionHeader {
@@ -393,7 +450,7 @@ func (m *OutlinerModel) renderOutlinerTreeContent(width int) string {
 				if m.cursorFlash {
 					rowStyle = CursorFlashRowStyle
 				}
-				line = rowStyle.Width(width).Render(line)
+				line = rowStyle.Width(rowWidth).Render(line)
 			}
 
 			rowBuilder.WriteString(line)
@@ -415,20 +472,9 @@ func (m *OutlinerModel) renderOutlinerTreeContent(width int) string {
 			}
 		}
 
-		// Project badge scaffolding — always empty in single-project mode.
-		// When m.project == nil, View() routes to crossProjectView() →
-		// renderCrossProjectContent, so this function is only reached when
-		// m.project != nil. In that case flattenTaskTreeWithFolds never sets
-		// row.ProjectID, so projBadge is always "". Badge rendering for
-		// cross-project rows lives in renderCrossProjectContent
-		// (cross_project_outliner.go).
+		// Project badge — shown when the row has a ProjectID (cross-project mode).
 		projBadge := ""
-		if m.project == nil {
-			// Unreachable: View() dispatches to crossProjectView() before reaching
-			// this function whenever m.project == nil. The block below is kept as
-			// scaffolding but must not be edited expecting it to affect cross-project
-			// badge rendering — changes there belong in renderCrossProjectContent.
-		} else if row.ProjectID != "" {
+		if row.ProjectID != "" {
 			projName := m.projectNameByID(row.ProjectID)
 			badgeStyle := lipgloss.NewStyle().Foreground(projectBadgeColor(projName))
 			projBadge = badgeStyle.Render("["+projName+"]") + " "
@@ -436,7 +482,8 @@ func (m *OutlinerModel) renderOutlinerTreeContent(width int) string {
 
 		typeIcon := GetTypeBadge(string(task.Type), task.Type.Icon())
 		statusIcon := GetStatusBadge(string(task.Status), task.Status.Icon())
-		if m.project.HasIncompleteDependencies(task) {
+		proj := m.resolveProjectForRow(row)
+		if proj != nil && proj.HasIncompleteDependencies(task) {
 			statusIcon = BlockedByDepsStyle.Render(task.Status.Icon())
 		}
 
@@ -463,9 +510,11 @@ func (m *OutlinerModel) renderOutlinerTreeContent(width int) string {
 			orgParts = append(orgParts, MutedStyle.Render(fmt.Sprintf("#%d", task.ShortID)))
 		}
 		if m.columnConfig.IsVisible(ColCustomSection) && task.CustomSection != "" {
-			csColor := m.project.GetSectionColor(task.CustomSection)
-			csStyle := GetSectionColorStyle(csColor)
-			orgParts = append(orgParts, csStyle.Render("@ "+task.CustomSection))
+			if proj != nil {
+				csColor := proj.GetSectionColor(task.CustomSection)
+				csStyle := GetSectionColorStyle(csColor)
+				orgParts = append(orgParts, csStyle.Render("@ "+task.CustomSection))
+			}
 		}
 		if p := m.currentPerspective(); p.Name != "All" {
 			sectionName := task.Section
@@ -511,12 +560,14 @@ func (m *OutlinerModel) renderOutlinerTreeContent(width int) string {
 			}
 		}
 		if m.columnConfig.IsVisible(ColDependencies) && !m.sidebar.IsEnabled() {
-			if s := renderDependencyIndicators(task, m.project); s != "" {
-				structureParts = append(structureParts, s)
+			if proj != nil {
+				if s := renderDependencyIndicators(task, proj); s != "" {
+					structureParts = append(structureParts, s)
+				}
 			}
 		}
-		if m.columnConfig.IsVisible(ColScore) && m.config != nil {
-			if profile := m.config.GetProjectScoringProfile(m.project.ID); profile != nil {
+		if m.columnConfig.IsVisible(ColScore) && m.config != nil && proj != nil {
+			if profile := m.config.GetProjectScoringProfile(proj.ID); profile != nil {
 				if HasManualScores(task, profile) {
 					structureParts = append(structureParts, RenderScoreBadge(task, profile))
 				}
@@ -568,8 +619,16 @@ func (m *OutlinerModel) renderOutlinerTreeContent(width int) string {
 			indicators = " " + indicators
 		}
 
-		// Truncate title to fit available width
-		availableWidth := max(width-lipgloss.Width(row.prefix)-lipgloss.Width(cursorPrefix)-lipgloss.Width(checkbox)-lipgloss.Width(projBadge)-12-lipgloss.Width(indicators), 10)
+		// Truncate title to fit available width.
+		// Account for every non-title component plus the two literal spaces in the format string.
+		// The EA delta compensates for terminals that render East Asian Ambiguous
+		// characters (box-drawing, geometric shapes, middle dots) at double width.
+		nonTitleWidth := lipgloss.Width(cursorPrefix) + lipgloss.Width(checkbox) +
+			lipgloss.Width(row.prefix) + lipgloss.Width(foldIndicator) +
+			lipgloss.Width(projBadge) + lipgloss.Width(typeIcon) + 1 +
+			lipgloss.Width(stageSegment) + lipgloss.Width(statusIcon) + 1 +
+			lipgloss.Width(indicators)
+		availableWidth := max(rowWidth-nonTitleWidth, 10)
 		truncatedTitle := util.Truncate(task.Title, availableWidth)
 		var title string
 		query := strings.TrimSpace(m.SearchQuery())
@@ -597,7 +656,7 @@ func (m *OutlinerModel) renderOutlinerTreeContent(width int) string {
 			if m.cursorFlash {
 				rowStyle = CursorFlashRowStyle
 			}
-			line = rowStyle.Width(width).Render(line)
+			line = rowStyle.Width(rowWidth).Render(line)
 		}
 
 		rowBuilder.WriteString(line)
