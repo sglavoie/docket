@@ -4,7 +4,7 @@ import "time"
 
 // MoveTaskUp swaps the task with its previous sibling in the Tasks slice.
 // For root tasks, completed tasks cannot move above uncompleted tasks.
-// Returns an error if the task cannot be moved up.
+// Returns nil without changes if the task is already at the top or cannot move.
 func (p *Project) MoveTaskUp(task *Task) error {
 	siblings := p.GetSiblings(task)
 	if len(siblings) < 2 {
@@ -42,7 +42,7 @@ func (p *Project) MoveTaskUp(task *Task) error {
 
 // MoveTaskDown swaps the task with its next sibling in the Tasks slice.
 // For root tasks, uncompleted tasks cannot move below completed tasks.
-// Returns an error if the task cannot be moved down.
+// Returns nil without changes if the task is already at the bottom or cannot move.
 func (p *Project) MoveTaskDown(task *Task) error {
 	siblings := p.GetSiblings(task)
 	if len(siblings) < 2 {

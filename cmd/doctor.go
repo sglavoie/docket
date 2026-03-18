@@ -88,7 +88,11 @@ func runDoctor(cmd *cobra.Command, _ []string) error {
 		return fmt.Errorf("found %d issue(s)", results.totalIssues())
 	}
 
-	fmt.Println("\nAll checks passed.")
+	if len(results.emptyProjects) > 0 {
+		fmt.Println("\nAll checks passed (with informational notes above).")
+	} else {
+		fmt.Println("\nAll checks passed.")
+	}
 	return nil
 }
 

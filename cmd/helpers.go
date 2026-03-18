@@ -217,6 +217,21 @@ func LoadConfigAndProject(slug string) (*models.Project, *config.Config, *config
 	return project, cfg, mgr, nil
 }
 
+// ReportBatchErrors prints a summary and returns nil on partial success, error on total failure.
+func ReportBatchErrors(succeeded int, errs []string) error {
+	if len(errs) == 0 {
+		return nil
+	}
+	if succeeded > 0 {
+		fmt.Printf("\n%d succeeded, %d failed:\n", succeeded, len(errs))
+		for _, e := range errs {
+			fmt.Printf("  %s\n", e)
+		}
+		return nil // partial success = exit 0
+	}
+	return fmt.Errorf("%s", strings.Join(errs, "\n"))
+}
+
 // LoadConfigAndProjectOrCurrent loads the config and looks up a project by slug
 // if args is non-empty, otherwise falls back to the current project.
 func LoadConfigAndProjectOrCurrent(args []string) (*models.Project, *config.Config, *config.Manager, error) {

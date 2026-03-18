@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -98,12 +97,5 @@ func runTaskSection(cmd *cobra.Command, args []string) error {
 		fmt.Printf("%d updated, %d already in the requested section\n", succeeded, skipped)
 	}
 
-	if len(errs) > 0 {
-		if succeeded > 0 {
-			fmt.Printf("\n%d succeeded, %d failed:\n", succeeded, len(errs))
-		}
-		return fmt.Errorf("%s", strings.Join(errs, "\n"))
-	}
-
-	return nil
+	return ReportBatchErrors(succeeded, errs)
 }

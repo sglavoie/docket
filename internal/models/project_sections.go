@@ -56,7 +56,10 @@ func (p *Project) HasSection(name string) bool {
 const MaxSectionNameLength = 256
 
 // EnsureSection adds a section if it does not already exist.
-// Silently rejects names that fail validation.
+// Silently rejects names that fail validation — this is intentional because
+// 26+ callers (including TUI handlers) rely on the no-error signature.
+// Invalid names are a no-op; callers that need validation should call
+// ValidateSectionName explicitly before this method.
 func (p *Project) EnsureSection(name string) {
 	if err := ValidateSectionName(name); err != nil {
 		return

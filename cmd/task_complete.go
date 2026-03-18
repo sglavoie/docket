@@ -267,12 +267,5 @@ func updateTaskStatus(args []string, action string, update func(*models.Task)) e
 		}
 	}
 
-	if len(errs) > 0 {
-		if succeeded > 0 {
-			fmt.Printf("\n%d succeeded, %d failed:\n", succeeded, len(errs))
-		}
-		return fmt.Errorf("%s", strings.Join(errs, "\n"))
-	}
-
-	return nil
+	return ReportBatchErrors(succeeded, errs)
 }

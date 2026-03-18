@@ -3,7 +3,6 @@ package cmd
 import (
 	"fmt"
 	"strconv"
-	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -82,17 +81,5 @@ func runTaskPriority(cmd *cobra.Command, args []string) error {
 		fmt.Printf("%d updated, %d already at priority %d\n", succeeded, skipped, priority)
 	}
 
-	if len(errs) > 0 {
-		if succeeded > 0 {
-			// Partial success: print failures as warnings but exit 0
-			fmt.Printf("\n%d succeeded, %d failed:\n", succeeded, len(errs))
-			for _, e := range errs {
-				fmt.Printf("  %s\n", e)
-			}
-			return nil
-		}
-		return fmt.Errorf("%s", strings.Join(errs, "\n"))
-	}
-
-	return nil
+	return ReportBatchErrors(succeeded, errs)
 }
