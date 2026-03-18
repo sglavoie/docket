@@ -135,7 +135,26 @@ func (r *KeybindingRegistry) registerOutlinerBindings() {
 func (r *KeybindingRegistry) registerCrossProjectOutlinerBindings() {
 	views := []ViewType{ViewCrossProjectOutliner}
 	r.add(
-		Keybinding{Key: "C", Description: "Open context picker", Category: "Filters", Views: views},
+		// Navigation
+		Keybinding{Key: "j/k", Description: "Move cursor up/down", Category: "Navigation", Views: views},
+		Keybinding{Key: "gg/G", Description: "Jump to first/last", Category: "Navigation", Views: views},
+		Keybinding{Key: "ctrl+d/u", Description: "Page down/up", Category: "Navigation", Views: views},
+		Keybinding{Key: "Enter", Description: "Zoom into parent / open leaf", Category: "Navigation", Views: views},
+		Keybinding{Key: "Backspace", Description: "Zoom out one level", Category: "Navigation", Views: views},
+		Keybinding{Key: "q", Description: "Zoom out / close", Category: "Navigation", Views: views},
 		Keybinding{Key: "go", Description: "Drill down to project outliner", Category: "Navigation", Views: views},
+
+		// Perspectives
+		Keybinding{Key: "h/l", Description: "Cycle perspective left/right", Category: "Perspectives", Views: views},
+		Keybinding{Key: "P0-P9", Description: "Switch perspective by number", Category: "Perspectives", Views: views},
+
+		// Filters
+		Keybinding{Key: "C", Description: "Open context picker", Category: "Filters", Views: views},
+
+		// Search
+		Keybinding{Key: "/", Description: "Search tasks", Category: "Search", Views: views},
+
+		// Other
+		Keybinding{Key: "ctrl+R", Description: "Refresh from disk", Category: "Other", Views: views},
 	)
 }
