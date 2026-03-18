@@ -1260,6 +1260,77 @@ func BenchmarkCrossProjectLoadAndRebuild(b *testing.B) {
 	}
 }
 
+// BenchmarkCrossProjectRowBuilding measures the pure row-building cost of
+// buildCrossProjectRowsWithSectionHeaders (All perspective) and
+// buildProjectGroupedRows (non-All perspective) without any disk I/O.
+//
+// The dataset contains 10 projects with 100 tasks each (10 parent tasks with
+// 9 children apiece), spread across all GTD sections. A single iteration of
+// either function should complete well under 500ms on a development machine.
+func BenchmarkCrossProjectRowBuilding(b *testing.B) {
+	sections := []string{
+		"", models.SectionInbox, models.SectionNext,
+		models.SectionWaiting, models.SectionReview,
+		models.SectionStandby, models.SectionSomeday,
+	}
+
+	const numProjects = 10
+	const tasksPerProject = 100 // 10 parents × 9 children + 10 parents = 100
+
+	// Build groups once; reused across all iterations (no mutation between runs).
+	groups := make([]projectTasksGroup, numProjects)
+	for p := range numProjects {
+		projID := fmt.Sprintf("bench-proj-%02d", p)
+		tasks := make([]*models.Task, 0, tasksPerProject)
+
+		seq := 1
+		for parentIdx := range 10 {
+			parentID := fmt.Sprintf("%s-task-%03d", projID, seq)
+			parent := makeTask(parentID, fmt.Sprintf("Parent %d-%d", p, parentIdx), sections[seq%len(sections)])
+			parent.Status = models.StatusInProgress
+			seq++
+			tasks = append(tasks, parent)
+
+			for childIdx := range 9 {
+				childID := fmt.Sprintf("%s-task-%03d", projID, seq)
+				child := makeTask(childID, fmt.Sprintf("Child %d-%d-%d", p, parentIdx, childIdx), sections[seq%len(sections)])
+				child.Status = models.StatusInProgress
+				child.Children = nil
+				seq++
+				tasks = append(tasks, child)
+			}
+		}
+
+		groups[p] = projectTasksGroup{projectID: projID, tasks: tasks}
+	}
+
+	b.Run("AllPerspective", func(b *testing.B) {
+		for b.Loop() {
+			m := &OutlinerModel{
+				collapsedSections: make(map[string]bool),
+				expandedNodes:     make(map[string]bool),
+			}
+			m.buildCrossProjectRowsWithSectionHeaders(groups)
+			if len(m.rows) == 0 {
+				b.Fatal("buildCrossProjectRowsWithSectionHeaders produced no rows")
+			}
+		}
+	})
+
+	b.Run("NonAllPerspective", func(b *testing.B) {
+		for b.Loop() {
+			m := &OutlinerModel{
+				collapsedSections: make(map[string]bool),
+				expandedNodes:     make(map[string]bool),
+			}
+			m.buildProjectGroupedRows(groups)
+			if len(m.rows) == 0 {
+				b.Fatal("buildProjectGroupedRows produced no rows")
+			}
+		}
+	})
+}
+
 // TestSearchTagOnlyMatchConsistency is a regression test that pins the shared
 // matchesSearch behavior between the single-project and cross-project outliner
 // row builders.
