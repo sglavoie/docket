@@ -85,73 +85,74 @@ type SavedView struct {
 
 // Config holds the application configuration.
 type Config struct {
-	Version                   int                          `json:"version"`
-	DataDir                   string                       `json:"data_dir"`
-	CurrentProject            string                       `json:"current_project,omitempty"`
-	Editor                    string                       `json:"editor"`
-	DefaultContext            string                       `json:"default_context"`
-	FilterContext             string                       `json:"filter_context,omitempty"`        // Persisted context filter for dashboard/cycling
-	FilterCustomContext       string                       `json:"filter_custom_context,omitempty"` // Custom context filter (mutually exclusive with FilterContext)
-	CustomContexts            map[string][]string          `json:"custom_contexts,omitempty"`       // Custom context name → project IDs
-	FzfEnabled                bool                         `json:"fzf_enabled"`
-	GlowEnabled               bool                         `json:"glow_enabled"`
-	UndoHistoryDepth          *int                         `json:"undo_history_depth,omitempty"` // Max undo snapshots (nil=50, 0 disables, max 1000)
-	Projects                  []*models.Project            `json:"projects"`
-	SectionColors             map[string]string            `json:"section_colors,omitempty"`               // Global section color registry
-	ProjectViewStates         map[string]ProjectViewState  `json:"project_view_states,omitempty"`          // Per-project filter/sort state
-	CycleProjects             []string                     `json:"cycle_projects,omitempty"`               // Project IDs for quick cycling with ` and ~ (global, when no context filter)
-	ContextCycleProjects      map[string][]string          `json:"context_cycle_projects,omitempty"`       // Per-context cycle project IDs (context name -> project IDs)
-	ShowInfoPanel             *bool                        `json:"show_info_panel,omitempty"`              // Legacy: show info panel section on dashboard (default: true)
-	InfoPanelMode             *int                         `json:"info_panel_mode,omitempty"`              // Info panel mode: 0=off, 1=info cards, 2=project summary
-	RecentPaletteItems        []RecentPaletteItem          `json:"recent_palette_items,omitempty"`         // Recently selected items in command palette
-	LastPaletteCategory       string                       `json:"last_palette_category,omitempty"`        // Last category filter used (e.g., ":task ")
-	PaletteSearchHistory      []string                     `json:"palette_search_history,omitempty"`       // Recent search queries in command palette
-	PinnedCommands            []string                     `json:"pinned_commands,omitempty"`              // Pinned command names for quick access
-	SavedSearches             map[string]string            `json:"saved_searches,omitempty"`               // Named saved searches (name -> query)
-	CommandHistory            []string                     `json:"command_history,omitempty"`              // Recently executed command names
-	WorkflowRules             []workflow.WorkflowRule      `json:"workflow_rules,omitempty"`               // Automation rules for task changes
-	DefaultRulesInitialized   bool                         `json:"default_rules_initialized,omitempty"`    // True after tt workflow init has run
-	WorkflowEvalStates        map[string]WorkflowEvalState `json:"workflow_eval_states,omitempty"`         // Per-project workflow evaluation state
-	WorkflowEvalInterval      *int                         `json:"workflow_eval_interval,omitempty"`       // Minutes between auto-evals (nil=60, 0=disabled)
-	ReviewDueSoonDays         *int                         `json:"review_due_soon_days,omitempty"`         // nil=7, 0=hide section
-	ReviewFutureDays          *int                         `json:"review_future_days,omitempty"`           // nil=30, 0=hide section (tasks due in >= this many days)
-	ReviewOldDays             *int                         `json:"review_old_days,omitempty"`              // nil=14, 0=hide section (based on UpdatedAt)
-	ReviewCompletedHours      *int                         `json:"review_completed_hours,omitempty"`       // nil=24, 0=hide section
-	LinkedTaskJumpToNew       *bool                        `json:"linked_task_jump_to_new,omitempty"`      // nil=false: stay on source, true=jump to new
-	MaxActivityEntries        *int                         `json:"max_activity_entries,omitempty"`         // nil=50, 0=disabled, max activity log entries per task
-	RecentActivityLimit       *int                         `json:"recent_activity_limit,omitempty"`        // nil=20, max tasks in recent activity view
-	RecentActivityShowAll     *bool                        `json:"recent_activity_show_all,omitempty"`     // nil=true, show completed tasks too
-	WeeklyStaleProjectDays    *int                         `json:"weekly_stale_project_days,omitempty"`    // nil=14, days without updates for stale projects
-	WeeklyStaleTaskDays       *int                         `json:"weekly_stale_task_days,omitempty"`       // nil=21, days without updates for stale tasks
-	WeeklyInboxThreshold      *int                         `json:"weekly_inbox_threshold,omitempty"`       // nil=5, inbox count threshold
-	WeeklyBlockedThreshold    *int                         `json:"weekly_blocked_threshold,omitempty"`     // nil=3, blocked count threshold
-	WeeklyInProgressThreshold *int                         `json:"weekly_in_progress_threshold,omitempty"` // nil=5, in-progress count threshold
-	TutorDismissed            *bool                        `json:"tutor_dismissed,omitempty"`              // nil=false, tutor prompt dismissed on dashboard
-	AttachmentEditor          string                       `json:"attachment_editor,omitempty"`            // Editor for general attachments (empty = OS default)
-	CodeEditor                string                       `json:"code_editor,omitempty"`                  // Editor for code references (default: code)
-	TaskTemplates             []template.TaskTemplate      `json:"task_templates,omitempty"`               // Task templates for quick task creation
-	DefaultTemplatesInit      bool                         `json:"default_templates_init,omitempty"`       // True after tt template init has run
-	ScoringProfiles           []scoring.ScoringProfile     `json:"scoring_profiles,omitempty"`             // Available scoring profiles
-	ProjectScoringProfile     map[string]string            `json:"project_scoring_profile,omitempty"`      // Project ID → scoring profile ID
-	ScoreFilterCustom         *float64                     `json:"score_filter_custom,omitempty"`          // Custom score filter threshold for FS→c
-	SavedViews                []SavedView                  `json:"saved_views,omitempty"`                  // Legacy: migrated to SavedFilters
-	SavedFilters              []SavedFilter                `json:"saved_filters,omitempty"`                // Unified filter presets (snapshot + criteria)
-	MaxPinnedBarItems         *int                         `json:"max_pinned_bar_items,omitempty"`         // nil=5, max pinned tasks in status bar
-	MaxRecentTaskVisits       *int                         `json:"max_recent_task_visits,omitempty"`       // nil=15, max tasks in quick-switch overlay
-	ActionInboxProjectID      string                       `json:"action_inbox_project_id,omitempty"`      // Project ID for focus board action inbox
-	DefaultProjectView        string                       `json:"default_project_view,omitempty"`         // Default view when opening a project: outliner, project_tree
-	FocusQueue                []FocusQueueItem             `json:"focus_queue,omitempty"`                  // Persisted focus board work queue
-	FocusDismissedIDs         []string                     `json:"focus_dismissed_ids,omitempty"`          // Dismissed suggestion task IDs
-	AlertDismissals           []AlertDismissal             `json:"alert_dismissals,omitempty"`             // Dismissed proactive alerts
-	RecentTaskVisits          []RecentTaskVisit            `json:"recent_task_visits,omitempty"`           // Recently visited tasks for quick-switch
-	OutlinerCollapsedSections map[string]bool              `json:"outliner_collapsed_sections,omitempty"`  // Default collapsed sections in outliner All perspective
-	TreeDefaultColumns        map[string]bool              `json:"tree_default_columns,omitempty"`         // Global default column visibility for tree view
-	OutlinerDefaultColumns    map[string]bool              `json:"outliner_default_columns,omitempty"`     // Global default column visibility for outliner view
-	TreePriorityMode          string                       `json:"tree_priority_mode,omitempty"`           // Global priority display mode for tree view
-	OutlinerPriorityMode      string                       `json:"outliner_priority_mode,omitempty"`       // Global priority display mode for outliner view
-	Stages                    []string                     `json:"stages,omitempty"`                       // Workflow stages (e.g., Brainstorm, Design, Implement)
-	SmartLists                []SmartList                  `json:"smart_lists,omitempty"`                  // User-defined smart list tabs for AllTasks view
-	AllTasksTabOrder          []string                     `json:"all_tasks_tab_order,omitempty"`          // Built-in tab names + smart list UUIDs
+	Version                     int                          `json:"version"`
+	DataDir                     string                       `json:"data_dir"`
+	CurrentProject              string                       `json:"current_project,omitempty"`
+	Editor                      string                       `json:"editor"`
+	DefaultContext              string                       `json:"default_context"`
+	FilterContext               string                       `json:"filter_context,omitempty"`        // Persisted context filter for dashboard/cycling
+	FilterCustomContext         string                       `json:"filter_custom_context,omitempty"` // Custom context filter (mutually exclusive with FilterContext)
+	CustomContexts              map[string][]string          `json:"custom_contexts,omitempty"`       // Custom context name → project IDs
+	FzfEnabled                  bool                         `json:"fzf_enabled"`
+	GlowEnabled                 bool                         `json:"glow_enabled"`
+	UndoHistoryDepth            *int                         `json:"undo_history_depth,omitempty"` // Max undo snapshots (nil=50, 0 disables, max 1000)
+	Projects                    []*models.Project            `json:"projects"`
+	SectionColors               map[string]string            `json:"section_colors,omitempty"`                 // Global section color registry
+	ProjectViewStates           map[string]ProjectViewState  `json:"project_view_states,omitempty"`            // Per-project filter/sort state
+	CycleProjects               []string                     `json:"cycle_projects,omitempty"`                 // Project IDs for quick cycling with ` and ~ (global, when no context filter)
+	ContextCycleProjects        map[string][]string          `json:"context_cycle_projects,omitempty"`         // Per-context cycle project IDs (context name -> project IDs)
+	ShowInfoPanel               *bool                        `json:"show_info_panel,omitempty"`                // Legacy: show info panel section on dashboard (default: true)
+	InfoPanelMode               *int                         `json:"info_panel_mode,omitempty"`                // Info panel mode: 0=off, 1=info cards, 2=project summary
+	RecentPaletteItems          []RecentPaletteItem          `json:"recent_palette_items,omitempty"`           // Recently selected items in command palette
+	LastPaletteCategory         string                       `json:"last_palette_category,omitempty"`          // Last category filter used (e.g., ":task ")
+	PaletteSearchHistory        []string                     `json:"palette_search_history,omitempty"`         // Recent search queries in command palette
+	PinnedCommands              []string                     `json:"pinned_commands,omitempty"`                // Pinned command names for quick access
+	SavedSearches               map[string]string            `json:"saved_searches,omitempty"`                 // Named saved searches (name -> query)
+	CommandHistory              []string                     `json:"command_history,omitempty"`                // Recently executed command names
+	WorkflowRules               []workflow.WorkflowRule      `json:"workflow_rules,omitempty"`                 // Automation rules for task changes
+	DefaultRulesInitialized     bool                         `json:"default_rules_initialized,omitempty"`      // True after tt workflow init has run
+	WorkflowEvalStates          map[string]WorkflowEvalState `json:"workflow_eval_states,omitempty"`           // Per-project workflow evaluation state
+	WorkflowEvalInterval        *int                         `json:"workflow_eval_interval,omitempty"`         // Minutes between auto-evals (nil=60, 0=disabled)
+	ReviewDueSoonDays           *int                         `json:"review_due_soon_days,omitempty"`           // nil=7, 0=hide section
+	ReviewFutureDays            *int                         `json:"review_future_days,omitempty"`             // nil=30, 0=hide section (tasks due in >= this many days)
+	ReviewOldDays               *int                         `json:"review_old_days,omitempty"`                // nil=14, 0=hide section (based on UpdatedAt)
+	ReviewCompletedHours        *int                         `json:"review_completed_hours,omitempty"`         // nil=24, 0=hide section
+	LinkedTaskJumpToNew         *bool                        `json:"linked_task_jump_to_new,omitempty"`        // nil=false: stay on source, true=jump to new
+	MaxActivityEntries          *int                         `json:"max_activity_entries,omitempty"`           // nil=50, 0=disabled, max activity log entries per task
+	RecentActivityLimit         *int                         `json:"recent_activity_limit,omitempty"`          // nil=20, max tasks in recent activity view
+	RecentActivityShowAll       *bool                        `json:"recent_activity_show_all,omitempty"`       // nil=true, show completed tasks too
+	WeeklyStaleProjectDays      *int                         `json:"weekly_stale_project_days,omitempty"`      // nil=14, days without updates for stale projects
+	WeeklyStaleTaskDays         *int                         `json:"weekly_stale_task_days,omitempty"`         // nil=21, days without updates for stale tasks
+	WeeklyInboxThreshold        *int                         `json:"weekly_inbox_threshold,omitempty"`         // nil=5, inbox count threshold
+	WeeklyBlockedThreshold      *int                         `json:"weekly_blocked_threshold,omitempty"`       // nil=3, blocked count threshold
+	WeeklyInProgressThreshold   *int                         `json:"weekly_in_progress_threshold,omitempty"`   // nil=5, in-progress count threshold
+	TutorDismissed              *bool                        `json:"tutor_dismissed,omitempty"`                // nil=false, tutor prompt dismissed on dashboard
+	AttachmentEditor            string                       `json:"attachment_editor,omitempty"`              // Editor for general attachments (empty = OS default)
+	CodeEditor                  string                       `json:"code_editor,omitempty"`                    // Editor for code references (default: code)
+	TaskTemplates               []template.TaskTemplate      `json:"task_templates,omitempty"`                 // Task templates for quick task creation
+	DefaultTemplatesInit        bool                         `json:"default_templates_init,omitempty"`         // True after tt template init has run
+	ScoringProfiles             []scoring.ScoringProfile     `json:"scoring_profiles,omitempty"`               // Available scoring profiles
+	ProjectScoringProfile       map[string]string            `json:"project_scoring_profile,omitempty"`        // Project ID → scoring profile ID
+	ScoreFilterCustom           *float64                     `json:"score_filter_custom,omitempty"`            // Custom score filter threshold for FS→c
+	SavedViews                  []SavedView                  `json:"saved_views,omitempty"`                    // Legacy: migrated to SavedFilters
+	SavedFilters                []SavedFilter                `json:"saved_filters,omitempty"`                  // Unified filter presets (snapshot + criteria)
+	MaxPinnedBarItems           *int                         `json:"max_pinned_bar_items,omitempty"`           // nil=5, max pinned tasks in status bar
+	MaxRecentTaskVisits         *int                         `json:"max_recent_task_visits,omitempty"`         // nil=15, max tasks in quick-switch overlay
+	ActionInboxProjectID        string                       `json:"action_inbox_project_id,omitempty"`        // Project ID for focus board action inbox
+	DefaultProjectView          string                       `json:"default_project_view,omitempty"`           // Default view when opening a project: outliner, project_tree
+	FocusQueue                  []FocusQueueItem             `json:"focus_queue,omitempty"`                    // Persisted focus board work queue
+	FocusDismissedIDs           []string                     `json:"focus_dismissed_ids,omitempty"`            // Dismissed suggestion task IDs
+	AlertDismissals             []AlertDismissal             `json:"alert_dismissals,omitempty"`               // Dismissed proactive alerts
+	RecentTaskVisits            []RecentTaskVisit            `json:"recent_task_visits,omitempty"`             // Recently visited tasks for quick-switch
+	OutlinerCollapsedSections   map[string]bool              `json:"outliner_collapsed_sections,omitempty"`    // Default collapsed sections in outliner All perspective
+	TreeDefaultColumns          map[string]bool              `json:"tree_default_columns,omitempty"`           // Global default column visibility for tree view
+	OutlinerDefaultColumns      map[string]bool              `json:"outliner_default_columns,omitempty"`       // Global default column visibility for outliner view
+	CrossOutlinerSidebarEnabled *bool                        `json:"cross_outliner_sidebar_enabled,omitempty"` // nil=true; default sidebar state for cross-project outliner
+	TreePriorityMode            string                       `json:"tree_priority_mode,omitempty"`             // Global priority display mode for tree view
+	OutlinerPriorityMode        string                       `json:"outliner_priority_mode,omitempty"`         // Global priority display mode for outliner view
+	Stages                      []string                     `json:"stages,omitempty"`                         // Workflow stages (e.g., Brainstorm, Design, Implement)
+	SmartLists                  []SmartList                  `json:"smart_lists,omitempty"`                    // User-defined smart list tabs for AllTasks view
+	AllTasksTabOrder            []string                     `json:"all_tasks_tab_order,omitempty"`            // Built-in tab names + smart list UUIDs
 	// Proactive alert system: review tracking
 	LastDailyReviewAt  *time.Time `json:"last_daily_review_at,omitempty"`
 	LastWeeklyReviewAt *time.Time `json:"last_weekly_review_at,omitempty"`

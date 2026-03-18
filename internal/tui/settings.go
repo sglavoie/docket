@@ -15,7 +15,7 @@ var (
 	settingsTabNames = []string{"General", "Review", "Behavior", "Attachments", "Project Tree", "Outliner", "Notifications", "Stages"}
 
 	// tabFieldCount declares how many focusable fields each tab has.
-	tabFieldCount = []int{4, 4, 5, 2, 13, 20, 15, 1}
+	tabFieldCount = []int{4, 4, 5, 2, 13, 21, 15, 1}
 
 	// tabFieldStart holds the starting focus index for each tab (computed in init).
 	tabFieldStart []int
@@ -91,10 +91,11 @@ type SettingsModel struct {
 	outlinerColumnDefaults   [13]bool // Global default column visibility for outliner view
 	treePriorityMode         int      // 0=All, 1=Conditional, 2=Hidden
 	outlinerPriorityMode     int      // 0=All, 1=Conditional, 2=Hidden
+	crossOutlinerSidebar     bool     // Default sidebar state for cross-project outliner
 	contexts                 []string
 	contextCursor            int // -1 for custom mode, 0+ for selecting from list
 
-	// Stages settings (Stages tab, index 63)
+	// Stages settings (Stages tab, index 64)
 	savedStages        []string // snapshot at load time, for dirty detection
 	stages             []string
 	stageInput         textinput.Model
@@ -103,7 +104,7 @@ type SettingsModel struct {
 	stageAddMode       bool // true when adding (vs editing)
 	stageConfirmDelete ConfirmDialog
 
-	// Alert settings (Notifications tab, indices 47-61)
+	// Alert settings (Notifications tab, indices 49-63)
 	alertDailyReviewEnabled    bool
 	alertDailyReviewHourInput  textinput.Model
 	alertWeeklyReviewEnabled   bool
@@ -121,7 +122,7 @@ type SettingsModel struct {
 	alertProjectStaleDaysInput textinput.Model
 
 	tabs               TabState
-	focusIndex         int // 0=editor .. 47=outlinerColumnDefaults, 48-62=alert settings
+	focusIndex         int // 0=editor .. 48=outlinerColumnDefaults, 49-63=alert settings
 	scrollOffset       int // vertical scroll offset within current tab content
 	validationErr      string
 	stageValidationErr string // timed error shown in stages tab (auto-clears)
@@ -312,6 +313,7 @@ func NewSettingsModel(cfg *config.Config, manager *config.Manager) *SettingsMode
 		outlinerColumnDefaults:     outlinerColumnDefaults,
 		treePriorityMode:           priorityModeToCursor(cfg.TreePriorityMode),
 		outlinerPriorityMode:       priorityModeToCursor(cfg.OutlinerPriorityMode),
+		crossOutlinerSidebar:       cfg.CrossOutlinerSidebarEnabled == nil || *cfg.CrossOutlinerSidebarEnabled,
 		savedStages:                append([]string{}, stages...),
 		stages:                     stages,
 		stageInput:                 stageInput,
@@ -393,6 +395,9 @@ func (m *SettingsModel) saveSettings() tea.Cmd {
 		if m.config.OutlinerPriorityMode == PriorityModeConditional {
 			m.config.OutlinerPriorityMode = ""
 		}
+
+		// Persist cross-project outliner sidebar default
+		m.config.CrossOutlinerSidebarEnabled = boolPtr(m.crossOutlinerSidebar)
 
 		// Persist stages
 		m.config.Stages = make([]string, len(m.stages))

@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	tea "github.com/charmbracelet/bubbletea"
+
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 )
@@ -1517,9 +1518,10 @@ func TestCrossProjectOutlinerQAtRootEmitsCloseCrossOutlinerMsg(t *testing.T) {
 
 // TestCloseCrossOutlinerMsgPreservesOutliner verifies that when the cross-project
 // outliner emits CloseCrossOutlinerMsg (the fixed 'q' path), the AppModel:
-//   (a) leaves the view stack at an anchor view
-//   (b) does not nil m.crossOutliner
-//   (c) does not nil m.outliner (the single-project outliner session)
+//
+//	(a) leaves the view stack at an anchor view
+//	(b) does not nil m.crossOutliner
+//	(c) does not nil m.outliner (the single-project outliner session)
 //
 // With the old bug (CloseOutlinerMsg), m.outliner was cleared and a non-anchor
 // view could be left exposed on the stack.

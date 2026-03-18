@@ -141,37 +141,41 @@ func (m *SettingsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.treeColumnDefaults[idx] = !m.treeColumnDefaults[idx]
 				}
 			}
-			// Outliner section toggles (indices 28-34)
-			if m.focusIndex >= 28 && m.focusIndex <= 34 {
-				idx := m.focusIndex - 28
+			// Cross-project sidebar toggle (index 28)
+			if m.focusIndex == 28 {
+				m.crossOutlinerSidebar = !m.crossOutlinerSidebar
+			}
+			// Outliner section toggles (indices 29-35)
+			if m.focusIndex >= 29 && m.focusIndex <= 35 {
+				idx := m.focusIndex - 29
 				m.outlinerCollapsed[idx] = !m.outlinerCollapsed[idx]
 			}
-			// Outliner column defaults (indices 35-47)
-			if m.focusIndex >= 35 && m.focusIndex <= 47 {
-				if m.focusIndex == 36 { // Priority: cycle 3-way
+			// Outliner column defaults (indices 36-48)
+			if m.focusIndex >= 36 && m.focusIndex <= 48 {
+				if m.focusIndex == 37 { // Priority: cycle 3-way
 					m.outlinerPriorityMode = (m.outlinerPriorityMode + 1) % 3
 				} else {
-					idx := m.focusIndex - 35
+					idx := m.focusIndex - 36
 					m.outlinerColumnDefaults[idx] = !m.outlinerColumnDefaults[idx]
 				}
 			}
-			// Alert toggles (indices 48, 50, 52, 53, 55, 57, 59, 61)
+			// Alert toggles (indices 49, 51, 53, 54, 56, 58, 60, 62)
 			switch m.focusIndex {
-			case 48:
+			case 49:
 				m.alertDailyReviewEnabled = !m.alertDailyReviewEnabled
-			case 50:
+			case 51:
 				m.alertWeeklyReviewEnabled = !m.alertWeeklyReviewEnabled
-			case 52:
-				m.alertOverdueEnabled = !m.alertOverdueEnabled
 			case 53:
+				m.alertOverdueEnabled = !m.alertOverdueEnabled
+			case 54:
 				m.alertDueSoonEnabled = !m.alertDueSoonEnabled
-			case 55:
+			case 56:
 				m.alertStaleEnabled = !m.alertStaleEnabled
-			case 57:
+			case 58:
 				m.alertInboxEnabled = !m.alertInboxEnabled
-			case 59:
+			case 60:
 				m.alertBlockedEnabled = !m.alertBlockedEnabled
-			case 61:
+			case 62:
 				m.alertProjectHealthEnabled = !m.alertProjectHealthEnabled
 			}
 			return m, nil
@@ -233,13 +237,13 @@ func (m *SettingsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if m.treePriorityMode > 0 {
 					m.treePriorityMode--
 				}
-			case 36:
+			case 37:
 				if m.outlinerPriorityMode > 0 {
 					m.outlinerPriorityMode--
 				}
 			}
 			// Weekly review day left
-			if m.focusIndex == 51 && m.alertWeeklyReviewDay > 0 {
+			if m.focusIndex == 52 && m.alertWeeklyReviewDay > 0 {
 				m.alertWeeklyReviewDay--
 			}
 
@@ -263,13 +267,13 @@ func (m *SettingsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if m.treePriorityMode < 2 {
 					m.treePriorityMode++
 				}
-			case 36:
+			case 37:
 				if m.outlinerPriorityMode < 2 {
 					m.outlinerPriorityMode++
 				}
 			}
 			// Weekly review day right
-			if m.focusIndex == 51 && m.alertWeeklyReviewDay < 6 {
+			if m.focusIndex == 52 && m.alertWeeklyReviewDay < 6 {
 				m.alertWeeklyReviewDay++
 			}
 		}
@@ -314,19 +318,19 @@ func (m *SettingsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.attachmentEditorInput, cmd = m.attachmentEditorInput.Update(msg)
 	case 14:
 		m.codeEditorInput, cmd = m.codeEditorInput.Update(msg)
-	case 49:
+	case 50:
 		m.alertDailyReviewHourInput, cmd = m.alertDailyReviewHourInput.Update(msg)
-	case 54:
+	case 55:
 		m.alertDueSoonDaysInput, cmd = m.alertDueSoonDaysInput.Update(msg)
-	case 56:
+	case 57:
 		m.alertStaleDaysInput, cmd = m.alertStaleDaysInput.Update(msg)
-	case 58:
+	case 59:
 		m.alertInboxThresholdInput, cmd = m.alertInboxThresholdInput.Update(msg)
-	case 60:
+	case 61:
 		m.alertBlockedDaysInput, cmd = m.alertBlockedDaysInput.Update(msg)
-	case 62:
-		m.alertProjectStaleDaysInput, cmd = m.alertProjectStaleDaysInput.Update(msg)
 	case 63:
+		m.alertProjectStaleDaysInput, cmd = m.alertProjectStaleDaysInput.Update(msg)
+	case 64:
 		if m.stageEditMode {
 			m.stageInput, cmd = m.stageInput.Update(msg)
 		}
@@ -372,7 +376,7 @@ func (m *SettingsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if err := m.validateCodeEditor(); err != nil {
 			m.validationErr = err.Error()
 		}
-	case 49, 54, 56, 58, 60, 62:
+	case 50, 55, 57, 59, 61, 63:
 		if err := m.validateAlertSettings(); err != nil {
 			m.validationErr = err.Error()
 		}
@@ -414,21 +418,21 @@ func (m *SettingsModel) blurCurrentField() {
 		m.codeEditorInput.Blur()
 	case 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27:
 		// Tree column toggle fields - no blur needed
-	case 49:
+	case 50:
 		m.alertDailyReviewHourInput.Blur()
-	case 54:
+	case 55:
 		m.alertDueSoonDaysInput.Blur()
-	case 56:
+	case 57:
 		m.alertStaleDaysInput.Blur()
-	case 58:
+	case 59:
 		m.alertInboxThresholdInput.Blur()
-	case 60:
+	case 61:
 		m.alertBlockedDaysInput.Blur()
-	case 62:
+	case 63:
 		m.alertProjectStaleDaysInput.Blur()
 	default:
-		// Outliner section toggles (28-34), outliner column toggles (35-47),
-		// alert toggles/enums - no blur needed
+		// Cross-project sidebar toggle (28), outliner section toggles (29-35),
+		// outliner column toggles (36-48), alert toggles/enums - no blur needed
 	}
 }
 
@@ -465,20 +469,20 @@ func (m *SettingsModel) focusCurrentField() {
 		m.codeEditorInput.Focus()
 	case 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27:
 		// Tree column toggle fields - no focus needed
-	case 49:
+	case 50:
 		m.alertDailyReviewHourInput.Focus()
-	case 54:
+	case 55:
 		m.alertDueSoonDaysInput.Focus()
-	case 56:
+	case 57:
 		m.alertStaleDaysInput.Focus()
-	case 58:
+	case 59:
 		m.alertInboxThresholdInput.Focus()
-	case 60:
+	case 61:
 		m.alertBlockedDaysInput.Focus()
-	case 62:
+	case 63:
 		m.alertProjectStaleDaysInput.Focus()
 	default:
-		// Outliner section toggles (28-34), outliner column toggles (35-47),
-		// alert toggles/enums - no focus needed
+		// Cross-project sidebar toggle (28), outliner section toggles (29-35),
+		// outliner column toggles (36-48), alert toggles/enums - no focus needed
 	}
 }

@@ -161,6 +161,11 @@ func NewOutlinerModel(project *models.Project, cfg *config.Config, cfgManager *c
 			m.sidebar.SetEnabled(state.SidebarEnabled)
 			m.filterBar.SetEnabled(state.OutlinerFilterBarEnabled)
 		}
+	} else {
+		// Cross-project outliner: use global setting (nil = true)
+		if cfg.CrossOutlinerSidebarEnabled != nil {
+			m.sidebar.SetEnabled(*cfg.CrossOutlinerSidebarEnabled)
+		}
 	}
 	return m
 }
