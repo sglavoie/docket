@@ -87,7 +87,8 @@ type OutlinerModel struct {
 	crossSpinnerVisible bool              // True once the 200ms delay has elapsed during load
 	crossLoadGen        int               // Generation counter; discards stale load results
 	crossUndoCtx        UndoContext       // Undo context scoped to cross-project operations
-	crossSpinner        SpinnerModel      // View-local spinner, independent of global save spinner
+	crossSpinner            SpinnerModel      // View-local spinner, independent of global save spinner
+	crossQuickEditProject   *models.Project   // Resolved project for quick edit in cross-project mode
 
 	// Memoization guard for crossProjectRebuildRows
 	crossLastPerspective int

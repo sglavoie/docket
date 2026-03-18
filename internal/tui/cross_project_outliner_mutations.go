@@ -285,6 +285,198 @@ func (m *OutlinerModel) crossHandleTagsMutation() (tea.Cmd, bool) {
 	}, true
 }
 
+// crossTogglePinned toggles the pinned state for a task in cross-project mode.
+func (m *OutlinerModel) crossTogglePinned(row outlinerRow, proj *models.Project) (tea.Model, tea.Cmd) {
+	pf := m.crossPersistFn(proj)
+	result := applyTogglePinned(pf, proj, row.task.ID)
+	if result.Err != nil {
+		return m, func() tea.Msg { return ErrorMsg{Err: result.Err} }
+	}
+	m.crossUndoCtx.Set("Toggle Pin", row.task.Title)
+	m.crossUndoCtx.ProjectIDs = []string{proj.ID}
+	if result.StatusMessage != "" {
+		m.statusMessage = result.StatusMessage
+	}
+	m.rebuildRows()
+	return m, result.Cmd
+}
+
+// crossHandleDueDateMutation handles the d prefix in cross-project mode.
+// "dd" emits SetDueDateMsg (date picker). Quick keys (dt/dm/dw/dn/d0) mutate inline.
+// Returns (cmd, true) when the key was consumed.
+func (m *OutlinerModel) crossHandleDueDateMutation(key string) (tea.Cmd, bool) {
+	if key == "d" {
+		row, proj, valid := m.crossGetMutationTarget()
+		if !valid {
+			return nil, true
+		}
+		task := row.task
+		return func() tea.Msg {
+			return SetDueDateMsg{Task: task, Project: proj}
+		}, true
+	}
+
+	days, isClear, ok := DueDateDaysForPrefixKey(key)
+	if !ok {
+		return nil, false
+	}
+	row, proj, valid := m.crossGetMutationTarget()
+	if !valid {
+		return nil, true
+	}
+	pf := m.crossPersistFn(proj)
+	var result TaskOpResult
+	if isClear {
+		m.crossUndoCtx.Set("Set Due Date", fmt.Sprintf("cleared: %s", row.task.Title))
+		result = applyClearDueDate(pf, proj, row.task.ID)
+	} else {
+		m.crossUndoCtx.Set("Set Due Date", fmt.Sprintf("%s: %s", dueDateLabel(days), row.task.Title))
+		result = applyQuickDueDate(pf, proj, row.task.ID, days)
+	}
+	m.crossUndoCtx.ProjectIDs = []string{proj.ID}
+	if result.Err != nil {
+		return func() tea.Msg { return ErrorMsg{Err: result.Err} }, true
+	}
+	if result.StatusMessage != "" {
+		m.statusMessage = result.StatusMessage
+	}
+	m.rebuildRows()
+	return result.Cmd, true
+}
+
+// crossHandleStageMutation handles the . prefix in cross-project mode.
+// Maps key to a stage name and applies the change.
+// Returns (cmd, true) when the key was consumed.
+func (m *OutlinerModel) crossHandleStageMutation(key string) (tea.Cmd, bool) {
+	stage := StageForPrefixKey(key, m.config.Stages)
+	if stage == nil {
+		return nil, false
+	}
+	row, proj, valid := m.crossGetMutationTarget()
+	if !valid {
+		return nil, true
+	}
+	label := *stage
+	if label == "" {
+		label = "(cleared)"
+	}
+	m.crossUndoCtx.Set("Set Stage", fmt.Sprintf("%s: %s", label, row.task.Title))
+	m.crossUndoCtx.ProjectIDs = []string{proj.ID}
+	pf := m.crossPersistFn(proj)
+	result := applyStageChange(pf, proj, row.task.ID, *stage)
+	if result.Err != nil {
+		return func() tea.Msg { return ErrorMsg{Err: result.Err} }, true
+	}
+	if result.StatusMessage != "" {
+		m.statusMessage = result.StatusMessage
+	}
+	m.rebuildRows()
+	return result.Cmd, true
+}
+
+// crossHandleSectionMove handles the m prefix in cross-project mode.
+// Section keys (ma/mn/mi/mw/ms/mr/mS) move the cursor task to a section.
+// mK/mJ delegate to moveTaskToPosition which already handles cross-project.
+func (m *OutlinerModel) crossHandleSectionMove(key string, cursorTask *models.Task) (tea.Model, tea.Cmd) {
+	if section, ok := sectionForMoveKey(key); ok {
+		row, proj, valid := m.crossGetMutationTarget()
+		if !valid {
+			return m, nil
+		}
+		task := row.task
+		svc := m.projectService
+		if err := svc.Backup(proj); err != nil {
+			return m, func() tea.Msg { return ErrorMsg{Err: fmt.Errorf("backup failed: %w", err)} }
+		}
+		proj.MutateTask(task.ID, func(t *models.Task) {
+			t.Section = section
+			if section == "" {
+				t.Activate()
+			}
+		})
+		proj.RelocateTaskToEndOfSection(task.ID, section)
+		if err := svc.Save(proj); err != nil {
+			return m, func() tea.Msg { return ErrorMsg{Err: fmt.Errorf("save failed: %w", err)} }
+		}
+		_ = svc.Load(proj)
+		label := "Move to " + section
+		if section == "" {
+			label = "Move to Active"
+		}
+		m.crossUndoCtx.Set(label, task.Title)
+		m.crossUndoCtx.ProjectIDs = []string{proj.ID}
+		m.rebuildRows()
+		return m, nil
+	}
+	switch key {
+	case "K":
+		if cursorTask == nil {
+			return m, nil
+		}
+		return m.moveTaskToPosition(cursorTask, true)
+	case "J":
+		if cursorTask == nil {
+			return m, nil
+		}
+		return m.moveTaskToPosition(cursorTask, false)
+	}
+	return m, nil
+}
+
+// crossToggleActive toggles the active flag for a task in cross-project mode.
+// Multi-select is not supported (tasks span projects); shows a status message instead.
+func (m *OutlinerModel) crossToggleActive() (tea.Cmd, bool) {
+	if m.multiSelectMode && len(m.selectedTasks) > 0 {
+		m.statusMessage = "bulk toggle active not supported in cross-project mode"
+		return nil, true
+	}
+	row, proj, valid := m.crossGetMutationTarget()
+	if !valid {
+		return nil, true
+	}
+	pf := m.crossPersistFn(proj)
+	result := applyToggleActive(pf, proj, row.task.ID)
+	if result.Err != nil {
+		return func() tea.Msg { return ErrorMsg{Err: result.Err} }, true
+	}
+	m.crossUndoCtx.Set("Toggle Active", row.task.Title)
+	m.crossUndoCtx.ProjectIDs = []string{proj.ID}
+	if result.StatusMessage != "" {
+		m.statusMessage = result.StatusMessage
+	}
+	m.rebuildRows()
+	return result.Cmd, true
+}
+
+// crossHandleTypeChange handles <, >, H, L type change keys in cross-project mode.
+// Multi-select is not supported (tasks span projects); shows a status message instead.
+func (m *OutlinerModel) crossHandleTypeChange(key string) (tea.Cmd, bool) {
+	op, undoAction, ok := typeChangeOpForKey(key)
+	if !ok {
+		return nil, false
+	}
+	if m.multiSelectMode && len(m.selectedTasks) > 0 {
+		m.statusMessage = "bulk type change not supported in cross-project mode"
+		return nil, true
+	}
+	row, proj, valid := m.crossGetMutationTarget()
+	if !valid {
+		return nil, true
+	}
+	m.crossUndoCtx.Set(undoAction, row.task.Title)
+	m.crossUndoCtx.ProjectIDs = []string{proj.ID}
+	pf := m.crossPersistFn(proj)
+	result := applyTypeChange(pf, proj, row.task.ID, op)
+	if result.Err != nil {
+		return func() tea.Msg { return ErrorMsg{Err: result.Err} }, true
+	}
+	if result.StatusMessage != "" {
+		m.statusMessage = result.StatusMessage
+	}
+	m.rebuildRows()
+	return result.Cmd, true
+}
+
 // crossSaveProject returns a tea.Cmd that performs backup → save → reload for
 // a single project. Used by J/K/right/left in cross-project mode.
 func (m *OutlinerModel) crossSaveProject(proj *models.Project) tea.Cmd {

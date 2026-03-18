@@ -516,7 +516,7 @@ func (m *OutlinerModel) renderOutlinerTreeContent(width int) string {
 				orgParts = append(orgParts, csStyle.Render("@ "+task.CustomSection))
 			}
 		}
-		if p := m.currentPerspective(); p.Name != "All" {
+		if p := m.currentPerspective(); p.Name != "All" && m.project != nil {
 			sectionName := task.Section
 			if sectionName == "" {
 				sectionName = "Active"

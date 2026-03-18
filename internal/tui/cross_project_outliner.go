@@ -183,7 +183,11 @@ func (m *OutlinerModel) crossProjectRebuildRows() {
 			}
 		}
 
-		tasks := filterTaskTree(roots, p.Filter)
+		filter := p.Filter
+		if sf := crossProjectSectionFilter(p); sf != nil {
+			filter = sf
+		}
+		tasks := filterTaskTree(roots, filter)
 
 		if q := m.SearchQuery(); q != "" {
 			tasks = filterTaskTree(tasks, func(t *models.Task) bool {
@@ -280,6 +284,25 @@ func (m *OutlinerModel) crossStatusBarLabel() string {
 		}
 	}
 	return fmt.Sprintf("Cross-Outliner · %s · %d tasks", ctxName, taskCount)
+}
+
+// crossProjectSectionFilter returns a Section-based filter for perspectives
+// that map to GTD sections in cross-project mode. Returns nil for perspectives
+// that should use their computed Filter (All, Snoozed, Completed).
+func crossProjectSectionFilter(p Perspective) func(t *models.Task) bool {
+	switch p.Name {
+	case "All", "Snoozed", "Completed":
+		return nil
+	case "Active":
+		return func(t *models.Task) bool {
+			return t.Section == "" && !t.Status.IsComplete() && !t.IsSnoozed()
+		}
+	default:
+		section := p.Name
+		return func(t *models.Task) bool {
+			return t.Section == section && !t.Status.IsComplete() && !t.IsSnoozed()
+		}
+	}
 }
 
 // Ensure spinner package is used (crossSpinner field type is SpinnerModel which

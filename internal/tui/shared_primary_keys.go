@@ -436,10 +436,19 @@ func handleCommonPrimaryViewKey(key string, v primaryProjectView) (tea.Cmd, bool
 
 	// Secondary views
 	case "B":
+		if project == nil {
+			return nil, true
+		}
 		return func() tea.Msg { return ShowBlockersMsg{Project: project} }, true
 	case "p":
+		if project == nil {
+			return nil, true
+		}
 		return func() tea.Msg { return ShowPriorityViewMsg{Project: project} }, true
 	case "w":
+		if project == nil {
+			return nil, true
+		}
 		return func() tea.Msg { return ShowInboxProcessorMsg{Project: project} }, true
 
 	// Capture
@@ -465,6 +474,9 @@ func handleCommonPrimaryViewKey(key string, v primaryProjectView) (tea.Cmd, bool
 
 	// Edit last modified task
 	case "ctrl+l":
+		if project == nil {
+			return nil, true
+		}
 		recentTasks := storage.GetRecentTasks(project.Tasks, 1)
 		if len(recentTasks) > 0 {
 			return func() tea.Msg { return EditTaskMsg{Task: recentTasks[0]} }, true
@@ -479,6 +491,9 @@ func handleCommonPrimaryViewKey(key string, v primaryProjectView) (tea.Cmd, bool
 
 	// Score editor
 	case "S":
+		if project == nil {
+			return nil, true
+		}
 		task := v.getCursorTask()
 		if task != nil {
 			return func() tea.Msg {

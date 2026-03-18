@@ -347,6 +347,14 @@ func (m *OutlinerModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		if len(m.rows) > 0 && m.cursor < len(m.rows) && !onHeader {
 			task := m.rows[m.cursor].task
 			project := m.project
+			if project == nil {
+				row, proj, valid := m.crossGetMutationTarget()
+				if !valid {
+					return m, nil
+				}
+				task = row.task
+				project = proj
+			}
 			return m, func() tea.Msg {
 				return ShowTaskDetailMsg{Task: task, Project: project}
 			}
@@ -354,6 +362,19 @@ func (m *OutlinerModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case "e":
+		// Cross-project mode
+		if m.project == nil {
+			if m.multiSelectMode && len(m.selectedTasks) > 0 {
+				m.statusMessage = "bulk edit not supported in cross-project mode"
+				return m, nil
+			}
+			row, proj, valid := m.crossGetMutationTarget()
+			if !valid {
+				return m, nil
+			}
+			task := row.task
+			return m, func() tea.Msg { return EditTaskMsg{Task: task, Project: proj} }
+		}
 		// Open full editor (with multi-select bulk edit support)
 		if m.multiSelectMode && len(m.selectedTasks) > 0 {
 			return m, func() tea.Msg {
@@ -375,6 +396,14 @@ func (m *OutlinerModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		// Quick edit with full modifier parsing (same as O)
 		if len(m.rows) > 0 && m.cursor < len(m.rows) && !onHeader {
 			task := m.rows[m.cursor].task
+			if m.project == nil {
+				row, proj, valid := m.crossGetMutationTarget()
+				if !valid {
+					return m, nil
+				}
+				task = row.task
+				m.crossQuickEditProject = proj
+			}
 			return m, m.quickEdit.Enter(task, false)
 		}
 		return m, nil
@@ -486,11 +515,17 @@ func (m *OutlinerModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	// Additional views
 	case "f":
+		if m.project == nil {
+			return m, nil
+		}
 		return m, func() tea.Msg {
 			return ShowProjectFocusViewMsg{Project: m.project}
 		}
 
 	case "A":
+		if m.project == nil {
+			return m, nil
+		}
 		// Archive completed tasks when in Completed perspective (p8)
 		if m.activePerspective == PerspectiveCompleted {
 			completedCount := m.project.CountCompletedTasks()
@@ -518,11 +553,19 @@ func (m *OutlinerModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	// Type change keys
 	case "<", ">", "H", "L":
+		if m.project == nil {
+			cmd, _ := m.crossHandleTypeChange(key)
+			return m, cmd
+		}
 		cmd, _ := handleTypeChangeKey(key, m)
 		return m, cmd
 
 	// Toggle active flag (with multi-select support)
 	case "*":
+		if m.project == nil {
+			cmd, _ := m.crossToggleActive()
+			return m, cmd
+		}
 		cmd, _ := handleToggleActiveKey(m)
 		return m, cmd
 
@@ -539,6 +582,9 @@ func (m *OutlinerModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	// Archive/unarchive project
 	case "ctrl+a":
+		if m.project == nil {
+			return m, nil
+		}
 		if m.project.Sandbox {
 			return m, func() tea.Msg {
 				return ErrorMsg{Err: fmt.Errorf("cannot archive the sandbox project")}
@@ -548,12 +594,18 @@ func (m *OutlinerModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	// Tag manager
 	case "ctrl+t":
+		if m.project == nil {
+			return m, nil
+		}
 		return m, func() tea.Msg {
 			return ShowTagManagerMsg{Project: m.project}
 		}
 
 	// Section manager
 	case "ctrl+s":
+		if m.project == nil {
+			return m, nil
+		}
 		return m, func() tea.Msg {
 			return ShowSectionManagerMsg{ProjectTree: nil, Project: m.project}
 		}
@@ -573,7 +625,21 @@ func (m *OutlinerModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 // handleQuickEditMode handles input while in quick edit mode.
 func (m *OutlinerModel) handleQuickEditMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	_, cmd := handleQuickEditKey(msg, m.quickEdit, m.project, m.saveWithWorkflow, m.setUndoContext)
+	proj := m.project
+	saveFn := m.saveWithWorkflow
+	undoFn := m.setUndoContext
+	if proj == nil && m.crossQuickEditProject != nil {
+		proj = m.crossQuickEditProject
+		saveFn = func() tea.Cmd {
+			m.crossQuickEditProject = nil
+			return m.crossSaveProject(proj)
+		}
+		undoFn = func(action, detail string) {
+			m.crossUndoCtx.Set(action, detail)
+			m.crossUndoCtx.ProjectIDs = []string{proj.ID}
+		}
+	}
+	_, cmd := handleQuickEditKey(msg, m.quickEdit, proj, saveFn, undoFn)
 	return m, cmd
 }
 

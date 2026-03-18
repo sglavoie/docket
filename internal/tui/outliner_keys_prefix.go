@@ -1,6 +1,8 @@
 package tui
 
 import (
+	"fmt"
+
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/sglavoie/tt/internal/models"
@@ -83,13 +85,48 @@ func (m *OutlinerModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 		}
 
 	case "t":
-		// Cross-project: intercept tt (tag selector) with the resolved project;
-		// other t-prefix operations are not supported in cross-project mode.
+		// Cross-project: resolve project from cursor, delegate to shared handlers.
 		if m.project == nil {
-			if key == "t" {
-				if cmd, ok := m.crossHandleTagsMutation(); ok {
-					return m, cmd
+			// Block task creation (same as a/i/I)
+			if key == "n" || key == "N" {
+				m.statusMessage = "use go to open project outliner for task creation"
+				return m, nil
+			}
+			row, proj, valid := m.crossGetMutationTarget()
+			if !valid {
+				return m, nil
+			}
+			task := row.task
+			// to, tc, ta, tl, td, tm → message-only handlers
+			if handled, cmd := handleTaskPrefixMsgKey(key, task, proj); handled {
+				return m, cmd
+			}
+			// ts, tt → action handlers (no focusedTask in cross-project)
+			if handled, cmd := handleTaskActionPrefixKey(key, task, proj, nil, func() []*models.Task {
+				return m.getMultiSelectedTasks()
+			}); handled {
+				return m, cmd
+			}
+			// tr → rename via quickEdit
+			if key == "r" {
+				m.crossQuickEditProject = proj
+				return m, m.quickEdit.Enter(task, true)
+			}
+			// tp → pin/unpin
+			if key == "p" {
+				return m.crossTogglePinned(row, proj)
+			}
+			// tD → delete
+			if key == "D" {
+				if task.IsRecurring() {
+					m.confirm.Show("delete-recurring",
+						fmt.Sprintf("Delete recurring task #%d '%s'? (d)elete instance / (s)top recurrence / (n)o",
+							task.ShortID, task.Title))
+				} else {
+					m.confirm.Show("delete", fmt.Sprintf("Delete task #%d?", task.ShortID))
 				}
+				m.deleteTarget = task
+				return m, nil
 			}
 			return m, nil
 		}
@@ -117,6 +154,12 @@ func (m *OutlinerModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 		}
 
 	case ".":
+		if m.project == nil {
+			if cmd, ok := m.crossHandleStageMutation(key); ok {
+				return m, cmd
+			}
+			return m, nil
+		}
 		if cmd, ok := handleStagePrefix(key, m, m.config.Stages); ok {
 			return m, cmd
 		}
@@ -133,6 +176,12 @@ func (m *OutlinerModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 		}
 
 	case "d":
+		if m.project == nil {
+			if cmd, ok := m.crossHandleDueDateMutation(key); ok {
+				return m, cmd
+			}
+			return m, nil
+		}
 		if cmd, ok := handleDueDatePrefix(key, m); ok {
 			return m, cmd
 		}
@@ -228,6 +277,9 @@ func (m *OutlinerModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 		return m.handleFilterPrefix(key)
 
 	case "m":
+		if m.project == nil {
+			return m.crossHandleSectionMove(key, cursorTask)
+		}
 		if model, cmd, handled := handleSectionMovePrefix(key, SectionMoveCallbacks{
 			MoveToSection: func(section string) (tea.Model, tea.Cmd) {
 				return m.sendTaskToSection(cursorTask, section)
@@ -253,6 +305,16 @@ func (m *OutlinerModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 		}
 
 	case "b":
+		if m.project == nil {
+			row, proj, valid := m.crossGetMutationTarget()
+			if !valid {
+				return m, nil
+			}
+			if handled, cmd := handleBlockerPrefixKey(key, row.task, proj); handled {
+				return m, cmd
+			}
+			return m, nil
+		}
 		if cursorTask == nil {
 			return m, nil
 		}
@@ -261,6 +323,16 @@ func (m *OutlinerModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 		}
 
 	case "c":
+		if m.project == nil {
+			row, proj, valid := m.crossGetMutationTarget()
+			if !valid {
+				return m, nil
+			}
+			if handled, cmd := handleLinkedTaskPrefixKey(key, row.task, proj, true, true); handled {
+				return m, cmd
+			}
+			return m, nil
+		}
 		if cursorTask == nil {
 			return m, nil
 		}
