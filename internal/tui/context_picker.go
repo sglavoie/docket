@@ -177,6 +177,16 @@ func buildContextListWithCustom(projects []*models.Project, cfg *config.Config) 
 	return contexts
 }
 
+// setStatus sets the status message.
+func (m *ContextPickerModel) setStatus(msg string) {
+	m.statusMessage = msg
+}
+
+// clearStatus clears the status message.
+func (m *ContextPickerModel) clearStatus() {
+	m.statusMessage = ""
+}
+
 // Init initializes the model.
 func (m *ContextPickerModel) Init() tea.Cmd {
 	return nil
@@ -333,10 +343,10 @@ func (m *ContextPickerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				selected := m.Filtered[m.Cursor]
 				if selected.IsCustom && m.config != nil {
 					m.confirm.Show("delete", "Delete this custom context?")
-					m.statusMessage = ""
+					m.clearStatus()
 				} else if selected.Name != "" {
 					// Can't delete regular contexts
-					m.statusMessage = "Cannot delete regular contexts.\nRename them with 'r' instead."
+					m.setStatus("Cannot delete regular contexts.\nRename them with 'r' instead.")
 				}
 			}
 			return m, nil
@@ -353,10 +363,10 @@ func (m *ContextPickerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.renameInput.SetValue(selected.Name)
 					m.renameInput.Focus()
 					m.renameInput.CharLimit = 50
-					m.statusMessage = ""
+					m.clearStatus()
 					return m, textinput.Blink
 				} else if selected.IsCustom {
-					m.statusMessage = "Use 'e' to edit custom contexts"
+					m.setStatus("Use 'e' to edit custom contexts")
 				}
 			}
 			return m, nil

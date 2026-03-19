@@ -36,7 +36,7 @@ func (m *OutlinerModel) crossInterceptCreationKeys(key string) (tea.Model, tea.C
 	}
 	switch key {
 	case "a", "i", "I":
-		m.statusMessage = "use go to open project outliner for task creation"
+		m.setStatus("use go to open project outliner for task creation")
 		return m, nil, true
 	}
 	return nil, nil, false
@@ -199,7 +199,7 @@ func (m *OutlinerModel) crossHandleUndo(key string) (tea.Model, tea.Cmd, bool) {
 
 	ids := m.crossUndoCtx.ProjectIDs
 	if len(ids) == 0 {
-		m.statusMessage = "Nothing to undo"
+		m.setStatus("Nothing to undo")
 		return m, nil, true
 	}
 
@@ -231,7 +231,7 @@ func (m *OutlinerModel) crossHandleUndo(key string) (tea.Model, tea.Cmd, bool) {
 		parts = append(parts, "FAILED: "+strings.Join(failed, ", "))
 	}
 	if len(parts) > 0 {
-		m.statusMessage = strings.Join(parts, "; ")
+		m.setStatus(strings.Join(parts, "; "))
 	}
 
 	m.rebuildRows()

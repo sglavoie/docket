@@ -55,6 +55,16 @@ func NewNoteTaskLinkerModel(project *models.Project, note *models.Note) *NoteTas
 	}
 }
 
+// setStatus sets the status message.
+func (m *NoteTaskLinkerModel) setStatus(msg string) {
+	m.statusMessage = msg
+}
+
+// clearStatus clears the status message.
+func (m *NoteTaskLinkerModel) clearStatus() {
+	m.statusMessage = ""
+}
+
 func (m *NoteTaskLinkerModel) Init() tea.Cmd {
 	return nil
 }
@@ -98,10 +108,10 @@ func (m *NoteTaskLinkerModel) toggleLink(task *models.Task) {
 		m.note.AddLink(task.ID)
 	}
 	if err := storage.SaveNote(m.project, m.note); err != nil {
-		m.statusMessage = fmt.Sprintf("Failed to save note: %v", err)
+		m.setStatus(fmt.Sprintf("Failed to save note: %v", err))
 		return
 	}
-	m.statusMessage = ""
+	m.clearStatus()
 	m.changed = true
 	m.lastToggled = task.ID
 }

@@ -21,13 +21,12 @@ func (m *NotesViewModel) viewCurrentNote() tea.Cmd {
 	note := m.notes[m.cursor]
 
 	if note.ParseError != "" {
-		m.statusMessage = "Cannot preview — note has parse error. Press e to edit."
-		m.statusIsError = true
+		m.setErrorStatus("Cannot preview — note has parse error. Press e to edit.")
 		return nil
 	}
 
 	if !external.GlowAvailable() {
-		m.statusMessage = "glow not available for viewing"
+		m.setStatus("glow not available for viewing")
 		return nil
 	}
 
@@ -110,13 +109,13 @@ func (m *NotesViewModel) performDelete() tea.Cmd {
 	note := m.notes[m.pendingDeleteIdx]
 
 	if err := storage.DeleteNoteFrom(m.effectiveDir(), note.Filename); err != nil {
-		m.statusMessage = "Failed to delete: " + err.Error()
+		m.setStatus("Failed to delete: " + err.Error())
 		return nil
 	}
 
 	m.lastDeleted = note
 	m.lastBulkDeleted = nil
-	m.statusMessage = "Deleted: " + note.Title
+	m.setStatus("Deleted: " + note.Title)
 	m.loadNotes()
 	return func() tea.Msg { return NotesRefreshMsg{} }
 }
@@ -140,9 +139,9 @@ func (m *NotesViewModel) undoDelete() tea.Cmd {
 		failed := m.batchSaveNotes(m.lastBulkDeleted)
 		m.lastBulkDeleted = nil
 		if failed > 0 {
-			m.statusMessage = fmt.Sprintf("Restored %d notes (%d failed)", count-failed, failed)
+			m.setStatus(fmt.Sprintf("Restored %d notes (%d failed)", count-failed, failed))
 		} else {
-			m.statusMessage = fmt.Sprintf("Restored %d notes", count)
+			m.setStatus(fmt.Sprintf("Restored %d notes", count))
 		}
 		m.loadNotes()
 		return nil
@@ -150,10 +149,10 @@ func (m *NotesViewModel) undoDelete() tea.Cmd {
 
 	if m.lastDeleted != nil {
 		if err := storage.SaveNoteTo(m.effectiveDir(), m.lastDeleted); err != nil {
-			m.statusMessage = "Failed to restore: " + err.Error()
+			m.setStatus("Failed to restore: " + err.Error())
 			return nil
 		}
-		m.statusMessage = "Restored: " + m.lastDeleted.Title
+		m.setStatus("Restored: " + m.lastDeleted.Title)
 		m.lastDeleted = nil
 		m.loadNotes()
 		return nil
@@ -170,9 +169,9 @@ func (m *NotesViewModel) undoDelete() tea.Cmd {
 		failed := m.batchSaveNotes(notes)
 		m.lastTagUndo = nil
 		if failed > 0 {
-			m.statusMessage = fmt.Sprintf("Undid tags on %d notes (%d failed)", count, failed)
+			m.setStatus(fmt.Sprintf("Undid tags on %d notes (%d failed)", count, failed))
 		} else {
-			m.statusMessage = fmt.Sprintf("Undid tags on %d notes", count)
+			m.setStatus(fmt.Sprintf("Undid tags on %d notes", count))
 		}
 		m.loadNotes()
 		return nil
@@ -189,15 +188,15 @@ func (m *NotesViewModel) undoDelete() tea.Cmd {
 		failed := m.batchSaveNotes(notes)
 		m.lastLinkUndo = nil
 		if failed > 0 {
-			m.statusMessage = fmt.Sprintf("Undid links on %d notes (%d failed)", count, failed)
+			m.setStatus(fmt.Sprintf("Undid links on %d notes (%d failed)", count, failed))
 		} else {
-			m.statusMessage = fmt.Sprintf("Undid links on %d notes", count)
+			m.setStatus(fmt.Sprintf("Undid links on %d notes", count))
 		}
 		m.loadNotes()
 		return nil
 	}
 
-	m.statusMessage = "Nothing to undo"
+	m.setStatus("Nothing to undo")
 	return nil
 }
 
@@ -207,8 +206,7 @@ func (m *NotesViewModel) linkCurrentNote() tea.Cmd {
 	}
 	note := m.notes[m.cursor]
 	if note.ParseError != "" {
-		m.statusMessage = "Cannot link — note has parse error. Press e to edit."
-		m.statusIsError = true
+		m.setErrorStatus("Cannot link — note has parse error. Press e to edit.")
 		return nil
 	}
 	return func() tea.Msg {
@@ -222,8 +220,7 @@ func (m *NotesViewModel) showTagSelector() tea.Cmd {
 	}
 	note := m.notes[m.cursor]
 	if note.ParseError != "" {
-		m.statusMessage = "Cannot edit tags — note has parse error. Press e to edit."
-		m.statusIsError = true
+		m.setErrorStatus("Cannot edit tags — note has parse error. Press e to edit.")
 		return nil
 	}
 	return func() tea.Msg {
@@ -243,20 +240,19 @@ func (m *NotesViewModel) togglePin() tea.Cmd {
 	}
 	note := m.notes[m.cursor]
 	if note.ParseError != "" {
-		m.statusMessage = "Cannot pin — note has parse error. Press e to edit."
-		m.statusIsError = true
+		m.setErrorStatus("Cannot pin — note has parse error. Press e to edit.")
 		return nil
 	}
 	note.Pinned = !note.Pinned
 	note.ModifiedAt = time.Now()
 	if err := storage.SaveNoteTo(m.effectiveDir(), note); err != nil {
-		m.statusMessage = "Failed to save: " + err.Error()
+		m.setStatus("Failed to save: " + err.Error())
 		return nil
 	}
 	if note.Pinned {
-		m.statusMessage = "Pinned: " + note.Title
+		m.setStatus("Pinned: " + note.Title)
 	} else {
-		m.statusMessage = "Unpinned: " + note.Title
+		m.setStatus("Unpinned: " + note.Title)
 	}
 	m.loadNotes()
 	return nil
@@ -283,9 +279,9 @@ func (m *NotesViewModel) performBulkDelete() tea.Cmd {
 	m.multiSelectMode = false
 
 	if errors > 0 {
-		m.statusMessage = fmt.Sprintf("Deleted %d/%d notes (%d failed)", len(deleted), len(selected), errors)
+		m.setStatus(fmt.Sprintf("Deleted %d/%d notes (%d failed)", len(deleted), len(selected), errors))
 	} else {
-		m.statusMessage = fmt.Sprintf("Deleted %d notes", len(deleted))
+		m.setStatus(fmt.Sprintf("Deleted %d notes", len(deleted)))
 	}
 
 	m.lastBulkDeleted = deleted
@@ -325,7 +321,7 @@ func (m *NotesViewModel) bulkLinkNotes() tea.Cmd {
 func (m *NotesViewModel) cycleSortMode() {
 	m.sortMode = (m.sortMode + 1) % 4
 	m.loadNotes()
-	m.statusMessage = fmt.Sprintf("Sort: %s", m.sortMode)
+	m.setStatus(fmt.Sprintf("Sort: %s", m.sortMode))
 }
 
 // copyNoteContent is a generic helper for clipboard copy operations. It handles
@@ -337,19 +333,16 @@ func (m *NotesViewModel) copyNoteContent(
 	singleMsg, bulkMsg string,
 ) tea.Cmd {
 	if !m.multiSelectMode && len(m.notes) > 0 && m.cursor < len(m.notes) && m.notes[m.cursor].ParseError != "" {
-		m.statusMessage = "Cannot copy — note has parse error. Press e to edit."
-		m.statusIsError = true
+		m.setErrorStatus("Cannot copy — note has parse error. Press e to edit.")
 		return nil
 	}
 	if m.multiSelectMode && m.selectedNoteCount() > 0 {
 		selected := m.getSelectedNotesList()
 		_, err := bulkFn(selected)
 		if err != nil {
-			m.statusMessage = "Copy failed: " + err.Error()
-			m.statusIsError = true
+			m.setErrorStatus("Copy failed: " + err.Error())
 		} else {
-			m.statusMessage = fmt.Sprintf(bulkMsg, len(selected))
-			m.statusIsError = false
+			m.setStatus(fmt.Sprintf(bulkMsg, len(selected)))
 		}
 		return nil
 	}
@@ -358,11 +351,9 @@ func (m *NotesViewModel) copyNoteContent(
 	}
 	_, err := singleFn(m.notes[m.cursor])
 	if err != nil {
-		m.statusMessage = "Copy failed: " + err.Error()
-		m.statusIsError = true
+		m.setErrorStatus("Copy failed: " + err.Error())
 	} else {
-		m.statusMessage = singleMsg
-		m.statusIsError = false
+		m.setStatus(singleMsg)
 	}
 	return nil
 }
@@ -394,8 +385,7 @@ func (m *NotesViewModel) moveNoteToProject() tea.Cmd {
 	}
 	note := m.notes[m.cursor]
 	if note.ParseError != "" {
-		m.statusMessage = "Cannot move — note has parse error. Press e to edit."
-		m.statusIsError = true
+		m.setErrorStatus("Cannot move — note has parse error. Press e to edit.")
 		return nil
 	}
 	return func() tea.Msg {

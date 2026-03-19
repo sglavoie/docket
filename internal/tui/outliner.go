@@ -568,16 +568,16 @@ func (m *OutlinerModel) getPersister() Persister { return m.projectService }
 func (m *OutlinerModel) getDataDir() string      { return m.config.DataDir }
 func (m *OutlinerModel) reloadData()             { m.rebuildRows() }
 func (m *OutlinerModel) setErr(err error)        { m.err = err }
-func (m *OutlinerModel) setStatus(msg string)    { m.statusMessage = msg }
+func (m *OutlinerModel) setStatus(msg string)    { m.InteractiveViewState.setStatus(msg) }
 
 // toggleMultiSelectMode enters or exits multi-select mode.
 func (m *OutlinerModel) toggleMultiSelectMode() {
 	m.multiSelectMode = !m.multiSelectMode
 	if !m.multiSelectMode {
 		m.ClearSelection()
-		m.statusMessage = ""
+		m.clearStatus()
 	} else {
-		m.statusMessage = "Multi-select: Space=toggle, a=all, A=deselect, D=delete, v/Esc=exit"
+		m.setStatus("Multi-select: Space=toggle, a=all, A=deselect, D=delete, v/Esc=exit")
 	}
 }
 
@@ -629,7 +629,7 @@ func (m *OutlinerModel) getSelectedTasks() []*models.Task {
 // clearMultiSelect exits multi-select mode and clears all selections.
 func (m *OutlinerModel) clearMultiSelect() {
 	m.ExitMultiSelect()
-	m.statusMessage = ""
+	m.clearStatus()
 }
 
 // getMultiSelectedTasks returns selected tasks when in multi-select mode, nil otherwise.
@@ -658,7 +658,7 @@ func (m *OutlinerModel) saveAndRefreshBulk(prevStates map[string]*models.Task) t
 
 // setStatusMessage sets the status bar text.
 func (m *OutlinerModel) setStatusMessage(msg string) {
-	m.statusMessage = msg
+	m.setStatus(msg)
 }
 
 // buildWorkflowOpts constructs a WorkflowSaveOptions from the current model

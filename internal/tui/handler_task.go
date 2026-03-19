@@ -53,9 +53,9 @@ func (m *AppModel) handleTaskMessages(msg tea.Msg) (bool, tea.Cmd) {
 		// Set status message showing section
 		if msg.Task != nil && msg.Task.Section != "" {
 			if msg.Task.CustomSection != "" {
-				m.statusMessage = fmt.Sprintf("Created in %s (%s)", msg.Task.Section, msg.Task.CustomSection)
+				m.setSuccessStatus(fmt.Sprintf("Created in %s (%s)", msg.Task.Section, msg.Task.CustomSection))
 			} else {
-				m.statusMessage = fmt.Sprintf("Created in %s", msg.Task.Section)
+				m.setSuccessStatus(fmt.Sprintf("Created in %s", msg.Task.Section))
 			}
 		}
 		// Delegate to current view (e.g., inbox processor) so it can reload its state
@@ -217,15 +217,15 @@ func (m *AppModel) handleTaskMessages(msg tea.Msg) (bool, tea.Cmd) {
 		return true, nil
 
 	case ChecklistItemAddedMsg:
-		m.statusMessage = "Checklist item added"
+		m.setSuccessStatus("Checklist item added")
 		return true, defaultStatusTimeout()
 
 	case ChecklistItemDeletedMsg:
-		m.statusMessage = "Checklist item deleted"
+		m.setSuccessStatus("Checklist item deleted")
 		return true, defaultStatusTimeout()
 
 	case ChecklistItemEditedMsg:
-		m.statusMessage = "Checklist item updated"
+		m.setSuccessStatus("Checklist item updated")
 		return true, defaultStatusTimeout()
 
 	case ChecklistItemToggledMsg:
@@ -244,15 +244,15 @@ func (m *AppModel) handleTaskMessages(msg tea.Msg) (bool, tea.Cmd) {
 		return true, nil
 
 	case CommentAddedMsg:
-		m.statusMessage = "Comment added"
+		m.setSuccessStatus("Comment added")
 		return true, defaultStatusTimeout()
 
 	case CommentDeletedMsg:
-		m.statusMessage = "Comment deleted"
+		m.setSuccessStatus("Comment deleted")
 		return true, defaultStatusTimeout()
 
 	case CommentEditedMsg:
-		m.statusMessage = "Comment updated"
+		m.setSuccessStatus("Comment updated")
 		return true, defaultStatusTimeout()
 
 	case CommentResolvedMsg:
@@ -263,16 +263,16 @@ func (m *AppModel) handleTaskMessages(msg tea.Msg) (bool, tea.Cmd) {
 					idx := commentsView.cursor
 					if idx >= 0 && idx < len(msg.Task.Comments) {
 						if msg.Task.Comments[idx].Resolved {
-							m.statusMessage = "Comment resolved"
+							m.setSuccessStatus("Comment resolved")
 						} else {
-							m.statusMessage = "Comment unresolved"
+							m.setSuccessStatus("Comment unresolved")
 						}
 						return true, defaultStatusTimeout()
 					}
 				}
 			}
 		}
-		m.statusMessage = "Comment resolved"
+		m.setSuccessStatus("Comment resolved")
 		return true, defaultStatusTimeout()
 
 	case ShowProjectSelectorForMoveMsg:
@@ -317,7 +317,7 @@ func (m *AppModel) handleTaskMessages(msg tea.Msg) (bool, tea.Cmd) {
 		case LinkTypeFollowUp:
 			linkName = "follow-up"
 		}
-		m.statusMessage = fmt.Sprintf("Created %s #%d", linkName, msg.NewTask.ShortID)
+		m.setSuccessStatus(fmt.Sprintf("Created %s #%d", linkName, msg.NewTask.ShortID))
 
 		// Jump to new task if configured
 		if m.config.GetLinkedTaskJumpToNew() && m.projectTree != nil && msg.NewTask != nil {
@@ -384,7 +384,7 @@ func (m *AppModel) handleTaskMessages(msg tea.Msg) (bool, tea.Cmd) {
 		case LinkTypeFollowUp:
 			linkName = "related"
 		}
-		m.statusMessage = fmt.Sprintf("Linked #%d → %s #%d (%s)", msg.SourceTask.ShortID, msg.TargetProject.Name, msg.TargetTask.ShortID, linkName)
+		m.setSuccessStatus(fmt.Sprintf("Linked #%d → %s #%d (%s)", msg.SourceTask.ShortID, msg.TargetProject.Name, msg.TargetTask.ShortID, linkName))
 		return true, statusTimeout(3 * time.Second)
 
 	case LinkRemovedMsg:
@@ -448,7 +448,7 @@ func (m *AppModel) handleDueDateChanged(msg DueDateChangedMsg) (bool, tea.Cmd) {
 				SaveMultipleProjectsAsync(projectsToSave, successMsg),
 			)
 		}
-		m.statusMessage = successMsg
+		m.setSuccessStatus(successMsg)
 		m.refreshProjectTree()
 		if m.outliner != nil {
 			m.outliner.rebuildRows()
@@ -542,6 +542,6 @@ func (m *AppModel) handleLinkRemoved(msg LinkRemovedMsg) (bool, tea.Cmd) {
 	case 2:
 		sectionName = "related"
 	}
-	m.statusMessage = fmt.Sprintf("Removed %s link", sectionName)
+	m.setSuccessStatus(fmt.Sprintf("Removed %s link", sectionName))
 	return true, defaultStatusTimeout()
 }

@@ -38,7 +38,7 @@ func runSectionAdd(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	project, _, _, err := LoadCurrentProject()
+	project, cfg, configManager, err := LoadCurrentProject()
 	if err != nil {
 		return err
 	}
@@ -49,8 +49,11 @@ func runSectionAdd(cmd *cobra.Command, args []string) error {
 
 	project.EnsureSection(sectionName)
 
-	if err := SaveProject(project, nil); err != nil {
-		return fmt.Errorf("failed to save project: %w", err)
+	if err := SaveProject(project, &SaveOptions{
+		Config: cfg, ConfigManager: configManager,
+		UndoAction: "Add Section", UndoContext: sectionName,
+	}); err != nil {
+		return tterrors.NewSaveProjectError(project.Name, err)
 	}
 
 	fmt.Printf("Added section: %s\n", sectionName)

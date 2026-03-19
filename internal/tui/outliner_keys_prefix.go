@@ -71,7 +71,7 @@ func (m *OutlinerModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 			if result.Err != nil {
 				return m, func() tea.Msg { return ErrorMsg{Err: result.Err} }
 			}
-			m.statusMessage = result.StatusMessage
+			m.setStatus(result.StatusMessage)
 			m.rebuildRows()
 			return m, result.Cmd
 		}
@@ -89,7 +89,7 @@ func (m *OutlinerModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 		if m.project == nil {
 			// Block task creation (same as a/i/I)
 			if key == "n" || key == "N" {
-				m.statusMessage = "use go to open project outliner for task creation"
+				m.setStatus("use go to open project outliner for task creation")
 				return m, nil
 			}
 			row, proj, valid := m.crossGetMutationTarget()

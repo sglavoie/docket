@@ -23,7 +23,7 @@ func (m *FocusBoardModel) markDone() (tea.Model, tea.Cmd) {
 	project := row.Project
 
 	if msg := task.CanTransitionTo(models.StatusDone); msg != "" {
-		m.statusMessage = msg
+		m.setStatus(msg)
 		return m, nil
 	}
 
@@ -31,9 +31,9 @@ func (m *FocusBoardModel) markDone() (tea.Model, tea.Cmd) {
 		t.ApplyTransition(models.StatusDone)
 	})
 	if err := saveProjectSync(project); err != nil {
-		m.statusMessage = "Failed to save: " + err.Error()
+		m.setStatus("Failed to save: " + err.Error())
 	} else {
-		m.statusMessage = fmt.Sprintf("Marked #%d done", task.ShortID)
+		m.setStatus(fmt.Sprintf("Marked #%d done", task.ShortID))
 		m.loadItems()
 		m.clampCursor()
 		return m, nil
@@ -51,7 +51,7 @@ func (m *FocusBoardModel) dismiss() (tea.Model, tea.Cmd) {
 	project := row.Project
 
 	if msg := task.CanTransitionTo(models.StatusCanceled); msg != "" {
-		m.statusMessage = msg
+		m.setStatus(msg)
 		return m, nil
 	}
 
@@ -59,9 +59,9 @@ func (m *FocusBoardModel) dismiss() (tea.Model, tea.Cmd) {
 		t.ApplyTransition(models.StatusCanceled)
 	})
 	if err := saveProjectSync(project); err != nil {
-		m.statusMessage = "Failed to save: " + err.Error()
+		m.setStatus("Failed to save: " + err.Error())
 	} else {
-		m.statusMessage = fmt.Sprintf("Dismissed #%d", task.ShortID)
+		m.setStatus(fmt.Sprintf("Dismissed #%d", task.ShortID))
 		m.loadItems()
 		m.clampCursor()
 		return m, nil
@@ -123,9 +123,9 @@ func (m *FocusBoardModel) deleteItem() (tea.Model, tea.Cmd) {
 	project.BuildTaskTree()
 
 	if err := saveProjectSync(project); err != nil {
-		m.statusMessage = "Failed to delete: " + err.Error()
+		m.setStatus("Failed to delete: " + err.Error())
 	} else {
-		m.statusMessage = fmt.Sprintf("Deleted #%d", task.ShortID)
+		m.setStatus(fmt.Sprintf("Deleted #%d", task.ShortID))
 		m.loadItems()
 		m.clampCursor()
 		return m, nil
@@ -157,7 +157,7 @@ func (m *FocusBoardModel) showDeleteConfirm(shortID int) {
 		if row.isAction() {
 			m.confirm.Show("delete", fmt.Sprintf("Delete action #%d?", shortID))
 		} else {
-			m.statusMessage = "Use project tree to delete non-action tasks"
+			m.setStatus("Use project tree to delete non-action tasks")
 		}
 	}
 }

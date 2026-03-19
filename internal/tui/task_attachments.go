@@ -253,7 +253,7 @@ func (m *TaskAttachmentsModel) addAttachment() tea.Cmd {
 
 				// Check if file exists and show info message if not
 				if !storage.CodeReferenceFileExists(codePath) {
-					m.statusMessage = "Code reference added (file may not exist)"
+					m.setStatus("Code reference added (file may not exist)")
 				}
 			} else {
 				// Handle regular file path
@@ -327,7 +327,7 @@ func (m *TaskAttachmentsModel) executeDelete() tea.Cmd {
 		if !att.IsURL {
 			if err := storage.RemoveAttachmentFile(m.project, m.task, removed.Filename); err != nil {
 				// Log warning but don't fail
-				m.statusMessage = fmt.Sprintf("Warning: file not deleted: %v", err)
+				m.setStatus(fmt.Sprintf("Warning: file not deleted: %v", err))
 			}
 		}
 
@@ -380,7 +380,7 @@ func (m *TaskAttachmentsModel) openAttachmentDefault() tea.Cmd {
 			m.err = fmt.Errorf("failed to open code reference: %w", err)
 			return nil
 		}
-		m.statusMessage = fmt.Sprintf("Opened %s:%d", filepath.Base(att.OriginalPath), att.LineNumber)
+		m.setStatus(fmt.Sprintf("Opened %s:%d", filepath.Base(att.OriginalPath), att.LineNumber))
 		return nil
 	}
 
@@ -431,7 +431,7 @@ func (m *TaskAttachmentsModel) openAttachmentInEditor() tea.Cmd {
 			m.err = fmt.Errorf("failed to open code reference: %w", err)
 			return nil
 		}
-		m.statusMessage = fmt.Sprintf("Opened %s:%d", filepath.Base(att.OriginalPath), att.LineNumber)
+		m.setStatus(fmt.Sprintf("Opened %s:%d", filepath.Base(att.OriginalPath), att.LineNumber))
 		return nil
 	}
 
@@ -527,7 +527,7 @@ func (m *TaskAttachmentsModel) copyPath() tea.Cmd {
 	case "windows":
 		clipCmd = exec.Command("clip")
 	default:
-		m.statusMessage = "Clipboard not supported on this OS"
+		m.setStatus("Clipboard not supported on this OS")
 		return nil
 	}
 
@@ -537,7 +537,7 @@ func (m *TaskAttachmentsModel) copyPath() tea.Cmd {
 		return nil
 	}
 
-	m.statusMessage = "Path copied to clipboard"
+	m.setStatus("Path copied to clipboard")
 	return nil
 }
 
@@ -565,7 +565,7 @@ func (m *TaskAttachmentsModel) copyPathWithLine() tea.Cmd {
 	case "windows":
 		clipCmd = exec.Command("clip")
 	default:
-		m.statusMessage = "Clipboard not supported on this OS"
+		m.setStatus("Clipboard not supported on this OS")
 		return nil
 	}
 
@@ -576,9 +576,9 @@ func (m *TaskAttachmentsModel) copyPathWithLine() tea.Cmd {
 	}
 
 	if att.IsCodeRef && att.LineNumber > 0 {
-		m.statusMessage = "Path:line copied to clipboard"
+		m.setStatus("Path:line copied to clipboard")
 	} else {
-		m.statusMessage = "Path copied to clipboard"
+		m.setStatus("Path copied to clipboard")
 	}
 	return nil
 }
@@ -597,7 +597,7 @@ func (m *TaskAttachmentsModel) openOriginalPath() tea.Cmd {
 		case "windows":
 			clipCmd = exec.Command("clip")
 		default:
-			m.statusMessage = "Clipboard not supported on this OS"
+			m.setStatus("Clipboard not supported on this OS")
 			return nil
 		}
 
@@ -607,7 +607,7 @@ func (m *TaskAttachmentsModel) openOriginalPath() tea.Cmd {
 			return nil
 		}
 
-		m.statusMessage = "URL copied to clipboard"
+		m.setStatus("URL copied to clipboard")
 		return nil
 	}
 

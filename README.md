@@ -364,7 +364,7 @@ tt select <project>                  # Select project directly
 
 The TUI provides a rich visual interface with extensive keyboard navigation and views.
 
-> **Note:** The TUI requires a minimum terminal width of 80 columns and height of 24 rows for optimal display. Smaller terminals may cause layout issues.
+> **Note:** The TUI requires a minimum terminal width of 60 columns and height of 24 rows for optimal display. Smaller terminals may cause layout issues.
 
 ### Main Views
 

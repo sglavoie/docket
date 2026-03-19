@@ -50,8 +50,8 @@ func (m *AppModel) handleInboxMessages(msg tea.Msg) (bool, tea.Cmd) {
 			m.dashboard.Refresh(m.config)
 		}
 		if msg.ProcessedCount > 0 || msg.SkippedCount > 0 {
-			m.statusMessage = fmt.Sprintf("Global inbox processing complete: %d processed, %d skipped",
-				msg.ProcessedCount, msg.SkippedCount)
+			m.setSuccessStatus(fmt.Sprintf("Global inbox processing complete: %d processed, %d skipped",
+				msg.ProcessedCount, msg.SkippedCount))
 		}
 		return true, nil
 

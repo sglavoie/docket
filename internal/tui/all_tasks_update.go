@@ -11,7 +11,7 @@ func (m *AllTasksViewModel) Init() tea.Cmd {
 }
 
 func (m *AllTasksViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	if handled, cmd := handleCommonUpdateMsg(msg, m.SetSize, m.loadAllTasks, m.clampCursor, func(s string) { m.statusMessage = s }); handled {
+	if handled, cmd := handleCommonUpdateMsg(msg, m.SetSize, m.loadAllTasks, m.clampCursor, func(s string) { m.setStatus(s) }); handled {
 		return m, cmd
 	}
 
@@ -43,7 +43,7 @@ func (m *AllTasksViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	// Clear previous error on any key
 	m.err = nil
-	m.statusMessage = ""
+	m.clearStatus()
 
 	// Handle confirm dialog
 	if m.confirm.IsActive() {
@@ -149,11 +149,11 @@ func (m *AllTasksViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		handleSortKey(key, &m.sort, func() {
 			m.applyFiltersAndGroup()
 			m.clampCursor()
-			m.statusMessage = "Sort reset"
+			m.setStatus("Sort reset")
 		}, func(field SortField) {
 			m.applyFiltersAndGroup()
 			m.clampCursor()
-			m.statusMessage = fmt.Sprintf("Sort: %s %s", field, m.sortDirection())
+			m.setStatus(fmt.Sprintf("Sort: %s %s", field, m.sortDirection()))
 		})
 		return m, nil
 
@@ -310,7 +310,7 @@ func (m *AllTasksViewModel) escSteps() []EscStep {
 			m.ClearAllFilters()
 			m.applyFiltersAndGroup()
 			m.clampCursor()
-			m.statusMessage = "Filters cleared"
+			m.setStatus("Filters cleared")
 		}),
 	}
 }

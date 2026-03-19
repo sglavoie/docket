@@ -216,7 +216,7 @@ func (m *WeeklyReviewModel) goToNextUnreviewed() (tea.Model, tea.Cmd) {
 			}
 		}
 	}
-	m.statusMessage = "All sections reviewed"
+	m.setStatus("All sections reviewed")
 	return m, nil
 }
 

@@ -6,6 +6,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tterrors"
 )
 
 var (
@@ -77,7 +78,7 @@ func runTaskRecur(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("cannot combine %s with a recurrence pattern argument", actionFlags[0])
 	}
 
-	project, _, _, err := LoadCurrentProject()
+	project, cfg, configManager, err := LoadCurrentProject()
 	if err != nil {
 		return err
 	}
@@ -93,8 +94,11 @@ func runTaskRecur(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("task #%d is not recurring; set recurrence first with: tt task recur %d <pattern>", task.ShortID, task.ShortID)
 		}
 		task.SkipRecurrence()
-		if err := SaveProject(project, nil); err != nil {
-			return fmt.Errorf("failed to save project: %w", err)
+		if err := SaveProject(project, &SaveOptions{
+			Config: cfg, ConfigManager: configManager,
+			UndoAction: "Skip Recurrence", UndoContext: fmt.Sprintf("#%d", task.ShortID),
+		}); err != nil {
+			return tterrors.NewSaveProjectError(project.Name, err)
 		}
 		dueStr := "none"
 		if task.DueDate != nil {
@@ -113,8 +117,11 @@ func runTaskRecur(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("task #%d is not recurring; set recurrence first with: tt task recur %d <pattern>", task.ShortID, task.ShortID)
 		}
 		task.DeferRecurrence(taskRecurDefer)
-		if err := SaveProject(project, nil); err != nil {
-			return fmt.Errorf("failed to save project: %w", err)
+		if err := SaveProject(project, &SaveOptions{
+			Config: cfg, ConfigManager: configManager,
+			UndoAction: "Defer Recurrence", UndoContext: fmt.Sprintf("%d days #%d", taskRecurDefer, task.ShortID),
+		}); err != nil {
+			return tterrors.NewSaveProjectError(project.Name, err)
 		}
 		dueStr := "none"
 		if task.DueDate != nil {
@@ -131,8 +138,11 @@ func runTaskRecur(cmd *cobra.Command, args []string) error {
 			return nil
 		}
 		task.ClearRecurrence()
-		if err := SaveProject(project, nil); err != nil {
-			return fmt.Errorf("failed to save project: %w", err)
+		if err := SaveProject(project, &SaveOptions{
+			Config: cfg, ConfigManager: configManager,
+			UndoAction: "Clear Recurrence", UndoContext: fmt.Sprintf("#%d", task.ShortID),
+		}); err != nil {
+			return tterrors.NewSaveProjectError(project.Name, err)
 		}
 		fmt.Printf("Removed recurrence from task #%d (%s)\n", task.ShortID, task.Title)
 		return nil
@@ -175,8 +185,11 @@ func runTaskRecur(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("invalid recurrence pattern: %w", err)
 	}
 
-	if err := SaveProject(project, nil); err != nil {
-		return fmt.Errorf("failed to save project: %w", err)
+	if err := SaveProject(project, &SaveOptions{
+		Config: cfg, ConfigManager: configManager,
+		UndoAction: "Set Recurrence", UndoContext: fmt.Sprintf("%s #%d", pattern.String(), task.ShortID),
+	}); err != nil {
+		return tterrors.NewSaveProjectError(project.Name, err)
 	}
 
 	if oldPattern != "" {

@@ -43,7 +43,7 @@ func runSectionRemove(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("cannot remove the Next section")
 	}
 
-	project, _, _, err := LoadCurrentProject()
+	project, cfg, configManager, err := LoadCurrentProject()
 	if err != nil {
 		return err
 	}
@@ -67,8 +67,11 @@ func runSectionRemove(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to remove section '%s'", sectionName)
 	}
 
-	if err := SaveProject(project, nil); err != nil {
-		return fmt.Errorf("failed to save project: %w", err)
+	if err := SaveProject(project, &SaveOptions{
+		Config: cfg, ConfigManager: configManager,
+		UndoAction: "Remove Section", UndoContext: sectionName,
+	}); err != nil {
+		return tterrors.NewSaveProjectError(project.Name, err)
 	}
 
 	if taskCount > 0 {

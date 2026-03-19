@@ -550,23 +550,19 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 		return true, nil
 
 	case StatusClearMsg:
-		m.statusMessage = ""
-		m.statusIsInfo = false
+		m.clearStatus()
 		return true, nil
 
 	case StatusMsg:
-		m.statusMessage = string(msg)
-		m.statusIsInfo = false
+		m.setSuccessStatus(string(msg))
 		return true, defaultStatusTimeout()
 
 	case InfoStatusMsg:
-		m.statusMessage = string(msg)
-		m.statusIsInfo = true
+		m.setInfoStatus(string(msg))
 		return true, defaultStatusTimeout()
 
 	case MoveBlockedMsg:
-		m.statusMessage = msg.Reason
-		m.statusIsInfo = true
+		m.setInfoStatus(msg.Reason)
 		return true, defaultStatusTimeout()
 
 	case ShowPriorityViewMsg:

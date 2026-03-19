@@ -28,7 +28,7 @@ func (m *WeeklyReviewModel) getConfigManager() *config.Manager { return m.config
 func (m *WeeklyReviewModel) getDataDir() string                { return m.config.DataDir }
 func (m *WeeklyReviewModel) reloadData()                       { m.loadData() }
 func (m *WeeklyReviewModel) setErr(err error)                  { m.err = err }
-func (m *WeeklyReviewModel) setStatus(msg string)              { m.statusMessage = msg }
+func (m *WeeklyReviewModel) setStatus(msg string)              { m.InteractiveViewState.setStatus(msg) }
 
 // prefixDispatchView implementation.
 

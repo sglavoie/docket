@@ -295,7 +295,7 @@ func (m *WeeklyReviewModel) markCurrentSectionReviewed() (tea.Model, tea.Cmd) {
 	idx := m.getCurrentSectionIndex()
 	section := m.sectionOrder[idx]
 	m.reviewedSections[section] = true
-	m.statusMessage = "Marked \"" + getWeeklySectionName(section) + "\" as reviewed"
+	m.setStatus("Marked \"" + getWeeklySectionName(section) + "\" as reviewed")
 	if m.allSectionsReviewed() {
 		m.reviewCompleted = true
 		m.completedAt = time.Now()

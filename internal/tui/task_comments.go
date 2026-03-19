@@ -619,7 +619,7 @@ func (m *TaskCommentsModel) copyCommentText() tea.Cmd {
 	case "windows":
 		clipCmd = exec.Command("clip")
 	default:
-		m.statusMessage = "Clipboard not supported on this OS"
+		m.setStatus("Clipboard not supported on this OS")
 		return nil
 	}
 
@@ -629,7 +629,7 @@ func (m *TaskCommentsModel) copyCommentText() tea.Cmd {
 		return nil
 	}
 
-	m.statusMessage = "Comment copied to clipboard"
+	m.setStatus("Comment copied to clipboard")
 	return nil
 }
 

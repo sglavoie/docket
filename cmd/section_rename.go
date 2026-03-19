@@ -38,7 +38,7 @@ func runSectionRename(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	project, _, _, err := LoadCurrentProject()
+	project, cfg, configManager, err := LoadCurrentProject()
 	if err != nil {
 		return err
 	}
@@ -47,8 +47,11 @@ func runSectionRename(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if err := SaveProject(project, nil); err != nil {
-		return fmt.Errorf("failed to save project: %w", err)
+	if err := SaveProject(project, &SaveOptions{
+		Config: cfg, ConfigManager: configManager,
+		UndoAction: "Rename Section", UndoContext: fmt.Sprintf("%s → %s", oldName, newName),
+	}); err != nil {
+		return tterrors.NewSaveProjectError(project.Name, err)
 	}
 
 	fmt.Printf("Renamed section '%s' to '%s'\n", oldName, newName)

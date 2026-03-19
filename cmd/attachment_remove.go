@@ -38,7 +38,7 @@ func runAttachmentRemove(cmd *cobra.Command, args []string) error {
 		return tterrors.NewRequiredFieldError("task ID and attachment name")
 	}
 
-	project, _, _, err := LoadCurrentProject()
+	project, cfg, configManager, err := LoadCurrentProject()
 	if err != nil {
 		return err
 	}
@@ -78,7 +78,10 @@ func runAttachmentRemove(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	if err := SaveProject(project, nil); err != nil {
+	if err := SaveProject(project, &SaveOptions{
+		Config: cfg, ConfigManager: configManager,
+		UndoAction: "Remove Attachment", UndoContext: filename,
+	}); err != nil {
 		return err
 	}
 

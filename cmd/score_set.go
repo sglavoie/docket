@@ -78,11 +78,11 @@ func runScoreSet(cmd *cobra.Command, args []string) error {
 	}
 
 	task.UpdatedAt = time.Now()
-	if err := SaveProject(project, nil); err != nil {
+	if err := SaveProject(project, &SaveOptions{
+		Config: cfg, ConfigManager: configManager,
+		UndoAction: "Set Score", UndoContext: fmt.Sprintf("#%d %s", task.ShortID, args[1]),
+	}); err != nil {
 		return err
-	}
-	if err := configManager.Save(cfg); err != nil {
-		return fmt.Errorf("failed to save config: %w", err)
 	}
 
 	fmt.Printf("Updated score dimensions for task #%d %q\n", task.ShortID, task.Title)

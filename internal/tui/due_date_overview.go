@@ -236,7 +236,7 @@ func (m *DueDateOverviewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.SetSize,
 		m.loadTasksWithDueDates,
 		m.clampCursor,
-		func(s string) { m.statusMessage = s },
+		m.setStatus,
 	); handled {
 		return m, cmd
 	}
@@ -389,7 +389,7 @@ func (m *DueDateOverviewModel) getConfigManager() *config.Manager { return m.con
 func (m *DueDateOverviewModel) getDataDir() string                { return m.config.DataDir }
 func (m *DueDateOverviewModel) reloadData()                       { m.loadTasksWithDueDates() }
 func (m *DueDateOverviewModel) setErr(err error)                  { m.SetError(err) }
-func (m *DueDateOverviewModel) setStatus(msg string)              { m.statusMessage = msg }
+func (m *DueDateOverviewModel) setStatus(msg string)              { m.InteractiveViewState.setStatus(msg) }
 
 func (m *DueDateOverviewModel) changeTaskPriority(key string) (tea.Model, tea.Cmd) {
 	return taskOpsChangePriority(m, key)
@@ -415,7 +415,7 @@ func (m *DueDateOverviewModel) escSteps() []EscStep {
 			m.ClearAllFilters()
 			m.loadTasksWithDueDates()
 			m.clampCursor()
-			m.statusMessage = "Filters cleared"
+			m.setStatus("Filters cleared")
 		}),
 	}
 }

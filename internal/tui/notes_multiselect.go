@@ -11,9 +11,9 @@ func (m *NotesViewModel) toggleNoteMultiSelectMode() {
 	m.multiSelectMode = !m.multiSelectMode
 	if !m.multiSelectMode {
 		m.selectedNotes = make(map[string]bool)
-		m.statusMessage = ""
+		m.clearStatus()
 	} else {
-		m.statusMessage = "Multi-select: space=toggle, a=all, gX=clear"
+		m.setStatus("Multi-select: space=toggle, a=all, gX=clear")
 	}
 }
 
@@ -70,8 +70,8 @@ func (m *NotesViewModel) selectedNoteCount() int {
 func (m *NotesViewModel) updateNoteSelectionStatus() {
 	count := len(m.selectedNotes)
 	if count == 0 {
-		m.statusMessage = "Multi-select: space=toggle, a=all, gX=clear"
+		m.setStatus("Multi-select: space=toggle, a=all, gX=clear")
 	} else {
-		m.statusMessage = fmt.Sprintf("%d selected (space=toggle, d=delete, t=tag, l=link, gX=clear)", count)
+		m.setStatus(fmt.Sprintf("%d selected (space=toggle, d=delete, t=tag, l=link, gX=clear)", count))
 	}
 }

@@ -52,7 +52,7 @@ Examples:
   tt task add --epic "User Authentication"
   tt task add --story "Login Flow" --parent 1
   tt task add "Create API endpoint" --parent 2 --priority 1
-  tt t a "Quick task" --tags backend,urgent
+  tt t a "Quick task" --tag backend,urgent
   tt task add "Login fails" --template def-bug-report`,
 	RunE: runTaskAdd,
 }
@@ -63,7 +63,7 @@ func init() {
 	taskAddCmd.Flags().StringVarP(&taskTypeFlag, "type", "t", "", "task type (epic, story, task, bug, idea)")
 	taskAddCmd.Flags().StringVar(&taskParentFlag, "parent", "", "parent task ID or short ID")
 	taskAddCmd.Flags().IntVar(&taskPriority, "priority", 3, "priority (1=highest, 5=lowest)")
-	taskAddCmd.Flags().StringSliceVarP(&taskTags, "tags", "T", nil, "tags for the task")
+	taskAddCmd.Flags().StringSliceVarP(&taskTags, "tag", "T", nil, "tags for the task")
 
 	taskAddCmd.Flags().BoolVar(&isEpic, "epic", false, "create an epic")
 	taskAddCmd.Flags().BoolVar(&isStory, "story", false, "create a story")

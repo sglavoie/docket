@@ -24,7 +24,7 @@ func (m *AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case "n", "N", "esc":
 				m.pendingSandboxReset = false
 				m.pendingSandboxTaskCount = 0
-				m.statusMessage = "Canceled"
+				m.setInfoStatus("Canceled")
 				return m, defaultStatusTimeout()
 			default:
 				// Keep showing the confirmation prompt
@@ -205,7 +205,7 @@ func (m *AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case SaveCompleteMsg:
 		m.isLoading = false
 		m.loadingMessage = ""
-		m.statusMessage = msg.SuccessMessage
+		m.setSuccessStatus(msg.SuccessMessage)
 		m.refreshProjectTree()
 		// Refresh all-tasks if open (cross-project view may show stale data)
 		if m.allTasksView != nil {

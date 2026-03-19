@@ -223,7 +223,7 @@ func (m *AllTasksViewModel) moveTabLeft() {
 	if err := m.configManager.Save(m.config); err != nil {
 		logging.Warn("failed to save config: %v", err)
 	}
-	m.statusMessage = "Tab moved left"
+	m.setStatus("Tab moved left")
 }
 
 // moveTabRight swaps the active tab with the one to its right.
@@ -239,7 +239,7 @@ func (m *AllTasksViewModel) moveTabRight() {
 	if err := m.configManager.Save(m.config); err != nil {
 		logging.Warn("failed to save config: %v", err)
 	}
-	m.statusMessage = "Tab moved right"
+	m.setStatus("Tab moved right")
 }
 
 // handleDeleteSavedFilterTab deletes the saved filter on the currently active tab.

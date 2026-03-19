@@ -43,6 +43,12 @@ func (m *AppModel) setInfoStatus(msg string) {
 	m.statusIsInfo = true
 }
 
+// clearStatus clears the status message and resets the info flag.
+func (m *AppModel) clearStatus() {
+	m.statusMessage = ""
+	m.statusIsInfo = false
+}
+
 // syncInboxProcessor updates the typed inboxProcessor pointer after view updates.
 // This keeps the pointer in sync when the inbox processor view is active.
 func (m *AppModel) syncInboxProcessor() {

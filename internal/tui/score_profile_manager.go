@@ -43,6 +43,11 @@ func NewScoreProfileManagerModel(cfg *config.Config, manager *config.Manager, cu
 	}
 }
 
+// setStatus sets the status message.
+func (m *ScoreProfileManagerModel) setStatus(msg string) {
+	m.statusMessage = msg
+}
+
 // SetSize implements View.
 func (m *ScoreProfileManagerModel) SetSize(width, height int) {
 	m.width = width
@@ -186,7 +191,7 @@ func (m *ScoreProfileManagerModel) startAddPreset() tea.Cmd {
 	}
 
 	if len(available) == 0 {
-		m.statusMessage = "All preset profiles already added"
+		m.setStatus("All preset profiles already added")
 		return defaultStatusTimeout()
 	}
 
@@ -212,12 +217,12 @@ func (m *ScoreProfileManagerModel) addPreset(name string) tea.Cmd {
 
 	profile := factory()
 	if err := m.config.AddScoringProfile(profile); err != nil {
-		m.statusMessage = err.Error()
+		m.setStatus(err.Error())
 		return defaultStatusTimeout()
 	}
 
 	if err := m.configManager.Save(m.config); err != nil {
-		m.statusMessage = "Failed to save: " + err.Error()
+		m.setStatus("Failed to save: " + err.Error())
 		return defaultStatusTimeout()
 	}
 
@@ -233,7 +238,7 @@ func (m *ScoreProfileManagerModel) addPreset(name string) tea.Cmd {
 		}
 	}
 
-	m.statusMessage = fmt.Sprintf("Added %s profile", profile.Name)
+	m.setStatus(fmt.Sprintf("Added %s profile", profile.Name))
 	return tea.Batch(
 		defaultStatusTimeout(),
 		func() tea.Msg { return ScoreProfileChangedMsg{} },
@@ -259,7 +264,7 @@ func (m *ScoreProfileManagerModel) executeDelete() tea.Cmd {
 
 	m.config.RemoveScoringProfile(profile.ID)
 	if err := m.configManager.Save(m.config); err != nil {
-		m.statusMessage = "Failed to save: " + err.Error()
+		m.setStatus("Failed to save: " + err.Error())
 		return defaultStatusTimeout()
 	}
 
@@ -271,7 +276,7 @@ func (m *ScoreProfileManagerModel) executeDelete() tea.Cmd {
 		m.cursor--
 	}
 
-	m.statusMessage = fmt.Sprintf("Deleted profile %q", profile.Name)
+	m.setStatus(fmt.Sprintf("Deleted profile %q", profile.Name))
 	return tea.Batch(
 		defaultStatusTimeout(),
 		func() tea.Msg { return ScoreProfileChangedMsg{} },
@@ -287,11 +292,11 @@ func (m *ScoreProfileManagerModel) assignProfile() tea.Cmd {
 	profile := m.profiles[m.cursor]
 	m.config.SetProjectScoringProfile(m.currentProjectID, profile.ID)
 	if err := m.configManager.Save(m.config); err != nil {
-		m.statusMessage = "Failed to save: " + err.Error()
+		m.setStatus("Failed to save: " + err.Error())
 		return defaultStatusTimeout()
 	}
 
-	m.statusMessage = fmt.Sprintf("Assigned %s to project", profile.Name)
+	m.setStatus(fmt.Sprintf("Assigned %s to project", profile.Name))
 	return tea.Batch(
 		defaultStatusTimeout(),
 		func() tea.Msg { return ScoreProfileChangedMsg{} },
@@ -306,11 +311,11 @@ func (m *ScoreProfileManagerModel) unassignProfile() tea.Cmd {
 
 	m.config.UnsetProjectScoringProfile(m.currentProjectID)
 	if err := m.configManager.Save(m.config); err != nil {
-		m.statusMessage = "Failed to save: " + err.Error()
+		m.setStatus("Failed to save: " + err.Error())
 		return defaultStatusTimeout()
 	}
 
-	m.statusMessage = "Unassigned scoring profile from project"
+	m.setStatus("Unassigned scoring profile from project")
 	return tea.Batch(
 		defaultStatusTimeout(),
 		func() tea.Msg { return ScoreProfileChangedMsg{} },

@@ -22,6 +22,10 @@ Accepted formats:
   +1w, +2w       Relative weeks from now
   +1m            Relative months from now
   2026-06-01     Exact date (YYYY-MM-DD)
+  mon-sun        Next occurrence of that weekday
+  next week      Next Monday
+  next month     First of next month
+  in N days/weeks/months  Relative offset
   clear          Remove snooze (make task visible again)
 
 Examples:

@@ -61,14 +61,14 @@ func (m *AppModel) handleNotesMessages(msg tea.Msg) (bool, tea.Cmd) {
 			m.popView()
 			// Copy note to project, delete from global
 			if err := storage.SaveNote(msg.Project, note); err != nil {
-				m.statusMessage = "Failed to move note: " + err.Error()
+				m.setInfoStatus("Failed to move note: " + err.Error())
 				return true, nil
 			}
 			if err := storage.DeleteNoteFrom(sourceDir, note.Filename); err != nil {
-				m.statusMessage = "Moved but failed to delete original: " + err.Error()
+				m.setInfoStatus("Moved but failed to delete original: " + err.Error())
 				return true, nil
 			}
-			m.statusMessage = fmt.Sprintf("Moved '%s' to %s", note.Title, msg.Project.Name)
+			m.setSuccessStatus(fmt.Sprintf("Moved '%s' to %s", note.Title, msg.Project.Name))
 			// Refresh global notes view
 			if nv := m.getActiveNotesView(); nv != nil {
 				nv.loadNotes()
@@ -144,9 +144,9 @@ func (m *AppModel) handleNotesMessages(msg tea.Msg) (bool, tea.Cmd) {
 					}
 					total := len(m.pendingBulkNotes)
 					if failed > 0 {
-						m.statusMessage = fmt.Sprintf("Linked %d notes (%d failed)", total, failed)
+						m.setInfoStatus(fmt.Sprintf("Linked %d notes (%d failed)", total, failed))
 					} else {
-						m.statusMessage = fmt.Sprintf("Linked %d notes", total)
+						m.setSuccessStatus(fmt.Sprintf("Linked %d notes", total))
 					}
 					notesView.lastLinkUndo = undoEntries
 					notesView.lastTagUndo = nil

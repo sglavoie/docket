@@ -433,12 +433,12 @@ func (m *AppModel) reorderPinnedTask(delta int) (*AppModel, tea.Cmd) {
 
 	// Persist affected projects (may be the same project)
 	if err := m.persister.SaveWithBackupSync(a.Project); err != nil {
-		m.statusMessage = fmt.Sprintf("Failed to save project %s: %v", a.Project.Name, err)
+		m.setInfoStatus(fmt.Sprintf("Failed to save project %s: %v", a.Project.Name, err))
 		return m, nil
 	}
 	if b.Project.Name != a.Project.Name {
 		if err := m.persister.SaveWithBackupSync(b.Project); err != nil {
-			m.statusMessage = fmt.Sprintf("Failed to save project %s: %v", b.Project.Name, err)
+			m.setInfoStatus(fmt.Sprintf("Failed to save project %s: %v", b.Project.Name, err))
 			return m, nil
 		}
 	}
@@ -465,7 +465,7 @@ func (m *AppModel) unpinFromPopup() (*AppModel, tea.Cmd) {
 		t.Unpin()
 	})
 	if err := m.persister.SaveWithBackupSync(entry.Project); err != nil {
-		m.statusMessage = fmt.Sprintf("Failed to save project %s: %v", entry.Project.Name, err)
+		m.setInfoStatus(fmt.Sprintf("Failed to save project %s: %v", entry.Project.Name, err))
 		return m, nil
 	}
 
@@ -497,7 +497,7 @@ func (m *AppModel) repinFromPopup() (*AppModel, tea.Cmd) {
 		t.Pin()
 	})
 	if err := m.persister.SaveWithBackupSync(entry.Project); err != nil {
-		m.statusMessage = fmt.Sprintf("Failed to save project %s: %v", entry.Project.Name, err)
+		m.setInfoStatus(fmt.Sprintf("Failed to save project %s: %v", entry.Project.Name, err))
 		return m, nil
 	}
 

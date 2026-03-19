@@ -50,7 +50,7 @@ func init() {
 }
 
 func runAttach(cmd *cobra.Command, args []string) error {
-	project, _, _, errLoad := LoadCurrentProject()
+	project, cfg, configManager, errLoad := LoadCurrentProject()
 	if errLoad != nil {
 		return errLoad
 	}
@@ -71,7 +71,10 @@ func runAttach(cmd *cobra.Command, args []string) error {
 			return err
 		}
 
-		if err := SaveProject(project, nil); err != nil {
+		if err := SaveProject(project, &SaveOptions{
+			Config: cfg, ConfigManager: configManager,
+			UndoAction: "Attach URL", UndoContext: url,
+		}); err != nil {
 			return err
 		}
 
@@ -95,7 +98,10 @@ func runAttach(cmd *cobra.Command, args []string) error {
 			return err
 		}
 
-		if err := SaveProject(project, nil); err != nil {
+		if err := SaveProject(project, &SaveOptions{
+			Config: cfg, ConfigManager: configManager,
+			UndoAction: "Attach Code Ref", UndoContext: fmt.Sprintf("%s:%d", codePath, lineNum),
+		}); err != nil {
 			return err
 		}
 
@@ -141,7 +147,10 @@ func runAttach(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if err := SaveProject(project, nil); err != nil {
+	if err := SaveProject(project, &SaveOptions{
+		Config: cfg, ConfigManager: configManager,
+		UndoAction: "Attach File", UndoContext: filename,
+	}); err != nil {
 		return err
 	}
 

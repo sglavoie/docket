@@ -182,7 +182,7 @@ func (m *AllTasksViewModel) cycleGroupBy() {
 	m.groupBy = (m.groupBy + 1) % (ATGroupByFlat + 1)
 	m.applyFiltersAndGroup()
 	m.clampCursor()
-	m.statusMessage = fmt.Sprintf("Grouped by: %s", m.groupBy)
+	m.setStatus(fmt.Sprintf("Grouped by: %s", m.groupBy))
 }
 
 // toggleGroupCollapse toggles the collapse state of the group containing the cursor.

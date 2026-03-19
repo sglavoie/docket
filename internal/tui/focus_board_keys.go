@@ -38,7 +38,7 @@ func (m *FocusBoardModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.ClearAllFilters()
 			m.applyFilter()
 			m.clampCursor()
-			m.statusMessage = "Filters cleared"
+			m.setStatus("Filters cleared")
 			return m, nil
 		}
 		return m, func() tea.Msg { return CloseFocusBoardMsg{} }
@@ -115,7 +115,7 @@ func (m *FocusBoardModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		handleSortKey(key, &m.sort, func() {
 			m.applyFilter()
 			m.clampCursor()
-			m.statusMessage = "Sort reset"
+			m.setStatus("Sort reset")
 		}, func(field SortField) {
 			m.applyFilter()
 			m.clampCursor()
@@ -123,7 +123,7 @@ func (m *FocusBoardModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			if !m.sort.Ascending {
 				direction = "↓"
 			}
-			m.statusMessage = fmt.Sprintf("Sort: %s %s", field, direction)
+			m.setStatus(fmt.Sprintf("Sort: %s %s", field, direction))
 		})
 		return m, nil
 

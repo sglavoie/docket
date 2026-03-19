@@ -20,7 +20,7 @@ func (m *OutlinerModel) handleConfirmDialog(key string) (tea.Model, tea.Cmd) {
 		switch key {
 		case "d", "D":
 			m.confirm.Cancel()
-			m.statusMessage = ""
+			m.clearStatus()
 			if m.project == nil {
 				return m.crossExecuteDelete()
 			}
@@ -28,14 +28,14 @@ func (m *OutlinerModel) handleConfirmDialog(key string) (tea.Model, tea.Cmd) {
 		case "s", "S":
 			m.deleteTarget.ClearRecurrence()
 			m.confirm.Cancel()
-			m.statusMessage = ""
+			m.clearStatus()
 			if m.project == nil {
 				return m.crossExecuteDelete()
 			}
 			return m.executeDelete()
 		case "n", "N", "esc":
 			m.confirm.Cancel()
-			m.statusMessage = ""
+			m.clearStatus()
 			m.deleteTarget = nil
 			return m, nil
 		}
@@ -80,7 +80,7 @@ func (m *OutlinerModel) applyBulkStatusChange(newStatus models.TaskStatus) (tea.
 
 	valid, blockedCount := analyzeBulkStatusTransition(m.project, tasks, newStatus)
 	if len(valid) == 0 {
-		m.statusMessage = "No selected tasks can transition to " + string(newStatus)
+		m.setStatus("No selected tasks can transition to " + string(newStatus))
 		m.clearMultiSelect()
 		return m, nil
 	}
@@ -108,7 +108,7 @@ func (m *OutlinerModel) applyBulkStatusChange(newStatus models.TaskStatus) (tea.
 		return m, func() tea.Msg { return ErrorMsg{Err: err} }
 	}
 
-	m.statusMessage = fmt.Sprintf("Changed %d tasks to %s", len(valid), newStatus)
+	m.setStatus(fmt.Sprintf("Changed %d tasks to %s", len(valid), newStatus))
 	m.clearMultiSelect()
 	return m, nil
 }
@@ -136,7 +136,7 @@ func (m *OutlinerModel) executePendingBulkStatus() (tea.Model, tea.Cmd) {
 		return m, func() tea.Msg { return ErrorMsg{Err: err} }
 	}
 
-	m.statusMessage = fmt.Sprintf("Changed %d tasks to %s", len(tasks), status)
+	m.setStatus(fmt.Sprintf("Changed %d tasks to %s", len(tasks), status))
 	m.bulkOp.Clear()
 	return m, nil
 }
@@ -173,7 +173,7 @@ func (m *OutlinerModel) executeDelete() (tea.Model, tea.Cmd) {
 	}
 	task := m.deleteTarget
 	m.deleteTarget = nil
-	m.statusMessage = ""
+	m.clearStatus()
 
 	pf := m.workflowPersistFn()
 	result := applyDeleteTask(pf, m.project, task.ID, m.config.DataDir)
@@ -252,7 +252,7 @@ func (m *OutlinerModel) executeBulkDelete() (tea.Model, tea.Cmd) {
 	}
 
 	m.clearMultiSelect()
-	m.statusMessage = fmt.Sprintf("Deleted %d tasks", count)
+	m.setStatus(fmt.Sprintf("Deleted %d tasks", count))
 	return m, nil
 }
 
@@ -284,7 +284,7 @@ func (m *OutlinerModel) archiveCompletedTasks() (tea.Model, tea.Cmd) {
 		m.rebuildRows()
 		return TasksArchivedMsg{Count: count}
 	}
-	m.statusMessage = ""
+	m.clearStatus()
 	return m, cmd
 }
 

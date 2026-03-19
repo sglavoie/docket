@@ -26,7 +26,7 @@ func (m *NotesViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case "y", "Y":
 				m.confirmDiscard = false
 				m.renaming = false
-				m.statusMessage = "Rename canceled"
+				m.setStatus("Rename canceled")
 				return m, nil
 			case "n", "N", "esc":
 				m.confirmDiscard = false
@@ -50,7 +50,7 @@ func (m *NotesViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						if m.pendingDeleteIdx < len(m.notes) {
 							return m, m.performDelete()
 						}
-						m.statusMessage = "Delete failed: note no longer exists"
+						m.setStatus("Delete failed: note no longer exists")
 					case "bulk-delete":
 						return m, m.performBulkDelete()
 					}
@@ -59,8 +59,7 @@ func (m *NotesViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 
-		m.statusMessage = ""
-		m.statusIsError = false
+		m.clearStatus()
 
 		// Handle pending 'g' prefix key — always consume the second keystroke
 		if m.pendingPrefix == "g" {
@@ -98,7 +97,7 @@ func (m *NotesViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.multiSelectMode && (key == "esc" || key == "q") {
 			m.multiSelectMode = false
 			m.selectedNotes = make(map[string]bool)
-			m.statusMessage = ""
+			m.clearStatus()
 			return m, nil
 		}
 
@@ -202,7 +201,7 @@ func (m *NotesViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if len(m.filterTags) > 0 {
 				m.filterTags = make(map[string]bool)
 				m.loadNotes()
-				m.statusMessage = "Filter cleared"
+				m.setStatus("Filter cleared")
 				return m, nil
 			}
 		case "/":
@@ -228,7 +227,7 @@ func (m *NotesViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.loadNotes()
 	case NoteTaskLinkedMsg:
 		m.loadNotes()
-		m.statusMessage = "Linked note to task"
+		m.setStatus("Linked note to task")
 	}
 	return m, nil
 }
@@ -270,7 +269,7 @@ func (m *NotesViewModel) handleRenameKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "enter":
 		newTitle := strings.TrimSpace(m.renameInput.Value())
 		if newTitle == "" {
-			m.statusMessage = "Rename canceled: empty title"
+			m.setStatus("Rename canceled: empty title")
 			m.renaming = false
 			return m, nil
 		}
@@ -282,16 +281,16 @@ func (m *NotesViewModel) handleRenameKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		oldTitle := note.Title
 		if newTitle == oldTitle {
 			m.renaming = false
-			m.statusMessage = "Rename canceled: same title"
+			m.setStatus("Rename canceled: same title")
 			return m, nil
 		}
 		_, err := storage.RenameNoteIn(m.effectiveDir(), note.Filename, newTitle)
 		if err != nil {
-			m.statusMessage = "Rename failed: " + err.Error()
+			m.setStatus("Rename failed: " + err.Error())
 			m.renaming = false
 			return m, nil
 		}
-		m.statusMessage = fmt.Sprintf("Renamed: %s → %s", oldTitle, newTitle)
+		m.setStatus(fmt.Sprintf("Renamed: %s → %s", oldTitle, newTitle))
 		m.loadNotes()
 		m.renaming = false
 		return m, func() tea.Msg { return NotesRefreshMsg{} }
@@ -301,7 +300,7 @@ func (m *NotesViewModel) handleRenameKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 		m.renaming = false
-		m.statusMessage = "Rename canceled"
+		m.setStatus("Rename canceled")
 		return m, nil
 	default:
 		var cmd tea.Cmd
@@ -343,8 +342,7 @@ func (m *NotesViewModel) startRename() {
 		return
 	}
 	if m.notes[m.cursor].ParseError != "" {
-		m.statusMessage = "Cannot rename — note has parse error. Press e to edit."
-		m.statusIsError = true
+		m.setErrorStatus("Cannot rename — note has parse error. Press e to edit.")
 		return
 	}
 	ti := textinput.New()

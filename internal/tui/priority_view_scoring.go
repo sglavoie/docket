@@ -271,7 +271,7 @@ func (m *PriorityViewModel) startSuggestedTask() (tea.Model, tea.Cmd) {
 	if result.Err != nil {
 		m.SetError(result.Err)
 	} else if result.StatusMessage != "" {
-		m.statusMessage = result.StatusMessage
+		m.setStatus(result.StatusMessage)
 	}
 	m.loadActionableTasks()
 	m.clampCursor()

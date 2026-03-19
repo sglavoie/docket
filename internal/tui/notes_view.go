@@ -90,6 +90,24 @@ type NotesViewModel struct {
 	statusIsError bool
 }
 
+// setStatus sets a status message and clears the error flag.
+func (m *NotesViewModel) setStatus(msg string) {
+	m.statusMessage = msg
+	m.statusIsError = false
+}
+
+// setErrorStatus sets a status message with error styling.
+func (m *NotesViewModel) setErrorStatus(msg string) {
+	m.statusMessage = msg
+	m.statusIsError = true
+}
+
+// clearStatus clears the status message and error flag.
+func (m *NotesViewModel) clearStatus() {
+	m.statusMessage = ""
+	m.statusIsError = false
+}
+
 // handleConfirmKey processes a key when the confirm dialog is active.
 // Returns (confirmed, handled). On cancel, clears the status message.
 // Mirrors InteractiveViewState.HandleConfirmKey for views that don't embed it.

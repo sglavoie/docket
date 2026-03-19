@@ -96,7 +96,7 @@ func (m *OutlinerModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 	if isPrefixKeySkippedOnHeader(key, !onHeader) {
-		m.statusMessage = "Move cursor to a task first"
+		m.setStatus("Move cursor to a task first")
 		return m, nil
 	}
 	// Outliner-specific: P prefix for perspectives
@@ -365,7 +365,7 @@ func (m *OutlinerModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		// Cross-project mode
 		if m.project == nil {
 			if m.multiSelectMode && len(m.selectedTasks) > 0 {
-				m.statusMessage = "bulk edit not supported in cross-project mode"
+				m.setStatus("bulk edit not supported in cross-project mode")
 				return m, nil
 			}
 			row, proj, valid := m.crossGetMutationTarget()

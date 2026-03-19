@@ -87,7 +87,7 @@ func (m *AppModel) handleScoringMessages(msg tea.Msg) (bool, tea.Cmd) {
 			if m.outliner != nil {
 				m.outliner.rebuildRows()
 			}
-			m.statusMessage = fmt.Sprintf("Score dimensions updated for task #%d", msg.Task.ShortID)
+			m.setSuccessStatus(fmt.Sprintf("Score dimensions updated for task #%d", msg.Task.ShortID))
 		}
 		return true, nil
 	}

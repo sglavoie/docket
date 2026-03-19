@@ -74,7 +74,7 @@ func (m *AllTasksViewModel) bulkApply(mutate func(project *models.Project, item 
 			continue
 		}
 		if err := m.projectService.Backup(project); err != nil {
-			m.statusMessage = fmt.Sprintf("Failed to backup project %s: %v", project.Name, err)
+			m.setStatus(fmt.Sprintf("Failed to backup project %s: %v", project.Name, err))
 			return -1
 		}
 		for _, item := range items {
@@ -83,7 +83,7 @@ func (m *AllTasksViewModel) bulkApply(mutate func(project *models.Project, item 
 			}
 		}
 		if err := m.projectService.Save(project); err != nil {
-			m.statusMessage = fmt.Sprintf("Failed to save project %s: %v", project.Name, err)
+			m.setStatus(fmt.Sprintf("Failed to save project %s: %v", project.Name, err))
 			return -1
 		}
 	}
@@ -213,7 +213,7 @@ func (m *AllTasksViewModel) handleBulkDelete() (tea.Model, tea.Cmd) {
 		}
 
 		if err := m.projectService.Backup(project); err != nil {
-			m.statusMessage = fmt.Sprintf("Failed to backup project %s: %v", project.Name, err)
+			m.setStatus(fmt.Sprintf("Failed to backup project %s: %v", project.Name, err))
 			return m, nil
 		}
 
@@ -258,7 +258,7 @@ func (m *AllTasksViewModel) handleBulkDelete() (tea.Model, tea.Cmd) {
 		project.Tasks = remaining
 		project.BuildTaskTree()
 		if err := m.projectService.Save(project); err != nil {
-			m.statusMessage = fmt.Sprintf("Failed to save project %s: %v", project.Name, err)
+			m.setStatus(fmt.Sprintf("Failed to save project %s: %v", project.Name, err))
 			return m, nil
 		}
 	}

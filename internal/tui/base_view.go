@@ -97,6 +97,16 @@ type InteractiveViewState struct {
 	confirm       ConfirmDialog
 }
 
+// setStatus sets the status message.
+func (s *InteractiveViewState) setStatus(msg string) {
+	s.statusMessage = msg
+}
+
+// clearStatus clears the status message.
+func (s *InteractiveViewState) clearStatus() {
+	s.statusMessage = ""
+}
+
 // HasPendingPrefix returns true if waiting for second key in a prefix sequence.
 func (s *InteractiveViewState) HasPendingPrefix() bool {
 	return s.pendingPrefix != ""

@@ -92,7 +92,7 @@ func (m *OutlinerModel) crossHandleStatusMutation(key string) (tea.Model, tea.Cm
 		return m, func() tea.Msg { return ErrorMsg{Err: result.Err} }, true
 	}
 	if result.StatusMessage != "" {
-		m.statusMessage = result.StatusMessage
+		m.setStatus(result.StatusMessage)
 	}
 	m.crossUndoCtx.Set(StatusVerb(status)+" Task", row.task.Title)
 	m.crossUndoCtx.ProjectIDs = []string{proj.ID}
@@ -180,7 +180,7 @@ func (m *OutlinerModel) crossExecutePendingBulkStatus() (tea.Model, tea.Cmd) {
 	m.crossUndoCtx.Set("Bulk Status Change", fmt.Sprintf("%d tasks -> %s", len(tasks), status))
 	m.crossUndoCtx.ProjectIDs = projectIDs
 
-	m.statusMessage = fmt.Sprintf("Changed %d tasks to %s", len(tasks), status)
+	m.setStatus(fmt.Sprintf("Changed %d tasks to %s", len(tasks), status))
 	m.bulkOp.Clear()
 	m.rebuildRows()
 	return m, nil
@@ -207,7 +207,7 @@ func (m *OutlinerModel) crossHandlePriorityMutation(key string) (tea.Cmd, bool) 
 		return func() tea.Msg { return ErrorMsg{Err: result.Err} }, true
 	}
 	if result.StatusMessage != "" {
-		m.statusMessage = result.StatusMessage
+		m.setStatus(result.StatusMessage)
 	}
 	m.crossUndoCtx.Set("Set Priority", row.task.Title)
 	m.crossUndoCtx.ProjectIDs = []string{proj.ID}
@@ -260,9 +260,9 @@ func (m *OutlinerModel) crossHandleSnoozeMutation(key string) (tea.Cmd, bool) {
 	m.crossUndoCtx.ProjectIDs = []string{proj.ID}
 
 	if snoozeDate == nil {
-		m.statusMessage = "Snooze cleared"
+		m.setStatus("Snooze cleared")
 	} else {
-		m.statusMessage = fmt.Sprintf("Snoozed until %s (%s)", snoozeDate.Format("Mon Jan 2"), desc)
+		m.setStatus(fmt.Sprintf("Snoozed until %s (%s)", snoozeDate.Format("Mon Jan 2"), desc))
 	}
 	m.rebuildRows()
 	return nil, true
@@ -295,7 +295,7 @@ func (m *OutlinerModel) crossTogglePinned(row outlinerRow, proj *models.Project)
 	m.crossUndoCtx.Set("Toggle Pin", row.task.Title)
 	m.crossUndoCtx.ProjectIDs = []string{proj.ID}
 	if result.StatusMessage != "" {
-		m.statusMessage = result.StatusMessage
+		m.setStatus(result.StatusMessage)
 	}
 	m.rebuildRows()
 	return m, result.Cmd
@@ -338,7 +338,7 @@ func (m *OutlinerModel) crossHandleDueDateMutation(key string) (tea.Cmd, bool) {
 		return func() tea.Msg { return ErrorMsg{Err: result.Err} }, true
 	}
 	if result.StatusMessage != "" {
-		m.statusMessage = result.StatusMessage
+		m.setStatus(result.StatusMessage)
 	}
 	m.rebuildRows()
 	return result.Cmd, true
@@ -368,7 +368,7 @@ func (m *OutlinerModel) crossHandleStageMutation(key string) (tea.Cmd, bool) {
 		return func() tea.Msg { return ErrorMsg{Err: result.Err} }, true
 	}
 	if result.StatusMessage != "" {
-		m.statusMessage = result.StatusMessage
+		m.setStatus(result.StatusMessage)
 	}
 	m.rebuildRows()
 	return result.Cmd, true
@@ -427,7 +427,7 @@ func (m *OutlinerModel) crossHandleSectionMove(key string, cursorTask *models.Ta
 // Multi-select is not supported (tasks span projects); shows a status message instead.
 func (m *OutlinerModel) crossToggleActive() (tea.Cmd, bool) {
 	if m.multiSelectMode && len(m.selectedTasks) > 0 {
-		m.statusMessage = "bulk toggle active not supported in cross-project mode"
+		m.setStatus("bulk toggle active not supported in cross-project mode")
 		return nil, true
 	}
 	row, proj, valid := m.crossGetMutationTarget()
@@ -442,7 +442,7 @@ func (m *OutlinerModel) crossToggleActive() (tea.Cmd, bool) {
 	m.crossUndoCtx.Set("Toggle Active", row.task.Title)
 	m.crossUndoCtx.ProjectIDs = []string{proj.ID}
 	if result.StatusMessage != "" {
-		m.statusMessage = result.StatusMessage
+		m.setStatus(result.StatusMessage)
 	}
 	m.rebuildRows()
 	return result.Cmd, true
@@ -456,7 +456,7 @@ func (m *OutlinerModel) crossHandleTypeChange(key string) (tea.Cmd, bool) {
 		return nil, false
 	}
 	if m.multiSelectMode && len(m.selectedTasks) > 0 {
-		m.statusMessage = "bulk type change not supported in cross-project mode"
+		m.setStatus("bulk type change not supported in cross-project mode")
 		return nil, true
 	}
 	row, proj, valid := m.crossGetMutationTarget()
@@ -471,7 +471,7 @@ func (m *OutlinerModel) crossHandleTypeChange(key string) (tea.Cmd, bool) {
 		return func() tea.Msg { return ErrorMsg{Err: result.Err} }, true
 	}
 	if result.StatusMessage != "" {
-		m.statusMessage = result.StatusMessage
+		m.setStatus(result.StatusMessage)
 	}
 	m.rebuildRows()
 	return result.Cmd, true
@@ -516,11 +516,11 @@ func (m *OutlinerModel) crossExecuteDelete() (tea.Model, tea.Cmd) {
 	}
 	task := m.deleteTarget
 	m.deleteTarget = nil
-	m.statusMessage = ""
+	m.clearStatus()
 
 	proj := m.crossFindProjectForTask(task.ID)
 	if proj == nil {
-		m.statusMessage = "Project for task not found"
+		m.setStatus("Project for task not found")
 		return m, nil
 	}
 

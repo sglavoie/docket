@@ -123,7 +123,7 @@ func (m *PriorityViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.SetSize,
 		m.loadActionableTasks,
 		m.clampCursor,
-		func(s string) { m.statusMessage = s },
+		func(s string) { m.setStatus(s) },
 	); handled {
 		return m, cmd
 	}
@@ -151,7 +151,7 @@ func (m *PriorityViewModel) escSteps() []EscStep {
 			m.ClearAllFilters()
 			m.loadActionableTasks()
 			m.clampCursor()
-			m.statusMessage = "Filters cleared"
+			m.setStatus("Filters cleared")
 		}),
 	}
 }

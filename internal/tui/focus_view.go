@@ -101,7 +101,7 @@ func (m *FocusViewModel) loadTasks() {
 	m.tasks = focus.CollectActionableTasks(loadedProjects)
 
 	if len(failedProjects) > 0 {
-		m.statusMessage = fmt.Sprintf("Failed to load: %s", strings.Join(failedProjects, ", "))
+		m.setStatus(fmt.Sprintf("Failed to load: %s", strings.Join(failedProjects, ", ")))
 	}
 
 	// Reconcile queue task pointers: replace stale pointers with freshly loaded ones.
@@ -375,7 +375,7 @@ func (m *FocusViewModel) Init() tea.Cmd {
 }
 
 func (m *FocusViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	if handled, cmd := handleCommonUpdateMsg(msg, m.SetSize, m.loadTasks, m.clampCursor, func(s string) { m.statusMessage = s }); handled {
+	if handled, cmd := handleCommonUpdateMsg(msg, m.SetSize, m.loadTasks, m.clampCursor, func(s string) { m.setStatus(s) }); handled {
 		return m, cmd
 	}
 
@@ -406,7 +406,7 @@ func (m *FocusViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	// Clear previous error on any key
 	m.err = nil
-	m.statusMessage = ""
+	m.clearStatus()
 
 	// Handle confirm dialog
 	if confirmed, handled := m.HandleConfirmKey(key); handled {
@@ -521,7 +521,7 @@ func (m *FocusViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 		m.loadTasks()
 		m.clampCursor()
-		m.statusMessage = "Refreshed"
+		m.setStatus("Refreshed")
 		return m, nil
 
 	// Toggle active flag (remove from focus)
@@ -561,14 +561,14 @@ func (m *FocusViewModel) handleAccept() (tea.Model, tea.Cmd) {
 		if sft := m.topNonQueuedSuggestion(); sft != nil {
 			m.acceptIntoQueue(sft.FocusTask)
 			m.applyFilter()
-			m.statusMessage = fmt.Sprintf("Added to queue: %s", sft.Task.Title)
+			m.setStatus(fmt.Sprintf("Added to queue: %s", sft.Task.Title))
 		}
 	default:
 		// On all other tabs, accept the cursor item
 		if ft := m.getTaskAtCursor(); ft != nil {
 			m.acceptIntoQueue(*ft)
 			m.applyFilter()
-			m.statusMessage = fmt.Sprintf("Added to queue: %s", ft.Task.Title)
+			m.setStatus(fmt.Sprintf("Added to queue: %s", ft.Task.Title))
 		}
 	}
 	return m, nil
@@ -585,14 +585,14 @@ func (m *FocusViewModel) handleDismissOrRemove() (tea.Model, tea.Cmd) {
 				m.persistDismissed()
 				m.recomputeSuggested()
 				m.clampCursor()
-				m.statusMessage = "Restored suggestion"
+				m.setStatus("Restored suggestion")
 			} else {
 				// Dismiss the item
 				m.dismissedIDs[ft.Task.ID] = true
 				m.persistDismissed()
 				m.recomputeSuggested()
 				m.clampCursor()
-				m.statusMessage = "Dismissed suggestion"
+				m.setStatus("Dismissed suggestion")
 			}
 		}
 	case focusTabQueue:
@@ -601,10 +601,10 @@ func (m *FocusViewModel) handleDismissOrRemove() (tea.Model, tea.Cmd) {
 			m.removeFromQueue(m.cursor)
 			m.applyFilter()
 			m.clampCursor()
-			m.statusMessage = fmt.Sprintf("Removed from queue: %s", title)
+			m.setStatus(fmt.Sprintf("Removed from queue: %s", title))
 		}
 	default:
-		m.statusMessage = "Use x on Queue to remove or Suggested to dismiss"
+		m.setStatus("Use x on Queue to remove or Suggested to dismiss")
 	}
 	return m, nil
 }
@@ -685,7 +685,7 @@ func (m *FocusViewModel) escSteps() []EscStep {
 			m.ClearAllFilters()
 			m.applyFilter()
 			m.clampCursor()
-			m.statusMessage = "Filters cleared"
+			m.setStatus("Filters cleared")
 		}),
 	}
 }

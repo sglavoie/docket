@@ -139,7 +139,7 @@ func (m *ProjectFocusViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.SetSize,
 		func() { _ = defaultPersister.Load(m.project); m.loadTasks() },
 		m.clampCursor,
-		func(s string) { m.statusMessage = s },
+		m.setStatus,
 	); handled {
 		return m, cmd
 	}
@@ -166,7 +166,7 @@ func (m *ProjectFocusViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd
 
 	// Clear previous error on any key
 	m.ClearError()
-	m.statusMessage = ""
+	m.clearStatus()
 
 	// Activate prefix mode
 	if prefix, ok := activateSecondaryPrefix(key, ",dg", "", false); ok {
@@ -235,7 +235,7 @@ func (m *ProjectFocusViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd
 		_ = defaultPersister.Load(m.project)
 		m.loadTasks()
 		m.clampCursor()
-		m.statusMessage = "Refreshed"
+		m.setStatus("Refreshed")
 		return m, nil
 
 	// Copy
@@ -304,7 +304,7 @@ func (m *ProjectFocusViewModel) getConfigManager() *config.Manager { return nil 
 func (m *ProjectFocusViewModel) getDataDir() string                { return "" }
 func (m *ProjectFocusViewModel) reloadData()                       { m.loadTasks() }
 func (m *ProjectFocusViewModel) setErr(err error)                  { m.SetError(err) }
-func (m *ProjectFocusViewModel) setStatus(msg string)              { m.statusMessage = msg }
+func (m *ProjectFocusViewModel) setStatus(msg string)              { m.InteractiveViewState.setStatus(msg) }
 
 func (m *ProjectFocusViewModel) toggleActive() (tea.Model, tea.Cmd) {
 	if task := m.getTaskAtCursor(); task != nil {

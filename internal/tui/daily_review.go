@@ -84,7 +84,7 @@ func (m *DailyReviewModel) Init() tea.Cmd {
 }
 
 func (m *DailyReviewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	if handled, cmd := handleCommonUpdateMsg(msg, m.SetSize, m.loadTasks, m.clampCursor, func(s string) { m.statusMessage = s }); handled {
+	if handled, cmd := handleCommonUpdateMsg(msg, m.SetSize, m.loadTasks, m.clampCursor, m.setStatus); handled {
 		return m, cmd
 	}
 
@@ -160,7 +160,7 @@ func (m *DailyReviewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.ClearAllFilters()
 			m.loadTasks()
 			m.clampCursor()
-			m.statusMessage = "Filters cleared"
+			m.setStatus("Filters cleared")
 			return m, nil
 		}
 		return m, func() tea.Msg {
@@ -312,7 +312,7 @@ func (m *DailyReviewModel) escSteps() []EscStep {
 			m.ClearAllFilters()
 			m.loadTasks()
 			m.clampCursor()
-			m.statusMessage = "Filters cleared"
+			m.setStatus("Filters cleared")
 		}),
 	}
 }

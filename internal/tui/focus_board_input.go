@@ -62,7 +62,7 @@ func (m *FocusBoardModel) handleEditInput(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 		if err := models.ValidateTaskTitle(value); err != nil {
-			m.statusMessage = err.Error()
+			m.setStatus(err.Error())
 			return m, nil
 		}
 		if m.editIdx >= 0 && m.editIdx < len(m.filtered) {
@@ -71,9 +71,9 @@ func (m *FocusBoardModel) handleEditInput(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 				t.Title = value
 			})
 			if err := saveProjectSync(row.Project); err != nil {
-				m.statusMessage = "Failed to save: " + err.Error()
+				m.setStatus("Failed to save: " + err.Error())
 			} else {
-				m.statusMessage = "Title updated"
+				m.setStatus("Title updated")
 				m.loadItems()
 				m.clampCursor()
 			}
@@ -113,11 +113,11 @@ func (m *FocusBoardModel) createItemFromInput(input string) (tea.Model, tea.Cmd)
 		if created {
 			// Ensure project directory exists and save config
 			if err := storage.CreateProjectDir(targetProject); err != nil {
-				m.statusMessage = "Failed to create action inbox: " + err.Error()
+				m.setStatus("Failed to create action inbox: " + err.Error())
 				return m, nil
 			}
 			if err := storage.SaveProject(targetProject); err != nil {
-				m.statusMessage = "Failed to save action inbox: " + err.Error()
+				m.setStatus("Failed to save action inbox: " + err.Error())
 				return m, nil
 			}
 			if m.configManager != nil {
@@ -129,13 +129,13 @@ func (m *FocusBoardModel) createItemFromInput(input string) (tea.Model, tea.Cmd)
 	}
 
 	if err := m.projectService.Load(targetProject); err != nil {
-		m.statusMessage = "Failed to load project: " + err.Error()
+		m.setStatus("Failed to load project: " + err.Error())
 		return m, nil
 	}
 
 	task, err := models.NewTask(uuid.New().String(), targetProject.GetNextShortID(), models.TaskTypeAction, result.title)
 	if err != nil {
-		m.statusMessage = "Invalid task: " + err.Error()
+		m.setStatus("Invalid task: " + err.Error())
 		return m, nil
 	}
 	if result.source != "" {
@@ -155,11 +155,11 @@ func (m *FocusBoardModel) createItemFromInput(input string) (tea.Model, tea.Cmd)
 	targetProject.BuildTaskTree()
 
 	if err := saveProjectSync(targetProject); err != nil {
-		m.statusMessage = "Failed to save: " + err.Error()
+		m.setStatus("Failed to save: " + err.Error())
 		return m, nil
 	}
 
-	m.statusMessage = fmt.Sprintf("Added #%d: %s", task.ShortID, task.Title)
+	m.setStatus(fmt.Sprintf("Added #%d: %s", task.ShortID, task.Title))
 	m.loadItems()
 	m.clampCursor()
 	return m, nil

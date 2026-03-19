@@ -134,7 +134,7 @@ func (m *WeeklyReviewModel) Init() tea.Cmd {
 }
 
 func (m *WeeklyReviewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	if handled, cmd := handleCommonUpdateMsg(msg, m.SetSize, m.loadData, m.clampCursor, func(s string) { m.statusMessage = s }); handled {
+	if handled, cmd := handleCommonUpdateMsg(msg, m.SetSize, m.loadData, m.clampCursor, m.setStatus); handled {
 		return m, cmd
 	}
 

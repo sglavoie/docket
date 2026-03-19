@@ -88,7 +88,7 @@ func (m *ProjectTreeModel) saveAndRefreshBulk(prevStates map[string]*models.Task
 
 // setStatusMessage sets the status bar text.
 func (m *ProjectTreeModel) setStatusMessage(msg string) {
-	m.statusMessage = msg
+	m.setStatus(msg)
 }
 
 // saveAndRefresh saves the project and refreshes the tree view.

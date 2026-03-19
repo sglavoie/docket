@@ -418,7 +418,7 @@ func (m *ProjectTreeModel) handleKeyMsg(msg tea.KeyMsg, visible []*TreeNode) (te
 		return m, nil
 	}
 	if isPrefixKeySkippedOnHeader(key, cursorOnTask) {
-		m.statusMessage = "Move cursor to a task first"
+		m.setStatus("Move cursor to a task first")
 		return m, nil
 	}
 

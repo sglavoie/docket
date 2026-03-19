@@ -167,7 +167,7 @@ func (m *RecentActivityModel) escSteps() []EscStep {
 			m.ClearAllFilters()
 			m.applyFilter()
 			m.clampCursor()
-			m.statusMessage = "Filters cleared"
+			m.setStatus("Filters cleared")
 		}),
 	}
 }
@@ -182,7 +182,7 @@ func (m *RecentActivityModel) Init() tea.Cmd {
 }
 
 func (m *RecentActivityModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	if handled, cmd := handleCommonUpdateMsg(msg, m.SetSize, m.loadTasks, m.clampCursor, func(s string) { m.statusMessage = s }); handled {
+	if handled, cmd := handleCommonUpdateMsg(msg, m.SetSize, m.loadTasks, m.clampCursor, m.setStatus); handled {
 		return m, cmd
 	}
 

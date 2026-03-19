@@ -95,7 +95,7 @@ func runTaskMoveAction(
 	move func(*models.Project, *models.Task) error,
 	describe func(*models.Project, *models.Task) string,
 ) error {
-	project, _, _, err := LoadCurrentProject()
+	project, cfg, configManager, err := LoadCurrentProject()
 	if err != nil {
 		return err
 	}
@@ -116,7 +116,10 @@ func runTaskMoveAction(
 		return fmt.Errorf("failed to %s task: %w", action, err)
 	}
 
-	if err := SaveProject(project, nil); err != nil {
+	if err := SaveProject(project, &SaveOptions{
+		Config: cfg, ConfigManager: configManager,
+		UndoAction: "Move Task", UndoContext: fmt.Sprintf("%s #%d", action, task.ShortID),
+	}); err != nil {
 		return fmt.Errorf("failed to save: %w", err)
 	}
 
