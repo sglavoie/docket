@@ -71,15 +71,15 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 	case SettingsStagesMsg:
 		sm := NewSettingsModel(m.config, m.configManager)
 		sm.blurCurrentField()
-		sm.tabs.Active = 7
-		sm.focusIndex = tabFieldStart[7]
+		sm.tabs.Active = 8
+		sm.focusIndex = tabFieldStart[8]
 		sm.focusCurrentField()
 		m.showView(ViewSettings, sm)
 		return true, nil
 
 	case SettingsSavedMsg:
 		m.popView()
-		ApplyTheme(m.config.TUIBackgroundColor, m.config.TUICursorColor, m.config.TUICursorTextColor)
+		ApplyTheme(NewThemeConfig(m.config))
 		if m.dashboard != nil {
 			m.dashboard.Refresh(m.config)
 		}

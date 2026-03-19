@@ -8,6 +8,8 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+
+	"github.com/charmbracelet/bubbles/textinput"
 )
 
 // validateIntInRange parses a required integer input and checks it is within [min, max].
@@ -58,6 +60,7 @@ func (m *SettingsModel) validateAll() error {
 		m.validateBackgroundColor,
 		m.validateCursorColor,
 		m.validateCursorTextColor,
+		m.validatePaletteColors,
 		m.validateReviewSettings,
 		m.validateRecentActivityLimit,
 		m.validateMaxPinnedBarItems,
@@ -281,6 +284,33 @@ func (m *SettingsModel) validateCursorColor() error {
 	}
 	if !hexColorRegex.MatchString(val) {
 		return fmt.Errorf("must be #rgb or #rrggbb hex color")
+	}
+	return nil
+}
+
+func (m *SettingsModel) validatePaletteColors() error {
+	inputs := []struct {
+		input textinput.Model
+		name  string
+	}{
+		{m.normalTextInput, "normal text"},
+		{m.mutedInput, "muted"},
+		{m.primaryInput, "primary"},
+		{m.secondaryInput, "secondary"},
+		{m.accentInput, "accent"},
+		{m.successInput, "success"},
+		{m.warningInput, "warning"},
+		{m.errorColorInput, "error"},
+		{m.borderInput, "border"},
+	}
+	for _, inp := range inputs {
+		val := strings.TrimSpace(inp.input.Value())
+		if val == "" {
+			continue
+		}
+		if !hexColorRegex.MatchString(val) {
+			return fmt.Errorf("%s: must be #rgb or #rrggbb hex color", inp.name)
+		}
 	}
 	return nil
 }

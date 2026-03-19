@@ -6,6 +6,8 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
+
+	"github.com/sglavoie/tt/internal/config"
 )
 
 // Default cursor/selection colors.
@@ -15,8 +17,29 @@ const (
 	DefaultFlashBg    = "#7b2fa0"
 )
 
+// ThemeConfig bundles all user-configurable theme values for ApplyTheme.
+type ThemeConfig struct {
+	BgColor  string
+	CursorBg string
+	CursorFg string
+	Palette  config.PaletteColors
+}
+
+// NewThemeConfig constructs a ThemeConfig from the application config.
+func NewThemeConfig(cfg *config.Config) ThemeConfig {
+	return ThemeConfig{
+		BgColor:  cfg.TUIBackgroundColor,
+		CursorBg: cfg.TUICursorColor,
+		CursorFg: cfg.TUICursorTextColor,
+		Palette:  cfg.Palette,
+	}
+}
+
 // themeBgColor holds the current TUI background color (empty = none/terminal default).
 var themeBgColor string
+
+// colorNormalText tracks whether NormalText palette override is set.
+var colorNormalText string
 
 // ThemeBgColor returns the current theme background color.
 func ThemeBgColor() string { return themeBgColor }
@@ -49,15 +72,378 @@ func lightenHex(hex string, factor float64) string {
 	return fmt.Sprintf("#%02x%02x%02x", lighten(r), lighten(g), lighten(b))
 }
 
+// rebuildPalette resets the palette color variables from user overrides.
+// Empty fields fall back to ANSI defaults.
+func rebuildPalette(p config.PaletteColors) {
+	if p.Primary != "" {
+		ColorPrimary = lipgloss.Color(p.Primary)
+	} else {
+		ColorPrimary = lipgloss.Color("39")
+	}
+	if p.Secondary != "" {
+		ColorSecondary = lipgloss.Color(p.Secondary)
+	} else {
+		ColorSecondary = lipgloss.Color("33")
+	}
+	if p.Success != "" {
+		ColorSuccess = lipgloss.Color(p.Success)
+	} else {
+		ColorSuccess = lipgloss.Color("42")
+	}
+	if p.Warning != "" {
+		ColorWarning = lipgloss.Color(p.Warning)
+	} else {
+		ColorWarning = lipgloss.Color("214")
+	}
+	if p.Error != "" {
+		ColorError = lipgloss.Color(p.Error)
+	} else {
+		ColorError = lipgloss.Color("196")
+	}
+	if p.Muted != "" {
+		ColorMuted = lipgloss.Color(p.Muted)
+	} else {
+		ColorMuted = lipgloss.Color("248")
+	}
+	if p.Border != "" {
+		ColorBorder = lipgloss.Color(p.Border)
+	} else {
+		ColorBorder = lipgloss.Color("244")
+	}
+	if p.Accent != "" {
+		ColorHighlight = lipgloss.Color(p.Accent)
+		ColorAccent = lipgloss.Color(p.Accent)
+	} else {
+		ColorHighlight = lipgloss.Color("#f2eb16")
+		ColorAccent = lipgloss.Color("226")
+	}
+	// Derived colors
+	ColorBadgeText = ColorMuted
+	ColorLightGray = ColorMuted
+	ColorDiffContext = ColorMuted
+	ColorSubtleBorder = ColorBorder
+
+	colorNormalText = p.NormalText
+}
+
+// rebuildStyles reassigns every style variable using the current palette colors.
+// This must be called after rebuildPalette so styles pick up user overrides.
+func rebuildStyles() {
+	// --- Text styles ---
+	NormalStyle = lipgloss.NewStyle()
+	BoldStyle = lipgloss.NewStyle().Bold(true)
+	if colorNormalText != "" {
+		fg := lipgloss.Color(colorNormalText)
+		NormalStyle = NormalStyle.Foreground(fg)
+		BoldStyle = BoldStyle.Foreground(fg)
+	}
+
+	// Title styles
+	TitleStyle = lipgloss.NewStyle().Bold(true).Foreground(ColorPrimary)
+	SubtitleStyle = lipgloss.NewStyle().Foreground(ColorSecondary).MarginBottom(1)
+	DimStyle = lipgloss.NewStyle().Faint(true)
+	MutedStyle = lipgloss.NewStyle().Foreground(ColorMuted)
+
+	// Status colors
+	TodoStyle = lipgloss.NewStyle().Foreground(ColorMuted)
+	InProgressStyle = lipgloss.NewStyle().Foreground(ColorWarning)
+	ReviewStyle = lipgloss.NewStyle().Foreground(ColorSecondary)
+	DoneStyle = lipgloss.NewStyle().Foreground(ColorSuccess)
+	BlockedStyle = lipgloss.NewStyle().Foreground(ColorError)
+	StandbyStyle = lipgloss.NewStyle().Foreground(ColorViewStandby)
+	CanceledStyle = lipgloss.NewStyle().Foreground(ColorMuted).Strikethrough(true)
+	OverdueStyle = lipgloss.NewStyle().Foreground(ColorError)
+	DueSoonStyle = lipgloss.NewStyle().Foreground(ColorWarning)
+	DependencyStyle = lipgloss.NewStyle().Foreground(ColorSecondary)
+
+	// Priority styles
+	PriorityHighStyle = lipgloss.NewStyle().Foreground(ColorError)
+	PriorityMediumStyle = lipgloss.NewStyle().Foreground(ColorWarning)
+	PriorityLowStyle = lipgloss.NewStyle().Foreground(ColorMuted)
+	DueDateStyle = lipgloss.NewStyle().Foreground(ColorMuted)
+	DueTodayStyle = lipgloss.NewStyle().Foreground(ColorWarning)
+
+	BlockedByDepsStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("231")).Background(ColorError)
+
+	// Task type colors
+	EpicStyle = lipgloss.NewStyle().Foreground(ColorPurple)
+	StoryStyle = lipgloss.NewStyle().Foreground(ColorPrimary)
+	TaskStyle = lipgloss.NewStyle().Foreground(ColorSuccess)
+	BugStyle = lipgloss.NewStyle().Foreground(ColorError)
+	IdeaStyle = lipgloss.NewStyle().Foreground(ColorWarning)
+	NoteStyle = lipgloss.NewStyle().Foreground(ColorMuted)
+	ActionStyle = lipgloss.NewStyle().Foreground(ColorOrange)
+
+	// Task type badge styles
+	EpicBadgeStyle = makeBadgeStyle("135", "53")
+	StoryBadgeStyle = makeBadgeStyle("39", "17")
+	TaskBadgeStyle = makeBadgeStyle("42", "22")
+	BugBadgeStyle = makeBadgeStyle("196", "52")
+	IdeaBadgeStyle = makeBadgeStyle("214", "94")
+	NoteBadgeStyle = makeBadgeStyle("248", "237")
+	ActionBadgeStyle = makeBadgeStyle("208", "94")
+
+	// Task status badge styles
+	TodoBadgeStyle = makeBadgeStyle("248", "236")
+	InProgressBadgeStyle = makeBadgeStyle("214", "94")
+	ReviewBadgeStyle = makeBadgeStyle(string(ColorSecondary), "17")
+	DoneBadgeStyle = makeBadgeStyle("42", "22")
+	BlockedBadgeStyle = makeBadgeStyle("196", "52")
+	StandbyBadgeStyle = makeBadgeStyle("141", "53")
+	CanceledBadgeStyle = makeBadgeStyle("248", "236")
+	StageBadgeStyle = makeBadgeStyle("183", "236")
+
+	// Container styles
+	BoxStyle = lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(ColorBorder).Padding(1, 2)
+	SelectedBoxStyle = lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(ColorPrimary).Padding(1, 2)
+
+	// Help bar
+	HelpStyle = lipgloss.NewStyle().Foreground(ColorMuted)
+	HelpKeyStyle = lipgloss.NewStyle().Foreground(ColorSecondary)
+
+	// Status bar
+	StatusBarStyle = lipgloss.NewStyle().Foreground(ColorHighlight).Background(ColorBackground).Padding(0, 1)
+
+	// Tree view
+	TreeBranchStyle = lipgloss.NewStyle().Foreground(ColorBorder)
+
+	// Progress bar colors
+	ProgressFullStyle = lipgloss.NewStyle().Foreground(ColorSuccess)
+	ProgressEmptyStyle = lipgloss.NewStyle().Foreground(ColorMuted)
+
+	// Scrollbar styles
+	ScrollbarThumbStyle = lipgloss.NewStyle().Foreground(ColorPrimary)
+	ScrollbarTrackStyle = lipgloss.NewStyle().Foreground(ColorMuted)
+
+	// Badge styles
+	ArchivedBadgeStyle = lipgloss.NewStyle().Background(ColorWarning).Foreground(lipgloss.Color("0")).Padding(0, 1)
+
+	// Confirmation prompt style
+	ConfirmStyle = lipgloss.NewStyle().Background(ColorWarning).Foreground(lipgloss.Color("0")).Padding(0, 1).MarginTop(1)
+
+	// Prefix key popup
+	PrefixPopupStyle = lipgloss.NewStyle().Background(ColorBackground).Foreground(ColorLightGray).Padding(0, 1)
+	PrefixKeyStyle = lipgloss.NewStyle().Foreground(ColorPrimary).Bold(true)
+	PrefixDescStyle = lipgloss.NewStyle().Foreground(ColorMuted)
+
+	// Form input styles
+	InputStyle = lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(ColorBorder).Padding(0, 1)
+	InputFocusedStyle = lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(ColorPrimary).Padding(0, 1)
+	FormInputBorderStyle = lipgloss.NewStyle().Border(lipgloss.NormalBorder()).BorderForeground(ColorBorder)
+	FormInputBorderFocusedStyle = lipgloss.NewStyle().Border(lipgloss.NormalBorder()).BorderForeground(ColorPrimary)
+
+	// Validation/warning
+	ValidationErrorStyle = lipgloss.NewStyle().Foreground(ColorError).MarginTop(1)
+	WarningMessageStyle = lipgloss.NewStyle().Foreground(ColorWarning)
+
+	// Field label styles
+	FieldLabelStyle = lipgloss.NewStyle().Foreground(ColorMuted)
+	FieldLabelFocusedStyle = lipgloss.NewStyle().Bold(true).Foreground(ColorPrimary)
+	FieldDescriptionStyle = lipgloss.NewStyle().Foreground(ColorMuted).Faint(true)
+
+	// Selector option styles
+	SelectorOptionStyle = lipgloss.NewStyle().Foreground(ColorMuted).Padding(0, 1)
+	SelectorOptionSelectedStyle = lipgloss.NewStyle().Bold(true).Foreground(ColorSelectedFg).Padding(0, 1)
+
+	// Success/info/loading/error status styles
+	SuccessStyle = lipgloss.NewStyle().Foreground(ColorSuccess)
+	InfoStatusStyle = lipgloss.NewStyle().Foreground(ColorPrimary)
+	LoadingStyle = lipgloss.NewStyle().Foreground(ColorWarning)
+	ErrorStatusStyle = lipgloss.NewStyle().Foreground(ColorError)
+
+	// Help view styles
+	HelpViewTitleStyle = lipgloss.NewStyle().Bold(true).Foreground(ColorPrimary).MarginBottom(1)
+	HelpCategoryStyle = lipgloss.NewStyle().Bold(true).Foreground(ColorSecondary).MarginTop(1)
+	HelpFilterActiveStyle = lipgloss.NewStyle().Foreground(ColorWarning)
+
+	// Focus mode style
+	FocusModeStyle = lipgloss.NewStyle().Foreground(ColorSecondary).Bold(true).Background(ColorBackground)
+
+	// View mode styles
+	ViewModeActiveStyle = makeViewModeStyle(string(ColorViewActive))
+	ViewModeNextStyle = makeViewModeStyle(string(ColorViewNext))
+	ViewModeInboxStyle = makeViewModeStyle(string(ColorSecondary))
+	ViewModeWaitingStyle = makeViewModeStyle(string(ColorWarning))
+	ViewModeSomedayStyle = makeViewModeStyle(string(ColorViewSomeday))
+	ViewModeCompletedStyle = makeViewModeStyle("136")
+	ViewModeReviewStyle = makeViewModeStyle(string(ColorViewReview))
+	ViewModeStandbyStyle = makeViewModeStyle(string(ColorViewStandby))
+	ViewModeSnoozedStyle = makeViewModeStyle("95")
+	ViewModeAllStyle = makeViewModeStyle("60")
+
+	// Filter view styles
+	FilterBadgeStyle = lipgloss.NewStyle().Background(ColorWarning).Foreground(lipgloss.Color("0")).Padding(0, 1)
+	SavedFilterBadgeStyle = lipgloss.NewStyle().Background(ColorSecondary).Foreground(lipgloss.Color("15")).Bold(true).Padding(0, 1)
+	FilterBadgeInactiveStyle = lipgloss.NewStyle().Background(ColorBackground).Foreground(ColorBadgeText).Padding(0, 1)
+	FilterViewBoxStyle = lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(ColorPrimary).Padding(1, 2)
+	FilterItemStyle = lipgloss.NewStyle().Foreground(ColorMuted)
+	FilterItemSelectedStyle = lipgloss.NewStyle().Foreground(ColorSelectedFg).Bold(true)
+	FilterValueStyle = lipgloss.NewStyle().Foreground(ColorSecondary)
+	FilterClearStyle = lipgloss.NewStyle().Foreground(ColorError)
+
+	// Task jumper styles
+	TaskJumperTitleStyle = lipgloss.NewStyle().Bold(true).Foreground(ColorPrimary).MarginBottom(1)
+	TaskJumperListStyle = lipgloss.NewStyle().Border(lipgloss.NormalBorder(), false, true, false, false).BorderForeground(ColorBorder)
+	TaskJumperPreviewStyle = lipgloss.NewStyle().Padding(0, 1)
+	TaskJumperSelectedStyle = lipgloss.NewStyle().Background(ColorSelectedBg).Foreground(ColorSelectedFg).Bold(true)
+	TaskJumperPreviewHeaderStyle = lipgloss.NewStyle().Bold(true).Foreground(ColorPrimary)
+
+	// Due date overview styles
+	DueDateOverviewTitleStyle = lipgloss.NewStyle().Bold(true).Foreground(ColorPrimary)
+	GroupHeaderStyle = lipgloss.NewStyle().Bold(true).Foreground(ColorSecondary).MarginTop(1)
+	SectionHeaderStyle = lipgloss.NewStyle().Bold(true).Foreground(ColorSecondary)
+
+	// Selection styles
+	SelectedStyle = lipgloss.NewStyle().Background(ColorSelectedBg).Foreground(ColorSelectedFg).Bold(true)
+	SelectedItemTextStyle = BoldStyle.Foreground(ColorSelectedFg)
+	SelectionCursorStyle = lipgloss.NewStyle().Foreground(ColorSelectedFg).Bold(true)
+	SelectionRowStyle = lipgloss.NewStyle().Background(ColorSelectedBg)
+	CursorFlashRowStyle = lipgloss.NewStyle().Background(ColorFlashBg)
+
+	// Multi-select styles
+	SelectionStyle = lipgloss.NewStyle().Foreground(ColorSecondary)
+	SelectionCheckStyle = lipgloss.NewStyle().Foreground(ColorSuccess).Bold(true)
+	SelectionCountStyle = lipgloss.NewStyle().Foreground(ColorWarning).Bold(true)
+
+	// Tag manager styles
+	TagManagerBoxStyle = lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(ColorPrimary).Padding(1, 2)
+	TagManagerItemStyle = lipgloss.NewStyle().Foreground(ColorMuted)
+	TagManagerItemSelectedStyle = lipgloss.NewStyle().Foreground(ColorSelectedFg).Bold(true)
+	TagManagerCountStyle = lipgloss.NewStyle().Foreground(ColorSecondary)
+	TagManagerErrorStyle = lipgloss.NewStyle().Foreground(ColorError)
+
+	// Section badge styles
+	SectionBadgeStyle = lipgloss.NewStyle().Foreground(ColorBadgeText).Background(ColorBackground)
+	ChildrenBadgeStyle = lipgloss.NewStyle().Foreground(ColorPrimary).Background(ColorBackground)
+
+	// Pinned project styles
+	PinnedProjectStyle = lipgloss.NewStyle().Foreground(ColorSuccess).Bold(true)
+	PinnedNumberStyle = lipgloss.NewStyle().Foreground(ColorWarning).Bold(true)
+
+	// Active/triaged styles
+	ActiveStyle = lipgloss.NewStyle().Foreground(ColorAccent)
+	TriagedBadgeStyle = lipgloss.NewStyle().Foreground(ColorWarning).Italic(true)
+
+	// Priority view styles
+	PriorityViewTitleStyle = lipgloss.NewStyle().Bold(true).Foreground(ColorPrimary)
+	PriorityWaitingHeaderStyle = lipgloss.NewStyle().Foreground(ColorMuted).Italic(true).MarginTop(1)
+
+	// Suggestion styles
+	SuggestionBoxStyle = lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(ColorAccent).Padding(0, 1)
+	SuggestionHeaderStyle = lipgloss.NewStyle().Foreground(ColorAccent).Bold(true)
+	SuggestionReasonStyle = lipgloss.NewStyle().Foreground(ColorMuted).Italic(true)
+	SuggestionStarStyle = lipgloss.NewStyle().Foreground(ColorAccent).Bold(true)
+
+	// Priority level styles
+	Priority1Style = lipgloss.NewStyle().Foreground(ColorError).Bold(true)
+	Priority2Style = makeColorStyle(ColorWarning)
+	Priority3Style = makeColorStyle(ColorPrimary)
+	Priority4Style = makeColorStyle(ColorMuted)
+	Priority5Style = makeColorStyle(ColorMuted).Faint(true)
+
+	// Workflow rule syntax highlighting
+	RuleKeywordStyle = makeColorStyle(ColorRuleKeyword)
+	RuleOperatorStyle = makeColorStyle(ColorRuleOperator)
+	RuleHighlightStyle = lipgloss.NewStyle().Foreground(ColorAccent).Bold(true)
+
+	// Highlight style
+	HighlightStyle = lipgloss.NewStyle().Background(ColorHighlight).Foreground(lipgloss.Color("0")).Bold(true)
+
+	// Common inline styles
+	MatchHighlightStyle = lipgloss.NewStyle().Foreground(ColorHighlight)
+	TagInlineStyle = lipgloss.NewStyle().Foreground(ColorSecondary)
+	PriorityInlineStyle = lipgloss.NewStyle().Foreground(ColorWarning)
+	CheckmarkStyle = lipgloss.NewStyle().Foreground(ColorSuccess)
+	WarningIconStyle = lipgloss.NewStyle().Foreground(ColorWarning)
+	ErrorIconStyle = lipgloss.NewStyle().Foreground(ColorError)
+	SuccessBoldStyle = BoldStyle.Foreground(ColorSuccess)
+	BoldPrimaryStyle = BoldStyle.Foreground(ColorPrimary)
+	BoldSecondaryStyle = BoldStyle.Foreground(ColorSecondary)
+	BoldPrimaryUnderlineStyle = BoldStyle.Foreground(ColorPrimary).Underline(true)
+	PurpleStyle = lipgloss.NewStyle().Foreground(ColorPurple)
+	OrangeStyle = lipgloss.NewStyle().Foreground(ColorWarning)
+
+	// Focus indicator (pre-rendered)
+	FocusIndicatorStyle = lipgloss.NewStyle().Foreground(ColorPrimary)
+	FocusIndicator = FocusIndicatorStyle.Render("▐")
+
+	// Pinned marker (pre-rendered)
+	PinnedMarker = lipgloss.NewStyle().Foreground(ColorSuccess).Bold(true).Render("·")
+
+	// Sidebar styles
+	SidebarStyle = lipgloss.NewStyle().BorderStyle(lipgloss.RoundedBorder()).BorderForeground(ColorBorder).Padding(1)
+	SidebarHeaderStyle = lipgloss.NewStyle().Bold(true).Foreground(ColorPrimary)
+	SidebarSectionHeaderStyle = lipgloss.NewStyle().Bold(true).Foreground(ColorSecondary).Underline(true)
+	TagStyle = lipgloss.NewStyle().Foreground(ColorSecondary).Background(ColorBackground).Padding(0, 1)
+	SidebarFocusBadgeStyle = lipgloss.NewStyle().Foreground(ColorAccent).Bold(true)
+	SidebarCardStyle = lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(ColorBorder).Padding(0, 1)
+	SidebarCardFocusedStyle = lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(ColorPrimary).Padding(0, 1)
+	SidebarCardTitleStyle = lipgloss.NewStyle().Foreground(ColorMuted)
+	DashboardCardStyle = lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(ColorBorder).Padding(0, 1)
+	DashboardCardTitleStyle = lipgloss.NewStyle().Foreground(ColorSecondary).Bold(true)
+
+	// Selector and list styles
+	SelectorTitleStyle = lipgloss.NewStyle().Bold(true).Foreground(ColorPrimary).MarginBottom(1)
+	SelectorSearchStyle = lipgloss.NewStyle().Bold(true).Foreground(ColorSecondary).MarginBottom(1)
+	SelectorCountStyle = lipgloss.NewStyle().Foreground(ColorMuted).MarginBottom(1)
+	SelectorNoResultsStyle = lipgloss.NewStyle().Foreground(ColorMuted).Italic(true).MarginTop(1).MarginBottom(1)
+	SelectorBaseStyle = lipgloss.NewStyle().BorderStyle(lipgloss.NormalBorder()).BorderForeground(ColorBorder)
+
+	// Empty/error state
+	EmptyErrorStyle = lipgloss.NewStyle().Bold(true).Foreground(ColorError)
+	SeparatorStyle = lipgloss.NewStyle().Foreground(ColorMuted)
+
+	// Category badge styles
+	CategoryCommandStyle = lipgloss.NewStyle().Foreground(ColorPrimary)
+	CategoryTaskStyle = lipgloss.NewStyle().Foreground(ColorSuccess)
+	CategoryProjectStyle = lipgloss.NewStyle().Foreground(ColorSecondary)
+	CategoryTagStyle = lipgloss.NewStyle().Foreground(ColorWarning)
+	CategorySectionStyle = lipgloss.NewStyle().Foreground(ColorPurple)
+	CategorySavedSearchStyle = lipgloss.NewStyle().Foreground(ColorWarning)
+	CategorySavedFilterStyle = lipgloss.NewStyle().Foreground(ColorSecondary)
+	CategoryNoteStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("108"))
+	CategoryViewStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("75"))
+
+	// Selection indicators
+	SelectedCheckboxStyle = lipgloss.NewStyle().Foreground(ColorSuccess)
+	PinIndicatorStyle = lipgloss.NewStyle().Foreground(ColorWarning)
+
+	// Due date urgency
+	DueThisWeekStyle = lipgloss.NewStyle().Foreground(ColorWarning)
+	HeaderBoldStyle = lipgloss.NewStyle().Bold(true)
+	PreviewWarningStyle = lipgloss.NewStyle().Foreground(ColorWarning)
+
+	// Overlay styles
+	OverlaySplitStyle = lipgloss.NewStyle().Foreground(ColorBorder)
+	OverlayTitleStyle = lipgloss.NewStyle().Bold(true).Foreground(ColorPurple)
+	OverlaySelectedStyle = lipgloss.NewStyle().Bold(true).Foreground(ColorAccent)
+	OverlayDetailStyle = lipgloss.NewStyle().Foreground(ColorLightGray)
+	OverlayBoxStyle = lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(ColorPurple).Padding(1, 2)
+
+	// Diff styles
+	DiffAddStyle = lipgloss.NewStyle().Foreground(ColorSuccess)
+	DiffRemoveStyle = lipgloss.NewStyle().Foreground(ColorError)
+	DiffContextStyle = lipgloss.NewStyle().Foreground(ColorDiffContext)
+
+	// Alert indicator (defined in alert_indicator.go)
+	alertIndicatorStyle = lipgloss.NewStyle().Foreground(ColorAccent).Bold(true)
+}
+
 // ApplyTheme reconfigures cursor/selection colors and background propagation.
 // Call at startup and after settings save.
-func ApplyTheme(bgColor, cursorBg, cursorFg string) {
-	// --- Cursor colors (always) ---
-	effectiveBg := cursorBg
+func ApplyTheme(tc ThemeConfig) {
+	// 1. Rebuild palette colors from user overrides
+	rebuildPalette(tc.Palette)
+
+	// 2. Rebuild ALL styles using updated palette
+	rebuildStyles()
+
+	// 3. Cursor colors (always)
+	effectiveBg := tc.CursorBg
 	if effectiveBg == "" {
 		effectiveBg = DefaultSelectedBg
 	}
-	effectiveFg := cursorFg
+	effectiveFg := tc.CursorFg
 	if effectiveFg == "" {
 		effectiveFg = DefaultSelectedFg
 	}
@@ -103,10 +489,10 @@ func ApplyTheme(bgColor, cursorBg, cursorFg string) {
 		Foreground(ColorSelectedFg).
 		Padding(0, 1)
 
-	// --- Background propagation ---
-	themeBgColor = bgColor
-	if bgColor != "" {
-		bg := lipgloss.Color(bgColor)
+	// 4. Background propagation
+	themeBgColor = tc.BgColor
+	if tc.BgColor != "" {
+		bg := lipgloss.Color(tc.BgColor)
 
 		StatusBarStyle = lipgloss.NewStyle().
 			Foreground(ColorHighlight).
@@ -115,7 +501,7 @@ func ApplyTheme(bgColor, cursorBg, cursorFg string) {
 
 		PrefixPopupStyle = lipgloss.NewStyle().
 			Background(bg).
-			Foreground(lipgloss.Color("255")).
+			Foreground(ColorLightGray).
 			Padding(0, 1)
 
 		FocusModeStyle = lipgloss.NewStyle().
@@ -177,7 +563,7 @@ func ApplyTheme(bgColor, cursorBg, cursorFg string) {
 
 		OverlayBoxStyle = lipgloss.NewStyle().
 			Border(lipgloss.RoundedBorder()).
-			BorderForeground(lipgloss.Color("99")).
+			BorderForeground(ColorPurple).
 			Padding(1, 2).
 			Background(bg)
 
@@ -212,7 +598,7 @@ func ApplyTheme(bgColor, cursorBg, cursorFg string) {
 
 		PrefixPopupStyle = lipgloss.NewStyle().
 			Background(ColorBackground).
-			Foreground(lipgloss.Color("255")).
+			Foreground(ColorLightGray).
 			Padding(0, 1)
 
 		FocusModeStyle = lipgloss.NewStyle().
@@ -267,7 +653,7 @@ func ApplyTheme(bgColor, cursorBg, cursorFg string) {
 
 		OverlayBoxStyle = lipgloss.NewStyle().
 			Border(lipgloss.RoundedBorder()).
-			BorderForeground(lipgloss.Color("99")).
+			BorderForeground(ColorPurple).
 			Padding(1, 2)
 
 		TagManagerBoxStyle = lipgloss.NewStyle().
@@ -552,7 +938,7 @@ var (
 	// Prefix key popup style (which-key style hints)
 	PrefixPopupStyle = lipgloss.NewStyle().
 				Background(ColorBackground).
-				Foreground(lipgloss.Color("255")).
+				Foreground(ColorLightGray).
 				Padding(0, 1)
 
 	PrefixKeyStyle = lipgloss.NewStyle().
@@ -853,7 +1239,7 @@ var (
 	ColorRuleOperator  = lipgloss.Color("13") // Magenta for =, !=, <, >, :
 	RuleKeywordStyle   = makeColorStyle(ColorRuleKeyword)
 	RuleOperatorStyle  = makeColorStyle(ColorRuleOperator)
-	RuleHighlightStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("11")).Bold(true) // Yellow for focused field
+	RuleHighlightStyle = lipgloss.NewStyle().Foreground(ColorAccent).Bold(true) // Yellow for focused field
 
 	// HighlightStyle is used to highlight matched characters in search results.
 	HighlightStyle = lipgloss.NewStyle().Background(ColorHighlight).Foreground(lipgloss.Color("0")).Bold(true)
@@ -1220,12 +1606,12 @@ var (
 				Foreground(ColorBorder)
 
 	// Overlay panel styles (used by score profile manager, etc.)
-	OverlayTitleStyle    = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("99"))
-	OverlaySelectedStyle = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("212"))
+	OverlayTitleStyle    = lipgloss.NewStyle().Bold(true).Foreground(ColorPurple)
+	OverlaySelectedStyle = lipgloss.NewStyle().Bold(true).Foreground(ColorAccent)
 	OverlayDetailStyle   = lipgloss.NewStyle().Foreground(ColorLightGray)
 	OverlayBoxStyle      = lipgloss.NewStyle().
 				Border(lipgloss.RoundedBorder()).
-				BorderForeground(lipgloss.Color("99")).
+				BorderForeground(ColorPurple).
 				Padding(1, 2)
 
 	// Diff styles

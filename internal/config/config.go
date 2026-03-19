@@ -83,6 +83,20 @@ type SavedView struct {
 	CustomSectionTab string            `json:"custom_section_tab,omitempty"`
 }
 
+// PaletteColors holds user-configurable TUI palette overrides.
+// Empty strings mean "use ANSI default".
+type PaletteColors struct {
+	NormalText string `json:"normal_text,omitempty"`
+	Muted      string `json:"muted,omitempty"`
+	Primary    string `json:"primary,omitempty"`
+	Secondary  string `json:"secondary,omitempty"`
+	Accent     string `json:"accent,omitempty"`
+	Success    string `json:"success,omitempty"`
+	Warning    string `json:"warning,omitempty"`
+	Error      string `json:"error,omitempty"`
+	Border     string `json:"border,omitempty"`
+}
+
 // Config holds the application configuration.
 type Config struct {
 	Version                        int                          `json:"version"`
@@ -142,6 +156,7 @@ type Config struct {
 	TUIBackgroundColor             string                       `json:"tui_background_color,omitempty"`              // HEX background color for TUI (#rgb or #rrggbb, empty = terminal default)
 	TUICursorColor                 string                       `json:"tui_cursor_color,omitempty"`                  // HEX background color for cursor/selection rows (empty = #4c0163)
 	TUICursorTextColor             string                       `json:"tui_cursor_text_color,omitempty"`             // HEX foreground color for cursor/selection text (empty = #fbeeff)
+	Palette                        PaletteColors                `json:"palette,omitzero"`                            // User-configurable TUI palette overrides
 	DefaultProjectView             string                       `json:"default_project_view,omitempty"`              // Default view when opening a project: outliner, project_tree
 	FocusQueue                     []FocusQueueItem             `json:"focus_queue,omitempty"`                       // Persisted focus board work queue
 	FocusDismissedIDs              []string                     `json:"focus_dismissed_ids,omitempty"`               // Dismissed suggestion task IDs

@@ -9,7 +9,7 @@ import (
 
 // alertIndicatorStyle is a bright style for the alert count indicator.
 var alertIndicatorStyle = lipgloss.NewStyle().
-	Foreground(lipgloss.Color("212")). // Bright purple/pink
+	Foreground(ColorAccent). // Bright accent (follows palette)
 	Bold(true)
 
 // renderAlertIndicator returns a styled alert indicator string.

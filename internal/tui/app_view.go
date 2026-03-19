@@ -19,7 +19,7 @@ func (m *AppModel) View() string {
 			Width(m.width).
 			Height(m.height).
 			Align(lipgloss.Center, lipgloss.Center).
-			Foreground(lipgloss.Color("241"))
+			Foreground(ColorMuted)
 		return m.applyBackground(style.Render(msg))
 	}
 

@@ -12,10 +12,10 @@ import (
 )
 
 var (
-	settingsTabNames = []string{"General", "Review", "Behavior", "Attachments", "Project Tree", "Outliner", "Notifications", "Stages"}
+	settingsTabNames = []string{"General", "Palette", "Review", "Behavior", "Attachments", "Project Tree", "Outliner", "Notifications", "Stages"}
 
 	// tabFieldCount declares how many focusable fields each tab has.
-	tabFieldCount = []int{7, 4, 5, 2, 13, 21, 15, 1}
+	tabFieldCount = []int{4, 12, 4, 5, 2, 13, 21, 15, 1}
 
 	// tabFieldStart holds the starting focus index for each tab (computed in init).
 	tabFieldStart []int
@@ -77,6 +77,15 @@ type SettingsModel struct {
 	bgColorInput             textinput.Model
 	cursorColorInput         textinput.Model
 	cursorTextColorInput     textinput.Model
+	normalTextInput          textinput.Model
+	mutedInput               textinput.Model
+	primaryInput             textinput.Model
+	secondaryInput           textinput.Model
+	accentInput              textinput.Model
+	successInput             textinput.Model
+	warningInput             textinput.Model
+	errorColorInput          textinput.Model
+	borderInput              textinput.Model
 	dueSoonInput             textinput.Model
 	futureInput              textinput.Model
 	oldDaysInput             textinput.Model
@@ -98,7 +107,7 @@ type SettingsModel struct {
 	contexts                 []string
 	contextCursor            int // -1 for custom mode, 0+ for selecting from list
 
-	// Stages settings (Stages tab, index 66)
+	// Stages settings (Stages tab, index 76)
 	savedStages        []string // snapshot at load time, for dirty detection
 	stages             []string
 	stageInput         textinput.Model
@@ -107,7 +116,7 @@ type SettingsModel struct {
 	stageAddMode       bool // true when adding (vs editing)
 	stageConfirmDelete ConfirmDialog
 
-	// Alert settings (Notifications tab, indices 51-65)
+	// Alert settings (Notifications tab, indices 61-75)
 	alertDailyReviewEnabled    bool
 	alertDailyReviewHourInput  textinput.Model
 	alertWeeklyReviewEnabled   bool
@@ -125,7 +134,7 @@ type SettingsModel struct {
 	alertProjectStaleDaysInput textinput.Model
 
 	tabs               TabState
-	focusIndex         int // 0=editor .. 50=outlinerColumnDefaults, 51-65=alert settings
+	focusIndex         int // 0=editor .. 60=outlinerColumnDefaults, 61-75=alert settings
 	scrollOffset       int // vertical scroll offset within current tab content
 	validationErr      string
 	stageValidationErr string // timed error shown in stages tab (auto-clears)
@@ -231,6 +240,60 @@ func NewSettingsModel(cfg *config.Config, manager *config.Manager) *SettingsMode
 	cursorTextColorInput.Width = 10
 	cursorTextColorInput.SetValue(cfg.TUICursorTextColor)
 
+	normalTextInput := textinput.New()
+	normalTextInput.Placeholder = "(none)"
+	normalTextInput.CharLimit = 7
+	normalTextInput.Width = 10
+	normalTextInput.SetValue(cfg.Palette.NormalText)
+
+	mutedInput := textinput.New()
+	mutedInput.Placeholder = "(none)"
+	mutedInput.CharLimit = 7
+	mutedInput.Width = 10
+	mutedInput.SetValue(cfg.Palette.Muted)
+
+	primaryInput := textinput.New()
+	primaryInput.Placeholder = "(none)"
+	primaryInput.CharLimit = 7
+	primaryInput.Width = 10
+	primaryInput.SetValue(cfg.Palette.Primary)
+
+	secondaryInput := textinput.New()
+	secondaryInput.Placeholder = "(none)"
+	secondaryInput.CharLimit = 7
+	secondaryInput.Width = 10
+	secondaryInput.SetValue(cfg.Palette.Secondary)
+
+	accentInput := textinput.New()
+	accentInput.Placeholder = "(none)"
+	accentInput.CharLimit = 7
+	accentInput.Width = 10
+	accentInput.SetValue(cfg.Palette.Accent)
+
+	successInput := textinput.New()
+	successInput.Placeholder = "(none)"
+	successInput.CharLimit = 7
+	successInput.Width = 10
+	successInput.SetValue(cfg.Palette.Success)
+
+	warningInput := textinput.New()
+	warningInput.Placeholder = "(none)"
+	warningInput.CharLimit = 7
+	warningInput.Width = 10
+	warningInput.SetValue(cfg.Palette.Warning)
+
+	errorColorInput := textinput.New()
+	errorColorInput.Placeholder = "(none)"
+	errorColorInput.CharLimit = 7
+	errorColorInput.Width = 10
+	errorColorInput.SetValue(cfg.Palette.Error)
+
+	borderInput := textinput.New()
+	borderInput.Placeholder = "(none)"
+	borderInput.CharLimit = 7
+	borderInput.Width = 10
+	borderInput.SetValue(cfg.Palette.Border)
+
 	// Determine default view cursor from config
 	defaultViewCursor := 0
 	configView := cfg.GetDefaultProjectView()
@@ -320,6 +383,15 @@ func NewSettingsModel(cfg *config.Config, manager *config.Manager) *SettingsMode
 		bgColorInput:               bgColorInput,
 		cursorColorInput:           cursorColorInput,
 		cursorTextColorInput:       cursorTextColorInput,
+		normalTextInput:            normalTextInput,
+		mutedInput:                 mutedInput,
+		primaryInput:               primaryInput,
+		secondaryInput:             secondaryInput,
+		accentInput:                accentInput,
+		successInput:               successInput,
+		warningInput:               warningInput,
+		errorColorInput:            errorColorInput,
+		borderInput:                borderInput,
 		dueSoonInput:               dueSoonInput,
 		futureInput:                futureInput,
 		oldDaysInput:               oldDaysInput,
@@ -393,6 +465,17 @@ func (m *SettingsModel) saveSettings() tea.Cmd {
 		m.config.TUIBackgroundColor = normalizeHexColor(m.bgColorInput.Value())
 		m.config.TUICursorColor = normalizeHexColor(m.cursorColorInput.Value())
 		m.config.TUICursorTextColor = normalizeHexColor(m.cursorTextColorInput.Value())
+		m.config.Palette = config.PaletteColors{
+			NormalText: normalizeHexColor(m.normalTextInput.Value()),
+			Muted:      normalizeHexColor(m.mutedInput.Value()),
+			Primary:    normalizeHexColor(m.primaryInput.Value()),
+			Secondary:  normalizeHexColor(m.secondaryInput.Value()),
+			Accent:     normalizeHexColor(m.accentInput.Value()),
+			Success:    normalizeHexColor(m.successInput.Value()),
+			Warning:    normalizeHexColor(m.warningInput.Value()),
+			Error:      normalizeHexColor(m.errorColorInput.Value()),
+			Border:     normalizeHexColor(m.borderInput.Value()),
+		}
 		m.config.DefaultProjectView = defaultProjectViewValues[m.defaultViewCursor]
 		m.config.ReviewDueSoonDays = &dueSoon
 		m.config.ReviewFutureDays = &futureDays

@@ -78,7 +78,7 @@ func NewSelectorModel(title string, items []SelectorItem) SelectorModel {
 		Bold(false)
 	s.Selected = s.Selected.
 		Foreground(ColorHighlight).
-		Background(lipgloss.Color("57")).
+		Background(ColorSelectedBg).
 		Bold(false)
 	t.SetStyles(s)
 
