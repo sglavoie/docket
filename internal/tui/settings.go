@@ -11,6 +11,12 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 )
 
+// settingsSection describes one sub-tab section within a settings tab.
+type settingsSection struct {
+	Name       string
+	FieldCount int
+}
+
 var (
 	settingsTabNames = []string{"General", "Palette", "Review", "Behavior", "Attachments", "Project Tree", "Outliner", "Notifications", "Stages"}
 
@@ -22,6 +28,20 @@ var (
 
 	// settingsFieldCount is the total number of focusable fields across all tabs (computed in init).
 	settingsFieldCount int
+
+	// settingsTabSections defines the sub-tab sections for each settings tab.
+	// nil means the tab has no sub-tabs (single section).
+	settingsTabSections = [][]settingsSection{
+		nil,                                                                                       // 0: General
+		{{"Palette Colors", 9}, {"Background & Cursor", 3}},                                      // 1: Palette
+		nil,                                                                                       // 2: Review
+		{{"Recent Activity", 2}, {"Linked Tasks", 1}, {"Pinned Tasks", 1}, {"Recent Tasks", 1}},  // 3: Behavior
+		nil,                                                                                       // 4: Attachments
+		nil,                                                                                       // 5: Project Tree
+		{{"Sidebar", 1}, {"Section State", 7}, {"Column Visibility", 13}},                         // 6: Outliner
+		{{"Reviews", 4}, {"Tasks", 9}, {"Projects", 2}},                                           // 7: Notifications
+		nil,                                                                                       // 8: Stages
+	}
 
 	// weeklyReviewDayOptions lists the display labels for weekly review day selector.
 	weeklyReviewDayOptions = []string{"Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"}
@@ -64,6 +84,48 @@ func tabForField(focusIndex int) int {
 		}
 	}
 	return 0
+}
+
+// subTabNamesForTab returns the section names for tab, or nil if it has no sub-tabs.
+func subTabNamesForTab(tab int) []string {
+	if tab < 0 || tab >= len(settingsTabSections) || settingsTabSections[tab] == nil {
+		return nil
+	}
+	names := make([]string, len(settingsTabSections[tab]))
+	for i, s := range settingsTabSections[tab] {
+		names[i] = s.Name
+	}
+	return names
+}
+
+// subTabFieldStart returns the absolute focusIndex for the first field of subTab within tab.
+func subTabFieldStart(tab, subTab int) int {
+	start := tabFieldStart[tab]
+	sections := settingsTabSections[tab]
+	if sections == nil {
+		return start
+	}
+	for i := 0; i < subTab && i < len(sections); i++ {
+		start += sections[i].FieldCount
+	}
+	return start
+}
+
+// subTabForField returns which sub-tab index a focusIndex belongs to within its tab.
+func subTabForField(focusIndex int) int {
+	tab := tabForField(focusIndex)
+	sections := settingsTabSections[tab]
+	if sections == nil {
+		return 0
+	}
+	offset := tabFieldStart[tab]
+	for i, s := range sections {
+		if focusIndex < offset+s.FieldCount {
+			return i
+		}
+		offset += s.FieldCount
+	}
+	return len(sections) - 1
 }
 
 // SettingsModel handles the settings view in the TUI.
@@ -134,7 +196,9 @@ type SettingsModel struct {
 	alertProjectStaleDaysInput textinput.Model
 
 	tabs               TabState
-	focusIndex         int // 0=editor .. 60=outlinerColumnDefaults, 61-75=alert settings
+	subTab             int  // active sub-tab index within current tab
+	subTabRowFocused   bool // true when [/] navigates sub-tabs instead of main tabs
+	focusIndex         int  // 0=editor .. 60=outlinerColumnDefaults, 61-75=alert settings
 	scrollOffset       int // vertical scroll offset within current tab content
 	validationErr      string
 	stageValidationErr string // timed error shown in stages tab (auto-clears)

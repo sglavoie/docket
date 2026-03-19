@@ -87,9 +87,19 @@ func (m *SettingsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.stageInput.Blur()
 				return m, nil
 			}
+			if m.subTabRowFocused {
+				m.subTabRowFocused = false
+				return m, nil
+			}
 			return m, func() tea.Msg {
 				return BackMsg{}
 			}
+
+		case "(", ")":
+			if subTabNamesForTab(m.tabs.Active) != nil {
+				m.subTabRowFocused = !m.subTabRowFocused
+			}
+			return m, nil
 
 		case "tab", "shift+tab":
 			// Don't cycle tabs while editing a stage
@@ -107,8 +117,9 @@ func (m *SettingsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.focusIndex = (m.focusIndex + settingsFieldCount - 1) % settingsFieldCount
 			}
 
-			// Auto-switch tab to follow focus
+			// Auto-switch tab and sub-tab to follow focus
 			m.tabs.Active = tabForField(m.focusIndex)
+			m.subTab = subTabForField(m.focusIndex)
 
 			// Focus new field
 			m.focusCurrentField()
@@ -116,8 +127,22 @@ func (m *SettingsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case "[", "]":
 			m.blurCurrentField()
+			if m.subTabRowFocused && subTabNamesForTab(m.tabs.Active) != nil {
+				sections := settingsTabSections[m.tabs.Active]
+				delta := 1
+				if msg.String() == "[" {
+					delta = -1
+				}
+				CycleTab(&m.subTab, len(sections), delta)
+				m.focusIndex = subTabFieldStart(m.tabs.Active, m.subTab)
+				m.scrollOffset = 0
+				m.focusCurrentField()
+				return m, nil
+			}
 			if handleTabCycleKey(msg.String(), &m.tabs, false, func() {
 				m.focusIndex = tabFieldStart[m.tabs.Active]
+				m.subTab = 0
+				m.subTabRowFocused = false
 				m.scrollOffset = 0
 				m.focusCurrentField()
 			}) {

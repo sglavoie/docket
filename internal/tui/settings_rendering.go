@@ -111,12 +111,18 @@ func (m *SettingsModel) renderColorInputField(b *strings.Builder, label string, 
 }
 
 func (m *SettingsModel) renderPaletteTab() string {
-	var b strings.Builder
-	const labelWidth = 16 // "Normal Text: " padded
-	const indent = 18     // 2 + labelWidth
+	switch m.subTab {
+	case 1:
+		return m.renderPaletteBgCursorSection()
+	default:
+		return m.renderPaletteColorsSection()
+	}
+}
 
-	b.WriteString(SubtitleStyle.Render("Palette Colors"))
-	b.WriteString("\n\n")
+func (m *SettingsModel) renderPaletteColorsSection() string {
+	var b strings.Builder
+	const labelWidth = 16
+	const indent = 18
 
 	m.renderColorInputField(&b, "Normal Text: ", m.normalTextInput, 4, labelWidth, indent, "Foreground for normal text", "")
 	m.renderColorInputField(&b, "Muted: ", m.mutedInput, 5, labelWidth, indent, "Subdued text and descriptions", "248")
@@ -128,12 +134,13 @@ func (m *SettingsModel) renderPaletteTab() string {
 	m.renderColorInputField(&b, "Error: ", m.errorColorInput, 11, labelWidth, indent, "Error indicators", "196")
 	m.renderColorInputField(&b, "Border: ", m.borderInput, 12, labelWidth, indent, "Border and divider color", "244")
 
-	b.WriteString("\n")
-	b.WriteString(MutedStyle.Render("  ───────────────────────────────"))
-	b.WriteString("\n\n")
+	return b.String()
+}
 
-	b.WriteString(SubtitleStyle.Render("Background & Cursor"))
-	b.WriteString("\n\n")
+func (m *SettingsModel) renderPaletteBgCursorSection() string {
+	var b strings.Builder
+	const labelWidth = 16
+	const indent = 18
 
 	m.renderColorInputField(&b, "Background: ", m.bgColorInput, 13, labelWidth, indent, "HEX background color for all TUI views", "")
 	m.renderColorInputField(&b, "Cursor BG: ", m.cursorColorInput, 14, labelWidth, indent, "HEX background color for selection/cursor rows", DefaultSelectedBg)
@@ -194,14 +201,23 @@ func (m *SettingsModel) renderReviewTab() string {
 }
 
 func (m *SettingsModel) renderBehaviorTab() string {
+	switch m.subTab {
+	case 1:
+		return m.renderBehaviorLinkedTasksSection()
+	case 2:
+		return m.renderBehaviorPinnedTasksSection()
+	case 3:
+		return m.renderBehaviorRecentTasksSection()
+	default:
+		return m.renderBehaviorRecentActivitySection()
+	}
+}
+
+func (m *SettingsModel) renderBehaviorRecentActivitySection() string {
 	var b strings.Builder
-	const labelWidth = 17 // "Show completed: " padded
-	const indent = 19     // 2 + labelWidth
+	const labelWidth = 17
+	const indent = 19
 
-	b.WriteString(SubtitleStyle.Render("Recent Activity"))
-	b.WriteString("\n\n")
-
-	// Recent Activity Limit
 	b.WriteString(renderFormLabelWithWidth("Task limit: ", labelWidth, m.focusIndex == 20))
 	b.WriteString(m.recentActivityInput.View())
 	b.WriteString("  ")
@@ -217,33 +233,32 @@ func (m *SettingsModel) renderBehaviorTab() string {
 
 	b.WriteString("\n")
 
-	// Recent Activity Show All Toggle
 	b.WriteString(renderFormLabelWithWidth("Show completed: ", labelWidth, m.focusIndex == 21))
 	b.WriteString(renderFormToggle("Yes", "No", m.recentActivityShowAll, m.focusIndex == 21))
 	b.WriteString("\n")
 	b.WriteString(renderFormFieldDesc("Include completed tasks in recent activity view", indent, m.focusIndex == 21))
 
-	b.WriteString("\n")
-	b.WriteString(MutedStyle.Render("  ───────────────────────────────"))
-	b.WriteString("\n\n")
+	return b.String()
+}
 
-	b.WriteString(SubtitleStyle.Render("Linked Task Creation"))
-	b.WriteString("\n\n")
+func (m *SettingsModel) renderBehaviorLinkedTasksSection() string {
+	var b strings.Builder
+	const labelWidth = 17
+	const indent = 19
 
-	// Linked Task Jump Toggle
 	b.WriteString(renderFormLabelWithWidth("After creation: ", labelWidth, m.focusIndex == 22))
 	b.WriteString(renderFormToggle("Jump to new", "Stay on source", m.linkedTaskJump, m.focusIndex == 22))
 	b.WriteString("\n")
 	b.WriteString(renderFormFieldDesc("Where to navigate after creating a linked task", indent, m.focusIndex == 22))
 
-	b.WriteString("\n")
-	b.WriteString(MutedStyle.Render("  ───────────────────────────────"))
-	b.WriteString("\n\n")
+	return b.String()
+}
 
-	b.WriteString(SubtitleStyle.Render("Pinned Tasks"))
-	b.WriteString("\n\n")
+func (m *SettingsModel) renderBehaviorPinnedTasksSection() string {
+	var b strings.Builder
+	const labelWidth = 17
+	const indent = 19
 
-	// Max Pinned Bar Items
 	b.WriteString(renderFormLabelWithWidth("Bar limit: ", labelWidth, m.focusIndex == 23))
 	b.WriteString(m.maxPinnedInput.View())
 	b.WriteString("  ")
@@ -256,14 +271,14 @@ func (m *SettingsModel) renderBehaviorTab() string {
 	}
 	b.WriteString(renderFormFieldDesc("Maximum pinned tasks displayed in the bar", indent, m.focusIndex == 23))
 
-	b.WriteString("\n")
-	b.WriteString(MutedStyle.Render("  ───────────────────────────────"))
-	b.WriteString("\n\n")
+	return b.String()
+}
 
-	b.WriteString(SubtitleStyle.Render("Recent Tasks"))
-	b.WriteString("\n\n")
+func (m *SettingsModel) renderBehaviorRecentTasksSection() string {
+	var b strings.Builder
+	const labelWidth = 17
+	const indent = 19
 
-	// Max Recent Task Visits
 	b.WriteString(renderFormLabelWithWidth("Task limit: ", labelWidth, m.focusIndex == 24))
 	b.WriteString(m.maxRecentTaskVisitsInput.View())
 	b.WriteString("  ")
@@ -350,27 +365,33 @@ func (m *SettingsModel) renderProjectTreeTab() string {
 }
 
 func (m *SettingsModel) renderOutlinerTab() string {
-	var b strings.Builder
-	const labelWidth = 22 // "Cross-Project Sidebar: " padded
-	const indent = 24     // 2 + labelWidth
+	switch m.subTab {
+	case 1:
+		return m.renderOutlinerSectionStateSection()
+	case 2:
+		return m.renderOutlinerColumnVisibilitySection()
+	default:
+		return m.renderOutlinerSidebarSection()
+	}
+}
 
-	// Cross-project sidebar toggle (index 40)
-	b.WriteString(SubtitleStyle.Render("Cross-Project Sidebar"))
-	b.WriteString("\n\n")
+func (m *SettingsModel) renderOutlinerSidebarSection() string {
+	var b strings.Builder
+	const labelWidth = 22
+	const indent = 24
 
 	b.WriteString(renderFormLabelWithWidth("Cross-Project Sidebar: ", labelWidth, m.focusIndex == 40))
 	b.WriteString(renderFormToggle("Enabled", "Disabled", m.crossOutlinerSidebar, m.focusIndex == 40))
 	b.WriteString("\n")
 	b.WriteString(renderFormFieldDesc("Show sidebar by default in cross-project outliner", indent, m.focusIndex == 40))
 
-	b.WriteString("\n")
-	b.WriteString(MutedStyle.Render("  ───────────────────────────────"))
-	b.WriteString("\n\n")
+	return b.String()
+}
 
-	b.WriteString(SubtitleStyle.Render("Default Section State"))
-	b.WriteString("  ")
-	b.WriteString(MutedStyle.Render("(All perspective)"))
-	b.WriteString("\n\n")
+func (m *SettingsModel) renderOutlinerSectionStateSection() string {
+	var b strings.Builder
+	const labelWidth = 22
+	const indent = 24
 
 	for i, label := range outlinerSectionLabels {
 		focusIdx := 41 + i
@@ -382,26 +403,34 @@ func (m *SettingsModel) renderOutlinerTab() string {
 		}
 	}
 
-	b.WriteString("\n")
-	b.WriteString(MutedStyle.Render("  ───────────────────────────────"))
-	b.WriteString("\n\n")
+	return b.String()
+}
 
-	b.WriteString(SubtitleStyle.Render("Default Column Visibility"))
-	b.WriteString("\n\n")
+func (m *SettingsModel) renderOutlinerColumnVisibilitySection() string {
+	var b strings.Builder
+	const labelWidth = 22
+
 	m.renderColumnToggles(&b, m.outlinerColumnDefaults, 48, labelWidth, m.outlinerPriorityMode)
 
 	return b.String()
 }
 
 func (m *SettingsModel) renderNotificationsTab() string {
+	switch m.subTab {
+	case 1:
+		return m.renderNotificationsTasksSection()
+	case 2:
+		return m.renderNotificationsProjectsSection()
+	default:
+		return m.renderNotificationsReviewsSection()
+	}
+}
+
+func (m *SettingsModel) renderNotificationsReviewsSection() string {
 	var b strings.Builder
-	const labelWidth = 22 // "Project Stale (days): " padded
-	const indent = 24     // 2 + labelWidth
+	const labelWidth = 22
+	const indent = 24
 
-	b.WriteString(SubtitleStyle.Render("Reviews"))
-	b.WriteString("\n\n")
-
-	// 61: Daily Review toggle
 	b.WriteString(renderFormLabelWithWidth("Daily Review: ", labelWidth, m.focusIndex == 61))
 	b.WriteString(renderFormToggle("Enabled", "Disabled", m.alertDailyReviewEnabled, m.focusIndex == 61))
 	b.WriteString("\n")
@@ -409,7 +438,6 @@ func (m *SettingsModel) renderNotificationsTab() string {
 
 	b.WriteString("\n")
 
-	// 62: Daily Review hour
 	b.WriteString(renderFormLabelWithWidth("Review Hour: ", labelWidth, m.focusIndex == 62))
 	b.WriteString(m.alertDailyReviewHourInput.View())
 	b.WriteString("  ")
@@ -424,7 +452,6 @@ func (m *SettingsModel) renderNotificationsTab() string {
 
 	b.WriteString("\n")
 
-	// 63: Weekly Review toggle
 	b.WriteString(renderFormLabelWithWidth("Weekly Review: ", labelWidth, m.focusIndex == 63))
 	b.WriteString(renderFormToggle("Enabled", "Disabled", m.alertWeeklyReviewEnabled, m.focusIndex == 63))
 	b.WriteString("\n")
@@ -432,20 +459,19 @@ func (m *SettingsModel) renderNotificationsTab() string {
 
 	b.WriteString("\n")
 
-	// 64: Weekly Review day
 	b.WriteString(renderFormLabelWithWidth("Review Day: ", labelWidth, m.focusIndex == 64))
 	b.WriteString(renderEnumSelector(weeklyReviewDayOptions, m.alertWeeklyReviewDay, m.focusIndex == 64))
 	b.WriteString("\n")
 	b.WriteString(renderFormFieldDesc("Day of week for weekly review reminder", indent, m.focusIndex == 64))
 
-	b.WriteString("\n")
-	b.WriteString(MutedStyle.Render("  ───────────────────────────────"))
-	b.WriteString("\n\n")
+	return b.String()
+}
 
-	b.WriteString(SubtitleStyle.Render("Tasks"))
-	b.WriteString("\n\n")
+func (m *SettingsModel) renderNotificationsTasksSection() string {
+	var b strings.Builder
+	const labelWidth = 22
+	const indent = 24
 
-	// 65: Overdue toggle
 	b.WriteString(renderFormLabelWithWidth("Overdue: ", labelWidth, m.focusIndex == 65))
 	b.WriteString(renderFormToggle("Enabled", "Disabled", m.alertOverdueEnabled, m.focusIndex == 65))
 	b.WriteString("\n")
@@ -453,12 +479,10 @@ func (m *SettingsModel) renderNotificationsTab() string {
 
 	b.WriteString("\n")
 
-	// 66: Due Soon toggle
 	b.WriteString(renderFormLabelWithWidth("Due Soon: ", labelWidth, m.focusIndex == 66))
 	b.WriteString(renderFormToggle("Enabled", "Disabled", m.alertDueSoonEnabled, m.focusIndex == 66))
 	b.WriteString("\n")
 
-	// 67: Due Soon days
 	b.WriteString(renderFormLabelWithWidth("Due Soon (days): ", labelWidth, m.focusIndex == 67))
 	b.WriteString(m.alertDueSoonDaysInput.View())
 	b.WriteString("\n")
@@ -471,12 +495,10 @@ func (m *SettingsModel) renderNotificationsTab() string {
 
 	b.WriteString("\n")
 
-	// 68: Stale toggle
 	b.WriteString(renderFormLabelWithWidth("Stale: ", labelWidth, m.focusIndex == 68))
 	b.WriteString(renderFormToggle("Enabled", "Disabled", m.alertStaleEnabled, m.focusIndex == 68))
 	b.WriteString("\n")
 
-	// 69: Stale days
 	b.WriteString(renderFormLabelWithWidth("Stale (days): ", labelWidth, m.focusIndex == 69))
 	b.WriteString(m.alertStaleDaysInput.View())
 	b.WriteString("\n")
@@ -489,12 +511,10 @@ func (m *SettingsModel) renderNotificationsTab() string {
 
 	b.WriteString("\n")
 
-	// 70: Inbox toggle
 	b.WriteString(renderFormLabelWithWidth("Inbox Backlog: ", labelWidth, m.focusIndex == 70))
 	b.WriteString(renderFormToggle("Enabled", "Disabled", m.alertInboxEnabled, m.focusIndex == 70))
 	b.WriteString("\n")
 
-	// 71: Inbox threshold
 	b.WriteString(renderFormLabelWithWidth("Inbox Threshold: ", labelWidth, m.focusIndex == 71))
 	b.WriteString(m.alertInboxThresholdInput.View())
 	b.WriteString("\n")
@@ -507,12 +527,10 @@ func (m *SettingsModel) renderNotificationsTab() string {
 
 	b.WriteString("\n")
 
-	// 72: Blocked toggle
 	b.WriteString(renderFormLabelWithWidth("Blocked: ", labelWidth, m.focusIndex == 72))
 	b.WriteString(renderFormToggle("Enabled", "Disabled", m.alertBlockedEnabled, m.focusIndex == 72))
 	b.WriteString("\n")
 
-	// 73: Blocked days
 	b.WriteString(renderFormLabelWithWidth("Blocked (days): ", labelWidth, m.focusIndex == 73))
 	b.WriteString(m.alertBlockedDaysInput.View())
 	b.WriteString("\n")
@@ -523,19 +541,18 @@ func (m *SettingsModel) renderNotificationsTab() string {
 	}
 	b.WriteString(renderFormFieldDesc("Days a task must be blocked before alerting", indent, m.focusIndex == 73))
 
-	b.WriteString("\n")
-	b.WriteString(MutedStyle.Render("  ───────────────────────────────"))
-	b.WriteString("\n\n")
+	return b.String()
+}
 
-	b.WriteString(SubtitleStyle.Render("Projects"))
-	b.WriteString("\n\n")
+func (m *SettingsModel) renderNotificationsProjectsSection() string {
+	var b strings.Builder
+	const labelWidth = 22
+	const indent = 24
 
-	// 74: Project Health toggle
 	b.WriteString(renderFormLabelWithWidth("Project Health: ", labelWidth, m.focusIndex == 74))
 	b.WriteString(renderFormToggle("Enabled", "Disabled", m.alertProjectHealthEnabled, m.focusIndex == 74))
 	b.WriteString("\n")
 
-	// 75: Project stale days
 	b.WriteString(renderFormLabelWithWidth("Stale (days): ", labelWidth, m.focusIndex == 75))
 	b.WriteString(m.alertProjectStaleDaysInput.View())
 	b.WriteString("\n")
@@ -607,6 +624,10 @@ func (m *SettingsModel) renderStagesTab() string {
 func (m *SettingsModel) settingsContentHeight() int {
 	// Title (1) + tab bar with border (2) + blank line (1) + footer (1) + padding (1)
 	h := m.height - TabbedViewChrome
+	// Subtract 1 extra line when sub-tab row is visible
+	if subTabNamesForTab(m.tabs.Active) != nil {
+		h--
+	}
 	if h < 3 {
 		return 3
 	}
@@ -617,79 +638,62 @@ func (m *SettingsModel) settingsContentHeight() int {
 // tab content where the currently focused field appears. This drives auto-scroll.
 func (m *SettingsModel) focusLineInContent() int {
 	tab := tabForField(m.focusIndex)
-	localIdx := m.focusIndex - tabFieldStart[tab]
+	localIdx := m.focusIndex - subTabFieldStart(tab, m.subTab)
 
 	switch tab {
 	case 0: // General: each field ~4-5 lines, context can be taller
 		return localIdx * 5
-	case 1: // Palette: subtitle+blank (3), then ~3 lines per color input, separator, subtitle, 3 more
-		if localIdx <= 8 { // palette colors (normal text through border)
-			return 3 + localIdx*3
-		}
-		return 33 + (localIdx-9)*3 // bg, cursor bg, cursor text (after separator)
+	case 1: // Palette: ~3 lines per color input
+		return localIdx * 3
 	case 2: // Review: subtitle+blank (3 lines) then ~4 lines per field
 		return 3 + localIdx*4
-	case 3: // Behavior: fields at varying heights
-		switch localIdx {
-		case 0:
-			return 3 // recent activity limit
-		case 1:
-			return 8 // show completed
-		case 2:
-			return 14 // linked task jump
-		case 3:
-			return 20 // max pinned
-		case 4:
-			return 26 // max recent task visits
-		}
-		return localIdx * 5
+	case 3: // Behavior: ~4 lines per field
+		return localIdx * 4
 	case 4: // Attachments
 		return 3 + localIdx*5
 	case 5: // Project Tree: subtitle+blank (3) then 1 line per toggle
 		return 3 + localIdx
-	case 6: // Outliner: subtitle+blank (2), cross-project sidebar toggle (1+desc=2), separator (3),
-		// subtitle+blank (2), 7 section toggles, separator (3), subtitle+blank (2), column toggles
-		if localIdx == 0 {
-			return 2 // cross-project sidebar toggle (index 40)
+	case 6: // Outliner
+		switch m.subTab {
+		case 0: // Sidebar: toggle+desc
+			return 0
+		case 1: // Section State: 1 line per toggle (+desc on first)
+			if localIdx == 0 {
+				return 0
+			}
+			return 1 + localIdx
+		case 2: // Column Visibility: 1 line per toggle
+			return localIdx
 		}
-		if localIdx <= 7 {
-			return 9 + (localIdx - 1) // section toggles (indices 41-47)
+	case 7: // Notifications
+		switch m.subTab {
+		case 0: // Reviews: ~4 lines per field
+			return localIdx * 4
+		case 1: // Tasks: varying heights
+			switch localIdx {
+			case 0:
+				return 0 // overdue toggle
+			case 1:
+				return 4 // due soon toggle
+			case 2:
+				return 6 // due soon days
+			case 3:
+				return 10 // stale toggle
+			case 4:
+				return 12 // stale days
+			case 5:
+				return 16 // inbox toggle
+			case 6:
+				return 18 // inbox threshold
+			case 7:
+				return 22 // blocked toggle
+			case 8:
+				return 24 // blocked days
+			}
+			return localIdx * 3
+		case 2: // Projects: 2 fields
+			return localIdx * 2
 		}
-		return 23 + (localIdx - 8) // column toggles (indices 48-60)
-	case 7: // Notifications: Reviews section (subtitle+blank=3), then fields at varying heights
-		switch localIdx {
-		case 0:
-			return 2 // daily review toggle
-		case 1:
-			return 6 // daily review hour
-		case 2:
-			return 10 // weekly review toggle
-		case 3:
-			return 14 // weekly review day
-		case 4:
-			return 21 // overdue toggle (after separator)
-		case 5:
-			return 25 // due soon toggle
-		case 6:
-			return 27 // due soon days
-		case 7:
-			return 31 // stale toggle
-		case 8:
-			return 33 // stale days
-		case 9:
-			return 37 // inbox toggle
-		case 10:
-			return 39 // inbox threshold
-		case 11:
-			return 43 // blocked toggle
-		case 12:
-			return 45 // blocked days
-		case 13:
-			return 52 // project health toggle (after separator)
-		case 14:
-			return 54 // project stale days
-		}
-		return localIdx * 4
 	case 8: // Stages: subtitle+blank (3) then cursor is at list position
 		return 3
 	}
@@ -761,9 +765,17 @@ func (m *SettingsModel) View() string {
 	out.WriteString(renderFullscreenTitle("Settings", ""))
 	out.WriteString("\n")
 
-	// Tab bar
-	out.WriteString(m.tabs.RenderBar(m.width))
-	out.WriteString("\n\n")
+	// Tab bar (with optional sub-tab row)
+	subNames := subTabNamesForTab(m.tabs.Active)
+	if subNames != nil {
+		out.WriteString(renderTabBarWithOptionalSubTabs(settingsTabNames, m.tabs.Active, subNames, m.subTabRowFocused, m.width))
+		out.WriteString("\n")
+		out.WriteString(renderSubTabBarWithFocus(subNames, m.subTab, m.subTabRowFocused, m.width))
+		out.WriteString("\n\n")
+	} else {
+		out.WriteString(m.tabs.RenderBar(m.width))
+		out.WriteString("\n\n")
+	}
 
 	out.WriteString(visibleContent)
 	out.WriteString("\n")
@@ -773,7 +785,11 @@ func (m *SettingsModel) View() string {
 	if len(contentLines) > visibleHeight {
 		scrollHint = fmt.Sprintf(" (%d/%d)", m.scrollOffset+1, maxScroll+1)
 	}
-	left := HelpStyle.Render("[/]: tabs · Tab: fields · Space: toggle · Enter: save · Esc: cancel" + scrollHint)
+	helpPrefix := ""
+	if subTabNamesForTab(m.tabs.Active) != nil {
+		helpPrefix = "(/) sub-tabs · "
+	}
+	left := HelpStyle.Render(helpPrefix + "[/]: tabs · Tab: fields · Space: toggle · Enter: save · Esc: cancel" + scrollHint)
 	right := MutedStyle.Render("Settings")
 	out.WriteString(renderStatusBarFooter(left, right, m.width))
 
