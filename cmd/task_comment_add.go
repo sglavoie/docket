@@ -7,6 +7,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tterrors"
 )
 
 var taskCommentAddCmd = &cobra.Command{
@@ -21,7 +22,6 @@ Examples:
   tt task comment add 5 "Found the root cause of the issue"
   tt task comment add abc123 "Tried approach X, didn't work because of Y"
   tt t c a 5 "Quick note"`,
-	Args: cobra.MinimumNArgs(2),
 	RunE: runTaskCommentAdd,
 }
 
@@ -30,6 +30,10 @@ func init() {
 }
 
 func runTaskCommentAdd(cmd *cobra.Command, args []string) error {
+	if len(args) < 2 {
+		return tterrors.NewRequiredFieldError("task ID and comment text")
+	}
+
 	taskID := args[0]
 
 	// Join remaining args as the comment text

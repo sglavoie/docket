@@ -6,6 +6,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tterrors"
 )
 
 var boardReopenCmd = &cobra.Command{
@@ -16,7 +17,6 @@ var boardReopenCmd = &cobra.Command{
 Examples:
   tt board reopen 1
   tt board reopen 3`,
-	Args: cobra.ExactArgs(1),
 	RunE: runBoardReopen,
 }
 
@@ -25,6 +25,10 @@ func init() {
 }
 
 func runBoardReopen(cmd *cobra.Command, args []string) error {
+	if len(args) < 1 {
+		return tterrors.NewRequiredFieldError("action ID")
+	}
+
 	cfg, mgr, err := LoadConfig()
 	if err != nil {
 		return err

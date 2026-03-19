@@ -7,6 +7,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/external"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/tterrors"
 )
 
 var boardEditEditor string
@@ -19,7 +20,6 @@ var boardEditCmd = &cobra.Command{
 Examples:
   tt board edit 1
   tt board edit 1 --editor vim`,
-	Args: cobra.ExactArgs(1),
 	RunE: runBoardEdit,
 }
 
@@ -29,6 +29,10 @@ func init() {
 }
 
 func runBoardEdit(cmd *cobra.Command, args []string) error {
+	if len(args) < 1 {
+		return tterrors.NewRequiredFieldError("action ID")
+	}
+
 	cfg, _, err := LoadConfig()
 	if err != nil {
 		return err

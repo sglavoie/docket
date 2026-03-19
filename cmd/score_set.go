@@ -7,6 +7,8 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+
+	"github.com/sglavoie/tt/internal/tterrors"
 )
 
 var scoreSetCmd = &cobra.Command{
@@ -20,7 +22,6 @@ The dimension key must match a dimension ID in the project's active scoring prof
 Examples:
   tt score set 42 impact=4 confidence=3
   tt score set abc-123 reach=8 effort=2`,
-	Args: cobra.MinimumNArgs(2),
 	RunE: runScoreSet,
 }
 
@@ -29,6 +30,10 @@ func init() {
 }
 
 func runScoreSet(cmd *cobra.Command, args []string) error {
+	if len(args) < 2 {
+		return tterrors.NewRequiredFieldError("task ID and score")
+	}
+
 	project, cfg, configManager, err := LoadCurrentProject()
 	if err != nil {
 		return err

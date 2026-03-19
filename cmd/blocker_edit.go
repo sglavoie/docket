@@ -7,6 +7,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tterrors"
 )
 
 var (
@@ -26,7 +27,6 @@ Examples:
   tt blocker edit abc12345 --title "New title"
   tt blocker edit abc1 -d "Updated description"
   tt blocker edit abc1 --unresolve`,
-	Args: cobra.ExactArgs(1),
 	RunE: runBlockerEdit,
 }
 
@@ -39,6 +39,10 @@ func init() {
 }
 
 func runBlockerEdit(cmd *cobra.Command, args []string) error {
+	if len(args) < 1 {
+		return tterrors.NewRequiredFieldError("blocker ID")
+	}
+
 	return WithBlockerUpdate(args[0], func(blockers []*models.Blocker, blocker *models.Blocker) ([]*models.Blocker, error) {
 		modified := false
 

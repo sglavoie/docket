@@ -364,6 +364,8 @@ tt select <project>                  # Select project directly
 
 The TUI provides a rich visual interface with extensive keyboard navigation and views.
 
+> **Note:** The TUI requires a minimum terminal width of 80 columns and height of 24 rows for optimal display. Smaller terminals may cause layout issues.
+
 ### Main Views
 
 **Dashboard** (`d`)
@@ -553,8 +555,6 @@ $start                     # Set status ($start, $blocked, $done, $canceled, $re
 - `y` / `Y` / `Ctrl+Y`: Copy title / description / both
 
 #### Prefix Commands (Vim-style)
-
-> **Note:** `,` behaves differently on the Dashboard (opens Settings) vs task views (status prefix).
 
 - `,s`, `,d`, `,b`, `,o`, `,x`: Status changes
 - `!1`-`!5`: Priority

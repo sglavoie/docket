@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -32,12 +34,30 @@ func LoadArchivedTasks(project *models.Project) []*models.Task {
 	if _, err := os.Stat(mainPath); err == nil {
 		paths = append(paths, mainPath)
 	}
-	for i := 1; ; i++ {
-		rotatedPath := filepath.Join(project.Path, fmt.Sprintf("completed.%d.md", i))
-		if _, err := os.Stat(rotatedPath); os.IsNotExist(err) {
-			break
+	matches, err := filepath.Glob(filepath.Join(project.Path, "completed.*.md"))
+	if err == nil {
+		type numberedPath struct {
+			num  int
+			path string
 		}
-		paths = append(paths, rotatedPath)
+		var numbered []numberedPath
+		for _, m := range matches {
+			base := filepath.Base(m)
+			// Extract the number between "completed." and ".md"
+			numStr := strings.TrimPrefix(base, "completed.")
+			numStr = strings.TrimSuffix(numStr, ".md")
+			n, err := strconv.Atoi(numStr)
+			if err != nil {
+				continue // skip non-numeric matches
+			}
+			numbered = append(numbered, numberedPath{num: n, path: m})
+		}
+		sort.Slice(numbered, func(i, j int) bool {
+			return numbered[i].num < numbered[j].num
+		})
+		for _, np := range numbered {
+			paths = append(paths, np.path)
+		}
 	}
 
 	for _, p := range paths {

@@ -7,6 +7,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/external"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/tterrors"
 )
 
 var noteEditEditor string
@@ -26,7 +27,6 @@ Examples:
   tt note edit meeting
   tt note edit 2026-01-28-meeting-notes.md
   tt note edit meeting --editor vim`,
-	Args: cobra.ExactArgs(1),
 	RunE: runNoteEdit,
 }
 
@@ -36,6 +36,10 @@ func init() {
 }
 
 func runNoteEdit(cmd *cobra.Command, args []string) error {
+	if len(args) < 1 {
+		return tterrors.NewRequiredFieldError("note ID")
+	}
+
 	ctx, err := resolveNoteContext()
 	if err != nil {
 		return err

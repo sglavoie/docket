@@ -6,6 +6,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tterrors"
 )
 
 var blockerDeleteForce bool
@@ -20,7 +21,6 @@ Use the ID prefix from 'tt blocker list' to identify the blocker.
 Examples:
   tt blocker delete abc12345
   tt blocker delete abc1 --force`,
-	Args: cobra.ExactArgs(1),
 	RunE: runBlockerDelete,
 }
 
@@ -30,6 +30,10 @@ func init() {
 }
 
 func runBlockerDelete(cmd *cobra.Command, args []string) error {
+	if len(args) < 1 {
+		return tterrors.NewRequiredFieldError("blocker ID")
+	}
+
 	return WithBlockerUpdate(args[0], func(blockers []*models.Blocker, blocker *models.Blocker) ([]*models.Blocker, error) {
 		// Confirmation
 		if !ConfirmYN(fmt.Sprintf("Delete blocker '%s'? [y/N]: ", blocker.Title), blockerDeleteForce) {

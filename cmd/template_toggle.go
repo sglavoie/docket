@@ -17,7 +17,6 @@ Disabled templates are not shown in the template picker during task creation.
 
 Example:
   tt template toggle def-bug-report`,
-	Args: cobra.ExactArgs(1),
 	RunE: runTemplateToggle,
 }
 
@@ -26,6 +25,10 @@ func init() {
 }
 
 func runTemplateToggle(cmd *cobra.Command, args []string) error {
+	if len(args) < 1 {
+		return tterrors.NewRequiredFieldError("template ID")
+	}
+
 	templateID := args[0]
 
 	cfg, configManager, err := LoadConfigStrict()

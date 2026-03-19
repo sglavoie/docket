@@ -7,6 +7,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/sglavoie/tt/internal/template"
+	"github.com/sglavoie/tt/internal/tterrors"
 )
 
 var templateShowCmd = &cobra.Command{
@@ -26,7 +27,6 @@ Examples:
   tt template show def-bug-report
   tt template show abc12345
   tt tpl show def-release-checklist`,
-	Args: cobra.ExactArgs(1),
 	RunE: runTemplateShow,
 }
 
@@ -35,6 +35,10 @@ func init() {
 }
 
 func runTemplateShow(cmd *cobra.Command, args []string) error {
+	if len(args) < 1 {
+		return tterrors.NewRequiredFieldError("template ID or name")
+	}
+
 	templateID := args[0]
 
 	cfg, _, err := LoadConfigStrict()

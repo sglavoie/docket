@@ -5,6 +5,8 @@ import (
 
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/spf13/cobra"
+
+	"github.com/sglavoie/tt/internal/tterrors"
 )
 
 var contextShowCmd = &cobra.Command{
@@ -15,7 +17,6 @@ var contextShowCmd = &cobra.Command{
 Examples:
   tt context show Work
   tt ctx show "Side Projects"`,
-	Args: cobra.ExactArgs(1),
 	RunE: runContextShow,
 }
 
@@ -24,6 +25,10 @@ func init() {
 }
 
 func runContextShow(cmd *cobra.Command, args []string) error {
+	if len(args) < 1 {
+		return tterrors.NewRequiredFieldError("context name")
+	}
+
 	name := args[0]
 
 	cfg, _, err := LoadConfig()

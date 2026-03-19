@@ -19,7 +19,6 @@ Use 'tt score profile list' to see available profiles.
 Examples:
   tt score assign rice
   tt score assign my-custom-profile`,
-	Args: cobra.ExactArgs(1),
 	RunE: runScoreAssign,
 }
 
@@ -41,6 +40,10 @@ func init() {
 }
 
 func runScoreAssign(cmd *cobra.Command, args []string) error {
+	if len(args) < 1 {
+		return tterrors.NewRequiredFieldError("task ID")
+	}
+
 	cfg, configManager, err := LoadConfig()
 	if err != nil {
 		return err

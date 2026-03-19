@@ -19,7 +19,6 @@ Archived projects are not deleted and can be unarchived later.
 Examples:
   tt project archive "Old Project"
   tt p archive my-project`,
-	Args: cobra.ExactArgs(1),
 	RunE: runProjectArchive,
 }
 
@@ -31,7 +30,6 @@ var projectUnarchiveCmd = &cobra.Command{
 Examples:
   tt project unarchive "Old Project"
   tt p unarchive my-project`,
-	Args: cobra.ExactArgs(1),
 	RunE: runProjectUnarchive,
 }
 
@@ -41,6 +39,10 @@ func init() {
 }
 
 func runProjectArchive(cmd *cobra.Command, args []string) error {
+	if len(args) < 1 {
+		return tterrors.NewRequiredFieldError("project slug")
+	}
+
 	project, cfg, configManager, err := LoadConfigAndProject(args[0])
 	if err != nil {
 		return err
@@ -70,6 +72,10 @@ func runProjectArchive(cmd *cobra.Command, args []string) error {
 }
 
 func runProjectUnarchive(cmd *cobra.Command, args []string) error {
+	if len(args) < 1 {
+		return tterrors.NewRequiredFieldError("project slug")
+	}
+
 	cfg, configManager, err := LoadConfig()
 	if err != nil {
 		return err

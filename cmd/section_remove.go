@@ -6,6 +6,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tterrors"
 )
 
 var sectionRemoveForce bool
@@ -23,7 +24,6 @@ Examples:
   tt section remove "In Progress"
   tt section rm Review
   tt sec delete Done`,
-	Args: cobra.ExactArgs(1),
 	RunE: runSectionRemove,
 }
 
@@ -33,6 +33,10 @@ func init() {
 }
 
 func runSectionRemove(cmd *cobra.Command, args []string) error {
+	if len(args) < 1 {
+		return tterrors.NewRequiredFieldError("section name")
+	}
+
 	sectionName := args[0]
 
 	if sectionName == models.SectionNext {

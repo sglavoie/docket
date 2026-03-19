@@ -6,6 +6,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/tterrors"
 )
 
 var noteLinkRemove bool
@@ -19,7 +20,6 @@ Examples:
   tt note link meeting 5
   tt note link meeting abc123
   tt note link --remove meeting 5`,
-	Args: cobra.ExactArgs(2),
 	RunE: runNoteLink,
 }
 
@@ -29,6 +29,10 @@ func init() {
 }
 
 func runNoteLink(cmd *cobra.Command, args []string) error {
+	if len(args) < 2 {
+		return tterrors.NewRequiredFieldError("note ID and task ID")
+	}
+
 	project, _, _, err := LoadCurrentProject()
 	if err != nil {
 		return err

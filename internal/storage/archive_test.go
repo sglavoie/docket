@@ -632,6 +632,35 @@ Some description.
 		}
 	})
 
+	t.Run("loads tasks even with gaps in rotated file numbering", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		project := &models.Project{Path: tmpDir}
+
+		// Create completed.1.md and completed.3.md (skip 2)
+		content1 := `### Task: Rotated 1
+<!-- id: rot1, status: done, priority: 3, completed: 2025-06-10 14:30 -->
+`
+		content3 := `### Task: Rotated 3
+<!-- id: rot3, status: done, priority: 3, completed: 2025-06-10 14:30 -->
+`
+		os.WriteFile(filepath.Join(tmpDir, "completed.1.md"), []byte(content1), 0644)
+		os.WriteFile(filepath.Join(tmpDir, "completed.3.md"), []byte(content3), 0644)
+
+		tasks := LoadArchivedTasks(project)
+
+		if len(tasks) != 2 {
+			t.Fatalf("expected 2 tasks from gapped archives, got %d", len(tasks))
+		}
+
+		ids := make(map[string]bool)
+		for _, task := range tasks {
+			ids[task.ID] = true
+		}
+		if !ids["rot1"] || !ids["rot3"] {
+			t.Errorf("expected both rot1 and rot3, got %v", ids)
+		}
+	})
+
 	t.Run("comments round-trip through archive write and load", func(t *testing.T) {
 		tmpDir := t.TempDir()
 		project := &models.Project{Path: tmpDir, Name: "TestProj"}

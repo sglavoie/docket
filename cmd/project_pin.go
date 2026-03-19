@@ -18,7 +18,6 @@ Pinned projects are highlighted in green and appear first in the project list.
 Examples:
   tt project pin "My Project"
   tt p pin my-project`,
-	Args: cobra.ExactArgs(1),
 	RunE: runProjectPin,
 }
 
@@ -27,6 +26,10 @@ func init() {
 }
 
 func runProjectPin(cmd *cobra.Command, args []string) error {
+	if len(args) < 1 {
+		return tterrors.NewRequiredFieldError("project slug")
+	}
+
 	project, cfg, configManager, err := LoadConfigAndProject(args[0])
 	if err != nil {
 		return err

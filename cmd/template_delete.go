@@ -20,7 +20,6 @@ Use 'tt template list' to see template IDs.
 
 Example:
   tt template delete abc123`,
-	Args: cobra.ExactArgs(1),
 	RunE: runTemplateDelete,
 }
 
@@ -30,6 +29,10 @@ func init() {
 }
 
 func runTemplateDelete(cmd *cobra.Command, args []string) error {
+	if len(args) < 1 {
+		return tterrors.NewRequiredFieldError("template ID")
+	}
+
 	templateID := args[0]
 
 	cfg, configManager, err := LoadConfigStrict()

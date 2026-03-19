@@ -3,6 +3,8 @@ package tui
 import (
 	"errors"
 	"testing"
+
+	"github.com/sglavoie/tt/internal/models"
 )
 
 func TestHandleViewMessagesBack(t *testing.T) {
@@ -545,5 +547,395 @@ func TestHandleViewMessagesTextEditorDone(t *testing.T) {
 	}
 	if app.currentView() != ViewDashboard {
 		t.Errorf("currentView should be Dashboard after text editor done, got %v", app.currentView())
+	}
+}
+
+func TestHandleViewMessagesShowTaskTemplates(t *testing.T) {
+	app := newTestAppModel()
+
+	msg := ShowTaskTemplatesMsg{}
+	handled, _ := app.handleViewMessages(msg)
+
+	if !handled {
+		t.Error("ShowTaskTemplatesMsg should be handled")
+	}
+	if app.currentView() != ViewTaskTemplates {
+		t.Errorf("currentView should be TaskTemplates, got %v", app.currentView())
+	}
+}
+
+func TestHandleViewMessagesTaskTemplatesUpdated(t *testing.T) {
+	app := newTestAppModel()
+
+	msg := TaskTemplatesUpdatedMsg{}
+	handled, _ := app.handleViewMessages(msg)
+
+	if !handled {
+		t.Error("TaskTemplatesUpdatedMsg should be handled")
+	}
+}
+
+func TestHandleViewMessagesShowWeeklyReview(t *testing.T) {
+	app := newTestAppModel()
+
+	msg := ShowWeeklyReviewMsg{}
+	handled, _ := app.handleViewMessages(msg)
+
+	if !handled {
+		t.Error("ShowWeeklyReviewMsg should be handled")
+	}
+	if app.currentView() != ViewWeeklyReview {
+		t.Errorf("currentView should be WeeklyReview, got %v", app.currentView())
+	}
+}
+
+func TestHandleViewMessagesCloseWeeklyReview(t *testing.T) {
+	app := newTestAppModel()
+	app.pushView(ViewWeeklyReview)
+
+	msg := CloseWeeklyReviewMsg{}
+	handled, _ := app.handleViewMessages(msg)
+
+	if !handled {
+		t.Error("CloseWeeklyReviewMsg should be handled")
+	}
+	if app.currentView() != ViewDashboard {
+		t.Errorf("currentView should be Dashboard after closing weekly review, got %v", app.currentView())
+	}
+}
+
+func TestHandleViewMessagesShowAllTasks(t *testing.T) {
+	app := newTestAppModel()
+
+	msg := ShowAllTasksMsg{}
+	handled, _ := app.handleViewMessages(msg)
+
+	if !handled {
+		t.Error("ShowAllTasksMsg should be handled")
+	}
+	if app.currentView() != ViewAllTasks {
+		t.Errorf("currentView should be AllTasks, got %v", app.currentView())
+	}
+}
+
+func TestHandleViewMessagesShowFocusBoard(t *testing.T) {
+	app := newTestAppModel()
+
+	msg := ShowFocusBoardMsg{}
+	handled, _ := app.handleViewMessages(msg)
+
+	if !handled {
+		t.Error("ShowFocusBoardMsg should be handled")
+	}
+	if app.currentView() != ViewFocusBoard {
+		t.Errorf("currentView should be FocusBoard, got %v", app.currentView())
+	}
+}
+
+func TestHandleViewMessagesShowRecentActivity(t *testing.T) {
+	app := newTestAppModel()
+
+	msg := ShowRecentActivityMsg{}
+	handled, _ := app.handleViewMessages(msg)
+
+	if !handled {
+		t.Error("ShowRecentActivityMsg should be handled")
+	}
+	if app.currentView() != ViewRecentActivity {
+		t.Errorf("currentView should be RecentActivity, got %v", app.currentView())
+	}
+}
+
+func TestHandleViewMessagesCloseRecentActivity(t *testing.T) {
+	app := newTestAppModel()
+	app.pushView(ViewRecentActivity)
+
+	msg := CloseRecentActivityMsg{}
+	handled, _ := app.handleViewMessages(msg)
+
+	if !handled {
+		t.Error("CloseRecentActivityMsg should be handled")
+	}
+	// popToAnchorView should land on Dashboard
+	if app.currentView() != ViewDashboard {
+		t.Errorf("currentView should be Dashboard after closing recent activity, got %v", app.currentView())
+	}
+}
+
+func TestHandleViewMessagesShowBlockers(t *testing.T) {
+	app, project := newTestAppModelWithProject()
+
+	msg := ShowBlockersMsg{Project: project}
+	handled, _ := app.handleViewMessages(msg)
+
+	if !handled {
+		t.Error("ShowBlockersMsg should be handled")
+	}
+	if app.currentView() != ViewBlockers {
+		t.Errorf("currentView should be Blockers, got %v", app.currentView())
+	}
+}
+
+func TestHandleViewMessagesCloseBlockers(t *testing.T) {
+	app := newTestAppModel()
+	app.pushView(ViewBlockers)
+
+	msg := CloseBlockersMsg{}
+	handled, _ := app.handleViewMessages(msg)
+
+	if !handled {
+		t.Error("CloseBlockersMsg should be handled")
+	}
+	if app.currentView() != ViewDashboard {
+		t.Errorf("currentView should be Dashboard after closing blockers, got %v", app.currentView())
+	}
+}
+
+func TestHandleViewMessagesShowGlobalBlockers(t *testing.T) {
+	app := newTestAppModel()
+
+	msg := ShowGlobalBlockersMsg{}
+	handled, _ := app.handleViewMessages(msg)
+
+	if !handled {
+		t.Error("ShowGlobalBlockersMsg should be handled")
+	}
+	if app.currentView() != ViewGlobalBlockers {
+		t.Errorf("currentView should be GlobalBlockers, got %v", app.currentView())
+	}
+}
+
+func TestHandleViewMessagesCloseGlobalBlockers(t *testing.T) {
+	app := newTestAppModel()
+	app.pushView(ViewGlobalBlockers)
+
+	msg := CloseGlobalBlockersMsg{}
+	handled, _ := app.handleViewMessages(msg)
+
+	if !handled {
+		t.Error("CloseGlobalBlockersMsg should be handled")
+	}
+	// popToAnchorView should land on Dashboard
+	if app.currentView() != ViewDashboard {
+		t.Errorf("currentView should be Dashboard after closing global blockers, got %v", app.currentView())
+	}
+}
+
+func TestHandleViewMessagesShowTaskAttachments(t *testing.T) {
+	app, project := newTestAppModelWithProject()
+	task := project.Tasks[0]
+
+	msg := ShowTaskAttachmentsMsg{Task: task, Project: project}
+	handled, _ := app.handleViewMessages(msg)
+
+	if !handled {
+		t.Error("ShowTaskAttachmentsMsg should be handled")
+	}
+	if app.currentView() != ViewTaskAttachments {
+		t.Errorf("currentView should be TaskAttachments, got %v", app.currentView())
+	}
+}
+
+func TestHandleViewMessagesCloseTaskAttachments(t *testing.T) {
+	app := newTestAppModel()
+	app.pushView(ViewTaskAttachments)
+
+	msg := CloseTaskAttachmentsMsg{}
+	handled, _ := app.handleViewMessages(msg)
+
+	if !handled {
+		t.Error("CloseTaskAttachmentsMsg should be handled")
+	}
+	if app.currentView() != ViewDashboard {
+		t.Errorf("currentView should be Dashboard after closing attachments, got %v", app.currentView())
+	}
+}
+
+func TestHandleViewMessagesStatusMsg(t *testing.T) {
+	app := newTestAppModel()
+
+	msg := StatusMsg("Operation completed")
+	handled, cmd := app.handleViewMessages(msg)
+
+	if !handled {
+		t.Error("StatusMsg should be handled")
+	}
+	if app.statusMessage != "Operation completed" {
+		t.Errorf("statusMessage should be 'Operation completed', got %q", app.statusMessage)
+	}
+	if app.statusIsInfo {
+		t.Error("statusIsInfo should be false for StatusMsg")
+	}
+	if cmd == nil {
+		t.Error("StatusMsg should return a status timeout command")
+	}
+}
+
+func TestHandleViewMessagesInfoStatusMsg(t *testing.T) {
+	app := newTestAppModel()
+
+	msg := InfoStatusMsg("Some info")
+	handled, cmd := app.handleViewMessages(msg)
+
+	if !handled {
+		t.Error("InfoStatusMsg should be handled")
+	}
+	if app.statusMessage != "Some info" {
+		t.Errorf("statusMessage should be 'Some info', got %q", app.statusMessage)
+	}
+	if !app.statusIsInfo {
+		t.Error("statusIsInfo should be true for InfoStatusMsg")
+	}
+	if cmd == nil {
+		t.Error("InfoStatusMsg should return a status timeout command")
+	}
+}
+
+func TestHandleViewMessagesStatusClearResetsInfoFlag(t *testing.T) {
+	app := newTestAppModel()
+	app.statusMessage = "Some status"
+	app.statusIsInfo = true
+
+	msg := StatusClearMsg{}
+	handled, _ := app.handleViewMessages(msg)
+
+	if !handled {
+		t.Error("StatusClearMsg should be handled")
+	}
+	if app.statusMessage != "" {
+		t.Errorf("statusMessage should be cleared, got %q", app.statusMessage)
+	}
+	if app.statusIsInfo {
+		t.Error("statusIsInfo should be cleared by StatusClearMsg")
+	}
+}
+
+func TestHandleViewMessagesShowNotificationCenter(t *testing.T) {
+	app := newTestAppModel()
+
+	msg := ShowNotificationCenterMsg{}
+	handled, _ := app.handleViewMessages(msg)
+
+	if !handled {
+		t.Error("ShowNotificationCenterMsg should be handled")
+	}
+	if app.currentView() != ViewNotificationCenter {
+		t.Errorf("currentView should be NotificationCenter, got %v", app.currentView())
+	}
+}
+
+func TestHandleViewMessagesCloseNotificationCenter(t *testing.T) {
+	app := newTestAppModel()
+	app.pushView(ViewNotificationCenter)
+
+	msg := CloseNotificationCenterMsg{}
+	handled, _ := app.handleViewMessages(msg)
+
+	if !handled {
+		t.Error("CloseNotificationCenterMsg should be handled")
+	}
+	if app.currentView() != ViewDashboard {
+		t.Errorf("currentView should be Dashboard after closing notification center, got %v", app.currentView())
+	}
+}
+
+func TestHandleViewMessagesSettingsStages(t *testing.T) {
+	app := newTestAppModel()
+
+	msg := SettingsStagesMsg{}
+	handled, _ := app.handleViewMessages(msg)
+
+	if !handled {
+		t.Error("SettingsStagesMsg should be handled")
+	}
+	if app.currentView() != ViewSettings {
+		t.Errorf("currentView should be Settings, got %v", app.currentView())
+	}
+}
+
+func TestHandleViewMessagesShowTutor(t *testing.T) {
+	app := newTestAppModel()
+
+	msg := ShowTutorMsg{}
+	handled, _ := app.handleViewMessages(msg)
+
+	if !handled {
+		t.Error("ShowTutorMsg should be handled")
+	}
+	if app.currentView() != ViewTutor {
+		t.Errorf("currentView should be Tutor, got %v", app.currentView())
+	}
+}
+
+func TestHandleViewMessagesFilterBuilderSaved(t *testing.T) {
+	app := newTestAppModel()
+	app.pushView(ViewFilterBuilder)
+
+	msg := FilterBuilderSavedMsg{}
+	handled, _ := app.handleViewMessages(msg)
+
+	if !handled {
+		t.Error("FilterBuilderSavedMsg should be handled")
+	}
+	if app.currentView() != ViewDashboard {
+		t.Errorf("currentView should be Dashboard after filter builder saved, got %v", app.currentView())
+	}
+}
+
+func TestHandleViewMessagesTemplatePickerDoneCanceled(t *testing.T) {
+	app := newTestAppModel()
+	app.pushView(ViewTaskTemplatePicker)
+	app.pendingCreateTaskParent = &models.Task{}
+
+	msg := TemplatePickerDoneMsg{Canceled: true}
+	handled, _ := app.handleViewMessages(msg)
+
+	if !handled {
+		t.Error("TemplatePickerDoneMsg should be handled")
+	}
+	if app.currentView() != ViewDashboard {
+		t.Errorf("currentView should be Dashboard after canceled template picker, got %v", app.currentView())
+	}
+	if app.pendingCreateTaskParent != nil {
+		t.Error("pendingCreateTaskParent should be cleared after canceling template picker")
+	}
+}
+
+func TestHandleViewMessagesShowBulkEdit(t *testing.T) {
+	app, project := newTestAppModelWithProject()
+	tasks := project.Tasks
+
+	msg := ShowBulkEditMsg{Tasks: tasks, Project: project}
+	handled, _ := app.handleViewMessages(msg)
+
+	if !handled {
+		t.Error("ShowBulkEditMsg should be handled")
+	}
+	if app.currentView() != ViewBulkEdit {
+		t.Errorf("currentView should be BulkEdit, got %v", app.currentView())
+	}
+}
+
+func TestHandleViewMessagesBlockerAdded(t *testing.T) {
+	app, project := newTestAppModelWithProject()
+	app.dashboard = NewDashboardModel(app.config, nil)
+
+	msg := BlockerAddedMsg{Project: project}
+	handled, _ := app.handleViewMessages(msg)
+
+	if !handled {
+		t.Error("BlockerAddedMsg should be handled")
+	}
+}
+
+func TestHandleViewMessagesAttachmentAdded(t *testing.T) {
+	app, _ := newTestAppModelWithProject()
+	app.dashboard = NewDashboardModel(app.config, nil)
+
+	msg := AttachmentAddedMsg{}
+	handled, _ := app.handleViewMessages(msg)
+
+	if !handled {
+		t.Error("AttachmentAddedMsg should be handled")
 	}
 }

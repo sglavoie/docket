@@ -28,7 +28,6 @@ Examples:
   tt task depends 5 --on 3             # Task 5 now depends on task 3
   tt task depends 5 --remove 3         # Remove dependency on task 3
   tt task depends 5 --clear            # Remove all dependencies`,
-	Args: cobra.ExactArgs(1),
 	RunE: runTaskDepends,
 }
 
@@ -41,6 +40,10 @@ func init() {
 }
 
 func runTaskDepends(cmd *cobra.Command, args []string) error {
+	if len(args) < 1 {
+		return tterrors.NewRequiredFieldError("task ID")
+	}
+
 	taskID := args[0]
 
 	// If no flags provided, just show dependencies (read-only)

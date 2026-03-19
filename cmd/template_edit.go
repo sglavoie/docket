@@ -51,7 +51,6 @@ EXAMPLES
 
   # Clear all checklist items
   tt template edit abc123 --clear-checklist`,
-	Args: cobra.ExactArgs(1),
 	RunE: runTemplateEdit,
 }
 
@@ -98,6 +97,10 @@ func init() {
 }
 
 func runTemplateEdit(cmd *cobra.Command, args []string) error {
+	if len(args) < 1 {
+		return tterrors.NewRequiredFieldError("template ID or name")
+	}
+
 	templateID := args[0]
 
 	cfg, configManager, err := LoadConfigStrict()

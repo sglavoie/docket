@@ -9,6 +9,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/tterrors"
 )
 
 var attachmentsCmd = &cobra.Command{
@@ -22,7 +23,6 @@ Shows filename/URL, size (for local files), and when it was added.
 Examples:
   tt attachments 5
   tt att abc123`,
-	Args: cobra.ExactArgs(1),
 	RunE: runAttachmentsList,
 }
 
@@ -31,6 +31,10 @@ func init() {
 }
 
 func runAttachmentsList(cmd *cobra.Command, args []string) error {
+	if len(args) < 1 {
+		return tterrors.NewRequiredFieldError("task ID")
+	}
+
 	return WithTaskRead(args[0], func(project *models.Project, task *models.Task) error {
 		return displayAttachmentsList(project, task)
 	})

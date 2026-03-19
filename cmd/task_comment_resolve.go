@@ -6,6 +6,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tterrors"
 )
 
 var taskCommentResolveCmd = &cobra.Command{
@@ -19,7 +20,6 @@ Use 'tt task comment list --all' to see resolved comments.
 Examples:
   tt task comment resolve 5 0        # Toggle resolved state of first comment
   tt t c resolve 5 0`,
-	Args: cobra.ExactArgs(2),
 	RunE: runTaskCommentResolve,
 }
 
@@ -28,6 +28,10 @@ func init() {
 }
 
 func runTaskCommentResolve(cmd *cobra.Command, args []string) error {
+	if len(args) < 2 {
+		return tterrors.NewRequiredFieldError("task ID and comment index")
+	}
+
 	_, err := WithTaskUpdate(args[0], func(task *models.Task) error {
 		index, err := parseItemIndex(args[1], len(task.Comments), "comment")
 		if err != nil {

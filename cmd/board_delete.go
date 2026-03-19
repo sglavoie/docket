@@ -8,6 +8,7 @@ import (
 	"github.com/sglavoie/tt/internal/logging"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/tterrors"
 )
 
 var boardDeleteForce bool
@@ -21,7 +22,6 @@ var boardDeleteCmd = &cobra.Command{
 Examples:
   tt board delete 1
   tt board delete 1 --force`,
-	Args: cobra.ExactArgs(1),
 	RunE: runBoardDelete,
 }
 
@@ -31,6 +31,10 @@ func init() {
 }
 
 func runBoardDelete(cmd *cobra.Command, args []string) error {
+	if len(args) < 1 {
+		return tterrors.NewRequiredFieldError("action ID")
+	}
+
 	cfg, mgr, err := LoadConfig()
 	if err != nil {
 		return err

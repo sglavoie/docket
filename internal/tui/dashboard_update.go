@@ -82,10 +82,6 @@ func (m *DashboardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.showArchived = !m.showArchived
 			m.cursor = 0
 			m.loadProjects()
-		case ",":
-			return m, func() tea.Msg {
-				return SettingsMsg{}
-			}
 		case "S":
 			if CursorInBounds(m.cursor, len(visible)) {
 				project := visible[m.cursor]

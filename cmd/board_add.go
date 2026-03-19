@@ -33,7 +33,6 @@ Examples:
   tt board add "Review PR #432" --url https://github.com/org/repo/pull/432 --source github
   tt board add "Reply to Sarah's thread" --source slack --priority 2
   tt board add "Follow up on Q2 roadmap" --project myproject --tag planning`,
-	Args: cobra.MinimumNArgs(1),
 	RunE: runBoardAdd,
 }
 

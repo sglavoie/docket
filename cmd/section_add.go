@@ -6,6 +6,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tterrors"
 )
 
 var sectionAddCmd = &cobra.Command{
@@ -19,7 +20,6 @@ Examples:
   tt section add InProgress
   tt section add Review
   tt sec add Done`,
-	Args: cobra.ExactArgs(1),
 	RunE: runSectionAdd,
 }
 
@@ -28,6 +28,10 @@ func init() {
 }
 
 func runSectionAdd(cmd *cobra.Command, args []string) error {
+	if len(args) < 1 {
+		return tterrors.NewRequiredFieldError("section name")
+	}
+
 	sectionName := args[0]
 
 	if err := models.ValidateSectionName(sectionName); err != nil {

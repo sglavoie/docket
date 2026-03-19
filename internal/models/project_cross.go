@@ -1,6 +1,9 @@
 package models
 
-import "time"
+import (
+	"fmt"
+	"time"
+)
 
 // MoveTaskToProjectResult contains the result of a cross-project task move.
 type MoveTaskToProjectResult struct {
@@ -15,13 +18,13 @@ type MoveTaskToProjectResult struct {
 // Short IDs are regenerated in the destination project.
 func (p *Project) MoveTaskToProject(task *Task, dest *Project) (*MoveTaskToProjectResult, error) {
 	if task == nil {
-		return nil, nil
+		return nil, fmt.Errorf("cannot move nil task")
 	}
 	if dest == nil {
-		return nil, nil
+		return nil, fmt.Errorf("destination project is nil")
 	}
 	if p.ID == dest.ID {
-		return nil, nil
+		return nil, fmt.Errorf("cannot move task to the same project")
 	}
 
 	// Build tree to ensure parent-child relationships are set

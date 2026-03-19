@@ -54,7 +54,6 @@ Examples:
   tt task add "Create API endpoint" --parent 2 --priority 1
   tt t a "Quick task" --tags backend,urgent
   tt task add "Login fails" --template def-bug-report`,
-	Args: cobra.MinimumNArgs(1),
 	RunE: runTaskAdd,
 }
 
@@ -110,6 +109,10 @@ func runTaskAdd(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
+	}
+
+	if len(args) < 1 {
+		return tterrors.NewRequiredFieldError("title")
 	}
 
 	title := strings.TrimSpace(strings.Join(args, " "))

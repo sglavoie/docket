@@ -10,6 +10,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/external"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/tterrors"
 )
 
 var attachmentOpenCmd = &cobra.Command{
@@ -24,7 +25,6 @@ For code references, opens in the configured code editor at the specified line.
 Examples:
   tt attachment open 5 0      # Open first attachment on task 5
   tt attachment open abc123 1 # Open second attachment`,
-	Args: cobra.ExactArgs(2),
 	RunE: runAttachmentOpen,
 }
 
@@ -33,6 +33,10 @@ func init() {
 }
 
 func runAttachmentOpen(cmd *cobra.Command, args []string) error {
+	if len(args) < 2 {
+		return tterrors.NewRequiredFieldError("task ID and attachment name")
+	}
+
 	project, cfg, _, err := LoadCurrentProject()
 	if err != nil {
 		return err

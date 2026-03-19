@@ -230,13 +230,19 @@ func TestMoveTaskToProjectNilInputs(t *testing.T) {
 
 	// Nil task
 	result, err := sourceProj.MoveTaskToProject(nil, destProj)
-	if err != nil || result != nil {
+	if err == nil {
+		t.Error("expected error for nil task")
+	}
+	if result != nil {
 		t.Error("expected nil result for nil task")
 	}
 
 	// Nil destination
 	result, err = sourceProj.MoveTaskToProject(task, nil)
-	if err != nil || result != nil {
+	if err == nil {
+		t.Error("expected error for nil destination")
+	}
+	if result != nil {
 		t.Error("expected nil result for nil destination")
 	}
 }
@@ -249,9 +255,12 @@ func TestMoveTaskToProjectSameProject(t *testing.T) {
 	}
 	sourceProj.Tasks = []*Task{task}
 
-	// Move to same project (should be no-op)
+	// Move to same project (should return error)
 	result, err := sourceProj.MoveTaskToProject(task, sourceProj)
-	if err != nil || result != nil {
+	if err == nil {
+		t.Error("expected error when moving to same project")
+	}
+	if result != nil {
 		t.Error("expected nil result when moving to same project")
 	}
 
@@ -420,5 +429,46 @@ func TestMoveTaskToProjectUpdatesTimestamps(t *testing.T) {
 	}
 	if !destProj.UpdatedAt.After(oldDestTime) {
 		t.Error("expected dest project timestamp to be updated")
+	}
+}
+
+func TestMoveTaskToProjectSelfMoveError(t *testing.T) {
+	proj := NewProject("proj1", "Project 1", "/tmp/proj1")
+	task, err := NewTask("task1", 1, TaskTypeTask, "Task 1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	proj.Tasks = []*Task{task}
+
+	_, err = proj.MoveTaskToProject(task, proj)
+	if err == nil {
+		t.Fatal("expected error when moving task to same project")
+	}
+	if err.Error() != "cannot move task to the same project" {
+		t.Errorf("unexpected error message: %v", err)
+	}
+}
+
+func TestMoveTaskToProjectNilTask(t *testing.T) {
+	proj := NewProject("proj1", "Project 1", "/tmp/proj1")
+	dest := NewProject("proj2", "Project 2", "/tmp/proj2")
+
+	_, err := proj.MoveTaskToProject(nil, dest)
+	if err == nil {
+		t.Fatal("expected error when moving nil task")
+	}
+}
+
+func TestMoveTaskToProjectNilDest(t *testing.T) {
+	proj := NewProject("proj1", "Project 1", "/tmp/proj1")
+	task, err := NewTask("task1", 1, TaskTypeTask, "Task 1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	proj.Tasks = []*Task{task}
+
+	_, err = proj.MoveTaskToProject(task, nil)
+	if err == nil {
+		t.Fatal("expected error when destination is nil")
 	}
 }

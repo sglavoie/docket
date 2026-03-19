@@ -7,6 +7,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/sglavoie/tt/internal/external"
+	"github.com/sglavoie/tt/internal/tterrors"
 	"github.com/sglavoie/tt/internal/util"
 )
 
@@ -27,7 +28,6 @@ Examples:
   tt task comment edit 5 0        # Edit first comment on task 5
   tt task comment edit 5 0 --editor vim
   tt t c e 5 0`,
-	Args: cobra.ExactArgs(2),
 	RunE: runTaskCommentEdit,
 }
 
@@ -39,6 +39,10 @@ func init() {
 }
 
 func runTaskCommentEdit(cmd *cobra.Command, args []string) error {
+	if len(args) < 2 {
+		return tterrors.NewRequiredFieldError("task ID and comment index")
+	}
+
 	project, cfg, _, err := LoadCurrentProject()
 	if err != nil {
 		return err

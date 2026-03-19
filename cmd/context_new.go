@@ -22,7 +22,6 @@ Uses fzf for multi-select if available, otherwise prompts for project names.
 Examples:
   tt context new Work
   tt ctx new "Side Projects"`,
-	Args: cobra.ExactArgs(1),
 	RunE: runContextNew,
 }
 
@@ -31,6 +30,10 @@ func init() {
 }
 
 func runContextNew(cmd *cobra.Command, args []string) error {
+	if len(args) < 1 {
+		return tterrors.NewRequiredFieldError("context name")
+	}
+
 	name := strings.TrimSpace(args[0])
 	if name == "" {
 		return fmt.Errorf("custom context name cannot be empty")

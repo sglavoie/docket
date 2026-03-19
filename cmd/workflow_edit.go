@@ -86,7 +86,6 @@ Examples:
     --set-logic or \
     -f due_days -o less_than -V 0 \
     --yes`,
-	Args: cobra.ExactArgs(1),
 	RunE: runWorkflowEdit,
 }
 
@@ -127,6 +126,10 @@ func init() {
 }
 
 func runWorkflowEdit(cmd *cobra.Command, args []string) error {
+	if len(args) < 1 {
+		return tterrors.NewRequiredFieldError("rule ID")
+	}
+
 	ruleID := args[0]
 
 	// Load config

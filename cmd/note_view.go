@@ -7,6 +7,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tterrors"
 )
 
 var noteViewNoGlow bool
@@ -20,7 +21,6 @@ Examples:
   tt note view 2026-01-28-meeting-notes.md
   tt note view meeting
   tt note view --no-glow meeting`,
-	Args: cobra.ExactArgs(1),
 	RunE: runNoteView,
 }
 
@@ -30,6 +30,10 @@ func init() {
 }
 
 func runNoteView(cmd *cobra.Command, args []string) error {
+	if len(args) < 1 {
+		return tterrors.NewRequiredFieldError("note ID")
+	}
+
 	var note *models.Note
 	var glowEnabled bool
 

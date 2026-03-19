@@ -23,7 +23,6 @@ Examples:
   tt blocker add "Waiting for API access"
   tt blocker add "Manager absent, cannot get review" -d "Need approval by next week"
   tt b a "Build server down"`,
-	Args: cobra.MinimumNArgs(1),
 	RunE: runBlockerAdd,
 }
 

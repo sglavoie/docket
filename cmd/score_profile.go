@@ -8,6 +8,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/sglavoie/tt/internal/scoring"
+	"github.com/sglavoie/tt/internal/tterrors"
 )
 
 var scoreProfileListCmd = &cobra.Command{
@@ -34,7 +35,6 @@ Examples:
 var scoreProfileShowCmd = &cobra.Command{
 	Use:   "show <profile-id>",
 	Short: "Show profile dimensions and formula",
-	Args:  cobra.ExactArgs(1),
 	RunE:  runScoreProfileShow,
 }
 
@@ -49,14 +49,12 @@ Modify dimensions with --dim flags. Each dimension is specified as:
 Examples:
   tt score profile edit rice --dim "reach:1-10:5:2" --dim "effort:1-10:5:1"
   tt score profile edit custom --name "Updated Name"`,
-	Args: cobra.ExactArgs(1),
 	RunE: runScoreProfileEdit,
 }
 
 var scoreProfileDeleteCmd = &cobra.Command{
 	Use:   "delete <profile-id>",
 	Short: "Remove a scoring profile",
-	Args:  cobra.ExactArgs(1),
 	RunE:  runScoreProfileDelete,
 }
 
@@ -162,6 +160,10 @@ func runScoreProfileAdd(cmd *cobra.Command, args []string) error {
 }
 
 func runScoreProfileShow(cmd *cobra.Command, args []string) error {
+	if len(args) < 1 {
+		return tterrors.NewRequiredFieldError("profile name")
+	}
+
 	cfg, _, err := LoadConfig()
 	if err != nil {
 		return err
@@ -200,6 +202,10 @@ func runScoreProfileShow(cmd *cobra.Command, args []string) error {
 }
 
 func runScoreProfileEdit(cmd *cobra.Command, args []string) error {
+	if len(args) < 1 {
+		return tterrors.NewRequiredFieldError("profile name")
+	}
+
 	cfg, configManager, err := LoadConfig()
 	if err != nil {
 		return err
@@ -246,6 +252,10 @@ func runScoreProfileEdit(cmd *cobra.Command, args []string) error {
 }
 
 func runScoreProfileDelete(cmd *cobra.Command, args []string) error {
+	if len(args) < 1 {
+		return tterrors.NewRequiredFieldError("profile name")
+	}
+
 	cfg, configManager, err := LoadConfig()
 	if err != nil {
 		return err

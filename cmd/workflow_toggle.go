@@ -17,7 +17,6 @@ Disabled rules are not evaluated when tasks change.
 
 Example:
   tt workflow toggle abc123`,
-	Args: cobra.ExactArgs(1),
 	RunE: runWorkflowToggle,
 }
 
@@ -26,6 +25,10 @@ func init() {
 }
 
 func runWorkflowToggle(cmd *cobra.Command, args []string) error {
+	if len(args) < 1 {
+		return tterrors.NewRequiredFieldError("rule ID")
+	}
+
 	ruleID := args[0]
 
 	cfg, configManager, err := LoadConfigStrict()

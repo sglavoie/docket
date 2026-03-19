@@ -8,6 +8,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/tterrors"
 )
 
 var keepFile bool
@@ -24,7 +25,6 @@ Use --keep-file to only remove the reference without deleting the file.
 Examples:
   tt attachment remove 5 0           # Remove and delete first attachment
   tt attachment rm 5 0 --keep-file   # Remove reference but keep file`,
-	Args: cobra.ExactArgs(2),
 	RunE: runAttachmentRemove,
 }
 
@@ -34,6 +34,10 @@ func init() {
 }
 
 func runAttachmentRemove(cmd *cobra.Command, args []string) error {
+	if len(args) < 2 {
+		return tterrors.NewRequiredFieldError("task ID and attachment name")
+	}
+
 	project, _, _, err := LoadCurrentProject()
 	if err != nil {
 		return err

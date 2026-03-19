@@ -11,7 +11,10 @@ import (
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/spf13/cobra"
 
+	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/tterrors"
 	"github.com/sglavoie/tt/internal/util"
 )
 
@@ -43,6 +46,7 @@ Examples:
   tt task list --tree       # Show hierarchical tree view
   tt task list --sort priority
   tt task list --json       # Output as JSON
+  tt task list --project myproject
   tt t ls`,
 	RunE: runTaskList,
 }
@@ -60,16 +64,43 @@ func init() {
 	taskListCmd.Flags().StringVar(&listSort, "sort", "", "sort by: priority, created, updated, status, title")
 	taskListCmd.Flags().BoolVar(&listJSON, "json", false, "output as JSON")
 
+	taskListCmd.Flags().StringP("project", "P", "", "target project slug (default: current project)")
+
 	_ = taskListCmd.RegisterFlagCompletionFunc("type", completeEnum(taskTypeCompletions))
 	_ = taskListCmd.RegisterFlagCompletionFunc("status", completeEnum(statusCompletions))
 	_ = taskListCmd.RegisterFlagCompletionFunc("sort", completeEnum(sortCompletions))
 }
 
 func runTaskList(cmd *cobra.Command, args []string) error {
-	project, _, _, err := LoadCurrentProject()
-	if err != nil {
-		return err
+	var (
+		project       *models.Project
+		cfg           *config.Config
+		configManager *config.Manager
+		err           error
+	)
+
+	if slug, _ := cmd.Flags().GetString("project"); slug != "" {
+		cfg, configManager, err = LoadConfig()
+		if err != nil {
+			return err
+		}
+		project = cfg.GetProject(slug)
+		if project == nil {
+			return tterrors.NewProjectNotFoundError(slug)
+		}
+		if err = storage.LoadProject(project); err != nil {
+			return fmt.Errorf("failed to load project %s: %w", slug, err)
+		}
+	} else {
+		project, cfg, configManager, err = LoadCurrentProject()
+		if err != nil {
+			return err
+		}
 	}
+
+	// Suppress unused variable warnings for cfg/configManager (not needed in list)
+	_ = cfg
+	_ = configManager
 
 	// Apply filters
 	tasks := filterTasks(project.Tasks)

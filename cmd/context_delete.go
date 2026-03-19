@@ -19,7 +19,6 @@ var contextDeleteCmd = &cobra.Command{
 Examples:
   tt context delete Work
   tt ctx del "Side Projects"`,
-	Args: cobra.ExactArgs(1),
 	RunE: runContextDelete,
 }
 
@@ -29,6 +28,10 @@ func init() {
 }
 
 func runContextDelete(cmd *cobra.Command, args []string) error {
+	if len(args) < 1 {
+		return tterrors.NewRequiredFieldError("context name")
+	}
+
 	name := args[0]
 
 	cfg, mgr, err := LoadConfig()

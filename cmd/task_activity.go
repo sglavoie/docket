@@ -9,6 +9,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/tterrors"
 	"github.com/sglavoie/tt/internal/util"
 )
 
@@ -24,7 +25,6 @@ title, and other fields. Entries are shown in reverse chronological order.
 Examples:
   tt task activity 5           # Show activity log for task 5
   tt task activity 5 --since 7d  # Show activity from the last 7 days`,
-	Args: cobra.ExactArgs(1),
 	RunE: runTaskActivity,
 }
 
@@ -36,6 +36,10 @@ func init() {
 }
 
 func runTaskActivity(cmd *cobra.Command, args []string) error {
+	if len(args) < 1 {
+		return tterrors.NewRequiredFieldError("task ID")
+	}
+
 	return WithTaskRead(args[0], func(project *models.Project, task *models.Task) error {
 		return displayTaskActivity(task)
 	})

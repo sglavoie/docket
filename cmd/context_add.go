@@ -17,7 +17,6 @@ var contextAddCmd = &cobra.Command{
 Examples:
   tt context add Work my-project
   tt ctx add "Side Projects" cool-app`,
-	Args: cobra.ExactArgs(2),
 	RunE: runContextAdd,
 }
 
@@ -26,6 +25,10 @@ func init() {
 }
 
 func runContextAdd(cmd *cobra.Command, args []string) error {
+	if len(args) < 2 {
+		return tterrors.NewRequiredFieldError("context name and project slug")
+	}
+
 	contextName := args[0]
 	projectSlug := args[1]
 

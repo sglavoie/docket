@@ -12,6 +12,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/external"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/tterrors"
 )
 
 var (
@@ -31,7 +32,6 @@ Examples:
   tt ask "what are my high priority tasks?"
   tt ask "create a bug for the login timeout issue" --apply
   tt ask --no-context "how do I use tt to manage dependencies?"`,
-	Args: cobra.MinimumNArgs(1),
 	RunE: runAsk,
 }
 
@@ -43,6 +43,10 @@ func init() {
 }
 
 func runAsk(cmd *cobra.Command, args []string) error {
+	if len(args) < 1 {
+		return tterrors.NewRequiredFieldError("question")
+	}
+
 	if !external.ClaudeAvailable() {
 		return fmt.Errorf("claude CLI not found. Install it from https://claude.ai/cli")
 	}

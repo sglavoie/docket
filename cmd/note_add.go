@@ -25,7 +25,6 @@ Examples:
   tt note add "Meeting notes"
   tt note add "Design ideas" --tag design --tag architecture
   tt note add "Quick thought" --edit`,
-	Args: cobra.MinimumNArgs(1),
 	RunE: runNoteAdd,
 }
 

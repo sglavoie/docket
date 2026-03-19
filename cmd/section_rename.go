@@ -6,6 +6,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tterrors"
 )
 
 var sectionRenameCmd = &cobra.Command{
@@ -18,7 +19,6 @@ The Next section cannot be renamed. New names must not contain spaces.
 Examples:
   tt section rename InProgress Working
   tt section rename Review Done`,
-	Args: cobra.ExactArgs(2),
 	RunE: runSectionRename,
 }
 
@@ -27,6 +27,10 @@ func init() {
 }
 
 func runSectionRename(cmd *cobra.Command, args []string) error {
+	if len(args) < 2 {
+		return tterrors.NewRequiredFieldError("old name and new name")
+	}
+
 	oldName := args[0]
 	newName := args[1]
 

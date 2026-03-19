@@ -5,6 +5,8 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
+
+	"github.com/sglavoie/tt/internal/tterrors"
 )
 
 var workflowShowCmd = &cobra.Command{
@@ -22,7 +24,6 @@ Examples:
   tt workflow show def-overdue
   tt workflow show abc12345
   tt wf show def-activate-on-active`,
-	Args: cobra.ExactArgs(1),
 	RunE: runWorkflowShow,
 }
 
@@ -31,6 +32,10 @@ func init() {
 }
 
 func runWorkflowShow(cmd *cobra.Command, args []string) error {
+	if len(args) < 1 {
+		return tterrors.NewRequiredFieldError("rule ID")
+	}
+
 	ruleID := args[0]
 
 	cfg, _, err := LoadConfigStrict()

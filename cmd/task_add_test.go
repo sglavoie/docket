@@ -3,7 +3,11 @@ package cmd
 import (
 	"testing"
 
+	"github.com/spf13/viper"
+
+	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/testutil"
 )
 
@@ -226,4 +230,217 @@ func TestTaskTypeIcons(t *testing.T) {
 			t.Errorf("TaskType(%q) should have a valid icon, got %q", taskType, icon)
 		}
 	}
+}
+
+// resetTaskAddVars resets all package-level flag variables used by runTaskAdd.
+func resetTaskAddVars() {
+	taskTypeFlag = ""
+	taskParentFlag = ""
+	taskPriority = 3
+	taskTags = nil
+	taskSectionFlag = ""
+	taskStageFlag = ""
+	taskRecurFlag = ""
+	taskTemplateFlag = ""
+	isEpic = false
+	isStory = false
+	isBug = false
+	isIdea = false
+	addTypeAttrs = TypeAttrValues{}
+}
+
+// setupTaskAddTest creates common test dependencies and returns them.
+// Caller must defer deps.Cleanup() and restore storage/viper.
+func setupTaskAddTest(t *testing.T) (*testutil.TestDeps, *models.Project) {
+	t.Helper()
+	resetTaskAddVars()
+
+	deps, project := testutil.SetupTestDepsWithProject(t, "Test Project")
+
+	viper.Set("config", deps.ConfigPath)
+	t.Cleanup(func() { viper.Set("config", "") })
+
+	manager := config.NewManager(deps.ConfigPath)
+	err := manager.Save(deps.Config)
+	testutil.AssertNoError(t, err)
+
+	oldStorageRepo := storage.DefaultRepository
+	storage.DefaultRepository = deps.Repository
+	t.Cleanup(func() { storage.DefaultRepository = oldStorageRepo })
+
+	return deps, project
+}
+
+func TestRunTaskAdd(t *testing.T) {
+	t.Run("creates task successfully", func(t *testing.T) {
+		deps, project := setupTaskAddTest(t)
+		defer deps.Cleanup()
+
+		initialCount := len(project.Tasks)
+
+		err := runTaskAdd(taskAddCmd, []string{"My New Task"})
+		testutil.AssertNoError(t, err)
+
+		savedProject := deps.Repository.Projects[project.ID]
+		if len(savedProject.Tasks) != initialCount+1 {
+			t.Fatalf("expected %d tasks, got %d", initialCount+1, len(savedProject.Tasks))
+		}
+		task := savedProject.Tasks[len(savedProject.Tasks)-1]
+		testutil.AssertEqual(t, task.Title, "My New Task")
+		testutil.AssertEqual(t, task.Type, models.TaskTypeTask)
+		testutil.AssertEqual(t, task.Priority, 3)
+		testutil.AssertEqual(t, task.Status, models.StatusTodo)
+	})
+
+	t.Run("rejects missing title", func(t *testing.T) {
+		deps, _ := setupTaskAddTest(t)
+		defer deps.Cleanup()
+
+		err := runTaskAdd(taskAddCmd, []string{})
+		if err == nil {
+			t.Error("expected error for missing title")
+		}
+	})
+
+	t.Run("rejects empty title", func(t *testing.T) {
+		deps, _ := setupTaskAddTest(t)
+		defer deps.Cleanup()
+
+		err := runTaskAdd(taskAddCmd, []string{" "})
+		if err == nil {
+			t.Error("expected error for empty title")
+		}
+	})
+
+	t.Run("creates epic with flag", func(t *testing.T) {
+		deps, project := setupTaskAddTest(t)
+		defer deps.Cleanup()
+
+		initialCount := len(project.Tasks)
+		isEpic = true
+
+		err := runTaskAdd(taskAddCmd, []string{"My Epic"})
+		testutil.AssertNoError(t, err)
+
+		savedProject := deps.Repository.Projects[project.ID]
+		if len(savedProject.Tasks) != initialCount+1 {
+			t.Fatalf("expected %d tasks, got %d", initialCount+1, len(savedProject.Tasks))
+		}
+		testutil.AssertEqual(t, savedProject.Tasks[len(savedProject.Tasks)-1].Type, models.TaskTypeEpic)
+	})
+
+	t.Run("creates bug with flag", func(t *testing.T) {
+		deps, project := setupTaskAddTest(t)
+		defer deps.Cleanup()
+
+		initialCount := len(project.Tasks)
+		isBug = true
+
+		err := runTaskAdd(taskAddCmd, []string{"Login crash"})
+		testutil.AssertNoError(t, err)
+
+		savedProject := deps.Repository.Projects[project.ID]
+		if len(savedProject.Tasks) != initialCount+1 {
+			t.Fatalf("expected %d tasks, got %d", initialCount+1, len(savedProject.Tasks))
+		}
+		testutil.AssertEqual(t, savedProject.Tasks[len(savedProject.Tasks)-1].Type, models.TaskTypeBug)
+	})
+
+	t.Run("sets priority", func(t *testing.T) {
+		deps, project := setupTaskAddTest(t)
+		defer deps.Cleanup()
+
+		initialCount := len(project.Tasks)
+		taskPriority = 1
+
+		err := runTaskAdd(taskAddCmd, []string{"Urgent task"})
+		testutil.AssertNoError(t, err)
+
+		savedProject := deps.Repository.Projects[project.ID]
+		if len(savedProject.Tasks) != initialCount+1 {
+			t.Fatalf("expected %d tasks, got %d", initialCount+1, len(savedProject.Tasks))
+		}
+		testutil.AssertEqual(t, savedProject.Tasks[len(savedProject.Tasks)-1].Priority, 1)
+	})
+
+	t.Run("sets tags", func(t *testing.T) {
+		deps, project := setupTaskAddTest(t)
+		defer deps.Cleanup()
+
+		initialCount := len(project.Tasks)
+		taskTags = []string{"backend", "api"}
+
+		err := runTaskAdd(taskAddCmd, []string{"Tagged task"})
+		testutil.AssertNoError(t, err)
+
+		savedProject := deps.Repository.Projects[project.ID]
+		if len(savedProject.Tasks) != initialCount+1 {
+			t.Fatalf("expected %d tasks, got %d", initialCount+1, len(savedProject.Tasks))
+		}
+		task := savedProject.Tasks[len(savedProject.Tasks)-1]
+		if !task.HasTag("backend") {
+			t.Error("task should have 'backend' tag")
+		}
+		if !task.HasTag("api") {
+			t.Error("task should have 'api' tag")
+		}
+	})
+
+	t.Run("creates task with section", func(t *testing.T) {
+		deps, project := setupTaskAddTest(t)
+		defer deps.Cleanup()
+
+		initialCount := len(project.Tasks)
+		taskSectionFlag = "Backlog"
+		// Simulate the flag being explicitly set via command line
+		_ = taskAddCmd.Flags().Set("section", "Backlog")
+		defer func() {
+			taskAddCmd.Flags().Lookup("section").Changed = false
+			taskSectionFlag = ""
+		}()
+
+		err := runTaskAdd(taskAddCmd, []string{"Backlog task"})
+		testutil.AssertNoError(t, err)
+
+		savedProject := deps.Repository.Projects[project.ID]
+		if len(savedProject.Tasks) != initialCount+1 {
+			t.Fatalf("expected %d tasks, got %d", initialCount+1, len(savedProject.Tasks))
+		}
+		testutil.AssertEqual(t, savedProject.Tasks[len(savedProject.Tasks)-1].Section, "Backlog")
+		if !savedProject.HasSection("Backlog") {
+			t.Error("project should have 'Backlog' section after task creation")
+		}
+	})
+
+	t.Run("rejects invalid recurrence", func(t *testing.T) {
+		deps, _ := setupTaskAddTest(t)
+		defer deps.Cleanup()
+
+		taskRecurFlag = "invalid"
+
+		err := runTaskAdd(taskAddCmd, []string{"Recurring task"})
+		if err == nil {
+			t.Error("expected error for invalid recurrence pattern")
+		}
+	})
+
+	t.Run("creates task with valid recurrence", func(t *testing.T) {
+		deps, project := setupTaskAddTest(t)
+		defer deps.Cleanup()
+
+		initialCount := len(project.Tasks)
+		taskRecurFlag = "weekly"
+
+		err := runTaskAdd(taskAddCmd, []string{"Weekly task"})
+		testutil.AssertNoError(t, err)
+
+		savedProject := deps.Repository.Projects[project.ID]
+		if len(savedProject.Tasks) != initialCount+1 {
+			t.Fatalf("expected %d tasks, got %d", initialCount+1, len(savedProject.Tasks))
+		}
+		task := savedProject.Tasks[len(savedProject.Tasks)-1]
+		if task.Recurrence == nil {
+			t.Fatal("task should have recurrence set")
+		}
+	})
 }

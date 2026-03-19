@@ -6,6 +6,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tterrors"
 )
 
 var boardDismissCmd = &cobra.Command{
@@ -16,7 +17,6 @@ var boardDismissCmd = &cobra.Command{
 Examples:
   tt board dismiss 1
   tt board dismiss 3`,
-	Args: cobra.ExactArgs(1),
 	RunE: runBoardDismiss,
 }
 
@@ -25,6 +25,10 @@ func init() {
 }
 
 func runBoardDismiss(cmd *cobra.Command, args []string) error {
+	if len(args) < 1 {
+		return tterrors.NewRequiredFieldError("action ID")
+	}
+
 	cfg, mgr, err := LoadConfig()
 	if err != nil {
 		return err

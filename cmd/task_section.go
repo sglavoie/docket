@@ -6,6 +6,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tterrors"
 )
 
 var taskSectionCmd = &cobra.Command{
@@ -19,7 +20,6 @@ Examples:
   tt task section 5 "In Progress"
   tt task section 1 2 3 Review
   tt task section 3 ""`,
-	Args: cobra.MinimumNArgs(2),
 	RunE: runTaskSection,
 }
 
@@ -28,6 +28,10 @@ func init() {
 }
 
 func runTaskSection(cmd *cobra.Command, args []string) error {
+	if len(args) < 2 {
+		return tterrors.NewRequiredFieldError("task ID and section name")
+	}
+
 	// Last argument is the section name, everything before is task IDs
 	taskIDs := args[:len(args)-1]
 	sectionName := args[len(args)-1]

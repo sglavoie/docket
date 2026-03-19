@@ -10,7 +10,9 @@ import (
 	"github.com/google/uuid"
 	"github.com/spf13/cobra"
 
+	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/tterrors"
 )
 
@@ -31,9 +33,9 @@ Examples:
   tt add "Add feature #backend #urgent"
   tt add "Critical fix !1 #hotfix"
   tt add --story "User authentication flow"
-  tt add "Implement cache" --parent 1`,
+  tt add "Implement cache" --parent 1
+  tt add "Deploy service" --project myproject`,
 	Aliases: []string{"a"},
-	Args:    cobra.MinimumNArgs(1),
 	RunE:    runQuickAdd,
 }
 
@@ -68,6 +70,8 @@ func init() {
 	addCmd.Flags().BoolVar(&addIsStory, "story", false, "create a story")
 	addCmd.Flags().BoolVar(&addIsBug, "bug", false, "create a bug")
 	addCmd.Flags().BoolVar(&addIsIdea, "idea", false, "create an idea")
+
+	addCmd.Flags().StringP("project", "p", "", "target project slug (default: current project)")
 
 	_ = addCmd.RegisterFlagCompletionFunc("type", completeEnum(taskTypeCompletions))
 }
@@ -106,9 +110,34 @@ func parseInlineMetadata(input string) (title string, priority int, tags []strin
 }
 
 func runQuickAdd(cmd *cobra.Command, args []string) error {
-	project, cfg, configManager, err := LoadCurrentProject()
-	if err != nil {
-		return err
+	var (
+		project       *models.Project
+		cfg           *config.Config
+		configManager *config.Manager
+		err           error
+	)
+
+	if slug, _ := cmd.Flags().GetString("project"); slug != "" {
+		cfg, configManager, err = LoadConfig()
+		if err != nil {
+			return err
+		}
+		project = cfg.GetProject(slug)
+		if project == nil {
+			return tterrors.NewProjectNotFoundError(slug)
+		}
+		if err = storage.LoadProject(project); err != nil {
+			return fmt.Errorf("failed to load project %s: %w", slug, err)
+		}
+	} else {
+		project, cfg, configManager, err = LoadCurrentProject()
+		if err != nil {
+			return err
+		}
+	}
+
+	if len(args) < 1 {
+		return tterrors.NewRequiredFieldError("task title")
 	}
 
 	// Parse input with inline metadata

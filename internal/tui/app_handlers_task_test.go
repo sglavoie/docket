@@ -376,3 +376,291 @@ func TestHandleTaskMessagesCommandPaletteBulkActionEmpty(t *testing.T) {
 		t.Error("CommandPaletteBulkActionMsg with empty tasks should be handled")
 	}
 }
+
+func TestHandleTaskMessagesShowTaskDetail(t *testing.T) {
+	app, project := newTestAppModelWithProject()
+	task := project.Tasks[0]
+
+	msg := ShowTaskDetailMsg{Task: task, Project: project}
+	handled, _ := app.handleTaskMessages(msg)
+
+	if !handled {
+		t.Error("ShowTaskDetailMsg should be handled")
+	}
+	if app.currentView() != ViewTaskDetail {
+		t.Errorf("currentView should be TaskDetail, got %v", app.currentView())
+	}
+}
+
+func TestHandleTaskMessagesCloseTaskDetail(t *testing.T) {
+	app := newTestAppModel()
+	app.pushView(ViewTaskDetail)
+
+	msg := CloseTaskDetailMsg{}
+	handled, _ := app.handleTaskMessages(msg)
+
+	if !handled {
+		t.Error("CloseTaskDetailMsg should be handled")
+	}
+	if app.currentView() != ViewDashboard {
+		t.Errorf("currentView should be Dashboard after closing detail, got %v", app.currentView())
+	}
+}
+
+func TestHandleTaskMessagesShowTaskChecklist(t *testing.T) {
+	app, project := newTestAppModelWithProject()
+	task := project.Tasks[0]
+
+	msg := ShowTaskChecklistMsg{Task: task, Project: project}
+	handled, _ := app.handleTaskMessages(msg)
+
+	if !handled {
+		t.Error("ShowTaskChecklistMsg should be handled")
+	}
+	if app.currentView() != ViewTaskChecklist {
+		t.Errorf("currentView should be TaskChecklist, got %v", app.currentView())
+	}
+}
+
+func TestHandleTaskMessagesCloseTaskChecklist(t *testing.T) {
+	app := newTestAppModel()
+	app.pushView(ViewTaskChecklist)
+
+	msg := CloseTaskChecklistMsg{}
+	handled, _ := app.handleTaskMessages(msg)
+
+	if !handled {
+		t.Error("CloseTaskChecklistMsg should be handled")
+	}
+	if app.currentView() != ViewDashboard {
+		t.Errorf("currentView should be Dashboard after closing checklist, got %v", app.currentView())
+	}
+}
+
+func TestHandleTaskMessagesChecklistItemAdded(t *testing.T) {
+	app := newTestAppModel()
+
+	msg := ChecklistItemAddedMsg{}
+	handled, cmd := app.handleTaskMessages(msg)
+
+	if !handled {
+		t.Error("ChecklistItemAddedMsg should be handled")
+	}
+	if app.statusMessage != "Checklist item added" {
+		t.Errorf("statusMessage should be 'Checklist item added', got %q", app.statusMessage)
+	}
+	if cmd == nil {
+		t.Error("ChecklistItemAddedMsg should return a status timeout command")
+	}
+}
+
+func TestHandleTaskMessagesChecklistItemDeleted(t *testing.T) {
+	app := newTestAppModel()
+
+	msg := ChecklistItemDeletedMsg{}
+	handled, cmd := app.handleTaskMessages(msg)
+
+	if !handled {
+		t.Error("ChecklistItemDeletedMsg should be handled")
+	}
+	if app.statusMessage != "Checklist item deleted" {
+		t.Errorf("statusMessage should be 'Checklist item deleted', got %q", app.statusMessage)
+	}
+	if cmd == nil {
+		t.Error("ChecklistItemDeletedMsg should return a status timeout command")
+	}
+}
+
+func TestHandleTaskMessagesChecklistItemEdited(t *testing.T) {
+	app := newTestAppModel()
+
+	msg := ChecklistItemEditedMsg{}
+	handled, cmd := app.handleTaskMessages(msg)
+
+	if !handled {
+		t.Error("ChecklistItemEditedMsg should be handled")
+	}
+	if app.statusMessage != "Checklist item updated" {
+		t.Errorf("statusMessage should be 'Checklist item updated', got %q", app.statusMessage)
+	}
+	if cmd == nil {
+		t.Error("ChecklistItemEditedMsg should return a status timeout command")
+	}
+}
+
+func TestHandleTaskMessagesChecklistItemToggled(t *testing.T) {
+	app := newTestAppModel()
+
+	msg := ChecklistItemToggledMsg{}
+	handled, _ := app.handleTaskMessages(msg)
+
+	if !handled {
+		t.Error("ChecklistItemToggledMsg should be handled")
+	}
+}
+
+func TestHandleTaskMessagesOpenTaskActivity(t *testing.T) {
+	app, project := newTestAppModelWithProject()
+	task := project.Tasks[0]
+
+	msg := OpenTaskActivityMsg{Task: task, Project: project}
+	handled, _ := app.handleTaskMessages(msg)
+
+	if !handled {
+		t.Error("OpenTaskActivityMsg should be handled")
+	}
+	if app.currentView() != ViewTaskActivity {
+		t.Errorf("currentView should be TaskActivity, got %v", app.currentView())
+	}
+}
+
+func TestHandleTaskMessagesCloseTaskActivity(t *testing.T) {
+	app := newTestAppModel()
+	app.pushView(ViewTaskActivity)
+
+	msg := CloseTaskActivityMsg{}
+	handled, _ := app.handleTaskMessages(msg)
+
+	if !handled {
+		t.Error("CloseTaskActivityMsg should be handled")
+	}
+	if app.currentView() != ViewDashboard {
+		t.Errorf("currentView should be Dashboard after closing activity, got %v", app.currentView())
+	}
+}
+
+func TestHandleTaskMessagesSetSnoozeDate(t *testing.T) {
+	app, project := newTestAppModelWithProject()
+	task := project.Tasks[0]
+
+	msg := SetSnoozeDateMsg{Task: task, Project: project}
+	handled, _ := app.handleTaskMessages(msg)
+
+	if !handled {
+		t.Error("SetSnoozeDateMsg should be handled")
+	}
+	if app.currentView() != ViewSnoozeInput {
+		t.Errorf("currentView should be SnoozeInput, got %v", app.currentView())
+	}
+}
+
+func TestHandleTaskMessagesSetSnoozeDateNil(t *testing.T) {
+	app := newTestAppModel()
+
+	msg := SetSnoozeDateMsg{Task: nil, Project: nil}
+	handled, _ := app.handleTaskMessages(msg)
+
+	if !handled {
+		t.Error("SetSnoozeDateMsg with nil task should still be handled")
+	}
+	if app.currentView() == ViewSnoozeInput {
+		t.Error("currentView should not be SnoozeInput when task is nil")
+	}
+}
+
+func TestHandleTaskMessagesSnoozeDateChanged(t *testing.T) {
+	app := newTestAppModel()
+	app.pushView(ViewSnoozeInput)
+
+	msg := SnoozeDateChangedMsg{}
+	handled, _ := app.handleTaskMessages(msg)
+
+	if !handled {
+		t.Error("SnoozeDateChangedMsg should be handled")
+	}
+	if app.currentView() != ViewDashboard {
+		t.Errorf("currentView should be Dashboard after snooze date changed, got %v", app.currentView())
+	}
+}
+
+func TestHandleTaskMessagesCreateLinkedTask(t *testing.T) {
+	app, project := newTestAppModelWithProject()
+	task := project.Tasks[0]
+
+	msg := CreateLinkedTaskMsg{SourceTask: task, Project: project, LinkType: LinkTypeBlocker}
+	handled, _ := app.handleTaskMessages(msg)
+
+	if !handled {
+		t.Error("CreateLinkedTaskMsg should be handled")
+	}
+	if app.currentView() != ViewLinkedTaskCreator {
+		t.Errorf("currentView should be LinkedTaskCreator, got %v", app.currentView())
+	}
+}
+
+func TestHandleTaskMessagesCloseLinkedTaskSelector(t *testing.T) {
+	app := newTestAppModel()
+	app.pushView(ViewLinkedTaskSelector)
+
+	msg := CloseLinkedTaskSelectorMsg{}
+	handled, _ := app.handleTaskMessages(msg)
+
+	if !handled {
+		t.Error("CloseLinkedTaskSelectorMsg should be handled")
+	}
+	if app.currentView() != ViewDashboard {
+		t.Errorf("currentView should be Dashboard after closing selector, got %v", app.currentView())
+	}
+}
+
+func TestHandleTaskMessagesShowCrossProjectLinker(t *testing.T) {
+	app, project := newTestAppModelWithProject()
+	task := project.Tasks[0]
+
+	msg := ShowCrossProjectLinkerMsg{SourceTask: task, SourceProject: project}
+	handled, _ := app.handleTaskMessages(msg)
+
+	if !handled {
+		t.Error("ShowCrossProjectLinkerMsg should be handled")
+	}
+	if app.currentView() != ViewCrossProjectLinker {
+		t.Errorf("currentView should be CrossProjectLinker, got %v", app.currentView())
+	}
+}
+
+func TestHandleTaskMessagesCloseCrossProjectLinker(t *testing.T) {
+	app := newTestAppModel()
+	app.pushView(ViewCrossProjectLinker)
+
+	msg := CloseCrossProjectLinkerMsg{}
+	handled, _ := app.handleTaskMessages(msg)
+
+	if !handled {
+		t.Error("CloseCrossProjectLinkerMsg should be handled")
+	}
+	if app.currentView() != ViewDashboard {
+		t.Errorf("currentView should be Dashboard after closing linker, got %v", app.currentView())
+	}
+}
+
+func TestHandleTaskMessagesShowProjectSelectorForMove(t *testing.T) {
+	app, project := newTestAppModelWithProject()
+	task := project.Tasks[0]
+
+	msg := ShowProjectSelectorForMoveMsg{Task: task, SourceProject: project}
+	handled, _ := app.handleTaskMessages(msg)
+
+	if !handled {
+		t.Error("ShowProjectSelectorForMoveMsg should be handled")
+	}
+	if app.currentView() != ViewProjectSelector {
+		t.Errorf("currentView should be ProjectSelector, got %v", app.currentView())
+	}
+}
+
+func TestHandleTaskMessagesCommentResolved(t *testing.T) {
+	app := newTestAppModel()
+
+	msg := CommentResolvedMsg{}
+	handled, cmd := app.handleTaskMessages(msg)
+
+	if !handled {
+		t.Error("CommentResolvedMsg should be handled")
+	}
+	if app.statusMessage != "Comment resolved" {
+		t.Errorf("statusMessage should be 'Comment resolved', got %q", app.statusMessage)
+	}
+	if cmd == nil {
+		t.Error("CommentResolvedMsg should return a status timeout command")
+	}
+}

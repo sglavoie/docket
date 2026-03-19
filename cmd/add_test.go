@@ -2,6 +2,13 @@ package cmd
 
 import (
 	"testing"
+
+	"github.com/spf13/viper"
+
+	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/testutil"
 )
 
 func TestParseInlineMetadata(t *testing.T) {
@@ -150,4 +157,240 @@ func TestParseInlineMetadata(t *testing.T) {
 			}
 		})
 	}
+}
+
+func resetQuickAddVars() {
+	addTypeFlag = ""
+	addParentFlag = ""
+	addPriority = 0
+	addTags = nil
+	addIsEpic = false
+	addIsStory = false
+	addIsBug = false
+	addIsIdea = false
+}
+
+func TestRunQuickAdd(t *testing.T) {
+	t.Run("creates task successfully", func(t *testing.T) {
+		resetQuickAddVars()
+
+		deps, project := testutil.SetupTestDepsWithProject(t, "Test Project")
+		defer deps.Cleanup()
+
+		viper.Set("config", deps.ConfigPath)
+		defer viper.Set("config", "")
+
+		manager := config.NewManager(deps.ConfigPath)
+		err := manager.Save(deps.Config)
+		testutil.AssertNoError(t, err)
+
+		oldStorageRepo := storage.DefaultRepository
+		storage.DefaultRepository = deps.Repository
+		defer func() { storage.DefaultRepository = oldStorageRepo }()
+
+		initialCount := len(project.Tasks)
+
+		err = runQuickAdd(addCmd, []string{"Fix login bug"})
+		testutil.AssertNoError(t, err)
+
+		savedProject := deps.Repository.Projects[project.ID]
+		if len(savedProject.Tasks) != initialCount+1 {
+			t.Errorf("expected %d tasks, got %d", initialCount+1, len(savedProject.Tasks))
+		}
+
+		newTask := savedProject.Tasks[len(savedProject.Tasks)-1]
+		if newTask.Title != "Fix login bug" {
+			t.Errorf("task title = %q, want %q", newTask.Title, "Fix login bug")
+		}
+		if newTask.Type != models.TaskTypeTask {
+			t.Errorf("task type = %v, want %v", newTask.Type, models.TaskTypeTask)
+		}
+	})
+
+	t.Run("rejects missing title", func(t *testing.T) {
+		resetQuickAddVars()
+
+		deps, _ := testutil.SetupTestDepsWithProject(t, "Test Project")
+		defer deps.Cleanup()
+
+		viper.Set("config", deps.ConfigPath)
+		defer viper.Set("config", "")
+
+		manager := config.NewManager(deps.ConfigPath)
+		err := manager.Save(deps.Config)
+		testutil.AssertNoError(t, err)
+
+		oldStorageRepo := storage.DefaultRepository
+		storage.DefaultRepository = deps.Repository
+		defer func() { storage.DefaultRepository = oldStorageRepo }()
+
+		err = runQuickAdd(addCmd, []string{})
+		if err == nil {
+			t.Error("runQuickAdd() should error for missing title")
+		}
+	})
+
+	t.Run("rejects empty title after metadata extraction", func(t *testing.T) {
+		resetQuickAddVars()
+
+		deps, _ := testutil.SetupTestDepsWithProject(t, "Test Project")
+		defer deps.Cleanup()
+
+		viper.Set("config", deps.ConfigPath)
+		defer viper.Set("config", "")
+
+		manager := config.NewManager(deps.ConfigPath)
+		err := manager.Save(deps.Config)
+		testutil.AssertNoError(t, err)
+
+		oldStorageRepo := storage.DefaultRepository
+		storage.DefaultRepository = deps.Repository
+		defer func() { storage.DefaultRepository = oldStorageRepo }()
+
+		err = runQuickAdd(addCmd, []string{"!1 #tag"})
+		if err == nil {
+			t.Error("runQuickAdd() should error when title is empty after metadata extraction")
+		}
+	})
+
+	t.Run("creates task with inline priority and tags", func(t *testing.T) {
+		resetQuickAddVars()
+
+		deps, project := testutil.SetupTestDepsWithProject(t, "Test Project")
+		defer deps.Cleanup()
+
+		viper.Set("config", deps.ConfigPath)
+		defer viper.Set("config", "")
+
+		manager := config.NewManager(deps.ConfigPath)
+		err := manager.Save(deps.Config)
+		testutil.AssertNoError(t, err)
+
+		oldStorageRepo := storage.DefaultRepository
+		storage.DefaultRepository = deps.Repository
+		defer func() { storage.DefaultRepository = oldStorageRepo }()
+
+		err = runQuickAdd(addCmd, []string{"Critical fix !1 #hotfix #backend"})
+		testutil.AssertNoError(t, err)
+
+		savedProject := deps.Repository.Projects[project.ID]
+		newTask := savedProject.Tasks[len(savedProject.Tasks)-1]
+
+		if newTask.Title != "Critical fix" {
+			t.Errorf("task title = %q, want %q", newTask.Title, "Critical fix")
+		}
+		if newTask.Priority != 1 {
+			t.Errorf("task priority = %d, want 1", newTask.Priority)
+		}
+		if len(newTask.Tags) != 2 {
+			t.Fatalf("expected 2 tags, got %d", len(newTask.Tags))
+		}
+		if newTask.Tags[0] != "hotfix" || newTask.Tags[1] != "backend" {
+			t.Errorf("task tags = %v, want [hotfix backend]", newTask.Tags)
+		}
+	})
+
+	t.Run("creates epic with flag", func(t *testing.T) {
+		resetQuickAddVars()
+		addIsEpic = true
+
+		deps, project := testutil.SetupTestDepsWithProject(t, "Test Project")
+		defer deps.Cleanup()
+
+		viper.Set("config", deps.ConfigPath)
+		defer viper.Set("config", "")
+
+		manager := config.NewManager(deps.ConfigPath)
+		err := manager.Save(deps.Config)
+		testutil.AssertNoError(t, err)
+
+		oldStorageRepo := storage.DefaultRepository
+		storage.DefaultRepository = deps.Repository
+		defer func() { storage.DefaultRepository = oldStorageRepo }()
+
+		err = runQuickAdd(addCmd, []string{"User Authentication"})
+		testutil.AssertNoError(t, err)
+
+		savedProject := deps.Repository.Projects[project.ID]
+		newTask := savedProject.Tasks[len(savedProject.Tasks)-1]
+
+		if newTask.Type != models.TaskTypeEpic {
+			t.Errorf("task type = %v, want %v", newTask.Type, models.TaskTypeEpic)
+		}
+	})
+
+	t.Run("explicit priority flag overrides inline", func(t *testing.T) {
+		resetQuickAddVars()
+		addPriority = 2
+
+		deps, project := testutil.SetupTestDepsWithProject(t, "Test Project")
+		defer deps.Cleanup()
+
+		viper.Set("config", deps.ConfigPath)
+		defer viper.Set("config", "")
+
+		manager := config.NewManager(deps.ConfigPath)
+		err := manager.Save(deps.Config)
+		testutil.AssertNoError(t, err)
+
+		oldStorageRepo := storage.DefaultRepository
+		storage.DefaultRepository = deps.Repository
+		defer func() { storage.DefaultRepository = oldStorageRepo }()
+
+		err = runQuickAdd(addCmd, []string{"Task !1"})
+		testutil.AssertNoError(t, err)
+
+		savedProject := deps.Repository.Projects[project.ID]
+		newTask := savedProject.Tasks[len(savedProject.Tasks)-1]
+
+		if newTask.Priority != 2 {
+			t.Errorf("task priority = %d, want 2 (explicit flag should override inline !1)", newTask.Priority)
+		}
+	})
+
+	t.Run("creates task with explicit tags", func(t *testing.T) {
+		resetQuickAddVars()
+		addTags = []string{"manual"}
+
+		deps, project := testutil.SetupTestDepsWithProject(t, "Test Project")
+		defer deps.Cleanup()
+
+		viper.Set("config", deps.ConfigPath)
+		defer viper.Set("config", "")
+
+		manager := config.NewManager(deps.ConfigPath)
+		err := manager.Save(deps.Config)
+		testutil.AssertNoError(t, err)
+
+		oldStorageRepo := storage.DefaultRepository
+		storage.DefaultRepository = deps.Repository
+		defer func() { storage.DefaultRepository = oldStorageRepo }()
+
+		err = runQuickAdd(addCmd, []string{"Task #inline"})
+		testutil.AssertNoError(t, err)
+
+		savedProject := deps.Repository.Projects[project.ID]
+		newTask := savedProject.Tasks[len(savedProject.Tasks)-1]
+
+		if len(newTask.Tags) != 2 {
+			t.Fatalf("expected 2 tags, got %d: %v", len(newTask.Tags), newTask.Tags)
+		}
+
+		hasManual := false
+		hasInline := false
+		for _, tag := range newTask.Tags {
+			if tag == "manual" {
+				hasManual = true
+			}
+			if tag == "inline" {
+				hasInline = true
+			}
+		}
+		if !hasManual {
+			t.Error("expected tag 'manual' from explicit flag")
+		}
+		if !hasInline {
+			t.Error("expected tag 'inline' from inline parsing")
+		}
+	})
 }

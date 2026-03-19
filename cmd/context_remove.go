@@ -16,7 +16,6 @@ var contextRemoveCmd = &cobra.Command{
 Examples:
   tt context remove Work my-project
   tt ctx remove "Side Projects" cool-app`,
-	Args: cobra.ExactArgs(2),
 	RunE: runContextRemove,
 }
 
@@ -25,6 +24,10 @@ func init() {
 }
 
 func runContextRemove(cmd *cobra.Command, args []string) error {
+	if len(args) < 2 {
+		return tterrors.NewRequiredFieldError("context name and project slug")
+	}
+
 	contextName := args[0]
 	projectSlug := args[1]
 

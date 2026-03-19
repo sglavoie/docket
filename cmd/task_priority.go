@@ -25,7 +25,6 @@ Priority levels:
 Examples:
   tt task priority 5 1       # Set task #5 to highest priority
   tt task priority 1 2 3 2   # Set tasks #1, #2, #3 to high priority`,
-	Args: cobra.MinimumNArgs(2),
 	RunE: runTaskPriority,
 }
 
@@ -34,6 +33,10 @@ func init() {
 }
 
 func runTaskPriority(cmd *cobra.Command, args []string) error {
+	if len(args) < 2 {
+		return tterrors.NewRequiredFieldError("task ID and priority")
+	}
+
 	// Last argument is the priority value, everything before is task IDs
 	taskIDs := args[:len(args)-1]
 	priorityArg := args[len(args)-1]

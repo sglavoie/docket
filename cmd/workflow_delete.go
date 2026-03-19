@@ -20,7 +20,6 @@ Use 'tt workflow list' to see rule IDs.
 
 Example:
   tt workflow delete abc123`,
-	Args: cobra.ExactArgs(1),
 	RunE: runWorkflowDelete,
 }
 
@@ -30,6 +29,10 @@ func init() {
 }
 
 func runWorkflowDelete(cmd *cobra.Command, args []string) error {
+	if len(args) < 1 {
+		return tterrors.NewRequiredFieldError("rule ID")
+	}
+
 	ruleID := args[0]
 
 	cfg, configManager, err := LoadConfigStrict()

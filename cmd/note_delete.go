@@ -6,6 +6,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/tterrors"
 )
 
 var noteDeleteForce bool
@@ -20,7 +21,6 @@ Examples:
   tt note delete meeting
   tt note delete 2026-01-28-meeting-notes.md
   tt note delete meeting --force`,
-	Args: cobra.ExactArgs(1),
 	RunE: runNoteDelete,
 }
 
@@ -30,6 +30,10 @@ func init() {
 }
 
 func runNoteDelete(cmd *cobra.Command, args []string) error {
+	if len(args) < 1 {
+		return tterrors.NewRequiredFieldError("note ID")
+	}
+
 	ctx, err := resolveNoteContext()
 	if err != nil {
 		return err
