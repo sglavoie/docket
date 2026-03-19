@@ -12,7 +12,6 @@ import (
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/glamour"
-	"github.com/charmbracelet/lipgloss"
 
 	"github.com/sglavoie/tt/internal/external"
 	"github.com/sglavoie/tt/internal/models"
@@ -331,7 +330,7 @@ func (m *AskViewModel) renderResponse() string {
 
 	if m.state == askStateResult && len(m.commands) > 0 {
 		b.WriteString("\n\n")
-		cmdStyle := lipgloss.NewStyle().Foreground(ColorPrimary)
+		cmdStyle := InfoStatusStyle
 		b.WriteString(cmdStyle.Render(fmt.Sprintf("── %d command(s) extracted ──", len(m.commands))))
 		b.WriteString("\n")
 		for i, c := range m.commands {

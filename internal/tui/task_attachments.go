@@ -759,7 +759,7 @@ func (m *TaskAttachmentsModel) View() string {
 			// Show warning icon for missing code reference files
 			if att.IsCodeRef && !storage.CodeReferenceFileExists(att.OriginalPath) {
 				entry.WriteString(" ")
-				entry.WriteString(lipgloss.NewStyle().Foreground(ColorWarning).Render("!"))
+				entry.WriteString(WarningIconStyle.Render("!"))
 			}
 			entry.WriteString("\n")
 
@@ -792,7 +792,7 @@ func (m *TaskAttachmentsModel) View() string {
 			// For code refs, show warning if file doesn't exist
 			if att.IsCodeRef && !storage.CodeReferenceFileExists(att.OriginalPath) {
 				entry.WriteString("      ")
-				entry.WriteString(lipgloss.NewStyle().Foreground(ColorWarning).Render("file may not exist"))
+				entry.WriteString(WarningIconStyle.Render("file may not exist"))
 				entry.WriteString("\n")
 			}
 

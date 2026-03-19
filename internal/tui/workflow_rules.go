@@ -521,7 +521,7 @@ func (m *WorkflowRulesModel) renderRulesList(paneHeight int) string {
 		} else {
 			var nameHighlighted string
 			if m.searchQuery != "" {
-				nameHighlighted = HighlightSubstring(name, m.searchQuery, lipgloss.NewStyle())
+				nameHighlighted = HighlightSubstring(name, m.searchQuery, NormalStyle)
 			} else {
 				nameHighlighted = name
 			}
@@ -548,8 +548,8 @@ func (m *WorkflowRulesModel) renderPreviewPane(width int) string {
 	var b strings.Builder
 
 	// Styles for syntax highlighting
-	keywordStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("14"))  // Cyan for IF/AND/OR/THEN
-	operatorStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("13")) // Magenta for =, !=, <, >, :
+	keywordStyle := RuleKeywordStyle
+	operatorStyle := RuleOperatorStyle
 
 	// Rule name header
 	b.WriteString(BoldStyle.Render("Preview"))
@@ -564,7 +564,7 @@ func (m *WorkflowRulesModel) renderPreviewPane(width int) string {
 	b.WriteString("\n\n")
 
 	// Rule name
-	b.WriteString(BoldStyle.Foreground(ColorPrimary).Render(rule.Name))
+	b.WriteString(BoldPrimaryStyle.Render(rule.Name))
 	b.WriteString("\n")
 
 	// Status and priority
@@ -639,11 +639,11 @@ func (m *WorkflowRulesModel) renderFullscreenPreview() string {
 	b.WriteString("\n\n")
 
 	// Styles for syntax highlighting
-	keywordStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("14"))  // Cyan for IF/AND/OR/THEN
-	operatorStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("13")) // Magenta for =, !=, <, >, :
+	keywordStyle := RuleKeywordStyle
+	operatorStyle := RuleOperatorStyle
 
 	// Rule name with level and default indicator
-	b.WriteString(BoldStyle.Foreground(ColorPrimary).Render(rule.Name))
+	b.WriteString(BoldPrimaryStyle.Render(rule.Name))
 	if rule.IsProjectLevel() {
 		b.WriteString(" ")
 		b.WriteString(MutedStyle.Render("[Project]"))

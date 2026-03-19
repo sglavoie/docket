@@ -159,8 +159,8 @@ func (p ProjectInfo) ItemID() string {
 
 // CountDisplayText returns a styled string showing active and completed counts.
 func (p ProjectInfo) CountDisplayText() string {
-	active := lipgloss.NewStyle().Foreground(ColorHighlight).Render(fmt.Sprintf("%d active", p.TaskCount))
-	done := lipgloss.NewStyle().Foreground(ColorMuted).Render(fmt.Sprintf("%d done", p.CompletedCount))
+	active := MatchHighlightStyle.Render(fmt.Sprintf("%d active", p.TaskCount))
+	done := MutedStyle.Render(fmt.Sprintf("%d done", p.CompletedCount))
 	return fmt.Sprintf("(%s / %s)", active, done)
 }
 

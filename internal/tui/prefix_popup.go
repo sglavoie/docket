@@ -85,9 +85,9 @@ func RenderPrefixPopup(prefix string, hints PrefixHints, width, height int) stri
 	}
 
 	// Build title: "prefix → category" with first letter of category highlighted
-	borderStyle := lipgloss.NewStyle().Foreground(ColorPrefixPopup)
-	titleKeyStyle := lipgloss.NewStyle().Foreground(ColorPrefixPopup).Bold(true)
-	titleCatFirstStyle := lipgloss.NewStyle().Foreground(ColorSuccess).Bold(true)
+	borderStyle := lipgloss.NewStyle().Foreground(ColorAccent)
+	titleKeyStyle := lipgloss.NewStyle().Foreground(ColorAccent).Bold(true)
+	titleCatFirstStyle := SuccessBoldStyle
 	titleCatRestStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("255"))
 
 	var categoryTitle string
@@ -137,8 +137,8 @@ func RenderPrefixPopup(prefix string, hints PrefixHints, width, height int) stri
 			}
 		}
 
-		activeDescStyle := lipgloss.NewStyle().Foreground(ColorWarning)
-		activeDetailStyle := lipgloss.NewStyle().Foreground(ColorWarning)
+		activeDescStyle := WarningIconStyle
+		activeDetailStyle := WarningIconStyle
 
 		contentWidth := 0
 		for _, h := range keyHints {
@@ -229,7 +229,7 @@ func renderPrefixBox(title string, contentLines []string, innerWidth int, border
 	// Build box using lipgloss border
 	boxStyle := lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
-		BorderForeground(ColorPrefixPopup).
+		BorderForeground(ColorAccent).
 		Padding(0, 1).
 		Width(innerWidth)
 

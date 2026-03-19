@@ -453,8 +453,8 @@ func (m *AppModel) renderQuickSwitchPopup() string {
 		return ""
 	}
 
-	borderStyle := lipgloss.NewStyle().Foreground(ColorPrimary)
-	titleStyle := lipgloss.NewStyle().Foreground(ColorPrimary).Bold(true)
+	borderStyle := InfoStatusStyle
+	titleStyle := TitleStyle
 	titleText := "Recent Tasks"
 	if m.quickSwitchShowCompleted {
 		titleText += " (Completed)"
@@ -465,13 +465,13 @@ func (m *AppModel) renderQuickSwitchPopup() string {
 	popupWidth := max(m.width-4, 30)
 
 	cursorStyle := SelectionRowStyle
-	badgeStyle := lipgloss.NewStyle().Foreground(ColorPrimary)
+	badgeStyle := InfoStatusStyle
 	dimBadgeStyle := MutedStyle
 	projectStyle := MutedStyle
-	pinStyle := lipgloss.NewStyle().Foreground(ColorWarning)
+	pinStyle := WarningIconStyle
 	tagStyle := MutedStyle
 	dividerStyle := MutedStyle
-	filterStyle := lipgloss.NewStyle().Foreground(ColorPrimary)
+	filterStyle := InfoStatusStyle
 
 	filtered := m.quickSwitchFiltered
 	innerWidth := popupWidth - 4 // border + padding
@@ -587,7 +587,7 @@ func (m *AppModel) renderQuickSwitchPopup() string {
 						validPositions = append(validPositions, p)
 					}
 				}
-				taskTitle = HighlightText(string(titleRunes), validPositions, lipgloss.NewStyle())
+				taskTitle = HighlightText(string(titleRunes), validPositions, NormalStyle)
 				if truncated {
 					taskTitle += "..."
 				}

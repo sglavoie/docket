@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/charmbracelet/lipgloss"
-
 	"github.com/sglavoie/tt/internal/logging"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/scoring"
@@ -207,7 +205,7 @@ func (m *TaskDetailModel) renderChecklistSection(width int) string {
 
 	for _, item := range m.task.Checklist {
 		marker := "☐"
-		style := lipgloss.NewStyle()
+		style := NormalStyle
 		if item.Done {
 			marker = "☑"
 			style = MutedStyle

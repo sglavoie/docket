@@ -515,15 +515,15 @@ func (m *AppModel) renderPinnedPopup() string {
 		return ""
 	}
 
-	borderStyle := lipgloss.NewStyle().Foreground(ColorPrimary)
-	titleStyle := lipgloss.NewStyle().Foreground(ColorPrimary).Bold(true)
+	borderStyle := InfoStatusStyle
+	titleStyle := TitleStyle
 	title := titleStyle.Render("Pinned Tasks")
-	filterStyle := lipgloss.NewStyle().Foreground(ColorPrimary)
+	filterStyle := InfoStatusStyle
 
 	popupWidth := max(m.width-4, 30)
 
 	cursorStyle := SelectionRowStyle
-	badgeStyle := lipgloss.NewStyle().Foreground(ColorPrimary)
+	badgeStyle := InfoStatusStyle
 	dimBadgeStyle := MutedStyle
 	projectStyle := MutedStyle
 
@@ -589,7 +589,7 @@ func (m *AppModel) renderPinnedPopup() string {
 						validPositions = append(validPositions, p)
 					}
 				}
-				taskTitle = HighlightText(string(titleRunes), validPositions, lipgloss.NewStyle())
+				taskTitle = HighlightText(string(titleRunes), validPositions, NormalStyle)
 				if truncated {
 					taskTitle += "..."
 				}

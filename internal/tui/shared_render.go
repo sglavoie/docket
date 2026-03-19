@@ -273,7 +273,7 @@ func (tl TaskLine) Render() string {
 	maxTitleLen := max(tl.MaxTitle, 10)
 	title := util.Truncate(tl.Task.Title, maxTitleLen)
 	if tl.SearchQuery != "" {
-		title = HighlightSubstring(title, tl.SearchQuery, lipgloss.NewStyle())
+		title = HighlightSubstring(title, tl.SearchQuery, NormalStyle)
 	}
 
 	// Build priority segment: "badge " when present, "" when hidden

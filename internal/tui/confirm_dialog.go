@@ -81,7 +81,7 @@ func (c *ConfirmDialog) RenderOverlay(width int) string {
 		return ""
 	}
 
-	borderStyle := lipgloss.NewStyle().Foreground(ColorWarning)
+	borderStyle := WarningIconStyle
 
 	// Render prompt text inside a bordered box
 	promptText := c.Prompt()
@@ -95,7 +95,7 @@ func (c *ConfirmDialog) RenderOverlay(width int) string {
 	// Title and footer text (computed early so we can size the box to fit)
 	titleStyle := lipgloss.NewStyle().Foreground(ColorWarning).Bold(true)
 	title := titleStyle.Render("Confirm")
-	footerText := lipgloss.NewStyle().Foreground(ColorMuted).Render("y confirm · n/Esc cancel")
+	footerText := MutedStyle.Render("y confirm · n/Esc cancel")
 
 	// Minimum inner width must accommodate title and footer border chrome.
 	// renderTitledTopBorder/renderTitledBottomBorder use e.g. "╭─ " + text + " ─╮"

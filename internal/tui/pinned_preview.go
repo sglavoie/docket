@@ -2,8 +2,6 @@ package tui
 
 import (
 	"strings"
-
-	"github.com/charmbracelet/lipgloss"
 )
 
 // renderPinnedPreviewBackground renders a dimmed task tree of the highlighted
@@ -32,7 +30,7 @@ func (m *AppModel) renderPinnedPreviewBackground() string {
 
 	content := m.pinnedPreview.View()
 
-	dim := lipgloss.NewStyle().Faint(true)
+	dim := DimStyle
 	lines := strings.Split(content, "\n")
 	for i, line := range lines {
 		lines[i] = dim.Render(line)

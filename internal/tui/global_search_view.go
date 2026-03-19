@@ -392,7 +392,7 @@ func (m *GlobalSearchModel) renderPreview() string {
 	// Priority
 	priorityStyle := NormalStyle
 	if task.Priority <= 2 {
-		priorityStyle = lipgloss.NewStyle().Foreground(ColorWarning)
+		priorityStyle = WarningIconStyle
 	}
 	fmt.Fprintf(&b, "%s %s\n",
 		MutedStyle.Render("Priority:"),
@@ -405,7 +405,7 @@ func (m *GlobalSearchModel) renderPreview() string {
 
 	// Tags
 	if len(task.Tags) > 0 {
-		tagStyle := lipgloss.NewStyle().Foreground(ColorSecondary)
+		tagStyle := TagInlineStyle
 		tags := make([]string, len(task.Tags))
 		for i, tag := range task.Tags {
 			tags[i] = tagStyle.Render(tag)

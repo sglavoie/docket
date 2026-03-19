@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/charmbracelet/lipgloss"
-
 	"github.com/sglavoie/tt/internal/fuzzy"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/util"
@@ -319,7 +317,7 @@ func (m *FocusBoardModel) highlightTitle(truncatedTitle, fullTitle string) strin
 			validPositions = append(validPositions, p)
 		}
 	}
-	return HighlightText(truncatedTitle, validPositions, lipgloss.NewStyle())
+	return HighlightText(truncatedTitle, validPositions, NormalStyle)
 }
 
 // boardPriorityBadge returns a colored priority label for board items (P1, P2, etc.).

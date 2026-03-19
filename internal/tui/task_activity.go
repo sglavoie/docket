@@ -267,7 +267,7 @@ func fieldColorStyle(field string) lipgloss.Style {
 	case "created":
 		return MutedStyle
 	default:
-		return lipgloss.NewStyle()
+		return NormalStyle
 	}
 }
 

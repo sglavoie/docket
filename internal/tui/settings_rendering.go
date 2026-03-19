@@ -33,7 +33,7 @@ func (m *SettingsModel) renderGeneralTab() string {
 		b.WriteString(MutedStyle.Render("Available: "))
 		for i, ctx := range m.contexts {
 			if i == m.contextCursor {
-				b.WriteString(BoldStyle.Foreground(ColorPrimary).Render(fmt.Sprintf("[%s]", ctx)))
+				b.WriteString(BoldPrimaryStyle.Render(fmt.Sprintf("[%s]", ctx)))
 			} else {
 				b.WriteString(MutedStyle.Render(ctx))
 			}
@@ -500,7 +500,7 @@ func (m *SettingsModel) renderStagesTab() string {
 	} else {
 		for i, stage := range m.stages {
 			if i == m.stageCursor {
-				b.WriteString(BoldStyle.Foreground(ColorPrimary).Render("  ▸ "))
+				b.WriteString(BoldPrimaryStyle.Render("  ▸ "))
 				b.WriteString(StageBadgeStyle.Render(stage))
 			} else {
 				b.WriteString(MutedStyle.Render("    "))

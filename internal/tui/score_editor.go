@@ -199,11 +199,11 @@ func (m *ScoreEditorModel) View() string {
 	// Content width for wrapping (box border=2, padding=4, margin=4)
 	contentWidth := max(m.width-10, 30)
 
-	titleStyle := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("99"))
-	headerStyle := lipgloss.NewStyle().Bold(true)
-	dimStyle := lipgloss.NewStyle()
-	selectedStyle := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("212"))
-	mutedStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("240"))
+	titleStyle := OverlayTitleStyle
+	headerStyle := BoldStyle
+	dimStyle := NormalStyle
+	selectedStyle := OverlaySelectedStyle
+	mutedStyle := lipgloss.NewStyle().Foreground(ColorSubtleBorder)
 	scoreStyle := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("220"))
 
 	var lines []string
@@ -269,10 +269,7 @@ func (m *ScoreEditorModel) View() string {
 	}
 
 	// Render as a centered box
-	boxStyle := lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(lipgloss.Color("99")).
-		Padding(1, 2)
+	boxStyle := OverlayBoxStyle
 
 	box := boxStyle.Render(content.String())
 

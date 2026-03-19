@@ -39,10 +39,22 @@ var (
 	ColorBackground  = lipgloss.Color("236")     // Dark gray
 	ColorBorder      = lipgloss.Color("244")     // Border gray
 	ColorDiffContext = lipgloss.Color("249")     // Diff context gray
-	ColorPrefixPopup = lipgloss.Color("226")     // Yellow for prefix popup border
+	ColorBadgeText   = lipgloss.Color("249")     // Gray text for badges/inactive elements
+	ColorAccent      = lipgloss.Color("226")     // Bright yellow accent
 	ColorSelectedBg  = lipgloss.Color("#4c0163") // Light purple background for selections
-	ColorSelectedFg  = lipgloss.Color("#fbeeff") // Dark purple foreground for selections
-	ColorFlashBg     = lipgloss.Color("#7b2fa0") // Brighter purple for cursor flash highlight
+
+	// View mode section colors (shared between tab bar and tutor highlighting)
+	ColorViewActive   = lipgloss.Color("34")      // Blue-green
+	ColorViewNext     = lipgloss.Color("61")      // Slate blue
+	ColorViewReview   = lipgloss.Color("30")      // Teal (distinct from Inbox's cyan)
+	ColorViewStandby  = lipgloss.Color("141")     // Violet
+	ColorViewSomeday  = lipgloss.Color("135")     // Purple
+	ColorSelectedFg   = lipgloss.Color("#fbeeff") // Dark purple foreground for selections
+	ColorFlashBg      = lipgloss.Color("#7b2fa0") // Brighter purple for cursor flash highlight
+	ColorLightGray    = lipgloss.Color("252")     // Light gray for normal text in overlays
+	ColorSubtleBorder = lipgloss.Color("240")     // Subtle border/muted text (darker than ColorBorder)
+	ColorPurple       = lipgloss.Color("135")     // Purple (epics, someday, category sections)
+	ColorOrange       = lipgloss.Color("208")     // Orange (actions, estimated scores)
 
 	// TaskCountColorScale is a 10-step gradient from red (low) to green (high).
 	TaskCountColorScale = [10]lipgloss.Color{
@@ -113,7 +125,7 @@ var (
 			Foreground(ColorError)
 
 	StandbyStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("141"))
+			Foreground(ColorViewStandby)
 
 	CanceledStyle = lipgloss.NewStyle().
 			Foreground(ColorMuted).
@@ -153,30 +165,34 @@ var (
 
 	// Task type colors
 	EpicStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("135")) // Purple
+			Foreground(ColorPurple) // Purple
 
 	StoryStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("39")) // Blue
+			Foreground(ColorPrimary) // Blue
 
 	TaskStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("42")) // Green
+			Foreground(ColorSuccess) // Green
 
 	BugStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("196")) // Red
+			Foreground(ColorError) // Red
 
 	IdeaStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("214")) // Orange
+			Foreground(ColorWarning) // Orange
 
 	NoteStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("248")) // Gray
+			Foreground(ColorMuted) // Gray
+
+	ActionStyle = lipgloss.NewStyle().
+			Foreground(ColorOrange) // Orange (quick to-dos)
 
 	// Task type badge styles (icon with background for visual distinction)
-	EpicBadgeStyle  = makeBadgeStyle("135", "53")  // Purple
-	StoryBadgeStyle = makeBadgeStyle("39", "17")   // Blue
-	TaskBadgeStyle  = makeBadgeStyle("42", "22")   // Green
-	BugBadgeStyle   = makeBadgeStyle("196", "52")  // Red
-	IdeaBadgeStyle  = makeBadgeStyle("214", "94")  // Orange
-	NoteBadgeStyle  = makeBadgeStyle("248", "237") // Gray
+	EpicBadgeStyle   = makeBadgeStyle("135", "53")  // Purple
+	StoryBadgeStyle  = makeBadgeStyle("39", "17")   // Blue
+	TaskBadgeStyle   = makeBadgeStyle("42", "22")   // Green
+	BugBadgeStyle    = makeBadgeStyle("196", "52")  // Red
+	IdeaBadgeStyle   = makeBadgeStyle("214", "94")  // Orange
+	NoteBadgeStyle   = makeBadgeStyle("248", "237") // Gray
+	ActionBadgeStyle = makeBadgeStyle("208", "94")  // Orange on dark orange
 
 	// Task status badge styles (icon with background for visual distinction)
 	TodoBadgeStyle       = makeBadgeStyle("248", "236")                 // Gray
@@ -348,14 +364,14 @@ var (
 			Background(ColorBackground)
 
 	// View mode styles
-	ViewModeActiveStyle    = makeViewModeStyle("34")
-	ViewModeNextStyle      = makeViewModeStyle("61")
+	ViewModeActiveStyle    = makeViewModeStyle(string(ColorViewActive))
+	ViewModeNextStyle      = makeViewModeStyle(string(ColorViewNext))
 	ViewModeInboxStyle     = makeViewModeStyle(string(ColorSecondary))
-	ViewModeWaitingStyle   = makeViewModeStyle("214")
-	ViewModeSomedayStyle   = makeViewModeStyle("135")
+	ViewModeWaitingStyle   = makeViewModeStyle(string(ColorWarning))
+	ViewModeSomedayStyle   = makeViewModeStyle(string(ColorViewSomeday))
 	ViewModeCompletedStyle = makeViewModeStyle("136")
-	ViewModeReviewStyle    = makeViewModeStyle(string(ColorSecondary))
-	ViewModeStandbyStyle   = makeViewModeStyle("141")
+	ViewModeReviewStyle    = makeViewModeStyle(string(ColorViewReview))
+	ViewModeStandbyStyle   = makeViewModeStyle(string(ColorViewStandby))
 	ViewModeSnoozedStyle   = makeViewModeStyle("95")
 	ViewModeAllStyle       = makeViewModeStyle("60")
 
@@ -372,8 +388,8 @@ var (
 				Padding(0, 1)
 
 	FilterBadgeInactiveStyle = lipgloss.NewStyle().
-					Background(lipgloss.Color("236")). // Dark gray (matches SectionBadgeStyle)
-					Foreground(lipgloss.Color("249")). // Gray text
+					Background(ColorBackground). // Dark gray (matches SectionBadgeStyle)
+					Foreground(ColorBadgeText).  // Gray text
 					Padding(0, 1)
 
 	FilterViewBoxStyle = lipgloss.NewStyle().
@@ -485,13 +501,13 @@ var (
 
 	// Section badge style for tree view
 	SectionBadgeStyle = lipgloss.NewStyle().
-				Foreground(lipgloss.Color("249")). // Gray text
-				Background(lipgloss.Color("236"))  // Dark gray background
+				Foreground(ColorBadgeText). // Gray text
+				Background(ColorBackground) // Dark gray background
 
 	// Children in other sections badge (shown on parent when children are hidden by view filter)
 	ChildrenBadgeStyle = lipgloss.NewStyle().
-				Foreground(lipgloss.Color("39")). // Blue (ColorPrimary) - info indicator
-				Background(lipgloss.Color("236")) // Dark gray background (matches SectionBadgeStyle)
+				Foreground(ColorPrimary).   // Blue - info indicator
+				Background(ColorBackground) // Dark gray background (matches SectionBadgeStyle)
 
 	// Pinned project style
 	PinnedProjectStyle = lipgloss.NewStyle().
@@ -503,13 +519,9 @@ var (
 				Foreground(ColorWarning).
 				Bold(true)
 
-	// Unsaved changes indicator style
-	UnsavedChangesStyle = lipgloss.NewStyle().
-				Foreground(lipgloss.Color("226")) // Yellow
-
 	// Active task style (yellow to make it pop out)
 	ActiveStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("226")) // Bright yellow
+			Foreground(ColorAccent) // Bright yellow
 
 	// Triaged badge style (shown in inbox processor when task will leave inbox)
 	TriagedBadgeStyle = lipgloss.NewStyle().
@@ -529,11 +541,11 @@ var (
 	// Suggestion styles (for Priority View smart suggestions)
 	SuggestionBoxStyle = lipgloss.NewStyle().
 				Border(lipgloss.RoundedBorder()).
-				BorderForeground(lipgloss.Color("226")). // Bright yellow
+				BorderForeground(ColorAccent). // Bright yellow
 				Padding(0, 1)
 
 	SuggestionHeaderStyle = lipgloss.NewStyle().
-				Foreground(lipgloss.Color("226")). // Bright yellow
+				Foreground(ColorAccent). // Bright yellow
 				Bold(true)
 
 	SuggestionReasonStyle = lipgloss.NewStyle().
@@ -541,7 +553,7 @@ var (
 				Italic(true)
 
 	SuggestionStarStyle = lipgloss.NewStyle().
-				Foreground(lipgloss.Color("226")). // Bright yellow (matches ActiveStyle)
+				Foreground(ColorAccent). // Bright yellow (matches ActiveStyle)
 				Bold(true)
 
 	// Priority level styles (for priority picker and palette)
@@ -551,15 +563,29 @@ var (
 	Priority4Style = makeColorStyle(ColorMuted)
 	Priority5Style = makeColorStyle(ColorMuted).Faint(true)
 
+	// Workflow rule syntax highlighting styles
+	ColorRuleKeyword   = lipgloss.Color("14") // Cyan for IF/AND/OR/THEN
+	ColorRuleOperator  = lipgloss.Color("13") // Magenta for =, !=, <, >, :
+	RuleKeywordStyle   = makeColorStyle(ColorRuleKeyword)
+	RuleOperatorStyle  = makeColorStyle(ColorRuleOperator)
+	RuleHighlightStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("11")).Bold(true) // Yellow for focused field
+
+	// HighlightStyle is used to highlight matched characters in search results.
+	HighlightStyle = lipgloss.NewStyle().Background(ColorHighlight).Foreground(lipgloss.Color("0")).Bold(true)
+
 	// Common inline styles used across multiple files
-	MatchHighlightStyle = lipgloss.NewStyle().Foreground(ColorHighlight)
-	TagInlineStyle      = lipgloss.NewStyle().Foreground(ColorSecondary)
-	PriorityInlineStyle = lipgloss.NewStyle().Foreground(ColorWarning)
-	CheckmarkStyle      = lipgloss.NewStyle().Foreground(ColorSuccess)
-	WarningIconStyle    = lipgloss.NewStyle().Foreground(ColorWarning)
-	ErrorIconStyle      = lipgloss.NewStyle().Foreground(ColorError)
-	PurpleStyle         = lipgloss.NewStyle().Foreground(lipgloss.Color("135"))
-	OrangeStyle         = lipgloss.NewStyle().Foreground(lipgloss.Color("214"))
+	MatchHighlightStyle       = lipgloss.NewStyle().Foreground(ColorHighlight)
+	TagInlineStyle            = lipgloss.NewStyle().Foreground(ColorSecondary)
+	PriorityInlineStyle       = lipgloss.NewStyle().Foreground(ColorWarning)
+	CheckmarkStyle            = lipgloss.NewStyle().Foreground(ColorSuccess)
+	WarningIconStyle          = lipgloss.NewStyle().Foreground(ColorWarning)
+	ErrorIconStyle            = lipgloss.NewStyle().Foreground(ColorError)
+	SuccessBoldStyle          = BoldStyle.Foreground(ColorSuccess)
+	BoldPrimaryStyle          = BoldStyle.Foreground(ColorPrimary)
+	BoldSecondaryStyle        = BoldStyle.Foreground(ColorSecondary)
+	BoldPrimaryUnderlineStyle = BoldStyle.Foreground(ColorPrimary).Underline(true)
+	PurpleStyle               = lipgloss.NewStyle().Foreground(ColorPurple)
+	OrangeStyle               = lipgloss.NewStyle().Foreground(ColorWarning)
 )
 
 // GetStatusStyle returns the appropriate style for a task status.
@@ -617,6 +643,8 @@ func GetTypeStyle(taskType string) lipgloss.Style {
 		return IdeaStyle
 	case "note":
 		return NoteStyle
+	case "action":
+		return ActionStyle
 	default:
 		return NormalStyle
 	}
@@ -637,6 +665,8 @@ func GetTypeBadge(taskType string, icon string) string {
 		return IdeaBadgeStyle.Render(icon)
 	case "note":
 		return NoteBadgeStyle.Render(icon)
+	case "action":
+		return ActionBadgeStyle.Render(icon)
 	default:
 		return NormalStyle.Render(icon)
 	}
@@ -699,12 +729,12 @@ type SectionColorEntry struct {
 var SectionColorPalette = []SectionColorEntry{
 	{"gray", lipgloss.Color("245")},
 	{"red", lipgloss.Color("196")},
-	{"orange", lipgloss.Color("208")},
+	{"orange", ColorOrange},
 	{"yellow", lipgloss.Color("220")},
 	{"green", lipgloss.Color("42")},
 	{"cyan", lipgloss.Color("44")},
 	{"blue", lipgloss.Color("33")},
-	{"purple", lipgloss.Color("135")},
+	{"purple", ColorPurple},
 	{"magenta", lipgloss.Color("198")},
 	{"white", lipgloss.Color("255")},
 }
@@ -747,7 +777,7 @@ func GetSectionColorStyle(colorName string) lipgloss.Style {
 		if pc.Name == colorName {
 			return lipgloss.NewStyle().
 				Foreground(pc.Color).
-				Background(lipgloss.Color("236")) // Dark background
+				Background(ColorBackground) // Dark background
 		}
 	}
 	// Default to gray
@@ -808,7 +838,7 @@ var (
 			Padding(0, 1)
 
 	SidebarFocusBadgeStyle = lipgloss.NewStyle().
-				Foreground(lipgloss.Color("226")). // Bright yellow like ActiveStyle
+				Foreground(ColorAccent). // Bright yellow like ActiveStyle
 				Bold(true)
 
 	// Sidebar card styles (compact boxes for sidebar sections)
@@ -877,8 +907,8 @@ var (
 	CategoryTaskStyle        = lipgloss.NewStyle().Foreground(ColorSuccess)
 	CategoryProjectStyle     = lipgloss.NewStyle().Foreground(ColorSecondary)
 	CategoryTagStyle         = lipgloss.NewStyle().Foreground(ColorWarning)
-	CategorySectionStyle     = lipgloss.NewStyle().Foreground(lipgloss.Color("135")) // Purple
-	CategorySavedSearchStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("214")) // Orange
+	CategorySectionStyle     = lipgloss.NewStyle().Foreground(ColorPurple)           // Purple
+	CategorySavedSearchStyle = lipgloss.NewStyle().Foreground(ColorWarning)          // Orange
 	CategorySavedFilterStyle = lipgloss.NewStyle().Foreground(ColorSecondary)        // Blue (matches saved filter badge)
 	CategoryNoteStyle        = lipgloss.NewStyle().Foreground(lipgloss.Color("108")) // Sage green
 	CategoryViewStyle        = lipgloss.NewStyle().Foreground(lipgloss.Color("75"))  // Sky blue
@@ -903,7 +933,7 @@ var (
 	// Overlay panel styles (used by score profile manager, etc.)
 	OverlayTitleStyle    = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("99"))
 	OverlaySelectedStyle = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("212"))
-	OverlayDetailStyle   = lipgloss.NewStyle().Foreground(lipgloss.Color("252"))
+	OverlayDetailStyle   = lipgloss.NewStyle().Foreground(ColorLightGray)
 	OverlayBoxStyle      = lipgloss.NewStyle().
 				Border(lipgloss.RoundedBorder()).
 				BorderForeground(lipgloss.Color("99")).

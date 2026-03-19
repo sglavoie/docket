@@ -8,9 +8,6 @@ import (
 	"github.com/charmbracelet/x/ansi"
 )
 
-// HighlightStyle is used to highlight matched characters in search results.
-var HighlightStyle = lipgloss.NewStyle().Background(ColorHighlight).Foreground(lipgloss.Color("0")).Bold(true)
-
 // HighlightSubstring renders text with all case-insensitive occurrences of query highlighted.
 func HighlightSubstring(text, query string, baseStyle lipgloss.Style) string {
 	if query == "" {

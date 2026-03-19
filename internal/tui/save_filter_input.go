@@ -6,7 +6,6 @@ import (
 
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 
 	"github.com/sglavoie/tt/internal/config"
 )
@@ -113,7 +112,7 @@ func (m *SaveFilterInputModel) View() string {
 
 	if m.err != "" {
 		b.WriteString("\n")
-		b.WriteString(lipgloss.NewStyle().Foreground(ColorError).Render(m.err))
+		b.WriteString(ErrorIconStyle.Render(m.err))
 		b.WriteString("\n")
 	}
 

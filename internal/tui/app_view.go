@@ -223,8 +223,7 @@ func (m *AppModel) renderStatusBar() string {
 
 	var left string
 	if m.currentView() == ViewDashboard && !m.config.GetTutorDismissed() {
-		blue := lipgloss.NewStyle().Foreground(ColorPrimary)
-		left = StatusBarStyle.Render("Dashboard") + ": Run " + blue.Render("tutor") + " command to start. Dismiss with " + blue.Render("|")
+		left = StatusBarStyle.Render("Dashboard") + ": Run " + InfoStatusStyle.Render("tutor") + " command to start. Dismiss with " + InfoStatusStyle.Render("|")
 	} else {
 		left = StatusBarStyle.Render(status)
 	}

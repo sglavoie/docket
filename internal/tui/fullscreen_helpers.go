@@ -676,7 +676,7 @@ func renderTabBarWithOptionalSubTabs(tabNames []string, activeTab int, subTabNam
 // project_tree_filters.go and due_date_overview_render.go.
 func ClassifyDueDate(dueDate *time.Time) (string, lipgloss.Style) {
 	if dueDate == nil {
-		return "", lipgloss.NewStyle()
+		return "", NormalStyle
 	}
 
 	now := time.Now()

@@ -16,10 +16,10 @@ type SpinnerModel struct {
 func NewSpinner() SpinnerModel {
 	s := spinner.New()
 	s.Spinner = spinner.Dot
-	s.Style = lipgloss.NewStyle().Foreground(ColorWarning)
+	s.Style = WarningIconStyle
 	return SpinnerModel{
 		spinner: s,
-		style:   lipgloss.NewStyle().Foreground(ColorWarning),
+		style:   WarningIconStyle,
 	}
 }
 

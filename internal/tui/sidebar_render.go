@@ -157,7 +157,7 @@ func renderSidebarChecklistCard(task *models.Task, width int) string {
 			break
 		}
 		marker := "☐"
-		style := lipgloss.NewStyle()
+		style := NormalStyle
 		if item.Done {
 			marker = "☑"
 			style = MutedStyle

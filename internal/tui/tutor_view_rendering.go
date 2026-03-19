@@ -23,6 +23,9 @@ func init() {
 		group   int
 	}
 
+	primaryStyle := makeColorStyle(ColorPrimary)
+	keybindStyle := makeColorStyle(ColorWarning)
+
 	rules := []rule{
 		// Statuses (longest first to match in_progress before partial)
 		{`\bin_progress\b`, InProgressStyle, 0},
@@ -41,7 +44,7 @@ func init() {
 		{`\bIdeas?\b`, IdeaStyle, 0},
 
 		// "tt" as standalone word
-		{`\btt\b`, lipgloss.NewStyle().Foreground(ColorPrimary).Bold(true), 0},
+		{`\btt\b`, primaryStyle.Bold(true), 0},
 
 		// Priority patterns: "Priority 1", "!1" through "!5"
 		{`Priority 1|!1`, Priority1Style, 0},
@@ -50,67 +53,67 @@ func init() {
 		{`Priority 4|!4`, Priority4Style, 0},
 		{`Priority 5|!5`, Priority5Style, 0},
 
-		// Section names
-		{`\bActive\b`, lipgloss.NewStyle().Foreground(lipgloss.Color("34")), 0},
-		{`\bNext\b`, lipgloss.NewStyle().Foreground(lipgloss.Color("61")), 0},
-		{`\bInbox\b`, lipgloss.NewStyle().Foreground(lipgloss.Color("33")), 0},
-		{`\bWaiting\b`, lipgloss.NewStyle().Foreground(lipgloss.Color("214")), 0},
-		{`\bStandby\b`, lipgloss.NewStyle().Foreground(lipgloss.Color("141")), 0},
-		{`\bSomeday\b`, lipgloss.NewStyle().Foreground(lipgloss.Color("135")), 0},
+		// Section names (colors derived from ViewMode constants in styles.go)
+		{`\bActive\b`, makeColorStyle(ColorViewActive), 0},
+		{`\bNext\b`, makeColorStyle(ColorViewNext), 0},
+		{`\bInbox\b`, makeColorStyle(ColorSecondary), 0},
+		{`\bWaiting\b`, keybindStyle, 0},
+		{`\bStandby\b`, makeColorStyle(ColorViewStandby), 0},
+		{`\bSomeday\b`, makeColorStyle(ColorViewSomeday), 0},
 		{`\bReview\b`, ReviewStyle, 0},
 
 		// Tags: #word
-		{`#[a-zA-Z][a-zA-Z0-9_-]*`, lipgloss.NewStyle().Foreground(ColorPrimary), 0},
+		{`#[a-zA-Z][a-zA-Z0-9_-]*`, primaryStyle, 0},
 
 		// Contexts
-		{`"work"`, lipgloss.NewStyle().Foreground(ColorWarning), 0},
-		{`"personal"`, lipgloss.NewStyle().Foreground(ColorWarning), 0},
-		{`"side-projects"`, lipgloss.NewStyle().Foreground(ColorWarning), 0},
+		{`"work"`, keybindStyle, 0},
+		{`"personal"`, keybindStyle, 0},
+		{`"side-projects"`, keybindStyle, 0},
 
 		// Keybinding highlights (yellow)
-		{`Ctrl\+K`, lipgloss.NewStyle().Foreground(ColorWarning), 0},
-		{`\bEnter\b`, lipgloss.NewStyle().Foreground(ColorWarning), 0},
-		{`\bEsc\b`, lipgloss.NewStyle().Foreground(ColorWarning), 0},
-		{`\bTab\b`, lipgloss.NewStyle().Foreground(ColorWarning), 0},
-		{`\bj/k\b`, lipgloss.NewStyle().Foreground(ColorWarning), 0},
+		{`Ctrl\+K`, keybindStyle, 0},
+		{`\bEnter\b`, keybindStyle, 0},
+		{`\bEsc\b`, keybindStyle, 0},
+		{`\bTab\b`, keybindStyle, 0},
+		{`\bj/k\b`, keybindStyle, 0},
 		// Comma-prefix bindings at start of line: ,s ,d ,b ,o ,x
-		{`^(,[sdboxr])\s`, lipgloss.NewStyle().Foreground(ColorWarning), 1},
+		{`^(,[sdboxr])\s`, keybindStyle, 1},
 		// "using , followed" — color the comma
-		{`using (,) followed`, lipgloss.NewStyle().Foreground(ColorWarning), 1},
+		{`using (,) followed`, keybindStyle, 1},
 		// "Press X" patterns for single-char keys
-		{`Press ([qQ?:@f]) `, lipgloss.NewStyle().Foreground(ColorWarning), 1},
+		{`Press ([qQ?:@f]) `, keybindStyle, 1},
 		// "using the s prefix"
-		{`the (s) prefix`, lipgloss.NewStyle().Foreground(ColorWarning), 1},
+		{`the (s) prefix`, keybindStyle, 1},
 		// "Use !" pattern
-		{`Use (!) followed`, lipgloss.NewStyle().Foreground(ColorWarning), 1},
+		{`Use (!) followed`, keybindStyle, 1},
 		// "d for days, w for weeks"
-		{`(d) for days`, lipgloss.NewStyle().Foreground(ColorWarning), 1},
-		{`(w) for weeks`, lipgloss.NewStyle().Foreground(ColorWarning), 1},
+		{`(d) for days`, keybindStyle, 1},
+		{`(w) for weeks`, keybindStyle, 1},
 		// "set with !", "with #", "with @"
-		{`(?:set |tags )with ([!#@])`, lipgloss.NewStyle().Foreground(ColorWarning), 1},
-		{`assignment with (@)`, lipgloss.NewStyle().Foreground(ColorWarning), 1},
+		{`(?:set |tags )with ([!#@])`, keybindStyle, 1},
+		{`assignment with (@)`, keybindStyle, 1},
 		// Command palette commands
-		{`type (ask ai) to`, lipgloss.NewStyle().Foreground(ColorWarning), 1},
+		{`type (ask ai) to`, keybindStyle, 1},
 		// Score badge patterns
-		{`\[S:\d+\]`, lipgloss.NewStyle().Foreground(lipgloss.Color("42")), 0},
-		{`\[S:~\d+\]`, lipgloss.NewStyle().Foreground(lipgloss.Color("208")), 0},
+		{`\[S:\d+\]`, makeColorStyle(ColorSuccess), 0},
+		{`\[S:~\d+\]`, makeColorStyle(ColorOrange), 0},
 		// Shift+S keybinding
-		{`Shift\+S`, lipgloss.NewStyle().Foreground(ColorWarning), 0},
+		{`Shift\+S`, keybindStyle, 0},
 		// FS prefix
-		{`\bFS\b`, lipgloss.NewStyle().Foreground(ColorWarning), 0},
+		{`\bFS\b`, keybindStyle, 0},
 		// Fv prefix and sub-keys (Fv, Fvs, Fvl, Fvd)
-		{`\bFv[sld]?\b`, lipgloss.NewStyle().Foreground(ColorWarning), 0},
+		{`\bFv[sld]?\b`, keybindStyle, 0},
 		// :sv palette prefix
-		{`:sv\b`, lipgloss.NewStyle().Foreground(ColorWarning), 0},
+		{`:sv\b`, keybindStyle, 0},
 		// "by s", "then l", "then d" — color the single key after by/then
-		{`(?:by|then) ([sld]) `, lipgloss.NewStyle().Foreground(ColorWarning), 1},
+		{`(?:by|then) ([sld]) `, keybindStyle, 1},
 		// Stage prefix bindings: .0-.9
-		{`^\.[0-9]\b`, lipgloss.NewStyle().Foreground(ColorWarning), 0},
+		{`^\.[0-9]\b`, keybindStyle, 0},
 		// "Press . " and "F then ." patterns
-		{`Press (\.) `, lipgloss.NewStyle().Foreground(ColorWarning), 1},
-		{`then (\.) to`, lipgloss.NewStyle().Foreground(ColorWarning), 1},
+		{`Press (\.) `, keybindStyle, 1},
+		{`then (\.) to`, keybindStyle, 1},
 		// F. prefix
-		{`\bF\.\b`, lipgloss.NewStyle().Foreground(ColorWarning), 0},
+		{`\bF\.\b`, keybindStyle, 0},
 		// Default stage names rendered with badge style
 		{`\bBrainstorm\b`, StageBadgeStyle, 0},
 		{`\bDesign\b`, StageBadgeStyle, 0},
@@ -220,10 +223,10 @@ func colorizeTutorLine(line string) string {
 }
 
 func renderTutorContent(topic TutorTopic, width int, searchQuery string) string {
-	titleStyle := lipgloss.NewStyle().Foreground(ColorPrimary).Bold(true)
-	headingStyle := lipgloss.NewStyle().Foreground(ColorSecondary).Bold(true)
+	titleStyle := TitleStyle
+	headingStyle := SectionHeaderStyle
 	codeStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("114"))
-	proseStyle := lipgloss.NewStyle()
+	proseStyle := NormalStyle
 
 	hl := func(s string) string {
 		if searchQuery != "" {
@@ -235,7 +238,7 @@ func renderTutorContent(topic TutorTopic, width int, searchQuery string) string 
 	var b strings.Builder
 	b.WriteString(hl(titleStyle.Render(colorizeTutorLine(topic.Title))))
 	b.WriteString("\n")
-	b.WriteString(lipgloss.NewStyle().Foreground(ColorMuted).Render(topic.Category))
+	b.WriteString(MutedStyle.Render(topic.Category))
 	b.WriteString("\n\n")
 
 	for line := range strings.SplitSeq(topic.Content, "\n") {

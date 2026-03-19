@@ -2,8 +2,6 @@ package tui
 
 import (
 	"strings"
-
-	"github.com/charmbracelet/lipgloss"
 )
 
 // renderCyclePreviewBackground renders a dimmed task tree of the highlighted
@@ -23,7 +21,7 @@ func (m *AppModel) renderCyclePreviewBackground() string {
 	content := m.projectCyclePreview.View()
 
 	// Dim each line so the preview visually recedes behind the overlay
-	dim := lipgloss.NewStyle().Faint(true)
+	dim := DimStyle
 	lines := strings.Split(content, "\n")
 	for i, line := range lines {
 		lines[i] = dim.Render(line)

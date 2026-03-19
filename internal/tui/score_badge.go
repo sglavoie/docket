@@ -29,15 +29,15 @@ func HasManualScores(task *models.Task, profile *scoring.ScoringProfile) bool {
 func scoreColor(pct float64) lipgloss.Color {
 	switch {
 	case pct < 60:
-		return lipgloss.Color("196")
+		return ColorError
 	case pct < 120:
-		return lipgloss.Color("208")
+		return ColorOrange
 	case pct < 180:
-		return lipgloss.Color("226")
+		return ColorAccent
 	case pct < 240:
 		return lipgloss.Color("118")
 	default:
-		return lipgloss.Color("42")
+		return ColorSuccess
 	}
 }
 
@@ -95,7 +95,7 @@ func renderScoreCardContent(task *models.Task, profile *scoring.ScoringProfile, 
 	lines = append(lines, fmt.Sprintf("%s %s  %s", bar, badge, formulaStr))
 	lines = append(lines, "")
 
-	manualStyle := lipgloss.NewStyle().Foreground(ColorPrimary)
+	manualStyle := InfoStatusStyle
 	derivedStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("44"))
 
 	maxNameWidth := 0

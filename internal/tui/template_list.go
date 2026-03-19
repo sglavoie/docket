@@ -501,7 +501,7 @@ func (m *TaskTemplatesModel) renderPreviewPane(width, height int) string {
 	lines = append(lines, header, "")
 
 	// Template name
-	lines = append(lines, BoldStyle.Foreground(ColorPrimary).Render(t.Name))
+	lines = append(lines, BoldPrimaryStyle.Render(t.Name))
 
 	// Status
 	if t.Enabled {
@@ -615,7 +615,7 @@ func (m *TaskTemplatesModel) renderFullscreenPreview() string {
 	var lines []string
 
 	// Template name with default indicator
-	nameLine := BoldStyle.Foreground(ColorPrimary).Render(t.Name)
+	nameLine := BoldPrimaryStyle.Render(t.Name)
 	if isDefault {
 		nameLine += " " + MutedStyle.Render("[Default]")
 	}

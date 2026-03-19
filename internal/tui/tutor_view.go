@@ -357,8 +357,8 @@ func (m *TutorModel) renderTopicList() string {
 	listW := m.listWidth()
 	var lines []string
 
-	cursorStyle := lipgloss.NewStyle().Foreground(ColorPrimary).Bold(true)
-	normalStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("252"))
+	cursorStyle := TitleStyle
+	normalStyle := OverlayDetailStyle
 	mutedCat := lipgloss.NewStyle().Foreground(ColorMuted).Bold(true)
 
 	if len(m.filteredTopics) == 0 {

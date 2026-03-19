@@ -187,7 +187,7 @@ func (m *FocusViewModel) renderSuggestedLines() []string {
 		if isDismissed {
 			prefix = MutedStyle.Render("[dismissed] ")
 		} else if m.isInQueue(ft.Task.ID) {
-			prefix = lipgloss.NewStyle().Foreground(ColorSecondary).Bold(true).Render("[Q] ")
+			prefix = SectionHeaderStyle.Render("[Q] ")
 		}
 
 		// Star indicator on the first non-queued item

@@ -302,12 +302,12 @@ func (m *AppModel) renderProjectCyclePopup() string {
 		return ""
 	}
 
-	borderStyle := lipgloss.NewStyle().Foreground(ColorPrimary)
-	titleStyle := lipgloss.NewStyle().Foreground(ColorPrimary).Bold(true)
+	borderStyle := InfoStatusStyle
+	titleStyle := TitleStyle
 	title := titleStyle.Render("Project Cycle")
 
 	cursorStyle := SelectionRowStyle
-	badgeStyle := lipgloss.NewStyle().Foreground(ColorPrimary)
+	badgeStyle := InfoStatusStyle
 	dimBadgeStyle := MutedStyle
 
 	// Build subtitle: context indicator + selection count
@@ -319,7 +319,7 @@ func (m *AppModel) renderProjectCyclePopup() string {
 	}
 
 	var subtitleParts []string
-	contextStyle := lipgloss.NewStyle().Foreground(ColorPrimary)
+	contextStyle := InfoStatusStyle
 	if m.config.FilterCustomContext != "" {
 		subtitleParts = append(subtitleParts, fmt.Sprintf("Context: %s", contextStyle.Render("+ "+m.config.FilterCustomContext)))
 	} else if m.config.FilterContext != "" {

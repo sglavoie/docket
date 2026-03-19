@@ -746,7 +746,7 @@ func (m *OutlinerModel) renderQuickEditBar() string {
 	if m.quickEdit.IsRenameOnly() {
 		mode = "Rename"
 	}
-	modeLabel := lipgloss.NewStyle().Bold(true).Foreground(ColorPrimary).Render(mode + ":")
+	modeLabel := TitleStyle.Render(mode + ":")
 
 	inputLine := modeLabel + " " + m.quickEdit.GetInput().View()
 	lines = append(lines, inputLine)

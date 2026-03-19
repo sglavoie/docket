@@ -432,9 +432,9 @@ func (m *WorkflowRuleCreatorModel) renderPreviewPane(width int) string {
 	section, itemIdx, fieldIdx := m.getFocusSection()
 
 	// Styles for syntax highlighting
-	keywordStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("14"))              // Cyan for IF/AND/OR/THEN
-	operatorStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("13"))             // Magenta for =, !=, <, >, :
-	highlightStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("11")).Bold(true) // Yellow for focused field
+	keywordStyle := RuleKeywordStyle
+	operatorStyle := RuleOperatorStyle
+	highlightStyle := RuleHighlightStyle
 
 	b.WriteString(BoldStyle.Render("Preview"))
 	b.WriteString("\n")

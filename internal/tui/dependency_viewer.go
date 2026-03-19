@@ -5,7 +5,6 @@ import (
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 
 	"github.com/sglavoie/tt/internal/models"
 )
@@ -181,9 +180,9 @@ func (m *DependencyViewerModel) renderSection(sectionIdx int, title, arrow strin
 	var b strings.Builder
 
 	// Section header with styling based on whether it's active
-	headerStyle := lipgloss.NewStyle().Bold(true).Foreground(ColorSecondary)
+	headerStyle := SectionHeaderStyle
 	if m.section == sectionIdx {
-		headerStyle = headerStyle.Foreground(ColorPrimary).Underline(true)
+		headerStyle = BoldPrimaryUnderlineStyle
 	}
 
 	countStr := fmt.Sprintf("(%d)", len(tasks))

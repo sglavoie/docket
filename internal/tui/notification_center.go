@@ -7,14 +7,12 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 
-	"github.com/charmbracelet/lipgloss"
-
 	"github.com/sglavoie/tt/internal/alerts"
 )
 
 var (
-	alertUrgentDot  = lipgloss.NewStyle().Foreground(ColorError).Render("✖ ")
-	alertWarningDot = lipgloss.NewStyle().Foreground(ColorWarning).Render("▲ ")
+	alertUrgentDot  = ErrorIconStyle.Render("✖ ")
+	alertWarningDot = WarningIconStyle.Render("▲ ")
 	alertInfoDot    = MutedStyle.Render("● ")
 )
 
@@ -364,7 +362,7 @@ func (m *NotificationCenterModel) View() string {
 			prefix := "  "
 			isSelected := i == m.cursor
 			if isSelected {
-				prefix = BoldStyle.Foreground(ColorPrimary).Render("▸ ")
+				prefix = BoldPrimaryStyle.Render("▸ ")
 			}
 			sev := m.severityPrefix(item)
 			title := item.label
@@ -500,7 +498,7 @@ func truncateToWidth(s string, maxWidth int) string {
 	return string(runes[:maxWidth-1]) + "…"
 }
 
-var alertDetailsStyle = lipgloss.NewStyle().Foreground(ColorPrimary)
+var alertDetailsStyle = InfoStatusStyle
 
 // styleAlertLine renders a line with the details portion styled in blue.
 // The line is already truncated/wrapped plain text combining title and details.

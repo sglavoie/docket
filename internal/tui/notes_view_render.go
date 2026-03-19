@@ -141,7 +141,7 @@ func (m *NotesViewModel) renderListPane() string {
 
 	selectedStyle := TaskJumperSelectedStyle
 	if m.detailsPane.Focused {
-		selectedStyle = lipgloss.NewStyle().Foreground(ColorMuted)
+		selectedStyle = MutedStyle
 	}
 
 	for i := startIdx; i < endIdx; i++ {

@@ -123,7 +123,7 @@ func (m *ProjectPickerModel) renderProjectDetail(width, height int) string {
 	lines := 0
 
 	// Project name
-	b.WriteString(lipgloss.NewStyle().Bold(true).Render(p.Name))
+	b.WriteString(BoldStyle.Render(p.Name))
 	b.WriteString("\n")
 	lines++
 
@@ -181,14 +181,14 @@ func (m *ProjectPickerModel) renderProjectDetail(width, height int) string {
 	lines++
 
 	if overdue > 0 {
-		overdueStr := lipgloss.NewStyle().Foreground(ColorWarning).Render(fmt.Sprintf("%d", overdue))
+		overdueStr := WarningIconStyle.Render(fmt.Sprintf("%d", overdue))
 		b.WriteString(MutedStyle.Render("Overdue: ") + overdueStr)
 	} else {
 		b.WriteString(MutedStyle.Render("Overdue: ") + "0")
 	}
 	b.WriteString("  ")
 	if blocked > 0 {
-		blockedStr := lipgloss.NewStyle().Foreground(ColorWarning).Render(fmt.Sprintf("%d", blocked))
+		blockedStr := WarningIconStyle.Render(fmt.Sprintf("%d", blocked))
 		b.WriteString(MutedStyle.Render("Blocked: ") + blockedStr)
 	} else {
 		b.WriteString(MutedStyle.Render("Blocked: ") + "0")
@@ -211,7 +211,7 @@ func (m *ProjectPickerModel) renderProjectDetail(width, height int) string {
 		b.WriteString(MutedStyle.Render(strings.Repeat("─", width)))
 		b.WriteString("\n")
 		lines++
-		b.WriteString(lipgloss.NewStyle().Bold(true).Render("Sections"))
+		b.WriteString(BoldStyle.Render("Sections"))
 		b.WriteString("\n")
 		lines++
 		for _, sec := range sections {

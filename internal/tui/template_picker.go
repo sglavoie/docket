@@ -470,7 +470,7 @@ func (m *TemplatePickerModel) View() string {
 	// Wrap in a box
 	boxStyle := lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
-		BorderForeground(lipgloss.Color("240")).
+		BorderForeground(ColorSubtleBorder).
 		Padding(1, 2).
 		Width(m.Width() - 4)
 

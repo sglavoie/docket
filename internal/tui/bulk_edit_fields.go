@@ -5,8 +5,6 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/charmbracelet/lipgloss"
-
 	"github.com/sglavoie/tt/internal/models"
 )
 
@@ -651,7 +649,7 @@ func (m *BulkEditModel) renderPreview() string {
 		parts = append(parts, "Move to root")
 	}
 
-	previewStyle := lipgloss.NewStyle().Foreground(ColorWarning)
+	previewStyle := WarningIconStyle
 	return previewStyle.Render(fmt.Sprintf("  Preview: %s", strings.Join(parts, ", ")))
 }
 

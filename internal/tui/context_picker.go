@@ -7,7 +7,6 @@ import (
 
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
@@ -486,7 +485,7 @@ func (m *ContextPickerModel) renderContextPicker(headerContent string) string {
 			if i == m.Cursor {
 				b.WriteString(TagManagerItemSelectedStyle.Render(line))
 			} else if isActive {
-				b.WriteString(lipgloss.NewStyle().Foreground(ColorPrimary).Render(line))
+				b.WriteString(InfoStatusStyle.Render(line))
 			} else {
 				b.WriteString(TagManagerItemStyle.Render(line))
 			}

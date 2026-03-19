@@ -494,7 +494,7 @@ func (m *DashboardModel) renderProjectList(visible []*models.Project, chromeHeig
 		}
 		if selected {
 			if p.Pinned {
-				style = BoldStyle.Foreground(ColorSuccess)
+				style = SuccessBoldStyle
 			} else {
 				style = SelectedItemTextStyle
 			}

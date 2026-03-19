@@ -358,7 +358,7 @@ func (m *HelpViewModel) renderContent() string {
 		// Render key with highlight if positions present
 		var renderedKey string
 		if len(keyPos) > 0 {
-			renderedKey = keyStyle.Render(HighlightText(key, keyPos, lipgloss.NewStyle().Foreground(ColorSecondary)))
+			renderedKey = keyStyle.Render(HighlightText(key, keyPos, TagInlineStyle))
 		} else {
 			renderedKey = keyStyle.Render(key)
 		}
@@ -377,7 +377,7 @@ func (m *HelpViewModel) renderContent() string {
 				result.WriteString(renderedKey)
 				result.WriteString("  ")
 				if len(descPos) > 0 {
-					result.WriteString(HighlightText(line, descPos, lipgloss.NewStyle()))
+					result.WriteString(HighlightText(line, descPos, NormalStyle))
 				} else {
 					result.WriteString(line)
 				}

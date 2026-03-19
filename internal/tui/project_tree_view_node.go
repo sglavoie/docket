@@ -91,7 +91,7 @@ func (m *ProjectTreeModel) renderNodeWithWidth(node *TreeNode, selected bool, in
 		if task.Active {
 			titleStyle = ActiveStyle.Bold(true)
 		} else if task.Pinned {
-			titleStyle = BoldStyle.Foreground(ColorSuccess)
+			titleStyle = SuccessBoldStyle
 		} else {
 			titleStyle = SelectedItemTextStyle
 		}

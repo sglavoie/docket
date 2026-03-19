@@ -229,7 +229,7 @@ func (m *MetricsDashboardModel) renderBlockedTab(height int) string {
 		style := NormalStyle
 		if i == m.blockedCursor {
 			prefix = "> "
-			style = lipgloss.NewStyle().Bold(true).Foreground(ColorPrimary)
+			style = TitleStyle
 		}
 
 		statusIcon := entry.Task.Status.Icon()

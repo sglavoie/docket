@@ -478,11 +478,9 @@ func (m *UndoHistoryModel) renderEntryList(width, height int) string {
 	var b strings.Builder
 
 	// Header
-	headerStyle := lipgloss.NewStyle().Bold(true)
+	headerStyle := BoldSecondaryStyle
 	if m.focusedPane == 0 {
-		headerStyle = headerStyle.Foreground(ColorPrimary).Underline(true)
-	} else {
-		headerStyle = headerStyle.Foreground(ColorSecondary)
+		headerStyle = BoldPrimaryUnderlineStyle
 	}
 	b.WriteString(headerStyle.Render("Actions"))
 	b.WriteString("\n")
@@ -550,11 +548,9 @@ func (m *UndoHistoryModel) renderDiffPreview(width, height int) string {
 	var b strings.Builder
 
 	// Header
-	headerStyle := lipgloss.NewStyle().Bold(true)
+	headerStyle := BoldSecondaryStyle
 	if m.focusedPane == 1 {
-		headerStyle = headerStyle.Foreground(ColorPrimary).Underline(true)
-	} else {
-		headerStyle = headerStyle.Foreground(ColorSecondary)
+		headerStyle = BoldPrimaryUnderlineStyle
 	}
 	b.WriteString(headerStyle.Render("What Changed"))
 	b.WriteString("\n")

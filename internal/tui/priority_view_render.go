@@ -5,8 +5,6 @@ import (
 	"maps"
 	"strings"
 
-	"github.com/charmbracelet/lipgloss"
-
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/util"
 )
@@ -343,7 +341,7 @@ func (m *PriorityViewModel) renderWaitingOnTask(pt *PriorityTask) string {
 	}
 	title := util.Truncate(task.Title, maxTitleLen)
 	if m.searchQuery != "" {
-		title = HighlightSubstring(title, m.searchQuery, lipgloss.NewStyle())
+		title = HighlightSubstring(title, m.searchQuery, NormalStyle)
 	}
 
 	// Blocking reason

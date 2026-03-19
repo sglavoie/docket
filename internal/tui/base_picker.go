@@ -243,7 +243,7 @@ func (p *BasePicker[T]) RenderList(maxVisible int) string {
 		displayText := item.DisplayText()
 		if isPinned {
 			if selected {
-				displayText = BoldStyle.Foreground(ColorSuccess).Render(displayText)
+				displayText = SuccessBoldStyle.Render(displayText)
 			} else {
 				displayText = PinnedProjectStyle.Render(displayText)
 			}

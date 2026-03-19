@@ -26,7 +26,7 @@ func (m *WorkflowDryRunModel) View() string {
 	}
 
 	if m.loadErr != nil {
-		b.WriteString(lipgloss.NewStyle().Foreground(ColorError).Render(fmt.Sprintf("Error: %s", m.loadErr.Error())))
+		b.WriteString(ErrorIconStyle.Render(fmt.Sprintf("Error: %s", m.loadErr.Error())))
 		b.WriteString("\n\n")
 		b.WriteString(renderStatusBarFooter(HelpStyle.Render("q: close"), "", m.Width()))
 		return b.String()
@@ -175,11 +175,11 @@ func (m *WorkflowDryRunModel) renderDetailPane() string {
 	result := m.filtered[m.cursor]
 	var b strings.Builder
 
-	keywordStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("14"))
-	operatorStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("13"))
+	keywordStyle := RuleKeywordStyle
+	operatorStyle := RuleOperatorStyle
 
 	// Task info
-	b.WriteString(BoldStyle.Foreground(ColorPrimary).Render(result.Task.Title))
+	b.WriteString(BoldPrimaryStyle.Render(result.Task.Title))
 	b.WriteString("\n")
 	b.WriteString(MutedStyle.Render(fmt.Sprintf("Project: %s  Status: %s  Priority: %d",
 		result.ProjectName, string(result.Task.Status), result.Task.Priority)))
@@ -225,7 +225,7 @@ func (m *WorkflowDryRunModel) renderTaskListWithDetails(paneHeight int) string {
 	}
 
 	var b strings.Builder
-	operatorStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("13"))
+	operatorStyle := RuleOperatorStyle
 
 	maxVisible := max(paneHeight, 3)
 

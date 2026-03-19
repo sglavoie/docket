@@ -142,7 +142,7 @@ func renderCard(title, content string, width int, config CardConfig) string {
 		borderColor = config.AccentColor
 		if config.Focused {
 			// Focused with accent: use blue title to indicate focus
-			titleStyle = lipgloss.NewStyle().Foreground(ColorPrimary).Bold(true)
+			titleStyle = TitleStyle
 		} else {
 			// Accent but not focused: use accent color for title too
 			titleStyle = lipgloss.NewStyle().Foreground(config.AccentColor)

@@ -114,7 +114,7 @@ func (m *TemplateVarFillerModel) View() string {
 
 	boxStyle := lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
-		BorderForeground(lipgloss.Color("240")).
+		BorderForeground(ColorSubtleBorder).
 		Padding(1, 2).
 		Width(max(m.width-4, 1))
 

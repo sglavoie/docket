@@ -6,7 +6,6 @@ import (
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 	"github.com/google/uuid"
 
 	"github.com/sglavoie/tt/internal/logging"
@@ -176,7 +175,7 @@ func (m *QuickCaptureModel) GetConfirmDialog() *ConfirmDialog {
 func (m *QuickCaptureModel) IsFullHeight() bool { return false }
 
 func (m *QuickCaptureModel) renderSyntaxGuide() string {
-	prefixStyle := lipgloss.NewStyle().Foreground(ColorHighlight)
+	prefixStyle := MatchHighlightStyle
 	type row struct{ prefix, desc, examples string }
 	rows := []row{
 		{"^type", "Task type", "^epic  ^story  ^task  ^bug  ^idea"},
