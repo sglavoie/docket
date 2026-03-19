@@ -289,11 +289,12 @@ func (m *OutlinerModel) renderOutlinerTreeContent(width int) string {
 		var headerStr string
 		if m.project == nil {
 			projectCount := len(m.loadedProjects)
-			headerStr = fmt.Sprintf("Cross-project outliner (%d project", projectCount)
+			title := fmt.Sprintf("Cross-project outliner (%d project", projectCount)
 			if projectCount != 1 {
-				headerStr += "s"
+				title += "s"
 			}
-			headerStr += ")"
+			title += ")"
+			headerStr = TitleStyle.Render(title)
 		} else {
 			titleParams := &TitleParams{
 				FilterParts:   m.activeFilterParts(),
@@ -338,12 +339,12 @@ func (m *OutlinerModel) renderOutlinerTreeContent(width int) string {
 	var b strings.Builder
 	if m.project == nil {
 		projectCount := len(m.loadedProjects)
-		headerStr := fmt.Sprintf("Cross-project outliner (%d project", projectCount)
+		title := fmt.Sprintf("Cross-project outliner (%d project", projectCount)
 		if projectCount != 1 {
-			headerStr += "s"
+			title += "s"
 		}
-		headerStr += ")"
-		b.WriteString(headerStr)
+		title += ")"
+		b.WriteString(TitleStyle.Render(title))
 	} else {
 		titleParams := &TitleParams{
 			FilterParts:   m.activeFilterParts(),
