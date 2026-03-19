@@ -353,7 +353,7 @@ var (
 	ViewModeInboxStyle     = makeViewModeStyle(string(ColorSecondary))
 	ViewModeWaitingStyle   = makeViewModeStyle("214")
 	ViewModeSomedayStyle   = makeViewModeStyle("135")
-	ViewModeCompletedStyle = makeViewModeStyle("28")
+	ViewModeCompletedStyle = makeViewModeStyle("136")
 	ViewModeReviewStyle    = makeViewModeStyle(string(ColorSecondary))
 	ViewModeStandbyStyle   = makeViewModeStyle("141")
 	ViewModeSnoozedStyle   = makeViewModeStyle("95")
@@ -728,6 +728,14 @@ func GetViewModeStyleForSection(section string) lipgloss.Style {
 		return ViewModeReviewStyle
 	case "Standby":
 		return ViewModeStandbyStyle
+	case "All":
+		return ViewModeAllStyle
+	case "Active":
+		return ViewModeActiveStyle
+	case "Completed":
+		return ViewModeCompletedStyle
+	case "Snoozed":
+		return ViewModeSnoozedStyle
 	default:
 		return ViewModeActiveStyle
 	}
