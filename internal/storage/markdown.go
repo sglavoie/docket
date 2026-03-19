@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/sglavoie/tt/internal/logging"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage/format"
 	"github.com/sglavoie/tt/internal/tterrors"
@@ -164,7 +165,7 @@ func SaveProject(project *models.Project) error {
 		if oldResult, parseErr := ParseTasksMarkdownWithSections(string(oldContent)); parseErr == nil {
 			DiffAndRecordActivity(oldResult.Tasks, project.Tasks, MaxActivityEntries)
 		} else {
-			fmt.Fprintf(os.Stderr, "warning: could not diff activity for %s: %v\n", project.Name, parseErr)
+			logging.Warn("could not diff activity for %s: %v", project.Name, parseErr)
 		}
 	}
 

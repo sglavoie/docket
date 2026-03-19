@@ -250,7 +250,7 @@ func TestRoundTrip_BugAttrs(t *testing.T) {
 
 	metaStr := WriteMetadata(task)
 	content := metaStr[5 : len(metaStr)-4]
-	parsed := &models.Task{}
+	parsed := &models.Task{Type: models.TaskTypeBug}
 	warnings := ParseMetadata(parsed, content)
 
 	if len(warnings) != 0 {
@@ -287,7 +287,7 @@ func TestRoundTrip_IdeaAttrs(t *testing.T) {
 
 	metaStr := WriteMetadata(task)
 	content := metaStr[5 : len(metaStr)-4]
-	parsed := &models.Task{}
+	parsed := &models.Task{Type: models.TaskTypeIdea}
 	warnings := ParseMetadata(parsed, content)
 
 	if len(warnings) != 0 {
@@ -406,7 +406,7 @@ func TestRoundTrip_KitchenSink(t *testing.T) {
 
 	metaStr := WriteMetadata(task)
 	content := metaStr[5 : len(metaStr)-4]
-	parsed := &models.Task{}
+	parsed := &models.Task{Type: task.Type}
 	warnings := ParseMetadata(parsed, content)
 
 	if len(warnings) != 0 {

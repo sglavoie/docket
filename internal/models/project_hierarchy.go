@@ -10,6 +10,27 @@ import (
 // MaxNestingDepth is the maximum allowed nesting depth for tasks in a tree.
 const MaxNestingDepth = 6
 
+// WouldCreateCycle checks whether setting proposedParentID as the parent of
+// taskID would create a cycle. It walks the parent chain from proposedParentID
+// upward; if it reaches taskID, a cycle would be created.
+func WouldCreateCycle(taskMap map[string]*Task, taskID, proposedParentID string) bool {
+	if taskID == proposedParentID {
+		return true
+	}
+	current := proposedParentID
+	for current != "" {
+		parent, ok := taskMap[current]
+		if !ok || parent.ParentID == nil {
+			return false
+		}
+		current = *parent.ParentID
+		if current == taskID {
+			return true
+		}
+	}
+	return false
+}
+
 // BuildTaskTree organizes flat tasks into a tree structure.
 // Sets Parent, Children, and Level for each task.
 func (p *Project) BuildTaskTree() {
@@ -213,6 +234,15 @@ func (p *Project) IndentTask(task *Task) error {
 	// Validate the indent operation
 	if ok, reason := task.CanIndent(targetParent); !ok {
 		return fmt.Errorf("cannot indent: %s", reason)
+	}
+
+	// Check for cycles before reparenting
+	taskMap := make(map[string]*Task, len(p.Tasks))
+	for _, t := range p.Tasks {
+		taskMap[t.ID] = t
+	}
+	if WouldCreateCycle(taskMap, task.ID, targetParent.ID) {
+		return fmt.Errorf("cannot indent: would create a circular parent reference")
 	}
 
 	// Update the parent reference

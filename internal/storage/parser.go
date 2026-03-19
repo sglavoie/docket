@@ -120,6 +120,14 @@ func ParseTasksMarkdownWithSections(content string) (*ParseResult, error) {
 				taskType = models.TaskTypeTask
 			}
 
+			if len(title) > models.MaxTaskTitleLength {
+				metadataWarnings = append(metadataWarnings, ParseWarning{
+					Type:    format.WarningValidation,
+					Field:   "title",
+					Message: fmt.Sprintf("task #%d title is overlong (%d chars, max %d)", nextShortID, len(title), models.MaxTaskTitleLength),
+				})
+			}
+
 			task, taskErr := models.NewTask("", nextShortID, taskType, title)
 			if taskErr != nil {
 				// Preserve tasks with invalid titles (e.g. empty) to avoid data loss
@@ -223,10 +231,12 @@ func ParseTasksMarkdownWithSections(content string) (*ParseResult, error) {
 	// Detect duplicate task IDs — these corrupt lookups, parent refs, and dependency graphs.
 	// Reassign new UUIDs to duplicates so every task has a unique ID.
 	taskByID := make(map[string]bool, len(tasks))
+	idRemap := make(map[string]string) // oldID → newID
 	for _, t := range tasks {
 		if taskByID[t.ID] {
 			oldID := t.ID
 			t.ID = uuid.New().String()
+			idRemap[oldID] = t.ID
 			metadataWarnings = append(metadataWarnings, ParseWarning{
 				Type:    format.WarningDataCorrection,
 				TaskID:  t.ID,
@@ -235,6 +245,27 @@ func ParseTasksMarkdownWithSections(content string) (*ParseResult, error) {
 			})
 		}
 		taskByID[t.ID] = true
+	}
+
+	// Update references (ParentID, DependsOn, RelatedTo) that point to reassigned IDs.
+	if len(idRemap) > 0 {
+		for _, t := range tasks {
+			if t.ParentID != nil {
+				if newID, ok := idRemap[*t.ParentID]; ok {
+					*t.ParentID = newID
+				}
+			}
+			for i, dep := range t.DependsOn {
+				if newID, ok := idRemap[dep]; ok {
+					t.DependsOn[i] = newID
+				}
+			}
+			for i, rel := range t.RelatedTo {
+				if newID, ok := idRemap[rel]; ok {
+					t.RelatedTo[i] = newID
+				}
+			}
+		}
 	}
 
 	// Validate parent references - preserve orphaned refs and clear ParentID

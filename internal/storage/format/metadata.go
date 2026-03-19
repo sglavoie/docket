@@ -63,6 +63,24 @@ var metadataKeys = []string{
 	"epic.scope", "epic.milestone", "epic.metrics",
 }
 
+// typeForAttrPrefix returns the expected TaskType for a given attribute prefix.
+func typeForAttrPrefix(key string) (models.TaskType, bool) {
+	switch {
+	case strings.HasPrefix(key, "bug."):
+		return models.TaskTypeBug, true
+	case strings.HasPrefix(key, "idea."):
+		return models.TaskTypeIdea, true
+	case strings.HasPrefix(key, "task."):
+		return models.TaskTypeTask, true
+	case strings.HasPrefix(key, "story."):
+		return models.TaskTypeStory, true
+	case strings.HasPrefix(key, "epic."):
+		return models.TaskTypeEpic, true
+	default:
+		return "", false
+	}
+}
+
 // ParseMetadata parses the metadata string and sets task fields.
 // Returns any warnings encountered during parsing.
 func ParseMetadata(task *models.Task, metaStr string) []ParseWarning {
@@ -89,6 +107,16 @@ func ParseMetadata(task *models.Task, metaStr string) []ParseWarning {
 		}
 		key := strings.TrimSpace(parts[0])
 		value := strings.TrimSpace(parts[1])
+
+		// Gate type-specific attributes on task type
+		if expectedType, ok := typeForAttrPrefix(key); ok && task.Type != expectedType {
+			warnings = append(warnings, ParseWarning{
+				Type:    WarningValidation,
+				Field:   key,
+				Message: fmt.Sprintf("%s attribute on %s task, skipping", key, task.Type),
+			})
+			continue
+		}
 
 		switch key {
 		case "id":

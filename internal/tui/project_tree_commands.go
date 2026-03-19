@@ -388,10 +388,11 @@ func (m *ProjectTreeModel) applyBulkChanges(changes PendingChanges, tasks []*mod
 
 					// Find target parent task
 					var targetParent *models.Task
+					taskMap := make(map[string]*models.Task, len(m.project.Tasks))
 					for _, t := range m.project.Tasks {
+						taskMap[t.ID] = t
 						if t.ID == targetID {
 							targetParent = t
-							break
 						}
 					}
 					if targetParent == nil {
@@ -403,28 +404,9 @@ func (m *ProjectTreeModel) applyBulkChanges(changes PendingChanges, tasks []*mod
 						canReparent = false
 					}
 
-					// Circular dependency check: walk up from target parent,
-					// if any ancestor is the task being moved, skip it
-					if canReparent {
-						current := targetParent
-						for current != nil {
-							if current.ID == task.ID {
-								canReparent = false
-								break
-							}
-							if current.ParentID == nil {
-								break
-							}
-							// Find parent in project tasks
-							var next *models.Task
-							for _, t := range m.project.Tasks {
-								if current.ParentID != nil && t.ID == *current.ParentID {
-									next = t
-									break
-								}
-							}
-							current = next
-						}
+					// Cycle check using shared utility
+					if canReparent && models.WouldCreateCycle(taskMap, task.ID, targetID) {
+						canReparent = false
 					}
 
 					if canReparent {

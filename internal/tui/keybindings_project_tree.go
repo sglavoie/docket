@@ -32,7 +32,7 @@ func (r *KeybindingRegistry) registerProjectTreeBindings() {
 		Keybinding{Key: "gz", Description: "Go to Snoozed view", Category: "Views", Views: views},
 		Keybinding{Key: "ctrl+P", Description: "Open outliner view", Category: "Views", Views: views},
 		Keybinding{Key: "ctrl+O", Description: "Open outliner view", Category: "Views", Views: views},
-		Keybinding{Key: "A", Description: "All tasks", Category: "Views", Views: views},
+		Keybinding{Key: "A", Description: "All tasks (normal mode)", Category: "Views", Views: views},
 
 		// Task Movement (when sidebar unfocused)
 		Keybinding{Key: "K", Description: "Move task up", Category: "Task Movement", Views: views},
@@ -122,7 +122,7 @@ func (r *KeybindingRegistry) registerProjectTreeBindings() {
 		Keybinding{Key: ",d", Description: "Complete recurring task (creates next instance)", Category: "Recurring Tasks", Views: views},
 
 		// Archive
-		Keybinding{Key: "A", Description: "Archive completed tasks (Completed view)", Category: "Archive", Views: views},
+		Keybinding{Key: "A", Description: "Archive completed (Completed view only)", Category: "Archive", Views: views},
 
 		// Other
 		Keybinding{Key: "ctrl+R", Description: "Refresh from disk", Category: "Other", Views: views},

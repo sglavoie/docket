@@ -162,6 +162,7 @@ func RecordUndoSnapshot(project *models.Project, action, context string, maxDept
 	meta, err := LoadUndoMeta(project)
 	if err != nil {
 		// Start fresh if meta is corrupted
+		logging.Warn("undo metadata corrupted for %s, starting fresh: %v", project.Name, err)
 		meta = &UndoMeta{Entries: []UndoEntry{}}
 	}
 
@@ -197,6 +198,8 @@ func RecordUndoSnapshot(project *models.Project, action, context string, maxDept
 
 	// Save metadata
 	if err := saveUndoMeta(project, meta); err != nil {
+		// Clean up the orphaned snapshot file since metadata save failed
+		os.Remove(snapshotPath)
 		return err
 	}
 

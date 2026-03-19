@@ -63,7 +63,7 @@ func LoadArchivedTasks(project *models.Project) []*models.Task {
 	for _, p := range paths {
 		tasks, err := parseArchiveFile(p)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "warning: skipping corrupt archive %s: %v\n", p, err)
+			logging.Warn("skipping corrupt archive %s: %v", p, err)
 			continue
 		}
 		allTasks = append(allTasks, tasks...)

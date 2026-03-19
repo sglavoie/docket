@@ -39,7 +39,7 @@ func TestParseMetadata_BugAttrs(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			task := &models.Task{}
+			task := &models.Task{Type: models.TaskTypeBug}
 			ParseMetadata(task, tc.metaStr)
 
 			if task.BugAttrs == nil {
@@ -85,7 +85,7 @@ func TestParseMetadata_IdeaAttrs(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			task := &models.Task{}
+			task := &models.Task{Type: models.TaskTypeIdea}
 			ParseMetadata(task, tc.metaStr)
 
 			if task.IdeaAttrs == nil {
@@ -108,7 +108,7 @@ func TestParseMetadata_IdeaAttrs(t *testing.T) {
 }
 
 func TestParseMetadata_TaskAttrs(t *testing.T) {
-	task := &models.Task{}
+	task := &models.Task{Type: models.TaskTypeTask}
 	ParseMetadata(task, "id: t1, status: todo, priority: 2, task.effort: small, task.worktype: development")
 
 	if task.TaskAttrs == nil {
@@ -147,7 +147,7 @@ func TestParseMetadata_StoryAttrs(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			task := &models.Task{}
+			task := &models.Task{Type: models.TaskTypeStory}
 			ParseMetadata(task, tc.metaStr)
 
 			if task.StoryAttrs == nil {
@@ -189,7 +189,7 @@ func TestParseMetadata_EpicAttrs(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			task := &models.Task{}
+			task := &models.Task{Type: models.TaskTypeEpic}
 			ParseMetadata(task, tc.metaStr)
 
 			if task.EpicAttrs == nil {
@@ -422,7 +422,7 @@ func TestTypeAttrs_RoundTrip(t *testing.T) {
 			}
 			content := metaStr[5 : len(metaStr)-4]
 
-			parsed := &models.Task{}
+			parsed := &models.Task{Type: tc.task.Type}
 			ParseMetadata(parsed, content)
 
 			// Check type-specific attributes
@@ -499,6 +499,82 @@ func TestTypeAttrs_RoundTrip(t *testing.T) {
 						t.Errorf("SuccessMetrics = %q, want %q", parsed.EpicAttrs.SuccessMetrics, tc.task.EpicAttrs.SuccessMetrics)
 					}
 				}
+			}
+		})
+	}
+}
+
+func TestParseMetadata_CrossTypeAttrWarning(t *testing.T) {
+	tests := []struct {
+		name      string
+		taskType  models.TaskType
+		metaStr   string
+		warnField string
+	}{
+		{
+			name:      "bug attr on story task",
+			taskType:  models.TaskTypeStory,
+			metaStr:   "id: x1, status: todo, priority: 2, bug.severity: major",
+			warnField: "bug.severity",
+		},
+		{
+			name:      "idea attr on bug task",
+			taskType:  models.TaskTypeBug,
+			metaStr:   "id: x2, status: todo, priority: 2, idea.category: feature",
+			warnField: "idea.category",
+		},
+		{
+			name:      "task attr on epic task",
+			taskType:  models.TaskTypeEpic,
+			metaStr:   "id: x3, status: todo, priority: 2, task.effort: small",
+			warnField: "task.effort",
+		},
+		{
+			name:      "story attr on task task",
+			taskType:  models.TaskTypeTask,
+			metaStr:   "id: x4, status: todo, priority: 2, story.points: 5",
+			warnField: "story.points",
+		},
+		{
+			name:      "epic attr on idea task",
+			taskType:  models.TaskTypeIdea,
+			metaStr:   "id: x5, status: todo, priority: 2, epic.scope: defined",
+			warnField: "epic.scope",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			task := &models.Task{Type: tc.taskType}
+			warnings := ParseMetadata(task, tc.metaStr)
+
+			// Should have exactly one validation warning for the cross-type attr
+			found := false
+			for _, w := range warnings {
+				if w.Type == WarningValidation && w.Field == tc.warnField {
+					found = true
+					break
+				}
+			}
+			if !found {
+				t.Errorf("expected WarningValidation for field %q, got warnings: %v", tc.warnField, warnings)
+			}
+
+			// The type-specific attrs should NOT be set
+			if task.BugAttrs != nil {
+				t.Error("BugAttrs should be nil for cross-type attr")
+			}
+			if task.IdeaAttrs != nil {
+				t.Error("IdeaAttrs should be nil for cross-type attr")
+			}
+			if task.TaskAttrs != nil {
+				t.Error("TaskAttrs should be nil for cross-type attr")
+			}
+			if task.StoryAttrs != nil {
+				t.Error("StoryAttrs should be nil for cross-type attr")
+			}
+			if task.EpicAttrs != nil {
+				t.Error("EpicAttrs should be nil for cross-type attr")
 			}
 		})
 	}

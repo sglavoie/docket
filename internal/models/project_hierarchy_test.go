@@ -476,6 +476,63 @@ func TestBuildTaskTree_CircularParentLongChain(t *testing.T) {
 	}
 }
 
+func TestWouldCreateCycle_SelfCycle(t *testing.T) {
+	taskA, err := NewTask("a", 1, TaskTypeTask, "Task A")
+	if err != nil {
+		t.Fatal(err)
+	}
+	taskMap := map[string]*Task{taskA.ID: taskA}
+
+	if !WouldCreateCycle(taskMap, taskA.ID, taskA.ID) {
+		t.Error("expected self-cycle (A→A) to be detected")
+	}
+}
+
+func TestWouldCreateCycle_IndirectCycle(t *testing.T) {
+	taskA, err := NewTask("a", 1, TaskTypeTask, "Task A")
+	if err != nil {
+		t.Fatal(err)
+	}
+	taskB, err := NewTask("b", 2, TaskTypeTask, "Task B")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// B is already a child of A
+	idA := taskA.ID
+	taskB.ParentID = &idA
+	taskMap := map[string]*Task{taskA.ID: taskA, taskB.ID: taskB}
+
+	// Setting A's parent to B would create A→B→A cycle
+	if !WouldCreateCycle(taskMap, taskA.ID, taskB.ID) {
+		t.Error("expected indirect cycle (A→B→A) to be detected")
+	}
+}
+
+func TestWouldCreateCycle_ValidReparent(t *testing.T) {
+	taskA, err := NewTask("a", 1, TaskTypeTask, "Task A")
+	if err != nil {
+		t.Fatal(err)
+	}
+	taskB, err := NewTask("b", 2, TaskTypeTask, "Task B")
+	if err != nil {
+		t.Fatal(err)
+	}
+	taskC, err := NewTask("c", 3, TaskTypeTask, "Task C")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// A→B already exists; reparenting C under B should be fine
+	idA := taskA.ID
+	taskB.ParentID = &idA
+	taskMap := map[string]*Task{taskA.ID: taskA, taskB.ID: taskB, taskC.ID: taskC}
+
+	if WouldCreateCycle(taskMap, taskC.ID, taskB.ID) {
+		t.Error("reparenting C under B should not create a cycle")
+	}
+}
+
 func TestOutdentTaskReturnsErrorAtRoot(t *testing.T) {
 	project := NewProject("test", "Test", "/tmp/test")
 

@@ -55,7 +55,7 @@ func (m *Manager) Load() (*Config, error) {
 		backupData, backupErr := os.ReadFile(backupPath)
 		if backupErr == nil {
 			if json.Unmarshal(backupData, &config) == nil {
-				fmt.Fprintf(os.Stderr, "warning: config file was corrupted, restored from backup %s\n", backupPath)
+				logging.Warn("config file was corrupted, restored from backup %s", backupPath)
 				// Persist the recovered config so next load doesn't hit corruption again
 				if writeErr := util.AtomicWriteFile(m.configPath, backupData, FilePermissions); writeErr != nil {
 					return nil, fmt.Errorf("recovered config from backup but failed to persist it: %w", writeErr)
@@ -101,6 +101,16 @@ func (m *Manager) Load() (*Config, error) {
 		// Default for existing configs that don't have this field
 		defaultUndoDepth := DefaultUndoHistoryDepth
 		config.UndoHistoryDepth = &defaultUndoDepth
+	}
+	// Clamp UndoHistoryDepth to valid range
+	if *config.UndoHistoryDepth < 0 {
+		logging.Warn("UndoHistoryDepth %d is negative, clamping to 0", *config.UndoHistoryDepth)
+		zero := 0
+		config.UndoHistoryDepth = &zero
+	} else if *config.UndoHistoryDepth > 1000 {
+		logging.Warn("UndoHistoryDepth %d exceeds maximum, clamping to 1000", *config.UndoHistoryDepth)
+		max := 1000
+		config.UndoHistoryDepth = &max
 	}
 
 	if config.Stages == nil {

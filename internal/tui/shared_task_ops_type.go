@@ -170,12 +170,18 @@ func applyBulkTypeCycle(project *models.Project, tasks []*models.Task, op TypeCh
 // the candidate (the task visually above). It sets ParentID and rebuilds the tree.
 // Returns true if the indent was performed.
 func IndentTask(project *models.Project, task *models.Task, candidate *models.Task) bool {
+	taskMap := make(map[string]*models.Task, len(project.Tasks))
+	for _, t := range project.Tasks {
+		taskMap[t.ID] = t
+	}
 	for candidate != nil {
 		if ok, _ := task.CanIndent(candidate); ok {
-			candidateID := candidate.ID
-			task.ParentID = &candidateID
-			project.BuildTaskTree()
-			return true
+			if !models.WouldCreateCycle(taskMap, task.ID, candidate.ID) {
+				candidateID := candidate.ID
+				task.ParentID = &candidateID
+				project.BuildTaskTree()
+				return true
+			}
 		}
 		candidate = candidate.Parent
 	}
