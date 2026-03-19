@@ -79,6 +79,7 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 
 	case SettingsSavedMsg:
 		m.popView()
+		ApplyTheme(m.config.TUIBackgroundColor, m.config.TUICursorColor, m.config.TUICursorTextColor)
 		if m.dashboard != nil {
 			m.dashboard.Refresh(m.config)
 		}

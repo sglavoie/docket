@@ -5,6 +5,7 @@ import (
 	"math"
 	"os"
 	"os/exec"
+	"regexp"
 	"strconv"
 	"strings"
 )
@@ -54,6 +55,9 @@ func (m *SettingsModel) validateAll() error {
 		m.validateEditor,
 		m.validateContext,
 		m.validateUndoDepth,
+		m.validateBackgroundColor,
+		m.validateCursorColor,
+		m.validateCursorTextColor,
 		m.validateReviewSettings,
 		m.validateRecentActivityLimit,
 		m.validateMaxPinnedBarItems,
@@ -254,6 +258,56 @@ func (m *SettingsModel) hasUnsavedStages() bool {
 		}
 	}
 	return false
+}
+
+// hexColorRegex matches #rgb or #rrggbb hex color strings.
+var hexColorRegex = regexp.MustCompile(`^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$`)
+
+func (m *SettingsModel) validateBackgroundColor() error {
+	val := strings.TrimSpace(m.bgColorInput.Value())
+	if val == "" {
+		return nil // empty = no background
+	}
+	if !hexColorRegex.MatchString(val) {
+		return fmt.Errorf("must be #rgb or #rrggbb hex color")
+	}
+	return nil
+}
+
+func (m *SettingsModel) validateCursorColor() error {
+	val := strings.TrimSpace(m.cursorColorInput.Value())
+	if val == "" {
+		return nil // empty = default
+	}
+	if !hexColorRegex.MatchString(val) {
+		return fmt.Errorf("must be #rgb or #rrggbb hex color")
+	}
+	return nil
+}
+
+func (m *SettingsModel) validateCursorTextColor() error {
+	val := strings.TrimSpace(m.cursorTextColorInput.Value())
+	if val == "" {
+		return nil // empty = default
+	}
+	if !hexColorRegex.MatchString(val) {
+		return fmt.Errorf("must be #rgb or #rrggbb hex color")
+	}
+	return nil
+}
+
+// normalizeHexColor expands 3-digit hex (#rgb → #rrggbb) and lowercases.
+// Returns empty string unchanged.
+func normalizeHexColor(val string) string {
+	val = strings.TrimSpace(val)
+	if val == "" {
+		return ""
+	}
+	val = strings.ToLower(val)
+	if len(val) == 4 { // #rgb → #rrggbb
+		return string([]byte{'#', val[1], val[1], val[2], val[2], val[3], val[3]})
+	}
+	return val
 }
 
 func (m *SettingsModel) validateEditorCommand(editor string) error {

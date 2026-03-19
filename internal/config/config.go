@@ -139,6 +139,9 @@ type Config struct {
 	MaxPinnedBarItems              *int                         `json:"max_pinned_bar_items,omitempty"`              // nil=5, max pinned tasks in status bar
 	MaxRecentTaskVisits            *int                         `json:"max_recent_task_visits,omitempty"`            // nil=15, max tasks in quick-switch overlay
 	ActionInboxProjectID           string                       `json:"action_inbox_project_id,omitempty"`           // Project ID for focus board action inbox
+	TUIBackgroundColor             string                       `json:"tui_background_color,omitempty"`              // HEX background color for TUI (#rgb or #rrggbb, empty = terminal default)
+	TUICursorColor                 string                       `json:"tui_cursor_color,omitempty"`                  // HEX background color for cursor/selection rows (empty = #4c0163)
+	TUICursorTextColor             string                       `json:"tui_cursor_text_color,omitempty"`             // HEX foreground color for cursor/selection text (empty = #fbeeff)
 	DefaultProjectView             string                       `json:"default_project_view,omitempty"`              // Default view when opening a project: outliner, project_tree
 	FocusQueue                     []FocusQueueItem             `json:"focus_queue,omitempty"`                       // Persisted focus board work queue
 	FocusDismissedIDs              []string                     `json:"focus_dismissed_ids,omitempty"`               // Dismissed suggestion task IDs

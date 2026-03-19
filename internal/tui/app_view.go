@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
@@ -19,7 +20,7 @@ func (m *AppModel) View() string {
 			Height(m.height).
 			Align(lipgloss.Center, lipgloss.Center).
 			Foreground(lipgloss.Color("241"))
-		return style.Render(msg)
+		return m.applyBackground(style.Render(msg))
 	}
 
 	content := m.views.View(m.currentView())
@@ -47,7 +48,7 @@ func (m *AppModel) View() string {
 			if popup := m.renderSemicolonPrefixPopup(); popup != "" {
 				content = OverlayPopup(content, popup, m.width, m.height)
 			}
-			return content
+			return m.applyBackground(content)
 		}
 	}
 
@@ -109,7 +110,7 @@ func (m *AppModel) View() string {
 		content = OverlayPopup(content, popup, m.width, targetContentHeight)
 	}
 
-	return content + "\n" + statusBar
+	return m.applyBackground(content + "\n" + statusBar)
 }
 
 // renderPrefixPopupOverlay checks if the current view has a pending prefix and
@@ -157,6 +158,55 @@ func (m *AppModel) renderConfirmDialogOverlay() string {
 	return cd.RenderOverlay(m.width)
 }
 
+// applyBackground fills every line of content with the configured TUI
+// background color so no terminal default leaks through. Inner lipgloss
+// styles emit SGR resets (\x1b[0m) that clear the background mid-line,
+// so we re-inject the background escape after every reset and pad each
+// line to the full terminal width.
+func (m *AppModel) applyBackground(content string) string {
+	bg := m.config.TUIBackgroundColor
+	if bg == "" {
+		return content
+	}
+	bgEsc := hexToBgEsc(bg)
+	if bgEsc == "" {
+		return content
+	}
+
+	lines := strings.Split(content, "\n")
+	for i, line := range lines {
+		// Re-apply background after every SGR reset within the line
+		patched := bgEsc + strings.ReplaceAll(line, "\x1b[0m", "\x1b[0m"+bgEsc)
+		// Pad to full terminal width
+		pad := m.width - lipgloss.Width(line)
+		if pad > 0 {
+			patched += strings.Repeat(" ", pad)
+		}
+		lines[i] = patched + "\x1b[0m"
+	}
+	// Fill remaining vertical space with background-colored empty lines
+	emptyLine := bgEsc + strings.Repeat(" ", m.width) + "\x1b[0m"
+	for len(lines) < m.height {
+		lines = append(lines, emptyLine)
+	}
+	return strings.Join(lines, "\n")
+}
+
+// hexToBgEsc converts a #rrggbb hex color to an ANSI true-color background
+// escape sequence.
+func hexToBgEsc(hex string) string {
+	if len(hex) != 7 || hex[0] != '#' {
+		return ""
+	}
+	r, err1 := strconv.ParseInt(hex[1:3], 16, 64)
+	g, err2 := strconv.ParseInt(hex[3:5], 16, 64)
+	b, err3 := strconv.ParseInt(hex[5:7], 16, 64)
+	if err1 != nil || err2 != nil || err3 != nil {
+		return ""
+	}
+	return fmt.Sprintf("\x1b[48;2;%d;%d;%dm", r, g, b)
+}
+
 func (m *AppModel) renderStatusBar() string {
 	// Top border separator for visual distinction
 	separator := renderHorizontalDivider(m.width)
@@ -164,7 +214,7 @@ func (m *AppModel) renderStatusBar() string {
 	// Helper to render left-aligned message with spacer
 	renderLeftAlignedMsg := func(msg string) string {
 		gap := max(m.width-lipgloss.Width(msg), 0)
-		spacer := lipgloss.NewStyle().Width(gap).Render("")
+		spacer := ThemeSpacer(gap)
 		return lipgloss.JoinHorizontal(lipgloss.Top, msg, spacer)
 	}
 
@@ -231,7 +281,7 @@ func (m *AppModel) renderStatusBar() string {
 
 	gap := max(m.width-lipgloss.Width(left)-lipgloss.Width(right), 1)
 
-	spacer := lipgloss.NewStyle().Width(gap).Render("")
+	spacer := ThemeSpacer(gap)
 
 	return separator + "\n" + lipgloss.JoinHorizontal(lipgloss.Top, left, spacer, right)
 }

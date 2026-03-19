@@ -14,6 +14,9 @@ func activeTabStyle(padding int, withBorder bool) lipgloss.Style {
 			BorderStyle(lipgloss.ThickBorder()).
 			BorderForeground(ColorPrimary)
 	}
+	if themeBgColor != "" {
+		s = s.Background(lipgloss.Color(themeBgColor))
+	}
 	return s
 }
 
@@ -27,6 +30,9 @@ func inactiveTabStyle(padding int, withBorder bool) lipgloss.Style {
 		s = s.BorderBottom(true).
 			BorderStyle(lipgloss.Border{Bottom: "─"}).
 			BorderForeground(ColorBorder)
+	}
+	if themeBgColor != "" {
+		s = s.Background(lipgloss.Color(themeBgColor))
 	}
 	return s
 }

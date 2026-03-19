@@ -40,7 +40,7 @@ func renderStatusBarFooter(left, right string, width int) string {
 	separator := MutedStyle.Render(strings.Repeat("─", width))
 
 	gap := max(width-lipgloss.Width(left)-lipgloss.Width(right), 1)
-	spacer := lipgloss.NewStyle().Width(gap).Render("")
+	spacer := ThemeSpacer(gap)
 
 	return fmt.Sprintf("%s\n%s", separator, lipgloss.JoinHorizontal(lipgloss.Top, left, spacer, right))
 }
@@ -445,12 +445,15 @@ func renderTabFiller(width int) string {
 	if width <= 0 {
 		return ""
 	}
-	return lipgloss.NewStyle().
+	s := lipgloss.NewStyle().
 		BorderBottom(true).
 		BorderStyle(lipgloss.Border{Bottom: "─"}).
 		BorderForeground(ColorBorder).
-		Width(width).
-		Render("")
+		Width(width)
+	if themeBgColor != "" {
+		s = s.Background(lipgloss.Color(themeBgColor))
+	}
+	return s.Render("")
 }
 
 // finishWrappingTabRow joins a row of rendered tabs and fills remaining width with a border.

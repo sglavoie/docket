@@ -1,10 +1,295 @@
 package tui
 
 import (
+	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
 )
+
+// Default cursor/selection colors.
+const (
+	DefaultSelectedBg = "#4c0163"
+	DefaultSelectedFg = "#fbeeff"
+	DefaultFlashBg    = "#7b2fa0"
+)
+
+// themeBgColor holds the current TUI background color (empty = none/terminal default).
+var themeBgColor string
+
+// ThemeBgColor returns the current theme background color.
+func ThemeBgColor() string { return themeBgColor }
+
+// ThemeSpacer renders an empty block of the given width, filled with the theme
+// background color when set. Used to plug "holes" in horizontal joins.
+func ThemeSpacer(width int) string {
+	s := lipgloss.NewStyle().Width(width)
+	if themeBgColor != "" {
+		s = s.Background(lipgloss.Color(themeBgColor))
+	}
+	return s.Render("")
+}
+
+// lightenHex takes a 6-digit hex color (#rrggbb) and lightens each channel
+// toward 255 by factor (0.0 = unchanged, 1.0 = white). Returns #rrggbb.
+func lightenHex(hex string, factor float64) string {
+	if len(hex) != 7 || hex[0] != '#' {
+		return hex
+	}
+	r, err1 := strconv.ParseInt(hex[1:3], 16, 64)
+	g, err2 := strconv.ParseInt(hex[3:5], 16, 64)
+	b, err3 := strconv.ParseInt(hex[5:7], 16, 64)
+	if err1 != nil || err2 != nil || err3 != nil {
+		return hex
+	}
+	lighten := func(c int64) int64 {
+		return c + int64(float64(255-c)*factor)
+	}
+	return fmt.Sprintf("#%02x%02x%02x", lighten(r), lighten(g), lighten(b))
+}
+
+// ApplyTheme reconfigures cursor/selection colors and background propagation.
+// Call at startup and after settings save.
+func ApplyTheme(bgColor, cursorBg, cursorFg string) {
+	// --- Cursor colors (always) ---
+	effectiveBg := cursorBg
+	if effectiveBg == "" {
+		effectiveBg = DefaultSelectedBg
+	}
+	effectiveFg := cursorFg
+	if effectiveFg == "" {
+		effectiveFg = DefaultSelectedFg
+	}
+	effectiveFlash := lightenHex(effectiveBg, 0.4)
+
+	ColorSelectedBg = lipgloss.Color(effectiveBg)
+	ColorSelectedFg = lipgloss.Color(effectiveFg)
+	ColorFlashBg = lipgloss.Color(effectiveFlash)
+
+	// Rebuild cursor-derived styles
+	SelectedStyle = lipgloss.NewStyle().
+		Background(ColorSelectedBg).
+		Foreground(ColorSelectedFg).
+		Bold(true)
+
+	SelectionRowStyle = lipgloss.NewStyle().
+		Background(ColorSelectedBg)
+
+	CursorFlashRowStyle = lipgloss.NewStyle().
+		Background(ColorFlashBg)
+
+	SelectionCursorStyle = lipgloss.NewStyle().
+		Foreground(ColorSelectedFg).
+		Bold(true)
+
+	TaskJumperSelectedStyle = lipgloss.NewStyle().
+		Background(ColorSelectedBg).
+		Foreground(ColorSelectedFg).
+		Bold(true)
+
+	SelectedItemTextStyle = BoldStyle.Foreground(ColorSelectedFg)
+
+	TagManagerItemSelectedStyle = lipgloss.NewStyle().
+		Foreground(ColorSelectedFg).
+		Bold(true)
+
+	FilterItemSelectedStyle = lipgloss.NewStyle().
+		Foreground(ColorSelectedFg).
+		Bold(true)
+
+	SelectorOptionSelectedStyle = lipgloss.NewStyle().
+		Bold(true).
+		Foreground(ColorSelectedFg).
+		Padding(0, 1)
+
+	// --- Background propagation ---
+	themeBgColor = bgColor
+	if bgColor != "" {
+		bg := lipgloss.Color(bgColor)
+
+		StatusBarStyle = lipgloss.NewStyle().
+			Foreground(ColorHighlight).
+			Background(bg).
+			Padding(0, 1)
+
+		PrefixPopupStyle = lipgloss.NewStyle().
+			Background(bg).
+			Foreground(lipgloss.Color("255")).
+			Padding(0, 1)
+
+		FocusModeStyle = lipgloss.NewStyle().
+			Foreground(ColorSecondary).
+			Bold(true).
+			Background(bg)
+
+		FilterBadgeInactiveStyle = lipgloss.NewStyle().
+			Background(bg).
+			Foreground(ColorBadgeText).
+			Padding(0, 1)
+
+		TagStyle = lipgloss.NewStyle().
+			Foreground(ColorSecondary).
+			Background(bg).
+			Padding(0, 1)
+
+		SectionBadgeStyle = lipgloss.NewStyle().
+			Foreground(ColorBadgeText).
+			Background(bg)
+
+		ChildrenBadgeStyle = lipgloss.NewStyle().
+			Foreground(ColorPrimary).
+			Background(bg)
+
+		// Container styles: add bg
+		DashboardCardStyle = lipgloss.NewStyle().
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(ColorBorder).
+			Padding(0, 1).
+			Background(bg)
+
+		SidebarCardStyle = lipgloss.NewStyle().
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(ColorBorder).
+			Padding(0, 1).
+			Background(bg)
+
+		SidebarCardFocusedStyle = lipgloss.NewStyle().
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(ColorPrimary).
+			Padding(0, 1).
+			Background(bg)
+
+		SidebarStyle = lipgloss.NewStyle().
+			BorderStyle(lipgloss.RoundedBorder()).
+			BorderForeground(ColorBorder).
+			Padding(1).
+			Background(bg)
+
+		TaskJumperListStyle = lipgloss.NewStyle().
+			Border(lipgloss.NormalBorder(), false, true, false, false).
+			BorderForeground(ColorBorder).
+			Background(bg)
+
+		TaskJumperPreviewStyle = lipgloss.NewStyle().
+			Padding(0, 1).
+			Background(bg)
+
+		OverlayBoxStyle = lipgloss.NewStyle().
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(lipgloss.Color("99")).
+			Padding(1, 2).
+			Background(bg)
+
+		TagManagerBoxStyle = lipgloss.NewStyle().
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(ColorPrimary).
+			Padding(1, 2).
+			Background(bg)
+
+		SelectorBaseStyle = lipgloss.NewStyle().
+			BorderStyle(lipgloss.NormalBorder()).
+			BorderForeground(ColorBorder).
+			Background(bg)
+
+		FilterViewBoxStyle = lipgloss.NewStyle().
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(ColorPrimary).
+			Padding(1, 2).
+			Background(bg)
+
+		SuggestionBoxStyle = lipgloss.NewStyle().
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(ColorAccent).
+			Padding(0, 1).
+			Background(bg)
+	} else {
+		// Restore defaults (no custom bg)
+		StatusBarStyle = lipgloss.NewStyle().
+			Foreground(ColorHighlight).
+			Background(ColorBackground).
+			Padding(0, 1)
+
+		PrefixPopupStyle = lipgloss.NewStyle().
+			Background(ColorBackground).
+			Foreground(lipgloss.Color("255")).
+			Padding(0, 1)
+
+		FocusModeStyle = lipgloss.NewStyle().
+			Foreground(ColorSecondary).
+			Bold(true).
+			Background(ColorBackground)
+
+		FilterBadgeInactiveStyle = lipgloss.NewStyle().
+			Background(ColorBackground).
+			Foreground(ColorBadgeText).
+			Padding(0, 1)
+
+		TagStyle = lipgloss.NewStyle().
+			Foreground(ColorSecondary).
+			Background(ColorBackground).
+			Padding(0, 1)
+
+		SectionBadgeStyle = lipgloss.NewStyle().
+			Foreground(ColorBadgeText).
+			Background(ColorBackground)
+
+		ChildrenBadgeStyle = lipgloss.NewStyle().
+			Foreground(ColorPrimary).
+			Background(ColorBackground)
+
+		DashboardCardStyle = lipgloss.NewStyle().
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(ColorBorder).
+			Padding(0, 1)
+
+		SidebarCardStyle = lipgloss.NewStyle().
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(ColorBorder).
+			Padding(0, 1)
+
+		SidebarCardFocusedStyle = lipgloss.NewStyle().
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(ColorPrimary).
+			Padding(0, 1)
+
+		SidebarStyle = lipgloss.NewStyle().
+			BorderStyle(lipgloss.RoundedBorder()).
+			BorderForeground(ColorBorder).
+			Padding(1)
+
+		TaskJumperListStyle = lipgloss.NewStyle().
+			Border(lipgloss.NormalBorder(), false, true, false, false).
+			BorderForeground(ColorBorder)
+
+		TaskJumperPreviewStyle = lipgloss.NewStyle().
+			Padding(0, 1)
+
+		OverlayBoxStyle = lipgloss.NewStyle().
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(lipgloss.Color("99")).
+			Padding(1, 2)
+
+		TagManagerBoxStyle = lipgloss.NewStyle().
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(ColorPrimary).
+			Padding(1, 2)
+
+		SelectorBaseStyle = lipgloss.NewStyle().
+			BorderStyle(lipgloss.NormalBorder()).
+			BorderForeground(ColorBorder)
+
+		FilterViewBoxStyle = lipgloss.NewStyle().
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(ColorPrimary).
+			Padding(1, 2)
+
+		SuggestionBoxStyle = lipgloss.NewStyle().
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(ColorAccent).
+			Padding(0, 1)
+	}
+}
 
 // makeBadgeStyle creates a badge style with the given foreground and background ANSI colors.
 func makeBadgeStyle(fg, bg string) lipgloss.Style {
@@ -773,11 +1058,15 @@ func GetViewModeStyleForSection(section string) lipgloss.Style {
 
 // GetSectionColorStyle returns a style for a section badge given a color name.
 func GetSectionColorStyle(colorName string) lipgloss.Style {
+	bg := ColorBackground
+	if themeBgColor != "" {
+		bg = lipgloss.Color(themeBgColor)
+	}
 	for _, pc := range SectionColorPalette {
 		if pc.Name == colorName {
 			return lipgloss.NewStyle().
 				Foreground(pc.Color).
-				Background(ColorBackground) // Dark background
+				Background(bg)
 		}
 	}
 	// Default to gray

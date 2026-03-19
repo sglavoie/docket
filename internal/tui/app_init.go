@@ -111,6 +111,8 @@ func NewAppModel(cfg *config.Config, manager *config.Manager, opts ...AppOption)
 		app.currentProject = current
 	}
 
+	ApplyTheme(cfg.TUIBackgroundColor, cfg.TUICursorColor, cfg.TUICursorTextColor)
+
 	return app
 }
 

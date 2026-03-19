@@ -15,7 +15,7 @@ var (
 	settingsTabNames = []string{"General", "Review", "Behavior", "Attachments", "Project Tree", "Outliner", "Notifications", "Stages"}
 
 	// tabFieldCount declares how many focusable fields each tab has.
-	tabFieldCount = []int{4, 4, 5, 2, 13, 21, 15, 1}
+	tabFieldCount = []int{7, 4, 5, 2, 13, 21, 15, 1}
 
 	// tabFieldStart holds the starting focus index for each tab (computed in init).
 	tabFieldStart []int
@@ -74,6 +74,9 @@ type SettingsModel struct {
 	editorInput              textinput.Model
 	contextInput             textinput.Model
 	undoDepthInput           textinput.Model
+	bgColorInput             textinput.Model
+	cursorColorInput         textinput.Model
+	cursorTextColorInput     textinput.Model
 	dueSoonInput             textinput.Model
 	futureInput              textinput.Model
 	oldDaysInput             textinput.Model
@@ -95,7 +98,7 @@ type SettingsModel struct {
 	contexts                 []string
 	contextCursor            int // -1 for custom mode, 0+ for selecting from list
 
-	// Stages settings (Stages tab, index 64)
+	// Stages settings (Stages tab, index 66)
 	savedStages        []string // snapshot at load time, for dirty detection
 	stages             []string
 	stageInput         textinput.Model
@@ -104,7 +107,7 @@ type SettingsModel struct {
 	stageAddMode       bool // true when adding (vs editing)
 	stageConfirmDelete ConfirmDialog
 
-	// Alert settings (Notifications tab, indices 49-63)
+	// Alert settings (Notifications tab, indices 51-65)
 	alertDailyReviewEnabled    bool
 	alertDailyReviewHourInput  textinput.Model
 	alertWeeklyReviewEnabled   bool
@@ -122,7 +125,7 @@ type SettingsModel struct {
 	alertProjectStaleDaysInput textinput.Model
 
 	tabs               TabState
-	focusIndex         int // 0=editor .. 48=outlinerColumnDefaults, 49-63=alert settings
+	focusIndex         int // 0=editor .. 50=outlinerColumnDefaults, 51-65=alert settings
 	scrollOffset       int // vertical scroll offset within current tab content
 	validationErr      string
 	stageValidationErr string // timed error shown in stages tab (auto-clears)
@@ -210,6 +213,24 @@ func NewSettingsModel(cfg *config.Config, manager *config.Manager) *SettingsMode
 	codeEditorInput.Width = 40
 	codeEditorInput.SetValue(cfg.CodeEditor) // Use raw value, not getter (to distinguish default from explicit)
 
+	bgColorInput := textinput.New()
+	bgColorInput.Placeholder = "(none)"
+	bgColorInput.CharLimit = 7
+	bgColorInput.Width = 10
+	bgColorInput.SetValue(cfg.TUIBackgroundColor)
+
+	cursorColorInput := textinput.New()
+	cursorColorInput.Placeholder = "(none)"
+	cursorColorInput.CharLimit = 7
+	cursorColorInput.Width = 10
+	cursorColorInput.SetValue(cfg.TUICursorColor)
+
+	cursorTextColorInput := textinput.New()
+	cursorTextColorInput.Placeholder = "(none)"
+	cursorTextColorInput.CharLimit = 7
+	cursorTextColorInput.Width = 10
+	cursorTextColorInput.SetValue(cfg.TUICursorTextColor)
+
 	// Determine default view cursor from config
 	defaultViewCursor := 0
 	configView := cfg.GetDefaultProjectView()
@@ -296,6 +317,9 @@ func NewSettingsModel(cfg *config.Config, manager *config.Manager) *SettingsMode
 		editorInput:                editorInput,
 		contextInput:               contextInput,
 		undoDepthInput:             undoDepthInput,
+		bgColorInput:               bgColorInput,
+		cursorColorInput:           cursorColorInput,
+		cursorTextColorInput:       cursorTextColorInput,
 		dueSoonInput:               dueSoonInput,
 		futureInput:                futureInput,
 		oldDaysInput:               oldDaysInput,
@@ -366,6 +390,9 @@ func (m *SettingsModel) saveSettings() tea.Cmd {
 		m.config.Editor = editor
 		m.config.DefaultContext = context
 		m.config.UndoHistoryDepth = &undoDepth
+		m.config.TUIBackgroundColor = normalizeHexColor(m.bgColorInput.Value())
+		m.config.TUICursorColor = normalizeHexColor(m.cursorColorInput.Value())
+		m.config.TUICursorTextColor = normalizeHexColor(m.cursorTextColorInput.Value())
 		m.config.DefaultProjectView = defaultProjectViewValues[m.defaultViewCursor]
 		m.config.ReviewDueSoonDays = &dueSoon
 		m.config.ReviewFutureDays = &futureDays
