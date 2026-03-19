@@ -268,23 +268,6 @@ func (m *OutlinerModel) crossHandleSnoozeMutation(key string) (tea.Cmd, bool) {
 	return nil, true
 }
 
-// crossHandleTagsMutation emits ShowTagSelectorMsg with the resolved owning
-// project so the tag selector can save changes to the correct project file.
-// It is called from handlePrefixKey when prefix="t", key="t" and m.project==nil.
-//
-// Returns (cmd, true) when a valid target exists, (nil, false) otherwise.
-func (m *OutlinerModel) crossHandleTagsMutation() (tea.Cmd, bool) {
-	row, proj, valid := m.crossGetMutationTarget()
-	if !valid {
-		return nil, false
-	}
-	task := row.task
-	tags := append([]string{}, task.Tags...)
-	return func() tea.Msg {
-		return ShowTagSelectorMsg{Task: task, Project: proj, CurrentTags: tags}
-	}, true
-}
-
 // crossTogglePinned toggles the pinned state for a task in cross-project mode.
 func (m *OutlinerModel) crossTogglePinned(row outlinerRow, proj *models.Project) (tea.Model, tea.Cmd) {
 	pf := m.crossPersistFn(proj)

@@ -199,7 +199,7 @@ func RecordUndoSnapshot(project *models.Project, action, context string, maxDept
 	// Save metadata
 	if err := saveUndoMeta(project, meta); err != nil {
 		// Clean up the orphaned snapshot file since metadata save failed
-		os.Remove(snapshotPath)
+		_ = os.Remove(snapshotPath)
 		return err
 	}
 

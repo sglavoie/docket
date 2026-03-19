@@ -41,9 +41,6 @@ var themeBgColor string
 // colorNormalText tracks whether NormalText palette override is set.
 var colorNormalText string
 
-// ThemeBgColor returns the current theme background color.
-func ThemeBgColor() string { return themeBgColor }
-
 // ThemeSpacer renders an empty block of the given width, filled with the theme
 // background color when set. Used to plug "holes" in horizontal joins.
 func ThemeSpacer(width int) string {

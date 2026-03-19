@@ -643,8 +643,12 @@ Some description.
 		content3 := `### Task: Rotated 3
 <!-- id: rot3, status: done, priority: 3, completed: 2025-06-10 14:30 -->
 `
-		os.WriteFile(filepath.Join(tmpDir, "completed.1.md"), []byte(content1), 0644)
-		os.WriteFile(filepath.Join(tmpDir, "completed.3.md"), []byte(content3), 0644)
+		if err := os.WriteFile(filepath.Join(tmpDir, "completed.1.md"), []byte(content1), 0644); err != nil {
+			t.Fatalf("failed to write completed.1.md: %v", err)
+		}
+		if err := os.WriteFile(filepath.Join(tmpDir, "completed.3.md"), []byte(content3), 0644); err != nil {
+			t.Fatalf("failed to write completed.3.md: %v", err)
+		}
 
 		tasks := LoadArchivedTasks(project)
 

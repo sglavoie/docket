@@ -32,15 +32,15 @@ var (
 	// settingsTabSections defines the sub-tab sections for each settings tab.
 	// nil means the tab has no sub-tabs (single section).
 	settingsTabSections = [][]settingsSection{
-		nil,                                                                                       // 0: General
-		{{"Palette Colors", 9}, {"Background & Cursor", 3}},                                      // 1: Palette
-		nil,                                                                                       // 2: Review
-		{{"Recent Activity", 2}, {"Linked Tasks", 1}, {"Pinned Tasks", 1}, {"Recent Tasks", 1}},  // 3: Behavior
-		nil,                                                                                       // 4: Attachments
-		nil,                                                                                       // 5: Project Tree
-		{{"Sidebar", 1}, {"Section State", 7}, {"Column Visibility", 13}},                         // 6: Outliner
-		{{"Reviews", 4}, {"Tasks", 9}, {"Projects", 2}},                                           // 7: Notifications
-		nil,                                                                                       // 8: Stages
+		nil, // 0: General
+		{{"Palette Colors", 9}, {"Background & Cursor", 3}}, // 1: Palette
+		nil, // 2: Review
+		{{"Recent Activity", 2}, {"Linked Tasks", 1}, {"Pinned Tasks", 1}, {"Recent Tasks", 1}}, // 3: Behavior
+		nil, // 4: Attachments
+		nil, // 5: Project Tree
+		{{"Sidebar", 1}, {"Section State", 7}, {"Column Visibility", 13}}, // 6: Outliner
+		{{"Reviews", 4}, {"Tasks", 9}, {"Projects", 2}},                   // 7: Notifications
+		nil, // 8: Stages
 	}
 
 	// weeklyReviewDayOptions lists the display labels for weekly review day selector.
@@ -199,7 +199,7 @@ type SettingsModel struct {
 	subTab             int  // active sub-tab index within current tab
 	subTabRowFocused   bool // true when [/] navigates sub-tabs instead of main tabs
 	focusIndex         int  // 0=editor .. 60=outlinerColumnDefaults, 61-75=alert settings
-	scrollOffset       int // vertical scroll offset within current tab content
+	scrollOffset       int  // vertical scroll offset within current tab content
 	validationErr      string
 	stageValidationErr string // timed error shown in stages tab (auto-clears)
 
