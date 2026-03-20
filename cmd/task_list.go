@@ -56,7 +56,7 @@ func init() {
 
 	taskListCmd.Flags().StringVarP(&listTaskType, "type", "t", "", "filter by type (epic, story, task, bug, idea)")
 	taskListCmd.Flags().StringVarP(&listTaskStatus, "status", "s", "", "filter by status (todo, in_progress, done, blocked, canceled)")
-	taskListCmd.Flags().IntVarP(&listPriority, "priority", "p", 0, "filter by priority (1-5)")
+	taskListCmd.Flags().IntVarP(&listPriority, "priority", "P", 0, "filter by priority (1-5)")
 	taskListCmd.Flags().StringVarP(&listTag, "tag", "T", "", "filter by tag")
 	taskListCmd.Flags().BoolVarP(&listShowAll, "all", "a", false, "include completed/canceled tasks")
 	taskListCmd.Flags().BoolVar(&listTreeView, "tree", false, "show hierarchical tree view")
@@ -64,7 +64,7 @@ func init() {
 	taskListCmd.Flags().StringVar(&listSort, "sort", "", "sort by: priority, created, updated, status, title")
 	taskListCmd.Flags().BoolVar(&listJSON, "json", false, "output as JSON")
 
-	taskListCmd.Flags().StringP("project", "P", "", "target project slug (default: current project)")
+	taskListCmd.Flags().StringP("project", "p", "", "target project slug (default: current project)")
 
 	_ = taskListCmd.RegisterFlagCompletionFunc("type", completeEnum(taskTypeCompletions))
 	_ = taskListCmd.RegisterFlagCompletionFunc("status", completeEnum(statusCompletions))

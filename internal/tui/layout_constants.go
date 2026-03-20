@@ -77,4 +77,26 @@ const (
 
 	// SeparatorWidth is the width of a vertical separator between panes.
 	SeparatorWidth = 3
+
+	// FocusBoardTitlePadding is the horizontal space reserved for non-title
+	// columns (status, priority, tags, etc.) in focus board rows.
+	FocusBoardTitlePadding = 40
+
+	// FocusBoardMinTitleWidth is the minimum title width in focus board rows.
+	FocusBoardMinTitleWidth = 20
+
+	// FocusViewQueueTitlePadding is the horizontal space reserved for
+	// non-title columns in the Focus View queue and suggested tabs.
+	FocusViewQueueTitlePadding = 50
+
+	// FocusViewStandardTitlePadding is the horizontal space reserved for
+	// non-title columns in the Focus View standard tabs (By Project, By Due Date).
+	FocusViewStandardTitlePadding = 45
+
+	// FocusViewMinTitleWidth is the minimum title width in focus view rows.
+	FocusViewMinTitleWidth = 10
+
+	// CreatorTabBarPadding is the horizontal padding subtracted from width
+	// when rendering tab bars in creator/editor views.
+	CreatorTabBarPadding = 4
 )

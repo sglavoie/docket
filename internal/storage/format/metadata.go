@@ -246,6 +246,11 @@ func ParseMetadata(task *models.Task, metaStr string) []ParseWarning {
 				}
 				if addedAt.IsZero() {
 					addedAt = time.Now()
+					warnings = append(warnings, ParseWarning{
+						Type:    WarningValidation,
+						Field:   "attachments",
+						Message: fmt.Sprintf("attachment %q has no valid timestamp, defaulting to now", att),
+					})
 				}
 
 				// Then, extract original path from the timestamp-stripped string.

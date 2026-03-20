@@ -29,9 +29,7 @@ func (m *WeeklyReviewModel) View() string {
 
 	if totalCount == 0 {
 		b.WriteString("\n")
-		b.WriteString(MutedStyle.Render("All systems healthy — your projects are on track."))
-		b.WriteString("\n\n")
-		b.WriteString(HelpStyle.Render("Press q or Esc to close."))
+		b.WriteString(renderEmptyState("All systems healthy — your projects are on track.", "Press q or Esc to close."))
 		return b.String()
 	}
 

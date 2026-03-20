@@ -62,7 +62,7 @@ func init() {
 
 	taskAddCmd.Flags().StringVarP(&taskTypeFlag, "type", "t", "", "task type (epic, story, task, bug, idea)")
 	taskAddCmd.Flags().StringVar(&taskParentFlag, "parent", "", "parent task ID or short ID")
-	taskAddCmd.Flags().IntVar(&taskPriority, "priority", 3, "priority (1=highest, 5=lowest)")
+	taskAddCmd.Flags().IntVarP(&taskPriority, "priority", "P", 3, "priority (1=highest, 5=lowest)")
 	taskAddCmd.Flags().StringSliceVarP(&taskTags, "tag", "T", nil, "tags for the task")
 
 	taskAddCmd.Flags().BoolVar(&isEpic, "epic", false, "create an epic")
@@ -74,7 +74,7 @@ func init() {
 	taskAddCmd.Flags().StringVar(&taskRecurFlag, "recur", "", "recurrence pattern (daily, weekly, monthly, yearly, Nd, Nw, Nm, Ny)")
 	taskAddCmd.Flags().StringVar(&taskTemplateFlag, "template", "", "create from template (ID or name)")
 
-	taskAddCmd.Flags().StringP("project", "P", "", "target project slug (default: current project)")
+	taskAddCmd.Flags().StringP("project", "p", "", "target project slug (default: current project)")
 
 	// Type-specific attribute flags
 	registerTypeAttrFlags(taskAddCmd, &addTypeAttrs)

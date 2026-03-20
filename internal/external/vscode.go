@@ -27,14 +27,20 @@ func CreateTempFileWithContent(content string, prefix string, suffix string) (st
 
 // ResolveEditor returns the editor command to use, applying the fallback chain:
 // configEditor → EDITOR env → "code".
+// Each candidate is verified with exec.LookPath before being returned.
 func ResolveEditor(configEditor string) string {
-	if configEditor != "" {
-		return configEditor
+	candidates := []string{configEditor, os.Getenv("EDITOR"), "code"}
+	for _, c := range candidates {
+		if c == "" {
+			continue
+		}
+		if _, err := exec.LookPath(c); err == nil {
+			return c
+		}
+		fmt.Fprintf(os.Stderr, "warning: editor %q not found in PATH, trying next fallback\n", c)
 	}
-	if env := os.Getenv("EDITOR"); env != "" {
-		return env
-	}
-	return "code"
+	// Last resort: return "vi" without checking (always present on Unix)
+	return "vi"
 }
 
 // EditorCommand builds an exec.Cmd for the given editor and file path,

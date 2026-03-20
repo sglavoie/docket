@@ -36,15 +36,13 @@ install: build
 # Alias for install
 tt: install
 
-# Run tests
+# Run tests (with race detector)
 test:
     @echo "Running tests..."
-    go test ./...
-
-# Run tests with race detector
-test-race:
-    @echo "Running tests with race detector..."
     go test -race ./...
+
+# Alias for test (race detector is now always enabled)
+test-race: test
 
 # Run tests with coverage report
 coverage:
@@ -75,7 +73,13 @@ lint: fmt vet
 
 # Run golangci-lint (requires golangci-lint installed)
 lint-ci:
-    @echo "Running golangci-lint..."
+    #!/usr/bin/env bash
+    set -euo pipefail
+    if ! command -v golangci-lint &>/dev/null; then
+        echo "Error: golangci-lint not found. Install it from https://golangci-lint.run/welcome/install/"
+        exit 1
+    fi
+    echo "Running golangci-lint..."
     golangci-lint run
 
 # Run all CI checks locally (build, test, coverage, lint)
@@ -99,6 +103,10 @@ ci:
     MARGIN=5
     if [ "$(echo "$COVERAGE >= $THRESHOLD + $MARGIN" | bc)" -eq 1 ]; then
         echo "Coverage ${COVERAGE}% exceeds threshold by ${MARGIN}%+. Consider increasing .coverage-threshold."
+    fi
+    if ! command -v golangci-lint &>/dev/null; then
+        echo "Error: golangci-lint not found. Install it from https://golangci-lint.run/welcome/install/"
+        exit 1
     fi
     echo "Running golangci-lint..."
     golangci-lint run

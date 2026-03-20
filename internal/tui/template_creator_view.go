@@ -22,7 +22,7 @@ func (m *TaskTemplateCreatorModel) View() string {
 		// Hide subtasks tab for types that can't have children
 		tabNames = templateTabNames[:2]
 	}
-	b.WriteString(RenderTabBar(tabNames, m.activeTab, m.width-4, 1))
+	b.WriteString(RenderTabBar(tabNames, m.activeTab, m.width-CreatorTabBarPadding, 1))
 	b.WriteString("\n\n")
 
 	// Render content based on active tab

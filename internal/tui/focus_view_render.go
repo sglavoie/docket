@@ -154,7 +154,7 @@ func (m *FocusViewModel) View() string {
 // renderQueueLines renders the Queue tab with numbered items.
 func (m *FocusViewModel) renderQueueLines() []string {
 	var lines []string
-	maxTitleLen := max(m.width-50, 10)
+	maxTitleLen := max(m.width-FocusViewQueueTitlePadding, FocusViewMinTitleWidth)
 
 	for i, ft := range m.filtered {
 		isSelected := i == m.cursor
@@ -169,7 +169,7 @@ func (m *FocusViewModel) renderQueueLines() []string {
 // renderSuggestedLines renders the Suggested tab with two-line format (task + reason).
 func (m *FocusViewModel) renderSuggestedLines() []string {
 	var lines []string
-	maxTitleLen := max(m.width-50, 10)
+	maxTitleLen := max(m.width-FocusViewQueueTitlePadding, FocusViewMinTitleWidth)
 
 	// Build reason lookup map to avoid O(n) scan per filtered task
 	reasonByID := make(map[string]string, len(m.ranked))
@@ -210,7 +210,7 @@ func (m *FocusViewModel) renderSuggestedLines() []string {
 // renderStandardLines renders the By Project and By Due Date tabs.
 func (m *FocusViewModel) renderStandardLines() []string {
 	var lines []string
-	maxTitleLen := max(m.width-45, 10)
+	maxTitleLen := max(m.width-FocusViewStandardTitlePadding, FocusViewMinTitleWidth)
 
 	for i, ft := range m.filtered {
 		isSelected := i == m.cursor

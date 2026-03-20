@@ -198,6 +198,18 @@ func (p *Project) GetSectionColor(section string) string {
 	return "gray"
 }
 
+// ValidSectionColors is the set of color names supported by the section color palette.
+// This must match the entries in tui/styles.go SectionColorPalette.
+var ValidSectionColors = map[string]bool{
+	"gray": true, "red": true, "orange": true, "yellow": true, "green": true,
+	"cyan": true, "blue": true, "purple": true, "magenta": true, "white": true,
+}
+
+// IsValidSectionColor reports whether the given color name is a known section color.
+func IsValidSectionColor(color string) bool {
+	return ValidSectionColors[color]
+}
+
 // SetSectionColor sets the color for a section.
 func (p *Project) SetSectionColor(section, color string) {
 	if p.SectionColors == nil {

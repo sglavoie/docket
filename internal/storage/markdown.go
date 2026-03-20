@@ -159,23 +159,27 @@ func SaveProject(project *models.Project) error {
 		return fmt.Errorf("failed to create project directory: %w", err)
 	}
 
-	// Diff activity: load old state and compare to detect field changes
 	tasksPath := filepath.Join(project.Path, tasksFileName)
-	if oldContent, err := os.ReadFile(tasksPath); err == nil {
-		if oldResult, parseErr := ParseTasksMarkdownWithSections(string(oldContent)); parseErr == nil {
-			DiffAndRecordActivity(oldResult.Tasks, project.Tasks, MaxActivityEntries)
-		} else {
-			logging.Warn("could not diff activity for %s: %v", project.Name, parseErr)
+	lockPath := filepath.Join(project.Path, ".tasks.md.lock")
+
+	return util.WithFileLock(lockPath, true, func() error {
+		// Diff activity: load old state and compare to detect field changes
+		if oldContent, err := os.ReadFile(tasksPath); err == nil {
+			if oldResult, parseErr := ParseTasksMarkdownWithSections(string(oldContent)); parseErr == nil {
+				DiffAndRecordActivity(oldResult.Tasks, project.Tasks, MaxActivityEntries)
+			} else {
+				logging.Warn("could not diff activity for %s: %v", project.Name, parseErr)
+			}
 		}
-	}
 
-	content := WriteTasksMarkdownWithSections(project.Name, project.Tasks, project.GetSections(), project.SectionColors)
+		content := WriteTasksMarkdownWithSections(project.Name, project.Tasks, project.GetSections(), project.SectionColors)
 
-	if err := writeFileAtomic(tasksPath, []byte(content), FilePermissions); err != nil {
-		return fmt.Errorf("failed to write tasks file: %w", err)
-	}
+		if err := writeFileAtomic(tasksPath, []byte(content), FilePermissions); err != nil {
+			return fmt.Errorf("failed to write tasks file: %w", err)
+		}
 
-	return nil
+		return nil
+	})
 }
 
 // WriteTasksMarkdown generates markdown content from tasks.

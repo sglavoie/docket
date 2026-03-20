@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 
 	"github.com/sglavoie/tt/internal/logging"
@@ -26,6 +27,7 @@ func NewManager(customPath string) *Manager {
 	} else {
 		homeDir, err := os.UserHomeDir()
 		if err != nil {
+			fmt.Fprintf(os.Stderr, "warning: could not determine home directory, using .tt.json in current directory\n")
 			configPath = ".tt.json"
 		} else {
 			configPath = filepath.Join(homeDir, ".tt", ".tt.json")
@@ -82,7 +84,15 @@ func (m *Manager) Load() (*Config, error) {
 		} else if vis := os.Getenv("VISUAL"); vis != "" {
 			config.Editor = vis
 		} else {
-			config.Editor = "vi"
+			for _, candidate := range []string{"vi", "nano"} {
+				if _, err := exec.LookPath(candidate); err == nil {
+					config.Editor = candidate
+					break
+				}
+			}
+			if config.Editor == "" {
+				config.Editor = "vi" // last resort even if not found
+			}
 		}
 	}
 	if config.DefaultContext == "" {
@@ -171,7 +181,11 @@ func (m *Manager) Load() (*Config, error) {
 	}
 
 	// Config version migration and validation.
-	// Strategy: each version bump gets a dedicated migration block below.
+	// Strategy: "defaults-on-load" — missing fields are backfilled with defaults
+	// above, so older configs gain new fields transparently without a migration.
+	// Explicit migration blocks below are only needed for breaking changes that
+	// require data transformation (e.g., renaming a field, restructuring data).
+	// Each version bump gets a dedicated migration block below.
 	// When adding version 2, add a `if config.Version == 1 { ... }` block
 	// that transforms the data, then set config.Version = 2 and save.
 	// Bump CurrentConfigVersion in config.go to match.

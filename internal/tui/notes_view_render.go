@@ -119,7 +119,7 @@ func (m *NotesViewModel) View() string {
 
 func (m *NotesViewModel) renderListPane() string {
 	if len(m.notes) == 0 {
-		return MutedStyle.Render("No notes yet. Press 'n' to create one.") + "\n"
+		return renderEmptyState("No notes yet.", "Press n to create one.") + "\n"
 	}
 
 	var b strings.Builder

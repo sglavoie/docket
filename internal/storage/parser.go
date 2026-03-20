@@ -93,7 +93,15 @@ func ParseTasksMarkdownWithSections(content string) (*ParseResult, error) {
 						if len(parts) == 2 {
 							color := strings.TrimSpace(parts[1])
 							if color != "" {
-								sectionColors[name] = color
+								if models.IsValidSectionColor(color) {
+									sectionColors[name] = color
+								} else {
+									metadataWarnings = append(metadataWarnings, ParseWarning{
+										Type:    format.WarningValidation,
+										Field:   "sections",
+										Message: fmt.Sprintf("section %q has invalid color %q (valid: gray, red, orange, yellow, green, cyan, blue, purple, magenta, white), using default", name, color),
+									})
+								}
 							}
 						}
 					}
@@ -144,8 +152,9 @@ func ParseTasksMarkdownWithSections(content string) (*ParseResult, error) {
 					Priority:  models.PriorityDefault,
 					Tags:      []string{},
 					DependsOn: []string{},
-					RelatedTo: []string{},
-					Children:  []*models.Task{},
+					RelatedTo:       []string{},
+					ScoreDimensions: map[string]int{},
+					Children:        []*models.Task{},
 				}
 			}
 			// Zero out timestamps so they come from metadata parsing.

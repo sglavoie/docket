@@ -21,7 +21,7 @@ func (m *TaskCreatorModel) View() string {
 		// Hide subtasks tab for types that can't have children (show Fields, Checklist, Attrs)
 		tabNames = creatorTabNames[:3]
 	}
-	b.WriteString(RenderTabBar(tabNames, m.activeTab, m.width-4, 1))
+	b.WriteString(RenderTabBar(tabNames, m.activeTab, m.width-CreatorTabBarPadding, 1))
 	b.WriteString("\n\n")
 
 	// Render content based on active tab
