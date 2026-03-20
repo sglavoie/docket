@@ -148,6 +148,12 @@ func (m *AppModel) reconstructGlobalView(entry NavEntry) tea.Cmd {
 			m.metricsDashboard = NewMetricsDashboardModel(m.config)
 			m.showView(ViewMetricsDashboard, m.metricsDashboard)
 		}
+	case ViewCrossProjectOutliner:
+		m.crossOutliner = NewOutlinerModel(nil, m.config, m.configManager)
+		m.showView(ViewCrossProjectOutliner, m.crossOutliner)
+		return m.crossOutliner.Init()
+	case ViewFocusBoard:
+		m.showView(ViewFocusBoard, NewFocusBoardModel(m.config, m.configManager))
 	case ViewAllTasks:
 		atv := NewAllTasksViewModel(m.config, m.configManager)
 		if m.allTasksFilterCache != nil {
@@ -212,6 +218,9 @@ func (m *AppModel) reconstructProjectView(entry NavEntry) tea.Cmd {
 			m.metricsDashboard = NewMetricsDashboardModelForProject(m.config, project)
 			m.showView(ViewMetricsDashboard, m.metricsDashboard)
 		}
+	case ViewTemporaryOutliner:
+		fresh := NewOutlinerModel(project, m.config, m.configManager)
+		m.showView(ViewTemporaryOutliner, fresh)
 	case ViewProjectRecentActivity:
 		m.showView(ViewProjectRecentActivity, NewProjectRecentActivityModel(m.config, project))
 	}

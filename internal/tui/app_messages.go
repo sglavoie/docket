@@ -15,6 +15,12 @@ import (
 // BackMsg requests navigation back to the previous view.
 type BackMsg struct{}
 
+// NavigateHistoryBackMsg requests navigation backward through view history.
+type NavigateHistoryBackMsg struct{}
+
+// NavigateHistoryForwardMsg requests navigation forward through view history.
+type NavigateHistoryForwardMsg struct{}
+
 // RefreshMsg requests a refresh of the current view's data.
 type RefreshMsg struct{}
 

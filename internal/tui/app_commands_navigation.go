@@ -586,8 +586,7 @@ func (m *AppModel) navCommands() []Command {
 			Category:    CategoryNavigation,
 			Aliases:     []string{"go back history", "previous view", "back history"},
 			Handler: func() tea.Msg {
-				m.navigateHistoryBack()
-				return nil
+				return NavigateHistoryBackMsg{}
 			},
 		},
 		{
@@ -597,8 +596,7 @@ func (m *AppModel) navCommands() []Command {
 			Category:    CategoryNavigation,
 			Aliases:     []string{"go forward history", "next view", "forward history"},
 			Handler: func() tea.Msg {
-				m.navigateHistoryForward()
-				return nil
+				return NavigateHistoryForwardMsg{}
 			},
 		},
 		{

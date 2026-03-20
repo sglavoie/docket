@@ -141,6 +141,9 @@ func isTrackedView(vt ViewType) bool {
 		ViewMetricsDashboard,
 		ViewAllTasks,
 		ViewOutliner,
+		ViewCrossProjectOutliner,
+		ViewTemporaryOutliner,
+		ViewFocusBoard,
 		ViewProjectRecentActivity:
 		return true
 	default:

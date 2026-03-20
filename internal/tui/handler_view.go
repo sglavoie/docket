@@ -61,6 +61,12 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 		m.err = msg.Err
 		return true, statusTimeout(5 * time.Second)
 
+	case NavigateHistoryBackMsg:
+		return true, m.navigateHistoryBack()
+
+	case NavigateHistoryForwardMsg:
+		return true, m.navigateHistoryForward()
+
 	case NavigateToViewMsg:
 		return m.handleNavigateToView(msg)
 
