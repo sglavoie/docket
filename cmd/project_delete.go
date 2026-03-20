@@ -45,6 +45,13 @@ func runProjectDelete(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("cannot delete the sandbox project; use 'tt sandbox reset' to clear its contents instead")
 	}
 
+	// Warn about cross-project references that will be cleaned up
+	if refCount, projectCount := countCrossProjectRefs(cfg.Projects, project.ID); refCount > 0 {
+		fmt.Printf("Warning: %s in %s will be cleaned up.\n",
+			Pluralize(refCount, "cross-project reference", "cross-project references"),
+			Pluralize(projectCount, "project", "projects"))
+	}
+
 	if !ConfirmStrict(fmt.Sprintf("Delete project '%s'? It will be moved to trash.", project.Name), projectDeleteForce) {
 		fmt.Println("Canceled")
 		return nil
@@ -123,6 +130,38 @@ func cleanCrossProjectRefs(projects []*models.Project, deletedProjectID string) 
 	}
 
 	return totalCleaned, nil
+}
+
+// countCrossProjectRefs counts the total cross-project references to deletedProjectID across
+// all given projects, and returns the ref count and the number of projects with refs.
+func countCrossProjectRefs(projects []*models.Project, deletedProjectID string) (int, int) {
+	totalRefs := 0
+	projectsWithRefs := 0
+	for _, p := range projects {
+		if err := storage.LoadProject(p); err != nil {
+			continue
+		}
+		refs := 0
+		for _, task := range p.Tasks {
+			for _, ref := range task.DependsOn {
+				parsed := models.ParseTaskRef(ref)
+				if parsed.IsCrossProject() && parsed.ProjectID == deletedProjectID {
+					refs++
+				}
+			}
+			for _, ref := range task.RelatedTo {
+				parsed := models.ParseTaskRef(ref)
+				if parsed.IsCrossProject() && parsed.ProjectID == deletedProjectID {
+					refs++
+				}
+			}
+		}
+		if refs > 0 {
+			totalRefs += refs
+			projectsWithRefs++
+		}
+	}
+	return totalRefs, projectsWithRefs
 }
 
 // filterRefs returns a new slice with cross-project refs to the given project ID removed.

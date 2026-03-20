@@ -156,11 +156,28 @@ func TestBuildHierarchy(t *testing.T) {
 			},
 			wantNoParent: []string{"epic1", "epic2"},
 		},
+		{
+			name: "heading level skip (## → #####) is clamped to direct child",
+			parsedTasks: []*ParsedTask{
+				{
+					Task:  &models.Task{ID: "epic1", Type: models.TaskTypeEpic, Title: "Epic 1"},
+					Level: 2,
+				},
+				{
+					Task:  &models.Task{ID: "task1", Type: models.TaskTypeTask, Title: "Task 1"},
+					Level: 5, // jumps 3 levels — clamped to level 3 (prevLevel+1)
+				},
+			},
+			wantParents: map[string]*string{
+				"task1": strPtr("epic1"), // clamped level 3 finds epic1 at level 2
+			},
+			wantNoParent: []string{"epic1"},
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tasks := BuildHierarchy(tt.parsedTasks)
+			tasks, _ := BuildHierarchy(tt.parsedTasks)
 
 			// Build a map of tasks by ID for easier lookup
 			taskMap := make(map[string]*models.Task)
@@ -199,6 +216,29 @@ func TestBuildHierarchy(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestBuildHierarchy_HeadingLevelSkipWarning(t *testing.T) {
+	parsedTasks := []*ParsedTask{
+		{Task: &models.Task{ID: "epic1", Type: models.TaskTypeEpic, Title: "Epic 1"}, Level: 2},
+		{Task: &models.Task{ID: "task1", Type: models.TaskTypeTask, Title: "Task 1"}, Level: 5},
+	}
+
+	_, warnings := BuildHierarchy(parsedTasks)
+
+	if len(warnings) == 0 {
+		t.Fatal("expected a warning for heading level skip, got none")
+	}
+	found := false
+	for _, w := range warnings {
+		if w.Field == "heading_level" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Errorf("expected warning with field='heading_level', got: %+v", warnings)
 	}
 }
 
@@ -279,7 +319,7 @@ func TestBuildHierarchy_TypeRestrictions(t *testing.T) {
 				},
 			}
 
-			tasks := BuildHierarchy(parsedTasks)
+			tasks, _ := BuildHierarchy(parsedTasks)
 
 			var child *models.Task
 			for _, task := range tasks {

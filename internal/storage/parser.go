@@ -202,7 +202,8 @@ func ParseTasksMarkdownWithSections(content string) (*ParseResult, error) {
 	}
 
 	// Build parent-child relationships using levels captured during initial parse
-	tasks := format.BuildHierarchy(parsedTasks)
+	tasks, hierarchyWarnings := format.BuildHierarchy(parsedTasks)
+	metadataWarnings = append(metadataWarnings, hierarchyWarnings...)
 
 	// Assign UUIDs and timestamps to tasks that had no metadata comment.
 	// This happens when a user manually adds a heading without an HTML comment line.

@@ -567,9 +567,9 @@ func TestAddMonths(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			got := addMonths(tc.base, tc.months)
+			got := addMonths(tc.base, tc.months, 0)
 			if !got.Equal(tc.want) {
-				t.Errorf("addMonths(%v, %d) = %v, want %v", tc.base, tc.months, got, tc.want)
+				t.Errorf("addMonths(%v, %d, 0) = %v, want %v", tc.base, tc.months, got, tc.want)
 			}
 		})
 	}
@@ -616,9 +616,9 @@ func TestAddMonthsLargeValues(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			got := addMonths(tc.base, tc.months)
+			got := addMonths(tc.base, tc.months, 0)
 			if !got.Equal(tc.want) {
-				t.Errorf("addMonths(%v, %d) = %v, want %v", tc.base, tc.months, got, tc.want)
+				t.Errorf("addMonths(%v, %d, 0) = %v, want %v", tc.base, tc.months, got, tc.want)
 			}
 		})
 	}

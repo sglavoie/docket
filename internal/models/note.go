@@ -1,6 +1,7 @@
 package models
 
 import (
+	"crypto/rand"
 	"fmt"
 	"regexp"
 	"slices"
@@ -105,11 +106,19 @@ func (n *Note) HasLink(taskID string) bool {
 
 // TitleFromFilename derives a human-readable title from a note filename
 // by stripping the date prefix and .md extension, then replacing hyphens with spaces.
+// Handles two filename formats:
+//   - New: "2025-01-28-150405_xxxx-slug.md" (17 chars + '_' + 4 hex + '-' = 23-char prefix)
+//   - Old: "2025-01-28-150405-slug.md" (17 chars + '-' = 18-char prefix)
 func TitleFromFilename(filename string) string {
 	name := strings.TrimSuffix(filename, ".md")
-	// Strip date prefix like "2025-01-28-150405-"
 	if len(name) > 18 && name[4] == '-' && name[7] == '-' && name[10] == '-' {
-		name = name[18:]
+		if len(name) > 22 && name[17] == '_' {
+			// New format with random suffix: strip 23-char prefix
+			name = name[23:]
+		} else {
+			// Old format: strip 18-char prefix
+			name = name[18:]
+		}
 	}
 	return strings.ReplaceAll(name, "-", " ")
 }
@@ -151,7 +160,12 @@ func GenerateNoteFilename(title string, t time.Time) string {
 }
 
 // generateFilename creates a dated slug filename from a title.
+// A 4-character random hex suffix is appended after the timestamp to prevent
+// collisions when two notes are created with the same title in the same second.
 func generateFilename(title string, t time.Time) string {
 	slug := slugify(title)
-	return fmt.Sprintf("%s-%s.md", t.Format("2006-01-02-150405"), slug)
+	var b [2]byte
+	_, _ = rand.Read(b[:])
+	suffix := fmt.Sprintf("%04x", uint16(b[0])<<8|uint16(b[1]))
+	return fmt.Sprintf("%s_%s-%s.md", t.Format("2006-01-02-150405"), suffix, slug)
 }

@@ -357,6 +357,42 @@ func TestDeleteProjectDir(t *testing.T) {
 	}
 }
 
+// TestSaveProject_FilePermissions verifies that SaveProject always writes the
+// tasks file with FilePermissions (0644), even when the existing file has
+// different permissions. The atomic write via a temp file + rename is what
+// enforces this: permissions are set on the temp file before rename.
+func TestSaveProject_FilePermissions(t *testing.T) {
+	dir, cleanup := testutil.TempProjectDir(t)
+	defer cleanup()
+
+	project := testutil.NewTestProject("Test Project")
+	project.Path = filepath.Join(dir, "perm-test-project")
+
+	// Create the project dir and a tasks.md with wrong permissions (0600).
+	if err := os.MkdirAll(project.Path, 0755); err != nil {
+		t.Fatal(err)
+	}
+	tasksPath := filepath.Join(project.Path, "tasks.md")
+	if err := os.WriteFile(tasksPath, []byte("# Project: Test Project\n\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+
+	// SaveProject should rewrite the file atomically, enforcing FilePermissions.
+	if err := SaveProject(project); err != nil {
+		t.Fatalf("SaveProject failed: %v", err)
+	}
+
+	info, err := os.Stat(tasksPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := info.Mode().Perm()
+	want := os.FileMode(FilePermissions)
+	if got != want {
+		t.Errorf("file permissions = %04o, want %04o", got, want)
+	}
+}
+
 // Helper to find a task by ID in a slice
 func findTaskByID(tasks []*models.Task, id string) *models.Task {
 	for _, task := range tasks {

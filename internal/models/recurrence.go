@@ -19,12 +19,24 @@ const (
 
 // RecurrencePattern defines how a task recurs.
 type RecurrencePattern struct {
-	Interval  int            `json:"interval"`             // Every N periods (e.g., 2 = every 2 weeks)
-	Unit      RecurrenceUnit `json:"unit"`                 // day, week, month, year
-	Weekdays  []int          `json:"weekdays,omitempty"`   // For weekly: 0=Sun, 1=Mon, ..., 6=Sat
-	Skipped   int            `json:"skipped,omitempty"`    // Number of times this recurrence has been skipped
-	Streak    int            `json:"streak,omitempty"`     // Current consecutive on-time completions
-	MaxStreak int            `json:"max_streak,omitempty"` // Best streak achieved
+	Interval    int            `json:"interval"`               // Every N periods (e.g., 2 = every 2 weeks)
+	Unit        RecurrenceUnit `json:"unit"`                   // day, week, month, year
+	Weekdays    []int          `json:"weekdays,omitempty"`     // For weekly: 0=Sun, 1=Mon, ..., 6=Sat
+	Skipped     int            `json:"skipped,omitempty"`      // Number of times this recurrence has been skipped
+	Streak      int            `json:"streak,omitempty"`       // Current consecutive on-time completions
+	MaxStreak   int            `json:"max_streak,omitempty"`   // Best streak achieved
+	OriginalDay int            `json:"original_day,omitempty"` // For monthly: the intended day-of-month (e.g. 31)
+}
+
+// NewRecurrencePattern creates a RecurrencePattern from an existing one, setting
+// OriginalDay from the due date when the unit is monthly. This preserves the
+// intended day-of-month across months that have fewer days (e.g. Jan 31 → Mar 31).
+func NewRecurrencePattern(p *RecurrencePattern, dueDate time.Time) *RecurrencePattern {
+	result := *p
+	if p.Unit == RecurrenceMonthly && p.OriginalDay == 0 {
+		result.OriginalDay = dueDate.Day()
+	}
+	return &result
 }
 
 // validRecurrenceUnits is the set of recognized recurrence time units.
@@ -122,7 +134,7 @@ func calculateNextDate(base time.Time, r *RecurrencePattern) time.Time {
 		return findNextWeekday(base, r.Weekdays, r.Interval)
 
 	case RecurrenceMonthly:
-		return addMonths(base, r.Interval)
+		return addMonths(base, r.Interval, r.OriginalDay)
 
 	case RecurrenceYearly:
 		return base.AddDate(r.Interval, 0, 0)
@@ -168,9 +180,17 @@ func findNextWeekday(base time.Time, weekdays []int, interval int) time.Time {
 
 // addMonths adds N months to a date, handling end-of-month edge cases.
 // If the target month has fewer days, clamps to the last day of that month.
-func addMonths(base time.Time, months int) time.Time {
+// originalDay, when > 0, is the intended day-of-month (e.g. 31 for Jan 31);
+// it is used instead of base.Day() when larger, so that months with 31 days
+// snap back to the 31st rather than drifting to 28/30 permanently.
+func addMonths(base time.Time, months int, originalDay int) time.Time {
 	year, month, day := base.Date()
 	hour, min, sec := base.Clock()
+
+	// Restore the intended day if OriginalDay is set and larger than base.Day().
+	if originalDay > day {
+		day = originalDay
+	}
 
 	targetMonth := int(month) + months
 	targetYear := year + (targetMonth-1)/12
@@ -270,6 +290,11 @@ func parseIntervalUnit(s string) *RecurrencePattern {
 	interval := 0
 	for _, c := range numStr {
 		if c < '0' || c > '9' {
+			return nil
+		}
+		// Guard against overflow before multiplying: if already above max/10,
+		// multiplying by 10 could overflow before the MaxRecurrenceInterval check.
+		if interval > MaxRecurrenceInterval/10 {
 			return nil
 		}
 		interval = interval*10 + int(c-'0')

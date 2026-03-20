@@ -436,6 +436,17 @@ func ParseMetadata(task *models.Task, metaStr string) []ParseWarning {
 
 // splitMetadataPairs splits metadata string into key-value pairs, handling values
 // that may contain commas (e.g., "recur: 1w:mon,wed,fri").
+//
+// Fields whose values may legitimately contain commas (and therefore require this
+// special handling rather than a naive strings.Split(s, ",")):
+//   - recur: weekday lists use comma-separated day names, e.g. "1w:mon,wed,fri"
+//   - url: URLs may contain commas in query strings
+//   - bug.workaround, story.persona, epic.metrics: free-text that may contain commas
+//
+// The strategy: scan for ", knownKey:" delimiters instead of bare commas, and skip
+// keys that have already been seen (each key appears at most once per metadata block)
+// to avoid mis-splitting on key-like substrings inside free-text values.
+//
 // It looks for ", key:" patterns where key is a known metadata key or a "score.*" prefix.
 // To prevent free-text values (URLs, descriptions) that happen to contain ", key:"
 // patterns from being mis-split, it tracks already-seen keys and only splits on

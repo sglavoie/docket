@@ -46,6 +46,21 @@ func runTaskDepends(cmd *cobra.Command, args []string) error {
 
 	taskID := args[0]
 
+	// Mutual exclusion: only one of --clear, --remove, --on may be set
+	flagCount := 0
+	if dependsClearFlag {
+		flagCount++
+	}
+	if dependsRemoveFlag != "" {
+		flagCount++
+	}
+	if dependsOnFlag != "" {
+		flagCount++
+	}
+	if flagCount > 1 {
+		return fmt.Errorf("only one of --clear, --remove, --on can be used at a time")
+	}
+
 	// If no flags provided, just show dependencies (read-only)
 	if !dependsClearFlag && dependsRemoveFlag == "" && dependsOnFlag == "" {
 		project, _, _, err := LoadCurrentProject()

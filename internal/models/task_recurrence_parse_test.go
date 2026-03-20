@@ -152,6 +152,26 @@ func TestParseRecurrenceMoreEdgeCases(t *testing.T) {
 	}
 }
 
+// TestParseRecurrenceOverflowGuard verifies that extremely large interval strings
+// are rejected without panicking, even when they would overflow int before the
+// MaxRecurrenceInterval check.
+func TestParseRecurrenceOverflowGuard(t *testing.T) {
+	inputs := []string{
+		"99999999999999d", // 14 digits — would overflow before MaxRecurrenceInterval check
+		"99999999999999999999d", // 20 digits — would definitely overflow int64
+		"999999999999999w",
+	}
+	for _, s := range inputs {
+		t.Run(s, func(t *testing.T) {
+			// Must not panic and must return nil.
+			got := ParseRecurrence(s)
+			if got != nil {
+				t.Errorf("ParseRecurrence(%q) = %+v, want nil", s, got)
+			}
+		})
+	}
+}
+
 func TestParseWeekdays(t *testing.T) {
 	tests := []struct {
 		input string

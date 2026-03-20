@@ -56,11 +56,19 @@ func (m *Manager) Load() (*Config, error) {
 		backupPath := m.configPath + ".bak"
 		backupData, backupErr := os.ReadFile(backupPath)
 		if backupErr == nil {
-			if json.Unmarshal(backupData, &config) == nil {
-				logging.Warn("config file was corrupted, restored from backup %s", backupPath)
-				// Persist the recovered config so next load doesn't hit corruption again
-				if writeErr := util.AtomicWriteFile(m.configPath, backupData, FilePermissions); writeErr != nil {
-					return nil, fmt.Errorf("recovered config from backup but failed to persist it: %w", writeErr)
+			var backupConfig Config
+			if json.Unmarshal(backupData, &backupConfig) == nil {
+				if backupConfig.DataDir != "" {
+					config = backupConfig
+					logging.Warn("config file was corrupted, restored from backup %s", backupPath)
+					// Persist the recovered config so next load doesn't hit corruption again
+					if writeErr := util.AtomicWriteFile(m.configPath, backupData, FilePermissions); writeErr != nil {
+						return nil, fmt.Errorf("recovered config from backup but failed to persist it: %w", writeErr)
+					}
+				} else {
+					// Backup parsed but is missing DataDir — treat as invalid and use defaults.
+					logging.Warn("config backup at %s is invalid (missing DataDir), using default config", backupPath)
+					config = *NewConfig()
 				}
 			} else {
 				return nil, fmt.Errorf("failed to parse config file and backup is also corrupted: config error: %w; backup path: %s", err, backupPath)

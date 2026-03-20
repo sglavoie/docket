@@ -50,10 +50,10 @@ func FormatCyclePosition(cfg *config.Config, projectID string) string {
 }
 
 // EmptyStateFiltered is the standard message shown when active filters produce no results.
-const EmptyStateFiltered = "No tasks match current filters."
+const EmptyStateFiltered = "No tasks match filters. Press 'F' then 'x' to clear."
 
 // EmptyStateNoTasks is the standard message shown when a view has no tasks at all.
-const EmptyStateNoTasks = "No tasks."
+const EmptyStateNoTasks = "No tasks yet. Press 'a' to add one."
 
 // renderTruncatedTags renders a compact inline tag string with per-tag truncation
 // and overflow count. Shows at most maxTags tags, each truncated to maxTagLen chars.

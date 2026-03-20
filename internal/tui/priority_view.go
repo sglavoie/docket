@@ -181,7 +181,7 @@ func (m *PriorityViewModel) View() string {
 		b.WriteString("\n\n")
 		b.WriteString(renderFilterAwareEmptyState(
 			m.searchQuery != "",
-			EmptyStateNoTasks, "Press a to add a task.",
+			EmptyStateNoTasks, "",
 			"Try a different search term.",
 		))
 		b.WriteString("\n\n")

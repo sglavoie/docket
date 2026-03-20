@@ -229,10 +229,11 @@ func (q *quickCaptureInput) getParentSuggestions(partial string) []ACSuggestion 
 	suggestions := make([]ACSuggestion, 0, len(scored))
 	for _, s := range scored {
 		task := s.task
-		// Truncate title if too long
+		// Truncate title if too long (width-aware: ~15 chars overhead for icon+id+spaces)
+		titleLimit := max(q.width-15, 10)
 		title := task.Title
-		if len(title) > 30 {
-			title = title[:27] + "..."
+		if len(title) > titleLimit {
+			title = title[:titleLimit-3] + "..."
 		}
 		suggestions = append(suggestions, ACSuggestion{
 			Display: fmt.Sprintf("%s #%d %s", task.Type.Icon(), task.ShortID, title),
@@ -268,10 +269,11 @@ func (q *quickCaptureInput) getProjectSuggestions(partial string) []ACSuggestion
 	suggestions := make([]ACSuggestion, 0, len(scored))
 	for _, s := range scored {
 		project := s.project
-		// Truncate name if too long
+		// Truncate name if too long (width-aware: ~20 chars overhead for context+brackets+spaces)
+		nameLimit := max(q.width-20, 10)
 		name := project.Name
-		if len(name) > 25 {
-			name = name[:22] + "..."
+		if len(name) > nameLimit {
+			name = name[:nameLimit-3] + "..."
 		}
 		suggestions = append(suggestions, ACSuggestion{
 			Display: fmt.Sprintf("%%%s [%s]", name, project.Context),

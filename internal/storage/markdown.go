@@ -104,6 +104,51 @@ func LoadProjectWithWarnings(project *models.Project) (*ProjectLoadResult, error
 	// Build the tree structure
 	project.BuildTaskTree()
 
+	// Validate cross-project dependency/related references.
+	// project.Path is {dataDir}/projects/{slug}, so dataDir is two levels up.
+	// Any dep/related ref of the form "projectSlug:taskUUID" is cross-project;
+	// if the referenced project directory no longer exists, remove the ref and warn.
+	dataDir := filepath.Dir(filepath.Dir(project.Path))
+	for _, t := range project.Tasks {
+		var cleanedDeps []string
+		for _, dep := range t.DependsOn {
+			ref := models.ParseTaskRef(dep)
+			if ref.IsCrossProject() {
+				projectDir := filepath.Join(dataDir, "projects", ref.ProjectID)
+				if _, err := os.Stat(projectDir); os.IsNotExist(err) {
+					result.Warnings = append(result.Warnings, ParseWarning{
+						Type:    format.WarningDataCorrection,
+						TaskID:  t.ID,
+						Field:   "depends",
+						Message: fmt.Sprintf("task %s has dependency on non-existent project %q, removing", t.ID, ref.ProjectID),
+					})
+					continue
+				}
+			}
+			cleanedDeps = append(cleanedDeps, dep)
+		}
+		t.DependsOn = cleanedDeps
+
+		var cleanedRelated []string
+		for _, rel := range t.RelatedTo {
+			ref := models.ParseTaskRef(rel)
+			if ref.IsCrossProject() {
+				projectDir := filepath.Join(dataDir, "projects", ref.ProjectID)
+				if _, err := os.Stat(projectDir); os.IsNotExist(err) {
+					result.Warnings = append(result.Warnings, ParseWarning{
+						Type:    format.WarningDataCorrection,
+						TaskID:  t.ID,
+						Field:   "related",
+						Message: fmt.Sprintf("task %s has related ref to non-existent project %q, removing", t.ID, ref.ProjectID),
+					})
+					continue
+				}
+			}
+			cleanedRelated = append(cleanedRelated, rel)
+		}
+		t.RelatedTo = cleanedRelated
+	}
+
 	// Populate project warnings for TUI display
 	var repairWarnings []string
 	for _, w := range result.Warnings {

@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"github.com/jedib0t/go-pretty/v6/table"
@@ -8,6 +9,8 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 )
+
+var sectionListJSON bool
 
 var sectionListCmd = &cobra.Command{
 	Use:     "list",
@@ -20,12 +23,14 @@ The Backlog section is hidden when it contains no tasks.
 Examples:
   tt section list
   tt section ls
-  tt sec l`,
+  tt sec l
+  tt section list --json`,
 	RunE: runSectionList,
 }
 
 func init() {
 	sectionCmd.AddCommand(sectionListCmd)
+	sectionListCmd.Flags().BoolVar(&sectionListJSON, "json", false, "output as JSON")
 }
 
 func runSectionList(cmd *cobra.Command, args []string) error {
@@ -44,6 +49,23 @@ func runSectionList(cmd *cobra.Command, args []string) error {
 			continue
 		}
 		visibleSections = append(visibleSections, s)
+	}
+
+	if sectionListJSON {
+		type sectionEntry struct {
+			Name  string `json:"name"`
+			Tasks int    `json:"tasks"`
+		}
+		entries := make([]sectionEntry, len(visibleSections))
+		for i, s := range visibleSections {
+			entries[i] = sectionEntry{Name: s, Tasks: counts[s]}
+		}
+		data, err := json.MarshalIndent(entries, "", "  ")
+		if err != nil {
+			return fmt.Errorf("marshal sections to JSON: %w", err)
+		}
+		fmt.Println(string(data))
+		return nil
 	}
 
 	if len(visibleSections) == 0 {

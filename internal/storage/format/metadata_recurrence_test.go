@@ -144,3 +144,30 @@ func TestMetadata_RecurrenceStreakRoundtrip(t *testing.T) {
 		t.Errorf("Roundtrip failed:\n  got:  %+v\n  want: %+v", parsed.Recurrence, original.Recurrence)
 	}
 }
+
+// TestParseMetadata_RecurrenceWeekdayCommas verifies that comma-separated weekday
+// lists inside a recur value (e.g., "1w:mon,wed,fri") are not mis-split by the
+// metadata parser, which uses ", key:" as its delimiter rather than bare commas.
+func TestParseMetadata_RecurrenceWeekdayCommas(t *testing.T) {
+	task := &models.Task{}
+	warnings := ParseMetadata(task, "id: abc, status: todo, priority: 1, recur: 1w:mon,wed,fri")
+
+	if task.Recurrence == nil {
+		t.Fatal("Recurrence should not be nil")
+	}
+	if task.Recurrence.Unit != models.RecurrenceWeekly {
+		t.Errorf("Unit = %v, want weekly", task.Recurrence.Unit)
+	}
+	if task.Recurrence.Interval != 1 {
+		t.Errorf("Interval = %d, want 1", task.Recurrence.Interval)
+	}
+	// mon=1, wed=3, fri=5
+	if len(task.Recurrence.Weekdays) != 3 {
+		t.Errorf("Weekdays = %v, want [1 3 5] (mon,wed,fri)", task.Recurrence.Weekdays)
+	}
+	for _, w := range warnings {
+		if w.Field == "recur" {
+			t.Errorf("unexpected recurrence warning: %s", w.Message)
+		}
+	}
+}

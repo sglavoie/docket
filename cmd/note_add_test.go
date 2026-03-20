@@ -157,9 +157,20 @@ func TestTitleFromFilename(t *testing.T) {
 func TestGenerateNoteFilename(t *testing.T) {
 	fixedTime := time.Date(2025, 3, 15, 9, 30, 45, 0, time.UTC)
 	got := models.GenerateNoteFilename("My Great Note", fixedTime)
-	expected := "2025-03-15-093045-my-great-note.md"
-	if got != expected {
-		t.Errorf("expected %q, got %q", expected, got)
+	// Filename now includes a 4-char random hex suffix:
+	// "2025-03-15-093045_xxxx-my-great-note.md"
+	prefix := "2025-03-15-093045_"
+	suffix := "-my-great-note.md"
+	if !containsSubstring(got, prefix) {
+		t.Errorf("expected filename to contain %q, got %q", prefix, got)
+	}
+	if !containsSubstring(got, suffix) {
+		t.Errorf("expected filename to end with %q, got %q", suffix, got)
+	}
+	// Two calls with same time must produce different filenames.
+	got2 := models.GenerateNoteFilename("My Great Note", fixedTime)
+	if got == got2 {
+		t.Errorf("expected different filenames for same time, got %q twice", got)
 	}
 }
 

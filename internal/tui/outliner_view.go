@@ -305,7 +305,7 @@ func (m *OutlinerModel) renderOutlinerTreeContent(width int) string {
 			headerStr = renderProjectTitle(m.project, m.config, titleParams)
 		}
 		header := headerStr + perspectiveLabel + searchIndicator
-		emptyMsg := EmptyStateNoTasks + " Press a to add one."
+		emptyMsg := EmptyStateNoTasks
 		if m.project == nil && len(m.loadedProjects) == 0 {
 			emptyMsg = "No projects in current context. Press C to switch context."
 		} else if m.project == nil {

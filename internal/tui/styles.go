@@ -245,7 +245,7 @@ func rebuildStyles() {
 	// Success/info/loading/error status styles
 	SuccessStyle = lipgloss.NewStyle().Foreground(ColorSuccess)
 	InfoStatusStyle = lipgloss.NewStyle().Foreground(ColorPrimary)
-	LoadingStyle = lipgloss.NewStyle().Foreground(ColorWarning)
+	LoadingStyle = lipgloss.NewStyle().Foreground(ColorMuted)
 	ErrorStatusStyle = lipgloss.NewStyle().Foreground(ColorError)
 
 	// Help view styles
@@ -1003,9 +1003,9 @@ var (
 	InfoStatusStyle = lipgloss.NewStyle().
 			Foreground(ColorPrimary)
 
-	// Loading message style (amber/yellow for in-progress operations)
+	// Loading message style (accent color for in-progress operations)
 	LoadingStyle = lipgloss.NewStyle().
-			Foreground(ColorWarning)
+			Foreground(ColorAccent)
 
 	// Error status bar style (red for errors)
 	ErrorStatusStyle = lipgloss.NewStyle().

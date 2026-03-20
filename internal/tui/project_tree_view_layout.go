@@ -99,9 +99,9 @@ func (m *ProjectTreeModel) renderFullWidth() string {
 
 	if len(visible) == 0 {
 		if len(m.project.Tasks) == 0 {
-			cardContent.WriteString(renderEmptyState(EmptyStateNoTasks, "Press a to add a task."))
+			cardContent.WriteString(renderEmptyState(EmptyStateNoTasks, ""))
 		} else {
-			cardContent.WriteString(renderEmptyState(EmptyStateFiltered, "Press Fx to clear filters."))
+			cardContent.WriteString(renderEmptyState(EmptyStateFiltered, ""))
 		}
 	} else {
 		// Calculate available height for task list
@@ -340,9 +340,9 @@ func (m *ProjectTreeModel) renderTreeContent(width int) string {
 
 	if len(visible) == 0 {
 		if len(m.project.Tasks) == 0 {
-			cardContent.WriteString(renderEmptyState(EmptyStateNoTasks, "Press a to add a task."))
+			cardContent.WriteString(renderEmptyState(EmptyStateNoTasks, ""))
 		} else {
-			cardContent.WriteString(renderEmptyState(EmptyStateFiltered, "Press Fx to clear filters."))
+			cardContent.WriteString(renderEmptyState(EmptyStateFiltered, ""))
 		}
 	} else {
 		// Calculate available height for task list
