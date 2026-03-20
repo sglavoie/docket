@@ -215,10 +215,33 @@ func (m *ProjectTreeModel) renderNodeWithWidth(node *TreeNode, selected bool, in
 	// Fixed overhead: selection prefix(3) + checkbox(0 or 4) + expand(2) + typeIcon(~2) + statusIcon(~2) + space(1) + idStr(~5) + space(1) = ~16
 	// Plus: indent, progress, and indicators (now measured accurately)
 	baseOverhead := 16
-	indicatorWidth := lipgloss.Width(indicators)
 	progressWidth := lipgloss.Width(progress)
-	usedWidth := 3 + len(checkbox) + node.Level*2 + len(expandIcon) + baseOverhead + indicatorWidth + progressWidth
-	availableTitleWidth := max(maxWidth-usedWidth, 10)
+	baseUsed := 3 + len(checkbox) + node.Level*2 + len(expandIcon) + baseOverhead + progressWidth
+	availableTitleWidth := maxWidth - baseUsed - lipgloss.Width(indicators)
+
+	// If title would be squeezed below 20 chars, progressively drop indicator groups
+	if availableTitleWidth < 20 {
+		indicators = JoinIndicatorGroups(orgGroup, lifecycleGroup, structureGroup)
+		if indicators != "" {
+			indicators = " " + indicators
+		}
+		availableTitleWidth = maxWidth - baseUsed - lipgloss.Width(indicators)
+	}
+	if availableTitleWidth < 20 {
+		indicators = JoinIndicatorGroups(orgGroup, lifecycleGroup)
+		if indicators != "" {
+			indicators = " " + indicators
+		}
+		availableTitleWidth = maxWidth - baseUsed - lipgloss.Width(indicators)
+	}
+	if availableTitleWidth < 20 {
+		indicators = JoinIndicatorGroups(orgGroup)
+		if indicators != "" {
+			indicators = " " + indicators
+		}
+		availableTitleWidth = maxWidth - baseUsed - lipgloss.Width(indicators)
+	}
+	availableTitleWidth = max(availableTitleWidth, 20)
 	truncatedTitle := util.Truncate(task.Title, availableTitleWidth)
 
 	// Apply search highlighting if there's an active search query

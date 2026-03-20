@@ -58,10 +58,6 @@ func runBoardList(cmd *cobra.Command, args []string) error {
 			continue
 		}
 		for _, task := range project.Tasks {
-			if task.Type != models.TaskTypeAction {
-				continue
-			}
-
 			// Filter by status
 			if boardListDone {
 				if task.Status != models.StatusDone {

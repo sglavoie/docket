@@ -639,6 +639,16 @@ func (m *OutlinerModel) handleQuickEditMode(msg tea.KeyMsg) (tea.Model, tea.Cmd)
 			m.crossUndoCtx.ProjectIDs = []string{proj.ID}
 		}
 	}
+
+	// Stale task guard: before applying the edit, verify the task still exists.
+	if msg.String() == "enter" && proj != nil && m.quickEdit.GetTask() != nil {
+		if proj.GetTaskByID(m.quickEdit.GetTask().ID) == nil {
+			m.quickEdit.Exit()
+			m.crossQuickEditProject = nil
+			return m, func() tea.Msg { return StatusMsg("task was deleted") }
+		}
+	}
+
 	_, cmd := handleQuickEditKey(msg, m.quickEdit, proj, saveFn, undoFn)
 	return m, cmd
 }

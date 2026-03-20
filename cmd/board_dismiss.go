@@ -51,6 +51,6 @@ func runBoardDismiss(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to save: %w", err)
 	}
 
-	fmt.Printf("Dismissed action #%d: %s\n", task.ShortID, task.Title)
+	fmt.Println(TaskMsg(project.Name, "Dismissed", task))
 	return nil
 }

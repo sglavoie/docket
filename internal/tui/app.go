@@ -103,6 +103,7 @@ const (
 	ViewStatusInput
 	ViewStatusIconPicker
 	ViewNotificationCenter
+	ViewMessageLog
 )
 
 // ProjectTreeSpatialState captures cursor position and fold state for a project tree
@@ -278,6 +279,9 @@ type AppModel struct {
 	rawAlerts       *alerts.AlertSnapshot // unfiltered (before dismissal filter)
 	proactiveAlerts *alerts.AlertSnapshot // filtered (after dismissals applied)
 	dismissedSet    map[string]bool       // active dismissal keys
+
+	// Message log: ring buffer of recent status messages for the log overlay.
+	messageLog MessageLog
 }
 
 // pendingNoteMove holds state for a global note move operation.

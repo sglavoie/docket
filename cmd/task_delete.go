@@ -127,11 +127,11 @@ func runTaskDelete(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	msg := TaskMsg(project.Name, "Deleted", task)
 	if count > 1 {
-		fmt.Printf("Deleted task #%d '%s' and %s\n", task.ShortID, task.Title, Pluralize(count-1, "descendant", "descendants"))
-	} else {
-		fmt.Printf("Deleted task #%d '%s'\n", task.ShortID, task.Title)
+		msg += fmt.Sprintf(" and %s", Pluralize(count-1, "descendant", "descendants"))
 	}
+	fmt.Println(msg)
 	return nil
 }
 

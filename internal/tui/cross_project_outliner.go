@@ -2,7 +2,6 @@ package tui
 
 import (
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/charmbracelet/bubbles/spinner"
@@ -113,8 +112,24 @@ func (m *OutlinerModel) handleCrossProjectsLoaded(msg crossProjectsLoadedMsg) te
 	if len(msg.failedNames) == 0 {
 		return nil
 	}
-	warning := "Cross-project outliner: failed to load: " + strings.Join(msg.failedNames, ", ")
-	return func() tea.Msg { return StatusMsg(warning) }
+	var cmds []tea.Cmd
+	for _, name := range msg.failedNames {
+		n := name // capture for closure
+		cmds = append(cmds, func() tea.Msg {
+			return AppendToMessageLogMsg{
+				Message: "Cross-project outliner: failed to load project: " + n,
+				Level:   MessageLogLevelError,
+			}
+		})
+	}
+	count := len(msg.failedNames)
+	noun := "project"
+	if count > 1 {
+		noun = "projects"
+	}
+	warning := fmt.Sprintf("%d %s failed to load — see message log (Alt+L)", count, noun)
+	cmds = append(cmds, func() tea.Msg { return InfoStatusMsg(warning) })
+	return tea.Batch(cmds...)
 }
 
 // crossProjectRebuildRows aggregates tasks from all loadedProjects into m.rows,

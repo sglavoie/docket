@@ -29,11 +29,11 @@ type boardRow struct {
 }
 
 func (r boardRow) isAction() bool {
-	return r.Task != nil && r.Task.Type == models.TaskTypeAction
+	return false
 }
 
 func (r boardRow) isTask() bool {
-	return r.Task != nil && r.Task.Type != models.TaskTypeAction
+	return r.Task != nil
 }
 
 // FocusBoardModel displays Action tasks + aggregated active/due tasks in a unified view.

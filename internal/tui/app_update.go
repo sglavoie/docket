@@ -103,6 +103,10 @@ func (m *AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, m.navigateHistoryBack()
 		case "alt+i":
 			return m, m.navigateHistoryForward()
+		case "alt+l":
+			if !m.hasActiveTextInput() {
+				return m, func() tea.Msg { return ShowMessageLogMsg{} }
+			}
 		case "|":
 			if !m.hasActiveTextInput() {
 				// On dashboard, dismiss tutor prompt if active
@@ -174,7 +178,10 @@ func (m *AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case ";":
 			if !m.hasActiveTextInput() {
 				m.pendingSemicolonPrefix = true
-				return m, nil
+				return m, func() tea.Msg {
+					time.Sleep(1500 * time.Millisecond)
+					return ClearSemicolonPrefixMsg{}
+				}
 			}
 		}
 
@@ -195,6 +202,12 @@ func (m *AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.spinner, cmd = m.spinner.Update(msg)
 			return m, cmd
 		}
+
+	case ClearSemicolonPrefixMsg:
+		if m.pendingSemicolonPrefix {
+			m.pendingSemicolonPrefix = false
+		}
+		return m, nil
 
 	case SaveStartMsg:
 		m.isLoading = true

@@ -804,6 +804,14 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 		m.showView(ViewNotificationCenter, NewNotificationCenterModel(m.proactiveAlerts, m.rawAlerts, m.dismissedSet))
 		return true, nil
 
+	case ShowMessageLogMsg:
+		m.showView(ViewMessageLog, NewMessageLogViewModel(m.messageLog.Entries()))
+		return true, nil
+
+	case AppendToMessageLogMsg:
+		m.messageLog.Append(msg.Message, msg.Level)
+		return true, nil
+
 	case AlertCenterNavigateMsg:
 		m.popView() // close alert center
 		switch msg.Category {

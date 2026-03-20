@@ -153,7 +153,6 @@ func (m *BulkEditModel) handleEnter() (tea.Model, tea.Cmd) {
 				models.TaskTypeTask,
 				models.TaskTypeBug,
 				models.TaskTypeIdea,
-				models.TaskTypeAction,
 			}
 			if m.typeCursor <= len(types) {
 				tp := types[m.typeCursor-1]
@@ -274,7 +273,7 @@ func (m *BulkEditModel) handleRight() {
 			m.statusCursor++
 		}
 	case fieldType:
-		if m.typeCursor < 6 {
+		if m.typeCursor < 5 {
 			m.typeCursor++
 		}
 	case fieldPriority:

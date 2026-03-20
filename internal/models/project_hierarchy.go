@@ -45,26 +45,34 @@ func (p *Project) BuildTaskTree() {
 	// Detect and break circular parent references before building parent-child links.
 	// A cycle exists when following ParentID pointers leads back to the starting task.
 	// This can happen from corrupt data (e.g., manual edits, interrupted saves).
-	for _, task := range p.Tasks {
-		if task.ParentID == nil {
-			continue
+	// Re-run until a full pass finds no cycles (handles multi-task cycles like A→B→C→A).
+	for {
+		foundCycle := false
+		for _, task := range p.Tasks {
+			if task.ParentID == nil {
+				continue
+			}
+			visited := make(map[string]bool)
+			visited[task.ID] = true
+			current := *task.ParentID
+			for current != "" {
+				if visited[current] {
+					// Cycle detected — break it by clearing this task's parent
+					logging.Warn("task %q (#%d) is part of a circular parent chain, clearing parent reference", task.Title, task.ShortID)
+					task.ParentID = nil
+					foundCycle = true
+					break
+				}
+				visited[current] = true
+				if parent, ok := taskMap[current]; ok && parent.ParentID != nil {
+					current = *parent.ParentID
+				} else {
+					break
+				}
+			}
 		}
-		visited := make(map[string]bool)
-		visited[task.ID] = true
-		current := *task.ParentID
-		for current != "" {
-			if visited[current] {
-				// Cycle detected — break it by clearing this task's parent
-				logging.Warn("task %q (#%d) is part of a circular parent chain, clearing parent reference", task.Title, task.ShortID)
-				task.ParentID = nil
-				break
-			}
-			visited[current] = true
-			if parent, ok := taskMap[current]; ok && parent.ParentID != nil {
-				current = *parent.ParentID
-			} else {
-				break
-			}
+		if !foundCycle {
+			break
 		}
 	}
 

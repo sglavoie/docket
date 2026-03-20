@@ -31,6 +31,11 @@ func TestGenerateFilenameFormat(t *testing.T) {
 	if !strings.HasSuffix(name, ".md") {
 		t.Errorf("filename %q does not end with .md", name)
 	}
+	// Verify 8-char hex suffix: "2024-01-15-143045_xxxxxxxx-slug.md"
+	rest := strings.TrimPrefix(name, "2024-01-15-143045_")
+	if len(rest) < 9 || rest[8] != '-' {
+		t.Errorf("filename %q: expected 8-char hex suffix before slug dash, got %q", name, rest)
+	}
 }
 
 // TestTitleFromFilenameNewFormat verifies TitleFromFilename handles the new
@@ -40,10 +45,13 @@ func TestTitleFromFilenameNewFormat(t *testing.T) {
 		filename string
 		want     string
 	}{
-		// New format: 2006-01-02-150405_xxxx-slug.md
+		// New format (8-hex): 2006-01-02-150405_xxxxxxxx-slug.md
+		{"2024-01-15-143045_ab12cd34-my-note.md", "my note"},
+		{"2024-01-15-143045_ff001122-hello-world.md", "hello world"},
+		// Old format (4-hex): 2006-01-02-150405_xxxx-slug.md
 		{"2024-01-15-143045_ab12-my-note.md", "my note"},
 		{"2024-01-15-143045_ff00-hello-world.md", "hello world"},
-		// Old format: 2006-01-02-150405-slug.md
+		// Legacy format: 2006-01-02-150405-slug.md
 		{"2024-01-15-143045-my-note.md", "my note"},
 		{"2024-01-15-143045-hello-world.md", "hello world"},
 		// No date prefix

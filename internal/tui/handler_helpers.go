@@ -35,12 +35,14 @@ func (m *AppModel) handleWithRefresh(popView, reload bool, statusMsg string) tea
 func (m *AppModel) setSuccessStatus(msg string) {
 	m.statusMessage = msg
 	m.statusIsInfo = false
+	m.messageLog.Append(msg, MessageLogLevelSuccess)
 }
 
 // setInfoStatus sets a status message with informational styling (neutral color, no checkmark).
 func (m *AppModel) setInfoStatus(msg string) {
 	m.statusMessage = msg
 	m.statusIsInfo = true
+	m.messageLog.Append(msg, MessageLogLevelInfo)
 }
 
 // clearStatus clears the status message and resets the info flag.

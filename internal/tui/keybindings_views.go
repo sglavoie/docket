@@ -550,6 +550,15 @@ func (r *KeybindingRegistry) registerNotificationCenterBindings() {
 	)
 }
 
+func (r *KeybindingRegistry) registerMessageLogBindings() {
+	views := []ViewType{ViewMessageLog}
+	r.add(
+		Keybinding{Key: "j/k", Description: "Scroll messages", Category: "Navigation", Views: views},
+		Keybinding{Key: "g/G", Description: "Jump to top/bottom", Category: "Navigation", Views: views},
+		Keybinding{Key: "Esc", Description: "Close", Category: "Navigation", Views: views},
+	)
+}
+
 func (r *KeybindingRegistry) registerAskViewBindings() {
 	views := []ViewType{ViewAsk}
 	r.add(

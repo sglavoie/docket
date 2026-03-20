@@ -254,12 +254,12 @@ func (m *AppModel) renderStatusBar() string {
 		}
 	}
 
-	// Check if view supports help shortcut hint
+	// Check if view supports help shortcut hint — only show if view implements HelpProvider
 	currentView := m.currentView()
-	showHelp := true
+	showHelp := false
 	if view := m.views.Get(currentView); view != nil {
-		if hs, ok := view.(HelpShortcutSupporter); ok {
-			showHelp = hs.SupportsHelpShortcut()
+		if _, ok := view.(HelpProvider); ok {
+			showHelp = true
 		}
 	}
 

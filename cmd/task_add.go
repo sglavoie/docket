@@ -264,7 +264,7 @@ func runTaskAdd(cmd *cobra.Command, args []string) error {
 		return tterrors.NewSaveProjectError(project.Name, err)
 	}
 
-	fmt.Printf("Created %s #%d: %s\n", taskType.HeadingPrefix(), shortID, title)
+	fmt.Println(TaskMsg(project.Name, "Created", task))
 	if checklistCreated > 0 {
 		fmt.Printf("  Added %d checklist item(s) from template\n", checklistCreated)
 	}

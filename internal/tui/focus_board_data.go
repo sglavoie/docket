@@ -28,22 +28,7 @@ func (m *FocusBoardModel) loadItems() {
 			continue
 		}
 		for _, task := range project.Tasks {
-			if task.Type == models.TaskTypeAction {
-				row := boardRow{
-					Task:     task,
-					Project:  project,
-					Priority: task.Priority,
-					Source:   task.Source,
-				}
-				if task.Status.IsComplete() {
-					m.closedRows = append(m.closedRows, row)
-				} else {
-					m.rows = append(m.rows, row)
-				}
-				continue
-			}
-
-			// Non-action tasks: include if active or due soon
+			// Include if active or due soon
 			if task.Status.IsComplete() || task.IsSnoozed() {
 				continue
 			}

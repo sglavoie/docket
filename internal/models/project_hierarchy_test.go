@@ -476,6 +476,59 @@ func TestBuildTaskTree_CircularParentLongChain(t *testing.T) {
 	}
 }
 
+func TestBuildTaskTree_CircularParentFullCycleCleared(t *testing.T) {
+	project := NewProject("test", "Test", "/tmp/test")
+
+	taskA, err := NewTask("a", 1, TaskTypeTask, "Task A")
+	if err != nil {
+		t.Fatal(err)
+	}
+	taskB, err := NewTask("b", 2, TaskTypeTask, "Task B")
+	if err != nil {
+		t.Fatal(err)
+	}
+	taskC, err := NewTask("c", 3, TaskTypeTask, "Task C")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Create a 3-node cycle: A -> B -> C -> A
+	idA := taskA.ID
+	idB := taskB.ID
+	idC := taskC.ID
+	taskA.ParentID = &idB
+	taskB.ParentID = &idC
+	taskC.ParentID = &idA
+
+	project.Tasks = []*Task{taskA, taskB, taskC}
+	project.BuildTaskTree()
+
+	// Verify no cycles remain: following any task's parent chain must not loop.
+	for _, task := range project.Tasks {
+		visited := make(map[string]bool)
+		current := task
+		for current != nil && current.ParentID != nil {
+			if visited[current.ID] {
+				t.Errorf("cycle still present after BuildTaskTree: task %q (#%d)", task.Title, task.ShortID)
+				break
+			}
+			visited[current.ID] = true
+			// Walk via ParentID pointer through the task map
+			foundParent := false
+			for _, t2 := range project.Tasks {
+				if t2.ID == *current.ParentID {
+					current = t2
+					foundParent = true
+					break
+				}
+			}
+			if !foundParent {
+				break
+			}
+		}
+	}
+}
+
 func TestWouldCreateCycle_SelfCycle(t *testing.T) {
 	taskA, err := NewTask("a", 1, TaskTypeTask, "Task A")
 	if err != nil {

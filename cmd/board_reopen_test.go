@@ -55,7 +55,7 @@ func TestRunBoardReopen(t *testing.T) {
 		deps, project := setup(t)
 		defer deps.Cleanup()
 
-		actionTask, _ := models.NewTask("action-1", project.GetNextShortID(), models.TaskTypeAction, "Test Action")
+		actionTask, _ := models.NewTask("action-1", project.GetNextShortID(), models.TaskTypeTask, "Test Action")
 		actionTask.ApplyTransition(models.StatusDone)
 		project.Tasks = append(project.Tasks, actionTask)
 		deps.Repository.Projects[project.ID] = project
@@ -65,7 +65,7 @@ func TestRunBoardReopen(t *testing.T) {
 
 		savedProject := deps.Repository.Projects[project.ID]
 		for _, task := range savedProject.Tasks {
-			if task.Type == models.TaskTypeAction {
+			if task.ID == actionTask.ID {
 				testutil.AssertEqual(t, task.Status, models.StatusTodo)
 				return
 			}

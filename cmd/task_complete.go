@@ -159,14 +159,22 @@ var actionToTargetStatus = map[string]models.TaskStatus{
 func updateTaskStatus(args []string, action string, update func(*models.Task)) error {
 	// Handle interactive selection if no ID provided
 	var taskIDs []string
+	var projectName string
 	if len(args) > 0 {
 		taskIDs = args
+		// Get project name for output (config-only, no task load needed)
+		if cfg, _, err := LoadConfig(); err == nil {
+			if p := cfg.GetCurrentProject(); p != nil {
+				projectName = p.Name
+			}
+		}
 	} else {
 		// Load project for interactive selection
 		project, _, _, err := LoadCurrentProject()
 		if err != nil {
 			return err
 		}
+		projectName = project.Name
 
 		targetStatus := actionToTargetStatus[action]
 
@@ -260,7 +268,7 @@ func updateTaskStatus(args []string, action string, update func(*models.Task)) e
 		}
 
 		succeeded++
-		fmt.Printf("%s %s #%d: %s\n", verb, task.Type.HeadingPrefix(), task.ShortID, task.Title)
+		fmt.Println(TaskMsg(projectName, verb, task))
 
 		if generated > 0 {
 			fmt.Printf("Created %s in Inbox\n", Pluralize(generated, "recurring task instance", "recurring task instances"))

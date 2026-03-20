@@ -64,6 +64,7 @@ func NewKeybindingRegistry() *KeybindingRegistry {
 	r.registerTaskTemplatesBindings()
 	r.registerFilterBuilderBindings()
 	r.registerNotificationCenterBindings()
+	r.registerMessageLogBindings()
 	r.registerAskViewBindings()
 	r.registerBulkEditBindings()
 	r.registerBlockersBindings()

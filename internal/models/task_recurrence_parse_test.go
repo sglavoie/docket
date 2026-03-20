@@ -157,7 +157,7 @@ func TestParseRecurrenceMoreEdgeCases(t *testing.T) {
 // MaxRecurrenceInterval check.
 func TestParseRecurrenceOverflowGuard(t *testing.T) {
 	inputs := []string{
-		"99999999999999d", // 14 digits — would overflow before MaxRecurrenceInterval check
+		"99999999999999d",       // 14 digits — would overflow before MaxRecurrenceInterval check
 		"99999999999999999999d", // 20 digits — would definitely overflow int64
 		"999999999999999w",
 	}

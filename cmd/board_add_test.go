@@ -76,7 +76,7 @@ func TestRunBoardAdd(t *testing.T) {
 		}
 		task := savedProject.Tasks[len(savedProject.Tasks)-1]
 		testutil.AssertEqual(t, task.Title, "Test Action")
-		testutil.AssertEqual(t, task.Type, models.TaskTypeAction)
+		testutil.AssertEqual(t, task.Type, models.TaskTypeTask)
 		testutil.AssertEqual(t, task.Status, models.StatusTodo)
 	})
 

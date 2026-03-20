@@ -86,7 +86,7 @@ func runBoardAdd(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to load project: %w", err)
 	}
 
-	task, err := models.NewTask(uuid.New().String(), targetProject.GetNextShortID(), models.TaskTypeAction, title)
+	task, err := models.NewTask(uuid.New().String(), targetProject.GetNextShortID(), models.TaskTypeTask, title)
 	if err != nil {
 		return err
 	}
@@ -113,6 +113,6 @@ func runBoardAdd(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to save: %w", err)
 	}
 
-	fmt.Printf("Added action #%d: %s\n", task.ShortID, task.Title)
+	fmt.Println(TaskMsg(targetProject.Name, "Added", task))
 	return nil
 }

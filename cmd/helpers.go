@@ -34,6 +34,12 @@ var Deps = Dependencies{
 	Repository: storage.DefaultRepository,
 }
 
+// TaskMsg formats a standard success message for task operations.
+// Format: "[project] Verb Type #id: title"
+func TaskMsg(projectName, verb string, task *models.Task) string {
+	return fmt.Sprintf("[%s] %s %s #%d: %s", projectName, verb, task.Type.HeadingPrefix(), task.ShortID, task.Title)
+}
+
 // NoItemsMsg returns a standardized "no <thing> found" message with an actionable hint.
 // Use this for empty-state messages across all commands.
 func NoItemsMsg(thing, hint string) string {
@@ -174,7 +180,7 @@ func LoadCurrentProject() (*models.Project, *config.Config, *config.Manager, err
 	return project, cfg, configManager, nil
 }
 
-// FindActionTaskByID searches all loadable projects for an Action task by short ID or UUID prefix.
+// FindActionTaskByID searches all loadable projects for a task by short ID or UUID prefix.
 // Returns the task and its project, or nil, nil if not found.
 func FindActionTaskByID(cfg *config.Config, query string) (*models.Task, *models.Project) {
 	var shortID int
@@ -189,9 +195,6 @@ func FindActionTaskByID(cfg *config.Config, query string) (*models.Task, *models
 			continue
 		}
 		for _, task := range project.Tasks {
-			if task.Type != models.TaskTypeAction {
-				continue
-			}
 			if isShortID && task.ShortID == shortID {
 				return task, project
 			}

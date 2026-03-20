@@ -33,6 +33,9 @@ type ErrorMsg struct{ Err error }
 // StatusClearMsg clears the status message after a timeout.
 type StatusClearMsg struct{}
 
+// ClearSemicolonPrefixMsg clears a pending semicolon prefix if it has not been resolved.
+type ClearSemicolonPrefixMsg struct{}
+
 // CursorFlashClearMsg clears the cursor flash highlight after a timeout.
 type CursorFlashClearMsg struct{}
 

@@ -1,0 +1,299 @@
+package cmd
+
+import (
+	"testing"
+
+	"github.com/spf13/viper"
+
+	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/scoring"
+	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/testutil"
+)
+
+// setupScoreTest sets up the full environment (config + storage) for score commands
+// that call LoadCurrentProject.
+func setupScoreTest(t *testing.T) (*testutil.TestDeps, *models.Project) {
+	t.Helper()
+	deps, project := testutil.SetupTestDepsWithProject(t, "Test Project")
+
+	iceProfile := scoring.NewICEProfile()
+	deps.Config.ScoringProfiles = []scoring.ScoringProfile{iceProfile}
+	deps.Config.SetProjectScoringProfile(project.ID, "ice")
+
+	viper.Set("config", deps.ConfigPath)
+	t.Cleanup(func() { viper.Set("config", "") })
+
+	manager := config.NewManager(deps.ConfigPath)
+	testutil.AssertNoError(t, manager.Save(deps.Config))
+
+	oldStorageRepo := storage.DefaultRepository
+	storage.DefaultRepository = deps.Repository
+	t.Cleanup(func() { storage.DefaultRepository = oldStorageRepo })
+
+	return deps, project
+}
+
+// setupScoreConfigOnlyTest sets up the environment for score commands that only call
+// LoadConfig (e.g., assign/unassign) and do not need storage.DefaultRepository.
+func setupScoreConfigOnlyTest(t *testing.T) (*testutil.TestDeps, *models.Project) {
+	t.Helper()
+	deps, project := testutil.SetupTestDepsWithProject(t, "Test Project")
+
+	iceProfile := scoring.NewICEProfile()
+	deps.Config.ScoringProfiles = []scoring.ScoringProfile{iceProfile}
+
+	viper.Set("config", deps.ConfigPath)
+	t.Cleanup(func() { viper.Set("config", "") })
+
+	manager := config.NewManager(deps.ConfigPath)
+	testutil.AssertNoError(t, manager.Save(deps.Config))
+
+	return deps, project
+}
+
+func TestRunScoreAssign(t *testing.T) {
+	t.Run("assigns profile successfully", func(t *testing.T) {
+		deps, project := setupScoreConfigOnlyTest(t)
+		defer deps.Cleanup()
+
+		err := runScoreAssign(scoreAssignCmd, []string{"ice"})
+		testutil.AssertNoError(t, err)
+
+		// Reload config to verify it was saved
+		manager := config.NewManager(deps.ConfigPath)
+		savedCfg, loadErr := manager.Load()
+		testutil.AssertNoError(t, loadErr)
+
+		profile := savedCfg.GetProjectScoringProfile(project.ID)
+		if profile == nil {
+			t.Fatal("expected scoring profile to be assigned after runScoreAssign")
+		}
+		testutil.AssertEqual(t, profile.ID, "ice")
+	})
+
+	t.Run("rejects nonexistent profile", func(t *testing.T) {
+		deps, _ := setupScoreConfigOnlyTest(t)
+		defer deps.Cleanup()
+
+		err := runScoreAssign(scoreAssignCmd, []string{"nonexistent-profile"})
+		if err == nil {
+			t.Error("expected error for nonexistent profile")
+		}
+	})
+
+	t.Run("rejects missing args", func(t *testing.T) {
+		deps, _ := setupScoreConfigOnlyTest(t)
+		defer deps.Cleanup()
+
+		err := runScoreAssign(scoreAssignCmd, []string{})
+		if err == nil {
+			t.Error("expected error for missing profile ID argument")
+		}
+	})
+}
+
+func TestRunScoreUnassign(t *testing.T) {
+	t.Run("unassigns profile successfully", func(t *testing.T) {
+		deps, project := setupScoreConfigOnlyTest(t)
+		defer deps.Cleanup()
+
+		// First assign a profile so there's something to unassign
+		deps.Config.SetProjectScoringProfile(project.ID, "ice")
+		manager := config.NewManager(deps.ConfigPath)
+		testutil.AssertNoError(t, manager.Save(deps.Config))
+
+		err := runScoreUnassign(scoreUnassignCmd, []string{})
+		testutil.AssertNoError(t, err)
+
+		// Reload config to verify profile was removed
+		savedCfg, loadErr := manager.Load()
+		testutil.AssertNoError(t, loadErr)
+
+		profile := savedCfg.GetProjectScoringProfile(project.ID)
+		if profile != nil {
+			t.Errorf("expected scoring profile to be unassigned, but got %q", profile.ID)
+		}
+	})
+}
+
+func TestRunScoreSet(t *testing.T) {
+	t.Run("sets dimension values on task", func(t *testing.T) {
+		deps, project := setupScoreTest(t)
+		defer deps.Cleanup()
+
+		firstTask := project.Tasks[0]
+		taskRef := firstTask.Title
+
+		err := runScoreSet(scoreSetCmd, []string{taskRef, "impact=7", "confidence=8", "ease=6"})
+		testutil.AssertNoError(t, err)
+
+		savedProject := deps.Repository.Projects[project.ID]
+		var updatedTask *models.Task
+		for _, task := range savedProject.Tasks {
+			if task.Title == taskRef {
+				updatedTask = task
+				break
+			}
+		}
+		if updatedTask == nil {
+			t.Fatal("could not find task after score set")
+		}
+		if updatedTask.ScoreDimensions == nil {
+			t.Fatal("expected ScoreDimensions to be set")
+		}
+		testutil.AssertEqual(t, updatedTask.ScoreDimensions["impact"], 7)
+		testutil.AssertEqual(t, updatedTask.ScoreDimensions["confidence"], 8)
+		testutil.AssertEqual(t, updatedTask.ScoreDimensions["ease"], 6)
+	})
+
+	t.Run("rejects task not found", func(t *testing.T) {
+		deps, _ := setupScoreTest(t)
+		defer deps.Cleanup()
+
+		err := runScoreSet(scoreSetCmd, []string{"99999", "impact=5"})
+		if err == nil {
+			t.Error("expected error for task not found")
+		}
+	})
+
+	t.Run("rejects no args (less than 2)", func(t *testing.T) {
+		deps, _ := setupScoreTest(t)
+		defer deps.Cleanup()
+
+		err := runScoreSet(scoreSetCmd, []string{"1"})
+		if err == nil {
+			t.Error("expected error for missing dimension argument")
+		}
+	})
+
+	t.Run("rejects invalid format (no equals)", func(t *testing.T) {
+		deps, project := setupScoreTest(t)
+		defer deps.Cleanup()
+
+		firstTask := project.Tasks[0]
+
+		err := runScoreSet(scoreSetCmd, []string{firstTask.Title, "impactNOEQUALS"})
+		if err == nil {
+			t.Error("expected error for invalid dimension format")
+		}
+	})
+
+	t.Run("rejects value out of range", func(t *testing.T) {
+		deps, project := setupScoreTest(t)
+		defer deps.Cleanup()
+
+		firstTask := project.Tasks[0]
+
+		err := runScoreSet(scoreSetCmd, []string{firstTask.Title, "impact=999"})
+		if err == nil {
+			t.Error("expected error for value out of range")
+		}
+	})
+
+	t.Run("rejects unknown dimension", func(t *testing.T) {
+		deps, project := setupScoreTest(t)
+		defer deps.Cleanup()
+
+		firstTask := project.Tasks[0]
+
+		err := runScoreSet(scoreSetCmd, []string{firstTask.Title, "unknowndim=5"})
+		if err == nil {
+			t.Error("expected error for unknown dimension")
+		}
+	})
+
+	t.Run("rejects task with no profile assigned", func(t *testing.T) {
+		deps, project := setupScoreTest(t)
+		defer deps.Cleanup()
+
+		// Remove the profile assignment
+		deps.Config.UnsetProjectScoringProfile(project.ID)
+		manager := config.NewManager(deps.ConfigPath)
+		testutil.AssertNoError(t, manager.Save(deps.Config))
+
+		firstTask := project.Tasks[0]
+
+		err := runScoreSet(scoreSetCmd, []string{firstTask.Title, "impact=5"})
+		if err == nil {
+			t.Error("expected error when no scoring profile is assigned")
+		}
+	})
+}
+
+func TestRunScoreShow(t *testing.T) {
+	t.Run("shows score for task with profile", func(t *testing.T) {
+		deps, project := setupScoreTest(t)
+		defer deps.Cleanup()
+
+		firstTask := project.Tasks[0]
+
+		err := runScoreShow(scoreShowCmd, []string{firstTask.Title})
+		testutil.AssertNoError(t, err)
+	})
+
+	t.Run("rejects task with no profile assigned", func(t *testing.T) {
+		deps, project := setupScoreTest(t)
+		defer deps.Cleanup()
+
+		deps.Config.UnsetProjectScoringProfile(project.ID)
+		manager := config.NewManager(deps.ConfigPath)
+		testutil.AssertNoError(t, manager.Save(deps.Config))
+
+		firstTask := project.Tasks[0]
+
+		err := runScoreShow(scoreShowCmd, []string{firstTask.Title})
+		if err == nil {
+			t.Error("expected error when no scoring profile is assigned")
+		}
+	})
+
+	t.Run("rejects missing args", func(t *testing.T) {
+		deps, _ := setupScoreTest(t)
+		defer deps.Cleanup()
+
+		err := runScoreShow(scoreShowCmd, []string{})
+		if err == nil {
+			t.Error("expected error for missing task ID argument")
+		}
+	})
+}
+
+func TestRunScoreRank(t *testing.T) {
+	t.Run("ranks tasks by score", func(t *testing.T) {
+		deps, _ := setupScoreTest(t)
+		defer deps.Cleanup()
+
+		err := runScoreRank(scoreRankCmd, []string{})
+		testutil.AssertNoError(t, err)
+	})
+
+	t.Run("handles empty task list", func(t *testing.T) {
+		deps, project := setupScoreTest(t)
+		defer deps.Cleanup()
+
+		// Mark all tasks complete so nothing is ranked (default excludes completed)
+		for _, task := range project.Tasks {
+			task.Status = models.StatusDone
+		}
+		deps.Repository.Projects[project.ID] = project
+
+		err := runScoreRank(scoreRankCmd, []string{})
+		testutil.AssertNoError(t, err)
+	})
+
+	t.Run("no profile assigned returns error", func(t *testing.T) {
+		deps, project := setupScoreTest(t)
+		defer deps.Cleanup()
+
+		deps.Config.UnsetProjectScoringProfile(project.ID)
+		manager := config.NewManager(deps.ConfigPath)
+		testutil.AssertNoError(t, manager.Save(deps.Config))
+
+		err := runScoreRank(scoreRankCmd, []string{})
+		if err == nil {
+			t.Error("expected error when no scoring profile is assigned")
+		}
+	})
+}

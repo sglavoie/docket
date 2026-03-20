@@ -145,7 +145,7 @@ func runQuickAdd(cmd *cobra.Command, args []string) error {
 	title, inlinePriority, inlineTags := parseInlineMetadata(rawTitle)
 
 	if title == "" {
-		return tterrors.NewRequiredFieldError("task title cannot be empty")
+		return fmt.Errorf("title is empty after extracting inline metadata (priority, tags, etc.) — provide a title")
 	}
 	if err = models.ValidateTaskTitle(title); err != nil {
 		return err

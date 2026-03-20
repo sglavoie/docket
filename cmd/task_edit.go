@@ -104,10 +104,7 @@ func runTaskEdit(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	fmt.Printf("Updated %s #%d: %s\n",
-		task.Type.HeadingPrefix(),
-		task.ShortID,
-		task.Title)
+	fmt.Println(TaskMsg(project.Name, "Updated", task))
 
 	return nil
 }

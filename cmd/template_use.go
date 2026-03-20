@@ -110,6 +110,9 @@ func runTemplateUse(cmd *cobra.Command, args []string) error {
 	if title == "" {
 		title = t.Name
 	}
+	if err := models.ValidateTaskTitle(title); err != nil {
+		return fmt.Errorf("template %q: %w", t.Name, err)
+	}
 
 	// Load current project
 	project, _, projectConfigManager, err := LoadCurrentProject()

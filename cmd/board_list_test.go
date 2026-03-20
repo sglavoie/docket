@@ -51,7 +51,7 @@ func TestRunBoardList(t *testing.T) {
 		deps, project := setup(t)
 		defer deps.Cleanup()
 
-		actionTask, _ := models.NewTask("action-1", project.GetNextShortID(), models.TaskTypeAction, "Test Action")
+		actionTask, _ := models.NewTask("action-1", project.GetNextShortID(), models.TaskTypeTask, "Test Action")
 		project.Tasks = append(project.Tasks, actionTask)
 		deps.Repository.Projects[project.ID] = project
 
@@ -63,7 +63,7 @@ func TestRunBoardList(t *testing.T) {
 		deps, project := setup(t)
 		defer deps.Cleanup()
 
-		actionTask, _ := models.NewTask("action-1", project.GetNextShortID(), models.TaskTypeAction, "Done Action")
+		actionTask, _ := models.NewTask("action-1", project.GetNextShortID(), models.TaskTypeTask, "Done Action")
 		actionTask.ApplyTransition(models.StatusDone)
 		project.Tasks = append(project.Tasks, actionTask)
 		deps.Repository.Projects[project.ID] = project
@@ -78,7 +78,7 @@ func TestRunBoardList(t *testing.T) {
 		deps, project := setup(t)
 		defer deps.Cleanup()
 
-		actionTask, _ := models.NewTask("action-1", project.GetNextShortID(), models.TaskTypeAction, "JSON Action")
+		actionTask, _ := models.NewTask("action-1", project.GetNextShortID(), models.TaskTypeTask, "JSON Action")
 		project.Tasks = append(project.Tasks, actionTask)
 		deps.Repository.Projects[project.ID] = project
 

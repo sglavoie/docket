@@ -106,17 +106,20 @@ func (n *Note) HasLink(taskID string) bool {
 
 // TitleFromFilename derives a human-readable title from a note filename
 // by stripping the date prefix and .md extension, then replacing hyphens with spaces.
-// Handles two filename formats:
-//   - New: "2025-01-28-150405_xxxx-slug.md" (17 chars + '_' + 4 hex + '-' = 23-char prefix)
-//   - Old: "2025-01-28-150405-slug.md" (17 chars + '-' = 18-char prefix)
+// Handles three filename formats:
+//   - New (8-hex): "2025-01-28-150405_xxxxxxxx-slug.md" (17+1+8+1 = 27-char prefix)
+//   - Old (4-hex): "2025-01-28-150405_xxxx-slug.md" (17+1+4+1 = 23-char prefix)
+//   - Legacy: "2025-01-28-150405-slug.md" (17+1 = 18-char prefix)
 func TitleFromFilename(filename string) string {
 	name := strings.TrimSuffix(filename, ".md")
 	if len(name) > 18 && name[4] == '-' && name[7] == '-' && name[10] == '-' {
-		if len(name) > 22 && name[17] == '_' {
-			// New format with random suffix: strip 23-char prefix
-			name = name[23:]
+		if len(name) > 19 && name[17] == '_' {
+			// Suffixed format: find the first '-' after the '_' to locate slug start
+			if idx := strings.Index(name[18:], "-"); idx >= 0 {
+				name = name[18+idx+1:]
+			}
 		} else {
-			// Old format: strip 18-char prefix
+			// Legacy format: strip 18-char prefix
 			name = name[18:]
 		}
 	}
@@ -160,12 +163,12 @@ func GenerateNoteFilename(title string, t time.Time) string {
 }
 
 // generateFilename creates a dated slug filename from a title.
-// A 4-character random hex suffix is appended after the timestamp to prevent
-// collisions when two notes are created with the same title in the same second.
+// An 8-character random hex suffix is appended after the timestamp to reduce
+// collision probability when two notes are created with the same title in the same second.
 func generateFilename(title string, t time.Time) string {
 	slug := slugify(title)
-	var b [2]byte
+	var b [4]byte
 	_, _ = rand.Read(b[:])
-	suffix := fmt.Sprintf("%04x", uint16(b[0])<<8|uint16(b[1]))
+	suffix := fmt.Sprintf("%02x%02x%02x%02x", b[0], b[1], b[2], b[3])
 	return fmt.Sprintf("%s_%s-%s.md", t.Format("2006-01-02-150405"), suffix, slug)
 }

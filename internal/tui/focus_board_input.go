@@ -133,7 +133,7 @@ func (m *FocusBoardModel) createItemFromInput(input string) (tea.Model, tea.Cmd)
 		return m, nil
 	}
 
-	task, err := models.NewTask(uuid.New().String(), targetProject.GetNextShortID(), models.TaskTypeAction, result.title)
+	task, err := models.NewTask(uuid.New().String(), targetProject.GetNextShortID(), models.TaskTypeTask, result.title)
 	if err != nil {
 		m.setStatus("Invalid task: " + err.Error())
 		return m, nil

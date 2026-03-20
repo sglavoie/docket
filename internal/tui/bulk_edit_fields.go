@@ -72,7 +72,7 @@ func (m *BulkEditModel) renderTypeField() string {
 	b.WriteString(MutedStyle.Render(fmt.Sprintf("(%s)", m.typeSummary)))
 	b.WriteString("\n")
 
-	options := []string{"No change", "Epic", "Story", "Task", "Bug", "Idea", "Action"}
+	options := []string{"No change", "Epic", "Story", "Task", "Bug", "Idea"}
 	for i, opt := range options {
 		prefix := "  "
 		if focused {
@@ -115,8 +115,6 @@ func getTypeIndex(t models.TaskType) int {
 		return 3
 	case models.TaskTypeIdea:
 		return 4
-	case models.TaskTypeAction:
-		return 5
 	default:
 		return 0
 	}

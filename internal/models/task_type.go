@@ -9,23 +9,22 @@ import (
 type TaskType string
 
 const (
-	TaskTypeEpic   TaskType = "epic"
-	TaskTypeStory  TaskType = "story"
-	TaskTypeTask   TaskType = "task"
-	TaskTypeBug    TaskType = "bug"
-	TaskTypeIdea   TaskType = "idea"
-	TaskTypeAction TaskType = "action"
+	TaskTypeEpic  TaskType = "epic"
+	TaskTypeStory TaskType = "story"
+	TaskTypeTask  TaskType = "task"
+	TaskTypeBug   TaskType = "bug"
+	TaskTypeIdea  TaskType = "idea"
 )
 
 // AllTaskTypes returns all valid task types.
 func AllTaskTypes() []TaskType {
-	return []TaskType{TaskTypeEpic, TaskTypeStory, TaskTypeTask, TaskTypeBug, TaskTypeIdea, TaskTypeAction}
+	return []TaskType{TaskTypeEpic, TaskTypeStory, TaskTypeTask, TaskTypeBug, TaskTypeIdea}
 }
 
 // IsValid checks if the task type is valid.
 func (t TaskType) IsValid() bool {
 	switch t {
-	case TaskTypeEpic, TaskTypeStory, TaskTypeTask, TaskTypeBug, TaskTypeIdea, TaskTypeAction:
+	case TaskTypeEpic, TaskTypeStory, TaskTypeTask, TaskTypeBug, TaskTypeIdea:
 		return true
 	}
 	return false
@@ -38,10 +37,10 @@ func (t TaskType) IsValid() bool {
 func (t TaskType) AllowedChildren() []TaskType {
 	switch t {
 	case TaskTypeEpic:
-		return []TaskType{TaskTypeStory, TaskTypeTask, TaskTypeBug, TaskTypeIdea, TaskTypeAction}
+		return []TaskType{TaskTypeStory, TaskTypeTask, TaskTypeBug, TaskTypeIdea}
 	case TaskTypeStory:
-		return []TaskType{TaskTypeTask, TaskTypeBug, TaskTypeIdea, TaskTypeAction}
-	case TaskTypeTask, TaskTypeBug, TaskTypeIdea, TaskTypeAction:
+		return []TaskType{TaskTypeTask, TaskTypeBug, TaskTypeIdea}
+	case TaskTypeTask, TaskTypeBug, TaskTypeIdea:
 		return []TaskType{}
 	default:
 		return []TaskType{}
@@ -71,8 +70,6 @@ func (t TaskType) Icon() string {
 		return "B"
 	case TaskTypeIdea:
 		return "I"
-	case TaskTypeAction:
-		return "A"
 	default:
 		return "?"
 	}
@@ -97,8 +94,6 @@ func (t TaskType) HeadingPrefix() string {
 		return "Bug"
 	case TaskTypeIdea:
 		return "Idea"
-	case TaskTypeAction:
-		return "Action"
 	default:
 		return "Task"
 	}
@@ -120,7 +115,7 @@ func ParseTaskTypeInsensitive(s string) (TaskType, bool) {
 // Leaf types have no children.
 func (t TaskType) IsLeafType() bool {
 	switch t {
-	case TaskTypeTask, TaskTypeBug, TaskTypeIdea, TaskTypeAction:
+	case TaskTypeTask, TaskTypeBug, TaskTypeIdea:
 		return true
 	}
 	return false
@@ -130,7 +125,7 @@ func (t TaskType) IsLeafType() bool {
 // Task/Bug/Idea -> Story, Story -> Epic, Epic -> Epic (already at top).
 func (t TaskType) Promote() TaskType {
 	switch t {
-	case TaskTypeTask, TaskTypeBug, TaskTypeIdea, TaskTypeAction:
+	case TaskTypeTask, TaskTypeBug, TaskTypeIdea:
 		return TaskTypeStory
 	case TaskTypeStory:
 		return TaskTypeEpic
@@ -148,7 +143,7 @@ func (t TaskType) Demote() TaskType {
 		return TaskTypeStory
 	case TaskTypeStory:
 		return TaskTypeTask // Default leaf type
-	case TaskTypeTask, TaskTypeBug, TaskTypeIdea, TaskTypeAction:
+	case TaskTypeTask, TaskTypeBug, TaskTypeIdea:
 		return t // Already at bottom
 	}
 	return t

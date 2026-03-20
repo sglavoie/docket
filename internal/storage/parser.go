@@ -126,6 +126,13 @@ func ParseTasksMarkdownWithSections(content string) (*ParseResult, error) {
 			taskType, ok := models.ParseTaskType(typeStr)
 			if !ok {
 				taskType = models.TaskTypeTask
+				if typeStr == "action" {
+					metadataWarnings = append(metadataWarnings, ParseWarning{
+						Type:    format.WarningDeprecation,
+						Field:   "type",
+						Message: fmt.Sprintf("task #%d has deprecated type 'action', migrated to 'task'", nextShortID),
+					})
+				}
 			}
 
 			if len(title) > models.MaxTaskTitleLength {
@@ -145,13 +152,13 @@ func ParseTasksMarkdownWithSections(content string) (*ParseResult, error) {
 					Message: fmt.Sprintf("task #%d has invalid title: %v", nextShortID, taskErr),
 				})
 				task = &models.Task{
-					ShortID:   nextShortID,
-					Type:      taskType,
-					Title:     title,
-					Status:    models.StatusTodo,
-					Priority:  models.PriorityDefault,
-					Tags:      []string{},
-					DependsOn: []string{},
+					ShortID:         nextShortID,
+					Type:            taskType,
+					Title:           title,
+					Status:          models.StatusTodo,
+					Priority:        models.PriorityDefault,
+					Tags:            []string{},
+					DependsOn:       []string{},
 					RelatedTo:       []string{},
 					ScoreDimensions: map[string]int{},
 					Children:        []*models.Task{},

@@ -59,6 +59,16 @@ func (m *AppModel) globalCommands() []Command {
 			},
 		},
 		{
+			Name:        "message log",
+			Description: "Show recent status messages",
+			Shortcut:    "alt+l",
+			Category:    CategoryNavigation,
+			Aliases:     []string{"status log", "status history", "log"},
+			Handler: func() tea.Msg {
+				return ShowMessageLogMsg{}
+			},
+		},
+		{
 			Name:        "tutor",
 			Description: "Open the interactive tutor",
 			Category:    CategoryNavigation,
