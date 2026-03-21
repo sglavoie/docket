@@ -67,7 +67,7 @@ func runContextAdd(cmd *cobra.Command, args []string) error {
 	// Check if custom context exists
 	projectIDs := cfg.GetCustomContext(contextName)
 	if projectIDs == nil {
-		return fmt.Errorf("custom context '%s' not found", contextName)
+		return fmt.Errorf("custom context '%s' not found; use 'tt context list' to see contexts", contextName)
 	}
 
 	// Find project by slug
@@ -108,6 +108,6 @@ func runContextAdd(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	fmt.Printf("Added '%s' to custom context '%s'\n", project.Name, contextName)
+	fmt.Printf("Added project '%s' (%s) to custom context '%s'\n", project.Name, project.Slug, contextName)
 	return nil
 }

@@ -116,6 +116,9 @@ func init() {
 }
 
 func getOutputOpts(cmd *cobra.Command) (MutateOutput, error) {
+	if cmd == nil {
+		return MutateOutput{}, nil
+	}
 	jsonOut, _ := cmd.Flags().GetBool("json")
 	quiet, _ := cmd.Flags().GetBool("quiet")
 	out := MutateOutput{JSON: jsonOut, Quiet: quiet}

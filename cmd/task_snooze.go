@@ -39,9 +39,24 @@ Examples:
 
 func init() {
 	taskCmd.AddCommand(taskSnoozeCmd)
+	addOutputFlags(taskSnoozeCmd)
+	taskSnoozeCmd.ValidArgsFunction = func(_ *cobra.Command, args []string, _ string) ([]string, cobra.ShellCompDirective) {
+		if len(args) == 1 {
+			return []string{
+				"clear", "tomorrow",
+				"monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday",
+			}, cobra.ShellCompDirectiveNoFileComp
+		}
+		return nil, cobra.ShellCompDirectiveNoFileComp
+	}
 }
 
 func runTaskSnooze(cmd *cobra.Command, args []string) error {
+	out, err := getOutputOpts(cmd)
+	if err != nil {
+		return err
+	}
+
 	taskID := args[0]
 	dateStr := args[1]
 
@@ -94,11 +109,15 @@ func runTaskSnooze(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if snoozeDate == nil {
-		fmt.Printf("Cleared snooze from task #%d: %s\n", task.ShortID, task.Title)
-	} else {
-		fmt.Printf("Snoozed task #%d until %s: %s\n", task.ShortID, desc, task.Title)
+	if out.JSON {
+		return outputSingleTaskJSON(task)
 	}
-
+	if !out.Quiet {
+		if snoozeDate == nil {
+			fmt.Printf("Cleared snooze from task #%d: %s\n", task.ShortID, task.Title)
+		} else {
+			fmt.Printf("Snoozed task #%d until %s: %s\n", task.ShortID, desc, task.Title)
+		}
+	}
 	return nil
 }

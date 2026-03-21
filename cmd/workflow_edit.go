@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -123,11 +124,17 @@ func init() {
 
 	// Confirmation flag
 	workflowEditCmd.Flags().BoolVarP(&workflowEditYes, "yes", "y", false, "apply changes without preview confirmation")
+	addOutputFlags(workflowEditCmd)
 }
 
 func runWorkflowEdit(cmd *cobra.Command, args []string) error {
 	if len(args) < 1 {
 		return tterrors.NewRequiredFieldError("rule ID")
+	}
+
+	out, err := getOutputOpts(cmd)
+	if err != nil {
+		return err
 	}
 
 	ruleID := args[0]
@@ -333,6 +340,20 @@ func runWorkflowEdit(cmd *cobra.Command, args []string) error {
 	// Save config
 	if err := saveConfig(configManager, cfg); err != nil {
 		return err
+	}
+
+	if out.Quiet {
+		return nil
+	}
+	if out.JSON {
+		data, _ := json.MarshalIndent(struct {
+			ID      string `json:"id"`
+			Name    string `json:"name"`
+			Enabled bool   `json:"enabled"`
+			Summary string `json:"summary"`
+		}{ID: modifiedRule.ID, Name: modifiedRule.Name, Enabled: modifiedRule.Enabled, Summary: modifiedRule.Summary()}, "", "  ")
+		fmt.Println(string(data))
+		return nil
 	}
 
 	// Display final result

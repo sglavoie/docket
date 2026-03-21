@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"github.com/spf13/cobra"
@@ -32,10 +33,16 @@ Examples:
 func init() {
 	projectCmd.AddCommand(projectPurgeCmd)
 	projectPurgeCmd.Flags().BoolVarP(&purgeForce, "force", "f", false, "Skip confirmation prompt")
+	addOutputFlags(projectPurgeCmd)
 }
 
 func runProjectPurge(cmd *cobra.Command, args []string) error {
 	cfg, _, err := LoadConfig()
+	if err != nil {
+		return err
+	}
+
+	out, err := getOutputOpts(cmd)
 	if err != nil {
 		return err
 	}
@@ -63,6 +70,17 @@ func runProjectPurge(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to delete project: %w", err)
 	}
 
+	if out.Quiet {
+		return nil
+	}
+	if out.JSON {
+		data, _ := json.MarshalIndent(struct {
+			Slug   string `json:"slug"`
+			Purged bool   `json:"purged"`
+		}{Slug: slug, Purged: true}, "", "  ")
+		fmt.Println(string(data))
+		return nil
+	}
 	fmt.Printf("Permanently deleted '%s'\n", slug)
 	return nil
 }

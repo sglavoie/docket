@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"github.com/spf13/cobra"
@@ -33,6 +34,7 @@ Examples:
 func init() {
 	noteCmd.AddCommand(noteEditCmd)
 	noteEditCmd.Flags().StringVar(&noteEditEditor, "editor", "", "editor to use")
+	addOutputFlags(noteEditCmd)
 }
 
 func runNoteEdit(cmd *cobra.Command, args []string) error {
@@ -46,6 +48,11 @@ func runNoteEdit(cmd *cobra.Command, args []string) error {
 	}
 
 	note, err := findNoteIn(ctx.Dir, args[0])
+	if err != nil {
+		return err
+	}
+
+	out, err := getOutputOpts(cmd)
 	if err != nil {
 		return err
 	}
@@ -67,7 +74,9 @@ func runNoteEdit(cmd *cobra.Command, args []string) error {
 	}
 
 	if modified == content {
-		fmt.Println("No changes made.")
+		if !out.Quiet {
+			fmt.Println("No changes made.")
+		}
 		return nil
 	}
 
@@ -80,6 +89,17 @@ func runNoteEdit(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to save note: %w", err)
 	}
 
+	if out.Quiet {
+		return nil
+	}
+	if out.JSON {
+		data, _ := json.MarshalIndent(struct {
+			Filename string `json:"filename"`
+			Updated  bool   `json:"updated"`
+		}{Filename: updatedNote.Filename, Updated: true}, "", "  ")
+		fmt.Println(string(data))
+		return nil
+	}
 	fmt.Println("Note updated.")
 	return nil
 }

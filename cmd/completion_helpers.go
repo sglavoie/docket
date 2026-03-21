@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -75,6 +76,36 @@ func knownContextList(cfg *config.Config) string {
 	all = append(all, builtinContexts...)
 	all = append(all, cfg.GetCustomContextNames()...)
 	return strings.Join(all, ", ")
+}
+
+// completeCurrentProjectTaskIDs returns a completion function that lists task short IDs from the current project.
+func completeCurrentProjectTaskIDs() func(*cobra.Command, []string, string) ([]string, cobra.ShellCompDirective) {
+	return func(_ *cobra.Command, _ []string, _ string) ([]string, cobra.ShellCompDirective) {
+		project, _, _, err := LoadCurrentProject()
+		if err != nil {
+			return nil, cobra.ShellCompDirectiveNoFileComp
+		}
+		completions := make([]string, 0, len(project.Tasks))
+		for _, t := range project.Tasks {
+			completions = append(completions, fmt.Sprintf("%d\t%s", t.ShortID, t.Title))
+		}
+		return completions, cobra.ShellCompDirectiveNoFileComp
+	}
+}
+
+// completeProjectSlugs returns a completion function that lists active project slugs.
+func completeProjectSlugs() func(*cobra.Command, []string, string) ([]string, cobra.ShellCompDirective) {
+	return func(_ *cobra.Command, _ []string, _ string) ([]string, cobra.ShellCompDirective) {
+		cfg, _, err := LoadConfig()
+		if err != nil {
+			return nil, cobra.ShellCompDirectiveNoFileComp
+		}
+		var slugs []string
+		for _, p := range cfg.GetActiveProjects() {
+			slugs = append(slugs, p.Slug)
+		}
+		return slugs, cobra.ShellCompDirectiveNoFileComp
+	}
 }
 
 // completeConfigStages returns a completion function that loads workflow stages from config.

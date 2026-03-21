@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"github.com/spf13/cobra"
@@ -30,6 +31,7 @@ Examples:
 func init() {
 	sectionCmd.AddCommand(sectionRemoveCmd)
 	sectionRemoveCmd.Flags().BoolVarP(&sectionRemoveForce, "force", "f", false, "Skip confirmation prompt")
+	addOutputFlags(sectionRemoveCmd)
 }
 
 func runSectionRemove(cmd *cobra.Command, args []string) error {
@@ -44,6 +46,11 @@ func runSectionRemove(cmd *cobra.Command, args []string) error {
 	}
 
 	project, cfg, configManager, err := LoadCurrentProject()
+	if err != nil {
+		return err
+	}
+
+	out, err := getOutputOpts(cmd)
 	if err != nil {
 		return err
 	}
@@ -74,6 +81,18 @@ func runSectionRemove(cmd *cobra.Command, args []string) error {
 		return tterrors.NewSaveProjectError(project.Name, err)
 	}
 
+	if out.Quiet {
+		return nil
+	}
+	if out.JSON {
+		data, _ := json.MarshalIndent(struct {
+			Section    string `json:"section"`
+			Project    string `json:"project"`
+			TasksMoved int    `json:"tasks_moved"`
+		}{Section: sectionName, Project: project.Name, TasksMoved: taskCount}, "", "  ")
+		fmt.Println(string(data))
+		return nil
+	}
 	if taskCount > 0 {
 		fmt.Printf("Removed section '%s' (%d tasks moved to unsectioned)\n", sectionName, taskCount)
 	} else {

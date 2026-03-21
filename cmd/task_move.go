@@ -84,6 +84,11 @@ func init() {
 	taskMoveCmd.AddCommand(taskMoveDownCmd)
 	taskMoveCmd.AddCommand(taskIndentCmd)
 	taskMoveCmd.AddCommand(taskOutdentCmd)
+
+	addOutputFlags(taskMoveUpCmd)
+	addOutputFlags(taskMoveDownCmd)
+	addOutputFlags(taskIndentCmd)
+	addOutputFlags(taskOutdentCmd)
 }
 
 // runTaskMoveAction is the generic skeleton for all move subcommands:
@@ -91,6 +96,7 @@ func init() {
 func runTaskMoveAction(
 	args []string,
 	action string,
+	out MutateOutput,
 	validate func(*models.Project, *models.Task) error,
 	move func(*models.Project, *models.Task) error,
 	describe func(*models.Project, *models.Task) string,
@@ -123,12 +129,21 @@ func runTaskMoveAction(
 		return fmt.Errorf("failed to save: %w", err)
 	}
 
-	fmt.Println(describe(project, task))
+	if out.JSON {
+		return outputSingleTaskJSON(task)
+	}
+	if !out.Quiet {
+		fmt.Println(describe(project, task))
+	}
 	return nil
 }
 
 func runTaskMoveUp(cmd *cobra.Command, args []string) error {
-	return runTaskMoveAction(args, "up",
+	out, err := getOutputOpts(cmd)
+	if err != nil {
+		return err
+	}
+	return runTaskMoveAction(args, "up", out,
 		func(p *models.Project, t *models.Task) error {
 			siblings := p.GetSiblings(t)
 			idx := p.FindSiblingIndex(t)
@@ -148,7 +163,11 @@ func runTaskMoveUp(cmd *cobra.Command, args []string) error {
 }
 
 func runTaskMoveDown(cmd *cobra.Command, args []string) error {
-	return runTaskMoveAction(args, "down",
+	out, err := getOutputOpts(cmd)
+	if err != nil {
+		return err
+	}
+	return runTaskMoveAction(args, "down", out,
 		func(p *models.Project, t *models.Task) error {
 			siblings := p.GetSiblings(t)
 			idx := p.FindSiblingIndex(t)
@@ -168,7 +187,11 @@ func runTaskMoveDown(cmd *cobra.Command, args []string) error {
 }
 
 func runTaskIndent(cmd *cobra.Command, args []string) error {
-	return runTaskMoveAction(args, "indent",
+	out, err := getOutputOpts(cmd)
+	if err != nil {
+		return err
+	}
+	return runTaskMoveAction(args, "indent", out,
 		func(p *models.Project, t *models.Task) error {
 			targetParent := p.GetTaskAbove(t)
 			if targetParent == nil {
@@ -195,7 +218,12 @@ func runTaskOutdent(cmd *cobra.Command, args []string) error {
 	var oldParentShortID int
 	var oldParentTitle string
 
-	return runTaskMoveAction(args, "outdent",
+	out, err := getOutputOpts(cmd)
+	if err != nil {
+		return err
+	}
+
+	return runTaskMoveAction(args, "outdent", out,
 		func(p *models.Project, t *models.Task) error {
 			if ok, reason := t.CanOutdent(); !ok {
 				return fmt.Errorf("cannot outdent: %s", reason)

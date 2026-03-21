@@ -36,9 +36,15 @@ var commentEditEditor string
 func init() {
 	taskCommentEditCmd.Flags().StringVar(&commentEditEditor, "editor", "", "editor to use")
 	taskCommentCmd.AddCommand(taskCommentEditCmd)
+	addOutputFlags(taskCommentEditCmd)
 }
 
 func runTaskCommentEdit(cmd *cobra.Command, args []string) error {
+	out, err := getOutputOpts(cmd)
+	if err != nil {
+		return err
+	}
+
 	if len(args) < 2 {
 		return tterrors.NewRequiredFieldError("task ID and comment index")
 	}
@@ -102,6 +108,11 @@ func runTaskCommentEdit(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to save: %w", err)
 	}
 
-	fmt.Printf("Updated comment %d on #%d: %s\n", index, task.ShortID, task.Title)
+	if out.JSON {
+		return outputSingleTaskJSON(task)
+	}
+	if !out.Quiet {
+		fmt.Printf("Updated comment %d on #%d: %s\n", index, task.ShortID, task.Title)
+	}
 	return nil
 }

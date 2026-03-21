@@ -22,6 +22,7 @@ Examples:
 
 func init() {
 	boardCmd.AddCommand(boardDismissCmd)
+	addOutputFlags(boardDismissCmd)
 }
 
 func runBoardDismiss(cmd *cobra.Command, args []string) error {
@@ -39,6 +40,11 @@ func runBoardDismiss(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("action not found: %s", args[0])
 	}
 
+	out, err := getOutputOpts(cmd)
+	if err != nil {
+		return err
+	}
+
 	if msg := task.CanTransitionTo(models.StatusCanceled); msg != "" {
 		return fmt.Errorf("cannot dismiss: %s", msg)
 	}
@@ -51,6 +57,5 @@ func runBoardDismiss(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to save: %w", err)
 	}
 
-	fmt.Println(TaskMsg(project.Name, "Dismissed", task))
-	return nil
+	return out.OutputTask(project.Name, "Dismissed", task)
 }

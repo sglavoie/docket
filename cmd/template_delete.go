@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"github.com/spf13/cobra"
@@ -26,11 +27,17 @@ Example:
 func init() {
 	templateCmd.AddCommand(templateDeleteCmd)
 	templateDeleteCmd.Flags().BoolVarP(&templateDeleteForce, "force", "f", false, "Skip confirmation prompt")
+	addOutputFlags(templateDeleteCmd)
 }
 
 func runTemplateDelete(cmd *cobra.Command, args []string) error {
 	if len(args) < 1 {
 		return tterrors.NewRequiredFieldError("template ID")
+	}
+
+	out, err := getOutputOpts(cmd)
+	if err != nil {
+		return err
 	}
 
 	templateID := args[0]
@@ -60,6 +67,17 @@ func runTemplateDelete(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	if out.Quiet {
+		return nil
+	}
+	if out.JSON {
+		data, _ := json.MarshalIndent(struct {
+			ID   string `json:"id"`
+			Name string `json:"name"`
+		}{ID: templateID, Name: templateName}, "", "  ")
+		fmt.Println(string(data))
+		return nil
+	}
 	fmt.Printf("Deleted task template: %s [%s]\n", templateName, templateID)
 	return nil
 }

@@ -34,6 +34,12 @@ Examples:
 func init() {
 	taskCmd.AddCommand(taskPriorityCmd)
 	addOutputFlags(taskPriorityCmd)
+	taskPriorityCmd.ValidArgsFunction = func(_ *cobra.Command, args []string, _ string) ([]string, cobra.ShellCompDirective) {
+		if len(args) >= 1 {
+			return []string{"1", "2", "3", "4", "5"}, cobra.ShellCompDirectiveNoFileComp
+		}
+		return nil, cobra.ShellCompDirectiveNoFileComp
+	}
 }
 
 func runTaskPriority(cmd *cobra.Command, args []string) error {
@@ -78,10 +84,12 @@ func runTaskPriority(cmd *cobra.Command, args []string) error {
 	for _, taskID := range taskIDs {
 		var oldPriority int
 
+		alreadyAtPriority := false
 		task, err := WithTaskUpdate(taskID, func(task *models.Task) error {
 			oldPriority = task.Priority
 
 			if oldPriority == priority {
+				alreadyAtPriority = true
 				return fmt.Errorf("already at priority %d", priority)
 			}
 
@@ -90,6 +98,10 @@ func runTaskPriority(cmd *cobra.Command, args []string) error {
 		})
 
 		if err != nil {
+			if alreadyAtPriority && len(taskIDs) > 1 {
+				// In batch mode, silently skip tasks already at the target priority
+				continue
+			}
 			errs = append(errs, fmt.Sprintf("task %s: %s", taskID, err))
 			continue
 		}

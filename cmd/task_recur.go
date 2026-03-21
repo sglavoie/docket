@@ -52,9 +52,15 @@ func init() {
 	taskRecurCmd.Flags().BoolVar(&taskRecurClear, "clear", false, "Remove recurrence pattern")
 	taskRecurCmd.Flags().BoolVar(&taskRecurSkip, "skip", false, "Skip next occurrence and advance due date")
 	taskRecurCmd.Flags().IntVar(&taskRecurDefer, "defer", 0, "Defer recurrence by N days")
+	addOutputFlags(taskRecurCmd)
 }
 
 func runTaskRecur(cmd *cobra.Command, args []string) error {
+	out, err := getOutputOpts(cmd)
+	if err != nil {
+		return err
+	}
+
 	// Reject conflicting action flags
 	actionCount := 0
 	var actionFlags []string
@@ -100,11 +106,16 @@ func runTaskRecur(cmd *cobra.Command, args []string) error {
 		}); err != nil {
 			return tterrors.NewSaveProjectError(project.Name, err)
 		}
-		dueStr := "none"
-		if task.DueDate != nil {
-			dueStr = task.DueDate.Format("Mon Jan 2, 2006")
+		if out.JSON {
+			return outputSingleTaskJSON(task)
 		}
-		fmt.Printf("Skipped: next due %s\n", dueStr)
+		if !out.Quiet {
+			dueStr := "none"
+			if task.DueDate != nil {
+				dueStr = task.DueDate.Format("Mon Jan 2, 2006")
+			}
+			fmt.Printf("Skipped: next due %s\n", dueStr)
+		}
 		return nil
 	}
 
@@ -123,11 +134,16 @@ func runTaskRecur(cmd *cobra.Command, args []string) error {
 		}); err != nil {
 			return tterrors.NewSaveProjectError(project.Name, err)
 		}
-		dueStr := "none"
-		if task.DueDate != nil {
-			dueStr = task.DueDate.Format("Mon Jan 2, 2006")
+		if out.JSON {
+			return outputSingleTaskJSON(task)
 		}
-		fmt.Printf("Deferred: now due %s\n", dueStr)
+		if !out.Quiet {
+			dueStr := "none"
+			if task.DueDate != nil {
+				dueStr = task.DueDate.Format("Mon Jan 2, 2006")
+			}
+			fmt.Printf("Deferred: now due %s\n", dueStr)
+		}
 		return nil
 	}
 
@@ -144,7 +160,12 @@ func runTaskRecur(cmd *cobra.Command, args []string) error {
 		}); err != nil {
 			return tterrors.NewSaveProjectError(project.Name, err)
 		}
-		fmt.Printf("Removed recurrence from task #%d (%s)\n", task.ShortID, task.Title)
+		if out.JSON {
+			return outputSingleTaskJSON(task)
+		}
+		if !out.Quiet {
+			fmt.Printf("Removed recurrence from task #%d (%s)\n", task.ShortID, task.Title)
+		}
 		return nil
 	}
 
@@ -192,10 +213,15 @@ func runTaskRecur(cmd *cobra.Command, args []string) error {
 		return tterrors.NewSaveProjectError(project.Name, err)
 	}
 
-	if oldPattern != "" {
-		fmt.Printf("Updated recurrence for task #%d: %s -> %s (%s)\n", task.ShortID, oldPattern, pattern.String(), task.Title)
-	} else {
-		fmt.Printf("Set recurrence for task #%d: %s (%s)\n", task.ShortID, pattern.String(), task.Title)
+	if out.JSON {
+		return outputSingleTaskJSON(task)
+	}
+	if !out.Quiet {
+		if oldPattern != "" {
+			fmt.Printf("Updated recurrence for task #%d: %s -> %s (%s)\n", task.ShortID, oldPattern, pattern.String(), task.Title)
+		} else {
+			fmt.Printf("Set recurrence for task #%d: %s (%s)\n", task.ShortID, pattern.String(), task.Title)
+		}
 	}
 	return nil
 }

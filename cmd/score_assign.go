@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"github.com/spf13/cobra"
@@ -37,11 +38,18 @@ Examples:
 func init() {
 	scoreCmd.AddCommand(scoreAssignCmd)
 	scoreCmd.AddCommand(scoreUnassignCmd)
+	addOutputFlags(scoreAssignCmd)
+	addOutputFlags(scoreUnassignCmd)
 }
 
 func runScoreAssign(cmd *cobra.Command, args []string) error {
 	if len(args) < 1 {
 		return tterrors.NewRequiredFieldError("task ID")
+	}
+
+	out, err := getOutputOpts(cmd)
+	if err != nil {
+		return err
 	}
 
 	cfg, configManager, err := LoadConfig()
@@ -63,11 +71,30 @@ func runScoreAssign(cmd *cobra.Command, args []string) error {
 	if err := saveConfig(configManager, cfg); err != nil {
 		return err
 	}
+
+	if out.Quiet {
+		return nil
+	}
+	if out.JSON {
+		data, _ := json.MarshalIndent(struct {
+			ProfileID   string `json:"profile_id"`
+			ProfileName string `json:"profile_name"`
+			ProjectID   string `json:"project_id"`
+			ProjectName string `json:"project_name"`
+		}{ProfileID: profile.ID, ProfileName: profile.Name, ProjectID: project.ID, ProjectName: project.Name}, "", "  ")
+		fmt.Println(string(data))
+		return nil
+	}
 	fmt.Printf("Assigned profile %q to project %q\n", profile.Name, project.Name)
 	return nil
 }
 
 func runScoreUnassign(cmd *cobra.Command, args []string) error {
+	out, err := getOutputOpts(cmd)
+	if err != nil {
+		return err
+	}
+
 	cfg, configManager, err := LoadConfig()
 	if err != nil {
 		return err
@@ -81,6 +108,18 @@ func runScoreUnassign(cmd *cobra.Command, args []string) error {
 	cfg.UnsetProjectScoringProfile(project.ID)
 	if err := saveConfig(configManager, cfg); err != nil {
 		return err
+	}
+
+	if out.Quiet {
+		return nil
+	}
+	if out.JSON {
+		data, _ := json.MarshalIndent(struct {
+			ProjectID   string `json:"project_id"`
+			ProjectName string `json:"project_name"`
+		}{ProjectID: project.ID, ProjectName: project.Name}, "", "  ")
+		fmt.Println(string(data))
+		return nil
 	}
 	fmt.Printf("Removed scoring profile from project %q\n", project.Name)
 	return nil

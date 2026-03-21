@@ -38,9 +38,21 @@ Examples:
 func init() {
 	taskCmd.AddCommand(taskMoveToCmd)
 	taskMoveToCmd.Flags().BoolVarP(&taskMoveToForce, "force", "f", false, "Skip confirmation prompt")
+	addOutputFlags(taskMoveToCmd)
+	taskMoveToCmd.ValidArgsFunction = func(_ *cobra.Command, args []string, _ string) ([]string, cobra.ShellCompDirective) {
+		if len(args) == 1 {
+			return completeProjectSlugs()(nil, nil, "")
+		}
+		return nil, cobra.ShellCompDirectiveNoFileComp
+	}
 }
 
 func runTaskMoveTo(cmd *cobra.Command, args []string) error {
+	out, err := getOutputOpts(cmd)
+	if err != nil {
+		return err
+	}
+
 	cfg, configManager, err := LoadConfig()
 	if err != nil {
 		return err
@@ -209,20 +221,21 @@ func runTaskMoveTo(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	// Print result
-	if descendants > 0 {
-		fmt.Printf("Moved #%d: %s (and %d descendants) to %s\n",
-			result.OldShortIDs[0], task.Title, descendants, destProject.Name)
-	} else {
-		fmt.Printf("Moved #%d: %s to %s\n",
-			result.OldShortIDs[0], task.Title, destProject.Name)
+	if out.JSON {
+		return outputSingleTaskJSON(task)
 	}
-
-	if len(result.ClearedDeps) > 0 {
-		fmt.Printf("Cleared %d dependencies that pointed to tasks in the source project.\n", len(result.ClearedDeps))
+	if !out.Quiet {
+		if descendants > 0 {
+			fmt.Printf("Moved #%d: %s (and %d descendants) to %s\n",
+				result.OldShortIDs[0], task.Title, descendants, destProject.Name)
+		} else {
+			fmt.Printf("Moved #%d: %s to %s\n",
+				result.OldShortIDs[0], task.Title, destProject.Name)
+		}
+		if len(result.ClearedDeps) > 0 {
+			fmt.Printf("Cleared %d dependencies that pointed to tasks in the source project.\n", len(result.ClearedDeps))
+		}
+		fmt.Printf("New task ID in %s: #%d\n", destProject.Name, task.ShortID)
 	}
-
-	fmt.Printf("New task ID in %s: #%d\n", destProject.Name, task.ShortID)
-
 	return nil
 }

@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
 	"strconv"
 	"strings"
@@ -27,11 +28,17 @@ Examples:
 
 func init() {
 	scoreCmd.AddCommand(scoreSetCmd)
+	addOutputFlags(scoreSetCmd)
 }
 
 func runScoreSet(cmd *cobra.Command, args []string) error {
 	if len(args) < 2 {
 		return tterrors.NewRequiredFieldError("task ID and score")
+	}
+
+	out, err := getOutputOpts(cmd)
+	if err != nil {
+		return err
 	}
 
 	project, cfg, configManager, err := LoadCurrentProject()
@@ -85,6 +92,23 @@ func runScoreSet(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	if out.Quiet {
+		return nil
+	}
+	if out.JSON {
+		dims := task.ScoreDimensions
+		if dims == nil {
+			dims = make(map[string]int)
+		}
+		data, _ := json.MarshalIndent(struct {
+			TaskID     string         `json:"task_id"`
+			ShortID    int            `json:"short_id"`
+			Title      string         `json:"title"`
+			Dimensions map[string]int `json:"dimensions"`
+		}{TaskID: task.ID, ShortID: task.ShortID, Title: task.Title, Dimensions: dims}, "", "  ")
+		fmt.Println(string(data))
+		return nil
+	}
 	fmt.Printf("Updated score dimensions for task #%d %q\n", task.ShortID, task.Title)
 	return nil
 }

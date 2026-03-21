@@ -26,6 +26,7 @@ Examples:
 func init() {
 	boardCmd.AddCommand(boardEditCmd)
 	boardEditCmd.Flags().StringVar(&boardEditEditor, "editor", "", "editor to use")
+	addOutputFlags(boardEditCmd)
 }
 
 func runBoardEdit(cmd *cobra.Command, args []string) error {
@@ -43,6 +44,11 @@ func runBoardEdit(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("action not found: %s", args[0])
 	}
 
+	out, err := getOutputOpts(cmd)
+	if err != nil {
+		return err
+	}
+
 	editor := resolveEditor(boardEditEditor, cfg.Editor)
 	tasksFile := storage.GetTasksFilePath(project)
 
@@ -51,6 +57,5 @@ func runBoardEdit(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("editor failed: %w", err)
 	}
 
-	fmt.Println("Action updated.")
-	return nil
+	return out.OutputTask(project.Name, "Updated", task)
 }

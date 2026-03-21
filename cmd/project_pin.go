@@ -23,6 +23,7 @@ Examples:
 
 func init() {
 	projectCmd.AddCommand(projectPinCmd)
+	addOutputFlags(projectPinCmd)
 }
 
 func runProjectPin(cmd *cobra.Command, args []string) error {
@@ -35,6 +36,11 @@ func runProjectPin(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	out, err := getOutputOpts(cmd)
+	if err != nil {
+		return err
+	}
+
 	project.TogglePinned()
 
 	if err := saveConfig(configManager, cfg); err != nil {
@@ -42,9 +48,7 @@ func runProjectPin(cmd *cobra.Command, args []string) error {
 	}
 
 	if project.Pinned {
-		fmt.Printf("Pinned project '%s'\n", project.Name)
-	} else {
-		fmt.Printf("Unpinned project '%s'\n", project.Name)
+		return out.OutputProject(project, func() { fmt.Printf("Pinned project '%s'\n", project.Name) })
 	}
-	return nil
+	return out.OutputProject(project, func() { fmt.Printf("Unpinned project '%s'\n", project.Name) })
 }

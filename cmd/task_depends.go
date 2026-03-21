@@ -37,9 +37,17 @@ func init() {
 	taskDependsCmd.Flags().BoolVar(&dependsClearFlag, "clear", false, "Clear all dependencies")
 
 	taskCmd.AddCommand(taskDependsCmd)
+	addOutputFlags(taskDependsCmd)
+	_ = taskDependsCmd.RegisterFlagCompletionFunc("on", completeCurrentProjectTaskIDs())
+	_ = taskDependsCmd.RegisterFlagCompletionFunc("remove", completeCurrentProjectTaskIDs())
 }
 
 func runTaskDepends(cmd *cobra.Command, args []string) error {
+	out, err := getOutputOpts(cmd)
+	if err != nil {
+		return err
+	}
+
 	if len(args) < 1 {
 		return tterrors.NewRequiredFieldError("task ID")
 	}
@@ -98,7 +106,12 @@ func runTaskDepends(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
-		fmt.Printf("Cleared all dependencies for #%d: %s\n", task.ShortID, task.Title)
+		if out.JSON {
+			return outputSingleTaskJSON(task)
+		}
+		if !out.Quiet {
+			fmt.Printf("Cleared all dependencies for #%d: %s\n", task.ShortID, task.Title)
+		}
 		return nil
 	}
 
@@ -113,14 +126,18 @@ func runTaskDepends(cmd *cobra.Command, args []string) error {
 				return fmt.Errorf("task #%d does not depend on #%d", t.ShortID, blocker.ShortID)
 			}
 			t.RemoveDependency(blocker.ID)
-			fmt.Printf("Removed dependency: #%d no longer depends on #%d (%s)\n",
-				t.ShortID, blocker.ShortID, blocker.Title)
+			if !out.Quiet {
+				fmt.Printf("Removed dependency: #%d no longer depends on #%d (%s)\n",
+					t.ShortID, blocker.ShortID, blocker.Title)
+			}
 			return nil
 		})
 		if err != nil {
 			return err
 		}
-		_ = task // used by inner function
+		if out.JSON {
+			return outputSingleTaskJSON(task)
+		}
 		return nil
 	}
 
@@ -143,14 +160,18 @@ func runTaskDepends(cmd *cobra.Command, args []string) error {
 			if err := t.AddDependency(blocker.ID); err != nil {
 				return err
 			}
-			fmt.Printf("Added dependency: #%d now depends on #%d (%s)\n",
-				t.ShortID, blocker.ShortID, blocker.Title)
+			if !out.Quiet {
+				fmt.Printf("Added dependency: #%d now depends on #%d (%s)\n",
+					t.ShortID, blocker.ShortID, blocker.Title)
+			}
 			return nil
 		})
 		if err != nil {
 			return err
 		}
-		_ = task // used by inner function
+		if out.JSON {
+			return outputSingleTaskJSON(task)
+		}
 		return nil
 	}
 

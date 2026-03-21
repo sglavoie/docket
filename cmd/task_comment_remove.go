@@ -30,19 +30,27 @@ Examples:
 func init() {
 	taskCommentRemoveCmd.Flags().BoolVar(&commentClearFlag, "clear", false, "Remove all comments")
 	taskCommentCmd.AddCommand(taskCommentRemoveCmd)
+	addOutputFlags(taskCommentRemoveCmd)
 }
 
 func runTaskCommentRemove(cmd *cobra.Command, args []string) error {
-	_, err := WithTaskUpdate(args[0], func(task *models.Task) error {
+	out, err := getOutputOpts(cmd)
+	if err != nil {
+		return err
+	}
+
+	var removedCount int
+	var removedIndex int
+
+	task, err := WithTaskUpdate(args[0], func(task *models.Task) error {
 		// Handle --clear flag
 		if commentClearFlag {
 			if len(task.Comments) == 0 {
 				fmt.Printf("Task #%d has no comments to clear\n", task.ShortID)
 				return nil
 			}
-			count := len(task.Comments)
+			removedCount = len(task.Comments)
 			task.ClearComments()
-			fmt.Printf("Cleared %d comment(s) from #%d: %s\n", count, task.ShortID, task.Title)
 			return nil
 		}
 
@@ -60,8 +68,22 @@ func runTaskCommentRemove(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("failed to remove comment at index %d", index)
 		}
 
-		fmt.Printf("Removed comment %d from #%d: %s\n", index, task.ShortID, task.Title)
+		removedIndex = index
 		return nil
 	})
-	return err
+	if err != nil {
+		return err
+	}
+
+	if out.JSON {
+		return outputSingleTaskJSON(task)
+	}
+	if !out.Quiet {
+		if commentClearFlag {
+			fmt.Printf("Cleared %d comment(s) from #%d: %s\n", removedCount, task.ShortID, task.Title)
+		} else {
+			fmt.Printf("Removed comment %d from #%d: %s\n", removedIndex, task.ShortID, task.Title)
+		}
+	}
+	return nil
 }

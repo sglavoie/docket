@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"github.com/spf13/cobra"
@@ -25,11 +26,17 @@ Examples:
 func init() {
 	workflowCmd.AddCommand(workflowResetCmd)
 	workflowResetCmd.Flags().BoolVar(&workflowResetAll, "all", false, "Reset trigger counts for all rules")
+	addOutputFlags(workflowResetCmd)
 }
 
 func runWorkflowReset(cmd *cobra.Command, args []string) error {
 	if !workflowResetAll && len(args) == 0 {
 		return fmt.Errorf("provide a rule ID or use --all")
+	}
+
+	out, err := getOutputOpts(cmd)
+	if err != nil {
+		return err
 	}
 
 	cfg, configManager, err := LoadConfigStrict()
@@ -38,11 +45,22 @@ func runWorkflowReset(cmd *cobra.Command, args []string) error {
 	}
 
 	if workflowResetAll {
+		total := len(cfg.WorkflowRules)
 		cfg.ResetAllRuleTriggerCounts()
 		if err := saveConfig(configManager, cfg); err != nil {
 			return err
 		}
-		fmt.Printf("Reset trigger counts for all %d rules\n", len(cfg.WorkflowRules))
+		if out.Quiet {
+			return nil
+		}
+		if out.JSON {
+			data, _ := json.MarshalIndent(struct {
+				Reset int `json:"reset"`
+			}{Reset: total}, "", "  ")
+			fmt.Println(string(data))
+			return nil
+		}
+		fmt.Printf("Reset trigger counts for all %d rules\n", total)
 		return nil
 	}
 
@@ -63,6 +81,18 @@ func runWorkflowReset(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	if out.Quiet {
+		return nil
+	}
+	if out.JSON {
+		data, _ := json.MarshalIndent(struct {
+			ID            string `json:"id"`
+			Name          string `json:"name"`
+			PreviousCount int64  `json:"previous_count"`
+		}{ID: ruleID, Name: ruleName, PreviousCount: oldCount}, "", "  ")
+		fmt.Println(string(data))
+		return nil
+	}
 	fmt.Printf("Reset trigger count for %q [%s]: %d -> 0\n", ruleName, ruleID, oldCount)
 	return nil
 }

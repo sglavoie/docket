@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"github.com/spf13/cobra"
@@ -24,6 +25,7 @@ Examples:
 
 func init() {
 	blockerCmd.AddCommand(blockerResolveCmd)
+	addOutputFlags(blockerResolveCmd)
 }
 
 func runBlockerResolve(cmd *cobra.Command, args []string) error {
@@ -31,13 +33,40 @@ func runBlockerResolve(cmd *cobra.Command, args []string) error {
 		return tterrors.NewRequiredFieldError("blocker ID")
 	}
 
+	out, err := getOutputOpts(cmd)
+	if err != nil {
+		return err
+	}
+
 	return WithBlockerUpdate(args[0], func(blockers []*models.Blocker, blocker *models.Blocker) ([]*models.Blocker, error) {
 		if blocker.IsResolved() {
+			if out.Quiet {
+				return blockers, nil
+			}
+			if out.JSON {
+				data, err := json.MarshalIndent(blocker, "", "  ")
+				if err != nil {
+					return nil, fmt.Errorf("marshaling blocker: %w", err)
+				}
+				fmt.Println(string(data))
+				return blockers, nil
+			}
 			fmt.Printf("Blocker '%s' is already resolved.\n", blocker.Title)
 			return blockers, nil
 		}
 
 		blocker.Resolve()
+		if out.Quiet {
+			return blockers, nil
+		}
+		if out.JSON {
+			data, err := json.MarshalIndent(blocker, "", "  ")
+			if err != nil {
+				return nil, fmt.Errorf("marshaling blocker: %w", err)
+			}
+			fmt.Println(string(data))
+			return blockers, nil
+		}
 		fmt.Printf("Resolved blocker: %s\n", blocker.Title)
 		return blockers, nil
 	})

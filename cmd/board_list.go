@@ -39,6 +39,26 @@ func init() {
 	boardListCmd.Flags().StringVarP(&boardListSource, "source", "s", "", "filter by source")
 	boardListCmd.Flags().BoolVarP(&boardListDone, "done", "d", false, "show only done items")
 	boardListCmd.Flags().BoolVar(&boardListJSON, "json", false, "output as JSON")
+	_ = boardListCmd.RegisterFlagCompletionFunc("source", func(_ *cobra.Command, _ []string, _ string) ([]string, cobra.ShellCompDirective) {
+		cfg, _, err := LoadConfig()
+		if err != nil {
+			return nil, cobra.ShellCompDirectiveNoFileComp
+		}
+		seen := make(map[string]bool)
+		var sources []string
+		for _, project := range cfg.GetAllLoadableProjects() {
+			if err := storage.LoadProject(project); err != nil {
+				continue
+			}
+			for _, task := range project.Tasks {
+				if task.Source != "" && !seen[task.Source] {
+					seen[task.Source] = true
+					sources = append(sources, task.Source)
+				}
+			}
+		}
+		return sources, cobra.ShellCompDirectiveNoFileComp
+	})
 }
 
 func runBoardList(cmd *cobra.Command, args []string) error {

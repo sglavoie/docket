@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 
@@ -33,11 +34,17 @@ func init() {
 	taskCmd.AddCommand(taskArchiveCmd)
 	taskArchiveCmd.Flags().BoolVarP(&archiveForce, "force", "f", false, "Skip confirmation prompt")
 	taskArchiveCmd.Flags().BoolVar(&archiveAll, "all", false, "Archive completed tasks across all projects")
+	addOutputFlags(taskArchiveCmd)
 }
 
 func runTaskArchive(cmd *cobra.Command, args []string) error {
+	out, err := getOutputOpts(cmd)
+	if err != nil {
+		return err
+	}
+
 	if archiveAll {
-		return runTaskArchiveAll()
+		return runTaskArchiveAll(out)
 	}
 
 	project, cfg, _, err := LoadCurrentProject()
@@ -52,7 +59,7 @@ func runTaskArchive(cmd *cobra.Command, args []string) error {
 	}
 
 	// Confirmation unless --force
-	if !ConfirmYN(fmt.Sprintf("Archive %s to completed.md? [y/N] ", Pluralize(len(completedTasks), "completed task", "completed tasks")), archiveForce) {
+	if !ConfirmYN(fmt.Sprintf("Archive %s to completed.md? [y/N]: ", Pluralize(len(completedTasks), "completed task", "completed tasks")), archiveForce) {
 		fmt.Println("Canceled")
 		return nil
 	}
@@ -76,19 +83,36 @@ func runTaskArchive(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to archive tasks: %w", err)
 	}
 
-	fmt.Printf("Archived %s to completed.md\n", Pluralize(count, "task", "tasks"))
+	if out.JSON {
+		entry := struct {
+			ArchivedCount int    `json:"archived_count"`
+			Project       string `json:"project"`
+		}{ArchivedCount: count, Project: project.Name}
+		data, _ := json.MarshalIndent(entry, "", "  ")
+		fmt.Println(string(data))
+		return nil
+	}
+	if !out.Quiet {
+		fmt.Printf("Archived %s to completed.md\n", Pluralize(count, "task", "tasks"))
+	}
 	return nil
 }
 
-func runTaskArchiveAll() error {
+func runTaskArchiveAll(out MutateOutput) error {
 	cfg, _, err := LoadConfigStrict()
 	if err != nil {
 		return err
 	}
 
+	type projectResult struct {
+		Name     string `json:"name"`
+		Archived int    `json:"archived"`
+	}
+
 	projects := cfg.GetActiveProjects()
 	totalArchived := 0
 	var failures []string
+	var results []projectResult
 
 	for _, project := range projects {
 		if err := storage.LoadProject(project); err != nil {
@@ -101,8 +125,10 @@ func runTaskArchiveAll() error {
 			continue
 		}
 
-		if !ConfirmYN(fmt.Sprintf("[%s] Archive %s? [y/N] ", project.Name, Pluralize(len(completedTasks), "completed task", "completed tasks")), archiveForce) {
-			fmt.Printf("[%s] Skipped.\n", project.Name)
+		if !ConfirmYN(fmt.Sprintf("[%s] Archive %s? [y/N]: ", project.Name, Pluralize(len(completedTasks), "completed task", "completed tasks")), archiveForce) {
+			if !out.Quiet {
+				fmt.Printf("[%s] Skipped.\n", project.Name)
+			}
 			continue
 		}
 
@@ -117,11 +143,26 @@ func runTaskArchiveAll() error {
 			continue
 		}
 
-		fmt.Printf("[%s] Archived %s\n", project.Name, Pluralize(count, "task", "tasks"))
+		results = append(results, projectResult{Name: project.Name, Archived: count})
+		if !out.Quiet {
+			fmt.Printf("[%s] Archived %s\n", project.Name, Pluralize(count, "task", "tasks"))
+		}
 		totalArchived += count
 	}
 
-	fmt.Printf("\nTotal: archived %s across all projects\n", Pluralize(totalArchived, "task", "tasks"))
+	if out.JSON {
+		summary := struct {
+			TotalArchived int             `json:"total_archived"`
+			Projects      []projectResult `json:"projects"`
+		}{TotalArchived: totalArchived, Projects: results}
+		data, _ := json.MarshalIndent(summary, "", "  ")
+		fmt.Println(string(data))
+		return nil
+	}
+
+	if !out.Quiet {
+		fmt.Printf("\nTotal: archived %s across all projects\n", Pluralize(totalArchived, "task", "tasks"))
+	}
 	if len(failures) > 0 {
 		fmt.Printf("\n%d project(s) had errors:\n", len(failures))
 		for _, f := range failures {

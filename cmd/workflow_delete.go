@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"github.com/spf13/cobra"
@@ -26,11 +27,17 @@ Example:
 func init() {
 	workflowCmd.AddCommand(workflowDeleteCmd)
 	workflowDeleteCmd.Flags().BoolVarP(&workflowDeleteForce, "force", "f", false, "Skip confirmation prompt")
+	addOutputFlags(workflowDeleteCmd)
 }
 
 func runWorkflowDelete(cmd *cobra.Command, args []string) error {
 	if len(args) < 1 {
 		return tterrors.NewRequiredFieldError("rule ID")
+	}
+
+	out, err := getOutputOpts(cmd)
+	if err != nil {
+		return err
 	}
 
 	ruleID := args[0]
@@ -63,6 +70,17 @@ func runWorkflowDelete(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	if out.Quiet {
+		return nil
+	}
+	if out.JSON {
+		data, _ := json.MarshalIndent(struct {
+			ID   string `json:"id"`
+			Name string `json:"name"`
+		}{ID: ruleID, Name: ruleName}, "", "  ")
+		fmt.Println(string(data))
+		return nil
+	}
 	fmt.Printf("Deleted workflow rule: %s [%s]\n", ruleName, ruleID)
 	return nil
 }

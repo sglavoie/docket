@@ -27,9 +27,15 @@ Examples:
 
 func init() {
 	taskCommentCmd.AddCommand(taskCommentAddCmd)
+	addOutputFlags(taskCommentAddCmd)
 }
 
 func runTaskCommentAdd(cmd *cobra.Command, args []string) error {
+	out, err := getOutputOpts(cmd)
+	if err != nil {
+		return err
+	}
+
 	if len(args) < 2 {
 		return tterrors.NewRequiredFieldError("task ID and comment text")
 	}
@@ -53,6 +59,11 @@ func runTaskCommentAdd(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	fmt.Printf("Added comment to #%d: %s\n", task.ShortID, task.Title)
+	if out.JSON {
+		return outputSingleTaskJSON(task)
+	}
+	if !out.Quiet {
+		fmt.Printf("Added comment to #%d: %s\n", task.ShortID, task.Title)
+	}
 	return nil
 }

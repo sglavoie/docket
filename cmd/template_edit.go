@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
 	"slices"
 	"strings"
@@ -94,11 +95,17 @@ func init() {
 	_ = templateEditCmd.RegisterFlagCompletionFunc("type", completeEnum(taskTypeCompletions))
 	_ = templateEditCmd.RegisterFlagCompletionFunc("category", completeEnum(categoryCompletions))
 	_ = templateEditCmd.RegisterFlagCompletionFunc("section", completeProjectSections())
+	addOutputFlags(templateEditCmd)
 }
 
 func runTemplateEdit(cmd *cobra.Command, args []string) error {
 	if len(args) < 1 {
 		return tterrors.NewRequiredFieldError("template ID or name")
+	}
+
+	out, err := getOutputOpts(cmd)
+	if err != nil {
+		return err
 	}
 
 	templateID := args[0]
@@ -286,6 +293,19 @@ func runTemplateEdit(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	if out.Quiet {
+		return nil
+	}
+	if out.JSON {
+		data, _ := json.MarshalIndent(struct {
+			ID      string `json:"id"`
+			Name    string `json:"name"`
+			Type    string `json:"type"`
+			Summary string `json:"summary"`
+		}{ID: t.ID, Name: t.Name, Type: string(t.Type), Summary: t.Summary()}, "", "  ")
+		fmt.Println(string(data))
+		return nil
+	}
 	fmt.Printf("Updated task template: %s [%s]\n", t.Name, t.ID)
 	fmt.Printf("  %s\n", t.Summary())
 	if len(t.Checklist) > 0 {

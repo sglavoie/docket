@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"bufio"
+	"encoding/json"
 	"fmt"
 	"os"
 	"strings"
@@ -27,6 +28,7 @@ Examples:
 
 func init() {
 	contextCmd.AddCommand(contextNewCmd)
+	addOutputFlags(contextNewCmd)
 }
 
 func runContextNew(cmd *cobra.Command, args []string) error {
@@ -40,6 +42,11 @@ func runContextNew(cmd *cobra.Command, args []string) error {
 	}
 
 	cfg, mgr, err := LoadConfig()
+	if err != nil {
+		return err
+	}
+
+	out, err := getOutputOpts(cmd)
 	if err != nil {
 		return err
 	}
@@ -106,6 +113,17 @@ func runContextNew(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	if out.Quiet {
+		return nil
+	}
+	if out.JSON {
+		data, _ := json.MarshalIndent(struct {
+			Context  string `json:"context"`
+			Projects int    `json:"projects"`
+		}{Context: name, Projects: len(selectedIDs)}, "", "  ")
+		fmt.Println(string(data))
+		return nil
+	}
 	fmt.Printf("Created custom context '%s' with %d project(s)\n", name, len(selectedIDs))
 	return nil
 }

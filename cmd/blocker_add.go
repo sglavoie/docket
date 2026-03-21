@@ -69,6 +69,6 @@ func runBlockerAdd(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	fmt.Printf("Created blocker: %s (%s)\n", title, blocker.ID[:8])
+	fmt.Printf("Created blocker '%s' [%s]\n", title, blocker.ID[:8])
 	return nil
 }

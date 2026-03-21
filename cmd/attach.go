@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -47,9 +48,15 @@ Examples:
 func init() {
 	rootCmd.AddCommand(attachCmd)
 	attachCmd.Flags().StringVarP(&attachURL, "url", "u", "", "attach a URL reference instead of a file")
+	addOutputFlags(attachCmd)
 }
 
 func runAttach(cmd *cobra.Command, args []string) error {
+	out, err := getOutputOpts(cmd)
+	if err != nil {
+		return err
+	}
+
 	project, cfg, configManager, errLoad := LoadCurrentProject()
 	if errLoad != nil {
 		return errLoad
@@ -66,6 +73,9 @@ func runAttach(cmd *cobra.Command, args []string) error {
 		if url == "" {
 			return fmt.Errorf("URL cannot be empty")
 		}
+		if len(url) > 2000 {
+			return fmt.Errorf("URL exceeds maximum length of 2000 characters (%d)", len(url))
+		}
 
 		if err := task.AddAttachment(url, true, url); err != nil {
 			return err
@@ -78,6 +88,18 @@ func runAttach(cmd *cobra.Command, args []string) error {
 			return err
 		}
 
+		if out.Quiet {
+			return nil
+		}
+		if out.JSON {
+			data, _ := json.MarshalIndent(struct {
+				TaskShortID int    `json:"task_short_id"`
+				Attachment  string `json:"attachment"`
+				Type        string `json:"type"`
+			}{TaskShortID: task.ShortID, Attachment: url, Type: "url"}, "", "  ")
+			fmt.Println(string(data))
+			return nil
+		}
 		fmt.Printf("Attached URL to #%d: %s\n", task.ShortID, url)
 		return nil
 	}
@@ -105,6 +127,18 @@ func runAttach(cmd *cobra.Command, args []string) error {
 			return err
 		}
 
+		if out.Quiet {
+			return nil
+		}
+		if out.JSON {
+			data, _ := json.MarshalIndent(struct {
+				TaskShortID int    `json:"task_short_id"`
+				Attachment  string `json:"attachment"`
+				Type        string `json:"type"`
+			}{TaskShortID: task.ShortID, Attachment: fmt.Sprintf("%s:%d", codePath, lineNum), Type: "code_ref"}, "", "  ")
+			fmt.Println(string(data))
+			return nil
+		}
 		// Check if file exists and show info message if not
 		if !storage.CodeReferenceFileExists(codePath) {
 			fmt.Printf("Attached code reference to #%d: %s:%d\n", task.ShortID, codePath, lineNum)
@@ -154,6 +188,18 @@ func runAttach(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	if out.Quiet {
+		return nil
+	}
+	if out.JSON {
+		data, _ := json.MarshalIndent(struct {
+			TaskShortID int    `json:"task_short_id"`
+			Attachment  string `json:"attachment"`
+			Type        string `json:"type"`
+		}{TaskShortID: task.ShortID, Attachment: filename, Type: "file"}, "", "  ")
+		fmt.Println(string(data))
+		return nil
+	}
 	fmt.Printf("Attached file to #%d: %s\n", task.ShortID, filename)
 	return nil
 }

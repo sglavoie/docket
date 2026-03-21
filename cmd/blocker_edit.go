@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -36,11 +37,17 @@ func init() {
 	blockerEditCmd.Flags().StringVarP(&blockerEditTitle, "title", "t", "", "new title for the blocker")
 	blockerEditCmd.Flags().StringVarP(&blockerEditDescription, "description", "d", "", "new description for the blocker")
 	blockerEditCmd.Flags().BoolVar(&blockerUnresolve, "unresolve", false, "mark blocker as unresolved")
+	addOutputFlags(blockerEditCmd)
 }
 
 func runBlockerEdit(cmd *cobra.Command, args []string) error {
 	if len(args) < 1 {
 		return tterrors.NewRequiredFieldError("blocker ID")
+	}
+
+	out, err := getOutputOpts(cmd)
+	if err != nil {
+		return err
 	}
 
 	return WithBlockerUpdate(args[0], func(blockers []*models.Blocker, blocker *models.Blocker) ([]*models.Blocker, error) {
@@ -67,6 +74,17 @@ func runBlockerEdit(cmd *cobra.Command, args []string) error {
 			return blockers, fmt.Errorf("no changes specified; use --title, --description, or --unresolve flags")
 		}
 
+		if out.Quiet {
+			return blockers, nil
+		}
+		if out.JSON {
+			data, err := json.MarshalIndent(blocker, "", "  ")
+			if err != nil {
+				return nil, fmt.Errorf("marshaling blocker: %w", err)
+			}
+			fmt.Println(string(data))
+			return blockers, nil
+		}
 		fmt.Printf("Updated blocker: %s\n", blocker.Title)
 		return blockers, nil
 	})

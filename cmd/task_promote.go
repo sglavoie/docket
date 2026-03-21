@@ -68,27 +68,43 @@ func init() {
 	taskCmd.AddCommand(taskCycleCmd)
 
 	taskCycleCmd.Flags().BoolVarP(&cycleLeft, "left", "l", false, "Cycle left instead of right")
+
+	addOutputFlags(taskPromoteCmd)
+	addOutputFlags(taskDemoteCmd)
+	addOutputFlags(taskCycleCmd)
 }
 
 func runTaskPromote(cmd *cobra.Command, args []string) error {
-	return updateTaskType(args, "promote", func(t *models.Task) error {
+	out, err := getOutputOpts(cmd)
+	if err != nil {
+		return err
+	}
+	return updateTaskType(args, "promote", out, func(t *models.Task) error {
 		return t.Promote()
 	})
 }
 
 func runTaskDemote(cmd *cobra.Command, args []string) error {
-	return updateTaskType(args, "demote", func(t *models.Task) error {
+	out, err := getOutputOpts(cmd)
+	if err != nil {
+		return err
+	}
+	return updateTaskType(args, "demote", out, func(t *models.Task) error {
 		return t.Demote()
 	})
 }
 
 func runTaskCycle(cmd *cobra.Command, args []string) error {
-	return updateTaskType(args, "cycle", func(t *models.Task) error {
+	out, err := getOutputOpts(cmd)
+	if err != nil {
+		return err
+	}
+	return updateTaskType(args, "cycle", out, func(t *models.Task) error {
 		return t.CycleLeafType(cycleLeft)
 	})
 }
 
-func updateTaskType(args []string, action string, update func(*models.Task) error) error {
+func updateTaskType(args []string, action string, out MutateOutput, update func(*models.Task) error) error {
 	project, cfg, configManager, err := LoadCurrentProject()
 	if err != nil {
 		return err
@@ -158,12 +174,16 @@ func updateTaskType(args []string, action string, update func(*models.Task) erro
 		return fmt.Errorf("failed to save: %w", err)
 	}
 
-	fmt.Printf("%s #%d: %s (%s -> %s)\n",
-		task.Type.HeadingPrefix(),
-		task.ShortID,
-		task.Title,
-		oldType,
-		task.Type)
-
+	if out.JSON {
+		return outputSingleTaskJSON(task)
+	}
+	if !out.Quiet {
+		fmt.Printf("%s #%d: %s (%s -> %s)\n",
+			task.Type.HeadingPrefix(),
+			task.ShortID,
+			task.Title,
+			oldType,
+			task.Type)
+	}
 	return nil
 }

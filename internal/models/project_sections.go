@@ -53,7 +53,7 @@ func (p *Project) HasSection(name string) bool {
 }
 
 // MaxSectionNameLength is the maximum allowed length for a section name.
-const MaxSectionNameLength = 256
+const MaxSectionNameLength = 50
 
 // EnsureSection adds a section if it does not already exist.
 // Silently rejects names that fail validation — this is intentional because

@@ -36,6 +36,8 @@ Examples:
 func init() {
 	projectCmd.AddCommand(projectArchiveCmd)
 	projectCmd.AddCommand(projectUnarchiveCmd)
+	addOutputFlags(projectArchiveCmd)
+	addOutputFlags(projectUnarchiveCmd)
 }
 
 func runProjectArchive(cmd *cobra.Command, args []string) error {
@@ -44,6 +46,11 @@ func runProjectArchive(cmd *cobra.Command, args []string) error {
 	}
 
 	project, cfg, configManager, err := LoadConfigAndProject(args[0])
+	if err != nil {
+		return err
+	}
+
+	out, err := getOutputOpts(cmd)
 	if err != nil {
 		return err
 	}
@@ -67,8 +74,7 @@ func runProjectArchive(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	fmt.Printf("Archived project '%s'\n", project.Name)
-	return nil
+	return out.OutputProject(project, func() { fmt.Printf("Archived project '%s'\n", project.Name) })
 }
 
 func runProjectUnarchive(cmd *cobra.Command, args []string) error {
@@ -77,6 +83,11 @@ func runProjectUnarchive(cmd *cobra.Command, args []string) error {
 	}
 
 	cfg, configManager, err := LoadConfig()
+	if err != nil {
+		return err
+	}
+
+	out, err := getOutputOpts(cmd)
 	if err != nil {
 		return err
 	}
@@ -104,6 +115,5 @@ func runProjectUnarchive(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	fmt.Printf("Unarchived project '%s'\n", project.Name)
-	return nil
+	return out.OutputProject(project, func() { fmt.Printf("Unarchived project '%s'\n", project.Name) })
 }

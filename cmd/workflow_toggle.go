@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"github.com/spf13/cobra"
@@ -22,11 +23,17 @@ Example:
 
 func init() {
 	workflowCmd.AddCommand(workflowToggleCmd)
+	addOutputFlags(workflowToggleCmd)
 }
 
 func runWorkflowToggle(cmd *cobra.Command, args []string) error {
 	if len(args) < 1 {
 		return tterrors.NewRequiredFieldError("rule ID")
+	}
+
+	out, err := getOutputOpts(cmd)
+	if err != nil {
+		return err
 	}
 
 	ruleID := args[0]
@@ -57,6 +64,19 @@ func runWorkflowToggle(cmd *cobra.Command, args []string) error {
 	status := "enabled"
 	if !enabled {
 		status = "disabled"
+	}
+
+	if out.Quiet {
+		return nil
+	}
+	if out.JSON {
+		data, _ := json.MarshalIndent(struct {
+			ID      string `json:"id"`
+			Name    string `json:"name"`
+			Enabled bool   `json:"enabled"`
+		}{ID: ruleID, Name: ruleName, Enabled: enabled}, "", "  ")
+		fmt.Println(string(data))
+		return nil
 	}
 	fmt.Printf("Workflow rule %q [%s] is now %s\n", ruleName, ruleID, status)
 	return nil

@@ -51,7 +51,7 @@ func runBoardDelete(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("action not found: %s. Use 'tt board list' to see available actions", args[0])
 	}
 
-	if !ConfirmYN(fmt.Sprintf("Delete action #%d '%s'? [y/N] ", task.ShortID, task.Title), boardDeleteForce) {
+	if !ConfirmYN(fmt.Sprintf("Delete action #%d '%s'? [y/N]: ", task.ShortID, task.Title), boardDeleteForce) {
 		if !out.Quiet {
 			fmt.Println("Canceled")
 		}

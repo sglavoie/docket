@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"github.com/spf13/cobra"
@@ -21,6 +22,7 @@ Examples:
 
 func init() {
 	contextCmd.AddCommand(contextRemoveCmd)
+	addOutputFlags(contextRemoveCmd)
 }
 
 func runContextRemove(cmd *cobra.Command, args []string) error {
@@ -32,6 +34,11 @@ func runContextRemove(cmd *cobra.Command, args []string) error {
 	projectSlug := args[1]
 
 	cfg, mgr, err := LoadConfig()
+	if err != nil {
+		return err
+	}
+
+	out, err := getOutputOpts(cmd)
 	if err != nil {
 		return err
 	}
@@ -69,6 +76,17 @@ func runContextRemove(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	if out.Quiet {
+		return nil
+	}
+	if out.JSON {
+		data, _ := json.MarshalIndent(struct {
+			Context string `json:"context"`
+			Project string `json:"project"`
+		}{Context: contextName, Project: project.Name}, "", "  ")
+		fmt.Println(string(data))
+		return nil
+	}
 	fmt.Printf("Removed '%s' from custom context '%s'\n", project.Name, contextName)
 	return nil
 }

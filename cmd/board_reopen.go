@@ -22,6 +22,7 @@ Examples:
 
 func init() {
 	boardCmd.AddCommand(boardReopenCmd)
+	addOutputFlags(boardReopenCmd)
 }
 
 func runBoardReopen(cmd *cobra.Command, args []string) error {
@@ -39,7 +40,15 @@ func runBoardReopen(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("action not found: %s", args[0])
 	}
 
+	out, err := getOutputOpts(cmd)
+	if err != nil {
+		return err
+	}
+
 	if !task.Status.IsComplete() {
+		if out.Quiet {
+			return nil
+		}
 		fmt.Printf("Action #%d is already open.\n", task.ShortID)
 		return nil
 	}
@@ -56,6 +65,5 @@ func runBoardReopen(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to save: %w", err)
 	}
 
-	fmt.Printf("Reopened action #%d: %s\n", task.ShortID, task.Title)
-	return nil
+	return out.OutputTask(project.Name, "Reopened", task)
 }

@@ -22,6 +22,7 @@ Examples:
 
 func init() {
 	boardCmd.AddCommand(boardDoneCmd)
+	addOutputFlags(boardDoneCmd)
 }
 
 func runBoardDone(cmd *cobra.Command, args []string) error {
@@ -39,6 +40,11 @@ func runBoardDone(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("action not found: %s", args[0])
 	}
 
+	out, err := getOutputOpts(cmd)
+	if err != nil {
+		return err
+	}
+
 	if msg := task.CanTransitionTo(models.StatusDone); msg != "" {
 		return fmt.Errorf("cannot mark done: %s", msg)
 	}
@@ -51,6 +57,5 @@ func runBoardDone(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to save: %w", err)
 	}
 
-	fmt.Printf("Marked action #%d as done: %s\n", task.ShortID, task.Title)
-	return nil
+	return out.OutputTask(project.Name, "Done", task)
 }

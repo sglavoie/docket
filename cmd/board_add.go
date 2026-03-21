@@ -40,7 +40,7 @@ func init() {
 	boardCmd.AddCommand(boardAddCmd)
 	boardAddCmd.Flags().StringVarP(&boardAddURL, "url", "u", "", "URL for the external resource")
 	boardAddCmd.Flags().StringVarP(&boardAddSource, "source", "s", "", "source of the item (e.g., slack, github, email)")
-	boardAddCmd.Flags().IntVarP(&boardAddPriority, "priority", "P", 0, "priority 1-5 (default 3)")
+	boardAddCmd.Flags().IntVarP(&boardAddPriority, "priority", "P", 3, "priority 1-5 (default 3)")
 	boardAddCmd.Flags().StringSliceVarP(&boardAddTags, "tag", "T", nil, "tags for the item")
 	boardAddCmd.Flags().StringVar(&boardAddProject, "project", "", "target project slug (default: action inbox)")
 	addOutputFlags(boardAddCmd)
@@ -102,12 +102,10 @@ func runBoardAdd(cmd *cobra.Command, args []string) error {
 	if boardAddSource != "" {
 		task.Source = boardAddSource
 	}
-	if cmd.Flags().Changed("priority") {
-		if boardAddPriority < models.PriorityMin || boardAddPriority > models.PriorityMax {
-			return fmt.Errorf("priority must be between %d and %d", models.PriorityMin, models.PriorityMax)
-		}
-		task.Priority = boardAddPriority
+	if boardAddPriority < models.PriorityMin || boardAddPriority > models.PriorityMax {
+		return fmt.Errorf("priority must be between %d and %d", models.PriorityMin, models.PriorityMax)
 	}
+	task.Priority = boardAddPriority
 	for _, tag := range boardAddTags {
 		task.AddTag(tag)
 	}

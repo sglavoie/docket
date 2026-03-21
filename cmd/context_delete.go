@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"github.com/spf13/cobra"
@@ -25,6 +26,7 @@ Examples:
 func init() {
 	contextCmd.AddCommand(contextDeleteCmd)
 	contextDeleteCmd.Flags().BoolVarP(&contextDeleteForce, "force", "f", false, "Skip confirmation prompt")
+	addOutputFlags(contextDeleteCmd)
 }
 
 func runContextDelete(cmd *cobra.Command, args []string) error {
@@ -35,6 +37,11 @@ func runContextDelete(cmd *cobra.Command, args []string) error {
 	name := args[0]
 
 	cfg, mgr, err := LoadConfig()
+	if err != nil {
+		return err
+	}
+
+	out, err := getOutputOpts(cmd)
 	if err != nil {
 		return err
 	}
@@ -52,6 +59,17 @@ func runContextDelete(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	if out.Quiet {
+		return nil
+	}
+	if out.JSON {
+		data, _ := json.MarshalIndent(struct {
+			Context string `json:"context"`
+			Deleted bool   `json:"deleted"`
+		}{Context: name, Deleted: true}, "", "  ")
+		fmt.Println(string(data))
+		return nil
+	}
 	fmt.Printf("Deleted custom context '%s'\n", name)
 	return nil
 }

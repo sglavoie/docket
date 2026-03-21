@@ -25,9 +25,25 @@ Examples:
 
 func init() {
 	taskCmd.AddCommand(taskSectionCmd)
+	addOutputFlags(taskSectionCmd)
+	taskSectionCmd.ValidArgsFunction = func(_ *cobra.Command, args []string, _ string) ([]string, cobra.ShellCompDirective) {
+		if len(args) >= 1 {
+			project, _, _, err := LoadCurrentProject()
+			if err != nil {
+				return nil, cobra.ShellCompDirectiveNoFileComp
+			}
+			return project.GetSections(), cobra.ShellCompDirectiveNoFileComp
+		}
+		return nil, cobra.ShellCompDirectiveNoFileComp
+	}
 }
 
 func runTaskSection(cmd *cobra.Command, args []string) error {
+	out, err := getOutputOpts(cmd)
+	if err != nil {
+		return err
+	}
+
 	if len(args) < 2 {
 		return tterrors.NewRequiredFieldError("task ID and section name")
 	}
@@ -61,10 +77,12 @@ func runTaskSection(cmd *cobra.Command, args []string) error {
 		}
 		if preTask.Section == sectionName {
 			skipped++
-			if sectionName == "" {
-				fmt.Printf("Task #%d already has no section.\n", preTask.ShortID)
-			} else {
-				fmt.Printf("Task #%d is already in section '%s'.\n", preTask.ShortID, sectionName)
+			if !out.Quiet {
+				if sectionName == "" {
+					fmt.Printf("Task #%d already has no section.\n", preTask.ShortID)
+				} else {
+					fmt.Printf("Task #%d is already in section '%s'.\n", preTask.ShortID, sectionName)
+				}
 			}
 			continue
 		}
@@ -88,16 +106,22 @@ func runTaskSection(cmd *cobra.Command, args []string) error {
 		}
 
 		succeeded++
-		if sectionName == "" {
-			fmt.Printf("Cleared section from task #%d (was: %s)\n", task.ShortID, oldSection)
-		} else if oldSection == "" {
-			fmt.Printf("Assigned task #%d to section: %s\n", task.ShortID, sectionName)
-		} else {
-			fmt.Printf("Moved task #%d from '%s' to '%s'\n", task.ShortID, oldSection, sectionName)
+		if out.JSON {
+			if err := outputSingleTaskJSON(task); err != nil {
+				return err
+			}
+		} else if !out.Quiet {
+			if sectionName == "" {
+				fmt.Printf("Cleared section from task #%d (was: %s)\n", task.ShortID, oldSection)
+			} else if oldSection == "" {
+				fmt.Printf("Assigned task #%d to section: %s\n", task.ShortID, sectionName)
+			} else {
+				fmt.Printf("Moved task #%d from '%s' to '%s'\n", task.ShortID, oldSection, sectionName)
+			}
 		}
 	}
 
-	if skipped > 0 && succeeded > 0 {
+	if !out.Quiet && !out.JSON && skipped > 0 && succeeded > 0 {
 		fmt.Printf("%d updated, %d already in the requested section\n", succeeded, skipped)
 	}
 

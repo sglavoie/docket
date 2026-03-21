@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"github.com/spf13/cobra"
@@ -24,6 +25,7 @@ Examples:
 
 func init() {
 	sectionCmd.AddCommand(sectionRenameCmd)
+	addOutputFlags(sectionRenameCmd)
 }
 
 func runSectionRename(cmd *cobra.Command, args []string) error {
@@ -43,6 +45,11 @@ func runSectionRename(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	out, err := getOutputOpts(cmd)
+	if err != nil {
+		return err
+	}
+
 	if err := project.RenameSection(oldName, newName); err != nil {
 		return err
 	}
@@ -54,6 +61,18 @@ func runSectionRename(cmd *cobra.Command, args []string) error {
 		return tterrors.NewSaveProjectError(project.Name, err)
 	}
 
+	if out.Quiet {
+		return nil
+	}
+	if out.JSON {
+		data, _ := json.MarshalIndent(struct {
+			OldName string `json:"old_name"`
+			NewName string `json:"new_name"`
+			Project string `json:"project"`
+		}{OldName: oldName, NewName: newName, Project: project.Name}, "", "  ")
+		fmt.Println(string(data))
+		return nil
+	}
 	fmt.Printf("Renamed section '%s' to '%s'\n", oldName, newName)
 	return nil
 }

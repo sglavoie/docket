@@ -34,10 +34,16 @@ Examples:
 
 func init() {
 	projectCmd.AddCommand(projectRestoreCmd)
+	addOutputFlags(projectRestoreCmd)
 }
 
 func runProjectRestore(cmd *cobra.Command, args []string) error {
 	cfg, configManager, err := LoadConfig()
+	if err != nil {
+		return err
+	}
+
+	out, err := getOutputOpts(cmd)
 	if err != nil {
 		return err
 	}
@@ -92,8 +98,7 @@ func runProjectRestore(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	fmt.Printf("Restored project '%s'\n", project.Name)
-	return nil
+	return out.OutputProject(project, func() { fmt.Printf("Restored project '%s'\n", project.Name) })
 }
 
 func listTrashedProjects(cfg *config.Config) error {

@@ -14,7 +14,7 @@ import (
 func resetBoardAddVars() {
 	boardAddURL = ""
 	boardAddSource = ""
-	boardAddPriority = 0
+	boardAddPriority = 3
 	boardAddTags = nil
 	boardAddProject = ""
 }

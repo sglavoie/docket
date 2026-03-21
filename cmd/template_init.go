@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"github.com/spf13/cobra"
@@ -79,12 +80,33 @@ func init() {
 	templateInitCmd.Flags().BoolVar(&templateInitForce, "force", false, "add defaults even if templates already exist")
 	templateInitCmd.Flags().BoolVar(&templateInitEnable, "enable", false, "create default templates in enabled state")
 	templateInitCmd.Flags().BoolVar(&templateInitChangedDefaults, "changed-defaults", false, "reset edited/deleted default templates to shipped values (requires --force)")
+	addOutputFlags(templateInitCmd)
 }
 
 func runTemplateInit(cmd *cobra.Command, args []string) error {
+	out, err := getOutputOpts(cmd)
+	if err != nil {
+		return err
+	}
+
 	defaults := template.GetDefaultTemplates()
 
 	if templateInitList {
+		if out.JSON {
+			type templateEntry struct {
+				ID       string `json:"id"`
+				Name     string `json:"name"`
+				Category string `json:"category"`
+				Summary  string `json:"summary"`
+			}
+			entries := make([]templateEntry, 0, len(defaults))
+			for _, t := range defaults {
+				entries = append(entries, templateEntry{ID: t.ID, Name: t.Name, Category: t.Category, Summary: t.Summary()})
+			}
+			data, _ := json.MarshalIndent(entries, "", "  ")
+			fmt.Println(string(data))
+			return nil
+		}
 		fmt.Println("Default task templates:")
 		fmt.Println()
 		for _, t := range defaults {
@@ -126,6 +148,19 @@ func runTemplateInit(cmd *cobra.Command, args []string) error {
 			return err
 		}
 
+		if out.Quiet {
+			return nil
+		}
+		if out.JSON {
+			data, _ := json.MarshalIndent(struct {
+				Updated   int      `json:"updated"`
+				Readded   int      `json:"readded"`
+				Unchanged int      `json:"unchanged"`
+				Affected  []string `json:"affected_ids"`
+			}{Updated: updated, Readded: readded, Unchanged: unchanged, Affected: affectedIDs}, "", "  ")
+			fmt.Println(string(data))
+			return nil
+		}
 		fmt.Println("Reset changed default templates:")
 		fmt.Printf("  Updated: %d\n", updated)
 		fmt.Printf("  Re-added (deleted): %d\n", readded)
@@ -160,14 +195,35 @@ func runTemplateInit(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if added == 0 {
-		fmt.Println("All default templates already exist.")
+	if out.Quiet {
 		return nil
 	}
 
 	state := "disabled"
 	if templateInitEnable {
 		state = "enabled"
+	}
+
+	if added == 0 {
+		if out.JSON {
+			data, _ := json.MarshalIndent(struct {
+				Added int    `json:"added"`
+				State string `json:"state"`
+			}{Added: 0, State: state}, "", "  ")
+			fmt.Println(string(data))
+			return nil
+		}
+		fmt.Println("All default templates already exist.")
+		return nil
+	}
+
+	if out.JSON {
+		data, _ := json.MarshalIndent(struct {
+			Added int    `json:"added"`
+			State string `json:"state"`
+		}{Added: added, State: state}, "", "  ")
+		fmt.Println(string(data))
+		return nil
 	}
 
 	fmt.Printf("Added %d default task template(s) (%s):\n", added, state)

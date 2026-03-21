@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"github.com/spf13/cobra"
@@ -25,6 +26,7 @@ Examples:
 
 func init() {
 	sectionCmd.AddCommand(sectionAddCmd)
+	addOutputFlags(sectionAddCmd)
 }
 
 func runSectionAdd(cmd *cobra.Command, args []string) error {
@@ -43,8 +45,13 @@ func runSectionAdd(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	out, err := getOutputOpts(cmd)
+	if err != nil {
+		return err
+	}
+
 	if project.HasSection(sectionName) {
-		return fmt.Errorf("section '%s' already exists", sectionName)
+		return fmt.Errorf("section '%s' already exists; use 'tt section list' to see sections", sectionName)
 	}
 
 	project.EnsureSection(sectionName)
@@ -56,6 +63,17 @@ func runSectionAdd(cmd *cobra.Command, args []string) error {
 		return tterrors.NewSaveProjectError(project.Name, err)
 	}
 
-	fmt.Printf("Added section: %s\n", sectionName)
+	if out.Quiet {
+		return nil
+	}
+	if out.JSON {
+		data, _ := json.MarshalIndent(struct {
+			Section string `json:"section"`
+			Project string `json:"project"`
+		}{Section: sectionName, Project: project.Name}, "", "  ")
+		fmt.Println(string(data))
+		return nil
+	}
+	fmt.Printf("Added section '%s' to project '%s'\n", sectionName, project.Name)
 	return nil
 }

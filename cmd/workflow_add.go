@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
 	"strconv"
 	"strings"
@@ -150,9 +151,15 @@ func init() {
 	_ = workflowAddCmd.MarkFlagRequired("field")
 	_ = workflowAddCmd.MarkFlagRequired("value")
 	_ = workflowAddCmd.MarkFlagRequired("action")
+	addOutputFlags(workflowAddCmd)
 }
 
 func runWorkflowAdd(cmd *cobra.Command, args []string) error {
+	out, err := getOutputOpts(cmd)
+	if err != nil {
+		return err
+	}
+
 	// Validate trigger counts match
 	if len(triggerFields) != len(triggerValues) {
 		return fmt.Errorf("number of --field flags (%d) must match --value flags (%d)", len(triggerFields), len(triggerValues))
@@ -373,6 +380,19 @@ func runWorkflowAdd(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	if out.Quiet {
+		return nil
+	}
+	if out.JSON {
+		data, _ := json.MarshalIndent(struct {
+			ID      string `json:"id"`
+			Name    string `json:"name"`
+			Enabled bool   `json:"enabled"`
+			Summary string `json:"summary"`
+		}{ID: rule.ID, Name: rule.Name, Enabled: rule.Enabled, Summary: rule.Summary()}, "", "  ")
+		fmt.Println(string(data))
+		return nil
+	}
 	fmt.Printf("Created workflow rule: %s [%s]\n", rule.Name, rule.ID)
 	if rule.IsProjectLevel() {
 		fmt.Println("  Level: project")

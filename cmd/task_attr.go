@@ -66,9 +66,15 @@ func init() {
 
 	// Clear flag
 	taskAttrCmd.Flags().BoolVar(&attrClear, "clear", false, "clear all type-specific attributes")
+	addOutputFlags(taskAttrCmd)
 }
 
 func runTaskAttr(cmd *cobra.Command, args []string) error {
+	out, err := getOutputOpts(cmd)
+	if err != nil {
+		return err
+	}
+
 	taskID := args[0]
 
 	// Check if any flags were provided
@@ -107,21 +113,25 @@ func runTaskAttr(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if attrClear {
-		fmt.Printf("Cleared attributes for %s #%d: %s\n",
-			updatedTask.Type.HeadingPrefix(),
-			updatedTask.ShortID,
-			updatedTask.Title)
-	} else {
-		fmt.Printf("Updated attributes for %s #%d: %s\n",
-			updatedTask.Type.HeadingPrefix(),
-			updatedTask.ShortID,
-			updatedTask.Title)
-		for _, c := range changes {
-			fmt.Printf("  %s\n", c)
+	if out.JSON {
+		return outputSingleTaskJSON(updatedTask)
+	}
+	if !out.Quiet {
+		if attrClear {
+			fmt.Printf("Cleared attributes for %s #%d: %s\n",
+				updatedTask.Type.HeadingPrefix(),
+				updatedTask.ShortID,
+				updatedTask.Title)
+		} else {
+			fmt.Printf("Updated attributes for %s #%d: %s\n",
+				updatedTask.Type.HeadingPrefix(),
+				updatedTask.ShortID,
+				updatedTask.Title)
+			for _, c := range changes {
+				fmt.Printf("  %s\n", c)
+			}
 		}
 	}
-
 	return nil
 }
 
