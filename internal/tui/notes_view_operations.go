@@ -21,7 +21,7 @@ func (m *NotesViewModel) viewCurrentNote() tea.Cmd {
 	note := m.notes[m.cursor]
 
 	if note.ParseError != "" {
-		m.setErrorStatus("Cannot preview — note has parse error. Press e to edit.")
+		m.setErrorStatus("cannot preview — note has parse error. Press e to edit.")
 		return nil
 	}
 
@@ -206,7 +206,7 @@ func (m *NotesViewModel) linkCurrentNote() tea.Cmd {
 	}
 	note := m.notes[m.cursor]
 	if note.ParseError != "" {
-		m.setErrorStatus("Cannot link — note has parse error. Press e to edit.")
+		m.setErrorStatus("cannot link — note has parse error. Press e to edit.")
 		return nil
 	}
 	return func() tea.Msg {
@@ -220,7 +220,7 @@ func (m *NotesViewModel) showTagSelector() tea.Cmd {
 	}
 	note := m.notes[m.cursor]
 	if note.ParseError != "" {
-		m.setErrorStatus("Cannot edit tags — note has parse error. Press e to edit.")
+		m.setErrorStatus("cannot edit tags — note has parse error. Press e to edit.")
 		return nil
 	}
 	return func() tea.Msg {
@@ -240,7 +240,7 @@ func (m *NotesViewModel) togglePin() tea.Cmd {
 	}
 	note := m.notes[m.cursor]
 	if note.ParseError != "" {
-		m.setErrorStatus("Cannot pin — note has parse error. Press e to edit.")
+		m.setErrorStatus("cannot pin — note has parse error. Press e to edit.")
 		return nil
 	}
 	note.Pinned = !note.Pinned
@@ -333,7 +333,7 @@ func (m *NotesViewModel) copyNoteContent(
 	singleMsg, bulkMsg string,
 ) tea.Cmd {
 	if !m.multiSelectMode && len(m.notes) > 0 && m.cursor < len(m.notes) && m.notes[m.cursor].ParseError != "" {
-		m.setErrorStatus("Cannot copy — note has parse error. Press e to edit.")
+		m.setErrorStatus("cannot copy — note has parse error. Press e to edit.")
 		return nil
 	}
 	if m.multiSelectMode && m.selectedNoteCount() > 0 {
@@ -385,7 +385,7 @@ func (m *NotesViewModel) moveNoteToProject() tea.Cmd {
 	}
 	note := m.notes[m.cursor]
 	if note.ParseError != "" {
-		m.setErrorStatus("Cannot move — note has parse error. Press e to edit.")
+		m.setErrorStatus("cannot move — note has parse error. Press e to edit.")
 		return nil
 	}
 	return func() tea.Msg {

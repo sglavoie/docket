@@ -194,8 +194,8 @@ func runTemplateUse(cmd *cobra.Command, args []string) error {
 
 	// Increment use count
 	cfg.IncrementTemplateUseCount(t.ID)
-	if err := configManager.Save(cfg); err != nil {
-		return tterrors.NewSaveConfigError(err)
+	if err := saveConfig(configManager, cfg); err != nil {
+		return err
 	}
 
 	// Update project timestamp

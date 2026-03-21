@@ -111,8 +111,8 @@ func runSandboxReset(cmd *cobra.Command, args []string) error {
 	}
 
 	// Update project in config (for NextShortID persistence)
-	if err := configManager.Save(cfg); err != nil {
-		return fmt.Errorf("failed to save config: %w", err)
+	if err := saveConfig(configManager, cfg); err != nil {
+		return err
 	}
 
 	// Build output message

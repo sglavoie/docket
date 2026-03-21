@@ -93,6 +93,11 @@ Examples:
 	RunE: runTaskStandby,
 }
 
+func addOutputFlags(cmd *cobra.Command) {
+	cmd.Flags().Bool("json", false, "output updated task as JSON")
+	cmd.Flags().Bool("quiet", false, "suppress output on success")
+}
+
 func init() {
 	taskCmd.AddCommand(taskCompleteCmd)
 	taskCmd.AddCommand(taskStartCmd)
@@ -101,46 +106,88 @@ func init() {
 	taskCmd.AddCommand(taskReopenCmd)
 	taskCmd.AddCommand(taskReviewCmd)
 	taskCmd.AddCommand(taskStandbyCmd)
+
+	for _, sub := range []*cobra.Command{
+		taskCompleteCmd, taskStartCmd, taskBlockCmd, taskCancelCmd,
+		taskReopenCmd, taskReviewCmd, taskStandbyCmd,
+	} {
+		addOutputFlags(sub)
+	}
+}
+
+func getOutputOpts(cmd *cobra.Command) (MutateOutput, error) {
+	jsonOut, _ := cmd.Flags().GetBool("json")
+	quiet, _ := cmd.Flags().GetBool("quiet")
+	out := MutateOutput{JSON: jsonOut, Quiet: quiet}
+	return out, out.CheckMutualExclusion()
 }
 
 func runTaskComplete(cmd *cobra.Command, args []string) error {
-	return updateTaskStatus(args, "complete", func(t *models.Task) {
+	out, err := getOutputOpts(cmd)
+	if err != nil {
+		return err
+	}
+	return updateTaskStatus(args, "complete", out, func(t *models.Task) {
 		t.Complete()
 	})
 }
 
 func runTaskStart(cmd *cobra.Command, args []string) error {
-	return updateTaskStatus(args, "start", func(t *models.Task) {
+	out, err := getOutputOpts(cmd)
+	if err != nil {
+		return err
+	}
+	return updateTaskStatus(args, "start", out, func(t *models.Task) {
 		t.Start()
 	})
 }
 
 func runTaskBlock(cmd *cobra.Command, args []string) error {
-	return updateTaskStatus(args, "block", func(t *models.Task) {
+	out, err := getOutputOpts(cmd)
+	if err != nil {
+		return err
+	}
+	return updateTaskStatus(args, "block", out, func(t *models.Task) {
 		t.Block()
 	})
 }
 
 func runTaskCancel(cmd *cobra.Command, args []string) error {
-	return updateTaskStatus(args, "cancel", func(t *models.Task) {
+	out, err := getOutputOpts(cmd)
+	if err != nil {
+		return err
+	}
+	return updateTaskStatus(args, "cancel", out, func(t *models.Task) {
 		t.Cancel()
 	})
 }
 
 func runTaskReopen(cmd *cobra.Command, args []string) error {
-	return updateTaskStatus(args, "reopen", func(t *models.Task) {
+	out, err := getOutputOpts(cmd)
+	if err != nil {
+		return err
+	}
+	return updateTaskStatus(args, "reopen", out, func(t *models.Task) {
 		t.Reopen()
 	})
 }
 
 func runTaskReview(cmd *cobra.Command, args []string) error {
-	return updateTaskStatus(args, "review", func(t *models.Task) {
+	out, err := getOutputOpts(cmd)
+	if err != nil {
+		return err
+	}
+	return updateTaskStatus(args, "review", out, func(t *models.Task) {
 		t.Review()
 	})
 }
 
 func runTaskStandby(cmd *cobra.Command, args []string) error {
-	return updateTaskStatus(args, "standby", func(t *models.Task) {
+	out, err := getOutputOpts(cmd)
+	if err != nil {
+		return err
+	}
+	return updateTaskStatus(args, "standby", out, func(t *models.Task) {
 		t.Standby()
 	})
 }
@@ -156,7 +203,7 @@ var actionToTargetStatus = map[string]models.TaskStatus{
 	"standby":  models.StatusStandby,
 }
 
-func updateTaskStatus(args []string, action string, update func(*models.Task)) error {
+func updateTaskStatus(args []string, action string, out MutateOutput, update func(*models.Task)) error {
 	// Handle interactive selection if no ID provided
 	var taskIDs []string
 	var projectName string
@@ -268,9 +315,10 @@ func updateTaskStatus(args []string, action string, update func(*models.Task)) e
 		}
 
 		succeeded++
-		fmt.Println(TaskMsg(projectName, verb, task))
-
-		if generated > 0 {
+		if err := out.OutputTask(projectName, verb, task); err != nil {
+			return err
+		}
+		if !out.Quiet && !out.JSON && generated > 0 {
 			fmt.Printf("Created %s in Inbox\n", Pluralize(generated, "recurring task instance", "recurring task instances"))
 		}
 	}

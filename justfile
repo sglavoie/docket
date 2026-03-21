@@ -41,8 +41,7 @@ test:
     @echo "Running tests..."
     go test -race ./...
 
-# Alias for test (race detector is now always enabled)
-test-race: test
+# Removed: test-race alias (use `just test` instead — race detector is always enabled)
 
 # Run tests with coverage report
 coverage:
@@ -95,13 +94,13 @@ ci:
     THRESHOLD=$(cat .coverage-threshold)
     COVERAGE=$(go tool cover -func=coverage.out | awk '/^total:/ { gsub(/%/, "", $3); print $3; exit }')
     echo "Total coverage: ${COVERAGE}%"
-    if [ "$(echo "$COVERAGE < $THRESHOLD" | bc)" -eq 1 ]; then
+    if awk "BEGIN { exit !($COVERAGE < $THRESHOLD) }"; then
         echo "Coverage ${COVERAGE}% is below ${THRESHOLD}% threshold"
         exit 1
     fi
     echo "Coverage ${COVERAGE}% meets ${THRESHOLD}% threshold"
     MARGIN=5
-    if [ "$(echo "$COVERAGE >= $THRESHOLD + $MARGIN" | bc)" -eq 1 ]; then
+    if awk "BEGIN { exit !($COVERAGE >= $THRESHOLD + $MARGIN) }"; then
         echo "Coverage ${COVERAGE}% exceeds threshold by ${MARGIN}%+. Consider increasing .coverage-threshold."
     fi
     if ! command -v golangci-lint &>/dev/null; then

@@ -32,14 +32,25 @@ Examples:
 	RunE: runTaskEdit,
 }
 
-var editEditor string
+var (
+	editEditor    string
+	taskEditJSON  bool
+	taskEditQuiet bool
+)
 
 func init() {
 	taskCmd.AddCommand(taskEditCmd)
 	taskEditCmd.Flags().StringVar(&editEditor, "editor", "", "editor to use")
+	taskEditCmd.Flags().BoolVar(&taskEditJSON, "json", false, "output updated task as JSON")
+	taskEditCmd.Flags().BoolVar(&taskEditQuiet, "quiet", false, "suppress output on success")
 }
 
 func runTaskEdit(cmd *cobra.Command, args []string) error {
+	out := MutateOutput{JSON: taskEditJSON, Quiet: taskEditQuiet}
+	if err := out.CheckMutualExclusion(); err != nil {
+		return err
+	}
+
 	// Load project and config once
 	project, cfg, configManager, err := LoadCurrentProject()
 	if err != nil {
@@ -104,9 +115,7 @@ func runTaskEdit(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	fmt.Println(TaskMsg(project.Name, "Updated", task))
-
-	return nil
+	return out.OutputTask(project.Name, "Updated", task)
 }
 
 // buildEditContent creates the content shown in the editor.

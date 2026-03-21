@@ -331,8 +331,8 @@ func runWorkflowEdit(cmd *cobra.Command, args []string) error {
 	cfg.InvalidateWorkflowEvalStates()
 
 	// Save config
-	if err := configManager.Save(cfg); err != nil {
-		return tterrors.NewSaveConfigError(err)
+	if err := saveConfig(configManager, cfg); err != nil {
+		return err
 	}
 
 	// Display final result

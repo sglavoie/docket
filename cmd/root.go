@@ -37,6 +37,10 @@ Examples:
   tt project new "My Project"  # Create a new project
   tt task add "Fix login bug"  # Add a task to current project
   tt task list --type epic     # List all epics`,
+	PersistentPreRunE: func(cmd *cobra.Command, _ []string) error {
+		cmd.SilenceUsage = true
+		return nil
+	},
 	RunE: runRoot,
 }
 
@@ -47,7 +51,9 @@ func RootCmd() *cobra.Command {
 
 func Execute() {
 	defer logging.Close()
-	rootCmd.SilenceUsage = true
+	// SilenceUsage is enabled in PersistentPreRunE so usage is still printed
+	// when cobra itself rejects args (wrong count, unknown flags, etc.) but
+	// suppressed for errors that originate inside RunE.
 	rootCmd.SilenceErrors = true
 
 	if err := rootCmd.Execute(); err != nil {

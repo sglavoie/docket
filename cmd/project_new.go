@@ -16,6 +16,8 @@ var (
 	projectContext     string
 	projectDescription string
 	projectStatusIcon  string
+	projectNewJSON     bool
+	projectNewQuiet    bool
 )
 
 var projectNewCmd = &cobra.Command{
@@ -39,11 +41,19 @@ func init() {
 	projectNewCmd.Flags().StringVarP(&projectDescription, "description", "d", "", "project status note")
 	projectNewCmd.Flags().StringVarP(&projectStatusIcon, "status-icon", "i", "", "project status icon (planning, wip, active, review, testing, stabilizing, maintenance, bugfix, paused, archived)")
 
-	_ = projectNewCmd.RegisterFlagCompletionFunc("context", completeEnum(contextCompletions))
+	projectNewCmd.Flags().BoolVar(&projectNewJSON, "json", false, "output created project as JSON")
+	projectNewCmd.Flags().BoolVar(&projectNewQuiet, "quiet", false, "suppress output on success")
+
+	_ = projectNewCmd.RegisterFlagCompletionFunc("context", completeContexts())
 	_ = projectNewCmd.RegisterFlagCompletionFunc("status-icon", completeEnum(statusIconCompletions))
 }
 
 func runProjectNew(cmd *cobra.Command, args []string) error {
+	out := MutateOutput{JSON: projectNewJSON, Quiet: projectNewQuiet}
+	if err := out.CheckMutualExclusion(); err != nil {
+		return err
+	}
+
 	cfg, configManager, err := LoadConfig()
 	if err != nil {
 		return err
@@ -60,8 +70,8 @@ func runProjectNew(cmd *cobra.Command, args []string) error {
 	if name == "" {
 		return tterrors.NewInvalidValueError("name", name, "cannot be empty")
 	}
-	if len(name) > 100 {
-		return fmt.Errorf("project name too long (%d chars, max 100)", len(name))
+	if len(name) > models.MaxProjectNameLength {
+		return fmt.Errorf("project name too long (%d chars, max %d)", len(name), models.MaxProjectNameLength)
 	}
 
 	// Check for duplicate slug
@@ -84,6 +94,9 @@ func runProjectNew(cmd *cobra.Command, args []string) error {
 	// Validate context (free-form string; common values: personal, work)
 	if strings.TrimSpace(projectContext) == "" {
 		return tterrors.NewInvalidValueError("context", projectContext, "cannot be empty")
+	}
+	if !isKnownContext(projectContext, cfg) {
+		fmt.Fprintf(cmd.ErrOrStderr(), "warning: unknown context %q (known: %s)\n", projectContext, knownContextList(cfg))
 	}
 
 	// Create project
@@ -122,12 +135,12 @@ func runProjectNew(cmd *cobra.Command, args []string) error {
 	cfg.AddProject(project)
 	cfg.CurrentProject = project.ID
 
-	if err := configManager.Save(cfg); err != nil {
-		return fmt.Errorf("%w: %w", tterrors.ErrConfigSaveFailed, err)
+	if err := saveConfig(configManager, cfg); err != nil {
+		return err
 	}
 
-	fmt.Printf("Created project %s: %s\n", slug, name)
-	fmt.Printf("  Path: %s\n", projectPath)
-
-	return nil
+	return out.OutputProject(project, func() {
+		fmt.Printf("Created project %s: %s\n", slug, name)
+		fmt.Printf("  Path: %s\n", projectPath)
+	})
 }

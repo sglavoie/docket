@@ -259,7 +259,7 @@ func (m *TagManagerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if len(m.tags) > 0 && m.cursor < len(m.tags) {
 				tag := m.tags[m.cursor]
 				if tag.TaskCount > 0 {
-					m.errorMsg = fmt.Sprintf("Cannot delete: tag has %d task(s)", tag.TaskCount)
+					m.errorMsg = fmt.Sprintf("cannot delete: tag has %d task(s)", tag.TaskCount)
 				} else {
 					// Tag has 0 tasks, just rebuild to remove it
 					m.buildTagList()

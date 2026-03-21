@@ -63,8 +63,8 @@ func runProjectArchive(cmd *cobra.Command, args []string) error {
 		cfg.CurrentProject = ""
 	}
 
-	if err := configManager.Save(cfg); err != nil {
-		return tterrors.NewSaveConfigError(err)
+	if err := saveConfig(configManager, cfg); err != nil {
+		return err
 	}
 
 	fmt.Printf("Archived project '%s'\n", project.Name)
@@ -100,8 +100,8 @@ func runProjectUnarchive(cmd *cobra.Command, args []string) error {
 
 	project.Unarchive()
 
-	if err := configManager.Save(cfg); err != nil {
-		return tterrors.NewSaveConfigError(err)
+	if err := saveConfig(configManager, cfg); err != nil {
+		return err
 	}
 
 	fmt.Printf("Unarchived project '%s'\n", project.Name)

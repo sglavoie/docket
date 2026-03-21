@@ -9,14 +9,15 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
-	"github.com/sglavoie/tt/internal/tterrors"
 )
 
 var (
-	editName        string
-	editContext     string
-	editDescription string
-	editStatusIcon  string
+	editName         string
+	editContext      string
+	editDescription  string
+	editStatusIcon   string
+	projectEditJSON  bool
+	projectEditQuiet bool
 )
 
 var projectEditCmd = &cobra.Command{
@@ -45,11 +46,19 @@ func init() {
 	projectEditCmd.Flags().StringVarP(&editDescription, "description", "d", "", "new status note")
 	projectEditCmd.Flags().StringVarP(&editStatusIcon, "status-icon", "i", "", "project status icon (e.g., wip, active, paused)")
 
-	_ = projectEditCmd.RegisterFlagCompletionFunc("context", completeEnum(contextCompletions))
+	projectEditCmd.Flags().BoolVar(&projectEditJSON, "json", false, "output updated project as JSON")
+	projectEditCmd.Flags().BoolVar(&projectEditQuiet, "quiet", false, "suppress output on success")
+
+	_ = projectEditCmd.RegisterFlagCompletionFunc("context", completeContexts())
 	_ = projectEditCmd.RegisterFlagCompletionFunc("status-icon", completeEnum(statusIconCompletions))
 }
 
 func runProjectEdit(cmd *cobra.Command, args []string) error {
+	out := MutateOutput{JSON: projectEditJSON, Quiet: projectEditQuiet}
+	if err := out.CheckMutualExclusion(); err != nil {
+		return err
+	}
+
 	project, cfg, configManager, err := LoadConfigAndProjectOrCurrent(args)
 	if err != nil {
 		return err
@@ -129,31 +138,31 @@ func runProjectEdit(cmd *cobra.Command, args []string) error {
 	project.UpdatedAt = time.Now()
 
 	// Save config
-	if err := configManager.Save(cfg); err != nil {
-		return tterrors.NewSaveConfigError(err)
+	if err := saveConfig(configManager, cfg); err != nil {
+		return err
 	}
 
-	fmt.Printf("Updated project '%s'\n", project.Name)
-	if nameChanged {
-		fmt.Printf("  Name: %s (slug: %s)\n", project.Name, project.Slug)
-	}
-	if contextChanged {
-		fmt.Printf("  Context: %s\n", project.Context)
-	}
-	if descriptionChanged {
-		if project.Description != "" {
-			fmt.Printf("  Description: %s\n", project.Description)
-		} else {
-			fmt.Printf("  Description: (cleared)\n")
+	return out.OutputProject(project, func() {
+		fmt.Printf("Updated project '%s'\n", project.Name)
+		if nameChanged {
+			fmt.Printf("  Name: %s (slug: %s)\n", project.Name, project.Slug)
 		}
-	}
-	if statusIconChanged {
-		if icon := models.ProjectStatusIconByKey(project.StatusIcon); icon != nil {
-			fmt.Printf("  Status icon: %s %s\n", icon.Emoji, icon.Label)
-		} else {
-			fmt.Printf("  Status icon: (cleared)\n")
+		if contextChanged {
+			fmt.Printf("  Context: %s\n", project.Context)
 		}
-	}
-
-	return nil
+		if descriptionChanged {
+			if project.Description != "" {
+				fmt.Printf("  Description: %s\n", project.Description)
+			} else {
+				fmt.Printf("  Description: (cleared)\n")
+			}
+		}
+		if statusIconChanged {
+			if icon := models.ProjectStatusIconByKey(project.StatusIcon); icon != nil {
+				fmt.Printf("  Status icon: %s %s\n", icon.Emoji, icon.Label)
+			} else {
+				fmt.Printf("  Status icon: (cleared)\n")
+			}
+		}
+	})
 }

@@ -212,14 +212,48 @@ func ParseTasksMarkdownWithSections(content string) (*ParseResult, error) {
 	tasks, hierarchyWarnings := format.BuildHierarchy(parsedTasks)
 	metadataWarnings = append(metadataWarnings, hierarchyWarnings...)
 
-	// Assign UUIDs and timestamps to tasks that had no metadata comment.
-	// This happens when a user manually adds a heading without an HTML comment line.
-	// Without this, such tasks would have ID == "" which breaks lookups, tree building, etc.
+	idWarnings := assignMissingIDsAndTimestamps(tasks)
+	metadataWarnings = append(metadataWarnings, idWarnings...)
+
+	// Extract activity and comments from task descriptions
+	for _, t := range tasks {
+		format.ExtractActivityFromDescription(t)
+		format.ExtractCommentsFromDescription(t)
+	}
+
+	normalizeUpdatedAt(tasks)
+
+	taskByID, dupWarnings := detectAndReassignDuplicateIDs(tasks)
+	metadataWarnings = append(metadataWarnings, dupWarnings...)
+
+	parentWarnings := validateParentReferences(tasks, taskByID)
+	metadataWarnings = append(metadataWarnings, parentWarnings...)
+
+	// Default to Next section if none specified
+	if len(sections) == 0 {
+		sections = []string{models.SectionNext}
+	}
+
+	return &ParseResult{
+		ProjectName:   projectName,
+		Tasks:         tasks,
+		Sections:      sections,
+		SectionColors: sectionColors,
+		Warnings:      metadataWarnings,
+	}, nil
+}
+
+// assignMissingIDsAndTimestamps assigns UUIDs and timestamps to tasks that had
+// no metadata comment. This happens when a user manually adds a heading without
+// an HTML comment line. Without this, such tasks would have ID == "" which
+// breaks lookups, tree building, etc.
+func assignMissingIDsAndTimestamps(tasks []*models.Task) []ParseWarning {
+	var warnings []ParseWarning
 	now := time.Now()
 	for _, t := range tasks {
 		if t.ID == "" {
 			t.ID = uuid.New().String()
-			metadataWarnings = append(metadataWarnings, ParseWarning{
+			warnings = append(warnings, ParseWarning{
 				Type:    format.WarningDataCorrection,
 				TaskID:  t.ID,
 				Field:   "id",
@@ -230,23 +264,26 @@ func ParseTasksMarkdownWithSections(content string) (*ParseResult, error) {
 			t.CreatedAt = now
 		}
 	}
+	return warnings
+}
 
-	// Extract activity and comments from task descriptions
-	for _, t := range tasks {
-		format.ExtractActivityFromDescription(t)
-		format.ExtractCommentsFromDescription(t)
-	}
-
-	// Normalize zero UpdatedAt: if metadata omitted updated: (because it equaled
-	// created:), default UpdatedAt to CreatedAt so downstream code never sees year-0001.
+// normalizeUpdatedAt defaults UpdatedAt to CreatedAt when the metadata omitted
+// the updated: field (because it equalled created:), so downstream code never
+// sees a year-0001 timestamp.
+func normalizeUpdatedAt(tasks []*models.Task) {
 	for _, t := range tasks {
 		if t.UpdatedAt.IsZero() && !t.CreatedAt.IsZero() {
 			t.UpdatedAt = t.CreatedAt
 		}
 	}
+}
 
-	// Detect duplicate task IDs — these corrupt lookups, parent refs, and dependency graphs.
-	// Reassign new UUIDs to duplicates so every task has a unique ID.
+// detectAndReassignDuplicateIDs detects duplicate task IDs, reassigns new UUIDs
+// to duplicates, and updates all cross-references (ParentID, DependsOn,
+// RelatedTo) that pointed to the old IDs. Returns the set of all known IDs and
+// any warnings generated.
+func detectAndReassignDuplicateIDs(tasks []*models.Task) (map[string]bool, []ParseWarning) {
+	var warnings []ParseWarning
 	taskByID := make(map[string]bool, len(tasks))
 	idRemap := make(map[string]string) // oldID → newID
 	for _, t := range tasks {
@@ -254,7 +291,7 @@ func ParseTasksMarkdownWithSections(content string) (*ParseResult, error) {
 			oldID := t.ID
 			t.ID = uuid.New().String()
 			idRemap[oldID] = t.ID
-			metadataWarnings = append(metadataWarnings, ParseWarning{
+			warnings = append(warnings, ParseWarning{
 				Type:    format.WarningDataCorrection,
 				TaskID:  t.ID,
 				Field:   "id",
@@ -263,8 +300,7 @@ func ParseTasksMarkdownWithSections(content string) (*ParseResult, error) {
 		}
 		taskByID[t.ID] = true
 	}
-
-	// Update references (ParentID, DependsOn, RelatedTo) that point to reassigned IDs.
+	// Update references that point to reassigned IDs.
 	if len(idRemap) > 0 {
 		for _, t := range tasks {
 			if t.ParentID != nil {
@@ -284,12 +320,17 @@ func ParseTasksMarkdownWithSections(content string) (*ParseResult, error) {
 			}
 		}
 	}
+	return taskByID, warnings
+}
 
-	// Validate parent references - preserve orphaned refs and clear ParentID
+// validateParentReferences clears ParentID on any task whose parent no longer
+// exists in the parsed task set (e.g. was deleted externally).
+func validateParentReferences(tasks []*models.Task, taskByID map[string]bool) []ParseWarning {
+	var warnings []ParseWarning
 	for _, t := range tasks {
 		if t.ParentID != nil && !taskByID[*t.ParentID] {
 			orphanedID := *t.ParentID
-			metadataWarnings = append(metadataWarnings, ParseWarning{
+			warnings = append(warnings, ParseWarning{
 				Type:    format.WarningDataCorrection,
 				TaskID:  t.ID,
 				Field:   "parent",
@@ -298,19 +339,7 @@ func ParseTasksMarkdownWithSections(content string) (*ParseResult, error) {
 			t.ParentID = nil
 		}
 	}
-
-	// Default to Next section if none specified
-	if len(sections) == 0 {
-		sections = []string{models.SectionNext}
-	}
-
-	return &ParseResult{
-		ProjectName:   projectName,
-		Tasks:         tasks,
-		Sections:      sections,
-		SectionColors: sectionColors,
-		Warnings:      metadataWarnings,
-	}, nil
+	return warnings
 }
 
 // ParseProjectNameFromFile reads a tasks.md file and extracts the project name.

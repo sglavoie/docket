@@ -13,8 +13,9 @@ func (m *AppModel) View() string {
 		return ""
 	}
 
-	if m.tooNarrow {
-		msg := fmt.Sprintf("Terminal too narrow (min %d columns)", minTerminalWidth)
+	if m.tooNarrow || m.tooShort {
+		msg := fmt.Sprintf("Terminal too small (need %d×%d, have %d×%d)",
+			minTerminalWidth, minTerminalHeight, m.width, m.height)
 		style := lipgloss.NewStyle().
 			Width(m.width).
 			Height(m.height).

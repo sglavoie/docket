@@ -82,6 +82,7 @@ func parseInlineMetadata(input string) (title string, priority int, tags []strin
 	// Match priority pattern: !1 through !5
 	priorityMatch := inlinePriorityRe.FindStringSubmatch(input)
 	if len(priorityMatch) > 1 {
+		// Safe: regex guarantees match[1] is a single digit 1-5.
 		priority, _ = strconv.Atoi(priorityMatch[1])
 		input = inlinePriorityRe.ReplaceAllString(input, " ")
 	} else {

@@ -65,8 +65,8 @@ func runContextRemove(cmd *cobra.Command, args []string) error {
 
 	cfg.SetCustomContext(contextName, newIDs)
 
-	if err := mgr.Save(cfg); err != nil {
-		return tterrors.NewSaveConfigError(err)
+	if err := saveConfig(mgr, cfg); err != nil {
+		return err
 	}
 
 	fmt.Printf("Removed '%s' from custom context '%s'\n", project.Name, contextName)

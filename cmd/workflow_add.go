@@ -8,7 +8,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/tterrors"
 	"github.com/sglavoie/tt/internal/workflow"
 )
 
@@ -370,8 +369,8 @@ func runWorkflowAdd(cmd *cobra.Command, args []string) error {
 	// Invalidate workflow eval states so all projects re-evaluate with new rule
 	cfg.InvalidateWorkflowEvalStates()
 
-	if err := configManager.Save(cfg); err != nil {
-		return tterrors.NewSaveConfigError(err)
+	if err := saveConfig(configManager, cfg); err != nil {
+		return err
 	}
 
 	fmt.Printf("Created workflow rule: %s [%s]\n", rule.Name, rule.ID)

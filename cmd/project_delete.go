@@ -10,7 +10,11 @@ import (
 	"github.com/sglavoie/tt/internal/tterrors"
 )
 
-var projectDeleteForce bool
+var (
+	projectDeleteForce bool
+	projectDeleteJSON  bool
+	projectDeleteQuiet bool
+)
 
 var projectDeleteCmd = &cobra.Command{
 	Use:   "delete [name|id]",
@@ -29,9 +33,16 @@ Examples:
 func init() {
 	projectCmd.AddCommand(projectDeleteCmd)
 	projectDeleteCmd.Flags().BoolVarP(&projectDeleteForce, "force", "f", false, "Skip confirmation prompt")
+	projectDeleteCmd.Flags().BoolVar(&projectDeleteJSON, "json", false, "output deleted project as JSON")
+	projectDeleteCmd.Flags().BoolVar(&projectDeleteQuiet, "quiet", false, "suppress output on success")
 }
 
 func runProjectDelete(cmd *cobra.Command, args []string) error {
+	out := MutateOutput{JSON: projectDeleteJSON, Quiet: projectDeleteQuiet}
+	if err := out.CheckMutualExclusion(); err != nil {
+		return err
+	}
+
 	if len(args) < 1 {
 		return tterrors.NewRequiredFieldError("project slug")
 	}
@@ -84,14 +95,20 @@ func runProjectDelete(cmd *cobra.Command, args []string) error {
 	}
 
 	// Save config
-	if err := configManager.Save(cfg); err != nil {
+	if err := saveConfig(configManager, cfg); err != nil {
 		// Try to restore from trash on failure
 		if restoreErr := storage.RestoreProjectFromTrash(project.Slug, cfg.DataDir); restoreErr != nil {
 			return fmt.Errorf("config save failed and restore from trash also failed: %w (restore error: %w)", err, restoreErr)
 		}
-		return tterrors.NewSaveConfigError(err)
+		return err
 	}
 
+	if out.Quiet {
+		return nil
+	}
+	if out.JSON {
+		return outputSingleProjectJSON(project)
+	}
 	fmt.Printf("Deleted project '%s'\n", project.Name)
 	fmt.Printf("To restore: tt project restore %s\n", project.Slug)
 	return nil

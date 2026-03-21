@@ -55,6 +55,12 @@ const EmptyStateFiltered = "No tasks match filters. Press 'F' then 'x' to clear.
 // EmptyStateNoTasks is the standard message shown when a view has no tasks at all.
 const EmptyStateNoTasks = "No tasks yet. Press 'a' to add one."
 
+// EmptyStateClosed is the standard message shown when the closed/done tab has no tasks.
+const EmptyStateClosed = "No closed tasks."
+
+// EmptyStateNoMatch is the standard message shown when a tab filter produces no results.
+const EmptyStateNoMatch = "No tasks match this tab."
+
 // renderTruncatedTags renders a compact inline tag string with per-tag truncation
 // and overflow count. Shows at most maxTags tags, each truncated to maxTagLen chars.
 // Returns an empty string if there are no tags.

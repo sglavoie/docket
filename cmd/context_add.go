@@ -58,8 +58,8 @@ func runContextAdd(cmd *cobra.Command, args []string) error {
 	projectIDs = append(projectIDs, project.ID)
 	cfg.SetCustomContext(contextName, projectIDs)
 
-	if err := mgr.Save(cfg); err != nil {
-		return tterrors.NewSaveConfigError(err)
+	if err := saveConfig(mgr, cfg); err != nil {
+		return err
 	}
 
 	fmt.Printf("Added '%s' to custom context '%s'\n", project.Name, contextName)

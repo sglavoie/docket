@@ -424,7 +424,7 @@ func (m *SectionManagerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if len(m.sections) > 0 && m.cursor < len(m.sections) {
 				section := m.sections[m.cursor]
 				if models.IsGTDSection(section.Name) {
-					m.errorMsg = "Cannot rename GTD sections"
+					m.errorMsg = "cannot rename GTD sections"
 					return m, nil
 				}
 				m.renameMode = true
@@ -438,7 +438,7 @@ func (m *SectionManagerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if len(m.sections) > 0 && m.cursor < len(m.sections) {
 				section := m.sections[m.cursor]
 				if models.IsGTDSection(section.Name) {
-					m.errorMsg = "Cannot remove GTD sections"
+					m.errorMsg = "cannot remove GTD sections"
 					return m, nil
 				}
 				return m, m.removeSection(section.Name)

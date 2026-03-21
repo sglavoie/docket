@@ -50,8 +50,8 @@ func runWorkflowToggle(cmd *cobra.Command, args []string) error {
 	// Invalidate workflow eval states so all projects re-evaluate with changed rule
 	cfg.InvalidateWorkflowEvalStates()
 
-	if err := configManager.Save(cfg); err != nil {
-		return tterrors.NewSaveConfigError(err)
+	if err := saveConfig(configManager, cfg); err != nil {
+		return err
 	}
 
 	status := "enabled"

@@ -282,8 +282,8 @@ func runTemplateEdit(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to update template")
 	}
 
-	if err := configManager.Save(cfg); err != nil {
-		return tterrors.NewSaveConfigError(err)
+	if err := saveConfig(configManager, cfg); err != nil {
+		return err
 	}
 
 	fmt.Printf("Updated task template: %s [%s]\n", t.Name, t.ID)

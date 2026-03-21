@@ -2,6 +2,9 @@ package tui
 
 import (
 	tea "github.com/charmbracelet/bubbletea"
+
+	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/tt/internal/logging"
 )
 
 // handleWithRefresh consolidates the common handler pattern of:
@@ -49,6 +52,14 @@ func (m *AppModel) setInfoStatus(msg string) {
 func (m *AppModel) clearStatus() {
 	m.statusMessage = ""
 	m.statusIsInfo = false
+}
+
+// saveConfigWarn attempts to save the config and logs a warning on failure.
+// Use this in TUI code where a config save failure is non-fatal.
+func saveConfigWarn(mgr *config.Manager, cfg *config.Config, context string) {
+	if err := mgr.Save(cfg); err != nil {
+		logging.Warn("failed to save config (%s): %v", context, err)
+	}
 }
 
 // syncInboxProcessor updates the typed inboxProcessor pointer after view updates.

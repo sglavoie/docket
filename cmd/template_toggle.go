@@ -47,8 +47,8 @@ func runTemplateToggle(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("task template not found: %s", templateID)
 	}
 
-	if err := configManager.Save(cfg); err != nil {
-		return tterrors.NewSaveConfigError(err)
+	if err := saveConfig(configManager, cfg); err != nil {
+		return err
 	}
 
 	status := "enabled"

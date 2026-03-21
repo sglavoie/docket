@@ -113,8 +113,8 @@ func runScoreProfileAdd(cmd *cobra.Command, args []string) error {
 		if addErr := cfg.AddScoringProfile(profile); addErr != nil {
 			return addErr
 		}
-		if saveErr := configManager.Save(cfg); saveErr != nil {
-			return fmt.Errorf("failed to save config: %w", saveErr)
+		if err := saveConfig(configManager, cfg); err != nil {
+			return err
 		}
 		fmt.Printf("Added scoring profile: %s\n", scoring.FormatProfileSummary(&profile))
 		return nil
@@ -152,8 +152,8 @@ func runScoreProfileAdd(cmd *cobra.Command, args []string) error {
 	if err := cfg.AddScoringProfile(profile); err != nil {
 		return err
 	}
-	if err := configManager.Save(cfg); err != nil {
-		return fmt.Errorf("failed to save config: %w", err)
+	if err := saveConfig(configManager, cfg); err != nil {
+		return err
 	}
 	fmt.Printf("Added scoring profile: %s\n", scoring.FormatProfileSummary(&profile))
 	return nil
@@ -244,8 +244,8 @@ func runScoreProfileEdit(cmd *cobra.Command, args []string) error {
 	if err := profile.Validate(); err != nil {
 		return err
 	}
-	if err := configManager.Save(cfg); err != nil {
-		return fmt.Errorf("failed to save config: %w", err)
+	if err := saveConfig(configManager, cfg); err != nil {
+		return err
 	}
 	fmt.Printf("Updated profile: %s\n", scoring.FormatProfileSummary(profile))
 	return nil
@@ -274,8 +274,8 @@ func runScoreProfileDelete(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	if err := configManager.Save(cfg); err != nil {
-		return fmt.Errorf("failed to save config: %w", err)
+	if err := saveConfig(configManager, cfg); err != nil {
+		return err
 	}
 	fmt.Printf("Deleted scoring profile %q\n", args[0])
 	return nil

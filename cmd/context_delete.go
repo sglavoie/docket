@@ -48,8 +48,8 @@ func runContextDelete(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("custom context '%s' not found", name)
 	}
 
-	if err := mgr.Save(cfg); err != nil {
-		return tterrors.NewSaveConfigError(err)
+	if err := saveConfig(mgr, cfg); err != nil {
+		return err
 	}
 
 	fmt.Printf("Deleted custom context '%s'\n", name)

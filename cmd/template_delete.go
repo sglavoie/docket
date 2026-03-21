@@ -56,8 +56,8 @@ func runTemplateDelete(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to delete task template: %s", templateID)
 	}
 
-	if err := configManager.Save(cfg); err != nil {
-		return tterrors.NewSaveConfigError(err)
+	if err := saveConfig(configManager, cfg); err != nil {
+		return err
 	}
 
 	fmt.Printf("Deleted task template: %s [%s]\n", templateName, templateID)

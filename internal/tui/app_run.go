@@ -155,9 +155,7 @@ func evaluateWorkflowAtStartup(cfg *config.Config, manager *config.Manager, proj
 	})
 
 	// Persist config changes
-	if err := manager.Save(cfg); err != nil {
-		logging.Warn("failed to save config: %v", err)
-	}
+	saveConfigWarn(manager, cfg, "TUI shutdown")
 
 	return result
 }

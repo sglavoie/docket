@@ -8,7 +8,6 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/sglavoie/tt/internal/config"
-	"github.com/sglavoie/tt/internal/logging"
 )
 
 // ScoreFilterInput encapsulates the inline text input for entering a custom
@@ -70,9 +69,7 @@ func (s *ScoreFilterInput) ProcessKey(msg tea.KeyMsg, cfg *config.Config, mgr *c
 	if done && val != nil {
 		cfg.ScoreFilterCustom = val
 		if mgr != nil {
-			if err := mgr.Save(cfg); err != nil {
-				logging.Warn("failed to save score filter preference: %v", err)
-			}
+			saveConfigWarn(mgr, cfg, "score filter preference")
 		}
 		*scoreMin = *val
 		onApply()

@@ -102,8 +102,8 @@ func runContextNew(cmd *cobra.Command, args []string) error {
 	}
 
 	cfg.SetCustomContext(name, selectedIDs)
-	if err := mgr.Save(cfg); err != nil {
-		return tterrors.NewSaveConfigError(err)
+	if err := saveConfig(mgr, cfg); err != nil {
+		return err
 	}
 
 	fmt.Printf("Created custom context '%s' with %d project(s)\n", name, len(selectedIDs))

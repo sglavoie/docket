@@ -9,6 +9,9 @@ import (
 // MaxTaskTitleLength is the maximum allowed length for a task title.
 const MaxTaskTitleLength = 700
 
+// MaxProjectNameLength is the maximum allowed length for a project name.
+const MaxProjectNameLength = 100
+
 // Attachment represents a file or URL attached to a task.
 type Attachment struct {
 	Filename     string    `json:"filename"`      // filename (local) or full URL

@@ -179,8 +179,8 @@ func runTemplateAdd(cmd *cobra.Command, args []string) error {
 
 	cfg.AddTaskTemplate(*t)
 
-	if err := configManager.Save(cfg); err != nil {
-		return tterrors.NewSaveConfigError(err)
+	if err := saveConfig(configManager, cfg); err != nil {
+		return err
 	}
 
 	fmt.Printf("Created task template: %s [%s]\n", t.Name, t.ID)

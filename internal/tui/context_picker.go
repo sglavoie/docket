@@ -345,7 +345,7 @@ func (m *ContextPickerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.clearStatus()
 				} else if selected.Name != "" {
 					// Can't delete regular contexts
-					m.setStatus("Cannot delete regular contexts.\nRename them with 'r' instead.")
+					m.setStatus("cannot delete regular contexts.\nRename them with 'r' instead.")
 				}
 			}
 			return m, nil

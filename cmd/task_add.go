@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"fmt"
-	"os"
 	"strings"
 
 	"github.com/google/uuid"
@@ -28,6 +27,8 @@ var (
 	isStory          bool
 	isBug            bool
 	isIdea           bool
+	taskAddJSON      bool
+	taskAddQuiet     bool
 
 	// Type-specific attribute flags (shared registration)
 	addTypeAttrs TypeAttrValues
@@ -79,12 +80,20 @@ func init() {
 	// Type-specific attribute flags
 	registerTypeAttrFlags(taskAddCmd, &addTypeAttrs)
 
+	taskAddCmd.Flags().BoolVar(&taskAddJSON, "json", false, "output created task as JSON")
+	taskAddCmd.Flags().BoolVar(&taskAddQuiet, "quiet", false, "suppress output on success")
+
 	_ = taskAddCmd.RegisterFlagCompletionFunc("type", completeEnum(taskTypeCompletions))
 	_ = taskAddCmd.RegisterFlagCompletionFunc("section", completeProjectSections())
 	_ = taskAddCmd.RegisterFlagCompletionFunc("stage", completeConfigStages())
 }
 
 func runTaskAdd(cmd *cobra.Command, args []string) error {
+	out := MutateOutput{JSON: taskAddJSON, Quiet: taskAddQuiet}
+	if err := out.CheckMutualExclusion(); err != nil {
+		return err
+	}
+
 	var (
 		project       *models.Project
 		cfg           *config.Config
@@ -251,8 +260,8 @@ func runTaskAdd(cmd *cobra.Command, args []string) error {
 
 		// Increment template use count (template was used regardless of checklist)
 		cfg.IncrementTemplateUseCount(tmpl.ID)
-		if err := configManager.Save(cfg); err != nil {
-			fmt.Fprintf(os.Stderr, "warning: task created but failed to save template use count: %v\n", err)
+		if err := saveConfig(configManager, cfg); err != nil {
+			return err
 		}
 	}
 
@@ -264,8 +273,10 @@ func runTaskAdd(cmd *cobra.Command, args []string) error {
 		return tterrors.NewSaveProjectError(project.Name, err)
 	}
 
-	fmt.Println(TaskMsg(project.Name, "Created", task))
-	if checklistCreated > 0 {
+	if err := out.OutputTask(project.Name, "Created", task); err != nil {
+		return err
+	}
+	if !out.Quiet && !out.JSON && checklistCreated > 0 {
 		fmt.Printf("  Added %d checklist item(s) from template\n", checklistCreated)
 	}
 	return nil

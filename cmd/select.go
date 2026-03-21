@@ -71,8 +71,8 @@ func runSelect(cmd *cobra.Command, args []string) error {
 
 	cfg.CurrentProject = project.ID
 
-	if err := configManager.Save(cfg); err != nil {
-		return tterrors.NewSaveConfigError(err)
+	if err := saveConfig(configManager, cfg); err != nil {
+		return err
 	}
 
 	fmt.Printf("Selected project: %s\n", project.Name)

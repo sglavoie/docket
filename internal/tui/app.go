@@ -183,8 +183,9 @@ type AppModel struct {
 	// is saved so it can be restored when navigating back.
 	projectStack []string
 
-	// Terminal too narrow to render properly
+	// Terminal too narrow or short to render properly
 	tooNarrow bool
+	tooShort  bool
 
 	// State
 	err           error

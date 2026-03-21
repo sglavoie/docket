@@ -5,7 +5,6 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/sglavoie/tt/internal/tterrors"
 	"github.com/sglavoie/tt/internal/workflow"
 )
 
@@ -104,8 +103,8 @@ func runWorkflowInit(cmd *cobra.Command, args []string) error {
 
 		updated, readded, unchanged, affectedIDs := cfg.ResetChangedDefaultRules(initEnable)
 
-		if err := configManager.Save(cfg); err != nil {
-			return tterrors.NewSaveConfigError(err)
+		if err := saveConfig(configManager, cfg); err != nil {
+			return err
 		}
 
 		fmt.Println("Reset changed default rules:")
@@ -141,8 +140,8 @@ func runWorkflowInit(cmd *cobra.Command, args []string) error {
 	useOriginalEnabled := cfg.DefaultRulesInitialized && !initForce
 	added := cfg.AddDefaultRules(initEnable, useOriginalEnabled)
 
-	if err := configManager.Save(cfg); err != nil {
-		return tterrors.NewSaveConfigError(err)
+	if err := saveConfig(configManager, cfg); err != nil {
+		return err
 	}
 
 	if added == 0 {

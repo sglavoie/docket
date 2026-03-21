@@ -10,7 +10,11 @@ import (
 	"github.com/sglavoie/tt/internal/storage"
 )
 
-var taskDeleteForce bool
+var (
+	taskDeleteForce bool
+	taskDeleteJSON  bool
+	taskDeleteQuiet bool
+)
 
 var taskDeleteCmd = &cobra.Command{
 	Use:   "delete [task-id]",
@@ -33,9 +37,16 @@ Examples:
 func init() {
 	taskCmd.AddCommand(taskDeleteCmd)
 	taskDeleteCmd.Flags().BoolVarP(&taskDeleteForce, "force", "f", false, "Skip confirmation prompt")
+	taskDeleteCmd.Flags().BoolVar(&taskDeleteJSON, "json", false, "output deleted task as JSON")
+	taskDeleteCmd.Flags().BoolVar(&taskDeleteQuiet, "quiet", false, "suppress output on success")
 }
 
 func runTaskDelete(cmd *cobra.Command, args []string) error {
+	out := MutateOutput{JSON: taskDeleteJSON, Quiet: taskDeleteQuiet}
+	if err := out.CheckMutualExclusion(); err != nil {
+		return err
+	}
+
 	project, cfg, configManager, err := LoadCurrentProject()
 	if err != nil {
 		return err
@@ -127,6 +138,12 @@ func runTaskDelete(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	if out.Quiet {
+		return nil
+	}
+	if out.JSON {
+		return outputSingleTaskJSON(task)
+	}
 	msg := TaskMsg(project.Name, "Deleted", task)
 	if count > 1 {
 		msg += fmt.Sprintf(" and %s", Pluralize(count-1, "descendant", "descendants"))

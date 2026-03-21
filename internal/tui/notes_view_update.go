@@ -342,7 +342,7 @@ func (m *NotesViewModel) startRename() {
 		return
 	}
 	if m.notes[m.cursor].ParseError != "" {
-		m.setErrorStatus("Cannot rename — note has parse error. Press e to edit.")
+		m.setErrorStatus("cannot rename — note has parse error. Press e to edit.")
 		return
 	}
 	ti := textinput.New()

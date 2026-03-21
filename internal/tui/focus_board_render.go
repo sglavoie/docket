@@ -123,13 +123,13 @@ func (m *FocusBoardModel) View() string {
 			b.WriteString("\n\n")
 			b.WriteString(HelpStyle.Render("  Press Fx to clear filters, or Esc to dismiss."))
 		} else if m.tabs.Active == boardTabClosed {
-			b.WriteString(MutedStyle.Render("  No closed tasks."))
+			b.WriteString(MutedStyle.Render("  " + EmptyStateClosed))
 		} else if len(m.rows) == 0 {
 			b.WriteString(MutedStyle.Render("  " + EmptyStateNoTasks))
 			b.WriteString("\n\n")
 			b.WriteString(HelpStyle.Render("  Press a to add an action, or mark tasks as active in a project."))
 		} else {
-			b.WriteString(MutedStyle.Render("  No tasks match this tab."))
+			b.WriteString(MutedStyle.Render("  " + EmptyStateNoMatch))
 		}
 		b.WriteString("\n\n")
 		b.WriteString(renderStatusMessages(m.statusMessage, m.err))
@@ -281,8 +281,8 @@ func (m *FocusBoardModel) renderRow(row boardRow, isSelected bool, maxTitleLen i
 
 		truncatedTitle := util.Truncate(task.Title, maxTitleLen)
 		title := m.highlightTitle(truncatedTitle, task.Title)
-		bullet := BoldStyle.Render("●")
-		content := fmt.Sprintf("  %s %s %s%s %s", bullet, priorityBadge, projectBadge, typeIcon, title)
+		statusIcon := GetStatusBadge(string(task.Status), task.Status.Icon())
+		content := fmt.Sprintf("  %s %s %s%s %s", statusIcon, priorityBadge, projectBadge, typeIcon, title)
 
 		structureGroup := scoreBadge
 		lifecycleGroup := dueStr

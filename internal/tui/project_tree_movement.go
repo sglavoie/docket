@@ -40,12 +40,12 @@ func (m *ProjectTreeModel) handleMovementKeys(key string, visible []*TreeNode) (
 				siblingAbove := visibleSiblings[visibleSiblingIdx-1]
 				if task.IsRoot() && task.IsComplete() && !siblingAbove.IsComplete() {
 					return true, func() tea.Msg {
-						return MoveBlockedMsg{Reason: "Cannot move completed task above uncompleted task"}
+						return MoveBlockedMsg{Reason: "cannot move completed task above uncompleted task"}
 					}
 				}
 				if m.viewMode == ViewModeActive && task.Active != siblingAbove.Active {
 					return true, func() tea.Msg {
-						return MoveBlockedMsg{Reason: "Cannot reorder across active/non-active boundary"}
+						return MoveBlockedMsg{Reason: "cannot reorder across active/non-active boundary"}
 					}
 				}
 				prevStates := captureTaskStates(m.project.Tasks)
@@ -68,12 +68,12 @@ func (m *ProjectTreeModel) handleMovementKeys(key string, visible []*TreeNode) (
 				siblingBelow := visibleSiblings[visibleSiblingIdx+1]
 				if task.IsRoot() && !task.IsComplete() && siblingBelow.IsComplete() {
 					return true, func() tea.Msg {
-						return MoveBlockedMsg{Reason: "Cannot move uncompleted task below completed task"}
+						return MoveBlockedMsg{Reason: "cannot move uncompleted task below completed task"}
 					}
 				}
 				if m.viewMode == ViewModeActive && task.Active != siblingBelow.Active {
 					return true, func() tea.Msg {
-						return MoveBlockedMsg{Reason: "Cannot reorder across active/non-active boundary"}
+						return MoveBlockedMsg{Reason: "cannot reorder across active/non-active boundary"}
 					}
 				}
 				prevStates := captureTaskStates(m.project.Tasks)

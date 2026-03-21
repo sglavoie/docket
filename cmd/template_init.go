@@ -6,7 +6,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/sglavoie/tt/internal/template"
-	"github.com/sglavoie/tt/internal/tterrors"
 )
 
 var templateInitCmd = &cobra.Command{
@@ -123,8 +122,8 @@ func runTemplateInit(cmd *cobra.Command, args []string) error {
 
 		updated, readded, unchanged, affectedIDs := cfg.ResetChangedDefaultTemplates(templateInitEnable)
 
-		if err := configManager.Save(cfg); err != nil {
-			return tterrors.NewSaveConfigError(err)
+		if err := saveConfig(configManager, cfg); err != nil {
+			return err
 		}
 
 		fmt.Println("Reset changed default templates:")
@@ -157,8 +156,8 @@ func runTemplateInit(cmd *cobra.Command, args []string) error {
 
 	added := cfg.AddDefaultTemplates(templateInitEnable)
 
-	if err := configManager.Save(cfg); err != nil {
-		return tterrors.NewSaveConfigError(err)
+	if err := saveConfig(configManager, cfg); err != nil {
+		return err
 	}
 
 	if added == 0 {

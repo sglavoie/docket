@@ -60,8 +60,8 @@ func runScoreAssign(cmd *cobra.Command, args []string) error {
 	}
 
 	cfg.SetProjectScoringProfile(project.ID, profile.ID)
-	if err := configManager.Save(cfg); err != nil {
-		return fmt.Errorf("failed to save config: %w", err)
+	if err := saveConfig(configManager, cfg); err != nil {
+		return err
 	}
 	fmt.Printf("Assigned profile %q to project %q\n", profile.Name, project.Name)
 	return nil
@@ -79,8 +79,8 @@ func runScoreUnassign(cmd *cobra.Command, args []string) error {
 	}
 
 	cfg.UnsetProjectScoringProfile(project.ID)
-	if err := configManager.Save(cfg); err != nil {
-		return fmt.Errorf("failed to save config: %w", err)
+	if err := saveConfig(configManager, cfg); err != nil {
+		return err
 	}
 	fmt.Printf("Removed scoring profile from project %q\n", project.Name)
 	return nil

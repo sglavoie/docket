@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"bufio"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -233,6 +234,124 @@ func ReportBatchErrors(succeeded int, errs []string) error {
 		return nil // partial success = exit 0
 	}
 	return fmt.Errorf("%s", strings.Join(errs, "\n"))
+}
+
+// saveConfig persists the config and wraps any error in a standard SaveConfigError.
+func saveConfig(mgr *config.Manager, cfg *config.Config) error {
+	if err := mgr.Save(cfg); err != nil {
+		return tterrors.NewSaveConfigError(err)
+	}
+	return nil
+}
+
+// MutateOutput controls how mutation commands print their results.
+// JSON and Quiet are mutually exclusive; validate with CheckMutualExclusion.
+type MutateOutput struct {
+	JSON  bool
+	Quiet bool
+}
+
+// CheckMutualExclusion returns an error if both JSON and Quiet are set.
+func (o MutateOutput) CheckMutualExclusion() error {
+	if o.JSON && o.Quiet {
+		return fmt.Errorf("--json and --quiet are mutually exclusive")
+	}
+	return nil
+}
+
+// OutputTask prints a single task as JSON (--json), suppresses output (--quiet),
+// or prints the standard success message.
+func (o MutateOutput) OutputTask(projectName, verb string, task *models.Task) error {
+	if o.Quiet {
+		return nil
+	}
+	if o.JSON {
+		return outputSingleTaskJSON(task)
+	}
+	fmt.Println(TaskMsg(projectName, verb, task))
+	return nil
+}
+
+// OutputProject prints a project as JSON (--json), suppresses output (--quiet),
+// or runs the provided fallback print function.
+func (o MutateOutput) OutputProject(project *models.Project, fallback func()) error {
+	if o.Quiet {
+		return nil
+	}
+	if o.JSON {
+		return outputSingleProjectJSON(project)
+	}
+	fallback()
+	return nil
+}
+
+// outputSingleTaskJSON marshals a task to indented JSON and prints it.
+func outputSingleTaskJSON(task *models.Task) error {
+	tags := task.Tags
+	if tags == nil {
+		tags = []string{}
+	}
+	entry := struct {
+		ID        string   `json:"id"`
+		ShortID   int      `json:"short_id"`
+		Type      string   `json:"type"`
+		Title     string   `json:"title"`
+		Status    string   `json:"status"`
+		Priority  int      `json:"priority"`
+		Tags      []string `json:"tags"`
+		Section   string   `json:"section,omitempty"`
+		CreatedAt string   `json:"created_at"`
+		UpdatedAt string   `json:"updated_at"`
+		DueDate   *string  `json:"due_date,omitempty"`
+	}{
+		ID:        task.ID,
+		ShortID:   task.ShortID,
+		Type:      task.Type.String(),
+		Title:     task.Title,
+		Status:    task.Status.String(),
+		Priority:  task.Priority,
+		Tags:      tags,
+		Section:   task.Section,
+		CreatedAt: task.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
+		UpdatedAt: task.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"),
+	}
+	if task.DueDate != nil {
+		s := task.DueDate.Format("2006-01-02T15:04:05Z07:00")
+		entry.DueDate = &s
+	}
+	data, err := json.MarshalIndent(entry, "", "  ")
+	if err != nil {
+		return fmt.Errorf("marshal task to JSON: %w", err)
+	}
+	fmt.Println(string(data))
+	return nil
+}
+
+// outputSingleProjectJSON marshals a project to indented JSON and prints it.
+func outputSingleProjectJSON(project *models.Project) error {
+	entry := struct {
+		ID          string `json:"id"`
+		Slug        string `json:"slug"`
+		Name        string `json:"name"`
+		Context     string `json:"context"`
+		Path        string `json:"path"`
+		Description string `json:"description,omitempty"`
+		StatusIcon  string `json:"status_icon,omitempty"`
+	}{
+		ID:          project.ID,
+		Slug:        project.Slug,
+		Name:        project.Name,
+		Context:     project.Context,
+		Path:        project.Path,
+		Description: project.Description,
+		StatusIcon:  project.StatusIcon,
+	}
+	data, err := json.MarshalIndent(entry, "", "  ")
+	if err != nil {
+		return fmt.Errorf("marshal project to JSON: %w", err)
+	}
+	fmt.Println(string(data))
+	return nil
 }
 
 // LoadConfigAndProjectOrCurrent loads the config and looks up a project by slug

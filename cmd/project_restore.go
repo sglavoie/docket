@@ -84,12 +84,12 @@ func runProjectRestore(cmd *cobra.Command, args []string) error {
 	cfg.AddProject(project)
 
 	// Save config
-	if err := configManager.Save(cfg); err != nil {
+	if err := saveConfig(configManager, cfg); err != nil {
 		// Move back to trash on failure (best effort)
 		if trashErr := storage.MoveProjectToTrash(project, cfg.DataDir); trashErr != nil {
 			fmt.Fprintf(os.Stderr, "warning: failed to move project back to trash after config save failure: %v\n", trashErr)
 		}
-		return tterrors.NewSaveConfigError(err)
+		return err
 	}
 
 	fmt.Printf("Restored project '%s'\n", project.Name)
