@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -76,23 +75,7 @@ func runNoteAdd(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 	if out.JSON {
-		entry := struct {
-			Filename string   `json:"filename"`
-			Title    string   `json:"title"`
-			Tags     []string `json:"tags"`
-			Scope    string   `json:"scope"`
-		}{
-			Filename: note.Filename,
-			Title:    note.Title,
-			Tags:     note.Tags,
-			Scope:    scope,
-		}
-		data, err := json.MarshalIndent(entry, "", "  ")
-		if err != nil {
-			return fmt.Errorf("marshaling note: %w", err)
-		}
-		fmt.Println(string(data))
-		return nil
+		return outputNoteJSON(note, scope)
 	}
 
 	fmt.Printf("[%s] Created note: %s (%s)\n", scope, title, note.Filename)

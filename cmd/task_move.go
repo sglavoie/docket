@@ -89,6 +89,11 @@ func init() {
 	addOutputFlags(taskMoveDownCmd)
 	addOutputFlags(taskIndentCmd)
 	addOutputFlags(taskOutdentCmd)
+
+	taskMoveUpCmd.ValidArgsFunction = completeCurrentProjectTaskIDs()
+	taskMoveDownCmd.ValidArgsFunction = completeCurrentProjectTaskIDs()
+	taskIndentCmd.ValidArgsFunction = completeCurrentProjectTaskIDs()
+	taskOutdentCmd.ValidArgsFunction = completeCurrentProjectTaskIDs()
 }
 
 // runTaskMoveAction is the generic skeleton for all move subcommands:

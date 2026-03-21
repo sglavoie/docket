@@ -58,7 +58,7 @@ func (m *Manager) Load() (*Config, error) {
 		if backupErr == nil {
 			var backupConfig Config
 			if json.Unmarshal(backupData, &backupConfig) == nil {
-				if backupConfig.DataDir != "" {
+				if backupConfig.DataDir != "" && backupConfig.Projects != nil {
 					config = backupConfig
 					logging.Warn("config file was corrupted, restored from backup %s", backupPath)
 					// Persist the recovered config so next load doesn't hit corruption again
@@ -67,7 +67,7 @@ func (m *Manager) Load() (*Config, error) {
 					}
 				} else {
 					// Backup parsed but is missing DataDir — treat as invalid and use defaults.
-					logging.Warn("config backup at %s is invalid (missing DataDir), using default config", backupPath)
+					logging.Warn("config backup at %s is invalid (missing DataDir or Projects), using default config", backupPath)
 					config = *NewConfig()
 				}
 			} else {

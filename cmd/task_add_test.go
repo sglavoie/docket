@@ -247,6 +247,7 @@ func resetTaskAddVars() {
 	isBug = false
 	isIdea = false
 	addTypeAttrs = TypeAttrValues{}
+	taskCreateSectionFlag = false
 }
 
 // setupTaskAddTest creates common test dependencies and returns them.
@@ -392,11 +393,13 @@ func TestRunTaskAdd(t *testing.T) {
 
 		initialCount := len(project.Tasks)
 		taskSectionFlag = "Backlog"
+		taskCreateSectionFlag = true
 		// Simulate the flag being explicitly set via command line
 		_ = taskAddCmd.Flags().Set("section", "Backlog")
 		defer func() {
 			taskAddCmd.Flags().Lookup("section").Changed = false
 			taskSectionFlag = ""
+			taskCreateSectionFlag = false
 		}()
 
 		err := runTaskAdd(taskAddCmd, []string{"Backlog task"})
@@ -441,6 +444,73 @@ func TestRunTaskAdd(t *testing.T) {
 		task := savedProject.Tasks[len(savedProject.Tasks)-1]
 		if task.Recurrence == nil {
 			t.Fatal("task should have recurrence set")
+		}
+	})
+}
+
+func TestRunTaskAdd_SectionValidation(t *testing.T) {
+	t.Run("rejects nonexistent section without --create-section", func(t *testing.T) {
+		deps, _ := setupTaskAddTest(t)
+		defer deps.Cleanup()
+
+		taskSectionFlag = "Nonexistent"
+		_ = taskAddCmd.Flags().Set("section", "Nonexistent")
+		defer func() {
+			taskAddCmd.Flags().Lookup("section").Changed = false
+			taskSectionFlag = ""
+		}()
+
+		err := runTaskAdd(taskAddCmd, []string{"My task"})
+		if err == nil {
+			t.Error("expected error for nonexistent section without --create-section")
+		}
+	})
+
+	t.Run("accepts nonexistent section with --create-section", func(t *testing.T) {
+		deps, project := setupTaskAddTest(t)
+		defer deps.Cleanup()
+
+		initialCount := len(project.Tasks)
+		taskSectionFlag = "NewSection"
+		taskCreateSectionFlag = true
+		_ = taskAddCmd.Flags().Set("section", "NewSection")
+		defer func() {
+			taskAddCmd.Flags().Lookup("section").Changed = false
+			taskSectionFlag = ""
+			taskCreateSectionFlag = false
+		}()
+
+		err := runTaskAdd(taskAddCmd, []string{"My task"})
+		testutil.AssertNoError(t, err)
+
+		savedProject := deps.Repository.Projects[project.ID]
+		if len(savedProject.Tasks) != initialCount+1 {
+			t.Fatalf("expected %d tasks, got %d", initialCount+1, len(savedProject.Tasks))
+		}
+		if !savedProject.HasSection("NewSection") {
+			t.Error("expected NewSection to be created")
+		}
+	})
+
+	t.Run("accepts existing section without --create-section", func(t *testing.T) {
+		deps, project := setupTaskAddTest(t)
+		defer deps.Cleanup()
+
+		// "Next" is the default section
+		initialCount := len(project.Tasks)
+		taskSectionFlag = "Next"
+		_ = taskAddCmd.Flags().Set("section", "Next")
+		defer func() {
+			taskAddCmd.Flags().Lookup("section").Changed = false
+			taskSectionFlag = ""
+		}()
+
+		err := runTaskAdd(taskAddCmd, []string{"My task"})
+		testutil.AssertNoError(t, err)
+
+		savedProject := deps.Repository.Projects[project.ID]
+		if len(savedProject.Tasks) != initialCount+1 {
+			t.Fatalf("expected %d tasks, got %d", initialCount+1, len(savedProject.Tasks))
 		}
 	})
 }

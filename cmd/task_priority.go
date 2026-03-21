@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"encoding/json"
 	"fmt"
 	"strconv"
 
@@ -65,22 +64,9 @@ func runTaskPriority(cmd *cobra.Command, args []string) error {
 		return errValidate
 	}
 
-	type taskEntry struct {
-		ID        string   `json:"id"`
-		ShortID   int      `json:"short_id"`
-		Type      string   `json:"type"`
-		Title     string   `json:"title"`
-		Status    string   `json:"status"`
-		Priority  int      `json:"priority"`
-		Tags      []string `json:"tags"`
-		Section   string   `json:"section,omitempty"`
-		CreatedAt string   `json:"created_at"`
-		UpdatedAt string   `json:"updated_at"`
-	}
-
 	var errs []string
 	succeeded := 0
-	var updated []taskEntry
+	var updated []*models.Task
 	for _, taskID := range taskIDs {
 		var oldPriority int
 
@@ -106,22 +92,7 @@ func runTaskPriority(cmd *cobra.Command, args []string) error {
 			continue
 		}
 
-		tags := task.Tags
-		if tags == nil {
-			tags = []string{}
-		}
-		updated = append(updated, taskEntry{
-			ID:        task.ID,
-			ShortID:   task.ShortID,
-			Type:      task.Type.String(),
-			Title:     task.Title,
-			Status:    task.Status.String(),
-			Priority:  task.Priority,
-			Tags:      tags,
-			Section:   task.Section,
-			CreatedAt: task.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
-			UpdatedAt: task.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"),
-		})
+		updated = append(updated, task)
 		if !out.Quiet && !out.JSON {
 			fmt.Printf("Updated priority for task #%d: %d -> %d (%s)\n", task.ShortID, oldPriority, priority, task.Title)
 		}
@@ -130,13 +101,11 @@ func runTaskPriority(cmd *cobra.Command, args []string) error {
 
 	if out.JSON {
 		if updated == nil {
-			updated = []taskEntry{}
+			updated = []*models.Task{}
 		}
-		data, err := json.MarshalIndent(updated, "", "  ")
-		if err != nil {
-			return fmt.Errorf("marshal tasks to JSON: %w", err)
+		if err := outputTasksJSON(updated); err != nil {
+			return err
 		}
-		fmt.Println(string(data))
 		return ReportBatchErrors(succeeded, errs)
 	}
 

@@ -605,6 +605,21 @@ Description with <!-- nested --> comment markers.
 	}
 }
 
+func TestParseTasksMarkdown_LineExceedingScannerBuffer(t *testing.T) {
+	// A line longer than scannerMaxBufSize (1MB) should return a parse error
+	// instead of silently truncating the file.
+	longLine := strings.Repeat("x", 2*1024*1024) // 2MB line
+	content := "# Project: Test\n\n## Task: Normal\n<!-- id: t1, status: todo, priority: 3 -->\n\n" + longLine + "\n"
+
+	_, err := ParseTasksMarkdownWithSections(content)
+	if err == nil {
+		t.Fatal("expected error for line exceeding scanner buffer, got nil")
+	}
+	if !strings.Contains(err.Error(), "parse") {
+		t.Errorf("expected parse error, got: %v", err)
+	}
+}
+
 func TestParseTasksMarkdown_CommentMarkerInDescription(t *testing.T) {
 	// Verify that <!-- in task descriptions doesn't corrupt parsing
 	content := `# Project: Test

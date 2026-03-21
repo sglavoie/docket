@@ -70,6 +70,12 @@ type FocusableView interface {
 	IsFocused() bool
 }
 
+// ViewExitResetter is implemented by views that need to reset interactive state
+// (e.g. text inputs, edit modes) when popped from the view stack.
+type ViewExitResetter interface {
+	OnExit()
+}
+
 // ViewContext provides shared state and dependencies to views.
 type ViewContext struct {
 	Width         int

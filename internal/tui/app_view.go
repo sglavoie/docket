@@ -248,12 +248,7 @@ func (m *AppModel) renderStatusBar() string {
 		return separator + "\n" + pinnedBar
 	}
 
-	var status string
-	if view := m.views.Get(m.currentView()); view != nil {
-		if labeler, ok := view.(StatusBarLabeler); ok {
-			status = labeler.StatusBarLabel()
-		}
-	}
+	status := m.buildBreadcrumb()
 
 	// Check if view supports help shortcut hint — only show if view implements HelpProvider
 	currentView := m.currentView()
@@ -285,4 +280,87 @@ func (m *AppModel) renderStatusBar() string {
 	spacer := ThemeSpacer(gap)
 
 	return separator + "\n" + lipgloss.JoinHorizontal(lipgloss.Top, left, spacer, right)
+}
+
+// buildBreadcrumb constructs a compact "Dashboard > project > view" label from the view stack.
+// Each segment uses the view's StatusBarLabel() when available, with fallbacks for common views.
+// Project names are truncated to keep the breadcrumb short.
+func (m *AppModel) buildBreadcrumb() string {
+	const maxProjectLen = 16
+	const sep = " > "
+
+	// Build a deduplicated view stack, keeping the LAST occurrence of each
+	// view type (e.g. for stacked ViewProjectTree the deepest project wins).
+	lastIdx := make(map[ViewType]int)
+	for i, vt := range m.viewStack {
+		lastIdx[vt] = i
+	}
+
+	var parts []string
+	for i, vt := range m.viewStack {
+		if lastIdx[vt] != i {
+			continue // skip earlier duplicates
+		}
+		label := m.breadcrumbLabel(vt, maxProjectLen)
+		if label != "" {
+			parts = append(parts, label)
+		}
+	}
+
+	if len(parts) == 0 {
+		return ""
+	}
+
+	crumb := strings.Join(parts, sep)
+	// Truncate total breadcrumb if it would crowd out the help text.
+	maxLen := max(m.width/2, 20)
+	if len(crumb) > maxLen {
+		crumb = crumb[:maxLen-1] + "…"
+	}
+	return crumb
+}
+
+// breadcrumbLabel returns a short human-readable label for a single view type.
+func (m *AppModel) breadcrumbLabel(vt ViewType, maxProjectLen int) string {
+	// ViewDashboard has no StatusBarLabel — use a fixed string.
+	if vt == ViewDashboard {
+		return "Dashboard"
+	}
+
+	// Use the registered view's StatusBarLabel when available.
+	if view := m.views.Get(vt); view != nil {
+		if labeler, ok := view.(StatusBarLabeler); ok {
+			raw := labeler.StatusBarLabel()
+			// Strip "Project: " prefix from project tree label for compactness.
+			label := strings.TrimPrefix(raw, "Project: ")
+			// Also strip cycle-position suffix (starts with " [") for compactness.
+			if idx := strings.Index(label, " ["); idx > 0 {
+				label = label[:idx]
+			}
+			if len(label) > maxProjectLen {
+				label = label[:maxProjectLen-1] + "…"
+			}
+			return label
+		}
+	}
+
+	// Fallback labels for views that don't implement StatusBarLabeler.
+	switch vt {
+	case ViewProjectTree:
+		if m.currentProject != nil {
+			name := m.currentProject.Name
+			if len(name) > maxProjectLen {
+				name = name[:maxProjectLen-1] + "…"
+			}
+			return name
+		}
+		return "Project"
+	case ViewFilter:
+		return "Filter"
+	case ViewDailyReview:
+		return "Daily Review"
+	case ViewWeeklyReview:
+		return "Weekly Review"
+	}
+	return ""
 }

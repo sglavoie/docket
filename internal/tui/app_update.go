@@ -320,6 +320,13 @@ func (m *AppModel) handleEscKey() (bool, tea.Cmd) {
 	}
 	if m.currentView() != ViewDashboard {
 		closingView := m.currentView()
+		// Give the closing view a chance to reset any interactive state
+		// (text inputs, edit modes) before it is popped from the stack.
+		if view := m.views.Get(closingView); view != nil {
+			if resetter, ok := view.(ViewExitResetter); ok {
+				resetter.OnExit()
+			}
+		}
 		var cmd tea.Cmd
 		if isGlobalOverlayView(closingView) {
 			m.popToAnchorView()

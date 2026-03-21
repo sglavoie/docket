@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -61,12 +60,7 @@ func runBlockerAdd(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 	if out.JSON {
-		data, err := json.MarshalIndent(blocker, "", "  ")
-		if err != nil {
-			return fmt.Errorf("marshaling blocker: %w", err)
-		}
-		fmt.Println(string(data))
-		return nil
+		return outputBlockerJSON(blocker)
 	}
 
 	fmt.Printf("Created blocker '%s' [%s]\n", title, blocker.ID[:8])

@@ -736,8 +736,8 @@ func TestConfigManager_LoadRecoversFromBackup(t *testing.T) {
 	configPath := filepath.Join(tmpDir, "test-config.json")
 	backupPath := configPath + ".bak"
 
-	// Write valid backup (must include DataDir to pass schema validation)
-	backupData := `{"editor": "vim", "version": 1, "data_dir": "/tmp/tt-test"}`
+	// Write valid backup (must include DataDir and non-nil Projects to pass schema validation)
+	backupData := `{"editor": "vim", "version": 1, "data_dir": "/tmp/tt-test", "projects": []}`
 	if err := os.WriteFile(backupPath, []byte(backupData), 0644); err != nil {
 		t.Fatalf("failed to write backup: %v", err)
 	}
@@ -871,6 +871,36 @@ func TestConfig_LoadInitializesSectionColors(t *testing.T) {
 	// SectionColors should be initialized
 	if cfg.SectionColors == nil {
 		t.Error("SectionColors should be initialized on load")
+	}
+}
+
+// TestConfigManager_BackupWithNilProjects verifies that a backup with valid
+// DataDir but nil Projects is rejected and a default config is used instead.
+func TestConfigManager_BackupWithNilProjects(t *testing.T) {
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, "tt.json")
+	backupPath := configPath + ".bak"
+
+	// Write corrupt main config (invalid JSON)
+	if err := os.WriteFile(configPath, []byte("not-json"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	// Write backup with valid DataDir but null projects (nil after unmarshal)
+	backupJSON := `{"data_dir": "/tmp/tt-data", "projects": null}`
+	if err := os.WriteFile(backupPath, []byte(backupJSON), 0600); err != nil {
+		t.Fatal(err)
+	}
+
+	manager := NewManager(configPath)
+	cfg, err := manager.Load()
+	if err != nil {
+		t.Fatalf("Load should not error when falling back to default: %v", err)
+	}
+	if cfg.DataDir == "" {
+		t.Error("DataDir should be set to a default value, not empty")
+	}
+	if cfg.Projects == nil {
+		t.Error("Projects should be initialized (not nil) on default config")
 	}
 }
 

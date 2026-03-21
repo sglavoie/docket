@@ -15,20 +15,21 @@ import (
 )
 
 var (
-	taskTypeFlag     string
-	taskParentFlag   string
-	taskPriority     int
-	taskTags         []string
-	taskSectionFlag  string
-	taskStageFlag    string
-	taskRecurFlag    string
-	taskTemplateFlag string
-	isEpic           bool
-	isStory          bool
-	isBug            bool
-	isIdea           bool
-	taskAddJSON      bool
-	taskAddQuiet     bool
+	taskTypeFlag          string
+	taskParentFlag        string
+	taskPriority          int
+	taskTags              []string
+	taskSectionFlag       string
+	taskStageFlag         string
+	taskRecurFlag         string
+	taskTemplateFlag      string
+	isEpic                bool
+	isStory               bool
+	isBug                 bool
+	isIdea                bool
+	taskAddJSON           bool
+	taskAddQuiet          bool
+	taskCreateSectionFlag bool
 
 	// Type-specific attribute flags (shared registration)
 	addTypeAttrs TypeAttrValues
@@ -80,6 +81,7 @@ func init() {
 	// Type-specific attribute flags
 	registerTypeAttrFlags(taskAddCmd, &addTypeAttrs)
 
+	taskAddCmd.Flags().BoolVar(&taskCreateSectionFlag, "create-section", false, "create the section if it does not exist")
 	taskAddCmd.Flags().BoolVar(&taskAddJSON, "json", false, "output created task as JSON")
 	taskAddCmd.Flags().BoolVar(&taskAddQuiet, "quiet", false, "suppress output on success")
 
@@ -191,7 +193,12 @@ func runTaskAdd(cmd *cobra.Command, args []string) error {
 
 	// Handle section (explicit flag overrides template, using Changed() for consistency)
 	if cmd.Flags().Changed("section") {
-		project.EnsureSection(taskSectionFlag)
+		if !project.HasSection(taskSectionFlag) {
+			if !taskCreateSectionFlag {
+				return fmt.Errorf("section %q not found; available: %v (use --create-section to create)", taskSectionFlag, project.GetSections())
+			}
+			project.EnsureSection(taskSectionFlag)
+		}
 		task.Section = taskSectionFlag
 	} else if tmpl != nil && tmpl.Section != "" {
 		project.EnsureSection(tmpl.Section)
@@ -212,7 +219,7 @@ func runTaskAdd(cmd *cobra.Command, args []string) error {
 	if taskRecurFlag != "" {
 		pattern := models.ParseRecurrence(taskRecurFlag)
 		if pattern == nil {
-			return tterrors.NewInvalidValueError("recurrence", taskRecurFlag, "use daily, weekly, monthly, yearly, Nd, Nw, Nm, Ny")
+			return tterrors.NewInvalidValueError("recurrence", taskRecurFlag, "use daily, weekly, weekly:mon,fri, monthly, yearly, Nd, Nw, Nm, Ny")
 		}
 		task.Recurrence = pattern
 	}

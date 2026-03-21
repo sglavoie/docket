@@ -1,0 +1,186 @@
+package cmd
+
+import (
+	"bytes"
+	"io"
+	"os"
+	"testing"
+
+	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/testutil"
+	"github.com/sglavoie/tt/internal/workflow"
+)
+
+func TestProcessDeferredMoves_WarnsCrossProjectDependencies(t *testing.T) {
+	t.Run("warns when task has DependsOn being dropped", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		deps := testutil.SetupTestDeps(t)
+		defer deps.Cleanup()
+
+		// Set up source project with a task that has a dependency
+		srcProject := testutil.NewTestProject("Source")
+		srcProject.Path = tmpDir + "/source"
+		if err := os.MkdirAll(srcProject.Path, 0o755); err != nil {
+			t.Fatal(err)
+		}
+
+		task, err := models.NewTask("task-1", srcProject.GetNextShortID(), models.TaskTypeTask, "My Task")
+		if err != nil {
+			t.Fatal(err)
+		}
+		task.DependsOn = []string{"dep-id-1", "dep-id-2"}
+		srcProject.Tasks = append(srcProject.Tasks, task)
+
+		// Set up destination project
+		destProject := testutil.NewTestProject("Dest")
+		destProject.Path = tmpDir + "/dest"
+		if err := os.MkdirAll(destProject.Path, 0o755); err != nil {
+			t.Fatal(err)
+		}
+
+		// Wire up mock storage
+		deps.Repository.Projects[srcProject.ID] = srcProject
+		deps.Repository.Projects[destProject.ID] = destProject
+		deps.Config.Projects = []*models.Project{srcProject, destProject}
+
+		oldRepo := storage.DefaultRepository
+		storage.DefaultRepository = deps.Repository
+		defer func() { storage.DefaultRepository = oldRepo }()
+
+		moves := []workflow.DeferredMove{
+			{TaskID: task.ID, Destination: destProject.Slug},
+		}
+
+		// Capture stdout to verify warnings
+		oldStdout := os.Stdout
+		r, w, _ := os.Pipe()
+		os.Stdout = w
+
+		err = processDeferredMoves(srcProject, moves, deps.Config, nil)
+
+		w.Close()
+		os.Stdout = oldStdout
+		var buf bytes.Buffer
+		_, _ = io.Copy(&buf, r)
+
+		testutil.AssertNoError(t, err)
+		output := buf.String()
+		if output == "" {
+			t.Error("expected warning about dropped dependencies, got none")
+		}
+		if len(task.DependsOn) != 0 {
+			t.Errorf("expected DependsOn to be cleared, got %v", task.DependsOn)
+		}
+	})
+
+	t.Run("warns when task has RelatedTo being dropped", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		deps := testutil.SetupTestDeps(t)
+		defer deps.Cleanup()
+
+		srcProject := testutil.NewTestProject("Source")
+		srcProject.Path = tmpDir + "/source"
+		if err := os.MkdirAll(srcProject.Path, 0o755); err != nil {
+			t.Fatal(err)
+		}
+
+		task, err := models.NewTask("task-2", srcProject.GetNextShortID(), models.TaskTypeTask, "My Task")
+		if err != nil {
+			t.Fatal(err)
+		}
+		task.RelatedTo = []string{"rel-id-1"}
+		srcProject.Tasks = append(srcProject.Tasks, task)
+
+		destProject := testutil.NewTestProject("Dest")
+		destProject.Path = tmpDir + "/dest"
+		if err := os.MkdirAll(destProject.Path, 0o755); err != nil {
+			t.Fatal(err)
+		}
+
+		deps.Repository.Projects[srcProject.ID] = srcProject
+		deps.Repository.Projects[destProject.ID] = destProject
+		deps.Config.Projects = []*models.Project{srcProject, destProject}
+
+		oldRepo := storage.DefaultRepository
+		storage.DefaultRepository = deps.Repository
+		defer func() { storage.DefaultRepository = oldRepo }()
+
+		moves := []workflow.DeferredMove{
+			{TaskID: task.ID, Destination: destProject.Slug},
+		}
+
+		oldStdout := os.Stdout
+		r, w, _ := os.Pipe()
+		os.Stdout = w
+
+		err = processDeferredMoves(srcProject, moves, deps.Config, nil)
+
+		w.Close()
+		os.Stdout = oldStdout
+		var buf bytes.Buffer
+		_, _ = io.Copy(&buf, r)
+
+		testutil.AssertNoError(t, err)
+		output := buf.String()
+		if output == "" {
+			t.Error("expected warning about dropped relations, got none")
+		}
+		if len(task.RelatedTo) != 0 {
+			t.Errorf("expected RelatedTo to be cleared, got %v", task.RelatedTo)
+		}
+	})
+
+	t.Run("no warning when task has no cross-project references", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		deps := testutil.SetupTestDeps(t)
+		defer deps.Cleanup()
+
+		srcProject := testutil.NewTestProject("Source")
+		srcProject.Path = tmpDir + "/source"
+		if err := os.MkdirAll(srcProject.Path, 0o755); err != nil {
+			t.Fatal(err)
+		}
+
+		task, err := models.NewTask("task-3", srcProject.GetNextShortID(), models.TaskTypeTask, "Clean Task")
+		if err != nil {
+			t.Fatal(err)
+		}
+		srcProject.Tasks = append(srcProject.Tasks, task)
+
+		destProject := testutil.NewTestProject("Dest")
+		destProject.Path = tmpDir + "/dest"
+		if err := os.MkdirAll(destProject.Path, 0o755); err != nil {
+			t.Fatal(err)
+		}
+
+		deps.Repository.Projects[srcProject.ID] = srcProject
+		deps.Repository.Projects[destProject.ID] = destProject
+		deps.Config.Projects = []*models.Project{srcProject, destProject}
+
+		oldRepo := storage.DefaultRepository
+		storage.DefaultRepository = deps.Repository
+		defer func() { storage.DefaultRepository = oldRepo }()
+
+		moves := []workflow.DeferredMove{
+			{TaskID: task.ID, Destination: destProject.Slug},
+		}
+
+		oldStdout := os.Stdout
+		r, w, _ := os.Pipe()
+		os.Stdout = w
+
+		err = processDeferredMoves(srcProject, moves, deps.Config, nil)
+
+		w.Close()
+		os.Stdout = oldStdout
+		var buf bytes.Buffer
+		_, _ = io.Copy(&buf, r)
+
+		testutil.AssertNoError(t, err)
+		output := buf.String()
+		if output != "" {
+			t.Errorf("expected no warning for task without cross-project references, got: %q", output)
+		}
+	})
+}

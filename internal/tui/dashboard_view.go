@@ -417,7 +417,8 @@ func (m *DashboardModel) renderProjectList(visible []*models.Project, chromeHeig
 	headerLines := 1
 	maxVisible := m.height - chromeHeight - bottomHeight - cardOverhead - 1 - headerLines
 	if narrowMode {
-		maxVisible = (m.height - chromeHeight - bottomHeight - cardOverhead - 1 - headerLines) / 2
+		availRows := m.height - chromeHeight - bottomHeight - cardOverhead - 1 - headerLines
+		maxVisible = (availRows + 1) / 2 // ceiling division: partial last row still fits a project
 	}
 	if maxVisible < DashboardMinVisibleProjects {
 		maxVisible = DashboardMinVisibleProjects

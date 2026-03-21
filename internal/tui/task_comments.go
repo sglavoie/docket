@@ -797,6 +797,17 @@ func (m *TaskCommentsModel) HasTextInput() bool {
 	return m.addMode || m.editMode
 }
 
+// OnExit resets all interactive input state so stale textarea content or edit
+// modes don't persist in the registry after the view is popped.
+func (m *TaskCommentsModel) OnExit() {
+	m.addMode = false
+	m.editMode = false
+	m.expandedView = false
+	m.editIndex = 0
+	m.textInput.Reset()
+	m.editTextInput.Reset()
+}
+
 // ShouldCaptureEsc returns true when in expanded, add/edit, delete confirmation, or pending prefix modes.
 func (m *TaskCommentsModel) ShouldCaptureEsc() bool {
 	return m.expandedView || m.DefaultShouldCaptureEsc() || m.addMode || m.editMode

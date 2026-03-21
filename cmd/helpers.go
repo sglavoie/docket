@@ -327,6 +327,98 @@ func outputSingleTaskJSON(task *models.Task) error {
 	return nil
 }
 
+// outputTasksJSON marshals a slice of tasks to indented JSON and prints it.
+func outputTasksJSON(tasks []*models.Task) error {
+	type taskEntry struct {
+		ID        string   `json:"id"`
+		ShortID   int      `json:"short_id"`
+		Type      string   `json:"type"`
+		Title     string   `json:"title"`
+		Status    string   `json:"status"`
+		Priority  int      `json:"priority"`
+		Tags      []string `json:"tags"`
+		Section   string   `json:"section,omitempty"`
+		CreatedAt string   `json:"created_at"`
+		UpdatedAt string   `json:"updated_at"`
+	}
+	entries := make([]taskEntry, 0, len(tasks))
+	for _, task := range tasks {
+		tags := task.Tags
+		if tags == nil {
+			tags = []string{}
+		}
+		entries = append(entries, taskEntry{
+			ID:        task.ID,
+			ShortID:   task.ShortID,
+			Type:      task.Type.String(),
+			Title:     task.Title,
+			Status:    task.Status.String(),
+			Priority:  task.Priority,
+			Tags:      tags,
+			Section:   task.Section,
+			CreatedAt: task.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
+			UpdatedAt: task.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"),
+		})
+	}
+	data, err := json.MarshalIndent(entries, "", "  ")
+	if err != nil {
+		return fmt.Errorf("marshal tasks to JSON: %w", err)
+	}
+	fmt.Println(string(data))
+	return nil
+}
+
+// outputBlockerJSON marshals a blocker to indented JSON and prints it.
+func outputBlockerJSON(blocker *models.Blocker) error {
+	entry := struct {
+		ID          string  `json:"id"`
+		Title       string  `json:"title"`
+		Description string  `json:"description,omitempty"`
+		CreatedAt   string  `json:"created_at"`
+		ResolvedAt  *string `json:"resolved_at,omitempty"`
+	}{
+		ID:          blocker.ID,
+		Title:       blocker.Title,
+		Description: blocker.Description,
+		CreatedAt:   blocker.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
+	}
+	if blocker.ResolvedAt != nil {
+		s := blocker.ResolvedAt.Format("2006-01-02T15:04:05Z07:00")
+		entry.ResolvedAt = &s
+	}
+	data, err := json.MarshalIndent(entry, "", "  ")
+	if err != nil {
+		return fmt.Errorf("marshal blocker to JSON: %w", err)
+	}
+	fmt.Println(string(data))
+	return nil
+}
+
+// outputNoteJSON marshals a note (with its scope) to indented JSON and prints it.
+func outputNoteJSON(note *models.Note, scope string) error {
+	tags := note.Tags
+	if tags == nil {
+		tags = []string{}
+	}
+	entry := struct {
+		Filename string   `json:"filename"`
+		Title    string   `json:"title"`
+		Tags     []string `json:"tags"`
+		Scope    string   `json:"scope"`
+	}{
+		Filename: note.Filename,
+		Title:    note.Title,
+		Tags:     tags,
+		Scope:    scope,
+	}
+	data, err := json.MarshalIndent(entry, "", "  ")
+	if err != nil {
+		return fmt.Errorf("marshal note to JSON: %w", err)
+	}
+	fmt.Println(string(data))
+	return nil
+}
+
 // outputSingleProjectJSON marshals a project to indented JSON and prints it.
 func outputSingleProjectJSON(project *models.Project) error {
 	entry := struct {

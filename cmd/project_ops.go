@@ -195,6 +195,14 @@ func processDeferredMoves(srcProject *models.Project, moves []workflow.DeferredM
 		srcProject.Tasks = remaining
 		srcProject.BuildTaskTree()
 
+		// Warn about cross-project references being dropped
+		if len(movedTask.DependsOn) > 0 {
+			fmt.Printf("warning: dropping %d dependency(s) for task #%d: %v\n", len(movedTask.DependsOn), movedTask.ShortID, movedTask.DependsOn)
+		}
+		if len(movedTask.RelatedTo) > 0 {
+			fmt.Printf("warning: dropping %d relation(s) for task #%d: %v\n", len(movedTask.RelatedTo), movedTask.ShortID, movedTask.RelatedTo)
+		}
+
 		// Clear cross-project references on the moved task
 		movedTask.DependsOn = []string{}
 		movedTask.RelatedTo = []string{}

@@ -43,6 +43,7 @@ func init() {
 	taskEditCmd.Flags().StringVar(&editEditor, "editor", "", "editor to use")
 	taskEditCmd.Flags().BoolVar(&taskEditJSON, "json", false, "output updated task as JSON")
 	taskEditCmd.Flags().BoolVar(&taskEditQuiet, "quiet", false, "suppress output on success")
+	taskEditCmd.ValidArgsFunction = completeCurrentProjectTaskIDs()
 }
 
 func runTaskEdit(cmd *cobra.Command, args []string) error {

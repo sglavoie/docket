@@ -26,7 +26,7 @@ Accepted formats:
   next week      Next Monday
   next month     First of next month
   in N days/weeks/months  Relative offset
-  clear          Remove snooze (make task visible again)
+  clear/none     Remove snooze (make task visible again)
 
 Examples:
   tt task snooze 5 tomorrow
@@ -43,7 +43,7 @@ func init() {
 	taskSnoozeCmd.ValidArgsFunction = func(_ *cobra.Command, args []string, _ string) ([]string, cobra.ShellCompDirective) {
 		if len(args) == 1 {
 			return []string{
-				"clear", "tomorrow",
+				"clear", "none", "tomorrow",
 				"monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday",
 			}, cobra.ShellCompDirectiveNoFileComp
 		}
