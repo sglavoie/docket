@@ -3,7 +3,10 @@ package models
 import "testing"
 
 func TestProjectGetRootTasks(t *testing.T) {
-	project := NewProject("test", "Test", "/tmp/test")
+	project, err := NewProject("test", "Test", "/tmp/test")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	epic, err := NewTask("epic", 1, TaskTypeEpic, "Epic")
 	if err != nil {
@@ -38,7 +41,10 @@ func TestProjectGetRootTasks(t *testing.T) {
 }
 
 func TestProjectGetTaskByID(t *testing.T) {
-	project := NewProject("test", "Test", "/tmp/test")
+	project, err := NewProject("test", "Test", "/tmp/test")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	task1, err := NewTask("task-1", 1, TaskTypeTask, "Task 1")
 	if err != nil {
@@ -68,7 +74,10 @@ func TestProjectGetTaskByID(t *testing.T) {
 }
 
 func TestProjectGetTaskByShortID(t *testing.T) {
-	project := NewProject("test", "Test", "/tmp/test")
+	project, err := NewProject("test", "Test", "/tmp/test")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	task1, err := NewTask("task-1", 1, TaskTypeTask, "Task 1")
 	if err != nil {
@@ -98,7 +107,10 @@ func TestProjectGetTaskByShortID(t *testing.T) {
 }
 
 func TestProjectBuildTaskTree(t *testing.T) {
-	project := NewProject("test", "Test", "/tmp/test")
+	project, err := NewProject("test", "Test", "/tmp/test")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	epic, err := NewTask("epic", 1, TaskTypeEpic, "Epic")
 	if err != nil {
@@ -146,7 +158,10 @@ func TestProjectBuildTaskTree(t *testing.T) {
 }
 
 func TestProjectGetNextShortID(t *testing.T) {
-	project := NewProject("test", "Test", "/tmp/test")
+	project, err := NewProject("test", "Test", "/tmp/test")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	id1 := project.GetNextShortID()
 	if id1 != 1 {
@@ -164,7 +179,10 @@ func TestProjectGetNextShortID(t *testing.T) {
 }
 
 func TestProjectGetTaskAbove(t *testing.T) {
-	project := NewProject("test", "Test", "/tmp/test")
+	project, err := NewProject("test", "Test", "/tmp/test")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	epic, err := NewTask("epic", 1, TaskTypeEpic, "Epic")
 	if err != nil {
@@ -218,7 +236,10 @@ func TestProjectGetTaskAbove(t *testing.T) {
 }
 
 func TestProjectFilterTasks_WithPredicates(t *testing.T) {
-	project := NewProject("test", "Test", "/tmp/test")
+	project, err := NewProject("test", "Test", "/tmp/test")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	task1, err := NewTask("task-1", 1, TaskTypeTask, "High priority task")
 	if err != nil {
@@ -286,7 +307,10 @@ func TestProjectFilterTasks_WithPredicates(t *testing.T) {
 }
 
 func TestProjectGetTasksByStatus_AllStatuses(t *testing.T) {
-	project := NewProject("test", "Test", "/tmp/test")
+	project, err := NewProject("test", "Test", "/tmp/test")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	todoTask, err := NewTask("todo", 1, TaskTypeTask, "Todo task")
 	if err != nil {
@@ -345,7 +369,10 @@ func TestProjectGetTasksByStatus_AllStatuses(t *testing.T) {
 }
 
 func TestProjectGetTasksByStatus_MultipleMatches(t *testing.T) {
-	project := NewProject("test", "Test", "/tmp/test")
+	project, err := NewProject("test", "Test", "/tmp/test")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	task1, err := NewTask("task-1", 1, TaskTypeTask, "Task 1")
 	if err != nil {
@@ -374,7 +401,10 @@ func TestProjectGetTasksByStatus_MultipleMatches(t *testing.T) {
 }
 
 func TestProjectGetTasksByType_AllTypes(t *testing.T) {
-	project := NewProject("test", "Test", "/tmp/test")
+	project, err := NewProject("test", "Test", "/tmp/test")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	epic, err := NewTask("epic", 1, TaskTypeEpic, "Epic")
 	if err != nil {
@@ -424,7 +454,10 @@ func TestProjectGetTasksByType_AllTypes(t *testing.T) {
 }
 
 func TestProjectGetTasksByType_MultipleMatches(t *testing.T) {
-	project := NewProject("test", "Test", "/tmp/test")
+	project, err := NewProject("test", "Test", "/tmp/test")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	task1, err := NewTask("task-1", 1, TaskTypeTask, "Task 1")
 	if err != nil {
@@ -452,7 +485,10 @@ func TestProjectGetTasksByType_MultipleMatches(t *testing.T) {
 }
 
 func TestProjectGetTasksByTag_SingleTag(t *testing.T) {
-	project := NewProject("test", "Test", "/tmp/test")
+	project, err := NewProject("test", "Test", "/tmp/test")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	task1, err := NewTask("task-1", 1, TaskTypeTask, "Backend task")
 	if err != nil {
@@ -491,7 +527,10 @@ func TestProjectGetTasksByTag_SingleTag(t *testing.T) {
 }
 
 func TestProjectGetTasksByTag_NoMatches(t *testing.T) {
-	project := NewProject("test", "Test", "/tmp/test")
+	project, err := NewProject("test", "Test", "/tmp/test")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	task1, err := NewTask("task-1", 1, TaskTypeTask, "Task 1")
 	if err != nil {
@@ -514,7 +553,10 @@ func TestProjectGetTasksByTag_NoMatches(t *testing.T) {
 }
 
 func TestProjectGetTasksByTag_TasksWithNoTags(t *testing.T) {
-	project := NewProject("test", "Test", "/tmp/test")
+	project, err := NewProject("test", "Test", "/tmp/test")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	task1, err := NewTask("task-1", 1, TaskTypeTask, "Task 1")
 	if err != nil {
@@ -543,7 +585,10 @@ func TestProjectGetTasksByTag_TasksWithNoTags(t *testing.T) {
 }
 
 func TestProjectGetCompletedTasks(t *testing.T) {
-	project := NewProject("test", "Test", "/tmp/test")
+	project, err := NewProject("test", "Test", "/tmp/test")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	todoTask, err := NewTask("todo", 1, TaskTypeTask, "Todo")
 	if err != nil {
@@ -590,7 +635,10 @@ func TestProjectGetCompletedTasks(t *testing.T) {
 }
 
 func TestProjectFilterMethods_EmptyTaskList(t *testing.T) {
-	project := NewProject("test", "Test", "/tmp/test")
+	project, err := NewProject("test", "Test", "/tmp/test")
+	if err != nil {
+		t.Fatal(err)
+	}
 	project.Tasks = []*Task{}
 
 	t.Run("FilterTasks on empty list", func(t *testing.T) {
@@ -637,7 +685,10 @@ func TestProjectFilterMethods_EmptyTaskList(t *testing.T) {
 }
 
 func TestProjectFilterMethods_NilTaskList(t *testing.T) {
-	project := NewProject("test", "Test", "/tmp/test")
+	project, err := NewProject("test", "Test", "/tmp/test")
+	if err != nil {
+		t.Fatal(err)
+	}
 	project.Tasks = nil
 
 	t.Run("FilterTasks on nil list", func(t *testing.T) {

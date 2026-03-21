@@ -6,7 +6,10 @@ import (
 )
 
 func TestProjectGetSections(t *testing.T) {
-	project := NewProject("test", "Test", "/tmp/test")
+	project, err := NewProject("test", "Test", "/tmp/test")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	// Default should be just Next
 	sections := project.GetSections()
@@ -45,7 +48,10 @@ func TestProjectGetSections(t *testing.T) {
 }
 
 func TestProjectHasSection(t *testing.T) {
-	project := NewProject("test", "Test", "/tmp/test")
+	project, err := NewProject("test", "Test", "/tmp/test")
+	if err != nil {
+		t.Fatal(err)
+	}
 	project.Sections = []string{SectionNext, "Active", "Done"}
 
 	if !project.HasSection(SectionNext) {
@@ -60,7 +66,10 @@ func TestProjectHasSection(t *testing.T) {
 }
 
 func TestProjectEnsureSection(t *testing.T) {
-	project := NewProject("test", "Test", "/tmp/test")
+	project, err := NewProject("test", "Test", "/tmp/test")
+	if err != nil {
+		t.Fatal(err)
+	}
 	initialLen := len(project.Sections)
 
 	// Adding existing section should not add duplicate
@@ -97,7 +106,10 @@ func TestProjectEnsureSection(t *testing.T) {
 }
 
 func TestProjectRemoveSection(t *testing.T) {
-	project := NewProject("test", "Test", "/tmp/test")
+	project, err := NewProject("test", "Test", "/tmp/test")
+	if err != nil {
+		t.Fatal(err)
+	}
 	project.Sections = []string{SectionNext, "Active", "Done"}
 
 	// Create tasks in Active section
@@ -147,7 +159,10 @@ func TestProjectRemoveSection(t *testing.T) {
 }
 
 func TestProjectRenameSection(t *testing.T) {
-	project := NewProject("test", "Test", "/tmp/test")
+	project, err := NewProject("test", "Test", "/tmp/test")
+	if err != nil {
+		t.Fatal(err)
+	}
 	project.Sections = []string{SectionNext, "Active", "Done"}
 
 	// Create tasks in Active section
@@ -202,7 +217,10 @@ func TestProjectRenameSection(t *testing.T) {
 }
 
 func TestProjectGetTasksBySection(t *testing.T) {
-	project := NewProject("test", "Test", "/tmp/test")
+	project, err := NewProject("test", "Test", "/tmp/test")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	task1, err := NewTask("1", 1, TaskTypeTask, "Task 1")
 	if err != nil {
@@ -256,7 +274,10 @@ func TestProjectGetTasksBySection(t *testing.T) {
 }
 
 func TestProjectCountTasksBySection(t *testing.T) {
-	project := NewProject("test", "Test", "/tmp/test")
+	project, err := NewProject("test", "Test", "/tmp/test")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	task1, err := NewTask("1", 1, TaskTypeTask, "Task 1")
 	if err != nil {

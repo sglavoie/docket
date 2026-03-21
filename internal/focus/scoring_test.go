@@ -13,7 +13,10 @@ import (
 
 func TestComputeCrossProjectScore(t *testing.T) {
 	now := time.Now()
-	project := models.NewProject(uuid.New().String(), "Test", "")
+	project, err := models.NewProject(uuid.New().String(), "Test", "")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	t.Run("higher priority scores higher", func(t *testing.T) {
 		p1, err := models.NewTask(uuid.New().String(), 1, models.TaskTypeTask, "Critical")
@@ -100,7 +103,10 @@ func TestComputeCrossProjectScore(t *testing.T) {
 
 func TestRankCrossProjectTasks(t *testing.T) {
 	t.Run("excludes dismissed tasks", func(t *testing.T) {
-		project := models.NewProject(uuid.New().String(), "Test", "")
+		project, err := models.NewProject(uuid.New().String(), "Test", "")
+		if err != nil {
+			t.Fatal(err)
+		}
 		t1, err := models.NewTask(uuid.New().String(), 1, models.TaskTypeTask, "Task 1")
 		if err != nil {
 			t.Fatal(err)
@@ -126,8 +132,14 @@ func TestRankCrossProjectTasks(t *testing.T) {
 	})
 
 	t.Run("balance factor penalizes repeated projects", func(t *testing.T) {
-		p1 := models.NewProject(uuid.New().String(), "Project A", "")
-		p2 := models.NewProject(uuid.New().String(), "Project B", "")
+		p1, err := models.NewProject(uuid.New().String(), "Project A", "")
+		if err != nil {
+			t.Fatal(err)
+		}
+		p2, err := models.NewProject(uuid.New().String(), "Project B", "")
+		if err != nil {
+			t.Fatal(err)
+		}
 
 		// Create 3 same-priority tasks from p1 and 1 from p2
 		t1a, err := models.NewTask(uuid.New().String(), 1, models.TaskTypeTask, "P1 Task A")
@@ -177,7 +189,10 @@ func TestRankCrossProjectTasks(t *testing.T) {
 	})
 
 	t.Run("sorted descending by score", func(t *testing.T) {
-		project := models.NewProject(uuid.New().String(), "Test", "")
+		project, err := models.NewProject(uuid.New().String(), "Test", "")
+		if err != nil {
+			t.Fatal(err)
+		}
 		high, err := models.NewTask(uuid.New().String(), 1, models.TaskTypeTask, "High")
 		if err != nil {
 			t.Fatal(err)
@@ -206,7 +221,10 @@ func TestRankCrossProjectTasks(t *testing.T) {
 
 func TestGetSuggestionReason(t *testing.T) {
 	now := time.Now()
-	project := models.NewProject(uuid.New().String(), "Test", "")
+	project, err := models.NewProject(uuid.New().String(), "Test", "")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	t.Run("critical priority", func(t *testing.T) {
 		task, err := models.NewTask(uuid.New().String(), 1, models.TaskTypeTask, "Critical")
@@ -294,7 +312,10 @@ func TestAllChildrenComplete(t *testing.T) {
 
 func TestScoringFactors(t *testing.T) {
 	now := time.Now()
-	project := models.NewProject(uuid.New().String(), "Test", "")
+	project, err := models.NewProject(uuid.New().String(), "Test", "")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	baseTask := func() *models.Task {
 		task, err := models.NewTask(uuid.New().String(), 1, models.TaskTypeTask, "Base")

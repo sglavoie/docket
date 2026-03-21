@@ -44,7 +44,7 @@ func init() {
 
 func runScoreAssign(cmd *cobra.Command, args []string) error {
 	if len(args) < 1 {
-		return tterrors.NewRequiredFieldError("task ID")
+		return tterrors.NewRequiredFieldError("profile ID")
 	}
 
 	out, err := getOutputOpts(cmd)
@@ -59,7 +59,7 @@ func runScoreAssign(cmd *cobra.Command, args []string) error {
 
 	project := cfg.GetCurrentProject()
 	if project == nil {
-		return fmt.Errorf("%w. Select one with: tt select", tterrors.ErrNoCurrentProject)
+		return NoCurrentProjectError()
 	}
 
 	profile := cfg.GetScoringProfile(args[0])
@@ -76,12 +76,15 @@ func runScoreAssign(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 	if out.JSON {
-		data, _ := json.MarshalIndent(struct {
+		data, err := json.MarshalIndent(struct {
 			ProfileID   string `json:"profile_id"`
 			ProfileName string `json:"profile_name"`
 			ProjectID   string `json:"project_id"`
 			ProjectName string `json:"project_name"`
 		}{ProfileID: profile.ID, ProfileName: profile.Name, ProjectID: project.ID, ProjectName: project.Name}, "", "  ")
+		if err != nil {
+			return fmt.Errorf("marshal JSON: %w", err)
+		}
 		fmt.Println(string(data))
 		return nil
 	}
@@ -102,7 +105,7 @@ func runScoreUnassign(cmd *cobra.Command, args []string) error {
 
 	project := cfg.GetCurrentProject()
 	if project == nil {
-		return fmt.Errorf("%w. Select one with: tt select", tterrors.ErrNoCurrentProject)
+		return NoCurrentProjectError()
 	}
 
 	cfg.UnsetProjectScoringProfile(project.ID)
@@ -114,10 +117,13 @@ func runScoreUnassign(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 	if out.JSON {
-		data, _ := json.MarshalIndent(struct {
+		data, err := json.MarshalIndent(struct {
 			ProjectID   string `json:"project_id"`
 			ProjectName string `json:"project_name"`
 		}{ProjectID: project.ID, ProjectName: project.Name}, "", "  ")
+		if err != nil {
+			return fmt.Errorf("marshal JSON: %w", err)
+		}
 		fmt.Println(string(data))
 		return nil
 	}

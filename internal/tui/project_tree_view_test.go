@@ -19,7 +19,10 @@ func newTestProjectTreeConfig() *config.Config {
 }
 
 func newTestProjectTreeProject(name string, tasks []*models.Task) *models.Project {
-	p := models.NewProject(uuid.New().String(), name, "")
+	p, err := models.NewProject(uuid.New().String(), name, "")
+	if err != nil {
+		panic(err)
+	}
 	p.Tasks = tasks
 	return p
 }

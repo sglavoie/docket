@@ -49,7 +49,10 @@ func TestDailyReview_SectionNavigation(t *testing.T) {
 	m := newTestDailyReviewModel(cfg)
 	m.SetSize(80, 24)
 
-	project := models.NewProject("p1", "Test", "")
+	project, err := models.NewProject("p1", "Test", "")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	// Add overdue and due-today tasks (both on the "Due" tab, index 0)
 	overdueTask := newTestDailyReviewTask(t, "Overdue task")
@@ -95,7 +98,10 @@ func TestDailyReview_WithTasks_Render(t *testing.T) {
 	m := newTestDailyReviewModel(cfg)
 	m.SetSize(120, 40)
 
-	project := models.NewProject("p1", "Test Project", "")
+	project, err := models.NewProject("p1", "Test Project", "")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	task := newTestDailyReviewTask(t, "Important task")
 	task.Status = models.StatusInProgress

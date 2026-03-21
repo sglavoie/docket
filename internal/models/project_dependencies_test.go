@@ -6,7 +6,10 @@ import (
 )
 
 func TestProjectGetBlockingTasks(t *testing.T) {
-	project := NewProject("test", "Test", "/tmp/test")
+	project, err := NewProject("test", "Test", "/tmp/test")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	task1, err := NewTask("1", 1, TaskTypeTask, "Task 1")
 	if err != nil {
@@ -40,7 +43,10 @@ func TestProjectGetBlockingTasks(t *testing.T) {
 }
 
 func TestProjectGetBlockedByTasks(t *testing.T) {
-	project := NewProject("test", "Test", "/tmp/test")
+	project, err := NewProject("test", "Test", "/tmp/test")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	task1, err := NewTask("1", 1, TaskTypeTask, "Task 1")
 	if err != nil {
@@ -74,7 +80,10 @@ func TestProjectGetBlockedByTasks(t *testing.T) {
 }
 
 func TestProjectHasCircularDependency(t *testing.T) {
-	project := NewProject("test", "Test", "/tmp/test")
+	project, err := NewProject("test", "Test", "/tmp/test")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	task1, err := NewTask("1", 1, TaskTypeTask, "Task 1")
 	if err != nil {
@@ -117,7 +126,10 @@ func TestProjectHasCircularDependency(t *testing.T) {
 }
 
 func TestProjectCheckAndAutoUnblock(t *testing.T) {
-	project := NewProject("test", "Test", "/tmp/test")
+	project, err := NewProject("test", "Test", "/tmp/test")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	blocker1, err := NewTask("blocker1", 1, TaskTypeTask, "Blocker 1")
 	if err != nil {
@@ -168,7 +180,10 @@ func TestProjectCheckAndAutoUnblock(t *testing.T) {
 }
 
 func TestProjectCheckAndAutoUnblockWithCanceled(t *testing.T) {
-	project := NewProject("test", "Test", "/tmp/test")
+	project, err := NewProject("test", "Test", "/tmp/test")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	blocker, err := NewTask("blocker", 1, TaskTypeTask, "Blocker")
 	if err != nil {
@@ -193,7 +208,10 @@ func TestProjectCheckAndAutoUnblockWithCanceled(t *testing.T) {
 }
 
 func TestProjectCheckAndAutoUnblockNoDependencies(t *testing.T) {
-	project := NewProject("test", "Test", "/tmp/test")
+	project, err := NewProject("test", "Test", "/tmp/test")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	// Blocked task with no dependencies should not be auto-unblocked
 	blocked, err := NewTask("blocked", 1, TaskTypeTask, "Blocked Task")
@@ -211,7 +229,10 @@ func TestProjectCheckAndAutoUnblockNoDependencies(t *testing.T) {
 }
 
 func TestHasIncompleteDependencies(t *testing.T) {
-	project := NewProject("test-project", "Test Project", "/tmp/test")
+	project, err := NewProject("test-project", "Test Project", "/tmp/test")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	blocker1, err := NewTask("blocker1", 1, TaskTypeTask, "Blocker 1")
 	if err != nil {
@@ -265,7 +286,10 @@ func TestHasIncompleteDependencies(t *testing.T) {
 }
 
 func TestGetIncompleteDependencies(t *testing.T) {
-	project := NewProject("test-project", "Test Project", "/tmp/test")
+	project, err := NewProject("test-project", "Test Project", "/tmp/test")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	blocker1, err := NewTask("blocker1", 1, TaskTypeTask, "Blocker 1")
 	if err != nil {
@@ -330,7 +354,10 @@ func TestGetIncompleteDependencies(t *testing.T) {
 }
 
 func TestProjectHasCircularDependencyDeepChain(t *testing.T) {
-	project := NewProject("test", "Test", "/tmp/test")
+	project, err := NewProject("test", "Test", "/tmp/test")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	tasks := make([]*Task, 5)
 	for i := range 5 {
@@ -370,7 +397,10 @@ func TestProjectHasCircularDependencyDeepChain(t *testing.T) {
 }
 
 func TestProjectHasCircularDependencyBranching(t *testing.T) {
-	project := NewProject("test", "Test", "/tmp/test")
+	project, err := NewProject("test", "Test", "/tmp/test")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	// Create branching dependency graph:
 	//     0 -> 1 -> 3
@@ -407,7 +437,10 @@ func TestProjectHasCircularDependencyBranching(t *testing.T) {
 }
 
 func TestProjectHasCircularDependencyWithNonExistentTask(t *testing.T) {
-	project := NewProject("test", "Test", "/tmp/test")
+	project, err := NewProject("test", "Test", "/tmp/test")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	task1, err := NewTask("1", 1, TaskTypeTask, "Task 1")
 	if err != nil {
@@ -445,7 +478,10 @@ func TestProjectHasCircularDependencyWithNonExistentTask(t *testing.T) {
 }
 
 func TestHasIncompleteDependenciesWithNonExistentDependency(t *testing.T) {
-	project := NewProject("test", "Test", "/tmp/test")
+	project, err := NewProject("test", "Test", "/tmp/test")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	blocker, err := NewTask("blocker", 1, TaskTypeTask, "Blocker")
 	if err != nil {
@@ -475,7 +511,10 @@ func TestHasIncompleteDependenciesWithNonExistentDependency(t *testing.T) {
 }
 
 func TestGetIncompleteDependenciesWithNonExistentDependency(t *testing.T) {
-	project := NewProject("test", "Test", "/tmp/test")
+	project, err := NewProject("test", "Test", "/tmp/test")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	blocker, err := NewTask("blocker", 1, TaskTypeTask, "Blocker")
 	if err != nil {
@@ -510,7 +549,10 @@ func TestGetIncompleteDependenciesWithNonExistentDependency(t *testing.T) {
 }
 
 func TestHasIncompleteDependenciesCrossProjectRef(t *testing.T) {
-	project := NewProject("test-proj", "Test", "/tmp/test")
+	project, err := NewProject("test-proj", "Test", "/tmp/test")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	task, err := NewTask("task1", 1, TaskTypeTask, "Task 1")
 	if err != nil {
@@ -528,7 +570,10 @@ func TestHasIncompleteDependenciesCrossProjectRef(t *testing.T) {
 }
 
 func TestCheckAndAutoUnblockSkipsCrossProjectDeps(t *testing.T) {
-	project := NewProject("test-proj", "Test", "/tmp/test")
+	project, err := NewProject("test-proj", "Test", "/tmp/test")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	blocker, err := NewTask("blocker", 1, TaskTypeTask, "Local Blocker")
 	if err != nil {

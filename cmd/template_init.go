@@ -77,7 +77,7 @@ func init() {
 	templateCmd.AddCommand(templateInitCmd)
 
 	templateInitCmd.Flags().BoolVar(&templateInitList, "list", false, "preview default templates without adding them")
-	templateInitCmd.Flags().BoolVar(&templateInitForce, "force", false, "add defaults even if templates already exist")
+	templateInitCmd.Flags().BoolVarP(&templateInitForce, "force", "f", false, "add defaults even if templates already exist")
 	templateInitCmd.Flags().BoolVar(&templateInitEnable, "enable", false, "create default templates in enabled state")
 	templateInitCmd.Flags().BoolVar(&templateInitChangedDefaults, "changed-defaults", false, "reset edited/deleted default templates to shipped values (requires --force)")
 	addOutputFlags(templateInitCmd)
@@ -103,7 +103,10 @@ func runTemplateInit(cmd *cobra.Command, args []string) error {
 			for _, t := range defaults {
 				entries = append(entries, templateEntry{ID: t.ID, Name: t.Name, Category: t.Category, Summary: t.Summary()})
 			}
-			data, _ := json.MarshalIndent(entries, "", "  ")
+			data, err := json.MarshalIndent(entries, "", "  ")
+			if err != nil {
+				return fmt.Errorf("marshal JSON: %w", err)
+			}
 			fmt.Println(string(data))
 			return nil
 		}
@@ -152,12 +155,15 @@ func runTemplateInit(cmd *cobra.Command, args []string) error {
 			return nil
 		}
 		if out.JSON {
-			data, _ := json.MarshalIndent(struct {
+			data, err := json.MarshalIndent(struct {
 				Updated   int      `json:"updated"`
 				Readded   int      `json:"readded"`
 				Unchanged int      `json:"unchanged"`
 				Affected  []string `json:"affected_ids"`
 			}{Updated: updated, Readded: readded, Unchanged: unchanged, Affected: affectedIDs}, "", "  ")
+			if err != nil {
+				return fmt.Errorf("marshal JSON: %w", err)
+			}
 			fmt.Println(string(data))
 			return nil
 		}
@@ -206,10 +212,13 @@ func runTemplateInit(cmd *cobra.Command, args []string) error {
 
 	if added == 0 {
 		if out.JSON {
-			data, _ := json.MarshalIndent(struct {
+			data, err := json.MarshalIndent(struct {
 				Added int    `json:"added"`
 				State string `json:"state"`
 			}{Added: 0, State: state}, "", "  ")
+			if err != nil {
+				return fmt.Errorf("marshal JSON: %w", err)
+			}
 			fmt.Println(string(data))
 			return nil
 		}
@@ -218,10 +227,13 @@ func runTemplateInit(cmd *cobra.Command, args []string) error {
 	}
 
 	if out.JSON {
-		data, _ := json.MarshalIndent(struct {
+		data, err := json.MarshalIndent(struct {
 			Added int    `json:"added"`
 			State string `json:"state"`
 		}{Added: added, State: state}, "", "  ")
+		if err != nil {
+			return fmt.Errorf("marshal JSON: %w", err)
+		}
 		fmt.Println(string(data))
 		return nil
 	}

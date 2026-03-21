@@ -39,6 +39,9 @@ type ClearSemicolonPrefixMsg struct{}
 // CursorFlashClearMsg clears the cursor flash highlight after a timeout.
 type CursorFlashClearMsg struct{}
 
+// periodicSaveMsg triggers a periodic save of spatial state (cursor/fold).
+type periodicSaveMsg struct{}
+
 // StatusMsg sets a temporary status message (used by command palette handlers).
 type StatusMsg string
 

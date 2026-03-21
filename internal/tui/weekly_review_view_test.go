@@ -41,7 +41,10 @@ func TestWeeklyReview_WithStaleProjects(t *testing.T) {
 	m := newTestWeeklyReviewModel(cfg)
 	m.SetSize(120, 40)
 
-	project := models.NewProject("p1", "Stale Project", "")
+	project, err := models.NewProject("p1", "Stale Project", "")
+	if err != nil {
+		t.Fatal(err)
+	}
 	m.staleProjects = []WeeklyReviewProject{{
 		Project:        project,
 		NoActivityDays: 30,
@@ -81,7 +84,10 @@ func TestWeeklyReview_TabCounts(t *testing.T) {
 	cfg := &config.Config{Projects: []*models.Project{}}
 	m := newTestWeeklyReviewModel(cfg)
 
-	project := models.NewProject("p1", "Test", "")
+	project, err := models.NewProject("p1", "Test", "")
+	if err != nil {
+		t.Fatal(err)
+	}
 	m.staleProjects = []WeeklyReviewProject{{Project: project, NoActivityDays: 30}}
 	m.inboxBacklog = []WeeklyReviewProject{{Project: project, InboxCount: 10}}
 
@@ -104,7 +110,10 @@ func TestWeeklyReview_CompletionSummary(t *testing.T) {
 	m.mutationCounts["priority"] = 1
 
 	// Need some data so the model has content to render
-	project := models.NewProject("p1", "Test", "")
+	project, err := models.NewProject("p1", "Test", "")
+	if err != nil {
+		t.Fatal(err)
+	}
 	m.staleProjects = []WeeklyReviewProject{{Project: project, NoActivityDays: 5}}
 	m.calculateNavigation()
 

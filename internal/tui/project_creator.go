@@ -203,7 +203,10 @@ func (m *ProjectCreatorModel) createProject() tea.Cmd {
 		// Create project
 		projectID := uuid.New().String()
 		projectPath := m.config.GetProjectPath(slug)
-		project := models.NewProject(projectID, name, projectPath)
+		project, err := models.NewProject(projectID, name, projectPath)
+		if err != nil {
+			return ErrorMsg{Err: fmt.Errorf("failed to create project: %w", err)}
+		}
 
 		// Get context value
 		context := strings.TrimSpace(m.contextInput.Value())

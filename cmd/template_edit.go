@@ -297,12 +297,15 @@ func runTemplateEdit(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 	if out.JSON {
-		data, _ := json.MarshalIndent(struct {
+		data, err := json.MarshalIndent(struct {
 			ID      string `json:"id"`
 			Name    string `json:"name"`
 			Type    string `json:"type"`
 			Summary string `json:"summary"`
 		}{ID: t.ID, Name: t.Name, Type: string(t.Type), Summary: t.Summary()}, "", "  ")
+		if err != nil {
+			return fmt.Errorf("marshal JSON: %w", err)
+		}
 		fmt.Println(string(data))
 		return nil
 	}

@@ -74,10 +74,13 @@ func runProjectPurge(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 	if out.JSON {
-		data, _ := json.MarshalIndent(struct {
+		data, err := json.MarshalIndent(struct {
 			Slug   string `json:"slug"`
 			Purged bool   `json:"purged"`
 		}{Slug: slug, Purged: true}, "", "  ")
+		if err != nil {
+			return fmt.Errorf("marshal JSON: %w", err)
+		}
 		fmt.Println(string(data))
 		return nil
 	}

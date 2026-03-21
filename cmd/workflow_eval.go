@@ -59,7 +59,7 @@ func init() {
 	workflowCmd.AddCommand(workflowEvalCmd)
 
 	workflowEvalCmd.Flags().BoolVar(&evalAll, "all", false, "Evaluate all projects")
-	workflowEvalCmd.Flags().BoolVar(&evalForce, "force", false, "Force evaluation even if recently run")
+	workflowEvalCmd.Flags().BoolVarP(&evalForce, "force", "f", false, "Force evaluation even if recently run")
 	workflowEvalCmd.Flags().BoolVar(&evalDryRun, "dry-run", false, "Preview changes without saving")
 	workflowEvalCmd.Flags().BoolVar(&evalQuiet, "quiet", false, "Suppress output (for cron jobs)")
 	workflowEvalCmd.Flags().StringVar(&evalProject, "project", "", "Specific project to evaluate (name or ID)")
@@ -99,7 +99,7 @@ func runWorkflowEval(cmd *cobra.Command, args []string) error {
 		// Current project
 		p := cfg.GetCurrentProject()
 		if p == nil {
-			return fmt.Errorf("%w. Use --all or --project, or select a project with: tt select", tterrors.ErrNoCurrentProject)
+			return NoCurrentProjectError()
 		}
 		projects = append(projects, p)
 	}

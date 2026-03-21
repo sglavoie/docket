@@ -3,7 +3,10 @@ package models
 import "testing"
 
 func TestNewProject(t *testing.T) {
-	project := NewProject("test-id", "My Project", "/tmp/my-project")
+	project, err := NewProject("test-id", "My Project", "/tmp/my-project")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	if project.ID != "test-id" {
 		t.Errorf("expected ID 'test-id', got '%s'", project.ID)
@@ -55,7 +58,10 @@ func TestSlugify(t *testing.T) {
 }
 
 func TestProjectArchive(t *testing.T) {
-	project := NewProject("test", "Test", "/tmp/test")
+	project, err := NewProject("test", "Test", "/tmp/test")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	if project.Archived {
 		t.Error("project should not be archived initially")
@@ -84,7 +90,10 @@ func TestProjectArchive(t *testing.T) {
 }
 
 func TestNewProjectHasNextSection(t *testing.T) {
-	project := NewProject("test", "Test", "/tmp/test")
+	project, err := NewProject("test", "Test", "/tmp/test")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	if len(project.Sections) != 1 {
 		t.Errorf("expected 1 section, got %d", len(project.Sections))
@@ -95,7 +104,10 @@ func TestNewProjectHasNextSection(t *testing.T) {
 }
 
 func TestMutateTask_NotFound(t *testing.T) {
-	project := NewProject("test", "Test", "/tmp/test")
+	project, err := NewProject("test", "Test", "/tmp/test")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	task, err := NewTask("task-1", 1, TaskTypeTask, "Task 1")
 	if err != nil {
@@ -125,5 +137,46 @@ func TestMutateTask_NotFound(t *testing.T) {
 	}
 	if task.Title != "Updated Title" {
 		t.Errorf("expected title 'Updated Title', got '%s'", task.Title)
+	}
+}
+
+func TestNewProject_EmptyIDReturnsError(t *testing.T) {
+	_, err := NewProject("", "My Project", "/path")
+	if err == nil {
+		t.Error("expected error for empty project ID, got nil")
+	}
+}
+
+func TestNewProject_WhitespaceIDReturnsError(t *testing.T) {
+	_, err := NewProject("   ", "My Project", "/path")
+	if err == nil {
+		t.Error("expected error for whitespace-only project ID, got nil")
+	}
+}
+
+func TestNewProject_EmptyNameReturnsError(t *testing.T) {
+	_, err := NewProject("my-id", "", "/path")
+	if err == nil {
+		t.Error("expected error for empty project name, got nil")
+	}
+}
+
+func TestNewProject_WhitespaceNameReturnsError(t *testing.T) {
+	_, err := NewProject("my-id", "   ", "/path")
+	if err == nil {
+		t.Error("expected error for whitespace-only project name, got nil")
+	}
+}
+
+func TestNewProject_ValidInputSucceeds(t *testing.T) {
+	p, err := NewProject("valid-id", "Valid Name", "/some/path")
+	if err != nil {
+		t.Fatalf("expected no error for valid input, got: %v", err)
+	}
+	if p.ID != "valid-id" {
+		t.Errorf("ID = %q, want %q", p.ID, "valid-id")
+	}
+	if p.Name != "Valid Name" {
+		t.Errorf("Name = %q, want %q", p.Name, "Valid Name")
 	}
 }

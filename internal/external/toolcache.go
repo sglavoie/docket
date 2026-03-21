@@ -3,44 +3,52 @@ package external
 import (
 	"os/exec"
 	"sync"
+	"time"
 )
+
+const cacheTTL = 5 * time.Minute
+
+// cachedPath holds a TTL-aware cached result of exec.LookPath.
+type cachedPath struct {
+	mu        sync.Mutex
+	path      string
+	err       error
+	checkedAt time.Time
+}
+
+func (c *cachedPath) lookup(name string) (string, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.checkedAt.IsZero() || time.Since(c.checkedAt) > cacheTTL {
+		c.path, c.err = exec.LookPath(name)
+		c.checkedAt = time.Now()
+	}
+	return c.path, c.err
+}
 
 var (
-	fzfOnce    sync.Once
-	fzfPath    string
-	fzfErr     error
-	glowOnce   sync.Once
-	glowPath   string
-	glowErr    error
-	codeOnce   sync.Once
-	codePath   string
-	codeErr    error
-	claudeOnce sync.Once
-	claudePath string
-	claudeErr  error
+	fzfCache    cachedPath
+	glowCache   cachedPath
+	codeCache   cachedPath
+	claudeCache cachedPath
 )
 
-func cachedLookPath(name string, once *sync.Once, path *string, pathErr *error) (string, error) {
-	once.Do(func() { *path, *pathErr = exec.LookPath(name) })
-	return *path, *pathErr
-}
-
-// CachedFzfPath returns the cached result of exec.LookPath("fzf").
+// CachedFzfPath returns the TTL-cached result of exec.LookPath("fzf").
 func CachedFzfPath() (string, error) {
-	return cachedLookPath("fzf", &fzfOnce, &fzfPath, &fzfErr)
+	return fzfCache.lookup("fzf")
 }
 
-// CachedGlowPath returns the cached result of exec.LookPath("glow").
+// CachedGlowPath returns the TTL-cached result of exec.LookPath("glow").
 func CachedGlowPath() (string, error) {
-	return cachedLookPath("glow", &glowOnce, &glowPath, &glowErr)
+	return glowCache.lookup("glow")
 }
 
-// CachedCodePath returns the cached result of exec.LookPath("code").
+// CachedCodePath returns the TTL-cached result of exec.LookPath("code").
 func CachedCodePath() (string, error) {
-	return cachedLookPath("code", &codeOnce, &codePath, &codeErr)
+	return codeCache.lookup("code")
 }
 
-// CachedClaudePath returns the cached result of exec.LookPath("claude").
+// CachedClaudePath returns the TTL-cached result of exec.LookPath("claude").
 func CachedClaudePath() (string, error) {
-	return cachedLookPath("claude", &claudeOnce, &claudePath, &claudeErr)
+	return claudeCache.lookup("claude")
 }

@@ -1,6 +1,8 @@
 package tui
 
 import (
+	"time"
+
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/sglavoie/tt/internal/config"
@@ -206,6 +208,10 @@ func getGlobalHelpItems() []HelpItem {
 	}
 }
 
+const periodicSaveInterval = 60 * time.Second
+
 func (m *AppModel) Init() tea.Cmd {
-	return nil
+	return tea.Tick(periodicSaveInterval, func(time.Time) tea.Msg {
+		return periodicSaveMsg{}
+	})
 }

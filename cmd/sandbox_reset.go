@@ -34,7 +34,7 @@ Examples:
 
 func init() {
 	rootCmd.AddCommand(sandboxResetCmd)
-	sandboxResetCmd.Flags().BoolVar(&sandboxResetForce, "force", false, "Skip confirmation prompt")
+	sandboxResetCmd.Flags().BoolVarP(&sandboxResetForce, "force", "f", false, "Skip confirmation prompt")
 }
 
 func runSandboxReset(cmd *cobra.Command, args []string) error {

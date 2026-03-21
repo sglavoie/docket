@@ -3,8 +3,14 @@ package models
 import "testing"
 
 func TestMoveTaskToProjectBasic(t *testing.T) {
-	sourceProj := NewProject("source", "Source Project", "/tmp/source")
-	destProj := NewProject("dest", "Dest Project", "/tmp/dest")
+	sourceProj, err := NewProject("source", "Source Project", "/tmp/source")
+	if err != nil {
+		t.Fatal(err)
+	}
+	destProj, err := NewProject("dest", "Dest Project", "/tmp/dest")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	task1, err := NewTask("task1", 1, TaskTypeTask, "Task 1")
 	if err != nil {
@@ -58,8 +64,14 @@ func TestMoveTaskToProjectBasic(t *testing.T) {
 }
 
 func TestMoveTaskToProjectWithChildren(t *testing.T) {
-	sourceProj := NewProject("source", "Source Project", "/tmp/source")
-	destProj := NewProject("dest", "Dest Project", "/tmp/dest")
+	sourceProj, err := NewProject("source", "Source Project", "/tmp/source")
+	if err != nil {
+		t.Fatal(err)
+	}
+	destProj, err := NewProject("dest", "Dest Project", "/tmp/dest")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	parent, err := NewTask("parent", 1, TaskTypeEpic, "Parent")
 	if err != nil {
@@ -124,8 +136,14 @@ func TestMoveTaskToProjectWithChildren(t *testing.T) {
 }
 
 func TestMoveTaskToProjectClearsCrossProjectDependencies(t *testing.T) {
-	sourceProj := NewProject("source", "Source Project", "/tmp/source")
-	destProj := NewProject("dest", "Dest Project", "/tmp/dest")
+	sourceProj, err := NewProject("source", "Source Project", "/tmp/source")
+	if err != nil {
+		t.Fatal(err)
+	}
+	destProj, err := NewProject("dest", "Dest Project", "/tmp/dest")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	parent, err := NewTask("parent", 1, TaskTypeEpic, "Parent")
 	if err != nil {
@@ -174,8 +192,14 @@ func TestMoveTaskToProjectClearsCrossProjectDependencies(t *testing.T) {
 }
 
 func TestMoveTaskToProjectPreservesSectionsIfExist(t *testing.T) {
-	sourceProj := NewProject("source", "Source Project", "/tmp/source")
-	destProj := NewProject("dest", "Dest Project", "/tmp/dest")
+	sourceProj, err := NewProject("source", "Source Project", "/tmp/source")
+	if err != nil {
+		t.Fatal(err)
+	}
+	destProj, err := NewProject("dest", "Dest Project", "/tmp/dest")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	// Add custom section to both projects
 	sourceProj.Sections = []string{SectionNext, "InProgress", "CustomSection"}
@@ -221,8 +245,14 @@ func TestMoveTaskToProjectPreservesSectionsIfExist(t *testing.T) {
 }
 
 func TestMoveTaskToProjectNilInputs(t *testing.T) {
-	sourceProj := NewProject("source", "Source Project", "/tmp/source")
-	destProj := NewProject("dest", "Dest Project", "/tmp/dest")
+	sourceProj, err := NewProject("source", "Source Project", "/tmp/source")
+	if err != nil {
+		t.Fatal(err)
+	}
+	destProj, err := NewProject("dest", "Dest Project", "/tmp/dest")
+	if err != nil {
+		t.Fatal(err)
+	}
 	task, err := NewTask("task1", 1, TaskTypeTask, "Task 1")
 	if err != nil {
 		t.Fatal(err)
@@ -248,7 +278,10 @@ func TestMoveTaskToProjectNilInputs(t *testing.T) {
 }
 
 func TestMoveTaskToProjectSameProject(t *testing.T) {
-	sourceProj := NewProject("source", "Source Project", "/tmp/source")
+	sourceProj, err := NewProject("source", "Source Project", "/tmp/source")
+	if err != nil {
+		t.Fatal(err)
+	}
 	task, err := NewTask("task1", 1, TaskTypeTask, "Task 1")
 	if err != nil {
 		t.Fatal(err)
@@ -271,8 +304,14 @@ func TestMoveTaskToProjectSameProject(t *testing.T) {
 }
 
 func TestMoveTaskToProjectRegeneratesShortIDs(t *testing.T) {
-	sourceProj := NewProject("source", "Source Project", "/tmp/source")
-	destProj := NewProject("dest", "Dest Project", "/tmp/dest")
+	sourceProj, err := NewProject("source", "Source Project", "/tmp/source")
+	if err != nil {
+		t.Fatal(err)
+	}
+	destProj, err := NewProject("dest", "Dest Project", "/tmp/dest")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	task1, err := NewTask("task1", 5, TaskTypeTask, "Task 1")
 	if err != nil {
@@ -304,8 +343,14 @@ func TestMoveTaskToProjectRegeneratesShortIDs(t *testing.T) {
 }
 
 func TestMoveTaskToProjectClearsDependenciesInSource(t *testing.T) {
-	sourceProj := NewProject("source", "Source Project", "/tmp/source")
-	destProj := NewProject("dest", "Dest Project", "/tmp/dest")
+	sourceProj, err := NewProject("source", "Source Project", "/tmp/source")
+	if err != nil {
+		t.Fatal(err)
+	}
+	destProj, err := NewProject("dest", "Dest Project", "/tmp/dest")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	task1, err := NewTask("task1", 1, TaskTypeTask, "Task 1")
 	if err != nil {
@@ -343,8 +388,14 @@ func TestMoveTaskToProjectClearsDependenciesInSource(t *testing.T) {
 }
 
 func TestMoveTaskToProjectPreservesCrossProjectRefs(t *testing.T) {
-	sourceProj := NewProject("source", "Source Project", "/tmp/source")
-	destProj := NewProject("dest", "Dest Project", "/tmp/dest")
+	sourceProj, err := NewProject("source", "Source Project", "/tmp/source")
+	if err != nil {
+		t.Fatal(err)
+	}
+	destProj, err := NewProject("dest", "Dest Project", "/tmp/dest")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	task1, err := NewTask("task1", 1, TaskTypeTask, "Task 1")
 	if err != nil {
@@ -400,8 +451,14 @@ func TestMoveTaskToProjectPreservesCrossProjectRefs(t *testing.T) {
 }
 
 func TestMoveTaskToProjectUpdatesTimestamps(t *testing.T) {
-	sourceProj := NewProject("source", "Source Project", "/tmp/source")
-	destProj := NewProject("dest", "Dest Project", "/tmp/dest")
+	sourceProj, err := NewProject("source", "Source Project", "/tmp/source")
+	if err != nil {
+		t.Fatal(err)
+	}
+	destProj, err := NewProject("dest", "Dest Project", "/tmp/dest")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	task, err := NewTask("task1", 1, TaskTypeTask, "Task 1")
 	if err != nil {
@@ -433,7 +490,10 @@ func TestMoveTaskToProjectUpdatesTimestamps(t *testing.T) {
 }
 
 func TestMoveTaskToProjectSelfMoveError(t *testing.T) {
-	proj := NewProject("proj1", "Project 1", "/tmp/proj1")
+	proj, err := NewProject("proj1", "Project 1", "/tmp/proj1")
+	if err != nil {
+		t.Fatal(err)
+	}
 	task, err := NewTask("task1", 1, TaskTypeTask, "Task 1")
 	if err != nil {
 		t.Fatal(err)
@@ -450,17 +510,26 @@ func TestMoveTaskToProjectSelfMoveError(t *testing.T) {
 }
 
 func TestMoveTaskToProjectNilTask(t *testing.T) {
-	proj := NewProject("proj1", "Project 1", "/tmp/proj1")
-	dest := NewProject("proj2", "Project 2", "/tmp/proj2")
+	proj, err := NewProject("proj1", "Project 1", "/tmp/proj1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	dest, err := NewProject("proj2", "Project 2", "/tmp/proj2")
+	if err != nil {
+		t.Fatal(err)
+	}
 
-	_, err := proj.MoveTaskToProject(nil, dest)
+	_, err = proj.MoveTaskToProject(nil, dest)
 	if err == nil {
 		t.Fatal("expected error when moving nil task")
 	}
 }
 
 func TestMoveTaskToProjectNilDest(t *testing.T) {
-	proj := NewProject("proj1", "Project 1", "/tmp/proj1")
+	proj, err := NewProject("proj1", "Project 1", "/tmp/proj1")
+	if err != nil {
+		t.Fatal(err)
+	}
 	task, err := NewTask("task1", 1, TaskTypeTask, "Task 1")
 	if err != nil {
 		t.Fatal(err)

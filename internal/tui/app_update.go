@@ -1,6 +1,8 @@
 package tui
 
 import (
+	"fmt"
+	"runtime/debug"
 	"time"
 
 	"github.com/charmbracelet/bubbles/spinner"
@@ -10,7 +12,20 @@ import (
 	"github.com/sglavoie/tt/internal/storage"
 )
 
-func (m *AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m *AppModel) Update(msg tea.Msg) (outModel tea.Model, outCmd tea.Cmd) {
+	defer func() {
+		if r := recover(); r != nil {
+			stack := debug.Stack()
+			logging.Warn("TUI panic in Update: %v\n%s", r, stack)
+			m.err = fmt.Errorf("internal error: %v", r)
+			if m.currentView() != ViewDashboard {
+				m.viewStack = []ViewType{ViewDashboard}
+			}
+			outModel = m
+			outCmd = nil
+		}
+	}()
+
 	var cmds []tea.Cmd
 
 	// Handle global key messages first
@@ -50,6 +65,7 @@ func (m *AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Intercept keys when semicolon prefix is pending
 		if m.pendingSemicolonPrefix {
 			m.pendingSemicolonPrefix = false
+			m.statusMessage = ""
 			switch msg.String() {
 			case "n":
 				return m, func() tea.Msg { return ShowNotificationCenterMsg{} }
@@ -178,6 +194,7 @@ func (m *AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case ";":
 			if !m.hasActiveTextInput() {
 				m.pendingSemicolonPrefix = true
+				m.setInfoStatus("; …")
 				return m, func() tea.Msg {
 					time.Sleep(1500 * time.Millisecond)
 					return ClearSemicolonPrefixMsg{}
@@ -206,8 +223,16 @@ func (m *AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case ClearSemicolonPrefixMsg:
 		if m.pendingSemicolonPrefix {
 			m.pendingSemicolonPrefix = false
+			m.statusMessage = ""
 		}
 		return m, nil
+
+	case periodicSaveMsg:
+		m.saveProjectTreeState()
+		m.saveOutlinerFilterState()
+		return m, tea.Tick(periodicSaveInterval, func(time.Time) tea.Msg {
+			return periodicSaveMsg{}
+		})
 
 	case SaveStartMsg:
 		m.isLoading = true

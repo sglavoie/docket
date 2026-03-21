@@ -103,7 +103,10 @@ func runProjectNew(cmd *cobra.Command, args []string) error {
 	projectID := uuid.New().String()
 	projectPath := cfg.GetProjectPath(slug)
 
-	project := models.NewProject(projectID, name, projectPath)
+	project, err := models.NewProject(projectID, name, projectPath)
+	if err != nil {
+		return err
+	}
 	project.Description = projectDescription
 	project.Context = projectContext
 

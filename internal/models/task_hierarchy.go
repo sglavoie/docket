@@ -74,10 +74,24 @@ func (t *Task) CanAddChild(childType TaskType) bool {
 }
 
 // AddChild adds a task as a child, setting the parent reference.
-// Returns an error if the child type is not allowed under this task's type.
+// Returns an error if the child type is not allowed, the nesting depth would
+// be exceeded, or a cycle would be created.
 func (t *Task) AddChild(child *Task) error {
 	if !t.CanAddChild(child.Type) {
 		return fmt.Errorf("cannot add %s as child of %s", child.Type, t.Type)
+	}
+	if t.Level+1 > MaxNestingDepth {
+		return fmt.Errorf("cannot add child: would exceed maximum nesting depth of %d", MaxNestingDepth)
+	}
+	// Cycle check: walk t's ancestor chain; if child appears, adding it would
+	// create a circular reference.
+	if t.ID == child.ID {
+		return fmt.Errorf("cannot add child: task cannot be its own parent")
+	}
+	for cur := t.Parent; cur != nil; cur = cur.Parent {
+		if cur.ID == child.ID {
+			return fmt.Errorf("cannot add child: would create a circular parent reference")
+		}
 	}
 	child.ParentID = &t.ID
 	child.Parent = t

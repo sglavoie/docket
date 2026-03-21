@@ -54,9 +54,12 @@ func runWorkflowReset(cmd *cobra.Command, args []string) error {
 			return nil
 		}
 		if out.JSON {
-			data, _ := json.MarshalIndent(struct {
+			data, err := json.MarshalIndent(struct {
 				Reset int `json:"reset"`
 			}{Reset: total}, "", "  ")
+			if err != nil {
+				return fmt.Errorf("marshal JSON: %w", err)
+			}
 			fmt.Println(string(data))
 			return nil
 		}
@@ -85,11 +88,14 @@ func runWorkflowReset(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 	if out.JSON {
-		data, _ := json.MarshalIndent(struct {
+		data, err := json.MarshalIndent(struct {
 			ID            string `json:"id"`
 			Name          string `json:"name"`
 			PreviousCount int64  `json:"previous_count"`
 		}{ID: ruleID, Name: ruleName, PreviousCount: oldCount}, "", "  ")
+		if err != nil {
+			return fmt.Errorf("marshal JSON: %w", err)
+		}
 		fmt.Println(string(data))
 		return nil
 	}

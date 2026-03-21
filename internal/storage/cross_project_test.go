@@ -38,7 +38,10 @@ func TestLoadProject_CrossProjectOrphanedDepCleaned(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	project := models.NewProject(uuid.New().String(), "My Project", "")
+	project, err := models.NewProject(uuid.New().String(), "My Project", "")
+	if err != nil {
+		t.Fatal(err)
+	}
 	project.Slug = projectSlug
 	project.Path = projectPath
 
@@ -101,7 +104,10 @@ func TestLoadProject_CrossProjectExistingDepPreserved(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	project := models.NewProject(uuid.New().String(), "My Project", "")
+	project, err := models.NewProject(uuid.New().String(), "My Project", "")
+	if err != nil {
+		t.Fatal(err)
+	}
 	project.Slug = projectSlug
 	project.Path = projectPath
 

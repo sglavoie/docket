@@ -25,9 +25,15 @@ Examples:
 
 func init() {
 	taskCmd.AddCommand(taskStageCmd)
+	addOutputFlags(taskStageCmd)
 }
 
 func runTaskStage(cmd *cobra.Command, args []string) error {
+	out, err := getOutputOpts(cmd)
+	if err != nil {
+		return err
+	}
+
 	taskID := args[0]
 	stageName := ""
 	if len(args) > 1 {
@@ -44,23 +50,32 @@ func runTaskStage(cmd *cobra.Command, args []string) error {
 		return findErr
 	}
 	if task.Stage == stageName {
-		if stageName == "" {
-			fmt.Printf("Task #%d already has no stage.\n", task.ShortID)
-		} else {
-			fmt.Printf("Task #%d is already at stage '%s'.\n", task.ShortID, stageName)
+		if !out.Quiet {
+			if stageName == "" {
+				fmt.Printf("Task #%d already has no stage.\n", task.ShortID)
+			} else {
+				fmt.Printf("Task #%d is already at stage '%s'.\n", task.ShortID, stageName)
+			}
 		}
 		return nil
 	}
 
 	oldStage := task.Stage
 
-	_, err = WithTaskUpdateInProject(taskID, func(project *models.Project, task *models.Task) error {
+	updatedTask, err := WithTaskUpdateInProject(taskID, func(project *models.Project, task *models.Task) error {
 		task.Stage = stageName
 		return nil
 	})
 
 	if err != nil {
 		return err
+	}
+
+	if out.Quiet {
+		return nil
+	}
+	if out.JSON {
+		return outputSingleTaskJSON(updatedTask)
 	}
 
 	if stageName == "" {

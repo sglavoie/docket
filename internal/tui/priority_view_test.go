@@ -23,7 +23,10 @@ func newTestTaskWithDueDate(t *testing.T, title string, daysOffset int) *models.
 
 // Helper to create a test project for priority view tests.
 func newTestPriorityProject() *models.Project {
-	project := models.NewProject(uuid.New().String(), "Priority Test", "")
+	project, err := models.NewProject(uuid.New().String(), "Priority Test", "")
+	if err != nil {
+		panic(err)
+	}
 	return project
 }
 

@@ -21,7 +21,11 @@ func newTestFocusConfig(projects []*models.Project) *config.Config {
 
 // newTestFocusProject creates a test project for focus view tests.
 func newTestFocusProject(name string) *models.Project {
-	return models.NewProject(uuid.New().String(), name, "")
+	project, err := models.NewProject(uuid.New().String(), name, "")
+	if err != nil {
+		panic(err)
+	}
+	return project
 }
 
 // newTestFocusTask creates a task with optional active flag.

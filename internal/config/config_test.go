@@ -594,7 +594,10 @@ func TestConfig_ApplyGlobalColorsToProject(t *testing.T) {
 	cfg.SetGlobalSectionColor("Active", "green")
 	cfg.SetGlobalSectionColor("Done", "blue")
 
-	project := models.NewProject("test", "Test", "/tmp/test")
+	project, err := models.NewProject("test", "Test", "/tmp/test")
+	if err != nil {
+		t.Fatal(err)
+	}
 	project.Sections = []string{"Backlog", "Active", "Done", "Review"}
 
 	cfg.ApplyGlobalColorsToProject(project)
@@ -620,7 +623,10 @@ func TestConfig_ApplyGlobalColorsToProject_NilProjectColors(t *testing.T) {
 	cfg := NewConfig()
 	cfg.SetGlobalSectionColor("Active", "green")
 
-	project := models.NewProject("test", "Test", "/tmp/test")
+	project, err := models.NewProject("test", "Test", "/tmp/test")
+	if err != nil {
+		t.Fatal(err)
+	}
 	project.SectionColors = nil
 	project.Sections = []string{"Active"}
 

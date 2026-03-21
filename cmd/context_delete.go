@@ -63,10 +63,13 @@ func runContextDelete(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 	if out.JSON {
-		data, _ := json.MarshalIndent(struct {
+		data, err := json.MarshalIndent(struct {
 			Context string `json:"context"`
 			Deleted bool   `json:"deleted"`
 		}{Context: name, Deleted: true}, "", "  ")
+		if err != nil {
+			return fmt.Errorf("marshal JSON: %w", err)
+		}
 		fmt.Println(string(data))
 		return nil
 	}

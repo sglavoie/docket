@@ -2,13 +2,24 @@ package tui
 
 import (
 	"fmt"
+	"runtime/debug"
 	"strconv"
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
+
+	"github.com/sglavoie/tt/internal/logging"
 )
 
-func (m *AppModel) View() string {
+func (m *AppModel) View() (result string) {
+	defer func() {
+		if r := recover(); r != nil {
+			stack := debug.Stack()
+			logging.Warn("TUI panic in View: %v\n%s", r, stack)
+			result = fmt.Sprintf("internal error: %v\n\nPress ctrl+c to quit.", r)
+		}
+	}()
+
 	if m.quitting {
 		return ""
 	}

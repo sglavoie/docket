@@ -65,11 +65,14 @@ func runSectionRename(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 	if out.JSON {
-		data, _ := json.MarshalIndent(struct {
+		data, err := json.MarshalIndent(struct {
 			OldName string `json:"old_name"`
 			NewName string `json:"new_name"`
 			Project string `json:"project"`
 		}{OldName: oldName, NewName: newName, Project: project.Name}, "", "  ")
+		if err != nil {
+			return fmt.Errorf("marshal JSON: %w", err)
+		}
 		fmt.Println(string(data))
 		return nil
 	}

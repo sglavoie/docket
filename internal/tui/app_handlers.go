@@ -14,7 +14,16 @@ import (
 // into the per-project cache so it can be restored after recreation.
 func (m *AppModel) saveOutlinerToggleState() {
 	if m.outliner != nil && m.outliner.project != nil {
-		m.outlinerToggleStates[m.outliner.project.ID] = m.outliner.SaveToggleState()
+		id := m.outliner.project.ID
+		m.outlinerToggleStates[id] = m.outliner.SaveToggleState()
+		for len(m.outlinerToggleStates) > maxProjectLastViewEntries {
+			for k := range m.outlinerToggleStates {
+				if k != id {
+					delete(m.outlinerToggleStates, k)
+					break
+				}
+			}
+		}
 	}
 }
 

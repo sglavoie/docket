@@ -16,7 +16,10 @@ import (
 
 // NewTestProject creates a project with sample tasks for testing.
 func NewTestProject(name string) *models.Project {
-	project := models.NewProject(uuid.New().String(), name, "")
+	project, err := models.NewProject(uuid.New().String(), name, "")
+	if err != nil {
+		panic(err)
+	}
 	project.Slug = models.Slugify(name)
 	return project
 }

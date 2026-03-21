@@ -92,11 +92,14 @@ func runAttach(cmd *cobra.Command, args []string) error {
 			return nil
 		}
 		if out.JSON {
-			data, _ := json.MarshalIndent(struct {
+			data, err := json.MarshalIndent(struct {
 				TaskShortID int    `json:"task_short_id"`
 				Attachment  string `json:"attachment"`
 				Type        string `json:"type"`
 			}{TaskShortID: task.ShortID, Attachment: url, Type: "url"}, "", "  ")
+			if err != nil {
+				return fmt.Errorf("marshal JSON: %w", err)
+			}
 			fmt.Println(string(data))
 			return nil
 		}
@@ -131,11 +134,14 @@ func runAttach(cmd *cobra.Command, args []string) error {
 			return nil
 		}
 		if out.JSON {
-			data, _ := json.MarshalIndent(struct {
+			data, err := json.MarshalIndent(struct {
 				TaskShortID int    `json:"task_short_id"`
 				Attachment  string `json:"attachment"`
 				Type        string `json:"type"`
 			}{TaskShortID: task.ShortID, Attachment: fmt.Sprintf("%s:%d", codePath, lineNum), Type: "code_ref"}, "", "  ")
+			if err != nil {
+				return fmt.Errorf("marshal JSON: %w", err)
+			}
 			fmt.Println(string(data))
 			return nil
 		}
@@ -192,11 +198,14 @@ func runAttach(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 	if out.JSON {
-		data, _ := json.MarshalIndent(struct {
+		data, err := json.MarshalIndent(struct {
 			TaskShortID int    `json:"task_short_id"`
 			Attachment  string `json:"attachment"`
 			Type        string `json:"type"`
 		}{TaskShortID: task.ShortID, Attachment: filename, Type: "file"}, "", "  ")
+		if err != nil {
+			return fmt.Errorf("marshal JSON: %w", err)
+		}
 		fmt.Println(string(data))
 		return nil
 	}

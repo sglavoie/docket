@@ -13,6 +13,8 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 )
 
+const fzfTimeoutSeconds = 30
+
 // FzfAvailable checks if fzf is installed and available.
 func FzfAvailable() bool {
 	_, err := CachedFzfPath()
@@ -41,7 +43,7 @@ func FzfSelectProject(projects []*models.Project, prompt string) (*models.Projec
 	input := strings.Join(lines, "\n")
 
 	// Run fzf
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), fzfTimeoutSeconds*time.Second)
 	defer cancel()
 
 	cmd := exec.CommandContext(ctx, "fzf",
@@ -65,6 +67,9 @@ func FzfSelectProject(projects []*models.Project, prompt string) (*models.Projec
 			if exitErr.ExitCode() == 130 {
 				return nil, fmt.Errorf("canceled")
 			}
+		}
+		if ctx.Err() == context.DeadlineExceeded {
+			return nil, fmt.Errorf("fzf timed out after %ds — try again or press Ctrl+C to cancel", fzfTimeoutSeconds)
 		}
 		return nil, fmt.Errorf("fzf failed: %w", err)
 	}
@@ -132,7 +137,7 @@ func FzfSelectTask(tasks []*models.Task, prompt string, previewCmd string) (*mod
 		)
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), fzfTimeoutSeconds*time.Second)
 	defer cancel()
 
 	cmd := exec.CommandContext(ctx, "fzf", args...)
@@ -148,6 +153,9 @@ func FzfSelectTask(tasks []*models.Task, prompt string, previewCmd string) (*mod
 			if exitErr.ExitCode() == 130 {
 				return nil, fmt.Errorf("canceled")
 			}
+		}
+		if ctx.Err() == context.DeadlineExceeded {
+			return nil, fmt.Errorf("fzf timed out after %ds — try again or press Ctrl+C to cancel", fzfTimeoutSeconds)
 		}
 		return nil, fmt.Errorf("fzf failed: %w", err)
 	}
@@ -194,7 +202,7 @@ func FzfMultiSelectProjects(projects []*models.Project, prompt string, preselect
 
 	input := strings.Join(lines, "\n")
 
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), fzfTimeoutSeconds*time.Second)
 	defer cancel()
 
 	cmd := exec.CommandContext(ctx, "fzf",
@@ -218,6 +226,9 @@ func FzfMultiSelectProjects(projects []*models.Project, prompt string, preselect
 			if exitErr.ExitCode() == 130 {
 				return nil, fmt.Errorf("canceled")
 			}
+		}
+		if ctx.Err() == context.DeadlineExceeded {
+			return nil, fmt.Errorf("fzf timed out after %ds — try again or press Ctrl+C to cancel", fzfTimeoutSeconds)
 		}
 		return nil, fmt.Errorf("fzf failed: %w", err)
 	}
@@ -276,7 +287,7 @@ func FzfMultiSelectTasks(tasks []*models.Task, prompt string) ([]*models.Task, e
 
 	input := strings.Join(lines, "\n")
 
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), fzfTimeoutSeconds*time.Second)
 	defer cancel()
 
 	cmd := exec.CommandContext(ctx, "fzf",
@@ -300,6 +311,9 @@ func FzfMultiSelectTasks(tasks []*models.Task, prompt string) ([]*models.Task, e
 			if exitErr.ExitCode() == 130 {
 				return nil, fmt.Errorf("canceled")
 			}
+		}
+		if ctx.Err() == context.DeadlineExceeded {
+			return nil, fmt.Errorf("fzf timed out after %ds — try again or press Ctrl+C to cancel", fzfTimeoutSeconds)
 		}
 		return nil, fmt.Errorf("fzf failed: %w", err)
 	}

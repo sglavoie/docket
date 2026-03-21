@@ -13,7 +13,9 @@ import (
 	"github.com/sglavoie/tt/internal/util"
 )
 
-const glowTimeout = 10 * time.Second
+const glowTimeoutSeconds = 10
+
+const glowTimeout = glowTimeoutSeconds * time.Second
 
 // GlowAvailable checks if glow is installed and available.
 func GlowAvailable() bool {
@@ -25,7 +27,7 @@ func GlowAvailable() bool {
 // Falls back to plain text output if glow fails or is unavailable.
 func RenderMarkdown(content string) error {
 	if !GlowAvailable() {
-		fmt.Println(content)
+		fmt.Println("(glow not available — showing plain text)\n\n" + content)
 		return nil
 	}
 
@@ -38,7 +40,11 @@ func RenderMarkdown(content string) error {
 	cmd.Stderr = os.Stderr
 
 	if err := cmd.Run(); err != nil {
-		logging.Warn("glow render failed, falling back to plain text: %v", err)
+		if ctx.Err() == context.DeadlineExceeded {
+			logging.Warn("glow timed out after %ds — falling back to plain text", glowTimeoutSeconds)
+		} else {
+			logging.Warn("glow render failed, falling back to plain text: %v", err)
+		}
 		fmt.Println(content)
 	}
 	return nil
@@ -52,7 +58,7 @@ func RenderFile(path string) error {
 		if err != nil {
 			return err
 		}
-		fmt.Println(string(content))
+		fmt.Println("(glow not available — showing plain text)\n\n" + string(content))
 		return nil
 	}
 
@@ -64,7 +70,11 @@ func RenderFile(path string) error {
 	cmd.Stderr = os.Stderr
 
 	if err := cmd.Run(); err != nil {
-		logging.Warn("glow render failed for %s, falling back to plain text: %v", path, err)
+		if ctx.Err() == context.DeadlineExceeded {
+			logging.Warn("glow timed out after %ds for %s — falling back to plain text", glowTimeoutSeconds, path)
+		} else {
+			logging.Warn("glow render failed for %s, falling back to plain text: %v", path, err)
+		}
 		content, readErr := os.ReadFile(path)
 		if readErr != nil {
 			return readErr
@@ -180,7 +190,7 @@ func FormatTaskAsMarkdown(task *models.Task) string {
 // Falls back to plain text output if glow fails or is unavailable.
 func PageMarkdown(content string) error {
 	if !GlowAvailable() {
-		fmt.Println(content)
+		fmt.Println("(glow not available — showing plain text)\n\n" + content)
 		return nil
 	}
 
@@ -193,7 +203,11 @@ func PageMarkdown(content string) error {
 	cmd.Stderr = os.Stderr
 
 	if err := cmd.Run(); err != nil {
-		logging.Warn("glow pager failed, falling back to plain text: %v", err)
+		if ctx.Err() == context.DeadlineExceeded {
+			logging.Warn("glow timed out after %ds — falling back to plain text", glowTimeoutSeconds)
+		} else {
+			logging.Warn("glow pager failed, falling back to plain text: %v", err)
+		}
 		fmt.Println(content)
 	}
 	return nil

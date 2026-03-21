@@ -100,12 +100,15 @@ func runScoreSet(cmd *cobra.Command, args []string) error {
 		if dims == nil {
 			dims = make(map[string]int)
 		}
-		data, _ := json.MarshalIndent(struct {
+		data, err := json.MarshalIndent(struct {
 			TaskID     string         `json:"task_id"`
 			ShortID    int            `json:"short_id"`
 			Title      string         `json:"title"`
 			Dimensions map[string]int `json:"dimensions"`
 		}{TaskID: task.ID, ShortID: task.ShortID, Title: task.Title, Dimensions: dims}, "", "  ")
+		if err != nil {
+			return fmt.Errorf("marshal JSON: %w", err)
+		}
 		fmt.Println(string(data))
 		return nil
 	}

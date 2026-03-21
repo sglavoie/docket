@@ -36,7 +36,10 @@ func TestSlugify(t *testing.T) {
 }
 
 func TestNewProject(t *testing.T) {
-	project := models.NewProject("test-id", "Test Project", "/path/to/project")
+	project, err := models.NewProject("test-id", "Test Project", "/path/to/project")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	testutil.AssertEqual(t, project.ID, "test-id")
 	testutil.AssertEqual(t, project.Name, "Test Project")
@@ -53,14 +56,20 @@ func TestNewProject(t *testing.T) {
 }
 
 func TestProjectContextDefault(t *testing.T) {
-	project := models.NewProject("test-id", "Test Project", "/path")
+	project, err := models.NewProject("test-id", "Test Project", "/path")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	// Context defaults to "personal"
 	testutil.AssertEqual(t, project.Context, "personal")
 }
 
 func TestProjectDescriptionDefault(t *testing.T) {
-	project := models.NewProject("test-id", "Test Project", "/path")
+	project, err := models.NewProject("test-id", "Test Project", "/path")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	testutil.AssertEqual(t, project.Description, "")
 }
@@ -117,7 +126,10 @@ func TestProjectSlugUniqueness(t *testing.T) {
 }
 
 func TestProjectSections(t *testing.T) {
-	project := models.NewProject("test-id", "Test", "/path")
+	project, err := models.NewProject("test-id", "Test", "/path")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	// Initially has Next section by default
 	testutil.AssertEqual(t, len(project.Sections), 1)

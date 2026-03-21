@@ -67,10 +67,13 @@ func runSectionAdd(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 	if out.JSON {
-		data, _ := json.MarshalIndent(struct {
+		data, err := json.MarshalIndent(struct {
 			Section string `json:"section"`
 			Project string `json:"project"`
 		}{Section: sectionName, Project: project.Name}, "", "  ")
+		if err != nil {
+			return fmt.Errorf("marshal JSON: %w", err)
+		}
 		fmt.Println(string(data))
 		return nil
 	}

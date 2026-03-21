@@ -1,6 +1,7 @@
 package models
 
 import (
+	"fmt"
 	"regexp"
 	"strings"
 	"time"
@@ -47,7 +48,14 @@ const (
 )
 
 // NewProject creates a new project with default values.
-func NewProject(id, name, path string) *Project {
+// Returns an error if id or name is empty.
+func NewProject(id, name, path string) (*Project, error) {
+	if strings.TrimSpace(id) == "" {
+		return nil, fmt.Errorf("project ID cannot be empty")
+	}
+	if strings.TrimSpace(name) == "" {
+		return nil, fmt.Errorf("project name cannot be empty")
+	}
 	now := time.Now()
 	return &Project{
 		ID:            id,
@@ -62,7 +70,7 @@ func NewProject(id, name, path string) *Project {
 		NextShortID:   1,
 		Sections:      []string{SectionNext},
 		SectionColors: make(map[string]string),
-	}
+	}, nil
 }
 
 // Slugify converts a name to a URL-safe slug.

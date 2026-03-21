@@ -68,9 +68,18 @@ func (m *AppModel) saveProjectTreeState() {
 	if task := m.projectTree.getCursorTask(); task != nil {
 		cursorTaskID = task.ID
 	}
-	m.projectTreeSpatialStates[m.currentProject.ID] = &ProjectTreeSpatialState{
+	id := m.currentProject.ID
+	m.projectTreeSpatialStates[id] = &ProjectTreeSpatialState{
 		CursorTaskID: cursorTaskID,
 		FoldState:    foldState,
+	}
+	for len(m.projectTreeSpatialStates) > maxProjectLastViewEntries {
+		for k := range m.projectTreeSpatialStates {
+			if k != id {
+				delete(m.projectTreeSpatialStates, k)
+				break
+			}
+		}
 	}
 
 	state := config.ProjectViewState{

@@ -6,7 +6,10 @@ import (
 )
 
 func TestProjectGetSiblings(t *testing.T) {
-	project := NewProject("test", "Test", "/tmp/test")
+	project, err := NewProject("test", "Test", "/tmp/test")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	// Create tasks: two root tasks, one with children
 	task1, err := NewTask("1", 1, TaskTypeTask, "Task 1")
@@ -55,7 +58,10 @@ func TestProjectGetSiblings(t *testing.T) {
 }
 
 func TestProjectMoveTaskUp(t *testing.T) {
-	project := NewProject("test", "Test", "/tmp/test")
+	project, err := NewProject("test", "Test", "/tmp/test")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	task1, err := NewTask("1", 1, TaskTypeTask, "Task 1")
 	if err != nil {
@@ -97,7 +103,10 @@ func TestProjectMoveTaskUp(t *testing.T) {
 }
 
 func TestProjectMoveTaskDown(t *testing.T) {
-	project := NewProject("test", "Test", "/tmp/test")
+	project, err := NewProject("test", "Test", "/tmp/test")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	task1, err := NewTask("1", 1, TaskTypeTask, "Task 1")
 	if err != nil {
@@ -139,7 +148,10 @@ func TestProjectMoveTaskDown(t *testing.T) {
 }
 
 func TestProjectMoveTaskUpWithChildren(t *testing.T) {
-	project := NewProject("test", "Test", "/tmp/test")
+	project, err := NewProject("test", "Test", "/tmp/test")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	epic, err := NewTask("epic", 1, TaskTypeEpic, "Epic")
 	if err != nil {
@@ -175,7 +187,10 @@ func TestProjectMoveTaskUpWithChildren(t *testing.T) {
 }
 
 func TestProjectIndentTask(t *testing.T) {
-	project := NewProject("test", "Test", "/tmp/test")
+	project, err := NewProject("test", "Test", "/tmp/test")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	epic, err := NewTask("epic", 1, TaskTypeEpic, "Epic")
 	if err != nil {
@@ -201,7 +216,10 @@ func TestProjectIndentTask(t *testing.T) {
 }
 
 func TestProjectOutdentTask(t *testing.T) {
-	project := NewProject("test", "Test", "/tmp/test")
+	project, err := NewProject("test", "Test", "/tmp/test")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	epic, err := NewTask("epic", 1, TaskTypeEpic, "Epic")
 	if err != nil {
@@ -246,7 +264,10 @@ func TestProjectOutdentTask(t *testing.T) {
 }
 
 func TestIndentTaskReturnsErrorWhenNoTaskAbove(t *testing.T) {
-	project := NewProject("test", "Test", "/tmp/test")
+	project, err := NewProject("test", "Test", "/tmp/test")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	task, err := NewTask("task", 1, TaskTypeTask, "Task")
 	if err != nil {
@@ -264,7 +285,10 @@ func TestIndentTaskReturnsErrorWhenNoTaskAbove(t *testing.T) {
 }
 
 func TestIndentTaskReturnsErrorWhenTypeInvalid(t *testing.T) {
-	project := NewProject("test", "Test", "/tmp/test")
+	project, err := NewProject("test", "Test", "/tmp/test")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	task1, err := NewTask("task1", 1, TaskTypeTask, "Task 1")
 	if err != nil {
@@ -286,7 +310,10 @@ func TestIndentTaskReturnsErrorWhenTypeInvalid(t *testing.T) {
 }
 
 func TestBuildTaskTree_MaxNestingDepth(t *testing.T) {
-	project := NewProject("test", "Test", "/tmp/test")
+	project, err := NewProject("test", "Test", "/tmp/test")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	// Create a chain of 8 tasks nested sequentially: depth 0 → 1 → ... → 7
 	const chainLen = 8
@@ -337,7 +364,10 @@ func TestBuildTaskTree_MaxNestingDepthRelevelSubtree(t *testing.T) {
 	// Regression: when a deeply nested task with children is detached to root,
 	// its children must be re-leveled relative to the new root (level 0),
 	// not retain their original (stale) levels.
-	project := NewProject("test", "Test", "/tmp/test")
+	project, err := NewProject("test", "Test", "/tmp/test")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	// Create chain: 0 -> 1 -> ... -> MaxNestingDepth+1 -> child_a, child_b
 	chainLen := MaxNestingDepth + 2 // one past the cap
@@ -385,7 +415,10 @@ func TestBuildTaskTree_MaxNestingDepthRelevelSubtree(t *testing.T) {
 }
 
 func TestBuildTaskTree_CircularParentSelfReference(t *testing.T) {
-	project := NewProject("test", "Test", "/tmp/test")
+	project, err := NewProject("test", "Test", "/tmp/test")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	task, err := NewTask("task-1", 1, TaskTypeTask, "Self-referencing task")
 	if err != nil {
@@ -409,7 +442,10 @@ func TestBuildTaskTree_CircularParentSelfReference(t *testing.T) {
 }
 
 func TestBuildTaskTree_CircularParentMutualReference(t *testing.T) {
-	project := NewProject("test", "Test", "/tmp/test")
+	project, err := NewProject("test", "Test", "/tmp/test")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	taskA, err := NewTask("a", 1, TaskTypeTask, "Task A")
 	if err != nil {
@@ -437,7 +473,10 @@ func TestBuildTaskTree_CircularParentMutualReference(t *testing.T) {
 }
 
 func TestBuildTaskTree_CircularParentLongChain(t *testing.T) {
-	project := NewProject("test", "Test", "/tmp/test")
+	project, err := NewProject("test", "Test", "/tmp/test")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	taskA, err := NewTask("a", 1, TaskTypeTask, "Task A")
 	if err != nil {
@@ -477,7 +516,10 @@ func TestBuildTaskTree_CircularParentLongChain(t *testing.T) {
 }
 
 func TestBuildTaskTree_CircularParentFullCycleCleared(t *testing.T) {
-	project := NewProject("test", "Test", "/tmp/test")
+	project, err := NewProject("test", "Test", "/tmp/test")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	taskA, err := NewTask("a", 1, TaskTypeTask, "Task A")
 	if err != nil {
@@ -587,7 +629,10 @@ func TestWouldCreateCycle_ValidReparent(t *testing.T) {
 }
 
 func TestOutdentTaskReturnsErrorAtRoot(t *testing.T) {
-	project := NewProject("test", "Test", "/tmp/test")
+	project, err := NewProject("test", "Test", "/tmp/test")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	task, err := NewTask("task", 1, TaskTypeTask, "Task")
 	if err != nil {
@@ -603,8 +648,53 @@ func TestOutdentTaskReturnsErrorAtRoot(t *testing.T) {
 	}
 }
 
+func TestAddChild_ExceedsMaxNestingDepth(t *testing.T) {
+	parent, err := NewTask("parent", 1, TaskTypeEpic, "Parent")
+	if err != nil {
+		t.Fatal(err)
+	}
+	parent.Level = MaxNestingDepth // simulate being at the deepest allowed level
+
+	child, err := NewTask("child", 2, TaskTypeStory, "Child")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = parent.AddChild(child)
+	if err == nil {
+		t.Error("expected error when adding child would exceed MaxNestingDepth")
+	}
+}
+
+func TestAddChild_CycleDetected(t *testing.T) {
+	// a (Story) is already the parent of b (Epic) via Parent pointer.
+	// Attempting to add a as a child of b would create cycle b→a→b.
+	a, err := NewTask("a", 1, TaskTypeStory, "A")
+	if err != nil {
+		t.Fatal(err)
+	}
+	b, err := NewTask("b", 2, TaskTypeEpic, "B")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Simulate existing tree: a is b's parent (set via pointer, not AddChild)
+	b.Parent = a
+	b.Level = 1
+
+	// Epic can have Story children (type check passes), but a is already
+	// an ancestor of b so this would create a cycle.
+	err = b.AddChild(a)
+	if err == nil {
+		t.Error("expected error when AddChild would create a circular reference")
+	}
+}
+
 func TestBuildTaskTree_OrphanedDependencyCleanup(t *testing.T) {
-	project := NewProject("test", "Test", "/tmp/test")
+	project, err := NewProject("test", "Test", "/tmp/test")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	task1, err := NewTask("task-1", 1, TaskTypeTask, "Task 1")
 	if err != nil {

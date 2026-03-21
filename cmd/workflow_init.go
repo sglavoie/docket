@@ -70,7 +70,7 @@ func init() {
 	workflowCmd.AddCommand(workflowInitCmd)
 
 	workflowInitCmd.Flags().BoolVar(&initList, "list", false, "preview default rules without adding them")
-	workflowInitCmd.Flags().BoolVar(&initForce, "force", false, "add defaults even if rules already exist")
+	workflowInitCmd.Flags().BoolVarP(&initForce, "force", "f", false, "add defaults even if rules already exist")
 	workflowInitCmd.Flags().BoolVar(&initEnable, "enable", false, "create default rules in enabled state")
 	workflowInitCmd.Flags().BoolVar(&initChangedDefaults, "changed-defaults", false, "reset edited/deleted default rules to shipped values (requires --force)")
 }

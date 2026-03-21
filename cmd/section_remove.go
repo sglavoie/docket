@@ -85,11 +85,14 @@ func runSectionRemove(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 	if out.JSON {
-		data, _ := json.MarshalIndent(struct {
+		data, err := json.MarshalIndent(struct {
 			Section    string `json:"section"`
 			Project    string `json:"project"`
 			TasksMoved int    `json:"tasks_moved"`
 		}{Section: sectionName, Project: project.Name, TasksMoved: taskCount}, "", "  ")
+		if err != nil {
+			return fmt.Errorf("marshal JSON: %w", err)
+		}
 		fmt.Println(string(data))
 		return nil
 	}

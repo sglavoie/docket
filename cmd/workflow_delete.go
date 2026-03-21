@@ -74,10 +74,13 @@ func runWorkflowDelete(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 	if out.JSON {
-		data, _ := json.MarshalIndent(struct {
+		data, err := json.MarshalIndent(struct {
 			ID   string `json:"id"`
 			Name string `json:"name"`
 		}{ID: ruleID, Name: ruleName}, "", "  ")
+		if err != nil {
+			return fmt.Errorf("marshal JSON: %w", err)
+		}
 		fmt.Println(string(data))
 		return nil
 	}

@@ -6,7 +6,10 @@ import (
 )
 
 func TestProjectTaskCounts(t *testing.T) {
-	project := NewProject("test", "Test", "/tmp/test")
+	project, err := NewProject("test", "Test", "/tmp/test")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	task1, err := NewTask("1", 1, TaskTypeTask, "Task 1") // todo
 	if err != nil {
@@ -51,7 +54,10 @@ func TestProjectTaskCounts(t *testing.T) {
 }
 
 func TestProjectGetTasksByStatus(t *testing.T) {
-	project := NewProject("test", "Test", "/tmp/test")
+	project, err := NewProject("test", "Test", "/tmp/test")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	task1, err := NewTask("1", 1, TaskTypeTask, "Task 1")
 	if err != nil {
@@ -81,7 +87,10 @@ func TestProjectGetTasksByStatus(t *testing.T) {
 }
 
 func TestProjectGetTasksByType(t *testing.T) {
-	project := NewProject("test", "Test", "/tmp/test")
+	project, err := NewProject("test", "Test", "/tmp/test")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	epic, err := NewTask("1", 1, TaskTypeEpic, "Epic")
 	if err != nil {
@@ -114,7 +123,10 @@ func TestProjectGetTasksByType(t *testing.T) {
 }
 
 func TestProjectGetTasksByTag(t *testing.T) {
-	project := NewProject("test", "Test", "/tmp/test")
+	project, err := NewProject("test", "Test", "/tmp/test")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	task1, err := NewTask("1", 1, TaskTypeTask, "Task 1")
 	if err != nil {
@@ -154,7 +166,10 @@ func TestProjectGetTasksByTag(t *testing.T) {
 }
 
 func TestCountActiveSectionTasks(t *testing.T) {
-	project := NewProject("test", "Test", "/tmp/test")
+	project, err := NewProject("test", "Test", "/tmp/test")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	// Task in Active section (empty string), todo status
 	task1, err := NewTask("1", 1, TaskTypeTask, "Active Todo")
@@ -215,7 +230,10 @@ func TestCountActiveSectionTasks(t *testing.T) {
 }
 
 func TestCountOverdueTasks(t *testing.T) {
-	project := NewProject("test", "Test", "/tmp/test")
+	project, err := NewProject("test", "Test", "/tmp/test")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	yesterday := time.Now().AddDate(0, 0, -1)
 	tomorrow := time.Now().AddDate(0, 0, 1)
@@ -265,7 +283,10 @@ func TestCountOverdueTasks(t *testing.T) {
 }
 
 func TestCountDueSoonTasks(t *testing.T) {
-	project := NewProject("test", "Test", "/tmp/test")
+	project, err := NewProject("test", "Test", "/tmp/test")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	yesterday := time.Now().AddDate(0, 0, -1)
 	twoDays := time.Now().AddDate(0, 0, 2)
@@ -315,7 +336,10 @@ func TestCountDueSoonTasks(t *testing.T) {
 }
 
 func TestCountBlockedTasks(t *testing.T) {
-	project := NewProject("test", "Test", "/tmp/test")
+	project, err := NewProject("test", "Test", "/tmp/test")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	task1, err := NewTask("1", 1, TaskTypeTask, "Blocked 1")
 	if err != nil {
@@ -349,7 +373,10 @@ func TestCountBlockedTasks(t *testing.T) {
 }
 
 func TestEmptyProjectCounts(t *testing.T) {
-	project := NewProject("test", "Test", "/tmp/test")
+	project, err := NewProject("test", "Test", "/tmp/test")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	if project.CountActiveSectionTasks() != 0 {
 		t.Errorf("expected 0 active section tasks, got %d", project.CountActiveSectionTasks())

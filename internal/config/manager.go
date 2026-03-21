@@ -103,6 +103,9 @@ func (m *Manager) Load() (*Config, error) {
 			}
 		}
 	}
+	if _, err := exec.LookPath(config.Editor); err != nil {
+		fmt.Fprintf(os.Stderr, "warning: editor '%s' not found in PATH; editing commands may fail\n", config.Editor)
+	}
 	if config.DefaultContext == "" {
 		config.DefaultContext = "personal"
 	}
@@ -122,11 +125,11 @@ func (m *Manager) Load() (*Config, error) {
 	}
 	// Clamp UndoHistoryDepth to valid range
 	if *config.UndoHistoryDepth < 0 {
-		logging.Warn("UndoHistoryDepth %d is negative, clamping to 0", *config.UndoHistoryDepth)
+		fmt.Fprintf(os.Stderr, "warning: UndoHistoryDepth %d is negative, clamping to 0\n", *config.UndoHistoryDepth)
 		zero := 0
 		config.UndoHistoryDepth = &zero
 	} else if *config.UndoHistoryDepth > 1000 {
-		logging.Warn("UndoHistoryDepth %d exceeds maximum, clamping to 1000", *config.UndoHistoryDepth)
+		fmt.Fprintf(os.Stderr, "warning: UndoHistoryDepth %d exceeds maximum, clamping to 1000\n", *config.UndoHistoryDepth)
 		max := 1000
 		config.UndoHistoryDepth = &max
 	}
@@ -148,7 +151,7 @@ func (m *Manager) Load() (*Config, error) {
 	validProjects := make([]*models.Project, 0, len(config.Projects))
 	for _, p := range config.Projects {
 		if p.ID == "" || p.Name == "" {
-			logging.Warn("skipping invalid project (missing ID or Name): ID=%q Name=%q", p.ID, p.Name)
+			fmt.Fprintf(os.Stderr, "warning: dropping project with missing ID/name from config (ID=%q Name=%q)\n", p.ID, p.Name)
 			continue
 		}
 		validProjects = append(validProjects, p)
@@ -222,7 +225,7 @@ func (m *Manager) Save(config *Config) error {
 	return util.WithFileLock(lockPath, true, func() error {
 		// Backup current config before overwriting (best-effort)
 		if err := m.BackupConfig(); err != nil {
-			logging.Warn("failed to backup config before save: %v", err)
+			fmt.Fprintf(os.Stderr, "warning: config backup failed: %v\n", err)
 		}
 
 		data, err := json.MarshalIndent(config, "", "  ")

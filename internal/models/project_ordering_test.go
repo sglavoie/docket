@@ -3,7 +3,10 @@ package models
 import "testing"
 
 func TestReorderRootTasksByCompletion(t *testing.T) {
-	project := NewProject("test", "Test", "/tmp/test")
+	project, err := NewProject("test", "Test", "/tmp/test")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	// Create tasks: some completed, some not
 	task1, err := NewTask("1", 1, TaskTypeTask, "Task 1") // uncompleted
@@ -45,7 +48,10 @@ func TestReorderRootTasksByCompletion(t *testing.T) {
 }
 
 func TestReorderRootTasksByCompletionPreservesRelativeOrder(t *testing.T) {
-	project := NewProject("test", "Test", "/tmp/test")
+	project, err := NewProject("test", "Test", "/tmp/test")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	// Create completed tasks in specific order
 	task1, err := NewTask("1", 1, TaskTypeTask, "Task 1")
@@ -75,7 +81,10 @@ func TestReorderRootTasksByCompletionPreservesRelativeOrder(t *testing.T) {
 }
 
 func TestReorderRootTasksByCompletionWithChildren(t *testing.T) {
-	project := NewProject("test", "Test", "/tmp/test")
+	project, err := NewProject("test", "Test", "/tmp/test")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	// Create an epic with children, then a root task
 	epic, err := NewTask("epic", 1, TaskTypeEpic, "Epic")
@@ -124,7 +133,10 @@ func TestReorderRootTasksByCompletionWithChildren(t *testing.T) {
 }
 
 func TestReorderRootTasksByCompletionEmptyProject(t *testing.T) {
-	project := NewProject("test", "Test", "/tmp/test")
+	project, err := NewProject("test", "Test", "/tmp/test")
+	if err != nil {
+		t.Fatal(err)
+	}
 	project.Tasks = []*Task{}
 
 	// Should not panic on empty project
@@ -136,7 +148,10 @@ func TestReorderRootTasksByCompletionEmptyProject(t *testing.T) {
 }
 
 func TestReorderRootTasksByCompletionAllUncompleted(t *testing.T) {
-	project := NewProject("test", "Test", "/tmp/test")
+	project, err := NewProject("test", "Test", "/tmp/test")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	task1, err := NewTask("1", 1, TaskTypeTask, "Task 1")
 	if err != nil {
@@ -162,7 +177,10 @@ func TestReorderRootTasksByCompletionAllUncompleted(t *testing.T) {
 }
 
 func TestMoveTaskUpCompletionBoundary(t *testing.T) {
-	project := NewProject("test", "Test", "/tmp/test")
+	project, err := NewProject("test", "Test", "/tmp/test")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	task1, err := NewTask("1", 1, TaskTypeTask, "Task 1") // uncompleted
 	if err != nil {
@@ -192,7 +210,10 @@ func TestMoveTaskUpCompletionBoundary(t *testing.T) {
 }
 
 func TestMoveTaskDownCompletionBoundary(t *testing.T) {
-	project := NewProject("test", "Test", "/tmp/test")
+	project, err := NewProject("test", "Test", "/tmp/test")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	task1, err := NewTask("1", 1, TaskTypeTask, "Task 1") // uncompleted
 	if err != nil {
@@ -222,7 +243,10 @@ func TestMoveTaskDownCompletionBoundary(t *testing.T) {
 }
 
 func TestMoveTaskUpWithinCompletedGroup(t *testing.T) {
-	project := NewProject("test", "Test", "/tmp/test")
+	project, err := NewProject("test", "Test", "/tmp/test")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	task1, err := NewTask("1", 1, TaskTypeTask, "Task 1")
 	if err != nil {
@@ -252,7 +276,10 @@ func TestMoveTaskUpWithinCompletedGroup(t *testing.T) {
 }
 
 func TestMoveTaskDownWithinUncompletedGroup(t *testing.T) {
-	project := NewProject("test", "Test", "/tmp/test")
+	project, err := NewProject("test", "Test", "/tmp/test")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	task1, err := NewTask("1", 1, TaskTypeTask, "Task 1")
 	if err != nil {
@@ -280,7 +307,10 @@ func TestMoveTaskDownWithinUncompletedGroup(t *testing.T) {
 }
 
 func TestRelocateTaskToEndOfSection(t *testing.T) {
-	project := NewProject("test", "Test", "/tmp/test")
+	project, err := NewProject("test", "Test", "/tmp/test")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	// Task at index 0 (before Next tasks) gets moved to Next section
 	task1, err := NewTask("1", 1, TaskTypeTask, "Task 1")
@@ -318,7 +348,10 @@ func TestRelocateTaskToEndOfSection(t *testing.T) {
 }
 
 func TestRelocateTaskToEndOfSectionAlreadyAtEnd(t *testing.T) {
-	project := NewProject("test", "Test", "/tmp/test")
+	project, err := NewProject("test", "Test", "/tmp/test")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	task1, err := NewTask("1", 1, TaskTypeTask, "Task 1")
 	if err != nil {
@@ -342,7 +375,10 @@ func TestRelocateTaskToEndOfSectionAlreadyAtEnd(t *testing.T) {
 }
 
 func TestRelocateTaskToEndOfSectionNoOtherTasks(t *testing.T) {
-	project := NewProject("test", "Test", "/tmp/test")
+	project, err := NewProject("test", "Test", "/tmp/test")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	task1, err := NewTask("1", 1, TaskTypeTask, "Task 1")
 	if err != nil {
@@ -366,7 +402,10 @@ func TestRelocateTaskToEndOfSectionNoOtherTasks(t *testing.T) {
 }
 
 func TestRelocateTaskToEndOfSectionInterleaved(t *testing.T) {
-	project := NewProject("test", "Test", "/tmp/test")
+	project, err := NewProject("test", "Test", "/tmp/test")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	// Interleaved sections: moved task is before several Next tasks
 	task1, err := NewTask("1", 1, TaskTypeTask, "Task 1")
@@ -415,7 +454,10 @@ func TestRelocateTaskToEndOfSectionInterleaved(t *testing.T) {
 }
 
 func TestMoveChildTaskIgnoresBoundary(t *testing.T) {
-	project := NewProject("test", "Test", "/tmp/test")
+	project, err := NewProject("test", "Test", "/tmp/test")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	epic, err := NewTask("epic", 1, TaskTypeEpic, "Epic")
 	if err != nil {

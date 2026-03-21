@@ -621,3 +621,129 @@ func TestRoundTrip_NilParentID(t *testing.T) {
 		t.Errorf("ParentID should be nil, got %q", *parsed.ParentID)
 	}
 }
+
+func TestRoundTrip_DependsOnCrossProject(t *testing.T) {
+	task := &models.Task{
+		ID:       "local-task-1",
+		Type:     models.TaskTypeTask,
+		Status:   models.StatusTodo,
+		Priority: 2,
+		DependsOn: []string{
+			"local-dep-abc",
+			"projID:task-xyz",        // cross-project reference
+			"other-proj:another-123", // another cross-project reference
+		},
+	}
+
+	metaStr := WriteMetadata(task)
+	content := metaStr[5 : len(metaStr)-4]
+	parsed := &models.Task{}
+	warnings := ParseMetadata(parsed, content)
+
+	if len(warnings) != 0 {
+		t.Errorf("got %d warnings, want 0: %v", len(warnings), warnings)
+	}
+
+	want := []string{"local-dep-abc", "projID:task-xyz", "other-proj:another-123"}
+	if !stringSlicesEqual(parsed.DependsOn, want) {
+		t.Errorf("DependsOn = %v, want %v", parsed.DependsOn, want)
+	}
+}
+
+func TestRoundTrip_RecurrenceMonthly(t *testing.T) {
+	task := &models.Task{
+		ID:       "monthly-task-1",
+		Type:     models.TaskTypeTask,
+		Status:   models.StatusTodo,
+		Priority: 2,
+		Recurrence: &models.RecurrencePattern{
+			Interval:  2,
+			Unit:      models.RecurrenceMonthly,
+			Skipped:   1,
+			Streak:    4,
+			MaxStreak: 8,
+		},
+	}
+
+	metaStr := WriteMetadata(task)
+	content := metaStr[5 : len(metaStr)-4]
+	parsed := &models.Task{}
+	warnings := ParseMetadata(parsed, content)
+
+	if len(warnings) != 0 {
+		t.Errorf("got %d warnings, want 0: %v", len(warnings), warnings)
+	}
+	if parsed.Recurrence == nil {
+		t.Fatal("Recurrence is nil after round-trip")
+	}
+	if parsed.Recurrence.Unit != models.RecurrenceMonthly {
+		t.Errorf("Unit = %q, want %q", parsed.Recurrence.Unit, models.RecurrenceMonthly)
+	}
+	if parsed.Recurrence.Interval != 2 {
+		t.Errorf("Interval = %d, want 2", parsed.Recurrence.Interval)
+	}
+	if parsed.Recurrence.Skipped != 1 {
+		t.Errorf("Skipped = %d, want 1", parsed.Recurrence.Skipped)
+	}
+	if parsed.Recurrence.Streak != 4 {
+		t.Errorf("Streak = %d, want 4", parsed.Recurrence.Streak)
+	}
+	if parsed.Recurrence.MaxStreak != 8 {
+		t.Errorf("MaxStreak = %d, want 8", parsed.Recurrence.MaxStreak)
+	}
+}
+
+func TestRoundTrip_KitchenSinkWithParentID(t *testing.T) {
+	parentID := "parent-epic-001"
+	task := &models.Task{
+		ID:        "full-task-1",
+		Type:      models.TaskTypeTask,
+		Status:    models.StatusInProgress,
+		Priority:  1,
+		ParentID:  &parentID,
+		Tags:      []string{"alpha", "beta"},
+		Section:   "Next",
+		DependsOn: []string{"dep-local", "proj2:dep-cross"},
+		RelatedTo: []string{"rel-1"},
+		Recurrence: &models.RecurrencePattern{
+			Interval: 3,
+			Unit:     models.RecurrenceMonthly,
+		},
+		Stage:  "Design",
+		Source: "jira",
+		URL:    "https://jira.example.com/browse/PROJ-1",
+		ScoreDimensions: map[string]int{
+			"impact": 5,
+		},
+	}
+
+	metaStr := WriteMetadata(task)
+	content := metaStr[5 : len(metaStr)-4]
+	parsed := &models.Task{}
+	warnings := ParseMetadata(parsed, content)
+
+	if len(warnings) != 0 {
+		t.Errorf("got %d warnings, want 0: %v", len(warnings), warnings)
+	}
+	if parsed.ParentID == nil {
+		t.Fatal("ParentID is nil after round-trip")
+	}
+	if *parsed.ParentID != parentID {
+		t.Errorf("ParentID = %q, want %q", *parsed.ParentID, parentID)
+	}
+	if !stringSlicesEqual(parsed.DependsOn, task.DependsOn) {
+		t.Errorf("DependsOn = %v, want %v", parsed.DependsOn, task.DependsOn)
+	}
+	if !stringSlicesEqual(parsed.RelatedTo, task.RelatedTo) {
+		t.Errorf("RelatedTo = %v, want %v", parsed.RelatedTo, task.RelatedTo)
+	}
+	if parsed.Recurrence == nil {
+		t.Fatal("Recurrence is nil after round-trip")
+	}
+	if parsed.Recurrence.Unit != models.RecurrenceMonthly {
+		t.Errorf("Recurrence.Unit = %q, want %q", parsed.Recurrence.Unit, models.RecurrenceMonthly)
+	}
+	if parsed.Recurrence.Interval != 3 {
+		t.Errorf("Recurrence.Interval = %d, want 3", parsed.Recurrence.Interval)
+	}
+}
