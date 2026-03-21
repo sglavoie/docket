@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -30,7 +31,8 @@ Examples:
 
 func init() {
 	noteCmd.AddCommand(noteAddCmd)
-	noteAddCmd.Flags().StringSliceVarP(&noteAddTags, "tag", "t", nil, "tags for the note")
+	noteAddCmd.Flags().StringSliceVarP(&noteAddTags, "tag", "T", nil, "tags for the note")
+	addOutputFlags(noteAddCmd)
 }
 
 func runNoteAdd(cmd *cobra.Command, args []string) error {
@@ -39,7 +41,12 @@ func runNoteAdd(cmd *cobra.Command, args []string) error {
 		return tterrors.NewRequiredFieldError("note title")
 	}
 	if len(title) > 200 {
-		return fmt.Errorf("note title too long (%d chars, max 200)", len(title))
+		return tterrors.NewInvalidValueError("title", len(title), "max 200 characters")
+	}
+
+	out, err := getOutputOpts(cmd)
+	if err != nil {
+		return err
 	}
 
 	note := models.NewNote(title)
@@ -52,16 +59,42 @@ func runNoteAdd(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	var scope string
 	if ctx.Project == nil {
 		if err := storage.SaveNoteTo(ctx.Dir, note); err != nil {
 			return fmt.Errorf("failed to save note: %w", err)
 		}
-		fmt.Printf("[global] Created note: %s (%s)\n", title, note.Filename)
+		scope = "global"
 	} else {
 		if err := storage.SaveNote(ctx.Project, note); err != nil {
 			return fmt.Errorf("failed to save note: %w", err)
 		}
-		fmt.Printf("[%s] Created note: %s (%s)\n", ctx.Project.Name, title, note.Filename)
+		scope = ctx.Project.Name
 	}
+
+	if out.Quiet {
+		return nil
+	}
+	if out.JSON {
+		entry := struct {
+			Filename string   `json:"filename"`
+			Title    string   `json:"title"`
+			Tags     []string `json:"tags"`
+			Scope    string   `json:"scope"`
+		}{
+			Filename: note.Filename,
+			Title:    note.Title,
+			Tags:     note.Tags,
+			Scope:    scope,
+		}
+		data, err := json.MarshalIndent(entry, "", "  ")
+		if err != nil {
+			return fmt.Errorf("marshaling note: %w", err)
+		}
+		fmt.Println(string(data))
+		return nil
+	}
+
+	fmt.Printf("[%s] Created note: %s (%s)\n", scope, title, note.Filename)
 	return nil
 }

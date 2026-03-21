@@ -21,6 +21,9 @@ func FzfAvailable() bool {
 
 // FzfSelectProject uses fzf to select a project from the list.
 func FzfSelectProject(projects []*models.Project, prompt string) (*models.Project, error) {
+	if _, err := CachedFzfPath(); err != nil {
+		return nil, fmt.Errorf("fzf not found — install fzf (https://github.com/junegunn/fzf) or use the --id flag to specify items directly")
+	}
 	if len(projects) == 0 {
 		return nil, fmt.Errorf("no projects to select from")
 	}
@@ -90,6 +93,9 @@ func FzfSelectProject(projects []*models.Project, prompt string) (*models.Projec
 
 // FzfSelectTask uses fzf to select a task from the list.
 func FzfSelectTask(tasks []*models.Task, prompt string, previewCmd string) (*models.Task, error) {
+	if _, err := CachedFzfPath(); err != nil {
+		return nil, fmt.Errorf("fzf not found — install fzf (https://github.com/junegunn/fzf) or use the --id flag to specify items directly")
+	}
 	if len(tasks) == 0 {
 		return nil, fmt.Errorf("no tasks to select from")
 	}
@@ -169,6 +175,9 @@ func FzfSelectTask(tasks []*models.Task, prompt string, previewCmd string) (*mod
 
 // FzfMultiSelectProjects uses fzf to select multiple projects from the list.
 func FzfMultiSelectProjects(projects []*models.Project, prompt string, preselectedIDs map[string]bool) ([]*models.Project, error) {
+	if _, err := CachedFzfPath(); err != nil {
+		return nil, fmt.Errorf("fzf not found — install fzf (https://github.com/junegunn/fzf) or use the --id flag to specify items directly")
+	}
 	if len(projects) == 0 {
 		return nil, fmt.Errorf("no projects to select from")
 	}
@@ -244,6 +253,9 @@ func FzfMultiSelectProjects(projects []*models.Project, prompt string, preselect
 
 // FzfMultiSelectTasks uses fzf to select multiple tasks from the list.
 func FzfMultiSelectTasks(tasks []*models.Task, prompt string) ([]*models.Task, error) {
+	if _, err := CachedFzfPath(); err != nil {
+		return nil, fmt.Errorf("fzf not found — install fzf (https://github.com/junegunn/fzf) or use the --id flag to specify items directly")
+	}
 	if len(tasks) == 0 {
 		return nil, fmt.Errorf("no tasks to select from")
 	}

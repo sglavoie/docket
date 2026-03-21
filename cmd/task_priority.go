@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
 	"strconv"
 
@@ -14,6 +15,8 @@ var taskPriorityCmd = &cobra.Command{
 	Use:   "priority <task-id>... <priority>",
 	Short: "Set task priority",
 	Long: `Set the priority of one or more tasks. The last argument is the priority value.
+
+The last argument is always the priority value; all preceding arguments are task IDs.
 
 Priority levels:
   1 - Critical/Urgent
@@ -30,11 +33,17 @@ Examples:
 
 func init() {
 	taskCmd.AddCommand(taskPriorityCmd)
+	addOutputFlags(taskPriorityCmd)
 }
 
 func runTaskPriority(cmd *cobra.Command, args []string) error {
 	if len(args) < 2 {
 		return tterrors.NewRequiredFieldError("task ID and priority")
+	}
+
+	out, err := getOutputOpts(cmd)
+	if err != nil {
+		return err
 	}
 
 	// Last argument is the priority value, everything before is task IDs
@@ -50,9 +59,22 @@ func runTaskPriority(cmd *cobra.Command, args []string) error {
 		return errValidate
 	}
 
+	type taskEntry struct {
+		ID        string   `json:"id"`
+		ShortID   int      `json:"short_id"`
+		Type      string   `json:"type"`
+		Title     string   `json:"title"`
+		Status    string   `json:"status"`
+		Priority  int      `json:"priority"`
+		Tags      []string `json:"tags"`
+		Section   string   `json:"section,omitempty"`
+		CreatedAt string   `json:"created_at"`
+		UpdatedAt string   `json:"updated_at"`
+	}
+
 	var errs []string
 	succeeded := 0
-	skipped := 0
+	var updated []taskEntry
 	for _, taskID := range taskIDs {
 		var oldPriority int
 
@@ -60,7 +82,7 @@ func runTaskPriority(cmd *cobra.Command, args []string) error {
 			oldPriority = task.Priority
 
 			if oldPriority == priority {
-				return nil
+				return fmt.Errorf("already at priority %d", priority)
 			}
 
 			task.Priority = priority
@@ -72,16 +94,38 @@ func runTaskPriority(cmd *cobra.Command, args []string) error {
 			continue
 		}
 
-		if oldPriority != priority {
-			fmt.Printf("Updated priority for task #%d: %d -> %d (%s)\n", task.ShortID, oldPriority, priority, task.Title)
-			succeeded++
-		} else {
-			skipped++
+		tags := task.Tags
+		if tags == nil {
+			tags = []string{}
 		}
+		updated = append(updated, taskEntry{
+			ID:        task.ID,
+			ShortID:   task.ShortID,
+			Type:      task.Type.String(),
+			Title:     task.Title,
+			Status:    task.Status.String(),
+			Priority:  task.Priority,
+			Tags:      tags,
+			Section:   task.Section,
+			CreatedAt: task.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
+			UpdatedAt: task.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"),
+		})
+		if !out.Quiet && !out.JSON {
+			fmt.Printf("Updated priority for task #%d: %d -> %d (%s)\n", task.ShortID, oldPriority, priority, task.Title)
+		}
+		succeeded++
 	}
 
-	if skipped > 0 {
-		fmt.Printf("%d updated, %d already at priority %d\n", succeeded, skipped, priority)
+	if out.JSON {
+		if updated == nil {
+			updated = []taskEntry{}
+		}
+		data, err := json.MarshalIndent(updated, "", "  ")
+		if err != nil {
+			return fmt.Errorf("marshal tasks to JSON: %w", err)
+		}
+		fmt.Println(string(data))
+		return ReportBatchErrors(succeeded, errs)
 	}
 
 	return ReportBatchErrors(succeeded, errs)

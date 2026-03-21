@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -18,6 +19,7 @@ var blockerAddCmd = &cobra.Command{
 	Long: `Add a new blocker to the current project.
 
 A blocker represents an impediment that blocks progress on the project.
+Blockers appear in 'tt blocker list' and can be resolved with 'tt blocker resolve'.
 
 Examples:
   tt blocker add "Waiting for API access"
@@ -29,6 +31,7 @@ Examples:
 func init() {
 	blockerCmd.AddCommand(blockerAddCmd)
 	blockerAddCmd.Flags().StringVarP(&blockerDescription, "description", "d", "", "blocker description")
+	addOutputFlags(blockerAddCmd)
 }
 
 func runBlockerAdd(cmd *cobra.Command, args []string) error {
@@ -37,7 +40,12 @@ func runBlockerAdd(cmd *cobra.Command, args []string) error {
 		return tterrors.NewRequiredFieldError("title")
 	}
 	if len(title) > 500 {
-		return fmt.Errorf("blocker title too long (%d chars, max 500)", len(title))
+		return tterrors.NewInvalidValueError("title", len(title), "max 500 characters")
+	}
+
+	out, err := getOutputOpts(cmd)
+	if err != nil {
+		return err
 	}
 
 	blocker, err := WithBlockerCreate(func() (*models.Blocker, error) {
@@ -49,7 +57,18 @@ func runBlockerAdd(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	fmt.Printf("Created blocker: %s\n", title)
-	fmt.Printf("ID: %s\n", blocker.ID[:8])
+	if out.Quiet {
+		return nil
+	}
+	if out.JSON {
+		data, err := json.MarshalIndent(blocker, "", "  ")
+		if err != nil {
+			return fmt.Errorf("marshaling blocker: %w", err)
+		}
+		fmt.Println(string(data))
+		return nil
+	}
+
+	fmt.Printf("Created blocker: %s (%s)\n", title, blocker.ID[:8])
 	return nil
 }

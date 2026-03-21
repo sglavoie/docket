@@ -9,6 +9,7 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/tterrors"
 )
 
 var (
@@ -31,7 +32,7 @@ When invoked as "tt n <title>", creates a global note directly.`,
 func init() {
 	rootCmd.AddCommand(noteCmd)
 	noteCmd.PersistentFlags().BoolVar(&noteGlobal, "global", false, "operate on global notes")
-	noteCmd.Flags().StringSliceVarP(&noteShortcutTags, "tag", "t", nil, "tags for the note (only with 'n' shortcut)")
+	noteCmd.Flags().StringSliceVarP(&noteShortcutTags, "tag", "T", nil, "tags for the note (only with 'n' shortcut)")
 }
 
 func runNoteShortcut(cmd *cobra.Command, args []string) error {
@@ -44,7 +45,7 @@ func runNoteShortcut(cmd *cobra.Command, args []string) error {
 		return cmd.Help()
 	}
 	if len(title) > 200 {
-		return fmt.Errorf("note title too long (%d chars, max 200)", len(title))
+		return tterrors.NewInvalidValueError("title", len(title), "max 200 characters")
 	}
 
 	note := models.NewNote(title)

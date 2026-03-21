@@ -1,12 +1,13 @@
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"github.com/spf13/cobra"
 
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/tterrors"
+	"github.com/sglavoie/tt/internal/storage"
 )
 
 var blockerDeleteForce bool
@@ -22,31 +23,67 @@ Examples:
   tt blocker delete abc12345
   tt blocker delete abc1 --force`,
 	RunE: runBlockerDelete,
+	ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		if len(args) > 0 {
+			return nil, cobra.ShellCompDirectiveNoFileComp
+		}
+		project, _, _, err := LoadCurrentProject()
+		if err != nil {
+			return nil, cobra.ShellCompDirectiveError
+		}
+		blockers, err := storage.LoadBlockers(project)
+		if err != nil {
+			return nil, cobra.ShellCompDirectiveError
+		}
+		var completions []string
+		for _, b := range blockers {
+			completions = append(completions, b.ID[:8]+"\t"+b.Title)
+		}
+		return completions, cobra.ShellCompDirectiveNoFileComp
+	},
 }
 
 func init() {
 	blockerCmd.AddCommand(blockerDeleteCmd)
 	blockerDeleteCmd.Flags().BoolVarP(&blockerDeleteForce, "force", "f", false, "Skip confirmation prompt")
+	addOutputFlags(blockerDeleteCmd)
 }
 
 func runBlockerDelete(cmd *cobra.Command, args []string) error {
 	if len(args) < 1 {
-		return tterrors.NewRequiredFieldError("blocker ID")
+		return fmt.Errorf("required: blocker ID (use 'tt blocker list' to see blockers)")
+	}
+
+	out, err := getOutputOpts(cmd)
+	if err != nil {
+		return err
 	}
 
 	return WithBlockerUpdate(args[0], func(blockers []*models.Blocker, blocker *models.Blocker) ([]*models.Blocker, error) {
-		// Confirmation
 		if !ConfirmYN(fmt.Sprintf("Delete blocker '%s'? [y/N]: ", blocker.Title), blockerDeleteForce) {
-			fmt.Println("Canceled")
+			if !out.Quiet {
+				fmt.Println("Canceled")
+			}
 			return blockers, nil
 		}
 
-		// Remove the blocker from list
 		var newBlockers []*models.Blocker
 		for _, b := range blockers {
 			if b.ID != blocker.ID {
 				newBlockers = append(newBlockers, b)
 			}
+		}
+
+		if out.Quiet {
+			return newBlockers, nil
+		}
+		if out.JSON {
+			data, err := json.MarshalIndent(blocker, "", "  ")
+			if err != nil {
+				return nil, fmt.Errorf("marshaling blocker: %w", err)
+			}
+			fmt.Println(string(data))
+			return newBlockers, nil
 		}
 
 		fmt.Printf("Deleted blocker: %s\n", blocker.Title)

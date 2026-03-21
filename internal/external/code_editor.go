@@ -1,6 +1,7 @@
 package external
 
 import (
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -90,7 +91,7 @@ func OpenCodeReference(editor, path string, line int) error {
 	// GUI editors run in the background; reap the child process in a
 	// goroutine to prevent zombie processes.
 	if err := cmd.Start(); err != nil {
-		return err
+		return fmt.Errorf("opening editor: %w", err)
 	}
 	go func() { _ = cmd.Wait() }()
 	return nil

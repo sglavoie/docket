@@ -28,11 +28,17 @@ Examples:
 func init() {
 	boardCmd.AddCommand(boardDeleteCmd)
 	boardDeleteCmd.Flags().BoolVarP(&boardDeleteForce, "force", "f", false, "Skip confirmation prompt")
+	addOutputFlags(boardDeleteCmd)
 }
 
 func runBoardDelete(cmd *cobra.Command, args []string) error {
 	if len(args) < 1 {
 		return tterrors.NewRequiredFieldError("action ID")
+	}
+
+	out, err := getOutputOpts(cmd)
+	if err != nil {
+		return err
 	}
 
 	cfg, mgr, err := LoadConfig()
@@ -46,7 +52,9 @@ func runBoardDelete(cmd *cobra.Command, args []string) error {
 	}
 
 	if !ConfirmYN(fmt.Sprintf("Delete action #%d '%s'? [y/N] ", task.ShortID, task.Title), boardDeleteForce) {
-		fmt.Println("Canceled")
+		if !out.Quiet {
+			fmt.Println("Canceled")
+		}
 		return nil
 	}
 
@@ -67,6 +75,5 @@ func runBoardDelete(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to delete: %w", err)
 	}
 
-	fmt.Printf("Deleted action #%d: %s\n", task.ShortID, task.Title)
-	return nil
+	return out.OutputTask(project.Name, "Deleted", task)
 }

@@ -23,10 +23,10 @@ func ValidateAttachmentPath(path string) error {
 // AddAttachment adds a file attachment to the task.
 func (t *Task) AddAttachment(filename string, isURL bool, originalPath string) error {
 	if err := ValidateAttachmentPath(filename); err != nil {
-		return err
+		return fmt.Errorf("adding attachment: %w", err)
 	}
 	if err := ValidateAttachmentPath(originalPath); err != nil {
-		return err
+		return fmt.Errorf("adding attachment: %w", err)
 	}
 	attachment := Attachment{
 		Filename:     filename,
@@ -43,7 +43,7 @@ func (t *Task) AddAttachment(filename string, isURL bool, originalPath string) e
 // Code references are stored without copying the file.
 func (t *Task) AddCodeReference(path string, lineNumber int) error {
 	if err := ValidateAttachmentPath(path); err != nil {
-		return err
+		return fmt.Errorf("adding code reference: %w", err)
 	}
 	attachment := Attachment{
 		Filename:     path,

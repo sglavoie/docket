@@ -41,8 +41,9 @@ func init() {
 	boardAddCmd.Flags().StringVarP(&boardAddURL, "url", "u", "", "URL for the external resource")
 	boardAddCmd.Flags().StringVarP(&boardAddSource, "source", "s", "", "source of the item (e.g., slack, github, email)")
 	boardAddCmd.Flags().IntVarP(&boardAddPriority, "priority", "P", 0, "priority 1-5 (default 3)")
-	boardAddCmd.Flags().StringSliceVarP(&boardAddTags, "tag", "t", nil, "tags for the item")
+	boardAddCmd.Flags().StringSliceVarP(&boardAddTags, "tag", "T", nil, "tags for the item")
 	boardAddCmd.Flags().StringVar(&boardAddProject, "project", "", "target project slug (default: action inbox)")
+	addOutputFlags(boardAddCmd)
 }
 
 func runBoardAdd(cmd *cobra.Command, args []string) error {
@@ -51,6 +52,11 @@ func runBoardAdd(cmd *cobra.Command, args []string) error {
 		return tterrors.NewRequiredFieldError("action title")
 	}
 	if err := models.ValidateTaskTitle(title); err != nil {
+		return err
+	}
+
+	out, err := getOutputOpts(cmd)
+	if err != nil {
 		return err
 	}
 
@@ -113,6 +119,5 @@ func runBoardAdd(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to save: %w", err)
 	}
 
-	fmt.Println(TaskMsg(targetProject.Name, "Added", task))
-	return nil
+	return out.OutputTask(targetProject.Name, "Added", task)
 }

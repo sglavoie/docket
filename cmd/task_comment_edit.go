@@ -88,7 +88,7 @@ func runTaskCommentEdit(cmd *cobra.Command, args []string) error {
 
 	// Check if empty
 	if newText == "" {
-		return fmt.Errorf("comment text cannot be empty")
+		return tterrors.NewRequiredFieldError("comment text")
 	}
 
 	// Update comment (preserve timestamp)

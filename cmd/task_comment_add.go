@@ -40,7 +40,7 @@ func runTaskCommentAdd(cmd *cobra.Command, args []string) error {
 	commentText := strings.Join(args[1:], " ")
 	commentText = strings.TrimSpace(commentText)
 	if commentText == "" {
-		return fmt.Errorf("comment text cannot be empty")
+		return tterrors.NewRequiredFieldError("comment text")
 	}
 
 	// Use WithTaskUpdate to add comment

@@ -13,6 +13,8 @@ import (
 	"github.com/sglavoie/tt/internal/util"
 )
 
+const glowTimeout = 10 * time.Second
+
 // GlowAvailable checks if glow is installed and available.
 func GlowAvailable() bool {
 	_, err := CachedGlowPath()
@@ -27,7 +29,7 @@ func RenderMarkdown(content string) error {
 		return nil
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), glowTimeout)
 	defer cancel()
 
 	cmd := exec.CommandContext(ctx, "glow", "-")
@@ -54,7 +56,7 @@ func RenderFile(path string) error {
 		return nil
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), glowTimeout)
 	defer cancel()
 
 	cmd := exec.CommandContext(ctx, "glow", path)
@@ -182,7 +184,7 @@ func PageMarkdown(content string) error {
 		return nil
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), glowTimeout)
 	defer cancel()
 
 	cmd := exec.CommandContext(ctx, "glow", "-p", "-")

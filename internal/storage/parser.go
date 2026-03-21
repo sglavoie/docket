@@ -15,6 +15,11 @@ import (
 	"github.com/sglavoie/tt/internal/tterrors"
 )
 
+const (
+	scannerInitBufSize = 64 * 1024
+	scannerMaxBufSize  = 1024 * 1024
+)
+
 var (
 	// Matches headings like "## Epic: Title" or "### Story: Title"
 	headingRegex = regexp.MustCompile(`^(#{2,6})\s+(Epic|Story|Task|Bug|Idea|Note|Action):\s*(.+)$`)
@@ -55,7 +60,7 @@ func ParseTasksMarkdownWithSections(content string) (*ParseResult, error) {
 	// Increase buffer to 1MB to handle files with long lines (e.g., base64
 	// content in descriptions, very long metadata comments). The default 64KB
 	// limit would cause silent truncation via scanner.Err().
-	scanner.Buffer(make([]byte, 0, 64*1024), 1024*1024)
+	scanner.Buffer(make([]byte, 0, scannerInitBufSize), scannerMaxBufSize)
 	var projectName string
 	var sections []string
 	sectionColors := make(map[string]string)
@@ -131,6 +136,12 @@ func ParseTasksMarkdownWithSections(content string) (*ParseResult, error) {
 						Type:    format.WarningDeprecation,
 						Field:   "type",
 						Message: fmt.Sprintf("task #%d has deprecated type 'action', migrated to 'task'", nextShortID),
+					})
+				} else {
+					metadataWarnings = append(metadataWarnings, ParseWarning{
+						Type:    format.WarningValidation,
+						Field:   "type",
+						Message: fmt.Sprintf("task #%d has unrecognized type '%s', treated as 'task'", nextShortID, typeStr),
 					})
 				}
 			}

@@ -9,6 +9,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/tterrors"
 )
 
 var (
@@ -78,13 +79,13 @@ func runProjectEdit(cmd *cobra.Command, args []string) error {
 	if nameChanged {
 		newName := strings.TrimSpace(editName)
 		if newName == "" {
-			return fmt.Errorf("project name cannot be empty")
+			return tterrors.NewRequiredFieldError("project name")
 		}
 
 		// Generate new slug and check for uniqueness
 		newSlug := models.Slugify(newName)
 		if newSlug == "" {
-			return fmt.Errorf("project name %q produces an empty slug (must contain at least one ASCII letter or digit)", newName)
+			return tterrors.NewInvalidValueError("project name", newName, "produces an empty slug")
 		}
 		for _, p := range cfg.Projects {
 			if p.ID != project.ID && p.Slug == newSlug {
