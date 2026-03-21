@@ -663,3 +663,48 @@ Normal description.
 		t.Errorf("expected status in_progress, got %q", t2.Status)
 	}
 }
+
+func TestRoundTripEdgeCaseTitleChars(t *testing.T) {
+	// Titles with special chars that are NOT rejected by ValidateTaskTitle
+	edgeTitles := []string{
+		"Use #hashtag in title",
+		"Arrow -> points right",
+		"Single # sign",
+		"Backslash \\ character",
+		"Ampersand & symbol",
+		"Asterisk * wildcard",
+		"[brackets] around text",
+		"(parens) around text",
+		`Backtick ` + "`code`" + ` reference`,
+	}
+
+	for _, title := range edgeTitles {
+		t.Run(title, func(t *testing.T) {
+			tasks := []*models.Task{
+				{
+					ID:      "task1",
+					ShortID: 1,
+					Type:    models.TaskTypeTask,
+					Title:   title,
+					Status:  models.StatusTodo,
+					Tags:    []string{},
+				},
+			}
+
+			// Write to markdown
+			content := WriteTasksMarkdown("Edge Case Project", tasks)
+
+			// Parse back
+			_, parsed, err := ParseTasksMarkdown(content)
+			if err != nil {
+				t.Fatalf("parse error for title %q: %v", title, err)
+			}
+			if len(parsed) != 1 {
+				t.Fatalf("expected 1 task, got %d", len(parsed))
+			}
+			if parsed[0].Title != title {
+				t.Errorf("title mismatch: got %q, want %q", parsed[0].Title, title)
+			}
+		})
+	}
+}

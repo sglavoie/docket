@@ -73,6 +73,32 @@ func TestTaskDependencies(t *testing.T) {
 	}
 }
 
+func TestValidateDependencyChain(t *testing.T) {
+	taskA, _ := NewTask("a", 1, TaskTypeTask, "A")
+	taskB, _ := NewTask("b", 2, TaskTypeTask, "B")
+	taskC, _ := NewTask("c", 3, TaskTypeTask, "C")
+
+	// A→B→C: adding A→B is fine
+	_ = taskB.AddDependency(taskA.ID)
+	_ = taskC.AddDependency(taskB.ID)
+	all := []*Task{taskA, taskB, taskC}
+
+	// No cycle: C→A is fine (A has no deps)
+	if err := ValidateDependencyChain(taskC.ID, taskA.ID, all); err != nil {
+		t.Errorf("expected no cycle for C→A, got: %v", err)
+	}
+
+	// Cycle: A→C would create A→B→C→A
+	if err := ValidateDependencyChain(taskA.ID, taskC.ID, all); err == nil {
+		t.Error("expected cycle error for A→C (A→B→C→A), got nil")
+	}
+
+	// Self-dependency always rejected
+	if err := ValidateDependencyChain(taskA.ID, taskA.ID, all); err == nil {
+		t.Error("expected error for self-dependency, got nil")
+	}
+}
+
 func TestAddDependencyRejectsSelfDependency(t *testing.T) {
 	task, err := NewTask("task", 1, TaskTypeTask, "Task")
 	if err != nil {

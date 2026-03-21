@@ -32,23 +32,18 @@ Examples:
 	RunE: runTaskEdit,
 }
 
-var (
-	editEditor    string
-	taskEditJSON  bool
-	taskEditQuiet bool
-)
+var editEditor string
 
 func init() {
 	taskCmd.AddCommand(taskEditCmd)
 	taskEditCmd.Flags().StringVar(&editEditor, "editor", "", "editor to use")
-	taskEditCmd.Flags().BoolVar(&taskEditJSON, "json", false, "output updated task as JSON")
-	taskEditCmd.Flags().BoolVar(&taskEditQuiet, "quiet", false, "suppress output on success")
+	addOutputFlags(taskEditCmd)
 	taskEditCmd.ValidArgsFunction = completeCurrentProjectTaskIDs()
 }
 
 func runTaskEdit(cmd *cobra.Command, args []string) error {
-	out := MutateOutput{JSON: taskEditJSON, Quiet: taskEditQuiet}
-	if err := out.CheckMutualExclusion(); err != nil {
+	out, err := getOutputOpts(cmd)
+	if err != nil {
 		return err
 	}
 

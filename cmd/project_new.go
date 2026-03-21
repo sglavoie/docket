@@ -16,8 +16,6 @@ var (
 	projectContext     string
 	projectDescription string
 	projectStatusIcon  string
-	projectNewJSON     bool
-	projectNewQuiet    bool
 )
 
 var projectNewCmd = &cobra.Command{
@@ -41,16 +39,15 @@ func init() {
 	projectNewCmd.Flags().StringVarP(&projectDescription, "description", "d", "", "project status note")
 	projectNewCmd.Flags().StringVarP(&projectStatusIcon, "status-icon", "i", "", "project status icon (planning, wip, active, review, testing, stabilizing, maintenance, bugfix, paused, archived)")
 
-	projectNewCmd.Flags().BoolVar(&projectNewJSON, "json", false, "output created project as JSON")
-	projectNewCmd.Flags().BoolVar(&projectNewQuiet, "quiet", false, "suppress output on success")
+	addOutputFlags(projectNewCmd)
 
 	_ = projectNewCmd.RegisterFlagCompletionFunc("context", completeContexts())
 	_ = projectNewCmd.RegisterFlagCompletionFunc("status-icon", completeEnum(statusIconCompletions))
 }
 
 func runProjectNew(cmd *cobra.Command, args []string) error {
-	out := MutateOutput{JSON: projectNewJSON, Quiet: projectNewQuiet}
-	if err := out.CheckMutualExclusion(); err != nil {
+	out, err := getOutputOpts(cmd)
+	if err != nil {
 		return err
 	}
 

@@ -33,7 +33,7 @@ Examples:
 func init() {
 	projectCmd.AddCommand(projectListCmd)
 
-	projectListCmd.Flags().BoolVarP(&showArchived, "archived", "a", false, "include archived projects")
+	projectListCmd.Flags().BoolVarP(&showArchived, "archived", "A", false, "include archived projects")
 	projectListCmd.Flags().BoolVar(&listProjectJSON, "json", false, "output as JSON")
 }
 

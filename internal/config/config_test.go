@@ -935,3 +935,117 @@ func TestConfigManager_BackupWithEmptyJSON(t *testing.T) {
 		t.Error("DataDir should be set to a default value, not empty")
 	}
 }
+
+func TestConfigManager_ClampsNegativeWorkflowEvalInterval(t *testing.T) {
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, "test-config.json")
+
+	neg := -5
+	data, _ := json.Marshal(map[string]any{
+		"version":                1,
+		"data_dir":               "/tmp/tt-test",
+		"projects":               []any{},
+		"workflow_eval_interval": neg,
+	})
+	if err := os.WriteFile(configPath, data, 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	manager := NewManager(configPath)
+	cfg, err := manager.Load()
+	if err != nil {
+		t.Fatalf("Load failed: %v", err)
+	}
+	if cfg.WorkflowEvalInterval == nil {
+		t.Fatal("WorkflowEvalInterval should not be nil")
+	}
+	if *cfg.WorkflowEvalInterval != 0 {
+		t.Errorf("expected WorkflowEvalInterval clamped to 0, got %d", *cfg.WorkflowEvalInterval)
+	}
+}
+
+func TestConfigManager_ClampsNegativeReviewDueSoonDays(t *testing.T) {
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, "test-config.json")
+
+	data, _ := json.Marshal(map[string]any{
+		"version":              1,
+		"data_dir":             "/tmp/tt-test",
+		"projects":             []any{},
+		"review_due_soon_days": -3,
+	})
+	if err := os.WriteFile(configPath, data, 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	manager := NewManager(configPath)
+	cfg, err := manager.Load()
+	if err != nil {
+		t.Fatalf("Load failed: %v", err)
+	}
+	if cfg.ReviewDueSoonDays == nil {
+		t.Fatal("ReviewDueSoonDays should not be nil")
+	}
+	if *cfg.ReviewDueSoonDays != 0 {
+		t.Errorf("expected ReviewDueSoonDays clamped to 0, got %d", *cfg.ReviewDueSoonDays)
+	}
+}
+
+func TestConfigManager_ClampsNegativeReviewOldDays(t *testing.T) {
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, "test-config.json")
+
+	data, _ := json.Marshal(map[string]any{
+		"version":         1,
+		"data_dir":        "/tmp/tt-test",
+		"projects":        []any{},
+		"review_old_days": -10,
+	})
+	if err := os.WriteFile(configPath, data, 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	manager := NewManager(configPath)
+	cfg, err := manager.Load()
+	if err != nil {
+		t.Fatalf("Load failed: %v", err)
+	}
+	if cfg.ReviewOldDays == nil {
+		t.Fatal("ReviewOldDays should not be nil")
+	}
+	if *cfg.ReviewOldDays != 0 {
+		t.Errorf("expected ReviewOldDays clamped to 0, got %d", *cfg.ReviewOldDays)
+	}
+}
+
+func TestConfigManager_PositiveReviewFieldsUnchanged(t *testing.T) {
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, "test-config.json")
+
+	data, _ := json.Marshal(map[string]any{
+		"version":                1,
+		"data_dir":               "/tmp/tt-test",
+		"projects":               []any{},
+		"workflow_eval_interval": 30,
+		"review_due_soon_days":   5,
+		"review_old_days":        14,
+	})
+	if err := os.WriteFile(configPath, data, 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	manager := NewManager(configPath)
+	cfg, err := manager.Load()
+	if err != nil {
+		t.Fatalf("Load failed: %v", err)
+	}
+	if cfg.WorkflowEvalInterval == nil || *cfg.WorkflowEvalInterval != 30 {
+		t.Errorf("expected WorkflowEvalInterval 30, got %v", cfg.WorkflowEvalInterval)
+	}
+	if cfg.ReviewDueSoonDays == nil || *cfg.ReviewDueSoonDays != 5 {
+		t.Errorf("expected ReviewDueSoonDays 5, got %v", cfg.ReviewDueSoonDays)
+	}
+	if cfg.ReviewOldDays == nil || *cfg.ReviewOldDays != 14 {
+		t.Errorf("expected ReviewOldDays 14, got %v", cfg.ReviewOldDays)
+	}
+}

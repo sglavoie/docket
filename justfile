@@ -121,6 +121,20 @@ dead:
     @echo "Finding dead code..."
     ./scripts/dead_code.sh
 
+# Build release binaries for darwin/linux × amd64/arm64
+release: docs
+    #!/usr/bin/env bash
+    set -euo pipefail
+    mkdir -p dist
+    for os in darwin linux; do
+        for arch in amd64 arm64; do
+            out="dist/tt-${os}-${arch}"
+            echo "Building ${out}..."
+            GOOS=${os} GOARCH=${arch} go build {{ ldflags }} -o "${out}" .
+        done
+    done
+    echo "Release binaries written to dist/"
+
 # Remove build artifacts
 clean:
     @echo "Cleaning..."

@@ -2,6 +2,7 @@ package storage
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"os"
 	"regexp"
@@ -216,6 +217,9 @@ func ParseTasksMarkdownWithSections(content string) (*ParseResult, error) {
 	}
 
 	if err := scanner.Err(); err != nil {
+		if errors.Is(err, bufio.ErrTooLong) {
+			return nil, fmt.Errorf("%w: file exceeds the %dMB parse buffer — consider splitting this project into smaller files", tterrors.ErrParseError, scannerMaxBufSize/(1024*1024))
+		}
 		return nil, fmt.Errorf("%w: %w", tterrors.ErrParseError, err)
 	}
 

@@ -93,11 +93,6 @@ Examples:
 	RunE: runTaskStandby,
 }
 
-func addOutputFlags(cmd *cobra.Command) {
-	cmd.Flags().Bool("json", false, "output updated task as JSON")
-	cmd.Flags().Bool("quiet", false, "suppress output on success")
-}
-
 func init() {
 	taskCmd.AddCommand(taskCompleteCmd)
 	taskCmd.AddCommand(taskStartCmd)
@@ -113,16 +108,6 @@ func init() {
 	} {
 		addOutputFlags(sub)
 	}
-}
-
-func getOutputOpts(cmd *cobra.Command) (MutateOutput, error) {
-	if cmd == nil {
-		return MutateOutput{}, nil
-	}
-	jsonOut, _ := cmd.Flags().GetBool("json")
-	quiet, _ := cmd.Flags().GetBool("quiet")
-	out := MutateOutput{JSON: jsonOut, Quiet: quiet}
-	return out, out.CheckMutualExclusion()
 }
 
 func runTaskComplete(cmd *cobra.Command, args []string) error {

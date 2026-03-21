@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/google/uuid"
@@ -27,8 +28,6 @@ var (
 	isStory               bool
 	isBug                 bool
 	isIdea                bool
-	taskAddJSON           bool
-	taskAddQuiet          bool
 	taskCreateSectionFlag bool
 
 	// Type-specific attribute flags (shared registration)
@@ -82,8 +81,7 @@ func init() {
 	registerTypeAttrFlags(taskAddCmd, &addTypeAttrs)
 
 	taskAddCmd.Flags().BoolVar(&taskCreateSectionFlag, "create-section", false, "create the section if it does not exist")
-	taskAddCmd.Flags().BoolVar(&taskAddJSON, "json", false, "output created task as JSON")
-	taskAddCmd.Flags().BoolVar(&taskAddQuiet, "quiet", false, "suppress output on success")
+	addOutputFlags(taskAddCmd)
 
 	_ = taskAddCmd.RegisterFlagCompletionFunc("type", completeEnum(taskTypeCompletions))
 	_ = taskAddCmd.RegisterFlagCompletionFunc("section", completeProjectSections())
@@ -91,8 +89,8 @@ func init() {
 }
 
 func runTaskAdd(cmd *cobra.Command, args []string) error {
-	out := MutateOutput{JSON: taskAddJSON, Quiet: taskAddQuiet}
-	if err := out.CheckMutualExclusion(); err != nil {
+	out, err := getOutputOpts(cmd)
+	if err != nil {
 		return err
 	}
 
@@ -100,7 +98,6 @@ func runTaskAdd(cmd *cobra.Command, args []string) error {
 		project       *models.Project
 		cfg           *config.Config
 		configManager *config.Manager
-		err           error
 	)
 
 	if slug, _ := cmd.Flags().GetString("project"); slug != "" {
@@ -256,6 +253,7 @@ func runTaskAdd(cmd *cobra.Command, args []string) error {
 			}
 		} else if len(tmpl.Children) > 0 {
 			// Legacy support: convert Children to checklist items
+			fmt.Fprintf(os.Stderr, "warning: template %q uses deprecated 'children' field; use 'checklist' instead\n", tmpl.ID)
 			for _, childTmpl := range tmpl.Children {
 				task.Checklist = append(task.Checklist, models.ChecklistItem{
 					Text: childTmpl.Title,

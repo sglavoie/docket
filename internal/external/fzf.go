@@ -13,7 +13,18 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 )
 
-const fzfTimeoutSeconds = 30
+const defaultFzfTimeoutSeconds = 30
+
+// fzfTimeoutSeconds is the timeout for fzf invocations. Configurable via SetFzfTimeout.
+var fzfTimeoutSeconds = defaultFzfTimeoutSeconds
+
+// SetFzfTimeout sets the fzf invocation timeout in seconds.
+// Values <= 0 are ignored and the default (30s) is kept.
+func SetFzfTimeout(seconds int) {
+	if seconds > 0 {
+		fzfTimeoutSeconds = seconds
+	}
+}
 
 // FzfAvailable checks if fzf is installed and available.
 func FzfAvailable() bool {
@@ -43,7 +54,7 @@ func FzfSelectProject(projects []*models.Project, prompt string) (*models.Projec
 	input := strings.Join(lines, "\n")
 
 	// Run fzf
-	ctx, cancel := context.WithTimeout(context.Background(), fzfTimeoutSeconds*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(fzfTimeoutSeconds)*time.Second)
 	defer cancel()
 
 	cmd := exec.CommandContext(ctx, "fzf",
@@ -137,7 +148,7 @@ func FzfSelectTask(tasks []*models.Task, prompt string, previewCmd string) (*mod
 		)
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), fzfTimeoutSeconds*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(fzfTimeoutSeconds)*time.Second)
 	defer cancel()
 
 	cmd := exec.CommandContext(ctx, "fzf", args...)
@@ -202,7 +213,7 @@ func FzfMultiSelectProjects(projects []*models.Project, prompt string, preselect
 
 	input := strings.Join(lines, "\n")
 
-	ctx, cancel := context.WithTimeout(context.Background(), fzfTimeoutSeconds*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(fzfTimeoutSeconds)*time.Second)
 	defer cancel()
 
 	cmd := exec.CommandContext(ctx, "fzf",
@@ -287,7 +298,7 @@ func FzfMultiSelectTasks(tasks []*models.Task, prompt string) ([]*models.Task, e
 
 	input := strings.Join(lines, "\n")
 
-	ctx, cancel := context.WithTimeout(context.Background(), fzfTimeoutSeconds*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(fzfTimeoutSeconds)*time.Second)
 	defer cancel()
 
 	cmd := exec.CommandContext(ctx, "fzf",

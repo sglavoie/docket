@@ -106,6 +106,52 @@ func (p *Project) BuildTaskTree() {
 		}
 	}
 
+	// Detect and break circular dependency chains (defensive, handles corrupt data).
+	// Re-run until a full pass finds no cycles (handles multi-task cycles like A→B→C→A).
+	var canReachViaDepChain func(startID, targetID string, visited map[string]bool) bool
+	canReachViaDepChain = func(startID, targetID string, visited map[string]bool) bool {
+		if startID == targetID {
+			return true
+		}
+		if visited[startID] {
+			return false
+		}
+		visited[startID] = true
+		t, ok := taskMap[startID]
+		if !ok {
+			return false
+		}
+		for _, depID := range t.DependsOn {
+			if !ParseTaskRef(depID).IsCrossProject() && canReachViaDepChain(depID, targetID, visited) {
+				return true
+			}
+		}
+		return false
+	}
+
+	for {
+		foundCycle := false
+		for _, task := range p.Tasks {
+			for i, depID := range task.DependsOn {
+				if ParseTaskRef(depID).IsCrossProject() {
+					continue
+				}
+				if canReachViaDepChain(depID, task.ID, make(map[string]bool)) {
+					logging.Warn("task %q (#%d) has circular dependency on %s, removing edge", task.Title, task.ShortID, depID)
+					task.DependsOn = append(task.DependsOn[:i], task.DependsOn[i+1:]...)
+					foundCycle = true
+					break
+				}
+			}
+			if foundCycle {
+				break
+			}
+		}
+		if !foundCycle {
+			break
+		}
+	}
+
 	// Set levels via DFS (with visited set to guard against any remaining cycles)
 	visited := make(map[string]bool, len(p.Tasks))
 	var setLevels func(task *Task, level int)

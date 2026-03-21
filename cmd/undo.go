@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/spf13/cobra"
 
@@ -58,6 +59,7 @@ func runUndo(cmd *cobra.Command, args []string) error {
 	}
 
 	// Fall back to legacy single-step backup
+	fmt.Fprintf(os.Stderr, "warning: no multi-level undo history found; falling back to legacy single-step backup\n")
 	if !storage.BackupExists(project) {
 		return fmt.Errorf("no undo history available for project '%s'", project.Name)
 	}

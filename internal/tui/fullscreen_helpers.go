@@ -230,15 +230,7 @@ func renderInlineTags(tags []string) string {
 
 // renderPriorityBadge renders a priority indicator with color styling.
 func renderPriorityBadge(priority int) string {
-	badge := fmt.Sprintf("!%d", priority)
-	switch priority {
-	case 1:
-		return PriorityHighStyle.Render(badge)
-	case 2:
-		return PriorityMediumStyle.Render(badge)
-	default:
-		return PriorityLowStyle.Render(badge)
-	}
+	return GetPriorityStyle(priority).Render(PriorityIcon(priority))
 }
 
 // renderTaskHeaderContent builds the common task header content:

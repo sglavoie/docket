@@ -109,6 +109,7 @@ type Config struct {
 	CustomContexts                 map[string][]string          `json:"custom_contexts,omitempty"`       // Custom context name → project IDs
 	FzfEnabled                     bool                         `json:"fzf_enabled"`
 	GlowEnabled                    bool                         `json:"glow_enabled"`
+	FzfTimeout                     *int                         `json:"fzf_timeout,omitempty"`        // Fzf invocation timeout in seconds (nil=30)
 	UndoHistoryDepth               *int                         `json:"undo_history_depth,omitempty"` // Max undo snapshots (nil=50, 0 disables, max 1000)
 	Projects                       []*models.Project            `json:"projects"`
 	SectionColors                  map[string]string            `json:"section_colors,omitempty"`                    // Global section color registry
@@ -409,6 +410,18 @@ func (c *Config) ApplyGlobalColorsToProject(project *models.Project) {
 // Returns empty string if not set (use OS default).
 func (c *Config) GetAttachmentEditor() string {
 	return c.AttachmentEditor
+}
+
+// GetFzfTimeout returns the fzf invocation timeout in seconds.
+// Defaults to 30 if not set; values <= 0 are clamped to 1.
+func (c *Config) GetFzfTimeout() int {
+	if c.FzfTimeout == nil {
+		return 30
+	}
+	if *c.FzfTimeout <= 0 {
+		return 1
+	}
+	return *c.FzfTimeout
 }
 
 // GetCodeEditor returns the configured editor for code references.

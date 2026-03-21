@@ -20,6 +20,8 @@ linters:
     - errcheck
     - ineffassign
     - staticcheck
+    - exhaustive
+    - gocyclo
   settings:
     govet:
       enable-all: true
@@ -32,3 +34,7 @@ linters:
       errorf-multi: true
       asserts: true
       comparison: true
+    exhaustive:
+      default-signifies-exhaustive: true
+    gocyclo:
+      min-complexity: 30

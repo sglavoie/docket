@@ -76,13 +76,25 @@ type Task struct {
 	Level    int      `json:"-"` // Depth in hierarchy (0 for root)
 }
 
-// ValidateTaskTitle returns an error if the title is empty or exceeds MaxTaskTitleLength.
+// ValidateTaskTitle returns an error if the title is empty, exceeds MaxTaskTitleLength,
+// or contains markdown meta-characters that would corrupt the storage format.
 func ValidateTaskTitle(title string) error {
 	if strings.TrimSpace(title) == "" {
 		return fmt.Errorf("task title cannot be empty")
 	}
 	if len(title) > MaxTaskTitleLength {
 		return fmt.Errorf("task title too long (%d chars, max %d)", len(title), MaxTaskTitleLength)
+	}
+	for line := range strings.SplitSeq(title, "\n") {
+		if strings.HasPrefix(line, "##") {
+			return fmt.Errorf("task title must not start a line with '##' (reserved for markdown headings)")
+		}
+	}
+	if strings.Contains(title, "<!--") {
+		return fmt.Errorf("task title must not contain '<!--' (reserved for metadata comments)")
+	}
+	if strings.Contains(title, "-->") {
+		return fmt.Errorf("task title must not contain '-->' (reserved for metadata comments)")
 	}
 	return nil
 }
@@ -114,6 +126,12 @@ func NewTask(id string, shortID int, taskType TaskType, title string) (*Task, er
 
 // ClearTypeAttrs clears all type-specific attribute pointers.
 // Called when task type changes to prevent stale attributes from persisting.
+//
+// Design note: each task type owns at most one Attrs pointer (e.g. a Bug has
+// BugAttrs, a Story has StoryAttrs). The other pointers are always nil during
+// normal operation. Clearing all of them on a type change is intentional —
+// it is cheaper and safer than tracking which pointer was previously active,
+// and ensures no phantom attributes leak into the new type's serialised form.
 func (t *Task) ClearTypeAttrs() {
 	t.BugAttrs = nil
 	t.IdeaAttrs = nil

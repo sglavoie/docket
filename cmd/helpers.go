@@ -8,6 +8,8 @@ import (
 	"os"
 	"strings"
 
+	"github.com/spf13/cobra"
+
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/external"
 	"github.com/sglavoie/tt/internal/logging"
@@ -124,6 +126,7 @@ func LoadConfig() (*config.Config, *config.Manager, error) {
 	if cfg.MaxActivityEntries != nil {
 		storage.MaxActivityEntries = *cfg.MaxActivityEntries
 	}
+	external.SetFzfTimeout(cfg.GetFzfTimeout())
 	return cfg, configManager, nil
 }
 
@@ -139,6 +142,7 @@ func LoadConfigStrict() (*config.Config, *config.Manager, error) {
 	if cfg.MaxActivityEntries != nil {
 		storage.MaxActivityEntries = *cfg.MaxActivityEntries
 	}
+	external.SetFzfTimeout(cfg.GetFzfTimeout())
 	return cfg, configManager, nil
 }
 
@@ -242,6 +246,25 @@ func saveConfig(mgr *config.Manager, cfg *config.Config) error {
 		return tterrors.NewSaveConfigError(err)
 	}
 	return nil
+}
+
+// addOutputFlags registers --json and --quiet flags on a command.
+// Use getOutputOpts to read them back in RunE.
+func addOutputFlags(cmd *cobra.Command) {
+	cmd.Flags().Bool("json", false, "output result as JSON")
+	cmd.Flags().Bool("quiet", false, "suppress output on success")
+}
+
+// getOutputOpts reads --json and --quiet from a command and returns a MutateOutput.
+// Returns an error if both flags are set.
+func getOutputOpts(cmd *cobra.Command) (MutateOutput, error) {
+	if cmd == nil {
+		return MutateOutput{}, nil
+	}
+	jsonOut, _ := cmd.Flags().GetBool("json")
+	quiet, _ := cmd.Flags().GetBool("quiet")
+	out := MutateOutput{JSON: jsonOut, Quiet: quiet}
+	return out, out.CheckMutualExclusion()
 }
 
 // MutateOutput controls how mutation commands print their results.

@@ -1256,6 +1256,69 @@ var (
 	OrangeStyle               = lipgloss.NewStyle().Foreground(ColorWarning)
 )
 
+// Status icon constants for TUI rendering. These mirror the icons returned by
+// models.TaskStatus.Icon() so that TUI code can reference them without needing
+// a typed TaskStatus value.
+const (
+	StatusIconTodo       = "○"
+	StatusIconInProgress = "◐"
+	StatusIconReview     = "◑"
+	StatusIconStandby    = "⏸"
+	StatusIconDone       = "●"
+	StatusIconBlocked    = "◈"
+	StatusIconCanceled   = "✕"
+)
+
+// Priority icon constants for TUI rendering. Each level gets a distinct shape
+// so that status is not conveyed by colour alone.
+const (
+	PriorityIcon1 = "◉" // critical  — bullseye
+	PriorityIcon2 = "●" // high      — filled circle
+	PriorityIcon3 = "◆" // medium    — filled diamond
+	PriorityIcon4 = "◇" // low       — hollow diamond
+	PriorityIcon5 = "·" // minimal   — tiny dot
+)
+
+// StatusIcon returns the unicode icon for a task status string.
+func StatusIcon(status string) string {
+	switch status {
+	case "todo":
+		return StatusIconTodo
+	case "in_progress":
+		return StatusIconInProgress
+	case "review":
+		return StatusIconReview
+	case "standby":
+		return StatusIconStandby
+	case "done":
+		return StatusIconDone
+	case "blocked":
+		return StatusIconBlocked
+	case "canceled":
+		return StatusIconCanceled
+	default:
+		return "·"
+	}
+}
+
+// PriorityIcon returns the unicode icon for a priority level (1–5).
+func PriorityIcon(priority int) string {
+	switch priority {
+	case 1:
+		return PriorityIcon1
+	case 2:
+		return PriorityIcon2
+	case 3:
+		return PriorityIcon3
+	case 4:
+		return PriorityIcon4
+	case 5:
+		return PriorityIcon5
+	default:
+		return PriorityIcon3
+	}
+}
+
 // GetStatusStyle returns the appropriate style for a task status.
 func GetStatusStyle(status string) lipgloss.Style {
 	switch status {

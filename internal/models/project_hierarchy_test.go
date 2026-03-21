@@ -738,3 +738,46 @@ func TestBuildTaskTree_OrphanedDependencyCleanup(t *testing.T) {
 		t.Error("expected cross-project dependency to be preserved")
 	}
 }
+
+func TestBuildTaskTreeBreaksDependencyCycles(t *testing.T) {
+	project, err := NewProject("test", "Test", "/tmp/test")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	taskA, _ := NewTask("a", 1, TaskTypeTask, "A")
+	taskB, _ := NewTask("b", 2, TaskTypeTask, "B")
+	taskC, _ := NewTask("c", 3, TaskTypeTask, "C")
+
+	// Inject a cycle directly: A→B→C→A (bypassing AddDependency self-check)
+	taskA.DependsOn = []string{taskB.ID}
+	taskB.DependsOn = []string{taskC.ID}
+	taskC.DependsOn = []string{taskA.ID}
+
+	project.Tasks = []*Task{taskA, taskB, taskC}
+	project.BuildTaskTree()
+
+	// After BuildTaskTree, no task should have a cycle in its DependsOn
+	totalDeps := len(taskA.DependsOn) + len(taskB.DependsOn) + len(taskC.DependsOn)
+	if totalDeps >= 3 {
+		t.Errorf("expected cycle to be broken (total deps < 3), got %d total DependsOn entries", totalDeps)
+	}
+}
+
+func TestBuildTaskTreeBreaksSelfDependencyCycle(t *testing.T) {
+	project, err := NewProject("test", "Test", "/tmp/test")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	taskA, _ := NewTask("a", 1, TaskTypeTask, "A")
+	// Inject self-dependency directly
+	taskA.DependsOn = []string{taskA.ID}
+
+	project.Tasks = []*Task{taskA}
+	project.BuildTaskTree()
+
+	if len(taskA.DependsOn) != 0 {
+		t.Errorf("expected self-dependency to be removed, got DependsOn: %v", taskA.DependsOn)
+	}
+}

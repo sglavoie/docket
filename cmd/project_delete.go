@@ -10,11 +10,7 @@ import (
 	"github.com/sglavoie/tt/internal/tterrors"
 )
 
-var (
-	projectDeleteForce bool
-	projectDeleteJSON  bool
-	projectDeleteQuiet bool
-)
+var projectDeleteForce bool
 
 var projectDeleteCmd = &cobra.Command{
 	Use:   "delete [name|id]",
@@ -33,13 +29,12 @@ Examples:
 func init() {
 	projectCmd.AddCommand(projectDeleteCmd)
 	projectDeleteCmd.Flags().BoolVarP(&projectDeleteForce, "force", "f", false, "Skip confirmation prompt")
-	projectDeleteCmd.Flags().BoolVar(&projectDeleteJSON, "json", false, "output deleted project as JSON")
-	projectDeleteCmd.Flags().BoolVar(&projectDeleteQuiet, "quiet", false, "suppress output on success")
+	addOutputFlags(projectDeleteCmd)
 }
 
 func runProjectDelete(cmd *cobra.Command, args []string) error {
-	out := MutateOutput{JSON: projectDeleteJSON, Quiet: projectDeleteQuiet}
-	if err := out.CheckMutualExclusion(); err != nil {
+	out, err := getOutputOpts(cmd)
+	if err != nil {
 		return err
 	}
 

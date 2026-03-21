@@ -330,7 +330,7 @@ func (m *PriorityViewModel) renderWaitingOnTask(pt *PriorityTask) string {
 	maxTitleLen := m.Width() - 50
 
 	// Blocked status icon
-	statusIcon := BlockedStyle.Render("◈")
+	statusIcon := BlockedStyle.Render(StatusIconBlocked)
 
 	// Type icon with badge style
 	typeIcon := GetTypeBadge(string(task.Type), task.Type.Icon())

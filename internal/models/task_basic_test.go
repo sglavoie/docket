@@ -54,6 +54,31 @@ func TestValidateTaskTitle(t *testing.T) {
 	if err := ValidateTaskTitle(strings.Repeat("x", 1000)); err == nil {
 		t.Error("expected error for 1000-char title")
 	}
+
+	// Markdown injection: rejected
+	if err := ValidateTaskTitle("## heading at start"); err == nil {
+		t.Error("expected error for title starting with ##")
+	}
+	if err := ValidateTaskTitle("first line\n## heading on second line"); err == nil {
+		t.Error("expected error for ## at start of second line")
+	}
+	if err := ValidateTaskTitle("task with <!-- comment"); err == nil {
+		t.Error("expected error for title containing <!--")
+	}
+	if err := ValidateTaskTitle("task with --> end"); err == nil {
+		t.Error("expected error for title containing -->")
+	}
+
+	// Markdown injection: allowed (# alone or mid-line ## are fine)
+	if err := ValidateTaskTitle("# single hash is ok"); err != nil {
+		t.Errorf("expected no error for single # title, got: %v", err)
+	}
+	if err := ValidateTaskTitle("mid ## line is ok"); err != nil {
+		t.Errorf("expected no error for mid-line ##, got: %v", err)
+	}
+	if err := ValidateTaskTitle("use -> arrows freely"); err != nil {
+		t.Errorf("expected no error for -> arrows, got: %v", err)
+	}
 }
 
 func TestTaskStatus(t *testing.T) {

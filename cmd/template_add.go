@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -83,6 +84,7 @@ func init() {
 	templateAddCmd.Flags().StringArrayVar(&templateAddChildren, "item", nil, "checklist item (can specify multiple)")
 	templateAddCmd.Flags().StringArrayVar(&templateAddOptChildren, "optional-item", nil, "optional checklist item (can specify multiple)")
 	templateAddCmd.Flags().BoolVar(&templateAddDisabled, "disabled", false, "create template in disabled state")
+	addOutputFlags(templateAddCmd)
 
 	_ = templateAddCmd.MarkFlagRequired("name")
 
@@ -92,6 +94,11 @@ func init() {
 }
 
 func runTemplateAdd(cmd *cobra.Command, args []string) error {
+	out, err := getOutputOpts(cmd)
+	if err != nil {
+		return err
+	}
+
 	// Validate name
 	name := strings.TrimSpace(templateAddName)
 	if name == "" {
@@ -181,6 +188,33 @@ func runTemplateAdd(cmd *cobra.Command, args []string) error {
 
 	if err := saveConfig(configManager, cfg); err != nil {
 		return err
+	}
+
+	if out.Quiet {
+		return nil
+	}
+	if out.JSON {
+		entry := struct {
+			ID      string `json:"id"`
+			Name    string `json:"name"`
+			Type    string `json:"type"`
+			Enabled bool   `json:"enabled"`
+			Items   int    `json:"items"`
+			Summary string `json:"summary"`
+		}{
+			ID:      t.ID,
+			Name:    t.Name,
+			Type:    string(t.Type),
+			Enabled: t.Enabled,
+			Items:   len(children),
+			Summary: t.Summary(),
+		}
+		data, err := json.MarshalIndent(entry, "", "  ")
+		if err != nil {
+			return fmt.Errorf("marshal template to JSON: %w", err)
+		}
+		fmt.Println(string(data))
+		return nil
 	}
 
 	fmt.Printf("Created task template: %s [%s]\n", t.Name, t.ID)

@@ -81,6 +81,7 @@ func runFocus(cmd *cobra.Command, args []string) error {
 
 	if focusActiveOnly {
 		// Legacy: only active-flagged, non-completed tasks
+		fmt.Fprintf(os.Stderr, "warning: --active is deprecated; run 'tt focus' without flags to see all actionable tasks\n")
 		for _, project := range projects {
 			for _, task := range project.Tasks {
 				if task.Status.IsComplete() || !task.Active {

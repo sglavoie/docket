@@ -140,9 +140,7 @@ func (r *GlowRenderer) PageMarkdown(content string) error {
 }
 
 // VSCodeEditor implements Editor using VS Code.
-type VSCodeEditor struct {
-	editorOverride string // Optional override for editor command
-}
+type VSCodeEditor struct{}
 
 // NewVSCodeEditor creates a new VS Code-based editor.
 func NewVSCodeEditor() *VSCodeEditor {
@@ -206,7 +204,7 @@ func (e *VSCodeEditor) OpenNewWindow(path string) error {
 
 // EditContent implements Editor.
 func (e *VSCodeEditor) EditContent(content string, extension string) (string, error) {
-	return EditInExternalEditor(e.editorOverride, content, extension)
+	return EditInExternalEditor("", content, extension)
 }
 
 // Default implementations for convenience.

@@ -10,11 +10,7 @@ import (
 	"github.com/sglavoie/tt/internal/storage"
 )
 
-var (
-	taskDeleteForce bool
-	taskDeleteJSON  bool
-	taskDeleteQuiet bool
-)
+var taskDeleteForce bool
 
 var taskDeleteCmd = &cobra.Command{
 	Use:   "delete [task-id]",
@@ -37,13 +33,12 @@ Examples:
 func init() {
 	taskCmd.AddCommand(taskDeleteCmd)
 	taskDeleteCmd.Flags().BoolVarP(&taskDeleteForce, "force", "f", false, "Skip confirmation prompt")
-	taskDeleteCmd.Flags().BoolVar(&taskDeleteJSON, "json", false, "output deleted task as JSON")
-	taskDeleteCmd.Flags().BoolVar(&taskDeleteQuiet, "quiet", false, "suppress output on success")
+	addOutputFlags(taskDeleteCmd)
 }
 
 func runTaskDelete(cmd *cobra.Command, args []string) error {
-	out := MutateOutput{JSON: taskDeleteJSON, Quiet: taskDeleteQuiet}
-	if err := out.CheckMutualExclusion(); err != nil {
+	out, err := getOutputOpts(cmd)
+	if err != nil {
 		return err
 	}
 
