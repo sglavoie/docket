@@ -27,7 +27,7 @@ func TestRunContextList(t *testing.T) {
 		cleanup := func() {
 			viper.Set("config", "")
 			storage.DefaultRepository = oldStorageRepo
-			contextListJSON = false
+			_ = contextListCmd.Flags().Set("json", "false")
 			deps.Cleanup()
 		}
 
@@ -63,7 +63,7 @@ func TestRunContextList(t *testing.T) {
 		manager := config.NewManager(deps.ConfigPath)
 		testutil.AssertNoError(t, manager.Save(deps.Config))
 
-		contextListJSON = true
+		_ = contextListCmd.Flags().Set("json", "true")
 		err := runContextList(contextListCmd, []string{})
 		testutil.AssertNoError(t, err)
 	})

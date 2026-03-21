@@ -70,13 +70,7 @@ func FindTaskByIdentifier(project *models.Project, identifier string) (*models.T
 // ValidatePriority checks that a priority value is in the valid range.
 // If allowZero is true, 0 is accepted (meaning "use default").
 func ValidatePriority(value int, allowZero bool) error {
-	if allowZero && value == 0 {
-		return nil
-	}
-	if value < models.PriorityMin || value > models.PriorityMax {
-		return fmt.Errorf("priority must be between %d and %d", models.PriorityMin, models.PriorityMax)
-	}
-	return nil
+	return models.ValidatePriority(value, allowZero)
 }
 
 // ParseTaskTypeFlags determines the task type from boolean flags or a string flag.

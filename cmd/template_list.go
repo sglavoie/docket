@@ -25,7 +25,6 @@ FLAGS
 var (
 	templateListEnabled  bool
 	templateListCategory string
-	templateListJSON     bool
 )
 
 func init() {
@@ -33,10 +32,15 @@ func init() {
 
 	templateListCmd.Flags().BoolVar(&templateListEnabled, "enabled", false, "show only enabled templates")
 	templateListCmd.Flags().StringVar(&templateListCategory, "category", "", "filter by category (bug, feature, process)")
-	templateListCmd.Flags().BoolVar(&templateListJSON, "json", false, "output as JSON")
+	addOutputFlags(templateListCmd)
 }
 
 func runTemplateList(cmd *cobra.Command, args []string) error {
+	out, err := getOutputOpts(cmd)
+	if err != nil {
+		return err
+	}
+
 	cfg, _, err := LoadConfigStrict()
 	if err != nil {
 		return err
@@ -44,13 +48,6 @@ func runTemplateList(cmd *cobra.Command, args []string) error {
 
 	defaultTemplates, customTemplates := cfg.GetTaskTemplatesSorted()
 	total := len(defaultTemplates) + len(customTemplates)
-	if total == 0 {
-		fmt.Println("No task templates configured.")
-		fmt.Println()
-		fmt.Println("Use 'tt template init' to add default templates.")
-		fmt.Println("Use 'tt template add' to create a custom template.")
-		return nil
-	}
 
 	// Apply filters
 	filterTemplates := func(templates []template.TaskTemplate) []template.TaskTemplate {
@@ -71,8 +68,20 @@ func runTemplateList(cmd *cobra.Command, args []string) error {
 	filteredCustom := filterTemplates(customTemplates)
 	filteredTotal := len(filteredDefaults) + len(filteredCustom)
 
-	if templateListJSON {
+	if out.JSON {
 		return displayTemplateListJSON(filteredDefaults, filteredCustom)
+	}
+
+	if out.Quiet {
+		return nil
+	}
+
+	if total == 0 {
+		fmt.Println("No task templates configured.")
+		fmt.Println()
+		fmt.Println("Use 'tt template init' to add default templates.")
+		fmt.Println("Use 'tt template add' to create a custom template.")
+		return nil
 	}
 
 	if filteredTotal == 0 {

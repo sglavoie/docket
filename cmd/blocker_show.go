@@ -12,8 +12,6 @@ import (
 	"github.com/sglavoie/tt/internal/tterrors"
 )
 
-var blockerShowJSON bool
-
 var blockerShowCmd = &cobra.Command{
 	Use:   "show <id>",
 	Short: "Show blocker details",
@@ -30,12 +28,17 @@ Examples:
 
 func init() {
 	blockerCmd.AddCommand(blockerShowCmd)
-	blockerShowCmd.Flags().BoolVar(&blockerShowJSON, "json", false, "output as JSON")
+	addOutputFlags(blockerShowCmd)
 }
 
 func runBlockerShow(cmd *cobra.Command, args []string) error {
 	if len(args) < 1 {
 		return tterrors.NewRequiredFieldError("blocker ID")
+	}
+
+	out, err := getOutputOpts(cmd)
+	if err != nil {
+		return err
 	}
 
 	project, _, _, err := LoadCurrentProject()
@@ -53,12 +56,16 @@ func runBlockerShow(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("blocker not found: %s", args[0])
 	}
 
-	if blockerShowJSON {
+	if out.JSON {
 		data, err := json.MarshalIndent(blocker, "", "  ")
 		if err != nil {
 			return fmt.Errorf("marshal blocker to JSON: %w", err)
 		}
 		fmt.Println(string(data))
+		return nil
+	}
+
+	if out.Quiet {
 		return nil
 	}
 

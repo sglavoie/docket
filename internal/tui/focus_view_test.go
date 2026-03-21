@@ -20,10 +20,11 @@ func newTestFocusConfig(projects []*models.Project) *config.Config {
 }
 
 // newTestFocusProject creates a test project for focus view tests.
-func newTestFocusProject(name string) *models.Project {
+func newTestFocusProject(t *testing.T, name string) *models.Project {
+	t.Helper()
 	project, err := models.NewProject(uuid.New().String(), name, "")
 	if err != nil {
-		panic(err)
+		t.Fatal(err)
 	}
 	return project
 }
@@ -55,7 +56,7 @@ func newTestFocusViewModel(cfg *config.Config) *FocusViewModel {
 
 func TestFocusViewLoadTasks_FilteringLogic(t *testing.T) {
 	t.Run("includes all non-complete tasks", func(t *testing.T) {
-		project := newTestFocusProject("Test")
+		project := newTestFocusProject(t, "Test")
 		active := newTestFocusTask(t, "Active task", 3, true)
 		inactive := newTestFocusTask(t, "Inactive task", 3, false)
 		project.Tasks = []*models.Task{active, inactive}
@@ -77,7 +78,7 @@ func TestFocusViewLoadTasks_FilteringLogic(t *testing.T) {
 	})
 
 	t.Run("skips completed tasks", func(t *testing.T) {
-		project := newTestFocusProject("Test")
+		project := newTestFocusProject(t, "Test")
 		done := newTestFocusTask(t, "Done task", 3, true)
 		done.Status = models.StatusDone
 
@@ -103,7 +104,7 @@ func TestFocusViewLoadTasks_FilteringLogic(t *testing.T) {
 	})
 
 	t.Run("includes blocked-status tasks (dependency check is separate)", func(t *testing.T) {
-		project := newTestFocusProject("Test")
+		project := newTestFocusProject(t, "Test")
 		blocked := newTestFocusTask(t, "Blocked task", 3, true)
 		blocked.Status = models.StatusBlocked
 		project.Tasks = []*models.Task{blocked}
@@ -125,7 +126,7 @@ func TestFocusViewLoadTasks_FilteringLogic(t *testing.T) {
 }
 
 func TestFocusViewLoadTasks_ExcludesSnoozedTasks(t *testing.T) {
-	project := newTestFocusProject("Test")
+	project := newTestFocusProject(t, "Test")
 	normal := newTestFocusTask(t, "Normal task", 3, false)
 	snoozed := newTestFocusTask(t, "Snoozed task", 3, false)
 	future := time.Now().AddDate(0, 0, 7)
@@ -154,7 +155,7 @@ func TestFocusViewLoadTasks_ExcludesSnoozedTasks(t *testing.T) {
 }
 
 func TestFocusViewLoadTasks_ExcludesDependencyBlockedTasks(t *testing.T) {
-	project := newTestFocusProject("Test")
+	project := newTestFocusProject(t, "Test")
 	blocker := newTestFocusTask(t, "Blocker", 1, false)
 	dependent := newTestFocusTask(t, "Dependent", 2, false)
 	dependent.DependsOn = []string{blocker.ID}
@@ -186,7 +187,7 @@ func TestFocusViewLoadTasks_ExcludesDependencyBlockedTasks(t *testing.T) {
 
 func TestFocusViewSorting(t *testing.T) {
 	t.Run("sorts by priority ascending", func(t *testing.T) {
-		project := newTestFocusProject("Test")
+		project := newTestFocusProject(t, "Test")
 		low := newTestFocusTask(t, "Low priority", 5, true)
 		high := newTestFocusTask(t, "High priority", 1, true)
 		medium := newTestFocusTask(t, "Medium priority", 3, true)
@@ -219,7 +220,7 @@ func TestFocusViewSorting(t *testing.T) {
 	})
 
 	t.Run("sorts by UpdatedAt within same priority", func(t *testing.T) {
-		project := newTestFocusProject("Test")
+		project := newTestFocusProject(t, "Test")
 		older := newTestFocusTask(t, "Older task", 3, true)
 		older.UpdatedAt = time.Now().Add(-1 * time.Hour)
 
@@ -251,7 +252,7 @@ func TestFocusViewSorting(t *testing.T) {
 
 func TestFocusViewGetTaskAtCursor(t *testing.T) {
 	t.Run("returns correct task", func(t *testing.T) {
-		project := newTestFocusProject("Test")
+		project := newTestFocusProject(t, "Test")
 		task1 := newTestFocusTask(t, "Task 1", 1, true)
 		task2 := newTestFocusTask(t, "Task 2", 2, true)
 		project.Tasks = []*models.Task{task1, task2}
@@ -327,7 +328,7 @@ func TestFocusViewClampCursor(t *testing.T) {
 			m.cursor = tt.cursor
 
 			// Create dummy tasks with a dummy project
-			dummyProject := newTestFocusProject("Dummy")
+			dummyProject := newTestFocusProject(t, "Dummy")
 			for i := 0; i < tt.taskCount; i++ {
 				m.tasks = append(m.tasks, FocusTask{
 					Task:    newTestFocusTask(t, "dummy", 3, false),
@@ -443,11 +444,11 @@ func TestFocusViewRenderPriorityBadge(t *testing.T) {
 
 func TestFocusViewMultipleProjects(t *testing.T) {
 	t.Run("aggregates tasks from multiple projects", func(t *testing.T) {
-		project1 := newTestFocusProject("Project 1")
+		project1 := newTestFocusProject(t, "Project 1")
 		task1 := newTestFocusTask(t, "Task from P1", 1, true)
 		project1.Tasks = []*models.Task{task1}
 
-		project2 := newTestFocusProject("Project 2")
+		project2 := newTestFocusProject(t, "Project 2")
 		task2 := newTestFocusTask(t, "Task from P2", 2, true)
 		project2.Tasks = []*models.Task{task2}
 
@@ -477,7 +478,7 @@ func TestFocusViewMultipleProjects(t *testing.T) {
 
 func TestFocusViewQueue(t *testing.T) {
 	t.Run("accept and remove from queue", func(t *testing.T) {
-		project := newTestFocusProject("Test")
+		project := newTestFocusProject(t, "Test")
 		task1 := newTestFocusTask(t, "Task 1", 1, true)
 		task2 := newTestFocusTask(t, "Task 2", 2, true)
 
@@ -516,7 +517,7 @@ func TestFocusViewQueue(t *testing.T) {
 	})
 
 	t.Run("reorder queue", func(t *testing.T) {
-		project := newTestFocusProject("Test")
+		project := newTestFocusProject(t, "Test")
 		task1 := newTestFocusTask(t, "Task 1", 1, true)
 		task2 := newTestFocusTask(t, "Task 2", 2, true)
 
@@ -581,7 +582,7 @@ func TestDueBucket(t *testing.T) {
 }
 
 func TestStaleQueuePruning(t *testing.T) {
-	project := newTestFocusProject("Test")
+	project := newTestFocusProject(t, "Test")
 	task1 := newTestFocusTask(t, "Active", 1, true)
 	task2 := newTestFocusTask(t, "Done", 2, false)
 	task2.Status = models.StatusDone
@@ -621,7 +622,7 @@ func TestStaleQueuePruning(t *testing.T) {
 
 func TestQueuePointerReconciliation(t *testing.T) {
 	t.Run("queue pointers updated after loadTasks", func(t *testing.T) {
-		project := newTestFocusProject("Test")
+		project := newTestFocusProject(t, "Test")
 		task := newTestFocusTask(t, "My Task", 1, true)
 		project.Tasks = []*models.Task{task}
 
@@ -669,7 +670,7 @@ func TestQueuePointerReconciliation(t *testing.T) {
 	})
 
 	t.Run("queue entries for non-actionable tasks are removed", func(t *testing.T) {
-		project := newTestFocusProject("Test")
+		project := newTestFocusProject(t, "Test")
 		task1 := newTestFocusTask(t, "Active", 1, true)
 		task2 := newTestFocusTask(t, "Completed", 2, false)
 		task2.Status = models.StatusDone
@@ -725,7 +726,7 @@ func TestQueuePointerReconciliation(t *testing.T) {
 }
 
 func TestAcceptOnAnyTab(t *testing.T) {
-	project := newTestFocusProject("Test")
+	project := newTestFocusProject(t, "Test")
 	task1 := newTestFocusTask(t, "Task 1", 1, true)
 	task2 := newTestFocusTask(t, "Task 2", 2, true)
 	task3 := newTestFocusTask(t, "Task 3", 3, true)
@@ -782,7 +783,7 @@ func TestAcceptOnAnyTab(t *testing.T) {
 }
 
 func TestTopNonQueuedSuggestion(t *testing.T) {
-	project := newTestFocusProject("Test")
+	project := newTestFocusProject(t, "Test")
 	task1 := newTestFocusTask(t, "Task 1", 1, true)
 	task2 := newTestFocusTask(t, "Task 2", 2, true)
 

@@ -71,7 +71,9 @@ func runTaskDelete(cmd *cobra.Command, args []string) error {
 		confirmFn = ConfirmStrict
 	}
 	if !confirmFn(prompt, taskDeleteForce) {
-		fmt.Println("Canceled")
+		if !out.Quiet {
+			fmt.Println("Canceled")
+		}
 		return nil
 	}
 

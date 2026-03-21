@@ -41,12 +41,14 @@ func FzfSelectProject(projects []*models.Project, prompt string) (*models.Projec
 		return nil, fmt.Errorf("no projects to select from")
 	}
 
-	// Build input for fzf
+	// Build input for fzf.
+	// Format: slug<TAB>display-name (slug)<TAB>context<TAB>N tasks
+	// The slug column is hidden via --with-nth=2.. and used only for parsing.
 	var lines []string
 	projectMap := make(map[string]*models.Project)
 
 	for _, p := range projects {
-		line := fmt.Sprintf("%s (%s)\t%s\t%d tasks", p.Name, p.Slug, p.Context, p.CountTasks())
+		line := fmt.Sprintf("%s\t%s (%s)\t%s\t%d tasks", p.Slug, p.Name, p.Slug, p.Context, p.CountTasks())
 		lines = append(lines, line)
 		projectMap[p.Slug] = p
 	}
@@ -62,7 +64,7 @@ func FzfSelectProject(projects []*models.Project, prompt string) (*models.Projec
 		"--height", "40%",
 		"--reverse",
 		"--delimiter", "\t",
-		"--with-nth", "1,2,3",
+		"--with-nth", "2..",
 		"--preview-window", "hidden",
 	)
 
@@ -90,17 +92,11 @@ func FzfSelectProject(projects []*models.Project, prompt string) (*models.Projec
 		return nil, fmt.Errorf("canceled")
 	}
 
-	// Parse the selection - extract slug from "Name (slug)" format in first field
-	parts := strings.Split(selected, "\t")
+	// Parse the selection - slug is the first tab-delimited field.
+	parts := strings.SplitN(selected, "\t", 2)
 	if len(parts) > 0 {
-		field := parts[0]
-		if start := strings.LastIndex(field, "("); start > 0 {
-			if end := strings.LastIndex(field, ")"); end > start {
-				slug := field[start+1 : end]
-				if project, ok := projectMap[slug]; ok {
-					return project, nil
-				}
-			}
+		if project, ok := projectMap[parts[0]]; ok {
+			return project, nil
 		}
 	}
 
@@ -201,12 +197,14 @@ func FzfMultiSelectProjects(projects []*models.Project, prompt string, preselect
 		return nil, fmt.Errorf("no projects to select from")
 	}
 
-	// Build input for fzf
+	// Build input for fzf.
+	// Format: slug<TAB>display-name (slug)<TAB>context<TAB>N tasks
+	// The slug column is hidden via --with-nth=2.. and used only for parsing.
 	var lines []string
 	projectMap := make(map[string]*models.Project)
 
 	for _, p := range projects {
-		line := fmt.Sprintf("%s (%s)\t%s\t%d tasks", p.Name, p.Slug, p.Context, p.CountTasks())
+		line := fmt.Sprintf("%s\t%s (%s)\t%s\t%d tasks", p.Slug, p.Name, p.Slug, p.Context, p.CountTasks())
 		lines = append(lines, line)
 		projectMap[p.Slug] = p
 	}
@@ -222,7 +220,7 @@ func FzfMultiSelectProjects(projects []*models.Project, prompt string, preselect
 		"--reverse",
 		"--multi",
 		"--delimiter", "\t",
-		"--with-nth", "1,2,3",
+		"--with-nth", "2..",
 	)
 
 	cmd.Stdin = strings.NewReader(input)
@@ -249,19 +247,13 @@ func FzfMultiSelectProjects(projects []*models.Project, prompt string, preselect
 		return nil, fmt.Errorf("canceled")
 	}
 
-	// Parse selections - extract slug from "Name (slug)" format in first field
+	// Parse selections - slug is the first tab-delimited field.
 	var selectedProjects []*models.Project
 	for line := range strings.SplitSeq(output, "\n") {
-		parts := strings.Split(line, "\t")
+		parts := strings.SplitN(line, "\t", 2)
 		if len(parts) > 0 {
-			field := parts[0]
-			if start := strings.LastIndex(field, "("); start > 0 {
-				if end := strings.LastIndex(field, ")"); end > start {
-					slug := field[start+1 : end]
-					if project, ok := projectMap[slug]; ok {
-						selectedProjects = append(selectedProjects, project)
-					}
-				}
+			if project, ok := projectMap[parts[0]]; ok {
+				selectedProjects = append(selectedProjects, project)
 			}
 		}
 	}

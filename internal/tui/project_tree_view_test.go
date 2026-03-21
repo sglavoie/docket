@@ -18,10 +18,11 @@ func newTestProjectTreeConfig() *config.Config {
 	}
 }
 
-func newTestProjectTreeProject(name string, tasks []*models.Task) *models.Project {
+func newTestProjectTreeProject(t *testing.T, name string, tasks []*models.Task) *models.Project {
+	t.Helper()
 	p, err := models.NewProject(uuid.New().String(), name, "")
 	if err != nil {
-		panic(err)
+		t.Fatal(err)
 	}
 	p.Tasks = tasks
 	return p
@@ -39,7 +40,7 @@ func newTestProjectTreeTask(t *testing.T, title string) *models.Task {
 func TestProjectTreeView_BasicRender(t *testing.T) {
 	task1 := newTestProjectTreeTask(t, "First task")
 	task2 := newTestProjectTreeTask(t, "Second task")
-	project := newTestProjectTreeProject("Test Project", []*models.Task{task1, task2})
+	project := newTestProjectTreeProject(t, "Test Project", []*models.Task{task1, task2})
 	cfg := newTestProjectTreeConfig()
 
 	m := NewProjectTreeModel(project, cfg, nil)
@@ -55,7 +56,7 @@ func TestProjectTreeView_BasicRender(t *testing.T) {
 }
 
 func TestProjectTreeView_EmptyProject(t *testing.T) {
-	project := newTestProjectTreeProject("Empty Project", nil)
+	project := newTestProjectTreeProject(t, "Empty Project", nil)
 	cfg := newTestProjectTreeConfig()
 
 	m := NewProjectTreeModel(project, cfg, nil)
@@ -68,7 +69,7 @@ func TestProjectTreeView_EmptyProject(t *testing.T) {
 }
 
 func TestProjectTreeView_CursorBounds(t *testing.T) {
-	project := newTestProjectTreeProject("Empty", nil)
+	project := newTestProjectTreeProject(t, "Empty", nil)
 	cfg := newTestProjectTreeConfig()
 
 	m := NewProjectTreeModel(project, cfg, nil)
@@ -81,7 +82,7 @@ func TestProjectTreeView_CursorBounds(t *testing.T) {
 }
 
 func TestProjectTreeView_FilterState(t *testing.T) {
-	project := newTestProjectTreeProject("Test", nil)
+	project := newTestProjectTreeProject(t, "Test", nil)
 	cfg := newTestProjectTreeConfig()
 
 	m := NewProjectTreeModel(project, cfg, nil)

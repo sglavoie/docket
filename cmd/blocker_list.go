@@ -16,7 +16,6 @@ var (
 	showAllBlockers      bool
 	showResolvedBlockers bool
 	showActiveBlockers   bool
-	blockerListJSON      bool
 )
 
 var blockerListCmd = &cobra.Command{
@@ -41,10 +40,15 @@ func init() {
 	blockerListCmd.Flags().BoolVarP(&showAllBlockers, "all", "a", false, "show all blockers")
 	blockerListCmd.Flags().BoolVar(&showResolvedBlockers, "resolved", false, "show only resolved blockers")
 	blockerListCmd.Flags().BoolVar(&showActiveBlockers, "active", false, "show only active blockers (default)")
-	blockerListCmd.Flags().BoolVar(&blockerListJSON, "json", false, "output as JSON")
+	addOutputFlags(blockerListCmd)
 }
 
 func runBlockerList(cmd *cobra.Command, args []string) error {
+	out, err := getOutputOpts(cmd)
+	if err != nil {
+		return err
+	}
+
 	project, _, _, err := LoadCurrentProject()
 	if err != nil {
 		return err
@@ -68,7 +72,7 @@ func runBlockerList(cmd *cobra.Command, args []string) error {
 		visibleBlockers = append(visibleBlockers, b)
 	}
 
-	if blockerListJSON {
+	if out.JSON {
 		if visibleBlockers == nil {
 			visibleBlockers = []*models.Blocker{}
 		}
@@ -80,8 +84,12 @@ func runBlockerList(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
+	if out.Quiet {
+		return nil
+	}
+
 	if len(blockers) == 0 {
-		fmt.Println("No blockers found. Add one with: tt blocker add <title>")
+		fmt.Println(NoItemsMsg("blockers", "tt blocker add <title>"))
 		return nil
 	}
 

@@ -8,8 +8,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var contextListJSON bool
-
 var contextListCmd = &cobra.Command{
 	Use:     "list",
 	Aliases: []string{"ls", "l"},
@@ -26,10 +24,15 @@ Examples:
 
 func init() {
 	contextCmd.AddCommand(contextListCmd)
-	contextListCmd.Flags().BoolVar(&contextListJSON, "json", false, "output as JSON")
+	addOutputFlags(contextListCmd)
 }
 
 func runContextList(cmd *cobra.Command, args []string) error {
+	out, err := getOutputOpts(cmd)
+	if err != nil {
+		return err
+	}
+
 	cfg, _, err := LoadConfig()
 	if err != nil {
 		return err
@@ -37,7 +40,7 @@ func runContextList(cmd *cobra.Command, args []string) error {
 
 	names := cfg.GetCustomContextNames()
 
-	if contextListJSON {
+	if out.JSON {
 		type contextEntry struct {
 			Name         string `json:"name"`
 			ProjectCount int    `json:"project_count"`
@@ -54,8 +57,12 @@ func runContextList(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
+	if out.Quiet {
+		return nil
+	}
+
 	if len(names) == 0 {
-		fmt.Println("No custom contexts found. Create one with: tt context new <name>")
+		fmt.Println(NoItemsMsg("custom contexts", "tt context new <name>"))
 		return nil
 	}
 

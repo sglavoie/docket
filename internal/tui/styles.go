@@ -488,190 +488,103 @@ func ApplyTheme(tc ThemeConfig) {
 
 	// 4. Background propagation
 	themeBgColor = tc.BgColor
+
+	// customBg is non-nil only when the user has set a custom background color.
+	// alwaysBg is the background used for styles that always have one (custom or the
+	// default dark terminal background).
+	var customBg lipgloss.TerminalColor
+	alwaysBg := lipgloss.TerminalColor(ColorBackground)
 	if tc.BgColor != "" {
-		bg := lipgloss.Color(tc.BgColor)
-
-		StatusBarStyle = lipgloss.NewStyle().
-			Foreground(ColorHighlight).
-			Background(bg).
-			Padding(0, 1)
-
-		PrefixPopupStyle = lipgloss.NewStyle().
-			Background(bg).
-			Foreground(ColorLightGray).
-			Padding(0, 1)
-
-		FocusModeStyle = lipgloss.NewStyle().
-			Foreground(ColorSecondary).
-			Bold(true).
-			Background(bg)
-
-		FilterBadgeInactiveStyle = lipgloss.NewStyle().
-			Background(bg).
-			Foreground(ColorBadgeText).
-			Padding(0, 1)
-
-		TagStyle = lipgloss.NewStyle().
-			Foreground(ColorSecondary).
-			Background(bg).
-			Padding(0, 1)
-
-		SectionBadgeStyle = lipgloss.NewStyle().
-			Foreground(ColorBadgeText).
-			Background(bg)
-
-		ChildrenBadgeStyle = lipgloss.NewStyle().
-			Foreground(ColorPrimary).
-			Background(bg)
-
-		// Container styles: add bg
-		DashboardCardStyle = lipgloss.NewStyle().
-			Border(lipgloss.RoundedBorder()).
-			BorderForeground(ColorBorder).
-			Padding(0, 1).
-			Background(bg)
-
-		SidebarCardStyle = lipgloss.NewStyle().
-			Border(lipgloss.RoundedBorder()).
-			BorderForeground(ColorBorder).
-			Padding(0, 1).
-			Background(bg)
-
-		SidebarCardFocusedStyle = lipgloss.NewStyle().
-			Border(lipgloss.RoundedBorder()).
-			BorderForeground(ColorPrimary).
-			Padding(0, 1).
-			Background(bg)
-
-		SidebarStyle = lipgloss.NewStyle().
-			BorderStyle(lipgloss.RoundedBorder()).
-			BorderForeground(ColorBorder).
-			Padding(1).
-			Background(bg)
-
-		TaskJumperListStyle = lipgloss.NewStyle().
-			Border(lipgloss.NormalBorder(), false, true, false, false).
-			BorderForeground(ColorBorder).
-			Background(bg)
-
-		TaskJumperPreviewStyle = lipgloss.NewStyle().
-			Padding(0, 1).
-			Background(bg)
-
-		OverlayBoxStyle = lipgloss.NewStyle().
-			Border(lipgloss.RoundedBorder()).
-			BorderForeground(ColorPurple).
-			Padding(1, 2).
-			Background(bg)
-
-		TagManagerBoxStyle = lipgloss.NewStyle().
-			Border(lipgloss.RoundedBorder()).
-			BorderForeground(ColorPrimary).
-			Padding(1, 2).
-			Background(bg)
-
-		SelectorBaseStyle = lipgloss.NewStyle().
-			BorderStyle(lipgloss.NormalBorder()).
-			BorderForeground(ColorBorder).
-			Background(bg)
-
-		FilterViewBoxStyle = lipgloss.NewStyle().
-			Border(lipgloss.RoundedBorder()).
-			BorderForeground(ColorPrimary).
-			Padding(1, 2).
-			Background(bg)
-
-		SuggestionBoxStyle = lipgloss.NewStyle().
-			Border(lipgloss.RoundedBorder()).
-			BorderForeground(ColorAccent).
-			Padding(0, 1).
-			Background(bg)
-	} else {
-		// Restore defaults (no custom bg)
-		StatusBarStyle = lipgloss.NewStyle().
-			Foreground(ColorHighlight).
-			Background(ColorBackground).
-			Padding(0, 1)
-
-		PrefixPopupStyle = lipgloss.NewStyle().
-			Background(ColorBackground).
-			Foreground(ColorLightGray).
-			Padding(0, 1)
-
-		FocusModeStyle = lipgloss.NewStyle().
-			Foreground(ColorSecondary).
-			Bold(true).
-			Background(ColorBackground)
-
-		FilterBadgeInactiveStyle = lipgloss.NewStyle().
-			Background(ColorBackground).
-			Foreground(ColorBadgeText).
-			Padding(0, 1)
-
-		TagStyle = lipgloss.NewStyle().
-			Foreground(ColorSecondary).
-			Background(ColorBackground).
-			Padding(0, 1)
-
-		SectionBadgeStyle = lipgloss.NewStyle().
-			Foreground(ColorBadgeText).
-			Background(ColorBackground)
-
-		ChildrenBadgeStyle = lipgloss.NewStyle().
-			Foreground(ColorPrimary).
-			Background(ColorBackground)
-
-		DashboardCardStyle = lipgloss.NewStyle().
-			Border(lipgloss.RoundedBorder()).
-			BorderForeground(ColorBorder).
-			Padding(0, 1)
-
-		SidebarCardStyle = lipgloss.NewStyle().
-			Border(lipgloss.RoundedBorder()).
-			BorderForeground(ColorBorder).
-			Padding(0, 1)
-
-		SidebarCardFocusedStyle = lipgloss.NewStyle().
-			Border(lipgloss.RoundedBorder()).
-			BorderForeground(ColorPrimary).
-			Padding(0, 1)
-
-		SidebarStyle = lipgloss.NewStyle().
-			BorderStyle(lipgloss.RoundedBorder()).
-			BorderForeground(ColorBorder).
-			Padding(1)
-
-		TaskJumperListStyle = lipgloss.NewStyle().
-			Border(lipgloss.NormalBorder(), false, true, false, false).
-			BorderForeground(ColorBorder)
-
-		TaskJumperPreviewStyle = lipgloss.NewStyle().
-			Padding(0, 1)
-
-		OverlayBoxStyle = lipgloss.NewStyle().
-			Border(lipgloss.RoundedBorder()).
-			BorderForeground(ColorPurple).
-			Padding(1, 2)
-
-		TagManagerBoxStyle = lipgloss.NewStyle().
-			Border(lipgloss.RoundedBorder()).
-			BorderForeground(ColorPrimary).
-			Padding(1, 2)
-
-		SelectorBaseStyle = lipgloss.NewStyle().
-			BorderStyle(lipgloss.NormalBorder()).
-			BorderForeground(ColorBorder)
-
-		FilterViewBoxStyle = lipgloss.NewStyle().
-			Border(lipgloss.RoundedBorder()).
-			BorderForeground(ColorPrimary).
-			Padding(1, 2)
-
-		SuggestionBoxStyle = lipgloss.NewStyle().
-			Border(lipgloss.RoundedBorder()).
-			BorderForeground(ColorAccent).
-			Padding(0, 1)
+		customBg = lipgloss.Color(tc.BgColor)
+		alwaysBg = customBg
 	}
+
+	// Styles that always carry a background (custom or ColorBackground).
+	StatusBarStyle = withOptionalBg(lipgloss.NewStyle().
+		Foreground(ColorHighlight).
+		Padding(0, 1), alwaysBg)
+
+	PrefixPopupStyle = withOptionalBg(lipgloss.NewStyle().
+		Foreground(ColorLightGray).
+		Padding(0, 1), alwaysBg)
+
+	FocusModeStyle = withOptionalBg(lipgloss.NewStyle().
+		Foreground(ColorSecondary).
+		Bold(true), alwaysBg)
+
+	FilterBadgeInactiveStyle = withOptionalBg(lipgloss.NewStyle().
+		Foreground(ColorBadgeText).
+		Padding(0, 1), alwaysBg)
+
+	TagStyle = withOptionalBg(lipgloss.NewStyle().
+		Foreground(ColorSecondary).
+		Padding(0, 1), alwaysBg)
+
+	SectionBadgeStyle = withOptionalBg(lipgloss.NewStyle().
+		Foreground(ColorBadgeText), alwaysBg)
+
+	ChildrenBadgeStyle = withOptionalBg(lipgloss.NewStyle().
+		Foreground(ColorPrimary), alwaysBg)
+
+	// Container styles: background only when a custom color is configured.
+	DashboardCardStyle = withOptionalBg(lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(ColorBorder).
+		Padding(0, 1), customBg)
+
+	SidebarCardStyle = withOptionalBg(lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(ColorBorder).
+		Padding(0, 1), customBg)
+
+	SidebarCardFocusedStyle = withOptionalBg(lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(ColorPrimary).
+		Padding(0, 1), customBg)
+
+	SidebarStyle = withOptionalBg(lipgloss.NewStyle().
+		BorderStyle(lipgloss.RoundedBorder()).
+		BorderForeground(ColorBorder).
+		Padding(1), customBg)
+
+	TaskJumperListStyle = withOptionalBg(lipgloss.NewStyle().
+		Border(lipgloss.NormalBorder(), false, true, false, false).
+		BorderForeground(ColorBorder), customBg)
+
+	TaskJumperPreviewStyle = withOptionalBg(lipgloss.NewStyle().
+		Padding(0, 1), customBg)
+
+	OverlayBoxStyle = withOptionalBg(lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(ColorPurple).
+		Padding(1, 2), customBg)
+
+	TagManagerBoxStyle = withOptionalBg(lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(ColorPrimary).
+		Padding(1, 2), customBg)
+
+	SelectorBaseStyle = withOptionalBg(lipgloss.NewStyle().
+		BorderStyle(lipgloss.NormalBorder()).
+		BorderForeground(ColorBorder), customBg)
+
+	FilterViewBoxStyle = withOptionalBg(lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(ColorPrimary).
+		Padding(1, 2), customBg)
+
+	SuggestionBoxStyle = withOptionalBg(lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(ColorAccent).
+		Padding(0, 1), customBg)
+}
+
+// withOptionalBg applies a background color to a style if bg is non-nil.
+func withOptionalBg(s lipgloss.Style, bg lipgloss.TerminalColor) lipgloss.Style {
+	if bg != nil {
+		return s.Background(bg)
+	}
+	return s
 }
 
 // makeBadgeStyle creates a badge style with the given foreground and background ANSI colors.

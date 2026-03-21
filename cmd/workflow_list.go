@@ -9,8 +9,6 @@ import (
 	"github.com/sglavoie/tt/internal/workflow"
 )
 
-var workflowListJSON bool
-
 var workflowListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List all workflow rules",
@@ -22,10 +20,15 @@ Shows rule ID, name, enabled status, trigger conditions, and actions.`,
 
 func init() {
 	workflowCmd.AddCommand(workflowListCmd)
-	workflowListCmd.Flags().BoolVar(&workflowListJSON, "json", false, "output as JSON")
+	addOutputFlags(workflowListCmd)
 }
 
 func runWorkflowList(cmd *cobra.Command, args []string) error {
+	out, err := getOutputOpts(cmd)
+	if err != nil {
+		return err
+	}
+
 	cfg, _, err := LoadConfigStrict()
 	if err != nil {
 		return err
@@ -34,8 +37,12 @@ func runWorkflowList(cmd *cobra.Command, args []string) error {
 	defaultRules, customRules := cfg.GetWorkflowRulesSorted()
 	total := len(defaultRules) + len(customRules)
 
-	if workflowListJSON {
+	if out.JSON {
 		return displayWorkflowListJSON(defaultRules, customRules)
+	}
+
+	if out.Quiet {
+		return nil
 	}
 
 	if total == 0 {

@@ -26,8 +26,11 @@ func ValidateTag(tag string) error {
 	return nil
 }
 
-// AddTag adds a tag if not already present.
+// AddTag adds a tag if not already present. Invalid tags are silently ignored.
 func (t *Task) AddTag(tag string) {
+	if ValidateTag(tag) != nil {
+		return
+	}
 	var added bool
 	t.Tags, added = util.SliceAdd(t.Tags, tag)
 	if added {

@@ -133,11 +133,11 @@ func ParseMetadata(task *models.Task, metaStr string) []ParseWarning {
 					Field:   "priority",
 					Message: fmt.Sprintf("invalid priority '%s', using default", value),
 				})
-			} else if p < 1 || p > 5 {
+			} else if err := models.ValidatePriority(p, false); err != nil {
 				warnings = append(warnings, ParseWarning{
 					Type:    WarningValidation,
 					Field:   "priority",
-					Message: fmt.Sprintf("priority %d out of range (1-5), using default", p),
+					Message: fmt.Sprintf("priority %d out of range (%d-%d), using default", p, models.PriorityMin, models.PriorityMax),
 				})
 			} else {
 				task.Priority = p

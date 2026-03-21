@@ -110,6 +110,33 @@ func TestValidateTag(t *testing.T) {
 	}
 }
 
+func TestAddTagRejectsInvalid(t *testing.T) {
+	task, err := NewTask("t1", 1, TaskTypeTask, "Test")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	tests := []struct {
+		name string
+		tag  string
+	}{
+		{"empty string", ""},
+		{"whitespace only", "   "},
+		{"too long", strings.Repeat("a", MaxTagLength+1)},
+		{"contains comma", "has,comma"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			before := len(task.Tags)
+			task.AddTag(tt.tag)
+			if len(task.Tags) != before {
+				t.Errorf("AddTag(%q) should have been rejected but tags changed: %v", tt.tag, task.Tags)
+			}
+		})
+	}
+}
+
 func TestHasTag(t *testing.T) {
 	task, err := NewTask("t1", 1, TaskTypeTask, "Test")
 	if err != nil {

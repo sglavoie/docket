@@ -60,7 +60,9 @@ func runTaskArchive(cmd *cobra.Command, args []string) error {
 
 	// Confirmation unless --force
 	if !ConfirmYN(fmt.Sprintf("Archive %s to completed.md? [y/N]: ", Pluralize(len(completedTasks), "completed task", "completed tasks")), archiveForce) {
-		fmt.Println("Canceled")
+		if !out.Quiet {
+			fmt.Println("Canceled")
+		}
 		return nil
 	}
 

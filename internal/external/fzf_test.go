@@ -10,32 +10,80 @@ import (
 
 func TestBuildProjectFzfInput(t *testing.T) {
 	projects := []*models.Project{
-		{Name: "project-a", Context: "work"},
-		{Name: "project-b", Context: "personal"},
+		{Name: "project-a", Slug: "project-a", Context: "work"},
+		{Name: "project-b", Slug: "project-b", Context: "personal"},
 	}
 
-	// Simulate the input building logic from FzfSelectProject
+	// Simulate the input building logic from FzfSelectProject.
+	// Format: slug<TAB>display-name (slug)<TAB>context<TAB>N tasks
 	var lines []string
 	for _, p := range projects {
-		line := fmt.Sprintf("%s\t%s\t%d tasks", p.Name, p.Context, p.CountTasks())
+		line := fmt.Sprintf("%s\t%s (%s)\t%s\t%d tasks", p.Slug, p.Name, p.Slug, p.Context, p.CountTasks())
 		lines = append(lines, line)
 	}
 	input := strings.Join(lines, "\n")
 
 	t.Run("formats project lines correctly", func(t *testing.T) {
-		if !strings.Contains(input, "project-a\twork\t0 tasks") {
-			t.Error("expected first project line with name, context, and task count")
+		if !strings.Contains(input, "project-a\tproject-a (project-a)\twork\t0 tasks") {
+			t.Error("expected first project line with slug, display name, context, and task count")
 		}
-		if !strings.Contains(input, "project-b\tpersonal\t0 tasks") {
-			t.Error("expected second project line with name, context, and task count")
+		if !strings.Contains(input, "project-b\tproject-b (project-b)\tpersonal\t0 tasks") {
+			t.Error("expected second project line with slug, display name, context, and task count")
 		}
 	})
 
-	t.Run("uses tab as delimiter", func(t *testing.T) {
+	t.Run("uses tab as delimiter with 4 parts", func(t *testing.T) {
 		firstLine := strings.Split(input, "\n")[0]
 		parts := strings.Split(firstLine, "\t")
-		if len(parts) != 3 {
-			t.Errorf("expected 3 tab-separated parts, got %d", len(parts))
+		if len(parts) != 4 {
+			t.Errorf("expected 4 tab-separated parts, got %d", len(parts))
+		}
+	})
+
+	t.Run("slug is first field", func(t *testing.T) {
+		firstLine := strings.Split(input, "\n")[0]
+		parts := strings.Split(firstLine, "\t")
+		if parts[0] != "project-a" {
+			t.Errorf("expected slug 'project-a' as first field, got %q", parts[0])
+		}
+	})
+}
+
+func TestParseProjectFzfOutput(t *testing.T) {
+	projectMap := map[string]*models.Project{
+		"my-project-v2": {Name: "My Project (v2)", Slug: "my-project-v2"},
+		"simple":        {Name: "Simple", Slug: "simple"},
+	}
+
+	t.Run("parses slug from first field", func(t *testing.T) {
+		// Simulated fzf output: the full line including hidden slug column
+		selected := "simple\tSimple (simple)\twork\t3 tasks"
+		parts := strings.SplitN(selected, "\t", 2)
+		if len(parts) == 0 {
+			t.Fatal("expected parts from split")
+		}
+		project, ok := projectMap[parts[0]]
+		if !ok {
+			t.Fatalf("expected to find project with slug %q", parts[0])
+		}
+		if project.Name != "Simple" {
+			t.Errorf("expected 'Simple', got %q", project.Name)
+		}
+	})
+
+	t.Run("correctly handles project name with parentheses", func(t *testing.T) {
+		// Project name contains parens — old LastIndex approach would break
+		selected := "my-project-v2\tMy Project (v2) (my-project-v2)\twork\t0 tasks"
+		parts := strings.SplitN(selected, "\t", 2)
+		if len(parts) == 0 {
+			t.Fatal("expected parts from split")
+		}
+		project, ok := projectMap[parts[0]]
+		if !ok {
+			t.Fatalf("expected to find project with slug %q", parts[0])
+		}
+		if project.Slug != "my-project-v2" {
+			t.Errorf("expected slug 'my-project-v2', got %q", project.Slug)
 		}
 	})
 }

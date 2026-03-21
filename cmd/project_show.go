@@ -29,14 +29,17 @@ Examples:
 	RunE: runProjectShow,
 }
 
-var projectShowJSON bool
-
 func init() {
 	projectCmd.AddCommand(projectShowCmd)
-	projectShowCmd.Flags().BoolVar(&projectShowJSON, "json", false, "output as JSON")
+	addOutputFlags(projectShowCmd)
 }
 
 func runProjectShow(cmd *cobra.Command, args []string) error {
+	out, err := getOutputOpts(cmd)
+	if err != nil {
+		return err
+	}
+
 	project, _, _, err := LoadConfigAndProjectOrCurrent(args)
 	if err != nil {
 		return err
@@ -47,8 +50,12 @@ func runProjectShow(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to load project: %w", err)
 	}
 
-	if projectShowJSON {
+	if out.JSON {
 		return displayProjectShowJSON(project)
+	}
+
+	if out.Quiet {
+		return nil
 	}
 
 	// Display project info

@@ -72,7 +72,9 @@ func runContextEdit(cmd *cobra.Command, args []string) error {
 		selected, err := external.FzfMultiSelectProjects(projects, "Edit projects for "+name, currentSet)
 		if err != nil {
 			if strings.Contains(err.Error(), "canceled") {
-				fmt.Println("Canceled")
+				if !out.Quiet {
+					fmt.Println("Canceled")
+				}
 				return nil
 			}
 			return fmt.Errorf("selection failed: %w", err)

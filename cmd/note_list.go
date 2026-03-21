@@ -99,7 +99,7 @@ func runNoteList(cmd *cobra.Command, args []string) error {
 	}
 
 	if len(notes) == 0 {
-		fmt.Println("No notes found. Create one with: tt note add \"Title\"")
+		fmt.Println(NoItemsMsg("notes", "tt note add \"Title\""))
 		return nil
 	}
 

@@ -10,8 +10,6 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 )
 
-var sectionListJSON bool
-
 var sectionListCmd = &cobra.Command{
 	Use:     "list",
 	Aliases: []string{"ls", "l"},
@@ -30,10 +28,15 @@ Examples:
 
 func init() {
 	sectionCmd.AddCommand(sectionListCmd)
-	sectionListCmd.Flags().BoolVar(&sectionListJSON, "json", false, "output as JSON")
+	addOutputFlags(sectionListCmd)
 }
 
 func runSectionList(cmd *cobra.Command, args []string) error {
+	out, err := getOutputOpts(cmd)
+	if err != nil {
+		return err
+	}
+
 	project, _, _, err := LoadCurrentProject()
 	if err != nil {
 		return err
@@ -51,7 +54,7 @@ func runSectionList(cmd *cobra.Command, args []string) error {
 		visibleSections = append(visibleSections, s)
 	}
 
-	if sectionListJSON {
+	if out.JSON {
 		type sectionEntry struct {
 			Name  string `json:"name"`
 			Tasks int    `json:"tasks"`
@@ -68,8 +71,12 @@ func runSectionList(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
+	if out.Quiet {
+		return nil
+	}
+
 	if len(visibleSections) == 0 {
-		fmt.Println("No sections found. Create one with: tt section add <name>")
+		fmt.Println(NoItemsMsg("sections", "tt section add <name>"))
 		return nil
 	}
 

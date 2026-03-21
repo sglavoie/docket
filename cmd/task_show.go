@@ -32,18 +32,20 @@ Examples:
 	RunE: runTaskShow,
 }
 
-var (
-	noGlow       bool
-	taskShowJSON bool
-)
+var noGlow bool
 
 func init() {
 	taskCmd.AddCommand(taskShowCmd)
 	taskShowCmd.Flags().BoolVar(&noGlow, "no-glow", false, "disable glow rendering")
-	taskShowCmd.Flags().BoolVar(&taskShowJSON, "json", false, "output as JSON")
+	addOutputFlags(taskShowCmd)
 }
 
 func runTaskShow(cmd *cobra.Command, args []string) error {
+	out, err := getOutputOpts(cmd)
+	if err != nil {
+		return err
+	}
+
 	project, cfg, _, err := LoadCurrentProject()
 	if err != nil {
 		return err
@@ -77,8 +79,12 @@ func runTaskShow(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	if taskShowJSON {
+	if out.JSON {
 		return displayTaskShowJSON(task)
+	}
+
+	if out.Quiet {
+		return nil
 	}
 
 	// Use glow if available and enabled

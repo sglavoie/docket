@@ -15,7 +15,6 @@ func resetBlockerListVars() {
 	showAllBlockers = false
 	showResolvedBlockers = false
 	showActiveBlockers = false
-	blockerListJSON = false
 }
 
 func setupBlockerListTest(t *testing.T) (*testutil.TestDeps, *models.Project) {

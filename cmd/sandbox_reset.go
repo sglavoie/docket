@@ -35,9 +35,15 @@ Examples:
 func init() {
 	rootCmd.AddCommand(sandboxResetCmd)
 	sandboxResetCmd.Flags().BoolVarP(&sandboxResetForce, "force", "f", false, "Skip confirmation prompt")
+	addOutputFlags(sandboxResetCmd)
 }
 
 func runSandboxReset(cmd *cobra.Command, args []string) error {
+	out, err := getOutputOpts(cmd)
+	if err != nil {
+		return err
+	}
+
 	cfg, configManager, err := LoadConfig()
 	if err != nil {
 		return err
@@ -59,7 +65,9 @@ func runSandboxReset(cmd *cobra.Command, args []string) error {
 	sectionCount := len(customSections)
 
 	if taskCount == 0 && noteCount == 0 && sectionCount == 0 {
-		fmt.Println("Sandbox is already empty.")
+		if !out.Quiet {
+			fmt.Println("Sandbox is already empty.")
+		}
 		return nil
 	}
 
@@ -77,7 +85,9 @@ func runSandboxReset(cmd *cobra.Command, args []string) error {
 	confirmMsg := fmt.Sprintf("Clear %s from sandbox? [y/N] ", joinWithAnd(parts))
 
 	if !ConfirmYN(confirmMsg, sandboxResetForce) {
-		fmt.Println("Canceled")
+		if !out.Quiet {
+			fmt.Println("Canceled")
+		}
 		return nil
 	}
 
@@ -126,7 +136,9 @@ func runSandboxReset(cmd *cobra.Command, args []string) error {
 	if sectionCount > 0 {
 		cleared = append(cleared, Pluralize(sectionCount, "custom section", "custom sections"))
 	}
-	fmt.Printf("Cleared %s from sandbox.\n", joinWithAnd(cleared))
+	if !out.Quiet {
+		fmt.Printf("Cleared %s from sandbox.\n", joinWithAnd(cleared))
+	}
 	return nil
 }
 

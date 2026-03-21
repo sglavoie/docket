@@ -61,7 +61,9 @@ func runProjectPurge(cmd *cobra.Command, args []string) error {
 
 	// Confirmation unless --force
 	if !ConfirmStrict(fmt.Sprintf("PERMANENTLY delete '%s'? This cannot be undone.", slug), purgeForce) {
-		fmt.Println("Canceled")
+		if !out.Quiet {
+			fmt.Println("Canceled")
+		}
 		return nil
 	}
 

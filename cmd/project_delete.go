@@ -59,7 +59,9 @@ func runProjectDelete(cmd *cobra.Command, args []string) error {
 	}
 
 	if !ConfirmStrict(fmt.Sprintf("Delete project '%s'? It will be moved to trash.", project.Name), projectDeleteForce) {
-		fmt.Println("Canceled")
+		if !out.Quiet {
+			fmt.Println("Canceled")
+		}
 		return nil
 	}
 
