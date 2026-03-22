@@ -44,6 +44,7 @@ var (
 	ErrRequiredField       = errors.New("required field missing")
 	ErrInvalidValue        = errors.New("invalid value")
 	ErrAmbiguousIdentifier = errors.New("ambiguous identifier")
+	ErrNoChanges           = errors.New("no changes specified")
 )
 
 // NewTaskNotFoundError creates a task not found error with the specified task identifier.
@@ -107,6 +108,11 @@ func NewInvalidTaskTypeError(taskType string) error {
 // candidates should be formatted strings like "#1 Login, #3 Logout".
 func NewAmbiguousIdentifierError(identifier string, candidates string) error {
 	return fmt.Errorf("%w %q: matches %s (use task short ID)", ErrAmbiguousIdentifier, identifier, candidates)
+}
+
+// NewNoChangesError creates an error when no modification flags are provided to an edit command.
+func NewNoChangesError(flags string) error {
+	return fmt.Errorf("%w; use %s", ErrNoChanges, flags)
 }
 
 // NewSaveConfigError creates an error for failing to save the config file.

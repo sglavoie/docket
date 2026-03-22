@@ -8,6 +8,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/tterrors"
 )
 
 var noteDeleteForce bool
@@ -51,7 +52,7 @@ func init() {
 
 func runNoteDelete(cmd *cobra.Command, args []string) error {
 	if len(args) < 1 {
-		return fmt.Errorf("required: note ID (use 'tt note list' to see notes)")
+		return tterrors.NewRequiredFieldError("note ID (use 'tt note list' to see notes)")
 	}
 
 	out, err := getOutputOpts(cmd)

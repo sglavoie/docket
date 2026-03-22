@@ -10,6 +10,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/tterrors"
 )
 
 var attachURL string
@@ -32,13 +33,13 @@ Examples:
 		if attachURL != "" {
 			// URL mode: only need task-id
 			if len(args) < 1 {
-				return fmt.Errorf("requires task-id argument")
+				return tterrors.NewRequiredFieldError("task-id argument")
 			}
 			return nil
 		}
 		// File mode: need task-id and file-path
 		if len(args) < 2 {
-			return fmt.Errorf("requires task-id and file-path arguments")
+			return tterrors.NewRequiredFieldError("task-id and file-path arguments")
 		}
 		return nil
 	},

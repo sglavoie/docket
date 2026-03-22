@@ -29,6 +29,7 @@ func TestSentinelErrors(t *testing.T) {
 		{"ErrWriteFailed", ErrWriteFailed, "failed to write file"},
 		{"ErrRequiredField", ErrRequiredField, "required field missing"},
 		{"ErrInvalidValue", ErrInvalidValue, "invalid value"},
+		{"ErrNoChanges", ErrNoChanges, "no changes specified"},
 	}
 
 	for _, tc := range testCases {
@@ -241,6 +242,7 @@ func TestErrorsIsWithAllSentinels(t *testing.T) {
 		{"ErrWriteFailed", ErrWriteFailed},
 		{"ErrRequiredField", ErrRequiredField},
 		{"ErrInvalidValue", ErrInvalidValue},
+		{"ErrNoChanges", ErrNoChanges},
 	}
 
 	for _, tc := range testCases {
@@ -248,6 +250,28 @@ func TestErrorsIsWithAllSentinels(t *testing.T) {
 			wrapped := fmt.Errorf("additional context: %w", tc.sentinel)
 			if !errors.Is(wrapped, tc.sentinel) {
 				t.Errorf("errors.Is should return true for wrapped %s", tc.name)
+			}
+		})
+	}
+}
+
+func TestNewNoChangesError(t *testing.T) {
+	testCases := []struct {
+		name  string
+		flags string
+	}{
+		{"edit flags", "--name, --description"},
+		{"help flag", "--help to see available options"},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := NewNoChangesError(tc.flags)
+			if !errors.Is(err, ErrNoChanges) {
+				t.Error("NewNoChangesError should wrap ErrNoChanges")
+			}
+			if !strings.Contains(err.Error(), tc.flags) {
+				t.Errorf("error message should contain flags %q, got %q", tc.flags, err.Error())
 			}
 		})
 	}

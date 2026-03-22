@@ -9,6 +9,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/tterrors"
 )
 
 var blockerDeleteForce bool
@@ -52,7 +53,7 @@ func init() {
 
 func runBlockerDelete(cmd *cobra.Command, args []string) error {
 	if len(args) < 1 {
-		return fmt.Errorf("required: blocker ID (use 'tt blocker list' to see blockers)")
+		return tterrors.NewRequiredFieldError("blocker ID (use 'tt blocker list' to see blockers)")
 	}
 
 	out, err := getOutputOpts(cmd)

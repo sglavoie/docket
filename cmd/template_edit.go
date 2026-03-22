@@ -276,7 +276,7 @@ func runTemplateEdit(cmd *cobra.Command, args []string) error {
 	}
 
 	if !hasChanges {
-		return fmt.Errorf("no changes specified; use --name, --type, --priority, --tags, etc")
+		return tterrors.NewNoChangesError("--name, --type, --priority, --tags, etc")
 	}
 
 	// Validate

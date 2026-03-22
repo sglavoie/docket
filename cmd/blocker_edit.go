@@ -71,7 +71,7 @@ func runBlockerEdit(cmd *cobra.Command, args []string) error {
 		}
 
 		if !modified {
-			return blockers, fmt.Errorf("no changes specified; use --title, --description, or --unresolve flags")
+			return blockers, tterrors.NewNoChangesError("--title, --description, or --unresolve flags")
 		}
 
 		if out.Quiet {

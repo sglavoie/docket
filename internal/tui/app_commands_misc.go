@@ -210,140 +210,32 @@ func (m *AppModel) outlinerCommands() []Command {
 		return m.outliner.rows[m.outliner.cursor].task
 	}
 
+	// outlinerStatusHandler builds a handler that applies a status change to the cursor task.
+	outlinerStatusHandler := func(status models.TaskStatus) func() tea.Msg {
+		return func() tea.Msg {
+			task := cursorTask()
+			if task == nil || m.outliner == nil {
+				return nil
+			}
+			pf := simplePersist(NewProjectService())
+			result := applyStatusChange(pf, m.outliner.project, task.ID, status)
+			if result.Err != nil {
+				return ErrorMsg{Err: result.Err}
+			}
+			m.outliner.statusMessage = result.StatusMessage
+			m.outliner.rebuildRows()
+			return nil
+		}
+	}
+
 	cmds := []Command{
 		// --- Status changes (,s ,d ,b ,x ,o ,r) ---
-		{
-			Name:        "start task",
-			Description: "Set task status to in progress",
-			Shortcut:    ",s",
-			Category:    CategoryStatus,
-			Views:       []ViewType{ViewOutliner},
-			Aliases:     []string{"begin task", "in progress"},
-			Handler: func() tea.Msg {
-				task := cursorTask()
-				if task == nil || m.outliner == nil {
-					return nil
-				}
-				pf := simplePersist(NewProjectService())
-				result := applyStatusChange(pf, m.outliner.project, task.ID, models.StatusInProgress)
-				if result.Err != nil {
-					return ErrorMsg{Err: result.Err}
-				}
-				m.outliner.statusMessage = result.StatusMessage
-				m.outliner.rebuildRows()
-				return nil
-			},
-		},
-		{
-			Name:        "complete task",
-			Description: "Set task status to done",
-			Shortcut:    ",d",
-			Category:    CategoryStatus,
-			Views:       []ViewType{ViewOutliner},
-			Aliases:     []string{"done task", "finish task", "mark done"},
-			Handler: func() tea.Msg {
-				task := cursorTask()
-				if task == nil || m.outliner == nil {
-					return nil
-				}
-				pf := simplePersist(NewProjectService())
-				result := applyStatusChange(pf, m.outliner.project, task.ID, models.StatusDone)
-				if result.Err != nil {
-					return ErrorMsg{Err: result.Err}
-				}
-				m.outliner.statusMessage = result.StatusMessage
-				m.outliner.rebuildRows()
-				return nil
-			},
-		},
-		{
-			Name:        "block task",
-			Description: "Set task status to blocked",
-			Shortcut:    ",b",
-			Category:    CategoryStatus,
-			Views:       []ViewType{ViewOutliner},
-			Aliases:     []string{"blocked task", "mark blocked"},
-			Handler: func() tea.Msg {
-				task := cursorTask()
-				if task == nil || m.outliner == nil {
-					return nil
-				}
-				pf := simplePersist(NewProjectService())
-				result := applyStatusChange(pf, m.outliner.project, task.ID, models.StatusBlocked)
-				if result.Err != nil {
-					return ErrorMsg{Err: result.Err}
-				}
-				m.outliner.statusMessage = result.StatusMessage
-				m.outliner.rebuildRows()
-				return nil
-			},
-		},
-		{
-			Name:        "cancel task",
-			Description: "Set task status to canceled",
-			Shortcut:    ",x",
-			Category:    CategoryStatus,
-			Views:       []ViewType{ViewOutliner},
-			Aliases:     []string{"canceled task", "mark canceled"},
-			Handler: func() tea.Msg {
-				task := cursorTask()
-				if task == nil || m.outliner == nil {
-					return nil
-				}
-				pf := simplePersist(NewProjectService())
-				result := applyStatusChange(pf, m.outliner.project, task.ID, models.StatusCanceled)
-				if result.Err != nil {
-					return ErrorMsg{Err: result.Err}
-				}
-				m.outliner.statusMessage = result.StatusMessage
-				m.outliner.rebuildRows()
-				return nil
-			},
-		},
-		{
-			Name:        "reopen task",
-			Description: "Reopen a completed or canceled task",
-			Shortcut:    ",o",
-			Category:    CategoryStatus,
-			Views:       []ViewType{ViewOutliner},
-			Aliases:     []string{"reopen", "undo complete", "mark todo"},
-			Handler: func() tea.Msg {
-				task := cursorTask()
-				if task == nil || m.outliner == nil {
-					return nil
-				}
-				pf := simplePersist(NewProjectService())
-				result := applyStatusChange(pf, m.outliner.project, task.ID, models.StatusTodo)
-				if result.Err != nil {
-					return ErrorMsg{Err: result.Err}
-				}
-				m.outliner.statusMessage = result.StatusMessage
-				m.outliner.rebuildRows()
-				return nil
-			},
-		},
-		{
-			Name:        "review task",
-			Description: "Set task status to review",
-			Shortcut:    ",r",
-			Category:    CategoryStatus,
-			Views:       []ViewType{ViewOutliner},
-			Aliases:     []string{"mark review", "in review"},
-			Handler: func() tea.Msg {
-				task := cursorTask()
-				if task == nil || m.outliner == nil {
-					return nil
-				}
-				pf := simplePersist(NewProjectService())
-				result := applyStatusChange(pf, m.outliner.project, task.ID, models.StatusReview)
-				if result.Err != nil {
-					return ErrorMsg{Err: result.Err}
-				}
-				m.outliner.statusMessage = result.StatusMessage
-				m.outliner.rebuildRows()
-				return nil
-			},
-		},
+		{Name: "start task", Description: "Set task status to in progress", Shortcut: ",s", Category: CategoryStatus, Views: []ViewType{ViewOutliner}, Aliases: []string{"begin task", "in progress"}, Handler: outlinerStatusHandler(models.StatusInProgress)},
+		{Name: "complete task", Description: "Set task status to done", Shortcut: ",d", Category: CategoryStatus, Views: []ViewType{ViewOutliner}, Aliases: []string{"done task", "finish task", "mark done"}, Handler: outlinerStatusHandler(models.StatusDone)},
+		{Name: "block task", Description: "Set task status to blocked", Shortcut: ",b", Category: CategoryStatus, Views: []ViewType{ViewOutliner}, Aliases: []string{"blocked task", "mark blocked"}, Handler: outlinerStatusHandler(models.StatusBlocked)},
+		{Name: "cancel task", Description: "Set task status to canceled", Shortcut: ",x", Category: CategoryStatus, Views: []ViewType{ViewOutliner}, Aliases: []string{"canceled task", "mark canceled"}, Handler: outlinerStatusHandler(models.StatusCanceled)},
+		{Name: "reopen task", Description: "Reopen a completed or canceled task", Shortcut: ",o", Category: CategoryStatus, Views: []ViewType{ViewOutliner}, Aliases: []string{"reopen", "undo complete", "mark todo"}, Handler: outlinerStatusHandler(models.StatusTodo)},
+		{Name: "review task", Description: "Set task status to review", Shortcut: ",r", Category: CategoryStatus, Views: []ViewType{ViewOutliner}, Aliases: []string{"mark review", "in review"}, Handler: outlinerStatusHandler(models.StatusReview)},
 
 		// --- Sort (s1-s5, s0) ---
 		{

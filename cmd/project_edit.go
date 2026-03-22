@@ -72,7 +72,7 @@ func runProjectEdit(cmd *cobra.Command, args []string) error {
 	statusIconChanged := cmd.Flags().Changed("status-icon")
 
 	if !nameChanged && !contextChanged && !descriptionChanged && !statusIconChanged {
-		return fmt.Errorf("no changes specified; use --name, --context, --description, or --status-icon")
+		return tterrors.NewNoChangesError("--name, --context, --description, or --status-icon")
 	}
 
 	// Validate and apply name change

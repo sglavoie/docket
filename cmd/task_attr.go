@@ -87,7 +87,7 @@ func runTaskAttr(cmd *cobra.Command, args []string) error {
 		v.EpicScope != "" || v.EpicMilestone != "" || v.EpicMetrics != ""
 
 	if !anyFlagSet {
-		return fmt.Errorf("no attribute flags provided; use --help to see available options")
+		return tterrors.NewNoChangesError("--help to see available options")
 	}
 
 	var changes []string
