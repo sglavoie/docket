@@ -88,10 +88,10 @@ func TestTaskStatus(t *testing.T) {
 		isActive   bool
 		icon       string
 	}{
-		{StatusTodo, false, true, "○"},
-		{StatusInProgress, false, true, "◐"},
-		{StatusDone, true, false, "●"},
-		{StatusBlocked, false, true, "◈"},
+		{StatusTodo, false, true, "□"},
+		{StatusInProgress, false, true, "▶"},
+		{StatusDone, true, false, "✓"},
+		{StatusBlocked, false, true, "⊘"},
 		{StatusCanceled, true, false, "✕"},
 	}
 

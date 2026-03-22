@@ -120,6 +120,7 @@ func (m *ProjectTreeModel) updateVisibility() {
 		}
 		node.Visible = visible
 	}
+	m.clampCursor()
 }
 
 // passesFilters checks if a node passes all current filters (view mode, status, etc.)

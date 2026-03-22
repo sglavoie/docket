@@ -268,7 +268,26 @@ func (m *AppModel) Update(msg tea.Msg) (outModel tea.Model, outCmd tea.Cmd) {
 			}
 			m.outliner.rebuildRows()
 		}
-		return m, defaultStatusTimeout()
+		// Refresh cross-project views that may show stale data
+		var saveCmds []tea.Cmd
+		saveCmds = append(saveCmds, defaultStatusTimeout())
+		if m.crossOutliner != nil {
+			saveCmds = append(saveCmds, m.crossOutliner.reloadCrossProjects())
+		}
+		if v := m.views.Get(ViewFocusView); v != nil {
+			if fv, ok := v.(*FocusViewModel); ok {
+				fv.loadTasks()
+			}
+		}
+		if v := m.views.Get(ViewRecentActivity); v != nil {
+			if ra, ok := v.(*RecentActivityModel); ok {
+				ra.loadTasks()
+			}
+		}
+		if m.globalInboxProcessor != nil {
+			m.globalInboxProcessor.loadAllInboxTasks()
+		}
+		return m, tea.Batch(saveCmds...)
 
 	case SaveErrorMsg:
 		m.isLoading = false

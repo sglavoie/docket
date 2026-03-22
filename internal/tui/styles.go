@@ -1173,12 +1173,12 @@ var (
 // models.TaskStatus.Icon() so that TUI code can reference them without needing
 // a typed TaskStatus value.
 const (
-	StatusIconTodo       = "○"
-	StatusIconInProgress = "◐"
+	StatusIconTodo       = "□"
+	StatusIconInProgress = "▶"
 	StatusIconReview     = "◑"
 	StatusIconStandby    = "⏸"
-	StatusIconDone       = "●"
-	StatusIconBlocked    = "◈"
+	StatusIconDone       = "✓"
+	StatusIconBlocked    = "⊘"
 	StatusIconCanceled   = "✕"
 )
 

@@ -67,17 +67,17 @@ func (s TaskStatus) IsActive() bool {
 func (s TaskStatus) Icon() string {
 	switch s {
 	case StatusTodo:
-		return "○"
+		return "□"
 	case StatusInProgress:
-		return "◐"
+		return "▶"
 	case StatusReview:
 		return "◑"
 	case StatusStandby:
 		return "⏸"
 	case StatusDone:
-		return "●"
+		return "✓"
 	case StatusBlocked:
-		return "◈"
+		return "⊘"
 	case StatusCanceled:
 		return "✕"
 	default:

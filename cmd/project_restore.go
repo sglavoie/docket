@@ -98,7 +98,7 @@ func runProjectRestore(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	return out.OutputProject(project, func() { fmt.Printf("Restored project '%s'\n", project.Name) })
+	return out.OutputProject(project, func() { fmt.Println(successMsg("Restored project '%s'", project.Name)) })
 }
 
 func listTrashedProjects(cfg *config.Config) error {

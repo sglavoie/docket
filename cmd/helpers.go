@@ -43,6 +43,12 @@ func TaskMsg(projectName, verb string, task *models.Task) string {
 	return fmt.Sprintf("[%s] %s %s #%d: %s", projectName, verb, task.Type.HeadingPrefix(), task.ShortID, task.Title)
 }
 
+// successMsg formats a success message with a ✓ prefix.
+// Format: "✓ <message>"
+func successMsg(format string, args ...any) string {
+	return "✓ " + fmt.Sprintf(format, args...)
+}
+
 // NoItemsMsg returns a standardized "no <thing> found" message with an actionable hint.
 // Use this for empty-state messages across all commands.
 func NoItemsMsg(thing, hint string) string {

@@ -51,12 +51,7 @@ func runProjectNew(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	cfg, configManager, err := LoadConfig()
-	if err != nil {
-		return err
-	}
-
-	// Get project name
+	// Validate name before loading config
 	var name string
 	if len(args) > 0 {
 		name = strings.TrimSpace(args[0])
@@ -66,6 +61,11 @@ func runProjectNew(cmd *cobra.Command, args []string) error {
 
 	if name == "" {
 		return tterrors.NewInvalidValueError("name", name, "cannot be empty")
+	}
+
+	cfg, configManager, err := LoadConfig()
+	if err != nil {
+		return err
 	}
 	if len(name) > models.MaxProjectNameLength {
 		return fmt.Errorf("project name too long (%d chars, max %d)", len(name), models.MaxProjectNameLength)
@@ -144,7 +144,7 @@ func runProjectNew(cmd *cobra.Command, args []string) error {
 	}
 
 	return out.OutputProject(project, func() {
-		fmt.Printf("Created project %s: %s\n", slug, name)
+		fmt.Println(successMsg("Created project '%s'", name))
 		fmt.Printf("  Path: %s\n", projectPath)
 	})
 }

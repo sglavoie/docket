@@ -228,7 +228,7 @@ func (m *ProjectTreeModel) handlePrefixKey(key string, visible []*TreeNode) (tea
 			return m, flashIfJumped(old, m.cursor, &m.cursorFlash)
 		case "o":
 			// Jump to context node's home section
-			if m.cursor < len(visible) {
+			if CursorInBounds(m.cursor, len(visible)) {
 				node := visible[m.cursor]
 				if node.IsContextNode {
 					task := node.Task

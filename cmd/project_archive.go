@@ -76,7 +76,7 @@ func runProjectArchive(cmd *cobra.Command, args []string) error {
 	}
 
 	return out.OutputProject(project, func() {
-		fmt.Printf("Archived project '%s'\n", project.Name)
+		fmt.Println(successMsg("Archived project '%s'", project.Name))
 		if wasCurrentProject {
 			fmt.Printf("Note: '%s' was the current project. Use 'tt project switch' to select another.\n", project.Name)
 		}
@@ -121,5 +121,5 @@ func runProjectUnarchive(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	return out.OutputProject(project, func() { fmt.Printf("Unarchived project '%s'\n", project.Name) })
+	return out.OutputProject(project, func() { fmt.Println(successMsg("Unarchived project '%s'", project.Name)) })
 }

@@ -124,42 +124,42 @@ func (m *Manager) Load() (*Config, error) {
 	}
 	// Clamp UndoHistoryDepth to valid range
 	if *config.UndoHistoryDepth < 0 {
-		fmt.Fprintf(os.Stderr, "warning: UndoHistoryDepth %d is negative, clamping to 0\n", *config.UndoHistoryDepth)
+		logging.Warn("UndoHistoryDepth %d is negative, clamping to 0", *config.UndoHistoryDepth)
 		zero := 0
 		config.UndoHistoryDepth = &zero
 	} else if *config.UndoHistoryDepth > 1000 {
-		fmt.Fprintf(os.Stderr, "warning: UndoHistoryDepth %d exceeds maximum, clamping to 1000\n", *config.UndoHistoryDepth)
+		logging.Warn("UndoHistoryDepth %d exceeds maximum, clamping to 1000", *config.UndoHistoryDepth)
 		max := 1000
 		config.UndoHistoryDepth = &max
 	}
 
 	// Clamp WorkflowEvalInterval to valid range (0=disabled, max 10080=1 week)
 	if config.WorkflowEvalInterval != nil && *config.WorkflowEvalInterval < 0 {
-		fmt.Fprintf(os.Stderr, "warning: WorkflowEvalInterval %d is negative, clamping to 0 (disabled)\n", *config.WorkflowEvalInterval)
+		logging.Warn("WorkflowEvalInterval %d is negative, clamping to 0 (disabled)", *config.WorkflowEvalInterval)
 		zero := 0
 		config.WorkflowEvalInterval = &zero
 	}
 	// Clamp ReviewDueSoonDays to valid range (0=hide section)
 	if config.ReviewDueSoonDays != nil && *config.ReviewDueSoonDays < 0 {
-		fmt.Fprintf(os.Stderr, "warning: ReviewDueSoonDays %d is negative, clamping to 0\n", *config.ReviewDueSoonDays)
+		logging.Warn("ReviewDueSoonDays %d is negative, clamping to 0", *config.ReviewDueSoonDays)
 		zero := 0
 		config.ReviewDueSoonDays = &zero
 	}
 	// Clamp ReviewOldDays to valid range (0=hide section)
 	if config.ReviewOldDays != nil && *config.ReviewOldDays < 0 {
-		fmt.Fprintf(os.Stderr, "warning: ReviewOldDays %d is negative, clamping to 0\n", *config.ReviewOldDays)
+		logging.Warn("ReviewOldDays %d is negative, clamping to 0", *config.ReviewOldDays)
 		zero := 0
 		config.ReviewOldDays = &zero
 	}
 	// Clamp ReviewFutureDays to valid range (0=hide section)
 	if config.ReviewFutureDays != nil && *config.ReviewFutureDays < 0 {
-		fmt.Fprintf(os.Stderr, "warning: ReviewFutureDays %d is negative, clamping to 0\n", *config.ReviewFutureDays)
+		logging.Warn("ReviewFutureDays %d is negative, clamping to 0", *config.ReviewFutureDays)
 		zero := 0
 		config.ReviewFutureDays = &zero
 	}
 	// Clamp ReviewCompletedHours to valid range (0=hide section)
 	if config.ReviewCompletedHours != nil && *config.ReviewCompletedHours < 0 {
-		fmt.Fprintf(os.Stderr, "warning: ReviewCompletedHours %d is negative, clamping to 0\n", *config.ReviewCompletedHours)
+		logging.Warn("ReviewCompletedHours %d is negative, clamping to 0", *config.ReviewCompletedHours)
 		zero := 0
 		config.ReviewCompletedHours = &zero
 	}

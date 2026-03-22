@@ -107,7 +107,7 @@ func runProjectDelete(cmd *cobra.Command, args []string) error {
 	if out.JSON {
 		return outputSingleProjectJSON(project)
 	}
-	fmt.Printf("Deleted project '%s'\n", project.Name)
+	fmt.Println(successMsg("Deleted project '%s'", project.Name))
 	fmt.Printf("To restore: tt project restore %s\n", project.Slug)
 	return nil
 }

@@ -58,11 +58,11 @@ func TestTaskStatusIcon(t *testing.T) {
 		status TaskStatus
 		icon   string
 	}{
-		{StatusTodo, "○"},
-		{StatusInProgress, "◐"},
+		{StatusTodo, "□"},
+		{StatusInProgress, "▶"},
 		{StatusReview, "◑"},
-		{StatusDone, "●"},
-		{StatusBlocked, "◈"},
+		{StatusDone, "✓"},
+		{StatusBlocked, "⊘"},
 		{StatusStandby, "⏸"},
 		{StatusCanceled, "✕"},
 		{TaskStatus("unknown"), "?"},

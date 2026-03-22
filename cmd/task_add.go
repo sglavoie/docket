@@ -94,6 +94,18 @@ func runTaskAdd(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	if len(args) < 1 {
+		return tterrors.NewRequiredFieldError("title")
+	}
+
+	title := strings.TrimSpace(strings.Join(args, " "))
+	if title == "" {
+		return tterrors.NewRequiredFieldError("title")
+	}
+	if err = models.ValidateTaskTitle(title); err != nil {
+		return err
+	}
+
 	var (
 		project       *models.Project
 		cfg           *config.Config
@@ -117,18 +129,6 @@ func runTaskAdd(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
-	}
-
-	if len(args) < 1 {
-		return tterrors.NewRequiredFieldError("title")
-	}
-
-	title := strings.TrimSpace(strings.Join(args, " "))
-	if title == "" {
-		return tterrors.NewRequiredFieldError("title")
-	}
-	if err = models.ValidateTaskTitle(title); err != nil {
-		return err
 	}
 
 	// Load template if specified

@@ -207,17 +207,35 @@ func ParseMetadata(task *models.Task, metaStr string) []ParseWarning {
 		// Buffer recurrence sub-fields for order-independent parsing.
 		// Applied to task.Recurrence after all keys are processed.
 		case "recur.skipped":
-			if v, err := strconv.Atoi(value); err == nil {
+			if v, err := strconv.Atoi(value); err != nil {
+				warnings = append(warnings, ParseWarning{
+					Type:    WarningValidation,
+					Field:   "recur.skipped",
+					Message: fmt.Sprintf("invalid recur.skipped %q, ignoring: %v", value, err),
+				})
+			} else {
 				recurSubFields.skipped = v
 				recurSubFields.hasAny = true
 			}
 		case "recur.streak":
-			if v, err := strconv.Atoi(value); err == nil {
+			if v, err := strconv.Atoi(value); err != nil {
+				warnings = append(warnings, ParseWarning{
+					Type:    WarningValidation,
+					Field:   "recur.streak",
+					Message: fmt.Sprintf("invalid recur.streak %q, ignoring: %v", value, err),
+				})
+			} else {
 				recurSubFields.streak = v
 				recurSubFields.hasAny = true
 			}
 		case "recur.max_streak":
-			if v, err := strconv.Atoi(value); err == nil {
+			if v, err := strconv.Atoi(value); err != nil {
+				warnings = append(warnings, ParseWarning{
+					Type:    WarningValidation,
+					Field:   "recur.max_streak",
+					Message: fmt.Sprintf("invalid recur.max_streak %q, ignoring: %v", value, err),
+				})
+			} else {
 				recurSubFields.maxStreak = v
 				recurSubFields.hasAny = true
 			}
@@ -277,7 +295,20 @@ func ParseMetadata(task *models.Task, metaStr string) []ParseWarning {
 					filename := after
 					// Extract line number from originalPath (format: path:line)
 					if colonIdx := strings.LastIndex(originalPath, ":"); colonIdx > 0 {
-						if ln, err := strconv.Atoi(originalPath[colonIdx+1:]); err == nil && ln > 0 {
+						suffix := originalPath[colonIdx+1:]
+						if ln, err := strconv.Atoi(suffix); err != nil {
+							warnings = append(warnings, ParseWarning{
+								Type:    WarningValidation,
+								Field:   "attachments",
+								Message: fmt.Sprintf("code attachment %q has invalid line number %q, ignoring", filename, suffix),
+							})
+						} else if ln <= 0 {
+							warnings = append(warnings, ParseWarning{
+								Type:    WarningValidation,
+								Field:   "attachments",
+								Message: fmt.Sprintf("code attachment %q has non-positive line number %d, ignoring", filename, ln),
+							})
+						} else {
 							lineNumber = ln
 							originalPath = originalPath[:colonIdx]
 						}
