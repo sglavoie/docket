@@ -238,7 +238,19 @@ func (m *AppModel) Update(msg tea.Msg) (outModel tea.Model, outCmd tea.Cmd) {
 		m.isLoading = true
 		m.loadingMessage = msg.Message
 		m.err = nil
-		return m, m.spinner.Tick()
+		return m, tea.Batch(
+			m.spinner.Tick(),
+			tea.Tick(10*time.Second, func(time.Time) tea.Msg { return SaveTimeoutMsg{} }),
+		)
+
+	case SaveTimeoutMsg:
+		if m.isLoading {
+			m.isLoading = false
+			m.loadingMessage = ""
+			m.err = fmt.Errorf("save timed out")
+			return m, statusTimeout(5 * time.Second)
+		}
+		return m, nil
 
 	case SaveCompleteMsg:
 		m.isLoading = false

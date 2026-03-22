@@ -98,8 +98,6 @@ func runTaskList(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	// Suppress unused variable warnings for cfg/configManager (not needed in list)
-	_ = cfg
 	_ = configManager
 
 	// Apply filters

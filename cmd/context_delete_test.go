@@ -38,7 +38,7 @@ func TestRunContextDelete(t *testing.T) {
 		_, cleanup := setup(t)
 		defer cleanup()
 
-		err := runContextDelete(contextDeleteCmd, []string{})
+		err := contextDeleteCmd.Args(contextDeleteCmd, []string{})
 		if err == nil {
 			t.Error("expected error for missing args")
 		}

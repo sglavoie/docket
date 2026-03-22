@@ -30,7 +30,7 @@ func (m *AppModel) taskCommands() []Command {
 				if m.currentProject != nil {
 					return ShowQuickCaptureMsg{Project: m.currentProject, AllProjects: m.config.Projects}
 				}
-				return nil
+				return StatusMsg("No project selected")
 			},
 		},
 		{
@@ -44,7 +44,7 @@ func (m *AppModel) taskCommands() []Command {
 				if m.currentProject != nil {
 					return ShowBulkCaptureMsg{Project: m.currentProject}
 				}
-				return nil
+				return StatusMsg("No project selected")
 			},
 		},
 		{
@@ -55,13 +55,14 @@ func (m *AppModel) taskCommands() []Command {
 			Views:       []ViewType{ViewProjectTree},
 			Aliases:     []string{"edit recent", "last modified", "recent task"},
 			Handler: func() tea.Msg {
-				if m.currentProject != nil {
-					recentTasks := storage.GetRecentTasks(m.currentProject.Tasks, 1)
-					if len(recentTasks) > 0 {
-						return EditTaskMsg{Task: recentTasks[0]}
-					}
+				if m.currentProject == nil {
+					return StatusMsg("No project selected")
 				}
-				return nil
+				recentTasks := storage.GetRecentTasks(m.currentProject.Tasks, 1)
+				if len(recentTasks) == 0 {
+					return StatusMsg("No recent tasks")
+				}
+				return EditTaskMsg{Task: recentTasks[0]}
 			},
 		},
 		{

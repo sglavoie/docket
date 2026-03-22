@@ -72,7 +72,7 @@ func runTaskDelete(cmd *cobra.Command, args []string) error {
 	}
 	if !confirmFn(prompt, taskDeleteForce) {
 		if !out.Quiet {
-			fmt.Println("Canceled")
+			fmt.Fprintf(os.Stderr, "Canceled\n")
 		}
 		return nil
 	}

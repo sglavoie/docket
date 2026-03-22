@@ -556,6 +556,9 @@ type SaveErrorMsg struct {
 	Err error
 }
 
+// SaveTimeoutMsg is sent when a save operation has not completed within the timeout window.
+type SaveTimeoutMsg struct{}
+
 // =============================================================================
 // Helper Functions
 // =============================================================================

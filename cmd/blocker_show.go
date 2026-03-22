@@ -9,7 +9,6 @@ import (
 	"github.com/sglavoie/tt/internal/external"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
-	"github.com/sglavoie/tt/internal/tterrors"
 )
 
 var blockerShowCmd = &cobra.Command{
@@ -23,6 +22,7 @@ If glow is available, the description is rendered as markdown.
 Examples:
   tt blocker show abc12345
   tt blocker show abc1 --json`,
+	Args: cobra.ExactArgs(1),
 	RunE: runBlockerShow,
 }
 
@@ -32,10 +32,6 @@ func init() {
 }
 
 func runBlockerShow(cmd *cobra.Command, args []string) error {
-	if len(args) < 1 {
-		return tterrors.NewRequiredFieldError("blocker ID")
-	}
-
 	out, err := getOutputOpts(cmd)
 	if err != nil {
 		return err

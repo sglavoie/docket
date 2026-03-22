@@ -3,6 +3,7 @@ package cmd
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 
 	"github.com/spf13/cobra"
 
@@ -62,7 +63,7 @@ func runBlockerDelete(cmd *cobra.Command, args []string) error {
 	return WithBlockerUpdate(args[0], func(blockers []*models.Blocker, blocker *models.Blocker) ([]*models.Blocker, error) {
 		if !ConfirmYN(fmt.Sprintf("Delete blocker '%s'? [y/N]: ", blocker.Title), blockerDeleteForce) {
 			if !out.Quiet {
-				fmt.Println("Canceled")
+				fmt.Fprintf(os.Stderr, "Canceled\n")
 			}
 			return blockers, nil
 		}

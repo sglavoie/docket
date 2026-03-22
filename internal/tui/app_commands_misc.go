@@ -146,18 +146,26 @@ func (m *AppModel) otherCommands() []Command {
 			Aliases:     []string{"refresh", "reload data", "sync"},
 			Handler: func() tea.Msg {
 				if m.baseProjectView() == ViewOutliner && m.outliner != nil {
-					if err := storage.LoadProject(m.outliner.project); err != nil {
+					err := storage.LoadProject(m.outliner.project)
+					if err != nil {
 						logging.Warn("failed to load project %s: %v", m.outliner.project.Name, err)
 					}
 					m.outliner.rebuildRows()
+					if err != nil {
+						return ErrorMsg{Err: err}
+					}
 					return nil
 				}
 				if m.projectTree != nil {
 					m.projectTree.clearSelection()
-					if err := storage.LoadProject(m.projectTree.project); err != nil {
+					err := storage.LoadProject(m.projectTree.project)
+					if err != nil {
 						logging.Warn("failed to load project %s: %v", m.projectTree.project.Name, err)
 					}
 					m.projectTree.buildTree()
+					if err != nil {
+						return ErrorMsg{Err: err}
+					}
 				}
 				return nil
 			},

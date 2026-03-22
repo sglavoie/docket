@@ -7,9 +7,9 @@ import (
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/spf13/cobra"
 
+	"github.com/sglavoie/tt/internal/logging"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
-	"github.com/sglavoie/tt/internal/tterrors"
 	"github.com/sglavoie/tt/internal/util"
 )
 
@@ -30,6 +30,7 @@ Examples:
   tt search "bug fix"         # Find tasks with "bug fix"
   tt search --all "auth"      # Include archived projects
   tt search --limit 10 "api"  # Limit to 10 results`,
+	Args: cobra.MinimumNArgs(1),
 	RunE: runSearch,
 }
 
@@ -41,10 +42,6 @@ func init() {
 }
 
 func runSearch(cmd *cobra.Command, args []string) error {
-	if len(args) < 1 {
-		return tterrors.NewRequiredFieldError("search query")
-	}
-
 	query := strings.TrimSpace(args[0])
 	if query == "" {
 		return fmt.Errorf("search query cannot be empty")
@@ -72,6 +69,7 @@ func runSearch(cmd *cobra.Command, args []string) error {
 
 	for _, project := range projects {
 		if err := storage.LoadProject(project); err != nil {
+			logging.Warn("skipping project %s: %v", project.Name, err)
 			continue
 		}
 
@@ -95,6 +93,7 @@ func runSearch(cmd *cobra.Command, args []string) error {
 
 	if len(results) == 0 {
 		fmt.Printf("No tasks found matching \"%s\".\n", query)
+		fmt.Println(NoItemsMsg("tasks", "tt task add <title>"))
 		return nil
 	}
 

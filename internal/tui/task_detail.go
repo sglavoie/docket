@@ -7,6 +7,7 @@ import (
 	"github.com/charmbracelet/glamour"
 
 	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/tt/internal/logging"
 	"github.com/sglavoie/tt/internal/models"
 )
 
@@ -28,10 +29,13 @@ type TaskDetailModel struct {
 
 // NewTaskDetailModel creates a new task detail view.
 func NewTaskDetailModel(task *models.Task, project *models.Project, cfg *config.Config, mgr *config.Manager) *TaskDetailModel {
-	renderer, _ := glamour.NewTermRenderer(
+	renderer, err := glamour.NewTermRenderer(
 		glamour.WithStylePath("dark"),
 		glamour.WithWordWrap(0),
 	)
+	if err != nil {
+		logging.Warn("glamour renderer init failed: %v", err)
+	}
 	return &TaskDetailModel{
 		task:          task,
 		project:       project,

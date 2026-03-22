@@ -45,8 +45,8 @@ func TestTaskCommands_QuickCapture_NilProject(t *testing.T) {
 	}
 
 	result := cmd.Handler()
-	if result != nil {
-		t.Errorf("expected nil, got %v", result)
+	if _, ok := result.(StatusMsg); !ok {
+		t.Errorf("expected StatusMsg, got %T", result)
 	}
 }
 
@@ -76,8 +76,8 @@ func TestTaskCommands_BulkCapture_NilProject(t *testing.T) {
 	}
 
 	result := cmd.Handler()
-	if result != nil {
-		t.Errorf("expected nil, got %v", result)
+	if _, ok := result.(StatusMsg); !ok {
+		t.Errorf("expected StatusMsg, got %T", result)
 	}
 }
 

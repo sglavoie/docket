@@ -44,6 +44,8 @@ func init() {
 	boardAddCmd.Flags().StringSliceVarP(&boardAddTags, "tag", "T", nil, "tags for the item")
 	boardAddCmd.Flags().StringVar(&boardAddProject, "project", "", "target project slug (default: action inbox)")
 	addOutputFlags(boardAddCmd)
+
+	_ = boardAddCmd.RegisterFlagCompletionFunc("project", completeProjectSlugs())
 }
 
 func runBoardAdd(cmd *cobra.Command, args []string) error {

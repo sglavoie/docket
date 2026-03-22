@@ -65,7 +65,7 @@ func runProjectList(cmd *cobra.Command, args []string) error {
 			CompletedCount int    `json:"completed_count,omitempty"`
 		}
 
-		var result []projectJSON
+		result := []projectJSON{}
 		for _, p := range projects {
 			entry := projectJSON{
 				ID:       p.ID,
@@ -84,9 +84,6 @@ func runProjectList(cmd *cobra.Command, args []string) error {
 			result = append(result, entry)
 		}
 
-		if result == nil {
-			result = []projectJSON{}
-		}
 		data, err := json.MarshalIndent(result, "", "  ")
 		if err != nil {
 			return fmt.Errorf("failed to marshal JSON: %w", err)
