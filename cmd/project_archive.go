@@ -66,7 +66,8 @@ func runProjectArchive(cmd *cobra.Command, args []string) error {
 	project.Archive()
 
 	// Clear current project if it was the archived one
-	if cfg.CurrentProject == project.ID {
+	wasCurrentProject := cfg.CurrentProject == project.ID
+	if wasCurrentProject {
 		cfg.CurrentProject = ""
 	}
 
@@ -74,7 +75,12 @@ func runProjectArchive(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	return out.OutputProject(project, func() { fmt.Printf("Archived project '%s'\n", project.Name) })
+	return out.OutputProject(project, func() {
+		fmt.Printf("Archived project '%s'\n", project.Name)
+		if wasCurrentProject {
+			fmt.Printf("Note: '%s' was the current project. Use 'tt project switch' to select another.\n", project.Name)
+		}
+	})
 }
 
 func runProjectUnarchive(cmd *cobra.Command, args []string) error {

@@ -66,9 +66,8 @@ func (m *Manager) Load() (*Config, error) {
 						return nil, fmt.Errorf("recovered config from backup but failed to persist it: %w", writeErr)
 					}
 				} else {
-					// Backup parsed but is missing DataDir — treat as invalid and use defaults.
-					logging.Warn("config backup at %s is invalid (missing DataDir or Projects), using default config", backupPath)
-					config = *NewConfig()
+					// Both config and backup are corrupted — require manual recovery.
+					return nil, fmt.Errorf("config and backup both corrupted; restore from %s or delete to reset", backupPath)
 				}
 			} else {
 				return nil, fmt.Errorf("failed to parse config file and backup is also corrupted: config error: %w; backup path: %s", err, backupPath)
@@ -254,9 +253,13 @@ func (m *Manager) Save(config *Config) error {
 
 	lockPath := m.configPath + ".lock"
 	return util.WithFileLock(lockPath, true, func() error {
-		// Backup current config before overwriting (best-effort)
+		// Backup current config before overwriting (best-effort).
+		// On failure, try an alternate path before giving up.
 		if err := m.BackupConfig(); err != nil {
-			fmt.Fprintf(os.Stderr, "warning: config backup failed: %v\n", err)
+			altPath := m.configPath + ".bak2"
+			if altErr := m.backupConfigToPath(altPath); altErr != nil {
+				fmt.Fprintf(os.Stderr, "warning: config backup failed: %v\n", err)
+			}
 		}
 
 		data, err := json.MarshalIndent(config, "", "  ")
@@ -308,6 +311,21 @@ func (m *Manager) GetBackupPath() string {
 func (m *Manager) ConfigBackupExists() bool {
 	_, err := os.Stat(m.GetBackupPath())
 	return !os.IsNotExist(err)
+}
+
+// backupConfigToPath writes the current config file to an arbitrary backup path.
+func (m *Manager) backupConfigToPath(path string) error {
+	content, err := os.ReadFile(m.configPath)
+	if os.IsNotExist(err) {
+		return nil
+	}
+	if err != nil {
+		return fmt.Errorf("failed to read config file for backup: %w", err)
+	}
+	if err := util.AtomicWriteFile(path, content, FilePermissions); err != nil {
+		return fmt.Errorf("failed to write config backup to %s: %w", path, err)
+	}
+	return nil
 }
 
 // BackupConfig creates a backup of the current config file.

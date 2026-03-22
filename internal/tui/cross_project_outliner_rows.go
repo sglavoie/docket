@@ -44,7 +44,7 @@ func (m *OutlinerModel) buildCrossProjectRowsWithSectionHeaders(groups []project
 
 		// Emit ONE shared section header for all projects in this section.
 		// Per requirements, tasks from multiple projects appear under the same
-		// shared section header; per-row project identity uses color badges only.
+		// shared section header; per-row project identity uses colored slug badges.
 		totalCount := 0
 		for _, pg := range projGroups {
 			totalCount += m.countTasksRecursive(pg.tasks)

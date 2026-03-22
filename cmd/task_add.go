@@ -194,6 +194,9 @@ func runTaskAdd(cmd *cobra.Command, args []string) error {
 			if !taskCreateSectionFlag {
 				return fmt.Errorf("section %q not found; available: %v (use --create-section to create)", taskSectionFlag, project.GetSections())
 			}
+			if err := models.ValidateSectionName(taskSectionFlag); err != nil {
+				return err
+			}
 			project.EnsureSection(taskSectionFlag)
 		}
 		task.Section = taskSectionFlag

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/sglavoie/tt/internal/models"
@@ -880,8 +881,8 @@ func TestConfig_LoadInitializesSectionColors(t *testing.T) {
 	}
 }
 
-// TestConfigManager_BackupWithNilProjects verifies that a backup with valid
-// DataDir but nil Projects is rejected and a default config is used instead.
+// TestConfigManager_BackupWithNilProjects verifies that when both config and
+// backup parse as JSON but are missing required fields, an error is returned.
 func TestConfigManager_BackupWithNilProjects(t *testing.T) {
 	tmpDir := t.TempDir()
 	configPath := filepath.Join(tmpDir, "tt.json")
@@ -898,20 +899,17 @@ func TestConfigManager_BackupWithNilProjects(t *testing.T) {
 	}
 
 	manager := NewManager(configPath)
-	cfg, err := manager.Load()
-	if err != nil {
-		t.Fatalf("Load should not error when falling back to default: %v", err)
+	_, err := manager.Load()
+	if err == nil {
+		t.Fatal("Load should error when backup is missing required fields")
 	}
-	if cfg.DataDir == "" {
-		t.Error("DataDir should be set to a default value, not empty")
-	}
-	if cfg.Projects == nil {
-		t.Error("Projects should be initialized (not nil) on default config")
+	if !strings.Contains(err.Error(), "both corrupted") {
+		t.Errorf("expected 'both corrupted' in error, got: %v", err)
 	}
 }
 
-// TestConfigManager_BackupWithEmptyJSON verifies that a backup containing valid
-// JSON but missing DataDir is rejected and a default config is used instead.
+// TestConfigManager_BackupWithEmptyJSON verifies that when both config and
+// backup are missing required fields, an error is returned.
 func TestConfigManager_BackupWithEmptyJSON(t *testing.T) {
 	tmpDir := t.TempDir()
 	configPath := filepath.Join(tmpDir, "tt.json")
@@ -927,12 +925,12 @@ func TestConfigManager_BackupWithEmptyJSON(t *testing.T) {
 	}
 
 	manager := NewManager(configPath)
-	cfg, err := manager.Load()
-	if err != nil {
-		t.Fatalf("Load should not error when falling back to default: %v", err)
+	_, err := manager.Load()
+	if err == nil {
+		t.Fatal("Load should error when backup is missing required fields")
 	}
-	if cfg.DataDir == "" {
-		t.Error("DataDir should be set to a default value, not empty")
+	if !strings.Contains(err.Error(), "both corrupted") {
+		t.Errorf("expected 'both corrupted' in error, got: %v", err)
 	}
 }
 
@@ -1047,5 +1045,58 @@ func TestConfigManager_PositiveReviewFieldsUnchanged(t *testing.T) {
 	}
 	if cfg.ReviewOldDays == nil || *cfg.ReviewOldDays != 14 {
 		t.Errorf("expected ReviewOldDays 14, got %v", cfg.ReviewOldDays)
+	}
+}
+
+func TestConfigManager_Load_BothCorrupted(t *testing.T) {
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, "test-config.json")
+	backupPath := configPath + ".bak"
+
+	manager := NewManager(configPath)
+
+	// Main config is invalid JSON; backup parses but is missing required fields.
+	if err := os.WriteFile(configPath, []byte("not-json"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(backupPath, []byte(`{}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	_, err := manager.Load()
+	if err == nil {
+		t.Fatal("expected error when both config and backup are corrupted")
+	}
+	if !strings.Contains(err.Error(), "both corrupted") {
+		t.Errorf("expected 'both corrupted' in error, got: %v", err)
+	}
+}
+
+func TestConfigManager_Load_BackupValidRecovery(t *testing.T) {
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, "test-config.json")
+	backupPath := configPath + ".bak"
+
+	manager := NewManager(configPath)
+
+	// Write a valid config to backup
+	validCfg := NewConfig()
+	validCfg.DataDir = tmpDir
+	validData, _ := json.Marshal(validCfg)
+	if err := os.WriteFile(backupPath, validData, 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	// Write corrupt main config
+	if err := os.WriteFile(configPath, []byte("not json"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	cfg, err := manager.Load()
+	if err != nil {
+		t.Fatalf("expected recovery from valid backup, got error: %v", err)
+	}
+	if cfg.DataDir != tmpDir {
+		t.Errorf("expected DataDir %q from backup, got %q", tmpDir, cfg.DataDir)
 	}
 }

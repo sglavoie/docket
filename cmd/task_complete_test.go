@@ -271,6 +271,114 @@ func TestStatusIsComplete(t *testing.T) {
 	}
 }
 
+func TestCompleteParentAllChildrenDone(t *testing.T) {
+	project := testutil.NewTestProject("Test Project")
+
+	parent, err := models.NewTask("parent-1", 1, models.TaskTypeEpic, "Parent Epic")
+	if err != nil {
+		t.Fatal(err)
+	}
+	child1, err := models.NewTask("child-1", 2, models.TaskTypeTask, "Child Done")
+	if err != nil {
+		t.Fatal(err)
+	}
+	child2, err := models.NewTask("child-2", 3, models.TaskTypeTask, "Child Canceled")
+	if err != nil {
+		t.Fatal(err)
+	}
+	child1.ParentID = &parent.ID
+	child2.ParentID = &parent.ID
+	child1.Status = models.StatusDone
+	child2.Status = models.StatusCanceled
+
+	project.Tasks = []*models.Task{parent, child1, child2}
+	project.BuildTaskTree()
+
+	parentTask := project.GetTaskByID(parent.ID)
+	var incompleteChildren []*models.Task
+	for _, child := range parentTask.Children {
+		if child.Status != models.StatusDone && child.Status != models.StatusCanceled {
+			incompleteChildren = append(incompleteChildren, child)
+		}
+	}
+
+	if len(incompleteChildren) != 0 {
+		t.Errorf("expected 0 incomplete children when all done/canceled, got %d", len(incompleteChildren))
+	}
+}
+
+func TestCompleteParentBlockedByIncompleteChildren(t *testing.T) {
+	project := testutil.NewTestProject("Test Project")
+
+	parent, err := models.NewTask("parent-1", 1, models.TaskTypeEpic, "Parent Epic")
+	if err != nil {
+		t.Fatal(err)
+	}
+	child1, err := models.NewTask("child-1", 2, models.TaskTypeTask, "Child Todo")
+	if err != nil {
+		t.Fatal(err)
+	}
+	child2, err := models.NewTask("child-2", 3, models.TaskTypeTask, "Child Done")
+	if err != nil {
+		t.Fatal(err)
+	}
+	child1.ParentID = &parent.ID
+	child2.ParentID = &parent.ID
+	child2.Status = models.StatusDone
+
+	project.Tasks = []*models.Task{parent, child1, child2}
+	project.BuildTaskTree()
+
+	parentTask := project.GetTaskByID(parent.ID)
+	var incompleteChildren []*models.Task
+	for _, child := range parentTask.Children {
+		if child.Status != models.StatusDone && child.Status != models.StatusCanceled {
+			incompleteChildren = append(incompleteChildren, child)
+		}
+	}
+
+	if len(incompleteChildren) != 1 {
+		t.Errorf("expected 1 incomplete child, got %d", len(incompleteChildren))
+	}
+	if incompleteChildren[0].ID != child1.ID {
+		t.Errorf("expected incomplete child to be child1")
+	}
+}
+
+func TestCompleteParentForceSkipsChildCheck(t *testing.T) {
+	project := testutil.NewTestProject("Test Project")
+
+	parent, err := models.NewTask("parent-1", 1, models.TaskTypeEpic, "Parent Epic")
+	if err != nil {
+		t.Fatal(err)
+	}
+	child, err := models.NewTask("child-1", 2, models.TaskTypeTask, "Child Todo")
+	if err != nil {
+		t.Fatal(err)
+	}
+	child.ParentID = &parent.ID
+
+	project.Tasks = []*models.Task{parent, child}
+	project.BuildTaskTree()
+
+	parentTask := project.GetTaskByID(parent.ID)
+
+	// Simulate force=true: incomplete children exist but check is skipped
+	force := true
+	var incompleteChildren []*models.Task
+	if !force {
+		for _, c := range parentTask.Children {
+			if c.Status != models.StatusDone && c.Status != models.StatusCanceled {
+				incompleteChildren = append(incompleteChildren, c)
+			}
+		}
+	}
+
+	if len(incompleteChildren) != 0 {
+		t.Errorf("force=true should skip children check, but got %d incomplete children", len(incompleteChildren))
+	}
+}
+
 func TestStatusIsActive(t *testing.T) {
 	tests := []struct {
 		status models.TaskStatus

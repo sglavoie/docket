@@ -108,6 +108,8 @@ func init() {
 	} {
 		addOutputFlags(sub)
 	}
+
+	taskCompleteCmd.Flags().Bool("force", false, "Skip incomplete-children check")
 }
 
 func runTaskComplete(cmd *cobra.Command, args []string) error {
@@ -115,7 +117,8 @@ func runTaskComplete(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	return updateTaskStatus(args, "complete", out, func(t *models.Task) {
+	force, _ := cmd.Flags().GetBool("force")
+	return updateTaskStatus(args, "complete", out, force, func(t *models.Task) {
 		t.Complete()
 	})
 }
@@ -125,7 +128,7 @@ func runTaskStart(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	return updateTaskStatus(args, "start", out, func(t *models.Task) {
+	return updateTaskStatus(args, "start", out, false, func(t *models.Task) {
 		t.Start()
 	})
 }
@@ -135,7 +138,7 @@ func runTaskBlock(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	return updateTaskStatus(args, "block", out, func(t *models.Task) {
+	return updateTaskStatus(args, "block", out, false, func(t *models.Task) {
 		t.Block()
 	})
 }
@@ -145,7 +148,7 @@ func runTaskCancel(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	return updateTaskStatus(args, "cancel", out, func(t *models.Task) {
+	return updateTaskStatus(args, "cancel", out, false, func(t *models.Task) {
 		t.Cancel()
 	})
 }
@@ -155,7 +158,7 @@ func runTaskReopen(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	return updateTaskStatus(args, "reopen", out, func(t *models.Task) {
+	return updateTaskStatus(args, "reopen", out, false, func(t *models.Task) {
 		t.Reopen()
 	})
 }
@@ -165,7 +168,7 @@ func runTaskReview(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	return updateTaskStatus(args, "review", out, func(t *models.Task) {
+	return updateTaskStatus(args, "review", out, false, func(t *models.Task) {
 		t.Review()
 	})
 }
@@ -175,7 +178,7 @@ func runTaskStandby(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	return updateTaskStatus(args, "standby", out, func(t *models.Task) {
+	return updateTaskStatus(args, "standby", out, false, func(t *models.Task) {
 		t.Standby()
 	})
 }
@@ -191,7 +194,7 @@ var actionToTargetStatus = map[string]models.TaskStatus{
 	"standby":  models.StatusStandby,
 }
 
-func updateTaskStatus(args []string, action string, out MutateOutput, update func(*models.Task)) error {
+func updateTaskStatus(args []string, action string, out MutateOutput, force bool, update func(*models.Task)) error {
 	// Handle interactive selection if no ID provided
 	var taskIDs []string
 	var projectName string
@@ -278,6 +281,25 @@ func updateTaskStatus(args []string, action string, out MutateOutput, update fun
 						fmt.Fprintf(&msg, "  - #%d %s (%s)\n", dep.ShortID, dep.Title, dep.Status)
 					}
 					return errors.New(msg.String())
+				}
+
+				// Block completion if task has incomplete children (bypass with --force)
+				if !force {
+					var incompleteChildren []*models.Task
+					for _, child := range task.Children {
+						if child.Status != models.StatusDone && child.Status != models.StatusCanceled {
+							incompleteChildren = append(incompleteChildren, child)
+						}
+					}
+					if len(incompleteChildren) > 0 {
+						var msg strings.Builder
+						fmt.Fprintf(&msg, "cannot complete task #%d: has %d incomplete children:\n",
+							task.ShortID, len(incompleteChildren))
+						for _, child := range incompleteChildren {
+							fmt.Fprintf(&msg, "  - #%d %s (%s)\n", child.ShortID, child.Title, child.Status)
+						}
+						return errors.New(msg.String())
+					}
 				}
 			}
 

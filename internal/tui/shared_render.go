@@ -94,9 +94,9 @@ func renderCommentIndicator(task *models.Task) string {
 	}
 	unresolved := task.UnresolvedCommentCount()
 	if unresolved < len(task.Comments) {
-		return MutedStyle.Render(fmt.Sprintf("💬%d/%d", unresolved, len(task.Comments)))
+		return MutedStyle.Render(fmt.Sprintf("💬 %d/%d", unresolved, len(task.Comments)))
 	}
-	return MutedStyle.Render(fmt.Sprintf("💬%d", len(task.Comments)))
+	return MutedStyle.Render(fmt.Sprintf("💬 %d", len(task.Comments)))
 }
 
 // renderAttachmentIndicator renders a compact attachment count indicator.
@@ -104,7 +104,7 @@ func renderAttachmentIndicator(task *models.Task) string {
 	if !task.HasAttachments() {
 		return ""
 	}
-	return MutedStyle.Render(fmt.Sprintf("📎%d", task.AttachmentCount()))
+	return MutedStyle.Render(fmt.Sprintf("📎 %d", task.AttachmentCount()))
 }
 
 // renderChecklistIndicator renders a compact checklist progress indicator.

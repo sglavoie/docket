@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
@@ -88,6 +89,7 @@ func displayProjectsSummary(projects []*models.Project) {
 
 	for _, p := range projects {
 		if err := storage.LoadProject(p); err != nil {
+			fmt.Fprintf(os.Stderr, "warning: could not load project %q: %v\n", p.Name, err)
 			continue
 		}
 

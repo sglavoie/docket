@@ -78,7 +78,11 @@ func runProjectNew(cmd *cobra.Command, args []string) error {
 	}
 
 	// Reject reserved slugs
-	if slug == ".tt" || slug == "projects" {
+	reservedSlugs := map[string]bool{
+		".tt": true, "projects": true,
+		"new": true, "list": true, "delete": true, "switch": true, "archive": true,
+	}
+	if reservedSlugs[slug] {
 		return fmt.Errorf("%w: '%s' is a reserved name", tterrors.ErrInvalidValue, slug)
 	}
 

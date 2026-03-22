@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -43,6 +44,23 @@ func applyStatusChange(pf persistFn, project *models.Project, taskID string, new
 
 	if newStatus == models.StatusDone && project.HasIncompleteDependencies(task) {
 		return TaskOpResult{Err: fmt.Errorf("cannot complete: has incomplete dependencies")}
+	}
+
+	if newStatus == models.StatusDone {
+		var incompleteChildren []*models.Task
+		for _, child := range task.Children {
+			if child.Status != models.StatusDone && child.Status != models.StatusCanceled {
+				incompleteChildren = append(incompleteChildren, child)
+			}
+		}
+		if len(incompleteChildren) > 0 {
+			var msg strings.Builder
+			fmt.Fprintf(&msg, "cannot complete #%d: has %d incomplete children:", task.ShortID, len(incompleteChildren))
+			for _, child := range incompleteChildren {
+				fmt.Fprintf(&msg, " #%d", child.ShortID)
+			}
+			return TaskOpResult{StatusMessage: msg.String()}
+		}
 	}
 
 	result := pf(project, taskID, func(t *models.Task) {

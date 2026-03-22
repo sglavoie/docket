@@ -53,6 +53,20 @@ func (m *OutlinerModel) projectNameByID(id string) string {
 	return id
 }
 
+// projectSlugByID looks up a project slug from m.loadedProjects by ID.
+// Falls back to projectNameByID when the slug is empty.
+func (m *OutlinerModel) projectSlugByID(id string) string {
+	for _, p := range m.loadedProjects {
+		if p.ID == id {
+			if p.Slug != "" {
+				return p.Slug
+			}
+			return p.Name
+		}
+	}
+	return id
+}
+
 // buildTreePrefix computes the connector prefix string from the ancestor
 // is-last-child boolean stack. Each true entry means that ancestor was the
 // last child of its parent (so we render spaces), while false means we need
@@ -474,11 +488,13 @@ func (m *OutlinerModel) renderOutlinerTreeContent(width int) string {
 		}
 
 		// Project badge — shown when the row has a ProjectID (cross-project mode).
+		// Uses the project slug for compact, accessible text alongside the color.
 		projBadge := ""
 		if row.ProjectID != "" {
 			projName := m.projectNameByID(row.ProjectID)
+			projSlug := m.projectSlugByID(row.ProjectID)
 			badgeStyle := lipgloss.NewStyle().Foreground(projectBadgeColor(projName))
-			projBadge = badgeStyle.Render("["+projName+"]") + " "
+			projBadge = badgeStyle.Render("["+projSlug+"]") + " "
 		}
 
 		typeIcon := GetTypeBadge(string(task.Type), task.Type.Icon())

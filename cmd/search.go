@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/jedib0t/go-pretty/v6/table"
@@ -70,6 +71,7 @@ func runSearch(cmd *cobra.Command, args []string) error {
 	for _, project := range projects {
 		if err := storage.LoadProject(project); err != nil {
 			logging.Warn("skipping project %s: %v", project.Name, err)
+			fmt.Fprintf(os.Stderr, "warning: skipping project %q: %v\n", project.Name, err)
 			continue
 		}
 
