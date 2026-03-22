@@ -109,8 +109,9 @@ type Config struct {
 	CustomContexts                 map[string][]string          `json:"custom_contexts,omitempty"`       // Custom context name → project IDs
 	FzfEnabled                     bool                         `json:"fzf_enabled"`
 	GlowEnabled                    bool                         `json:"glow_enabled"`
-	FzfTimeout                     *int                         `json:"fzf_timeout,omitempty"`        // Fzf invocation timeout in seconds (nil=30)
-	UndoHistoryDepth               *int                         `json:"undo_history_depth,omitempty"` // Max undo snapshots (nil=50, 0 disables, max 1000)
+	FzfTimeout                     *int                         `json:"fzf_timeout,omitempty"`           // Fzf invocation timeout in seconds (nil=30)
+	UndoHistoryDepth               *int                         `json:"undo_history_depth,omitempty"`    // Max undo snapshots (nil=50, 0 disables, max 1000)
+	PopupTimeoutSeconds            *int                         `json:"popup_timeout_seconds,omitempty"` // nil=0 (disabled), seconds before prefix popup auto-dismisses
 	Projects                       []*models.Project            `json:"projects"`
 	SectionColors                  map[string]string            `json:"section_colors,omitempty"`                    // Global section color registry
 	ProjectViewStates              map[string]ProjectViewState  `json:"project_view_states,omitempty"`               // Per-project filter/sort state
@@ -422,6 +423,15 @@ func (c *Config) GetFzfTimeout() int {
 		return 1
 	}
 	return *c.FzfTimeout
+}
+
+// GetPopupTimeoutSeconds returns the auto-dismiss timeout for prefix popups in seconds.
+// Returns 0 when nil (disabled — popup stays until manual dismiss).
+func (c *Config) GetPopupTimeoutSeconds() int {
+	if c.PopupTimeoutSeconds == nil {
+		return 0
+	}
+	return *c.PopupTimeoutSeconds
 }
 
 // GetCodeEditor returns the configured editor for code references.

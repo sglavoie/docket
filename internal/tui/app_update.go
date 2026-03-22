@@ -65,7 +65,6 @@ func (m *AppModel) Update(msg tea.Msg) (outModel tea.Model, outCmd tea.Cmd) {
 		// Intercept keys when semicolon prefix is pending
 		if m.pendingSemicolonPrefix {
 			m.pendingSemicolonPrefix = false
-			m.statusMessage = ""
 			switch msg.String() {
 			case "n":
 				return m, func() tea.Msg { return ShowNotificationCenterMsg{} }
@@ -194,9 +193,12 @@ func (m *AppModel) Update(msg tea.Msg) (outModel tea.Model, outCmd tea.Cmd) {
 		case ";":
 			if !m.hasActiveTextInput() {
 				m.pendingSemicolonPrefix = true
-				m.setInfoStatus("; …")
+				timeout := m.config.GetPopupTimeoutSeconds()
+				if timeout <= 0 {
+					return m, nil
+				}
 				return m, func() tea.Msg {
-					time.Sleep(1500 * time.Millisecond)
+					time.Sleep(time.Duration(timeout) * time.Second)
 					return ClearSemicolonPrefixMsg{}
 				}
 			}
@@ -223,7 +225,6 @@ func (m *AppModel) Update(msg tea.Msg) (outModel tea.Model, outCmd tea.Cmd) {
 	case ClearSemicolonPrefixMsg:
 		if m.pendingSemicolonPrefix {
 			m.pendingSemicolonPrefix = false
-			m.statusMessage = ""
 		}
 		return m, nil
 

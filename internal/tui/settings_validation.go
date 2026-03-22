@@ -67,6 +67,7 @@ func (m *SettingsModel) validateAll() error {
 		m.validateMaxRecentTaskVisits,
 		m.validateAttachmentEditor,
 		m.validateCodeEditor,
+		m.validatePopupTimeout,
 		m.validateAlertSettings,
 	}
 	for _, v := range validators {
@@ -338,6 +339,11 @@ func normalizeHexColor(val string) string {
 		return string([]byte{'#', val[1], val[1], val[2], val[2], val[3], val[3]})
 	}
 	return val
+}
+
+func (m *SettingsModel) validatePopupTimeout() error {
+	_, _, err := validateIntOptionalInRange(m.popupTimeoutInput.Value(), "popup timeout", 0, 30)
+	return err
 }
 
 func (m *SettingsModel) validateEditorCommand(editor string) error {
