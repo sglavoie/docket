@@ -164,7 +164,7 @@ func renderCard(title, content string, width int, config CardConfig) string {
 
 	// Render the content in a box with proper width handling
 	rendered := style.
-		Width(max(width-2, 1)). // Account for border
+		Width(max(width, 1)).
 		Render(content)
 
 	// Split rendered into lines to replace top border with titled version
