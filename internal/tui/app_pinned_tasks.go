@@ -533,8 +533,8 @@ func (m *AppModel) renderPinnedPopup() string {
 	maxProjLen := 0
 	for _, realIdx := range filtered {
 		entry := m.pinnedPopupItems[realIdx]
-		if len(entry.ProjectName) > maxProjLen {
-			maxProjLen = len(entry.ProjectName)
+		if width := lipgloss.Width(entry.ProjectName); width > maxProjLen {
+			maxProjLen = width
 		}
 	}
 
@@ -572,42 +572,15 @@ func (m *AppModel) renderPinnedPopup() string {
 			priorityBadge := renderPriorityBadge(entry.Task.Priority)
 			projectName := entry.ProjectName
 
-			taskTitle := entry.Title
-			titleRunes := []rune(taskTitle)
-			truncated := false
-			if len(titleRunes) > titleWidth {
-				titleRunes = titleRunes[:titleWidth-3]
-				truncated = true
-			}
-
 			// Apply fuzzy match highlighting to title
+			taskTitle := entry.Title
 			if i < len(m.pinnedPopupTitlePos) && len(m.pinnedPopupTitlePos[i]) > 0 {
-				maxPos := len(titleRunes)
-				var validPositions []int
-				for _, p := range m.pinnedPopupTitlePos[i] {
-					if p < maxPos {
-						validPositions = append(validPositions, p)
-					}
-				}
-				taskTitle = HighlightText(string(titleRunes), validPositions, NormalStyle)
-				if truncated {
-					taskTitle += "..."
-				}
-				visualWidth := lipgloss.Width(taskTitle)
-				if visualWidth < titleWidth {
-					taskTitle += strings.Repeat(" ", titleWidth-visualWidth)
-				}
+				taskTitle = truncateAndPad(HighlightText(taskTitle, m.pinnedPopupTitlePos[i], NormalStyle), titleWidth)
 			} else {
-				taskTitle = string(titleRunes)
-				if truncated {
-					taskTitle += "..."
-				}
-				if len([]rune(taskTitle)) < titleWidth {
-					taskTitle += strings.Repeat(" ", titleWidth-len([]rune(taskTitle)))
-				}
+				taskTitle = truncateAndPad(taskTitle, titleWidth)
 			}
 
-			paddedProject := fmt.Sprintf("%*s", projColWidth, projectName)
+			paddedProject := leftPadToWidth(projectName, projColWidth)
 
 			line := badge + " " + statusIcon + " " + priorityBadge + " " + taskTitle + "  " + projectStyle.Render(paddedProject)
 
@@ -629,7 +602,7 @@ func (m *AppModel) renderPinnedPopup() string {
 		Border(lipgloss.RoundedBorder()).
 		BorderForeground(ColorPrimary).
 		Padding(0, 1).
-		Width(popupWidth - 2)
+		Width(popupWidth)
 
 	rendered := boxStyle.Render(content)
 

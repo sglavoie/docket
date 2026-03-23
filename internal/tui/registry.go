@@ -68,13 +68,13 @@ func (r *ViewRegistry) Update(vt ViewType, msg tea.Msg) tea.Cmd {
 	return cmd
 }
 
-// View returns the View() output for the specified view type.
-func (r *ViewRegistry) View(vt ViewType) string {
+// View returns the tea.View output for the specified view type.
+func (r *ViewRegistry) View(vt ViewType) tea.View {
 	view := r.views[vt]
 	if view == nil {
-		return ""
+		return tea.NewView("")
 	}
-	return view.View().Content
+	return view.View()
 }
 
 // Clear removes all views from the registry.

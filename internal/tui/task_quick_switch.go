@@ -496,8 +496,8 @@ func (m *AppModel) renderQuickSwitchPopup() string {
 		maxProjLen := 0
 		for _, realIdx := range filtered {
 			entry := m.recentTaskVisits[realIdx]
-			if len(entry.Project.Name) > maxProjLen {
-				maxProjLen = len(entry.Project.Name)
+			if width := lipgloss.Width(entry.Project.Name); width > maxProjLen {
+				maxProjLen = width
 			}
 		}
 
@@ -568,47 +568,17 @@ func (m *AppModel) renderQuickSwitchPopup() string {
 			pinVisualWidth := lipgloss.Width(pinIndicator)
 			adjustedTitleWidth := max(titleWidth-metaVisualWidth-pinVisualWidth, 10)
 
-			// Truncate title if needed
 			taskTitle := entry.Task.Title
-			titleRunes := []rune(taskTitle)
-			truncated := false
-			if len(titleRunes) > adjustedTitleWidth {
-				titleRunes = titleRunes[:adjustedTitleWidth-3]
-				truncated = true
-			}
 
 			// Apply fuzzy match highlighting to title
 			if i < len(m.quickSwitchTitlePositions) && len(m.quickSwitchTitlePositions[i]) > 0 {
-				// Filter positions to only those within the visible (possibly truncated) range
-				maxPos := len(titleRunes)
-				var validPositions []int
-				for _, p := range m.quickSwitchTitlePositions[i] {
-					if p < maxPos {
-						validPositions = append(validPositions, p)
-					}
-				}
-				taskTitle = HighlightText(string(titleRunes), validPositions, NormalStyle)
-				if truncated {
-					taskTitle += "..."
-				}
-				// Pad to fixed width using visual width (ANSI codes don't count)
-				visualWidth := lipgloss.Width(taskTitle)
-				if visualWidth < adjustedTitleWidth {
-					taskTitle += strings.Repeat(" ", adjustedTitleWidth-visualWidth)
-				}
+				taskTitle = truncateAndPad(HighlightText(taskTitle, m.quickSwitchTitlePositions[i], NormalStyle), adjustedTitleWidth)
 			} else {
-				taskTitle = string(titleRunes)
-				if truncated {
-					taskTitle += "..."
-				}
-				// Pad title to fixed width for alignment
-				if len([]rune(taskTitle)) < adjustedTitleWidth {
-					taskTitle += strings.Repeat(" ", adjustedTitleWidth-len([]rune(taskTitle)))
-				}
+				taskTitle = truncateAndPad(taskTitle, adjustedTitleWidth)
 			}
 
 			// Right-align project name within its column
-			paddedProject := fmt.Sprintf("%*s", projColWidth, projectName)
+			paddedProject := leftPadToWidth(projectName, projColWidth)
 
 			line := badge + " " + statusIcon + " " + priorityBadge + " " + pinIndicator + taskTitle + metaSuffix + "  " + projectStyle.Render(paddedProject)
 
@@ -630,7 +600,7 @@ func (m *AppModel) renderQuickSwitchPopup() string {
 		Border(lipgloss.RoundedBorder()).
 		BorderForeground(ColorPrimary).
 		Padding(0, 1).
-		Width(popupWidth - 2) // inner width
+		Width(popupWidth)
 
 	rendered := boxStyle.Render(content)
 

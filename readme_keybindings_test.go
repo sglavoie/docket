@@ -37,3 +37,18 @@ func TestREADMECommandPaletteBindingStaysCurrent(t *testing.T) {
 		}
 	}
 }
+
+func TestREADMEUsesUppercaseVMultiSelectBinding(t *testing.T) {
+	data, err := os.ReadFile("README.md")
+	if err != nil {
+		t.Fatalf("read README.md: %v", err)
+	}
+	content := string(data)
+
+	if strings.Contains(content, "`v`: Toggle multi-select mode") {
+		t.Fatal("README contains stale lowercase multi-select binding")
+	}
+	if !strings.Contains(content, "`V`: Toggle multi-select mode") {
+		t.Fatal("README missing uppercase multi-select binding")
+	}
+}

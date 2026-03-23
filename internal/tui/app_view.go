@@ -1,11 +1,12 @@
 package tui
 
 import (
-	tea "charm.land/bubbletea/v2"
 	"fmt"
 	"runtime/debug"
 	"strconv"
 	"strings"
+
+	tea "charm.land/bubbletea/v2"
 
 	"charm.land/lipgloss/v2"
 
@@ -38,7 +39,8 @@ func (m *AppModel) View() (result tea.View) {
 		return tea.NewView(m.applyBackground(style.Render(msg)))
 	}
 
-	content := m.views.View(m.currentView())
+	resultView := m.views.View(m.currentView())
+	content := resultView.Content
 	if content == "" {
 		content = "Unknown view"
 	}
@@ -57,13 +59,14 @@ func (m *AppModel) View() (result tea.View) {
 	}
 
 	// Full-height views render their own footer and skip the external status bar
-	if view := m.views.Get(m.currentView()); view != nil {
-		if caps, ok := view.(ViewCapabilities); ok && caps.IsFullHeight() {
+	if currentView := m.views.Get(m.currentView()); currentView != nil {
+		if caps, ok := currentView.(ViewCapabilities); ok && caps.IsFullHeight() {
 			// Still overlay the semicolon prefix popup on full-height views
 			if popup := m.renderSemicolonPrefixPopup(); popup != "" {
 				content = OverlayPopup(content, popup, m.width, m.height)
 			}
-			return tea.NewView(m.applyBackground(content))
+			resultView.SetContent(m.applyBackground(content))
+			return resultView
 		}
 	}
 
@@ -125,7 +128,8 @@ func (m *AppModel) View() (result tea.View) {
 		content = OverlayPopup(content, popup, m.width, targetContentHeight)
 	}
 
-	return tea.NewView(m.applyBackground(content + "\n" + statusBar))
+	resultView.SetContent(m.applyBackground(content + "\n" + statusBar))
+	return resultView
 }
 
 // renderPrefixPopupOverlay checks if the current view has a pending prefix and

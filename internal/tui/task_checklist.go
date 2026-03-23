@@ -221,7 +221,7 @@ func (m *TaskChecklistModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 			}
 
-		case " ", "enter":
+		case "space", "enter":
 			// Toggle done/undone
 			if len(m.task.Checklist) > 0 && m.cursor < len(m.task.Checklist) {
 				return m, m.toggleItem()

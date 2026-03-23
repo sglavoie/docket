@@ -551,7 +551,7 @@ $start                     # Set status ($start, $blocked, $done, $canceled, $re
 - `*`: Toggle active flag
 - `Ctrl+L`: Edit last modified task
 - `u` / `Ctrl+Z`: Undo / undo history
-- `v`: Toggle multi-select mode
+- `V`: Toggle multi-select mode
 - `y` / `Y` / `Ctrl+Y`: Copy title / description / both
 
 #### Prefix Commands (Vim-style)

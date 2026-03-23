@@ -347,8 +347,8 @@ func (m *AppModel) renderProjectCyclePopup() string {
 	// Calculate ideal width from content
 	maxNameLen := 0
 	for _, item := range m.projectCycleItems {
-		if len(item.Project.Name) > maxNameLen {
-			maxNameLen = len(item.Project.Name)
+		if width := lipgloss.Width(item.Project.Name); width > maxNameLen {
+			maxNameLen = width
 		}
 	}
 	// badge(1) + space(1) + checkbox(3) + space(1) + name + gap(2) + count + border/padding(4)
@@ -404,12 +404,6 @@ func (m *AppModel) renderProjectCyclePopup() string {
 			checkbox = MutedStyle.Render("[ ]")
 		}
 
-		// Project name
-		name := item.Project.Name
-		if item.Project.Pinned {
-			name = PinnedProjectStyle.Render(name)
-		}
-
 		// Task count (right-aligned) — colored on a red→green gradient
 		countText := fmt.Sprintf("%*d", maxCountWidth, item.TaskCount)
 		color := TaskCountColor(item.TaskCount, minCount, maxCount)
@@ -419,23 +413,13 @@ func (m *AppModel) renderProjectCyclePopup() string {
 		fixedWidth := 1 + 1 + 3 + 1 + 2 + maxCountWidth
 		nameWidth := max(innerWidth-fixedWidth, 10)
 
-		// Truncate name if needed
-		plainName := item.Project.Name
-		if len(plainName) > nameWidth {
-			plainName = plainName[:nameWidth-3] + "..."
-		}
-		// Re-render with style after truncation
+		plainName := truncateAndPad(item.Project.Name, nameWidth)
 		displayName := plainName
 		if item.Project.Pinned {
 			displayName = PinnedProjectStyle.Render(plainName)
 		}
-		// Pad to fixed width
-		if len(plainName) < nameWidth {
-			displayName += strings.Repeat(" ", nameWidth-len(plainName))
-		}
 
 		line := badge + " " + checkbox + " " + displayName + "  " + countStr
-		_ = name // suppress unused warning from earlier assignment
 
 		if i == m.projectCycleCursor {
 			lineWidth := lipgloss.Width(line)
@@ -474,7 +458,9 @@ func (m *AppModel) renderProjectCyclePopup() string {
 		Border(lipgloss.RoundedBorder()).
 		BorderForeground(ColorPrimary).
 		Padding(0, 1).
-		Width(popupWidth - 2)
+		// Width includes the border and padding, so use the full popup width
+		// to preserve the content area assumed by innerWidth above.
+		Width(popupWidth)
 
 	rendered := boxStyle.Render(content)
 
