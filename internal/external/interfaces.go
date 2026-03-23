@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 
+	"github.com/sglavoie/tt/internal/logging"
 	"github.com/sglavoie/tt/internal/models"
 )
 
@@ -161,7 +162,11 @@ func (e *VSCodeEditor) OpenFile(path string) error {
 	if err := cmd.Start(); err != nil {
 		return err
 	}
-	go func() { _ = cmd.Wait() }()
+	go func() {
+		if err := cmd.Wait(); err != nil {
+			logging.Warn("external tool exited with error: %v", err)
+		}
+	}()
 	return nil
 }
 
@@ -174,7 +179,11 @@ func (e *VSCodeEditor) OpenFileAtLine(path string, line int) error {
 	if err := cmd.Start(); err != nil {
 		return err
 	}
-	go func() { _ = cmd.Wait() }()
+	go func() {
+		if err := cmd.Wait(); err != nil {
+			logging.Warn("external tool exited with error: %v", err)
+		}
+	}()
 	return nil
 }
 
@@ -186,7 +195,11 @@ func (e *VSCodeEditor) OpenFolder(path string) error {
 	if err := cmd.Start(); err != nil {
 		return err
 	}
-	go func() { _ = cmd.Wait() }()
+	go func() {
+		if err := cmd.Wait(); err != nil {
+			logging.Warn("external tool exited with error: %v", err)
+		}
+	}()
 	return nil
 }
 
@@ -198,7 +211,11 @@ func (e *VSCodeEditor) OpenNewWindow(path string) error {
 	if err := cmd.Start(); err != nil {
 		return err
 	}
-	go func() { _ = cmd.Wait() }()
+	go func() {
+		if err := cmd.Wait(); err != nil {
+			logging.Warn("external tool exited with error: %v", err)
+		}
+	}()
 	return nil
 }
 

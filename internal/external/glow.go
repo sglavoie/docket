@@ -13,7 +13,7 @@ import (
 	"github.com/sglavoie/tt/internal/util"
 )
 
-const glowTimeoutSeconds = 10
+const glowTimeoutSeconds = 30
 
 const glowTimeout = glowTimeoutSeconds * time.Second
 

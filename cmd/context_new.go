@@ -69,7 +69,7 @@ func runContextNew(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			if strings.Contains(err.Error(), "canceled") {
 				if !out.Quiet {
-					fmt.Println("Canceled")
+					fmt.Fprintf(os.Stderr, "Canceled\n")
 				}
 				return nil
 			}

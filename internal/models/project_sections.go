@@ -190,7 +190,7 @@ func (p *Project) GetCustomSections() []string {
 // GetSectionColor returns the color for a section, defaulting to "gray".
 func (p *Project) GetSectionColor(section string) string {
 	if p.SectionColors == nil {
-		return "gray"
+		p.SectionColors = make(map[string]string)
 	}
 	if color, ok := p.SectionColors[section]; ok && color != "" {
 		return color

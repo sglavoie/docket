@@ -37,7 +37,7 @@ func init() {
 	boardCmd.AddCommand(boardListCmd)
 	boardListCmd.Flags().BoolVarP(&boardListAll, "all", "a", false, "show all items including done/canceled")
 	boardListCmd.Flags().StringVarP(&boardListSource, "source", "s", "", "filter by source")
-	boardListCmd.Flags().BoolVarP(&boardListDone, "done", "d", false, "show only done items")
+	boardListCmd.Flags().BoolVar(&boardListDone, "done", false, "show only done items")
 	boardListCmd.Flags().BoolVar(&boardListJSON, "json", false, "output as JSON")
 	_ = boardListCmd.RegisterFlagCompletionFunc("source", func(_ *cobra.Command, _ []string, _ string) ([]string, cobra.ShellCompDirective) {
 		cfg, _, err := LoadConfig()

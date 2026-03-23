@@ -3,6 +3,7 @@ package cmd
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 
 	"github.com/spf13/cobra"
 
@@ -56,7 +57,7 @@ func runWorkflowDelete(cmd *cobra.Command, args []string) error {
 
 	if !ConfirmYN(fmt.Sprintf("Delete workflow rule '%s'? [y/N]: ", ruleName), workflowDeleteForce) {
 		if !out.Quiet {
-			fmt.Println("Canceled")
+			fmt.Fprintf(os.Stderr, "Canceled\n")
 		}
 		return nil
 	}

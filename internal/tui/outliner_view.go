@@ -333,6 +333,10 @@ func (m *OutlinerModel) renderOutlinerTreeContent(width int) string {
 			}
 		} else if perspective.Name != "All" {
 			emptyMsg = fmt.Sprintf("No tasks match the %s perspective. Try switching perspectives with [/].", perspective.Name)
+		} else if m.SearchQuery() != "" {
+			emptyMsg = fmt.Sprintf("No tasks match search %q. Press Esc to clear.", m.SearchQuery())
+		} else if hasActiveCommonFilters(&m.filter.CommonFilterState) || len(m.filter.Sections) > 0 || m.filter.Actionable {
+			emptyMsg = EmptyStateFiltered
 		}
 		result := header + "\n"
 		if m.project != nil {

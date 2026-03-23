@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+
+	"github.com/sglavoie/tt/internal/logging"
 )
 
 // editorPattern defines how an editor handles opening a file at a specific line.
@@ -93,6 +95,10 @@ func OpenCodeReference(editor, path string, line int) error {
 	if err := cmd.Start(); err != nil {
 		return fmt.Errorf("opening editor: %w", err)
 	}
-	go func() { _ = cmd.Wait() }()
+	go func() {
+		if err := cmd.Wait(); err != nil {
+			logging.Warn("external tool exited with error: %v", err)
+		}
+	}()
 	return nil
 }

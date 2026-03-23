@@ -21,6 +21,20 @@ func (m *AppModel) Update(msg tea.Msg) (outModel tea.Model, outCmd tea.Cmd) {
 			if m.currentView() != ViewDashboard {
 				m.viewStack = []ViewType{ViewDashboard}
 			}
+			m.pendingSemicolonPrefix = false
+			m.isLoading = false
+			m.showQuickSwitch = false
+			m.quickSwitchFiltering = false
+			m.quickSwitchShowCompleted = false
+			m.showPinnedPopup = false
+			m.pinnedPopupFiltering = false
+			m.showProjectCycle = false
+			m.pendingSandboxReset = false
+			m.pendingBulkTasks = nil
+			m.pendingBulkSectionTasks = nil
+			m.pendingBulkNotes = nil
+			m.statusMessage = ""
+			m.loadingMessage = ""
 			outModel = m
 			outCmd = nil
 		}
@@ -396,6 +410,8 @@ func (m *AppModel) handleEscKey() (bool, tea.Cmd) {
 			m.projectStack = m.projectStack[:len(m.projectStack)-1]
 			if prev := m.config.GetProject(prevID); prev != nil {
 				m.switchToProject(prev, true)
+			} else {
+				m.setInfoStatus("Previous project no longer exists")
 			}
 		}
 		return true, cmd

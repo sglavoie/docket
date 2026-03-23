@@ -3,6 +3,7 @@ package cmd
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 
 	"github.com/spf13/cobra"
 )
@@ -43,7 +44,7 @@ func runContextDelete(cmd *cobra.Command, args []string) error {
 
 	if !ConfirmYN(fmt.Sprintf("Delete context '%s'? [y/N]: ", name), contextDeleteForce) {
 		if !out.Quiet {
-			fmt.Println("Canceled")
+			fmt.Fprintf(os.Stderr, "Canceled\n")
 		}
 		return nil
 	}

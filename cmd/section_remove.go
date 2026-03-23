@@ -3,6 +3,7 @@ package cmd
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 
 	"github.com/spf13/cobra"
 
@@ -67,7 +68,7 @@ func runSectionRemove(cmd *cobra.Command, args []string) error {
 	}
 	if !ConfirmYN(prompt+" [y/N]: ", sectionRemoveForce) {
 		if !out.Quiet {
-			fmt.Println("Canceled")
+			fmt.Fprintf(os.Stderr, "Canceled\n")
 		}
 		return nil
 	}

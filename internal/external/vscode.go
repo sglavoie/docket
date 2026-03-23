@@ -39,8 +39,11 @@ func ResolveEditor(configEditor string) string {
 		}
 		fmt.Fprintf(os.Stderr, "warning: editor %q not found in PATH, trying next fallback\n", c)
 	}
-	// Last resort: return "vi" without checking (always present on Unix)
-	return "vi"
+	// Last resort: check if vi is available before returning it
+	if _, err := exec.LookPath("vi"); err == nil {
+		return "vi"
+	}
+	return "" // caller should handle empty editor
 }
 
 // EditorCommand builds an exec.Cmd for the given editor and file path,
@@ -63,6 +66,9 @@ func EditInExternalEditor(editor string, content string, extension string) (stri
 
 	// Get editor command
 	editor = ResolveEditor(editor)
+	if editor == "" {
+		return "", fmt.Errorf("no editor found in PATH (tried config, $EDITOR, code, vi)")
+	}
 	cmd := EditorCommand(editor, tmpPath)
 
 	cmd.Stdin = os.Stdin

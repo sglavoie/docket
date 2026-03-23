@@ -102,6 +102,7 @@ func LoadProjectWithWarnings(project *models.Project) (*ProjectLoadResult, error
 	project.EnsureDefaultSections()
 
 	// Build the tree structure
+	// Orphaned local deps are cleaned in models/project_hierarchy.go BuildTaskTree()
 	project.BuildTaskTree()
 
 	// Validate cross-project dependency/related references.

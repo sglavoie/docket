@@ -190,6 +190,20 @@ func (m *Manager) Load() (*Config, error) {
 		config.Projects = validProjects
 	}
 
+	// Warn on duplicate project IDs or slugs.
+	seenIDs := make(map[string]bool)
+	seenSlugs := make(map[string]bool)
+	for _, p := range validProjects {
+		if seenIDs[p.ID] {
+			fmt.Fprintf(os.Stderr, "warning: duplicate project ID %q in config\n", p.ID)
+		}
+		if seenSlugs[p.Slug] {
+			fmt.Fprintf(os.Stderr, "warning: duplicate project slug %q in config\n", p.Slug)
+		}
+		seenIDs[p.ID] = true
+		seenSlugs[p.Slug] = true
+	}
+
 	// Backfill new fields on builtin scoring profiles from presets
 	presets := scoring.PresetProfiles()
 	for i := range config.ScoringProfiles {

@@ -56,10 +56,17 @@ func NewProject(id, name, path string) (*Project, error) {
 	if strings.TrimSpace(name) == "" {
 		return nil, fmt.Errorf("project name cannot be empty")
 	}
+	if len(name) > MaxProjectNameLength {
+		return nil, fmt.Errorf("project name too long (%d chars, max %d)", len(name), MaxProjectNameLength)
+	}
+	slug := Slugify(name)
+	if slug == "" {
+		return nil, fmt.Errorf("project name %q produces empty slug after sanitization", name)
+	}
 	now := time.Now()
 	return &Project{
 		ID:            id,
-		Slug:          Slugify(name),
+		Slug:          slug,
 		Name:          name,
 		Context:       "personal",
 		Path:          path,

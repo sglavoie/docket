@@ -78,6 +78,13 @@ func ParseTasksMarkdownWithSections(content string) (*ParseResult, error) {
 		// Check for project title
 		if matches := projectRegex.FindStringSubmatch(line); matches != nil {
 			projectName = strings.TrimSpace(matches[1])
+			if len(projectName) > models.MaxProjectNameLength {
+				metadataWarnings = append(metadataWarnings, ParseWarning{
+					Type:    format.WarningValidation,
+					Field:   "project_name",
+					Message: fmt.Sprintf("project name exceeds %d chars", models.MaxProjectNameLength),
+				})
+			}
 			continue
 		}
 

@@ -86,7 +86,7 @@ func runSandboxReset(cmd *cobra.Command, args []string) error {
 
 	if !ConfirmYN(confirmMsg, sandboxResetForce) {
 		if !out.Quiet {
-			fmt.Println("Canceled")
+			fmt.Fprintf(os.Stderr, "Canceled\n")
 		}
 		return nil
 	}
