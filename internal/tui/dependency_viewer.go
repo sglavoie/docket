@@ -233,11 +233,8 @@ func (m *DependencyViewerModel) renderSection(sectionIdx int, title, arrow strin
 		idStr := MutedStyle.Render(fmt.Sprintf("#%d", task.ShortID))
 
 		// Title (truncated)
-		title := task.Title
-		maxTitleLen := max(m.width-20, 20)
-		if len(title) > maxTitleLen {
-			title = title[:maxTitleLen-3] + "..."
-		}
+		maxTitleLen := max(m.width-20, 1)
+		title := truncateToVisualWidth(task.Title, maxTitleLen)
 
 		// Build line
 		line := fmt.Sprintf("%s%s %s%s %s %s", cursor, typeIcon, stageSegment, statusIcon, idStr, title)

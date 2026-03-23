@@ -1,15 +1,15 @@
 package tui
 
 import (
-	tea "charm.land/bubbletea/v2"
 	"fmt"
 	"strings"
+
+	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/logging"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/scoring"
 	"github.com/sglavoie/tt/internal/storage"
-	"github.com/sglavoie/tt/internal/util"
 )
 
 // maxContentWidth aliases the layout constant for local use.
@@ -127,7 +127,7 @@ func (m *TaskDetailModel) renderFooter() string {
 		scrollInfo = "All"
 	}
 
-	left := StatusBarStyle.Render(fmt.Sprintf("#%d %s", m.task.ShortID, util.Truncate(m.task.Title, 40)))
+	left := StatusBarStyle.Render(fmt.Sprintf("#%d %s", m.task.ShortID, truncateToVisualWidth(m.task.Title, 40)))
 	right := HelpStyle.Render("j/k: scroll · ,: status · !: priority · e: edit · c: comments · d: due · h: history · q: close  " + scrollInfo)
 	return renderStatusBarFooter(left, right, m.width)
 }

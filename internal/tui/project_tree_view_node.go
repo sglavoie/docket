@@ -8,7 +8,6 @@ import (
 	"charm.land/lipgloss/v2"
 
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/util"
 )
 
 // renderNodeWithWidth is like renderNode but accepts a custom width for truncation.
@@ -242,7 +241,7 @@ func (m *ProjectTreeModel) renderNodeWithWidth(node *TreeNode, selected bool, in
 		availableTitleWidth = maxWidth - baseUsed - lipgloss.Width(indicators)
 	}
 	availableTitleWidth = max(availableTitleWidth, 20)
-	truncatedTitle := util.Truncate(task.Title, availableTitleWidth)
+	truncatedTitle := truncateToVisualWidth(task.Title, availableTitleWidth)
 
 	// Apply search highlighting if there's an active search query
 	var title string

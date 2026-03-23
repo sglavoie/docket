@@ -7,6 +7,7 @@ import (
 
 	"charm.land/bubbles/v2/viewport"
 	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
@@ -245,13 +246,20 @@ func (m *ProjectPreviewModel) renderContent() string {
 				if stageBadge != "" {
 					stageSegment = stageBadge + " "
 				}
-				line := fmt.Sprintf("  %s %s %s%s %s  %s",
+				suffix := MutedStyle.Render(storage.FormatRelativeTime(task.UpdatedAt))
+				prefix := fmt.Sprintf("  %s %s %s%s ",
 					MutedStyle.Render(fmt.Sprintf("#%d", task.ShortID)),
 					GetTypeBadge(string(task.Type), task.Type.Icon()),
 					stageSegment,
-					GetStatusBadge(string(task.Status), task.Status.Icon()),
-					util.Truncate(task.Title, 40),
-					MutedStyle.Render(storage.FormatRelativeTime(task.UpdatedAt)))
+					GetStatusBadge(string(task.Status), task.Status.Icon()))
+				availableTitleWidth := max(m.width-lipgloss.Width(prefix)-lipgloss.Width(suffix)-2, 1)
+				title := truncateToVisualWidth(task.Title, availableTitleWidth)
+				line := prefix + title + "  " + suffix
+				if lipgloss.Width(line) > m.width {
+					excess := lipgloss.Width(line) - m.width
+					title = truncateToVisualWidth(task.Title, max(availableTitleWidth-excess, 1))
+					line = prefix + title + "  " + suffix
+				}
 
 				b.WriteString(line)
 				b.WriteString("\n")

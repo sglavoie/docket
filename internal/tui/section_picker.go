@@ -8,9 +8,9 @@ import (
 
 	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/util"
 )
 
 const newSectionSentinel = "+ New Section"
@@ -255,8 +255,11 @@ func (m *SectionPickerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m *SectionPickerModel) View() tea.View {
 	var b strings.Builder
 
-	subtitle := fmt.Sprintf("Task #%d: %s", m.task.ShortID, util.Truncate(m.task.Title, 30))
-	b.WriteString(renderFullscreenTitle("Assign Section", subtitle))
+	title := "Assign Section"
+	subtitle := fmt.Sprintf("Task #%d: %s", m.task.ShortID, m.task.Title)
+	availableSubtitleWidth := max(m.Width()-lipgloss.Width(title)-2, 1)
+	subtitle = truncateToVisualWidth(subtitle, availableSubtitleWidth)
+	b.WriteString(renderFullscreenTitle(title, subtitle))
 	b.WriteString("\n\n")
 
 	// Search bar

@@ -5,7 +5,6 @@ import (
 	"strings"
 
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/util"
 )
 
 // renderFormLabelShared renders a form field label with fixed width alignment.
@@ -94,7 +93,7 @@ func renderParentSelectorShared(validParents []*models.Task, parentCursor int, f
 
 	for i := startIdx; i < len(validParents) && i < startIdx+maxShow+1; i++ {
 		p := validParents[i]
-		display := util.Truncate(fmt.Sprintf("#%d %s", p.ShortID, p.Title), 18)
+		display := truncateToVisualWidth(fmt.Sprintf("#%d %s", p.ShortID, p.Title), 18)
 		if parentCursor == i+1 {
 			if focused {
 				b.WriteString(SelectorOptionSelectedStyle.Render(fmt.Sprintf(" [%s]", display)))
@@ -351,7 +350,7 @@ func renderTextAttrPreview(value string, focused bool) string {
 	}
 	// Show truncated preview
 	display := strings.ReplaceAll(value, "\n", " ")
-	display = util.Truncate(display, 40)
+	display = truncateToVisualWidth(display, 40)
 	if focused {
 		return SelectorOptionSelectedStyle.Render(display)
 	}

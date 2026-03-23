@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"charm.land/lipgloss/v2"
+	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
@@ -39,8 +40,23 @@ func ScrollDownIndicator(n int) string {
 // line with left-aligned title and right-aligned help text beneath it.
 func renderStatusBarFooter(left, right string, width int) string {
 	separator := MutedStyle.Render(strings.Repeat("─", width))
+	if width <= 0 {
+		width = 80
+	}
 
-	gap := max(width-lipgloss.Width(left)-lipgloss.Width(right), 1)
+	leftWidth := lipgloss.Width(left)
+	rightWidth := lipgloss.Width(right)
+	if leftWidth+rightWidth+1 > width {
+		availableLeft := max(width-rightWidth-1, 1)
+		left = ansi.Truncate(left, availableLeft, "")
+		leftWidth = lipgloss.Width(left)
+		if leftWidth+rightWidth+1 > width {
+			right = ansi.Truncate(right, max(width-leftWidth-1, 1), "")
+			rightWidth = lipgloss.Width(right)
+		}
+	}
+
+	gap := max(width-leftWidth-rightWidth, 1)
 	spacer := ThemeSpacer(gap)
 
 	return fmt.Sprintf("%s\n%s", separator, lipgloss.JoinHorizontal(lipgloss.Top, left, spacer, right))
@@ -325,7 +341,7 @@ func renderMetadataContent(task *models.Task, project *models.Project, innerWidt
 		lines = append(lines, MutedStyle.Render("Source:  ")+task.Source)
 	}
 	if task.URL != "" {
-		display := util.Truncate(task.URL, innerWidth-5)
+		display := truncateToVisualWidth(task.URL, innerWidth-5)
 		link := Hyperlink(task.URL, display)
 		lines = append(lines, MutedStyle.Render("URL:     ")+link)
 	}
@@ -477,10 +493,10 @@ func renderWrappingHelpLine(helpText string, width int) string {
 	currentWidth := 0
 
 	for i, item := range items {
-		itemWidth := len(item)
+		itemWidth := lipgloss.Width(item)
 		sepWidth := 0
 		if currentLine.Len() > 0 {
-			sepWidth = len(separator)
+			sepWidth = lipgloss.Width(separator)
 		}
 
 		// Check if adding this item would exceed width
@@ -494,7 +510,7 @@ func renderWrappingHelpLine(helpText string, width int) string {
 		// Add separator if not first item on this line
 		if currentLine.Len() > 0 {
 			currentLine.WriteString(separator)
-			currentWidth += len(separator)
+			currentWidth += sepWidth
 		}
 
 		currentLine.WriteString(item)

@@ -6,10 +6,10 @@ import (
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 
 	"github.com/sglavoie/tt/internal/fuzzy"
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/util"
 )
 
 // GlobalNoteMoveDoneMsg indicates the user selected a project (or canceled).
@@ -169,7 +169,7 @@ func (m *GlobalNoteMoveProjectSelectorModel) View() tea.View {
 	b.WriteString(m.renderList())
 	b.WriteString("\n")
 
-	b.WriteString(HelpStyle.Render("↑/↓ navigate · Enter select · Esc cancel"))
+	b.WriteString(HelpStyle.Render(renderWrappingHelpLine("↑/↓ navigate · Enter select · Esc cancel", m.Width())))
 
 	return tea.NewView(b.String())
 }
@@ -197,9 +197,9 @@ func (m *GlobalNoteMoveProjectSelectorModel) renderList() string {
 		}
 
 		contextBadge := MutedStyle.Render(fmt.Sprintf("[%s]", item.Project.Context))
-		maxNameLen := max(m.Width()-20, 10)
-		name := util.Truncate(item.Project.Name, maxNameLen)
-		line := fmt.Sprintf("%s%-*s %s", cursor, maxNameLen, name, contextBadge)
+		maxNameLen := max(m.Width()-lipgloss.Width(cursor)-lipgloss.Width(contextBadge)-1, 1)
+		name := truncateToVisualWidth(item.Project.Name, maxNameLen)
+		line := fmt.Sprintf("%s%s %s", cursor, truncateAndPad(name, maxNameLen), contextBadge)
 
 		if m.Cursor == i {
 			line = SelectedItemTextStyle.Render(line)

@@ -6,10 +6,10 @@ import (
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 
 	"github.com/sglavoie/tt/internal/fuzzy"
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/util"
 )
 
 // ProjectPickerItem wraps a Project for selection with fuzzy scoring.
@@ -223,11 +223,13 @@ func (m *ProjectSelectorModel) View() tea.View {
 	var b strings.Builder
 
 	// Title with task info
+	title := "Move to Project"
 	taskInfo := fmt.Sprintf("Moving: #%d %s", m.task.ShortID, m.task.Title)
-	if len(taskInfo) > m.Width()-4 {
-		taskInfo = util.Truncate(taskInfo, m.Width()-4)
+	availableSubtitleWidth := max(m.Width()-lipgloss.Width(title)-2, 1)
+	if lipgloss.Width(taskInfo) > availableSubtitleWidth {
+		taskInfo = truncateToVisualWidth(taskInfo, availableSubtitleWidth)
 	}
-	b.WriteString(renderFullscreenTitle("Move to Project", taskInfo))
+	b.WriteString(renderFullscreenTitle(title, taskInfo))
 	b.WriteString("\n\n")
 
 	// Search input
@@ -279,10 +281,10 @@ func (m *ProjectSelectorModel) renderList() string {
 
 		// Project name (truncated)
 		maxNameLen := max(m.Width()-30, 10)
-		name := util.Truncate(item.Project.Name, maxNameLen)
+		name := truncateToVisualWidth(item.Project.Name, maxNameLen)
 
 		// Build line
-		line := fmt.Sprintf("%s%-*s %s %s", cursor, maxNameLen, name, contextBadge, MutedStyle.Render(taskCount))
+		line := fmt.Sprintf("%s%s %s %s", cursor, truncateAndPad(name, maxNameLen), contextBadge, MutedStyle.Render(taskCount))
 
 		if m.Cursor == i {
 			line = SelectedItemTextStyle.Render(line)

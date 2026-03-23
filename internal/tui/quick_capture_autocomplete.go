@@ -231,10 +231,7 @@ func (q *quickCaptureInput) getParentSuggestions(partial string) []ACSuggestion 
 		task := s.task
 		// Truncate title if too long (width-aware: ~15 chars overhead for icon+id+spaces)
 		titleLimit := max(q.width-15, 10)
-		title := task.Title
-		if len(title) > titleLimit {
-			title = title[:titleLimit-3] + "..."
-		}
+		title := truncateToVisualWidth(task.Title, titleLimit)
 		suggestions = append(suggestions, ACSuggestion{
 			Display: fmt.Sprintf("%s #%d %s", task.Type.Icon(), task.ShortID, title),
 			Value:   strconv.Itoa(task.ShortID),
@@ -271,10 +268,7 @@ func (q *quickCaptureInput) getProjectSuggestions(partial string) []ACSuggestion
 		project := s.project
 		// Truncate name if too long (width-aware: ~20 chars overhead for context+brackets+spaces)
 		nameLimit := max(q.width-20, 10)
-		name := project.Name
-		if len(name) > nameLimit {
-			name = name[:nameLimit-3] + "..."
-		}
+		name := truncateToVisualWidth(project.Name, nameLimit)
 		suggestions = append(suggestions, ACSuggestion{
 			Display: fmt.Sprintf("%%%s [%s]", name, project.Context),
 			Value:   project.Slug,

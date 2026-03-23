@@ -252,12 +252,9 @@ func (m *TemplatePickerModel) renderListPanel(width int) string {
 			b.WriteString("\n")
 
 			for _, t := range templates {
-				name := t.Name
 				// Truncate name if too long for width (account for prefix "▸ " = 2 chars)
-				maxNameLen := width - 3
-				if maxNameLen > 0 && len(name) > maxNameLen {
-					name = name[:maxNameLen-1] + "…"
-				}
+				maxNameLen := max(width-3, 1)
+				name := truncateToVisualWidth(t.Name, maxNameLen)
 
 				if listIdx == m.cursor {
 					b.WriteString(SelectedItemTextStyle.Render(fmt.Sprintf("▸ %s", name)))
@@ -309,9 +306,7 @@ func (m *TemplatePickerModel) renderPreviewPanel(t *template.TaskTemplate, width
 	// Tags
 	if len(t.Tags) > 0 {
 		tagStr := strings.Join(t.Tags, ", ")
-		if len(tagStr) > width-8 {
-			tagStr = tagStr[:width-11] + "..."
-		}
+		tagStr = truncateToVisualWidth(tagStr, max(width-8, 1))
 		lines = append(lines, fmt.Sprintf("Tags: %s", tagStr))
 	}
 

@@ -5,9 +5,9 @@ import (
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/util"
 )
 
 // PriorityInfo represents a selectable priority option.
@@ -155,9 +155,12 @@ func (m *PriorityPickerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m *PriorityPickerModel) View() tea.View {
 	var b strings.Builder
 
-	subtitle := fmt.Sprintf("Task #%d: %s", m.task.ShortID, util.Truncate(m.task.Title, 25))
+	title := "Set Priority"
+	subtitle := fmt.Sprintf("Task #%d: %s", m.task.ShortID, m.task.Title)
+	availableSubtitleWidth := max(m.Width()-lipgloss.Width(title)-2, 1)
+	subtitle = truncateToVisualWidth(subtitle, availableSubtitleWidth)
 	currentPriority := m.task.Priority
-	b.WriteString(renderFullscreenTitle("Set Priority", subtitle))
+	b.WriteString(renderFullscreenTitle(title, subtitle))
 	b.WriteString("\n\n")
 
 	// Current priority

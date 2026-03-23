@@ -5,12 +5,12 @@ import (
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/logging"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
-	"github.com/sglavoie/tt/internal/util"
 )
 
 // LinkedTaskRelation represents a task and its relationship to the source task.
@@ -374,7 +374,7 @@ func (m *LinkedTaskSelectorModel) unlinkMissingTaskFromFiltered(idx int) tea.Cmd
 }
 
 func (m *LinkedTaskSelectorModel) View() tea.View {
-	taskSubtitle := fmt.Sprintf("#%d %s", m.sourceTask.ShortID, util.Truncate(m.sourceTask.Title, 30))
+	taskSubtitle := fmt.Sprintf("#%d %s", m.sourceTask.ShortID, truncateToVisualWidth(m.sourceTask.Title, 30))
 
 	var b strings.Builder
 
@@ -565,20 +565,24 @@ func (m *LinkedTaskSelectorModel) renderRelationLine(rel LinkedTaskRelation, isS
 		stageSegment = stageBadge + " "
 	}
 
-	maxTitleLen := max(m.width-35, 20)
+	availableWidth := max(m.width-4, 20)
 
 	// Show project name for cross-project links
 	var projectLabel string
 	if rel.Project != nil {
-		projectLabel = MutedStyle.Render(fmt.Sprintf("[%s] ", rel.Project.Name))
-		maxTitleLen -= len(rel.Project.Name) + 3
-		if maxTitleLen < 15 {
-			maxTitleLen = 15
-		}
+		projectName := truncateToVisualWidth(rel.Project.Name, 12)
+		projectLabel = MutedStyle.Render(fmt.Sprintf("[%s] ", projectName))
 	}
 
-	title := util.Truncate(rel.Task.Title, maxTitleLen)
-	line := fmt.Sprintf("%s %s %s%s#%d %s", statusIcon, typeIcon, stageSegment, projectLabel, rel.Task.ShortID, title)
+	prefix := fmt.Sprintf("%s %s %s%s#%d ", statusIcon, typeIcon, stageSegment, projectLabel, rel.Task.ShortID)
+	maxTitleLen := max(availableWidth-lipgloss.Width(prefix), 1)
+	title := truncateToVisualWidth(rel.Task.Title, maxTitleLen)
+	line := prefix + title
+	if lipgloss.Width(line) > availableWidth {
+		excess := lipgloss.Width(line) - availableWidth
+		title = truncateToVisualWidth(rel.Task.Title, max(maxTitleLen-excess, 1))
+		line = prefix + title
+	}
 	if isSelected {
 		line = SelectedStyle.Render(line)
 	}

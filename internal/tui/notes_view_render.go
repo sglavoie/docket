@@ -1,11 +1,12 @@
 package tui
 
 import (
-	tea "charm.land/bubbletea/v2"
 	"fmt"
 	"image/color"
 	"strings"
 	"time"
+
+	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/util"
@@ -161,15 +162,11 @@ func (m *NotesViewModel) renderListPane() string {
 		if note.ParseError != "" {
 			// Error indicator for broken notes
 			indicator := WarningIconStyle.Render("!")
-			titleStr := note.Title
 			maxTitle := 40
 			if m.multiSelectMode {
 				maxTitle = 36
 			}
-			if len(titleStr) > maxTitle {
-				titleStr = titleStr[:maxTitle-3] + "..."
-			}
-			paddedTitle := fmt.Sprintf("%-40s", checkbox+titleStr)
+			paddedTitle := truncateAndPad(checkbox+truncateToVisualWidth(note.Title, maxTitle), 40)
 			paddedTitle = MutedStyle.Render(paddedTitle)
 			row = fmt.Sprintf("%s %s %8s", indicator, paddedTitle, MutedStyle.Render("error"))
 		} else {
@@ -178,15 +175,11 @@ func (m *NotesViewModel) renderListPane() string {
 				pin = pinnedStyle.Render("P")
 			}
 
-			titleStr := note.Title
 			maxTitle := 40
 			if m.multiSelectMode {
 				maxTitle = 36
 			}
-			if len(titleStr) > maxTitle {
-				titleStr = titleStr[:maxTitle-3] + "..."
-			}
-			paddedTitle := fmt.Sprintf("%-40s", checkbox+titleStr)
+			paddedTitle := truncateAndPad(checkbox+truncateToVisualWidth(note.Title, maxTitle), 40)
 
 			tags := ""
 			if len(note.Tags) > 0 {
@@ -302,7 +295,7 @@ func (m *NotesViewModel) renderDetailsPane(note *models.Note, width, height int)
 		lines = append(lines, MutedStyle.Render("Press e to edit and fix this note"))
 	} else {
 		// Title
-		titleLine := TitleStyle.Render(note.Title)
+		titleLine := TitleStyle.Render(truncateToVisualWidth(note.Title, max(width-2, 1)))
 		lines = append(lines, titleLine)
 
 		// Tags

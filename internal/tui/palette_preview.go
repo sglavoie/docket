@@ -800,7 +800,7 @@ func (m *CommandPaletteModel) renderNotePreview(item PaletteItem) string {
 	var b strings.Builder
 
 	// Header
-	b.WriteString(TaskJumperPreviewHeaderStyle.Render(note.Title))
+	b.WriteString(TaskJumperPreviewHeaderStyle.Render(truncateToVisualWidth(note.Title, max(m.previewWidth-2, 1))))
 	b.WriteString("\n\n")
 
 	// Project

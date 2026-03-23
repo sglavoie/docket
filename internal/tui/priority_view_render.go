@@ -5,8 +5,9 @@ import (
 	"maps"
 	"strings"
 
+	"charm.land/lipgloss/v2"
+
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/util"
 )
 
 // renderPriorityTabBar renders the tab bar for the priority view.
@@ -339,15 +340,22 @@ func (m *PriorityViewModel) renderWaitingOnTask(pt *PriorityTask) string {
 	if maxTitleLen < 10 {
 		maxTitleLen = 10
 	}
-	title := util.Truncate(task.Title, maxTitleLen)
+	title := truncateToVisualWidth(task.Title, maxTitleLen)
 	if m.searchQuery != "" {
 		title = HighlightSubstring(title, m.searchQuery, NormalStyle)
 	}
 
 	// Blocking reason
 	blockingReason := m.getBlockingReason(task)
+	prefix := fmt.Sprintf("    %s %s ", statusIcon, typeIcon)
+	suffix := " " + MutedStyle.Render(blockingReason)
+	titleWidth := max(m.Width()-lipgloss.Width(prefix)-lipgloss.Width(suffix), 1)
+	title = truncateToVisualWidth(task.Title, titleWidth)
+	if m.searchQuery != "" {
+		title = HighlightSubstring(title, m.searchQuery, NormalStyle)
+	}
 
-	return fmt.Sprintf("    %s %s %s %s", statusIcon, typeIcon, title, MutedStyle.Render(blockingReason))
+	return prefix + title + suffix
 }
 
 // getBlockingReason returns a description of what's blocking a task.
@@ -360,7 +368,7 @@ func (m *PriorityViewModel) getBlockingReason(task *models.Task) string {
 	for _, depID := range task.DependsOn {
 		if dep := m.project.GetTaskByID(depID); dep != nil {
 			if !dep.Status.IsComplete() {
-				return fmt.Sprintf("← %s", util.Truncate(dep.Title, 20))
+				return fmt.Sprintf("← %s", truncateToVisualWidth(dep.Title, 20))
 			}
 		}
 	}

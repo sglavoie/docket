@@ -9,6 +9,7 @@ import (
 
 	"charm.land/bubbles/v2/textarea"
 	tea "charm.land/bubbletea/v2"
+	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/external"
 	"github.com/sglavoie/tt/internal/models"
@@ -672,7 +673,7 @@ func (m *TaskCommentsModel) View() tea.View {
 		b.WriteString(MutedStyle.Render(timestamp))
 		b.WriteString("\n\n")
 
-		renderWidth := max(contentWidth, 40)
+		renderWidth := max(contentWidth, 1)
 		b.WriteString(renderMarkdown(comment.Text, renderWidth))
 		b.WriteString("\n")
 
@@ -730,7 +731,7 @@ func (m *TaskCommentsModel) View() tea.View {
 
 		scrollOffset := calcScrollOffset(m.cursor, maxVisible)
 
-		maxLen := max(contentWidth-8, 40)
+		maxLen := max(contentWidth-8, 1)
 
 		for i := scrollOffset; i < len(m.task.Comments) && i < scrollOffset+maxVisible; i++ {
 			comment := m.task.Comments[i]
@@ -768,9 +769,7 @@ func (m *TaskCommentsModel) View() tea.View {
 					fmt.Fprintf(&entry, "      ... (%d more lines, press Enter to expand)\n", remaining)
 					break
 				}
-				if len(line) > maxLen {
-					line = line[:maxLen-3] + "..."
-				}
+				line = ansi.Truncate(line, maxLen, "")
 				entry.WriteString("      ")
 				if comment.Resolved {
 					entry.WriteString(MutedStyle.Render(line))

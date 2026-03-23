@@ -1,10 +1,11 @@
 package tui
 
 import (
-	tea "charm.land/bubbletea/v2"
 	"fmt"
 	"strings"
 	"time"
+
+	tea "charm.land/bubbletea/v2"
 
 	"charm.land/lipgloss/v2"
 
@@ -143,7 +144,7 @@ func (m *DashboardModel) renderInfoSection(width int, selected *models.Project) 
 		} else {
 			recentContent = m.renderRecentTasksContentWithWidth(selected, otherContentW)
 		}
-		recentTitle := fmt.Sprintf("Recent — %s", util.Truncate(selected.Name, otherCardW-16))
+		recentTitle := fmt.Sprintf("Recent — %s", truncateToVisualWidth(selected.Name, otherCardW-16))
 		cards = append(cards, card{title: recentTitle, content: recentContent, width: otherCardW})
 	}
 
@@ -216,7 +217,7 @@ func (m *DashboardModel) renderProjectSummarySection(width int, selected *models
 
 	if hasSummary {
 		summaryContent := m.renderProjectSummaryContent(selected)
-		summaryTitle := fmt.Sprintf("%s Summary", util.Truncate(selected.Name, summaryCardW-16))
+		summaryTitle := fmt.Sprintf("%s Summary", truncateToVisualWidth(selected.Name, summaryCardW-16))
 		cards = append(cards, card{title: summaryTitle, content: summaryContent, width: summaryCardW})
 	}
 
@@ -398,13 +399,13 @@ func (m *DashboardModel) renderProjectList(visible []*models.Project, chromeHeig
 	}
 	for _, p := range visible {
 		nameStr := p.Name
-		if len(nameStr) > maxNameWidth {
-			maxNameWidth = len(nameStr)
+		if width := lipgloss.Width(nameStr); width > maxNameWidth {
+			maxNameWidth = width
 		}
 		if showContext && p.Context != "" {
 			ctxStr := fmt.Sprintf("[%s]", p.Context)
-			if len(ctxStr) > maxContextWidth {
-				maxContextWidth = len(ctxStr)
+			if width := lipgloss.Width(ctxStr); width > maxContextWidth {
+				maxContextWidth = width
 			}
 		}
 		statusW := m.projectStatusWidth(p, dueSoonDays)
@@ -465,7 +466,7 @@ func (m *DashboardModel) renderProjectList(visible []*models.Project, chromeHeig
 		}
 		header := fmt.Sprintf("%s%s %s %6s %6s", prefix, namePad, ctxPad, "Active", "Total")
 		withStatus := header + "  Status"
-		if len(withStatus) <= rowWidth {
+		if lipgloss.Width(withStatus) <= rowWidth {
 			header = withStatus
 		}
 		cardContent.WriteString(MutedStyle.Render(header))
@@ -523,34 +524,24 @@ func (m *DashboardModel) renderProjectList(visible []*models.Project, chromeHeig
 		}
 
 		// Build the name string, padded/truncated to max width
-		displayName := p.Name
-		if len(displayName) > maxNameWidth && maxNameWidth > 2 {
-			displayName = p.Name[:maxNameWidth-1] + "…"
-		}
-		namePadding := max(maxNameWidth-len(displayName), 0)
+		displayName := truncateAndPad(p.Name, maxNameWidth)
 		var nameStr string
 		if m.SearchQuery() != "" {
 			nameStr = HighlightSubstring(displayName, m.SearchQuery(), style)
 		} else {
 			nameStr = style.Render(displayName)
 		}
-		nameRendered := iconRendered + nameStr + strings.Repeat(" ", namePadding)
+		nameRendered := iconRendered + nameStr
 
 		// Context badge, padded/truncated
 		contextRendered := ""
 		if showContext && maxContextWidth > 0 {
 			if p.Context != "" {
-				ctxStr := fmt.Sprintf("[%s]", p.Context)
-				if len(ctxStr) > maxContextWidth && maxContextWidth > 2 {
-					ctxStr = ctxStr[:maxContextWidth-1] + "…"
-				} else if len(ctxStr) > maxContextWidth {
-					ctxStr = ctxStr[:maxContextWidth]
-				}
-				ctxPadding := max(maxContextWidth-len(ctxStr), 0)
+				ctxStr := truncateAndPad(fmt.Sprintf("[%s]", p.Context), maxContextWidth)
 				if m.SearchQuery() != "" {
-					contextRendered = HighlightSubstring(ctxStr, m.SearchQuery(), MutedStyle) + strings.Repeat(" ", ctxPadding)
+					contextRendered = HighlightSubstring(ctxStr, m.SearchQuery(), MutedStyle)
 				} else {
-					contextRendered = MutedStyle.Render(ctxStr) + strings.Repeat(" ", ctxPadding)
+					contextRendered = MutedStyle.Render(ctxStr)
 				}
 			} else {
 				contextRendered = strings.Repeat(" ", maxContextWidth)
@@ -808,7 +799,7 @@ func (m *DashboardModel) renderTopScoredContent(project *models.Project, profile
 	bar := RenderScoreBar(bestTask, profile)
 	badge := RenderScoreBadge(bestTask, profile)
 	titleWidth := max(contentWidth-15, 10)
-	title := util.Truncate(bestTask.Title, titleWidth)
+	title := truncateToVisualWidth(bestTask.Title, titleWidth)
 	typeIcon := GetTypeBadge(string(bestTask.Type), bestTask.Type.Icon())
 	stageBadge := GetStageBadge(bestTask.Stage)
 	stageSegment := ""
@@ -838,10 +829,10 @@ func (m *DashboardModel) renderRecentTasksContentWithWidth(project *models.Proje
 			stageSegment = stageBadge + " "
 		}
 		// Check if title + 2-space gap + time fits on one line
-		fitsOnOneLine := len(task.Title)+2+len(timeStr) <= titleWidth
+		fitsOnOneLine := lipgloss.Width(task.Title)+2+lipgloss.Width(timeStr) <= titleWidth
 
 		if fitsOnOneLine {
-			gap := max(titleWidth-len(task.Title)-len(timeStr), 2)
+			gap := max(titleWidth-lipgloss.Width(task.Title)-lipgloss.Width(timeStr), 2)
 			line1 := fmt.Sprintf("%s %s%s %s%s%s",
 				GetTypeBadge(string(task.Type), task.Type.Icon()),
 				stageSegment,
@@ -855,9 +846,9 @@ func (m *DashboardModel) renderRecentTasksContentWithWidth(project *models.Proje
 				GetTypeBadge(string(task.Type), task.Type.Icon()),
 				stageSegment,
 				GetStatusBadge(string(task.Status), task.Status.Icon()),
-				util.Truncate(task.Title, titleWidth))
+				truncateAndPad(task.Title, titleWidth))
 
-			padding := max(contentWidth-len(timeStr), 0)
+			padding := max(contentWidth-lipgloss.Width(timeStr), 0)
 			line2 := MutedStyle.Render(strings.Repeat(" ", padding) + timeStr)
 			lines = append(lines, line1, line2)
 		}

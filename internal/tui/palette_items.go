@@ -108,13 +108,23 @@ func (m *CommandPaletteModel) SetSize(width, height int) {
 	// cardWidth = viewWidth - 4 (margin)
 	// lipgloss Width = cardWidth - 2 (border adds 2 to total)
 	// usable text area = Width - 4 (padding inside) = viewWidth - 10
-	innerWidth := max(width-10, 60)
+	innerWidth := max(width-10, 1)
 
-	m.searchInput.SetWidth(innerWidth - 4)
+	m.searchInput.SetWidth(max(innerWidth-4, 1))
 
-	// Calculate split pane widths: 65% list, 35% preview based on inner width
-	m.listWidth = min(max(innerWidth*65/100, 35), innerWidth-25)
-	m.previewWidth = innerWidth - m.listWidth - 1 // -1 for separator
+	// Calculate split pane widths: 65% list, 35% preview based on inner width.
+	// On very narrow terminals, prefer a single-pane layout and let compact mode hide preview.
+	if innerWidth <= 2 {
+		m.listWidth = innerWidth
+		m.previewWidth = 0
+	} else {
+		m.listWidth = max(innerWidth*65/100, 1)
+		m.previewWidth = innerWidth - m.listWidth - 1 // -1 for separator
+		if m.previewWidth < 1 {
+			m.previewWidth = 1
+			m.listWidth = max(innerWidth-m.previewWidth-1, 1)
+		}
+	}
 
 	// Auto-enable compact mode on narrow terminals unless user explicitly toggled
 	if !m.userSetCompact {

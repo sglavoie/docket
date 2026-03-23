@@ -4,8 +4,9 @@ import (
 	"fmt"
 	"strings"
 
+	"charm.land/lipgloss/v2"
+
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/util"
 )
 
 // inlinePreviewLines returns the styled preview lines for a task (description + checklist).
@@ -17,7 +18,7 @@ func inlinePreviewLines(task *models.Task, indentStr string, maxWidth int) []str
 	}
 
 	var lines []string
-	availWidth := max(maxWidth-len(indentStr), 10)
+	availWidth := max(maxWidth-lipgloss.Width(indentStr), 10)
 
 	// Description lines (up to 2)
 	if task.Description != "" {
@@ -30,7 +31,7 @@ func inlinePreviewLines(task *models.Task, indentStr string, maxWidth int) []str
 			if trimmed == "" {
 				continue
 			}
-			lines = append(lines, indentStr+MutedStyle.Render(util.Truncate(trimmed, availWidth)))
+			lines = append(lines, indentStr+MutedStyle.Render(truncateToVisualWidth(trimmed, availWidth)))
 		}
 	}
 
@@ -47,7 +48,7 @@ func inlinePreviewLines(task *models.Task, indentStr string, maxWidth int) []str
 			if item.Done {
 				check = "[x]"
 			}
-			text := util.Truncate(item.Text, availWidth-4) // 4 = "[x] "
+			text := truncateToVisualWidth(item.Text, availWidth-4) // 4 = "[x] "
 			lines = append(lines, indentStr+MutedStyle.Render(check+" "+text))
 			shown++
 		}

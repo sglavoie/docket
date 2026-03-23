@@ -1,13 +1,12 @@
 package tui
 
 import (
-	tea "charm.land/bubbletea/v2"
 	"fmt"
 	"strings"
 
-	"charm.land/lipgloss/v2"
+	tea "charm.land/bubbletea/v2"
 
-	"github.com/sglavoie/tt/internal/util"
+	"charm.land/lipgloss/v2"
 )
 
 func (m *ProjectPickerModel) View() tea.View {
@@ -63,8 +62,8 @@ func (m *ProjectPickerModel) renderList(width int) string {
 	// Calculate max name length from filtered items for aligned columns
 	maxNameLen := 0
 	for _, item := range m.Filtered {
-		if n := len(item.Project.Name); n > maxNameLen {
-			maxNameLen = n
+		if width := lipgloss.Width(item.Project.Name); width > maxNameLen {
+			maxNameLen = width
 		}
 	}
 	// Cap to width with room for cursor, context badge, and task count
@@ -91,9 +90,8 @@ func (m *ProjectPickerModel) renderList(width int) string {
 
 		taskCount := fmt.Sprintf("%d tasks", item.Project.CountTasks())
 
-		name := util.Truncate(item.Project.Name, maxNameLen-2)
-
-		line := fmt.Sprintf("%s%-*s %s %s", cursor, maxNameLen, name, contextBadge, MutedStyle.Render(taskCount))
+		name := truncateToVisualWidth(item.Project.Name, maxNameLen-2)
+		line := fmt.Sprintf("%s%s %s %s", cursor, truncateAndPad(name, maxNameLen), contextBadge, MutedStyle.Render(taskCount))
 
 		if m.Cursor == i {
 			line = SelectedItemTextStyle.Render(line)

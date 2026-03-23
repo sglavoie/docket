@@ -1,9 +1,10 @@
 package tui
 
 import (
-	tea "charm.land/bubbletea/v2"
 	"fmt"
 	"strings"
+
+	tea "charm.land/bubbletea/v2"
 
 	"charm.land/lipgloss/v2"
 )
@@ -313,10 +314,7 @@ func (m *FilterBuilderModel) renderFieldSelector(cursor int, focused bool) strin
 	}
 
 	for i := start; i < end; i++ {
-		display := smartListFields[i].Name
-		if len(display) > 16 {
-			display = display[:13] + "..."
-		}
+		display := truncateToVisualWidth(smartListFields[i].Name, 16)
 
 		if i == cursor {
 			if focused {
@@ -387,10 +385,7 @@ func (m *FilterBuilderModel) renderEnumSelector(values []string, cursor int, foc
 	}
 
 	for i := start; i < end; i++ {
-		display := values[i]
-		if len(display) > 14 {
-			display = display[:11] + "..."
-		}
+		display := truncateToVisualWidth(values[i], 14)
 
 		if i == cursor {
 			if focused {

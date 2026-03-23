@@ -1,13 +1,13 @@
 package tui
 
 import (
-	tea "charm.land/bubbletea/v2"
 	"fmt"
 	"strings"
 
+	tea "charm.land/bubbletea/v2"
+
 	"github.com/sglavoie/tt/internal/fuzzy"
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/util"
 )
 
 func (m *FocusBoardModel) View() tea.View {
@@ -220,7 +220,7 @@ func (m *FocusBoardModel) renderRow(row boardRow, isSelected bool, maxTitleLen i
 	var b strings.Builder
 
 	task := row.Task
-	projectName := util.Truncate(row.Project.Name, 10)
+	projectName := truncateToVisualWidth(row.Project.Name, 10)
 
 	priorityBadge := boardPriorityBadge(task.Priority)
 	isClosed := task.Status.IsComplete()
@@ -229,13 +229,13 @@ func (m *FocusBoardModel) renderRow(row boardRow, isSelected bool, maxTitleLen i
 		// Action item rendering
 		var sourceBadge string
 		if task.Source != "" {
-			sourceBadge = DependencyStyle.Render(fmt.Sprintf("[%s]", util.Truncate(task.Source, 10)))
+			sourceBadge = DependencyStyle.Render(fmt.Sprintf("[%s]", truncateToVisualWidth(task.Source, 10)))
 		} else {
 			sourceBadge = DependencyStyle.Render("[action]")
 		}
 		projectBadge := ""
 		if !row.Project.Internal {
-			projectBadge = " " + MutedStyle.Render(fmt.Sprintf("[%s]", util.Truncate(projectName, 12)))
+			projectBadge = " " + MutedStyle.Render(fmt.Sprintf("[%s]", truncateToVisualWidth(projectName, 12)))
 		}
 		urlIndicator := ""
 		if task.URL != "" {
@@ -251,7 +251,7 @@ func (m *FocusBoardModel) renderRow(row boardRow, isSelected bool, maxTitleLen i
 			}
 		}
 
-		truncatedTitle := util.Truncate(task.Title, maxTitleLen)
+		truncatedTitle := truncateToVisualWidth(task.Title, maxTitleLen)
 		title := m.highlightTitle(truncatedTitle, task.Title)
 		content := fmt.Sprintf("  %s %s%s%s %s%s", priorityBadge, sourceBadge, projectBadge, urlIndicator, statusMarker, title)
 
@@ -280,7 +280,7 @@ func (m *FocusBoardModel) renderRow(row boardRow, isSelected bool, maxTitleLen i
 			scoreBadge = RenderScoreBadge(task, profile)
 		}
 
-		truncatedTitle := util.Truncate(task.Title, maxTitleLen)
+		truncatedTitle := truncateToVisualWidth(task.Title, maxTitleLen)
 		title := m.highlightTitle(truncatedTitle, task.Title)
 		statusIcon := GetStatusBadge(string(task.Status), task.Status.Icon())
 		content := fmt.Sprintf("  %s %s %s%s %s", statusIcon, priorityBadge, projectBadge, typeIcon, title)

@@ -1,9 +1,10 @@
 package tui
 
 import (
-	tea "charm.land/bubbletea/v2"
 	"fmt"
 	"strings"
+
+	tea "charm.land/bubbletea/v2"
 
 	"charm.land/lipgloss/v2"
 
@@ -729,10 +730,7 @@ func (m *WorkflowRuleCreatorModel) renderSelector(fields []workflow.TriggerField
 	}
 
 	for i := start; i < end; i++ {
-		display := string(fields[i])
-		if len(display) > 18 {
-			display = display[:15] + "..."
-		}
+		display := truncateToVisualWidth(string(fields[i]), 18)
 
 		if i == cursor {
 			if focused {
@@ -805,10 +803,7 @@ func (m *WorkflowRuleCreatorModel) renderActionSelector(cursor int, focused bool
 	}
 
 	for i := start; i < end; i++ {
-		display := string(m.actionTypes[i])
-		if len(display) > 16 {
-			display = display[:13] + "..."
-		}
+		display := truncateToVisualWidth(string(m.actionTypes[i]), 16)
 
 		if i == cursor {
 			if focused {

@@ -101,8 +101,8 @@ func renderScoreCardContent(task *models.Task, profile *scoring.ScoringProfile, 
 
 	maxNameWidth := 0
 	for _, r := range results {
-		if len(r.DimensionName) > maxNameWidth {
-			maxNameWidth = len(r.DimensionName)
+		if width := lipgloss.Width(r.DimensionName); width > maxNameWidth {
+			maxNameWidth = width
 		}
 	}
 	if maxNameWidth > innerWidth-16 {
@@ -110,10 +110,7 @@ func renderScoreCardContent(task *models.Task, profile *scoring.ScoringProfile, 
 	}
 
 	for _, r := range results {
-		name := r.DimensionName
-		if len(name) > maxNameWidth {
-			name = name[:maxNameWidth]
-		}
+		name := truncateToVisualWidth(r.DimensionName, maxNameWidth)
 
 		valStr := fmt.Sprintf("%d", r.Value)
 
@@ -135,7 +132,7 @@ func renderScoreCardContent(task *models.Task, profile *scoring.ScoringProfile, 
 			roleStr = MutedStyle.Render(" [d]")
 		}
 
-		padding := max(maxNameWidth-len(name), 0)
+		padding := max(maxNameWidth-lipgloss.Width(name), 0)
 		line := fmt.Sprintf("%s%s %s %s%s",
 			MutedStyle.Render(name), strings.Repeat(" ", padding),
 			valStr, sourceLabel, roleStr)

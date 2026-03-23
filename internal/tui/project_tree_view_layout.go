@@ -8,7 +8,6 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
-	"github.com/sglavoie/tt/internal/util"
 )
 
 // renderFullWidth renders the traditional full-width tree view (sidebar disabled).
@@ -56,7 +55,7 @@ func (m *ProjectTreeModel) renderFullWidth() string {
 
 	// Focus mode indicator
 	if m.focusedTask != nil {
-		focusIndicator := fmt.Sprintf("[Focus: #%d %s]", m.focusedTask.ShortID, util.Truncate(m.focusedTask.Title, FocusTitleMaxWidth))
+		focusIndicator := fmt.Sprintf("[Focus: #%d %s]", m.focusedTask.ShortID, truncateToVisualWidth(m.focusedTask.Title, FocusTitleMaxWidth))
 		b.WriteString(FocusModeStyle.Render(focusIndicator))
 		b.WriteString(" ")
 		b.WriteString(HelpStyle.Render("(Esc to exit)"))
@@ -299,7 +298,7 @@ func (m *ProjectTreeModel) renderTreeContent(width int) string {
 
 	// Focus mode indicator
 	if m.focusedTask != nil {
-		focusIndicator := fmt.Sprintf("[Focus: #%d %s]", m.focusedTask.ShortID, util.Truncate(m.focusedTask.Title, FocusTitleMaxWidth))
+		focusIndicator := fmt.Sprintf("[Focus: #%d %s]", m.focusedTask.ShortID, truncateToVisualWidth(m.focusedTask.Title, FocusTitleMaxWidth))
 		b.WriteString(FocusModeStyle.Render(focusIndicator))
 		b.WriteString(" ")
 		b.WriteString(HelpStyle.Render("(Esc to exit)"))

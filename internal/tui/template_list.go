@@ -451,10 +451,7 @@ func (m *TaskTemplatesModel) renderTemplatesList(paneHeight int) string {
 		}
 
 		// Template name - use full available width
-		name := t.Name
-		if len(name) > effectiveMaxLen {
-			name = name[:effectiveMaxLen-3] + "..."
-		}
+		name := truncateToVisualWidth(t.Name, max(effectiveMaxLen, 1))
 
 		if i == m.cursor {
 			line := SelectedItemTextStyle.Render(fmt.Sprintf("▸ %s %s%s", status, defaultMarker, name))
@@ -463,10 +460,8 @@ func (m *TaskTemplatesModel) renderTemplatesList(paneHeight int) string {
 			// Show summary for selected template on narrow screens only
 			if !m.isWideScreen() {
 				summary := t.Summary()
-				maxSummaryLen := max(m.Width()-8, 20)
-				if len(summary) > maxSummaryLen {
-					summary = summary[:maxSummaryLen-3] + "..."
-				}
+				maxSummaryLen := max(m.Width()-8, 1)
+				summary = truncateToVisualWidth(summary, maxSummaryLen)
 				rowBuilder.WriteString(MutedStyle.Render(fmt.Sprintf("    %s", summary)))
 				rowBuilder.WriteString("\n")
 			}

@@ -1,10 +1,11 @@
 package tui
 
 import (
-	tea "charm.land/bubbletea/v2"
 	"fmt"
 	"strings"
 	"time"
+
+	tea "charm.land/bubbletea/v2"
 
 	"charm.land/lipgloss/v2"
 	"github.com/guptarohit/asciigraph"
@@ -221,10 +222,7 @@ func (m *MetricsDashboardModel) renderBlockedTab(height int) string {
 
 	for i := start; i < end; i++ {
 		entry := b.Entries[i]
-		title := entry.Task.Title
-		if len(title) > 38 {
-			title = title[:35] + "..."
-		}
+		title := truncateToVisualWidth(entry.Task.Title, 38)
 
 		prefix := "  "
 		style := NormalStyle

@@ -9,7 +9,6 @@ import (
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/util"
 )
 
 // inboxBoxStyle returns a compact box style with no vertical padding.
@@ -95,15 +94,16 @@ func renderInboxTaskDisplay(task *models.Task, width int, willLeave bool, projec
 
 	// Title: #ID prefix on first line, wraps to 2 lines then truncates
 	prefix := fmt.Sprintf("#%d  ", task.ShortID)
-	titleWidth := inner - len(prefix)
+	titleWidth := inner - lipgloss.Width(prefix)
 	if willLeave {
-		titleWidth -= len("  ↗ Triaged")
+		titleWidth -= lipgloss.Width("  ↗ Triaged")
 	}
+	titleWidth = max(titleWidth, 1)
 	wrapped := lipgloss.NewStyle().Width(titleWidth).Render(task.Title)
 	rawLines := strings.Split(wrapped, "\n")
 	if len(rawLines) > 2 {
 		rawLines = rawLines[:2]
-		rawLines[1] = util.Truncate(rawLines[1], titleWidth-3) + "..."
+		rawLines[1] = truncateToVisualWidth(strings.TrimRight(rawLines[1], " "), titleWidth)
 	}
 	titleLines := make([]string, 2)
 	copy(titleLines, rawLines)
@@ -149,7 +149,7 @@ func renderInboxTaskDisplay(task *models.Task, width int, willLeave bool, projec
 		lines := strings.Split(rendered, "\n")
 		if len(lines) > 3 {
 			lines = lines[:3]
-			lines[2] = util.Truncate(lines[2], inner-3) + "..."
+			lines[2] = truncateToVisualWidth(strings.TrimRight(lines[2], " "), inner)
 		}
 		copy(descLines, lines)
 	}
@@ -162,9 +162,9 @@ func renderInboxTaskDisplay(task *models.Task, width int, willLeave bool, projec
 	// Wrap in compact box style; use selected (blue border) if triaged
 	content := b.String()
 	if willLeave {
-		return inboxSelectedBoxStyle().Render(content)
+		return inboxSelectedBoxStyle().Width(inner).Render(content)
 	}
-	return inboxBoxStyle().Render(content)
+	return inboxBoxStyle().Width(inner).Render(content)
 }
 
 // renderInboxCurrentSettings renders the current task settings as a vertical label-value layout.

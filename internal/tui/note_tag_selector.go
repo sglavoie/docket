@@ -25,10 +25,7 @@ type NoteTagSelectorModel struct {
 func NewNoteTagSelectorModel(note *models.Note, project *models.Project, notesDir string, isGlobal bool, currentTags []string) *NoteTagSelectorModel {
 	tags := buildNoteTagList(project, notesDir)
 
-	titleStr := note.Title
-	if len(titleStr) > 30 {
-		titleStr = titleStr[:27] + "..."
-	}
+	titleStr := truncateToVisualWidth(note.Title, 30)
 
 	picker := NewBasePicker(tags, PickerConfig{
 		Title:          fmt.Sprintf("Tags for: %s", titleStr),

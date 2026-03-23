@@ -773,10 +773,8 @@ func (m *TaskAttachmentsModel) View() tea.View {
 			} else {
 				name = att.Filename
 			}
-			maxLen := max(m.Width()-8, 40)
-			if len(name) > maxLen {
-				name = name[:maxLen-3] + "..."
-			}
+			maxLen := max(m.Width()-8, 1)
+			name = truncateToVisualWidth(name, maxLen)
 			entry.WriteString("      ")
 			entry.WriteString(name)
 			entry.WriteString("\n")
@@ -784,9 +782,7 @@ func (m *TaskAttachmentsModel) View() tea.View {
 			// Original path (only for regular files, not URLs or code refs)
 			if !att.IsURL && !att.IsCodeRef {
 				origPath := att.OriginalPath
-				if len(origPath) > maxLen {
-					origPath = origPath[:maxLen-3] + "..."
-				}
+				origPath = truncateToVisualWidth(origPath, maxLen)
 				entry.WriteString("      ")
 				entry.WriteString(MutedStyle.Render("from: " + origPath))
 				entry.WriteString("\n")

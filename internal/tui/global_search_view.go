@@ -1,9 +1,10 @@
 package tui
 
 import (
-	tea "charm.land/bubbletea/v2"
 	"fmt"
 	"strings"
+
+	tea "charm.land/bubbletea/v2"
 
 	"charm.land/lipgloss/v2"
 
@@ -216,13 +217,13 @@ func (m *GlobalSearchModel) renderTaskList(paneHeight int) string {
 		// Handle note results
 		if result.IsNote() {
 			note := result.Note
-			projectSlug := util.Truncate(result.Project.Slug, 8)
+			projectSlug := truncateToVisualWidth(result.Project.Slug, 8)
 			projectName := MutedStyle.Render(fmt.Sprintf("[%s]", projectSlug))
 			noteIcon := MutedStyle.Render("[N]")
 			prefix := fmt.Sprintf("%s%s %s ", cursor, noteIcon, projectName)
 			prefixWidth := lipgloss.Width(prefix)
-			maxTitleLen := max(m.listWidth-prefixWidth-2, 10)
-			title := util.Truncate(note.Title, maxTitleLen)
+			maxTitleLen := max(m.listWidth-prefixWidth-2, 1)
+			title := truncateToVisualWidth(note.Title, maxTitleLen)
 			var titleRendered string
 			if len(fr.titlePositions) > 0 {
 				titleRunes := []rune(title)
@@ -237,6 +238,26 @@ func (m *GlobalSearchModel) renderTaskList(paneHeight int) string {
 				titleRendered = title
 			}
 			line := prefix + titleRendered
+			lineWidth := lipgloss.Width(line)
+			if lineWidth > m.listWidth {
+				excess := lineWidth - m.listWidth + 1
+				if lipgloss.Width(title) > excess {
+					title = truncateToVisualWidth(note.Title, maxTitleLen-excess)
+					if len(fr.titlePositions) > 0 {
+						titleRunes := []rune(title)
+						var validPositions []int
+						for _, p := range fr.titlePositions {
+							if p < len(titleRunes) {
+								validPositions = append(validPositions, p)
+							}
+						}
+						titleRendered = HighlightText(title, validPositions, NormalStyle)
+					} else {
+						titleRendered = title
+					}
+					line = prefix + titleRendered
+				}
+			}
 			b.WriteString(line)
 			b.WriteString("\n")
 			continue
@@ -258,7 +279,7 @@ func (m *GlobalSearchModel) renderTaskList(paneHeight int) string {
 		statusIcon := GetStatusBadge(string(task.Status), task.Status.Icon())
 
 		// Project name (truncated to 8 chars to save space)
-		projectSlug := util.Truncate(result.Project.Slug, 8)
+		projectSlug := truncateToVisualWidth(result.Project.Slug, 8)
 		projectName := MutedStyle.Render(fmt.Sprintf("[%s]", projectSlug))
 
 		// Short ID
@@ -270,8 +291,8 @@ func (m *GlobalSearchModel) renderTaskList(paneHeight int) string {
 
 		// Title (truncated) - use measured prefix width for accuracy
 		// Subtract extra buffer to ensure no wrapping
-		maxTitleLen := max(m.listWidth-prefixWidth-2, 10)
-		title := util.Truncate(task.Title, maxTitleLen)
+		maxTitleLen := max(m.listWidth-prefixWidth-2, 1)
+		title := truncateToVisualWidth(task.Title, maxTitleLen)
 
 		// Adjust positions for truncated title and apply highlighting
 		var titleRendered string
@@ -300,8 +321,8 @@ func (m *GlobalSearchModel) renderTaskList(paneHeight int) string {
 		if lineWidth > m.listWidth {
 			// Truncate title further if still too wide (recalculate without highlighting)
 			excess := lineWidth - m.listWidth + 3
-			if len(title) > excess {
-				title = util.Truncate(task.Title, maxTitleLen-excess)
+			if lipgloss.Width(title) > excess {
+				title = truncateToVisualWidth(task.Title, maxTitleLen-excess)
 				// Re-apply highlighting with new truncated title
 				if len(fr.titlePositions) > 0 {
 					titleRunes := []rune(title)
@@ -345,7 +366,8 @@ func (m *GlobalSearchModel) renderPreview() string {
 		b.WriteString(MutedStyle.Render("Project: "))
 		b.WriteString(BoldStyle.Render(project.Name))
 		b.WriteString("\n\n")
-		b.WriteString(TaskJumperPreviewHeaderStyle.Render("Note: " + result.Note.Title))
+		noteHeader := "Note: " + truncateToVisualWidth(result.Note.Title, max(m.previewWidth-8, 1))
+		b.WriteString(TaskJumperPreviewHeaderStyle.Render(noteHeader))
 		b.WriteString("\n\n")
 		if len(result.Note.Tags) > 0 {
 			fmt.Fprintf(&b, "%s %s\n", MutedStyle.Render("Tags:"), strings.Join(result.Note.Tags, ", "))
@@ -375,11 +397,11 @@ func (m *GlobalSearchModel) renderPreview() string {
 	titlePrefix := fmt.Sprintf("%s #%d: ", task.Type.HeadingPrefix(), task.ShortID)
 	maxTitleLen := max(
 		// -4 for padding/margin
-		m.previewWidth-len(titlePrefix)-4, 10)
+		m.previewWidth-lipgloss.Width(titlePrefix)-4, 10)
 	header := fmt.Sprintf("%s #%d: %s",
 		typeStyle.Render(task.Type.HeadingPrefix()),
 		task.ShortID,
-		util.Truncate(task.Title, maxTitleLen))
+		truncateToVisualWidth(task.Title, maxTitleLen))
 	b.WriteString(TaskJumperPreviewHeaderStyle.Render(header))
 	b.WriteString("\n\n")
 
@@ -428,7 +450,7 @@ func (m *GlobalSearchModel) renderPreview() string {
 		parentRef := fmt.Sprintf("#%d: %s", task.Parent.ShortID, task.Parent.Title)
 		fmt.Fprintf(&b, "%s %s\n",
 			MutedStyle.Render("Parent:"),
-			MutedStyle.Render(util.Truncate(parentRef, m.previewWidth-10)))
+			MutedStyle.Render(truncateToVisualWidth(parentRef, m.previewWidth-10)))
 	}
 
 	// Description (truncated)

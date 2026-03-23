@@ -335,11 +335,11 @@ func (m *HelpViewModel) renderContent() string {
 	// Calculate column widths based on viewport width (not full width)
 	// Each column: keyWidth + separator(2) + descWidth
 	// Total: 2 * (keyWidth + 2 + descWidth) + columnGap(4)
-	contentWidth := max(m.viewport.Width(), 40)
+	contentWidth := max(m.viewport.Width(), 1)
 	keyWidth := 12
 	columnGap := 4
 	columnOverhead := keyWidth + 2 // key + separator
-	descWidth := max((contentWidth-2*columnOverhead-columnGap)/2, 20)
+	descWidth := max((contentWidth-2*columnOverhead-columnGap)/2, 1)
 	columnWidth := keyWidth + 2 + descWidth
 
 	keyStyle := lipgloss.NewStyle().

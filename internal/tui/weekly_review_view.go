@@ -1,13 +1,12 @@
 package tui
 
 import (
-	tea "charm.land/bubbletea/v2"
 	"fmt"
 	"strings"
 
-	"charm.land/lipgloss/v2"
+	tea "charm.land/bubbletea/v2"
 
-	"github.com/sglavoie/tt/internal/util"
+	"charm.land/lipgloss/v2"
 )
 
 func (m *WeeklyReviewModel) View() tea.View {
@@ -265,8 +264,6 @@ func (m *WeeklyReviewModel) renderProjectLine(wp WeeklyReviewProject, section We
 		cursor = "> "
 	}
 
-	name := util.Truncate(wp.Project.Name, 25)
-
 	var badges []string
 	switch section {
 	case WeeklySectionStaleProjects:
@@ -295,14 +292,29 @@ func (m *WeeklyReviewModel) renderProjectLine(wp WeeklyReviewProject, section We
 		badgeStr = "  " + strings.Join(badges, "  ")
 	}
 
+	maxNameWidth := 25
+	if m.width > 0 {
+		maxNameWidth = min(maxNameWidth, max(m.width-lipgloss.Width(cursor)-lipgloss.Width(badgeStr), 1))
+	}
+	name := truncateToVisualWidth(wp.Project.Name, maxNameWidth)
+
 	line := fmt.Sprintf("%s%s%s", cursor, name, badgeStr)
+	if m.width > 0 && lipgloss.Width(line) > m.width {
+		excess := lipgloss.Width(line) - m.width
+		name = truncateToVisualWidth(wp.Project.Name, max(maxNameWidth-excess, 1))
+		line = fmt.Sprintf("%s%s%s", cursor, name, badgeStr)
+	}
 
 	if isSelected {
 		selStyle := SelectedStyle
 		if m.cursorFlash {
 			selStyle = selStyle.Background(ColorFlashBg)
 		}
-		line = selStyle.Render(line)
+		if m.width > 0 {
+			line = selStyle.Width(m.width).Render(line)
+		} else {
+			line = selStyle.Render(line)
+		}
 	}
 
 	return line

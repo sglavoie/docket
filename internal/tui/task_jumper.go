@@ -7,6 +7,7 @@ import (
 
 	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 
 	"github.com/sglavoie/tt/internal/fuzzy"
 	"github.com/sglavoie/tt/internal/models"
@@ -86,13 +87,16 @@ func (m *TaskJumperModel) SetSize(width, height int) {
 	// cardWidth = viewWidth - 4 (margin)
 	// lipgloss Width = cardWidth - 2 (border adds 2 to total)
 	// usable text area = Width - 4 (padding inside) = viewWidth - 10
-	innerWidth := max(width-10, 60)
+	innerWidth := max(width-10, 1)
 
 	// Calculate split pane widths: 50/50 based on inner width
-	m.listWidth = max(innerWidth*50/100, 30)
+	m.listWidth = max(innerWidth*50/100, 1)
 	m.previewWidth = innerWidth - m.listWidth - 1 // -1 for separator
+	if m.previewWidth < 1 {
+		m.previewWidth = 1
+	}
 
-	m.searchInput.SetWidth(innerWidth - 4)
+	m.searchInput.SetWidth(max(innerWidth-4, 1))
 }
 
 func (m *TaskJumperModel) Init() tea.Cmd {
@@ -304,10 +308,9 @@ func (m *TaskJumperModel) renderTaskList() string {
 		// Short ID
 		shortID := MutedStyle.Render(fmt.Sprintf("#%-4d", task.ShortID))
 
-		// Title (truncated) with highlighting
-		// Account for: cursor(2) + icons(4) + spaces(3) + ID(5) = 14
-		maxTitleLen := max(m.listWidth-14, 10)
-		title := util.Truncate(task.Title, maxTitleLen)
+		prefix := fmt.Sprintf("%s%s %s%s %s ", cursor, typeIcon, stageSegment, statusIcon, shortID)
+		maxTitleLen := max(m.listWidth-lipgloss.Width(prefix), 1)
+		title := truncateToVisualWidth(task.Title, maxTitleLen)
 
 		// Adjust positions for truncated title and apply highlighting
 		var titleRendered string
@@ -325,8 +328,26 @@ func (m *TaskJumperModel) renderTaskList() string {
 			titleRendered = title
 		}
 
-		// Build line
-		line := fmt.Sprintf("%s%s %s%s %s %s", cursor, typeIcon, stageSegment, statusIcon, shortID, titleRendered)
+		line := prefix + titleRendered
+		if lipgloss.Width(line) > m.listWidth {
+			excess := lipgloss.Width(line) - m.listWidth
+			if lipgloss.Width(title) > excess {
+				title = truncateToVisualWidth(task.Title, max(maxTitleLen-excess, 1))
+				if len(ft.titlePositions) > 0 {
+					titleRunes := []rune(title)
+					var validPositions []int
+					for _, p := range ft.titlePositions {
+						if p < len(titleRunes) {
+							validPositions = append(validPositions, p)
+						}
+					}
+					titleRendered = HighlightText(title, validPositions, NormalStyle)
+				} else {
+					titleRendered = title
+				}
+				line = prefix + titleRendered
+			}
+		}
 
 		if i == m.cursor {
 			line = TaskJumperSelectedStyle.Render(line)
@@ -353,11 +374,11 @@ func (m *TaskJumperModel) renderPreview() string {
 	titlePrefix := fmt.Sprintf("%s #%d: ", task.Type.HeadingPrefix(), task.ShortID)
 	maxTitleLen := max(
 		// -4 for padding/margin
-		m.previewWidth-len(titlePrefix)-4, 10)
+		m.previewWidth-lipgloss.Width(titlePrefix)-4, 10)
 	header := fmt.Sprintf("%s #%d: %s",
 		typeStyle.Render(task.Type.HeadingPrefix()),
 		task.ShortID,
-		util.Truncate(task.Title, maxTitleLen))
+		truncateToVisualWidth(task.Title, maxTitleLen))
 	b.WriteString(TaskJumperPreviewHeaderStyle.Render(header))
 	b.WriteString("\n\n")
 
@@ -406,7 +427,7 @@ func (m *TaskJumperModel) renderPreview() string {
 		parentRef := fmt.Sprintf("#%d: %s", task.Parent.ShortID, task.Parent.Title)
 		fmt.Fprintf(&b, "%s %s\n",
 			MutedStyle.Render("Parent:"),
-			MutedStyle.Render(util.Truncate(parentRef, m.previewWidth-10)))
+			MutedStyle.Render(truncateToVisualWidth(parentRef, m.previewWidth-10)))
 	}
 
 	// Description (truncated)

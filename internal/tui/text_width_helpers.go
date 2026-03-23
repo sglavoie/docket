@@ -4,7 +4,21 @@ import (
 	"strings"
 
 	"charm.land/lipgloss/v2"
+	"github.com/charmbracelet/x/ansi"
 )
+
+func truncateToVisualWidth(text string, width int) string {
+	if width <= 0 {
+		return ""
+	}
+	if lipgloss.Width(text) <= width {
+		return text
+	}
+	if width < 2 {
+		return ansi.Truncate(text, width, "")
+	}
+	return ansi.Truncate(text, width-1, "") + "…"
+}
 
 func leftPadToWidth(text string, width int) string {
 	visualWidth := lipgloss.Width(text)

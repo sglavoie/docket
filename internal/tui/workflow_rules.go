@@ -487,10 +487,7 @@ func (m *WorkflowRulesModel) renderRulesList(paneHeight int) string {
 		}
 
 		// Rule name - use full available width
-		name := rule.Name
-		if len(name) > effectiveMaxLen {
-			name = name[:effectiveMaxLen-3] + "..."
-		}
+		name := truncateToVisualWidth(rule.Name, max(effectiveMaxLen, 1))
 
 		if i == m.cursor {
 			prefix := fmt.Sprintf("▸ %s %s", status, defaultMarker)
@@ -505,10 +502,8 @@ func (m *WorkflowRulesModel) renderRulesList(paneHeight int) string {
 			// Show summary for selected rule on narrow screens only
 			if !m.isWideScreen() {
 				summary := rule.Summary()
-				maxSummaryLen := max(m.Width()-8, 20)
-				if len(summary) > maxSummaryLen {
-					summary = summary[:maxSummaryLen-3] + "..."
-				}
+				maxSummaryLen := max(m.Width()-8, 1)
+				summary = truncateToVisualWidth(summary, maxSummaryLen)
 				var summaryRendered string
 				if m.searchQuery != "" {
 					summaryRendered = HighlightSubstring(summary, m.searchQuery, MutedStyle)

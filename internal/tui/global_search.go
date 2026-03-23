@@ -190,13 +190,16 @@ func (m *GlobalSearchModel) SetSize(width, height int) {
 	// cardWidth = viewWidth - 4 (margin)
 	// lipgloss Width = cardWidth - 2 (border adds 2 to total)
 	// usable text area = Width - 4 (padding inside) = viewWidth - 10
-	innerWidth := max(width-10, 60)
+	innerWidth := max(width-10, 1)
 
 	// Calculate split pane widths: 50/50 based on inner width
-	m.listWidth = max(innerWidth*50/100, 30)
+	m.listWidth = max(innerWidth*50/100, 1)
 	m.previewWidth = innerWidth - m.listWidth - 1 // -1 for separator
+	if m.previewWidth < 1 {
+		m.previewWidth = 1
+	}
 
-	m.searchInput.SetWidth(innerWidth - 4)
+	m.searchInput.SetWidth(max(innerWidth-4, 1))
 }
 
 func (m *GlobalSearchModel) Init() tea.Cmd {

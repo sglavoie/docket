@@ -328,7 +328,7 @@ func renderSidebarAttachmentsCard(task *models.Task, width int) string {
 		if i > 0 {
 			lines = append(lines, "") // spacer between attachments
 		}
-		displayName := util.Truncate(attachment.Filename, maxLen)
+		displayName := truncateToVisualWidth(attachment.Filename, maxLen)
 		if attachment.IsURL {
 			link := Hyperlink(attachment.Filename, displayName)
 			lines = append(lines, MutedStyle.Render("🔗 ")+link)
@@ -418,25 +418,21 @@ func formatSidebarLinkedTask(linked sidebarLinkedTask, innerWidth int, cursor, i
 
 	depStatus := GetStatusStyle(string(linked.Task.Status))
 
-	titleWidth := innerWidth - 12
+	projectName := ""
+	prefix := cursorStr
 	if linked.Project != nil {
-		titleWidth -= len(linked.Project.Name) + 3
+		projectName = truncateToVisualWidth(linked.Project.Name, max(innerWidth/3, 8))
+		prefix += MutedStyle.Render(fmt.Sprintf("[%s] ", projectName))
 	}
-	if titleWidth < 10 {
-		titleWidth = 10
+	prefix += fmt.Sprintf("#%-3d %s ", linked.Task.ShortID, depStatus.Render(linked.Task.Status.Icon()))
+	titleWidth := max(innerWidth-lipgloss.Width(prefix), 1)
+	if linked.Project != nil && titleWidth < 6 {
+		projectName = truncateToVisualWidth(linked.Project.Name, max(innerWidth/4, 4))
+		prefix = cursorStr + MutedStyle.Render(fmt.Sprintf("[%s] ", projectName)) + fmt.Sprintf("#%-3d %s ", linked.Task.ShortID, depStatus.Render(linked.Task.Status.Icon()))
+		titleWidth = max(innerWidth-lipgloss.Width(prefix), 1)
 	}
 
-	var line string
-	if linked.Project != nil {
-		projectLabel := MutedStyle.Render(fmt.Sprintf("[%s] ", linked.Project.Name))
-		line = fmt.Sprintf("%s%s#%-3d %s %s",
-			cursorStr, projectLabel, linked.Task.ShortID, depStatus.Render(linked.Task.Status.Icon()),
-			util.Truncate(linked.Task.Title, titleWidth))
-	} else {
-		line = fmt.Sprintf("%s#%-3d %s %s",
-			cursorStr, linked.Task.ShortID, depStatus.Render(linked.Task.Status.Icon()),
-			util.Truncate(linked.Task.Title, titleWidth))
-	}
+	line := prefix + truncateToVisualWidth(linked.Task.Title, titleWidth)
 
 	if cursor && isFocused {
 		line = BoldStyle.Render(line)
@@ -558,7 +554,7 @@ func formatTaskAttributes(task *models.Task, maxWidth int) []string {
 				lines = append(lines, MutedStyle.Render("Reproducible: ")+string(task.BugAttrs.Reproducible))
 			}
 			if task.BugAttrs.Workaround != "" {
-				preview := util.Truncate(task.BugAttrs.Workaround, maxWidth-12)
+				preview := truncateToVisualWidth(task.BugAttrs.Workaround, maxWidth-12)
 				preview = strings.ReplaceAll(preview, "\n", " ")
 				lines = append(lines, MutedStyle.Render("Workaround: ")+preview)
 			}
@@ -593,7 +589,7 @@ func formatTaskAttributes(task *models.Task, maxWidth int) []string {
 				lines = append(lines, MutedStyle.Render("Points: ")+fmt.Sprintf("%d", task.StoryAttrs.StoryPoints))
 			}
 			if task.StoryAttrs.Persona != "" {
-				preview := util.Truncate(task.StoryAttrs.Persona, maxWidth-9)
+				preview := truncateToVisualWidth(task.StoryAttrs.Persona, maxWidth-9)
 				preview = strings.ReplaceAll(preview, "\n", " ")
 				lines = append(lines, MutedStyle.Render("Persona: ")+preview)
 			}
@@ -604,11 +600,11 @@ func formatTaskAttributes(task *models.Task, maxWidth int) []string {
 				lines = append(lines, MutedStyle.Render("Scope: ")+string(task.EpicAttrs.Scope))
 			}
 			if task.EpicAttrs.Milestone != "" {
-				preview := util.Truncate(task.EpicAttrs.Milestone, maxWidth-11)
+				preview := truncateToVisualWidth(task.EpicAttrs.Milestone, maxWidth-11)
 				lines = append(lines, MutedStyle.Render("Milestone: ")+preview)
 			}
 			if task.EpicAttrs.SuccessMetrics != "" {
-				preview := util.Truncate(task.EpicAttrs.SuccessMetrics, maxWidth-9)
+				preview := truncateToVisualWidth(task.EpicAttrs.SuccessMetrics, maxWidth-9)
 				preview = strings.ReplaceAll(preview, "\n", " ")
 				lines = append(lines, MutedStyle.Render("Metrics: ")+preview)
 			}

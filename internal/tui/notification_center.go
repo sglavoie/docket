@@ -6,6 +6,8 @@ import (
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
+	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/alerts"
 )
@@ -486,16 +488,19 @@ func (m *NotificationCenterModel) severityPrefix(item alertCenterItem) string {
 	}
 }
 
-// truncateToWidth truncates a plain-text string to maxWidth runes, adding "…" if truncated.
+// truncateToWidth truncates a plain-text string to maxWidth terminal columns,
+// adding "…" if truncated.
 func truncateToWidth(s string, maxWidth int) string {
-	runes := []rune(s)
-	if len(runes) <= maxWidth {
+	if maxWidth <= 0 {
+		return ""
+	}
+	if lipgloss.Width(s) <= maxWidth {
 		return s
 	}
 	if maxWidth < 2 {
-		return string(runes[:maxWidth])
+		return ansi.Truncate(s, maxWidth, "")
 	}
-	return string(runes[:maxWidth-1]) + "…"
+	return ansi.Truncate(s, maxWidth-1, "") + "…"
 }
 
 var alertDetailsStyle = InfoStatusStyle
@@ -508,26 +513,11 @@ func (m *NotificationCenterModel) styleAlertLine(line, title, details string) st
 	}
 	// The separator between title and details is "  " (two spaces)
 	sep := "  "
-	titleLen := len([]rune(title))
-	lineRunes := []rune(line)
-
-	// If the line is shorter than or equal to the title, no details are visible
-	if len(lineRunes) <= titleLen {
+	parts := strings.SplitN(line, sep, 2)
+	if len(parts) < 2 {
 		return line
 	}
-
-	// Check if the separator is present right after the title
-	sepStart := titleLen
-	sepEnd := sepStart + len([]rune(sep))
-	if sepEnd <= len(lineRunes) && string(lineRunes[sepStart:sepEnd]) == sep {
-		// Title + sep + details portion
-		titlePart := string(lineRunes[:sepStart])
-		detailsPart := string(lineRunes[sepEnd:])
-		return titlePart + sep + alertDetailsStyle.Render(detailsPart)
-	}
-
-	// For wrapped continuation lines that are entirely within details
-	return alertDetailsStyle.Render(line)
+	return parts[0] + sep + alertDetailsStyle.Render(parts[1])
 }
 
 // AlertCenterNavigateMsg requests navigation from the alert center to a task/project.

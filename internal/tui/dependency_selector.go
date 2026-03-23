@@ -5,9 +5,9 @@ import (
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/util"
 )
 
 // DependencySelectorModel allows toggling dependencies for a task.
@@ -155,8 +155,11 @@ func (m *DependencySelectorModel) View() tea.View {
 
 	var b strings.Builder
 
-	subtitle := fmt.Sprintf("Task #%d: %s", m.task.ShortID, util.Truncate(m.task.Title, 40))
-	b.WriteString(renderFullscreenTitle("Dependencies", subtitle))
+	title := "Dependencies"
+	subtitle := fmt.Sprintf("Task #%d: %s", m.task.ShortID, m.task.Title)
+	availableSubtitleWidth := max(m.Width()-lipgloss.Width(title)-2, 1)
+	subtitle = truncateToVisualWidth(subtitle, availableSubtitleWidth)
+	b.WriteString(renderFullscreenTitle(title, subtitle))
 	b.WriteString("\n\n")
 
 	// Search bar
@@ -237,12 +240,10 @@ func (m *DependencySelectorModel) renderTaskList() string {
 
 		// Task info
 		idStr := MutedStyle.Render(fmt.Sprintf("#%d", t.ShortID))
-		title := t.Title
-		if len(title) > 50 {
-			title = title[:47] + "..."
-		}
+		prefix := fmt.Sprintf("%s%s %s %s%s %s ", cursor, checkbox, typeIcon, stageSegment, statusIcon, idStr)
+		title := truncateToVisualWidth(t.Title, max(m.Width()-lipgloss.Width(prefix), 1))
 
-		line := fmt.Sprintf("%s%s %s %s%s %s %s", cursor, checkbox, typeIcon, stageSegment, statusIcon, idStr, title)
+		line := prefix + title
 		if i == m.Cursor {
 			line = BoldStyle.Render(line)
 		}

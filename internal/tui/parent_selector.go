@@ -6,10 +6,10 @@ import (
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 
 	"github.com/sglavoie/tt/internal/fuzzy"
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/util"
 )
 
 // ParentPickerItem wraps a Task for parent selection with fuzzy scoring.
@@ -249,8 +249,11 @@ func (m *ParentSelectorModel) selectCurrent() tea.Cmd {
 func (m *ParentSelectorModel) View() tea.View {
 	var b strings.Builder
 
+	title := "Select Parent"
 	subtitle := fmt.Sprintf("%d parent%s available", len(m.allItems), pluralize(len(m.allItems), "", "s"))
-	b.WriteString(renderFullscreenTitle("Select Parent", subtitle))
+	availableSubtitleWidth := max(m.Width()-lipgloss.Width(title)-2, 1)
+	subtitle = truncateToVisualWidth(subtitle, availableSubtitleWidth)
+	b.WriteString(renderFullscreenTitle(title, subtitle))
 	b.WriteString("\n\n")
 
 	// Search input
@@ -328,12 +331,10 @@ func (m *ParentSelectorModel) renderList() string {
 			// Short ID
 			shortID := MutedStyle.Render(fmt.Sprintf("#%-4d", item.Task.ShortID))
 
-			// Title (truncated)
-			maxTitleLen := max(m.Width()-20, 10)
-			title := util.Truncate(item.Task.Title, maxTitleLen)
-
-			// Build line
-			line := fmt.Sprintf("%s%s %s %s", cursor, typeIcon, shortID, title)
+			prefix := fmt.Sprintf("%s%s %s ", cursor, typeIcon, shortID)
+			maxTitleLen := max(m.Width()-lipgloss.Width(prefix), 1)
+			title := truncateToVisualWidth(item.Task.Title, maxTitleLen)
+			line := prefix + title
 
 			if m.Cursor == cursorIdx {
 				line = SelectedItemTextStyle.Render(line)

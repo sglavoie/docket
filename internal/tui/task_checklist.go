@@ -589,7 +589,7 @@ func (m *TaskChecklistModel) View() tea.View {
 	if total > 0 {
 		progressStr = fmt.Sprintf("%d/%d completed", completed, total)
 	}
-	b.WriteString(renderFullscreenTitle(checklistTitle, progressStr))
+	b.WriteString(renderStatusBarFooter(TitleStyle.Render(checklistTitle), MutedStyle.Render(progressStr), m.Width()))
 	b.WriteString("\n\n")
 
 	contentWidth := m.Width() - 4
@@ -631,7 +631,7 @@ func (m *TaskChecklistModel) View() tea.View {
 
 		scrollOffset := calcScrollOffset(m.cursor, maxVisible)
 
-		maxLen := max(contentWidth-8, 40)
+		maxLen := max(contentWidth-8, 1)
 
 		for i := scrollOffset; i < len(m.task.Checklist) && i < scrollOffset+maxVisible; i++ {
 			item := m.task.Checklist[i]
@@ -649,11 +649,8 @@ func (m *TaskChecklistModel) View() tea.View {
 			var entry strings.Builder
 			entry.WriteString(cursor)
 
-			text := item.Text
-			if len(text) > maxLen {
-				text = text[:maxLen-3] + "..."
-			}
-			text = strings.ReplaceAll(text, "\n", " ")
+			text := strings.ReplaceAll(item.Text, "\n", " ")
+			text = truncateToVisualWidth(text, maxLen)
 
 			if i == m.cursor {
 				entry.WriteString(BoldStyle.Render(checkbox + " "))

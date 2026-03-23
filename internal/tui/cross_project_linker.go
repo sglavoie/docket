@@ -6,12 +6,12 @@ import (
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/fuzzy"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
-	"github.com/sglavoie/tt/internal/util"
 )
 
 // CrossProjectLinkerStep represents the current step in the linking process.
@@ -418,10 +418,13 @@ func (m *CrossProjectLinkerModel) createLink() tea.Cmd {
 }
 
 func (m *CrossProjectLinkerModel) View() tea.View {
-	subtitle := fmt.Sprintf("#%d %s", m.sourceTask.ShortID, util.Truncate(m.sourceTask.Title, 30))
+	title := m.getStepTitle()
+	subtitle := fmt.Sprintf("#%d %s", m.sourceTask.ShortID, m.sourceTask.Title)
+	availableSubtitleWidth := max(m.Width()-lipgloss.Width(title)-2, 1)
+	subtitle = truncateToVisualWidth(subtitle, availableSubtitleWidth)
 
 	var out strings.Builder
-	out.WriteString(renderFullscreenTitle(m.getStepTitle(), subtitle))
+	out.WriteString(renderFullscreenTitle(title, subtitle))
 	out.WriteString("\n\n")
 
 	switch m.step {
@@ -488,7 +491,9 @@ func (m *CrossProjectLinkerModel) viewProjectSelection() string {
 			cursor = "> "
 		}
 		contextBadge := MutedStyle.Render(fmt.Sprintf("[%s]", p.Context))
-		line := fmt.Sprintf("%s%s %s", cursor, p.Name, contextBadge)
+		availableNameWidth := max(m.Width()-lipgloss.Width(cursor)-lipgloss.Width(contextBadge)-1, 1)
+		name := truncateToVisualWidth(p.Name, availableNameWidth)
+		line := fmt.Sprintf("%s%s %s", cursor, name, contextBadge)
 		if i == m.projectCursor {
 			line = BoldStyle.Render(line)
 		}
@@ -501,9 +506,9 @@ func (m *CrossProjectLinkerModel) viewProjectSelection() string {
 
 	b.WriteString("\n")
 	if m.IsSearchMode() {
-		b.WriteString(HelpStyle.Render("Type to filter · Enter confirm · Esc cancel"))
+		b.WriteString(HelpStyle.Render(renderWrappingHelpLine("Type to filter · Enter confirm · Esc cancel", m.Width())))
 	} else {
-		b.WriteString(HelpStyle.Render("/ search · j/k navigate · Enter select · Esc cancel"))
+		b.WriteString(HelpStyle.Render(renderWrappingHelpLine("/ search · j/k navigate · Enter select · Esc cancel", m.Width())))
 	}
 
 	return b.String()
@@ -559,8 +564,15 @@ func (m *CrossProjectLinkerModel) viewTaskSelection() string {
 		if stageBadge != "" {
 			stageSegment = stageBadge + " "
 		}
-		title := util.Truncate(t.Title, max(m.Width()-35, 5))
-		line := fmt.Sprintf("%s%s %s %s#%d %s", cursor, statusIcon, typeIcon, stageSegment, t.ShortID, title)
+		prefix := fmt.Sprintf("%s%s %s %s#%d ", cursor, statusIcon, typeIcon, stageSegment, t.ShortID)
+		maxTitleLen := max(m.Width()-lipgloss.Width(prefix), 1)
+		title := truncateToVisualWidth(t.Title, maxTitleLen)
+		line := prefix + title
+		if lipgloss.Width(line) > m.Width() {
+			excess := lipgloss.Width(line) - m.Width()
+			title = truncateToVisualWidth(t.Title, max(maxTitleLen-excess, 1))
+			line = prefix + title
+		}
 		if i == m.taskCursor {
 			line = BoldStyle.Render(line)
 		}
@@ -573,9 +585,9 @@ func (m *CrossProjectLinkerModel) viewTaskSelection() string {
 
 	b.WriteString("\n")
 	if m.IsSearchMode() {
-		b.WriteString(HelpStyle.Render("Type to filter · Enter confirm · Esc cancel"))
+		b.WriteString(HelpStyle.Render(renderWrappingHelpLine("Type to filter · Enter confirm · Esc cancel", m.Width())))
 	} else {
-		b.WriteString(HelpStyle.Render("/ search · j/k navigate · Enter select · Esc back"))
+		b.WriteString(HelpStyle.Render(renderWrappingHelpLine("/ search · j/k navigate · Enter select · Esc back", m.Width())))
 	}
 
 	return b.String()
@@ -587,7 +599,7 @@ func (m *CrossProjectLinkerModel) viewLinkTypeSelection() string {
 	// Show selected project and task
 	b.WriteString(SubtitleStyle.Render(fmt.Sprintf("Project: %s", m.targetProject.Name)))
 	b.WriteString("\n")
-	b.WriteString(MutedStyle.Render(fmt.Sprintf("Task: #%d %s", m.targetTask.ShortID, util.Truncate(m.targetTask.Title, 40))))
+	b.WriteString(MutedStyle.Render(fmt.Sprintf("Task: #%d %s", m.targetTask.ShortID, truncateToVisualWidth(m.targetTask.Title, max(m.Width()-12, 1)))))
 	b.WriteString("\n\n")
 
 	linkTypes := []struct {
@@ -617,7 +629,7 @@ func (m *CrossProjectLinkerModel) viewLinkTypeSelection() string {
 	}
 
 	b.WriteString("\n")
-	b.WriteString(HelpStyle.Render("↑/↓ navigate · Enter create link · Esc back"))
+	b.WriteString(HelpStyle.Render(renderWrappingHelpLine("↑/↓ navigate · Enter create link · Esc back", m.Width())))
 
 	return b.String()
 }

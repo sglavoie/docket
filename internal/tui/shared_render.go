@@ -9,7 +9,6 @@ import (
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/util"
 )
 
 // IndicatorGroupSep is the dim separator rendered between indicator groups.
@@ -74,10 +73,7 @@ func renderTruncatedTags(tags []string, maxTags, maxTagLen int) string {
 		if i >= maxTags {
 			break
 		}
-		display := tag
-		if len(display) > maxTagLen {
-			display = display[:maxTagLen-1] + "…"
-		}
+		display := truncateToVisualWidth(tag, maxTagLen)
 		parts = append(parts, "#"+display)
 	}
 	result := TagInlineStyle.Render(strings.Join(parts, " "))
@@ -211,7 +207,7 @@ func RenderCrossProjectTaskLine(
 	if opts.BadgeColor != nil {
 		badgeStyle = lipgloss.NewStyle().Foreground(opts.BadgeColor)
 	}
-	projectBadge := badgeStyle.Render(fmt.Sprintf("[%s]", util.Truncate(proj.Name, maxProjLen)))
+	projectBadge := badgeStyle.Render(fmt.Sprintf("[%s]", truncateToVisualWidth(proj.Name, maxProjLen)))
 	preBadges := opts.Prefix + projectBadge + " "
 
 	// Build indicator groups
@@ -278,7 +274,7 @@ func (tl TaskLine) Render() string {
 	}
 
 	maxTitleLen := max(tl.MaxTitle, 10)
-	title := util.Truncate(tl.Task.Title, maxTitleLen)
+	title := truncateToVisualWidth(tl.Task.Title, maxTitleLen)
 	if tl.SearchQuery != "" {
 		title = HighlightSubstring(title, tl.SearchQuery, NormalStyle)
 	}
@@ -297,7 +293,13 @@ func (tl TaskLine) Render() string {
 
 	line := fmt.Sprintf("%s%s%s%s %s %s%s%s%s", tl.Prefix, cursor, tl.PreBadges, statusIcon, typeIcon, stageSegment, prioritySegment, title, tl.PostTitle)
 	if tl.DueStr != "" {
-		line = fmt.Sprintf("%-*s %s", max(tl.ViewWidth-15, 0), line, tl.DueStr)
+		if tl.ViewWidth > 0 {
+			leftWidth := max(tl.ViewWidth-lipgloss.Width(tl.DueStr)-1, 1)
+			line = truncateToVisualWidth(line, leftWidth)
+			line += strings.Repeat(" ", max(leftWidth-lipgloss.Width(line), 0)) + " " + tl.DueStr
+		} else {
+			line += " " + tl.DueStr
+		}
 	}
 
 	if tl.IsSelected {

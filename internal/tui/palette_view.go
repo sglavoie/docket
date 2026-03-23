@@ -1,10 +1,11 @@
 package tui
 
 import (
-	tea "charm.land/bubbletea/v2"
 	"fmt"
 	"strings"
 	"time"
+
+	tea "charm.land/bubbletea/v2"
 
 	"charm.land/lipgloss/v2"
 
@@ -243,7 +244,7 @@ func (m *CommandPaletteModel) renderActionList() string {
 	}
 
 	var b strings.Builder
-	contentWidth := max(m.listWidth-4, 40)
+	contentWidth := max(m.listWidth-4, 1)
 
 	// Calculate max visible items based on pane height
 	paneHeight := max(m.height-8, 5)
@@ -292,7 +293,7 @@ func (m *CommandPaletteModel) renderActionItem(action PaletteAction, selected bo
 	keyHintLen := 0
 	if action.KeyHint != "" {
 		keyHint = action.KeyHint
-		keyHintLen = len(keyHint) + 2 // +2 for spacing
+		keyHintLen = lipgloss.Width(keyHint) + 2 // +2 for spacing
 	}
 
 	// Calculate remaining width for name using actual icon width
@@ -300,13 +301,10 @@ func (m *CommandPaletteModel) renderActionItem(action PaletteAction, selected bo
 	nameWidth := max(width-fixedWidth, 10)
 
 	// Truncate name if needed
-	name := action.Name
-	if len(name) > nameWidth {
-		name = name[:nameWidth-1] + "…"
-	}
+	name := truncateToVisualWidth(action.Name, nameWidth)
 
 	// Calculate gap for right-alignment
-	gap := max(nameWidth-len(name), 1)
+	gap := max(nameWidth-lipgloss.Width(name), 1)
 
 	// Build the line
 	var line strings.Builder
@@ -446,7 +444,7 @@ func (m *CommandPaletteModel) renderItemList() string {
 	}
 
 	// Available width for content - use listWidth, not full width
-	contentWidth := max(m.listWidth-4, 40)
+	contentWidth := max(m.listWidth-4, 1)
 
 	// Calculate scroll offset to keep cursor visible (accounts for headers)
 	scrollOffset := m.calculateScrollOffset(maxVisible, showHeaders)
@@ -742,10 +740,10 @@ func (m *CommandPaletteModel) renderItemContentWithHighlight(item PaletteItem, n
 	maxNameLen := max(maxWidth-totalLen, 10)
 
 	// Name with highlighting (truncated if needed)
-	name := util.Truncate(item.Name, maxNameLen)
+	name := truncateToVisualWidth(item.Name, maxNameLen)
 	// Adjust positions if name was truncated
 	truncatedPositions := namePositions
-	if len(name) < len(item.Name) {
+	if lipgloss.Width(name) < lipgloss.Width(item.Name) {
 		var validPositions []int
 		nameRunes := []rune(name)
 		for _, p := range namePositions {
@@ -756,16 +754,16 @@ func (m *CommandPaletteModel) renderItemContentWithHighlight(item PaletteItem, n
 		truncatedPositions = validPositions
 	}
 	content.WriteString(HighlightText(name, truncatedPositions, BoldStyle))
-	totalLen += len([]rune(name))
+	totalLen += lipgloss.Width(name)
 
 	// Description (dimmed, if space allows)
 	if item.Description != "" {
 		descMaxLen := maxWidth - totalLen - 3
 		if descMaxLen > 8 {
-			desc := util.Truncate(item.Description, descMaxLen)
+			desc := truncateToVisualWidth(item.Description, descMaxLen)
 			content.WriteString(" ")
 			content.WriteString(MutedStyle.Render("· " + desc))
-			totalLen += 3 + len(desc)
+			totalLen += 3 + lipgloss.Width(desc)
 		}
 	}
 

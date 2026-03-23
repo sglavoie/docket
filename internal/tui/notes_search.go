@@ -12,7 +12,6 @@ import (
 	"github.com/sglavoie/tt/internal/fuzzy"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
-	"github.com/sglavoie/tt/internal/util"
 )
 
 // ShowNotesSearchMsg opens the notes search view.
@@ -105,12 +104,15 @@ func (m *NotesSearchModel) SetSize(width, height int) {
 	m.width = width
 	m.height = height
 
-	innerWidth := max(width-10, 60)
+	innerWidth := max(width-10, 1)
 
-	m.listWidth = max(innerWidth*50/100, 30)
+	m.listWidth = max(innerWidth*50/100, 1)
 	m.previewWidth = innerWidth - m.listWidth - 1
+	if m.previewWidth < 1 {
+		m.previewWidth = 1
+	}
 
-	m.searchInput.SetWidth(innerWidth - 4)
+	m.searchInput.SetWidth(max(innerWidth-4, 1))
 }
 
 // Init initializes the model.
@@ -388,7 +390,9 @@ func (m *NotesSearchModel) View() tea.View {
 	}
 
 	// Title
-	b.WriteString(renderFullscreenTitle(fmt.Sprintf("Notes Search - %s", m.project.Name), subtitle))
+	title := fmt.Sprintf("Notes Search - %s", m.project.Name)
+	availableSubtitleWidth := max(m.width-lipgloss.Width(title)-2, 1)
+	b.WriteString(renderFullscreenTitle(title, truncateToVisualWidth(subtitle, availableSubtitleWidth)))
 	b.WriteString("\n\n")
 
 	b.WriteString(m.searchInput.View())
@@ -446,8 +450,8 @@ func (m *NotesSearchModel) renderNoteList(paneHeight int) string {
 		prefix := fmt.Sprintf("%s%s ", cursor, noteIcon)
 		prefixWidth := lipgloss.Width(prefix)
 
-		maxTitleLen := max(m.listWidth-prefixWidth-2, 10)
-		title := util.Truncate(note.Title, maxTitleLen)
+		maxTitleLen := max(m.listWidth-prefixWidth-2, 1)
+		title := truncateToVisualWidth(note.Title, maxTitleLen)
 
 		var titleRendered string
 		if len(fr.titlePositions) > 0 {
@@ -464,6 +468,25 @@ func (m *NotesSearchModel) renderNoteList(paneHeight int) string {
 		}
 
 		line := prefix + titleRendered
+		if lipgloss.Width(line) > m.listWidth {
+			excess := lipgloss.Width(line) - m.listWidth
+			if lipgloss.Width(title) > excess {
+				title = truncateToVisualWidth(note.Title, max(maxTitleLen-excess, 1))
+				if len(fr.titlePositions) > 0 {
+					titleRunes := []rune(title)
+					var validPositions []int
+					for _, p := range fr.titlePositions {
+						if p < len(titleRunes) {
+							validPositions = append(validPositions, p)
+						}
+					}
+					titleRendered = HighlightText(title, validPositions, NormalStyle)
+				} else {
+					titleRendered = title
+				}
+				line = prefix + titleRendered
+			}
+		}
 		if i == m.cursor {
 			line = TaskJumperSelectedStyle.Render(line)
 		}
@@ -486,7 +509,7 @@ func (m *NotesSearchModel) renderPreview() string {
 
 	var b strings.Builder
 
-	b.WriteString(TaskJumperPreviewHeaderStyle.Render(note.Title))
+	b.WriteString(TaskJumperPreviewHeaderStyle.Render(truncateToVisualWidth(note.Title, max(m.previewWidth-2, 1))))
 	b.WriteString("\n\n")
 
 	if len(note.Tags) > 0 {
@@ -516,7 +539,7 @@ func (m *NotesSearchModel) renderPreview() string {
 		// Truncate lines to fit preview width
 		lines := strings.Split(fr.bodySnippet, "\n")
 		for i, line := range lines {
-			lines[i] = util.Truncate(line, m.previewWidth-2)
+			lines[i] = truncateToVisualWidth(line, m.previewWidth-2)
 		}
 		snippetText := strings.Join(lines, "\n")
 		if len(fr.bodyPositions) > 0 {

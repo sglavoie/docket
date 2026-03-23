@@ -10,7 +10,6 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/util"
 )
 
 // LinkedTaskCreatorModel handles creation of tasks linked to a source task.
@@ -101,7 +100,7 @@ func (m *LinkedTaskCreatorModel) View() tea.View {
 	linkName := m.linkTypeName()
 	b.WriteString(SubtitleStyle.Render(fmt.Sprintf("Create %s for #%d", linkName, m.sourceTask.ShortID)))
 	b.WriteString("\n")
-	b.WriteString(MutedStyle.Render(util.Truncate(m.sourceTask.Title, 50)))
+	b.WriteString(MutedStyle.Render(truncateToVisualWidth(m.sourceTask.Title, max(m.width-2, 1))))
 	b.WriteString("\n\n")
 
 	// Input field
@@ -125,7 +124,7 @@ func (m *LinkedTaskCreatorModel) View() tea.View {
 	}
 
 	// Help text
-	b.WriteString(MutedStyle.Render("^type · !N · #tag · @date · ~recur · /section · $status"))
+	b.WriteString(MutedStyle.Render(renderWrappingHelpLine("^type · !N · #tag · @date · ~recur · /section · $status", m.width)))
 	b.WriteString("\n")
 	var helpText string
 	if m.isAutocompleteActive() {

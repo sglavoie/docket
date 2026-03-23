@@ -49,10 +49,7 @@ func (m *FocusBoardModel) getBoardProjectSuggestions(partial string) []ACSuggest
 	suggestions := make([]ACSuggestion, 0, len(scored))
 	for _, s := range scored {
 		project := s.project
-		name := project.Name
-		if len(name) > 25 {
-			name = name[:22] + "..."
-		}
+		name := truncateToVisualWidth(project.Name, 25)
 		suggestions = append(suggestions, ACSuggestion{
 			Display: fmt.Sprintf("%%%s [%s]", name, project.Context),
 			Value:   project.Slug,

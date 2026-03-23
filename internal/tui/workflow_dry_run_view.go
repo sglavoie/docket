@@ -1,9 +1,10 @@
 package tui
 
 import (
-	tea "charm.land/bubbletea/v2"
 	"fmt"
 	"strings"
+
+	tea "charm.land/bubbletea/v2"
 
 	"charm.land/lipgloss/v2"
 )
@@ -139,13 +140,11 @@ func (m *WorkflowDryRunModel) renderTaskList(paneHeight int) string {
 	var rowBuilder strings.Builder
 	for i := startIdx; i < endIdx; i++ {
 		result := m.filtered[i]
-		title := result.Task.Title
-		if len(title) > listWidth-4 {
-			title = title[:listWidth-7] + "..."
-		}
-
-		projectTag := MutedStyle.Render("[" + result.ProjectName + "]")
+		projectName := truncateToVisualWidth(result.ProjectName, max(listWidth-6, 1))
+		projectTag := MutedStyle.Render("[" + projectName + "]")
 		changeCount := MutedStyle.Render(fmt.Sprintf("(%d)", len(result.Changes)))
+		titleWidth := max(listWidth-lipgloss.Width(changeCount)-4, 1)
+		title := truncateToVisualWidth(result.Task.Title, titleWidth)
 
 		if i == m.cursor {
 			line := SelectedItemTextStyle.Render(fmt.Sprintf("▸ %s", title))
@@ -236,19 +235,17 @@ func (m *WorkflowDryRunModel) renderTaskListWithDetails(paneHeight int) string {
 	}
 	endIdx := min(startIdx+maxVisible, len(m.filtered))
 
-	maxTitleLen := max(m.Width()-8, 20)
+	maxTitleLen := max(m.Width()-8, 1)
 
 	for i := startIdx; i < endIdx; i++ {
 		result := m.filtered[i]
-		title := result.Task.Title
-		if len(title) > maxTitleLen {
-			title = title[:maxTitleLen-3] + "..."
-		}
+		title := truncateToVisualWidth(result.Task.Title, maxTitleLen)
+		projectName := truncateToVisualWidth(result.ProjectName, max(m.Width()-8, 1))
 
 		if i == m.cursor {
 			b.WriteString(SelectedItemTextStyle.Render(fmt.Sprintf("▸ %s", title)))
 			b.WriteString(" ")
-			b.WriteString(MutedStyle.Render("[" + result.ProjectName + "]"))
+			b.WriteString(MutedStyle.Render("[" + projectName + "]"))
 			b.WriteString("\n")
 			// Show rules and changes for selected task
 			for _, name := range result.MatchedRules {

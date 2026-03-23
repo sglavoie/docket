@@ -735,11 +735,9 @@ func blockerViewShared(s *blockerViewState, ds blockerDataSource) string {
 
 			if blocker.Description != "" {
 				desc := blocker.Description
-				maxLen := max(s.width-10, 30)
+				maxLen := max(s.width-10, 1)
 				desc = strings.ReplaceAll(desc, "\n", " ")
-				if len(desc) > maxLen {
-					desc = desc[:maxLen-3] + "..."
-				}
+				desc = truncateToVisualWidth(desc, maxLen)
 				line.WriteString(" - ")
 				line.WriteString(MutedStyle.Render(desc))
 			}

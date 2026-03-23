@@ -1,12 +1,12 @@
 package tui
 
 import (
-	tea "charm.land/bubbletea/v2"
 	"fmt"
 	"strings"
 
+	tea "charm.land/bubbletea/v2"
+
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/util"
 )
 
 func (m *TaskCreatorModel) View() tea.View {
@@ -133,7 +133,7 @@ func (m *TaskCreatorModel) renderFieldsTab() string {
 		descDisplay = MutedStyle.Render("(press Enter to edit)")
 	} else {
 		descDisplay = strings.ReplaceAll(descDisplay, "\n", " ")
-		descDisplay = util.Truncate(descDisplay, 50)
+		descDisplay = truncateToVisualWidth(descDisplay, 50)
 	}
 	if m.focusIndex == 9 {
 		b.WriteString(SelectorOptionSelectedStyle.Render(descDisplay))

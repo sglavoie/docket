@@ -1,16 +1,16 @@
 package tui
 
 import (
-	tea "charm.land/bubbletea/v2"
 	"fmt"
 	"strings"
 	"time"
+
+	tea "charm.land/bubbletea/v2"
 
 	"charm.land/lipgloss/v2"
 
 	"github.com/sglavoie/tt/internal/fuzzy"
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/util"
 )
 
 // Tree connector characters for outliner rendering.
@@ -651,7 +651,7 @@ func (m *OutlinerModel) renderOutlinerTreeContent(width int) string {
 			lipgloss.Width(stageSegment) + lipgloss.Width(statusIcon) + 1 +
 			lipgloss.Width(indicators)
 		availableWidth := max(rowWidth-nonTitleWidth, 10)
-		truncatedTitle := util.Truncate(task.Title, availableWidth)
+		truncatedTitle := truncateToVisualWidth(task.Title, availableWidth)
 		var title string
 		query := strings.TrimSpace(m.SearchQuery())
 		if query != "" {

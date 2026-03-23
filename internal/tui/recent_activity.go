@@ -10,7 +10,6 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
-	"github.com/sglavoie/tt/internal/util"
 )
 
 var recentActivityTabNames = []string{"All", "Active", "Completed"}
@@ -410,7 +409,7 @@ func (m *RecentActivityModel) renderTaskLine(dt CrossProjectTask, selected bool)
 	var preBadges string
 	maxTitleLen := m.Width() - 50
 	if m.projectScope == nil {
-		projectName := util.Truncate(dt.Project.Name, 12)
+		projectName := truncateToVisualWidth(dt.Project.Name, 12)
 		preBadges = MutedStyle.Render(fmt.Sprintf("[%s]", projectName)) + " " +
 			MutedStyle.Render(fmt.Sprintf("#%d", task.ShortID)) + " "
 	} else {
