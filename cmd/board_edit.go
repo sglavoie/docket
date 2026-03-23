@@ -7,19 +7,21 @@ import (
 
 	"github.com/sglavoie/tt/internal/external"
 	"github.com/sglavoie/tt/internal/storage"
-	"github.com/sglavoie/tt/internal/tterrors"
 )
 
 var boardEditEditor string
 
 var boardEditCmd = &cobra.Command{
-	Use:   "edit <id>",
+	Use:   "edit [id]",
 	Short: "Edit an action in an external editor",
 	Long: `Open an action's project tasks file in an external editor.
 
+If no ID is provided, an interactive selector is shown.
+
 Examples:
   tt board edit 1
-  tt board edit 1 --editor vim`,
+  tt board edit 1 --editor vim
+  tt board edit`,
 	RunE: runBoardEdit,
 }
 
@@ -30,21 +32,17 @@ func init() {
 }
 
 func runBoardEdit(cmd *cobra.Command, args []string) error {
-	if len(args) < 1 {
-		return tterrors.NewRequiredFieldError("action ID")
-	}
-
 	cfg, _, err := LoadConfig()
 	if err != nil {
 		return err
 	}
 
-	task, project := FindActionTaskByID(cfg, args[0])
-	if task == nil {
-		return fmt.Errorf("action not found: %s", args[0])
+	out, err := getOutputOpts(cmd)
+	if err != nil {
+		return err
 	}
 
-	out, err := getOutputOpts(cmd)
+	task, project, err := SelectActionTask(cfg, args, "Select action to edit:", "No actions found. Use 'tt board add' to create one.")
 	if err != nil {
 		return err
 	}

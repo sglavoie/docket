@@ -86,6 +86,8 @@ func init() {
 	_ = taskAddCmd.RegisterFlagCompletionFunc("type", completeEnum(taskTypeCompletions))
 	_ = taskAddCmd.RegisterFlagCompletionFunc("section", completeProjectSections())
 	_ = taskAddCmd.RegisterFlagCompletionFunc("stage", completeConfigStages())
+	_ = taskAddCmd.RegisterFlagCompletionFunc("project", completeProjectSlugs())
+	_ = taskAddCmd.RegisterFlagCompletionFunc("template", completeTemplates())
 }
 
 func runTaskAdd(cmd *cobra.Command, args []string) error {

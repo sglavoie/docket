@@ -278,6 +278,15 @@ func ParseMetadata(task *models.Task, metaStr string) []ParseWarning {
 				if origIdx := strings.Index(att, "||"); origIdx > 0 {
 					originalPath = att[origIdx+2:]
 					att = att[:origIdx]
+					// Warn if the original path itself contains "||" — indicates a
+					// malformed entry (e.g., manually edited or written by a buggy version).
+					if strings.Contains(originalPath, "||") {
+						warnings = append(warnings, ParseWarning{
+							Type:    WarningValidation,
+							Field:   "attachments",
+							Message: fmt.Sprintf("attachment %q has malformed original path containing '||', data may be corrupt", att),
+						})
+					}
 				}
 
 				if after, ok := strings.CutPrefix(att, "url:"); ok {

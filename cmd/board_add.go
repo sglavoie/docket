@@ -18,6 +18,7 @@ var (
 	boardAddPriority int
 	boardAddTags     []string
 	boardAddProject  string
+	boardAddSection  string
 )
 
 var boardAddCmd = &cobra.Command{
@@ -43,9 +44,11 @@ func init() {
 	boardAddCmd.Flags().IntVarP(&boardAddPriority, "priority", "P", 3, "priority 1-5 (default 3)")
 	boardAddCmd.Flags().StringSliceVarP(&boardAddTags, "tag", "T", nil, "tags for the item")
 	boardAddCmd.Flags().StringVar(&boardAddProject, "project", "", "target project slug (default: action inbox)")
+	boardAddCmd.Flags().StringVar(&boardAddSection, "section", "", "section for the action")
 	addOutputFlags(boardAddCmd)
 
 	_ = boardAddCmd.RegisterFlagCompletionFunc("project", completeProjectSlugs())
+	_ = boardAddCmd.RegisterFlagCompletionFunc("section", completeProjectSections())
 }
 
 func runBoardAdd(cmd *cobra.Command, args []string) error {
@@ -108,6 +111,12 @@ func runBoardAdd(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("priority must be between %d and %d", models.PriorityMin, models.PriorityMax)
 	}
 	task.Priority = boardAddPriority
+	if boardAddSection != "" {
+		if !targetProject.HasSection(boardAddSection) {
+			return fmt.Errorf("section %q not found in project %q; available: %v", boardAddSection, targetProject.Name, targetProject.GetSections())
+		}
+		task.Section = boardAddSection
+	}
 	for _, tag := range boardAddTags {
 		task.AddTag(tag)
 	}

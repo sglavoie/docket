@@ -6,17 +6,19 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/tterrors"
 )
 
 var boardReopenCmd = &cobra.Command{
-	Use:   "reopen <id>",
+	Use:   "reopen [id]",
 	Short: "Reopen a done or dismissed action",
 	Long: `Reopen an action that was previously marked done or dismissed.
 
+If no ID is provided, an interactive selector is shown.
+
 Examples:
   tt board reopen 1
-  tt board reopen 3`,
+  tt board reopen 3
+  tt board reopen`,
 	RunE: runBoardReopen,
 }
 
@@ -26,21 +28,17 @@ func init() {
 }
 
 func runBoardReopen(cmd *cobra.Command, args []string) error {
-	if len(args) < 1 {
-		return tterrors.NewRequiredFieldError("action ID")
-	}
-
 	cfg, mgr, err := LoadConfig()
 	if err != nil {
 		return err
 	}
 
-	task, project := FindActionTaskByID(cfg, args[0])
-	if task == nil {
-		return fmt.Errorf("action not found: %s", args[0])
+	out, err := getOutputOpts(cmd)
+	if err != nil {
+		return err
 	}
 
-	out, err := getOutputOpts(cmd)
+	task, project, err := SelectActionTask(cfg, args, "Select action to reopen:", "No actions found. Use 'tt board add' to create one.")
 	if err != nil {
 		return err
 	}

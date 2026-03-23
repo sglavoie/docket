@@ -377,9 +377,10 @@ func (m *CustomContextEditorModel) HasTextInput() bool {
 }
 
 // ShouldCaptureEsc returns true to let the editor handle esc internally.
-func (m *CustomContextEditorModel) ShouldCaptureEsc() bool {
-	return true
-}
+func (m *CustomContextEditorModel) ShouldCaptureEsc() bool { return true }
+
+// IsFullHeight returns false; the context editor is a panel overlay, not full-screen.
+func (m *CustomContextEditorModel) IsFullHeight() bool { return false }
 
 func (m *CustomContextEditorModel) SupportsHelpShortcut() bool { return false }
 

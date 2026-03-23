@@ -266,6 +266,39 @@ func TestReopen(t *testing.T) {
 	}
 }
 
+func TestReopenClearsActive(t *testing.T) {
+	task, err := NewTask("t1", 1, TaskTypeTask, "Test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	task.Active = true
+	// Cancel doesn't clear Active, so Active remains true after Cancel
+	task.Cancel()
+	if !task.Active {
+		t.Skip("Cancel clears Active — test precondition changed, review fix")
+	}
+	task.Reopen()
+
+	if task.Active {
+		t.Error("expected Active to be false after Reopen")
+	}
+}
+
+func TestReopenAfterCancelClearsCompletedAt(t *testing.T) {
+	task, err := NewTask("t1", 1, TaskTypeTask, "Test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	task.Cancel()
+	if task.CompletedAt == nil {
+		t.Fatal("expected CompletedAt to be set after Cancel")
+	}
+	task.Reopen()
+	if task.CompletedAt != nil {
+		t.Error("expected CompletedAt to be nil after Reopen following Cancel")
+	}
+}
+
 func TestCanTransitionTo(t *testing.T) {
 	tests := []struct {
 		name      string

@@ -211,7 +211,12 @@ func IsValidSectionColor(color string) bool {
 }
 
 // SetSectionColor sets the color for a section.
+// Silently rejects colors not in ValidSectionColors — callers needing validation
+// should call IsValidSectionColor first.
 func (p *Project) SetSectionColor(section, color string) {
+	if !IsValidSectionColor(color) {
+		return
+	}
 	if p.SectionColors == nil {
 		p.SectionColors = make(map[string]string)
 	}

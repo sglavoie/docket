@@ -389,9 +389,13 @@ func (m *RecurrenceEditorModel) View() string {
 }
 
 // ShouldCaptureEsc returns true to let the editor handle esc internally.
-func (m *RecurrenceEditorModel) ShouldCaptureEsc() bool {
-	return true
-}
+func (m *RecurrenceEditorModel) ShouldCaptureEsc() bool { return true }
+
+// HasTextInput returns false; the recurrence editor uses selector inputs, not text fields.
+func (m *RecurrenceEditorModel) HasTextInput() bool { return false }
+
+// IsFullHeight returns false; the recurrence editor is a panel overlay, not full-screen.
+func (m *RecurrenceEditorModel) IsFullHeight() bool { return false }
 
 func (m *RecurrenceEditorModel) renderUnitSelector() string {
 	var b strings.Builder

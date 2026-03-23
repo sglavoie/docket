@@ -48,6 +48,7 @@ func (m *NotesViewModel) viewCurrentNote() tea.Cmd {
 		return nil
 	}
 
+	m.setStatus("Opening in glow...")
 	c := exec.Command("sh", "-c", fmt.Sprintf("glow --style=dark '%s' | less -R", tmpPath))
 	return tea.ExecProcess(c, func(err error) tea.Msg {
 		_ = os.Remove(tmpPath)

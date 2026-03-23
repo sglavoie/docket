@@ -4,27 +4,32 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 
 	"github.com/spf13/cobra"
 
+	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
-	"github.com/sglavoie/tt/internal/tterrors"
 )
 
 var keepFile bool
 
 var attachmentRemoveCmd = &cobra.Command{
-	Use:     "remove <task-id> <attachment-index>",
+	Use:     "remove [task-id] [attachment-index]",
 	Aliases: []string{"rm", "delete"},
 	Short:   "Remove an attachment",
 	Long: `Remove an attachment from a task.
+
+If no task ID is provided, an interactive selector is shown (filtered to tasks
+that have attachments). The attachment index can be found via 'tt attachment list'.
 
 By default, this also deletes the file from disk for local attachments.
 Use --keep-file to only remove the reference without deleting the file.
 
 Examples:
   tt attachment remove 5 0           # Remove and delete first attachment
-  tt attachment rm 5 0 --keep-file   # Remove reference but keep file`,
+  tt attachment rm 5 0 --keep-file   # Remove reference but keep file
+  tt attachment remove               # Interactive task selection`,
 	RunE: runAttachmentRemove,
 }
 
@@ -34,27 +39,41 @@ func init() {
 }
 
 func runAttachmentRemove(cmd *cobra.Command, args []string) error {
-	if len(args) < 2 {
-		return tterrors.NewRequiredFieldError("task ID and attachment name")
-	}
-
 	project, cfg, configManager, err := LoadCurrentProject()
 	if err != nil {
 		return err
 	}
 
-	task, findErr := FindTaskByIdentifier(project, args[0])
-	if findErr != nil {
-		return findErr
+	// Select the task: from args or interactively (only tasks with attachments)
+	task, err := SelectTask(project, args,
+		func(t *models.Task) bool { return len(t.Attachments) > 0 },
+		"Select task to remove attachment from:", "No tasks with attachments found.")
+	if err != nil {
+		return err
 	}
 
 	if len(task.Attachments) == 0 {
 		return fmt.Errorf("task #%d has no attachments", task.ShortID)
 	}
 
+	// If no attachment index provided, list attachments and give a hint
+	if len(args) < 2 {
+		var b strings.Builder
+		fmt.Fprintf(&b, "Task #%d has %d attachment(s):\n", task.ShortID, len(task.Attachments))
+		for i, att := range task.Attachments {
+			kind := "local"
+			if att.IsURL {
+				kind = "URL"
+			}
+			fmt.Fprintf(&b, "  %d: %s (%s)\n", i, att.Filename, kind)
+		}
+		fmt.Fprintf(&b, "Specify the index: tt attachment remove %d <index>", task.ShortID)
+		return fmt.Errorf("%s", b.String())
+	}
+
 	index, err := strconv.Atoi(args[1])
 	if err != nil {
-		return fmt.Errorf("invalid attachment index: %s", args[1])
+		return fmt.Errorf("invalid attachment index: %s (must be a number)", args[1])
 	}
 
 	if index < 0 || index >= len(task.Attachments) {

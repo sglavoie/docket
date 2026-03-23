@@ -271,6 +271,7 @@ func (m *AppModel) Update(msg tea.Msg) (outModel tea.Model, outCmd tea.Cmd) {
 		m.isLoading = false
 		m.loadingMessage = ""
 		m.setSuccessStatus(msg.SuccessMessage)
+		m.invalidateFilterCaches()
 		m.refreshProjectTree()
 		// Refresh all-tasks if open (cross-project view may show stale data)
 		if m.allTasksView != nil {

@@ -11,10 +11,12 @@ import (
 )
 
 var taskSnoozeCmd = &cobra.Command{
-	Use:   "snooze <task-id> <date|duration|clear>",
+	Use:   "snooze [task-id] <date|duration|clear>",
 	Short: "Snooze a task until a specific date",
 	Long: `Snooze a task to hide it from all views until the specified date.
 Snoozed tasks reappear automatically when the snooze date arrives.
+
+If only a date is given (no task ID), an interactive selector is shown.
 
 Accepted formats:
   tomorrow       Tomorrow's date
@@ -32,8 +34,9 @@ Examples:
   tt task snooze 5 tomorrow
   tt task snooze 12 +1w
   tt task snooze 3 2026-06-01
-  tt task snooze 7 clear`,
-	Args: cobra.ExactArgs(2),
+  tt task snooze 7 clear
+  tt task snooze tomorrow`,
+	Args: cobra.RangeArgs(1, 2),
 	RunE: runTaskSnooze,
 }
 
@@ -41,11 +44,16 @@ func init() {
 	taskCmd.AddCommand(taskSnoozeCmd)
 	addOutputFlags(taskSnoozeCmd)
 	taskSnoozeCmd.ValidArgsFunction = func(_ *cobra.Command, args []string, _ string) ([]string, cobra.ShellCompDirective) {
+		dateCompletions := []string{
+			"clear", "none", "tomorrow",
+			"monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday",
+		}
+		if len(args) == 0 {
+			// First arg could be task ID; complete task IDs
+			return completeCurrentProjectTaskIDs()(nil, nil, "")
+		}
 		if len(args) == 1 {
-			return []string{
-				"clear", "none", "tomorrow",
-				"monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday",
-			}, cobra.ShellCompDirectiveNoFileComp
+			return dateCompletions, cobra.ShellCompDirectiveNoFileComp
 		}
 		return nil, cobra.ShellCompDirectiveNoFileComp
 	}
@@ -57,8 +65,26 @@ func runTaskSnooze(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	taskID := args[0]
-	dateStr := args[1]
+	// 1 arg: interactive task selection; date is the only arg
+	// 2 args: args[0]=task-id, args[1]=date
+	var taskID, dateStr string
+	if len(args) == 1 {
+		dateStr = args[0]
+		project, _, _, loadErr := LoadCurrentProject()
+		if loadErr != nil {
+			return loadErr
+		}
+		selectedTask, selErr := SelectTask(project, nil,
+			func(t *models.Task) bool { return !t.Status.IsComplete() },
+			"Select task to snooze:", "No active tasks found.")
+		if selErr != nil {
+			return selErr
+		}
+		taskID = selectedTask.ID
+	} else {
+		taskID = args[0]
+		dateStr = args[1]
+	}
 
 	var snoozeDate *time.Time
 	var desc string

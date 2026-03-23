@@ -46,10 +46,18 @@ func ResolveEditor(configEditor string) string {
 	return "" // caller should handle empty editor
 }
 
+// editorsRequiringWait is the set of editors that need --wait to block until
+// the file is closed before returning control to the caller.
+var editorsRequiringWait = map[string]bool{
+	"code": true, // VS Code
+	"subl": true, // Sublime Text
+	"zed":  true, // Zed
+}
+
 // EditorCommand builds an exec.Cmd for the given editor and file path,
-// adding --wait for VS Code.
+// adding --wait for editors that need it (VS Code, Sublime Text, Zed).
 func EditorCommand(editor, path string) *exec.Cmd {
-	if editor == "code" {
+	if editorsRequiringWait[editor] {
 		return exec.Command(editor, "--wait", path)
 	}
 	return exec.Command(editor, path)

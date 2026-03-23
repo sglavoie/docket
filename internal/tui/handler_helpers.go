@@ -22,6 +22,7 @@ func (m *AppModel) handleWithRefresh(popView, reload bool, statusMsg string) tea
 	}
 	if reload && m.currentProject != nil {
 		_ = m.persister.Load(m.currentProject)
+		m.invalidateFilterCaches()
 	}
 	m.refreshProjectTree()
 	if m.outliner != nil {
@@ -52,6 +53,15 @@ func (m *AppModel) setInfoStatus(msg string) {
 func (m *AppModel) clearStatus() {
 	m.statusMessage = ""
 	m.statusIsInfo = false
+}
+
+// invalidateFilterCaches clears data-dependent filter caches after a project
+// reload. Only clears priorityViewFilterCache and allTasksFilterCache, which
+// may hold filter criteria that reference tags or sections removed by the
+// reload. Spatial and toggle state (UX state) is intentionally preserved.
+func (m *AppModel) invalidateFilterCaches() {
+	m.priorityViewFilterCache = make(map[string]*PriorityViewCache)
+	m.allTasksFilterCache = nil
 }
 
 // saveConfigWarn attempts to save the config and logs a warning on failure.

@@ -122,6 +122,7 @@ func (m *AppModel) handleTextEditorExternal(msg TextEditorExternalMsg) (bool, te
 	editor := external.ResolveEditor(m.config.Editor)
 	c := external.EditorCommand(editor, tmpPath)
 
+	m.setInfoStatus("Opening in editor...")
 	fieldName := msg.FieldName
 	return true, tea.ExecProcess(c, func(err error) tea.Msg {
 		if err != nil {
@@ -152,6 +153,7 @@ func (m *AppModel) handleGlowView(msg GlowViewMsg) (bool, tea.Cmd) {
 	_, _ = tmpFile.WriteString(content)
 	_ = tmpFile.Close()
 
+	m.setInfoStatus("Opening in glow...")
 	c := exec.Command("sh", "-c", fmt.Sprintf("CLICOLOR_FORCE=1 glow --style=dark '%s' | less -R", tmpPath))
 	return true, tea.ExecProcess(c, func(err error) tea.Msg {
 		_ = os.Remove(tmpPath)

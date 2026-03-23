@@ -770,3 +770,33 @@ func TestChecklistEscapeUnescape(t *testing.T) {
 		}
 	}
 }
+
+// TestParseMetadata_EmptyAndMalformedComment verifies that ParseMetadata handles
+// empty strings, whitespace-only input, and malformed key-value pairs without
+// panicking or producing unexpected state.
+func TestParseMetadata_EmptyAndMalformedComment(t *testing.T) {
+	tests := []struct {
+		name      string
+		metaStr   string
+		wantPanic bool
+	}{
+		{name: "empty string", metaStr: ""},
+		{name: "whitespace only", metaStr: "   "},
+		{name: "no colon in pair", metaStr: "just-garbage"},
+		{name: "malformed pair no value", metaStr: "id:"},
+		{name: "multiple malformed pairs", metaStr: "foo, bar, baz"},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			defer func() {
+				if r := recover(); r != nil {
+					t.Errorf("ParseMetadata panicked for input %q: %v", tc.metaStr, r)
+				}
+			}()
+			task := &models.Task{}
+			_ = ParseMetadata(task, tc.metaStr)
+			// No assertions on warnings — just verifying no panic.
+		})
+	}
+}

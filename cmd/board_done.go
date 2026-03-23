@@ -6,17 +6,19 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/tterrors"
 )
 
 var boardDoneCmd = &cobra.Command{
-	Use:   "done <id>",
+	Use:   "done [id]",
 	Short: "Mark an action as done",
 	Long: `Mark an action item as done.
 
+If no ID is provided, an interactive selector is shown.
+
 Examples:
   tt board done 1
-  tt board done 3`,
+  tt board done 3
+  tt board done`,
 	RunE: runBoardDone,
 }
 
@@ -26,21 +28,17 @@ func init() {
 }
 
 func runBoardDone(cmd *cobra.Command, args []string) error {
-	if len(args) < 1 {
-		return tterrors.NewRequiredFieldError("action ID")
-	}
-
 	cfg, mgr, err := LoadConfig()
 	if err != nil {
 		return err
 	}
 
-	task, project := FindActionTaskByID(cfg, args[0])
-	if task == nil {
-		return fmt.Errorf("action not found: %s", args[0])
+	out, err := getOutputOpts(cmd)
+	if err != nil {
+		return err
 	}
 
-	out, err := getOutputOpts(cmd)
+	task, project, err := SelectActionTask(cfg, args, "Select action to mark done:", "No actions found. Use 'tt board add' to create one.")
 	if err != nil {
 		return err
 	}

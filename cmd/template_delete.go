@@ -50,7 +50,7 @@ func runTemplateDelete(cmd *cobra.Command, args []string) error {
 
 	t := cfg.GetTaskTemplate(templateID)
 	if t == nil {
-		return fmt.Errorf("task template not found: %s", templateID)
+		return fmt.Errorf("task template not found: %s. Use 'tt template list' to see templates", templateID)
 	}
 
 	templateName := t.Name

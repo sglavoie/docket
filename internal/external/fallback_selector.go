@@ -79,7 +79,7 @@ func FallbackMultiSelectTasks(tasks []*models.Task, prompt string) ([]*models.Ta
 	for i, t := range tasks {
 		fmt.Printf("  %d) #%d %s %s %s\n", i+1, t.ShortID, t.Type.Icon(), t.Status.Icon(), t.Title)
 	}
-	fmt.Print("Enter numbers (comma-separated): ")
+	fmt.Print("Enter numbers (comma- or space-separated): ")
 
 	reader := bufio.NewReader(os.Stdin)
 	line, err := reader.ReadString('\n')
@@ -87,8 +87,10 @@ func FallbackMultiSelectTasks(tasks []*models.Task, prompt string) ([]*models.Ta
 		return nil, fmt.Errorf("failed to read input: %w", err)
 	}
 
+	// Normalize: replace commas with spaces, then split on whitespace
+	normalized := strings.ReplaceAll(strings.TrimSpace(line), ",", " ")
 	var selected []*models.Task
-	for part := range strings.SplitSeq(strings.TrimSpace(line), ",") {
+	for part := range strings.FieldsSeq(normalized) {
 		part = strings.TrimSpace(part)
 		n, err := strconv.Atoi(part)
 		if err != nil || n < 1 || n > len(tasks) {

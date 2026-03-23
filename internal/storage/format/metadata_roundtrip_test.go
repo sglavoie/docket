@@ -747,3 +747,36 @@ func TestRoundTrip_KitchenSinkWithParentID(t *testing.T) {
 		t.Errorf("Recurrence.Interval = %d, want 3", parsed.Recurrence.Interval)
 	}
 }
+
+// TestParse_AttachmentMalformedDoubleBar verifies that an attachment entry whose
+// original path contains "||" (i.e. was manually edited or produced by a buggy
+// writer) is flagged with a warning instead of being silently corrupted.
+func TestParse_AttachmentMalformedDoubleBar(t *testing.T) {
+	// Craft a raw metadata string with a malformed attachment: original path
+	// contains a second "||" sequence, which the validator should catch.
+	// Format: "filename||originalPath@epoch" where originalPath has "||" in it.
+	metaStr := "id: att-bad, status: todo, priority: 1, attachments: report.pdf||/path/with||double@1609459200"
+
+	task := &models.Task{}
+	warnings := ParseMetadata(task, metaStr)
+
+	if len(warnings) == 0 {
+		t.Error("expected at least one warning for malformed attachment, got none")
+	}
+
+	found := false
+	for _, w := range warnings {
+		if w.Field == "attachments" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Errorf("expected a warning with Field=attachments, got: %v", warnings)
+	}
+
+	// The attachment should still be parsed (graceful degradation), not dropped.
+	if len(task.Attachments) == 0 {
+		t.Error("expected attachment to be present even when malformed (graceful degradation)")
+	}
+}

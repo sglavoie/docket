@@ -118,9 +118,12 @@ func runTemplateAdd(cmd *cobra.Command, args []string) error {
 		return tterrors.NewInvalidValueError("task type", templateAddType, "valid: epic, story, task, bug, idea")
 	}
 
-	// Validate priority
+	// Validate priority; normalize 0 (meaning "use default") to PriorityDefault
 	if err := ValidatePriority(templateAddPriority, true); err != nil {
 		return err
+	}
+	if templateAddPriority == 0 {
+		templateAddPriority = models.PriorityDefault
 	}
 
 	// Validate category

@@ -116,10 +116,7 @@ func (m *HelpViewModel) ShouldCaptureEsc() bool {
 
 // SetSize sets the view dimensions.
 func (m *HelpViewModel) innerWidth() int {
-	w := max(
-		// 1 char padding each side
-		m.width-2, 40)
-	return w
+	return max(m.width-2, 0)
 }
 
 func (m *HelpViewModel) SetSize(width, height int) {
@@ -136,8 +133,8 @@ func (m *HelpViewModel) SetSize(width, height int) {
 	viewportWidth := m.innerWidth()
 	viewportHeight := height - tabBarHeight - searchHeight - statusBarHeight + 1
 
-	if viewportWidth < 40 {
-		viewportWidth = 40
+	if viewportWidth < 1 {
+		viewportWidth = 1
 	}
 	if viewportHeight < 5 {
 		viewportHeight = 5

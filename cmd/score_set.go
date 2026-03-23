@@ -9,6 +9,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/sglavoie/tt/internal/scoring"
 	"github.com/sglavoie/tt/internal/tterrors"
 )
 
@@ -77,8 +78,8 @@ func runScoreSet(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("dimension %q not found in profile %q", dimID, profile.ID)
 		}
 
-		if val < dim.Min || val > dim.Max {
-			return fmt.Errorf("value %d for %q outside range [%d, %d]", val, dimID, dim.Min, dim.Max)
+		if err := scoring.ValidateScoreDimension(dim, val); err != nil {
+			return err
 		}
 
 		task.ScoreDimensions[dimID] = val

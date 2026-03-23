@@ -78,6 +78,6 @@ func runNoteAdd(cmd *cobra.Command, args []string) error {
 		return outputNoteJSON(note, scope)
 	}
 
-	fmt.Printf("[%s] Created note: %s (%s)\n", scope, title, note.Filename)
+	fmt.Printf("[%s] Created note: %s [%s]\n", scope, title, note.Filename)
 	return nil
 }

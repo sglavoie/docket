@@ -66,6 +66,7 @@ func (t *Task) Cancel() {
 func (t *Task) Reopen() {
 	t.Status = StatusTodo
 	t.CompletedAt = nil
+	t.Active = false
 	t.Section = SectionInbox
 	t.UpdatedAt = time.Now()
 }

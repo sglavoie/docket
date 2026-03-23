@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/spf13/cobra"
 
@@ -204,6 +205,13 @@ func runTaskRecur(cmd *cobra.Command, args []string) error {
 
 	if err := task.SetRecurrence(pattern); err != nil {
 		return fmt.Errorf("invalid recurrence pattern: %w", err)
+	}
+
+	// Warn when setting monthly recurrence on a task whose due date falls on
+	// day 29–31: those days don't exist in all months, so the recurrence will
+	// silently clamp to the last day of shorter months.
+	if pattern.Unit == models.RecurrenceMonthly && task.DueDate != nil && task.DueDate.Day() > 28 {
+		fmt.Fprintf(os.Stderr, "warning: due date is on day %d; months with fewer days will use the last day instead\n", task.DueDate.Day())
 	}
 
 	if err := SaveProject(project, &SaveOptions{

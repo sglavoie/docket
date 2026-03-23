@@ -9,20 +9,22 @@ import (
 	"github.com/sglavoie/tt/internal/logging"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
-	"github.com/sglavoie/tt/internal/tterrors"
 )
 
 var boardDeleteForce bool
 
 var boardDeleteCmd = &cobra.Command{
-	Use:     "delete <id>",
+	Use:     "delete [id]",
 	Aliases: []string{"rm"},
 	Short:   "Delete an action permanently",
 	Long: `Delete an action permanently from its project.
 
+If no ID is provided, an interactive selector is shown.
+
 Examples:
   tt board delete 1
-  tt board delete 1 --force`,
+  tt board delete 1 --force
+  tt board delete`,
 	RunE: runBoardDelete,
 }
 
@@ -33,10 +35,6 @@ func init() {
 }
 
 func runBoardDelete(cmd *cobra.Command, args []string) error {
-	if len(args) < 1 {
-		return tterrors.NewRequiredFieldError("action ID")
-	}
-
 	out, err := getOutputOpts(cmd)
 	if err != nil {
 		return err
@@ -47,9 +45,9 @@ func runBoardDelete(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	task, project := FindActionTaskByID(cfg, args[0])
-	if task == nil {
-		return fmt.Errorf("action not found: %s. Use 'tt board list' to see available actions", args[0])
+	task, project, err := SelectActionTask(cfg, args, "Select action to delete:", "No actions found. Use 'tt board add' to create one.")
+	if err != nil {
+		return err
 	}
 
 	if !ConfirmYN(fmt.Sprintf("Delete action #%d '%s'? [y/N]: ", task.ShortID, task.Title), boardDeleteForce) {
@@ -57,6 +55,13 @@ func runBoardDelete(cmd *cobra.Command, args []string) error {
 			fmt.Fprintf(os.Stderr, "Canceled\n")
 		}
 		return nil
+	}
+
+	if cfg.UndoHistoryDepth != nil && *cfg.UndoHistoryDepth > 0 {
+		if snapshotErr := storage.RecordUndoSnapshot(project, "Delete Action",
+			fmt.Sprintf("#%d %s", task.ShortID, task.Title), *cfg.UndoHistoryDepth); snapshotErr != nil {
+			fmt.Fprintf(os.Stderr, "warning: failed to record undo snapshot: %v\n", snapshotErr)
+		}
 	}
 
 	if err := storage.CleanupTaskAttachments(project, task); err != nil {

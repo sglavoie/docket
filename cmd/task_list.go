@@ -69,6 +69,7 @@ func init() {
 	_ = taskListCmd.RegisterFlagCompletionFunc("type", completeEnum(taskTypeCompletions))
 	_ = taskListCmd.RegisterFlagCompletionFunc("status", completeEnum(statusCompletions))
 	_ = taskListCmd.RegisterFlagCompletionFunc("sort", completeEnum(sortCompletions))
+	_ = taskListCmd.RegisterFlagCompletionFunc("project", completeProjectSlugs())
 }
 
 func runTaskList(cmd *cobra.Command, args []string) error {

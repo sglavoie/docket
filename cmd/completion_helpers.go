@@ -118,3 +118,18 @@ func completeConfigStages() func(*cobra.Command, []string, string) ([]string, co
 		return cfg.Stages, cobra.ShellCompDirectiveNoFileComp
 	}
 }
+
+// completeTemplates returns a completion function that lists task template IDs and names.
+func completeTemplates() func(*cobra.Command, []string, string) ([]string, cobra.ShellCompDirective) {
+	return func(_ *cobra.Command, _ []string, _ string) ([]string, cobra.ShellCompDirective) {
+		cfg, _, err := LoadConfig()
+		if err != nil {
+			return nil, cobra.ShellCompDirectiveNoFileComp
+		}
+		var completions []string
+		for _, t := range cfg.TaskTemplates {
+			completions = append(completions, t.ID+"\t"+t.Name)
+		}
+		return completions, cobra.ShellCompDirectiveNoFileComp
+	}
+}

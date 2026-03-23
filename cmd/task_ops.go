@@ -2,10 +2,12 @@ package cmd
 
 import (
 	"fmt"
+	"os"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/fuzzy"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/selector"
@@ -235,6 +237,49 @@ func SelectTask(project *models.Project, args []string, filter TaskFilter, promp
 	}
 
 	return GetTaskFromSelector(selected)
+}
+
+// SelectActionTask handles the common pattern for board commands that operate on action tasks.
+// If args contains an ID, finds the task directly across all loaded projects.
+// Otherwise, presents an interactive selector across all action tasks.
+// Returns the task, its project, and an error.
+func SelectActionTask(cfg *config.Config, args []string, prompt, emptyMsg string) (*models.Task, *models.Project, error) {
+	if len(args) > 0 {
+		task, project := FindActionTaskByID(cfg, args[0])
+		if task == nil {
+			return nil, nil, fmt.Errorf("action not found: %s. Use 'tt board list' to see available actions", args[0])
+		}
+		return task, project, nil
+	}
+
+	var candidates []*models.Task
+	taskToProject := map[string]*models.Project{}
+	for _, proj := range cfg.GetAllLoadableProjects() {
+		if err := storage.LoadProject(proj); err != nil {
+			fmt.Fprintf(os.Stderr, "warning: skipping project %s: %v\n", proj.Name, err)
+			continue
+		}
+		for _, t := range proj.Tasks {
+			candidates = append(candidates, t)
+			taskToProject[t.ID] = proj
+		}
+	}
+
+	if len(candidates) == 0 {
+		return nil, nil, fmt.Errorf("%s", emptyMsg)
+	}
+
+	items := TasksToSelectorItems(candidates)
+	selected, err := tui.RunSelector(prompt, items)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	task, err := GetTaskFromSelector(selected)
+	if err != nil {
+		return nil, nil, err
+	}
+	return task, taskToProject[task.ID], nil
 }
 
 // WithTaskUpdate encapsulates the common Load→FindTask→Update→Save pattern.

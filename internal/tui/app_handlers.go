@@ -179,6 +179,29 @@ func (m *AppModel) reloadAndRefreshProjectTree() {
 	}
 }
 
+// resolveCurrentTask returns the live *Task pointer from project for the given
+// task ID, or nil if the task no longer exists. Use this after any async reload
+// to avoid operating on a stale task pointer captured before the reload.
+func (m *AppModel) resolveCurrentTask(taskID string, project *models.Project) *models.Task {
+	if project == nil {
+		return nil
+	}
+	for _, t := range project.Tasks {
+		if t.ID == taskID {
+			return t
+		}
+	}
+	return nil
+}
+
+// resolveCurrentProject returns the authoritative current project pointer.
+// Reloads update project fields in-place, so m.currentProject always points to
+// live data after a reload. Use this instead of a captured project pointer that
+// may predate a reload.
+func (m *AppModel) resolveCurrentProject() *models.Project {
+	return m.currentProject
+}
+
 // applyTagsToTask applies selected tags to a single task and saves the project.
 func (m *AppModel) applyTagsToTask(task *models.Task, project *models.Project, selectedTags []string) tea.Cmd {
 	// Re-lookup task to avoid stale pointer after concurrent reload
