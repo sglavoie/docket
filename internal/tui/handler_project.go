@@ -161,7 +161,11 @@ func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) {
 	case RestoreFromTrashMsg:
 		m.isLoading = true
 		m.loadingMessage = "Restoring..."
-		return true, tea.Batch(m.spinner.Tick(), m.restoreProjectFromTrash(msg.Slug))
+		return true, tea.Batch(
+			m.spinner.Tick(),
+			m.restoreProjectFromTrash(msg.Slug),
+			tea.Tick(10*time.Second, func(time.Time) tea.Msg { return SaveTimeoutMsg{} }),
+		)
 
 	case projectRestoredFromTrashMsg:
 		m.isLoading = false
@@ -176,7 +180,11 @@ func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) {
 	case PurgeFromTrashMsg:
 		m.isLoading = true
 		m.loadingMessage = "Deleting..."
-		return true, tea.Batch(m.spinner.Tick(), m.purgeProjectFromTrash(msg.Slug))
+		return true, tea.Batch(
+			m.spinner.Tick(),
+			m.purgeProjectFromTrash(msg.Slug),
+			tea.Tick(10*time.Second, func(time.Time) tea.Msg { return SaveTimeoutMsg{} }),
+		)
 
 	case projectPurgedFromTrashMsg:
 		m.isLoading = false

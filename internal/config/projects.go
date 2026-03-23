@@ -10,7 +10,7 @@ import (
 // GetProject returns a project by ID or slug.
 func (c *Config) GetProject(idOrSlug string) *models.Project {
 	for _, p := range c.Projects {
-		if p.ID == idOrSlug || p.Slug == idOrSlug || p.Name == idOrSlug {
+		if p.ID == idOrSlug || p.Slug == idOrSlug {
 			return p
 		}
 	}

@@ -183,12 +183,11 @@ func TestConfigGetProject(t *testing.T) {
 	}
 	testutil.AssertEqual(t, found.Name, "My Project")
 
-	// Find by name
-	found = cfg.GetProject(project.Name)
-	if found == nil {
-		t.Fatal("should find project by name")
+	// Name lookup is not supported — only ID and slug
+	notFoundByName := cfg.GetProject(project.Name)
+	if notFoundByName != nil {
+		t.Error("should not find project by name (only ID and slug are supported)")
 	}
-	testutil.AssertEqual(t, found.Name, "My Project")
 
 	// Not found
 	notFound := cfg.GetProject("nonexistent")

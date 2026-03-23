@@ -379,7 +379,11 @@ func (m *TaskCommentsModel) editInExternalEditor() tea.Cmd {
 		return nil
 	}
 
-	editor := external.ResolveEditor(m.editor)
+	editor, editorErr := external.ResolveEditor(m.editor)
+	if editorErr != nil {
+		_ = os.Remove(tmpPath)
+		return errorCmd("%s", editorErr)
+	}
 	c := external.EditorCommand(editor, tmpPath)
 
 	task := m.task
@@ -458,7 +462,11 @@ func (m *TaskCommentsModel) addCommentInExternalEditor() tea.Cmd {
 		return nil
 	}
 
-	editor := external.ResolveEditor(m.editor)
+	editor, editorErr := external.ResolveEditor(m.editor)
+	if editorErr != nil {
+		_ = os.Remove(tmpPath)
+		return errorCmd("%s", editorErr)
+	}
 	c := external.EditorCommand(editor, tmpPath)
 
 	task := m.task
@@ -551,7 +559,11 @@ func (m *TaskCommentsModel) editCommentInExternalEditorFromEditMode() tea.Cmd {
 		return nil
 	}
 
-	editor := external.ResolveEditor(m.editor)
+	editor, editorErr := external.ResolveEditor(m.editor)
+	if editorErr != nil {
+		_ = os.Remove(tmpPath)
+		return errorCmd("%s", editorErr)
+	}
 	c := external.EditorCommand(editor, tmpPath)
 
 	task := m.task

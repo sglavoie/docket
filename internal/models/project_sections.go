@@ -21,6 +21,16 @@ func (p *Project) EnsureDefaultSections() {
 			p.Sections = append(p.Sections, s)
 		}
 	}
+	// Deduplicate while preserving order (keep first occurrence).
+	seen := make(map[string]bool, len(p.Sections))
+	deduped := p.Sections[:0]
+	for _, s := range p.Sections {
+		if !seen[s] {
+			seen[s] = true
+			deduped = append(deduped, s)
+		}
+	}
+	p.Sections = deduped
 }
 
 // GetSections returns the project's sections, ensuring Next is always first.

@@ -426,9 +426,12 @@ func blockerToggleResolve(s *blockerViewState, ds blockerDataSource, item blocke
 }
 
 // blockerBuildEditorCmd creates an exec.Cmd for the configured editor.
-func blockerBuildEditorCmd(editor, tmpPath string) *exec.Cmd {
-	editor = external.ResolveEditor(editor)
-	return external.EditorCommand(editor, tmpPath)
+func blockerBuildEditorCmd(editor, tmpPath string) (*exec.Cmd, error) {
+	resolved, err := external.ResolveEditor(editor)
+	if err != nil {
+		return nil, err
+	}
+	return external.EditorCommand(resolved, tmpPath), nil
 }
 
 func blockerEditInExternalEditor(s *blockerViewState, ds blockerDataSource, fromEditMode bool) tea.Cmd {
@@ -458,7 +461,11 @@ func blockerEditInExternalEditor(s *blockerViewState, ds blockerDataSource, from
 	_, _ = tmpFile.WriteString(content)
 	_ = tmpFile.Close()
 
-	c := blockerBuildEditorCmd(s.editor, tmpPath)
+	c, editorErr := blockerBuildEditorCmd(s.editor, tmpPath)
+	if editorErr != nil {
+		_ = os.Remove(tmpPath)
+		return func() tea.Msg { return ErrorMsg{Err: editorErr} }
+	}
 
 	editIndex := s.editIndex
 	originalTitle := blocker.Title
@@ -536,7 +543,11 @@ func blockerAddInExternalEditor(s *blockerViewState, ds blockerDataSource) tea.C
 	_, _ = tmpFile.WriteString(content)
 	_ = tmpFile.Close()
 
-	c := blockerBuildEditorCmd(s.editor, tmpPath)
+	c, editorErr := blockerBuildEditorCmd(s.editor, tmpPath)
+	if editorErr != nil {
+		_ = os.Remove(tmpPath)
+		return func() tea.Msg { return ErrorMsg{Err: editorErr} }
+	}
 
 	s.addMode = false
 	s.textInput.Reset()

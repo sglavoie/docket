@@ -13,6 +13,7 @@ import (
 )
 
 var keepFile bool
+var attachmentRemoveForce bool
 
 var attachmentRemoveCmd = &cobra.Command{
 	Use:     "remove [task-id] [attachment-index]",
@@ -29,16 +30,24 @@ Use --keep-file to only remove the reference without deleting the file.
 Examples:
   tt attachment remove 5 0           # Remove and delete first attachment
   tt attachment rm 5 0 --keep-file   # Remove reference but keep file
-  tt attachment remove               # Interactive task selection`,
+  tt attachment remove               # Interactive task selection
+  tt attachment remove 5 0 --force   # Skip confirmation prompt`,
 	RunE: runAttachmentRemove,
 }
 
 func init() {
 	attachmentCmd.AddCommand(attachmentRemoveCmd)
 	attachmentRemoveCmd.Flags().BoolVar(&keepFile, "keep-file", false, "keep the file on disk")
+	attachmentRemoveCmd.Flags().BoolVarP(&attachmentRemoveForce, "force", "f", false, "skip confirmation prompt")
+	addOutputFlags(attachmentRemoveCmd)
 }
 
 func runAttachmentRemove(cmd *cobra.Command, args []string) error {
+	out, err := getOutputOpts(cmd)
+	if err != nil {
+		return err
+	}
+
 	project, cfg, configManager, err := LoadCurrentProject()
 	if err != nil {
 		return err
@@ -53,7 +62,7 @@ func runAttachmentRemove(cmd *cobra.Command, args []string) error {
 	}
 
 	if len(task.Attachments) == 0 {
-		return fmt.Errorf("task #%d has no attachments", task.ShortID)
+		return fmt.Errorf("task #%d has no attachments; use 'tt attachment list' to check", task.ShortID)
 	}
 
 	// If no attachment index provided, list attachments and give a hint
@@ -84,10 +93,18 @@ func runAttachmentRemove(cmd *cobra.Command, args []string) error {
 	filename := att.Filename
 	isURL := att.IsURL
 
+	prompt := fmt.Sprintf("Remove attachment '%s' from task #%d? [y/N] ", filename, task.ShortID)
+	if !ConfirmYN(prompt, attachmentRemoveForce) {
+		if !out.Quiet {
+			fmt.Fprintf(os.Stderr, "Canceled\n")
+		}
+		return nil
+	}
+
 	// Remove from task metadata
 	removed, ok := task.RemoveAttachment(index)
 	if !ok {
-		return fmt.Errorf("failed to remove attachment")
+		return fmt.Errorf("failed to remove attachment '%s' from task #%d", filename, task.ShortID)
 	}
 
 	// Delete file from disk if not a URL and not keeping file
@@ -104,6 +121,12 @@ func runAttachmentRemove(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	if out.Quiet {
+		return nil
+	}
+	if out.JSON {
+		return outputSingleTaskJSON(task)
+	}
 	if isURL {
 		fmt.Printf("Removed URL from #%d: %s\n", task.ShortID, filename)
 	} else if keepFile {

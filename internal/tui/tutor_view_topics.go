@@ -423,7 +423,7 @@ Use tt select to switch between projects and contexts.
 
   tt note add "Sprint Planning Notes"
   tt note list
-  tt note view <id>
+  tt note show <id>
 
 # Global Notes
 

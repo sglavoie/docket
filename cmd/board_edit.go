@@ -50,7 +50,11 @@ func runBoardEdit(cmd *cobra.Command, args []string) error {
 	editor := resolveEditor(boardEditEditor, cfg.Editor)
 	tasksFile := storage.GetTasksFilePath(project)
 
-	c := external.EditorCommand(external.ResolveEditor(editor), tasksFile)
+	resolvedEditor, editorErr := external.ResolveEditor(editor)
+	if editorErr != nil {
+		return editorErr
+	}
+	c := external.EditorCommand(resolvedEditor, tasksFile)
 	if err := c.Run(); err != nil {
 		return fmt.Errorf("editor failed: %w", err)
 	}

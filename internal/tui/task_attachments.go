@@ -448,7 +448,10 @@ func (m *TaskAttachmentsModel) openAttachmentInEditor() tea.Cmd {
 	}
 
 	// Use configured attachment editor, fall back to $EDITOR, then default
-	editor := external.ResolveEditor(m.config.GetAttachmentEditor())
+	editor, editorErr := external.ResolveEditor(m.config.GetAttachmentEditor())
+	if editorErr != nil {
+		return errorCmd("%s", editorErr)
+	}
 
 	openCmd := exec.Command(editor, target)
 	return tea.ExecProcess(openCmd, func(err error) tea.Msg {

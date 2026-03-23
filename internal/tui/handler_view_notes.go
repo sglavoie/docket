@@ -175,7 +175,10 @@ func (m *AppModel) handleCreateGlobalNote(notesDir string) (bool, tea.Cmd) {
 		return true, errorCmd("failed to create note: %w", err)
 	}
 
-	editor := external.ResolveEditor(m.config.Editor)
+	editor, editorErr := external.ResolveEditor(m.config.Editor)
+	if editorErr != nil {
+		return true, errorCmd("%s", editorErr)
+	}
 	path := storage.NoteFilePathIn(notesDir, note.Filename)
 	c := external.EditorCommand(editor, path)
 
@@ -197,7 +200,10 @@ func (m *AppModel) handleCreateNote(project *models.Project) (bool, tea.Cmd) {
 		return true, errorCmd("failed to create note: %w", err)
 	}
 
-	editor := external.ResolveEditor(m.config.Editor)
+	editor, editorErr := external.ResolveEditor(m.config.Editor)
+	if editorErr != nil {
+		return true, errorCmd("%s", editorErr)
+	}
 	path := storage.NoteFilePath(project, note.Filename)
 	c := external.EditorCommand(editor, path)
 

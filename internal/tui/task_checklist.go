@@ -360,7 +360,11 @@ func (m *TaskChecklistModel) editInExternalEditor() tea.Cmd {
 	_, _ = tmpFile.WriteString(content)
 	_ = tmpFile.Close()
 
-	editor := external.ResolveEditor(m.editor)
+	editor, editorErr := external.ResolveEditor(m.editor)
+	if editorErr != nil {
+		_ = os.Remove(tmpPath)
+		return errorCmd("%s", editorErr)
+	}
 	c := external.EditorCommand(editor, tmpPath)
 
 	task := m.task
@@ -430,7 +434,11 @@ func (m *TaskChecklistModel) addItemInExternalEditor() tea.Cmd {
 	_, _ = tmpFile.WriteString(content)
 	_ = tmpFile.Close()
 
-	editor := external.ResolveEditor(m.editor)
+	editor, editorErr := external.ResolveEditor(m.editor)
+	if editorErr != nil {
+		_ = os.Remove(tmpPath)
+		return errorCmd("%s", editorErr)
+	}
 	c := external.EditorCommand(editor, tmpPath)
 
 	task := m.task
@@ -500,7 +508,11 @@ func (m *TaskChecklistModel) editItemInExternalEditorFromEditMode() tea.Cmd {
 	_, _ = tmpFile.WriteString(content)
 	_ = tmpFile.Close()
 
-	editor := external.ResolveEditor(m.editor)
+	editor, editorErr := external.ResolveEditor(m.editor)
+	if editorErr != nil {
+		_ = os.Remove(tmpPath)
+		return errorCmd("%s", editorErr)
+	}
 	c := external.EditorCommand(editor, tmpPath)
 
 	task := m.task

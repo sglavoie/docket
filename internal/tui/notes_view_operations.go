@@ -66,7 +66,10 @@ func (m *NotesViewModel) editCurrentNote() tea.Cmd {
 	if m.config != nil {
 		configEditor = m.config.GetEditor()
 	}
-	editor := external.ResolveEditor(configEditor)
+	editor, editorErr := external.ResolveEditor(configEditor)
+	if editorErr != nil {
+		return errorCmd("%s", editorErr)
+	}
 	path := storage.NoteFilePathIn(m.effectiveDir(), note.Filename)
 	c := external.EditorCommand(editor, path)
 

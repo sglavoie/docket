@@ -256,7 +256,7 @@ Notes are standalone markdown documents (not tasks) for reference information:
 tt note add [title]                  # Create note (interactive if no title)
 tt note list                         # List notes in current project
 tt note list --global                # List global notes
-tt note view <id>                    # View note content
+tt note show <id>                    # Show note content
 tt note edit <id>                    # Edit note in external editor
 tt note delete <id>                  # Delete note
 tt note link <note-id> <task-id>     # Link note to task
@@ -364,7 +364,7 @@ tt select <project>                  # Select project directly
 
 The TUI provides a rich visual interface with extensive keyboard navigation and views.
 
-> **Note:** The TUI requires a minimum terminal width of 60 columns and height of 24 rows for optimal display. Smaller terminals may cause layout issues.
+> **Note:** The TUI requires a minimum terminal width of 60 columns and height of 20 rows for optimal display. Smaller terminals may cause layout issues.
 
 ### Main Views
 

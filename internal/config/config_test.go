@@ -149,10 +149,10 @@ func TestConfig_Projects(t *testing.T) {
 		t.Error("GetProject by slug failed")
 	}
 
-	// Get by name
+	// Name lookup is not supported — should return nil
 	found = cfg.GetProject("Project One")
-	if found == nil || found.ID != "p1" {
-		t.Error("GetProject by name failed")
+	if found != nil {
+		t.Error("GetProject by name should return nil (only ID and slug are supported)")
 	}
 
 	// Get non-existent

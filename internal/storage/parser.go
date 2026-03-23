@@ -154,16 +154,29 @@ func ParseTasksMarkdownWithSections(content string) (*ParseResult, error) {
 				}
 			}
 
+			var task *models.Task
 			if len(title) > models.MaxTaskTitleLength {
+				// Bypass NewTask validation for overlong titles to avoid a double
+				// warning (one here, one from NewTask). The task already exists in
+				// the file; we preserve it as-is rather than rejecting it.
 				metadataWarnings = append(metadataWarnings, ParseWarning{
 					Type:    format.WarningValidation,
 					Field:   "title",
 					Message: fmt.Sprintf("task #%d title is overlong (%d chars, max %d)", nextShortID, len(title), models.MaxTaskTitleLength),
 				})
-			}
-
-			task, taskErr := models.NewTask("", nextShortID, taskType, title)
-			if taskErr != nil {
+				task = &models.Task{
+					ShortID:         nextShortID,
+					Type:            taskType,
+					Title:           title,
+					Status:          models.StatusTodo,
+					Priority:        models.PriorityDefault,
+					Tags:            []string{},
+					DependsOn:       []string{},
+					RelatedTo:       []string{},
+					ScoreDimensions: map[string]int{},
+					Children:        []*models.Task{},
+				}
+			} else if newTask, taskErr := models.NewTask("", nextShortID, taskType, title); taskErr != nil {
 				// Preserve tasks with invalid titles (e.g. empty) to avoid data loss
 				metadataWarnings = append(metadataWarnings, ParseWarning{
 					Type:    format.WarningDataCorrection,
@@ -182,6 +195,8 @@ func ParseTasksMarkdownWithSections(content string) (*ParseResult, error) {
 					ScoreDimensions: map[string]int{},
 					Children:        []*models.Task{},
 				}
+			} else {
+				task = newTask
 			}
 			// Zero out timestamps so they come from metadata parsing.
 			// NewTask sets these to time.Now(), which is wrong for tasks

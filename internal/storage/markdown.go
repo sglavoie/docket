@@ -159,7 +159,7 @@ func LoadProjectWithWarnings(project *models.Project) (*ProjectLoadResult, error
 	}
 	project.Warnings = repairWarnings
 
-	// Warn on tasks whose section doesn't match any project-defined section
+	// Reassign tasks whose section doesn't match any project-defined section to Inbox.
 	sections := project.GetSections()
 	sectionSet := make(map[string]bool, len(sections))
 	for _, s := range sections {
@@ -167,11 +167,13 @@ func LoadProjectWithWarnings(project *models.Project) (*ProjectLoadResult, error
 	}
 	for _, task := range project.Tasks {
 		if task.Section != "" && !sectionSet[task.Section] {
+			old := task.Section
+			task.Section = models.SectionInbox
 			result.Warnings = append(result.Warnings, ParseWarning{
-				Type:    format.WarningValidation,
+				Type:    format.WarningDataCorrection,
 				TaskID:  task.ID,
 				Field:   "section",
-				Message: fmt.Sprintf("task #%d section %q not in project sections", task.ShortID, task.Section),
+				Message: fmt.Sprintf("task #%d section %q not in project sections, reassigned to %q", task.ShortID, old, models.SectionInbox),
 			})
 		}
 	}
@@ -275,6 +277,16 @@ func WriteTasksMarkdownWithSections(projectName string, tasks []*models.Task, se
 		writeTaskPreservingOrder(&b, task, tasks, 2, visited)
 		if i < len(rootTasks)-1 {
 			b.WriteString("\n")
+		}
+	}
+
+	// Append any tasks not reachable from a root (orphaned due to corrupted
+	// parent references) so they are never silently dropped.
+	for _, task := range tasks {
+		if !visited[task.ID] {
+			logging.Warn("task #%d %q has missing parent reference, saving as root-level entry", task.ShortID, task.Title)
+			b.WriteString("\n")
+			writeTaskPreservingOrder(&b, task, tasks, 2, visited)
 		}
 	}
 

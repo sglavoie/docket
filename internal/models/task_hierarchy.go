@@ -81,7 +81,7 @@ func (t *Task) AddChild(child *Task) error {
 		return fmt.Errorf("cannot add %s as child of %s", child.Type, t.Type)
 	}
 	if t.Level+1 > MaxNestingDepth {
-		return fmt.Errorf("cannot add child: would exceed maximum nesting depth of %d", MaxNestingDepth)
+		return fmt.Errorf("cannot add child: would exceed maximum nesting depth of %d levels", MaxNestingDepth)
 	}
 	// Cycle check: walk t's ancestor chain; if child appears, adding it would
 	// create a circular reference.

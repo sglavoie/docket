@@ -25,7 +25,11 @@ func (m *AppModel) handleEditTaskContent(msg EditTaskContentMsg) (bool, tea.Cmd)
 	_, _ = tmpFile.WriteString(content)
 	_ = tmpFile.Close()
 
-	editor := external.ResolveEditor(m.config.Editor)
+	editor, editorErr := external.ResolveEditor(m.config.Editor)
+	if editorErr != nil {
+		_ = os.Remove(tmpPath)
+		return true, errorCmd("%s", editorErr)
+	}
 	c := external.EditorCommand(editor, tmpPath)
 
 	task := msg.Task

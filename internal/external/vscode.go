@@ -26,24 +26,25 @@ func CreateTempFileWithContent(content string, prefix string, suffix string) (st
 }
 
 // ResolveEditor returns the editor command to use, applying the fallback chain:
-// configEditor → EDITOR env → "code".
+// configEditor → EDITOR env → "code" → "vi".
 // Each candidate is verified with exec.LookPath before being returned.
-func ResolveEditor(configEditor string) string {
+// Returns an error if no editor is found.
+func ResolveEditor(configEditor string) (string, error) {
 	candidates := []string{configEditor, os.Getenv("EDITOR"), "code"}
 	for _, c := range candidates {
 		if c == "" {
 			continue
 		}
 		if _, err := exec.LookPath(c); err == nil {
-			return c
+			return c, nil
 		}
 		fmt.Fprintf(os.Stderr, "warning: editor %q not found in PATH, trying next fallback\n", c)
 	}
 	// Last resort: check if vi is available before returning it
 	if _, err := exec.LookPath("vi"); err == nil {
-		return "vi"
+		return "vi", nil
 	}
-	return "" // caller should handle empty editor
+	return "", fmt.Errorf("no editor found: set $EDITOR or install VS Code")
 }
 
 // editorsRequiringWait is the set of editors that need --wait to block until
@@ -73,10 +74,11 @@ func EditInExternalEditor(editor string, content string, extension string) (stri
 	defer func() { _ = os.Remove(tmpPath) }()
 
 	// Get editor command
-	editor = ResolveEditor(editor)
-	if editor == "" {
-		return "", fmt.Errorf("no editor found in PATH (tried config, $EDITOR, code, vi)")
+	resolvedEditor, resolveErr := ResolveEditor(editor)
+	if resolveErr != nil {
+		return "", resolveErr
 	}
+	editor = resolvedEditor
 	cmd := EditorCommand(editor, tmpPath)
 
 	cmd.Stdin = os.Stdin

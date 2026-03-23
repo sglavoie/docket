@@ -156,7 +156,11 @@ func (e *VSCodeEditor) Available() bool {
 
 // OpenFile implements Editor.
 func (e *VSCodeEditor) OpenFile(path string) error {
-	cmd := exec.Command("code", path)
+	codePath, err := CachedCodePath()
+	if err != nil {
+		return fmt.Errorf("VS Code ('code') not found in PATH")
+	}
+	cmd := exec.Command(codePath, path)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	if err := cmd.Start(); err != nil {
@@ -172,8 +176,12 @@ func (e *VSCodeEditor) OpenFile(path string) error {
 
 // OpenFileAtLine implements Editor.
 func (e *VSCodeEditor) OpenFileAtLine(path string, line int) error {
+	codePath, err := CachedCodePath()
+	if err != nil {
+		return fmt.Errorf("VS Code ('code') not found in PATH")
+	}
 	arg := fmt.Sprintf("%s:%d", path, line)
-	cmd := exec.Command("code", "--goto", arg)
+	cmd := exec.Command(codePath, "--goto", arg)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	if err := cmd.Start(); err != nil {
@@ -189,7 +197,11 @@ func (e *VSCodeEditor) OpenFileAtLine(path string, line int) error {
 
 // OpenFolder implements Editor.
 func (e *VSCodeEditor) OpenFolder(path string) error {
-	cmd := exec.Command("code", path)
+	codePath, err := CachedCodePath()
+	if err != nil {
+		return fmt.Errorf("VS Code ('code') not found in PATH")
+	}
+	cmd := exec.Command(codePath, path)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	if err := cmd.Start(); err != nil {
@@ -205,7 +217,11 @@ func (e *VSCodeEditor) OpenFolder(path string) error {
 
 // OpenNewWindow implements Editor.
 func (e *VSCodeEditor) OpenNewWindow(path string) error {
-	cmd := exec.Command("code", "--new-window", path)
+	codePath, err := CachedCodePath()
+	if err != nil {
+		return fmt.Errorf("VS Code ('code') not found in PATH")
+	}
+	cmd := exec.Command(codePath, "--new-window", path)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	if err := cmd.Start(); err != nil {

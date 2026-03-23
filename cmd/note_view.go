@@ -10,23 +10,24 @@ import (
 	"github.com/sglavoie/tt/internal/tterrors"
 )
 
-var noteViewNoGlow bool
+var noteShowNoGlow bool
 
-var noteViewCmd = &cobra.Command{
-	Use:   "view <filename-or-title>",
-	Short: "View a note",
+var noteShowCmd = &cobra.Command{
+	Use:     "show <filename-or-title>",
+	Aliases: []string{"view"},
+	Short:   "Show a note",
 	Long: `Display a note using glow for markdown rendering (if available).
 
 Examples:
-  tt note view 2026-01-28-meeting-notes.md
-  tt note view meeting
-  tt note view --no-glow meeting`,
+  tt note show 2026-01-28-meeting-notes.md
+  tt note show meeting
+  tt note show --no-glow meeting`,
 	RunE: runNoteView,
 }
 
 func init() {
-	noteCmd.AddCommand(noteViewCmd)
-	noteViewCmd.Flags().BoolVar(&noteViewNoGlow, "no-glow", false, "disable glow rendering")
+	noteCmd.AddCommand(noteShowCmd)
+	noteShowCmd.Flags().BoolVar(&noteShowNoGlow, "no-glow", false, "disable glow rendering")
 }
 
 func runNoteView(cmd *cobra.Command, args []string) error {
@@ -65,7 +66,7 @@ func runNoteView(cmd *cobra.Command, args []string) error {
 		content = fmt.Sprintf("# %s\n\nTags: %s\n\n%s", note.Title, strings.Join(note.Tags, ", "), note.Body)
 	}
 
-	useGlow := glowEnabled && Deps.Renderer.Available() && !noteViewNoGlow
+	useGlow := glowEnabled && Deps.Renderer.Available() && !noteShowNoGlow
 	if useGlow {
 		return Deps.Renderer.PageMarkdown(content)
 	}

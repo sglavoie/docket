@@ -97,7 +97,10 @@ func (m *AppModel) handleEditorMessages(msg tea.Msg) (bool, tea.Cmd) {
 			path = m.config.DataDir
 		}
 
-		editor := external.ResolveEditor(m.config.Editor)
+		editor, editorErr := external.ResolveEditor(m.config.Editor)
+		if editorErr != nil {
+			return true, errorCmd("%s", editorErr)
+		}
 		c := exec.Command(editor, path)
 		return true, tea.ExecProcess(c, func(err error) tea.Msg {
 			if err != nil {
@@ -119,7 +122,11 @@ func (m *AppModel) handleTextEditorExternal(msg TextEditorExternalMsg) (bool, te
 	_, _ = tmpFile.WriteString(msg.CurrentValue)
 	_ = tmpFile.Close()
 
-	editor := external.ResolveEditor(m.config.Editor)
+	editor, editorErr := external.ResolveEditor(m.config.Editor)
+	if editorErr != nil {
+		_ = os.Remove(tmpPath)
+		return true, errorCmd("%s", editorErr)
+	}
 	c := external.EditorCommand(editor, tmpPath)
 
 	m.setInfoStatus("Opening in editor...")

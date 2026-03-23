@@ -22,6 +22,9 @@ func ValidateAttachmentPath(path string) error {
 
 // AddAttachment adds a file attachment to the task.
 func (t *Task) AddAttachment(filename string, isURL bool, originalPath string) error {
+	if filename == "" {
+		return fmt.Errorf("attachment filename must not be empty")
+	}
 	if err := ValidateAttachmentPath(filename); err != nil {
 		return fmt.Errorf("adding attachment: %w", err)
 	}
@@ -42,6 +45,9 @@ func (t *Task) AddAttachment(filename string, isURL bool, originalPath string) e
 // AddCodeReference adds a code reference attachment to the task.
 // Code references are stored without copying the file.
 func (t *Task) AddCodeReference(path string, lineNumber int) error {
+	if path == "" {
+		return fmt.Errorf("code reference path must not be empty")
+	}
 	if err := ValidateAttachmentPath(path); err != nil {
 		return fmt.Errorf("adding code reference: %w", err)
 	}
