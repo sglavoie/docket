@@ -1,16 +1,17 @@
 package tui
 
 import (
+	tea "charm.land/bubbletea/v2"
 	"fmt"
 	"strings"
 
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/lipgloss/v2"
 
 	"github.com/sglavoie/tt/internal/workflow"
 )
 
 // View renders the workflow rule creator interface.
-func (m *WorkflowRuleCreatorModel) View() string {
+func (m *WorkflowRuleCreatorModel) View() tea.View {
 	// Render picker overlays if active
 	if m.showingFieldPicker && m.fieldPicker != nil {
 		return m.fieldPicker.View()
@@ -21,7 +22,7 @@ func (m *WorkflowRuleCreatorModel) View() string {
 
 	// Narrow screen with preview toggle: show fullscreen preview
 	if !m.isWideScreen() && m.previewShown {
-		return m.renderFullscreenPreview()
+		return tea.NewView(m.renderFullscreenPreview())
 	}
 
 	title := "Edit Workflow Rule"
@@ -79,7 +80,7 @@ func (m *WorkflowRuleCreatorModel) View() string {
 	out.WriteString("\n")
 	out.WriteString(renderStatusBarFooter(helpText, "", m.width))
 
-	return out.String()
+	return tea.NewView(out.String())
 }
 
 // renderHelpText renders the help text, wrapping if necessary.

@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strings"
 
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/template"
@@ -69,7 +69,7 @@ func (m *TaskTemplatesModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.cursor = ClampCursor(m.cursor, len(m.filteredTemplates))
 		return m, func() tea.Msg { return TaskTemplatesUpdatedMsg{} }
 
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		// Handle expanded view mode first (narrow screen only)
 		if m.expandedView && !m.isWideScreen() {
 			switch msg.String() {
@@ -77,7 +77,7 @@ func (m *TaskTemplatesModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.expandedView = false
 				m.previewScroll = 0
 				return m, nil
-			case " ":
+			case "space":
 				// Toggle enabled/disabled from preview
 				if len(m.filteredTemplates) > 0 && m.cursor < len(m.filteredTemplates) {
 					return m, m.toggleCurrentTemplate()
@@ -193,7 +193,7 @@ func (m *TaskTemplatesModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			return m, nil
 
-		case " ":
+		case "space":
 			// Toggle enabled/disabled
 			if len(m.filteredTemplates) > 0 && m.cursor < len(m.filteredTemplates) {
 				return m, m.toggleCurrentTemplate()
@@ -323,12 +323,12 @@ func (m *TaskTemplatesModel) isWideScreen() bool {
 	return m.Width() >= 81
 }
 
-func (m *TaskTemplatesModel) View() string {
+func (m *TaskTemplatesModel) View() tea.View {
 	var b strings.Builder
 
 	// Fullscreen preview mode on narrow screens
 	if m.expandedView && !m.isWideScreen() && len(m.filteredTemplates) > 0 && m.cursor < len(m.filteredTemplates) {
-		return m.renderFullscreenPreview()
+		return tea.NewView(m.renderFullscreenPreview())
 	}
 
 	b.WriteString(renderFullscreenTitle("Task Templates", fmt.Sprintf("%d templates", len(m.filteredTemplates))))
@@ -393,7 +393,7 @@ func (m *TaskTemplatesModel) View() string {
 	b.WriteString("\n")
 	b.WriteString(renderStatusBarFooter(HelpStyle.Render(m.renderHelpText()), "", m.Width()))
 
-	return b.String()
+	return tea.NewView(b.String())
 }
 
 // renderTemplatesList renders the list of templates.

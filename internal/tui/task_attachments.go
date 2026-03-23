@@ -8,9 +8,9 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/charmbracelet/bubbles/textinput"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/bubbles/v2/textinput"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/external"
@@ -36,7 +36,7 @@ func NewTaskAttachmentsModel(task *models.Task, project *models.Project, cfg *co
 	ti := textinput.New()
 	ti.Placeholder = "Enter file path, URL, or code ref (file:line)..."
 	ti.CharLimit = 500
-	ti.Width = 60
+	ti.SetWidth(60)
 
 	return &TaskAttachmentsModel{
 		task:      task,
@@ -60,7 +60,7 @@ func (m *TaskAttachmentsModel) Init() tea.Cmd {
 // SetSize updates the view dimensions.
 func (m *TaskAttachmentsModel) SetSize(width, height int) {
 	m.BaseView.SetSize(width, height)
-	m.textInput.Width = width - 4
+	m.textInput.SetWidth(width - 4)
 }
 
 func (m *TaskAttachmentsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -69,7 +69,7 @@ func (m *TaskAttachmentsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// Handle confirmation mode
 	if m.confirm.IsActive() {
 		switch msg := msg.(type) {
-		case tea.KeyMsg:
+		case tea.KeyPressMsg:
 			action := m.confirm.Action()
 			if confirmed, handled := m.HandleConfirmKey(msg.String()); handled {
 				if confirmed {
@@ -94,7 +94,7 @@ func (m *TaskAttachmentsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// Handle add mode
 	if m.addMode {
 		switch msg := msg.(type) {
-		case tea.KeyMsg:
+		case tea.KeyPressMsg:
 			switch msg.String() {
 			case "esc":
 				if strings.TrimSpace(m.textInput.Value()) != "" {
@@ -120,7 +120,7 @@ func (m *TaskAttachmentsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.BaseView.SetSize(msg.Width, msg.Height)
 
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		if m.pendingPrefix == "g" {
 			m.pendingPrefix = ""
 			_, cmd := handleGotoTopPrefix(msg.String(), &m.cursor, &m.cursorFlash)
@@ -681,9 +681,9 @@ func (m *TaskAttachmentsModel) revealOriginalFile() tea.Cmd {
 	})
 }
 
-func (m *TaskAttachmentsModel) View() string {
+func (m *TaskAttachmentsModel) View() tea.View {
 	if m.task == nil {
-		return "No task selected"
+		return tea.NewView("No task selected")
 	}
 
 	var b strings.Builder
@@ -702,7 +702,7 @@ func (m *TaskAttachmentsModel) View() string {
 		b.WriteString("\n\n")
 		b.WriteString(HelpStyle.Render("Enter: add · Esc: cancel"))
 		b.WriteString("\n")
-		return b.String()
+		return tea.NewView(b.String())
 	}
 
 	// Error/status display
@@ -857,7 +857,7 @@ func (m *TaskAttachmentsModel) View() string {
 		b.WriteString(renderStatusBarFooter(HelpStyle.Render(helpText), "", m.Width()))
 	}
 
-	return b.String()
+	return tea.NewView(b.String())
 }
 
 // HasTextInput returns true when add mode is active.

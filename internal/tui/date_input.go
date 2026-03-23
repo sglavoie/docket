@@ -5,8 +5,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/charmbracelet/bubbles/textinput"
-	tea "github.com/charmbracelet/bubbletea"
+	"charm.land/bubbles/v2/textinput"
+	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/util"
@@ -32,7 +32,7 @@ func NewDateInputModel(task *models.Task, project *models.Project) *DateInputMod
 	input.Placeholder = "e.g., 2024-01-15, tomorrow, +3d, fri, none"
 	input.Focus()
 	input.CharLimit = 30
-	input.Width = 40
+	input.SetWidth(40)
 
 	// Pre-fill with current due date if set
 	if task.DueDate != nil {
@@ -51,7 +51,7 @@ func NewDateInputModel(task *models.Task, project *models.Project) *DateInputMod
 func (m *DateInputModel) SetSize(width, height int) {
 	m.width = width
 	m.height = height
-	m.input.Width = min(width-20, 40)
+	m.input.SetWidth(min(width-20, 40))
 }
 
 func (m *DateInputModel) Init() tea.Cmd {
@@ -60,7 +60,7 @@ func (m *DateInputModel) Init() tea.Cmd {
 
 func (m *DateInputModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if m.confirmDiscard {
-		if msg, ok := msg.(tea.KeyMsg); ok {
+		if msg, ok := msg.(tea.KeyPressMsg); ok {
 			switch msg.String() {
 			case "y", "Y":
 				m.confirmDiscard = false
@@ -74,7 +74,7 @@ func (m *DateInputModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	switch msg := msg.(type) {
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		switch msg.String() {
 		case "esc":
 			if m.input.Value() != m.initialValue {
@@ -130,7 +130,7 @@ func (m *DateInputModel) saveAndReturn() tea.Cmd {
 	}
 }
 
-func (m *DateInputModel) View() string {
+func (m *DateInputModel) View() tea.View {
 	var b strings.Builder
 
 	b.WriteString(renderFullscreenTitle(fmt.Sprintf("Set Due Date for #%d", m.task.ShortID), m.task.Title))
@@ -172,7 +172,7 @@ func (m *DateInputModel) View() string {
 	)
 	b.WriteString(help)
 
-	return b.String()
+	return tea.NewView(b.String())
 }
 
 // HasTextInput returns true because the date input is always active.

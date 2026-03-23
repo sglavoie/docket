@@ -5,8 +5,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/charmbracelet/bubbles/textarea"
-	tea "github.com/charmbracelet/bubbletea"
+	"charm.land/bubbles/v2/textarea"
+	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
@@ -120,7 +120,7 @@ func NewTaskEditorModel(project *models.Project, task *models.Task, cfg *config.
 
 	titleInput := factory.NewTitleInputWithValue(task.Title)
 	titleInput.Focus()
-	titleInput.SetPromptFunc(0, func(lineIdx int) string { return "" })
+	titleInput.SetPromptFunc(0, func(info textarea.PromptInfo) string { return "" })
 
 	// Copy tags slice
 	tags := append([]string{}, task.Tags...)
@@ -314,7 +314,7 @@ func (m *TaskEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		// Handle discard confirmation
 		if m.confirmDiscard {
 			switch msg.String() {
@@ -574,7 +574,7 @@ func (m *TaskEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 
-		case " ":
+		case "space":
 			// Space is a no-op for flags (selection happens via left/right)
 			if m.focusIndex == 6 {
 				return m, nil
@@ -608,7 +608,7 @@ func (m *TaskEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case 0:
 		m.titleInput, cmd = m.titleInput.Update(msg)
 	case 5: // Due date text input
-		if keyMsg, ok := msg.(tea.KeyMsg); ok {
+		if keyMsg, ok := msg.(tea.KeyPressMsg); ok {
 			key := keyMsg.String()
 			if key == "backspace" && len(m.dueDateInput) > 0 {
 				m.dueDateInput = m.dueDateInput[:len(m.dueDateInput)-1]
@@ -617,7 +617,7 @@ func (m *TaskEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 	case 8: // URL text input
-		if keyMsg, ok := msg.(tea.KeyMsg); ok {
+		if keyMsg, ok := msg.(tea.KeyPressMsg); ok {
 			key := keyMsg.String()
 			if key == "backspace" && len(m.urlInput) > 0 {
 				m.urlInput = m.urlInput[:len(m.urlInput)-1]
@@ -626,7 +626,7 @@ func (m *TaskEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 	case 9: // Source text input
-		if keyMsg, ok := msg.(tea.KeyMsg); ok {
+		if keyMsg, ok := msg.(tea.KeyPressMsg); ok {
 			key := keyMsg.String()
 			if key == "backspace" && len(m.sourceInput) > 0 {
 				m.sourceInput = m.sourceInput[:len(m.sourceInput)-1]
@@ -642,7 +642,7 @@ func (m *TaskEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
-func (m *TaskEditorModel) View() string {
+func (m *TaskEditorModel) View() tea.View {
 	var content strings.Builder
 
 	// Title field
@@ -752,7 +752,7 @@ func (m *TaskEditorModel) View() string {
 	out.WriteString("\n")
 	out.WriteString(renderStatusBarFooter(left, right, m.width))
 
-	return out.String()
+	return tea.NewView(out.String())
 }
 
 // HasTextInput returns true because the task editor contains inputs.

@@ -6,8 +6,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/charmbracelet/bubbles/textarea"
-	tea "github.com/charmbracelet/bubbletea"
+	"charm.land/bubbles/v2/textarea"
+	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/models"
 )
@@ -90,7 +90,7 @@ func newQuickCaptureInput(project *models.Project, allProjects []*models.Project
 	input.CharLimit = 200
 	input.SetHeight(3)
 	input.ShowLineNumbers = false
-	input.SetPromptFunc(0, func(lineIdx int) string { return "" })
+	input.SetPromptFunc(0, func(info textarea.PromptInfo) string { return "" })
 	input.Focus()
 
 	qci := quickCaptureInput{

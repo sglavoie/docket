@@ -5,8 +5,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/charmbracelet/bubbles/textarea"
-	tea "github.com/charmbracelet/bubbletea"
+	"charm.land/bubbles/v2/textarea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/google/uuid"
 
 	"github.com/sglavoie/tt/internal/models"
@@ -63,7 +63,7 @@ func (m *BulkCaptureModel) Init() tea.Cmd {
 func (m *BulkCaptureModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// Handle discard confirmation
 	if m.confirmDiscard {
-		if msg, ok := msg.(tea.KeyMsg); ok {
+		if msg, ok := msg.(tea.KeyPressMsg); ok {
 			switch msg.String() {
 			case "y", "Y":
 				m.confirmDiscard = false
@@ -77,7 +77,7 @@ func (m *BulkCaptureModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	switch msg := msg.(type) {
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		switch msg.String() {
 		case "esc":
 			if strings.TrimSpace(m.input.Value()) != "" {
@@ -96,7 +96,7 @@ func (m *BulkCaptureModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
-func (m *BulkCaptureModel) View() string {
+func (m *BulkCaptureModel) View() tea.View {
 	var b strings.Builder
 
 	b.WriteString(renderFullscreenTitle("Bulk Capture", ""))
@@ -129,7 +129,7 @@ func (m *BulkCaptureModel) View() string {
 
 	b.WriteString(renderStatusBarFooter(HelpStyle.Render("Ctrl+S: create"), HelpStyle.Render("Esc: cancel"), m.width))
 
-	return b.String()
+	return tea.NewView(b.String())
 }
 
 // HasTextInput returns true because bulk capture uses a textarea input.

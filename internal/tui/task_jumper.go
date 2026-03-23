@@ -5,8 +5,8 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/charmbracelet/bubbles/textinput"
-	tea "github.com/charmbracelet/bubbletea"
+	"charm.land/bubbles/v2/textinput"
+	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/fuzzy"
 	"github.com/sglavoie/tt/internal/models"
@@ -41,7 +41,7 @@ func NewTaskJumperModel(project *models.Project) *TaskJumperModel {
 	searchInput := textinput.New()
 	searchInput.Placeholder = "Type to filter tasks..."
 	searchInput.CharLimit = 100
-	searchInput.Width = 40
+	searchInput.SetWidth(40)
 	searchInput.Focus()
 
 	m := &TaskJumperModel{
@@ -92,7 +92,7 @@ func (m *TaskJumperModel) SetSize(width, height int) {
 	m.listWidth = max(innerWidth*50/100, 30)
 	m.previewWidth = innerWidth - m.listWidth - 1 // -1 for separator
 
-	m.searchInput.Width = innerWidth - 4
+	m.searchInput.SetWidth(innerWidth - 4)
 }
 
 func (m *TaskJumperModel) Init() tea.Cmd {
@@ -105,7 +105,7 @@ func (m *TaskJumperModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.SetSize(msg.Width, msg.Height)
 		return m, nil
 
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		switch msg.String() {
 		case "esc":
 			return m, func() tea.Msg {
@@ -225,7 +225,7 @@ func (m *TaskJumperModel) scoreTask(task *models.Task, query string) (int, []int
 	return score, titlePositions
 }
 
-func (m *TaskJumperModel) View() string {
+func (m *TaskJumperModel) View() tea.View {
 	var out strings.Builder
 
 	// Title
@@ -245,7 +245,7 @@ func (m *TaskJumperModel) View() string {
 		out.WriteString(MutedStyle.Render("No tasks in this project."))
 		out.WriteString("\n\n")
 		out.WriteString(HelpStyle.Render("Press Esc to close"))
-		return out.String()
+		return tea.NewView(out.String())
 	}
 
 	// Calculate pane height for split view
@@ -264,7 +264,7 @@ func (m *TaskJumperModel) View() string {
 	// Footer
 	out.WriteString(HelpStyle.Render("↑↓ nav · Enter · Esc"))
 
-	return out.String()
+	return tea.NewView(out.String())
 }
 
 // renderTaskList renders the filtered task list.

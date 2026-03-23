@@ -7,8 +7,6 @@ import (
 	"strings"
 	"testing"
 
-	tea "github.com/charmbracelet/bubbletea"
-
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 )
@@ -1505,7 +1503,7 @@ func TestCrossProjectOutlinerQAtRootEmitsCloseCrossOutlinerMsg(t *testing.T) {
 	// project == nil: cross-project mode; crossZoomStack is empty (root level)
 	m := NewOutlinerModel(nil, app.config, app.configManager)
 
-	key := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'q'}}
+	key := syntheticKey('q')
 	_, cmd := m.handleKeyMsg(key)
 	if cmd == nil {
 		t.Fatal("expected a command from 'q' at cross-project root, got nil")

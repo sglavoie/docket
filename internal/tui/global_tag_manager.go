@@ -5,8 +5,8 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/charmbracelet/bubbles/textinput"
-	tea "github.com/charmbracelet/bubbletea"
+	"charm.land/bubbles/v2/textinput"
+	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
@@ -75,7 +75,7 @@ func NewGlobalTagManagerModel(cfg *config.Config) *GlobalTagManagerModel {
 	renameInput := textinput.New()
 	renameInput.Placeholder = "new tag name"
 	renameInput.CharLimit = 50
-	renameInput.Width = 30
+	renameInput.SetWidth(30)
 
 	m := &GlobalTagManagerModel{
 		config:      cfg,
@@ -228,7 +228,7 @@ func (m *GlobalTagManagerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return CloseGlobalTagManagerMsg{}
 		}
 
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		// Handle discard confirmation
 		if m.confirmDiscard {
 			switch msg.String() {
@@ -262,7 +262,7 @@ func (m *GlobalTagManagerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 // handleNormalMode handles keyboard input in normal mode.
-func (m *GlobalTagManagerModel) handleNormalMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+func (m *GlobalTagManagerModel) handleNormalMode(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "q", "esc", "ctrl+t":
 		return m, func() tea.Msg {
@@ -321,7 +321,7 @@ func (m *GlobalTagManagerModel) handleNormalMode(msg tea.KeyMsg) (tea.Model, tea
 }
 
 // handleRenameMode handles keyboard input while in rename mode.
-func (m *GlobalTagManagerModel) handleRenameMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+func (m *GlobalTagManagerModel) handleRenameMode(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "esc":
 		if strings.TrimSpace(m.renameInput.Value()) != m.renameTarget {
@@ -351,7 +351,7 @@ func (m *GlobalTagManagerModel) handleRenameMode(msg tea.KeyMsg) (tea.Model, tea
 }
 
 // handleProjectPickerMode handles keyboard input in project picker mode.
-func (m *GlobalTagManagerModel) handleProjectPickerMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+func (m *GlobalTagManagerModel) handleProjectPickerMode(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	// Find the current tag's projects
 	var projects []TagProjectUsage
 	for _, tag := range m.tags {
@@ -404,11 +404,11 @@ func (m *GlobalTagManagerModel) handleProjectPickerMode(msg tea.KeyMsg) (tea.Mod
 }
 
 // View renders the global tag manager view.
-func (m *GlobalTagManagerModel) View() string {
+func (m *GlobalTagManagerModel) View() tea.View {
 	var b strings.Builder
 
 	if m.showProjectPicker {
-		return m.renderProjectPicker()
+		return tea.NewView(m.renderProjectPicker())
 	}
 
 	b.WriteString(renderFullscreenTitle("Global Tag Manager", "across all projects"))
@@ -463,7 +463,7 @@ func (m *GlobalTagManagerModel) View() string {
 	}
 	b.WriteString(renderStatusBarFooter(HelpStyle.Render(footerHelp), "", m.width))
 
-	return b.String()
+	return tea.NewView(b.String())
 }
 
 // renderProjectPicker renders the project picker overlay.

@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/charmbracelet/bubbles/textinput"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/bubbles/v2/textinput"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 
 	"github.com/sglavoie/tt/internal/template"
 )
@@ -30,7 +30,7 @@ func NewTemplateVarFillerModel(tmpl *template.TaskTemplate) *TemplateVarFillerMo
 		ti := textinput.New()
 		ti.Placeholder = v.Name
 		ti.CharLimit = 200
-		ti.Width = 40
+		ti.SetWidth(40)
 		if v.Default != "" {
 			ti.SetValue(v.Default)
 		}
@@ -53,7 +53,7 @@ func (m *TemplateVarFillerModel) Init() tea.Cmd {
 
 func (m *TemplateVarFillerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		switch msg.String() {
 		case "ctrl+s", "enter":
 			// Build values map and apply substitution
@@ -91,7 +91,7 @@ func (m *TemplateVarFillerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
-func (m *TemplateVarFillerModel) View() string {
+func (m *TemplateVarFillerModel) View() tea.View {
 	var b strings.Builder
 
 	b.WriteString(BoldStyle.Render("Fill in Template Variables"))
@@ -118,7 +118,7 @@ func (m *TemplateVarFillerModel) View() string {
 		Padding(1, 2).
 		Width(max(m.width-4, 1))
 
-	return boxStyle.Render(b.String())
+	return tea.NewView(boxStyle.Render(b.String()))
 }
 
 // SetSize implements the View interface.
@@ -127,7 +127,7 @@ func (m *TemplateVarFillerModel) SetSize(width, height int) {
 	m.height = height
 	inputWidth := max(width-10, 20)
 	for i := range m.inputs {
-		m.inputs[i].Width = inputWidth
+		m.inputs[i].SetWidth(inputWidth)
 	}
 }
 

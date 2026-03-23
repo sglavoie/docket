@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strings"
 
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/workflow"
@@ -55,14 +55,14 @@ func (m *WorkflowRulesModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case CursorFlashClearMsg:
 		m.cursorFlash = false
 		return m, nil
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		// Handle expanded view mode first (narrow screen only)
 		if m.expandedView && !m.isWideScreen() {
 			switch msg.String() {
 			case "esc", "enter", "q":
 				m.expandedView = false
 				return m, nil
-			case " ":
+			case "space":
 				// Toggle enabled/disabled from preview
 				if len(m.filteredRules) > 0 {
 					return m, m.toggleCurrentRule()
@@ -150,7 +150,7 @@ func (m *WorkflowRulesModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			return m, nil
 
-		case " ":
+		case "space":
 			// Toggle enabled/disabled
 			if len(m.filteredRules) > 0 {
 				return m, m.toggleCurrentRule()
@@ -348,12 +348,12 @@ func (m *WorkflowRulesModel) isWideScreen() bool {
 	return m.Width() >= 81
 }
 
-func (m *WorkflowRulesModel) View() string {
+func (m *WorkflowRulesModel) View() tea.View {
 	var b strings.Builder
 
 	// Fullscreen preview mode on narrow screens
 	if m.expandedView && !m.isWideScreen() && len(m.filteredRules) > 0 && m.cursor < len(m.filteredRules) {
-		return m.renderFullscreenPreview()
+		return tea.NewView(m.renderFullscreenPreview())
 	}
 
 	b.WriteString(renderFullscreenTitle("Workflow Rules", fmt.Sprintf("%d rules", len(m.filteredRules))))
@@ -419,7 +419,7 @@ func (m *WorkflowRulesModel) View() string {
 	b.WriteString("\n")
 	b.WriteString(renderStatusBarFooter(HelpStyle.Render(helpText), "", m.Width()))
 
-	return b.String()
+	return tea.NewView(b.String())
 }
 
 // renderRulesList renders the list of rules.

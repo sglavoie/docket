@@ -5,8 +5,8 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/charmbracelet/bubbles/textinput"
-	tea "github.com/charmbracelet/bubbletea"
+	"charm.land/bubbles/v2/textinput"
+	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
@@ -198,7 +198,7 @@ func (m *ContextPickerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.SetSize(msg.Width, msg.Height)
 		return m, nil
 
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		// Handle discard confirmation for rename mode
 		if m.confirmDiscard {
 			switch msg.String() {
@@ -382,7 +382,7 @@ func (m *ContextPickerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 // View renders the context picker.
-func (m *ContextPickerModel) View() string {
+func (m *ContextPickerModel) View() tea.View {
 	// Current filter indicator
 	var headerContent string
 	if m.currentCustomFilter != "" {
@@ -394,7 +394,7 @@ func (m *ContextPickerModel) View() string {
 	}
 
 	// Custom render since context picker has special highlighting for active filter
-	return m.renderContextPicker(headerContent)
+	return tea.NewView(m.renderContextPicker(headerContent))
 }
 
 // renderContextPicker renders the context picker with custom active highlighting.

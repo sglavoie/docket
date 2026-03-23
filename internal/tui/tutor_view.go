@@ -2,12 +2,13 @@ package tui
 
 import (
 	"fmt"
+	"image/color"
 	"strings"
 
-	"github.com/charmbracelet/bubbles/textinput"
-	"github.com/charmbracelet/bubbles/viewport"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/bubbles/v2/textinput"
+	"charm.land/bubbles/v2/viewport"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 )
 
 // TutorTopic represents a single topic in the tutor view.
@@ -40,7 +41,7 @@ func NewTutorModel() *TutorModel {
 	searchInput := textinput.New()
 	searchInput.Placeholder = "Search topics..."
 	searchInput.CharLimit = 50
-	searchInput.Width = 25
+	searchInput.SetWidth(25)
 
 	m := &TutorModel{
 		topics:      tutorTopics(),
@@ -80,7 +81,7 @@ func (m *TutorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.SetSize(msg.Width, msg.Height)
 		return m, nil
 
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		if m.searchMode {
 			switch msg.String() {
 			case "esc":
@@ -283,12 +284,12 @@ func (m *TutorModel) SetSize(width, height int) {
 	}
 
 	if !m.ready {
-		m.viewport = viewport.New(vpWidth, vpHeight)
+		m.viewport = viewport.New(viewport.WithWidth(vpWidth), viewport.WithHeight(vpHeight))
 		m.viewport.YPosition = 0
 		m.ready = true
 	} else {
-		m.viewport.Width = vpWidth
-		m.viewport.Height = vpHeight
+		m.viewport.SetWidth(vpWidth)
+		m.viewport.SetHeight(vpHeight)
 	}
 
 	m.viewport.SetContent(m.renderTopicContent())
@@ -317,7 +318,7 @@ func (m *TutorModel) topicLineIndex(topicIdx int) int {
 
 // listViewHeight returns the visible height for the topic list pane.
 func (m *TutorModel) listViewHeight() int {
-	return m.viewport.Height
+	return m.viewport.Height()
 }
 
 // ensureSelectedVisible adjusts listOffset so the selected item is visible.
@@ -444,7 +445,7 @@ func (m *TutorModel) renderTabBar() string {
 	return renderWrappingTabBar(tabNames, m.activeTab, m.innerWidth())
 }
 
-func (m *TutorModel) View() string {
+func (m *TutorModel) View() tea.View {
 	pad := " " // 1 char left padding
 	var b strings.Builder
 
@@ -474,11 +475,11 @@ func (m *TutorModel) View() string {
 
 		lw := m.listWidth()
 		rw := m.innerWidth() - lw - 1
-		vpH := m.viewport.Height
+		vpH := m.viewport.Height()
 
 		// Focus indicator bar
-		leftColor := lipgloss.TerminalColor(ColorBorder)
-		rightColor := lipgloss.TerminalColor(ColorBorder)
+		leftColor := color.Color(ColorBorder)
+		rightColor := color.Color(ColorBorder)
 		if m.activePane == 0 {
 			leftColor = ColorPrimary
 		} else {
@@ -510,13 +511,13 @@ func (m *TutorModel) View() string {
 	}
 	leftFooter := HelpStyle.Render(fmt.Sprintf("Tab: switch pane (%s) · [/]: tabs · /: search · j/k: navigate · q: close", paneHint))
 	rightFooter := ""
-	if m.ready && m.viewport.TotalLineCount() > m.viewport.Height {
+	if m.ready && m.viewport.TotalLineCount() > m.viewport.Height() {
 		rightFooter = MutedStyle.Render(fmt.Sprintf("%3.0f%%", m.viewport.ScrollPercent()*100))
 	}
 	b.WriteString(pad)
 	b.WriteString(renderStatusBarFooter(leftFooter, rightFooter, m.innerWidth()))
 
-	return b.String()
+	return tea.NewView(b.String())
 }
 
 func (m *TutorModel) StatusBarLabel() string { return "Tutorial" }

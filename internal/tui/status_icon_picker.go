@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/models"
 )
@@ -101,7 +101,7 @@ func (m *StatusIconPickerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.SetSize(msg.Width, msg.Height)
 		return m, nil
 
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		switch msg.String() {
 		case "q", "esc":
 			project := m.project
@@ -133,7 +133,7 @@ func (m *StatusIconPickerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-func (m *StatusIconPickerModel) View() string {
+func (m *StatusIconPickerModel) View() tea.View {
 	var b strings.Builder
 
 	b.WriteString(renderFullscreenTitle("Set Status Icon", m.project.Name))
@@ -171,7 +171,7 @@ func (m *StatusIconPickerModel) View() string {
 	left := HelpStyle.Render("↑/↓ navigate · Enter confirm · Esc skip")
 	b.WriteString(renderStatusBarFooter(left, "", m.Width()))
 
-	return b.String()
+	return tea.NewView(b.String())
 }
 
 func (m *StatusIconPickerModel) StatusBarLabel() string { return "Set Status Icon" }

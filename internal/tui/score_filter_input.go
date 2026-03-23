@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/charmbracelet/bubbles/textinput"
-	tea "github.com/charmbracelet/bubbletea"
+	"charm.land/bubbles/v2/textinput"
+	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/config"
 )
@@ -30,7 +30,7 @@ func (s *ScoreFilterInput) Enter(customValue *float64) {
 	ti.Prompt = ""
 	ti.Placeholder = "enter value"
 	ti.CharLimit = 10
-	ti.Width = 12
+	ti.SetWidth(12)
 	if customValue != nil {
 		ti.SetValue(fmt.Sprintf("%.0f", *customValue))
 	}
@@ -43,7 +43,7 @@ func (s *ScoreFilterInput) Enter(customValue *float64) {
 // Returns the parsed value (nil if canceled or invalid) and whether the input
 // session is done. The caller is responsible for applying the value to filters
 // and persisting to config.
-func (s *ScoreFilterInput) HandleKey(msg tea.KeyMsg) (value *float64, done bool, cmd tea.Cmd) {
+func (s *ScoreFilterInput) HandleKey(msg tea.KeyPressMsg) (value *float64, done bool, cmd tea.Cmd) {
 	switch msg.String() {
 	case "enter":
 		val, err := strconv.ParseFloat(s.Input.Value(), 64)
@@ -64,7 +64,7 @@ func (s *ScoreFilterInput) HandleKey(msg tea.KeyMsg) (value *float64, done bool,
 // ProcessKey handles a key event, persists the result to config, and updates
 // the filter ScoreMin. The onApply callback is called when a valid value is
 // accepted so the caller can refresh its view.
-func (s *ScoreFilterInput) ProcessKey(msg tea.KeyMsg, cfg *config.Config, mgr *config.Manager, scoreMin *float64, onApply func()) tea.Cmd {
+func (s *ScoreFilterInput) ProcessKey(msg tea.KeyPressMsg, cfg *config.Config, mgr *config.Manager, scoreMin *float64, onApply func()) tea.Cmd {
 	val, done, cmd := s.HandleKey(msg)
 	if done && val != nil {
 		cfg.ScoreFilterCustom = val

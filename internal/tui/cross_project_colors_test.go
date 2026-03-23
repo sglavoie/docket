@@ -38,7 +38,7 @@ func TestProjectBadgeColorInPalette(t *testing.T) {
 	}
 	names := []string{"alpha", "beta", "gamma", "tt", "work", "home", "side", "hobby"}
 	for _, name := range names {
-		c := string(projectBadgeColor(name))
+		c := projectBadgeColor(name)
 		if !paletteSet[c] {
 			t.Errorf("projectBadgeColor(%q) = %q, not in palette", name, c)
 		}

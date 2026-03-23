@@ -1,15 +1,16 @@
 package tui
 
 import (
+	tea "charm.land/bubbletea/v2"
 	"fmt"
 	"maps"
 	"strings"
 	"time"
 
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/lipgloss/v2"
 )
 
-func (m *DailyReviewModel) View() string {
+func (m *DailyReviewModel) View() tea.View {
 	totalCount := m.getTotalTaskCount()
 
 	var b strings.Builder
@@ -35,7 +36,7 @@ func (m *DailyReviewModel) View() string {
 		b.WriteString(renderFilterAwareEmptyState(m.HasActiveFilters(),
 			"No tasks to review.", "Your inbox is clear. Press q or Esc to close.",
 			"Press q or Esc to clear filters."))
-		return b.String()
+		return tea.NewView(b.String())
 	}
 
 	// Tab bar + filter badge
@@ -54,7 +55,7 @@ func (m *DailyReviewModel) View() string {
 		b.WriteString(renderFilterAwareEmptyState(m.HasActiveFilters(),
 			"No tasks in this tab.", "[/]: tabs · ? help",
 			"[/]: tabs · Fx clear filters · q/Esc clear filters · ? help"))
-		return b.String()
+		return tea.NewView(b.String())
 	}
 
 	lines, cursorLineIndex := m.renderAllSections()
@@ -82,7 +83,7 @@ func (m *DailyReviewModel) View() string {
 	right := MutedStyle.Render(fmt.Sprintf("%d tasks", totalCount))
 	b.WriteString(renderFullscreenFooterBlock(m.statusMessage, m.err, left, right, m.width))
 
-	return b.String()
+	return tea.NewView(b.String())
 }
 
 // renderReviewTabBar renders the tab bar for daily review sections.

@@ -5,8 +5,8 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/charmbracelet/bubbles/textinput"
-	tea "github.com/charmbracelet/bubbletea"
+	"charm.land/bubbles/v2/textinput"
+	tea "charm.land/bubbletea/v2"
 )
 
 // TagAdder provides shared add-tag mode state and logic.
@@ -52,7 +52,7 @@ func (a *TagAdder) EnterAddMode() tea.Cmd {
 // HandleAddTagKey processes a key message while in add-tag mode.
 // The picker parameter is used to manipulate the item list and selection.
 // Returns (handled, cmd). The caller should return (m, cmd) when handled is true.
-func (a *TagAdder) HandleAddTagKey(msg tea.KeyMsg, picker *BasePicker[TagInfo]) (bool, tea.Cmd) {
+func (a *TagAdder) HandleAddTagKey(msg tea.KeyPressMsg, picker *BasePicker[TagInfo]) (bool, tea.Cmd) {
 	switch msg.String() {
 	case "esc":
 		a.AddTagMode = false

@@ -1,6 +1,6 @@
 package tui
 
-import tea "github.com/charmbracelet/bubbletea"
+import tea "charm.land/bubbletea/v2"
 
 // ViewRegistry manages view instances and provides centralized view operations.
 // It supports lazy initialization of views through factories.
@@ -74,7 +74,7 @@ func (r *ViewRegistry) View(vt ViewType) string {
 	if view == nil {
 		return ""
 	}
-	return view.View()
+	return view.View().Content
 }
 
 // Clear removes all views from the registry.

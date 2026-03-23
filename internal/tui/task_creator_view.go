@@ -1,6 +1,7 @@
 package tui
 
 import (
+	tea "charm.land/bubbletea/v2"
 	"fmt"
 	"strings"
 
@@ -8,7 +9,7 @@ import (
 	"github.com/sglavoie/tt/internal/util"
 )
 
-func (m *TaskCreatorModel) View() string {
+func (m *TaskCreatorModel) View() tea.View {
 	var b strings.Builder
 
 	// Title
@@ -66,7 +67,7 @@ func (m *TaskCreatorModel) View() string {
 	out.WriteString("\n")
 	out.WriteString(HelpStyle.Render(wrappedHelp))
 
-	return out.String()
+	return tea.NewView(out.String())
 }
 
 // renderFieldsTab renders the Fields tab content.

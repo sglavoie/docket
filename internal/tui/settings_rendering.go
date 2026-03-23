@@ -1,11 +1,12 @@
 package tui
 
 import (
+	tea "charm.land/bubbletea/v2"
 	"fmt"
 	"strings"
 
-	"github.com/charmbracelet/bubbles/textinput"
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/bubbles/v2/textinput"
+	"charm.land/lipgloss/v2"
 )
 
 func (m *SettingsModel) renderGeneralTab() string {
@@ -722,7 +723,7 @@ func (m *SettingsModel) focusLineInContent() int {
 	return 0
 }
 
-func (m *SettingsModel) View() string {
+func (m *SettingsModel) View() tea.View {
 	// Tab content
 	var content string
 	switch m.tabs.Active {
@@ -815,5 +816,5 @@ func (m *SettingsModel) View() string {
 	right := MutedStyle.Render("Settings")
 	out.WriteString(renderStatusBarFooter(left, right, m.width))
 
-	return out.String()
+	return tea.NewView(out.String())
 }

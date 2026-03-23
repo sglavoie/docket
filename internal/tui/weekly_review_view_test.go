@@ -24,7 +24,7 @@ func TestWeeklyReview_EmptyState(t *testing.T) {
 	m.SetSize(80, 24)
 	m.calculateNavigation()
 
-	output := m.View()
+	output := m.View().Content
 	if output == "" {
 		t.Error("expected non-empty output for empty weekly review")
 	}
@@ -52,7 +52,7 @@ func TestWeeklyReview_WithStaleProjects(t *testing.T) {
 
 	m.calculateNavigation()
 
-	output := m.View()
+	output := m.View().Content
 	if !strings.Contains(output, "Stale Project") {
 		t.Error("expected output to contain 'Stale Project'")
 	}
@@ -117,7 +117,7 @@ func TestWeeklyReview_CompletionSummary(t *testing.T) {
 	m.staleProjects = []WeeklyReviewProject{{Project: project, NoActivityDays: 5}}
 	m.calculateNavigation()
 
-	output := m.View()
+	output := m.View().Content
 	if !strings.Contains(output, "Review Complete") {
 		t.Error("expected output to contain 'Review Complete'")
 	}

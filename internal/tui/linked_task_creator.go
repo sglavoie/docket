@@ -5,8 +5,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/charmbracelet/bubbles/textarea"
-	tea "github.com/charmbracelet/bubbletea"
+	"charm.land/bubbles/v2/textarea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/google/uuid"
 
 	"github.com/sglavoie/tt/internal/models"
@@ -53,7 +53,7 @@ func (m *LinkedTaskCreatorModel) Init() tea.Cmd {
 func (m *LinkedTaskCreatorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// Handle discard confirmation
 	if m.confirmDiscard {
-		if msg, ok := msg.(tea.KeyMsg); ok {
+		if msg, ok := msg.(tea.KeyPressMsg); ok {
 			switch msg.String() {
 			case "y", "Y":
 				m.confirmDiscard = false
@@ -67,7 +67,7 @@ func (m *LinkedTaskCreatorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	switch msg := msg.(type) {
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		key := msg.String()
 
 		// Handle autocomplete navigation when active
@@ -94,7 +94,7 @@ func (m *LinkedTaskCreatorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
-func (m *LinkedTaskCreatorModel) View() string {
+func (m *LinkedTaskCreatorModel) View() tea.View {
 	var b strings.Builder
 
 	// Header showing link type and source task
@@ -143,7 +143,7 @@ func (m *LinkedTaskCreatorModel) View() string {
 	out.WriteString("\n")
 	out.WriteString(renderStatusBarFooter(HelpStyle.Render(helpText), "", m.width))
 
-	return out.String()
+	return tea.NewView(out.String())
 }
 
 // HasTextInput returns true because this view uses a textarea.

@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strings"
 
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 
 	"github.com/sglavoie/tt/internal/models"
 )
@@ -54,7 +54,7 @@ func (m *TaskActivityModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.BaseView.SetSize(msg.Width, msg.Height)
 
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		if m.pendingPrefix == "g" {
 			m.pendingPrefix = ""
 			_, cmd := handleGotoTopPrefix(msg.String(), &m.cursor, &m.cursorFlash)
@@ -121,9 +121,9 @@ func (m *TaskActivityModel) ShouldCaptureEsc() bool {
 
 func (m *TaskActivityModel) SupportsHelpShortcut() bool { return false }
 
-func (m *TaskActivityModel) View() string {
+func (m *TaskActivityModel) View() tea.View {
 	if m.task == nil {
-		return "No task selected"
+		return tea.NewView("No task selected")
 	}
 
 	var b strings.Builder
@@ -191,7 +191,7 @@ func (m *TaskActivityModel) View() string {
 	helpText := "[/]: tabs · j/k: navigate · s: sort · y: copy entry · q/Esc: close"
 	b.WriteString(HelpStyle.Render(renderWrappingHelpLine(helpText, m.Width())))
 
-	return b.String()
+	return tea.NewView(b.String())
 }
 
 // getEntries returns entries in the current sort order, filtered by active tab.

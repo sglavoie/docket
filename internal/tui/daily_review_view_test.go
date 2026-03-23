@@ -35,7 +35,7 @@ func TestDailyReview_EmptyState(t *testing.T) {
 	m.SetSize(80, 24)
 	m.calculateNavigation()
 
-	output := m.View()
+	output := m.View().Content
 	if output == "" {
 		t.Error("expected non-empty output for empty daily review")
 	}
@@ -87,7 +87,7 @@ func TestDailyReview_ReviewCompletion(t *testing.T) {
 	m.completedAt = time.Now()
 	m.calculateNavigation()
 
-	output := m.View()
+	output := m.View().Content
 	if !strings.Contains(output, "completed today at") {
 		t.Error("expected output to contain completion message")
 	}
@@ -111,7 +111,7 @@ func TestDailyReview_WithTasks_Render(t *testing.T) {
 	m.tabs.Active = 1
 	m.calculateNavigation()
 
-	output := m.View()
+	output := m.View().Content
 	if !strings.Contains(output, "Important task") {
 		t.Error("expected output to contain 'Important task'")
 	}

@@ -1,12 +1,13 @@
 package tui
 
 import (
+	tea "charm.land/bubbletea/v2"
 	"fmt"
 	"maps"
 	"strings"
 )
 
-func (m *AllTasksViewModel) View() string {
+func (m *AllTasksViewModel) View() tea.View {
 	var b strings.Builder
 
 	// Title
@@ -20,7 +21,7 @@ func (m *AllTasksViewModel) View() string {
 	if len(m.allTasks) == 0 {
 		b.WriteString("\n")
 		b.WriteString(renderEmptyState("No tasks found across projects.", "Press q to return to dashboard."))
-		return b.String()
+		return tea.NewView(b.String())
 	}
 
 	// Tab bar + filter badge
@@ -48,7 +49,7 @@ func (m *AllTasksViewModel) View() string {
 		b.WriteString(renderFilterAwareEmptyState(m.HasActiveFilters(),
 			EmptyStateFiltered, "[/] h/l tabs · q/Esc close",
 			"[/] tabs · Fx clear filters · q/Esc clear filters"))
-		return b.String()
+		return tea.NewView(b.String())
 	}
 
 	// Render groups with task lines
@@ -117,7 +118,7 @@ func (m *AllTasksViewModel) View() string {
 	right := MutedStyle.Render(fmt.Sprintf("%d tasks", m.totalVisibleTaskCount()))
 	b.WriteString(renderFullscreenFooterBlock(m.statusMessage, m.err, left, right, m.Width()))
 
-	return b.String()
+	return tea.NewView(b.String())
 }
 
 // GetPrefixPopupInfo returns prefix popup data for overlay rendering.

@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/charmbracelet/bubbles/textarea"
-	"github.com/charmbracelet/bubbles/textinput"
-	tea "github.com/charmbracelet/bubbletea"
+	"charm.land/bubbles/v2/textarea"
+	"charm.land/bubbles/v2/textinput"
+	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
@@ -122,7 +122,7 @@ func NewTaskCreatorModel(project *models.Project, cfg *config.Config, manager *c
 
 	titleInput := factory.NewTitleInput("Enter task title...")
 	titleInput.Focus()
-	titleInput.SetPromptFunc(0, func(lineIdx int) string { return "" })
+	titleInput.SetPromptFunc(0, func(info textarea.PromptInfo) string { return "" })
 
 	types := []models.TaskType{
 		models.TaskTypeTask,

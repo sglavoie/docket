@@ -5,7 +5,7 @@ import (
 	"strings"
 	"time"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/models"
 )
@@ -89,7 +89,7 @@ func (m *RecurrenceEditorModel) Init() tea.Cmd {
 
 func (m *RecurrenceEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		switch msg.String() {
 		case "esc":
 			return m, func() tea.Msg {
@@ -125,7 +125,7 @@ func (m *RecurrenceEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "down", "j":
 			return m, m.handleDown()
 
-		case " ":
+		case "space":
 			// Toggle weekday
 			if m.focusSection == 2 && m.isWeeklyUnit() {
 				m.weekdays[m.weekdayCursor] = !m.weekdays[m.weekdayCursor]
@@ -285,7 +285,7 @@ func (m *RecurrenceEditorModel) buildPattern() *models.RecurrencePattern {
 	return pattern
 }
 
-func (m *RecurrenceEditorModel) View() string {
+func (m *RecurrenceEditorModel) View() tea.View {
 	var b strings.Builder
 
 	// Interval row
@@ -385,7 +385,7 @@ func (m *RecurrenceEditorModel) View() string {
 	out.WriteString("\n")
 	out.WriteString(renderStatusBarFooter(left, "", m.width))
 
-	return out.String()
+	return tea.NewView(out.String())
 }
 
 // ShouldCaptureEsc returns true to let the editor handle esc internally.

@@ -5,8 +5,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/charmbracelet/bubbles/textinput"
-	tea "github.com/charmbracelet/bubbletea"
+	"charm.land/bubbles/v2/textinput"
+	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
@@ -123,7 +123,7 @@ func (m *ProjectEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	// Handle discard confirmation
 	if m.confirmDiscard {
-		if keyMsg, ok := msg.(tea.KeyMsg); ok {
+		if keyMsg, ok := msg.(tea.KeyPressMsg); ok {
 			switch keyMsg.String() {
 			case "y", "Y":
 				m.confirmDiscard = false
@@ -139,7 +139,7 @@ func (m *ProjectEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	switch msg := msg.(type) {
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		switch msg.String() {
 		case "esc":
 			if m.checkChanges() {
@@ -306,7 +306,7 @@ func (m *ProjectEditorModel) saveProject() tea.Cmd {
 	}
 }
 
-func (m *ProjectEditorModel) View() string {
+func (m *ProjectEditorModel) View() tea.View {
 	var b strings.Builder
 
 	// Name input with slug preview
@@ -371,7 +371,7 @@ func (m *ProjectEditorModel) View() string {
 	out.WriteString("\n")
 	out.WriteString(renderStatusBarFooter(left, right, m.width))
 
-	return out.String()
+	return tea.NewView(out.String())
 }
 
 func (m *ProjectEditorModel) HasTextInput() bool     { return true }

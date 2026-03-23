@@ -46,7 +46,7 @@ func TestProjectTreeView_BasicRender(t *testing.T) {
 	m := NewProjectTreeModel(project, cfg, nil)
 	m.SetSize(80, 24)
 
-	output := m.View()
+	output := m.View().Content
 	if !strings.Contains(output, "First task") {
 		t.Error("expected output to contain 'First task'")
 	}
@@ -62,7 +62,7 @@ func TestProjectTreeView_EmptyProject(t *testing.T) {
 	m := NewProjectTreeModel(project, cfg, nil)
 	m.SetSize(80, 24)
 
-	output := m.View()
+	output := m.View().Content
 	if output == "" {
 		t.Error("expected non-empty output even for empty project")
 	}

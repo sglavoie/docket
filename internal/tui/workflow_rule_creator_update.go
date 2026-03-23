@@ -3,7 +3,7 @@ package tui
 import (
 	"strings"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/workflow"
 )
@@ -63,7 +63,7 @@ func (m *WorkflowRuleCreatorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	// Handle discard confirmation
 	if m.confirmDiscard {
-		if keyMsg, ok := msg.(tea.KeyMsg); ok {
+		if keyMsg, ok := msg.(tea.KeyPressMsg); ok {
 			switch keyMsg.String() {
 			case "y", "Y":
 				m.confirmDiscard = false
@@ -79,7 +79,7 @@ func (m *WorkflowRuleCreatorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	switch msg := msg.(type) {
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		switch msg.String() {
 		case "esc":
 			// If showing preview on narrow screen, go back to editor
@@ -236,7 +236,7 @@ func (m *WorkflowRuleCreatorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			return m, nil
 
-		case " ":
+		case "space":
 			section, _, _ := m.getFocusSection()
 			if section == "logic" {
 				if m.triggerLogic == workflow.LogicAnd {

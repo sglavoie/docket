@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 )
 
 // PickerItem defines the interface that any picker item must implement.
@@ -87,7 +87,7 @@ func (p *BasePicker[T]) Filter(query string) {
 
 // HandleKeyMsg processes keyboard input for navigation and selection.
 // Returns (handled, cmd) where handled indicates if the key was consumed.
-func (p *BasePicker[T]) HandleKeyMsg(msg tea.KeyMsg) (bool, tea.Cmd) {
+func (p *BasePicker[T]) HandleKeyMsg(msg tea.KeyPressMsg) (bool, tea.Cmd) {
 	// Handle search mode first
 	if p.IsSearchMode() {
 		handled, cmd, valueChanged := p.HandleSearchInput(msg)
@@ -113,7 +113,7 @@ func (p *BasePicker[T]) HandleKeyMsg(msg tea.KeyMsg) (bool, tea.Cmd) {
 	case "/":
 		return true, p.ActivateSearch()
 
-	case " ":
+	case "space":
 		if p.Config.MultiSelect && len(p.Filtered) > 0 && p.Cursor < len(p.Filtered) {
 			item := p.Filtered[p.Cursor]
 			id := item.ItemID()

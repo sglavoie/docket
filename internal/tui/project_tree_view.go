@@ -1,23 +1,23 @@
 package tui
 
 import (
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/models"
 )
 
-func (m *ProjectTreeModel) View() string {
+func (m *ProjectTreeModel) View() tea.View {
 	if m.project == nil {
-		return "No project loaded"
+		return tea.NewView("No project loaded")
 	}
 
 	// If sidebar is enabled, render split-pane layout
 	if m.sidebar.IsEnabled() {
-		return m.renderWithSidebar()
+		return tea.NewView(m.renderWithSidebar())
 	}
 
 	// Otherwise, render traditional full-width view
-	return m.renderFullWidth()
+	return tea.NewView(m.renderFullWidth())
 }
 
 // GetHelpItems returns the help items for the project tree view.

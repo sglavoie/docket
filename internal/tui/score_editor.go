@@ -5,8 +5,8 @@ import (
 	"strconv"
 	"strings"
 
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
@@ -81,7 +81,7 @@ func (m *ScoreEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.height = msg.Height
 		return m, nil
 
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		switch msg.String() {
 		case "esc", "q":
 			return m, func() tea.Msg {
@@ -188,9 +188,9 @@ func (m *ScoreEditorModel) computeLiveScore() float64 {
 }
 
 // View implements tea.Model.
-func (m *ScoreEditorModel) View() string {
+func (m *ScoreEditorModel) View() tea.View {
 	if m.task == nil {
-		return "No task selected"
+		return tea.NewView("No task selected")
 	}
 
 	// Compute live score from in-progress editor values
@@ -274,9 +274,9 @@ func (m *ScoreEditorModel) View() string {
 	box := boxStyle.Render(content.String())
 
 	// Center the box in the terminal
-	return lipgloss.Place(m.width, m.height,
+	return tea.NewView(lipgloss.Place(m.width, m.height,
 		lipgloss.Center, lipgloss.Center,
-		box)
+		box))
 }
 
 // ShouldCaptureEsc returns true since the editor handles Esc internally.

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/util"
@@ -97,7 +97,7 @@ func (m *PriorityPickerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.SetSize(msg.Width, msg.Height)
 		return m, nil
 
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		switch msg.String() {
 		case "q", "esc":
 			return m, func() tea.Msg {
@@ -152,7 +152,7 @@ func (m *PriorityPickerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 // View renders the priority picker.
-func (m *PriorityPickerModel) View() string {
+func (m *PriorityPickerModel) View() tea.View {
 	var b strings.Builder
 
 	subtitle := fmt.Sprintf("Task #%d: %s", m.task.ShortID, util.Truncate(m.task.Title, 25))
@@ -186,7 +186,7 @@ func (m *PriorityPickerModel) View() string {
 	left := HelpStyle.Render("1-5 to select · ↑/↓ navigate · Enter confirm · Esc cancel")
 	b.WriteString(renderStatusBarFooter(left, "", m.Width()))
 
-	return b.String()
+	return tea.NewView(b.String())
 }
 
 func (m *PriorityPickerModel) StatusBarLabel() string { return "Set Priority" }

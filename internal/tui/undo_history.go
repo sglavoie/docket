@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strings"
 
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
@@ -72,7 +72,7 @@ func (m *UndoHistoryModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.BaseView.SetSize(msg.Width, msg.Height)
 
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		// Handle detail view first
 		if m.showingDetail {
 			switch msg.String() {
@@ -267,10 +267,10 @@ func (m *UndoHistoryModel) performUndo() tea.Cmd {
 	}
 }
 
-func (m *UndoHistoryModel) View() string {
+func (m *UndoHistoryModel) View() tea.View {
 	// Show detail view if active
 	if m.showingDetail {
-		return m.renderDetailView()
+		return tea.NewView(m.renderDetailView())
 	}
 
 	var b strings.Builder
@@ -284,7 +284,7 @@ func (m *UndoHistoryModel) View() string {
 		b.WriteString(ErrorIconStyle.Render(m.Error().Error()))
 		b.WriteString("\n\n")
 		b.WriteString(HelpStyle.Render("Press Esc to close"))
-		return b.String()
+		return tea.NewView(b.String())
 	}
 
 	// Handle empty state
@@ -292,7 +292,7 @@ func (m *UndoHistoryModel) View() string {
 		b.WriteString(MutedStyle.Render("No undo history available."))
 		b.WriteString("\n\n")
 		b.WriteString(HelpStyle.Render("Press Esc to close"))
-		return b.String()
+		return tea.NewView(b.String())
 	}
 
 	// Calculate layout
@@ -328,7 +328,7 @@ func (m *UndoHistoryModel) View() string {
 	helpParts = append(helpParts, "Esc: close")
 	b.WriteString(HelpStyle.Render(renderWrappingHelpLine(strings.Join(helpParts, " · "), m.Width())))
 
-	return b.String()
+	return tea.NewView(b.String())
 }
 
 // renderDetailView renders a modal showing the full content of the selected diff line.

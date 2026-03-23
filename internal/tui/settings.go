@@ -5,8 +5,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/charmbracelet/bubbles/textinput"
-	tea "github.com/charmbracelet/bubbletea"
+	"charm.land/bubbles/v2/textinput"
+	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/config"
 )
@@ -214,19 +214,19 @@ func NewSettingsModel(cfg *config.Config, manager *config.Manager) *SettingsMode
 	editorInput.Placeholder = "code"
 	editorInput.Focus()
 	editorInput.CharLimit = 256
-	editorInput.Width = 40
+	editorInput.SetWidth(40)
 	editorInput.SetValue(cfg.Editor)
 
 	contextInput := textinput.New()
 	contextInput.Placeholder = "personal"
 	contextInput.CharLimit = 50
-	contextInput.Width = 30
+	contextInput.SetWidth(30)
 	contextInput.SetValue(cfg.DefaultContext)
 
 	undoDepthInput := textinput.New()
 	undoDepthInput.Placeholder = strconv.Itoa(config.DefaultUndoHistoryDepth)
 	undoDepthInput.CharLimit = 4
-	undoDepthInput.Width = 10
+	undoDepthInput.SetWidth(10)
 	undoDepthValue := config.DefaultUndoHistoryDepth
 	if cfg.UndoHistoryDepth != nil {
 		undoDepthValue = *cfg.UndoHistoryDepth
@@ -236,133 +236,133 @@ func NewSettingsModel(cfg *config.Config, manager *config.Manager) *SettingsMode
 	dueSoonInput := textinput.New()
 	dueSoonInput.Placeholder = "7"
 	dueSoonInput.CharLimit = 3
-	dueSoonInput.Width = 6
+	dueSoonInput.SetWidth(6)
 	dueSoonInput.SetValue(strconv.Itoa(cfg.GetReviewDueSoonDays()))
 
 	futureInput := textinput.New()
 	futureInput.Placeholder = "30"
 	futureInput.CharLimit = 3
-	futureInput.Width = 6
+	futureInput.SetWidth(6)
 	futureInput.SetValue(strconv.Itoa(cfg.GetReviewFutureDays()))
 
 	oldDaysInput := textinput.New()
 	oldDaysInput.Placeholder = "14"
 	oldDaysInput.CharLimit = 3
-	oldDaysInput.Width = 6
+	oldDaysInput.SetWidth(6)
 	oldDaysInput.SetValue(strconv.Itoa(cfg.GetReviewOldDays()))
 
 	completedHoursInput := textinput.New()
 	completedHoursInput.Placeholder = "24"
 	completedHoursInput.CharLimit = 3
-	completedHoursInput.Width = 6
+	completedHoursInput.SetWidth(6)
 	completedHoursInput.SetValue(strconv.Itoa(cfg.GetReviewCompletedHours()))
 
 	recentActivityInput := textinput.New()
 	recentActivityInput.Placeholder = "20"
 	recentActivityInput.CharLimit = 3
-	recentActivityInput.Width = 6
+	recentActivityInput.SetWidth(6)
 	recentActivityInput.SetValue(strconv.Itoa(cfg.GetRecentActivityLimit()))
 
 	maxPinnedInput := textinput.New()
 	maxPinnedInput.Placeholder = strconv.Itoa(config.DefaultMaxPinnedBarItems)
 	maxPinnedInput.CharLimit = 2
-	maxPinnedInput.Width = 6
+	maxPinnedInput.SetWidth(6)
 	maxPinnedInput.SetValue(strconv.Itoa(cfg.GetMaxPinnedBarItems()))
 
 	maxRecentTaskVisitsInput := textinput.New()
 	maxRecentTaskVisitsInput.Placeholder = strconv.Itoa(config.DefaultMaxRecentTaskVisits)
 	maxRecentTaskVisitsInput.CharLimit = 2
-	maxRecentTaskVisitsInput.Width = 6
+	maxRecentTaskVisitsInput.SetWidth(6)
 	maxRecentTaskVisitsInput.SetValue(strconv.Itoa(cfg.GetMaxRecentTaskVisits()))
 
 	popupTimeoutInput := textinput.New()
 	popupTimeoutInput.Placeholder = "0"
 	popupTimeoutInput.CharLimit = 2
-	popupTimeoutInput.Width = 6
+	popupTimeoutInput.SetWidth(6)
 	popupTimeoutInput.SetValue(strconv.Itoa(cfg.GetPopupTimeoutSeconds()))
 
 	attachmentEditorInput := textinput.New()
 	attachmentEditorInput.Placeholder = "(OS default)"
 	attachmentEditorInput.CharLimit = 256
-	attachmentEditorInput.Width = 40
+	attachmentEditorInput.SetWidth(40)
 	attachmentEditorInput.SetValue(cfg.GetAttachmentEditor())
 
 	codeEditorInput := textinput.New()
 	codeEditorInput.Placeholder = "code"
 	codeEditorInput.CharLimit = 256
-	codeEditorInput.Width = 40
+	codeEditorInput.SetWidth(40)
 	codeEditorInput.SetValue(cfg.CodeEditor) // Use raw value, not getter (to distinguish default from explicit)
 
 	bgColorInput := textinput.New()
 	bgColorInput.Placeholder = "(none)"
 	bgColorInput.CharLimit = 7
-	bgColorInput.Width = 10
+	bgColorInput.SetWidth(10)
 	bgColorInput.SetValue(cfg.TUIBackgroundColor)
 
 	cursorColorInput := textinput.New()
 	cursorColorInput.Placeholder = "(none)"
 	cursorColorInput.CharLimit = 7
-	cursorColorInput.Width = 10
+	cursorColorInput.SetWidth(10)
 	cursorColorInput.SetValue(cfg.TUICursorColor)
 
 	cursorTextColorInput := textinput.New()
 	cursorTextColorInput.Placeholder = "(none)"
 	cursorTextColorInput.CharLimit = 7
-	cursorTextColorInput.Width = 10
+	cursorTextColorInput.SetWidth(10)
 	cursorTextColorInput.SetValue(cfg.TUICursorTextColor)
 
 	normalTextInput := textinput.New()
 	normalTextInput.Placeholder = "(none)"
 	normalTextInput.CharLimit = 7
-	normalTextInput.Width = 10
+	normalTextInput.SetWidth(10)
 	normalTextInput.SetValue(cfg.Palette.NormalText)
 
 	mutedInput := textinput.New()
 	mutedInput.Placeholder = "(none)"
 	mutedInput.CharLimit = 7
-	mutedInput.Width = 10
+	mutedInput.SetWidth(10)
 	mutedInput.SetValue(cfg.Palette.Muted)
 
 	primaryInput := textinput.New()
 	primaryInput.Placeholder = "(none)"
 	primaryInput.CharLimit = 7
-	primaryInput.Width = 10
+	primaryInput.SetWidth(10)
 	primaryInput.SetValue(cfg.Palette.Primary)
 
 	secondaryInput := textinput.New()
 	secondaryInput.Placeholder = "(none)"
 	secondaryInput.CharLimit = 7
-	secondaryInput.Width = 10
+	secondaryInput.SetWidth(10)
 	secondaryInput.SetValue(cfg.Palette.Secondary)
 
 	accentInput := textinput.New()
 	accentInput.Placeholder = "(none)"
 	accentInput.CharLimit = 7
-	accentInput.Width = 10
+	accentInput.SetWidth(10)
 	accentInput.SetValue(cfg.Palette.Accent)
 
 	successInput := textinput.New()
 	successInput.Placeholder = "(none)"
 	successInput.CharLimit = 7
-	successInput.Width = 10
+	successInput.SetWidth(10)
 	successInput.SetValue(cfg.Palette.Success)
 
 	warningInput := textinput.New()
 	warningInput.Placeholder = "(none)"
 	warningInput.CharLimit = 7
-	warningInput.Width = 10
+	warningInput.SetWidth(10)
 	warningInput.SetValue(cfg.Palette.Warning)
 
 	errorColorInput := textinput.New()
 	errorColorInput.Placeholder = "(none)"
 	errorColorInput.CharLimit = 7
-	errorColorInput.Width = 10
+	errorColorInput.SetWidth(10)
 	errorColorInput.SetValue(cfg.Palette.Error)
 
 	borderInput := textinput.New()
 	borderInput.Placeholder = "(none)"
 	borderInput.CharLimit = 7
-	borderInput.Width = 10
+	borderInput.SetWidth(10)
 	borderInput.SetValue(cfg.Palette.Border)
 
 	// Determine default view cursor from config
@@ -402,7 +402,7 @@ func NewSettingsModel(cfg *config.Config, manager *config.Manager) *SettingsMode
 	stageInput := textinput.New()
 	stageInput.Placeholder = "Stage name"
 	stageInput.CharLimit = 30
-	stageInput.Width = 30
+	stageInput.SetWidth(30)
 
 	// Copy stages from config
 	stages := make([]string, len(cfg.Stages))
@@ -412,37 +412,37 @@ func NewSettingsModel(cfg *config.Config, manager *config.Manager) *SettingsMode
 	alertDailyReviewHourInput := textinput.New()
 	alertDailyReviewHourInput.Placeholder = strconv.Itoa(config.DefaultAlertDailyReviewHour)
 	alertDailyReviewHourInput.CharLimit = 2
-	alertDailyReviewHourInput.Width = 6
+	alertDailyReviewHourInput.SetWidth(6)
 	alertDailyReviewHourInput.SetValue(strconv.Itoa(cfg.GetAlertDailyReviewHour()))
 
 	alertDueSoonDaysInput := textinput.New()
 	alertDueSoonDaysInput.Placeholder = strconv.Itoa(config.DefaultAlertDueSoonDays)
 	alertDueSoonDaysInput.CharLimit = 3
-	alertDueSoonDaysInput.Width = 6
+	alertDueSoonDaysInput.SetWidth(6)
 	alertDueSoonDaysInput.SetValue(strconv.Itoa(cfg.GetAlertDueSoonDays()))
 
 	alertStaleDaysInput := textinput.New()
 	alertStaleDaysInput.Placeholder = strconv.Itoa(config.DefaultAlertStaleDays)
 	alertStaleDaysInput.CharLimit = 3
-	alertStaleDaysInput.Width = 6
+	alertStaleDaysInput.SetWidth(6)
 	alertStaleDaysInput.SetValue(strconv.Itoa(cfg.GetAlertStaleDays()))
 
 	alertInboxThresholdInput := textinput.New()
 	alertInboxThresholdInput.Placeholder = strconv.Itoa(config.DefaultAlertInboxThreshold)
 	alertInboxThresholdInput.CharLimit = 3
-	alertInboxThresholdInput.Width = 6
+	alertInboxThresholdInput.SetWidth(6)
 	alertInboxThresholdInput.SetValue(strconv.Itoa(cfg.GetAlertInboxThreshold()))
 
 	alertBlockedDaysInput := textinput.New()
 	alertBlockedDaysInput.Placeholder = strconv.Itoa(config.DefaultAlertBlockedDays)
 	alertBlockedDaysInput.CharLimit = 3
-	alertBlockedDaysInput.Width = 6
+	alertBlockedDaysInput.SetWidth(6)
 	alertBlockedDaysInput.SetValue(strconv.Itoa(cfg.GetAlertBlockedDays()))
 
 	alertProjectStaleDaysInput := textinput.New()
 	alertProjectStaleDaysInput.Placeholder = strconv.Itoa(config.DefaultAlertProjectStaleDays)
 	alertProjectStaleDaysInput.CharLimit = 3
-	alertProjectStaleDaysInput.Width = 6
+	alertProjectStaleDaysInput.SetWidth(6)
 	alertProjectStaleDaysInput.SetValue(strconv.Itoa(cfg.GetAlertProjectStaleDays()))
 
 	return &SettingsModel{

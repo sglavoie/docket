@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
@@ -77,7 +77,7 @@ func (m *NoteTaskLinkerModel) SetSize(width, height int) {
 
 func (m *NoteTaskLinkerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		// Let picker handle search mode first
 		handled, cmd := m.picker.HandleKeyMsg(msg)
 		if handled {
@@ -89,7 +89,7 @@ func (m *NoteTaskLinkerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, m.close()
 		case "enter":
 			return m, m.close()
-		case " ":
+		case "space":
 			selected := m.picker.SelectedItem()
 			if selected.task != nil {
 				m.toggleLink(selected.task)
@@ -124,7 +124,7 @@ func (m *NoteTaskLinkerModel) close() tea.Cmd {
 	return func() tea.Msg { return CloseNoteTaskLinkerMsg{} }
 }
 
-func (m *NoteTaskLinkerModel) View() string {
+func (m *NoteTaskLinkerModel) View() tea.View {
 	// Already-linked task IDs for display
 	linkedSet := map[string]bool{}
 	for _, id := range m.note.LinkedTasks {
@@ -200,7 +200,7 @@ func (m *NoteTaskLinkerModel) View() string {
 	}
 	out.WriteString(renderStatusBarFooter(statusLeft, "", m.width))
 
-	return out.String()
+	return tea.NewView(out.String())
 }
 
 func (m *NoteTaskLinkerModel) StatusBarLabel() string { return "Link to Task" }

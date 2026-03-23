@@ -1,24 +1,24 @@
 package tui
 
 import (
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/logging"
 )
 
 func (m *AppModel) undoHistoryCommands() []Command {
 	return []Command{
-		{Name: "perform undo", Description: "Undo selected entry or view detail", Shortcut: "enter", Category: CategoryUndoHistory, Views: []ViewType{ViewUndoHistory}, Aliases: []string{"undo entry", "view detail"}, Handler: func() tea.Msg { return tea.KeyMsg{Type: tea.KeyEnter} }},
-		{Name: "switch pane", Description: "Switch between entry list and diff pane", Shortcut: "tab", Category: CategoryUndoHistory, Views: []ViewType{ViewUndoHistory}, Aliases: []string{"toggle pane"}, Handler: func() tea.Msg { return tea.KeyMsg{Type: tea.KeyTab} }},
-		{Name: "scroll diff left", Description: "Scroll diff pane left", Shortcut: "h", Category: CategoryUndoHistory, Views: []ViewType{ViewUndoHistory}, Aliases: []string{"diff left"}, Handler: func() tea.Msg { return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'h'}} }},
-		{Name: "scroll diff right", Description: "Scroll diff pane right", Shortcut: "l", Category: CategoryUndoHistory, Views: []ViewType{ViewUndoHistory}, Aliases: []string{"diff right"}, Handler: func() tea.Msg { return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'l'}} }},
+		{Name: "perform undo", Description: "Undo selected entry or view detail", Shortcut: "enter", Category: CategoryUndoHistory, Views: []ViewType{ViewUndoHistory}, Aliases: []string{"undo entry", "view detail"}, Handler: func() tea.Msg { return syntheticSpecialKey(tea.KeyEnter) }},
+		{Name: "switch pane", Description: "Switch between entry list and diff pane", Shortcut: "tab", Category: CategoryUndoHistory, Views: []ViewType{ViewUndoHistory}, Aliases: []string{"toggle pane"}, Handler: func() tea.Msg { return syntheticSpecialKey(tea.KeyTab) }},
+		{Name: "scroll diff left", Description: "Scroll diff pane left", Shortcut: "h", Category: CategoryUndoHistory, Views: []ViewType{ViewUndoHistory}, Aliases: []string{"diff left"}, Handler: func() tea.Msg { return syntheticKey('h') }},
+		{Name: "scroll diff right", Description: "Scroll diff pane right", Shortcut: "l", Category: CategoryUndoHistory, Views: []ViewType{ViewUndoHistory}, Aliases: []string{"diff right"}, Handler: func() tea.Msg { return syntheticKey('l') }},
 	}
 }
 
 func (m *AppModel) globalTagManagerCommands() []Command {
 	return []Command{
-		{Name: "navigate to tag project", Description: "Navigate to tag's project", Shortcut: "enter", Category: CategoryActions, Views: []ViewType{ViewGlobalTagManager}, Aliases: []string{"open tag project"}, Handler: func() tea.Msg { return tea.KeyMsg{Type: tea.KeyEnter} }},
-		{Name: "rename tag", Description: "Rename selected tag", Shortcut: "r", Category: CategoryActions, Views: []ViewType{ViewGlobalTagManager}, Aliases: []string{"edit tag name"}, Handler: func() tea.Msg { return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'r'}} }},
+		{Name: "navigate to tag project", Description: "Navigate to tag's project", Shortcut: "enter", Category: CategoryActions, Views: []ViewType{ViewGlobalTagManager}, Aliases: []string{"open tag project"}, Handler: func() tea.Msg { return syntheticSpecialKey(tea.KeyEnter) }},
+		{Name: "rename tag", Description: "Rename selected tag", Shortcut: "r", Category: CategoryActions, Views: []ViewType{ViewGlobalTagManager}, Aliases: []string{"edit tag name"}, Handler: func() tea.Msg { return syntheticKey('r') }},
 	}
 }
 
@@ -32,7 +32,7 @@ func (m *AppModel) attachmentCommands() []Command {
 			Views:       []ViewType{ViewTaskAttachments},
 			Aliases:     []string{"attach file", "new attachment"},
 			Handler: func() tea.Msg {
-				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'a'}}
+				return syntheticKey('a')
 			},
 		},
 		{
@@ -43,7 +43,7 @@ func (m *AppModel) attachmentCommands() []Command {
 			Views:       []ViewType{ViewTaskAttachments},
 			Aliases:     []string{"view attachment", "launch attachment"},
 			Handler: func() tea.Msg {
-				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'o'}}
+				return syntheticKey('o')
 			},
 		},
 		{
@@ -54,7 +54,7 @@ func (m *AppModel) attachmentCommands() []Command {
 			Views:       []ViewType{ViewTaskAttachments},
 			Aliases:     []string{"edit in editor", "open in editor"},
 			Handler: func() tea.Msg {
-				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'e'}}
+				return syntheticKey('e')
 			},
 		},
 		{
@@ -65,7 +65,7 @@ func (m *AppModel) attachmentCommands() []Command {
 			Views:       []ViewType{ViewTaskAttachments},
 			Aliases:     []string{"reveal attachments", "attachments folder"},
 			Handler: func() tea.Msg {
-				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'O'}}
+				return syntheticKey('O')
 			},
 		},
 		{
@@ -76,7 +76,7 @@ func (m *AppModel) attachmentCommands() []Command {
 			Views:       []ViewType{ViewTaskAttachments},
 			Aliases:     []string{"original location", "source path"},
 			Handler: func() tea.Msg {
-				return tea.KeyMsg{Type: tea.KeyCtrlE}
+				return syntheticCtrlKey('e')
 			},
 		},
 		{
@@ -87,7 +87,7 @@ func (m *AppModel) attachmentCommands() []Command {
 			Views:       []ViewType{ViewTaskAttachments},
 			Aliases:     []string{"remove attachment"},
 			Handler: func() tea.Msg {
-				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'d'}}
+				return syntheticKey('d')
 			},
 		},
 		{
@@ -98,7 +98,7 @@ func (m *AppModel) attachmentCommands() []Command {
 			Views:       []ViewType{ViewTaskAttachments},
 			Aliases:     []string{"detach file", "keep and unlink"},
 			Handler: func() tea.Msg {
-				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'u'}}
+				return syntheticKey('u')
 			},
 		},
 		{
@@ -109,7 +109,7 @@ func (m *AppModel) attachmentCommands() []Command {
 			Views:       []ViewType{ViewTaskAttachments},
 			Aliases:     []string{"yank path", "clipboard path"},
 			Handler: func() tea.Msg {
-				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'y'}}
+				return syntheticKey('y')
 			},
 		},
 	}
@@ -125,7 +125,7 @@ func (m *AppModel) workflowRulesCommands() []Command {
 			Views:       []ViewType{ViewWorkflowRules},
 			Aliases:     []string{"new rule", "add rule"},
 			Handler: func() tea.Msg {
-				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'n'}}
+				return syntheticKey('n')
 			},
 		},
 		{
@@ -136,7 +136,7 @@ func (m *AppModel) workflowRulesCommands() []Command {
 			Views:       []ViewType{ViewWorkflowRules},
 			Aliases:     []string{"modify rule"},
 			Handler: func() tea.Msg {
-				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'e'}}
+				return syntheticKey('e')
 			},
 		},
 		{
@@ -147,7 +147,7 @@ func (m *AppModel) workflowRulesCommands() []Command {
 			Views:       []ViewType{ViewWorkflowRules},
 			Aliases:     []string{"remove rule"},
 			Handler: func() tea.Msg {
-				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'d'}}
+				return syntheticKey('d')
 			},
 		},
 		{
@@ -158,7 +158,7 @@ func (m *AppModel) workflowRulesCommands() []Command {
 			Views:       []ViewType{ViewWorkflowRules},
 			Aliases:     []string{"open rule", "rule details"},
 			Handler: func() tea.Msg {
-				return tea.KeyMsg{Type: tea.KeyEnter}
+				return syntheticSpecialKey(tea.KeyEnter)
 			},
 		},
 	}

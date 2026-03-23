@@ -1,11 +1,12 @@
 package tui
 
 import (
+	tea "charm.land/bubbletea/v2"
 	"fmt"
 	"strings"
 	"time"
 
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/lipgloss/v2"
 
 	"github.com/sglavoie/tt/internal/fuzzy"
 	"github.com/sglavoie/tt/internal/models"
@@ -199,26 +200,26 @@ func (m *OutlinerModel) breadcrumb(maxWidth int) string {
 
 // View implements tea.Model. It renders the full outliner tree with connector
 // prefixes computed on each render pass from the project's task hierarchy.
-func (m *OutlinerModel) View() string {
+func (m *OutlinerModel) View() tea.View {
 	if m.project == nil {
 		// Spinner/loading states handled by crossProjectView.
 		if m.crossSpinnerVisible || m.crossLoading {
-			return m.crossProjectView()
+			return tea.NewView(m.crossProjectView())
 		}
 		m.crossProjectRebuildRows()
 		if m.sidebar.IsEnabled() {
-			return m.renderWithSidebar()
+			return tea.NewView(m.renderWithSidebar())
 		}
-		return m.renderOutlinerTreeContent(m.width)
+		return tea.NewView(m.renderOutlinerTreeContent(m.width))
 	}
 
 	// Rebuild flat row list with perspective filter and clamp cursor.
 	m.rebuildRows()
 
 	if m.sidebar.IsEnabled() {
-		return m.renderWithSidebar()
+		return tea.NewView(m.renderWithSidebar())
 	}
-	return m.renderFullWidth()
+	return tea.NewView(m.renderFullWidth())
 }
 
 // renderFullWidth renders the outliner tree using the full terminal width.
@@ -497,7 +498,7 @@ func (m *OutlinerModel) renderOutlinerTreeContent(width int) string {
 		if row.ProjectID != "" {
 			projName := m.projectNameByID(row.ProjectID)
 			projSlug := m.projectSlugByID(row.ProjectID)
-			badgeStyle := lipgloss.NewStyle().Foreground(projectBadgeColor(projName))
+			badgeStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(projectBadgeColor(projName)))
 			projBadge = badgeStyle.Render("["+projSlug+"]") + " "
 		}
 

@@ -5,7 +5,7 @@ import (
 	"strings"
 	"time"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/google/uuid"
 
 	"github.com/sglavoie/tt/internal/logging"
@@ -51,7 +51,7 @@ func (m *QuickCaptureModel) Init() tea.Cmd {
 func (m *QuickCaptureModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// Handle discard confirmation
 	if m.confirmDiscard {
-		if msg, ok := msg.(tea.KeyMsg); ok {
+		if msg, ok := msg.(tea.KeyPressMsg); ok {
 			switch msg.String() {
 			case "y", "Y":
 				m.confirmDiscard = false
@@ -65,7 +65,7 @@ func (m *QuickCaptureModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	switch msg := msg.(type) {
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		key := msg.String()
 
 		// Handle autocomplete navigation when active
@@ -107,7 +107,7 @@ func (m *QuickCaptureModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
-func (m *QuickCaptureModel) View() string {
+func (m *QuickCaptureModel) View() tea.View {
 	var b strings.Builder
 	b.WriteString(m.input.View())
 	b.WriteString("\n")
@@ -149,7 +149,7 @@ func (m *QuickCaptureModel) View() string {
 	out.WriteString("\n")
 	out.WriteString(renderStatusBarFooter(HelpStyle.Render(helpText), "", m.width))
 
-	return out.String()
+	return tea.NewView(out.String())
 }
 
 // HasTextInput returns true because quick capture uses a textarea input.

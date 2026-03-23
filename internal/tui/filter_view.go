@@ -5,7 +5,7 @@ import (
 	"sort"
 	"strings"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/models"
 )
@@ -224,7 +224,7 @@ func (m *FilterViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.SetSize(msg.Width, msg.Height)
 		return m, nil
 
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		switch msg.String() {
 		case "q", "esc", "ctrl+f":
 			return m, func() tea.Msg {
@@ -275,7 +275,7 @@ func (m *FilterViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 // View renders the filter view.
-func (m *FilterViewModel) View() string {
+func (m *FilterViewModel) View() tea.View {
 	// Build content
 	var content strings.Builder
 
@@ -326,7 +326,7 @@ func (m *FilterViewModel) View() string {
 	out.WriteString("\n")
 	out.WriteString(renderStatusBarFooter(HelpStyle.Render(helpText), "", m.width))
 
-	return out.String()
+	return tea.NewView(out.String())
 }
 
 func (m *FilterViewModel) StatusBarLabel() string { return "Filters" }

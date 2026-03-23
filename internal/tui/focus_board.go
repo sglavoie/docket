@@ -1,8 +1,8 @@
 package tui
 
 import (
-	"github.com/charmbracelet/bubbles/textinput"
-	tea "github.com/charmbracelet/bubbletea"
+	"charm.land/bubbles/v2/textinput"
+	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
@@ -82,12 +82,12 @@ func NewFocusBoardModel(cfg *config.Config, manager *config.Manager) *FocusBoard
 	ti := textinput.New()
 	ti.Placeholder = "Action title (%project !priority #tag -s source -u url)"
 	ti.CharLimit = 200
-	ti.Width = 60
+	ti.SetWidth(60)
 
 	ei := textinput.New()
 	ei.Placeholder = "New title"
 	ei.CharLimit = 200
-	ei.Width = 60
+	ei.SetWidth(60)
 
 	m := &FocusBoardModel{
 		config:         cfg,
@@ -117,8 +117,8 @@ func (m *FocusBoardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.SetSize(msg.Width, msg.Height)
 		inputWidth := max(msg.Width-8, 30)
-		m.addInput.Width = inputWidth
-		m.editInput.Width = inputWidth
+		m.addInput.SetWidth(inputWidth)
+		m.editInput.SetWidth(inputWidth)
 		return m, nil
 
 	case FocusBoardRefreshMsg:
@@ -126,7 +126,7 @@ func (m *FocusBoardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.clampCursor()
 		return m, nil
 
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		if m.addMode {
 			return m.handleAddInput(msg)
 		}

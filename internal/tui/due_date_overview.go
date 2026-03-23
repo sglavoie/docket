@@ -4,7 +4,7 @@ import (
 	"sort"
 	"time"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
@@ -245,7 +245,7 @@ func (m *DueDateOverviewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case CursorFlashClearMsg:
 		m.cursorFlash = false
 		return m, nil
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		return m.handleKeyMsg(msg)
 
 	case DueDateOverviewRefreshMsg:
@@ -258,7 +258,7 @@ func (m *DueDateOverviewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 // handleKeyMsg handles keyboard input.
-func (m *DueDateOverviewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+func (m *DueDateOverviewModel) handleKeyMsg(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	key := msg.String()
 
 	// Handle pending prefix keys (which-key style)

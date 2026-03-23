@@ -5,7 +5,7 @@ import (
 	"sort"
 	"strings"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/fuzzy"
@@ -87,13 +87,13 @@ func (m *CrossProjectLinkerModel) Init() tea.Cmd {
 
 func (m *CrossProjectLinkerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		return m.handleKeypress(msg)
 	}
 	return m, nil
 }
 
-func (m *CrossProjectLinkerModel) handleKeypress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+func (m *CrossProjectLinkerModel) handleKeypress(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	key := msg.String()
 
 	// Handle pending prefix keys
@@ -417,7 +417,7 @@ func (m *CrossProjectLinkerModel) createLink() tea.Cmd {
 	}
 }
 
-func (m *CrossProjectLinkerModel) View() string {
+func (m *CrossProjectLinkerModel) View() tea.View {
 	subtitle := fmt.Sprintf("#%d %s", m.sourceTask.ShortID, util.Truncate(m.sourceTask.Title, 30))
 
 	var out strings.Builder
@@ -433,7 +433,7 @@ func (m *CrossProjectLinkerModel) View() string {
 		out.WriteString(m.viewLinkTypeSelection())
 	}
 
-	return out.String()
+	return tea.NewView(out.String())
 }
 
 func (m *CrossProjectLinkerModel) getStepTitle() string {

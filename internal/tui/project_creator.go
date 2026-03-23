@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/charmbracelet/bubbles/textinput"
-	tea "github.com/charmbracelet/bubbletea"
+	"charm.land/bubbles/v2/textinput"
+	tea "charm.land/bubbletea/v2"
 	"github.com/google/uuid"
 
 	"github.com/sglavoie/tt/internal/config"
@@ -84,7 +84,7 @@ func (m *ProjectCreatorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	// Handle discard confirmation
 	if m.confirmDiscard {
-		if keyMsg, ok := msg.(tea.KeyMsg); ok {
+		if keyMsg, ok := msg.(tea.KeyPressMsg); ok {
 			switch keyMsg.String() {
 			case "y", "Y":
 				m.confirmDiscard = false
@@ -101,7 +101,7 @@ func (m *ProjectCreatorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	switch msg := msg.(type) {
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		switch msg.String() {
 		case "esc":
 			if strings.TrimSpace(m.nameInput.Value()) != "" {
@@ -237,7 +237,7 @@ func (m *ProjectCreatorModel) createProject() tea.Cmd {
 	}
 }
 
-func (m *ProjectCreatorModel) View() string {
+func (m *ProjectCreatorModel) View() tea.View {
 	var b strings.Builder
 
 	// Name input
@@ -276,7 +276,7 @@ func (m *ProjectCreatorModel) View() string {
 	out.WriteString("\n")
 	out.WriteString(renderStatusBarFooter(left, right, m.width))
 
-	return out.String()
+	return tea.NewView(out.String())
 }
 
 func (m *ProjectCreatorModel) HasTextInput() bool     { return true }

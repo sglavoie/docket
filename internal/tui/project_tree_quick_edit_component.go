@@ -1,8 +1,8 @@
 package tui
 
 import (
-	"github.com/charmbracelet/bubbles/textinput"
-	tea "github.com/charmbracelet/bubbletea"
+	"charm.land/bubbles/v2/textinput"
+	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/models"
 )
@@ -22,7 +22,7 @@ func NewQuickEditComponent() *QuickEditComponent {
 	quickEditInput := textinput.New()
 	quickEditInput.Placeholder = "Edit task..."
 	quickEditInput.CharLimit = 200
-	quickEditInput.Width = 60
+	quickEditInput.SetWidth(60)
 
 	return &QuickEditComponent{
 		mode:     false,
@@ -121,7 +121,7 @@ func (q *QuickEditComponent) Exit() {
 }
 
 // Update updates the quick edit component with a key message.
-func (q *QuickEditComponent) Update(msg tea.KeyMsg) (textinput.Model, tea.Cmd) {
+func (q *QuickEditComponent) Update(msg tea.KeyPressMsg) (textinput.Model, tea.Cmd) {
 	return q.input.Update(msg)
 }
 

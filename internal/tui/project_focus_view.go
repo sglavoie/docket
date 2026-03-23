@@ -5,7 +5,7 @@ import (
 	"sort"
 	"strings"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
@@ -148,7 +148,7 @@ func (m *ProjectFocusViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case CursorFlashClearMsg:
 		m.cursorFlash = false
 		return m, nil
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		return m.handleKeyMsg(msg)
 	}
 
@@ -156,7 +156,7 @@ func (m *ProjectFocusViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 // handleKeyMsg handles keyboard input.
-func (m *ProjectFocusViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+func (m *ProjectFocusViewModel) handleKeyMsg(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	key := msg.String()
 
 	// Handle pending prefix keys (which-key style)
@@ -327,7 +327,7 @@ func (m *ProjectFocusViewModel) GetHelpItems() []HelpItem {
 	return GetKeybindingRegistry().GetForView(ViewProjectFocusView)
 }
 
-func (m *ProjectFocusViewModel) View() string {
+func (m *ProjectFocusViewModel) View() tea.View {
 	tasks := m.filteredTasks()
 
 	var b strings.Builder
@@ -346,7 +346,7 @@ func (m *ProjectFocusViewModel) View() string {
 		b.WriteString("\n")
 		left := HelpStyle.Render("q return")
 		b.WriteString(renderStatusBarFooter(left, "", m.Width()))
-		return b.String()
+		return tea.NewView(b.String())
 	}
 
 	contentHeight := max(m.Height()-OverlayListChrome, 1)
@@ -389,7 +389,7 @@ func (m *ProjectFocusViewModel) View() string {
 	right := MutedStyle.Render(fmt.Sprintf("%d tasks", len(tasks)))
 	b.WriteString(renderStatusBarFooter(left, right, m.Width()))
 
-	return b.String()
+	return tea.NewView(b.String())
 }
 
 // renderSubTabBar renders the dynamic sub-tab row when applicable.

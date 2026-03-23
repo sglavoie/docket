@@ -1,7 +1,7 @@
 package tui
 
 import (
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 )
 
 func (m *AppModel) notesViewCommands() []Command {
@@ -14,7 +14,7 @@ func (m *AppModel) notesViewCommands() []Command {
 			Views:       []ViewType{ViewNotes, ViewGlobalNotes},
 			Aliases:     []string{"open note editor", "modify note"},
 			Handler: func() tea.Msg {
-				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'e'}}
+				return syntheticKey('e')
 			},
 		},
 		{
@@ -25,7 +25,7 @@ func (m *AppModel) notesViewCommands() []Command {
 			Views:       []ViewType{ViewNotes, ViewGlobalNotes},
 			Aliases:     []string{"remove note", "trash note"},
 			Handler: func() tea.Msg {
-				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'d'}}
+				return syntheticKey('d')
 			},
 		},
 		{
@@ -36,7 +36,7 @@ func (m *AppModel) notesViewCommands() []Command {
 			Views:       []ViewType{ViewNotes, ViewGlobalNotes},
 			Aliases:     []string{"restore note", "undelete note"},
 			Handler: func() tea.Msg {
-				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'u'}}
+				return syntheticKey('u')
 			},
 		},
 		{
@@ -47,7 +47,7 @@ func (m *AppModel) notesViewCommands() []Command {
 			Views:       []ViewType{ViewNotes},
 			Aliases:     []string{"attach note", "note task link"},
 			Handler: func() tea.Msg {
-				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'l'}}
+				return syntheticKey('l')
 			},
 		},
 		{
@@ -58,7 +58,7 @@ func (m *AppModel) notesViewCommands() []Command {
 			Views:       []ViewType{ViewNotes, ViewGlobalNotes},
 			Aliases:     []string{"pin note", "unpin note"},
 			Handler: func() tea.Msg {
-				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'p'}}
+				return syntheticKey('p')
 			},
 		},
 		{
@@ -69,7 +69,7 @@ func (m *AppModel) notesViewCommands() []Command {
 			Views:       []ViewType{ViewNotes, ViewGlobalNotes},
 			Aliases:     []string{"tag note", "note tags"},
 			Handler: func() tea.Msg {
-				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'t'}}
+				return syntheticKey('t')
 			},
 		},
 		{
@@ -80,7 +80,7 @@ func (m *AppModel) notesViewCommands() []Command {
 			Views:       []ViewType{ViewNotes},
 			Aliases:     []string{"filter notes by tag"},
 			Handler: func() tea.Msg {
-				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'T'}}
+				return syntheticKey('T')
 			},
 		},
 		{
@@ -91,7 +91,7 @@ func (m *AppModel) notesViewCommands() []Command {
 			Views:       []ViewType{ViewNotes},
 			Aliases:     []string{"find note", "note search"},
 			Handler: func() tea.Msg {
-				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'/'}}
+				return syntheticKey('/')
 			},
 		},
 		{
@@ -102,7 +102,7 @@ func (m *AppModel) notesViewCommands() []Command {
 			Views:       []ViewType{ViewNotes, ViewGlobalNotes},
 			Aliases:     []string{"new note", "add note"},
 			Handler: func() tea.Msg {
-				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'n'}}
+				return syntheticKey('n')
 			},
 		},
 		{
@@ -113,7 +113,7 @@ func (m *AppModel) notesViewCommands() []Command {
 			Views:       []ViewType{ViewNotes, ViewGlobalNotes},
 			Aliases:     []string{"note rename", "change note title"},
 			Handler: func() tea.Msg {
-				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'r'}}
+				return syntheticKey('r')
 			},
 		},
 		{
@@ -124,7 +124,7 @@ func (m *AppModel) notesViewCommands() []Command {
 			Views:       []ViewType{ViewNotes, ViewGlobalNotes},
 			Aliases:     []string{"sort notes", "note sort mode"},
 			Handler: func() tea.Msg {
-				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'s'}}
+				return syntheticKey('s')
 			},
 		},
 		{
@@ -135,7 +135,7 @@ func (m *AppModel) notesViewCommands() []Command {
 			Views:       []ViewType{ViewNotes, ViewGlobalNotes},
 			Aliases:     []string{"reset note filters", "clear note tags"},
 			Handler: func() tea.Msg {
-				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'C'}}
+				return syntheticKey('C')
 			},
 		},
 		{
@@ -146,7 +146,7 @@ func (m *AppModel) notesViewCommands() []Command {
 			Views:       []ViewType{ViewNotes, ViewGlobalNotes},
 			Aliases:     []string{"yank note title"},
 			Handler: func() tea.Msg {
-				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'y'}}
+				return syntheticKey('y')
 			},
 		},
 		{
@@ -157,7 +157,7 @@ func (m *AppModel) notesViewCommands() []Command {
 			Views:       []ViewType{ViewNotes, ViewGlobalNotes},
 			Aliases:     []string{"yank note body"},
 			Handler: func() tea.Msg {
-				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'Y'}}
+				return syntheticKey('Y')
 			},
 		},
 		{
@@ -168,7 +168,7 @@ func (m *AppModel) notesViewCommands() []Command {
 			Views:       []ViewType{ViewNotes, ViewGlobalNotes},
 			Aliases:     []string{"yank note full"},
 			Handler: func() tea.Msg {
-				return tea.KeyMsg{Type: tea.KeyCtrlY}
+				return syntheticCtrlKey('y')
 			},
 		},
 		{
@@ -179,7 +179,7 @@ func (m *AppModel) notesViewCommands() []Command {
 			Views:       []ViewType{ViewNotes, ViewGlobalNotes},
 			Aliases:     []string{"multi select notes"},
 			Handler: func() tea.Msg {
-				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'V'}}
+				return syntheticKey('V')
 			},
 		},
 		{
@@ -190,7 +190,7 @@ func (m *AppModel) notesViewCommands() []Command {
 			Views:       []ViewType{ViewNotes, ViewGlobalNotes},
 			Aliases:     []string{"open note", "read note"},
 			Handler: func() tea.Msg {
-				return tea.KeyMsg{Type: tea.KeyEnter}
+				return syntheticSpecialKey(tea.KeyEnter)
 			},
 		},
 	}

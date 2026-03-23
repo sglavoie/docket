@@ -7,8 +7,8 @@ import (
 	"time"
 	"unicode"
 
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/fuzzy"
@@ -171,7 +171,7 @@ func (m *AppModel) renderPinnedTasksBar(width int) string {
 }
 
 // handlePinnedPopupKey handles key events when the pinned tasks popup is open.
-func (m *AppModel) handlePinnedPopupKey(msg tea.KeyMsg) (*AppModel, tea.Cmd) {
+func (m *AppModel) handlePinnedPopupKey(msg tea.KeyPressMsg) (*AppModel, tea.Cmd) {
 	// Handle second key of a pending prefix
 	if m.pinnedPendingPrefix != "" {
 		return m.handlePinnedPopupPrefixKey(msg)
@@ -183,7 +183,7 @@ func (m *AppModel) handlePinnedPopupKey(msg tea.KeyMsg) (*AppModel, tea.Cmd) {
 }
 
 // handlePinnedPopupPrefixKey dispatches the second key of a `,` or `!` prefix.
-func (m *AppModel) handlePinnedPopupPrefixKey(msg tea.KeyMsg) (*AppModel, tea.Cmd) {
+func (m *AppModel) handlePinnedPopupPrefixKey(msg tea.KeyPressMsg) (*AppModel, tea.Cmd) {
 	prefix := m.pinnedPendingPrefix
 	m.pinnedPendingPrefix = ""
 	key := msg.String()
@@ -230,7 +230,7 @@ func (m *AppModel) handlePinnedPopupPrefixKey(msg tea.KeyMsg) (*AppModel, tea.Cm
 }
 
 // handlePinnedPopupNormalKey handles keys in normal (non-filtering) mode.
-func (m *AppModel) handlePinnedPopupNormalKey(msg tea.KeyMsg) (*AppModel, tea.Cmd) {
+func (m *AppModel) handlePinnedPopupNormalKey(msg tea.KeyPressMsg) (*AppModel, tea.Cmd) {
 	switch msg.String() {
 	case ",":
 		m.pinnedPendingPrefix = ","
@@ -332,7 +332,7 @@ func (m *AppModel) handlePinnedPopupNormalKey(msg tea.KeyMsg) (*AppModel, tea.Cm
 }
 
 // handlePinnedPopupFilterKey handles keys in filter (type-to-search) mode.
-func (m *AppModel) handlePinnedPopupFilterKey(msg tea.KeyMsg) (*AppModel, tea.Cmd) {
+func (m *AppModel) handlePinnedPopupFilterKey(msg tea.KeyPressMsg) (*AppModel, tea.Cmd) {
 	key := msg.String()
 	switch key {
 	case "up":
@@ -367,7 +367,7 @@ func (m *AppModel) handlePinnedPopupFilterKey(msg tea.KeyMsg) (*AppModel, tea.Cm
 		}
 		return m, nil
 	default:
-		runes := msg.Runes
+		runes := []rune(msg.Text)
 		if len(runes) == 1 && unicode.IsPrint(runes[0]) {
 			m.pinnedPopupFilter += string(runes[0])
 			m.pinnedPopupCursor = 0

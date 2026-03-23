@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strings"
 
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
@@ -90,7 +90,7 @@ func (m *TemplatePickerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case CursorFlashClearMsg:
 		m.cursorFlash = false
 		return m, nil
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		// Navigation keys that work regardless of search mode
 		switch msg.String() {
 		case "up", "ctrl+k", "ctrl+p":
@@ -412,7 +412,7 @@ func wrapTemplateText(text string, width int) []string {
 	return lines
 }
 
-func (m *TemplatePickerModel) View() string {
+func (m *TemplatePickerModel) View() tea.View {
 	totalWidth := m.Width() - 4
 
 	// Get selected template for preview
@@ -474,7 +474,7 @@ func (m *TemplatePickerModel) View() string {
 		Padding(1, 2).
 		Width(m.Width() - 4)
 
-	return boxStyle.Render(b.String())
+	return tea.NewView(boxStyle.Render(b.String()))
 }
 
 // HasTextInput returns true when search is active.

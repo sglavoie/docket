@@ -1,11 +1,12 @@
 package tui
 
 import (
+	tea "charm.land/bubbletea/v2"
 	"fmt"
 	"strings"
 	"time"
 
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/lipgloss/v2"
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/logging"
@@ -15,7 +16,7 @@ import (
 	"github.com/sglavoie/tt/internal/util"
 )
 
-func (m *DashboardModel) View() string {
+func (m *DashboardModel) View() tea.View {
 	var b strings.Builder
 
 	filterBar, chromeHeight := m.renderFilterBar()
@@ -24,7 +25,7 @@ func (m *DashboardModel) View() string {
 	visible := m.visibleProjects()
 	b.WriteString(m.renderDashboard(visible, chromeHeight))
 
-	return b.String()
+	return tea.NewView(b.String())
 }
 
 // renderDashboard renders the always-stacked dashboard: full-width projects on top,

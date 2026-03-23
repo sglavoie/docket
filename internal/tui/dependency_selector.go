@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/util"
@@ -100,7 +100,7 @@ func (m *DependencySelectorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.SetSize(msg.Width, msg.Height)
 		return m, nil
 
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		switch msg.String() {
 		case "q", "esc":
 			return m, func() tea.Msg {
@@ -148,9 +148,9 @@ func mapsEqual(a, b map[string]bool) bool {
 }
 
 // View renders the dependency selector.
-func (m *DependencySelectorModel) View() string {
+func (m *DependencySelectorModel) View() tea.View {
 	if m.task == nil {
-		return "No task selected"
+		return tea.NewView("No task selected")
 	}
 
 	var b strings.Builder
@@ -179,7 +179,7 @@ func (m *DependencySelectorModel) View() string {
 	right := MutedStyle.Render(fmt.Sprintf("%d items", len(m.Filtered)))
 	b.WriteString(renderStatusBarFooter(left, right, m.Width()))
 
-	return b.String()
+	return tea.NewView(b.String())
 }
 
 // renderTaskList renders the task list with status icons.

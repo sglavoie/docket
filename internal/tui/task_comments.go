@@ -7,8 +7,8 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/charmbracelet/bubbles/textarea"
-	tea "github.com/charmbracelet/bubbletea"
+	"charm.land/bubbles/v2/textarea"
+	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/external"
 	"github.com/sglavoie/tt/internal/models"
@@ -86,7 +86,7 @@ func (m *TaskCommentsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// Handle expanded view mode
 	if m.expandedView {
 		switch msg := msg.(type) {
-		case tea.KeyMsg:
+		case tea.KeyPressMsg:
 			switch msg.String() {
 			case "esc", "enter", "q":
 				m.expandedView = false
@@ -104,7 +104,7 @@ func (m *TaskCommentsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// Handle confirmation mode
 	if m.confirm.IsActive() {
 		switch msg := msg.(type) {
-		case tea.KeyMsg:
+		case tea.KeyPressMsg:
 			action := m.confirm.Action()
 			if confirmed, handled := m.HandleConfirmKey(msg.String()); handled {
 				if confirmed {
@@ -131,7 +131,7 @@ func (m *TaskCommentsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// Handle edit mode
 	if m.editMode {
 		switch msg := msg.(type) {
-		case tea.KeyMsg:
+		case tea.KeyPressMsg:
 			switch msg.String() {
 			case "esc":
 				if m.cursor < len(m.task.Comments) && strings.TrimSpace(m.editTextInput.Value()) != m.task.Comments[m.editIndex].Text {
@@ -154,7 +154,7 @@ func (m *TaskCommentsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// Handle add mode
 	if m.addMode {
 		switch msg := msg.(type) {
-		case tea.KeyMsg:
+		case tea.KeyPressMsg:
 			switch msg.String() {
 			case "esc":
 				if strings.TrimSpace(m.textInput.Value()) != "" {
@@ -182,7 +182,7 @@ func (m *TaskCommentsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.BaseView.SetSize(msg.Width, msg.Height)
 
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		if m.pendingPrefix == "g" {
 			m.pendingPrefix = ""
 			_, cmd := handleGotoTopPrefix(msg.String(), &m.cursor, &m.cursorFlash)
@@ -645,9 +645,9 @@ func (m *TaskCommentsModel) copyCommentText() tea.Cmd {
 	return nil
 }
 
-func (m *TaskCommentsModel) View() string {
+func (m *TaskCommentsModel) View() tea.View {
 	if m.task == nil {
-		return "No task selected"
+		return tea.NewView("No task selected")
 	}
 
 	var b strings.Builder
@@ -678,7 +678,7 @@ func (m *TaskCommentsModel) View() string {
 
 		b.WriteString("\n")
 		b.WriteString(renderStatusBarFooter(HelpStyle.Render("Enter/Esc: close expanded view"), "", m.Width()))
-		return b.String()
+		return tea.NewView(b.String())
 	}
 
 	// Edit mode input
@@ -691,7 +691,7 @@ func (m *TaskCommentsModel) View() string {
 		b.WriteString(m.editTextInput.View())
 		b.WriteString("\n\n")
 		b.WriteString(renderStatusBarFooter(HelpStyle.Render("Ctrl+S: save · Ctrl+E: external editor · Esc: cancel"), "", m.Width()))
-		return b.String()
+		return tea.NewView(b.String())
 	}
 
 	// Add mode input
@@ -701,7 +701,7 @@ func (m *TaskCommentsModel) View() string {
 		b.WriteString(m.textInput.View())
 		b.WriteString("\n\n")
 		b.WriteString(renderStatusBarFooter(HelpStyle.Render("Ctrl+S: save · Ctrl+E: external editor · Esc: cancel"), "", m.Width()))
-		return b.String()
+		return tea.NewView(b.String())
 	}
 
 	// Comment count
@@ -801,7 +801,7 @@ func (m *TaskCommentsModel) View() string {
 	helpText := "a/n: add · e: edit · E: external editor · r: resolve · d/x: delete · y: copy · Enter: expand · Esc: close"
 	b.WriteString(HelpStyle.Render(renderWrappingHelpLine(helpText, m.Width())))
 
-	return b.String()
+	return tea.NewView(b.String())
 }
 
 // HasTextInput returns true when add/edit mode is active.

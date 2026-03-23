@@ -2,8 +2,6 @@ package tui
 
 import (
 	"testing"
-
-	tea "github.com/charmbracelet/bubbletea"
 )
 
 // testItem implements PickerItem for testing.
@@ -113,7 +111,7 @@ func TestBasePickerNavigation(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		picker.HandleKeyMsg(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune(tt.key)})
+		picker.HandleKeyMsg(syntheticKeyStr(tt.key))
 		if picker.Cursor != tt.expected {
 			t.Errorf("after key %q: expected cursor at %d, got %d", tt.key, tt.expected, picker.Cursor)
 		}
@@ -130,14 +128,14 @@ func TestBasePickerMultiSelect(t *testing.T) {
 	picker := NewBasePicker(items, PickerConfig{MultiSelect: true})
 
 	// Toggle first item
-	picker.HandleKeyMsg(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune(" ")})
+	picker.HandleKeyMsg(syntheticKey(' '))
 	if !picker.Selected["1"] {
 		t.Error("expected item 1 to be selected")
 	}
 
 	// Move down and toggle second item
-	picker.HandleKeyMsg(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("j")})
-	picker.HandleKeyMsg(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune(" ")})
+	picker.HandleKeyMsg(syntheticKey('j'))
+	picker.HandleKeyMsg(syntheticKey(' '))
 	if !picker.Selected["2"] {
 		t.Error("expected item 2 to be selected")
 	}
@@ -149,7 +147,7 @@ func TestBasePickerMultiSelect(t *testing.T) {
 	}
 
 	// Clear selections
-	picker.HandleKeyMsg(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("c")})
+	picker.HandleKeyMsg(syntheticKey('c'))
 	if len(picker.Selected) != 0 {
 		t.Errorf("expected 0 selected after clear, got %d", len(picker.Selected))
 	}
@@ -164,7 +162,7 @@ func TestBasePickerSingleSelect(t *testing.T) {
 	picker := NewBasePicker(items, PickerConfig{MultiSelect: false})
 
 	// Space should not toggle in single-select mode
-	picker.HandleKeyMsg(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune(" ")})
+	picker.HandleKeyMsg(syntheticKey(' '))
 	if len(picker.Selected) != 0 {
 		t.Error("space should not select in single-select mode")
 	}

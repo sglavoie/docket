@@ -1,18 +1,19 @@
 package tui
 
 import (
+	tea "charm.land/bubbletea/v2"
 	"fmt"
 	"strings"
 	"time"
 
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/lipgloss/v2"
 	"github.com/guptarohit/asciigraph"
 )
 
 // View implements tea.Model.
-func (m *MetricsDashboardModel) View() string {
+func (m *MetricsDashboardModel) View() tea.View {
 	if m.metrics == nil {
-		return "Computing metrics..."
+		return tea.NewView("Computing metrics...")
 	}
 
 	// Title
@@ -55,7 +56,7 @@ func (m *MetricsDashboardModel) View() string {
 		content = m.renderBlockedTab(contentHeight)
 	}
 
-	return lipgloss.JoinVertical(lipgloss.Left, title, tabBar, content, footer)
+	return tea.NewView(lipgloss.JoinVertical(lipgloss.Left, title, tabBar, content, footer))
 }
 
 // renderSummaryTab renders a 2x2 card grid with mini charts.

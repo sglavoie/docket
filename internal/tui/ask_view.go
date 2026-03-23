@@ -8,10 +8,10 @@ import (
 	"os/exec"
 	"strings"
 
-	"github.com/charmbracelet/bubbles/textarea"
-	"github.com/charmbracelet/bubbles/viewport"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/glamour"
+	"charm.land/bubbles/v2/textarea"
+	"charm.land/bubbles/v2/viewport"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/glamour/v2"
 
 	"github.com/sglavoie/tt/internal/external"
 	"github.com/sglavoie/tt/internal/models"
@@ -57,7 +57,7 @@ func NewAskViewModel(project *models.Project, cliReference string) *AskViewModel
 	ta.CharLimit = 500
 	ta.SetHeight(3)
 	ta.ShowLineNumbers = false
-	ta.SetPromptFunc(0, func(lineIdx int) string { return "" })
+	ta.SetPromptFunc(0, func(info textarea.PromptInfo) string { return "" })
 	ta.Focus()
 
 	renderer, _ := glamour.NewTermRenderer(
@@ -149,7 +149,7 @@ func (m *AskViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.viewport.GotoBottom()
 		return m, nil
 
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		return m.handleKey(msg)
 	}
 
@@ -162,7 +162,7 @@ func (m *AskViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-func (m *AskViewModel) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+func (m *AskViewModel) handleKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	switch m.state {
 	case askStateInput:
 		switch msg.String() {
@@ -335,7 +335,7 @@ func (m *AskViewModel) renderResponse() string {
 		b.WriteString("\n")
 		for i, c := range m.commands {
 			prefix := fmt.Sprintf("  %d. ", i+1)
-			wrapWidth := max(m.viewport.Width-2, 40)
+			wrapWidth := max(m.viewport.Width()-2, 40)
 			indent := strings.Repeat(" ", len(prefix))
 			line := prefix + c
 			if len(line) > wrapWidth {
@@ -410,16 +410,16 @@ func (m *AskViewModel) SetSize(width, height int) {
 	}
 
 	if !m.ready {
-		m.viewport = viewport.New(vpWidth, vpHeight)
+		m.viewport = viewport.New(viewport.WithWidth(vpWidth), viewport.WithHeight(vpHeight))
 		m.ready = true
 	} else {
-		m.viewport.Width = vpWidth
-		m.viewport.Height = vpHeight
+		m.viewport.SetWidth(vpWidth)
+		m.viewport.SetHeight(vpHeight)
 	}
 }
 
 // View implements tea.Model.
-func (m *AskViewModel) View() string {
+func (m *AskViewModel) View() tea.View {
 	pad := " "
 	var b strings.Builder
 
@@ -464,14 +464,14 @@ func (m *AskViewModel) View() string {
 			footer = "a: apply commands · " + footer
 		}
 		footerLeft = HelpStyle.Render(footer)
-		if m.ready && m.viewport.TotalLineCount() > m.viewport.Height {
+		if m.ready && m.viewport.TotalLineCount() > m.viewport.Height() {
 			footerRight = HelpStyle.Render(fmt.Sprintf("%3.0f%%", m.viewport.ScrollPercent()*100))
 		}
 	}
 
 	b.WriteString(renderStatusBarFooter(footerLeft, footerRight, m.width))
 
-	return b.String()
+	return tea.NewView(b.String())
 }
 
 func (m *AskViewModel) StatusBarLabel() string { return "AI Assistant" }

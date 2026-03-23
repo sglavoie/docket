@@ -5,7 +5,7 @@ import (
 	"sort"
 	"strings"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/fuzzy"
 	"github.com/sglavoie/tt/internal/models"
@@ -69,7 +69,7 @@ func (m *GlobalNoteMoveProjectSelectorModel) Update(msg tea.Msg) (tea.Model, tea
 		m.SetSize(msg.Width, msg.Height)
 		return m, nil
 
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		switch msg.String() {
 		case "esc":
 			if m.IsSearchMode() && m.SearchQuery() != "" {
@@ -157,7 +157,7 @@ func (m *GlobalNoteMoveProjectSelectorModel) selectCurrent() tea.Cmd {
 	}
 }
 
-func (m *GlobalNoteMoveProjectSelectorModel) View() string {
+func (m *GlobalNoteMoveProjectSelectorModel) View() tea.View {
 	var b strings.Builder
 
 	b.WriteString(TitleStyle.Render("Move Note to Project"))
@@ -171,7 +171,7 @@ func (m *GlobalNoteMoveProjectSelectorModel) View() string {
 
 	b.WriteString(HelpStyle.Render("↑/↓ navigate · Enter select · Esc cancel"))
 
-	return b.String()
+	return tea.NewView(b.String())
 }
 
 func (m *GlobalNoteMoveProjectSelectorModel) renderList() string {

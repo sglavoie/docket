@@ -1,9 +1,10 @@
 package tui
 
 import (
+	"image/color"
 	"strings"
 
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
 )
 
@@ -12,8 +13,8 @@ type CardConfig struct {
 	Style       lipgloss.Style
 	TitleStyle  lipgloss.Style
 	Focused     bool
-	AccentColor lipgloss.Color // optional section color for border
-	Height      int            // optional fixed height (0 = auto)
+	AccentColor color.Color // optional section color for border
+	Height      int         // optional fixed height (0 = auto)
 }
 
 // DefaultCardConfig returns the default card configuration for sidebar cards.
@@ -132,10 +133,10 @@ func renderCard(title, content string, width int, config CardConfig) string {
 	}
 
 	// Determine border and title colors based on accent and focus state
-	var borderColor lipgloss.Color
+	var borderColor color.Color
 	var titleStyle lipgloss.Style
 
-	hasAccent := config.AccentColor != ""
+	hasAccent := config.AccentColor != nil
 
 	if hasAccent {
 		// Use accent color for border

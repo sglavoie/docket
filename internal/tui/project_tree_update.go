@@ -3,7 +3,7 @@ package tui
 import (
 	"fmt"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/models"
 )
@@ -17,7 +17,7 @@ func (m *ProjectTreeModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.clampCursor()
 		return m, nil
 
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		// Handle confirmation prompts first
 		if m.confirm.IsActive() {
 			return m.handleConfirmation(msg)
@@ -47,7 +47,7 @@ func (m *ProjectTreeModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 // handleConfirmation handles confirmation prompts using the shared ConfirmDialog.
-func (m *ProjectTreeModel) handleConfirmation(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+func (m *ProjectTreeModel) handleConfirmation(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	key := msg.String()
 	action := m.confirm.Action()
 
@@ -95,7 +95,7 @@ func (m *ProjectTreeModel) handleConfirmation(msg tea.KeyMsg) (tea.Model, tea.Cm
 }
 
 // handleSearchMode handles input while in search mode.
-func (m *ProjectTreeModel) handleSearchMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+func (m *ProjectTreeModel) handleSearchMode(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	model, cmd, handled := m.HandleSearchMode(msg, m, func() {
 		m.updateVisibility()
 		visible := m.visibleNodes()
@@ -108,7 +108,7 @@ func (m *ProjectTreeModel) handleSearchMode(msg tea.KeyMsg) (tea.Model, tea.Cmd)
 }
 
 // handleQuickEditMode handles input while in quick edit mode.
-func (m *ProjectTreeModel) handleQuickEditMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+func (m *ProjectTreeModel) handleQuickEditMode(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	_, cmd := handleQuickEditKey(msg, m.quickEdit, m.project, m.saveAndRefresh, m.setUndoContext)
 	return m, cmd
 }
@@ -396,7 +396,7 @@ func (m *ProjectTreeModel) handleBlockerPrefix(key string, visible []*TreeNode) 
 }
 
 // handleKeyMsg dispatches key messages to appropriate handlers.
-func (m *ProjectTreeModel) handleKeyMsg(msg tea.KeyMsg, visible []*TreeNode) (tea.Model, tea.Cmd) {
+func (m *ProjectTreeModel) handleKeyMsg(msg tea.KeyPressMsg, visible []*TreeNode) (tea.Model, tea.Cmd) {
 	key := msg.String()
 
 	// Handle pending prefix keys first (which-key style two-key sequences)

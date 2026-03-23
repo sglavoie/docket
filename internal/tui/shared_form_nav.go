@@ -1,6 +1,6 @@
 package tui
 
-import tea "github.com/charmbracelet/bubbletea"
+import tea "charm.land/bubbletea/v2"
 
 // FormTabNavigable is implemented by form creators that support tab/shift+tab
 // field cycling and [/] tab switching with per-tab focus scoping.

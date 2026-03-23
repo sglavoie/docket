@@ -2,10 +2,11 @@ package tui
 
 import (
 	"fmt"
+	"image/color"
 	"strconv"
 	"strings"
 
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/lipgloss/v2"
 
 	"github.com/sglavoie/tt/internal/config"
 )
@@ -183,7 +184,7 @@ func rebuildStyles() {
 	// Task status badge styles
 	TodoBadgeStyle = makeBadgeStyle("248", "236")
 	InProgressBadgeStyle = makeBadgeStyle("214", "94")
-	ReviewBadgeStyle = makeBadgeStyle(string(ColorSecondary), "17")
+	ReviewBadgeStyle = makeBadgeStyle("33", "17") // ColorSecondary
 	DoneBadgeStyle = makeBadgeStyle("42", "22")
 	BlockedBadgeStyle = makeBadgeStyle("196", "52")
 	StandbyBadgeStyle = makeBadgeStyle("141", "53")
@@ -257,14 +258,14 @@ func rebuildStyles() {
 	FocusModeStyle = lipgloss.NewStyle().Foreground(ColorSecondary).Bold(true).Background(ColorBackground)
 
 	// View mode styles
-	ViewModeActiveStyle = makeViewModeStyle(string(ColorViewActive))
-	ViewModeNextStyle = makeViewModeStyle(string(ColorViewNext))
-	ViewModeInboxStyle = makeViewModeStyle(string(ColorSecondary))
-	ViewModeWaitingStyle = makeViewModeStyle(string(ColorWarning))
-	ViewModeSomedayStyle = makeViewModeStyle(string(ColorViewSomeday))
+	ViewModeActiveStyle = makeViewModeStyle("34")   // ColorViewActive
+	ViewModeNextStyle = makeViewModeStyle("61")     // ColorViewNext
+	ViewModeInboxStyle = makeViewModeStyle("33")    // ColorSecondary
+	ViewModeWaitingStyle = makeViewModeStyle("214") // ColorWarning
+	ViewModeSomedayStyle = makeViewModeStyle("135") // ColorViewSomeday
 	ViewModeCompletedStyle = makeViewModeStyle("136")
-	ViewModeReviewStyle = makeViewModeStyle(string(ColorViewReview))
-	ViewModeStandbyStyle = makeViewModeStyle(string(ColorViewStandby))
+	ViewModeReviewStyle = makeViewModeStyle("30")   // ColorViewReview
+	ViewModeStandbyStyle = makeViewModeStyle("141") // ColorViewStandby
 	ViewModeSnoozedStyle = makeViewModeStyle("95")
 	ViewModeAllStyle = makeViewModeStyle("60")
 
@@ -492,8 +493,8 @@ func ApplyTheme(tc ThemeConfig) {
 	// customBg is non-nil only when the user has set a custom background color.
 	// alwaysBg is the background used for styles that always have one (custom or the
 	// default dark terminal background).
-	var customBg lipgloss.TerminalColor
-	alwaysBg := lipgloss.TerminalColor(ColorBackground)
+	var customBg color.Color
+	alwaysBg := color.Color(ColorBackground)
 	if tc.BgColor != "" {
 		customBg = lipgloss.Color(tc.BgColor)
 		alwaysBg = customBg
@@ -580,7 +581,7 @@ func ApplyTheme(tc ThemeConfig) {
 }
 
 // withOptionalBg applies a background color to a style if bg is non-nil.
-func withOptionalBg(s lipgloss.Style, bg lipgloss.TerminalColor) lipgloss.Style {
+func withOptionalBg(s lipgloss.Style, bg color.Color) lipgloss.Style {
 	if bg != nil {
 		return s.Background(bg)
 	}
@@ -604,8 +605,8 @@ func makeViewModeStyle(bg string) lipgloss.Style {
 }
 
 // makeColorStyle creates a style with just a foreground color.
-func makeColorStyle(color lipgloss.Color) lipgloss.Style {
-	return lipgloss.NewStyle().Foreground(color)
+func makeColorStyle(c color.Color) lipgloss.Style {
+	return lipgloss.NewStyle().Foreground(c)
 }
 
 // Color palette
@@ -638,22 +639,22 @@ var (
 	ColorOrange       = lipgloss.Color("208")     // Orange (actions, estimated scores)
 
 	// TaskCountColorScale is a 10-step gradient from red (low) to green (high).
-	TaskCountColorScale = [10]lipgloss.Color{
-		"196", // Red
-		"202", // Red-orange
-		"208", // Orange
-		"214", // Orange-yellow
-		"220", // Yellow
-		"226", // Yellow-green
-		"154", // Light green
-		"118", // Green
-		"82",  // Bright green
-		"42",  // Full green
+	TaskCountColorScale = [10]color.Color{
+		lipgloss.Color("196"), // Red
+		lipgloss.Color("202"), // Red-orange
+		lipgloss.Color("208"), // Orange
+		lipgloss.Color("214"), // Orange-yellow
+		lipgloss.Color("220"), // Yellow
+		lipgloss.Color("226"), // Yellow-green
+		lipgloss.Color("154"), // Light green
+		lipgloss.Color("118"), // Green
+		lipgloss.Color("82"),  // Bright green
+		lipgloss.Color("42"),  // Full green
 	}
 )
 
 // TaskCountColor maps a value within [min, max] to a color from TaskCountColorScale.
-func TaskCountColor(value, min, max int) lipgloss.Color {
+func TaskCountColor(value, min, max int) color.Color {
 	if min == max {
 		return TaskCountColorScale[4] // middle color
 	}
@@ -776,14 +777,14 @@ var (
 	ActionBadgeStyle = makeBadgeStyle("208", "94")  // Orange on dark orange
 
 	// Task status badge styles (icon with background for visual distinction)
-	TodoBadgeStyle       = makeBadgeStyle("248", "236")                 // Gray
-	InProgressBadgeStyle = makeBadgeStyle("214", "94")                  // Orange
-	ReviewBadgeStyle     = makeBadgeStyle(string(ColorSecondary), "17") // Blue
-	DoneBadgeStyle       = makeBadgeStyle("42", "22")                   // Green
-	BlockedBadgeStyle    = makeBadgeStyle("196", "52")                  // Red
-	StandbyBadgeStyle    = makeBadgeStyle("141", "53")                  // Violet
-	CanceledBadgeStyle   = makeBadgeStyle("248", "236")                 // Gray
-	StageBadgeStyle      = makeBadgeStyle("183", "236")                 // Lavender on dark gray
+	TodoBadgeStyle       = makeBadgeStyle("248", "236") // Gray
+	InProgressBadgeStyle = makeBadgeStyle("214", "94")  // Orange
+	ReviewBadgeStyle     = makeBadgeStyle("33", "17")   // Blue (ColorSecondary)
+	DoneBadgeStyle       = makeBadgeStyle("42", "22")   // Green
+	BlockedBadgeStyle    = makeBadgeStyle("196", "52")  // Red
+	StandbyBadgeStyle    = makeBadgeStyle("141", "53")  // Violet
+	CanceledBadgeStyle   = makeBadgeStyle("248", "236") // Gray
+	StageBadgeStyle      = makeBadgeStyle("183", "236") // Lavender on dark gray
 
 	// Container styles
 	BoxStyle = lipgloss.NewStyle().
@@ -945,14 +946,14 @@ var (
 			Background(ColorBackground)
 
 	// View mode styles
-	ViewModeActiveStyle    = makeViewModeStyle(string(ColorViewActive))
-	ViewModeNextStyle      = makeViewModeStyle(string(ColorViewNext))
-	ViewModeInboxStyle     = makeViewModeStyle(string(ColorSecondary))
-	ViewModeWaitingStyle   = makeViewModeStyle(string(ColorWarning))
-	ViewModeSomedayStyle   = makeViewModeStyle(string(ColorViewSomeday))
+	ViewModeActiveStyle    = makeViewModeStyle("34")  // ColorViewActive
+	ViewModeNextStyle      = makeViewModeStyle("61")  // ColorViewNext
+	ViewModeInboxStyle     = makeViewModeStyle("33")  // ColorSecondary
+	ViewModeWaitingStyle   = makeViewModeStyle("214") // ColorWarning
+	ViewModeSomedayStyle   = makeViewModeStyle("135") // ColorViewSomeday
 	ViewModeCompletedStyle = makeViewModeStyle("136")
-	ViewModeReviewStyle    = makeViewModeStyle(string(ColorViewReview))
-	ViewModeStandbyStyle   = makeViewModeStyle(string(ColorViewStandby))
+	ViewModeReviewStyle    = makeViewModeStyle("30")  // ColorViewReview
+	ViewModeStandbyStyle   = makeViewModeStyle("141") // ColorViewStandby
 	ViewModeSnoozedStyle   = makeViewModeStyle("95")
 	ViewModeAllStyle       = makeViewModeStyle("60")
 
@@ -1366,7 +1367,7 @@ func RenderProgressBar(percent float64, width int) string {
 // SectionColorEntry represents a color in the section color palette.
 type SectionColorEntry struct {
 	Name  string
-	Color lipgloss.Color
+	Color color.Color
 }
 
 // SectionColorPalette defines the available colors for sections.
@@ -1450,18 +1451,18 @@ func GetSectionColorByIndex(index int) string {
 	return SectionColorPalette[index].Name
 }
 
-// GetSectionColorValue returns the lipgloss.Color for a section color name.
-// Returns empty string if the color name is empty or not found.
-func GetSectionColorValue(colorName string) lipgloss.Color {
+// GetSectionColorValue returns the color.Color for a section color name.
+// Returns nil if the color name is empty or not found.
+func GetSectionColorValue(colorName string) color.Color {
 	if colorName == "" {
-		return ""
+		return nil
 	}
 	for _, pc := range SectionColorPalette {
 		if pc.Name == colorName {
 			return pc.Color
 		}
 	}
-	return ""
+	return nil
 }
 
 // Sidebar styles

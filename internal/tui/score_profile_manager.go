@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strings"
 
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/scoring"
@@ -66,7 +66,7 @@ func (m *ScoreProfileManagerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.SetSize(msg.Width, msg.Height)
 		return m, nil
 
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		// Handle confirm dialog first
 		if m.confirm.IsActive() {
 			confirmed, handled := m.confirm.HandleKey(msg.String())
@@ -88,7 +88,7 @@ func (m *ScoreProfileManagerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-func (m *ScoreProfileManagerModel) handleKeypress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+func (m *ScoreProfileManagerModel) handleKeypress(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	key := msg.String()
 
 	// Handle pending prefix keys
@@ -149,7 +149,7 @@ func (m *ScoreProfileManagerModel) handleKeypress(msg tea.KeyMsg) (tea.Model, te
 	return m, nil
 }
 
-func (m *ScoreProfileManagerModel) handlePresetPicker(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+func (m *ScoreProfileManagerModel) handlePresetPicker(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	key := msg.String()
 
 	switch key {
@@ -330,7 +330,7 @@ func (m *ScoreProfileManagerModel) assignedProfileID() string {
 	return m.config.ProjectScoringProfile[m.currentProjectID]
 }
 
-func (m *ScoreProfileManagerModel) View() string {
+func (m *ScoreProfileManagerModel) View() tea.View {
 	titleStyle := OverlayTitleStyle
 	subtitleStyle := MutedStyle
 	selectedStyle := OverlaySelectedStyle
@@ -432,9 +432,9 @@ func (m *ScoreProfileManagerModel) View() string {
 
 	box := OverlayBoxStyle.Render(content)
 
-	return lipgloss.Place(m.width, m.height,
+	return tea.NewView(lipgloss.Place(m.width, m.height,
 		lipgloss.Center, lipgloss.Center,
-		box)
+		box))
 }
 
 // detailPaneWidth computes the fixed width for the right detail pane.

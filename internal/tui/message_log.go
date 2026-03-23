@@ -5,8 +5,8 @@ import (
 	"strings"
 	"time"
 
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 )
 
 // MessageLogLevel indicates the severity of a log entry.
@@ -88,7 +88,7 @@ func NewMessageLogViewModel(entries []MessageLogEntry) *MessageLogViewModel {
 func (m *MessageLogViewModel) Init() tea.Cmd { return nil }
 
 func (m *MessageLogViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	if key, ok := msg.(tea.KeyMsg); ok {
+	if key, ok := msg.(tea.KeyPressMsg); ok {
 		switch key.String() {
 		case "j", "down":
 			m.scroll = min(m.scroll+1, max(0, len(m.entries)-1))
@@ -111,7 +111,7 @@ func (m *MessageLogViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-func (m *MessageLogViewModel) View() string {
+func (m *MessageLogViewModel) View() tea.View {
 	title := TitleStyle.Render("Message Log") + MutedStyle.Render(fmt.Sprintf("  (%d entries)", len(m.entries)))
 	hint := MutedStyle.Render("j/k scroll · g/G top/bottom · Esc close")
 
@@ -152,7 +152,7 @@ func (m *MessageLogViewModel) View() string {
 		Width(m.width - 4).
 		Render(inner)
 
-	return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, box)
+	return tea.NewView(lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, box))
 }
 
 func (m *MessageLogViewModel) SetSize(w, h int) {

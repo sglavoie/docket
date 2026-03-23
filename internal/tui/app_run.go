@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"time"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/logging"
@@ -67,7 +67,7 @@ func RunApp(cfg *config.Config, manager *config.Manager, opts ...AppOption) erro
 		}
 	}
 
-	p := tea.NewProgram(model, tea.WithAltScreen())
+	p := tea.NewProgram(model)
 
 	// Recover from panics to restore terminal state before crashing.
 	defer func() {

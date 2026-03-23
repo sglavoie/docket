@@ -1,6 +1,7 @@
 package tui
 
 import (
+	tea "charm.land/bubbletea/v2"
 	"fmt"
 	"maps"
 	"strings"
@@ -8,7 +9,7 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 )
 
-func (m *DueDateOverviewModel) View() string {
+func (m *DueDateOverviewModel) View() tea.View {
 	var b strings.Builder
 
 	allTotal := len(m.overdue) + len(m.today) + len(m.thisWeek) + len(m.later)
@@ -27,7 +28,7 @@ func (m *DueDateOverviewModel) View() string {
 		b.WriteString(renderFilterAwareEmptyState(m.HasActiveFilters(),
 			"No tasks with due dates found.", "Press q or Esc to close",
 			"Press q or Esc to clear filters."))
-		return b.String()
+		return tea.NewView(b.String())
 	}
 
 	// Tab bar + filter badge
@@ -42,7 +43,7 @@ func (m *DueDateOverviewModel) View() string {
 		b.WriteString(renderFilterAwareEmptyState(m.HasActiveFilters(),
 			"No tasks in this category.", "[/] h/l tabs · q/Esc close",
 			"[/] h/l tabs · Fx clear filters · q/Esc clear filters"))
-		return b.String()
+		return tea.NewView(b.String())
 	}
 
 	// Render groups with scroll awareness
@@ -79,7 +80,7 @@ func (m *DueDateOverviewModel) View() string {
 	right := MutedStyle.Render(fmt.Sprintf("%d tasks", m.totalTasks))
 	b.WriteString(renderFullscreenFooterBlock(m.statusMessage, m.Error(), left, right, m.Width()))
 
-	return b.String()
+	return tea.NewView(b.String())
 }
 
 // GetPrefixPopupInfo returns prefix popup data for overlay rendering.

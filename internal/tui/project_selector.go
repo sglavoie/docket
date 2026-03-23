@@ -5,7 +5,7 @@ import (
 	"sort"
 	"strings"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/fuzzy"
 	"github.com/sglavoie/tt/internal/models"
@@ -102,7 +102,7 @@ func (m *ProjectSelectorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.SetSize(msg.Width, msg.Height)
 		return m, nil
 
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		switch msg.String() {
 		case "esc":
 			if m.IsSearchMode() && m.SearchQuery() != "" {
@@ -219,7 +219,7 @@ func (m *ProjectSelectorModel) selectCurrent() tea.Cmd {
 	}
 }
 
-func (m *ProjectSelectorModel) View() string {
+func (m *ProjectSelectorModel) View() tea.View {
 	var b strings.Builder
 
 	// Title with task info
@@ -241,7 +241,7 @@ func (m *ProjectSelectorModel) View() string {
 	// Footer
 	b.WriteString(renderStatusBarFooter(HelpStyle.Render("↑/↓ navigate · Enter select · Esc cancel"), "", m.Width()))
 
-	return b.String()
+	return tea.NewView(b.String())
 }
 
 // renderList renders the filtered project list.

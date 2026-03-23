@@ -3,7 +3,7 @@ package tui
 import (
 	"sort"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/models"
 )
@@ -104,8 +104,8 @@ func (m *TagFilterSelectorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 // View renders the tag filter selector.
-func (m *TagFilterSelectorModel) View() string {
-	return filterSelectorView(m.BasePicker, "tag")
+func (m *TagFilterSelectorModel) View() tea.View {
+	return tea.NewView(filterSelectorView(m.BasePicker, "tag"))
 }
 
 func (m *TagFilterSelectorModel) StatusBarLabel() string { return "Filter by Tags" }

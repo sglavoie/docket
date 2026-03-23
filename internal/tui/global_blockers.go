@@ -1,7 +1,7 @@
 package tui
 
 import (
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
@@ -63,8 +63,8 @@ func (m *GlobalBlockersModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-func (m *GlobalBlockersModel) View() string {
-	return blockerViewShared(&m.state, m)
+func (m *GlobalBlockersModel) View() tea.View {
+	return tea.NewView(blockerViewShared(&m.state, m))
 }
 
 func (m *GlobalBlockersModel) HasTextInput() bool {

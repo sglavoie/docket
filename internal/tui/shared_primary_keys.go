@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
@@ -622,7 +622,7 @@ func handleSavedFilterPrefixKey(key string) (tea.Cmd, bool) {
 // successful edit to persist and refresh the view. The optional onUndo callback
 // is called with (action, detail) before saving to set undo context.
 func handleQuickEditKey(
-	msg tea.KeyMsg,
+	msg tea.KeyPressMsg,
 	qe *QuickEditComponent,
 	project *models.Project,
 	onSave func() tea.Cmd,

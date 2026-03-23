@@ -1,7 +1,7 @@
 package tui
 
 import (
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/models"
 )
@@ -149,7 +149,7 @@ func (s *SidebarComponent) ShouldCaptureEsc() bool {
 }
 
 // HandleKeys handles keyboard input for the sidebar using the SidebarHost interface.
-func (s *SidebarComponent) HandleKeys(host SidebarHost, msg tea.KeyMsg) (bool, tea.Cmd) {
+func (s *SidebarComponent) HandleKeys(host SidebarHost, msg tea.KeyPressMsg) (bool, tea.Cmd) {
 	if !s.focused {
 		return false, nil
 	}

@@ -6,8 +6,8 @@ import (
 	"strings"
 	"time"
 
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
@@ -104,7 +104,7 @@ func (c *inboxCore) ShouldCaptureEsc() bool {
 // Update handles messages for the inbox processor.
 func (c *inboxCore) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		return c.handleKeyMsg(msg)
 
 	case SectionPickerDoneMsg:
@@ -150,9 +150,9 @@ func (c *inboxCore) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 // View renders the inbox processor.
-func (c *inboxCore) View() string {
+func (c *inboxCore) View() tea.View {
 	if c.backend.taskCount() == 0 {
-		return c.renderEmptyInbox()
+		return tea.NewView(c.renderEmptyInbox())
 	}
 
 	var b strings.Builder
@@ -186,7 +186,7 @@ func (c *inboxCore) View() string {
 	if outputHeight := lipgloss.Height(output); outputHeight < c.height {
 		output += strings.Repeat("\n", c.height-outputHeight)
 	}
-	return output
+	return tea.NewView(output)
 }
 
 // GetPrefixPopupInfo returns prefix popup data for overlay rendering.
@@ -210,7 +210,7 @@ func (c *inboxCore) GetHelpItems() []HelpItem {
 
 // --- Key handling ---
 
-func (c *inboxCore) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+func (c *inboxCore) handleKeyMsg(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	key := msg.String()
 
 	if confirmed, handled := c.confirm.HandleKey(key); handled {

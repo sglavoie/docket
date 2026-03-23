@@ -6,8 +6,8 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/charmbracelet/bubbles/textinput"
-	tea "github.com/charmbracelet/bubbletea"
+	"charm.land/bubbles/v2/textinput"
+	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/util"
@@ -150,7 +150,7 @@ func (m *SectionPickerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.SetSize(msg.Width, msg.Height)
 		return m, nil
 
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		// Handle add mode (text input for new section name)
 		if m.addMode {
 			switch msg.String() {
@@ -252,7 +252,7 @@ func (m *SectionPickerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 // View renders the section picker.
-func (m *SectionPickerModel) View() string {
+func (m *SectionPickerModel) View() tea.View {
 	var b strings.Builder
 
 	subtitle := fmt.Sprintf("Task #%d: %s", m.task.ShortID, util.Truncate(m.task.Title, 30))
@@ -306,7 +306,7 @@ func (m *SectionPickerModel) View() string {
 	right := MutedStyle.Render(fmt.Sprintf("%d items", len(m.Filtered)))
 	b.WriteString(renderStatusBarFooter(footerLeft, right, m.Width()))
 
-	return b.String()
+	return tea.NewView(b.String())
 }
 
 // renderSectionList renders the section list with gutter symbols for custom sections.

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/logging"
 	"github.com/sglavoie/tt/internal/models"
@@ -27,7 +27,7 @@ func (m *CommandPaletteModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.actionMode = false
 		return m, nil
 
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		// Handle action mode separately
 		if m.actionMode {
 			return m.updateActionMode(msg)
@@ -38,7 +38,7 @@ func (m *CommandPaletteModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 // updateSearchMode handles key events in search mode (the default mode).
-func (m *CommandPaletteModel) updateSearchMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+func (m *CommandPaletteModel) updateSearchMode(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "esc":
 		return m, func() tea.Msg {
@@ -87,7 +87,7 @@ func (m *CommandPaletteModel) updateSearchMode(msg tea.KeyMsg) (tea.Model, tea.C
 			}
 		}
 		return m, nil
-	case " ":
+	case "space":
 		// Toggle selection on task items (Space key)
 		if len(m.filteredItems) > 0 && m.cursor < len(m.filteredItems) {
 			item := m.filteredItems[m.cursor].Item
@@ -400,7 +400,7 @@ func (m *CommandPaletteModel) updateSearchMode(msg tea.KeyMsg) (tea.Model, tea.C
 }
 
 // updateActionMode handles key events when showing inline actions for an item.
-func (m *CommandPaletteModel) updateActionMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+func (m *CommandPaletteModel) updateActionMode(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	key := msg.String()
 
 	switch key {

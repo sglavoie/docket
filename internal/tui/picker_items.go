@@ -3,7 +3,7 @@ package tui
 import (
 	"fmt"
 
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/lipgloss/v2"
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/workflow"
@@ -26,7 +26,7 @@ func (s SectionInfo) DisplayText() string {
 	}
 	if s.ColorName != "" && s.ColorName != "gray" {
 		colorVal := GetSectionColorValue(s.ColorName)
-		if colorVal != "" {
+		if colorVal != nil {
 			return lipgloss.NewStyle().Foreground(colorVal).Render(name)
 		}
 	}

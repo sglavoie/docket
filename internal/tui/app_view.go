@@ -1,27 +1,30 @@
 package tui
 
 import (
+	tea "charm.land/bubbletea/v2"
 	"fmt"
 	"runtime/debug"
 	"strconv"
 	"strings"
 
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/lipgloss/v2"
 
 	"github.com/sglavoie/tt/internal/logging"
 )
 
-func (m *AppModel) View() (result string) {
+func (m *AppModel) View() (result tea.View) {
 	defer func() {
+		result.AltScreen = true
 		if r := recover(); r != nil {
 			stack := debug.Stack()
 			logging.Warn("TUI panic in View: %v\n%s", r, stack)
-			result = fmt.Sprintf("internal error: %v\n\nPress ctrl+c to quit.", r)
+			result = tea.NewView(fmt.Sprintf("internal error: %v\n\nPress ctrl+c to quit.", r))
+			result.AltScreen = true
 		}
 	}()
 
 	if m.quitting {
-		return ""
+		return tea.NewView("")
 	}
 
 	if m.tooNarrow || m.tooShort {
@@ -32,7 +35,7 @@ func (m *AppModel) View() (result string) {
 			Height(m.height).
 			Align(lipgloss.Center, lipgloss.Center).
 			Foreground(ColorMuted)
-		return m.applyBackground(style.Render(msg))
+		return tea.NewView(m.applyBackground(style.Render(msg)))
 	}
 
 	content := m.views.View(m.currentView())
@@ -60,7 +63,7 @@ func (m *AppModel) View() (result string) {
 			if popup := m.renderSemicolonPrefixPopup(); popup != "" {
 				content = OverlayPopup(content, popup, m.width, m.height)
 			}
-			return m.applyBackground(content)
+			return tea.NewView(m.applyBackground(content))
 		}
 	}
 
@@ -122,7 +125,7 @@ func (m *AppModel) View() (result string) {
 		content = OverlayPopup(content, popup, m.width, targetContentHeight)
 	}
 
-	return m.applyBackground(content + "\n" + statusBar)
+	return tea.NewView(m.applyBackground(content + "\n" + statusBar))
 }
 
 // renderPrefixPopupOverlay checks if the current view has a pending prefix and

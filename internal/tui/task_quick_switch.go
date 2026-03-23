@@ -6,8 +6,8 @@ import (
 	"strings"
 	"unicode"
 
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/config"
@@ -197,7 +197,7 @@ func (m *AppModel) quickSwitchClampCursor() {
 }
 
 // handleQuickSwitchKey handles key events when the quick-switch popup is open.
-func (m *AppModel) handleQuickSwitchKey(msg tea.KeyMsg) (*AppModel, tea.Cmd) {
+func (m *AppModel) handleQuickSwitchKey(msg tea.KeyPressMsg) (*AppModel, tea.Cmd) {
 	// Handle second key of a pending prefix
 	if m.quickSwitchPendingPrefix != "" {
 		return m.handleQuickSwitchPrefixKey(msg)
@@ -209,7 +209,7 @@ func (m *AppModel) handleQuickSwitchKey(msg tea.KeyMsg) (*AppModel, tea.Cmd) {
 }
 
 // handleQuickSwitchPrefixKey dispatches the second key of a `,` or `!` prefix.
-func (m *AppModel) handleQuickSwitchPrefixKey(msg tea.KeyMsg) (*AppModel, tea.Cmd) {
+func (m *AppModel) handleQuickSwitchPrefixKey(msg tea.KeyPressMsg) (*AppModel, tea.Cmd) {
 	prefix := m.quickSwitchPendingPrefix
 	m.quickSwitchPendingPrefix = ""
 	key := msg.String()
@@ -252,7 +252,7 @@ func (m *AppModel) handleQuickSwitchPrefixKey(msg tea.KeyMsg) (*AppModel, tea.Cm
 }
 
 // handleQuickSwitchNormalKey handles keys in normal (non-filtering) mode.
-func (m *AppModel) handleQuickSwitchNormalKey(msg tea.KeyMsg) (*AppModel, tea.Cmd) {
+func (m *AppModel) handleQuickSwitchNormalKey(msg tea.KeyPressMsg) (*AppModel, tea.Cmd) {
 	key := msg.String()
 	switch key {
 	case "j", "down":
@@ -314,7 +314,7 @@ func (m *AppModel) handleQuickSwitchNormalKey(msg tea.KeyMsg) (*AppModel, tea.Cm
 }
 
 // handleQuickSwitchFilterKey handles keys in filter (type-to-search) mode.
-func (m *AppModel) handleQuickSwitchFilterKey(msg tea.KeyMsg) (*AppModel, tea.Cmd) {
+func (m *AppModel) handleQuickSwitchFilterKey(msg tea.KeyPressMsg) (*AppModel, tea.Cmd) {
 	key := msg.String()
 	switch key {
 	case "up":
@@ -349,7 +349,7 @@ func (m *AppModel) handleQuickSwitchFilterKey(msg tea.KeyMsg) (*AppModel, tea.Cm
 		}
 		return m, nil
 	default:
-		runes := msg.Runes
+		runes := []rune(msg.Text)
 		if len(runes) == 1 && unicode.IsPrint(runes[0]) {
 			m.quickSwitchFilter += string(runes[0])
 			m.quickSwitchCursor = 0

@@ -3,8 +3,8 @@ package tui
 import (
 	"strings"
 
-	"github.com/charmbracelet/bubbles/textarea"
-	tea "github.com/charmbracelet/bubbletea"
+	"charm.land/bubbles/v2/textarea"
+	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/models"
 )
@@ -29,7 +29,7 @@ func NewTextEditorModel(fieldName, currentValue string) *TextEditorModel {
 	ta.SetValue(currentValue)
 	ta.SetHeight(5)
 	ta.ShowLineNumbers = false
-	ta.SetPromptFunc(0, func(lineIdx int) string { return "" })
+	ta.SetPromptFunc(0, func(info textarea.PromptInfo) string { return "" })
 	ta.Focus()
 
 	return &TextEditorModel{
@@ -56,7 +56,7 @@ func (m *TextEditorModel) Init() tea.Cmd {
 func (m *TextEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// Handle discard confirmation
 	if m.confirmDiscard {
-		if keyMsg, ok := msg.(tea.KeyMsg); ok {
+		if keyMsg, ok := msg.(tea.KeyPressMsg); ok {
 			switch keyMsg.String() {
 			case "y", "Y":
 				m.confirmDiscard = false
@@ -83,7 +83,7 @@ func (m *TextEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		switch msg.String() {
 		case "esc":
 			// Show confirmation if content changed from initial value
@@ -132,7 +132,7 @@ func (m *TextEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
-func (m *TextEditorModel) View() string {
+func (m *TextEditorModel) View() tea.View {
 	var b strings.Builder
 
 	// Determine title
@@ -149,7 +149,7 @@ func (m *TextEditorModel) View() string {
 	left := HelpStyle.Render("Ctrl+S: save · Ctrl+E: external editor · Esc: cancel")
 	b.WriteString(renderStatusBarFooter(left, "", m.width))
 
-	return b.String()
+	return tea.NewView(b.String())
 }
 
 // HasTextInput returns true because the text editor uses a textarea input.

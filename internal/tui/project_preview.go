@@ -5,8 +5,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/charmbracelet/bubbles/viewport"
-	tea "github.com/charmbracelet/bubbletea"
+	"charm.land/bubbles/v2/viewport"
+	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
@@ -52,12 +52,12 @@ func (m *ProjectPreviewModel) SetSize(width, height int) {
 	footerHeight := 2 // Footer hint
 
 	if !m.ready {
-		m.viewport = viewport.New(width, height-headerHeight-footerHeight)
+		m.viewport = viewport.New(viewport.WithWidth(width), viewport.WithHeight(height-headerHeight-footerHeight))
 		m.viewport.YPosition = headerHeight
 		m.ready = true
 	} else {
-		m.viewport.Width = width
-		m.viewport.Height = height - headerHeight - footerHeight
+		m.viewport.SetWidth(width)
+		m.viewport.SetHeight(height - headerHeight - footerHeight)
 	}
 
 	m.viewport.SetContent(m.renderContent())
@@ -73,7 +73,7 @@ func (m *ProjectPreviewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.SetSize(msg.Width, msg.Height)
 		return m, nil
 
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		switch msg.String() {
 		case "p", "q", "esc":
 			return m, func() tea.Msg {
@@ -262,9 +262,9 @@ func (m *ProjectPreviewModel) renderContent() string {
 	return b.String()
 }
 
-func (m *ProjectPreviewModel) View() string {
+func (m *ProjectPreviewModel) View() tea.View {
 	if m.project == nil {
-		return MutedStyle.Render("No project selected.")
+		return tea.NewView(MutedStyle.Render("No project selected."))
 	}
 
 	var b strings.Builder
@@ -282,13 +282,13 @@ func (m *ProjectPreviewModel) View() string {
 	// Footer
 	b.WriteString("\n")
 	scrollPercent := ""
-	if m.ready && m.viewport.TotalLineCount() > m.viewport.Height {
+	if m.ready && m.viewport.TotalLineCount() > m.viewport.Height() {
 		scrollPercent = fmt.Sprintf(" %3.0f%%", m.viewport.ScrollPercent()*100)
 	}
 	footer := HelpStyle.Render(fmt.Sprintf("p/q/esc close · j/k scroll · g/G top/bottom · s scoring%s", scrollPercent))
 	b.WriteString(footer)
 
-	return b.String()
+	return tea.NewView(b.String())
 }
 
 // refreshContent updates the viewport content (e.g., after scoring profile change).

@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strings"
 
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
@@ -132,7 +132,7 @@ func (m *PriorityViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case CursorFlashClearMsg:
 		m.cursorFlash = false
 		return m, nil
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		return m.handleKeypress(msg)
 	}
 
@@ -166,7 +166,7 @@ func (m *PriorityViewModel) HasTextInput() bool {
 	return m.DefaultHasTextInput()
 }
 
-func (m *PriorityViewModel) View() string {
+func (m *PriorityViewModel) View() tea.View {
 	var b strings.Builder
 
 	// Title
@@ -190,7 +190,7 @@ func (m *PriorityViewModel) View() string {
 			b.WriteString("\n")
 		}
 		b.WriteString(HelpStyle.Render("[/]: tabs" + m.activeTabHint()))
-		return b.String()
+		return tea.NewView(b.String())
 	}
 
 	// Pre-render conditional sections to calculate their actual height
@@ -308,7 +308,7 @@ func (m *PriorityViewModel) View() string {
 	right := MutedStyle.Render(fmt.Sprintf("%d tasks", m.totalTasks))
 	b.WriteString(renderStatusBarFooter(left, right, m.Width()))
 
-	return b.String()
+	return tea.NewView(b.String())
 }
 
 // GetHelpItems returns help items for this view.

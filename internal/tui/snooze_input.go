@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/charmbracelet/bubbles/textinput"
-	tea "github.com/charmbracelet/bubbletea"
+	"charm.land/bubbles/v2/textinput"
+	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/util"
@@ -30,7 +30,7 @@ func NewSnoozeInputModel(task *models.Task, project *models.Project) *SnoozeInpu
 	input.Placeholder = "e.g., YYYY-MM-DD, tomorrow, +3d, +1w, none"
 	input.Focus()
 	input.CharLimit = 30
-	input.Width = 40
+	input.SetWidth(40)
 
 	// Pre-fill with current snooze date if set
 	if task.SnoozedUntil != nil {
@@ -49,7 +49,7 @@ func NewSnoozeInputModel(task *models.Task, project *models.Project) *SnoozeInpu
 func (m *SnoozeInputModel) SetSize(width, height int) {
 	m.width = width
 	m.height = height
-	m.input.Width = min(width-20, 40)
+	m.input.SetWidth(min(width-20, 40))
 }
 
 func (m *SnoozeInputModel) Init() tea.Cmd {
@@ -58,7 +58,7 @@ func (m *SnoozeInputModel) Init() tea.Cmd {
 
 func (m *SnoozeInputModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if m.confirmDiscard {
-		if msg, ok := msg.(tea.KeyMsg); ok {
+		if msg, ok := msg.(tea.KeyPressMsg); ok {
 			switch msg.String() {
 			case "y", "Y":
 				m.confirmDiscard = false
@@ -72,7 +72,7 @@ func (m *SnoozeInputModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	switch msg := msg.(type) {
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		switch msg.String() {
 		case "esc":
 			if m.input.Value() != m.initialValue {
@@ -126,7 +126,7 @@ func (m *SnoozeInputModel) saveAndReturn() tea.Cmd {
 	}
 }
 
-func (m *SnoozeInputModel) View() string {
+func (m *SnoozeInputModel) View() tea.View {
 	var b strings.Builder
 
 	b.WriteString(renderFullscreenTitle(fmt.Sprintf("Snooze Task #%d", m.task.ShortID), m.task.Title))
@@ -167,7 +167,7 @@ func (m *SnoozeInputModel) View() string {
 	)
 	b.WriteString(help)
 
-	return b.String()
+	return tea.NewView(b.String())
 }
 
 // HasTextInput returns true because the snooze input is always active.

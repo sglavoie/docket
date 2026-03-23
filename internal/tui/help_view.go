@@ -5,10 +5,10 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/charmbracelet/bubbles/textinput"
-	"github.com/charmbracelet/bubbles/viewport"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/bubbles/v2/textinput"
+	"charm.land/bubbles/v2/viewport"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 
 	"github.com/sglavoie/tt/internal/fuzzy"
 )
@@ -61,7 +61,7 @@ func NewHelpViewModel(items []HelpItem, sourceView ViewType, viewName string) *H
 	searchInput := textinput.New()
 	searchInput.Placeholder = "Filter help..."
 	searchInput.CharLimit = 50
-	searchInput.Width = 30
+	searchInput.SetWidth(30)
 
 	m := &HelpViewModel{
 		items:       items,
@@ -141,12 +141,12 @@ func (m *HelpViewModel) SetSize(width, height int) {
 	}
 
 	if !m.ready {
-		m.viewport = viewport.New(viewportWidth, viewportHeight)
+		m.viewport = viewport.New(viewport.WithWidth(viewportWidth), viewport.WithHeight(viewportHeight))
 		m.viewport.YPosition = 0
 		m.ready = true
 	} else {
-		m.viewport.Width = viewportWidth
-		m.viewport.Height = viewportHeight
+		m.viewport.SetWidth(viewportWidth)
+		m.viewport.SetHeight(viewportHeight)
 	}
 
 	m.viewport.SetContent(m.renderContent())
@@ -164,7 +164,7 @@ func (m *HelpViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.SetSize(msg.Width, msg.Height)
 		return m, nil
 
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		if m.searchMode {
 			switch msg.String() {
 			case "esc":
@@ -232,14 +232,14 @@ func (m *HelpViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "n":
 			// Next section (with wrap)
 			if len(m.sectionPositions) > 0 {
-				startOffset := m.viewport.YOffset
+				startOffset := m.viewport.YOffset()
 				for i := 0; i < len(m.sectionPositions); i++ {
 					m.currentSection++
 					if m.currentSection >= len(m.sectionPositions) {
 						m.currentSection = 0
 					}
 					m.goToSection(m.currentSection)
-					if m.viewport.YOffset != startOffset {
+					if m.viewport.YOffset() != startOffset {
 						break
 					}
 				}
@@ -247,14 +247,14 @@ func (m *HelpViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "N":
 			// Previous section (with wrap)
 			if len(m.sectionPositions) > 0 {
-				startOffset := m.viewport.YOffset
+				startOffset := m.viewport.YOffset()
 				for i := 0; i < len(m.sectionPositions); i++ {
 					m.currentSection--
 					if m.currentSection < 0 {
 						m.currentSection = len(m.sectionPositions) - 1
 					}
 					m.goToSection(m.currentSection)
-					if m.viewport.YOffset != startOffset {
+					if m.viewport.YOffset() != startOffset {
 						break
 					}
 				}
@@ -335,7 +335,7 @@ func (m *HelpViewModel) renderContent() string {
 	// Calculate column widths based on viewport width (not full width)
 	// Each column: keyWidth + separator(2) + descWidth
 	// Total: 2 * (keyWidth + 2 + descWidth) + columnGap(4)
-	contentWidth := max(m.viewport.Width, 40)
+	contentWidth := max(m.viewport.Width(), 40)
 	keyWidth := 12
 	columnGap := 4
 	columnOverhead := keyWidth + 2 // key + separator
@@ -454,7 +454,7 @@ func (m *HelpViewModel) renderHelpTabBar() string {
 	return renderWrappingTabBar(tabNames, m.activeTab, m.innerWidth())
 }
 
-func (m *HelpViewModel) View() string {
+func (m *HelpViewModel) View() tea.View {
 	pad := " "
 	var b strings.Builder
 
@@ -495,14 +495,14 @@ func (m *HelpViewModel) View() string {
 	left := StatusBarStyle.Render(title)
 
 	scrollPercent := ""
-	if m.ready && m.viewport.TotalLineCount() > m.viewport.Height {
+	if m.ready && m.viewport.TotalLineCount() > m.viewport.Height() {
 		scrollPercent = fmt.Sprintf(" %3.0f%%", m.viewport.ScrollPercent()*100)
 	}
 	right := HelpStyle.Render(fmt.Sprintf("[/]: tabs · / filter · j/k scroll · n/N sections · ? close%s", scrollPercent))
 
 	b.WriteString(renderStatusBarFooter(left, right, m.width))
 
-	return b.String()
+	return tea.NewView(b.String())
 }
 
 // wrapDescriptionWithIndent wraps text to fit within width, indenting continuation

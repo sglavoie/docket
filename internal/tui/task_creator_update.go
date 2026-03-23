@@ -3,7 +3,7 @@ package tui
 import (
 	"strings"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/models"
 )
@@ -61,7 +61,7 @@ func (m *TaskCreatorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		// Handle type change confirmation
 		if m.confirmTypeChange {
 			switch msg.String() {
@@ -434,7 +434,7 @@ func (m *TaskCreatorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 			}
 
-		case " ":
+		case "space":
 			// Space is a no-op for flags (selection happens via left/right)
 			if m.focusIndex == 6 {
 				return m, nil
@@ -464,7 +464,7 @@ func (m *TaskCreatorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case "title":
 		m.titleInput, cmd = m.titleInput.Update(msg)
 	case "dueDate":
-		if keyMsg, ok := msg.(tea.KeyMsg); ok {
+		if keyMsg, ok := msg.(tea.KeyPressMsg); ok {
 			key := keyMsg.String()
 			// Handle backspace
 			if key == "backspace" && len(m.dueDateInput) > 0 {

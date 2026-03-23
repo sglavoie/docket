@@ -1,6 +1,7 @@
 package tui
 
 import (
+	tea "charm.land/bubbletea/v2"
 	"fmt"
 	"strings"
 
@@ -9,7 +10,7 @@ import (
 	"github.com/sglavoie/tt/internal/util"
 )
 
-func (m *FocusBoardModel) View() string {
+func (m *FocusBoardModel) View() tea.View {
 	var b strings.Builder
 
 	// Title
@@ -136,7 +137,7 @@ func (m *FocusBoardModel) View() string {
 		left := HelpStyle.Render("a add · tab switch · q close · ? help")
 		right := MutedStyle.Render("0 items")
 		b.WriteString(renderStatusBarFooter(left, right, m.width))
-		return b.String()
+		return tea.NewView(b.String())
 	}
 
 	// Render rows
@@ -211,7 +212,7 @@ func (m *FocusBoardModel) View() string {
 	right := MutedStyle.Render(strings.Join(rightParts, " · "))
 	b.WriteString(renderStatusBarFooter(left, right, m.width))
 
-	return b.String()
+	return tea.NewView(b.String())
 }
 
 // renderRow renders a single board row line.

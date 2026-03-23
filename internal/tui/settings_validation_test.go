@@ -4,7 +4,7 @@ import (
 	"math"
 	"testing"
 
-	"github.com/charmbracelet/bubbles/textinput"
+	"charm.land/bubbles/v2/textinput"
 )
 
 func TestValidateIntInRange(t *testing.T) {

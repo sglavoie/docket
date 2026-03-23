@@ -5,7 +5,7 @@ import (
 	"sort"
 	"strings"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
@@ -190,13 +190,13 @@ func (m *RecentActivityModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case CursorFlashClearMsg:
 		m.cursorFlash = false
 		return m, nil
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		return m.handleKeyMsg(msg)
 	}
 	return m, nil
 }
 
-func (m *RecentActivityModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+func (m *RecentActivityModel) handleKeyMsg(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	// Handle search mode input
 	if model, cmd, handled := m.HandleSearchMode(msg, m, func() {
 		m.applyFilter()
@@ -329,7 +329,7 @@ func (m *RecentActivityModel) GetHelpItems() []HelpItem {
 	return GetKeybindingRegistry().GetForView(ViewRecentActivity)
 }
 
-func (m *RecentActivityModel) View() string {
+func (m *RecentActivityModel) View() tea.View {
 	var b strings.Builder
 
 	title := "Latest Activity"
@@ -352,7 +352,7 @@ func (m *RecentActivityModel) View() string {
 		b.WriteString(renderFilterAwareEmptyState(m.HasActiveFilters(),
 			"No recent activity found.", "Press q or Esc to close.",
 			"Press q or Esc to clear filters."))
-		return b.String()
+		return tea.NewView(b.String())
 	}
 
 	// Tab bar
@@ -402,7 +402,7 @@ func (m *RecentActivityModel) View() string {
 	right := MutedStyle.Render(fmt.Sprintf("%d tasks", len(m.filtered)))
 	b.WriteString(renderStatusBarFooter(left, right, m.Width()))
 
-	return b.String()
+	return tea.NewView(b.String())
 }
 
 func (m *RecentActivityModel) renderTaskLine(dt CrossProjectTask, selected bool) string {

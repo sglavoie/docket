@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/workflow"
 )
@@ -64,7 +64,7 @@ func (m *ActionTypePickerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.SetSize(msg.Width, msg.Height)
 		return m, nil
 
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		// Handle search mode first
 		if m.IsSearchMode() {
 			switch msg.String() {
@@ -125,7 +125,7 @@ func (m *ActionTypePickerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 // View renders the action type picker.
-func (m *ActionTypePickerModel) View() string {
+func (m *ActionTypePickerModel) View() tea.View {
 	var b strings.Builder
 
 	b.WriteString(renderFullscreenTitle("Select Action Type", "Type to search"))
@@ -148,5 +148,5 @@ func (m *ActionTypePickerModel) View() string {
 	right := MutedStyle.Render(fmt.Sprintf("%d items", len(m.Filtered)))
 	b.WriteString(renderStatusBarFooter(left, right, m.Width()))
 
-	return b.String()
+	return tea.NewView(b.String())
 }

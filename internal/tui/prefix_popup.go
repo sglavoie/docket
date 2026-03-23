@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/config"
@@ -183,7 +183,8 @@ func RenderPrefixPopup(prefix string, hints PrefixHints, width, height int) stri
 
 	// Compact mode: hints joined on a line, wrapping
 	boxInnerWidth := maxWidth
-	availLineWidth := boxInnerWidth - 2 // padding
+	// lipgloss wraps at: Width - horizontalBorderSize(2) - leftPadding(1) - rightPadding(1)
+	availLineWidth := boxInnerWidth - 4
 
 	var parts []string
 	for _, h := range keyHints {

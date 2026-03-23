@@ -3,8 +3,8 @@ package tui
 import (
 	"strings"
 
-	"github.com/charmbracelet/bubbles/textinput"
-	tea "github.com/charmbracelet/bubbletea"
+	"charm.land/bubbles/v2/textinput"
+	tea "charm.land/bubbletea/v2"
 )
 
 // SaveSearchInputModel handles naming a saved search.
@@ -25,7 +25,7 @@ func NewSaveSearchInputModel(query string) *SaveSearchInputModel {
 	input.Placeholder = "Enter a name for this search"
 	input.Focus()
 	input.CharLimit = 50
-	input.Width = 40
+	input.SetWidth(40)
 
 	return &SaveSearchInputModel{
 		query: query,
@@ -37,7 +37,7 @@ func NewSaveSearchInputModel(query string) *SaveSearchInputModel {
 func (m *SaveSearchInputModel) SetSize(width, height int) {
 	m.width = width
 	m.height = height
-	m.input.Width = min(width-20, 40)
+	m.input.SetWidth(min(width-20, 40))
 }
 
 func (m *SaveSearchInputModel) Init() tea.Cmd {
@@ -46,7 +46,7 @@ func (m *SaveSearchInputModel) Init() tea.Cmd {
 
 func (m *SaveSearchInputModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if m.confirmDiscard {
-		if msg, ok := msg.(tea.KeyMsg); ok {
+		if msg, ok := msg.(tea.KeyPressMsg); ok {
 			switch msg.String() {
 			case "y", "Y":
 				m.confirmDiscard = false
@@ -60,7 +60,7 @@ func (m *SaveSearchInputModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	switch msg := msg.(type) {
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		switch msg.String() {
 		case "esc":
 			if strings.TrimSpace(m.input.Value()) != "" {
@@ -90,7 +90,7 @@ func (m *SaveSearchInputModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
-func (m *SaveSearchInputModel) View() string {
+func (m *SaveSearchInputModel) View() tea.View {
 	var b strings.Builder
 
 	// Title
@@ -118,7 +118,7 @@ func (m *SaveSearchInputModel) View() string {
 	// Help footer
 	b.WriteString(renderStatusBarFooter(HelpStyle.Render("Enter to save · Esc to cancel"), "", m.width))
 
-	return b.String()
+	return tea.NewView(b.String())
 }
 
 // HasTextInput returns true because the save search input is active.

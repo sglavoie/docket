@@ -5,7 +5,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/lipgloss/v2"
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/util"
@@ -289,7 +289,7 @@ func (m *ProjectTreeModel) renderQuickEditNode(node *TreeNode, maxWidth int) str
 	prefixWidth := len(indent) + 2 + 2 + 2 + 1 + 5 + 1 // indent + typeIcon + statusIcon + space + idStr + space
 	inputWidth := max(maxWidth-prefixWidth-4, 20)
 	input := m.quickEdit.GetInput()
-	input.Width = inputWidth
+	input.SetWidth(inputWidth)
 	m.quickEdit.UpdateInput(input)
 
 	// Render the input

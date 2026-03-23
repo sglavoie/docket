@@ -5,8 +5,8 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/charmbracelet/bubbles/textinput"
-	tea "github.com/charmbracelet/bubbletea"
+	"charm.land/bubbles/v2/textinput"
+	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
@@ -17,7 +17,7 @@ func (m *NotesViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case CursorFlashClearMsg:
 		m.cursorFlash = false
 		return m, nil
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		key := msg.String()
 
 		// Handle discard confirmation for rename mode
@@ -131,7 +131,7 @@ func (m *NotesViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "V":
 			m.toggleNoteMultiSelectMode()
 			return m, nil
-		case " ":
+		case "space":
 			if m.multiSelectMode {
 				m.toggleNoteSelection()
 				// Move cursor down after toggle
@@ -264,7 +264,7 @@ func (m *NotesViewModel) handleDetailsPaneKey(key string) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-func (m *NotesViewModel) handleRenameKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+func (m *NotesViewModel) handleRenameKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "enter":
 		newTitle := strings.TrimSpace(m.renameInput.Value())
@@ -348,7 +348,7 @@ func (m *NotesViewModel) startRename() {
 	ti := textinput.New()
 	ti.SetValue(m.notes[m.cursor].Title)
 	ti.CharLimit = 100
-	ti.Width = 50
+	ti.SetWidth(50)
 	ti.Focus()
 	m.renameInput = ti
 	m.renaming = true

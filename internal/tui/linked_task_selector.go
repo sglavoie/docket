@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/logging"
@@ -190,13 +190,13 @@ func (m *LinkedTaskSelectorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case CursorFlashClearMsg:
 		m.cursorFlash = false
 		return m, nil
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		return m.handleKeypress(msg)
 	}
 	return m, nil
 }
 
-func (m *LinkedTaskSelectorModel) handleKeypress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+func (m *LinkedTaskSelectorModel) handleKeypress(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	key := msg.String()
 
 	// Handle pending prefix keys
@@ -373,7 +373,7 @@ func (m *LinkedTaskSelectorModel) unlinkMissingTaskFromFiltered(idx int) tea.Cmd
 	return m.unlinkTaskFromFiltered(idx)
 }
 
-func (m *LinkedTaskSelectorModel) View() string {
+func (m *LinkedTaskSelectorModel) View() tea.View {
 	taskSubtitle := fmt.Sprintf("#%d %s", m.sourceTask.ShortID, util.Truncate(m.sourceTask.Title, 30))
 
 	var b strings.Builder
@@ -385,7 +385,7 @@ func (m *LinkedTaskSelectorModel) View() string {
 		b.WriteString("\n")
 		left := HelpStyle.Render("q close")
 		b.WriteString(renderStatusBarFooter(left, "", m.width))
-		return b.String()
+		return tea.NewView(b.String())
 	}
 
 	// Max visible ITEMS - use available height
@@ -435,7 +435,7 @@ func (m *LinkedTaskSelectorModel) View() string {
 		b.WriteString("\n")
 		left := HelpStyle.Render("Esc clear filter · q close")
 		b.WriteString(renderStatusBarFooter(left, "", m.width))
-		return b.String()
+		return tea.NewView(b.String())
 	}
 
 	// Render sections, but only items within the visible range
@@ -535,7 +535,7 @@ func (m *LinkedTaskSelectorModel) View() string {
 	right := MutedStyle.Render(fmt.Sprintf("%d links", len(m.filtered)))
 	b.WriteString(renderStatusBarFooter(footerLeft, right, m.width))
 
-	return b.String()
+	return tea.NewView(b.String())
 }
 
 func (m *LinkedTaskSelectorModel) renderRelationLine(rel LinkedTaskRelation, isSelected bool) string {

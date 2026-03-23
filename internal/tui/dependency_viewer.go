@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/models"
 )
@@ -58,7 +58,7 @@ func (m *DependencyViewerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.width = msg.Width
 		m.height = msg.Height
 
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		switch msg.String() {
 		case "q", "esc":
 			return m, func() tea.Msg { return CloseDependencyViewerMsg{} }
@@ -144,9 +144,9 @@ func (m *DependencyViewerModel) switchSection() {
 	}
 }
 
-func (m *DependencyViewerModel) View() string {
+func (m *DependencyViewerModel) View() tea.View {
 	if m.task == nil {
-		return "No task selected"
+		return tea.NewView("No task selected")
 	}
 
 	var b strings.Builder
@@ -173,7 +173,7 @@ func (m *DependencyViewerModel) View() string {
 	helpText := "Tab: switch section · j/k: navigate · Enter: go to task · d: view deps · Esc: close"
 	b.WriteString(HelpStyle.Render(renderWrappingHelpLine(helpText, m.width)))
 
-	return b.String()
+	return tea.NewView(b.String())
 }
 
 func (m *DependencyViewerModel) renderSection(sectionIdx int, title, arrow string, tasks []*models.Task, maxVisible int) string {

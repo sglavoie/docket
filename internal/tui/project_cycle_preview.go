@@ -18,7 +18,7 @@ func (m *AppModel) renderCyclePreviewBackground() string {
 		m.projectCyclePreviewID = proj.ID
 	}
 
-	content := m.projectCyclePreview.View()
+	content := m.projectCyclePreview.View().Content
 
 	// Dim each line so the preview visually recedes behind the overlay
 	dim := DimStyle

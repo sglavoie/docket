@@ -1,15 +1,16 @@
 package tui
 
 import (
+	tea "charm.land/bubbletea/v2"
 	"fmt"
 	"strings"
 
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/lipgloss/v2"
 
 	"github.com/sglavoie/tt/internal/util"
 )
 
-func (m *WeeklyReviewModel) View() string {
+func (m *WeeklyReviewModel) View() tea.View {
 	totalCount := m.getTotalItemCount()
 	projectCount, taskCount := m.countByType()
 
@@ -30,7 +31,7 @@ func (m *WeeklyReviewModel) View() string {
 	if totalCount == 0 {
 		b.WriteString("\n")
 		b.WriteString(renderEmptyState("All systems healthy — your projects are on track.", "Press q or Esc to close."))
-		return b.String()
+		return tea.NewView(b.String())
 	}
 
 	// Tab bar
@@ -39,7 +40,7 @@ func (m *WeeklyReviewModel) View() string {
 
 	if m.showingSummary {
 		b.WriteString(m.renderCompletionSummary())
-		return b.String()
+		return tea.NewView(b.String())
 	}
 
 	contentHeight := fullscreenContentHeight(m.height, chromeLines)
@@ -53,7 +54,7 @@ func (m *WeeklyReviewModel) View() string {
 		b.WriteString("\n\n")
 		footer := HelpStyle.Render("[/]: tabs")
 		b.WriteString(footer)
-		return b.String()
+		return tea.NewView(b.String())
 	}
 
 	lines, cursorLineIndex := m.renderAllSections()
@@ -94,7 +95,7 @@ func (m *WeeklyReviewModel) View() string {
 	right := MutedStyle.Render(rightText)
 	b.WriteString(renderFullscreenFooterBlock(m.statusMessage, m.err, left, right, m.width))
 
-	return b.String()
+	return tea.NewView(b.String())
 }
 
 // countByType returns separate counts of project items and task items.

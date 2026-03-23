@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/workflow"
 )
@@ -64,7 +64,7 @@ func (m *TriggerFieldPickerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.SetSize(msg.Width, msg.Height)
 		return m, nil
 
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		// Handle search mode first
 		if m.IsSearchMode() {
 			switch msg.String() {
@@ -125,7 +125,7 @@ func (m *TriggerFieldPickerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 // View renders the trigger field picker.
-func (m *TriggerFieldPickerModel) View() string {
+func (m *TriggerFieldPickerModel) View() tea.View {
 	var b strings.Builder
 
 	b.WriteString(renderFullscreenTitle("Select Trigger Field", "Type to search"))
@@ -148,5 +148,5 @@ func (m *TriggerFieldPickerModel) View() string {
 	right := MutedStyle.Render(fmt.Sprintf("%d items", len(m.Filtered)))
 	b.WriteString(renderStatusBarFooter(left, right, m.Width()))
 
-	return b.String()
+	return tea.NewView(b.String())
 }

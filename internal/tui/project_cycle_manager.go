@@ -5,8 +5,8 @@ import (
 	"sort"
 	"strings"
 
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/config"
@@ -106,7 +106,7 @@ func (m *AppModel) closeProjectCyclePopup() {
 }
 
 // handleProjectCycleKey handles key events when the project cycle popup is open.
-func (m *AppModel) handleProjectCycleKey(msg tea.KeyMsg) (*AppModel, tea.Cmd) {
+func (m *AppModel) handleProjectCycleKey(msg tea.KeyPressMsg) (*AppModel, tea.Cmd) {
 	switch msg.String() {
 	case "1", "2", "3", "4", "5", "6", "7", "8", "9":
 		idx := int(msg.String()[0]-'0') - 1
@@ -131,7 +131,7 @@ func (m *AppModel) handleProjectCycleKey(msg tea.KeyMsg) (*AppModel, tea.Cmd) {
 		}
 		return m, nil
 
-	case " ":
+	case "space":
 		// Toggle cycle membership for highlighted project
 		if m.projectCycleCursor < len(m.projectCycleItems) {
 			item := m.projectCycleItems[m.projectCycleCursor]

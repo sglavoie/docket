@@ -5,8 +5,8 @@ import (
 	"maps"
 	"strings"
 
-	"github.com/charmbracelet/bubbles/textinput"
-	tea "github.com/charmbracelet/bubbletea"
+	"charm.land/bubbles/v2/textinput"
+	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
@@ -115,7 +115,7 @@ func (m *CustomContextEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 
 	if m.confirmDiscard {
-		if msg, ok := msg.(tea.KeyMsg); ok {
+		if msg, ok := msg.(tea.KeyPressMsg); ok {
 			switch msg.String() {
 			case "y", "Y":
 				m.confirmDiscard = false
@@ -133,7 +133,7 @@ func (m *CustomContextEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.SetSize(msg.Width, msg.Height)
 		return m, nil
 
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		// Handle search mode input first
 		if m.IsSearchMode() {
 			_, cmdHandleSearch, valueChanged := m.HandleSearchInput(msg)
@@ -192,7 +192,7 @@ func (m *CustomContextEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.nameInput.Blur()
 			return m, nil
 
-		case " ":
+		case "space":
 			// Space toggles selection in project list mode
 			if m.projectListMode && m.cursor < len(m.filteredProjects) {
 				id := m.filteredProjects[m.cursor].ID
@@ -384,7 +384,7 @@ func (m *CustomContextEditorModel) IsFullHeight() bool { return false }
 
 func (m *CustomContextEditorModel) SupportsHelpShortcut() bool { return false }
 
-func (m *CustomContextEditorModel) View() string {
+func (m *CustomContextEditorModel) View() tea.View {
 	var b strings.Builder
 
 	// Title
@@ -493,7 +493,7 @@ func (m *CustomContextEditorModel) View() string {
 	}
 	b.WriteString(renderStatusBarFooter(footerLeft, footerRight, m.width))
 
-	return b.String()
+	return tea.NewView(b.String())
 }
 
 func (m *CustomContextEditorModel) GetConfirmDialog() *ConfirmDialog {

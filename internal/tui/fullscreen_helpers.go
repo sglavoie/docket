@@ -2,10 +2,11 @@ package tui
 
 import (
 	"fmt"
+	"image/color"
 	"strings"
 	"time"
 
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/lipgloss/v2"
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
@@ -49,14 +50,14 @@ func renderStatusBarFooter(left, right string, width int) string {
 type DividerOption func(*dividerConfig)
 
 type dividerConfig struct {
-	color          lipgloss.TerminalColor
+	color          color.Color
 	rightIndicator string
 }
 
 // WithDividerColor overrides the default muted color.
-func WithDividerColor(color lipgloss.TerminalColor) DividerOption {
-	return func(c *dividerConfig) {
-		c.color = color
+func WithDividerColor(c color.Color) DividerOption {
+	return func(cfg *dividerConfig) {
+		cfg.color = c
 	}
 }
 

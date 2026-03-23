@@ -3,7 +3,7 @@ package tui
 import (
 	"testing"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/models"
 )
@@ -32,31 +32,31 @@ func TestCursorMovement(t *testing.T) {
 	m := newTestNotesView(sampleNotes())
 
 	// j moves down
-	m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("j")})
+	m.Update(syntheticKey('j'))
 	if m.cursor != 1 {
 		t.Errorf("expected cursor=1 after j, got %d", m.cursor)
 	}
 
 	// k moves up
-	m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("k")})
+	m.Update(syntheticKey('k'))
 	if m.cursor != 0 {
 		t.Errorf("expected cursor=0 after k, got %d", m.cursor)
 	}
 
 	// k at top stays at 0
-	m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("k")})
+	m.Update(syntheticKey('k'))
 	if m.cursor != 0 {
 		t.Errorf("expected cursor=0 at top, got %d", m.cursor)
 	}
 
 	// G goes to bottom
-	m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("G")})
+	m.Update(syntheticKey('G'))
 	if m.cursor != 2 {
 		t.Errorf("expected cursor=2 after G, got %d", m.cursor)
 	}
 
 	// j at bottom stays
-	m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("j")})
+	m.Update(syntheticKey('j'))
 	if m.cursor != 2 {
 		t.Errorf("expected cursor=2 at bottom, got %d", m.cursor)
 	}
@@ -66,13 +66,13 @@ func TestMultiSelectToggle(t *testing.T) {
 	m := newTestNotesView(sampleNotes())
 
 	// V enters multi-select
-	m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("V")})
+	m.Update(syntheticKey('V'))
 	if !m.multiSelectMode {
 		t.Error("expected multi-select mode after V")
 	}
 
 	// space toggles selection and moves cursor down
-	m.Update(tea.KeyMsg{Type: tea.KeySpace})
+	m.Update(syntheticSpecialKey(tea.KeySpace))
 	if !m.selectedNotes["a.md"] {
 		t.Error("expected a.md selected after space")
 	}
@@ -81,13 +81,13 @@ func TestMultiSelectToggle(t *testing.T) {
 	}
 
 	// 'a' selects all
-	m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("a")})
+	m.Update(syntheticKey('a'))
 	if len(m.selectedNotes) != 3 {
 		t.Errorf("expected 3 selected after 'a', got %d", len(m.selectedNotes))
 	}
 
 	// V exits multi-select
-	m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("V")})
+	m.Update(syntheticKey('V'))
 	if m.multiSelectMode {
 		t.Error("expected multi-select off after second V")
 	}
@@ -133,7 +133,7 @@ func TestRenameFlowCancel(t *testing.T) {
 	}
 
 	// Esc cancels
-	m.handleRenameKey(tea.KeyMsg{Type: tea.KeyEscape})
+	m.handleRenameKey(syntheticSpecialKey(tea.KeyEscape))
 	if m.renaming {
 		t.Error("expected renaming=false after Esc")
 	}
@@ -149,12 +149,12 @@ func TestPendingGKeyConsumed(t *testing.T) {
 	m.cursor = 2
 
 	// Press g then d — should consume the d, NOT trigger delete
-	m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("g")})
+	m.Update(syntheticKey('g'))
 	if m.pendingPrefix != "g" {
 		t.Error("expected pendingPrefix=\"g\" after g")
 	}
 
-	m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("d")})
+	m.Update(syntheticKey('d'))
 	if m.pendingPrefix != "" {
 		t.Error("expected pendingPrefix=\"\" after second key")
 	}
@@ -171,8 +171,8 @@ func TestPendingGKeyDeselectAll(t *testing.T) {
 	m.multiSelectMode = true
 	m.selectedNotes = map[string]bool{"a.md": true, "b.md": true}
 
-	m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("g")})
-	m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("X")})
+	m.Update(syntheticKey('g'))
+	m.Update(syntheticKey('X'))
 
 	if len(m.selectedNotes) != 0 {
 		t.Error("expected all deselected after gX")

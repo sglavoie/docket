@@ -1,16 +1,17 @@
 package tui
 
 import (
+	tea "charm.land/bubbletea/v2"
 	"fmt"
 	"strings"
 
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/lipgloss/v2"
 
 	"github.com/sglavoie/tt/internal/util"
 )
 
 // View renders the global search view.
-func (m *GlobalSearchModel) View() string {
+func (m *GlobalSearchModel) View() tea.View {
 	var out strings.Builder
 
 	// Title
@@ -48,7 +49,7 @@ func (m *GlobalSearchModel) View() string {
 		out.WriteString(MutedStyle.Render("No tasks found in any project."))
 		out.WriteString("\n\n")
 		out.WriteString(m.renderHelpText())
-		return out.String()
+		return tea.NewView(out.String())
 	}
 
 	query := strings.TrimSpace(m.searchInput.Value())
@@ -56,7 +57,7 @@ func (m *GlobalSearchModel) View() string {
 		out.WriteString(MutedStyle.Render("Type to search across all tasks..."))
 		out.WriteString("\n\n")
 		out.WriteString(m.renderHelpText())
-		return out.String()
+		return tea.NewView(out.String())
 	}
 
 	if len(m.filtered) == 0 {
@@ -71,7 +72,7 @@ func (m *GlobalSearchModel) View() string {
 		}
 		out.WriteString("\n\n")
 		out.WriteString(m.renderHelpText())
-		return out.String()
+		return tea.NewView(out.String())
 	}
 
 	// Calculate pane height for split view
@@ -107,7 +108,7 @@ func (m *GlobalSearchModel) View() string {
 	// Footer
 	out.WriteString(m.renderHelpText())
 
-	return out.String()
+	return tea.NewView(out.String())
 }
 
 // renderTabBar renders the tab bar for filtering.

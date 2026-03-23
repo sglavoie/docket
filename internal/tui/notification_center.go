@@ -5,7 +5,7 @@ import (
 	"sort"
 	"strings"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/alerts"
 )
@@ -137,7 +137,7 @@ func (m *NotificationCenterModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.SetSize(msg.Width, msg.Height)
 
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		switch msg.String() {
 		case "q", "esc":
 			return m, func() tea.Msg { return CloseNotificationCenterMsg{} }
@@ -323,7 +323,7 @@ func (m *NotificationCenterModel) ShouldCaptureEsc() bool {
 	return m.DefaultShouldCaptureEsc()
 }
 
-func (m *NotificationCenterModel) View() string {
+func (m *NotificationCenterModel) View() tea.View {
 	var b strings.Builder
 
 	b.WriteString(renderFullscreenTitle("Alert Center", ""))
@@ -341,7 +341,7 @@ func (m *NotificationCenterModel) View() string {
 		}
 		b.WriteString("\n\n")
 		b.WriteString(HelpStyle.Render("  Press Esc to close"))
-		return b.String()
+		return tea.NewView(b.String())
 	}
 
 	// Calculate available content height (title=1, blank=1, footer=1, padding=1)
@@ -466,7 +466,7 @@ func (m *NotificationCenterModel) View() string {
 	right := MutedStyle.Render(fmt.Sprintf("%d alerts", count))
 	b.WriteString(renderStatusBarFooter(left, right, m.width))
 
-	return b.String()
+	return tea.NewView(b.String())
 }
 
 // severityPrefix returns a colored severity indicator for an alert item.

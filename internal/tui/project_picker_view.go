@@ -1,15 +1,16 @@
 package tui
 
 import (
+	tea "charm.land/bubbletea/v2"
 	"fmt"
 	"strings"
 
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/lipgloss/v2"
 
 	"github.com/sglavoie/tt/internal/util"
 )
 
-func (m *ProjectPickerModel) View() string {
+func (m *ProjectPickerModel) View() tea.View {
 	var b strings.Builder
 
 	b.WriteString(renderFullscreenTitle("Switch Project", ""))
@@ -45,7 +46,7 @@ func (m *ProjectPickerModel) View() string {
 	// Footer
 	b.WriteString(renderStatusBarFooter(HelpStyle.Render("↑/↓/Ctrl+J/K/N/P navigate · Ctrl+U/D page · Enter select · Esc cancel"), "", totalWidth))
 
-	return b.String()
+	return tea.NewView(b.String())
 }
 
 func (m *ProjectPickerModel) renderList(width int) string {

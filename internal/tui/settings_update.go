@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 )
 
 // stageValidationClearMsg is sent after a timeout to clear the stage validation error.
@@ -17,7 +17,7 @@ func (m *SettingsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case stageValidationClearMsg:
 		m.stageValidationErr = ""
 		return m, nil
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		// Stages tab: handle confirm dialog first
 		if m.tabs.Active == 8 && m.stageConfirmDelete.IsActive() {
 			confirmed, handled := m.stageConfirmDelete.HandleKey(msg.String())
@@ -149,7 +149,7 @@ func (m *SettingsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 			}
 
-		case " ":
+		case "space":
 			// Toggle fields
 			if m.focusIndex == 21 {
 				m.recentActivityShowAll = !m.recentActivityShowAll

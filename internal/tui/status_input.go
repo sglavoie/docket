@@ -5,8 +5,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/charmbracelet/bubbles/textinput"
-	tea "github.com/charmbracelet/bubbletea"
+	"charm.land/bubbles/v2/textinput"
+	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
@@ -28,7 +28,7 @@ func NewStatusInputModel(project *models.Project, cfg *config.Config, mgr *confi
 	input.Placeholder = "Enter project status"
 	input.Focus()
 	input.CharLimit = 120
-	input.Width = 60
+	input.SetWidth(60)
 	input.SetValue(project.Description)
 
 	return &StatusInputModel{
@@ -44,7 +44,7 @@ func (m *StatusInputModel) SetSize(width, height int) {
 	m.width = width
 	m.height = height
 	inputWidth := max(min(width-20, 60), 20)
-	m.input.Width = inputWidth
+	m.input.SetWidth(inputWidth)
 }
 
 func (m *StatusInputModel) Init() tea.Cmd {
@@ -53,7 +53,7 @@ func (m *StatusInputModel) Init() tea.Cmd {
 
 func (m *StatusInputModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		switch msg.String() {
 		case "esc":
 			return m, func() tea.Msg { return BackMsg{} }
@@ -80,7 +80,7 @@ func (m *StatusInputModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
-func (m *StatusInputModel) View() string {
+func (m *StatusInputModel) View() tea.View {
 	var b strings.Builder
 
 	b.WriteString(renderFullscreenTitle("Project Status", ""))
@@ -105,7 +105,7 @@ func (m *StatusInputModel) View() string {
 
 	b.WriteString(renderStatusBarFooter(HelpStyle.Render("Enter to save · Esc to cancel"), "", m.width))
 
-	return b.String()
+	return tea.NewView(b.String())
 }
 
 // HasTextInput returns true because the status input is active.

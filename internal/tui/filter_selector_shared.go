@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"sort"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 )
 
 // filterSelectorUpdate handles the common Update logic for filter selectors.
@@ -15,7 +15,7 @@ func filterSelectorUpdate[T PickerItem](picker *BasePicker[T], msg tea.Msg, canc
 		picker.SetSize(msg.Width, msg.Height)
 		return nil
 
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		switch msg.String() {
 		case "q", "esc":
 			return cancelMsg

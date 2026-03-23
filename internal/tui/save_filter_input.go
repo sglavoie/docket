@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/charmbracelet/bubbles/textinput"
-	tea "github.com/charmbracelet/bubbletea"
+	"charm.land/bubbles/v2/textinput"
+	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/config"
 )
@@ -28,7 +28,7 @@ func NewSaveFilterInputModel(summary string) *SaveFilterInputModel {
 	input.Placeholder = "Enter a name for this view"
 	input.Focus()
 	input.CharLimit = 50
-	input.Width = 40
+	input.SetWidth(40)
 
 	return &SaveFilterInputModel{
 		summary: summary,
@@ -40,7 +40,7 @@ func NewSaveFilterInputModel(summary string) *SaveFilterInputModel {
 func (m *SaveFilterInputModel) SetSize(width, height int) {
 	m.width = width
 	m.height = height
-	m.input.Width = min(width-20, 40)
+	m.input.SetWidth(min(width-20, 40))
 }
 
 func (m *SaveFilterInputModel) Init() tea.Cmd {
@@ -49,7 +49,7 @@ func (m *SaveFilterInputModel) Init() tea.Cmd {
 
 func (m *SaveFilterInputModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if m.confirmDiscard {
-		if msg, ok := msg.(tea.KeyMsg); ok {
+		if msg, ok := msg.(tea.KeyPressMsg); ok {
 			switch msg.String() {
 			case "y", "Y":
 				m.confirmDiscard = false
@@ -63,7 +63,7 @@ func (m *SaveFilterInputModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	switch msg := msg.(type) {
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		switch msg.String() {
 		case "esc":
 			if strings.TrimSpace(m.input.Value()) != "" {
@@ -92,7 +92,7 @@ func (m *SaveFilterInputModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
-func (m *SaveFilterInputModel) View() string {
+func (m *SaveFilterInputModel) View() tea.View {
 	var b strings.Builder
 
 	b.WriteString(renderFullscreenTitle("Save View", ""))
@@ -118,7 +118,7 @@ func (m *SaveFilterInputModel) View() string {
 
 	b.WriteString(renderStatusBarFooter(HelpStyle.Render("Enter to save · Esc to cancel"), "", m.width))
 
-	return b.String()
+	return tea.NewView(b.String())
 }
 
 // HasTextInput returns true because the save view input is active.

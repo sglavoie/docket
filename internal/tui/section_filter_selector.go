@@ -3,7 +3,7 @@ package tui
 import (
 	"sort"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/models"
 )
@@ -128,8 +128,8 @@ func (m *SectionFilterSelectorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 // View renders the section filter selector.
-func (m *SectionFilterSelectorModel) View() string {
-	return filterSelectorView(m.BasePicker, "section")
+func (m *SectionFilterSelectorModel) View() tea.View {
+	return tea.NewView(filterSelectorView(m.BasePicker, "section"))
 }
 
 func (m *SectionFilterSelectorModel) StatusBarLabel() string { return "Filter by Sections" }

@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 )
 
 func TestNewSelectorModel(t *testing.T) {
@@ -134,7 +134,7 @@ func TestSelectorModel_Update_Escape(t *testing.T) {
 	}
 	m := NewSelectorModel("Test", items)
 
-	keyMsg := tea.KeyMsg{Type: tea.KeyEsc}
+	keyMsg := syntheticSpecialKey(tea.KeyEsc)
 	newModel, _ := m.Update(keyMsg)
 	sm := newModel.(SelectorModel)
 
@@ -152,7 +152,7 @@ func TestSelectorModel_Update_CtrlC(t *testing.T) {
 	}
 	m := NewSelectorModel("Test", items)
 
-	keyMsg := tea.KeyMsg{Type: tea.KeyCtrlC}
+	keyMsg := syntheticCtrlKey('c')
 	newModel, _ := m.Update(keyMsg)
 	sm := newModel.(SelectorModel)
 
@@ -171,7 +171,7 @@ func TestSelectorModel_Update_EnterSearch(t *testing.T) {
 	m := NewSelectorModel("Test", items)
 
 	// Press / to enter search mode
-	keyMsg := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("/")}
+	keyMsg := syntheticKey('/')
 	newModel, _ := m.Update(keyMsg)
 	sm := newModel.(SelectorModel)
 
@@ -190,7 +190,7 @@ func TestSelectorModel_Update_EnterSearchWithF(t *testing.T) {
 	m := NewSelectorModel("Test", items)
 
 	// Press f to enter search mode
-	keyMsg := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("f")}
+	keyMsg := syntheticKey('f')
 	newModel, _ := m.Update(keyMsg)
 	sm := newModel.(SelectorModel)
 
@@ -211,7 +211,7 @@ func TestSelectorModel_Update_ToggleHelp(t *testing.T) {
 	}
 
 	// Press ? to toggle
-	keyMsg := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("?")}
+	keyMsg := syntheticKey('?')
 	newModel, _ := m.Update(keyMsg)
 	sm := newModel.(SelectorModel)
 
@@ -220,7 +220,7 @@ func TestSelectorModel_Update_ToggleHelp(t *testing.T) {
 	}
 
 	// Press h to toggle back
-	keyMsg = tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("h")}
+	keyMsg = syntheticKey('h')
 	newModel, _ = sm.Update(keyMsg)
 	sm = newModel.(SelectorModel)
 
@@ -237,7 +237,7 @@ func TestSelectorModel_Update_SelectItem(t *testing.T) {
 	m := NewSelectorModel("Test", items)
 
 	// Press enter to select
-	keyMsg := tea.KeyMsg{Type: tea.KeyEnter}
+	keyMsg := syntheticSpecialKey(tea.KeyEnter)
 	newModel, _ := m.Update(keyMsg)
 	sm := newModel.(SelectorModel)
 
@@ -265,7 +265,7 @@ func TestSelectorModel_Update_SearchModeEscape(t *testing.T) {
 	m.searchInput.SetValue("test")
 
 	// Press escape to exit search mode
-	keyMsg := tea.KeyMsg{Type: tea.KeyEsc}
+	keyMsg := syntheticSpecialKey(tea.KeyEsc)
 	newModel, _ := m.Update(keyMsg)
 	sm := newModel.(SelectorModel)
 
@@ -289,7 +289,7 @@ func TestSelectorModel_Update_SearchModeTab(t *testing.T) {
 	m.searchFocused = true
 
 	// Press tab to toggle focus
-	keyMsg := tea.KeyMsg{Type: tea.KeyTab}
+	keyMsg := syntheticSpecialKey(tea.KeyTab)
 	newModel, _ := m.Update(keyMsg)
 	sm := newModel.(SelectorModel)
 
@@ -309,7 +309,7 @@ func TestSelectorModel_Update_SearchModeTab(t *testing.T) {
 func TestSelectorModel_View_EmptyItems(t *testing.T) {
 	m := NewSelectorModel("Empty", []SelectorItem{})
 
-	view := m.View()
+	view := m.View().Content
 	if !strings.Contains(view, "No items to display") {
 		t.Error("view should show 'No items to display' for empty list")
 	}
@@ -321,7 +321,7 @@ func TestSelectorModel_View_WithItems(t *testing.T) {
 	}
 	m := NewSelectorModel("Test Selector", items)
 
-	view := m.View()
+	view := m.View().Content
 	if !strings.Contains(view, "Test Selector") {
 		t.Error("view should contain title")
 	}
@@ -334,7 +334,7 @@ func TestSelectorModel_View_SearchMode(t *testing.T) {
 	m := NewSelectorModel("Test", items)
 	m.searchMode = true
 
-	view := m.View()
+	view := m.View().Content
 	if !strings.Contains(view, "Search:") {
 		t.Error("view should show 'Search:' in search mode")
 	}
@@ -348,7 +348,7 @@ func TestSelectorModel_View_NoResults(t *testing.T) {
 	m.searchMode = true
 	m.filterItems("nonexistent")
 
-	view := m.View()
+	view := m.View().Content
 	if !strings.Contains(view, "No matching items found") {
 		t.Error("view should show 'No matching items found' when filter has no results")
 	}
@@ -364,7 +364,7 @@ func TestSelectorModel_View_FilteredCount(t *testing.T) {
 	m.searchMode = true
 	m.filterItems("ap")
 
-	view := m.View()
+	view := m.View().Content
 	if !strings.Contains(view, "Showing") {
 		t.Error("view should show filtered count when items are filtered")
 	}

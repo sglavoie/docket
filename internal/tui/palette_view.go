@@ -1,11 +1,12 @@
 package tui
 
 import (
+	tea "charm.land/bubbletea/v2"
 	"fmt"
 	"strings"
 	"time"
 
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/lipgloss/v2"
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/util"
@@ -17,7 +18,7 @@ import (
 // StatusBarLabel implements StatusBarLabeler.
 func (m *CommandPaletteModel) StatusBarLabel() string { return "Command Palette" }
 
-func (m *CommandPaletteModel) View() string {
+func (m *CommandPaletteModel) View() tea.View {
 	var content strings.Builder
 
 	// In action mode, show which item we're acting on
@@ -49,7 +50,7 @@ func (m *CommandPaletteModel) View() string {
 		out.WriteString(MutedStyle.Render("No items available."))
 		out.WriteString("\n\n")
 		out.WriteString(HelpStyle.Render("Press Esc to close"))
-		return out.String()
+		return tea.NewView(out.String())
 	}
 
 	query := strings.TrimSpace(m.searchInput.Value())
@@ -63,7 +64,7 @@ func (m *CommandPaletteModel) View() string {
 		out.WriteString(HelpStyle.Render("Try: :cmd for commands · :task for tasks · :prj for projects"))
 		out.WriteString("\n")
 		out.WriteString(HelpStyle.Render("     :tag :sec :note :view · or clear to browse all"))
-		return out.String()
+		return tea.NewView(out.String())
 	}
 
 	// Render content based on mode
@@ -120,7 +121,7 @@ func (m *CommandPaletteModel) View() string {
 	}
 	out.WriteString(renderStatusBarFooter(HelpStyle.Render(footerText), "", m.width))
 
-	return out.String()
+	return tea.NewView(out.String())
 }
 
 // buildSubtitle builds the subtitle showing item counts.

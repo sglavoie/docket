@@ -8,8 +8,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/charmbracelet/bubbles/textinput"
-	tea "github.com/charmbracelet/bubbletea"
+	"charm.land/bubbles/v2/textinput"
+	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/fuzzy"
@@ -26,7 +26,7 @@ func NewCommandPaletteModel(cfg *config.Config, manager *config.Manager, registr
 	searchInput := textinput.New()
 	searchInput.Placeholder = "Search · :cmd :task :prj :tag :sec :saved :sv :note :view · Alt+↑↓ history"
 	searchInput.CharLimit = 100
-	searchInput.Width = 40
+	searchInput.SetWidth(40)
 	searchInput.Focus()
 
 	// Load persisted recent items from config
@@ -110,7 +110,7 @@ func (m *CommandPaletteModel) SetSize(width, height int) {
 	// usable text area = Width - 4 (padding inside) = viewWidth - 10
 	innerWidth := max(width-10, 60)
 
-	m.searchInput.Width = innerWidth - 4
+	m.searchInput.SetWidth(innerWidth - 4)
 
 	// Calculate split pane widths: 65% list, 35% preview based on inner width
 	m.listWidth = min(max(innerWidth*65/100, 35), innerWidth-25)

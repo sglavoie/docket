@@ -1,14 +1,15 @@
 package tui
 
 import (
+	tea "charm.land/bubbletea/v2"
 	"fmt"
 	"maps"
 	"strings"
 
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/lipgloss/v2"
 )
 
-func (m *FocusViewModel) View() string {
+func (m *FocusViewModel) View() tea.View {
 	var b strings.Builder
 
 	// Title
@@ -33,7 +34,7 @@ func (m *FocusViewModel) View() string {
 		b.WriteString(HelpStyle.Render("Tasks appear here from all active projects (excluding completed, snoozed, and blocked)."))
 		b.WriteString("\n")
 		b.WriteString(HelpStyle.Render("Press q to return to dashboard."))
-		return b.String()
+		return tea.NewView(b.String())
 	}
 
 	// Tab bar + filter badge
@@ -148,7 +149,7 @@ func (m *FocusViewModel) View() string {
 	right := MutedStyle.Render(fmt.Sprintf("%d tasks", len(m.filtered)))
 	b.WriteString(renderStatusBarFooter(left, right, m.width))
 
-	return b.String()
+	return tea.NewView(b.String())
 }
 
 // renderQueueLines renders the Queue tab with numbered items.

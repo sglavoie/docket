@@ -5,8 +5,8 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/charmbracelet/bubbles/textinput"
-	tea "github.com/charmbracelet/bubbletea"
+	"charm.land/bubbles/v2/textinput"
+	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/models"
 )
@@ -65,12 +65,12 @@ func newTagManagerModel(pt *ProjectTreeModel, project *models.Project) *TagManag
 	renameInput := textinput.New()
 	renameInput.Placeholder = "new tag name"
 	renameInput.CharLimit = 50
-	renameInput.Width = 30
+	renameInput.SetWidth(30)
 
 	addTagInput := textinput.New()
 	addTagInput.Placeholder = "tag name"
 	addTagInput.CharLimit = 50
-	addTagInput.Width = 30
+	addTagInput.SetWidth(30)
 
 	m := &TagManagerModel{
 		projectTree: pt,
@@ -178,7 +178,7 @@ func (m *TagManagerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return CloseTagManagerMsg{}
 		}
 
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		// Handle discard confirmation
 		if m.confirmDiscard {
 			switch msg.String() {
@@ -280,7 +280,7 @@ func (m *TagManagerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 // handleRenameMode handles keyboard input while in rename mode.
-func (m *TagManagerModel) handleRenameMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+func (m *TagManagerModel) handleRenameMode(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "esc":
 		if strings.TrimSpace(m.renameInput.Value()) != m.renameTarget {
@@ -311,7 +311,7 @@ func (m *TagManagerModel) handleRenameMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) 
 }
 
 // handleAddTagMode handles keyboard input while in add tag mode.
-func (m *TagManagerModel) handleAddTagMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+func (m *TagManagerModel) handleAddTagMode(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "esc":
 		if strings.TrimSpace(m.addTagInput.Value()) != "" {
@@ -369,7 +369,7 @@ func (m *TagManagerModel) handleAddTagMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) 
 }
 
 // View renders the tag manager view.
-func (m *TagManagerModel) View() string {
+func (m *TagManagerModel) View() tea.View {
 	// Build content
 	var content strings.Builder
 
@@ -441,7 +441,7 @@ func (m *TagManagerModel) View() string {
 	out.WriteString("\n")
 	out.WriteString(HelpStyle.Render(renderWrappingHelpLine(helpText, m.width)))
 
-	return out.String()
+	return tea.NewView(out.String())
 }
 
 func (m *TagManagerModel) HasTextInput() bool { return m.renameMode || m.addTagMode }

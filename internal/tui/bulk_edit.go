@@ -6,8 +6,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/charmbracelet/bubbles/textinput"
-	tea "github.com/charmbracelet/bubbletea"
+	"charm.land/bubbles/v2/textinput"
+	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/models"
 )
@@ -110,13 +110,13 @@ func NewBulkEditModel(tasks []*models.Task, project *models.Project) *BulkEditMo
 	m.tagAddInput = textinput.New()
 	m.tagAddInput.Placeholder = "Enter tag name..."
 	m.tagAddInput.CharLimit = 50
-	m.tagAddInput.Width = 30
+	m.tagAddInput.SetWidth(30)
 
 	// Initialize due date input
 	m.dueDateInput = textinput.New()
 	m.dueDateInput.Placeholder = "e.g., tomorrow, +3d, fri, 2024-01-15"
 	m.dueDateInput.CharLimit = 30
-	m.dueDateInput.Width = 40
+	m.dueDateInput.SetWidth(40)
 
 	// Analyze current values
 	m.analyzeCurrentValues()
@@ -489,7 +489,7 @@ func (m *BulkEditModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.ensureFocusedFieldVisible()
 		return m, nil
 
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		// Handle tag add input mode
 		if m.tagMode == 1 {
 			return m.handleTagAddInput(msg)
@@ -545,7 +545,7 @@ func (m *BulkEditModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "enter":
 			return m.handleEnter()
 
-		case " ":
+		case "space":
 			return m.handleSpace()
 
 		case "a":
@@ -578,7 +578,7 @@ func (m *BulkEditModel) GetHelpItems() []HelpItem {
 }
 
 // View renders the bulk edit panel.
-func (m *BulkEditModel) View() string {
+func (m *BulkEditModel) View() tea.View {
 	boxWidth := 60
 	if m.Width() > 0 && m.Width() < boxWidth+10 {
 		boxWidth = m.Width() - 10
@@ -667,7 +667,7 @@ func (m *BulkEditModel) View() string {
 		out.WriteString(fullContent)
 	}
 
-	return out.String()
+	return tea.NewView(out.String())
 }
 
 func (m *BulkEditModel) StatusBarLabel() string { return "Bulk Edit" }

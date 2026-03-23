@@ -1,8 +1,8 @@
 package tui
 
 import (
-	"github.com/charmbracelet/bubbles/textarea"
-	"github.com/charmbracelet/bubbles/textinput"
+	"charm.land/bubbles/v2/textarea"
+	"charm.land/bubbles/v2/textinput"
 )
 
 // FormFieldFactory creates consistently configured input fields.
@@ -59,7 +59,7 @@ func (f *FormFieldFactory) NewTextInput(placeholder string) textinput.Model {
 	ti := textinput.New()
 	ti.Placeholder = placeholder
 	ti.CharLimit = f.DefaultCharLimit
-	ti.Width = f.DefaultWidth
+	ti.SetWidth(f.DefaultWidth)
 	return ti
 }
 
@@ -98,5 +98,5 @@ func (f *FormFieldFactory) ResizeTextInput(ti *textinput.Model, availableWidth i
 	lipglossWidth := cardWidth - 2
 	textWidth := lipglossWidth - 4
 	width := max(textWidth, 30)
-	ti.Width = width
+	ti.SetWidth(width)
 }

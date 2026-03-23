@@ -5,14 +5,14 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/charmbracelet/bubbles/textinput"
-	tea "github.com/charmbracelet/bubbletea"
+	"charm.land/bubbles/v2/textinput"
+	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/models"
 )
 
 // handleTagAddInput handles input when adding a tag.
-func (m *BulkEditModel) handleTagAddInput(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+func (m *BulkEditModel) handleTagAddInput(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "esc":
 		m.tagMode = 0
@@ -41,7 +41,7 @@ func (m *BulkEditModel) handleTagAddInput(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 }
 
 // handleDueDateInput handles input when setting a due date.
-func (m *BulkEditModel) handleDueDateInput(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+func (m *BulkEditModel) handleDueDateInput(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "esc":
 		m.dueDateInputMode = false
@@ -81,7 +81,7 @@ func (m *BulkEditModel) handleDueDateInput(msg tea.KeyMsg) (tea.Model, tea.Cmd) 
 }
 
 // handleParentListInput handles input when browsing the parent candidate list.
-func (m *BulkEditModel) handleParentListInput(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+func (m *BulkEditModel) handleParentListInput(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "esc":
 		m.parentListMode = false

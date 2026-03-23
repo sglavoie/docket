@@ -1,6 +1,6 @@
 package tui
 
-import "github.com/charmbracelet/lipgloss"
+import "charm.land/lipgloss/v2"
 
 // activeTabStyle returns the standard active tab style: bold, primary-colored,
 // with optional bottom border. Used by tab bar renderers to avoid style duplication.
@@ -65,7 +65,7 @@ func RenderColoredTabBar(tabs []string, activeIdx int, availableWidth int, paddi
 			if tabColors != nil {
 				if colorName, ok := tabColors[name]; ok && colorName != "" && colorName != "gray" {
 					colorVal := GetSectionColorValue(colorName)
-					if colorVal != "" {
+					if colorVal != nil {
 						colored := activeTabStyle(padding, fitsSingleLine).
 							Foreground(colorVal).
 							BorderForeground(colorVal)
@@ -80,7 +80,7 @@ func RenderColoredTabBar(tabs []string, activeIdx int, availableWidth int, paddi
 			if tabColors != nil {
 				if colorName, ok := tabColors[name]; ok && colorName != "" && colorName != "gray" {
 					colorVal := GetSectionColorValue(colorName)
-					if colorVal != "" {
+					if colorVal != nil {
 						colored := inactiveTabStyle(padding, fitsSingleLine).
 							Foreground(colorVal)
 						rendered = append(rendered, colored.Render(name))

@@ -5,10 +5,10 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/charmbracelet/bubbles/table"
-	"github.com/charmbracelet/bubbles/textinput"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/bubbles/v2/table"
+	"charm.land/bubbles/v2/textinput"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 
 	"github.com/sglavoie/tt/internal/fuzzy"
 	"github.com/sglavoie/tt/internal/selector"
@@ -38,7 +38,7 @@ func NewSelectorModel(title string, items []SelectorItem) SelectorModel {
 	searchInput := textinput.New()
 	searchInput.Placeholder = "Type to search..."
 	searchInput.CharLimit = 50
-	searchInput.Width = 40
+	searchInput.SetWidth(40)
 
 	// Determine columns based on items
 	var columns []table.Column
@@ -156,7 +156,7 @@ func (m SelectorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 
 	switch msg := msg.(type) {
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		if m.searchMode {
 			switch msg.String() {
 			case "esc":
@@ -245,9 +245,9 @@ func (m SelectorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
-func (m SelectorModel) View() string {
+func (m SelectorModel) View() tea.View {
 	if len(m.items) == 0 {
-		return EmptyErrorStyle.Render("No items to display")
+		return tea.NewView(EmptyErrorStyle.Render("No items to display"))
 	}
 
 	var b strings.Builder
@@ -280,7 +280,9 @@ func (m SelectorModel) View() string {
 		b.WriteString(HelpStyle.MarginTop(1).Render(help))
 	}
 
-	return b.String()
+	v := tea.NewView(b.String())
+	v.AltScreen = true
+	return v
 }
 
 func (m SelectorModel) GetSelectedItem() *SelectorItem {
@@ -303,7 +305,7 @@ func RunSelector(title string, items []SelectorItem) (*SelectorItem, error) {
 
 	model := NewSelectorModel(title, items)
 
-	p := tea.NewProgram(model, tea.WithAltScreen())
+	p := tea.NewProgram(model)
 	finalModel, err := p.Run()
 	if err != nil {
 		return nil, fmt.Errorf("failed to run selector: %w", err)

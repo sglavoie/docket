@@ -1,7 +1,7 @@
 package tui
 
 import (
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 )
 
 func (m *AppModel) focusViewCommands() []Command {
@@ -14,7 +14,7 @@ func (m *AppModel) focusViewCommands() []Command {
 			Views:       []ViewType{ViewFocusView, ViewProjectFocusView},
 			Aliases:     []string{"unflag task", "unstar task", "deactivate"},
 			Handler: func() tea.Msg {
-				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'*'}}
+				return syntheticKey('*')
 			},
 		},
 		{
@@ -25,7 +25,7 @@ func (m *AppModel) focusViewCommands() []Command {
 			Views:       []ViewType{ViewFocusView, ViewProjectFocusView},
 			Aliases:     []string{"open in project", "show in tree"},
 			Handler: func() tea.Msg {
-				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'g'}}
+				return syntheticKey('g')
 			},
 		},
 		{
@@ -36,7 +36,7 @@ func (m *AppModel) focusViewCommands() []Command {
 			Views:       []ViewType{ViewFocusView, ViewProjectFocusView},
 			Aliases:     []string{"yank title"},
 			Handler: func() tea.Msg {
-				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'y'}}
+				return syntheticKey('y')
 			},
 		},
 		{
@@ -47,7 +47,7 @@ func (m *AppModel) focusViewCommands() []Command {
 			Views:       []ViewType{ViewFocusView, ViewProjectFocusView},
 			Aliases:     []string{"yank details"},
 			Handler: func() tea.Msg {
-				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'Y'}}
+				return syntheticKey('Y')
 			},
 		},
 		{
@@ -58,7 +58,7 @@ func (m *AppModel) focusViewCommands() []Command {
 			Views:       []ViewType{ViewFocusView, ViewProjectFocusView},
 			Aliases:     []string{"yank description"},
 			Handler: func() tea.Msg {
-				return tea.KeyMsg{Type: tea.KeyCtrlY}
+				return syntheticCtrlKey('y')
 			},
 		},
 	}
@@ -74,7 +74,7 @@ func (m *AppModel) dailyReviewCommands() []Command {
 			Views:       []ViewType{ViewDailyReview},
 			Aliases:     []string{"due today section"},
 			Handler: func() tea.Msg {
-				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'s'}}
+				return syntheticKey('s')
 			},
 		},
 		{
@@ -85,7 +85,7 @@ func (m *AppModel) dailyReviewCommands() []Command {
 			Views:       []ViewType{ViewDailyReview},
 			Aliases:     []string{"top priority section"},
 			Handler: func() tea.Msg {
-				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'s'}}
+				return syntheticKey('s')
 			},
 		},
 		{
@@ -96,7 +96,7 @@ func (m *AppModel) dailyReviewCommands() []Command {
 			Views:       []ViewType{ViewDailyReview},
 			Aliases:     []string{"stale section"},
 			Handler: func() tea.Msg {
-				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'s'}}
+				return syntheticKey('s')
 			},
 		},
 		{
@@ -107,7 +107,7 @@ func (m *AppModel) dailyReviewCommands() []Command {
 			Views:       []ViewType{ViewDailyReview},
 			Aliases:     []string{"recently logged section"},
 			Handler: func() tea.Msg {
-				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'s'}}
+				return syntheticKey('s')
 			},
 		},
 		{
@@ -118,7 +118,7 @@ func (m *AppModel) dailyReviewCommands() []Command {
 			Views:       []ViewType{ViewDailyReview},
 			Aliases:     []string{"flagged section", "active section"},
 			Handler: func() tea.Msg {
-				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'s'}}
+				return syntheticKey('s')
 			},
 		},
 		{
@@ -129,7 +129,7 @@ func (m *AppModel) dailyReviewCommands() []Command {
 			Views:       []ViewType{ViewDailyReview},
 			Aliases:     []string{"overdue section"},
 			Handler: func() tea.Msg {
-				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'s'}}
+				return syntheticKey('s')
 			},
 		},
 		{
@@ -140,7 +140,7 @@ func (m *AppModel) dailyReviewCommands() []Command {
 			Views:       []ViewType{ViewDailyReview},
 			Aliases:     []string{"fold section", "toggle section"},
 			Handler: func() tea.Msg {
-				return tea.KeyMsg{Type: tea.KeyTab}
+				return syntheticSpecialKey(tea.KeyTab)
 			},
 		},
 		{
@@ -151,7 +151,7 @@ func (m *AppModel) dailyReviewCommands() []Command {
 			Views:       []ViewType{ViewDailyReview},
 			Aliases:     []string{"section forward"},
 			Handler: func() tea.Msg {
-				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'n'}}
+				return syntheticKey('n')
 			},
 		},
 		{
@@ -162,7 +162,7 @@ func (m *AppModel) dailyReviewCommands() []Command {
 			Views:       []ViewType{ViewDailyReview},
 			Aliases:     []string{"section backward"},
 			Handler: func() tea.Msg {
-				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'N'}}
+				return syntheticKey('N')
 			},
 		},
 		{
@@ -173,7 +173,7 @@ func (m *AppModel) dailyReviewCommands() []Command {
 			Views:       []ViewType{ViewDailyReview},
 			Aliases:     []string{"yank title"},
 			Handler: func() tea.Msg {
-				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'y'}}
+				return syntheticKey('y')
 			},
 		},
 		{
@@ -184,7 +184,7 @@ func (m *AppModel) dailyReviewCommands() []Command {
 			Views:       []ViewType{ViewDailyReview},
 			Aliases:     []string{"yank details"},
 			Handler: func() tea.Msg {
-				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'Y'}}
+				return syntheticKey('Y')
 			},
 		},
 		{
@@ -195,7 +195,7 @@ func (m *AppModel) dailyReviewCommands() []Command {
 			Views:       []ViewType{ViewDailyReview},
 			Aliases:     []string{"yank description"},
 			Handler: func() tea.Msg {
-				return tea.KeyMsg{Type: tea.KeyCtrlY}
+				return syntheticCtrlKey('y')
 			},
 		},
 	}
@@ -211,7 +211,7 @@ func (m *AppModel) priorityViewCommands() []Command {
 			Views:       []ViewType{ViewPriorityView},
 			Aliases:     []string{"begin suggestion", "accept suggestion"},
 			Handler: func() tea.Msg {
-				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'s'}}
+				return syntheticKey('s')
 			},
 		},
 		{
@@ -222,7 +222,7 @@ func (m *AppModel) priorityViewCommands() []Command {
 			Views:       []ViewType{ViewPriorityView},
 			Aliases:     []string{"skip suggestion", "reject suggestion"},
 			Handler: func() tea.Msg {
-				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'x'}}
+				return syntheticKey('x')
 			},
 		},
 		{
@@ -233,7 +233,7 @@ func (m *AppModel) priorityViewCommands() []Command {
 			Views:       []ViewType{ViewPriorityView},
 			Aliases:     []string{"open in tree", "show in tree"},
 			Handler: func() tea.Msg {
-				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'g'}}
+				return syntheticKey('g')
 			},
 		},
 		{
@@ -244,7 +244,7 @@ func (m *AppModel) priorityViewCommands() []Command {
 			Views:       []ViewType{ViewPriorityView},
 			Aliases:     []string{"show waiting", "hide waiting"},
 			Handler: func() tea.Msg {
-				return tea.KeyMsg{Type: tea.KeyTab}
+				return syntheticSpecialKey(tea.KeyTab)
 			},
 		},
 		{
@@ -255,7 +255,7 @@ func (m *AppModel) priorityViewCommands() []Command {
 			Views:       []ViewType{ViewPriorityView},
 			Aliases:     []string{"reload priorities"},
 			Handler: func() tea.Msg {
-				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'r'}}
+				return syntheticKey('r')
 			},
 		},
 		{
@@ -266,7 +266,7 @@ func (m *AppModel) priorityViewCommands() []Command {
 			Views:       []ViewType{ViewPriorityView},
 			Aliases:     []string{"yank title"},
 			Handler: func() tea.Msg {
-				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'y'}}
+				return syntheticKey('y')
 			},
 		},
 		{
@@ -277,7 +277,7 @@ func (m *AppModel) priorityViewCommands() []Command {
 			Views:       []ViewType{ViewPriorityView},
 			Aliases:     []string{"yank details"},
 			Handler: func() tea.Msg {
-				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'Y'}}
+				return syntheticKey('Y')
 			},
 		},
 		{
@@ -288,7 +288,7 @@ func (m *AppModel) priorityViewCommands() []Command {
 			Views:       []ViewType{ViewPriorityView},
 			Aliases:     []string{"yank description"},
 			Handler: func() tea.Msg {
-				return tea.KeyMsg{Type: tea.KeyCtrlY}
+				return syntheticCtrlKey('y')
 			},
 		},
 	}
@@ -304,7 +304,7 @@ func (m *AppModel) inboxProcessorCommands() []Command {
 			Views:       []ViewType{ViewInboxProcessor},
 			Aliases:     []string{"next inbox task", "pass"},
 			Handler: func() tea.Msg {
-				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'n'}}
+				return syntheticKey('n')
 			},
 		},
 		{
@@ -315,7 +315,7 @@ func (m *AppModel) inboxProcessorCommands() []Command {
 			Views:       []ViewType{ViewInboxProcessor},
 			Aliases:     []string{"pick section", "move to section"},
 			Handler: func() tea.Msg {
-				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'s'}}
+				return syntheticKey('s')
 			},
 		},
 		{
@@ -326,7 +326,7 @@ func (m *AppModel) inboxProcessorCommands() []Command {
 			Views:       []ViewType{ViewInboxProcessor},
 			Aliases:     []string{"waiting", "defer task"},
 			Handler: func() tea.Msg {
-				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'w'}}
+				return syntheticKey('w')
 			},
 		},
 		{
@@ -337,7 +337,7 @@ func (m *AppModel) inboxProcessorCommands() []Command {
 			Views:       []ViewType{ViewInboxProcessor},
 			Aliases:     []string{"tag inbox task"},
 			Handler: func() tea.Msg {
-				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'t'}}
+				return syntheticKey('t')
 			},
 		},
 		{
@@ -348,7 +348,7 @@ func (m *AppModel) inboxProcessorCommands() []Command {
 			Views:       []ViewType{ViewInboxProcessor},
 			Aliases:     []string{"add subtask inbox"},
 			Handler: func() tea.Msg {
-				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'c'}}
+				return syntheticKey('c')
 			},
 		},
 		{
@@ -359,7 +359,7 @@ func (m *AppModel) inboxProcessorCommands() []Command {
 			Views:       []ViewType{ViewInboxProcessor},
 			Aliases:     []string{"inbox due date", "deadline"},
 			Handler: func() tea.Msg {
-				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'D'}}
+				return syntheticKey('D')
 			},
 		},
 		{
@@ -370,7 +370,7 @@ func (m *AppModel) inboxProcessorCommands() []Command {
 			Views:       []ViewType{ViewInboxProcessor},
 			Aliases:     []string{"inbox dependencies", "add dependency"},
 			Handler: func() tea.Msg {
-				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'b'}}
+				return syntheticKey('b')
 			},
 		},
 		{
@@ -381,7 +381,7 @@ func (m *AppModel) inboxProcessorCommands() []Command {
 			Views:       []ViewType{ViewInboxProcessor},
 			Aliases:     []string{"remove inbox task"},
 			Handler: func() tea.Msg {
-				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'x'}}
+				return syntheticKey('x')
 			},
 		},
 		{
@@ -392,7 +392,7 @@ func (m *AppModel) inboxProcessorCommands() []Command {
 			Views:       []ViewType{ViewInboxProcessor},
 			Aliases:     []string{"inbox undo", "revert inbox"},
 			Handler: func() tea.Msg {
-				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'u'}}
+				return syntheticKey('u')
 			},
 		},
 	}
@@ -408,7 +408,7 @@ func (m *AppModel) dueDateOverviewCommands() []Command {
 			Views:       []ViewType{ViewDueDateOverview},
 			Aliases:     []string{"reload due dates"},
 			Handler: func() tea.Msg {
-				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'r'}}
+				return syntheticKey('r')
 			},
 		},
 		{
@@ -419,7 +419,7 @@ func (m *AppModel) dueDateOverviewCommands() []Command {
 			Views:       []ViewType{ViewDueDateOverview},
 			Aliases:     []string{"open in project", "show in tree"},
 			Handler: func() tea.Msg {
-				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'g'}}
+				return syntheticKey('g')
 			},
 		},
 		{
@@ -430,7 +430,7 @@ func (m *AppModel) dueDateOverviewCommands() []Command {
 			Views:       []ViewType{ViewDueDateOverview},
 			Aliases:     []string{"yank title"},
 			Handler: func() tea.Msg {
-				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'y'}}
+				return syntheticKey('y')
 			},
 		},
 		{
@@ -441,7 +441,7 @@ func (m *AppModel) dueDateOverviewCommands() []Command {
 			Views:       []ViewType{ViewDueDateOverview},
 			Aliases:     []string{"yank details"},
 			Handler: func() tea.Msg {
-				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'Y'}}
+				return syntheticKey('Y')
 			},
 		},
 		{
@@ -452,7 +452,7 @@ func (m *AppModel) dueDateOverviewCommands() []Command {
 			Views:       []ViewType{ViewDueDateOverview},
 			Aliases:     []string{"yank description"},
 			Handler: func() tea.Msg {
-				return tea.KeyMsg{Type: tea.KeyCtrlY}
+				return syntheticCtrlKey('y')
 			},
 		},
 	}

@@ -3,7 +3,7 @@ package tui
 import (
 	"sort"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 )
 
 // ColumnInfo represents a single column in the column picker.
@@ -89,8 +89,8 @@ func (m *ColumnPickerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
-func (m *ColumnPickerModel) View() string {
-	return filterSelectorView(m.BasePicker, "column")
+func (m *ColumnPickerModel) View() tea.View {
+	return tea.NewView(filterSelectorView(m.BasePicker, "column"))
 }
 
 func (m *ColumnPickerModel) StatusBarLabel() string { return "Display Columns" }

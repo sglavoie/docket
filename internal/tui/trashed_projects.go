@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/storage"
 )
@@ -79,7 +79,7 @@ func (m *TrashedProjectsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.SetSize(msg.Width, msg.Height)
 		return m, nil
 
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		// Handle confirmation mode first
 		if m.confirm.IsActive() {
 			target := m.purgeTarget
@@ -133,7 +133,7 @@ func (m *TrashedProjectsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 // View renders the trashed projects picker.
-func (m *TrashedProjectsModel) View() string {
+func (m *TrashedProjectsModel) View() tea.View {
 	subtitle := fmt.Sprintf("%d projects", len(m.Items))
 
 	var out strings.Builder
@@ -157,7 +157,7 @@ func (m *TrashedProjectsModel) View() string {
 	out.WriteString("\n")
 	out.WriteString(m.RenderFooter())
 
-	return out.String()
+	return tea.NewView(out.String())
 }
 
 func (m *TrashedProjectsModel) StatusBarLabel() string { return "Trash" }

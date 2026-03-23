@@ -1,13 +1,14 @@
 package tui
 
 import (
+	tea "charm.land/bubbletea/v2"
 	"fmt"
 	"strings"
 
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/lipgloss/v2"
 )
 
-func (m *WorkflowDryRunModel) View() string {
+func (m *WorkflowDryRunModel) View() tea.View {
 	var b strings.Builder
 
 	// Title
@@ -22,14 +23,14 @@ func (m *WorkflowDryRunModel) View() string {
 
 	if m.loading {
 		b.WriteString(MutedStyle.Render("Evaluating rules against all tasks..."))
-		return b.String()
+		return tea.NewView(b.String())
 	}
 
 	if m.loadErr != nil {
 		b.WriteString(ErrorIconStyle.Render(fmt.Sprintf("Error: %s", m.loadErr.Error())))
 		b.WriteString("\n\n")
 		b.WriteString(renderStatusBarFooter(HelpStyle.Render("q: close"), "", m.Width()))
-		return b.String()
+		return tea.NewView(b.String())
 	}
 
 	// Show search input when active
@@ -111,7 +112,7 @@ func (m *WorkflowDryRunModel) View() string {
 	b.WriteString("\n")
 	b.WriteString(renderStatusBarFooter(HelpStyle.Render(strings.Join(helpParts, " · ")), "", m.Width()))
 
-	return b.String()
+	return tea.NewView(b.String())
 }
 
 // renderTaskList renders the scrollable task list for split layout.

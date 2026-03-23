@@ -1,6 +1,6 @@
 package tui
 
-import tea "github.com/charmbracelet/bubbletea"
+import tea "charm.land/bubbletea/v2"
 
 // dailyReviewTabNames are the tab labels for the daily review view.
 var dailyReviewTabNames = []string{"Due", "Active", "In Review", "Stale", "Done"}

@@ -3,11 +3,11 @@ package tui
 import (
 	"fmt"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 )
 
 // handleKeyMsg processes key events in the outliner view.
-func (m *OutlinerModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+func (m *OutlinerModel) handleKeyMsg(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	key := msg.String()
 
 	// Handle score filter custom value input
@@ -49,7 +49,7 @@ func (m *OutlinerModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		case "v":
 			m.toggleMultiSelectMode()
 			return m, nil
-		case " ":
+		case "space":
 			if len(m.rows) > 0 && m.cursor >= 0 && m.cursor < len(m.rows) && !m.rows[m.cursor].IsSectionHeader {
 				m.ToggleSelection(m.rows[m.cursor].task.ID)
 			}
@@ -624,7 +624,7 @@ func (m *OutlinerModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 }
 
 // handleQuickEditMode handles input while in quick edit mode.
-func (m *OutlinerModel) handleQuickEditMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+func (m *OutlinerModel) handleQuickEditMode(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	proj := m.project
 	saveFn := m.saveWithWorkflow
 	undoFn := m.setUndoContext

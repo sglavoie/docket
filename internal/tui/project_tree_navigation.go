@@ -1,7 +1,7 @@
 package tui
 
 import (
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/models"
 )
@@ -86,7 +86,7 @@ func viewModeIndex(modes []ViewMode, mode ViewMode) int {
 // Returns true if the key was handled.
 func (m *ProjectTreeModel) handleSelectionKeys(key string, visible []*TreeNode) (bool, tea.Cmd) {
 	switch key {
-	case " ":
+	case "space":
 		if m.multiSelectMode {
 			if CursorInBounds(m.cursor, len(visible)) {
 				m.toggleSelection(visible[m.cursor].Task)

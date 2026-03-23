@@ -1,6 +1,6 @@
 package tui
 
-import tea "github.com/charmbracelet/bubbletea"
+import tea "charm.land/bubbletea/v2"
 
 // typeChangeOpForKey maps a key to a TypeChangeOp, or returns false if not a type key.
 func typeChangeOpForKey(key string) (TypeChangeOp, string, bool) {

@@ -1,7 +1,7 @@
 package tui
 
 import (
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 )
 
 func (m *AppModel) allTasksCommands() []Command {
@@ -14,7 +14,7 @@ func (m *AppModel) allTasksCommands() []Command {
 			Views:       []ViewType{ViewAllTasks},
 			Aliases:     []string{"open in project", "show in tree"},
 			Handler: func() tea.Msg {
-				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'g'}}
+				return syntheticKey('g')
 			},
 		},
 		{
@@ -25,7 +25,7 @@ func (m *AppModel) allTasksCommands() []Command {
 			Views:       []ViewType{ViewAllTasks},
 			Aliases:     []string{"group by", "change grouping"},
 			Handler: func() tea.Msg {
-				return tea.KeyMsg{Type: tea.KeyCtrlG}
+				return syntheticCtrlKey('g')
 			},
 		},
 		{
@@ -36,7 +36,7 @@ func (m *AppModel) allTasksCommands() []Command {
 			Views:       []ViewType{ViewAllTasks},
 			Aliases:     []string{"multi select", "bulk select"},
 			Handler: func() tea.Msg {
-				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'v'}}
+				return syntheticKey('v')
 			},
 		},
 		{
@@ -47,7 +47,7 @@ func (m *AppModel) allTasksCommands() []Command {
 			Views:       []ViewType{ViewAllTasks},
 			Aliases:     []string{"fold group", "toggle group"},
 			Handler: func() tea.Msg {
-				return tea.KeyMsg{Type: tea.KeyTab}
+				return syntheticSpecialKey(tea.KeyTab)
 			},
 		},
 		{
@@ -58,7 +58,7 @@ func (m *AppModel) allTasksCommands() []Command {
 			Views:       []ViewType{ViewAllTasks},
 			Aliases:     []string{"reload tasks"},
 			Handler: func() tea.Msg {
-				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'r'}}
+				return syntheticKey('r')
 			},
 		},
 		{
@@ -69,7 +69,7 @@ func (m *AppModel) allTasksCommands() []Command {
 			Views:       []ViewType{ViewAllTasks},
 			Aliases:     []string{"yank title"},
 			Handler: func() tea.Msg {
-				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'y'}}
+				return syntheticKey('y')
 			},
 		},
 		{
@@ -80,7 +80,7 @@ func (m *AppModel) allTasksCommands() []Command {
 			Views:       []ViewType{ViewAllTasks},
 			Aliases:     []string{"yank details"},
 			Handler: func() tea.Msg {
-				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'Y'}}
+				return syntheticKey('Y')
 			},
 		},
 		{
@@ -91,7 +91,7 @@ func (m *AppModel) allTasksCommands() []Command {
 			Views:       []ViewType{ViewAllTasks},
 			Aliases:     []string{"yank description"},
 			Handler: func() tea.Msg {
-				return tea.KeyMsg{Type: tea.KeyCtrlY}
+				return syntheticCtrlKey('y')
 			},
 		},
 	}

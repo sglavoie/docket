@@ -5,7 +5,7 @@ import (
 	"sort"
 	"strings"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/fuzzy"
 	"github.com/sglavoie/tt/internal/models"
@@ -106,7 +106,7 @@ func (m *ParentSelectorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.SetSize(msg.Width, msg.Height)
 		return m, nil
 
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		switch msg.String() {
 		case "esc":
 			if m.IsSearchMode() && m.SearchQuery() != "" {
@@ -246,7 +246,7 @@ func (m *ParentSelectorModel) selectCurrent() tea.Cmd {
 	}
 }
 
-func (m *ParentSelectorModel) View() string {
+func (m *ParentSelectorModel) View() tea.View {
 	var b strings.Builder
 
 	subtitle := fmt.Sprintf("%d parent%s available", len(m.allItems), pluralize(len(m.allItems), "", "s"))
@@ -265,7 +265,7 @@ func (m *ParentSelectorModel) View() string {
 	right := MutedStyle.Render(fmt.Sprintf("%d items", len(m.Filtered)))
 	b.WriteString(renderStatusBarFooter(left, right, m.Width()))
 
-	return b.String()
+	return tea.NewView(b.String())
 }
 
 // renderList renders the filtered parent list.

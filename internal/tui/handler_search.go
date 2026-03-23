@@ -1,6 +1,6 @@
 package tui
 
-import tea "github.com/charmbracelet/bubbletea"
+import tea "charm.land/bubbletea/v2"
 
 // handleSearchMessages handles search-related messages (global search, command palette, saved searches).
 // Returns true if the message was handled.

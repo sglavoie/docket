@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"sort"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/models"
 )
@@ -131,7 +131,7 @@ func (m *BulkTagSelectorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.SetSize(msg.Width, msg.Height)
 		return m, nil
 
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		if m.AddTagMode {
 			handled, cmd := m.HandleAddTagKey(msg, m.BasePicker)
 			if handled {
@@ -176,8 +176,8 @@ func (m *BulkTagSelectorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 // View renders the bulk tag selector.
-func (m *BulkTagSelectorModel) View() string {
-	return RenderTagSelectorView(m.BasePicker, &m.TagAdder, m.Config.Title, m.Width(), m.Height())
+func (m *BulkTagSelectorModel) View() tea.View {
+	return tea.NewView(RenderTagSelectorView(m.BasePicker, &m.TagAdder, m.Config.Title, m.Width(), m.Height()))
 }
 
 // NewTagSelectorModel creates a new tag selector.
@@ -230,7 +230,7 @@ func (m *TagSelectorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.SetSize(msg.Width, msg.Height)
 		return m, nil
 
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		if m.AddTagMode {
 			handled, cmd := m.HandleAddTagKey(msg, m.BasePicker)
 			if handled {
@@ -275,8 +275,8 @@ func (m *TagSelectorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 // View renders the tag selector.
-func (m *TagSelectorModel) View() string {
-	return RenderTagSelectorView(m.BasePicker, &m.TagAdder, m.Config.Title, m.Width(), m.Height())
+func (m *TagSelectorModel) View() tea.View {
+	return tea.NewView(RenderTagSelectorView(m.BasePicker, &m.TagAdder, m.Config.Title, m.Width(), m.Height()))
 }
 
 func (m *TagSelectorModel) StatusBarLabel() string { return "Select Tags" }

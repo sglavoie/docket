@@ -1,8 +1,8 @@
 package tui
 
 import (
-	"github.com/charmbracelet/bubbles/textinput"
-	tea "github.com/charmbracelet/bubbletea"
+	"charm.land/bubbles/v2/textinput"
+	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
@@ -55,7 +55,7 @@ func NewGlobalSearchModel(cfg *config.Config) *GlobalSearchModel {
 	searchInput := textinput.New()
 	searchInput.Placeholder = "Search all tasks..."
 	searchInput.CharLimit = 100
-	searchInput.Width = 40
+	searchInput.SetWidth(40)
 	searchInput.Focus()
 
 	projects := cfg.GetActiveProjects()
@@ -196,7 +196,7 @@ func (m *GlobalSearchModel) SetSize(width, height int) {
 	m.listWidth = max(innerWidth*50/100, 30)
 	m.previewWidth = innerWidth - m.listWidth - 1 // -1 for separator
 
-	m.searchInput.Width = innerWidth - 4
+	m.searchInput.SetWidth(innerWidth - 4)
 }
 
 func (m *GlobalSearchModel) Init() tea.Cmd {
@@ -209,7 +209,7 @@ func (m *GlobalSearchModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.SetSize(msg.Width, msg.Height)
 		return m, nil
 
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		key := msg.String()
 
 		// Handle autocomplete navigation when active

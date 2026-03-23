@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"testing"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
@@ -317,7 +317,7 @@ func TestQuickSwitchPrefixDispatch(t *testing.T) {
 		app.quickSwitchPendingPrefix = ","
 
 		// Press 's' for in_progress
-		msg := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'s'}}
+		msg := syntheticKey('s')
 		app.handleQuickSwitchKey(msg)
 
 		if app.quickSwitchPendingPrefix != "" {
@@ -343,7 +343,7 @@ func TestQuickSwitchPrefixDispatch(t *testing.T) {
 		app.quickSwitchPendingPrefix = "!"
 
 		// Press '1' for priority 1
-		msg := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'1'}}
+		msg := syntheticKey('1')
 		app.handleQuickSwitchKey(msg)
 
 		if app.quickSwitchPendingPrefix != "" {
@@ -364,7 +364,7 @@ func TestQuickSwitchPrefixDispatch(t *testing.T) {
 		app.showQuickSwitch = true
 		app.quickSwitchPendingPrefix = ","
 
-		msg := tea.KeyMsg{Type: tea.KeyEscape}
+		msg := syntheticSpecialKey(tea.KeyEscape)
 		app.handleQuickSwitchKey(msg)
 
 		if app.quickSwitchPendingPrefix != "" {
@@ -387,7 +387,7 @@ func TestQuickSwitchPrefixDispatch(t *testing.T) {
 		app.quickSwitchPendingPrefix = ","
 
 		// Press 'z' which is not a valid status key
-		msg := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'z'}}
+		msg := syntheticKey('z')
 		app.handleQuickSwitchKey(msg)
 
 		if app.quickSwitchPendingPrefix != "" {
@@ -504,7 +504,7 @@ func TestQuickSwitchFilterKeyHandling(t *testing.T) {
 		initQuickSwitchFilter(app)
 		app.showQuickSwitch = true
 
-		msg := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'a'}}
+		msg := syntheticKey('a')
 		app.handleQuickSwitchKey(msg)
 
 		if app.quickSwitchFiltering {
@@ -524,7 +524,7 @@ func TestQuickSwitchFilterKeyHandling(t *testing.T) {
 		initQuickSwitchFilter(app)
 		app.showQuickSwitch = true
 
-		msg := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'/'}}
+		msg := syntheticKey('/')
 		app.handleQuickSwitchKey(msg)
 
 		if !app.quickSwitchFiltering {
@@ -545,7 +545,7 @@ func TestQuickSwitchFilterKeyHandling(t *testing.T) {
 		app.quickSwitchFilter = "a"
 		initQuickSwitchFilter(app)
 
-		msg := tea.KeyMsg{Type: tea.KeyBackspace}
+		msg := syntheticSpecialKey(tea.KeyBackspace)
 		app.handleQuickSwitchKey(msg)
 
 		if app.quickSwitchFiltering {
@@ -565,7 +565,7 @@ func TestQuickSwitchFilterKeyHandling(t *testing.T) {
 		initQuickSwitchFilter(app)
 		app.showQuickSwitch = true
 
-		msg := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{','}}
+		msg := syntheticKey(',')
 		app.handleQuickSwitchKey(msg)
 
 		if app.quickSwitchPendingPrefix != "," {
@@ -582,7 +582,7 @@ func TestQuickSwitchFilterKeyHandling(t *testing.T) {
 		initQuickSwitchFilter(app)
 		app.showQuickSwitch = true
 
-		msg := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'!'}}
+		msg := syntheticKey('!')
 		app.handleQuickSwitchKey(msg)
 
 		if app.quickSwitchPendingPrefix != "!" {
@@ -601,7 +601,7 @@ func TestQuickSwitchFilterKeyHandling(t *testing.T) {
 		initQuickSwitchFilter(app)
 		app.showQuickSwitch = true
 
-		msg := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{','}}
+		msg := syntheticKey(',')
 		app.handleQuickSwitchKey(msg)
 
 		if app.quickSwitchPendingPrefix != "" {
@@ -624,7 +624,7 @@ func TestQuickSwitchFilterKeyHandling(t *testing.T) {
 		initQuickSwitchFilter(app)
 
 		// First esc: clears filter
-		msg := tea.KeyMsg{Type: tea.KeyEscape}
+		msg := syntheticSpecialKey(tea.KeyEscape)
 		app.handleQuickSwitchKey(msg)
 
 		if app.quickSwitchFilter != "" {

@@ -28,7 +28,7 @@ func (m *AppModel) renderPinnedPreviewBackground() string {
 		m.focusPinnedPreviewOnTask(taskID)
 	}
 
-	content := m.pinnedPreview.View()
+	content := m.pinnedPreview.View().Content
 
 	dim := DimStyle
 	lines := strings.Split(content, "\n")

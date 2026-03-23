@@ -1,17 +1,17 @@
 package tui
 
 import (
+	tea "charm.land/bubbletea/v2"
 	"fmt"
+	"image/color"
 	"strings"
 	"time"
-
-	"github.com/charmbracelet/lipgloss"
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/util"
 )
 
-func (m *NotesViewModel) View() string {
+func (m *NotesViewModel) View() tea.View {
 	var b strings.Builder
 
 	// Title
@@ -114,7 +114,7 @@ func (m *NotesViewModel) View() string {
 
 		b.WriteString(m.renderStatusBar())
 	}
-	return b.String()
+	return tea.NewView(b.String())
 }
 
 func (m *NotesViewModel) renderListPane() string {
@@ -253,7 +253,7 @@ func (m *NotesViewModel) renderFooter() string {
 }
 
 func (m *NotesViewModel) renderDivider() string {
-	dividerColor := lipgloss.TerminalColor(ColorMuted)
+	dividerColor := color.Color(ColorMuted)
 	if m.detailsPane.Focused {
 		dividerColor = ColorPrimary
 	}

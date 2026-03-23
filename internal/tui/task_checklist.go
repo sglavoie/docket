@@ -5,8 +5,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/charmbracelet/bubbles/textarea"
-	tea "github.com/charmbracelet/bubbletea"
+	"charm.land/bubbles/v2/textarea"
+	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/external"
 	"github.com/sglavoie/tt/internal/models"
@@ -88,7 +88,7 @@ func (m *TaskChecklistModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// Handle confirmation mode
 	if m.confirm.IsActive() {
 		switch msg := msg.(type) {
-		case tea.KeyMsg:
+		case tea.KeyPressMsg:
 			action := m.confirm.Action()
 			if confirmed, handled := m.HandleConfirmKey(msg.String()); handled {
 				if confirmed {
@@ -115,7 +115,7 @@ func (m *TaskChecklistModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// Handle edit mode
 	if m.editMode {
 		switch msg := msg.(type) {
-		case tea.KeyMsg:
+		case tea.KeyPressMsg:
 			switch msg.String() {
 			case "esc":
 				if m.editIndex < len(m.task.Checklist) && strings.TrimSpace(m.editTextInput.Value()) != m.task.Checklist[m.editIndex].Text {
@@ -138,7 +138,7 @@ func (m *TaskChecklistModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// Handle add mode
 	if m.addMode {
 		switch msg := msg.(type) {
-		case tea.KeyMsg:
+		case tea.KeyPressMsg:
 			switch msg.String() {
 			case "esc":
 				if strings.TrimSpace(m.textInput.Value()) != "" {
@@ -166,7 +166,7 @@ func (m *TaskChecklistModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.BaseView.SetSize(msg.Width, msg.Height)
 
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		if m.pendingPrefix == "g" {
 			m.pendingPrefix = ""
 			_, cmd := handleGotoTopPrefix(msg.String(), &m.cursor, &m.cursorFlash)
@@ -568,9 +568,9 @@ func (m *TaskChecklistModel) editItemInExternalEditorFromEditMode() tea.Cmd {
 	})
 }
 
-func (m *TaskChecklistModel) View() string {
+func (m *TaskChecklistModel) View() tea.View {
 	if m.task == nil {
-		return "No task selected"
+		return tea.NewView("No task selected")
 	}
 
 	var b strings.Builder
@@ -601,7 +601,7 @@ func (m *TaskChecklistModel) View() string {
 		b.WriteString(m.editTextInput.View())
 		b.WriteString("\n\n")
 		b.WriteString(renderStatusBarFooter(HelpStyle.Render("Ctrl+S: save · Ctrl+E: external editor · Esc: cancel"), "", m.Width()))
-		return b.String()
+		return tea.NewView(b.String())
 	}
 
 	// Add mode input
@@ -611,7 +611,7 @@ func (m *TaskChecklistModel) View() string {
 		b.WriteString(m.textInput.View())
 		b.WriteString("\n\n")
 		b.WriteString(renderStatusBarFooter(HelpStyle.Render("Ctrl+S: save · Ctrl+E: external editor · Esc: cancel"), "", m.Width()))
-		return b.String()
+		return tea.NewView(b.String())
 	}
 
 	// Error display
@@ -688,7 +688,7 @@ func (m *TaskChecklistModel) View() string {
 	helpText := "j/k: nav · Space: toggle · a: add · e: edit · E: external editor · d: delete · q: close"
 	b.WriteString(HelpStyle.Render(renderWrappingHelpLine(helpText, m.Width())))
 
-	return b.String()
+	return tea.NewView(b.String())
 }
 
 // HasTextInput returns true when add/edit mode is active.

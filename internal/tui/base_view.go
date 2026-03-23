@@ -3,8 +3,8 @@ package tui
 import (
 	"fmt"
 
-	"github.com/charmbracelet/bubbles/textinput"
-	tea "github.com/charmbracelet/bubbletea"
+	"charm.land/bubbles/v2/textinput"
+	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/config"
 )
@@ -197,7 +197,7 @@ type BaseSearchableView struct {
 // SetSize updates the view dimensions and adjusts the search input width.
 func (v *BaseSearchableView) SetSize(w, h int) {
 	v.BaseView.SetSize(w, h)
-	v.searchInput.Width = SearchInputWidth(w)
+	v.searchInput.SetWidth(SearchInputWidth(w))
 }
 
 // InitSearchInput initializes the search input with the given placeholder.
@@ -206,7 +206,7 @@ func (v *BaseSearchableView) InitSearchInput(placeholder string, charLimit, widt
 	v.searchInput = textinput.New()
 	v.searchInput.Placeholder = placeholder
 	v.searchInput.CharLimit = charLimit
-	v.searchInput.Width = width
+	v.searchInput.SetWidth(width)
 }
 
 // HasActiveSearch returns true if search mode is active.
@@ -294,7 +294,7 @@ func (v *BaseSearchableView) ConfirmSearch() {
 // Returns (model, cmd, true) if search is active and the key was consumed.
 // Calls onChanged when the search input value changes.
 func (v *BaseSearchableView) HandleSearchMode(
-	msg tea.KeyMsg, model tea.Model, onChanged func(),
+	msg tea.KeyPressMsg, model tea.Model, onChanged func(),
 ) (tea.Model, tea.Cmd, bool) {
 	if !v.searchActive {
 		return model, nil, false
@@ -314,7 +314,7 @@ func (v *BaseSearchableView) HandleSearchMode(
 //
 // The caller should check handled first. If true, no further processing is needed.
 // If valueChanged is true, the caller should update their filtered list.
-func (v *BaseSearchableView) HandleSearchInput(msg tea.KeyMsg) (handled bool, cmd tea.Cmd, valueChanged bool) {
+func (v *BaseSearchableView) HandleSearchInput(msg tea.KeyPressMsg) (handled bool, cmd tea.Cmd, valueChanged bool) {
 	switch msg.String() {
 	case "esc":
 		v.DeactivateSearch()

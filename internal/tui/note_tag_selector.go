@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"sort"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
@@ -108,7 +108,7 @@ func (m *NoteTagSelectorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.SetSize(msg.Width, msg.Height)
 		return m, nil
 
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		if m.AddTagMode {
 			handled, cmd := m.HandleAddTagKey(msg, m.BasePicker)
 			if handled {
@@ -157,8 +157,8 @@ func (m *NoteTagSelectorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 // View renders the note tag selector.
-func (m *NoteTagSelectorModel) View() string {
-	return RenderTagSelectorView(m.BasePicker, &m.TagAdder, m.Config.Title, m.Width(), m.Height())
+func (m *NoteTagSelectorModel) View() tea.View {
+	return tea.NewView(RenderTagSelectorView(m.BasePicker, &m.TagAdder, m.Config.Title, m.Width(), m.Height()))
 }
 
 func (m *NoteTagSelectorModel) StatusBarLabel() string { return "Tag Note" }

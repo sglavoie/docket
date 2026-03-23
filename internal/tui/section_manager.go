@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/charmbracelet/bubbles/textinput"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/bubbles/v2/textinput"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
@@ -78,12 +78,12 @@ func NewSectionManagerModel(pt *ProjectTreeModel, proj *models.Project, cfg *con
 	renameInput := textinput.New()
 	renameInput.Placeholder = "new section name"
 	renameInput.CharLimit = 50
-	renameInput.Width = 30
+	renameInput.SetWidth(30)
 
 	addInput := textinput.New()
 	addInput.Placeholder = "section name"
 	addInput.CharLimit = 50
-	addInput.Width = 30
+	addInput.SetWidth(30)
 
 	m := &SectionManagerModel{
 		projectTree:   pt,
@@ -339,7 +339,7 @@ func (m *SectionManagerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.addInput.SetValue("")
 		return m, nil
 
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		// Handle discard confirmation
 		if m.confirmDiscard {
 			switch msg.String() {
@@ -462,7 +462,7 @@ func (m *SectionManagerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 // handleRenameMode handles keyboard input while in rename mode.
-func (m *SectionManagerModel) handleRenameMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+func (m *SectionManagerModel) handleRenameMode(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "esc":
 		if m.cursor < len(m.sections) && strings.TrimSpace(m.renameInput.Value()) != m.sections[m.cursor].Name {
@@ -494,7 +494,7 @@ func (m *SectionManagerModel) handleRenameMode(msg tea.KeyMsg) (tea.Model, tea.C
 }
 
 // handleAddMode handles keyboard input while in add mode.
-func (m *SectionManagerModel) handleAddMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+func (m *SectionManagerModel) handleAddMode(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "esc":
 		if strings.TrimSpace(m.addInput.Value()) != "" {
@@ -523,7 +523,7 @@ func (m *SectionManagerModel) handleAddMode(msg tea.KeyMsg) (tea.Model, tea.Cmd)
 }
 
 // handleColorPickMode handles keyboard input while in color pick mode.
-func (m *SectionManagerModel) handleColorPickMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+func (m *SectionManagerModel) handleColorPickMode(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	paletteLen := len(SectionColorPalette)
 
 	switch msg.String() {
@@ -579,7 +579,7 @@ func (m *SectionManagerModel) handleColorPickMode(msg tea.KeyMsg) (tea.Model, te
 }
 
 // View renders the section manager view.
-func (m *SectionManagerModel) View() string {
+func (m *SectionManagerModel) View() tea.View {
 	var b strings.Builder
 
 	b.WriteString(renderFullscreenTitle("Custom Section Manager", ""))
@@ -670,7 +670,7 @@ func (m *SectionManagerModel) View() string {
 	}
 	b.WriteString(HelpStyle.Render(renderWrappingHelpLine(footerHelp, m.width)))
 
-	return b.String()
+	return tea.NewView(b.String())
 }
 
 func (m *SectionManagerModel) HasTextInput() bool { return m.renameMode || m.addMode }

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/scoring"
@@ -120,7 +120,7 @@ func (m *ScoringProfilePickerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.SetSize(msg.Width, msg.Height)
 		return m, nil
 
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		switch msg.String() {
 		case "q", "esc":
 			projectID := m.projectID
@@ -164,7 +164,7 @@ func (m *ScoringProfilePickerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 // View renders the scoring profile picker.
-func (m *ScoringProfilePickerModel) View() string {
+func (m *ScoringProfilePickerModel) View() tea.View {
 	var b strings.Builder
 
 	b.WriteString(renderFullscreenTitle("Scoring Profile", ""))
@@ -235,7 +235,7 @@ func (m *ScoringProfilePickerModel) View() string {
 	right := MutedStyle.Render(fmt.Sprintf("%d profiles", len(m.Filtered)))
 	b.WriteString(renderStatusBarFooter(left, right, m.Width()))
 
-	return b.String()
+	return tea.NewView(b.String())
 }
 
 func (m *ScoringProfilePickerModel) StatusBarLabel() string { return "Scoring Profile" }

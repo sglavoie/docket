@@ -2,9 +2,10 @@ package tui
 
 import (
 	"fmt"
+	"image/color"
 	"strings"
 
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/lipgloss/v2"
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/scoring"
@@ -26,7 +27,7 @@ func HasManualScores(task *models.Task, profile *scoring.ScoringProfile) bool {
 
 // scoreColor returns a color based on the score percentage using a 5-bucket gradient.
 // red(196) < orange(208) < yellow(226) < light-green(118) < green(42)
-func scoreColor(pct float64) lipgloss.Color {
+func scoreColor(pct float64) color.Color {
 	switch {
 	case pct < 60:
 		return ColorError

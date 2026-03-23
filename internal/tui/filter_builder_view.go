@@ -1,14 +1,15 @@
 package tui
 
 import (
+	tea "charm.land/bubbletea/v2"
 	"fmt"
 	"strings"
 
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/lipgloss/v2"
 )
 
 // View renders the filter builder interface.
-func (m *FilterBuilderModel) View() string {
+func (m *FilterBuilderModel) View() tea.View {
 	title := "Edit Criteria Filter"
 	if m.editingID == "" {
 		title = "Create Criteria Filter"
@@ -34,7 +35,7 @@ func (m *FilterBuilderModel) View() string {
 	out.WriteString("\n")
 	out.WriteString(renderStatusBarFooter(helpText, "", m.width))
 
-	return out.String()
+	return tea.NewView(out.String())
 }
 
 // renderHelpText renders the help footer.

@@ -1,6 +1,7 @@
 package tui
 
 import (
+	tea "charm.land/bubbletea/v2"
 	"fmt"
 	"strings"
 
@@ -14,9 +15,9 @@ import (
 // maxContentWidth aliases the layout constant for local use.
 const maxContentWidth = MaxContentWidth
 
-func (m *TaskDetailModel) View() string {
+func (m *TaskDetailModel) View() tea.View {
 	if m.task == nil || m.project == nil {
-		return "No task selected"
+		return tea.NewView("No task selected")
 	}
 
 	// Determine content width (capped, centered if wider)
@@ -103,7 +104,7 @@ func (m *TaskDetailModel) View() string {
 	// Footer with scroll position
 	footer := m.renderFooter()
 
-	return titleBar + "\n" + content + "\n" + footer
+	return tea.NewView(titleBar + "\n" + content + "\n" + footer)
 }
 
 // renderTitleBar renders the top title bar.

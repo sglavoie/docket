@@ -9,7 +9,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/charmbracelet/bubbles/textinput"
+	"charm.land/bubbles/v2/textinput"
 )
 
 // validateIntInRange parses a required integer input and checks it is within [min, max].

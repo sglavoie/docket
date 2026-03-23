@@ -5,9 +5,9 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/charmbracelet/bubbles/textinput"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/bubbles/v2/textinput"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 
 	"github.com/sglavoie/tt/internal/fuzzy"
 	"github.com/sglavoie/tt/internal/models"
@@ -62,7 +62,7 @@ func NewNotesSearchModel(project *models.Project) *NotesSearchModel {
 	searchInput := textinput.New()
 	searchInput.Placeholder = "Search notes..."
 	searchInput.CharLimit = 100
-	searchInput.Width = 40
+	searchInput.SetWidth(40)
 	searchInput.Focus()
 
 	notes, _ := storage.ListNotes(project)
@@ -110,7 +110,7 @@ func (m *NotesSearchModel) SetSize(width, height int) {
 	m.listWidth = max(innerWidth*50/100, 30)
 	m.previewWidth = innerWidth - m.listWidth - 1
 
-	m.searchInput.Width = innerWidth - 4
+	m.searchInput.SetWidth(innerWidth - 4)
 }
 
 // Init initializes the model.
@@ -128,7 +128,7 @@ func (m *NotesSearchModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.SetSize(msg.Width, msg.Height)
 		return m, nil
 
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		switch msg.String() {
 		case "esc":
 			return m, func() tea.Msg { return CloseNotesSearchMsg{} }
@@ -372,7 +372,7 @@ func extractSnippets(body, query string) (string, []int) {
 }
 
 // View renders the notes search view.
-func (m *NotesSearchModel) View() string {
+func (m *NotesSearchModel) View() tea.View {
 	var b strings.Builder
 
 	query := strings.TrimSpace(m.searchInput.Value())
@@ -403,7 +403,7 @@ func (m *NotesSearchModel) View() string {
 		b.WriteString("\n")
 		left := HelpStyle.Render("Esc close")
 		b.WriteString(renderStatusBarFooter(left, "", m.width))
-		return b.String()
+		return tea.NewView(b.String())
 	}
 
 	paneHeight := max(m.height-8, 5)
@@ -419,7 +419,7 @@ func (m *NotesSearchModel) View() string {
 	left := HelpStyle.Render(fmt.Sprintf("up/down nav · Enter select · Esc close · %d results", len(m.filtered)))
 	b.WriteString(renderStatusBarFooter(left, "", m.width))
 
-	return b.String()
+	return tea.NewView(b.String())
 }
 
 // renderNoteList renders the filtered note list.
