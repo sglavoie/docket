@@ -176,7 +176,7 @@ func RenderPrefixPopup(prefix string, hints PrefixHints, width, height int) stri
 			// 1 padding each side
 			max(
 
-				contentWidth+2, minWidth), maxWidth)
+				contentWidth+4, minWidth), maxWidth)
 
 		return renderPrefixBox(title, contentLines, boxInnerWidth, borderStyle)
 	}
