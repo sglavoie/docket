@@ -13,7 +13,8 @@ import (
 
 func resetNoteListVars() {
 	noteListTag = ""
-	noteListJSON = false
+	_ = noteListCmd.Flags().Set("json", "false")
+	_ = noteListCmd.Flags().Set("quiet", "false")
 	noteGlobal = false
 }
 

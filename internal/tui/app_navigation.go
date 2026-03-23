@@ -67,7 +67,7 @@ func (m *AppModel) validateCurrentProject() bool {
 	}
 	m.currentProject = nil
 	m.viewStack = m.viewStack[:1]
-	m.setInfoStatus("Project no longer exists, returned to dashboard")
+	m.setInfoStatus("Project was removed — returning to dashboard")
 	if m.dashboard != nil {
 		m.dashboard.Refresh(m.config)
 	}

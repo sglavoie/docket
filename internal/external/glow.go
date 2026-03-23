@@ -27,6 +27,7 @@ func GlowAvailable() bool {
 // Falls back to plain text output if glow fails or is unavailable.
 func RenderMarkdown(content string) error {
 	if !GlowAvailable() {
+		logging.Warn("glow not available — showing plain text")
 		fmt.Println("(glow not available — showing plain text)\n\n" + content)
 		return nil
 	}
@@ -58,6 +59,7 @@ func RenderFile(path string) error {
 		if err != nil {
 			return err
 		}
+		logging.Warn("glow not available — showing plain text")
 		fmt.Println("(glow not available — showing plain text)\n\n" + string(content))
 		return nil
 	}
@@ -190,6 +192,7 @@ func FormatTaskAsMarkdown(task *models.Task) string {
 // Falls back to plain text output if glow fails or is unavailable.
 func PageMarkdown(content string) error {
 	if !GlowAvailable() {
+		logging.Warn("glow not available — showing plain text")
 		fmt.Println("(glow not available — showing plain text)\n\n" + content)
 		return nil
 	}

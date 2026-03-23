@@ -94,7 +94,7 @@ func runTaskPriority(cmd *cobra.Command, args []string) error {
 
 		updated = append(updated, task)
 		if !out.Quiet && !out.JSON {
-			fmt.Printf("Updated priority for task #%d: %d -> %d (%s)\n", task.ShortID, oldPriority, priority, task.Title)
+			fmt.Println(successMsg("Updated priority for task #%d: %d -> %d (%s)", task.ShortID, oldPriority, priority, task.Title))
 		}
 		succeeded++
 	}

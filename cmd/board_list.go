@@ -16,7 +16,6 @@ var (
 	boardListAll    bool
 	boardListSource string
 	boardListDone   bool
-	boardListJSON   bool
 )
 
 var boardListCmd = &cobra.Command{
@@ -38,7 +37,7 @@ func init() {
 	boardListCmd.Flags().BoolVarP(&boardListAll, "all", "a", false, "show all items including done/canceled")
 	boardListCmd.Flags().StringVarP(&boardListSource, "source", "s", "", "filter by source")
 	boardListCmd.Flags().BoolVar(&boardListDone, "done", false, "show only done items")
-	boardListCmd.Flags().BoolVar(&boardListJSON, "json", false, "output as JSON")
+	addOutputFlags(boardListCmd)
 	_ = boardListCmd.RegisterFlagCompletionFunc("source", func(_ *cobra.Command, _ []string, _ string) ([]string, cobra.ShellCompDirective) {
 		cfg, _, err := LoadConfig()
 		if err != nil {
@@ -62,6 +61,11 @@ func init() {
 }
 
 func runBoardList(cmd *cobra.Command, args []string) error {
+	out, err := getOutputOpts(cmd)
+	if err != nil {
+		return err
+	}
+
 	cfg, _, err := LoadConfig()
 	if err != nil {
 		return err
@@ -100,7 +104,11 @@ func runBoardList(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	if boardListJSON {
+	if out.Quiet {
+		return nil
+	}
+
+	if out.JSON {
 		type actionJSONEntry struct {
 			ID        string     `json:"id"`
 			ShortID   int        `json:"short_id"`
@@ -146,11 +154,11 @@ func runBoardList(cmd *cobra.Command, args []string) error {
 
 	if len(actions) == 0 {
 		if boardListDone {
-			fmt.Println("No completed actions.")
+			fmt.Println(NoItemsMsg("completed actions", ""))
 		} else if boardListSource != "" {
 			fmt.Printf("No actions from source '%s'.\n", boardListSource)
 		} else {
-			fmt.Println("No open actions. Add one with: tt board add \"Title\"")
+			fmt.Println(NoItemsMsg("open actions", `tt board add "Title"`))
 		}
 		return nil
 	}

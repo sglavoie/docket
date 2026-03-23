@@ -346,11 +346,17 @@ func detectAndReassignDuplicateIDs(tasks []*models.Task) (map[string]bool, []Par
 				}
 			}
 			for i, dep := range t.DependsOn {
+				if strings.Contains(dep, ":") {
+					continue
+				}
 				if newID, ok := idRemap[dep]; ok {
 					t.DependsOn[i] = newID
 				}
 			}
 			for i, rel := range t.RelatedTo {
+				if strings.Contains(rel, ":") {
+					continue
+				}
 				if newID, ok := idRemap[rel]; ok {
 					t.RelatedTo[i] = newID
 				}

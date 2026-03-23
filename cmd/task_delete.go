@@ -135,6 +135,11 @@ func runTaskDelete(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	// Clean cross-project references pointing to the deleted tasks from other projects.
+	if err := cleanDeletedTaskCrossProjectRefs(cfg.Projects, project.ID, project.Slug, idsToDelete); err != nil {
+		fmt.Fprintf(os.Stderr, "warning: failed to clean cross-project references: %v\n", err)
+	}
+
 	if out.Quiet {
 		return nil
 	}
@@ -147,6 +152,53 @@ func runTaskDelete(cmd *cobra.Command, args []string) error {
 	}
 	fmt.Println(msg)
 	return nil
+}
+
+// cleanDeletedTaskCrossProjectRefs removes cross-project references to the deleted tasks
+// from all other projects. deletedProjectID is the UUID of the source project (used to
+// skip it), deletedProjectSlug is the slug used in cross-project ref format ("slug:taskID"),
+// and deletedTaskIDs is the set of task IDs that were deleted.
+func cleanDeletedTaskCrossProjectRefs(projects []*models.Project, deletedProjectID, deletedProjectSlug string, deletedTaskIDs map[string]bool) error {
+	for _, p := range projects {
+		if p.ID == deletedProjectID {
+			continue
+		}
+		if err := storage.LoadProject(p); err != nil {
+			return fmt.Errorf("loading project '%s': %w", p.Name, err)
+		}
+		cleaned := 0
+		for _, t := range p.Tasks {
+			orig := len(t.DependsOn)
+			t.DependsOn = filterDeletedTaskRefs(t.DependsOn, deletedProjectSlug, deletedTaskIDs)
+			cleaned += orig - len(t.DependsOn)
+
+			orig = len(t.RelatedTo)
+			t.RelatedTo = filterDeletedTaskRefs(t.RelatedTo, deletedProjectSlug, deletedTaskIDs)
+			cleaned += orig - len(t.RelatedTo)
+		}
+		if cleaned > 0 {
+			if err := storage.SaveProject(p); err != nil {
+				return fmt.Errorf("saving project '%s': %w", p.Name, err)
+			}
+		}
+	}
+	return nil
+}
+
+// filterDeletedTaskRefs removes cross-project refs to deleted tasks in the given project slug.
+func filterDeletedTaskRefs(refs []string, projectSlug string, deletedTaskIDs map[string]bool) []string {
+	if len(refs) == 0 {
+		return refs
+	}
+	filtered := refs[:0]
+	for _, ref := range refs {
+		parsed := models.ParseTaskRef(ref)
+		if parsed.IsCrossProject() && parsed.ProjectID == projectSlug && deletedTaskIDs[parsed.TaskID] {
+			continue
+		}
+		filtered = append(filtered, ref)
+	}
+	return filtered
 }
 
 // collectTaskDescendantIDs collects IDs of root tasks and all their descendants.

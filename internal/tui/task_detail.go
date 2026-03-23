@@ -59,6 +59,8 @@ func (m *TaskDetailModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if fresh := m.project.GetTaskByID(msg.Task.ID); fresh != nil {
 				m.task = fresh
 				m.renderedDesc = ""
+			} else if msg.Task.ID == m.task.ID {
+				return m, func() tea.Msg { return BackMsg{} }
 			}
 		}
 		return m, nil
@@ -67,6 +69,8 @@ func (m *TaskDetailModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if fresh := m.project.GetTaskByID(msg.Task.ID); fresh != nil {
 				m.task = fresh
 				m.renderedDesc = ""
+			} else if msg.Task.ID == m.task.ID {
+				return m, func() tea.Msg { return BackMsg{} }
 			}
 		}
 		return m, nil

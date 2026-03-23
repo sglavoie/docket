@@ -36,7 +36,7 @@ func init() {
 	projectCmd.AddCommand(projectNewCmd)
 
 	projectNewCmd.Flags().StringVarP(&projectContext, "context", "c", "personal", "project context (personal or work)")
-	projectNewCmd.Flags().StringVarP(&projectDescription, "description", "d", "", "project status note")
+	projectNewCmd.Flags().StringVarP(&projectDescription, "description", "d", "", "project description")
 	projectNewCmd.Flags().StringVarP(&projectStatusIcon, "status-icon", "i", "", "project status icon (planning, wip, active, review, testing, stabilizing, maintenance, bugfix, paused, archived)")
 
 	addOutputFlags(projectNewCmd)

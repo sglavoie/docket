@@ -101,6 +101,43 @@ func TestParseTasksMarkdown_DuplicateID_UpdatesParentID(t *testing.T) {
 	}
 }
 
+func TestParseTasksMarkdown_OrphanedParentRef(t *testing.T) {
+	// A task that references a parent ID that doesn't exist in the file should
+	// have its ParentID cleared and a DataCorrection warning emitted.
+	content := `# Project: Test
+
+## Task: Orphaned Child
+<!-- id: child-id, status: todo, priority: 1, parent: nonexistent-parent-id -->
+`
+	result, err := ParseTasksMarkdownWithSections(content)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if len(result.Tasks) != 1 {
+		t.Fatalf("expected 1 task, got %d", len(result.Tasks))
+	}
+
+	task := result.Tasks[0]
+
+	// ParentID should have been cleared since the referenced parent doesn't exist
+	if task.ParentID != nil {
+		t.Errorf("expected ParentID nil (orphaned ref cleared), got %q", *task.ParentID)
+	}
+
+	// Should have a DataCorrection warning about the orphaned parent reference
+	found := false
+	for _, w := range result.Warnings {
+		if w.Field == "parent" && w.TaskID == "child-id" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Error("expected a DataCorrection warning for orphaned parent reference, got none")
+	}
+}
+
 func TestParseTasksMarkdown_DuplicateID_UpdatesRelatedTo(t *testing.T) {
 	// Task A and Task A2 share "dup-id". A2 gets reassigned.
 	// Task C has related: dup-id, which should be updated to A2's new ID.

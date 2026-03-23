@@ -147,10 +147,12 @@ func ParseMetadata(task *models.Task, metaStr string) []ParseWarning {
 				task.ParentID = &value
 			}
 		case "tags":
+			seen := make(map[string]bool)
 			tags := strings.Split(value, ";")
 			for _, tag := range tags {
 				tag = strings.TrimSpace(tag)
-				if tag != "" {
+				if tag != "" && !seen[tag] {
+					seen[tag] = true
 					task.Tags = append(task.Tags, tag)
 				}
 			}

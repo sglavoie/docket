@@ -14,10 +14,7 @@ import (
 	"github.com/sglavoie/tt/internal/util"
 )
 
-var (
-	noteListTag  string
-	noteListJSON bool
-)
+var noteListTag string
 
 var noteListCmd = &cobra.Command{
 	Use:     "list",
@@ -33,13 +30,17 @@ Examples:
 
 func init() {
 	noteCmd.AddCommand(noteListCmd)
-	noteListCmd.Flags().StringVarP(&noteListTag, "tag", "t", "", "filter by tag")
-	noteListCmd.Flags().BoolVar(&noteListJSON, "json", false, "output as JSON")
+	noteListCmd.Flags().StringVarP(&noteListTag, "tag", "T", "", "filter by tag")
+	addOutputFlags(noteListCmd)
 }
 
 func runNoteList(cmd *cobra.Command, args []string) error {
+	out, err := getOutputOpts(cmd)
+	if err != nil {
+		return err
+	}
+
 	var notes []*models.Note
-	var err error
 
 	if noteGlobal {
 		dir, _, gErr := globalNotesDir()
@@ -68,7 +69,11 @@ func runNoteList(cmd *cobra.Command, args []string) error {
 		filtered = append(filtered, note)
 	}
 
-	if noteListJSON {
+	if out.Quiet {
+		return nil
+	}
+
+	if out.JSON {
 		type noteJSONEntry struct {
 			Title       string    `json:"title"`
 			Filename    string    `json:"filename"`

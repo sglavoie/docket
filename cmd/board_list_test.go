@@ -15,7 +15,8 @@ func resetBoardListVars() {
 	boardListAll = false
 	boardListSource = ""
 	boardListDone = false
-	boardListJSON = false
+	_ = boardListCmd.Flags().Set("json", "false")
+	_ = boardListCmd.Flags().Set("quiet", "false")
 }
 
 func TestRunBoardList(t *testing.T) {
@@ -82,7 +83,7 @@ func TestRunBoardList(t *testing.T) {
 		project.Tasks = append(project.Tasks, actionTask)
 		deps.Repository.Projects[project.ID] = project
 
-		boardListJSON = true
+		_ = boardListCmd.Flags().Set("json", "true")
 
 		err := runBoardList(boardListCmd, []string{})
 		testutil.AssertNoError(t, err)

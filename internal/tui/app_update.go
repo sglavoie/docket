@@ -239,6 +239,8 @@ func (m *AppModel) Update(msg tea.Msg) (outModel tea.Model, outCmd tea.Cmd) {
 	case ClearSemicolonPrefixMsg:
 		if m.pendingSemicolonPrefix {
 			m.pendingSemicolonPrefix = false
+			m.setInfoStatus("prefix cleared")
+			return m, defaultStatusTimeout()
 		}
 		return m, nil
 
@@ -260,9 +262,14 @@ func (m *AppModel) Update(msg tea.Msg) (outModel tea.Model, outCmd tea.Cmd) {
 
 	case SaveTimeoutMsg:
 		if m.isLoading {
+			loadMsg := m.loadingMessage
 			m.isLoading = false
 			m.loadingMessage = ""
-			m.err = fmt.Errorf("save timed out")
+			if loadMsg != "" {
+				m.err = fmt.Errorf("save timed out — %s", loadMsg)
+			} else {
+				m.err = fmt.Errorf("save timed out")
+			}
 			return m, statusTimeout(5 * time.Second)
 		}
 		return m, nil
