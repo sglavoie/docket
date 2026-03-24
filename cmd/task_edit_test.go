@@ -159,4 +159,19 @@ func TestParseEditedContent(t *testing.T) {
 		testutil.AssertEqual(t, title, "Title")
 		testutil.AssertEqual(t, desc, "Actual description starts here.")
 	})
+
+	t.Run("H1 heading after comment is description not title", func(t *testing.T) {
+		task := testutil.NewTestTask("Original Title", models.TaskTypeTask)
+		task.Description = ""
+
+		content := "# My Title\n\n<!-- Edit the title above and description below. -->\n\n# Description Heading\n\nSome text."
+
+		title, desc := parseEditedContent(content, task)
+
+		testutil.AssertEqual(t, title, "My Title")
+		expected := "# Description Heading\n\nSome text."
+		if desc != expected {
+			t.Errorf("got desc: %q, want: %q", desc, expected)
+		}
+	})
 }

@@ -130,6 +130,7 @@ func TestValidateSectionName(t *testing.T) {
 		"",              // empty
 		"   ",           // whitespace only
 		"has;semicolon", // semicolon
+		"has:colon",     // colon (used as section color delimiter in metadata)
 		strings.Repeat("a", MaxSectionNameLength+1), // too long
 	}
 	for _, name := range invalid {

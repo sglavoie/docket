@@ -106,6 +106,9 @@ func ValidateSectionName(name string) error {
 	if strings.Contains(name, ";") {
 		return fmt.Errorf("section name %q must not contain semicolons (used as internal delimiter)", name)
 	}
+	if strings.Contains(name, ":") {
+		return fmt.Errorf("section name %q must not contain colons (used as internal delimiter for section colors)", name)
+	}
 	return nil
 }
 

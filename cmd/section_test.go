@@ -110,6 +110,27 @@ func TestSectionAdd(t *testing.T) {
 			t.Error("runSectionAdd() should error for section name with spaces")
 		}
 	})
+
+	t.Run("rejects section name with colon", func(t *testing.T) {
+		deps, _ := testutil.SetupTestDepsWithProject(t, "Test Project")
+		defer deps.Cleanup()
+
+		viper.Set("config", deps.ConfigPath)
+		defer viper.Set("config", "")
+
+		manager := config.NewManager(deps.ConfigPath)
+		err := manager.Save(deps.Config)
+		testutil.AssertNoError(t, err)
+
+		oldStorageRepo := storage.DefaultRepository
+		storage.DefaultRepository = deps.Repository
+		defer func() { storage.DefaultRepository = oldStorageRepo }()
+
+		err = runSectionAdd(nil, []string{"Has:Colon"})
+		if err == nil {
+			t.Error("runSectionAdd() should error for section name with colons (used as color delimiter)")
+		}
+	})
 }
 
 func TestSectionRemove(t *testing.T) {

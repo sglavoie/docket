@@ -137,8 +137,8 @@ func parseEditedContent(content string, task *models.Task) (title, description s
 			continue
 		}
 
-		// Look for title line (first # line)
-		if len(line) >= 2 && line[0] == '#' && line[1] == ' ' {
+		// Look for title line (first # line, only before the comment marker)
+		if !foundComment && len(line) >= 2 && line[0] == '#' && line[1] == ' ' {
 			title = strings.TrimSpace(line[2:])
 			continue
 		}
