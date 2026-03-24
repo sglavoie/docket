@@ -64,13 +64,46 @@ func runBoardDelete(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	if err := storage.CleanupTaskAttachments(project, task); err != nil {
-		logging.Warn("failed to clean up attachments for task %s: %v", task.ID, err)
+	// Collect task and all descendants for deletion (mirrors task_delete.go logic)
+	idsToDelete := collectTaskDescendantIDs(project.Tasks, map[string]bool{task.ID: true})
+	count := len(idsToDelete)
+
+	// Clean up attachments for all tasks being deleted
+	for _, t := range project.Tasks {
+		if idsToDelete[t.ID] {
+			if err := storage.CleanupTaskAttachments(project, t); err != nil {
+				logging.Warn("failed to clean up attachments for task %s: %v", t.ID, err)
+			}
+		}
 	}
 
+	// Filter out deleted tasks and clear dangling references
 	var remaining []*models.Task
 	for _, t := range project.Tasks {
-		if t.ID != task.ID {
+		if !idsToDelete[t.ID] {
+			if t.ParentID != nil && idsToDelete[*t.ParentID] {
+				t.ParentID = nil
+			}
+			// Clear dangling DependsOn references
+			if len(t.DependsOn) > 0 {
+				cleaned := t.DependsOn[:0]
+				for _, depID := range t.DependsOn {
+					if !idsToDelete[depID] {
+						cleaned = append(cleaned, depID)
+					}
+				}
+				t.DependsOn = cleaned
+			}
+			// Clear dangling RelatedTo references
+			if len(t.RelatedTo) > 0 {
+				cleaned := t.RelatedTo[:0]
+				for _, relID := range t.RelatedTo {
+					if !idsToDelete[relID] {
+						cleaned = append(cleaned, relID)
+					}
+				}
+				t.RelatedTo = cleaned
+			}
 			remaining = append(remaining, t)
 		}
 	}
@@ -81,5 +114,16 @@ func runBoardDelete(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to delete: %w", err)
 	}
 
-	return out.OutputTask(project.Name, "Deleted", task)
+	if out.Quiet {
+		return nil
+	}
+	if out.JSON {
+		return outputSingleTaskJSON(task)
+	}
+	msg := TaskMsg(project.Name, "Deleted", task)
+	if count > 1 {
+		msg += fmt.Sprintf(" and %s", Pluralize(count-1, "descendant", "descendants"))
+	}
+	fmt.Println(msg)
+	return nil
 }
