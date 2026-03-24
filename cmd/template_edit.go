@@ -207,12 +207,16 @@ func runTemplateEdit(cmd *cobra.Command, args []string) error { //nolint:gocyclo
 		if len(t.Children) == 0 {
 			return fmt.Errorf("template has no items to remove")
 		}
-		// Deduplicate and sort indices in descending order to remove from end first
-		indices := slices.Compact(slices.Sorted(slices.Values(templateEditRemoveChild)))
+		// Convert 1-based user indices to 0-based, deduplicate, sort descending
+		indices := make([]int, 0, len(templateEditRemoveChild))
+		for _, idx := range templateEditRemoveChild {
+			indices = append(indices, idx-1) // convert to 0-based
+		}
+		indices = slices.Compact(slices.Sorted(slices.Values(indices)))
 		slices.Reverse(indices)
 		for _, idx := range indices {
 			if idx < 0 || idx >= len(t.Children) {
-				return fmt.Errorf("item index %d out of range (0-%d)", idx, len(t.Children)-1)
+				return fmt.Errorf("item index %d out of range (1-%d)", idx+1, len(t.Children))
 			}
 			t.Children = append(t.Children[:idx], t.Children[idx+1:]...)
 		}
