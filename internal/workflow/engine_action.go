@@ -216,8 +216,10 @@ func applyAction(task *models.Task, action RuleAction) bool { //nolint:gocyclo
 		if pattern == nil {
 			return false
 		}
-		task.Recurrence = pattern
-		task.UpdatedAt = time.Now()
+		// Use SetRecurrence to populate OriginalDay for monthly patterns
+		if err := task.SetRecurrence(pattern); err != nil {
+			return false
+		}
 		return true
 	default:
 	}

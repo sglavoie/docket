@@ -705,15 +705,15 @@ func TestNextNDueDates(t *testing.T) { //nolint:gocyclo
 		if len(dates) != 3 {
 			t.Fatalf("expected 3 dates, got %d", len(dates))
 		}
-		// Jan 31 -> Feb 28, Feb 28 -> Mar 28, Mar 28 -> Apr 28
+		// Jan 31 -> Feb 28 (clamped), Feb 28 -> Mar 31 (restored via OriginalDay=31), Mar 31 -> Apr 30 (clamped)
 		if dates[0].Month() != time.February || dates[0].Day() != 28 {
 			t.Errorf("date[0]: expected Feb 28, got %v", dates[0])
 		}
-		if dates[1].Month() != time.March || dates[1].Day() != 28 {
-			t.Errorf("date[1]: expected Mar 28, got %v", dates[1])
+		if dates[1].Month() != time.March || dates[1].Day() != 31 {
+			t.Errorf("date[1]: expected Mar 31, got %v", dates[1])
 		}
-		if dates[2].Month() != time.April || dates[2].Day() != 28 {
-			t.Errorf("date[2]: expected Apr 28, got %v", dates[2])
+		if dates[2].Month() != time.April || dates[2].Day() != 30 {
+			t.Errorf("date[2]: expected Apr 30, got %v", dates[2])
 		}
 	})
 

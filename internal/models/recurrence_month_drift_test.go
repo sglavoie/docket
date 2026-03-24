@@ -67,6 +67,65 @@ func TestNewRecurrencePatternSetsOriginalDay(t *testing.T) {
 	}
 }
 
+// TestSetRecurrenceSetsOriginalDayFromDueDate verifies that SetRecurrence
+// populates OriginalDay from the task's DueDate for monthly patterns.
+func TestSetRecurrenceSetsOriginalDayFromDueDate(t *testing.T) {
+	due := time.Date(2023, time.January, 31, 0, 0, 0, 0, time.UTC)
+	task := &Task{DueDate: &due, Tags: []string{}, DependsOn: []string{}, RelatedTo: []string{}}
+
+	pattern := &RecurrencePattern{Interval: 1, Unit: RecurrenceMonthly}
+	if err := task.SetRecurrence(pattern); err != nil {
+		t.Fatalf("SetRecurrence failed: %v", err)
+	}
+	if task.Recurrence.OriginalDay != 31 {
+		t.Errorf("OriginalDay = %d, want 31", task.Recurrence.OriginalDay)
+	}
+}
+
+// TestSetRecurrenceNoOriginalDayForNonMonthly verifies that SetRecurrence
+// does NOT set OriginalDay for non-monthly patterns.
+func TestSetRecurrenceNoOriginalDayForNonMonthly(t *testing.T) {
+	due := time.Date(2023, time.January, 31, 0, 0, 0, 0, time.UTC)
+	task := &Task{DueDate: &due, Tags: []string{}, DependsOn: []string{}, RelatedTo: []string{}}
+
+	pattern := &RecurrencePattern{Interval: 1, Unit: RecurrenceWeekly}
+	if err := task.SetRecurrence(pattern); err != nil {
+		t.Fatalf("SetRecurrence failed: %v", err)
+	}
+	if task.Recurrence.OriginalDay != 0 {
+		t.Errorf("OriginalDay = %d, want 0 for weekly", task.Recurrence.OriginalDay)
+	}
+}
+
+// TestSetRecurrencePreservesExistingOriginalDay verifies that SetRecurrence
+// does NOT overwrite a pre-existing OriginalDay.
+func TestSetRecurrencePreservesExistingOriginalDay(t *testing.T) {
+	due := time.Date(2023, time.January, 31, 0, 0, 0, 0, time.UTC)
+	task := &Task{DueDate: &due, Tags: []string{}, DependsOn: []string{}, RelatedTo: []string{}}
+
+	pattern := &RecurrencePattern{Interval: 1, Unit: RecurrenceMonthly, OriginalDay: 15}
+	if err := task.SetRecurrence(pattern); err != nil {
+		t.Fatalf("SetRecurrence failed: %v", err)
+	}
+	if task.Recurrence.OriginalDay != 15 {
+		t.Errorf("OriginalDay = %d, want 15 (should not be overwritten)", task.Recurrence.OriginalDay)
+	}
+}
+
+// TestSetRecurrenceNoDueDateNoOriginalDay verifies that SetRecurrence
+// does NOT set OriginalDay when the task has no DueDate.
+func TestSetRecurrenceNoDueDateNoOriginalDay(t *testing.T) {
+	task := &Task{Tags: []string{}, DependsOn: []string{}, RelatedTo: []string{}}
+
+	pattern := &RecurrencePattern{Interval: 1, Unit: RecurrenceMonthly}
+	if err := task.SetRecurrence(pattern); err != nil {
+		t.Fatalf("SetRecurrence failed: %v", err)
+	}
+	if task.Recurrence.OriginalDay != 0 {
+		t.Errorf("OriginalDay = %d, want 0 (no due date set)", task.Recurrence.OriginalDay)
+	}
+}
+
 // TestMonthlyRecurrenceBackwardCompat verifies that OriginalDay==0 (old data)
 // falls back to using base.Day() unchanged.
 func TestMonthlyRecurrenceBackwardCompat(t *testing.T) {

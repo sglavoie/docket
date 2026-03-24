@@ -217,13 +217,15 @@ func runTaskAdd(cmd *cobra.Command, args []string) error { //nolint:gocyclo
 		task.Description = tmpl.Description
 	}
 
-	// Handle recurrence
+	// Handle recurrence (use SetRecurrence to populate OriginalDay for monthly patterns)
 	if taskRecurFlag != "" {
 		pattern := models.ParseRecurrence(taskRecurFlag)
 		if pattern == nil {
 			return tterrors.NewInvalidValueError("recurrence", taskRecurFlag, "use daily, weekly, weekly:mon,fri, monthly, yearly, Nd, Nw, Nm, Ny")
 		}
-		task.Recurrence = pattern
+		if err := task.SetRecurrence(pattern); err != nil {
+			return fmt.Errorf("invalid recurrence pattern: %w", err)
+		}
 	}
 
 	// Handle parent

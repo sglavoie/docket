@@ -358,11 +358,12 @@ func (m *ProjectTreeModel) applyBulkChanges(changes PendingChanges, tasks []*mod
 				if changes.ClearRecurrence {
 					t.ClearRecurrence()
 				} else if changes.SetRecurrence != nil {
-					t.Recurrence = &models.RecurrencePattern{
+					// Use SetRecurrence to populate OriginalDay for monthly patterns
+					_ = t.SetRecurrence(&models.RecurrencePattern{
 						Interval: changes.SetRecurrence.Interval,
 						Unit:     changes.SetRecurrence.Unit,
 						Weekdays: changes.SetRecurrence.Weekdays,
-					}
+					})
 				}
 			})
 			if changes.SetSection != nil {
