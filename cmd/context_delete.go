@@ -42,6 +42,11 @@ func runContextDelete(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	// Check existence before prompting for confirmation
+	if cfg.GetCustomContext(name) == nil {
+		return fmt.Errorf("custom context '%s' not found", name)
+	}
+
 	if !ConfirmYN(fmt.Sprintf("Delete context '%s'? [y/N]: ", name), contextDeleteForce) {
 		if !out.Quiet {
 			fmt.Fprintf(os.Stderr, "Canceled\n")

@@ -74,4 +74,20 @@ func TestRunContextDelete(t *testing.T) {
 			t.Error("expected error for nonexistent context")
 		}
 	})
+
+	t.Run("rejects nonexistent context before prompting", func(t *testing.T) {
+		_, cleanup := setup(t)
+		defer cleanup()
+
+		// With force=false, the error should be returned without prompting
+		// (existence check must happen before confirmation prompt)
+		contextDeleteForce = false
+		err := runContextDelete(contextDeleteCmd, []string{"Nonexistent"})
+		if err == nil {
+			t.Error("expected error for nonexistent context without force flag")
+		}
+		if err != nil && err.Error() != "custom context 'Nonexistent' not found" {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
 }
