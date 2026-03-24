@@ -691,6 +691,84 @@ func TestAddChild_CycleDetected(t *testing.T) {
 	}
 }
 
+func TestBuildTaskTree_OrphanedParentClearsParentID(t *testing.T) {
+	project, err := NewProject("test", "Test", "/tmp/test")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	task1, err := NewTask("task-1", 1, TaskTypeTask, "Orphaned child")
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Set ParentID to a non-existent task
+	orphanedParent := "nonexistent-parent-id"
+	task1.ParentID = &orphanedParent
+
+	task2, err := NewTask("task-2", 2, TaskTypeTask, "Normal root")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	project.Tasks = []*Task{task1, task2}
+	project.BuildTaskTree()
+
+	// ParentID should be cleared so the task becomes a true root
+	if task1.ParentID != nil {
+		t.Error("expected orphaned task ParentID to be cleared, but it is still set")
+	}
+	if task1.Parent != nil {
+		t.Error("expected orphaned task Parent to be nil")
+	}
+	if !task1.IsRoot() {
+		t.Error("expected orphaned task to be treated as root after BuildTaskTree")
+	}
+}
+
+func TestReorderRootTasksByCompletion_NoDataLossOnOrphanedParent(t *testing.T) {
+	project, err := NewProject("test", "Test", "/tmp/test")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	task1, err := NewTask("task-1", 1, TaskTypeTask, "Normal root")
+	if err != nil {
+		t.Fatal(err)
+	}
+	task2, err := NewTask("task-2", 2, TaskTypeTask, "Orphaned child")
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Set ParentID to a non-existent task (simulating corrupt data)
+	orphanedParent := "nonexistent-parent-id"
+	task2.ParentID = &orphanedParent
+
+	project.Tasks = []*Task{task1, task2}
+
+	// ReorderRootTasksByCompletion calls BuildTaskTree internally,
+	// which should clear the orphaned ParentID before reordering.
+	project.ReorderRootTasksByCompletion()
+
+	// Both tasks must survive — no data loss
+	if len(project.Tasks) != 2 {
+		t.Fatalf("expected 2 tasks after reorder, got %d (data loss!)", len(project.Tasks))
+	}
+
+	// The orphaned task should now be a root
+	found := false
+	for _, task := range project.Tasks {
+		if task.ID == task2.ID {
+			found = true
+			if task.ParentID != nil {
+				t.Error("orphaned task should have ParentID cleared after reorder")
+			}
+		}
+	}
+	if !found {
+		t.Error("orphaned task was lost during ReorderRootTasksByCompletion")
+	}
+}
+
 func TestBuildTaskTree_OrphanedDependencyCleanup(t *testing.T) {
 	project, err := NewProject("test", "Test", "/tmp/test")
 	if err != nil {

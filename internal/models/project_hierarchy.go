@@ -84,6 +84,7 @@ func (p *Project) BuildTaskTree() { //nolint:gocyclo
 				parent.Children = append(parent.Children, task)
 			} else {
 				logging.Warn("task %q (#%d) references non-existent parent %s, treating as root", task.Title, task.ShortID, *task.ParentID)
+				task.ParentID = nil
 			}
 		}
 	}
