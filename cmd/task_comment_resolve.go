@@ -25,14 +25,23 @@ Examples:
 
 func init() {
 	taskCommentCmd.AddCommand(taskCommentResolveCmd)
+	addOutputFlags(taskCommentResolveCmd)
 }
 
 func runTaskCommentResolve(cmd *cobra.Command, args []string) error {
+	out, err := getOutputOpts(cmd)
+	if err != nil {
+		return err
+	}
+
 	if len(args) < 2 {
 		return tterrors.NewRequiredFieldError("task ID and comment index")
 	}
 
-	_, err := WithTaskUpdate(args[0], func(task *models.Task) error {
+	var commentIndex int
+	var state string
+
+	task, err := WithTaskUpdate(args[0], func(task *models.Task) error {
 		index, err := parseItemIndex(args[1], len(task.Comments), "comment")
 		if err != nil {
 			return err
@@ -42,12 +51,22 @@ func runTaskCommentResolve(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("failed to toggle comment at index %d", index)
 		}
 
-		state := "resolved"
+		commentIndex = index
+		state = "resolved"
 		if !task.Comments[index].Resolved {
 			state = "unresolved"
 		}
-		fmt.Printf("Comment %d marked as %s on #%d: %s\n", index, state, task.ShortID, task.Title)
 		return nil
 	})
-	return err
+	if err != nil {
+		return err
+	}
+
+	if out.JSON {
+		return outputSingleTaskJSON(task)
+	}
+	if !out.Quiet {
+		fmt.Printf("Comment %d marked as %s on #%d: %s\n", commentIndex, state, task.ShortID, task.Title)
+	}
+	return nil
 }

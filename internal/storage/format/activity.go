@@ -65,13 +65,14 @@ func parseActivityPayload(payload string, timestamp time.Time) *models.ActivityE
 	field := before
 	value := after
 
-	// Check for "old > new" pattern
-	if parts := strings.SplitN(value, " > ", 2); len(parts) == 2 {
+	// Check for "old > new" pattern using the first unescaped " > " separator.
+	// Escaped occurrences (" \> ") in values are unescaped after splitting.
+	if idx := findUnescapedSeparator(value); idx >= 0 {
 		return &models.ActivityEntry{
 			Timestamp: timestamp,
 			Field:     field,
-			OldValue:  parts[0],
-			NewValue:  parts[1],
+			OldValue:  unescapeActivityValue(value[:idx]),
+			NewValue:  unescapeActivityValue(value[idx+3:]),
 		}
 	}
 
@@ -80,8 +81,43 @@ func parseActivityPayload(payload string, timestamp time.Time) *models.ActivityE
 		Timestamp: timestamp,
 		Field:     field,
 		OldValue:  "",
-		NewValue:  value,
+		NewValue:  unescapeActivityValue(value),
 	}
+}
+
+// findUnescapedSeparator returns the index of the first unescaped " > " in s,
+// or -1 if none is found. An escaped separator is " \> ".
+func findUnescapedSeparator(s string) int {
+	searchFrom := 0
+	for {
+		idx := strings.Index(s[searchFrom:], " > ")
+		if idx == -1 {
+			return -1
+		}
+		idx += searchFrom
+		// Check if this " > " is escaped (preceded by "\")
+		if idx >= 1 && s[idx-1] == '\\' {
+			searchFrom = idx + 3
+			continue
+		}
+		return idx
+	}
+}
+
+// escapeActivityValue escapes literal " > " and backslashes in activity values
+// so the " > " delimiter between old and new values is unambiguous.
+// Backslashes are escaped first to preserve existing ones.
+func escapeActivityValue(s string) string {
+	s = strings.ReplaceAll(s, `\`, `\\`)
+	s = strings.ReplaceAll(s, " > ", ` \> `)
+	return s
+}
+
+// unescapeActivityValue reverses escapeActivityValue.
+func unescapeActivityValue(s string) string {
+	s = strings.ReplaceAll(s, ` \> `, " > ")
+	s = strings.ReplaceAll(s, `\\`, `\`)
+	return s
 }
 
 // WriteActivity generates the activity block for a task.
@@ -105,9 +141,9 @@ func WriteActivity(task *models.Task) string {
 
 		if entry.OldValue == "" {
 			// Single-value entry (e.g., tags: +backend +api)
-			fmt.Fprintf(&b, "<!-- act: %s, %s: %s -->\n", ts, entry.Field, entry.NewValue)
+			fmt.Fprintf(&b, "<!-- act: %s, %s: %s -->\n", ts, entry.Field, escapeActivityValue(entry.NewValue))
 		} else {
-			fmt.Fprintf(&b, "<!-- act: %s, %s: %s > %s -->\n", ts, entry.Field, entry.OldValue, entry.NewValue)
+			fmt.Fprintf(&b, "<!-- act: %s, %s: %s > %s -->\n", ts, entry.Field, escapeActivityValue(entry.OldValue), escapeActivityValue(entry.NewValue))
 		}
 	}
 
