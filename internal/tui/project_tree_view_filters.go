@@ -8,6 +8,54 @@ import (
 	"github.com/sglavoie/tt/internal/storage"
 )
 
+// viewModeToSection maps a ViewMode to its GTD section name string for limit warnings.
+// Returns "" for ViewModeActive, ViewModeAll, ViewModeCompleted, ViewModeSnoozed
+// (no project-tree warning for those — the outliner handles Active via section headers).
+func viewModeToSection(vm ViewMode) string {
+	switch vm {
+	case ViewModeNext:
+		return models.SectionNext
+	case ViewModeInbox:
+		return models.SectionInbox
+	case ViewModeWaiting:
+		return models.SectionWaiting
+	case ViewModeSomeday:
+		return models.SectionSomeday
+	case ViewModeReview:
+		return models.SectionReview
+	case ViewModeStandby:
+		return models.SectionStandby
+	default:
+		// ViewModeAll, ViewModeCompleted, ViewModeSnoozed — no limit warning
+		return ""
+	}
+}
+
+// sectionTaskCount returns the number of non-completed, non-snoozed tasks in
+// the given section (where sectionName="" means Active).
+func sectionTaskCount(tasks []*models.Task, sectionName string) int {
+	count := 0
+	for _, t := range tasks {
+		if t.IsComplete() || t.IsSnoozed() {
+			continue
+		}
+		if t.Section == sectionName {
+			count++
+		}
+	}
+	return count
+}
+
+// sectionLimitWarning returns a warning string like "⚠ 3 tasks over section limit (5)"
+// with correct singular/plural form.
+func sectionLimitWarning(over, limit int) string {
+	word := "tasks"
+	if over == 1 {
+		word = "task"
+	}
+	return fmt.Sprintf("⚠ %d %s over section limit (%d)", over, word, limit)
+}
+
 // renderViewModeIndicator returns a styled indicator for the current view mode with counts.
 func (m *ProjectTreeModel) renderViewModeIndicator() string {
 	// Count by section: active, next, inbox, waiting, someday, completed

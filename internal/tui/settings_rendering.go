@@ -212,6 +212,8 @@ func (m *SettingsModel) renderBehaviorTab() string {
 		return m.renderBehaviorRecentTasksSection()
 	case 4:
 		return m.renderBehaviorPopupsSection()
+	case 5:
+		return m.renderBehaviorSectionLimitsSection()
 	default:
 		return m.renderBehaviorRecentActivitySection()
 	}
@@ -318,6 +320,41 @@ func (m *SettingsModel) renderBehaviorPopupsSection() string {
 	return b.String()
 }
 
+func (m *SettingsModel) renderBehaviorSectionLimitsSection() string {
+	var b strings.Builder
+	const labelWidth = 17
+	const indent = 19
+
+	type limitField struct {
+		label    string
+		focusIdx int
+		input    *textinput.Model
+	}
+	fields := []limitField{
+		{"Active: ", 26, &m.sectionLimitActiveInput},
+		{"Next: ", 27, &m.sectionLimitNextInput},
+		{"Inbox: ", 28, &m.sectionLimitInboxInput},
+		{"Standby: ", 29, &m.sectionLimitStandbyInput},
+		{"Waiting: ", 30, &m.sectionLimitWaitingInput},
+		{"Someday: ", 31, &m.sectionLimitSomedayInput},
+		{"Review: ", 32, &m.sectionLimitReviewInput},
+	}
+	for _, f := range fields {
+		b.WriteString(renderFormLabelWithWidth(f.label, labelWidth, m.focusIndex == f.focusIdx))
+		b.WriteString(f.input.View())
+		b.WriteString("  ")
+		b.WriteString(MutedStyle.Render("(0=disabled, max 999)"))
+		b.WriteString("\n")
+		if m.focusIndex == f.focusIdx && m.validationErr != "" {
+			b.WriteString(strings.Repeat(" ", indent))
+			b.WriteString(ValidationErrorStyle.Render(m.validationErr))
+			b.WriteString("\n")
+		}
+	}
+
+	return b.String()
+}
+
 func (m *SettingsModel) renderAttachmentsTab() string {
 	var b strings.Builder
 	const labelWidth = 20 // "Attachment Editor: " padded
@@ -327,28 +364,28 @@ func (m *SettingsModel) renderAttachmentsTab() string {
 	b.WriteString("\n\n")
 
 	// Attachment Editor
-	b.WriteString(renderFormLabelWithWidth("Attachment Editor: ", labelWidth, m.focusIndex == 26))
+	b.WriteString(renderFormLabelWithWidth("Attachment Editor: ", labelWidth, m.focusIndex == 33))
 	b.WriteString(m.attachmentEditorInput.View())
 	b.WriteString("\n")
-	if m.focusIndex == 26 && m.validationErr != "" {
+	if m.focusIndex == 33 && m.validationErr != "" {
 		b.WriteString(strings.Repeat(" ", indent))
 		b.WriteString(ValidationErrorStyle.Render(m.validationErr))
 		b.WriteString("\n")
 	}
-	b.WriteString(renderFormFieldDesc("Editor for general attachments (empty = OS default)", indent, m.focusIndex == 26))
+	b.WriteString(renderFormFieldDesc("Editor for general attachments (empty = OS default)", indent, m.focusIndex == 33))
 
 	b.WriteString("\n")
 
 	// Code Editor
-	b.WriteString(renderFormLabelWithWidth("Code Editor: ", labelWidth, m.focusIndex == 27))
+	b.WriteString(renderFormLabelWithWidth("Code Editor: ", labelWidth, m.focusIndex == 34))
 	b.WriteString(m.codeEditorInput.View())
 	b.WriteString("\n")
-	if m.focusIndex == 27 && m.validationErr != "" {
+	if m.focusIndex == 34 && m.validationErr != "" {
 		b.WriteString(strings.Repeat(" ", indent))
 		b.WriteString(ValidationErrorStyle.Render(m.validationErr))
 		b.WriteString("\n")
 	}
-	b.WriteString(renderFormFieldDesc("Editor for code references (empty = code)", indent, m.focusIndex == 27))
+	b.WriteString(renderFormFieldDesc("Editor for code references (empty = code)", indent, m.focusIndex == 34))
 
 	b.WriteString("\n")
 	b.WriteString(MutedStyle.Render("  ───────────────────────────────"))
@@ -384,7 +421,7 @@ func (m *SettingsModel) renderProjectTreeTab() string {
 	const labelWidth = 18 // "Custom Section: " padded
 	b.WriteString(SubtitleStyle.Render("Default Column Visibility"))
 	b.WriteString("\n\n")
-	m.renderColumnToggles(&b, m.treeColumnDefaults, 28, labelWidth, m.treePriorityMode)
+	m.renderColumnToggles(&b, m.treeColumnDefaults, 35, labelWidth, m.treePriorityMode)
 	return b.String()
 }
 
@@ -404,10 +441,10 @@ func (m *SettingsModel) renderOutlinerSidebarSection() string {
 	const labelWidth = 22
 	const indent = 24
 
-	b.WriteString(renderFormLabelWithWidth("Cross-Project Sidebar: ", labelWidth, m.focusIndex == 41))
-	b.WriteString(renderFormToggle("Enabled", "Disabled", m.crossOutlinerSidebar, m.focusIndex == 41))
+	b.WriteString(renderFormLabelWithWidth("Cross-Project Sidebar: ", labelWidth, m.focusIndex == 48))
+	b.WriteString(renderFormToggle("Enabled", "Disabled", m.crossOutlinerSidebar, m.focusIndex == 48))
 	b.WriteString("\n")
-	b.WriteString(renderFormFieldDesc("Show sidebar by default in cross-project outliner", indent, m.focusIndex == 41))
+	b.WriteString(renderFormFieldDesc("Show sidebar by default in cross-project outliner", indent, m.focusIndex == 48))
 
 	return b.String()
 }
@@ -418,7 +455,7 @@ func (m *SettingsModel) renderOutlinerSectionStateSection() string {
 	const indent = 24
 
 	for i, label := range outlinerSectionLabels {
-		focusIdx := 42 + i
+		focusIdx := 49 + i
 		b.WriteString(renderFormLabelWithWidth(label+": ", labelWidth, m.focusIndex == focusIdx))
 		b.WriteString(renderFormToggle("Collapsed", "Expanded", m.outlinerCollapsed[i], m.focusIndex == focusIdx))
 		b.WriteString("\n")
@@ -434,7 +471,7 @@ func (m *SettingsModel) renderOutlinerColumnVisibilitySection() string {
 	var b strings.Builder
 	const labelWidth = 22
 
-	m.renderColumnToggles(&b, m.outlinerColumnDefaults, 49, labelWidth, m.outlinerPriorityMode)
+	m.renderColumnToggles(&b, m.outlinerColumnDefaults, 56, labelWidth, m.outlinerPriorityMode)
 
 	return b.String()
 }
@@ -455,38 +492,38 @@ func (m *SettingsModel) renderNotificationsReviewsSection() string {
 	const labelWidth = 22
 	const indent = 24
 
-	b.WriteString(renderFormLabelWithWidth("Daily Review: ", labelWidth, m.focusIndex == 62))
-	b.WriteString(renderFormToggle("Enabled", "Disabled", m.alertDailyReviewEnabled, m.focusIndex == 62))
+	b.WriteString(renderFormLabelWithWidth("Daily Review: ", labelWidth, m.focusIndex == 69))
+	b.WriteString(renderFormToggle("Enabled", "Disabled", m.alertDailyReviewEnabled, m.focusIndex == 69))
 	b.WriteString("\n")
-	b.WriteString(renderFormFieldDesc("Remind to do daily review", indent, m.focusIndex == 62))
+	b.WriteString(renderFormFieldDesc("Remind to do daily review", indent, m.focusIndex == 69))
 
 	b.WriteString("\n")
 
-	b.WriteString(renderFormLabelWithWidth("Review Hour: ", labelWidth, m.focusIndex == 63))
+	b.WriteString(renderFormLabelWithWidth("Review Hour: ", labelWidth, m.focusIndex == 70))
 	b.WriteString(m.alertDailyReviewHourInput.View())
 	b.WriteString("  ")
 	b.WriteString(MutedStyle.Render("(0-23)"))
 	b.WriteString("\n")
-	if m.focusIndex == 63 && m.validationErr != "" {
+	if m.focusIndex == 70 && m.validationErr != "" {
 		b.WriteString(strings.Repeat(" ", indent))
 		b.WriteString(ValidationErrorStyle.Render(m.validationErr))
 		b.WriteString("\n")
 	}
-	b.WriteString(renderFormFieldDesc("Hour of day to trigger daily review reminder", indent, m.focusIndex == 63))
+	b.WriteString(renderFormFieldDesc("Hour of day to trigger daily review reminder", indent, m.focusIndex == 70))
 
 	b.WriteString("\n")
 
-	b.WriteString(renderFormLabelWithWidth("Weekly Review: ", labelWidth, m.focusIndex == 64))
-	b.WriteString(renderFormToggle("Enabled", "Disabled", m.alertWeeklyReviewEnabled, m.focusIndex == 64))
+	b.WriteString(renderFormLabelWithWidth("Weekly Review: ", labelWidth, m.focusIndex == 71))
+	b.WriteString(renderFormToggle("Enabled", "Disabled", m.alertWeeklyReviewEnabled, m.focusIndex == 71))
 	b.WriteString("\n")
-	b.WriteString(renderFormFieldDesc("Remind to do weekly review", indent, m.focusIndex == 64))
+	b.WriteString(renderFormFieldDesc("Remind to do weekly review", indent, m.focusIndex == 71))
 
 	b.WriteString("\n")
 
-	b.WriteString(renderFormLabelWithWidth("Review Day: ", labelWidth, m.focusIndex == 65))
-	b.WriteString(renderEnumSelector(weeklyReviewDayOptions, m.alertWeeklyReviewDay, m.focusIndex == 65))
+	b.WriteString(renderFormLabelWithWidth("Review Day: ", labelWidth, m.focusIndex == 72))
+	b.WriteString(renderEnumSelector(weeklyReviewDayOptions, m.alertWeeklyReviewDay, m.focusIndex == 72))
 	b.WriteString("\n")
-	b.WriteString(renderFormFieldDesc("Day of week for weekly review reminder", indent, m.focusIndex == 65))
+	b.WriteString(renderFormFieldDesc("Day of week for weekly review reminder", indent, m.focusIndex == 72))
 
 	return b.String()
 }
@@ -496,74 +533,74 @@ func (m *SettingsModel) renderNotificationsTasksSection() string {
 	const labelWidth = 22
 	const indent = 24
 
-	b.WriteString(renderFormLabelWithWidth("Overdue: ", labelWidth, m.focusIndex == 66))
-	b.WriteString(renderFormToggle("Enabled", "Disabled", m.alertOverdueEnabled, m.focusIndex == 66))
+	b.WriteString(renderFormLabelWithWidth("Overdue: ", labelWidth, m.focusIndex == 73))
+	b.WriteString(renderFormToggle("Enabled", "Disabled", m.alertOverdueEnabled, m.focusIndex == 73))
 	b.WriteString("\n")
-	b.WriteString(renderFormFieldDesc("Alert for tasks past their due date", indent, m.focusIndex == 66))
+	b.WriteString(renderFormFieldDesc("Alert for tasks past their due date", indent, m.focusIndex == 73))
 
 	b.WriteString("\n")
 
-	b.WriteString(renderFormLabelWithWidth("Due Soon: ", labelWidth, m.focusIndex == 67))
-	b.WriteString(renderFormToggle("Enabled", "Disabled", m.alertDueSoonEnabled, m.focusIndex == 67))
+	b.WriteString(renderFormLabelWithWidth("Due Soon: ", labelWidth, m.focusIndex == 74))
+	b.WriteString(renderFormToggle("Enabled", "Disabled", m.alertDueSoonEnabled, m.focusIndex == 74))
 	b.WriteString("\n")
 
-	b.WriteString(renderFormLabelWithWidth("Due Soon (days): ", labelWidth, m.focusIndex == 68))
+	b.WriteString(renderFormLabelWithWidth("Due Soon (days): ", labelWidth, m.focusIndex == 75))
 	b.WriteString(m.alertDueSoonDaysInput.View())
 	b.WriteString("\n")
-	if m.focusIndex == 68 && m.validationErr != "" {
+	if m.focusIndex == 75 && m.validationErr != "" {
 		b.WriteString(strings.Repeat(" ", indent))
 		b.WriteString(ValidationErrorStyle.Render(m.validationErr))
 		b.WriteString("\n")
 	}
-	b.WriteString(renderFormFieldDesc("Alert when tasks are due within this many days", indent, m.focusIndex == 68))
+	b.WriteString(renderFormFieldDesc("Alert when tasks are due within this many days", indent, m.focusIndex == 75))
 
 	b.WriteString("\n")
 
-	b.WriteString(renderFormLabelWithWidth("Stale: ", labelWidth, m.focusIndex == 69))
-	b.WriteString(renderFormToggle("Enabled", "Disabled", m.alertStaleEnabled, m.focusIndex == 69))
+	b.WriteString(renderFormLabelWithWidth("Stale: ", labelWidth, m.focusIndex == 76))
+	b.WriteString(renderFormToggle("Enabled", "Disabled", m.alertStaleEnabled, m.focusIndex == 76))
 	b.WriteString("\n")
 
-	b.WriteString(renderFormLabelWithWidth("Stale (days): ", labelWidth, m.focusIndex == 70))
+	b.WriteString(renderFormLabelWithWidth("Stale (days): ", labelWidth, m.focusIndex == 77))
 	b.WriteString(m.alertStaleDaysInput.View())
 	b.WriteString("\n")
-	if m.focusIndex == 70 && m.validationErr != "" {
+	if m.focusIndex == 77 && m.validationErr != "" {
 		b.WriteString(strings.Repeat(" ", indent))
 		b.WriteString(ValidationErrorStyle.Render(m.validationErr))
 		b.WriteString("\n")
 	}
-	b.WriteString(renderFormFieldDesc("Days without updates before a task is stale", indent, m.focusIndex == 70))
+	b.WriteString(renderFormFieldDesc("Days without updates before a task is stale", indent, m.focusIndex == 77))
 
 	b.WriteString("\n")
 
-	b.WriteString(renderFormLabelWithWidth("Inbox Backlog: ", labelWidth, m.focusIndex == 71))
-	b.WriteString(renderFormToggle("Enabled", "Disabled", m.alertInboxEnabled, m.focusIndex == 71))
+	b.WriteString(renderFormLabelWithWidth("Inbox Backlog: ", labelWidth, m.focusIndex == 78))
+	b.WriteString(renderFormToggle("Enabled", "Disabled", m.alertInboxEnabled, m.focusIndex == 78))
 	b.WriteString("\n")
 
-	b.WriteString(renderFormLabelWithWidth("Inbox Threshold: ", labelWidth, m.focusIndex == 72))
+	b.WriteString(renderFormLabelWithWidth("Inbox Threshold: ", labelWidth, m.focusIndex == 79))
 	b.WriteString(m.alertInboxThresholdInput.View())
 	b.WriteString("\n")
-	if m.focusIndex == 72 && m.validationErr != "" {
+	if m.focusIndex == 79 && m.validationErr != "" {
 		b.WriteString(strings.Repeat(" ", indent))
 		b.WriteString(ValidationErrorStyle.Render(m.validationErr))
 		b.WriteString("\n")
 	}
-	b.WriteString(renderFormFieldDesc("Alert when inbox has more than this many tasks", indent, m.focusIndex == 72))
+	b.WriteString(renderFormFieldDesc("Alert when inbox has more than this many tasks", indent, m.focusIndex == 79))
 
 	b.WriteString("\n")
 
-	b.WriteString(renderFormLabelWithWidth("Blocked: ", labelWidth, m.focusIndex == 73))
-	b.WriteString(renderFormToggle("Enabled", "Disabled", m.alertBlockedEnabled, m.focusIndex == 73))
+	b.WriteString(renderFormLabelWithWidth("Blocked: ", labelWidth, m.focusIndex == 80))
+	b.WriteString(renderFormToggle("Enabled", "Disabled", m.alertBlockedEnabled, m.focusIndex == 80))
 	b.WriteString("\n")
 
-	b.WriteString(renderFormLabelWithWidth("Blocked (days): ", labelWidth, m.focusIndex == 74))
+	b.WriteString(renderFormLabelWithWidth("Blocked (days): ", labelWidth, m.focusIndex == 81))
 	b.WriteString(m.alertBlockedDaysInput.View())
 	b.WriteString("\n")
-	if m.focusIndex == 74 && m.validationErr != "" {
+	if m.focusIndex == 81 && m.validationErr != "" {
 		b.WriteString(strings.Repeat(" ", indent))
 		b.WriteString(ValidationErrorStyle.Render(m.validationErr))
 		b.WriteString("\n")
 	}
-	b.WriteString(renderFormFieldDesc("Days a task must be blocked before alerting", indent, m.focusIndex == 74))
+	b.WriteString(renderFormFieldDesc("Days a task must be blocked before alerting", indent, m.focusIndex == 81))
 
 	return b.String()
 }
@@ -573,19 +610,19 @@ func (m *SettingsModel) renderNotificationsProjectsSection() string {
 	const labelWidth = 22
 	const indent = 24
 
-	b.WriteString(renderFormLabelWithWidth("Project Health: ", labelWidth, m.focusIndex == 75))
-	b.WriteString(renderFormToggle("Enabled", "Disabled", m.alertProjectHealthEnabled, m.focusIndex == 75))
+	b.WriteString(renderFormLabelWithWidth("Project Health: ", labelWidth, m.focusIndex == 82))
+	b.WriteString(renderFormToggle("Enabled", "Disabled", m.alertProjectHealthEnabled, m.focusIndex == 82))
 	b.WriteString("\n")
 
-	b.WriteString(renderFormLabelWithWidth("Stale (days): ", labelWidth, m.focusIndex == 76))
+	b.WriteString(renderFormLabelWithWidth("Stale (days): ", labelWidth, m.focusIndex == 83))
 	b.WriteString(m.alertProjectStaleDaysInput.View())
 	b.WriteString("\n")
-	if m.focusIndex == 76 && m.validationErr != "" {
+	if m.focusIndex == 83 && m.validationErr != "" {
 		b.WriteString(strings.Repeat(" ", indent))
 		b.WriteString(ValidationErrorStyle.Render(m.validationErr))
 		b.WriteString("\n")
 	}
-	b.WriteString(renderFormFieldDesc("Days without task updates to flag project health", indent, m.focusIndex == 76))
+	b.WriteString(renderFormFieldDesc("Days without task updates to flag project health", indent, m.focusIndex == 83))
 
 	return b.String()
 }

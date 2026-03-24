@@ -172,6 +172,13 @@ type Config struct {
 	TreePriorityMode               string                       `json:"tree_priority_mode,omitempty"`                // Global priority display mode for tree view
 	OutlinerPriorityMode           string                       `json:"outliner_priority_mode,omitempty"`            // Global priority display mode for outliner view
 	Stages                         []string                     `json:"stages,omitempty"`                            // Workflow stages (e.g., Brainstorm, Design, Implement)
+	SectionLimitActive             *int                         `json:"section_limit_active,omitempty"`
+	SectionLimitNext               *int                         `json:"section_limit_next,omitempty"`
+	SectionLimitInbox              *int                         `json:"section_limit_inbox,omitempty"`
+	SectionLimitStandby            *int                         `json:"section_limit_standby,omitempty"`
+	SectionLimitWaiting            *int                         `json:"section_limit_waiting,omitempty"`
+	SectionLimitSomeday            *int                         `json:"section_limit_someday,omitempty"`
+	SectionLimitReview             *int                         `json:"section_limit_review,omitempty"`
 	SmartLists                     []SmartList                  `json:"smart_lists,omitempty"`                       // User-defined smart list tabs for AllTasks view
 	AllTasksTabOrder               []string                     `json:"all_tasks_tab_order,omitempty"`               // Built-in tab names + smart list UUIDs
 	// Proactive alert system: review tracking

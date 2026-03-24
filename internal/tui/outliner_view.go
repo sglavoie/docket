@@ -458,6 +458,10 @@ func (m *OutlinerModel) renderOutlinerTreeContent(width int) string { //nolint:g
 			badge := sectionStyle.Render(fmt.Sprintf("@ %s", displayName))
 			line := fmt.Sprintf("%s%s %s (%d)", cursorPrefix, MutedStyle.Render(indicator), badge, row.SectionCount)
 
+			if limit := m.config.GetSectionLimit(row.SectionName); limit > 0 && row.SectionCount > limit {
+				line += "  " + PreviewWarningStyle.Render(sectionLimitWarning(row.SectionCount-limit, limit))
+			}
+
 			// In cross-project mode, append a project name badge to distinguish
 			// identically-named sections from different projects.
 			if row.ProjectID != "" {

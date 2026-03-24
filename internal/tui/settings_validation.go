@@ -65,6 +65,7 @@ func (m *SettingsModel) validateAll() error {
 		m.validateRecentActivityLimit,
 		m.validateMaxPinnedBarItems,
 		m.validateMaxRecentTaskVisits,
+		m.validateSectionLimits,
 		m.validateAttachmentEditor,
 		m.validateCodeEditor,
 		m.validatePopupTimeout,
@@ -156,6 +157,27 @@ func (m *SettingsModel) validateReviewSettings() error {
 func (m *SettingsModel) validateRecentActivityLimit() error {
 	_, err := validateIntInRange(m.recentActivityInput.Value(), "recent activity limit", 0, math.MaxInt)
 	return err
+}
+
+func (m *SettingsModel) validateSectionLimits() error {
+	inputs := []struct {
+		input textinput.Model
+		name  string
+	}{
+		{m.sectionLimitActiveInput, "Active limit"},
+		{m.sectionLimitNextInput, "Next limit"},
+		{m.sectionLimitInboxInput, "Inbox limit"},
+		{m.sectionLimitStandbyInput, "Standby limit"},
+		{m.sectionLimitWaitingInput, "Waiting limit"},
+		{m.sectionLimitSomedayInput, "Someday limit"},
+		{m.sectionLimitReviewInput, "Review limit"},
+	}
+	for _, inp := range inputs {
+		if _, err := validateIntInRange(inp.input.Value(), inp.name, 0, 999); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (m *SettingsModel) validateAttachmentEditor() error {

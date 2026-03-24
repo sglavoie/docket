@@ -21,7 +21,7 @@ var (
 	settingsTabNames = []string{"General", "Palette", "Review", "Behavior", "Attachments", "Project Tree", "Outliner", "Notifications", "Stages"}
 
 	// tabFieldCount declares how many focusable fields each tab has.
-	tabFieldCount = []int{4, 12, 4, 6, 2, 13, 21, 15, 1}
+	tabFieldCount = []int{4, 12, 4, 13, 2, 13, 21, 15, 1}
 
 	// tabFieldStart holds the starting focus index for each tab (computed in init).
 	tabFieldStart []int
@@ -35,7 +35,7 @@ var (
 		nil, // 0: General
 		{{"Palette Colors", 9}, {"Background & Cursor", 3}}, // 1: Palette
 		nil, // 2: Review
-		{{"Recent Activity", 2}, {"Linked Tasks", 1}, {"Pinned Tasks", 1}, {"Recent Tasks", 1}, {"Popups", 1}}, // 3: Behavior
+		{{"Recent Activity", 2}, {"Linked Tasks", 1}, {"Pinned Tasks", 1}, {"Recent Tasks", 1}, {"Popups", 1}, {"Section Limits", 7}}, // 3: Behavior
 		nil, // 4: Attachments
 		nil, // 5: Project Tree
 		{{"Sidebar", 1}, {"Section State", 7}, {"Column Visibility", 13}}, // 6: Outliner
@@ -196,10 +196,19 @@ type SettingsModel struct {
 	alertProjectHealthEnabled  bool
 	alertProjectStaleDaysInput textinput.Model
 
+	// Section limit inputs (Behavior tab, indices 26-32)
+	sectionLimitActiveInput  textinput.Model
+	sectionLimitNextInput    textinput.Model
+	sectionLimitInboxInput   textinput.Model
+	sectionLimitStandbyInput textinput.Model
+	sectionLimitWaitingInput textinput.Model
+	sectionLimitSomedayInput textinput.Model
+	sectionLimitReviewInput  textinput.Model
+
 	tabs               TabState
 	subTab             int  // active sub-tab index within current tab
 	subTabRowFocused   bool // true when [/] navigates sub-tabs instead of main tabs
-	focusIndex         int  // 0=editor .. 61=outlinerColumnDefaults, 62-76=alert settings
+	focusIndex         int  // 0=editor .. 68=outlinerColumnDefaults, 69-83=alert settings
 	scrollOffset       int  // vertical scroll offset within current tab content
 	validationErr      string
 	stageValidationErr string // timed error shown in stages tab (auto-clears)
@@ -280,6 +289,48 @@ func NewSettingsModel(cfg *config.Config, manager *config.Manager) *SettingsMode
 	popupTimeoutInput.CharLimit = 2
 	popupTimeoutInput.SetWidth(6)
 	popupTimeoutInput.SetValue(strconv.Itoa(cfg.GetPopupTimeoutSeconds()))
+
+	sectionLimitActiveInput := textinput.New()
+	sectionLimitActiveInput.Placeholder = strconv.Itoa(config.DefaultSectionLimitActive)
+	sectionLimitActiveInput.CharLimit = 3
+	sectionLimitActiveInput.SetWidth(6)
+	sectionLimitActiveInput.SetValue(strconv.Itoa(cfg.GetSectionLimit("")))
+
+	sectionLimitNextInput := textinput.New()
+	sectionLimitNextInput.Placeholder = strconv.Itoa(config.DefaultSectionLimitNext)
+	sectionLimitNextInput.CharLimit = 3
+	sectionLimitNextInput.SetWidth(6)
+	sectionLimitNextInput.SetValue(strconv.Itoa(cfg.GetSectionLimit("Next")))
+
+	sectionLimitInboxInput := textinput.New()
+	sectionLimitInboxInput.Placeholder = strconv.Itoa(config.DefaultSectionLimitInbox)
+	sectionLimitInboxInput.CharLimit = 3
+	sectionLimitInboxInput.SetWidth(6)
+	sectionLimitInboxInput.SetValue(strconv.Itoa(cfg.GetSectionLimit("Inbox")))
+
+	sectionLimitStandbyInput := textinput.New()
+	sectionLimitStandbyInput.Placeholder = strconv.Itoa(config.DefaultSectionLimitStandby)
+	sectionLimitStandbyInput.CharLimit = 3
+	sectionLimitStandbyInput.SetWidth(6)
+	sectionLimitStandbyInput.SetValue(strconv.Itoa(cfg.GetSectionLimit("Standby")))
+
+	sectionLimitWaitingInput := textinput.New()
+	sectionLimitWaitingInput.Placeholder = strconv.Itoa(config.DefaultSectionLimitWaiting)
+	sectionLimitWaitingInput.CharLimit = 3
+	sectionLimitWaitingInput.SetWidth(6)
+	sectionLimitWaitingInput.SetValue(strconv.Itoa(cfg.GetSectionLimit("Waiting")))
+
+	sectionLimitSomedayInput := textinput.New()
+	sectionLimitSomedayInput.Placeholder = strconv.Itoa(config.DefaultSectionLimitSomeday)
+	sectionLimitSomedayInput.CharLimit = 3
+	sectionLimitSomedayInput.SetWidth(6)
+	sectionLimitSomedayInput.SetValue(strconv.Itoa(cfg.GetSectionLimit("Someday")))
+
+	sectionLimitReviewInput := textinput.New()
+	sectionLimitReviewInput.Placeholder = strconv.Itoa(config.DefaultSectionLimitReview)
+	sectionLimitReviewInput.CharLimit = 3
+	sectionLimitReviewInput.SetWidth(6)
+	sectionLimitReviewInput.SetValue(strconv.Itoa(cfg.GetSectionLimit("Review")))
 
 	attachmentEditorInput := textinput.New()
 	attachmentEditorInput.Placeholder = "(OS default)"
@@ -474,6 +525,13 @@ func NewSettingsModel(cfg *config.Config, manager *config.Manager) *SettingsMode
 		maxPinnedInput:             maxPinnedInput,
 		maxRecentTaskVisitsInput:   maxRecentTaskVisitsInput,
 		popupTimeoutInput:          popupTimeoutInput,
+		sectionLimitActiveInput:    sectionLimitActiveInput,
+		sectionLimitNextInput:      sectionLimitNextInput,
+		sectionLimitInboxInput:     sectionLimitInboxInput,
+		sectionLimitStandbyInput:   sectionLimitStandbyInput,
+		sectionLimitWaitingInput:   sectionLimitWaitingInput,
+		sectionLimitSomedayInput:   sectionLimitSomedayInput,
+		sectionLimitReviewInput:    sectionLimitReviewInput,
 		attachmentEditorInput:      attachmentEditorInput,
 		codeEditorInput:            codeEditorInput,
 		outlinerCollapsed:          outlinerCollapsed,
@@ -563,6 +621,20 @@ func (m *SettingsModel) saveSettings() tea.Cmd {
 		m.config.MaxRecentTaskVisits = &maxRecentVisits
 		popupTimeout, _ := strconv.Atoi(strings.TrimSpace(m.popupTimeoutInput.Value()))
 		m.config.PopupTimeoutSeconds = &popupTimeout
+		sectionLimitActive, _ := strconv.Atoi(strings.TrimSpace(m.sectionLimitActiveInput.Value()))
+		m.config.SectionLimitActive = &sectionLimitActive
+		sectionLimitNext, _ := strconv.Atoi(strings.TrimSpace(m.sectionLimitNextInput.Value()))
+		m.config.SectionLimitNext = &sectionLimitNext
+		sectionLimitInbox, _ := strconv.Atoi(strings.TrimSpace(m.sectionLimitInboxInput.Value()))
+		m.config.SectionLimitInbox = &sectionLimitInbox
+		sectionLimitStandby, _ := strconv.Atoi(strings.TrimSpace(m.sectionLimitStandbyInput.Value()))
+		m.config.SectionLimitStandby = &sectionLimitStandby
+		sectionLimitWaiting, _ := strconv.Atoi(strings.TrimSpace(m.sectionLimitWaitingInput.Value()))
+		m.config.SectionLimitWaiting = &sectionLimitWaiting
+		sectionLimitSomeday, _ := strconv.Atoi(strings.TrimSpace(m.sectionLimitSomedayInput.Value()))
+		m.config.SectionLimitSomeday = &sectionLimitSomeday
+		sectionLimitReview, _ := strconv.Atoi(strings.TrimSpace(m.sectionLimitReviewInput.Value()))
+		m.config.SectionLimitReview = &sectionLimitReview
 		m.config.AttachmentEditor = strings.TrimSpace(m.attachmentEditorInput.Value())
 		m.config.CodeEditor = strings.TrimSpace(m.codeEditorInput.Value())
 		// Persist column default visibility

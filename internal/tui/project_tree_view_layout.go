@@ -164,6 +164,15 @@ func (m *ProjectTreeModel) renderFullWidth() string {
 		cardContent.WriteString(content)
 	}
 
+	if sn := viewModeToSection(m.viewMode); sn != "" {
+		count := sectionTaskCount(m.project.Tasks, sn)
+		limit := m.config.GetSectionLimit(sn)
+		if limit > 0 && count > limit {
+			cardContent.WriteString("\n")
+			cardContent.WriteString(PreviewWarningStyle.Render(sectionLimitWarning(count-limit, limit)))
+		}
+	}
+
 	// Render the card with view mode as title
 	// Full-width mode has no sidebar, so always focused
 	// Use section color accent if exactly one section is filtered
@@ -406,6 +415,15 @@ func (m *ProjectTreeModel) renderTreeContent(width int) string {
 			content = AttachScrollbar(content, scrollbar)
 		}
 		cardContent.WriteString(content)
+	}
+
+	if sn := viewModeToSection(m.viewMode); sn != "" {
+		count := sectionTaskCount(m.project.Tasks, sn)
+		limit := m.config.GetSectionLimit(sn)
+		if limit > 0 && count > limit {
+			cardContent.WriteString("\n")
+			cardContent.WriteString(PreviewWarningStyle.Render(sectionLimitWarning(count-limit, limit)))
+		}
 	}
 
 	// Render the card with view mode as title
