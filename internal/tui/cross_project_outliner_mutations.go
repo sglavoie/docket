@@ -508,7 +508,7 @@ func (m *OutlinerModel) crossExecuteDelete() (tea.Model, tea.Cmd) {
 	}
 
 	pf := m.crossPersistFn(proj)
-	result := applyDeleteTask(pf, proj, task.ID, m.config.DataDir)
+	result := applyDeleteTask(pf, m.projectService, proj, task.ID)
 	if result.Err != nil {
 		m.err = result.Err
 		return m, func() tea.Msg { return ErrorMsg{Err: result.Err} }

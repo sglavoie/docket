@@ -176,7 +176,7 @@ func (m *OutlinerModel) executeDelete() (tea.Model, tea.Cmd) {
 	m.clearStatus()
 
 	pf := m.workflowPersistFn()
-	result := applyDeleteTask(pf, m.project, task.ID, m.config.DataDir)
+	result := applyDeleteTask(pf, m.projectService, m.project, task.ID)
 	if result.Err != nil {
 		m.err = result.Err
 		return m, func() tea.Msg { return ErrorMsg{Err: result.Err} }

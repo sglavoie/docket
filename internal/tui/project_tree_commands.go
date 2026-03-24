@@ -240,7 +240,7 @@ func (m *ProjectTreeModel) deleteTask() tea.Cmd {
 	}
 
 	pf := m.workflowPersistFn()
-	result := applyDeleteTask(pf, m.project, task.ID, m.config.DataDir)
+	result := applyDeleteTask(pf, m.projectService, m.project, task.ID)
 	if result.Err != nil {
 		return func() tea.Msg { return ErrorMsg{Err: result.Err} }
 	}
@@ -265,7 +265,7 @@ func (m *ProjectTreeModel) bulkDeleteTasks() tea.Cmd {
 
 	pf := m.workflowPersistFn()
 	for taskID := range m.selectedTasks {
-		result := applyDeleteTask(pf, m.project, taskID, m.config.DataDir)
+		result := applyDeleteTask(pf, m.projectService, m.project, taskID)
 		if result.Err != nil {
 			return func() tea.Msg { return ErrorMsg{Err: result.Err} }
 		}

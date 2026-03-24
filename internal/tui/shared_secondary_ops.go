@@ -132,9 +132,9 @@ func taskOpsSectionMove(v taskOpsView, section string) (tea.Model, tea.Cmd) {
 
 // taskOpsDeleteTask deletes the task at cursor.
 func taskOpsDeleteTask(v taskOpsView) (tea.Model, tea.Cmd) {
-	dataDir := v.getDataDir()
+	persister := v.getPersister()
 	cmd := taskOpsApply(v, func(pf persistFn, project *models.Project, taskID string) TaskOpResult {
-		return applyDeleteTask(pf, project, taskID, dataDir)
+		return applyDeleteTask(pf, persister, project, taskID)
 	})
 	return v, cmd
 }

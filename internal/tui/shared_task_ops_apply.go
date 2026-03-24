@@ -281,7 +281,9 @@ func applySectionChange(pf persistFn, project *models.Project, taskID string, se
 
 // applyDeleteTask removes a task and its descendants from a project.
 // It handles attachment cleanup, descendant collection, and dangling parent references.
-func applyDeleteTask(pf persistFn, project *models.Project, taskID string, _ string) TaskOpResult {
+// The persister is used to save the project directly when all tasks are deleted
+// (the persistFn requires a task ID, which is unavailable when the list is empty).
+func applyDeleteTask(pf persistFn, persister Persister, project *models.Project, taskID string) TaskOpResult {
 	task := project.GetTaskByID(taskID)
 	if task == nil {
 		return TaskOpResult{StatusMessage: "Task no longer exists in project"}
@@ -334,10 +336,16 @@ func applyDeleteTask(pf persistFn, project *models.Project, taskID string, _ str
 	project.Tasks = remaining
 
 	// Trigger the persist pipeline via a no-op mutate on any remaining task.
+	// When all tasks have been deleted, save directly via the persister since
+	// persistFn requires a valid task ID.
 	if len(project.Tasks) > 0 {
 		result := pf(project, project.Tasks[0].ID, func(t *models.Task) {})
 		if result.Err != nil {
 			return result
+		}
+	} else {
+		if err := persister.SaveWithBackupSync(project); err != nil {
+			return TaskOpResult{Err: fmt.Errorf("failed to save empty project: %w", err)}
 		}
 	}
 
