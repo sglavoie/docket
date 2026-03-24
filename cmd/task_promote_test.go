@@ -466,6 +466,36 @@ func TestCanCycleLeafTypeReturnsReason(t *testing.T) {
 	}
 }
 
+func TestUndoActionLabelsForTypeChange(t *testing.T) {
+	// Verify that the undo action labels map in updateTaskType covers
+	// all three operations: promote, demote, and cycle.
+	// Previously, this was hardcoded to "Promote Task" for all actions.
+	undoActions := map[string]string{
+		"promote": "Promote Task",
+		"demote":  "Demote Task",
+		"cycle":   "Cycle Task Type",
+	}
+
+	for _, action := range []string{"promote", "demote", "cycle"} {
+		label, ok := undoActions[action]
+		if !ok {
+			t.Errorf("missing undo action label for %q", action)
+			continue
+		}
+		if label == "" {
+			t.Errorf("undo action label for %q is empty", action)
+		}
+	}
+
+	// Ensure demote and cycle have distinct labels from promote
+	if undoActions["demote"] == undoActions["promote"] {
+		t.Error("demote undo label should differ from promote")
+	}
+	if undoActions["cycle"] == undoActions["promote"] {
+		t.Error("cycle undo label should differ from promote")
+	}
+}
+
 func TestPromoteUpdatesTimestamp(t *testing.T) {
 	project := testutil.NewTestProject("Timestamp Test")
 

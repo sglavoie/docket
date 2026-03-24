@@ -166,10 +166,21 @@ func updateTaskType(args []string, action string, out MutateOutput, update func(
 		return err
 	}
 
+	// Map action to undo label
+	undoActions := map[string]string{
+		"promote": "Promote Task",
+		"demote":  "Demote Task",
+		"cycle":   "Cycle Task Type",
+	}
+	undoAction := undoActions[action]
+	if undoAction == "" {
+		undoAction = "Change Task Type"
+	}
+
 	// Save with workflow rules evaluation
 	if err := SaveProject(project, &SaveOptions{
 		EvaluateRules: true, Config: cfg, ConfigManager: configManager, PrevStates: prevStates,
-		UndoAction: "Promote Task", UndoContext: fmt.Sprintf("#%d %s", task.ShortID, task.Title),
+		UndoAction: undoAction, UndoContext: fmt.Sprintf("#%d %s", task.ShortID, task.Title),
 	}); err != nil {
 		return fmt.Errorf("failed to save: %w", err)
 	}

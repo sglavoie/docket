@@ -414,6 +414,77 @@ func TestSectionRename(t *testing.T) {
 	})
 }
 
+func TestTaskSectionSkipsAlreadyAssigned(t *testing.T) {
+	t.Run("does not save when task already in requested section", func(t *testing.T) {
+		deps, project := testutil.SetupTestDepsWithProject(t, "Test Project")
+		defer deps.Cleanup()
+
+		viper.Set("config", deps.ConfigPath)
+		defer viper.Set("config", "")
+
+		manager := config.NewManager(deps.ConfigPath)
+		err := manager.Save(deps.Config)
+		testutil.AssertNoError(t, err)
+
+		oldStorageRepo := storage.DefaultRepository
+		storage.DefaultRepository = deps.Repository
+		defer func() { storage.DefaultRepository = oldStorageRepo }()
+
+		// Use existing task from test project (epic, #1) and set its section
+		task := project.Tasks[0]
+		project.EnsureSection("Active")
+		task.Section = "Active"
+		deps.Repository.Projects[project.ID] = project
+
+		originalUpdatedAt := task.UpdatedAt
+
+		// Assign to the same section - should be a no-op
+		err = runTaskSection(nil, []string{"1", "Active"})
+		testutil.AssertNoError(t, err)
+
+		// Verify the task's UpdatedAt was NOT changed (no unnecessary save)
+		savedProject := deps.Repository.Projects[project.ID]
+		savedTask := savedProject.GetTaskByShortID(task.ShortID)
+		if savedTask.UpdatedAt != originalUpdatedAt {
+			t.Error("UpdatedAt should not change when section already matches")
+		}
+	})
+
+	t.Run("assigns section to task in different section", func(t *testing.T) {
+		deps, project := testutil.SetupTestDepsWithProject(t, "Test Project")
+		defer deps.Cleanup()
+
+		viper.Set("config", deps.ConfigPath)
+		defer viper.Set("config", "")
+
+		manager := config.NewManager(deps.ConfigPath)
+		err := manager.Save(deps.Config)
+		testutil.AssertNoError(t, err)
+
+		oldStorageRepo := storage.DefaultRepository
+		storage.DefaultRepository = deps.Repository
+		defer func() { storage.DefaultRepository = oldStorageRepo }()
+
+		// Use existing task from test project and set a different section
+		task := project.Tasks[0]
+		project.EnsureSection("Backlog")
+		project.EnsureSection("Active")
+		task.Section = "Backlog"
+		deps.Repository.Projects[project.ID] = project
+
+		// Assign to Active
+		err = runTaskSection(nil, []string{"1", "Active"})
+		testutil.AssertNoError(t, err)
+
+		// Verify the section was updated
+		savedProject := deps.Repository.Projects[project.ID]
+		savedTask := savedProject.GetTaskByShortID(task.ShortID)
+		if savedTask.Section != "Active" {
+			t.Errorf("task section = %q, want Active", savedTask.Section)
+		}
+	})
+}
+
 func TestSectionList(t *testing.T) {
 	t.Run("lists sections with counts", func(t *testing.T) {
 		deps, project := testutil.SetupTestDepsWithProject(t, "Test Project")

@@ -42,13 +42,27 @@ func runTaskCommentRemove(cmd *cobra.Command, args []string) error {
 	var removedCount int
 	var removedIndex int
 
+	// Pre-check: skip save when clearing comments on a task with no comments
+	if commentClearFlag {
+		project, _, _, loadErr := LoadCurrentProject()
+		if loadErr != nil {
+			return loadErr
+		}
+		preTask, findErr := FindTaskByIdentifier(project, args[0])
+		if findErr != nil {
+			return findErr
+		}
+		if len(preTask.Comments) == 0 {
+			if !out.Quiet {
+				fmt.Printf("Task #%d has no comments to clear\n", preTask.ShortID)
+			}
+			return nil
+		}
+	}
+
 	task, err := WithTaskUpdate(args[0], func(task *models.Task) error {
 		// Handle --clear flag
 		if commentClearFlag {
-			if len(task.Comments) == 0 {
-				fmt.Printf("Task #%d has no comments to clear\n", task.ShortID)
-				return nil
-			}
 			removedCount = len(task.Comments)
 			task.ClearComments()
 			return nil

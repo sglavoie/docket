@@ -194,6 +194,43 @@ func TestTaskCommentRemove(t *testing.T) {
 	})
 }
 
+func TestTaskCommentRemoveClearNoComments(t *testing.T) {
+	t.Run("clear on task with no comments does not save", func(t *testing.T) {
+		deps, project := testutil.SetupTestDepsWithProject(t, "Test Project")
+		defer deps.Cleanup()
+
+		viper.Set("config", deps.ConfigPath)
+		defer viper.Set("config", "")
+
+		manager := config.NewManager(deps.ConfigPath)
+		err := manager.Save(deps.Config)
+		testutil.AssertNoError(t, err)
+
+		oldStorageRepo := storage.DefaultRepository
+		storage.DefaultRepository = deps.Repository
+		defer func() { storage.DefaultRepository = oldStorageRepo }()
+
+		// Use existing task from test project (epic, #1) which has no comments
+		task := project.Tasks[0]
+		originalUpdatedAt := task.UpdatedAt
+
+		// Set the clear flag
+		commentClearFlag = true
+		defer func() { commentClearFlag = false }()
+
+		// Should not return an error, just a no-op message
+		err = runTaskCommentRemove(nil, []string{"1"})
+		testutil.AssertNoError(t, err)
+
+		// Verify UpdatedAt was NOT changed (no unnecessary save)
+		savedProject := deps.Repository.Projects[project.ID]
+		savedTask := savedProject.GetTaskByShortID(task.ShortID)
+		if savedTask.UpdatedAt != originalUpdatedAt {
+			t.Error("UpdatedAt should not change when clearing comments on a task with no comments")
+		}
+	})
+}
+
 func TestTaskCommentEdit(t *testing.T) {
 	t.Run("validates comment index", func(t *testing.T) {
 		deps, project := testutil.SetupTestDepsWithProject(t, "Test Project")
