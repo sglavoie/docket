@@ -310,6 +310,11 @@ func (m *OutlinerModel) renderOutlinerTreeContent(width int) string { //nolint:g
 			}
 			title += ")"
 			headerStr = TitleStyle.Render(title)
+			headerStr += buildTitleFilterSuffix(&TitleParams{
+				SortField:     m.sort.Field,
+				SortAscending: m.sort.Ascending,
+				Width:         width,
+			}, len(title))
 		} else {
 			titleParams := &TitleParams{
 				FilterParts:   m.activeFilterParts(),
@@ -364,6 +369,11 @@ func (m *OutlinerModel) renderOutlinerTreeContent(width int) string { //nolint:g
 		}
 		title += ")"
 		b.WriteString(TitleStyle.Render(title))
+		b.WriteString(buildTitleFilterSuffix(&TitleParams{
+			SortField:     m.sort.Field,
+			SortAscending: m.sort.Ascending,
+			Width:         width,
+		}, len(title)))
 	} else {
 		titleParams := &TitleParams{
 			FilterParts:   m.activeFilterParts(),

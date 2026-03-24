@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"sort"
 	"time"
 
 	"charm.land/bubbles/v2/spinner"
@@ -216,12 +217,45 @@ func (m *OutlinerModel) crossProjectRebuildRows() {
 		groups = append(groups, projectTasksGroup{projectID: proj.ID, tasks: tasks})
 	}
 
+	if m.sort.Field != SortByDefault {
+		m.sortCrossProjectGroups(groups)
+	}
+
 	if p.Name == "All" {
 		m.buildCrossProjectRowsWithSectionHeaders(groups)
 	} else {
 		m.buildProjectGroupedRows(groups)
 	}
 	m.clampCursor()
+}
+
+// sortCrossProjectGroups sorts each project group's tasks in place using the
+// current sort state. Each group is sorted independently using the group's
+// project ID for score resolution.
+func (m *OutlinerModel) sortCrossProjectGroups(groups []projectTasksGroup) {
+	for i := range groups {
+		groups[i].tasks = m.sortTaskTreeForProject(groups[i].tasks, groups[i].projectID)
+	}
+}
+
+// sortTaskTreeForProject returns a sorted copy of the task tree using the
+// given projectID for cross-project score comparison. Like sortTaskTree, it
+// recurses into children to sort at every hierarchy level.
+func (m *OutlinerModel) sortTaskTreeForProject(tasks []*models.Task, projectID string) []*models.Task {
+	sorted := make([]*models.Task, len(tasks))
+	copy(sorted, tasks)
+	sort.SliceStable(sorted, func(i, j int) bool {
+		cmp := CompareTasksCrossProject(sorted[i], sorted[j], m.sort.Field, projectID, projectID, m.config)
+		return ApplySortDirection(cmp, m.sort.Ascending)
+	})
+	for idx, task := range sorted {
+		if len(task.Children) > 0 {
+			clone := *task
+			clone.Children = m.sortTaskTreeForProject(task.Children, projectID)
+			sorted[idx] = &clone
+		}
+	}
+	return sorted
 }
 
 // crossProjectView renders the cross-project outliner. It shows a centered
