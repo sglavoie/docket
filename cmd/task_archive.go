@@ -131,10 +131,18 @@ func runTaskArchiveAll(out MutateOutput) error {
 		}
 
 		if !ConfirmYN(fmt.Sprintf("[%s] Archive %s? [y/N]: ", project.Name, Pluralize(len(completedTasks), "completed task", "completed tasks")), archiveForce) {
-			if !out.Quiet {
+			if !out.Quiet && !out.JSON {
 				fmt.Printf("[%s] Skipped.\n", project.Name)
 			}
 			continue
+		}
+
+		// Record undo snapshot before archiving
+		if cfg.UndoHistoryDepth != nil && *cfg.UndoHistoryDepth > 0 {
+			if snapshotErr := storage.RecordUndoSnapshot(project, "Archive Tasks",
+				fmt.Sprintf("%d tasks", len(completedTasks)), *cfg.UndoHistoryDepth); snapshotErr != nil {
+				fmt.Fprintf(os.Stderr, "warning: failed to record undo snapshot for %s: %v\n", project.Name, snapshotErr)
+			}
 		}
 
 		if backupErr := storage.BackupProject(project); backupErr != nil {
@@ -149,7 +157,7 @@ func runTaskArchiveAll(out MutateOutput) error {
 		}
 
 		results = append(results, projectResult{Name: project.Name, Archived: count})
-		if !out.Quiet {
+		if !out.Quiet && !out.JSON {
 			fmt.Printf("[%s] Archived %s\n", project.Name, Pluralize(count, "task", "tasks"))
 		}
 		totalArchived += count

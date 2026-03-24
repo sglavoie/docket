@@ -117,6 +117,8 @@ func runTaskDepends(cmd *cobra.Command, args []string) error { //nolint:gocyclo
 
 	// Handle --remove
 	if dependsRemoveFlag != "" {
+		var blockerShortID int
+		var blockerTitle string
 		task, err := WithTaskUpdateInProject(taskID, func(project *models.Project, t *models.Task) error {
 			blocker, blockerErr := FindTaskByIdentifier(project, dependsRemoveFlag)
 			if blockerErr != nil {
@@ -125,11 +127,9 @@ func runTaskDepends(cmd *cobra.Command, args []string) error { //nolint:gocyclo
 			if !t.HasDependency(blocker.ID) {
 				return fmt.Errorf("task #%d does not depend on #%d", t.ShortID, blocker.ShortID)
 			}
+			blockerShortID = blocker.ShortID
+			blockerTitle = blocker.Title
 			t.RemoveDependency(blocker.ID)
-			if !out.Quiet {
-				fmt.Printf("Removed dependency: #%d no longer depends on #%d (%s)\n",
-					t.ShortID, blocker.ShortID, blocker.Title)
-			}
 			return nil
 		})
 		if err != nil {
@@ -138,11 +138,17 @@ func runTaskDepends(cmd *cobra.Command, args []string) error { //nolint:gocyclo
 		if out.JSON {
 			return outputSingleTaskJSON(task)
 		}
+		if !out.Quiet {
+			fmt.Printf("Removed dependency: #%d no longer depends on #%d (%s)\n",
+				task.ShortID, blockerShortID, blockerTitle)
+		}
 		return nil
 	}
 
 	// Handle --on
 	if dependsOnFlag != "" {
+		var blockerShortID int
+		var blockerTitle string
 		task, err := WithTaskUpdateInProject(taskID, func(project *models.Project, t *models.Task) error {
 			blocker, blockerErr := FindTaskByIdentifier(project, dependsOnFlag)
 			if blockerErr != nil {
@@ -160,10 +166,8 @@ func runTaskDepends(cmd *cobra.Command, args []string) error { //nolint:gocyclo
 			if err := t.AddDependency(blocker.ID); err != nil {
 				return err
 			}
-			if !out.Quiet {
-				fmt.Printf("Added dependency: #%d now depends on #%d (%s)\n",
-					t.ShortID, blocker.ShortID, blocker.Title)
-			}
+			blockerShortID = blocker.ShortID
+			blockerTitle = blocker.Title
 			return nil
 		})
 		if err != nil {
@@ -171,6 +175,10 @@ func runTaskDepends(cmd *cobra.Command, args []string) error { //nolint:gocyclo
 		}
 		if out.JSON {
 			return outputSingleTaskJSON(task)
+		}
+		if !out.Quiet {
+			fmt.Printf("Added dependency: #%d now depends on #%d (%s)\n",
+				task.ShortID, blockerShortID, blockerTitle)
 		}
 		return nil
 	}
