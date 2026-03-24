@@ -53,7 +53,7 @@ type ParseWarning struct {
 var metadataKeys = []string{
 	"id", "status", "priority", "parent", "tags", "created", "updated",
 	"completed", "due", "depends", "related", "section", "custom_section", "pinned", "pinned_at", "active", "recur",
-	"recur.skipped", "recur.streak", "recur.max_streak",
+	"recur.skipped", "recur.streak", "recur.max_streak", "recur.original_day",
 	"attachments", "snoozed", "checklist", "stage", "source", "url",
 	// Type-specific attribute keys
 	"bug.reproducible", "bug.severity", "bug.workaround",
@@ -90,10 +90,11 @@ func ParseMetadata(task *models.Task, metaStr string) []ParseWarning { //nolint:
 	// If "recur" appears before its sub-fields, they're applied immediately.
 	// If sub-fields appear first, they're buffered and applied after all keys are parsed.
 	var recurSubFields struct {
-		skipped   int
-		streak    int
-		maxStreak int
-		hasAny    bool
+		skipped     int
+		streak      int
+		maxStreak   int
+		originalDay int
+		hasAny      bool
 	}
 
 	// Parse key-value pairs, handling values that may contain commas (like recur: 1w:mon,wed,fri)
@@ -239,6 +240,17 @@ func ParseMetadata(task *models.Task, metaStr string) []ParseWarning { //nolint:
 				})
 			} else {
 				recurSubFields.maxStreak = v
+				recurSubFields.hasAny = true
+			}
+		case "recur.original_day":
+			if v, err := strconv.Atoi(value); err != nil {
+				warnings = append(warnings, ParseWarning{
+					Type:    WarningValidation,
+					Field:   "recur.original_day",
+					Message: fmt.Sprintf("invalid recur.original_day %q, ignoring: %v", value, err),
+				})
+			} else {
+				recurSubFields.originalDay = v
 				recurSubFields.hasAny = true
 			}
 		case "snoozed":
@@ -445,6 +457,7 @@ func ParseMetadata(task *models.Task, metaStr string) []ParseWarning { //nolint:
 		task.Recurrence.Skipped = recurSubFields.skipped
 		task.Recurrence.Streak = recurSubFields.streak
 		task.Recurrence.MaxStreak = recurSubFields.maxStreak
+		task.Recurrence.OriginalDay = recurSubFields.originalDay
 	}
 
 	// Validate recurrence pattern if present
@@ -762,6 +775,9 @@ func WriteMetadata(task *models.Task) string { //nolint:gocyclo
 		}
 		if task.Recurrence.MaxStreak > 0 {
 			parts = append(parts, fmt.Sprintf("recur.max_streak: %d", task.Recurrence.MaxStreak))
+		}
+		if task.Recurrence.OriginalDay > 0 {
+			parts = append(parts, fmt.Sprintf("recur.original_day: %d", task.Recurrence.OriginalDay))
 		}
 	}
 

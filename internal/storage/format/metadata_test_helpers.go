@@ -85,7 +85,8 @@ func recurrenceEqual(a, b *models.RecurrencePattern) bool {
 		return false
 	}
 	return a.Interval == b.Interval && a.Unit == b.Unit && intSlicesEqual(a.Weekdays, b.Weekdays) &&
-		a.Skipped == b.Skipped && a.Streak == b.Streak && a.MaxStreak == b.MaxStreak
+		a.Skipped == b.Skipped && a.Streak == b.Streak && a.MaxStreak == b.MaxStreak &&
+		a.OriginalDay == b.OriginalDay
 }
 
 func assertTaskFields(t *testing.T, task, want *models.Task) {

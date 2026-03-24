@@ -67,3 +67,35 @@ func TestTitleFromFilenameNewFormat(t *testing.T) {
 		})
 	}
 }
+
+// TestSlugifyMultiByteUTF8Truncation verifies that slugify does not split
+// multi-byte UTF-8 characters when truncating to 60 characters.
+func TestSlugifyMultiByteUTF8Truncation(t *testing.T) {
+	// Create a title with 70 CJK characters (each 3 bytes in UTF-8).
+	// Byte-level truncation at 60 bytes would split the 20th character.
+	// Rune-level truncation at 60 runes preserves all characters.
+	title := strings.Repeat("\u4e16", 70) // 70 x "世" (U+4E16, 3 bytes each)
+	slug := slugify(title)
+
+	// The slug should be valid UTF-8 (no split runes)
+	for i, r := range slug {
+		if r == '\uFFFD' {
+			t.Errorf("slugify produced invalid UTF-8 at byte %d (replacement character found)", i)
+		}
+	}
+
+	// Should be truncated to 60 runes
+	runes := []rune(slug)
+	if len(runes) > 60 {
+		t.Errorf("slug has %d runes, want <= 60", len(runes))
+	}
+}
+
+// TestSlugifyASCIIStillTruncates verifies that ASCII slugs are still truncated.
+func TestSlugifyASCIIStillTruncates(t *testing.T) {
+	title := strings.Repeat("a", 100)
+	slug := slugify(title)
+	if len(slug) > 60 {
+		t.Errorf("slug length = %d, want <= 60", len(slug))
+	}
+}

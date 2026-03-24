@@ -489,3 +489,44 @@ func TestGenerateRecurringInstances_StreakFromZero(t *testing.T) {
 		t.Errorf("expected max streak 1, got %d", newTask.Recurrence.MaxStreak)
 	}
 }
+
+// TestGenerateRecurringInstances_OriginalDayCarriedForward verifies that the
+// OriginalDay field is carried forward to the new recurring instance. Without
+// this, monthly recurrence on the 31st would drift to the 28th permanently.
+func TestGenerateRecurringInstances_OriginalDayCarriedForward(t *testing.T) {
+	dueDate := time.Date(2025, 1, 31, 0, 0, 0, 0, time.UTC)
+	completedAt := time.Date(2025, 1, 31, 10, 0, 0, 0, time.UTC)
+	task := &Task{
+		ID:          "monthly-31",
+		ShortID:     1,
+		Type:        TaskTypeTask,
+		Title:       "Monthly on 31st",
+		Status:      StatusDone,
+		DueDate:     &dueDate,
+		CompletedAt: &completedAt,
+		Recurrence: &RecurrencePattern{
+			Interval:    1,
+			Unit:        RecurrenceMonthly,
+			OriginalDay: 31,
+		},
+	}
+
+	project := &Project{
+		Name:        "OriginalDay Test",
+		Tasks:       []*Task{task},
+		NextShortID: 2,
+	}
+
+	count := project.GenerateRecurringInstances()
+	if count != 1 {
+		t.Fatalf("expected 1 instance generated, got %d", count)
+	}
+
+	newTask := project.Tasks[0]
+	if newTask.Recurrence == nil {
+		t.Fatal("new task should have recurrence pattern")
+	}
+	if newTask.Recurrence.OriginalDay != 31 {
+		t.Errorf("OriginalDay = %d, want 31 (must be carried forward to prevent month drift)", newTask.Recurrence.OriginalDay)
+	}
+}

@@ -145,6 +145,82 @@ func TestMetadata_RecurrenceStreakRoundtrip(t *testing.T) {
 	}
 }
 
+func TestParseMetadata_RecurrenceOriginalDay(t *testing.T) {
+	task := &models.Task{}
+	ParseMetadata(task, "id: abc, status: todo, priority: 1, recur: 1m, recur.original_day: 31")
+
+	if task.Recurrence == nil {
+		t.Fatal("Recurrence should not be nil")
+	}
+	if task.Recurrence.OriginalDay != 31 {
+		t.Errorf("OriginalDay = %d, want 31", task.Recurrence.OriginalDay)
+	}
+}
+
+func TestWriteMetadata_RecurrenceOriginalDay(t *testing.T) {
+	task := &models.Task{
+		ID:       "abc",
+		Status:   models.StatusTodo,
+		Priority: 1,
+		Recurrence: &models.RecurrencePattern{
+			Interval:    1,
+			Unit:        models.RecurrenceMonthly,
+			OriginalDay: 31,
+		},
+		CreatedAt: time.Date(2025, 1, 1, 0, 0, 0, 0, time.Local),
+	}
+
+	result := WriteMetadata(task)
+	if !strings.Contains(result, "recur.original_day: 31") {
+		t.Errorf("expected recur.original_day: 31, got: %s", result)
+	}
+}
+
+func TestWriteMetadata_RecurrenceOriginalDayOmittedWhenZero(t *testing.T) {
+	task := &models.Task{
+		ID:       "abc",
+		Status:   models.StatusTodo,
+		Priority: 1,
+		Recurrence: &models.RecurrencePattern{
+			Interval: 1,
+			Unit:     models.RecurrenceMonthly,
+		},
+		CreatedAt: time.Date(2025, 1, 1, 0, 0, 0, 0, time.Local),
+	}
+
+	result := WriteMetadata(task)
+	if strings.Contains(result, "recur.original_day") {
+		t.Errorf("should not contain recur.original_day when 0, got: %s", result)
+	}
+}
+
+func TestMetadata_RecurrenceOriginalDayRoundtrip(t *testing.T) {
+	original := &models.Task{
+		ID:       "abc",
+		Status:   models.StatusTodo,
+		Priority: 1,
+		Recurrence: &models.RecurrencePattern{
+			Interval:    1,
+			Unit:        models.RecurrenceMonthly,
+			OriginalDay: 31,
+			Streak:      3,
+			MaxStreak:   5,
+		},
+		CreatedAt: time.Date(2025, 1, 1, 0, 0, 0, 0, time.Local),
+	}
+
+	meta := WriteMetadata(original)
+	metaStr := strings.TrimPrefix(meta, "<!-- ")
+	metaStr = strings.TrimSuffix(metaStr, " -->")
+
+	parsed := &models.Task{}
+	ParseMetadata(parsed, metaStr)
+
+	if !recurrenceEqual(parsed.Recurrence, original.Recurrence) {
+		t.Errorf("Roundtrip failed:\n  got:  %+v\n  want: %+v", parsed.Recurrence, original.Recurrence)
+	}
+}
+
 // TestParseMetadata_RecurrenceWeekdayCommas verifies that comma-separated weekday
 // lists inside a recur value (e.g., "1w:mon,wed,fri") are not mis-split by the
 // metadata parser, which uses ", key:" as its delimiter rather than bare commas.

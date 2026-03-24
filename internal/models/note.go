@@ -148,9 +148,10 @@ func slugify(s string) string {
 		result = "untitled"
 	}
 
-	// Limit length
-	if len(result) > 60 {
-		result = result[:60]
+	// Limit length (rune-aware to avoid splitting multi-byte UTF-8 characters)
+	runes := []rune(result)
+	if len(runes) > 60 {
+		result = string(runes[:60])
 		result = strings.TrimRight(result, "-")
 	}
 

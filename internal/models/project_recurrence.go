@@ -51,12 +51,13 @@ func (p *Project) GenerateRecurringInstances() int {
 
 		// Create new instance — carry forward recurrence pattern with streak data
 		newRecurrence := &RecurrencePattern{
-			Interval:  task.Recurrence.Interval,
-			Unit:      task.Recurrence.Unit,
-			Weekdays:  append([]int{}, task.Recurrence.Weekdays...),
-			Skipped:   task.Recurrence.Skipped,
-			Streak:    task.Recurrence.Streak,
-			MaxStreak: task.Recurrence.MaxStreak,
+			Interval:    task.Recurrence.Interval,
+			Unit:        task.Recurrence.Unit,
+			Weekdays:    append([]int{}, task.Recurrence.Weekdays...),
+			Skipped:     task.Recurrence.Skipped,
+			Streak:      task.Recurrence.Streak,
+			MaxStreak:   task.Recurrence.MaxStreak,
+			OriginalDay: task.Recurrence.OriginalDay,
 		}
 
 		// Copy score dimensions from the completed task

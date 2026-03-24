@@ -18,7 +18,6 @@ func (t *Task) IsRoot() bool {
 // GetProgress returns the completion percentage based on children.
 // For leaf tasks, returns 100 if complete, 0 otherwise.
 // For parent tasks, returns percentage of completed children.
-// Notes are excluded from progress calculation as they are not completable items.
 func (t *Task) GetProgress() float64 {
 	if len(t.Children) == 0 {
 		if t.IsComplete() {
