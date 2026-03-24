@@ -387,6 +387,49 @@ func TestWriteComments_Resolved(t *testing.T) {
 	})
 }
 
+func TestWriteComments_AmpersandRoundTrip(t *testing.T) {
+	// Verify that comments containing literal "&lt;!--" or "&" survive a roundtrip
+	// without being corrupted by the escape/unescape cycle.
+	comments := []*models.Comment{
+		{
+			Text:      "Use &lt;!-- for HTML comments",
+			CreatedAt: time.Date(2025, 3, 1, 10, 0, 0, 0, time.Local),
+		},
+		{
+			Text:      "Tom & Jerry",
+			CreatedAt: time.Date(2025, 3, 2, 10, 0, 0, 0, time.Local),
+		},
+		{
+			Text:      "Code: <!-- inject --> end",
+			CreatedAt: time.Date(2025, 3, 3, 10, 0, 0, 0, time.Local),
+		},
+	}
+
+	task := &models.Task{
+		Description: "Task description",
+		Comments:    comments,
+	}
+
+	commentBlock := WriteComments(task)
+
+	task2 := &models.Task{
+		Description: "Task description\n\n" + commentBlock,
+	}
+
+	ExtractCommentsFromDescription(task2)
+
+	if len(task2.Comments) != len(comments) {
+		t.Fatalf("got %d comments, want %d", len(task2.Comments), len(comments))
+	}
+
+	for i, got := range task2.Comments {
+		want := comments[i]
+		if got.Text != want.Text {
+			t.Errorf("Comment[%d].Text = %q, want %q", i, got.Text, want.Text)
+		}
+	}
+}
+
 func TestWriteComments_ResolvedRoundTrip(t *testing.T) {
 	comments := []*models.Comment{
 		{
@@ -474,6 +517,24 @@ func TestEscapeUnescapeCommentText(t *testing.T) {
 			name:      "multiple occurrences",
 			input:     "<!-- first --> and <!-- second -->",
 			escaped:   "&lt;!-- first --&gt; and &lt;!-- second --&gt;",
+			roundtrip: true,
+		},
+		{
+			name:      "pre-existing entity-like &lt;!--",
+			input:     "Use &lt;!-- for HTML comments",
+			escaped:   "Use &amp;lt;!-- for HTML comments",
+			roundtrip: true,
+		},
+		{
+			name:      "pre-existing &amp; entity",
+			input:     "Use &amp; for ampersands",
+			escaped:   "Use &amp;amp; for ampersands",
+			roundtrip: true,
+		},
+		{
+			name:      "bare ampersand",
+			input:     "Tom & Jerry",
+			escaped:   "Tom &amp; Jerry",
 			roundtrip: true,
 		},
 	}

@@ -108,15 +108,21 @@ func WriteComments(task *models.Task) string {
 
 // escapeCommentText escapes HTML comment markers in comment text
 // to prevent parser corruption when the text contains <!-- or -->.
+// Ampersands are escaped first so that pre-existing entity-like sequences
+// (e.g., a literal "&lt;!--" in the text) survive a roundtrip without
+// being falsely unescaped.
 func escapeCommentText(text string) string {
+	text = strings.ReplaceAll(text, "&", "&amp;")
 	text = strings.ReplaceAll(text, "<!--", "&lt;!--")
 	text = strings.ReplaceAll(text, "-->", "--&gt;")
 	return text
 }
 
 // unescapeCommentText reverses the escaping done by escapeCommentText.
+// Order is the reverse of escaping: comment markers first, then ampersands.
 func unescapeCommentText(text string) string {
 	text = strings.ReplaceAll(text, "&lt;!--", "<!--")
 	text = strings.ReplaceAll(text, "--&gt;", "-->")
+	text = strings.ReplaceAll(text, "&amp;", "&")
 	return text
 }

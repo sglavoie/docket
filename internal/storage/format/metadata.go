@@ -638,14 +638,39 @@ func ParseTimeField(value string) (time.Time, bool) {
 	return time.Time{}, false
 }
 
-// escapeNewlines replaces actual newlines with literal \n for storage in metadata.
+// escapeNewlines escapes backslashes and newlines for single-line metadata storage.
+// Backslashes are escaped first so that a literal `\n` in the input becomes `\\n`,
+// distinguishable from an actual newline which becomes `\n`.
 func escapeNewlines(s string) string {
-	return strings.ReplaceAll(s, "\n", `\n`)
+	s = strings.ReplaceAll(s, `\`, `\\`)
+	s = strings.ReplaceAll(s, "\n", `\n`)
+	return s
 }
 
-// unescapeNewlines replaces literal \n with actual newlines when reading from metadata.
+// unescapeNewlines reverses escapeNewlines by scanning byte-by-byte.
+// `\n` -> newline, `\\` -> `\`, and bare `\` before any other char is kept as-is.
+// This sequential approach avoids the ambiguity that arises with chained ReplaceAll
+// (e.g., `\\n` must become `\n` literal, not backslash + newline).
 func unescapeNewlines(s string) string {
-	return strings.ReplaceAll(s, `\n`, "\n")
+	var b strings.Builder
+	b.Grow(len(s))
+	for i := 0; i < len(s); i++ {
+		if s[i] == '\\' && i+1 < len(s) {
+			switch s[i+1] {
+			case 'n':
+				b.WriteByte('\n')
+				i++
+			case '\\':
+				b.WriteByte('\\')
+				i++
+			default:
+				b.WriteByte(s[i])
+			}
+		} else {
+			b.WriteByte(s[i])
+		}
+	}
+	return b.String()
 }
 
 // escapeChecklistText escapes semicolons and done/undone markers in checklist item text

@@ -748,6 +748,111 @@ func TestRoundTrip_KitchenSinkWithParentID(t *testing.T) {
 	}
 }
 
+// TestRoundTrip_NewlineEscapingWithLiteralBackslash verifies that free-text fields
+// containing literal backslash-n sequences survive a write/parse cycle without being
+// converted into actual newlines.
+func TestRoundTrip_NewlineEscapingWithLiteralBackslash(t *testing.T) {
+	tests := []struct {
+		name  string
+		input string
+	}{
+		{"literal backslash-n", `Use \n for newlines`},
+		{"actual newline", "line1\nline2"},
+		{"both literal and actual", "line1\nuse \\n here"},
+		{"trailing backslash", `end with \`},
+		{"double backslash", `path\\to\\file`},
+		{"backslash then newline", "before\\\nafter"},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Test via bug.workaround field
+			task := &models.Task{
+				ID:       "escape-test",
+				Type:     models.TaskTypeBug,
+				Status:   models.StatusTodo,
+				Priority: 2,
+				BugAttrs: &models.BugAttrs{
+					Workaround: tc.input,
+				},
+			}
+
+			metaStr := WriteMetadata(task)
+			content := metaStr[5 : len(metaStr)-4]
+			parsed := &models.Task{Type: models.TaskTypeBug}
+			warnings := ParseMetadata(parsed, content)
+
+			if len(warnings) != 0 {
+				t.Errorf("got %d warnings, want 0: %v", len(warnings), warnings)
+			}
+			if parsed.BugAttrs == nil {
+				t.Fatal("BugAttrs is nil after round-trip")
+			}
+			if parsed.BugAttrs.Workaround != tc.input {
+				t.Errorf("Workaround = %q, want %q", parsed.BugAttrs.Workaround, tc.input)
+			}
+		})
+	}
+}
+
+// TestRoundTrip_StoryPersonaWithBackslash verifies story.persona roundtrip with literal backslashes.
+func TestRoundTrip_StoryPersonaWithBackslash(t *testing.T) {
+	input := `Admin uses \n and \\path`
+	task := &models.Task{
+		ID:       "story-esc-1",
+		Type:     models.TaskTypeStory,
+		Status:   models.StatusTodo,
+		Priority: 2,
+		StoryAttrs: &models.StoryAttrs{
+			Persona: input,
+		},
+	}
+
+	metaStr := WriteMetadata(task)
+	content := metaStr[5 : len(metaStr)-4]
+	parsed := &models.Task{Type: models.TaskTypeStory}
+	warnings := ParseMetadata(parsed, content)
+
+	if len(warnings) != 0 {
+		t.Errorf("got %d warnings, want 0: %v", len(warnings), warnings)
+	}
+	if parsed.StoryAttrs == nil {
+		t.Fatal("StoryAttrs is nil after round-trip")
+	}
+	if parsed.StoryAttrs.Persona != input {
+		t.Errorf("Persona = %q, want %q", parsed.StoryAttrs.Persona, input)
+	}
+}
+
+// TestRoundTrip_EpicMetricsWithBackslash verifies epic.metrics roundtrip with literal backslashes.
+func TestRoundTrip_EpicMetricsWithBackslash(t *testing.T) {
+	input := "metric1\nmetric2 with \\n literal"
+	task := &models.Task{
+		ID:       "epic-esc-1",
+		Type:     models.TaskTypeEpic,
+		Status:   models.StatusTodo,
+		Priority: 2,
+		EpicAttrs: &models.EpicAttrs{
+			SuccessMetrics: input,
+		},
+	}
+
+	metaStr := WriteMetadata(task)
+	content := metaStr[5 : len(metaStr)-4]
+	parsed := &models.Task{Type: models.TaskTypeEpic}
+	warnings := ParseMetadata(parsed, content)
+
+	if len(warnings) != 0 {
+		t.Errorf("got %d warnings, want 0: %v", len(warnings), warnings)
+	}
+	if parsed.EpicAttrs == nil {
+		t.Fatal("EpicAttrs is nil after round-trip")
+	}
+	if parsed.EpicAttrs.SuccessMetrics != input {
+		t.Errorf("SuccessMetrics = %q, want %q", parsed.EpicAttrs.SuccessMetrics, input)
+	}
+}
+
 // TestParse_AttachmentMalformedDoubleBar verifies that an attachment entry whose
 // original path contains "||" (i.e. was manually edited or produced by a buggy
 // writer) is flagged with a warning instead of being silently corrupted.
