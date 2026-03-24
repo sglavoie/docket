@@ -125,7 +125,7 @@ func runTaskList(cmd *cobra.Command, args []string) error {
 	}
 
 	if listTreeView {
-		displayTaskTree(project)
+		displayTaskTree(project, taskMatchesFilters)
 	} else {
 		displayTaskTable(tasks)
 	}
@@ -178,49 +178,42 @@ func displayTaskJSON(tasks []*models.Task) error {
 	return nil
 }
 
+// taskMatchesFilters returns true if the task passes all active CLI filters.
+func taskMatchesFilters(task *models.Task) bool {
+	if !listShowAll && task.Status.IsComplete() {
+		return false
+	}
+	if !listSnoozed && task.IsSnoozed() {
+		return false
+	}
+	if listTaskType != "" {
+		t, ok := models.ParseTaskType(listTaskType)
+		if !ok || task.Type != t {
+			return false
+		}
+	}
+	if listTaskStatus != "" {
+		s, ok := models.ParseTaskStatus(listTaskStatus)
+		if !ok || task.Status != s {
+			return false
+		}
+	}
+	if listPriority > 0 && task.Priority != listPriority {
+		return false
+	}
+	if listTag != "" && !task.HasTag(listTag) {
+		return false
+	}
+	return true
+}
+
 func filterTasks(tasks []*models.Task) []*models.Task {
 	var result []*models.Task
-
 	for _, task := range tasks {
-		// Filter by completed status
-		if !listShowAll && task.Status.IsComplete() {
-			continue
+		if taskMatchesFilters(task) {
+			result = append(result, task)
 		}
-
-		// Hide snoozed tasks unless --snoozed flag is set
-		if !listSnoozed && task.IsSnoozed() {
-			continue
-		}
-
-		// Filter by type
-		if listTaskType != "" {
-			t, ok := models.ParseTaskType(listTaskType)
-			if !ok || task.Type != t {
-				continue
-			}
-		}
-
-		// Filter by status
-		if listTaskStatus != "" {
-			s, ok := models.ParseTaskStatus(listTaskStatus)
-			if !ok || task.Status != s {
-				continue
-			}
-		}
-
-		// Filter by priority
-		if listPriority > 0 && task.Priority != listPriority {
-			continue
-		}
-
-		// Filter by tag
-		if listTag != "" && !task.HasTag(listTag) {
-			continue
-		}
-
-		result = append(result, task)
 	}
-
 	return result
 }
 
@@ -291,7 +284,7 @@ func displayTaskTable(tasks []*models.Task) {
 	fmt.Println(t.Render())
 }
 
-func displayTaskTree(project *models.Project) {
+func displayTaskTree(project *models.Project, matches func(*models.Task) bool) {
 	project.BuildTaskTree()
 	roots := project.GetRootTasks()
 
@@ -301,14 +294,14 @@ func displayTaskTree(project *models.Project) {
 	}
 
 	for _, root := range roots {
-		if !listShowAll && root.Status.IsComplete() {
+		if !matches(root) {
 			continue
 		}
-		printTaskNode(root, 0)
+		printTaskNode(root, 0, matches)
 	}
 }
 
-func printTaskNode(task *models.Task, depth int) {
+func printTaskNode(task *models.Task, depth int, matches func(*models.Task) bool) {
 	var indent strings.Builder
 	for range depth {
 		indent.WriteString("  ")
@@ -349,9 +342,9 @@ func printTaskNode(task *models.Task, depth int) {
 
 	// Print children
 	for _, child := range task.Children {
-		if !listShowAll && child.Status.IsComplete() {
+		if !matches(child) {
 			continue
 		}
-		printTaskNode(child, depth+1)
+		printTaskNode(child, depth+1, matches)
 	}
 }

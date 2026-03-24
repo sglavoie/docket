@@ -127,10 +127,9 @@ func runTaskDelete(cmd *cobra.Command, args []string) error {
 	project.Tasks = remaining
 	project.BuildTaskTree()
 
-	// Save
+	// Save (undo snapshot already recorded above, don't duplicate it via SaveOptions)
 	if err := SaveProject(project, &SaveOptions{
 		Config: cfg, ConfigManager: configManager,
-		UndoAction: "Delete Task", UndoContext: fmt.Sprintf("#%d %s", task.ShortID, task.Title),
 	}); err != nil {
 		return err
 	}

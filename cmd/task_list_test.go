@@ -16,6 +16,9 @@ func resetFilterVars() {
 	listTag = ""
 	listShowAll = false
 	listTreeView = false
+	listSnoozed = false
+	listSort = ""
+	listJSON = false
 }
 
 func TestFilterTasks_EmptyTaskList(t *testing.T) {
@@ -520,4 +523,81 @@ func TestSortTasks_StableSort(t *testing.T) {
 	testutil.AssertEqual(t, tasks[0].Title, "First")
 	testutil.AssertEqual(t, tasks[1].Title, "Second")
 	testutil.AssertEqual(t, tasks[2].Title, "Third")
+}
+
+func TestTaskMatchesFilters_ByType(t *testing.T) {
+	defer resetFilterVars()
+	listShowAll = true
+	listTaskType = "bug"
+
+	bug := testutil.NewTestTask("A bug", models.TaskTypeBug)
+	task := testutil.NewTestTask("A task", models.TaskTypeTask)
+
+	if !taskMatchesFilters(bug) {
+		t.Error("expected bug to match type=bug filter")
+	}
+	if taskMatchesFilters(task) {
+		t.Error("expected task to NOT match type=bug filter")
+	}
+}
+
+func TestTaskMatchesFilters_ByTag(t *testing.T) {
+	defer resetFilterVars()
+	listShowAll = true
+	listTag = "urgent"
+
+	tagged := testutil.NewTestTask("Tagged", models.TaskTypeTask)
+	tagged.Tags = []string{"urgent"}
+	untagged := testutil.NewTestTask("Untagged", models.TaskTypeTask)
+	untagged.Tags = []string{"low"}
+
+	if !taskMatchesFilters(tagged) {
+		t.Error("expected tagged task to match")
+	}
+	if taskMatchesFilters(untagged) {
+		t.Error("expected untagged task to NOT match")
+	}
+}
+
+func TestTaskMatchesFilters_SnoozedHiddenByDefault(t *testing.T) {
+	defer resetFilterVars()
+
+	snoozed := testutil.NewTestTask("Snoozed", models.TaskTypeTask)
+	future := time.Now().Add(24 * time.Hour)
+	snoozed.SnoozedUntil = &future
+
+	normal := testutil.NewTestTask("Normal", models.TaskTypeTask)
+
+	if taskMatchesFilters(snoozed) {
+		t.Error("expected snoozed task to be hidden by default")
+	}
+	if !taskMatchesFilters(normal) {
+		t.Error("expected normal task to be visible")
+	}
+
+	// With --snoozed flag, snoozed tasks are included
+	listSnoozed = true
+	if !taskMatchesFilters(snoozed) {
+		t.Error("expected snoozed task to be visible with --snoozed flag")
+	}
+}
+
+func TestTaskMatchesFilters_CompletedHiddenByDefault(t *testing.T) {
+	defer resetFilterVars()
+
+	done := testutil.NewTestTaskWithStatus("Done", models.StatusDone)
+	todo := testutil.NewTestTaskWithStatus("Todo", models.StatusTodo)
+
+	if taskMatchesFilters(done) {
+		t.Error("expected completed task to be hidden by default")
+	}
+	if !taskMatchesFilters(todo) {
+		t.Error("expected todo task to be visible")
+	}
+
+	// With --all flag, completed tasks are included
+	listShowAll = true
+	if !taskMatchesFilters(done) {
+		t.Error("expected completed task to be visible with --all flag")
+	}
 }
