@@ -182,6 +182,19 @@ func checkDeadDependencies(projects []*models.Project, results *doctorResults) {
 					})
 				}
 			}
+			for _, rel := range task.RelatedTo {
+				ref := models.ParseTaskRef(rel)
+				if ref.IsCrossProject() {
+					continue // handled by checkOrphanedCrossRefs
+				}
+				if _, exists := taskMap[ref.TaskID]; !exists {
+					results.deadDependencies = append(results.deadDependencies, doctorIssue{
+						project: project.Name,
+						task:    task.ID,
+						detail:  fmt.Sprintf("related to nonexistent task %s (task: %s)", ref.TaskID, task.Title),
+					})
+				}
+			}
 		}
 	}
 }
@@ -257,8 +270,8 @@ func fixIssues(projects []*models.Project, cfg interface{ GetProject(string) *mo
 				dirtyProjects[project.ID] = true
 			}
 
-			// Fix orphaned cross-project refs in RelatedTo
-			if cleaned := cleanCrossRefs(task.RelatedTo, cfg, projectTaskMaps); len(cleaned) != len(task.RelatedTo) {
+			// Fix orphaned cross-project refs and dead same-project refs in RelatedTo
+			if cleaned := cleanRefs(task.RelatedTo, cfg, projectTaskMaps, taskMap); len(cleaned) != len(task.RelatedTo) {
 				removed := len(task.RelatedTo) - len(cleaned)
 				fmt.Printf("  Fixed: removed %d broken RelatedTo ref(s) from task %s in %s\n", removed, task.Title, project.Name)
 				task.RelatedTo = cleaned

@@ -860,3 +860,57 @@ func TestBuildTaskTreeBreaksSelfDependencyCycle(t *testing.T) {
 		t.Errorf("expected self-dependency to be removed, got DependsOn: %v", taskA.DependsOn)
 	}
 }
+
+func TestBuildTaskTree_RemovesOrphanedRelatedTo(t *testing.T) {
+	project, err := NewProject("test", "Test", "/tmp/test")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	taskA, err := NewTask("aaa", 1, TaskTypeTask, "Task A")
+	if err != nil {
+		t.Fatal(err)
+	}
+	taskB, err := NewTask("bbb", 2, TaskTypeTask, "Task B")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// taskA has a RelatedTo ref to taskB (valid) and a non-existent task (orphaned)
+	taskA.RelatedTo = []string{"bbb", "deleted-task-id"}
+
+	project.Tasks = []*Task{taskA, taskB}
+	project.BuildTaskTree()
+
+	if len(taskA.RelatedTo) != 1 {
+		t.Errorf("expected 1 RelatedTo ref, got %d: %v", len(taskA.RelatedTo), taskA.RelatedTo)
+	}
+	if len(taskA.RelatedTo) > 0 && taskA.RelatedTo[0] != "bbb" {
+		t.Errorf("expected RelatedTo[0] to be 'bbb', got %q", taskA.RelatedTo[0])
+	}
+}
+
+func TestBuildTaskTree_PreservesCrossProjectRelatedTo(t *testing.T) {
+	project, err := NewProject("test", "Test", "/tmp/test")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	taskA, err := NewTask("aaa", 1, TaskTypeTask, "Task A")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Cross-project ref should be preserved even though the task ID doesn't exist locally
+	taskA.RelatedTo = []string{"other-project:some-task-id", "deleted-local-id"}
+
+	project.Tasks = []*Task{taskA}
+	project.BuildTaskTree()
+
+	if len(taskA.RelatedTo) != 1 {
+		t.Errorf("expected 1 RelatedTo ref (cross-project), got %d: %v", len(taskA.RelatedTo), taskA.RelatedTo)
+	}
+	if len(taskA.RelatedTo) > 0 && taskA.RelatedTo[0] != "other-project:some-task-id" {
+		t.Errorf("expected cross-project ref preserved, got %q", taskA.RelatedTo[0])
+	}
+}

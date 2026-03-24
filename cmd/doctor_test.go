@@ -129,6 +129,26 @@ func TestCheckDeadDependencies(t *testing.T) {
 	}
 }
 
+func TestCheckDeadRelatedTo(t *testing.T) {
+	project := testutil.NewTestProject("P1")
+	task1 := testutil.NewTestTask("Task A", models.TaskTypeTask)
+	task2 := testutil.NewTestTask("Task B", models.TaskTypeTask)
+	task1.RelatedTo = []string{task2.ID}            // valid
+	task2.RelatedTo = []string{"nonexistent-rel-x"} // dead
+
+	project.Tasks = []*models.Task{task1, task2}
+
+	results := &doctorResults{}
+	checkDeadDependencies([]*models.Project{project}, results)
+
+	if len(results.deadDependencies) != 1 {
+		t.Fatalf("expected 1 dead RelatedTo ref, got %d", len(results.deadDependencies))
+	}
+	if results.deadDependencies[0].task != task2.ID {
+		t.Errorf("expected task %q, got %q", task2.ID, results.deadDependencies[0].task)
+	}
+}
+
 func TestCheckOrphanedCrossRefs(t *testing.T) {
 	p1 := testutil.NewTestProject("P1")
 	p2 := testutil.NewTestProject("P2")
@@ -194,6 +214,28 @@ func TestFixIssues(t *testing.T) {
 	// Verify dead dependency was removed
 	if len(task2.DependsOn) != 0 {
 		t.Errorf("expected DependsOn to be empty, got %v", task2.DependsOn)
+	}
+}
+
+func TestFixIssues_CleansDeadRelatedTo(t *testing.T) {
+	deps, project := testutil.SetupTestDepsWithProject(t, "FixRelated")
+	defer deps.Cleanup()
+
+	task1 := testutil.NewTestTask("Good Task", models.TaskTypeTask)
+	task2 := testutil.NewTestTask("Broken Related", models.TaskTypeTask)
+	task2.RelatedTo = []string{task1.ID, "nonexistent-rel"}
+
+	project.Tasks = []*models.Task{task1, task2}
+	deps.Repository.Projects[project.ID] = project
+
+	cfg := testutil.NewTestConfig()
+	fixIssues([]*models.Project{project}, cfg)
+
+	if len(task2.RelatedTo) != 1 {
+		t.Errorf("expected 1 RelatedTo ref after fix, got %d: %v", len(task2.RelatedTo), task2.RelatedTo)
+	}
+	if len(task2.RelatedTo) > 0 && task2.RelatedTo[0] != task1.ID {
+		t.Errorf("expected RelatedTo[0] to be %q, got %q", task1.ID, task2.RelatedTo[0])
 	}
 }
 

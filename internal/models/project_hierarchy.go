@@ -106,6 +106,19 @@ func (p *Project) BuildTaskTree() { //nolint:gocyclo
 			}
 			task.DependsOn = valid
 		}
+		if len(task.RelatedTo) > 0 {
+			valid := task.RelatedTo[:0]
+			for _, relID := range task.RelatedTo {
+				if ParseTaskRef(relID).IsCrossProject() {
+					valid = append(valid, relID)
+				} else if _, ok := taskMap[relID]; ok {
+					valid = append(valid, relID)
+				} else {
+					logging.Warn("task %q (#%d) has related ref to non-existent task %s, removing orphaned reference", task.Title, task.ShortID, relID)
+				}
+			}
+			task.RelatedTo = valid
+		}
 	}
 
 	// Detect and break circular dependency chains (defensive, handles corrupt data).
