@@ -443,6 +443,28 @@ func taskDescendantIDs(task *models.Task) map[string]bool {
 	return ids
 }
 
+// resolveTaskAndProject returns the task under the cursor and its owning
+// project. In single-project mode, project comes from the view's getProject().
+// In cross-project mode (project == nil), it falls back to getTaskRef() which
+// resolves the project per-row.
+func resolveTaskAndProject(v primaryProjectView, project *models.Project) (*models.Task, *models.Project) {
+	task := v.getCursorTask()
+	if task == nil {
+		return nil, nil
+	}
+	if project != nil {
+		return task, project
+	}
+	// Cross-project mode: resolve project from the row
+	type taskRefProvider interface {
+		getTaskRef() (*models.Task, *models.Project)
+	}
+	if trp, ok := v.(taskRefProvider); ok {
+		return trp.getTaskRef()
+	}
+	return nil, nil
+}
+
 // handleCommonPrimaryViewKey handles keys shared across the three primary
 // project views (ProjectTree, Outliner). It returns (cmd, true) when
 // the key was consumed, or (nil, false) when the caller should continue with
@@ -522,40 +544,31 @@ func handleCommonPrimaryViewKey(key string, v primaryProjectView) (tea.Cmd, bool
 
 	// Score editor
 	case "S":
-		if project == nil {
-			return nil, true
-		}
-		task := v.getCursorTask()
-		if task != nil {
-			return func() tea.Msg {
-				return ShowScoreEditorMsg{Task: task, Project: project}
-			}, true
-		}
-		return nil, true
-
-	// Quick note on selected task
-	case "ctrl+.":
-		if project == nil {
-			return nil, true
-		}
-		task := v.getCursorTask()
-		if task == nil {
+		task, taskProject := resolveTaskAndProject(v, project)
+		if task == nil || taskProject == nil {
 			return nil, true
 		}
 		return func() tea.Msg {
-			return OpenQuickNoteMsg{Task: task, Project: project}
+			return ShowScoreEditorMsg{Task: task, Project: taskProject}
+		}, true
+
+	// Quick note on selected task
+	case "ctrl+.":
+		task, taskProject := resolveTaskAndProject(v, project)
+		if task == nil || taskProject == nil {
+			return nil, true
+		}
+		return func() tea.Msg {
+			return OpenQuickNoteMsg{Task: task, Project: taskProject}
 		}, true
 
 	// Move/reparent task
 	case "ctrl+m":
-		if project == nil {
+		task, taskProject := resolveTaskAndProject(v, project)
+		if task == nil || taskProject == nil {
 			return nil, true
 		}
-		task := v.getCursorTask()
-		if task == nil {
-			return nil, true
-		}
-		validParents := buildReparentValidParents(project, task)
+		validParents := buildReparentValidParents(taskProject, task)
 		taskID := task.ID
 		var currentParentID *string
 		if task.ParentID != nil {

@@ -156,6 +156,9 @@ func (r *KeybindingRegistry) registerCrossProjectOutlinerBindings() {
 		// Search
 		Keybinding{Key: "/", Description: "Search tasks", Category: "Search", Views: views},
 
+		// Task Operations
+		Keybinding{Key: "ctrl+.", Description: "Quick note on selected task", Category: "Task Operations", Views: views},
+
 		// Other
 		Keybinding{Key: "ctrl+R", Description: "Refresh from disk", Category: "Other", Views: views},
 		Keybinding{Key: "u", Description: "Undo last change", Category: "Other", Views: views},

@@ -231,6 +231,14 @@ func (m *RecentActivityModel) handleKeyMsg(msg tea.KeyPressMsg) (tea.Model, tea.
 			}
 		}
 
+	case "ctrl+.":
+		if m.cursor >= 0 && m.cursor < len(m.filtered) {
+			dt := m.filtered[m.cursor]
+			return m, func() tea.Msg {
+				return OpenQuickNoteMsg{Task: dt.Task, Project: dt.Project}
+			}
+		}
+
 	case "g":
 		m.pendingPrefix = "g"
 		return m, nil

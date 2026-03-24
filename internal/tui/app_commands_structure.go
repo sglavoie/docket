@@ -137,10 +137,11 @@ func (m *AppModel) structureCommands() []Command {
 			Description: "Append a quick note/comment to the selected task",
 			Shortcut:    "ctrl+.",
 			Category:    CategoryStructure,
-			Views:       []ViewType{ViewProjectTree, ViewOutliner},
+			Views:       []ViewType{ViewProjectTree, ViewOutliner, ViewCrossProjectOutliner, ViewAllTasks, ViewDailyReview, ViewWeeklyReview, ViewFocusView, ViewRecentActivity, ViewFocusBoard, ViewPriorityView, ViewDueDateOverview},
 			Aliases:     []string{"note", "comment quick"},
 			Handler: func() tea.Msg {
 				getTaskAndProject := func() (*models.Task, *models.Project) {
+					// Primary views
 					if m.projectTree != nil {
 						if task := m.projectTree.getCursorTask(); task != nil {
 							return task, m.projectTree.getProject()
@@ -149,6 +150,20 @@ func (m *AppModel) structureCommands() []Command {
 					if m.outliner != nil {
 						if task := m.outliner.getCursorTask(); task != nil {
 							return task, m.outliner.getProject()
+						}
+					}
+					if m.crossOutliner != nil {
+						if task := m.crossOutliner.getCursorTask(); task != nil {
+							return task, m.crossOutliner.getProject()
+						}
+					}
+					// Secondary views that implement getTaskRef
+					if v := m.views.Get(m.currentView()); v != nil {
+						type taskRefProvider interface {
+							getTaskRef() (*models.Task, *models.Project)
+						}
+						if trp, ok := v.(taskRefProvider); ok {
+							return trp.getTaskRef()
 						}
 					}
 					return nil, nil
