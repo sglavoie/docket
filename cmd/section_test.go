@@ -506,6 +506,69 @@ func TestTaskSectionSkipsAlreadyAssigned(t *testing.T) {
 	})
 }
 
+func TestSectionRemoveBuiltInSections(t *testing.T) {
+	builtInSections := []string{
+		models.SectionNext, models.SectionInbox, models.SectionWaiting,
+		models.SectionSomeday, models.SectionReview, models.SectionStandby, models.SectionCompleted,
+	}
+
+	for _, section := range builtInSections {
+		t.Run("rejects removing built-in section "+section, func(t *testing.T) {
+			deps, _ := testutil.SetupTestDepsWithProject(t, "Test Project")
+			defer deps.Cleanup()
+
+			viper.Set("config", deps.ConfigPath)
+			defer viper.Set("config", "")
+
+			manager := config.NewManager(deps.ConfigPath)
+			err := manager.Save(deps.Config)
+			testutil.AssertNoError(t, err)
+
+			oldStorageRepo := storage.DefaultRepository
+			storage.DefaultRepository = deps.Repository
+			defer func() { storage.DefaultRepository = oldStorageRepo }()
+
+			sectionRemoveForce = true
+			defer func() { sectionRemoveForce = false }()
+
+			err = runSectionRemove(nil, []string{section})
+			if err == nil {
+				t.Errorf("runSectionRemove() should error when trying to remove built-in section %q", section)
+			}
+		})
+	}
+}
+
+func TestSectionRenameBuiltInSections(t *testing.T) {
+	builtInSections := []string{
+		models.SectionNext, models.SectionInbox, models.SectionWaiting,
+		models.SectionSomeday, models.SectionReview, models.SectionStandby, models.SectionCompleted,
+	}
+
+	for _, section := range builtInSections {
+		t.Run("rejects renaming built-in section "+section, func(t *testing.T) {
+			deps, _ := testutil.SetupTestDepsWithProject(t, "Test Project")
+			defer deps.Cleanup()
+
+			viper.Set("config", deps.ConfigPath)
+			defer viper.Set("config", "")
+
+			manager := config.NewManager(deps.ConfigPath)
+			err := manager.Save(deps.Config)
+			testutil.AssertNoError(t, err)
+
+			oldStorageRepo := storage.DefaultRepository
+			storage.DefaultRepository = deps.Repository
+			defer func() { storage.DefaultRepository = oldStorageRepo }()
+
+			err = runSectionRename(nil, []string{section, "CustomName"})
+			if err == nil {
+				t.Errorf("runSectionRename() should error when trying to rename built-in section %q", section)
+			}
+		})
+	}
+}
+
 func TestSectionList(t *testing.T) {
 	t.Run("lists sections with counts", func(t *testing.T) {
 		deps, project := testutil.SetupTestDepsWithProject(t, "Test Project")

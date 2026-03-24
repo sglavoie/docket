@@ -42,8 +42,8 @@ func runSectionRemove(cmd *cobra.Command, args []string) error {
 
 	sectionName := args[0]
 
-	if sectionName == models.SectionNext {
-		return fmt.Errorf("cannot remove the Next section")
+	if models.IsGTDSection(sectionName) {
+		return fmt.Errorf("cannot remove built-in section '%s'", sectionName)
 	}
 
 	project, cfg, configManager, err := LoadCurrentProject()

@@ -84,8 +84,8 @@ func (p *Project) EnsureSection(name string) {
 // Returns false if trying to remove the Next section or if section doesn't exist.
 // Tasks in the removed section will have their section cleared.
 func (p *Project) RemoveSection(name string) bool {
-	if name == SectionNext {
-		return false // Cannot remove Next
+	if IsGTDSection(name) {
+		return false // Cannot remove built-in sections
 	}
 	for i, s := range p.Sections {
 		if s == name {
@@ -115,8 +115,8 @@ func (p *Project) RemoveSection(name string) bool {
 // RenameSection renames a section and updates all tasks with that section.
 // Returns an error if the rename cannot be performed.
 func (p *Project) RenameSection(oldName, newName string) error {
-	if oldName == SectionNext {
-		return fmt.Errorf("cannot rename the Next section")
+	if IsGTDSection(oldName) {
+		return fmt.Errorf("cannot rename built-in section '%s'", oldName)
 	}
 	if newName == "" {
 		return fmt.Errorf("new section name cannot be empty")

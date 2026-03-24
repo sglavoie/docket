@@ -36,6 +36,10 @@ func runSectionRename(cmd *cobra.Command, args []string) error {
 	oldName := args[0]
 	newName := args[1]
 
+	if models.IsGTDSection(oldName) {
+		return fmt.Errorf("cannot rename built-in section '%s'", oldName)
+	}
+
 	if err := models.ValidateSectionName(newName); err != nil {
 		return err
 	}
