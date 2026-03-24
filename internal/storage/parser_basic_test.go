@@ -708,3 +708,81 @@ func TestRoundTripEdgeCaseTitleChars(t *testing.T) {
 		})
 	}
 }
+
+func TestParseDeprecatedNoteType(t *testing.T) {
+	content := `# Project: Test
+
+## Note: My Meeting Notes
+<!-- id: note-1, status: todo, priority: 3 -->
+
+Some notes here.
+`
+	result, err := ParseTasksMarkdownWithSections(content)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if len(result.Tasks) != 1 {
+		t.Fatalf("expected 1 task, got %d", len(result.Tasks))
+	}
+
+	task := result.Tasks[0]
+	// "Note" is a deprecated type that should be migrated to "Task"
+	if task.Type != models.TaskTypeTask {
+		t.Errorf("expected type 'task', got %q", task.Type)
+	}
+	if task.Title != "My Meeting Notes" {
+		t.Errorf("expected title 'My Meeting Notes', got %q", task.Title)
+	}
+
+	// Should produce a deprecation warning (not a validation warning)
+	var found bool
+	for _, w := range result.Warnings {
+		if w.Field == "type" && strings.Contains(w.Message, "deprecated type 'note'") {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Errorf("expected deprecation warning for 'note' type, got warnings: %v", result.Warnings)
+	}
+}
+
+func TestParseDeprecatedActionType(t *testing.T) {
+	content := `# Project: Test
+
+## Action: Review PR
+<!-- id: act-1, status: todo, priority: 2 -->
+
+Review the pull request.
+`
+	result, err := ParseTasksMarkdownWithSections(content)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if len(result.Tasks) != 1 {
+		t.Fatalf("expected 1 task, got %d", len(result.Tasks))
+	}
+
+	task := result.Tasks[0]
+	// "Action" is a deprecated type that should be migrated to "Task"
+	if task.Type != models.TaskTypeTask {
+		t.Errorf("expected type 'task', got %q", task.Type)
+	}
+	if task.Title != "Review PR" {
+		t.Errorf("expected title 'Review PR', got %q", task.Title)
+	}
+
+	// Should produce a deprecation warning
+	var found bool
+	for _, w := range result.Warnings {
+		if w.Field == "type" && strings.Contains(w.Message, "deprecated type 'action'") {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Errorf("expected deprecation warning for 'action' type, got warnings: %v", result.Warnings)
+	}
+}

@@ -139,11 +139,11 @@ func ParseTasksMarkdownWithSections(content string) (*ParseResult, error) {
 			taskType, ok := models.ParseTaskType(typeStr)
 			if !ok {
 				taskType = models.TaskTypeTask
-				if typeStr == "action" {
+				if typeStr == "action" || typeStr == "note" {
 					metadataWarnings = append(metadataWarnings, ParseWarning{
 						Type:    format.WarningDeprecation,
 						Field:   "type",
-						Message: fmt.Sprintf("task #%d has deprecated type 'action', migrated to 'task'", nextShortID),
+						Message: fmt.Sprintf("task #%d has deprecated type '%s', migrated to 'task'", nextShortID, typeStr),
 					})
 				} else {
 					metadataWarnings = append(metadataWarnings, ParseWarning{
