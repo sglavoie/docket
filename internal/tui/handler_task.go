@@ -254,7 +254,10 @@ func (m *AppModel) handleTaskMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint:go
 	case CommentAddedMsg:
 		m.quickNoteOverlay = nil
 		m.setSuccessStatus("Comment added")
-		return true, defaultStatusTimeout()
+		// Delegate to current view so it can refresh stale task data
+		// (outliner rows contain clones from filterTaskTree)
+		viewCmd := m.delegateToCurrentView(msg)
+		return true, tea.Batch(defaultStatusTimeout(), viewCmd)
 
 	case CommentDeletedMsg:
 		m.setSuccessStatus("Comment deleted")

@@ -107,20 +107,35 @@ func truncateAndPad(line string, maxWidth int) string {
 
 // renderTitledTopBorder builds "╭─ Title ─────╮" for the given width.
 // titleText should already be styled; borderStyle controls the frame characters.
+// Renders the full border as a single styled string, then splices in the title
+// using ansi.Cut to guarantee the output is exactly width visual characters.
 func renderTitledTopBorder(titleText string, width int, borderStyle lipgloss.Style) string {
 	titleVisualWidth := lipgloss.Width(titleText)
 	usedByTitle := 5 + titleVisualWidth // "╭─ " + title + " " + "╮"
 	remainingDashes := max(width-usedByTitle, 1)
-	return borderStyle.Render("╭─ ") + titleText + borderStyle.Render(" "+strings.Repeat("─", remainingDashes)+"╮")
+	// Build full border with placeholder dashes where title goes, then style once
+	fullBorder := borderStyle.Render(
+		"╭─ " + strings.Repeat("─", titleVisualWidth) + " " + strings.Repeat("─", remainingDashes) + "╮",
+	)
+	// Splice in the styled title, replacing the placeholder dashes
+	left := ansi.Cut(fullBorder, 0, 3)
+	right := ansi.Cut(fullBorder, 3+titleVisualWidth, width)
+	return left + titleText + right
 }
 
 // renderTitledBottomBorder builds "╰─ Footer ─────╯" for the given width.
 // footerText should already be styled; borderStyle controls the frame characters.
+// Same single-render + splice approach as renderTitledTopBorder.
 func renderTitledBottomBorder(footerText string, width int, borderStyle lipgloss.Style) string {
 	footerVisualWidth := lipgloss.Width(footerText)
 	usedByFooter := 5 + footerVisualWidth // "╰─ " + footer + " " + "╯"
 	remainingDashes := max(width-usedByFooter, 1)
-	return borderStyle.Render("╰─ ") + footerText + borderStyle.Render(" "+strings.Repeat("─", remainingDashes)+"╯")
+	fullBorder := borderStyle.Render(
+		"╰─ " + strings.Repeat("─", footerVisualWidth) + " " + strings.Repeat("─", remainingDashes) + "╯",
+	)
+	left := ansi.Cut(fullBorder, 0, 3)
+	right := ansi.Cut(fullBorder, 3+footerVisualWidth, width)
+	return left + footerText + right
 }
 
 // renderCard renders a card with a titled border.
