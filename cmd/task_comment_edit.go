@@ -88,7 +88,9 @@ func runTaskCommentEdit(cmd *cobra.Command, args []string) error {
 
 	// Check if changed
 	if newText == comment.Text {
-		fmt.Println("No changes made.")
+		if !out.Quiet {
+			fmt.Println("No changes made.")
+		}
 		return nil
 	}
 

@@ -212,6 +212,61 @@ func TestSearchLimit(t *testing.T) {
 	})
 }
 
+func TestSearchMultiWordQuery(t *testing.T) {
+	t.Run("joins multiple args into a single query", func(t *testing.T) {
+		deps, project := testutil.SetupTestDepsWithProject(t, "Test Project")
+		defer deps.Cleanup()
+
+		viper.Set("config", deps.ConfigPath)
+		defer viper.Set("config", "")
+
+		manager := config.NewManager(deps.ConfigPath)
+		err := manager.Save(deps.Config)
+		testutil.AssertNoError(t, err)
+
+		oldStorageRepo := storage.DefaultRepository
+		storage.DefaultRepository = deps.Repository
+		defer func() { storage.DefaultRepository = oldStorageRepo }()
+
+		// Create a task with a multi-word title that only matches the full phrase
+		task := testutil.NewTestTask("Fix login bug on staging", models.TaskTypeTask)
+		project.Tasks = append(project.Tasks, task)
+
+		// Create a task that matches only the first word
+		task2 := testutil.NewTestTask("Fix typo in readme", models.TaskTypeTask)
+		project.Tasks = append(project.Tasks, task2)
+
+		deps.Repository.Projects[project.ID] = project
+
+		searchIncludeArchived = false
+		searchLimit = 0
+		defer func() {
+			searchIncludeArchived = false
+			searchLimit = 0
+		}()
+
+		// Simulate: tt search login bug (two separate args)
+		// Before the fix, only "login" would be searched; now "login bug" is searched
+		err = runSearch(nil, []string{"login", "bug"})
+		testutil.AssertNoError(t, err)
+	})
+
+	t.Run("empty multi-word args are trimmed", func(t *testing.T) {
+		searchIncludeArchived = false
+		searchLimit = 0
+		defer func() {
+			searchIncludeArchived = false
+			searchLimit = 0
+		}()
+
+		err := runSearch(nil, []string{"  ", "  "})
+		if err == nil {
+			t.Fatal("expected error for empty query")
+		}
+		testutil.AssertEqual(t, err.Error(), "search query cannot be empty")
+	})
+}
+
 func TestSearchEdgeCases(t *testing.T) {
 	t.Run("empty query returns early", func(t *testing.T) {
 		deps, _ := testutil.SetupTestDepsWithProject(t, "Test Project")

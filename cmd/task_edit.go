@@ -94,7 +94,9 @@ func runTaskEdit(cmd *cobra.Command, args []string) error {
 	titleChanged := newTitle != task.Title
 	descChanged := newDesc != task.Description
 	if !titleChanged && !descChanged {
-		fmt.Println("No changes made.")
+		if !out.Quiet {
+			fmt.Println("No changes made.")
+		}
 		return nil
 	}
 
