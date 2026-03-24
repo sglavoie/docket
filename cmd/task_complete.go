@@ -272,13 +272,22 @@ func updateTaskStatus(args []string, action string, out MutateOutput, force bool
 			}
 
 			// Block completion if task has incomplete dependencies
+			// HasIncompleteDependencies checks both local and cross-project deps;
+			// GetIncompleteDependencies only returns resolvable local tasks for the
+			// detailed error message.
 			if action == "complete" {
-				if incompleteDeps := project.GetIncompleteDependencies(task); len(incompleteDeps) > 0 {
+				if project.HasIncompleteDependencies(task) {
+					incompleteDeps := project.GetIncompleteDependencies(task)
 					var msg strings.Builder
-					fmt.Fprintf(&msg, "cannot complete task #%d: has %d incomplete dependencies:\n",
-						task.ShortID, len(incompleteDeps))
+					fmt.Fprintf(&msg, "cannot complete task #%d: has incomplete dependencies:\n",
+						task.ShortID)
 					for _, dep := range incompleteDeps {
 						fmt.Fprintf(&msg, "  - #%d %s (%s)\n", dep.ShortID, dep.Title, dep.Status)
+					}
+					// Report cross-project deps that can't be resolved locally
+					crossProjectCount := countCrossProjectDeps(task)
+					if crossProjectCount > 0 {
+						fmt.Fprintf(&msg, "  - %d cross-project dependency/dependencies (not resolvable locally)\n", crossProjectCount)
 					}
 					return errors.New(msg.String())
 				}
@@ -334,4 +343,15 @@ func updateTaskStatus(args []string, action string, out MutateOutput, force bool
 	}
 
 	return ReportBatchErrors(succeeded, errs)
+}
+
+// countCrossProjectDeps counts the number of cross-project dependencies on a task.
+func countCrossProjectDeps(task *models.Task) int {
+	count := 0
+	for _, depID := range task.DependsOn {
+		if models.ParseTaskRef(depID).IsCrossProject() {
+			count++
+		}
+	}
+	return count
 }

@@ -379,6 +379,79 @@ func TestCompleteParentForceSkipsChildCheck(t *testing.T) {
 	}
 }
 
+func TestCompleteBlockedByCrossProjectDependencies(t *testing.T) {
+	project := testutil.NewTestProject("Test Project")
+
+	task, err := models.NewTask("task-1", 1, models.TaskTypeTask, "Task with cross-project dep")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Add a cross-project dependency directly (format "projectID:taskID")
+	task.DependsOn = []string{"other-project:remote-task-id"}
+	project.Tasks = []*models.Task{task}
+
+	// HasIncompleteDependencies should detect the cross-project dep
+	if !project.HasIncompleteDependencies(task) {
+		t.Error("expected HasIncompleteDependencies to return true for cross-project dep")
+	}
+
+	// GetIncompleteDependencies cannot resolve cross-project deps, so returns empty
+	incompleteDeps := project.GetIncompleteDependencies(task)
+	if len(incompleteDeps) != 0 {
+		t.Errorf("expected 0 locally-resolvable incomplete deps, got %d", len(incompleteDeps))
+	}
+
+	// countCrossProjectDeps should count 1
+	crossCount := countCrossProjectDeps(task)
+	if crossCount != 1 {
+		t.Errorf("expected 1 cross-project dep, got %d", crossCount)
+	}
+}
+
+func TestCompleteBlockedByMixedDependencies(t *testing.T) {
+	project := testutil.NewTestProject("Test Project")
+
+	blocker, err := models.NewTask("blocker-1", 1, models.TaskTypeTask, "Local Blocker")
+	if err != nil {
+		t.Fatal(err)
+	}
+	task, err := models.NewTask("task-1", 2, models.TaskTypeTask, "Task with mixed deps")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Add both a local and cross-project dependency
+	_ = task.AddDependency(blocker.ID)
+	task.DependsOn = append(task.DependsOn, "other-project:remote-task-id")
+	project.Tasks = []*models.Task{blocker, task}
+
+	// Both should block
+	if !project.HasIncompleteDependencies(task) {
+		t.Error("expected HasIncompleteDependencies to return true for mixed deps")
+	}
+
+	// GetIncompleteDependencies should only return the local one
+	incompleteDeps := project.GetIncompleteDependencies(task)
+	if len(incompleteDeps) != 1 {
+		t.Errorf("expected 1 locally-resolvable incomplete dep, got %d", len(incompleteDeps))
+	}
+	if len(incompleteDeps) > 0 && incompleteDeps[0].ID != blocker.ID {
+		t.Error("expected local blocker to be the incomplete dep")
+	}
+
+	crossCount := countCrossProjectDeps(task)
+	if crossCount != 1 {
+		t.Errorf("expected 1 cross-project dep, got %d", crossCount)
+	}
+
+	// Complete local blocker — should still block due to cross-project dep
+	blocker.Complete()
+	if !project.HasIncompleteDependencies(task) {
+		t.Error("expected HasIncompleteDependencies to still return true after completing local blocker (cross-project dep remains)")
+	}
+}
+
 func TestStatusIsActive(t *testing.T) {
 	tests := []struct {
 		status models.TaskStatus

@@ -20,7 +20,7 @@ func analyzeBulkStatusTransition(project *models.Project, tasks []*models.Task, 
 		if task.CanTransitionTo(newStatus) != "" {
 			continue
 		}
-		if newStatus == models.StatusDone && len(project.GetIncompleteDependencies(task)) > 0 {
+		if newStatus == models.StatusDone && project.HasIncompleteDependencies(task) {
 			blockedCount++
 			continue
 		}

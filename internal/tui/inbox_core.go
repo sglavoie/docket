@@ -476,14 +476,24 @@ func (c *inboxCore) changeTaskStatus(newStatus models.TaskStatus, verb string) t
 	}
 
 	if newStatus == models.StatusDone {
-		incompleteDeps := project.GetIncompleteDependencies(current)
-		if len(incompleteDeps) > 0 {
-			depIDs := make([]string, len(incompleteDeps))
-			for i, dep := range incompleteDeps {
-				depIDs[i] = fmt.Sprintf("#%d", dep.ShortID)
+		if project.HasIncompleteDependencies(current) {
+			incompleteDeps := project.GetIncompleteDependencies(current)
+			depIDs := make([]string, 0, len(incompleteDeps))
+			for _, dep := range incompleteDeps {
+				depIDs = append(depIDs, fmt.Sprintf("#%d", dep.ShortID))
 			}
-			c.err = fmt.Errorf("cannot complete: %d incomplete dependencies (%s)",
-				len(incompleteDeps), strings.Join(depIDs, ", "))
+			// Count cross-project deps not included in GetIncompleteDependencies
+			crossCount := 0
+			for _, depID := range current.DependsOn {
+				if models.ParseTaskRef(depID).IsCrossProject() {
+					crossCount++
+				}
+			}
+			if crossCount > 0 {
+				depIDs = append(depIDs, fmt.Sprintf("%d cross-project", crossCount))
+			}
+			c.err = fmt.Errorf("cannot complete: incomplete dependencies (%s)",
+				strings.Join(depIDs, ", "))
 			return nil
 		}
 	}
