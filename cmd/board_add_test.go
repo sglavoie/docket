@@ -17,6 +17,7 @@ func resetBoardAddVars() {
 	boardAddPriority = 3
 	boardAddTags = nil
 	boardAddProject = ""
+	boardAddSection = ""
 }
 
 func setupBoardAddTest(t *testing.T) (*testutil.TestDeps, *models.Project) {
@@ -154,5 +155,24 @@ func TestRunBoardAdd(t *testing.T) {
 		if err == nil {
 			t.Error("expected error for nonexistent project")
 		}
+	})
+
+	t.Run("rejects nonexistent section", func(t *testing.T) {
+		deps, project := setupBoardAddTest(t)
+		defer deps.Cleanup()
+
+		boardAddProject = project.Slug
+		boardAddSection = "nonexistent-section"
+
+		err := runBoardAdd(boardAddCmd, []string{"Action With Bad Section"})
+		if err == nil {
+			t.Error("expected error for nonexistent section")
+		}
+	})
+
+	t.Run("section flag is reset between tests", func(t *testing.T) {
+		_, _ = setupBoardAddTest(t)
+		// After resetBoardAddVars(), boardAddSection should be empty
+		testutil.AssertEqual(t, boardAddSection, "")
 	})
 }

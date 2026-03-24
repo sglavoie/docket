@@ -97,12 +97,22 @@ func runTaskUnfocus(cmd *cobra.Command, args []string) error {
 		taskID = task.ID
 	}
 
+	// Pre-check: skip save if task is already not active
+	project, _, _, err := LoadCurrentProject()
+	if err != nil {
+		return err
+	}
+	preTask, findErr := FindTaskByIdentifier(project, taskID)
+	if findErr != nil {
+		return findErr
+	}
+	if !preTask.Active {
+		fmt.Printf("Task #%d is not in focus\n", preTask.ShortID)
+		return nil
+	}
+
 	// Use WithTaskUpdate to remove focus
 	task, err := WithTaskUpdate(taskID, func(t *models.Task) error {
-		if !t.Active {
-			fmt.Printf("Task #%d is not in focus\n", t.ShortID)
-			return nil
-		}
 		t.Deactivate()
 		return nil
 	})
@@ -111,9 +121,7 @@ func runTaskUnfocus(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if !task.Active {
-		fmt.Printf("Removed #%d from focus: %s\n", task.ShortID, task.Title)
-	}
+	fmt.Printf("Removed #%d from focus: %s\n", task.ShortID, task.Title)
 
 	return nil
 }
