@@ -9,12 +9,14 @@ import (
 
 // Complete marks the task as done and sets the completion time.
 // The task is moved to the Completed section.
+// Snooze is cleared since hiding a completed task is meaningless.
 func (t *Task) Complete() {
 	now := time.Now()
 	t.Status = StatusDone
 	t.CompletedAt = &now
 	t.UpdatedAt = now
 	t.Active = false
+	t.SnoozedUntil = nil
 	t.Section = SectionCompleted
 }
 
@@ -54,19 +56,23 @@ func (t *Task) Block() {
 
 // Cancel marks the task as canceled.
 // The task is moved to the Completed section.
+// Snooze is cleared since hiding a canceled task is meaningless.
 func (t *Task) Cancel() {
 	now := time.Now()
 	t.Status = StatusCanceled
 	t.CompletedAt = &now
 	t.UpdatedAt = now
+	t.SnoozedUntil = nil
 	t.Section = SectionCompleted
 }
 
 // Reopen sets the task back to todo status and moves it to the Inbox for re-processing.
+// Snooze is cleared so the reopened task is immediately visible.
 func (t *Task) Reopen() {
 	t.Status = StatusTodo
 	t.CompletedAt = nil
 	t.Active = false
+	t.SnoozedUntil = nil
 	t.Section = SectionInbox
 	t.UpdatedAt = time.Now()
 }

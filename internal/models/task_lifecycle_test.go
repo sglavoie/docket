@@ -974,3 +974,84 @@ func TestIsRecurring(t *testing.T) {
 		t.Error("expected not recurring after ClearRecurrence")
 	}
 }
+
+func TestCompleteClearsSnooze(t *testing.T) {
+	task, err := NewTask("t1", 1, TaskTypeTask, "Test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	future := time.Now().AddDate(0, 0, 7)
+	task.SnoozedUntil = &future
+
+	task.Complete()
+
+	if task.SnoozedUntil != nil {
+		t.Error("expected SnoozedUntil to be nil after Complete")
+	}
+	if task.IsSnoozed() {
+		t.Error("expected not snoozed after Complete")
+	}
+}
+
+func TestCancelClearsSnooze(t *testing.T) {
+	task, err := NewTask("t1", 1, TaskTypeTask, "Test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	future := time.Now().AddDate(0, 0, 7)
+	task.SnoozedUntil = &future
+
+	task.Cancel()
+
+	if task.SnoozedUntil != nil {
+		t.Error("expected SnoozedUntil to be nil after Cancel")
+	}
+	if task.IsSnoozed() {
+		t.Error("expected not snoozed after Cancel")
+	}
+}
+
+func TestReopenClearsSnooze(t *testing.T) {
+	task, err := NewTask("t1", 1, TaskTypeTask, "Test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Snooze, complete, then reopen — snooze should be cleared
+	future := time.Now().AddDate(0, 0, 7)
+	task.SnoozedUntil = &future
+	task.Complete()
+	task.Reopen()
+
+	if task.SnoozedUntil != nil {
+		t.Error("expected SnoozedUntil to be nil after Reopen")
+	}
+	if task.IsSnoozed() {
+		t.Error("expected not snoozed after Reopen")
+	}
+	if task.Status != StatusTodo {
+		t.Errorf("expected StatusTodo after Reopen, got %s", task.Status)
+	}
+}
+
+func TestReopenClearsSnoozeDirectly(t *testing.T) {
+	// Test the case where a task was snoozed, then directly reopened
+	// (e.g., task was snoozed with a future date but status was set externally)
+	task, err := NewTask("t1", 1, TaskTypeTask, "Test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	future := time.Now().AddDate(0, 0, 14)
+	task.SnoozedUntil = &future
+	task.Status = StatusDone
+	now := time.Now()
+	task.CompletedAt = &now
+
+	task.Reopen()
+
+	if task.SnoozedUntil != nil {
+		t.Error("expected SnoozedUntil to be nil after Reopen")
+	}
+	if task.IsSnoozed() {
+		t.Error("expected not snoozed after Reopen")
+	}
+}
