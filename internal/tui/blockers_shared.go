@@ -129,7 +129,7 @@ type blockerDataSource interface {
 }
 
 // blockerUpdateShared handles the Update logic shared between both blocker views.
-func blockerUpdateShared(s *blockerViewState, ds blockerDataSource, msg tea.Msg) (tea.Model, tea.Cmd, bool) {
+func blockerUpdateShared(s *blockerViewState, ds blockerDataSource, msg tea.Msg) (tea.Model, tea.Cmd, bool) { //nolint:gocyclo
 	var cmd tea.Cmd
 
 	// Handle expanded view mode

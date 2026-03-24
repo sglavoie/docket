@@ -464,7 +464,7 @@ func TestArchiveTasks(t *testing.T) {
 	})
 }
 
-func TestLoadArchivedTasks(t *testing.T) {
+func TestLoadArchivedTasks(t *testing.T) { //nolint:gocyclo
 	t.Run("returns empty slice when no archive file exists", func(t *testing.T) {
 		tmpDir := t.TempDir()
 		project := &models.Project{Path: tmpDir}
@@ -704,7 +704,7 @@ Some description.
 	})
 }
 
-func TestArchivePreservesAllMetadataFields(t *testing.T) {
+func TestArchivePreservesAllMetadataFields(t *testing.T) { //nolint:gocyclo
 	tmpDir := t.TempDir()
 	project := &models.Project{Path: tmpDir, Name: "TestProj"}
 

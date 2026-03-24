@@ -84,7 +84,7 @@ func matchesTriggerWithContext(task, prev *models.Task, trigger RuleTrigger, eva
 }
 
 // matchesEventTrigger checks event-based triggers that detect transitions.
-func matchesEventTrigger(task, prev *models.Task, trigger RuleTrigger) bool {
+func matchesEventTrigger(task, prev *models.Task, trigger RuleTrigger) bool { //nolint:gocyclo
 	switch trigger.Field {
 	case FieldStatusChanged:
 		return matchesTransition(
@@ -175,6 +175,7 @@ func matchesEventTrigger(task, prev *models.Task, trigger RuleTrigger) bool {
 		hadStreak := prev != nil && prev.Recurrence != nil && prev.Recurrence.Streak > 0
 		hasStreak := task.Recurrence != nil && task.Recurrence.Streak > 0
 		return hadStreak && !hasStreak
+	default:
 	}
 
 	return false
@@ -273,6 +274,7 @@ func matchesHierarchicalTrigger(task *models.Task, trigger RuleTrigger, evalCtx 
 	case FieldDependencyCount:
 		count := len(task.DependsOn)
 		return compareValues(strconv.Itoa(count), trigger.Operation, trigger.Value)
+	default:
 	}
 
 	return false

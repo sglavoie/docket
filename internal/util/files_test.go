@@ -18,9 +18,7 @@ func TestWithFileLock_ExclusiveSerializesConcurrentAccess(t *testing.T) {
 	var wg sync.WaitGroup
 
 	for range 5 {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			err := WithFileLock(lockPath, true, func() error {
 				n := concurrent.Add(1)
 				// Track max concurrency observed
@@ -37,7 +35,7 @@ func TestWithFileLock_ExclusiveSerializesConcurrentAccess(t *testing.T) {
 			if err != nil {
 				t.Errorf("unexpected error: %v", err)
 			}
-		}()
+		})
 	}
 
 	wg.Wait()
@@ -55,9 +53,7 @@ func TestWithFileLock_SharedAllowsConcurrentReads(t *testing.T) {
 	var wg sync.WaitGroup
 
 	for range 5 {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			err := WithFileLock(lockPath, false, func() error {
 				n := concurrent.Add(1)
 				for {
@@ -73,7 +69,7 @@ func TestWithFileLock_SharedAllowsConcurrentReads(t *testing.T) {
 			if err != nil {
 				t.Errorf("unexpected error: %v", err)
 			}
-		}()
+		})
 	}
 
 	wg.Wait()

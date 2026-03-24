@@ -38,7 +38,7 @@ func (m *CommandPaletteModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 // updateSearchMode handles key events in search mode (the default mode).
-func (m *CommandPaletteModel) updateSearchMode(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
+func (m *CommandPaletteModel) updateSearchMode(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) { //nolint:gocyclo
 	switch msg.String() {
 	case "esc":
 		return m, func() tea.Msg {

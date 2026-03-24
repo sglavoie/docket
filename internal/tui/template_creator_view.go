@@ -1,9 +1,10 @@
 package tui
 
 import (
-	tea "charm.land/bubbletea/v2"
 	"fmt"
 	"strings"
+
+	tea "charm.land/bubbletea/v2"
 )
 
 func (m *TaskTemplateCreatorModel) View() tea.View {

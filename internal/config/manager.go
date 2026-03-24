@@ -40,7 +40,7 @@ func NewManager(customPath string) *Manager {
 }
 
 // Load loads the configuration from file.
-func (m *Manager) Load() (*Config, error) {
+func (m *Manager) Load() (*Config, error) { //nolint:gocyclo
 	if _, err := os.Stat(m.configPath); os.IsNotExist(err) {
 		return NewConfig(), nil
 	}

@@ -312,7 +312,7 @@ func (m *SectionManagerModel) Init() tea.Cmd {
 }
 
 // Update handles messages.
-func (m *SectionManagerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m *SectionManagerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) { //nolint:gocyclo
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.SetSize(msg.Width, msg.Height)

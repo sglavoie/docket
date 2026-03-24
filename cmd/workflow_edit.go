@@ -127,7 +127,7 @@ func init() {
 	addOutputFlags(workflowEditCmd)
 }
 
-func runWorkflowEdit(cmd *cobra.Command, args []string) error {
+func runWorkflowEdit(cmd *cobra.Command, args []string) error { //nolint:gocyclo
 	if len(args) < 1 {
 		return tterrors.NewRequiredFieldError("rule ID")
 	}

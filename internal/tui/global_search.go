@@ -194,10 +194,9 @@ func (m *GlobalSearchModel) SetSize(width, height int) {
 
 	// Calculate split pane widths: 50/50 based on inner width
 	m.listWidth = max(innerWidth*50/100, 1)
-	m.previewWidth = innerWidth - m.listWidth - 1 // -1 for separator
-	if m.previewWidth < 1 {
-		m.previewWidth = 1
-	}
+	m.previewWidth = max(
+		// -1 for separator
+		innerWidth-m.listWidth-1, 1)
 
 	m.searchInput.SetWidth(max(innerWidth-4, 1))
 }

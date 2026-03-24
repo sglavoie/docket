@@ -261,7 +261,7 @@ func (m *TaskEditorModel) Init() tea.Cmd {
 	return textarea.Blink
 }
 
-func (m *TaskEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m *TaskEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) { //nolint:gocyclo
 	var cmd tea.Cmd
 
 	switch msg := msg.(type) {

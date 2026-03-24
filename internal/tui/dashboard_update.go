@@ -9,7 +9,7 @@ import (
 	"github.com/sglavoie/tt/internal/storage"
 )
 
-func (m *DashboardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m *DashboardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) { //nolint:gocyclo
 	visible := m.visibleProjects()
 
 	switch msg := msg.(type) {

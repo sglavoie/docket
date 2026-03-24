@@ -63,7 +63,7 @@ func (m *TaskAttachmentsModel) SetSize(width, height int) {
 	m.textInput.SetWidth(width - 4)
 }
 
-func (m *TaskAttachmentsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m *TaskAttachmentsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) { //nolint:gocyclo
 	var cmd tea.Cmd
 
 	// Handle confirmation mode
@@ -681,7 +681,7 @@ func (m *TaskAttachmentsModel) revealOriginalFile() tea.Cmd {
 	})
 }
 
-func (m *TaskAttachmentsModel) View() tea.View {
+func (m *TaskAttachmentsModel) View() tea.View { //nolint:gocyclo
 	if m.task == nil {
 		return tea.NewView("No task selected")
 	}

@@ -328,7 +328,6 @@ func (m *PriorityViewModel) renderTaskLine(pt *PriorityTask, isOverdue bool, isS
 // renderWaitingOnTask renders a blocked task in the waiting on section.
 func (m *PriorityViewModel) renderWaitingOnTask(pt *PriorityTask) string {
 	task := pt.Task
-	maxTitleLen := m.Width() - 50
 
 	// Blocked status icon
 	statusIcon := BlockedStyle.Render(StatusIconBlocked)
@@ -336,21 +335,12 @@ func (m *PriorityViewModel) renderWaitingOnTask(pt *PriorityTask) string {
 	// Type icon with badge style
 	typeIcon := GetTypeBadge(string(task.Type), task.Type.Icon())
 
-	// Title
-	if maxTitleLen < 10 {
-		maxTitleLen = 10
-	}
-	title := truncateToVisualWidth(task.Title, maxTitleLen)
-	if m.searchQuery != "" {
-		title = HighlightSubstring(title, m.searchQuery, NormalStyle)
-	}
-
 	// Blocking reason
 	blockingReason := m.getBlockingReason(task)
 	prefix := fmt.Sprintf("    %s %s ", statusIcon, typeIcon)
 	suffix := " " + MutedStyle.Render(blockingReason)
 	titleWidth := max(m.Width()-lipgloss.Width(prefix)-lipgloss.Width(suffix), 1)
-	title = truncateToVisualWidth(task.Title, titleWidth)
+	title := truncateToVisualWidth(task.Title, titleWidth)
 	if m.searchQuery != "" {
 		title = HighlightSubstring(title, m.searchQuery, NormalStyle)
 	}

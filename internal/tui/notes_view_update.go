@@ -12,7 +12,7 @@ import (
 	"github.com/sglavoie/tt/internal/storage"
 )
 
-func (m *NotesViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m *NotesViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) { //nolint:gocyclo
 	switch msg := msg.(type) {
 	case CursorFlashClearMsg:
 		m.cursorFlash = false

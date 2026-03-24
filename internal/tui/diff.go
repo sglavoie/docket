@@ -121,6 +121,7 @@ func SummarizeDiff(lines []DiffLine) (added, removed int) {
 			added++
 		case DiffRemove:
 			removed++
+		default:
 		}
 	}
 	return

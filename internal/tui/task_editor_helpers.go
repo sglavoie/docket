@@ -628,6 +628,7 @@ func (m *TaskEditorModel) handleAttrEnter(fieldIdx int) func() any {
 				}
 			}
 		}
+	default:
 	}
 	return nil
 }

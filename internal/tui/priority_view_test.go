@@ -223,7 +223,7 @@ func intPtr(i int) *int {
 	return &i
 }
 
-func TestLoadActionableTasks(t *testing.T) {
+func TestLoadActionableTasks(t *testing.T) { //nolint:gocyclo
 	t.Run("filters out completed tasks", func(t *testing.T) {
 		project := newTestPriorityProject(t)
 

@@ -235,7 +235,7 @@ func (m *AppModel) projectCommands() []Command {
 	}
 }
 
-func (m *AppModel) taskActionCommands() []Command {
+func (m *AppModel) taskActionCommands() []Command { //nolint:gocyclo
 	return []Command{
 		{
 			Name:        "edit task",

@@ -171,6 +171,7 @@ func runBoardList(cmd *cobra.Command, args []string) error {
 			statusIcon = "x"
 		case models.StatusCanceled:
 			statusIcon = "-"
+		default:
 		}
 
 		source := ""

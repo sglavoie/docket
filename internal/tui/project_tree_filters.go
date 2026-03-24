@@ -125,7 +125,7 @@ func (m *ProjectTreeModel) updateVisibility() {
 
 // passesFilters checks if a node passes all current filters (view mode, status, etc.)
 // without considering parent visibility. This determines "intrinsic" visibility.
-func (m *ProjectTreeModel) passesFilters(node *TreeNode) bool {
+func (m *ProjectTreeModel) passesFilters(node *TreeNode) bool { //nolint:gocyclo
 	// Handle snoozed view mode
 	if m.viewMode == ViewModeSnoozed {
 		// In Snoozed view, ONLY show snoozed tasks
@@ -202,6 +202,7 @@ func (m *ProjectTreeModel) passesFilters(node *TreeNode) bool {
 			}
 		case ViewModeAll:
 			// Show all non-completed, non-snoozed tasks (no section filtering)
+		default:
 		}
 	}
 
@@ -480,6 +481,7 @@ func (m *ProjectTreeModel) getHiddenSectionsForViewMode() []string {
 		return []string{models.SectionInbox, models.SectionNext, models.SectionWaiting, models.SectionSomeday, models.SectionReview, models.SectionCompleted, "Active"}
 	case ViewModeAll:
 		return []string{models.SectionCompleted} // Hide Completed from All view (use Completed view instead)
+	default:
 	}
 	return nil
 }
@@ -497,7 +499,7 @@ func (m *ProjectTreeModel) findNodeByTaskID(id string) *TreeNode {
 // passesAttrFilters checks if a task passes all attribute filters.
 // Attribute filter keys: "bug.severity", "bug.reproducible", "idea.category", "idea.value",
 // "idea.validated", "effort" (task/idea), "task.worktype", "epic.scope", "story.points"
-func passesAttrFilters(task *models.Task, attrs map[string]string) bool {
+func passesAttrFilters(task *models.Task, attrs map[string]string) bool { //nolint:gocyclo
 	if len(attrs) == 0 {
 		return true
 	}

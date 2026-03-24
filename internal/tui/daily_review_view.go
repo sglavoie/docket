@@ -1,11 +1,12 @@
 package tui
 
 import (
-	tea "charm.land/bubbletea/v2"
 	"fmt"
 	"maps"
 	"strings"
 	"time"
+
+	tea "charm.land/bubbletea/v2"
 
 	"charm.land/lipgloss/v2"
 )
@@ -280,6 +281,7 @@ func (m *DailyReviewModel) sectionContextStr(dt CrossProjectTask, section DailyR
 			displayTime = task.CreatedAt
 		}
 		return MutedStyle.Render(formatRelativeTime(displayTime))
+	default:
 	}
 	return ""
 }

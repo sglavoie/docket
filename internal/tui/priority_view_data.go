@@ -56,6 +56,7 @@ func (m *PriorityViewModel) loadActionableTasks() {
 			m.later = append(m.later, pt)
 		case PriorityGroupBacklog:
 			m.backlog = append(m.backlog, pt)
+		default:
 		}
 	}
 

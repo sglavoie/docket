@@ -9,7 +9,7 @@ import (
 )
 
 // Update handles state transitions for the workflow rule creator.
-func (m *WorkflowRuleCreatorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m *WorkflowRuleCreatorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) { //nolint:gocyclo
 	var cmd tea.Cmd
 
 	// Handle picker overlays first

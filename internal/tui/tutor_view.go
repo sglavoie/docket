@@ -2,7 +2,6 @@ package tui
 
 import (
 	"fmt"
-	"image/color"
 	"strings"
 
 	"charm.land/bubbles/v2/textinput"
@@ -75,7 +74,7 @@ func (m *TutorModel) Init() tea.Cmd {
 	return nil
 }
 
-func (m *TutorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m *TutorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) { //nolint:gocyclo
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.SetSize(msg.Width, msg.Height)
@@ -478,8 +477,8 @@ func (m *TutorModel) View() tea.View {
 		vpH := m.viewport.Height()
 
 		// Focus indicator bar
-		leftColor := color.Color(ColorBorder)
-		rightColor := color.Color(ColorBorder)
+		leftColor := ColorBorder
+		rightColor := ColorBorder
 		if m.activePane == 0 {
 			leftColor = ColorPrimary
 		} else {

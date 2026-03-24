@@ -99,7 +99,7 @@ func runTaskList(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	_ = configManager
+	_, _ = cfg, configManager
 
 	// Apply filters
 	tasks := filterTasks(project.Tasks)
@@ -333,6 +333,7 @@ func printTaskNode(task *models.Task, depth int) {
 		style = style.Foreground(lipgloss.Color("214"))
 	case models.StatusBlocked:
 		style = style.Foreground(lipgloss.Color("196"))
+	default:
 	}
 
 	line := fmt.Sprintf("%s%s%s %s #%d %s",

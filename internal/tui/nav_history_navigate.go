@@ -164,6 +164,7 @@ func (m *AppModel) reconstructGlobalView(entry NavEntry) tea.Cmd {
 		}
 		m.allTasksView = atv
 		m.showView(ViewAllTasks, atv)
+	default:
 	}
 	return nil
 }
@@ -223,6 +224,7 @@ func (m *AppModel) reconstructProjectView(entry NavEntry) tea.Cmd {
 		m.showView(ViewTemporaryOutliner, fresh)
 	case ViewProjectRecentActivity:
 		m.showView(ViewProjectRecentActivity, NewProjectRecentActivityModel(m.config, project))
+	default:
 	}
 	return nil
 }
@@ -254,6 +256,7 @@ func (m *AppModel) reconstructTaskView(entry NavEntry) tea.Cmd {
 	case ViewTaskActivity:
 		m.lastNavigatedTaskID = task.ID
 		m.showView(ViewTaskActivity, NewTaskActivityModel(task, project))
+	default:
 	}
 	return nil
 }

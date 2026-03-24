@@ -379,6 +379,7 @@ func (m *AppModel) breadcrumbLabel(vt ViewType, maxProjectLen int) string {
 		return "Daily Review"
 	case ViewWeeklyReview:
 		return "Weekly Review"
+	default:
 	}
 	return ""
 }

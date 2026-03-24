@@ -264,7 +264,7 @@ func (m *OutlinerModel) renderWithSidebar() string {
 
 // renderOutlinerTreeContent renders the tree portion of the outliner, constrained to
 // the given width. Used by both full-width and split-pane layouts.
-func (m *OutlinerModel) renderOutlinerTreeContent(width int) string {
+func (m *OutlinerModel) renderOutlinerTreeContent(width int) string { //nolint:gocyclo
 	// Capture and clear the transient zoom notice (shown for one render).
 	notice := m.zoomNotice
 	m.zoomNotice = ""

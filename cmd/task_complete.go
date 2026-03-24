@@ -194,7 +194,7 @@ var actionToTargetStatus = map[string]models.TaskStatus{
 	"standby":  models.StatusStandby,
 }
 
-func updateTaskStatus(args []string, action string, out MutateOutput, force bool, update func(*models.Task)) error {
+func updateTaskStatus(args []string, action string, out MutateOutput, force bool, update func(*models.Task)) error { //nolint:gocyclo
 	// Handle interactive selection if no ID provided
 	var taskIDs []string
 	var projectName string

@@ -7,7 +7,7 @@ import (
 )
 
 // handleKeyMsg processes key events in the outliner view.
-func (m *OutlinerModel) handleKeyMsg(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
+func (m *OutlinerModel) handleKeyMsg(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) { //nolint:gocyclo
 	key := msg.String()
 
 	// Handle score filter custom value input

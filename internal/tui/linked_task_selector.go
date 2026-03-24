@@ -373,7 +373,7 @@ func (m *LinkedTaskSelectorModel) unlinkMissingTaskFromFiltered(idx int) tea.Cmd
 	return m.unlinkTaskFromFiltered(idx)
 }
 
-func (m *LinkedTaskSelectorModel) View() tea.View {
+func (m *LinkedTaskSelectorModel) View() tea.View { //nolint:gocyclo
 	taskSubtitle := fmt.Sprintf("#%d %s", m.sourceTask.ShortID, truncateToVisualWidth(m.sourceTask.Title, 30))
 
 	var b strings.Builder

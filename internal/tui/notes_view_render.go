@@ -2,7 +2,6 @@ package tui
 
 import (
 	"fmt"
-	"image/color"
 	"strings"
 	"time"
 
@@ -246,7 +245,7 @@ func (m *NotesViewModel) renderFooter() string {
 }
 
 func (m *NotesViewModel) renderDivider() string {
-	dividerColor := color.Color(ColorMuted)
+	dividerColor := ColorMuted
 	if m.detailsPane.Focused {
 		dividerColor = ColorPrimary
 	}

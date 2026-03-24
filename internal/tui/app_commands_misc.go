@@ -201,7 +201,7 @@ func (m *AppModel) otherCommands() []Command {
 	}
 }
 
-func (m *AppModel) outlinerCommands() []Command {
+func (m *AppModel) outlinerCommands() []Command { //nolint:gocyclo
 	// Helper to get the task under the outliner cursor.
 	cursorTask := func() *models.Task {
 		if m.outliner == nil || len(m.outliner.rows) == 0 || m.outliner.cursor >= len(m.outliner.rows) {

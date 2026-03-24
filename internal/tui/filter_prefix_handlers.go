@@ -493,6 +493,7 @@ func buildCommonFilterPrefixHints(f *CommonFilterState, includeDueDate, includeS
 			dueDetail = "week"
 		case DueDateNone:
 			dueDetail = "no-date"
+		default:
 		}
 		hints = append(hints, PrefixHint{Key: "d", Description: "due-date", Detail: dueDetail, Active: f.DueDate != DueDateAll})
 	}

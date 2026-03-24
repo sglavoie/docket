@@ -828,6 +828,7 @@ func (m *WorkflowRuleCreatorModel) actionNeedsNoValue(actionType workflow.Action
 	switch actionType {
 	case workflow.ActionClearDue, workflow.ActionCompleteParent, workflow.ActionBlockParent:
 		return true
+	default:
 	}
 	return false
 }

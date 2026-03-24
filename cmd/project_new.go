@@ -97,7 +97,7 @@ func runProjectNew(cmd *cobra.Command, args []string) error {
 		return tterrors.NewInvalidValueError("context", projectContext, "cannot be empty")
 	}
 	if !isKnownContext(projectContext, cfg) {
-		fmt.Fprintf(cmd.ErrOrStderr(), "warning: unknown context %q (known: %s)\n", projectContext, knownContextList(cfg))
+		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "warning: unknown context %q (known: %s)\n", projectContext, knownContextList(cfg))
 	}
 
 	// Create project

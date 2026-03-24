@@ -469,7 +469,7 @@ func (m *BulkEditModel) renderRecurrenceField() string {
 }
 
 // renderParentField renders the parent selection field.
-func (m *BulkEditModel) renderParentField() string {
+func (m *BulkEditModel) renderParentField() string { //nolint:gocyclo
 	var b strings.Builder
 
 	focused := m.focusIndex == fieldParent

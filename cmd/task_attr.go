@@ -137,7 +137,7 @@ func runTaskAttr(cmd *cobra.Command, args []string) error {
 
 // collectAttrDeltas captures the old values for attributes that are about to change
 // and returns formatted "field: old -> new" strings.
-func collectAttrDeltas(task *models.Task, vals TypeAttrValues, cmd *cobra.Command) []string {
+func collectAttrDeltas(task *models.Task, vals TypeAttrValues, cmd *cobra.Command) []string { //nolint:gocyclo
 	var deltas []string
 	delta := func(name, oldVal, newVal string) {
 		if oldVal == "" {

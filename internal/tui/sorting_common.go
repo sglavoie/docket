@@ -120,6 +120,7 @@ func CompareTasks(a, b *models.Task, field SortField, projectID string, cfg *con
 			}
 		}
 		return 0
+	default:
 	}
 
 	return 0

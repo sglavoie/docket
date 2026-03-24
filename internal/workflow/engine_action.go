@@ -20,6 +20,7 @@ func applyActionWithContext(task *models.Task, action RuleAction, evalCtx *Evalu
 		return applyCreateFollowup(task, action, result)
 	case ActionMoveToProject:
 		return applyMoveToProject(task, action, result)
+	default:
 	}
 
 	return applyAction(task, action)
@@ -61,6 +62,7 @@ func applyHierarchicalAction(task *models.Task, action RuleAction, evalCtx *Eval
 			task.Parent.AddComment("[Workflow] " + action.Value)
 			return true
 		}
+	default:
 	}
 
 	_ = evalCtx
@@ -93,7 +95,7 @@ func applyMoveToProject(task *models.Task, action RuleAction, result *Evaluation
 }
 
 // applyAction applies a rule action to a task. Returns true if the task was modified.
-func applyAction(task *models.Task, action RuleAction) bool {
+func applyAction(task *models.Task, action RuleAction) bool { //nolint:gocyclo
 	switch action.ActionType {
 	case ActionSetStatus:
 		newStatus := models.TaskStatus(action.Value)
@@ -217,6 +219,7 @@ func applyAction(task *models.Task, action RuleAction) bool {
 		task.Recurrence = pattern
 		task.UpdatedAt = time.Now()
 		return true
+	default:
 	}
 	return false
 }

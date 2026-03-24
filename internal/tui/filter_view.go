@@ -142,6 +142,7 @@ func (m *FilterViewModel) buildFilterList() {
 			dueName = "this week"
 		case DueDateNone:
 			dueName = "no due date"
+		default:
 		}
 		m.items = append(m.items, FilterItem{
 			Name:       "Due Date",
@@ -183,6 +184,7 @@ func (m *FilterViewModel) clearFilter(filterType FilterType) {
 			m.projectTree.searchQuery = ""
 			m.projectTree.searchInput.SetValue("")
 		}
+	default:
 	}
 	// Update visibility only if projectTree is available
 	if m.projectTree != nil {

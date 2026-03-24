@@ -33,12 +33,7 @@ func ValidateDependencyChain(taskID, blockerID string, allTasks []*Task) error {
 		if !ok {
 			return false
 		}
-		for _, depID := range t.DependsOn {
-			if canReach(depID) {
-				return true
-			}
-		}
-		return false
+		return slices.ContainsFunc(t.DependsOn, canReach)
 	}
 	if canReach(blockerID) {
 		return fmt.Errorf("circular dependency: adding this dependency would create a cycle")

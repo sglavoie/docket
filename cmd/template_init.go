@@ -83,7 +83,7 @@ func init() {
 	addOutputFlags(templateInitCmd)
 }
 
-func runTemplateInit(cmd *cobra.Command, args []string) error {
+func runTemplateInit(cmd *cobra.Command, args []string) error { //nolint:gocyclo
 	out, err := getOutputOpts(cmd)
 	if err != nil {
 		return err
@@ -103,9 +103,9 @@ func runTemplateInit(cmd *cobra.Command, args []string) error {
 			for _, t := range defaults {
 				entries = append(entries, templateEntry{ID: t.ID, Name: t.Name, Category: t.Category, Summary: t.Summary()})
 			}
-			data, err := json.MarshalIndent(entries, "", "  ")
-			if err != nil {
-				return fmt.Errorf("marshal JSON: %w", err)
+			data, marshalErr := json.MarshalIndent(entries, "", "  ")
+			if marshalErr != nil {
+				return fmt.Errorf("marshal JSON: %w", marshalErr)
 			}
 			fmt.Println(string(data))
 			return nil

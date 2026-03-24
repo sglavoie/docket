@@ -373,7 +373,8 @@ func TestBuildTaskTree_MaxNestingDepthRelevelSubtree(t *testing.T) {
 	chainLen := MaxNestingDepth + 2 // one past the cap
 	tasks := make([]*Task, chainLen)
 	for i := range chainLen {
-		task, err := NewTask(fmt.Sprintf("chain-%d", i), i+1, TaskTypeTask, fmt.Sprintf("Chain %d", i))
+		var task *Task
+		task, err = NewTask(fmt.Sprintf("chain-%d", i), i+1, TaskTypeTask, fmt.Sprintf("Chain %d", i))
 		if err != nil {
 			t.Fatal(err)
 		}

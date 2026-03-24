@@ -1,15 +1,16 @@
 package tui
 
 import (
-	tea "charm.land/bubbletea/v2"
 	"fmt"
 	"maps"
 	"strings"
 
+	tea "charm.land/bubbletea/v2"
+
 	"charm.land/lipgloss/v2"
 )
 
-func (m *FocusViewModel) View() tea.View {
+func (m *FocusViewModel) View() tea.View { //nolint:gocyclo
 	var b strings.Builder
 
 	// Title

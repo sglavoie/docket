@@ -34,7 +34,7 @@ func WouldCreateCycle(taskMap map[string]*Task, taskID, proposedParentID string)
 // BuildTaskTree organizes flat tasks into a tree structure.
 // Sets Parent, Children, and Level for each task.
 // Cross-project refs are validated in storage/markdown.go LoadProject()
-func (p *Project) BuildTaskTree() {
+func (p *Project) BuildTaskTree() { //nolint:gocyclo
 	taskMap := make(map[string]*Task)
 	for _, task := range p.Tasks {
 		task.Children = []*Task{}

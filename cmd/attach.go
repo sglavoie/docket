@@ -52,7 +52,7 @@ func init() {
 	addOutputFlags(attachCmd)
 }
 
-func runAttach(cmd *cobra.Command, args []string) error {
+func runAttach(cmd *cobra.Command, args []string) error { //nolint:gocyclo
 	out, err := getOutputOpts(cmd)
 	if err != nil {
 		return err
@@ -78,14 +78,16 @@ func runAttach(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("URL exceeds maximum length of 2000 characters (%d)", len(url))
 		}
 
-		if err := task.AddAttachment(url, true, url); err != nil {
+		err = task.AddAttachment(url, true, url)
+		if err != nil {
 			return err
 		}
 
-		if err := SaveProject(project, &SaveOptions{
+		err = SaveProject(project, &SaveOptions{
 			Config: cfg, ConfigManager: configManager,
 			UndoAction: "Attach URL", UndoContext: url,
-		}); err != nil {
+		})
+		if err != nil {
 			return err
 		}
 
@@ -93,13 +95,13 @@ func runAttach(cmd *cobra.Command, args []string) error {
 			return nil
 		}
 		if out.JSON {
-			data, err := json.MarshalIndent(struct {
+			data, marshalErr := json.MarshalIndent(struct {
 				TaskShortID int    `json:"task_short_id"`
 				Attachment  string `json:"attachment"`
 				Type        string `json:"type"`
 			}{TaskShortID: task.ShortID, Attachment: url, Type: "url"}, "", "  ")
-			if err != nil {
-				return fmt.Errorf("marshal JSON: %w", err)
+			if marshalErr != nil {
+				return fmt.Errorf("marshal JSON: %w", marshalErr)
 			}
 			fmt.Println(string(data))
 			return nil
@@ -120,14 +122,16 @@ func runAttach(cmd *cobra.Command, args []string) error {
 	codePath, lineNum, isCodeRef := storage.ParseCodeReference(filePath)
 	if isCodeRef {
 		// Store code reference without copying
-		if err := task.AddCodeReference(codePath, lineNum); err != nil {
+		err = task.AddCodeReference(codePath, lineNum)
+		if err != nil {
 			return err
 		}
 
-		if err := SaveProject(project, &SaveOptions{
+		err = SaveProject(project, &SaveOptions{
 			Config: cfg, ConfigManager: configManager,
 			UndoAction: "Attach Code Ref", UndoContext: fmt.Sprintf("%s:%d", codePath, lineNum),
-		}); err != nil {
+		})
+		if err != nil {
 			return err
 		}
 
@@ -135,13 +139,13 @@ func runAttach(cmd *cobra.Command, args []string) error {
 			return nil
 		}
 		if out.JSON {
-			data, err := json.MarshalIndent(struct {
+			data, marshalErr := json.MarshalIndent(struct {
 				TaskShortID int    `json:"task_short_id"`
 				Attachment  string `json:"attachment"`
 				Type        string `json:"type"`
 			}{TaskShortID: task.ShortID, Attachment: fmt.Sprintf("%s:%d", codePath, lineNum), Type: "code_ref"}, "", "  ")
-			if err != nil {
-				return fmt.Errorf("marshal JSON: %w", err)
+			if marshalErr != nil {
+				return fmt.Errorf("marshal JSON: %w", marshalErr)
 			}
 			fmt.Println(string(data))
 			return nil
@@ -184,14 +188,16 @@ func runAttach(cmd *cobra.Command, args []string) error {
 	}
 
 	// Add attachment to task metadata
-	if err := task.AddAttachment(filename, false, absPath); err != nil {
+	err = task.AddAttachment(filename, false, absPath)
+	if err != nil {
 		return err
 	}
 
-	if err := SaveProject(project, &SaveOptions{
+	err = SaveProject(project, &SaveOptions{
 		Config: cfg, ConfigManager: configManager,
 		UndoAction: "Attach File", UndoContext: filename,
-	}); err != nil {
+	})
+	if err != nil {
 		return err
 	}
 
@@ -199,13 +205,13 @@ func runAttach(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 	if out.JSON {
-		data, err := json.MarshalIndent(struct {
+		data, marshalErr := json.MarshalIndent(struct {
 			TaskShortID int    `json:"task_short_id"`
 			Attachment  string `json:"attachment"`
 			Type        string `json:"type"`
 		}{TaskShortID: task.ShortID, Attachment: filename, Type: "file"}, "", "  ")
-		if err != nil {
-			return fmt.Errorf("marshal JSON: %w", err)
+		if marshalErr != nil {
+			return fmt.Errorf("marshal JSON: %w", marshalErr)
 		}
 		fmt.Println(string(data))
 		return nil

@@ -278,7 +278,7 @@ func (m *ProjectTreeModel) bulkDeleteTasks() tea.Cmd {
 }
 
 // applyBulkChanges applies bulk edit changes to the given tasks.
-func (m *ProjectTreeModel) applyBulkChanges(changes PendingChanges, tasks []*models.Task) tea.Cmd {
+func (m *ProjectTreeModel) applyBulkChanges(changes PendingChanges, tasks []*models.Task) tea.Cmd { //nolint:gocyclo
 	if !changes.HasChanges() || len(tasks) == 0 {
 		return nil
 	}

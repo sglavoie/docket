@@ -616,6 +616,7 @@ func (a RuleAction) Validate() error {
 		if models.ProjectStatusIconByKey(a.Value) == nil {
 			return fmt.Errorf("invalid project status icon key: %s", a.Value)
 		}
+	default:
 	}
 
 	// Validate embedded condition if present
@@ -727,6 +728,7 @@ func IsEventTrigger(field TriggerField) bool {
 		FieldTagAdded, FieldTagRemoved, FieldCompleted, FieldReopened,
 		FieldDueDateChanged, FieldTypeChanged, FieldRecurrenceCompleted, FieldStreakBroken:
 		return true
+	default:
 	}
 	return false
 }
@@ -738,6 +740,7 @@ func IsHierarchicalTrigger(field TriggerField) bool {
 		FieldHasChildren, FieldChildrenProgress, FieldAllChildrenDone,
 		FieldIsBlocked, FieldBlockerCount, FieldDependencyCount:
 		return true
+	default:
 	}
 	return false
 }
@@ -748,6 +751,7 @@ func IsHierarchicalAction(actionType ActionType) bool {
 	case ActionCompleteParent, ActionBlockParent, ActionCascadeTag,
 		ActionInheritTag, ActionNotifyParent:
 		return true
+	default:
 	}
 	return false
 }
@@ -759,6 +763,7 @@ func IsProjectTrigger(field TriggerField) bool {
 		FieldMajorityTaskType, FieldMajorityTaskStatus, FieldCompletionRatio,
 		FieldDaysSinceUpdate, FieldProjectStatus, FieldHasTasksWithStatus:
 		return true
+	default:
 	}
 	return false
 }

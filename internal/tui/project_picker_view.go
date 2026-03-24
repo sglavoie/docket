@@ -62,8 +62,8 @@ func (m *ProjectPickerModel) renderList(width int) string {
 	// Calculate max name length from filtered items for aligned columns
 	maxNameLen := 0
 	for _, item := range m.Filtered {
-		if width := lipgloss.Width(item.Project.Name); width > maxNameLen {
-			maxNameLen = width
+		if nameWidth := lipgloss.Width(item.Project.Name); nameWidth > maxNameLen {
+			maxNameLen = nameWidth
 		}
 	}
 	// Cap to width with room for cursor, context badge, and task count

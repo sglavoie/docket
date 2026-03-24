@@ -494,7 +494,7 @@ func ApplyTheme(tc ThemeConfig) {
 	// alwaysBg is the background used for styles that always have one (custom or the
 	// default dark terminal background).
 	var customBg color.Color
-	alwaysBg := color.Color(ColorBackground)
+	alwaysBg := ColorBackground
 	if tc.BgColor != "" {
 		customBg = lipgloss.Color(tc.BgColor)
 		alwaysBg = customBg
@@ -1184,7 +1184,7 @@ const (
 )
 
 // Priority icon constants for TUI rendering. Each level gets a distinct shape
-// so that status is not conveyed by colour alone.
+// so that status is not conveyed by color alone.
 const (
 	PriorityIcon1 = "◉" // critical  — bullseye
 	PriorityIcon2 = "●" // high      — filled circle
@@ -1192,28 +1192,6 @@ const (
 	PriorityIcon4 = "◇" // low       — hollow diamond
 	PriorityIcon5 = "·" // minimal   — tiny dot
 )
-
-// StatusIcon returns the unicode icon for a task status string.
-func StatusIcon(status string) string {
-	switch status {
-	case "todo":
-		return StatusIconTodo
-	case "in_progress":
-		return StatusIconInProgress
-	case "review":
-		return StatusIconReview
-	case "standby":
-		return StatusIconStandby
-	case "done":
-		return StatusIconDone
-	case "blocked":
-		return StatusIconBlocked
-	case "canceled":
-		return StatusIconCanceled
-	default:
-		return "·"
-	}
-}
 
 // PriorityIcon returns the unicode icon for a priority level (1–5).
 func PriorityIcon(priority int) string {

@@ -336,7 +336,7 @@ func TestWriteMetadata_TypeAttrs(t *testing.T) {
 	}
 }
 
-func TestTypeAttrs_RoundTrip(t *testing.T) {
+func TestTypeAttrs_RoundTrip(t *testing.T) { //nolint:gocyclo
 	tests := []struct {
 		name string
 		task *models.Task

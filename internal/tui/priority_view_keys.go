@@ -6,7 +6,7 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 )
 
-func (m *PriorityViewModel) handleKeypress(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
+func (m *PriorityViewModel) handleKeypress(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) { //nolint:gocyclo
 	key := msg.String()
 
 	// Handle search input mode

@@ -107,10 +107,7 @@ func (m *NotesSearchModel) SetSize(width, height int) {
 	innerWidth := max(width-10, 1)
 
 	m.listWidth = max(innerWidth*50/100, 1)
-	m.previewWidth = innerWidth - m.listWidth - 1
-	if m.previewWidth < 1 {
-		m.previewWidth = 1
-	}
+	m.previewWidth = max(innerWidth-m.listWidth-1, 1)
 
 	m.searchInput.SetWidth(max(innerWidth-4, 1))
 }

@@ -276,6 +276,7 @@ func (m *ProjectTreeModel) buildFilterPrefixHints() []PrefixHint {
 		dueDetail = "week"
 	case DueDateNone:
 		dueDetail = "no-date"
+	default:
 	}
 
 	readyDetail := "off"

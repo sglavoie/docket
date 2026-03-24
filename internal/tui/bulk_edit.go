@@ -131,7 +131,7 @@ func NewBulkEditModel(tasks []*models.Task, project *models.Project) *BulkEditMo
 }
 
 // analyzeCurrentValues examines all selected tasks to build summaries.
-func (m *BulkEditModel) analyzeCurrentValues() {
+func (m *BulkEditModel) analyzeCurrentValues() { //nolint:gocyclo
 	if len(m.tasks) == 0 {
 		return
 	}

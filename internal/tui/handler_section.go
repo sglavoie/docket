@@ -10,7 +10,7 @@ import (
 
 // handleSectionMessages handles section-related messages.
 // Returns true if the message was handled.
-func (m *AppModel) handleSectionMessages(msg tea.Msg) (bool, tea.Cmd) {
+func (m *AppModel) handleSectionMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint:gocyclo
 	switch msg := msg.(type) {
 	case ShowSectionFilterSelectorMsg:
 		if msg.ProjectTree != nil {

@@ -51,7 +51,7 @@ func (m *TaskTemplatesModel) Init() tea.Cmd {
 	return nil
 }
 
-func (m *TaskTemplatesModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m *TaskTemplatesModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) { //nolint:gocyclo
 	switch msg := msg.(type) {
 	case CursorFlashClearMsg:
 		m.cursorFlash = false

@@ -11,7 +11,7 @@ import (
 
 // taskMatchesFieldFilters checks if a task matches all field filters.
 // Returns false if the item is not a task or doesn't match any filter.
-func (m *CommandPaletteModel) taskMatchesFieldFilters(item PaletteItem, filters []fieldFilter) bool {
+func (m *CommandPaletteModel) taskMatchesFieldFilters(item PaletteItem, filters []fieldFilter) bool { //nolint:gocyclo
 	// Non-task items don't match field filters (they get filtered out)
 	if item.Category != ItemCategoryTasks || item.Task == nil {
 		return len(filters) == 0 // Allow non-tasks only if no filters

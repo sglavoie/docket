@@ -65,7 +65,7 @@ func init() {
 	workflowEvalCmd.Flags().StringVar(&evalProject, "project", "", "Specific project to evaluate (name or ID)")
 }
 
-func runWorkflowEval(cmd *cobra.Command, args []string) error {
+func runWorkflowEval(cmd *cobra.Command, args []string) error { //nolint:gocyclo
 	cfg, configManager, err := LoadConfig()
 	if err != nil {
 		return err

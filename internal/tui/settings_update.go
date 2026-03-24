@@ -10,7 +10,7 @@ import (
 // stageValidationClearMsg is sent after a timeout to clear the stage validation error.
 type stageValidationClearMsg struct{}
 
-func (m *SettingsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m *SettingsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) { //nolint:gocyclo
 	var cmd tea.Cmd
 
 	switch msg := msg.(type) {
@@ -457,7 +457,7 @@ func (m *SettingsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 // blurCurrentField removes focus from the current field.
-func (m *SettingsModel) blurCurrentField() {
+func (m *SettingsModel) blurCurrentField() { //nolint:gocyclo
 	switch m.focusIndex {
 	case 0:
 		m.editorInput.Blur()
@@ -534,7 +534,7 @@ func (m *SettingsModel) blurCurrentField() {
 }
 
 // focusCurrentField sets focus on the current field.
-func (m *SettingsModel) focusCurrentField() {
+func (m *SettingsModel) focusCurrentField() { //nolint:gocyclo
 	switch m.focusIndex {
 	case 0:
 		m.editorInput.Focus()

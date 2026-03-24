@@ -35,8 +35,8 @@ func TestProcessDeferredMoves_WarnsCrossProjectDependencies(t *testing.T) {
 		// Set up destination project
 		destProject := testutil.NewTestProject("Dest")
 		destProject.Path = tmpDir + "/dest"
-		if err := os.MkdirAll(destProject.Path, 0o755); err != nil {
-			t.Fatal(err)
+		if mkdirErr := os.MkdirAll(destProject.Path, 0o755); mkdirErr != nil {
+			t.Fatal(mkdirErr)
 		}
 
 		// Wire up mock storage
@@ -59,7 +59,7 @@ func TestProcessDeferredMoves_WarnsCrossProjectDependencies(t *testing.T) {
 
 		err = processDeferredMoves(srcProject, moves, deps.Config, nil)
 
-		w.Close()
+		_ = w.Close()
 		os.Stdout = oldStdout
 		var buf bytes.Buffer
 		_, _ = io.Copy(&buf, r)
@@ -94,8 +94,8 @@ func TestProcessDeferredMoves_WarnsCrossProjectDependencies(t *testing.T) {
 
 		destProject := testutil.NewTestProject("Dest")
 		destProject.Path = tmpDir + "/dest"
-		if err := os.MkdirAll(destProject.Path, 0o755); err != nil {
-			t.Fatal(err)
+		if mkdirErr := os.MkdirAll(destProject.Path, 0o755); mkdirErr != nil {
+			t.Fatal(mkdirErr)
 		}
 
 		deps.Repository.Projects[srcProject.ID] = srcProject
@@ -116,7 +116,7 @@ func TestProcessDeferredMoves_WarnsCrossProjectDependencies(t *testing.T) {
 
 		err = processDeferredMoves(srcProject, moves, deps.Config, nil)
 
-		w.Close()
+		_ = w.Close()
 		os.Stdout = oldStdout
 		var buf bytes.Buffer
 		_, _ = io.Copy(&buf, r)
@@ -150,8 +150,8 @@ func TestProcessDeferredMoves_WarnsCrossProjectDependencies(t *testing.T) {
 
 		destProject := testutil.NewTestProject("Dest")
 		destProject.Path = tmpDir + "/dest"
-		if err := os.MkdirAll(destProject.Path, 0o755); err != nil {
-			t.Fatal(err)
+		if mkdirErr := os.MkdirAll(destProject.Path, 0o755); mkdirErr != nil {
+			t.Fatal(mkdirErr)
 		}
 
 		deps.Repository.Projects[srcProject.ID] = srcProject
@@ -172,7 +172,7 @@ func TestProcessDeferredMoves_WarnsCrossProjectDependencies(t *testing.T) {
 
 		err = processDeferredMoves(srcProject, moves, deps.Config, nil)
 
-		w.Close()
+		_ = w.Close()
 		os.Stdout = oldStdout
 		var buf bytes.Buffer
 		_, _ = io.Copy(&buf, r)

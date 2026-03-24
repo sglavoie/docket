@@ -98,7 +98,7 @@ func init() {
 	addOutputFlags(templateEditCmd)
 }
 
-func runTemplateEdit(cmd *cobra.Command, args []string) error {
+func runTemplateEdit(cmd *cobra.Command, args []string) error { //nolint:gocyclo
 	if len(args) < 1 {
 		return tterrors.NewRequiredFieldError("template ID or name")
 	}

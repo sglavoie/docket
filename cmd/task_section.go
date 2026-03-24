@@ -54,7 +54,8 @@ func runTaskSection(cmd *cobra.Command, args []string) error {
 
 	// Validate section name upfront (not per-task)
 	if sectionName != "" {
-		if err := models.ValidateSectionName(sectionName); err != nil {
+		err = models.ValidateSectionName(sectionName)
+		if err != nil {
 			return err
 		}
 	}

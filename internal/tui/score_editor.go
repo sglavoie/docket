@@ -238,6 +238,7 @@ func (m *ScoreEditorModel) View() tea.View {
 			roleStr = " [num]"
 		case scoring.RoleDenominator:
 			roleStr = " [den]"
+		default:
 		}
 
 		sourceTag := mutedStyle.Render(fmt.Sprintf("(%s)", m.sources[i]))

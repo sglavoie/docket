@@ -117,6 +117,7 @@ func (t TaskType) IsLeafType() bool {
 	switch t {
 	case TaskTypeTask, TaskTypeBug, TaskTypeIdea:
 		return true
+	default:
 	}
 	return false
 }
@@ -159,6 +160,7 @@ func (t TaskType) CycleLeafLeft() TaskType {
 		return TaskTypeTask
 	case TaskTypeIdea:
 		return TaskTypeBug
+	default:
 	}
 	return t
 }
@@ -173,6 +175,7 @@ func (t TaskType) CycleLeafRight() TaskType {
 		return TaskTypeIdea
 	case TaskTypeIdea:
 		return TaskTypeTask
+	default:
 	}
 	return t
 }

@@ -13,7 +13,7 @@ import (
 
 // handleNotesMessages handles note-related view messages.
 // Returns true if the message was handled.
-func (m *AppModel) handleNotesMessages(msg tea.Msg) (bool, tea.Cmd) {
+func (m *AppModel) handleNotesMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint:gocyclo
 	switch msg := msg.(type) {
 	case ShowNotesMsg:
 		if msg.Project != nil {

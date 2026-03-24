@@ -13,7 +13,7 @@ import (
 
 // handleViewMessages handles view navigation and display messages.
 // Returns true if the message was handled.
-func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
+func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint:gocyclo
 	// Delegate search messages to dedicated handler
 	if handled, cmd := m.handleSearchMessages(msg); handled {
 		return handled, cmd
@@ -821,6 +821,7 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 		case alerts.CategoryWeeklyReview:
 			m.showView(ViewWeeklyReview, NewWeeklyReviewModel(m.config, m.configManager))
 			return true, nil
+		default:
 		}
 		if msg.ProjectID == "" {
 			return true, nil

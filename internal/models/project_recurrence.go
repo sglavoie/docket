@@ -3,6 +3,7 @@ package models
 import (
 	"crypto/rand"
 	"fmt"
+	"maps"
 	"sync/atomic"
 	"time"
 
@@ -60,9 +61,7 @@ func (p *Project) GenerateRecurringInstances() int {
 
 		// Copy score dimensions from the completed task
 		scoreDims := make(map[string]int, len(task.ScoreDimensions))
-		for k, v := range task.ScoreDimensions {
-			scoreDims[k] = v
-		}
+		maps.Copy(scoreDims, task.ScoreDimensions)
 
 		// Copy checklist items (reset all to unchecked for the new instance)
 		var checklist []ChecklistItem

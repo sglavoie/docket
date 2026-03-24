@@ -201,6 +201,7 @@ func (m *CommandPaletteModel) buildFooter() string {
 			toggles = append(toggles, "P↓")
 		case SortByDueDate:
 			toggles = append(toggles, "D↓")
+		default:
 		}
 	}
 	if m.compactMode {
@@ -805,6 +806,7 @@ func (m *CommandPaletteModel) getContextualHint() string {
 			return "Tip: Enter=filter by tag  Tab=manage tags"
 		case ItemCategorySections:
 			return "Tip: Enter=filter by section"
+		default:
 		}
 	}
 
@@ -821,6 +823,7 @@ func (m *CommandPaletteModel) getContextualHint() string {
 			return "Tip: Use priority:1-2 for high priority, @overdue for overdue tasks"
 		case ItemCategoryCommands:
 			return "Tip: Commands show their keyboard shortcut on the right"
+		default:
 		}
 	}
 

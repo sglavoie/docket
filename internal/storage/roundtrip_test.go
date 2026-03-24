@@ -14,7 +14,7 @@ import (
 // TestRoundTrip_AllFields verifies that a project with varied tasks (different
 // types, statuses, priorities, tags, descriptions, code refs, comments,
 // dependencies, recurrence) survives a full SaveProject → LoadProject cycle.
-func TestRoundTrip_AllFields(t *testing.T) {
+func TestRoundTrip_AllFields(t *testing.T) { //nolint:gocyclo
 	dir, cleanup := testutil.TempProjectDir(t)
 	defer cleanup()
 

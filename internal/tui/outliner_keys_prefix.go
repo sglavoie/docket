@@ -9,7 +9,7 @@ import (
 )
 
 // handlePrefixKey handles the second key in a prefix key sequence.
-func (m *OutlinerModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
+func (m *OutlinerModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) { //nolint:gocyclo
 	prefix := m.pendingPrefix
 	m.pendingPrefix = "" // Always clear prefix
 

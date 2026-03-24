@@ -68,6 +68,7 @@ func (m *AppModel) handleNavigateToView(msg NavigateToViewMsg) (bool, tea.Cmd) {
 			}
 			return m.handleViewMessages(ShowOutlinerMsg{Project: project})
 		}
+	default:
 	}
 	return true, nil
 }

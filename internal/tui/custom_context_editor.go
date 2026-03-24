@@ -111,7 +111,7 @@ func (m *CustomContextEditorModel) hasChanges() bool {
 	return false
 }
 
-func (m *CustomContextEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m *CustomContextEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) { //nolint:gocyclo
 	var cmd tea.Cmd
 
 	if m.confirmDiscard {

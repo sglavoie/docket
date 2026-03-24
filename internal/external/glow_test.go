@@ -8,7 +8,7 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 )
 
-func TestFormatTaskAsMarkdown(t *testing.T) {
+func TestFormatTaskAsMarkdown(t *testing.T) { //nolint:gocyclo
 	now := time.Now()
 
 	t.Run("basic task format", func(t *testing.T) {

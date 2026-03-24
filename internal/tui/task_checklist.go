@@ -82,7 +82,7 @@ func (m *TaskChecklistModel) SetSize(width, height int) {
 	m.editTextInput.SetWidth(contentWidth)
 }
 
-func (m *TaskChecklistModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m *TaskChecklistModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) { //nolint:gocyclo
 	var cmd tea.Cmd
 
 	// Handle confirmation mode

@@ -230,6 +230,7 @@ func (m *CrossProjectLinkerModel) applySearchFilter() {
 		m.filterProjects()
 	case StepSelectTask:
 		m.filterTasks()
+	default:
 	}
 }
 
@@ -385,6 +386,7 @@ func (m *CrossProjectLinkerModel) createLink() tea.Cmd {
 			if err := m.targetTask.AddRelatedTo(sourceRef); err != nil {
 				return ErrorMsg{Err: fmt.Errorf("failed to add related link: %w", err)}
 			}
+		default:
 		}
 
 		// Update timestamps

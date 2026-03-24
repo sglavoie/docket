@@ -39,7 +39,7 @@ func DiffAndRecordActivity(oldTasks, newTasks []*models.Task, maxEntries int) {
 }
 
 // diffTask compares two versions of the same task and records changes.
-func diffTask(old, new *models.Task) {
+func diffTask(old, new *models.Task) { //nolint:gocyclo
 	now := time.Now()
 
 	if old.Status != new.Status {

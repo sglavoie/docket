@@ -10,7 +10,7 @@ import (
 	"github.com/sglavoie/tt/internal/template"
 )
 
-func (m *TaskTemplateCreatorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m *TaskTemplateCreatorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) { //nolint:gocyclo
 	var cmd tea.Cmd
 
 	switch msg := msg.(type) {

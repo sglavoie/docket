@@ -56,7 +56,7 @@ func init() {
 	addOutputFlags(taskRecurCmd)
 }
 
-func runTaskRecur(cmd *cobra.Command, args []string) error {
+func runTaskRecur(cmd *cobra.Command, args []string) error { //nolint:gocyclo
 	out, err := getOutputOpts(cmd)
 	if err != nil {
 		return err

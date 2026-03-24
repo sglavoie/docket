@@ -87,6 +87,7 @@ func passesCommonFilters(task *models.Task, f *CommonFilterState, projectID stri
 			if task.DueDate != nil {
 				return false
 			}
+		default:
 		}
 	}
 	if f.Stage != "" && task.Stage != f.Stage {
@@ -160,6 +161,7 @@ func commonFilterParts(f *CommonFilterState) []string {
 		parts = append(parts, "due:week")
 	case DueDateNone:
 		parts = append(parts, "due:none")
+	default:
 	}
 	if len(f.Attrs) > 0 {
 		var attrParts []string

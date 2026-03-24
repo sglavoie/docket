@@ -17,7 +17,7 @@ import (
 
 // handleProjectMessages handles project-related messages (create, edit, archive, delete, restore).
 // Returns true if the message was handled.
-func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) {
+func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint:gocyclo
 	switch msg := msg.(type) {
 	case SelectProjectMsg:
 		// Pop overlay views if that's where we came from

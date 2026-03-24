@@ -8,7 +8,7 @@ import (
 )
 
 // Update handles state transitions for the filter builder.
-func (m *FilterBuilderModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m *FilterBuilderModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) { //nolint:gocyclo
 	var cmd tea.Cmd
 
 	switch msg := msg.(type) {

@@ -59,7 +59,8 @@ func runTaskCommentRemove(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("comment index required (use --clear to remove all)")
 		}
 
-		index, err := parseItemIndex(args[1], len(task.Comments), "comment")
+		var index int
+		index, err = parseItemIndex(args[1], len(task.Comments), "comment")
 		if err != nil {
 			return err
 		}

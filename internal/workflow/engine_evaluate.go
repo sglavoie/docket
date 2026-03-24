@@ -67,7 +67,7 @@ func EvaluateRulesWithContext(evalCtx *EvaluationContext, rules []WorkflowRule) 
 	return result
 }
 
-func evaluateRulesWithContextRecursive(evalCtx *EvaluationContext, rules []WorkflowRule, ctx *executionContext, result *EvaluationResult) {
+func evaluateRulesWithContextRecursive(evalCtx *EvaluationContext, rules []WorkflowRule, ctx *executionContext, result *EvaluationResult) { //nolint:gocyclo
 	if ctx.depth >= maxRuleDepth {
 		return
 	}

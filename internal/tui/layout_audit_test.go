@@ -30,7 +30,7 @@ func TestDashboardRecentTasksContentRespectsVisualWidth(t *testing.T) {
 	contentWidth := 28
 	rendered := m.renderRecentTasksContentWithWidth(project, contentWidth)
 
-	for _, line := range strings.Split(rendered, "\n") {
+	for line := range strings.SplitSeq(rendered, "\n") {
 		if lipgloss.Width(line) > contentWidth {
 			t.Fatalf("dashboard recent task line exceeds width %d: %q (width=%d)\n\n%s", contentWidth, ansi.Strip(line), lipgloss.Width(line), ansi.Strip(rendered))
 		}
@@ -68,7 +68,7 @@ func TestNotificationCenterViewRespectsVisualWidth(t *testing.T) {
 	m.SetSize(24, 10)
 	rendered := m.View().Content
 
-	for _, line := range strings.Split(rendered, "\n") {
+	for line := range strings.SplitSeq(rendered, "\n") {
 		if lipgloss.Width(line) > 24 {
 			t.Fatalf("notification center line exceeds width 24: %q (width=%d)\n\n%s", ansi.Strip(line), lipgloss.Width(line), ansi.Strip(rendered))
 		}
@@ -82,7 +82,7 @@ func TestRenderStatusBarFooterRespectsWidth(t *testing.T) {
 		24,
 	)
 
-	for _, line := range strings.Split(footer, "\n") {
+	for line := range strings.SplitSeq(footer, "\n") {
 		if lipgloss.Width(line) > 24 {
 			t.Fatalf("footer line exceeds width 24: %q (width=%d)", ansi.Strip(line), lipgloss.Width(line))
 		}

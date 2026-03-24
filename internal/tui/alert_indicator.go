@@ -26,6 +26,7 @@ func (m *AppModel) shouldShowAlertIndicator() bool {
 	switch m.currentView() {
 	case ViewDashboard, ViewProjectTree, ViewOutliner, ViewFocusBoard:
 		return m.alertCount() > 0
+	default:
 	}
 	return false
 }

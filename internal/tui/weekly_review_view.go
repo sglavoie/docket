@@ -274,6 +274,7 @@ func (m *WeeklyReviewModel) renderProjectLine(wp WeeklyReviewProject, section We
 		badges = append(badges, BlockedStyle.Render(fmt.Sprintf("%d blocked", wp.BlockedCount)))
 	case WeeklySectionOvercommitted:
 		badges = append(badges, OverdueStyle.Render(fmt.Sprintf("%d in-progress", wp.InProgressCount)))
+	default:
 	}
 
 	// Add secondary context badges
@@ -363,6 +364,7 @@ func (m *WeeklyReviewModel) renderTaskLine(dt WeeklyReviewTask, section WeeklyRe
 				contextStr = nextStr
 			}
 		}
+	default:
 	}
 
 	return RenderCrossProjectTaskLine(task, dt.Project, nil, isSelected, m.width, maxTitleLen, CrossProjectTaskLineOpts{

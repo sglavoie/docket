@@ -10,7 +10,7 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 )
 
-func (m *FocusBoardModel) View() tea.View {
+func (m *FocusBoardModel) View() tea.View { //nolint:gocyclo
 	var b strings.Builder
 
 	// Title

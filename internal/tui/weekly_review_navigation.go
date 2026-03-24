@@ -109,6 +109,7 @@ func (m *WeeklyReviewModel) getProjectAtCursor() *WeeklyReviewProject {
 				if idx < len(m.overcommitted) {
 					return &m.overcommitted[idx]
 				}
+			default:
 			}
 			return nil // Task sections don't return projects
 		}
@@ -156,6 +157,7 @@ func (m *WeeklyReviewModel) getTaskAtCursor() *WeeklyReviewTask {
 				if idx < len(m.recurringOverview) {
 					return &m.recurringOverview[idx]
 				}
+			default:
 			}
 			return nil // Project sections don't return tasks
 		}

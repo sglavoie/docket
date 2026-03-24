@@ -302,6 +302,7 @@ func (m *QuickCaptureModel) createTask(openAfter bool) tea.Cmd {
 		task.Cancel()
 	case models.StatusReview:
 		task.Review()
+	default:
 	}
 
 	// Add to project at the beginning so it's prominently visible

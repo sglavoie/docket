@@ -12,7 +12,7 @@ import (
 
 // handleTaskMessages handles task-related messages (create, edit, delete, status changes).
 // Returns true if the message was handled.
-func (m *AppModel) handleTaskMessages(msg tea.Msg) (bool, tea.Cmd) {
+func (m *AppModel) handleTaskMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint:gocyclo
 	// Delegate dependency messages to dedicated handler
 	if handled, cmd := m.handleDependencyMessages(msg); handled {
 		return handled, cmd
@@ -383,6 +383,7 @@ func (m *AppModel) handleTaskMessages(msg tea.Msg) (bool, tea.Cmd) {
 			linkName = "dependency"
 		case LinkTypeFollowUp:
 			linkName = "related"
+		default:
 		}
 		m.setSuccessStatus(fmt.Sprintf("Linked #%d → %s #%d (%s)", msg.SourceTask.ShortID, msg.TargetProject.Name, msg.TargetTask.ShortID, linkName))
 		return true, statusTimeout(3 * time.Second)

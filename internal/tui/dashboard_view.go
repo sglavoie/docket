@@ -50,6 +50,7 @@ func (m *DashboardModel) renderDashboard(visible []*models.Project, chromeHeight
 			infoContent = m.renderInfoSection(cardWidth, selected)
 		case config.InfoPanelProjectSummary:
 			infoContent = m.renderProjectSummarySection(cardWidth, selected)
+		default:
 		}
 		if infoContent != "" {
 			// +1 for the final line (Count gives separators), +1 for the gap newline
@@ -361,7 +362,7 @@ func (m *DashboardModel) projectCardTitle(visible []*models.Project) string {
 
 // renderProjectList renders the project list content for a card of the given width.
 // bottomHeight is reserved space below the card (only used in full-width mode).
-func (m *DashboardModel) renderProjectList(visible []*models.Project, chromeHeight, cardWidth, bottomHeight int) string {
+func (m *DashboardModel) renderProjectList(visible []*models.Project, chromeHeight, cardWidth, bottomHeight int) string { //nolint:gocyclo
 	var cardContent strings.Builder
 
 	if len(m.projects) == 0 {
@@ -477,7 +478,7 @@ func (m *DashboardModel) renderProjectList(visible []*models.Project, chromeHeig
 	end := min(scrollOffset+maxVisible, len(visible))
 
 	pinnedNum := 0
-	for i := 0; i < scrollOffset; i++ {
+	for i := range scrollOffset {
 		if visible[i].Pinned {
 			pinnedNum++
 		}

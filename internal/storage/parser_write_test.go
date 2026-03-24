@@ -383,7 +383,7 @@ func TestHeadingLevelCappedAtSix(t *testing.T) {
 	content := WriteTasksMarkdown("Test", tasks)
 
 	// All headings should use at most 6 # characters
-	for _, line := range strings.Split(content, "\n") {
+	for line := range strings.SplitSeq(content, "\n") {
 		if strings.HasPrefix(line, "#") {
 			hashes := 0
 			for _, c := range line {

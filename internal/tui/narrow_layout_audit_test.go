@@ -57,7 +57,7 @@ func TestProjectSelectorViewRespectsVisualWidth(t *testing.T) {
 	m.SetSize(32, 14)
 	rendered := m.View().Content
 
-	for _, line := range strings.Split(rendered, "\n") {
+	for line := range strings.SplitSeq(rendered, "\n") {
 		if lipgloss.Width(line) > 32 {
 			t.Fatalf("project selector line exceeds width 32: %q (width=%d)\n\n%s", ansi.Strip(line), lipgloss.Width(line), ansi.Strip(rendered))
 		}
@@ -128,7 +128,7 @@ func TestGlobalSearchNoteRowRespectsVisualWidth(t *testing.T) {
 	}
 
 	rendered := m.renderTaskList(6)
-	for _, line := range strings.Split(strings.TrimRight(rendered, "\n"), "\n") {
+	for line := range strings.SplitSeq(strings.TrimRight(rendered, "\n"), "\n") {
 		if lipgloss.Width(ansi.Strip(line)) > m.listWidth {
 			t.Fatalf("global search note row exceeds width %d: %q (width=%d)\n\n%s", m.listWidth, ansi.Strip(line), lipgloss.Width(ansi.Strip(line)), ansi.Strip(rendered))
 		}
@@ -234,7 +234,7 @@ func TestCrossProjectLinkerTaskSelectionRespectsVisualWidth(t *testing.T) {
 	m.SetSize(32, 14)
 
 	rendered := m.viewTaskSelection()
-	for _, line := range strings.Split(strings.TrimRight(rendered, "\n"), "\n") {
+	for line := range strings.SplitSeq(strings.TrimRight(rendered, "\n"), "\n") {
 		if lipgloss.Width(ansi.Strip(line)) > 32 {
 			t.Fatalf("cross-project linker line exceeds width 32: %q (width=%d)\n\n%s", ansi.Strip(line), lipgloss.Width(ansi.Strip(line)), ansi.Strip(rendered))
 		}
@@ -255,7 +255,7 @@ func TestParentSelectorViewRespectsVisualWidth(t *testing.T) {
 	m.SetSize(32, 14)
 	rendered := m.View().Content
 
-	for _, line := range strings.Split(rendered, "\n") {
+	for line := range strings.SplitSeq(rendered, "\n") {
 		if lipgloss.Width(ansi.Strip(line)) > 32 {
 			t.Fatalf("parent selector line exceeds width 32: %q (width=%d)\n\n%s", ansi.Strip(line), lipgloss.Width(ansi.Strip(line)), ansi.Strip(rendered))
 		}
@@ -280,7 +280,7 @@ func TestProjectPickerViewRespectsVisualWidth(t *testing.T) {
 	m.SetSize(32, 14)
 	rendered := m.View().Content
 
-	for _, line := range strings.Split(rendered, "\n") {
+	for line := range strings.SplitSeq(rendered, "\n") {
 		if lipgloss.Width(ansi.Strip(line)) > 32 {
 			t.Fatalf("project picker line exceeds width 32: %q (width=%d)\n\n%s", ansi.Strip(line), lipgloss.Width(ansi.Strip(line)), ansi.Strip(rendered))
 		}
@@ -298,7 +298,7 @@ func TestPriorityPickerViewRespectsVisualWidth(t *testing.T) {
 	m.SetSize(32, 14)
 	rendered := m.View().Content
 
-	for _, line := range strings.Split(rendered, "\n") {
+	for line := range strings.SplitSeq(rendered, "\n") {
 		if lipgloss.Width(ansi.Strip(line)) > 32 {
 			t.Fatalf("priority picker line exceeds width 32: %q (width=%d)\n\n%s", ansi.Strip(line), lipgloss.Width(ansi.Strip(line)), ansi.Strip(rendered))
 		}
@@ -321,7 +321,7 @@ func TestTaskJumperViewRespectsVisualWidth(t *testing.T) {
 	m.SetSize(32, 14)
 	rendered := m.View().Content
 
-	for _, line := range strings.Split(rendered, "\n") {
+	for line := range strings.SplitSeq(rendered, "\n") {
 		if lipgloss.Width(ansi.Strip(line)) > 32 {
 			t.Fatalf("task jumper line exceeds width 32: %q (width=%d)\n\n%s", ansi.Strip(line), lipgloss.Width(ansi.Strip(line)), ansi.Strip(rendered))
 		}
@@ -342,7 +342,7 @@ func TestNotesSearchViewRespectsVisualWidth(t *testing.T) {
 	m.SetSize(32, 14)
 	rendered := m.View().Content
 
-	for _, line := range strings.Split(rendered, "\n") {
+	for line := range strings.SplitSeq(rendered, "\n") {
 		if lipgloss.Width(ansi.Strip(line)) > 32 {
 			t.Fatalf("notes search line exceeds width 32: %q (width=%d)\n\n%s", ansi.Strip(line), lipgloss.Width(ansi.Strip(line)), ansi.Strip(rendered))
 		}
@@ -357,7 +357,7 @@ func TestRenderInboxTaskDisplayRespectsVisualWidth(t *testing.T) {
 	task.Description = "这是一段需要在窄宽度下正确截断的描述内容，用于验证收件箱卡片布局。"
 
 	rendered := renderInboxTaskDisplay(task, 32, true, "界面修复项目", testutil.NewTestConfig())
-	for _, line := range strings.Split(rendered, "\n") {
+	for line := range strings.SplitSeq(rendered, "\n") {
 		if lipgloss.Width(ansi.Strip(line)) > 32 {
 			t.Fatalf("inbox task display line exceeds width 32: %q (width=%d)\n\n%s", ansi.Strip(line), lipgloss.Width(ansi.Strip(line)), ansi.Strip(rendered))
 		}
@@ -426,7 +426,7 @@ func TestGlobalNoteMoveViewRespectsVisualWidth(t *testing.T) {
 	m.SetSize(32, 14)
 	rendered := m.View().Content
 
-	for _, line := range strings.Split(rendered, "\n") {
+	for line := range strings.SplitSeq(rendered, "\n") {
 		if lipgloss.Width(ansi.Strip(line)) > 32 {
 			t.Fatalf("global note move line exceeds width 32: %q (width=%d)\n\n%s", ansi.Strip(line), lipgloss.Width(ansi.Strip(line)), ansi.Strip(rendered))
 		}
@@ -447,7 +447,7 @@ func TestLinkedTaskCreatorViewRespectsVisualWidth(t *testing.T) {
 	m.SetSize(32, 14)
 	rendered := m.View().Content
 
-	for _, line := range strings.Split(rendered, "\n") {
+	for line := range strings.SplitSeq(rendered, "\n") {
 		if lipgloss.Width(ansi.Strip(line)) > 32 {
 			t.Fatalf("linked task creator line exceeds width 32: %q (width=%d)\n\n%s", ansi.Strip(line), lipgloss.Width(ansi.Strip(line)), ansi.Strip(rendered))
 		}
@@ -484,7 +484,7 @@ func TestRenderTruncatedTagsUsesVisualWidth(t *testing.T) {
 	if !strings.Contains(plain, "#") {
 		t.Fatalf("expected tag rendering, got %q", plain)
 	}
-	for _, part := range strings.Split(plain, " ") {
+	for part := range strings.SplitSeq(plain, " ") {
 		if strings.HasPrefix(part, "#") && lipgloss.Width(strings.TrimPrefix(part, "#")) > 6 {
 			t.Fatalf("tag part exceeds width 6: %q (width=%d)", part, lipgloss.Width(strings.TrimPrefix(part, "#")))
 		}
@@ -504,7 +504,7 @@ func TestWorkflowRulesListRespectsVisualWidth(t *testing.T) {
 	m.SetSize(24, 10)
 	rendered := m.renderRulesList(4)
 
-	for _, line := range strings.Split(strings.TrimRight(rendered, "\n"), "\n") {
+	for line := range strings.SplitSeq(strings.TrimRight(rendered, "\n"), "\n") {
 		if lipgloss.Width(ansi.Strip(line)) > 24 {
 			t.Fatalf("workflow rules line exceeds width 24: %q (width=%d)\n\n%s", ansi.Strip(line), lipgloss.Width(ansi.Strip(line)), ansi.Strip(rendered))
 		}
@@ -524,7 +524,7 @@ func TestTemplateListRespectsVisualWidth(t *testing.T) {
 	m.SetSize(24, 10)
 	rendered := m.renderTemplatesList(4)
 
-	for _, line := range strings.Split(strings.TrimRight(rendered, "\n"), "\n") {
+	for line := range strings.SplitSeq(strings.TrimRight(rendered, "\n"), "\n") {
 		if lipgloss.Width(ansi.Strip(line)) > 24 {
 			t.Fatalf("template list line exceeds width 24: %q (width=%d)\n\n%s", ansi.Strip(line), lipgloss.Width(ansi.Strip(line)), ansi.Strip(rendered))
 		}
@@ -559,7 +559,7 @@ func TestTaskChecklistViewRespectsVisualWidth(t *testing.T) {
 	m.SetSize(24, 12)
 	rendered := m.View().Content
 
-	for _, line := range strings.Split(rendered, "\n") {
+	for line := range strings.SplitSeq(rendered, "\n") {
 		if lipgloss.Width(ansi.Strip(line)) > 24 {
 			t.Fatalf("task checklist line exceeds width 24: %q (width=%d)\n\n%s", ansi.Strip(line), lipgloss.Width(ansi.Strip(line)), ansi.Strip(rendered))
 		}

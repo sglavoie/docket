@@ -23,7 +23,7 @@ var quotedPhrasePattern = regexp.MustCompile(`"([^"]+)"|'([^']+)'`)
 // Supports negation with "-" prefix (e.g., "task -bug" excludes items matching "bug").
 // Supports direct task ID jump with "#123" syntax.
 // Supports inline task creation with "+Task title" syntax.
-func (m *CommandPaletteModel) filterItems() {
+func (m *CommandPaletteModel) filterItems() { //nolint:gocyclo
 	query := strings.TrimSpace(m.searchInput.Value())
 
 	// Save current cursor item ID for restoration after filtering

@@ -92,6 +92,7 @@ func (m *AppModel) baseProjectView() ViewType {
 		switch m.viewStack[i] {
 		case ViewProjectTree, ViewOutliner:
 			return m.viewStack[i]
+		default:
 		}
 	}
 	return ViewDashboard
@@ -142,6 +143,7 @@ func isGlobalOverlayView(v ViewType) bool {
 		ViewGlobalNotes, ViewRecentActivity, ViewGlobalBlockers,
 		ViewMetricsDashboard, ViewAllTasks, ViewWorkflowRules:
 		return true
+	default:
 	}
 	return false
 }
@@ -157,6 +159,7 @@ func (m *AppModel) popToAnchorView() {
 				m.reevaluateAlerts()
 			}
 			return
+		default:
 		}
 		m.viewStack = m.viewStack[:len(m.viewStack)-1]
 	}

@@ -11,7 +11,7 @@ import (
 
 // handleTagMessages handles tag-related messages.
 // Returns true if the message was handled.
-func (m *AppModel) handleTagMessages(msg tea.Msg) (bool, tea.Cmd) {
+func (m *AppModel) handleTagMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint:gocyclo
 	switch msg := msg.(type) {
 	case ShowTagManagerMsg:
 		if msg.ProjectTree != nil {
@@ -149,6 +149,7 @@ func (m *AppModel) handleTagMessages(msg tea.Msg) (bool, tea.Cmd) {
 					notesView.loadNotes()
 				}
 			}
+		default:
 		}
 		return true, nil
 
@@ -331,6 +332,7 @@ func (m *AppModel) applyColumnToggles(source ViewType, toggles map[string]bool) 
 			state.OutlinerColumnToggles = toggles
 			m.config.SetProjectViewState(projectID, state)
 		}
+	default:
 	}
 
 	if err := m.configManager.Save(m.config); err != nil {

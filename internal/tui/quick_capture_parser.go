@@ -227,7 +227,7 @@ func resolveProject(ref string, allProjects []*models.Project) *models.Project {
 
 // parseQuickCaptureForPreview parses input for live preview without failing early.
 // Returns partial results and any validation error string.
-func parseQuickCaptureForPreview(input string, project *models.Project, allProjects []*models.Project) (*quickCaptureResult, string) {
+func parseQuickCaptureForPreview(input string, project *models.Project, allProjects []*models.Project) (*quickCaptureResult, string) { //nolint:gocyclo
 	result := &quickCaptureResult{
 		taskType: models.TaskTypeTask,
 		priority: 3,

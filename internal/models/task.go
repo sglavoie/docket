@@ -131,7 +131,7 @@ func NewTask(id string, shortID int, taskType TaskType, title string) (*Task, er
 // BugAttrs, a Story has StoryAttrs). The other pointers are always nil during
 // normal operation. Clearing all of them on a type change is intentional —
 // it is cheaper and safer than tracking which pointer was previously active,
-// and ensures no phantom attributes leak into the new type's serialised form.
+// and ensures no phantom attributes leak into the new type's serialized form.
 func (t *Task) ClearTypeAttrs() {
 	t.BugAttrs = nil
 	t.IdeaAttrs = nil

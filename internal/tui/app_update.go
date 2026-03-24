@@ -12,7 +12,7 @@ import (
 	"github.com/sglavoie/tt/internal/storage"
 )
 
-func (m *AppModel) Update(msg tea.Msg) (outModel tea.Model, outCmd tea.Cmd) {
+func (m *AppModel) Update(msg tea.Msg) (outModel tea.Model, outCmd tea.Cmd) { //nolint:gocyclo
 	defer func() {
 		if r := recover(); r != nil {
 			stack := debug.Stack()
@@ -501,6 +501,7 @@ func (m *AppModel) delegateToCurrentView(msg tea.Msg) tea.Cmd {
 		if v := m.views.Get(ViewCrossProjectOutliner); v != nil {
 			m.crossOutliner = v.(*OutlinerModel)
 		}
+	default:
 	}
 
 	return cmd

@@ -8,7 +8,7 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 )
 
-func (m *TaskCreatorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m *TaskCreatorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) { //nolint:gocyclo
 	var cmd tea.Cmd
 
 	switch msg := msg.(type) {

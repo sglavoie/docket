@@ -11,7 +11,7 @@ import (
 )
 
 // renderNodeWithWidth is like renderNode but accepts a custom width for truncation.
-func (m *ProjectTreeModel) renderNodeWithWidth(node *TreeNode, selected bool, inSelection bool, maxWidth int) string {
+func (m *ProjectTreeModel) renderNodeWithWidth(node *TreeNode, selected bool, inSelection bool, maxWidth int) string { //nolint:gocyclo
 	task := node.Task
 
 	// Check if this task is being quick-edited

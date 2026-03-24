@@ -610,7 +610,7 @@ func TestIsDueSoon(t *testing.T) {
 	}
 }
 
-func TestNextNDueDates(t *testing.T) {
+func TestNextNDueDates(t *testing.T) { //nolint:gocyclo
 	t.Run("nil when not recurring", func(t *testing.T) {
 		task, err := NewTask("t1", 1, TaskTypeTask, "Test")
 		if err != nil {

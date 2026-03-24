@@ -47,7 +47,7 @@ func init() {
 	}
 }
 
-func runTaskMoveTo(cmd *cobra.Command, args []string) error {
+func runTaskMoveTo(cmd *cobra.Command, args []string) error { //nolint:gocyclo
 	out, err := getOutputOpts(cmd)
 	if err != nil {
 		return err

@@ -338,7 +338,7 @@ func TestRoundTrip_SourceAndURL(t *testing.T) {
 	}
 }
 
-func TestRoundTrip_KitchenSink(t *testing.T) {
+func TestRoundTrip_KitchenSink(t *testing.T) { //nolint:gocyclo
 	now := time.Now()
 	created := time.Date(2026, 1, 10, 8, 0, 0, 0, time.Local)
 	updated := time.Date(2026, 1, 15, 12, 30, 0, 0, time.Local)

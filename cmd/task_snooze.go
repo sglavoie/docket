@@ -93,9 +93,9 @@ func runTaskSnooze(cmd *cobra.Command, args []string) error {
 		snoozeDate = nil
 		desc = "cleared"
 	} else {
-		parsed, err := util.ParseRelativeDate(dateStr)
-		if err != nil {
-			return fmt.Errorf("invalid date %q: %w\nAccepted formats: YYYY-MM-DD, +Nd/+Nw/+Nm, today, tomorrow, mon-sun, next week/month, in N days/weeks/months", dateStr, err)
+		parsed, parseErr := util.ParseRelativeDate(dateStr)
+		if parseErr != nil {
+			return fmt.Errorf("invalid date %q: %w\nAccepted formats: YYYY-MM-DD, +Nd/+Nw/+Nm, today, tomorrow, mon-sun, next week/month, in N days/weeks/months", dateStr, parseErr)
 		}
 		// Reject snoozing to today or the past since the task would be immediately visible
 		today := util.StartOfDay(time.Now())
@@ -108,9 +108,9 @@ func runTaskSnooze(cmd *cobra.Command, args []string) error {
 
 	// Pre-check: skip the save if clearing snooze on a non-snoozed task
 	if snoozeDate == nil {
-		project, _, _, err := LoadCurrentProject()
-		if err != nil {
-			return err
+		project, _, _, loadErr := LoadCurrentProject()
+		if loadErr != nil {
+			return loadErr
 		}
 		preTask, findErr := FindTaskByIdentifier(project, taskID)
 		if findErr != nil {

@@ -67,7 +67,7 @@ func (m *UndoHistoryModel) Init() tea.Cmd {
 	return nil
 }
 
-func (m *UndoHistoryModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m *UndoHistoryModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) { //nolint:gocyclo
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.BaseView.SetSize(msg.Width, msg.Height)

@@ -65,7 +65,7 @@ func registerTypeAttrFlags(cmd *cobra.Command, v *TypeAttrValues) {
 // applyTypeAttrValues applies type-specific attributes to a task.
 // It ensures the appropriate attrs struct exists (creating it if nil),
 // assigns the provided values, and validates the result.
-func applyTypeAttrValues(task *models.Task, vals TypeAttrValues) error {
+func applyTypeAttrValues(task *models.Task, vals TypeAttrValues) error { //nolint:gocyclo
 	// Bug attributes
 	hasBugAttrs := vals.BugReproducible != "" || vals.BugSeverity != "" || vals.BugWorkaround != ""
 	if hasBugAttrs {

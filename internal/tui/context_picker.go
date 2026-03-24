@@ -192,7 +192,7 @@ func (m *ContextPickerModel) Init() tea.Cmd {
 }
 
 // Update handles messages.
-func (m *ContextPickerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m *ContextPickerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) { //nolint:gocyclo
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.SetSize(msg.Width, msg.Height)

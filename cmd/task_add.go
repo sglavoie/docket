@@ -90,7 +90,7 @@ func init() {
 	_ = taskAddCmd.RegisterFlagCompletionFunc("template", completeTemplates())
 }
 
-func runTaskAdd(cmd *cobra.Command, args []string) error {
+func runTaskAdd(cmd *cobra.Command, args []string) error { //nolint:gocyclo
 	out, err := getOutputOpts(cmd)
 	if err != nil {
 		return err

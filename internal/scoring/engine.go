@@ -403,6 +403,7 @@ func FormatBreakdown(results []DimensionResult, formula Formula, totalScore floa
 			roleStr = " [num]"
 		case RoleDenominator:
 			roleStr = " [den]"
+		default:
 		}
 		weightStr := ""
 		if r.Weight != 1 {

@@ -245,6 +245,7 @@ func (m *LinkedTaskCreatorModel) createTask() tea.Cmd {
 		newTask.Complete()
 	case models.StatusCanceled:
 		newTask.Cancel()
+	default:
 	}
 
 	// Establish the relationship based on link type
@@ -287,6 +288,7 @@ func (m *LinkedTaskCreatorModel) createTask() tea.Cmd {
 		for _, tag := range m.sourceTask.Tags {
 			newTask.AddTag(tag)
 		}
+	default:
 	}
 
 	// Add task to project

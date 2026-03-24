@@ -83,7 +83,7 @@ func typeForAttrPrefix(key string) (models.TaskType, bool) {
 
 // ParseMetadata parses the metadata string and sets task fields.
 // Returns any warnings encountered during parsing.
-func ParseMetadata(task *models.Task, metaStr string) []ParseWarning {
+func ParseMetadata(task *models.Task, metaStr string) []ParseWarning { //nolint:gocyclo
 	var warnings []ParseWarning
 
 	// Buffer recurrence sub-fields so they work regardless of key order.
@@ -686,7 +686,7 @@ func sortedKeys(m map[string]int) []string {
 }
 
 // WriteMetadata generates the metadata comment for a task.
-func WriteMetadata(task *models.Task) string {
+func WriteMetadata(task *models.Task) string { //nolint:gocyclo
 	var parts []string
 
 	if task.ID != "" {

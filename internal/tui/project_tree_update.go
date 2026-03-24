@@ -119,7 +119,7 @@ func (m *ProjectTreeModel) enterQuickEditMode(task *models.Task, renameOnly bool
 }
 
 // handlePrefixKey handles the second key in a prefix key sequence.
-func (m *ProjectTreeModel) handlePrefixKey(key string, visible []*TreeNode) (tea.Model, tea.Cmd) {
+func (m *ProjectTreeModel) handlePrefixKey(key string, visible []*TreeNode) (tea.Model, tea.Cmd) { //nolint:gocyclo
 	prefix := m.pendingPrefix
 	m.pendingPrefix = "" // Always clear prefix
 

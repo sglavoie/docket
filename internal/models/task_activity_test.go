@@ -73,7 +73,7 @@ func TestPruneActivity(t *testing.T) {
 	}
 
 	// Add 10 entries
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		task.Activity = append(task.Activity, &ActivityEntry{
 			Timestamp: time.Now(),
 			Field:     "status",
@@ -120,7 +120,7 @@ func TestPruneActivityKeepsNewest(t *testing.T) {
 	}
 
 	// Add entries with identifiable values
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		task.Activity = append(task.Activity, &ActivityEntry{
 			Timestamp: time.Now(),
 			Field:     "priority",

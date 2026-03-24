@@ -130,6 +130,7 @@ func renderScoreCardContent(task *models.Task, profile *scoring.ScoringProfile, 
 			roleStr = MutedStyle.Render(" [n]")
 		case scoring.RoleDenominator:
 			roleStr = MutedStyle.Render(" [d]")
+		default:
 		}
 
 		padding := max(maxNameWidth-lipgloss.Width(name), 0)

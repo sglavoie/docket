@@ -474,6 +474,7 @@ func (m *ScoreProfileManagerModel) buildDetailPane(p *scoring.ScoringProfile, ma
 			roleStr = " [num]"
 		case scoring.RoleDenominator:
 			roleStr = " [den]"
+		default:
 		}
 
 		sourceStr := string(d.Source)

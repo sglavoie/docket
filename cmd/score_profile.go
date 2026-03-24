@@ -113,7 +113,8 @@ func runScoreProfileAdd(cmd *cobra.Command, args []string) error {
 		if addErr := cfg.AddScoringProfile(profile); addErr != nil {
 			return addErr
 		}
-		if err := saveConfig(configManager, cfg); err != nil {
+		err = saveConfig(configManager, cfg)
+		if err != nil {
 			return err
 		}
 		fmt.Printf("Added scoring profile: %s\n", scoring.FormatProfileSummary(&profile))

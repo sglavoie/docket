@@ -154,7 +154,7 @@ func init() {
 	addOutputFlags(workflowAddCmd)
 }
 
-func runWorkflowAdd(cmd *cobra.Command, args []string) error {
+func runWorkflowAdd(cmd *cobra.Command, args []string) error { //nolint:gocyclo
 	out, err := getOutputOpts(cmd)
 	if err != nil {
 		return err
@@ -301,8 +301,8 @@ func runWorkflowAdd(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("action value required for %s", action)
 	}
 	if action == workflow.ActionSetPriority {
-		p, err := strconv.Atoi(actionValue)
-		if err != nil || ValidatePriority(p, false) != nil {
+		p, atoiErr := strconv.Atoi(actionValue)
+		if atoiErr != nil || ValidatePriority(p, false) != nil {
 			return fmt.Errorf("priority must be %d-%d, got: %s", models.PriorityMin, models.PriorityMax, actionValue)
 		}
 	}
@@ -312,7 +312,8 @@ func runWorkflowAdd(cmd *cobra.Command, args []string) error {
 		}
 	}
 	if action == workflow.ActionSetDueRelative {
-		if _, err := workflow.ParseRelativeDuration(actionValue); err != nil {
+		_, durErr := workflow.ParseRelativeDuration(actionValue)
+		if durErr != nil {
 			return fmt.Errorf("invalid relative duration: %s (use format like +3d, +1w, +2m)", actionValue)
 		}
 	}
@@ -362,7 +363,8 @@ func runWorkflowAdd(cmd *cobra.Command, args []string) error {
 	rule.Priority = rulePriority
 	rule.Scope = buildScopeFromFlags(scopeProjects, scopeTypes, scopeSections)
 
-	if err := rule.Validate(); err != nil {
+	err = rule.Validate()
+	if err != nil {
 		return fmt.Errorf("invalid rule: %w", err)
 	}
 

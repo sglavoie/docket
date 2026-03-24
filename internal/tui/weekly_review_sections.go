@@ -12,7 +12,7 @@ import (
 )
 
 // loadData aggregates projects and tasks into weekly review sections.
-func (m *WeeklyReviewModel) loadData() {
+func (m *WeeklyReviewModel) loadData() { //nolint:gocyclo
 	m.staleProjects = nil
 	m.inboxBacklog = nil
 	m.blockedWork = nil

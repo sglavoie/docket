@@ -359,6 +359,7 @@ func (m *AppModel) saveCurrentViewFilterState() {
 				TabActive: m.allTasksView.tabs.Active,
 			}
 		}
+	default:
 	}
 }
 

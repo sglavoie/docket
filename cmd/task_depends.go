@@ -42,7 +42,7 @@ func init() {
 	_ = taskDependsCmd.RegisterFlagCompletionFunc("remove", completeCurrentProjectTaskIDs())
 }
 
-func runTaskDepends(cmd *cobra.Command, args []string) error {
+func runTaskDepends(cmd *cobra.Command, args []string) error { //nolint:gocyclo
 	out, err := getOutputOpts(cmd)
 	if err != nil {
 		return err

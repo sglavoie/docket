@@ -158,6 +158,7 @@ func (m *TaskCreatorModel) handleAttrEnter(fieldIdx int) tea.Cmd {
 				}
 			}
 		}
+	default:
 	}
 	return nil
 }

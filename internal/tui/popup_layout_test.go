@@ -113,7 +113,7 @@ func TestRenderQuickSwitchPopupHandlesWideUnicodeWidths(t *testing.T) {
 
 func assertPopupLineContains(t *testing.T, rendered, left, right string) {
 	t.Helper()
-	for _, line := range strings.Split(rendered, "\n") {
+	for line := range strings.SplitSeq(rendered, "\n") {
 		if strings.Contains(line, left) {
 			if !strings.Contains(line, right) {
 				t.Fatalf("popup line containing %q is missing %q\n\n%s", left, right, rendered)
@@ -126,7 +126,7 @@ func assertPopupLineContains(t *testing.T, rendered, left, right string) {
 
 func assertPopupDoesNotContainStandaloneLine(t *testing.T, rendered, text string) {
 	t.Helper()
-	for _, line := range strings.Split(rendered, "\n") {
+	for line := range strings.SplitSeq(rendered, "\n") {
 		trimmed := strings.TrimSpace(strings.Trim(line, "│"))
 		if trimmed == text {
 			t.Fatalf("popup still renders %q on a standalone line\n\n%s", text, rendered)

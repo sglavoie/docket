@@ -119,7 +119,8 @@ func runTemplateAdd(cmd *cobra.Command, args []string) error {
 	}
 
 	// Validate priority; normalize 0 (meaning "use default") to PriorityDefault
-	if err := ValidatePriority(templateAddPriority, true); err != nil {
+	err = ValidatePriority(templateAddPriority, true)
+	if err != nil {
 		return err
 	}
 	if templateAddPriority == 0 {
@@ -177,7 +178,8 @@ func runTemplateAdd(cmd *cobra.Command, args []string) error {
 	t.Children = children
 
 	// Validate
-	if err := t.Validate(); err != nil {
+	err = t.Validate()
+	if err != nil {
 		return fmt.Errorf("invalid template: %w", err)
 	}
 
