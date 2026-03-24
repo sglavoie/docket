@@ -1,6 +1,7 @@
 package models
 
 import (
+	"errors"
 	"strings"
 	"testing"
 )
@@ -188,9 +189,11 @@ func TestProjectRenameSection(t *testing.T) {
 		t.Error("should not be able to rename to empty string")
 	}
 
-	// Cannot rename to existing section name
+	// Cannot rename to existing section name — should wrap ErrSectionAlreadyExists
 	if err := project.RenameSection("Active", "Done"); err == nil {
 		t.Error("should not be able to rename to existing section name")
+	} else if !errors.Is(err, ErrSectionAlreadyExists) {
+		t.Errorf("expected ErrSectionAlreadyExists, got: %v", err)
 	}
 
 	// Rename Active to InProgress

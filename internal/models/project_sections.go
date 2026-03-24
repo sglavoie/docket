@@ -125,7 +125,7 @@ func (p *Project) RenameSection(oldName, newName string) error {
 		return err
 	}
 	if p.HasSection(newName) {
-		return fmt.Errorf("cannot rename section: target name %q already exists", newName)
+		return fmt.Errorf("cannot rename section to %q: %w", newName, ErrSectionAlreadyExists)
 	}
 	for i, s := range p.Sections {
 		if s == oldName {

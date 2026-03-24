@@ -18,7 +18,12 @@ func TestTruncate(t *testing.T) {
 		{"max of 4", "hello", 4, "h..."},
 		{"single char max", "hello", 1, "h"},
 		{"zero max", "hello", 0, ""},
-		{"unicode string", "hello 世界", 8, "hello..."},
+		{"unicode exact rune count", "hello 世界", 8, "hello 世界"},
+		{"unicode needs truncation", "hello 世界!", 8, "hello..."},
+		{"unicode short max", "世界你好", 3, "世界你"},
+		{"unicode exact rune count 4", "世界你好", 4, "世界你好"},
+		{"unicode truncate with ellipsis", "世界你好啊", 4, "世..."},
+		{"emoji truncation", "hello 🌍🌎🌏", 8, "hello..."},
 	}
 
 	for _, tt := range tests {

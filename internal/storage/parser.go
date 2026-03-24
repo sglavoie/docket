@@ -315,19 +315,19 @@ func normalizeUpdatedAt(tasks []*models.Task) {
 	}
 }
 
-// detectAndReassignDuplicateIDs detects duplicate task IDs, reassigns new UUIDs
-// to duplicates, and updates all cross-references (ParentID, DependsOn,
-// RelatedTo) that pointed to the old IDs. Returns the set of all known IDs and
+// detectAndReassignDuplicateIDs detects duplicate task IDs and reassigns new
+// UUIDs to duplicates. The first task with a given ID keeps it; subsequent
+// duplicates get new UUIDs. References (ParentID, DependsOn, RelatedTo) are
+// NOT remapped because the first task retains the original ID, so existing
+// references to that ID remain valid. Returns the set of all known IDs and
 // any warnings generated.
 func detectAndReassignDuplicateIDs(tasks []*models.Task) (map[string]bool, []ParseWarning) {
 	var warnings []ParseWarning
 	taskByID := make(map[string]bool, len(tasks))
-	idRemap := make(map[string]string) // oldID → newID
 	for _, t := range tasks {
 		if taskByID[t.ID] {
 			oldID := t.ID
 			t.ID = uuid.New().String()
-			idRemap[oldID] = t.ID
 			warnings = append(warnings, ParseWarning{
 				Type:    format.WarningDataCorrection,
 				TaskID:  t.ID,
@@ -336,32 +336,6 @@ func detectAndReassignDuplicateIDs(tasks []*models.Task) (map[string]bool, []Par
 			})
 		}
 		taskByID[t.ID] = true
-	}
-	// Update references that point to reassigned IDs.
-	if len(idRemap) > 0 {
-		for _, t := range tasks {
-			if t.ParentID != nil {
-				if newID, ok := idRemap[*t.ParentID]; ok {
-					*t.ParentID = newID
-				}
-			}
-			for i, dep := range t.DependsOn {
-				if strings.Contains(dep, ":") {
-					continue
-				}
-				if newID, ok := idRemap[dep]; ok {
-					t.DependsOn[i] = newID
-				}
-			}
-			for i, rel := range t.RelatedTo {
-				if strings.Contains(rel, ":") {
-					continue
-				}
-				if newID, ok := idRemap[rel]; ok {
-					t.RelatedTo[i] = newID
-				}
-			}
-		}
 	}
 	return taskByID, warnings
 }

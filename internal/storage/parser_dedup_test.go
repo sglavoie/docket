@@ -5,9 +5,10 @@ import (
 	"testing"
 )
 
-func TestParseTasksMarkdown_DuplicateID_UpdatesDependsOn(t *testing.T) {
+func TestParseTasksMarkdown_DuplicateID_PreservesDependsOn(t *testing.T) {
 	// Task A and Task A2 share the same ID "dup-id". A2 will get a new UUID.
-	// Task B depends on "dup-id". After dedup, B's DependsOn should point to A2's new ID.
+	// Task B depends on "dup-id". After dedup, B's DependsOn should still point
+	// to "dup-id" because Task A (the first) retains the original ID.
 	content := `# Project: Test
 
 ## Task: Task A
@@ -42,12 +43,13 @@ func TestParseTasksMarkdown_DuplicateID_UpdatesDependsOn(t *testing.T) {
 		t.Fatal("Task A2 should have been reassigned a new ID")
 	}
 
-	// Task B's DependsOn should reference A2's new ID
+	// Task B's DependsOn should still reference "dup-id" (Task A, the first
+	// occurrence that kept the original ID)
 	if len(taskB.DependsOn) != 1 {
 		t.Fatalf("expected 1 dependency, got %d", len(taskB.DependsOn))
 	}
-	if taskB.DependsOn[0] != taskA2.ID {
-		t.Errorf("Task B DependsOn should be updated to %q, got %q", taskA2.ID, taskB.DependsOn[0])
+	if taskB.DependsOn[0] != "dup-id" {
+		t.Errorf("Task B DependsOn should still be %q (first task keeps original ID), got %q", "dup-id", taskB.DependsOn[0])
 	}
 
 	// Should have a warning about the duplicate
@@ -63,9 +65,10 @@ func TestParseTasksMarkdown_DuplicateID_UpdatesDependsOn(t *testing.T) {
 	}
 }
 
-func TestParseTasksMarkdown_DuplicateID_UpdatesParentID(t *testing.T) {
+func TestParseTasksMarkdown_DuplicateID_PreservesParentID(t *testing.T) {
 	// Parent and Parent2 share "dup-id". Parent2 gets reassigned.
-	// Child has parent: dup-id, which should be updated to Parent2's new ID.
+	// Child has parent: dup-id, which should still point to "dup-id" because
+	// the first Parent retains the original ID.
 	content := `# Project: Test
 
 ## Epic: Parent
@@ -86,8 +89,13 @@ func TestParseTasksMarkdown_DuplicateID_UpdatesParentID(t *testing.T) {
 		t.Fatalf("expected 3 tasks, got %d", len(result.Tasks))
 	}
 
+	parent := result.Tasks[0]
 	parent2 := result.Tasks[1]
 	child := result.Tasks[2]
+
+	if parent.ID != "dup-id" {
+		t.Errorf("Parent should keep original ID 'dup-id', got %q", parent.ID)
+	}
 
 	if parent2.ID == "dup-id" {
 		t.Fatal("Parent2 should have been reassigned a new ID")
@@ -96,8 +104,9 @@ func TestParseTasksMarkdown_DuplicateID_UpdatesParentID(t *testing.T) {
 	if child.ParentID == nil {
 		t.Fatal("Child should have a ParentID")
 	}
-	if *child.ParentID != parent2.ID {
-		t.Errorf("Child ParentID should be updated to %q, got %q", parent2.ID, *child.ParentID)
+	// Child's parent reference points to the first Parent (which kept "dup-id")
+	if *child.ParentID != "dup-id" {
+		t.Errorf("Child ParentID should still be %q (first parent keeps original ID), got %q", "dup-id", *child.ParentID)
 	}
 }
 
@@ -138,9 +147,10 @@ func TestParseTasksMarkdown_OrphanedParentRef(t *testing.T) {
 	}
 }
 
-func TestParseTasksMarkdown_DuplicateID_UpdatesRelatedTo(t *testing.T) {
+func TestParseTasksMarkdown_DuplicateID_PreservesRelatedTo(t *testing.T) {
 	// Task A and Task A2 share "dup-id". A2 gets reassigned.
-	// Task C has related: dup-id, which should be updated to A2's new ID.
+	// Task C has related: dup-id, which should still point to "dup-id" because
+	// Task A (the first) retains the original ID.
 	content := `# Project: Test
 
 ## Task: Task A
@@ -171,7 +181,75 @@ func TestParseTasksMarkdown_DuplicateID_UpdatesRelatedTo(t *testing.T) {
 	if len(taskC.RelatedTo) != 1 {
 		t.Fatalf("expected 1 related entry, got %d", len(taskC.RelatedTo))
 	}
-	if taskC.RelatedTo[0] != taskA2.ID {
-		t.Errorf("Task C RelatedTo should be updated to %q, got %q", taskA2.ID, taskC.RelatedTo[0])
+	// RelatedTo should still reference "dup-id" (Task A, the first occurrence)
+	if taskC.RelatedTo[0] != "dup-id" {
+		t.Errorf("Task C RelatedTo should still be %q (first task keeps original ID), got %q", "dup-id", taskC.RelatedTo[0])
+	}
+}
+
+func TestParseTasksMarkdown_TripleDuplicateID(t *testing.T) {
+	// Three tasks share the same ID. Only the first keeps it; the other two
+	// get new UUIDs. References to the original ID stay valid.
+	content := `# Project: Test
+
+## Task: Task A
+<!-- id: dup-id, status: todo, priority: 1 -->
+
+## Task: Task B
+<!-- id: dup-id, status: todo, priority: 2 -->
+
+## Task: Task C
+<!-- id: dup-id, status: todo, priority: 3 -->
+
+## Task: Task D
+<!-- id: unique-d, status: todo, priority: 1, depends: dup-id -->
+`
+	result, err := ParseTasksMarkdownWithSections(content)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if len(result.Tasks) != 4 {
+		t.Fatalf("expected 4 tasks, got %d", len(result.Tasks))
+	}
+
+	taskA := result.Tasks[0]
+	taskB := result.Tasks[1]
+	taskC := result.Tasks[2]
+	taskD := result.Tasks[3]
+
+	// First task keeps original ID
+	if taskA.ID != "dup-id" {
+		t.Errorf("Task A should keep original ID, got %q", taskA.ID)
+	}
+
+	// Second and third tasks get new IDs
+	if taskB.ID == "dup-id" {
+		t.Error("Task B should have been reassigned a new ID")
+	}
+	if taskC.ID == "dup-id" {
+		t.Error("Task C should have been reassigned a new ID")
+	}
+
+	// All three IDs should be unique
+	ids := map[string]bool{taskA.ID: true, taskB.ID: true, taskC.ID: true}
+	if len(ids) != 3 {
+		t.Errorf("expected 3 unique IDs, got %d (%q, %q, %q)", len(ids), taskA.ID, taskB.ID, taskC.ID)
+	}
+
+	// Task D's dependency should still point to "dup-id" (Task A)
+	if len(taskD.DependsOn) != 1 || taskD.DependsOn[0] != "dup-id" {
+		t.Errorf("Task D DependsOn should still be [\"dup-id\"], got %v", taskD.DependsOn)
+	}
+
+	// Should have 2 warnings about duplicate IDs
+	dupWarnings := 0
+	for _, w := range result.Warnings {
+		if strings.Contains(w.Message, "duplicate ID") {
+			dupWarnings++
+		}
+	}
+	if dupWarnings != 2 {
+		t.Errorf("expected 2 duplicate ID warnings, got %d", dupWarnings)
 	}
 }
