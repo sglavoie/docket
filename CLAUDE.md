@@ -71,10 +71,7 @@ The TUI uses a view stack pattern. Selecting a project pushes `ViewProjectTree`.
 
 ### TUI Keybinding Constraints
 
-BubbleTea/terminal limitations:
-
-- `Ctrl+,` does not work as a keybinding (not recognized by terminal)
-- Dashboard uses `,` for Settings (not as a status prefix like other views) because Dashboard shows projects, not tasks
+tt requires a Kitty-protocol-compatible terminal (Kitty, Ghostty, WezTerm, etc.). Bubble Tea v2 auto-requests Kitty key disambiguation, enabling keys like `Ctrl+,`, `Ctrl+i` (≠ Tab), `Ctrl+m` (≠ Enter), `Shift+Enter`, and key release events.
 
 ### TUI Esc/q Key Handling
 

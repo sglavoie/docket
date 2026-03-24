@@ -46,6 +46,8 @@ func (r *KeybindingRegistry) registerOutlinerBindings() {
 		Keybinding{Key: "i", Description: "Quick capture", Category: "Task Operations", Views: views},
 		Keybinding{Key: "I", Description: "Bulk capture", Category: "Task Operations", Views: views},
 		Keybinding{Key: "*", Description: "Toggle active flag", Category: "Task Operations", Views: views},
+		Keybinding{Key: "ctrl+M", Description: "Move/reparent task", Category: "Task Operations", Views: views},
+		Keybinding{Key: "ctrl+.", Description: "Quick note on selected task", Category: "Task Operations", Views: views},
 		Keybinding{Key: "ctrl+L", Description: "Edit last modified task", Category: "Task Operations", Views: views},
 
 		// Search

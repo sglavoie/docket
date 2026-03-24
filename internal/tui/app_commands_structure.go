@@ -2,6 +2,8 @@ package tui
 
 import (
 	tea "charm.land/bubbletea/v2"
+
+	"github.com/sglavoie/tt/internal/models"
 )
 
 func (m *AppModel) structureCommands() []Command {
@@ -127,6 +129,83 @@ func (m *AppModel) structureCommands() []Command {
 				}
 				visible := m.projectTree.visibleNodes()
 				m.projectTree.handleMovementKeys("left", visible)
+				return nil
+			},
+		},
+		{
+			Name:        "quick note",
+			Description: "Append a quick note/comment to the selected task",
+			Shortcut:    "ctrl+.",
+			Category:    CategoryStructure,
+			Views:       []ViewType{ViewProjectTree, ViewOutliner},
+			Aliases:     []string{"note", "comment quick"},
+			Handler: func() tea.Msg {
+				getTaskAndProject := func() (*models.Task, *models.Project) {
+					if m.projectTree != nil {
+						if task := m.projectTree.getCursorTask(); task != nil {
+							return task, m.projectTree.getProject()
+						}
+					}
+					if m.outliner != nil {
+						if task := m.outliner.getCursorTask(); task != nil {
+							return task, m.outliner.getProject()
+						}
+					}
+					return nil, nil
+				}
+				task, project := getTaskAndProject()
+				if task == nil || project == nil {
+					return nil
+				}
+				return OpenQuickNoteMsg{Task: task, Project: project}
+			},
+		},
+		{
+			Name:        "move/reparent task",
+			Description: "Move selected task to a new parent",
+			Shortcut:    "ctrl+m",
+			Category:    CategoryStructure,
+			Views:       []ViewType{ViewProjectTree, ViewOutliner},
+			Aliases:     []string{"reparent", "move to parent"},
+			Handler: func() tea.Msg {
+				if m.projectTree != nil {
+					task := m.projectTree.getCursorTask()
+					project := m.projectTree.getProject()
+					if task != nil && project != nil {
+						validParents := buildReparentValidParents(project, task)
+						var currentParentID *string
+						if task.ParentID != nil {
+							id := *task.ParentID
+							currentParentID = &id
+						}
+						return OpenParentSelectorMsg{
+							ValidParents:   validParents,
+							CurrentID:      currentParentID,
+							AllowNone:      true,
+							Source:         ViewProjectTree,
+							ReparentTaskID: task.ID,
+						}
+					}
+				}
+				if m.outliner != nil {
+					task := m.outliner.getCursorTask()
+					project := m.outliner.getProject()
+					if task != nil && project != nil {
+						validParents := buildReparentValidParents(project, task)
+						var currentParentID *string
+						if task.ParentID != nil {
+							id := *task.ParentID
+							currentParentID = &id
+						}
+						return OpenParentSelectorMsg{
+							ValidParents:   validParents,
+							CurrentID:      currentParentID,
+							AllowNone:      true,
+							Source:         ViewOutliner,
+							ReparentTaskID: task.ID,
+						}
+					}
+				}
 				return nil
 			},
 		},

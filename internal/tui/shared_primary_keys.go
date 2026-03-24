@@ -412,6 +412,37 @@ func handleDeleteConfirmKey(v deleteConfirmView) bool {
 	return true
 }
 
+// buildReparentValidParents returns tasks that are valid parents for reparenting task.
+// Excludes the task itself, its descendants, and tasks that can't parent the task's type.
+func buildReparentValidParents(project *models.Project, task *models.Task) []*models.Task {
+	if project == nil || task == nil {
+		return nil
+	}
+	var parents []*models.Task
+	excluded := taskDescendantIDs(task)
+	for _, t := range project.Tasks {
+		if t.ID == task.ID || excluded[t.ID] {
+			continue
+		}
+		if t.CanAddChild(task.Type) {
+			parents = append(parents, t)
+		}
+	}
+	return parents
+}
+
+// taskDescendantIDs returns the set of IDs of all descendants of task.
+func taskDescendantIDs(task *models.Task) map[string]bool {
+	ids := make(map[string]bool)
+	for _, child := range task.Children {
+		ids[child.ID] = true
+		for id := range taskDescendantIDs(child) {
+			ids[id] = true
+		}
+	}
+	return ids
+}
+
 // handleCommonPrimaryViewKey handles keys shared across the three primary
 // project views (ProjectTree, Outliner). It returns (cmd, true) when
 // the key was consumed, or (nil, false) when the caller should continue with
@@ -501,6 +532,45 @@ func handleCommonPrimaryViewKey(key string, v primaryProjectView) (tea.Cmd, bool
 			}, true
 		}
 		return nil, true
+
+	// Quick note on selected task
+	case "ctrl+.":
+		if project == nil {
+			return nil, true
+		}
+		task := v.getCursorTask()
+		if task == nil {
+			return nil, true
+		}
+		return func() tea.Msg {
+			return OpenQuickNoteMsg{Task: task, Project: project}
+		}, true
+
+	// Move/reparent task
+	case "ctrl+m":
+		if project == nil {
+			return nil, true
+		}
+		task := v.getCursorTask()
+		if task == nil {
+			return nil, true
+		}
+		validParents := buildReparentValidParents(project, task)
+		taskID := task.ID
+		var currentParentID *string
+		if task.ParentID != nil {
+			id := *task.ParentID
+			currentParentID = &id
+		}
+		return func() tea.Msg {
+			return OpenParentSelectorMsg{
+				ValidParents:   validParents,
+				CurrentID:      currentParentID,
+				AllowNone:      true,
+				Source:         ViewProjectTree,
+				ReparentTaskID: taskID,
+			}
+		}, true
 	}
 
 	return nil, false

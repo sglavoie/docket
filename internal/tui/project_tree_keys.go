@@ -290,6 +290,21 @@ func (m *ProjectTreeModel) handleMiscActionKeys(key string, _ []*TreeNode) (bool
 		}
 		return true, nil
 
+	case "ctrl+;":
+		// Toggle focus mode (zoom into selected subtree or clear if already focused)
+		visible := m.visibleNodes()
+		if CursorInBounds(m.cursor, len(visible)) {
+			task := visible[m.cursor].Task
+			if m.focusedTask != nil && m.focusedTask.ID == task.ID {
+				m.focusedTask = nil
+			} else if task.Type.CanHaveChildren() {
+				m.focusedTask = task
+				m.cursor = 0
+			}
+			m.buildTree()
+		}
+		return true, nil
+
 	case "f":
 		return true, func() tea.Msg {
 			return ShowProjectFocusViewMsg{Project: m.project}

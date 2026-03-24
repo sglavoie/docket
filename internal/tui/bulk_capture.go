@@ -88,6 +88,10 @@ func (m *BulkCaptureModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case "ctrl+s":
 			return m, m.createTasks()
+
+		case "shift+enter":
+			m.input.InsertString("\n")
+			return m, nil
 		}
 	}
 

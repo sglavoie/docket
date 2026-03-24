@@ -41,7 +41,7 @@ func (m *AppModel) globalCommands() []Command {
 		{
 			Name:        "settings",
 			Description: "Open application settings",
-			Shortcut:    ";s",
+			Shortcut:    "ctrl+,",
 			Category:    CategoryNavigation,
 			Aliases:     []string{"preferences", "config", "options"},
 			Handler: func() tea.Msg {
@@ -469,7 +469,7 @@ func (m *AppModel) viewCommands() []Command {
 		{
 			Name:        "global inbox processor",
 			Description: "Process inbox items across all projects",
-			Shortcut:    ";i",
+			Shortcut:    "ctrl+i",
 			Category:    CategoryViews,
 			Aliases:     []string{"global inbox", "all inbox", "process all inbox"},
 			Handler: func() tea.Msg {
@@ -617,6 +617,22 @@ func (m *AppModel) navCommands() []Command {
 			Aliases:     []string{"quick switch", "task switcher", "recent visits"},
 			Handler: func() tea.Msg {
 				m.openQuickSwitch()
+				return nil
+			},
+		},
+		{
+			Name:        "peek task detail",
+			Description: "Hold shift+space to peek at the selected task's details",
+			Shortcut:    "shift+space",
+			Category:    CategoryNavigation,
+			Aliases:     []string{"peek task", "task peek", "preview task"},
+			Handler: func() tea.Msg {
+				task := m.getCurrentCursorTask()
+				if task == nil {
+					return nil
+				}
+				m.peekTask = task
+				m.peekActive = true
 				return nil
 			},
 		},

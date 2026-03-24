@@ -1,6 +1,8 @@
 package tui
 
 import (
+	tea "charm.land/bubbletea/v2"
+
 	"github.com/sglavoie/tt/internal/alerts"
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
@@ -283,6 +285,16 @@ type AppModel struct {
 
 	// Message log: ring buffer of recent status messages for the log overlay.
 	messageLog MessageLog
+
+	// Keyboard enhancements reported by the terminal (Kitty protocol).
+	keyboardEnhancements tea.KeyboardEnhancementsMsg
+
+	// Quick note overlay (ctrl+. to add a comment without opening the full comments view)
+	quickNoteOverlay *QuickNoteOverlay
+
+	// Peek task overlay (shift+space to hold-peek task detail)
+	peekTask   *models.Task
+	peekActive bool
 }
 
 // pendingNoteMove holds state for a global note move operation.

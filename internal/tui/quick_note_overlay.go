@@ -1,0 +1,126 @@
+package tui
+
+import (
+	"fmt"
+	"strings"
+
+	"charm.land/bubbles/v2/textarea"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
+
+	"github.com/sglavoie/tt/internal/models"
+)
+
+// QuickNoteOverlay is an inline overlay for quickly appending a comment to a
+// task. It is stored on AppModel and rendered on top of the current view.
+type QuickNoteOverlay struct {
+	taskID    string
+	taskTitle string
+	project   *models.Project
+	input     textarea.Model
+}
+
+// newQuickNoteOverlay creates and focuses a quick note overlay for the given task.
+func newQuickNoteOverlay(task *models.Task, project *models.Project) *QuickNoteOverlay {
+	ti := textarea.New()
+	ti.Placeholder = "Type your note..."
+	ti.CharLimit = 2000
+	ti.SetHeight(3)
+	ti.ShowLineNumbers = false
+	ti.Focus()
+	return &QuickNoteOverlay{
+		taskID:    task.ID,
+		taskTitle: task.Title,
+		project:   project,
+		input:     ti,
+	}
+}
+
+// initCmd returns the command needed to start the textarea blink cursor.
+func (q *QuickNoteOverlay) initCmd() tea.Cmd {
+	return textarea.Blink
+}
+
+// handleKey processes a key press.
+// Returns (cmd, dismiss, resultMsg): dismiss=true means caller should clear
+// the overlay; resultMsg is non-nil when a side-effect message should be dispatched.
+func (q *QuickNoteOverlay) handleKey(msg tea.KeyPressMsg) (tea.Cmd, bool, tea.Msg) {
+	switch msg.String() {
+	case "esc":
+		return nil, true, nil
+	case "ctrl+s", "enter":
+		text := strings.TrimSpace(q.input.Value())
+		if text == "" {
+			return nil, true, nil
+		}
+		task, err := appendComment(q.project, q.taskID, text)
+		if err != nil {
+			return nil, true, ErrorMsg{Err: err}
+		}
+		if err := saveProjectNoReload(q.project); err != nil {
+			return nil, true, ErrorMsg{Err: fmt.Errorf("failed to save project: %w", err)}
+		}
+		return nil, true, CommentAddedMsg{Task: task}
+	case "shift+enter":
+		q.input.InsertString("\n")
+		return nil, false, nil
+	default:
+		var cmd tea.Cmd
+		q.input, cmd = q.input.Update(msg)
+		return cmd, false, nil
+	}
+}
+
+// render returns the overlay as a bordered popup string ready for OverlayPopup.
+func (q *QuickNoteOverlay) render(width int) string {
+	borderStyle := lipgloss.NewStyle().Foreground(ColorPrimary)
+
+	title := lipgloss.NewStyle().Foreground(ColorPrimary).Bold(true).Render("Quick Note")
+
+	// Truncate task title if needed
+	taskTitle := q.taskTitle
+	footerText := HelpStyle.Render("Enter: save · Shift+Enter: newline · Esc: cancel")
+
+	// Compute widths: fit within 60% of screen, at least 40 chars
+	maxWidth := min(max(width*3/5, 40), width-4)
+
+	titleMinInner := lipgloss.Width(title) + 6 - 2
+	footerMinInner := lipgloss.Width(footerText) + 6 - 2
+	innerWidth := max(maxWidth, max(titleMinInner, footerMinInner))
+
+	// Truncate task title to fit label area
+	labelPrefix := "Task: "
+	maxTitleLen := max(innerWidth-lipgloss.Width(labelPrefix)-2, 3)
+	if len(taskTitle) > maxTitleLen {
+		taskTitle = taskTitle[:maxTitleLen-1] + "…"
+	}
+	label := MutedStyle.Render(labelPrefix + taskTitle)
+
+	// Size the textarea input to fit inside the box
+	inputWidth := max(innerWidth-2, 10) // account for padding
+	q.input.SetWidth(inputWidth)
+
+	var content strings.Builder
+	content.WriteString(label)
+	content.WriteString("\n")
+	content.WriteString(q.input.View())
+
+	boxStyle := lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(ColorPrimary).
+		Padding(0, 1).
+		Width(innerWidth)
+
+	rendered := boxStyle.Render(content.String())
+
+	lines := strings.Split(rendered, "\n")
+	if len(lines) < 2 {
+		return rendered
+	}
+
+	actualWidth := lipgloss.Width(lines[0])
+	lines[0] = renderTitledTopBorder(title, actualWidth, borderStyle)
+	lines[len(lines)-1] = renderTitledBottomBorder(footerText, actualWidth, borderStyle)
+
+	return strings.Join(lines, "\n")
+}

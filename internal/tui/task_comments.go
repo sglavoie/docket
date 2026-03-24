@@ -146,6 +146,9 @@ func (m *TaskCommentsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) { //nolint:
 				return m, m.saveEditedComment()
 			case "ctrl+e":
 				return m, m.editCommentInExternalEditorFromEditMode()
+			case "shift+enter":
+				m.editTextInput.InsertString("\n")
+				return m, nil
 			}
 		}
 		m.editTextInput, cmd = m.editTextInput.Update(msg)
@@ -169,6 +172,9 @@ func (m *TaskCommentsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) { //nolint:
 				return m, m.saveComment()
 			case "ctrl+e":
 				return m, m.addCommentInExternalEditor()
+			case "shift+enter":
+				m.textInput.InsertString("\n")
+				return m, nil
 			}
 		}
 		m.textInput, cmd = m.textInput.Update(msg)
@@ -264,16 +270,12 @@ func (m *TaskCommentsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) { //nolint:
 
 func (m *TaskCommentsModel) saveComment() tea.Cmd {
 	return func() tea.Msg {
-		text := strings.TrimSpace(m.textInput.Value())
-		if text == "" {
-			m.err = fmt.Errorf("comment text cannot be empty")
+		task, err := appendComment(m.project, m.task.ID, m.textInput.Value())
+		if err != nil {
+			m.err = err
 			return nil
 		}
-
-		if t := resolveTaskInProject(m.project, m.task.ID); t != nil {
-			m.task = t
-		}
-		m.task.AddComment(text)
+		m.task = task
 
 		if err := saveProjectNoReload(m.project); err != nil {
 			return ErrorMsg{Err: fmt.Errorf("failed to save project: %w", err)}

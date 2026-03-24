@@ -179,8 +179,8 @@ type Config struct {
 	SectionLimitWaiting            *int                         `json:"section_limit_waiting,omitempty"`
 	SectionLimitSomeday            *int                         `json:"section_limit_someday,omitempty"`
 	SectionLimitReview             *int                         `json:"section_limit_review,omitempty"`
-	SmartLists                     []SmartList                  `json:"smart_lists,omitempty"`                       // User-defined smart list tabs for AllTasks view
-	AllTasksTabOrder               []string                     `json:"all_tasks_tab_order,omitempty"`               // Built-in tab names + smart list UUIDs
+	SmartLists                     []SmartList                  `json:"smart_lists,omitempty"`         // User-defined smart list tabs for AllTasks view
+	AllTasksTabOrder               []string                     `json:"all_tasks_tab_order,omitempty"` // Built-in tab names + smart list UUIDs
 	// Proactive alert system: review tracking
 	LastDailyReviewAt  *time.Time `json:"last_daily_review_at,omitempty"`
 	LastWeeklyReviewAt *time.Time `json:"last_weekly_review_at,omitempty"`

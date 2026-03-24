@@ -123,6 +123,10 @@ func (m *TextEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					CurrentValue: m.textarea.Value(),
 				}
 			}
+
+		case "shift+enter":
+			m.textarea.InsertString("\n")
+			return m, nil
 		}
 	}
 

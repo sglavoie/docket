@@ -331,16 +331,18 @@ type TaskCopiedMsg struct {
 
 // OpenParentSelectorMsg opens the parent task selector.
 type OpenParentSelectorMsg struct {
-	ValidParents []*models.Task
-	CurrentID    *string  // Pre-select current parent
-	AllowNone    bool     // Whether "None" is valid option
-	Source       ViewType // Which view opened it
+	ValidParents   []*models.Task
+	CurrentID      *string  // Pre-select current parent
+	AllowNone      bool     // Whether "None" is valid option
+	Source         ViewType // Which view opened it
+	ReparentTaskID string   // When non-empty, reparent this task instead of updating a form field
 }
 
 // ParentSelectedMsg returns the selected parent from parent selector.
 type ParentSelectedMsg struct {
-	ParentID *string  // nil means "None"
-	Source   ViewType // Which view to send result to
+	ParentID       *string  // nil means "None"
+	Source         ViewType // Which view to send result to
+	ReparentTaskID string   // Forwarded from OpenParentSelectorMsg; non-empty means reparent operation
 }
 
 // CloseParentSelectorMsg closes the parent selector without selection.
@@ -406,6 +408,12 @@ type ShowTaskCommentsMsg struct {
 
 // CloseTaskCommentsMsg closes the comments view.
 type CloseTaskCommentsMsg struct{}
+
+// OpenQuickNoteMsg opens the quick note overlay for the given task.
+type OpenQuickNoteMsg struct {
+	Task    *models.Task
+	Project *models.Project
+}
 
 // CommentAddedMsg signals a comment was added.
 type CommentAddedMsg struct{ Task *models.Task }

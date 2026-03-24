@@ -49,6 +49,9 @@ func (r *KeybindingRegistry) registerProjectTreeBindings() {
 		Keybinding{Key: "D", Description: "Delete task", Category: "Task Operations", Views: views},
 		Keybinding{Key: "ctrl+L", Description: "Edit last modified task", Category: "Task Operations", Views: views},
 		Keybinding{Key: "*", Description: "Toggle active flag", Category: "Task Operations", Views: views},
+		Keybinding{Key: "ctrl+M", Description: "Move/reparent task", Category: "Task Operations", Views: views},
+		Keybinding{Key: "ctrl+.", Description: "Quick note on selected task", Category: "Task Operations", Views: views},
+		Keybinding{Key: "ctrl+;", Description: "Toggle focus mode (zoom into subtree)", Category: "Task Operations", Views: views},
 		Keybinding{Key: "gh", Description: "View activity log", Category: "Task Operations", Views: views},
 		Keybinding{Key: "gl", Description: "Project recent activity", Category: "Navigation", Views: views},
 
@@ -88,7 +91,7 @@ func (r *KeybindingRegistry) registerProjectTreeBindings() {
 		Keybinding{Key: "FS", Description: "Score threshold filter", Category: "Scoring", Views: views},
 
 		// Multi-select
-		Keybinding{Key: "v", Description: "Toggle multi-select mode", Category: "Multi-select", Views: views},
+		Keybinding{Key: "v", Description: "Focus mode (zoom into subtree)", Category: "Navigation", Views: views},
 		Keybinding{Key: "a", Description: "Select all visible (in multi-select)", Category: "Multi-select", Views: views},
 		Keybinding{Key: "A", Description: "Deselect all visible (in multi-select)", Category: "Multi-select", Views: views},
 		Keybinding{Key: "gX", Description: "Deselect all (in multi-select)", Category: "Multi-select", Views: views},

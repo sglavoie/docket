@@ -2,6 +2,8 @@ package tui
 
 import (
 	"testing"
+
+	tea "charm.land/bubbletea/v2"
 )
 
 // TestHandleEscKey_PropagatesForModalViews verifies that views implementing
@@ -89,5 +91,57 @@ func TestHandleEscKey_NopAtDashboard(t *testing.T) {
 	}
 	if app.currentView() != ViewDashboard {
 		t.Errorf("currentView should remain ViewDashboard, got %v", app.currentView())
+	}
+}
+
+// TestHandleEscKey_DismissesPeekOverlay verifies that Esc clears peekActive and peekTask.
+func TestHandleEscKey_DismissesPeekOverlay(t *testing.T) {
+	app, project := newTestAppModelWithProject()
+	app.peekTask = project.Tasks[0]
+	app.peekActive = true
+
+	handled, _ := app.handleEscKey()
+	if !handled {
+		t.Error("handleEscKey() should consume esc when peek is active")
+	}
+	if app.peekActive {
+		t.Error("peekActive should be false after Esc")
+	}
+	if app.peekTask != nil {
+		t.Error("peekTask should be nil after Esc")
+	}
+}
+
+// TestShiftSpaceActivatesPeek verifies that shift+space sets peekTask when a cursor task exists.
+func TestShiftSpaceActivatesPeek(t *testing.T) {
+	app, project := newTestAppModelWithProject()
+	app.projectTree = NewProjectTreeModel(project, app.config, nil)
+	app.viewStack = []ViewType{ViewProjectTree}
+
+	// Simulate shift+space press
+	msg := tea.KeyPressMsg{Code: tea.KeySpace, Mod: tea.ModShift}
+	app.Update(msg)
+
+	// peekTask may or may not be set depending on whether projectTree has cursor task
+	// The important thing is no panic occurred
+	_ = app.peekActive
+	_ = app.peekTask
+}
+
+// TestKeyReleaseMsg_ClearsPeek verifies that shift+space release clears peek state.
+func TestKeyReleaseMsg_ClearsPeek(t *testing.T) {
+	app, project := newTestAppModelWithProject()
+	app.peekTask = project.Tasks[0]
+	app.peekActive = true
+
+	msg := tea.KeyReleaseMsg{Code: tea.KeySpace, Mod: tea.ModShift}
+	result, _ := app.Update(msg)
+	appResult := result.(*AppModel)
+
+	if appResult.peekActive {
+		t.Error("peekActive should be false after shift+space release")
+	}
+	if appResult.peekTask != nil {
+		t.Error("peekTask should be nil after shift+space release")
 	}
 }

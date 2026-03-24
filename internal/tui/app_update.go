@@ -9,6 +9,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/logging"
+	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 )
 
@@ -76,20 +77,33 @@ func (m *AppModel) Update(msg tea.Msg) (outModel tea.Model, outCmd tea.Cmd) { //
 			return m.handleProjectCycleKey(msg)
 		}
 
+		// Intercept keys when quick note overlay is active
+		if m.quickNoteOverlay != nil {
+			inputCmd, dismiss, resultMsg := m.quickNoteOverlay.handleKey(msg)
+			if dismiss {
+				m.quickNoteOverlay = nil
+			}
+			var batchCmds []tea.Cmd
+			if inputCmd != nil {
+				batchCmds = append(batchCmds, inputCmd)
+			}
+			if resultMsg != nil {
+				captured := resultMsg
+				batchCmds = append(batchCmds, func() tea.Msg { return captured })
+			}
+			return m, tea.Batch(batchCmds...)
+		}
+
 		// Intercept keys when semicolon prefix is pending
 		if m.pendingSemicolonPrefix {
 			m.pendingSemicolonPrefix = false
 			switch msg.String() {
 			case "n":
 				return m, func() tea.Msg { return ShowNotificationCenterMsg{} }
-			case "s":
-				return m, func() tea.Msg { return SettingsMsg{} }
 			case "d":
 				return m, func() tea.Msg { return ShowDailyReviewMsg{} }
 			case "w":
 				return m, func() tea.Msg { return ShowWeeklyReviewMsg{} }
-			case "i":
-				return m, func() tea.Msg { return ShowGlobalInboxProcessorMsg{} }
 			case "N":
 				return m, func() tea.Msg { return ShowGlobalNotesMsg{} }
 			case "f":
@@ -216,6 +230,31 @@ func (m *AppModel) Update(msg tea.Msg) (outModel tea.Model, outCmd tea.Cmd) { //
 					return ClearSemicolonPrefixMsg{}
 				}
 			}
+		case "ctrl+,":
+			if !m.hasActiveTextInput() {
+				return m, func() tea.Msg { return SettingsMsg{} }
+			}
+		case "ctrl+i":
+			if !m.hasActiveTextInput() {
+				return m, func() tea.Msg { return ShowGlobalInboxProcessorMsg{} }
+			}
+		case "shift+space":
+			if !m.hasActiveTextInput() && !m.hasActiveMultiSelect() {
+				task := m.getCurrentCursorTask()
+				if task != nil {
+					m.peekTask = task
+					m.peekActive = true
+				}
+			}
+		}
+
+	case tea.KeyboardEnhancementsMsg:
+		m.keyboardEnhancements = msg
+
+	case tea.KeyReleaseMsg:
+		if msg.String() == "shift+space" && m.peekActive {
+			m.peekTask = nil
+			m.peekActive = false
 		}
 
 	case tea.WindowSizeMsg:
@@ -379,6 +418,9 @@ func (m *AppModel) currentViewCapabilities() ViewCapabilities {
 // that should receive keyboard input (like search boxes, text fields).
 // This is used to determine whether global keyboard shortcuts should be intercepted.
 func (m *AppModel) hasActiveTextInput() bool {
+	if m.quickNoteOverlay != nil {
+		return true
+	}
 	if caps := m.currentViewCapabilities(); caps != nil {
 		return caps.HasTextInput()
 	}
@@ -390,6 +432,11 @@ func (m *AppModel) hasActiveTextInput() bool {
 // propagate to views); cmd is non-nil when the pop triggers a side-effect
 // (e.g. ViewDidAppearMsg for the cross-project outliner).
 func (m *AppModel) handleEscKey() (bool, tea.Cmd) {
+	if m.peekActive {
+		m.peekTask = nil
+		m.peekActive = false
+		return true, nil
+	}
 	if m.pendingSemicolonPrefix {
 		m.pendingSemicolonPrefix = false
 		return true, nil
@@ -463,6 +510,16 @@ func (m *AppModel) delegateToCurrentView(msg tea.Msg) tea.Cmd {
 	currentView := m.currentView()
 	cmd := m.views.Update(currentView, msg)
 
+	// Update peek task if active (cursor may have moved)
+	if m.peekActive {
+		if task := m.getCurrentCursorTask(); task != nil {
+			m.peekTask = task
+		} else {
+			m.peekTask = nil
+			m.peekActive = false
+		}
+	}
+
 	// Keep typed pointers in sync for views that need direct access
 	switch currentView {
 	case ViewDashboard:
@@ -505,4 +562,38 @@ func (m *AppModel) delegateToCurrentView(msg tea.Msg) tea.Cmd {
 	}
 
 	return cmd
+}
+
+// getCurrentCursorTask returns the task under the cursor in the current primary view,
+// or nil if no task is selected or the current view is not a primary project view.
+func (m *AppModel) getCurrentCursorTask() *models.Task {
+	switch m.currentView() {
+	case ViewProjectTree:
+		if m.projectTree != nil {
+			return m.projectTree.getCursorTask()
+		}
+	case ViewOutliner, ViewTemporaryOutliner:
+		if m.outliner != nil {
+			return m.outliner.getCursorTask()
+		}
+	case ViewCrossProjectOutliner:
+		if m.crossOutliner != nil {
+			return m.crossOutliner.getCursorTask()
+		}
+	}
+	return nil
+}
+
+// hasActiveMultiSelect returns true if any primary view has multi-select mode active.
+func (m *AppModel) hasActiveMultiSelect() bool {
+	if m.projectTree != nil && m.projectTree.multiSelectMode {
+		return true
+	}
+	if m.outliner != nil && m.outliner.multiSelectMode {
+		return true
+	}
+	if m.crossOutliner != nil && m.crossOutliner.multiSelectMode {
+		return true
+	}
+	return false
 }

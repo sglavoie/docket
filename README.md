@@ -518,7 +518,10 @@ $start                     # Set status ($start, $blocked, $done, $canceled, $re
 
 - `:`: Open command palette
 - `Ctrl+X`: Switch project
-- `;n` / `;s` / `;d` / `;w`: Notification center / settings / daily review / weekly review
+- `;n` / `;d` / `;w`: Notification center / daily review / weekly review
+- `Ctrl+,`: Settings
+- `Ctrl+I`: Global inbox processor
+- `Shift+Space`: Hold to peek task detail
 - `Alt+O` / `Alt+I`: History back / forward
 - `|`: Recent tasks popup
 - `#`: Pinned tasks popup

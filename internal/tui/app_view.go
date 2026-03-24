@@ -16,6 +16,7 @@ import (
 func (m *AppModel) View() (result tea.View) {
 	defer func() {
 		result.AltScreen = true
+		result.KeyboardEnhancements.ReportEventTypes = true
 		if r := recover(); r != nil {
 			stack := debug.Stack()
 			logging.Warn("TUI panic in View: %v\n%s", r, stack)
@@ -63,6 +64,14 @@ func (m *AppModel) View() (result tea.View) {
 		if caps, ok := currentView.(ViewCapabilities); ok && caps.IsFullHeight() {
 			// Still overlay the semicolon prefix popup on full-height views
 			if popup := m.renderSemicolonPrefixPopup(); popup != "" {
+				content = OverlayPopup(content, popup, m.width, m.height)
+			}
+			// Overlay quick note on full-height views
+			if popup := m.renderQuickNoteOverlay(); popup != "" {
+				content = OverlayPopup(content, popup, m.width, m.height)
+			}
+			// Overlay peek task overlay on full-height views
+			if popup := m.renderPeekOverlay(); popup != "" {
 				content = OverlayPopup(content, popup, m.width, m.height)
 			}
 			resultView.SetContent(m.applyBackground(content))
@@ -123,6 +132,16 @@ func (m *AppModel) View() (result tea.View) {
 		}
 	}
 
+	// Overlay quick note popup if active
+	if popup := m.renderQuickNoteOverlay(); popup != "" {
+		content = OverlayPopup(content, popup, m.width, targetContentHeight)
+	}
+
+	// Overlay peek task detail if active
+	if popup := m.renderPeekOverlay(); popup != "" {
+		content = OverlayPopup(content, popup, m.width, targetContentHeight)
+	}
+
 	// Overlay confirm dialog last so it renders on top of all other popups
 	if popup := m.renderConfirmDialogOverlay(); popup != "" {
 		content = OverlayPopup(content, popup, m.width, targetContentHeight)
@@ -130,6 +149,104 @@ func (m *AppModel) View() (result tea.View) {
 
 	resultView.SetContent(m.applyBackground(content + "\n" + statusBar))
 	return resultView
+}
+
+// renderPeekOverlay renders the peek task detail overlay when peekActive is true.
+func (m *AppModel) renderPeekOverlay() string {
+	if !m.peekActive || m.peekTask == nil {
+		return ""
+	}
+	task := m.peekTask
+
+	title := lipgloss.NewStyle().Foreground(ColorPrimary).Bold(true).Render("Task Detail")
+	footerText := HelpStyle.Render("Esc: dismiss")
+
+	maxWidth := min(max(m.width*3/5, 40), m.width-4)
+	titleMinInner := lipgloss.Width(title) + 6 - 2
+	footerMinInner := lipgloss.Width(footerText) + 6 - 2
+	innerWidth := max(maxWidth, max(titleMinInner, footerMinInner))
+
+	var sb strings.Builder
+
+	// Task title
+	taskTitle := task.Title
+	if len(taskTitle) > innerWidth-2 {
+		taskTitle = taskTitle[:innerWidth-5] + "…"
+	}
+	sb.WriteString(lipgloss.NewStyle().Bold(true).Render(taskTitle))
+	sb.WriteString("\n")
+
+	// Type + Status
+	typeStatus := string(task.Type) + " · " + string(task.Status)
+	sb.WriteString(MutedStyle.Render(typeStatus))
+	sb.WriteString("\n")
+
+	// Priority
+	if task.Priority > 0 {
+		priorityNames := map[int]string{1: "Critical", 2: "High", 3: "Normal", 4: "Low", 5: "Someday"}
+		if name, ok := priorityNames[task.Priority]; ok {
+			sb.WriteString(MutedStyle.Render("Priority: " + name))
+			sb.WriteString("\n")
+		}
+	}
+
+	// Due date
+	if task.DueDate != nil {
+		sb.WriteString(MutedStyle.Render("Due: " + task.DueDate.Format("Mon Jan 2, 2006")))
+		sb.WriteString("\n")
+	}
+
+	// Tags
+	if len(task.Tags) > 0 {
+		sb.WriteString(MutedStyle.Render("Tags: " + strings.Join(task.Tags, ", ")))
+		sb.WriteString("\n")
+	}
+
+	// Description (truncated)
+	if task.Description != "" {
+		sb.WriteString("\n")
+		lines := strings.Split(strings.TrimSpace(task.Description), "\n")
+		maxLines := 5
+		if len(lines) > maxLines {
+			lines = lines[:maxLines]
+			lines = append(lines, "…")
+		}
+		for _, line := range lines {
+			if len(line) > innerWidth-2 {
+				line = line[:innerWidth-5] + "…"
+			}
+			sb.WriteString(MutedStyle.Render(line))
+			sb.WriteString("\n")
+		}
+	}
+
+	boxStyle := lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(ColorPrimary).
+		Padding(0, 1).
+		Width(innerWidth)
+
+	borderStyle := lipgloss.NewStyle().Foreground(ColorPrimary)
+	rendered := boxStyle.Render(sb.String())
+
+	renderedLines := strings.Split(rendered, "\n")
+	if len(renderedLines) < 2 {
+		return rendered
+	}
+
+	actualWidth := lipgloss.Width(renderedLines[0])
+	renderedLines[0] = renderTitledTopBorder(title, actualWidth, borderStyle)
+	renderedLines[len(renderedLines)-1] = renderTitledBottomBorder(footerText, actualWidth, borderStyle)
+
+	return strings.Join(renderedLines, "\n")
+}
+
+// renderQuickNoteOverlay renders the quick note overlay popup when active.
+func (m *AppModel) renderQuickNoteOverlay() string {
+	if m.quickNoteOverlay == nil {
+		return ""
+	}
+	return m.quickNoteOverlay.render(m.width)
 }
 
 // renderPrefixPopupOverlay checks if the current view has a pending prefix and

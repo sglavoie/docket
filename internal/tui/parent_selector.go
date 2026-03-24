@@ -40,10 +40,11 @@ func (p ParentPickerItem) ItemID() string {
 // ParentSelectorModel provides fuzzy-find selection of parent tasks.
 type ParentSelectorModel struct {
 	*BasePicker[ParentPickerItem]
-	allItems  []ParentPickerItem // All valid parent candidates
-	allowNone bool               // Whether "None" is a valid option
-	currentID *string            // Currently selected parent ID (for pre-selection)
-	source    ViewType           // Which view opened this selector
+	allItems       []ParentPickerItem // All valid parent candidates
+	allowNone      bool               // Whether "None" is a valid option
+	currentID      *string            // Currently selected parent ID (for pre-selection)
+	source         ViewType           // Which view opened this selector
+	reparentTaskID string             // When non-empty, forwarded back in ParentSelectedMsg
 }
 
 // NewParentSelectorModel creates a new parent selector.
@@ -240,8 +241,9 @@ func (m *ParentSelectorModel) selectCurrent() tea.Cmd {
 		}
 
 		return ParentSelectedMsg{
-			ParentID: parentID,
-			Source:   m.source,
+			ParentID:       parentID,
+			Source:         m.source,
+			ReparentTaskID: m.reparentTaskID,
 		}
 	}
 }

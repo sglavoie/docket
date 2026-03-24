@@ -167,6 +167,7 @@ func (m *AppModel) handleTaskMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint:go
 
 	case OpenParentSelectorMsg:
 		selector := NewParentSelectorModel(msg.ValidParents, msg.CurrentID, msg.AllowNone, msg.Source)
+		selector.reparentTaskID = msg.ReparentTaskID
 		m.showView(ViewParentSelector, selector)
 		return true, selector.Init()
 
@@ -243,7 +244,15 @@ func (m *AppModel) handleTaskMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint:go
 		m.popView()
 		return true, nil
 
+	case OpenQuickNoteMsg:
+		if msg.Task != nil && msg.Project != nil {
+			m.quickNoteOverlay = newQuickNoteOverlay(msg.Task, msg.Project)
+			return true, m.quickNoteOverlay.initCmd()
+		}
+		return true, nil
+
 	case CommentAddedMsg:
+		m.quickNoteOverlay = nil
 		m.setSuccessStatus("Comment added")
 		return true, defaultStatusTimeout()
 
