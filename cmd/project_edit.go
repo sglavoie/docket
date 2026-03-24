@@ -82,11 +82,25 @@ func runProjectEdit(cmd *cobra.Command, args []string) error {
 			return tterrors.NewRequiredFieldError("project name")
 		}
 
+		if len(newName) > models.MaxProjectNameLength {
+			return fmt.Errorf("project name too long (%d chars, max %d)", len(newName), models.MaxProjectNameLength)
+		}
+
 		// Generate new slug and check for uniqueness
 		newSlug := models.Slugify(newName)
 		if newSlug == "" {
 			return tterrors.NewInvalidValueError("project name", newName, "produces an empty slug")
 		}
+
+		// Reject reserved slugs (same check as project new)
+		reservedSlugs := map[string]bool{
+			".tt": true, "projects": true,
+			"new": true, "list": true, "delete": true, "switch": true, "archive": true,
+		}
+		if reservedSlugs[newSlug] {
+			return fmt.Errorf("%w: '%s' is a reserved name", tterrors.ErrInvalidValue, newSlug)
+		}
+
 		for _, p := range cfg.Projects {
 			if p.ID != project.ID && p.Slug == newSlug {
 				return fmt.Errorf("project with slug '%s' already exists", newSlug)
@@ -141,6 +155,19 @@ func runProjectEdit(cmd *cobra.Command, args []string) error {
 	// Save config
 	if err := saveConfig(configManager, cfg); err != nil {
 		return err
+	}
+
+	// When the name changes, update the tasks.md heading so the project name
+	// in the file stays in sync with the config. This matters for project
+	// restore (which reads the name from tasks.md) and human readability.
+	if nameChanged {
+		if err := storage.LoadProject(project); err == nil {
+			if err := storage.SaveProject(project); err != nil {
+				return fmt.Errorf("failed to update tasks file after rename: %w", err)
+			}
+		}
+		// If LoadProject fails (e.g., no tasks.md yet), skip silently —
+		// the heading will be written correctly on the next task save.
 	}
 
 	return out.OutputProject(project, func() {

@@ -147,6 +147,7 @@ func (m *MockEditor) EditContent(content string, extension string) (string, erro
 // MockRepository implements storage.ProjectRepository for testing.
 type MockRepository struct {
 	Projects    map[string]*models.Project
+	LastSaved   *models.Project // Most recently saved project (shallow copy for assertions)
 	LoadError   error
 	SaveError   error
 	BackupError error
@@ -230,6 +231,7 @@ func (m *MockRepository) Save(project *models.Project) error {
 
 	maps.Copy(savedProject.SectionColors, project.SectionColors)
 	m.Projects[project.ID] = savedProject
+	m.LastSaved = savedProject
 	return nil
 }
 
