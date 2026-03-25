@@ -10,6 +10,7 @@ import (
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/spf13/cobra"
 
+	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 )
 
@@ -45,7 +46,9 @@ func runProjectList(cmd *cobra.Command, args []string) error {
 
 	var projects = cfg.GetActiveProjects()
 	if showArchived {
-		projects = cfg.Projects
+		// Copy the slice to avoid mutating cfg.Projects order in place
+		projects = make([]*models.Project, len(cfg.Projects))
+		copy(projects, cfg.Projects)
 		sort.Slice(projects, func(i, j int) bool {
 			return strings.ToLower(projects[i].Name) < strings.ToLower(projects[j].Name)
 		})

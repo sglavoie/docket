@@ -174,18 +174,22 @@ func ParseMetadata(task *models.Task, metaStr string) []ParseWarning { //nolint:
 				task.DueDate = &t
 			}
 		case "depends":
+			seen := make(map[string]bool)
 			deps := strings.Split(value, ";")
 			for _, dep := range deps {
 				dep = strings.TrimSpace(dep)
-				if dep != "" {
+				if dep != "" && !seen[dep] {
+					seen[dep] = true
 					task.DependsOn = append(task.DependsOn, dep)
 				}
 			}
 		case "related":
+			seen := make(map[string]bool)
 			related := strings.Split(value, ";")
 			for _, rel := range related {
 				rel = strings.TrimSpace(rel)
-				if rel != "" {
+				if rel != "" && !seen[rel] {
+					seen[rel] = true
 					task.RelatedTo = append(task.RelatedTo, rel)
 				}
 			}

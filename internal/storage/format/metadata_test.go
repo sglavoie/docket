@@ -800,3 +800,51 @@ func TestParseMetadata_EmptyAndMalformedComment(t *testing.T) {
 		})
 	}
 }
+
+func TestParseMetadata_DedupsDependsOn(t *testing.T) {
+	task := &models.Task{
+		DependsOn: []string{},
+		RelatedTo: []string{},
+	}
+	_ = ParseMetadata(task, "id: abc, depends: dep1;dep2;dep1;dep3;dep2")
+	if len(task.DependsOn) != 3 {
+		t.Errorf("expected 3 unique depends, got %d: %v", len(task.DependsOn), task.DependsOn)
+	}
+	want := []string{"dep1", "dep2", "dep3"}
+	for i, w := range want {
+		if i >= len(task.DependsOn) || task.DependsOn[i] != w {
+			t.Errorf("DependsOn[%d] = %q, want %q", i, task.DependsOn[i], w)
+		}
+	}
+}
+
+func TestParseMetadata_DedupsRelatedTo(t *testing.T) {
+	task := &models.Task{
+		DependsOn: []string{},
+		RelatedTo: []string{},
+	}
+	_ = ParseMetadata(task, "id: abc, related: rel1;rel2;rel1;rel3;rel2")
+	if len(task.RelatedTo) != 3 {
+		t.Errorf("expected 3 unique related, got %d: %v", len(task.RelatedTo), task.RelatedTo)
+	}
+	want := []string{"rel1", "rel2", "rel3"}
+	for i, w := range want {
+		if i >= len(task.RelatedTo) || task.RelatedTo[i] != w {
+			t.Errorf("RelatedTo[%d] = %q, want %q", i, task.RelatedTo[i], w)
+		}
+	}
+}
+
+func TestParseMetadata_NoDuplicateWithSingleDep(t *testing.T) {
+	task := &models.Task{
+		DependsOn: []string{},
+		RelatedTo: []string{},
+	}
+	_ = ParseMetadata(task, "id: abc, depends: only-one")
+	if len(task.DependsOn) != 1 {
+		t.Errorf("expected 1 dep, got %d: %v", len(task.DependsOn), task.DependsOn)
+	}
+	if task.DependsOn[0] != "only-one" {
+		t.Errorf("DependsOn[0] = %q, want %q", task.DependsOn[0], "only-one")
+	}
+}
