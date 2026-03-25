@@ -93,6 +93,9 @@ func TestValidateTag(t *testing.T) {
 		{"valid with hyphens", "high-priority", false},
 		{"empty string", "", true},
 		{"whitespace only", "   ", true},
+		{"leading whitespace", " backend", true},
+		{"trailing whitespace", "backend ", true},
+		{"leading and trailing whitespace", " backend ", true},
 		{"contains comma", "a,b", true},
 		{"contains semicolon", "a;b", true},
 		{"contains newline", "a\nb", true},
@@ -134,6 +137,66 @@ func TestAddTagRejectsInvalid(t *testing.T) {
 				t.Errorf("AddTag(%q) should have been rejected but tags changed: %v", tt.tag, task.Tags)
 			}
 		})
+	}
+}
+
+func TestAddTagNormalizesWhitespace(t *testing.T) {
+	task, err := NewTask("t1", 1, TaskTypeTask, "Test")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Adding a tag with leading/trailing whitespace should store trimmed version
+	task.AddTag("  backend  ")
+	if !task.HasTag("backend") {
+		t.Error("expected AddTag to normalize whitespace and store 'backend'")
+	}
+	if len(task.Tags) != 1 {
+		t.Errorf("expected 1 tag, got %d", len(task.Tags))
+	}
+	if task.Tags[0] != "backend" {
+		t.Errorf("expected stored tag to be 'backend', got %q", task.Tags[0])
+	}
+
+	// Adding trimmed version of same tag should be a no-op (dedup)
+	task.AddTag("backend")
+	if len(task.Tags) != 1 {
+		t.Errorf("expected 1 tag after adding trimmed duplicate, got %d", len(task.Tags))
+	}
+
+	// Adding another whitespace-padded version should also be a no-op
+	task.AddTag(" backend ")
+	if len(task.Tags) != 1 {
+		t.Errorf("expected 1 tag after adding padded duplicate, got %d", len(task.Tags))
+	}
+}
+
+func TestRemoveTagNormalizesWhitespace(t *testing.T) {
+	task, err := NewTask("t1", 1, TaskTypeTask, "Test")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	task.AddTag("backend")
+	// Removing with whitespace should still find and remove the trimmed version
+	task.RemoveTag("  backend  ")
+	if task.HasTag("backend") {
+		t.Error("expected RemoveTag to normalize whitespace and remove 'backend'")
+	}
+	if len(task.Tags) != 0 {
+		t.Errorf("expected 0 tags, got %d", len(task.Tags))
+	}
+}
+
+func TestHasTagNormalizesWhitespace(t *testing.T) {
+	task, err := NewTask("t1", 1, TaskTypeTask, "Test")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	task.AddTag("backend")
+	if !task.HasTag("  backend  ") {
+		t.Error("expected HasTag to normalize whitespace and find 'backend'")
 	}
 }
 

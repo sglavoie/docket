@@ -51,6 +51,7 @@ func TestRemoveByIndices(t *testing.T) {
 		{"remove none", []string{"a", "b"}, []int{}, []string{"a", "b"}, false},
 		{"out of bounds", []string{"a", "b"}, []int{5}, nil, true},
 		{"negative index", []string{"a", "b"}, []int{-1}, nil, true},
+		{"empty slice", []string{}, []int{0}, nil, true},
 	}
 
 	for _, tt := range tests {

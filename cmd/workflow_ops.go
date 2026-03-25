@@ -360,6 +360,9 @@ func removeByIndices[T any](slice []T, indices []int) ([]T, error) {
 	}
 
 	// Validate all indices first
+	if len(slice) == 0 {
+		return nil, fmt.Errorf("cannot remove from empty list")
+	}
 	for _, idx := range indices {
 		if idx < 0 || idx >= len(slice) {
 			return nil, fmt.Errorf("invalid index %d (valid range: 0-%d)", idx, len(slice)-1)
