@@ -471,6 +471,14 @@ func ValidateParentTask(project *models.Project, parentIdentifier string, childT
 			childType.HeadingPrefix(), parent.Type.HeadingPrefix())
 	}
 
+	// Reject if adding a child would exceed the maximum nesting depth.
+	// Without this check the task is created with the parent reference, but
+	// BuildTaskTree silently detaches it at save time — misleading the user.
+	if parent.Level+1 > models.MaxNestingDepth {
+		return nil, fmt.Errorf("%w: nesting under #%d would exceed maximum depth of %d levels",
+			tterrors.ErrInvalidParent, parent.ShortID, models.MaxNestingDepth)
+	}
+
 	return parent, nil
 }
 

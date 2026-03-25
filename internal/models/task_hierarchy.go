@@ -199,10 +199,31 @@ func (t *Task) CanIndent(targetParent *Task) (bool, string) {
 		return false, t.Type.String() + " cannot be child of " + targetParent.Type.String()
 	}
 
+	// Check nesting depth: the task (and its subtree) would be pushed one level
+	// deeper. Verify that the deepest descendant would not exceed MaxNestingDepth.
+	if targetParent.Level+1 > MaxNestingDepth {
+		return false, fmt.Sprintf("would exceed maximum nesting depth of %d levels", MaxNestingDepth)
+	}
+	subtreeDepth := maxDescendantDepth(t) - t.Level
+	if targetParent.Level+1+subtreeDepth > MaxNestingDepth {
+		return false, fmt.Sprintf("subtree would exceed maximum nesting depth of %d levels", MaxNestingDepth)
+	}
+
 	// Check if all children remain valid (they stay under this task, so no change)
 	// Children keep the same parent type, so they're still valid
 
 	return true, ""
+}
+
+// maxDescendantDepth returns the maximum Level value among a task and all its descendants.
+func maxDescendantDepth(t *Task) int {
+	maxLevel := t.Level
+	for _, child := range t.Children {
+		if d := maxDescendantDepth(child); d > maxLevel {
+			maxLevel = d
+		}
+	}
+	return maxLevel
 }
 
 // CanOutdent checks if this task can move to be a sibling of its current parent.

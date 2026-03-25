@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
@@ -62,5 +63,53 @@ func TestParseTaskTypeFlagsConflicting(t *testing.T) {
 				t.Errorf("expected 'conflicting type flags' in error, got: %v", err)
 			}
 		})
+	}
+}
+
+func TestValidateParentTask_NestingDepthExceeded(t *testing.T) {
+	// Create a project with a task at MaxNestingDepth.
+	project, err := models.NewProject("proj-1", "Test Project", "/tmp/test")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Create a chain of tasks from level 0 up to MaxNestingDepth.
+	parent, err := models.NewTask("parent-id", 1, models.TaskTypeEpic, "Deep Parent")
+	if err != nil {
+		t.Fatal(err)
+	}
+	parent.Level = models.MaxNestingDepth
+	project.Tasks = append(project.Tasks, parent)
+
+	// Trying to add a child under a task at MaxNestingDepth should fail.
+	_, err = ValidateParentTask(project, "1", models.TaskTypeTask)
+	if err == nil {
+		t.Fatal("expected error when parent is at MaxNestingDepth, got nil")
+	}
+	if !strings.Contains(err.Error(), "nesting") {
+		t.Errorf("expected nesting depth error, got: %v", err)
+	}
+}
+
+func TestValidateParentTask_NestingDepthAllowed(t *testing.T) {
+	project, err := models.NewProject("proj-1", "Test Project", "/tmp/test")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	parent, err := models.NewTask("parent-id", 1, models.TaskTypeEpic, "Parent")
+	if err != nil {
+		t.Fatal(err)
+	}
+	parent.Level = models.MaxNestingDepth - 1
+	project.Tasks = append(project.Tasks, parent)
+
+	// Adding a child one level below MaxNestingDepth should succeed.
+	result, err := ValidateParentTask(project, fmt.Sprintf("%d", parent.ShortID), models.TaskTypeTask)
+	if err != nil {
+		t.Fatalf("expected no error, got: %v", err)
+	}
+	if result.ID != parent.ID {
+		t.Errorf("expected parent task returned, got %s", result.ID)
 	}
 }
