@@ -2,10 +2,12 @@ package cmd
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/spf13/cobra"
 
+	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/tterrors"
 )
 
@@ -62,7 +64,13 @@ func runContextShow(cmd *cobra.Command, args []string) error {
 		if p.Archived {
 			status = "archived"
 		}
-		t.AppendRow(table.Row{p.Name, p.Context, p.CountTasks(), status})
+		taskCount := 0
+		if err := storage.LoadProject(p); err != nil {
+			fmt.Fprintf(os.Stderr, "warning: could not load project %q: %v\n", p.Name, err)
+		} else {
+			taskCount = p.CountTasks()
+		}
+		t.AppendRow(table.Row{p.Name, p.Context, taskCount, status})
 	}
 
 	fmt.Println(t.Render())

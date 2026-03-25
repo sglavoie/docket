@@ -112,4 +112,41 @@ func TestRunContextRemove(t *testing.T) {
 			t.Error("expected error for removing project not in context")
 		}
 	})
+
+	t.Run("context still exists after removing last project", func(t *testing.T) {
+		deps, cleanup := setup(t)
+		defer cleanup()
+
+		project := deps.Config.Projects[0]
+		deps.Config.SetCustomContext("Work", []string{project.ID})
+		manager := config.NewManager(deps.ConfigPath)
+		testutil.AssertNoError(t, manager.Save(deps.Config))
+
+		err := runContextRemove(contextRemoveCmd, []string{"Work", project.Slug})
+		testutil.AssertNoError(t, err)
+
+		// Reload config and verify the context still exists (non-nil) with 0 projects.
+		// Before the fix, removing the last project set nil which made the context
+		// appear "not found" to other commands (add, show, edit, remove).
+		reloaded, loadErr := config.NewManager(deps.ConfigPath).Load()
+		testutil.AssertNoError(t, loadErr)
+		ids := reloaded.GetCustomContext("Work")
+		if ids == nil {
+			t.Fatal("expected context to still exist (non-nil slice), got nil")
+		}
+		if len(ids) != 0 {
+			t.Errorf("expected 0 projects in context, got %d", len(ids))
+		}
+
+		// Verify the context is still usable by other commands (e.g., context add)
+		err = runContextAdd(contextAddCmd, []string{"Work", project.Slug})
+		testutil.AssertNoError(t, err)
+
+		reloaded2, loadErr2 := config.NewManager(deps.ConfigPath).Load()
+		testutil.AssertNoError(t, loadErr2)
+		ids2 := reloaded2.GetCustomContext("Work")
+		if len(ids2) != 1 {
+			t.Errorf("expected 1 project after re-adding, got %d", len(ids2))
+		}
+	})
 }

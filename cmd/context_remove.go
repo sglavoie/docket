@@ -57,7 +57,7 @@ func runContextRemove(cmd *cobra.Command, args []string) error {
 
 	// Find and remove project from context
 	found := false
-	var newIDs []string
+	newIDs := make([]string, 0, len(projectIDs))
 	for _, id := range projectIDs {
 		if id == project.ID {
 			found = true
