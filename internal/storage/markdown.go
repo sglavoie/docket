@@ -33,6 +33,11 @@ func getChildrenInOrder(parentID string, tasks []*models.Task) []*models.Task {
 const tasksFileName = "tasks.md"
 const backupFileName = ".tasks.md.bak"
 
+// LockFileName is the advisory lock file used to serialize concurrent writes
+// to a project's tasks.md. All callers (CLI, TUI, storage layer) must use
+// this same name so the locks actually provide mutual exclusion.
+const LockFileName = ".tasks.md.lock"
+
 // File permission constants (from util for consistency).
 const (
 	DirPermissions  = util.DirPermissions
@@ -208,7 +213,7 @@ func SaveProject(project *models.Project) error {
 	}
 
 	tasksPath := filepath.Join(project.Path, tasksFileName)
-	lockPath := filepath.Join(project.Path, ".tasks.md.lock")
+	lockPath := filepath.Join(project.Path, LockFileName)
 
 	return util.WithFileLock(lockPath, true, func() error {
 		// Diff activity: load old state and compare to detect field changes

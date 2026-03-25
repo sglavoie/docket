@@ -7,7 +7,6 @@ import (
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/workflow"
 )
 
@@ -47,10 +46,6 @@ func runWorkflowTest(cmd *cobra.Command, args []string) error {
 	project, _, _, err := LoadCurrentProject()
 	if err != nil {
 		return err
-	}
-
-	if err := storage.LoadProject(project); err != nil {
-		return fmt.Errorf("failed to load project: %w", err)
 	}
 
 	var tasks []*models.Task

@@ -104,7 +104,7 @@ func SaveProject(project *models.Project, opts *SaveOptions) error {
 	if err := os.MkdirAll(project.Path, 0o755); err != nil {
 		return fmt.Errorf("failed to ensure project directory: %w", err)
 	}
-	lockPath := filepath.Join(project.Path, "tasks.md.lock")
+	lockPath := filepath.Join(project.Path, storage.LockFileName)
 	return util.WithFileLock(lockPath, true, func() error {
 		if err := storage.BackupProject(project); err != nil {
 			return fmt.Errorf("failed to create backup: %w", err)
@@ -222,7 +222,7 @@ func processDeferredMoves(srcProject *models.Project, moves []workflow.DeferredM
 		destProject.BuildTaskTree()
 
 		// Save destination project with file locking to prevent corruption
-		destLockPath := filepath.Join(destProject.Path, "tasks.md.lock")
+		destLockPath := filepath.Join(destProject.Path, storage.LockFileName)
 		if err := util.WithFileLock(destLockPath, true, func() error {
 			if err := storage.BackupProject(destProject); err != nil {
 				return fmt.Errorf("failed to backup destination project %q: %w", move.Destination, err)

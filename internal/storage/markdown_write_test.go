@@ -393,6 +393,37 @@ func TestSaveProject_FilePermissions(t *testing.T) {
 	}
 }
 
+// TestLockFileName verifies the lock file name is a hidden file (dot-prefixed)
+// and matches the expected value. This prevents regressions where callers use
+// different lock paths (which was a bug: cmd/ used "tasks.md.lock" while
+// storage/ used ".tasks.md.lock", so the locks didn't protect each other).
+func TestLockFileName(t *testing.T) {
+	if LockFileName != ".tasks.md.lock" {
+		t.Errorf("LockFileName = %q, want %q", LockFileName, ".tasks.md.lock")
+	}
+}
+
+// TestSaveProject_CreatesLockFile verifies that saving a project uses the
+// correct lock file path (the one from LockFileName constant).
+func TestSaveProject_CreatesLockFile(t *testing.T) {
+	dir, cleanup := testutil.TempProjectDir(t)
+	defer cleanup()
+
+	project := testutil.NewTestProject("Lock Test")
+	project.Path = filepath.Join(dir, "lock-test")
+	project.Tasks = []*models.Task{}
+
+	if err := SaveProject(project); err != nil {
+		t.Fatalf("SaveProject failed: %v", err)
+	}
+
+	// The lock file should exist after save (flock creates it)
+	lockPath := filepath.Join(project.Path, LockFileName)
+	if _, err := os.Stat(lockPath); os.IsNotExist(err) {
+		t.Errorf("lock file %q not created by SaveProject", LockFileName)
+	}
+}
+
 // Helper to find a task by ID in a slice
 func findTaskByID(tasks []*models.Task, id string) *models.Task {
 	for _, task := range tasks {

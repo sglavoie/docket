@@ -60,7 +60,7 @@ func NewProjectService() *ProjectService {
 
 // lockPath returns the advisory lock file path for a project's tasks file.
 func lockPath(project *models.Project) string {
-	return filepath.Join(project.Path, "tasks.md.lock")
+	return filepath.Join(project.Path, storage.LockFileName)
 }
 
 // SaveWithBackup returns a command that saves a project asynchronously.
