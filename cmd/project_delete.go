@@ -53,7 +53,7 @@ func runProjectDelete(cmd *cobra.Command, args []string) error {
 	}
 
 	// Warn about cross-project references that will be cleaned up
-	if refCount, projectCount := countCrossProjectRefs(cfg.Projects, project.ID); refCount > 0 {
+	if refCount, projectCount := countCrossProjectRefs(cfg.Projects, project.Slug); refCount > 0 {
 		fmt.Printf("Warning: %s in %s will be cleaned up.\n",
 			Pluralize(refCount, "cross-project reference", "cross-project references"),
 			Pluralize(projectCount, "project", "projects"))
@@ -85,7 +85,7 @@ func runProjectDelete(cmd *cobra.Command, args []string) error {
 	cfg.RemoveProject(project.ID)
 
 	// Clean cross-project references in remaining projects
-	if cleaned, err := cleanCrossProjectRefs(cfg.Projects, project.ID); err != nil {
+	if cleaned, err := cleanCrossProjectRefs(cfg.Projects, project.Slug); err != nil {
 		fmt.Printf("Warning: failed to clean some cross-project references: %v\n", err)
 	} else if cleaned > 0 {
 		// Summary is printed inside cleanCrossProjectRefs per project
@@ -114,9 +114,9 @@ func runProjectDelete(cmd *cobra.Command, args []string) error {
 
 // cleanCrossProjectRefs removes cross-project dependency and relation references
 // to the deleted project from all remaining projects. It loads each project's tasks,
-// filters out references pointing to deletedProjectID, and saves any modified projects.
+// filters out references pointing to deletedProjectSlug, and saves any modified projects.
 // Returns the total number of references cleaned across all projects.
-func cleanCrossProjectRefs(projects []*models.Project, deletedProjectID string) (int, error) {
+func cleanCrossProjectRefs(projects []*models.Project, deletedProjectSlug string) (int, error) {
 	totalCleaned := 0
 
 	for _, p := range projects {
@@ -127,11 +127,11 @@ func cleanCrossProjectRefs(projects []*models.Project, deletedProjectID string) 
 		cleaned := 0
 		for _, task := range p.Tasks {
 			origDeps := len(task.DependsOn)
-			task.DependsOn = filterRefs(task.DependsOn, deletedProjectID)
+			task.DependsOn = filterRefs(task.DependsOn, deletedProjectSlug)
 			cleaned += origDeps - len(task.DependsOn)
 
 			origRels := len(task.RelatedTo)
-			task.RelatedTo = filterRefs(task.RelatedTo, deletedProjectID)
+			task.RelatedTo = filterRefs(task.RelatedTo, deletedProjectSlug)
 			cleaned += origRels - len(task.RelatedTo)
 		}
 
@@ -147,9 +147,9 @@ func cleanCrossProjectRefs(projects []*models.Project, deletedProjectID string) 
 	return totalCleaned, nil
 }
 
-// countCrossProjectRefs counts the total cross-project references to deletedProjectID across
+// countCrossProjectRefs counts the total cross-project references to deletedProjectSlug across
 // all given projects, and returns the ref count and the number of projects with refs.
-func countCrossProjectRefs(projects []*models.Project, deletedProjectID string) (int, int) {
+func countCrossProjectRefs(projects []*models.Project, deletedProjectSlug string) (int, int) {
 	totalRefs := 0
 	projectsWithRefs := 0
 	for _, p := range projects {
@@ -160,13 +160,13 @@ func countCrossProjectRefs(projects []*models.Project, deletedProjectID string) 
 		for _, task := range p.Tasks {
 			for _, ref := range task.DependsOn {
 				parsed := models.ParseTaskRef(ref)
-				if parsed.IsCrossProject() && parsed.ProjectID == deletedProjectID {
+				if parsed.IsCrossProject() && parsed.ProjectID == deletedProjectSlug {
 					refs++
 				}
 			}
 			for _, ref := range task.RelatedTo {
 				parsed := models.ParseTaskRef(ref)
-				if parsed.IsCrossProject() && parsed.ProjectID == deletedProjectID {
+				if parsed.IsCrossProject() && parsed.ProjectID == deletedProjectSlug {
 					refs++
 				}
 			}
@@ -179,15 +179,15 @@ func countCrossProjectRefs(projects []*models.Project, deletedProjectID string) 
 	return totalRefs, projectsWithRefs
 }
 
-// filterRefs returns a new slice with cross-project refs to the given project ID removed.
-func filterRefs(refs []string, deletedProjectID string) []string {
+// filterRefs returns a new slice with cross-project refs to the given project slug removed.
+func filterRefs(refs []string, deletedProjectSlug string) []string {
 	if len(refs) == 0 {
 		return refs
 	}
 	filtered := make([]string, 0, len(refs))
 	for _, ref := range refs {
 		parsed := models.ParseTaskRef(ref)
-		if parsed.IsCrossProject() && parsed.ProjectID == deletedProjectID {
+		if parsed.IsCrossProject() && parsed.ProjectID == deletedProjectSlug {
 			continue
 		}
 		filtered = append(filtered, ref)

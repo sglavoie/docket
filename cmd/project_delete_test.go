@@ -362,18 +362,19 @@ func TestProjectDeleteCleansCrossProjectRefs(t *testing.T) {
 	projectB := testutil.NewTestProject("Project B")
 
 	// Create tasks in project B with cross-project refs to project A
+	// Cross-project refs use the slug (not UUID) as prefix: "slug:taskID"
 	task1, err := models.NewTask("task-b1", projectB.GetNextShortID(), models.TaskTypeTask, "Task B1")
 	if err != nil {
 		t.Fatal(err)
 	}
 	task1.DependsOn = []string{
-		projectA.ID + ":task-a1",   // cross-project ref to A (should be removed)
+		projectA.Slug + ":task-a1", // cross-project ref to A (should be removed)
 		"same-project-task-id",     // same-project ref (should be preserved)
-		"other-project-id:task-x1", // cross-project ref to different project (should be preserved)
+		"other-project:task-x1",    // cross-project ref to different project (should be preserved)
 	}
 	task1.RelatedTo = []string{
-		projectA.ID + ":task-a2", // cross-project ref to A (should be removed)
-		"local-task-id",          // same-project ref (should be preserved)
+		projectA.Slug + ":task-a2", // cross-project ref to A (should be removed)
+		"local-task-id",            // same-project ref (should be preserved)
 	}
 
 	task2, err := models.NewTask("task-b2", projectB.GetNextShortID(), models.TaskTypeTask, "Task B2")
@@ -381,7 +382,7 @@ func TestProjectDeleteCleansCrossProjectRefs(t *testing.T) {
 		t.Fatal(err)
 	}
 	task2.DependsOn = []string{
-		projectA.ID + ":task-a3", // cross-project ref to A (should be removed)
+		projectA.Slug + ":task-a3", // cross-project ref to A (should be removed)
 	}
 
 	projectB.Tasks = []*models.Task{task1, task2}
@@ -396,8 +397,9 @@ func TestProjectDeleteCleansCrossProjectRefs(t *testing.T) {
 	mockRepo.Projects[projectB.ID] = mockProjectB
 
 	// Run cleanup: only project B remains (A is being deleted)
+	// Pass slug (not UUID) since cross-project refs use the slug format
 	remainingProjects := []*models.Project{projectB}
-	totalCleaned, err := cleanCrossProjectRefs(remainingProjects, projectA.ID)
+	totalCleaned, err := cleanCrossProjectRefs(remainingProjects, projectA.Slug)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -422,7 +424,7 @@ func TestProjectDeleteCleansCrossProjectRefs(t *testing.T) {
 	}
 	testutil.AssertEqual(t, len(savedTask1.DependsOn), 2)
 	testutil.AssertEqual(t, savedTask1.DependsOn[0], "same-project-task-id")
-	testutil.AssertEqual(t, savedTask1.DependsOn[1], "other-project-id:task-x1")
+	testutil.AssertEqual(t, savedTask1.DependsOn[1], "other-project:task-x1")
 
 	// Verify task1 RelatedTo: only local ref remains
 	testutil.AssertEqual(t, len(savedTask1.RelatedTo), 1)
@@ -462,7 +464,7 @@ func TestProjectDeleteCleansCrossProjectRefsNoRefsUnchanged(t *testing.T) {
 	mockProjectB.Tasks = []*models.Task{task1}
 	mockRepo.Projects[projectB.ID] = mockProjectB
 
-	totalCleaned, err := cleanCrossProjectRefs([]*models.Project{projectB}, projectA.ID)
+	totalCleaned, err := cleanCrossProjectRefs([]*models.Project{projectB}, projectA.Slug)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -472,7 +474,7 @@ func TestProjectDeleteCleansCrossProjectRefsNoRefsUnchanged(t *testing.T) {
 }
 
 func TestFilterRefs(t *testing.T) {
-	deletedID := "project-a-id"
+	deletedSlug := "project-a"
 
 	tests := []struct {
 		name     string
@@ -491,12 +493,12 @@ func TestFilterRefs(t *testing.T) {
 		},
 		{
 			name:     "removes cross-project ref to deleted project",
-			refs:     []string{deletedID + ":task-1", "local-task"},
+			refs:     []string{deletedSlug + ":task-1", "local-task"},
 			expected: []string{"local-task"},
 		},
 		{
 			name:     "preserves cross-project ref to other project",
-			refs:     []string{"other-project:task-1", deletedID + ":task-2"},
+			refs:     []string{"other-project:task-1", deletedSlug + ":task-2"},
 			expected: []string{"other-project:task-1"},
 		},
 		{
@@ -506,14 +508,14 @@ func TestFilterRefs(t *testing.T) {
 		},
 		{
 			name:     "removes all when all match",
-			refs:     []string{deletedID + ":t1", deletedID + ":t2"},
+			refs:     []string{deletedSlug + ":t1", deletedSlug + ":t2"},
 			expected: []string{},
 		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			result := filterRefs(tc.refs, deletedID)
+			result := filterRefs(tc.refs, deletedSlug)
 			if tc.refs == nil {
 				if result != nil {
 					t.Errorf("expected nil, got %v", result)
