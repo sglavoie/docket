@@ -3,6 +3,7 @@ package format
 import (
 	"fmt"
 	"regexp"
+	"slices"
 	"strings"
 	"time"
 
@@ -42,6 +43,11 @@ func ExtractActivityFromDescription(task *models.Task) {
 			}
 		}
 	}
+
+	// WriteActivity writes entries newest-first for human readability.
+	// Reverse them back to chronological order (oldest-first) which is the
+	// in-memory convention expected by DiffAndRecordActivity and PruneActivity.
+	slices.Reverse(task.Activity)
 }
 
 // parseActivityPayload parses the payload portion of an activity entry.

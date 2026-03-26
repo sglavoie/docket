@@ -231,6 +231,56 @@ func TestFindUnescapedSeparator(t *testing.T) {
 	}
 }
 
+func TestActivityRoundtripPreservesChronologicalOrder(t *testing.T) {
+	// WriteActivity writes newest-first for human readability.
+	// ExtractActivityFromDescription must reverse them back to chronological
+	// order (oldest-first) so that DiffAndRecordActivity and PruneActivity
+	// work correctly (they append new entries at the end and keep the last N).
+	ts1 := time.Date(2025, 1, 10, 8, 0, 0, 0, time.Local)
+	ts2 := time.Date(2025, 1, 11, 9, 0, 0, 0, time.Local)
+	ts3 := time.Date(2025, 1, 12, 10, 0, 0, 0, time.Local)
+
+	task := &models.Task{
+		ID:      "test-1",
+		ShortID: 1,
+		Type:    models.TaskTypeTask,
+		Title:   "Test",
+		Activity: []*models.ActivityEntry{
+			{Timestamp: ts1, Field: "created"},
+			{Timestamp: ts2, Field: "status", OldValue: "todo", NewValue: "in_progress"},
+			{Timestamp: ts3, Field: "priority", OldValue: "3", NewValue: "1"},
+		},
+	}
+
+	// Write and parse back
+	output := WriteActivity(task)
+	parsedTask := &models.Task{Description: output}
+	ExtractActivityFromDescription(parsedTask)
+
+	if len(parsedTask.Activity) != 3 {
+		t.Fatalf("expected 3 activity entries, got %d", len(parsedTask.Activity))
+	}
+
+	// Verify chronological order is preserved (oldest first)
+	if parsedTask.Activity[0].Field != "created" {
+		t.Errorf("entry[0].Field = %q, want %q", parsedTask.Activity[0].Field, "created")
+	}
+	if parsedTask.Activity[1].Field != "status" {
+		t.Errorf("entry[1].Field = %q, want %q", parsedTask.Activity[1].Field, "status")
+	}
+	if parsedTask.Activity[2].Field != "priority" {
+		t.Errorf("entry[2].Field = %q, want %q", parsedTask.Activity[2].Field, "priority")
+	}
+
+	// Verify timestamps are in ascending order
+	for i := 1; i < len(parsedTask.Activity); i++ {
+		if parsedTask.Activity[i].Timestamp.Before(parsedTask.Activity[i-1].Timestamp) {
+			t.Errorf("activity entries not in chronological order: entry[%d] (%v) before entry[%d] (%v)",
+				i, parsedTask.Activity[i].Timestamp, i-1, parsedTask.Activity[i-1].Timestamp)
+		}
+	}
+}
+
 func TestEscapeUnescapeActivityValue(t *testing.T) {
 	tests := []string{
 		"simple value",
