@@ -192,7 +192,7 @@ func (m *GlobalTagManagerModel) renameGlobalTag(oldName, newName string) tea.Cmd
 				if err := storage.BackupProject(project); err != nil {
 					return ErrorMsg{Err: fmt.Errorf("failed to backup %s: %w", project.Name, err)}
 				}
-				if err := storage.SaveProject(project); err != nil {
+				if err := storage.SaveProjectLocked(project); err != nil {
 					return ErrorMsg{Err: fmt.Errorf("failed to save %s: %w", project.Name, err)}
 				}
 				projectCount++

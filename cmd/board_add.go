@@ -84,7 +84,7 @@ func runBoardAdd(cmd *cobra.Command, args []string) error {
 			if err = storage.CreateProjectDir(targetProject); err != nil {
 				return fmt.Errorf("failed to create action inbox: %w", err)
 			}
-			if err = storage.SaveProject(targetProject); err != nil {
+			if err = storage.SaveProjectLocked(targetProject); err != nil {
 				return fmt.Errorf("failed to save action inbox: %w", err)
 			}
 			if err = saveConfig(mgr, cfg); err != nil {

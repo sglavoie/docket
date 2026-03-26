@@ -142,7 +142,7 @@ func (s *ProjectService) Backup(project *models.Project) error {
 
 // Save saves a project to disk without backup or reload.
 func (s *ProjectService) Save(project *models.Project) error {
-	return storage.SaveProject(project)
+	return storage.SaveProjectLocked(project)
 }
 
 // defaultPersister is a package-level Persister for callers that don't hold

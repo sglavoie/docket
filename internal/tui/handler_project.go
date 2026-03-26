@@ -382,7 +382,7 @@ func (m *AppModel) executeSandboxReset() tea.Cmd {
 		sandbox.Sections = []string{models.SectionNext}
 		sandbox.SectionColors = make(map[string]string)
 
-		if err := storage.SaveProject(sandbox); err != nil {
+		if err := storage.SaveProjectLocked(sandbox); err != nil {
 			return ErrorMsg{Err: fmt.Errorf("failed to save sandbox: %w", err)}
 		}
 

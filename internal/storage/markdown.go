@@ -213,25 +213,39 @@ func SaveProject(project *models.Project) error {
 	}
 
 	tasksPath := filepath.Join(project.Path, tasksFileName)
+
+	// Diff activity: load old state and compare to detect field changes
+	if oldContent, err := os.ReadFile(tasksPath); err == nil {
+		if oldResult, parseErr := ParseTasksMarkdownWithSections(string(oldContent)); parseErr == nil {
+			DiffAndRecordActivity(oldResult.Tasks, project.Tasks, MaxActivityEntries)
+		} else {
+			logging.Warn("could not diff activity for %s: %v", project.Name, parseErr)
+		}
+	}
+
+	content := WriteTasksMarkdownWithSections(project.Name, project.Tasks, project.GetSections(), project.SectionColors)
+
+	if err := writeFileAtomic(tasksPath, []byte(content), FilePermissions); err != nil {
+		return fmt.Errorf("failed to write tasks file: %w", err)
+	}
+
+	return nil
+}
+
+// SaveProjectLocked saves a project's tasks to its tasks.md file, acquiring
+// an exclusive file lock first. Use this for call sites that don't already
+// hold their own lock.
+func SaveProjectLocked(project *models.Project) error {
+	// If using a non-filesystem repository (e.g., mock), delegate directly
+	if _, ok := DefaultRepository.(*FileSystemRepository); !ok {
+		return DefaultRepository.Save(project)
+	}
+	if err := os.MkdirAll(project.Path, DirPermissions); err != nil {
+		return fmt.Errorf("failed to create project directory: %w", err)
+	}
 	lockPath := filepath.Join(project.Path, LockFileName)
-
 	return util.WithFileLock(lockPath, true, func() error {
-		// Diff activity: load old state and compare to detect field changes
-		if oldContent, err := os.ReadFile(tasksPath); err == nil {
-			if oldResult, parseErr := ParseTasksMarkdownWithSections(string(oldContent)); parseErr == nil {
-				DiffAndRecordActivity(oldResult.Tasks, project.Tasks, MaxActivityEntries)
-			} else {
-				logging.Warn("could not diff activity for %s: %v", project.Name, parseErr)
-			}
-		}
-
-		content := WriteTasksMarkdownWithSections(project.Name, project.Tasks, project.GetSections(), project.SectionColors)
-
-		if err := writeFileAtomic(tasksPath, []byte(content), FilePermissions); err != nil {
-			return fmt.Errorf("failed to write tasks file: %w", err)
-		}
-
-		return nil
+		return SaveProject(project)
 	})
 }
 

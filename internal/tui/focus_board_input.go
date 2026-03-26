@@ -116,7 +116,7 @@ func (m *FocusBoardModel) createItemFromInput(input string) (tea.Model, tea.Cmd)
 				m.setStatus("Failed to create action inbox: " + err.Error())
 				return m, nil
 			}
-			if err := storage.SaveProject(targetProject); err != nil {
+			if err := storage.SaveProjectLocked(targetProject); err != nil {
 				m.setStatus("Failed to save action inbox: " + err.Error())
 				return m, nil
 			}

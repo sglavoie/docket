@@ -286,7 +286,7 @@ func (m *SectionManagerModel) setSectionColor(sectionName, colorName string) tea
 			if p.HasSection(sectionName) {
 				p.SetSectionColor(sectionName, colorName)
 				// Save project to persist the color in tasks.md
-				if err := storage.SaveProject(p); err != nil {
+				if err := storage.SaveProjectLocked(p); err != nil {
 					continue // Log error but continue with other projects
 				}
 			}

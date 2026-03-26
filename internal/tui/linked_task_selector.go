@@ -341,7 +341,7 @@ func (m *LinkedTaskSelectorModel) unlinkTask(idx int) tea.Cmd {
 		if err := storage.BackupProject(m.project); err != nil {
 			return ErrorMsg{Err: fmt.Errorf("failed to backup: %w", err)}
 		}
-		if err := storage.SaveProject(m.project); err != nil {
+		if err := storage.SaveProjectLocked(m.project); err != nil {
 			return ErrorMsg{Err: fmt.Errorf("failed to save: %w", err)}
 		}
 

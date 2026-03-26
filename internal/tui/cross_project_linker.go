@@ -397,7 +397,7 @@ func (m *CrossProjectLinkerModel) createLink() tea.Cmd {
 		if err := storage.BackupProject(m.sourceProject); err != nil {
 			return ErrorMsg{Err: fmt.Errorf("failed to backup source project: %w", err)}
 		}
-		if err := storage.SaveProject(m.sourceProject); err != nil {
+		if err := storage.SaveProjectLocked(m.sourceProject); err != nil {
 			return ErrorMsg{Err: fmt.Errorf("failed to save source project: %w", err)}
 		}
 
@@ -405,7 +405,7 @@ func (m *CrossProjectLinkerModel) createLink() tea.Cmd {
 		if err := storage.BackupProject(m.targetProject); err != nil {
 			return ErrorMsg{Err: fmt.Errorf("failed to backup target project: %w", err)}
 		}
-		if err := storage.SaveProject(m.targetProject); err != nil {
+		if err := storage.SaveProjectLocked(m.targetProject); err != nil {
 			return ErrorMsg{Err: fmt.Errorf("failed to save target project: %w", err)}
 		}
 

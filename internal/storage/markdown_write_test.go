@@ -403,9 +403,9 @@ func TestLockFileName(t *testing.T) {
 	}
 }
 
-// TestSaveProject_CreatesLockFile verifies that saving a project uses the
-// correct lock file path (the one from LockFileName constant).
-func TestSaveProject_CreatesLockFile(t *testing.T) {
+// TestSaveProjectLocked_CreatesLockFile verifies that SaveProjectLocked uses
+// the correct lock file path (the one from LockFileName constant).
+func TestSaveProjectLocked_CreatesLockFile(t *testing.T) {
 	dir, cleanup := testutil.TempProjectDir(t)
 	defer cleanup()
 
@@ -413,14 +413,14 @@ func TestSaveProject_CreatesLockFile(t *testing.T) {
 	project.Path = filepath.Join(dir, "lock-test")
 	project.Tasks = []*models.Task{}
 
-	if err := SaveProject(project); err != nil {
-		t.Fatalf("SaveProject failed: %v", err)
+	if err := SaveProjectLocked(project); err != nil {
+		t.Fatalf("SaveProjectLocked failed: %v", err)
 	}
 
 	// The lock file should exist after save (flock creates it)
 	lockPath := filepath.Join(project.Path, LockFileName)
 	if _, err := os.Stat(lockPath); os.IsNotExist(err) {
-		t.Errorf("lock file %q not created by SaveProject", LockFileName)
+		t.Errorf("lock file %q not created by SaveProjectLocked", LockFileName)
 	}
 }
 

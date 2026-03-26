@@ -241,7 +241,7 @@ func processTUIDeferredMoves(_ Persister, srcProject *models.Project, moves []wo
 		if err := storage.BackupProject(destProject); err != nil {
 			return fmt.Errorf("failed to backup destination project %q: %w", move.Destination, err)
 		}
-		if err := storage.SaveProject(destProject); err != nil {
+		if err := storage.SaveProjectLocked(destProject); err != nil {
 			return fmt.Errorf("failed to save destination project %q: %w", move.Destination, err)
 		}
 	}

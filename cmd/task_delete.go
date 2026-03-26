@@ -176,7 +176,7 @@ func cleanDeletedTaskCrossProjectRefs(projects []*models.Project, deletedProject
 			cleaned += orig - len(t.RelatedTo)
 		}
 		if cleaned > 0 {
-			if err := storage.SaveProject(p); err != nil {
+			if err := storage.SaveProjectLocked(p); err != nil {
 				return fmt.Errorf("saving project '%s': %w", p.Name, err)
 			}
 		}

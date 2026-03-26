@@ -103,7 +103,7 @@ func (m *ProjectTreeModel) UnlinkSelectedSidebarTask(sourceTask *models.Task) te
 							if err := storage.BackupProject(targetProject); err != nil {
 								return ErrorMsg{Err: err}
 							}
-							if err := storage.SaveProject(targetProject); err != nil {
+							if err := storage.SaveProjectLocked(targetProject); err != nil {
 								return ErrorMsg{Err: err}
 							}
 						}

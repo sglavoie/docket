@@ -289,7 +289,7 @@ func fixIssues(projects []*models.Project, cfg interface{ GetProject(string) *mo
 		}
 
 		if dirtyProjects[project.ID] {
-			if err := storage.SaveProject(project); err != nil {
+			if err := storage.SaveProjectLocked(project); err != nil {
 				fmt.Fprintf(os.Stderr, "error: failed to save project %s: %v\n", project.Name, err)
 			}
 		}

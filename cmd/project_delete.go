@@ -136,7 +136,7 @@ func cleanCrossProjectRefs(projects []*models.Project, deletedProjectSlug string
 		}
 
 		if cleaned > 0 {
-			if err := storage.SaveProject(p); err != nil {
+			if err := storage.SaveProjectLocked(p); err != nil {
 				return totalCleaned, fmt.Errorf("saving project '%s': %w", p.Name, err)
 			}
 			fmt.Printf("Cleaned %d cross-project references from '%s'\n", cleaned, p.Name)

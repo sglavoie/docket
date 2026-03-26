@@ -162,7 +162,7 @@ func runProjectEdit(cmd *cobra.Command, args []string) error {
 	// restore (which reads the name from tasks.md) and human readability.
 	if nameChanged {
 		if err := storage.LoadProject(project); err == nil {
-			if err := storage.SaveProject(project); err != nil {
+			if err := storage.SaveProjectLocked(project); err != nil {
 				return fmt.Errorf("failed to update tasks file after rename: %w", err)
 			}
 		}

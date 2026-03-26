@@ -121,7 +121,7 @@ func evaluateWorkflowAtStartup(cfg *config.Config, manager *config.Manager, proj
 		if err := storage.BackupProject(project); err != nil {
 			logging.Warn("failed to backup project: %v", err)
 		}
-		if err := storage.SaveProject(project); err != nil {
+		if err := storage.SaveProjectLocked(project); err != nil {
 			logging.Warn("failed to save project: %v", err)
 		}
 
