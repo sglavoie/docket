@@ -73,6 +73,25 @@ func TestWriteMetadata_NoPinnedAt(t *testing.T) {
 	}
 }
 
+func TestWriteMetadata_PinnedAtOmittedWhenNotPinned(t *testing.T) {
+	// If a task has PinnedAt set but Pinned is false (e.g., from a manual file edit),
+	// the writer should NOT emit pinned_at since pinned is not true.
+	pinnedTime := time.Date(2025, 3, 10, 14, 30, 45, 0, time.Local)
+	task := &models.Task{
+		ID:        "p3",
+		Status:    models.StatusTodo,
+		Priority:  2,
+		Pinned:    false,
+		PinnedAt:  &pinnedTime,
+		CreatedAt: time.Date(2025, 1, 1, 0, 0, 0, 0, time.Local),
+	}
+
+	result := WriteMetadata(task)
+	if strings.Contains(result, "pinned") {
+		t.Errorf("WriteMetadata should not contain pinned or pinned_at when Pinned is false, got: %s", result)
+	}
+}
+
 func TestMetadata_PinnedAtRoundtrip(t *testing.T) {
 	pinnedTime := time.Date(2025, 3, 10, 14, 30, 45, 0, time.Local)
 	original := &models.Task{

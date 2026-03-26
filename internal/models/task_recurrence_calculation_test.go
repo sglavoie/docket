@@ -725,18 +725,18 @@ func TestCalculateNextDateWeeklyMultiWeekWrap(t *testing.T) {
 			time.Date(2024, 2, 12, 10, 0, 0, 0, time.UTC), // Monday 4 weeks later
 		},
 		{
-			"Monday with 3-week interval, Wed+Fri pattern - jumps to next cycle",
+			"Monday with 3-week interval, Wed+Fri pattern - same week Wed first",
 			time.Date(2024, 1, 15, 10, 0, 0, 0, time.UTC), // Monday Jan 15
 			3,
 			[]int{3, 5}, // Wed, Fri
-			time.Date(2024, 1, 31, 10, 0, 0, 0, time.UTC), // Wed in next 3-week cycle
+			time.Date(2024, 1, 17, 10, 0, 0, 0, time.UTC), // Wed same week (no interval skip for same-week matches)
 		},
 		{
-			"Friday with 2-week interval, Sat pattern - finds next Sat in current week",
+			"Friday with 2-week interval, Sat pattern - same week Sat first",
 			friday,
 			2,
 			[]int{6}, // Saturday only
-			time.Date(2024, 1, 27, 10, 0, 0, 0, time.UTC), // Next Saturday (still in period)
+			time.Date(2024, 1, 20, 10, 0, 0, 0, time.UTC), // Saturday same week (no interval skip for same-week matches)
 		},
 	}
 
@@ -753,5 +753,29 @@ func TestCalculateNextDateWeeklyMultiWeekWrap(t *testing.T) {
 					got, got.Weekday(), tc.want, tc.want.Weekday())
 			}
 		})
+	}
+}
+
+func TestCalculateNextDateWeeklyMultiWeekSequence(t *testing.T) {
+	// Verify the full sequence for "every 2 weeks on Mon, Fri" starting from Mon Jan 15.
+	// Same-week matches come first (no interval skip), then interval applies on week wrap.
+	r := &RecurrencePattern{Interval: 2, Unit: RecurrenceWeekly, Weekdays: []int{1, 5}}
+	base := time.Date(2024, 1, 15, 10, 0, 0, 0, time.UTC) // Monday
+
+	expected := []time.Time{
+		time.Date(2024, 1, 19, 10, 0, 0, 0, time.UTC), // Fri Jan 19 (same week)
+		time.Date(2024, 1, 29, 10, 0, 0, 0, time.UTC), // Mon Jan 29 (wrap + 2-week interval)
+		time.Date(2024, 2, 2, 10, 0, 0, 0, time.UTC),  // Fri Feb 2 (same week)
+		time.Date(2024, 2, 12, 10, 0, 0, 0, time.UTC), // Mon Feb 12 (wrap + 2-week interval)
+	}
+
+	current := base
+	for i, want := range expected {
+		got := calculateNextDate(current, r)
+		if !got.Equal(want) {
+			t.Errorf("step %d from %v (%s): got %v (%s), want %v (%s)",
+				i, current, current.Weekday(), got, got.Weekday(), want, want.Weekday())
+		}
+		current = got
 	}
 }

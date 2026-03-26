@@ -780,10 +780,9 @@ func WriteMetadata(task *models.Task) string { //nolint:gocyclo
 
 	if task.Pinned {
 		parts = append(parts, "pinned: true")
-	}
-
-	if task.PinnedAt != nil {
-		parts = append(parts, fmt.Sprintf("pinned_at: %s", task.PinnedAt.Format(pinnedAtFormat)))
+		if task.PinnedAt != nil {
+			parts = append(parts, fmt.Sprintf("pinned_at: %s", task.PinnedAt.Format(pinnedAtFormat)))
+		}
 	}
 
 	if task.Active {

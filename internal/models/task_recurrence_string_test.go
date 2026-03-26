@@ -60,9 +60,9 @@ func TestRecurrencePatternStringEdgeCases(t *testing.T) {
 			"weekly on Mon and Fri",
 		},
 		{
-			"biweekly ignores weekdays in string",
+			"biweekly includes weekdays in string",
 			&RecurrencePattern{Interval: 2, Unit: RecurrenceWeekly, Weekdays: []int{1, 3, 5}},
-			"every 2 weeks", // Current behavior: interval > 1 doesn't show weekdays
+			"every 2 weeks on Mon, Wed, and Fri",
 		},
 	}
 

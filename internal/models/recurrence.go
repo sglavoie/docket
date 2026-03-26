@@ -94,7 +94,11 @@ func (r *RecurrencePattern) String() string {
 			return "yearly"
 		}
 	}
-	return fmt.Sprintf("every %d %ss", r.Interval, r.Unit)
+	base := fmt.Sprintf("every %d %ss", r.Interval, r.Unit)
+	if r.Unit == RecurrenceWeekly && len(r.Weekdays) > 0 {
+		return fmt.Sprintf("%s on %s", base, weekdaysToString(r.Weekdays))
+	}
+	return base
 }
 
 // weekdaysToString converts weekday numbers to abbreviated names.
@@ -146,7 +150,11 @@ func calculateNextDate(base time.Time, r *RecurrencePattern) time.Time {
 }
 
 // findNextWeekday finds the next occurrence on one of the specified weekdays.
-// If interval > 1, it advances by that many weeks first.
+// Same-week occurrences are returned without applying the interval. The interval
+// (N weeks) is only applied when wrapping past the end of the current week to
+// the first matching day of a future week. For example, "every 2 weeks on
+// Mon,Fri" from Monday returns Friday of the same week, then Monday 2 weeks
+// after that Friday's week.
 func findNextWeekday(base time.Time, weekdays []int, interval int) time.Time {
 	if len(weekdays) == 0 {
 		return base.AddDate(0, 0, interval*7)
@@ -159,14 +167,10 @@ func findNextWeekday(base time.Time, weekdays []int, interval int) time.Time {
 
 	currentDay := int(base.Weekday())
 
-	// Find the next weekday after today in the same week
+	// Find the next weekday after today in the same week (no interval skip)
 	for _, wd := range sortedDays {
 		if wd > currentDay {
-			daysToAdd := wd - currentDay
-			if interval > 1 {
-				daysToAdd += (interval - 1) * 7
-			}
-			return base.AddDate(0, 0, daysToAdd)
+			return base.AddDate(0, 0, wd-currentDay)
 		}
 	}
 
