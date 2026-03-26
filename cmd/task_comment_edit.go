@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"strconv"
+	"time"
 
 	"github.com/spf13/cobra"
 
@@ -99,8 +100,9 @@ func runTaskCommentEdit(cmd *cobra.Command, args []string) error {
 		return tterrors.NewRequiredFieldError("comment text")
 	}
 
-	// Update comment (preserve timestamp)
+	// Update comment (preserve comment timestamp) and refresh task's UpdatedAt
 	comment.Text = newText
+	task.UpdatedAt = time.Now()
 
 	// Save
 	if err := SaveProject(project, &SaveOptions{

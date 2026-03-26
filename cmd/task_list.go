@@ -294,11 +294,27 @@ func displayTaskTree(project *models.Project, matches func(*models.Task) bool) {
 	}
 
 	for _, root := range roots {
-		if !matches(root) {
+		if !subtreeHasMatch(root, matches) {
 			continue
 		}
 		printTaskNode(root, 0, matches)
 	}
+}
+
+// subtreeHasMatch returns true if the task itself matches the filter
+// or any of its descendants do. This ensures ancestor nodes are shown
+// as context when their children match (e.g., a completed epic with
+// active child tasks is still displayed in tree view).
+func subtreeHasMatch(task *models.Task, matches func(*models.Task) bool) bool {
+	if matches(task) {
+		return true
+	}
+	for _, child := range task.Children {
+		if subtreeHasMatch(child, matches) {
+			return true
+		}
+	}
+	return false
 }
 
 func printTaskNode(task *models.Task, depth int, matches func(*models.Task) bool) {
@@ -340,9 +356,9 @@ func printTaskNode(task *models.Task, depth int, matches func(*models.Task) bool
 
 	fmt.Println(style.Render(line))
 
-	// Print children
+	// Print children that match or have matching descendants
 	for _, child := range task.Children {
-		if !matches(child) {
+		if !subtreeHasMatch(child, matches) {
 			continue
 		}
 		printTaskNode(child, depth+1, matches)
