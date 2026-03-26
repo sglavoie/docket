@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/spf13/viper"
@@ -29,13 +30,17 @@ func TestRunBoardShow(t *testing.T) {
 		return deps
 	}
 
-	t.Run("rejects missing args", func(t *testing.T) {
+	t.Run("rejects missing args with correct error message", func(t *testing.T) {
 		deps := setup(t)
 		defer deps.Cleanup()
 
 		err := runBoardShow(boardShowCmd, []string{})
 		if err == nil {
 			t.Error("expected error for missing args")
+		}
+		// Should mention "action ID", not "board column"
+		if err != nil && strings.Contains(err.Error(), "board column") {
+			t.Errorf("error message should not mention 'board column': %v", err)
 		}
 	})
 

@@ -37,7 +37,7 @@ func init() {
 
 func runBoardShow(cmd *cobra.Command, args []string) error {
 	if len(args) < 1 {
-		return tterrors.NewRequiredFieldError("board column")
+		return tterrors.NewRequiredFieldError("action ID")
 	}
 
 	cfg, _, err := LoadConfig()

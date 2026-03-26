@@ -6,6 +6,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/selector"
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/tterrors"
@@ -177,6 +178,8 @@ func runTaskMoveTo(cmd *cobra.Command, args []string) error { //nolint:gocyclo
 	descendants := len(movedSet) - 1 // Exclude the root task itself
 
 	// Check for dependencies that will be cleared
+	// Cross-project refs (format "projectID:taskID") are preserved during the move,
+	// so only count same-project refs that point outside the moved set.
 	var depsToBeCleared int
 	for id := range movedSet {
 		t := sourceProject.GetTaskByID(id)
@@ -184,6 +187,9 @@ func runTaskMoveTo(cmd *cobra.Command, args []string) error { //nolint:gocyclo
 			continue
 		}
 		for _, depID := range t.DependsOn {
+			if models.ParseTaskRef(depID).IsCrossProject() {
+				continue // cross-project refs are preserved, not cleared
+			}
 			if !movedSet[depID] {
 				depsToBeCleared++
 			}

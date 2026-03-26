@@ -114,6 +114,11 @@ func runBoardDelete(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to delete: %w", err)
 	}
 
+	// Clean cross-project references pointing to the deleted tasks from other projects.
+	if err := cleanDeletedTaskCrossProjectRefs(cfg.Projects, project.ID, project.Slug, idsToDelete); err != nil {
+		fmt.Fprintf(os.Stderr, "warning: failed to clean cross-project references: %v\n", err)
+	}
+
 	if out.Quiet {
 		return nil
 	}

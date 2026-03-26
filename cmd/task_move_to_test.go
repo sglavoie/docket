@@ -184,6 +184,43 @@ func TestMoveTaskToProject_ClearedDepsTracking(t *testing.T) {
 	testutil.AssertEqual(t, clearedDeps[0], task2.ID)
 }
 
+func TestMoveTaskToProject_CrossProjectRefsNotCountedAsCleared(t *testing.T) {
+	project := testutil.NewTestProject("Test Project")
+
+	task1, err := models.NewTask("task-1", project.GetNextShortID(), models.TaskTypeTask, "Task 1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	project.Tasks = append(project.Tasks, task1)
+
+	task2, err := models.NewTask("task-2", project.GetNextShortID(), models.TaskTypeTask, "Task 2")
+	if err != nil {
+		t.Fatal(err)
+	}
+	project.Tasks = append(project.Tasks, task2)
+
+	// task1 has a same-project dep (task2, not being moved) and a cross-project dep
+	task1.DependsOn = []string{task2.ID, "other-project:some-task-uuid"}
+	project.BuildTaskTree()
+
+	movedSet := map[string]bool{task1.ID: true}
+
+	// Count deps to be cleared the way the fixed code does:
+	// cross-project refs should NOT be counted since they are preserved.
+	var depsToBeCleared int
+	for _, depID := range task1.DependsOn {
+		if models.ParseTaskRef(depID).IsCrossProject() {
+			continue
+		}
+		if !movedSet[depID] {
+			depsToBeCleared++
+		}
+	}
+
+	// Only the same-project dep (task2) should be counted as cleared
+	testutil.AssertEqual(t, depsToBeCleared, 1)
+}
+
 func TestMoveTaskToProject_TaskNotFound(t *testing.T) {
 	project := testutil.NewTestProject("Test Project")
 	_, findErr := FindTaskByIdentifier(project, "nonexistent")
