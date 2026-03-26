@@ -659,7 +659,7 @@ func renderCollapsibleHeader(name string, count int, collapsed, isSelected, flas
 	}
 	cursor := "  "
 	if isSelected {
-		cursor = "> "
+		cursor = "→ "
 	}
 	header := fmt.Sprintf("%s%s %s (%d)", cursor, indicator, name, count)
 	styled := style.Bold(true).Render(header)

@@ -193,7 +193,7 @@ func (m *GlobalNoteMoveProjectSelectorModel) renderList() string {
 
 		cursor := "  "
 		if m.Cursor == i {
-			cursor = "> "
+			cursor = "→ "
 		}
 
 		contextBadge := MutedStyle.Render(fmt.Sprintf("[%s]", item.Project.Context))

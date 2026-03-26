@@ -1592,13 +1592,13 @@ func RenderCursorPrefix(selected, active, pinned bool) string {
 	activeMarker := ActiveStyle.Bold(true).Render("*")
 	switch {
 	case selected && active && pinned:
-		return SelectionCursorStyle.Render(">") + activeMarker + PinnedMarker
+		return SelectionCursorStyle.Render("→") + activeMarker + PinnedMarker
 	case selected && active:
-		return SelectionCursorStyle.Render(">") + activeMarker + " "
+		return SelectionCursorStyle.Render("→") + activeMarker + " "
 	case selected && pinned:
-		return SelectionCursorStyle.Render(">") + " " + PinnedMarker
+		return SelectionCursorStyle.Render("→") + " " + PinnedMarker
 	case selected:
-		return SelectionCursorStyle.Render(">") + "  "
+		return SelectionCursorStyle.Render("→") + "  "
 	case active && pinned:
 		return " " + activeMarker + PinnedMarker
 	case active:

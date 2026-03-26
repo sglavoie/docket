@@ -490,7 +490,7 @@ func (m *CrossProjectLinkerModel) viewProjectSelection() string {
 		}
 		cursor := "  "
 		if i == m.projectCursor {
-			cursor = "> "
+			cursor = "→ "
 		}
 		contextBadge := MutedStyle.Render(fmt.Sprintf("[%s]", p.Context))
 		availableNameWidth := max(m.Width()-lipgloss.Width(cursor)-lipgloss.Width(contextBadge)-1, 1)
@@ -557,7 +557,7 @@ func (m *CrossProjectLinkerModel) viewTaskSelection() string {
 		}
 		cursor := "  "
 		if i == m.taskCursor {
-			cursor = "> "
+			cursor = "→ "
 		}
 		statusIcon := GetStatusBadge(string(t.Status), t.Status.Icon())
 		typeIcon := GetTypeBadge(string(t.Type), t.Type.Icon())
@@ -616,7 +616,7 @@ func (m *CrossProjectLinkerModel) viewLinkTypeSelection() string {
 	for i, lt := range linkTypes {
 		cursor := "  "
 		if i == m.linkTypeCursor {
-			cursor = "> "
+			cursor = "→ "
 		}
 		line := fmt.Sprintf("%s%s", cursor, lt.name)
 		if i == m.linkTypeCursor {

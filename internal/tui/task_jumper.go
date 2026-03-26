@@ -288,7 +288,7 @@ func (m *TaskJumperModel) renderTaskList() string {
 		// Cursor indicator
 		cursor := "  "
 		if i == m.cursor {
-			cursor = "> "
+			cursor = "→ "
 		}
 
 		// Type icon with badge style

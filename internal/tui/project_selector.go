@@ -270,7 +270,7 @@ func (m *ProjectSelectorModel) renderList() string {
 
 		cursor := "  "
 		if m.Cursor == i {
-			cursor = "> "
+			cursor = "→ "
 		}
 
 		// Context badge

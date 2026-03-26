@@ -211,7 +211,7 @@ func (m *GlobalSearchModel) renderTaskList(paneHeight int) string {
 		// Cursor indicator
 		cursor := "  "
 		if i == m.cursor {
-			cursor = "> "
+			cursor = "→ "
 		}
 
 		// Handle note results

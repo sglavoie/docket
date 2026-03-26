@@ -461,7 +461,7 @@ func (m *ContextPickerModel) renderContextPicker(headerContent string) string {
 			// Cursor indicator
 			cursor := "  "
 			if i == m.Cursor {
-				cursor = "> "
+				cursor = "→ "
 			}
 
 			// Display name with "+" prefix for custom contexts

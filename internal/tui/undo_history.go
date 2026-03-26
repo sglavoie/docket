@@ -503,7 +503,7 @@ func (m *UndoHistoryModel) renderEntryList(width, height int) string {
 		// Cursor indicator
 		cursor := "  "
 		if i == m.cursor {
-			cursor = "> "
+			cursor = "→ "
 		}
 
 		// Format entry

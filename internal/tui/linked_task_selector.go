@@ -461,7 +461,7 @@ func (m *LinkedTaskSelectorModel) View() tea.View { //nolint:gocyclo
 				if idx >= visibleStart && idx < visibleEnd {
 					cursor := "  "
 					if idx == m.cursor {
-						cursor = "> "
+						cursor = "→ "
 					}
 					sectionBuilder.WriteString(cursor + m.renderRelationLine(rel, false) + "\n")
 				}
@@ -488,7 +488,7 @@ func (m *LinkedTaskSelectorModel) View() tea.View { //nolint:gocyclo
 				if idx >= visibleStart && idx < visibleEnd {
 					cursor := "  "
 					if idx == m.cursor {
-						cursor = "> "
+						cursor = "→ "
 					}
 					sectionBuilder.WriteString(cursor + m.renderRelationLine(rel, false) + "\n")
 				}
@@ -514,7 +514,7 @@ func (m *LinkedTaskSelectorModel) View() tea.View { //nolint:gocyclo
 				if idx >= visibleStart && idx < visibleEnd {
 					cursor := "  "
 					if idx == m.cursor {
-						cursor = "> "
+						cursor = "→ "
 					}
 					sectionBuilder.WriteString(cursor + m.renderRelationLine(rel, false) + "\n")
 				}

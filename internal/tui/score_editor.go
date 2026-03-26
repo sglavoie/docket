@@ -216,7 +216,7 @@ func (m *ScoreEditorModel) View() tea.View {
 		cursor := "  "
 		style := dimStyle
 		if i == m.cursor {
-			cursor = "> "
+			cursor = "→ "
 			style = selectedStyle
 		}
 

@@ -638,7 +638,7 @@ func (m *TaskChecklistModel) View() tea.View {
 
 			cursor := "  "
 			if i == m.cursor {
-				cursor = "> "
+				cursor = "→ "
 			}
 
 			checkbox := "[ ]"

@@ -461,7 +461,7 @@ func (m *OutlinerModel) renderOutlinerTreeContent(width int) string { //nolint:g
 			// Cursor prefix
 			cursorPrefix := "  "
 			if selected {
-				cursorPrefix = SelectionCursorStyle.Render(">") + " "
+				cursorPrefix = SelectionCursorStyle.Render("→") + " "
 			}
 
 			// Render colored badge with @ symbol at the very left

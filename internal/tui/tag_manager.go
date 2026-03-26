@@ -389,7 +389,7 @@ func (m *TagManagerModel) View() tea.View {
 			cursor := "  "
 			style := TagManagerItemStyle
 			if i == m.cursor {
-				cursor = "> "
+				cursor = "→ "
 				style = TagManagerItemSelectedStyle
 			}
 

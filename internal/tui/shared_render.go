@@ -260,7 +260,7 @@ func RenderCrossProjectTaskLine(
 func (tl TaskLine) Render() string {
 	cursor := "  "
 	if tl.IsSelected {
-		cursor = "> "
+		cursor = "→ "
 	}
 
 	statusIcon := tl.StatusBadge

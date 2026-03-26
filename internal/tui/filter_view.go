@@ -290,7 +290,7 @@ func (m *FilterViewModel) View() tea.View {
 			cursor := "  "
 			style := FilterItemStyle
 			if i == m.cursor {
-				cursor = "> "
+				cursor = "→ "
 				style = FilterItemSelectedStyle
 			}
 

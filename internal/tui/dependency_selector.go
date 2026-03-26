@@ -222,7 +222,7 @@ func (m *DependencySelectorModel) renderTaskList() string {
 		// Cursor indicator
 		cursor := "  "
 		if i == m.Cursor {
-			cursor = "> "
+			cursor = "→ "
 		}
 
 		// Status icon with badge style

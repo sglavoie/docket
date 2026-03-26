@@ -353,7 +353,7 @@ func (m *SectionPickerModel) renderSectionList(maxVisible, boxWidth int) string 
 		// Build prefix: "> @ " or "  @ " or ">   " or "    "
 		var prefix string
 		if selected {
-			prefix = SelectionCursorStyle.Render(">") + " " + gutter + " "
+			prefix = SelectionCursorStyle.Render("→") + " " + gutter + " "
 		} else {
 			prefix = "  " + gutter + " "
 		}

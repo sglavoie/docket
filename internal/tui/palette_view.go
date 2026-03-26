@@ -278,7 +278,7 @@ func (m *CommandPaletteModel) renderActionItem(action PaletteAction, selected bo
 	// Cursor indicator (2 chars)
 	cursor := "  "
 	if selected {
-		cursor = "> "
+		cursor = "→ "
 	}
 
 	// Icon with space after
@@ -573,7 +573,7 @@ func (m *CommandPaletteModel) renderPaletteItemWithHighlight(filtered filteredPa
 	// Cursor/number indicator (2 chars)
 	cursor := "  "
 	if selected {
-		cursor = "> "
+		cursor = "→ "
 	} else if numberHint > 0 && numberHint <= 9 {
 		// Show number hint in muted style
 		cursor = MutedStyle.Render(fmt.Sprintf("%d ", numberHint))

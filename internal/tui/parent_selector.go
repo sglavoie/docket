@@ -300,7 +300,7 @@ func (m *ParentSelectorModel) renderList() string {
 		if itemIndex >= scrollOffset && itemIndex < scrollOffset+maxVisible {
 			cursor := "  "
 			if m.Cursor == 0 {
-				cursor = "> "
+				cursor = "→ "
 			}
 			line := fmt.Sprintf("%s%s", cursor, "(None)")
 			if m.Cursor == 0 {
@@ -324,7 +324,7 @@ func (m *ParentSelectorModel) renderList() string {
 		if itemIndex >= scrollOffset && itemIndex < scrollOffset+maxVisible {
 			cursor := "  "
 			if m.Cursor == cursorIdx {
-				cursor = "> "
+				cursor = "→ "
 			}
 
 			// Type icon with badge style

@@ -700,7 +700,7 @@ func blockerViewShared(s *blockerViewState, ds blockerDataSource) string {
 
 			cursor := "  "
 			if i == s.cursor {
-				cursor = "> "
+				cursor = "→ "
 			}
 
 			relativeTime := storage.FormatRelativeTime(blocker.CreatedAt)
