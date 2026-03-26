@@ -22,9 +22,11 @@ func (t *Task) Complete() {
 
 // Start marks the task as in progress.
 // If the task is in any non-Active section, it is automatically moved out (auto-triage).
+// Snooze is cleared since an in-progress task should always be visible.
 func (t *Task) Start() {
 	t.Status = StatusInProgress
 	t.UpdatedAt = time.Now()
+	t.SnoozedUntil = nil
 	// Auto-triage: move out of Inbox/Next/Waiting/Someday/Review/Standby when starting
 	if t.Section == SectionInbox || t.Section == SectionNext || t.Section == SectionWaiting || t.Section == SectionSomeday || t.Section == SectionReview || t.Section == SectionStandby {
 		t.Section = ""
@@ -33,24 +35,30 @@ func (t *Task) Start() {
 
 // Review marks the task as in review.
 // If the task is in any non-Active section, it is automatically moved to Review section.
+// Snooze is cleared since a task in review should always be visible.
 func (t *Task) Review() {
 	t.Status = StatusReview
 	t.UpdatedAt = time.Now()
+	t.SnoozedUntil = nil
 	t.Section = SectionReview
 }
 
 // Standby puts the task on hold.
 // The task is moved to the Standby section.
+// Snooze is cleared since standby tasks appear in the Standby section and should be visible.
 func (t *Task) Standby() {
 	t.Status = StatusStandby
 	t.UpdatedAt = time.Now()
+	t.SnoozedUntil = nil
 	t.Section = SectionStandby
 }
 
 // Block marks the task as blocked.
+// Snooze is cleared since a blocked task needs visibility for tracking blockers.
 func (t *Task) Block() {
 	t.Status = StatusBlocked
 	t.UpdatedAt = time.Now()
+	t.SnoozedUntil = nil
 	t.Section = SectionWaiting
 }
 

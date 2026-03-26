@@ -1055,3 +1055,90 @@ func TestReopenClearsSnoozeDirectly(t *testing.T) {
 		t.Error("expected not snoozed after Reopen")
 	}
 }
+
+func TestStartClearsSnooze(t *testing.T) {
+	task, err := NewTask("t1", 1, TaskTypeTask, "Test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	future := time.Now().AddDate(0, 0, 7)
+	task.SnoozedUntil = &future
+
+	task.Start()
+
+	if task.SnoozedUntil != nil {
+		t.Error("expected SnoozedUntil to be nil after Start")
+	}
+	if task.IsSnoozed() {
+		t.Error("expected not snoozed after Start")
+	}
+	if task.Status != StatusInProgress {
+		t.Errorf("expected StatusInProgress after Start, got %s", task.Status)
+	}
+}
+
+func TestBlockClearsSnooze(t *testing.T) {
+	task, err := NewTask("t1", 1, TaskTypeTask, "Test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	task.Status = StatusInProgress
+	future := time.Now().AddDate(0, 0, 7)
+	task.SnoozedUntil = &future
+
+	task.Block()
+
+	if task.SnoozedUntil != nil {
+		t.Error("expected SnoozedUntil to be nil after Block")
+	}
+	if task.IsSnoozed() {
+		t.Error("expected not snoozed after Block")
+	}
+	if task.Status != StatusBlocked {
+		t.Errorf("expected StatusBlocked after Block, got %s", task.Status)
+	}
+}
+
+func TestReviewClearsSnooze(t *testing.T) {
+	task, err := NewTask("t1", 1, TaskTypeTask, "Test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	task.Status = StatusInProgress
+	future := time.Now().AddDate(0, 0, 7)
+	task.SnoozedUntil = &future
+
+	task.Review()
+
+	if task.SnoozedUntil != nil {
+		t.Error("expected SnoozedUntil to be nil after Review")
+	}
+	if task.IsSnoozed() {
+		t.Error("expected not snoozed after Review")
+	}
+	if task.Status != StatusReview {
+		t.Errorf("expected StatusReview after Review, got %s", task.Status)
+	}
+}
+
+func TestStandbyClearsSnooze(t *testing.T) {
+	task, err := NewTask("t1", 1, TaskTypeTask, "Test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	task.Status = StatusInProgress
+	future := time.Now().AddDate(0, 0, 7)
+	task.SnoozedUntil = &future
+
+	task.Standby()
+
+	if task.SnoozedUntil != nil {
+		t.Error("expected SnoozedUntil to be nil after Standby")
+	}
+	if task.IsSnoozed() {
+		t.Error("expected not snoozed after Standby")
+	}
+	if task.Status != StatusStandby {
+		t.Errorf("expected StatusStandby after Standby, got %s", task.Status)
+	}
+}

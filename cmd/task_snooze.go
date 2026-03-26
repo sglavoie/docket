@@ -123,9 +123,16 @@ func runTaskSnooze(cmd *cobra.Command, args []string) error {
 	}
 
 	task, err := WithTaskUpdateInProject(taskID, func(project *models.Project, task *models.Task) error {
-		// Prevent snoozing completed/canceled tasks (it makes no sense to hide them)
-		if snoozeDate != nil && task.Status.IsComplete() {
-			return fmt.Errorf("cannot snooze a %s task", task.Status)
+		if snoozeDate != nil {
+			// Prevent snoozing completed/canceled tasks (it makes no sense to hide them)
+			if task.Status.IsComplete() {
+				return fmt.Errorf("cannot snooze a %s task", task.Status)
+			}
+			// Prevent snoozing in_progress tasks — hiding an actively worked-on task
+			// is contradictory. Change its status first if you want to snooze it.
+			if task.Status == models.StatusInProgress {
+				return fmt.Errorf("cannot snooze an in-progress task (change status first)")
+			}
 		}
 		task.SnoozedUntil = snoozeDate
 		return nil

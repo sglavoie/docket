@@ -38,6 +38,26 @@ func TestSnoozeTask(t *testing.T) {
 	})
 }
 
+func TestSnoozeTaskRejectsInProgress(t *testing.T) {
+	task := testutil.NewTestTask("Active task", models.TaskTypeTask)
+	task.Start() // sets status to in_progress
+
+	// Attempting to snooze an in-progress task should be rejected
+	if task.Status != models.StatusInProgress {
+		t.Fatalf("expected StatusInProgress, got %s", task.Status)
+	}
+
+	// The validation happens in the command layer, but we can verify
+	// the model-level invariant: Start() clears any existing snooze
+	future := time.Now().AddDate(0, 0, 7)
+	task.SnoozedUntil = &future
+	task.Start()
+
+	if task.SnoozedUntil != nil {
+		t.Error("Start() should clear SnoozedUntil")
+	}
+}
+
 func TestSnoozeTaskIsSnoozed(t *testing.T) {
 	t.Run("task snoozed until future date is snoozed", func(t *testing.T) {
 		task := testutil.NewTestTask("Future task", models.TaskTypeTask)
