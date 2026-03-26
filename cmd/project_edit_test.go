@@ -126,3 +126,57 @@ func TestProjectEdit(t *testing.T) {
 		testutil.AssertEqual(t, saved.Name, "Renamed Project")
 	})
 }
+
+func TestRewriteRefs(t *testing.T) {
+	t.Run("rewrites matching cross-project refs", func(t *testing.T) {
+		refs := []string{"old-project:task-123", "other:task-456", "plain-task-id"}
+		result, count := rewriteRefs(refs, "old-project", "new-project")
+		if count != 1 {
+			t.Errorf("expected 1 ref rewritten, got %d", count)
+		}
+		if result[0] != "new-project:task-123" {
+			t.Errorf("expected 'new-project:task-123', got %q", result[0])
+		}
+		if result[1] != "other:task-456" {
+			t.Errorf("expected 'other:task-456' unchanged, got %q", result[1])
+		}
+		if result[2] != "plain-task-id" {
+			t.Errorf("expected 'plain-task-id' unchanged, got %q", result[2])
+		}
+	})
+
+	t.Run("returns zero count for no matches", func(t *testing.T) {
+		refs := []string{"other:task-456", "plain-task-id"}
+		result, count := rewriteRefs(refs, "old-project", "new-project")
+		if count != 0 {
+			t.Errorf("expected 0 refs rewritten, got %d", count)
+		}
+		if len(result) != 2 {
+			t.Errorf("expected 2 refs, got %d", len(result))
+		}
+	})
+
+	t.Run("handles empty refs", func(t *testing.T) {
+		result, count := rewriteRefs(nil, "old", "new")
+		if count != 0 {
+			t.Errorf("expected 0 refs rewritten, got %d", count)
+		}
+		if result != nil {
+			t.Errorf("expected nil result for nil input, got %v", result)
+		}
+	})
+
+	t.Run("rewrites multiple matching refs", func(t *testing.T) {
+		refs := []string{"proj:task-1", "proj:task-2", "proj:task-3"}
+		result, count := rewriteRefs(refs, "proj", "renamed-proj")
+		if count != 3 {
+			t.Errorf("expected 3 refs rewritten, got %d", count)
+		}
+		for i, ref := range result {
+			expected := "renamed-proj:" + refs[i][len("proj:"):]
+			if ref != expected {
+				t.Errorf("result[%d]: expected %q, got %q", i, expected, ref)
+			}
+		}
+	})
+}

@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"os"
 	"strings"
 	"time"
 
@@ -65,6 +66,8 @@ func runProjectEdit(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	originalSlug := project.Slug
+
 	// Check if any flags were provided
 	nameChanged := cmd.Flags().Changed("name")
 	contextChanged := cmd.Flags().Changed("context")
@@ -108,9 +111,9 @@ func runProjectEdit(cmd *cobra.Command, args []string) error {
 		}
 
 		// Rename project directory if slug changed (must happen before updating project fields)
-		oldSlug := project.Slug
-		if oldSlug != newSlug {
-			if err := storage.RenameProjectDir(project, oldSlug, newSlug, cfg.DataDir); err != nil {
+		originalSlug := project.Slug
+		if originalSlug != newSlug {
+			if err := storage.RenameProjectDir(project, originalSlug, newSlug, cfg.DataDir); err != nil {
 				return fmt.Errorf("failed to rename project directory: %w", err)
 			}
 		}
@@ -168,6 +171,16 @@ func runProjectEdit(cmd *cobra.Command, args []string) error {
 		}
 		// If LoadProject fails (e.g., no tasks.md yet), skip silently —
 		// the heading will be written correctly on the next task save.
+
+		// Update cross-project references in other projects when the slug changed
+		if originalSlug != project.Slug {
+			updated, updateErr := updateCrossProjectRefs(cfg.Projects, originalSlug, project.Slug, project.ID)
+			if updateErr != nil {
+				fmt.Fprintf(os.Stderr, "warning: failed to update some cross-project references: %v\n", updateErr)
+			} else if updated > 0 && !out.Quiet {
+				fmt.Printf("Updated %d cross-project reference(s) from '%s' to '%s'\n", updated, originalSlug, project.Slug)
+			}
+		}
 	}
 
 	return out.OutputProject(project, func() {
@@ -193,4 +206,57 @@ func runProjectEdit(cmd *cobra.Command, args []string) error {
 			}
 		}
 	})
+}
+
+// updateCrossProjectRefs rewrites cross-project references in other projects
+// when a project's slug changes. Returns the total number of refs updated.
+func updateCrossProjectRefs(projects []*models.Project, originalSlug, newSlug, renamedProjectID string) (int, error) {
+	totalUpdated := 0
+
+	for _, p := range projects {
+		if p.ID == renamedProjectID {
+			continue // skip the renamed project itself
+		}
+		if err := storage.LoadProject(p); err != nil {
+			continue // skip projects that can't be loaded
+		}
+
+		projectUpdated := 0
+		for _, task := range p.Tasks {
+			var n int
+			task.DependsOn, n = rewriteRefs(task.DependsOn, originalSlug, newSlug)
+			projectUpdated += n
+			task.RelatedTo, n = rewriteRefs(task.RelatedTo, originalSlug, newSlug)
+			projectUpdated += n
+		}
+
+		if projectUpdated > 0 {
+			if err := storage.SaveProjectLocked(p); err != nil {
+				return totalUpdated, fmt.Errorf("saving project '%s': %w", p.Name, err)
+			}
+			totalUpdated += projectUpdated
+		}
+	}
+
+	return totalUpdated, nil
+}
+
+// rewriteRefs replaces cross-project references from originalSlug to newSlug.
+// Returns the updated slice and the number of refs rewritten.
+func rewriteRefs(refs []string, originalSlug, newSlug string) ([]string, int) {
+	if len(refs) == 0 {
+		return refs, 0
+	}
+	updated := 0
+	result := make([]string, len(refs))
+	for i, ref := range refs {
+		parsed := models.ParseTaskRef(ref)
+		if parsed.IsCrossProject() && parsed.ProjectID == originalSlug {
+			result[i] = newSlug + ":" + parsed.TaskID
+			updated++
+		} else {
+			result[i] = ref
+		}
+	}
+	return result, updated
 }

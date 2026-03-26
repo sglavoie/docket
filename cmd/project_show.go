@@ -75,7 +75,11 @@ func runProjectShow(cmd *cobra.Command, args []string) error {
 	fmt.Printf("%s %s\n", labelStyle.Render("Created:"), project.CreatedAt.Format(util.DateFormat))
 
 	if project.Archived {
-		fmt.Printf("%s %s\n", labelStyle.Render("Archived:"), project.ArchivedAt.Format(util.DateFormat))
+		archivedStr := "yes"
+		if project.ArchivedAt != nil {
+			archivedStr = project.ArchivedAt.Format(util.DateFormat)
+		}
+		fmt.Printf("%s %s\n", labelStyle.Render("Archived:"), archivedStr)
 	}
 
 	fmt.Println()

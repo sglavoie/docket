@@ -174,6 +174,36 @@ func TestCheckOrphanedCrossRefs(t *testing.T) {
 	}
 }
 
+func TestCheckOrphanedCrossRefs_ArchivedProjectNotOrphaned(t *testing.T) {
+	// Cross-project references to tasks in archived projects should NOT be
+	// reported as orphaned. The doctor command must load archived projects
+	// for cross-ref validation.
+	activeProject := testutil.NewTestProject("Active")
+	archivedProject := testutil.NewTestProject("Archived")
+	archivedProject.Archived = true
+
+	activeTask := testutil.NewTestTask("Active Task", models.TaskTypeTask)
+	archivedTask := testutil.NewTestTask("Archived Task", models.TaskTypeTask)
+
+	// Active project references a task in the archived project
+	activeTask.DependsOn = []string{archivedProject.Slug + ":" + archivedTask.ID}
+
+	activeProject.Tasks = []*models.Task{activeTask}
+	archivedProject.Tasks = []*models.Task{archivedTask}
+
+	cfg := testutil.NewTestConfig()
+	cfg.Projects = append(cfg.Projects, activeProject, archivedProject)
+
+	results := &doctorResults{}
+	// Pass BOTH projects (including archived) to simulate the fix
+	checkOrphanedCrossRefs([]*models.Project{activeProject, archivedProject}, cfg, results)
+
+	if len(results.orphanedCrossRefs) != 0 {
+		t.Errorf("expected 0 orphaned cross refs (archived project ref is valid), got %d: %v",
+			len(results.orphanedCrossRefs), results.orphanedCrossRefs)
+	}
+}
+
 func TestTotalIssues(t *testing.T) {
 	results := &doctorResults{
 		orphanedCrossRefs: []doctorIssue{{project: "p"}},

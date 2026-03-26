@@ -53,9 +53,11 @@ func runDoctor(cmd *cobra.Command, _ []string) error {
 
 	projects := cfg.GetAllLoadableProjects()
 
-	// Load all projects
+	// Load all projects (including archived) so cross-project ref checks
+	// don't report false positives for refs pointing to archived projects.
+	allProjects := cfg.Projects
 	var loadedProjects []*models.Project
-	for _, project := range projects {
+	for _, project := range allProjects {
 		if err := storage.LoadProject(project); err != nil {
 			fmt.Fprintf(os.Stderr, "warning: skipping project %s: %v\n", project.Name, err)
 			continue

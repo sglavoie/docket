@@ -35,10 +35,31 @@ func runTaskStage(cmd *cobra.Command, args []string) error {
 	}
 
 	taskID := args[0]
-	stageName := ""
-	if len(args) > 1 {
-		stageName = args[1]
+
+	// With only 1 argument, show the current stage (read-only)
+	if len(args) == 1 {
+		project, _, _, loadErr := LoadCurrentProject()
+		if loadErr != nil {
+			return loadErr
+		}
+		task, findErr := FindTaskByIdentifier(project, taskID)
+		if findErr != nil {
+			return findErr
+		}
+		if out.JSON {
+			return outputSingleTaskJSON(task)
+		}
+		if !out.Quiet {
+			if task.Stage == "" {
+				fmt.Printf("Task #%d has no stage.\n", task.ShortID)
+			} else {
+				fmt.Printf("Task #%d stage: %s\n", task.ShortID, task.Stage)
+			}
+		}
+		return nil
 	}
+
+	stageName := args[1]
 
 	// Pre-check: skip the save if the stage is already the requested value
 	project, _, _, err := LoadCurrentProject()
