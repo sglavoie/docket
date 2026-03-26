@@ -233,55 +233,52 @@ func (m *TaskChecklistModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) { //nolint
 }
 
 func (m *TaskChecklistModel) saveItem() tea.Cmd {
+	text := strings.TrimSpace(m.textInput.Value())
+	if text == "" {
+		m.err = fmt.Errorf("item text cannot be empty")
+		return nil
+	}
+
+	// Mutate model state synchronously in Update() to avoid data races with View().
+	m.resolveTask()
+	m.task.Checklist = append(m.task.Checklist, models.ChecklistItem{
+		Text: text,
+		Done: false,
+	})
+	m.addMode = false
+	m.textInput.Reset()
+	m.err = nil
+	m.cursor = len(m.task.Checklist) - 1
+
+	task := m.task
+	project := m.project
 	return func() tea.Msg {
-		text := strings.TrimSpace(m.textInput.Value())
-		if text == "" {
-			m.err = fmt.Errorf("item text cannot be empty")
-			return nil
-		}
-
-		m.resolveTask()
-		m.task.Checklist = append(m.task.Checklist, models.ChecklistItem{
-			Text: text,
-			Done: false,
-		})
-
-		if err := saveProjectNoReload(m.project); err != nil {
+		if err := saveProjectNoReload(project); err != nil {
 			return ErrorMsg{Err: fmt.Errorf("failed to save project: %w", err)}
 		}
-
-		// Reset add mode
-		m.addMode = false
-		m.textInput.Reset()
-		m.err = nil
-
-		// Move cursor to the new item (last in list)
-		m.cursor = len(m.task.Checklist) - 1
-
-		return ChecklistItemAddedMsg{Task: m.task}
+		return ChecklistItemAddedMsg{Task: task}
 	}
 }
 
 func (m *TaskChecklistModel) executeDelete() tea.Cmd {
+	if m.cursor < 0 || m.cursor >= len(m.task.Checklist) {
+		return func() tea.Msg { return ErrorMsg{Err: fmt.Errorf("invalid index")} }
+	}
+
+	// Mutate model state synchronously in Update() to avoid data races with View().
+	m.resolveTask()
+	m.task.Checklist = append(m.task.Checklist[:m.cursor], m.task.Checklist[m.cursor+1:]...)
+	if m.cursor >= len(m.task.Checklist) && m.cursor > 0 {
+		m.cursor--
+	}
+
+	task := m.task
+	project := m.project
 	return func() tea.Msg {
-		if m.cursor < 0 || m.cursor >= len(m.task.Checklist) {
-			return ErrorMsg{Err: fmt.Errorf("invalid index")}
-		}
-
-		// Remove item at cursor
-		m.resolveTask()
-		m.task.Checklist = append(m.task.Checklist[:m.cursor], m.task.Checklist[m.cursor+1:]...)
-
-		if err := saveProjectNoReload(m.project); err != nil {
+		if err := saveProjectNoReload(project); err != nil {
 			return ErrorMsg{Err: fmt.Errorf("failed to save project: %w", err)}
 		}
-
-		// Adjust cursor if needed
-		if m.cursor >= len(m.task.Checklist) && m.cursor > 0 {
-			m.cursor--
-		}
-
-		return ChecklistItemDeletedMsg{Task: m.task}
+		return ChecklistItemDeletedMsg{Task: task}
 	}
 }
 
@@ -295,49 +292,50 @@ func (m *TaskChecklistModel) startEditItem() tea.Cmd {
 }
 
 func (m *TaskChecklistModel) saveEditedItem() tea.Cmd {
-	return func() tea.Msg {
-		text := strings.TrimSpace(m.editTextInput.Value())
-		if text == "" {
-			m.err = fmt.Errorf("item text cannot be empty")
-			return nil
-		}
+	text := strings.TrimSpace(m.editTextInput.Value())
+	if text == "" {
+		m.err = fmt.Errorf("item text cannot be empty")
+		return nil
+	}
 
-		// Update the item text (preserve done state)
-		m.resolveTask()
-		if m.editIndex < 0 || m.editIndex >= len(m.task.Checklist) {
-			m.editMode = false
-			m.editTextInput.Reset()
-			return ErrorMsg{Err: fmt.Errorf("checklist item no longer exists")}
-		}
-		m.task.Checklist[m.editIndex].Text = text
-
-		if err := saveProjectNoReload(m.project); err != nil {
-			return ErrorMsg{Err: fmt.Errorf("failed to save project: %w", err)}
-		}
-
-		// Reset edit mode
+	// Mutate model state synchronously in Update() to avoid data races with View().
+	m.resolveTask()
+	if m.editIndex < 0 || m.editIndex >= len(m.task.Checklist) {
 		m.editMode = false
 		m.editTextInput.Reset()
-		m.err = nil
+		return func() tea.Msg { return ErrorMsg{Err: fmt.Errorf("checklist item no longer exists")} }
+	}
+	m.task.Checklist[m.editIndex].Text = text
+	m.editMode = false
+	m.editTextInput.Reset()
+	m.err = nil
 
-		return ChecklistItemEditedMsg{Task: m.task}
+	task := m.task
+	project := m.project
+	return func() tea.Msg {
+		if err := saveProjectNoReload(project); err != nil {
+			return ErrorMsg{Err: fmt.Errorf("failed to save project: %w", err)}
+		}
+		return ChecklistItemEditedMsg{Task: task}
 	}
 }
 
 func (m *TaskChecklistModel) toggleItem() tea.Cmd {
+	if m.cursor < 0 || m.cursor >= len(m.task.Checklist) {
+		return nil
+	}
+
+	// Mutate model state synchronously in Update() to avoid data races with View().
+	m.resolveTask()
+	m.task.Checklist[m.cursor].Done = !m.task.Checklist[m.cursor].Done
+
+	task := m.task
+	project := m.project
 	return func() tea.Msg {
-		if m.cursor < 0 || m.cursor >= len(m.task.Checklist) {
-			return nil
-		}
-
-		m.resolveTask()
-		m.task.Checklist[m.cursor].Done = !m.task.Checklist[m.cursor].Done
-
-		if err := saveProjectNoReload(m.project); err != nil {
+		if err := saveProjectNoReload(project); err != nil {
 			return ErrorMsg{Err: fmt.Errorf("failed to save project: %w", err)}
 		}
-
-		return ChecklistItemToggledMsg{Task: m.task}
+		return ChecklistItemToggledMsg{Task: task}
 	}
 }
 
