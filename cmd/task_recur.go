@@ -73,7 +73,7 @@ func runTaskRecur(cmd *cobra.Command, args []string) error { //nolint:gocyclo
 		actionCount++
 		actionFlags = append(actionFlags, "--skip")
 	}
-	if taskRecurDefer != 0 {
+	if cmd.Flags().Changed("defer") {
 		actionCount++
 		actionFlags = append(actionFlags, "--defer")
 	}
@@ -121,8 +121,8 @@ func runTaskRecur(cmd *cobra.Command, args []string) error { //nolint:gocyclo
 	}
 
 	// Handle --defer flag
-	if taskRecurDefer < 0 {
-		return fmt.Errorf("defer days must be positive, got %d", taskRecurDefer)
+	if cmd.Flags().Changed("defer") && taskRecurDefer <= 0 {
+		return fmt.Errorf("defer days must be a positive number, got %d", taskRecurDefer)
 	}
 	if taskRecurDefer > 0 {
 		if task.Recurrence == nil {

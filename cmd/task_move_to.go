@@ -109,6 +109,10 @@ func runTaskMoveTo(cmd *cobra.Command, args []string) error { //nolint:gocyclo
 		}
 		for _, p := range cfg.GetActiveProjects() {
 			if p.ID != sourceProject.ID {
+				taskCount := 0
+				if loadErr := storage.LoadProject(p); loadErr == nil {
+					taskCount = p.CountTasks()
+				}
 				candidates = append(candidates, &struct {
 					Project any
 					ID      string
@@ -120,7 +124,7 @@ func runTaskMoveTo(cmd *cobra.Command, args []string) error { //nolint:gocyclo
 					ID:      p.ID,
 					Name:    p.Name,
 					Context: p.Context,
-					Tasks:   p.CountTasks(),
+					Tasks:   taskCount,
 				})
 			}
 		}

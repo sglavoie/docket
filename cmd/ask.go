@@ -11,7 +11,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/sglavoie/tt/internal/external"
-	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/tterrors"
 )
 
@@ -57,11 +56,8 @@ func runAsk(cmd *cobra.Command, args []string) error {
 	if !askNoContext {
 		project, _, _, err := LoadCurrentProject()
 		if err == nil {
-			if loadErr := storage.LoadProject(project); loadErr != nil {
-				fmt.Fprintf(os.Stderr, "warning: failed to load project tasks: %v\n", loadErr)
-			} else {
-				systemPrompt = external.BuildTaskContext(project)
-			}
+			// LoadCurrentProject already loads tasks; no need for a second LoadProject call.
+			systemPrompt = external.BuildTaskContext(project)
 		}
 	}
 
