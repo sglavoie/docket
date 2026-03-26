@@ -128,11 +128,26 @@ func (m *TagManagerModel) renameTag(oldName, newName string) tea.Cmd {
 		}
 
 		for _, task := range m.project.Tasks {
+			hasOld := false
+			hasNew := false
+			oldIdx := -1
 			for i, tag := range task.Tags {
 				if tag == oldName {
-					task.Tags[i] = newName
-					break
+					hasOld = true
+					oldIdx = i
 				}
+				if tag == newName {
+					hasNew = true
+				}
+			}
+			if !hasOld {
+				continue
+			}
+			if hasNew {
+				// Task already has the destination tag; remove the old one to avoid duplicates
+				task.Tags = append(task.Tags[:oldIdx], task.Tags[oldIdx+1:]...)
+			} else {
+				task.Tags[oldIdx] = newName
 			}
 		}
 

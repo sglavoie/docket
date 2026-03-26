@@ -24,6 +24,7 @@ func init() {
 
 	scoreRankCmd.Flags().IntP("limit", "n", 0, "limit number of results (0 = all)")
 	scoreRankCmd.Flags().Bool("all", false, "include completed tasks")
+	scoreRankCmd.Flags().Bool("snoozed", false, "include snoozed tasks (hidden by default)")
 	scoreRankCmd.Flags().Bool("json", false, "output as JSON")
 }
 
@@ -44,11 +45,15 @@ func runScoreRank(cmd *cobra.Command, args []string) error {
 	}
 
 	includeAll, _ := cmd.Flags().GetBool("all")
+	includeSnoozed, _ := cmd.Flags().GetBool("snoozed")
 	limit, _ := cmd.Flags().GetInt("limit")
 
 	var ranked []rankedTask
 	for _, task := range project.Tasks {
 		if !includeAll && task.Status.IsComplete() {
+			continue
+		}
+		if !includeSnoozed && task.IsSnoozed() {
 			continue
 		}
 		score := scoring.ComputeScore(task, profile)

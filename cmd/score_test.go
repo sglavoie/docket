@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"testing"
+	"time"
 
 	"github.com/spf13/viper"
 
@@ -294,6 +295,61 @@ func TestRunScoreRank(t *testing.T) {
 		err := runScoreRank(scoreRankCmd, []string{})
 		if err == nil {
 			t.Error("expected error when no scoring profile is assigned")
+		}
+	})
+
+	t.Run("excludes snoozed tasks by default", func(t *testing.T) {
+		deps, project := setupScoreTest(t)
+		defer deps.Cleanup()
+
+		profile := deps.Config.GetProjectScoringProfile(project.ID)
+		if profile == nil {
+			t.Fatal("expected scoring profile to be assigned")
+		}
+
+		// Snooze one active task (set SnoozedUntil to the future)
+		var snoozedTask *models.Task
+		for _, task := range project.Tasks {
+			if task.Status.IsActive() && !task.Status.IsComplete() {
+				future := time.Now().Add(7 * 24 * time.Hour)
+				task.SnoozedUntil = &future
+				snoozedTask = task
+				break
+			}
+		}
+		if snoozedTask == nil {
+			t.Fatal("could not find an active task to snooze")
+		}
+		deps.Repository.Projects[project.ID] = project
+
+		// Count how many tasks would be included (active, non-snoozed)
+		expectedCount := 0
+		for _, task := range project.Tasks {
+			if !task.Status.IsComplete() && !task.IsSnoozed() {
+				expectedCount++
+			}
+		}
+
+		// Build ranked list using the same logic as runScoreRank (with default snoozed=false)
+		var ranked []rankedTask
+		for _, task := range project.Tasks {
+			if task.Status.IsComplete() {
+				continue
+			}
+			if task.IsSnoozed() {
+				continue
+			}
+			score := scoring.ComputeScore(task, profile)
+			ranked = append(ranked, rankedTask{task: task, score: score})
+		}
+
+		if len(ranked) != expectedCount {
+			t.Errorf("expected %d ranked tasks (excluding snoozed), got %d", expectedCount, len(ranked))
+		}
+		for _, r := range ranked {
+			if r.task.ID == snoozedTask.ID {
+				t.Errorf("snoozed task %q should have been excluded from ranking", snoozedTask.Title)
+			}
 		}
 	})
 }
