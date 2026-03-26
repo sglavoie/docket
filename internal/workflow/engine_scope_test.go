@@ -151,6 +151,40 @@ func TestMatchesScope_CombinedScope(t *testing.T) {
 	}
 }
 
+func TestMatchesScope_CustomSectionMatch(t *testing.T) {
+	rule := WorkflowRule{
+		Scope: &RuleScope{Sections: []string{"Sprint-1", "Backlog"}},
+	}
+
+	tests := []struct {
+		name          string
+		section       string
+		customSection string
+		expected      bool
+	}{
+		{"section matches in scope list", "Backlog", "", true}, // "Backlog" is in the scope list and matches task.Section
+		{"custom section matches", "", "Sprint-1", true},
+		{"custom section case-insensitive", "", "sprint-1", true},
+		{"neither matches", "Inbox", "Sprint-2", false},
+		{"GTD section in scope", "Backlog", "Sprint-2", true}, // Backlog is in scope
+		{"custom section in scope with GTD section set", "Inbox", "Sprint-1", true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			task := &models.Task{
+				ID:            "1",
+				Type:          models.TaskTypeTask,
+				Section:       tt.section,
+				CustomSection: tt.customSection,
+			}
+			if got := rule.MatchesScope(task, "Proj", "p1"); got != tt.expected {
+				t.Errorf("MatchesScope() = %v, want %v", got, tt.expected)
+			}
+		})
+	}
+}
+
 func TestMatchesScope_EmptyFields(t *testing.T) {
 	// Empty slices mean no restriction for that dimension
 	rule := WorkflowRule{

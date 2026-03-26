@@ -805,7 +805,8 @@ func (r *WorkflowRule) MatchesScope(task *models.Task, projectName, projectID st
 	if len(r.Scope.Sections) > 0 {
 		matched := false
 		for _, s := range r.Scope.Sections {
-			if strings.EqualFold(s, task.Section) {
+			// Match against both GTD Section and CustomSection
+			if strings.EqualFold(s, task.Section) || strings.EqualFold(s, task.CustomSection) {
 				matched = true
 				break
 			}

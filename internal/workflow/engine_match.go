@@ -94,9 +94,19 @@ func matchesEventTrigger(task, prev *models.Task, trigger RuleTrigger) bool { //
 		)
 
 	case FieldSectionChanged:
-		return matchesTransition(
+		// Check both GTD Section and CustomSection for transitions.
+		// A change in either constitutes a section change.
+		sectionChanged := matchesTransition(
 			getPrevValue(prev, func(t *models.Task) string { return t.Section }),
 			task.Section,
+			trigger.Value,
+		)
+		if sectionChanged {
+			return true
+		}
+		return matchesTransition(
+			getPrevValue(prev, func(t *models.Task) string { return t.CustomSection }),
+			task.CustomSection,
 			trigger.Value,
 		)
 
@@ -348,7 +358,14 @@ func matchesTrigger(task *models.Task, trigger RuleTrigger) bool {
 	case FieldPriority:
 		fieldValue = strconv.Itoa(task.Priority)
 	case FieldSection:
-		fieldValue = task.Section
+		// Section matching considers both GTD Section and CustomSection.
+		// GTD trigger values match against task.Section; non-GTD trigger values
+		// match against task.CustomSection (mirrors ActionSetSection behavior).
+		if models.IsGTDSection(trigger.Value) || trigger.Value == "" {
+			fieldValue = task.Section
+		} else {
+			fieldValue = task.CustomSection
+		}
 	case FieldTags:
 		return matchesTagTrigger(task.Tags, trigger)
 	case FieldType:

@@ -47,15 +47,16 @@ func copyTaskState(task *models.Task) *models.Task {
 	}
 
 	return &models.Task{
-		ID:          task.ID,
-		Status:      task.Status,
-		Priority:    task.Priority,
-		Section:     task.Section,
-		Tags:        tagsCopy,
-		Type:        task.Type,
-		DueDate:     task.DueDate,
-		Description: task.Description,
-		Recurrence:  recurrenceCopy,
+		ID:            task.ID,
+		Status:        task.Status,
+		Priority:      task.Priority,
+		Section:       task.Section,
+		CustomSection: task.CustomSection,
+		Tags:          tagsCopy,
+		Type:          task.Type,
+		DueDate:       task.DueDate,
+		Description:   task.Description,
+		Recurrence:    recurrenceCopy,
 		// Preserve parent/child relationships for hierarchical triggers
 		Parent:   task.Parent,
 		Children: task.Children,

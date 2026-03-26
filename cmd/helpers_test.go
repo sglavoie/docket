@@ -498,6 +498,24 @@ func TestCaptureTaskStates(t *testing.T) {
 		}
 	})
 
+	t.Run("captures CustomSection field", func(t *testing.T) {
+		task := testutil.NewTestTaskWithStatus("Task", models.StatusTodo)
+		task.CustomSection = "Sprint-1"
+
+		states := CaptureTaskStates([]*models.Task{task})
+		state := states[task.ID]
+
+		if state.CustomSection != "Sprint-1" {
+			t.Errorf("captured state CustomSection = %q, want %q", state.CustomSection, "Sprint-1")
+		}
+
+		// Modify original - string is a value type so copy is independent
+		task.CustomSection = "Sprint-2"
+		if state.CustomSection != "Sprint-1" {
+			t.Errorf("captured state CustomSection should not change after original mutation")
+		}
+	})
+
 	t.Run("modifying original tasks does not affect captured states", func(t *testing.T) {
 		task := testutil.NewTestTaskWithStatus("Task", models.StatusTodo)
 		task.Priority = 3

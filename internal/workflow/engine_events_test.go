@@ -391,3 +391,79 @@ func TestEvaluateRulesWithContext_EventTrigger(t *testing.T) {
 		t.Error("expected task to have 'ready' tag from event trigger")
 	}
 }
+
+func TestEventTrigger_CustomSectionChanged(t *testing.T) {
+	prevTask := &models.Task{
+		ID:            "task-1",
+		Status:        models.StatusInProgress,
+		CustomSection: "Sprint-1",
+	}
+	currTask := &models.Task{
+		ID:            "task-1",
+		Status:        models.StatusInProgress,
+		CustomSection: "Sprint-2",
+	}
+
+	evalCtx := &EvaluationContext{
+		Changes:  []TaskChangeContext{{Task: currTask, Previous: prevTask}},
+		AllTasks: []*models.Task{currTask},
+		TaskMap:  map[string]*models.Task{"task-1": currTask},
+	}
+
+	rules := []WorkflowRule{
+		{
+			ID:      "rule-1",
+			Name:    "Custom section change",
+			Enabled: true,
+			Trigger: RuleTrigger{Field: FieldSectionChanged, Operation: OpEquals, Value: "Sprint-1->Sprint-2"},
+			Actions: []RuleAction{{ActionType: ActionAddTag, Value: "moved"}},
+		},
+	}
+
+	result := EvaluateRulesWithContext(evalCtx, rules)
+
+	if len(result.ModifiedTasks) != 1 {
+		t.Fatalf("expected 1 modified task, got %d", len(result.ModifiedTasks))
+	}
+	if !currTask.HasTag("moved") {
+		t.Error("expected task to have 'moved' tag from custom section change trigger")
+	}
+}
+
+func TestEventTrigger_CustomSectionChanged_WildcardPattern(t *testing.T) {
+	prevTask := &models.Task{
+		ID:            "task-1",
+		Status:        models.StatusTodo,
+		CustomSection: "Sprint-1",
+	}
+	currTask := &models.Task{
+		ID:            "task-1",
+		Status:        models.StatusTodo,
+		CustomSection: "Sprint-2",
+	}
+
+	evalCtx := &EvaluationContext{
+		Changes:  []TaskChangeContext{{Task: currTask, Previous: prevTask}},
+		AllTasks: []*models.Task{currTask},
+		TaskMap:  map[string]*models.Task{"task-1": currTask},
+	}
+
+	rules := []WorkflowRule{
+		{
+			ID:      "rule-1",
+			Name:    "Any custom section change",
+			Enabled: true,
+			Trigger: RuleTrigger{Field: FieldSectionChanged, Operation: OpEquals, Value: "*->*"},
+			Actions: []RuleAction{{ActionType: ActionAddTag, Value: "section-changed"}},
+		},
+	}
+
+	result := EvaluateRulesWithContext(evalCtx, rules)
+
+	if len(result.ModifiedTasks) != 1 {
+		t.Fatalf("expected 1 modified task, got %d", len(result.ModifiedTasks))
+	}
+	if !currTask.HasTag("section-changed") {
+		t.Error("expected task to have 'section-changed' tag from wildcard section change")
+	}
+}
