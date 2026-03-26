@@ -91,8 +91,32 @@ func (p *Project) GenerateRecurringInstances() int {
 			Recurrence:      newRecurrence,
 			Checklist:       checklist,
 			Stage:           task.Stage,
+			Source:          task.Source,
+			URL:             task.URL,
 			CreatedAt:       now,
 			UpdatedAt:       now,
+		}
+
+		// Copy type-specific attributes (value types, so shallow copy is safe)
+		if task.BugAttrs != nil {
+			copied := *task.BugAttrs
+			newTask.BugAttrs = &copied
+		}
+		if task.IdeaAttrs != nil {
+			copied := *task.IdeaAttrs
+			newTask.IdeaAttrs = &copied
+		}
+		if task.TaskAttrs != nil {
+			copied := *task.TaskAttrs
+			newTask.TaskAttrs = &copied
+		}
+		if task.StoryAttrs != nil {
+			copied := *task.StoryAttrs
+			newTask.StoryAttrs = &copied
+		}
+		if task.EpicAttrs != nil {
+			copied := *task.EpicAttrs
+			newTask.EpicAttrs = &copied
 		}
 
 		// Clear recurrence from completed task (pattern moves to new instance)
