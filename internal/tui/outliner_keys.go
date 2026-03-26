@@ -493,10 +493,6 @@ func (m *OutlinerModel) handleKeyMsg(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 
-	// Cut: copy title(s) to clipboard, then initiate delete
-	case "x":
-		return m.handleCutKey()
-
 	// Filter keys
 	case "T":
 		cmd, _ := handleTagKey(m, ViewOutliner, false, m.filter.Tags)

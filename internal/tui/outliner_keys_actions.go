@@ -287,22 +287,3 @@ func (m *OutlinerModel) archiveCompletedTasks() (tea.Model, tea.Cmd) {
 	m.clearStatus()
 	return m, cmd
 }
-
-// handleCutKey copies the selected task(s) title to clipboard and initiates
-// delete confirmation (cut = copy + delete).
-func (m *OutlinerModel) handleCutKey() (tea.Model, tea.Cmd) {
-	if m.multiSelectMode && len(m.selectedTasks) > 0 {
-		tasks := m.getSelectedTasks()
-		copyCmd := func() tea.Msg { return CopyTasksTitleMsg{Tasks: tasks} }
-		m.confirm.Show("bulk-delete", fmt.Sprintf("Cut %d selected tasks?", len(tasks)))
-		return m, copyCmd
-	}
-	if len(m.rows) > 0 && m.cursor >= 0 && m.cursor < len(m.rows) && !m.rows[m.cursor].IsSectionHeader {
-		task := m.rows[m.cursor].task
-		copyCmd := func() tea.Msg { return CopyTaskTitleMsg{Task: task} }
-		m.confirm.Show("delete", fmt.Sprintf("Cut task #%d?", task.ShortID))
-		m.deleteTarget = task
-		return m, copyCmd
-	}
-	return m, nil
-}
