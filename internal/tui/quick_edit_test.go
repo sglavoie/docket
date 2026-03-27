@@ -157,6 +157,64 @@ func TestParseQuickEdit_Combined(t *testing.T) {
 	}
 }
 
+func TestParseQuickEdit_HyphenatedTags(t *testing.T) {
+	project := &models.Project{Name: "test"}
+	task := &models.Task{Title: "Original", Tags: []string{"old-tag"}}
+
+	result, err := parseQuickEdit("Task #new-tag -#old-tag", task, project)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if len(result.tagsToAdd) != 1 || result.tagsToAdd[0] != "new-tag" {
+		t.Errorf("expected tagsToAdd=['new-tag'], got %v", result.tagsToAdd)
+	}
+	if len(result.tagsToRemove) != 1 || result.tagsToRemove[0] != "old-tag" {
+		t.Errorf("expected tagsToRemove=['old-tag'], got %v", result.tagsToRemove)
+	}
+	if result.title != "Task" {
+		t.Errorf("expected title 'Task', got '%s'", result.title)
+	}
+}
+
+func TestParseQuickEdit_DottedTags(t *testing.T) {
+	project := &models.Project{Name: "test"}
+	task := &models.Task{Title: "Original"}
+
+	result, err := parseQuickEdit("Task #v2.0", task, project)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if len(result.tagsToAdd) != 1 || result.tagsToAdd[0] != "v2.0" {
+		t.Errorf("expected tagsToAdd=['v2.0'], got %v", result.tagsToAdd)
+	}
+	if result.title != "Task" {
+		t.Errorf("expected title 'Task', got '%s'", result.title)
+	}
+}
+
+func TestParseQuickEdit_StandbyStatus(t *testing.T) {
+	project := &models.Project{Name: "test"}
+	task := &models.Task{Title: "Original", Status: models.StatusInProgress}
+
+	result, err := parseQuickEdit("Task $standby", task, project)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !result.statusSet || result.status != models.StatusStandby {
+		t.Errorf("expected status standby, got %s (set=%v)", result.status, result.statusSet)
+	}
+
+	result, err = parseQuickEdit("Task $hold", task, project)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !result.statusSet || result.status != models.StatusStandby {
+		t.Errorf("expected status standby from $hold, got %s (set=%v)", result.status, result.statusSet)
+	}
+}
+
 func TestApplyQuickEdit(t *testing.T) {
 	task := &models.Task{
 		ID:       "test-task-id",

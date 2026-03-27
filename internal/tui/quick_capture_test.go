@@ -481,6 +481,43 @@ func TestParseQuickCapture(t *testing.T) {
 			wantErr:     true,
 			errContains: "invalid status",
 		},
+		// Hyphenated and dotted tags
+		{
+			name:         "hyphenated tag",
+			input:        "Fix bug #my-tag",
+			wantTitle:    "Fix bug",
+			wantPriority: 3,
+			wantTags:     []string{"my-tag"},
+		},
+		{
+			name:         "dotted tag",
+			input:        "Update #v2.0 release",
+			wantTitle:    "Update release",
+			wantPriority: 3,
+			wantTags:     []string{"v2.0"},
+		},
+		{
+			name:         "tag with multiple hyphens",
+			input:        "Add feature #long-hyphen-tag",
+			wantTitle:    "Add feature",
+			wantPriority: 3,
+			wantTags:     []string{"long-hyphen-tag"},
+		},
+		// Standby status
+		{
+			name:         "status standby",
+			input:        "Paused work $standby",
+			wantTitle:    "Paused work",
+			wantPriority: 3,
+			wantStatus:   models.StatusStandby,
+		},
+		{
+			name:         "status hold (alias for standby)",
+			input:        "On hold $hold",
+			wantTitle:    "On hold",
+			wantPriority: 3,
+			wantStatus:   models.StatusStandby,
+		},
 		// Combined: all features together
 		{
 			name:           "all features combined",

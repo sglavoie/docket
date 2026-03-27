@@ -40,7 +40,7 @@ func parseQuickCapture(input string, project *models.Project, allProjects []*mod
 
 	// Extract tags: #word
 	// Require # to be at start of string or preceded by whitespace
-	tagRe := regexp.MustCompile(`(?:^|\s)#(\w+)`)
+	tagRe := regexp.MustCompile(`(?:^|\s)#([\w][\w.-]*)`)
 	tagMatches := tagRe.FindAllStringSubmatch(input, -1)
 	for _, match := range tagMatches {
 		if len(match) > 1 {
@@ -144,8 +144,10 @@ func parseQuickCapture(input string, project *models.Project, allProjects []*mod
 			result.status = models.StatusCanceled
 		case "review":
 			result.status = models.StatusReview
+		case "standby", "hold":
+			result.status = models.StatusStandby
 		default:
-			return nil, fmt.Errorf("invalid status: $%s (use $start, $blocked, $done, $canceled, $review)", match[1])
+			return nil, fmt.Errorf("invalid status: $%s (use $start, $blocked, $done, $canceled, $review, $standby)", match[1])
 		}
 		input = statusRe.ReplaceAllString(input, " ")
 	}
@@ -254,7 +256,7 @@ func parseQuickCaptureForPreview(input string, project *models.Project, allProje
 
 	// Extract tags
 	// Require # to be at start of string or preceded by whitespace
-	tagRe := regexp.MustCompile(`(?:^|\s)#(\w+)`)
+	tagRe := regexp.MustCompile(`(?:^|\s)#([\w][\w.-]*)`)
 	tagMatches := tagRe.FindAllStringSubmatch(input, -1)
 	for _, match := range tagMatches {
 		if len(match) > 1 {
@@ -362,6 +364,8 @@ func parseQuickCaptureForPreview(input string, project *models.Project, allProje
 			result.status = models.StatusCanceled
 		case "review":
 			result.status = models.StatusReview
+		case "standby", "hold":
+			result.status = models.StatusStandby
 		default:
 			if errMsg == "" {
 				errMsg = fmt.Sprintf("invalid status: $%s", match[1])

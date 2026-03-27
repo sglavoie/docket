@@ -13,8 +13,8 @@ import (
 // Pre-compiled regexps for quick edit parsing to avoid recompilation on each call.
 var (
 	qePriorityRe  = regexp.MustCompile(`\s*!([1-5])\s*`)
-	qeRemoveTagRe = regexp.MustCompile(`\s*-#(\w+)\s*`)
-	qeAddTagRe    = regexp.MustCompile(`\s*#(\w+)\s*`)
+	qeRemoveTagRe = regexp.MustCompile(`\s*-#([\w][\w.-]*)\s*`)
+	qeAddTagRe    = regexp.MustCompile(`\s*#([\w][\w.-]*)\s*`)
 	qeDueDateRe   = regexp.MustCompile(`\s*@(\S+)\s*`)
 	qeSectionRe   = regexp.MustCompile(`\s*/(\S+)\s*`)
 	qeStatusRe    = regexp.MustCompile(`\s*\$(\w+)\s*`)
@@ -139,6 +139,9 @@ func parseQuickEdit(input string, _ *models.Task, project *models.Project) (*qui
 		case "review":
 			result.status = models.StatusReview
 			result.statusSet = true
+		case "standby", "hold":
+			result.status = models.StatusStandby
+			result.statusSet = true
 		default:
 			return nil, fmt.Errorf("invalid status: $%s", match[1])
 		}
@@ -248,6 +251,9 @@ func parseQuickEditForPreview(input string, _ *models.Task, project *models.Proj
 			result.statusSet = true
 		case "review":
 			result.status = models.StatusReview
+			result.statusSet = true
+		case "standby", "hold":
+			result.status = models.StatusStandby
 			result.statusSet = true
 		default:
 			if errMsg == "" {
