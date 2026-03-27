@@ -127,13 +127,34 @@ func copyTaskState(task *models.Task) *models.Task {
 	tagsCopy := make([]string, len(task.Tags))
 	copy(tagsCopy, task.Tags)
 
+	// Copy recurrence if present
+	var recurrenceCopy *models.RecurrencePattern
+	if task.Recurrence != nil {
+		recurrenceCopy = &models.RecurrencePattern{
+			Interval:  task.Recurrence.Interval,
+			Unit:      task.Recurrence.Unit,
+			Skipped:   task.Recurrence.Skipped,
+			Streak:    task.Recurrence.Streak,
+			MaxStreak: task.Recurrence.MaxStreak,
+		}
+		if len(task.Recurrence.Weekdays) > 0 {
+			recurrenceCopy.Weekdays = make([]int, len(task.Recurrence.Weekdays))
+			copy(recurrenceCopy.Weekdays, task.Recurrence.Weekdays)
+		}
+	}
+
 	return &models.Task{
-		ID:       task.ID,
-		Status:   task.Status,
-		Priority: task.Priority,
-		Section:  task.Section,
-		Tags:     tagsCopy,
-		Type:     task.Type,
+		ID:            task.ID,
+		Status:        task.Status,
+		Priority:      task.Priority,
+		Section:       task.Section,
+		CustomSection: task.CustomSection,
+		Tags:          tagsCopy,
+		Type:          task.Type,
+		DueDate:       task.DueDate,
+		Description:   task.Description,
+		Recurrence:    recurrenceCopy,
+		// Preserve parent/child relationships for hierarchical triggers
 		Parent:   task.Parent,
 		Children: task.Children,
 		Level:    task.Level,

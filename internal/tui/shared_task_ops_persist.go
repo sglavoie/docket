@@ -202,7 +202,7 @@ func persistWithWorkflow(opts WorkflowSaveOptions) error {
 }
 
 // processTUIDeferredMoves handles move_to_project actions in the TUI context.
-// It transfers tasks from the source project to destination projects.
+// It transfers tasks (and their descendants) from the source project to destination projects.
 func processTUIDeferredMoves(_ Persister, srcProject *models.Project, moves []workflow.DeferredMove, cfg *config.Config) error {
 	for _, move := range moves {
 		destProject := cfg.GetProject(move.Destination)
@@ -214,28 +214,73 @@ func processTUIDeferredMoves(_ Persister, srcProject *models.Project, moves []wo
 			return fmt.Errorf("failed to load destination project %q: %w", move.Destination, err)
 		}
 
-		// Find and remove the task from source
+		// Find the root task in source
 		var movedTask *models.Task
-		var remaining []*models.Task
 		for _, t := range srcProject.Tasks {
 			if t.ID == move.TaskID {
 				movedTask = t
-			} else {
-				remaining = append(remaining, t)
+				break
 			}
 		}
 		if movedTask == nil {
 			continue
 		}
 
+		// Collect the full subtree (task + all descendants) so children move
+		// with their parent, matching the behavior of MoveTaskToProject.
+		// Walk by ParentID rather than Children to avoid requiring BuildTaskTree.
+		movedIDs := make(map[string]bool)
+		movedIDs[movedTask.ID] = true
+		changed := true
+		for changed {
+			changed = false
+			for _, t := range srcProject.Tasks {
+				if movedIDs[t.ID] {
+					continue
+				}
+				if t.ParentID != nil && movedIDs[*t.ParentID] {
+					movedIDs[t.ID] = true
+					changed = true
+				}
+			}
+		}
+
+		// Partition source tasks into moved and remaining
+		var movedTasks []*models.Task
+		var remaining []*models.Task
+		for _, t := range srcProject.Tasks {
+			if movedIDs[t.ID] {
+				movedTasks = append(movedTasks, t)
+			} else {
+				remaining = append(remaining, t)
+			}
+		}
+
 		srcProject.Tasks = remaining
 		srcProject.BuildTaskTree()
 
-		movedTask.ShortID = destProject.GetNextShortID()
+		// Clear dependencies and related references on moved tasks
+		// (they point to tasks in the source project and would become dangling)
+		for _, mt := range movedTasks {
+			mt.DependsOn = []string{}
+			mt.RelatedTo = []string{}
+		}
+
+		// Clear references in source project that point to any moved task
+		for _, t := range srcProject.Tasks {
+			for id := range movedIDs {
+				t.RemoveDependency(id)
+				t.RemoveRelatedTo(id)
+			}
+		}
+
+		// Assign new short IDs in destination and add all moved tasks
+		for _, mt := range movedTasks {
+			mt.ShortID = destProject.GetNextShortID()
+		}
 		movedTask.ParentID = nil
 		movedTask.Parent = nil
-		movedTask.Children = nil
-		destProject.Tasks = append(destProject.Tasks, movedTask)
+		destProject.Tasks = append(destProject.Tasks, movedTasks...)
 		destProject.BuildTaskTree()
 
 		if err := storage.BackupProject(destProject); err != nil {

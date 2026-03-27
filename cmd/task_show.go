@@ -192,6 +192,7 @@ type taskShowJSONEntry struct {
 	DependsOn       []string                  `json:"depends_on"`
 	RelatedTo       []string                  `json:"related_to"`
 	Pinned          bool                      `json:"pinned"`
+	PinnedAt        *time.Time                `json:"pinned_at,omitempty"`
 	Active          bool                      `json:"active"`
 	SnoozedUntil    *time.Time                `json:"snoozed_until"`
 	Stage           string                    `json:"stage,omitempty"`
@@ -201,6 +202,7 @@ type taskShowJSONEntry struct {
 	Checklist       []models.ChecklistItem    `json:"checklist"`
 	Attachments     []models.Attachment       `json:"attachments"`
 	Comments        []*models.Comment         `json:"comments"`
+	Activity        []*models.ActivityEntry   `json:"activity"`
 	ScoreDimensions map[string]int            `json:"score_dimensions"`
 	ChildIDs        []string                  `json:"child_ids"`
 	BugAttrs        *models.BugAttrs          `json:"bug_attrs,omitempty"`
@@ -235,6 +237,10 @@ func displayTaskShowJSON(task *models.Task) error {
 	if comments == nil {
 		comments = []*models.Comment{}
 	}
+	activity := task.Activity
+	if activity == nil {
+		activity = []*models.ActivityEntry{}
+	}
 	scoreDims := task.ScoreDimensions
 	if scoreDims == nil {
 		scoreDims = map[string]int{}
@@ -267,6 +273,7 @@ func displayTaskShowJSON(task *models.Task) error {
 		DependsOn:       dependsOn,
 		RelatedTo:       relatedTo,
 		Pinned:          task.Pinned,
+		PinnedAt:        task.PinnedAt,
 		Active:          task.Active,
 		SnoozedUntil:    task.SnoozedUntil,
 		Stage:           task.Stage,
@@ -276,6 +283,7 @@ func displayTaskShowJSON(task *models.Task) error {
 		Checklist:       checklist,
 		Attachments:     attachments,
 		Comments:        comments,
+		Activity:        activity,
 		ScoreDimensions: scoreDims,
 		ChildIDs:        childIDs,
 		BugAttrs:        task.BugAttrs,
