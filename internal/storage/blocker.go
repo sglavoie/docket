@@ -73,31 +73,56 @@ func GetActiveBlockerCount(project *models.Project) int {
 func parseBlockersMarkdown(content string) ([]*models.Blocker, error) {
 	scanner := bufio.NewScanner(strings.NewReader(content))
 	scanner.Buffer(make([]byte, 0, 64*1024), 1024*1024)
+
+	// Collect all lines for lookahead (needed to distinguish blocker headings
+	// from ## headings inside descriptions).
+	var lines []string
+	for scanner.Scan() {
+		lines = append(lines, scanner.Text())
+	}
+	if err := scanner.Err(); err != nil {
+		return nil, err
+	}
+
 	var blockers []*models.Blocker
 	var currentBlocker *models.Blocker
 	var descBuilder strings.Builder
 
-	for scanner.Scan() {
-		line := scanner.Text()
+	for i := 0; i < len(lines); i++ {
+		line := lines[i]
 
-		// Skip the top-level heading "# Blockers"
-		if strings.HasPrefix(line, "# ") {
+		// Skip only the exact file header "# Blockers" (not arbitrary H1 lines
+		// that might appear in descriptions).
+		if strings.TrimSpace(line) == "# Blockers" {
 			continue
 		}
 
-		// Check for blocker heading
+		// A line matching "## <title>" is a real blocker heading only when the
+		// next non-empty line is a metadata comment (<!-- ... -->). Without this
+		// lookahead, ## headings inside a blocker's description would be
+		// misinterpreted as new blockers, corrupting data on roundtrip.
 		if matches := blockerHeadingRegex.FindStringSubmatch(line); matches != nil {
-			// Save previous blocker's description
-			if currentBlocker != nil {
-				currentBlocker.Description = strings.TrimSpace(descBuilder.String())
-				blockers = append(blockers, currentBlocker)
+			nextLine := ""
+			for j := i + 1; j < len(lines); j++ {
+				if strings.TrimSpace(lines[j]) != "" {
+					nextLine = strings.TrimSpace(lines[j])
+					break
+				}
 			}
+			if blockerMetadataRegex.MatchString(nextLine) {
+				// Save previous blocker's description
+				if currentBlocker != nil {
+					currentBlocker.Description = strings.TrimSpace(descBuilder.String())
+					blockers = append(blockers, currentBlocker)
+				}
 
-			currentBlocker = &models.Blocker{
-				Title: strings.TrimSpace(matches[1]),
+				currentBlocker = &models.Blocker{
+					Title: strings.TrimSpace(matches[1]),
+				}
+				descBuilder.Reset()
+				continue
 			}
-			descBuilder.Reset()
-			continue
+			// No metadata comment follows — treat as description content, fall through
 		}
 
 		// Check for metadata comment (only if we have a current blocker without ID)
@@ -121,7 +146,7 @@ func parseBlockersMarkdown(content string) ([]*models.Blocker, error) {
 		blockers = append(blockers, currentBlocker)
 	}
 
-	return blockers, scanner.Err()
+	return blockers, nil
 }
 
 // parseBlockerMetadata parses metadata string and sets blocker fields.

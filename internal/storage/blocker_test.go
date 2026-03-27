@@ -3,6 +3,7 @@ package storage
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -231,6 +232,94 @@ func TestFindBlockerByPrefix(t *testing.T) {
 	found = FindBlockerByPrefix(blockers, "nope")
 	if found != nil {
 		t.Error("expected nil for non-matching prefix")
+	}
+}
+
+func TestParseBlockersDescriptionWithH2Heading(t *testing.T) {
+	// Bug: ## headings inside a blocker description were misinterpreted as new
+	// blocker headings, corrupting data on roundtrip. The fix uses lookahead
+	// to only treat ## lines as blocker headings when followed by a metadata comment.
+	content := `# Blockers
+
+## API Access
+<!-- id: uuid-1, created: 2026-01-15T10:30:00Z -->
+
+Some description.
+
+## Why this matters
+
+More details here.
+`
+	blockers, err := parseBlockersMarkdown(content)
+	if err != nil {
+		t.Fatalf("parse error: %v", err)
+	}
+	if len(blockers) != 1 {
+		t.Fatalf("expected 1 blocker (## in description should not split), got %d", len(blockers))
+	}
+	if blockers[0].Title != "API Access" {
+		t.Errorf("blocker title: expected 'API Access', got %q", blockers[0].Title)
+	}
+	// The description should include the ## heading and subsequent content
+	if !strings.Contains(blockers[0].Description, "## Why this matters") {
+		t.Errorf("expected description to contain '## Why this matters', got %q", blockers[0].Description)
+	}
+	if !strings.Contains(blockers[0].Description, "More details here.") {
+		t.Errorf("expected description to contain 'More details here.', got %q", blockers[0].Description)
+	}
+}
+
+func TestParseBlockersDescriptionWithH1Heading(t *testing.T) {
+	// Bug: any line starting with "# " was skipped, not just the "# Blockers"
+	// file header. This caused H1 headings in descriptions to be silently dropped.
+	content := `# Blockers
+
+## My Blocker
+<!-- id: uuid-1, created: 2026-01-15T10:30:00Z -->
+
+Some intro.
+
+# Important Note
+
+This should be preserved.
+`
+	blockers, err := parseBlockersMarkdown(content)
+	if err != nil {
+		t.Fatalf("parse error: %v", err)
+	}
+	if len(blockers) != 1 {
+		t.Fatalf("expected 1 blocker, got %d", len(blockers))
+	}
+	if !strings.Contains(blockers[0].Description, "# Important Note") {
+		t.Errorf("expected description to contain '# Important Note', got %q", blockers[0].Description)
+	}
+}
+
+func TestBlockerRoundtripWithMarkdownHeadings(t *testing.T) {
+	// Verify save -> load roundtrip preserves descriptions with ## headings
+	dir := t.TempDir()
+	project := &models.Project{Path: dir}
+
+	blocker := &models.Blocker{
+		ID:          "test-uuid",
+		Title:       "Blocked by design",
+		Description: "Some context.\n\n## Analysis\n\nThe root cause is X.\n\n## Next Steps\n\n- Do Y\n- Do Z",
+		CreatedAt:   time.Date(2026, 1, 15, 10, 0, 0, 0, time.UTC),
+	}
+
+	if err := SaveBlockers(project, []*models.Blocker{blocker}); err != nil {
+		t.Fatalf("save error: %v", err)
+	}
+
+	loaded, err := LoadBlockers(project)
+	if err != nil {
+		t.Fatalf("load error: %v", err)
+	}
+	if len(loaded) != 1 {
+		t.Fatalf("expected 1 blocker after roundtrip, got %d", len(loaded))
+	}
+	if loaded[0].Description != blocker.Description {
+		t.Errorf("description changed on roundtrip:\n  want: %q\n  got:  %q", blocker.Description, loaded[0].Description)
 	}
 }
 
