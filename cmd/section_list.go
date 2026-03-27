@@ -16,7 +16,7 @@ var sectionListCmd = &cobra.Command{
 	Short:   "List all sections in the current project",
 	Long: `List all sections with their task counts.
 
-The Backlog section is hidden when it contains no tasks.
+The Next section is hidden when it contains no tasks.
 
 Examples:
   tt section list

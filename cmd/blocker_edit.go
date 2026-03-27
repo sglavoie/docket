@@ -53,12 +53,16 @@ func runBlockerEdit(cmd *cobra.Command, args []string) error {
 	return WithBlockerUpdate(args[0], func(blockers []*models.Blocker, blocker *models.Blocker) ([]*models.Blocker, error) {
 		modified := false
 
-		if blockerEditTitle != "" {
-			blocker.Title = strings.TrimSpace(blockerEditTitle)
+		if cmd.Flags().Changed("title") {
+			newTitle := strings.TrimSpace(blockerEditTitle)
+			if newTitle == "" {
+				return blockers, fmt.Errorf("blocker title cannot be empty")
+			}
+			blocker.Title = newTitle
 			modified = true
 		}
 
-		if blockerEditDescription != "" {
+		if cmd.Flags().Changed("description") {
 			blocker.Description = strings.TrimSpace(blockerEditDescription)
 			modified = true
 		}
