@@ -131,6 +131,82 @@ func TestProcessDeferredMoves_WarnsCrossProjectDependencies(t *testing.T) {
 		}
 	})
 
+	t.Run("moves task with children to destination", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		deps := testutil.SetupTestDeps(t)
+		defer deps.Cleanup()
+
+		srcProject := testutil.NewTestProject("Source")
+		srcProject.Path = tmpDir + "/source"
+		if err := os.MkdirAll(srcProject.Path, 0o755); err != nil {
+			t.Fatal(err)
+		}
+
+		// Create parent (epic) and child (task) hierarchy
+		epic, err := models.NewTask("epic-1", srcProject.GetNextShortID(), models.TaskTypeEpic, "My Epic")
+		if err != nil {
+			t.Fatal(err)
+		}
+		child, err := models.NewTask("child-1", srcProject.GetNextShortID(), models.TaskTypeTask, "Child Task")
+		if err != nil {
+			t.Fatal(err)
+		}
+		child.ParentID = &epic.ID
+		srcProject.Tasks = []*models.Task{epic, child}
+		srcProject.BuildTaskTree()
+
+		destProject := testutil.NewTestProject("Dest")
+		destProject.Path = tmpDir + "/dest"
+		if mkdirErr := os.MkdirAll(destProject.Path, 0o755); mkdirErr != nil {
+			t.Fatal(mkdirErr)
+		}
+
+		deps.Repository.Projects[srcProject.ID] = srcProject
+		deps.Repository.Projects[destProject.ID] = destProject
+		deps.Config.Projects = []*models.Project{srcProject, destProject}
+
+		oldRepo := storage.DefaultRepository
+		storage.DefaultRepository = deps.Repository
+		defer func() { storage.DefaultRepository = oldRepo }()
+
+		moves := []workflow.DeferredMove{
+			{TaskID: epic.ID, Destination: destProject.Slug},
+		}
+
+		// Suppress stdout
+		oldStdout := os.Stdout
+		_, w, _ := os.Pipe()
+		os.Stdout = w
+
+		err = processDeferredMoves(srcProject, moves, deps.Config, nil)
+
+		_ = w.Close()
+		os.Stdout = oldStdout
+
+		testutil.AssertNoError(t, err)
+
+		// Source project should have no tasks left
+		if len(srcProject.Tasks) != 0 {
+			t.Errorf("expected source to have 0 tasks, got %d", len(srcProject.Tasks))
+		}
+
+		// Destination should have both parent and child
+		if len(destProject.Tasks) != 2 {
+			t.Errorf("expected destination to have 2 tasks, got %d", len(destProject.Tasks))
+		}
+
+		// Verify the child is present in destination
+		foundChild := false
+		for _, task := range destProject.Tasks {
+			if task.ID == "child-1" {
+				foundChild = true
+			}
+		}
+		if !foundChild {
+			t.Error("expected child task to be moved to destination project")
+		}
+	})
+
 	t.Run("no warning when task has no cross-project references", func(t *testing.T) {
 		tmpDir := t.TempDir()
 		deps := testutil.SetupTestDeps(t)

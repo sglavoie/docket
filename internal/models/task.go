@@ -85,10 +85,14 @@ func ValidateTaskTitle(title string) error {
 	if len(title) > MaxTaskTitleLength {
 		return fmt.Errorf("task title too long (%d chars, max %d)", len(title), MaxTaskTitleLength)
 	}
-	for line := range strings.SplitSeq(title, "\n") {
-		if strings.HasPrefix(line, "##") {
-			return fmt.Errorf("task title must not start a line with '##' (reserved for markdown headings)")
-		}
+	// Newlines in the title would cause data loss: the markdown heading format
+	// is a single line ("## Type: Title"), so anything after the first newline
+	// would be parsed as description content on the next load.
+	if strings.ContainsAny(title, "\n\r") {
+		return fmt.Errorf("task title must not contain newlines")
+	}
+	if strings.HasPrefix(title, "##") {
+		return fmt.Errorf("task title must not start with '##' (reserved for markdown headings)")
 	}
 	if strings.Contains(title, "<!--") {
 		return fmt.Errorf("task title must not contain '<!--' (reserved for metadata comments)")

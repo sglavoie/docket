@@ -55,12 +55,23 @@ func TestValidateTaskTitle(t *testing.T) {
 		t.Error("expected error for 1000-char title")
 	}
 
+	// Newlines: rejected (would cause data loss on markdown round-trip)
+	if err := ValidateTaskTitle("first line\nsecond line"); err == nil {
+		t.Error("expected error for title containing newline")
+	}
+	if err := ValidateTaskTitle("first line\rsecond line"); err == nil {
+		t.Error("expected error for title containing carriage return")
+	}
+	if err := ValidateTaskTitle("first line\r\nsecond line"); err == nil {
+		t.Error("expected error for title containing CRLF")
+	}
+	if err := ValidateTaskTitle("first line\n## heading on second line"); err == nil {
+		t.Error("expected error for title containing newline (with ##)")
+	}
+
 	// Markdown injection: rejected
 	if err := ValidateTaskTitle("## heading at start"); err == nil {
 		t.Error("expected error for title starting with ##")
-	}
-	if err := ValidateTaskTitle("first line\n## heading on second line"); err == nil {
-		t.Error("expected error for ## at start of second line")
 	}
 	if err := ValidateTaskTitle("task with <!-- comment"); err == nil {
 		t.Error("expected error for title containing <!--")

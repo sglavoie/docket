@@ -178,47 +178,83 @@ func processDeferredMoves(srcProject *models.Project, moves []workflow.DeferredM
 	for _, move := range moves {
 		destProject := destProjects[move.Destination]
 
-		// Find and remove the task from source
+		// Find the root task in source
 		var movedTask *models.Task
-		var remaining []*models.Task
 		for _, t := range srcProject.Tasks {
 			if t.ID == move.TaskID {
 				movedTask = t
-			} else {
-				remaining = append(remaining, t)
+				break
 			}
 		}
 		if movedTask == nil {
 			continue // task already removed (e.g., by a prior move)
 		}
 
+		// Collect the full subtree (task + all descendants) so children move
+		// with their parent, matching the behavior of MoveTaskToProject.
+		// Walk by ParentID rather than Children to avoid requiring BuildTaskTree
+		// (which would also clean orphaned deps before we can warn about them).
+		movedIDs := make(map[string]bool)
+		movedIDs[movedTask.ID] = true
+		changed := true
+		for changed {
+			changed = false
+			for _, t := range srcProject.Tasks {
+				if movedIDs[t.ID] {
+					continue
+				}
+				if t.ParentID != nil && movedIDs[*t.ParentID] {
+					movedIDs[t.ID] = true
+					changed = true
+				}
+			}
+		}
+
+		// Partition source tasks into moved and remaining
+		var movedTasks []*models.Task
+		var remaining []*models.Task
+		for _, t := range srcProject.Tasks {
+			if movedIDs[t.ID] {
+				movedTasks = append(movedTasks, t)
+			} else {
+				remaining = append(remaining, t)
+			}
+		}
+
 		srcProject.Tasks = remaining
 		srcProject.BuildTaskTree()
 
 		// Warn about cross-project references being dropped
-		if len(movedTask.DependsOn) > 0 {
-			fmt.Printf("warning: dropping %d dependency(s) for task #%d: %v\n", len(movedTask.DependsOn), movedTask.ShortID, movedTask.DependsOn)
-		}
-		if len(movedTask.RelatedTo) > 0 {
-			fmt.Printf("warning: dropping %d relation(s) for task #%d: %v\n", len(movedTask.RelatedTo), movedTask.ShortID, movedTask.RelatedTo)
+		for _, mt := range movedTasks {
+			if len(mt.DependsOn) > 0 {
+				fmt.Printf("warning: dropping %d dependency(s) for task #%d: %v\n", len(mt.DependsOn), mt.ShortID, mt.DependsOn)
+			}
+			if len(mt.RelatedTo) > 0 {
+				fmt.Printf("warning: dropping %d relation(s) for task #%d: %v\n", len(mt.RelatedTo), mt.ShortID, mt.RelatedTo)
+			}
 		}
 
-		// Clear cross-project references on the moved task
-		movedTask.DependsOn = []string{}
-		movedTask.RelatedTo = []string{}
+		// Clear cross-project references on all moved tasks
+		for _, mt := range movedTasks {
+			mt.DependsOn = []string{}
+			mt.RelatedTo = []string{}
+		}
 
-		// Clear references in source project that point to the moved task
+		// Clear references in source project that point to any moved task
 		for _, t := range srcProject.Tasks {
-			t.RemoveDependency(movedTask.ID)
-			t.RemoveRelatedTo(movedTask.ID)
+			for id := range movedIDs {
+				t.RemoveDependency(id)
+				t.RemoveRelatedTo(id)
+			}
 		}
 
-		// Add to destination with a new short ID
-		movedTask.ShortID = destProject.GetNextShortID()
-		movedTask.ParentID = nil // clear parent since it's in a new project
+		// Add tasks to destination with new short IDs
+		for _, mt := range movedTasks {
+			mt.ShortID = destProject.GetNextShortID()
+		}
+		movedTask.ParentID = nil // root task loses its parent in destination
 		movedTask.Parent = nil
-		movedTask.Children = nil
-		destProject.Tasks = append(destProject.Tasks, movedTask)
+		destProject.Tasks = append(destProject.Tasks, movedTasks...)
 		destProject.BuildTaskTree()
 
 		// Save destination project with file locking to prevent corruption
