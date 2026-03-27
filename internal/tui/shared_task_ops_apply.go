@@ -402,12 +402,13 @@ func dueDateLabel(daysFromNow int) string {
 
 // dueDateFromDays returns a *time.Time pointer and description for a relative
 // day offset. When isClear is true, it returns (nil, "cleared").
+// The returned time is normalized to start-of-day (midnight) for consistency
+// with all other due-date setters and the day-level storage format.
 func dueDateFromDays(days int, isClear bool) (*time.Time, string) {
 	if isClear {
 		return nil, "cleared"
 	}
-	now := time.Now()
-	d := time.Date(now.Year(), now.Month(), now.Day()+days, 23, 59, 59, 0, now.Location())
+	d := util.StartOfDay(time.Now().AddDate(0, 0, days))
 	return &d, dueDateLabel(days)
 }
 

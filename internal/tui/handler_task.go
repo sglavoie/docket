@@ -110,6 +110,9 @@ func (m *AppModel) handleTaskMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint:go
 		m.handleWithRefresh(false, false, "")
 		cmd := m.views.Update(m.currentView(), msg)
 		m.syncInboxProcessor()
+		if msg.NeedsSave && m.currentProject != nil {
+			cmd = tea.Batch(cmd, SaveProjectAsync(m.currentProject, ""))
+		}
 		return true, cmd
 
 	case CommandPaletteTaskActionMsg:

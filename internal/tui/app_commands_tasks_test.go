@@ -408,8 +408,12 @@ func TestTaskActionCommands_ToggleActive(t *testing.T) {
 	}
 
 	result := cmd.Handler()
-	if _, ok := result.(TaskPropertyChangedMsg); !ok {
+	msg, ok := result.(TaskPropertyChangedMsg)
+	if !ok {
 		t.Errorf("expected TaskPropertyChangedMsg, got %T", result)
+	}
+	if !msg.NeedsSave {
+		t.Error("toggle active command should set NeedsSave=true")
 	}
 }
 
@@ -429,8 +433,12 @@ func TestTaskActionCommands_TogglePin(t *testing.T) {
 	}
 
 	result := cmd.Handler()
-	if _, ok := result.(TaskPropertyChangedMsg); !ok {
+	msg, ok := result.(TaskPropertyChangedMsg)
+	if !ok {
 		t.Errorf("expected TaskPropertyChangedMsg, got %T", result)
+	}
+	if !msg.NeedsSave {
+		t.Error("toggle pin command should set NeedsSave=true")
 	}
 }
 

@@ -113,7 +113,13 @@ type TaskStatusChangedMsg struct{ Task *models.Task }
 
 // TaskPropertyChangedMsg signals an in-place task property change
 // (active, pinned, section, etc.) that should refresh without popping.
-type TaskPropertyChangedMsg struct{ Task *models.Task }
+// When NeedsSave is true, the handler will trigger an async project save.
+// This is used by command palette handlers that mutate tasks in-memory
+// without going through the persistFn pipeline.
+type TaskPropertyChangedMsg struct {
+	Task      *models.Task
+	NeedsSave bool
+}
 
 // =============================================================================
 // External Editor Messages

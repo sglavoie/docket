@@ -29,7 +29,7 @@ func (m *AppModel) dueDateCommands() []Command {
 					m.projectTree.project.MutateTask(task.ID, func(t *models.Task) {
 						t.DueDate = &today
 					})
-					return TaskPropertyChangedMsg{Task: task}
+					return TaskPropertyChangedMsg{Task: task, NeedsSave: true}
 				}
 				return StatusMsg("No task selected")
 			},
@@ -52,7 +52,7 @@ func (m *AppModel) dueDateCommands() []Command {
 					m.projectTree.project.MutateTask(task.ID, func(t *models.Task) {
 						t.DueDate = &tomorrow
 					})
-					return TaskPropertyChangedMsg{Task: task}
+					return TaskPropertyChangedMsg{Task: task, NeedsSave: true}
 				}
 				return StatusMsg("No task selected")
 			},
@@ -75,7 +75,7 @@ func (m *AppModel) dueDateCommands() []Command {
 					m.projectTree.project.MutateTask(task.ID, func(t *models.Task) {
 						t.DueDate = &nextWeek
 					})
-					return TaskPropertyChangedMsg{Task: task}
+					return TaskPropertyChangedMsg{Task: task, NeedsSave: true}
 				}
 				return StatusMsg("No task selected")
 			},
@@ -98,7 +98,7 @@ func (m *AppModel) dueDateCommands() []Command {
 					m.projectTree.project.MutateTask(task.ID, func(t *models.Task) {
 						t.DueDate = &nextMonth
 					})
-					return TaskPropertyChangedMsg{Task: task}
+					return TaskPropertyChangedMsg{Task: task, NeedsSave: true}
 				}
 				return StatusMsg("No task selected")
 			},
@@ -119,7 +119,7 @@ func (m *AppModel) dueDateCommands() []Command {
 					m.projectTree.project.MutateTask(task.ID, func(t *models.Task) {
 						t.DueDate = nil
 					})
-					return TaskPropertyChangedMsg{Task: task}
+					return TaskPropertyChangedMsg{Task: task, NeedsSave: true}
 				}
 				return StatusMsg("No task selected")
 			},

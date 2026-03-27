@@ -2,6 +2,7 @@ package tui
 
 import (
 	"testing"
+	"time"
 
 	"github.com/sglavoie/tt/internal/models"
 )
@@ -95,6 +96,41 @@ func TestPriorityForPrefixKey(t *testing.T) {
 			t.Errorf("PriorityForPrefixKey(%q) = (%d, %v), want (%d, %v)", tt.key, got, ok, tt.want, tt.wantOK)
 		}
 	}
+}
+
+func TestDueDateFromDays(t *testing.T) {
+	t.Run("returns nil for clear", func(t *testing.T) {
+		d, desc := dueDateFromDays(0, true)
+		if d != nil {
+			t.Error("expected nil for isClear=true")
+		}
+		if desc != "cleared" {
+			t.Errorf("got desc %q, want %q", desc, "cleared")
+		}
+	})
+
+	t.Run("returns start of day", func(t *testing.T) {
+		d, _ := dueDateFromDays(1, false)
+		if d == nil {
+			t.Fatal("expected non-nil date")
+		}
+		// The time component should be midnight (start of day)
+		if d.Hour() != 0 || d.Minute() != 0 || d.Second() != 0 {
+			t.Errorf("expected start-of-day (00:00:00), got %02d:%02d:%02d",
+				d.Hour(), d.Minute(), d.Second())
+		}
+	})
+
+	t.Run("correct day offset", func(t *testing.T) {
+		d, _ := dueDateFromDays(7, false)
+		if d == nil {
+			t.Fatal("expected non-nil date")
+		}
+		expected := time.Now().AddDate(0, 0, 7)
+		if d.Year() != expected.Year() || d.Month() != expected.Month() || d.Day() != expected.Day() {
+			t.Errorf("expected date %v, got %v", expected.Format("2006-01-02"), d.Format("2006-01-02"))
+		}
+	})
 }
 
 func TestSectionForMoveKey(t *testing.T) {

@@ -130,14 +130,14 @@ func (m *AppModel) makePriorityHandler(priority int) func() tea.Msg {
 			}
 			m.projectTree.clearSelection()
 			m.projectTree.buildTree()
-			return nil
+			return TaskPropertyChangedMsg{NeedsSave: true}
 		}
 		if CursorInBounds(m.projectTree.cursor, len(visible)) {
 			task := visible[m.projectTree.cursor].Task
 			m.projectTree.project.MutateTask(task.ID, func(t *models.Task) {
 				t.Priority = priority
 			})
-			return TaskPropertyChangedMsg{Task: task}
+			return TaskPropertyChangedMsg{Task: task, NeedsSave: true}
 		}
 		return nil
 	}

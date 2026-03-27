@@ -413,7 +413,7 @@ func (m *AppModel) taskActionCommands() []Command { //nolint:gocyclo
 				if CursorInBounds(m.projectTree.cursor, len(visible)) {
 					task := visible[m.projectTree.cursor].Task
 					task.ToggleActive()
-					return TaskPropertyChangedMsg{Task: task}
+					return TaskPropertyChangedMsg{Task: task, NeedsSave: true}
 				}
 				return StatusMsg("No task selected")
 			},
@@ -433,7 +433,7 @@ func (m *AppModel) taskActionCommands() []Command { //nolint:gocyclo
 				if CursorInBounds(m.projectTree.cursor, len(visible)) {
 					task := visible[m.projectTree.cursor].Task
 					task.TogglePinned()
-					return TaskPropertyChangedMsg{Task: task}
+					return TaskPropertyChangedMsg{Task: task, NeedsSave: true}
 				}
 				return StatusMsg("No task selected")
 			},
