@@ -79,6 +79,9 @@ func (d *ScoringDimension) Validate() error {
 	if d.Default < d.Min || d.Default > d.Max {
 		return fmt.Errorf("dimension %q: default (%d) outside range [%d, %d]", d.ID, d.Default, d.Min, d.Max)
 	}
+	if d.Weight < 0 {
+		return fmt.Errorf("dimension %q: weight must be non-negative, got %g", d.ID, d.Weight)
+	}
 	if d.Source == SourceDerived && d.DerivedMapping == nil {
 		return fmt.Errorf("dimension %q: derived source requires a derived_mapping", d.ID)
 	}

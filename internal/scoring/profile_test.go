@@ -61,6 +61,16 @@ func TestDimensionValidate(t *testing.T) {
 			wantErr: true,
 		},
 		{
+			name:    "negative weight",
+			dim:     ScoringDimension{ID: "impact", Name: "Impact", Min: 1, Max: 5, Default: 3, Weight: -1, Source: SourceManual},
+			wantErr: true,
+		},
+		{
+			name:    "zero weight is allowed",
+			dim:     ScoringDimension{ID: "impact", Name: "Impact", Min: 1, Max: 5, Default: 3, Weight: 0, Source: SourceManual},
+			wantErr: false,
+		},
+		{
 			name:    "derived without mapping",
 			dim:     ScoringDimension{ID: "effort", Name: "Effort", Min: 1, Max: 5, Default: 3, Source: SourceDerived},
 			wantErr: true,
@@ -216,6 +226,19 @@ func TestGetDimension(t *testing.T) {
 	}
 	if d := p.GetDimension("nonexistent"); d != nil {
 		t.Error("expected nil for nonexistent dimension")
+	}
+}
+
+func TestProfileValidateRejectsNegativeWeight(t *testing.T) {
+	profile := ScoringProfile{
+		ID: "test", Name: "Test", Formula: FormulaWeightedSum,
+		Dimensions: []ScoringDimension{
+			{ID: "a", Name: "A", Min: 1, Max: 5, Default: 3, Weight: -2, Source: SourceManual},
+		},
+	}
+	err := profile.Validate()
+	if err == nil {
+		t.Error("expected error for negative weight dimension in profile, got nil")
 	}
 }
 
