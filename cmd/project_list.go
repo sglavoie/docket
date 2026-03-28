@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"time"
 
 	"charm.land/lipgloss/v2"
 	"github.com/jedib0t/go-pretty/v6/table"
@@ -56,28 +57,34 @@ func runProjectList(cmd *cobra.Command, args []string) error {
 
 	if listProjectJSON {
 		type projectJSON struct {
-			ID             string `json:"id"`
-			Slug           string `json:"slug"`
-			Name           string `json:"name"`
-			Context        string `json:"context"`
-			Path           string `json:"path"`
-			Archived       bool   `json:"archived"`
-			Pinned         bool   `json:"pinned"`
-			TaskCount      int    `json:"task_count,omitempty"`
-			ActiveCount    int    `json:"active_count,omitempty"`
-			CompletedCount int    `json:"completed_count,omitempty"`
+			ID             string     `json:"id"`
+			Slug           string     `json:"slug"`
+			Name           string     `json:"name"`
+			Description    string     `json:"description"`
+			Context        string     `json:"context"`
+			Path           string     `json:"path"`
+			StatusIcon     string     `json:"status_icon,omitempty"`
+			Archived       bool       `json:"archived"`
+			Pinned         bool       `json:"pinned"`
+			PinnedAt       *time.Time `json:"pinned_at,omitempty"`
+			TaskCount      int        `json:"task_count,omitempty"`
+			ActiveCount    int        `json:"active_count,omitempty"`
+			CompletedCount int        `json:"completed_count,omitempty"`
 		}
 
 		result := []projectJSON{}
 		for _, p := range projects {
 			entry := projectJSON{
-				ID:       p.ID,
-				Slug:     p.Slug,
-				Name:     p.Name,
-				Context:  p.Context,
-				Path:     p.Path,
-				Archived: p.Archived,
-				Pinned:   p.Pinned,
+				ID:          p.ID,
+				Slug:        p.Slug,
+				Name:        p.Name,
+				Description: p.Description,
+				Context:     p.Context,
+				Path:        p.Path,
+				StatusIcon:  p.StatusIcon,
+				Archived:    p.Archived,
+				Pinned:      p.Pinned,
+				PinnedAt:    p.PinnedAt,
 			}
 			if err := storage.LoadProject(p); err == nil {
 				entry.TaskCount = p.CountTasks()

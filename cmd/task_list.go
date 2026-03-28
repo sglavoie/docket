@@ -148,6 +148,8 @@ type taskJSONEntry struct {
 	Pinned        bool       `json:"pinned"`
 	Active        bool       `json:"active"`
 	Dimmed        bool       `json:"dimmed"`
+	Stage         string     `json:"stage,omitempty"`
+	SnoozedUntil  *time.Time `json:"snoozed_until,omitempty"`
 	CreatedAt     time.Time  `json:"created_at"`
 	UpdatedAt     time.Time  `json:"updated_at"`
 	DueDate       *time.Time `json:"due_date"`
@@ -173,6 +175,8 @@ func displayTaskJSON(tasks []*models.Task) error {
 			Pinned:        t.Pinned,
 			Active:        t.Active,
 			Dimmed:        t.Dimmed,
+			Stage:         t.Stage,
+			SnoozedUntil:  t.SnoozedUntil,
 			CreatedAt:     t.CreatedAt,
 			UpdatedAt:     t.UpdatedAt,
 			DueDate:       t.DueDate,

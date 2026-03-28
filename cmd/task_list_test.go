@@ -738,7 +738,7 @@ func TestTaskJSONEntry_IncludesFlagFields(t *testing.T) {
 		t.Fatalf("failed to marshal: %v", err)
 	}
 
-	var parsed map[string]interface{}
+	var parsed map[string]any
 	if err := json.Unmarshal(data, &parsed); err != nil {
 		t.Fatalf("failed to unmarshal: %v", err)
 	}
@@ -754,6 +754,79 @@ func TestTaskJSONEntry_IncludesFlagFields(t *testing.T) {
 	}
 	if v, ok := parsed["custom_section"]; !ok || v != "sprint-1" {
 		t.Errorf("expected custom_section=sprint-1 in JSON, got %v", v)
+	}
+}
+
+func TestTaskJSONEntry_IncludesStageAndSnoozedUntil(t *testing.T) {
+	snoozeTime := time.Now().Add(24 * time.Hour)
+	task := testutil.NewTestTask("Staged task", models.TaskTypeTask)
+	task.Stage = "Design"
+	task.SnoozedUntil = &snoozeTime
+
+	tags := task.Tags
+	if tags == nil {
+		tags = []string{}
+	}
+	entry := taskJSONEntry{
+		ID:           task.ID,
+		ShortID:      task.ShortID,
+		Type:         task.Type.String(),
+		Title:        task.Title,
+		Status:       task.Status.String(),
+		Priority:     task.Priority,
+		Tags:         tags,
+		Stage:        task.Stage,
+		SnoozedUntil: task.SnoozedUntil,
+		CreatedAt:    task.CreatedAt,
+		UpdatedAt:    task.UpdatedAt,
+	}
+
+	data, err := json.Marshal(entry)
+	if err != nil {
+		t.Fatalf("failed to marshal: %v", err)
+	}
+
+	var parsed map[string]any
+	if err := json.Unmarshal(data, &parsed); err != nil {
+		t.Fatalf("failed to unmarshal: %v", err)
+	}
+
+	if v, ok := parsed["stage"]; !ok || v != "Design" {
+		t.Errorf("expected stage=Design in JSON, got %v", v)
+	}
+	if _, ok := parsed["snoozed_until"]; !ok {
+		t.Error("expected snoozed_until in JSON output")
+	}
+}
+
+func TestTaskJSONEntry_OmitsEmptyStageAndSnoozedUntil(t *testing.T) {
+	task := testutil.NewTestTask("Plain task", models.TaskTypeTask)
+
+	entry := taskJSONEntry{
+		ID:       task.ID,
+		ShortID:  task.ShortID,
+		Type:     task.Type.String(),
+		Title:    task.Title,
+		Status:   task.Status.String(),
+		Priority: task.Priority,
+		Tags:     []string{},
+	}
+
+	data, err := json.Marshal(entry)
+	if err != nil {
+		t.Fatalf("failed to marshal: %v", err)
+	}
+
+	var parsed map[string]any
+	if err := json.Unmarshal(data, &parsed); err != nil {
+		t.Fatalf("failed to unmarshal: %v", err)
+	}
+
+	if _, ok := parsed["stage"]; ok {
+		t.Error("expected stage to be omitted when empty")
+	}
+	if _, ok := parsed["snoozed_until"]; ok {
+		t.Error("expected snoozed_until to be omitted when nil")
 	}
 }
 
