@@ -136,17 +136,21 @@ func runTaskList(cmd *cobra.Command, args []string) error {
 // taskJSONEntry is a slim representation of a task for JSON output,
 // avoiding circular references from Children/Parent/Project.
 type taskJSONEntry struct {
-	ID        string     `json:"id"`
-	ShortID   int        `json:"short_id"`
-	Type      string     `json:"type"`
-	Title     string     `json:"title"`
-	Status    string     `json:"status"`
-	Priority  int        `json:"priority"`
-	Tags      []string   `json:"tags"`
-	Section   string     `json:"section"`
-	CreatedAt time.Time  `json:"created_at"`
-	UpdatedAt time.Time  `json:"updated_at"`
-	DueDate   *time.Time `json:"due_date"`
+	ID            string     `json:"id"`
+	ShortID       int        `json:"short_id"`
+	Type          string     `json:"type"`
+	Title         string     `json:"title"`
+	Status        string     `json:"status"`
+	Priority      int        `json:"priority"`
+	Tags          []string   `json:"tags"`
+	Section       string     `json:"section"`
+	CustomSection string     `json:"custom_section,omitempty"`
+	Pinned        bool       `json:"pinned"`
+	Active        bool       `json:"active"`
+	Dimmed        bool       `json:"dimmed"`
+	CreatedAt     time.Time  `json:"created_at"`
+	UpdatedAt     time.Time  `json:"updated_at"`
+	DueDate       *time.Time `json:"due_date"`
 }
 
 func displayTaskJSON(tasks []*models.Task) error {
@@ -157,17 +161,21 @@ func displayTaskJSON(tasks []*models.Task) error {
 			tags = []string{}
 		}
 		entries[i] = taskJSONEntry{
-			ID:        t.ID,
-			ShortID:   t.ShortID,
-			Type:      t.Type.String(),
-			Title:     t.Title,
-			Status:    t.Status.String(),
-			Priority:  t.Priority,
-			Tags:      tags,
-			Section:   t.Section,
-			CreatedAt: t.CreatedAt,
-			UpdatedAt: t.UpdatedAt,
-			DueDate:   t.DueDate,
+			ID:            t.ID,
+			ShortID:       t.ShortID,
+			Type:          t.Type.String(),
+			Title:         t.Title,
+			Status:        t.Status.String(),
+			Priority:      t.Priority,
+			Tags:          tags,
+			Section:       t.Section,
+			CustomSection: t.CustomSection,
+			Pinned:        t.Pinned,
+			Active:        t.Active,
+			Dimmed:        t.Dimmed,
+			CreatedAt:     t.CreatedAt,
+			UpdatedAt:     t.UpdatedAt,
+			DueDate:       t.DueDate,
 		}
 	}
 	data, err := json.MarshalIndent(entries, "", "  ")

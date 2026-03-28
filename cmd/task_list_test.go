@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"encoding/json"
 	"testing"
 	"time"
 
@@ -700,6 +701,59 @@ func TestSubtreeHasMatch_NonMatchingParentWithMatchingGrandchild(t *testing.T) {
 
 	if !subtreeHasMatch(grandparent, matches) {
 		t.Error("expected completed grandparent with active grandchild to match via subtree")
+	}
+}
+
+func TestTaskJSONEntry_IncludesFlagFields(t *testing.T) {
+	task := testutil.NewTestTask("Flagged task", models.TaskTypeTask)
+	task.Pinned = true
+	task.Active = true
+	task.Dimmed = true
+	task.CustomSection = "sprint-1"
+
+	tags := task.Tags
+	if tags == nil {
+		tags = []string{}
+	}
+	entry := taskJSONEntry{
+		ID:            task.ID,
+		ShortID:       task.ShortID,
+		Type:          task.Type.String(),
+		Title:         task.Title,
+		Status:        task.Status.String(),
+		Priority:      task.Priority,
+		Tags:          tags,
+		Section:       task.Section,
+		CustomSection: task.CustomSection,
+		Pinned:        task.Pinned,
+		Active:        task.Active,
+		Dimmed:        task.Dimmed,
+		CreatedAt:     task.CreatedAt,
+		UpdatedAt:     task.UpdatedAt,
+		DueDate:       task.DueDate,
+	}
+
+	data, err := json.Marshal(entry)
+	if err != nil {
+		t.Fatalf("failed to marshal: %v", err)
+	}
+
+	var parsed map[string]interface{}
+	if err := json.Unmarshal(data, &parsed); err != nil {
+		t.Fatalf("failed to unmarshal: %v", err)
+	}
+
+	if v, ok := parsed["pinned"]; !ok || v != true {
+		t.Errorf("expected pinned=true in JSON, got %v", v)
+	}
+	if v, ok := parsed["active"]; !ok || v != true {
+		t.Errorf("expected active=true in JSON, got %v", v)
+	}
+	if v, ok := parsed["dimmed"]; !ok || v != true {
+		t.Errorf("expected dimmed=true in JSON, got %v", v)
+	}
+	if v, ok := parsed["custom_section"]; !ok || v != "sprint-1" {
+		t.Errorf("expected custom_section=sprint-1 in JSON, got %v", v)
 	}
 }
 

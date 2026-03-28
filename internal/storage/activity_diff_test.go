@@ -368,6 +368,47 @@ func TestDiffTaskScoreDimensionsUnchanged(t *testing.T) {
 	}
 }
 
+func TestDiffTaskDimmed(t *testing.T) {
+	old, err := models.NewTask("1", 1, models.TaskTypeTask, "Test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	newT, err := models.NewTask("1", 1, models.TaskTypeTask, "Test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	newT.Dimmed = true
+
+	diffTask(old, newT)
+
+	found := findActivity(newT, "dimmed")
+	if found == nil {
+		t.Fatal("expected dimmed activity entry")
+	}
+	if found.OldValue != "false" || found.NewValue != "true" {
+		t.Errorf("expected false→true, got %s→%s", found.OldValue, found.NewValue)
+	}
+}
+
+func TestDiffTaskDimmedUnchanged(t *testing.T) {
+	old, err := models.NewTask("1", 1, models.TaskTypeTask, "Test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	old.Dimmed = true
+	newT, err := models.NewTask("1", 1, models.TaskTypeTask, "Test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	newT.Dimmed = true
+
+	diffTask(old, newT)
+
+	if findActivity(newT, "dimmed") != nil {
+		t.Fatal("expected no dimmed activity entry when unchanged")
+	}
+}
+
 func TestDiffTaskCustomSection(t *testing.T) {
 	old, err := models.NewTask("1", 1, models.TaskTypeTask, "Test")
 	if err != nil {

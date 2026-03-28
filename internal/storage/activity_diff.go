@@ -160,6 +160,16 @@ func diffTask(old, new *models.Task) { //nolint:gocyclo
 		})
 	}
 
+	// Dimmed
+	if old.Dimmed != new.Dimmed {
+		new.Activity = append(new.Activity, &models.ActivityEntry{
+			Timestamp: now,
+			Field:     "dimmed",
+			OldValue:  fmt.Sprintf("%v", old.Dimmed),
+			NewValue:  fmt.Sprintf("%v", new.Dimmed),
+		})
+	}
+
 	// Description (hash-based, don't store full text)
 	if hashString(old.Description) != hashString(new.Description) {
 		new.Activity = append(new.Activity, &models.ActivityEntry{
