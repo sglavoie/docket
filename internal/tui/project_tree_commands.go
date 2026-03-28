@@ -10,31 +10,40 @@ import (
 )
 
 func (m *ProjectTreeModel) archiveProject() tea.Cmd {
+	// Mutate state synchronously to avoid data races with View()
+	m.project.Archive()
+
+	// Clear current project if it was the archived one
+	if m.config.CurrentProject == m.project.ID {
+		m.config.CurrentProject = ""
+	}
+
+	// Capture references for the goroutine (only I/O inside)
+	cfg := m.config
+	mgr := m.configManager
+	proj := m.project
 	return func() tea.Msg {
-		m.project.Archive()
-
-		// Clear current project if it was the archived one
-		if m.config.CurrentProject == m.project.ID {
-			m.config.CurrentProject = ""
-		}
-
-		if err := m.configManager.Save(m.config); err != nil {
+		if err := mgr.Save(cfg); err != nil {
 			return ErrorMsg{Err: fmt.Errorf("failed to save: %w", err)}
 		}
 
-		return ProjectArchivedMsg{Project: m.project}
+		return ProjectArchivedMsg{Project: proj}
 	}
 }
 
 func (m *ProjectTreeModel) unarchiveProject() tea.Cmd {
-	return func() tea.Msg {
-		m.project.Unarchive()
+	// Mutate state synchronously to avoid data races with View()
+	m.project.Unarchive()
 
-		if err := m.configManager.Save(m.config); err != nil {
+	cfg := m.config
+	mgr := m.configManager
+	proj := m.project
+	return func() tea.Msg {
+		if err := mgr.Save(cfg); err != nil {
 			return ErrorMsg{Err: fmt.Errorf("failed to save: %w", err)}
 		}
 
-		return ProjectArchivedMsg{Project: m.project}
+		return ProjectArchivedMsg{Project: proj}
 	}
 }
 
@@ -105,7 +114,7 @@ func (m *ProjectTreeModel) saveAndRefreshWithPrevStates(prevStates map[string]*m
 		if err := persistWithWorkflow(opts); err != nil {
 			return ErrorMsg{Err: err}
 		}
-		m.buildTree()
+		// Note: m.buildTree() is called by the Update handler on treeRefreshMsg
 		return treeRefreshMsg{}
 	}
 }
@@ -306,152 +315,153 @@ func (m *ProjectTreeModel) applyBulkChanges(changes PendingChanges, tasks []*mod
 
 	m.setUndoContext("Bulk Edit", fmt.Sprintf("%d tasks", len(tasks)))
 
-	return func() tea.Msg {
-		// Capture task states before changes for event-based workflow triggers
-		prevStates := captureTaskStates(m.project.Tasks)
+	// All mutations run synchronously to avoid data races with View()
+	// Capture task states before changes for event-based workflow triggers
+	prevStates := captureTaskStates(m.project.Tasks)
 
-		// Apply changes to each task
-		typeSkipped := 0
-		for _, task := range tasks {
-			// Handle type change with hierarchy validation (outside MutateTask
-			// since we need to check parent/children relationships)
-			if changes.SetType != nil {
-				newType := *changes.SetType
-				canChange := true
+	// Apply changes to each task
+	typeSkipped := 0
+	for _, task := range tasks {
+		// Handle type change with hierarchy validation (outside MutateTask
+		// since we need to check parent/children relationships)
+		if changes.SetType != nil {
+			newType := *changes.SetType
+			canChange := true
 
-				// Check if new type is valid under current parent
-				if task.Parent != nil {
-					if !newType.CanBeChildOf(task.Parent.Type) {
-						canChange = false
-					}
-				}
-
-				// Check if new type can have children (if task has any)
-				if canChange && len(task.Children) > 0 && !newType.CanHaveChildren() {
+			// Check if new type is valid under current parent
+			if task.Parent != nil {
+				if !newType.CanBeChildOf(task.Parent.Type) {
 					canChange = false
 				}
+			}
 
-				// Check if all children are valid under new type
-				if canChange && len(task.Children) > 0 {
-					for _, child := range task.Children {
-						if !child.Type.CanBeChildOf(newType) {
-							canChange = false
-							break
-						}
+			// Check if new type can have children (if task has any)
+			if canChange && len(task.Children) > 0 && !newType.CanHaveChildren() {
+				canChange = false
+			}
+
+			// Check if all children are valid under new type
+			if canChange && len(task.Children) > 0 {
+				for _, child := range task.Children {
+					if !child.Type.CanBeChildOf(newType) {
+						canChange = false
+						break
 					}
 				}
+			}
 
-				if canChange {
+			if canChange {
+				m.project.MutateTask(task.ID, func(t *models.Task) {
+					t.Type = newType
+					t.ClearTypeAttrs()
+				})
+			} else {
+				typeSkipped++
+			}
+		}
+
+		m.project.MutateTask(task.ID, func(t *models.Task) {
+			if changes.SetStatus != nil {
+				t.ApplyTransition(*changes.SetStatus)
+			}
+			if changes.SetPriority != nil {
+				t.Priority = *changes.SetPriority
+			}
+			for _, tag := range changes.AddTags {
+				t.AddTag(tag)
+			}
+			for _, tag := range changes.RemoveTags {
+				t.RemoveTag(tag)
+			}
+			if changes.SetSection != nil {
+				if models.IsGTDSection(*changes.SetSection) || *changes.SetSection == "" {
+					t.Section = *changes.SetSection
+				} else {
+					t.CustomSection = *changes.SetSection
+				}
+			}
+			if changes.ClearDueDate {
+				t.DueDate = nil
+			} else if changes.SetDueDate != nil {
+				t.DueDate = changes.SetDueDate
+			}
+			if changes.ClearRecurrence {
+				t.ClearRecurrence()
+			} else if changes.SetRecurrence != nil {
+				// Use SetRecurrence to populate OriginalDay for monthly patterns
+				_ = t.SetRecurrence(&models.RecurrencePattern{
+					Interval: changes.SetRecurrence.Interval,
+					Unit:     changes.SetRecurrence.Unit,
+					Weekdays: changes.SetRecurrence.Weekdays,
+				})
+			}
+		})
+		if changes.SetSection != nil {
+			section := *changes.SetSection
+			if models.IsGTDSection(section) || section == "" {
+				m.project.RelocateTaskToEndOfSection(task.ID, section)
+			}
+		}
+	}
+	_ = typeSkipped // Available for future status message use
+
+	// Handle reparenting (after other mutations, before persist)
+	if changes.ClearParent || changes.SetParentID != nil {
+		parentSkipped := 0
+		for _, task := range tasks {
+			if changes.ClearParent {
+				m.project.MutateTask(task.ID, func(t *models.Task) {
+					t.ParentID = nil
+				})
+			} else if changes.SetParentID != nil {
+				targetID := *changes.SetParentID
+				canReparent := true
+
+				// Find target parent task
+				var targetParent *models.Task
+				taskMap := make(map[string]*models.Task, len(m.project.Tasks))
+				for _, t := range m.project.Tasks {
+					taskMap[t.ID] = t
+					if t.ID == targetID {
+						targetParent = t
+					}
+				}
+				if targetParent == nil {
+					canReparent = false
+				}
+
+				// Validate type compatibility
+				if canReparent && !task.Type.CanBeChildOf(targetParent.Type) {
+					canReparent = false
+				}
+
+				// Cycle check using shared utility
+				if canReparent && models.WouldCreateCycle(taskMap, task.ID, targetID) {
+					canReparent = false
+				}
+
+				if canReparent {
 					m.project.MutateTask(task.ID, func(t *models.Task) {
-						t.Type = newType
-						t.ClearTypeAttrs()
+						t.ParentID = &targetID
 					})
 				} else {
-					typeSkipped++
-				}
-			}
-
-			m.project.MutateTask(task.ID, func(t *models.Task) {
-				if changes.SetStatus != nil {
-					t.ApplyTransition(*changes.SetStatus)
-				}
-				if changes.SetPriority != nil {
-					t.Priority = *changes.SetPriority
-				}
-				for _, tag := range changes.AddTags {
-					t.AddTag(tag)
-				}
-				for _, tag := range changes.RemoveTags {
-					t.RemoveTag(tag)
-				}
-				if changes.SetSection != nil {
-					if models.IsGTDSection(*changes.SetSection) || *changes.SetSection == "" {
-						t.Section = *changes.SetSection
-					} else {
-						t.CustomSection = *changes.SetSection
-					}
-				}
-				if changes.ClearDueDate {
-					t.DueDate = nil
-				} else if changes.SetDueDate != nil {
-					t.DueDate = changes.SetDueDate
-				}
-				if changes.ClearRecurrence {
-					t.ClearRecurrence()
-				} else if changes.SetRecurrence != nil {
-					// Use SetRecurrence to populate OriginalDay for monthly patterns
-					_ = t.SetRecurrence(&models.RecurrencePattern{
-						Interval: changes.SetRecurrence.Interval,
-						Unit:     changes.SetRecurrence.Unit,
-						Weekdays: changes.SetRecurrence.Weekdays,
-					})
-				}
-			})
-			if changes.SetSection != nil {
-				section := *changes.SetSection
-				if models.IsGTDSection(section) || section == "" {
-					m.project.RelocateTaskToEndOfSection(task.ID, section)
+					parentSkipped++
 				}
 			}
 		}
-		_ = typeSkipped // Available for future status message use
+		_ = parentSkipped // Available for future status message use
+		m.project.BuildTaskTree()
+	}
 
-		// Handle reparenting (after other mutations, before persist)
-		if changes.ClearParent || changes.SetParentID != nil {
-			parentSkipped := 0
-			for _, task := range tasks {
-				if changes.ClearParent {
-					m.project.MutateTask(task.ID, func(t *models.Task) {
-						t.ParentID = nil
-					})
-				} else if changes.SetParentID != nil {
-					targetID := *changes.SetParentID
-					canReparent := true
+	opts := m.buildWorkflowOpts(prevStates)
+	m.clearSelection()
 
-					// Find target parent task
-					var targetParent *models.Task
-					taskMap := make(map[string]*models.Task, len(m.project.Tasks))
-					for _, t := range m.project.Tasks {
-						taskMap[t.ID] = t
-						if t.ID == targetID {
-							targetParent = t
-						}
-					}
-					if targetParent == nil {
-						canReparent = false
-					}
-
-					// Validate type compatibility
-					if canReparent && !task.Type.CanBeChildOf(targetParent.Type) {
-						canReparent = false
-					}
-
-					// Cycle check using shared utility
-					if canReparent && models.WouldCreateCycle(taskMap, task.ID, targetID) {
-						canReparent = false
-					}
-
-					if canReparent {
-						m.project.MutateTask(task.ID, func(t *models.Task) {
-							t.ParentID = &targetID
-						})
-					} else {
-						parentSkipped++
-					}
-				}
-			}
-			_ = parentSkipped // Available for future status message use
-			m.project.BuildTaskTree()
-		}
-
-		opts := m.buildWorkflowOpts(prevStates)
+	// Only I/O in the goroutine
+	return func() tea.Msg {
 		if err := persistWithWorkflow(opts); err != nil {
 			return ErrorMsg{Err: err}
 		}
 
-		m.clearSelection()
-		m.buildTree()
-		m.clampCursor()
 		return treeRefreshMsg{}
 	}
 }
@@ -465,32 +475,32 @@ func (m *ProjectTreeModel) archiveCompletedTasks() tea.Cmd {
 	}
 	completedCount := m.project.CountCompletedTasks()
 
-	return func() tea.Msg {
-		if completedCount == 0 {
-			return nil
-		}
+	if completedCount == 0 {
+		return nil
+	}
 
+	ps := m.projectService
+	proj := m.project
+	return func() tea.Msg {
 		// Record undo snapshot before archiving
 		if undoDepth > 0 {
-			_ = m.projectService.RecordUndoSnapshot(m.project, "Archive Tasks",
+			_ = ps.RecordUndoSnapshot(proj, "Archive Tasks",
 				fmt.Sprintf("%d tasks", completedCount), undoDepth)
 		}
 
 		// Create backup before archiving
-		if err := m.projectService.Backup(m.project); err != nil {
+		if err := ps.Backup(proj); err != nil {
 			return ErrorMsg{Err: fmt.Errorf("failed to create backup: %w", err)}
 		}
 
 		// Archive the tasks
-		count, err := m.projectService.ArchiveTasks(m.project)
+		count, err := ps.ArchiveTasks(proj)
 		if err != nil {
 			return ErrorMsg{Err: fmt.Errorf("failed to archive tasks: %w", err)}
 		}
 
-		// Reload project and rebuild tree
-		_ = m.projectService.Load(m.project)
-		m.buildTree()
-		m.clampCursor()
+		// Reload project (tree rebuild happens in TasksArchivedMsg handler)
+		_ = ps.Load(proj)
 
 		return TasksArchivedMsg{Count: count}
 	}

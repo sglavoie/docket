@@ -268,29 +268,32 @@ func (m *TaskTemplatesModel) filterTemplates() {
 }
 
 func (m *TaskTemplatesModel) toggleCurrentTemplate() tea.Cmd {
+	// Mutate state synchronously to avoid data races with View()
+	if m.cursor >= len(m.filteredTemplates) {
+		return nil
+	}
+
+	t := &m.filteredTemplates[m.cursor]
+	enabled, found := m.config.ToggleTaskTemplate(t.ID)
+	if !found {
+		return func() tea.Msg { return ErrorMsg{Err: fmt.Errorf("template not found")} }
+	}
+
+	// Update local copy
+	t.Enabled = enabled
+
+	// Also update in allTemplates
+	for i := range m.allTemplates {
+		if m.allTemplates[i].ID == t.ID {
+			m.allTemplates[i].Enabled = enabled
+			break
+		}
+	}
+
+	mgr := m.configManager
+	cfg := m.config
 	return func() tea.Msg {
-		if m.cursor >= len(m.filteredTemplates) {
-			return nil
-		}
-
-		t := &m.filteredTemplates[m.cursor]
-		enabled, found := m.config.ToggleTaskTemplate(t.ID)
-		if !found {
-			return ErrorMsg{Err: fmt.Errorf("template not found")}
-		}
-
-		// Update local copy
-		t.Enabled = enabled
-
-		// Also update in allTemplates
-		for i := range m.allTemplates {
-			if m.allTemplates[i].ID == t.ID {
-				m.allTemplates[i].Enabled = enabled
-				break
-			}
-		}
-
-		if err := m.configManager.Save(m.config); err != nil {
+		if err := mgr.Save(cfg); err != nil {
 			return ErrorMsg{Err: fmt.Errorf("failed to save: %w", err)}
 		}
 
@@ -299,18 +302,22 @@ func (m *TaskTemplatesModel) toggleCurrentTemplate() tea.Cmd {
 }
 
 func (m *TaskTemplatesModel) deleteCurrentTemplate() tea.Cmd {
-	// Capture the ID synchronously before returning the command
+	// Mutate state synchronously to avoid data races with View()
 	if m.cursor >= len(m.filteredTemplates) {
 		return nil
 	}
 	templateID := m.filteredTemplates[m.cursor].ID
 
-	return func() tea.Msg {
-		if !m.config.DeleteTaskTemplate(templateID) {
+	if !m.config.DeleteTaskTemplate(templateID) {
+		return func() tea.Msg {
 			return TemplateDeletedMsg{DeletedID: templateID, Error: fmt.Errorf("template not found")}
 		}
+	}
 
-		if err := m.configManager.Save(m.config); err != nil {
+	mgr := m.configManager
+	cfg := m.config
+	return func() tea.Msg {
+		if err := mgr.Save(cfg); err != nil {
 			return TemplateDeletedMsg{DeletedID: templateID, Error: fmt.Errorf("failed to save: %w", err)}
 		}
 

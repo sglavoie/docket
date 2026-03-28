@@ -264,24 +264,26 @@ func (m *OutlinerModel) archiveCompletedTasks() (tea.Model, tea.Cmd) {
 	}
 	completedCount := m.project.CountCompletedTasks()
 
+	if completedCount == 0 {
+		return m, nil
+	}
+
 	svc := m.projectService
+	proj := m.project
 	cmd := func() tea.Msg {
-		if completedCount == 0 {
-			return nil
-		}
 		if undoDepth > 0 {
-			_ = svc.RecordUndoSnapshot(m.project, "Archive Tasks",
+			_ = svc.RecordUndoSnapshot(proj, "Archive Tasks",
 				fmt.Sprintf("%d tasks", completedCount), undoDepth)
 		}
-		if err := svc.Backup(m.project); err != nil {
+		if err := svc.Backup(proj); err != nil {
 			return ErrorMsg{Err: fmt.Errorf("failed to create backup: %w", err)}
 		}
-		count, err := svc.ArchiveTasks(m.project)
+		count, err := svc.ArchiveTasks(proj)
 		if err != nil {
 			return ErrorMsg{Err: fmt.Errorf("failed to archive tasks: %w", err)}
 		}
-		_ = svc.Load(m.project)
-		m.rebuildRows()
+		_ = svc.Load(proj)
+		// Note: rebuildRows() is called by TasksArchivedMsg handler
 		return TasksArchivedMsg{Count: count}
 	}
 	m.clearStatus()

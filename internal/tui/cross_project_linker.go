@@ -350,70 +350,77 @@ func (m *CrossProjectLinkerModel) getSelectableTasks() []*models.Task {
 }
 
 func (m *CrossProjectLinkerModel) createLink() tea.Cmd {
+	// All mutations run synchronously to avoid data races with View().
+	// Only I/O (backup + save) goes in the goroutine.
+
+	// Determine link type
+	var linkType LinkType
+	switch m.linkTypeCursor {
+	case 0:
+		linkType = LinkTypeBlocker // Target blocks source
+	case 1:
+		linkType = LinkTypeDependent // Source blocks target (source depends on target)
+	case 2:
+		linkType = LinkTypeFollowUp // Related (bidirectional)
+	}
+
+	// Create qualified reference
+	targetRef := m.targetProject.ID + ":" + m.targetTask.ID
+	sourceRef := m.sourceProject.ID + ":" + m.sourceTask.ID
+
+	// Establish the relationship
+	switch linkType {
+	case LinkTypeBlocker:
+		// Target blocks source: source depends on target
+		if err := m.sourceTask.AddDependency(targetRef); err != nil {
+			return func() tea.Msg { return ErrorMsg{Err: fmt.Errorf("failed to add dependency: %w", err)} }
+		}
+	case LinkTypeDependent:
+		// Source blocks target: target depends on source
+		if err := m.targetTask.AddDependency(sourceRef); err != nil {
+			return func() tea.Msg { return ErrorMsg{Err: fmt.Errorf("failed to add dependency: %w", err)} }
+		}
+	case LinkTypeFollowUp:
+		// Bidirectional relationship
+		if err := m.sourceTask.AddRelatedTo(targetRef); err != nil {
+			return func() tea.Msg { return ErrorMsg{Err: fmt.Errorf("failed to add related link: %w", err)} }
+		}
+		if err := m.targetTask.AddRelatedTo(sourceRef); err != nil {
+			return func() tea.Msg { return ErrorMsg{Err: fmt.Errorf("failed to add related link: %w", err)} }
+		}
+	default:
+	}
+
+	// Update timestamps
+	m.sourceProject.MutateTask(m.sourceTask.ID, func(t *models.Task) {})
+	m.targetProject.MutateTask(m.targetTask.ID, func(t *models.Task) {})
+
+	srcProj := m.sourceProject
+	tgtProj := m.targetProject
+	srcTask := m.sourceTask
+	tgtTask := m.targetTask
 	return func() tea.Msg {
-		// Determine link type
-		var linkType LinkType
-		switch m.linkTypeCursor {
-		case 0:
-			linkType = LinkTypeBlocker // Target blocks source
-		case 1:
-			linkType = LinkTypeDependent // Source blocks target (source depends on target)
-		case 2:
-			linkType = LinkTypeFollowUp // Related (bidirectional)
-		}
-
-		// Create qualified reference
-		targetRef := m.targetProject.ID + ":" + m.targetTask.ID
-		sourceRef := m.sourceProject.ID + ":" + m.sourceTask.ID
-
-		// Establish the relationship
-		switch linkType {
-		case LinkTypeBlocker:
-			// Target blocks source: source depends on target
-			if err := m.sourceTask.AddDependency(targetRef); err != nil {
-				return ErrorMsg{Err: fmt.Errorf("failed to add dependency: %w", err)}
-			}
-		case LinkTypeDependent:
-			// Source blocks target: target depends on source
-			if err := m.targetTask.AddDependency(sourceRef); err != nil {
-				return ErrorMsg{Err: fmt.Errorf("failed to add dependency: %w", err)}
-			}
-		case LinkTypeFollowUp:
-			// Bidirectional relationship
-			if err := m.sourceTask.AddRelatedTo(targetRef); err != nil {
-				return ErrorMsg{Err: fmt.Errorf("failed to add related link: %w", err)}
-			}
-			if err := m.targetTask.AddRelatedTo(sourceRef); err != nil {
-				return ErrorMsg{Err: fmt.Errorf("failed to add related link: %w", err)}
-			}
-		default:
-		}
-
-		// Update timestamps
-		m.sourceProject.MutateTask(m.sourceTask.ID, func(t *models.Task) {})
-		m.targetProject.MutateTask(m.targetTask.ID, func(t *models.Task) {})
-
 		// Backup and save source project
-		if err := storage.BackupProject(m.sourceProject); err != nil {
+		if err := storage.BackupProject(srcProj); err != nil {
 			return ErrorMsg{Err: fmt.Errorf("failed to backup source project: %w", err)}
 		}
-		if err := storage.SaveProjectLocked(m.sourceProject); err != nil {
+		if err := storage.SaveProjectLocked(srcProj); err != nil {
 			return ErrorMsg{Err: fmt.Errorf("failed to save source project: %w", err)}
 		}
 
 		// Backup and save target project
-		if err := storage.BackupProject(m.targetProject); err != nil {
+		if err := storage.BackupProject(tgtProj); err != nil {
 			return ErrorMsg{Err: fmt.Errorf("failed to backup target project: %w", err)}
 		}
-		if err := storage.SaveProjectLocked(m.targetProject); err != nil {
+		if err := storage.SaveProjectLocked(tgtProj); err != nil {
 			return ErrorMsg{Err: fmt.Errorf("failed to save target project: %w", err)}
 		}
 
 		return CrossProjectLinkCreatedMsg{
-			SourceTask:    m.sourceTask,
-			SourceProject: m.sourceProject,
-			TargetTask:    m.targetTask,
-			TargetProject: m.targetProject,
+			SourceTask:    srcTask,
+			SourceProject: srcProj,
+			TargetTask:    tgtTask,
+			TargetProject: tgtProj,
 			LinkType:      linkType,
 		}
 	}

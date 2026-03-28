@@ -146,31 +146,32 @@ func (m *GlobalTagManagerModel) buildGlobalTagList() {
 
 // renameGlobalTag renames a tag across all projects that use it.
 func (m *GlobalTagManagerModel) renameGlobalTag(oldName, newName string) tea.Cmd {
-	return func() tea.Msg {
-		newName = strings.TrimSpace(newName)
-		if newName == "" || newName == oldName {
-			return nil
-		}
+	// Capture tag info synchronously to avoid data races with View()
+	newName = strings.TrimSpace(newName)
+	if newName == "" || newName == oldName {
+		return nil
+	}
 
-		// Find the tag info
-		var tagInfo *GlobalTagInfo
-		for i := range m.tags {
-			if m.tags[i].Name == oldName {
-				tagInfo = &m.tags[i]
-				break
+	// Find the tag info and snapshot the project list
+	var projects []*models.Project
+	for i := range m.tags {
+		if m.tags[i].Name == oldName {
+			for _, usage := range m.tags[i].Projects {
+				projects = append(projects, usage.Project)
 			}
+			break
 		}
-		if tagInfo == nil {
-			return nil
-		}
+	}
+	if len(projects) == 0 {
+		return nil
+	}
 
+	return func() tea.Msg {
 		projectCount := 0
 		taskCount := 0
 
 		// Rename in each project that uses this tag
-		for _, usage := range tagInfo.Projects {
-			project := usage.Project
-
+		for _, project := range projects {
 			// Reload project to ensure fresh data
 			if err := storage.LoadProject(project); err != nil {
 				continue

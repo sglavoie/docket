@@ -254,29 +254,32 @@ func (m *WorkflowRulesModel) filterRules() {
 }
 
 func (m *WorkflowRulesModel) toggleCurrentRule() tea.Cmd {
+	// Mutate state synchronously to avoid data races with View()
+	if m.cursor >= len(m.filteredRules) {
+		return nil
+	}
+
+	rule := &m.filteredRules[m.cursor]
+	enabled, found := m.config.ToggleWorkflowRule(rule.ID)
+	if !found {
+		return func() tea.Msg { return ErrorMsg{Err: fmt.Errorf("rule not found")} }
+	}
+
+	// Update local copy
+	rule.Enabled = enabled
+
+	// Also update in allRules
+	for i := range m.allRules {
+		if m.allRules[i].ID == rule.ID {
+			m.allRules[i].Enabled = enabled
+			break
+		}
+	}
+
+	mgr := m.configManager
+	cfg := m.config
 	return func() tea.Msg {
-		if m.cursor >= len(m.filteredRules) {
-			return nil
-		}
-
-		rule := &m.filteredRules[m.cursor]
-		enabled, found := m.config.ToggleWorkflowRule(rule.ID)
-		if !found {
-			return ErrorMsg{Err: fmt.Errorf("rule not found")}
-		}
-
-		// Update local copy
-		rule.Enabled = enabled
-
-		// Also update in allRules
-		for i := range m.allRules {
-			if m.allRules[i].ID == rule.ID {
-				m.allRules[i].Enabled = enabled
-				break
-			}
-		}
-
-		if err := m.configManager.Save(m.config); err != nil {
+		if err := mgr.Save(cfg); err != nil {
 			return ErrorMsg{Err: fmt.Errorf("failed to save: %w", err)}
 		}
 
@@ -285,31 +288,34 @@ func (m *WorkflowRulesModel) toggleCurrentRule() tea.Cmd {
 }
 
 func (m *WorkflowRulesModel) adjustCurrentRulePriority(delta int) tea.Cmd {
+	// Mutate state synchronously to avoid data races with View()
+	if m.cursor >= len(m.filteredRules) {
+		return nil
+	}
+
+	rule := &m.filteredRules[m.cursor]
+	newPriority := min(max(rule.Priority+delta, 0), 99)
+	rule.Priority = newPriority
+
+	// Update in config
+	configRule := m.config.GetWorkflowRule(rule.ID)
+	if configRule == nil {
+		return func() tea.Msg { return ErrorMsg{Err: fmt.Errorf("rule not found")} }
+	}
+	configRule.Priority = newPriority
+
+	// Also update in allRules
+	for i := range m.allRules {
+		if m.allRules[i].ID == rule.ID {
+			m.allRules[i].Priority = newPriority
+			break
+		}
+	}
+
+	mgr := m.configManager
+	cfg := m.config
 	return func() tea.Msg {
-		if m.cursor >= len(m.filteredRules) {
-			return nil
-		}
-
-		rule := &m.filteredRules[m.cursor]
-		newPriority := min(max(rule.Priority+delta, 0), 99)
-		rule.Priority = newPriority
-
-		// Update in config
-		configRule := m.config.GetWorkflowRule(rule.ID)
-		if configRule == nil {
-			return ErrorMsg{Err: fmt.Errorf("rule not found")}
-		}
-		configRule.Priority = newPriority
-
-		// Also update in allRules
-		for i := range m.allRules {
-			if m.allRules[i].ID == rule.ID {
-				m.allRules[i].Priority = newPriority
-				break
-			}
-		}
-
-		if err := m.configManager.Save(m.config); err != nil {
+		if err := mgr.Save(cfg); err != nil {
 			return ErrorMsg{Err: fmt.Errorf("failed to save: %w", err)}
 		}
 

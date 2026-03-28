@@ -312,100 +312,106 @@ func (m *TaskTemplateCreatorModel) focusCurrentField() tea.Cmd {
 }
 
 func (m *TaskTemplateCreatorModel) saveTemplate() tea.Cmd {
+	// All state reads and mutations run synchronously to avoid data races with View().
+	// Only I/O (config save) goes in the goroutine.
+
+	// Validate name
+	name := strings.TrimSpace(m.nameInput.Value())
+	if name == "" {
+		return func() tea.Msg { return ErrorMsg{Err: fmt.Errorf("template name is required")} }
+	}
+
+	// Build template
+	var t template.TaskTemplate
+	if m.editingTemplate != nil {
+		t = *m.editingTemplate
+	} else {
+		t.ID = uuid.New().String()[:8]
+		t.Enabled = true
+	}
+
+	t.Name = name
+	t.Type = m.types[m.typeCursor]
+
+	if m.categoryCursor > 0 {
+		t.Category = m.categories[m.categoryCursor]
+	} else {
+		t.Category = ""
+	}
+
+	t.Priority = m.priorityCursor
+	t.Section = strings.TrimSpace(m.sectionInput.Value())
+	t.Description = strings.TrimSpace(m.descInput.Value())
+
+	// Parse tags
+	tagsStr := strings.TrimSpace(m.tagsInput.Value())
+	if tagsStr != "" {
+		var tags []string
+		for tag := range strings.SplitSeq(tagsStr, ",") {
+			tag = strings.TrimSpace(tag)
+			if tag != "" {
+				tags = append(tags, tag)
+			}
+		}
+		t.Tags = tags
+	} else {
+		t.Tags = nil
+	}
+
+	// Build checklist (available for all types)
+	var checklist []string
+	for _, item := range m.checklist {
+		text := strings.TrimSpace(item.Value())
+		if text != "" {
+			checklist = append(checklist, text)
+		}
+	}
+	t.Checklist = checklist
+
+	// Build children/subtasks (only for Epic/Story)
+	var children []template.TemplateChild
+	if t.Type.CanHaveChildren() {
+		for _, st := range m.subtasks {
+			title := strings.TrimSpace(st.titleInput.Value())
+			if title != "" {
+				children = append(children, template.TemplateChild{
+					Title:    title,
+					Type:     subtaskTypes[st.typeCursor],
+					Optional: st.optional,
+				})
+			}
+		}
+	}
+	t.Children = children
+
+	// Validate variable tokens
+	if err := template.ValidateTokens(&t); err != nil {
+		return func() tea.Msg { return ErrorMsg{Err: err} }
+	}
+
+	// Validate
+	if err := t.Validate(); err != nil {
+		return func() tea.Msg { return ErrorMsg{Err: err} }
+	}
+
+	// Save to config synchronously
+	isEdit := m.editingTemplate != nil
+	if isEdit {
+		if !m.config.UpdateTaskTemplate(t) {
+			return func() tea.Msg { return ErrorMsg{Err: fmt.Errorf("failed to update template")} }
+		}
+	} else {
+		m.config.AddTaskTemplate(t)
+	}
+
+	mgr := m.configManager
+	cfg := m.config
 	return func() tea.Msg {
-		// Validate name
-		name := strings.TrimSpace(m.nameInput.Value())
-		if name == "" {
-			return ErrorMsg{Err: fmt.Errorf("template name is required")}
-		}
-
-		// Build template
-		var t template.TaskTemplate
-		if m.editingTemplate != nil {
-			t = *m.editingTemplate
-		} else {
-			t.ID = uuid.New().String()[:8]
-			t.Enabled = true
-		}
-
-		t.Name = name
-		t.Type = m.types[m.typeCursor]
-
-		if m.categoryCursor > 0 {
-			t.Category = m.categories[m.categoryCursor]
-		} else {
-			t.Category = ""
-		}
-
-		t.Priority = m.priorityCursor
-		t.Section = strings.TrimSpace(m.sectionInput.Value())
-		t.Description = strings.TrimSpace(m.descInput.Value())
-
-		// Parse tags
-		tagsStr := strings.TrimSpace(m.tagsInput.Value())
-		if tagsStr != "" {
-			var tags []string
-			for tag := range strings.SplitSeq(tagsStr, ",") {
-				tag = strings.TrimSpace(tag)
-				if tag != "" {
-					tags = append(tags, tag)
-				}
-			}
-			t.Tags = tags
-		} else {
-			t.Tags = nil
-		}
-
-		// Build checklist (available for all types)
-		var checklist []string
-		for _, item := range m.checklist {
-			text := strings.TrimSpace(item.Value())
-			if text != "" {
-				checklist = append(checklist, text)
-			}
-		}
-		t.Checklist = checklist
-
-		// Build children/subtasks (only for Epic/Story)
-		var children []template.TemplateChild
-		if t.Type.CanHaveChildren() {
-			for _, st := range m.subtasks {
-				title := strings.TrimSpace(st.titleInput.Value())
-				if title != "" {
-					children = append(children, template.TemplateChild{
-						Title:    title,
-						Type:     subtaskTypes[st.typeCursor],
-						Optional: st.optional,
-					})
-				}
-			}
-		}
-		t.Children = children
-
-		// Validate variable tokens
-		if err := template.ValidateTokens(&t); err != nil {
-			return ErrorMsg{Err: err}
-		}
-
-		// Validate
-		if err := t.Validate(); err != nil {
-			return ErrorMsg{Err: err}
-		}
-
-		// Save
-		if m.editingTemplate != nil {
-			if !m.config.UpdateTaskTemplate(t) {
-				return ErrorMsg{Err: fmt.Errorf("failed to update template")}
-			}
-		} else {
-			m.config.AddTaskTemplate(t)
-		}
-
-		if err := m.configManager.Save(m.config); err != nil {
+		if err := mgr.Save(cfg); err != nil {
 			return ErrorMsg{Err: fmt.Errorf("failed to save: %w", err)}
 		}
 
-		if m.editingTemplate != nil {
+		if isEdit {
 			return TaskTemplateEditedMsg{Template: t}
 		}
 		return TaskTemplateCreatedMsg{Template: t}

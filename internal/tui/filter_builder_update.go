@@ -322,19 +322,23 @@ func (m *FilterBuilderModel) updateScrollForFocus() {
 
 // saveSavedFilter validates and saves the filter directly as a SavedFilter.
 func (m *FilterBuilderModel) saveSavedFilter() tea.Cmd {
+	// All state reads and config mutations run synchronously to avoid
+	// data races with View(). Only I/O (config save) goes in the goroutine.
+	name := strings.TrimSpace(m.nameInput.Value())
+	if name == "" {
+		return func() tea.Msg { return ErrorMsg{Err: fmt.Errorf("filter name is required")} }
+	}
+	if len(m.criteria) == 0 {
+		return func() tea.Msg { return ErrorMsg{Err: fmt.Errorf("at least one criterion is required")} }
+	}
+
+	sf := m.buildSavedFilter()
+	m.config.SaveFilter(sf)
+
+	mgr := m.configManager
+	cfg := m.config
 	return func() tea.Msg {
-		name := strings.TrimSpace(m.nameInput.Value())
-		if name == "" {
-			return ErrorMsg{Err: fmt.Errorf("filter name is required")}
-		}
-		if len(m.criteria) == 0 {
-			return ErrorMsg{Err: fmt.Errorf("at least one criterion is required")}
-		}
-
-		sf := m.buildSavedFilter()
-		m.config.SaveFilter(sf)
-
-		if err := m.configManager.Save(m.config); err != nil {
+		if err := mgr.Save(cfg); err != nil {
 			return ErrorMsg{Err: fmt.Errorf("failed to save: %w", err)}
 		}
 

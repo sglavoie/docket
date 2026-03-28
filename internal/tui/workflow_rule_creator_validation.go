@@ -156,30 +156,36 @@ func (m *WorkflowRuleCreatorModel) buildRuleFromForm() (*workflow.WorkflowRule, 
 
 // saveRule validates the form and saves the workflow rule.
 func (m *WorkflowRuleCreatorModel) saveRule() tea.Cmd {
+	// All state reads and config mutations run synchronously to avoid
+	// data races with View(). Only I/O (config save) goes in the goroutine.
+	rule, err := m.buildRuleFromForm()
+	if err != nil {
+		return func() tea.Msg { return ErrorMsg{Err: err} }
+	}
+
+	// If editing, preserve the original ID and update
+	isEdit := m.editingRule != nil
+	if isEdit {
+		rule.ID = m.editingRule.ID
+		rule.Enabled = m.editingRule.Enabled
+		rule.TriggerCount = m.editingRule.TriggerCount
+		rule.Source = m.editingRule.Source
+		m.config.UpdateWorkflowRule(*rule)
+	} else {
+		m.config.AddWorkflowRule(*rule)
+	}
+
+	mgr := m.configManager
+	cfg := m.config
+	savedRule := *rule
 	return func() tea.Msg {
-		rule, err := m.buildRuleFromForm()
-		if err != nil {
-			return ErrorMsg{Err: err}
-		}
-
-		// If editing, preserve the original ID and update
-		if m.editingRule != nil {
-			rule.ID = m.editingRule.ID
-			rule.Enabled = m.editingRule.Enabled
-			rule.TriggerCount = m.editingRule.TriggerCount
-			rule.Source = m.editingRule.Source
-			m.config.UpdateWorkflowRule(*rule)
-		} else {
-			m.config.AddWorkflowRule(*rule)
-		}
-
-		if err := m.configManager.Save(m.config); err != nil {
+		if err := mgr.Save(cfg); err != nil {
 			return ErrorMsg{Err: fmt.Errorf("failed to save: %w", err)}
 		}
 
-		if m.editingRule != nil {
-			return WorkflowRuleEditedMsg{Rule: *rule}
+		if isEdit {
+			return WorkflowRuleEditedMsg{Rule: savedRule}
 		}
-		return WorkflowRuleCreatedMsg{Rule: *rule}
+		return WorkflowRuleCreatedMsg{Rule: savedRule}
 	}
 }
