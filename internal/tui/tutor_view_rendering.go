@@ -32,6 +32,7 @@ func init() {
 		{`\bcanceled\b`, GetStatusStyle("canceled"), 0},
 		{`\bblocked\b`, BlockedStyle, 0},
 		{`\breview\b`, ReviewStyle, 0},
+		{`\bstandby\b`, StandbyStyle, 0},
 		{`\btodo\b`, TodoStyle, 0},
 		{`\bdone\b`, DoneStyle, 0},
 

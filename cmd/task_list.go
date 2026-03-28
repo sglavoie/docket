@@ -336,10 +336,14 @@ func printTaskNode(task *models.Task, depth int, matches func(*models.Task) bool
 	switch task.Status {
 	case models.StatusDone:
 		style = style.Foreground(lipgloss.Color("242")).Strikethrough(true)
+	case models.StatusCanceled:
+		style = style.Foreground(lipgloss.Color("242")).Strikethrough(true)
 	case models.StatusInProgress:
 		style = style.Foreground(lipgloss.Color("82"))
 	case models.StatusReview:
 		style = style.Foreground(lipgloss.Color("214"))
+	case models.StatusStandby:
+		style = style.Foreground(lipgloss.Color("141"))
 	case models.StatusBlocked:
 		style = style.Foreground(lipgloss.Color("196"))
 	default:

@@ -114,6 +114,8 @@ func TestFilterTasks_ByStatus(t *testing.T) {
 	}{
 		{"todo", "todo", models.StatusTodo},
 		{"in_progress", "in_progress", models.StatusInProgress},
+		{"review", "review", models.StatusReview},
+		{"standby", "standby", models.StatusStandby},
 		{"done", "done", models.StatusDone},
 		{"blocked", "blocked", models.StatusBlocked},
 		{"canceled", "canceled", models.StatusCanceled},
@@ -128,6 +130,8 @@ func TestFilterTasks_ByStatus(t *testing.T) {
 			tasks := []*models.Task{
 				testutil.NewTestTaskWithStatus("Todo task", models.StatusTodo),
 				testutil.NewTestTaskWithStatus("In Progress task", models.StatusInProgress),
+				testutil.NewTestTaskWithStatus("Review task", models.StatusReview),
+				testutil.NewTestTaskWithStatus("Standby task", models.StatusStandby),
 				testutil.NewTestTaskWithStatus("Done task", models.StatusDone),
 				testutil.NewTestTaskWithStatus("Blocked task", models.StatusBlocked),
 				testutil.NewTestTaskWithStatus("Canceled task", models.StatusCanceled),
@@ -301,6 +305,8 @@ func TestFilterTasks_CompletedTasksExcludedByDefault(t *testing.T) {
 	tasks := []*models.Task{
 		testutil.NewTestTaskWithStatus("Todo", models.StatusTodo),
 		testutil.NewTestTaskWithStatus("InProgress", models.StatusInProgress),
+		testutil.NewTestTaskWithStatus("Review", models.StatusReview),
+		testutil.NewTestTaskWithStatus("Standby", models.StatusStandby),
 		testutil.NewTestTaskWithStatus("Blocked", models.StatusBlocked),
 		testutil.NewTestTaskWithStatus("Done", models.StatusDone),
 		testutil.NewTestTaskWithStatus("Canceled", models.StatusCanceled),
@@ -308,9 +314,9 @@ func TestFilterTasks_CompletedTasksExcludedByDefault(t *testing.T) {
 
 	result := filterTasks(tasks)
 
-	// Only active tasks (todo, in_progress, blocked) should be included
-	if len(result) != 3 {
-		t.Errorf("expected 3 active tasks, got %d", len(result))
+	// Only active tasks (todo, in_progress, review, standby, blocked) should be included
+	if len(result) != 5 {
+		t.Errorf("expected 5 active tasks, got %d", len(result))
 	}
 
 	for _, task := range result {
@@ -599,6 +605,43 @@ func TestTaskMatchesFilters_CompletedHiddenByDefault(t *testing.T) {
 	listShowAll = true
 	if !taskMatchesFilters(done) {
 		t.Error("expected completed task to be visible with --all flag")
+	}
+}
+
+func TestStatusOrderCoversAllStatuses(t *testing.T) {
+	for _, status := range models.AllTaskStatuses() {
+		if _, ok := statusOrder[status]; !ok {
+			t.Errorf("statusOrder map is missing status %q", status)
+		}
+	}
+}
+
+func TestFilterTasks_ByStatusReviewAndStandby(t *testing.T) {
+	defer resetFilterVars()
+	listShowAll = true
+
+	tasks := []*models.Task{
+		testutil.NewTestTaskWithStatus("Todo task", models.StatusTodo),
+		testutil.NewTestTaskWithStatus("Review task", models.StatusReview),
+		testutil.NewTestTaskWithStatus("Standby task", models.StatusStandby),
+	}
+
+	listTaskStatus = "review"
+	result := filterTasks(tasks)
+	if len(result) != 1 {
+		t.Errorf("expected 1 review task, got %d", len(result))
+	}
+	if len(result) > 0 && result[0].Status != models.StatusReview {
+		t.Errorf("expected status review, got %s", result[0].Status)
+	}
+
+	listTaskStatus = "standby"
+	result = filterTasks(tasks)
+	if len(result) != 1 {
+		t.Errorf("expected 1 standby task, got %d", len(result))
+	}
+	if len(result) > 0 && result[0].Status != models.StatusStandby {
+		t.Errorf("expected status standby, got %s", result[0].Status)
 	}
 }
 
