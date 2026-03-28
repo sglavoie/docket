@@ -107,6 +107,101 @@ func TestApplyDeleteTask_UsesWorkflowPersistWhenTasksRemain(t *testing.T) {
 	}
 }
 
+func TestSimplePersist_AutoUnblocksAfterCompletion(t *testing.T) {
+	project, err := models.NewProject("proj-1", "TestProject", t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Task A: will be completed
+	taskA, err := models.NewTask("task-a", 1, models.TaskTypeTask, "Dep task")
+	if err != nil {
+		t.Fatal(err)
+	}
+	taskA.Status = models.StatusInProgress
+
+	// Task B: blocked on task A
+	taskB, err := models.NewTask("task-b", 2, models.TaskTypeTask, "Blocked task")
+	if err != nil {
+		t.Fatal(err)
+	}
+	taskB.Status = models.StatusBlocked
+	taskB.DependsOn = []string{"task-a"}
+
+	project.Tasks = []*models.Task{taskA, taskB}
+	project.NextShortID = 3
+	project.BuildTaskTree()
+
+	mock := NewMockPersister()
+	pf := simplePersist(mock)
+
+	// Complete task A via simplePersist
+	result := pf(project, "task-a", func(t *models.Task) {
+		t.Complete()
+	})
+	if result.Err != nil {
+		t.Fatalf("unexpected error: %v", result.Err)
+	}
+
+	// Task B should have been auto-unblocked to todo
+	if taskB.Status != models.StatusTodo {
+		t.Errorf("expected task B to be auto-unblocked to %s, got %s", models.StatusTodo, taskB.Status)
+	}
+}
+
+func TestSimplePersist_GeneratesRecurringInstances(t *testing.T) {
+	project, err := models.NewProject("proj-1", "TestProject", t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	task, err := models.NewTask("task-r", 1, models.TaskTypeTask, "Recurring task")
+	if err != nil {
+		t.Fatal(err)
+	}
+	task.Status = models.StatusInProgress
+	task.Recurrence = &models.RecurrencePattern{
+		Unit:     models.RecurrenceDaily,
+		Interval: 1,
+	}
+
+	project.Tasks = []*models.Task{task}
+	project.NextShortID = 2
+	project.BuildTaskTree()
+
+	mock := NewMockPersister()
+	pf := simplePersist(mock)
+
+	// Complete the recurring task via simplePersist
+	result := pf(project, "task-r", func(t *models.Task) {
+		t.Complete()
+	})
+	if result.Err != nil {
+		t.Fatalf("unexpected error: %v", result.Err)
+	}
+
+	// A new recurring instance should have been generated
+	if len(project.Tasks) != 2 {
+		t.Fatalf("expected 2 tasks (original + recurring instance), got %d", len(project.Tasks))
+	}
+
+	// The new instance should be todo with the same recurrence
+	var newTask *models.Task
+	for _, tt := range project.Tasks {
+		if tt.ID != "task-r" {
+			newTask = tt
+			break
+		}
+	}
+	if newTask == nil {
+		t.Fatal("expected a new recurring task instance to be created")
+	}
+	if newTask.Status != models.StatusTodo {
+		t.Errorf("expected new instance status %s, got %s", models.StatusTodo, newTask.Status)
+	}
+	if newTask.Recurrence == nil {
+		t.Error("expected new instance to have recurrence set")
+	}
+}
+
 func TestApplyDeleteTask_ClearsDanglingRefsWhenAllDeleted(t *testing.T) {
 	// Create a project with parent and child task where child depends on parent
 	project, err := models.NewProject("proj-1", "TestProject", t.TempDir())

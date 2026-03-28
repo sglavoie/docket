@@ -217,7 +217,7 @@ func (m *AppModel) outlinerCommands() []Command { //nolint:gocyclo
 			if task == nil || m.outliner == nil {
 				return nil
 			}
-			pf := simplePersist(NewProjectService())
+			pf := m.outliner.workflowPersistFn()
 			result := applyStatusChange(pf, m.outliner.project, task.ID, status)
 			if result.Err != nil {
 				return ErrorMsg{Err: result.Err}

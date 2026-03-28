@@ -78,6 +78,11 @@ func withPersist(p Persister, project *models.Project, taskID string, mutate fun
 		return TaskOpResult{Err: fmt.Errorf("backup failed: %w", err)}
 	}
 	project.MutateTask(taskID, mutate)
+	// Run post-mutation hooks so that secondary views (pinned tasks, quick
+	// switch, task detail) that use simplePersist still auto-unblock blocked
+	// tasks and generate recurring instances — matching the CLI behavior.
+	project.CheckAndAutoUnblock()
+	project.GenerateRecurringInstances()
 	if err := p.Save(project); err != nil {
 		return TaskOpResult{Err: fmt.Errorf("save failed: %w", err)}
 	}
