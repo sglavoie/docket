@@ -147,6 +147,7 @@ func (m *SectionManagerModel) buildSectionList() {
 // addSection adds a new section to the project.
 func (m *SectionManagerModel) addSection(name string) tea.Cmd {
 	proj := m.getProject()
+	cfg := m.config
 	return func() tea.Msg {
 		name = strings.TrimSpace(name)
 		if name == "" {
@@ -171,7 +172,7 @@ func (m *SectionManagerModel) addSection(name string) tea.Cmd {
 		proj.EnsureSection(name)
 
 		// Apply global color if one exists for this section name
-		if globalColor := m.config.GetGlobalSectionColor(name); globalColor != "gray" {
+		if globalColor := cfg.GetGlobalSectionColor(name); globalColor != "gray" {
 			proj.SetSectionColor(name, globalColor)
 		}
 
@@ -186,6 +187,7 @@ func (m *SectionManagerModel) addSection(name string) tea.Cmd {
 // renameSection renames a section.
 func (m *SectionManagerModel) renameSection(oldName, newName string) tea.Cmd {
 	proj := m.getProject()
+	cfg := m.config
 	return func() tea.Msg {
 		newName = strings.TrimSpace(newName)
 		if newName == "" || newName == oldName {
@@ -217,7 +219,7 @@ func (m *SectionManagerModel) renameSection(oldName, newName string) tea.Cmd {
 		}
 
 		// Apply global color if one exists for the new section name
-		if globalColor := m.config.GetGlobalSectionColor(newName); globalColor != "gray" {
+		if globalColor := cfg.GetGlobalSectionColor(newName); globalColor != "gray" {
 			proj.SetSectionColor(newName, globalColor)
 		}
 

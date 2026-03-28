@@ -13,6 +13,7 @@ func (m *AppModel) handleArchiveCompletedTasks() (bool, tea.Cmd) {
 	}
 
 	project := m.currentProject
+	persister := m.persister
 	undoDepth := 0
 	if m.config.UndoHistoryDepth != nil {
 		undoDepth = *m.config.UndoHistoryDepth
@@ -26,23 +27,23 @@ func (m *AppModel) handleArchiveCompletedTasks() (bool, tea.Cmd) {
 
 		// Record undo snapshot before archiving
 		if undoDepth > 0 {
-			_ = m.persister.RecordUndoSnapshot(project, "Archive Tasks",
+			_ = persister.RecordUndoSnapshot(project, "Archive Tasks",
 				fmt.Sprintf("%d tasks", completedCount), undoDepth)
 		}
 
 		// Create backup before archiving
-		if err := m.persister.Backup(project); err != nil {
+		if err := persister.Backup(project); err != nil {
 			return ErrorMsg{Err: fmt.Errorf("failed to create backup: %w", err)}
 		}
 
 		// Archive the tasks
-		count, err := m.persister.ArchiveTasks(project)
+		count, err := persister.ArchiveTasks(project)
 		if err != nil {
 			return ErrorMsg{Err: fmt.Errorf("failed to archive tasks: %w", err)}
 		}
 
 		// Reload project
-		_ = m.persister.Load(project)
+		_ = persister.Load(project)
 
 		return TasksArchivedMsg{Count: count}
 	}
@@ -53,13 +54,15 @@ func (m *AppModel) handleArchiveCompletedTasks() (bool, tea.Cmd) {
 // handleArchiveAllCompletedTasks archives completed tasks across all active projects.
 func (m *AppModel) handleArchiveAllCompletedTasks() (bool, tea.Cmd) {
 	projects := m.config.GetActiveProjects()
+	persister := m.persister
+	currentProject := m.currentProject
 
 	cmd := func() tea.Msg {
 		totalArchived := 0
 		projectsAffected := 0
 
 		for _, project := range projects {
-			if err := m.persister.Load(project); err != nil {
+			if err := persister.Load(project); err != nil {
 				continue
 			}
 
@@ -67,11 +70,11 @@ func (m *AppModel) handleArchiveAllCompletedTasks() (bool, tea.Cmd) {
 				continue
 			}
 
-			if err := m.persister.Backup(project); err != nil {
+			if err := persister.Backup(project); err != nil {
 				continue
 			}
 
-			count, err := m.persister.ArchiveTasks(project)
+			count, err := persister.ArchiveTasks(project)
 			if err != nil {
 				continue
 			}
@@ -81,8 +84,8 @@ func (m *AppModel) handleArchiveAllCompletedTasks() (bool, tea.Cmd) {
 		}
 
 		// Reload current project if it was affected
-		if m.currentProject != nil {
-			_ = m.persister.Load(m.currentProject)
+		if currentProject != nil {
+			_ = persister.Load(currentProject)
 		}
 
 		return TasksArchivedMsg{Count: totalArchived, Projects: projectsAffected}

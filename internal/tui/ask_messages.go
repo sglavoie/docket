@@ -1,7 +1,21 @@
 package tui
 
+import (
+	"io"
+	"os/exec"
+)
+
 // ShowAskMsg opens the AI assistant view.
 type ShowAskMsg struct{}
+
+// AskStreamStartMsg carries the streaming reader and command back to the
+// Update loop so they are assigned on the main goroutine, avoiding a data
+// race between the tea.Cmd goroutine and the model.
+type AskStreamStartMsg struct {
+	Reader    io.ReadCloser
+	Cmd       *exec.Cmd
+	FirstText string
+}
 
 // AskStreamChunkMsg delivers a chunk of streaming response text.
 type AskStreamChunkMsg struct {

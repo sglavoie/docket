@@ -412,12 +412,13 @@ func (m *TaskEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) { //nolint:go
 			}
 
 		case "ctrl+s":
-			// Save changes
+			// Save changes synchronously, then return result via cmd
+			if err := m.saveTask(); err != nil {
+				return m, func() tea.Msg { return ErrorMsg{Err: err} }
+			}
+			task := m.task
 			return m, func() tea.Msg {
-				if err := m.saveTask(); err != nil {
-					return ErrorMsg{Err: err}
-				}
-				return TaskUpdatedMsg{Task: m.task}
+				return TaskUpdatedMsg{Task: task}
 			}
 
 		case "ctrl+t":

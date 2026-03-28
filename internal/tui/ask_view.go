@@ -102,6 +102,14 @@ func (m *AskViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.SetSize(msg.Width, msg.Height)
 		return m, nil
 
+	case AskStreamStartMsg:
+		m.streamReader = msg.Reader
+		m.streamCmd = msg.Cmd
+		m.response += msg.FirstText
+		m.viewport.SetContent(m.renderResponse())
+		m.viewport.GotoBottom()
+		return m, m.readNextChunk()
+
 	case AskStreamChunkMsg:
 		m.response += msg.Text
 		m.viewport.SetContent(m.renderResponse())
@@ -251,13 +259,11 @@ func (m *AskViewModel) submitQuery(query string) tea.Cmd {
 		if err != nil {
 			return AskStreamDoneMsg{Err: err}
 		}
-		m.streamReader = reader
-		m.streamCmd = cmd
 
 		buf := make([]byte, 1024)
 		n, readErr := reader.Read(buf)
 		if n > 0 {
-			return AskStreamChunkMsg{Text: string(buf[:n])}
+			return AskStreamStartMsg{Reader: reader, Cmd: cmd, FirstText: string(buf[:n])}
 		}
 		if readErr != nil {
 			_ = cmd.Wait()

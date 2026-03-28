@@ -310,12 +310,15 @@ func (m *LinkedTaskCreatorModel) createTask() tea.Cmd {
 		return func() tea.Msg { return ErrorMsg{Err: fmt.Errorf("failed to save project: %w", err)} }
 	}
 
+	sourceTask := m.sourceTask
+	project := m.project
+	linkType := m.linkType
 	return func() tea.Msg {
 		return LinkedTaskCreatedMsg{
-			SourceTask: m.sourceTask,
+			SourceTask: sourceTask,
 			NewTask:    newTask,
-			Project:    m.project,
-			LinkType:   m.linkType,
+			Project:    project,
+			LinkType:   linkType,
 		}
 	}
 }

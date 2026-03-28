@@ -118,11 +118,13 @@ func (m *SnoozeInputModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m *SnoozeInputModel) saveAndReturn() tea.Cmd {
+	project := m.project
+	task := m.task
 	return func() tea.Msg {
-		if err := saveProjectSync(m.project); err != nil {
+		if err := saveProjectSync(project); err != nil {
 			return ErrorMsg{Err: fmt.Errorf("failed to save project: %w", err)}
 		}
-		return SnoozeDateChangedMsg{Task: m.task}
+		return SnoozeDateChangedMsg{Task: task}
 	}
 }
 

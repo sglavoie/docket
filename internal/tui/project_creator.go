@@ -183,8 +183,11 @@ func (m *ProjectCreatorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m *ProjectCreatorModel) createProject() tea.Cmd {
+	name := strings.TrimSpace(m.nameInput.Value())
+	contextValue := strings.TrimSpace(m.contextInput.Value())
+	cfg := m.config
+	configManager := m.configManager
 	return func() tea.Msg {
-		name := strings.TrimSpace(m.nameInput.Value())
 		if name == "" {
 			return ErrorMsg{Err: fmt.Errorf("project name cannot be empty")}
 		}
@@ -194,7 +197,7 @@ func (m *ProjectCreatorModel) createProject() tea.Cmd {
 		if slug == "" {
 			return ErrorMsg{Err: fmt.Errorf("project name must contain at least one ASCII letter or digit")}
 		}
-		for _, p := range m.config.Projects {
+		for _, p := range cfg.Projects {
 			if p.Slug == slug {
 				return ErrorMsg{Err: fmt.Errorf("project with slug '%s' already exists", slug)}
 			}
@@ -202,21 +205,20 @@ func (m *ProjectCreatorModel) createProject() tea.Cmd {
 
 		// Create project
 		projectID := uuid.New().String()
-		projectPath := m.config.GetProjectPath(slug)
+		projectPath := cfg.GetProjectPath(slug)
 		project, err := models.NewProject(projectID, name, projectPath)
 		if err != nil {
 			return ErrorMsg{Err: fmt.Errorf("failed to create project: %w", err)}
 		}
 
 		// Get context value
-		context := strings.TrimSpace(m.contextInput.Value())
-		if context == "" {
-			context = m.config.DefaultContext
+		if contextValue == "" {
+			contextValue = cfg.DefaultContext
 		}
-		project.Context = context
+		project.Context = contextValue
 
 		// Ensure data directory exists
-		if err := m.config.EnsureDataDir(); err != nil {
+		if err := cfg.EnsureDataDir(); err != nil {
 			return ErrorMsg{Err: fmt.Errorf("failed to create data directory: %w", err)}
 		}
 
@@ -226,10 +228,10 @@ func (m *ProjectCreatorModel) createProject() tea.Cmd {
 		}
 
 		// Add to config and set as current
-		m.config.AddProject(project)
-		m.config.CurrentProject = project.ID
+		cfg.AddProject(project)
+		cfg.CurrentProject = project.ID
 
-		if err := m.configManager.Save(m.config); err != nil {
+		if err := configManager.Save(cfg); err != nil {
 			return ErrorMsg{Err: fmt.Errorf("failed to save config: %w", err)}
 		}
 

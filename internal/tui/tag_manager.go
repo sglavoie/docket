@@ -121,13 +121,14 @@ func (m *TagManagerModel) buildTagList() {
 
 // renameTag renames a tag across all tasks.
 func (m *TagManagerModel) renameTag(oldName, newName string) tea.Cmd {
+	project := m.project
 	return func() tea.Msg {
 		newName = strings.TrimSpace(newName)
 		if newName == "" || newName == oldName {
 			return nil
 		}
 
-		for _, task := range m.project.Tasks {
+		for _, task := range project.Tasks {
 			hasOld := false
 			hasNew := false
 			oldIdx := -1
@@ -151,7 +152,7 @@ func (m *TagManagerModel) renameTag(oldName, newName string) tea.Cmd {
 			}
 		}
 
-		if err := saveProjectSync(m.project); err != nil {
+		if err := saveProjectSync(project); err != nil {
 			return ErrorMsg{Err: fmt.Errorf("failed to save project: %w", err)}
 		}
 

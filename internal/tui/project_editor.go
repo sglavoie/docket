@@ -256,8 +256,14 @@ func (m *ProjectEditorModel) focusCurrentField() {
 }
 
 func (m *ProjectEditorModel) saveProject() tea.Cmd {
+	name := strings.TrimSpace(m.nameInput.Value())
+	contextValue := strings.TrimSpace(m.contextInput.Value())
+	description := strings.TrimSpace(m.descriptionInput.Value())
+	originalName := m.originalName
+	project := m.project
+	cfg := m.config
+	configManager := m.configManager
 	return func() tea.Msg {
-		name := strings.TrimSpace(m.nameInput.Value())
 		if name == "" {
 			return ErrorMsg{Err: fmt.Errorf("project name cannot be empty")}
 		}
@@ -267,42 +273,42 @@ func (m *ProjectEditorModel) saveProject() tea.Cmd {
 		if newSlug == "" {
 			return ErrorMsg{Err: fmt.Errorf("project name must contain at least one ASCII letter or digit")}
 		}
-		if name != m.originalName {
+		if name != originalName {
 			// Check for duplicate slug (excluding self)
-			for _, p := range m.config.Projects {
-				if p.ID != m.project.ID && p.Slug == newSlug {
+			for _, p := range cfg.Projects {
+				if p.ID != project.ID && p.Slug == newSlug {
 					return ErrorMsg{Err: fmt.Errorf("project with slug '%s' already exists", newSlug)}
 				}
 			}
 		}
 
 		// Rename directory if slug changed
-		oldSlug := models.Slugify(m.originalName)
+		oldSlug := models.Slugify(originalName)
 		if oldSlug != newSlug {
-			if err := storage.RenameProjectDir(m.project, oldSlug, newSlug, m.config.DataDir); err != nil {
+			if err := storage.RenameProjectDir(project, oldSlug, newSlug, cfg.DataDir); err != nil {
 				return ErrorMsg{Err: fmt.Errorf("failed to rename project directory: %w", err)}
 			}
 		}
 
 		// Get context value
-		context := strings.TrimSpace(m.contextInput.Value())
-		if context == "" {
-			context = m.config.DefaultContext
+		ctx := contextValue
+		if ctx == "" {
+			ctx = cfg.DefaultContext
 		}
 
 		// Update project fields
-		m.project.Name = name
-		m.project.Slug = newSlug
-		m.project.Context = context
-		m.project.Description = strings.TrimSpace(m.descriptionInput.Value())
-		m.project.UpdatedAt = time.Now()
+		project.Name = name
+		project.Slug = newSlug
+		project.Context = ctx
+		project.Description = description
+		project.UpdatedAt = time.Now()
 
 		// Save config
-		if err := m.configManager.Save(m.config); err != nil {
+		if err := configManager.Save(cfg); err != nil {
 			return ErrorMsg{Err: fmt.Errorf("failed to save config: %w", err)}
 		}
 
-		return ProjectUpdatedMsg{Project: m.project}
+		return ProjectUpdatedMsg{Project: project}
 	}
 }
 

@@ -252,14 +252,15 @@ func (m *UndoHistoryModel) computeDiff() {
 
 // performUndo performs the undo operation.
 func (m *UndoHistoryModel) performUndo() tea.Cmd {
+	project := m.project
 	return func() tea.Msg {
-		actionDesc, err := storage.PerformUndo(m.project)
+		actionDesc, err := storage.PerformUndo(project)
 		if err != nil {
 			return ErrorMsg{Err: fmt.Errorf("undo failed: %w", err)}
 		}
 
 		// Reload project
-		if err := storage.LoadProject(m.project); err != nil {
+		if err := storage.LoadProject(project); err != nil {
 			return ErrorMsg{Err: fmt.Errorf("failed to reload after undo: %w", err)}
 		}
 
