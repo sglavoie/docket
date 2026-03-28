@@ -805,19 +805,22 @@ func (m *OutlinerModel) saveWithWorkflow() tea.Cmd {
 
 // archiveProject archives or unarchives the project and saves config.
 func (m *OutlinerModel) archiveProject() tea.Cmd {
-	return func() tea.Msg {
-		if m.project.Archived {
-			m.project.Unarchive()
-		} else {
-			m.project.Archive()
-			if m.config.CurrentProject == m.project.ID {
-				m.config.CurrentProject = ""
-			}
+	if m.project.Archived {
+		m.project.Unarchive()
+	} else {
+		m.project.Archive()
+		if m.config.CurrentProject == m.project.ID {
+			m.config.CurrentProject = ""
 		}
-		if err := m.configManager.Save(m.config); err != nil {
+	}
+	mgr := m.configManager
+	cfg := m.config
+	proj := m.project
+	return func() tea.Msg {
+		if err := mgr.Save(cfg); err != nil {
 			return ErrorMsg{Err: fmt.Errorf("failed to save: %w", err)}
 		}
-		return ProjectArchivedMsg{Project: m.project}
+		return ProjectArchivedMsg{Project: proj}
 	}
 }
 
@@ -912,59 +915,67 @@ func (m *OutlinerModel) UnlinkSelectedSidebarTask(sourceTask *models.Task) tea.C
 
 	m.setUndoContext("Unlink", sourceTask.Title)
 	opts := m.buildWorkflowOpts(nil)
+	project := m.project
+	cfg := m.config
+	projectID := m.project.ID
+
+	// Perform all mutations synchronously before entering the goroutine
+	var crossProjectRef string // Non-empty if cross-project related link needs I/O
+	switch section {
+	case 0: // Blocked by
+		if cursor < 0 || cursor >= len(sourceTask.DependsOn) {
+			return nil
+		}
+		ref := sourceTask.DependsOn[cursor]
+		sourceTask.RemoveDependency(ref)
+
+	case 1: // Blocking
+		blockedTasks := project.GetBlockedByTasks(sourceTask)
+		if cursor < 0 || cursor >= len(blockedTasks) {
+			return nil
+		}
+		blockedTask := blockedTasks[cursor]
+		blockedTask.RemoveDependency(sourceTask.ID)
+
+	case 2: // Related
+		if cursor < 0 || cursor >= len(sourceTask.RelatedTo) {
+			return nil
+		}
+		ref := sourceTask.RelatedTo[cursor]
+		taskRef := models.ParseTaskRef(ref)
+
+		sourceTask.RemoveRelatedTo(ref)
+
+		if taskRef.IsCrossProject() {
+			crossProjectRef = ref
+		} else {
+			if targetTask := project.GetTaskByID(taskRef.TaskID); targetTask != nil {
+				targetTask.RemoveRelatedTo(sourceTask.ID)
+			}
+		}
+	}
 
 	return func() tea.Msg {
-		switch section {
-		case 0: // Blocked by
-			if cursor < 0 || cursor >= len(sourceTask.DependsOn) {
-				return nil
-			}
-			ref := sourceTask.DependsOn[cursor]
-			sourceTask.RemoveDependency(ref)
-
-		case 1: // Blocking
-			blockedTasks := m.project.GetBlockedByTasks(sourceTask)
-			if cursor < 0 || cursor >= len(blockedTasks) {
-				return nil
-			}
-			blockedTask := blockedTasks[cursor]
-			blockedTask.RemoveDependency(sourceTask.ID)
-
-		case 2: // Related
-			if cursor < 0 || cursor >= len(sourceTask.RelatedTo) {
-				return nil
-			}
-			ref := sourceTask.RelatedTo[cursor]
-			taskRef := models.ParseTaskRef(ref)
-
-			sourceTask.RemoveRelatedTo(ref)
-
-			if taskRef.IsCrossProject() {
-				// Cross-project: direct save (workflow is scoped to current project)
-				if m.config != nil {
-					targetProject := m.config.GetProject(taskRef.ProjectID)
-					if targetProject != nil {
-						if len(targetProject.Tasks) == 0 {
-							if err := storage.LoadProject(targetProject); err != nil {
-								return ErrorMsg{Err: err}
-							}
-						}
-						if targetTask := targetProject.GetTaskByID(taskRef.TaskID); targetTask != nil {
-							reverseRef := m.project.ID + ":" + sourceTask.ID
-							targetTask.RemoveRelatedTo(reverseRef)
-
-							if err := storage.BackupProject(targetProject); err != nil {
-								return ErrorMsg{Err: err}
-							}
-							if err := storage.SaveProjectLocked(targetProject); err != nil {
-								return ErrorMsg{Err: err}
-							}
-						}
+		// Handle cross-project related link removal (requires I/O)
+		if crossProjectRef != "" && cfg != nil {
+			taskRef := models.ParseTaskRef(crossProjectRef)
+			targetProject := cfg.GetProject(taskRef.ProjectID)
+			if targetProject != nil {
+				if len(targetProject.Tasks) == 0 {
+					if err := storage.LoadProject(targetProject); err != nil {
+						return ErrorMsg{Err: err}
 					}
 				}
-			} else {
-				if targetTask := m.project.GetTaskByID(taskRef.TaskID); targetTask != nil {
-					targetTask.RemoveRelatedTo(sourceTask.ID)
+				if targetTask := targetProject.GetTaskByID(taskRef.TaskID); targetTask != nil {
+					reverseRef := projectID + ":" + sourceTask.ID
+					targetTask.RemoveRelatedTo(reverseRef)
+
+					if err := storage.BackupProject(targetProject); err != nil {
+						return ErrorMsg{Err: err}
+					}
+					if err := storage.SaveProjectLocked(targetProject); err != nil {
+						return ErrorMsg{Err: err}
+					}
 				}
 			}
 		}
@@ -972,7 +983,7 @@ func (m *OutlinerModel) UnlinkSelectedSidebarTask(sourceTask *models.Task) tea.C
 		if err := persistWithWorkflow(opts); err != nil {
 			return ErrorMsg{Err: err}
 		}
-		if err := ps.Load(m.project); err != nil {
+		if err := ps.Load(project); err != nil {
 			return ErrorMsg{Err: err}
 		}
 		return LinkRemovedMsg{SourceTask: sourceTask, Section: section}

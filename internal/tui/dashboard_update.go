@@ -62,8 +62,9 @@ func (m *DashboardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) { //nolint:goc
 			}
 		case "enter":
 			if CursorInBounds(m.cursor, len(visible)) {
+				project := visible[m.cursor]
 				return m, func() tea.Msg {
-					return SelectProjectMsg{Project: visible[m.cursor]}
+					return SelectProjectMsg{Project: project}
 				}
 			}
 		case "?":
@@ -102,14 +103,16 @@ func (m *DashboardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) { //nolint:goc
 			}
 		case "e":
 			if CursorInBounds(m.cursor, len(visible)) {
+				project := visible[m.cursor]
 				return m, func() tea.Msg {
-					return EditProjectMsg{Project: visible[m.cursor]}
+					return EditProjectMsg{Project: project}
 				}
 			}
 		case "p":
 			if CursorInBounds(m.cursor, len(visible)) {
+				project := visible[m.cursor]
 				return m, func() tea.Msg {
-					return ShowProjectPreviewMsg{Project: visible[m.cursor]}
+					return ShowProjectPreviewMsg{Project: project}
 				}
 			}
 		case "C":
@@ -174,14 +177,15 @@ func (m *DashboardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) { //nolint:goc
 }
 
 func (m *DashboardModel) deleteProject(project *models.Project) tea.Cmd {
+	dataDir := m.config.DataDir
 	return func() tea.Msg {
 		// Purge any existing trash entry with same slug
-		if err := storage.PurgeFromTrash(project.Slug, m.config.DataDir); err != nil {
+		if err := storage.PurgeFromTrash(project.Slug, dataDir); err != nil {
 			return ErrorMsg{Err: fmt.Errorf("failed to purge old trash entry: %w", err)}
 		}
 
 		// Move project directory to trash
-		if err := storage.MoveProjectToTrash(project, m.config.DataDir); err != nil {
+		if err := storage.MoveProjectToTrash(project, dataDir); err != nil {
 			return ErrorMsg{Err: fmt.Errorf("failed to move project to trash: %w", err)}
 		}
 
@@ -190,8 +194,8 @@ func (m *DashboardModel) deleteProject(project *models.Project) tea.Cmd {
 }
 
 func (m *DashboardModel) toggleProjectPinned(project *models.Project) tea.Cmd {
+	project.TogglePinned()
 	return func() tea.Msg {
-		project.TogglePinned()
 		return ProjectPinnedToggledMsg{Project: project}
 	}
 }

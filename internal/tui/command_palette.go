@@ -414,9 +414,9 @@ func (m *CommandPaletteModel) updateActionMode(msg tea.KeyPressMsg) (tea.Model, 
 		if m.actionCursor < len(m.availableActions) {
 			action := m.availableActions[m.actionCursor]
 			if action.Handler != nil {
-				handler := action.Handler
+				result := action.Handler()
 				return m, func() tea.Msg {
-					return CommandPaletteExecuteMsg{ResultMsg: handler()}
+					return CommandPaletteExecuteMsg{ResultMsg: result}
 				}
 			}
 		}
@@ -435,9 +435,9 @@ func (m *CommandPaletteModel) updateActionMode(msg tea.KeyPressMsg) (tea.Model, 
 		// Check if the key matches an action's KeyHint for quick execution
 		for _, action := range m.availableActions {
 			if action.KeyHint == key && action.Handler != nil {
-				handler := action.Handler
+				result := action.Handler()
 				return m, func() tea.Msg {
-					return CommandPaletteExecuteMsg{ResultMsg: handler()}
+					return CommandPaletteExecuteMsg{ResultMsg: result}
 				}
 			}
 		}

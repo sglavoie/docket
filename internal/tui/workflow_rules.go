@@ -341,8 +341,10 @@ func (m *WorkflowRulesModel) deleteCurrentRule() tea.Cmd {
 	// Re-filter to update filteredRules
 	m.filterRules()
 
+	mgr := m.configManager
+	cfg := m.config
 	return func() tea.Msg {
-		if err := m.configManager.Save(m.config); err != nil {
+		if err := mgr.Save(cfg); err != nil {
 			return ErrorMsg{Err: fmt.Errorf("failed to save: %w", err)}
 		}
 		return WorkflowRulesUpdatedMsg{}

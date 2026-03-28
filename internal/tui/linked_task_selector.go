@@ -318,36 +318,37 @@ func (m *LinkedTaskSelectorModel) filterRelations() {
 
 // unlinkTask removes the link at the given index.
 func (m *LinkedTaskSelectorModel) unlinkTask(idx int) tea.Cmd {
+	if idx < 0 || idx >= len(m.relations) {
+		return nil
+	}
+	rel := m.relations[idx]
+
+	// Remove from source task's dependencies/related
+	switch rel.RelationType {
+	case "blocked by":
+		m.sourceTask.RemoveDependency(rel.TaskRef)
+	case "related":
+		m.sourceTask.RemoveRelatedTo(rel.TaskRef)
+	case "blocks":
+		// For "blocks", we need to remove from the other task's DependsOn
+		if rel.Task != nil {
+			rel.Task.RemoveDependency(m.sourceTask.ID)
+		}
+	}
+
+	project := m.project
 	return func() tea.Msg {
-		if idx < 0 || idx >= len(m.relations) {
-			return nil
-		}
-		rel := m.relations[idx]
-
-		// Remove from source task's dependencies/related
-		switch rel.RelationType {
-		case "blocked by":
-			m.sourceTask.RemoveDependency(rel.TaskRef)
-		case "related":
-			m.sourceTask.RemoveRelatedTo(rel.TaskRef)
-		case "blocks":
-			// For "blocks", we need to remove from the other task's DependsOn
-			if rel.Task != nil {
-				rel.Task.RemoveDependency(m.sourceTask.ID)
-			}
-		}
-
 		// Save the source project
-		if err := storage.BackupProject(m.project); err != nil {
+		if err := storage.BackupProject(project); err != nil {
 			return ErrorMsg{Err: fmt.Errorf("failed to backup: %w", err)}
 		}
-		if err := storage.SaveProjectLocked(m.project); err != nil {
+		if err := storage.SaveProjectLocked(project); err != nil {
 			return ErrorMsg{Err: fmt.Errorf("failed to save: %w", err)}
 		}
 
 		// Reload and close
-		if err := storage.LoadProject(m.project); err != nil {
-			logging.Warn("failed to reload project %s: %v", m.project.Name, err)
+		if err := storage.LoadProject(project); err != nil {
+			logging.Warn("failed to reload project %s: %v", project.Name, err)
 		}
 		return CloseLinkedTaskSelectorMsg{}
 	}

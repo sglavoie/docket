@@ -162,12 +162,12 @@ func (m *TagManagerModel) renameTag(oldName, newName string) tea.Cmd {
 // filterByTag sets the project tree filter and closes the tag manager.
 // When projectTree is nil (outliner), it just closes without applying filters.
 func (m *TagManagerModel) filterByTag(tagName string) tea.Cmd {
+	if m.projectTree != nil {
+		m.projectTree.filter.Tags = map[string]bool{tagName: true}
+		m.projectTree.updateVisibility()
+		m.projectTree.clampCursor()
+	}
 	return func() tea.Msg {
-		if m.projectTree != nil {
-			m.projectTree.filter.Tags = map[string]bool{tagName: true}
-			m.projectTree.updateVisibility()
-			m.projectTree.clampCursor()
-		}
 		return CloseTagManagerMsg{}
 	}
 }

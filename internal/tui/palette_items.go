@@ -673,9 +673,9 @@ func (m *CommandPaletteModel) executeItem(item PaletteItem) (tea.Model, tea.Cmd)
 				}
 			}
 
-			handler := item.Command.Handler
+			result := item.Command.Handler()
 			return m, func() tea.Msg {
-				return CommandPaletteExecuteMsg{ResultMsg: handler()}
+				return CommandPaletteExecuteMsg{ResultMsg: result}
 			}
 		}
 	case ItemCategoryTasks:

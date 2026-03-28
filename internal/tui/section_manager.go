@@ -253,12 +253,12 @@ func (m *SectionManagerModel) removeSection(name string) tea.Cmd {
 // filterBySection sets the project tree filter and closes the section manager.
 // When opened from outliner view (no projectTree), it just closes without filtering.
 func (m *SectionManagerModel) filterBySection(sectionName string) tea.Cmd {
+	if m.projectTree != nil {
+		m.projectTree.filter.Sections = map[string]bool{sectionName: true}
+		m.projectTree.updateVisibility()
+		m.projectTree.clampCursor()
+	}
 	return func() tea.Msg {
-		if m.projectTree != nil {
-			m.projectTree.filter.Sections = map[string]bool{sectionName: true}
-			m.projectTree.updateVisibility()
-			m.projectTree.clampCursor()
-		}
 		return CloseSectionManagerMsg{}
 	}
 }
@@ -266,17 +266,21 @@ func (m *SectionManagerModel) filterBySection(sectionName string) tea.Cmd {
 // setSectionColor sets the color for the current section globally and propagates to all projects.
 func (m *SectionManagerModel) setSectionColor(sectionName, colorName string) tea.Cmd {
 	proj := m.getProject()
+	// Update global registry before entering goroutine
+	m.config.SetGlobalSectionColor(sectionName, colorName)
+	cfg := m.config
+	mgr := m.configManager
+	// Snapshot the project list to avoid reading m.config.Projects in goroutine
+	projects := make([]*models.Project, len(cfg.Projects))
+	copy(projects, cfg.Projects)
 	return func() tea.Msg {
-		// Update global registry
-		m.config.SetGlobalSectionColor(sectionName, colorName)
-
 		// Save config first
-		if err := m.configManager.Save(m.config); err != nil {
+		if err := mgr.Save(cfg); err != nil {
 			return ErrorMsg{Err: fmt.Errorf("failed to save config: %w", err)}
 		}
 
 		// Propagate to all projects that have this section
-		for _, p := range m.config.Projects {
+		for _, p := range projects {
 			// Load project data
 			if err := storage.LoadProject(p); err != nil {
 				continue // Skip projects that can't be loaded

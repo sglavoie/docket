@@ -151,23 +151,25 @@ func (m *ScoreEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 // save applies the edited values to the task and saves.
 func (m *ScoreEditorModel) save() tea.Cmd {
+	if t := resolveTaskInProject(m.project, m.task.ID); t != nil {
+		m.task = t
+	}
+
+	dims := make(map[string]int)
+	for i, dim := range m.profile.Dimensions {
+		if m.sources[i] == "manual" {
+			dims[dim.ID] = m.values[i]
+		}
+	}
+	m.task.ScoreDimensions = dims
+
+	project := m.project
+	task := m.task
 	return func() tea.Msg {
-		if t := resolveTaskInProject(m.project, m.task.ID); t != nil {
-			m.task = t
-		}
-
-		dims := make(map[string]int)
-		for i, dim := range m.profile.Dimensions {
-			if m.sources[i] == "manual" {
-				dims[dim.ID] = m.values[i]
-			}
-		}
-		m.task.ScoreDimensions = dims
-
-		if err := saveProjectNoReload(m.project); err != nil {
+		if err := saveProjectNoReload(project); err != nil {
 			return ErrorMsg{Err: fmt.Errorf("failed to save: %w", err)}
 		}
-		return ScoreEditorDoneMsg{Task: m.task, Saved: true, Project: m.project}
+		return ScoreEditorDoneMsg{Task: task, Saved: true, Project: project}
 	}
 }
 

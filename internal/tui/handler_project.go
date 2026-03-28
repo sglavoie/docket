@@ -278,43 +278,46 @@ func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 
 // restoreProjectFromTrash restores a project from the trash directory.
 func (m *AppModel) restoreProjectFromTrash(slug string) tea.Cmd {
+	cfg := m.config
+	mgr := m.configManager
+	dataDir := cfg.DataDir
 	return func() tea.Msg {
 		// Check if project exists in trash
-		if !storage.TrashEntryExists(slug, m.config.DataDir) {
+		if !storage.TrashEntryExists(slug, dataDir) {
 			return ErrorMsg{Err: fmt.Errorf("project '%s' not found in trash", slug)}
 		}
 
 		// Check if active project with same slug exists
-		if m.config.GetProject(slug) != nil {
+		if cfg.GetProject(slug) != nil {
 			return ErrorMsg{Err: fmt.Errorf("active project '%s' already exists; rename or delete it first", slug)}
 		}
 
 		// Backup config before making changes
-		if err := m.configManager.BackupConfig(); err != nil {
+		if err := mgr.BackupConfig(); err != nil {
 			return ErrorMsg{Err: fmt.Errorf("failed to create config backup: %w", err)}
 		}
 
 		// Restore project directory from trash
-		if err := storage.RestoreProjectFromTrash(slug, m.config.DataDir); err != nil {
+		if err := storage.RestoreProjectFromTrash(slug, dataDir); err != nil {
 			return ErrorMsg{Err: fmt.Errorf("failed to restore project from trash: %w", err)}
 		}
 
 		// Reconstruct project metadata
-		projectPath := m.config.GetProjectPath(slug)
+		projectPath := cfg.GetProjectPath(slug)
 		project, err := reconstructProjectFromDir(slug, projectPath)
 		if err != nil {
 			// Move back to trash on failure (best effort)
-			_ = storage.MoveProjectToTrash(&models.Project{Slug: slug, Path: projectPath}, m.config.DataDir)
+			_ = storage.MoveProjectToTrash(&models.Project{Slug: slug, Path: projectPath}, dataDir)
 			return ErrorMsg{Err: fmt.Errorf("failed to reconstruct project metadata: %w", err)}
 		}
 
 		// Add project to config
-		m.config.AddProject(project)
+		cfg.AddProject(project)
 
 		// Save config
-		if err := m.configManager.Save(m.config); err != nil {
+		if err := mgr.Save(cfg); err != nil {
 			// Move back to trash on failure (best effort)
-			_ = storage.MoveProjectToTrash(project, m.config.DataDir)
+			_ = storage.MoveProjectToTrash(project, dataDir)
 			return ErrorMsg{Err: fmt.Errorf("failed to save config: %w", err)}
 		}
 
@@ -334,8 +337,9 @@ type projectPurgedFromTrashMsg struct {
 
 // purgeProjectFromTrash permanently deletes a project from the trash directory.
 func (m *AppModel) purgeProjectFromTrash(slug string) tea.Cmd {
+	dataDir := m.config.DataDir
 	return func() tea.Msg {
-		if err := storage.PurgeFromTrash(slug, m.config.DataDir); err != nil {
+		if err := storage.PurgeFromTrash(slug, dataDir); err != nil {
 			return ErrorMsg{Err: fmt.Errorf("failed to delete project: %w", err)}
 		}
 		return projectPurgedFromTrashMsg{Slug: slug}
@@ -344,8 +348,14 @@ func (m *AppModel) purgeProjectFromTrash(slug string) tea.Cmd {
 
 // executeSandboxReset performs the actual sandbox reset operation.
 func (m *AppModel) executeSandboxReset() tea.Cmd {
+	cfg := m.config
+	mgr := m.configManager
+	sandbox := cfg.GetSandboxProject()
+	undoDepth := 0
+	if cfg.UndoHistoryDepth != nil {
+		undoDepth = *cfg.UndoHistoryDepth
+	}
 	return func() tea.Msg {
-		sandbox := m.config.GetSandboxProject()
 		if sandbox == nil {
 			return ErrorMsg{Err: fmt.Errorf("sandbox project not found")}
 		}
@@ -366,10 +376,6 @@ func (m *AppModel) executeSandboxReset() tea.Cmd {
 		}
 
 		// Record undo snapshot before clearing (only captures tasks, not notes)
-		undoDepth := 0
-		if m.config.UndoHistoryDepth != nil {
-			undoDepth = *m.config.UndoHistoryDepth
-		}
 		if err := storage.RecordUndoSnapshot(sandbox, "reset sandbox", "", undoDepth); err != nil {
 			return ErrorMsg{Err: fmt.Errorf("failed to record undo snapshot: %w", err)}
 		}
@@ -395,7 +401,7 @@ func (m *AppModel) executeSandboxReset() tea.Cmd {
 		}
 
 		// Save config for NextShortID persistence
-		if err := m.configManager.Save(m.config); err != nil {
+		if err := mgr.Save(cfg); err != nil {
 			return ErrorMsg{Err: fmt.Errorf("failed to save config: %w", err)}
 		}
 

@@ -580,124 +580,126 @@ func (m *SettingsModel) Init() tea.Cmd {
 }
 
 func (m *SettingsModel) saveSettings() tea.Cmd {
+	editor := strings.TrimSpace(m.editorInput.Value())
+	context := strings.TrimSpace(m.contextInput.Value())
+	undoDepth, _ := strconv.Atoi(strings.TrimSpace(m.undoDepthInput.Value()))
+	dueSoon, _ := strconv.Atoi(strings.TrimSpace(m.dueSoonInput.Value()))
+	futureDays, _ := strconv.Atoi(strings.TrimSpace(m.futureInput.Value()))
+	oldDays, _ := strconv.Atoi(strings.TrimSpace(m.oldDaysInput.Value()))
+	completedHours, _ := strconv.Atoi(strings.TrimSpace(m.completedHoursInput.Value()))
+
+	m.config.Editor = editor
+	m.config.DefaultContext = context
+	m.config.UndoHistoryDepth = &undoDepth
+	m.config.TUIBackgroundColor = normalizeHexColor(m.bgColorInput.Value())
+	m.config.TUICursorColor = normalizeHexColor(m.cursorColorInput.Value())
+	m.config.TUICursorTextColor = normalizeHexColor(m.cursorTextColorInput.Value())
+	m.config.Palette = config.PaletteColors{
+		NormalText: normalizeHexColor(m.normalTextInput.Value()),
+		Muted:      normalizeHexColor(m.mutedInput.Value()),
+		Primary:    normalizeHexColor(m.primaryInput.Value()),
+		Secondary:  normalizeHexColor(m.secondaryInput.Value()),
+		Accent:     normalizeHexColor(m.accentInput.Value()),
+		Success:    normalizeHexColor(m.successInput.Value()),
+		Warning:    normalizeHexColor(m.warningInput.Value()),
+		Error:      normalizeHexColor(m.errorColorInput.Value()),
+		Border:     normalizeHexColor(m.borderInput.Value()),
+	}
+	m.config.DefaultProjectView = defaultProjectViewValues[m.defaultViewCursor]
+	m.config.ReviewDueSoonDays = &dueSoon
+	m.config.ReviewFutureDays = &futureDays
+	m.config.ReviewOldDays = &oldDays
+	m.config.ReviewCompletedHours = &completedHours
+	recentActivityLimit, _ := strconv.Atoi(strings.TrimSpace(m.recentActivityInput.Value()))
+	m.config.RecentActivityLimit = &recentActivityLimit
+	m.config.RecentActivityShowAll = &m.recentActivityShowAll
+	m.config.LinkedTaskJumpToNew = &m.linkedTaskJump
+	maxPinned, _ := strconv.Atoi(strings.TrimSpace(m.maxPinnedInput.Value()))
+	m.config.MaxPinnedBarItems = &maxPinned
+	maxRecentVisits, _ := strconv.Atoi(strings.TrimSpace(m.maxRecentTaskVisitsInput.Value()))
+	m.config.MaxRecentTaskVisits = &maxRecentVisits
+	popupTimeout, _ := strconv.Atoi(strings.TrimSpace(m.popupTimeoutInput.Value()))
+	m.config.PopupTimeoutSeconds = &popupTimeout
+	sectionLimitActive, _ := strconv.Atoi(strings.TrimSpace(m.sectionLimitActiveInput.Value()))
+	m.config.SectionLimitActive = &sectionLimitActive
+	sectionLimitNext, _ := strconv.Atoi(strings.TrimSpace(m.sectionLimitNextInput.Value()))
+	m.config.SectionLimitNext = &sectionLimitNext
+	sectionLimitInbox, _ := strconv.Atoi(strings.TrimSpace(m.sectionLimitInboxInput.Value()))
+	m.config.SectionLimitInbox = &sectionLimitInbox
+	sectionLimitStandby, _ := strconv.Atoi(strings.TrimSpace(m.sectionLimitStandbyInput.Value()))
+	m.config.SectionLimitStandby = &sectionLimitStandby
+	sectionLimitWaiting, _ := strconv.Atoi(strings.TrimSpace(m.sectionLimitWaitingInput.Value()))
+	m.config.SectionLimitWaiting = &sectionLimitWaiting
+	sectionLimitSomeday, _ := strconv.Atoi(strings.TrimSpace(m.sectionLimitSomedayInput.Value()))
+	m.config.SectionLimitSomeday = &sectionLimitSomeday
+	sectionLimitReview, _ := strconv.Atoi(strings.TrimSpace(m.sectionLimitReviewInput.Value()))
+	m.config.SectionLimitReview = &sectionLimitReview
+	m.config.AttachmentEditor = strings.TrimSpace(m.attachmentEditorInput.Value())
+	m.config.CodeEditor = strings.TrimSpace(m.codeEditorInput.Value())
+	// Persist column default visibility
+	m.config.TreeDefaultColumns = columnDefaultsToMap(m.treeColumnDefaults)
+	m.config.OutlinerDefaultColumns = columnDefaultsToMap(m.outlinerColumnDefaults)
+
+	// Persist priority display modes (empty string = conditional, omitted from JSON)
+	m.config.TreePriorityMode = priorityModeValues[m.treePriorityMode]
+	m.config.OutlinerPriorityMode = priorityModeValues[m.outlinerPriorityMode]
+	// Omit "conditional" from config (it's the default)
+	if m.config.TreePriorityMode == PriorityModeConditional {
+		m.config.TreePriorityMode = ""
+	}
+	if m.config.OutlinerPriorityMode == PriorityModeConditional {
+		m.config.OutlinerPriorityMode = ""
+	}
+
+	// Persist cross-project outliner sidebar default
+	m.config.CrossOutlinerSidebarEnabled = boolPtr(m.crossOutlinerSidebar)
+
+	// Persist stages
+	m.config.Stages = make([]string, len(m.stages))
+	copy(m.config.Stages, m.stages)
+
+	// Persist alert settings
+	m.config.AlertDailyReviewEnabled = boolPtr(m.alertDailyReviewEnabled)
+	m.config.AlertWeeklyReviewEnabled = boolPtr(m.alertWeeklyReviewEnabled)
+	m.config.AlertOverdueEnabled = boolPtr(m.alertOverdueEnabled)
+	m.config.AlertDueSoonEnabled = boolPtr(m.alertDueSoonEnabled)
+	m.config.AlertStaleEnabled = boolPtr(m.alertStaleEnabled)
+	m.config.AlertInboxEnabled = boolPtr(m.alertInboxEnabled)
+	m.config.AlertBlockedEnabled = boolPtr(m.alertBlockedEnabled)
+	m.config.AlertProjectHealthEnabled = boolPtr(m.alertProjectHealthEnabled)
+
+	alertDailyHour, _ := strconv.Atoi(strings.TrimSpace(m.alertDailyReviewHourInput.Value()))
+	m.config.AlertDailyReviewHour = &alertDailyHour
+	m.config.AlertWeeklyReviewDay = &m.alertWeeklyReviewDay
+
+	alertDueSoonDays, _ := strconv.Atoi(strings.TrimSpace(m.alertDueSoonDaysInput.Value()))
+	m.config.AlertDueSoonDays = &alertDueSoonDays
+	alertStaleDays, _ := strconv.Atoi(strings.TrimSpace(m.alertStaleDaysInput.Value()))
+	m.config.AlertStaleDays = &alertStaleDays
+	alertInboxThreshold, _ := strconv.Atoi(strings.TrimSpace(m.alertInboxThresholdInput.Value()))
+	m.config.AlertInboxThreshold = &alertInboxThreshold
+	alertBlockedDays, _ := strconv.Atoi(strings.TrimSpace(m.alertBlockedDaysInput.Value()))
+	m.config.AlertBlockedDays = &alertBlockedDays
+	alertProjectStaleDays, _ := strconv.Atoi(strings.TrimSpace(m.alertProjectStaleDaysInput.Value()))
+	m.config.AlertProjectStaleDays = &alertProjectStaleDays
+
+	// Persist outliner collapsed sections
+	collapsed := make(map[string]bool)
+	for i, name := range outlinerSectionNames {
+		if m.outlinerCollapsed[i] {
+			collapsed[name] = true
+		}
+	}
+	if len(collapsed) > 0 {
+		m.config.OutlinerCollapsedSections = collapsed
+	} else {
+		m.config.OutlinerCollapsedSections = nil
+	}
+
+	mgr := m.configManager
+	cfg := m.config
 	return func() tea.Msg {
-		editor := strings.TrimSpace(m.editorInput.Value())
-		context := strings.TrimSpace(m.contextInput.Value())
-		undoDepth, _ := strconv.Atoi(strings.TrimSpace(m.undoDepthInput.Value()))
-		dueSoon, _ := strconv.Atoi(strings.TrimSpace(m.dueSoonInput.Value()))
-		futureDays, _ := strconv.Atoi(strings.TrimSpace(m.futureInput.Value()))
-		oldDays, _ := strconv.Atoi(strings.TrimSpace(m.oldDaysInput.Value()))
-		completedHours, _ := strconv.Atoi(strings.TrimSpace(m.completedHoursInput.Value()))
-
-		m.config.Editor = editor
-		m.config.DefaultContext = context
-		m.config.UndoHistoryDepth = &undoDepth
-		m.config.TUIBackgroundColor = normalizeHexColor(m.bgColorInput.Value())
-		m.config.TUICursorColor = normalizeHexColor(m.cursorColorInput.Value())
-		m.config.TUICursorTextColor = normalizeHexColor(m.cursorTextColorInput.Value())
-		m.config.Palette = config.PaletteColors{
-			NormalText: normalizeHexColor(m.normalTextInput.Value()),
-			Muted:      normalizeHexColor(m.mutedInput.Value()),
-			Primary:    normalizeHexColor(m.primaryInput.Value()),
-			Secondary:  normalizeHexColor(m.secondaryInput.Value()),
-			Accent:     normalizeHexColor(m.accentInput.Value()),
-			Success:    normalizeHexColor(m.successInput.Value()),
-			Warning:    normalizeHexColor(m.warningInput.Value()),
-			Error:      normalizeHexColor(m.errorColorInput.Value()),
-			Border:     normalizeHexColor(m.borderInput.Value()),
-		}
-		m.config.DefaultProjectView = defaultProjectViewValues[m.defaultViewCursor]
-		m.config.ReviewDueSoonDays = &dueSoon
-		m.config.ReviewFutureDays = &futureDays
-		m.config.ReviewOldDays = &oldDays
-		m.config.ReviewCompletedHours = &completedHours
-		recentActivityLimit, _ := strconv.Atoi(strings.TrimSpace(m.recentActivityInput.Value()))
-		m.config.RecentActivityLimit = &recentActivityLimit
-		m.config.RecentActivityShowAll = &m.recentActivityShowAll
-		m.config.LinkedTaskJumpToNew = &m.linkedTaskJump
-		maxPinned, _ := strconv.Atoi(strings.TrimSpace(m.maxPinnedInput.Value()))
-		m.config.MaxPinnedBarItems = &maxPinned
-		maxRecentVisits, _ := strconv.Atoi(strings.TrimSpace(m.maxRecentTaskVisitsInput.Value()))
-		m.config.MaxRecentTaskVisits = &maxRecentVisits
-		popupTimeout, _ := strconv.Atoi(strings.TrimSpace(m.popupTimeoutInput.Value()))
-		m.config.PopupTimeoutSeconds = &popupTimeout
-		sectionLimitActive, _ := strconv.Atoi(strings.TrimSpace(m.sectionLimitActiveInput.Value()))
-		m.config.SectionLimitActive = &sectionLimitActive
-		sectionLimitNext, _ := strconv.Atoi(strings.TrimSpace(m.sectionLimitNextInput.Value()))
-		m.config.SectionLimitNext = &sectionLimitNext
-		sectionLimitInbox, _ := strconv.Atoi(strings.TrimSpace(m.sectionLimitInboxInput.Value()))
-		m.config.SectionLimitInbox = &sectionLimitInbox
-		sectionLimitStandby, _ := strconv.Atoi(strings.TrimSpace(m.sectionLimitStandbyInput.Value()))
-		m.config.SectionLimitStandby = &sectionLimitStandby
-		sectionLimitWaiting, _ := strconv.Atoi(strings.TrimSpace(m.sectionLimitWaitingInput.Value()))
-		m.config.SectionLimitWaiting = &sectionLimitWaiting
-		sectionLimitSomeday, _ := strconv.Atoi(strings.TrimSpace(m.sectionLimitSomedayInput.Value()))
-		m.config.SectionLimitSomeday = &sectionLimitSomeday
-		sectionLimitReview, _ := strconv.Atoi(strings.TrimSpace(m.sectionLimitReviewInput.Value()))
-		m.config.SectionLimitReview = &sectionLimitReview
-		m.config.AttachmentEditor = strings.TrimSpace(m.attachmentEditorInput.Value())
-		m.config.CodeEditor = strings.TrimSpace(m.codeEditorInput.Value())
-		// Persist column default visibility
-		m.config.TreeDefaultColumns = columnDefaultsToMap(m.treeColumnDefaults)
-		m.config.OutlinerDefaultColumns = columnDefaultsToMap(m.outlinerColumnDefaults)
-
-		// Persist priority display modes (empty string = conditional, omitted from JSON)
-		m.config.TreePriorityMode = priorityModeValues[m.treePriorityMode]
-		m.config.OutlinerPriorityMode = priorityModeValues[m.outlinerPriorityMode]
-		// Omit "conditional" from config (it's the default)
-		if m.config.TreePriorityMode == PriorityModeConditional {
-			m.config.TreePriorityMode = ""
-		}
-		if m.config.OutlinerPriorityMode == PriorityModeConditional {
-			m.config.OutlinerPriorityMode = ""
-		}
-
-		// Persist cross-project outliner sidebar default
-		m.config.CrossOutlinerSidebarEnabled = boolPtr(m.crossOutlinerSidebar)
-
-		// Persist stages
-		m.config.Stages = make([]string, len(m.stages))
-		copy(m.config.Stages, m.stages)
-
-		// Persist alert settings
-		m.config.AlertDailyReviewEnabled = boolPtr(m.alertDailyReviewEnabled)
-		m.config.AlertWeeklyReviewEnabled = boolPtr(m.alertWeeklyReviewEnabled)
-		m.config.AlertOverdueEnabled = boolPtr(m.alertOverdueEnabled)
-		m.config.AlertDueSoonEnabled = boolPtr(m.alertDueSoonEnabled)
-		m.config.AlertStaleEnabled = boolPtr(m.alertStaleEnabled)
-		m.config.AlertInboxEnabled = boolPtr(m.alertInboxEnabled)
-		m.config.AlertBlockedEnabled = boolPtr(m.alertBlockedEnabled)
-		m.config.AlertProjectHealthEnabled = boolPtr(m.alertProjectHealthEnabled)
-
-		alertDailyHour, _ := strconv.Atoi(strings.TrimSpace(m.alertDailyReviewHourInput.Value()))
-		m.config.AlertDailyReviewHour = &alertDailyHour
-		m.config.AlertWeeklyReviewDay = &m.alertWeeklyReviewDay
-
-		alertDueSoonDays, _ := strconv.Atoi(strings.TrimSpace(m.alertDueSoonDaysInput.Value()))
-		m.config.AlertDueSoonDays = &alertDueSoonDays
-		alertStaleDays, _ := strconv.Atoi(strings.TrimSpace(m.alertStaleDaysInput.Value()))
-		m.config.AlertStaleDays = &alertStaleDays
-		alertInboxThreshold, _ := strconv.Atoi(strings.TrimSpace(m.alertInboxThresholdInput.Value()))
-		m.config.AlertInboxThreshold = &alertInboxThreshold
-		alertBlockedDays, _ := strconv.Atoi(strings.TrimSpace(m.alertBlockedDaysInput.Value()))
-		m.config.AlertBlockedDays = &alertBlockedDays
-		alertProjectStaleDays, _ := strconv.Atoi(strings.TrimSpace(m.alertProjectStaleDaysInput.Value()))
-		m.config.AlertProjectStaleDays = &alertProjectStaleDays
-
-		// Persist outliner collapsed sections
-		collapsed := make(map[string]bool)
-		for i, name := range outlinerSectionNames {
-			if m.outlinerCollapsed[i] {
-				collapsed[name] = true
-			}
-		}
-		if len(collapsed) > 0 {
-			m.config.OutlinerCollapsedSections = collapsed
-		} else {
-			m.config.OutlinerCollapsedSections = nil
-		}
-
-		if err := m.configManager.Save(m.config); err != nil {
+		if err := mgr.Save(cfg); err != nil {
 			return ErrorMsg{Err: fmt.Errorf("failed to save settings: %w", err)}
 		}
 
