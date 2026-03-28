@@ -791,7 +791,7 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint:go
 				}
 				m.replaceView(ViewProjectTree, m.projectTree)
 			} else {
-				if m.projectTree == nil {
+				if m.projectTree == nil || m.currentProject == nil || msg.Project.ID != m.currentProject.ID {
 					m.switchToProject(msg.Project, true)
 				}
 				m.showView(ViewProjectTree, m.projectTree)
