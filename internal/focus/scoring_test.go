@@ -370,6 +370,14 @@ func TestScoringFactors(t *testing.T) {
 		waiting.Section = models.SectionWaiting
 		waitingScore := computeCrossProjectScore(waiting, project, nil, now)
 
+		review := baseTask()
+		review.Section = models.SectionReview
+		reviewScore := computeCrossProjectScore(review, project, nil, now)
+
+		standby := baseTask()
+		standby.Section = models.SectionStandby
+		standbyScore := computeCrossProjectScore(standby, project, nil, now)
+
 		someday := baseTask()
 		someday.Section = models.SectionSomeday
 		somedayScore := computeCrossProjectScore(someday, project, nil, now)
@@ -380,8 +388,14 @@ func TestScoringFactors(t *testing.T) {
 		if inboxScore <= waitingScore {
 			t.Errorf("Inbox score (%d) should be > Waiting score (%d)", inboxScore, waitingScore)
 		}
-		if waitingScore <= somedayScore {
-			t.Errorf("Waiting score (%d) should be > Someday score (%d)", waitingScore, somedayScore)
+		if reviewScore != waitingScore {
+			t.Errorf("Review score (%d) should equal Waiting score (%d)", reviewScore, waitingScore)
+		}
+		if waitingScore <= standbyScore {
+			t.Errorf("Waiting score (%d) should be > Standby score (%d)", waitingScore, standbyScore)
+		}
+		if standbyScore <= somedayScore {
+			t.Errorf("Standby score (%d) should be > Someday score (%d)", standbyScore, somedayScore)
 		}
 	})
 

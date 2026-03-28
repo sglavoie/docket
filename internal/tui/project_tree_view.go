@@ -81,6 +81,10 @@ func (m *ProjectTreeModel) NavigateToTask(task *models.Task) tea.Cmd {
 			m.viewMode = ViewModeWaiting
 		case models.SectionSomeday:
 			m.viewMode = ViewModeSomeday
+		case models.SectionReview:
+			m.viewMode = ViewModeReview
+		case models.SectionStandby:
+			m.viewMode = ViewModeStandby
 		default:
 			m.viewMode = ViewModeActive
 		}

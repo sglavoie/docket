@@ -82,12 +82,16 @@ func computeCrossProjectScore(task *models.Task, project *models.Project, cfg *c
 	unblockingBonus := min(blockedByThisCount, 3)
 	score += unblockingBonus * 150
 
-	// Section scoring: Next is boosted, Waiting/Someday penalized
+	// Section scoring: Next is boosted, Waiting/Review/Standby/Someday penalized
 	switch task.Section {
 	case models.SectionNext:
 		score += 100
 	case models.SectionWaiting:
 		score -= 100
+	case models.SectionReview:
+		score -= 100
+	case models.SectionStandby:
+		score -= 200
 	case models.SectionSomeday:
 		score -= 300
 	}

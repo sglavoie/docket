@@ -278,6 +278,8 @@ func (m *ProjectTreeModel) handlePrefixKey(key string, visible []*TreeNode) (tea
 							m.viewMode = ViewModeSomeday
 						case models.SectionReview:
 							m.viewMode = ViewModeReview
+						case models.SectionStandby:
+							m.viewMode = ViewModeStandby
 						default:
 							m.viewMode = ViewModeActive
 						}

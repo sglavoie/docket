@@ -91,12 +91,16 @@ func (m *PriorityViewModel) computeSuggestionScore(task *models.Task) int {
 		3)
 	score += unblockingBonus * 150
 
-	// Section penalty: deprioritize Next, Waiting, and Someday section tasks
+	// Section penalty: deprioritize non-Active section tasks
 	switch task.Section {
 	case models.SectionNext:
 		score -= 100
 	case models.SectionWaiting:
 		score -= 200
+	case models.SectionReview:
+		score -= 200
+	case models.SectionStandby:
+		score -= 250
 	case models.SectionSomeday:
 		score -= 300
 	}
