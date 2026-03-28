@@ -283,6 +283,82 @@ func TestBulkCaptureModel_rejectsInvalidTitles(t *testing.T) {
 	}
 }
 
+func TestBulkCaptureModel_appliesRecurrence(t *testing.T) {
+	project := &models.Project{
+		ID:   "test-project",
+		Name: "Test Project",
+	}
+
+	m := NewBulkCaptureModel(project)
+	m.input.SetValue("Daily standup ~daily")
+
+	cmd := m.createTasks()
+	if cmd != nil {
+		cmd()
+	}
+
+	if m.created != 1 {
+		t.Fatalf("created = %d, want 1", m.created)
+	}
+
+	task := project.Tasks[0]
+	if task.Recurrence == nil {
+		t.Fatal("recurrence should be set")
+	}
+	if task.Recurrence.Unit != models.RecurrenceDaily || task.Recurrence.Interval != 1 {
+		t.Errorf("recurrence = %v, want daily", task.Recurrence)
+	}
+}
+
+func TestBulkCaptureModel_appliesSection(t *testing.T) {
+	project := &models.Project{
+		ID:       "test-project",
+		Name:     "Test Project",
+		Sections: []string{models.SectionInbox, "Next"},
+	}
+
+	m := NewBulkCaptureModel(project)
+	m.input.SetValue("Important task /next")
+
+	cmd := m.createTasks()
+	if cmd != nil {
+		cmd()
+	}
+
+	if m.created != 1 {
+		t.Fatalf("created = %d, want 1", m.created)
+	}
+
+	task := project.Tasks[0]
+	if task.Section != "Next" {
+		t.Errorf("section = %q, want %q", task.Section, "Next")
+	}
+}
+
+func TestBulkCaptureModel_appliesStatus(t *testing.T) {
+	project := &models.Project{
+		ID:   "test-project",
+		Name: "Test Project",
+	}
+
+	m := NewBulkCaptureModel(project)
+	m.input.SetValue("Blocked task $blocked")
+
+	cmd := m.createTasks()
+	if cmd != nil {
+		cmd()
+	}
+
+	if m.created != 1 {
+		t.Fatalf("created = %d, want 1", m.created)
+	}
+
+	task := project.Tasks[0]
+	if task.Status != models.StatusBlocked {
+		t.Errorf("status = %q, want %q", task.Status, models.StatusBlocked)
+	}
+}
+
 func TestNewBulkCaptureModel(t *testing.T) {
 	project := &models.Project{
 		ID:   "test-project",

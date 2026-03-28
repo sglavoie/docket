@@ -213,22 +213,60 @@ func (m *BulkCaptureModel) createTasks() tea.Cmd {
 		// Create all valid tasks
 		var newTasks []*models.Task
 		for _, result := range validResults {
+			// Determine target section and custom section
+			targetSection := result.section
+			var customSection string
+			if targetSection == "" {
+				targetSection = models.SectionInbox
+			} else if !models.IsGTDSection(targetSection) {
+				customSection = targetSection
+				targetSection = models.SectionInbox
+			}
+
+			// Ensure target section exists
+			if targetSection != models.SectionInbox && !m.project.HasSection(targetSection) {
+				m.project.EnsureSection(targetSection)
+			}
+			if customSection != "" && !m.project.HasSection(customSection) {
+				m.project.EnsureSection(customSection)
+			}
+
 			task := &models.Task{
-				ID:        uuid.New().String(),
-				ShortID:   m.project.GetNextShortID(),
-				Type:      result.taskType,
-				Title:     result.title,
-				Status:    models.StatusTodo,
-				Priority:  result.priority,
-				Section:   models.SectionInbox,
-				ParentID:  result.parentID,
-				DueDate:   result.dueDate,
-				CreatedAt: time.Now(),
-				UpdatedAt: time.Now(),
+				ID:            uuid.New().String(),
+				ShortID:       m.project.GetNextShortID(),
+				Type:          result.taskType,
+				Title:         result.title,
+				Status:        models.StatusTodo,
+				Priority:      result.priority,
+				Section:       targetSection,
+				CustomSection: customSection,
+				ParentID:      result.parentID,
+				DueDate:       result.dueDate,
+				Recurrence:    result.recurrence,
+				CreatedAt:     time.Now(),
+				UpdatedAt:     time.Now(),
 			}
 
 			for _, tag := range result.tags {
 				task.AddTag(tag)
+			}
+
+			// Apply status transition using Task methods (handles auto-triage)
+			switch result.status {
+			case models.StatusInProgress:
+				task.Start()
+				if result.activate {
+					task.Activate()
+				}
+			case models.StatusBlocked:
+				task.Block()
+			case models.StatusDone:
+				task.Complete()
+			case models.StatusCanceled:
+				task.Cancel()
+			case models.StatusReview:
+				task.Review()
+			default:
 			}
 
 			newTasks = append(newTasks, task)
