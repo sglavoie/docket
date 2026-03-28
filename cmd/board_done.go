@@ -53,6 +53,9 @@ func runBoardDone(cmd *cobra.Command, args []string) error {
 		t.ApplyTransition(models.StatusDone)
 	})
 
+	// Generate recurring task instances for completed recurring tasks
+	generated := project.GenerateRecurringInstances()
+
 	if err := SaveProject(project, &SaveOptions{
 		EvaluateRules: true, Config: cfg, ConfigManager: mgr,
 		PrevStates: prevStates,
@@ -61,5 +64,11 @@ func runBoardDone(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to save: %w", err)
 	}
 
-	return out.OutputTask(project.Name, "Done", task)
+	if err := out.OutputTask(project.Name, "Done", task); err != nil {
+		return err
+	}
+	if !out.Quiet && !out.JSON && generated > 0 {
+		fmt.Printf("Created %s in Inbox\n", Pluralize(generated, "recurring task instance", "recurring task instances"))
+	}
+	return nil
 }
