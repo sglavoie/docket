@@ -85,13 +85,21 @@ func runNoteList(cmd *cobra.Command, args []string) error {
 		}
 		entries := make([]noteJSONEntry, len(filtered))
 		for i, n := range filtered {
+			tags := n.Tags
+			if tags == nil {
+				tags = []string{}
+			}
+			linked := n.LinkedTasks
+			if linked == nil {
+				linked = []string{}
+			}
 			entries[i] = noteJSONEntry{
 				Title:       n.Title,
 				Filename:    n.Filename,
-				Tags:        n.Tags,
+				Tags:        tags,
 				CreatedAt:   n.CreatedAt,
 				ModifiedAt:  n.ModifiedAt,
-				LinkedTasks: n.LinkedTasks,
+				LinkedTasks: linked,
 				Pinned:      n.Pinned,
 			}
 		}
