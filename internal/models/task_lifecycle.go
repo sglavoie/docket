@@ -70,6 +70,7 @@ func (t *Task) Cancel() {
 	t.Status = StatusCanceled
 	t.CompletedAt = &now
 	t.UpdatedAt = now
+	t.Active = false
 	t.SnoozedUntil = nil
 	t.Section = SectionCompleted
 }

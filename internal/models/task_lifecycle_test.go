@@ -266,17 +266,26 @@ func TestReopen(t *testing.T) {
 	}
 }
 
+func TestCancelClearsActive(t *testing.T) {
+	task, err := NewTask("t1", 1, TaskTypeTask, "Test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	task.Active = true
+	task.Cancel()
+
+	if task.Active {
+		t.Error("expected Active to be false after Cancel")
+	}
+}
+
 func TestReopenClearsActive(t *testing.T) {
 	task, err := NewTask("t1", 1, TaskTypeTask, "Test")
 	if err != nil {
 		t.Fatal(err)
 	}
 	task.Active = true
-	// Cancel doesn't clear Active, so Active remains true after Cancel
-	task.Cancel()
-	if !task.Active {
-		t.Skip("Cancel clears Active — test precondition changed, review fix")
-	}
+	task.Complete()
 	task.Reopen()
 
 	if task.Active {
