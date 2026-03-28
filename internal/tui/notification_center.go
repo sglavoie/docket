@@ -380,7 +380,7 @@ func (m *NotificationCenterModel) View() tea.View {
 				}
 				wrapped := wrapText(full, maxLabelWidth)
 				for li, wl := range wrapped {
-					styled := m.styleAlertLine(wl, title, details)
+					styled := m.styleAlertLine(wl, details)
 					if item.dismissed {
 						styled = MutedStyle.Render(wl)
 					}
@@ -401,7 +401,7 @@ func (m *NotificationCenterModel) View() tea.View {
 					full += "  " + details
 				}
 				truncated := truncateToWidth(full, maxLabelWidth)
-				styled := m.styleAlertLine(truncated, title, details)
+				styled := m.styleAlertLine(truncated, details)
 				if item.dismissed {
 					styled = MutedStyle.Render(truncated)
 				}
@@ -507,7 +507,7 @@ var alertDetailsStyle = InfoStatusStyle
 
 // styleAlertLine renders a line with the details portion styled in blue.
 // The line is already truncated/wrapped plain text combining title and details.
-func (m *NotificationCenterModel) styleAlertLine(line, title, details string) string {
+func (m *NotificationCenterModel) styleAlertLine(line, details string) string {
 	if details == "" {
 		return line
 	}
