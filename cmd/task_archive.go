@@ -164,6 +164,9 @@ func runTaskArchiveAll(out MutateOutput) error {
 	}
 
 	if out.JSON {
+		if results == nil {
+			results = []projectResult{}
+		}
 		summary := struct {
 			TotalArchived int             `json:"total_archived"`
 			Projects      []projectResult `json:"projects"`

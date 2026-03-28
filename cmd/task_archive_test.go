@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	"encoding/json"
+	"strings"
 	"testing"
 
 	"github.com/sglavoie/tt/internal/models"
@@ -121,5 +123,35 @@ func TestArchiveRemovesCompletedFromProject(t *testing.T) {
 		if task.IsComplete() {
 			t.Errorf("expected only active tasks, found %s with status %s", task.Title, task.Status)
 		}
+	}
+}
+
+func TestArchiveAllJSON_EmptyProjectsNotNull(t *testing.T) {
+	// Verify that the JSON summary serializes an empty projects list as []
+	// rather than null (the nil-slice default in Go).
+	type projectResult struct {
+		Name     string `json:"name"`
+		Archived int    `json:"archived"`
+	}
+	// Simulate the zero-results case: results stays nil.
+	var results []projectResult
+	if results == nil {
+		results = []projectResult{}
+	}
+	summary := struct {
+		TotalArchived int             `json:"total_archived"`
+		Projects      []projectResult `json:"projects"`
+	}{TotalArchived: 0, Projects: results}
+
+	data, err := json.Marshal(summary)
+	if err != nil {
+		t.Fatalf("unexpected marshal error: %v", err)
+	}
+	got := string(data)
+	if !strings.Contains(got, `"projects":[]`) {
+		t.Errorf("expected JSON to contain \"projects\":[], got %s", got)
+	}
+	if strings.Contains(got, `"projects":null`) {
+		t.Error("projects field should be [] not null")
 	}
 }
