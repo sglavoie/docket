@@ -47,11 +47,17 @@ func runBoardDone(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("cannot mark done: %s", msg)
 	}
 
+	prevStates := CaptureTaskStates(project.Tasks)
+
 	project.MutateTask(task.ID, func(t *models.Task) {
 		t.ApplyTransition(models.StatusDone)
 	})
 
-	if err := SaveProject(project, &SaveOptions{Config: cfg, ConfigManager: mgr}); err != nil {
+	if err := SaveProject(project, &SaveOptions{
+		EvaluateRules: true, Config: cfg, ConfigManager: mgr,
+		PrevStates: prevStates,
+		UndoAction: "Board Done", UndoContext: fmt.Sprintf("#%d %s", task.ShortID, task.Title),
+	}); err != nil {
 		return fmt.Errorf("failed to save: %w", err)
 	}
 

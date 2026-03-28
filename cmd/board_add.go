@@ -124,7 +124,10 @@ func runBoardAdd(cmd *cobra.Command, args []string) error {
 	targetProject.Tasks = append(targetProject.Tasks, task)
 	targetProject.BuildTaskTree()
 
-	if err := SaveProject(targetProject, &SaveOptions{Config: cfg, ConfigManager: mgr}); err != nil {
+	if err := SaveProject(targetProject, &SaveOptions{
+		EvaluateRules: true, Config: cfg, ConfigManager: mgr,
+		UndoAction: "Board Add", UndoContext: fmt.Sprintf("#%d %s", task.ShortID, task.Title),
+	}); err != nil {
 		return fmt.Errorf("failed to save: %w", err)
 	}
 

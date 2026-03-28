@@ -86,6 +86,61 @@ func TestCheckDuplicateIDs(t *testing.T) {
 	})
 }
 
+func TestCheckDuplicateShortIDs(t *testing.T) {
+	t.Run("duplicate within project", func(t *testing.T) {
+		project := testutil.NewTestProject("P1")
+		task1 := testutil.NewTestTask("Task A", models.TaskTypeTask)
+		task2 := testutil.NewTestTask("Task B", models.TaskTypeTask)
+		task1.ShortID = 5
+		task2.ShortID = 5 // force duplicate
+
+		project.Tasks = []*models.Task{task1, task2}
+
+		results := &doctorResults{}
+		checkDuplicateShortIDs([]*models.Project{project}, results)
+
+		if len(results.duplicateShortIDs) != 1 {
+			t.Fatalf("expected 1 duplicate short ID issue, got %d", len(results.duplicateShortIDs))
+		}
+	})
+
+	t.Run("no duplicates", func(t *testing.T) {
+		project := testutil.NewTestProject("P1")
+		task1 := testutil.NewTestTask("Task A", models.TaskTypeTask)
+		task2 := testutil.NewTestTask("Task B", models.TaskTypeTask)
+		task1.ShortID = 1
+		task2.ShortID = 2
+
+		project.Tasks = []*models.Task{task1, task2}
+
+		results := &doctorResults{}
+		checkDuplicateShortIDs([]*models.Project{project}, results)
+
+		if len(results.duplicateShortIDs) != 0 {
+			t.Fatalf("expected 0 duplicate short ID issues, got %d", len(results.duplicateShortIDs))
+		}
+	})
+
+	t.Run("duplicates across projects not flagged", func(t *testing.T) {
+		p1 := testutil.NewTestProject("P1")
+		p2 := testutil.NewTestProject("P2")
+		task1 := testutil.NewTestTask("Task A", models.TaskTypeTask)
+		task2 := testutil.NewTestTask("Task B", models.TaskTypeTask)
+		task1.ShortID = 1
+		task2.ShortID = 1 // same short ID but different projects — OK
+
+		p1.Tasks = []*models.Task{task1}
+		p2.Tasks = []*models.Task{task2}
+
+		results := &doctorResults{}
+		checkDuplicateShortIDs([]*models.Project{p1, p2}, results)
+
+		if len(results.duplicateShortIDs) != 0 {
+			t.Fatalf("expected 0 issues (different projects), got %d", len(results.duplicateShortIDs))
+		}
+	})
+}
+
 func TestCheckBrokenParentRefs(t *testing.T) {
 	project := testutil.NewTestProject("P1")
 	parent := testutil.NewTestTask("Parent", models.TaskTypeEpic)

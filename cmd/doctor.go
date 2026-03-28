@@ -32,6 +32,7 @@ type doctorIssue struct {
 type doctorResults struct {
 	orphanedCrossRefs []doctorIssue
 	duplicateIDs      []doctorIssue
+	duplicateShortIDs []doctorIssue
 	deadDependencies  []doctorIssue
 	missingTaskFiles  []doctorIssue
 	brokenParentRefs  []doctorIssue
@@ -39,8 +40,8 @@ type doctorResults struct {
 }
 
 func (r *doctorResults) totalIssues() int {
-	return len(r.orphanedCrossRefs) + len(r.duplicateIDs) + len(r.deadDependencies) +
-		len(r.missingTaskFiles) + len(r.brokenParentRefs)
+	return len(r.orphanedCrossRefs) + len(r.duplicateIDs) + len(r.duplicateShortIDs) +
+		len(r.deadDependencies) + len(r.missingTaskFiles) + len(r.brokenParentRefs)
 }
 
 func runDoctor(cmd *cobra.Command, _ []string) error {
@@ -71,6 +72,7 @@ func runDoctor(cmd *cobra.Command, _ []string) error {
 	checkMissingTaskFiles(projects, results)
 	checkEmptyProjects(loadedProjects, results)
 	checkDuplicateIDs(loadedProjects, results)
+	checkDuplicateShortIDs(loadedProjects, results)
 	checkBrokenParentRefs(loadedProjects, results)
 	checkDeadDependencies(loadedProjects, results)
 	checkOrphanedCrossRefs(loadedProjects, cfg, results)
@@ -145,6 +147,23 @@ func checkDuplicateIDs(projects []*models.Project, results *doctorResults) {
 				})
 			} else {
 				globalIDs[task.ID] = project.Name
+			}
+		}
+	}
+}
+
+func checkDuplicateShortIDs(projects []*models.Project, results *doctorResults) {
+	for _, project := range projects {
+		seen := make(map[int]string) // shortID -> first task title
+		for _, task := range project.Tasks {
+			if first, exists := seen[task.ShortID]; exists {
+				results.duplicateShortIDs = append(results.duplicateShortIDs, doctorIssue{
+					project: project.Name,
+					task:    task.ID,
+					detail:  fmt.Sprintf("short ID #%d used by %q and %q", task.ShortID, first, task.Title),
+				})
+			} else {
+				seen[task.ShortID] = task.Title
 			}
 		}
 	}
@@ -262,6 +281,18 @@ func fixIssues(projects []*models.Project, cfg interface{ GetProject(string) *mo
 	dirtyProjects := make(map[string]bool)
 
 	for _, project := range projects {
+		// Fix duplicate short IDs by reassigning duplicates
+		seenShortIDs := make(map[int]bool)
+		for _, task := range project.Tasks {
+			if seenShortIDs[task.ShortID] {
+				newID := project.GetNextShortID()
+				fmt.Printf("  Fixed: reassigned duplicate short ID #%d to #%d for task %s in %s\n", task.ShortID, newID, task.Title, project.Name)
+				task.ShortID = newID
+				dirtyProjects[project.ID] = true
+			}
+			seenShortIDs[task.ShortID] = true
+		}
+
 		taskMap := buildTaskMap(project)
 		for _, task := range project.Tasks {
 			// Fix orphaned cross-project refs and dead dependencies in DependsOn
@@ -347,6 +378,7 @@ func buildTaskIDSet(project *models.Project) map[string]bool {
 func printResults(results *doctorResults) {
 	printSection("Missing task files", results.missingTaskFiles)
 	printSection("Duplicate task IDs", results.duplicateIDs)
+	printSection("Duplicate short IDs", results.duplicateShortIDs)
 	printSection("Broken parent refs", results.brokenParentRefs)
 	printSection("Dead dependency links", results.deadDependencies)
 	printSection("Orphaned cross-project refs", results.orphanedCrossRefs)
