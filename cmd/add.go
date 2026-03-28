@@ -54,7 +54,7 @@ var (
 var (
 	inlinePriorityRe  = regexp.MustCompile(`\s*!([1-5])\s*`)
 	invalidPriorityRe = regexp.MustCompile(`\s*!([0-9]+)\s*`)
-	inlineTagRe       = regexp.MustCompile(`\s*#(\w+)\s*`)
+	inlineTagRe       = regexp.MustCompile(`\s*#([\w][\w.-]*)\s*`)
 	multiSpaceRe      = regexp.MustCompile(`\s+`)
 )
 

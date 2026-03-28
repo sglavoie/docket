@@ -79,7 +79,7 @@ func ParseSearchQuery(input string) *ParsedSearchQuery {
 	input = prioritySingleRe.ReplaceAllString(input, " ")
 
 	// Extract tags: #word
-	tagRe := regexp.MustCompile(`\s*#(\w+)\s*`)
+	tagRe := regexp.MustCompile(`\s*#([\w][\w.-]*)\s*`)
 	for _, match := range tagRe.FindAllStringSubmatch(input, -1) {
 		if len(match) == 2 {
 			result.Tags = append(result.Tags, match[1])

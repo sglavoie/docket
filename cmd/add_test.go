@@ -131,6 +131,27 @@ func TestParseInlineMetadata(t *testing.T) {
 			wantPriority: 0,
 			wantTags:     nil,
 		},
+		{
+			name:         "tag with hyphen",
+			input:        "Fix bug #my-tag",
+			wantTitle:    "Fix bug",
+			wantPriority: 0,
+			wantTags:     []string{"my-tag"},
+		},
+		{
+			name:         "tag with dot",
+			input:        "Release #v2.0",
+			wantTitle:    "Release",
+			wantPriority: 0,
+			wantTags:     []string{"v2.0"},
+		},
+		{
+			name:         "tag with hyphen and dot",
+			input:        "Deploy #my-app.v2",
+			wantTitle:    "Deploy",
+			wantPriority: 0,
+			wantTags:     []string{"my-app.v2"},
+		},
 	}
 
 	for _, tt := range tests {

@@ -539,7 +539,7 @@ func (m *CommandPaletteModel) parseInlineTask(input string) *inlineTaskPreview {
 	}
 
 	// Extract tags: #word
-	tagRe := regexp.MustCompile(`\s*#(\w+)\s*`)
+	tagRe := regexp.MustCompile(`\s*#([\w][\w.-]*)\s*`)
 	tagMatches := tagRe.FindAllStringSubmatch(input, -1)
 	for _, match := range tagMatches {
 		if len(match) > 1 {
