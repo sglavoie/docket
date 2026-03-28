@@ -316,22 +316,6 @@ func cleanRefs(refs []string, cfg interface{ GetProject(string) *models.Project 
 	return valid
 }
 
-// cleanCrossRefs filters only cross-project refs, keeping same-project refs untouched.
-func cleanCrossRefs(refs []string, cfg interface{ GetProject(string) *models.Project }, projectTaskMaps map[string]map[string]bool) []string {
-	var valid []string
-	for _, ref := range refs {
-		parsed := models.ParseTaskRef(ref)
-		if parsed.IsCrossProject() {
-			if isValidCrossRef(parsed, cfg, projectTaskMaps) {
-				valid = append(valid, ref)
-			}
-		} else {
-			valid = append(valid, ref)
-		}
-	}
-	return valid
-}
-
 func isValidCrossRef(ref models.TaskRef, cfg interface{ GetProject(string) *models.Project }, projectTaskMaps map[string]map[string]bool) bool {
 	targetProject := cfg.GetProject(ref.ProjectID)
 	if targetProject == nil {

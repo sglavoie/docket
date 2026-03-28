@@ -22,7 +22,6 @@ func TestTaskShowJSONIncludesPinnedAt(t *testing.T) {
 		Tags:      []string{},
 		DependsOn: []string{},
 		RelatedTo: []string{},
-		Children:  []*models.Task{},
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
 	}
@@ -56,7 +55,7 @@ func TestTaskShowJSONIncludesPinnedAt(t *testing.T) {
 	}
 
 	// Verify pinned_at is present in the JSON output
-	var raw map[string]interface{}
+	var raw map[string]any
 	if err := json.Unmarshal(data, &raw); err != nil {
 		t.Fatalf("failed to unmarshal: %v", err)
 	}
@@ -85,7 +84,6 @@ func TestTaskShowJSONIncludesActivity(t *testing.T) {
 		Tags:      []string{},
 		DependsOn: []string{},
 		RelatedTo: []string{},
-		Children:  []*models.Task{},
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
 	}
@@ -115,7 +113,7 @@ func TestTaskShowJSONIncludesActivity(t *testing.T) {
 		t.Fatalf("failed to marshal: %v", err)
 	}
 
-	var raw map[string]interface{}
+	var raw map[string]any
 	if err := json.Unmarshal(data, &raw); err != nil {
 		t.Fatalf("failed to unmarshal: %v", err)
 	}
@@ -125,7 +123,7 @@ func TestTaskShowJSONIncludesActivity(t *testing.T) {
 		t.Fatal("activity field missing from JSON output")
 	}
 
-	activities, ok := activityRaw.([]interface{})
+	activities, ok := activityRaw.([]any)
 	if !ok {
 		t.Fatalf("activity field is not an array: %T", activityRaw)
 	}
