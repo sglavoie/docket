@@ -302,6 +302,8 @@ func (m *QuickCaptureModel) createTask(openAfter bool) tea.Cmd {
 		task.Cancel()
 	case models.StatusReview:
 		task.Review()
+	case models.StatusStandby:
+		task.Standby()
 	default:
 	}
 

@@ -359,6 +359,60 @@ func TestBulkCaptureModel_appliesStatus(t *testing.T) {
 	}
 }
 
+func TestBulkCaptureModel_appliesStandbyStatus(t *testing.T) {
+	project := &models.Project{
+		ID:   "test-project",
+		Name: "Test Project",
+	}
+
+	m := NewBulkCaptureModel(project)
+	m.input.SetValue("On hold task $standby")
+
+	cmd := m.createTasks()
+	if cmd != nil {
+		cmd()
+	}
+
+	if m.created != 1 {
+		t.Fatalf("created = %d, want 1", m.created)
+	}
+
+	task := project.Tasks[0]
+	if task.Status != models.StatusStandby {
+		t.Errorf("status = %q, want %q", task.Status, models.StatusStandby)
+	}
+	if task.Section != models.SectionStandby {
+		t.Errorf("section = %q, want %q", task.Section, models.SectionStandby)
+	}
+}
+
+func TestBulkCaptureModel_appliesReviewStatus(t *testing.T) {
+	project := &models.Project{
+		ID:   "test-project",
+		Name: "Test Project",
+	}
+
+	m := NewBulkCaptureModel(project)
+	m.input.SetValue("Review this $review")
+
+	cmd := m.createTasks()
+	if cmd != nil {
+		cmd()
+	}
+
+	if m.created != 1 {
+		t.Fatalf("created = %d, want 1", m.created)
+	}
+
+	task := project.Tasks[0]
+	if task.Status != models.StatusReview {
+		t.Errorf("status = %q, want %q", task.Status, models.StatusReview)
+	}
+	if task.Section != models.SectionReview {
+		t.Errorf("section = %q, want %q", task.Section, models.SectionReview)
+	}
+}
+
 func TestNewBulkCaptureModel(t *testing.T) {
 	project := &models.Project{
 		ID:   "test-project",

@@ -266,6 +266,8 @@ func (m *BulkCaptureModel) createTasks() tea.Cmd {
 				task.Cancel()
 			case models.StatusReview:
 				task.Review()
+			case models.StatusStandby:
+				task.Standby()
 			default:
 			}
 
