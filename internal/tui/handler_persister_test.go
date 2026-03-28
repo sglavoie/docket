@@ -2,7 +2,6 @@ package tui
 
 import (
 	"errors"
-	"os"
 	"path/filepath"
 	"testing"
 
@@ -12,14 +11,14 @@ import (
 )
 
 // newTestAppModelWithMockPersisterAndProject creates an AppModel with mock persister and test project.
-func newTestAppModelWithMockPersisterAndProject() (*AppModel, *MockPersister, *models.Project) {
+func newTestAppModelWithMockPersisterAndProject(t *testing.T) (*AppModel, *MockPersister, *models.Project) {
+	t.Helper()
 	cfg := testutil.NewTestConfig()
 	project := testutil.NewTestProjectWithTasks("Test Project")
 	cfg.Projects = []*models.Project{project}
 	cfg.CurrentProject = project.ID
 
-	tmpDir, _ := os.MkdirTemp("", "tt-test-*")
-	configPath := filepath.Join(tmpDir, "tt.json")
+	configPath := filepath.Join(t.TempDir(), "tt.json")
 	manager := config.NewManager(configPath)
 	mockPersister := NewMockPersister()
 
@@ -34,8 +33,7 @@ func newTestAppModelWithMockPersisterAndProject() (*AppModel, *MockPersister, *m
 
 func TestWithPersisterOption(t *testing.T) {
 	cfg := testutil.NewTestConfig()
-	tmpDir, _ := os.MkdirTemp("", "tt-test-*")
-	configPath := filepath.Join(tmpDir, "tt.json")
+	configPath := filepath.Join(t.TempDir(), "tt.json")
 	manager := config.NewManager(configPath)
 
 	mockPersister := NewMockPersister()
@@ -48,8 +46,7 @@ func TestWithPersisterOption(t *testing.T) {
 
 func TestDefaultPersisterIsProjectService(t *testing.T) {
 	cfg := testutil.NewTestConfig()
-	tmpDir, _ := os.MkdirTemp("", "tt-test-*")
-	configPath := filepath.Join(tmpDir, "tt.json")
+	configPath := filepath.Join(t.TempDir(), "tt.json")
 	manager := config.NewManager(configPath)
 
 	app := NewAppModel(cfg, manager)
@@ -63,7 +60,7 @@ func TestDefaultPersisterIsProjectService(t *testing.T) {
 }
 
 func TestHandleTaskCreatedMsgUsesPersister(t *testing.T) {
-	app, mockPersister, _ := newTestAppModelWithMockPersisterAndProject()
+	app, mockPersister, _ := newTestAppModelWithMockPersisterAndProject(t)
 	app.pushView(ViewTaskCreator)
 
 	task := &models.Task{ID: "test-task", Title: "Test Task"}
@@ -81,7 +78,7 @@ func TestHandleTaskCreatedMsgUsesPersister(t *testing.T) {
 }
 
 func TestHandleTaskUpdatedMsgUsesPersister(t *testing.T) {
-	app, mockPersister, _ := newTestAppModelWithMockPersisterAndProject()
+	app, mockPersister, _ := newTestAppModelWithMockPersisterAndProject(t)
 	app.pushView(ViewTaskEditor)
 
 	msg := TaskUpdatedMsg{}
@@ -98,7 +95,7 @@ func TestHandleTaskUpdatedMsgUsesPersister(t *testing.T) {
 }
 
 func TestHandleTaskPropertyChangedMsg(t *testing.T) {
-	app, mockPersister, _ := newTestAppModelWithMockPersisterAndProject()
+	app, mockPersister, _ := newTestAppModelWithMockPersisterAndProject(t)
 	// Push project tree so we're not on dashboard (simulates in-place operation)
 	app.pushView(ViewProjectTree)
 	initialStackLen := len(app.viewStack)
@@ -123,7 +120,7 @@ func TestHandleTaskPropertyChangedMsg(t *testing.T) {
 }
 
 func TestHandleInlineTaskCreateUsesPersister(t *testing.T) {
-	app, mockPersister, project := newTestAppModelWithMockPersisterAndProject()
+	app, mockPersister, project := newTestAppModelWithMockPersisterAndProject(t)
 
 	msg := InlineTaskCreateMsg{
 		Project: project,
@@ -142,7 +139,7 @@ func TestHandleInlineTaskCreateUsesPersister(t *testing.T) {
 }
 
 func TestHandleInlineTaskCreateWithLoadError(t *testing.T) {
-	app, mockPersister, project := newTestAppModelWithMockPersisterAndProject()
+	app, mockPersister, project := newTestAppModelWithMockPersisterAndProject(t)
 	mockPersister.LoadError = errors.New("load failed")
 
 	msg := InlineTaskCreateMsg{
@@ -180,7 +177,7 @@ func TestHandleInlineTaskCreateRejectsInvalidTitle(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			app, _, project := newTestAppModelWithMockPersisterAndProject()
+			app, _, project := newTestAppModelWithMockPersisterAndProject(t)
 			initialTaskCount := len(project.Tasks)
 
 			msg := InlineTaskCreateMsg{
@@ -208,7 +205,7 @@ func TestHandleInlineTaskCreateRejectsInvalidTitle(t *testing.T) {
 }
 
 func TestSwitchToProjectUsesPersister(t *testing.T) {
-	app, mockPersister, _ := newTestAppModelWithMockPersisterAndProject()
+	app, mockPersister, _ := newTestAppModelWithMockPersisterAndProject(t)
 	newProject := testutil.NewTestProjectWithTasks("New Project")
 	mockPersister.Projects[newProject.ID] = newProject
 
@@ -224,7 +221,7 @@ func TestSwitchToProjectUsesPersister(t *testing.T) {
 }
 
 func TestHandleMoveTaskToProjectUsesPersister(t *testing.T) {
-	app, mockPersister, _ := newTestAppModelWithMockPersisterAndProject()
+	app, mockPersister, _ := newTestAppModelWithMockPersisterAndProject(t)
 
 	// Create source project with a task manually
 	sourceProject := &models.Project{
@@ -271,7 +268,7 @@ func TestHandleMoveTaskToProjectUsesPersister(t *testing.T) {
 }
 
 func TestCloseInboxProcessorMsgUsesPersister(t *testing.T) {
-	app, mockPersister, _ := newTestAppModelWithMockPersisterAndProject()
+	app, mockPersister, _ := newTestAppModelWithMockPersisterAndProject(t)
 	app.pushView(ViewInboxProcessor)
 	app.views.Register(ViewInboxProcessor, &InboxProcessorModel{})
 
@@ -289,7 +286,7 @@ func TestCloseInboxProcessorMsgUsesPersister(t *testing.T) {
 }
 
 func TestCycleProjectUsesPersister(t *testing.T) {
-	app, mockPersister, project := newTestAppModelWithMockPersisterAndProject()
+	app, mockPersister, project := newTestAppModelWithMockPersisterAndProject(t)
 
 	// Add project to cycle
 	project2 := testutil.NewTestProjectWithTasks("Project 2")
