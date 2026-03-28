@@ -6,6 +6,27 @@ func tutorTopics() []TutorTopic {
 		// ── Concepts (alphabetical) ──────────────────────────
 
 		{
+			Title:    "Activity Log",
+			Category: "Concepts",
+			Content: `# What Is the Activity Log
+
+Every task maintains a persistent changelog that records field
+changes over time: status transitions, priority changes, section
+reassignments, tag edits, title updates, and more.
+
+# How It Works
+
+Each change creates a timestamped entry with the field name, old
+value, and new value. Entries are stored in the task metadata and
+persist across sessions. A "created" entry is recorded when the
+task is first added.
+
+# Pruning
+
+Activity logs can be pruned to keep only the newest entries. This
+prevents the log from growing indefinitely on long-lived tasks.`,
+		},
+		{
 			Title:    "Attachments",
 			Category: "Concepts",
 			Content: `# What Are Attachments
@@ -30,6 +51,28 @@ In the TUI, press a in the attachments view to add. Configure
 the code editor and attachment editor in Settings > Attachments.`,
 		},
 		{
+			Title:    "Blockers (Project-level)",
+			Category: "Concepts",
+			Content: `# What Are Project Blockers
+
+Project blockers are impediments that prevent progress on the
+project as a whole. They are distinct from task-level dependencies
+which link individual tasks to each other.
+
+# Blockers vs Dependencies
+
+Dependencies connect task A to task B (A blocks B). Project
+blockers represent external impediments like waiting for API
+access, pending approvals, or resource constraints that affect
+the entire project.
+
+# Resolution
+
+Blockers track their status (active or resolved) and can be
+edited or deleted. Use them to maintain visibility into what
+is holding up project progress.`,
+		},
+		{
 			Title:    "Contexts",
 			Category: "Concepts",
 			Content: `# What Are Contexts
@@ -44,6 +87,50 @@ in your dashboard and when cycling through projects.
 When a context is active, only projects in that context
 appear in the dashboard and project list. This keeps your
 view focused on the relevant area of your life.`,
+		},
+		{
+			Title:    "Checklists",
+			Category: "Concepts",
+			Content: `# What Are Checklists
+
+Each task can have a checklist of items with done/incomplete state.
+Checklists are lightweight sub-items that live inside a task rather
+than creating separate child tasks.
+
+# When to Use Checklists
+
+Use checklists for steps within a task that do not need their own
+status, priority, or metadata. For example, a deployment task might
+have checklist items for each step in the release process.
+
+# Checklists vs Child Tasks
+
+Child tasks have full metadata (status, priority, tags, due dates).
+Checklist items are simple text with a done/incomplete toggle. Use
+child tasks for substantial work items and checklists for quick
+step-by-step tracking.`,
+		},
+		{
+			Title:    "Comments",
+			Category: "Concepts",
+			Content: `# What Are Comments
+
+Comments are timestamped notes attached to a task. They capture
+the WHY and decision history, separate from the description which
+captures the WHAT.
+
+# Resolved Comments
+
+Comments can be marked as resolved to indicate they have been
+addressed. Resolved comments remain in the log for historical
+reference but are visually distinguished.
+
+# Comments vs Description
+
+The description is the single source of truth for what the task
+is about. Comments track the evolving conversation: decisions made,
+approaches tried, blockers discovered. Keep the description current
+and use comments for the narrative trail.`,
 		},
 		{
 			Title:    "Dependencies",
@@ -63,7 +150,29 @@ with a distinct indicator in all views.
 
 Dependencies can form chains where task A blocks B which
 blocks C. Completing A unblocks B, and completing B then
-unblocks C.`,
+unblocks C.
+
+See Blockers (Project-level) for project-level impediments.`,
+		},
+		{
+			Title:    "Focus & Suggestions",
+			Category: "Concepts",
+			Content: `# The Suggestion Engine
+
+The "What's Next" engine ranks tasks across all active projects
+using a weighted formula that considers priority, due dates, status,
+activity recency, unblocking potential, and scoring profiles.
+
+# Focus Queue
+
+The focus queue is a persistent, ordered list of tasks you have
+accepted from suggestions. Manage it in the TUI focus view: press
+a to accept a suggestion, x to remove, J/K to reorder.
+
+# Actionable Tasks
+
+A task is actionable if it is not completed, not snoozed, and not
+blocked. The focus command surfaces these across all projects.`,
 		},
 		{
 			Title:    "Markdown Format",
@@ -371,7 +480,63 @@ ideas are leaf nodes that cannot contain children.
 Epics represent large features or initiatives spanning weeks.
 Stories are user-facing deliverables within an epic. Tasks are
 concrete work items. Bugs track defects. Ideas capture future
-possibilities without commitment.`,
+possibilities without commitment.
+
+See Type-Specific Attributes for per-type metadata.`,
+		},
+		{
+			Title:    "Templates",
+			Category: "Concepts",
+			Content: `# What Are Templates
+
+Templates are pre-configured task structures for common scenarios.
+A template specifies type, priority, tags, section, attributes,
+and optional checklist items that are applied when creating a task.
+
+# Default Templates
+
+tt ships with default templates for common workflows: Bug Report,
+Production Incident, Feature Request, API Endpoint, UI Component,
+Code Review Checklist, Release Checklist, and Sprint Planning.
+Initialize them with tt template init.
+
+# Custom Templates
+
+Create your own templates for repeatable work patterns. Templates
+can be enabled or disabled without deleting them.`,
+		},
+		{
+			Title:    "Type-Specific Attributes",
+			Category: "Concepts",
+			Content: `# What Are Type-Specific Attributes
+
+Each task type has optional attributes tailored to its purpose.
+These provide structured metadata beyond the common fields.
+
+# Bug Attributes
+
+severity (critical, major, minor, cosmetic), reproducible
+(yes, no, sometimes), and workaround (free text).
+
+# Idea Attributes
+
+category (feature, improvement, refactor, research), effort
+(small, medium, large, unknown), value (low, medium, high),
+and validated (boolean).
+
+# Task Attributes
+
+effort (small, medium, large, unknown) and work type
+(development, documentation, testing, devops, design).
+
+# Story Attributes
+
+story points (integer) and persona (free text).
+
+# Epic Attributes
+
+scope (defined, evolving, undefined), milestone (free text),
+and success metrics (free text).`,
 		},
 		{
 			Title:    "Workflow Rules",
@@ -398,6 +563,51 @@ Auto-tag completed tasks:
 		// ── CLI (alphabetical) ────────────────────────────────
 
 		{
+			Title:    "Blockers",
+			Category: "CLI",
+			Content: `# Adding Blockers
+
+  tt blocker add "Waiting for API access"
+
+# Listing and Viewing
+
+  tt blocker                   # List all blockers
+  tt blocker list              # Same as above
+  tt blocker show abc12345     # Show blocker details
+
+# Resolving and Deleting
+
+  tt blocker resolve abc12345  # Mark as resolved
+  tt blocker delete abc12345   # Remove entirely
+
+# Editing
+
+  tt blocker edit abc12345`,
+		},
+		{
+			Title:    "Board (Actions)",
+			Category: "CLI",
+			Content: `# What Is the Focus Board
+
+The focus board manages lightweight action items from external
+sources like Slack, GitHub, or email. Actions are stored as tasks
+in a dedicated action inbox project.
+
+# Adding Actions
+
+  tt board add "Review PR #432" --url https://... --source github
+  tt board add "Reply to thread" --source slack --priority 2
+  tt bd add "Quick note" --priority 1
+
+# Managing Actions
+
+  tt board                     # List open actions
+  tt board list --all          # Include done/dismissed
+  tt board done 1              # Mark action done
+  tt board dismiss 2           # Dismiss as irrelevant
+  tt board reopen 3            # Reopen dismissed action`,
+		},
+		{
 			Title:    "Contexts",
 			Category: "CLI",
 			Content: `# Creating Contexts
@@ -415,6 +625,50 @@ Auto-tag completed tasks:
 Use tt select to switch between projects and contexts.
 
   tt select`,
+		},
+		{
+			Title:    "Comments",
+			Category: "CLI",
+			Content: `# Adding Comments
+
+  tt task comment add 5 "Found the root cause"
+  tt task comment add 5 "Tried approach X, didn't work"
+  tt t c a 5 "Quick note"
+
+# Listing Comments
+
+  tt task comment list 5
+
+# Resolving and Editing
+
+  tt task comment resolve 5 0
+  tt task comment edit 5 0 "Updated note"
+
+# Removing Comments
+
+  tt task comment remove 5 0`,
+		},
+		{
+			Title:    "Focus",
+			Category: "CLI",
+			Content: `# Actionable Tasks Across Projects
+
+  tt focus                # All actionable tasks
+  tt focus --active       # Only active-flagged tasks (deprecated)
+
+# Ranked Suggestions
+
+The suggestion engine scores tasks based on priority, due dates,
+status, activity recency, unblocking potential, and scoring profiles.
+
+  tt focus suggest        # Top 10 suggestions
+  tt focus suggest -n 5   # Top 5 suggestions
+
+# Focus Queue
+
+The queue holds tasks accepted from suggestions in the TUI.
+
+  tt focus queue`,
 		},
 		{
 			Title:    "Notes",
@@ -579,6 +833,28 @@ Add tasks with type and parent options for hierarchy.
   tt task snooze <id> 1w`,
 		},
 		{
+			Title:    "Templates",
+			Category: "CLI",
+			Content: `# Initialize Default Templates
+
+  tt template init
+
+# Managing Templates
+
+  tt template list
+  tt template show def-bug-report
+  tt template toggle def-bug-report
+  tt template delete my-template
+
+# Creating Tasks from Templates
+
+  tt template use def-bug-report "Login fails on mobile"
+
+# Adding Custom Templates
+
+  tt template add -n "My Workflow" --type task --item "Step 1" --item "Step 2"`,
+		},
+		{
 			Title:    "Workflow Rules",
 			Category: "CLI",
 			Content: `# Managing Workflow Rules
@@ -592,6 +868,32 @@ Create, list, and delete workflow rules from the command line.
 
 		// ── TUI (alphabetical) ────────────────────────────────
 
+		{
+			Title:    "Bulk Operations",
+			Category: "TUI",
+			Content: `# Multi-Select Mode
+
+Press v to toggle multi-select mode. Once active, press Space
+on individual tasks to select or deselect them. Press a to select
+all visible tasks.
+
+# Bulk Actions
+
+With tasks selected, use the comma-prefix status bindings to
+apply changes to all selected tasks at once:
+
+  ,s  Start all selected
+  ,d  Complete all selected
+  ,b  Block all selected
+  ,x  Cancel all selected
+
+Press Esc to exit multi-select mode and clear selections.
+
+# Where It Works
+
+Multi-select is available in the outliner, project tree, and
+all-tasks views.`,
+		},
 		{
 			Title:    "Command Palette",
 			Category: "TUI",
@@ -636,6 +938,32 @@ normal selection highlight, so you always know which tasks
 are dimmed.`,
 		},
 		{
+			Title:    "Filtering",
+			Category: "TUI",
+			Content: `# Filter Popup
+
+Press F to open the filter popup. From there, choose a filter
+dimension by pressing the corresponding key:
+
+  Ft  Filter by type
+  Fs  Filter by status
+  Fp  Filter by priority
+  F#  Filter by tag
+  F/  Filter by section
+  F.  Filter by stage
+  FS  Filter by score threshold
+
+# Clearing Filters
+
+Press the same filter key with the 0 option to clear that filter.
+Active filters appear as badges in the status bar.
+
+# Saved Filters
+
+Save your current filter combination for reuse. See the Saved
+Filters topic under Concepts for details.`,
+		},
+		{
 			Title:    "Help",
 			Category: "TUI",
 			Content: `# Context-Sensitive Help
@@ -650,6 +978,26 @@ Press : to open the command palette, then type ask ai to launch
 the AI assistant. It can answer questions about your tasks,
 suggest next steps, and generate tt commands. Requires the
 claude CLI to be installed.`,
+		},
+		{
+			Title:    "Inbox Processing",
+			Category: "TUI",
+			Content: `# GTD Inbox Processing
+
+The inbox processor walks through unsorted inbox tasks one at
+a time. For each task, you can set its priority, section, tags,
+and other metadata before moving to the next item.
+
+# How to Open
+
+Open the command palette with : and type "inbox" or "process
+inbox". The processor shows each inbox task sequentially with
+action options.
+
+# Global Inbox Processing
+
+Global inbox processing works across all active projects,
+surfacing inbox tasks from every project in one flow.`,
 		},
 		{
 			Title:    "Navigation",
@@ -671,6 +1019,27 @@ Press ? in any view to see all available keybindings for that
 screen. Help is context-sensitive and shows only relevant actions.`,
 		},
 		{
+			Title:    "Outliner",
+			Category: "TUI",
+			Content: `# What Is the Outliner
+
+The outliner is a column-based flat view that shows tasks organized
+by sections. Unlike the project tree which shows the full hierarchy,
+the outliner focuses on one level at a time with zoom navigation.
+
+# Zooming
+
+Press Enter on a parent task to zoom into its children. Press
+Esc or q to zoom back out. The zoom stack remembers your position
+at each level.
+
+# Perspectives
+
+Press 1-9 to switch between perspective presets that filter and
+group tasks differently. The outliner supports the same sort
+modes and filters as the project tree.`,
+		},
+		{
 			Title:    "Priority",
 			Category: "TUI",
 			Content: `# Setting Priority in TUI
@@ -682,6 +1051,49 @@ Use ! followed by a number to set priority on the selected task:
   !3  Normal
   !4  Low
   !5  Someday (lowest)`,
+		},
+		{
+			Title:    "Quick Capture",
+			Category: "TUI",
+			Content: `# Opening Quick Capture
+
+Press n to open the quick capture view. Type a task title with
+inline modifiers to set metadata as you type.
+
+# Inline Syntax
+
+  ^bug Task title !1 #backend @tomorrow >3 /active $in_progress
+
+Prefixes: ^ type, ! priority, # tag, @ due date, > parent ID,
+/ section, $ status, ~ recurrence, % project.
+
+# Autocomplete
+
+As you type a prefix, suggestions appear. Tab completes the
+current suggestion. Quick capture parses everything in real time
+and shows a live preview of the task that will be created.`,
+		},
+		{
+			Title:    "Reviews (Daily/Weekly)",
+			Category: "TUI",
+			Content: `# Daily Review
+
+The daily review shows a cross-project overview of tasks organized
+by urgency: overdue, due today, due soon, in progress, blocked,
+in review, on standby, and recently completed. Use it to plan
+your day and catch tasks that need attention.
+
+# Weekly Review
+
+The weekly review surfaces structural issues across projects:
+stale projects with no recent activity, inbox backlogs, blocked
+work, overcommitted priorities, stale tasks, priority mismatches,
+upcoming deadlines, and recurring task overviews.
+
+# Accessing Reviews
+
+Open the command palette with : and type "daily review" or
+"weekly review". Press q to close when finished.`,
 		},
 		{
 			Title:    "Sections",
@@ -785,6 +1197,27 @@ then press the key combination.`,
 Press T to open the tag filter selector, or use F then # (F#)
 to filter by tag from the filter popup. From there you can filter
 tasks by tag across all tasks in the current project.`,
+		},
+		{
+			Title:    "Undo",
+			Category: "TUI",
+			Content: `# Undo History
+
+Every mutating operation (add, complete, edit, delete, etc.)
+creates an undo snapshot. Multiple levels of undo are supported.
+
+# CLI Undo
+
+  tt undo              # Restore previous state
+
+Run tt undo multiple times to step back through history. The
+depth is configurable via the undo_history_depth setting.
+
+# How It Works
+
+Each undo restores the tasks.md file to its state before the
+last change. The command reports what was undone and how many
+more undo steps remain.`,
 		},
 	}
 }

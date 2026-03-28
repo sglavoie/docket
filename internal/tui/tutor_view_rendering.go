@@ -76,12 +76,13 @@ func init() {
 		{`\bEsc\b`, keybindStyle, 0},
 		{`\bTab\b`, keybindStyle, 0},
 		{`\bj/k\b`, keybindStyle, 0},
-		// Comma-prefix bindings at start of line: ,s ,d ,b ,o ,x
-		{`^(,[sdboxr])\s`, keybindStyle, 1},
+		{`\bJ/K\b`, keybindStyle, 0},
+		// Comma-prefix bindings at start of line: ,s ,d ,b ,o ,x ,S
+		{`^(,[sdboxrS])\s`, keybindStyle, 1},
 		// "using , followed" — color the comma
 		{`using (,) followed`, keybindStyle, 1},
 		// "Press X" patterns for single-char keys
-		{`Press ([qQ?:@f]) `, keybindStyle, 1},
+		{`[Pp]ress ([qQ?:@fnva]) `, keybindStyle, 1},
 		// "using the s prefix"
 		{`the (s) prefix`, keybindStyle, 1},
 		// "Use !" pattern
