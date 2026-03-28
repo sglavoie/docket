@@ -269,49 +269,46 @@ func (m *TaskCommentsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) { //nolint:
 }
 
 func (m *TaskCommentsModel) saveComment() tea.Cmd {
-	return func() tea.Msg {
-		task, err := appendComment(m.project, m.task.ID, m.textInput.Value())
-		if err != nil {
-			m.err = err
-			return nil
-		}
-		m.task = task
+	// Mutate model state synchronously in Update() to avoid data races with View().
+	task, err := appendComment(m.project, m.task.ID, m.textInput.Value())
+	if err != nil {
+		m.err = err
+		return nil
+	}
+	m.task = task
+	m.addMode = false
+	m.textInput.Reset()
+	m.err = nil
+	m.cursor = len(m.task.Comments) - 1
 
-		if err := saveProjectNoReload(m.project); err != nil {
+	project := m.project
+	return func() tea.Msg {
+		if err := saveProjectNoReload(project); err != nil {
 			return ErrorMsg{Err: fmt.Errorf("failed to save project: %w", err)}
 		}
-
-		// Reset add mode
-		m.addMode = false
-		m.textInput.Reset()
-		m.err = nil
-
-		// Move cursor to the new comment (last in list)
-		m.cursor = len(m.task.Comments) - 1
-
-		return CommentAddedMsg{Task: m.task}
+		return CommentAddedMsg{Task: task}
 	}
 }
 
 func (m *TaskCommentsModel) executeDelete() tea.Cmd {
-	return func() tea.Msg {
-		if t := resolveTaskInProject(m.project, m.task.ID); t != nil {
-			m.task = t
-		}
-		if !m.task.RemoveComment(m.cursor) {
-			return ErrorMsg{Err: fmt.Errorf("failed to remove comment")}
-		}
+	// Mutate model state synchronously in Update() to avoid data races with View().
+	if t := resolveTaskInProject(m.project, m.task.ID); t != nil {
+		m.task = t
+	}
+	if !m.task.RemoveComment(m.cursor) {
+		return func() tea.Msg { return ErrorMsg{Err: fmt.Errorf("failed to remove comment")} }
+	}
+	if m.cursor >= len(m.task.Comments) && m.cursor > 0 {
+		m.cursor--
+	}
 
-		if err := saveProjectNoReload(m.project); err != nil {
+	task := m.task
+	project := m.project
+	return func() tea.Msg {
+		if err := saveProjectNoReload(project); err != nil {
 			return ErrorMsg{Err: fmt.Errorf("failed to save project: %w", err)}
 		}
-
-		// Adjust cursor if needed
-		if m.cursor >= len(m.task.Comments) && m.cursor > 0 {
-			m.cursor--
-		}
-
-		return CommentDeletedMsg{Task: m.task}
+		return CommentDeletedMsg{Task: task}
 	}
 }
 
@@ -325,32 +322,33 @@ func (m *TaskCommentsModel) startEditComment() tea.Cmd {
 }
 
 func (m *TaskCommentsModel) saveEditedComment() tea.Cmd {
-	return func() tea.Msg {
-		text := strings.TrimSpace(m.editTextInput.Value())
-		if text == "" {
-			m.err = fmt.Errorf("comment text cannot be empty")
-			return nil
-		}
+	// Mutate model state synchronously in Update() to avoid data races with View().
+	text := strings.TrimSpace(m.editTextInput.Value())
+	if text == "" {
+		m.err = fmt.Errorf("comment text cannot be empty")
+		return nil
+	}
 
-		// Update the comment text (preserve timestamp)
-		if t := resolveTaskInProject(m.project, m.task.ID); t != nil {
-			m.task = t
-		}
-		if m.editIndex >= len(m.task.Comments) {
-			return ErrorMsg{Err: fmt.Errorf("comment was deleted externally")}
-		}
-		m.task.Comments[m.editIndex].Text = text
-
-		if err := saveProjectNoReload(m.project); err != nil {
-			return ErrorMsg{Err: fmt.Errorf("failed to save project: %w", err)}
-		}
-
-		// Reset edit mode
+	if t := resolveTaskInProject(m.project, m.task.ID); t != nil {
+		m.task = t
+	}
+	if m.editIndex >= len(m.task.Comments) {
 		m.editMode = false
 		m.editTextInput.Reset()
-		m.err = nil
+		return func() tea.Msg { return ErrorMsg{Err: fmt.Errorf("comment was deleted externally")} }
+	}
+	m.task.Comments[m.editIndex].Text = text
+	m.editMode = false
+	m.editTextInput.Reset()
+	m.err = nil
 
-		return CommentEditedMsg{Task: m.task}
+	task := m.task
+	project := m.project
+	return func() tea.Msg {
+		if err := saveProjectNoReload(project); err != nil {
+			return ErrorMsg{Err: fmt.Errorf("failed to save project: %w", err)}
+		}
+		return CommentEditedMsg{Task: task}
 	}
 }
 
@@ -515,19 +513,21 @@ func (m *TaskCommentsModel) addCommentInExternalEditor() tea.Cmd {
 }
 
 func (m *TaskCommentsModel) toggleResolved() tea.Cmd {
-	return func() tea.Msg {
-		if t := resolveTaskInProject(m.project, m.task.ID); t != nil {
-			m.task = t
-		}
-		if !m.task.ToggleCommentResolved(m.cursor) {
-			return ErrorMsg{Err: fmt.Errorf("failed to toggle comment resolved state")}
-		}
+	// Mutate model state synchronously in Update() to avoid data races with View().
+	if t := resolveTaskInProject(m.project, m.task.ID); t != nil {
+		m.task = t
+	}
+	if !m.task.ToggleCommentResolved(m.cursor) {
+		return func() tea.Msg { return ErrorMsg{Err: fmt.Errorf("failed to toggle comment resolved state")} }
+	}
 
-		if err := saveProjectNoReload(m.project); err != nil {
+	task := m.task
+	project := m.project
+	return func() tea.Msg {
+		if err := saveProjectNoReload(project); err != nil {
 			return ErrorMsg{Err: fmt.Errorf("failed to save project: %w", err)}
 		}
-
-		return CommentResolvedMsg{Task: m.task}
+		return CommentResolvedMsg{Task: task}
 	}
 }
 

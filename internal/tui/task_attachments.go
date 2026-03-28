@@ -219,150 +219,154 @@ func (m *TaskAttachmentsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) { //noli
 }
 
 func (m *TaskAttachmentsModel) addAttachment() tea.Cmd {
-	return func() tea.Msg {
-		input := strings.TrimSpace(m.textInput.Value())
-		// Strip surrounding single quotes (e.g. from drag-and-drop paths with spaces)
-		if len(input) >= 2 && input[0] == '\'' && input[len(input)-1] == '\'' {
-			input = input[1 : len(input)-1]
-		}
-		if input == "" {
-			m.err = fmt.Errorf("path/URL cannot be empty")
+	// Capture and validate input synchronously in Update() to avoid data races with View().
+	input := strings.TrimSpace(m.textInput.Value())
+	if len(input) >= 2 && input[0] == '\'' && input[len(input)-1] == '\'' {
+		input = input[1 : len(input)-1]
+	}
+	if input == "" {
+		m.err = fmt.Errorf("path/URL cannot be empty")
+		return nil
+	}
+
+	m.resolveTask()
+
+	// For URLs and code references, we can mutate synchronously since no file I/O is needed.
+	isURL := strings.HasPrefix(input, "http://") || strings.HasPrefix(input, "https://")
+	if isURL {
+		if err := m.task.AddAttachment(input, true, input); err != nil {
+			m.err = err
 			return nil
 		}
-
-		m.resolveTask()
-
-		// Detect if it's a URL
-		isURL := strings.HasPrefix(input, "http://") || strings.HasPrefix(input, "https://")
-
-		if isURL {
-			// Add URL attachment
-			if err := m.task.AddAttachment(input, true, input); err != nil {
-				m.err = err
-				return nil
-			}
-		} else {
-			// Check if it's a code reference (file:line format)
-			codePath, lineNum, isCodeRef := storage.ParseCodeReference(input)
-			if isCodeRef {
-				// Store code reference without copying
-				if err := m.task.AddCodeReference(codePath, lineNum); err != nil {
-					m.err = err
-					return nil
-				}
-
-				// Check if file exists and show info message if not
-				if !storage.CodeReferenceFileExists(codePath) {
-					m.setStatus("Code reference added (file may not exist)")
-				}
-			} else {
-				// Handle regular file path
-				path := input
-
-				// Expand ~ to home directory
-				if strings.HasPrefix(path, "~/") {
-					home, err := os.UserHomeDir()
-					if err != nil {
-						m.err = fmt.Errorf("failed to expand home directory: %w", err)
-						return nil
-					}
-					path = filepath.Join(home, path[2:])
-				}
-
-				// Convert to absolute path
-				absPath, err := filepath.Abs(path)
-				if err != nil {
-					m.err = fmt.Errorf("failed to resolve path: %w", err)
-					return nil
-				}
-
-				// Check if file exists
-				if _, statErr := os.Stat(absPath); os.IsNotExist(statErr) {
-					m.err = fmt.Errorf("file not found: %s", absPath)
-					return nil
-				}
-
-				// Copy file to attachments directory
-				filename, err := storage.CopyAttachment(m.project, m.task, absPath)
-				if err != nil {
-					m.err = fmt.Errorf("failed to copy: %w", err)
-					return nil
-				}
-
-				if err := m.task.AddAttachment(filename, false, absPath); err != nil {
-					m.err = err
-					return nil
-				}
-			}
-		}
-
-		if err := saveProjectNoReload(m.project); err != nil {
-			return ErrorMsg{Err: fmt.Errorf("failed to save project: %w", err)}
-		}
-
-		// Reset add mode
 		m.addMode = false
 		m.textInput.Reset()
 		m.err = nil
-
-		// Move cursor to the new attachment (last in list)
 		m.cursor = len(m.task.Attachments) - 1
 
-		return AttachmentAddedMsg{Task: m.task}
+		task := m.task
+		project := m.project
+		return func() tea.Msg {
+			if err := saveProjectNoReload(project); err != nil {
+				return ErrorMsg{Err: fmt.Errorf("failed to save project: %w", err)}
+			}
+			return AttachmentAddedMsg{Task: task}
+		}
+	}
+
+	codePath, lineNum, isCodeRef := storage.ParseCodeReference(input)
+	if isCodeRef {
+		if err := m.task.AddCodeReference(codePath, lineNum); err != nil {
+			m.err = err
+			return nil
+		}
+		if !storage.CodeReferenceFileExists(codePath) {
+			m.setStatus("Code reference added (file may not exist)")
+		}
+		m.addMode = false
+		m.textInput.Reset()
+		m.err = nil
+		m.cursor = len(m.task.Attachments) - 1
+
+		task := m.task
+		project := m.project
+		return func() tea.Msg {
+			if err := saveProjectNoReload(project); err != nil {
+				return ErrorMsg{Err: fmt.Errorf("failed to save project: %w", err)}
+			}
+			return AttachmentAddedMsg{Task: task}
+		}
+	}
+
+	// File attachment requires I/O (copy), so reset UI state first then do I/O in the cmd.
+	path := input
+	if strings.HasPrefix(path, "~/") {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			m.err = fmt.Errorf("failed to expand home directory: %w", err)
+			return nil
+		}
+		path = filepath.Join(home, path[2:])
+	}
+	absPath, err := filepath.Abs(path)
+	if err != nil {
+		m.err = fmt.Errorf("failed to resolve path: %w", err)
+		return nil
+	}
+	if _, statErr := os.Stat(absPath); os.IsNotExist(statErr) {
+		m.err = fmt.Errorf("file not found: %s", absPath)
+		return nil
+	}
+
+	// Reset add mode synchronously before the goroutine runs.
+	m.addMode = false
+	m.textInput.Reset()
+	m.err = nil
+
+	task := m.task
+	project := m.project
+	return func() tea.Msg {
+		filename, copyErr := storage.CopyAttachment(project, task, absPath)
+		if copyErr != nil {
+			return ErrorMsg{Err: fmt.Errorf("failed to copy: %w", copyErr)}
+		}
+		if err := task.AddAttachment(filename, false, absPath); err != nil {
+			return ErrorMsg{Err: err}
+		}
+		if err := saveProjectNoReload(project); err != nil {
+			return ErrorMsg{Err: fmt.Errorf("failed to save project: %w", err)}
+		}
+		return AttachmentAddedMsg{Task: task}
 	}
 }
 
 func (m *TaskAttachmentsModel) executeDelete() tea.Cmd {
+	// Mutate model state synchronously in Update() to avoid data races with View().
+	m.resolveTask()
+	if m.cursor < 0 || m.cursor >= len(m.task.Attachments) {
+		return func() tea.Msg { return ErrorMsg{Err: fmt.Errorf("attachment no longer exists")} }
+	}
+	isURL := m.task.Attachments[m.cursor].IsURL
+
+	removed, ok := m.task.RemoveAttachment(m.cursor)
+	if !ok {
+		return func() tea.Msg { return ErrorMsg{Err: fmt.Errorf("failed to remove attachment")} }
+	}
+	if m.cursor >= len(m.task.Attachments) && m.cursor > 0 {
+		m.cursor--
+	}
+
+	task := m.task
+	project := m.project
 	return func() tea.Msg {
-		m.resolveTask()
-		att := m.task.Attachments[m.cursor]
-
-		// Remove from task metadata
-		removed, ok := m.task.RemoveAttachment(m.cursor)
-		if !ok {
-			return ErrorMsg{Err: fmt.Errorf("failed to remove attachment")}
-		}
-
 		// Delete file from disk if not a URL
-		if !att.IsURL {
-			if err := storage.RemoveAttachmentFile(m.project, m.task, removed.Filename); err != nil {
-				// Log warning but don't fail
-				m.setStatus(fmt.Sprintf("Warning: file not deleted: %v", err))
-			}
+		if !isURL {
+			_ = storage.RemoveAttachmentFile(project, task, removed.Filename)
 		}
-
-		if err := saveProjectNoReload(m.project); err != nil {
+		if err := saveProjectNoReload(project); err != nil {
 			return ErrorMsg{Err: fmt.Errorf("failed to save project: %w", err)}
 		}
-
-		// Adjust cursor if needed
-		if m.cursor >= len(m.task.Attachments) && m.cursor > 0 {
-			m.cursor--
-		}
-
-		return AttachmentDeletedMsg{Task: m.task}
+		return AttachmentDeletedMsg{Task: task}
 	}
 }
 
 func (m *TaskAttachmentsModel) executeKeep() tea.Cmd {
-	return func() tea.Msg {
-		// Remove from task metadata only (keep file on disk)
-		m.resolveTask()
-		_, ok := m.task.RemoveAttachment(m.cursor)
-		if !ok {
-			return ErrorMsg{Err: fmt.Errorf("failed to unlink attachment")}
-		}
+	// Mutate model state synchronously in Update() to avoid data races with View().
+	m.resolveTask()
+	_, ok := m.task.RemoveAttachment(m.cursor)
+	if !ok {
+		return func() tea.Msg { return ErrorMsg{Err: fmt.Errorf("failed to unlink attachment")} }
+	}
+	if m.cursor >= len(m.task.Attachments) && m.cursor > 0 {
+		m.cursor--
+	}
 
-		if err := saveProjectNoReload(m.project); err != nil {
+	task := m.task
+	project := m.project
+	return func() tea.Msg {
+		if err := saveProjectNoReload(project); err != nil {
 			return ErrorMsg{Err: fmt.Errorf("failed to save project: %w", err)}
 		}
-
-		// Adjust cursor if needed
-		if m.cursor >= len(m.task.Attachments) && m.cursor > 0 {
-			m.cursor--
-		}
-
-		return AttachmentDeletedMsg{Task: m.task}
+		return AttachmentDeletedMsg{Task: task}
 	}
 }
 
