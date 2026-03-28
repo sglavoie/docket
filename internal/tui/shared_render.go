@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"charm.land/lipgloss/v2"
+	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
@@ -256,11 +257,30 @@ func RenderCrossProjectTaskLine(
 	}.Render()
 }
 
+// DimLine strips all ANSI styling and re-renders as dim text.
+// Call after full line assembly, before selection styling.
+// The caller is responsible for placing a "◌" indicator in the cursor prefix
+// position so that DimLine does not alter the line width.
+func DimLine(line string) string {
+	stripped := ansi.Strip(line)
+	return DimmedTaskStyle.Render(stripped)
+}
+
+// DimSelectedLine strips all ANSI styling and re-renders as dim+selected text.
+// Used when a dimmed task is under the cursor to keep it visually distinct from
+// normal selected rows. The cursor "→" is preserved in the stripped text.
+func DimSelectedLine(line string, width int) string {
+	stripped := ansi.Strip(line)
+	return DimmedSelectedStyle.Width(width).Render(stripped)
+}
+
 // Render assembles the task line string from the configured fields.
 func (tl TaskLine) Render() string {
 	cursor := "  "
 	if tl.IsSelected {
 		cursor = "→ "
+	} else if tl.Task.Dimmed {
+		cursor = "◌ "
 	}
 
 	statusIcon := tl.StatusBadge
@@ -302,7 +322,13 @@ func (tl TaskLine) Render() string {
 		}
 	}
 
-	if tl.IsSelected {
+	if tl.Task.Dimmed && !tl.IsSelected {
+		line = DimLine(line)
+	} else if tl.Task.Dimmed && tl.IsSelected {
+		line = DimSelectedLine(line, tl.ViewWidth)
+	}
+
+	if tl.IsSelected && !(tl.Task != nil && tl.Task.Dimmed) {
 		if tl.ViewWidth > 0 {
 			style := SelectionRowStyle
 			if tl.Flash {

@@ -101,6 +101,9 @@ func (m *TaskEditorModel) checkChanges() bool {
 	if m.active != m.originalActive {
 		return true
 	}
+	if m.dimmed != m.originalDimmed {
+		return true
+	}
 	// Check recurrence
 	if !recurrenceEqual(m.recurrence, m.originalRecurrence) {
 		return true
@@ -280,28 +283,38 @@ func (m *TaskEditorModel) updateRecurrenceFromCursor() {
 	}
 }
 
-// updateFlagsFromCursor updates pinned/active based on cursor position.
+// updateFlagsFromCursor updates pinned/active/dimmed based on cursor position.
 func (m *TaskEditorModel) updateFlagsFromCursor() {
 	switch m.flagCursor {
 	case 0: // None
 		m.pinned = false
 		m.active = false
+		m.dimmed = false
 	case 1: // Pin
 		m.pinned = true
 		m.active = false
+		m.dimmed = false
 	case 2: // Active
 		m.pinned = false
 		m.active = true
+		m.dimmed = false
+	case 3: // Dim
+		m.pinned = false
+		m.active = false
+		m.dimmed = true
 	}
 }
 
-// flagCursorFromFlags returns the cursor position based on pinned/active flags.
-func flagCursorFromFlags(pinned, active bool) int {
+// flagCursorFromFlags returns the cursor position based on pinned/active/dimmed flags.
+func flagCursorFromFlags(pinned, active, dimmed bool) int {
 	if pinned {
 		return 1 // Pin
 	}
 	if active {
 		return 2 // Active
+	}
+	if dimmed {
+		return 3 // Dim
 	}
 	return 0 // None
 }
@@ -728,6 +741,7 @@ func (m *TaskEditorModel) saveTask() error {
 		t.DueDate = m.dueDate
 		t.Tags = append([]string{}, m.tags...)
 		t.Active = m.active
+		t.Dimmed = m.dimmed
 		t.Recurrence = m.recurrence
 		t.URL = strings.TrimSpace(m.urlInput)
 		t.Source = strings.TrimSpace(m.sourceInput)

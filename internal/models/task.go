@@ -50,6 +50,7 @@ type Task struct {
 	Pinned        bool               `json:"pinned,omitempty"`     // Whether the task is pinned
 	PinnedAt      *time.Time         `json:"pinned_at,omitempty"`  // When the task was pinned
 	Active        bool               `json:"active,omitempty"`     // Whether the task is flagged as active
+	Dimmed        bool               `json:"dimmed,omitempty"`     // Whether the task is visually dimmed
 	Comments      []*Comment         `json:"comments,omitempty"`   // Timestamped comments/notes
 	Recurrence    *RecurrencePattern `json:"recurrence,omitempty"` // Recurrence pattern (nil = non-recurring)
 	Attachments   []Attachment       `json:"attachments,omitempty"`

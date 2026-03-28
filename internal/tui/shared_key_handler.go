@@ -109,15 +109,6 @@ func handleCommonTaskAction(key string, v commonActionView) (tea.Model, tea.Cmd,
 		}
 		return v, nil, true
 
-	case "t":
-		task, project := v.getTaskRef()
-		if task != nil {
-			return v, func() tea.Msg {
-				return ShowTagSelectorMsg{Task: task, Project: project, CurrentTags: append([]string{}, task.Tags...)}
-			}, true
-		}
-		return v, nil, true
-
 	case "Z":
 		task, project := v.getTaskRef()
 		if task != nil {

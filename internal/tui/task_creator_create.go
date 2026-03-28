@@ -47,6 +47,7 @@ func (m *TaskCreatorModel) createTask() tea.Cmd {
 		DueDate:     m.dueDate,
 		Pinned:      m.pinned,
 		Active:      m.active,
+		Dimmed:      m.dimmed,
 		Recurrence:  m.recurrence,
 		BugAttrs:    bugAttrs,
 		IdeaAttrs:   ideaAttrs,

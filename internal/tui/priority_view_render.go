@@ -345,7 +345,13 @@ func (m *PriorityViewModel) renderWaitingOnTask(pt *PriorityTask) string {
 		title = HighlightSubstring(title, m.searchQuery, NormalStyle)
 	}
 
-	return prefix + title + suffix
+	line := prefix + title + suffix
+	if task.Dimmed {
+		// Replace leading space with ◌ indicator before dimming
+		line = "◌" + line[1:]
+		line = DimLine(line)
+	}
+	return line
 }
 
 // getBlockingReason returns a description of what's blocking a task.

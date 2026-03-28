@@ -29,6 +29,7 @@ type TaskEditorModel struct {
 	originalDueDate    *time.Time
 	originalPinned     bool
 	originalActive     bool
+	originalDimmed     bool
 	originalRecurrence *models.RecurrencePattern
 
 	// Form fields
@@ -50,7 +51,8 @@ type TaskEditorModel struct {
 	dueDateInput     string
 	pinned           bool
 	active           bool
-	flagCursor       int // 0=None, 1=Pin, 2=Active (mutually exclusive)
+	dimmed           bool
+	flagCursor       int // 0=None, 1=Pin, 2=Active, 3=Dim (mutually exclusive)
 	recurrence       *models.RecurrencePattern
 	recurrenceCursor int
 	recurrenceOpts   []string // Display labels for recurrence options
@@ -213,6 +215,7 @@ func NewTaskEditorModel(project *models.Project, task *models.Task, cfg *config.
 		originalDueDate:    originalDueDate,
 		originalPinned:     task.Pinned,
 		originalActive:     task.Active,
+		originalDimmed:     task.Dimmed,
 		titleInput:         titleInput,
 		tags:               tags,
 		taskType:           task.Type,
@@ -228,7 +231,8 @@ func NewTaskEditorModel(project *models.Project, task *models.Task, cfg *config.
 		dueDateInput:       dueDateInput,
 		pinned:             task.Pinned,
 		active:             task.Active,
-		flagCursor:         flagCursorFromFlags(task.Pinned, task.Active),
+		dimmed:             task.Dimmed,
+		flagCursor:         flagCursorFromFlags(task.Pinned, task.Active, task.Dimmed),
 		recurrence:         recurrence,
 		recurrenceCursor:   recurrenceCursor,
 		recurrenceOpts:     recurrenceOpts,
@@ -553,8 +557,8 @@ func (m *TaskEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) { //nolint:go
 					m.sectionCursor++
 					m.section = m.sections[m.sectionCursor]
 				}
-			case 6: // Flags - switch between None, Pin, Active
-				if m.flagCursor < 2 {
+			case 6: // Flags - switch between None, Pin, Active, Dim
+				if m.flagCursor < 3 {
 					m.flagCursor++
 					m.updateFlagsFromCursor()
 				}

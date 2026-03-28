@@ -181,10 +181,10 @@ func renderRecurrenceSelectorShared(recurrenceOpts []string, recurrenceCursor in
 	return b.String()
 }
 
-// renderFlagsSelectorShared renders the mutually exclusive flag options: None, Pin, Active.
+// renderFlagsSelectorShared renders the mutually exclusive flag options: None, Pin, Active, Dim.
 func renderFlagsSelectorShared(flagCursor int, focused bool) string {
 	var b strings.Builder
-	options := []string{"None", "Pin", "Active"}
+	options := []string{"None", "Pin", "Active", "Dim"}
 
 	for i, opt := range options {
 		if i == flagCursor {

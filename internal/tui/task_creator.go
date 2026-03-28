@@ -55,7 +55,8 @@ type TaskCreatorModel struct {
 	dueDateInput     string
 	pinned           bool
 	active           bool
-	flagCursor       int // 0=None, 1=Pin, 2=Active (mutually exclusive)
+	dimmed           bool
+	flagCursor       int // 0=None, 1=Pin, 2=Active, 3=Dim (mutually exclusive)
 	recurrence       *models.RecurrencePattern
 	recurrenceCursor int
 	recurrenceOpts   []string

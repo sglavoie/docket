@@ -1142,3 +1142,63 @@ func TestStandbyClearsSnooze(t *testing.T) {
 		t.Errorf("expected StatusStandby after Standby, got %s", task.Status)
 	}
 }
+
+func TestDimUndim(t *testing.T) {
+	task, err := NewTask("t1", 1, TaskTypeTask, "Test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	task.Dim()
+	if !task.Dimmed {
+		t.Error("expected Dimmed to be true after Dim")
+	}
+	task.Undim()
+	if task.Dimmed {
+		t.Error("expected Dimmed to be false after Undim")
+	}
+}
+
+func TestToggleDimmed(t *testing.T) {
+	task, err := NewTask("t1", 1, TaskTypeTask, "Test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	task.ToggleDimmed()
+	if !task.Dimmed {
+		t.Error("expected Dimmed to be true after first ToggleDimmed")
+	}
+	task.ToggleDimmed()
+	if task.Dimmed {
+		t.Error("expected Dimmed to be false after second ToggleDimmed")
+	}
+}
+
+func TestDimClearsActive(t *testing.T) {
+	task, err := NewTask("t1", 1, TaskTypeTask, "Test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	task.Active = true
+	task.Dim()
+	if !task.Dimmed {
+		t.Error("expected Dimmed to be true after Dim")
+	}
+	if task.Active {
+		t.Error("expected Active to be false after Dim")
+	}
+}
+
+func TestActivateClearsDimmed(t *testing.T) {
+	task, err := NewTask("t1", 1, TaskTypeTask, "Test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	task.Dimmed = true
+	task.Activate()
+	if !task.Active {
+		t.Error("expected Active to be true after Activate")
+	}
+	if task.Dimmed {
+		t.Error("expected Dimmed to be false after Activate")
+	}
+}

@@ -130,6 +130,22 @@ func taskOpsSectionMove(v taskOpsView, section string) (tea.Model, tea.Cmd) {
 	return v, cmd
 }
 
+// taskOpsTogglePinned toggles the Pinned flag on the task at cursor.
+func taskOpsTogglePinned(v taskOpsView) (tea.Model, tea.Cmd) {
+	cmd := taskOpsApply(v, func(pf persistFn, project *models.Project, taskID string) TaskOpResult {
+		return applyTogglePinned(pf, project, taskID)
+	})
+	return v, cmd
+}
+
+// taskOpsToggleDimmed toggles the Dimmed flag on the task at cursor.
+func taskOpsToggleDimmed(v taskOpsView) (tea.Model, tea.Cmd) {
+	cmd := taskOpsApply(v, func(pf persistFn, project *models.Project, taskID string) TaskOpResult {
+		return applyToggleDimmed(pf, project, taskID)
+	})
+	return v, cmd
+}
+
 // taskOpsDeleteTask deletes the task at cursor.
 func taskOpsDeleteTask(v taskOpsView) (tea.Model, tea.Cmd) {
 	persister := v.getPersister()

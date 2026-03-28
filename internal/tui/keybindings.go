@@ -238,11 +238,12 @@ func taskPrefixBindings() []Keybinding {
 		{Key: "ts", Description: "Change section", Category: "Task (t prefix)"},
 		{Key: "to", Description: "Open in external editor", Category: "Task (t prefix)"},
 		{Key: "tp", Description: "Pin/unpin task", Category: "Task (t prefix)"},
+		{Key: "td", Description: "Dim/undim task", Category: "Task (t prefix)"},
 		{Key: "tt", Description: "Manage tags", Category: "Task (t prefix)"},
 		{Key: "tc", Description: "View/add comments", Category: "Task (t prefix)"},
 		{Key: "ta", Description: "View/add attachments", Category: "Task (t prefix)"},
 		{Key: "tl", Description: "Edit checklist", Category: "Task (t prefix)"},
-		{Key: "td", Description: "Edit description", Category: "Task (t prefix)"},
+		{Key: "te", Description: "Edit description", Category: "Task (t prefix)"},
 		{Key: "tm", Description: "Move to another project", Category: "Task (t prefix)"},
 		{Key: "tD", Description: "Delete task", Category: "Task (t prefix)"},
 	}

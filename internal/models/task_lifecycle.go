@@ -182,6 +182,7 @@ func (t *Task) TogglePinned() {
 // Activate marks the task as active.
 func (t *Task) Activate() {
 	t.Active = true
+	t.Dimmed = false
 	t.UpdatedAt = time.Now()
 }
 
@@ -197,6 +198,28 @@ func (t *Task) ToggleActive() {
 		t.Deactivate()
 	} else {
 		t.Activate()
+	}
+}
+
+// Dim marks the task as visually dimmed and clears the Active flag.
+func (t *Task) Dim() {
+	t.Dimmed = true
+	t.Active = false
+	t.UpdatedAt = time.Now()
+}
+
+// Undim removes the dimmed state.
+func (t *Task) Undim() {
+	t.Dimmed = false
+	t.UpdatedAt = time.Now()
+}
+
+// ToggleDimmed toggles the dimmed state.
+func (t *Task) ToggleDimmed() {
+	if t.Dimmed {
+		t.Undim()
+	} else {
+		t.Dim()
 	}
 }
 

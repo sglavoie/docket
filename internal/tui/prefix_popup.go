@@ -662,11 +662,12 @@ var (
 		{Key: "s", Description: "section", Detail: "Change section"},
 		{Key: "o", Description: "open", Detail: "Open in external editor"},
 		{Key: "p", Description: "pin", Detail: "Toggle pin/unpin"},
+		{Key: "d", Description: "dim", Detail: "Dim/undim task"},
 		{Key: "t", Description: "tags", Detail: "Manage task tags"},
 		{Key: "c", Description: "comments", Detail: "View/add comments"},
 		{Key: "a", Description: "attachments", Detail: "View/add attachments"},
 		{Key: "l", Description: "checklist", Detail: "Edit checklist items"},
-		{Key: "d", Description: "description", Detail: "Edit description"},
+		{Key: "e", Description: "description", Detail: "Edit description"},
 		{Key: "m", Description: "move", Detail: "Move to another project"},
 		{Key: "D", Description: "delete", Detail: "Delete task"},
 	}
@@ -709,6 +710,7 @@ func CommonTaskActionPrefixHints(stages []string, currentStage string) PrefixHin
 		"s": SnoozePrefixHints,
 		"c": CreateLinkedPrefixHints,
 		"m": SecondaryViewMovePrefixHints,
+		"t": TaskPrefixHints,
 	}
 }
 

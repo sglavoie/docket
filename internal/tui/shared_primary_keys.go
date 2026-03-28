@@ -371,6 +371,42 @@ func handleTogglePinnedKey(v prefixableView) (tea.Cmd, bool) {
 	return tea.Batch(cmds...), true
 }
 
+// handleToggleDimmedKey handles the td prefix key for toggling the Dimmed flag.
+// Returns (cmd, handled).
+func handleToggleDimmedKey(v prefixableView) (tea.Cmd, bool) {
+	project := v.getProject()
+
+	if tasks := v.getMultiSelectedTasks(); tasks != nil {
+		prevStates := captureTaskStates(project.Tasks)
+		count := 0
+		for _, task := range tasks {
+			task.ToggleDimmed()
+			count++
+		}
+		v.clearMultiSelect()
+		msg := fmt.Sprintf("Toggled dim on %d tasks", count)
+		v.setUndoContext("Toggle Dim", msg)
+		v.setStatusMessage(msg)
+		return v.saveAndRefreshBulk(prevStates), true
+	}
+
+	task := v.getCursorTask()
+	if task == nil {
+		return nil, true
+	}
+	v.setUndoContext("Toggle Dim", task.Title)
+	result := applyToggleDimmed(v.workflowPersistFn(), project, task.ID)
+	if result.Err != nil {
+		return func() tea.Msg { return ErrorMsg{Err: result.Err} }, true
+	}
+	cmds := []tea.Cmd{result.Cmd}
+	if result.StatusMessage != "" {
+		v.setStatusMessage(result.StatusMessage)
+	}
+	v.refreshView()
+	return tea.Batch(cmds...), true
+}
+
 // handleTagKey handles the T key for tag filtering or bulk tag assignment.
 // selectedTags is the current tag filter selection from the view's filter state.
 // Returns (cmd, handled).
@@ -827,8 +863,8 @@ func handleTypeChangeKey(key string, v prefixableView) (tea.Cmd, bool) {
 }
 
 // handleSharedTaskPrefix handles the t-prefix key sequence shared across
-// primary views: message-only handlers (to, tc, ta, tl, td, tm), action
-// handlers (tn, tN, ts, tt), rename (tr), toggle pinned (tp), and delete (tD).
+// primary views: message-only handlers (to, tc, ta, tl, te, tm), action
+// handlers (tn, tN, ts, tt), rename (tr), toggle pinned (tp), toggle dimmed (td), and delete (tD).
 // The onRename callback handles view-specific rename entry. focusedTask is the
 // zoom/focus target (may be nil).
 func handleSharedTaskPrefix(
@@ -845,7 +881,7 @@ func handleSharedTaskPrefix(
 		return v.getMultiSelectedTasks()
 	}
 
-	// Try shared message-only handlers first (to, tc, ta, tl, td, tm)
+	// Try shared message-only handlers first (to, tc, ta, tl, te, tm)
 	if task != nil {
 		if handled, cmd := handleTaskPrefixMsgKey(key, task, project); handled {
 			return cmd, true
@@ -865,6 +901,9 @@ func handleSharedTaskPrefix(
 		return nil, true
 	case "p":
 		cmd, _ := handleTogglePinnedKey(v)
+		return cmd, true
+	case "d":
+		cmd, _ := handleToggleDimmedKey(v)
 		return cmd, true
 	case "D":
 		if dv, ok := v.(deleteConfirmView); ok {

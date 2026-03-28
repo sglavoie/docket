@@ -105,7 +105,6 @@ func (m *ProjectTreeModel) renderNodeWithWidth(node *TreeNode, selected bool, in
 	if task.Status == models.StatusCanceled && !node.IsContextNode {
 		titleStyle = CanceledStyle
 	}
-
 	// Progress for parent tasks
 	progress := ""
 	if m.columnConfig.IsVisible(ColProgress) {
@@ -261,7 +260,8 @@ func (m *ProjectTreeModel) renderNodeWithWidth(node *TreeNode, selected bool, in
 
 	content := fmt.Sprintf("%s%s%s%s %s%s %s%s%s%s",
 		checkbox, indent, expandIcon, typeIcon, stageSegment, statusIcon, idStr, title, progress, indicators)
-	return RenderSelectableRow(selected, task.Active, task.Pinned, m.cursorFlash, content, maxWidth)
+	isDimmed := task.Dimmed && !node.IsContextNode
+	return RenderSelectableRow(selected, task.Active, task.Pinned, m.cursorFlash, content, maxWidth, isDimmed)
 }
 
 // renderQuickEditNode renders a task node in quick edit mode.

@@ -162,6 +162,28 @@ func dispatchCommonPrefix(
 		}
 		return v, nil, true
 
+	case "t":
+		task, project := v.getTaskAndProject()
+		if task != nil {
+			// to, tc, ta, tl, te, tm → message-only handlers
+			if handled, cmd := handleTaskPrefixMsgKey(key, task, project); handled {
+				return v, cmd, true
+			}
+			// ts, tt → action handlers (no focusedTask/multi-select in secondary views)
+			if handled, cmd := handleTaskActionPrefixKey(key, task, project, nil, nil); handled {
+				return v, cmd, true
+			}
+		}
+		switch key {
+		case "d":
+			model, cmd := taskOpsToggleDimmed(v)
+			return model, cmd, true
+		case "p":
+			model, cmd := taskOpsTogglePinned(v)
+			return model, cmd, true
+		}
+		return v, nil, true
+
 	case ".":
 		stage := StageForPrefixKey(key, v.getConfig().Stages)
 		if stage != nil {

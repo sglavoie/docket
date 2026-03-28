@@ -219,7 +219,7 @@ func applyToggleActive(pf persistFn, project *models.Project, taskID string) Tas
 
 	wasActive := task.Active
 	result := pf(project, taskID, func(t *models.Task) {
-		t.Active = !t.Active
+		t.ToggleActive()
 	})
 	if result.Err != nil || result.StatusMessage != "" {
 		return result
@@ -378,6 +378,33 @@ func applyTogglePinned(pf persistFn, project *models.Project, taskID string) Tas
 			result.StatusMessage = fmt.Sprintf("Pinned task #%d", updated.ShortID)
 		} else {
 			result.StatusMessage = fmt.Sprintf("Unpinned task #%d", updated.ShortID)
+		}
+	}
+	result.Cmd = func() tea.Msg { return TaskPropertyChangedMsg{Task: task} }
+	return result
+}
+
+// applyToggleDimmed toggles the Dimmed flag on a task.
+func applyToggleDimmed(pf persistFn, project *models.Project, taskID string) TaskOpResult {
+	task := project.GetTaskByID(taskID)
+	if task == nil {
+		return TaskOpResult{StatusMessage: "Task no longer exists in project"}
+	}
+
+	result := pf(project, taskID, func(t *models.Task) {
+		t.ToggleDimmed()
+	})
+	if result.Err != nil || result.StatusMessage != "" {
+		return result
+	}
+
+	// Re-read to get updated state
+	updated := project.GetTaskByID(taskID)
+	if updated != nil {
+		if updated.Dimmed {
+			result.StatusMessage = fmt.Sprintf("Dimmed task #%d", updated.ShortID)
+		} else {
+			result.StatusMessage = fmt.Sprintf("Undimmed task #%d", updated.ShortID)
 		}
 	}
 	result.Cmd = func() tea.Msg { return TaskPropertyChangedMsg{Task: task} }

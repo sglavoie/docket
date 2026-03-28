@@ -88,6 +88,9 @@ type SavedView struct {
 type PaletteColors struct {
 	NormalText string `json:"normal_text,omitempty"`
 	Muted      string `json:"muted,omitempty"`
+	Dimmed     string `json:"dimmed,omitempty"`
+	DimmedBg   string `json:"dimmed_bg,omitempty"`
+	DimmedFg   string `json:"dimmed_fg,omitempty"`
 	Primary    string `json:"primary,omitempty"`
 	Secondary  string `json:"secondary,omitempty"`
 	Accent     string `json:"accent,omitempty"`

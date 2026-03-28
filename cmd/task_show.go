@@ -121,6 +121,10 @@ func displayTaskDetail(task *models.Task) {
 		labelStyle.Render("Type:"),
 		valueStyle.Render(task.Type.HeadingPrefix()))
 
+	if task.Dimmed {
+		fmt.Printf("%s yes\n", labelStyle.Render("Dimmed:"))
+	}
+
 	if len(task.Tags) > 0 {
 		fmt.Printf("%s %s\n",
 			labelStyle.Render("Tags:"),
@@ -194,6 +198,7 @@ type taskShowJSONEntry struct {
 	Pinned          bool                      `json:"pinned"`
 	PinnedAt        *time.Time                `json:"pinned_at,omitempty"`
 	Active          bool                      `json:"active"`
+	Dimmed          bool                      `json:"dimmed"`
 	SnoozedUntil    *time.Time                `json:"snoozed_until"`
 	Stage           string                    `json:"stage,omitempty"`
 	Source          string                    `json:"source,omitempty"`
@@ -275,6 +280,7 @@ func displayTaskShowJSON(task *models.Task) error {
 		Pinned:          task.Pinned,
 		PinnedAt:        task.PinnedAt,
 		Active:          task.Active,
+		Dimmed:          task.Dimmed,
 		SnoozedUntil:    task.SnoozedUntil,
 		Stage:           task.Stage,
 		Source:          task.Source,

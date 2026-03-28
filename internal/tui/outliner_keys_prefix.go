@@ -97,7 +97,7 @@ func (m *OutlinerModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) { //nol
 				return m, nil
 			}
 			task := row.task
-			// to, tc, ta, tl, td, tm → message-only handlers
+			// to, tc, ta, tl, te, tm → message-only handlers
 			if handled, cmd := handleTaskPrefixMsgKey(key, task, proj); handled {
 				return m, cmd
 			}
@@ -115,6 +115,10 @@ func (m *OutlinerModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) { //nol
 			// tp → pin/unpin
 			if key == "p" {
 				return m.crossTogglePinned(row, proj)
+			}
+			// td → dim/undim
+			if key == "d" {
+				return m.crossToggleDimmed(row, proj)
 			}
 			// tD → delete
 			if key == "D" {

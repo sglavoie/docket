@@ -103,6 +103,21 @@ func rebuildPalette(p config.PaletteColors) {
 	} else {
 		ColorMuted = lipgloss.Color("248")
 	}
+	if p.Dimmed != "" {
+		ColorDimmed = lipgloss.Color(p.Dimmed)
+	} else {
+		ColorDimmed = lipgloss.Color("240")
+	}
+	if p.DimmedBg != "" {
+		ColorDimmedBg = lipgloss.Color(p.DimmedBg)
+	} else {
+		ColorDimmedBg = lipgloss.Color("237")
+	}
+	if p.DimmedFg != "" {
+		ColorDimmedFg = lipgloss.Color(p.DimmedFg)
+	} else {
+		ColorDimmedFg = lipgloss.Color("250")
+	}
 	if p.Border != "" {
 		ColorBorder = lipgloss.Color(p.Border)
 	} else {
@@ -140,6 +155,14 @@ func rebuildStyles() {
 	TitleStyle = lipgloss.NewStyle().Bold(true).Foreground(ColorPrimary)
 	SubtitleStyle = lipgloss.NewStyle().Foreground(ColorSecondary).MarginBottom(1)
 	DimStyle = lipgloss.NewStyle().Faint(true)
+	DimmedTaskStyle = lipgloss.NewStyle().
+		Background(ColorDimmedBg).
+		Foreground(ColorDimmedFg).
+		Italic(true)
+	DimmedSelectedStyle = lipgloss.NewStyle().
+		Background(ColorDimmedBg).
+		Foreground(ColorSelectedFg).
+		Italic(true)
 	MutedStyle = lipgloss.NewStyle().Foreground(ColorMuted)
 
 	// Status colors
@@ -487,6 +510,11 @@ func ApplyTheme(tc ThemeConfig) {
 		Foreground(ColorSelectedFg).
 		Padding(0, 1)
 
+	DimmedSelectedStyle = lipgloss.NewStyle().
+		Background(ColorDimmedBg).
+		Foreground(ColorSelectedFg).
+		Italic(true)
+
 	// 4. Background propagation
 	themeBgColor = tc.BgColor
 
@@ -617,6 +645,9 @@ var (
 	ColorWarning     = lipgloss.Color("214")     // Orange
 	ColorError       = lipgloss.Color("196")     // Red
 	ColorMuted       = lipgloss.Color("248")     // Gray
+	ColorDimmed      = lipgloss.Color("240")     // Dimmed gray (darker than muted)
+	ColorDimmedBg    = lipgloss.Color("237")     // Light gray background for dimmed rows
+	ColorDimmedFg    = lipgloss.Color("250")     // Light gray text on dimmed background
 	ColorHighlight   = lipgloss.Color("#f2eb16") // Bright yellow
 	ColorBackground  = lipgloss.Color("236")     // Dark gray
 	ColorBorder      = lipgloss.Color("244")     // Border gray
@@ -680,6 +711,18 @@ var (
 
 	// DimStyle applies the ANSI faint attribute to visually de-emphasize unfocused panes.
 	DimStyle = lipgloss.NewStyle().Faint(true)
+
+	// DimmedTaskStyle applies a light gray background + dark text + italic to visually dim task lines.
+	DimmedTaskStyle = lipgloss.NewStyle().
+			Background(ColorDimmedBg).
+			Foreground(ColorDimmedFg).
+			Italic(true)
+
+	// DimmedSelectedStyle is used for dimmed tasks that are also under the cursor.
+	DimmedSelectedStyle = lipgloss.NewStyle().
+				Background(ColorDimmedBg).
+				Foreground(ColorSelectedFg).
+				Italic(true)
 
 	// Text styles
 	NormalStyle = lipgloss.NewStyle()
@@ -1588,33 +1631,47 @@ var PinnedMarker = lipgloss.NewStyle().Foreground(ColorSuccess).Bold(true).Rende
 // The content should already have its internal styling (badges, etc).
 // RenderCursorPrefix returns the 3-character cursor prefix string based on
 // selected/active/pinned state. Always exactly 3 display characters wide.
-func RenderCursorPrefix(selected, active, pinned bool) string {
+func RenderCursorPrefix(selected, active, pinned, dimmed bool) string {
 	activeMarker := ActiveStyle.Bold(true).Render("*")
+	var prefix string
 	switch {
 	case selected && active && pinned:
-		return SelectionCursorStyle.Render("→") + activeMarker + PinnedMarker
+		prefix = SelectionCursorStyle.Render("→") + activeMarker + PinnedMarker
 	case selected && active:
-		return SelectionCursorStyle.Render("→") + activeMarker + " "
+		prefix = SelectionCursorStyle.Render("→") + activeMarker + " "
 	case selected && pinned:
-		return SelectionCursorStyle.Render("→") + " " + PinnedMarker
+		prefix = SelectionCursorStyle.Render("→") + " " + PinnedMarker
 	case selected:
-		return SelectionCursorStyle.Render("→") + "  "
+		prefix = SelectionCursorStyle.Render("→") + "  "
 	case active && pinned:
-		return " " + activeMarker + PinnedMarker
+		prefix = " " + activeMarker + PinnedMarker
 	case active:
-		return " " + activeMarker + " "
+		prefix = " " + activeMarker + " "
 	case pinned:
-		return "  " + PinnedMarker
+		prefix = "  " + PinnedMarker
 	default:
-		return "   "
+		prefix = "   "
 	}
+	// When dimmed and not selected, replace the leading space with ◌
+	if dimmed && !selected && len(prefix) > 0 && prefix[0] == ' ' {
+		prefix = "◌" + prefix[1:]
+	}
+	return prefix
 }
 
 // RenderSelectableRow renders a row with cursor prefix and optional full-width
 // selection highlight. Uses RenderCursorPrefix for the 3-char prefix, then
 // applies SelectionRowStyle with the given width when selected.
-func RenderSelectableRow(selected bool, active bool, pinned bool, flash bool, content string, width int) string {
-	row := RenderCursorPrefix(selected, active, pinned) + content
+// When dimmed is true, DimLine/DimSelectedLine styling is applied automatically.
+func RenderSelectableRow(selected bool, active bool, pinned bool, flash bool, content string, width int, dimmed ...bool) string {
+	isDimmed := len(dimmed) > 0 && dimmed[0]
+	row := RenderCursorPrefix(selected, active, pinned, isDimmed) + content
+	if isDimmed && selected {
+		return DimSelectedLine(row, width)
+	}
+	if isDimmed {
+		return DimLine(row)
+	}
 	if selected {
 		style := SelectionRowStyle
 		if flash {

@@ -80,7 +80,7 @@ func (m *PriorityViewModel) handleKeypress(msg tea.KeyPressMsg) (tea.Model, tea.
 	}
 
 	// Activate prefix mode
-	if prefix, ok := activateSecondaryPrefix(key, "gzF", ",!dsmc.", m.getTaskAtCursor() != nil); ok {
+	if prefix, ok := activateSecondaryPrefix(key, "gzF", ",!dsmct.", m.getTaskAtCursor() != nil); ok {
 		m.pendingPrefix = prefix
 		return m, nil
 	}

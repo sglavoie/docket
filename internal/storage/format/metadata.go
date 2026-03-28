@@ -52,7 +52,7 @@ type ParseWarning struct {
 // metadataKeys lists all known metadata keys for smart splitting.
 var metadataKeys = []string{
 	"id", "status", "priority", "parent", "tags", "created", "updated",
-	"completed", "due", "depends", "related", "section", "custom_section", "pinned", "pinned_at", "active", "recur",
+	"completed", "due", "depends", "related", "section", "custom_section", "pinned", "pinned_at", "active", "dimmed", "recur",
 	"recur.skipped", "recur.streak", "recur.max_streak", "recur.original_day",
 	"attachments", "snoozed", "checklist", "stage", "source", "url",
 	// Type-specific attribute keys
@@ -207,6 +207,8 @@ func ParseMetadata(task *models.Task, metaStr string) []ParseWarning { //nolint:
 			}
 		case "active":
 			task.Active = value == "true"
+		case "dimmed":
+			task.Dimmed = value == "true"
 		case "recur":
 			if pattern := models.ParseRecurrence(value); pattern != nil {
 				task.Recurrence = pattern
@@ -787,6 +789,10 @@ func WriteMetadata(task *models.Task) string { //nolint:gocyclo
 
 	if task.Active {
 		parts = append(parts, "active: true")
+	}
+
+	if task.Dimmed {
+		parts = append(parts, "dimmed: true")
 	}
 
 	if task.SnoozedUntil != nil {

@@ -284,6 +284,22 @@ func (m *OutlinerModel) crossTogglePinned(row outlinerRow, proj *models.Project)
 	return m, result.Cmd
 }
 
+// crossToggleDimmed toggles the dimmed state for a task in cross-project mode.
+func (m *OutlinerModel) crossToggleDimmed(row outlinerRow, proj *models.Project) (tea.Model, tea.Cmd) {
+	pf := m.crossPersistFn(proj)
+	result := applyToggleDimmed(pf, proj, row.task.ID)
+	if result.Err != nil {
+		return m, func() tea.Msg { return ErrorMsg{Err: result.Err} }
+	}
+	m.crossUndoCtx.Set("Toggle Dim", row.task.Title)
+	m.crossUndoCtx.ProjectIDs = []string{proj.ID}
+	if result.StatusMessage != "" {
+		m.setStatus(result.StatusMessage)
+	}
+	m.rebuildRows()
+	return m, result.Cmd
+}
+
 // crossHandleDueDateMutation handles the d prefix in cross-project mode.
 // "dd" emits SetDueDateMsg (date picker). Quick keys (dt/dm/dw/dn/d0) mutate inline.
 // Returns (cmd, true) when the key was consumed.

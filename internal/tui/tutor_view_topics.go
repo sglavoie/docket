@@ -607,6 +607,35 @@ view. It is the fastest way to discover and access features
 without memorizing keybindings.`,
 		},
 		{
+			Title:    "Dimming",
+			Category: "TUI",
+			Content: `# What Is Dimming
+
+Dimming visually de-emphasizes a task without changing its
+status. Dimmed tasks stay in place but appear with a gray
+background and italic text, marked with a ◌ indicator.
+
+Use dimming to push tasks out of your visual focus while
+keeping them visible — for example, tasks you've triaged
+but don't need to act on right now.
+
+# How to Dim
+
+  td  Toggle dim on the current task
+
+Dimmed tasks remain in all views and filters. Dimming is
+purely visual — it does not affect status, priority, or
+any other task property.
+
+# Visual Appearance
+
+Dimmed tasks show a distinct gray background so they stand
+out from normal rows. When the cursor is on a dimmed task,
+the row keeps its dimmed styling instead of switching to the
+normal selection highlight, so you always know which tasks
+are dimmed.`,
+		},
+		{
 			Title:    "Help",
 			Category: "TUI",
 			Content: `# Context-Sensitive Help

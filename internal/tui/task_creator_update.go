@@ -400,7 +400,7 @@ func (m *TaskCreatorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) { //nolint:g
 				}
 				return m, nil
 			case "flags":
-				if m.flagCursor < 2 {
+				if m.flagCursor < 3 {
 					m.flagCursor++
 					m.updateFlagsFromCursor()
 				}

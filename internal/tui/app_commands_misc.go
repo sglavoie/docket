@@ -619,6 +619,27 @@ func (m *AppModel) outlinerCommands() []Command { //nolint:gocyclo
 			},
 		},
 		{
+			Name:        "dim/undim task",
+			Description: "Toggle dim state of task",
+			Shortcut:    "",
+			Category:    CategoryTasks,
+			Views:       []ViewType{ViewOutliner},
+			Aliases:     []string{"dim task", "undim task", "mute task"},
+			Handler: func() tea.Msg {
+				task := cursorTask()
+				if task == nil || m.outliner == nil {
+					return nil
+				}
+				pf := simplePersist(NewProjectService())
+				result := applyToggleDimmed(pf, m.outliner.project, task.ID)
+				if result.Err != nil {
+					return ErrorMsg{Err: result.Err}
+				}
+				m.outliner.rebuildRows()
+				return StatusMsg(result.StatusMessage)
+			},
+		},
+		{
 			Name:        "move to project",
 			Description: "Move task to another project",
 			Shortcut:    "tm",

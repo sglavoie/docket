@@ -44,17 +44,24 @@ func (m *TaskCreatorModel) updateRecurrenceFromCursor() {
 	}
 }
 
-// updateFlagsFromCursor updates pinned/active based on cursor position.
+// updateFlagsFromCursor updates pinned/active/dimmed based on cursor position.
 func (m *TaskCreatorModel) updateFlagsFromCursor() {
 	switch m.flagCursor {
 	case 0: // None
 		m.pinned = false
 		m.active = false
+		m.dimmed = false
 	case 1: // Pin
 		m.pinned = true
 		m.active = false
+		m.dimmed = false
 	case 2: // Active
 		m.pinned = false
 		m.active = true
+		m.dimmed = false
+	case 3: // Dim
+		m.pinned = false
+		m.active = false
+		m.dimmed = true
 	}
 }

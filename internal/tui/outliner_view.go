@@ -516,9 +516,10 @@ func (m *OutlinerModel) renderOutlinerTreeContent(width int) string { //nolint:g
 			projBadge = badgeStyle.Render("["+projSlug+"]") + " "
 		}
 
+		// Title with priority coloring
+		proj := m.resolveProjectForRow(row)
 		typeIcon := GetTypeBadge(string(task.Type), task.Type.Icon())
 		statusIcon := GetStatusBadge(string(task.Status), task.Status.Icon())
-		proj := m.resolveProjectForRow(row)
 		if proj != nil && proj.HasIncompleteDependencies(task) {
 			statusIcon = BlockedByDepsStyle.Render(task.Status.Icon())
 		}
@@ -529,7 +530,6 @@ func (m *OutlinerModel) renderOutlinerTreeContent(width int) string { //nolint:g
 			stageSegment = stageBadge + " "
 		}
 
-		// Title with priority coloring
 		titleStyle := NormalStyle
 		if task.Status == models.StatusCanceled {
 			titleStyle = CanceledStyle
@@ -637,7 +637,7 @@ func (m *OutlinerModel) renderOutlinerTreeContent(width int) string { //nolint:g
 
 		indicatorStr := JoinIndicatorGroups(orgGroup, lifecycleGroup, structureGroup, contentGroup)
 
-		cursorPrefix := RenderCursorPrefix(selected, task.Active, task.Pinned)
+		cursorPrefix := RenderCursorPrefix(selected, task.Active, task.Pinned, task.Dimmed)
 
 		// Selection checkbox (only in multi-select mode)
 		checkbox := ""
@@ -687,7 +687,13 @@ func (m *OutlinerModel) renderOutlinerTreeContent(width int) string { //nolint:g
 			projBadge,
 			typeIcon, stageSegment, statusIcon, title, indicators)
 
-		if selected {
+		if task.Dimmed && !selected {
+			line = DimLine(line)
+		} else if task.Dimmed && selected {
+			line = DimSelectedLine(line, rowWidth)
+		}
+
+		if selected && !task.Dimmed {
 			rowStyle := SelectionRowStyle
 			if m.cursorFlash {
 				rowStyle = CursorFlashRowStyle
