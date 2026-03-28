@@ -64,7 +64,10 @@ func runProjectList(cmd *cobra.Command, args []string) error {
 			Context        string     `json:"context"`
 			Path           string     `json:"path"`
 			StatusIcon     string     `json:"status_icon,omitempty"`
+			CreatedAt      time.Time  `json:"created_at"`
+			UpdatedAt      time.Time  `json:"updated_at"`
 			Archived       bool       `json:"archived"`
+			ArchivedAt     *time.Time `json:"archived_at,omitempty"`
 			Pinned         bool       `json:"pinned"`
 			PinnedAt       *time.Time `json:"pinned_at,omitempty"`
 			TaskCount      int        `json:"task_count,omitempty"`
@@ -82,7 +85,10 @@ func runProjectList(cmd *cobra.Command, args []string) error {
 				Context:     p.Context,
 				Path:        p.Path,
 				StatusIcon:  p.StatusIcon,
+				CreatedAt:   p.CreatedAt,
+				UpdatedAt:   p.UpdatedAt,
 				Archived:    p.Archived,
+				ArchivedAt:  p.ArchivedAt,
 				Pinned:      p.Pinned,
 				PinnedAt:    p.PinnedAt,
 			}

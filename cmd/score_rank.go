@@ -81,10 +81,12 @@ func runScoreRank(cmd *cobra.Command, args []string) error {
 	if jsonOutput {
 		type rankedJSON struct {
 			Rank         int     `json:"rank"`
+			ID           string  `json:"id"`
 			ShortID      int     `json:"short_id"`
 			Type         string  `json:"type"`
 			Status       string  `json:"status"`
 			Title        string  `json:"title"`
+			Priority     int     `json:"priority"`
 			Score        float64 `json:"score"`
 			ScorePercent int     `json:"score_percent"`
 		}
@@ -94,10 +96,12 @@ func runScoreRank(cmd *cobra.Command, args []string) error {
 			pct := scoring.ScorePercent(r.score, profile)
 			items[i] = rankedJSON{
 				Rank:         i + 1,
+				ID:           r.task.ID,
 				ShortID:      r.task.ShortID,
 				Type:         string(r.task.Type),
 				Status:       string(r.task.Status),
 				Title:        r.task.Title,
+				Priority:     r.task.Priority,
 				Score:        r.score,
 				ScorePercent: int(pct),
 			}

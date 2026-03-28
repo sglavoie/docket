@@ -54,6 +54,7 @@ func runBoardShow(cmd *cobra.Command, args []string) error {
 		type actionJSON struct {
 			ID          string     `json:"id"`
 			ShortID     int        `json:"short_id"`
+			Type        string     `json:"type"`
 			Title       string     `json:"title"`
 			Description string     `json:"description"`
 			Status      string     `json:"status"`
@@ -77,6 +78,7 @@ func runBoardShow(cmd *cobra.Command, args []string) error {
 		entry := actionJSON{
 			ID:          task.ID,
 			ShortID:     task.ShortID,
+			Type:        task.Type.String(),
 			Title:       task.Title,
 			Description: task.Description,
 			Status:      task.Status.String(),

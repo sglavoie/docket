@@ -1,7 +1,9 @@
 package cmd
 
 import (
+	"encoding/json"
 	"testing"
+	"time"
 
 	"github.com/spf13/viper"
 
@@ -95,4 +97,66 @@ func TestProjectList(t *testing.T) {
 			t.Errorf("config.Projects[1] was mutated: got %s, want %s", deps.Config.Projects[1].ID, originalSecond)
 		}
 	})
+}
+
+func TestProjectListJSON_IncludesTimestampsAndArchivedAt(t *testing.T) {
+	now := time.Now()
+	archivedAt := now.Add(-24 * time.Hour)
+
+	type projectJSON struct {
+		ID         string     `json:"id"`
+		CreatedAt  time.Time  `json:"created_at"`
+		UpdatedAt  time.Time  `json:"updated_at"`
+		ArchivedAt *time.Time `json:"archived_at,omitempty"`
+	}
+
+	entry := projectJSON{
+		ID:         "test-id",
+		CreatedAt:  now,
+		UpdatedAt:  now,
+		ArchivedAt: &archivedAt,
+	}
+
+	data, err := json.Marshal(entry)
+	if err != nil {
+		t.Fatalf("failed to marshal: %v", err)
+	}
+
+	var parsed map[string]any
+	if err := json.Unmarshal(data, &parsed); err != nil {
+		t.Fatalf("failed to unmarshal: %v", err)
+	}
+
+	if _, ok := parsed["created_at"]; !ok {
+		t.Error("created_at field missing from project list JSON")
+	}
+	if _, ok := parsed["updated_at"]; !ok {
+		t.Error("updated_at field missing from project list JSON")
+	}
+	if _, ok := parsed["archived_at"]; !ok {
+		t.Error("archived_at field missing from project list JSON")
+	}
+}
+
+func TestProjectListJSON_OmitsArchivedAtWhenNil(t *testing.T) {
+	type projectJSON struct {
+		ID         string     `json:"id"`
+		ArchivedAt *time.Time `json:"archived_at,omitempty"`
+	}
+
+	entry := projectJSON{ID: "test-id", ArchivedAt: nil}
+
+	data, err := json.Marshal(entry)
+	if err != nil {
+		t.Fatalf("failed to marshal: %v", err)
+	}
+
+	var parsed map[string]any
+	if err := json.Unmarshal(data, &parsed); err != nil {
+		t.Fatalf("failed to unmarshal: %v", err)
+	}
+
+	if _, ok := parsed["archived_at"]; ok {
+		t.Error("archived_at should be omitted when nil")
+	}
 }

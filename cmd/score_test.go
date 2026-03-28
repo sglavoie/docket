@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"encoding/json"
 	"testing"
 	"time"
 
@@ -352,4 +353,47 @@ func TestRunScoreRank(t *testing.T) {
 			}
 		}
 	})
+}
+
+func TestScoreRankJSON_IncludesIDAndPriority(t *testing.T) {
+	type rankedJSON struct {
+		Rank         int     `json:"rank"`
+		ID           string  `json:"id"`
+		ShortID      int     `json:"short_id"`
+		Type         string  `json:"type"`
+		Status       string  `json:"status"`
+		Title        string  `json:"title"`
+		Priority     int     `json:"priority"`
+		Score        float64 `json:"score"`
+		ScorePercent int     `json:"score_percent"`
+	}
+
+	entry := rankedJSON{
+		Rank:         1,
+		ID:           "task-uuid-123",
+		ShortID:      42,
+		Type:         "task",
+		Status:       "todo",
+		Title:        "Important task",
+		Priority:     1,
+		Score:        8.5,
+		ScorePercent: 85,
+	}
+
+	data, err := json.Marshal(entry)
+	if err != nil {
+		t.Fatalf("failed to marshal: %v", err)
+	}
+
+	var parsed map[string]any
+	if err := json.Unmarshal(data, &parsed); err != nil {
+		t.Fatalf("failed to unmarshal: %v", err)
+	}
+
+	if v, ok := parsed["id"]; !ok || v != "task-uuid-123" {
+		t.Errorf("expected id=task-uuid-123 in score rank JSON, got %v", v)
+	}
+	if v, ok := parsed["priority"]; !ok || v != float64(1) {
+		t.Errorf("expected priority=1 in score rank JSON, got %v", v)
+	}
 }

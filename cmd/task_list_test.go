@@ -710,6 +710,8 @@ func TestTaskJSONEntry_IncludesFlagFields(t *testing.T) {
 	task.Active = true
 	task.Dimmed = true
 	task.CustomSection = "sprint-1"
+	parentID := "parent-uuid"
+	task.ParentID = &parentID
 
 	tags := task.Tags
 	if tags == nil {
@@ -722,6 +724,7 @@ func TestTaskJSONEntry_IncludesFlagFields(t *testing.T) {
 		Title:         task.Title,
 		Status:        task.Status.String(),
 		Priority:      task.Priority,
+		ParentID:      task.ParentID,
 		Tags:          tags,
 		Section:       task.Section,
 		CustomSection: task.CustomSection,
@@ -754,6 +757,41 @@ func TestTaskJSONEntry_IncludesFlagFields(t *testing.T) {
 	}
 	if v, ok := parsed["custom_section"]; !ok || v != "sprint-1" {
 		t.Errorf("expected custom_section=sprint-1 in JSON, got %v", v)
+	}
+	if v, ok := parsed["parent_id"]; !ok || v != "parent-uuid" {
+		t.Errorf("expected parent_id=parent-uuid in JSON, got %v", v)
+	}
+}
+
+func TestTaskJSONEntry_NilParentIDSerializesAsNull(t *testing.T) {
+	task := testutil.NewTestTask("Root task", models.TaskTypeTask)
+
+	entry := taskJSONEntry{
+		ID:       task.ID,
+		ShortID:  task.ShortID,
+		Type:     task.Type.String(),
+		Title:    task.Title,
+		Status:   task.Status.String(),
+		Priority: task.Priority,
+		ParentID: nil,
+		Tags:     []string{},
+	}
+
+	data, err := json.Marshal(entry)
+	if err != nil {
+		t.Fatalf("failed to marshal: %v", err)
+	}
+
+	var parsed map[string]any
+	if err := json.Unmarshal(data, &parsed); err != nil {
+		t.Fatalf("failed to unmarshal: %v", err)
+	}
+
+	if _, ok := parsed["parent_id"]; !ok {
+		t.Error("expected parent_id key to be present even when nil")
+	}
+	if parsed["parent_id"] != nil {
+		t.Errorf("expected parent_id=null for root task, got %v", parsed["parent_id"])
 	}
 }
 

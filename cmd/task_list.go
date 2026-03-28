@@ -142,6 +142,7 @@ type taskJSONEntry struct {
 	Title         string     `json:"title"`
 	Status        string     `json:"status"`
 	Priority      int        `json:"priority"`
+	ParentID      *string    `json:"parent_id"`
 	Tags          []string   `json:"tags"`
 	Section       string     `json:"section"`
 	CustomSection string     `json:"custom_section,omitempty"`
@@ -169,6 +170,7 @@ func displayTaskJSON(tasks []*models.Task) error {
 			Title:         t.Title,
 			Status:        t.Status.String(),
 			Priority:      t.Priority,
+			ParentID:      t.ParentID,
 			Tags:          tags,
 			Section:       t.Section,
 			CustomSection: t.CustomSection,

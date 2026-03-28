@@ -112,6 +112,7 @@ func runBoardList(cmd *cobra.Command, args []string) error {
 		type actionJSONEntry struct {
 			ID        string     `json:"id"`
 			ShortID   int        `json:"short_id"`
+			Type      string     `json:"type"`
 			Title     string     `json:"title"`
 			Status    string     `json:"status"`
 			Priority  int        `json:"priority"`
@@ -132,6 +133,7 @@ func runBoardList(cmd *cobra.Command, args []string) error {
 			entries[i] = actionJSONEntry{
 				ID:        a.task.ID,
 				ShortID:   a.task.ShortID,
+				Type:      a.task.Type.String(),
 				Title:     a.task.Title,
 				Status:    a.task.Status.String(),
 				Priority:  a.task.Priority,
