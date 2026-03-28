@@ -65,7 +65,7 @@ func runBoardShow(cmd *cobra.Command, args []string) error {
 			Project     string     `json:"project,omitempty"`
 			CreatedAt   time.Time  `json:"created_at"`
 			UpdatedAt   time.Time  `json:"updated_at"`
-			DueDate     *time.Time `json:"due_date,omitempty"`
+			DueDate     *time.Time `json:"due_date"`
 		}
 		tags := task.Tags
 		if tags == nil {

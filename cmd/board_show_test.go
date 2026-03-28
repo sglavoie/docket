@@ -1,20 +1,25 @@
 package cmd
 
 import (
+	"io"
+	"os"
 	"strings"
 	"testing"
 
 	"github.com/spf13/viper"
 
 	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/testutil"
 )
 
 func TestRunBoardShow(t *testing.T) {
-	setup := func(t *testing.T) *testutil.TestDeps {
+	setup := func(t *testing.T) (*testutil.TestDeps, *models.Project) {
 		t.Helper()
-		deps, _ := testutil.SetupTestDepsWithProject(t, "Test Project")
+		deps, project := testutil.SetupTestDepsWithProject(t, "Test Project")
+
+		boardShowJSON = false
 
 		viper.Set("config", deps.ConfigPath)
 		t.Cleanup(func() { viper.Set("config", "") })
@@ -27,11 +32,11 @@ func TestRunBoardShow(t *testing.T) {
 		storage.DefaultRepository = deps.Repository
 		t.Cleanup(func() { storage.DefaultRepository = oldStorageRepo })
 
-		return deps
+		return deps, project
 	}
 
 	t.Run("rejects missing args with correct error message", func(t *testing.T) {
-		deps := setup(t)
+		deps, _ := setup(t)
 		defer deps.Cleanup()
 
 		err := runBoardShow(boardShowCmd, []string{})
@@ -45,12 +50,43 @@ func TestRunBoardShow(t *testing.T) {
 	})
 
 	t.Run("returns error for nonexistent action ID", func(t *testing.T) {
-		deps := setup(t)
+		deps, _ := setup(t)
 		defer deps.Cleanup()
 
 		err := runBoardShow(boardShowCmd, []string{"999"})
 		if err == nil {
 			t.Error("expected error for nonexistent action ID")
+		}
+	})
+
+	t.Run("json includes due_date null when no due date set", func(t *testing.T) {
+		deps, project := setup(t)
+		defer deps.Cleanup()
+
+		task, _ := models.NewTask("action-1", project.GetNextShortID(), models.TaskTypeTask, "Show Action")
+		project.Tasks = append(project.Tasks, task)
+		deps.Repository.Projects[project.ID] = project
+
+		boardShowJSON = true
+
+		oldStdout := os.Stdout
+		r, w, _ := os.Pipe()
+		os.Stdout = w
+
+		err := runBoardShow(boardShowCmd, []string{"1"})
+
+		w.Close()
+		os.Stdout = oldStdout
+		outBytes, _ := io.ReadAll(r)
+		out := string(outBytes)
+
+		testutil.AssertNoError(t, err)
+
+		if !strings.Contains(out, `"due_date"`) {
+			t.Error("JSON output should always include due_date field, even when null")
+		}
+		if !strings.Contains(out, `"due_date": null`) {
+			t.Error("due_date should be null when no due date is set")
 		}
 	})
 }
