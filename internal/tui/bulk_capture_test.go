@@ -249,6 +249,40 @@ func TestBulkCaptureModel_taskOrder(t *testing.T) {
 	}
 }
 
+func TestBulkCaptureModel_rejectsInvalidTitles(t *testing.T) {
+	project := &models.Project{
+		ID:   "test-project",
+		Name: "Test Project",
+	}
+
+	// All lines have storage-corrupting characters, so no tasks should be created
+	// and errors should be reported for each line.
+	m := NewBulkCaptureModel(project)
+	m.input.SetValue("Fix <!-- bug\nFix --> issue")
+
+	cmd := m.createTasks()
+	if cmd != nil {
+		cmd()
+	}
+
+	if m.created != 0 {
+		t.Errorf("created = %d, want 0", m.created)
+	}
+	if len(m.errors) != 2 {
+		t.Errorf("errors = %d, want 2", len(m.errors))
+	}
+	if len(project.Tasks) != 0 {
+		t.Errorf("tasks = %d, want 0", len(project.Tasks))
+	}
+
+	// Verify error messages reference the title validation
+	for _, err := range m.errors {
+		if !strings.Contains(err.message, "must not contain") {
+			t.Errorf("expected validation error, got: %s", err.message)
+		}
+	}
+}
+
 func TestNewBulkCaptureModel(t *testing.T) {
 	project := &models.Project{
 		ID:   "test-project",

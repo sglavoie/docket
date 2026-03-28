@@ -187,6 +187,16 @@ func (m *BulkCaptureModel) createTasks() tea.Cmd {
 				message: err.Error(),
 			})
 			failedLines = append(failedLines, lines[i]) // Keep original line
+			continue
+		}
+
+		// Validate title to prevent storage corruption from meta-characters
+		if valErr := models.ValidateTaskTitle(result.title); valErr != nil {
+			errors = append(errors, lineError{
+				line:    len(failedLines) + 1,
+				message: valErr.Error(),
+			})
+			failedLines = append(failedLines, lines[i])
 		} else {
 			validResults = append(validResults, result)
 		}

@@ -69,6 +69,12 @@ func (m *AppModel) handleInlineTaskCreate(msg InlineTaskCreateMsg) (bool, tea.Cm
 		return true, nil
 	}
 
+	// Validate title before creating the task to prevent storage corruption
+	// (e.g., titles containing "<!--" or "-->" break the markdown metadata format).
+	if err := models.ValidateTaskTitle(msg.Title); err != nil {
+		return true, errorCmd("invalid title: %w", err)
+	}
+
 	// Ensure project is loaded
 	if err := m.persister.Load(msg.Project); err != nil {
 		return true, errorCmd("failed to load project: %w", err)

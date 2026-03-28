@@ -169,6 +169,44 @@ func TestHandleInlineTaskCreateWithLoadError(t *testing.T) {
 	}
 }
 
+func TestHandleInlineTaskCreateRejectsInvalidTitle(t *testing.T) {
+	tests := []struct {
+		name  string
+		title string
+	}{
+		{"html comment open", "Fix <!-- bug"},
+		{"html comment close", "Fix --> issue"},
+		{"heading prefix", "## Not a heading"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			app, _, project := newTestAppModelWithMockPersisterAndProject()
+			initialTaskCount := len(project.Tasks)
+
+			msg := InlineTaskCreateMsg{
+				Project: project,
+				Title:   tt.title,
+			}
+			handled, cmd := app.handleTaskMessages(msg)
+
+			if !handled {
+				t.Error("InlineTaskCreateMsg should be handled")
+			}
+			if cmd == nil {
+				t.Fatal("Expected error command for invalid title")
+			}
+			result := cmd()
+			if _, ok := result.(ErrorMsg); !ok {
+				t.Error("Expected ErrorMsg for invalid title")
+			}
+			// Task should not have been added
+			if len(project.Tasks) != initialTaskCount {
+				t.Errorf("Expected %d tasks (unchanged), got %d", initialTaskCount, len(project.Tasks))
+			}
+		})
+	}
+}
+
 func TestSwitchToProjectUsesPersister(t *testing.T) {
 	app, mockPersister, _ := newTestAppModelWithMockPersisterAndProject()
 	newProject := testutil.NewTestProjectWithTasks("New Project")

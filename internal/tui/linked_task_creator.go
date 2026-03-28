@@ -199,6 +199,12 @@ func (m *LinkedTaskCreatorModel) createTask() tea.Cmd {
 		return nil
 	}
 
+	// Validate title to prevent storage corruption from meta-characters
+	if err := models.ValidateTaskTitle(result.title); err != nil {
+		m.err = err
+		return nil
+	}
+
 	// Create the new task with parsed metadata
 	newTask := &models.Task{
 		ID:         uuid.New().String(),
