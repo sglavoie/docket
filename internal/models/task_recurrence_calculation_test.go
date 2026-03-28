@@ -263,16 +263,34 @@ func TestCalculateNextDateYearly(t *testing.T) {
 			time.Date(2025, 3, 15, 10, 0, 0, 0, time.UTC),
 		},
 		{
-			"leap year Feb 29 to non-leap year",
+			"leap year Feb 29 to non-leap year - clamp to Feb 28",
 			time.Date(2024, 2, 29, 10, 0, 0, 0, time.UTC),
 			1,
-			time.Date(2025, 3, 1, 10, 0, 0, 0, time.UTC), // Go's AddDate behavior
+			time.Date(2025, 2, 28, 10, 0, 0, 0, time.UTC),
 		},
 		{
 			"every 2 years",
 			time.Date(2024, 6, 1, 10, 0, 0, 0, time.UTC),
 			2,
 			time.Date(2026, 6, 1, 10, 0, 0, 0, time.UTC),
+		},
+		{
+			"Feb 29 leap to leap year (4 years)",
+			time.Date(2024, 2, 29, 10, 0, 0, 0, time.UTC),
+			4,
+			time.Date(2028, 2, 29, 10, 0, 0, 0, time.UTC),
+		},
+		{
+			"Feb 29 + 2 years - clamp to Feb 28",
+			time.Date(2024, 2, 29, 10, 0, 0, 0, time.UTC),
+			2,
+			time.Date(2026, 2, 28, 10, 0, 0, 0, time.UTC),
+		},
+		{
+			"Feb 29 + 3 years - clamp to Feb 28",
+			time.Date(2024, 2, 29, 10, 0, 0, 0, time.UTC),
+			3,
+			time.Date(2027, 2, 28, 10, 0, 0, 0, time.UTC),
 		},
 	}
 

@@ -141,7 +141,7 @@ func calculateNextDate(base time.Time, r *RecurrencePattern) time.Time {
 		return addMonths(base, r.Interval, r.OriginalDay)
 
 	case RecurrenceYearly:
-		return base.AddDate(r.Interval, 0, 0)
+		return addYears(base, r.Interval)
 
 	default:
 		// Fallback to daily
@@ -211,6 +211,21 @@ func addMonths(base time.Time, months int, originalDay int) time.Time {
 	}
 
 	return time.Date(targetYear, time.Month(targetMonth), day, hour, min, sec, base.Nanosecond(), base.Location())
+}
+
+// addYears adds N years to a date, clamping to the last day of the target month
+// when the original day doesn't exist (e.g. Feb 29 in a non-leap year → Feb 28).
+func addYears(base time.Time, years int) time.Time {
+	year, month, day := base.Date()
+	hour, min, sec := base.Clock()
+
+	targetYear := year + years
+	lastDay := daysInMonth(targetYear, month)
+	if day > lastDay {
+		day = lastDay
+	}
+
+	return time.Date(targetYear, month, day, hour, min, sec, base.Nanosecond(), base.Location())
 }
 
 // daysInMonth returns the number of days in the given month.
