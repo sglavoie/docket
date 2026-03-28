@@ -204,7 +204,11 @@ func FzfMultiSelectProjects(projects []*models.Project, prompt string, preselect
 	projectMap := make(map[string]*models.Project)
 
 	for _, p := range projects {
-		line := fmt.Sprintf("%s\t%s (%s)\t%s\t%d tasks", p.Slug, p.Name, p.Slug, p.Context, p.CountTasks())
+		marker := " "
+		if preselectedIDs[p.ID] {
+			marker = "*"
+		}
+		line := fmt.Sprintf("%s\t%s %s (%s)\t%s\t%d tasks", p.Slug, marker, p.Name, p.Slug, p.Context, p.CountTasks())
 		lines = append(lines, line)
 		projectMap[p.Slug] = p
 	}

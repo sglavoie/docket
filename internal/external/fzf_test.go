@@ -179,6 +179,65 @@ func TestParseTaskFzfOutput(t *testing.T) {
 	})
 }
 
+func TestBuildMultiSelectProjectFzfInput_PreselectedMarker(t *testing.T) {
+	projects := []*models.Project{
+		{ID: "id-a", Name: "project-a", Slug: "project-a", Context: "work"},
+		{ID: "id-b", Name: "project-b", Slug: "project-b", Context: "personal"},
+		{ID: "id-c", Name: "project-c", Slug: "project-c", Context: "work"},
+	}
+
+	preselectedIDs := map[string]bool{
+		"id-a": true,
+		"id-c": true,
+	}
+
+	// Simulate the input building logic from FzfMultiSelectProjects
+	var lines []string
+	for _, p := range projects {
+		marker := " "
+		if preselectedIDs[p.ID] {
+			marker = "*"
+		}
+		line := fmt.Sprintf("%s\t%s %s (%s)\t%s\t%d tasks", p.Slug, marker, p.Name, p.Slug, p.Context, p.CountTasks())
+		lines = append(lines, line)
+	}
+	input := strings.Join(lines, "\n")
+
+	t.Run("marks pre-selected projects with asterisk", func(t *testing.T) {
+		inputLines := strings.Split(input, "\n")
+		// project-a is pre-selected
+		if !strings.Contains(inputLines[0], "\t* project-a") {
+			t.Errorf("expected project-a to be marked with *, got %q", inputLines[0])
+		}
+		// project-b is NOT pre-selected
+		if !strings.Contains(inputLines[1], "\t  project-b") {
+			t.Errorf("expected project-b to not be marked with *, got %q", inputLines[1])
+		}
+		// project-c is pre-selected
+		if !strings.Contains(inputLines[2], "\t* project-c") {
+			t.Errorf("expected project-c to be marked with *, got %q", inputLines[2])
+		}
+	})
+
+	t.Run("nil preselectedIDs marks nothing", func(t *testing.T) {
+		var noPreselect map[string]bool
+		var lines2 []string
+		for _, p := range projects {
+			marker := " "
+			if noPreselect[p.ID] {
+				marker = "*"
+			}
+			line := fmt.Sprintf("%s\t%s %s (%s)\t%s\t%d tasks", p.Slug, marker, p.Name, p.Slug, p.Context, p.CountTasks())
+			lines2 = append(lines2, line)
+		}
+		for _, line := range lines2 {
+			if strings.Contains(line, "\t*") {
+				t.Errorf("expected no markers with nil preselectedIDs, got %q", line)
+			}
+		}
+	})
+}
+
 func TestParseMultiSelectOutput(t *testing.T) {
 	taskMap := map[int]*models.Task{
 		1: {ShortID: 1, Title: "First task"},

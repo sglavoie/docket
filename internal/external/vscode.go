@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
+	"strings"
 )
 
 // CreateTempFileWithContent creates a temporary file with the given content.
@@ -47,21 +49,27 @@ func ResolveEditor(configEditor string) (string, error) {
 	return "", fmt.Errorf("no editor found: set $EDITOR or install VS Code")
 }
 
-// editorsRequiringWait is the set of editors that need --wait to block until
-// the file is closed before returning control to the caller.
-var editorsRequiringWait = map[string]bool{
-	"code": true, // VS Code
-	"subl": true, // Sublime Text
-	"zed":  true, // Zed
-}
-
 // EditorCommand builds an exec.Cmd for the given editor and file path,
 // adding --wait for editors that need it (VS Code, Sublime Text, Zed).
 func EditorCommand(editor, path string) *exec.Cmd {
-	if editorsRequiringWait[editor] {
+	if needsWaitFlag(editor) {
 		return exec.Command(editor, "--wait", path)
 	}
 	return exec.Command(editor, path)
+}
+
+// needsWaitFlag returns true if the editor needs --wait to block until
+// the file is closed. Checks the base name to handle full paths and
+// variants like "code-insiders".
+func needsWaitFlag(editor string) bool {
+	base := strings.ToLower(filepath.Base(editor))
+	if base == "code" || base == "subl" || base == "sublime" || base == "zed" {
+		return true
+	}
+	if strings.HasPrefix(base, "code-") {
+		return true
+	}
+	return false
 }
 
 // EditInExternalEditor opens content in an external editor and returns the modified content.

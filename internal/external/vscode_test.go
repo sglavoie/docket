@@ -106,6 +106,60 @@ func TestCreateTempFileWithMultilineContent(t *testing.T) {
 	}
 }
 
+func TestNeedsWaitFlag(t *testing.T) {
+	testCases := []struct {
+		editor string
+		want   bool
+	}{
+		{"code", true},
+		{"subl", true},
+		{"sublime", true},
+		{"zed", true},
+		{"code-insiders", true},
+		{"code-oss", true},
+		{"/usr/bin/code", true},
+		{"/opt/editors/code-insiders", true},
+		{"vim", false},
+		{"nvim", false},
+		{"nano", false},
+		{"emacs", false},
+		{"vi", false},
+		{"", false},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.editor, func(t *testing.T) {
+			got := needsWaitFlag(tc.editor)
+			if got != tc.want {
+				t.Errorf("needsWaitFlag(%q) = %v, want %v", tc.editor, got, tc.want)
+			}
+		})
+	}
+}
+
+func TestEditorCommandAddsWaitForVariants(t *testing.T) {
+	// EditorCommand should add --wait for code-insiders
+	cmd := EditorCommand("code-insiders", "/tmp/test.md")
+	args := cmd.Args
+	foundWait := false
+	for _, arg := range args {
+		if arg == "--wait" {
+			foundWait = true
+		}
+	}
+	if !foundWait {
+		t.Errorf("EditorCommand('code-insiders', ...) should include --wait, got args: %v", args)
+	}
+
+	// EditorCommand should NOT add --wait for vim
+	cmd = EditorCommand("vim", "/tmp/test.md")
+	for _, arg := range cmd.Args {
+		if arg == "--wait" {
+			t.Errorf("EditorCommand('vim', ...) should not include --wait, got args: %v", cmd.Args)
+		}
+	}
+}
+
 func TestEditorDefaultFallback(t *testing.T) {
 	// Test the logic for choosing default editor
 	// When EDITOR is not set, should default to "code"
