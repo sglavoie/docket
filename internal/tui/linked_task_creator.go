@@ -251,6 +251,10 @@ func (m *LinkedTaskCreatorModel) createTask() tea.Cmd {
 		newTask.Complete()
 	case models.StatusCanceled:
 		newTask.Cancel()
+	case models.StatusReview:
+		newTask.Review()
+	case models.StatusStandby:
+		newTask.Standby()
 	default:
 	}
 

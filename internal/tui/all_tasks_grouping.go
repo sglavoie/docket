@@ -60,6 +60,7 @@ func (m *AllTasksViewModel) groupByStatus(tasks []CrossProjectTask) []AllTasksGr
 		models.StatusTodo,
 		models.StatusInProgress,
 		models.StatusReview,
+		models.StatusStandby,
 		models.StatusBlocked,
 		models.StatusDone,
 		models.StatusCanceled,

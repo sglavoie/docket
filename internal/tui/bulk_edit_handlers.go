@@ -133,6 +133,7 @@ func (m *BulkEditModel) handleEnter() (tea.Model, tea.Cmd) {
 				models.StatusTodo,
 				models.StatusInProgress,
 				models.StatusReview,
+				models.StatusStandby,
 				models.StatusDone,
 				models.StatusBlocked,
 				models.StatusCanceled,
@@ -269,7 +270,7 @@ func (m *BulkEditModel) handleSpace() (tea.Model, tea.Cmd) {
 func (m *BulkEditModel) handleRight() {
 	switch m.focusIndex {
 	case fieldStatus:
-		if m.statusCursor < 5 {
+		if m.statusCursor < 7 {
 			m.statusCursor++
 		}
 	case fieldType:

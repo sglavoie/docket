@@ -36,7 +36,7 @@ type BulkEditModel struct {
 	focusIndex int // Which field is focused (0-5)
 
 	// Status field
-	statusCursor  int                // Cursor within status options (0=no change, 1-5=statuses)
+	statusCursor  int                // Cursor within status options (0=no change, 1-7=statuses)
 	statusValue   *models.TaskStatus // nil = no change
 	statusSummary string             // Summary of current values
 
