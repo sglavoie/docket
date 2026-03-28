@@ -55,7 +55,7 @@ func init() {
 	taskCmd.AddCommand(taskListCmd)
 
 	taskListCmd.Flags().StringVarP(&listTaskType, "type", "t", "", "filter by type (epic, story, task, bug, idea)")
-	taskListCmd.Flags().StringVarP(&listTaskStatus, "status", "s", "", "filter by status (todo, in_progress, done, blocked, canceled)")
+	taskListCmd.Flags().StringVarP(&listTaskStatus, "status", "s", "", "filter by status (todo, in_progress, review, standby, done, blocked, canceled)")
 	taskListCmd.Flags().IntVarP(&listPriority, "priority", "P", 0, "filter by priority (1-5)")
 	taskListCmd.Flags().StringVarP(&listTag, "tag", "T", "", "filter by tag")
 	taskListCmd.Flags().BoolVarP(&listShowAll, "all", "a", false, "include completed/canceled tasks")

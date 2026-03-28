@@ -414,19 +414,27 @@ func (m *NotificationCenterModel) View() tea.View {
 		}
 	}
 
-	// Auto-scroll to keep cursor visible
+	// Auto-scroll to keep cursor visible.
+	// Track actual rendered line counts (expanded items produce multiple lines).
 	scrollOffset := 0
 	cursorLine := 0
 	lineIdx := 0
 	for i, item := range m.items {
 		if item.isHeader {
-			lineIdx++ // blank line
-			lineIdx++ // header line
+			lineIdx += 2 // blank line + header line
 		} else {
 			if i == m.cursor {
 				cursorLine = lineIdx
 			}
-			lineIdx++
+			if i == m.expandedItem {
+				full := item.label
+				if item.details != "" {
+					full += "  " + item.details
+				}
+				lineIdx += len(wrapText(full, maxLabelWidth))
+			} else {
+				lineIdx++
+			}
 		}
 	}
 	if cursorLine >= scrollOffset+contentHeight {
