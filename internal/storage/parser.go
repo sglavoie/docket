@@ -225,9 +225,10 @@ func ParseTasksMarkdownWithSections(content string) (*ParseResult, error) {
 			}
 		}
 
-		// Accumulate description content
+		// Accumulate description content (unescape heading-like lines that
+		// were escaped by the writer to prevent parser mis-interpretation)
 		if currentTask != nil {
-			descBuilder.WriteString(line)
+			descBuilder.WriteString(unescapeDescriptionLine(line))
 			descBuilder.WriteString("\n")
 		}
 	}

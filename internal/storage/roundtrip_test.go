@@ -302,3 +302,76 @@ func TestRoundTrip_AllFields(t *testing.T) { //nolint:gocyclo
 		t.Errorf("section color Waiting: got %q, want %q", loaded.SectionColors["Waiting"], "orange")
 	}
 }
+
+// TestRoundTrip_DescriptionWithHeadingPattern verifies that descriptions
+// containing lines matching the task heading pattern (e.g., "## Task: ...")
+// survive a round-trip without being mis-parsed as new tasks.
+func TestRoundTrip_DescriptionWithHeadingPattern(t *testing.T) {
+	now := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+
+	tests := []struct {
+		name string
+		desc string
+	}{
+		{
+			name: "task heading in description",
+			desc: "Some text\n## Task: Looks like a heading\nMore text",
+		},
+		{
+			name: "epic heading in description",
+			desc: "Before\n## Epic: Fake epic\nAfter",
+		},
+		{
+			name: "story heading in description",
+			desc: "### Story: Not a real story",
+		},
+		{
+			name: "bug heading in description",
+			desc: "#### Bug: Not a bug heading\nstill description",
+		},
+		{
+			name: "idea heading in description",
+			desc: "## Idea: Just an idea mention",
+		},
+		{
+			name: "project title in description",
+			desc: "# Project: Embedded project name",
+		},
+		{
+			name: "multiple heading-like lines",
+			desc: "## Task: first\n### Story: second\n## Epic: third",
+		},
+		{
+			name: "escaped backslash before heading",
+			desc: `Line with \## Task: not a heading`,
+		},
+		{
+			name: "no heading pattern (safe)",
+			desc: "Normal description\nwith multiple lines",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			task, err := models.NewTask("id-1", 1, models.TaskTypeTask, "My Task")
+			if err != nil {
+				t.Fatal(err)
+			}
+			task.Description = tc.desc
+			task.CreatedAt = now
+			task.UpdatedAt = now
+
+			md := WriteTasksMarkdown("Test", []*models.Task{task})
+			_, tasks, err := ParseTasksMarkdown(md)
+			if err != nil {
+				t.Fatalf("parse error: %v", err)
+			}
+			if len(tasks) != 1 {
+				t.Fatalf("expected 1 task, got %d (description with heading pattern was split into multiple tasks)", len(tasks))
+			}
+			if tasks[0].Description != tc.desc {
+				t.Errorf("description mismatch:\n  got:  %q\n  want: %q", tasks[0].Description, tc.desc)
+			}
+		})
+	}
+}

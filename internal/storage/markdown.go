@@ -155,15 +155,6 @@ func LoadProjectWithWarnings(project *models.Project) (*ProjectLoadResult, error
 		t.RelatedTo = cleanedRelated
 	}
 
-	// Populate project warnings for TUI display
-	var repairWarnings []string
-	for _, w := range result.Warnings {
-		if w.Type == format.WarningDataCorrection {
-			repairWarnings = append(repairWarnings, w.Message)
-		}
-	}
-	project.Warnings = repairWarnings
-
 	// Reassign tasks whose section doesn't match any project-defined section to Inbox.
 	sections := project.GetSections()
 	sectionSet := make(map[string]bool, len(sections))
@@ -182,6 +173,17 @@ func LoadProjectWithWarnings(project *models.Project) (*ProjectLoadResult, error
 			})
 		}
 	}
+
+	// Populate project warnings for TUI display.
+	// Must happen after all DataCorrection warnings are collected
+	// (including section reassignment above).
+	var repairWarnings []string
+	for _, w := range result.Warnings {
+		if w.Type == format.WarningDataCorrection {
+			repairWarnings = append(repairWarnings, w.Message)
+		}
+	}
+	project.Warnings = repairWarnings
 
 	return &ProjectLoadResult{Warnings: result.Warnings}, nil
 }
@@ -340,9 +342,9 @@ func writeTaskPreservingOrder(b *strings.Builder, task *models.Task, allTasks []
 	b.WriteString(format.WriteMetadata(task))
 	b.WriteString("\n")
 
-	// Write description
+	// Write description (escape heading-like lines to prevent parser corruption)
 	if task.Description != "" {
-		b.WriteString(task.Description)
+		b.WriteString(escapeDescription(task.Description))
 		b.WriteString("\n")
 	}
 
