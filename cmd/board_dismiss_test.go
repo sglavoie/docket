@@ -12,6 +12,46 @@ import (
 	"github.com/sglavoie/tt/internal/testutil"
 )
 
+func TestBoardDismissAutoUnblocksDependent(t *testing.T) {
+	deps, project := testutil.SetupTestDepsWithProject(t, "Test Project")
+	defer deps.Cleanup()
+
+	viper.Set("config", deps.ConfigPath)
+	t.Cleanup(func() { viper.Set("config", "") })
+
+	manager := config.NewManager(deps.ConfigPath)
+	err := manager.Save(deps.Config)
+	testutil.AssertNoError(t, err)
+
+	oldStorageRepo := storage.DefaultRepository
+	storage.DefaultRepository = deps.Repository
+	t.Cleanup(func() { storage.DefaultRepository = oldStorageRepo })
+
+	// Create a blocker task and a blocked dependent
+	blockerTask, _ := models.NewTask("blocker-1", project.GetNextShortID(), models.TaskTypeTask, "Blocker")
+	dependentTask, _ := models.NewTask("dependent-1", project.GetNextShortID(), models.TaskTypeTask, "Dependent")
+	dependentTask.DependsOn = []string{blockerTask.ID}
+	dependentTask.Block()
+	project.Tasks = append(project.Tasks, blockerTask, dependentTask)
+	project.BuildTaskTree()
+	deps.Repository.Projects[project.ID] = project
+
+	// Dismiss the blocker via board dismiss
+	err = runBoardDismiss(boardDismissCmd, []string{fmt.Sprintf("%d", blockerTask.ShortID)})
+	testutil.AssertNoError(t, err)
+
+	savedProject := deps.Repository.Projects[project.ID]
+	for _, task := range savedProject.Tasks {
+		if task.ID == dependentTask.ID {
+			if task.Status == models.StatusBlocked {
+				t.Error("dependent task should have been auto-unblocked after blocker was dismissed")
+			}
+			return
+		}
+	}
+	t.Error("dependent task not found")
+}
+
 func TestRunBoardDismiss(t *testing.T) {
 	setup := func(t *testing.T) (*testutil.TestDeps, *models.Project) {
 		t.Helper()

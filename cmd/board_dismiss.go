@@ -53,6 +53,8 @@ func runBoardDismiss(cmd *cobra.Command, args []string) error {
 		t.ApplyTransition(models.StatusCanceled)
 	})
 
+	project.CheckAndAutoUnblock()
+
 	if err := SaveProject(project, &SaveOptions{
 		EvaluateRules: true, Config: cfg, ConfigManager: mgr,
 		PrevStates: prevStates,

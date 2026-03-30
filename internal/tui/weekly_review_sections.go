@@ -190,7 +190,7 @@ func (m *WeeklyReviewModel) sortSections() {
 		return ti.Before(tj)
 	})
 
-	// Priority mismatch: by priority then due date
+	// Priority mismatch: by priority then due date, then by ID for stable ordering
 	sort.Slice(m.priorityMismatch, func(i, j int) bool {
 		if m.priorityMismatch[i].Task.Priority != m.priorityMismatch[j].Task.Priority {
 			return m.priorityMismatch[i].Task.Priority < m.priorityMismatch[j].Task.Priority
@@ -203,9 +203,11 @@ func (m *WeeklyReviewModel) sortSections() {
 			return false
 		}
 		if m.priorityMismatch[i].Task.DueDate != nil && m.priorityMismatch[j].Task.DueDate != nil {
-			return m.priorityMismatch[i].Task.DueDate.Before(*m.priorityMismatch[j].Task.DueDate)
+			if !m.priorityMismatch[i].Task.DueDate.Equal(*m.priorityMismatch[j].Task.DueDate) {
+				return m.priorityMismatch[i].Task.DueDate.Before(*m.priorityMismatch[j].Task.DueDate)
+			}
 		}
-		return false
+		return m.priorityMismatch[i].Task.ID < m.priorityMismatch[j].Task.ID
 	})
 
 	// Upcoming week: by due date then priority

@@ -158,9 +158,12 @@ func (m *DailyReviewModel) sortSections() {
 		return m.overdue[i].Task.DueDate.Before(*m.overdue[j].Task.DueDate)
 	})
 
-	// Due today: by priority
+	// Due today: by priority, then by ID for stable ordering
 	sort.Slice(m.dueToday, func(i, j int) bool {
-		return m.dueToday[i].Task.Priority < m.dueToday[j].Task.Priority
+		if m.dueToday[i].Task.Priority != m.dueToday[j].Task.Priority {
+			return m.dueToday[i].Task.Priority < m.dueToday[j].Task.Priority
+		}
+		return m.dueToday[i].Task.ID < m.dueToday[j].Task.ID
 	})
 
 	// Due soon: by due date then priority
@@ -195,9 +198,12 @@ func (m *DailyReviewModel) sortSections() {
 		return m.inProgress[i].Task.UpdatedAt.After(m.inProgress[j].Task.UpdatedAt)
 	})
 
-	// Blocked: by priority
+	// Blocked: by priority, then by ID for stable ordering
 	sort.Slice(m.blocked, func(i, j int) bool {
-		return m.blocked[i].Task.Priority < m.blocked[j].Task.Priority
+		if m.blocked[i].Task.Priority != m.blocked[j].Task.Priority {
+			return m.blocked[i].Task.Priority < m.blocked[j].Task.Priority
+		}
+		return m.blocked[i].Task.ID < m.blocked[j].Task.ID
 	})
 
 	// In Review: by priority then by updated date

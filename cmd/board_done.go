@@ -1,7 +1,9 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -47,11 +49,45 @@ func runBoardDone(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("cannot mark done: %s", msg)
 	}
 
+	// Block completion if task has incomplete dependencies
+	if project.HasIncompleteDependencies(task) {
+		incompleteDeps := project.GetIncompleteDependencies(task)
+		var msg strings.Builder
+		fmt.Fprintf(&msg, "cannot complete task #%d: has incomplete dependencies:\n", task.ShortID)
+		for _, dep := range incompleteDeps {
+			fmt.Fprintf(&msg, "  - #%d %s (%s)\n", dep.ShortID, dep.Title, dep.Status)
+		}
+		crossProjectCount := countCrossProjectDeps(task)
+		if crossProjectCount > 0 {
+			fmt.Fprintf(&msg, "  - %d cross-project dependency/dependencies (not resolvable locally)\n", crossProjectCount)
+		}
+		return errors.New(msg.String())
+	}
+
+	// Block completion if task has incomplete children
+	var incompleteChildren []*models.Task
+	for _, child := range task.Children {
+		if child.Status != models.StatusDone && child.Status != models.StatusCanceled {
+			incompleteChildren = append(incompleteChildren, child)
+		}
+	}
+	if len(incompleteChildren) > 0 {
+		var msg strings.Builder
+		fmt.Fprintf(&msg, "cannot complete task #%d: has %d incomplete children:\n",
+			task.ShortID, len(incompleteChildren))
+		for _, child := range incompleteChildren {
+			fmt.Fprintf(&msg, "  - #%d %s (%s)\n", child.ShortID, child.Title, child.Status)
+		}
+		return errors.New(msg.String())
+	}
+
 	prevStates := CaptureTaskStates(project.Tasks)
 
 	project.MutateTask(task.ID, func(t *models.Task) {
 		t.ApplyTransition(models.StatusDone)
 	})
+
+	project.CheckAndAutoUnblock()
 
 	// Generate recurring task instances for completed recurring tasks
 	generated := project.GenerateRecurringInstances()

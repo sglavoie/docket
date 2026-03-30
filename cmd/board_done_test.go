@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/spf13/viper"
@@ -62,6 +63,121 @@ func TestBoardDoneGeneratesRecurringInstance(t *testing.T) {
 	if newInstance.Recurrence == nil {
 		t.Error("new instance should carry the recurrence pattern")
 	}
+}
+
+func TestBoardDoneBlocksOnIncompleteDependencies(t *testing.T) {
+	deps, project := testutil.SetupTestDepsWithProject(t, "Test Project")
+	defer deps.Cleanup()
+
+	viper.Set("config", deps.ConfigPath)
+	t.Cleanup(func() { viper.Set("config", "") })
+
+	manager := config.NewManager(deps.ConfigPath)
+	err := manager.Save(deps.Config)
+	testutil.AssertNoError(t, err)
+
+	oldStorageRepo := storage.DefaultRepository
+	storage.DefaultRepository = deps.Repository
+	t.Cleanup(func() { storage.DefaultRepository = oldStorageRepo })
+
+	// Create a blocker task (todo) and a dependent task
+	blockerTask, _ := models.NewTask("blocker-1", project.GetNextShortID(), models.TaskTypeTask, "Blocker Task")
+	dependentTask, _ := models.NewTask("dependent-1", project.GetNextShortID(), models.TaskTypeTask, "Dependent Task")
+	dependentTask.DependsOn = []string{blockerTask.ID}
+	project.Tasks = append(project.Tasks, blockerTask, dependentTask)
+	project.BuildTaskTree()
+	deps.Repository.Projects[project.ID] = project
+
+	err = runBoardDone(boardDoneCmd, []string{fmt.Sprintf("%d", dependentTask.ShortID)})
+	if err == nil {
+		t.Fatal("expected error when completing task with incomplete dependencies")
+	}
+	if !strings.Contains(err.Error(), "incomplete dependencies") {
+		t.Errorf("expected error about incomplete dependencies, got: %s", err.Error())
+	}
+
+	// Verify the task was NOT completed
+	savedProject := deps.Repository.Projects[project.ID]
+	for _, task := range savedProject.Tasks {
+		if task.ID == dependentTask.ID {
+			if task.Status == models.StatusDone {
+				t.Error("task should not be completed when it has incomplete dependencies")
+			}
+			return
+		}
+	}
+}
+
+func TestBoardDoneBlocksOnIncompleteChildren(t *testing.T) {
+	deps, project := testutil.SetupTestDepsWithProject(t, "Test Project")
+	defer deps.Cleanup()
+
+	viper.Set("config", deps.ConfigPath)
+	t.Cleanup(func() { viper.Set("config", "") })
+
+	manager := config.NewManager(deps.ConfigPath)
+	err := manager.Save(deps.Config)
+	testutil.AssertNoError(t, err)
+
+	oldStorageRepo := storage.DefaultRepository
+	storage.DefaultRepository = deps.Repository
+	t.Cleanup(func() { storage.DefaultRepository = oldStorageRepo })
+
+	// Create a parent epic with an incomplete child
+	parentTask, _ := models.NewTask("parent-1", project.GetNextShortID(), models.TaskTypeEpic, "Parent Epic")
+	childTask, _ := models.NewTask("child-1", project.GetNextShortID(), models.TaskTypeTask, "Child Task")
+	childTask.ParentID = &parentTask.ID
+	project.Tasks = append(project.Tasks, parentTask, childTask)
+	project.BuildTaskTree()
+	deps.Repository.Projects[project.ID] = project
+
+	err = runBoardDone(boardDoneCmd, []string{fmt.Sprintf("%d", parentTask.ShortID)})
+	if err == nil {
+		t.Fatal("expected error when completing task with incomplete children")
+	}
+	if !strings.Contains(err.Error(), "incomplete children") {
+		t.Errorf("expected error about incomplete children, got: %s", err.Error())
+	}
+}
+
+func TestBoardDoneAutoUnblocksDependent(t *testing.T) {
+	deps, project := testutil.SetupTestDepsWithProject(t, "Test Project")
+	defer deps.Cleanup()
+
+	viper.Set("config", deps.ConfigPath)
+	t.Cleanup(func() { viper.Set("config", "") })
+
+	manager := config.NewManager(deps.ConfigPath)
+	err := manager.Save(deps.Config)
+	testutil.AssertNoError(t, err)
+
+	oldStorageRepo := storage.DefaultRepository
+	storage.DefaultRepository = deps.Repository
+	t.Cleanup(func() { storage.DefaultRepository = oldStorageRepo })
+
+	// Create a blocker task and a blocked dependent
+	blockerTask, _ := models.NewTask("blocker-1", project.GetNextShortID(), models.TaskTypeTask, "Blocker")
+	dependentTask, _ := models.NewTask("dependent-1", project.GetNextShortID(), models.TaskTypeTask, "Dependent")
+	dependentTask.DependsOn = []string{blockerTask.ID}
+	dependentTask.Block()
+	project.Tasks = append(project.Tasks, blockerTask, dependentTask)
+	project.BuildTaskTree()
+	deps.Repository.Projects[project.ID] = project
+
+	// Complete the blocker via board done
+	err = runBoardDone(boardDoneCmd, []string{fmt.Sprintf("%d", blockerTask.ShortID)})
+	testutil.AssertNoError(t, err)
+
+	savedProject := deps.Repository.Projects[project.ID]
+	for _, task := range savedProject.Tasks {
+		if task.ID == dependentTask.ID {
+			if task.Status == models.StatusBlocked {
+				t.Error("dependent task should have been auto-unblocked after blocker was completed")
+			}
+			return
+		}
+	}
+	t.Error("dependent task not found")
 }
 
 func TestRunBoardDone(t *testing.T) {
