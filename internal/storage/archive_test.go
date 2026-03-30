@@ -916,6 +916,47 @@ func TestClearOrphanedParentRefs(t *testing.T) {
 	})
 }
 
+// TestWriteArchivedTasks_DescriptionWithHeadingPattern verifies that archived
+// tasks whose descriptions contain heading-like lines (e.g., "## Task: ...")
+// survive a write-then-parse round-trip without creating phantom tasks.
+func TestWriteArchivedTasks_DescriptionWithHeadingPattern(t *testing.T) {
+	now := time.Now()
+	completedAt := now
+	task := &models.Task{
+		ID:          uuid.New().String(),
+		ShortID:     1,
+		Title:       "Archived with heading desc",
+		Type:        models.TaskTypeTask,
+		Status:      models.StatusDone,
+		Priority:    2,
+		Tags:        []string{},
+		DependsOn:   []string{},
+		RelatedTo:   []string{},
+		Section:     models.SectionCompleted,
+		CreatedAt:   now.Add(-24 * time.Hour),
+		UpdatedAt:   now,
+		CompletedAt: &completedAt,
+		Description: "Some notes\n## Task: Looks like a heading\nMore notes",
+	}
+
+	output := WriteArchivedTasks("Test Project", []*models.Task{task})
+
+	// Parse the written archive content
+	result, err := ParseTasksMarkdownWithSections(output)
+	if err != nil {
+		t.Fatalf("parse error: %v", err)
+	}
+
+	// Should have exactly 1 task (the heading-like line must not create a second task)
+	if len(result.Tasks) != 1 {
+		t.Fatalf("expected 1 task, got %d (heading-like line in description created phantom task)", len(result.Tasks))
+	}
+
+	if result.Tasks[0].Description != task.Description {
+		t.Errorf("description mismatch:\n  got:  %q\n  want: %q", result.Tasks[0].Description, task.Description)
+	}
+}
+
 func TestGetArchiveFilePath(t *testing.T) {
 	project := &models.Project{
 		Path: "/home/user/projects/my-project",

@@ -246,9 +246,9 @@ func writeArchivedTask(task *models.Task) string {
 	b.WriteString(format.WriteMetadata(task))
 	b.WriteString("\n")
 
-	// Write description if present
+	// Write description (escape heading-like lines to prevent parser corruption)
 	if task.Description != "" {
-		b.WriteString(task.Description)
+		b.WriteString(escapeDescription(task.Description))
 		b.WriteString("\n")
 	}
 
