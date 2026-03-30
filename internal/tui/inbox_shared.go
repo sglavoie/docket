@@ -42,11 +42,12 @@ func renderSettingLine(label, value string) string {
 
 // inboxSnapshot stores task state for undo in inbox processors.
 type inboxSnapshot struct {
-	section   string
-	priority  int
-	tags      []string
-	dueDate   *time.Time
-	dependsOn []string
+	section       string
+	customSection string
+	priority      int
+	tags          []string
+	dueDate       *time.Time
+	dependsOn     []string
 }
 
 // captureInboxSnapshot creates a snapshot of task state for undo.
@@ -58,17 +59,19 @@ func captureInboxSnapshot(task *models.Task) *inboxSnapshot {
 	}
 
 	return &inboxSnapshot{
-		section:   task.Section,
-		priority:  task.Priority,
-		tags:      append([]string{}, task.Tags...),
-		dueDate:   dueDate,
-		dependsOn: append([]string{}, task.DependsOn...),
+		section:       task.Section,
+		customSection: task.CustomSection,
+		priority:      task.Priority,
+		tags:          append([]string{}, task.Tags...),
+		dueDate:       dueDate,
+		dependsOn:     append([]string{}, task.DependsOn...),
 	}
 }
 
 // restoreInboxSnapshot restores a task from a snapshot.
 func restoreInboxSnapshot(task *models.Task, snap *inboxSnapshot) {
 	task.Section = snap.section
+	task.CustomSection = snap.customSection
 	task.Priority = snap.priority
 	task.Tags = append([]string{}, snap.tags...)
 	task.DependsOn = append([]string{}, snap.dependsOn...)

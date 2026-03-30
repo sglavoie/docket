@@ -387,7 +387,7 @@ func TestRunTaskAdd(t *testing.T) {
 		}
 	})
 
-	t.Run("creates task with section", func(t *testing.T) {
+	t.Run("creates task with custom section in CustomSection field", func(t *testing.T) {
 		deps, project := setupTaskAddTest(t)
 		defer deps.Cleanup()
 
@@ -409,10 +409,41 @@ func TestRunTaskAdd(t *testing.T) {
 		if len(savedProject.Tasks) != initialCount+1 {
 			t.Fatalf("expected %d tasks, got %d", initialCount+1, len(savedProject.Tasks))
 		}
-		testutil.AssertEqual(t, savedProject.Tasks[len(savedProject.Tasks)-1].Section, "Backlog")
+		task := savedProject.Tasks[len(savedProject.Tasks)-1]
+		// "Backlog" is not a built-in GTD section, so it should go into CustomSection
+		testutil.AssertEqual(t, task.CustomSection, "Backlog")
+		testutil.AssertEqual(t, task.Section, "")
 		if !savedProject.HasSection("Backlog") {
 			t.Error("project should have 'Backlog' section after task creation")
 		}
+	})
+
+	t.Run("creates task with GTD section in Section field", func(t *testing.T) {
+		deps, project := setupTaskAddTest(t)
+		defer deps.Cleanup()
+
+		// Ensure built-in sections exist (mirroring LoadProject behavior)
+		project.EnsureDefaultSections()
+
+		initialCount := len(project.Tasks)
+		taskSectionFlag = "Inbox"
+		_ = taskAddCmd.Flags().Set("section", "Inbox")
+		defer func() {
+			taskAddCmd.Flags().Lookup("section").Changed = false
+			taskSectionFlag = ""
+		}()
+
+		err := runTaskAdd(taskAddCmd, []string{"Inbox task"})
+		testutil.AssertNoError(t, err)
+
+		savedProject := deps.Repository.Projects[project.ID]
+		if len(savedProject.Tasks) != initialCount+1 {
+			t.Fatalf("expected %d tasks, got %d", initialCount+1, len(savedProject.Tasks))
+		}
+		task := savedProject.Tasks[len(savedProject.Tasks)-1]
+		// "Inbox" is a built-in GTD section, so it should go into Section
+		testutil.AssertEqual(t, task.Section, "Inbox")
+		testutil.AssertEqual(t, task.CustomSection, "")
 	})
 
 	t.Run("rejects invalid recurrence", func(t *testing.T) {
@@ -490,9 +521,13 @@ func TestRunTaskAdd_SectionValidation(t *testing.T) {
 		if !savedProject.HasSection("NewSection") {
 			t.Error("expected NewSection to be created")
 		}
+		task := savedProject.Tasks[len(savedProject.Tasks)-1]
+		// "NewSection" is custom, should be in CustomSection
+		testutil.AssertEqual(t, task.CustomSection, "NewSection")
+		testutil.AssertEqual(t, task.Section, "")
 	})
 
-	t.Run("accepts existing section without --create-section", func(t *testing.T) {
+	t.Run("accepts existing GTD section without --create-section", func(t *testing.T) {
 		deps, project := setupTaskAddTest(t)
 		defer deps.Cleanup()
 
@@ -512,5 +547,9 @@ func TestRunTaskAdd_SectionValidation(t *testing.T) {
 		if len(savedProject.Tasks) != initialCount+1 {
 			t.Fatalf("expected %d tasks, got %d", initialCount+1, len(savedProject.Tasks))
 		}
+		task := savedProject.Tasks[len(savedProject.Tasks)-1]
+		// "Next" is a GTD section, should be in Section field
+		testutil.AssertEqual(t, task.Section, "Next")
+		testutil.AssertEqual(t, task.CustomSection, "")
 	})
 }

@@ -115,7 +115,11 @@ func runBoardAdd(cmd *cobra.Command, args []string) error {
 		if !targetProject.HasSection(boardAddSection) {
 			return fmt.Errorf("section %q not found in project %q; available: %v", boardAddSection, targetProject.Name, targetProject.GetSections())
 		}
-		task.Section = boardAddSection
+		if models.IsGTDSection(boardAddSection) {
+			task.Section = boardAddSection
+		} else {
+			task.CustomSection = boardAddSection
+		}
 	}
 	for _, tag := range boardAddTags {
 		task.AddTag(tag)

@@ -133,7 +133,11 @@ func runTemplateUse(cmd *cobra.Command, args []string) error {
 	task.Priority = t.GetEffectivePriority()
 	if t.Section != "" {
 		project.EnsureSection(t.Section)
-		task.Section = t.Section
+		if models.IsGTDSection(t.Section) {
+			task.Section = t.Section
+		} else {
+			task.CustomSection = t.Section
+		}
 	}
 	for _, tag := range t.Tags {
 		task.AddTag(tag)
@@ -181,6 +185,7 @@ func runTemplateUse(cmd *cobra.Command, args []string) error {
 			childTask.ParentID = &task.ID
 			childTask.Priority = task.Priority
 			childTask.Section = task.Section
+			childTask.CustomSection = task.CustomSection
 			for _, tag := range task.Tags {
 				childTask.AddTag(tag)
 			}

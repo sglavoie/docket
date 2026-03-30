@@ -190,7 +190,10 @@ func runTaskAdd(cmd *cobra.Command, args []string) error { //nolint:gocyclo
 		task.AddTag(tag)
 	}
 
-	// Handle section (explicit flag overrides template, using Changed() for consistency)
+	// Handle section (explicit flag overrides template, using Changed() for consistency).
+	// GTD sections (Next, Inbox, Waiting, etc.) go into task.Section; custom sections
+	// go into task.CustomSection. Without this distinction, workflow rules that match
+	// on section would see the wrong field until the next save/reload cycle.
 	if cmd.Flags().Changed("section") {
 		if !project.HasSection(taskSectionFlag) {
 			if !taskCreateSectionFlag {
@@ -201,10 +204,18 @@ func runTaskAdd(cmd *cobra.Command, args []string) error { //nolint:gocyclo
 			}
 			project.EnsureSection(taskSectionFlag)
 		}
-		task.Section = taskSectionFlag
+		if models.IsGTDSection(taskSectionFlag) {
+			task.Section = taskSectionFlag
+		} else {
+			task.CustomSection = taskSectionFlag
+		}
 	} else if tmpl != nil && tmpl.Section != "" {
 		project.EnsureSection(tmpl.Section)
-		task.Section = tmpl.Section
+		if models.IsGTDSection(tmpl.Section) {
+			task.Section = tmpl.Section
+		} else {
+			task.CustomSection = tmpl.Section
+		}
 	}
 
 	// Handle stage
