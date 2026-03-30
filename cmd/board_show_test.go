@@ -75,7 +75,10 @@ func TestRunBoardShow(t *testing.T) {
 
 		err := runBoardShow(boardShowCmd, []string{"1"})
 
-		w.Close()
+		if closeErr := w.Close(); closeErr != nil {
+			t.Errorf("failed to close pipe: %v", closeErr)
+		}
+
 		os.Stdout = oldStdout
 		outBytes, _ := io.ReadAll(r)
 		out := string(outBytes)

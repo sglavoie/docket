@@ -133,11 +133,8 @@ func TestArchiveAllJSON_EmptyProjectsNotNull(t *testing.T) {
 		Name     string `json:"name"`
 		Archived int    `json:"archived"`
 	}
-	// Simulate the zero-results case: results stays nil.
-	var results []projectResult
-	if results == nil {
-		results = []projectResult{}
-	}
+	// Simulate the zero-results case with an empty (non-nil) slice.
+	results := []projectResult{}
 	summary := struct {
 		TotalArchived int             `json:"total_archived"`
 		Projects      []projectResult `json:"projects"`

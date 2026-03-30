@@ -353,66 +353,7 @@ func (m *NotificationCenterModel) View() tea.View {
 	const prefixWidth = 4
 	maxLabelWidth := max(m.width-prefixWidth, 20)
 
-	// Build all lines first
-	var lines []string
-	for i, item := range m.items {
-		if item.isHeader {
-			lines = append(lines, "")
-			header := SubtitleStyle.Render("  " + item.label)
-			lines = append(lines, header)
-		} else {
-			prefix := "  "
-			isSelected := i == m.cursor
-			if isSelected {
-				prefix = BoldPrimaryStyle.Render("▸ ")
-			}
-			sev := m.severityPrefix(item)
-			title := item.label
-			details := item.details
-
-			flash := isSelected && m.cursorFlash
-
-			if i == m.expandedItem {
-				// Wrap the full combined text across multiple lines
-				full := title
-				if details != "" {
-					full += "  " + details
-				}
-				wrapped := wrapText(full, maxLabelWidth)
-				for li, wl := range wrapped {
-					styled := m.styleAlertLine(wl, details)
-					if item.dismissed {
-						styled = MutedStyle.Render(wl)
-					}
-					var line string
-					if li == 0 {
-						line = prefix + sev + styled
-					} else {
-						line = strings.Repeat(" ", prefixWidth) + styled
-					}
-					if flash {
-						line = CursorFlashRowStyle.Width(m.width).Render(line)
-					}
-					lines = append(lines, line)
-				}
-			} else {
-				full := title
-				if details != "" {
-					full += "  " + details
-				}
-				truncated := truncateToWidth(full, maxLabelWidth)
-				styled := m.styleAlertLine(truncated, details)
-				if item.dismissed {
-					styled = MutedStyle.Render(truncated)
-				}
-				line := prefix + sev + styled
-				if flash {
-					line = CursorFlashRowStyle.Width(m.width).Render(line)
-				}
-				lines = append(lines, line)
-			}
-		}
-	}
+	lines := m.buildAlertLines(prefixWidth, maxLabelWidth)
 
 	// Auto-scroll to keep cursor visible.
 	// Track actual rendered line counts (expanded items produce multiple lines).
@@ -477,6 +418,63 @@ func (m *NotificationCenterModel) View() tea.View {
 	b.WriteString(renderStatusBarFooter(left, right, m.width))
 
 	return tea.NewView(b.String())
+}
+
+// buildAlertLines renders each alert item into styled lines for display.
+func (m *NotificationCenterModel) buildAlertLines(prefixWidth, maxLabelWidth int) []string {
+	var lines []string
+	for i, item := range m.items {
+		if item.isHeader {
+			lines = append(lines, "")
+			header := SubtitleStyle.Render("  " + item.label)
+			lines = append(lines, header)
+			continue
+		}
+		prefix := "  "
+		isSelected := i == m.cursor
+		if isSelected {
+			prefix = BoldPrimaryStyle.Render("▸ ")
+		}
+		sev := m.severityPrefix(item)
+		flash := isSelected && m.cursorFlash
+
+		full := item.label
+		if item.details != "" {
+			full += "  " + item.details
+		}
+
+		if i == m.expandedItem {
+			wrapped := wrapText(full, maxLabelWidth)
+			for li, wl := range wrapped {
+				styled := m.styleAlertLine(wl, item.details)
+				if item.dismissed {
+					styled = MutedStyle.Render(wl)
+				}
+				var line string
+				if li == 0 {
+					line = prefix + sev + styled
+				} else {
+					line = strings.Repeat(" ", prefixWidth) + styled
+				}
+				if flash {
+					line = CursorFlashRowStyle.Width(m.width).Render(line)
+				}
+				lines = append(lines, line)
+			}
+		} else {
+			truncated := truncateToWidth(full, maxLabelWidth)
+			styled := m.styleAlertLine(truncated, item.details)
+			if item.dismissed {
+				styled = MutedStyle.Render(truncated)
+			}
+			line := prefix + sev + styled
+			if flash {
+				line = CursorFlashRowStyle.Width(m.width).Render(line)
+			}
+			lines = append(lines, line)
+		}
+	}
+	return lines
 }
 
 // severityPrefix returns a colored severity indicator for an alert item.

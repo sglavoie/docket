@@ -165,7 +165,6 @@ func (m *AllTasksViewModel) getTaskRef() (*models.Task, *models.Project) {
 
 func (m *AllTasksViewModel) getPersister() Persister           { return m.projectService }
 func (m *AllTasksViewModel) getConfigManager() *config.Manager { return m.configManager }
-func (m *AllTasksViewModel) getDataDir() string                { return m.config.DataDir }
 func (m *AllTasksViewModel) reloadData()                       { m.loadAllTasks() }
 func (m *AllTasksViewModel) setErr(err error)                  { m.err = err }
 func (m *AllTasksViewModel) setStatus(msg string)              { m.statusMessage = msg }

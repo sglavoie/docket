@@ -145,7 +145,6 @@ func (m *FocusBoardModel) getTaskRef() (*models.Task, *models.Project) {
 
 func (m *FocusBoardModel) getPersister() Persister           { return m.projectService }
 func (m *FocusBoardModel) getConfigManager() *config.Manager { return m.configManager }
-func (m *FocusBoardModel) getDataDir() string                { return m.config.DataDir }
 func (m *FocusBoardModel) reloadData()                       { m.loadItems() }
 func (m *FocusBoardModel) setErr(err error)                  { m.statusMessage = err.Error() }
 func (m *FocusBoardModel) setStatus(msg string)              { m.statusMessage = msg }

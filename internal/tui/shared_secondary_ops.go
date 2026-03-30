@@ -23,7 +23,6 @@ type taskOpsView interface {
 	getPersister() Persister
 	getConfig() *config.Config
 	getConfigManager() *config.Manager
-	getDataDir() string
 	reloadData()
 	clampCursor()
 	setErr(error)

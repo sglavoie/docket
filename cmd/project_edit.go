@@ -8,6 +8,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/tterrors"
@@ -80,46 +81,9 @@ func runProjectEdit(cmd *cobra.Command, args []string) error {
 
 	// Validate and apply name change
 	if nameChanged {
-		newName := strings.TrimSpace(editName)
-		if newName == "" {
-			return tterrors.NewRequiredFieldError("project name")
+		if err := applyProjectNameChange(project, editName, cfg); err != nil {
+			return err
 		}
-
-		if len(newName) > models.MaxProjectNameLength {
-			return fmt.Errorf("project name too long (%d chars, max %d)", len(newName), models.MaxProjectNameLength)
-		}
-
-		// Generate new slug and check for uniqueness
-		newSlug := models.Slugify(newName)
-		if newSlug == "" {
-			return tterrors.NewInvalidValueError("project name", newName, "produces an empty slug")
-		}
-
-		// Reject reserved slugs (same check as project new)
-		reservedSlugs := map[string]bool{
-			".tt": true, "projects": true,
-			"new": true, "list": true, "delete": true, "switch": true, "archive": true,
-		}
-		if reservedSlugs[newSlug] {
-			return fmt.Errorf("%w: '%s' is a reserved name", tterrors.ErrInvalidValue, newSlug)
-		}
-
-		for _, p := range cfg.Projects {
-			if p.ID != project.ID && p.Slug == newSlug {
-				return fmt.Errorf("project with slug '%s' already exists", newSlug)
-			}
-		}
-
-		// Rename project directory if slug changed (must happen before updating project fields)
-		originalSlug := project.Slug
-		if originalSlug != newSlug {
-			if err := storage.RenameProjectDir(project, originalSlug, newSlug, cfg.DataDir); err != nil {
-				return fmt.Errorf("failed to rename project directory: %w", err)
-			}
-		}
-
-		project.Name = newName
-		project.Slug = newSlug
 	}
 
 	// Apply context change
@@ -206,6 +170,48 @@ func runProjectEdit(cmd *cobra.Command, args []string) error {
 			}
 		}
 	})
+}
+
+// applyProjectNameChange validates the new name and renames the project.
+func applyProjectNameChange(project *models.Project, rawName string, cfg *config.Config) error {
+	newName := strings.TrimSpace(rawName)
+	if newName == "" {
+		return tterrors.NewRequiredFieldError("project name")
+	}
+
+	if len(newName) > models.MaxProjectNameLength {
+		return fmt.Errorf("project name too long (%d chars, max %d)", len(newName), models.MaxProjectNameLength)
+	}
+
+	newSlug := models.Slugify(newName)
+	if newSlug == "" {
+		return tterrors.NewInvalidValueError("project name", newName, "produces an empty slug")
+	}
+
+	reservedSlugs := map[string]bool{
+		".tt": true, "projects": true,
+		"new": true, "list": true, "delete": true, "switch": true, "archive": true,
+	}
+	if reservedSlugs[newSlug] {
+		return fmt.Errorf("%w: '%s' is a reserved name", tterrors.ErrInvalidValue, newSlug)
+	}
+
+	for _, p := range cfg.Projects {
+		if p.ID != project.ID && p.Slug == newSlug {
+			return fmt.Errorf("project with slug '%s' already exists", newSlug)
+		}
+	}
+
+	originalProjectSlug := project.Slug
+	if originalProjectSlug != newSlug {
+		if err := storage.RenameProjectDir(project, originalProjectSlug, newSlug, cfg.DataDir); err != nil {
+			return fmt.Errorf("failed to rename project directory: %w", err)
+		}
+	}
+
+	project.Name = newName
+	project.Slug = newSlug
+	return nil
 }
 
 // updateCrossProjectRefs rewrites cross-project references in other projects

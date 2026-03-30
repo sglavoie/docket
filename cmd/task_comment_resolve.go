@@ -42,9 +42,9 @@ func runTaskCommentResolve(cmd *cobra.Command, args []string) error {
 	var state string
 
 	task, err := WithTaskUpdate(args[0], func(task *models.Task) error {
-		index, err := parseItemIndex(args[1], len(task.Comments), "comment")
-		if err != nil {
-			return err
+		index, errParse := parseItemIndex(args[1], len(task.Comments), "comment")
+		if errParse != nil {
+			return errParse
 		}
 
 		if !task.ToggleCommentResolved(index) {

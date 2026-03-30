@@ -580,6 +580,8 @@ func (m *AppModel) getCurrentCursorTask() *models.Task {
 		if m.crossOutliner != nil {
 			return m.crossOutliner.getCursorTask()
 		}
+	default:
+		// Other view types don't have a cursor task.
 	}
 	return nil
 }

@@ -19,7 +19,6 @@ func (m *DailyReviewModel) getTaskRef() (*models.Task, *models.Project) {
 
 func (m *DailyReviewModel) getPersister() Persister           { return defaultPersister }
 func (m *DailyReviewModel) getConfigManager() *config.Manager { return m.configManager }
-func (m *DailyReviewModel) getDataDir() string                { return m.config.DataDir }
 func (m *DailyReviewModel) reloadData()                       { m.loadTasks() }
 func (m *DailyReviewModel) setErr(err error)                  { m.err = err }
 func (m *DailyReviewModel) setStatus(msg string)              { m.InteractiveViewState.setStatus(msg) }

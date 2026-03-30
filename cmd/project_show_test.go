@@ -43,8 +43,15 @@ func TestProjectShowJSON_IncludesPinnedAtAndSectionColors(t *testing.T) {
 
 	// Run the JSON display via the command with --json flag
 	cmd := projectShowCmd
-	cmd.Flags().Set("json", "true")
-	defer cmd.Flags().Set("json", "false")
+	if err := cmd.Flags().Set("json", "true"); err != nil {
+		t.Fatalf("failed to set json flag: %v", err)
+	}
+
+	defer func() {
+		if err := cmd.Flags().Set("json", "false"); err != nil {
+			t.Fatalf("failed to reset json flag: %v", err)
+		}
+	}()
 
 	// Since displayProjectShowJSON prints to stdout, test the struct construction directly
 	type projectShowJSONEntry struct {

@@ -328,7 +328,7 @@ func (tl TaskLine) Render() string {
 		line = DimSelectedLine(line, tl.ViewWidth)
 	}
 
-	if tl.IsSelected && !(tl.Task != nil && tl.Task.Dimmed) {
+	if tl.IsSelected && (tl.Task == nil || !tl.Task.Dimmed) {
 		if tl.ViewWidth > 0 {
 			style := SelectionRowStyle
 			if tl.Flash {

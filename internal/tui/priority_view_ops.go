@@ -22,7 +22,6 @@ func (m *PriorityViewModel) getTaskRef() (*models.Task, *models.Project) {
 func (m *PriorityViewModel) getPersister() Persister           { return m.projectService }
 func (m *PriorityViewModel) getConfig() *config.Config         { return m.config }
 func (m *PriorityViewModel) getConfigManager() *config.Manager { return m.configManager }
-func (m *PriorityViewModel) getDataDir() string                { return m.config.DataDir }
 func (m *PriorityViewModel) reloadData() {
 	_ = m.projectService.Load(m.project)
 	m.dismissedIDs = make(map[string]bool)

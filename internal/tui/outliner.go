@@ -602,7 +602,6 @@ func (m *OutlinerModel) getTaskRef() (*models.Task, *models.Project) {
 }
 
 func (m *OutlinerModel) getPersister() Persister { return m.projectService }
-func (m *OutlinerModel) getDataDir() string      { return m.config.DataDir }
 func (m *OutlinerModel) reloadData()             { m.rebuildRows() }
 func (m *OutlinerModel) setErr(err error)        { m.err = err }
 func (m *OutlinerModel) setStatus(msg string)    { m.InteractiveViewState.setStatus(msg) }

@@ -235,7 +235,7 @@ func (m *RecentActivityModel) handleKeyMsg(msg tea.KeyPressMsg) (tea.Model, tea.
 		if m.cursor >= 0 && m.cursor < len(m.filtered) {
 			dt := m.filtered[m.cursor]
 			return m, func() tea.Msg {
-				return OpenQuickNoteMsg{Task: dt.Task, Project: dt.Project}
+				return OpenQuickNoteMsg(dt)
 			}
 		}
 

@@ -88,22 +88,8 @@ func dispatchCommonPrefix(
 		}
 
 	case "d":
-		if days, isClear, ok := DueDateDaysForPrefixKey(key); ok {
-			if isClear {
-				model, cmd := taskOpsClearDueDate(v)
-				return model, cmd, true
-			}
-			model, cmd := taskOpsSetQuickDueDate(v, days)
+		if model, cmd, handled := dispatchDueDatePrefix(key, v); handled {
 			return model, cmd, true
-		}
-		if key == "d" {
-			task, project := v.getTaskAndProject()
-			if task != nil {
-				return v, func() tea.Msg {
-					return SetDueDateMsg{Task: task, Project: project}
-				}, true
-			}
-			return v, nil, true
 		}
 
 	case "g":
@@ -163,26 +149,8 @@ func dispatchCommonPrefix(
 		return v, nil, true
 
 	case "t":
-		task, project := v.getTaskAndProject()
-		if task != nil {
-			// to, tc, ta, tl, te, tm → message-only handlers
-			if handled, cmd := handleTaskPrefixMsgKey(key, task, project); handled {
-				return v, cmd, true
-			}
-			// ts, tt → action handlers (no focusedTask/multi-select in secondary views)
-			if handled, cmd := handleTaskActionPrefixKey(key, task, project, nil, nil); handled {
-				return v, cmd, true
-			}
-		}
-		switch key {
-		case "d":
-			model, cmd := taskOpsToggleDimmed(v)
-			return model, cmd, true
-		case "p":
-			model, cmd := taskOpsTogglePinned(v)
-			return model, cmd, true
-		}
-		return v, nil, true
+		model, cmd := dispatchTaskPrefix(key, v)
+		return model, cmd, true
 
 	case ".":
 		stage := StageForPrefixKey(key, v.getConfig().Stages)
@@ -194,6 +162,48 @@ func dispatchCommonPrefix(
 	}
 
 	return nil, nil, false
+}
+
+// dispatchDueDatePrefix handles the d-prefix key sequence for due date operations.
+func dispatchDueDatePrefix(key string, v prefixDispatchView) (tea.Model, tea.Cmd, bool) {
+	if days, isClear, ok := DueDateDaysForPrefixKey(key); ok {
+		if isClear {
+			model, cmd := taskOpsClearDueDate(v)
+			return model, cmd, true
+		}
+		model, cmd := taskOpsSetQuickDueDate(v, days)
+		return model, cmd, true
+	}
+	if key == "d" {
+		task, project := v.getTaskAndProject()
+		if task != nil {
+			return v, func() tea.Msg {
+				return SetDueDateMsg{Task: task, Project: project}
+			}, true
+		}
+		return v, nil, true
+	}
+	return nil, nil, false
+}
+
+// dispatchTaskPrefix handles the t-prefix key sequence for task operations.
+func dispatchTaskPrefix(key string, v prefixDispatchView) (tea.Model, tea.Cmd) {
+	task, project := v.getTaskAndProject()
+	if task != nil {
+		if handled, cmd := handleTaskPrefixMsgKey(key, task, project); handled {
+			return v, cmd
+		}
+		if handled, cmd := handleTaskActionPrefixKey(key, task, project, nil, nil); handled {
+			return v, cmd
+		}
+	}
+	switch key {
+	case "d":
+		return taskOpsToggleDimmed(v)
+	case "p":
+		return taskOpsTogglePinned(v)
+	}
+	return v, nil
 }
 
 // SectionMoveCallbacks provides the view-specific operations needed by

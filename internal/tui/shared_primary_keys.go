@@ -578,32 +578,30 @@ func handleCommonPrimaryViewKey(key string, v primaryProjectView) (tea.Cmd, bool
 	case "ctrl+z":
 		return func() tea.Msg { return ShowUndoHistoryMsg{Project: project} }, true
 
-	// Score editor
+	// Task-specific keys requiring resolve
+	case "S", "ctrl+.", "ctrl+m":
+		return handleResolvedTaskKey(key, v, project)
+	}
+
+	return nil, false
+}
+
+// handleResolvedTaskKey handles keys that need resolveTaskAndProject before acting.
+func handleResolvedTaskKey(key string, v primaryProjectView, project *models.Project) (tea.Cmd, bool) {
+	task, taskProject := resolveTaskAndProject(v, project)
+	if task == nil || taskProject == nil {
+		return nil, true
+	}
+	switch key {
 	case "S":
-		task, taskProject := resolveTaskAndProject(v, project)
-		if task == nil || taskProject == nil {
-			return nil, true
-		}
 		return func() tea.Msg {
 			return ShowScoreEditorMsg{Task: task, Project: taskProject}
 		}, true
-
-	// Quick note on selected task
 	case "ctrl+.":
-		task, taskProject := resolveTaskAndProject(v, project)
-		if task == nil || taskProject == nil {
-			return nil, true
-		}
 		return func() tea.Msg {
 			return OpenQuickNoteMsg{Task: task, Project: taskProject}
 		}, true
-
-	// Move/reparent task
 	case "ctrl+m":
-		task, taskProject := resolveTaskAndProject(v, project)
-		if task == nil || taskProject == nil {
-			return nil, true
-		}
 		validParents := buildReparentValidParents(taskProject, task)
 		taskID := task.ID
 		var currentParentID *string
@@ -621,7 +619,6 @@ func handleCommonPrimaryViewKey(key string, v primaryProjectView) (tea.Cmd, bool
 			}
 		}, true
 	}
-
 	return nil, false
 }
 

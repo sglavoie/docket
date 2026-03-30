@@ -301,7 +301,6 @@ func (m *ProjectFocusViewModel) getTaskRef() (*models.Task, *models.Project) {
 func (m *ProjectFocusViewModel) getPersister() Persister           { return defaultPersister }
 func (m *ProjectFocusViewModel) getConfig() *config.Config         { return nil }
 func (m *ProjectFocusViewModel) getConfigManager() *config.Manager { return nil }
-func (m *ProjectFocusViewModel) getDataDir() string                { return "" }
 func (m *ProjectFocusViewModel) reloadData()                       { m.loadTasks() }
 func (m *ProjectFocusViewModel) setErr(err error)                  { m.SetError(err) }
 func (m *ProjectFocusViewModel) setStatus(msg string)              { m.InteractiveViewState.setStatus(msg) }
