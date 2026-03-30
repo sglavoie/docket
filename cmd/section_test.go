@@ -436,7 +436,7 @@ func TestSectionRename(t *testing.T) {
 }
 
 func TestTaskSectionSkipsAlreadyAssigned(t *testing.T) {
-	t.Run("does not save when task already in requested section", func(t *testing.T) {
+	t.Run("does not save when GTD section already matches", func(t *testing.T) {
 		deps, project := testutil.SetupTestDepsWithProject(t, "Test Project")
 		defer deps.Cleanup()
 
@@ -451,16 +451,15 @@ func TestTaskSectionSkipsAlreadyAssigned(t *testing.T) {
 		storage.DefaultRepository = deps.Repository
 		defer func() { storage.DefaultRepository = oldStorageRepo }()
 
-		// Use existing task from test project (epic, #1) and set its section
+		// Use existing task from test project (epic, #1) and set a GTD section
 		task := project.Tasks[0]
-		project.EnsureSection("Active")
-		task.Section = "Active"
+		task.Section = models.SectionWaiting
 		deps.Repository.Projects[project.ID] = project
 
 		originalUpdatedAt := task.UpdatedAt
 
-		// Assign to the same section - should be a no-op
-		err = runTaskSection(nil, []string{"1", "Active"})
+		// Assign to the same GTD section - should be a no-op
+		err = runTaskSection(nil, []string{"1", models.SectionWaiting})
 		testutil.AssertNoError(t, err)
 
 		// Verify the task's UpdatedAt was NOT changed (no unnecessary save)
@@ -471,7 +470,7 @@ func TestTaskSectionSkipsAlreadyAssigned(t *testing.T) {
 		}
 	})
 
-	t.Run("assigns section to task in different section", func(t *testing.T) {
+	t.Run("does not save when custom section already matches", func(t *testing.T) {
 		deps, project := testutil.SetupTestDepsWithProject(t, "Test Project")
 		defer deps.Cleanup()
 
@@ -486,22 +485,83 @@ func TestTaskSectionSkipsAlreadyAssigned(t *testing.T) {
 		storage.DefaultRepository = deps.Repository
 		defer func() { storage.DefaultRepository = oldStorageRepo }()
 
-		// Use existing task from test project and set a different section
+		// Use existing task and set a custom section
 		task := project.Tasks[0]
-		project.EnsureSection("Backlog")
 		project.EnsureSection("Active")
-		task.Section = "Backlog"
+		task.CustomSection = "Active"
 		deps.Repository.Projects[project.ID] = project
 
-		// Assign to Active
+		originalUpdatedAt := task.UpdatedAt
+
+		// Assign to the same custom section - should be a no-op
 		err = runTaskSection(nil, []string{"1", "Active"})
 		testutil.AssertNoError(t, err)
 
-		// Verify the section was updated
 		savedProject := deps.Repository.Projects[project.ID]
 		savedTask := savedProject.GetTaskByShortID(task.ShortID)
-		if savedTask.Section != "Active" {
-			t.Errorf("task section = %q, want Active", savedTask.Section)
+		if savedTask.UpdatedAt != originalUpdatedAt {
+			t.Error("UpdatedAt should not change when custom section already matches")
+		}
+	})
+
+	t.Run("assigns GTD section to task in different section", func(t *testing.T) {
+		deps, project := testutil.SetupTestDepsWithProject(t, "Test Project")
+		defer deps.Cleanup()
+
+		viper.Set("config", deps.ConfigPath)
+		defer viper.Set("config", "")
+
+		manager := config.NewManager(deps.ConfigPath)
+		err := manager.Save(deps.Config)
+		testutil.AssertNoError(t, err)
+
+		oldStorageRepo := storage.DefaultRepository
+		storage.DefaultRepository = deps.Repository
+		defer func() { storage.DefaultRepository = oldStorageRepo }()
+
+		// Use existing task from test project and set a different GTD section
+		task := project.Tasks[0]
+		task.Section = models.SectionSomeday
+		deps.Repository.Projects[project.ID] = project
+
+		// Assign to Waiting (a GTD section)
+		err = runTaskSection(nil, []string{"1", models.SectionWaiting})
+		testutil.AssertNoError(t, err)
+
+		// Verify the GTD section was updated
+		savedProject := deps.Repository.Projects[project.ID]
+		savedTask := savedProject.GetTaskByShortID(task.ShortID)
+		if savedTask.Section != models.SectionWaiting {
+			t.Errorf("task section = %q, want %q", savedTask.Section, models.SectionWaiting)
+		}
+	})
+
+	t.Run("assigns custom section to CustomSection field", func(t *testing.T) {
+		deps, project := testutil.SetupTestDepsWithProject(t, "Test Project")
+		defer deps.Cleanup()
+
+		viper.Set("config", deps.ConfigPath)
+		defer viper.Set("config", "")
+
+		manager := config.NewManager(deps.ConfigPath)
+		err := manager.Save(deps.Config)
+		testutil.AssertNoError(t, err)
+
+		oldStorageRepo := storage.DefaultRepository
+		storage.DefaultRepository = deps.Repository
+		defer func() { storage.DefaultRepository = oldStorageRepo }()
+
+		task := project.Tasks[0]
+		project.EnsureSection("MyCustom")
+		deps.Repository.Projects[project.ID] = project
+
+		err = runTaskSection(nil, []string{"1", "MyCustom"})
+		testutil.AssertNoError(t, err)
+
+		savedProject := deps.Repository.Projects[project.ID]
+		savedTask := savedProject.GetTaskByShortID(task.ShortID)
+		if savedTask.CustomSection != "MyCustom" {
+			t.Errorf("task CustomSection = %q, want %q", savedTask.CustomSection, "MyCustom")
 		}
 	})
 }

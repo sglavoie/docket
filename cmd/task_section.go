@@ -69,19 +69,34 @@ func runTaskSection(cmd *cobra.Command, args []string) error {
 		alreadyInSection := false
 
 		task, err := WithTaskUpdateInProject(taskID, func(project *models.Project, task *models.Task) error {
-			// Check with fresh data whether the section already matches
-			if task.Section == sectionName {
-				alreadyInSection = true
-				skippedShortID = task.ShortID
-				return fmt.Errorf("no change needed")
+			// Check with fresh data whether the section already matches.
+			// GTD sections live in task.Section; custom sections in task.CustomSection.
+			isGTD := models.IsGTDSection(sectionName) || sectionName == ""
+			if isGTD {
+				if task.Section == sectionName {
+					alreadyInSection = true
+					skippedShortID = task.ShortID
+					return fmt.Errorf("no change needed")
+				}
+				oldSection = task.Section
+			} else {
+				if task.CustomSection == sectionName {
+					alreadyInSection = true
+					skippedShortID = task.ShortID
+					return fmt.Errorf("no change needed")
+				}
+				oldSection = task.CustomSection
 			}
-			oldSection = task.Section
 
 			if sectionName != "" {
 				project.EnsureSection(sectionName)
 			}
 
-			task.Section = sectionName
+			if isGTD {
+				task.Section = sectionName
+			} else {
+				task.CustomSection = sectionName
+			}
 			return nil
 		})
 
