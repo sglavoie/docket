@@ -538,6 +538,9 @@ func (m *OutlinerModel) renderOutlinerTreeContent(width int) string { //nolint:g
 		} else if task.Pinned {
 			titleStyle = SuccessStyle
 		}
+		if selected && !task.Dimmed {
+			titleStyle = SelectedTaskTitleStyle
+		}
 
 		// Build indicators in semantic groups for visual clustering
 		// Organization group: short ID, custom section, section badge

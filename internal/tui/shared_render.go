@@ -298,6 +298,9 @@ func (tl TaskLine) Render() string {
 	if tl.SearchQuery != "" {
 		title = HighlightSubstring(title, tl.SearchQuery, NormalStyle)
 	}
+	if tl.IsSelected && !tl.Task.Dimmed {
+		title = SelectedTaskTitleStyle.Render(title)
+	}
 
 	// Build priority segment: "badge " when present, "" when hidden
 	prioritySegment := ""

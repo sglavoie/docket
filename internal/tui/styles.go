@@ -320,6 +320,7 @@ func rebuildStyles() {
 	SelectionCursorStyle = lipgloss.NewStyle().Foreground(ColorSelectedFg).Bold(true)
 	SelectionRowStyle = lipgloss.NewStyle().Background(ColorSelectedBg)
 	CursorFlashRowStyle = lipgloss.NewStyle().Background(ColorFlashBg)
+	SelectedTaskTitleStyle = lipgloss.NewStyle().Bold(true).Foreground(ColorSelectedFg)
 
 	// Multi-select styles
 	SelectionStyle = lipgloss.NewStyle().Foreground(ColorSecondary)
@@ -514,6 +515,10 @@ func ApplyTheme(tc ThemeConfig) {
 		Background(ColorDimmedBg).
 		Foreground(ColorSelectedFg).
 		Italic(true)
+
+	SelectedTaskTitleStyle = lipgloss.NewStyle().
+		Bold(true).
+		Foreground(ColorSelectedFg)
 
 	// 4. Background propagation
 	themeBgColor = tc.BgColor
@@ -723,6 +728,11 @@ var (
 				Background(ColorDimmedBg).
 				Foreground(ColorSelectedFg).
 				Italic(true)
+
+	// SelectedTaskTitleStyle is applied to the task title on the selected row (bold + cursor fg).
+	SelectedTaskTitleStyle = lipgloss.NewStyle().
+				Bold(true).
+				Foreground(ColorSelectedFg)
 
 	// Text styles
 	NormalStyle = lipgloss.NewStyle()

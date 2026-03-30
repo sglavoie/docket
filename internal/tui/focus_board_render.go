@@ -253,6 +253,9 @@ func (m *FocusBoardModel) renderRow(row boardRow, isSelected bool, maxTitleLen i
 
 		truncatedTitle := truncateToVisualWidth(task.Title, maxTitleLen)
 		title := m.highlightTitle(truncatedTitle, task.Title)
+		if isSelected && !task.Dimmed && !isClosed {
+			title = SelectedTaskTitleStyle.Render(title)
+		}
 		content := fmt.Sprintf("  %s %s%s%s %s%s", priorityBadge, sourceBadge, projectBadge, urlIndicator, statusMarker, title)
 
 		if len(task.Tags) > 0 {
@@ -282,6 +285,9 @@ func (m *FocusBoardModel) renderRow(row boardRow, isSelected bool, maxTitleLen i
 
 		truncatedTitle := truncateToVisualWidth(task.Title, maxTitleLen)
 		title := m.highlightTitle(truncatedTitle, task.Title)
+		if isSelected && !task.Dimmed {
+			title = SelectedTaskTitleStyle.Render(title)
+		}
 		statusIcon := GetStatusBadge(string(task.Status), task.Status.Icon())
 		content := fmt.Sprintf("  %s %s %s%s %s", statusIcon, priorityBadge, projectBadge, typeIcon, title)
 
