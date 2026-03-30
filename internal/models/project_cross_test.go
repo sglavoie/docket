@@ -525,6 +525,41 @@ func TestMoveTaskToProjectNilTask(t *testing.T) {
 	}
 }
 
+func TestMoveTaskToProjectEnsuresCustomSectionInDest(t *testing.T) {
+	sourceProj, err := NewProject("source", "Source Project", "/tmp/source")
+	if err != nil {
+		t.Fatal(err)
+	}
+	destProj, err := NewProject("dest", "Dest Project", "/tmp/dest")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	sourceProj.Sections = []string{SectionNext, "Sprint-1"}
+	destProj.Sections = []string{SectionNext}
+
+	task, err := NewTask("task1", 1, TaskTypeTask, "Task with custom section")
+	if err != nil {
+		t.Fatal(err)
+	}
+	task.CustomSection = "Sprint-1"
+
+	sourceProj.Tasks = []*Task{task}
+	sourceProj.BuildTaskTree()
+
+	_, err = sourceProj.MoveTaskToProject(task, destProj)
+	if err != nil {
+		t.Fatalf("MoveTaskToProject failed: %v", err)
+	}
+
+	if task.CustomSection != "Sprint-1" {
+		t.Errorf("expected custom section preserved, got %q", task.CustomSection)
+	}
+	if !destProj.HasSection("Sprint-1") {
+		t.Error("expected destination project to have 'Sprint-1' section after move")
+	}
+}
+
 func TestMoveTaskToProjectNilDest(t *testing.T) {
 	proj, err := NewProject("proj1", "Project 1", "/tmp/proj1")
 	if err != nil {

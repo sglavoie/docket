@@ -58,7 +58,15 @@ func evaluateCriterion(task *models.Task, project *models.Project, c config.Smar
 		return evalDueDate(task, c.Value)
 
 	case "section":
-		return evalStringOp(task.Section, c.Operation, c.Value)
+		// Check both GTD Section and CustomSection.
+		// For positive ops (equals, contains): match if EITHER field matches.
+		// For negative ops (not_equals): match only if NEITHER field matches the value.
+		if c.Operation == "not_equals" {
+			return evalStringOp(task.Section, c.Operation, c.Value) &&
+				evalStringOp(task.CustomSection, c.Operation, c.Value)
+		}
+		return evalStringOp(task.Section, c.Operation, c.Value) ||
+			evalStringOp(task.CustomSection, c.Operation, c.Value)
 
 	case "score_min":
 		threshold, err := strconv.ParseFloat(c.Value, 64)

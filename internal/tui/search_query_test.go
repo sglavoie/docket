@@ -145,3 +145,61 @@ func TestParseSearchQuery_AllStatuses(t *testing.T) {
 		})
 	}
 }
+
+func TestTaskMatchesFilters_SectionMatchesCustomSection(t *testing.T) {
+	gtdTask := &models.Task{
+		Title:   "GTD task",
+		Section: "Next",
+	}
+	customTask := &models.Task{
+		Title:         "Custom task",
+		CustomSection: "Design",
+	}
+	bothTask := &models.Task{
+		Title:         "Both task",
+		Section:       "Next",
+		CustomSection: "Design",
+	}
+
+	tests := []struct {
+		name    string
+		task    *models.Task
+		section string
+		want    bool
+	}{
+		{"GTD section matches GTD task", gtdTask, "Next", true},
+		{"GTD section does not match custom task", customTask, "Next", false},
+		{"custom section matches custom task", customTask, "Design", true},
+		{"custom section does not match GTD task", gtdTask, "Design", false},
+		{"custom section matches task with both", bothTask, "Design", true},
+		{"GTD section matches task with both", bothTask, "Next", true},
+		{"case insensitive custom section", customTask, "design", true},
+		{"no section filter matches all", gtdTask, "", true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			filters := &ParsedSearchQuery{Section: tt.section}
+			got := TaskMatchesFilters(tt.task, filters)
+			if got != tt.want {
+				t.Errorf("TaskMatchesFilters(section=%q) = %v, want %v", tt.section, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestTaskMatchesFilters_SectionViaSearchQuery(t *testing.T) {
+	task := &models.Task{
+		Title:         "My task",
+		CustomSection: "Design",
+		Status:        models.StatusTodo,
+	}
+
+	filters := ParseSearchQuery("/Design")
+	if filters.Section != "Design" {
+		t.Fatalf("ParseSearchQuery(/Design).Section = %q, want %q", filters.Section, "Design")
+	}
+	if !TaskMatchesFilters(task, filters) {
+		t.Error("TaskMatchesFilters should match custom section via /Design search query")
+	}
+}

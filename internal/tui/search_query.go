@@ -182,9 +182,9 @@ func TaskMatchesFilters(task *models.Task, filters *ParsedSearchQuery) bool {
 		}
 	}
 
-	// Section filter (case-insensitive)
+	// Section filter (case-insensitive, checks both GTD Section and CustomSection)
 	if filters.Section != "" {
-		if !strings.EqualFold(task.Section, filters.Section) {
+		if !strings.EqualFold(task.Section, filters.Section) && !strings.EqualFold(task.CustomSection, filters.Section) {
 			return false
 		}
 	}

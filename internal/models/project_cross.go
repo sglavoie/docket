@@ -79,6 +79,11 @@ func (p *Project) MoveTaskToProject(task *Task, dest *Project) (*MoveTaskToProje
 			t.Section = SectionNext
 		}
 
+		// Ensure custom section exists in destination
+		if t.CustomSection != "" && !dest.HasSection(t.CustomSection) {
+			dest.EnsureSection(t.CustomSection)
+		}
+
 		// Update timestamp
 		t.UpdatedAt = now
 
