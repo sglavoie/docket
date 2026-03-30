@@ -1,6 +1,9 @@
 package storage
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 func TestEscapeDescription(t *testing.T) {
 	tests := []struct {
@@ -159,9 +162,11 @@ func joinLines(lines []string) string {
 	if len(lines) == 0 {
 		return ""
 	}
-	result := lines[0]
+	var b strings.Builder
+	b.WriteString(lines[0])
 	for _, line := range lines[1:] {
-		result += "\n" + line
+		b.WriteByte('\n')
+		b.WriteString(line)
 	}
-	return result
+	return b.String()
 }

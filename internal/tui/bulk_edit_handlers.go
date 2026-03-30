@@ -345,12 +345,15 @@ func (m *BulkEditModel) handleLeft() {
 // apply returns a command that applies the changes.
 func (m *BulkEditModel) apply() tea.Cmd {
 	changes := m.buildChanges()
+	tasks := m.tasks
+	project := m.project
+	taskCount := len(m.tasks)
 	return func() tea.Msg {
 		return BulkEditDoneMsg{
 			Changes:   changes,
-			Tasks:     m.tasks,
-			Project:   m.project,
-			TaskCount: len(m.tasks),
+			Tasks:     tasks,
+			Project:   project,
+			TaskCount: taskCount,
 			Applied:   true,
 		}
 	}
