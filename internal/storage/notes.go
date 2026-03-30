@@ -184,16 +184,22 @@ func RenameNoteIn(dir, oldFilename, newTitle string) (*models.Note, error) {
 
 	if newFilename != oldFilename {
 		base := strings.TrimSuffix(newFilename, ".md")
-		candidate := newFilename
 		const maxDedup = 1000
+		candidate := newFilename
 		found := false
-		for i := 2; i <= maxDedup; i++ {
-			candidatePath := filepath.Join(dir, candidate)
-			if _, statErr := os.Stat(candidatePath); os.IsNotExist(statErr) {
-				found = true
-				break
+		candidatePath := filepath.Join(dir, candidate)
+		if _, statErr := os.Stat(candidatePath); os.IsNotExist(statErr) {
+			found = true
+		}
+		if !found {
+			for i := 2; i <= maxDedup; i++ {
+				candidate = fmt.Sprintf("%s-%d.md", base, i)
+				candidatePath = filepath.Join(dir, candidate)
+				if _, statErr := os.Stat(candidatePath); os.IsNotExist(statErr) {
+					found = true
+					break
+				}
 			}
-			candidate = fmt.Sprintf("%s-%d.md", base, i)
 		}
 		if !found {
 			return nil, fmt.Errorf("too many notes with base name %q (tried %d variants)", base, maxDedup)

@@ -206,6 +206,74 @@ func TestSaveNoteFilenameCollision(t *testing.T) {
 	}
 }
 
+func TestRenameNoteIn(t *testing.T) {
+	dir := t.TempDir()
+
+	// Create initial note
+	note := models.NewNote("Original Title")
+	if err := SaveNoteTo(dir, note); err != nil {
+		t.Fatalf("SaveNoteTo failed: %v", err)
+	}
+	oldFilename := note.Filename
+
+	// Rename to a new title
+	renamed, err := RenameNoteIn(dir, oldFilename, "New Title")
+	if err != nil {
+		t.Fatalf("RenameNoteIn failed: %v", err)
+	}
+	if renamed.Title != "New Title" {
+		t.Errorf("Title = %q, want %q", renamed.Title, "New Title")
+	}
+
+	// Old file should be gone
+	oldPath := filepath.Join(dir, oldFilename)
+	if _, err := os.Stat(oldPath); !os.IsNotExist(err) {
+		t.Error("old file should not exist after rename")
+	}
+
+	// New file should exist
+	newPath := filepath.Join(dir, renamed.Filename)
+	if _, err := os.Stat(newPath); err != nil {
+		t.Errorf("new file should exist: %v", err)
+	}
+}
+
+func TestRenameNoteInDedup(t *testing.T) {
+	dir := t.TempDir()
+
+	// Create two notes that will collide on rename
+	note1 := models.NewNote("Target Name")
+	if err := SaveNoteTo(dir, note1); err != nil {
+		t.Fatalf("SaveNoteTo note1 failed: %v", err)
+	}
+
+	note2 := models.NewNote("Something Else")
+	if err := SaveNoteTo(dir, note2); err != nil {
+		t.Fatalf("SaveNoteTo note2 failed: %v", err)
+	}
+
+	// Rename note2 to "Target Name" — should get a deduplicated filename
+	renamed, err := RenameNoteIn(dir, note2.Filename, "Target Name")
+	if err != nil {
+		t.Fatalf("RenameNoteIn failed: %v", err)
+	}
+	if renamed.Filename == note1.Filename {
+		t.Error("renamed note should have a different filename from existing note")
+	}
+	if !strings.HasSuffix(renamed.Filename, ".md") {
+		t.Errorf("renamed filename should end with .md, got %q", renamed.Filename)
+	}
+
+	// Both notes should exist
+	notes, err := ListNotesFrom(dir)
+	if err != nil {
+		t.Fatalf("ListNotesFrom failed: %v", err)
+	}
+	if len(notes) != 2 {
+		t.Errorf("expected 2 notes, got %d", len(notes))
+	}
+}
+
 func TestParseNoteRoundtrip(t *testing.T) {
 	note := models.NewNote("Roundtrip Test")
 	note.Tags = []string{"go", "test"}

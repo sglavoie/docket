@@ -69,6 +69,11 @@ func CopyAttachment(project *models.Project, task *models.Task, sourcePath strin
 		if cerr := dst.Close(); cerr != nil && err == nil {
 			err = fmt.Errorf("failed to close destination file: %w", cerr)
 		}
+		// Clean up partially-written file on any error so that a retry
+		// is not blocked by the "already exists" check above.
+		if err != nil {
+			_ = os.Remove(destPath)
+		}
 	}()
 
 	// Copy contents
