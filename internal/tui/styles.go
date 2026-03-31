@@ -317,7 +317,6 @@ func rebuildStyles() {
 	// Selection styles
 	SelectedStyle = lipgloss.NewStyle().Background(ColorSelectedBg).Foreground(ColorSelectedFg).Bold(true)
 	SelectedItemTextStyle = BoldStyle.Foreground(ColorSelectedFg)
-	SelectionCursorStyle = lipgloss.NewStyle().Foreground(ColorSelectedFg).Bold(true)
 	SelectionRowStyle = lipgloss.NewStyle().Background(ColorSelectedBg)
 	CursorFlashRowStyle = lipgloss.NewStyle().Background(ColorFlashBg)
 	SelectedTaskTitleStyle = lipgloss.NewStyle().Bold(true).Foreground(ColorSelectedFg)
@@ -486,10 +485,6 @@ func ApplyTheme(tc ThemeConfig) {
 
 	CursorFlashRowStyle = lipgloss.NewStyle().
 		Background(ColorFlashBg)
-
-	SelectionCursorStyle = lipgloss.NewStyle().
-		Foreground(ColorSelectedFg).
-		Bold(true)
 
 	TaskJumperSelectedStyle = lipgloss.NewStyle().
 		Background(ColorSelectedBg).
@@ -1093,9 +1088,6 @@ var (
 	SelectedItemTextStyle = BoldStyle.Foreground(ColorSelectedFg)
 
 	// Selection row styles (unified across all list views)
-	SelectionCursorStyle = lipgloss.NewStyle().
-				Foreground(ColorSelectedFg).
-				Bold(true)
 
 	SelectionRowStyle = lipgloss.NewStyle().
 				Background(ColorSelectedBg)
@@ -1646,13 +1638,13 @@ func RenderCursorPrefix(selected, active, pinned, dimmed bool) string {
 	var prefix string
 	switch {
 	case selected && active && pinned:
-		prefix = SelectionCursorStyle.Render("→") + activeMarker + PinnedMarker
+		prefix = " " + activeMarker + PinnedMarker
 	case selected && active:
-		prefix = SelectionCursorStyle.Render("→") + activeMarker + " "
+		prefix = " " + activeMarker + " "
 	case selected && pinned:
-		prefix = SelectionCursorStyle.Render("→") + " " + PinnedMarker
+		prefix = "  " + PinnedMarker
 	case selected:
-		prefix = SelectionCursorStyle.Render("→") + "  "
+		prefix = "   "
 	case active && pinned:
 		prefix = " " + activeMarker + PinnedMarker
 	case active:
@@ -1662,8 +1654,8 @@ func RenderCursorPrefix(selected, active, pinned, dimmed bool) string {
 	default:
 		prefix = "   "
 	}
-	// When dimmed and not selected, replace the leading space with ◌
-	if dimmed && !selected && len(prefix) > 0 && prefix[0] == ' ' {
+	// When dimmed, replace the leading space with ◌
+	if dimmed && len(prefix) > 0 && prefix[0] == ' ' {
 		prefix = "◌" + prefix[1:]
 	}
 	return prefix
@@ -1683,11 +1675,10 @@ func RenderSelectableRow(selected bool, active bool, pinned bool, flash bool, co
 		return DimLine(row)
 	}
 	if selected {
-		style := SelectionRowStyle
 		if flash {
-			style = CursorFlashRowStyle
+			return SelectedFlashLine(row, width)
 		}
-		return style.Width(width).Render(row)
+		return SelectedLine(row, width)
 	}
 	return row
 }

@@ -268,18 +268,30 @@ func DimLine(line string) string {
 
 // DimSelectedLine strips all ANSI styling and re-renders as dim+selected text.
 // Used when a dimmed task is under the cursor to keep it visually distinct from
-// normal selected rows. The cursor "→" is preserved in the stripped text.
+// normal selected rows.
 func DimSelectedLine(line string, width int) string {
 	stripped := ansi.Strip(line)
 	return DimmedSelectedStyle.Width(width).Render(stripped)
 }
 
+// SelectedLine strips all ANSI styling and re-renders with the unified
+// selection style (colored background, high-contrast foreground, bold).
+// Call after full line assembly so the entire row gets consistent styling.
+func SelectedLine(line string, width int) string {
+	stripped := ansi.Strip(line)
+	return SelectedStyle.Width(width).Render(stripped)
+}
+
+// SelectedFlashLine is like SelectedLine but uses the flash background.
+func SelectedFlashLine(line string, width int) string {
+	stripped := ansi.Strip(line)
+	return SelectedStyle.Background(ColorFlashBg).Width(width).Render(stripped)
+}
+
 // Render assembles the task line string from the configured fields.
 func (tl TaskLine) Render() string {
 	cursor := "  "
-	if tl.IsSelected {
-		cursor = "→ "
-	} else if tl.Task.Dimmed {
+	if tl.Task.Dimmed {
 		cursor = "◌ "
 	}
 
@@ -333,13 +345,13 @@ func (tl TaskLine) Render() string {
 
 	if tl.IsSelected && (tl.Task == nil || !tl.Task.Dimmed) {
 		if tl.ViewWidth > 0 {
-			style := SelectionRowStyle
 			if tl.Flash {
-				style = CursorFlashRowStyle
+				line = SelectedFlashLine(line, tl.ViewWidth)
+			} else {
+				line = SelectedLine(line, tl.ViewWidth)
 			}
-			line = style.Width(tl.ViewWidth).Render(line)
 		} else {
-			line = SelectedStyle.Render(line)
+			line = SelectedLine(line, 0)
 		}
 	}
 

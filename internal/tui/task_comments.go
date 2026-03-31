@@ -740,7 +740,7 @@ func (m *TaskCommentsModel) View() tea.View {
 
 			cursor := "  "
 			if i == m.cursor {
-				cursor = "→ "
+				cursor = "  "
 			}
 
 			timestamp := FormatTimestampBracket(comment.CreatedAt)

@@ -83,7 +83,7 @@ func (m *ProjectPickerModel) renderList(width int) string {
 
 		cursor := "  "
 		if m.Cursor == i {
-			cursor = "→ "
+			cursor = "  "
 		}
 
 		contextBadge := MutedStyle.Render(fmt.Sprintf("[%s]", item.Project.Context))

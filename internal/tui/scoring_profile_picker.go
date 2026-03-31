@@ -204,7 +204,7 @@ func (m *ScoringProfilePickerModel) View() tea.View {
 			opt := m.Filtered[i]
 			cursor := "  "
 			if i == m.Cursor {
-				cursor = "→ "
+				cursor = "  "
 			}
 
 			check := "  "

@@ -460,9 +460,6 @@ func (m *OutlinerModel) renderOutlinerTreeContent(width int) string { //nolint:g
 
 			// Cursor prefix
 			cursorPrefix := "  "
-			if selected {
-				cursorPrefix = SelectionCursorStyle.Render("→") + " "
-			}
 
 			// Render colored badge with @ symbol at the very left
 			badge := sectionStyle.Render(fmt.Sprintf("@ %s", displayName))
@@ -480,11 +477,11 @@ func (m *OutlinerModel) renderOutlinerTreeContent(width int) string { //nolint:g
 			}
 
 			if selected {
-				rowStyle := SelectionRowStyle
 				if m.cursorFlash {
-					rowStyle = CursorFlashRowStyle
+					line = SelectedFlashLine(line, rowWidth)
+				} else {
+					line = SelectedLine(line, rowWidth)
 				}
-				line = rowStyle.Width(rowWidth).Render(line)
 			}
 
 			rowBuilder.WriteString(line)
@@ -565,11 +562,14 @@ func (m *OutlinerModel) renderOutlinerTreeContent(width int) string { //nolint:g
 		}
 		orgGroup := JoinGroupParts(orgParts...)
 
-		// Lifecycle group: priority, due date, snooze, recurrence
-		var lifecycleParts []string
+		// Priority segment: rendered before title (like TaskLine.Render)
+		prioritySegment := ""
 		if m.columnConfig.ShouldShowPriority(task.Priority) {
-			lifecycleParts = append(lifecycleParts, renderPriorityBadge(task.Priority))
+			prioritySegment = renderPriorityBadge(task.Priority) + " "
 		}
+
+		// Lifecycle group: due date, snooze, recurrence
+		var lifecycleParts []string
 		if m.columnConfig.IsVisible(ColDueDate) {
 			if dueStr := formatDueDate(task); dueStr != "" {
 				lifecycleParts = append(lifecycleParts, dueStr)
@@ -666,7 +666,7 @@ func (m *OutlinerModel) renderOutlinerTreeContent(width int) string { //nolint:g
 			lipgloss.Width(row.prefix) + lipgloss.Width(foldIndicator) +
 			lipgloss.Width(projBadge) + lipgloss.Width(typeIcon) + 1 +
 			lipgloss.Width(stageSegment) + lipgloss.Width(statusIcon) + 1 +
-			lipgloss.Width(indicators)
+			lipgloss.Width(prioritySegment) + lipgloss.Width(indicators)
 		availableWidth := max(rowWidth-nonTitleWidth, 10)
 		truncatedTitle := truncateToVisualWidth(task.Title, availableWidth)
 		var title string
@@ -682,13 +682,13 @@ func (m *OutlinerModel) renderOutlinerTreeContent(width int) string { //nolint:g
 			title = titleStyle.Render(truncatedTitle)
 		}
 
-		line := fmt.Sprintf("%s%s%s%s%s%s %s%s %s%s",
+		line := fmt.Sprintf("%s%s%s%s%s%s %s%s %s%s%s",
 			cursorPrefix,
 			checkbox,
 			MutedStyle.Render(row.prefix),
 			foldIndicator,
 			projBadge,
-			typeIcon, stageSegment, statusIcon, title, indicators)
+			typeIcon, stageSegment, statusIcon, prioritySegment, title, indicators)
 
 		if task.Dimmed && !selected {
 			line = DimLine(line)
@@ -697,11 +697,11 @@ func (m *OutlinerModel) renderOutlinerTreeContent(width int) string { //nolint:g
 		}
 
 		if selected && !task.Dimmed {
-			rowStyle := SelectionRowStyle
 			if m.cursorFlash {
-				rowStyle = CursorFlashRowStyle
+				line = SelectedFlashLine(line, rowWidth)
+			} else {
+				line = SelectedLine(line, rowWidth)
 			}
-			line = rowStyle.Width(rowWidth).Render(line)
 		}
 
 		rowBuilder.WriteString(line)

@@ -213,7 +213,7 @@ func (m *DependencyViewerModel) renderSection(sectionIdx int, title, arrow strin
 		// Cursor indicator (only for active section)
 		cursor := "  "
 		if m.section == sectionIdx && i == m.cursor {
-			cursor = "→ "
+			cursor = "  "
 		}
 
 		// Type icon with badge style

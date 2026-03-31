@@ -155,7 +155,7 @@ func (m *StatusIconPickerModel) View() tea.View {
 	for i, item := range m.Filtered {
 		cursor := "  "
 		if i == m.Cursor {
-			cursor = "→ "
+			cursor = "  "
 		}
 
 		line := cursor + item.DisplayText()

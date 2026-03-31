@@ -739,7 +739,7 @@ func (m *TaskAttachmentsModel) View() tea.View { //nolint:gocyclo
 			// Cursor indicator
 			cursor := "  "
 			if i == m.cursor {
-				cursor = "→ "
+				cursor = "  "
 			}
 
 			// Build attachment entry

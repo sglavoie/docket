@@ -457,7 +457,7 @@ func (m *NotificationCenterModel) buildAlertLines(prefixWidth, maxLabelWidth int
 					line = strings.Repeat(" ", prefixWidth) + styled
 				}
 				if flash {
-					line = CursorFlashRowStyle.Width(m.width).Render(line)
+					line = SelectedFlashLine(line, m.width)
 				}
 				lines = append(lines, line)
 			}
@@ -469,7 +469,7 @@ func (m *NotificationCenterModel) buildAlertLines(prefixWidth, maxLabelWidth int
 			}
 			line := prefix + sev + styled
 			if flash {
-				line = CursorFlashRowStyle.Width(m.width).Render(line)
+				line = SelectedFlashLine(line, m.width)
 			}
 			lines = append(lines, line)
 		}

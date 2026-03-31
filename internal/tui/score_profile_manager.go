@@ -365,7 +365,7 @@ func (m *ScoreProfileManagerModel) View() tea.View {
 			cursor := "  "
 			style := dimStyle
 			if i == m.cursor {
-				cursor = "→ "
+				cursor = "  "
 				style = selectedStyle
 
 				// Build detail pane content for wide screens
@@ -400,7 +400,7 @@ func (m *ScoreProfileManagerModel) View() tea.View {
 		for i, name := range m.presetOptions {
 			cursor := "  "
 			if i == m.presetCursor {
-				cursor = "→ "
+				cursor = "  "
 			}
 			presets := scoring.PresetProfiles()
 			desc := ""

@@ -171,7 +171,7 @@ func (m *PriorityPickerModel) View() tea.View {
 	for i, p := range m.Filtered {
 		cursor := "  "
 		if i == m.Cursor {
-			cursor = "→ "
+			cursor = "  "
 		}
 
 		style := GetPriorityStyle(p.Priority)

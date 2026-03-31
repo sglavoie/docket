@@ -658,17 +658,13 @@ func renderCollapsibleHeader(name string, count int, collapsed, isSelected, flas
 		indicator = "▶"
 	}
 	cursor := "  "
-	if isSelected {
-		cursor = "→ "
-	}
 	header := fmt.Sprintf("%s%s %s (%d)", cursor, indicator, name, count)
 	styled := style.Bold(true).Render(header)
 	if isSelected {
-		selStyle := SelectedStyle
 		if flash {
-			selStyle = selStyle.Background(ColorFlashBg)
+			return SelectedFlashLine(styled, 0)
 		}
-		return selStyle.Render(styled)
+		return SelectedLine(styled, 0)
 	}
 	return styled
 }

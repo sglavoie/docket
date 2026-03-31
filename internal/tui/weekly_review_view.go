@@ -261,7 +261,7 @@ func (m *WeeklyReviewModel) renderSectionHeader(section WeeklyReviewSection, cou
 func (m *WeeklyReviewModel) renderProjectLine(wp WeeklyReviewProject, section WeeklyReviewSection, isSelected bool) string {
 	cursor := "  "
 	if isSelected {
-		cursor = "→ "
+		cursor = "  "
 	}
 
 	var badges []string

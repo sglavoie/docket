@@ -449,7 +449,7 @@ func (m *CustomContextEditorModel) View() tea.View {
 			// Cursor
 			cursor := "  "
 			if m.projectListMode && i == m.cursor {
-				cursor = "→ "
+				cursor = "  "
 			}
 
 			// Checkbox

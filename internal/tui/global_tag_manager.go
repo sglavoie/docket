@@ -423,7 +423,7 @@ func (m *GlobalTagManagerModel) View() tea.View {
 			cursor := "  "
 			style := TagManagerItemStyle
 			if i == m.cursor {
-				cursor = "→ "
+				cursor = "  "
 				style = TagManagerItemSelectedStyle
 			}
 
@@ -486,7 +486,7 @@ func (m *GlobalTagManagerModel) renderProjectPicker() string {
 		cursor := "  "
 		style := TagManagerItemStyle
 		if i == m.projectCursor {
-			cursor = "→ "
+			cursor = "  "
 			style = TagManagerItemSelectedStyle
 		}
 

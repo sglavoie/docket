@@ -440,7 +440,7 @@ func (m *NotesSearchModel) renderNoteList(paneHeight int) string {
 
 		cursor := "  "
 		if i == m.cursor {
-			cursor = "→ "
+			cursor = "  "
 		}
 
 		noteIcon := MutedStyle.Render("[N]")

@@ -350,13 +350,7 @@ func (m *SectionPickerModel) renderSectionList(maxVisible, boxWidth int) string 
 			gutter = " "
 		}
 
-		// Build prefix: "> @ " or "  @ " or ">   " or "    "
-		var prefix string
-		if selected {
-			prefix = SelectionCursorStyle.Render("→") + " " + gutter + " "
-		} else {
-			prefix = "  " + gutter + " "
-		}
+		prefix := "  " + gutter + " "
 
 		// Display text (without @ prefix, that's in the gutter)
 		var displayText string
@@ -372,7 +366,7 @@ func (m *SectionPickerModel) renderSectionList(maxVisible, boxWidth int) string 
 
 		row := prefix + displayText + countStr
 		if selected {
-			b.WriteString(SelectionRowStyle.Width(rowWidth).Render(row))
+			b.WriteString(SelectedLine(row, rowWidth))
 		} else {
 			b.WriteString(row)
 		}

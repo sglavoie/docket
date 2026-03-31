@@ -155,7 +155,7 @@ func (m *TaskActivityModel) View() tea.View {
 
 			cursor := "  "
 			if i == m.cursor {
-				cursor = "→ "
+				cursor = "  "
 			}
 
 			ts := FormatTimestampBracket(entry.Timestamp)

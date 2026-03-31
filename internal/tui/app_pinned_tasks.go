@@ -522,7 +522,6 @@ func (m *AppModel) renderPinnedPopup() string {
 
 	popupWidth := max(m.width-4, 30)
 
-	cursorStyle := SelectionRowStyle
 	badgeStyle := InfoStatusStyle
 	dimBadgeStyle := MutedStyle
 	projectStyle := MutedStyle
@@ -589,7 +588,7 @@ func (m *AppModel) renderPinnedPopup() string {
 				if lineWidth < innerWidth {
 					line += strings.Repeat(" ", innerWidth-lineWidth)
 				}
-				line = cursorStyle.Render(ansi.Truncate(line, innerWidth, ""))
+				line = SelectedLine(ansi.Truncate(line, innerWidth, ""), innerWidth)
 			}
 
 			contentLines = append(contentLines, line)
