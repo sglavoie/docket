@@ -250,10 +250,12 @@ func (m *ProjectTreeModel) GetPrefixPopupInfo() *PrefixPopupInfo {
 		return nil
 	}
 	var currentStage string
+	var currentPriority int
 	if task := m.getCursorTask(); task != nil {
 		currentStage = task.Stage
+		currentPriority = task.Priority
 	}
-	hints := CommonTaskActionPrefixHints(m.config.Stages, currentStage)
+	hints := CommonTaskActionPrefixHints(m.config.Stages, currentStage, currentPriority)
 	hints["z"] = FoldPrefixHints
 	hints["g"] = ProjectTreeNavigationPrefixHints
 	hints["m"] = ProjectTreeMovePrefixHints // override: tree uses tree moves

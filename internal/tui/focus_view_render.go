@@ -238,10 +238,12 @@ func (m *FocusViewModel) GetPrefixPopupInfo() *PrefixPopupInfo {
 		return nil
 	}
 	var currentStage string
+	var currentPriority int
 	if ft := m.getTaskAtCursor(); ft != nil {
 		currentStage = ft.Task.Stage
+		currentPriority = ft.Task.Priority
 	}
-	hints := CommonTaskActionPrefixHints(m.config.Stages, currentStage)
+	hints := CommonTaskActionPrefixHints(m.config.Stages, currentStage, currentPriority)
 	hints["g"] = FocusViewNavigationPrefixHints
 	hints["z"] = []PrefixHint{
 		{Key: "p", Description: "preview", Detail: "Toggle inline preview"},

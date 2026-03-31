@@ -98,7 +98,7 @@ func (m *TaskDetailModel) GetPrefixPopupInfo() *PrefixPopupInfo {
 func (m *TaskDetailModel) prefixHints() PrefixHints {
 	hints := PrefixHints{
 		",": StatusPrefixHints,
-		"!": PriorityPrefixHints,
+		"!": BuildPriorityPrefixHints(0),
 	}
 
 	// Add status-aware active hints
@@ -122,25 +122,7 @@ func (m *TaskDetailModel) prefixHints() PrefixHints {
 			}
 		}
 		hints[","] = statusHints
-
-		// Priority hints with active indicator
-		priorityHints := make([]PrefixHint, len(PriorityPrefixHints))
-		copy(priorityHints, PriorityPrefixHints)
-		for i := range priorityHints {
-			switch priorityHints[i].Key {
-			case "1":
-				priorityHints[i].Active = m.task.Priority == 1
-			case "2":
-				priorityHints[i].Active = m.task.Priority == 2
-			case "3":
-				priorityHints[i].Active = m.task.Priority == 3
-			case "4":
-				priorityHints[i].Active = m.task.Priority == 4
-			case "5":
-				priorityHints[i].Active = m.task.Priority == 5
-			}
-		}
-		hints["!"] = priorityHints
+		hints["!"] = BuildPriorityPrefixHints(m.task.Priority)
 	}
 
 	return hints

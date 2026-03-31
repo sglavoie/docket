@@ -26,10 +26,12 @@ func (m *PriorityViewModel) GetPrefixPopupInfo() *PrefixPopupInfo {
 		return nil
 	}
 	var currentStage string
+	var currentPriority int
 	if pt := m.getTaskAtCursor(); pt != nil {
 		currentStage = pt.Task.Stage
+		currentPriority = pt.Task.Priority
 	}
-	hints := CommonTaskActionPrefixHints(m.config.Stages, currentStage)
+	hints := CommonTaskActionPrefixHints(m.config.Stages, currentStage, currentPriority)
 	hints["g"] = PriorityViewNavigationPrefixHints
 	hints["z"] = []PrefixHint{
 		{Key: "p", Description: "preview", Detail: "Toggle inline preview"},

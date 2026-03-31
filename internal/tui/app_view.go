@@ -105,7 +105,12 @@ func (m *AppModel) View() (result tea.View) {
 		content = OverlayPopup(content, popup, m.width, targetContentHeight)
 		// Overlay prefix hints on top of quick-switch popup when prefix is pending
 		if m.quickSwitchPendingPrefix != "" {
-			prefixPopup := RenderPrefixPopup(m.quickSwitchPendingPrefix, PrefixHints{",": StatusPrefixHints, "!": PriorityPrefixHints}, m.width, targetContentHeight)
+			var qsPriority int
+			if m.quickSwitchCursor >= 0 && m.quickSwitchCursor < m.quickSwitchFilteredLen() {
+				realIdx := m.quickSwitchFiltered[m.quickSwitchCursor]
+				qsPriority = m.recentTaskVisits[realIdx].Task.Priority
+			}
+			prefixPopup := RenderPrefixPopup(m.quickSwitchPendingPrefix, PrefixHints{",": StatusPrefixHints, "!": BuildPriorityPrefixHints(qsPriority)}, m.width, targetContentHeight)
 			content = OverlayPopup(content, prefixPopup, m.width, targetContentHeight)
 		}
 	}
@@ -127,7 +132,12 @@ func (m *AppModel) View() (result tea.View) {
 		content = OverlayPopupBottomLeft(content, popup, m.width, targetContentHeight)
 		// Overlay prefix hints on top of pinned popup when prefix is pending
 		if m.pinnedPendingPrefix != "" {
-			prefixPopup := RenderPrefixPopup(m.pinnedPendingPrefix, PrefixHints{",": StatusPrefixHints, "!": PriorityPrefixHints}, m.width, targetContentHeight)
+			var pinnedPriority int
+			if m.pinnedPopupCursor >= 0 && m.pinnedPopupCursor < m.pinnedPopupFilteredLen() {
+				realIdx := m.pinnedPopupFiltered[m.pinnedPopupCursor]
+				pinnedPriority = m.pinnedPopupItems[realIdx].Task.Priority
+			}
+			prefixPopup := RenderPrefixPopup(m.pinnedPendingPrefix, PrefixHints{",": StatusPrefixHints, "!": BuildPriorityPrefixHints(pinnedPriority)}, m.width, targetContentHeight)
 			content = OverlayPopupBottomLeft(content, prefixPopup, m.width, targetContentHeight)
 		}
 	}

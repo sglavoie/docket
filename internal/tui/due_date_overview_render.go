@@ -90,10 +90,12 @@ func (m *DueDateOverviewModel) GetPrefixPopupInfo() *PrefixPopupInfo {
 		return nil
 	}
 	var currentStage string
+	var currentPriority int
 	if ct := m.getTaskAtCursor(); ct != nil {
 		currentStage = ct.Task.Stage
+		currentPriority = ct.Task.Priority
 	}
-	hints := CommonTaskActionPrefixHints(m.config.Stages, currentStage)
+	hints := CommonTaskActionPrefixHints(m.config.Stages, currentStage, currentPriority)
 	hints["g"] = DueDateOverviewNavigationPrefixHints
 	hints["z"] = []PrefixHint{
 		{Key: "p", Description: "preview", Detail: "Toggle inline preview"},

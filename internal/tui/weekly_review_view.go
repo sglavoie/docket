@@ -124,10 +124,12 @@ func (m *WeeklyReviewModel) GetPrefixPopupInfo() *PrefixPopupInfo {
 		return nil
 	}
 	var currentStage string
+	var currentPriority int
 	if wt := m.getTaskAtCursor(); wt != nil {
 		currentStage = wt.Task.Stage
+		currentPriority = wt.Task.Priority
 	}
-	hints := CommonTaskActionPrefixHints(m.config.Stages, currentStage)
+	hints := CommonTaskActionPrefixHints(m.config.Stages, currentStage, currentPriority)
 	hints["g"] = WeeklyReviewNavigationPrefixHints
 	hints["z"] = append(SectionFoldPrefixHints, PrefixHint{Key: "p", Description: "preview", Detail: "Toggle inline preview"})
 	return &PrefixPopupInfo{

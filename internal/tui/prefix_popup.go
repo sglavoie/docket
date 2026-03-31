@@ -12,11 +12,12 @@ import (
 
 // PrefixHint represents a single key hint in a prefix popup.
 type PrefixHint struct {
-	Key         string
-	Description string
-	Detail      string
-	Active      bool // When true, description and detail are rendered in orange
-	Disabled    bool // When true, all columns are rendered dimmed (muted)
+	Key          string
+	Description  string
+	Detail       string
+	Active       bool   // When true, description and detail are rendered in orange
+	Disabled     bool   // When true, all columns are rendered dimmed (muted)
+	RenderedIcon string // Pre-styled icon string prepended before the description column
 }
 
 // PrefixHints maps prefix characters to their available key hints.
@@ -120,11 +121,13 @@ func RenderPrefixPopup(prefix string, hints PrefixHints, width, height int) stri
 	var contentLines []string
 
 	if onePerLine {
-		// One hint per line: "key  description  detail"
-		// Find max key and description widths for alignment
+		// One hint per line: "key  [icon ]description  detail"
+		// Find max key, icon, and description widths for alignment
 		maxKeyWidth := 0
 		maxDescWidth := 0
+		maxIconWidth := 0
 		hasDetail := false
+		hasIcon := false
 		for _, h := range keyHints {
 			if len(h.Key) > maxKeyWidth {
 				maxKeyWidth = len(h.Key)
@@ -135,10 +138,22 @@ func RenderPrefixPopup(prefix string, hints PrefixHints, width, height int) stri
 			if h.Detail != "" {
 				hasDetail = true
 			}
+			if h.RenderedIcon != "" {
+				hasIcon = true
+				if w := ansi.StringWidth(h.RenderedIcon); w > maxIconWidth {
+					maxIconWidth = w
+				}
+			}
 		}
 
 		activeDescStyle := WarningIconStyle
 		activeDetailStyle := WarningIconStyle
+
+		// Extra width for icon column: icon + space separator
+		iconColWidth := 0
+		if hasIcon {
+			iconColWidth = maxIconWidth + 1
+		}
 
 		contentWidth := 0
 		for _, h := range keyHints {
@@ -154,16 +169,30 @@ func RenderPrefixPopup(prefix string, hints PrefixHints, width, height int) stri
 				detailStyle = activeDetailStyle
 			}
 
+			// Build icon prefix (pre-rendered with styling)
+			iconPart := ""
+			iconPlain := ""
+			if hasIcon {
+				if h.RenderedIcon != "" {
+					iconPart = h.RenderedIcon + " "
+					iconPlain = fmt.Sprintf("%-*s ", maxIconWidth, strings.Repeat("X", ansi.StringWidth(h.RenderedIcon)))
+				} else {
+					iconPart = strings.Repeat(" ", iconColWidth)
+					iconPlain = strings.Repeat(" ", iconColWidth)
+				}
+			}
+
 			var line string
 			var rendered string
 			if hasDetail {
-				line = fmt.Sprintf("%-*s  %-*s  %s", maxKeyWidth, h.Key, maxDescWidth, h.Description, h.Detail)
+				line = fmt.Sprintf("%-*s  %s%-*s  %s", maxKeyWidth, h.Key, iconPlain, maxDescWidth, h.Description, h.Detail)
 				rendered = keyStyle.Render(fmt.Sprintf("%-*s", maxKeyWidth, h.Key)) + "  " +
+					iconPart +
 					descStyle.Render(fmt.Sprintf("%-*s", maxDescWidth, h.Description)) + "  " +
 					detailStyle.Render(h.Detail)
 			} else {
-				line = fmt.Sprintf("%-*s  %s", maxKeyWidth, h.Key, h.Description)
-				rendered = keyStyle.Render(fmt.Sprintf("%-*s", maxKeyWidth, h.Key)) + "  " + descStyle.Render(h.Description)
+				line = fmt.Sprintf("%-*s  %s%s", maxKeyWidth, h.Key, iconPlain, h.Description)
+				rendered = keyStyle.Render(fmt.Sprintf("%-*s", maxKeyWidth, h.Key)) + "  " + iconPart + descStyle.Render(h.Description)
 			}
 			contentLines = append(contentLines, rendered)
 			if len(line) > contentWidth {
@@ -444,8 +473,9 @@ var (
 		{Key: "J", Description: "to-bottom", Detail: "Move task to bottom of section"},
 	}
 
-	// PriorityPrefixHints contains hints for the "!" (priority) prefix.
-	PriorityPrefixHints = []PrefixHint{
+	// PriorityPrefixHintsBase contains hints for the "!" (priority) prefix
+	// without icons or active state. Use BuildPriorityPrefixHints for overlays.
+	PriorityPrefixHintsBase = []PrefixHint{
 		{Key: "1", Description: "critical", Detail: "Set priority to critical"},
 		{Key: "2", Description: "high", Detail: "Set priority to high"},
 		{Key: "3", Description: "normal", Detail: "Set priority to normal"},
@@ -697,14 +727,27 @@ var (
 	}
 )
 
+// BuildPriorityPrefixHints returns priority hints with colored icons and
+// the current priority marked as active.
+func BuildPriorityPrefixHints(currentPriority int) []PrefixHint {
+	hints := make([]PrefixHint, len(PriorityPrefixHintsBase))
+	copy(hints, PriorityPrefixHintsBase)
+	for i := range hints {
+		p := i + 1 // priorities are 1-indexed
+		hints[i].RenderedIcon = GetPriorityStyle(p).Render(PriorityIcon(p))
+		hints[i].Active = currentPriority == p
+	}
+	return hints
+}
+
 // CommonTaskActionPrefixHints returns the prefix hints shared across most
 // task-operating views: status (,), priority (!), stage (.), due date (d),
 // snooze (s), create-linked (c), and move (m). Views extend the returned
 // map with their view-specific entries (e.g. "g" navigation, "z" folds).
-func CommonTaskActionPrefixHints(stages []string, currentStage string) PrefixHints {
+func CommonTaskActionPrefixHints(stages []string, currentStage string, currentPriority int) PrefixHints {
 	return PrefixHints{
 		",": StatusPrefixHints,
-		"!": PriorityPrefixHints,
+		"!": BuildPriorityPrefixHints(currentPriority),
 		".": BuildStagePrefixHints(stages, currentStage),
 		"d": DueDatePrefixHints,
 		"s": SnoozePrefixHints,
