@@ -151,6 +151,35 @@ func isTrackedView(vt ViewType) bool {
 	}
 }
 
+// isGlobalNavView returns true for ViewTypes that are handled by reconstructGlobalView.
+// These views should never carry a ProjectID in their nav entry.
+func isGlobalNavView(vt ViewType) bool {
+	switch vt {
+	case ViewDailyReview,
+		ViewWeeklyReview,
+		ViewFocusView,
+		ViewDueDateOverview,
+		ViewRecentActivity,
+		ViewGlobalSearch,
+		ViewGlobalBlockers,
+		ViewGlobalNotes,
+		ViewGlobalInboxProcessor,
+		ViewGlobalTagManager,
+		ViewSettings,
+		ViewWorkflowRules,
+		ViewTaskTemplates,
+		ViewTutor,
+		ViewScoreProfileManager,
+		ViewMetricsDashboard,
+		ViewCrossProjectOutliner,
+		ViewFocusBoard,
+		ViewAllTasks:
+		return true
+	default:
+		return false
+	}
+}
+
 // isTaskScopedView returns true if the view is scoped to a specific task.
 func isTaskScopedView(vt ViewType) bool {
 	switch vt {

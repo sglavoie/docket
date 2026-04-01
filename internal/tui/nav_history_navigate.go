@@ -83,6 +83,8 @@ func (m *AppModel) navigateToEntry(entry NavEntry) tea.Cmd {
 	switch {
 	case entry.ViewType == ViewDashboard:
 		return m.reconstructDashboard()
+	case isGlobalNavView(entry.ViewType):
+		return m.reconstructGlobalView(entry)
 	case entry.TaskID != "" && entry.ProjectID != "":
 		return m.reconstructTaskView(entry)
 	case entry.ProjectID != "":

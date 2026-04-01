@@ -107,7 +107,7 @@ func (m *AppModel) pushView(view ViewType) {
 	}
 	if !m.navHistory.IsLocked() && isTrackedView(view) {
 		entry := NavEntry{ViewType: view}
-		if m.currentProject != nil {
+		if m.currentProject != nil && !isGlobalNavView(view) {
 			entry.ProjectID = m.currentProject.ID
 		}
 		if isTaskScopedView(view) {
@@ -201,7 +201,7 @@ func (m *AppModel) replaceView(viewType ViewType, view View) {
 	}
 	if !m.navHistory.IsLocked() && isTrackedView(viewType) {
 		entry := NavEntry{ViewType: viewType}
-		if m.currentProject != nil {
+		if m.currentProject != nil && !isGlobalNavView(viewType) {
 			entry.ProjectID = m.currentProject.ID
 		}
 		if isTaskScopedView(viewType) {
