@@ -50,7 +50,24 @@ func runBoardDelete(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if !ConfirmYN(fmt.Sprintf("Delete action #%d '%s'? [y/N]: ", task.ShortID, task.Title), boardDeleteForce) {
+	// Collect task and all descendants for deletion (mirrors task_delete.go logic)
+	idsToDelete := collectTaskDescendantIDs(project.Tasks, map[string]bool{task.ID: true})
+	count := len(idsToDelete)
+
+	prompt := fmt.Sprintf("Delete action #%d '%s'?", task.ShortID, task.Title)
+	if count > 1 {
+		prompt = fmt.Sprintf("Delete action #%d '%s' and %s?",
+			task.ShortID, task.Title, Pluralize(count-1, "descendant", "descendants"))
+	}
+
+	var confirmed bool
+	if count > 1 {
+		// ConfirmStrict prints its own "Type 'yes' to confirm:" prompt
+		confirmed = ConfirmStrict(prompt, boardDeleteForce)
+	} else {
+		confirmed = ConfirmYN(prompt+" [y/N] ", boardDeleteForce)
+	}
+	if !confirmed {
 		if !out.Quiet {
 			fmt.Fprintf(os.Stderr, "Canceled\n")
 		}
@@ -63,10 +80,6 @@ func runBoardDelete(cmd *cobra.Command, args []string) error {
 			fmt.Fprintf(os.Stderr, "warning: failed to record undo snapshot: %v\n", snapshotErr)
 		}
 	}
-
-	// Collect task and all descendants for deletion (mirrors task_delete.go logic)
-	idsToDelete := collectTaskDescendantIDs(project.Tasks, map[string]bool{task.ID: true})
-	count := len(idsToDelete)
 
 	// Clean up attachments for all tasks being deleted
 	for _, t := range project.Tasks {

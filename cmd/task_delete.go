@@ -64,13 +64,15 @@ func runTaskDelete(cmd *cobra.Command, args []string) error {
 		prompt = fmt.Sprintf("Permanently delete task #%d '%s' and %s?",
 			task.ShortID, task.Title, Pluralize(count-1, "descendant", "descendants"))
 	}
-	prompt += " [y/N] "
 
-	confirmFn := ConfirmYN
+	var confirmed bool
 	if count > 1 {
-		confirmFn = ConfirmStrict
+		// ConfirmStrict prints its own "Type 'yes' to confirm:" prompt
+		confirmed = ConfirmStrict(prompt, taskDeleteForce)
+	} else {
+		confirmed = ConfirmYN(prompt+" [y/N] ", taskDeleteForce)
 	}
-	if !confirmFn(prompt, taskDeleteForce) {
+	if !confirmed {
 		if !out.Quiet {
 			fmt.Fprintf(os.Stderr, "Canceled\n")
 		}
