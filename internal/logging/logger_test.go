@@ -72,6 +72,51 @@ func TestCloseOpenFile(t *testing.T) {
 	}
 }
 
+func TestCloseRemovesEmptyFile(t *testing.T) {
+	origFile := logFile
+	origPath := logFilePath
+	defer func() { logFile = origFile; logFilePath = origPath }()
+
+	tmp := t.TempDir()
+	path := filepath.Join(tmp, "empty.log")
+	f, err := os.Create(path)
+	if err != nil {
+		t.Fatalf("failed to create temp file: %v", err)
+	}
+
+	logFile = f
+	logFilePath = path
+	Close()
+
+	if _, err := os.Stat(path); !os.IsNotExist(err) {
+		t.Error("expected empty log file to be removed")
+	}
+}
+
+func TestCloseKeepsNonEmptyFile(t *testing.T) {
+	origFile := logFile
+	origPath := logFilePath
+	defer func() { logFile = origFile; logFilePath = origPath }()
+
+	tmp := t.TempDir()
+	path := filepath.Join(tmp, "nonempty.log")
+	if err := os.WriteFile(path, []byte("some log content"), 0o644); err != nil {
+		t.Fatalf("failed to create temp file: %v", err)
+	}
+	f, err := os.Open(path)
+	if err != nil {
+		t.Fatalf("failed to open temp file: %v", err)
+	}
+
+	logFile = f
+	logFilePath = path
+	Close()
+
+	if _, err := os.Stat(path); err != nil {
+		t.Error("expected non-empty log file to remain")
+	}
+}
+
 func TestPruneOldLogs(t *testing.T) {
 	original := logDirPath
 	defer func() { logDirPath = original }()

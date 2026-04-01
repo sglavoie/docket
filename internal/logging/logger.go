@@ -9,8 +9,9 @@ import (
 )
 
 var (
-	logDirPath string
-	logFile    *os.File
+	logDirPath  string
+	logFile     *os.File
+	logFilePath string
 )
 
 // Init creates the log directory and opens a timestamped log file.
@@ -26,7 +27,8 @@ func Init() {
 		return
 	}
 	name := fmt.Sprintf("tt-%s.log", time.Now().Format("2006-01-02-150405"))
-	f, err := os.OpenFile(filepath.Join(logDirPath, name), os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o644)
+	logFilePath = filepath.Join(logDirPath, name)
+	f, err := os.OpenFile(logFilePath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o644)
 	if err != nil {
 		return
 	}
@@ -65,9 +67,16 @@ func Warn(format string, args ...any) {
 	log.Printf("WARN: "+format, args...)
 }
 
-// Close closes the log file.
+// Close closes the log file and removes it if empty.
 func Close() {
-	if logFile != nil {
-		_ = logFile.Close()
+	if logFile == nil {
+		return
+	}
+	path := logFilePath
+	info, statErr := logFile.Stat()
+	_ = logFile.Close()
+	logFile = nil
+	if statErr == nil && info.Size() == 0 && path != "" {
+		_ = os.Remove(path)
 	}
 }
