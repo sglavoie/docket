@@ -50,6 +50,17 @@ func (m *AppModel) handleTaskMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint:go
 	case TaskCreatedMsg:
 		// Common pattern: pop view, reload, refresh
 		m.handleWithRefresh(true, true, "")
+		// Navigate cursor to the newly created task
+		if msg.Task != nil && m.currentProject != nil {
+			if fresh := m.currentProject.GetTaskByID(msg.Task.ID); fresh != nil {
+				if m.projectTree != nil {
+					m.projectTree.NavigateToTask(fresh)
+				}
+				if m.outliner != nil {
+					m.outliner.NavigateToSidebarTask(fresh)
+				}
+			}
+		}
 		// Set status message showing section
 		if msg.Task != nil && msg.Task.Section != "" {
 			if msg.Task.CustomSection != "" {

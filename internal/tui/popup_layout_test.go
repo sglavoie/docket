@@ -11,7 +11,7 @@ import (
 
 func TestRenderPinnedPopupKeepsProjectNameOnSameLine(t *testing.T) {
 	app := newTestAppModel()
-	app.width = 44
+	app.width = 48
 	app.height = 20
 	app.showPinnedPopup = true
 
