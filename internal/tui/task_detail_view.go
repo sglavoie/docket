@@ -115,20 +115,17 @@ func (m *TaskDetailModel) renderTitleBar() string {
 
 // renderFooter renders the bottom footer with scroll position and help.
 func (m *TaskDetailModel) renderFooter() string {
-	var scrollInfo string
+	var right string
 	if m.totalLines > m.viewHeight() {
 		pct := 0
 		maxScroll := m.totalLines - m.viewHeight()
 		if maxScroll > 0 {
 			pct = m.scrollOffset * 100 / maxScroll
 		}
-		scrollInfo = fmt.Sprintf("%d%% (%d/%d)", pct, m.scrollOffset+1, m.totalLines)
-	} else {
-		scrollInfo = "All"
+		right = HelpStyle.Render(fmt.Sprintf("%d%% (%d/%d)", pct, m.scrollOffset+1, m.totalLines))
 	}
 
-	left := StatusBarStyle.Render(fmt.Sprintf("#%d %s", m.task.ShortID, truncateToVisualWidth(m.task.Title, 40)))
-	right := HelpStyle.Render("j/k: scroll · ,: status · !: priority · e: edit · c: comments · d: due · h: history · q: close  " + scrollInfo)
+	left := HelpStyle.Render("j/k: scroll · ,: status · !: priority · e: edit · c: comments · d: due · h: history · q: close")
 	return renderStatusBarFooter(left, right, m.width)
 }
 
