@@ -572,9 +572,7 @@ func (m *CommandPaletteModel) renderPaletteItemWithHighlight(filtered filteredPa
 
 	// Cursor/number indicator (2 chars)
 	cursor := "  "
-	if selected {
-		cursor = "  "
-	} else if numberHint > 0 && numberHint <= 9 {
+	if numberHint > 0 && numberHint <= 9 {
 		// Show number hint in muted style
 		cursor = MutedStyle.Render(fmt.Sprintf("%d ", numberHint))
 	}
@@ -588,7 +586,7 @@ func (m *CommandPaletteModel) renderPaletteItemWithHighlight(filtered filteredPa
 	}
 
 	// Category badge with color (5-6 chars including brackets)
-	catBadge, catBadgeLen := m.renderCategoryBadge(item.Category)
+	catBadge, catBadgeLen := m.renderCategoryBadge(item.Category, selected)
 
 	// Shortcut string for right alignment
 	shortcutText := ""
@@ -643,7 +641,7 @@ func (m *CommandPaletteModel) renderPaletteItemWithHighlight(filtered filteredPa
 
 // renderCategoryBadge returns the styled category badge and its display length.
 // Badges include an icon prefix for faster visual scanning.
-func (m *CommandPaletteModel) renderCategoryBadge(cat ItemCategory) (string, int) {
+func (m *CommandPaletteModel) renderCategoryBadge(cat ItemCategory, selected bool) (string, int) {
 	var badge string
 	var style lipgloss.Style
 
@@ -678,6 +676,10 @@ func (m *CommandPaletteModel) renderCategoryBadge(cat ItemCategory) (string, int
 	default:
 		badge = "? ???"
 		style = MutedStyle
+	}
+
+	if selected {
+		style = style.Foreground(ColorHighlight).Background(ColorSelectedBg).Bold(true)
 	}
 
 	return style.Render(badge), 5 // All badges are 5 display characters
