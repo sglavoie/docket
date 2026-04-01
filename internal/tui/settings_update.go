@@ -401,6 +401,11 @@ func (m *SettingsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) { //nolint:gocy
 		}
 	}
 
+	// Live-apply palette changes so the user sees them immediately
+	if m.tabs.Active == 1 {
+		ApplyTheme(m.buildTentativeThemeConfig())
+	}
+
 	// Validate on each keystroke
 	m.validationErr = ""
 	switch m.focusIndex {

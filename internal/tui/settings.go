@@ -205,6 +205,8 @@ type SettingsModel struct {
 	sectionLimitSomedayInput textinput.Model
 	sectionLimitReviewInput  textinput.Model
 
+	originalTheme ThemeConfig // snapshot at load time, restored on cancel
+
 	tabs               TabState
 	subTab             int  // active sub-tab index within current tab
 	subTabRowFocused   bool // true when [/] navigates sub-tabs instead of main tabs
@@ -560,10 +562,32 @@ func NewSettingsModel(cfg *config.Config, manager *config.Manager) *SettingsMode
 		alertProjectStaleDaysInput: alertProjectStaleDaysInput,
 		contexts:                   contexts,
 		contextCursor:              contextCursor,
+		originalTheme:              NewThemeConfig(cfg),
 		focusIndex:                 0,
 		tabs:                       TabState{Names: settingsTabNames},
 		width:                      80,
 		height:                     24,
+	}
+}
+
+// buildTentativeThemeConfig reads all color input values and returns a ThemeConfig
+// reflecting the current (possibly unsaved) form state.
+func (m *SettingsModel) buildTentativeThemeConfig() ThemeConfig {
+	return ThemeConfig{
+		BgColor:  normalizeHexColor(m.bgColorInput.Value()),
+		CursorBg: normalizeHexColor(m.cursorColorInput.Value()),
+		CursorFg: normalizeHexColor(m.cursorTextColorInput.Value()),
+		Palette: config.PaletteColors{
+			NormalText: normalizeHexColor(m.normalTextInput.Value()),
+			Muted:      normalizeHexColor(m.mutedInput.Value()),
+			Primary:    normalizeHexColor(m.primaryInput.Value()),
+			Secondary:  normalizeHexColor(m.secondaryInput.Value()),
+			Accent:     normalizeHexColor(m.accentInput.Value()),
+			Success:    normalizeHexColor(m.successInput.Value()),
+			Warning:    normalizeHexColor(m.warningInput.Value()),
+			Error:      normalizeHexColor(m.errorColorInput.Value()),
+			Border:     normalizeHexColor(m.borderInput.Value()),
+		},
 	}
 }
 
@@ -577,6 +601,12 @@ func (m *SettingsModel) SupportsHelpShortcut() bool { return false }
 
 func (m *SettingsModel) Init() tea.Cmd {
 	return textinput.Blink
+}
+
+// OnExit restores the original theme when the user cancels out of settings
+// without saving, so tentative palette changes are discarded.
+func (m *SettingsModel) OnExit() {
+	ApplyTheme(m.originalTheme)
 }
 
 func (m *SettingsModel) saveSettings() tea.Cmd {
