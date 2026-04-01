@@ -144,7 +144,7 @@ func (m *AppModel) renderPinnedTasksBar(width int) string {
 	// Fixed overhead per entry: initial(1) + space(1)
 	var entries []string
 	for _, p := range pinned {
-		initial := MutedStyle.Render(string([]rune(p.ProjectName)[0:1]))
+		typeBadge := GetTypeBadge(string(p.Task.Type), p.Task.Type.Icon())
 
 		prefixWidth := 1 + 1
 		titleWidth := max(perEntryWidth-prefixWidth, 3)
@@ -157,7 +157,7 @@ func (m *AppModel) renderPinnedTasksBar(width int) string {
 			title += strings.Repeat(" ", titleWidth-len(titleRunes))
 		}
 
-		entries = append(entries, initial+" "+title)
+		entries = append(entries, typeBadge+" "+title)
 	}
 
 	result := strings.Join(entries, separatorStr)
@@ -538,7 +538,7 @@ func (m *AppModel) renderPinnedPopup() string {
 	}
 
 	projColWidth := maxProjLen
-	fixedWidth := 1 + 1 + 1 + 1 + 3 + 1 + 2 + projColWidth // badge, space, icon, space, priority(3), space, gap, project
+	fixedWidth := 1 + 1 + 1 + 1 + 1 + 1 + 3 + 1 + 2 + projColWidth // badge, space, icon, space, type(1), space, priority(3), space, gap, project
 	titleWidth := max(innerWidth-fixedWidth, 10)
 
 	var contentLines []string
@@ -568,6 +568,7 @@ func (m *AppModel) renderPinnedPopup() string {
 			}
 
 			statusIcon := GetStatusStyle(string(entry.Task.Status)).Render(entry.Task.Status.Icon())
+			typeBadge := GetTypeBadge(string(entry.Task.Type), entry.Task.Type.Icon())
 			priorityBadge := renderPriorityBadge(entry.Task.Priority)
 			projectName := entry.ProjectName
 
@@ -581,7 +582,7 @@ func (m *AppModel) renderPinnedPopup() string {
 
 			paddedProject := leftPadToWidth(projectName, projColWidth)
 
-			line := badge + " " + statusIcon + " " + priorityBadge + " " + taskTitle + "  " + projectStyle.Render(paddedProject)
+			line := badge + " " + statusIcon + " " + typeBadge + " " + priorityBadge + " " + taskTitle + "  " + projectStyle.Render(paddedProject)
 
 			if i == m.pinnedPopupCursor {
 				lineWidth := lipgloss.Width(line)
