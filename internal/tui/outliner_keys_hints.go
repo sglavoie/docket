@@ -57,6 +57,16 @@ func (m *OutlinerModel) buildPrefixHints() PrefixHints {
 	}
 	hints := CommonTaskActionPrefixHints(m.config.Stages, currentStage, currentPriority)
 	hints["t"] = TaskPrefixHints
+	if m.project == nil {
+		annotated := make([]PrefixHint, len(TaskPrefixHints))
+		copy(annotated, TaskPrefixHints)
+		for i := range annotated {
+			if annotated[i].Key == "n" || annotated[i].Key == "N" {
+				annotated[i].Disabled = true
+			}
+		}
+		hints["t"] = annotated
+	}
 	hints["b"] = BlockerPrefixHints
 	if m.project == nil {
 		hints["g"] = CrossProjectNavigationPrefixHints
