@@ -468,6 +468,7 @@ func (r *KeybindingRegistry) registerTaskChecklistBindings() {
 		Keybinding{Key: "e", Description: "Edit item", Category: "Actions", Views: views},
 		Keybinding{Key: "E", Description: "Edit in external editor", Category: "Actions", Views: views},
 		Keybinding{Key: "d/x", Description: "Delete item", Category: "Actions", Views: views},
+		Keybinding{Key: "J/K", Description: "Reorder item", Category: "Actions", Views: views},
 		Keybinding{Key: "q/Esc", Description: "Close", Category: "Navigation", Views: views},
 	)
 }

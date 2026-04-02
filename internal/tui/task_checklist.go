@@ -226,6 +226,16 @@ func (m *TaskChecklistModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) { //nolint
 			if len(m.task.Checklist) > 0 && m.cursor < len(m.task.Checklist) {
 				return m, m.toggleItem()
 			}
+
+		case "J":
+			if m.cursor < len(m.task.Checklist)-1 {
+				return m, m.reorderItem(m.cursor, m.cursor+1)
+			}
+
+		case "K":
+			if m.cursor > 0 {
+				return m, m.reorderItem(m.cursor, m.cursor-1)
+			}
 		}
 	}
 
@@ -336,6 +346,22 @@ func (m *TaskChecklistModel) toggleItem() tea.Cmd {
 			return ErrorMsg{Err: fmt.Errorf("failed to save project: %w", err)}
 		}
 		return ChecklistItemToggledMsg{Task: task}
+	}
+}
+
+func (m *TaskChecklistModel) reorderItem(from, to int) tea.Cmd {
+	// Mutate model state synchronously in Update() to avoid data races with View().
+	m.resolveTask()
+	m.task.Checklist[from], m.task.Checklist[to] = m.task.Checklist[to], m.task.Checklist[from]
+	m.cursor = to
+
+	task := m.task
+	project := m.project
+	return func() tea.Msg {
+		if err := saveProjectNoReload(project); err != nil {
+			return ErrorMsg{Err: fmt.Errorf("failed to save project: %w", err)}
+		}
+		return ChecklistItemEditedMsg{Task: task}
 	}
 }
 
@@ -680,7 +706,7 @@ func (m *TaskChecklistModel) View() tea.View {
 	}
 
 	b.WriteString("\n")
-	helpText := "j/k: nav · Space: toggle · a: add · e: edit · E: external editor · d: delete · q: close"
+	helpText := "j/k: nav · J/K: reorder · Space: toggle · a: add · e: edit · E: external editor · d: delete · q: close"
 	b.WriteString(HelpStyle.Render(renderWrappingHelpLine(helpText, m.Width())))
 
 	return tea.NewView(b.String())
