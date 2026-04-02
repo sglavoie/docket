@@ -210,6 +210,16 @@ func (m *TaskAttachmentsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) { //noli
 			// Open attachments directory in file manager
 			return m, m.openAttachmentsDir()
 
+		case "J":
+			if len(m.task.Attachments) > 1 && m.cursor < len(m.task.Attachments)-1 {
+				return m, m.reorderAttachment(m.cursor, m.cursor+1)
+			}
+
+		case "K":
+			if m.cursor > 0 {
+				return m, m.reorderAttachment(m.cursor, m.cursor-1)
+			}
+
 		case "?":
 			return m, helpCmd(ViewTaskAttachments, "Attachments", m.GetHelpItems())
 		}
@@ -367,6 +377,22 @@ func (m *TaskAttachmentsModel) executeKeep() tea.Cmd {
 			return ErrorMsg{Err: fmt.Errorf("failed to save project: %w", err)}
 		}
 		return AttachmentDeletedMsg{Task: task}
+	}
+}
+
+func (m *TaskAttachmentsModel) reorderAttachment(from, to int) tea.Cmd {
+	// Mutate model state synchronously in Update() to avoid data races with View().
+	m.resolveTask()
+	m.task.Attachments[from], m.task.Attachments[to] = m.task.Attachments[to], m.task.Attachments[from]
+	m.cursor = to
+
+	task := m.task
+	project := m.project
+	return func() tea.Msg {
+		if err := saveProjectNoReload(project); err != nil {
+			return ErrorMsg{Err: fmt.Errorf("failed to save project: %w", err)}
+		}
+		return AttachmentReorderedMsg{Task: task}
 	}
 }
 
@@ -837,7 +863,7 @@ func (m *TaskAttachmentsModel) View() tea.View { //nolint:gocyclo
 	if !isCodeRef {
 		helpParts = append(helpParts, "Ctrl+O: original")
 	}
-	helpParts = append(helpParts, "d: del", "u: unlink", "y: copy")
+	helpParts = append(helpParts, "J/K: reorder", "d: del", "u: unlink", "y: copy")
 	if isCodeRef {
 		helpParts = append(helpParts, "Y: copy w/line")
 	}

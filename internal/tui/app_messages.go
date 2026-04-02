@@ -503,6 +503,9 @@ type AttachmentAddedMsg struct{ Task *models.Task }
 // AttachmentDeletedMsg signals an attachment was deleted.
 type AttachmentDeletedMsg struct{ Task *models.Task }
 
+// AttachmentReorderedMsg signals an attachment was reordered.
+type AttachmentReorderedMsg struct{ Task *models.Task }
+
 // =============================================================================
 // Project Cycling Messages
 // =============================================================================

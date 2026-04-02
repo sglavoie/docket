@@ -307,6 +307,7 @@ func (r *KeybindingRegistry) registerTaskAttachmentsBindings() {
 		Keybinding{Key: "u", Description: "Unlink (keep file)", Category: "Actions", Views: views},
 		Keybinding{Key: "y", Description: "Copy path to clipboard", Category: "Actions", Views: views},
 		Keybinding{Key: "Y", Description: "Copy path with line (code refs)", Category: "Actions", Views: views},
+		Keybinding{Key: "J/K", Description: "Reorder attachment", Category: "Actions", Views: views},
 		Keybinding{Key: "q/Esc", Description: "Close", Category: "Actions", Views: views},
 	)
 }

@@ -705,6 +705,9 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint:go
 		}
 		return true, nil
 
+	case AttachmentReorderedMsg:
+		return true, nil
+
 	case ShowOutlinerMsg:
 		if msg.Project != nil {
 			if msg.Temporary {
