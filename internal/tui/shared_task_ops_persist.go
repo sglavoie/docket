@@ -188,6 +188,12 @@ func persistWithWorkflow(opts WorkflowSaveOptions) error {
 		}
 	}
 
+	// Re-run post-mutation hooks after workflow rules: rules may have set
+	// tasks to "done" (e.g., auto-complete parent), which requires generating
+	// recurring instances and unblocking dependents.
+	opts.Project.CheckAndAutoUnblock()
+	opts.Project.GenerateRecurringInstances()
+
 	opts.Project.ReorderRootTasksByCompletion()
 
 	// Record undo snapshot BEFORE backup+save so it captures the pre-mutation state

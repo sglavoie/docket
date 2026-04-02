@@ -6,6 +6,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/testutil"
@@ -259,4 +260,77 @@ func TestProcessDeferredMoves_WarnsCrossProjectDependencies(t *testing.T) {
 			t.Errorf("expected no warning for task without cross-project references, got: %q", output)
 		}
 	})
+}
+
+// TestSaveProject_WorkflowRuleCompletesRecurringTask verifies that when a
+// workflow rule sets a recurring task to "done", GenerateRecurringInstances
+// runs after rule evaluation and creates the next occurrence.
+func TestSaveProject_WorkflowRuleCompletesRecurringTask(t *testing.T) {
+	deps := testutil.SetupTestDeps(t)
+	defer deps.Cleanup()
+
+	project := testutil.NewTestProject("Recur")
+	project.Path = t.TempDir()
+
+	oldRepo := storage.DefaultRepository
+	storage.DefaultRepository = deps.Repository
+	defer func() { storage.DefaultRepository = oldRepo }()
+	deps.Repository.Projects[project.ID] = project
+
+	// Create a recurring task in "in_progress" status with a recurrence pattern.
+	task, err := models.NewTask("recur-task-1", project.GetNextShortID(), models.TaskTypeTask, "Daily standup")
+	if err != nil {
+		t.Fatal(err)
+	}
+	task.Status = models.StatusInProgress
+	task.Recurrence = &models.RecurrencePattern{Interval: 1, Unit: models.RecurrenceDaily}
+	project.Tasks = []*models.Task{task}
+	project.BuildTaskTree()
+
+	// Capture previous state (task is in_progress)
+	prevStates := CaptureTaskStates(project.Tasks)
+
+	// Simulate the user completing the task (which triggers the rule evaluation path)
+	task.Status = models.StatusDone
+
+	// Create a config with a ConfigManager that doesn't need to persist
+	cfg := deps.Config
+	configManager := config.NewManager(deps.ConfigPath)
+
+	// Call SaveProject with EvaluateRules enabled and PrevStates
+	// (even though there are no matching rules, the post-rule hooks should still run)
+	err = SaveProject(project, &SaveOptions{
+		EvaluateRules: true,
+		Config:        cfg,
+		ConfigManager: configManager,
+		PrevStates:    prevStates,
+	})
+	if err != nil {
+		t.Fatalf("SaveProject failed: %v", err)
+	}
+
+	// The recurring task should have generated a new instance
+	if len(project.Tasks) < 2 {
+		t.Fatalf("expected at least 2 tasks (original + recurring instance), got %d", len(project.Tasks))
+	}
+
+	// Find the new instance (should be StatusTodo with a recurrence pattern)
+	var newInstance *models.Task
+	for _, tsk := range project.Tasks {
+		if tsk.ID != task.ID && tsk.Status == models.StatusTodo && tsk.Recurrence != nil {
+			newInstance = tsk
+			break
+		}
+	}
+	if newInstance == nil {
+		t.Fatal("recurring instance was not generated after workflow rule evaluation")
+	}
+	if newInstance.Title != "Daily standup" {
+		t.Errorf("new instance title = %q, want %q", newInstance.Title, "Daily standup")
+	}
+
+	// The original task should no longer have a recurrence pattern
+	if task.Recurrence != nil {
+		t.Error("original completed task should have its recurrence cleared")
+	}
 }

@@ -91,6 +91,12 @@ func SaveProject(project *models.Project, opts *SaveOptions) error {
 		}
 	}
 
+	// Re-run post-mutation hooks after workflow rules: rules may have set
+	// tasks to "done" (e.g., auto-complete parent), which requires generating
+	// recurring instances and unblocking dependents.
+	project.CheckAndAutoUnblock()
+	project.GenerateRecurringInstances()
+
 	project.ReorderRootTasksByCompletion()
 
 	// Record undo snapshot before backup+save so it captures the pre-mutation state
