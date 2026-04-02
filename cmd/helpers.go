@@ -37,6 +37,11 @@ var Deps = Dependencies{
 	Repository: storage.DefaultRepository,
 }
 
+const (
+	defaultConfigPathDisplay = "~/.tt/.tt.json"
+	projectRefDescription    = "project slug or ID"
+)
+
 // TaskMsg formats a standard success message for task operations.
 // Format: "[project] Verb Type #id: title"
 func TaskMsg(projectName, verb string, task *models.Task) string {
@@ -217,16 +222,16 @@ func FindActionTaskByID(cfg *config.Config, query string) (*models.Task, *models
 	return nil, nil
 }
 
-// LoadConfigAndProject loads the config and looks up a project by slug.
+// LoadConfigAndProject loads the config and looks up a project by slug or ID.
 // Returns an error if the project is not found.
-func LoadConfigAndProject(slug string) (*models.Project, *config.Config, *config.Manager, error) {
+func LoadConfigAndProject(projectRef string) (*models.Project, *config.Config, *config.Manager, error) {
 	cfg, mgr, err := LoadConfig()
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	project := cfg.GetProject(slug)
+	project := cfg.GetProject(projectRef)
 	if project == nil {
-		return nil, nil, nil, tterrors.NewProjectNotFoundError(slug)
+		return nil, nil, nil, tterrors.NewProjectNotFoundError(projectRef)
 	}
 	return project, cfg, mgr, nil
 }

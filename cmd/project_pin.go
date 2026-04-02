@@ -9,14 +9,14 @@ import (
 )
 
 var projectPinCmd = &cobra.Command{
-	Use:   "pin [name|id]",
+	Use:   "pin <slug-or-id>",
 	Short: "Toggle a project's pinned status",
 	Long: `Toggle a project's pinned status to keep it at the top of lists.
 
 Pinned projects are highlighted in green and appear first in the project list.
 
 Examples:
-  tt project pin "My Project"
+  tt project pin my-project
   tt p pin my-project`,
 	RunE: runProjectPin,
 }

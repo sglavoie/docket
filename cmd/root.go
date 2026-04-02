@@ -67,7 +67,7 @@ func init() {
 	logging.Init()
 	rootCmd.CompletionOptions.HiddenDefaultCmd = true
 
-	rootCmd.PersistentFlags().StringVar(&configPath, "config", "", "config file path (default: ~/.tt.json)")
+	rootCmd.PersistentFlags().StringVar(&configPath, "config", "", fmt.Sprintf("config file path (default: %s)", defaultConfigPathDisplay))
 	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "verbose output")
 	rootCmd.PersistentFlags().BoolVar(&noColor, "no-color", false, "disable color output")
 	rootCmd.Flags().Bool("version", false, "show version information")

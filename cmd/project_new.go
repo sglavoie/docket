@@ -19,7 +19,7 @@ var (
 )
 
 var projectNewCmd = &cobra.Command{
-	Use:   "new [name]",
+	Use:   "new <name>",
 	Short: "Create a new project",
 	Long: `Create a new project with the given name.
 

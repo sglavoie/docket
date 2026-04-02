@@ -140,17 +140,19 @@ tt ask --no-context "how do I use tt?"                 # Ask without project con
 
 ### Project Commands
 
+Detailed command syntax is generated from the Cobra command tree. Use `tt <command> --help` for authoritative flags and examples.
+
 ```bash
-tt project new [name]                # Create project (interactive if no name)
+tt project new <name>                # Create project
 tt project list [--archived]         # List projects
-tt project show <name|id>            # Show project details
-tt project edit <name|id>            # Edit project metadata
-tt project archive <name|id>         # Archive a project
-tt project restore <name|id>         # Restore an archived project
-tt project delete <name|id>          # Move project to trash
-tt project purge <name|id>           # Permanently delete from trash
-tt project open <name|id>            # Open in VS Code
-tt project pin <name|id>             # Pin project for quick access
+tt project show [slug-or-id]         # Show project details (defaults to current project)
+tt project edit [slug-or-id]         # Edit project metadata (defaults to current project)
+tt project archive <slug-or-id>      # Archive a project
+tt project restore [slug]            # Restore a deleted project or list trash
+tt project delete <slug-or-id>       # Move project to trash
+tt project purge <slug>              # Permanently delete from trash
+tt project open [slug-or-id]         # Open in VS Code
+tt project pin <slug-or-id>          # Pin project for quick access
 ```
 
 ### Context Commands
@@ -158,7 +160,7 @@ tt project pin <name|id>             # Pin project for quick access
 Custom contexts group projects (e.g., work, personal, hobby):
 
 ```bash
-tt context new                       # Create custom context
+tt context new <name>                # Create custom context
 tt context list                      # List all contexts
 tt context add <context> <project>   # Add project to context
 tt context remove <context> <project> # Remove project from context
@@ -188,7 +190,7 @@ tt task promote <id>                 # Promote task type (Task→Story→Epic)
 tt task demote <id>                  # Demote task type (Epic→Story→Task)
 tt task cycle <id> [--left]          # Cycle leaf types (Task↔Bug↔Idea)
 tt task move <id> <project>          # Move task to another project
-tt task move-to <id> <target-id>     # Move task as child of target
+tt task move-to <id> <project>       # Move task subtree to another project
 tt task focus <id>                   # Focus on task subtree
 tt task activity <id>                # Show task activity log
 ```
@@ -203,11 +205,12 @@ Task add flags:
 --type <type>       Specify type directly (epic, story, task, bug, idea)
 --parent <id>       Add as child of another task
 --priority <1-5>    Set priority (1=highest, default=3)
---tags <t1,t2>      Add tags
+--tag <t1,t2>       Add tags
 --section <name>    Set section (default: Next)
---due <date>        Set due date (YYYY-MM-DD or relative like "3d", "1w")
---active            Mark as active task
+--stage <name>      Set workflow stage
 --recur <pattern>   Set recurrence (daily, weekly, monthly, etc.)
+--template <name>   Create from a task template
+--project <slug>    Target a project without changing current project
 ```
 
 Task list flags:
@@ -225,9 +228,10 @@ Task list flags:
 ### Task Dependencies
 
 ```bash
-tt task depends add <id> <blocker-id>      # Make task depend on blocker
-tt task depends remove <id> <blocker-id>   # Remove dependency
-tt task depends list <id>                  # List task dependencies
+tt task depends <id>                       # Show task dependencies
+tt task depends <id> --on <blocker-id>     # Make task depend on blocker
+tt task depends <id> --remove <blocker-id> # Remove dependency
+tt task depends <id> --clear               # Clear all dependencies
 ```
 
 ### Task Comments
@@ -253,13 +257,13 @@ tt attachments <id>                  # List all attachments
 Notes are standalone markdown documents (not tasks) for reference information:
 
 ```bash
-tt note add [title]                  # Create note (interactive if no title)
+tt note add <title>                  # Create note
 tt note list                         # List notes in current project
 tt note list --global                # List global notes
-tt note show <id>                    # Show note content
-tt note edit <id>                    # Edit note in external editor
-tt note delete <id>                  # Delete note
-tt note link <note-id> <task-id>     # Link note to task
+tt note show <filename-or-title>     # Show note content
+tt note edit <filename-or-title>     # Edit note in external editor
+tt note delete <filename-or-title>   # Delete note
+tt note link <note> <task-id>        # Link note to task
 ```
 
 ### Sections
@@ -589,7 +593,7 @@ tt integrates with external tools when available:
 
 ## Configuration
 
-Configuration is stored at `~/.tt.json`:
+Configuration is stored at `~/.tt/.tt.json`:
 
 ```json
 {

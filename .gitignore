@@ -3,3 +3,4 @@ cmd/cli-reference.md
 coverage.out
 tt
 .tasks.md.lock
+.claude/

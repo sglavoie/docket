@@ -24,12 +24,12 @@ var (
 )
 
 var projectEditCmd = &cobra.Command{
-	Use:   "edit [project]",
+	Use:   "edit [slug-or-id]",
 	Short: "Edit project details",
 	Long: `Edit a project's name, context, or description.
 
 If no project is specified, edits the current project.
-Projects can be specified by name, slug, or ID.
+Projects can be specified by slug or ID.
 
 Examples:
   tt project edit --name "New Name"
@@ -46,7 +46,7 @@ func init() {
 
 	projectEditCmd.Flags().StringVarP(&editName, "name", "n", "", "new project name")
 	projectEditCmd.Flags().StringVarP(&editContext, "context", "c", "", "new context (e.g., personal, work)")
-	projectEditCmd.Flags().StringVarP(&editDescription, "description", "d", "", "new status note")
+	projectEditCmd.Flags().StringVarP(&editDescription, "description", "d", "", "new project description")
 	projectEditCmd.Flags().StringVarP(&editStatusIcon, "status-icon", "i", "", "project status icon (e.g., wip, active, paused)")
 
 	projectEditCmd.Flags().BoolVar(&projectEditJSON, "json", false, "output updated project as JSON")

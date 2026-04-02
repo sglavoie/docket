@@ -15,7 +15,7 @@ import (
 )
 
 var projectShowCmd = &cobra.Command{
-	Use:   "show [name|id]",
+	Use:   "show [slug-or-id]",
 	Short: "Show project details",
 	Long: `Display detailed information about a project.
 
@@ -23,7 +23,7 @@ If no project is specified, shows the current project.
 
 Examples:
   tt project show
-  tt project show "My Project"
+  tt project show my-project
   tt p show my-project`,
 	Args: cobra.MaximumNArgs(1),
 	RunE: runProjectShow,

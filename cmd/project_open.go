@@ -13,7 +13,7 @@ import (
 )
 
 var projectOpenCmd = &cobra.Command{
-	Use:   "open [name|id]",
+	Use:   "open [slug-or-id]",
 	Short: "Open a project in VS Code",
 	Long: `Open a project's directory in VS Code.
 

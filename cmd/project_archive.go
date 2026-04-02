@@ -10,25 +10,25 @@ import (
 )
 
 var projectArchiveCmd = &cobra.Command{
-	Use:   "archive [name|id]",
+	Use:   "archive <slug-or-id>",
 	Short: "Archive a project",
 	Long: `Archive a project to hide it from the active list.
 
 Archived projects are not deleted and can be unarchived later.
 
 Examples:
-  tt project archive "Old Project"
+  tt project archive old-project
   tt p archive my-project`,
 	RunE: runProjectArchive,
 }
 
 var projectUnarchiveCmd = &cobra.Command{
-	Use:   "unarchive [name|id]",
+	Use:   "unarchive <slug-or-id>",
 	Short: "Unarchive a project",
 	Long: `Restore an archived project to the active list.
 
 Examples:
-  tt project unarchive "Old Project"
+  tt project unarchive old-project
   tt p unarchive my-project`,
 	RunE: runProjectUnarchive,
 }
@@ -78,7 +78,7 @@ func runProjectArchive(cmd *cobra.Command, args []string) error {
 	return out.OutputProject(project, func() {
 		fmt.Println(successMsg("Archived project '%s'", project.Name))
 		if wasCurrentProject {
-			fmt.Printf("Note: '%s' was the current project. Use 'tt project switch' to select another.\n", project.Name)
+			fmt.Printf("Note: '%s' was the current project. Use 'tt select' to choose another.\n", project.Name)
 		}
 	})
 }

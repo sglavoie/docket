@@ -23,7 +23,7 @@ var projectRestoreCmd = &cobra.Command{
 	Long: `Restore a previously deleted project from the trash folder.
 
 If no slug is provided, lists all projects in trash.
-Use 'tt project delete <name>' to delete a project.
+Use 'tt project delete <slug-or-id>' to delete a project.
 
 Examples:
   tt project restore              # List trashed projects

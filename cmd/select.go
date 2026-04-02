@@ -13,14 +13,14 @@ import (
 )
 
 var selectCmd = &cobra.Command{
-	Use:   "select [project]",
+	Use:   "select [slug-or-id]",
 	Short: "Select a project as current",
 	Long: `Select a project to work with. If no argument is provided,
 opens an interactive selector.
 
 Examples:
   tt select              # Open interactive selector
-  tt select my-project   # Select by name/slug directly`,
+	tt select my-project   # Select by slug or ID directly`,
 	Args: cobra.MaximumNArgs(1),
 	RunE: runSelect,
 }
@@ -38,7 +38,7 @@ func runSelect(cmd *cobra.Command, args []string) error {
 	var project *models.Project
 
 	if len(args) > 0 {
-		// Direct selection by name/slug
+		// Direct selection by slug or ID
 		project = cfg.GetProject(args[0])
 		if project == nil {
 			return tterrors.NewProjectNotFoundError(args[0])

@@ -7,12 +7,17 @@ import (
 	"testing"
 )
 
-func TestREADMECommandPaletteBindingStaysCurrent(t *testing.T) {
-	data, err := os.ReadFile("README.md")
+func readFileForContractTest(t *testing.T, path string) string {
+	t.Helper()
+	data, err := os.ReadFile(path)
 	if err != nil {
-		t.Fatalf("read README.md: %v", err)
+		t.Fatalf("read %s: %v", path, err)
 	}
-	content := string(data)
+	return string(data)
+}
+
+func TestREADMECommandPaletteBindingStaysCurrent(t *testing.T) {
+	content := readFileForContractTest(t, "README.md")
 
 	forbidden := []*regexp.Regexp{
 		regexp.MustCompile(`(?i)###\s*command palette\s*\(\s*ctrl\+p\s*\)`),
@@ -39,16 +44,97 @@ func TestREADMECommandPaletteBindingStaysCurrent(t *testing.T) {
 }
 
 func TestREADMEUsesUppercaseVMultiSelectBinding(t *testing.T) {
-	data, err := os.ReadFile("README.md")
-	if err != nil {
-		t.Fatalf("read README.md: %v", err)
-	}
-	content := string(data)
+	content := readFileForContractTest(t, "README.md")
 
 	if strings.Contains(content, "`v`: Toggle multi-select mode") {
 		t.Fatal("README contains stale lowercase multi-select binding")
 	}
 	if !strings.Contains(content, "`V`: Toggle multi-select mode") {
 		t.Fatal("README missing uppercase multi-select binding")
+	}
+}
+
+func TestREADMECLIContractStaysCurrent(t *testing.T) {
+	content := readFileForContractTest(t, "README.md")
+
+	forbidden := []string{
+		"tt project new [name]",
+		"tt project show <name|id>",
+		"tt project edit <name|id>",
+		"tt project archive <name|id>",
+		"tt project delete <name|id>",
+		"tt project open <name|id>",
+		"tt project pin <name|id>",
+		"interactive if no name",
+		"tt task move-to <id> <target-id>",
+		"tt task depends add <id> <blocker-id>",
+		"tt note add [title]",
+		"--tags <t1,t2>",
+		"Configuration is stored at `~/.tt.json`",
+	}
+
+	for _, needle := range forbidden {
+		if strings.Contains(content, needle) {
+			t.Fatalf("README contains stale CLI contract text: %q", needle)
+		}
+	}
+
+	required := []string{
+		"Detailed command syntax is generated from the Cobra command tree.",
+		"tt project show [slug-or-id]",
+		"tt task move-to <id> <project>",
+		"tt task depends <id> --on <blocker-id>",
+		"tt note add <title>",
+		"Configuration is stored at `~/.tt/.tt.json`",
+	}
+
+	for _, needle := range required {
+		if !strings.Contains(content, needle) {
+			t.Fatalf("README missing expected CLI contract text: %q", needle)
+		}
+	}
+}
+
+func TestCLIReferenceContractStaysCurrent(t *testing.T) {
+	content := readFileForContractTest(t, "cmd/cli-reference.md")
+
+	forbidden := []string{
+		"config file path (default: ~/.tt.json)",
+		"'editor' field in ~/.tt.json",
+		"Usage: tt project archive [name|id] [flags]",
+		"Usage: tt project delete [name|id] [flags]",
+		"Usage: tt project open [name|id] [flags]",
+		"Usage: tt project pin [name|id] [flags]",
+		"Usage: tt project show [name|id] [flags]",
+		"Usage: tt project unarchive [name|id] [flags]",
+		"The project directory is moved to ~/.tt-data/.trash/ and can be restored later.",
+		"Projects can be specified by name, slug, or ID.",
+		"tt select my-project   # Select by name/slug directly",
+	}
+
+	for _, needle := range forbidden {
+		if strings.Contains(content, needle) {
+			t.Fatalf("CLI reference contains stale generated text: %q", needle)
+		}
+	}
+
+	required := []string{
+		"config file path (default: ~/.tt/.tt.json)",
+		"'editor' field in ~/.tt/.tt.json",
+		"Usage: tt project archive <slug-or-id> [flags]",
+		"Usage: tt project delete <slug-or-id> [flags]",
+		"Usage: tt project open [slug-or-id] [flags]",
+		"Usage: tt project pin <slug-or-id> [flags]",
+		"Usage: tt project show [slug-or-id] [flags]",
+		"Usage: tt project unarchive <slug-or-id> [flags]",
+		"The project directory is moved to ~/.tt/trash/ and can be restored later.",
+		"Projects can be specified by slug or ID.",
+		"tt select my-project   # Select by slug or ID directly",
+	}
+
+	for _, needle := range required {
+		if !strings.Contains(content, needle) {
+			t.Fatalf("CLI reference missing expected generated text: %q", needle)
+		}
 	}
 }

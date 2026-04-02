@@ -14,15 +14,15 @@ import (
 var projectDeleteForce bool
 
 var projectDeleteCmd = &cobra.Command{
-	Use:   "delete [name|id]",
+	Use:   "delete <slug-or-id>",
 	Short: "Delete a project",
 	Long: `Delete a project by moving it to the trash folder.
 
-The project directory is moved to ~/.tt-data/.trash/ and can be restored later.
+The project directory is moved to ~/.tt/trash/ and can be restored later.
 Use 'tt project restore <slug>' to restore a deleted project.
 
 Examples:
-  tt project delete "Old Project"
+  tt project delete old-project
   tt p delete my-project`,
 	RunE: runProjectDelete,
 }
