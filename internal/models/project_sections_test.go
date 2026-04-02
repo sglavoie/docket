@@ -276,6 +276,49 @@ func TestProjectGetTasksBySection(t *testing.T) {
 	}
 }
 
+func TestGetTasksBySectionIncludesCustomSection(t *testing.T) {
+	project, err := NewProject("test", "Test", "/tmp/test")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Task with CustomSection set (as happens after parser migration)
+	task1, err := NewTask("1", 1, TaskTypeTask, "Task 1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	task1.CustomSection = "Sprint1"
+
+	// Task with Section set to a GTD section
+	task2, err := NewTask("2", 2, TaskTypeTask, "Task 2")
+	if err != nil {
+		t.Fatal(err)
+	}
+	task2.Section = SectionNext
+
+	// Task with both Section and CustomSection
+	task3, err := NewTask("3", 3, TaskTypeTask, "Task 3")
+	if err != nil {
+		t.Fatal(err)
+	}
+	task3.Section = SectionInbox
+	task3.CustomSection = "Sprint1"
+
+	project.Tasks = []*Task{task1, task2, task3}
+
+	// Should find tasks by CustomSection
+	sprint1Tasks := project.GetTasksBySection("Sprint1")
+	if len(sprint1Tasks) != 2 {
+		t.Errorf("expected 2 tasks in Sprint1 (via CustomSection), got %d", len(sprint1Tasks))
+	}
+
+	// GTD sections should still work normally
+	nextTasks := project.GetTasksBySection(SectionNext)
+	if len(nextTasks) != 1 {
+		t.Errorf("expected 1 task in Next, got %d", len(nextTasks))
+	}
+}
+
 func TestRemoveSectionRejectsBuiltInSections(t *testing.T) {
 	project, err := NewProject("test", "Test", "/tmp/test")
 	if err != nil {
@@ -360,5 +403,51 @@ func TestProjectCountTasksBySection(t *testing.T) {
 	// Empty section tasks represent Active view and are counted separately
 	if counts[""] != 1 {
 		t.Errorf("expected 1 empty section task (Active view), got %d", counts[""])
+	}
+}
+
+func TestCountTasksBySectionIncludesCustomSections(t *testing.T) {
+	project, err := NewProject("test", "Test", "/tmp/test")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Task with CustomSection only (as happens after parser migration)
+	task1, err := NewTask("1", 1, TaskTypeTask, "Task 1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	task1.CustomSection = "Sprint1"
+
+	// Another task in same custom section, also with a GTD section
+	task2, err := NewTask("2", 2, TaskTypeTask, "Task 2")
+	if err != nil {
+		t.Fatal(err)
+	}
+	task2.Section = SectionInbox
+	task2.CustomSection = "Sprint1"
+
+	// Task in GTD section only
+	task3, err := NewTask("3", 3, TaskTypeTask, "Task 3")
+	if err != nil {
+		t.Fatal(err)
+	}
+	task3.Section = SectionNext
+
+	project.Tasks = []*Task{task1, task2, task3}
+
+	counts := project.CountTasksBySection()
+
+	// Sprint1 should count both tasks with CustomSection = "Sprint1"
+	if counts["Sprint1"] != 2 {
+		t.Errorf("expected 2 tasks in Sprint1, got %d", counts["Sprint1"])
+	}
+
+	// GTD sections still counted normally
+	if counts[SectionInbox] != 1 {
+		t.Errorf("expected 1 task in Inbox, got %d", counts[SectionInbox])
+	}
+	if counts[SectionNext] != 1 {
+		t.Errorf("expected 1 task in Next, got %d", counts[SectionNext])
 	}
 }

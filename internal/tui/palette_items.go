@@ -208,9 +208,12 @@ func (m *CommandPaletteModel) loadAllItems() []PaletteItem {
 				tagCounts[tag]++
 			}
 
-			// Count tasks per section
+			// Count tasks per section (check both GTD and custom section fields)
 			if task.Section != "" {
 				sectionCounts[task.Section]++
+			}
+			if task.CustomSection != "" {
+				sectionCounts[task.CustomSection]++
 			}
 		}
 	}

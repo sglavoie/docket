@@ -156,10 +156,13 @@ func (p *Project) RenameSection(oldName, newName string) error {
 }
 
 // GetTasksBySection returns tasks filtered by section.
+// Checks both the GTD Section field and the CustomSection field, so that
+// custom (non-GTD) sections are counted correctly when the parser has
+// migrated them from Section to CustomSection.
 func (p *Project) GetTasksBySection(section string) []*Task {
 	var result []*Task
 	for _, task := range p.Tasks {
-		if task.Section == section {
+		if task.Section == section || (task.CustomSection != "" && task.CustomSection == section) {
 			result = append(result, task)
 		}
 	}
@@ -168,10 +171,15 @@ func (p *Project) GetTasksBySection(section string) []*Task {
 
 // CountTasksBySection returns the number of tasks in each section.
 // Tasks with empty section are counted separately (representing Active view).
+// Both the GTD Section field and the CustomSection field are counted, so that
+// custom (non-GTD) sections are represented correctly.
 func (p *Project) CountTasksBySection() map[string]int {
 	counts := make(map[string]int)
 	for _, task := range p.Tasks {
 		counts[task.Section]++
+		if task.CustomSection != "" {
+			counts[task.CustomSection]++
+		}
 	}
 	return counts
 }

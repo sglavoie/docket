@@ -581,6 +581,87 @@ func TestTaskMatchesFieldFilters_Section(t *testing.T) {
 	}
 }
 
+func TestTaskMatchesFieldFilters_SectionCustom(t *testing.T) {
+	m := &CommandPaletteModel{}
+	// Task with CustomSection set (as happens after parser migration for non-GTD sections)
+	task := &models.Task{Section: models.SectionInbox, CustomSection: "Sprint1"}
+	item := PaletteItem{Category: ItemCategoryTasks, Task: task}
+
+	tests := []struct {
+		name    string
+		filters []fieldFilter
+		want    bool
+	}{
+		{
+			name:    "match by CustomSection eq",
+			filters: []fieldFilter{{field: "section", op: "eq", value: "Sprint1"}},
+			want:    true,
+		},
+		{
+			name:    "match by GTD Section eq",
+			filters: []fieldFilter{{field: "section", op: "eq", value: models.SectionInbox}},
+			want:    true,
+		},
+		{
+			name:    "no match wrong section",
+			filters: []fieldFilter{{field: "section", op: "eq", value: "Sprint2"}},
+			want:    false,
+		},
+		{
+			name:    "in match via CustomSection",
+			filters: []fieldFilter{{field: "section", op: "in", alt: []string{"Sprint1", "Sprint2"}}},
+			want:    true,
+		},
+		{
+			name:    "in no match",
+			filters: []fieldFilter{{field: "section", op: "in", alt: []string{"Sprint2", "Sprint3"}}},
+			want:    false,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got := m.taskMatchesFieldFilters(item, tc.filters)
+			if got != tc.want {
+				t.Errorf("taskMatchesFieldFilters() = %v, want %v", got, tc.want)
+			}
+		})
+	}
+}
+
+func TestBuildSectionListIncludesCustomSections(t *testing.T) {
+	project, err := models.NewProject("test", "Test", "/tmp/test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	project.Sections = []string{models.SectionNext, models.SectionInbox, "Sprint1"}
+
+	task1, _ := models.NewTask("1", 1, models.TaskTypeTask, "Task 1")
+	task1.Section = models.SectionInbox
+	task1.CustomSection = "Sprint1"
+
+	task2, _ := models.NewTask("2", 2, models.TaskTypeTask, "Task 2")
+	task2.CustomSection = "Sprint1"
+
+	project.Tasks = []*models.Task{task1, task2}
+
+	sections := buildSectionList(project)
+
+	// Find Sprint1 in the list and verify its count
+	found := false
+	for _, s := range sections {
+		if s.Name == "Sprint1" {
+			found = true
+			if s.TaskCount != 2 {
+				t.Errorf("expected 2 tasks in Sprint1, got %d", s.TaskCount)
+			}
+		}
+	}
+	if !found {
+		t.Error("Sprint1 section not found in buildSectionList output")
+	}
+}
+
 func TestTaskMatchesFieldFilters_Date(t *testing.T) {
 	m := &CommandPaletteModel{}
 	now := time.Now()

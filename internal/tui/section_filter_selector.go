@@ -82,6 +82,9 @@ func buildSectionList(project *models.Project) []SectionInfo {
 		if task.Section != "" {
 			sectionCounts[task.Section]++
 		}
+		if task.CustomSection != "" {
+			sectionCounts[task.CustomSection]++
+		}
 	}
 
 	for _, section := range project.GetSections() {
