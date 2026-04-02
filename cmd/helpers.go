@@ -37,10 +37,7 @@ var Deps = Dependencies{
 	Repository: storage.DefaultRepository,
 }
 
-const (
-	defaultConfigPathDisplay = "~/.tt/.tt.json"
-	projectRefDescription    = "project slug or ID"
-)
+const defaultConfigPathDisplay = "~/.tt/.tt.json"
 
 // TaskMsg formats a standard success message for task operations.
 // Format: "[project] Verb Type #id: title"
