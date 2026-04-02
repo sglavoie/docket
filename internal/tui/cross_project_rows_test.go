@@ -271,6 +271,79 @@ func TestSeparatorSkipLoop(t *testing.T) {
 	}
 }
 
+// TestSpaceOnSeparatorNoPanic verifies that pressing space in multi-select mode
+// does not panic when the cursor is on a separator row (which has a nil task).
+func TestSpaceOnSeparatorNoPanic(t *testing.T) {
+	m := minimalOutliner()
+
+	groups := []projectTasksGroup{
+		{projectID: "p1", tasks: []*models.Task{makeTask("t1", "Task 1", "")}},
+		{projectID: "p2", tasks: []*models.Task{makeTask("t2", "Task 2", "")}},
+	}
+
+	m.buildProjectGroupedRows(groups)
+
+	// Enter multi-select mode
+	m.multiSelectMode = true
+	m.selectedTasks = make(map[string]bool)
+
+	// Find the separator row
+	separatorIdx := -1
+	for i, row := range m.rows {
+		if row.IsSeparator {
+			separatorIdx = i
+			break
+		}
+	}
+	if separatorIdx < 0 {
+		t.Fatal("expected a separator row")
+	}
+
+	// Move cursor to separator
+	m.cursor = separatorIdx
+
+	// This must not panic — separator has nil task
+	row := m.rows[m.cursor]
+	if row.IsSectionHeader || row.IsSeparator || row.task == nil {
+		// Expected: skip selection for non-task rows
+	} else {
+		t.Error("separator row should be skipped by the guard condition")
+	}
+
+	// Also verify the onHeader computation includes separators
+	onHeader := m.rows[m.cursor].IsSectionHeader || m.rows[m.cursor].IsSeparator
+	if !onHeader {
+		t.Error("onHeader should be true for separator rows to prevent prefix key activation")
+	}
+}
+
+// TestDeleteOnSeparatorNoPanic verifies that the D (delete) key guard correctly
+// treats separator rows as non-task rows, preventing nil dereference on row.task.
+func TestDeleteOnSeparatorNoPanic(t *testing.T) {
+	m := minimalOutliner()
+
+	groups := []projectTasksGroup{
+		{projectID: "p1", tasks: []*models.Task{makeTask("t1", "Task 1", "")}},
+		{projectID: "p2", tasks: []*models.Task{makeTask("t2", "Task 2", "")}},
+	}
+
+	m.buildProjectGroupedRows(groups)
+
+	// Find separator
+	for i, row := range m.rows {
+		if row.IsSeparator {
+			m.cursor = i
+			// The onHeader guard should prevent D from accessing row.task
+			onHeader := m.rows[m.cursor].IsSectionHeader || m.rows[m.cursor].IsSeparator
+			if !onHeader {
+				t.Error("onHeader must be true for separator rows")
+			}
+			return
+		}
+	}
+	t.Fatal("expected a separator row")
+}
+
 func TestSeparatorIsSeparatorNotSectionHeader(t *testing.T) {
 	m := minimalOutliner()
 

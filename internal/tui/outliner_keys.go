@@ -50,7 +50,8 @@ func (m *OutlinerModel) handleKeyMsg(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 			m.toggleMultiSelectMode()
 			return m, nil
 		case "space":
-			if len(m.rows) > 0 && m.cursor >= 0 && m.cursor < len(m.rows) && !m.rows[m.cursor].IsSectionHeader {
+			if len(m.rows) > 0 && m.cursor >= 0 && m.cursor < len(m.rows) &&
+				!m.rows[m.cursor].IsSectionHeader && !m.rows[m.cursor].IsSeparator && m.rows[m.cursor].task != nil {
 				m.ToggleSelection(m.rows[m.cursor].task.ID)
 			}
 			return m, nil
@@ -90,7 +91,10 @@ func (m *OutlinerModel) handleKeyMsg(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	}
 
 	// Prefix key activation (shared across primary views)
-	onHeader := len(m.rows) > 0 && m.cursor >= 0 && m.cursor < len(m.rows) && m.rows[m.cursor].IsSectionHeader
+	// Treat both section headers and separator rows as non-task rows to prevent
+	// nil dereference when accessing row.task on separator rows (cross-project mode).
+	onHeader := len(m.rows) > 0 && m.cursor >= 0 && m.cursor < len(m.rows) &&
+		(m.rows[m.cursor].IsSectionHeader || m.rows[m.cursor].IsSeparator)
 	if prefix, ok := activatePrefixKey(key, !onHeader); ok {
 		m.pendingPrefix = prefix
 		return m, nil
