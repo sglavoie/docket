@@ -422,6 +422,46 @@ func TestMatchesRule_LegacySingleTrigger(t *testing.T) {
 	}
 }
 
+func TestMatchesRule_TriggerGroup(t *testing.T) {
+	task := &models.Task{
+		ID:       "task-1",
+		Priority: 1,
+		Status:   models.StatusInProgress,
+		Tags:     []string{},
+		Type:     models.TaskTypeTask,
+	}
+
+	rule := WorkflowRule{
+		ID:      "rule-group",
+		Name:    "Group Rule",
+		Enabled: true,
+		TriggerGroup: &TriggerGroup{
+			Logic: LogicAnd,
+			Triggers: []RuleTrigger{
+				{Field: FieldPriority, Operation: OpEquals, Value: "1"},
+				{Field: FieldStatus, Operation: OpEquals, Value: "in_progress"},
+			},
+		},
+		Actions: []RuleAction{{ActionType: ActionAddTag, Value: "urgent"}},
+	}
+
+	if !matchesRule(task, &rule) {
+		t.Error("expected matchesRule to match rule with TriggerGroup")
+	}
+
+	// Non-matching case
+	nonMatchTask := &models.Task{
+		ID:       "task-2",
+		Priority: 5,
+		Status:   models.StatusTodo,
+		Tags:     []string{},
+		Type:     models.TaskTypeTask,
+	}
+	if matchesRule(nonMatchTask, &rule) {
+		t.Error("expected matchesRule NOT to match when TriggerGroup conditions are not met")
+	}
+}
+
 func TestMatchesTrigger_SectionWithCustomSection(t *testing.T) {
 	tests := []struct {
 		name          string

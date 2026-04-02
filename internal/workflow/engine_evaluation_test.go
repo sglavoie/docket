@@ -282,6 +282,46 @@ func TestTestRule(t *testing.T) {
 	}
 }
 
+func TestTestRule_TriggerGroup(t *testing.T) {
+	task := &models.Task{
+		ID:       "1",
+		Priority: 1,
+		Status:   models.StatusInProgress,
+		Section:  "Backlog",
+		Tags:     []string{},
+		Type:     models.TaskTypeTask,
+	}
+
+	rule := WorkflowRule{
+		ID:      "rule-group",
+		Name:    "Group Rule",
+		Enabled: true,
+		TriggerGroup: &TriggerGroup{
+			Logic: LogicAnd,
+			Triggers: []RuleTrigger{
+				{Field: FieldPriority, Operation: OpEquals, Value: "1"},
+				{Field: FieldStatus, Operation: OpEquals, Value: "in_progress"},
+			},
+		},
+		Actions: []RuleAction{
+			{ActionType: ActionAddTag, Value: "urgent"},
+		},
+	}
+
+	matches, actions := TestRule(task, rule)
+	if !matches {
+		t.Error("expected TestRule to match rule with TriggerGroup")
+	}
+	if len(actions) != 1 {
+		t.Errorf("expected 1 action, got %d", len(actions))
+	}
+
+	// Task should not be modified
+	if task.Section != "Backlog" {
+		t.Error("TestRule should not modify task")
+	}
+}
+
 func TestEvaluation_ScopedRule(t *testing.T) {
 	task := &models.Task{ID: "1", Priority: 1, Tags: []string{}, Type: models.TaskTypeTask}
 

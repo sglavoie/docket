@@ -322,8 +322,12 @@ func countIncompleteBlockers(task *models.Task, taskMap map[string]*models.Task)
 }
 
 // matchesRule checks if a task matches all of the rule's trigger conditions.
-// Handles both single trigger (legacy) and compound triggers.
+// Handles single trigger (legacy), compound triggers, and nested TriggerGroup.
 func matchesRule(task *models.Task, rule *WorkflowRule) bool {
+	if rule.TriggerGroup != nil {
+		return matchesTriggerGroup(task, nil, rule.TriggerGroup, nil)
+	}
+
 	triggers := rule.GetTriggers()
 	if len(triggers) == 0 {
 		return false
