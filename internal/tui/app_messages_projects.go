@@ -1,0 +1,92 @@
+package tui
+
+import "github.com/sglavoie/tt/internal/models"
+
+// =============================================================================
+// Project CRUD Messages
+// =============================================================================
+
+// SelectProjectMsg switches the current project view.
+type SelectProjectMsg struct{ Project *models.Project }
+
+// CreateProjectMsg opens the project creator view.
+type CreateProjectMsg struct{}
+
+// EditProjectMsg opens the project editor for the given project.
+type EditProjectMsg struct{ Project *models.Project }
+
+// ProjectCreatedMsg signals a new project was created.
+type ProjectCreatedMsg struct{ Project *models.Project }
+
+// ProjectUpdatedMsg signals a project's metadata was updated.
+type ProjectUpdatedMsg struct{ Project *models.Project }
+
+// ProjectArchivedMsg signals a project was archived.
+type ProjectArchivedMsg struct{ Project *models.Project }
+
+// ProjectRestoredMsg signals an archived project was restored.
+type ProjectRestoredMsg struct{ Project *models.Project }
+
+// ProjectDeletedMsg signals a project was permanently deleted.
+type ProjectDeletedMsg struct{ Project *models.Project }
+
+// ProjectPinnedToggledMsg signals a project's pinned state changed.
+type ProjectPinnedToggledMsg struct{ Project *models.Project }
+
+// =============================================================================
+// Project Tree Messages
+// =============================================================================
+
+// ShowProjectTreeMsg opens the project tree view for a project.
+type ShowProjectTreeMsg struct {
+	Project *models.Project
+}
+
+// =============================================================================
+// Project Cycling Messages
+// =============================================================================
+
+// CycleProjectMsg cycles to next/previous project.
+type CycleProjectMsg struct {
+	Forward bool // true = next, false = previous
+}
+
+// =============================================================================
+// Trash Messages (Show/Close Pattern)
+// =============================================================================
+
+// ShowTrashedProjectsMsg opens the trashed projects picker.
+type ShowTrashedProjectsMsg struct{}
+
+// CloseTrashedProjectsMsg closes the trashed projects picker.
+type CloseTrashedProjectsMsg struct{}
+
+// RestoreFromTrashMsg requests restoration of a project from trash.
+type RestoreFromTrashMsg struct{ Slug string }
+
+// PurgeFromTrashMsg requests permanent deletion of a project from trash.
+type PurgeFromTrashMsg struct{ Slug string }
+
+// =============================================================================
+// Status Input Messages
+// =============================================================================
+
+// ShowStatusInputMsg opens the status input overlay for a project.
+type ShowStatusInputMsg struct {
+	Project *models.Project
+}
+
+// StatusUpdatedMsg signals the project status was updated.
+type StatusUpdatedMsg struct{}
+
+// =============================================================================
+// Sandbox Messages
+// =============================================================================
+
+// SandboxResetRequestMsg requests to reset/clear the sandbox project.
+type SandboxResetRequestMsg struct{}
+
+// SandboxResetDoneMsg signals the sandbox was reset.
+type SandboxResetDoneMsg struct {
+	TaskCount int // Number of tasks that were cleared
+}

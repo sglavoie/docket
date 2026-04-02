@@ -77,7 +77,7 @@ package tui
 //
 // Messages are defined close to their primary consumers:
 //
-//   - app_messages.go: Core navigation and shared messages
+//   - app_messages_*.go: Core navigation and shared app-level messages
 //   - inbox_messages.go: Inbox processor specific
 //   - bulk_edit_types.go: Bulk edit panel specific
 //   - command_palette.go: Palette-specific messages (end of file)
