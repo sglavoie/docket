@@ -65,6 +65,13 @@ func (m *CommandPaletteModel) taskMatchesFieldFilters(item PaletteItem, filters 
 			}
 
 		case "date":
+			// Handle "none" filter before the nil check
+			if f.value == "none" {
+				if task.DueDate != nil {
+					return false
+				}
+				continue
+			}
 			if task.DueDate == nil {
 				return false // No due date means can't match date filters
 			}
@@ -72,7 +79,8 @@ func (m *CommandPaletteModel) taskMatchesFieldFilters(item PaletteItem, filters 
 
 			switch f.value {
 			case "overdue":
-				if !dueDay.Before(today) {
+				// Completed/canceled tasks are not overdue
+				if task.Status.IsComplete() || !dueDay.Before(today) {
 					return false
 				}
 			case "today":

@@ -132,6 +132,8 @@ func TestParseFieldFilters_DatePredicates(t *testing.T) {
 		{"@tomorrow", "", "tomorrow"},
 		{"@this-week task", "task", "this-week"},
 		{"@thisweek", "", "thisweek"},
+		{"@none", "", "none"},
+		{"@none task", "task", "none"},
 	}
 
 	for _, tc := range tests {
@@ -709,6 +711,18 @@ func TestTaskMatchesFieldFilters_Date(t *testing.T) {
 			filter:  "today",
 			want:    false,
 		},
+		{
+			name:    "none matches nil due date",
+			dueDate: nil,
+			filter:  "none",
+			want:    true,
+		},
+		{
+			name:    "none rejects task with due date",
+			dueDate: &today,
+			filter:  "none",
+			want:    false,
+		},
 	}
 
 	for _, tc := range tests {
@@ -722,6 +736,40 @@ func TestTaskMatchesFieldFilters_Date(t *testing.T) {
 				t.Errorf("taskMatchesFieldFilters() = %v, want %v", got, tc.want)
 			}
 		})
+	}
+}
+
+func TestTaskMatchesFieldFilters_OverdueExcludesCompleted(t *testing.T) {
+	m := &CommandPaletteModel{}
+	now := time.Now()
+	today := util.StartOfDay(now)
+	yesterday := today.AddDate(0, 0, -1)
+
+	// Completed task with past due date should NOT be overdue
+	task := &models.Task{
+		DueDate: &yesterday,
+		Status:  models.StatusDone,
+	}
+	item := PaletteItem{Category: ItemCategoryTasks, Task: task}
+	filters := []fieldFilter{{field: "date", op: "eq", value: "overdue"}}
+
+	got := m.taskMatchesFieldFilters(item, filters)
+	if got {
+		t.Error("completed task with past due date should not match @overdue filter")
+	}
+
+	// Canceled task should also not be overdue
+	task.Status = models.StatusCanceled
+	got = m.taskMatchesFieldFilters(item, filters)
+	if got {
+		t.Error("canceled task with past due date should not match @overdue filter")
+	}
+
+	// Active task with past due date SHOULD be overdue
+	task.Status = models.StatusTodo
+	got = m.taskMatchesFieldFilters(item, filters)
+	if !got {
+		t.Error("active task with past due date should match @overdue filter")
 	}
 }
 

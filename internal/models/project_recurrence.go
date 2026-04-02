@@ -81,7 +81,8 @@ func (p *Project) GenerateRecurringInstances() int {
 			Description:     task.Description, // Carry forward description for context
 			Status:          StatusTodo,
 			Priority:        task.Priority,
-			Section:         SectionInbox, // New instances go to Inbox for triage
+			Section:         SectionInbox,       // New instances go to Inbox for triage
+			CustomSection:   task.CustomSection, // Carry forward user-defined section
 			Tags:            append([]string{}, task.Tags...),
 			DependsOn:       []string{},
 			RelatedTo:       []string{},

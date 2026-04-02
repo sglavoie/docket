@@ -101,7 +101,7 @@ func parseFieldFilters(query string) (remaining string, filters []fieldFilter) {
 		if strings.HasPrefix(term, "@") {
 			datePred := strings.ToLower(term[1:])
 			switch datePred {
-			case "overdue", "today", "tomorrow", "this-week", "thisweek":
+			case "overdue", "today", "tomorrow", "this-week", "thisweek", "none":
 				filters = append(filters, fieldFilter{
 					field: "date",
 					op:    "eq",
