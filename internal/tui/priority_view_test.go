@@ -773,6 +773,121 @@ func TestEdgeCases(t *testing.T) {
 	})
 }
 
+func TestPriorityViewActionableFilter(t *testing.T) {
+	t.Run("actionable filter hides tasks in non-actionable GTD sections", func(t *testing.T) {
+		project := newTestPriorityProject(t)
+
+		// Actionable task (default section, no blockers)
+		actionable, err := models.NewTask("1", 1, models.TaskTypeTask, "Actionable task")
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		// Tasks in non-actionable GTD sections
+		inbox, err := models.NewTask("2", 2, models.TaskTypeTask, "Inbox task")
+		if err != nil {
+			t.Fatal(err)
+		}
+		inbox.Section = models.SectionInbox
+
+		waiting, err := models.NewTask("3", 3, models.TaskTypeTask, "Waiting task")
+		if err != nil {
+			t.Fatal(err)
+		}
+		waiting.Section = models.SectionWaiting
+
+		someday, err := models.NewTask("4", 4, models.TaskTypeTask, "Someday task")
+		if err != nil {
+			t.Fatal(err)
+		}
+		someday.Section = models.SectionSomeday
+
+		review, err := models.NewTask("5", 5, models.TaskTypeTask, "Review task")
+		if err != nil {
+			t.Fatal(err)
+		}
+		review.Section = models.SectionReview
+
+		standby, err := models.NewTask("6", 6, models.TaskTypeTask, "Standby task")
+		if err != nil {
+			t.Fatal(err)
+		}
+		standby.Section = models.SectionStandby
+
+		next, err := models.NewTask("7", 7, models.TaskTypeTask, "Next task")
+		if err != nil {
+			t.Fatal(err)
+		}
+		next.Section = models.SectionNext
+
+		project.Tasks = []*models.Task{actionable, inbox, waiting, someday, review, standby, next}
+
+		m := NewPriorityViewModel(project, nil, nil)
+
+		// Without actionable filter: all 7 tasks should appear in backlog
+		// (none have due dates, none are blocked)
+		totalWithout := len(m.backlog)
+		if totalWithout != 7 {
+			t.Fatalf("without filter: expected 7 backlog tasks, got %d", totalWithout)
+		}
+
+		// Enable actionable filter
+		m.filter.Actionable = true
+		m.loadActionableTasks()
+
+		// With actionable filter: only the task with default section should remain
+		totalWith := len(m.backlog)
+		if totalWith != 1 {
+			t.Errorf("with actionable filter: expected 1 backlog task, got %d", totalWith)
+		}
+		if totalWith > 0 && m.backlog[0].Task.Title != "Actionable task" {
+			t.Errorf("expected remaining task to be 'Actionable task', got %q", m.backlog[0].Task.Title)
+		}
+	})
+
+	t.Run("actionable filter hides blocked tasks from groups", func(t *testing.T) {
+		project := newTestPriorityProject(t)
+
+		// Actionable task
+		actionable, err := models.NewTask("1", 1, models.TaskTypeTask, "Actionable")
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		// Blocked task (already goes to waitingOn by default, but test filter logic)
+		blocked, err := models.NewTask("2", 2, models.TaskTypeTask, "Blocked")
+		if err != nil {
+			t.Fatal(err)
+		}
+		blocked.Status = models.StatusBlocked
+
+		project.Tasks = []*models.Task{actionable, blocked}
+
+		m := NewPriorityViewModel(project, nil, nil)
+		m.filter.Actionable = true
+		m.loadActionableTasks()
+
+		// Blocked task should be in waitingOn, not in backlog
+		if len(m.backlog) != 1 {
+			t.Errorf("expected 1 backlog task with actionable filter, got %d", len(m.backlog))
+		}
+	})
+
+	t.Run("HasActiveFilters reflects actionable state", func(t *testing.T) {
+		project := newTestPriorityProject(t)
+		m := NewPriorityViewModel(project, nil, nil)
+
+		if m.HasActiveFilters() {
+			t.Error("HasActiveFilters should be false initially")
+		}
+
+		m.filter.Actionable = true
+		if !m.HasActiveFilters() {
+			t.Error("HasActiveFilters should be true when Actionable is set")
+		}
+	})
+}
+
 func TestHasActiveSearch(t *testing.T) {
 	project := newTestPriorityProject(t)
 	m := NewPriorityViewModel(project, nil, nil)

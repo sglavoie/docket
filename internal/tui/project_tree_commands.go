@@ -205,8 +205,20 @@ func taskStateChanged(current, prev *models.Task) bool {
 	if current.Status != prev.Status ||
 		current.Priority != prev.Priority ||
 		current.Section != prev.Section ||
+		current.CustomSection != prev.CustomSection ||
 		current.Type != prev.Type {
 		return true
+	}
+	// Detect due date changes (added, removed, or modified)
+	switch {
+	case current.DueDate == nil && prev.DueDate == nil:
+		// no change
+	case current.DueDate == nil || prev.DueDate == nil:
+		return true // one is nil, the other is not
+	default:
+		if !current.DueDate.Equal(*prev.DueDate) {
+			return true
+		}
 	}
 	if len(current.Tags) != len(prev.Tags) {
 		return true

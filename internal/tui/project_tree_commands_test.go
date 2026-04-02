@@ -113,3 +113,72 @@ func TestCopyTaskStateNilTask(t *testing.T) {
 		t.Error("copyTaskState(nil) should return nil")
 	}
 }
+
+func TestTaskStateChangedDetectsCustomSection(t *testing.T) {
+	current := &models.Task{
+		ID:            "t1",
+		Status:        models.StatusTodo,
+		Priority:      3,
+		Section:       "",
+		CustomSection: "Sprint 2",
+		Tags:          []string{"backend"},
+		Type:          models.TaskTypeTask,
+	}
+	prev := &models.Task{
+		ID:            "t1",
+		Status:        models.StatusTodo,
+		Priority:      3,
+		Section:       "",
+		CustomSection: "Sprint 1",
+		Tags:          []string{"backend"},
+		Type:          models.TaskTypeTask,
+	}
+
+	if !taskStateChanged(current, prev) {
+		t.Error("taskStateChanged should detect CustomSection change from 'Sprint 1' to 'Sprint 2'")
+	}
+}
+
+func TestTaskStateChangedDetectsDueDateChange(t *testing.T) {
+	oldDue := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
+	newDue := time.Date(2025, 2, 1, 0, 0, 0, 0, time.UTC)
+
+	current := &models.Task{
+		ID:      "t1",
+		Status:  models.StatusTodo,
+		DueDate: &newDue,
+		Tags:    []string{},
+		Type:    models.TaskTypeTask,
+	}
+	prev := &models.Task{
+		ID:      "t1",
+		Status:  models.StatusTodo,
+		DueDate: &oldDue,
+		Tags:    []string{},
+		Type:    models.TaskTypeTask,
+	}
+
+	if !taskStateChanged(current, prev) {
+		t.Error("taskStateChanged should detect DueDate change")
+	}
+}
+
+func TestTaskStateChangedDetectsDueDateAddedRemoved(t *testing.T) {
+	due := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
+
+	// DueDate added
+	current := &models.Task{ID: "t1", Status: models.StatusTodo, DueDate: &due, Tags: []string{}, Type: models.TaskTypeTask}
+	prev := &models.Task{ID: "t1", Status: models.StatusTodo, DueDate: nil, Tags: []string{}, Type: models.TaskTypeTask}
+
+	if !taskStateChanged(current, prev) {
+		t.Error("taskStateChanged should detect DueDate being added")
+	}
+
+	// DueDate removed
+	current2 := &models.Task{ID: "t1", Status: models.StatusTodo, DueDate: nil, Tags: []string{}, Type: models.TaskTypeTask}
+	prev2 := &models.Task{ID: "t1", Status: models.StatusTodo, DueDate: &due, Tags: []string{}, Type: models.TaskTypeTask}
+
+	if !taskStateChanged(current2, prev2) {
+		t.Error("taskStateChanged should detect DueDate being removed")
+	}
+}
