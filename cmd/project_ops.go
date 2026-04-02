@@ -88,6 +88,22 @@ func SaveProject(project *models.Project, opts *SaveOptions) error {
 					logging.Warn("failed to save rule trigger counts: %v", err)
 				}
 			}
+
+			// Evaluate project-level rules against aggregate task data
+			projResult := evaluateAndApplyProjectRules(project, opts.Config, rules)
+			if projResult.ProjectStatusSet {
+				Debugf("project status set to %q by rule %q", projResult.ProjectStatusIcon, projResult.ProjectRuleName)
+				if len(projResult.TriggeredRuleIDs) > 0 {
+					counts := make(map[string]int, len(projResult.TriggeredRuleIDs))
+					for _, id := range projResult.TriggeredRuleIDs {
+						counts[id]++
+					}
+					opts.Config.IncrementRuleTriggerCounts(counts)
+					if err := opts.ConfigManager.Save(opts.Config); err != nil {
+						logging.Warn("failed to save project rule trigger counts: %v", err)
+					}
+				}
+			}
 		}
 	}
 
