@@ -11,11 +11,15 @@ import (
 // sequence — see ValidateAttachmentPath.
 const attachmentDelimiter = "||"
 
-// ValidateAttachmentPath returns an error if the path contains the internal
-// attachment delimiter ("||"), which would corrupt the storage format.
+// ValidateAttachmentPath returns an error if the path contains characters
+// reserved by the storage format: the attachment delimiter ("||") or
+// semicolons (";"), which delimit multiple attachments in metadata.
 func ValidateAttachmentPath(path string) error {
 	if strings.Contains(path, attachmentDelimiter) {
 		return fmt.Errorf("path %q contains reserved delimiter %q", path, attachmentDelimiter)
+	}
+	if strings.Contains(path, ";") {
+		return fmt.Errorf("path %q contains semicolons which are reserved as attachment delimiters", path)
 	}
 	return nil
 }

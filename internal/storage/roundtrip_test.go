@@ -342,8 +342,24 @@ func TestRoundTrip_DescriptionWithHeadingPattern(t *testing.T) {
 			desc: "## Task: first\n### Story: second\n## Epic: third",
 		},
 		{
-			name: "escaped backslash before heading",
+			name: "escaped backslash before heading mid-line",
 			desc: `Line with \## Task: not a heading`,
+		},
+		{
+			name: "backslash heading at line start",
+			desc: `\## Task: not a heading`,
+		},
+		{
+			name: "backslash project at line start",
+			desc: `\# Project: not a project`,
+		},
+		{
+			name: "double backslash heading at line start",
+			desc: `\\## Task: double escaped`,
+		},
+		{
+			name: "backslash heading in multiline",
+			desc: "Some text\n\\## Task: Looks like a heading\nMore text",
 		},
 		{
 			name: "no heading pattern (safe)",

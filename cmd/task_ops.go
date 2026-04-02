@@ -19,9 +19,8 @@ import (
 // FindTaskByIdentifier finds a task by short ID, UUID, or title prefix.
 // Returns an error if no match is found or if a title prefix matches multiple tasks.
 func FindTaskByIdentifier(project *models.Project, identifier string) (*models.Task, error) {
-	// Try as short ID first
-	var shortID int
-	if _, err := fmt.Sscanf(identifier, "%d", &shortID); err == nil {
+	// Try as short ID first (must be purely numeric)
+	if shortID, err := strconv.Atoi(identifier); err == nil {
 		if task := project.GetTaskByShortID(shortID); task != nil {
 			return task, nil
 		}

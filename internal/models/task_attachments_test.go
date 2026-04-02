@@ -14,6 +14,8 @@ func TestValidateAttachmentPath(t *testing.T) {
 		{"valid URL", "https://example.com/file.pdf", false},
 		{"path with delimiter", "/home/user/a||b.txt", true},
 		{"empty path", "", false},
+		{"path with semicolon", "/home/user/a;b.txt", true},
+		{"URL with semicolon", "https://example.com/page?a=1;b=2", true},
 	}
 
 	for _, tt := range tests {

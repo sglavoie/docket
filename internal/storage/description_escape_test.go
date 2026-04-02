@@ -51,6 +51,21 @@ func TestEscapeDescription(t *testing.T) {
 			input: "# Just a heading",
 			want:  "# Just a heading",
 		},
+		{
+			name:  "literal backslash before heading pattern",
+			input: `\## Task: not a heading`,
+			want:  `\\## Task: not a heading`,
+		},
+		{
+			name:  "literal backslash before project pattern",
+			input: `\# Project: not a project`,
+			want:  `\\# Project: not a project`,
+		},
+		{
+			name:  "double backslash before heading pattern",
+			input: `\\## Task: double escaped`,
+			want:  `\\\## Task: double escaped`,
+		},
 	}
 
 	for _, tc := range tests {
@@ -104,6 +119,21 @@ func TestUnescapeDescriptionLine(t *testing.T) {
 			input: `\`,
 			want:  `\`,
 		},
+		{
+			name:  "escaped literal backslash before heading",
+			input: `\\## Task: not a heading`,
+			want:  `\## Task: not a heading`,
+		},
+		{
+			name:  "escaped literal backslash before project",
+			input: `\\# Project: not a project`,
+			want:  `\# Project: not a project`,
+		},
+		{
+			name:  "triple backslash before heading",
+			input: `\\\## Task: triple`,
+			want:  `\\## Task: triple`,
+		},
 	}
 
 	for _, tc := range tests {
@@ -125,6 +155,11 @@ func TestEscapeUnescapeRoundTrip(t *testing.T) {
 		"## Not a heading type",
 		"No special content",
 		"",
+		`\## Task: not a heading`,
+		`\# Project: not a project`,
+		`\\## Task: double escaped`,
+		"Some text\n\\## Task: heading in middle\nMore text",
+		`\\\## Task: triple backslash`,
 	}
 
 	for _, desc := range descs {
