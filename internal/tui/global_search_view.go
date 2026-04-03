@@ -348,6 +348,9 @@ func (m *GlobalSearchModel) renderTaskList(paneHeight int) string {
 					line = prefix + titleRendered
 				}
 			}
+			if i == m.cursor {
+				line = TaskJumperSelectedStyle.Width(m.listWidth).Render(line)
+			}
 			b.WriteString(line)
 			b.WriteString("\n")
 			continue
@@ -431,7 +434,7 @@ func (m *GlobalSearchModel) renderTaskList(paneHeight int) string {
 		}
 
 		if i == m.cursor {
-			line = TaskJumperSelectedStyle.Render(line)
+			line = TaskJumperSelectedStyle.Width(m.listWidth).Render(line)
 		}
 
 		b.WriteString(line)
