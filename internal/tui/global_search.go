@@ -48,6 +48,9 @@ type GlobalSearchModel struct {
 
 	// Toggle to hide completed/canceled tasks
 	hideCompleted bool
+
+	// Toggle to show help panel
+	showHelp bool
 }
 
 // NewGlobalSearchModel creates a new global search model.
@@ -269,6 +272,12 @@ func (m *GlobalSearchModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "ctrl+d":
 			jumpCursor(&m.cursor, len(m.filtered), 10)
 			return m, nil
+		case "?":
+			if !m.ac.IsActive() {
+				m.showHelp = !m.showHelp
+				return m, nil
+			}
+			fallthrough
 		default:
 			// Update search input
 			var cmd tea.Cmd

@@ -8,6 +8,53 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 )
 
+// noteMatchesFilters checks applicable has:/no:/is: filters against a note.
+// Task-only filters (checklist, attachment, dependency, etc.) auto-pass no:
+// and auto-fail has:.
+func noteMatchesFilters(note *models.Note, filters *ParsedSearchQuery) bool {
+	for _, f := range filters.HasPresence {
+		switch f {
+		case "tag":
+			if len(note.Tags) == 0 {
+				return false
+			}
+		case "description":
+			if len(note.Body) == 0 {
+				return false
+			}
+		default:
+			// Task-only has: filter: note doesn't have it → fail
+			return false
+		}
+	}
+	for _, f := range filters.NoPresence {
+		switch f {
+		case "tag":
+			if len(note.Tags) > 0 {
+				return false
+			}
+		case "description":
+			if len(note.Body) > 0 {
+				return false
+			}
+		default:
+			// Task-only no: filter: note doesn't have it → pass (vacuously true)
+		}
+	}
+	for _, f := range filters.IsState {
+		switch f {
+		case "pinned":
+			if !note.Pinned {
+				return false
+			}
+		default:
+			// Task-only is: filter: note doesn't have this state → fail
+			return false
+		}
+	}
+	return true
+}
+
 // filteredSearchResult holds a search result with match positions for highlighting.
 type filteredSearchResult struct {
 	result            models.SearchResult
@@ -57,7 +104,20 @@ func (m *GlobalSearchModel) filterTasks() {
 			}
 		}
 
+		// Apply project slug filter to both tasks and notes
+		if m.parsedFilters.ProjectSlug != "" {
+			slug := strings.ToLower(result.Project.Slug)
+			if !strings.HasPrefix(slug, m.parsedFilters.ProjectSlug) {
+				continue
+			}
+		}
+
 		if result.IsNote() {
+			// Apply applicable has:/no:/is: filters to notes
+			if !noteMatchesFilters(result.Note, m.parsedFilters) {
+				continue
+			}
+
 			// Score notes by title and body
 			textQuery := m.parsedFilters.TextQuery
 			if textQuery != "" {

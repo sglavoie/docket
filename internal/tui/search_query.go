@@ -21,6 +21,10 @@ type ParsedSearchQuery struct {
 	DueDateFilter string              // "today", "tomorrow", "week", "overdue", "none", ""
 	Section       string              // Empty = all sections
 	ActiveOnly    bool                // Only show active tasks
+	HasPresence   []string            // has:X filters (normalized names)
+	NoPresence    []string            // no:X filters (negation of has:)
+	IsState       []string            // is:X filters
+	ProjectSlug   string              // p:slug project filter
 }
 
 // HasFilters returns true if any filters are active.
@@ -31,7 +35,11 @@ func (p *ParsedSearchQuery) HasFilters() bool {
 		len(p.Types) > 0 ||
 		p.DueDateFilter != "" ||
 		p.Section != "" ||
-		p.ActiveOnly
+		p.ActiveOnly ||
+		len(p.HasPresence) > 0 ||
+		len(p.NoPresence) > 0 ||
+		len(p.IsState) > 0 ||
+		p.ProjectSlug != ""
 }
 
 // ParseSearchQuery extracts structured filters from a search query string.
@@ -123,6 +131,40 @@ func ParseSearchQuery(input string) *ParsedSearchQuery {
 	}
 	input = sectionRe.ReplaceAllString(input, " ")
 
+	// Extract has: filters
+	hasRe := regexp.MustCompile(`(?i)\bhas:(\w+)`)
+	for _, match := range hasRe.FindAllStringSubmatch(input, -1) {
+		if len(match) == 2 {
+			result.HasPresence = append(result.HasPresence, normalizeHasFilter(strings.ToLower(match[1])))
+		}
+	}
+	input = hasRe.ReplaceAllString(input, " ")
+
+	// Extract no: filters
+	noRe := regexp.MustCompile(`(?i)\bno:(\w+)`)
+	for _, match := range noRe.FindAllStringSubmatch(input, -1) {
+		if len(match) == 2 {
+			result.NoPresence = append(result.NoPresence, normalizeHasFilter(strings.ToLower(match[1])))
+		}
+	}
+	input = noRe.ReplaceAllString(input, " ")
+
+	// Extract is: filters
+	isRe := regexp.MustCompile(`(?i)\bis:(\w+)`)
+	for _, match := range isRe.FindAllStringSubmatch(input, -1) {
+		if len(match) == 2 {
+			result.IsState = append(result.IsState, strings.ToLower(match[1]))
+		}
+	}
+	input = isRe.ReplaceAllString(input, " ")
+
+	// Extract p: / project: filter
+	projectRe := regexp.MustCompile(`(?i)\b(?:project:|p:)(\S+)`)
+	if match := projectRe.FindStringSubmatch(input); len(match) == 2 {
+		result.ProjectSlug = strings.ToLower(match[1])
+	}
+	input = projectRe.ReplaceAllString(input, " ")
+
 	// Extract active flag: *
 	activeRe := regexp.MustCompile(`\s*\*\s*`)
 	if activeRe.MatchString(input) {
@@ -194,6 +236,27 @@ func TaskMatchesFilters(task *models.Task, filters *ParsedSearchQuery) bool {
 		return false
 	}
 
+	// has: filters (must have the property)
+	for _, f := range filters.HasPresence {
+		if !matchesHasFilter(task, f) {
+			return false
+		}
+	}
+
+	// no: filters (must NOT have the property)
+	for _, f := range filters.NoPresence {
+		if matchesHasFilter(task, f) {
+			return false
+		}
+	}
+
+	// is: filters (must match the state)
+	for _, f := range filters.IsState {
+		if !matchesIsFilter(task, f) {
+			return false
+		}
+	}
+
 	return true
 }
 
@@ -242,4 +305,78 @@ func matchesDueDateFilter(task *models.Task, filter string) bool {
 // containsInt checks if a slice contains an integer.
 func containsInt(slice []int, val int) bool {
 	return slices.Contains(slice, val)
+}
+
+// normalizeHasFilter maps aliases to canonical filter names.
+func normalizeHasFilter(s string) string {
+	switch s {
+	case "desc":
+		return "description"
+	case "deps":
+		return "dependency"
+	case "subtasks":
+		return "children"
+	}
+	return s
+}
+
+// matchesHasFilter returns true if the task has the specified property.
+func matchesHasFilter(task *models.Task, filter string) bool {
+	switch filter {
+	case "description":
+		return len(task.Description) > 0
+	case "comment":
+		return len(task.Comments) > 0
+	case "checklist":
+		return len(task.Checklist) > 0
+	case "attachment":
+		return len(task.Attachments) > 0
+	case "due":
+		return task.DueDate != nil
+	case "dependency":
+		return len(task.DependsOn) > 0
+	case "relation":
+		return len(task.RelatedTo) > 0
+	case "recurrence":
+		return task.Recurrence != nil
+	case "url":
+		return task.URL != ""
+	case "stage":
+		return task.Stage != ""
+	case "parent":
+		return task.ParentID != nil
+	case "children":
+		return len(task.Children) > 0
+	case "tag":
+		return len(task.Tags) > 0
+	}
+	return false
+}
+
+// matchesIsFilter returns true if the task matches the specified state.
+func matchesIsFilter(task *models.Task, filter string) bool {
+	switch filter {
+	case "pinned":
+		return task.Pinned
+	case "active":
+		return task.Active
+	case "dimmed":
+		return task.Dimmed
+	case "blocked":
+		return task.Status == models.StatusBlocked
+	case "overdue":
+		if task.DueDate == nil || task.Status.IsComplete() {
+			return false
+		}
+		return task.DueDate.Before(time.Now())
+	case "snoozed":
+		return task.SnoozedUntil != nil && task.SnoozedUntil.After(time.Now())
+	case "recurring":
+		return task.Recurrence != nil
+	case "leaf":
+		return len(task.Children) == 0
+	case "root":
+		return task.ParentID == nil
+	}
+	return false
 }

@@ -24,6 +24,10 @@ const (
 	acModeSection         // Completing a /section
 	acModeStatus          // Completing a $status
 	acModeProject         // Completing a %project
+	acModeHas             // has:property filter (global search)
+	acModeIs              // is:state filter (global search)
+	acModeNo              // no:property filter (global search)
+	acModeSearchProject   // p:project filter (global search)
 )
 
 // acVisibleCount is the number of suggestions visible at once (scrollable window size)

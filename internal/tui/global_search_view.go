@@ -35,7 +35,7 @@ func (m *GlobalSearchModel) View() tea.View {
 	if m.ac.IsActive() {
 		out.WriteString(m.ac.RenderDropdown(""))
 	} else {
-		out.WriteString(MutedStyle.Render("!priority  #tag  @due  $status  ^type  /section  *active"))
+		out.WriteString(MutedStyle.Render("!priority  #tag  @due  $status  ^type  /section  *active  has:  is:  no:  p:  ?: help"))
 	}
 	out.WriteString("\n")
 
@@ -98,9 +98,14 @@ func (m *GlobalSearchModel) View() tea.View {
 		paneHeight -= 2
 	}
 
-	// Split pane: list on left, preview on right
+	// Split pane: list on left, preview/help on right
 	listContent := m.renderTaskList(paneHeight)
-	previewContent := m.renderPreview()
+	var previewContent string
+	if m.showHelp {
+		previewContent = m.renderSearchHelp()
+	} else {
+		previewContent = m.renderPreview()
+	}
 
 	splitPane := renderOverlaySplitPane(listContent, previewContent, m.listWidth, m.previewWidth, paneHeight)
 	out.WriteString(splitPane)
@@ -167,6 +172,26 @@ func (m *GlobalSearchModel) renderFilterBadges() string {
 		badges = append(badges, "*active")
 	}
 
+	// has: badges
+	for _, f := range m.parsedFilters.HasPresence {
+		badges = append(badges, "has:"+f)
+	}
+
+	// no: badges
+	for _, f := range m.parsedFilters.NoPresence {
+		badges = append(badges, "no:"+f)
+	}
+
+	// is: badges
+	for _, f := range m.parsedFilters.IsState {
+		badges = append(badges, "is:"+f)
+	}
+
+	// project badge
+	if m.parsedFilters.ProjectSlug != "" {
+		badges = append(badges, "p:"+m.parsedFilters.ProjectSlug)
+	}
+
 	// Hide completed toggle badge
 	if m.hideCompleted {
 		badges = append(badges, "hide:completed")
@@ -190,7 +215,72 @@ func (m *GlobalSearchModel) renderHelpText() string {
 	if m.ac.IsActive() {
 		return HelpStyle.Render("Tab: accept · ↑↓: navigate · Esc: dismiss")
 	}
-	return HelpStyle.Render(fmt.Sprintf("[/] tabs · ↑↓ nav · Enter · Ctrl+O completed · Esc · %d results", len(m.filtered)))
+	return HelpStyle.Render(fmt.Sprintf("[/] tabs · ↑↓ nav · Enter · Ctrl+O completed · ?: help · Esc · %d results", len(m.filtered)))
+}
+
+// renderSearchHelp renders the search syntax help panel.
+func (m *GlobalSearchModel) renderSearchHelp() string {
+	prefix := MatchHighlightStyle
+	muted := MutedStyle
+
+	var b strings.Builder
+
+	// has: filter
+	b.WriteString(prefix.Render("has:X"))
+	b.WriteString(muted.Render("  Task has this property"))
+	b.WriteString("\n")
+	hasValues := []string{
+		"description", "comment", "checklist", "attachment",
+		"due", "dependency", "relation", "recurrence",
+		"url", "stage", "parent", "children", "tag",
+	}
+	b.WriteString(muted.Render("  " + wrapValues(hasValues, m.previewWidth-4)))
+	b.WriteString("\n\n")
+
+	// no: filter
+	b.WriteString(prefix.Render("no:X"))
+	b.WriteString(muted.Render("  Negation of has:"))
+	b.WriteString("\n")
+	b.WriteString(muted.Render("  Same values as has: (e.g. no:due, no:tag)"))
+	b.WriteString("\n\n")
+
+	// is: filter
+	b.WriteString(prefix.Render("is:X"))
+	b.WriteString(muted.Render("  Task matches this state"))
+	b.WriteString("\n")
+	isValues := []string{
+		"pinned", "active", "dimmed", "blocked",
+		"overdue", "snoozed", "recurring", "leaf", "root",
+	}
+	b.WriteString(muted.Render("  " + wrapValues(isValues, m.previewWidth-4)))
+	b.WriteString("\n\n")
+
+	// p: filter
+	b.WriteString(prefix.Render("p:slug"))
+	b.WriteString(muted.Render("  Filter by project (case-insensitive prefix)"))
+	b.WriteString("\n")
+
+	return b.String()
+}
+
+// wrapValues joins values with spaces, wrapping to a new line when exceeding maxWidth.
+func wrapValues(values []string, maxWidth int) string {
+	var lines []string
+	line := ""
+	for _, v := range values {
+		if line == "" {
+			line = v
+		} else if len(line)+1+len(v) > maxWidth {
+			lines = append(lines, line)
+			line = v
+		} else {
+			line += " " + v
+		}
+	}
+	if line != "" {
+		lines = append(lines, line)
+	}
+	return strings.Join(lines, "\n  ")
 }
 
 // renderTaskList renders the filtered task list.

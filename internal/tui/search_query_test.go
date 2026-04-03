@@ -2,6 +2,7 @@ package tui
 
 import (
 	"testing"
+	"time"
 
 	"github.com/sglavoie/tt/internal/models"
 )
@@ -202,4 +203,173 @@ func TestTaskMatchesFilters_SectionViaSearchQuery(t *testing.T) {
 	if !TaskMatchesFilters(task, filters) {
 		t.Error("TaskMatchesFilters should match custom section via /Design search query")
 	}
+}
+
+func TestParseSearchQuery_HasIsNoPFilters(t *testing.T) {
+	tests := []struct {
+		name        string
+		input       string
+		wantHas     []string
+		wantNo      []string
+		wantIs      []string
+		wantProject string
+		wantText    string
+	}{
+		{
+			name:    "has:comment",
+			input:   "has:comment",
+			wantHas: []string{"comment"},
+		},
+		{
+			name:   "is:pinned",
+			input:  "is:pinned",
+			wantIs: []string{"pinned"},
+		},
+		{
+			name:   "no:description",
+			input:  "no:description",
+			wantNo: []string{"description"},
+		},
+		{
+			name:        "p:myproj",
+			input:       "p:myproj",
+			wantProject: "myproj",
+		},
+		{
+			name:    "has:desc alias",
+			input:   "has:desc",
+			wantHas: []string{"description"},
+		},
+		{
+			name:    "has:deps alias",
+			input:   "has:deps",
+			wantHas: []string{"dependency"},
+		},
+		{
+			name:    "has:subtasks alias",
+			input:   "has:subtasks",
+			wantHas: []string{"children"},
+		},
+		{
+			name:    "no:deps alias",
+			input:   "no:deps",
+			wantNo:  []string{"dependency"},
+		},
+		{
+			name:     "combination with text",
+			input:    "#backend has:comment is:pinned",
+			wantHas:  []string{"comment"},
+			wantIs:   []string{"pinned"},
+			wantText: "",
+		},
+		{
+			name:        "project: long form",
+			input:       "project:myproj",
+			wantProject: "myproj",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := ParseSearchQuery(tt.input)
+
+			if !stringSliceEqual(result.HasPresence, tt.wantHas) {
+				t.Errorf("HasPresence = %v, want %v", result.HasPresence, tt.wantHas)
+			}
+			if !stringSliceEqual(result.NoPresence, tt.wantNo) {
+				t.Errorf("NoPresence = %v, want %v", result.NoPresence, tt.wantNo)
+			}
+			if !stringSliceEqual(result.IsState, tt.wantIs) {
+				t.Errorf("IsState = %v, want %v", result.IsState, tt.wantIs)
+			}
+			if result.ProjectSlug != tt.wantProject {
+				t.Errorf("ProjectSlug = %q, want %q", result.ProjectSlug, tt.wantProject)
+			}
+			if tt.wantText != "" && result.TextQuery != tt.wantText {
+				t.Errorf("TextQuery = %q, want %q", result.TextQuery, tt.wantText)
+			}
+		})
+	}
+}
+
+func TestTaskMatchesFilters_HasPresence(t *testing.T) {
+	future := time.Now().Add(365 * 24 * time.Hour)
+	dueDate := &future
+	now := time.Now().Add(time.Hour)
+
+	withComment := &models.Task{Comments: []*models.Comment{{Text: "hi"}}}
+	noComment := &models.Task{}
+	withDue := &models.Task{DueDate: dueDate} //nolint:govet
+	withAttachment := &models.Task{Attachments: []models.Attachment{{Filename: "f.txt"}}}
+	withRecurrence := &models.Task{Recurrence: &models.RecurrencePattern{}}
+	withChecklist := &models.Task{Checklist: []models.ChecklistItem{{Text: "a"}}}
+	snoozed := &models.Task{SnoozedUntil: &now}
+
+	tests := []struct {
+		name    string
+		task    *models.Task
+		filters *ParsedSearchQuery
+		want    bool
+	}{
+		{"has:comment match", withComment, &ParsedSearchQuery{HasPresence: []string{"comment"}}, true},
+		{"has:comment no match", noComment, &ParsedSearchQuery{HasPresence: []string{"comment"}}, false},
+		{"no:comment match", noComment, &ParsedSearchQuery{NoPresence: []string{"comment"}}, true},
+		{"no:comment no match", withComment, &ParsedSearchQuery{NoPresence: []string{"comment"}}, false},
+		{"has:due match", withDue, &ParsedSearchQuery{HasPresence: []string{"due"}}, true},
+		{"no:due match", noComment, &ParsedSearchQuery{NoPresence: []string{"due"}}, true},
+		{"has:attachment match", withAttachment, &ParsedSearchQuery{HasPresence: []string{"attachment"}}, true},
+		{"has:recurrence match", withRecurrence, &ParsedSearchQuery{HasPresence: []string{"recurrence"}}, true},
+		{"has:checklist match", withChecklist, &ParsedSearchQuery{HasPresence: []string{"checklist"}}, true},
+		{"is:snoozed match", snoozed, &ParsedSearchQuery{IsState: []string{"snoozed"}}, true},
+		{"is:snoozed no match", noComment, &ParsedSearchQuery{IsState: []string{"snoozed"}}, false},
+		{"is:pinned no match", noComment, &ParsedSearchQuery{IsState: []string{"pinned"}}, false},
+		{"is:pinned match", &models.Task{Pinned: true}, &ParsedSearchQuery{IsState: []string{"pinned"}}, true},
+		{"is:leaf match (no children)", noComment, &ParsedSearchQuery{IsState: []string{"leaf"}}, true},
+		{"is:root match (no parentID)", noComment, &ParsedSearchQuery{IsState: []string{"root"}}, true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := TaskMatchesFilters(tt.task, tt.filters)
+			if got != tt.want {
+				t.Errorf("TaskMatchesFilters() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestTaskMatchesFilters_Combinations(t *testing.T) {
+	future2 := time.Now().Add(365 * 24 * time.Hour)
+	task := &models.Task{
+		Tags:     []string{"backend"},
+		Comments: []*models.Comment{{Text: "notes"}},
+		Pinned:   true,
+		DueDate:  &future2,
+	}
+
+	filters := ParseSearchQuery("#backend has:comment is:pinned")
+	if !TaskMatchesFilters(task, filters) {
+		t.Error("expected task to match #backend has:comment is:pinned")
+	}
+
+	filters2 := ParseSearchQuery("is:pinned no:due")
+	if TaskMatchesFilters(task, filters2) {
+		t.Error("expected task NOT to match is:pinned no:due (task has due date)")
+	}
+}
+
+// stringSliceEqual compares two string slices, treating nil and empty as equal.
+func stringSliceEqual(a, b []string) bool {
+	if len(a) == 0 && len(b) == 0 {
+		return true
+	}
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
 }
