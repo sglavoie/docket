@@ -120,8 +120,6 @@ func (m *AppModel) Update(msg tea.Msg) (outModel tea.Model, outCmd tea.Cmd) { //
 				return m, func() tea.Msg { return ShowMetricsDashboardMsg{} }
 			case "a":
 				return m, func() tea.Msg { return ShowAllTasksMsg{} }
-			case "/":
-				return m, func() tea.Msg { return ShowGlobalSearchMsg{} }
 			case "W":
 				return m, func() tea.Msg { return ShowWorkflowRulesMsg{} }
 			case "o":
@@ -237,6 +235,10 @@ func (m *AppModel) Update(msg tea.Msg) (outModel tea.Model, outCmd tea.Cmd) { //
 		case "ctrl+i":
 			if !m.hasActiveTextInput() {
 				return m, func() tea.Msg { return ShowGlobalInboxProcessorMsg{} }
+			}
+		case "ctrl+/":
+			if !m.hasActiveTextInput() {
+				return m, func() tea.Msg { return ShowGlobalSearchMsg{} }
 			}
 		case "shift+space":
 			if !m.hasActiveTextInput() && !m.hasActiveMultiSelect() {

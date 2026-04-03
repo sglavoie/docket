@@ -318,7 +318,7 @@ func (r *KeybindingRegistry) registerGlobalBindings() {
 		Keybinding{Key: ";D", Description: "Open Due Date Overview", Category: "Navigation"},
 		Keybinding{Key: ";m", Description: "Open Metrics Dashboard", Category: "Navigation"},
 		Keybinding{Key: ";a", Description: "Open All Tasks", Category: "Navigation"},
-		Keybinding{Key: ";/", Description: "Open Global Search", Category: "Navigation"},
+		Keybinding{Key: "ctrl+/", Description: "Open Global Search", Category: "Navigation"},
 		Keybinding{Key: ";W", Description: "Open Workflow Rules", Category: "Navigation"},
 		Keybinding{Key: ";o", Description: "Open Global Outliner", Category: "Navigation"},
 		Keybinding{Key: "ctrl+X", Description: "Switch project", Category: "Navigation"},

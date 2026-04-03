@@ -191,7 +191,7 @@ func getGlobalHelpItems() []HelpItem {
 		{Key: "esc", Description: "Go back / cancel", Category: "General"},
 		{Key: "ctrl+c", Description: "Quit application", Category: "General"},
 		{Key: "/", Description: "Search projects", Category: "Navigation"},
-		{Key: ";/", Description: "Global search", Category: "Navigation"},
+		{Key: "ctrl+/", Description: "Global search", Category: "Navigation"},
 		{Key: ":", Description: "Command palette", Category: "Navigation"},
 		{Key: "j/k", Description: "Move cursor down/up", Category: "Navigation"},
 		{Key: "↑/↓", Description: "Move cursor up/down", Category: "Navigation"},

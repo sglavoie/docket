@@ -31,7 +31,7 @@ func (m *AppModel) globalCommands() []Command {
 		{
 			Name:        "global search",
 			Description: "Search tasks across all projects",
-			Shortcut:    ";/",
+			Shortcut:    "ctrl+/",
 			Category:    CategorySearch,
 			Aliases:     []string{"find tasks", "search all"},
 			Handler: func() tea.Msg {
