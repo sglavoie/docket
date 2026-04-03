@@ -108,10 +108,10 @@ func flattenTaskTree(tasks []*models.Task, ancestorIsLast []bool, rows *[]outlin
 	}
 }
 
-// matchesSearch checks if a task matches the search query by fuzzy-matching
-// the title, tags, description, and comments.
+// matchesSearch parses structured filters from the query and fuzzy-matches
+// the remaining text against the task's title, tags, description, and comments.
 func matchesSearch(task *models.Task, query string) bool {
-	return TaskMatchesSearch(task, query)
+	return TaskMatchesStructuredSearch(task, query)
 }
 
 // flattenTaskTreeWithFolds recursively walks the task tree and produces a flat

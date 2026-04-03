@@ -283,7 +283,7 @@ func (m *ProjectTreeModel) markAncestorsAsContext(node *TreeNode, intrinsicVisib
 }
 
 func (m *ProjectTreeModel) matchesSearch(task *models.Task) bool {
-	return TaskMatchesSearch(task, m.SearchQuery())
+	return TaskMatchesStructuredSearch(task, m.SearchQuery())
 }
 
 // getSearchMatchPositions returns match positions for the title if there's a search query.
@@ -292,7 +292,10 @@ func (m *ProjectTreeModel) getSearchMatchPositions(task *models.Task) []int {
 	if m.SearchQuery() == "" {
 		return nil
 	}
-	query := strings.TrimSpace(m.SearchQuery())
+	query := strings.TrimSpace(ExtractSearchTextQuery(m.SearchQuery()))
+	if query == "" {
+		return nil
+	}
 	_, positions := fuzzy.ScoreTermsWithPositions(task.Title, query)
 	return positions
 }

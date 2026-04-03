@@ -32,3 +32,19 @@ func TaskMatchesSearch(task *models.Task, query string) bool {
 	}
 	return false
 }
+
+// TaskMatchesStructuredSearch parses structured filters from the query, applies
+// them, and then fuzzy-matches the remaining text portion.
+func TaskMatchesStructuredSearch(task *models.Task, query string) bool {
+	parsed := ParseSearchQuery(query)
+	if !TaskMatchesFilters(task, parsed) {
+		return false
+	}
+	return TaskMatchesSearch(task, parsed.TextQuery)
+}
+
+// ExtractSearchTextQuery returns only the text portion of a search query,
+// with all structured filter tokens removed.
+func ExtractSearchTextQuery(query string) string {
+	return ParseSearchQuery(query).TextQuery
+}

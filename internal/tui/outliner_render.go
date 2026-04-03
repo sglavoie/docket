@@ -484,7 +484,7 @@ func (m *OutlinerModel) renderOutlinerTreeContent(width int) string { //nolint:g
 		availableWidth := max(rowWidth-nonTitleWidth, 10)
 		truncatedTitle := truncateToVisualWidth(task.Title, availableWidth)
 		var title string
-		query := strings.TrimSpace(m.SearchQuery())
+		query := strings.TrimSpace(ExtractSearchTextQuery(m.SearchQuery()))
 		if query != "" {
 			_, positions := fuzzy.ScoreTermsWithPositions(truncatedTitle, query)
 			if len(positions) > 0 {
