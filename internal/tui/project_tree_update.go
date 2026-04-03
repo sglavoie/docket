@@ -88,9 +88,14 @@ func (m *ProjectTreeModel) handleConfirmation(msg tea.KeyPressMsg) (tea.Model, t
 			m.confirm.Cancel()
 			return m, m.deleteTask()
 		case "s", "S":
-			m.deleteTarget.ClearRecurrence()
+			// Stop recurrence but keep the task (don't delete)
+			task := m.deleteTarget
+			m.deleteTarget = nil
 			m.confirm.Cancel()
-			return m, m.deleteTask()
+			task.ClearRecurrence()
+			m.setUndoContext("Stop Recurrence", task.Title)
+			m.setStatus(fmt.Sprintf("Stopped recurrence on #%d", task.ShortID))
+			return m, m.saveAndRefresh()
 		case "n", "N", "esc":
 			m.confirm.Cancel()
 			m.deleteTarget = nil

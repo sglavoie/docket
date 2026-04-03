@@ -26,13 +26,27 @@ func (m *OutlinerModel) handleConfirmDialog(key string) (tea.Model, tea.Cmd) {
 			}
 			return m.executeDelete()
 		case "s", "S":
-			m.deleteTarget.ClearRecurrence()
+			// Stop recurrence but keep the task (don't delete)
+			task := m.deleteTarget
+			m.deleteTarget = nil
 			m.confirm.Cancel()
 			m.clearStatus()
+			task.ClearRecurrence()
 			if m.project == nil {
-				return m.crossExecuteDelete()
+				proj := m.crossFindProjectForTask(task.ID)
+				if proj == nil {
+					return m, nil
+				}
+				m.crossUndoCtx.Set("Stop Recurrence", task.Title)
+				m.crossUndoCtx.ProjectIDs = []string{proj.ID}
+				m.rebuildRows()
+				m.setStatus(fmt.Sprintf("Stopped recurrence on #%d", task.ShortID))
+				return m, m.crossSaveProject(proj)
 			}
-			return m.executeDelete()
+			m.setUndoContext("Stop Recurrence", task.Title)
+			m.rebuildRows()
+			m.setStatus(fmt.Sprintf("Stopped recurrence on #%d", task.ShortID))
+			return m, m.saveWithWorkflow()
 		case "n", "N", "esc":
 			m.confirm.Cancel()
 			m.clearStatus()
