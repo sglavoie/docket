@@ -572,9 +572,15 @@ func (m *AppModel) getCurrentCursorTask() *models.Task {
 		if m.projectTree != nil {
 			return m.projectTree.getCursorTask()
 		}
-	case ViewOutliner, ViewTemporaryOutliner:
+	case ViewOutliner:
 		if m.outliner != nil {
 			return m.outliner.getCursorTask()
+		}
+	case ViewTemporaryOutliner:
+		if v := m.views.Get(ViewTemporaryOutliner); v != nil {
+			if o, ok := v.(*OutlinerModel); ok {
+				return o.getCursorTask()
+			}
 		}
 	case ViewCrossProjectOutliner:
 		if m.crossOutliner != nil {
@@ -596,6 +602,12 @@ func (m *AppModel) hasActiveMultiSelect() bool {
 	}
 	if m.crossOutliner != nil && m.crossOutliner.multiSelectMode {
 		return true
+	}
+	// Check temporary outliner (not tracked in m.outliner)
+	if v := m.views.Get(ViewTemporaryOutliner); v != nil {
+		if o, ok := v.(*OutlinerModel); ok && o.multiSelectMode {
+			return true
+		}
 	}
 	return false
 }

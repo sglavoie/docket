@@ -190,15 +190,25 @@ func showTaskDependencies(project *models.Project, task *models.Task) {
 	fmt.Printf("#%d: %s\n", task.ShortID, task.Title)
 	fmt.Println(strings.Repeat("-", 40))
 
-	// Show what this task depends on
+	// Show what this task depends on (local + cross-project)
 	blockers := project.GetBlockingTasks(task)
-	if len(blockers) == 0 {
+	var crossProjectDeps []models.TaskRef
+	for _, depID := range task.DependsOn {
+		ref := models.ParseTaskRef(depID)
+		if ref.IsCrossProject() {
+			crossProjectDeps = append(crossProjectDeps, ref)
+		}
+	}
+	if len(blockers) == 0 && len(crossProjectDeps) == 0 {
 		fmt.Println("Depends on: (none)")
 	} else {
 		fmt.Println("Depends on:")
 		for _, b := range blockers {
 			status := b.Status.Icon()
 			fmt.Printf("  %s #%d: %s\n", status, b.ShortID, b.Title)
+		}
+		for _, ref := range crossProjectDeps {
+			fmt.Printf("  ⧉ %s (cross-project)\n", ref.String())
 		}
 	}
 
