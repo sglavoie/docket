@@ -393,3 +393,46 @@ func TestHandleViewMessagesCloseTaskAttachments(t *testing.T) {
 		t.Errorf("currentView should be Dashboard after closing attachments, got %v", app.currentView())
 	}
 }
+
+func TestGetCurrentCursorTask_TemporaryOutliner(t *testing.T) {
+	app, project := newTestAppModelWithProject()
+
+	// Create a temporary outliner and register it (simulating the drill-down
+	// from the cross-project outliner). The temporary outliner is NOT stored
+	// in m.outliner — it only lives in the view registry.
+	tempOutliner := NewOutlinerModel(project, app.config, app.configManager)
+	tempOutliner.SetSize(80, 22)
+	app.views.Register(ViewTemporaryOutliner, tempOutliner)
+	app.pushView(ViewTemporaryOutliner)
+
+	// getCurrentCursorTask must resolve via the registry, not m.outliner.
+	// Before the fix, m.outliner was nil so the result was always nil.
+	task := app.getCurrentCursorTask()
+
+	// If the outliner has rows with tasks, we should get a task back.
+	// If there are no rows (empty project), nil is acceptable.
+	if len(tempOutliner.rows) > 0 && !tempOutliner.rows[0].IsSectionHeader && !tempOutliner.rows[0].IsSeparator {
+		if task == nil {
+			t.Error("getCurrentCursorTask should return a task from the temporary outliner, got nil")
+		}
+	}
+
+	// Verify that m.outliner is still nil (not clobbered)
+	if app.outliner != nil {
+		t.Error("m.outliner should remain nil when using a temporary outliner")
+	}
+}
+
+func TestHasActiveMultiSelect_TemporaryOutliner(t *testing.T) {
+	app, project := newTestAppModelWithProject()
+
+	tempOutliner := NewOutlinerModel(project, app.config, app.configManager)
+	tempOutliner.SetSize(80, 22)
+	tempOutliner.multiSelectMode = true
+	app.views.Register(ViewTemporaryOutliner, tempOutliner)
+	app.pushView(ViewTemporaryOutliner)
+
+	if !app.hasActiveMultiSelect() {
+		t.Error("hasActiveMultiSelect should detect multi-select on a temporary outliner")
+	}
+}
