@@ -247,3 +247,119 @@ func TestParseMetadata_RecurrenceWeekdayCommas(t *testing.T) {
 		}
 	}
 }
+
+func TestParseMetadata_RecurrenceWithCommas(t *testing.T) {
+	metaStr := "id: t1, status: todo, priority: 2, recur: 2w:mon,wed,fri, tags: work"
+	task := &models.Task{}
+	warnings := ParseMetadata(task, metaStr)
+
+	if len(warnings) != 0 {
+		t.Errorf("got %d warnings, want 0", len(warnings))
+	}
+
+	if task.ID != "t1" {
+		t.Errorf("ID = %q, want %q", task.ID, "t1")
+	}
+
+	if task.Recurrence == nil {
+		t.Fatal("Recurrence is nil")
+	}
+
+	if task.Recurrence.Interval != 2 {
+		t.Errorf("Recurrence.Interval = %d, want 2", task.Recurrence.Interval)
+	}
+
+	if task.Recurrence.Unit != models.RecurrenceWeekly {
+		t.Errorf("Recurrence.Unit = %s, want %s", task.Recurrence.Unit, models.RecurrenceWeekly)
+	}
+
+	wantWeekdays := []int{1, 3, 5}
+	if !intSlicesEqual(task.Recurrence.Weekdays, wantWeekdays) {
+		t.Errorf("Recurrence.Weekdays = %v, want %v", task.Recurrence.Weekdays, wantWeekdays)
+	}
+
+	if !stringSlicesEqual(task.Tags, []string{"work"}) {
+		t.Errorf("Tags = %v, want [work]", task.Tags)
+	}
+}
+
+func TestFormatRecurrence(t *testing.T) {
+	tests := []struct {
+		name string
+		r    *models.RecurrencePattern
+		want string
+	}{
+		{
+			name: "nil recurrence",
+			r:    nil,
+			want: "",
+		},
+		{
+			name: "daily",
+			r: &models.RecurrencePattern{
+				Interval: 1,
+				Unit:     models.RecurrenceDaily,
+			},
+			want: "1d",
+		},
+		{
+			name: "every 3 days",
+			r: &models.RecurrencePattern{
+				Interval: 3,
+				Unit:     models.RecurrenceDaily,
+			},
+			want: "3d",
+		},
+		{
+			name: "weekly",
+			r: &models.RecurrencePattern{
+				Interval: 1,
+				Unit:     models.RecurrenceWeekly,
+			},
+			want: "1w",
+		},
+		{
+			name: "weekly with weekdays",
+			r: &models.RecurrencePattern{
+				Interval: 1,
+				Unit:     models.RecurrenceWeekly,
+				Weekdays: []int{1, 3, 5},
+			},
+			want: "1w:mon,wed,fri",
+		},
+		{
+			name: "every 2 weeks on specific days",
+			r: &models.RecurrencePattern{
+				Interval: 2,
+				Unit:     models.RecurrenceWeekly,
+				Weekdays: []int{0, 6},
+			},
+			want: "2w:sun,sat",
+		},
+		{
+			name: "monthly",
+			r: &models.RecurrencePattern{
+				Interval: 1,
+				Unit:     models.RecurrenceMonthly,
+			},
+			want: "1m",
+		},
+		{
+			name: "yearly",
+			r: &models.RecurrencePattern{
+				Interval: 1,
+				Unit:     models.RecurrenceYearly,
+			},
+			want: "1y",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := FormatRecurrence(tt.r)
+			if got != tt.want {
+				t.Errorf("FormatRecurrence() = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}

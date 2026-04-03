@@ -148,3 +148,10 @@ func assertTaskFields(t *testing.T, task, want *models.Task) {
 func containsString(s, substr string) bool {
 	return len(s) >= len(substr) && (s == substr || len(s) > 0 && (s[:len(substr)] == substr || containsString(s[1:], substr)))
 }
+
+func parseWrittenMetadata(task, parsed *models.Task) []ParseWarning {
+	metaStr := WriteMetadata(task)
+	content := metaStr[5 : len(metaStr)-4]
+
+	return ParseMetadata(parsed, content)
+}

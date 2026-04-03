@@ -2,6 +2,7 @@ package format
 
 import (
 	"testing"
+	"time"
 
 	"github.com/sglavoie/tt/internal/models"
 )
@@ -87,5 +88,61 @@ func TestRoundTrip_ChecklistAdversarial(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestChecklistRoundtripWithSemicolon(t *testing.T) {
+	task := &models.Task{
+		ID:       "abc",
+		Status:   models.StatusTodo,
+		Priority: 1,
+		Checklist: []models.ChecklistItem{
+			{Text: "Buy eggs; milk; bread", Done: false},
+			{Text: "Normal item", Done: true},
+			{Text: "Has [x] in text", Done: false},
+			{Text: "Has [ ] in text", Done: true},
+		},
+		CreatedAt: time.Date(2025, 1, 1, 0, 0, 0, 0, time.Local),
+	}
+
+	meta := WriteMetadata(task)
+	metaStr := meta[5 : len(meta)-4]
+
+	parsed := &models.Task{}
+	ParseMetadata(parsed, metaStr)
+
+	if len(parsed.Checklist) != len(task.Checklist) {
+		t.Fatalf("expected %d checklist items, got %d", len(task.Checklist), len(parsed.Checklist))
+	}
+
+	for i, want := range task.Checklist {
+		got := parsed.Checklist[i]
+		if got.Text != want.Text {
+			t.Errorf("item %d text: got %q, want %q", i, got.Text, want.Text)
+		}
+		if got.Done != want.Done {
+			t.Errorf("item %d done: got %v, want %v", i, got.Done, want.Done)
+		}
+	}
+}
+
+func TestChecklistEscapeUnescape(t *testing.T) {
+	tests := []struct {
+		input string
+	}{
+		{"simple text"},
+		{"has;semicolon"},
+		{"has [x] marker"},
+		{"has [ ] marker"},
+		{`has\backslash`},
+		{"combo; [x] and [ ] all;together"},
+	}
+
+	for _, tc := range tests {
+		escaped := escapeChecklistText(tc.input)
+		unescaped := unescapeChecklistText(escaped)
+		if unescaped != tc.input {
+			t.Errorf("roundtrip failed: input=%q, escaped=%q, unescaped=%q", tc.input, escaped, unescaped)
+		}
 	}
 }
