@@ -163,6 +163,59 @@ func TestTaskStateChangedDetectsDueDateChange(t *testing.T) {
 	}
 }
 
+// TestDeleteRecurringStopRecurrence_KeepsTask verifies that pressing "s" on a
+// delete-recurring confirmation stops recurrence but does NOT delete the task.
+// This was a bug where "s" cleared recurrence then called executeDelete().
+func TestDeleteRecurringStopRecurrence_KeepsTask(t *testing.T) {
+	project := &models.Project{
+		Name:        "Test",
+		ID:          "test-proj",
+		NextShortID: 2,
+	}
+	task, _ := models.NewTask("rec-task", 1, models.TaskTypeTask, "Recurring Task")
+	task.Recurrence = &models.RecurrencePattern{
+		Interval: 1,
+		Unit:     models.RecurrenceDaily,
+		Streak:   5,
+	}
+	project.Tasks = []*models.Task{task}
+
+	// Simulate showing the delete-recurring confirm dialog
+	m := &OutlinerModel{
+		PrimaryViewBundle: PrimaryViewBundle{
+			projectService: NewProjectService(),
+			bulkOp:         NewBulkOperationComponent(),
+			quickEdit:      NewQuickEditComponent(),
+		},
+		collapsedSections: make(map[string]bool),
+		expandedNodes:     make(map[string]bool),
+		MultiSelectState:  MultiSelectState{selectedTasks: make(map[string]bool)},
+		project:           project,
+	}
+	m.confirm.Show("delete-recurring", "Delete recurring task?")
+	m.deleteTarget = task
+
+	// Press "s" to stop recurrence
+	m.handleConfirmDialog("s")
+
+	// Task should still exist in the project
+	if len(project.Tasks) != 1 {
+		t.Fatalf("expected 1 task (kept), got %d (task was deleted)", len(project.Tasks))
+	}
+	// Recurrence should be cleared
+	if project.Tasks[0].Recurrence != nil {
+		t.Error("recurrence should be nil after stop recurrence")
+	}
+	// Confirm dialog should be dismissed
+	if m.confirm.IsActive() {
+		t.Error("confirm dialog should be dismissed")
+	}
+	// deleteTarget should be cleared
+	if m.deleteTarget != nil {
+		t.Error("deleteTarget should be nil after stop recurrence")
+	}
+}
+
 func TestTaskStateChangedDetectsDueDateAddedRemoved(t *testing.T) {
 	due := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
 
