@@ -135,6 +135,7 @@ func (m *ProjectTreeModel) handleSearchMode(msg tea.KeyPressMsg) (tea.Model, tea
 		m.updateVisibility()
 		visible := m.visibleNodes()
 		m.cursor = ClampCursor(m.cursor, len(visible))
+		DetectSearchAutocomplete(m.SearchAC(), m.SearchInputValue(), m.getAllTags(), m.project.GetSections())
 	})
 	if handled {
 		return model, cmd

@@ -293,6 +293,36 @@ func (m *OutlinerModel) activeCustomSectionFilter() string {
 	return ActiveCustomSectionFilter(m.project, m.customSectionTabIndex())
 }
 
+// searchTagCache returns all unique tags across the outliner's project(s).
+func (m *OutlinerModel) searchTagCache() []string {
+	if m.project != nil {
+		return CollectProjectTagNames(m.project.Tasks)
+	}
+	var allTasks []*models.Task
+	for _, p := range m.loadedProjects {
+		allTasks = append(allTasks, p.Tasks...)
+	}
+	return CollectProjectTagNames(allTasks)
+}
+
+// searchSectionCache returns all unique sections across the outliner's project(s).
+func (m *OutlinerModel) searchSectionCache() []string {
+	if m.project != nil {
+		return m.project.GetSections()
+	}
+	seen := make(map[string]bool)
+	var result []string
+	for _, p := range m.loadedProjects {
+		for _, s := range p.GetSections() {
+			if !seen[s] {
+				seen[s] = true
+				result = append(result, s)
+			}
+		}
+	}
+	return result
+}
+
 // contentHeight returns the number of task rows visible on screen,
 // accounting for the title header, optional tab bar, and optional breadcrumb line.
 func (m *OutlinerModel) contentHeight() int {

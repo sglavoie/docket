@@ -159,6 +159,9 @@ func (m *OutlinerModel) renderOutlinerTreeContent(width int) string { //nolint:g
 			emptyMsg = EmptyStateFiltered
 		}
 		result := header + "\n"
+		if m.ac.IsActive() {
+			result += m.ac.RenderDropdown("    ")
+		}
 		if m.project != nil {
 			if tabs := m.customSectionTabs(); tabs != nil {
 				result += RenderColoredTabBar(tabs, m.customSectionTabIndex(), width, 1, m.project.SectionColors) + "\n"
@@ -170,6 +173,13 @@ func (m *OutlinerModel) renderOutlinerTreeContent(width int) string { //nolint:g
 		result += MutedStyle.Render(emptyMsg)
 		if notice != "" {
 			result += "\n\n" + PreviewWarningStyle.Render(notice)
+		}
+		if m.IsSearchHelpVisible() {
+			helpHeight := m.contentHeight() / 2
+			if helpHeight < 1 {
+				helpHeight = 1
+			}
+			result += "\n" + renderSearchHelpPane(width, helpHeight)
 		}
 		return result
 	}
@@ -206,6 +216,11 @@ func (m *OutlinerModel) renderOutlinerTreeContent(width int) string { //nolint:g
 	}
 	b.WriteString("\n")
 
+	// Show autocomplete dropdown when active
+	if m.ac.IsActive() {
+		b.WriteString(m.ac.RenderDropdown("    "))
+	}
+
 	// Custom section tab bar (single-project only)
 	if m.project != nil {
 		if tabs := m.customSectionTabs(); tabs != nil {
@@ -221,6 +236,31 @@ func (m *OutlinerModel) renderOutlinerTreeContent(width int) string { //nolint:g
 
 	// Compute scroll window.
 	visibleRows := m.contentHeight()
+
+	// Reserve space for autocomplete dropdown
+	if m.ac.IsActive() {
+		acLines := min(len(m.ac.Items), acVisibleCount)
+		if m.ac.ViewportTop > 0 {
+			acLines++ // "↑ N more"
+		}
+		if m.ac.ViewportTop+acVisibleCount < len(m.ac.Items) {
+			acLines++ // "↓ N more"
+		}
+		visibleRows -= acLines
+		if visibleRows < 1 {
+			visibleRows = 1
+		}
+	}
+
+	// Reserve space for search help pane (takes half the content area)
+	var searchHelpHeight int
+	if m.IsSearchHelpVisible() {
+		searchHelpHeight = visibleRows / 2
+		visibleRows -= searchHelpHeight
+		if visibleRows < 1 {
+			visibleRows = 1
+		}
+	}
 
 	// Reserve space for inline preview lines when preview mode is on
 	var previewLines int
@@ -535,6 +575,12 @@ func (m *OutlinerModel) renderOutlinerTreeContent(width int) string { //nolint:g
 	// Attach scrollbar to the right edge when content overflows
 	scrollbar := RenderScrollbar(len(m.rows), visibleRows, startIdx)
 	b.WriteString(AttachScrollbar(rowBuilder.String(), scrollbar))
+
+	// Render search help pane below task list
+	if searchHelpHeight > 0 {
+		b.WriteString("\n")
+		b.WriteString(renderSearchHelpPane(width, searchHelpHeight))
+	}
 
 	if notice != "" {
 		b.WriteString("\n")

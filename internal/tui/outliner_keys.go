@@ -17,7 +17,10 @@ func (m *OutlinerModel) handleKeyMsg(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	}
 
 	// Handle search mode input first
-	if model, cmd, handled := m.HandleSearchMode(msg, m, m.rebuildRows); handled {
+	if model, cmd, handled := m.HandleSearchMode(msg, m, func() {
+		m.rebuildRows()
+		DetectSearchAutocomplete(m.SearchAC(), m.SearchInputValue(), m.searchTagCache(), m.searchSectionCache())
+	}); handled {
 		return model, cmd
 	}
 
