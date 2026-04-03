@@ -368,18 +368,23 @@ func runWorkflowEdit(cmd *cobra.Command, args []string) error { //nolint:gocyclo
 	fmt.Println()
 
 	// Show full details
-	triggers := modifiedRule.GetTriggers()
-	if len(triggers) > 1 {
-		logic := "AND"
-		if modifiedRule.GetTriggerLogic() == workflow.LogicOr {
-			logic = "OR"
+	if modifiedRule.TriggerGroup != nil {
+		fmt.Println("  Triggers (nested group):")
+		printTriggerGroup(modifiedRule.TriggerGroup, "    ")
+	} else {
+		triggers := modifiedRule.GetTriggers()
+		if len(triggers) > 1 {
+			logic := "AND"
+			if modifiedRule.GetTriggerLogic() == workflow.LogicOr {
+				logic = "OR"
+			}
+			fmt.Printf("  Trigger Logic: %s\n", logic)
 		}
-		fmt.Printf("  Trigger Logic: %s\n", logic)
-	}
 
-	fmt.Println("  Triggers:")
-	for i, trigger := range triggers {
-		fmt.Printf("    %d. %s %s %q\n", i, trigger.Field, trigger.Operation, trigger.Value)
+		fmt.Println("  Triggers:")
+		for i, trigger := range triggers {
+			fmt.Printf("    %d. %s %s %q\n", i, trigger.Field, trigger.Operation, trigger.Value)
+		}
 	}
 
 	fmt.Println()

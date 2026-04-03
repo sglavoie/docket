@@ -7,6 +7,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/sglavoie/tt/internal/tterrors"
+	"github.com/sglavoie/tt/internal/workflow"
 )
 
 var workflowShowCmd = &cobra.Command{
@@ -79,25 +80,28 @@ func runWorkflowShow(cmd *cobra.Command, args []string) error {
 		fmt.Printf("Triggered: never\n")
 	}
 
-	// Trigger logic
-	fmt.Println()
-	triggers := rule.GetTriggers()
-	if len(triggers) > 1 {
-		logic := "AND"
-		if rule.GetTriggerLogic() == "or" {
-			logic = "OR"
-		}
-		fmt.Printf("Trigger Logic: %s\n", logic)
-	}
-
 	// Triggers
 	fmt.Println()
-	fmt.Println("Triggers:")
-	if len(triggers) == 0 {
-		fmt.Println("  (none)")
+	if rule.TriggerGroup != nil {
+		fmt.Println("Triggers (nested group):")
+		printTriggerGroup(rule.TriggerGroup, "  ")
 	} else {
-		for i, trigger := range triggers {
-			fmt.Printf("  %d. %s %s %q\n", i, trigger.Field, trigger.Operation, trigger.Value)
+		triggers := rule.GetTriggers()
+		if len(triggers) > 1 {
+			logic := "AND"
+			if rule.GetTriggerLogic() == "or" {
+				logic = "OR"
+			}
+			fmt.Printf("Trigger Logic: %s\n", logic)
+		}
+
+		fmt.Println("Triggers:")
+		if len(triggers) == 0 {
+			fmt.Println("  (none)")
+		} else {
+			for i, trigger := range triggers {
+				fmt.Printf("  %d. %s %s %q\n", i, trigger.Field, trigger.Operation, trigger.Value)
+			}
 		}
 	}
 
@@ -136,4 +140,20 @@ func runWorkflowShow(cmd *cobra.Command, args []string) error {
 	fmt.Printf("Summary: %s\n", rule.Summary())
 
 	return nil
+}
+
+// printTriggerGroup recursively prints a TriggerGroup with indentation.
+func printTriggerGroup(group *workflow.TriggerGroup, indent string) {
+	logic := "AND"
+	if group.Logic == workflow.LogicOr {
+		logic = "OR"
+	}
+	fmt.Printf("%sLogic: %s\n", indent, logic)
+	for i, trigger := range group.Triggers {
+		fmt.Printf("%s%d. %s %s %q\n", indent, i, trigger.Field, trigger.Operation, trigger.Value)
+	}
+	for i, sub := range group.Groups {
+		fmt.Printf("%sSub-group %d:\n", indent, i)
+		printTriggerGroup(&sub, indent+"  ")
+	}
 }

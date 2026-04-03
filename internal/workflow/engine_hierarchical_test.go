@@ -285,3 +285,86 @@ func TestEvaluateRulesWithContext_HierarchicalTrigger(t *testing.T) {
 		t.Errorf("expected epic status to be done, got %s", epic.Status)
 	}
 }
+
+func TestMatchesRule_TriggerGroupWithHierarchicalTrigger_NilEvalCtx(t *testing.T) {
+	// Regression: matchesRule passes nil evalCtx to matchesTriggerGroup.
+	// If TriggerGroup contains hierarchical triggers like FieldIsBlocked or
+	// FieldBlockerCount, the code used to dereference evalCtx.TaskMap and panic.
+	task := &models.Task{ID: "task", Status: models.StatusTodo, DependsOn: []string{"blocker1"}}
+
+	tests := []struct {
+		name     string
+		rule     WorkflowRule
+		expected bool
+	}{
+		{
+			name: "TriggerGroup with FieldIsBlocked does not panic",
+			rule: WorkflowRule{
+				ID:      "r1",
+				Name:    "blocked check",
+				Enabled: true,
+				TriggerGroup: &TriggerGroup{
+					Logic: LogicAnd,
+					Triggers: []RuleTrigger{
+						{Field: FieldStatus, Operation: OpEquals, Value: "todo"},
+						{Field: FieldIsBlocked, Operation: OpEquals, Value: "true"},
+					},
+				},
+				Actions: []RuleAction{{ActionType: ActionAddTag, Value: "x"}},
+			},
+			// With nil taskMap, hasIncompleteBlockers returns false because
+			// the range over a nil map yields no iterations.
+			expected: false,
+		},
+		{
+			name: "TriggerGroup with FieldBlockerCount does not panic",
+			rule: WorkflowRule{
+				ID:      "r2",
+				Name:    "blocker count",
+				Enabled: true,
+				TriggerGroup: &TriggerGroup{
+					Logic: LogicOr,
+					Triggers: []RuleTrigger{
+						{Field: FieldBlockerCount, Operation: OpGreaterThan, Value: "0"},
+					},
+				},
+				Actions: []RuleAction{{ActionType: ActionAddTag, Value: "x"}},
+			},
+			// nil taskMap -> countIncompleteBlockers returns 0 -> 0 > 0 is false
+			expected: false,
+		},
+		{
+			name: "nested TriggerGroup with hierarchical trigger does not panic",
+			rule: WorkflowRule{
+				ID:      "r3",
+				Name:    "nested blocker",
+				Enabled: true,
+				TriggerGroup: &TriggerGroup{
+					Logic: LogicAnd,
+					Groups: []TriggerGroup{
+						{
+							Logic: LogicOr,
+							Triggers: []RuleTrigger{
+								{Field: FieldIsBlocked, Operation: OpEquals, Value: "false"},
+								{Field: FieldBlockerCount, Operation: OpEquals, Value: "0"},
+							},
+						},
+					},
+				},
+				Actions: []RuleAction{{ActionType: ActionAddTag, Value: "x"}},
+			},
+			// nil taskMap -> is_blocked=false (no blockers found) matches "false"=true
+			expected: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// This must not panic.
+			got := matchesRule(task, &tt.rule)
+			if got != tt.expected {
+				t.Errorf("matchesRule() = %v, want %v", got, tt.expected)
+			}
+		})
+	}
+}

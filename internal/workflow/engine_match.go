@@ -236,6 +236,16 @@ func hasTag(tags []string, tag string) bool {
 
 // matchesHierarchicalTrigger checks triggers that depend on parent/child relationships.
 func matchesHierarchicalTrigger(task *models.Task, trigger RuleTrigger, evalCtx *EvaluationContext) bool {
+	// Build a task map on the fly when evalCtx is nil (e.g., matchesRule /
+	// TestRule calls that lack full evaluation context).  Without this,
+	// FieldIsBlocked / FieldBlockerCount would nil-deref on evalCtx.TaskMap.
+	taskMap := func() map[string]*models.Task {
+		if evalCtx != nil {
+			return evalCtx.TaskMap
+		}
+		return nil
+	}()
+
 	switch trigger.Field {
 	case FieldParentStatus:
 		if task.Parent == nil {
@@ -274,11 +284,11 @@ func matchesHierarchicalTrigger(task *models.Task, trigger RuleTrigger, evalCtx 
 		return compareBool(allDone, trigger.Value)
 
 	case FieldIsBlocked:
-		blocked := hasIncompleteBlockers(task, evalCtx.TaskMap)
+		blocked := hasIncompleteBlockers(task, taskMap)
 		return compareBool(blocked, trigger.Value)
 
 	case FieldBlockerCount:
-		count := countIncompleteBlockers(task, evalCtx.TaskMap)
+		count := countIncompleteBlockers(task, taskMap)
 		return compareValues(strconv.Itoa(count), trigger.Operation, trigger.Value)
 
 	case FieldDependencyCount:

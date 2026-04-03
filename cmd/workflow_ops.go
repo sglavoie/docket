@@ -416,18 +416,37 @@ func formatGitStyleDiff(before, after *workflow.WorkflowRule) string {
 		lines = append(lines, fmt.Sprintf("+ Trigger Logic: %s", afterLogic))
 	}
 
-	// Trigger changes
-	beforeTriggers := before.GetTriggers()
-	afterTriggers := after.GetTriggers()
-	if !triggersEqual(beforeTriggers, afterTriggers) {
-		lines = append(lines, "")
-		lines = append(lines, "- Triggers:")
-		for i, t := range beforeTriggers {
-			lines = append(lines, fmt.Sprintf("-   %d. %s", i, t.String()))
+	// Trigger changes — compare TriggerGroup summaries when present,
+	// fall back to flat trigger comparison otherwise.
+	beforeHasGroup := before.TriggerGroup != nil
+	afterHasGroup := after.TriggerGroup != nil
+	if beforeHasGroup || afterHasGroup {
+		beforeSummary := ""
+		afterSummary := ""
+		if before.TriggerGroup != nil {
+			beforeSummary = before.TriggerGroup.Summary()
 		}
-		lines = append(lines, "+ Triggers:")
-		for i, t := range afterTriggers {
-			lines = append(lines, fmt.Sprintf("+   %d. %s", i, t.String()))
+		if after.TriggerGroup != nil {
+			afterSummary = after.TriggerGroup.Summary()
+		}
+		if beforeSummary != afterSummary {
+			lines = append(lines, "")
+			lines = append(lines, fmt.Sprintf("- Triggers: %s", beforeSummary))
+			lines = append(lines, fmt.Sprintf("+ Triggers: %s", afterSummary))
+		}
+	} else {
+		beforeTriggers := before.GetTriggers()
+		afterTriggers := after.GetTriggers()
+		if !triggersEqual(beforeTriggers, afterTriggers) {
+			lines = append(lines, "")
+			lines = append(lines, "- Triggers:")
+			for i, t := range beforeTriggers {
+				lines = append(lines, fmt.Sprintf("-   %d. %s", i, t.String()))
+			}
+			lines = append(lines, "+ Triggers:")
+			for i, t := range afterTriggers {
+				lines = append(lines, fmt.Sprintf("+   %d. %s", i, t.String()))
+			}
 		}
 	}
 
@@ -558,13 +577,19 @@ func collectValidationErrors(rule *workflow.WorkflowRule) []string {
 		errors = append(errors, "rule name cannot be empty")
 	}
 
-	triggers := rule.GetTriggers()
-	if len(triggers) == 0 {
-		errors = append(errors, "at least one trigger is required")
+	if rule.TriggerGroup != nil {
+		if err := rule.TriggerGroup.Validate(); err != nil {
+			errors = append(errors, fmt.Sprintf("trigger group: %s", err.Error()))
+		}
 	} else {
-		for i, trigger := range triggers {
-			if err := trigger.Validate(); err != nil {
-				errors = append(errors, fmt.Sprintf("trigger %d: %s", i, err.Error()))
+		triggers := rule.GetTriggers()
+		if len(triggers) == 0 {
+			errors = append(errors, "at least one trigger is required")
+		} else {
+			for i, trigger := range triggers {
+				if err := trigger.Validate(); err != nil {
+					errors = append(errors, fmt.Sprintf("trigger %d: %s", i, err.Error()))
+				}
 			}
 		}
 	}

@@ -127,6 +127,41 @@ func TestCollectValidationErrors(t *testing.T) {
 			},
 			wantCount: 1,
 		},
+		{
+			name: "valid rule with TriggerGroup instead of flat triggers",
+			rule: &workflow.WorkflowRule{
+				ID:   "test",
+				Name: "TriggerGroup Rule",
+				TriggerGroup: &workflow.TriggerGroup{
+					Logic: workflow.LogicAnd,
+					Triggers: []workflow.RuleTrigger{
+						{Field: workflow.FieldStatus, Operation: workflow.OpEquals, Value: "done"},
+						{Field: workflow.FieldTags, Operation: workflow.OpContains, Value: "release"},
+					},
+				},
+				Actions: []workflow.RuleAction{
+					{ActionType: workflow.ActionAddTag, Value: "archived"},
+				},
+			},
+			wantCount: 0,
+		},
+		{
+			name: "TriggerGroup with invalid trigger",
+			rule: &workflow.WorkflowRule{
+				ID:   "test",
+				Name: "Bad TriggerGroup",
+				TriggerGroup: &workflow.TriggerGroup{
+					Logic: workflow.LogicAnd,
+					Triggers: []workflow.RuleTrigger{
+						{Field: "", Operation: workflow.OpEquals, Value: "done"},
+					},
+				},
+				Actions: []workflow.RuleAction{
+					{ActionType: workflow.ActionAddTag, Value: "archived"},
+				},
+			},
+			wantCount: 1,
+		},
 	}
 
 	for _, tt := range tests {
