@@ -64,15 +64,15 @@ func (m *AppModel) View() (result tea.View) {
 		if caps, ok := currentView.(ViewCapabilities); ok && caps.IsFullHeight() {
 			// Still overlay the semicolon prefix popup on full-height views
 			if popup := m.renderSemicolonPrefixPopup(); popup != "" {
-				content = OverlayPopup(content, popup, m.width, m.height)
+				content = OverlayPopupDimmed(content, popup, m.width, m.height)
 			}
 			// Overlay quick note on full-height views
 			if popup := m.renderQuickNoteOverlay(); popup != "" {
-				content = OverlayPopup(content, popup, m.width, m.height)
+				content = OverlayPopupDimmed(content, popup, m.width, m.height)
 			}
 			// Overlay peek task overlay on full-height views
 			if popup := m.renderPeekOverlay(); popup != "" {
-				content = OverlayPopup(content, popup, m.width, m.height)
+				content = OverlayPopupDimmed(content, popup, m.width, m.height)
 			}
 			resultView.SetContent(m.applyBackground(content))
 			return resultView
@@ -97,7 +97,7 @@ func (m *AppModel) View() (result tea.View) {
 
 	// Overlay semicolon prefix popup if active (global, not view-specific)
 	if popup := m.renderSemicolonPrefixPopup(); popup != "" {
-		content = OverlayPopup(content, popup, m.width, targetContentHeight)
+		content = OverlayPopupDimmed(content, popup, m.width, targetContentHeight)
 	}
 
 	// Overlay quick-switch popup if active
@@ -117,7 +117,7 @@ func (m *AppModel) View() (result tea.View) {
 
 	// Overlay project cycle popup if active (bottom-left to avoid covering sidebar)
 	if popup := m.renderProjectCyclePopup(); popup != "" {
-		content = OverlayPopupBottomLeft(content, popup, m.width, targetContentHeight)
+		content = OverlayPopupBottomLeftDimmed(content, popup, m.width, targetContentHeight)
 	}
 
 	// Replace base content with task preview when pinned popup is active
@@ -144,12 +144,12 @@ func (m *AppModel) View() (result tea.View) {
 
 	// Overlay quick note popup if active
 	if popup := m.renderQuickNoteOverlay(); popup != "" {
-		content = OverlayPopup(content, popup, m.width, targetContentHeight)
+		content = OverlayPopupDimmed(content, popup, m.width, targetContentHeight)
 	}
 
 	// Overlay peek task detail if active
 	if popup := m.renderPeekOverlay(); popup != "" {
-		content = OverlayPopup(content, popup, m.width, targetContentHeight)
+		content = OverlayPopupDimmed(content, popup, m.width, targetContentHeight)
 	}
 
 	// Overlay confirm dialog last so it renders on top of all other popups
@@ -424,6 +424,20 @@ func (m *AppModel) renderStatusBar() string {
 	} else {
 		left = accentBarStyle.Render(status)
 	}
+
+	// Add filter pill if current view has active filters
+	if view := m.views.Get(currentView); view != nil {
+		if fp, ok := view.(ActiveFilterProvider); ok {
+			if count := fp.ActiveFilterCount(); count > 0 {
+				filterLabel := "filters"
+				if count == 1 {
+					filterLabel = "filter"
+				}
+				left += " " + FilterBadgeStyle.Render(fmt.Sprintf("%d %s", count, filterLabel))
+			}
+		}
+	}
+
 	right := HelpStyle.Render(help)
 
 	gap := max(m.width-lipgloss.Width(left)-lipgloss.Width(right), 1)

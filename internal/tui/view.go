@@ -78,6 +78,13 @@ type ViewExitResetter interface {
 	OnExit()
 }
 
+// ActiveFilterProvider is implemented by views that support filtering and can
+// report how many filters are currently active. Used by the status bar to show
+// a filter pill when filters are active.
+type ActiveFilterProvider interface {
+	ActiveFilterCount() int
+}
+
 // AccentColorSetter is implemented by views that support contextual accent color
 // injection from the app shell. BaseView provides the default implementation.
 type AccentColorSetter interface {

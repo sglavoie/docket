@@ -1,8 +1,5 @@
 package tui
 
-import (
-	"strings"
-)
 
 // renderCyclePreviewBackground renders a dimmed task tree of the highlighted
 // project as background content behind the cycle overlay popup.
@@ -20,13 +17,8 @@ func (m *AppModel) renderCyclePreviewBackground() string {
 
 	content := m.projectCyclePreview.View().Content
 
-	// Dim each line so the preview visually recedes behind the overlay
-	dim := DimStyle
-	lines := strings.Split(content, "\n")
-	for i, line := range lines {
-		lines[i] = dim.Render(line)
-	}
-	return strings.Join(lines, "\n")
+	// Dim content so the preview visually recedes behind the overlay
+	return DimContent(content)
 }
 
 // invalidateCyclePreview clears the cached preview tree.

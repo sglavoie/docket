@@ -9,6 +9,11 @@ func (m *OutlinerModel) clearActiveSavedFilter() {
 	m.activeCriteriaFilter = nil
 }
 
+// ActiveFilterCount returns the number of active filters for the status bar pill.
+func (m *OutlinerModel) ActiveFilterCount() int {
+	return len(m.activeFilterParts())
+}
+
 // activeFilterParts returns the list of active filter description strings.
 func (m *OutlinerModel) activeFilterParts() []string {
 	var parts []string

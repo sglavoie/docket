@@ -319,6 +319,16 @@ func (fm *FilterMixin) renderActiveFilterIndicator() string {
 	return renderCommonFilterIndicator(&fm.filter)
 }
 
+// ActiveFilterCount returns the number of active filters.
+// Implements ActiveFilterProvider. Views with extra filter fields override this.
+func (fm *FilterMixin) ActiveFilterCount() int {
+	count := len(commonFilterParts(&fm.filter))
+	if fm.activeCriteriaFilter != nil {
+		count++
+	}
+	return count
+}
+
 // SetCriteriaFilter sets a criteria-mode SavedFilter for per-task matching.
 func (fm *FilterMixin) SetCriteriaFilter(sf *config.SavedFilter) {
 	fm.activeCriteriaFilter = sf

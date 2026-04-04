@@ -40,6 +40,16 @@ func (m *FocusBoardModel) HasActiveFilters() bool {
 	return hasActiveCommonFilters(&m.filter) || m.searchQuery != ""
 }
 
+// ActiveFilterCount returns the number of active filters. Overrides FilterMixin
+// to include the search query in the count.
+func (m *FocusBoardModel) ActiveFilterCount() int {
+	count := m.FilterMixin.ActiveFilterCount()
+	if m.searchQuery != "" {
+		count++
+	}
+	return count
+}
+
 // ClearAllFilters resets all filters to their default state.
 func (m *FocusBoardModel) ClearAllFilters() {
 	clearCommonFilters(&m.filter)

@@ -204,6 +204,12 @@ func (m *AllTasksViewModel) HasActiveFilters() bool {
 	return hasActiveCommonFilters(&m.filter) || len(m.projectFilter) > 0
 }
 
+// ActiveFilterCount returns the number of active filters. Overrides FilterMixin
+// to include the project filter in the count.
+func (m *AllTasksViewModel) ActiveFilterCount() int {
+	return m.FilterMixin.ActiveFilterCount() + len(m.projectFilter)
+}
+
 // toggleProjectFilter toggles the project of the task under cursor in/out of the filter set.
 func (m *AllTasksViewModel) toggleProjectFilter() {
 	item := m.getTaskAtCursor()

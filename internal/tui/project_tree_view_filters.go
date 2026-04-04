@@ -186,6 +186,11 @@ func (m *ProjectTreeModel) renderFilterBar() string {
 	return result.String()
 }
 
+// ActiveFilterCount returns the number of active filters for the status bar pill.
+func (m *ProjectTreeModel) ActiveFilterCount() int {
+	return len(m.activeFilterParts())
+}
+
 // activeFilterParts returns the list of active filter description strings.
 func (m *ProjectTreeModel) activeFilterParts() []string {
 	var parts []string

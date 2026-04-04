@@ -55,9 +55,15 @@ func (m *AllTasksViewModel) View() tea.View {
 		return tea.NewView(b.String())
 	}
 
+	// Reserve one column for the scrollbar when content overflows.
+	lineWidth := m.Width()
+	if m.totalNavigableItems() > contentHeight {
+		lineWidth--
+	}
+
 	// Compute column layout from visible tasks for badge alignment.
 	var colLayout *ColumnLayout
-	if m.Width() >= MinColumnAlignWidth {
+	if lineWidth >= MinColumnAlignWidth {
 		var visibleTasks []*models.Task
 		for _, group := range m.groups {
 			if !m.collapsedGroups[group.Name] {
@@ -71,10 +77,10 @@ func (m *AllTasksViewModel) View() tea.View {
 
 	// Render groups with task lines
 	var lines []string
-	maxTitleLen := m.Width() - 50
+	maxTitleLen := lineWidth - 50
 	currentIndex := 0
 	cursorLineIdx := 0
-	separator := renderHorizontalDivider(m.Width())
+	separator := renderHorizontalDivider(lineWidth)
 
 	for i, group := range m.groups {
 		if i > 0 {
@@ -86,7 +92,7 @@ func (m *AllTasksViewModel) View() tea.View {
 		if headerSelected {
 			cursorLineIdx = len(lines)
 		}
-		lines = append(lines, m.renderGroupHeader(group.Name, len(group.Tasks), collapsed, headerSelected, m.Width()))
+		lines = append(lines, m.renderGroupHeader(group.Name, len(group.Tasks), collapsed, headerSelected, lineWidth))
 		currentIndex++
 
 		if !collapsed {
@@ -96,7 +102,7 @@ func (m *AllTasksViewModel) View() tea.View {
 					cursorLineIdx = len(lines)
 				}
 				isChecked := m.selectedTasks[item.Task.ID]
-				line := m.renderTaskLine(item, isSelected, isChecked, maxTitleLen, currentIndex, colLayout)
+				line := m.renderTaskLine(item, isSelected, isChecked, maxTitleLen, currentIndex, lineWidth, colLayout)
 				lines = append(lines, line)
 				currentIndex++
 			}
@@ -108,7 +114,7 @@ func (m *AllTasksViewModel) View() tea.View {
 		task, _ := m.getTaskRef()
 		if task != nil {
 			indent := "        " // align with cross-project task line content
-			pLines := inlinePreviewLines(task, indent, m.Width())
+			pLines := inlinePreviewLines(task, indent, lineWidth)
 			if len(pLines) > 0 {
 				insertAt := cursorLineIdx + 1
 				if insertAt <= len(lines) {
@@ -124,7 +130,9 @@ func (m *AllTasksViewModel) View() tea.View {
 		}
 	}
 
-	b.WriteString(strings.Join(applyPersistentScroll(lines, cursorLineIdx, contentHeight, &m.scrollOffset), "\n"))
+	scrolledLines := applyPersistentScroll(lines, cursorLineIdx, contentHeight, &m.scrollOffset)
+	scrollbar := RenderScrollbar(len(lines), contentHeight, m.scrollOffset)
+	b.WriteString(AttachScrollbar(strings.Join(scrolledLines, "\n"), scrollbar))
 
 	// Footer
 	footerLeft := "j/k nav · [/] tabs · Ctrl+G group · ,s/d/b/x status · 1-5 sort · v multi"
@@ -183,7 +191,7 @@ func (m *AllTasksViewModel) renderGroupHeader(name string, count int, collapsed 
 }
 
 // renderTaskLine renders a single task line.
-func (m *AllTasksViewModel) renderTaskLine(item CrossProjectTask, isSelected bool, isChecked bool, maxTitleLen int, rowIndex int, layout *ColumnLayout) string {
+func (m *AllTasksViewModel) renderTaskLine(item CrossProjectTask, isSelected bool, isChecked bool, maxTitleLen int, rowIndex int, lineWidth int, layout *ColumnLayout) string {
 	task := item.Task
 
 	// Multi-select checkbox
@@ -201,7 +209,7 @@ func (m *AllTasksViewModel) renderTaskLine(item CrossProjectTask, isSelected boo
 		dueStr = FormatRelativeDue(task.DueDate, true)
 	}
 
-	return RenderCrossProjectTaskLine(task, item.Project, m.config, isSelected, m.Width(), maxTitleLen, CrossProjectTaskLineOpts{
+	return RenderCrossProjectTaskLine(task, item.Project, m.config, isSelected, lineWidth, maxTitleLen, CrossProjectTaskLineOpts{
 		ShowTags:      true,
 		ShowScore:     true,
 		MaxProjectLen: 15,

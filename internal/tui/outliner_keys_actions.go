@@ -162,22 +162,53 @@ func (m *OutlinerModel) showDeleteConfirm(task *models.Task) {
 		m.confirm.Show("delete-recurring",
 			fmt.Sprintf("Delete recurring task #%d '%s'? (d)elete instance / (s)top recurrence / (n)o",
 				task.ShortID, task.Title))
-	} else {
-		m.confirm.Show("delete", fmt.Sprintf("Delete task #%d?", task.ShortID))
+		return
 	}
+
+	childCount := task.CountChildren()
+	detail := &ConfirmDetail{
+		Items:    []string{fmt.Sprintf("#%d %s (%s)", task.ShortID, task.Title, task.Type)},
+		UndoHint: true,
+	}
+	if childCount > 0 {
+		label := "subtask"
+		if childCount != 1 {
+			label = "subtasks"
+		}
+		detail.CascadeNote = fmt.Sprintf("%d %s will also be deleted", childCount, label)
+	}
+	m.confirm.ShowWithDetail("delete", "Delete this task?", detail)
 }
 
 // showBulkDeleteConfirm shows a confirmation dialog for deleting multiple selected tasks.
 func (m *OutlinerModel) showBulkDeleteConfirm() {
+	selected := m.getSelectedTasks()
 	totalChildren := 0
-	for _, task := range m.getSelectedTasks() {
+	for _, task := range selected {
 		totalChildren += task.CountChildren()
 	}
-	if totalChildren > 0 {
-		m.confirm.Show("bulk-delete", fmt.Sprintf("Delete %d selected tasks and %d children?", len(m.selectedTasks), totalChildren))
-	} else {
-		m.confirm.Show("bulk-delete", fmt.Sprintf("Delete %d selected tasks?", len(m.selectedTasks)))
+
+	const maxItems = 5
+	detail := &ConfirmDetail{
+		TotalCount: len(selected),
+		UndoHint:   true,
 	}
+	for i, task := range selected {
+		if i >= maxItems {
+			break
+		}
+		detail.Items = append(detail.Items, fmt.Sprintf("#%d %s", task.ShortID, task.Title))
+	}
+	if totalChildren > 0 {
+		label := "subtask"
+		if totalChildren != 1 {
+			label = "subtasks"
+		}
+		detail.CascadeNote = fmt.Sprintf("%d %s will also be deleted", totalChildren, label)
+	}
+
+	m.confirm.ShowWithDetail("bulk-delete",
+		fmt.Sprintf("Delete %d selected tasks?", len(selected)), detail)
 }
 
 // executeDelete removes the current deleteTarget task using shared helpers.

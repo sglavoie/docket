@@ -1,8 +1,5 @@
 package tui
 
-import (
-	"strings"
-)
 
 // renderPinnedPreviewBackground renders a dimmed task tree of the highlighted
 // pinned task's project as background content behind the pinned tasks popup.
@@ -30,12 +27,8 @@ func (m *AppModel) renderPinnedPreviewBackground() string {
 
 	content := m.pinnedPreview.View().Content
 
-	dim := DimStyle
-	lines := strings.Split(content, "\n")
-	for i, line := range lines {
-		lines[i] = dim.Render(line)
-	}
-	return strings.Join(lines, "\n")
+	// Dim content so the preview visually recedes behind the overlay
+	return DimContent(content)
 }
 
 // focusPinnedPreviewOnTask positions the preview cursor on the given task.

@@ -20,6 +20,26 @@ func OverlayPopupBottomLeft(base, popup string, baseWidth, baseHeight int) strin
 	return overlayPopup(base, popup, baseWidth, baseHeight, 1)
 }
 
+// DimContent applies DimStyle to every line of content, visually receding it
+// behind an overlay popup.
+func DimContent(content string) string {
+	lines := strings.Split(content, "\n")
+	for i, line := range lines {
+		lines[i] = DimStyle.Render(line)
+	}
+	return strings.Join(lines, "\n")
+}
+
+// OverlayPopupDimmed dims the base content before placing the popup at bottom-center.
+func OverlayPopupDimmed(base, popup string, baseWidth, baseHeight int) string {
+	return OverlayPopup(DimContent(base), popup, baseWidth, baseHeight)
+}
+
+// OverlayPopupBottomLeftDimmed dims the base content before placing the popup at bottom-left.
+func OverlayPopupBottomLeftDimmed(base, popup string, baseWidth, baseHeight int) string {
+	return OverlayPopupBottomLeft(DimContent(base), popup, baseWidth, baseHeight)
+}
+
 func overlayPopup(base, popup string, baseWidth, baseHeight, startCol int) string {
 	if popup == "" {
 		return base
