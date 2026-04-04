@@ -172,7 +172,7 @@ func (m *WeeklyReviewModel) renderAllSections() ([]string, int) {
 		if headerSelected {
 			cursorLineIndex = len(lines)
 		}
-		lines = append(lines, m.renderSectionHeader(section, count, collapsed, headerSelected))
+		lines = append(lines, m.renderSectionHeader(section, count, collapsed, headerSelected, m.width))
 		currentIndex++
 
 		// Section items (if not collapsed)
@@ -234,7 +234,7 @@ func (m *WeeklyReviewModel) renderSectionItem(section WeeklyReviewSection, index
 }
 
 // renderSectionHeader renders a section header.
-func (m *WeeklyReviewModel) renderSectionHeader(section WeeklyReviewSection, count int, collapsed bool, isSelected bool) string {
+func (m *WeeklyReviewModel) renderSectionHeader(section WeeklyReviewSection, count int, collapsed bool, isSelected bool, width int) string {
 	var style lipgloss.Style
 	switch section {
 	case WeeklySectionStaleProjects, WeeklySectionStaleTasks:
@@ -256,7 +256,7 @@ func (m *WeeklyReviewModel) renderSectionHeader(section WeeklyReviewSection, cou
 	if m.reviewedSections[section] {
 		checkbox = "[x] "
 	}
-	return renderCollapsibleHeader(checkbox+getWeeklySectionName(section), count, collapsed, isSelected, m.cursorFlash, style)
+	return renderCollapsibleHeader(checkbox+getWeeklySectionName(section), count, collapsed, isSelected, m.cursorFlash, style, width)
 }
 
 // renderProjectLine renders a single project line with metric badges.

@@ -119,7 +119,7 @@ func renderChecklistIndicator(task *models.Task) string {
 	return MutedStyle.Render(fmt.Sprintf("✅%d/%d", completed, len(task.Checklist)))
 }
 
-// renderProgressFraction renders a compact [done/total] fraction for parent tasks.
+// renderProgressFraction renders an inline progress bar + fraction for parent tasks.
 // Returns an empty string if the task has no children.
 func renderProgressFraction(task *models.Task) string {
 	if !task.HasProgressChildren() {
@@ -131,7 +131,14 @@ func renderProgressFraction(task *models.Task) string {
 			completed++
 		}
 	}
-	return MutedStyle.Render(fmt.Sprintf("[%d/%d]", completed, len(task.Children)))
+	total := len(task.Children)
+	percent := float64(completed) / float64(total) * 100
+	bar := "[" + RenderProgressBar(percent, 5) + "]"
+	fraction := fmt.Sprintf("%d/%d", completed, total)
+	if completed == total {
+		return bar + " " + SuccessStyle.Render(fraction)
+	}
+	return bar + " " + MutedStyle.Render(fraction)
 }
 
 // renderDependencyIndicators renders compact dependency arrow indicators.

@@ -119,7 +119,7 @@ func (m *PriorityViewModel) renderAllGroups(currentIndex *int) ([]string, int) {
 	overdue, today, thisWeek, later, backlog, waitingOn := m.filteredGroupsWithSubTab()
 
 	if len(overdue) > 0 {
-		lines = append(lines, renderGroupHeader("OVERDUE", len(overdue), true))
+		lines = append(lines, renderGroupHeader("OVERDUE", len(overdue), true, m.Width()))
 		lines = append(lines, m.renderGroup(overdue, currentIndex, true, &cursorLineIdx, len(lines))...)
 		hasContent = true
 	}
@@ -128,7 +128,7 @@ func (m *PriorityViewModel) renderAllGroups(currentIndex *int) ([]string, int) {
 		if hasContent {
 			lines = append(lines, separator)
 		}
-		lines = append(lines, renderGroupHeader("DUE TODAY", len(today), false))
+		lines = append(lines, renderGroupHeader("DUE TODAY", len(today), false, m.Width()))
 		lines = append(lines, m.renderGroup(today, currentIndex, false, &cursorLineIdx, len(lines))...)
 		hasContent = true
 	}
@@ -137,7 +137,7 @@ func (m *PriorityViewModel) renderAllGroups(currentIndex *int) ([]string, int) {
 		if hasContent {
 			lines = append(lines, separator)
 		}
-		lines = append(lines, renderGroupHeader("THIS WEEK", len(thisWeek), false))
+		lines = append(lines, renderGroupHeader("THIS WEEK", len(thisWeek), false, m.Width()))
 		lines = append(lines, m.renderGroup(thisWeek, currentIndex, false, &cursorLineIdx, len(lines))...)
 		hasContent = true
 	}
@@ -146,7 +146,7 @@ func (m *PriorityViewModel) renderAllGroups(currentIndex *int) ([]string, int) {
 		if hasContent {
 			lines = append(lines, separator)
 		}
-		lines = append(lines, renderGroupHeader("LATER", len(later), false))
+		lines = append(lines, renderGroupHeader("LATER", len(later), false, m.Width()))
 		lines = append(lines, m.renderGroup(later, currentIndex, false, &cursorLineIdx, len(lines))...)
 		hasContent = true
 	}
@@ -166,7 +166,7 @@ func (m *PriorityViewModel) renderAllGroups(currentIndex *int) ([]string, int) {
 		}
 		// In Blocked tab, tasks are navigable (rendered as regular tasks)
 		if m.tabs.Active == priorityTabBlocked {
-			lines = append(lines, renderGroupHeader("BLOCKED / WAITING", len(waitingOn), false))
+			lines = append(lines, renderGroupHeader("BLOCKED / WAITING", len(waitingOn), false, m.Width()))
 			lines = append(lines, m.renderGroup(waitingOn, currentIndex, false, &cursorLineIdx, len(lines))...)
 		} else {
 			lines = append(lines, m.renderWaitingOnHeader())

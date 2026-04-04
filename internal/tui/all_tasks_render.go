@@ -70,7 +70,7 @@ func (m *AllTasksViewModel) View() tea.View {
 		if headerSelected {
 			cursorLineIdx = len(lines)
 		}
-		lines = append(lines, m.renderGroupHeader(group.Name, len(group.Tasks), collapsed, headerSelected))
+		lines = append(lines, m.renderGroupHeader(group.Name, len(group.Tasks), collapsed, headerSelected, m.Width()))
 		currentIndex++
 
 		if !collapsed {
@@ -162,8 +162,8 @@ var AllTasksNavigationPrefixHints = []PrefixHint{
 }
 
 // renderGroupHeader renders a group header with task count and collapse indicator.
-func (m *AllTasksViewModel) renderGroupHeader(name string, count int, collapsed bool, isSelected bool) string {
-	return renderCollapsibleHeader(name, count, collapsed, isSelected, m.cursorFlash, SectionHeaderStyle)
+func (m *AllTasksViewModel) renderGroupHeader(name string, count int, collapsed bool, isSelected bool, width int) string {
+	return renderCollapsibleHeader(name, count, collapsed, isSelected, m.cursorFlash, SectionHeaderStyle, width)
 }
 
 // renderTaskLine renders a single task line.

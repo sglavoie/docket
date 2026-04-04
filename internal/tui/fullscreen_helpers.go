@@ -642,17 +642,26 @@ func FormatTimestampLabeled(label string, t time.Time) string {
 }
 
 // renderGroupHeader renders a group header with count, using overdue styling when appropriate.
-func renderGroupHeader(name string, count int, isOverdue bool) string {
+// If width > 0, a trailing horizontal rule fills the remaining line width.
+func renderGroupHeader(name string, count int, isOverdue bool, width int) string {
 	header := fmt.Sprintf("%s (%d)", name, count)
+	var styled string
 	if isOverdue {
-		return OverdueStyle.Bold(true).Render(header)
+		styled = OverdueStyle.Bold(true).Render(header)
+	} else {
+		styled = GroupHeaderStyle.Render(header)
 	}
-	return GroupHeaderStyle.Render(header)
+	visibleWidth := lipgloss.Width(styled)
+	if width > visibleWidth+2 {
+		styled += " " + MutedStyle.Render(strings.Repeat("─", width-visibleWidth-1))
+	}
+	return styled
 }
 
 // renderCollapsibleHeader renders a collapsible section/group header with cursor
 // indicator, collapse toggle, name, count, and selection highlight.
-func renderCollapsibleHeader(name string, count int, collapsed, isSelected, flash bool, style lipgloss.Style) string {
+// If width > 0, a trailing horizontal rule fills the remaining line width.
+func renderCollapsibleHeader(name string, count int, collapsed, isSelected, flash bool, style lipgloss.Style, width int) string {
 	indicator := "▼"
 	if collapsed {
 		indicator = "▶"
@@ -660,6 +669,10 @@ func renderCollapsibleHeader(name string, count int, collapsed, isSelected, flas
 	cursor := "  "
 	header := fmt.Sprintf("%s%s %s (%d)", cursor, indicator, name, count)
 	styled := style.Bold(true).Render(header)
+	visibleWidth := lipgloss.Width(styled)
+	if width > visibleWidth+2 {
+		styled += " " + MutedStyle.Render(strings.Repeat("─", width-visibleWidth-1))
+	}
 	if isSelected {
 		if flash {
 			return SelectedFlashLine(styled, 0)

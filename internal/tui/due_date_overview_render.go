@@ -123,7 +123,7 @@ func (m *DueDateOverviewModel) renderAllGroups(currentIndex *int, cursorLineIdx 
 	overdue, today, thisWeek, later := m.visibleGroups()
 
 	if len(overdue) > 0 {
-		lines = append(lines, renderGroupHeader("Overdue", len(overdue), true))
+		lines = append(lines, renderGroupHeader("Overdue", len(overdue), true, m.Width()))
 		lines = append(lines, m.renderGroup(overdue, currentIndex, cursorLineIdx, len(lines))...)
 		hasContent = true
 	}
@@ -132,7 +132,7 @@ func (m *DueDateOverviewModel) renderAllGroups(currentIndex *int, cursorLineIdx 
 		if hasContent {
 			lines = append(lines, separator)
 		}
-		lines = append(lines, renderGroupHeader("Today", len(today), false))
+		lines = append(lines, renderGroupHeader("Today", len(today), false, m.Width()))
 		lines = append(lines, m.renderGroup(today, currentIndex, cursorLineIdx, len(lines))...)
 		hasContent = true
 	}
@@ -141,7 +141,7 @@ func (m *DueDateOverviewModel) renderAllGroups(currentIndex *int, cursorLineIdx 
 		if hasContent {
 			lines = append(lines, separator)
 		}
-		lines = append(lines, renderGroupHeader("This Week", len(thisWeek), false))
+		lines = append(lines, renderGroupHeader("This Week", len(thisWeek), false, m.Width()))
 		lines = append(lines, m.renderGroup(thisWeek, currentIndex, cursorLineIdx, len(lines))...)
 		hasContent = true
 	}
@@ -150,7 +150,7 @@ func (m *DueDateOverviewModel) renderAllGroups(currentIndex *int, cursorLineIdx 
 		if hasContent {
 			lines = append(lines, separator)
 		}
-		lines = append(lines, renderGroupHeader("Later", len(later), false))
+		lines = append(lines, renderGroupHeader("Later", len(later), false, m.Width()))
 		lines = append(lines, m.renderGroup(later, currentIndex, cursorLineIdx, len(lines))...)
 	}
 

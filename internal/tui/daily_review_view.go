@@ -162,7 +162,7 @@ func (m *DailyReviewModel) renderAllSections() ([]string, int) {
 		if headerSelected {
 			cursorLineIndex = len(lines)
 		}
-		lines = append(lines, m.renderSectionHeader(section, len(tasks), collapsed, headerSelected))
+		lines = append(lines, m.renderSectionHeader(section, len(tasks), collapsed, headerSelected, m.width))
 		currentIndex++
 
 		// Section tasks (if not collapsed)
@@ -200,7 +200,7 @@ func (m *DailyReviewModel) renderAllSections() ([]string, int) {
 }
 
 // renderSectionHeader renders a section header with collapse indicator.
-func (m *DailyReviewModel) renderSectionHeader(section DailyReviewSection, count int, collapsed bool, isSelected bool) string {
+func (m *DailyReviewModel) renderSectionHeader(section DailyReviewSection, count int, collapsed bool, isSelected bool, width int) string {
 	var style lipgloss.Style
 	switch section {
 	case SectionOverdue:
@@ -220,7 +220,7 @@ func (m *DailyReviewModel) renderSectionHeader(section DailyReviewSection, count
 	default:
 		style = SectionHeaderStyle
 	}
-	return renderCollapsibleHeader(getSectionName(section), count, collapsed, isSelected, m.cursorFlash, style)
+	return renderCollapsibleHeader(getSectionName(section), count, collapsed, isSelected, m.cursorFlash, style, width)
 }
 
 // renderTaskLine renders a single task line.
