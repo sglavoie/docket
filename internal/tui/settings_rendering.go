@@ -99,6 +99,8 @@ func (m *SettingsModel) focusLineInContent() int {
 		}
 	case 8:
 		return 3
+	case 9:
+		return 0
 	}
 	return 0
 }
@@ -124,6 +126,8 @@ func (m *SettingsModel) View() tea.View {
 		content = m.renderNotificationsTab()
 	case 8:
 		content = m.renderStagesTab()
+	case 9:
+		content = m.renderAppearanceTab()
 	}
 
 	contentLines := strings.Split(content, "\n")

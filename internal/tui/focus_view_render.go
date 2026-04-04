@@ -6,8 +6,9 @@ import (
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
-
 	"charm.land/lipgloss/v2"
+
+	"github.com/sglavoie/tt/internal/models"
 )
 
 func (m *FocusViewModel) View() tea.View { //nolint:gocyclo
@@ -68,11 +69,11 @@ func (m *FocusViewModel) View() tea.View { //nolint:gocyclo
 
 	switch m.tabs.Active {
 	case focusTabQueue:
-		lines = m.renderQueueLines()
+		lines, _ = m.renderQueueLines()
 	case focusTabSuggested:
-		lines = m.renderSuggestedLines()
+		lines, _ = m.renderSuggestedLines()
 	default:
-		lines = m.renderStandardLines()
+		lines, _ = m.renderStandardLines()
 	}
 
 	if len(lines) == 0 {
@@ -154,24 +155,29 @@ func (m *FocusViewModel) View() tea.View { //nolint:gocyclo
 }
 
 // renderQueueLines renders the Queue tab with numbered items.
-func (m *FocusViewModel) renderQueueLines() []string {
+func (m *FocusViewModel) renderQueueLines() ([]string, int) {
 	var lines []string
 	maxTitleLen := max(m.width-FocusViewQueueTitlePadding, FocusViewMinTitleWidth)
+	layout := m.computeColumnLayout()
+	rowIndex := 0
 
 	for i, ft := range m.filtered {
 		isSelected := i == m.cursor
 		// Number prefix for queue items
 		numPrefix := MutedStyle.Render(fmt.Sprintf("%d. ", i+1))
-		line := m.renderTaskLineWithPrefix(ft, isSelected, maxTitleLen, numPrefix)
+		line := m.renderTaskLineWithPrefix(ft, isSelected, maxTitleLen, numPrefix, layout, rowIndex)
 		lines = append(lines, line)
+		rowIndex++
 	}
-	return lines
+	return lines, rowIndex
 }
 
 // renderSuggestedLines renders the Suggested tab with two-line format (task + reason).
-func (m *FocusViewModel) renderSuggestedLines() []string {
+func (m *FocusViewModel) renderSuggestedLines() ([]string, int) {
 	var lines []string
 	maxTitleLen := max(m.width-FocusViewQueueTitlePadding, FocusViewMinTitleWidth)
+	layout := m.computeColumnLayout()
+	rowIndex := 0
 
 	// Build reason lookup map to avoid O(n) scan per filtered task
 	reasonByID := make(map[string]string, len(m.ranked))
@@ -198,28 +204,32 @@ func (m *FocusViewModel) renderSuggestedLines() []string {
 			starShown = true
 		}
 
-		line := m.renderTaskLineWithPrefix(ft, isSelected, maxTitleLen, prefix)
+		line := m.renderTaskLineWithPrefix(ft, isSelected, maxTitleLen, prefix, layout, rowIndex)
 		lines = append(lines, line)
+		rowIndex++
 
 		if reason := reasonByID[ft.Task.ID]; reason != "" {
 			reasonLine := "    " + MutedStyle.Render(reason)
 			lines = append(lines, reasonLine)
 		}
 	}
-	return lines
+	return lines, rowIndex
 }
 
 // renderStandardLines renders the By Project and By Due Date tabs.
-func (m *FocusViewModel) renderStandardLines() []string {
+func (m *FocusViewModel) renderStandardLines() ([]string, int) {
 	var lines []string
 	maxTitleLen := max(m.width-FocusViewStandardTitlePadding, FocusViewMinTitleWidth)
+	layout := m.computeColumnLayout()
+	rowIndex := 0
 
 	for i, ft := range m.filtered {
 		isSelected := i == m.cursor
-		line := m.renderTaskLine(ft, isSelected, maxTitleLen)
+		line := m.renderTaskLineWithPrefix(ft, isSelected, maxTitleLen, "", layout, rowIndex)
 		lines = append(lines, line)
+		rowIndex++
 	}
-	return lines
+	return lines, rowIndex
 }
 
 // renderTabBar renders the tab bar for filtering.
@@ -262,13 +272,21 @@ var FocusViewNavigationPrefixHints = []PrefixHint{
 	{Key: "p", Description: "go to project", Detail: "Navigate to project"},
 }
 
-// renderTaskLine renders a single task line.
-func (m *FocusViewModel) renderTaskLine(ft FocusTask, isSelected bool, maxTitleLen int) string {
-	return m.renderTaskLineWithPrefix(ft, isSelected, maxTitleLen, "")
+// computeColumnLayout builds a ColumnLayout from the current filtered task list.
+// Returns nil when the terminal is too narrow for alignment.
+func (m *FocusViewModel) computeColumnLayout() *ColumnLayout {
+	if m.width < MinColumnAlignWidth {
+		return nil
+	}
+	tasks := make([]*models.Task, 0, len(m.filtered))
+	for _, ft := range m.filtered {
+		tasks = append(tasks, ft.Task)
+	}
+	return ComputeTaskLineColumnLayout(tasks, false)
 }
 
 // renderTaskLineWithPrefix renders a single task line with an optional prefix.
-func (m *FocusViewModel) renderTaskLineWithPrefix(ft FocusTask, isSelected bool, maxTitleLen int, prefix string) string {
+func (m *FocusViewModel) renderTaskLineWithPrefix(ft FocusTask, isSelected bool, maxTitleLen int, prefix string, layout *ColumnLayout, rowIndex int) string {
 	task := ft.Task
 
 	dueStr := ""
@@ -281,5 +299,7 @@ func (m *FocusViewModel) renderTaskLineWithPrefix(ft FocusTask, isSelected bool,
 		Prefix:   prefix,
 		DueStr:   dueStr,
 		Flash:    m.cursorFlash,
+		Layout:   layout,
+		RowIndex: rowIndex,
 	})
 }

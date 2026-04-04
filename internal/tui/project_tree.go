@@ -186,6 +186,11 @@ type ProjectTreeModel struct {
 
 	// Inline preview mode: show description/checklist below cursor task
 	previewMode bool
+
+	// colLayout is computed once before each render pass and used by
+	// renderNodeWithWidth to align badge columns across visible rows.
+	// Nil when column alignment is disabled (e.g., narrow terminals).
+	colLayout *ColumnLayout
 }
 
 // primaryProjectView interface implementation for shared key dispatch.

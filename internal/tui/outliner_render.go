@@ -281,6 +281,12 @@ func (m *OutlinerModel) renderOutlinerTreeContent(width int) string { //nolint:g
 		rowWidth = width - 1
 	}
 
+	// Compute column layout for alignment (single-project only; skip narrow terminals).
+	var colLayout *ColumnLayout
+	if m.project != nil && rowWidth >= MinColumnAlignWidth {
+		colLayout = ComputeOutlinerColumnLayout(m.rows[startIdx:endIdx], m.columnConfig)
+	}
+
 	var rowBuilder strings.Builder
 	for i := startIdx; i < endIdx; i++ {
 		row := m.rows[i]
@@ -336,6 +342,8 @@ func (m *OutlinerModel) renderOutlinerTreeContent(width int) string { //nolint:g
 				} else {
 					line = SelectedLine(line, rowWidth)
 				}
+			} else {
+				line = ZebraLine(line, rowWidth, i)
 			}
 
 			rowBuilder.WriteString(line)
@@ -376,8 +384,10 @@ func (m *OutlinerModel) renderOutlinerTreeContent(width int) string { //nolint:g
 		}
 
 		stageBadge := GetStageBadge(task.Stage)
-		stageSegment := ""
-		if stageBadge != "" {
+		var stageSegment string
+		if colLayout != nil && colLayout.HasStage {
+			stageSegment = PadBadge(stageBadge, colLayout.StageWidth) + " "
+		} else if stageBadge != "" {
 			stageSegment = stageBadge + " "
 		}
 
@@ -417,8 +427,14 @@ func (m *OutlinerModel) renderOutlinerTreeContent(width int) string { //nolint:g
 		orgGroup := JoinGroupParts(orgParts...)
 
 		// Priority segment: rendered before title (like TaskLine.Render)
-		prioritySegment := ""
-		if m.columnConfig.ShouldShowPriority(task.Priority) {
+		var prioritySegment string
+		if colLayout != nil && colLayout.HasPriority {
+			var priorityBadge string
+			if m.columnConfig.ShouldShowPriority(task.Priority) {
+				priorityBadge = renderPriorityBadge(task.Priority)
+			}
+			prioritySegment = PadBadge(priorityBadge, colLayout.PriorityWidth) + " "
+		} else if m.columnConfig.ShouldShowPriority(task.Priority) {
 			prioritySegment = renderPriorityBadge(task.Priority) + " "
 		}
 
@@ -512,12 +528,24 @@ func (m *OutlinerModel) renderOutlinerTreeContent(width int) string { //nolint:g
 			indicators = " " + indicators
 		}
 
+		// When column layout is active, pad the tree prefix and always reserve
+		// 2 chars for the fold indicator so typeIcon starts at the same column.
+		var prefixStr string
+		if colLayout != nil {
+			prefixStr = MutedStyle.Render(PadBadge(row.prefix, colLayout.PrefixWidth))
+			if foldIndicator == "" {
+				foldIndicator = "  " // reserve fold indicator slot for leaf nodes
+			}
+		} else {
+			prefixStr = MutedStyle.Render(row.prefix)
+		}
+
 		// Truncate title to fit available width.
 		// Account for every non-title component plus the two literal spaces in the format string.
 		// The EA delta compensates for terminals that render East Asian Ambiguous
 		// characters (box-drawing, geometric shapes, middle dots) at double width.
 		nonTitleWidth := lipgloss.Width(cursorPrefix) + lipgloss.Width(checkbox) +
-			lipgloss.Width(row.prefix) + lipgloss.Width(foldIndicator) +
+			lipgloss.Width(prefixStr) + lipgloss.Width(foldIndicator) +
 			lipgloss.Width(projBadge) + lipgloss.Width(typeIcon) + 1 +
 			lipgloss.Width(stageSegment) + lipgloss.Width(statusIcon) + 1 +
 			lipgloss.Width(prioritySegment) + lipgloss.Width(indicators)
@@ -536,13 +564,13 @@ func (m *OutlinerModel) renderOutlinerTreeContent(width int) string { //nolint:g
 			title = titleStyle.Render(truncatedTitle)
 		}
 
-		line := fmt.Sprintf("%s%s%s%s%s%s %s%s %s%s%s",
+		line := fmt.Sprintf("%s%s%s%s%s%s %s %s%s%s%s",
 			cursorPrefix,
 			checkbox,
-			MutedStyle.Render(row.prefix),
+			prefixStr,
 			foldIndicator,
 			projBadge,
-			typeIcon, stageSegment, statusIcon, prioritySegment, title, indicators)
+			typeIcon, statusIcon, prioritySegment, stageSegment, title, indicators)
 
 		if task.Dimmed && !selected {
 			line = DimLine(line)
@@ -556,6 +584,8 @@ func (m *OutlinerModel) renderOutlinerTreeContent(width int) string { //nolint:g
 			} else {
 				line = SelectedLine(line, rowWidth)
 			}
+		} else if !task.Dimmed && !selected {
+			line = ZebraLine(line, rowWidth, i)
 		}
 
 		rowBuilder.WriteString(line)

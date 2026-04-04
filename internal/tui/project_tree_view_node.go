@@ -19,8 +19,15 @@ func (m *ProjectTreeModel) renderNodeWithWidth(node *TreeNode, selected bool, in
 		return m.renderQuickEditNode(node, maxWidth)
 	}
 
-	// Build indent using tree connectors (├── , └── , │   )
-	indent := MutedStyle.Render(node.TreePrefix)
+	// Build indent using tree connectors (├── , └── , │   ).
+	// When column layout is active, pad prefix to the maximum prefix width so
+	// typeIcon starts at the same column on every visible row.
+	var indent string
+	if m.colLayout != nil {
+		indent = MutedStyle.Render(PadBadge(node.TreePrefix, m.colLayout.PrefixWidth))
+	} else {
+		indent = MutedStyle.Render(node.TreePrefix)
+	}
 
 	// Expand/collapse indicator (only show if node has filtered children)
 	expandIcon := "  "
@@ -70,15 +77,34 @@ func (m *ProjectTreeModel) renderNodeWithWidth(node *TreeNode, selected bool, in
 	}
 
 	stageBadge := GetStageBadge(task.Stage)
-	stageSegment := ""
-	if stageBadge != "" {
+	var stageSegment string
+	if m.colLayout != nil && m.colLayout.HasStage {
+		stageSegment = PadBadge(stageBadge, m.colLayout.StageWidth) + " "
+	} else if stageBadge != "" {
 		stageSegment = stageBadge + " "
+	}
+
+	// Priority segment (inline, before stage)
+	var prioritySegment string
+	if m.colLayout != nil && m.colLayout.HasPriority {
+		var priorityBadge string
+		if m.columnConfig.ShouldShowPriority(task.Priority) {
+			priorityBadge = renderPriorityBadge(task.Priority)
+		}
+		prioritySegment = PadBadge(priorityBadge, m.colLayout.PriorityWidth) + " "
+	} else if m.columnConfig.ShouldShowPriority(task.Priority) {
+		prioritySegment = renderPriorityBadge(task.Priority) + " "
 	}
 
 	// Task ID (includes trailing space when visible for spacing in the format string)
 	idStr := ""
 	if m.columnConfig.IsVisible(ColShortID) {
-		idStr = MutedStyle.Render(fmt.Sprintf("#%d", task.ShortID)) + " "
+		rendered := MutedStyle.Render(fmt.Sprintf("#%d", task.ShortID))
+		if m.colLayout != nil && m.colLayout.HasShortID {
+			idStr = PadBadge(rendered, m.colLayout.ShortIDWidth) + " "
+		} else {
+			idStr = rendered + " "
+		}
 	}
 
 	// Title
@@ -140,11 +166,8 @@ func (m *ProjectTreeModel) renderNodeWithWidth(node *TreeNode, selected bool, in
 	}
 	orgGroup := JoinGroupParts(orgParts...)
 
-	// Lifecycle group: priority, due date, snooze, recurrence
+	// Lifecycle group: due date, snooze, recurrence
 	var lifecycleParts []string
-	if m.columnConfig.ShouldShowPriority(task.Priority) {
-		lifecycleParts = append(lifecycleParts, renderPriorityBadge(task.Priority))
-	}
 	if m.columnConfig.IsVisible(ColDueDate) {
 		if dueStr := formatDueDate(task); dueStr != "" {
 			lifecycleParts = append(lifecycleParts, dueStr)
@@ -209,12 +232,31 @@ func (m *ProjectTreeModel) renderNodeWithWidth(node *TreeNode, selected bool, in
 		indicators = " " + indicators
 	}
 
-	// Calculate available width for title, accounting for all other elements
-	// Fixed overhead: selection prefix(3) + checkbox(0 or 4) + expand(2) + typeIcon(~2) + statusIcon(~2) + space(1) + idStr(~5) + space(1) = ~16
-	// Plus: indent, progress, and indicators (now measured accurately)
-	baseOverhead := 16
+	// Calculate available width for title, accounting for all other elements.
 	progressWidth := lipgloss.Width(progress)
-	baseUsed := 3 + len(checkbox) + lipgloss.Width(node.TreePrefix) + len(expandIcon) + baseOverhead + progressWidth
+	var baseUsed int
+	if m.colLayout != nil {
+		// Fixed-width path: compute exact overhead from column layout.
+		// format: cursor(3) + checkbox + indent(PrefixWidth) + expandIcon(2) + typeIcon(1) +
+		//         space(1) + statusIcon(1) + space(1) + prioritySegment + stageSegment + idStr
+		priorityW := 0
+		if m.colLayout.HasPriority {
+			priorityW = m.colLayout.PriorityWidth + 1
+		}
+		stageW := 0
+		if m.colLayout.HasStage {
+			stageW = m.colLayout.StageWidth + 1
+		}
+		idW := 0
+		if m.colLayout.HasShortID {
+			idW = m.colLayout.ShortIDWidth + 1
+		}
+		baseUsed = 3 + lipgloss.Width(checkbox) + m.colLayout.PrefixWidth + 2 + 1 + 1 + 1 + priorityW + stageW + idW + progressWidth
+	} else {
+		// Approximate path (pre-existing logic).
+		baseOverhead := 16
+		baseUsed = 3 + len(checkbox) + lipgloss.Width(node.TreePrefix) + len(expandIcon) + baseOverhead + progressWidth
+	}
 	availableTitleWidth := maxWidth - baseUsed - lipgloss.Width(indicators)
 
 	// If title would be squeezed below 20 chars, progressively drop indicator groups
@@ -258,8 +300,8 @@ func (m *ProjectTreeModel) renderNodeWithWidth(node *TreeNode, selected bool, in
 		title = titleStyle.Render(truncatedTitle)
 	}
 
-	content := fmt.Sprintf("%s%s%s%s %s%s %s%s%s%s",
-		checkbox, indent, expandIcon, typeIcon, stageSegment, statusIcon, idStr, title, progress, indicators)
+	content := fmt.Sprintf("%s%s%s%s %s %s%s%s%s%s%s",
+		checkbox, indent, expandIcon, typeIcon, statusIcon, prioritySegment, stageSegment, idStr, title, progress, indicators)
 	isDimmed := task.Dimmed && !node.IsContextNode
 	return RenderSelectableRow(selected, task.Active, task.Pinned, m.cursorFlash, content, maxWidth, isDimmed)
 }
@@ -282,11 +324,19 @@ func (m *ProjectTreeModel) renderQuickEditNode(node *TreeNode, maxWidth int) str
 		stageSegment = stageBadge + " "
 	}
 
+	priorityBadge := renderPriorityBadge(task.Priority)
+	prioritySegment := ""
+	if priorityBadge != "" {
+		prioritySegment = priorityBadge + " "
+	}
+
 	// Task ID
 	idStr := MutedStyle.Render(fmt.Sprintf("#%d", task.ShortID))
 
 	// Calculate width for the text input
-	prefixWidth := indentWidth + 2 + 2 + 2 + 1 + 5 + 1 // indent + typeIcon + statusIcon + space + idStr + space
+	priorityW := lipgloss.Width(prioritySegment)
+	stageW := lipgloss.Width(stageSegment)
+	prefixWidth := indentWidth + 2 + 1 + 1 + priorityW + stageW + 5 + 1 // indent + typeIcon + space + statusIcon + space + priority + stage + idStr + space
 	inputWidth := max(maxWidth-prefixWidth-4, 20)
 	input := m.quickEdit.GetInput()
 	input.SetWidth(inputWidth)
@@ -296,7 +346,7 @@ func (m *ProjectTreeModel) renderQuickEditNode(node *TreeNode, maxWidth int) str
 	inputView := m.quickEdit.GetInput().View()
 
 	// Build prefix
-	prefix := fmt.Sprintf("%s%s %s%s %s ", indent, typeIcon, stageSegment, statusIcon, idStr)
+	prefix := fmt.Sprintf("%s%s %s %s%s%s ", indent, typeIcon, statusIcon, prioritySegment, stageSegment, idStr)
 
 	// Build the edit line
 	editLine := prefix + inputView

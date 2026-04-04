@@ -3,6 +3,19 @@ package tui
 // Layout constants for TUI rendering dimensions and spacing.
 // These replace hardcoded magic numbers throughout the view code.
 
+// ColumnLayout holds pre-computed fixed-width column measurements for a single
+// render pass. When non-nil, badge columns are padded to fixed widths so
+// metadata aligns vertically across all rows. Nil = current variable behavior.
+type ColumnLayout struct {
+	StageWidth    int  // max rendered stage badge visual width; 0 if no rows have stages
+	PriorityWidth int  // 1 when any row shows priority badge; 0 if all hidden
+	ShortIDWidth  int  // max rendered "#N" visual width; 0 if column not visible
+	PrefixWidth   int  // max tree-prefix rendered width (not counting fold/expand indicator)
+	HasPriority   bool // true if any visible row has a priority badge shown
+	HasStage      bool // true if any visible row has a non-empty stage
+	HasShortID    bool // true if short ID column is visible and any row has an ID
+}
+
 const (
 	// CardBorderOverhead is the horizontal space consumed by card borders
 	// and padding (left border + left padding + right padding + right border).
@@ -99,4 +112,8 @@ const (
 	// CreatorTabBarPadding is the horizontal padding subtracted from width
 	// when rendering tab bars in creator/editor views.
 	CreatorTabBarPadding = 4
+
+	// MinColumnAlignWidth is the minimum render width at which column alignment
+	// is applied. Below this threshold prefix padding is skipped to preserve space.
+	MinColumnAlignWidth = 60
 )

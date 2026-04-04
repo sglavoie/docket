@@ -119,12 +119,25 @@ func (m *DueDateOverviewModel) renderAllGroups(currentIndex *int, cursorLineIdx 
 	var lines []string
 	hasContent := false
 	separator := renderHorizontalDivider(m.Width())
+	rowIdx := 0
 
 	overdue, today, thisWeek, later := m.visibleGroups()
 
+	// Compute column layout from all visible tasks.
+	var colLayout *ColumnLayout
+	if m.Width() >= MinColumnAlignWidth {
+		var allTasks []*models.Task
+		for _, g := range [][]CrossProjectTask{overdue, today, thisWeek, later} {
+			for _, dt := range g {
+				allTasks = append(allTasks, dt.Task)
+			}
+		}
+		colLayout = ComputeTaskLineColumnLayout(allTasks, false)
+	}
+
 	if len(overdue) > 0 {
 		lines = append(lines, renderGroupHeader("Overdue", len(overdue), true, m.Width()))
-		lines = append(lines, m.renderGroup(overdue, currentIndex, cursorLineIdx, len(lines))...)
+		lines = append(lines, m.renderGroup(overdue, currentIndex, cursorLineIdx, len(lines), colLayout, &rowIdx)...)
 		hasContent = true
 	}
 
@@ -133,7 +146,7 @@ func (m *DueDateOverviewModel) renderAllGroups(currentIndex *int, cursorLineIdx 
 			lines = append(lines, separator)
 		}
 		lines = append(lines, renderGroupHeader("Today", len(today), false, m.Width()))
-		lines = append(lines, m.renderGroup(today, currentIndex, cursorLineIdx, len(lines))...)
+		lines = append(lines, m.renderGroup(today, currentIndex, cursorLineIdx, len(lines), colLayout, &rowIdx)...)
 		hasContent = true
 	}
 
@@ -142,7 +155,7 @@ func (m *DueDateOverviewModel) renderAllGroups(currentIndex *int, cursorLineIdx 
 			lines = append(lines, separator)
 		}
 		lines = append(lines, renderGroupHeader("This Week", len(thisWeek), false, m.Width()))
-		lines = append(lines, m.renderGroup(thisWeek, currentIndex, cursorLineIdx, len(lines))...)
+		lines = append(lines, m.renderGroup(thisWeek, currentIndex, cursorLineIdx, len(lines), colLayout, &rowIdx)...)
 		hasContent = true
 	}
 
@@ -151,14 +164,14 @@ func (m *DueDateOverviewModel) renderAllGroups(currentIndex *int, cursorLineIdx 
 			lines = append(lines, separator)
 		}
 		lines = append(lines, renderGroupHeader("Later", len(later), false, m.Width()))
-		lines = append(lines, m.renderGroup(later, currentIndex, cursorLineIdx, len(lines))...)
+		lines = append(lines, m.renderGroup(later, currentIndex, cursorLineIdx, len(lines), colLayout, &rowIdx)...)
 	}
 
 	return lines
 }
 
 // renderGroup renders a group of tasks.
-func (m *DueDateOverviewModel) renderGroup(tasks []CrossProjectTask, currentIndex *int, cursorLineIdx *int, baseLine int) []string {
+func (m *DueDateOverviewModel) renderGroup(tasks []CrossProjectTask, currentIndex *int, cursorLineIdx *int, baseLine int, layout *ColumnLayout, rowIdx *int) []string {
 	var lines []string
 	maxTitleLen := m.Width() - 35 // Account for date, project, icons
 
@@ -167,21 +180,24 @@ func (m *DueDateOverviewModel) renderGroup(tasks []CrossProjectTask, currentInde
 		if isSelected && cursorLineIdx != nil {
 			*cursorLineIdx = baseLine + len(lines)
 		}
-		line := m.renderTaskLine(dt, isSelected, maxTitleLen)
+		line := m.renderTaskLine(dt, isSelected, maxTitleLen, layout, *rowIdx)
 		lines = append(lines, line)
 		*currentIndex++
+		*rowIdx++
 	}
 
 	return lines
 }
 
 // renderTaskLine renders a single task line.
-func (m *DueDateOverviewModel) renderTaskLine(dt CrossProjectTask, isSelected bool, maxTitleLen int) string {
+func (m *DueDateOverviewModel) renderTaskLine(dt CrossProjectTask, isSelected bool, maxTitleLen int, layout *ColumnLayout, rowIndex int) string {
 	dateStr := m.formatDueDate(dt.Task)
 	return RenderCrossProjectTaskLine(dt.Task, dt.Project, nil, isSelected, m.Width(), maxTitleLen, CrossProjectTaskLineOpts{
 		MaxProjectLen: 15,
 		Prefix:        dateStr + " ",
 		Flash:         m.cursorFlash,
+		Layout:        layout,
+		RowIndex:      rowIndex,
 	})
 }
 

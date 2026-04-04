@@ -170,6 +170,10 @@ func (m *SettingsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) { //nolint:gocy
 			if m.focusIndex == 48 {
 				m.crossOutlinerSidebar = !m.crossOutlinerSidebar
 			}
+			// Zebra striping toggle (index 85)
+			if m.focusIndex == 85 {
+				m.zebraStriping = !m.zebraStriping
+			}
 			// Outliner section toggles (indices 49-55)
 			if m.focusIndex >= 49 && m.focusIndex <= 55 {
 				idx := m.focusIndex - 49
@@ -566,7 +570,7 @@ func (m *SettingsModel) blurCurrentField() { //nolint:gocyclo
 		m.alertProjectStaleDaysInput.Blur()
 	default:
 		// Cross-project sidebar toggle (48), outliner section toggles (49-55),
-		// outliner column toggles (56-68), alert toggles/enums - no blur needed
+		// outliner column toggles (56-68), alert toggles/enums, zebra striping (85) - no blur needed
 	}
 }
 
@@ -657,6 +661,6 @@ func (m *SettingsModel) focusCurrentField() { //nolint:gocyclo
 		m.alertProjectStaleDaysInput.Focus()
 	default:
 		// Cross-project sidebar toggle (48), outliner section toggles (49-55),
-		// outliner column toggles (56-68), alert toggles/enums - no focus needed
+		// outliner column toggles (56-68), alert toggles/enums, zebra striping (85) - no focus needed
 	}
 }

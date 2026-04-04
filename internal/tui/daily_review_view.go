@@ -7,8 +7,9 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
-
 	"charm.land/lipgloss/v2"
+
+	"github.com/sglavoie/tt/internal/models"
 )
 
 func (m *DailyReviewModel) View() tea.View {
@@ -149,6 +150,21 @@ func (m *DailyReviewModel) renderAllSections() ([]string, int) {
 	cursorLineIndex := 0
 	separator := renderHorizontalDivider(m.width)
 
+	// Compute column layout from all visible tasks.
+	var colLayout *ColumnLayout
+	if m.width >= MinColumnAlignWidth {
+		var allTasks []*models.Task
+		for _, section := range m.sectionOrder {
+			if !m.collapsedSections[int(section)] {
+				for _, dt := range m.getSectionTasks(section) {
+					allTasks = append(allTasks, dt.Task)
+				}
+			}
+		}
+		colLayout = ComputeTaskLineColumnLayout(allTasks, true)
+	}
+
+	rowIdx := 0
 	for i, section := range m.sectionOrder {
 		if i > 0 {
 			lines = append(lines, separator)
@@ -172,9 +188,10 @@ func (m *DailyReviewModel) renderAllSections() ([]string, int) {
 				if isSelected {
 					cursorLineIndex = len(lines)
 				}
-				line := m.renderTaskLine(dt, section, isSelected, max(m.width-40, 10))
+				line := m.renderTaskLine(dt, section, isSelected, max(m.width-40, 10), colLayout, rowIdx)
 				lines = append(lines, line)
 				currentIndex++
+				rowIdx++
 			}
 		}
 	}
@@ -224,7 +241,7 @@ func (m *DailyReviewModel) renderSectionHeader(section DailyReviewSection, count
 }
 
 // renderTaskLine renders a single task line.
-func (m *DailyReviewModel) renderTaskLine(dt CrossProjectTask, section DailyReviewSection, isSelected bool, maxTitleLen int) string {
+func (m *DailyReviewModel) renderTaskLine(dt CrossProjectTask, section DailyReviewSection, isSelected bool, maxTitleLen int, layout *ColumnLayout, rowIndex int) string {
 	task := dt.Task
 
 	// Custom status badge for blocked tasks
@@ -245,6 +262,8 @@ func (m *DailyReviewModel) renderTaskLine(dt CrossProjectTask, section DailyRevi
 		DueStr:          m.sectionContextStr(dt, section),
 		ShowRecurrence:  true,
 		Flash:           m.cursorFlash,
+		Layout:          layout,
+		RowIndex:        rowIndex,
 	})
 }
 

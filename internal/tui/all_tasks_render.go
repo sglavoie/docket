@@ -6,6 +6,8 @@ import (
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
+
+	"github.com/sglavoie/tt/internal/models"
 )
 
 func (m *AllTasksViewModel) View() tea.View {
@@ -53,6 +55,20 @@ func (m *AllTasksViewModel) View() tea.View {
 		return tea.NewView(b.String())
 	}
 
+	// Compute column layout from visible tasks for badge alignment.
+	var colLayout *ColumnLayout
+	if m.Width() >= MinColumnAlignWidth {
+		var visibleTasks []*models.Task
+		for _, group := range m.groups {
+			if !m.collapsedGroups[group.Name] {
+				for _, item := range group.Tasks {
+					visibleTasks = append(visibleTasks, item.Task)
+				}
+			}
+		}
+		colLayout = ComputeTaskLineColumnLayout(visibleTasks, false)
+	}
+
 	// Render groups with task lines
 	var lines []string
 	maxTitleLen := m.Width() - 50
@@ -80,7 +96,7 @@ func (m *AllTasksViewModel) View() tea.View {
 					cursorLineIdx = len(lines)
 				}
 				isChecked := m.selectedTasks[item.Task.ID]
-				line := m.renderTaskLine(item, isSelected, isChecked, maxTitleLen)
+				line := m.renderTaskLine(item, isSelected, isChecked, maxTitleLen, currentIndex, colLayout)
 				lines = append(lines, line)
 				currentIndex++
 			}
@@ -167,7 +183,7 @@ func (m *AllTasksViewModel) renderGroupHeader(name string, count int, collapsed 
 }
 
 // renderTaskLine renders a single task line.
-func (m *AllTasksViewModel) renderTaskLine(item CrossProjectTask, isSelected bool, isChecked bool, maxTitleLen int) string {
+func (m *AllTasksViewModel) renderTaskLine(item CrossProjectTask, isSelected bool, isChecked bool, maxTitleLen int, rowIndex int, layout *ColumnLayout) string {
 	task := item.Task
 
 	// Multi-select checkbox
@@ -192,6 +208,8 @@ func (m *AllTasksViewModel) renderTaskLine(item CrossProjectTask, isSelected boo
 		Prefix:        checkbox,
 		DueStr:        dueStr,
 		Flash:         m.cursorFlash,
+		RowIndex:      rowIndex,
+		Layout:        layout,
 	})
 }
 

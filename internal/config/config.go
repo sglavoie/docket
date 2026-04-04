@@ -161,6 +161,7 @@ type Config struct {
 	TUIBackgroundColor             string                       `json:"tui_background_color,omitempty"`              // HEX background color for TUI (#rgb or #rrggbb, empty = terminal default)
 	TUICursorColor                 string                       `json:"tui_cursor_color,omitempty"`                  // HEX background color for cursor/selection rows (empty = #4c0163)
 	TUICursorTextColor             string                       `json:"tui_cursor_text_color,omitempty"`             // HEX foreground color for cursor/selection text (empty = #fbeeff)
+	TUIZebraStriping               *bool                        `json:"tui_zebra_striping,omitempty"`                // Alternating row backgrounds in task list views (default: false)
 	Palette                        PaletteColors                `json:"palette,omitzero"`                            // User-configurable TUI palette overrides
 	DefaultProjectView             string                       `json:"default_project_view,omitempty"`              // Default view when opening a project: outliner, project_tree
 	FocusQueue                     []FocusQueueItem             `json:"focus_queue,omitempty"`                       // Persisted focus board work queue
@@ -433,6 +434,12 @@ func (c *Config) GetFzfTimeout() int {
 		return 1
 	}
 	return *c.FzfTimeout
+}
+
+// ZebraStriping returns true when alternating row backgrounds are enabled.
+// Defaults to false.
+func (c *Config) ZebraStriping() bool {
+	return c.TUIZebraStriping != nil && *c.TUIZebraStriping
 }
 
 // GetPopupTimeoutSeconds returns the auto-dismiss timeout for prefix popups in seconds.

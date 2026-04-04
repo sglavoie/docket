@@ -103,12 +103,37 @@ func (m *PriorityViewModel) renderSuggestionSection() string {
 	return header + "\n" + box
 }
 
+// computeColumnLayout builds a ColumnLayout for the current tab's visible tasks.
+func (m *PriorityViewModel) computeColumnLayout() *ColumnLayout {
+	if m.Width() < MinColumnAlignWidth {
+		return nil
+	}
+	if m.tabs.Active == priorityTabByScore {
+		scored := m.visibleScoredTasks()
+		tasks := make([]*models.Task, 0, len(scored))
+		for _, pt := range scored {
+			tasks = append(tasks, pt.Task)
+		}
+		return ComputeTaskLineColumnLayout(tasks, false)
+	}
+	overdue, today, thisWeek, later, backlog, waitingOn := m.filteredGroupsWithSubTab()
+	var tasks []*models.Task
+	for _, g := range [][]*PriorityTask{overdue, today, thisWeek, later, backlog, waitingOn} {
+		for _, pt := range g {
+			tasks = append(tasks, pt.Task)
+		}
+	}
+	return ComputeTaskLineColumnLayout(tasks, false)
+}
+
 // renderAllGroups renders all task groups and returns the lines.
 func (m *PriorityViewModel) renderAllGroups(currentIndex *int) ([]string, int) {
 	cursorLineIdx := 0
+	colLayout := m.computeColumnLayout()
+	rowIndex := 0
 
 	if m.tabs.Active == priorityTabByScore {
-		lines := m.renderScoreRanking(currentIndex, &cursorLineIdx)
+		lines := m.renderScoreRanking(currentIndex, &cursorLineIdx, &rowIndex, colLayout)
 		return lines, cursorLineIdx
 	}
 
@@ -120,7 +145,7 @@ func (m *PriorityViewModel) renderAllGroups(currentIndex *int) ([]string, int) {
 
 	if len(overdue) > 0 {
 		lines = append(lines, renderGroupHeader("OVERDUE", len(overdue), true, m.Width()))
-		lines = append(lines, m.renderGroup(overdue, currentIndex, true, &cursorLineIdx, len(lines))...)
+		lines = append(lines, m.renderGroup(overdue, currentIndex, true, &cursorLineIdx, len(lines), &rowIndex, colLayout)...)
 		hasContent = true
 	}
 
@@ -129,7 +154,7 @@ func (m *PriorityViewModel) renderAllGroups(currentIndex *int) ([]string, int) {
 			lines = append(lines, separator)
 		}
 		lines = append(lines, renderGroupHeader("DUE TODAY", len(today), false, m.Width()))
-		lines = append(lines, m.renderGroup(today, currentIndex, false, &cursorLineIdx, len(lines))...)
+		lines = append(lines, m.renderGroup(today, currentIndex, false, &cursorLineIdx, len(lines), &rowIndex, colLayout)...)
 		hasContent = true
 	}
 
@@ -138,7 +163,7 @@ func (m *PriorityViewModel) renderAllGroups(currentIndex *int) ([]string, int) {
 			lines = append(lines, separator)
 		}
 		lines = append(lines, renderGroupHeader("THIS WEEK", len(thisWeek), false, m.Width()))
-		lines = append(lines, m.renderGroup(thisWeek, currentIndex, false, &cursorLineIdx, len(lines))...)
+		lines = append(lines, m.renderGroup(thisWeek, currentIndex, false, &cursorLineIdx, len(lines), &rowIndex, colLayout)...)
 		hasContent = true
 	}
 
@@ -147,7 +172,7 @@ func (m *PriorityViewModel) renderAllGroups(currentIndex *int) ([]string, int) {
 			lines = append(lines, separator)
 		}
 		lines = append(lines, renderGroupHeader("LATER", len(later), false, m.Width()))
-		lines = append(lines, m.renderGroup(later, currentIndex, false, &cursorLineIdx, len(lines))...)
+		lines = append(lines, m.renderGroup(later, currentIndex, false, &cursorLineIdx, len(lines), &rowIndex, colLayout)...)
 		hasContent = true
 	}
 
@@ -155,7 +180,7 @@ func (m *PriorityViewModel) renderAllGroups(currentIndex *int) ([]string, int) {
 		if hasContent {
 			lines = append(lines, separator)
 		}
-		lines = append(lines, m.renderGroup(backlog, currentIndex, false, &cursorLineIdx, len(lines))...)
+		lines = append(lines, m.renderGroup(backlog, currentIndex, false, &cursorLineIdx, len(lines), &rowIndex, colLayout)...)
 		hasContent = true
 	}
 
@@ -167,7 +192,7 @@ func (m *PriorityViewModel) renderAllGroups(currentIndex *int) ([]string, int) {
 		// In Blocked tab, tasks are navigable (rendered as regular tasks)
 		if m.tabs.Active == priorityTabBlocked {
 			lines = append(lines, renderGroupHeader("BLOCKED / WAITING", len(waitingOn), false, m.Width()))
-			lines = append(lines, m.renderGroup(waitingOn, currentIndex, false, &cursorLineIdx, len(lines))...)
+			lines = append(lines, m.renderGroup(waitingOn, currentIndex, false, &cursorLineIdx, len(lines), &rowIndex, colLayout)...)
 		} else {
 			lines = append(lines, m.renderWaitingOnHeader())
 			if !m.waitingOnCollapsed {
@@ -183,7 +208,7 @@ func (m *PriorityViewModel) renderAllGroups(currentIndex *int) ([]string, int) {
 }
 
 // renderScoreRanking renders a flat ranked list of tasks by composite score.
-func (m *PriorityViewModel) renderScoreRanking(currentIndex *int, cursorLineIdx *int) []string {
+func (m *PriorityViewModel) renderScoreRanking(currentIndex *int, cursorLineIdx *int, rowIndex *int, layout *ColumnLayout) []string {
 	if m.config == nil {
 		return []string{MutedStyle.Render("No scoring profile assigned. Use : scoring profiles to set one up.")}
 	}
@@ -223,9 +248,12 @@ func (m *PriorityViewModel) renderScoreRanking(currentIndex *int, cursorLineIdx 
 			PostTitle:   postTitle,
 			Flash:       m.cursorFlash,
 			SearchQuery: m.searchQuery,
+			Layout:      layout,
+			RowIndex:    *rowIndex,
 		}.Render()
 		lines = append(lines, line)
 		*currentIndex++
+		*rowIndex++
 	}
 
 	return lines
@@ -242,7 +270,7 @@ func (m *PriorityViewModel) renderWaitingOnHeader() string {
 }
 
 // renderGroup renders a group of tasks.
-func (m *PriorityViewModel) renderGroup(tasks []*PriorityTask, currentIndex *int, isOverdue bool, cursorLineIdx *int, baseLine int) []string {
+func (m *PriorityViewModel) renderGroup(tasks []*PriorityTask, currentIndex *int, isOverdue bool, cursorLineIdx *int, baseLine int, rowIndex *int, layout *ColumnLayout) []string {
 	var lines []string
 	maxTitleLen := m.Width() - 45 // Account for other elements
 
@@ -251,16 +279,17 @@ func (m *PriorityViewModel) renderGroup(tasks []*PriorityTask, currentIndex *int
 		if isSelected {
 			*cursorLineIdx = baseLine + len(lines)
 		}
-		line := m.renderTaskLine(pt, isOverdue, isSelected, maxTitleLen)
+		line := m.renderTaskLine(pt, isOverdue, isSelected, maxTitleLen, *rowIndex, layout)
 		lines = append(lines, line)
 		*currentIndex++
+		*rowIndex++
 	}
 
 	return lines
 }
 
 // renderTaskLine renders a single actionable task line.
-func (m *PriorityViewModel) renderTaskLine(pt *PriorityTask, isOverdue bool, isSelected bool, maxTitleLen int) string {
+func (m *PriorityViewModel) renderTaskLine(pt *PriorityTask, isOverdue bool, isSelected bool, maxTitleLen int, rowIndex int, layout *ColumnLayout) string {
 	task := pt.Task
 
 	// Star indicator for suggested task
@@ -324,6 +353,8 @@ func (m *PriorityViewModel) renderTaskLine(pt *PriorityTask, isOverdue bool, isS
 		ViewWidth:   m.Width(),
 		Flash:       m.cursorFlash,
 		SearchQuery: m.searchQuery,
+		Layout:      layout,
+		RowIndex:    rowIndex,
 	}.Render()
 }
 

@@ -255,3 +255,18 @@ func RenderSelectableRow(selected, active, pinned, flash bool, content string, w
 func Hyperlink(url, displayText string) string {
 	return "\033]8;;" + url + "\033\\" + displayText + "\033]8;;\033\\"
 }
+
+// PadBadge right-pads a pre-rendered badge string to a fixed visual width.
+// It uses lipgloss.Width to measure the rendered width (handles ANSI sequences
+// and multi-byte unicode). If rendered is already at or above width, it is
+// returned unchanged.
+func PadBadge(rendered string, width int) string {
+	if width <= 0 {
+		return rendered
+	}
+	current := lipgloss.Width(rendered)
+	if current >= width {
+		return rendered
+	}
+	return rendered + strings.Repeat(" ", width-current)
+}

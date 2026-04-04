@@ -171,6 +171,13 @@ func (m *ProjectTreeModel) renderFullWidth() string {
 			}
 		}
 
+		// Compute column layout for the visible slice (alignment guard: >= MinColumnAlignWidth)
+		if cardContentWidth >= MinColumnAlignWidth {
+			m.colLayout = ComputeTreeColumnLayout(visible[startIdx:endIdx], m.columnConfig)
+		} else {
+			m.colLayout = nil
+		}
+
 		// Render visible tasks
 		var lines []string
 		for i := startIdx; i < endIdx; i++ {
@@ -457,6 +464,13 @@ func (m *ProjectTreeModel) renderTreeContent(width int) string {
 				endIdx = len(visible)
 				startIdx = max(endIdx-availableHeight, 0)
 			}
+		}
+
+		// Compute column layout for the visible slice (alignment guard: >= MinColumnAlignWidth)
+		if cardContentWidth >= MinColumnAlignWidth {
+			m.colLayout = ComputeTreeColumnLayout(visible[startIdx:endIdx], m.columnConfig)
+		} else {
+			m.colLayout = nil
 		}
 
 		// Render visible tasks (with adjusted width for card content)

@@ -13,10 +13,10 @@ type settingsSection struct {
 }
 
 var (
-	settingsTabNames = []string{"General", "Palette", "Review", "Behavior", "Attachments", "Project Tree", "Outliner", "Notifications", "Stages"}
+	settingsTabNames = []string{"General", "Palette", "Review", "Behavior", "Attachments", "Project Tree", "Outliner", "Notifications", "Stages", "Appearance"}
 
 	// tabFieldCount declares how many focusable fields each tab has.
-	tabFieldCount = []int{4, 12, 4, 13, 2, 13, 21, 15, 1}
+	tabFieldCount = []int{4, 12, 4, 13, 2, 13, 21, 15, 1, 1}
 
 	// tabFieldStart holds the starting focus index for each tab (computed in init).
 	tabFieldStart []int
@@ -36,6 +36,7 @@ var (
 		{{"Sidebar", 1}, {"Section State", 7}, {"Column Visibility", 13}}, // 6: Outliner
 		{{"Reviews", 4}, {"Tasks", 9}, {"Projects", 2}},                   // 7: Notifications
 		nil, // 8: Stages
+		nil, // 9: Appearance
 	}
 
 	// weeklyReviewDayOptions lists the display labels for weekly review day selector.
@@ -162,6 +163,7 @@ type SettingsModel struct {
 	treePriorityMode         int      // 0=All, 1=Conditional, 2=Hidden
 	outlinerPriorityMode     int      // 0=All, 1=Conditional, 2=Hidden
 	crossOutlinerSidebar     bool     // Default sidebar state for cross-project outliner
+	zebraStriping            bool     // Alternating row backgrounds in task list views
 	contexts                 []string
 	contextCursor            int // -1 for custom mode, 0+ for selecting from list
 

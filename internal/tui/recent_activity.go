@@ -390,11 +390,21 @@ func (m *RecentActivityModel) View() tea.View {
 		contentHeight--
 	}
 
+	// Compute column layout for badge alignment.
+	var colLayout *ColumnLayout
+	if m.Width() >= MinColumnAlignWidth {
+		tasks := make([]*models.Task, 0, len(m.filtered))
+		for _, dt := range m.filtered {
+			tasks = append(tasks, dt.Task)
+		}
+		colLayout = ComputeTaskLineColumnLayout(tasks, false)
+	}
+
 	// Build lines
 	var lines []string
 	for i, dt := range m.filtered {
 		selected := i == m.cursor
-		line := m.renderTaskLine(dt, selected)
+		line := m.renderTaskLine(dt, selected, colLayout, i)
 		lines = append(lines, line)
 	}
 
@@ -412,7 +422,7 @@ func (m *RecentActivityModel) View() tea.View {
 	return tea.NewView(b.String())
 }
 
-func (m *RecentActivityModel) renderTaskLine(dt CrossProjectTask, selected bool) string {
+func (m *RecentActivityModel) renderTaskLine(dt CrossProjectTask, selected bool, layout *ColumnLayout, rowIndex int) string {
 	task := dt.Task
 	var preBadges string
 	maxTitleLen := m.Width() - 50
@@ -435,6 +445,8 @@ func (m *RecentActivityModel) renderTaskLine(dt CrossProjectTask, selected bool)
 		ViewWidth:   m.Width(),
 		Flash:       m.cursorFlash,
 		SearchQuery: m.SearchQuery(),
+		Layout:      layout,
+		RowIndex:    rowIndex,
 	}.Render()
 }
 

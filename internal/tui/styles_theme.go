@@ -19,27 +19,38 @@ const (
 
 // ThemeConfig bundles all user-configurable theme values for ApplyTheme.
 type ThemeConfig struct {
-	BgColor  string
-	CursorBg string
-	CursorFg string
-	Palette  config.PaletteColors
+	BgColor       string
+	CursorBg      string
+	CursorFg      string
+	Palette       config.PaletteColors
+	ZebraStriping bool
 }
 
 // NewThemeConfig constructs a ThemeConfig from the application config.
 func NewThemeConfig(cfg *config.Config) ThemeConfig {
 	return ThemeConfig{
-		BgColor:  cfg.TUIBackgroundColor,
-		CursorBg: cfg.TUICursorColor,
-		CursorFg: cfg.TUICursorTextColor,
-		Palette:  cfg.Palette,
+		BgColor:       cfg.TUIBackgroundColor,
+		CursorBg:      cfg.TUICursorColor,
+		CursorFg:      cfg.TUICursorTextColor,
+		Palette:       cfg.Palette,
+		ZebraStriping: cfg.ZebraStriping(),
 	}
 }
+
+// ZebraEnabled returns true when zebra striping is active.
+func ZebraEnabled() bool { return zebraEnabled }
 
 // themeBgColor holds the current TUI background color (empty = none/terminal default).
 var themeBgColor string
 
 // colorNormalText tracks whether NormalText palette override is set.
 var colorNormalText string
+
+// zebraEnabled controls whether alternating row backgrounds are rendered.
+var zebraEnabled bool
+
+// ZebraRowStyle is the background style applied to odd-indexed rows when zebra is enabled.
+var ZebraRowStyle = lipgloss.NewStyle().Background(ColorZebraBg)
 
 // ThemeSpacer renders an empty block of the given width, filled with the theme
 // background color when set. Used to plug "holes" in horizontal joins.
@@ -49,6 +60,24 @@ func ThemeSpacer(width int) string {
 		s = s.Background(lipgloss.Color(themeBgColor))
 	}
 	return s.Render("")
+}
+
+// darkenHex takes a 6-digit hex color (#rrggbb) and darkens each channel
+// toward 0 by factor (0.0 = unchanged, 1.0 = black). Returns #rrggbb.
+func darkenHex(hex string, factor float64) string {
+	if len(hex) != 7 || hex[0] != '#' {
+		return hex
+	}
+	r, err1 := strconv.ParseInt(hex[1:3], 16, 64)
+	g, err2 := strconv.ParseInt(hex[3:5], 16, 64)
+	b, err3 := strconv.ParseInt(hex[5:7], 16, 64)
+	if err1 != nil || err2 != nil || err3 != nil {
+		return hex
+	}
+	darken := func(channel int64) int64 {
+		return channel - int64(float64(channel)*factor)
+	}
+	return fmt.Sprintf("#%02x%02x%02x", darken(r), darken(g), darken(b))
 }
 
 // lightenHex takes a 6-digit hex color (#rrggbb) and lightens each channel
@@ -461,6 +490,15 @@ func ApplyTheme(tc ThemeConfig) {
 		Foreground(ColorSelectedFg)
 
 	themeBgColor = tc.BgColor
+	zebraEnabled = tc.ZebraStriping
+
+	// Derive zebra background: darken custom bg 8%, or use default ColorZebraBg.
+	if tc.BgColor != "" {
+		derivedZebra := darkenHex(tc.BgColor, 0.08)
+		ZebraRowStyle = lipgloss.NewStyle().Background(lipgloss.Color(derivedZebra))
+	} else {
+		ZebraRowStyle = lipgloss.NewStyle().Background(ColorZebraBg)
+	}
 
 	var customBg color.Color
 	alwaysBg := ColorBackground

@@ -7,6 +7,8 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"charm.land/lipgloss/v2"
+
+	"github.com/sglavoie/tt/internal/models"
 )
 
 func (m *WeeklyReviewModel) View() tea.View {
@@ -159,6 +161,37 @@ func (m *WeeklyReviewModel) renderAllSections() ([]string, int) {
 	cursorLineIndex := 0
 	separator := renderHorizontalDivider(m.width)
 
+	// Compute column layout from all visible task-section items.
+	var colLayout *ColumnLayout
+	if m.width >= MinColumnAlignWidth {
+		var allTasks []*models.Task
+		for _, section := range m.sectionOrder {
+			if m.collapsedSections[int(section)] {
+				continue
+			}
+			switch section {
+			case WeeklySectionStaleTasks:
+				for _, dt := range m.staleTasks {
+					allTasks = append(allTasks, dt.Task)
+				}
+			case WeeklySectionPriorityMismatch:
+				for _, dt := range m.priorityMismatch {
+					allTasks = append(allTasks, dt.Task)
+				}
+			case WeeklySectionUpcomingWeek:
+				for _, dt := range m.upcomingWeek {
+					allTasks = append(allTasks, dt.Task)
+				}
+			case WeeklySectionRecurringOverview:
+				for _, dt := range m.recurringOverview {
+					allTasks = append(allTasks, dt.Task)
+				}
+			}
+		}
+		colLayout = ComputeTaskLineColumnLayout(allTasks, true)
+	}
+
+	rowIdx := 0
 	for i, section := range m.sectionOrder {
 		if i > 0 {
 			lines = append(lines, separator)
@@ -185,8 +218,9 @@ func (m *WeeklyReviewModel) renderAllSections() ([]string, int) {
 				if isSelected {
 					cursorLineIndex = len(lines)
 				}
-				lines = append(lines, m.renderSectionItem(section, idx, isSelected))
+				lines = append(lines, m.renderSectionItem(section, idx, isSelected, colLayout, rowIdx))
 				currentIndex++
+				rowIdx++
 			}
 		}
 	}
@@ -211,7 +245,7 @@ func (m *WeeklyReviewModel) renderAllSections() ([]string, int) {
 }
 
 // renderSectionItem renders a single item at the given index within a section.
-func (m *WeeklyReviewModel) renderSectionItem(section WeeklyReviewSection, index int, isSelected bool) string {
+func (m *WeeklyReviewModel) renderSectionItem(section WeeklyReviewSection, index int, isSelected bool, layout *ColumnLayout, rowIndex int) string {
 	switch section {
 	case WeeklySectionStaleProjects:
 		return m.renderProjectLine(m.staleProjects[index], section, isSelected)
@@ -222,13 +256,13 @@ func (m *WeeklyReviewModel) renderSectionItem(section WeeklyReviewSection, index
 	case WeeklySectionOvercommitted:
 		return m.renderProjectLine(m.overcommitted[index], section, isSelected)
 	case WeeklySectionStaleTasks:
-		return m.renderTaskLine(m.staleTasks[index], section, isSelected, max(m.width-40, 10))
+		return m.renderTaskLine(m.staleTasks[index], section, isSelected, max(m.width-40, 10), layout, rowIndex)
 	case WeeklySectionPriorityMismatch:
-		return m.renderTaskLine(m.priorityMismatch[index], section, isSelected, max(m.width-40, 10))
+		return m.renderTaskLine(m.priorityMismatch[index], section, isSelected, max(m.width-40, 10), layout, rowIndex)
 	case WeeklySectionUpcomingWeek:
-		return m.renderTaskLine(m.upcomingWeek[index], section, isSelected, max(m.width-40, 10))
+		return m.renderTaskLine(m.upcomingWeek[index], section, isSelected, max(m.width-40, 10), layout, rowIndex)
 	case WeeklySectionRecurringOverview:
-		return m.renderTaskLine(m.recurringOverview[index], section, isSelected, max(m.width-40, 10))
+		return m.renderTaskLine(m.recurringOverview[index], section, isSelected, max(m.width-40, 10), layout, rowIndex)
 	}
 	return ""
 }
@@ -324,7 +358,7 @@ func (m *WeeklyReviewModel) renderProjectLine(wp WeeklyReviewProject, section We
 }
 
 // renderTaskLine renders a single task line (same style as daily review).
-func (m *WeeklyReviewModel) renderTaskLine(dt WeeklyReviewTask, section WeeklyReviewSection, isSelected bool, maxTitleLen int) string {
+func (m *WeeklyReviewModel) renderTaskLine(dt WeeklyReviewTask, section WeeklyReviewSection, isSelected bool, maxTitleLen int, layout *ColumnLayout, rowIndex int) string {
 	task := dt.Task
 
 	// Context string based on section
@@ -374,6 +408,8 @@ func (m *WeeklyReviewModel) renderTaskLine(dt WeeklyReviewTask, section WeeklyRe
 		DueStr:          contextStr,
 		ShowRecurrence:  section == WeeklySectionRecurringOverview,
 		Flash:           m.cursorFlash,
+		Layout:          layout,
+		RowIndex:        rowIndex,
 	})
 }
 

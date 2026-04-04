@@ -153,6 +153,16 @@ func renderDependencyIndicators(task *models.Task, project *models.Project) stri
 	return strings.Join(parts, " ")
 }
 
+// ZebraLine applies a subtle background tint to odd-indexed rows when zebra
+// striping is enabled. It is a no-op on even rows, disabled config, or when
+// the line is already selected/dimmed/flashed (caller handles those cases).
+func ZebraLine(line string, width int, rowIndex int) string {
+	if !zebraEnabled || rowIndex%2 == 0 {
+		return line
+	}
+	return ZebraRowStyle.Width(width).Render(line)
+}
+
 // TaskLine holds the configuration for rendering a single task line.
 // Callers set the fields they need and call Render() to produce the line string.
 // The core badge sequence (status → type → priority → title) is always rendered.
@@ -162,33 +172,37 @@ type TaskLine struct {
 	MaxTitle   int // maximum title width; clamped to minimum 10
 
 	// Optional elements
-	Prefix          string // before cursor (e.g., star indicator "★ ")
-	PreBadges       string // after cursor, before status badge (e.g., project name, checkbox, rank)
-	PostTitle       string // after title (e.g., tags, score badge, custom section)
-	DueStr          string // right-aligned due date string (pre-styled by caller)
-	ViewWidth       int    // total view width for due date right-alignment
-	StatusBadge     string // override computed status badge (pre-styled by caller)
-	StageBadge      string // pre-styled stage badge (from GetStageBadge)
-	HideLowPriority bool   // only show priority badge for priority ≤ 2
-	Flash           bool   // cursor flash highlight active
-	SearchQuery     string // when set, highlight matching substring in title
+	Prefix          string        // before cursor (e.g., star indicator "★ ")
+	PreBadges       string        // after cursor, before status badge (e.g., project name, checkbox, rank)
+	PostTitle       string        // after title (e.g., tags, score badge, custom section)
+	DueStr          string        // right-aligned due date string (pre-styled by caller)
+	ViewWidth       int           // total view width for due date right-alignment
+	StatusBadge     string        // override computed status badge (pre-styled by caller)
+	StageBadge      string        // pre-styled stage badge (from GetStageBadge)
+	HideLowPriority bool          // only show priority badge for priority ≤ 2
+	Flash           bool          // cursor flash highlight active
+	SearchQuery     string        // when set, highlight matching substring in title
+	RowIndex        int           // visual row index for zebra striping (0-based)
+	Layout          *ColumnLayout // when non-nil, use fixed-width badge columns
 }
 
 // CrossProjectTaskLineOpts configures optional elements for a cross-project task line.
 // Views that aggregate tasks from multiple projects use this to render a standard
 // [project-name] badge plus optional tags/score in a consistent format.
 type CrossProjectTaskLineOpts struct {
-	ShowScore       bool        // show composite score badge (requires cfg != nil)
-	ShowTags        bool        // show inline tag string
-	ShowRecurrence  bool        // show ↻ indicator with streak count for recurring tasks
-	MaxProjectLen   int         // project name truncation; 0 defaults to 12
-	Prefix          string      // prepended before the project badge (e.g. checkbox, date string)
-	StatusBadge     string      // pre-styled status badge override
-	DueStr          string      // right-aligned context string, already styled by caller
-	HideLowPriority bool        // omit priority badge when priority > 2
-	Flash           bool        // cursor flash highlight active
-	SearchQuery     string      // when set, highlight matching substring in title
-	BadgeColor      color.Color // when set, overrides MutedStyle on the [project-name] badge
+	ShowScore       bool          // show composite score badge (requires cfg != nil)
+	ShowTags        bool          // show inline tag string
+	ShowRecurrence  bool          // show ↻ indicator with streak count for recurring tasks
+	MaxProjectLen   int           // project name truncation; 0 defaults to 12
+	Prefix          string        // prepended before the project badge (e.g. checkbox, date string)
+	StatusBadge     string        // pre-styled status badge override
+	DueStr          string        // right-aligned context string, already styled by caller
+	HideLowPriority bool          // omit priority badge when priority > 2
+	Flash           bool          // cursor flash highlight active
+	SearchQuery     string        // when set, highlight matching substring in title
+	BadgeColor      color.Color   // when set, overrides MutedStyle on the [project-name] badge
+	RowIndex        int           // visual row index for zebra striping (0-based)
+	Layout          *ColumnLayout // when non-nil, use fixed-width badge columns
 }
 
 // RenderCrossProjectTaskLine renders a standard task line for views that aggregate
@@ -261,6 +275,8 @@ func RenderCrossProjectTaskLine(
 		HideLowPriority: opts.HideLowPriority,
 		Flash:           opts.Flash,
 		SearchQuery:     opts.SearchQuery,
+		RowIndex:        opts.RowIndex,
+		Layout:          opts.Layout,
 	}.Render()
 }
 
@@ -321,19 +337,23 @@ func (tl TaskLine) Render() string {
 		title = SelectedTaskTitleStyle.Render(title)
 	}
 
-	// Build priority segment: "badge " when present, "" when hidden
-	prioritySegment := ""
-	if priorityBadge != "" {
+	// Build priority segment: fixed-width when Layout set, variable otherwise.
+	var prioritySegment string
+	if tl.Layout != nil && tl.Layout.HasPriority {
+		prioritySegment = PadBadge(priorityBadge, tl.Layout.PriorityWidth) + " "
+	} else if priorityBadge != "" {
 		prioritySegment = priorityBadge + " "
 	}
 
-	// Build stage segment: "badge " when present, "" when empty
-	stageSegment := ""
-	if tl.StageBadge != "" {
+	// Build stage segment: fixed-width when Layout set, variable otherwise.
+	var stageSegment string
+	if tl.Layout != nil && tl.Layout.HasStage {
+		stageSegment = PadBadge(tl.StageBadge, tl.Layout.StageWidth) + " "
+	} else if tl.StageBadge != "" {
 		stageSegment = tl.StageBadge + " "
 	}
 
-	line := fmt.Sprintf("%s%s%s%s %s %s%s%s%s", tl.Prefix, cursor, tl.PreBadges, statusIcon, typeIcon, stageSegment, prioritySegment, title, tl.PostTitle)
+	line := fmt.Sprintf("%s%s%s%s %s %s%s%s%s", tl.Prefix, cursor, tl.PreBadges, statusIcon, typeIcon, prioritySegment, stageSegment, title, tl.PostTitle)
 	if tl.DueStr != "" {
 		if tl.ViewWidth > 0 {
 			leftWidth := max(tl.ViewWidth-lipgloss.Width(tl.DueStr)-1, 1)
@@ -360,6 +380,8 @@ func (tl TaskLine) Render() string {
 		} else {
 			line = SelectedLine(line, 0)
 		}
+	} else if !tl.Task.Dimmed && !tl.IsSelected && !tl.Flash {
+		line = ZebraLine(line, tl.ViewWidth, tl.RowIndex)
 	}
 
 	return line

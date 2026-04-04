@@ -55,6 +55,7 @@ func NewSettingsModel(cfg *config.Config, manager *config.Manager) *SettingsMode
 		treePriorityMode:         priorityModeToCursor(cfg.TreePriorityMode),
 		outlinerPriorityMode:     priorityModeToCursor(cfg.OutlinerPriorityMode),
 		crossOutlinerSidebar:     cfg.CrossOutlinerSidebarEnabled == nil || *cfg.CrossOutlinerSidebarEnabled,
+		zebraStriping:            cfg.ZebraStriping(),
 		contexts:                 contexts,
 		contextCursor:            settingsOptionCursor(contexts, cfg.DefaultContext, -1),
 		savedStages:              append([]string{}, stages...),

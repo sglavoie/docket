@@ -38,6 +38,7 @@ var (
 	ColorOrange       = lipgloss.Color("208")
 	ColorRuleKeyword  = lipgloss.Color("14")
 	ColorRuleOperator = lipgloss.Color("13")
+	ColorZebraBg      = lipgloss.Color("235")
 
 	// View accent colors — one per view category for spatial orientation.
 	AccentDashboard   = lipgloss.Color("39")  // blue

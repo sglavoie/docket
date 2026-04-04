@@ -358,13 +358,19 @@ func (m *ProjectFocusViewModel) View() tea.View {
 		contentHeight -= 2
 	}
 
+	// Compute column layout for badge alignment.
+	var colLayout *ColumnLayout
+	if m.Width() >= MinColumnAlignWidth {
+		colLayout = ComputeTaskLineColumnLayout(tasks, false)
+	}
+
 	// Render task lines
 	var lines []string
 	maxTitleLen := m.Width() - 35
 
 	for i, task := range tasks {
 		isSelected := i == m.cursor
-		line := m.renderTaskLine(task, isSelected, maxTitleLen)
+		line := m.renderTaskLine(task, isSelected, maxTitleLen, colLayout, i)
 		lines = append(lines, line)
 	}
 
@@ -432,7 +438,7 @@ var ProjectFocusNavigationPrefixHints = []PrefixHint{
 }
 
 // renderTaskLine renders a single task line.
-func (m *ProjectFocusViewModel) renderTaskLine(task *models.Task, isSelected bool, maxTitleLen int) string {
+func (m *ProjectFocusViewModel) renderTaskLine(task *models.Task, isSelected bool, maxTitleLen int, layout *ColumnLayout, rowIndex int) string {
 	csStr := ""
 	if task.CustomSection != "" {
 		csColor := m.project.GetSectionColor(task.CustomSection)
@@ -463,6 +469,8 @@ func (m *ProjectFocusViewModel) renderTaskLine(task *models.Task, isSelected boo
 		DueStr:     dueStr,
 		ViewWidth:  m.Width(),
 		Flash:      m.cursorFlash,
+		Layout:     layout,
+		RowIndex:   rowIndex,
 	}.Render()
 }
 
