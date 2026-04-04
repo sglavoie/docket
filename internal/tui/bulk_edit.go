@@ -639,7 +639,7 @@ func (m *BulkEditModel) View() tea.View {
 	viewportH := m.viewportHeight()
 
 	var out strings.Builder
-	out.WriteString(renderFullscreenTitle("Bulk Edit", subtitle))
+	out.WriteString(renderFullscreenTitle("Bulk Edit", subtitle, m.AccentColor()))
 	out.WriteString("\n\n")
 
 	// Only apply scrolling if content exceeds viewport

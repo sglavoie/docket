@@ -171,7 +171,7 @@ func (m *PriorityViewModel) View() tea.View {
 
 	// Title
 	subtitle := fmt.Sprintf("%d tasks · %s", m.totalTasks, m.project.Name)
-	b.WriteString(renderFullscreenTitle("Priority View", subtitle))
+	b.WriteString(renderFullscreenTitle("Priority View", subtitle, m.AccentColor()))
 	b.WriteString("\n")
 
 	_, _, _, _, _, filteredWaiting := m.filteredGroupsWithSubTab()
@@ -306,7 +306,7 @@ func (m *PriorityViewModel) View() tea.View {
 	}
 	left := HelpStyle.Render("↑/↓ navigate · / search · [/] tabs · F filter · s start suggested · ,s/,d status" + tabHint)
 	right := MutedStyle.Render(fmt.Sprintf("%d tasks", m.totalTasks))
-	b.WriteString(renderStatusBarFooter(left, right, m.Width()))
+	b.WriteString(renderStatusBarFooter(left, right, m.Width(), m.AccentColor()))
 
 	return tea.NewView(b.String())
 }

@@ -25,7 +25,7 @@ func (m *FocusViewModel) View() tea.View { //nolint:gocyclo
 			subtitle = fmt.Sprintf("%d queued, %d/%d tasks", queueCount, len(m.filtered), len(m.tasks))
 		}
 	}
-	b.WriteString(renderFullscreenTitle("What's Next", subtitle))
+	b.WriteString(renderFullscreenTitle("What's Next", subtitle, m.AccentColor()))
 	b.WriteString("\n")
 
 	if len(m.tasks) == 0 && len(*m.queue) == 0 {
@@ -148,7 +148,7 @@ func (m *FocusViewModel) View() tea.View { //nolint:gocyclo
 	}
 	left := HelpStyle.Render(strings.Join(helpParts, " · "))
 	right := MutedStyle.Render(fmt.Sprintf("%d tasks", len(m.filtered)))
-	b.WriteString(renderStatusBarFooter(left, right, m.width))
+	b.WriteString(renderStatusBarFooter(left, right, m.width, m.AccentColor()))
 
 	return tea.NewView(b.String())
 }
@@ -224,12 +224,12 @@ func (m *FocusViewModel) renderStandardLines() []string {
 
 // renderTabBar renders the tab bar for filtering.
 func (m *FocusViewModel) renderTabBar() string {
-	return renderTabBarWithOptionalSubTabs(focusTabNames, m.tabs.Active, m.subTabNames, m.subTabRowFocused, m.width)
+	return renderTabBarWithOptionalSubTabs(focusTabNames, m.tabs.Active, m.subTabNames, m.subTabRowFocused, m.width, m.AccentColor())
 }
 
 // renderSubTabBar renders the dynamic sub-tab row when applicable.
 func (m *FocusViewModel) renderSubTabBar() string {
-	return renderDynamicSubTabBar(m.subTabNames, m.subTab, m.subTabRowFocused, m.width)
+	return renderDynamicSubTabBar(m.subTabNames, m.subTab, m.subTabRowFocused, m.width, m.AccentColor())
 }
 
 // GetPrefixPopupInfo returns prefix popup data for overlay rendering.

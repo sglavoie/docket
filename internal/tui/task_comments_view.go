@@ -16,7 +16,7 @@ func (m *TaskCommentsModel) View() tea.View {
 	}
 
 	var b strings.Builder
-	b.WriteString(renderFullscreenTitle(fmt.Sprintf("Comments · #%d: %s", m.task.ShortID, m.task.Title), ""))
+	b.WriteString(renderFullscreenTitle(fmt.Sprintf("Comments · #%d: %s", m.task.ShortID, m.task.Title), "", m.AccentColor()))
 	b.WriteString("\n\n")
 
 	if m.expandedView && m.hasSelection() {
@@ -52,7 +52,7 @@ func (m *TaskCommentsModel) renderExpandedView(b *strings.Builder) tea.View {
 	b.WriteString("\n\n")
 	b.WriteString(renderMarkdown(comment.Text, max(m.Width()-4, 1)))
 	b.WriteString("\n\n")
-	b.WriteString(renderStatusBarFooter(HelpStyle.Render("Enter/Esc: close expanded view"), "", m.Width()))
+	b.WriteString(renderStatusBarFooter(HelpStyle.Render("Enter/Esc: close expanded view"), "", m.Width(), m.AccentColor()))
 	return tea.NewView(b.String())
 }
 
@@ -64,7 +64,7 @@ func (m *TaskCommentsModel) renderEditMode(b *strings.Builder) tea.View {
 	b.WriteString("\n\n")
 	b.WriteString(m.editTextInput.View())
 	b.WriteString("\n\n")
-	b.WriteString(renderStatusBarFooter(HelpStyle.Render("Ctrl+S: save · Ctrl+E: external editor · Esc: cancel"), "", m.Width()))
+	b.WriteString(renderStatusBarFooter(HelpStyle.Render("Ctrl+S: save · Ctrl+E: external editor · Esc: cancel"), "", m.Width(), m.AccentColor()))
 	return tea.NewView(b.String())
 }
 
@@ -73,7 +73,7 @@ func (m *TaskCommentsModel) renderAddMode(b *strings.Builder) tea.View {
 	b.WriteString("\n")
 	b.WriteString(m.textInput.View())
 	b.WriteString("\n\n")
-	b.WriteString(renderStatusBarFooter(HelpStyle.Render("Ctrl+S: save · Ctrl+E: external editor · Esc: cancel"), "", m.Width()))
+	b.WriteString(renderStatusBarFooter(HelpStyle.Render("Ctrl+S: save · Ctrl+E: external editor · Esc: cancel"), "", m.Width(), m.AccentColor()))
 	return tea.NewView(b.String())
 }
 

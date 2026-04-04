@@ -32,7 +32,7 @@ func (m *NotesViewModel) View() tea.View {
 		}
 		subtitle = fmt.Sprintf("[tags: %s]", strings.Join(tags, ", "))
 	}
-	b.WriteString(renderFullscreenTitle(title, subtitle))
+	b.WriteString(renderFullscreenTitle(title, subtitle, m.AccentColor()))
 	b.WriteString("\n")
 
 	// Tab bar and count info (hidden when bottom pane is fullscreen)
@@ -275,7 +275,7 @@ func (m *NotesViewModel) renderStatusBar() string {
 }
 
 func (m *NotesViewModel) renderNotesTabBar() string {
-	return RenderTabBar(m.tabs.Names, m.tabs.Active, min(m.Width()-6, 54)-2, 1)
+	return RenderTabBar(m.tabs.Names, m.tabs.Active, min(m.Width()-6, 54)-2, 1, m.AccentColor())
 }
 
 func (m *NotesViewModel) renderDetailsPane(note *models.Note, width, height int) string {

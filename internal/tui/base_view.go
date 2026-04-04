@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"image/color"
 
 	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
@@ -19,15 +20,27 @@ type ViewBundle struct {
 // BaseView provides common functionality for TUI views.
 // Embed this in view models to get standard dimension and error handling.
 type BaseView struct {
-	width  int
-	height int
-	err    error
+	width       int
+	height      int
+	err         error
+	accentColor color.Color
 }
 
 // SetSize updates the view dimensions.
 func (v *BaseView) SetSize(w, h int) {
 	v.width = w
 	v.height = h
+}
+
+// SetAccentColor stores the view's contextual accent color.
+// Called by the app shell when the view is pushed onto the stack.
+func (v *BaseView) SetAccentColor(c color.Color) {
+	v.accentColor = c
+}
+
+// AccentColor returns the view's contextual accent color, or nil if unset.
+func (v *BaseView) AccentColor() color.Color {
+	return v.accentColor
 }
 
 // Width returns the current width.
@@ -512,8 +525,9 @@ func (t *TabState) Cycle(delta int) {
 func (t *TabState) Count() int { return len(t.Names) }
 
 // RenderBar renders the tab bar at the given width.
-func (t *TabState) RenderBar(width int) string {
-	return renderWrappingTabBar(t.Names, t.Active, width)
+// Pass an optional accent color to highlight the active tab with a distinct color.
+func (t *TabState) RenderBar(width int, accent ...color.Color) string {
+	return renderWrappingTabBar(t.Names, t.Active, width, accent...)
 }
 
 // ExpandAllSections clears the collapsed map so all sections are visible.

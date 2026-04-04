@@ -16,7 +16,7 @@ func (m *AllTasksViewModel) View() tea.View {
 	if m.totalVisibleTaskCount() != len(m.allTasks) {
 		subtitle = fmt.Sprintf("%d/%d tasks across %d projects", m.totalVisibleTaskCount(), len(m.allTasks), m.projectCount())
 	}
-	b.WriteString(renderFullscreenTitle("All Tasks", subtitle))
+	b.WriteString(renderFullscreenTitle("All Tasks", subtitle, m.AccentColor()))
 	b.WriteString("\n")
 
 	if len(m.allTasks) == 0 {
@@ -27,7 +27,7 @@ func (m *AllTasksViewModel) View() tea.View {
 
 	// Tab bar + filter badge
 	chrome, chromeLines := renderFullscreenChrome(
-		m.tabs.RenderBar(m.Width()),
+		m.tabs.RenderBar(m.Width(), m.AccentColor()),
 		m.renderActiveFilterIndicator(),
 		false,
 	)
@@ -117,7 +117,7 @@ func (m *AllTasksViewModel) View() tea.View {
 	}
 	left := HelpStyle.Render(footerLeft)
 	right := MutedStyle.Render(fmt.Sprintf("%d tasks", m.totalVisibleTaskCount()))
-	b.WriteString(renderFullscreenFooterBlock(m.statusMessage, m.err, left, right, m.Width()))
+	b.WriteString(renderFullscreenFooterBlock(m.statusMessage, m.err, left, right, m.Width(), m.AccentColor()))
 
 	return tea.NewView(b.String())
 }

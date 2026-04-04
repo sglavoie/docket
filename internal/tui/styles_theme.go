@@ -404,6 +404,7 @@ func rebuildStyles() {
 func ApplyTheme(tc ThemeConfig) {
 	rebuildPalette(tc.Palette)
 	rebuildStyles()
+	buildViewAccentMap()
 
 	effectiveBg := tc.CursorBg
 	if effectiveBg == "" {

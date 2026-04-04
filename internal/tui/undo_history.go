@@ -277,7 +277,7 @@ func (m *UndoHistoryModel) View() tea.View {
 	var b strings.Builder
 
 	// Title
-	b.WriteString(renderFullscreenTitle("Undo History", ""))
+	b.WriteString(renderFullscreenTitle("Undo History", "", m.AccentColor()))
 	b.WriteString("\n\n")
 
 	// Handle error state

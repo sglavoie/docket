@@ -20,7 +20,7 @@ func (m *GlobalSearchModel) View() tea.View {
 	if len(m.filtered) != len(m.allTasks) {
 		subtitle = fmt.Sprintf("%d/%d matching", len(m.filtered), len(m.allTasks))
 	}
-	out.WriteString(renderFullscreenTitle("Global Search", subtitle))
+	out.WriteString(renderFullscreenTitle("Global Search", subtitle, m.AccentColor()))
 	out.WriteString("\n")
 
 	// Tab bar
@@ -119,7 +119,7 @@ func (m *GlobalSearchModel) View() tea.View {
 
 // renderTabBar renders the tab bar for filtering.
 func (m *GlobalSearchModel) renderTabBar() string {
-	return m.tabs.RenderBar(m.Width())
+	return m.tabs.RenderBar(m.Width(), m.AccentColor())
 }
 
 // renderFilterBadges renders active filters as styled badges.

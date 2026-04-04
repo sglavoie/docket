@@ -24,11 +24,11 @@ func (m *FocusBoardModel) View() tea.View { //nolint:gocyclo
 		}
 	}
 	subtitle := fmt.Sprintf("%d actions, %d tasks", totalActions, totalTasks)
-	b.WriteString(renderFullscreenTitle("Focus Board", subtitle))
+	b.WriteString(renderFullscreenTitle("Focus Board", subtitle, m.AccentColor()))
 	b.WriteString("\n")
 
 	// Tab bar
-	b.WriteString(renderTabBarWithOptionalSubTabs(focusBoardTabNames, m.tabs.Active, nil, false, m.width))
+	b.WriteString(renderTabBarWithOptionalSubTabs(focusBoardTabNames, m.tabs.Active, nil, false, m.width, m.AccentColor()))
 	b.WriteString("\n")
 
 	// Search input
@@ -136,7 +136,7 @@ func (m *FocusBoardModel) View() tea.View { //nolint:gocyclo
 		b.WriteString(renderStatusMessages(m.statusMessage, m.err))
 		left := HelpStyle.Render("a add · tab switch · q close · ? help")
 		right := MutedStyle.Render("0 items")
-		b.WriteString(renderStatusBarFooter(left, right, m.width))
+		b.WriteString(renderStatusBarFooter(left, right, m.width, m.AccentColor()))
 		return tea.NewView(b.String())
 	}
 
@@ -210,7 +210,7 @@ func (m *FocusBoardModel) View() tea.View { //nolint:gocyclo
 		rightParts = append(rightParts, fmt.Sprintf("%d/%d items", len(m.filtered), len(m.rows)))
 	}
 	right := MutedStyle.Render(strings.Join(rightParts, " · "))
-	b.WriteString(renderStatusBarFooter(left, right, m.width))
+	b.WriteString(renderStatusBarFooter(left, right, m.width, m.AccentColor()))
 
 	return tea.NewView(b.String())
 }

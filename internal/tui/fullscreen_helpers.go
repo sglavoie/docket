@@ -38,11 +38,18 @@ func ScrollDownIndicator(n int) string {
 // renderStatusBarFooter renders a horizontal divider followed by a left/right aligned
 // status line. This is the standard footer pattern for fullscreen views: a separator
 // line with left-aligned title and right-aligned help text beneath it.
-func renderStatusBarFooter(left, right string, width int) string {
-	separator := MutedStyle.Render(strings.Repeat("─", width))
+// Pass an optional accent color to tint the separator line.
+func renderStatusBarFooter(left, right string, width int, accent ...color.Color) string {
 	if width <= 0 {
 		width = 80
 	}
+	var separatorStyle lipgloss.Style
+	if len(accent) > 0 && accent[0] != nil {
+		separatorStyle = lipgloss.NewStyle().Foreground(accent[0])
+	} else {
+		separatorStyle = MutedStyle
+	}
+	separator := separatorStyle.Render(strings.Repeat("─", width))
 
 	leftWidth := lipgloss.Width(left)
 	rightWidth := lipgloss.Width(right)
@@ -112,9 +119,10 @@ func renderHorizontalDivider(width int, opts ...DividerOption) string {
 // renderWrappingTabBar renders a tab bar that wraps to multiple rows when tabs
 // overflow the available width. Each row is filled with a border filler on the right.
 // This differs from RenderTabBar which renders a single-line tab bar.
-func renderWrappingTabBar(tabs []string, activeIdx, availableWidth int) string {
+// Pass an optional accent color to tint the active tab.
+func renderWrappingTabBar(tabs []string, activeIdx, availableWidth int, accent ...color.Color) string {
 	plainStyle := lipgloss.NewStyle().Padding(0, 1)
-	active := activeTabStyle(1, true)
+	active := activeTabStyle(1, true, accent...)
 	inactive := inactiveTabStyle(1, true)
 
 	// Build rows of tabs that fit within available width
@@ -226,8 +234,15 @@ func AttachScrollbar(content, scrollbar string) string {
 }
 
 // renderFullscreenTitle renders a title line for fullscreen views with optional subtitle.
-func renderFullscreenTitle(title, subtitle string) string {
-	t := TitleStyle.Render(title)
+// Pass an optional accent color to override the title foreground color.
+func renderFullscreenTitle(title, subtitle string, accent ...color.Color) string {
+	var titleStyle lipgloss.Style
+	if len(accent) > 0 && accent[0] != nil {
+		titleStyle = lipgloss.NewStyle().Bold(true).Foreground(accent[0])
+	} else {
+		titleStyle = TitleStyle
+	}
+	t := titleStyle.Render(title)
 	if subtitle != "" {
 		t += "  " + MutedStyle.Render(subtitle)
 	}
@@ -437,8 +452,8 @@ func formatRelativeDueVerbose(dueDate *time.Time) string {
 // tabs is the list of tab names, activeIdx is the active tab, focused indicates
 // whether this row has focus (shows ▐) or not (shows space), and width is the
 // available width for the tab bar.
-func renderSubTabBarWithFocus(tabs []string, activeIdx int, focused bool, width int) string {
-	bar := RenderTabBar(tabs, activeIdx, width-2, 1)
+func renderSubTabBarWithFocus(tabs []string, activeIdx int, focused bool, width int, accent ...color.Color) string {
+	bar := RenderTabBar(tabs, activeIdx, width-2, 1, accent...)
 
 	if focused {
 		bar = FocusIndicator + bar
@@ -608,11 +623,12 @@ func renderFullscreenChrome(tabBar, filterBadge string, trailingBlank bool) (str
 // renderFullscreenFooterBlock renders the "\n\n" + status messages + footer bar
 // sequence that most fullscreen views share. The caller supplies the status
 // message, error, and the left/right footer strings already styled.
-func renderFullscreenFooterBlock(statusMsg string, err error, footerLeft, footerRight string, width int) string {
+// Pass an optional accent color to tint the separator line.
+func renderFullscreenFooterBlock(statusMsg string, err error, footerLeft, footerRight string, width int, accent ...color.Color) string {
 	var b strings.Builder
 	b.WriteString("\n\n")
 	b.WriteString(renderStatusMessages(statusMsg, err))
-	b.WriteString(renderStatusBarFooter(footerLeft, footerRight, width))
+	b.WriteString(renderStatusBarFooter(footerLeft, footerRight, width, accent...))
 	return b.String()
 }
 
@@ -685,11 +701,11 @@ func renderCollapsibleHeader(name string, count int, collapsed, isSelected, flas
 // renderTabBarWithOptionalSubTabs renders a tab bar that switches between a
 // wrapping tab bar and a sub-tab-bar-with-focus layout depending on whether
 // sub-tabs are present.
-func renderTabBarWithOptionalSubTabs(tabNames []string, activeTab int, subTabNames []string, subTabRowFocused bool, width int) string {
+func renderTabBarWithOptionalSubTabs(tabNames []string, activeTab int, subTabNames []string, subTabRowFocused bool, width int, accent ...color.Color) string {
 	if len(subTabNames) > 1 {
-		return renderSubTabBarWithFocus(tabNames, activeTab, !subTabRowFocused, width)
+		return renderSubTabBarWithFocus(tabNames, activeTab, !subTabRowFocused, width, accent...)
 	}
-	return renderWrappingTabBar(tabNames, activeTab, width)
+	return renderWrappingTabBar(tabNames, activeTab, width, accent...)
 }
 
 // ClassifyDueDate returns a display string and style for a due date relative to today.
@@ -743,7 +759,7 @@ func renderFilterAwareEmptyState(hasFilters bool, baseMsg, baseHelpText, filterH
 
 // renderDynamicSubTabBar renders the dynamic sub-tab row when there are
 // multiple sub-tabs (prepends "All"), or returns "" if none.
-func renderDynamicSubTabBar(subTabNames []string, subTab int, subTabRowFocused bool, width int) string {
+func renderDynamicSubTabBar(subTabNames []string, subTab int, subTabRowFocused bool, width int, accent ...color.Color) string {
 	if len(subTabNames) <= 1 {
 		return ""
 	}
@@ -753,7 +769,7 @@ func renderDynamicSubTabBar(subTabNames []string, subTab int, subTabRowFocused b
 	tabs = append(tabs, subTabNames...)
 
 	// Use wrapping tab bar with width reduced for focus indicator column
-	bar := renderWrappingTabBar(tabs, subTab, width-2)
+	bar := renderWrappingTabBar(tabs, subTab, width-2, accent...)
 
 	lines := strings.Split(bar, "\n")
 	if subTabRowFocused {

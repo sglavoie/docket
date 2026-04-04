@@ -251,9 +251,9 @@ func TestParseSearchQuery_HasIsNoPFilters(t *testing.T) {
 			wantHas: []string{"children"},
 		},
 		{
-			name:    "no:deps alias",
-			input:   "no:deps",
-			wantNo:  []string{"dependency"},
+			name:   "no:deps alias",
+			input:  "no:deps",
+			wantNo: []string{"dependency"},
 		},
 		{
 			name:     "combination with text",

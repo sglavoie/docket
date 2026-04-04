@@ -17,7 +17,7 @@ func (m *DueDateOverviewModel) View() tea.View {
 
 	// Title
 	subtitle := fmt.Sprintf("%d tasks across all projects", allTotal)
-	b.WriteString(renderFullscreenTitle("Due Dates", subtitle))
+	b.WriteString(renderFullscreenTitle("Due Dates", subtitle, m.AccentColor()))
 	b.WriteString("\n")
 
 	if allTotal == 0 {
@@ -34,7 +34,7 @@ func (m *DueDateOverviewModel) View() tea.View {
 
 	// Tab bar + filter badge
 	chrome, chromeLines := renderFullscreenChrome(
-		m.tabs.RenderBar(m.Width()),
+		m.tabs.RenderBar(m.Width(), m.AccentColor()),
 		m.renderActiveFilterIndicator(),
 		true,
 	)
@@ -79,7 +79,7 @@ func (m *DueDateOverviewModel) View() tea.View {
 	// Footer
 	left := HelpStyle.Render("[/] tabs · ↑/↓ navigate · ,s/d/b/x/o status · 1-5 priority · dt/dm/dw due · e edit · ? help")
 	right := MutedStyle.Render(fmt.Sprintf("%d tasks", m.totalTasks))
-	b.WriteString(renderFullscreenFooterBlock(m.statusMessage, m.Error(), left, right, m.Width()))
+	b.WriteString(renderFullscreenFooterBlock(m.statusMessage, m.Error(), left, right, m.Width(), m.AccentColor()))
 
 	return tea.NewView(b.String())
 }

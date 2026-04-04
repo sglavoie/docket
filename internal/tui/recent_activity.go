@@ -347,7 +347,7 @@ func (m *RecentActivityModel) View() tea.View {
 	if m.SearchQuery() != "" || m.IsSearchMode() {
 		subtitle = fmt.Sprintf("%d/%d tasks", len(m.filtered), len(m.tasks))
 	}
-	b.WriteString(renderFullscreenTitle(title, subtitle))
+	b.WriteString(renderFullscreenTitle(title, subtitle, m.AccentColor()))
 	b.WriteString("\n")
 
 	if len(m.filtered) == 0 && !m.IsSearchMode() && m.SearchQuery() == "" {
@@ -363,7 +363,7 @@ func (m *RecentActivityModel) View() tea.View {
 	}
 
 	// Tab bar
-	b.WriteString(m.tabs.RenderBar(m.Width()))
+	b.WriteString(m.tabs.RenderBar(m.Width(), m.AccentColor()))
 	b.WriteString("\n")
 
 	// Filter badge
@@ -407,7 +407,7 @@ func (m *RecentActivityModel) View() tea.View {
 
 	left := HelpStyle.Render("j/k nav · [/] tabs · Enter open · p preview · / filter · r refresh · ? help")
 	right := MutedStyle.Render(fmt.Sprintf("%d tasks", len(m.filtered)))
-	b.WriteString(renderStatusBarFooter(left, right, m.Width()))
+	b.WriteString(renderStatusBarFooter(left, right, m.Width(), m.AccentColor()))
 
 	return tea.NewView(b.String())
 }

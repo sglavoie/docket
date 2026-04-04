@@ -137,14 +137,14 @@ func TestDetectKeywordTrigger(t *testing.T) {
 
 func TestBuildKeywordAcceptedInput(t *testing.T) {
 	tests := []struct {
-		name     string
-		input    string
-		keyword  string
-		mode     int
-		trigPos  int
-		items    []ACSuggestion
-		cursor   int
-		wantOut  string
+		name    string
+		input   string
+		keyword string
+		mode    int
+		trigPos int
+		items   []ACSuggestion
+		cursor  int
+		wantOut string
 	}{
 		{
 			name:    "accept has:comment from start",

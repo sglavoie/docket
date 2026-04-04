@@ -1,18 +1,27 @@
 package tui
 
-import "charm.land/lipgloss/v2"
+import (
+	"image/color"
+
+	"charm.land/lipgloss/v2"
+)
 
 // activeTabStyle returns the standard active tab style: bold, primary-colored,
-// with optional bottom border. Used by tab bar renderers to avoid style duplication.
-func activeTabStyle(padding int, withBorder bool) lipgloss.Style {
+// with optional bottom border. Pass an optional accent color to override the
+// primary color for the foreground and border.
+func activeTabStyle(padding int, withBorder bool, accent ...color.Color) lipgloss.Style {
+	var fg color.Color = ColorPrimary
+	if len(accent) > 0 && accent[0] != nil {
+		fg = accent[0]
+	}
 	s := lipgloss.NewStyle().
 		Bold(true).
-		Foreground(ColorPrimary).
+		Foreground(fg).
 		Padding(0, padding)
 	if withBorder {
 		s = s.BorderBottom(true).
 			BorderStyle(lipgloss.ThickBorder()).
-			BorderForeground(ColorPrimary)
+			BorderForeground(fg)
 	}
 	if themeBgColor != "" {
 		s = s.Background(lipgloss.Color(themeBgColor))
@@ -40,14 +49,16 @@ func inactiveTabStyle(padding int, withBorder bool) lipgloss.Style {
 // RenderTabBar renders a horizontal tab bar with the given tab labels, highlighting
 // the active tab. The availableWidth controls the filler line width. The padding
 // parameter sets the horizontal padding for each tab (typically 1 or 2).
-func RenderTabBar(tabs []string, activeIdx int, availableWidth int, padding int) string {
-	return RenderColoredTabBar(tabs, activeIdx, availableWidth, padding, nil)
+// Pass an optional accent color to tint the active tab.
+func RenderTabBar(tabs []string, activeIdx int, availableWidth int, padding int, accent ...color.Color) string {
+	return RenderColoredTabBar(tabs, activeIdx, availableWidth, padding, nil, accent...)
 }
 
 // RenderColoredTabBar renders a tab bar where inactive tabs can have custom foreground
 // colors via the tabColors map (tab name -> color name from SectionColorPalette).
 // Active tabs always use the primary color. Tabs not in the map use the default muted color.
-func RenderColoredTabBar(tabs []string, activeIdx int, availableWidth int, padding int, tabColors map[string]string) string {
+// Pass an optional accent color to tint the active tab.
+func RenderColoredTabBar(tabs []string, activeIdx int, availableWidth int, padding int, tabColors map[string]string, accent ...color.Color) string {
 	plainStyle := lipgloss.NewStyle().Padding(0, padding)
 	totalWidth := 0
 	for _, name := range tabs {
@@ -55,7 +66,7 @@ func RenderColoredTabBar(tabs []string, activeIdx int, availableWidth int, paddi
 	}
 	fitsSingleLine := totalWidth <= availableWidth
 
-	active := activeTabStyle(padding, fitsSingleLine)
+	active := activeTabStyle(padding, fitsSingleLine, accent...)
 	inactive := inactiveTabStyle(padding, fitsSingleLine)
 
 	var rendered []string
@@ -66,7 +77,7 @@ func RenderColoredTabBar(tabs []string, activeIdx int, availableWidth int, paddi
 				if colorName, ok := tabColors[name]; ok && colorName != "" && colorName != "gray" {
 					colorVal := GetSectionColorValue(colorName)
 					if colorVal != nil {
-						colored := activeTabStyle(padding, fitsSingleLine).
+						colored := activeTabStyle(padding, fitsSingleLine, accent...).
 							Foreground(colorVal).
 							BorderForeground(colorVal)
 						rendered = append(rendered, colored.Render(name))

@@ -433,7 +433,7 @@ func (m *CrossProjectLinkerModel) View() tea.View {
 	subtitle = truncateToVisualWidth(subtitle, availableSubtitleWidth)
 
 	var out strings.Builder
-	out.WriteString(renderFullscreenTitle(title, subtitle))
+	out.WriteString(renderFullscreenTitle(title, subtitle, m.AccentColor()))
 	out.WriteString("\n\n")
 
 	switch m.step {

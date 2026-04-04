@@ -39,6 +39,16 @@ var (
 	ColorRuleKeyword  = lipgloss.Color("14")
 	ColorRuleOperator = lipgloss.Color("13")
 
+	// View accent colors — one per view category for spatial orientation.
+	AccentDashboard   = lipgloss.Color("39")  // blue
+	AccentProjectTree = lipgloss.Color("44")  // cyan
+	AccentFocus       = lipgloss.Color("42")  // green
+	AccentPriority    = lipgloss.Color("208") // orange
+	AccentReview      = lipgloss.Color("220") // yellow
+	AccentAllTasks    = lipgloss.Color("135") // purple
+	AccentMetrics     = lipgloss.Color("30")  // teal
+	AccentSearch      = lipgloss.Color("198") // magenta
+
 	// TaskCountColorScale is a 10-step gradient from red (low) to green (high).
 	TaskCountColorScale = [10]color.Color{
 		lipgloss.Color("196"),

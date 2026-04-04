@@ -40,11 +40,11 @@ func (m *WorkflowRulesModel) renderFullscreenPreview() string {
 	isDefault := m.isDefaultRule(rule.ID)
 
 	var b strings.Builder
-	b.WriteString(renderFullscreenTitle("Rule Preview", ""))
+	b.WriteString(renderFullscreenTitle("Rule Preview", "", m.AccentColor()))
 	b.WriteString("\n\n")
 	b.WriteString(m.renderRuleDetails(rule, isDefault, true))
 	b.WriteString("\n")
-	b.WriteString(renderStatusBarFooter(HelpStyle.Render("Enter/Esc: close · e: edit · Space: toggle · d: delete"), "", m.Width()))
+	b.WriteString(renderStatusBarFooter(HelpStyle.Render("Enter/Esc: close · e: edit · Space: toggle · d: delete"), "", m.Width(), m.AccentColor()))
 
 	return b.String()
 }

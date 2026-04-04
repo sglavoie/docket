@@ -19,7 +19,7 @@ func (m *WorkflowDryRunModel) View() tea.View {
 	} else {
 		subtitle = fmt.Sprintf("%d rules · %d tasks scanned", m.ruleCount, m.taskCount)
 	}
-	b.WriteString(renderFullscreenTitle("Workflow Dry Run", subtitle))
+	b.WriteString(renderFullscreenTitle("Workflow Dry Run", subtitle, m.AccentColor()))
 	b.WriteString("\n\n")
 
 	if m.loading {
@@ -30,7 +30,7 @@ func (m *WorkflowDryRunModel) View() tea.View {
 	if m.loadErr != nil {
 		b.WriteString(ErrorIconStyle.Render(fmt.Sprintf("Error: %s", m.loadErr.Error())))
 		b.WriteString("\n\n")
-		b.WriteString(renderStatusBarFooter(HelpStyle.Render("q: close"), "", m.Width()))
+		b.WriteString(renderStatusBarFooter(HelpStyle.Render("q: close"), "", m.Width(), m.AccentColor()))
 		return tea.NewView(b.String())
 	}
 
@@ -111,7 +111,7 @@ func (m *WorkflowDryRunModel) View() tea.View {
 	var helpParts []string
 	helpParts = append(helpParts, "/: search", "j/k: nav", "q: close")
 	b.WriteString("\n")
-	b.WriteString(renderStatusBarFooter(HelpStyle.Render(strings.Join(helpParts, " · ")), "", m.Width()))
+	b.WriteString(renderStatusBarFooter(HelpStyle.Render(strings.Join(helpParts, " · ")), "", m.Width(), m.AccentColor()))
 
 	return tea.NewView(b.String())
 }

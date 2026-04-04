@@ -109,7 +109,7 @@ func (m *TaskDetailModel) View() tea.View {
 
 // renderTitleBar renders the top title bar.
 func (m *TaskDetailModel) renderTitleBar() string {
-	title := renderFullscreenTitle("Task Detail", fmt.Sprintf("#%d", m.task.ShortID))
+	title := renderFullscreenTitle("Task Detail", fmt.Sprintf("#%d", m.task.ShortID), m.AccentColor())
 	return title
 }
 
@@ -126,7 +126,7 @@ func (m *TaskDetailModel) renderFooter() string {
 	}
 
 	left := HelpStyle.Render("j/k: scroll · ,: status · !: priority · e: edit · c: comments · d: due · h: history · q: close")
-	return renderStatusBarFooter(left, right, m.width)
+	return renderStatusBarFooter(left, right, m.width, m.AccentColor())
 }
 
 // renderHeaderSection renders the task header card.

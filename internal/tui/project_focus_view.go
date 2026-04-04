@@ -335,7 +335,7 @@ func (m *ProjectFocusViewModel) View() tea.View {
 	if len(m.tasks) == 0 {
 		subtitle = "no active tasks"
 	}
-	b.WriteString(renderFullscreenTitle(fmt.Sprintf("Focus: %s", m.project.Name), subtitle))
+	b.WriteString(renderFullscreenTitle(fmt.Sprintf("Focus: %s", m.project.Name), subtitle, m.AccentColor()))
 	b.WriteString("\n\n")
 
 	if len(m.tasks) == 0 {
@@ -344,7 +344,7 @@ func (m *ProjectFocusViewModel) View() tea.View {
 		b.WriteString(HelpStyle.Render("Mark tasks as active with * in the project tree."))
 		b.WriteString("\n")
 		left := HelpStyle.Render("q return")
-		b.WriteString(renderStatusBarFooter(left, "", m.Width()))
+		b.WriteString(renderStatusBarFooter(left, "", m.Width(), m.AccentColor()))
 		return tea.NewView(b.String())
 	}
 
@@ -386,7 +386,7 @@ func (m *ProjectFocusViewModel) View() tea.View {
 	footerParts += " · ? help"
 	left := HelpStyle.Render(footerParts)
 	right := MutedStyle.Render(fmt.Sprintf("%d tasks", len(tasks)))
-	b.WriteString(renderStatusBarFooter(left, right, m.Width()))
+	b.WriteString(renderStatusBarFooter(left, right, m.Width(), m.AccentColor()))
 
 	return tea.NewView(b.String())
 }
@@ -401,7 +401,7 @@ func (m *ProjectFocusViewModel) renderSubTabBar() string {
 	tabs = append(tabs, "All")
 	tabs = append(tabs, m.subTabNames...)
 
-	bar := RenderTabBar(tabs, m.subTab, min(m.Width()-6, 54)-2, 1)
+	bar := RenderTabBar(tabs, m.subTab, min(m.Width()-6, 54)-2, 1, m.AccentColor())
 
 	if m.subTabRowFocused {
 		bar = FocusIndicator + bar

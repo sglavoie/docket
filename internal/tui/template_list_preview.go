@@ -36,7 +36,7 @@ func (m *TaskTemplatesModel) renderFullscreenPreview() string {
 	isDefault := m.isDefaultTemplate(t.ID)
 
 	var b strings.Builder
-	b.WriteString(renderFullscreenTitle("Template Preview", ""))
+	b.WriteString(renderFullscreenTitle("Template Preview", "", m.AccentColor()))
 	b.WriteString("\n\n")
 
 	lines := m.renderTemplateDetails(t, isDefault, m.Width()-4)
@@ -49,7 +49,7 @@ func (m *TaskTemplatesModel) renderFullscreenPreview() string {
 
 	b.WriteString(strings.Join(lines, "\n"))
 	b.WriteString("\n")
-	b.WriteString(renderStatusBarFooter(HelpStyle.Render("j/k: scroll · Ctrl+D/U: page · Enter/Esc: close · e: edit · Space: toggle · d: delete"), "", m.Width()))
+	b.WriteString(renderStatusBarFooter(HelpStyle.Render("j/k: scroll · Ctrl+D/U: page · Enter/Esc: close · e: edit · Space: toggle · d: delete"), "", m.Width(), m.AccentColor()))
 
 	return b.String()
 }

@@ -613,7 +613,7 @@ func (m *TaskChecklistModel) View() tea.View {
 	if total > 0 {
 		progressStr = fmt.Sprintf("%d/%d completed", completed, total)
 	}
-	b.WriteString(renderStatusBarFooter(TitleStyle.Render(checklistTitle), MutedStyle.Render(progressStr), m.Width()))
+	b.WriteString(renderStatusBarFooter(TitleStyle.Render(checklistTitle), MutedStyle.Render(progressStr), m.Width(), m.AccentColor()))
 	b.WriteString("\n\n")
 
 	contentWidth := m.Width() - 4
@@ -624,7 +624,7 @@ func (m *TaskChecklistModel) View() tea.View {
 		b.WriteString("\n\n")
 		b.WriteString(m.editTextInput.View())
 		b.WriteString("\n\n")
-		b.WriteString(renderStatusBarFooter(HelpStyle.Render("Ctrl+S: save · Ctrl+E: external editor · Esc: cancel"), "", m.Width()))
+		b.WriteString(renderStatusBarFooter(HelpStyle.Render("Ctrl+S: save · Ctrl+E: external editor · Esc: cancel"), "", m.Width(), m.AccentColor()))
 		return tea.NewView(b.String())
 	}
 
@@ -634,7 +634,7 @@ func (m *TaskChecklistModel) View() tea.View {
 		b.WriteString("\n")
 		b.WriteString(m.textInput.View())
 		b.WriteString("\n\n")
-		b.WriteString(renderStatusBarFooter(HelpStyle.Render("Ctrl+S: save · Ctrl+E: external editor · Esc: cancel"), "", m.Width()))
+		b.WriteString(renderStatusBarFooter(HelpStyle.Render("Ctrl+S: save · Ctrl+E: external editor · Esc: cancel"), "", m.Width(), m.AccentColor()))
 		return tea.NewView(b.String())
 	}
 

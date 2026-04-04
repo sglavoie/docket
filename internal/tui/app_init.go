@@ -111,6 +111,7 @@ func NewAppModel(cfg *config.Config, manager *config.Manager, opts ...AppOption)
 	}
 
 	ApplyTheme(NewThemeConfig(cfg))
+	app.dashboard.SetAccentColor(AccentDashboard)
 
 	return app
 }

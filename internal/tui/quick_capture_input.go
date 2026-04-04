@@ -14,20 +14,20 @@ import (
 
 // Autocomplete mode constants
 const (
-	acModeNone     = iota // No autocomplete active
-	acModeTag             // Completing a #tag
-	acModeParent          // Completing a >parent
-	acModeType            // Completing a ^type
-	acModePriority        // Completing a !priority
-	acModeDate            // Completing a @date
-	acModeRecur           // Completing a ~recurrence
-	acModeSection         // Completing a /section
-	acModeStatus          // Completing a $status
-	acModeProject         // Completing a %project
-	acModeHas             // has:property filter (global search)
-	acModeIs              // is:state filter (global search)
-	acModeNo              // no:property filter (global search)
-	acModeSearchProject   // p:project filter (global search)
+	acModeNone          = iota // No autocomplete active
+	acModeTag                  // Completing a #tag
+	acModeParent               // Completing a >parent
+	acModeType                 // Completing a ^type
+	acModePriority             // Completing a !priority
+	acModeDate                 // Completing a @date
+	acModeRecur                // Completing a ~recurrence
+	acModeSection              // Completing a /section
+	acModeStatus               // Completing a $status
+	acModeProject              // Completing a %project
+	acModeHas                  // has:property filter (global search)
+	acModeIs                   // is:state filter (global search)
+	acModeNo                   // no:property filter (global search)
+	acModeSearchProject        // p:project filter (global search)
 )
 
 // acVisibleCount is the number of suggestions visible at once (scrollable window size)

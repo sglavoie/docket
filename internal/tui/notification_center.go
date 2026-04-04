@@ -328,7 +328,7 @@ func (m *NotificationCenterModel) ShouldCaptureEsc() bool {
 func (m *NotificationCenterModel) View() tea.View {
 	var b strings.Builder
 
-	b.WriteString(renderFullscreenTitle("Alert Center", ""))
+	b.WriteString(renderFullscreenTitle("Alert Center", "", m.AccentColor()))
 	b.WriteString("\n\n")
 
 	if len(m.items) == 0 {
@@ -415,7 +415,7 @@ func (m *NotificationCenterModel) View() tea.View {
 		count = snap.TotalCount
 	}
 	right := MutedStyle.Render(fmt.Sprintf("%d alerts", count))
-	b.WriteString(renderStatusBarFooter(left, right, m.width))
+	b.WriteString(renderStatusBarFooter(left, right, m.width, m.AccentColor()))
 
 	return tea.NewView(b.String())
 }

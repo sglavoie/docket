@@ -592,7 +592,7 @@ func (c *inboxCore) renderHeader() string {
 	processed, skipped, remaining, total := c.getProgressStats()
 	subtitle := fmt.Sprintf("%d/%d tasks%s (%d processed, %d skipped, %d remaining)",
 		c.currentIndex+1, total, c.backend.headerSubtitleExtra(), processed, skipped, remaining)
-	title := renderFullscreenTitle(c.backend.headerTitle(), subtitle)
+	title := renderFullscreenTitle(c.backend.headerTitle(), subtitle, c.AccentColor())
 
 	var percent float64
 	if total > 0 {
@@ -621,7 +621,7 @@ func (c *inboxCore) renderEmptyState() string {
 
 func (c *inboxCore) renderEmptyInbox() string {
 	var b strings.Builder
-	b.WriteString(renderFullscreenTitle(c.backend.headerTitle(), ""))
+	b.WriteString(renderFullscreenTitle(c.backend.headerTitle(), "", c.AccentColor()))
 	b.WriteString("\n\n")
 	content := SuccessStyle.Render(c.backend.emptyInboxText())
 	b.WriteString(BoxStyle.Render(content))

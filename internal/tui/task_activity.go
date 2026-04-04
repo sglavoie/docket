@@ -134,7 +134,7 @@ func (m *TaskActivityModel) View() tea.View {
 		sortDir = "oldest first"
 	}
 	subtitle := fmt.Sprintf("%d entries (%s)", len(entries), sortDir)
-	b.WriteString(renderFullscreenTitle(fmt.Sprintf("Activity Log for #%d: %s", m.task.ShortID, m.task.Title), subtitle))
+	b.WriteString(renderFullscreenTitle(fmt.Sprintf("Activity Log for #%d: %s", m.task.ShortID, m.task.Title), subtitle, m.AccentColor()))
 	b.WriteString("\n")
 
 	b.WriteString(m.renderTabBar())
@@ -235,7 +235,7 @@ func (m *TaskActivityModel) getEntries() []*models.ActivityEntry {
 
 // renderTabBar renders the tab bar for filtering.
 func (m *TaskActivityModel) renderTabBar() string {
-	return RenderTabBar(activityTabNames, m.activeTab, min(m.Width()-6, 54)-2, 1)
+	return RenderTabBar(activityTabNames, m.activeTab, min(m.Width()-6, 54)-2, 1, m.AccentColor())
 }
 
 // formatEntryText formats an activity entry as a human-readable string.

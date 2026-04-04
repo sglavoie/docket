@@ -1,6 +1,8 @@
 package tui
 
 import (
+	"image/color"
+
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/config"
@@ -74,6 +76,13 @@ type FocusableView interface {
 // (e.g. text inputs, edit modes) when popped from the view stack.
 type ViewExitResetter interface {
 	OnExit()
+}
+
+// AccentColorSetter is implemented by views that support contextual accent color
+// injection from the app shell. BaseView provides the default implementation.
+type AccentColorSetter interface {
+	SetAccentColor(c color.Color)
+	AccentColor() color.Color
 }
 
 // ViewContext provides shared state and dependencies to views.

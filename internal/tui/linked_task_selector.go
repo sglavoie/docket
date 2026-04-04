@@ -380,12 +380,12 @@ func (m *LinkedTaskSelectorModel) View() tea.View { //nolint:gocyclo
 	var b strings.Builder
 
 	if len(m.relations) == 0 {
-		b.WriteString(renderFullscreenTitle("Linked Tasks", taskSubtitle))
+		b.WriteString(renderFullscreenTitle("Linked Tasks", taskSubtitle, m.AccentColor()))
 		b.WriteString("\n\n")
 		b.WriteString(MutedStyle.Render("No linked tasks."))
 		b.WriteString("\n")
 		left := HelpStyle.Render("q close")
-		b.WriteString(renderStatusBarFooter(left, "", m.width))
+		b.WriteString(renderStatusBarFooter(left, "", m.width, m.AccentColor()))
 		return tea.NewView(b.String())
 	}
 
@@ -418,7 +418,7 @@ func (m *LinkedTaskSelectorModel) View() tea.View { //nolint:gocyclo
 	visibleEnd := min(m.scrollOffset+maxVisibleItems, len(m.filtered))
 
 	// Title
-	b.WriteString(renderFullscreenTitle("Navigate Linked Tasks", taskSubtitle))
+	b.WriteString(renderFullscreenTitle("Navigate Linked Tasks", taskSubtitle, m.AccentColor()))
 	b.WriteString("\n\n")
 
 	// Show search input when active
@@ -435,7 +435,7 @@ func (m *LinkedTaskSelectorModel) View() tea.View { //nolint:gocyclo
 		b.WriteString(MutedStyle.Render("No matching linked tasks."))
 		b.WriteString("\n")
 		left := HelpStyle.Render("Esc clear filter · q close")
-		b.WriteString(renderStatusBarFooter(left, "", m.width))
+		b.WriteString(renderStatusBarFooter(left, "", m.width, m.AccentColor()))
 		return tea.NewView(b.String())
 	}
 
@@ -534,7 +534,7 @@ func (m *LinkedTaskSelectorModel) View() tea.View { //nolint:gocyclo
 		footerLeft = HelpStyle.Render("/ search · j/k navigate · Enter select · x unlink · Esc cancel")
 	}
 	right := MutedStyle.Render(fmt.Sprintf("%d links", len(m.filtered)))
-	b.WriteString(renderStatusBarFooter(footerLeft, right, m.width))
+	b.WriteString(renderStatusBarFooter(footerLeft, right, m.width, m.AccentColor()))
 
 	return tea.NewView(b.String())
 }

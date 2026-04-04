@@ -20,7 +20,7 @@ func (m *TaskAttachmentsModel) View() tea.View { //nolint:gocyclo
 	b.WriteString(renderFullscreenTitle(
 		fmt.Sprintf("Attachments for #%d: %s", m.task.ShortID, m.task.Title),
 		fmt.Sprintf("%d attachment(s)", len(m.task.Attachments)),
-	))
+		m.AccentColor()))
 	b.WriteString("\n\n")
 
 	if m.addMode {
@@ -171,11 +171,11 @@ func (m *TaskAttachmentsModel) renderHelp(b *strings.Builder) {
 		mid := len(helpParts) / 2
 		line1 := strings.Join(helpParts[:mid], " · ")
 		line2 := strings.Join(helpParts[mid:], " · ")
-		b.WriteString(renderStatusBarFooter(HelpStyle.Render(line1), "", m.Width()))
+		b.WriteString(renderStatusBarFooter(HelpStyle.Render(line1), "", m.Width(), m.AccentColor()))
 		b.WriteString("\n")
 		b.WriteString(HelpStyle.Render(line2))
 		return
 	}
 
-	b.WriteString(renderStatusBarFooter(HelpStyle.Render(helpText), "", m.Width()))
+	b.WriteString(renderStatusBarFooter(HelpStyle.Render(helpText), "", m.Width(), m.AccentColor()))
 }

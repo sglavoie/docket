@@ -24,7 +24,7 @@ func (m *WeeklyReviewModel) View() tea.View {
 	} else {
 		subtitle = "all clear"
 	}
-	b.WriteString(renderFullscreenTitle("Weekly Review", subtitle))
+	b.WriteString(renderFullscreenTitle("Weekly Review", subtitle, m.AccentColor()))
 	b.WriteString("\n")
 
 	if totalCount == 0 {
@@ -92,7 +92,7 @@ func (m *WeeklyReviewModel) View() tea.View {
 	}
 	left := HelpStyle.Render(leftText)
 	right := MutedStyle.Render(rightText)
-	b.WriteString(renderFullscreenFooterBlock(m.statusMessage, m.err, left, right, m.width))
+	b.WriteString(renderFullscreenFooterBlock(m.statusMessage, m.err, left, right, m.width, m.AccentColor()))
 
 	return tea.NewView(b.String())
 }
@@ -115,7 +115,7 @@ func (m *WeeklyReviewModel) renderTabBar() string {
 	for i, name := range m.tabs.Names {
 		labels[i] = fmt.Sprintf("%s (%d)", name, tabCounts[i])
 	}
-	return renderWrappingTabBar(labels, m.tabs.Active, m.width)
+	return renderWrappingTabBar(labels, m.tabs.Active, m.width, m.AccentColor())
 }
 
 // GetPrefixPopupInfo returns prefix popup data for overlay rendering.

@@ -1,6 +1,8 @@
 package tui
 
 import (
+	"image/color"
+
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/config"
@@ -128,6 +130,10 @@ func (m *AppModel) popView() tea.Cmd {
 	if cv == ViewDashboard {
 		m.reevaluateAlerts()
 	}
+	// Update accent on the now-top view.
+	if v := m.views.Get(cv); v != nil {
+		m.setAccentOnView(v)
+	}
 	// Notify the cross-project outliner that it has become visible again.
 	if cv == ViewCrossProjectOutliner {
 		return func() tea.Msg { return ViewDidAppearMsg{} }
@@ -169,6 +175,25 @@ func (m *AppModel) popToAnchorView() {
 	}
 }
 
+// currentAccentColor returns the accent color for the topmost mapped view in
+// the stack, falling back to ColorPrimary when no mapping is found.
+func (m *AppModel) currentAccentColor() color.Color {
+	for i := len(m.viewStack) - 1; i >= 0; i-- {
+		if c := ViewAccentColor(m.viewStack[i]); c != nil {
+			return c
+		}
+	}
+	return ColorPrimary
+}
+
+// setAccentOnView injects the accent color for the current view stack top into
+// any view that implements AccentColorSetter.
+func (m *AppModel) setAccentOnView(view View) {
+	if v, ok := view.(AccentColorSetter); ok {
+		v.SetAccentColor(m.currentAccentColor())
+	}
+}
+
 // showView is a helper that registers a view, sets its size, and pushes it onto the view stack.
 // This consolidates the common pattern used by Show*Msg handlers.
 func (m *AppModel) showView(viewType ViewType, view View) {
@@ -179,6 +204,7 @@ func (m *AppModel) showView(viewType ViewType, view View) {
 	}
 	m.views.Register(viewType, view)
 	m.pushView(viewType)
+	m.setAccentOnView(view)
 }
 
 // replaceView replaces the top of the view stack instead of pushing.
@@ -209,6 +235,7 @@ func (m *AppModel) replaceView(viewType ViewType, view View) {
 		}
 		m.navHistory.Record(entry)
 	}
+	m.setAccentOnView(view)
 }
 
 // isOnProjectView returns true if the current view is a peer project view.

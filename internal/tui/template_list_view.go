@@ -17,7 +17,7 @@ func (m *TaskTemplatesModel) View() tea.View {
 		return tea.NewView(m.renderFullscreenPreview())
 	}
 
-	b.WriteString(renderFullscreenTitle("Task Templates", fmt.Sprintf("%d templates", len(m.filteredTemplates))))
+	b.WriteString(renderFullscreenTitle("Task Templates", fmt.Sprintf("%d templates", len(m.filteredTemplates)), m.AccentColor()))
 	b.WriteString("\n\n")
 
 	if m.searchActive || m.searchQuery != "" {
@@ -69,7 +69,7 @@ func (m *TaskTemplatesModel) View() tea.View {
 	}
 
 	b.WriteString("\n")
-	b.WriteString(renderStatusBarFooter(HelpStyle.Render(m.renderHelpText()), "", m.Width()))
+	b.WriteString(renderStatusBarFooter(HelpStyle.Render(m.renderHelpText()), "", m.Width(), m.AccentColor()))
 
 	return tea.NewView(b.String())
 }

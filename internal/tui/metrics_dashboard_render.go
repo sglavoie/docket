@@ -23,10 +23,10 @@ func (m *MetricsDashboardModel) View() tea.View {
 		scope = m.project.Name
 	}
 	subtitle := m.timeRange.Label() + " · " + scope
-	title := renderFullscreenTitle("Metrics Dashboard", subtitle)
+	title := renderFullscreenTitle("Metrics Dashboard", subtitle, m.AccentColor())
 
 	// Tab bar
-	tabBar := RenderTabBar(metricsTabNames, int(m.activeTab), m.width, 1)
+	tabBar := RenderTabBar(metricsTabNames, int(m.activeTab), m.width, 1, m.AccentColor())
 
 	// Footer
 	helpParts := []string{"[/] tabs", "t/T range", "r refresh"}
@@ -37,7 +37,7 @@ func (m *MetricsDashboardModel) View() tea.View {
 		helpParts = append(helpParts, "↵ go to task")
 	}
 	helpText := HelpStyle.Render(strings.Join(helpParts, " · "))
-	footer := renderStatusBarFooter("", helpText, m.width)
+	footer := renderStatusBarFooter("", helpText, m.width, m.AccentColor())
 
 	contentHeight := max(
 		// tab bar(2)

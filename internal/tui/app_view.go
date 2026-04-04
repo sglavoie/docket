@@ -354,8 +354,8 @@ func hexToBgEsc(hex string) string {
 }
 
 func (m *AppModel) renderStatusBar() string {
-	// Top border separator for visual distinction
-	separator := renderHorizontalDivider(m.width)
+	// Top border separator for visual distinction; tinted with current view accent.
+	separator := renderHorizontalDivider(m.width, WithDividerColor(m.currentAccentColor()))
 
 	// Helper to render left-aligned message with spacer
 	renderLeftAlignedMsg := func(msg string) string {
@@ -412,11 +412,17 @@ func (m *AppModel) renderStatusBar() string {
 		help = "Press : for commands, ? for help"
 	}
 
+	accent := m.currentAccentColor()
+	accentBarStyle := lipgloss.NewStyle().
+		Foreground(accent).
+		Background(ColorBackground).
+		Padding(0, 1)
+
 	var left string
 	if m.currentView() == ViewDashboard && !m.config.GetTutorDismissed() {
-		left = StatusBarStyle.Render("Dashboard") + ": Run " + InfoStatusStyle.Render("tutor") + " command to start. Dismiss with " + InfoStatusStyle.Render("|")
+		left = accentBarStyle.Render("Dashboard") + ": Run " + InfoStatusStyle.Render("tutor") + " command to start. Dismiss with " + InfoStatusStyle.Render("|")
 	} else {
-		left = StatusBarStyle.Render(status)
+		left = accentBarStyle.Render(status)
 	}
 	right := HelpStyle.Render(help)
 

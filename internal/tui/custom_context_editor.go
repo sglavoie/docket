@@ -393,9 +393,9 @@ func (m *CustomContextEditorModel) View() tea.View {
 
 	// Title
 	if m.editMode {
-		b.WriteString(renderFullscreenTitle("Edit Custom Context", m.originalName))
+		b.WriteString(renderFullscreenTitle("Edit Custom Context", m.originalName, m.AccentColor()))
 	} else {
-		b.WriteString(renderFullscreenTitle("New Custom Context", ""))
+		b.WriteString(renderFullscreenTitle("New Custom Context", "", m.AccentColor()))
 	}
 	b.WriteString("\n\n")
 
@@ -495,7 +495,7 @@ func (m *CustomContextEditorModel) View() tea.View {
 		footerLeft = HelpStyle.Render("Tab/Enter: project list")
 		footerRight = HelpStyle.Render("Ctrl+S: save · Esc: cancel")
 	}
-	b.WriteString(renderStatusBarFooter(footerLeft, footerRight, m.width))
+	b.WriteString(renderStatusBarFooter(footerLeft, footerRight, m.width, m.AccentColor()))
 
 	return tea.NewView(b.String())
 }

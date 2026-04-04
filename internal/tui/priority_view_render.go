@@ -12,12 +12,12 @@ import (
 
 // renderPriorityTabBar renders the tab bar for the priority view.
 func (m *PriorityViewModel) renderPriorityTabBar() string {
-	return renderTabBarWithOptionalSubTabs(priorityTabNames, m.tabs.Active, m.subTabNames, m.subTabRowFocused, m.Width())
+	return renderTabBarWithOptionalSubTabs(priorityTabNames, m.tabs.Active, m.subTabNames, m.subTabRowFocused, m.Width(), m.AccentColor())
 }
 
 // renderSubTabBar renders the dynamic sub-tab row when applicable.
 func (m *PriorityViewModel) renderSubTabBar() string {
-	return renderDynamicSubTabBar(m.subTabNames, m.subTab, m.subTabRowFocused, m.Width())
+	return renderDynamicSubTabBar(m.subTabNames, m.subTab, m.subTabRowFocused, m.Width(), m.AccentColor())
 }
 
 // GetPrefixPopupInfo returns prefix popup data for overlay rendering.
