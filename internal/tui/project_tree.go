@@ -130,9 +130,10 @@ type TreeNode struct {
 	Level               int
 	Expanded            bool
 	Visible             bool
-	IsContextNode       bool  // True if visible only to show hierarchy context (parent in different section)
-	HasFilteredChildren bool  // True if any children pass current filters (used for collapse arrow)
-	MatchPositions      []int // Match positions within title for search highlighting
+	IsContextNode       bool   // True if visible only to show hierarchy context (parent in different section)
+	HasFilteredChildren bool   // True if any children pass current filters (used for collapse arrow)
+	MatchPositions      []int  // Match positions within title for search highlighting
+	TreePrefix          string // Pre-computed connector prefix (├── , └── , etc.)
 }
 
 // ProjectTreeModel represents the project tree view.

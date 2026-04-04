@@ -115,7 +115,7 @@ func (m *DashboardModel) projectListMaxVisible(chromeHeight, bottomHeight int, n
 }
 
 func clampProjectListColumnWidths(rowWidth, iconColWidth, maxNameWidth, maxContextWidth, maxStatusWidth int, showContext bool) (int, int) {
-	fixedCols := 20 + iconColWidth
+	fixedCols := 29 + iconColWidth // +9 for progress bar column (2-space gap + 7-char bar)
 	if maxStatusWidth > 0 {
 		fixedCols += 2 + maxStatusWidth
 	}
@@ -143,7 +143,7 @@ func (m *DashboardModel) renderProjectListHeader(rowWidth, iconColWidth, maxName
 	if showContext && maxContextWidth > 0 {
 		ctxPad = strings.Repeat(" ", maxContextWidth+1)
 	}
-	header := fmt.Sprintf("%s%s %s %6s %6s", prefix, namePad, ctxPad, "Active", "Total")
+	header := fmt.Sprintf("%s%s %s %6s %6s  %s", prefix, namePad, ctxPad, "Active", "Total", "       ")
 	withStatus := header + "  Status"
 	if lipgloss.Width(withStatus) <= rowWidth {
 		header = withStatus
@@ -180,11 +180,22 @@ func (m *DashboardModel) renderProjectRow(p *models.Project, selected, narrowMod
 		style = PinnedProjectStyle
 	}
 
-	total := p.CountTasks() - p.CountCompletedTasks()
+	totalAll := p.CountTasks()
+	completedCount := p.CountCompletedTasks()
+	total := totalAll - completedCount
 	active := p.CountActiveSectionTasks()
 	statusIndicator := m.projectRowStatusIndicator(p, dueSoonDays)
 	scoreCoverageBadge := m.projectRowScoreCoverageBadge(p)
 	noteCount := m.projectRowNoteCount(p)
+
+	// Mini progress bar: [█████] = 7 chars
+	var bar string
+	if totalAll == 0 {
+		bar = MutedStyle.Render("[  —  ]")
+	} else {
+		percent := float64(completedCount) / float64(totalAll) * 100
+		bar = "[" + RenderProgressBar(percent, 5) + "]"
+	}
 
 	nameRendered := m.renderProjectRowName(p, style, maxNameWidth, iconColWidth)
 	contextRendered := m.renderProjectRowContext(p, maxContextWidth, showContext)
@@ -194,14 +205,14 @@ func (m *DashboardModel) renderProjectRow(p *models.Project, selected, narrowMod
 		line1Content := fmt.Sprintf("%s%s %s", numberPrefix, nameRendered, contextRendered)
 		line1 := RenderSelectableRow(selected, false, false, m.cursorFlash, line1Content, rowWidth)
 
-		statsLine := fmt.Sprintf("      %s", MutedStyle.Render(fmt.Sprintf("Active: %d  Total: %d", active, total)))
+		statsLine := fmt.Sprintf("      %s  %s", MutedStyle.Render(fmt.Sprintf("Active: %d  Total: %d", active, total)), bar)
 		statsLine = appendProjectRowBadge(statsLine, rowWidth, noteCount, scoreCoverageBadge, statusIndicator)
 		return line1 + "\n" + statsLine
 	}
 
 	activeStr := MutedStyle.Render(fmt.Sprintf("%6d", active))
 	totalStr := MutedStyle.Render(fmt.Sprintf("%6d", total))
-	content := fmt.Sprintf("%s%s %s %s %s", numberPrefix, nameRendered, contextRendered, activeStr, totalStr)
+	content := fmt.Sprintf("%s%s %s %s %s  %s", numberPrefix, nameRendered, contextRendered, activeStr, totalStr, bar)
 	content = appendProjectRowBadge(content, maxContentWidth, noteCount, scoreCoverageBadge, statusIndicator)
 	return RenderSelectableRow(selected, false, false, m.cursorFlash, content, rowWidth)
 }

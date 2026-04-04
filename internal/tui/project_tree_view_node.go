@@ -19,8 +19,8 @@ func (m *ProjectTreeModel) renderNodeWithWidth(node *TreeNode, selected bool, in
 		return m.renderQuickEditNode(node, maxWidth)
 	}
 
-	// Build indent
-	indent := strings.Repeat(TreeIndent, node.Level)
+	// Build indent using tree connectors (├── , └── , │   )
+	indent := MutedStyle.Render(node.TreePrefix)
 
 	// Expand/collapse indicator (only show if node has filtered children)
 	expandIcon := "  "
@@ -214,7 +214,7 @@ func (m *ProjectTreeModel) renderNodeWithWidth(node *TreeNode, selected bool, in
 	// Plus: indent, progress, and indicators (now measured accurately)
 	baseOverhead := 16
 	progressWidth := lipgloss.Width(progress)
-	baseUsed := 3 + len(checkbox) + node.Level*2 + len(expandIcon) + baseOverhead + progressWidth
+	baseUsed := 3 + len(checkbox) + lipgloss.Width(node.TreePrefix) + len(expandIcon) + baseOverhead + progressWidth
 	availableTitleWidth := maxWidth - baseUsed - lipgloss.Width(indicators)
 
 	// If title would be squeezed below 20 chars, progressively drop indicator groups
@@ -268,8 +268,9 @@ func (m *ProjectTreeModel) renderNodeWithWidth(node *TreeNode, selected bool, in
 func (m *ProjectTreeModel) renderQuickEditNode(node *TreeNode, maxWidth int) string {
 	task := node.Task
 
-	// Build indent
-	indent := strings.Repeat(TreeIndent, node.Level)
+	// Build indent using tree connectors
+	indent := MutedStyle.Render(node.TreePrefix)
+	indentWidth := lipgloss.Width(node.TreePrefix)
 
 	// Type and status icons
 	typeIcon := GetTypeBadge(string(task.Type), task.Type.Icon())
@@ -285,7 +286,7 @@ func (m *ProjectTreeModel) renderQuickEditNode(node *TreeNode, maxWidth int) str
 	idStr := MutedStyle.Render(fmt.Sprintf("#%d", task.ShortID))
 
 	// Calculate width for the text input
-	prefixWidth := len(indent) + 2 + 2 + 2 + 1 + 5 + 1 // indent + typeIcon + statusIcon + space + idStr + space
+	prefixWidth := indentWidth + 2 + 2 + 2 + 1 + 5 + 1 // indent + typeIcon + statusIcon + space + idStr + space
 	inputWidth := max(maxWidth-prefixWidth-4, 20)
 	input := m.quickEdit.GetInput()
 	input.SetWidth(inputWidth)
@@ -304,13 +305,13 @@ func (m *ProjectTreeModel) renderQuickEditNode(node *TreeNode, maxWidth int) str
 	if !m.quickEdit.IsRenameOnly() && m.quickEdit.GetPreview() != nil && m.quickEdit.GetOriginal() != nil {
 		previewText := renderQuickEditPreview(m.quickEdit.GetPreview(), m.quickEdit.GetOriginal())
 		if previewText != "" {
-			previewIndent := strings.Repeat(" ", len(indent)+2)
+			previewIndent := strings.Repeat(" ", indentWidth+2)
 			editLine += "\n" + previewIndent + MutedStyle.Render(previewText)
 		}
 	}
 
 	// Add help hint
-	helpIndent := strings.Repeat(" ", len(indent)+2)
+	helpIndent := strings.Repeat(" ", indentWidth+2)
 	if m.quickEdit.IsRenameOnly() {
 		editLine += "\n" + helpIndent + HelpStyle.Render("Enter: save · Esc: cancel")
 	} else {
