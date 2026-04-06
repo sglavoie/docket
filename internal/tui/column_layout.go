@@ -19,11 +19,6 @@ func ComputeTreeColumnLayout(nodes []*TreeNode, columnConfig *ColumnConfig) *Col
 	for _, node := range nodes {
 		task := node.Task
 
-		// Tree prefix width (connector characters, excludes expand indicator)
-		if pw := lipgloss.Width(node.TreePrefix); pw > cl.PrefixWidth {
-			cl.PrefixWidth = pw
-		}
-
 		// Priority (inline, before stage badge)
 		if columnConfig.ShouldShowPriority(task.Priority) {
 			cl.HasPriority = true
@@ -56,11 +51,6 @@ func ComputeOutlinerColumnLayout(rows []outlinerRow, columnConfig *ColumnConfig)
 		}
 		hasRows = true
 		task := row.task
-
-		// Prefix width (tree connector, excludes fold indicator)
-		if pw := lipgloss.Width(row.prefix); pw > cl.PrefixWidth {
-			cl.PrefixWidth = pw
-		}
 
 		// Priority (pre-title in outliner)
 		if columnConfig.ShouldShowPriority(task.Priority) {

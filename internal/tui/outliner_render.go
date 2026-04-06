@@ -526,14 +526,17 @@ func (m *OutlinerModel) renderOutlinerTreeContent(width int) string { //nolint:g
 			indicators = " " + indicators
 		}
 
-		// When column layout is active, pad the tree prefix and always reserve
-		// 2 chars for the fold indicator so typeIcon starts at the same column.
+		// Render the tree prefix. For leaf nodes, extend the tree connector
+		// line horizontally through the fold indicator gap so the line
+		// reaches the type icon without dead space.
 		var prefixStr string
-		if colLayout != nil {
-			prefixStr = MutedStyle.Render(PadBadge(row.prefix, colLayout.PrefixWidth))
-			if foldIndicator == "" {
-				foldIndicator = "  " // reserve fold indicator slot for leaf nodes
+		if foldIndicator == "" && row.prefix != "" {
+			runes := []rune(row.prefix)
+			if runes[len(runes)-1] == ' ' {
+				runes[len(runes)-1] = '─'
 			}
+			prefixStr = MutedStyle.Render(string(runes))
+			foldIndicator = MutedStyle.Render("─") + " "
 		} else {
 			prefixStr = MutedStyle.Render(row.prefix)
 		}

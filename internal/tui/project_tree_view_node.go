@@ -20,16 +20,9 @@ func (m *ProjectTreeModel) renderNodeWithWidth(node *TreeNode, selected bool, in
 	}
 
 	// Build indent using tree connectors (├── , └── , │   ).
-	// When column layout is active, pad prefix to the maximum prefix width so
-	// typeIcon starts at the same column on every visible row.
+	// For leaf nodes, extend the connector line horizontally through the
+	// expand icon gap so the line reaches the type icon without dead space.
 	var indent string
-	if m.colLayout != nil {
-		indent = MutedStyle.Render(PadBadge(node.TreePrefix, m.colLayout.PrefixWidth))
-	} else {
-		indent = MutedStyle.Render(node.TreePrefix)
-	}
-
-	// Expand/collapse indicator (only show if node has filtered children)
 	expandIcon := "  "
 	if node.HasFilteredChildren {
 		if node.Expanded {
@@ -37,6 +30,14 @@ func (m *ProjectTreeModel) renderNodeWithWidth(node *TreeNode, selected bool, in
 		} else {
 			expandIcon = "▶ "
 		}
+		indent = MutedStyle.Render(node.TreePrefix)
+	} else if node.TreePrefix != "" {
+		runes := []rune(node.TreePrefix)
+		if runes[len(runes)-1] == ' ' {
+			runes[len(runes)-1] = '─'
+		}
+		indent = MutedStyle.Render(string(runes))
+		expandIcon = MutedStyle.Render("─") + " "
 	}
 
 	// Selection checkbox (only in multi-select mode)
@@ -235,7 +236,7 @@ func (m *ProjectTreeModel) renderNodeWithWidth(node *TreeNode, selected bool, in
 	var baseUsed int
 	if m.colLayout != nil {
 		// Fixed-width path: compute exact overhead from column layout.
-		// format: cursor(3) + checkbox + indent(PrefixWidth) + expandIcon(2) + typeIcon(1) +
+		// format: cursor(3) + checkbox + indent(actual prefix) + expandIcon(2) + typeIcon(1) +
 		//         space(1) + statusIcon(1) + space(1) + prioritySegment + stageSegment + idStr
 		priorityW := 0
 		if m.colLayout.HasPriority {
@@ -245,7 +246,7 @@ func (m *ProjectTreeModel) renderNodeWithWidth(node *TreeNode, selected bool, in
 		if m.colLayout.HasShortID {
 			idW = m.colLayout.ShortIDWidth + 1
 		}
-		baseUsed = 3 + lipgloss.Width(checkbox) + m.colLayout.PrefixWidth + 2 + 1 + 1 + 1 + 1 + priorityW + lipgloss.Width(stageSegment) + idW + progressWidth
+		baseUsed = 3 + lipgloss.Width(checkbox) + lipgloss.Width(node.TreePrefix) + 2 + 1 + 1 + 1 + 1 + priorityW + lipgloss.Width(stageSegment) + idW + progressWidth
 	} else {
 		// Approximate path (pre-existing logic).
 		baseOverhead := 16

@@ -9,7 +9,6 @@ package tui
 type ColumnLayout struct {
 	PriorityWidth int  // 1 when any row shows priority badge; 0 if all hidden
 	ShortIDWidth  int  // max rendered "#N" visual width; 0 if column not visible
-	PrefixWidth   int  // max tree-prefix rendered width (not counting fold/expand indicator)
 	HasPriority   bool // true if any visible row has a priority badge shown
 	HasShortID    bool // true if short ID column is visible and any row has an ID
 }
