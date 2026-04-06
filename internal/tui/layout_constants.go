@@ -7,12 +7,10 @@ package tui
 // render pass. When non-nil, badge columns are padded to fixed widths so
 // metadata aligns vertically across all rows. Nil = current variable behavior.
 type ColumnLayout struct {
-	StageWidth    int  // max rendered stage badge visual width; 0 if no rows have stages
 	PriorityWidth int  // 1 when any row shows priority badge; 0 if all hidden
 	ShortIDWidth  int  // max rendered "#N" visual width; 0 if column not visible
 	PrefixWidth   int  // max tree-prefix rendered width (not counting fold/expand indicator)
 	HasPriority   bool // true if any visible row has a priority badge shown
-	HasStage      bool // true if any visible row has a non-empty stage
 	HasShortID    bool // true if short ID column is visible and any row has an ID
 }
 

@@ -281,9 +281,9 @@ func (m *OutlinerModel) renderOutlinerTreeContent(width int) string { //nolint:g
 		rowWidth = width - 1
 	}
 
-	// Compute column layout for alignment (single-project only; skip narrow terminals).
+	// Compute column layout for alignment (skip narrow terminals).
 	var colLayout *ColumnLayout
-	if m.project != nil && rowWidth >= MinColumnAlignWidth {
+	if rowWidth >= MinColumnAlignWidth {
 		colLayout = ComputeOutlinerColumnLayout(m.rows[startIdx:endIdx], m.columnConfig)
 	}
 
@@ -385,9 +385,7 @@ func (m *OutlinerModel) renderOutlinerTreeContent(width int) string { //nolint:g
 
 		stageBadge := GetStageBadge(task.Stage)
 		var stageSegment string
-		if colLayout != nil && colLayout.HasStage {
-			stageSegment = PadBadge(stageBadge, colLayout.StageWidth) + " "
-		} else if stageBadge != "" {
+		if stageBadge != "" {
 			stageSegment = stageBadge + " "
 		}
 

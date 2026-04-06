@@ -78,9 +78,7 @@ func (m *ProjectTreeModel) renderNodeWithWidth(node *TreeNode, selected bool, in
 
 	stageBadge := GetStageBadge(task.Stage)
 	var stageSegment string
-	if m.colLayout != nil && m.colLayout.HasStage {
-		stageSegment = PadBadge(stageBadge, m.colLayout.StageWidth) + " "
-	} else if stageBadge != "" {
+	if stageBadge != "" {
 		stageSegment = stageBadge + " "
 	}
 
@@ -243,15 +241,11 @@ func (m *ProjectTreeModel) renderNodeWithWidth(node *TreeNode, selected bool, in
 		if m.colLayout.HasPriority {
 			priorityW = m.colLayout.PriorityWidth + 1
 		}
-		stageW := 0
-		if m.colLayout.HasStage {
-			stageW = m.colLayout.StageWidth + 1
-		}
 		idW := 0
 		if m.colLayout.HasShortID {
 			idW = m.colLayout.ShortIDWidth + 1
 		}
-		baseUsed = 3 + lipgloss.Width(checkbox) + m.colLayout.PrefixWidth + 2 + 1 + 1 + 1 + priorityW + stageW + idW + progressWidth
+		baseUsed = 3 + lipgloss.Width(checkbox) + m.colLayout.PrefixWidth + 2 + 1 + 1 + 1 + 1 + priorityW + lipgloss.Width(stageSegment) + idW + progressWidth
 	} else {
 		// Approximate path (pre-existing logic).
 		baseOverhead := 16

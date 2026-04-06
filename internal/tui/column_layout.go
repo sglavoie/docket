@@ -24,14 +24,6 @@ func ComputeTreeColumnLayout(nodes []*TreeNode, columnConfig *ColumnConfig) *Col
 			cl.PrefixWidth = pw
 		}
 
-		// Stage badge
-		if task.Stage != "" {
-			cl.HasStage = true
-			if sw := lipgloss.Width(GetStageBadge(task.Stage)); sw > cl.StageWidth {
-				cl.StageWidth = sw
-			}
-		}
-
 		// Priority (inline, before stage badge)
 		if columnConfig.ShouldShowPriority(task.Priority) {
 			cl.HasPriority = true
@@ -70,14 +62,6 @@ func ComputeOutlinerColumnLayout(rows []outlinerRow, columnConfig *ColumnConfig)
 			cl.PrefixWidth = pw
 		}
 
-		// Stage badge
-		if task.Stage != "" {
-			cl.HasStage = true
-			if sw := lipgloss.Width(GetStageBadge(task.Stage)); sw > cl.StageWidth {
-				cl.StageWidth = sw
-			}
-		}
-
 		// Priority (pre-title in outliner)
 		if columnConfig.ShouldShowPriority(task.Priority) {
 			cl.HasPriority = true
@@ -101,14 +85,6 @@ func ComputeTaskLineColumnLayout(tasks []*models.Task, hideLowPriority bool) *Co
 	for _, task := range tasks {
 		if task == nil {
 			continue
-		}
-
-		// Stage badge
-		if task.Stage != "" {
-			cl.HasStage = true
-			if sw := lipgloss.Width(GetStageBadge(task.Stage)); sw > cl.StageWidth {
-				cl.StageWidth = sw
-			}
 		}
 
 		// Priority

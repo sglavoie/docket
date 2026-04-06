@@ -345,11 +345,9 @@ func (tl TaskLine) Render() string {
 		prioritySegment = priorityBadge + " "
 	}
 
-	// Build stage segment: fixed-width when Layout set, variable otherwise.
+	// Build stage segment (variable width, no column padding).
 	var stageSegment string
-	if tl.Layout != nil && tl.Layout.HasStage {
-		stageSegment = PadBadge(tl.StageBadge, tl.Layout.StageWidth) + " "
-	} else if tl.StageBadge != "" {
+	if tl.StageBadge != "" {
 		stageSegment = tl.StageBadge + " "
 	}
 
