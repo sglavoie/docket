@@ -316,4 +316,24 @@ func (m *PriorityViewModel) GetHelpItems() []HelpItem {
 	return GetKeybindingRegistry().GetForView(ViewPriorityView)
 }
 
+func (m *PriorityViewModel) HandledKeys() []string {
+	return concatKeys(
+		listNavigationKeys(),
+		statusPrefixKeys(),
+		priorityPrefixKeys(),
+		dueDatePrefixKeys(),
+		snoozePrefixKeys(),
+		linkedTaskPrefixKeys(),
+		stagePrefixKeys(),
+		[]string{
+			"g", "gt",
+			"w", "x", "A",
+			"enter", "tab", "F", "m", "t", "/",
+			"e", "Z", "D", "ctrl+.", "r", "y", "Y", "ctrl+y",
+			"1", "2", "3", "4", "5",
+			"q", "esc",
+		},
+	)
+}
+
 func (m *PriorityViewModel) StatusBarLabel() string { return "Priority" }

@@ -184,6 +184,17 @@ func (m *TaskCommentsModel) handleNormalKey(key string) tea.Cmd {
 	return nil
 }
 
+func (m *TaskCommentsModel) HandledKeys() []string {
+	return []string{
+		// Normal mode navigation
+		"j", "down", "k", "up", "g", "G",
+		// Normal mode actions
+		"a", "n", "e", "E", "d", "x", "r", "y", "enter",
+		// Edit/add mode
+		"ctrl+s", "ctrl+e",
+	}
+}
+
 func (m *TaskCommentsModel) hasSelection() bool {
 	return len(m.task.Comments) > 0 && m.cursor < len(m.task.Comments)
 }

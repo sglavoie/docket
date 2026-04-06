@@ -259,6 +259,14 @@ func (m *CustomContextEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) { //
 	return m, cmd
 }
 
+func (m *CustomContextEditorModel) HandledKeys() []string {
+	return []string{
+		"tab", "/", "enter", "space",
+		"up", "k", "down", "j",
+		"ctrl+s", "a", "A",
+	}
+}
+
 func (m *CustomContextEditorModel) filterProjects() {
 	query := strings.ToLower(m.SearchQuery())
 	if query == "" {

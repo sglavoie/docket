@@ -108,6 +108,14 @@ func (m *ProjectPreviewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
+func (m *ProjectPreviewModel) HandledKeys() []string {
+	return []string{
+		"p", "s",
+		"up", "k", "down", "j", "g", "G",
+		"ctrl+u", "ctrl+d",
+	}
+}
+
 func (m *ProjectPreviewModel) renderContent() string {
 	if m.project == nil {
 		return MutedStyle.Render("No project selected.")

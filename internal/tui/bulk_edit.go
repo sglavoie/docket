@@ -573,6 +573,17 @@ func (m *BulkEditModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+func (m *BulkEditModel) HandledKeys() []string {
+	return []string{
+		// Normal navigation
+		"tab", "down", "j", "shift+tab", "up", "k",
+		// Field interaction
+		"enter", "space", "l", "right", "h", "left",
+		// Tag operations
+		"a", "r",
+	}
+}
+
 func (m *BulkEditModel) GetHelpItems() []HelpItem {
 	return GetKeybindingRegistry().GetForView(ViewBulkEdit)
 }

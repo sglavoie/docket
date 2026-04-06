@@ -283,12 +283,11 @@ func (r *KeybindingRegistry) registerProjectFocusViewBindings() {
 		Keybinding{Key: "[/]", Description: "Navigate sub-tabs", Category: "Navigation", Views: views},
 		Keybinding{Key: "q/Esc", Description: "Close focus view", Category: "View", Views: views},
 	)
+	// Only status and due-date prefixes are activated by this view's handler
+	// (activateSecondaryPrefix(",dg", "", false)); priority, stage, snooze, linked
+	// task prefixes are intentionally absent to avoid ghost bindings.
 	r.addForViews(views, statusBindings())
-	r.addForViews(views, priorityBindings())
-	r.addForViews(views, stageBindings())
 	r.addForViews(views, dueDateBindings())
-	r.addForViews(views, snoozeBindings())
-	r.addForViews(views, linkedTaskBindings())
 }
 
 func (r *KeybindingRegistry) registerTaskAttachmentsBindings() {
@@ -318,6 +317,7 @@ func (r *KeybindingRegistry) registerCustomContextEditorBindings() {
 		Keybinding{Key: "Tab", Description: "Toggle name/projects", Category: "Navigation", Views: views},
 		Keybinding{Key: "j/k", Description: "Move cursor", Category: "Navigation", Views: views},
 		Keybinding{Key: "↑/↓", Description: "Move cursor", Category: "Navigation", Views: views},
+		Keybinding{Key: "/", Description: "Search projects", Category: "Navigation", Views: views},
 		Keybinding{Key: "Space/Enter", Description: "Toggle selection", Category: "Selection", Views: views},
 		Keybinding{Key: "a", Description: "Select all", Category: "Selection", Views: views},
 		Keybinding{Key: "A", Description: "Deselect all", Category: "Selection", Views: views},
@@ -383,6 +383,7 @@ func (r *KeybindingRegistry) registerProjectRecentActivityBindings() {
 		Keybinding{Key: "ctrl+U/D", Description: "Page up/down", Category: "Navigation", Views: views},
 		Keybinding{Key: "Enter", Description: "Open task in project", Category: "Actions", Views: views},
 		Keybinding{Key: "p", Description: "Preview task", Category: "Actions", Views: views},
+		Keybinding{Key: "ctrl+.", Description: "Quick note on selected task", Category: "Actions", Views: views},
 		Keybinding{Key: "/", Description: "Filter tasks", Category: "Filters", Views: views},
 		Keybinding{Key: "F", Description: "Filter prefix (type/status/tags/due/attr/score)", Category: "Filters", Views: views},
 		Keybinding{Key: "[/]", Description: "Switch tabs", Category: "Navigation", Views: views},
@@ -395,7 +396,9 @@ func (r *KeybindingRegistry) registerProjectPreviewBindings() {
 	views := []ViewType{ViewProjectPreview}
 	r.add(
 		Keybinding{Key: "j/k", Description: "Scroll", Category: "Navigation", Views: views},
+		Keybinding{Key: "↑/↓", Description: "Scroll", Category: "Navigation", Views: views},
 		Keybinding{Key: "g/G", Description: "Top/Bottom", Category: "Navigation", Views: views},
+		Keybinding{Key: "Ctrl+U/D", Description: "Page up/down", Category: "Navigation", Views: views},
 		Keybinding{Key: "s", Description: "Switch scoring profile", Category: "Actions", Views: views},
 		Keybinding{Key: "p/q/Esc", Description: "Close", Category: "Navigation", Views: views},
 	)
@@ -405,9 +408,11 @@ func (r *KeybindingRegistry) registerScoreProfileManagerBindings() {
 	views := []ViewType{ViewScoreProfileManager}
 	r.add(
 		Keybinding{Key: "j/k", Description: "Navigate", Category: "Navigation", Views: views},
+		Keybinding{Key: "↑/↓", Description: "Navigate", Category: "Navigation", Views: views},
+		Keybinding{Key: "gg/G", Description: "Jump to first/last", Category: "Navigation", Views: views},
 		Keybinding{Key: "a", Description: "Add preset profile", Category: "Actions", Views: views},
 		Keybinding{Key: "d", Description: "Delete profile", Category: "Actions", Views: views},
-		Keybinding{Key: "Enter", Description: "Assign to project", Category: "Actions", Views: views},
+		Keybinding{Key: "Space/Enter", Description: "Assign to project", Category: "Actions", Views: views},
 		Keybinding{Key: "u", Description: "Unassign from project", Category: "Actions", Views: views},
 		Keybinding{Key: "q/Esc", Description: "Close", Category: "Navigation", Views: views},
 	)
@@ -470,6 +475,8 @@ func (r *KeybindingRegistry) registerTaskChecklistBindings() {
 		Keybinding{Key: "E", Description: "Edit in external editor", Category: "Actions", Views: views},
 		Keybinding{Key: "d/x", Description: "Delete item", Category: "Actions", Views: views},
 		Keybinding{Key: "J/K", Description: "Reorder item", Category: "Actions", Views: views},
+		Keybinding{Key: "Ctrl+S", Description: "Save (add/edit mode)", Category: "Actions", Views: views},
+		Keybinding{Key: "Ctrl+E", Description: "Open in external editor (add mode)", Category: "Actions", Views: views},
 		Keybinding{Key: "q/Esc", Description: "Close", Category: "Navigation", Views: views},
 	)
 }
@@ -487,6 +494,8 @@ func (r *KeybindingRegistry) registerTaskCommentsBindings() {
 		Keybinding{Key: "d/x", Description: "Delete comment", Category: "Actions", Views: views},
 		Keybinding{Key: "y", Description: "Copy comment text", Category: "Actions", Views: views},
 		Keybinding{Key: "Enter", Description: "Expand comment", Category: "Actions", Views: views},
+		Keybinding{Key: "Ctrl+S", Description: "Save (add/edit mode)", Category: "Actions", Views: views},
+		Keybinding{Key: "Ctrl+E", Description: "Open in external editor (add/edit mode)", Category: "Actions", Views: views},
 		Keybinding{Key: "q/Esc", Description: "Close", Category: "Navigation", Views: views},
 	)
 }
@@ -495,12 +504,14 @@ func (r *KeybindingRegistry) registerWorkflowRulesBindings() {
 	views := []ViewType{ViewWorkflowRules}
 	r.add(
 		Keybinding{Key: "j/k", Description: "Navigate", Category: "Navigation", Views: views},
+		Keybinding{Key: "↑/↓", Description: "Navigate", Category: "Navigation", Views: views},
 		Keybinding{Key: "g/G", Description: "Top/Bottom", Category: "Navigation", Views: views},
 		Keybinding{Key: "/", Description: "Search rules", Category: "Navigation", Views: views},
 		Keybinding{Key: "Space", Description: "Toggle enabled/disabled", Category: "Actions", Views: views},
 		Keybinding{Key: "n", Description: "New rule", Category: "Actions", Views: views},
 		Keybinding{Key: "e", Description: "Edit rule", Category: "Actions", Views: views},
-		Keybinding{Key: "d", Description: "Delete rule", Category: "Actions", Views: views},
+		Keybinding{Key: "d/D", Description: "Delete rule", Category: "Actions", Views: views},
+		Keybinding{Key: "J/K", Description: "Adjust rule priority", Category: "Actions", Views: views},
 		Keybinding{Key: "t", Description: "Dry run all rules", Category: "Actions", Views: views},
 		Keybinding{Key: "T", Description: "Test selected rule", Category: "Actions", Views: views},
 		Keybinding{Key: "Enter", Description: "Preview (narrow screen)", Category: "Actions", Views: views},
@@ -512,6 +523,7 @@ func (r *KeybindingRegistry) registerWorkflowDryRunBindings() {
 	views := []ViewType{ViewWorkflowDryRun}
 	r.add(
 		Keybinding{Key: "j/k", Description: "Navigate", Category: "Navigation", Views: views},
+		Keybinding{Key: "↑/↓", Description: "Navigate", Category: "Navigation", Views: views},
 		Keybinding{Key: "g/G", Description: "Top/Bottom", Category: "Navigation", Views: views},
 		Keybinding{Key: "/", Description: "Search tasks", Category: "Navigation", Views: views},
 		Keybinding{Key: "q/Esc", Description: "Close", Category: "Navigation", Views: views},
@@ -522,13 +534,14 @@ func (r *KeybindingRegistry) registerTaskTemplatesBindings() {
 	views := []ViewType{ViewTaskTemplates}
 	r.add(
 		Keybinding{Key: "j/k", Description: "Navigate", Category: "Navigation", Views: views},
+		Keybinding{Key: "↑/↓", Description: "Navigate", Category: "Navigation", Views: views},
 		Keybinding{Key: "g/G", Description: "Top/Bottom", Category: "Navigation", Views: views},
 		Keybinding{Key: "/", Description: "Search templates", Category: "Navigation", Views: views},
 		Keybinding{Key: "Ctrl+D/U", Description: "Scroll preview", Category: "Navigation", Views: views},
 		Keybinding{Key: "Space", Description: "Toggle enabled/disabled", Category: "Actions", Views: views},
 		Keybinding{Key: "n", Description: "New template", Category: "Actions", Views: views},
 		Keybinding{Key: "e", Description: "Edit template", Category: "Actions", Views: views},
-		Keybinding{Key: "d", Description: "Delete template", Category: "Actions", Views: views},
+		Keybinding{Key: "d/D", Description: "Delete template", Category: "Actions", Views: views},
 		Keybinding{Key: "Enter", Description: "Preview (narrow screen)", Category: "Actions", Views: views},
 		Keybinding{Key: "q/Esc", Description: "Close", Category: "Navigation", Views: views},
 	)
@@ -539,7 +552,10 @@ func (r *KeybindingRegistry) registerFilterBuilderBindings() {
 	r.add(
 		Keybinding{Key: "[/]", Description: "Switch tabs (Criteria/Options)", Category: "Navigation", Views: views},
 		Keybinding{Key: "Tab/Shift+Tab", Description: "Navigate fields", Category: "Navigation", Views: views},
+		Keybinding{Key: "j/k", Description: "Navigate fields (vim-style)", Category: "Navigation", Views: views},
+		Keybinding{Key: "↑/↓", Description: "Navigate fields", Category: "Navigation", Views: views},
 		Keybinding{Key: "←/→", Description: "Cycle field/op/value", Category: "Navigation", Views: views},
+		Keybinding{Key: "h/l", Description: "Cycle field/op/value (vim-style)", Category: "Navigation", Views: views},
 		Keybinding{Key: "Enter", Description: "Next field", Category: "Navigation", Views: views},
 		Keybinding{Key: "Space", Description: "Toggle (logic/sort/completed)", Category: "Actions", Views: views},
 		Keybinding{Key: "+/-", Description: "Add/remove criterion", Category: "Criteria", Views: views},
@@ -552,9 +568,13 @@ func (r *KeybindingRegistry) registerNotificationCenterBindings() {
 	views := []ViewType{ViewNotificationCenter}
 	r.add(
 		Keybinding{Key: "j/k", Description: "Navigate notifications", Category: "Navigation", Views: views},
-		Keybinding{Key: "d/x", Description: "Clear notification", Category: "Actions", Views: views},
-		Keybinding{Key: "D", Description: "Clear all notifications", Category: "Actions", Views: views},
+		Keybinding{Key: "↑/↓", Description: "Navigate notifications", Category: "Navigation", Views: views},
 		Keybinding{Key: "g/G", Description: "Jump to first/last", Category: "Navigation", Views: views},
+		Keybinding{Key: "n/N", Description: "Next/previous section", Category: "Navigation", Views: views},
+		Keybinding{Key: "Tab", Description: "Expand/collapse notification", Category: "Actions", Views: views},
+		Keybinding{Key: "d", Description: "Clear/restore notification", Category: "Actions", Views: views},
+		Keybinding{Key: "D", Description: "Toggle dismissed view", Category: "Actions", Views: views},
+		Keybinding{Key: "Enter", Description: "Navigate to notification", Category: "Actions", Views: views},
 		Keybinding{Key: "Esc", Description: "Close", Category: "Navigation", Views: views},
 	)
 }
@@ -563,7 +583,9 @@ func (r *KeybindingRegistry) registerMessageLogBindings() {
 	views := []ViewType{ViewMessageLog}
 	r.add(
 		Keybinding{Key: "j/k", Description: "Scroll messages", Category: "Navigation", Views: views},
+		Keybinding{Key: "↑/↓", Description: "Scroll messages", Category: "Navigation", Views: views},
 		Keybinding{Key: "g/G", Description: "Jump to top/bottom", Category: "Navigation", Views: views},
+		Keybinding{Key: "Ctrl+U/D", Description: "Page up/down", Category: "Navigation", Views: views},
 		Keybinding{Key: "Esc", Description: "Close", Category: "Navigation", Views: views},
 	)
 }
@@ -582,8 +604,11 @@ func (r *KeybindingRegistry) registerBulkEditBindings() {
 	views := []ViewType{ViewBulkEdit}
 	r.add(
 		Keybinding{Key: "Tab/j", Description: "Next field", Category: "Navigation", Views: views},
+		Keybinding{Key: "↓", Description: "Next field", Category: "Navigation", Views: views},
 		Keybinding{Key: "Shift+Tab/k", Description: "Previous field", Category: "Navigation", Views: views},
+		Keybinding{Key: "↑", Description: "Previous field", Category: "Navigation", Views: views},
 		Keybinding{Key: "h/l", Description: "Cycle option left/right", Category: "Navigation", Views: views},
+		Keybinding{Key: "←/→", Description: "Cycle option left/right", Category: "Navigation", Views: views},
 		Keybinding{Key: "Space", Description: "Toggle selection", Category: "Actions", Views: views},
 		Keybinding{Key: "Enter", Description: "Confirm", Category: "Actions", Views: views},
 		Keybinding{Key: "a", Description: "Add tag", Category: "Actions", Views: views},
@@ -596,8 +621,10 @@ func (r *KeybindingRegistry) registerBlockersBindings() {
 	views := []ViewType{ViewBlockers}
 	r.add(
 		Keybinding{Key: "j/k", Description: "Navigate up/down", Category: "Navigation", Views: views},
+		Keybinding{Key: "↑/↓", Description: "Navigate up/down", Category: "Navigation", Views: views},
 		Keybinding{Key: "g/G", Description: "Go to first/last", Category: "Navigation", Views: views},
 		Keybinding{Key: "[/]", Description: "Switch tabs", Category: "Navigation", Views: views},
+		Keybinding{Key: "h/l", Description: "Switch tabs", Category: "Navigation", Views: views},
 		Keybinding{Key: "a/n", Description: "Add blocker", Category: "Actions", Views: views},
 		Keybinding{Key: "e", Description: "Edit blocker", Category: "Actions", Views: views},
 		Keybinding{Key: "E", Description: "Edit in external editor", Category: "Actions", Views: views},
@@ -605,6 +632,7 @@ func (r *KeybindingRegistry) registerBlockersBindings() {
 		Keybinding{Key: "d/x", Description: "Delete blocker", Category: "Actions", Views: views},
 		Keybinding{Key: "Enter", Description: "Expand blocker", Category: "Actions", Views: views},
 		Keybinding{Key: "Ctrl+S", Description: "Save (edit/add mode)", Category: "Actions", Views: views},
+		Keybinding{Key: "Ctrl+E", Description: "Open in external editor (add/edit mode)", Category: "Actions", Views: views},
 		Keybinding{Key: "q/Esc", Description: "Close", Category: "Navigation", Views: views},
 	)
 }
@@ -613,6 +641,7 @@ func (r *KeybindingRegistry) registerCrossProjectLinkerBindings() {
 	views := []ViewType{ViewCrossProjectLinker}
 	r.add(
 		Keybinding{Key: "j/k", Description: "Navigate up/down", Category: "Navigation", Views: views},
+		Keybinding{Key: "↑/↓", Description: "Navigate up/down", Category: "Navigation", Views: views},
 		Keybinding{Key: "gg/G", Description: "Jump to top/bottom", Category: "Navigation", Views: views},
 		Keybinding{Key: "/", Description: "Search", Category: "Navigation", Views: views},
 		Keybinding{Key: "Enter", Description: "Select", Category: "Actions", Views: views},
@@ -625,11 +654,14 @@ func (r *KeybindingRegistry) registerTutorBindings() {
 	views := []ViewType{ViewTutor}
 	r.add(
 		Keybinding{Key: "j/k", Description: "Navigate list / scroll content", Category: "Navigation", Views: views},
+		Keybinding{Key: "↑/↓", Description: "Navigate list / scroll content", Category: "Navigation", Views: views},
+		Keybinding{Key: "g/G", Description: "Scroll to top/bottom (content pane)", Category: "Navigation", Views: views},
 		Keybinding{Key: "h/l", Description: "Previous/next category", Category: "Navigation", Views: views},
 		Keybinding{Key: "[/]", Description: "Previous/next category", Category: "Navigation", Views: views},
 		Keybinding{Key: "Tab", Description: "Switch pane (list/content)", Category: "Navigation", Views: views},
 		Keybinding{Key: "/", Description: "Search", Category: "Navigation", Views: views},
 		Keybinding{Key: "Ctrl+U/D", Description: "Page up/down", Category: "Navigation", Views: views},
+		Keybinding{Key: "Enter", Description: "Switch to content pane", Category: "Navigation", Views: views},
 		Keybinding{Key: "q/Esc", Description: "Close", Category: "Navigation", Views: views},
 	)
 }

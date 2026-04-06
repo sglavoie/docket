@@ -73,6 +73,17 @@ The TUI uses a view stack pattern. Selecting a project pushes `ViewProjectTree`.
 
 tt requires a Kitty-protocol-compatible terminal (Kitty, Ghostty, WezTerm, etc.). Bubble Tea v2 auto-requests Kitty key disambiguation, enabling keys like `Ctrl+,`, `Ctrl+i` (≠ Tab), `Ctrl+m` (≠ Enter), `Shift+Enter`, and key release events.
 
+### TUI Keybinding Sync Convention
+
+Every view that has a `KeybindingRegistry` entry must implement `HandledKeys() []string` (the `KeySyncView` interface in `handled_keys.go`). `HandledKeys()` must return exactly the set of keys the view's `Update()` can process — matching the expanded registry keys for that view. The bidirectional sync is enforced by `TestKeybindingSyncAllViews` in `keybinding_sync_test.go`:
+
+- **Ghost binding**: key in registry but not in `HandledKeys()` → user sees a key that does nothing.
+- **Invisible binding**: key in `HandledKeys()` but not in registry → key works but is undocumented.
+
+When adding a new keybinding: update both the registry (`keybindings_views.go` or similar) AND `HandledKeys()`. Use the shared helpers in `handled_keys.go` (e.g. `statusPrefixKeys()`, `filterSubKeys()`, `listNavigationKeys()`). Add the view to the appropriate session function in `keybinding_sync_test.go`.
+
+Navigation aliases (`up`/`down`) are usually handled internally but not registered; don't include them in `HandledKeys()` unless the registry explicitly documents `↑/↓` or `↑/k`. Similarly, `ctrl+u`/`ctrl+d` for page navigation must appear in the registry (as `ctrl+u/d` or `ctrl+U/D`) before being added to `HandledKeys()`.
+
 ### TUI Esc/q Key Handling
 
 Esc and q have distinct behaviors:

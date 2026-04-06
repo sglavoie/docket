@@ -237,6 +237,15 @@ func (m *AskViewModel) handleKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+func (m *AskViewModel) HandledKeys() []string {
+	return []string{
+		// Input state
+		"ctrl+s",
+		// Result state
+		"a", "n",
+	}
+}
+
 func (m *AskViewModel) submitQuery(query string) tea.Cmd {
 	m.state = askStateLoading
 	m.response = ""

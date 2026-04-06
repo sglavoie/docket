@@ -44,6 +44,18 @@ func (m *BlockersModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+func (m *BlockersModel) HandledKeys() []string {
+	return []string{
+		// Navigation
+		"j", "down", "k", "up", "g", "G",
+		"[", "h", "]", "l",
+		// Actions
+		"a", "n", "e", "E", "R", "d", "x", "enter",
+		// Add/edit mode
+		"ctrl+s", "ctrl+e",
+	}
+}
+
 func (m *BlockersModel) View() tea.View {
 	return tea.NewView(blockerViewShared(&m.state, m))
 }

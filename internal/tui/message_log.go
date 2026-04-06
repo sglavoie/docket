@@ -111,6 +111,13 @@ func (m *MessageLogViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+func (m *MessageLogViewModel) HandledKeys() []string {
+	return []string{
+		"j", "down", "k", "up", "g", "G",
+		"ctrl+d", "ctrl+u",
+	}
+}
+
 func (m *MessageLogViewModel) View() tea.View {
 	title := TitleStyle.Render("Message Log") + MutedStyle.Render(fmt.Sprintf("  (%d entries)", len(m.entries)))
 	hint := MutedStyle.Render("j/k scroll · g/G top/bottom · Esc close")

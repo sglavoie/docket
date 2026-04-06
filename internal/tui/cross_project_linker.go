@@ -189,6 +189,12 @@ func (m *CrossProjectLinkerModel) handleKeypress(msg tea.KeyPressMsg) (tea.Model
 	return m, nil
 }
 
+func (m *CrossProjectLinkerModel) HandledKeys() []string {
+	return []string{
+		"/", "enter", "up", "k", "down", "j", "g", "G",
+	}
+}
+
 func (m *CrossProjectLinkerModel) handleEnter() (tea.Model, tea.Cmd) {
 	switch m.step {
 	case StepSelectProject:

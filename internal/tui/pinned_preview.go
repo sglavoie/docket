@@ -1,6 +1,5 @@
 package tui
 
-
 // renderPinnedPreviewBackground renders a dimmed task tree of the highlighted
 // pinned task's project as background content behind the pinned tasks popup.
 func (m *AppModel) renderPinnedPreviewBackground() string {

@@ -140,6 +140,20 @@ func (m *FilterBuilderModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) { //nolint
 	return m, cmd
 }
 
+func (m *FilterBuilderModel) HandledKeys() []string {
+	return []string{
+		// Navigation between tabs
+		"[", "]",
+		// Navigation between fields
+		"tab", "shift+tab", "enter",
+		"left", "right", "up", "down",
+		"h", "l", "k", "j",
+		// Actions
+		"space", "+", "-",
+		"ctrl+s",
+	}
+}
+
 // isInTextInput returns true if the current focus is on a text input field.
 func (m *FilterBuilderModel) isInTextInput() bool {
 	section, itemIdx, fieldIdx := m.getFocusSection()

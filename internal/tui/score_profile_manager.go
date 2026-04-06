@@ -88,6 +88,13 @@ func (m *ScoreProfileManagerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+func (m *ScoreProfileManagerModel) HandledKeys() []string {
+	return []string{
+		"j", "down", "k", "up", "g", "G",
+		"a", "d", "enter", "space", "u",
+	}
+}
+
 func (m *ScoreProfileManagerModel) handleKeypress(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	key := msg.String()
 

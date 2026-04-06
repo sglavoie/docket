@@ -208,6 +208,16 @@ func (m *TutorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) { //nolint:gocyclo
 	return m, nil
 }
 
+func (m *TutorModel) HandledKeys() []string {
+	return []string{
+		"/", "tab", "h", "l", "[", "]",
+		"up", "k", "down", "j",
+		"g", "G",
+		"ctrl+u", "ctrl+d",
+		"enter",
+	}
+}
+
 func (m *TutorModel) filterTopics() {
 	source := m.topics
 	if m.activeTab > 0 && m.activeTab <= len(m.categories) {

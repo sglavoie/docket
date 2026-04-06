@@ -185,6 +185,17 @@ func (m *TaskTemplatesModel) handleTemplateActionKey(key string) (bool, tea.Mode
 	}
 }
 
+func (m *TaskTemplatesModel) HandledKeys() []string {
+	return []string{
+		// Navigation
+		"j", "down", "k", "up", "g", "G", "/",
+		// Preview scroll (wide screen mode)
+		"ctrl+d", "ctrl+u",
+		// Actions
+		"space", "enter", "d", "D", "n", "e",
+	}
+}
+
 // filterTemplates filters allTemplates based on the current search query.
 func (m *TaskTemplatesModel) filterTemplates() {
 	query := strings.ToLower(m.searchQuery)

@@ -429,6 +429,25 @@ func (m *DueDateOverviewModel) GetHelpItems() []HelpItem {
 	return GetKeybindingRegistry().GetForView(ViewDueDateOverview)
 }
 
+func (m *DueDateOverviewModel) HandledKeys() []string {
+	return concatKeys(
+		listNavigationKeys(),
+		statusPrefixKeys(),
+		priorityPrefixKeys(),
+		dueDatePrefixKeys(),
+		snoozePrefixKeys(),
+		linkedTaskPrefixKeys(),
+		stagePrefixKeys(),
+		[]string{
+			"g", "gp",
+			"enter", "F", "m", "t",
+			"e", "Z", "D", "ctrl+.", "r", "y", "Y", "ctrl+y",
+			"1", "2", "3", "4", "5",
+			"q", "esc",
+		},
+	)
+}
+
 // CloseDueDateOverviewMsg is sent when the overview should close.
 type CloseDueDateOverviewMsg struct{}
 

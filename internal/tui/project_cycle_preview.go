@@ -1,6 +1,5 @@
 package tui
 
-
 // renderCyclePreviewBackground renders a dimmed task tree of the highlighted
 // project as background content behind the cycle overlay popup.
 func (m *AppModel) renderCyclePreviewBackground() string {

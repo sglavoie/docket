@@ -330,6 +330,28 @@ func (m *DailyReviewModel) GetHelpItems() []HelpItem {
 	return GetKeybindingRegistry().GetForView(ViewDailyReview)
 }
 
+func (m *DailyReviewModel) HandledKeys() []string {
+	return concatKeys(
+		listNavigationKeys(),
+		statusPrefixKeys(),
+		priorityPrefixKeys(),
+		dueDatePrefixKeys(),
+		snoozePrefixKeys(),
+		linkedTaskPrefixKeys(),
+		stagePrefixKeys(),
+		[]string{
+			"g",
+			"zR", "zM", "zp",
+			"tab", "n", "N",
+			"gd", "gt", "gs", "gl", "gf", "gr", "go", "gp",
+			"enter", "*", "F", "m", "t",
+			"e", "Z", "D", "ctrl+.", "r", "y", "Y",
+			"1", "2", "3", "4", "5",
+			"q", "esc",
+		},
+	)
+}
+
 // isToday returns true if t falls on the current calendar day.
 func isToday(t time.Time) bool {
 	now := time.Now()

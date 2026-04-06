@@ -144,6 +144,58 @@ func (m *OutlinerModel) buildPrefixHints() PrefixHints {
 	return hints
 }
 
+// HandledKeys returns all keys OutlinerModel can handle (ViewOutliner set).
+// ViewCrossProjectOutliner is a subset handled by the same model; cross-project
+// unique keys (go) are excluded here and tested separately.
+func (m *OutlinerModel) HandledKeys() []string {
+	return concatKeys(
+		[]string{"j", "k", "G", "ctrl+u", "ctrl+d"}, // Outliner registry has j/k and ctrl+d/u but not ↑/↓
+		// commonPrimaryViewKeys() minus ctrl+o (ctrl+o opens outliner but isn't registered for ViewOutliner)
+		[]string{
+			"ctrl+p",
+			"`", "~", "@",
+			"B", "p", "w",
+			"i", "I",
+			"\\", "{", "}",
+			"ctrl+r", "ctrl+l",
+			"u", "ctrl+z",
+			"S", "ctrl+.", "ctrl+m",
+		},
+		statusPrefixKeys(),       // ,s ,d ,b ,S ,o ,x ,r
+		priorityPrefixKeys(),     // !1-!5
+		dueDatePrefixKeys(),      // dt dm dw dn d0 dd
+		snoozePrefixKeys(),       // st sw sm sn s0 sd
+		stagePrefixKeys(),        // .1-.9 .0 F.
+		linkedTaskPrefixKeys(),   // cb cd cs cf cn cp
+		blockerPrefixKeySet(),    // bb bm
+		taskPrefixKeySet(),       // tn tN tr ts to tp td tt tc ta tl te tm tD
+		movePrefixKeys(),         // ma mn mi mw mr ms mK mJ
+		foldPrefixKeys(),         // za zo zc zR zM zv zp
+		typeChangeKeys(),         // < > H L
+		filterSubKeys(),          // Fp Ft Fs F# Fa FS Fr Fc F@ Fx Fd Fvs Fvl Fvd
+		sortKeys(),               // 1 2 3 4 5 0
+		[]string{
+			"h", "l",
+			"enter", "space", "tab",
+			"g", "backspace",
+			"n", "N",
+			"f",
+			"K", "J", "right", "left",
+			"o", "e", "E", "D",
+			"*",
+			"gz", "gh", "gl", "gd", "gX",
+			"A", "C", "T", "v", "a",
+			"F", "/",
+			"ctrl+f", "ctrl+t", "ctrl+s", "ctrl+a",
+			"[", "]",
+			"x",
+			"y", "Y", "ctrl+y",
+			// P0-P9 perspective switching
+			"P0", "P1", "P2", "P3", "P4", "P5", "P6", "P7", "P8", "P9",
+		},
+	)
+}
+
 // GetHelpItems returns help items for the outliner view.
 // In cross-project mode (project == nil), returns bindings for ViewCrossProjectOutliner.
 func (m *OutlinerModel) GetHelpItems() []HelpItem {

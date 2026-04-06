@@ -89,3 +89,9 @@ func (m *WorkflowDryRunModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	return m, nil
 }
+
+func (m *WorkflowDryRunModel) HandledKeys() []string {
+	return []string{
+		"j", "down", "k", "up", "g", "G", "/",
+	}
+}

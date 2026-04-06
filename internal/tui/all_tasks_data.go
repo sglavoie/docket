@@ -199,6 +199,29 @@ func (m *AllTasksViewModel) GetHelpItems() []HelpItem {
 	return GetKeybindingRegistry().GetForView(ViewAllTasks)
 }
 
+func (m *AllTasksViewModel) HandledKeys() []string {
+	return concatKeys(
+		listNavigationKeys(),
+		statusPrefixKeys(),
+		priorityPrefixKeys(),
+		dueDatePrefixKeys(),
+		snoozePrefixKeys(),
+		linkedTaskPrefixKeys(),
+		stagePrefixKeys(),
+		[]string{
+			"g", "gp",
+			"zR", "zM",
+			"tab", "n", "N",
+			"enter", "*", "F", "FP", "m", "t", "S", "v",
+			"e", "Z", "D", "ctrl+.", "r", "y", "Y", "ctrl+y",
+			"0", "+", "E", "X", "ctrl+g",
+			"{", "}",
+			"1", "2", "3", "4", "5",
+			"q", "esc",
+		},
+	)
+}
+
 // HasActiveFilters returns true if any filter is currently active.
 func (m *AllTasksViewModel) HasActiveFilters() bool {
 	return hasActiveCommonFilters(&m.filter) || len(m.projectFilter) > 0

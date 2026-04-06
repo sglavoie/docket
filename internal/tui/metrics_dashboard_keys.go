@@ -9,6 +9,7 @@ func (r *KeybindingRegistry) registerMetricsDashboardBindings() {
 		{Key: "g", Description: "Toggle scope (global/project)", Category: "Navigation"},
 		{Key: "r", Description: "Refresh metrics", Category: "Actions"},
 		{Key: "j/k", Description: "Scroll blocked list (blocked tab)", Category: "Navigation"},
+		{Key: "↑/↓", Description: "Scroll blocked list (blocked tab)", Category: "Navigation"},
 		{Key: "enter", Description: "Go to task (blocked tab)", Category: "Actions"},
 	})
 }

@@ -214,6 +214,15 @@ func (m *NotificationCenterModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+func (m *NotificationCenterModel) HandledKeys() []string {
+	return []string{
+		// Navigation
+		"j", "down", "k", "up", "g", "G", "n", "N",
+		// Actions
+		"tab", "d", "D", "enter",
+	}
+}
+
 // moveDown moves cursor to the next selectable item.
 func (m *NotificationCenterModel) moveDown() {
 	for i := m.cursor + 1; i < len(m.items); i++ {

@@ -176,6 +176,18 @@ func (m *DashboardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) { //nolint:goc
 	return m, nil
 }
 
+func (m *DashboardModel) HandledKeys() []string {
+	return []string{
+		// Navigation
+		"j", "k", "up", "down", "G", "g", "enter", "/",
+		// Actions
+		"ctrl+r", "R", "n", "a", "S", "D", "e", "p",
+		"C", "ctrl+t", "@", "`", "~", "ctrl+p", "T", "b",
+		// Quick-select pinned projects
+		"1", "2", "3", "4", "5", "6", "7", "8", "9",
+	}
+}
+
 func (m *DashboardModel) deleteProject(project *models.Project) tea.Cmd {
 	dataDir := m.config.DataDir
 	return func() tea.Msg {

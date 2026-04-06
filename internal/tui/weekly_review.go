@@ -430,4 +430,27 @@ func (m *WeeklyReviewModel) GetHelpItems() []HelpItem {
 	return GetKeybindingRegistry().GetForView(ViewWeeklyReview)
 }
 
+func (m *WeeklyReviewModel) HandledKeys() []string {
+	return concatKeys(
+		listNavigationKeys(),
+		statusPrefixKeys(),
+		priorityPrefixKeys(),
+		dueDatePrefixKeys(),
+		snoozePrefixKeys(),
+		linkedTaskPrefixKeys(),
+		stagePrefixKeys(),
+		[]string{
+			"g",
+			"zR", "zM", "zp",
+			"tab", "n", "N",
+			"gP", "gi", "gb", "go", "gt", "gm", "gw", "gp",
+			"enter", "*", "m", "t",
+			"e", "Z", "D", "ctrl+.", "r", "y", "Y",
+			"R", "ctrl+n",
+			"1", "2", "3", "4", "5",
+			"q", "esc",
+		},
+	)
+}
+
 func (m *WeeklyReviewModel) StatusBarLabel() string { return "Weekly Review" }

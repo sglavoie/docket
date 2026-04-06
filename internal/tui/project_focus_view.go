@@ -326,6 +326,20 @@ func (m *ProjectFocusViewModel) GetHelpItems() []HelpItem {
 	return GetKeybindingRegistry().GetForView(ViewProjectFocusView)
 }
 
+func (m *ProjectFocusViewModel) HandledKeys() []string {
+	return concatKeys(
+		listNavigationKeys(),
+		statusPrefixKeys(),
+		dueDatePrefixKeys(),
+		[]string{
+			"g", "[", "]",
+			"enter", "*", "e", "r", "y", "Y",
+			"1", "2", "3", "4", "5",
+			"q", "esc",
+		},
+	)
+}
+
 func (m *ProjectFocusViewModel) View() tea.View {
 	tasks := m.filteredTasks()
 

@@ -242,6 +242,17 @@ func (m *TaskChecklistModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) { //nolint
 	return m, nil
 }
 
+func (m *TaskChecklistModel) HandledKeys() []string {
+	return []string{
+		// Normal mode navigation
+		"j", "down", "k", "up", "g", "G",
+		// Normal mode actions
+		"a", "n", "e", "E", "d", "x", "space", "enter", "J", "K",
+		// Edit/add mode
+		"ctrl+s", "ctrl+e",
+	}
+}
+
 func (m *TaskChecklistModel) saveItem() tea.Cmd {
 	text := strings.TrimSpace(m.textInput.Value())
 	if text == "" {

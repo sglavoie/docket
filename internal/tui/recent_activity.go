@@ -336,6 +336,13 @@ func (m *RecentActivityModel) GetHelpItems() []HelpItem {
 	return GetKeybindingRegistry().GetForView(ViewRecentActivity)
 }
 
+func (m *RecentActivityModel) HandledKeys() []string {
+	return []string{
+		"j", "k", "up", "down", "g", "G", "ctrl+u", "ctrl+d",
+		"enter", "p", "ctrl+.", "/", "F", "[", "]", "r", "q", "esc",
+	}
+}
+
 func (m *RecentActivityModel) View() tea.View {
 	var b strings.Builder
 

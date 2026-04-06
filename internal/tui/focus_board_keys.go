@@ -193,3 +193,26 @@ func (m *FocusBoardModel) handleConfirmKey(key string) (tea.Model, tea.Cmd) {
 func (m *FocusBoardModel) GetHelpItems() []HelpItem {
 	return GetKeybindingRegistry().GetForView(ViewFocusBoard)
 }
+
+func (m *FocusBoardModel) HandledKeys() []string {
+	return concatKeys(
+		[]string{"j", "k", "G", "ctrl+u", "ctrl+d"}, // FocusBoard registry has j/k and ctrl+u/d but not ↑/↓
+		statusPrefixKeys(),
+		priorityPrefixKeys(),
+		dueDatePrefixKeys(),
+		snoozePrefixKeys(),
+		linkedTaskPrefixKeys(),
+		stagePrefixKeys(),
+		[]string{
+			"g", "gp",
+			"tab", "[", "]",
+			"zp",
+			"enter", "o", "a", "x", "X",
+			"d", "D", "p", "e", "E", "t", "Z", "m",
+			"ctrl+.", "y", "Y", "ctrl+y", "S",
+			"r", "F", "Fx", "/",
+			"1", "2", "3", "4", "5", "0",
+			"q", "esc",
+		},
+	)
+}

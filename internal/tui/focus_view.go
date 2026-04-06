@@ -702,4 +702,20 @@ func (m *FocusViewModel) GetHelpItems() []HelpItem {
 	return GetKeybindingRegistry().GetForView(ViewFocusView)
 }
 
+func (m *FocusViewModel) HandledKeys() []string {
+	return concatKeys(
+		listNavigationKeys(),
+		statusPrefixKeys(),
+		dueDatePrefixKeys(),
+		linkedTaskPrefixKeys(),
+		[]string{
+			"g", "gp",
+			"enter", "a", "x", "J", "K", "*", "F", "m", "t",
+			"e", "Z", "D", "ctrl+.", "r", "y", "Y",
+			"1", "2", "3", "4", "5",
+			"q", "esc",
+		},
+	)
+}
+
 func (m *FocusViewModel) StatusBarLabel() string { return "What's Next" }

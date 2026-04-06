@@ -164,6 +164,19 @@ func (m *TaskAttachmentsModel) handleAttachmentsMutationKey(key string) (tea.Cmd
 	}
 }
 
+func (m *TaskAttachmentsModel) HandledKeys() []string {
+	return []string{
+		// Navigation
+		"j", "down", "k", "up", "g", "G",
+		// Open/view
+		"a", "o", "enter", "e", "ctrl+e", "ctrl+o", "O",
+		// Mutations
+		"d", "x", "u", "y", "Y", "J", "K",
+		// Help
+		"?",
+	}
+}
+
 func (m *TaskAttachmentsModel) moveCursorDown() {
 	if len(m.task.Attachments) > 0 && m.cursor < len(m.task.Attachments)-1 {
 		m.cursor++
