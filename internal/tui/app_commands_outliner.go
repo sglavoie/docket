@@ -5,201 +5,8 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
-	"github.com/sglavoie/tt/internal/logging"
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/storage"
 )
-
-func (m *AppModel) viewModeCommands() []Command {
-	type viewModeEntry struct {
-		name, desc, shortcut string
-		aliases              []string
-		mode                 ViewMode
-	}
-	entries := []viewModeEntry{
-		{"active view", "Switch to Active view mode", "ga", []string{"view active", "active tasks"}, ViewModeActive},
-		{"next view", "Switch to Next view mode", "gn", []string{"view next", "next actions"}, ViewModeNext},
-		{"inbox view", "Switch to Inbox view mode", "gi", []string{"view inbox"}, ViewModeInbox},
-		{"waiting view", "Switch to Waiting view mode", "gw", []string{"view waiting", "waiting for"}, ViewModeWaiting},
-		{"someday view", "Switch to Someday view mode", "gs", []string{"view someday", "someday maybe"}, ViewModeSomeday},
-	}
-
-	cmds := make([]Command, 0, len(entries)+1)
-	for _, e := range entries {
-		mode := e.mode
-		cmds = append(cmds, Command{
-			Name:        e.name,
-			Description: e.desc,
-			Shortcut:    e.shortcut,
-			Category:    CategoryViews,
-			Views:       []ViewType{ViewProjectTree},
-			Aliases:     e.aliases,
-			Handler: func() tea.Msg {
-				if m.projectTree != nil {
-					m.projectTree.viewMode = mode
-					m.projectTree.updateVisibility()
-				}
-				return nil
-			},
-		})
-	}
-
-	cmds = append(cmds, Command{
-		Name:        "cycle view mode",
-		Description: "Cycle through all view modes",
-		Shortcut:    "gv",
-		Category:    CategoryViews,
-		Views:       []ViewType{ViewProjectTree},
-		Aliases:     []string{"next view mode", "toggle view"},
-		Handler: func() tea.Msg {
-			if m.projectTree != nil {
-				m.projectTree.viewMode = (m.projectTree.viewMode + 1) % (ViewModeCompleted + 1)
-				m.projectTree.updateVisibility()
-			}
-			return nil
-		},
-	})
-
-	return cmds
-}
-
-func (m *AppModel) notesCommands() []Command {
-	return []Command{
-		{
-			Name:        "show notes",
-			Description: "Open notes view",
-			Shortcut:    "[",
-			Category:    CategoryNotes,
-			Views:       projectTreeAndOutlinerViews(),
-			Aliases:     []string{"notes", "view notes", "open notes"},
-			Handler: func() tea.Msg {
-				if m.currentProject != nil {
-					return ShowNotesMsg{Project: m.currentProject}
-				}
-				return nil
-			},
-		},
-		{
-			Name:        "create note",
-			Description: "Create a new note",
-			Shortcut:    "]",
-			Category:    CategoryNotes,
-			Views:       projectTreeAndOutlinerViews(),
-			Aliases:     []string{"new note", "add note"},
-			Handler: func() tea.Msg {
-				if m.currentProject != nil {
-					return ShowNoteCreatorMsg{Project: m.currentProject}
-				}
-				return nil
-			},
-		},
-	}
-}
-
-func (m *AppModel) otherCommands() []Command {
-	return []Command{
-		{
-			Name:        "project focus",
-			Description: "Project-scoped focus view",
-			Shortcut:    "f",
-			Category:    CategoryViews,
-			Views:       projectTreeAndOutlinerViews(),
-			Aliases:     []string{"focus mode", "project active tasks"},
-			Handler: func() tea.Msg {
-				if m.currentProject != nil {
-					return ShowProjectFocusViewMsg{Project: m.currentProject}
-				}
-				return nil
-			},
-		},
-		{
-			Name:        "blockers view",
-			Description: "Show blockers and blocked tasks",
-			Shortcut:    "b",
-			Category:    CategoryViews,
-			Views:       projectTreeAndOutlinerViews(),
-			Aliases:     []string{"blockers", "blocked tasks"},
-			Handler: func() tea.Msg {
-				if m.currentProject != nil {
-					return ShowBlockersMsg{Project: m.currentProject}
-				}
-				return nil
-			},
-		},
-		{
-			Name:        "all blockers",
-			Description: "Show blockers across all projects",
-			Shortcut:    "b",
-			Category:    CategoryViews,
-			Views:       []ViewType{ViewDashboard},
-			Aliases:     []string{"blockers overview", "global blockers"},
-			Handler: func() tea.Msg {
-				return ShowBlockersMsg{}
-			},
-		},
-		{
-			Name:        "reload project",
-			Description: "Reload project data from storage",
-			Shortcut:    "ctrl+r",
-			Category:    CategoryActions,
-			Views:       projectTreeAndOutlinerViews(),
-			Aliases:     []string{"refresh", "reload data", "sync"},
-			Handler: func() tea.Msg {
-				if m.baseProjectView() == ViewOutliner && m.outliner != nil {
-					err := storage.LoadProject(m.outliner.project)
-					if err != nil {
-						logging.Warn("failed to load project %s: %v", m.outliner.project.Name, err)
-					}
-					m.outliner.rebuildRows()
-					if err != nil {
-						return ErrorMsg{Err: err}
-					}
-					return nil
-				}
-				if m.projectTree != nil {
-					m.projectTree.clearSelection()
-					err := storage.LoadProject(m.projectTree.project)
-					if err != nil {
-						logging.Warn("failed to load project %s: %v", m.projectTree.project.Name, err)
-					}
-					m.projectTree.buildTree()
-					if err != nil {
-						return ErrorMsg{Err: err}
-					}
-				}
-				return nil
-			},
-		},
-		{
-			Name:        "archive project",
-			Description: "Archive or unarchive the current project",
-			Shortcut:    "ctrl+a",
-			Category:    CategoryActions,
-			Views:       projectTreeAndOutlinerViews(),
-			Aliases:     []string{"unarchive project"},
-			Handler: func() tea.Msg {
-				if m.currentProject == nil {
-					return nil
-				}
-				if m.currentProject.Sandbox {
-					return ErrorMsg{Err: fmt.Errorf("cannot archive the sandbox project")}
-				}
-				if m.baseProjectView() == ViewOutliner && m.outliner != nil {
-					return m.outliner.archiveProject()()
-				}
-				if m.projectTree == nil {
-					return nil
-				}
-				if m.currentProject.Archived {
-					m.projectTree.confirm.Show("unarchive", "Are you sure you want to unarchive this project?")
-				} else {
-					m.projectTree.confirm.Show("archive", "Are you sure you want to archive this project?")
-				}
-				return nil
-			},
-		},
-	}
-}
 
 func (m *AppModel) outlinerCommands() []Command { //nolint:gocyclo
 	// Helper to get the task under the outliner cursor.
@@ -229,15 +36,12 @@ func (m *AppModel) outlinerCommands() []Command { //nolint:gocyclo
 	}
 
 	cmds := []Command{
-		// --- Status changes (,s ,d ,b ,x ,o ,r) ---
 		{Name: "start task", Description: "Set task status to in progress", Shortcut: ",s", Category: CategoryStatus, Views: []ViewType{ViewOutliner}, Aliases: []string{"begin task", "in progress"}, Handler: outlinerStatusHandler(models.StatusInProgress)},
 		{Name: "complete task", Description: "Set task status to done", Shortcut: ",d", Category: CategoryStatus, Views: []ViewType{ViewOutliner}, Aliases: []string{"done task", "finish task", "mark done"}, Handler: outlinerStatusHandler(models.StatusDone)},
 		{Name: "block task", Description: "Set task status to blocked", Shortcut: ",b", Category: CategoryStatus, Views: []ViewType{ViewOutliner}, Aliases: []string{"blocked task", "mark blocked"}, Handler: outlinerStatusHandler(models.StatusBlocked)},
 		{Name: "cancel task", Description: "Set task status to canceled", Shortcut: ",x", Category: CategoryStatus, Views: []ViewType{ViewOutliner}, Aliases: []string{"canceled task", "mark canceled"}, Handler: outlinerStatusHandler(models.StatusCanceled)},
 		{Name: "reopen task", Description: "Reopen a completed or canceled task", Shortcut: ",o", Category: CategoryStatus, Views: []ViewType{ViewOutliner}, Aliases: []string{"reopen", "undo complete", "mark todo"}, Handler: outlinerStatusHandler(models.StatusTodo)},
 		{Name: "review task", Description: "Set task status to review", Shortcut: ",r", Category: CategoryStatus, Views: []ViewType{ViewOutliner}, Aliases: []string{"mark review", "in review"}, Handler: outlinerStatusHandler(models.StatusReview)},
-
-		// --- Sort (s1-s5, s0) ---
 		{
 			Name:        "outliner sort by priority",
 			Description: "Sort tasks by priority",
@@ -323,8 +127,6 @@ func (m *AppModel) outlinerCommands() []Command { //nolint:gocyclo
 				return nil
 			},
 		},
-
-		// --- Edit operations ---
 		{
 			Name:        "view task details",
 			Description: "Open task detail view",
@@ -370,8 +172,6 @@ func (m *AppModel) outlinerCommands() []Command { //nolint:gocyclo
 				return nil
 			},
 		},
-
-		// --- Create operations (t-prefix) ---
 		{
 			Name:        "create subtask",
 			Description: "Create a new child task under cursor",
@@ -413,8 +213,6 @@ func (m *AppModel) outlinerCommands() []Command { //nolint:gocyclo
 				return CreateTaskMsg{}
 			},
 		},
-
-		// --- Delete ---
 		{
 			Name:        "delete task",
 			Description: "Delete selected task",
@@ -434,8 +232,6 @@ func (m *AppModel) outlinerCommands() []Command { //nolint:gocyclo
 				return nil
 			},
 		},
-
-		// --- Clipboard ---
 		{
 			Name:        "copy title",
 			Description: "Copy task title to clipboard",
@@ -481,8 +277,6 @@ func (m *AppModel) outlinerCommands() []Command { //nolint:gocyclo
 				return nil
 			},
 		},
-
-		// --- Score editor ---
 		{
 			Name:        "score editor",
 			Description: "Open score editor for task",
@@ -498,8 +292,6 @@ func (m *AppModel) outlinerCommands() []Command { //nolint:gocyclo
 				return nil
 			},
 		},
-
-		// --- View switching ---
 		{
 			Name:        "project tree",
 			Description: "Switch to project tree view",
@@ -525,8 +317,6 @@ func (m *AppModel) outlinerCommands() []Command { //nolint:gocyclo
 				return ShowFocusBoardMsg{}
 			},
 		},
-
-		// --- Multi-select ---
 		{
 			Name:        "multi-select mode",
 			Description: "Toggle multi-select mode",
@@ -541,8 +331,6 @@ func (m *AppModel) outlinerCommands() []Command { //nolint:gocyclo
 				return nil
 			},
 		},
-
-		// --- Linked task operations (t-prefix message keys) ---
 		{
 			Name:        "edit content",
 			Description: "Edit task description in external editor",
@@ -657,94 +445,4 @@ func (m *AppModel) outlinerCommands() []Command { //nolint:gocyclo
 	}
 
 	return cmds
-}
-
-func (m *AppModel) sortCommands() []Command {
-	return []Command{
-		{
-			Name:        "sort by priority",
-			Description: "Sort tasks by priority",
-			Shortcut:    "1",
-			Category:    CategorySort,
-			Views:       []ViewType{ViewProjectTree},
-			Aliases:     []string{"priority sort"},
-			Handler: func() tea.Msg {
-				if m.projectTree != nil {
-					m.projectTree.toggleSort(SortByPriority)
-				}
-				return nil
-			},
-		},
-		{
-			Name:        "sort by due date",
-			Description: "Sort tasks by due date",
-			Shortcut:    "2",
-			Category:    CategorySort,
-			Views:       []ViewType{ViewProjectTree},
-			Aliases:     []string{"due date sort", "deadline sort"},
-			Handler: func() tea.Msg {
-				if m.projectTree != nil {
-					m.projectTree.toggleSort(SortByDueDate)
-				}
-				return nil
-			},
-		},
-		{
-			Name:        "sort by created",
-			Description: "Sort tasks by creation date",
-			Shortcut:    "3",
-			Category:    CategorySort,
-			Views:       []ViewType{ViewProjectTree},
-			Aliases:     []string{"created sort", "creation date sort"},
-			Handler: func() tea.Msg {
-				if m.projectTree != nil {
-					m.projectTree.toggleSort(SortByCreatedAt)
-				}
-				return nil
-			},
-		},
-		{
-			Name:        "sort by status",
-			Description: "Sort tasks by status",
-			Shortcut:    "4",
-			Category:    CategorySort,
-			Views:       []ViewType{ViewProjectTree},
-			Aliases:     []string{"status sort"},
-			Handler: func() tea.Msg {
-				if m.projectTree != nil {
-					m.projectTree.toggleSort(SortByStatus)
-				}
-				return nil
-			},
-		},
-		{
-			Name:        "sort by score",
-			Description: "Sort tasks by composite score",
-			Shortcut:    "5",
-			Category:    CategorySort,
-			Views:       []ViewType{ViewProjectTree},
-			Aliases:     []string{"score sort", "scoring sort"},
-			Handler: func() tea.Msg {
-				if m.projectTree != nil {
-					m.projectTree.toggleSort(SortByScore)
-				}
-				return nil
-			},
-		},
-		{
-			Name:        "reset sort",
-			Description: "Reset sort to default order",
-			Shortcut:    "0",
-			Category:    CategorySort,
-			Views:       []ViewType{ViewProjectTree},
-			Aliases:     []string{"default sort", "clear sort"},
-			Handler: func() tea.Msg {
-				if m.projectTree != nil {
-					m.projectTree.sort.Reset()
-					m.projectTree.buildTree()
-				}
-				return nil
-			},
-		},
-	}
 }

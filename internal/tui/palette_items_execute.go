@@ -1,0 +1,130 @@
+package tui
+
+import (
+	"slices"
+
+	tea "charm.land/bubbletea/v2"
+
+	"github.com/sglavoie/tt/internal/logging"
+	"github.com/sglavoie/tt/internal/models"
+)
+
+// findProjectWithTag returns the first project that contains the specified tag.
+func (m *CommandPaletteModel) findProjectWithTag(tag string) *models.Project {
+	for _, item := range m.allItems {
+		if item.Category == ItemCategoryTasks && item.Task != nil {
+			if slices.Contains(item.Task.Tags, tag) {
+				return item.Project
+			}
+		}
+	}
+	return nil
+}
+
+// findProjectWithSection returns the first project that contains the specified section.
+func (m *CommandPaletteModel) findProjectWithSection(section string) *models.Project {
+	for _, item := range m.allItems {
+		if item.Category == ItemCategoryTasks && item.Task != nil && item.Task.Section == section {
+			return item.Project
+		}
+	}
+	return nil
+}
+
+// executeItem handles selection of an item from the palette.
+// For commands, it invokes the handler directly and returns its message.
+// For tasks, it emits GlobalSearchSelectMsg to navigate to the task.
+// For projects, it emits SelectProjectMsg to switch to that project.
+// For tags and sections, it emits navigation messages with the first associated project.
+// All item types use CommandPaletteExecuteMsg to ensure the palette closes and action
+// executes in the same update cycle.
+// The selected item is recorded for recent items boosting.
+func (m *CommandPaletteModel) executeItem(item PaletteItem) (tea.Model, tea.Cmd) {
+	itemID := m.getItemID(item)
+	if itemID != "" {
+		recordRecentSelection(item, itemID)
+		m.persistRecentSelections()
+	}
+
+	m.recordSearchHistory()
+
+	switch item.Category {
+	case ItemCategoryCommands:
+		if item.Command != nil && item.Command.Handler != nil {
+			m.config.AddCommandToHistory(item.Command.Name)
+			if m.configManager != nil {
+				if err := m.configManager.Save(m.config); err != nil {
+					logging.Warn("failed to save config: %v", err)
+				}
+			}
+
+			result := item.Command.Handler()
+			return m, func() tea.Msg {
+				return CommandPaletteExecuteMsg{ResultMsg: result}
+			}
+		}
+	case ItemCategoryTasks:
+		if item.Task != nil && item.Project != nil {
+			task := item.Task
+			project := item.Project
+			return m, func() tea.Msg {
+				return CommandPaletteExecuteMsg{ResultMsg: GlobalSearchSelectMsg{Task: task, Project: project}}
+			}
+		}
+	case ItemCategoryProjects:
+		if item.Project != nil {
+			project := item.Project
+			return m, func() tea.Msg {
+				return CommandPaletteExecuteMsg{ResultMsg: SelectProjectMsg{Project: project}}
+			}
+		}
+	case ItemCategoryTags:
+		if item.Tag != "" {
+			tag := item.Tag
+			project := m.findProjectWithTag(tag)
+			if project != nil {
+				return m, func() tea.Msg {
+					return CommandPaletteExecuteMsg{ResultMsg: GlobalTagNavigateMsg{Project: project, Tag: tag}}
+				}
+			}
+		}
+	case ItemCategorySections:
+		if item.Section != "" {
+			section := item.Section
+			project := m.findProjectWithSection(section)
+			if project != nil {
+				return m, func() tea.Msg {
+					return CommandPaletteExecuteMsg{ResultMsg: CommandPaletteSectionSelectMsg{Section: section, Project: project}}
+				}
+			}
+		}
+	case ItemCategorySavedSearch:
+		if item.SavedSearch != "" {
+			query := item.SavedSearch
+			m.searchInput.SetValue(query)
+			m.filterItems()
+			return m, nil
+		}
+	case ItemCategorySavedFilter:
+		if item.SavedFilter != nil {
+			sf := *item.SavedFilter
+			return m, func() tea.Msg {
+				return CommandPaletteExecuteMsg{ResultMsg: LoadSavedFilterMsg{Filter: sf}}
+			}
+		}
+	case ItemCategoryNotes:
+		if item.Project != nil {
+			project := item.Project
+			return m, func() tea.Msg {
+				return CommandPaletteExecuteMsg{ResultMsg: ShowNotesMsg{Project: project}}
+			}
+		}
+	case ItemCategoryViews:
+		viewType := item.ViewTarget
+		return m, func() tea.Msg {
+			return CommandPaletteExecuteMsg{ResultMsg: NavigateToViewMsg{ViewType: viewType}}
+		}
+	}
+
+	return m, nil
+}

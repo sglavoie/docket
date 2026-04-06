@@ -45,7 +45,10 @@ const (
 // WorkflowRuleCreatorModel handles creating a new workflow rule via TUI.
 // The implementation is split across multiple files:
 // - workflow_rule_creator.go: core model and constructors
-// - workflow_rule_creator_update.go: Update() and input handlers
+// - workflow_rule_creator_update.go: Update() event loop
+// - workflow_rule_creator_focus.go: focus bookkeeping and scrolling
+// - workflow_rule_creator_navigation.go: directional navigation helpers
+// - workflow_rule_creator_mutations.go: trigger/action mutations
 // - workflow_rule_creator_view.go: View() and rendering
 // - workflow_rule_creator_validation.go: saveRule() validation
 type WorkflowRuleCreatorModel struct {
@@ -365,86 +368,6 @@ func (m *WorkflowRuleCreatorModel) SetSize(width, height int) {
 // Init initializes the model.
 func (m *WorkflowRuleCreatorModel) Init() tea.Cmd {
 	return textinput.Blink
-}
-
-// focusFieldCount returns total number of focusable fields for the current tab.
-// Triggers tab: name(1) + priority(1) + triggers(3 each) + logic(1 if >1 trigger)
-// Actions tab: name(1) + priority(1) + actions(2 each)
-// Scope tab: name(1) + priority(1) + 3 text inputs (projects, types, sections)
-func (m *WorkflowRuleCreatorModel) focusFieldCount() int {
-	count := 2 // name + priority are always first
-	switch m.activeTab {
-	case tabTriggers:
-		count += len(m.triggers) * 3
-		if len(m.triggers) > 1 {
-			count++ // logic toggle
-		}
-	case tabActions:
-		for _, a := range m.actions {
-			count += 2 // type + value
-			if a.hasCondition {
-				count += 3 // condField + condOp + condValue
-			}
-		}
-	case tabScope:
-		count += 3 // projects, types, sections
-	}
-	return count
-}
-
-// getFocusSection returns which section the current focus is in and the offset within that section.
-// Returns: section ("name", "priority", "trigger", "logic", "action", "scope"), item index, field within item.
-// Focus is scoped to the current tab.
-func (m *WorkflowRuleCreatorModel) getFocusSection() (section string, itemIdx int, fieldIdx int) {
-	idx := m.focusIndex
-
-	// Name field (always index 0 on all tabs)
-	if idx == 0 {
-		return "name", 0, 0
-	}
-	idx--
-
-	// Priority field (always index 1 on all tabs)
-	if idx == 0 {
-		return "priority", 0, 0
-	}
-	idx--
-
-	switch m.activeTab {
-	case tabTriggers:
-		// Trigger fields (3 per trigger: field, op, value)
-		triggersTotal := len(m.triggers) * 3
-		if idx < triggersTotal {
-			itemIdx = idx / 3
-			fieldIdx = idx % 3
-			return "trigger", itemIdx, fieldIdx
-		}
-		idx -= triggersTotal
-
-		// Logic toggle (only if >1 trigger)
-		if len(m.triggers) > 1 && idx == 0 {
-			return "logic", 0, 0
-		}
-	case tabActions:
-		// Action fields: 2 per action (type, value) + 3 if hasCondition (condField, condOp, condValue)
-		for i, a := range m.actions {
-			fieldsForAction := 2
-			if a.hasCondition {
-				fieldsForAction = 5
-			}
-			if idx < fieldsForAction {
-				return "action", i, idx
-			}
-			idx -= fieldsForAction
-		}
-	case tabScope:
-		// Scope fields: 0=projects, 1=types, 2=sections
-		if idx < 3 {
-			return "scope", 0, idx
-		}
-	}
-
-	return "name", 0, 0 // fallback
 }
 
 // WorkflowRuleCreatedMsg signals a new rule was created.
