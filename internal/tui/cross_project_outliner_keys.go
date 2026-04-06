@@ -173,6 +173,17 @@ func (m *OutlinerModel) crossHandleEnterKey() (tea.Model, tea.Cmd, bool) {
 		return m, nil, true
 	}
 	task := row.task
+	// Parent tasks: zoom in (same as project-specific outliner Enter behavior).
+	if len(task.Children) > 0 {
+		m.crossZoomStack = append(m.crossZoomStack, CrossProjectZoomEntry{
+			TaskID:      task.ID,
+			ProjectID:   row.ProjectID,
+			CursorIndex: m.cursor,
+		})
+		m.cursor = 0
+		return m, nil, true
+	}
+	// Leaf tasks: open detail view.
 	for _, p := range m.loadedProjects {
 		if p.ID == row.ProjectID {
 			proj := p
