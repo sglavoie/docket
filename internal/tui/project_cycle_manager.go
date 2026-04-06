@@ -278,7 +278,9 @@ func (m *AppModel) handleProjectCycleKey(msg tea.KeyPressMsg) (*AppModel, tea.Cm
 // cycleMaxVisibleItems returns the maximum number of project items visible
 // in the cycle popup viewport, based on terminal height.
 func (m *AppModel) cycleMaxVisibleItems() int {
-	return max(m.height-OverlayListChrome, 3)
+	maxFromHeight := m.height - OverlayListChrome
+	maxFromPercent := (m.height * 50) / 100
+	return max(min(maxFromHeight, maxFromPercent), 3)
 }
 
 // adjustCycleScroll ensures projectCycleScroll keeps the cursor visible.
