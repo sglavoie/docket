@@ -116,12 +116,7 @@ func (m *InboxProcessorModel) viewType() ViewType   { return ViewInboxProcessor 
 func (m *InboxProcessorModel) helpViewName() string { return "Inbox Processor" }
 
 func (m *InboxProcessorModel) HandledKeys() []string {
-	return []string{
-		"j", "k", "g", "G",
-		"enter", "n", "q",
-		",s", ",d", ",b", ",x", ",o",
-		"s", "1", "2", "3", "4", "5", "t", "c", "e", "d", "D", "b", "w", "u",
-	}
+	return inboxProcessorKeys()
 }
 
 func (m *InboxProcessorModel) StatusBarLabel() string { return "Inbox" }

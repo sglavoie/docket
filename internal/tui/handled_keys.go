@@ -20,9 +20,14 @@ func listNavigationKeys() []string {
 	return []string{"j", "k", "up", "down", "G", "ctrl+u", "ctrl+d"}
 }
 
-// commonTaskActionKeys returns keys handled by handleCommonTaskAction.
-func commonTaskActionKeys() []string {
-	return []string{"ctrl+.", "Z", "D", "e", "r", "y", "Y", "ctrl+y", "?"}
+// inboxProcessorKeys returns the key set shared by InboxProcessorModel and GlobalInboxProcessorModel.
+func inboxProcessorKeys() []string {
+	return []string{
+		"j", "k", "g", "G",
+		"enter", "n", "q",
+		",s", ",d", ",b", ",x", ",o",
+		"s", "1", "2", "3", "4", "5", "t", "c", "e", "d", "D", "b", "w", "u",
+	}
 }
 
 // statusPrefixKeys returns the status prefix sequences handled by dispatchCommonPrefix.

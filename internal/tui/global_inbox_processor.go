@@ -148,12 +148,7 @@ func (m *GlobalInboxProcessorModel) viewType() ViewType   { return ViewGlobalInb
 func (m *GlobalInboxProcessorModel) helpViewName() string { return "Global Inbox Processor" }
 
 func (m *GlobalInboxProcessorModel) HandledKeys() []string {
-	return []string{
-		"j", "k", "g", "G",
-		"enter", "n", "q",
-		",s", ",d", ",b", ",x", ",o",
-		"s", "1", "2", "3", "4", "5", "t", "c", "e", "d", "D", "b", "w", "u",
-	}
+	return inboxProcessorKeys()
 }
 
 func (m *GlobalInboxProcessorModel) StatusBarLabel() string { return "Global Inbox" }

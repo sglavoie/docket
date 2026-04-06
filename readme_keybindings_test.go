@@ -31,32 +31,27 @@ func TestREADMECommandPaletteBindingStaysCurrent(t *testing.T) {
 		}
 	}
 
-	required := []string{
-		"### Command Palette (:)",
-		"`:`: Open command palette",
-	}
-
-	for _, line := range required {
-		if !strings.Contains(content, line) {
-			t.Fatalf("README missing expected command palette documentation: %q", line)
-		}
+	// The lean README mentions `:` for the command palette inline;
+	// detailed keybinding docs live in-app (tutor / ? help).
+	if !strings.Contains(content, "`:`") {
+		t.Fatal("README should mention the `:` command palette shortcut")
 	}
 }
 
 func TestREADMEUsesUppercaseVMultiSelectBinding(t *testing.T) {
 	content := readFileForContractTest(t, "README.md")
 
+	// The lean README no longer lists individual keybindings;
+	// just ensure stale lowercase binding isn't present.
 	if strings.Contains(content, "`v`: Toggle multi-select mode") {
 		t.Fatal("README contains stale lowercase multi-select binding")
-	}
-	if !strings.Contains(content, "`V`: Toggle multi-select mode") {
-		t.Fatal("README missing uppercase multi-select binding")
 	}
 }
 
 func TestREADMECLIContractStaysCurrent(t *testing.T) {
 	content := readFileForContractTest(t, "README.md")
 
+	// Ensure stale patterns from the old exhaustive README are gone.
 	forbidden := []string{
 		"tt project new [name]",
 		"tt project show <name|id>",
@@ -79,18 +74,17 @@ func TestREADMECLIContractStaysCurrent(t *testing.T) {
 		}
 	}
 
+	// The lean README mentions the data directory and key commands,
+	// but no longer has an exhaustive CLI reference.
 	required := []string{
-		"Detailed command syntax is generated from the Cobra command tree.",
-		"tt project show [slug-or-id]",
-		"tt task move-to <id> <project>",
-		"tt task depends <id> --on <blocker-id>",
-		"tt note add <title>",
-		"Configuration is stored at `~/.tt/.tt.json`",
+		"~/.tt/",
+		"tt task add",
+		"tt project",
 	}
 
 	for _, needle := range required {
 		if !strings.Contains(content, needle) {
-			t.Fatalf("README missing expected CLI contract text: %q", needle)
+			t.Fatalf("README missing expected text: %q", needle)
 		}
 	}
 }
