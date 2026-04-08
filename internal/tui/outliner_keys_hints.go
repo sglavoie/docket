@@ -161,19 +161,19 @@ func (m *OutlinerModel) HandledKeys() []string {
 			"u", "ctrl+z",
 			"S", "ctrl+.", "ctrl+m",
 		},
-		statusPrefixKeys(),       // ,s ,d ,b ,S ,o ,x ,r
-		priorityPrefixKeys(),     // !1-!5
-		dueDatePrefixKeys(),      // dt dm dw dn d0 dd
-		snoozePrefixKeys(),       // st sw sm sn s0 sd
-		stagePrefixKeys(),        // .1-.9 .0 F.
-		linkedTaskPrefixKeys(),   // cb cd cs cf cn cp
-		blockerPrefixKeySet(),    // bb bm
-		taskPrefixKeySet(),       // tn tN tr ts to tp td tt tc ta tl te tm tD
-		movePrefixKeys(),         // ma mn mi mw mr ms mK mJ
-		foldPrefixKeys(),         // za zo zc zR zM zv zp
-		typeChangeKeys(),         // < > H L
-		filterSubKeys(),          // Fp Ft Fs F# Fa FS Fr Fc F@ Fx Fd Fvs Fvl Fvd
-		sortKeys(),               // 1 2 3 4 5 0
+		statusPrefixKeys(),     // ,s ,d ,b ,S ,o ,x ,r
+		priorityPrefixKeys(),   // !1-!5
+		dueDatePrefixKeys(),    // dt dm dw dn d0 dd
+		snoozePrefixKeys(),     // st sw sm sn s0 sd
+		stagePrefixKeys(),      // .1-.9 .0 F.
+		linkedTaskPrefixKeys(), // cb cd cs cf cn cp
+		blockerPrefixKeySet(),  // bb bm
+		taskPrefixKeySet(),     // tn tN tr ts to tp td tt tc ta tl te tm tD
+		movePrefixKeys(),       // ma mn mi mw mr ms mK mJ
+		foldPrefixKeys(),       // za zo zc zR zM zv zp
+		typeChangeKeys(),       // < > H L
+		filterSubKeys(),        // Fp Ft Fs F# Fa FS Fr Fc F@ Fx Fd Fvs Fvl Fvd
+		sortKeys(),             // 1 2 3 4 5 0
 		[]string{
 			"h", "l",
 			"enter", "space", "tab",

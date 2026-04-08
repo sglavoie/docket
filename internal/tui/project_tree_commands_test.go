@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/testutil"
 )
 
 func TestCopyTaskStatePreservesAllFields(t *testing.T) {
@@ -213,6 +214,71 @@ func TestDeleteRecurringStopRecurrence_KeepsTask(t *testing.T) {
 	// deleteTarget should be cleared
 	if m.deleteTarget != nil {
 		t.Error("deleteTarget should be nil after stop recurrence")
+	}
+}
+
+// TestRefreshViewClampsCursor verifies that refreshView clamps the cursor
+// after rebuilding the tree, preventing out-of-bounds access when the
+// visible list shrinks (e.g., after a task is filtered out or deleted).
+func TestRefreshViewClampsCursor(t *testing.T) {
+	cfg := testutil.NewTestConfig()
+	project := &models.Project{
+		Name:        "Test",
+		ID:          "test-proj",
+		NextShortID: 4,
+	}
+	t1, _ := models.NewTask("task-1", 1, models.TaskTypeTask, "Task 1")
+	t2, _ := models.NewTask("task-2", 2, models.TaskTypeTask, "Task 2")
+	t3, _ := models.NewTask("task-3", 3, models.TaskTypeTask, "Task 3")
+	project.Tasks = []*models.Task{t1, t2, t3}
+	project.BuildTaskTree()
+
+	m := NewProjectTreeModel(project, cfg, nil)
+	m.SetSize(120, 40)
+
+	// Cursor at last task (index 2)
+	m.cursor = 2
+	visible := m.visibleNodes()
+	if len(visible) != 3 {
+		t.Fatalf("expected 3 visible nodes, got %d", len(visible))
+	}
+
+	// Remove last two tasks, simulating deletion
+	project.Tasks = []*models.Task{t1}
+	project.BuildTaskTree()
+
+	// refreshView should clamp cursor to 0 (only 1 item left)
+	m.refreshView()
+	visible = m.visibleNodes()
+	if len(visible) != 1 {
+		t.Fatalf("expected 1 visible node after delete, got %d", len(visible))
+	}
+	if m.cursor != 0 {
+		t.Errorf("cursor should be clamped to 0, got %d", m.cursor)
+	}
+}
+
+// TestNewProjectTreeModelNilConfig verifies that NewProjectTreeModel does not
+// panic when cfg is nil. Previously, cfg.TreeDefaultColumns was accessed
+// outside the nil-check guard, causing a nil pointer dereference.
+func TestNewProjectTreeModelNilConfig(t *testing.T) {
+	project := &models.Project{
+		Name:        "Test",
+		ID:          "test-proj",
+		NextShortID: 2,
+	}
+	task, _ := models.NewTask("t1", 1, models.TaskTypeTask, "Task 1")
+	project.Tasks = []*models.Task{task}
+	project.BuildTaskTree()
+
+	// Should not panic with nil config
+	m := NewProjectTreeModel(project, nil, nil)
+	if m == nil {
+		t.Fatal("NewProjectTreeModel returned nil")
+	}
+	visible := m.visibleNodes()
+	if len(visible) != 1 {
+		t.Errorf("expected 1 visible node, got %d", len(visible))
 	}
 }
 

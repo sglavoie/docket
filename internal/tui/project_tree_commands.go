@@ -85,9 +85,11 @@ func (m *ProjectTreeModel) clearMultiSelect() {
 	m.clearSelection()
 }
 
-// refreshView rebuilds the tree display.
+// refreshView rebuilds the tree display and clamps the cursor so it
+// cannot point past the last visible node after filtering changes.
 func (m *ProjectTreeModel) refreshView() {
 	m.buildTree()
+	m.clampCursor()
 }
 
 // saveAndRefreshBulk saves the project with workflow rules and rebuilds the tree.
@@ -310,6 +312,7 @@ func (m *ProjectTreeModel) deleteTask() tea.Cmd {
 	}
 
 	m.buildTree()
+	m.clampCursor()
 	return result.Cmd
 }
 

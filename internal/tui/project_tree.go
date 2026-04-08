@@ -225,6 +225,7 @@ func (m *ProjectTreeModel) clearActiveSavedFilter() {
 func NewProjectTreeModel(project *models.Project, cfg *config.Config, manager *config.Manager) *ProjectTreeModel {
 	var treeToggles map[string]bool
 	var treePriorityMode string
+	var treeDefaultColumns map[string]bool
 	if cfg != nil {
 		if vs, ok := cfg.ProjectViewStates[project.ID]; ok {
 			treeToggles = vs.TreeColumnToggles
@@ -233,6 +234,7 @@ func NewProjectTreeModel(project *models.Project, cfg *config.Config, manager *c
 		if treePriorityMode == "" {
 			treePriorityMode = cfg.TreePriorityMode
 		}
+		treeDefaultColumns = cfg.TreeDefaultColumns
 	}
 	m := &ProjectTreeModel{
 		PrimaryViewBundle: NewPrimaryViewBundle(cfg, manager),
@@ -242,7 +244,7 @@ func NewProjectTreeModel(project *models.Project, cfg *config.Config, manager *c
 		MultiSelectState:  MultiSelectState{selectedTasks: make(map[string]bool)},
 		filterBar:         NewFilterBarComponent(),
 		sidebar:           NewSidebarComponent(),
-		columnConfig:      NewColumnConfig(treeToggles, cfg.TreeDefaultColumns, DefaultTreeColumns, treePriorityMode),
+		columnConfig:      NewColumnConfig(treeToggles, treeDefaultColumns, DefaultTreeColumns, treePriorityMode),
 	}
 	m.InitSearchInput("Search tasks...", 100, 40)
 	m.buildTree()

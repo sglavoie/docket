@@ -36,6 +36,7 @@ func (m *ProjectTreeModel) handleSingleStatusTransition(status models.TaskStatus
 		return true, func() tea.Msg { return ErrorMsg{Err: result.Err} }
 	}
 	m.buildTree()
+	m.clampCursor()
 	return true, result.Cmd
 }
 
