@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"errors"
 	"fmt"
 	"strings"
 
@@ -271,44 +270,10 @@ func updateTaskStatus(args []string, action string, out MutateOutput, force bool
 				return fmt.Errorf("%s", msg)
 			}
 
-			// Block completion if task has incomplete dependencies
-			// HasIncompleteDependencies checks both local and cross-project deps;
-			// GetIncompleteDependencies only returns resolvable local tasks for the
-			// detailed error message.
+			// Block completion if task has incomplete dependencies or children
 			if action == "complete" {
-				if project.HasIncompleteDependencies(task) {
-					incompleteDeps := project.GetIncompleteDependencies(task)
-					var msg strings.Builder
-					fmt.Fprintf(&msg, "cannot complete task #%d: has incomplete dependencies:\n",
-						task.ShortID)
-					for _, dep := range incompleteDeps {
-						fmt.Fprintf(&msg, "  - #%d %s (%s)\n", dep.ShortID, dep.Title, dep.Status)
-					}
-					// Report cross-project deps that can't be resolved locally
-					crossProjectCount := countCrossProjectDeps(task)
-					if crossProjectCount > 0 {
-						fmt.Fprintf(&msg, "  - %d cross-project dependency/dependencies (not resolvable locally)\n", crossProjectCount)
-					}
-					return errors.New(msg.String())
-				}
-
-				// Block completion if task has incomplete children (bypass with --force)
-				if !force {
-					var incompleteChildren []*models.Task
-					for _, child := range task.Children {
-						if child.Status != models.StatusDone && child.Status != models.StatusCanceled {
-							incompleteChildren = append(incompleteChildren, child)
-						}
-					}
-					if len(incompleteChildren) > 0 {
-						var msg strings.Builder
-						fmt.Fprintf(&msg, "cannot complete task #%d: has %d incomplete children:\n",
-							task.ShortID, len(incompleteChildren))
-						for _, child := range incompleteChildren {
-							fmt.Fprintf(&msg, "  - #%d %s (%s)\n", child.ShortID, child.Title, child.Status)
-						}
-						return errors.New(msg.String())
-					}
+				if err := CheckCompletionBlockers(project, task, force); err != nil {
+					return err
 				}
 			}
 

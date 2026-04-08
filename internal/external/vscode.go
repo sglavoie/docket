@@ -17,14 +17,21 @@ func CreateTempFileWithContent(content string, prefix string, suffix string) (st
 	if err != nil {
 		return "", fmt.Errorf("failed to create temp file: %w", err)
 	}
-	defer func() { _ = f.Close() }()
+
+	tmpPath := f.Name()
 
 	if _, err := f.WriteString(content); err != nil {
-		_ = os.Remove(f.Name())
+		_ = f.Close()
+		_ = os.Remove(tmpPath)
 		return "", fmt.Errorf("failed to write to temp file: %w", err)
 	}
 
-	return f.Name(), nil
+	if err := f.Close(); err != nil {
+		_ = os.Remove(tmpPath)
+		return "", fmt.Errorf("failed to close temp file: %w", err)
+	}
+
+	return tmpPath, nil
 }
 
 // ResolveEditor returns the editor command to use, applying the fallback chain:

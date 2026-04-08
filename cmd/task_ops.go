@@ -511,3 +511,42 @@ func suggestSimilarTasks(tasks []*models.Task, identifier string, limit int) []s
 	}
 	return suggestions
 }
+
+// CheckCompletionBlockers checks whether a task can be completed,
+// returning an error if it has incomplete dependencies or children.
+// When force is true, the incomplete-children check is skipped.
+func CheckCompletionBlockers(project *models.Project, task *models.Task, force bool) error {
+	if project.HasIncompleteDependencies(task) {
+		incompleteDeps := project.GetIncompleteDependencies(task)
+		var msg strings.Builder
+		fmt.Fprintf(&msg, "cannot complete task #%d: has incomplete dependencies:\n", task.ShortID)
+		for _, dep := range incompleteDeps {
+			fmt.Fprintf(&msg, "  - #%d %s (%s)\n", dep.ShortID, dep.Title, dep.Status)
+		}
+		crossProjectCount := countCrossProjectDeps(task)
+		if crossProjectCount > 0 {
+			fmt.Fprintf(&msg, "  - %d cross-project dependency/dependencies (not resolvable locally)\n", crossProjectCount)
+		}
+		return fmt.Errorf("%s", msg.String())
+	}
+
+	if !force {
+		var incompleteChildren []*models.Task
+		for _, child := range task.Children {
+			if child.Status != models.StatusDone && child.Status != models.StatusCanceled {
+				incompleteChildren = append(incompleteChildren, child)
+			}
+		}
+		if len(incompleteChildren) > 0 {
+			var msg strings.Builder
+			fmt.Fprintf(&msg, "cannot complete task #%d: has %d incomplete children:\n",
+				task.ShortID, len(incompleteChildren))
+			for _, child := range incompleteChildren {
+				fmt.Fprintf(&msg, "  - #%d %s (%s)\n", child.ShortID, child.Title, child.Status)
+			}
+			return fmt.Errorf("%s", msg.String())
+		}
+	}
+
+	return nil
+}
