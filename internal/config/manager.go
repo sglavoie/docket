@@ -297,7 +297,7 @@ func (m *Manager) GetConfigPath() string {
 // Exists checks if the config file exists.
 func (m *Manager) Exists() bool {
 	_, err := os.Stat(m.configPath)
-	return !os.IsNotExist(err)
+	return err == nil
 }
 
 // LoadOrCreate loads existing config or creates a new one.
@@ -324,7 +324,7 @@ func (m *Manager) GetBackupPath() string {
 // ConfigBackupExists checks if a config backup file exists.
 func (m *Manager) ConfigBackupExists() bool {
 	_, err := os.Stat(m.GetBackupPath())
-	return !os.IsNotExist(err)
+	return err == nil
 }
 
 // backupConfigToPath writes the current config file to an arbitrary backup path.

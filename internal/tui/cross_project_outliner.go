@@ -5,7 +5,6 @@ import (
 	"sort"
 	"time"
 
-	"charm.land/bubbles/v2/spinner"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 
@@ -353,7 +352,3 @@ func crossProjectSectionFilter(p Perspective) func(t *models.Task) bool {
 		}
 	}
 }
-
-// Ensure spinner package is used (crossSpinner field type is SpinnerModel which
-// wraps bubbles/spinner; the Dot spinner style is selected in NewSpinner).
-var _ = spinner.Dot

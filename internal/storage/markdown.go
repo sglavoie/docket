@@ -384,7 +384,7 @@ func GetBackupFilePath(project *models.Project) string {
 func BackupExists(project *models.Project) bool {
 	backupPath := GetBackupFilePath(project)
 	_, err := os.Stat(backupPath)
-	return !os.IsNotExist(err)
+	return err == nil
 }
 
 // BackupProject creates a backup of the current tasks.md file.
@@ -455,7 +455,7 @@ func RestoreFromBackup(project *models.Project) error {
 func ProjectExists(projectPath string) bool {
 	tasksPath := filepath.Join(projectPath, tasksFileName)
 	_, err := os.Stat(tasksPath)
-	return !os.IsNotExist(err)
+	return err == nil
 }
 
 // CreateProjectDir creates the project directory structure.
@@ -531,7 +531,7 @@ func GetTrashDir(dataDir string) string {
 func TrashEntryExists(slug, dataDir string) bool {
 	trashPath := filepath.Join(GetTrashDir(dataDir), slug)
 	_, err := os.Stat(trashPath)
-	return !os.IsNotExist(err)
+	return err == nil
 }
 
 // RenameProjectDir renames a project's data directory when the slug changes.

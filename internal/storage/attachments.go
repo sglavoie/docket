@@ -108,7 +108,7 @@ func CleanupTaskAttachments(project *models.Project, task *models.Task) error {
 func AttachmentExists(project *models.Project, task *models.Task, filename string) bool {
 	path := GetAttachmentPath(project, task, filename)
 	_, err := os.Stat(path)
-	return !os.IsNotExist(err)
+	return err == nil
 }
 
 // GetAttachmentSize returns the size of an attachment file in bytes.
