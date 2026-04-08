@@ -552,7 +552,7 @@ func RenameProjectDir(project *models.Project, oldSlug, newSlug, dataDir string)
 	}
 
 	// Check if new path already exists
-	if _, err := os.Stat(newPath); !os.IsNotExist(err) {
+	if _, err := os.Stat(newPath); err == nil {
 		return fmt.Errorf("directory '%s' already exists", newSlug)
 	}
 
@@ -606,7 +606,7 @@ func RestoreProjectFromTrash(slug, dataDir string) error {
 	}
 
 	// Check if active project exists
-	if _, err := os.Stat(projectPath); !os.IsNotExist(err) {
+	if _, err := os.Stat(projectPath); err == nil {
 		return fmt.Errorf("%w: '%s' already exists; rename or delete it first", tterrors.ErrProjectExists, slug)
 	}
 

@@ -47,7 +47,7 @@ func CopyAttachment(project *models.Project, task *models.Task, sourcePath strin
 	destPath := GetAttachmentPath(project, task, filename)
 
 	// Check if file already exists
-	if _, statErr := os.Stat(destPath); !os.IsNotExist(statErr) {
+	if _, statErr := os.Stat(destPath); statErr == nil {
 		return "", fmt.Errorf("attachment '%s' already exists", filename)
 	}
 
