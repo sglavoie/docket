@@ -12,6 +12,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/fuzzy"
 	"github.com/sglavoie/tt/internal/selector"
+	"github.com/sglavoie/tt/internal/tterrors"
 )
 
 // SelectorItem is an alias for selector.Item for backwards compatibility.
@@ -215,7 +216,7 @@ func (m SelectorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case "ctrl+c", "esc":
 				m.done = true
 				m.canceled = true
-				m.err = fmt.Errorf("canceled")
+				m.err = tterrors.ErrCanceled
 				return m, tea.Quit
 			case "enter":
 				if len(m.filteredItems) > 0 {
@@ -320,7 +321,7 @@ func RunSelector(title string, items []SelectorItem) (*SelectorItem, error) {
 	}
 
 	if selectorModel.IsCanceled() {
-		return nil, fmt.Errorf("canceled")
+		return nil, tterrors.ErrCanceled
 	}
 
 	return selectorModel.GetSelectedItem(), nil

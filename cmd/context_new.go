@@ -3,6 +3,7 @@ package cmd
 import (
 	"bufio"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -67,7 +68,7 @@ func runContextNew(cmd *cobra.Command, args []string) error {
 	if cfg.FzfEnabled && external.FzfAvailable() {
 		selected, err := external.FzfMultiSelectProjects(projects, "Select projects for "+name, nil)
 		if err != nil {
-			if strings.Contains(err.Error(), "canceled") {
+			if errors.Is(err, tterrors.ErrCanceled) {
 				if !out.Quiet {
 					fmt.Fprintf(os.Stderr, "Canceled\n")
 				}

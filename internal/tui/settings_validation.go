@@ -81,37 +81,10 @@ func (m *SettingsModel) validateAll() error {
 
 func (m *SettingsModel) validateEditor() error {
 	editor := strings.TrimSpace(m.editorInput.Value())
-
 	if editor == "" {
 		return fmt.Errorf("editor is required")
 	}
-
-	// Check if it's an absolute path
-	if strings.HasPrefix(editor, "/") {
-		info, err := os.Stat(editor)
-		if os.IsNotExist(err) {
-			return fmt.Errorf("file does not exist: %s", editor)
-		}
-		if err != nil {
-			return fmt.Errorf("cannot access file: %s", editor)
-		}
-		if info.IsDir() {
-			return fmt.Errorf("path is a directory, not an executable: %s", editor)
-		}
-		// Check if executable
-		if info.Mode()&0111 == 0 {
-			return fmt.Errorf("file is not executable: %s", editor)
-		}
-		return nil
-	}
-
-	// Otherwise, check if command exists in PATH
-	_, err := exec.LookPath(editor)
-	if err != nil {
-		return fmt.Errorf("command not found in PATH: %s", editor)
-	}
-
-	return nil
+	return m.validateEditorCommand(editor)
 }
 
 func (m *SettingsModel) validateContext() error {

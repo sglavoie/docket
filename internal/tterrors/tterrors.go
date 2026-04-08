@@ -47,6 +47,11 @@ var (
 	ErrNoChanges           = errors.New("no changes specified")
 )
 
+// User interaction errors
+var (
+	ErrCanceled = errors.New("canceled")
+)
+
 // NewTaskNotFoundError creates a task not found error with the specified task identifier.
 // Use this for consistent error messaging across the codebase.
 func NewTaskNotFoundError(taskID any) error {

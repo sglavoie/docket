@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tterrors"
 )
 
 const defaultFzfTimeoutSeconds = 30
@@ -78,7 +79,7 @@ func FzfSelectProject(projects []*models.Project, prompt string) (*models.Projec
 		var exitErr *exec.ExitError
 		if errors.As(err, &exitErr) {
 			if exitErr.ExitCode() == 130 {
-				return nil, fmt.Errorf("canceled")
+				return nil, tterrors.ErrCanceled
 			}
 		}
 		if ctx.Err() == context.DeadlineExceeded {
@@ -89,7 +90,7 @@ func FzfSelectProject(projects []*models.Project, prompt string) (*models.Projec
 
 	selected := strings.TrimSpace(stdout.String())
 	if selected == "" {
-		return nil, fmt.Errorf("canceled")
+		return nil, tterrors.ErrCanceled
 	}
 
 	// Parse the selection - slug is the first tab-delimited field.
@@ -158,7 +159,7 @@ func FzfSelectTask(tasks []*models.Task, prompt string, previewCmd string) (*mod
 		var exitErr *exec.ExitError
 		if errors.As(err, &exitErr) {
 			if exitErr.ExitCode() == 130 {
-				return nil, fmt.Errorf("canceled")
+				return nil, tterrors.ErrCanceled
 			}
 		}
 		if ctx.Err() == context.DeadlineExceeded {
@@ -169,7 +170,7 @@ func FzfSelectTask(tasks []*models.Task, prompt string, previewCmd string) (*mod
 
 	selected := strings.TrimSpace(stdout.String())
 	if selected == "" {
-		return nil, fmt.Errorf("canceled")
+		return nil, tterrors.ErrCanceled
 	}
 
 	// Parse the selection - get task ID from first field
@@ -237,7 +238,7 @@ func FzfMultiSelectProjects(projects []*models.Project, prompt string, preselect
 		var exitErr *exec.ExitError
 		if errors.As(err, &exitErr) {
 			if exitErr.ExitCode() == 130 {
-				return nil, fmt.Errorf("canceled")
+				return nil, tterrors.ErrCanceled
 			}
 		}
 		if ctx.Err() == context.DeadlineExceeded {
@@ -248,7 +249,7 @@ func FzfMultiSelectProjects(projects []*models.Project, prompt string, preselect
 
 	output := strings.TrimSpace(stdout.String())
 	if output == "" {
-		return nil, fmt.Errorf("canceled")
+		return nil, tterrors.ErrCanceled
 	}
 
 	// Parse selections - slug is the first tab-delimited field.
@@ -316,7 +317,7 @@ func FzfMultiSelectTasks(tasks []*models.Task, prompt string) ([]*models.Task, e
 		var exitErr *exec.ExitError
 		if errors.As(err, &exitErr) {
 			if exitErr.ExitCode() == 130 {
-				return nil, fmt.Errorf("canceled")
+				return nil, tterrors.ErrCanceled
 			}
 		}
 		if ctx.Err() == context.DeadlineExceeded {
@@ -327,7 +328,7 @@ func FzfMultiSelectTasks(tasks []*models.Task, prompt string) ([]*models.Task, e
 
 	output := strings.TrimSpace(stdout.String())
 	if output == "" {
-		return nil, fmt.Errorf("canceled")
+		return nil, tterrors.ErrCanceled
 	}
 
 	// Parse selections
