@@ -195,59 +195,6 @@ func TestQueuePointerReconciliation(t *testing.T) {
 	})
 }
 
-func TestAcceptOnAnyTab(t *testing.T) {
-	project := newTestFocusProject(t, "Test")
-	task1 := newTestFocusTask(t, "Task 1", 1, true)
-	task2 := newTestFocusTask(t, "Task 2", 2, true)
-	task3 := newTestFocusTask(t, "Task 3", 3, true)
-
-	cfg := newTestFocusConfig([]*models.Project{project})
-	m := newTestFocusViewModel(cfg)
-	m.tasks = []FocusTask{
-		{Task: task1, Project: project},
-		{Task: task2, Project: project},
-		{Task: task3, Project: project},
-	}
-
-	m.ranked = focus.RankCrossProjectTasks(m.tasks, m.dismissedIDs, cfg)
-
-	t.Run("accept on Queue tab adds top non-queued suggestion", func(t *testing.T) {
-		m.tabs.Active = focusTabQueue
-		m.handleAccept()
-
-		if len(*m.queue) != 1 {
-			t.Fatalf("expected 1 task in queue, got %d", len(*m.queue))
-		}
-		firstID := (*m.queue)[0].Task.ID
-		if firstID != m.ranked[0].Task.ID {
-			t.Errorf("expected top ranked task in queue")
-		}
-	})
-
-	t.Run("accept on Queue tab skips already-queued task", func(t *testing.T) {
-		m.handleAccept()
-
-		if len(*m.queue) != 2 {
-			t.Fatalf("expected 2 tasks in queue, got %d", len(*m.queue))
-		}
-		if (*m.queue)[0].Task.ID == (*m.queue)[1].Task.ID {
-			t.Error("second accept should add a different task")
-		}
-	})
-
-	t.Run("accept on By Project tab also adds suggestion", func(t *testing.T) {
-		*m.queue = nil
-		m.queueIDs = make(map[string]bool)
-
-		m.tabs.Active = focusTabByProject
-		m.handleAccept()
-
-		if len(*m.queue) != 1 {
-			t.Fatalf("expected 1 task in queue, got %d", len(*m.queue))
-		}
-	})
-}
-
 func TestTopNonQueuedSuggestion(t *testing.T) {
 	project := newTestFocusProject(t, "Test")
 	task1 := newTestFocusTask(t, "Task 1", 1, true)

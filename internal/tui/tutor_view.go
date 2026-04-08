@@ -104,7 +104,7 @@ func (m *TutorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) { //nolint:gocyclo
 		}
 
 		switch msg.String() {
-		case "q", "esc":
+		case "esc":
 			if m.searchQuery != "" {
 				m.searchQuery = ""
 				m.searchInput.SetValue("")

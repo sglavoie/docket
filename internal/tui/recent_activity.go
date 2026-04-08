@@ -25,6 +25,9 @@ type RecentActivityModel struct {
 	InteractiveViewState
 	config *config.Config
 
+	// Queue indicator support
+	queueIDs map[string]bool
+
 	tasks    []CrossProjectTask
 	filtered []CrossProjectTask
 
@@ -68,6 +71,15 @@ func NewProjectRecentActivityModel(cfg *config.Config, project *models.Project) 
 	m.InitSearchInput("Filter tasks...", 100, 40)
 	m.loadTasks()
 	return m
+}
+
+// getTaskRef returns the focused task and its project for queue toggling.
+func (m *RecentActivityModel) getTaskRef() (*models.Task, *models.Project) {
+	if !CursorInBounds(m.cursor, len(m.filtered)) {
+		return nil, nil
+	}
+	cpt := m.filtered[m.cursor]
+	return cpt.Task, cpt.Project
 }
 
 // loadTasks aggregates tasks from all active projects, sorted by UpdatedAt desc.
@@ -210,7 +222,7 @@ func (m *RecentActivityModel) handleKeyMsg(msg tea.KeyPressMsg) (tea.Model, tea.
 	}
 
 	switch msg.String() {
-	case "esc", "q":
+	case "esc":
 		if RunEscCascade(m.escSteps()) {
 			return m, nil
 		}
@@ -339,7 +351,7 @@ func (m *RecentActivityModel) GetHelpItems() []HelpItem {
 func (m *RecentActivityModel) HandledKeys() []string {
 	return []string{
 		"j", "k", "up", "down", "g", "G", "ctrl+u", "ctrl+d",
-		"enter", "p", "ctrl+.", "/", "F", "[", "]", "r", "q", "esc",
+		"enter", "p", "ctrl+.", "/", "F", "[", "]", "r", "esc",
 	}
 }
 
@@ -445,6 +457,7 @@ func (m *RecentActivityModel) renderTaskLine(dt CrossProjectTask, selected bool,
 	return TaskLine{
 		Task:        task,
 		IsSelected:  selected,
+		Queued:      m.queueIDs[task.ID],
 		MaxTitle:    maxTitleLen,
 		PreBadges:   preBadges,
 		StageBadge:  GetStageBadge(task.Stage),

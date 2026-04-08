@@ -109,7 +109,7 @@ func (m *ScoreProfileManagerModel) handleKeypress(msg tea.KeyPressMsg) (tea.Mode
 	}
 
 	switch key {
-	case "esc", "q":
+	case "esc":
 		return m, func() tea.Msg {
 			return CloseScoreProfileManagerMsg{}
 		}

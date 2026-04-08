@@ -15,6 +15,7 @@ func (r *KeybindingRegistry) registerProjectTreeBindings() {
 		Keybinding{Key: "N", Description: "Jump to previous root task", Category: "Navigation", Views: views},
 		Keybinding{Key: "p", Description: "Priority view", Category: "Navigation", Views: views},
 		Keybinding{Key: "f", Description: "Focus view (project)", Category: "Navigation", Views: views},
+		Keybinding{Key: "q", Description: "Toggle queue", Category: "Queue", Views: views},
 
 		// Sidebar
 		Keybinding{Key: "j/k (sidebar)", Description: "Scroll/navigate dependencies", Category: "Sidebar", Views: views},

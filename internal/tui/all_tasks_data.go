@@ -217,7 +217,7 @@ func (m *AllTasksViewModel) HandledKeys() []string {
 			"0", "+", "E", "X", "ctrl+g",
 			"{", "}",
 			"1", "2", "3", "4", "5",
-			"q", "esc",
+			"esc",
 		},
 	)
 }

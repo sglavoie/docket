@@ -29,7 +29,7 @@ func (m *TaskCommentsModel) updateExpandedView(msg tea.Msg) (tea.Model, tea.Cmd)
 	switch msg := msg.(type) {
 	case tea.KeyPressMsg:
 		switch msg.String() {
-		case "esc", "enter", "q":
+		case "esc", "enter":
 			m.expandedView = false
 		case "j", "down", "k", "up":
 			return m, nil
@@ -143,7 +143,7 @@ func (m *TaskCommentsModel) updateNormalMode(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m *TaskCommentsModel) handleNormalKey(key string) tea.Cmd {
 	switch key {
-	case "q", "esc":
+	case "esc":
 		return func() tea.Msg { return CloseTaskCommentsMsg{} }
 	case "j", "down":
 		m.moveCursorDown()

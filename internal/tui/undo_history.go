@@ -100,7 +100,7 @@ func (m *UndoHistoryModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) { //nolint:g
 		}
 
 		switch msg.String() {
-		case "q", "esc":
+		case "esc":
 			return m, func() tea.Msg { return CloseUndoHistoryMsg{} }
 
 		case "j", "down":

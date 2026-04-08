@@ -95,7 +95,7 @@ func (m *SectionManagerModel) handleConfirmDiscard(msg tea.KeyPressMsg) tea.Cmd 
 
 func (m *SectionManagerModel) handleDefaultMode(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
-	case "q", "esc", "ctrl+s":
+	case "esc", "ctrl+s":
 		return m, closeSectionManagerCmd()
 
 	case "j", "down":

@@ -12,7 +12,7 @@ func blockerUpdateShared(s *blockerViewState, ds blockerDataSource, msg tea.Msg)
 	if s.expandedView {
 		if keyMsg, ok := msg.(tea.KeyPressMsg); ok {
 			switch keyMsg.String() {
-			case "esc", "enter", "q":
+			case "esc", "enter":
 				s.expandedView = false
 			}
 		}
@@ -70,7 +70,7 @@ func blockerUpdateShared(s *blockerViewState, ds blockerDataSource, msg tea.Msg)
 		visible := ds.getVisibleItems(s.tabs.Active)
 
 		switch keyMsg.String() {
-		case "q", "esc":
+		case "esc":
 			return nil, func() tea.Msg { return ds.closeMsg() }, true
 		case "j", "down":
 			if len(visible) > 0 && s.cursor < len(visible)-1 {

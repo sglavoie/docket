@@ -33,7 +33,7 @@ func (m *FocusBoardModel) handleKeyMsg(msg tea.KeyPressMsg) (tea.Model, tea.Cmd)
 	}
 
 	switch key {
-	case "esc", "q":
+	case "esc":
 		if m.HasActiveFilters() {
 			m.ClearAllFilters()
 			m.applyFilter()
@@ -212,7 +212,7 @@ func (m *FocusBoardModel) HandledKeys() []string {
 			"ctrl+.", "y", "Y", "ctrl+y", "S",
 			"r", "F", "Fx", "/",
 			"1", "2", "3", "4", "5", "0",
-			"q", "esc",
+			"esc",
 		},
 	)
 }

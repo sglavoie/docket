@@ -103,7 +103,7 @@ func (m *AllTasksViewModel) handleKeyMsg(msg tea.KeyPressMsg) (tea.Model, tea.Cm
 	}
 
 	switch key {
-	case "esc", "q":
+	case "esc":
 		if RunEscCascade(m.escSteps()) {
 			return m, nil
 		}

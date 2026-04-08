@@ -39,6 +39,9 @@ type OutlinerModel struct {
 	PrimaryViewBundle
 	MultiSelectState
 
+	// Queue indicator support
+	queueIDs map[string]bool
+
 	project *models.Project
 
 	zoomStack      []ZoomEntry             // Zoom stack for single-project mode

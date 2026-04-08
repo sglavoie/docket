@@ -105,7 +105,7 @@ func (m *TaskAttachmentsModel) updateNormalKey(key string) tea.Cmd {
 
 func (m *TaskAttachmentsModel) handleAttachmentsNavigationKey(key string) (tea.Cmd, bool) {
 	switch key {
-	case "q", "esc":
+	case "esc":
 		return func() tea.Msg { return CloseTaskAttachmentsMsg{} }, true
 	case "j", "down":
 		m.moveCursorDown()

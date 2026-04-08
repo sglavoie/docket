@@ -56,6 +56,9 @@ type PriorityViewModel struct {
 	InteractiveViewState
 	ViewBundle
 
+	// Queue indicator support
+	queueIDs map[string]bool
+
 	project        *models.Project
 	projectService *ProjectService
 

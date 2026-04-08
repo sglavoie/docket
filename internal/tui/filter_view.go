@@ -228,7 +228,7 @@ func (m *FilterViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case tea.KeyPressMsg:
 		switch msg.String() {
-		case "q", "esc", "ctrl+f":
+		case "esc", "ctrl+f":
 			return m, func() tea.Msg {
 				return CloseFilterMsg{}
 			}

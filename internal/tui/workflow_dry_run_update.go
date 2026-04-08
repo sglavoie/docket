@@ -57,9 +57,6 @@ func (m *WorkflowDryRunModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			return m, func() tea.Msg { return BackMsg{} }
 
-		case "q":
-			return m, func() tea.Msg { return BackMsg{} }
-
 		case "/":
 			return m, m.ActivateSearch()
 

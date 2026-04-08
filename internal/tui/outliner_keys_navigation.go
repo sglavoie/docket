@@ -4,28 +4,6 @@ import tea "charm.land/bubbletea/v2"
 
 func (m *OutlinerModel) handleNavigationKey(key string) (tea.Model, tea.Cmd, bool) {
 	switch key {
-	case "q":
-		if m.project == nil && len(m.crossZoomStack) > 0 {
-			top := m.crossZoomStack[len(m.crossZoomStack)-1]
-			m.crossZoomStack = m.crossZoomStack[:len(m.crossZoomStack)-1]
-			m.cursor = top.CursorIndex
-			return m, nil, true
-		}
-		if m.project == nil {
-			return m, func() tea.Msg {
-				return CloseCrossOutlinerMsg{}
-			}, true
-		}
-		if len(m.zoomStack) == 0 {
-			return m, func() tea.Msg {
-				return CloseOutlinerMsg{}
-			}, true
-		}
-		top := m.zoomStack[len(m.zoomStack)-1]
-		m.zoomStack = m.zoomStack[:len(m.zoomStack)-1]
-		m.cursor = top.CursorIndex
-		return m, nil, true
-
 	case "esc":
 		RunEscCascade(m.escSteps())
 		return m, nil, true

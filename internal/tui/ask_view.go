@@ -214,7 +214,7 @@ func (m *AskViewModel) handleKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 
 	case askStateResult:
 		switch msg.String() {
-		case "q", "esc":
+		case "esc":
 			return m, func() tea.Msg { return BackMsg{} }
 		case "a":
 			if len(m.commands) > 0 {

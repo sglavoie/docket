@@ -510,6 +510,12 @@ func (m *OutlinerModel) renderOutlinerTreeContent(width int) string { //nolint:g
 
 		cursorPrefix := RenderCursorPrefix(selected, task.Active, task.Pinned, task.Dimmed)
 
+		// Queue indicator: always 2 chars wide.
+		queueIndicator := "  "
+		if m.queueIDs[task.ID] {
+			queueIndicator = ActiveStyle.Render("Q") + " "
+		}
+
 		// Selection checkbox (only in multi-select mode)
 		checkbox := ""
 		if m.multiSelectMode {
@@ -545,7 +551,7 @@ func (m *OutlinerModel) renderOutlinerTreeContent(width int) string { //nolint:g
 		// Account for every non-title component plus the two literal spaces in the format string.
 		// The EA delta compensates for terminals that render East Asian Ambiguous
 		// characters (box-drawing, geometric shapes, middle dots) at double width.
-		nonTitleWidth := lipgloss.Width(cursorPrefix) + lipgloss.Width(checkbox) +
+		nonTitleWidth := lipgloss.Width(cursorPrefix) + 2 + lipgloss.Width(checkbox) +
 			lipgloss.Width(prefixStr) + lipgloss.Width(foldIndicator) +
 			lipgloss.Width(projBadge) + lipgloss.Width(typeIcon) + 1 +
 			lipgloss.Width(stageSegment) + lipgloss.Width(statusIcon) + 1 +
@@ -565,8 +571,9 @@ func (m *OutlinerModel) renderOutlinerTreeContent(width int) string { //nolint:g
 			title = titleStyle.Render(truncatedTitle)
 		}
 
-		line := fmt.Sprintf("%s%s%s%s%s%s %s %s%s%s%s",
+		line := fmt.Sprintf("%s%s%s%s%s%s%s %s %s%s%s%s",
 			cursorPrefix,
+			queueIndicator,
 			checkbox,
 			prefixStr,
 			foldIndicator,

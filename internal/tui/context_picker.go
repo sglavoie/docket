@@ -295,7 +295,7 @@ func (m *ContextPickerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) { //nolint
 		}
 
 		switch msg.String() {
-		case "q", "esc":
+		case "esc":
 			fromCycle := m.fromCycle
 			return m, func() tea.Msg {
 				return ContextPickerDoneMsg{Canceled: true, FromCycle: fromCycle}

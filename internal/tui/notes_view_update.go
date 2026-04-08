@@ -111,7 +111,7 @@ func (m *NotesViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) { //nolint:goc
 			if handleTabCycleKey(key, &m.tabs, true, m.loadNotes) {
 				return m, nil
 			}
-		case "q", "esc":
+		case "esc":
 			if m.isGlobal {
 				return m, func() tea.Msg { return CloseGlobalNotesMsg{} }
 			}
@@ -251,11 +251,6 @@ func (m *NotesViewModel) handleDetailsPaneKey(key string) (tea.Model, tea.Cmd) {
 	switch key {
 	case "esc":
 		m.detailsPane.Focused = false
-	case "q":
-		if m.isGlobal {
-			return m, func() tea.Msg { return CloseGlobalNotesMsg{} }
-		}
-		return m, func() tea.Msg { return CloseNotesMsg{} }
 	case "e":
 		return m, m.editCurrentNote()
 	case "enter":

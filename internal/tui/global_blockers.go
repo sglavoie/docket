@@ -49,6 +49,9 @@ func (m *GlobalBlockersModel) loadAllBlockers() {
 
 func (m *GlobalBlockersModel) GetConfirmDialog() *ConfirmDialog { return m.state.GetConfirmDialog() }
 
+// getTaskRef returns nil for both values — global blockers have no task reference.
+func (m *GlobalBlockersModel) getTaskRef() (*models.Task, *models.Project) { return nil, nil }
+
 func (m *GlobalBlockersModel) Init() tea.Cmd { return nil }
 
 func (m *GlobalBlockersModel) SetSize(width, height int) {

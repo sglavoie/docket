@@ -163,10 +163,10 @@ func (m *FocusViewModel) HandledKeys() []string {
 		linkedTaskPrefixKeys(),
 		[]string{
 			"g", "gp",
-			"enter", "a", "x", "J", "K", "*", "F", "m", "t",
+			"enter", "J", "K", "*", "F", "m", "t",
 			"e", "Z", "D", "ctrl+.", "r", "y", "Y",
 			"1", "2", "3", "4", "5",
-			"q", "esc",
+			"esc",
 		},
 	)
 }

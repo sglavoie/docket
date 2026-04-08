@@ -63,7 +63,7 @@ func (m *RecentActivityPreviewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case tea.KeyPressMsg:
 		switch msg.String() {
-		case "p", "q", "esc":
+		case "p", "esc":
 			return m, func() tea.Msg {
 				return CloseRecentActivityPreviewMsg{}
 			}

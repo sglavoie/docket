@@ -86,7 +86,7 @@ func (m *PriorityViewModel) handleKeypress(msg tea.KeyPressMsg) (tea.Model, tea.
 	}
 
 	switch key {
-	case "esc", "q":
+	case "esc":
 		if RunEscCascade(m.escSteps()) {
 			return m, nil
 		}

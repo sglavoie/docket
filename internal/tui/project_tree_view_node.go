@@ -40,6 +40,12 @@ func (m *ProjectTreeModel) renderNodeWithWidth(node *TreeNode, selected bool, in
 		expandIcon = MutedStyle.Render("─") + " "
 	}
 
+	// Queue indicator: always 2 chars wide.
+	queueIndicator := "  "
+	if m.queueIDs[task.ID] {
+		queueIndicator = ActiveStyle.Render("Q") + " "
+	}
+
 	// Selection checkbox (only in multi-select mode)
 	checkbox := ""
 	if m.multiSelectMode {
@@ -246,11 +252,11 @@ func (m *ProjectTreeModel) renderNodeWithWidth(node *TreeNode, selected bool, in
 		if m.colLayout.HasShortID {
 			idW = m.colLayout.ShortIDWidth + 1
 		}
-		baseUsed = 3 + lipgloss.Width(checkbox) + lipgloss.Width(node.TreePrefix) + 2 + 1 + 1 + 1 + 1 + priorityW + lipgloss.Width(stageSegment) + idW + progressWidth
+		baseUsed = 3 + 2 + lipgloss.Width(checkbox) + lipgloss.Width(node.TreePrefix) + 2 + 1 + 1 + 1 + 1 + priorityW + lipgloss.Width(stageSegment) + idW + progressWidth
 	} else {
 		// Approximate path (pre-existing logic).
 		baseOverhead := 16
-		baseUsed = 3 + len(checkbox) + lipgloss.Width(node.TreePrefix) + len(expandIcon) + baseOverhead + progressWidth
+		baseUsed = 3 + 2 + len(checkbox) + lipgloss.Width(node.TreePrefix) + len(expandIcon) + baseOverhead + progressWidth
 	}
 	availableTitleWidth := maxWidth - baseUsed - lipgloss.Width(indicators)
 
@@ -295,8 +301,8 @@ func (m *ProjectTreeModel) renderNodeWithWidth(node *TreeNode, selected bool, in
 		title = titleStyle.Render(truncatedTitle)
 	}
 
-	content := fmt.Sprintf("%s%s%s%s %s %s%s%s%s%s%s",
-		checkbox, indent, expandIcon, typeIcon, statusIcon, prioritySegment, stageSegment, idStr, title, progress, indicators)
+	content := fmt.Sprintf("%s%s%s%s%s %s %s%s%s%s%s%s",
+		queueIndicator, checkbox, indent, expandIcon, typeIcon, statusIcon, prioritySegment, stageSegment, idStr, title, progress, indicators)
 	isDimmed := task.Dimmed && !node.IsContextNode
 	return RenderSelectableRow(selected, task.Active, task.Pinned, m.cursorFlash, content, maxWidth, isDimmed)
 }

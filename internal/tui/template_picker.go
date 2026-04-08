@@ -151,8 +151,6 @@ func (m *TemplatePickerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.cursor = len(m.filteredTemplates)
 				m.previewScroll = 0
 				return m, nil
-			case "q":
-				return m, m.skipTemplate()
 			case "/":
 				return m, m.ActivateSearch()
 			}

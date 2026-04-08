@@ -26,6 +26,9 @@ func NewBlockersModelWithEditor(project *models.Project, editor string) *Blocker
 
 func (m *BlockersModel) GetConfirmDialog() *ConfirmDialog { return m.state.GetConfirmDialog() }
 
+// getTaskRef returns nil for both values — blockers have no task reference.
+func (m *BlockersModel) getTaskRef() (*models.Task, *models.Project) { return nil, nil }
+
 func (m *BlockersModel) Init() tea.Cmd { return nil }
 
 func (m *BlockersModel) GetHelpItems() []HelpItem {

@@ -70,12 +70,6 @@ func (m *CrossProjectLinkerModel) handleKeypress(msg tea.KeyPressMsg) (tea.Model
 		}
 		return m, nil
 
-	case "q":
-		if !m.IsSearchMode() {
-			return m, func() tea.Msg { return CloseCrossProjectLinkerMsg{} }
-		}
-		return m, nil
-
 	case "enter":
 		return m.handleEnter()
 

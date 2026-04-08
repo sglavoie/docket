@@ -11,7 +11,8 @@ func (r *KeybindingRegistry) registerFocusBoardBindings() {
 		Keybinding{Key: "Enter", Description: "Navigate to task / open URL", Category: "Navigation", Views: views},
 		Keybinding{Key: "gp", Description: "Go to task in project", Category: "Navigation", Views: views},
 		Keybinding{Key: "o", Description: "Open URL in browser", Category: "Navigation", Views: views},
-		Keybinding{Key: "q/Esc", Description: "Close", Category: "Navigation", Views: views},
+		Keybinding{Key: "q", Description: "Toggle queue", Category: "Queue", Views: views},
+		Keybinding{Key: "Esc", Description: "Close", Category: "Navigation", Views: views},
 
 		// Actions
 		Keybinding{Key: "a", Description: "Quick-add board item", Category: "Actions", Views: views},

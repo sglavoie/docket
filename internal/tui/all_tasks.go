@@ -57,6 +57,9 @@ type AllTasksViewModel struct {
 	InteractiveViewState
 	ViewBundle
 
+	// Queue indicator support
+	queueIDs map[string]bool
+
 	projectService *ProjectService
 	projectCache   map[string]*models.Project
 

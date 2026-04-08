@@ -66,6 +66,9 @@ type WeeklyReviewModel struct {
 	InteractiveViewState
 	ViewBundle
 
+	// Queue indicator support
+	queueIDs map[string]bool
+
 	// Project sections
 	staleProjects []WeeklyReviewProject
 	inboxBacklog  []WeeklyReviewProject
@@ -160,7 +163,7 @@ func (m *WeeklyReviewModel) handleKeyMsg(msg tea.KeyPressMsg) (tea.Model, tea.Cm
 
 	// Handle completion summary overlay
 	if m.showingSummary {
-		if key == "q" || key == "esc" {
+		if key == "esc" {
 			return m, func() tea.Msg {
 				return CloseWeeklyReviewMsg{}
 			}
@@ -215,11 +218,6 @@ func (m *WeeklyReviewModel) handleKeyMsg(msg tea.KeyPressMsg) (tea.Model, tea.Cm
 		if RunEscCascade(m.escSteps()) {
 			return m, nil
 		}
-		return m, func() tea.Msg {
-			return CloseWeeklyReviewMsg{}
-		}
-
-	case "q":
 		return m, func() tea.Msg {
 			return CloseWeeklyReviewMsg{}
 		}
@@ -448,7 +446,7 @@ func (m *WeeklyReviewModel) HandledKeys() []string {
 			"e", "Z", "D", "ctrl+.", "r", "y", "Y",
 			"R", "ctrl+n",
 			"1", "2", "3", "4", "5",
-			"q", "esc",
+			"esc",
 		},
 	)
 }

@@ -46,6 +46,11 @@ func getInboxTasksForModel(project *models.Project) []*models.Task {
 
 // --- inboxBackend implementation ---
 
+// getTaskRef returns the currently focused inbox task and its project.
+func (m *InboxProcessorModel) getTaskRef() (*models.Task, *models.Project) {
+	return m.currentTaskRef()
+}
+
 func (m *InboxProcessorModel) taskCount() int { return len(m.inboxTasks) }
 
 func (m *InboxProcessorModel) taskRef(index int) (*models.Task, *models.Project) {

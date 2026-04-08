@@ -189,7 +189,7 @@ func (m *SectionPickerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		switch msg.String() {
-		case "q", "esc":
+		case "esc":
 			return m, func() tea.Msg {
 				return SectionPickerDoneMsg{
 					Task:     m.task,

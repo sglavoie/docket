@@ -202,7 +202,7 @@ func (m *ProjectFocusViewModel) handleKeyMsg(msg tea.KeyPressMsg) (tea.Model, te
 	}
 
 	switch key {
-	case "esc", "q":
+	case "esc":
 		return m, func() tea.Msg {
 			return CloseProjectFocusViewMsg{}
 		}
@@ -335,7 +335,7 @@ func (m *ProjectFocusViewModel) HandledKeys() []string {
 			"g", "[", "]",
 			"enter", "*", "e", "r", "y", "Y",
 			"1", "2", "3", "4", "5",
-			"q", "esc",
+			"esc",
 		},
 	)
 }

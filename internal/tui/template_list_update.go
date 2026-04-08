@@ -67,7 +67,7 @@ func (m *TaskTemplatesModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) { //nolint
 
 func (m *TaskTemplatesModel) handleExpandedViewKey(key string) tea.Cmd {
 	switch key {
-	case "esc", "enter", "q":
+	case "esc", "enter":
 		m.expandedView = false
 		m.previewScroll = 0
 		return nil
@@ -124,8 +124,6 @@ func (m *TaskTemplatesModel) handleNavigationKey(key string) (bool, tea.Model, t
 			m.filterTemplates()
 			return true, m, nil
 		}
-		return true, m, func() tea.Msg { return BackMsg{} }
-	case "q":
 		return true, m, func() tea.Msg { return BackMsg{} }
 	case "/":
 		return true, m, m.ActivateSearch()

@@ -313,6 +313,7 @@ func (m *AppModel) navigateToTaskInProject(task *models.Task, project *models.Pr
 		m.saveOutlinerToggleState()
 		m.saveOutlinerFilterState()
 		m.outliner = NewOutlinerModel(project, m.config, m.configManager)
+		m.outliner.queueIDs = m.focusQueueIDs
 		m.restoreOutlinerToggleState()
 		m.restoreOutlinerFilterState()
 		if task != nil {

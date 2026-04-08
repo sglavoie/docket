@@ -16,6 +16,11 @@ func (m *ProjectTreeModel) clearSelection() {
 	m.ExitMultiSelect()
 }
 
+// getTaskRef returns the focused task and its project for queue toggling.
+func (m *ProjectTreeModel) getTaskRef() (*models.Task, *models.Project) {
+	return m.getSelectedTask(), m.project
+}
+
 // getSelectedTask returns the task under the cursor, or nil if none.
 func (m *ProjectTreeModel) getSelectedTask() *models.Task {
 	visible := m.visibleNodes()

@@ -31,6 +31,9 @@ type DailyReviewModel struct {
 	InteractiveViewState
 	ViewBundle
 
+	// Queue indicator support
+	queueIDs map[string]bool
+
 	// Sections
 	overdue    []CrossProjectTask
 	dueToday   []CrossProjectTask
@@ -148,19 +151,6 @@ func (m *DailyReviewModel) handleKeyMsg(msg tea.KeyPressMsg) (tea.Model, tea.Cmd
 	switch key {
 	case "esc":
 		if RunEscCascade(m.escSteps()) {
-			return m, nil
-		}
-		return m, func() tea.Msg {
-			return CloseDailyReviewMsg{}
-		}
-
-	case "q":
-		// q clears filters but does not unfocus sections
-		if m.HasActiveFilters() {
-			m.ClearAllFilters()
-			m.loadTasks()
-			m.clampCursor()
-			m.setStatus("Filters cleared")
 			return m, nil
 		}
 		return m, func() tea.Msg {
@@ -347,7 +337,7 @@ func (m *DailyReviewModel) HandledKeys() []string {
 			"enter", "*", "F", "m", "t",
 			"e", "Z", "D", "ctrl+.", "r", "y", "Y",
 			"1", "2", "3", "4", "5",
-			"q", "esc",
+			"esc",
 		},
 	)
 }

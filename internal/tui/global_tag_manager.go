@@ -265,7 +265,7 @@ func (m *GlobalTagManagerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 // handleNormalMode handles keyboard input in normal mode.
 func (m *GlobalTagManagerModel) handleNormalMode(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
-	case "q", "esc", "ctrl+t":
+	case "esc", "ctrl+t":
 		return m, func() tea.Msg {
 			return CloseGlobalTagManagerMsg{}
 		}

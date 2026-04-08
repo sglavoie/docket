@@ -14,7 +14,7 @@ func (r *KeybindingRegistry) registerTaskChecklistBindings() {
 		Keybinding{Key: "J/K", Description: "Reorder item", Category: "Actions", Views: views},
 		Keybinding{Key: "Ctrl+S", Description: "Save (add/edit mode)", Category: "Actions", Views: views},
 		Keybinding{Key: "Ctrl+E", Description: "Open in external editor (add mode)", Category: "Actions", Views: views},
-		Keybinding{Key: "q/Esc", Description: "Close", Category: "Navigation", Views: views},
+		Keybinding{Key: "Esc", Description: "Close", Category: "Navigation", Views: views},
 	)
 }
 
@@ -33,7 +33,7 @@ func (r *KeybindingRegistry) registerTaskCommentsBindings() {
 		Keybinding{Key: "Enter", Description: "Expand comment", Category: "Actions", Views: views},
 		Keybinding{Key: "Ctrl+S", Description: "Save (add/edit mode)", Category: "Actions", Views: views},
 		Keybinding{Key: "Ctrl+E", Description: "Open in external editor (add/edit mode)", Category: "Actions", Views: views},
-		Keybinding{Key: "q/Esc", Description: "Close", Category: "Navigation", Views: views},
+		Keybinding{Key: "Esc", Description: "Close", Category: "Navigation", Views: views},
 	)
 }
 
@@ -52,7 +52,7 @@ func (r *KeybindingRegistry) registerWorkflowRulesBindings() {
 		Keybinding{Key: "t", Description: "Dry run all rules", Category: "Actions", Views: views},
 		Keybinding{Key: "T", Description: "Test selected rule", Category: "Actions", Views: views},
 		Keybinding{Key: "Enter", Description: "Preview (narrow screen)", Category: "Actions", Views: views},
-		Keybinding{Key: "q/Esc", Description: "Close", Category: "Navigation", Views: views},
+		Keybinding{Key: "Esc", Description: "Close", Category: "Navigation", Views: views},
 	)
 }
 
@@ -63,7 +63,7 @@ func (r *KeybindingRegistry) registerWorkflowDryRunBindings() {
 		Keybinding{Key: "↑/↓", Description: "Navigate", Category: "Navigation", Views: views},
 		Keybinding{Key: "g/G", Description: "Top/Bottom", Category: "Navigation", Views: views},
 		Keybinding{Key: "/", Description: "Search tasks", Category: "Navigation", Views: views},
-		Keybinding{Key: "q/Esc", Description: "Close", Category: "Navigation", Views: views},
+		Keybinding{Key: "Esc", Description: "Close", Category: "Navigation", Views: views},
 	)
 }
 
@@ -80,7 +80,7 @@ func (r *KeybindingRegistry) registerTaskTemplatesBindings() {
 		Keybinding{Key: "e", Description: "Edit template", Category: "Actions", Views: views},
 		Keybinding{Key: "d/D", Description: "Delete template", Category: "Actions", Views: views},
 		Keybinding{Key: "Enter", Description: "Preview (narrow screen)", Category: "Actions", Views: views},
-		Keybinding{Key: "q/Esc", Description: "Close", Category: "Navigation", Views: views},
+		Keybinding{Key: "Esc", Description: "Close", Category: "Navigation", Views: views},
 	)
 }
 
@@ -114,7 +114,7 @@ func (r *KeybindingRegistry) registerBulkEditBindings() {
 		Keybinding{Key: "Enter", Description: "Confirm", Category: "Actions", Views: views},
 		Keybinding{Key: "a", Description: "Add tag", Category: "Actions", Views: views},
 		Keybinding{Key: "r", Description: "Remove tag", Category: "Actions", Views: views},
-		Keybinding{Key: "q/Esc", Description: "Cancel", Category: "Navigation", Views: views},
+		Keybinding{Key: "Esc", Description: "Cancel", Category: "Navigation", Views: views},
 	)
 }
 
@@ -134,7 +134,7 @@ func (r *KeybindingRegistry) registerBlockersBindings() {
 		Keybinding{Key: "Enter", Description: "Expand blocker", Category: "Actions", Views: views},
 		Keybinding{Key: "Ctrl+S", Description: "Save (edit/add mode)", Category: "Actions", Views: views},
 		Keybinding{Key: "Ctrl+E", Description: "Open in external editor (add/edit mode)", Category: "Actions", Views: views},
-		Keybinding{Key: "q/Esc", Description: "Close", Category: "Navigation", Views: views},
+		Keybinding{Key: "Esc", Description: "Close", Category: "Navigation", Views: views},
 	)
 }
 
@@ -147,6 +147,5 @@ func (r *KeybindingRegistry) registerCrossProjectLinkerBindings() {
 		Keybinding{Key: "/", Description: "Search", Category: "Navigation", Views: views},
 		Keybinding{Key: "Enter", Description: "Select", Category: "Actions", Views: views},
 		Keybinding{Key: "Esc", Description: "Back / Close", Category: "Navigation", Views: views},
-		Keybinding{Key: "q", Description: "Close", Category: "Navigation", Views: views},
 	)
 }

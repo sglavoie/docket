@@ -193,6 +193,7 @@ func (m *DueDateOverviewModel) renderGroup(tasks []CrossProjectTask, currentInde
 func (m *DueDateOverviewModel) renderTaskLine(dt CrossProjectTask, isSelected bool, maxTitleLen int, layout *ColumnLayout, rowIndex int) string {
 	dateStr := m.formatDueDate(dt.Task)
 	return RenderCrossProjectTaskLine(dt.Task, dt.Project, nil, isSelected, m.Width(), maxTitleLen, CrossProjectTaskLineOpts{
+		Queued:        m.queueIDs[dt.Task.ID],
 		MaxProjectLen: 15,
 		Prefix:        dateStr + " ",
 		Flash:         m.cursorFlash,

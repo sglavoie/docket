@@ -87,7 +87,7 @@ func (m *ActionTypePickerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		// Not in search mode - normal handling
 		switch msg.String() {
-		case "q", "esc":
+		case "esc":
 			return m, func() tea.Msg {
 				return ActionTypePickerDoneMsg{
 					ActionIndex: m.actionIndex,

@@ -1,8 +1,6 @@
 package tui
 
 import (
-	"fmt"
-
 	tea "charm.land/bubbletea/v2"
 )
 
@@ -64,10 +62,6 @@ func (m *FocusViewModel) handleKeyMsg(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) 
 			}
 		}
 		return m, nil
-	case "a":
-		return m.handleAccept()
-	case "x":
-		return m.handleDismissOrRemove()
 	case "J":
 		return m.handleQueueReorder(1)
 	case "K":
@@ -104,58 +98,6 @@ func (m *FocusViewModel) handleKeyMsg(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) 
 		return model, cmd
 	}
 
-	return m, nil
-}
-
-// handleAccept accepts a task into the work queue.
-func (m *FocusViewModel) handleAccept() (tea.Model, tea.Cmd) {
-	switch m.tabs.Active {
-	case focusTabQueue:
-		if sft := m.topNonQueuedSuggestion(); sft != nil {
-			m.acceptIntoQueue(sft.FocusTask)
-			m.applyFilter()
-			m.setStatus(fmt.Sprintf("Added to queue: %s", sft.Task.Title))
-		}
-	default:
-		if ft := m.getTaskAtCursor(); ft != nil {
-			m.acceptIntoQueue(*ft)
-			m.applyFilter()
-			m.setStatus(fmt.Sprintf("Added to queue: %s", ft.Task.Title))
-		}
-	}
-	return m, nil
-}
-
-// handleDismissOrRemove dismisses a suggestion or removes from queue.
-func (m *FocusViewModel) handleDismissOrRemove() (tea.Model, tea.Cmd) {
-	switch m.tabs.Active {
-	case focusTabSuggested:
-		if ft := m.getTaskAtCursor(); ft != nil {
-			if m.showDismissed && m.dismissedIDs[ft.Task.ID] {
-				delete(m.dismissedIDs, ft.Task.ID)
-				m.persistDismissed()
-				m.recomputeSuggested()
-				m.clampCursor()
-				m.setStatus("Restored suggestion")
-			} else {
-				m.dismissedIDs[ft.Task.ID] = true
-				m.persistDismissed()
-				m.recomputeSuggested()
-				m.clampCursor()
-				m.setStatus("Dismissed suggestion")
-			}
-		}
-	case focusTabQueue:
-		if m.cursor >= 0 && m.cursor < len(*m.queue) {
-			title := (*m.queue)[m.cursor].Task.Title
-			m.removeFromQueue(m.cursor)
-			m.applyFilter()
-			m.clampCursor()
-			m.setStatus(fmt.Sprintf("Removed from queue: %s", title))
-		}
-	default:
-		m.setStatus("Use x on Queue to remove or Suggested to dismiss")
-	}
 	return m, nil
 }
 

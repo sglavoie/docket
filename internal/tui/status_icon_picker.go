@@ -103,7 +103,7 @@ func (m *StatusIconPickerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case tea.KeyPressMsg:
 		switch msg.String() {
-		case "q", "esc":
+		case "esc":
 			project := m.project
 			return m, func() tea.Msg {
 				return StatusIconSelectedMsg{Project: project, Canceled: true}

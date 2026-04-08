@@ -2,21 +2,6 @@ package tui
 
 import "testing"
 
-func TestCrossProjectOutlinerQAtRootEmitsCloseCrossOutlinerMsg(t *testing.T) {
-	app := newTestAppModel()
-	m := NewOutlinerModel(nil, app.config, app.configManager)
-
-	key := syntheticKey('q')
-	_, cmd := m.handleKeyMsg(key)
-	if cmd == nil {
-		t.Fatal("expected a command from 'q' at cross-project root, got nil")
-	}
-	msg := cmd()
-	if _, ok := msg.(CloseCrossOutlinerMsg); !ok {
-		t.Errorf("expected CloseCrossOutlinerMsg, got %T", msg)
-	}
-}
-
 func TestCloseCrossOutlinerMsgPreservesOutliner(t *testing.T) {
 	app, project := newTestAppModelWithProject()
 

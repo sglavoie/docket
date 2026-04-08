@@ -37,7 +37,8 @@ func (r *KeybindingRegistry) registerPriorityViewBindings() {
 		Keybinding{Key: "Tab", Description: "Toggle waiting section", Category: "View", Views: views},
 		Keybinding{Key: "A", Description: "All tasks", Category: "Views", Views: views},
 		Keybinding{Key: "r", Description: "Refresh (clears dismissed)", Category: "View", Views: views},
-		Keybinding{Key: "q/Esc", Description: "Close priority view", Category: "View", Views: views},
+		Keybinding{Key: "q", Description: "Toggle queue", Category: "Queue", Views: views},
+		Keybinding{Key: "Esc", Description: "Close priority view", Category: "View", Views: views},
 	)
 	r.addForViews(views, statusBindings())
 	r.addForViews(views, priorityBindings())
@@ -55,7 +56,8 @@ func (r *KeybindingRegistry) registerInboxProcessorBindings() {
 		Keybinding{Key: "n", Description: "Skip task (move to next without processing)", Category: "Navigation", Views: views},
 		Keybinding{Key: "j/k", Description: "Navigate to next/previous task", Category: "Navigation", Views: views},
 		Keybinding{Key: "gg/G", Description: "Go to first/last task", Category: "Navigation", Views: views},
-		Keybinding{Key: "q", Description: "Quit inbox processing", Category: "Navigation", Views: views},
+		Keybinding{Key: "q", Description: "Toggle queue", Category: "Queue", Views: views},
+		Keybinding{Key: "Esc", Description: "Close inbox processing", Category: "Navigation", Views: views},
 
 		// Status
 		Keybinding{Key: ",s", Description: "Start (in progress)", Category: "Status", Views: views},
@@ -89,7 +91,8 @@ func (r *KeybindingRegistry) registerGlobalInboxProcessorBindings() {
 		Keybinding{Key: "n", Description: "Skip task (move to next without processing)", Category: "Navigation", Views: views},
 		Keybinding{Key: "j/k", Description: "Navigate to next/previous task", Category: "Navigation", Views: views},
 		Keybinding{Key: "gg/G", Description: "Go to first/last task", Category: "Navigation", Views: views},
-		Keybinding{Key: "q", Description: "Quit inbox processing", Category: "Navigation", Views: views},
+		Keybinding{Key: "q", Description: "Toggle queue", Category: "Queue", Views: views},
+		Keybinding{Key: "Esc", Description: "Close inbox processing", Category: "Navigation", Views: views},
 
 		// Status
 		Keybinding{Key: ",s", Description: "Start (in progress)", Category: "Status", Views: views},
@@ -134,7 +137,8 @@ func (r *KeybindingRegistry) registerDueDateOverviewBindings() {
 		Keybinding{Key: "F", Description: "Filter prefix (type/status/tags/attr/score)", Category: "Filter", Views: views},
 		Keybinding{Key: "r", Description: "Refresh", Category: "View", Views: views},
 		Keybinding{Key: "gp", Description: "Go to task in project", Category: "View", Views: views},
-		Keybinding{Key: "q/Esc", Description: "Close due date overview", Category: "View", Views: views},
+		Keybinding{Key: "q", Description: "Toggle queue", Category: "Queue", Views: views},
+		Keybinding{Key: "Esc", Description: "Close due date overview", Category: "View", Views: views},
 	)
 	r.addForViews(views, statusBindings())
 	r.addForViews(views, priorityBindings())
@@ -177,7 +181,8 @@ func (r *KeybindingRegistry) registerDailyReviewBindings() {
 		Keybinding{Key: "h/l or [/]", Description: "Switch tab", Category: "View", Views: views},
 		Keybinding{Key: "r", Description: "Refresh", Category: "View", Views: views},
 		Keybinding{Key: "gp", Description: "Go to task in project", Category: "View", Views: views},
-		Keybinding{Key: "q/Esc", Description: "Close review", Category: "View", Views: views},
+		Keybinding{Key: "q", Description: "Toggle queue", Category: "Queue", Views: views},
+		Keybinding{Key: "Esc", Description: "Close review", Category: "View", Views: views},
 	)
 	r.addForViews(views, statusBindings())
 	r.addForViews(views, priorityBindings())
@@ -221,7 +226,8 @@ func (r *KeybindingRegistry) registerWeeklyReviewBindings() {
 		Keybinding{Key: "R", Description: "Mark section reviewed", Category: "Review", Views: views},
 		Keybinding{Key: "ctrl+n", Description: "Next unreviewed section", Category: "Review", Views: views},
 		Keybinding{Key: "gp", Description: "Go to project/task", Category: "View", Views: views},
-		Keybinding{Key: "q/Esc", Description: "Close weekly review", Category: "View", Views: views},
+		Keybinding{Key: "q", Description: "Toggle queue", Category: "Queue", Views: views},
+		Keybinding{Key: "Esc", Description: "Close weekly review", Category: "View", Views: views},
 	)
 	r.addForViews(views, statusBindings())
 	r.addForViews(views, priorityBindings())
@@ -239,8 +245,6 @@ func (r *KeybindingRegistry) registerFocusViewBindings() {
 		Keybinding{Key: "gg/G", Description: "Jump to top/bottom", Category: "Navigation", Views: views},
 		Keybinding{Key: "ctrl+u/d", Description: "Page up/down", Category: "Navigation", Views: views},
 		Keybinding{Key: "Enter", Description: "Jump to task in project", Category: "Actions", Views: views},
-		Keybinding{Key: "a", Description: "Accept into queue", Category: "Queue", Views: views},
-		Keybinding{Key: "x", Description: "Dismiss / Remove from queue", Category: "Queue", Views: views},
 		Keybinding{Key: "J", Description: "Move down in queue", Category: "Queue", Views: views},
 		Keybinding{Key: "K", Description: "Move up in queue", Category: "Queue", Views: views},
 		Keybinding{Key: "*", Description: "Toggle active flag", Category: "Actions", Views: views},
@@ -258,7 +262,8 @@ func (r *KeybindingRegistry) registerFocusViewBindings() {
 		Keybinding{Key: "h/l or [/]", Description: "Navigate tabs", Category: "View", Views: views},
 		Keybinding{Key: "(/) ", Description: "Toggle sub-tab row focus", Category: "View", Views: views},
 		Keybinding{Key: "gp", Description: "Go to task in project", Category: "View", Views: views},
-		Keybinding{Key: "q/Esc", Description: "Close view", Category: "View", Views: views},
+		Keybinding{Key: "q", Description: "Toggle queue", Category: "Queue", Views: views},
+		Keybinding{Key: "Esc", Description: "Close view", Category: "View", Views: views},
 	)
 	r.addForViews(views, statusBindings())
 	r.addForViews(views, dueDateBindings())
@@ -281,7 +286,8 @@ func (r *KeybindingRegistry) registerProjectFocusViewBindings() {
 		Keybinding{Key: "r", Description: "Refresh", Category: "View", Views: views},
 		Keybinding{Key: "(/) ", Description: "Toggle sub-tab row focus", Category: "Navigation", Views: views},
 		Keybinding{Key: "[/]", Description: "Navigate sub-tabs", Category: "Navigation", Views: views},
-		Keybinding{Key: "q/Esc", Description: "Close focus view", Category: "View", Views: views},
+		Keybinding{Key: "q", Description: "Toggle queue", Category: "Queue", Views: views},
+		Keybinding{Key: "Esc", Description: "Close focus view", Category: "View", Views: views},
 	)
 	// Only status and due-date prefixes are activated by this view's handler
 	// (activateSecondaryPrefix(",dg", "", false)); priority, stage, snooze, linked
@@ -325,7 +331,8 @@ func (r *KeybindingRegistry) registerAllTasksBindings() {
 		Keybinding{Key: "+", Description: "Create smart list tab", Category: "Smart Lists", Views: views},
 		Keybinding{Key: "E", Description: "Edit current smart list tab", Category: "Smart Lists", Views: views},
 		Keybinding{Key: "X", Description: "Delete current smart list tab", Category: "Smart Lists", Views: views},
-		Keybinding{Key: "q/Esc", Description: "Close all tasks view", Category: "View", Views: views},
+		Keybinding{Key: "q", Description: "Toggle queue", Category: "Queue", Views: views},
+		Keybinding{Key: "Esc", Description: "Close all tasks view", Category: "View", Views: views},
 	)
 	r.addForViews(views, statusBindings())
 	r.addForViews(views, priorityBindings())

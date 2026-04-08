@@ -233,7 +233,7 @@ func (c *inboxCore) handleKeyMsg(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	}
 
 	switch key {
-	case "q", "esc":
+	case "esc":
 		return c.model, func() tea.Msg {
 			return c.backend.closeMsg(len(c.processedIDs), len(c.skippedIDs))
 		}

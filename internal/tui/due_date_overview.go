@@ -36,6 +36,9 @@ type DueDateOverviewModel struct {
 	InteractiveViewState
 	ViewBundle
 
+	// Queue indicator support
+	queueIDs map[string]bool
+
 	projectService *ProjectService
 
 	// Grouped tasks
@@ -291,7 +294,7 @@ func (m *DueDateOverviewModel) handleKeyMsg(msg tea.KeyPressMsg) (tea.Model, tea
 	}
 
 	switch key {
-	case "esc", "q":
+	case "esc":
 		if RunEscCascade(m.escSteps()) {
 			return m, nil
 		}
@@ -443,7 +446,7 @@ func (m *DueDateOverviewModel) HandledKeys() []string {
 			"enter", "F", "m", "t",
 			"e", "Z", "D", "ctrl+.", "r", "y", "Y", "ctrl+y",
 			"1", "2", "3", "4", "5",
-			"q", "esc",
+			"esc",
 		},
 	)
 }

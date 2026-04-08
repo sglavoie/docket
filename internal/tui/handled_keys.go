@@ -24,7 +24,7 @@ func listNavigationKeys() []string {
 func inboxProcessorKeys() []string {
 	return []string{
 		"j", "k", "g", "G",
-		"enter", "n", "q",
+		"enter", "n",
 		",s", ",d", ",b", ",x", ",o",
 		"s", "1", "2", "3", "4", "5", "t", "c", "e", "d", "D", "b", "w", "u",
 	}

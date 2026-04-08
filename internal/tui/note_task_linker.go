@@ -85,7 +85,7 @@ func (m *NoteTaskLinkerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		switch msg.String() {
-		case "q", "esc":
+		case "esc":
 			return m, m.close()
 		case "enter":
 			return m, m.close()

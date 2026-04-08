@@ -172,6 +172,7 @@ type TaskLine struct {
 	MaxTitle   int // maximum title width; clamped to minimum 10
 
 	// Optional elements
+	Queued          bool          // show "Q " queue indicator in accent color (else "  ")
 	Prefix          string        // before cursor (e.g., star indicator "★ ")
 	PreBadges       string        // after cursor, before status badge (e.g., project name, checkbox, rank)
 	PostTitle       string        // after title (e.g., tags, score badge, custom section)
@@ -194,6 +195,7 @@ type CrossProjectTaskLineOpts struct {
 	ShowTags        bool          // show inline tag string
 	ShowRecurrence  bool          // show ↻ indicator with streak count for recurring tasks
 	MaxProjectLen   int           // project name truncation; 0 defaults to 12
+	Queued          bool          // show "Q " queue indicator in accent color (else "  ")
 	Prefix          string        // prepended before the project badge (e.g. checkbox, date string)
 	StatusBadge     string        // pre-styled status badge override
 	DueStr          string        // right-aligned context string, already styled by caller
@@ -266,6 +268,7 @@ func RenderCrossProjectTaskLine(
 		Task:            task,
 		IsSelected:      isCursor,
 		MaxTitle:        maxTitleLen,
+		Queued:          opts.Queued,
 		PreBadges:       preBadges,
 		PostTitle:       postTitle,
 		StatusBadge:     opts.StatusBadge,
@@ -318,6 +321,12 @@ func (tl TaskLine) Render() string {
 		cursor = "◌ "
 	}
 
+	// Queue indicator: always 2 chars wide so line width stays constant.
+	queueIndicator := "  "
+	if tl.Queued {
+		queueIndicator = ActiveStyle.Render("Q") + " "
+	}
+
 	statusIcon := tl.StatusBadge
 	if statusIcon == "" {
 		statusIcon = GetStatusBadge(string(tl.Task.Status), tl.Task.Status.Icon())
@@ -328,7 +337,8 @@ func (tl TaskLine) Render() string {
 		priorityBadge = ""
 	}
 
-	maxTitleLen := max(tl.MaxTitle, 10)
+	// Queue indicator always occupies 2 chars; reduce title space accordingly.
+	maxTitleLen := max(tl.MaxTitle-2, 10)
 	title := truncateToVisualWidth(tl.Task.Title, maxTitleLen)
 	if tl.SearchQuery != "" {
 		title = HighlightSubstring(title, tl.SearchQuery, NormalStyle)
@@ -351,7 +361,7 @@ func (tl TaskLine) Render() string {
 		stageSegment = tl.StageBadge + " "
 	}
 
-	line := fmt.Sprintf("%s%s%s%s %s %s%s%s%s", tl.Prefix, cursor, tl.PreBadges, statusIcon, typeIcon, prioritySegment, stageSegment, title, tl.PostTitle)
+	line := fmt.Sprintf("%s%s%s%s%s %s %s%s%s%s", queueIndicator, tl.Prefix, cursor, tl.PreBadges, statusIcon, typeIcon, prioritySegment, stageSegment, title, tl.PostTitle)
 	if tl.DueStr != "" {
 		if tl.ViewWidth > 0 {
 			leftWidth := max(tl.ViewWidth-lipgloss.Width(tl.DueStr)-1, 1)

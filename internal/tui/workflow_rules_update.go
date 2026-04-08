@@ -44,7 +44,7 @@ func (m *WorkflowRulesModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) { //nolint
 
 func (m *WorkflowRulesModel) handleExpandedViewKey(key string) tea.Cmd {
 	switch key {
-	case "esc", "enter", "q":
+	case "esc", "enter":
 		m.expandedView = false
 		return nil
 	case "space":
@@ -89,8 +89,6 @@ func (m *WorkflowRulesModel) handleNavigationKey(key string) (bool, tea.Model, t
 			m.filterRules()
 			return true, m, nil
 		}
-		return true, m, func() tea.Msg { return BackMsg{} }
-	case "q":
 		return true, m, func() tea.Msg { return BackMsg{} }
 	case "/":
 		return true, m, m.ActivateSearch()

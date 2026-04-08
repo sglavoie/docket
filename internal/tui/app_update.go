@@ -191,17 +191,11 @@ func (m *AppModel) Update(msg tea.Msg) (outModel tea.Model, outCmd tea.Cmd) { //
 			if m.hasActiveTextInput() {
 				break
 			}
-			// On dashboard, q quits the app
-			if m.currentView() == ViewDashboard {
-				m.saveProjectTreeState()
-				m.saveOutlinerFilterState()
-				m.saveCrossOutlinerState()
-				m.quitting = true
-				return m, tea.Quit
-			}
-			if handled, cmd := m.handleEscKey(); handled {
+			if cmd := m.toggleQueue(); cmd != nil {
 				return m, cmd
 			}
+			// Non-task views (including dashboard): q is a no-op
+			return m, nil
 		case "ctrl+x":
 			// Open project picker if no view has an active text input
 			if !m.hasActiveTextInput() {

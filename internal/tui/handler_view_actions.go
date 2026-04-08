@@ -11,7 +11,9 @@ func (m *AppModel) handleViewActionMessages(msg tea.Msg) (bool, tea.Cmd) {
 	switch msg := msg.(type) {
 	case ShowPriorityViewMsg:
 		if msg.Project != nil {
-			m.showView(ViewPriorityView, NewPriorityViewModel(msg.Project, m.config, m.configManager))
+			pv := NewPriorityViewModel(msg.Project, m.config, m.configManager)
+			pv.queueIDs = m.focusQueueIDs
+			m.showView(ViewPriorityView, pv)
 		}
 		return true, nil
 

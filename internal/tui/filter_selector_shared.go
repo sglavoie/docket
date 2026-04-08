@@ -17,7 +17,7 @@ func filterSelectorUpdate[T PickerItem](picker *BasePicker[T], msg tea.Msg, canc
 
 	case tea.KeyPressMsg:
 		switch msg.String() {
-		case "q", "esc":
+		case "esc":
 			return cancelMsg
 		case "enter":
 			selected := picker.SelectedIDs()

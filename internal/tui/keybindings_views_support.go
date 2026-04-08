@@ -17,7 +17,7 @@ func (r *KeybindingRegistry) registerTaskAttachmentsBindings() {
 		Keybinding{Key: "y", Description: "Copy path to clipboard", Category: "Actions", Views: views},
 		Keybinding{Key: "Y", Description: "Copy path with line (code refs)", Category: "Actions", Views: views},
 		Keybinding{Key: "J/K", Description: "Reorder attachment", Category: "Actions", Views: views},
-		Keybinding{Key: "q/Esc", Description: "Close", Category: "Actions", Views: views},
+		Keybinding{Key: "Esc", Description: "Close", Category: "Actions", Views: views},
 	)
 }
 
@@ -62,7 +62,7 @@ func (r *KeybindingRegistry) registerNotesBindings() {
 		Keybinding{Key: "r", Description: "Rename note (inline)", Category: "Actions", Views: views},
 		Keybinding{Key: "C", Description: "Clear tag filters", Category: "Tags", Views: views},
 		Keybinding{Key: "ctrl+Y", Description: "Copy title and body", Category: "Actions", Views: views},
-		Keybinding{Key: "q", Description: "Close notes view", Category: "Navigation", Views: views},
+		Keybinding{Key: "Esc", Description: "Close notes view", Category: "Navigation", Views: views},
 	)
 }
 
@@ -80,7 +80,8 @@ func (r *KeybindingRegistry) registerRecentActivityBindings() {
 		Keybinding{Key: "F", Description: "Filter prefix (type/status/tags/due/attr/score)", Category: "Filters", Views: views},
 		Keybinding{Key: "[/]", Description: "Switch tabs", Category: "Navigation", Views: views},
 		Keybinding{Key: "r", Description: "Refresh", Category: "Actions", Views: views},
-		Keybinding{Key: "q/Esc", Description: "Close", Category: "Navigation", Views: views},
+		Keybinding{Key: "q", Description: "Toggle queue", Category: "Queue", Views: views},
+		Keybinding{Key: "Esc", Description: "Close", Category: "Navigation", Views: views},
 	)
 }
 
@@ -98,7 +99,8 @@ func (r *KeybindingRegistry) registerProjectRecentActivityBindings() {
 		Keybinding{Key: "F", Description: "Filter prefix (type/status/tags/due/attr/score)", Category: "Filters", Views: views},
 		Keybinding{Key: "[/]", Description: "Switch tabs", Category: "Navigation", Views: views},
 		Keybinding{Key: "r", Description: "Refresh", Category: "Actions", Views: views},
-		Keybinding{Key: "q/Esc", Description: "Close", Category: "Navigation", Views: views},
+		Keybinding{Key: "q", Description: "Toggle queue", Category: "Queue", Views: views},
+		Keybinding{Key: "Esc", Description: "Close", Category: "Navigation", Views: views},
 	)
 }
 
@@ -110,7 +112,7 @@ func (r *KeybindingRegistry) registerProjectPreviewBindings() {
 		Keybinding{Key: "g/G", Description: "Top/Bottom", Category: "Navigation", Views: views},
 		Keybinding{Key: "Ctrl+U/D", Description: "Page up/down", Category: "Navigation", Views: views},
 		Keybinding{Key: "s", Description: "Switch scoring profile", Category: "Actions", Views: views},
-		Keybinding{Key: "p/q/Esc", Description: "Close", Category: "Navigation", Views: views},
+		Keybinding{Key: "p/Esc", Description: "Close", Category: "Navigation", Views: views},
 	)
 }
 
@@ -124,6 +126,6 @@ func (r *KeybindingRegistry) registerScoreProfileManagerBindings() {
 		Keybinding{Key: "d", Description: "Delete profile", Category: "Actions", Views: views},
 		Keybinding{Key: "Space/Enter", Description: "Assign to project", Category: "Actions", Views: views},
 		Keybinding{Key: "u", Description: "Unassign from project", Category: "Actions", Views: views},
-		Keybinding{Key: "q/Esc", Description: "Close", Category: "Navigation", Views: views},
+		Keybinding{Key: "Esc", Description: "Close", Category: "Navigation", Views: views},
 	)
 }

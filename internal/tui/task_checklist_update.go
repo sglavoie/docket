@@ -120,7 +120,7 @@ func (m *TaskChecklistModel) updateNormalMode(msg tea.Msg) (tea.Model, tea.Cmd) 
 
 func (m *TaskChecklistModel) handleNormalKey(key string) tea.Cmd {
 	switch key {
-	case "q", "esc":
+	case "esc":
 		return func() tea.Msg { return CloseTaskChecklistMsg{} }
 	case "j", "down":
 		m.moveCursorDown()

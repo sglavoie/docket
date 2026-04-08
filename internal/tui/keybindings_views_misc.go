@@ -32,7 +32,7 @@ func (r *KeybindingRegistry) registerAskViewBindings() {
 		Keybinding{Key: "Ctrl+S", Description: "Submit query", Category: "Actions", Views: views},
 		Keybinding{Key: "a", Description: "Apply extracted commands (result)", Category: "Actions", Views: views},
 		Keybinding{Key: "n", Description: "New query (result)", Category: "Actions", Views: views},
-		Keybinding{Key: "q/Esc", Description: "Close", Category: "Navigation", Views: views},
+		Keybinding{Key: "Esc", Description: "Close", Category: "Navigation", Views: views},
 	)
 }
 
@@ -48,6 +48,6 @@ func (r *KeybindingRegistry) registerTutorBindings() {
 		Keybinding{Key: "/", Description: "Search", Category: "Navigation", Views: views},
 		Keybinding{Key: "Ctrl+U/D", Description: "Page up/down", Category: "Navigation", Views: views},
 		Keybinding{Key: "Enter", Description: "Switch to content pane", Category: "Navigation", Views: views},
-		Keybinding{Key: "q/Esc", Description: "Close", Category: "Navigation", Views: views},
+		Keybinding{Key: "Esc", Description: "Close", Category: "Navigation", Views: views},
 	)
 }

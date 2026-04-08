@@ -60,7 +60,7 @@ func (m *DependencyViewerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case tea.KeyPressMsg:
 		switch msg.String() {
-		case "q", "esc":
+		case "esc":
 			return m, func() tea.Msg { return CloseDependencyViewerMsg{} }
 
 		case "j", "down":

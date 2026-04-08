@@ -9,7 +9,7 @@ func (r *KeybindingRegistry) registerOutlinerBindings() {
 		Keybinding{Key: "ctrl+d/u", Description: "Page down/up", Category: "Navigation", Views: views},
 		Keybinding{Key: "Enter", Description: "Zoom into parent / open leaf", Category: "Navigation", Views: views},
 		Keybinding{Key: "Backspace", Description: "Zoom out one level", Category: "Navigation", Views: views},
-		Keybinding{Key: "q", Description: "Zoom out / close", Category: "Navigation", Views: views},
+		Keybinding{Key: "q", Description: "Toggle queue", Category: "Queue", Views: views},
 		Keybinding{Key: "\\", Description: "Jump to task", Category: "Navigation", Views: views},
 		Keybinding{Key: "n", Description: "Jump to next section", Category: "Navigation", Views: views},
 		Keybinding{Key: "N", Description: "Jump to previous section", Category: "Navigation", Views: views},
@@ -143,7 +143,7 @@ func (r *KeybindingRegistry) registerCrossProjectOutlinerBindings() {
 		Keybinding{Key: "ctrl+d/u", Description: "Page down/up", Category: "Navigation", Views: views},
 		Keybinding{Key: "Enter", Description: "Zoom into parent / open leaf", Category: "Navigation", Views: views},
 		Keybinding{Key: "Backspace", Description: "Zoom out one level", Category: "Navigation", Views: views},
-		Keybinding{Key: "q", Description: "Zoom out / close", Category: "Navigation", Views: views},
+		Keybinding{Key: "q", Description: "Toggle queue", Category: "Queue", Views: views},
 		Keybinding{Key: "go", Description: "Drill down to project outliner", Category: "Navigation", Views: views},
 
 		// Perspectives

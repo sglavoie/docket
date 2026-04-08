@@ -122,7 +122,7 @@ func (m *ScoringProfilePickerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case tea.KeyPressMsg:
 		switch msg.String() {
-		case "q", "esc":
+		case "esc":
 			projectID := m.projectID
 			return m, func() tea.Msg {
 				return ScoringProfilePickerDoneMsg{

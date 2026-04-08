@@ -231,11 +231,6 @@ func (m *LinkedTaskSelectorModel) handleKeypress(msg tea.KeyPressMsg) (tea.Model
 			return CloseLinkedTaskSelectorMsg{}
 		}
 
-	case "q":
-		return m, func() tea.Msg {
-			return CloseLinkedTaskSelectorMsg{}
-		}
-
 	case "enter":
 		if m.cursor >= 0 && m.cursor < len(m.filtered) {
 			rel := m.filtered[m.cursor]

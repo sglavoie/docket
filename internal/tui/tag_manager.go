@@ -232,7 +232,7 @@ func (m *TagManagerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		switch msg.String() {
-		case "q", "esc", "ctrl+t":
+		case "esc", "ctrl+t":
 			return m, func() tea.Msg {
 				return CloseTagManagerMsg{}
 			}

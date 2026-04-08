@@ -141,6 +141,10 @@ type ProjectTreeModel struct {
 	BaseSearchableView
 	InteractiveViewState
 	PrimaryViewBundle
+
+	// Queue indicator support
+	queueIDs map[string]bool
+
 	project *models.Project
 	nodes   []*TreeNode
 

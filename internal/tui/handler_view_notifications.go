@@ -19,10 +19,14 @@ func (m *AppModel) handleNotificationMessages(msg tea.Msg) (bool, tea.Cmd) {
 		m.popView()
 		switch msg.Category {
 		case alerts.CategoryDailyReview:
-			m.showView(ViewDailyReview, NewDailyReviewModel(m.config, m.configManager))
+			dr := NewDailyReviewModel(m.config, m.configManager)
+			dr.queueIDs = m.focusQueueIDs
+			m.showView(ViewDailyReview, dr)
 			return true, nil
 		case alerts.CategoryWeeklyReview:
-			m.showView(ViewWeeklyReview, NewWeeklyReviewModel(m.config, m.configManager))
+			wr := NewWeeklyReviewModel(m.config, m.configManager)
+			wr.queueIDs = m.focusQueueIDs
+			m.showView(ViewWeeklyReview, wr)
 			return true, nil
 		default:
 		}

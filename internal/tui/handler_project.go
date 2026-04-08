@@ -34,6 +34,7 @@ func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 			m.saveOutlinerToggleState()
 			m.saveOutlinerFilterState()
 			m.outliner = NewOutlinerModel(msg.Project, m.config, m.configManager)
+			m.outliner.queueIDs = m.focusQueueIDs
 			m.restoreOutlinerToggleState()
 			m.restoreOutlinerFilterState()
 			m.showView(ViewOutliner, m.outliner)
@@ -223,6 +224,7 @@ func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 				m.saveOutlinerToggleState()
 				m.saveOutlinerFilterState()
 				m.outliner = NewOutlinerModel(msg.Project, m.config, m.configManager)
+				m.outliner.queueIDs = m.focusQueueIDs
 				m.restoreOutlinerToggleState()
 				m.restoreOutlinerFilterState()
 				m.showView(ViewOutliner, m.outliner)

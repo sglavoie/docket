@@ -12,7 +12,9 @@ import (
 func (m *AppModel) handleViewReviewMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint:gocyclo
 	switch msg := msg.(type) {
 	case ShowDueDateOverviewMsg:
-		m.showView(ViewDueDateOverview, NewDueDateOverviewModel(m.config, m.configManager))
+		ddo := NewDueDateOverviewModel(m.config, m.configManager)
+		ddo.queueIDs = m.focusQueueIDs
+		m.showView(ViewDueDateOverview, ddo)
 		return true, nil
 
 	case CloseDueDateOverviewMsg:
@@ -40,7 +42,9 @@ func (m *AppModel) handleViewReviewMessages(msg tea.Msg) (bool, tea.Cmd) { //nol
 		return true, nil
 
 	case ShowDailyReviewMsg:
-		m.showView(ViewDailyReview, NewDailyReviewModel(m.config, m.configManager))
+		dr := NewDailyReviewModel(m.config, m.configManager)
+		dr.queueIDs = m.focusQueueIDs
+		m.showView(ViewDailyReview, dr)
 		return true, nil
 
 	case CloseDailyReviewMsg:
@@ -84,7 +88,9 @@ func (m *AppModel) handleViewReviewMessages(msg tea.Msg) (bool, tea.Cmd) { //nol
 		return true, nil
 
 	case ShowWeeklyReviewMsg:
-		m.showView(ViewWeeklyReview, NewWeeklyReviewModel(m.config, m.configManager))
+		wr := NewWeeklyReviewModel(m.config, m.configManager)
+		wr.queueIDs = m.focusQueueIDs
+		m.showView(ViewWeeklyReview, wr)
 		return true, nil
 
 	case CloseWeeklyReviewMsg:
@@ -113,7 +119,9 @@ func (m *AppModel) handleViewReviewMessages(msg tea.Msg) (bool, tea.Cmd) { //nol
 		return true, nil
 
 	case ShowAllTasksMsg:
-		m.showView(ViewAllTasks, NewAllTasksViewModel(m.config, m.configManager))
+		atv := NewAllTasksViewModel(m.config, m.configManager)
+		atv.queueIDs = m.focusQueueIDs
+		m.showView(ViewAllTasks, atv)
 		return true, nil
 
 	case CloseAllTasksMsg:
@@ -161,7 +169,9 @@ func (m *AppModel) handleViewReviewMessages(msg tea.Msg) (bool, tea.Cmd) { //nol
 		return true, nil
 
 	case ShowRecentActivityMsg:
-		m.showView(ViewRecentActivity, NewRecentActivityModel(m.config))
+		ra := NewRecentActivityModel(m.config)
+		ra.queueIDs = m.focusQueueIDs
+		m.showView(ViewRecentActivity, ra)
 		return true, nil
 
 	case CloseRecentActivityMsg:
@@ -170,7 +180,9 @@ func (m *AppModel) handleViewReviewMessages(msg tea.Msg) (bool, tea.Cmd) { //nol
 
 	case ShowProjectRecentActivityMsg:
 		if msg.Project != nil {
-			m.showView(ViewProjectRecentActivity, NewProjectRecentActivityModel(m.config, msg.Project))
+			pra := NewProjectRecentActivityModel(m.config, msg.Project)
+			pra.queueIDs = m.focusQueueIDs
+			m.showView(ViewProjectRecentActivity, pra)
 		}
 		return true, nil
 
