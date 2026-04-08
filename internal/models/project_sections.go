@@ -1,6 +1,7 @@
 package models
 
 import (
+	"errors"
 	"fmt"
 	"slices"
 	"sort"
@@ -8,7 +9,7 @@ import (
 )
 
 // ErrSectionAlreadyExists is returned when a section rename targets an existing name.
-var ErrSectionAlreadyExists = fmt.Errorf("section already exists")
+var ErrSectionAlreadyExists = errors.New("section already exists")
 
 // EnsureDefaultSections guarantees that all built-in sections used by lifecycle
 // methods (Complete, Block, Reopen, etc.) exist in the project's section list.

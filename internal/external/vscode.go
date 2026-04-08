@@ -35,11 +35,11 @@ func CreateTempFileWithContent(content string, prefix string, suffix string) (st
 }
 
 // ResolveEditor returns the editor command to use, applying the fallback chain:
-// configEditor → EDITOR env → "code" → "vi".
+// configEditor → VISUAL env → EDITOR env → "code" → "vi".
 // Each candidate is verified with exec.LookPath before being returned.
 // Returns an error if no editor is found.
 func ResolveEditor(configEditor string) (string, error) {
-	candidates := []string{configEditor, os.Getenv("EDITOR"), "code"}
+	candidates := []string{configEditor, os.Getenv("VISUAL"), os.Getenv("EDITOR"), "code"}
 	for _, c := range candidates {
 		if c == "" {
 			continue
@@ -53,7 +53,7 @@ func ResolveEditor(configEditor string) (string, error) {
 	if _, err := exec.LookPath("vi"); err == nil {
 		return "vi", nil
 	}
-	return "", fmt.Errorf("no editor found: set $EDITOR or install VS Code")
+	return "", fmt.Errorf("no editor found: set $VISUAL or $EDITOR, or install VS Code")
 }
 
 // EditorCommand builds an exec.Cmd for the given editor and file path,
@@ -70,10 +70,10 @@ func EditorCommand(editor, path string) *exec.Cmd {
 // variants like "code-insiders".
 func needsWaitFlag(editor string) bool {
 	base := strings.ToLower(filepath.Base(editor))
-	if base == "code" || base == "subl" || base == "sublime" || base == "zed" {
+	if base == "code" || base == "cursor" || base == "subl" || base == "sublime" || base == "zed" {
 		return true
 	}
-	if strings.HasPrefix(base, "code-") {
+	if strings.HasPrefix(base, "code-") || strings.HasPrefix(base, "cursor-") {
 		return true
 	}
 	return false

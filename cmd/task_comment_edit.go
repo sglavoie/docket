@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"fmt"
-	"strconv"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -60,13 +59,9 @@ func runTaskCommentEdit(cmd *cobra.Command, args []string) error {
 		return findErr
 	}
 
-	index, err := strconv.Atoi(args[1])
+	index, err := parseItemIndex(args[1], len(task.Comments), "comment")
 	if err != nil {
-		return fmt.Errorf("invalid comment index: %s", args[1])
-	}
-
-	if index < 0 || index >= len(task.Comments) {
-		return fmt.Errorf("comment index %d out of range (task has %d comments)", index, len(task.Comments))
+		return err
 	}
 
 	comment := task.Comments[index]

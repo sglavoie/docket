@@ -112,6 +112,9 @@ func TestNeedsWaitFlag(t *testing.T) {
 		want   bool
 	}{
 		{"code", true},
+		{"cursor", true},
+		{"cursor-nightly", true},
+		{"/usr/local/bin/cursor", true},
 		{"subl", true},
 		{"sublime", true},
 		{"zed", true},

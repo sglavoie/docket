@@ -3,7 +3,6 @@ package cmd
 import (
 	"fmt"
 	"os"
-	"strconv"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -80,13 +79,9 @@ func runAttachmentRemove(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("%s", b.String())
 	}
 
-	index, err := strconv.Atoi(args[1])
+	index, err := parseItemIndex(args[1], len(task.Attachments), "attachment")
 	if err != nil {
-		return fmt.Errorf("invalid attachment index: %s (must be a number)", args[1])
-	}
-
-	if index < 0 || index >= len(task.Attachments) {
-		return fmt.Errorf("attachment index %d out of range (0-%d)", index, len(task.Attachments)-1)
+		return err
 	}
 
 	att := task.Attachments[index]
