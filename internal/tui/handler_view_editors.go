@@ -114,13 +114,10 @@ func (m *AppModel) handleEditorMessages(msg tea.Msg) (bool, tea.Cmd) {
 
 // handleTextEditorExternal opens an external editor for text field editing.
 func (m *AppModel) handleTextEditorExternal(msg TextEditorExternalMsg) (bool, tea.Cmd) {
-	tmpFile, err := os.CreateTemp("", "tt-text-*.md")
+	tmpPath, err := external.CreateTempFileWithContent(msg.CurrentValue, "tt-text-", ".md")
 	if err != nil {
-		return true, errorCmd("failed to create temp file: %w", err)
+		return true, errorCmd("%s", err)
 	}
-	tmpPath := tmpFile.Name()
-	_, _ = tmpFile.WriteString(msg.CurrentValue)
-	_ = tmpFile.Close()
 
 	editor, editorErr := external.ResolveEditor(m.config.Editor)
 	if editorErr != nil {
@@ -152,13 +149,10 @@ func (m *AppModel) handleGlowView(msg GlowViewMsg) (bool, tea.Cmd) {
 	}
 
 	content := external.FormatTaskAsMarkdown(msg.Task)
-	tmpFile, err := os.CreateTemp("", "tt-glow-*.md")
+	tmpPath, err := external.CreateTempFileWithContent(content, "tt-glow-", ".md")
 	if err != nil {
-		return true, errorCmd("failed to create temp file: %w", err)
+		return true, errorCmd("%s", err)
 	}
-	tmpPath := tmpFile.Name()
-	_, _ = tmpFile.WriteString(content)
-	_ = tmpFile.Close()
 
 	m.setInfoStatus("Opening in glow...")
 	c := exec.Command("sh", "-c", fmt.Sprintf("CLICOLOR_FORCE=1 glow --style=dark '%s' | less -R", tmpPath))

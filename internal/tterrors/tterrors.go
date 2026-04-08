@@ -49,7 +49,8 @@ var (
 
 // User interaction errors
 var (
-	ErrCanceled = errors.New("canceled")
+	ErrCanceled   = errors.New("canceled")
+	ErrEmptyTitle = errors.New("blocker title cannot be empty")
 )
 
 // NewTaskNotFoundError creates a task not found error with the specified task identifier.

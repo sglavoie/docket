@@ -22,14 +22,11 @@ func (m *TaskChecklistModel) editInExternalEditor() tea.Cmd {
 	content += item.Text
 
 	// Create temp file
-	tmpFile, err := os.CreateTemp("", "tt-checklist-*.md")
-	if err != nil {
-		m.err = fmt.Errorf("failed to create temp file: %w", err)
+	tmpPath, tmpErr := external.CreateTempFileWithContent(content, "tt-checklist-", ".md")
+	if tmpErr != nil {
+		m.err = tmpErr
 		return nil
 	}
-	tmpPath := tmpFile.Name()
-	_, _ = tmpFile.WriteString(content)
-	_ = tmpFile.Close()
 
 	editor, editorErr := external.ResolveEditor(m.editor)
 	if editorErr != nil {
@@ -96,14 +93,11 @@ func (m *TaskChecklistModel) addItemInExternalEditor() tea.Cmd {
 	content += currentText
 
 	// Create temp file
-	tmpFile, err := os.CreateTemp("", "tt-checklist-*.md")
-	if err != nil {
-		m.err = fmt.Errorf("failed to create temp file: %w", err)
+	tmpPath, tmpErr := external.CreateTempFileWithContent(content, "tt-checklist-", ".md")
+	if tmpErr != nil {
+		m.err = tmpErr
 		return nil
 	}
-	tmpPath := tmpFile.Name()
-	_, _ = tmpFile.WriteString(content)
-	_ = tmpFile.Close()
 
 	editor, editorErr := external.ResolveEditor(m.editor)
 	if editorErr != nil {
@@ -170,14 +164,11 @@ func (m *TaskChecklistModel) editItemInExternalEditorFromEditMode() tea.Cmd {
 	content += currentText
 
 	// Create temp file
-	tmpFile, err := os.CreateTemp("", "tt-checklist-*.md")
-	if err != nil {
-		m.err = fmt.Errorf("failed to create temp file: %w", err)
+	tmpPath, tmpErr := external.CreateTempFileWithContent(content, "tt-checklist-", ".md")
+	if tmpErr != nil {
+		m.err = tmpErr
 		return nil
 	}
-	tmpPath := tmpFile.Name()
-	_, _ = tmpFile.WriteString(content)
-	_ = tmpFile.Close()
 
 	editor, editorErr := external.ResolveEditor(m.editor)
 	if editorErr != nil {

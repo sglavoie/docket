@@ -8,6 +8,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tterrors"
 )
 
 func blockerSaveNew(s *blockerViewState, ds blockerDataSource) tea.Cmd {
@@ -140,13 +141,13 @@ func blockerTextValue(blocker *models.Blocker) string {
 func parseBlockerContent(content string) (string, string, error) {
 	trimmed := strings.TrimSpace(content)
 	if trimmed == "" {
-		return "", "", fmt.Errorf("blocker title cannot be empty")
+		return "", "", tterrors.ErrEmptyTitle
 	}
 
 	lines := strings.SplitN(trimmed, "\n", 2)
 	title := strings.TrimSpace(lines[0])
 	if title == "" {
-		return "", "", fmt.Errorf("blocker title cannot be empty")
+		return "", "", tterrors.ErrEmptyTitle
 	}
 
 	description := ""

@@ -16,14 +16,11 @@ func (m *AppModel) handleEditTaskContent(msg EditTaskContentMsg) (bool, tea.Cmd)
 		return true, nil
 	}
 
-	tmpFile, err := os.CreateTemp("", "tt-edit-*.md")
-	if err != nil {
-		return true, errorCmd("failed to create temp file: %w", err)
-	}
-	tmpPath := tmpFile.Name()
 	content := fmt.Sprintf("# %s\n\n<!-- Edit the title above and description below. -->\n\n%s", msg.Task.Title, msg.Task.Description)
-	_, _ = tmpFile.WriteString(content)
-	_ = tmpFile.Close()
+	tmpPath, err := external.CreateTempFileWithContent(content, "tt-edit-", ".md")
+	if err != nil {
+		return true, errorCmd("%s", err)
+	}
 
 	editor, editorErr := external.ResolveEditor(m.config.Editor)
 	if editorErr != nil {

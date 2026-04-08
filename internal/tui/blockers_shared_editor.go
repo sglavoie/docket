@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -10,6 +11,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/external"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tterrors"
 	"github.com/sglavoie/tt/internal/util"
 )
 
@@ -124,7 +126,7 @@ func blockerAddInExternalEditor(s *blockerViewState, ds blockerDataSource) tea.C
 
 		title, description, parseErr := readEditedBlockerTempFile(tmpPath)
 		if parseErr != nil {
-			if parseErr.Error() == "blocker title cannot be empty" {
+			if errors.Is(parseErr, tterrors.ErrEmptyTitle) {
 				return nil
 			}
 			return ErrorMsg{Err: parseErr}
@@ -147,16 +149,7 @@ func blockerEditorContent(header, hint, body string) string {
 }
 
 func writeBlockerTempFile(content string) (string, error) {
-	tmpFile, err := os.CreateTemp("", "tt-blocker-*.md")
-	if err != nil {
-		return "", fmt.Errorf("failed to create temp file: %w", err)
-	}
-
-	tmpPath := tmpFile.Name()
-	_, _ = tmpFile.WriteString(content)
-	_ = tmpFile.Close()
-
-	return tmpPath, nil
+	return external.CreateTempFileWithContent(content, "tt-blocker-", ".md")
 }
 
 func readEditedBlockerTempFile(tmpPath string) (string, string, error) {
