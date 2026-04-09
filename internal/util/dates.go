@@ -36,29 +36,6 @@ func DaysBetween(a, b time.Time) int {
 	return int(bDate.Sub(aDate).Hours() / 24)
 }
 
-// FormatDate formats a time as date only (YYYY-MM-DD).
-func FormatDate(t time.Time) string {
-	return t.Format(DateFormat)
-}
-
-// FormatDateTime formats a time as date and time (YYYY-MM-DD HH:MM).
-func FormatDateTime(t time.Time) string {
-	return t.Format(DateTimeFormat)
-}
-
-// ParseDate attempts to parse a date string in standard formats.
-// It tries datetime format first, then date-only format.
-// Returns the parsed time and true if successful, zero time and false otherwise.
-func ParseDate(value string) (time.Time, bool) {
-	if t, err := time.ParseInLocation(DateTimeFormat, value, time.Local); err == nil {
-		return t, true
-	}
-	if t, err := time.ParseInLocation(DateFormat, value, time.Local); err == nil {
-		return t, true
-	}
-	return time.Time{}, false
-}
-
 // Pre-compiled regexps for ParseRelativeDate to avoid recompilation on each call.
 var (
 	relativeDaysRe   = regexp.MustCompile(`^\+(\d+)d$`)

@@ -59,16 +59,6 @@ func NewTaskNotFoundError(taskID any) error {
 	return fmt.Errorf("%w: '%v' (tried short ID, UUID, and title prefix)", ErrTaskNotFound, taskID)
 }
 
-// NewParentTaskNotFoundError creates a parent task not found error with the specified task identifier.
-func NewParentTaskNotFoundError(taskID any) error {
-	return fmt.Errorf("parent %w: '%v'", ErrTaskNotFound, taskID)
-}
-
-// NewBlockerTaskNotFoundError creates a blocker task not found error with the specified task identifier.
-func NewBlockerTaskNotFoundError(taskID any) error {
-	return fmt.Errorf("blocker %w: '%v'", ErrTaskNotFound, taskID)
-}
-
 // NewProjectNotFoundError creates a project not found error with the specified project identifier.
 // Use this for consistent error messaging across the codebase.
 func NewProjectNotFoundError(projectID any) error {
@@ -90,12 +80,6 @@ func NewRequiredFieldError(field string) error {
 // Use this for consistent validation error messaging across the codebase.
 func NewInvalidValueError(field string, value any, reason string) error {
 	return fmt.Errorf("%w for %s: '%v' (%s)", ErrInvalidValue, field, value, reason)
-}
-
-// NewLoadProjectError creates an error for failing to load a project.
-// Use this when project loading fails to provide consistent error messaging.
-func NewLoadProjectError(name string, err error) error {
-	return fmt.Errorf("%w '%s': %w", ErrReadFailed, name, err)
 }
 
 // NewSaveProjectError creates an error for failing to save a project.

@@ -35,32 +35,3 @@ func TestTruncate(t *testing.T) {
 		})
 	}
 }
-
-func TestContainsIgnoreCase(t *testing.T) {
-	tests := []struct {
-		name     string
-		haystack string
-		needle   string
-		expected bool
-	}{
-		{"exact match", "hello", "hello", true},
-		{"case insensitive match", "Hello World", "hello", true},
-		{"uppercase needle", "hello world", "WORLD", true},
-		{"mixed case", "HeLLo WoRLd", "llo wor", true},
-		{"no match", "hello world", "xyz", false},
-		{"empty needle", "hello", "", true},
-		{"empty haystack", "", "hello", false},
-		{"both empty", "", "", true},
-		{"partial match", "authentication", "auth", true},
-		{"substring in middle", "user authentication flow", "auth", true},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := ContainsIgnoreCase(tt.haystack, tt.needle)
-			if result != tt.expected {
-				t.Errorf("ContainsIgnoreCase(%q, %q) = %v, want %v", tt.haystack, tt.needle, result, tt.expected)
-			}
-		})
-	}
-}

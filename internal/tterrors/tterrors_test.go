@@ -110,32 +110,6 @@ func TestNewTaskNotFoundError(t *testing.T) {
 	}
 }
 
-func TestNewParentTaskNotFoundError(t *testing.T) {
-	err := NewParentTaskNotFoundError("parent-123")
-	if !errors.Is(err, ErrTaskNotFound) {
-		t.Error("NewParentTaskNotFoundError should wrap ErrTaskNotFound")
-	}
-	if !strings.Contains(err.Error(), "parent") {
-		t.Errorf("error message should contain 'parent', got %q", err.Error())
-	}
-	if !strings.Contains(err.Error(), "parent-123") {
-		t.Errorf("error message should contain task ID, got %q", err.Error())
-	}
-}
-
-func TestNewBlockerTaskNotFoundError(t *testing.T) {
-	err := NewBlockerTaskNotFoundError("blocker-456")
-	if !errors.Is(err, ErrTaskNotFound) {
-		t.Error("NewBlockerTaskNotFoundError should wrap ErrTaskNotFound")
-	}
-	if !strings.Contains(err.Error(), "blocker") {
-		t.Errorf("error message should contain 'blocker', got %q", err.Error())
-	}
-	if !strings.Contains(err.Error(), "blocker-456") {
-		t.Errorf("error message should contain task ID, got %q", err.Error())
-	}
-}
-
 func TestNewProjectNotFoundError(t *testing.T) {
 	testCases := []struct {
 		name      string
@@ -274,21 +248,6 @@ func TestNewNoChangesError(t *testing.T) {
 				t.Errorf("error message should contain flags %q, got %q", tc.flags, err.Error())
 			}
 		})
-	}
-}
-
-func TestNewLoadProjectError(t *testing.T) {
-	innerErr := errors.New("file not found")
-	err := NewLoadProjectError("my-project", innerErr)
-
-	if !errors.Is(err, ErrReadFailed) {
-		t.Error("NewLoadProjectError should wrap ErrReadFailed")
-	}
-	if !strings.Contains(err.Error(), "my-project") {
-		t.Errorf("error message should contain project name, got %q", err.Error())
-	}
-	if !errors.Is(err, innerErr) {
-		t.Error("NewLoadProjectError should wrap the inner error")
 	}
 }
 

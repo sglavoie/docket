@@ -1,7 +1,6 @@
 package util
 
 import (
-	"strings"
 	"unicode/utf8"
 )
 
@@ -29,9 +28,4 @@ func runeSlice(s string, n int) string {
 		i += size
 	}
 	return s[:i]
-}
-
-// ContainsIgnoreCase checks if haystack contains needle (case-insensitive).
-func ContainsIgnoreCase(haystack, needle string) bool {
-	return strings.Contains(strings.ToLower(haystack), strings.ToLower(needle))
 }
