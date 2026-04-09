@@ -82,58 +82,41 @@ func (m *LinkedTaskSelectorModel) loadRelations() {
 
 // resolveTaskRef resolves a task reference (local or cross-project) to a LinkedTaskRelation.
 func (m *LinkedTaskSelectorModel) resolveTaskRef(ref, relationType, direction string) LinkedTaskRelation {
-	taskRef := models.ParseTaskRef(ref)
-
-	if !taskRef.IsCrossProject() {
-		// Same-project reference
-		task := m.project.GetTaskByID(taskRef.TaskID)
-		if task != nil {
-			return LinkedTaskRelation{
-				Task:         task,
-				Project:      nil,
-				RelationType: relationType,
-				Direction:    direction,
-				TaskRef:      ref,
-				IsMissing:    false,
-			}
-		}
-		// Task not found in same project
+	missing := func(project *models.Project) LinkedTaskRelation {
 		return LinkedTaskRelation{
-			Task:         nil,
-			Project:      nil,
+			Project:      project,
 			RelationType: relationType,
 			Direction:    direction,
 			TaskRef:      ref,
 			IsMissing:    true,
+		}
+	}
+
+	taskRef := models.ParseTaskRef(ref)
+
+	if !taskRef.IsCrossProject() {
+		task := m.project.GetTaskByID(taskRef.TaskID)
+		if task == nil {
+			return missing(nil)
+		}
+		return LinkedTaskRelation{
+			Task:         task,
+			RelationType: relationType,
+			Direction:    direction,
+			TaskRef:      ref,
 		}
 	}
 
 	// Cross-project reference
 	if m.config == nil {
-		// No config available, can't resolve cross-project refs
-		return LinkedTaskRelation{
-			Task:         nil,
-			Project:      nil,
-			RelationType: relationType,
-			Direction:    direction,
-			TaskRef:      ref,
-			IsMissing:    true,
-		}
+		return missing(nil)
 	}
 
 	targetProject := m.config.GetProject(taskRef.ProjectID)
 	if targetProject == nil {
-		return LinkedTaskRelation{
-			Task:         nil,
-			Project:      nil,
-			RelationType: relationType,
-			Direction:    direction,
-			TaskRef:      ref,
-			IsMissing:    true,
-		}
+		return missing(nil)
 	}
 
-	// Load the project if not already loaded
 	if len(targetProject.Tasks) == 0 {
 		if err := storage.LoadProject(targetProject); err != nil {
 			logging.Warn("failed to load project %s: %v", targetProject.Name, err)
@@ -142,14 +125,7 @@ func (m *LinkedTaskSelectorModel) resolveTaskRef(ref, relationType, direction st
 
 	task := targetProject.GetTaskByID(taskRef.TaskID)
 	if task == nil {
-		return LinkedTaskRelation{
-			Task:         nil,
-			Project:      targetProject,
-			RelationType: relationType,
-			Direction:    direction,
-			TaskRef:      ref,
-			IsMissing:    true,
-		}
+		return missing(targetProject)
 	}
 
 	return LinkedTaskRelation{
@@ -158,7 +134,6 @@ func (m *LinkedTaskSelectorModel) resolveTaskRef(ref, relationType, direction st
 		RelationType: relationType,
 		Direction:    direction,
 		TaskRef:      ref,
-		IsMissing:    false,
 	}
 }
 
@@ -439,20 +414,32 @@ func (m *LinkedTaskSelectorModel) View() tea.View { //nolint:gocyclo
 	itemIndex := 0
 	needSpacer := false
 
-	// Blocks section
-	if len(blocksItems) > 0 {
+	type relSection struct {
+		title string
+		items []LinkedTaskRelation
+	}
+	sections := []relSection{
+		{"→ Blocks", blocksItems},
+		{"← Blocked By", blockedByItems},
+		{"↔ Related", relatedItems},
+	}
+
+	for _, sec := range sections {
+		if len(sec.items) == 0 {
+			continue
+		}
 		sectionStart := itemIndex
-		sectionEnd := itemIndex + len(blocksItems)
+		sectionEnd := itemIndex + len(sec.items)
 
 		if sectionEnd > visibleStart && sectionStart < visibleEnd {
 			if needSpacer {
 				sectionBuilder.WriteString("\n")
 			}
-			sectionBuilder.WriteString(SubtitleStyle.Render("→ Blocks"))
+			sectionBuilder.WriteString(SubtitleStyle.Render(sec.title))
 			sectionBuilder.WriteString("\n")
 			needSpacer = true
 
-			for i, rel := range blocksItems {
+			for i, rel := range sec.items {
 				idx := sectionStart + i
 				if idx >= visibleStart && idx < visibleEnd {
 					cursor := "  "
@@ -464,58 +451,6 @@ func (m *LinkedTaskSelectorModel) View() tea.View { //nolint:gocyclo
 			}
 		}
 		itemIndex = sectionEnd
-	}
-
-	// Blocked By section
-	if len(blockedByItems) > 0 {
-		sectionStart := itemIndex
-		sectionEnd := itemIndex + len(blockedByItems)
-
-		if sectionEnd > visibleStart && sectionStart < visibleEnd {
-			if needSpacer {
-				sectionBuilder.WriteString("\n")
-			}
-			sectionBuilder.WriteString(SubtitleStyle.Render("← Blocked By"))
-			sectionBuilder.WriteString("\n")
-			needSpacer = true
-
-			for i, rel := range blockedByItems {
-				idx := sectionStart + i
-				if idx >= visibleStart && idx < visibleEnd {
-					cursor := "  "
-					if idx == m.cursor {
-						cursor = "  "
-					}
-					sectionBuilder.WriteString(cursor + m.renderRelationLine(rel, false) + "\n")
-				}
-			}
-		}
-		itemIndex = sectionEnd
-	}
-
-	// Related section
-	if len(relatedItems) > 0 {
-		sectionStart := itemIndex
-		sectionEnd := itemIndex + len(relatedItems)
-
-		if sectionEnd > visibleStart && sectionStart < visibleEnd {
-			if needSpacer {
-				sectionBuilder.WriteString("\n")
-			}
-			sectionBuilder.WriteString(SubtitleStyle.Render("↔ Related"))
-			sectionBuilder.WriteString("\n")
-
-			for i, rel := range relatedItems {
-				idx := sectionStart + i
-				if idx >= visibleStart && idx < visibleEnd {
-					cursor := "  "
-					if idx == m.cursor {
-						cursor = "  "
-					}
-					sectionBuilder.WriteString(cursor + m.renderRelationLine(rel, false) + "\n")
-				}
-			}
-		}
 	}
 
 	scrollbar := RenderScrollbar(len(m.filtered), visibleEnd-visibleStart, visibleStart)
