@@ -6,116 +6,49 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 )
 
-// handleAttrLeft handles left arrow key for attribute fields.
-func (m *TaskCreatorModel) handleAttrLeft(fieldIdx int) {
-	switch m.taskType {
-	case models.TaskTypeBug:
-		switch fieldIdx {
-		case 0: // Reproducible
-			if m.bugReproducibleCursor > 0 {
-				m.bugReproducibleCursor--
-			}
-		case 1: // Severity
-			if m.bugSeverityCursor > 0 {
-				m.bugSeverityCursor--
-			}
-		}
-	case models.TaskTypeIdea:
-		switch fieldIdx {
-		case 0: // Category
-			if m.ideaCategoryCursor > 0 {
-				m.ideaCategoryCursor--
-			}
-		case 1: // Effort
-			if m.ideaEffortCursor > 0 {
-				m.ideaEffortCursor--
-			}
-		case 2: // Value
-			if m.ideaValueCursor > 0 {
-				m.ideaValueCursor--
-			}
-		}
-	case models.TaskTypeTask:
-		switch fieldIdx {
-		case 0: // Effort
-			if m.taskEffortCursor > 0 {
-				m.taskEffortCursor--
-			}
-		case 1: // WorkType
-			if m.taskWorkTypeCursor > 0 {
-				m.taskWorkTypeCursor--
-			}
-		}
-	case models.TaskTypeStory:
-		switch fieldIdx {
-		case 0: // Story Points
-			if m.storyPointsCursor > 0 {
-				m.storyPointsCursor--
-			}
-		}
-	case models.TaskTypeEpic:
-		switch fieldIdx {
-		case 0: // Scope
-			if m.epicScopeCursor > 0 {
-				m.epicScopeCursor--
-			}
+// handleAttrNav handles left/right arrow keys for attribute fields.
+// direction is -1 for left, +1 for right.
+func (m *TaskCreatorModel) handleAttrNav(fieldIdx, direction int) {
+	clamp := func(cursor *int, maxLen int) {
+		*cursor += direction
+		if *cursor < 0 {
+			*cursor = 0
+		} else if *cursor >= maxLen {
+			*cursor = maxLen - 1
 		}
 	}
-}
 
-// handleAttrRight handles right arrow key for attribute fields.
-func (m *TaskCreatorModel) handleAttrRight(fieldIdx int) {
 	switch m.taskType {
 	case models.TaskTypeBug:
 		switch fieldIdx {
-		case 0: // Reproducible
-			if m.bugReproducibleCursor < len(bugReproducibleOptions)-1 {
-				m.bugReproducibleCursor++
-			}
-		case 1: // Severity
-			if m.bugSeverityCursor < len(bugSeverityOptions)-1 {
-				m.bugSeverityCursor++
-			}
+		case 0:
+			clamp(&m.bugReproducibleCursor, len(bugReproducibleOptions))
+		case 1:
+			clamp(&m.bugSeverityCursor, len(bugSeverityOptions))
 		}
 	case models.TaskTypeIdea:
 		switch fieldIdx {
-		case 0: // Category
-			if m.ideaCategoryCursor < len(ideaCategoryOptions)-1 {
-				m.ideaCategoryCursor++
-			}
-		case 1: // Effort
-			if m.ideaEffortCursor < len(effortOptions)-1 {
-				m.ideaEffortCursor++
-			}
-		case 2: // Value
-			if m.ideaValueCursor < len(ideaValueOptions)-1 {
-				m.ideaValueCursor++
-			}
+		case 0:
+			clamp(&m.ideaCategoryCursor, len(ideaCategoryOptions))
+		case 1:
+			clamp(&m.ideaEffortCursor, len(effortOptions))
+		case 2:
+			clamp(&m.ideaValueCursor, len(ideaValueOptions))
 		}
 	case models.TaskTypeTask:
 		switch fieldIdx {
-		case 0: // Effort
-			if m.taskEffortCursor < len(effortOptions)-1 {
-				m.taskEffortCursor++
-			}
-		case 1: // WorkType
-			if m.taskWorkTypeCursor < len(workTypeOptions)-1 {
-				m.taskWorkTypeCursor++
-			}
+		case 0:
+			clamp(&m.taskEffortCursor, len(effortOptions))
+		case 1:
+			clamp(&m.taskWorkTypeCursor, len(workTypeOptions))
 		}
 	case models.TaskTypeStory:
-		switch fieldIdx {
-		case 0: // Story Points
-			if m.storyPointsCursor < len(storyPointsOptions)-1 {
-				m.storyPointsCursor++
-			}
+		if fieldIdx == 0 {
+			clamp(&m.storyPointsCursor, len(storyPointsOptions))
 		}
 	case models.TaskTypeEpic:
-		switch fieldIdx {
-		case 0: // Scope
-			if m.epicScopeCursor < len(epicScopeOptions)-1 {
-				m.epicScopeCursor++
-			}
+		if fieldIdx == 0 {
+			clamp(&m.epicScopeCursor, len(epicScopeOptions))
 		}
 	}
 }
