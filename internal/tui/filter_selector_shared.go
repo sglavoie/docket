@@ -20,6 +20,10 @@ func filterSelectorUpdate[T PickerItem](picker *BasePicker[T], msg tea.Msg, canc
 		case "esc":
 			return cancelMsg
 		case "enter":
+			if picker.IsSearchMode() {
+				_, cmd := picker.HandleKeyMsg(msg)
+				return cmd
+			}
 			selected := picker.SelectedIDs()
 			sort.Strings(selected)
 			return func() tea.Msg { return doneMsg(selected) }

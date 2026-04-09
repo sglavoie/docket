@@ -210,6 +210,12 @@ func (m *OutlinerModel) crossProjectRebuildRows() {
 			})
 		}
 
+		if hasActiveCommonFilters(&m.filter.CommonFilterState) {
+			tasks = filterTaskTree(tasks, func(t *models.Task) bool {
+				return passesCommonFilters(t, &m.filter.CommonFilterState, proj.ID, m.config)
+			})
+		}
+
 		if len(tasks) == 0 {
 			continue
 		}

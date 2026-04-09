@@ -137,10 +137,24 @@ func (m *AppModel) handleTagMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint:goc
 				}
 			}
 		case ViewOutliner:
-			if m.outliner != nil {
-				m.outliner.filter.Tags = tags
-				m.outliner.rebuildRows()
-				m.outliner.clampCursor()
+			target := m.outliner
+			if target == nil {
+				if v := m.views.Get(ViewTemporaryOutliner); v != nil {
+					if o, ok := v.(*OutlinerModel); ok {
+						target = o
+					}
+				}
+			}
+			if target != nil {
+				target.filter.Tags = tags
+				target.rebuildRows()
+				target.clampCursor()
+			}
+		case ViewCrossProjectOutliner:
+			if m.crossOutliner != nil {
+				m.crossOutliner.filter.Tags = tags
+				m.crossOutliner.rebuildRows()
+				m.crossOutliner.clampCursor()
 			}
 		case ViewNotes:
 			if v := m.views.Get(ViewNotes); v != nil {
