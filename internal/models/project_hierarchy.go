@@ -34,7 +34,7 @@ func WouldCreateCycle(taskMap map[string]*Task, taskID, proposedParentID string)
 // BuildTaskTree organizes flat tasks into a tree structure.
 // Sets Parent, Children, and Level for each task.
 // Cross-project refs are validated in storage/markdown.go LoadProject()
-func (p *Project) BuildTaskTree() { //nolint:gocyclo
+func (p *Project) BuildTaskTree() {
 	taskMap := make(map[string]*Task)
 	for _, task := range p.Tasks {
 		task.Children = []*Task{}
@@ -43,133 +43,14 @@ func (p *Project) BuildTaskTree() { //nolint:gocyclo
 		taskMap[task.ID] = task
 	}
 
-	// Detect and break circular parent references before building parent-child links.
-	// A cycle exists when following ParentID pointers leads back to the starting task.
-	// This can happen from corrupt data (e.g., manual edits, interrupted saves).
-	// Re-run until a full pass finds no cycles (handles multi-task cycles like A→B→C→A).
-	for {
-		foundCycle := false
-		for _, task := range p.Tasks {
-			if task.ParentID == nil {
-				continue
-			}
-			visited := make(map[string]bool)
-			visited[task.ID] = true
-			current := *task.ParentID
-			for current != "" {
-				if visited[current] {
-					// Cycle detected — break it by clearing this task's parent
-					logging.Warn("task %q (#%d) is part of a circular parent chain, clearing parent reference", task.Title, task.ShortID)
-					task.ParentID = nil
-					foundCycle = true
-					break
-				}
-				visited[current] = true
-				if parent, ok := taskMap[current]; ok && parent.ParentID != nil {
-					current = *parent.ParentID
-				} else {
-					break
-				}
-			}
-		}
-		if !foundCycle {
-			break
-		}
-	}
-
-	for _, task := range p.Tasks {
-		if task.ParentID != nil {
-			if parent, ok := taskMap[*task.ParentID]; ok {
-				task.Parent = parent
-				parent.Children = append(parent.Children, task)
-			} else {
-				logging.Warn("task %q (#%d) references non-existent parent %s, treating as root", task.Title, task.ShortID, *task.ParentID)
-				task.ParentID = nil
-			}
-		}
-	}
-
-	// Remove orphaned dependency IDs (references to deleted tasks).
-	// Cross-project qualified references (format "projectID:taskID") are preserved
-	// since they point to tasks in other projects not present in this task map.
-	for _, task := range p.Tasks {
-		if len(task.DependsOn) > 0 {
-			valid := task.DependsOn[:0]
-			for _, depID := range task.DependsOn {
-				if ParseTaskRef(depID).IsCrossProject() {
-					valid = append(valid, depID)
-				} else if _, ok := taskMap[depID]; ok {
-					valid = append(valid, depID)
-				} else {
-					logging.Warn("task %q (#%d) depends on non-existent task %s, removing orphaned dependency", task.Title, task.ShortID, depID)
-				}
-			}
-			task.DependsOn = valid
-		}
-		if len(task.RelatedTo) > 0 {
-			valid := task.RelatedTo[:0]
-			for _, relID := range task.RelatedTo {
-				if ParseTaskRef(relID).IsCrossProject() {
-					valid = append(valid, relID)
-				} else if _, ok := taskMap[relID]; ok {
-					valid = append(valid, relID)
-				} else {
-					logging.Warn("task %q (#%d) has related ref to non-existent task %s, removing orphaned reference", task.Title, task.ShortID, relID)
-				}
-			}
-			task.RelatedTo = valid
-		}
-	}
-
-	// Detect and break circular dependency chains (defensive, handles corrupt data).
-	// Re-run until a full pass finds no cycles (handles multi-task cycles like A→B→C→A).
-	var canReachViaDepChain func(startID, targetID string, visited map[string]bool) bool
-	canReachViaDepChain = func(startID, targetID string, visited map[string]bool) bool {
-		if startID == targetID {
-			return true
-		}
-		if visited[startID] {
-			return false
-		}
-		visited[startID] = true
-		t, ok := taskMap[startID]
-		if !ok {
-			return false
-		}
-		for _, depID := range t.DependsOn {
-			if !ParseTaskRef(depID).IsCrossProject() && canReachViaDepChain(depID, targetID, visited) {
-				return true
-			}
-		}
-		return false
-	}
-
-	for {
-		foundCycle := false
-		for _, task := range p.Tasks {
-			for i, depID := range task.DependsOn {
-				if ParseTaskRef(depID).IsCrossProject() {
-					continue
-				}
-				if canReachViaDepChain(depID, task.ID, make(map[string]bool)) {
-					logging.Warn("task %q (#%d) has circular dependency on %s, removing edge", task.Title, task.ShortID, depID)
-					task.DependsOn = append(task.DependsOn[:i], task.DependsOn[i+1:]...)
-					foundCycle = true
-					break
-				}
-			}
-			if foundCycle {
-				break
-			}
-		}
-		if !foundCycle {
-			break
-		}
-	}
+	breakParentCycles(p.Tasks, taskMap)
+	linkParentChild(p.Tasks, taskMap)
+	pruneAllOrphanedRefs(p.Tasks, taskMap)
+	breakDependencyCycles(p.Tasks, taskMap)
 
 	// Set levels via DFS (with visited set to guard against any remaining cycles)
 	visited := make(map[string]bool, len(p.Tasks))
-	var setLevels func(task *Task, level int)
+	setLevels := func(task *Task, level int) {}
 	setLevels = func(task *Task, level int) {
 		if visited[task.ID] {
 			return
@@ -191,7 +72,6 @@ func (p *Project) BuildTaskTree() { //nolint:gocyclo
 	for _, task := range p.Tasks {
 		if task.Level > MaxNestingDepth && task.Parent != nil {
 			logging.Warn("task %q (#%d) exceeds max nesting depth %d, treating as root", task.Title, task.ShortID, MaxNestingDepth)
-			// Remove from parent's children
 			parent := task.Parent
 			for i, child := range parent.Children {
 				if child.ID == task.ID {
@@ -202,10 +82,136 @@ func (p *Project) BuildTaskTree() { //nolint:gocyclo
 			task.Parent = nil
 			task.ParentID = nil
 			task.Level = 0
-			// Re-level this task's subtree from 0.
-			// Clear visited entries first so setLevels will traverse them.
 			clearVisited(task, visited)
 			setLevels(task, 0)
+		}
+	}
+}
+
+// breakParentCycles detects and breaks circular parent references.
+// A cycle exists when following ParentID pointers leads back to the starting task.
+// Re-runs until a full pass finds no cycles (handles multi-task cycles like A→B→C→A).
+func breakParentCycles(tasks []*Task, taskMap map[string]*Task) {
+	for {
+		foundCycle := false
+		for _, task := range tasks {
+			if task.ParentID == nil {
+				continue
+			}
+			visited := make(map[string]bool)
+			visited[task.ID] = true
+			current := *task.ParentID
+			for current != "" {
+				if visited[current] {
+					logging.Warn("task %q (#%d) is part of a circular parent chain, clearing parent reference", task.Title, task.ShortID)
+					task.ParentID = nil
+					foundCycle = true
+					break
+				}
+				visited[current] = true
+				if parent, ok := taskMap[current]; ok && parent.ParentID != nil {
+					current = *parent.ParentID
+				} else {
+					break
+				}
+			}
+		}
+		if !foundCycle {
+			break
+		}
+	}
+}
+
+// linkParentChild builds parent-child links from ParentID pointers.
+// Tasks referencing non-existent parents are treated as roots.
+func linkParentChild(tasks []*Task, taskMap map[string]*Task) {
+	for _, task := range tasks {
+		if task.ParentID == nil {
+			continue
+		}
+		if parent, ok := taskMap[*task.ParentID]; ok {
+			task.Parent = parent
+			parent.Children = append(parent.Children, task)
+		} else {
+			logging.Warn("task %q (#%d) references non-existent parent %s, treating as root", task.Title, task.ShortID, *task.ParentID)
+			task.ParentID = nil
+		}
+	}
+}
+
+// pruneAllOrphanedRefs removes orphaned dependency and related-to IDs
+// (references to deleted tasks). Cross-project qualified references
+// (format "projectID:taskID") are preserved.
+func pruneAllOrphanedRefs(tasks []*Task, taskMap map[string]*Task) {
+	for _, task := range tasks {
+		task.DependsOn = pruneOrphanedRefs(task, taskMap, task.DependsOn, "depends on")
+		task.RelatedTo = pruneOrphanedRefs(task, taskMap, task.RelatedTo, "has related ref to")
+	}
+}
+
+// pruneOrphanedRefs filters a ref slice, keeping only IDs that exist in
+// taskMap or are cross-project qualified. Logs a warning for each removal.
+func pruneOrphanedRefs(task *Task, taskMap map[string]*Task, refs []string, label string) []string {
+	if len(refs) == 0 {
+		return refs
+	}
+	valid := refs[:0]
+	for _, refID := range refs {
+		if ParseTaskRef(refID).IsCrossProject() {
+			valid = append(valid, refID)
+		} else if _, ok := taskMap[refID]; ok {
+			valid = append(valid, refID)
+		} else {
+			logging.Warn("task %q (#%d) %s non-existent task %s, removing orphaned reference", task.Title, task.ShortID, label, refID)
+		}
+	}
+	return valid
+}
+
+// breakDependencyCycles detects and breaks circular dependency chains.
+// Re-runs until a full pass finds no cycles (handles multi-task cycles like A→B→C→A).
+func breakDependencyCycles(tasks []*Task, taskMap map[string]*Task) {
+	var canReach func(startID, targetID string, visited map[string]bool) bool
+	canReach = func(startID, targetID string, visited map[string]bool) bool {
+		if startID == targetID {
+			return true
+		}
+		if visited[startID] {
+			return false
+		}
+		visited[startID] = true
+		t, ok := taskMap[startID]
+		if !ok {
+			return false
+		}
+		for _, depID := range t.DependsOn {
+			if !ParseTaskRef(depID).IsCrossProject() && canReach(depID, targetID, visited) {
+				return true
+			}
+		}
+		return false
+	}
+
+	for {
+		foundCycle := false
+		for _, task := range tasks {
+			for i, depID := range task.DependsOn {
+				if ParseTaskRef(depID).IsCrossProject() {
+					continue
+				}
+				if canReach(depID, task.ID, make(map[string]bool)) {
+					logging.Warn("task %q (#%d) has circular dependency on %s, removing edge", task.Title, task.ShortID, depID)
+					task.DependsOn = append(task.DependsOn[:i], task.DependsOn[i+1:]...)
+					foundCycle = true
+					break
+				}
+			}
+			if foundCycle {
+				break
+			}
+		}
+		if !foundCycle {
+			break
 		}
 	}
 }
