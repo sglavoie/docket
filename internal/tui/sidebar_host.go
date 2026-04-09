@@ -1,6 +1,8 @@
 package tui
 
 import (
+	"slices"
+
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/config"
@@ -73,6 +75,30 @@ func sidebarGetLinkedItemCount(project *models.Project, sidebar *SidebarComponen
 		return len(task.RelatedTo)
 	}
 	return 0
+}
+
+// sidebarAdjustAfterLinkRemoval re-validates the sidebar cursor after a link
+// has been removed. If no linked sections remain the sidebar is unfocused;
+// otherwise the current section is switched (if empty) and the cursor is
+// clamped to the valid range.
+func sidebarAdjustAfterLinkRemoval(project *models.Project, sidebar *SidebarComponent, task *models.Task) {
+	sections := sidebarGetAvailableSections(project, task)
+	if len(sections) == 0 {
+		sidebar.SetFocused(false)
+		return
+	}
+	currentSection := sidebar.GetDependencySection()
+	if !slices.Contains(sections, currentSection) {
+		sidebar.SetDependencySection(sections[0])
+	}
+	count := sidebarGetLinkedItemCount(project, sidebar, task)
+	if sidebar.GetDependencyCursor() >= count {
+		if count > 0 {
+			sidebar.SetDependencyCursor(count - 1)
+		} else {
+			sidebar.SetDependencyCursor(0)
+		}
+	}
 }
 
 // sidebarResolveTaskRefWithProject resolves a task reference and returns the task with its project.

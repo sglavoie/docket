@@ -2,7 +2,6 @@ package tui
 
 import (
 	"fmt"
-	"slices"
 	"time"
 
 	tea "charm.land/bubbletea/v2"
@@ -500,62 +499,15 @@ func (m *AppModel) handleLinkRemoved(msg LinkRemovedMsg) (bool, tea.Cmd) {
 		m.outliner.rebuildRows()
 	}
 	// Adjust cursors after link removal
-	if m.projectTree != nil && m.currentProject != nil {
-		// Find the task again after refresh (refresh reloads project)
+	if m.currentProject != nil {
 		task := m.currentProject.GetTaskByID(sourceTaskID)
 		if task != nil {
-			// Restore main tree cursor to the source task
-			m.projectTree.JumpToTask(task)
-
-			sections := sidebarGetAvailableSections(m.currentProject, task)
-			sidebar := m.projectTree.sidebar
-
-			if len(sections) == 0 {
-				// No links remaining, unfocus sidebar
-				sidebar.SetFocused(false)
-			} else {
-				// Check if current section still has items
-				currentSection := sidebar.GetDependencySection()
-				sectionHasItems := slices.Contains(sections, currentSection)
-				if !sectionHasItems {
-					// Switch to first available section
-					sidebar.SetDependencySection(sections[0])
-				}
-				// Clamp cursor to valid range
-				count := sidebarGetLinkedItemCount(m.currentProject, sidebar, task)
-				if sidebar.GetDependencyCursor() >= count {
-					if count > 0 {
-						sidebar.SetDependencyCursor(count - 1)
-					} else {
-						sidebar.SetDependencyCursor(0)
-					}
-				}
+			if m.projectTree != nil {
+				m.projectTree.JumpToTask(task)
+				sidebarAdjustAfterLinkRemoval(m.currentProject, m.projectTree.sidebar, task)
 			}
-		}
-	}
-	// Adjust outliner sidebar cursor after link removal
-	if m.outliner != nil && m.outliner.sidebar != nil && m.currentProject != nil {
-		task := m.currentProject.GetTaskByID(sourceTaskID)
-		if task != nil {
-			sections := sidebarGetAvailableSections(m.currentProject, task)
-			sidebar := m.outliner.sidebar
-
-			if len(sections) == 0 {
-				sidebar.SetFocused(false)
-			} else {
-				currentSection := sidebar.GetDependencySection()
-				sectionHasItems := slices.Contains(sections, currentSection)
-				if !sectionHasItems {
-					sidebar.SetDependencySection(sections[0])
-				}
-				count := sidebarGetLinkedItemCount(m.currentProject, sidebar, task)
-				if sidebar.GetDependencyCursor() >= count {
-					if count > 0 {
-						sidebar.SetDependencyCursor(count - 1)
-					} else {
-						sidebar.SetDependencyCursor(0)
-					}
-				}
+			if m.outliner != nil && m.outliner.sidebar != nil {
+				sidebarAdjustAfterLinkRemoval(m.currentProject, m.outliner.sidebar, task)
 			}
 		}
 	}
