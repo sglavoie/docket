@@ -13,6 +13,28 @@ import (
 	"github.com/sglavoie/tt/internal/util"
 )
 
+// clampIntPtrMin clamps a non-nil *int to a minimum of 0, logging a warning on change.
+func clampIntPtrMin(p *int, name string) {
+	if p != nil && *p < 0 {
+		logging.Warn("%s %d is negative, clamping to 0", name, *p)
+		*p = 0
+	}
+}
+
+// clampIntPtrRange clamps a non-nil *int to [min, max], logging a warning on change.
+func clampIntPtrRange(p *int, name string, min, max int) {
+	if p == nil {
+		return
+	}
+	if *p < min {
+		logging.Warn("%s %d is below minimum, clamping to %d", name, *p, min)
+		*p = min
+	} else if *p > max {
+		logging.Warn("%s %d exceeds maximum, clamping to %d", name, *p, max)
+		*p = max
+	}
+}
+
 // Manager handles configuration file operations.
 type Manager struct {
 	configPath string
@@ -123,46 +145,14 @@ func (m *Manager) Load() (*Config, error) { //nolint:gocyclo
 		config.UndoHistoryDepth = &defaultUndoDepth
 	}
 	// Clamp UndoHistoryDepth to valid range
-	if *config.UndoHistoryDepth < 0 {
-		logging.Warn("UndoHistoryDepth %d is negative, clamping to 0", *config.UndoHistoryDepth)
-		zero := 0
-		config.UndoHistoryDepth = &zero
-	} else if *config.UndoHistoryDepth > 1000 {
-		logging.Warn("UndoHistoryDepth %d exceeds maximum, clamping to 1000", *config.UndoHistoryDepth)
-		max := 1000
-		config.UndoHistoryDepth = &max
-	}
+	clampIntPtrRange(config.UndoHistoryDepth, "UndoHistoryDepth", 0, 1000)
 
-	// Clamp WorkflowEvalInterval to valid range (0=disabled, max 10080=1 week)
-	if config.WorkflowEvalInterval != nil && *config.WorkflowEvalInterval < 0 {
-		logging.Warn("WorkflowEvalInterval %d is negative, clamping to 0 (disabled)", *config.WorkflowEvalInterval)
-		zero := 0
-		config.WorkflowEvalInterval = &zero
-	}
-	// Clamp ReviewDueSoonDays to valid range (0=hide section)
-	if config.ReviewDueSoonDays != nil && *config.ReviewDueSoonDays < 0 {
-		logging.Warn("ReviewDueSoonDays %d is negative, clamping to 0", *config.ReviewDueSoonDays)
-		zero := 0
-		config.ReviewDueSoonDays = &zero
-	}
-	// Clamp ReviewOldDays to valid range (0=hide section)
-	if config.ReviewOldDays != nil && *config.ReviewOldDays < 0 {
-		logging.Warn("ReviewOldDays %d is negative, clamping to 0", *config.ReviewOldDays)
-		zero := 0
-		config.ReviewOldDays = &zero
-	}
-	// Clamp ReviewFutureDays to valid range (0=hide section)
-	if config.ReviewFutureDays != nil && *config.ReviewFutureDays < 0 {
-		logging.Warn("ReviewFutureDays %d is negative, clamping to 0", *config.ReviewFutureDays)
-		zero := 0
-		config.ReviewFutureDays = &zero
-	}
-	// Clamp ReviewCompletedHours to valid range (0=hide section)
-	if config.ReviewCompletedHours != nil && *config.ReviewCompletedHours < 0 {
-		logging.Warn("ReviewCompletedHours %d is negative, clamping to 0", *config.ReviewCompletedHours)
-		zero := 0
-		config.ReviewCompletedHours = &zero
-	}
+	// Clamp optional *int fields to >= 0
+	clampIntPtrMin(config.WorkflowEvalInterval, "WorkflowEvalInterval")
+	clampIntPtrMin(config.ReviewDueSoonDays, "ReviewDueSoonDays")
+	clampIntPtrMin(config.ReviewOldDays, "ReviewOldDays")
+	clampIntPtrMin(config.ReviewFutureDays, "ReviewFutureDays")
+	clampIntPtrMin(config.ReviewCompletedHours, "ReviewCompletedHours")
 
 	if config.Stages == nil {
 		config.Stages = []string{"Brainstorm", "Design", "Implement", "Test", "Review", "Deploy"}
@@ -344,21 +334,7 @@ func (m *Manager) backupConfigToPath(path string) error {
 
 // BackupConfig creates a backup of the current config file.
 func (m *Manager) BackupConfig() error {
-	backupPath := m.GetBackupPath()
-
-	content, err := os.ReadFile(m.configPath)
-	if os.IsNotExist(err) {
-		return nil // No config file to backup
-	}
-	if err != nil {
-		return fmt.Errorf("failed to read config file for backup: %w", err)
-	}
-
-	if err := util.AtomicWriteFile(backupPath, content, FilePermissions); err != nil {
-		return fmt.Errorf("failed to write config backup file: %w", err)
-	}
-
-	return nil
+	return m.backupConfigToPath(m.GetBackupPath())
 }
 
 // RestoreConfigFromBackup swaps the current config file with the backup.
