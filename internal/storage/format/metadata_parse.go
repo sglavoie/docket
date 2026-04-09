@@ -10,6 +10,127 @@ import (
 	"github.com/sglavoie/tt/internal/util"
 )
 
+// splitSemicolonDedup splits a semicolon-delimited string into unique, trimmed,
+// non-empty values, preserving insertion order. Used for tags, depends, related.
+func splitSemicolonDedup(value string) []string {
+	seen := make(map[string]bool)
+	var result []string
+	for _, item := range strings.Split(value, ";") {
+		item = strings.TrimSpace(item)
+		if item != "" && !seen[item] {
+			seen[item] = true
+			result = append(result, item)
+		}
+	}
+	return result
+}
+
+// parseIntOrWarn parses an integer value, appending a validation warning on failure.
+// Returns the parsed value and true on success, or zero and false on failure.
+func parseIntOrWarn(value, field string, warnings *[]ParseWarning) (int, bool) {
+	v, err := strconv.Atoi(value)
+	if err != nil {
+		*warnings = append(*warnings, ParseWarning{
+			Type:    WarningValidation,
+			Field:   field,
+			Message: fmt.Sprintf("invalid %s %q, ignoring: %v", field, value, err),
+		})
+		return 0, false
+	}
+	return v, true
+}
+
+// parseAttachments parses a semicolon-delimited attachment string into Attachment structs.
+func parseAttachments(value string, warnings *[]ParseWarning) []models.Attachment {
+	var result []models.Attachment
+	for _, att := range strings.Split(value, ";") {
+		att = strings.TrimSpace(att)
+		if att == "" {
+			continue
+		}
+		var addedAt time.Time
+		var originalPath string
+		var lineNumber int
+
+		if idx := strings.LastIndex(att, "@"); idx > 0 {
+			if epoch, err := strconv.ParseInt(att[idx+1:], 10, 64); err == nil {
+				addedAt = time.Unix(epoch, 0)
+				att = att[:idx]
+			}
+		}
+		if addedAt.IsZero() {
+			addedAt = time.Now()
+			*warnings = append(*warnings, ParseWarning{
+				Type:    WarningValidation,
+				Field:   "attachments",
+				Message: fmt.Sprintf("attachment %q has no valid timestamp, defaulting to now", att),
+			})
+		}
+
+		if origIdx := strings.Index(att, "||"); origIdx > 0 {
+			originalPath = att[origIdx+2:]
+			att = att[:origIdx]
+			if strings.Contains(originalPath, "||") {
+				*warnings = append(*warnings, ParseWarning{
+					Type:    WarningValidation,
+					Field:   "attachments",
+					Message: fmt.Sprintf("attachment %q has malformed original path containing '||', data may be corrupt", att),
+				})
+			}
+		}
+
+		if after, ok := strings.CutPrefix(att, "url:"); ok {
+			filename := after
+			if originalPath == "" {
+				originalPath = filename
+			}
+			result = append(result, models.Attachment{
+				Filename:     filename,
+				IsURL:        true,
+				OriginalPath: originalPath,
+				AddedAt:      addedAt,
+			})
+		} else if after, ok := strings.CutPrefix(att, "code:"); ok {
+			filename := after
+			if colonIdx := strings.LastIndex(originalPath, ":"); colonIdx > 0 {
+				suffix := originalPath[colonIdx+1:]
+				if ln, err := strconv.Atoi(suffix); err != nil {
+					*warnings = append(*warnings, ParseWarning{
+						Type:    WarningValidation,
+						Field:   "attachments",
+						Message: fmt.Sprintf("code attachment %q has invalid line number %q, ignoring", filename, suffix),
+					})
+				} else if ln <= 0 {
+					*warnings = append(*warnings, ParseWarning{
+						Type:    WarningValidation,
+						Field:   "attachments",
+						Message: fmt.Sprintf("code attachment %q has non-positive line number %d, ignoring", filename, ln),
+					})
+				} else {
+					lineNumber = ln
+					originalPath = originalPath[:colonIdx]
+				}
+			}
+			result = append(result, models.Attachment{
+				Filename:     filename,
+				IsURL:        false,
+				IsCodeRef:    true,
+				LineNumber:   lineNumber,
+				OriginalPath: originalPath,
+				AddedAt:      addedAt,
+			})
+		} else {
+			result = append(result, models.Attachment{
+				Filename:     att,
+				IsURL:        false,
+				OriginalPath: originalPath,
+				AddedAt:      addedAt,
+			})
+		}
+	}
+	return result
+}
+
 // ParseMetadata parses the metadata string and sets task fields.
 // Returns any warnings encountered during parsing.
 func ParseMetadata(task *models.Task, metaStr string) []ParseWarning { //nolint:gocyclo
@@ -77,15 +198,7 @@ func ParseMetadata(task *models.Task, metaStr string) []ParseWarning { //nolint:
 				task.ParentID = &value
 			}
 		case "tags":
-			seen := make(map[string]bool)
-			tags := strings.Split(value, ";")
-			for _, tag := range tags {
-				tag = strings.TrimSpace(tag)
-				if tag != "" && !seen[tag] {
-					seen[tag] = true
-					task.Tags = append(task.Tags, tag)
-				}
-			}
+			task.Tags = append(task.Tags, splitSemicolonDedup(value)...)
 		case "created":
 			if t, ok := ParseTimeField(value); ok {
 				task.CreatedAt = t
@@ -103,25 +216,9 @@ func ParseMetadata(task *models.Task, metaStr string) []ParseWarning { //nolint:
 				task.DueDate = &t
 			}
 		case "depends":
-			seen := make(map[string]bool)
-			deps := strings.Split(value, ";")
-			for _, dep := range deps {
-				dep = strings.TrimSpace(dep)
-				if dep != "" && !seen[dep] {
-					seen[dep] = true
-					task.DependsOn = append(task.DependsOn, dep)
-				}
-			}
+			task.DependsOn = append(task.DependsOn, splitSemicolonDedup(value)...)
 		case "related":
-			seen := make(map[string]bool)
-			related := strings.Split(value, ";")
-			for _, rel := range related {
-				rel = strings.TrimSpace(rel)
-				if rel != "" && !seen[rel] {
-					seen[rel] = true
-					task.RelatedTo = append(task.RelatedTo, rel)
-				}
-			}
+			task.RelatedTo = append(task.RelatedTo, splitSemicolonDedup(value)...)
 		case "section":
 			task.Section = value
 		case "custom_section":
@@ -145,46 +242,22 @@ func ParseMetadata(task *models.Task, metaStr string) []ParseWarning { //nolint:
 		// Buffer recurrence sub-fields for order-independent parsing.
 		// Applied to task.Recurrence after all keys are processed.
 		case "recur.skipped":
-			if v, err := strconv.Atoi(value); err != nil {
-				warnings = append(warnings, ParseWarning{
-					Type:    WarningValidation,
-					Field:   "recur.skipped",
-					Message: fmt.Sprintf("invalid recur.skipped %q, ignoring: %v", value, err),
-				})
-			} else {
+			if v, ok := parseIntOrWarn(value, key, &warnings); ok {
 				recurSubFields.skipped = v
 				recurSubFields.hasAny = true
 			}
 		case "recur.streak":
-			if v, err := strconv.Atoi(value); err != nil {
-				warnings = append(warnings, ParseWarning{
-					Type:    WarningValidation,
-					Field:   "recur.streak",
-					Message: fmt.Sprintf("invalid recur.streak %q, ignoring: %v", value, err),
-				})
-			} else {
+			if v, ok := parseIntOrWarn(value, key, &warnings); ok {
 				recurSubFields.streak = v
 				recurSubFields.hasAny = true
 			}
 		case "recur.max_streak":
-			if v, err := strconv.Atoi(value); err != nil {
-				warnings = append(warnings, ParseWarning{
-					Type:    WarningValidation,
-					Field:   "recur.max_streak",
-					Message: fmt.Sprintf("invalid recur.max_streak %q, ignoring: %v", value, err),
-				})
-			} else {
+			if v, ok := parseIntOrWarn(value, key, &warnings); ok {
 				recurSubFields.maxStreak = v
 				recurSubFields.hasAny = true
 			}
 		case "recur.original_day":
-			if v, err := strconv.Atoi(value); err != nil {
-				warnings = append(warnings, ParseWarning{
-					Type:    WarningValidation,
-					Field:   "recur.original_day",
-					Message: fmt.Sprintf("invalid recur.original_day %q, ignoring: %v", value, err),
-				})
-			} else {
+			if v, ok := parseIntOrWarn(value, key, &warnings); ok {
 				recurSubFields.originalDay = v
 				recurSubFields.hasAny = true
 			}
@@ -193,92 +266,7 @@ func ParseMetadata(task *models.Task, metaStr string) []ParseWarning { //nolint:
 				task.SnoozedUntil = &t
 			}
 		case "attachments":
-			attachments := strings.Split(value, ";")
-			for _, att := range attachments {
-				att = strings.TrimSpace(att)
-				if att == "" {
-					continue
-				}
-				var addedAt time.Time
-				var originalPath string
-				var lineNumber int
-
-				if idx := strings.LastIndex(att, "@"); idx > 0 {
-					if epoch, err := strconv.ParseInt(att[idx+1:], 10, 64); err == nil {
-						addedAt = time.Unix(epoch, 0)
-						att = att[:idx]
-					}
-				}
-				if addedAt.IsZero() {
-					addedAt = time.Now()
-					warnings = append(warnings, ParseWarning{
-						Type:    WarningValidation,
-						Field:   "attachments",
-						Message: fmt.Sprintf("attachment %q has no valid timestamp, defaulting to now", att),
-					})
-				}
-
-				if origIdx := strings.Index(att, "||"); origIdx > 0 {
-					originalPath = att[origIdx+2:]
-					att = att[:origIdx]
-					if strings.Contains(originalPath, "||") {
-						warnings = append(warnings, ParseWarning{
-							Type:    WarningValidation,
-							Field:   "attachments",
-							Message: fmt.Sprintf("attachment %q has malformed original path containing '||', data may be corrupt", att),
-						})
-					}
-				}
-
-				if after, ok := strings.CutPrefix(att, "url:"); ok {
-					filename := after
-					if originalPath == "" {
-						originalPath = filename
-					}
-					task.Attachments = append(task.Attachments, models.Attachment{
-						Filename:     filename,
-						IsURL:        true,
-						OriginalPath: originalPath,
-						AddedAt:      addedAt,
-					})
-				} else if after, ok := strings.CutPrefix(att, "code:"); ok {
-					filename := after
-					if colonIdx := strings.LastIndex(originalPath, ":"); colonIdx > 0 {
-						suffix := originalPath[colonIdx+1:]
-						if ln, err := strconv.Atoi(suffix); err != nil {
-							warnings = append(warnings, ParseWarning{
-								Type:    WarningValidation,
-								Field:   "attachments",
-								Message: fmt.Sprintf("code attachment %q has invalid line number %q, ignoring", filename, suffix),
-							})
-						} else if ln <= 0 {
-							warnings = append(warnings, ParseWarning{
-								Type:    WarningValidation,
-								Field:   "attachments",
-								Message: fmt.Sprintf("code attachment %q has non-positive line number %d, ignoring", filename, ln),
-							})
-						} else {
-							lineNumber = ln
-							originalPath = originalPath[:colonIdx]
-						}
-					}
-					task.Attachments = append(task.Attachments, models.Attachment{
-						Filename:     filename,
-						IsURL:        false,
-						IsCodeRef:    true,
-						LineNumber:   lineNumber,
-						OriginalPath: originalPath,
-						AddedAt:      addedAt,
-					})
-				} else {
-					task.Attachments = append(task.Attachments, models.Attachment{
-						Filename:     att,
-						IsURL:        false,
-						OriginalPath: originalPath,
-						AddedAt:      addedAt,
-					})
-				}
-			}
+			task.Attachments = append(task.Attachments, parseAttachments(value, &warnings)...)
 		case "checklist":
 			items := splitChecklistItems(value)
 			for _, item := range items {

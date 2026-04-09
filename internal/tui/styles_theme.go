@@ -37,9 +37,6 @@ func NewThemeConfig(cfg *config.Config) ThemeConfig {
 	}
 }
 
-// ZebraEnabled returns true when zebra striping is active.
-func ZebraEnabled() bool { return zebraEnabled }
-
 // themeBgColor holds the current TUI background color (empty = none/terminal default).
 var themeBgColor string
 
