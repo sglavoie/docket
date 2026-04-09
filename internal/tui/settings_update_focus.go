@@ -1,163 +1,100 @@
 package tui
 
-func (m *SettingsModel) blurCurrentField() { //nolint:gocyclo
+import "charm.land/bubbles/v2/textinput"
+
+// focusedInput returns a pointer to the textinput.Model for the current
+// focusIndex, or nil if the index has no associated text input.
+func (m *SettingsModel) focusedInput() *textinput.Model {
 	switch m.focusIndex {
 	case 0:
-		m.editorInput.Blur()
+		return &m.editorInput
 	case 1:
-		m.contextInput.Blur()
+		return &m.contextInput
 	case 2:
-		m.undoDepthInput.Blur()
+		return &m.undoDepthInput
 	case 4:
-		m.normalTextInput.Blur()
+		return &m.normalTextInput
 	case 5:
-		m.mutedInput.Blur()
+		return &m.mutedInput
 	case 6:
-		m.primaryInput.Blur()
+		return &m.primaryInput
 	case 7:
-		m.secondaryInput.Blur()
+		return &m.secondaryInput
 	case 8:
-		m.accentInput.Blur()
+		return &m.accentInput
 	case 9:
-		m.successInput.Blur()
+		return &m.successInput
 	case 10:
-		m.warningInput.Blur()
+		return &m.warningInput
 	case 11:
-		m.errorColorInput.Blur()
+		return &m.errorColorInput
 	case 12:
-		m.borderInput.Blur()
+		return &m.borderInput
 	case 13:
-		m.bgColorInput.Blur()
+		return &m.bgColorInput
 	case 14:
-		m.cursorColorInput.Blur()
+		return &m.cursorColorInput
 	case 15:
-		m.cursorTextColorInput.Blur()
+		return &m.cursorTextColorInput
 	case 16:
-		m.dueSoonInput.Blur()
+		return &m.dueSoonInput
 	case 17:
-		m.futureInput.Blur()
+		return &m.futureInput
 	case 18:
-		m.oldDaysInput.Blur()
+		return &m.oldDaysInput
 	case 19:
-		m.completedHoursInput.Blur()
+		return &m.completedHoursInput
 	case 20:
-		m.recentActivityInput.Blur()
+		return &m.recentActivityInput
 	case 23:
-		m.maxPinnedInput.Blur()
+		return &m.maxPinnedInput
 	case 24:
-		m.maxRecentTaskVisitsInput.Blur()
+		return &m.maxRecentTaskVisitsInput
 	case 25:
-		m.popupTimeoutInput.Blur()
+		return &m.popupTimeoutInput
 	case 26:
-		m.sectionLimitActiveInput.Blur()
+		return &m.sectionLimitActiveInput
 	case 27:
-		m.sectionLimitNextInput.Blur()
+		return &m.sectionLimitNextInput
 	case 28:
-		m.sectionLimitInboxInput.Blur()
+		return &m.sectionLimitInboxInput
 	case 29:
-		m.sectionLimitStandbyInput.Blur()
+		return &m.sectionLimitStandbyInput
 	case 30:
-		m.sectionLimitWaitingInput.Blur()
+		return &m.sectionLimitWaitingInput
 	case 31:
-		m.sectionLimitSomedayInput.Blur()
+		return &m.sectionLimitSomedayInput
 	case 32:
-		m.sectionLimitReviewInput.Blur()
+		return &m.sectionLimitReviewInput
 	case 33:
-		m.attachmentEditorInput.Blur()
+		return &m.attachmentEditorInput
 	case 34:
-		m.codeEditorInput.Blur()
+		return &m.codeEditorInput
 	case 70:
-		m.alertDailyReviewHourInput.Blur()
+		return &m.alertDailyReviewHourInput
 	case 75:
-		m.alertDueSoonDaysInput.Blur()
+		return &m.alertDueSoonDaysInput
 	case 77:
-		m.alertStaleDaysInput.Blur()
+		return &m.alertStaleDaysInput
 	case 79:
-		m.alertInboxThresholdInput.Blur()
+		return &m.alertInboxThresholdInput
 	case 81:
-		m.alertBlockedDaysInput.Blur()
+		return &m.alertBlockedDaysInput
 	case 83:
-		m.alertProjectStaleDaysInput.Blur()
+		return &m.alertProjectStaleDaysInput
+	default:
+		return nil
 	}
 }
 
-func (m *SettingsModel) focusCurrentField() { //nolint:gocyclo
-	switch m.focusIndex {
-	case 0:
-		m.editorInput.Focus()
-	case 1:
-		m.contextInput.Focus()
-	case 2:
-		m.undoDepthInput.Focus()
-	case 4:
-		m.normalTextInput.Focus()
-	case 5:
-		m.mutedInput.Focus()
-	case 6:
-		m.primaryInput.Focus()
-	case 7:
-		m.secondaryInput.Focus()
-	case 8:
-		m.accentInput.Focus()
-	case 9:
-		m.successInput.Focus()
-	case 10:
-		m.warningInput.Focus()
-	case 11:
-		m.errorColorInput.Focus()
-	case 12:
-		m.borderInput.Focus()
-	case 13:
-		m.bgColorInput.Focus()
-	case 14:
-		m.cursorColorInput.Focus()
-	case 15:
-		m.cursorTextColorInput.Focus()
-	case 16:
-		m.dueSoonInput.Focus()
-	case 17:
-		m.futureInput.Focus()
-	case 18:
-		m.oldDaysInput.Focus()
-	case 19:
-		m.completedHoursInput.Focus()
-	case 20:
-		m.recentActivityInput.Focus()
-	case 23:
-		m.maxPinnedInput.Focus()
-	case 24:
-		m.maxRecentTaskVisitsInput.Focus()
-	case 25:
-		m.popupTimeoutInput.Focus()
-	case 26:
-		m.sectionLimitActiveInput.Focus()
-	case 27:
-		m.sectionLimitNextInput.Focus()
-	case 28:
-		m.sectionLimitInboxInput.Focus()
-	case 29:
-		m.sectionLimitStandbyInput.Focus()
-	case 30:
-		m.sectionLimitWaitingInput.Focus()
-	case 31:
-		m.sectionLimitSomedayInput.Focus()
-	case 32:
-		m.sectionLimitReviewInput.Focus()
-	case 33:
-		m.attachmentEditorInput.Focus()
-	case 34:
-		m.codeEditorInput.Focus()
-	case 70:
-		m.alertDailyReviewHourInput.Focus()
-	case 75:
-		m.alertDueSoonDaysInput.Focus()
-	case 77:
-		m.alertStaleDaysInput.Focus()
-	case 79:
-		m.alertInboxThresholdInput.Focus()
-	case 81:
-		m.alertBlockedDaysInput.Focus()
-	case 83:
-		m.alertProjectStaleDaysInput.Focus()
+func (m *SettingsModel) blurCurrentField() {
+	if input := m.focusedInput(); input != nil {
+		input.Blur()
+	}
+}
+
+func (m *SettingsModel) focusCurrentField() {
+	if input := m.focusedInput(); input != nil {
+		input.Focus()
 	}
 }
