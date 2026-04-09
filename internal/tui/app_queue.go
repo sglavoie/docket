@@ -16,9 +16,9 @@ type QueueToggleable interface {
 
 // queueToggleAction records a single q-key toggle for undo support.
 type queueToggleAction struct {
-	Task          *models.Task
-	Project       *models.Project
-	WasAdd        bool // true = task was added to queue
+	Task           *models.Task
+	Project        *models.Project
+	WasAdd         bool // true = task was added to queue
 	WasInDailyPlan bool // true = task was in daily plan before (restore on undo)
 }
 

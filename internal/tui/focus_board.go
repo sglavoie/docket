@@ -51,11 +51,11 @@ type FocusBoardModel struct {
 	dailyPlanIDs map[string]bool
 
 	// Data
-	rows          []boardRow
-	nextRows      []boardRow
-	closedRows    []boardRow
-	todayRows     []boardRow
-	filtered      []boardRow
+	rows           []boardRow
+	nextRows       []boardRow
+	closedRows     []boardRow
+	todayRows      []boardRow
+	filtered       []boardRow
 	carriedOverIDs map[string]bool
 
 	// Tabs

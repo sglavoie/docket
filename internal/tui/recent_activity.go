@@ -464,11 +464,11 @@ func (m *RecentActivityModel) renderTaskLine(dt CrossProjectTask, selected bool,
 		PreBadges:    preBadges,
 		StageBadge:   GetStageBadge(task.Stage),
 		PostTitle:    relTime,
-		ViewWidth:   m.Width(),
-		Flash:       m.cursorFlash,
-		SearchQuery: m.SearchQuery(),
-		Layout:      layout,
-		RowIndex:    rowIndex,
+		ViewWidth:    m.Width(),
+		Flash:        m.cursorFlash,
+		SearchQuery:  m.SearchQuery(),
+		Layout:       layout,
+		RowIndex:     rowIndex,
 	}.Render()
 }
 
