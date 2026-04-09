@@ -286,6 +286,8 @@ type AppModel struct {
 	dailyPlanCarried      int             // count of items carried over from a previous day
 	dailyPlanCarriedIDs   map[string]bool // task IDs that were carried over (for visual indicator)
 	dailyPlanCarriedShown bool            // true once the carry-over status message has been shown
+	lastDailyPlanToggle   *dailyPlanToggleAction // last w-key action for undo
+	lastQueueToggle       *queueToggleAction     // last q-key action for undo
 
 	// Current project context
 	currentProject *models.Project

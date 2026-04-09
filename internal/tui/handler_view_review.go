@@ -142,10 +142,7 @@ func (m *AppModel) handleViewReviewMessages(msg tea.Msg) (bool, tea.Cmd) { //nol
 
 	case ShowFocusBoardMsg:
 		m.reevaluateAlerts()
-		fb := NewFocusBoardModel(m.config, m.configManager)
-		fb.queueIDs = m.focusQueueIDs
-		fb.dailyPlanIDs = m.dailyPlanIDs
-		fb.carriedOverIDs = m.dailyPlanCarriedIDs
+		fb := NewFocusBoardModel(m.config, m.configManager, m.focusQueueIDs, m.dailyPlanIDs, m.dailyPlanCarriedIDs)
 		if m.dailyPlanCarried > 0 && !m.dailyPlanCarriedShown {
 			fb.setStatus(fmt.Sprintf("%d item(s) carried over from yesterday", m.dailyPlanCarried))
 			m.dailyPlanCarriedShown = true

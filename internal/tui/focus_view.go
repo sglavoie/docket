@@ -168,7 +168,7 @@ func (m *FocusViewModel) HandledKeys() []string {
 			"enter", "J", "K", "*", "F", "m", "t",
 			"e", "Z", "D", "ctrl+.", "r", "y", "Y",
 			"1", "2", "3", "4", "5",
-			"w", "esc",
+			"w", "u", "esc",
 		},
 	)
 }

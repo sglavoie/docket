@@ -169,9 +169,7 @@ func (m *AppModel) reconstructGlobalView(entry NavEntry) tea.Cmd {
 		m.showView(ViewCrossProjectOutliner, m.crossOutliner)
 		return m.crossOutliner.Init()
 	case ViewFocusBoard:
-		fb := NewFocusBoardModel(m.config, m.configManager)
-		fb.queueIDs = m.focusQueueIDs
-		fb.dailyPlanIDs = m.dailyPlanIDs
+		fb := NewFocusBoardModel(m.config, m.configManager, m.focusQueueIDs, m.dailyPlanIDs, m.dailyPlanCarriedIDs)
 		m.showView(ViewFocusBoard, fb)
 	case ViewAllTasks:
 		atv := NewAllTasksViewModel(m.config, m.configManager)

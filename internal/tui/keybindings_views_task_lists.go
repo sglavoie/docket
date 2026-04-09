@@ -264,6 +264,7 @@ func (r *KeybindingRegistry) registerFocusViewBindings() {
 		Keybinding{Key: "gp", Description: "Go to task in project", Category: "View", Views: views},
 		Keybinding{Key: "q", Description: "Toggle queue", Category: "Queue", Views: views},
 		Keybinding{Key: "w", Description: "Plan for today", Category: "Daily Plan", Views: views},
+		Keybinding{Key: "u", Description: "Undo last plan toggle", Category: "Daily Plan", Views: views},
 		Keybinding{Key: "Esc", Description: "Close view", Category: "View", Views: views},
 	)
 	r.addForViews(views, statusBindings())

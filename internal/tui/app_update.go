@@ -192,7 +192,7 @@ func (m *AppModel) Update(msg tea.Msg) (outModel tea.Model, outCmd tea.Cmd) { //
 				break
 			}
 			if cmd := m.toggleQueue(); cmd != nil {
-				return m, cmd
+				return m, m.batchWithFocusRefresh(cmd)
 			}
 			// Non-task views (including dashboard): q is a no-op
 			return m, nil
@@ -201,9 +201,23 @@ func (m *AppModel) Update(msg tea.Msg) (outModel tea.Model, outCmd tea.Cmd) { //
 				break
 			}
 			if cmd := m.toggleDailyPlan(); cmd != nil {
-				return m, cmd
+				return m, m.batchWithFocusRefresh(cmd)
 			}
 			// Fall through to view's own w handler (inbox processor, waiting, etc.)
+		case "u":
+			if m.hasActiveTextInput() {
+				break
+			}
+			switch m.currentView() {
+			case ViewFocusView:
+				if cmd := m.undoDailyPlanToggle(); cmd != nil {
+					return m, m.batchWithFocusRefresh(cmd)
+				}
+			case ViewFocusBoard:
+				if cmd := m.undoQueueToggle(); cmd != nil {
+					return m, m.batchWithFocusRefresh(cmd)
+				}
+			}
 		case "ctrl+x":
 			// Open project picker if no view has an active text input
 			if !m.hasActiveTextInput() {
@@ -416,6 +430,15 @@ func (m *AppModel) currentViewCapabilities() ViewCapabilities {
 		return caps
 	}
 	return nil
+}
+
+// batchWithFocusRefresh batches a command with refresh messages for both focus views.
+func (m *AppModel) batchWithFocusRefresh(cmd tea.Cmd) tea.Cmd {
+	return tea.Batch(
+		cmd,
+		func() tea.Msg { return FocusViewRefreshMsg{} },
+		func() tea.Msg { return FocusBoardRefreshMsg{} },
+	)
 }
 
 // hasActiveTextInput returns true if the current view has an active text input

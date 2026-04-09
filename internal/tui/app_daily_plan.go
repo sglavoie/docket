@@ -7,7 +7,16 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/tt/internal/models"
 )
+
+// dailyPlanToggleAction records a single w-key toggle for undo support.
+type dailyPlanToggleAction struct {
+	Task       *models.Task
+	Project    *models.Project
+	WasAdd     bool // true = task was added to daily plan
+	WasInQueue bool // true = task was in queue before (restore on undo)
+}
 
 // toggleDailyPlan adds or removes the focused task from the daily plan.
 // Returns a status timeout cmd on success, or nil if no task is available.
@@ -26,6 +35,9 @@ func (m *AppModel) toggleDailyPlan() tea.Cmd {
 	}
 	if m.dailyPlanIDs[task.ID] {
 		// Remove from daily plan.
+		m.lastDailyPlanToggle = &dailyPlanToggleAction{
+			Task: task, Project: project, WasAdd: false,
+		}
 		for i, ft := range m.dailyPlan {
 			if ft.Task.ID == task.ID {
 				m.dailyPlan = append(m.dailyPlan[:i], m.dailyPlan[i+1:]...)
@@ -35,11 +47,16 @@ func (m *AppModel) toggleDailyPlan() tea.Cmd {
 		delete(m.dailyPlanIDs, task.ID)
 		m.setInfoStatus(fmt.Sprintf("Removed from today's plan: %s", task.Title))
 	} else {
+		// Record before mutating so WasInQueue reflects the pre-toggle state.
+		wasInQueue := m.focusQueueIDs[task.ID]
+		m.lastDailyPlanToggle = &dailyPlanToggleAction{
+			Task: task, Project: project, WasAdd: true, WasInQueue: wasInQueue,
+		}
 		// Add to daily plan.
 		m.dailyPlan = append(m.dailyPlan, FocusTask{Task: task, Project: project})
 		m.dailyPlanIDs[task.ID] = true
 		// Mutual exclusivity: remove from queue if present.
-		if m.focusQueueIDs[task.ID] {
+		if wasInQueue {
 			for i, ft := range m.focusQueue {
 				if ft.Task.ID == task.ID {
 					m.focusQueue = append(m.focusQueue[:i], m.focusQueue[i+1:]...)
@@ -52,6 +69,43 @@ func (m *AppModel) toggleDailyPlan() tea.Cmd {
 		m.setInfoStatus(fmt.Sprintf("Added to today's plan: %s", task.Title))
 	}
 	m.persistDailyPlan()
+	return defaultStatusTimeout()
+}
+
+// undoDailyPlanToggle reverses the last toggleDailyPlan action.
+func (m *AppModel) undoDailyPlanToggle() tea.Cmd {
+	action := m.lastDailyPlanToggle
+	if action == nil {
+		return nil
+	}
+	m.lastDailyPlanToggle = nil
+
+	if action.WasAdd {
+		// Reverse add: remove from daily plan.
+		for i, ft := range m.dailyPlan {
+			if ft.Task.ID == action.Task.ID {
+				m.dailyPlan = append(m.dailyPlan[:i], m.dailyPlan[i+1:]...)
+				break
+			}
+		}
+		delete(m.dailyPlanIDs, action.Task.ID)
+		m.persistDailyPlan()
+		// Restore to queue if it was there before.
+		if action.WasInQueue && !m.focusQueueIDs[action.Task.ID] {
+			m.focusQueue = append(m.focusQueue, FocusTask{Task: action.Task, Project: action.Project})
+			m.focusQueueIDs[action.Task.ID] = true
+			m.persistFocusQueue()
+		}
+		m.setInfoStatus(fmt.Sprintf("Undone: %s", action.Task.Title))
+	} else {
+		// Reverse remove: add back to daily plan.
+		if !m.dailyPlanIDs[action.Task.ID] {
+			m.dailyPlan = append(m.dailyPlan, FocusTask{Task: action.Task, Project: action.Project})
+			m.dailyPlanIDs[action.Task.ID] = true
+			m.persistDailyPlan()
+		}
+		m.setInfoStatus(fmt.Sprintf("Undone: %s", action.Task.Title))
+	}
 	return defaultStatusTimeout()
 }
 

@@ -85,7 +85,7 @@ type FocusBoardModel struct {
 }
 
 // NewFocusBoardModel creates a new focus board model.
-func NewFocusBoardModel(cfg *config.Config, manager *config.Manager) *FocusBoardModel {
+func NewFocusBoardModel(cfg *config.Config, manager *config.Manager, queueIDs, dailyPlanIDs, carriedOverIDs map[string]bool) *FocusBoardModel {
 	ti := textinput.New()
 	ti.Placeholder = "Action title (%project !priority #tag -s source -u url)"
 	ti.CharLimit = 200
@@ -100,6 +100,9 @@ func NewFocusBoardModel(cfg *config.Config, manager *config.Manager) *FocusBoard
 		config:         cfg,
 		configManager:  manager,
 		projectService: NewProjectService(),
+		queueIDs:       queueIDs,
+		dailyPlanIDs:   dailyPlanIDs,
+		carriedOverIDs: carriedOverIDs,
 		addInput:       ti,
 		editInput:      ei,
 		FilterMixin:    FilterMixin{filter: newFilterState()},
