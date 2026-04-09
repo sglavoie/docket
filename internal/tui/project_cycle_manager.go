@@ -237,30 +237,14 @@ func (m *AppModel) handleProjectCycleKey(msg tea.KeyPressMsg) (*AppModel, tea.Cm
 		return m, nil
 
 	case "ctrl+h":
-		// Cycle preview section backward (like h in project tree)
 		if m.projectCyclePreview != nil {
-			modes := m.projectCyclePreview.cyclableViewModes()
-			if idx := viewModeIndex(modes, m.projectCyclePreview.viewMode); idx >= 0 {
-				m.projectCyclePreview.viewMode = modes[(idx+len(modes)-1)%len(modes)]
-			} else {
-				m.projectCyclePreview.viewMode = modes[len(modes)-1]
-			}
-			m.projectCyclePreview.updateVisibility()
-			m.projectCyclePreview.clampCursor()
+			m.projectCyclePreview.cycleViewMode(-1)
 		}
 		return m, nil
 
 	case "ctrl+l":
-		// Cycle preview section forward (like l in project tree)
 		if m.projectCyclePreview != nil {
-			modes := m.projectCyclePreview.cyclableViewModes()
-			if idx := viewModeIndex(modes, m.projectCyclePreview.viewMode); idx >= 0 {
-				m.projectCyclePreview.viewMode = modes[(idx+1)%len(modes)]
-			} else {
-				m.projectCyclePreview.viewMode = modes[0]
-			}
-			m.projectCyclePreview.updateVisibility()
-			m.projectCyclePreview.clampCursor()
+			m.projectCyclePreview.cycleViewMode(1)
 		}
 		return m, nil
 

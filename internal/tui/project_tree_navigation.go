@@ -34,27 +34,13 @@ func (m *ProjectTreeModel) handleNavigationKeys(key string, visible []*TreeNode)
 	case "h":
 		if !m.sidebar.IsFocused() {
 			m.clearActiveSavedFilter()
-			modes := m.cyclableViewModes()
-			if idx := viewModeIndex(modes, m.viewMode); idx >= 0 {
-				m.viewMode = modes[(idx+len(modes)-1)%len(modes)]
-			} else {
-				m.viewMode = modes[len(modes)-1]
-			}
-			m.updateVisibility()
-			m.clampCursor()
+			m.cycleViewMode(-1)
 			return true, nil
 		}
 	case "l":
 		if !m.sidebar.IsFocused() {
 			m.clearActiveSavedFilter()
-			modes := m.cyclableViewModes()
-			if idx := viewModeIndex(modes, m.viewMode); idx >= 0 {
-				m.viewMode = modes[(idx+1)%len(modes)]
-			} else {
-				m.viewMode = modes[0]
-			}
-			m.updateVisibility()
-			m.clampCursor()
+			m.cycleViewMode(1)
 			return true, nil
 		}
 	}
@@ -80,6 +66,24 @@ func viewModeIndex(modes []ViewMode, mode ViewMode) int {
 		}
 	}
 	return -1
+}
+
+// cycleViewMode cycles the view mode forward (delta=+1) or backward (delta=-1)
+// through the cyclable modes, then refreshes visibility and clamps the cursor.
+func (m *ProjectTreeModel) cycleViewMode(delta int) {
+	modes := m.cyclableViewModes()
+	if len(modes) == 0 {
+		return
+	}
+	if idx := viewModeIndex(modes, m.viewMode); idx >= 0 {
+		m.viewMode = modes[(idx+delta+len(modes))%len(modes)]
+	} else if delta > 0 {
+		m.viewMode = modes[0]
+	} else {
+		m.viewMode = modes[len(modes)-1]
+	}
+	m.updateVisibility()
+	m.clampCursor()
 }
 
 // handleSelectionKeys handles v, a, space - selection operations.
