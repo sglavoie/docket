@@ -8,100 +8,65 @@ import (
 )
 
 func TestWorkflowAdd_TriggerFieldValidation(t *testing.T) {
-	validFields := map[workflow.TriggerField]bool{
-		workflow.FieldStatus:           true,
-		workflow.FieldPriority:         true,
-		workflow.FieldSection:          true,
-		workflow.FieldTags:             true,
-		workflow.FieldType:             true,
-		workflow.FieldDueDays:          true,
-		workflow.FieldCreatedDays:      true,
-		workflow.FieldUpdatedDays:      true,
-		workflow.FieldStatusChanged:    true,
-		workflow.FieldSectionChanged:   true,
-		workflow.FieldPriorityChanged:  true,
-		workflow.FieldTagAdded:         true,
-		workflow.FieldTagRemoved:       true,
-		workflow.FieldCompleted:        true,
-		workflow.FieldReopened:         true,
-		workflow.FieldParentStatus:     true,
-		workflow.FieldParentType:       true,
-		workflow.FieldParentTags:       true,
-		workflow.FieldLevel:            true,
-		workflow.FieldHasChildren:      true,
-		workflow.FieldChildrenProgress: true,
-		workflow.FieldAllChildrenDone:  true,
-		workflow.FieldIsBlocked:        true,
-		workflow.FieldBlockerCount:     true,
-		workflow.FieldDependencyCount:  true,
-	}
-
-	for field := range validFields {
-		if !validFields[field] {
-			t.Errorf("expected field %s to be valid", field)
+	for _, field := range workflow.ValidTriggerFields() {
+		trigger := workflow.RuleTrigger{Field: field, Operation: workflow.OpEquals, Value: "test"}
+		if err := trigger.Validate(); err != nil {
+			t.Errorf("expected field %s to be valid, got: %v", field, err)
 		}
 	}
 
 	invalidFields := []string{"invalid_field", "foo", "bar"}
 	for _, field := range invalidFields {
-		if validFields[workflow.TriggerField(field)] {
+		trigger := workflow.RuleTrigger{Field: workflow.TriggerField(field), Operation: workflow.OpEquals, Value: "test"}
+		if err := trigger.Validate(); err == nil {
 			t.Errorf("expected field %s to be invalid", field)
 		}
 	}
 }
 
 func TestWorkflowAdd_TriggerOperationValidation(t *testing.T) {
-	validOps := map[workflow.TriggerOperation]bool{
-		workflow.OpEquals:      true,
-		workflow.OpNotEquals:   true,
-		workflow.OpContains:    true,
-		workflow.OpGreaterThan: true,
-		workflow.OpLessThan:    true,
-	}
-
-	for op := range validOps {
-		if !validOps[op] {
-			t.Errorf("expected operation %s to be valid", op)
+	for _, op := range workflow.ValidTriggerOperations() {
+		trigger := workflow.RuleTrigger{Field: workflow.FieldStatus, Operation: op, Value: "test"}
+		if err := trigger.Validate(); err != nil {
+			t.Errorf("expected operation %s to be valid, got: %v", op, err)
 		}
 	}
 
 	invalidOps := []string{"invalid", "match", "regex"}
 	for _, op := range invalidOps {
-		if validOps[workflow.TriggerOperation(op)] {
+		trigger := workflow.RuleTrigger{Field: workflow.FieldStatus, Operation: workflow.TriggerOperation(op), Value: "test"}
+		if err := trigger.Validate(); err == nil {
 			t.Errorf("expected operation %s to be invalid", op)
 		}
 	}
 }
 
 func TestWorkflowAdd_ActionTypeValidation(t *testing.T) {
-	validActions := map[workflow.ActionType]bool{
-		workflow.ActionSetStatus:      true,
-		workflow.ActionSetPriority:    true,
-		workflow.ActionSetSection:     true,
-		workflow.ActionAddTag:         true,
-		workflow.ActionRemoveTag:      true,
-		workflow.ActionSetDueRelative: true,
-		workflow.ActionClearDue:       true,
-		workflow.ActionSetActive:      true,
-		workflow.ActionSetPinned:      true,
-		workflow.ActionAddComment:     true,
-		workflow.ActionSetType:        true,
-		workflow.ActionCompleteParent: true,
-		workflow.ActionBlockParent:    true,
-		workflow.ActionCascadeTag:     true,
-		workflow.ActionInheritTag:     true,
-		workflow.ActionNotifyParent:   true,
+	// Provide format-appropriate values for actions that validate their value.
+	specialValues := map[workflow.ActionType]string{
+		workflow.ActionSetActive:        "true",
+		workflow.ActionSetPinned:        "true",
+		workflow.ActionSetDueRelative:   "+3d",
+		workflow.ActionSetSnooze:        "+1d",
+		workflow.ActionSetRecurrence:    "daily",
+		workflow.ActionSetProjectStatus: "active",
 	}
 
-	for action := range validActions {
-		if !validActions[action] {
-			t.Errorf("expected action %s to be valid", action)
+	for _, action := range workflow.ValidActionTypes() {
+		value := "test"
+		if v, ok := specialValues[action]; ok {
+			value = v
+		}
+		a := workflow.RuleAction{ActionType: action, Value: value}
+		if err := a.Validate(); err != nil {
+			t.Errorf("expected action %s to be valid, got: %v", action, err)
 		}
 	}
 
 	invalidActions := []string{"invalid_action", "do_something", "magic"}
 	for _, action := range invalidActions {
-		if validActions[workflow.ActionType(action)] {
+		a := workflow.RuleAction{ActionType: workflow.ActionType(action), Value: "test"}
+		if err := a.Validate(); err == nil {
 			t.Errorf("expected action %s to be invalid", action)
 		}
 	}

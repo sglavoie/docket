@@ -213,7 +213,6 @@ func evaluateAndApplyProjectRules(project *models.Project, _ *config.Config, rul
 // Helper functions for workflow edit command
 
 // buildTriggersFromFlags creates triggers from flag arrays.
-// Mirrors the logic from workflow_add.go for consistency.
 func buildTriggersFromFlags(fields, ops, values []string) ([]workflow.RuleTrigger, error) {
 	if len(fields) != len(values) {
 		return nil, fmt.Errorf("number of trigger fields (%d) must match values (%d)", len(fields), len(values))
@@ -229,47 +228,11 @@ func buildTriggersFromFlags(fields, ops, values []string) ([]workflow.RuleTrigge
 		return nil, fmt.Errorf("number of trigger ops (%d) must match fields (%d), or omit ops to default to equals", len(ops), len(fields))
 	}
 
-	validFields := map[workflow.TriggerField]bool{
-		workflow.FieldStatus: true, workflow.FieldPriority: true, workflow.FieldSection: true,
-		workflow.FieldTags: true, workflow.FieldType: true, workflow.FieldDueDays: true,
-		workflow.FieldCreatedDays: true, workflow.FieldUpdatedDays: true,
-		workflow.FieldStatusChanged: true, workflow.FieldSectionChanged: true,
-		workflow.FieldPriorityChanged: true, workflow.FieldTagAdded: true,
-		workflow.FieldTagRemoved: true, workflow.FieldCompleted: true, workflow.FieldReopened: true,
-		workflow.FieldDueDateChanged: true, workflow.FieldTypeChanged: true,
-		workflow.FieldRecurrenceCompleted: true, workflow.FieldStreakBroken: true,
-		workflow.FieldHasDueDate: true, workflow.FieldHasTags: true, workflow.FieldDescriptionEmpty: true,
-		workflow.FieldParentStatus: true, workflow.FieldParentType: true, workflow.FieldParentTags: true,
-		workflow.FieldLevel: true, workflow.FieldHasChildren: true, workflow.FieldChildrenProgress: true,
-		workflow.FieldAllChildrenDone: true, workflow.FieldIsBlocked: true, workflow.FieldBlockerCount: true,
-		workflow.FieldDependencyCount: true,
-		// Project-level triggers
-		workflow.FieldHasInProgressTasks: true, workflow.FieldActiveTaskCount: true,
-		workflow.FieldAllTasksStatus: true, workflow.FieldMajorityTaskType: true,
-		workflow.FieldMajorityTaskStatus: true, workflow.FieldCompletionRatio: true,
-		workflow.FieldDaysSinceUpdate: true, workflow.FieldProjectStatus: true,
-		workflow.FieldHasTasksWithStatus: true,
-	}
-	validOps := map[workflow.TriggerOperation]bool{
-		workflow.OpEquals: true, workflow.OpNotEquals: true, workflow.OpContains: true,
-		workflow.OpGreaterThan: true, workflow.OpLessThan: true,
-	}
-
 	var triggers []workflow.RuleTrigger
 	for i := range fields {
-		field := workflow.TriggerField(strings.ToLower(fields[i]))
-		if !validFields[field] {
-			return nil, fmt.Errorf("invalid trigger field: %s", fields[i])
-		}
-
-		op := workflow.TriggerOperation(strings.ToLower(ops[i]))
-		if !validOps[op] {
-			return nil, fmt.Errorf("invalid trigger operation: %s (valid: equals, not_equals, contains, greater_than, less_than)", ops[i])
-		}
-
 		trigger := workflow.RuleTrigger{
-			Field:     field,
-			Operation: op,
+			Field:     workflow.TriggerField(strings.ToLower(fields[i])),
+			Operation: workflow.TriggerOperation(strings.ToLower(ops[i])),
 			Value:     values[i],
 		}
 

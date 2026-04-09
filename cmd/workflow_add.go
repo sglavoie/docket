@@ -3,12 +3,10 @@ package cmd
 import (
 	"encoding/json"
 	"fmt"
-	"strconv"
 	"strings"
 
 	"github.com/spf13/cobra"
 
-	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/workflow"
 )
 
@@ -154,101 +152,16 @@ func init() {
 	addOutputFlags(workflowAddCmd)
 }
 
-func runWorkflowAdd(cmd *cobra.Command, args []string) error { //nolint:gocyclo
+func runWorkflowAdd(cmd *cobra.Command, args []string) error {
 	out, err := getOutputOpts(cmd)
 	if err != nil {
 		return err
 	}
 
-	// Validate trigger counts match
-	if len(triggerFields) != len(triggerValues) {
-		return fmt.Errorf("number of --field flags (%d) must match --value flags (%d)", len(triggerFields), len(triggerValues))
-	}
-
-	// Default ops to "equals" if not specified
-	if len(triggerOps) == 0 {
-		triggerOps = make([]string, len(triggerFields))
-		for i := range triggerOps {
-			triggerOps[i] = "equals"
-		}
-	} else if len(triggerOps) != len(triggerFields) {
-		return fmt.Errorf("number of --op flags (%d) must match --field flags (%d), or omit --op to default to equals", len(triggerOps), len(triggerFields))
-	}
-
-	validFields := map[workflow.TriggerField]bool{
-		// State triggers
-		workflow.FieldStatus:      true,
-		workflow.FieldPriority:    true,
-		workflow.FieldSection:     true,
-		workflow.FieldTags:        true,
-		workflow.FieldType:        true,
-		workflow.FieldDueDays:     true,
-		workflow.FieldCreatedDays: true,
-		workflow.FieldUpdatedDays: true,
-		// Event triggers
-		workflow.FieldStatusChanged:       true,
-		workflow.FieldSectionChanged:      true,
-		workflow.FieldPriorityChanged:     true,
-		workflow.FieldTagAdded:            true,
-		workflow.FieldTagRemoved:          true,
-		workflow.FieldCompleted:           true,
-		workflow.FieldReopened:            true,
-		workflow.FieldDueDateChanged:      true,
-		workflow.FieldTypeChanged:         true,
-		workflow.FieldRecurrenceCompleted: true,
-		workflow.FieldStreakBroken:        true,
-		// Boolean state triggers
-		workflow.FieldHasDueDate:       true,
-		workflow.FieldHasTags:          true,
-		workflow.FieldDescriptionEmpty: true,
-		// Hierarchical triggers
-		workflow.FieldParentStatus:     true,
-		workflow.FieldParentType:       true,
-		workflow.FieldParentTags:       true,
-		workflow.FieldLevel:            true,
-		workflow.FieldHasChildren:      true,
-		workflow.FieldChildrenProgress: true,
-		workflow.FieldAllChildrenDone:  true,
-		workflow.FieldIsBlocked:        true,
-		workflow.FieldBlockerCount:     true,
-		workflow.FieldDependencyCount:  true,
-		// Project-level triggers
-		workflow.FieldHasInProgressTasks: true,
-		workflow.FieldActiveTaskCount:    true,
-		workflow.FieldAllTasksStatus:     true,
-		workflow.FieldMajorityTaskType:   true,
-		workflow.FieldMajorityTaskStatus: true,
-		workflow.FieldCompletionRatio:    true,
-		workflow.FieldDaysSinceUpdate:    true,
-		workflow.FieldProjectStatus:      true,
-		workflow.FieldHasTasksWithStatus: true,
-	}
-	validOps := map[workflow.TriggerOperation]bool{
-		workflow.OpEquals:      true,
-		workflow.OpNotEquals:   true,
-		workflow.OpContains:    true,
-		workflow.OpGreaterThan: true,
-		workflow.OpLessThan:    true,
-	}
-
-	// Build triggers
-	var triggers []workflow.RuleTrigger
-	for i := range triggerFields {
-		field := workflow.TriggerField(strings.ToLower(triggerFields[i]))
-		if !validFields[field] {
-			return fmt.Errorf("invalid trigger field: %s (run 'tt workflow add --help' for valid fields)", triggerFields[i])
-		}
-
-		op := workflow.TriggerOperation(strings.ToLower(triggerOps[i]))
-		if !validOps[op] {
-			return fmt.Errorf("invalid trigger operation: %s (valid: equals, not_equals, contains, greater_than, less_than)", triggerOps[i])
-		}
-
-		triggers = append(triggers, workflow.RuleTrigger{
-			Field:     field,
-			Operation: op,
-			Value:     triggerValues[i],
-		})
+	// Build and validate triggers
+	triggers, err := buildTriggersFromFlags(triggerFields, triggerOps, triggerValues)
+	if err != nil {
+		return err
 	}
 
 	// Validate trigger logic
@@ -257,87 +170,19 @@ func runWorkflowAdd(cmd *cobra.Command, args []string) error { //nolint:gocyclo
 		return fmt.Errorf("invalid trigger logic: %s (valid: and, or)", triggerLogic)
 	}
 
-	// Validate action type
-	action := workflow.ActionType(strings.ToLower(actionType))
-	validActions := map[workflow.ActionType]bool{
-		workflow.ActionSetStatus:      true,
-		workflow.ActionSetPriority:    true,
-		workflow.ActionSetSection:     true,
-		workflow.ActionAddTag:         true,
-		workflow.ActionRemoveTag:      true,
-		workflow.ActionSetDueRelative: true,
-		workflow.ActionClearDue:       true,
-		workflow.ActionSetActive:      true,
-		workflow.ActionSetPinned:      true,
-		workflow.ActionAddComment:     true,
-		workflow.ActionSetType:        true,
-		// Hierarchical actions
-		workflow.ActionCompleteParent: true,
-		workflow.ActionBlockParent:    true,
-		workflow.ActionCascadeTag:     true,
-		workflow.ActionInheritTag:     true,
-		workflow.ActionNotifyParent:   true,
-		// New actions
-		workflow.ActionSetSnooze:        true,
-		workflow.ActionCreateFollowup:   true,
-		workflow.ActionMoveToProject:    true,
-		workflow.ActionSetRecurrence:    true,
-		workflow.ActionSetProjectStatus: true,
+	// Build and validate action
+	ruleAction, err := buildActionFromFlags(actionType, actionValue)
+	if err != nil {
+		return err
 	}
-	if !validActions[action] {
-		return fmt.Errorf("invalid action type: %s (run 'tt workflow add --help' for valid actions)", actionType)
-	}
-
-	// Actions that don't require a value
-	noValueRequired := map[workflow.ActionType]bool{
-		workflow.ActionSetSection:     true, // empty = Active
-		workflow.ActionClearDue:       true,
-		workflow.ActionCompleteParent: true,
-		workflow.ActionBlockParent:    true,
-	}
-
-	// Validate action value based on action type
-	if !noValueRequired[action] && actionValue == "" {
-		return fmt.Errorf("action value required for %s", action)
-	}
-	if action == workflow.ActionSetPriority {
-		p, atoiErr := strconv.Atoi(actionValue)
-		if atoiErr != nil || ValidatePriority(p, false) != nil {
-			return fmt.Errorf("priority must be %d-%d, got: %s", models.PriorityMin, models.PriorityMax, actionValue)
-		}
-	}
-	if action == workflow.ActionSetActive || action == workflow.ActionSetPinned {
-		if actionValue != "true" && actionValue != "false" {
-			return fmt.Errorf("%s value must be 'true' or 'false'", action)
-		}
-	}
-	if action == workflow.ActionSetDueRelative {
-		_, durErr := workflow.ParseRelativeDuration(actionValue)
-		if durErr != nil {
-			return fmt.Errorf("invalid relative duration: %s (use format like +3d, +1w, +2m)", actionValue)
-		}
-	}
-
-	ruleAction := workflow.RuleAction{ActionType: action, Value: actionValue}
 
 	// Build action condition if specified
 	if condField != "" {
-		cField := workflow.TriggerField(strings.ToLower(condField))
-		if !validFields[cField] {
-			return fmt.Errorf("invalid condition field: %s", condField)
+		cond, condErr := buildConditionFromFlags(condField, condOp, condValue)
+		if condErr != nil {
+			return condErr
 		}
-		cOp := workflow.TriggerOperation(strings.ToLower(condOp))
-		if !validOps[cOp] {
-			return fmt.Errorf("invalid condition operation: %s", condOp)
-		}
-		if condValue == "" {
-			return fmt.Errorf("--cond-value is required when --cond-field is specified")
-		}
-		ruleAction.Condition = &workflow.RuleTrigger{
-			Field:     cField,
-			Operation: cOp,
-			Value:     condValue,
-		}
+		ruleAction.Condition = cond
 	}
 
 	actions := []workflow.RuleAction{ruleAction}
