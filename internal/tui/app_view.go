@@ -212,14 +212,21 @@ func (m *AppModel) renderPeekOverlay() string {
 		sb.WriteString("\n")
 	}
 
-	// Description (truncated)
+	// Count lines used so far for metadata (including border/padding overhead).
+	// Border top + bottom = 2, padding top + bottom = 0, footer = 1.
+	metadataLines := strings.Count(sb.String(), "\n")
+	overhead := 3 // top border + bottom border + footer line
+	maxTotalLines := max(m.height*3/5, 10)
+	remainingLines := max(maxTotalLines-metadataLines-overhead, 2)
+
+	// Description (fill remaining space)
 	if task.Description != "" {
 		sb.WriteString("\n")
+		remainingLines-- // account for the blank separator
 		lines := strings.Split(strings.TrimSpace(task.Description), "\n")
-		maxLines := 5
-		if len(lines) > maxLines {
-			lines = lines[:maxLines]
-			lines = append(lines, "…")
+		if len(lines) > remainingLines {
+			lines = lines[:remainingLines]
+			lines[len(lines)-1] = "…"
 		}
 		for _, line := range lines {
 			if len(line) > innerWidth-2 {

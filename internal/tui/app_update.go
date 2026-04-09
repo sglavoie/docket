@@ -2,11 +2,13 @@ package tui
 
 import (
 	"fmt"
+	"os"
 	"runtime/debug"
 	"time"
 
 	"charm.land/bubbles/v2/spinner"
 	tea "charm.land/bubbletea/v2"
+	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/logging"
 	"github.com/sglavoie/tt/internal/models"
@@ -268,6 +270,7 @@ func (m *AppModel) Update(msg tea.Msg) (outModel tea.Model, outCmd tea.Cmd) { //
 
 	case tea.KeyboardEnhancementsMsg:
 		m.keyboardEnhancements = msg
+		return m, upgradeKittyKeyboard()
 
 	case tea.KeyReleaseMsg:
 		if msg.String() == "shift+space" && m.peekActive {
@@ -613,10 +616,37 @@ func (m *AppModel) getCurrentCursorTask() *models.Task {
 		if m.crossOutliner != nil {
 			return m.crossOutliner.getCursorTask()
 		}
+	case ViewInboxProcessor:
+		if m.inboxProcessor != nil {
+			task, _ := m.inboxProcessor.getTaskRef()
+			return task
+		}
+	case ViewGlobalInboxProcessor:
+		if m.globalInboxProcessor != nil {
+			task, _ := m.globalInboxProcessor.getTaskRef()
+			return task
+		}
 	default:
 		// Other view types don't have a cursor task.
 	}
 	return nil
+}
+
+// upgradeKittyKeyboard adds the KittyReportAllKeysAsEscapeCodes flag to the
+// terminal's Kitty keyboard protocol. Bubble Tea v2 only requests mode 1
+// (disambiguate escape codes) which doesn't report shift modifiers for
+// printable keys like space. This upgrade makes shift+space distinguishable
+// from plain space.
+func upgradeKittyKeyboard() tea.Cmd {
+	return func() tea.Msg {
+		f, err := os.OpenFile("/dev/tty", os.O_WRONLY, 0)
+		if err != nil {
+			return nil
+		}
+		defer f.Close()
+		_, _ = f.WriteString(ansi.KittyKeyboard(ansi.KittyReportAllKeysAsEscapeCodes|ansi.KittyReportAlternateKeys|ansi.KittyReportAssociatedKeys, 2))
+		return nil
+	}
 }
 
 // hasActiveMultiSelect returns true if any primary view has multi-select mode active.
