@@ -39,289 +39,93 @@ func DiffAndRecordActivity(oldTasks, newTasks []*models.Task, maxEntries int) {
 }
 
 // diffTask compares two versions of the same task and records changes.
-func diffTask(old, new *models.Task) { //nolint:gocyclo
+func diffTask(old, new *models.Task) {
 	now := time.Now()
 
-	if old.Status != new.Status {
+	// record appends an activity entry to the new task.
+	record := func(field, oldVal, newVal string) {
 		new.Activity = append(new.Activity, &models.ActivityEntry{
 			Timestamp: now,
-			Field:     "status",
-			OldValue:  string(old.Status),
-			NewValue:  string(new.Status),
+			Field:     field,
+			OldValue:  oldVal,
+			NewValue:  newVal,
 		})
 	}
 
-	if old.Priority != new.Priority {
-		new.Activity = append(new.Activity, &models.ActivityEntry{
-			Timestamp: now,
-			Field:     "priority",
-			OldValue:  fmt.Sprintf("%d", old.Priority),
-			NewValue:  fmt.Sprintf("%d", new.Priority),
-		})
-	}
-
-	if old.Section != new.Section {
-		oldSection := old.Section
-		if oldSection == "" {
-			oldSection = "Active"
-		}
-		newSection := new.Section
-		if newSection == "" {
-			newSection = "Active"
-		}
-		if oldSection != newSection {
-			new.Activity = append(new.Activity, &models.ActivityEntry{
-				Timestamp: now,
-				Field:     "section",
-				OldValue:  oldSection,
-				NewValue:  newSection,
-			})
+	// recordIfDiff records a change when two pre-computed strings differ.
+	recordIfDiff := func(field, oldVal, newVal string) {
+		if oldVal != newVal {
+			record(field, oldVal, newVal)
 		}
 	}
 
-	if old.Stage != new.Stage {
-		new.Activity = append(new.Activity, &models.ActivityEntry{
-			Timestamp: now,
-			Field:     "stage",
-			OldValue:  old.Stage,
-			NewValue:  new.Stage,
-		})
-	}
+	recordIfDiff("status", string(old.Status), string(new.Status))
+	recordIfDiff("priority", fmt.Sprintf("%d", old.Priority), fmt.Sprintf("%d", new.Priority))
 
-	if old.Title != new.Title {
-		new.Activity = append(new.Activity, &models.ActivityEntry{
-			Timestamp: now,
-			Field:     "title",
-			OldValue:  old.Title,
-			NewValue:  new.Title,
-		})
-	}
+	// Section: normalize empty to "Active"
+	recordIfDiff("section", orDefault(old.Section, "Active"), orDefault(new.Section, "Active"))
 
-	if string(old.Type) != string(new.Type) {
-		new.Activity = append(new.Activity, &models.ActivityEntry{
-			Timestamp: now,
-			Field:     "type",
-			OldValue:  string(old.Type),
-			NewValue:  string(new.Type),
-		})
-	}
+	recordIfDiff("stage", old.Stage, new.Stage)
+	recordIfDiff("title", old.Title, new.Title)
+	recordIfDiff("type", string(old.Type), string(new.Type))
 
 	// Tags: record as +added -removed
-	tagChanges := diffTags(old.Tags, new.Tags)
-	if tagChanges != "" {
-		new.Activity = append(new.Activity, &models.ActivityEntry{
-			Timestamp: now,
-			Field:     "tags",
-			NewValue:  tagChanges,
-		})
+	if tagChanges := diffTags(old.Tags, new.Tags); tagChanges != "" {
+		record("tags", "", tagChanges)
 	}
 
-	// Due date
-	oldDue := formatDueDate(old.DueDate)
-	newDue := formatDueDate(new.DueDate)
-	if oldDue != newDue {
-		new.Activity = append(new.Activity, &models.ActivityEntry{
-			Timestamp: now,
-			Field:     "due",
-			OldValue:  oldDue,
-			NewValue:  newDue,
-		})
-	}
+	recordIfDiff("due", formatTimePtr(old.DueDate), formatTimePtr(new.DueDate))
+	recordIfDiff("snoozed", formatTimePtr(old.SnoozedUntil), formatTimePtr(new.SnoozedUntil))
 
-	// Snoozed
-	oldSnoozed := formatSnoozedDate(old.SnoozedUntil)
-	newSnoozed := formatSnoozedDate(new.SnoozedUntil)
-	if oldSnoozed != newSnoozed {
-		new.Activity = append(new.Activity, &models.ActivityEntry{
-			Timestamp: now,
-			Field:     "snoozed",
-			OldValue:  oldSnoozed,
-			NewValue:  newSnoozed,
-		})
-	}
-
-	// Pinned
-	if old.Pinned != new.Pinned {
-		new.Activity = append(new.Activity, &models.ActivityEntry{
-			Timestamp: now,
-			Field:     "pinned",
-			OldValue:  fmt.Sprintf("%v", old.Pinned),
-			NewValue:  fmt.Sprintf("%v", new.Pinned),
-		})
-	}
-
-	// Active
-	if old.Active != new.Active {
-		new.Activity = append(new.Activity, &models.ActivityEntry{
-			Timestamp: now,
-			Field:     "active",
-			OldValue:  fmt.Sprintf("%v", old.Active),
-			NewValue:  fmt.Sprintf("%v", new.Active),
-		})
-	}
-
-	// Dimmed
-	if old.Dimmed != new.Dimmed {
-		new.Activity = append(new.Activity, &models.ActivityEntry{
-			Timestamp: now,
-			Field:     "dimmed",
-			OldValue:  fmt.Sprintf("%v", old.Dimmed),
-			NewValue:  fmt.Sprintf("%v", new.Dimmed),
-		})
-	}
+	// Boolean fields
+	recordIfDiff("pinned", fmt.Sprintf("%v", old.Pinned), fmt.Sprintf("%v", new.Pinned))
+	recordIfDiff("active", fmt.Sprintf("%v", old.Active), fmt.Sprintf("%v", new.Active))
+	recordIfDiff("dimmed", fmt.Sprintf("%v", old.Dimmed), fmt.Sprintf("%v", new.Dimmed))
 
 	// Description (hash-based, don't store full text)
 	if hashString(old.Description) != hashString(new.Description) {
-		new.Activity = append(new.Activity, &models.ActivityEntry{
-			Timestamp: now,
-			Field:     "description",
-			OldValue:  "changed",
-			NewValue:  "updated",
-		})
+		record("description", "changed", "updated")
 	}
 
-	// Comments
-	oldComments := len(old.Comments)
-	newComments := len(new.Comments)
-	if oldComments != newComments {
-		new.Activity = append(new.Activity, &models.ActivityEntry{
-			Timestamp: now,
-			Field:     "comments",
-			OldValue:  fmt.Sprintf("%d", oldComments),
-			NewValue:  fmt.Sprintf("%d", newComments),
-		})
-	}
+	recordIfDiff("comments", fmt.Sprintf("%d", len(old.Comments)), fmt.Sprintf("%d", len(new.Comments)))
 
-	// Dependencies (DependsOn)
 	if !stringSlicesEqual(old.DependsOn, new.DependsOn) {
-		new.Activity = append(new.Activity, &models.ActivityEntry{
-			Timestamp: now,
-			Field:     "dependencies",
-			NewValue:  "updated",
-		})
+		record("dependencies", "", "updated")
 	}
 
-	// Related tasks
 	if !stringSlicesEqual(old.RelatedTo, new.RelatedTo) {
-		new.Activity = append(new.Activity, &models.ActivityEntry{
-			Timestamp: now,
-			Field:     "related",
-			NewValue:  "updated",
-		})
+		record("related", "", "updated")
 	}
 
-	// Attachments
-	oldAttach := len(old.Attachments)
-	newAttach := len(new.Attachments)
-	if oldAttach != newAttach {
-		new.Activity = append(new.Activity, &models.ActivityEntry{
-			Timestamp: now,
-			Field:     "attachments",
-			OldValue:  fmt.Sprintf("%d", oldAttach),
-			NewValue:  fmt.Sprintf("%d", newAttach),
-		})
-	}
-
-	// ParentID
-	oldParent := ptrStringVal(old.ParentID)
-	newParent := ptrStringVal(new.ParentID)
-	if oldParent != newParent {
-		new.Activity = append(new.Activity, &models.ActivityEntry{
-			Timestamp: now,
-			Field:     "parent",
-			OldValue:  oldParent,
-			NewValue:  newParent,
-		})
-	}
-
-	// Recurrence
-	oldRecur := recurrenceString(old.Recurrence)
-	newRecur := recurrenceString(new.Recurrence)
-	if oldRecur != newRecur {
-		new.Activity = append(new.Activity, &models.ActivityEntry{
-			Timestamp: now,
-			Field:     "recurrence",
-			OldValue:  oldRecur,
-			NewValue:  newRecur,
-		})
-	}
+	recordIfDiff("attachments", fmt.Sprintf("%d", len(old.Attachments)), fmt.Sprintf("%d", len(new.Attachments)))
+	recordIfDiff("parent", ptrStringVal(old.ParentID), ptrStringVal(new.ParentID))
+	recordIfDiff("recurrence", recurrenceString(old.Recurrence), recurrenceString(new.Recurrence))
 
 	// Checklist
-	oldChecklist := len(old.Checklist)
-	newChecklist := len(new.Checklist)
-	oldDone := countChecklistDone(old.Checklist)
-	newDone := countChecklistDone(new.Checklist)
+	oldChecklist, newChecklist := len(old.Checklist), len(new.Checklist)
+	oldDone, newDone := countChecklistDone(old.Checklist), countChecklistDone(new.Checklist)
 	if oldChecklist != newChecklist || oldDone != newDone {
-		new.Activity = append(new.Activity, &models.ActivityEntry{
-			Timestamp: now,
-			Field:     "checklist",
-			OldValue:  fmt.Sprintf("%d/%d", oldDone, oldChecklist),
-			NewValue:  fmt.Sprintf("%d/%d", newDone, newChecklist),
-		})
+		record("checklist",
+			fmt.Sprintf("%d/%d", oldDone, oldChecklist),
+			fmt.Sprintf("%d/%d", newDone, newChecklist))
 	}
 
-	// ScoreDimensions
 	if !scoreDimensionsEqual(old.ScoreDimensions, new.ScoreDimensions) {
-		new.Activity = append(new.Activity, &models.ActivityEntry{
-			Timestamp: now,
-			Field:     "score",
-			NewValue:  "updated",
-		})
+		record("score", "", "updated")
 	}
 
-	// CustomSection
-	if old.CustomSection != new.CustomSection {
-		oldCS := old.CustomSection
-		if oldCS == "" {
-			oldCS = "none"
-		}
-		newCS := new.CustomSection
-		if newCS == "" {
-			newCS = "none"
-		}
-		new.Activity = append(new.Activity, &models.ActivityEntry{
-			Timestamp: now,
-			Field:     "custom_section",
-			OldValue:  oldCS,
-			NewValue:  newCS,
-		})
-	}
+	// String fields with empty -> "none" normalization
+	recordIfDiff("custom_section", orDefault(old.CustomSection, "none"), orDefault(new.CustomSection, "none"))
+	recordIfDiff("url", orDefault(old.URL, "none"), orDefault(new.URL, "none"))
+	recordIfDiff("source", orDefault(old.Source, "none"), orDefault(new.Source, "none"))
+}
 
-	// URL
-	if old.URL != new.URL {
-		oldURL := old.URL
-		if oldURL == "" {
-			oldURL = "none"
-		}
-		newURL := new.URL
-		if newURL == "" {
-			newURL = "none"
-		}
-		new.Activity = append(new.Activity, &models.ActivityEntry{
-			Timestamp: now,
-			Field:     "url",
-			OldValue:  oldURL,
-			NewValue:  newURL,
-		})
+// orDefault returns fallback if s is empty, otherwise s.
+func orDefault(s, fallback string) string {
+	if s == "" {
+		return fallback
 	}
-
-	// Source
-	if old.Source != new.Source {
-		oldSource := old.Source
-		if oldSource == "" {
-			oldSource = "none"
-		}
-		newSource := new.Source
-		if newSource == "" {
-			newSource = "none"
-		}
-		new.Activity = append(new.Activity, &models.ActivityEntry{
-			Timestamp: now,
-			Field:     "source",
-			OldValue:  oldSource,
-			NewValue:  newSource,
-		})
-	}
+	return s
 }
 
 // diffTags returns a string like "+backend +api -frontend" for tag changes.
@@ -364,14 +168,7 @@ func diffTags(oldTags, newTags []string) string {
 	return strings.Join(parts, " ")
 }
 
-func formatSnoozedDate(d *time.Time) string {
-	if d == nil {
-		return "none"
-	}
-	return d.Format(util.DateFormat)
-}
-
-func formatDueDate(d *time.Time) string {
+func formatTimePtr(d *time.Time) string {
 	if d == nil {
 		return "none"
 	}
