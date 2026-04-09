@@ -141,6 +141,53 @@ func (m *AppModel) popView() tea.Cmd {
 	return nil
 }
 
+// handleEscKey handles the escape/q key for view navigation.
+// Returns (handled, cmd): handled=true if the key was consumed (should not
+// propagate to views); cmd is non-nil when the pop triggers a side-effect
+// (e.g. ViewDidAppearMsg for the cross-project outliner).
+func (m *AppModel) handleEscKey() (bool, tea.Cmd) {
+	if m.peekActive {
+		m.peekTask = nil
+		m.peekActive = false
+		return true, nil
+	}
+	if m.pendingSemicolonPrefix {
+		m.pendingSemicolonPrefix = false
+		return true, nil
+	}
+	if caps := m.currentViewCapabilities(); caps != nil && caps.ShouldCaptureEsc() {
+		return false, nil
+	}
+	if m.currentView() != ViewDashboard {
+		closingView := m.currentView()
+		// Give the closing view a chance to reset any interactive state
+		// (text inputs, edit modes) before it is popped from the stack.
+		if view := m.views.Get(closingView); view != nil {
+			if resetter, ok := view.(ViewExitResetter); ok {
+				resetter.OnExit()
+			}
+		}
+		var cmd tea.Cmd
+		if isGlobalOverlayView(closingView) {
+			m.popToAnchorView()
+		} else {
+			cmd = m.popView()
+		}
+		// Restore previous project when popping a stacked project tree
+		if closingView == ViewProjectTree && m.currentView() == ViewProjectTree && len(m.projectStack) > 0 {
+			prevID := m.projectStack[len(m.projectStack)-1]
+			m.projectStack = m.projectStack[:len(m.projectStack)-1]
+			if prev := m.config.GetProject(prevID); prev != nil {
+				m.switchToProject(prev, true)
+			} else {
+				m.setInfoStatus("Previous project no longer exists")
+			}
+		}
+		return true, cmd
+	}
+	return false, nil
+}
+
 // isGlobalOverlayView returns true for views launched via the global ";" overlay prefix.
 // These views can be opened from any context and should return to an anchor view when closed.
 func isGlobalOverlayView(v ViewType) bool {
