@@ -26,7 +26,7 @@ func (m *FocusViewModel) View() tea.View { //nolint:gocyclo
 			subtitle = fmt.Sprintf("%d queued, %d/%d tasks", queueCount, len(m.filtered), len(m.tasks))
 		}
 	}
-	b.WriteString(renderFullscreenTitle("What's Next", subtitle, m.AccentColor()))
+	b.WriteString(renderFullscreenTitle("Backlog", subtitle, m.AccentColor()))
 	b.WriteString("\n")
 
 	if len(m.tasks) == 0 && len(*m.queue) == 0 {
@@ -165,7 +165,7 @@ func (m *FocusViewModel) renderQueueLines() ([]string, int) {
 		isSelected := i == m.cursor
 		// Number prefix for queue items
 		numPrefix := MutedStyle.Render(fmt.Sprintf("%d. ", i+1))
-		line := m.renderTaskLineWithPrefix(ft, isSelected, maxTitleLen, numPrefix, false, layout, rowIndex)
+		line := m.renderTaskLineWithPrefix(ft, isSelected, maxTitleLen, numPrefix, false, false, layout, rowIndex)
 		lines = append(lines, line)
 		rowIndex++
 	}
@@ -202,7 +202,7 @@ func (m *FocusViewModel) renderSuggestedLines() ([]string, int) {
 			starShown = true
 		}
 
-		line := m.renderTaskLineWithPrefix(ft, isSelected, maxTitleLen, prefix, m.isInQueue(ft.Task.ID), layout, rowIndex)
+		line := m.renderTaskLineWithPrefix(ft, isSelected, maxTitleLen, prefix, m.isInQueue(ft.Task.ID), m.dailyPlanIDs[ft.Task.ID], layout, rowIndex)
 		lines = append(lines, line)
 		rowIndex++
 
@@ -223,7 +223,7 @@ func (m *FocusViewModel) renderStandardLines() ([]string, int) {
 
 	for i, ft := range m.filtered {
 		isSelected := i == m.cursor
-		line := m.renderTaskLineWithPrefix(ft, isSelected, maxTitleLen, "", m.queueIDs[ft.Task.ID], layout, rowIndex)
+		line := m.renderTaskLineWithPrefix(ft, isSelected, maxTitleLen, "", m.queueIDs[ft.Task.ID], m.dailyPlanIDs[ft.Task.ID], layout, rowIndex)
 		lines = append(lines, line)
 		rowIndex++
 	}
@@ -284,7 +284,7 @@ func (m *FocusViewModel) computeColumnLayout() *ColumnLayout {
 }
 
 // renderTaskLineWithPrefix renders a single task line with an optional prefix.
-func (m *FocusViewModel) renderTaskLineWithPrefix(ft FocusTask, isSelected bool, maxTitleLen int, prefix string, queued bool, layout *ColumnLayout, rowIndex int) string {
+func (m *FocusViewModel) renderTaskLineWithPrefix(ft FocusTask, isSelected bool, maxTitleLen int, prefix string, queued bool, dailyPlanned bool, layout *ColumnLayout, rowIndex int) string {
 	task := ft.Task
 
 	dueStr := ""
@@ -293,12 +293,13 @@ func (m *FocusViewModel) renderTaskLineWithPrefix(ft FocusTask, isSelected bool,
 	}
 
 	return RenderCrossProjectTaskLine(task, ft.Project, nil, isSelected, m.width, maxTitleLen, CrossProjectTaskLineOpts{
-		Queued:   queued,
-		ShowTags: true,
-		Prefix:   prefix,
-		DueStr:   dueStr,
-		Flash:    m.cursorFlash,
-		Layout:   layout,
-		RowIndex: rowIndex,
+		Queued:       queued,
+		DailyPlanned: dailyPlanned,
+		ShowTags:     true,
+		Prefix:       prefix,
+		DueStr:       dueStr,
+		Flash:        m.cursorFlash,
+		Layout:       layout,
+		RowIndex:     rowIndex,
 	})
 }

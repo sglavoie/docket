@@ -21,11 +21,13 @@ func (m *AppModel) handleNotificationMessages(msg tea.Msg) (bool, tea.Cmd) {
 		case alerts.CategoryDailyReview:
 			dr := NewDailyReviewModel(m.config, m.configManager)
 			dr.queueIDs = m.focusQueueIDs
+			dr.dailyPlanIDs = m.dailyPlanIDs
 			m.showView(ViewDailyReview, dr)
 			return true, nil
 		case alerts.CategoryWeeklyReview:
 			wr := NewWeeklyReviewModel(m.config, m.configManager)
 			wr.queueIDs = m.focusQueueIDs
+			wr.dailyPlanIDs = m.dailyPlanIDs
 			m.showView(ViewWeeklyReview, wr)
 			return true, nil
 		default:

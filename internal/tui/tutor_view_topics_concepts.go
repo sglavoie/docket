@@ -157,7 +157,7 @@ See Blockers (Project-level) for project-level impediments.`,
 			Category: "Concepts",
 			Content: `# The Suggestion Engine
 
-The "What's Next" engine ranks tasks across all active projects
+The "Backlog" engine ranks tasks across all active projects
 using a weighted formula that considers priority, due dates, status,
 activity recency, unblocking potential, and scoring profiles.
 

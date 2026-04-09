@@ -106,20 +106,24 @@ func (m *AppModel) reconstructGlobalView(entry NavEntry) tea.Cmd {
 	case ViewDailyReview:
 		dr := NewDailyReviewModel(m.config, m.configManager)
 		dr.queueIDs = m.focusQueueIDs
+		dr.dailyPlanIDs = m.dailyPlanIDs
 		m.showView(ViewDailyReview, dr)
 	case ViewWeeklyReview:
 		wr := NewWeeklyReviewModel(m.config, m.configManager)
 		wr.queueIDs = m.focusQueueIDs
+		wr.dailyPlanIDs = m.dailyPlanIDs
 		m.showView(ViewWeeklyReview, wr)
 	case ViewFocusView:
-		m.showView(ViewFocusView, NewFocusViewModel(m.config, m.configManager, &m.focusQueue, m.focusQueueIDs, m.focusDismissedIDs))
+		m.showView(ViewFocusView, NewFocusViewModel(m.config, m.configManager, &m.focusQueue, m.focusQueueIDs, m.dailyPlanIDs, m.focusDismissedIDs))
 	case ViewDueDateOverview:
 		ddo := NewDueDateOverviewModel(m.config, m.configManager)
 		ddo.queueIDs = m.focusQueueIDs
+		ddo.dailyPlanIDs = m.dailyPlanIDs
 		m.showView(ViewDueDateOverview, ddo)
 	case ViewRecentActivity:
 		ra := NewRecentActivityModel(m.config)
 		ra.queueIDs = m.focusQueueIDs
+		ra.dailyPlanIDs = m.dailyPlanIDs
 		m.showView(ViewRecentActivity, ra)
 	case ViewGlobalSearch:
 		m.globalSearch = NewGlobalSearchModel(m.config)
@@ -161,13 +165,18 @@ func (m *AppModel) reconstructGlobalView(entry NavEntry) tea.Cmd {
 	case ViewCrossProjectOutliner:
 		m.crossOutliner = NewOutlinerModel(nil, m.config, m.configManager)
 		m.crossOutliner.queueIDs = m.focusQueueIDs
+		m.crossOutliner.dailyPlanIDs = m.dailyPlanIDs
 		m.showView(ViewCrossProjectOutliner, m.crossOutliner)
 		return m.crossOutliner.Init()
 	case ViewFocusBoard:
-		m.showView(ViewFocusBoard, NewFocusBoardModel(m.config, m.configManager))
+		fb := NewFocusBoardModel(m.config, m.configManager)
+		fb.queueIDs = m.focusQueueIDs
+		fb.dailyPlanIDs = m.dailyPlanIDs
+		m.showView(ViewFocusBoard, fb)
 	case ViewAllTasks:
 		atv := NewAllTasksViewModel(m.config, m.configManager)
 		atv.queueIDs = m.focusQueueIDs
+		atv.dailyPlanIDs = m.dailyPlanIDs
 		if m.allTasksFilterCache != nil {
 			atv.filter = *copyCommonFilterState(&m.allTasksFilterCache.Filter)
 			atv.groupBy = m.allTasksFilterCache.GroupBy
@@ -199,6 +208,7 @@ func (m *AppModel) reconstructProjectView(entry NavEntry) tea.Cmd {
 	case ViewPriorityView:
 		pv := NewPriorityViewModel(project, m.config, m.configManager)
 		pv.queueIDs = m.focusQueueIDs
+		pv.dailyPlanIDs = m.dailyPlanIDs
 		if cached, ok := m.priorityViewFilterCache[project.ID]; ok {
 			pv.filter = *copyCommonFilterState(&cached.Filter)
 			pv.tabs.Active = cached.TabActive
@@ -218,6 +228,7 @@ func (m *AppModel) reconstructProjectView(entry NavEntry) tea.Cmd {
 		m.saveOutlinerFilterState()
 		m.outliner = NewOutlinerModel(project, m.config, m.configManager)
 		m.outliner.queueIDs = m.focusQueueIDs
+		m.outliner.dailyPlanIDs = m.dailyPlanIDs
 		m.restoreOutlinerToggleState()
 		m.restoreOutlinerFilterState()
 		m.showView(ViewOutliner, m.outliner)
@@ -236,10 +247,12 @@ func (m *AppModel) reconstructProjectView(entry NavEntry) tea.Cmd {
 	case ViewTemporaryOutliner:
 		fresh := NewOutlinerModel(project, m.config, m.configManager)
 		fresh.queueIDs = m.focusQueueIDs
+		fresh.dailyPlanIDs = m.dailyPlanIDs
 		m.showView(ViewTemporaryOutliner, fresh)
 	case ViewProjectRecentActivity:
 		pra := NewProjectRecentActivityModel(m.config, project)
 		pra.queueIDs = m.focusQueueIDs
+		pra.dailyPlanIDs = m.dailyPlanIDs
 		m.showView(ViewProjectRecentActivity, pra)
 	default:
 	}

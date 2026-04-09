@@ -162,8 +162,9 @@ var (
 	// SemicolonPrefixHints contains hints for the ";" (tt global) prefix.
 	SemicolonPrefixHints = []PrefixHint{
 		{Key: "a", Description: "all tasks", Detail: "View all tasks across projects"},
+		{Key: "b", Description: "backlog", Detail: "Cross-project task suggestions"},
 		{Key: "d", Description: "daily review", Detail: "Open Daily Review"},
-		{Key: "f", Description: "what's next", Detail: "Cross-project task suggestions"},
+		{Key: "f", Description: "focus board", Detail: "Personal command center"},
 		{Key: "l", Description: "latest activity", Detail: "Recently modified tasks"},
 		{Key: "m", Description: "metrics", Detail: "Completion rates and throughput"},
 		{Key: "n", Description: "notifications", Detail: "Open Notification Center"},
@@ -171,7 +172,6 @@ var (
 		{Key: "w", Description: "weekly review", Detail: "Open Weekly Review"},
 		{Key: "B", Description: "global blockers", Detail: "Blockers across all projects"},
 		{Key: "D", Description: "due date overview", Detail: "View tasks by due date"},
-		{Key: "F", Description: "focus board", Detail: "Personal command center"},
 		{Key: "N", Description: "global notes", Detail: "Open global notes"},
 		{Key: "W", Description: "workflow rules", Detail: "Manage workflow automation rules"},
 	}

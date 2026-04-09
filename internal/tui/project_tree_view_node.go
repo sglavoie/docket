@@ -40,9 +40,11 @@ func (m *ProjectTreeModel) renderNodeWithWidth(node *TreeNode, selected bool, in
 		expandIcon = MutedStyle.Render("─") + " "
 	}
 
-	// Queue indicator: always 2 chars wide.
+	// Queue / daily-plan indicator: always 2 chars wide. T takes precedence over Q.
 	queueIndicator := "  "
-	if m.queueIDs[task.ID] {
+	if m.dailyPlanIDs[task.ID] {
+		queueIndicator = ActiveStyle.Render("T") + " "
+	} else if m.queueIDs[task.ID] {
 		queueIndicator = ActiveStyle.Render("Q") + " "
 	}
 

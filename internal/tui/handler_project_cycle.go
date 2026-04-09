@@ -96,6 +96,7 @@ func (m *AppModel) switchToCycleProject(project *models.Project) (bool, tea.Cmd)
 	m.config.ApplyGlobalColorsToProject(project)
 	m.projectTree = NewProjectTreeModel(project, m.config, m.configManager)
 	m.projectTree.queueIDs = m.focusQueueIDs
+	m.projectTree.dailyPlanIDs = m.dailyPlanIDs
 	m.projectTree.SetSize(m.width, m.height-2)
 	m.restoreProjectTreeState()
 	m.views.Register(ViewProjectTree, m.projectTree)
@@ -113,6 +114,7 @@ func (m *AppModel) switchToCycleProject(project *models.Project) (bool, tea.Cmd)
 		m.saveOutlinerFilterState()
 		m.outliner = NewOutlinerModel(project, m.config, m.configManager)
 		m.outliner.queueIDs = m.focusQueueIDs
+		m.outliner.dailyPlanIDs = m.dailyPlanIDs
 		m.restoreOutlinerToggleState()
 		m.restoreOutlinerFilterState()
 		m.outliner.SetSize(m.width, m.height-2)

@@ -10,6 +10,16 @@ func (c *Config) SetFocusQueue(items []FocusQueueItem) {
 	c.FocusQueue = items
 }
 
+// GetDailyPlan returns the persisted daily plan items.
+func (c *Config) GetDailyPlan() []DailyPlanItem {
+	return c.DailyPlan
+}
+
+// SetDailyPlan replaces the entire daily plan.
+func (c *Config) SetDailyPlan(items []DailyPlanItem) {
+	c.DailyPlan = items
+}
+
 // GetFocusDismissedIDs returns the persisted dismissed suggestion IDs.
 func (c *Config) GetFocusDismissedIDs() []string {
 	return c.FocusDismissedIDs

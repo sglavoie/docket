@@ -27,6 +27,7 @@ func (m *AppModel) refreshProjectTree() {
 
 	m.projectTree = NewProjectTreeModel(m.currentProject, m.config, m.configManager)
 	m.projectTree.queueIDs = m.focusQueueIDs
+	m.projectTree.dailyPlanIDs = m.dailyPlanIDs
 	m.projectTree.SetSize(m.width, m.height-2)
 	m.views.Register(ViewProjectTree, m.projectTree)
 	m.restoreProjectTreeState()
@@ -123,6 +124,7 @@ func (m *AppModel) switchToProject(project *models.Project, restoreState bool) {
 	m.config.ApplyGlobalColorsToProject(project)
 	m.projectTree = NewProjectTreeModel(project, m.config, m.configManager)
 	m.projectTree.queueIDs = m.focusQueueIDs
+	m.projectTree.dailyPlanIDs = m.dailyPlanIDs
 	m.projectTree.SetSize(m.width, m.height-2)
 	if restoreState {
 		m.restoreProjectTreeState()

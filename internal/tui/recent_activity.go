@@ -25,8 +25,9 @@ type RecentActivityModel struct {
 	InteractiveViewState
 	config *config.Config
 
-	// Queue indicator support
-	queueIDs map[string]bool
+	// Queue / daily-plan indicator support
+	queueIDs     map[string]bool
+	dailyPlanIDs map[string]bool
 
 	tasks    []CrossProjectTask
 	filtered []CrossProjectTask
@@ -455,13 +456,14 @@ func (m *RecentActivityModel) renderTaskLine(dt CrossProjectTask, selected bool,
 	}
 	relTime := MutedStyle.Render("  " + storage.FormatRelativeTime(task.UpdatedAt))
 	return TaskLine{
-		Task:        task,
-		IsSelected:  selected,
-		Queued:      m.queueIDs[task.ID],
-		MaxTitle:    maxTitleLen,
-		PreBadges:   preBadges,
-		StageBadge:  GetStageBadge(task.Stage),
-		PostTitle:   relTime,
+		Task:         task,
+		IsSelected:   selected,
+		Queued:       m.queueIDs[task.ID],
+		DailyPlanned: m.dailyPlanIDs[task.ID],
+		MaxTitle:     maxTitleLen,
+		PreBadges:    preBadges,
+		StageBadge:   GetStageBadge(task.Stage),
+		PostTitle:    relTime,
 		ViewWidth:   m.Width(),
 		Flash:       m.cursorFlash,
 		SearchQuery: m.SearchQuery(),

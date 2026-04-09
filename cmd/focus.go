@@ -35,7 +35,7 @@ var focusSuggestLimit int
 var focusSuggestCmd = &cobra.Command{
 	Use:   "suggest",
 	Short: "Show ranked task suggestions across projects",
-	Long: `Show tasks ranked by the "What's Next" suggestion engine.
+	Long: `Show tasks ranked by the "Backlog" suggestion engine.
 
 Tasks are scored based on priority, due dates, status, activity recency,
 unblocking potential, and composite scoring profiles.
@@ -59,6 +59,19 @@ Examples:
 	RunE: runFocusQueue,
 }
 
+var focusTodayCmd = &cobra.Command{
+	Use:   "today",
+	Short: "Show tasks planned for today",
+	Long: `Show tasks that have been planned for today's work session.
+
+Tasks are added to the daily plan by pressing 'w' in any task view.
+Unfinished tasks carry over automatically to the next day.
+
+Examples:
+  tt focus today`,
+	RunE: runFocusToday,
+}
+
 func init() {
 	rootCmd.AddCommand(focusCmd)
 	focusCmd.Flags().BoolVar(&focusActiveOnly, "active", false, "Show only active-flagged tasks")
@@ -67,6 +80,7 @@ func init() {
 	focusSuggestCmd.Flags().IntVarP(&focusSuggestLimit, "number", "n", 10, "Number of suggestions to show")
 
 	focusCmd.AddCommand(focusQueueCmd)
+	focusCmd.AddCommand(focusTodayCmd)
 }
 
 func runFocus(cmd *cobra.Command, args []string) error {
@@ -201,6 +215,72 @@ func runFocusSuggest(cmd *cobra.Command, args []string) error {
 
 	fmt.Println(t.Render())
 	fmt.Printf("\nTop %d of %d suggestions\n", limit, len(ranked))
+	return nil
+}
+
+func runFocusToday(cmd *cobra.Command, args []string) error {
+	cfg, _, err := LoadConfigStrict()
+	if err != nil {
+		return err
+	}
+
+	planItems := cfg.GetDailyPlan()
+	if len(planItems) == 0 {
+		fmt.Println("No tasks planned for today.")
+		fmt.Println("Press 'w' on any task in the TUI to plan it for today.")
+		return nil
+	}
+
+	// Load projects and build task lookup
+	projectMap := make(map[string]*models.Project)
+	taskMap := make(map[string]*models.Task)
+	for _, p := range cfg.GetActiveProjects() {
+		if err := storage.LoadProject(p); err != nil {
+			fmt.Fprintf(os.Stderr, "warning: failed to load project %q: %v\n", p.Slug, err)
+			continue
+		}
+		projectMap[p.ID] = p
+		for _, task := range p.Tasks {
+			taskMap[task.ID] = task
+		}
+	}
+
+	t := table.NewWriter()
+	t.SetStyle(table.StyleRounded)
+	t.AppendHeader(table.Row{"#", "Project", "ID", "Type", "Status", "Pri", "Title", "Due"})
+
+	count := 0
+	for _, item := range planItems {
+		project, ok := projectMap[item.ProjectID]
+		if !ok {
+			continue
+		}
+		task, ok := taskMap[item.TaskID]
+		if !ok {
+			continue
+		}
+
+		count++
+		dueStr := focus.FormatRelativeDue(task.DueDate)
+		t.AppendRow(table.Row{
+			count,
+			util.Truncate(project.Name, 15),
+			task.ShortID,
+			task.Type.Icon(),
+			task.Status.Icon(),
+			task.Priority,
+			util.Truncate(task.Title, 40),
+			dueStr,
+		})
+	}
+
+	if count == 0 {
+		fmt.Println("No tasks planned for today (all planned tasks belong to inactive or missing projects).")
+		return nil
+	}
+
+	fmt.Println(t.Render())
+	fmt.Printf("\n%s planned for today\n", Pluralize(count, "task", "tasks"))
 	return nil
 }
 

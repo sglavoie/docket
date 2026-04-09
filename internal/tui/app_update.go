@@ -106,9 +106,9 @@ func (m *AppModel) Update(msg tea.Msg) (outModel tea.Model, outCmd tea.Cmd) { //
 				return m, func() tea.Msg { return ShowWeeklyReviewMsg{} }
 			case "N":
 				return m, func() tea.Msg { return ShowGlobalNotesMsg{} }
-			case "f":
+			case "b":
 				return m, func() tea.Msg { return ShowFocusViewMsg{} }
-			case "F":
+			case "f":
 				return m, func() tea.Msg { return ShowFocusBoardMsg{} }
 			case "l":
 				return m, func() tea.Msg { return ShowRecentActivityMsg{} }
@@ -196,6 +196,14 @@ func (m *AppModel) Update(msg tea.Msg) (outModel tea.Model, outCmd tea.Cmd) { //
 			}
 			// Non-task views (including dashboard): q is a no-op
 			return m, nil
+		case "w":
+			if m.hasActiveTextInput() {
+				break
+			}
+			if cmd := m.toggleDailyPlan(); cmd != nil {
+				return m, cmd
+			}
+			// Fall through to view's own w handler (inbox processor, waiting, etc.)
 		case "ctrl+x":
 			// Open project picker if no view has an active text input
 			if !m.hasActiveTextInput() {

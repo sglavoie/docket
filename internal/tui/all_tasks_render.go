@@ -211,6 +211,7 @@ func (m *AllTasksViewModel) renderTaskLine(item CrossProjectTask, isSelected boo
 
 	return RenderCrossProjectTaskLine(task, item.Project, m.config, isSelected, lineWidth, maxTitleLen, CrossProjectTaskLineOpts{
 		Queued:        m.queueIDs[task.ID],
+		DailyPlanned:  m.dailyPlanIDs[task.ID],
 		ShowTags:      true,
 		ShowScore:     true,
 		MaxProjectLen: 15,

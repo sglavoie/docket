@@ -43,6 +43,17 @@ func (m *AppModel) toggleQueue() tea.Cmd {
 		// Add to queue.
 		m.focusQueue = append(m.focusQueue, FocusTask{Task: task, Project: project})
 		m.focusQueueIDs[task.ID] = true
+		// Mutual exclusivity: remove from daily plan if present.
+		if m.dailyPlanIDs[task.ID] {
+			for i, ft := range m.dailyPlan {
+				if ft.Task.ID == task.ID {
+					m.dailyPlan = append(m.dailyPlan[:i], m.dailyPlan[i+1:]...)
+					break
+				}
+			}
+			delete(m.dailyPlanIDs, task.ID)
+			m.persistDailyPlan()
+		}
 		m.setInfoStatus(fmt.Sprintf("Added to queue: %s", task.Title))
 	}
 	m.persistFocusQueue()

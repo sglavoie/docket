@@ -165,6 +165,7 @@ type Config struct {
 	Palette                        PaletteColors                `json:"palette,omitzero"`                            // User-configurable TUI palette overrides
 	DefaultProjectView             string                       `json:"default_project_view,omitempty"`              // Default view when opening a project: outliner, project_tree
 	FocusQueue                     []FocusQueueItem             `json:"focus_queue,omitempty"`                       // Persisted focus board work queue
+	DailyPlan                      []DailyPlanItem              `json:"daily_plan,omitempty"`                        // Persisted daily plan (tasks planned for today)
 	FocusDismissedIDs              []string                     `json:"focus_dismissed_ids,omitempty"`               // Dismissed suggestion task IDs
 	AlertDismissals                []AlertDismissal             `json:"alert_dismissals,omitempty"`                  // Dismissed proactive alerts
 	RecentTaskVisits               []RecentTaskVisit            `json:"recent_task_visits,omitempty"`                // Recently visited tasks for quick-switch
@@ -223,6 +224,13 @@ type AlertDismissal struct {
 type FocusQueueItem struct {
 	TaskID    string `json:"task_id"`
 	ProjectID string `json:"project_id"`
+}
+
+// DailyPlanItem stores a task reference for the daily plan.
+type DailyPlanItem struct {
+	TaskID      string `json:"task_id"`
+	ProjectID   string `json:"project_id"`
+	PlannedDate string `json:"planned_date"` // YYYY-MM-DD
 }
 
 // RecentTaskVisit stores a task reference for the recent task quick-switch list.

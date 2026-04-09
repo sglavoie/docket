@@ -23,7 +23,7 @@ type FocusTask = focus.FocusTask
 // ScoredFocusTask is an alias for focus.ScoredFocusTask.
 type ScoredFocusTask = focus.ScoredFocusTask
 
-// FocusViewModel displays the "What's Next" engine for cross-project task suggestions.
+// FocusViewModel displays the "Backlog" engine for cross-project task suggestions.
 type FocusViewModel struct {
 	BaseView
 	InteractiveViewState
@@ -36,8 +36,9 @@ type FocusViewModel struct {
 	filtered []FocusTask
 
 	// Work queue (session-persistent, pointers to AppModel-held state)
-	queue    *[]FocusTask
-	queueIDs map[string]bool
+	queue        *[]FocusTask
+	queueIDs     map[string]bool
+	dailyPlanIDs map[string]bool
 
 	// Ranked suggestions
 	ranked       []ScoredFocusTask
@@ -62,12 +63,13 @@ type FocusViewModel struct {
 }
 
 // NewFocusViewModel creates a new focus view model.
-func NewFocusViewModel(cfg *config.Config, mgr *config.Manager, queue *[]FocusTask, queueIDs map[string]bool, dismissedIDs map[string]bool) *FocusViewModel {
+func NewFocusViewModel(cfg *config.Config, mgr *config.Manager, queue *[]FocusTask, queueIDs map[string]bool, dailyPlanIDs map[string]bool, dismissedIDs map[string]bool) *FocusViewModel {
 	m := &FocusViewModel{
 		ViewBundle:     ViewBundle{config: cfg, configManager: mgr},
 		projectService: NewProjectService(),
 		queue:          queue,
 		queueIDs:       queueIDs,
+		dailyPlanIDs:   dailyPlanIDs,
 		dismissedIDs:   dismissedIDs,
 		FilterMixin:    FilterMixin{filter: newFilterState()},
 		tabs:           TabState{Names: focusTabNames},
@@ -148,7 +150,7 @@ func (m *FocusViewModel) ShouldCaptureEsc() bool {
 }
 
 func (m *FocusViewModel) viewID() ViewType { return ViewFocusView }
-func (m *FocusViewModel) viewName() string { return "What's Next" }
+func (m *FocusViewModel) viewName() string { return "Backlog" }
 
 // GetHelpItems returns help items for this view.
 func (m *FocusViewModel) GetHelpItems() []HelpItem {
@@ -166,9 +168,9 @@ func (m *FocusViewModel) HandledKeys() []string {
 			"enter", "J", "K", "*", "F", "m", "t",
 			"e", "Z", "D", "ctrl+.", "r", "y", "Y",
 			"1", "2", "3", "4", "5",
-			"esc",
+			"w", "esc",
 		},
 	)
 }
 
-func (m *FocusViewModel) StatusBarLabel() string { return "What's Next" }
+func (m *FocusViewModel) StatusBarLabel() string { return "Backlog" }

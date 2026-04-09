@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"fmt"
 	"time"
 
 	tea "charm.land/bubbletea/v2"
@@ -14,6 +15,7 @@ func (m *AppModel) handleViewReviewMessages(msg tea.Msg) (bool, tea.Cmd) { //nol
 	case ShowDueDateOverviewMsg:
 		ddo := NewDueDateOverviewModel(m.config, m.configManager)
 		ddo.queueIDs = m.focusQueueIDs
+		ddo.dailyPlanIDs = m.dailyPlanIDs
 		m.showView(ViewDueDateOverview, ddo)
 		return true, nil
 
@@ -44,6 +46,7 @@ func (m *AppModel) handleViewReviewMessages(msg tea.Msg) (bool, tea.Cmd) { //nol
 	case ShowDailyReviewMsg:
 		dr := NewDailyReviewModel(m.config, m.configManager)
 		dr.queueIDs = m.focusQueueIDs
+		dr.dailyPlanIDs = m.dailyPlanIDs
 		m.showView(ViewDailyReview, dr)
 		return true, nil
 
@@ -90,6 +93,7 @@ func (m *AppModel) handleViewReviewMessages(msg tea.Msg) (bool, tea.Cmd) { //nol
 	case ShowWeeklyReviewMsg:
 		wr := NewWeeklyReviewModel(m.config, m.configManager)
 		wr.queueIDs = m.focusQueueIDs
+		wr.dailyPlanIDs = m.dailyPlanIDs
 		m.showView(ViewWeeklyReview, wr)
 		return true, nil
 
@@ -121,6 +125,7 @@ func (m *AppModel) handleViewReviewMessages(msg tea.Msg) (bool, tea.Cmd) { //nol
 	case ShowAllTasksMsg:
 		atv := NewAllTasksViewModel(m.config, m.configManager)
 		atv.queueIDs = m.focusQueueIDs
+		atv.dailyPlanIDs = m.dailyPlanIDs
 		m.showView(ViewAllTasks, atv)
 		return true, nil
 
@@ -137,7 +142,15 @@ func (m *AppModel) handleViewReviewMessages(msg tea.Msg) (bool, tea.Cmd) { //nol
 
 	case ShowFocusBoardMsg:
 		m.reevaluateAlerts()
-		m.showView(ViewFocusBoard, NewFocusBoardModel(m.config, m.configManager))
+		fb := NewFocusBoardModel(m.config, m.configManager)
+		fb.queueIDs = m.focusQueueIDs
+		fb.dailyPlanIDs = m.dailyPlanIDs
+		fb.carriedOverIDs = m.dailyPlanCarriedIDs
+		if m.dailyPlanCarried > 0 && !m.dailyPlanCarriedShown {
+			fb.setStatus(fmt.Sprintf("%d item(s) carried over from yesterday", m.dailyPlanCarried))
+			m.dailyPlanCarriedShown = true
+		}
+		m.showView(ViewFocusBoard, fb)
 		return true, nil
 
 	case CloseFocusBoardMsg:
@@ -158,7 +171,7 @@ func (m *AppModel) handleViewReviewMessages(msg tea.Msg) (bool, tea.Cmd) { //nol
 		return true, nil
 
 	case ShowFocusViewMsg:
-		m.showView(ViewFocusView, NewFocusViewModel(m.config, m.configManager, &m.focusQueue, m.focusQueueIDs, m.focusDismissedIDs))
+		m.showView(ViewFocusView, NewFocusViewModel(m.config, m.configManager, &m.focusQueue, m.focusQueueIDs, m.dailyPlanIDs, m.focusDismissedIDs))
 		return true, nil
 
 	case FocusViewSelectMsg:
@@ -171,6 +184,7 @@ func (m *AppModel) handleViewReviewMessages(msg tea.Msg) (bool, tea.Cmd) { //nol
 	case ShowRecentActivityMsg:
 		ra := NewRecentActivityModel(m.config)
 		ra.queueIDs = m.focusQueueIDs
+		ra.dailyPlanIDs = m.dailyPlanIDs
 		m.showView(ViewRecentActivity, ra)
 		return true, nil
 
@@ -182,6 +196,7 @@ func (m *AppModel) handleViewReviewMessages(msg tea.Msg) (bool, tea.Cmd) { //nol
 		if msg.Project != nil {
 			pra := NewProjectRecentActivityModel(m.config, msg.Project)
 			pra.queueIDs = m.focusQueueIDs
+			pra.dailyPlanIDs = m.dailyPlanIDs
 			m.showView(ViewProjectRecentActivity, pra)
 		}
 		return true, nil

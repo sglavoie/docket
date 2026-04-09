@@ -172,7 +172,8 @@ type TaskLine struct {
 	MaxTitle   int // maximum title width; clamped to minimum 10
 
 	// Optional elements
-	Queued          bool          // show "Q " queue indicator in accent color (else "  ")
+	Queued          bool          // show "Q " queue indicator in accent color (else "  "); superseded by DailyPlanned
+	DailyPlanned    bool          // show "T " daily-plan indicator in accent color; takes precedence over Queued
 	Prefix          string        // before cursor (e.g., star indicator "★ ")
 	PreBadges       string        // after cursor, before status badge (e.g., project name, checkbox, rank)
 	PostTitle       string        // after title (e.g., tags, score badge, custom section)
@@ -195,7 +196,8 @@ type CrossProjectTaskLineOpts struct {
 	ShowTags        bool          // show inline tag string
 	ShowRecurrence  bool          // show ↻ indicator with streak count for recurring tasks
 	MaxProjectLen   int           // project name truncation; 0 defaults to 12
-	Queued          bool          // show "Q " queue indicator in accent color (else "  ")
+	Queued          bool          // show "Q " queue indicator in accent color (else "  "); superseded by DailyPlanned
+	DailyPlanned    bool          // show "T " daily-plan indicator in accent color; takes precedence over Queued
 	Prefix          string        // prepended before the project badge (e.g. checkbox, date string)
 	StatusBadge     string        // pre-styled status badge override
 	DueStr          string        // right-aligned context string, already styled by caller
@@ -269,6 +271,7 @@ func RenderCrossProjectTaskLine(
 		IsSelected:      isCursor,
 		MaxTitle:        maxTitleLen,
 		Queued:          opts.Queued,
+		DailyPlanned:    opts.DailyPlanned,
 		PreBadges:       preBadges,
 		PostTitle:       postTitle,
 		StatusBadge:     opts.StatusBadge,
@@ -321,9 +324,12 @@ func (tl TaskLine) Render() string {
 		cursor = "◌ "
 	}
 
-	// Queue indicator: always 2 chars wide so line width stays constant.
+	// Queue / daily-plan indicator: always 2 chars wide so line width stays constant.
+	// DailyPlanned takes precedence over Queued (T > Q).
 	queueIndicator := "  "
-	if tl.Queued {
+	if tl.DailyPlanned {
+		queueIndicator = ActiveStyle.Render("T") + " "
+	} else if tl.Queued {
 		queueIndicator = ActiveStyle.Render("Q") + " "
 	}
 

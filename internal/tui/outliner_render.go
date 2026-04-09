@@ -510,9 +510,11 @@ func (m *OutlinerModel) renderOutlinerTreeContent(width int) string { //nolint:g
 
 		cursorPrefix := RenderCursorPrefix(selected, task.Active, task.Pinned, task.Dimmed)
 
-		// Queue indicator: always 2 chars wide.
+		// Queue / daily-plan indicator: always 2 chars wide. T takes precedence over Q.
 		queueIndicator := "  "
-		if m.queueIDs[task.ID] {
+		if m.dailyPlanIDs[task.ID] {
+			queueIndicator = ActiveStyle.Render("T") + " "
+		} else if m.queueIDs[task.ID] {
 			queueIndicator = ActiveStyle.Render("Q") + " "
 		}
 

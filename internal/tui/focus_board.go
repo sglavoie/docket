@@ -8,16 +8,17 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 )
 
-var focusBoardTabNames = []string{"All", "Actions", "Active/Due", "Next", "By Source", "By Priority", "By Score", "Closed"}
+var focusBoardTabNames = []string{"Today", "All", "Actions", "Active/Due", "Next", "By Source", "By Priority", "By Score", "Closed"}
 
 const (
-	boardTabActions    = 1
-	boardTabActiveDue  = 2
-	boardTabNext       = 3
-	boardTabBySource   = 4
-	boardTabByPriority = 5
-	boardTabByScore    = 6
-	boardTabClosed     = 7
+	boardTabToday      = 0
+	boardTabActions    = 2
+	boardTabActiveDue  = 3
+	boardTabNext       = 4
+	boardTabBySource   = 5
+	boardTabByPriority = 6
+	boardTabByScore    = 7
+	boardTabClosed     = 8
 )
 
 // boardRow is a unified display item: an Action task or an aggregated active/due task.
@@ -45,11 +46,17 @@ type FocusBoardModel struct {
 	configManager  *config.Manager
 	projectService *ProjectService
 
+	// Queue / daily-plan indicator support
+	queueIDs     map[string]bool
+	dailyPlanIDs map[string]bool
+
 	// Data
-	rows       []boardRow
-	nextRows   []boardRow
-	closedRows []boardRow
-	filtered   []boardRow
+	rows          []boardRow
+	nextRows      []boardRow
+	closedRows    []boardRow
+	todayRows     []boardRow
+	filtered      []boardRow
+	carriedOverIDs map[string]bool
 
 	// Tabs
 	tabs TabState

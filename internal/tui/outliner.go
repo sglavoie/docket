@@ -39,8 +39,9 @@ type OutlinerModel struct {
 	PrimaryViewBundle
 	MultiSelectState
 
-	// Queue indicator support
-	queueIDs map[string]bool
+	// Queue / daily-plan indicator support
+	queueIDs     map[string]bool
+	dailyPlanIDs map[string]bool
 
 	project *models.Project
 

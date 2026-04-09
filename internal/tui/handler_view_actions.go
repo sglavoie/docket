@@ -13,6 +13,7 @@ func (m *AppModel) handleViewActionMessages(msg tea.Msg) (bool, tea.Cmd) {
 		if msg.Project != nil {
 			pv := NewPriorityViewModel(msg.Project, m.config, m.configManager)
 			pv.queueIDs = m.focusQueueIDs
+			pv.dailyPlanIDs = m.dailyPlanIDs
 			m.showView(ViewPriorityView, pv)
 		}
 		return true, nil

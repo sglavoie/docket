@@ -405,6 +405,7 @@ func (m *WeeklyReviewModel) renderTaskLine(dt WeeklyReviewTask, section WeeklyRe
 
 	return RenderCrossProjectTaskLine(task, dt.Project, nil, isSelected, m.width, maxTitleLen, CrossProjectTaskLineOpts{
 		Queued:          m.queueIDs[task.ID],
+		DailyPlanned:    m.dailyPlanIDs[task.ID],
 		HideLowPriority: true,
 		DueStr:          contextStr,
 		ShowRecurrence:  section == WeeklySectionRecurringOverview,

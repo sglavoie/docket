@@ -14,6 +14,7 @@ func (m *FocusBoardModel) loadItems() {
 	m.rows = nil
 	m.nextRows = nil
 	m.closedRows = nil
+	m.todayRows = nil
 
 	now := time.Now()
 	today := util.StartOfDay(now)
@@ -28,16 +29,21 @@ func (m *FocusBoardModel) loadItems() {
 			continue
 		}
 		for _, task := range project.Tasks {
-			// Include if active or due soon
-			if task.Status.IsComplete() || task.IsSnoozed() {
-				continue
-			}
-
 			row := boardRow{
 				Task:     task,
 				Project:  project,
 				Priority: task.Priority,
 				Source:   project.Name,
+			}
+
+			// Today tab: include daily-planned tasks regardless of completion status
+			if m.dailyPlanIDs[task.ID] {
+				m.todayRows = append(m.todayRows, row)
+			}
+
+			// Include if active or due soon
+			if task.Status.IsComplete() || task.IsSnoozed() {
+				continue
 			}
 
 			// Collect Next-section tasks (empty section defaults to Next)
@@ -52,6 +58,16 @@ func (m *FocusBoardModel) loadItems() {
 			}
 		}
 	}
+
+	// Sort today rows: active first (by priority), then completed (by priority)
+	sort.SliceStable(m.todayRows, func(i, j int) bool {
+		iComplete := m.todayRows[i].Task.Status.IsComplete()
+		jComplete := m.todayRows[j].Task.Status.IsComplete()
+		if iComplete != jComplete {
+			return !iComplete
+		}
+		return m.todayRows[i].Priority < m.todayRows[j].Priority
+	})
 
 	// Sort by priority ascending, then preserve original order within same priority
 	sort.SliceStable(m.rows, func(i, j int) bool {
@@ -68,6 +84,9 @@ func (m *FocusBoardModel) loadItems() {
 // applyFilter filters rows based on the active tab.
 func (m *FocusBoardModel) applyFilter() {
 	switch m.tabs.Active {
+	case boardTabToday:
+		m.filtered = make([]boardRow, len(m.todayRows))
+		copy(m.filtered, m.todayRows)
 	case boardTabActions:
 		m.filtered = nil
 		for _, r := range m.rows {

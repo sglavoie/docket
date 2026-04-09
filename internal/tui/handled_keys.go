@@ -135,7 +135,7 @@ func globalAppKeys() []string {
 		"ctrl+x", ":", ";", "ctrl+,", "ctrl+i", "ctrl+/",
 		"shift+space", "?", "alt+l",
 		// Semicolon prefix dispatches
-		";n", ";d", ";w", ";N", ";f", ";F", ";l", ";B", ";D", ";m", ";a", ";W", ";o",
+		";n", ";d", ";w", ";N", ";b", ";f", ";l", ";B", ";D", ";m", ";a", ";W", ";o",
 	}
 }
 

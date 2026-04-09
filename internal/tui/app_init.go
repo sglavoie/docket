@@ -45,6 +45,9 @@ func NewAppModel(cfg *config.Config, manager *config.Manager, opts ...AppOption)
 		focusQueue:               []FocusTask{},
 		focusQueueIDs:            make(map[string]bool),
 		focusDismissedIDs:        make(map[string]bool),
+		dailyPlan:                []FocusTask{},
+		dailyPlanIDs:             make(map[string]bool),
+		dailyPlanCarriedIDs:      make(map[string]bool),
 	}
 
 	// Apply functional options
@@ -69,6 +72,55 @@ func NewAppModel(cfg *config.Config, manager *config.Manager, opts ...AppOption)
 			break
 		}
 	}
+	// Hydrate daily plan from persisted config (only from active projects, with carry-over logic)
+	today := time.Now().Format("2006-01-02")
+	var updatedPlan []config.DailyPlanItem
+	planChanged := false
+	for _, item := range cfg.GetDailyPlan() {
+		var foundTask *models.Task
+		var foundProject *models.Project
+		for _, p := range activeProjects {
+			if p.ID != item.ProjectID {
+				continue
+			}
+			if err := app.persister.Load(p); err != nil {
+				break
+			}
+			if task := p.GetTaskByID(item.TaskID); task != nil {
+				foundTask = task
+				foundProject = p
+			}
+			break
+		}
+		if foundTask == nil || foundProject == nil {
+			// Task not found in any active project — prune
+			planChanged = true
+			continue
+		}
+		if item.PlannedDate < today {
+			if foundTask.Status.IsComplete() {
+				// Completed in a previous day — prune
+				planChanged = true
+				continue
+			}
+			// Carry over: bump date to today
+			item.PlannedDate = today
+			app.dailyPlanCarried++
+			app.dailyPlanCarriedIDs[foundTask.ID] = true
+			planChanged = true
+		}
+		updatedPlan = append(updatedPlan, item)
+		app.dailyPlan = append(app.dailyPlan, FocusTask{Task: foundTask, Project: foundProject})
+		app.dailyPlanIDs[foundTask.ID] = true
+	}
+	if planChanged {
+		if updatedPlan == nil {
+			updatedPlan = []config.DailyPlanItem{}
+		}
+		cfg.SetDailyPlan(updatedPlan)
+		saveConfigWarn(manager, cfg, "daily plan carry-over")
+	}
+
 	// Hydrate dismissed IDs
 	for _, id := range cfg.GetFocusDismissedIDs() {
 		app.focusDismissedIDs[id] = true

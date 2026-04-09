@@ -28,7 +28,7 @@ func (m *FocusBoardModel) View() tea.View { //nolint:gocyclo
 	b.WriteString("\n")
 
 	// Tab bar
-	b.WriteString(renderTabBarWithOptionalSubTabs(focusBoardTabNames, m.tabs.Active, nil, false, m.width, m.AccentColor()))
+	b.WriteString(renderTabBarWithOptionalSubTabs(m.computedTabNames(), m.tabs.Active, nil, false, m.width, m.AccentColor()))
 	b.WriteString("\n")
 
 	// Search input
@@ -123,6 +123,10 @@ func (m *FocusBoardModel) View() tea.View { //nolint:gocyclo
 			b.WriteString(MutedStyle.Render("  " + EmptyStateFiltered))
 			b.WriteString("\n\n")
 			b.WriteString(HelpStyle.Render("  Press Fx to clear filters, or Esc to dismiss."))
+		} else if m.tabs.Active == boardTabToday {
+			b.WriteString(MutedStyle.Render("  No tasks planned for today"))
+			b.WriteString("\n\n")
+			b.WriteString(HelpStyle.Render("  Press w on any task to plan it for today."))
 		} else if m.tabs.Active == boardTabClosed {
 			b.WriteString(MutedStyle.Render("  " + EmptyStateClosed))
 		} else if len(m.rows) == 0 {
@@ -206,6 +210,14 @@ func (m *FocusBoardModel) View() tea.View { //nolint:gocyclo
 	}
 	if m.tabs.Active == boardTabClosed {
 		rightParts = append(rightParts, fmt.Sprintf("%d closed", len(m.closedRows)))
+	} else if m.tabs.Active == boardTabToday {
+		completedToday := 0
+		for _, r := range m.todayRows {
+			if r.Task.Status.IsComplete() {
+				completedToday++
+			}
+		}
+		rightParts = append(rightParts, fmt.Sprintf("%d/%d done", completedToday, len(m.todayRows)))
 	} else {
 		rightParts = append(rightParts, fmt.Sprintf("%d/%d items", len(m.filtered), len(m.rows)))
 	}
@@ -224,6 +236,14 @@ func (m *FocusBoardModel) renderRow(row boardRow, isSelected bool, maxTitleLen i
 
 	priorityBadge := boardPriorityBadge(task.Priority)
 	isClosed := task.Status.IsComplete()
+
+	// Queue / daily-plan badge (T > Q, single badge only)
+	badge := ""
+	if m.dailyPlanIDs[task.ID] {
+		badge = ActiveStyle.Render("[T]") + " "
+	} else if m.queueIDs[task.ID] {
+		badge = ActiveStyle.Render("[Q]") + " "
+	}
 
 	if row.isAction() {
 		// Action item rendering
@@ -256,10 +276,13 @@ func (m *FocusBoardModel) renderRow(row boardRow, isSelected bool, maxTitleLen i
 		if isSelected && !task.Dimmed && !isClosed {
 			title = SelectedTaskTitleStyle.Render(title)
 		}
-		content := fmt.Sprintf("  %s %s%s%s %s%s", priorityBadge, sourceBadge, projectBadge, urlIndicator, statusMarker, title)
+		content := fmt.Sprintf("  %s %s%s%s %s%s%s", priorityBadge, sourceBadge, projectBadge, urlIndicator, statusMarker, badge, title)
 
 		if len(task.Tags) > 0 {
 			content += " " + renderInlineTags(task.Tags)
+		}
+		if m.tabs.Active == boardTabToday && m.carriedOverIDs[task.ID] {
+			content += " " + MutedStyle.Render("(carried)")
 		}
 
 		if !task.Dimmed && isClosed {
@@ -289,7 +312,7 @@ func (m *FocusBoardModel) renderRow(row boardRow, isSelected bool, maxTitleLen i
 			title = SelectedTaskTitleStyle.Render(title)
 		}
 		statusIcon := GetStatusBadge(string(task.Status), task.Status.Icon())
-		content := fmt.Sprintf("  %s %s %s%s %s", statusIcon, priorityBadge, projectBadge, typeIcon, title)
+		content := fmt.Sprintf("  %s %s %s%s %s%s", statusIcon, priorityBadge, projectBadge, typeIcon, badge, title)
 
 		structureGroup := scoreBadge
 		lifecycleGroup := dueStr
@@ -298,8 +321,12 @@ func (m *FocusBoardModel) renderRow(row boardRow, isSelected bool, maxTitleLen i
 		if trailing != "" {
 			content += " " + trailing
 		}
+		if m.tabs.Active == boardTabToday && m.carriedOverIDs[task.ID] {
+			content += " " + MutedStyle.Render("(carried)")
+		}
 
-		line := RenderSelectableRow(isSelected, false, false, m.cursorFlash, content, m.width-2, task.Dimmed)
+		dimmed := task.Dimmed || (isClosed && m.tabs.Active == boardTabToday)
+		line := RenderSelectableRow(isSelected, false, false, m.cursorFlash, content, m.width-2, dimmed)
 		b.WriteString(line)
 	}
 
@@ -325,6 +352,20 @@ func (m *FocusBoardModel) highlightTitle(truncatedTitle, fullTitle string) strin
 		}
 	}
 	return HighlightText(truncatedTitle, validPositions, NormalStyle)
+}
+
+// computedTabNames returns the tab name slice with a dynamic "Today (done/total)" label.
+func (m *FocusBoardModel) computedTabNames() []string {
+	names := make([]string, len(focusBoardTabNames))
+	copy(names, focusBoardTabNames)
+	completedToday := 0
+	for _, r := range m.todayRows {
+		if r.Task.Status.IsComplete() {
+			completedToday++
+		}
+	}
+	names[boardTabToday] = fmt.Sprintf("Today (%d/%d)", completedToday, len(m.todayRows))
+	return names
 }
 
 // boardPriorityBadge returns a colored priority label for board items (P1, P2, etc.).

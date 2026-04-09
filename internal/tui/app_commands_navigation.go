@@ -421,11 +421,11 @@ func (m *AppModel) viewCommands() []Command {
 			},
 		},
 		{
-			Name:        "what's next",
-			Description: "Cross-project task suggestions and work queue",
-			Shortcut:    ";f",
+			Name:        "backlog",
+			Description: "Cross-project task suggestions and backlog",
+			Shortcut:    ";b",
 			Category:    CategoryViews,
-			Aliases:     []string{"active tasks", "focus", "today tasks", "focus view", "suggestions"},
+			Aliases:     []string{"active tasks", "focus", "today tasks", "focus view", "suggestions", "what's next"},
 			Handler: func() tea.Msg {
 				return ShowFocusViewMsg{}
 			},
@@ -433,7 +433,7 @@ func (m *AppModel) viewCommands() []Command {
 		{
 			Name:        "focus board",
 			Description: "Personal command center with external items and tasks",
-			Shortcut:    ";F",
+			Shortcut:    ";f",
 			Category:    CategoryViews,
 			Aliases:     []string{"board", "command center", "external items"},
 			Handler: func() tea.Msg {

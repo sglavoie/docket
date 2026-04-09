@@ -254,8 +254,8 @@ func TestFocusViewRenderPriorityBadge(t *testing.T) {
 
 func TestFocusViewName(t *testing.T) {
 	m := &FocusViewModel{}
-	if m.viewName() != "What's Next" {
-		t.Errorf("expected 'What's Next', got %q", m.viewName())
+	if m.viewName() != "Backlog" {
+		t.Errorf("expected 'Backlog', got %q", m.viewName())
 	}
 }
 

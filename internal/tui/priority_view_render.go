@@ -240,10 +240,11 @@ func (m *PriorityViewModel) renderScoreRanking(currentIndex *int, cursorLineIdx 
 		}
 
 		line := TaskLine{
-			Task:        pt.Task,
-			IsSelected:  isSelected,
-			Queued:      m.queueIDs[pt.Task.ID],
-			MaxTitle:    maxTitleLen,
+			Task:         pt.Task,
+			IsSelected:   isSelected,
+			Queued:       m.queueIDs[pt.Task.ID],
+			DailyPlanned: m.dailyPlanIDs[pt.Task.ID],
+			MaxTitle:     maxTitleLen,
 			PreBadges:   fmt.Sprintf("%d. %s ", rank+1, scoreBadge),
 			StageBadge:  GetStageBadge(pt.Task.Stage),
 			PostTitle:   postTitle,
@@ -344,10 +345,11 @@ func (m *PriorityViewModel) renderTaskLine(pt *PriorityTask, isOverdue bool, isS
 	}
 
 	return TaskLine{
-		Task:        task,
-		IsSelected:  isSelected,
-		Queued:      m.queueIDs[task.ID],
-		MaxTitle:    adjustedMaxTitleLen,
+		Task:         task,
+		IsSelected:   isSelected,
+		Queued:       m.queueIDs[task.ID],
+		DailyPlanned: m.dailyPlanIDs[task.ID],
+		MaxTitle:     adjustedMaxTitleLen,
 		Prefix:      starPrefix,
 		StageBadge:  GetStageBadge(task.Stage),
 		PostTitle:   postTitle,

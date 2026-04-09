@@ -67,12 +67,12 @@ func TestViewCommands_LatestActivity(t *testing.T) {
 	}
 }
 
-func TestViewCommands_WhatsNext(t *testing.T) {
+func TestViewCommands_Backlog(t *testing.T) {
 	app := newTestAppModel()
 	cmds := app.viewCommands()
-	cmd := findCommand(cmds, "what's next")
+	cmd := findCommand(cmds, "backlog")
 	if cmd == nil {
-		t.Fatal("expected \"what's next\" command")
+		t.Fatal("expected \"backlog\" command")
 	}
 	msg := cmd.Handler()
 	if _, ok := msg.(ShowFocusViewMsg); !ok {
