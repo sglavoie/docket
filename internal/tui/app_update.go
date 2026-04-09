@@ -130,6 +130,15 @@ func (m *AppModel) Update(msg tea.Msg) (outModel tea.Model, outCmd tea.Cmd) { //
 			return m, nil
 		}
 
+		// Intercept keys when peek overlay is active
+		if m.peekActive {
+			if msg.String() == "esc" {
+				m.peekTask = nil
+				m.peekActive = false
+			}
+			return m, nil
+		}
+
 		// Guard against stale currentProject (e.g., deleted by external CLI command)
 		if m.currentView() != ViewDashboard && m.validateCurrentProject() {
 			return m, defaultStatusTimeout()
