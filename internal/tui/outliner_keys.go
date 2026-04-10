@@ -115,6 +115,11 @@ func (m *OutlinerModel) handleKeyMsg(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		return model, cmd
 	}
 
+	// Cross-project mode: ctrl+r performs redo on the affected project.
+	if model, cmd, handled := m.crossHandleRedo(key); handled {
+		return model, cmd
+	}
+
 	// Shared primary view keys (view switching, project cycling, secondary views, capture, etc.)
 	if cmd, handled := handleCommonPrimaryViewKey(key, m); handled {
 		return m, cmd

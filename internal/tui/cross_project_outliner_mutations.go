@@ -41,14 +41,20 @@ func (m *OutlinerModel) crossGetMutationTarget() (row outlinerRow, proj *models.
 	return row, proj, true
 }
 
-// crossPersistFn returns a persistFn scoped to the given project. It calls
-// Backup() on the project before the mutation and Save() after, ensuring only
-// the owning project is written to disk.
+// crossPersistFn returns a persistFn scoped to the given project. It records
+// an undo snapshot, calls Backup() before the mutation and Save() after,
+// ensuring only the owning project is written to disk.
 func (m *OutlinerModel) crossPersistFn(_ *models.Project) persistFn {
 	svc := m.projectService
+	undoCtx := &m.crossUndoCtx
+	cfg := m.config
 	return func(project *models.Project, taskID string, mutate func(*models.Task)) TaskOpResult {
 		if project.GetTaskByID(taskID) == nil {
 			return TaskOpResult{StatusMessage: "Task no longer exists in project"}
+		}
+		// Record undo snapshot before mutation (reads current tasks.md)
+		if cfg != nil && cfg.UndoHistoryDepth != nil && *cfg.UndoHistoryDepth > 0 {
+			_ = svc.RecordUndoSnapshot(project, undoCtx.Action, undoCtx.Context, *cfg.UndoHistoryDepth)
 		}
 		if err := svc.Backup(project); err != nil {
 			return TaskOpResult{Err: fmt.Errorf("backup failed: %w", err)}
@@ -86,6 +92,8 @@ func (m *OutlinerModel) crossHandleStatusMutation(key string) (tea.Model, tea.Cm
 	if !valid {
 		return m, nil, true
 	}
+	m.crossUndoCtx.Set(StatusVerb(status)+" Task", row.task.Title)
+	m.crossUndoCtx.ProjectIDs = []string{proj.ID}
 	pf := m.crossPersistFn(proj)
 	result := applyStatusChange(pf, proj, row.task.ID, status)
 	if result.Err != nil {
@@ -94,8 +102,6 @@ func (m *OutlinerModel) crossHandleStatusMutation(key string) (tea.Model, tea.Cm
 	if result.StatusMessage != "" {
 		m.setStatus(result.StatusMessage)
 	}
-	m.crossUndoCtx.Set(StatusVerb(status)+" Task", row.task.Title)
-	m.crossUndoCtx.ProjectIDs = []string{proj.ID}
 	m.rebuildRows()
 	return m, result.Cmd, true
 }
@@ -158,8 +164,17 @@ func (m *OutlinerModel) crossExecutePendingBulkStatus() (tea.Model, tea.Cmd) {
 	svc := m.projectService
 	var projectIDs []string
 
+	undoDepth := 0
+	if m.config != nil && m.config.UndoHistoryDepth != nil {
+		undoDepth = *m.config.UndoHistoryDepth
+	}
+
 	for _, projID := range projectOrder {
 		group := grouped[projID]
+		if undoDepth > 0 {
+			_ = svc.RecordUndoSnapshot(group.proj, "Bulk Status Change",
+				fmt.Sprintf("%d tasks -> %s", len(group.tasks), status), undoDepth)
+		}
 		if err := svc.Backup(group.proj); err != nil {
 			m.bulkOp.Clear()
 			return m, func() tea.Msg { return ErrorMsg{Err: fmt.Errorf("backup failed: %w", err)} }
@@ -201,6 +216,8 @@ func (m *OutlinerModel) crossHandlePriorityMutation(key string) (tea.Cmd, bool) 
 	if !valid {
 		return nil, true
 	}
+	m.crossUndoCtx.Set("Set Priority", row.task.Title)
+	m.crossUndoCtx.ProjectIDs = []string{proj.ID}
 	pf := m.crossPersistFn(proj)
 	result := applyPriorityChange(pf, proj, row.task.ID, priority)
 	if result.Err != nil {
@@ -209,8 +226,6 @@ func (m *OutlinerModel) crossHandlePriorityMutation(key string) (tea.Cmd, bool) 
 	if result.StatusMessage != "" {
 		m.setStatus(result.StatusMessage)
 	}
-	m.crossUndoCtx.Set("Set Priority", row.task.Title)
-	m.crossUndoCtx.ProjectIDs = []string{proj.ID}
 	m.rebuildRows()
 	return result.Cmd, true
 }
@@ -245,6 +260,11 @@ func (m *OutlinerModel) crossHandleSnoozeMutation(key string) (tea.Cmd, bool) {
 		return nil, true
 	}
 
+	m.crossUndoCtx.Set("Snooze", row.task.Title)
+	m.crossUndoCtx.ProjectIDs = []string{proj.ID}
+	if m.config != nil && m.config.UndoHistoryDepth != nil && *m.config.UndoHistoryDepth > 0 {
+		_ = m.projectService.RecordUndoSnapshot(proj, "Snooze", row.task.Title, *m.config.UndoHistoryDepth)
+	}
 	if err := m.projectService.Backup(proj); err != nil {
 		return func() tea.Msg { return ErrorMsg{Err: fmt.Errorf("backup failed: %w", err)} }, true
 	}
@@ -255,9 +275,6 @@ func (m *OutlinerModel) crossHandleSnoozeMutation(key string) (tea.Cmd, bool) {
 		return func() tea.Msg { return ErrorMsg{Err: fmt.Errorf("save failed: %w", err)} }, true
 	}
 	_ = m.projectService.Load(proj)
-
-	m.crossUndoCtx.Set("Snooze", row.task.Title)
-	m.crossUndoCtx.ProjectIDs = []string{proj.ID}
 
 	if snoozeDate == nil {
 		m.setStatus("Snooze cleared")
@@ -270,13 +287,13 @@ func (m *OutlinerModel) crossHandleSnoozeMutation(key string) (tea.Cmd, bool) {
 
 // crossTogglePinned toggles the pinned state for a task in cross-project mode.
 func (m *OutlinerModel) crossTogglePinned(row outlinerRow, proj *models.Project) (tea.Model, tea.Cmd) {
+	m.crossUndoCtx.Set("Toggle Pin", row.task.Title)
+	m.crossUndoCtx.ProjectIDs = []string{proj.ID}
 	pf := m.crossPersistFn(proj)
 	result := applyTogglePinned(pf, proj, row.task.ID)
 	if result.Err != nil {
 		return m, func() tea.Msg { return ErrorMsg{Err: result.Err} }
 	}
-	m.crossUndoCtx.Set("Toggle Pin", row.task.Title)
-	m.crossUndoCtx.ProjectIDs = []string{proj.ID}
 	if result.StatusMessage != "" {
 		m.setStatus(result.StatusMessage)
 	}
@@ -286,13 +303,13 @@ func (m *OutlinerModel) crossTogglePinned(row outlinerRow, proj *models.Project)
 
 // crossToggleDimmed toggles the dimmed state for a task in cross-project mode.
 func (m *OutlinerModel) crossToggleDimmed(row outlinerRow, proj *models.Project) (tea.Model, tea.Cmd) {
+	m.crossUndoCtx.Set("Toggle Dim", row.task.Title)
+	m.crossUndoCtx.ProjectIDs = []string{proj.ID}
 	pf := m.crossPersistFn(proj)
 	result := applyToggleDimmed(pf, proj, row.task.ID)
 	if result.Err != nil {
 		return m, func() tea.Msg { return ErrorMsg{Err: result.Err} }
 	}
-	m.crossUndoCtx.Set("Toggle Dim", row.task.Title)
-	m.crossUndoCtx.ProjectIDs = []string{proj.ID}
 	if result.StatusMessage != "" {
 		m.setStatus(result.StatusMessage)
 	}
@@ -383,7 +400,16 @@ func (m *OutlinerModel) crossHandleSectionMove(key string, cursorTask *models.Ta
 			return m, nil
 		}
 		task := row.task
+		label := "Move to " + section
+		if section == "" {
+			label = "Move to Active"
+		}
+		m.crossUndoCtx.Set(label, task.Title)
+		m.crossUndoCtx.ProjectIDs = []string{proj.ID}
 		svc := m.projectService
+		if m.config != nil && m.config.UndoHistoryDepth != nil && *m.config.UndoHistoryDepth > 0 {
+			_ = svc.RecordUndoSnapshot(proj, label, task.Title, *m.config.UndoHistoryDepth)
+		}
 		if err := svc.Backup(proj); err != nil {
 			return m, func() tea.Msg { return ErrorMsg{Err: fmt.Errorf("backup failed: %w", err)} }
 		}
@@ -398,12 +424,6 @@ func (m *OutlinerModel) crossHandleSectionMove(key string, cursorTask *models.Ta
 			return m, func() tea.Msg { return ErrorMsg{Err: fmt.Errorf("save failed: %w", err)} }
 		}
 		_ = svc.Load(proj)
-		label := "Move to " + section
-		if section == "" {
-			label = "Move to Active"
-		}
-		m.crossUndoCtx.Set(label, task.Title)
-		m.crossUndoCtx.ProjectIDs = []string{proj.ID}
 		m.rebuildRows()
 		return m, nil
 	}
@@ -433,13 +453,13 @@ func (m *OutlinerModel) crossToggleActive() (tea.Cmd, bool) {
 	if !valid {
 		return nil, true
 	}
+	m.crossUndoCtx.Set("Toggle Active", row.task.Title)
+	m.crossUndoCtx.ProjectIDs = []string{proj.ID}
 	pf := m.crossPersistFn(proj)
 	result := applyToggleActive(pf, proj, row.task.ID)
 	if result.Err != nil {
 		return func() tea.Msg { return ErrorMsg{Err: result.Err} }, true
 	}
-	m.crossUndoCtx.Set("Toggle Active", row.task.Title)
-	m.crossUndoCtx.ProjectIDs = []string{proj.ID}
 	if result.StatusMessage != "" {
 		m.setStatus(result.StatusMessage)
 	}
@@ -523,14 +543,14 @@ func (m *OutlinerModel) crossExecuteDelete() (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
+	m.crossUndoCtx.Set("Delete Task", task.Title)
+	m.crossUndoCtx.ProjectIDs = []string{proj.ID}
 	pf := m.crossPersistFn(proj)
 	result := applyDeleteTask(pf, m.projectService, proj, task.ID)
 	if result.Err != nil {
 		m.err = result.Err
 		return m, func() tea.Msg { return ErrorMsg{Err: result.Err} }
 	}
-	m.crossUndoCtx.Set("Delete Task", task.Title)
-	m.crossUndoCtx.ProjectIDs = []string{proj.ID}
 	m.rebuildRows()
 	return m, result.Cmd
 }

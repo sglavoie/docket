@@ -5,6 +5,8 @@ import (
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
+
+	"github.com/sglavoie/tt/internal/storage"
 )
 
 // crossHandleContextPickerKey handles the C key in cross-project mode,
@@ -195,11 +197,9 @@ func (m *OutlinerModel) crossHandleEnterKey() (tea.Model, tea.Cmd, bool) {
 	return m, nil, true
 }
 
-// crossHandleUndo handles the 'u' key in cross-project mode by restoring all
-// backed-up projects from m.crossUndoCtx in reverse order. Each project is
-// restored via RestoreFromBackup; failures are recorded but do not abort
-// remaining restores. A single non-blocking status bar message is set listing
-// per-project outcomes in the format "Undo: restored A, B; FAILED: C (reason)".
+// crossHandleUndo handles the 'u' key in cross-project mode. For single-project
+// operations it uses snapshot-based undo (storage.PerformUndo) which enables
+// redo. For multi-project operations it falls back to backup-based restore.
 //
 // Returns (model, cmd, true) when in cross-project mode (m.project == nil),
 // (nil, nil, false) otherwise.
@@ -209,15 +209,60 @@ func (m *OutlinerModel) crossHandleUndo(key string) (tea.Model, tea.Cmd, bool) {
 	}
 
 	ids := m.crossUndoCtx.ProjectIDs
+
+	// No pending undo context — try snapshot-based undo on any project that
+	// has undo history. This handles the case where the user presses u
+	// multiple times (crossUndoCtx was already cleared by the first undo).
 	if len(ids) == 0 {
+		// Check all loaded projects for undo history.
+		for _, proj := range m.loadedProjects {
+			if storage.UndoHistoryExists(proj) {
+				actionDesc, err := storage.PerformUndo(proj)
+				if err != nil {
+					m.setStatus(fmt.Sprintf("Undo failed: %s", err))
+				} else {
+					_ = m.projectService.Load(proj)
+					m.setStatus(fmt.Sprintf("Undid: %s", actionDesc))
+				}
+				m.rebuildRows()
+				return m, nil, true
+			}
+		}
 		m.setStatus("Nothing to undo")
 		return m, nil, true
 	}
 
+	// Single-project operation: use snapshot-based undo for redo support.
+	if len(ids) == 1 {
+		proj := m.crossResolveProject(ids[0])
+		if proj == nil {
+			m.setStatus("Undo failed: project not found")
+			m.crossUndoCtx.Clear()
+			m.rebuildRows()
+			return m, nil, true
+		}
+		actionDesc, err := storage.PerformUndo(proj)
+		if err != nil {
+			// Fallback to backup-based restore.
+			if backupErr := m.projectService.RestoreFromBackup(proj); backupErr != nil {
+				m.setStatus(fmt.Sprintf("Undo failed: %s", backupErr))
+			} else {
+				_ = m.projectService.Load(proj)
+				m.setStatus(fmt.Sprintf("Undo: restored %s", proj.Name))
+			}
+		} else {
+			_ = m.projectService.Load(proj)
+			m.setStatus(fmt.Sprintf("Undid: %s", actionDesc))
+		}
+		m.crossUndoCtx.Clear()
+		m.rebuildRows()
+		return m, nil, true
+	}
+
+	// Multi-project operation: backup-based restore (no redo support).
 	var restored []string
 	var failed []string
 
-	// Restore in reverse order.
 	for i := len(ids) - 1; i >= 0; i-- {
 		proj := m.crossResolveProject(ids[i])
 		if proj == nil {
@@ -246,5 +291,34 @@ func (m *OutlinerModel) crossHandleUndo(key string) (tea.Model, tea.Cmd, bool) {
 	}
 
 	m.rebuildRows()
+	return m, nil, true
+}
+
+// crossHandleRedo handles the 'ctrl+r' key in cross-project mode. It performs
+// snapshot-based redo on the most recently affected project.
+//
+// Returns (model, cmd, true) when in cross-project mode (m.project == nil),
+// (nil, nil, false) otherwise.
+func (m *OutlinerModel) crossHandleRedo(key string) (tea.Model, tea.Cmd, bool) {
+	if m.project != nil || key != "ctrl+r" {
+		return nil, nil, false
+	}
+
+	// Check all loaded projects for redo history.
+	for _, proj := range m.loadedProjects {
+		if storage.RedoHistoryExists(proj) {
+			actionDesc, err := storage.PerformRedo(proj)
+			if err != nil {
+				m.setStatus(fmt.Sprintf("Redo failed: %s", err))
+			} else {
+				_ = m.projectService.Load(proj)
+				m.setStatus(fmt.Sprintf("Redo: %s", actionDesc))
+			}
+			m.rebuildRows()
+			return m, nil, true
+		}
+	}
+
+	m.setStatus("Nothing to redo")
 	return m, nil, true
 }
