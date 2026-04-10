@@ -378,6 +378,11 @@ func (tl TaskLine) Render() string {
 		}
 	}
 
+	// Truncate to prevent terminal wrapping.
+	if tl.ViewWidth > 0 {
+		line = truncateToVisualWidth(line, tl.ViewWidth)
+	}
+
 	if tl.Task.Dimmed && !tl.IsSelected {
 		line = DimLine(line)
 	} else if tl.Task.Dimmed && tl.IsSelected {

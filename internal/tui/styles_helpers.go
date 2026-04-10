@@ -236,6 +236,10 @@ func RenderCursorPrefix(selected, active, pinned, dimmed bool) string {
 func RenderSelectableRow(selected, active, pinned, flash bool, content string, width int, dimmed ...bool) string {
 	isDimmed := len(dimmed) > 0 && dimmed[0]
 	row := RenderCursorPrefix(selected, active, pinned, isDimmed) + content
+	// Truncate to prevent terminal wrapping.
+	if width > 0 {
+		row = truncateToVisualWidth(row, width)
+	}
 	if isDimmed && selected {
 		return DimSelectedLine(row, width)
 	}
