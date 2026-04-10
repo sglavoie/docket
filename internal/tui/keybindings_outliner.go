@@ -28,7 +28,8 @@ func (r *KeybindingRegistry) registerOutlinerBindings() {
 		Keybinding{Key: "f", Description: "Focus view (project)", Category: "Views", Views: views},
 		Keybinding{Key: "A", Description: "All tasks / archive (Completed)", Category: "Views", Views: views},
 		Keybinding{Key: "B", Description: "Project blockers", Category: "Views", Views: views},
-		Keybinding{Key: "w", Description: "Inbox processor", Category: "Views", Views: views},
+		Keybinding{Key: "w", Description: "Add to today's plan", Category: "Views", Views: views},
+		Keybinding{Key: "W", Description: "Inbox processor", Category: "Views", Views: views},
 
 		// Task Movement
 		Keybinding{Key: "J", Description: "Move task down", Category: "Task Movement", Views: views},

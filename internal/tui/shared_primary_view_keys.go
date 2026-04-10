@@ -43,7 +43,7 @@ func handleCommonPrimaryViewKey(key string, v primaryProjectView) (tea.Cmd, bool
 			return nil, true
 		}
 		return func() tea.Msg { return ShowPriorityViewMsg{Project: project} }, true
-	case "w":
+	case "W":
 		if project == nil {
 			return nil, true
 		}

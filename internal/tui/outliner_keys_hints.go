@@ -154,7 +154,7 @@ func (m *OutlinerModel) HandledKeys() []string {
 		[]string{
 			"ctrl+p",
 			"`", "~", "@",
-			"B", "p", "w",
+			"B", "p", "w", "W",
 			"i", "I",
 			"\\", "{", "}",
 			"ctrl+r", "ctrl+l",

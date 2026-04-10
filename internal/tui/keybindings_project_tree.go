@@ -72,7 +72,8 @@ func (r *KeybindingRegistry) registerProjectTreeBindings() {
 		Keybinding{Key: "gc", Description: "Go to Completed view", Category: "Views", Views: views},
 		Keybinding{Key: "g*", Description: "Go to All view", Category: "Views", Views: views},
 		Keybinding{Key: "go", Description: "Jump to context node's home section", Category: "Views", Views: views},
-		Keybinding{Key: "w", Description: "Inbox processor", Category: "Views", Views: views},
+		Keybinding{Key: "w", Description: "Add to today's plan", Category: "Views", Views: views},
+		Keybinding{Key: "W", Description: "Inbox processor", Category: "Views", Views: views},
 
 		// Filters
 		Keybinding{Key: "C", Description: "Filter by context", Category: "Filters", Views: views},

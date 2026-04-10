@@ -109,7 +109,7 @@ func commonPrimaryViewKeys() []string {
 	return []string{
 		"ctrl+p", "ctrl+o",
 		"`", "~", "@",
-		"B", "p", "w",
+		"B", "p", "w", "W",
 		"i", "I",
 		"\\", "{", "}",
 		"ctrl+r", "ctrl+l",
