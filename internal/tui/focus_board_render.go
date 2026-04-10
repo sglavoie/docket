@@ -158,7 +158,11 @@ func (m *FocusBoardModel) View() tea.View { //nolint:gocyclo
 			continue
 		}
 
-		line := m.renderRow(row, isSelected, maxTitleLen)
+		rowNum := ""
+		if m.tabs.Active == boardTabToday {
+			rowNum = fmt.Sprintf("%d.", i+1)
+		}
+		line := m.renderRow(row, isSelected, maxTitleLen, rowNum)
 		lines = append(lines, line)
 	}
 
@@ -228,7 +232,7 @@ func (m *FocusBoardModel) View() tea.View { //nolint:gocyclo
 }
 
 // renderRow renders a single board row line.
-func (m *FocusBoardModel) renderRow(row boardRow, isSelected bool, maxTitleLen int) string {
+func (m *FocusBoardModel) renderRow(row boardRow, isSelected bool, maxTitleLen int, rowNum string) string {
 	var b strings.Builder
 
 	task := row.Task
@@ -237,12 +241,18 @@ func (m *FocusBoardModel) renderRow(row boardRow, isSelected bool, maxTitleLen i
 	priorityBadge := boardPriorityBadge(task.Priority)
 	isClosed := task.Status.IsComplete()
 
-	// Queue / daily-plan badge (T > Q, single badge only)
-	badge := ""
+	// Queue / daily-plan indicator: always 2 chars wide (first column).
+	queueIndicator := "  "
 	if m.dailyPlanIDs[task.ID] {
-		badge = ActiveStyle.Render("[T]") + " "
+		queueIndicator = ActiveStyle.Render("T") + " "
 	} else if m.queueIDs[task.ID] {
-		badge = ActiveStyle.Render("[Q]") + " "
+		queueIndicator = ActiveStyle.Render("Q") + " "
+	}
+
+	// Row number prefix for Today tab, or plain indent.
+	prefix := ""
+	if rowNum != "" {
+		prefix = fmt.Sprintf("%3s ", rowNum)
 	}
 
 	if row.isAction() {
@@ -276,7 +286,7 @@ func (m *FocusBoardModel) renderRow(row boardRow, isSelected bool, maxTitleLen i
 		if isSelected && !task.Dimmed && !isClosed {
 			title = SelectedTaskTitleStyle.Render(title)
 		}
-		content := fmt.Sprintf("  %s %s%s%s %s%s%s", priorityBadge, sourceBadge, projectBadge, urlIndicator, statusMarker, badge, title)
+		content := fmt.Sprintf("%s%s%s %s%s%s %s%s", queueIndicator, prefix, priorityBadge, sourceBadge, projectBadge, urlIndicator, statusMarker, title)
 
 		if len(task.Tags) > 0 {
 			content += " " + renderInlineTags(task.Tags)
@@ -312,7 +322,7 @@ func (m *FocusBoardModel) renderRow(row boardRow, isSelected bool, maxTitleLen i
 			title = SelectedTaskTitleStyle.Render(title)
 		}
 		statusIcon := GetStatusBadge(string(task.Status), task.Status.Icon())
-		content := fmt.Sprintf("  %s %s %s%s %s%s", statusIcon, priorityBadge, projectBadge, typeIcon, badge, title)
+		content := fmt.Sprintf("%s%s%s %s %s%s %s", queueIndicator, prefix, statusIcon, priorityBadge, projectBadge, typeIcon, title)
 
 		structureGroup := scoreBadge
 		lifecycleGroup := dueStr

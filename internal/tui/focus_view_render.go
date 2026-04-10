@@ -165,7 +165,7 @@ func (m *FocusViewModel) renderQueueLines() ([]string, int) {
 		isSelected := i == m.cursor
 		// Number prefix for queue items
 		numPrefix := MutedStyle.Render(fmt.Sprintf("%d. ", i+1))
-		line := m.renderTaskLineWithPrefix(ft, isSelected, maxTitleLen, numPrefix, false, false, layout, rowIndex)
+		line := m.renderTaskLineWithPrefix(ft, isSelected, maxTitleLen, numPrefix, m.queueIDs[ft.Task.ID], m.dailyPlanIDs[ft.Task.ID], layout, rowIndex)
 		lines = append(lines, line)
 		rowIndex++
 	}
