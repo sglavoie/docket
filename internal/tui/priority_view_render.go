@@ -78,6 +78,8 @@ func (m *PriorityViewModel) renderSuggestionSection() string {
 	// Build the task line
 	taskLine := TaskLine{
 		Task:       task,
+		Active:     task.Active,
+		Pinned:     task.Pinned,
 		MaxTitle:   titleWidth,
 		Prefix:     star,
 		StageBadge: GetStageBadge(task.Stage),
@@ -244,6 +246,8 @@ func (m *PriorityViewModel) renderScoreRanking(currentIndex *int, cursorLineIdx 
 			IsSelected:   isSelected,
 			Queued:       m.queueIDs[pt.Task.ID],
 			DailyPlanned: m.dailyPlanIDs[pt.Task.ID],
+			Active:       pt.Task.Active,
+			Pinned:       pt.Task.Pinned,
 			MaxTitle:     maxTitleLen,
 			PreBadges:    fmt.Sprintf("%d. %s ", rank+1, scoreBadge),
 			StageBadge:   GetStageBadge(pt.Task.Stage),
@@ -349,6 +353,8 @@ func (m *PriorityViewModel) renderTaskLine(pt *PriorityTask, isOverdue bool, isS
 		IsSelected:   isSelected,
 		Queued:       m.queueIDs[task.ID],
 		DailyPlanned: m.dailyPlanIDs[task.ID],
+		Active:       task.Active,
+		Pinned:       task.Pinned,
 		MaxTitle:     adjustedMaxTitleLen,
 		Prefix:       starPrefix,
 		StageBadge:   GetStageBadge(task.Stage),

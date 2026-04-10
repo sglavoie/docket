@@ -79,10 +79,7 @@ func (m *FocusViewModel) handleKeyMsg(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) 
 		m.refreshViewState()
 		return m, nil
 	case "*":
-		if ft := m.getTaskAtCursor(); ft != nil {
-			return taskOpsRemoveFromFocus(m, ft.Task.ShortID)
-		}
-		return m, nil
+		return taskOpsToggleActive(m)
 	case "1", "2", "3", "4", "5":
 		return taskOpsChangePriority(m, key)
 	case "D":

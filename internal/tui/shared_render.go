@@ -174,7 +174,9 @@ type TaskLine struct {
 	// Optional elements
 	Queued          bool          // show "Q " queue indicator in accent color (else "  "); superseded by DailyPlanned
 	DailyPlanned    bool          // show "T " daily-plan indicator in accent color; takes precedence over Queued
-	Prefix          string        // before cursor (e.g., star indicator "★ ")
+	Active          bool          // show * active marker in cursor prefix
+	Pinned          bool          // show · pinned marker in cursor prefix
+	Prefix          string        // after queue indicator (e.g., star indicator "★ ")
 	PreBadges       string        // after cursor, before status badge (e.g., project name, checkbox, rank)
 	PostTitle       string        // after title (e.g., tags, score badge, custom section)
 	DueStr          string        // right-aligned due date string (pre-styled by caller)
@@ -272,6 +274,8 @@ func RenderCrossProjectTaskLine(
 		MaxTitle:        maxTitleLen,
 		Queued:          opts.Queued,
 		DailyPlanned:    opts.DailyPlanned,
+		Active:          task.Active,
+		Pinned:          task.Pinned,
 		PreBadges:       preBadges,
 		PostTitle:       postTitle,
 		StatusBadge:     opts.StatusBadge,
@@ -319,13 +323,9 @@ func SelectedFlashLine(line string, width int) string {
 
 // Render assembles the task line string from the configured fields.
 func (tl TaskLine) Render() string {
-	cursor := "  "
-	if tl.Task.Dimmed {
-		cursor = "◌ "
-	}
+	// Standard 5-char prefix: [dim(1)][active(1)][pin(1)] + [T/Q(2)]
+	cursorPrefix := RenderCursorPrefix(tl.IsSelected, tl.Active, tl.Pinned, tl.Task.Dimmed)
 
-	// Queue / daily-plan indicator: always 2 chars wide so line width stays constant.
-	// DailyPlanned takes precedence over Queued (T > Q).
 	queueIndicator := "  "
 	if tl.DailyPlanned {
 		queueIndicator = ActiveStyle.Render("T") + " "
@@ -343,8 +343,8 @@ func (tl TaskLine) Render() string {
 		priorityBadge = ""
 	}
 
-	// Queue indicator always occupies 2 chars; reduce title space accordingly.
-	maxTitleLen := max(tl.MaxTitle-2, 10)
+	// Cursor prefix (3 chars) + queue indicator (2 chars) reduce title space.
+	maxTitleLen := max(tl.MaxTitle-3, 10)
 	title := truncateToVisualWidth(tl.Task.Title, maxTitleLen)
 	if tl.SearchQuery != "" {
 		title = HighlightSubstring(title, tl.SearchQuery, NormalStyle)
@@ -367,7 +367,7 @@ func (tl TaskLine) Render() string {
 		stageSegment = tl.StageBadge + " "
 	}
 
-	line := fmt.Sprintf("%s%s%s%s%s %s %s%s%s%s", queueIndicator, tl.Prefix, cursor, tl.PreBadges, statusIcon, typeIcon, prioritySegment, stageSegment, title, tl.PostTitle)
+	line := fmt.Sprintf("%s%s%s%s%s %s %s%s%s%s", cursorPrefix, queueIndicator, tl.Prefix, tl.PreBadges, statusIcon, typeIcon, prioritySegment, stageSegment, title, tl.PostTitle)
 	if tl.DueStr != "" {
 		if tl.ViewWidth > 0 {
 			leftWidth := max(tl.ViewWidth-lipgloss.Width(tl.DueStr)-1, 1)

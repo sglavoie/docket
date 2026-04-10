@@ -477,6 +477,8 @@ func (m *ProjectFocusViewModel) renderTaskLine(task *models.Task, isSelected boo
 	return TaskLine{
 		Task:       task,
 		IsSelected: isSelected,
+		Active:     task.Active,
+		Pinned:     task.Pinned,
 		MaxTitle:   maxTitleLen,
 		StageBadge: GetStageBadge(task.Stage),
 		PostTitle:  postTitle,

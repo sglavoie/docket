@@ -299,7 +299,7 @@ func (m *FocusBoardModel) renderRow(row boardRow, isSelected bool, maxTitleLen i
 			content = MutedStyle.Render(content)
 		}
 
-		line := RenderSelectableRow(isSelected, false, false, m.cursorFlash, content, m.width-2, task.Dimmed)
+		line := RenderSelectableRow(isSelected, task.Active, task.Pinned, m.cursorFlash, content, m.width-2, task.Dimmed)
 		b.WriteString(line)
 	} else {
 		// Regular task rendering
@@ -336,7 +336,7 @@ func (m *FocusBoardModel) renderRow(row boardRow, isSelected bool, maxTitleLen i
 		}
 
 		dimmed := task.Dimmed || (isClosed && m.tabs.Active == boardTabToday)
-		line := RenderSelectableRow(isSelected, false, false, m.cursorFlash, content, m.width-2, dimmed)
+		line := RenderSelectableRow(isSelected, task.Active, task.Pinned, m.cursorFlash, content, m.width-2, dimmed)
 		b.WriteString(line)
 	}
 
