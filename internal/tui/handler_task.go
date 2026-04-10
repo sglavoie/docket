@@ -175,7 +175,7 @@ func (m *AppModel) handleTaskMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint:go
 	case UndoPerformedMsg:
 		fromViewer := m.currentView() == ViewUndoHistory
 		undoMsg := fmt.Sprintf("Undid: %s", msg.Action)
-		cmd := m.handleWithRefresh(!fromViewer, false, undoMsg)
+		cmd := m.handleWithRefresh(false, false, undoMsg)
 		if fromViewer {
 			if v := m.views.Get(ViewUndoHistory); v != nil {
 				v.(*UndoHistoryModel).reloadEntries()
@@ -186,7 +186,7 @@ func (m *AppModel) handleTaskMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint:go
 	case RedoPerformedMsg:
 		fromViewer := m.currentView() == ViewUndoHistory
 		redoMsg := fmt.Sprintf("Redo: %s", msg.Action)
-		cmd := m.handleWithRefresh(!fromViewer, false, redoMsg)
+		cmd := m.handleWithRefresh(false, false, redoMsg)
 		if fromViewer {
 			if v := m.views.Get(ViewUndoHistory); v != nil {
 				v.(*UndoHistoryModel).reloadEntries()

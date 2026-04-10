@@ -50,7 +50,7 @@ func (m *UndoHistoryModel) renderDetailView() string {
 	}
 
 	b.WriteString("\n")
-	b.WriteString(HelpStyle.Render("Press Esc/Enter/q to close"))
+	b.WriteString(HelpStyle.Render("Press Esc/Enter to close"))
 	return b.String()
 }
 

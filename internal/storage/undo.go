@@ -136,6 +136,15 @@ func UndoHistoryExists(project *models.Project) bool {
 	return len(meta.Entries) > 0
 }
 
+// RedoHistoryExists checks if there is any redo history available.
+func RedoHistoryExists(project *models.Project) bool {
+	meta, err := LoadUndoMeta(project)
+	if err != nil {
+		return false
+	}
+	return len(meta.RedoEntries) > 0
+}
+
 // GetSnapshotContent reads the content of a specific snapshot.
 func GetSnapshotContent(project *models.Project, num int) (string, error) {
 	snapshotPath := getSnapshotPath(project, num)
@@ -309,23 +318,26 @@ func PerformUndo(project *models.Project) (string, error) {
 
 	// Capture current state as redo snapshot before restoring
 	tasksPath := GetTasksFilePath(project)
-	if currentContent, readErr := os.ReadFile(tasksPath); readErr == nil {
-		nextRedoNum := 1
-		for _, re := range meta.RedoEntries {
-			if re.Num >= nextRedoNum {
-				nextRedoNum = re.Num + 1
-			}
-		}
-		redoPath := getRedoSnapshotPath(project, nextRedoNum)
-		if writeErr := util.AtomicWriteFile(redoPath, currentContent, FilePermissions); writeErr == nil {
-			meta.RedoEntries = append(meta.RedoEntries, UndoEntry{
-				Num:       nextRedoNum,
-				Action:    latest.Action,
-				Context:   latest.Context,
-				Timestamp: time.Now(),
-			})
+	currentContent, readErr := os.ReadFile(tasksPath)
+	if readErr != nil {
+		return "", fmt.Errorf("failed to read current state for redo snapshot: %w", readErr)
+	}
+	nextRedoNum := 1
+	for _, re := range meta.RedoEntries {
+		if re.Num >= nextRedoNum {
+			nextRedoNum = re.Num + 1
 		}
 	}
+	redoPath := getRedoSnapshotPath(project, nextRedoNum)
+	if writeErr := util.AtomicWriteFile(redoPath, currentContent, FilePermissions); writeErr != nil {
+		return "", fmt.Errorf("failed to write redo snapshot: %w", writeErr)
+	}
+	meta.RedoEntries = append(meta.RedoEntries, UndoEntry{
+		Num:       nextRedoNum,
+		Action:    latest.Action,
+		Context:   latest.Context,
+		Timestamp: time.Now(),
+	})
 
 	// Write the snapshot content to tasks.md
 	if err := util.AtomicWriteFile(tasksPath, []byte(content), FilePermissions); err != nil {
@@ -386,23 +398,26 @@ func PerformRedo(project *models.Project) (string, error) {
 
 	// Capture current state as undo snapshot before applying redo
 	tasksPath := GetTasksFilePath(project)
-	if currentContent, readErr := os.ReadFile(tasksPath); readErr == nil {
-		nextUndoNum := 1
-		for _, e := range meta.Entries {
-			if e.Num >= nextUndoNum {
-				nextUndoNum = e.Num + 1
-			}
-		}
-		undoPath := getSnapshotPath(project, nextUndoNum)
-		if writeErr := util.AtomicWriteFile(undoPath, currentContent, FilePermissions); writeErr == nil {
-			meta.Entries = append(meta.Entries, UndoEntry{
-				Num:       nextUndoNum,
-				Action:    latest.Action,
-				Context:   latest.Context,
-				Timestamp: time.Now(),
-			})
+	currentContent, readErr := os.ReadFile(tasksPath)
+	if readErr != nil {
+		return "", fmt.Errorf("failed to read current state for undo snapshot: %w", readErr)
+	}
+	nextUndoNum := 1
+	for _, e := range meta.Entries {
+		if e.Num >= nextUndoNum {
+			nextUndoNum = e.Num + 1
 		}
 	}
+	undoPath := getSnapshotPath(project, nextUndoNum)
+	if writeErr := util.AtomicWriteFile(undoPath, currentContent, FilePermissions); writeErr != nil {
+		return "", fmt.Errorf("failed to write undo snapshot: %w", writeErr)
+	}
+	meta.Entries = append(meta.Entries, UndoEntry{
+		Num:       nextUndoNum,
+		Action:    latest.Action,
+		Context:   latest.Context,
+		Timestamp: time.Now(),
+	})
 
 	// Restore from redo snapshot
 	if err := util.AtomicWriteFile(tasksPath, redoContent, FilePermissions); err != nil {

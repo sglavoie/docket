@@ -58,6 +58,21 @@ func runUndo(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
+	// Try redo if no undo entries remain but redo entries exist
+	if storage.RedoHistoryExists(project) {
+		actionDesc, err := storage.PerformRedo(project)
+		if err != nil {
+			return fmt.Errorf("redo failed: %w", err)
+		}
+
+		if err := storage.LoadProject(project); err != nil {
+			return fmt.Errorf("failed to reload project after redo: %w", err)
+		}
+
+		fmt.Printf("Redo: %s\n", actionDesc)
+		return nil
+	}
+
 	// Fall back to legacy single-step backup
 	fmt.Fprintf(os.Stderr, "warning: no multi-level undo history found; falling back to legacy single-step backup\n")
 	if !storage.BackupExists(project) {

@@ -53,7 +53,7 @@ func (m *UndoHistoryModel) handleKeyPress(msg tea.KeyPressMsg) (tea.Model, tea.C
 
 func (m *UndoHistoryModel) handleDetailKeyPress(msg tea.KeyPressMsg) tea.Model {
 	switch msg.String() {
-	case "esc", "q", "enter":
+	case "esc", "enter":
 		m.showingDetail = false
 	}
 

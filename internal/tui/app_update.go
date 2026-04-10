@@ -231,7 +231,7 @@ func (m *AppModel) Update(msg tea.Msg) (outModel tea.Model, outCmd tea.Cmd) { //
 			}
 		case "ctrl+z":
 			if !m.hasActiveTextInput() {
-				if m.currentProject != nil {
+				if m.currentProject != nil && m.currentView() != ViewUndoHistory {
 					project := m.currentProject
 					return m, func() tea.Msg { return ShowUndoHistoryMsg{Project: project} }
 				}
