@@ -49,6 +49,7 @@ type FocusBoardModel struct {
 	// Queue / daily-plan indicator support
 	queueIDs     map[string]bool
 	dailyPlanIDs map[string]bool
+	dailyPlan    *[]FocusTask // shared with AppModel for reordering
 
 	// Data
 	rows           []boardRow
@@ -85,7 +86,7 @@ type FocusBoardModel struct {
 }
 
 // NewFocusBoardModel creates a new focus board model.
-func NewFocusBoardModel(cfg *config.Config, manager *config.Manager, queueIDs, dailyPlanIDs, carriedOverIDs map[string]bool) *FocusBoardModel {
+func NewFocusBoardModel(cfg *config.Config, manager *config.Manager, dailyPlan *[]FocusTask, queueIDs, dailyPlanIDs, carriedOverIDs map[string]bool) *FocusBoardModel {
 	ti := textinput.New()
 	ti.Placeholder = "Action title (%project !priority #tag -s source -u url)"
 	ti.CharLimit = 200
@@ -101,6 +102,7 @@ func NewFocusBoardModel(cfg *config.Config, manager *config.Manager, queueIDs, d
 		configManager:  manager,
 		projectService: NewProjectService(),
 		queueIDs:       queueIDs,
+		dailyPlan:      dailyPlan,
 		dailyPlanIDs:   dailyPlanIDs,
 		carriedOverIDs: carriedOverIDs,
 		addInput:       ti,

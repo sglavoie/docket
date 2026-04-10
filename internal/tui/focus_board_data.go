@@ -59,14 +59,18 @@ func (m *FocusBoardModel) loadItems() {
 		}
 	}
 
-	// Sort today rows: active first (by priority), then completed (by priority)
+	// Sort today rows: active first, then completed; within each group preserve dailyPlan order
+	posMap := make(map[string]int, len(*m.dailyPlan))
+	for i, ft := range *m.dailyPlan {
+		posMap[ft.Task.ID] = i
+	}
 	sort.SliceStable(m.todayRows, func(i, j int) bool {
 		iComplete := m.todayRows[i].Task.Status.IsComplete()
 		jComplete := m.todayRows[j].Task.Status.IsComplete()
 		if iComplete != jComplete {
 			return !iComplete
 		}
-		return m.todayRows[i].Priority < m.todayRows[j].Priority
+		return posMap[m.todayRows[i].Task.ID] < posMap[m.todayRows[j].Task.ID]
 	})
 
 	// Sort by priority ascending, then preserve original order within same priority

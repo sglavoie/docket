@@ -26,6 +26,14 @@ func (m *FocusBoardModel) handleKeyMsg(msg tea.KeyPressMsg) (tea.Model, tea.Cmd)
 		return m, cmd
 	}
 
+	// Reorder today items
+	switch key {
+	case "J":
+		return m.handleDailyPlanReorder(1)
+	case "K":
+		return m.handleDailyPlanReorder(-1)
+	}
+
 	// Activate prefix keys: F always, ,!g gated on item, mc gated on item
 	if prefix, ok := activateSecondaryPrefix(key, "gzF", ",!dsmct.", m.getRowAtCursor() != nil); ok {
 		m.pendingPrefix = prefix
@@ -196,7 +204,7 @@ func (m *FocusBoardModel) GetHelpItems() []HelpItem {
 
 func (m *FocusBoardModel) HandledKeys() []string {
 	return concatKeys(
-		[]string{"j", "k", "G", "ctrl+u", "ctrl+d"}, // FocusBoard registry has j/k and ctrl+u/d but not ↑/↓
+		[]string{"j", "k", "J", "K", "G", "ctrl+u", "ctrl+d"}, // FocusBoard registry has j/k and ctrl+u/d but not ↑/↓
 		statusPrefixKeys(),
 		priorityPrefixKeys(),
 		dueDatePrefixKeys(),

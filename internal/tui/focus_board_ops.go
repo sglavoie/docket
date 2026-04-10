@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os/exec"
 	"runtime"
+	"time"
 
 	tea "charm.land/bubbletea/v2"
 
@@ -185,6 +186,70 @@ func (m *FocusBoardModel) handleFilterPrefix(key string) (tea.Model, tea.Cmd) {
 
 func (m *FocusBoardModel) handleFilterSubPrefix(prefix, key string) (tea.Model, tea.Cmd) {
 	return m.handleFocusBoardFilterSubPrefix(prefix, key)
+}
+
+// handleDailyPlanReorder swaps the cursor item with an adjacent item in the Today tab.
+func (m *FocusBoardModel) handleDailyPlanReorder(delta int) (tea.Model, tea.Cmd) {
+	if m.tabs.Active != boardTabToday {
+		return m, nil
+	}
+	to := m.cursor + delta
+	if m.cursor < 0 || m.cursor >= len(m.filtered) || to < 0 || to >= len(m.filtered) {
+		return m, nil
+	}
+
+	curRow := m.filtered[m.cursor]
+	targetRow := m.filtered[to]
+
+	// Only reorder within the same completion group (active-first partition).
+	if curRow.Task.Status.IsComplete() != targetRow.Task.Status.IsComplete() {
+		return m, nil
+	}
+
+	// Swap in the canonical dailyPlan slice.
+	dp := *m.dailyPlan
+	curIdx, targetIdx := -1, -1
+	for i, ft := range dp {
+		switch ft.Task.ID {
+		case curRow.Task.ID:
+			curIdx = i
+		case targetRow.Task.ID:
+			targetIdx = i
+		}
+	}
+	if curIdx < 0 || targetIdx < 0 {
+		return m, nil
+	}
+	dp[curIdx], dp[targetIdx] = dp[targetIdx], dp[curIdx]
+
+	m.persistDailyPlan()
+
+	// Swap in display slices and move cursor.
+	m.filtered[m.cursor], m.filtered[to] = m.filtered[to], m.filtered[m.cursor]
+	m.todayRows[m.cursor], m.todayRows[to] = m.todayRows[to], m.todayRows[m.cursor]
+	m.cursor = to
+	return m, nil
+}
+
+// persistDailyPlan saves the current daily plan order to config.
+func (m *FocusBoardModel) persistDailyPlan() {
+	if m.configManager == nil {
+		return
+	}
+	today := time.Now().Format("2006-01-02")
+	dp := *m.dailyPlan
+	items := make([]config.DailyPlanItem, len(dp))
+	for i, ft := range dp {
+		items[i] = config.DailyPlanItem{
+			TaskID:      ft.Task.ID,
+			ProjectID:   ft.Project.ID,
+			PlannedDate: today,
+		}
+	}
+	m.config.SetDailyPlan(items)
+	if err := m.configManager.Save(m.config); err != nil {
+		m.setStatus("Failed to save: " + err.Error())
+	}
 }
 
 // openBrowserCmd opens a URL in the default browser.
