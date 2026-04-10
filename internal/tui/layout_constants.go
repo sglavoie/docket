@@ -66,6 +66,11 @@ const (
 	// AlertsCardHeight is the fixed height for the alerts card in dashboard.
 	AlertsCardHeight = 8
 
+	// DashboardBottomPaneHeight is the fixed height for the bottom info
+	// section (summary/alerts cards) in the dashboard. The top project
+	// list gets whatever vertical space remains after reserving this.
+	DashboardBottomPaneHeight = 12
+
 	// FocusTitleMaxWidth is the maximum width for truncated titles in focus mode indicators.
 	FocusTitleMaxWidth = 40
 

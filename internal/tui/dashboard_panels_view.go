@@ -25,6 +25,7 @@ type dashboardPanelCard struct {
 // Narrow: cards stacked vertically.
 func (m *DashboardModel) renderInfoSection(width int, selected *models.Project) string {
 	cfg := DashboardCardConfig()
+	cfg.Height = DashboardBottomPaneHeight
 
 	hasRecent := selected != nil
 	var scoringProfile *scoring.ScoringProfile
@@ -101,6 +102,7 @@ func (m *DashboardModel) renderInfoSection(width int, selected *models.Project) 
 // renderProjectSummarySection renders the project summary card and alerts card.
 func (m *DashboardModel) renderProjectSummarySection(width int, selected *models.Project) string {
 	cfg := DashboardCardConfig()
+	cfg.Height = DashboardBottomPaneHeight
 
 	numCards := 1
 	hasSummary := selected != nil

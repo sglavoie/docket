@@ -29,7 +29,7 @@ func (m *DashboardModel) renderDashboard(visible []*models.Project, chromeHeight
 
 	cardWidth := max(m.width-2, MinCardWidth)
 
-	// Pre-render info section to measure its actual height
+	// Reserve fixed height for bottom info section, then render it
 	var infoContent string
 	bottomHeight := 0
 	panelMode := m.config.GetInfoPanelMode()
@@ -46,8 +46,8 @@ func (m *DashboardModel) renderDashboard(visible []*models.Project, chromeHeight
 		default:
 		}
 		if infoContent != "" {
-			// +1 for the final line (Count gives separators), +1 for the gap newline
-			bottomHeight = strings.Count(infoContent, "\n") + 2
+			// Fixed height: reserve space for bottom pane first, top pane gets the rest
+			bottomHeight = DashboardBottomPaneHeight + 1 // +1 for the gap newline
 		}
 	}
 
