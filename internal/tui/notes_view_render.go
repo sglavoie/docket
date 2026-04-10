@@ -223,7 +223,7 @@ func (m *NotesViewModel) renderFooter() string {
 		if m.fullscreenPane {
 			zHint = "Z:exit fullscreen"
 		}
-		helpText = "j/k: scroll · g/G: top/bottom · Ctrl+D/U: half page · Tab/Esc: list pane · Enter: view · e: edit · " + zHint + " · q: close"
+		helpText = "j/k: scroll · g/G: top/bottom · Ctrl+D/U: half page · Tab/Esc: list pane · Enter: view · e: edit · " + zHint + " · Esc: close"
 	} else if m.multiSelectMode {
 		helpText = "space: toggle · a: all · gX: clear · d: delete · t: tag · l: link · y: copy · V/Esc: exit multi-select"
 	} else {

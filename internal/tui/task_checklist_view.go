@@ -135,6 +135,6 @@ func (m *TaskChecklistModel) renderChecklistItemEntry(index, maxLen int) string 
 
 func (m *TaskChecklistModel) renderChecklistHelp(b *strings.Builder) {
 	b.WriteString("\n")
-	helpText := "j/k: nav · J/K: reorder · Space: toggle · a: add · e: edit · E: external editor · d: delete · q: close"
+	helpText := "j/k: nav · J/K: reorder · Space: toggle · a: add · e: edit · E: external editor · d: delete · Esc: close"
 	b.WriteString(HelpStyle.Render(renderWrappingHelpLine(helpText, m.Width())))
 }

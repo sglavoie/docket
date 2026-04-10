@@ -125,7 +125,7 @@ func (m *TaskDetailModel) renderFooter() string {
 		right = HelpStyle.Render(fmt.Sprintf("%d%% (%d/%d)", pct, m.scrollOffset+1, m.totalLines))
 	}
 
-	left := HelpStyle.Render("j/k: scroll · ,: status · !: priority · e: edit · c: comments · d: due · h: history · q: close")
+	left := HelpStyle.Render("j/k: scroll · ,: status · !: priority · e: edit · c: comments · d: due · h: history · Esc: close")
 	return renderStatusBarFooter(left, right, m.width, m.AccentColor())
 }
 

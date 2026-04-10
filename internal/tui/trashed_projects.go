@@ -140,7 +140,7 @@ func (m *TrashedProjectsModel) View() tea.View {
 	out.WriteString(renderFullscreenTitle(m.Config.Title, subtitle))
 	out.WriteString("\n\n")
 
-	out.WriteString(MutedStyle.Render("Enter: restore · d: delete · q: close"))
+	out.WriteString(MutedStyle.Render("Enter: restore · d: delete · Esc: close"))
 	out.WriteString("\n\n")
 
 	// Search bar

@@ -432,7 +432,7 @@ func (m *ScoreProfileManagerModel) View() tea.View {
 	if m.pickingPreset {
 		lines = append(lines, HelpStyle.Render("j/k: navigate  Enter: add  Esc: cancel"))
 	} else {
-		lines = append(lines, HelpStyle.Render("a: add preset  d: delete  Enter: assign  u: unassign  q: close"))
+		lines = append(lines, HelpStyle.Render("a: add preset  d: delete  Enter: assign  u: unassign  Esc: close"))
 	}
 
 	content := strings.Join(lines, "\n")

@@ -30,7 +30,7 @@ func (m *WorkflowDryRunModel) View() tea.View {
 	if m.loadErr != nil {
 		b.WriteString(ErrorIconStyle.Render(fmt.Sprintf("Error: %s", m.loadErr.Error())))
 		b.WriteString("\n\n")
-		b.WriteString(renderStatusBarFooter(HelpStyle.Render("q: close"), "", m.Width(), m.AccentColor()))
+		b.WriteString(renderStatusBarFooter(HelpStyle.Render("Esc: close"), "", m.Width(), m.AccentColor()))
 		return tea.NewView(b.String())
 	}
 
@@ -109,7 +109,7 @@ func (m *WorkflowDryRunModel) View() tea.View {
 
 	// Help footer
 	var helpParts []string
-	helpParts = append(helpParts, "/: search", "j/k: nav", "q: close")
+	helpParts = append(helpParts, "/: search", "j/k: nav", "Esc: close")
 	b.WriteString("\n")
 	b.WriteString(renderStatusBarFooter(HelpStyle.Render(strings.Join(helpParts, " · ")), "", m.Width(), m.AccentColor()))
 

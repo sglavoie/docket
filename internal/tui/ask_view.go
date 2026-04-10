@@ -474,7 +474,7 @@ func (m *AskViewModel) View() tea.View {
 			b.WriteString(m.viewport.View())
 		}
 		b.WriteString("\n")
-		footer := "n: new query · q: close"
+		footer := "n: new query · Esc: close"
 		if len(m.commands) > 0 {
 			footer = "a: apply commands · " + footer
 		}

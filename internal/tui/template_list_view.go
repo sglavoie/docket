@@ -159,14 +159,14 @@ func (m *TaskTemplatesModel) renderHelpText() string {
 
 	if len(m.filteredTemplates) == 0 {
 		if m.searchQuery == "" {
-			parts = []string{"/: search", "n: new template", "q: close"}
+			parts = []string{"/: search", "n: new template", "Esc: close"}
 		} else {
-			parts = []string{"Esc: clear search", "n: new template", "q: close"}
+			parts = []string{"Esc: clear search", "n: new template", "Esc: close"}
 		}
 	} else if m.isWideScreen() {
-		parts = []string{"/: search", "j/k: nav", "Ctrl+D/U: scroll", "Space: toggle", "n: new", "e: edit", "d: delete", "q: close"}
+		parts = []string{"/: search", "j/k: nav", "Ctrl+D/U: scroll", "Space: toggle", "n: new", "e: edit", "d: delete", "Esc: close"}
 	} else {
-		parts = []string{"/: search", "j/k: nav", "Enter: preview", "Space: toggle", "n: new", "e: edit", "d: delete", "q: close"}
+		parts = []string{"/: search", "j/k: nav", "Enter: preview", "Space: toggle", "n: new", "e: edit", "d: delete", "Esc: close"}
 	}
 
 	return renderWrappingHelpLine(strings.Join(parts, " · "), m.Width()-2)
