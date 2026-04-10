@@ -140,7 +140,15 @@ func (m *UndoHistoryModel) handleEnter() (tea.Model, tea.Cmd) {
 
 	if m.focusedPane == 0 && m.totalEntries() > 0 {
 		if m.isOnRedoSide() {
+			// Only the most recent redo entry (index 0) can be applied
+			if m.redoIndex() != 0 {
+				return m, func() tea.Msg { return InfoStatusMsg("Only the most recent redo entry can be applied") }
+			}
 			return m, m.performRedo()
+		}
+		// Only the most recent undo entry (first after redo entries) can be applied
+		if m.undoIndex() != 0 {
+			return m, func() tea.Msg { return InfoStatusMsg("Only the most recent undo entry can be applied") }
 		}
 		return m, m.performUndo()
 	}

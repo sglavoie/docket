@@ -14,13 +14,19 @@ import (
 )
 
 func TestRunUndo(t *testing.T) {
-	t.Run("restores backup when backup exists", func(t *testing.T) {
+	t.Run("restores from undo history", func(t *testing.T) {
 		tmpDir := t.TempDir()
 		projectPath := filepath.Join(tmpDir, "test-project")
 		if err := os.MkdirAll(projectPath, 0755); err != nil {
 			t.Fatalf("failed to create project dir: %v", err)
 		}
 
+		originalContent := `# Project: Test Project
+<!-- next_short_id: 2 -->
+
+## Task: Original task
+<!-- id: task-1, status: todo, priority: 3 -->
+`
 		currentContent := `# Project: Test Project
 <!-- next_short_id: 3 -->
 
@@ -30,20 +36,11 @@ func TestRunUndo(t *testing.T) {
 ## Task: New task
 <!-- id: task-2, status: todo, priority: 3 -->
 `
-		backupContent := `# Project: Test Project
-<!-- next_short_id: 2 -->
-
-## Task: Original task
-<!-- id: task-1, status: todo, priority: 3 -->
-`
 		tasksPath := filepath.Join(projectPath, "tasks.md")
-		backupPath := filepath.Join(projectPath, ".tasks.md.bak")
 
-		if err := os.WriteFile(tasksPath, []byte(currentContent), 0644); err != nil {
+		// Write original content first so we can record a snapshot
+		if err := os.WriteFile(tasksPath, []byte(originalContent), 0644); err != nil {
 			t.Fatalf("failed to write tasks file: %v", err)
-		}
-		if err := os.WriteFile(backupPath, []byte(backupContent), 0644); err != nil {
-			t.Fatalf("failed to write backup file: %v", err)
 		}
 
 		project := &models.Project{
@@ -52,6 +49,15 @@ func TestRunUndo(t *testing.T) {
 			Slug: "test-project",
 			Path: projectPath,
 		}
+
+		// Record undo snapshot (captures original state), then write current content
+		if err := storage.RecordUndoSnapshot(project, "test", "modified task", 10); err != nil {
+			t.Fatalf("failed to record undo snapshot: %v", err)
+		}
+		if err := os.WriteFile(tasksPath, []byte(currentContent), 0644); err != nil {
+			t.Fatalf("failed to write modified tasks file: %v", err)
+		}
+
 		if err := storage.LoadProject(project); err != nil {
 			t.Fatalf("failed to load project: %v", err)
 		}
@@ -152,33 +158,22 @@ func TestRunUndo(t *testing.T) {
 		}
 	})
 
-	t.Run("backup swap allows redo via second undo", func(t *testing.T) {
+	t.Run("undo does not silently redo when undo stack is empty", func(t *testing.T) {
 		tmpDir := t.TempDir()
 		projectPath := filepath.Join(tmpDir, "test-project")
 		if err := os.MkdirAll(projectPath, 0755); err != nil {
 			t.Fatalf("failed to create project dir: %v", err)
 		}
 
-		stateA := `# Project: Test Project
+		tasksContent := `# Project: Test Project
 <!-- next_short_id: 2 -->
 
-## Task: State A task
+## Task: Some task
 <!-- id: task-1, status: todo, priority: 3 -->
 `
-		stateB := `# Project: Test Project
-<!-- next_short_id: 2 -->
-
-## Task: State B task
-<!-- id: task-1, status: done, priority: 1 -->
-`
 		tasksPath := filepath.Join(projectPath, "tasks.md")
-		backupPath := filepath.Join(projectPath, ".tasks.md.bak")
-
-		if err := os.WriteFile(tasksPath, []byte(stateB), 0644); err != nil {
+		if err := os.WriteFile(tasksPath, []byte(tasksContent), 0644); err != nil {
 			t.Fatalf("failed to write tasks file: %v", err)
-		}
-		if err := os.WriteFile(backupPath, []byte(stateA), 0644); err != nil {
-			t.Fatalf("failed to write backup file: %v", err)
 		}
 
 		project := &models.Project{
@@ -186,6 +181,14 @@ func TestRunUndo(t *testing.T) {
 			Name: "Test Project",
 			Slug: "test-project",
 			Path: projectPath,
+		}
+
+		// Record a snapshot, mutate, then undo to create redo entries
+		if err := storage.RecordUndoSnapshot(project, "test", "", 10); err != nil {
+			t.Fatalf("failed to record snapshot: %v", err)
+		}
+		if err := os.WriteFile(tasksPath, []byte(tasksContent), 0644); err != nil {
+			t.Fatalf("failed to write tasks file: %v", err)
 		}
 
 		cfg := &config.Config{
@@ -207,22 +210,18 @@ func TestRunUndo(t *testing.T) {
 		storage.DefaultRepository = storage.NewFileSystemRepository()
 		defer func() { storage.DefaultRepository = oldRepo }()
 
+		// First undo succeeds (consumes the undo entry, creates redo)
 		if err := runUndo(nil, nil); err != nil {
 			t.Fatalf("first undo failed: %v", err)
 		}
 
-		afterFirstUndo, _ := os.ReadFile(tasksPath)
-		if !strings.Contains(string(afterFirstUndo), "State A task") {
-			t.Error("after first undo, should have State A content")
+		// Second undo should fail, not silently redo
+		err := runUndo(nil, nil)
+		if err == nil {
+			t.Fatal("expected error when undo stack is empty, got nil")
 		}
-
-		if err := runUndo(nil, nil); err != nil {
-			t.Fatalf("second undo (redo) failed: %v", err)
-		}
-
-		afterSecondUndo, _ := os.ReadFile(tasksPath)
-		if !strings.Contains(string(afterSecondUndo), "State B task") {
-			t.Error("after second undo, should have State B content (redo)")
+		if !strings.Contains(err.Error(), "no undo history available") {
+			t.Errorf("expected 'no undo history available' error, got: %v", err)
 		}
 	})
 }

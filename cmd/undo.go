@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/spf13/cobra"
 
@@ -17,8 +16,6 @@ var undoCmd = &cobra.Command{
 Each mutating operation (add, complete, edit, etc.) creates an undo snapshot.
 Running undo restores the most recent snapshot.
 Multiple levels of undo are supported (configurable via undo_history_depth).
-
-If no multi-level undo history is available, falls back to legacy single-step backup.
 
 Examples:
   tt undo              # Restore previous state`,
@@ -58,45 +55,5 @@ func runUndo(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	// Try redo if no undo entries remain but redo entries exist
-	if storage.RedoHistoryExists(project) {
-		actionDesc, err := storage.PerformRedo(project)
-		if err != nil {
-			return fmt.Errorf("redo failed: %w", err)
-		}
-
-		if err := storage.LoadProject(project); err != nil {
-			return fmt.Errorf("failed to reload project after redo: %w", err)
-		}
-
-		fmt.Printf("Redo: %s\n", actionDesc)
-		return nil
-	}
-
-	// Fall back to legacy single-step backup
-	fmt.Fprintf(os.Stderr, "warning: no multi-level undo history found; falling back to legacy single-step backup\n")
-	if !storage.BackupExists(project) {
-		return fmt.Errorf("no undo history available for project '%s'", project.Name)
-	}
-
-	// Count tasks before restore
-	tasksBefore := len(project.Tasks)
-
-	// Perform the restore (swap current with backup)
-	if err := storage.RestoreFromBackup(project); err != nil {
-		return fmt.Errorf("failed to restore from backup: %w", err)
-	}
-
-	// Reload project to get the restored state
-	if err := storage.LoadProject(project); err != nil {
-		return fmt.Errorf("failed to reload project after restore: %w", err)
-	}
-
-	tasksAfter := len(project.Tasks)
-
-	fmt.Printf("Restored project '%s' (legacy backup)\n", project.Name)
-	fmt.Printf("Tasks: %d -> %d\n", tasksBefore, tasksAfter)
-	fmt.Println("Run 'tt undo' again to reverse this operation.")
-
-	return nil
+	return fmt.Errorf("no undo history available for project '%s'", project.Name)
 }

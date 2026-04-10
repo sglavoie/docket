@@ -344,17 +344,16 @@ func PerformUndo(project *models.Project) (string, error) {
 		return "", fmt.Errorf("failed to restore from snapshot: %w", err)
 	}
 
-	// Remove the snapshot file
-	snapshotPath := getSnapshotPath(project, latest.Num)
-	_ = os.Remove(snapshotPath)
-
-	// Remove the entry from metadata
+	// Remove the entry from metadata and save BEFORE deleting the snapshot file.
+	// If meta save fails, the snapshot file still exists and state is recoverable.
 	meta.Entries = meta.Entries[1:]
-
-	// Save updated metadata
 	if err := saveUndoMeta(project, meta); err != nil {
 		return "", err
 	}
+
+	// Delete consumed snapshot (cleanup — safe to fail)
+	snapshotPath := getSnapshotPath(project, latest.Num)
+	_ = os.Remove(snapshotPath)
 
 	// Build action description
 	actionDesc := latest.Action
@@ -424,16 +423,15 @@ func PerformRedo(project *models.Project) (string, error) {
 		return "", fmt.Errorf("failed to restore from redo snapshot: %w", err)
 	}
 
-	// Remove the redo snapshot file
-	_ = os.Remove(redoPath)
-
-	// Remove the consumed redo entry
+	// Remove the consumed redo entry and save meta BEFORE deleting the snapshot file.
+	// If meta save fails, the snapshot file still exists and state is recoverable.
 	meta.RedoEntries = meta.RedoEntries[1:]
-
-	// Save updated metadata
 	if err := saveUndoMeta(project, meta); err != nil {
 		return "", err
 	}
+
+	// Delete consumed redo snapshot (cleanup — safe to fail)
+	_ = os.Remove(redoPath)
 
 	actionDesc := latest.Action
 	if latest.Context != "" {

@@ -56,13 +56,13 @@ func NewUndoHistoryModel(project *models.Project) *UndoHistoryModel {
 	}
 	m.BaseView.SetSize(80, 24)
 
-	// Start cursor on the most recent undo entry (below the divider).
-	// Clamp to valid range to handle redo-only state (no undo entries).
-	m.cursor = len(redoEntries)
-	if total := m.totalEntries(); total == 0 {
-		m.cursor = 0
-	} else if m.cursor >= total {
-		m.cursor = total - 1
+	// Start cursor on the most recent actionable entry.
+	// If undo entries exist, select the most recent undo (first after redo section).
+	// If only redo entries exist, select the most recent redo (index 0).
+	if len(entries) > 0 {
+		m.cursor = len(redoEntries) // first undo entry
+	} else if len(redoEntries) > 0 {
+		m.cursor = 0 // most recent redo entry
 	}
 
 	// Compute initial diff if there are any entries
