@@ -222,6 +222,9 @@ func (m *AppModel) Update(msg tea.Msg) (outModel tea.Model, outCmd tea.Cmd) { //
 					return m, m.batchWithFocusRefresh(cmd)
 				}
 			case ViewFocusBoard:
+				if cmd := m.undoDailyPlanToggle(); cmd != nil {
+					return m, m.batchWithFocusRefresh(cmd)
+				}
 				if cmd := m.undoQueueToggle(); cmd != nil {
 					return m, m.batchWithFocusRefresh(cmd)
 				}
