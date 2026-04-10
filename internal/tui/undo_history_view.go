@@ -16,7 +16,7 @@ func (m *UndoHistoryModel) View() tea.View {
 	}
 
 	var b strings.Builder
-	b.WriteString(renderFullscreenTitle("Undo History", "", m.AccentColor()))
+	b.WriteString(renderFullscreenTitle("Undo / Redo History", "", m.AccentColor()))
 	b.WriteString("\n\n")
 
 	if m.HasError() {
@@ -26,8 +26,8 @@ func (m *UndoHistoryModel) View() tea.View {
 		return tea.NewView(b.String())
 	}
 
-	if len(m.entries) == 0 {
-		b.WriteString(MutedStyle.Render("No undo history available."))
+	if m.totalEntries() == 0 {
+		b.WriteString(MutedStyle.Render("No undo/redo history available."))
 		b.WriteString("\n\n")
 		b.WriteString(HelpStyle.Render("Press Esc to close"))
 		return tea.NewView(b.String())
@@ -53,8 +53,10 @@ func (m *UndoHistoryModel) helpText() string {
 	helpParts := []string{"j/k: navigate"}
 	if m.focusedPane == 1 {
 		helpParts = append(helpParts, "h/l: scroll left/right", "Enter: view full line")
+	} else if m.isOnRedoSide() {
+		helpParts = append(helpParts, "Enter: redo")
 	} else {
-		helpParts = append(helpParts, "Enter: undo most recent")
+		helpParts = append(helpParts, "Enter: undo")
 	}
 	helpParts = append(helpParts, "Tab: switch pane", "Esc: close")
 	return strings.Join(helpParts, " · ")
@@ -70,20 +72,43 @@ func (m *UndoHistoryModel) renderEntryList(width, height int) string {
 	b.WriteString(headerStyle.Render("Actions"))
 	b.WriteString("\n")
 
+	total := m.totalEntries()
+	if total == 0 {
+		return b.String()
+	}
+
 	visibleEntries := max((height-2)/2, 1)
 	startIdx := 0
 	if m.cursor >= visibleEntries {
 		startIdx = m.cursor - visibleEntries + 1
 	}
+	endIdx := min(startIdx+visibleEntries, total)
 
-	endIdx := min(startIdx+visibleEntries, len(m.entries))
+	nRedo := len(m.redoEntries)
+	// dividerShown tracks whether the current-state divider has already been emitted
+	dividerShown := startIdx >= nRedo
+
 	for i := startIdx; i < endIdx; i++ {
-		entry := m.entries[i]
+		// Emit divider when crossing from redo to undo section
+		if i == nRedo && !dividerShown && nRedo > 0 && len(m.entries) > 0 {
+			dividerShown = true
+			b.WriteString(MutedStyle.Render("─── current state ───"))
+			b.WriteString("\n")
+		}
+
+		var entry storage.UndoEntry
+		var isRedo bool
+		if i < nRedo {
+			entry = m.redoEntries[i]
+			isRedo = true
+		} else {
+			entry = m.entries[i-nRedo]
+		}
+
 		actionText := entry.Action
 		if entry.Context != "" {
 			actionText = fmt.Sprintf("%s: %s", entry.Action, entry.Context)
 		}
-
 		maxLen := width - 4
 		if len(actionText) > maxLen {
 			actionText = actionText[:maxLen-3] + "..."
@@ -92,16 +117,29 @@ func (m *UndoHistoryModel) renderEntryList(width, height int) string {
 		line := "  " + actionText
 		if i == m.cursor {
 			line = BoldStyle.Render(line)
+		} else if isRedo {
+			line = MutedStyle.Render(line)
 		}
 
 		b.WriteString(line)
 		b.WriteString("\n")
-		fmt.Fprintf(&b, "   %s", MutedStyle.Render(storage.FormatRelativeTime(entry.Timestamp)))
+
+		timeStr := storage.FormatRelativeTime(entry.Timestamp)
+		if isRedo {
+			fmt.Fprintf(&b, "   %s\n", MutedStyle.Render("↑ redo · "+timeStr))
+		} else {
+			fmt.Fprintf(&b, "   %s\n", MutedStyle.Render(timeStr))
+		}
+	}
+
+	// If divider was not shown and both sections exist, it appears below the visible window
+	if !dividerShown && nRedo > 0 && len(m.entries) > 0 {
+		b.WriteString(MutedStyle.Render("─── current state ───"))
 		b.WriteString("\n")
 	}
 
-	if len(m.entries) > visibleEntries {
-		remaining := len(m.entries) - endIdx
+	if total > visibleEntries {
+		remaining := total - endIdx
 		if remaining > 0 {
 			b.WriteString(MutedStyle.Render(fmt.Sprintf("  ... %d more", remaining)))
 			b.WriteString("\n")
@@ -118,7 +156,11 @@ func (m *UndoHistoryModel) renderDiffPreview(width, height int) string {
 	if m.focusedPane == 1 {
 		headerStyle = BoldPrimaryUnderlineStyle
 	}
-	b.WriteString(headerStyle.Render("What Changed"))
+	if m.isOnRedoSide() {
+		b.WriteString(headerStyle.Render("What Redo Restores"))
+	} else {
+		b.WriteString(headerStyle.Render("What Changed"))
+	}
 	b.WriteString("\n")
 
 	if len(m.diffLines) == 0 {

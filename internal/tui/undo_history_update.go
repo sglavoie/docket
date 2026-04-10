@@ -7,6 +7,9 @@ func (m *UndoHistoryModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) { //nolint:g
 	case tea.WindowSizeMsg:
 		m.BaseView.SetSize(msg.Width, msg.Height)
 
+	case UndoHistoryRefreshMsg:
+		m.reloadEntries()
+
 	case tea.KeyPressMsg:
 		return m.handleKeyPress(msg)
 	}
@@ -77,7 +80,7 @@ func (m *UndoHistoryModel) handlePendingPrefix(msg tea.KeyPressMsg) tea.Model {
 
 func (m *UndoHistoryModel) moveDown() {
 	if m.focusedPane == 0 {
-		if m.cursor < len(m.entries)-1 {
+		if m.cursor < m.totalEntries()-1 {
 			m.cursor++
 			m.computeDiff()
 			m.resetDiffSelection(true)
@@ -135,7 +138,10 @@ func (m *UndoHistoryModel) handleEnter() (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
-	if m.focusedPane == 0 && len(m.entries) > 0 {
+	if m.focusedPane == 0 && m.totalEntries() > 0 {
+		if m.isOnRedoSide() {
+			return m, m.performRedo()
+		}
 		return m, m.performUndo()
 	}
 
@@ -144,8 +150,8 @@ func (m *UndoHistoryModel) handleEnter() (tea.Model, tea.Cmd) {
 
 func (m *UndoHistoryModel) jumpToBottom() {
 	if m.focusedPane == 0 {
-		if len(m.entries) > 0 {
-			m.cursor = len(m.entries) - 1
+		if m.totalEntries() > 0 {
+			m.cursor = m.totalEntries() - 1
 			m.computeDiff()
 			m.resetDiffSelection(true)
 		}

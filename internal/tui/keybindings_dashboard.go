@@ -40,7 +40,6 @@ func (r *KeybindingRegistry) registerDashboardBindings() {
 		Keybinding{Key: "a", Description: "Toggle archived filter", Category: "Actions", Views: views},
 		Keybinding{Key: "T", Description: "View trash", Category: "Actions", Views: views},
 		Keybinding{Key: "S", Description: "Set status icon & note", Category: "Actions", Views: views},
-		Keybinding{Key: "R", Description: "Cycle info panel", Category: "Actions", Views: views},
-		Keybinding{Key: "ctrl+R", Description: "Refresh", Category: "Actions", Views: views},
+		Keybinding{Key: "R", Description: "Refresh", Category: "Actions", Views: views},
 	)
 }

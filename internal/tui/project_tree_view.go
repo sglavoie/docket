@@ -36,7 +36,7 @@ func (m *ProjectTreeModel) GetHelpItems() []HelpItem {
 func (m *ProjectTreeModel) HandledKeys() []string {
 	return concatKeys(
 		[]string{"j", "k", "G"}, // ProjectTree registry has j/k and gg/G but not ctrl+u/d or ↑/↓
-		commonPrimaryViewKeys(), // ctrl+p, ctrl+o, `, ~, @, B, p, w, i, I, \, {, }, ctrl+r, ctrl+l, u, ctrl+z, S, ctrl+., ctrl+m
+		commonPrimaryViewKeys(), // ctrl+p, ctrl+o, `, ~, @, B, p, w, i, I, \, {, }, R, ctrl+r, ctrl+l, u, S, ctrl+., ctrl+m
 		statusPrefixKeys(),      // ,s ,d ,b ,S ,o ,x ,r
 		priorityPrefixKeys(),    // !1-!5
 		dueDatePrefixKeys(),     // dt dm dw dn d0 dd

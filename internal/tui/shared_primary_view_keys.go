@@ -67,8 +67,12 @@ func handleCommonPrimaryViewKey(key string, v primaryProjectView) (tea.Cmd, bool
 		return func() tea.Msg { return ShowNoteCreatorMsg{Project: project} }, true
 
 	// Reload from disk
-	case "ctrl+r":
+	case "R":
 		return v.reloadFromDisk(), true
+
+	// Redo
+	case "ctrl+r":
+		return v.performRedo(), true
 
 	// Edit last modified task
 	case "ctrl+l":
@@ -84,8 +88,6 @@ func handleCommonPrimaryViewKey(key string, v primaryProjectView) (tea.Cmd, bool
 	// Undo
 	case "u":
 		return v.performUndo(), true
-	case "ctrl+z":
-		return func() tea.Msg { return ShowUndoHistoryMsg{Project: project} }, true
 
 	// Task-specific keys requiring resolve
 	case "S", "ctrl+.", "ctrl+m":

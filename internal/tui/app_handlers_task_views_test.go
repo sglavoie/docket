@@ -88,8 +88,9 @@ func TestHandleTaskMessagesUndoPerformed(t *testing.T) {
 	if !handled {
 		t.Error("UndoPerformedMsg should be handled")
 	}
-	if app.currentView() != ViewDashboard {
-		t.Errorf("currentView should be Dashboard after undo, got %v", app.currentView())
+	// Viewer stays open after undo — user can continue undoing/redoing
+	if app.currentView() != ViewUndoHistory {
+		t.Errorf("currentView should remain UndoHistory after undo, got %v", app.currentView())
 	}
 	if app.statusMessage != "Undid: Task deleted" {
 		t.Errorf("statusMessage should contain undo action, got %q", app.statusMessage)

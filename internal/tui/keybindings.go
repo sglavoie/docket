@@ -322,6 +322,7 @@ func (r *KeybindingRegistry) registerGlobalBindings() {
 		Keybinding{Key: ";W", Description: "Open Workflow Rules", Category: "Navigation"},
 		Keybinding{Key: ";o", Description: "Open Global Outliner", Category: "Navigation"},
 		Keybinding{Key: "ctrl+X", Description: "Switch project", Category: "Navigation"},
+		Keybinding{Key: "ctrl+Z", Description: "Undo/redo stack", Category: "Navigation"},
 		Keybinding{Key: "alt+o", Description: "History back", Category: "Navigation"},
 		Keybinding{Key: "alt+i", Description: "History forward", Category: "Navigation"},
 		Keybinding{Key: "q", Description: "Toggle queue", Category: "Navigation"},

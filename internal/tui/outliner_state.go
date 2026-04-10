@@ -60,9 +60,14 @@ func (m *OutlinerModel) setUndoContext(action, context string) {
 	m.undo.Set(action, context)
 }
 
-// performUndo restores the project from backup.
+// performUndo restores the project from the most recent undo snapshot.
 func (m *OutlinerModel) performUndo() tea.Cmd {
 	return performUndoCmd(m.projectService, m.project)
+}
+
+// performRedo restores the project from the most recent redo snapshot.
+func (m *OutlinerModel) performRedo() tea.Cmd {
+	return performRedoCmd(m.projectService, m.project)
 }
 
 // OutlinerToggleState captures section/fold state so it can survive outliner

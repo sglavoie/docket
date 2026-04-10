@@ -156,6 +156,217 @@ func TestPerformUndo(t *testing.T) {
 	}
 }
 
+func TestPerformUndoCreatesRedoEntry(t *testing.T) {
+	tmpDir := t.TempDir()
+	projectPath := filepath.Join(tmpDir, "test-project")
+	if err := os.MkdirAll(projectPath, 0755); err != nil {
+		t.Fatalf("failed to create project dir: %v", err)
+	}
+	project := &models.Project{ID: "test-id", Name: "Test Project", Slug: "test-project", Path: projectPath}
+
+	initialContent := "# Project: Test Project\n\n## Task: First task\n<!-- id: 1, status: todo, priority: 3 -->\n"
+	tasksPath := filepath.Join(projectPath, "tasks.md")
+	if err := os.WriteFile(tasksPath, []byte(initialContent), 0644); err != nil {
+		t.Fatalf("failed to write tasks file: %v", err)
+	}
+
+	if err := RecordUndoSnapshot(project, "Add Task", "task1", 10); err != nil {
+		t.Fatalf("RecordUndoSnapshot failed: %v", err)
+	}
+
+	modifiedContent := "# Project: Test Project\n\n## Task: Modified task\n<!-- id: 1, status: done, priority: 1 -->\n"
+	if err := os.WriteFile(tasksPath, []byte(modifiedContent), 0644); err != nil {
+		t.Fatalf("failed to write modified tasks file: %v", err)
+	}
+
+	if _, err := PerformUndo(project); err != nil {
+		t.Fatalf("PerformUndo failed: %v", err)
+	}
+
+	// After undo, there should be a redo entry
+	redoEntries, err := LoadRedoHistory(project)
+	if err != nil {
+		t.Fatalf("LoadRedoHistory failed: %v", err)
+	}
+	if len(redoEntries) != 1 {
+		t.Errorf("expected 1 redo entry, got %d", len(redoEntries))
+	}
+	if redoEntries[0].Action != "Add Task" {
+		t.Errorf("expected redo action 'Add Task', got %q", redoEntries[0].Action)
+	}
+
+	// Redo snapshot file must exist
+	undoDir := GetUndoDir(project)
+	redoFile := filepath.Join(undoDir, "redo_0001.md")
+	if _, statErr := os.Stat(redoFile); os.IsNotExist(statErr) {
+		t.Error("redo snapshot file was not created")
+	}
+
+	// Redo snapshot content should be the modified (pre-undo) state
+	content, err := os.ReadFile(redoFile)
+	if err != nil {
+		t.Fatalf("failed to read redo snapshot: %v", err)
+	}
+	if string(content) != modifiedContent {
+		t.Error("redo snapshot content does not match pre-undo state")
+	}
+}
+
+func TestPerformRedo(t *testing.T) {
+	tmpDir := t.TempDir()
+	projectPath := filepath.Join(tmpDir, "test-project")
+	if err := os.MkdirAll(projectPath, 0755); err != nil {
+		t.Fatalf("failed to create project dir: %v", err)
+	}
+	project := &models.Project{ID: "test-id", Name: "Test Project", Slug: "test-project", Path: projectPath}
+
+	initialContent := "# Project: Test Project\n\n## Task: First task\n<!-- id: 1, status: todo, priority: 3 -->\n"
+	modifiedContent := "# Project: Test Project\n\n## Task: Modified task\n<!-- id: 1, status: done, priority: 1 -->\n"
+	tasksPath := filepath.Join(projectPath, "tasks.md")
+
+	if err := os.WriteFile(tasksPath, []byte(initialContent), 0644); err != nil {
+		t.Fatalf("failed to write tasks file: %v", err)
+	}
+	if err := RecordUndoSnapshot(project, "Add Task", "task1", 10); err != nil {
+		t.Fatalf("RecordUndoSnapshot failed: %v", err)
+	}
+	if err := os.WriteFile(tasksPath, []byte(modifiedContent), 0644); err != nil {
+		t.Fatalf("failed to write modified tasks file: %v", err)
+	}
+
+	// Undo: restores initialContent, creates redo entry
+	if _, err := PerformUndo(project); err != nil {
+		t.Fatalf("PerformUndo failed: %v", err)
+	}
+
+	// Verify we are at initialContent
+	content, _ := os.ReadFile(tasksPath)
+	if string(content) != initialContent {
+		t.Error("expected initialContent after undo")
+	}
+
+	// Redo: should restore modifiedContent
+	actionDesc, err := PerformRedo(project)
+	if err != nil {
+		t.Fatalf("PerformRedo failed: %v", err)
+	}
+	if actionDesc != "Add Task: task1" {
+		t.Errorf("expected action desc 'Add Task: task1', got %q", actionDesc)
+	}
+
+	content, _ = os.ReadFile(tasksPath)
+	if string(content) != modifiedContent {
+		t.Error("expected modifiedContent after redo")
+	}
+
+	// Redo stack should now be empty
+	redoEntries, _ := LoadRedoHistory(project)
+	if len(redoEntries) != 0 {
+		t.Errorf("expected 0 redo entries after redo, got %d", len(redoEntries))
+	}
+
+	// Undo stack should have one entry (the state before redo)
+	if !UndoHistoryExists(project) {
+		t.Error("expected undo history after redo")
+	}
+}
+
+func TestNewMutationClearsRedoStack(t *testing.T) {
+	tmpDir := t.TempDir()
+	projectPath := filepath.Join(tmpDir, "test-project")
+	if err := os.MkdirAll(projectPath, 0755); err != nil {
+		t.Fatalf("failed to create project dir: %v", err)
+	}
+	project := &models.Project{ID: "test-id", Name: "Test Project", Slug: "test-project", Path: projectPath}
+
+	content1 := "# Project: Test Project\n\n## Task: First task\n<!-- id: 1, status: todo, priority: 3 -->\n"
+	content2 := "# Project: Test Project\n\n## Task: Modified task\n<!-- id: 1, status: done, priority: 1 -->\n"
+	content3 := "# Project: Test Project\n\n## Task: New task\n<!-- id: 2, status: todo, priority: 2 -->\n"
+	tasksPath := filepath.Join(projectPath, "tasks.md")
+
+	if err := os.WriteFile(tasksPath, []byte(content1), 0644); err != nil {
+		t.Fatalf("failed to write tasks file: %v", err)
+	}
+	if err := RecordUndoSnapshot(project, "Action1", "", 10); err != nil {
+		t.Fatalf("RecordUndoSnapshot failed: %v", err)
+	}
+	if err := os.WriteFile(tasksPath, []byte(content2), 0644); err != nil {
+		t.Fatalf("failed to write tasks file: %v", err)
+	}
+
+	// Undo → creates redo entry
+	if _, err := PerformUndo(project); err != nil {
+		t.Fatalf("PerformUndo failed: %v", err)
+	}
+
+	redoEntries, _ := LoadRedoHistory(project)
+	if len(redoEntries) != 1 {
+		t.Fatalf("expected 1 redo entry before new mutation, got %d", len(redoEntries))
+	}
+
+	// New mutation: record a snapshot (clears redo)
+	if err := os.WriteFile(tasksPath, []byte(content3), 0644); err != nil {
+		t.Fatalf("failed to write tasks file: %v", err)
+	}
+	// First record the snapshot for content1 (current state is content1 after undo)
+	if err := RecordUndoSnapshot(project, "Action2", "", 10); err != nil {
+		t.Fatalf("RecordUndoSnapshot failed: %v", err)
+	}
+
+	redoEntries, _ = LoadRedoHistory(project)
+	if len(redoEntries) != 0 {
+		t.Errorf("expected 0 redo entries after new mutation, got %d", len(redoEntries))
+	}
+
+	// Verify redo snapshot file is deleted
+	undoDir := GetUndoDir(project)
+	redoFile := filepath.Join(undoDir, "redo_0001.md")
+	if _, statErr := os.Stat(redoFile); !os.IsNotExist(statErr) {
+		t.Error("redo snapshot file should have been deleted after new mutation")
+	}
+}
+
+func TestRedoRoundTrip(t *testing.T) {
+	tmpDir := t.TempDir()
+	projectPath := filepath.Join(tmpDir, "test-project")
+	if err := os.MkdirAll(projectPath, 0755); err != nil {
+		t.Fatalf("failed to create project dir: %v", err)
+	}
+	project := &models.Project{ID: "test-id", Name: "Test Project", Slug: "test-project", Path: projectPath}
+
+	stateA := "# Project: Test Project\n\n## Task: State A\n<!-- id: 1, status: todo, priority: 3 -->\n"
+	stateB := "# Project: Test Project\n\n## Task: State B\n<!-- id: 1, status: done, priority: 1 -->\n"
+	tasksPath := filepath.Join(projectPath, "tasks.md")
+
+	if err := os.WriteFile(tasksPath, []byte(stateA), 0644); err != nil {
+		t.Fatalf("failed to write tasks file: %v", err)
+	}
+	if err := RecordUndoSnapshot(project, "Edit", "", 10); err != nil {
+		t.Fatalf("RecordUndoSnapshot failed: %v", err)
+	}
+	if err := os.WriteFile(tasksPath, []byte(stateB), 0644); err != nil {
+		t.Fatalf("failed to write tasks file: %v", err)
+	}
+
+	// Undo: B → A
+	if _, err := PerformUndo(project); err != nil {
+		t.Fatalf("PerformUndo failed: %v", err)
+	}
+	content, _ := os.ReadFile(tasksPath)
+	if string(content) != stateA {
+		t.Error("expected stateA after undo")
+	}
+
+	// Redo: A → B
+	if _, err := PerformRedo(project); err != nil {
+		t.Fatalf("PerformRedo failed: %v", err)
+	}
+	content, _ = os.ReadFile(tasksPath)
+	if string(content) != stateB {
+		t.Error("expected stateB after redo")
+	}
+}
+
 func TestUndoHistoryPruning(t *testing.T) {
 	// Create temp directory
 	tmpDir := t.TempDir()

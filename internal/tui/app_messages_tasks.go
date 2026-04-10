@@ -131,6 +131,14 @@ type UndoPerformedMsg struct {
 	Action string
 }
 
+// RedoPerformedMsg signals a redo operation completed.
+type RedoPerformedMsg struct {
+	Action string
+}
+
+// UndoHistoryRefreshMsg tells the undo history viewer to reload its entries.
+type UndoHistoryRefreshMsg struct{}
+
 // =============================================================================
 // Clipboard Messages
 // =============================================================================

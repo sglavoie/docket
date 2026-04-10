@@ -69,12 +69,8 @@ func (m *DashboardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) { //nolint:goc
 			}
 		case "?":
 			return m, helpCmd(ViewDashboard, "Dashboard", m.GetHelpItems())
-		case "ctrl+r":
-			m.loadProjects()
 		case "R":
-			return m, func() tea.Msg {
-				return ToggleInfoPanelMsg{}
-			}
+			m.loadProjects()
 		case "n":
 			return m, func() tea.Msg {
 				return CreateProjectMsg{}
@@ -181,7 +177,7 @@ func (m *DashboardModel) HandledKeys() []string {
 		// Navigation
 		"j", "k", "up", "down", "G", "g", "enter", "/",
 		// Actions
-		"ctrl+r", "R", "n", "a", "S", "D", "e", "p",
+		"R", "n", "a", "S", "D", "e", "p",
 		"C", "ctrl+t", "@", "`", "~", "ctrl+p", "T", "b",
 		// Quick-select pinned projects
 		"1", "2", "3", "4", "5", "6", "7", "8", "9",

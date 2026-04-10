@@ -157,8 +157,8 @@ func (m *OutlinerModel) HandledKeys() []string {
 			"B", "p", "w", "W",
 			"i", "I",
 			"\\", "{", "}",
-			"ctrl+r", "ctrl+l",
-			"u", "ctrl+z",
+			"R", "ctrl+r", "ctrl+l",
+			"u",
 			"S", "ctrl+.", "ctrl+m",
 		},
 		statusPrefixKeys(),     // ,s ,d ,b ,S ,o ,x ,r

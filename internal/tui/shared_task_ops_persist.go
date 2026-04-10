@@ -304,31 +304,39 @@ func processTUIDeferredMoves(_ Persister, srcProject *models.Project, moves []wo
 	return nil
 }
 
-// performUndoFromBackup restores a project from backup using the given Persister.
-// Returns an error message or nil on success.
-func performUndoFromBackup(p Persister, project *models.Project) error {
-	if !p.BackupExists(project) {
-		return fmt.Errorf("no backup available to undo")
-	}
-	if err := p.RestoreFromBackup(project); err != nil {
-		return fmt.Errorf("failed to undo: %w", err)
-	}
-	if err := p.Load(project); err != nil {
-		return fmt.Errorf("failed to reload after undo: %w", err)
-	}
-	return nil
-}
-
-// performUndoCmd returns a tea.Cmd that restores the project from backup.
-// View-level rebuild (buildTree, rebuildRows) is handled by handleWithRefresh
-// on the main goroutine when UndoPerformedMsg is received, so no callback is
-// needed here — calling view-mutating methods inside a tea.Cmd goroutine would
-// race with BubbleTea's View() calls.
+// performUndoCmd returns a tea.Cmd that restores the project from the most recent
+// undo snapshot. View-level rebuild (buildTree, rebuildRows) is handled by
+// handleWithRefresh on the main goroutine when UndoPerformedMsg is received.
 func performUndoCmd(persister Persister, project *models.Project) tea.Cmd {
+	if project == nil {
+		return nil
+	}
 	return func() tea.Msg {
-		if err := performUndoFromBackup(persister, project); err != nil {
+		action, err := storage.PerformUndo(project)
+		if err != nil {
 			return ErrorMsg{Err: err}
 		}
-		return UndoPerformedMsg{Action: "Undo"}
+		if err := persister.Load(project); err != nil {
+			return ErrorMsg{Err: fmt.Errorf("failed to reload after undo: %w", err)}
+		}
+		return UndoPerformedMsg{Action: action}
+	}
+}
+
+// performRedoCmd returns a tea.Cmd that restores the project from the most recent
+// redo snapshot and pushes current state onto the undo stack.
+func performRedoCmd(persister Persister, project *models.Project) tea.Cmd {
+	if project == nil {
+		return nil
+	}
+	return func() tea.Msg {
+		action, err := storage.PerformRedo(project)
+		if err != nil {
+			return ErrorMsg{Err: err}
+		}
+		if err := persister.Load(project); err != nil {
+			return ErrorMsg{Err: fmt.Errorf("failed to reload after redo: %w", err)}
+		}
+		return RedoPerformedMsg{Action: action}
 	}
 }

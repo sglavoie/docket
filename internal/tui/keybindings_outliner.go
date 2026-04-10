@@ -104,9 +104,9 @@ func (r *KeybindingRegistry) registerOutlinerBindings() {
 		Keybinding{Key: "Esc", Description: "Unfocus sidebar", Category: "Sidebar", Views: views},
 
 		// Other
-		Keybinding{Key: "ctrl+R", Description: "Refresh from disk", Category: "Other", Views: views},
+		Keybinding{Key: "R", Description: "Reload from disk", Category: "Other", Views: views},
 		Keybinding{Key: "u", Description: "Undo last change", Category: "Other", Views: views},
-		Keybinding{Key: "ctrl+Z", Description: "Undo history", Category: "Other", Views: views},
+		Keybinding{Key: "ctrl+R", Description: "Redo", Category: "Other", Views: views},
 	)
 
 	// Shared bindings
@@ -162,7 +162,7 @@ func (r *KeybindingRegistry) registerCrossProjectOutlinerBindings() {
 		Keybinding{Key: "ctrl+.", Description: "Quick note on selected task", Category: "Task Operations", Views: views},
 
 		// Other
-		Keybinding{Key: "ctrl+R", Description: "Refresh from disk", Category: "Other", Views: views},
+		Keybinding{Key: "R", Description: "Reload from disk", Category: "Other", Views: views},
 		Keybinding{Key: "u", Description: "Undo last change", Category: "Other", Views: views},
 	)
 	r.addForViews(views, sortBindings())

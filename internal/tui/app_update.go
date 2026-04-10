@@ -229,6 +229,13 @@ func (m *AppModel) Update(msg tea.Msg) (outModel tea.Model, outCmd tea.Cmd) { //
 					return m, m.batchWithFocusRefresh(cmd)
 				}
 			}
+		case "ctrl+z":
+			if !m.hasActiveTextInput() {
+				if m.currentProject != nil {
+					project := m.currentProject
+					return m, func() tea.Msg { return ShowUndoHistoryMsg{Project: project} }
+				}
+			}
 		case "ctrl+x":
 			// Open project picker if no view has an active text input
 			if !m.hasActiveTextInput() {

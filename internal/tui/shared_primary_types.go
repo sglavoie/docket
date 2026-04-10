@@ -15,6 +15,7 @@ type primaryProjectView interface {
 	getConfig() *config.Config
 	reloadFromDisk() tea.Cmd
 	performUndo() tea.Cmd
+	performRedo() tea.Cmd
 }
 
 // prefixableView is the interface that primary views must implement to use
