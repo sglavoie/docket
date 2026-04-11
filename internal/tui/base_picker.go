@@ -60,12 +60,6 @@ func NewBasePicker[T PickerItem](items []T, config PickerConfig) *BasePicker[T] 
 	return p
 }
 
-// SetItems updates the item list and resets the filter.
-func (p *BasePicker[T]) SetItems(items []T) {
-	p.Items = items
-	p.Filter(p.SearchQuery())
-}
-
 // Filter updates the filtered list based on the search query.
 func (p *BasePicker[T]) Filter(query string) {
 	if query == "" {

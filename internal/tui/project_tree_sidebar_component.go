@@ -47,16 +47,6 @@ func (s *SidebarComponent) SetFocused(focused bool) {
 	s.focused = focused
 }
 
-// GetScroll returns the scroll offset.
-func (s *SidebarComponent) GetScroll() int {
-	return s.scroll
-}
-
-// SetScroll sets the scroll offset.
-func (s *SidebarComponent) SetScroll(scroll int) {
-	s.scroll = scroll
-}
-
 // GetDependencyCursor returns the dependency cursor position.
 func (s *SidebarComponent) GetDependencyCursor() int {
 	return s.dependencyCursor

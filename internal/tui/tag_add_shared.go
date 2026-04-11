@@ -24,11 +24,6 @@ func NewTagAdder() TagAdder {
 	return TagAdder{AddTagInput: input}
 }
 
-// HasActiveInput returns true when in add tag mode.
-func (a *TagAdder) HasActiveInput() bool {
-	return a.AddTagMode
-}
-
 // HasTextInput returns true when the add-tag input is active.
 func (a *TagAdder) HasTextInput() bool {
 	return a.AddTagMode

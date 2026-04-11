@@ -328,13 +328,3 @@ func (fm *FilterMixin) ActiveFilterCount() int {
 	}
 	return count
 }
-
-// SetCriteriaFilter sets a criteria-mode SavedFilter for per-task matching.
-func (fm *FilterMixin) SetCriteriaFilter(sf *config.SavedFilter) {
-	fm.activeCriteriaFilter = sf
-}
-
-// ClearCriteriaFilter removes the active criteria filter.
-func (fm *FilterMixin) ClearCriteriaFilter() {
-	fm.activeCriteriaFilter = nil
-}

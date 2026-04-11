@@ -37,11 +37,6 @@ func (b *BulkOperationComponent) GetTasks() []*models.Task {
 	return b.tasks
 }
 
-// GetBlockedCount returns the count of tasks with incomplete dependencies.
-func (b *BulkOperationComponent) GetBlockedCount() int {
-	return b.blockedCount
-}
-
 // GetPrevStates returns the previous states for event triggers.
 func (b *BulkOperationComponent) GetPrevStates() map[string]*models.Task {
 	return b.prevStates

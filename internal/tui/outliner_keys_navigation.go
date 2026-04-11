@@ -112,11 +112,6 @@ func (m *OutlinerModel) ShouldCaptureEsc() bool {
 	return primaryViewShouldCaptureEsc(&m.InteractiveViewState, &m.BaseSearchableView, m.multiSelectMode, m.quickEdit.IsActive(), m.scoreFilterInput.IsActive()) ||
 		AnyEscStepActive(m.escSteps()) || m.sidebar.ShouldCaptureEsc()
 }
-
-func (m *OutlinerModel) HasConfirmDialog() bool {
-	return m.confirm.IsActive()
-}
-
 func (m *OutlinerModel) HasTextInput() bool {
 	return m.DefaultHasTextInput() || m.quickEdit.IsActive() || m.scoreFilterInput.IsActive()
 }

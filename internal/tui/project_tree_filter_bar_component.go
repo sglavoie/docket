@@ -34,11 +34,6 @@ func (f *FilterBarComponent) Toggle() {
 	f.enabled = !f.enabled
 }
 
-// GetCounts returns the cached filter counts.
-func (f *FilterBarComponent) GetCounts() map[string]int {
-	return f.counts
-}
-
 // SetCounts updates the cached filter counts.
 func (f *FilterBarComponent) SetCounts(counts map[string]int) {
 	f.counts = counts
