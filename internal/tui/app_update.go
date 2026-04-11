@@ -95,6 +95,11 @@ func (m *AppModel) Update(msg tea.Msg) (outModel tea.Model, outCmd tea.Cmd) { //
 
 		// Intercept keys when semicolon prefix is pending
 		if m.pendingSemicolonPrefix {
+			// Ignore modifier-only key events (e.g. Shift pressed alone)
+			// so the popup stays open while typing capital letters.
+			if isModifierOnly(msg) {
+				return m, nil
+			}
 			m.pendingSemicolonPrefix = false
 			switch msg.String() {
 			case "n":
@@ -438,4 +443,19 @@ func (m *AppModel) Update(msg tea.Msg) (outModel tea.Model, outCmd tea.Cmd) { //
 	cmds = append(cmds, cmd)
 
 	return m, tea.Batch(cmds...)
+}
+
+// isModifierOnly returns true when the key event is a bare modifier press
+// (Shift, Ctrl, Alt, etc.) with no accompanying character.
+func isModifierOnly(msg tea.KeyPressMsg) bool {
+	switch msg.Code {
+	case tea.KeyLeftShift, tea.KeyRightShift,
+		tea.KeyLeftCtrl, tea.KeyRightCtrl,
+		tea.KeyLeftAlt, tea.KeyRightAlt,
+		tea.KeyLeftSuper, tea.KeyRightSuper,
+		tea.KeyLeftHyper, tea.KeyRightHyper,
+		tea.KeyLeftMeta, tea.KeyRightMeta:
+		return true
+	}
+	return false
 }

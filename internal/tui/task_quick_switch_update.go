@@ -20,6 +20,9 @@ func (m *AppModel) handleQuickSwitchKey(msg tea.KeyPressMsg) (*AppModel, tea.Cmd
 
 // handleQuickSwitchPrefixKey dispatches the second key of a `,` or `!` prefix.
 func (m *AppModel) handleQuickSwitchPrefixKey(msg tea.KeyPressMsg) (*AppModel, tea.Cmd) {
+	if isModifierOnly(msg) {
+		return m, nil
+	}
 	prefix := m.quickSwitchPendingPrefix
 	m.quickSwitchPendingPrefix = ""
 	key := msg.String()
