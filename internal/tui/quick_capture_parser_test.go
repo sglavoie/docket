@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"slices"
 	"strings"
 	"testing"
 
@@ -551,7 +552,7 @@ func TestParseQuickCapture(t *testing.T) {
 				t.Errorf("priority = %d, want %d", result.priority, tt.wantPriority)
 			}
 
-			if !slicesEqual(result.tags, tt.wantTags) {
+			if !slices.Equal(result.tags, tt.wantTags) {
 				t.Errorf("tags = %v, want %v", result.tags, tt.wantTags)
 			}
 

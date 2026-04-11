@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 
@@ -456,22 +457,9 @@ func scopesEqual(a, b *workflow.RuleScope) bool {
 	if a == nil || b == nil {
 		return false
 	}
-	return slicesEqual(a.Projects, b.Projects) &&
-		slicesEqual(a.Types, b.Types) &&
-		slicesEqual(a.Sections, b.Sections)
-}
-
-// slicesEqual compares two string slices for equality.
-func slicesEqual(a, b []string) bool {
-	if len(a) != len(b) {
-		return false
-	}
-	for i := range a {
-		if a[i] != b[i] {
-			return false
-		}
-	}
-	return true
+	return slices.Equal(a.Projects, b.Projects) &&
+		slices.Equal(a.Types, b.Types) &&
+		slices.Equal(a.Sections, b.Sections)
 }
 
 // formatScope returns a human-readable representation of a RuleScope.

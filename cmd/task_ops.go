@@ -284,37 +284,9 @@ func SelectActionTask(cfg *config.Config, args []string, prompt, emptyMsg string
 // The update function receives the task and should return an error if the update fails.
 // Returns the updated task on success for further inspection.
 func WithTaskUpdate(taskIdentifier string, updateFn func(*models.Task) error) (*models.Task, error) {
-	project, cfg, configManager, err := LoadCurrentProject()
-	if err != nil {
-		return nil, err
-	}
-
-	task, findErr := FindTaskByIdentifier(project, taskIdentifier)
-	if findErr != nil {
-		return nil, findErr
-	}
-
-	// Capture task states before changes for event-based workflow triggers
-	prevStates := CaptureTaskStates(project.Tasks)
-
-	// Apply the update
-	if err := updateFn(task); err != nil {
-		return nil, err
-	}
-
-	// Update timestamp
-	task.UpdatedAt = time.Now()
-
-	// Save with workflow rules evaluation and undo recording
-	undoContext := fmt.Sprintf("#%d %s", task.ShortID, task.Title)
-	if err := SaveProject(project, &SaveOptions{
-		EvaluateRules: true, Config: cfg, ConfigManager: configManager,
-		PrevStates: prevStates, UndoAction: "Edit Task", UndoContext: undoContext,
-	}); err != nil {
-		return nil, err
-	}
-
-	return task, nil
+	return WithTaskUpdateInProject(taskIdentifier, func(_ *models.Project, task *models.Task) error {
+		return updateFn(task)
+	})
 }
 
 // WithTaskUpdateInProject encapsulates the Load→FindTask→Update→Save pattern
