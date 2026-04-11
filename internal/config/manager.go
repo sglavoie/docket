@@ -61,6 +61,32 @@ func NewManager(customPath string) *Manager {
 	}
 }
 
+// recoverFromBackup attempts to restore a Config from the backup file when the
+// primary config is corrupted. On success the recovered data is persisted back
+// to configPath so subsequent loads don't hit the corruption again.
+func (m *Manager) recoverFromBackup(primaryErr error) (Config, error) {
+	backupPath := m.configPath + ".bak"
+	backupData, err := os.ReadFile(backupPath)
+	if err != nil {
+		return Config{}, fmt.Errorf("failed to parse config file (no backup available): %w", primaryErr)
+	}
+
+	var cfg Config
+	if json.Unmarshal(backupData, &cfg) != nil {
+		return Config{}, fmt.Errorf("failed to parse config file and backup is also corrupted: config error: %w; backup path: %s", primaryErr, backupPath)
+	}
+
+	if cfg.DataDir == "" || cfg.Projects == nil {
+		return Config{}, fmt.Errorf("config and backup both corrupted; restore from %s or delete to reset", backupPath)
+	}
+
+	logging.Warn("config file was corrupted, restored from backup %s", backupPath)
+	if writeErr := util.AtomicWriteFile(m.configPath, backupData, FilePermissions); writeErr != nil {
+		return Config{}, fmt.Errorf("recovered config from backup but failed to persist it: %w", writeErr)
+	}
+	return cfg, nil
+}
+
 // Load loads the configuration from file.
 func (m *Manager) Load() (*Config, error) { //nolint:gocyclo
 	if _, err := os.Stat(m.configPath); os.IsNotExist(err) {
@@ -74,29 +100,11 @@ func (m *Manager) Load() (*Config, error) { //nolint:gocyclo
 
 	var config Config
 	if err := json.Unmarshal(data, &config); err != nil {
-		// Try to recover from backup
-		backupPath := m.configPath + ".bak"
-		backupData, backupErr := os.ReadFile(backupPath)
-		if backupErr == nil {
-			var backupConfig Config
-			if json.Unmarshal(backupData, &backupConfig) == nil {
-				if backupConfig.DataDir != "" && backupConfig.Projects != nil {
-					config = backupConfig
-					logging.Warn("config file was corrupted, restored from backup %s", backupPath)
-					// Persist the recovered config so next load doesn't hit corruption again
-					if writeErr := util.AtomicWriteFile(m.configPath, backupData, FilePermissions); writeErr != nil {
-						return nil, fmt.Errorf("recovered config from backup but failed to persist it: %w", writeErr)
-					}
-				} else {
-					// Both config and backup are corrupted — require manual recovery.
-					return nil, fmt.Errorf("config and backup both corrupted; restore from %s or delete to reset", backupPath)
-				}
-			} else {
-				return nil, fmt.Errorf("failed to parse config file and backup is also corrupted: config error: %w; backup path: %s", err, backupPath)
-			}
-		} else {
-			return nil, fmt.Errorf("failed to parse config file (no backup available): %w", err)
+		recovered, recoverErr := m.recoverFromBackup(err)
+		if recoverErr != nil {
+			return nil, recoverErr
 		}
+		config = recovered
 	}
 
 	// Ensure defaults for missing fields
