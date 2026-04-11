@@ -107,6 +107,9 @@ func (m *AppModel) closeProjectCyclePopup() {
 
 // handleProjectCycleKey handles key events when the project cycle popup is open.
 func (m *AppModel) handleProjectCycleKey(msg tea.KeyPressMsg) (*AppModel, tea.Cmd) { //nolint:gocyclo
+	if isModifierOnly(msg) {
+		return m, nil
+	}
 	switch msg.String() {
 	case "1", "2", "3", "4", "5", "6", "7", "8", "9":
 		idx := int(msg.String()[0]-'0') - 1
