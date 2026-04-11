@@ -471,3 +471,6 @@ type ShowDueDateOverviewMsg struct{}
 type DueDateOverviewRefreshMsg struct{}
 
 func (m *DueDateOverviewModel) StatusBarLabel() string { return "Due Dates" }
+
+// IsFullHeight returns true because the due date overview renders its own footer.
+func (m *DueDateOverviewModel) IsFullHeight() bool { return true }

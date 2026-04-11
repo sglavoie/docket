@@ -116,3 +116,6 @@ func NewAllTasksViewModel(cfg *config.Config, mgr *config.Manager) *AllTasksView
 }
 
 func (m *AllTasksViewModel) StatusBarLabel() string { return "All Tasks" }
+
+// IsFullHeight returns true because the all tasks view renders its own footer.
+func (m *AllTasksViewModel) IsFullHeight() bool { return true }

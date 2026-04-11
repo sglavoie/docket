@@ -200,3 +200,6 @@ type ShowGlobalBlockersMsg struct{}
 type CloseGlobalBlockersMsg struct{}
 
 func (m *GlobalBlockersModel) StatusBarLabel() string { return "Global Blockers" }
+
+// IsFullHeight returns true because the global blockers view renders its own footer.
+func (m *GlobalBlockersModel) IsFullHeight() bool { return true }

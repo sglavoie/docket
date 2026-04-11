@@ -62,18 +62,7 @@ func (m *AppModel) View() (result tea.View) { //nolint:gocyclo
 	// Full-height views render their own footer and skip the external status bar
 	if currentView := m.views.Get(m.currentView()); currentView != nil {
 		if caps, ok := currentView.(ViewCapabilities); ok && caps.IsFullHeight() {
-			// Still overlay the semicolon prefix popup on full-height views
-			if popup := m.renderSemicolonPrefixPopup(); popup != "" {
-				content = OverlayPopupDimmed(content, popup, m.width, m.height)
-			}
-			// Overlay quick note on full-height views
-			if popup := m.renderQuickNoteOverlay(); popup != "" {
-				content = OverlayPopupDimmed(content, popup, m.width, m.height)
-			}
-			// Overlay peek task overlay on full-height views
-			if popup := m.renderPeekOverlay(); popup != "" {
-				content = OverlayPopupDimmed(content, popup, m.width, m.height)
-			}
+			content = m.applyOverlays(content, m.height)
 			resultView.SetContent(m.applyBackground(content))
 			return resultView
 		}
@@ -90,19 +79,29 @@ func (m *AppModel) View() (result tea.View) { //nolint:gocyclo
 		content += strings.Repeat("\n", targetContentHeight-contentHeight)
 	}
 
+	content = m.applyOverlays(content, targetContentHeight)
+
+	resultView.SetContent(m.applyBackground(content + "\n" + statusBar))
+	return resultView
+}
+
+// applyOverlays composites all popup/overlay layers onto the base content.
+// h is the overlay positioning height (m.height for full-height views,
+// targetContentHeight for views with an external status bar).
+func (m *AppModel) applyOverlays(content string, h int) string {
 	// Overlay prefix popup if the current view provides one
 	if popup := m.renderPrefixPopupOverlay(); popup != "" {
-		content = OverlayPopup(content, popup, m.width, targetContentHeight)
+		content = OverlayPopup(content, popup, m.width, h)
 	}
 
 	// Overlay semicolon prefix popup if active (global, not view-specific)
 	if popup := m.renderSemicolonPrefixPopup(); popup != "" {
-		content = OverlayPopupDimmed(content, popup, m.width, targetContentHeight)
+		content = OverlayPopupDimmed(content, popup, m.width, h)
 	}
 
 	// Overlay quick-switch popup if active
 	if popup := m.renderQuickSwitchPopup(); popup != "" {
-		content = OverlayPopup(content, popup, m.width, targetContentHeight)
+		content = OverlayPopup(content, popup, m.width, h)
 		// Overlay prefix hints on top of quick-switch popup when prefix is pending
 		if m.quickSwitchPendingPrefix != "" {
 			var qsPriority int
@@ -110,14 +109,14 @@ func (m *AppModel) View() (result tea.View) { //nolint:gocyclo
 				realIdx := m.quickSwitchFiltered[m.quickSwitchCursor]
 				qsPriority = m.recentTaskVisits[realIdx].Task.Priority
 			}
-			prefixPopup := RenderPrefixPopup(m.quickSwitchPendingPrefix, PrefixHints{",": StatusPrefixHints, "!": BuildPriorityPrefixHints(qsPriority)}, m.width, targetContentHeight)
-			content = OverlayPopup(content, prefixPopup, m.width, targetContentHeight)
+			prefixPopup := RenderPrefixPopup(m.quickSwitchPendingPrefix, PrefixHints{",": StatusPrefixHints, "!": BuildPriorityPrefixHints(qsPriority)}, m.width, h)
+			content = OverlayPopup(content, prefixPopup, m.width, h)
 		}
 	}
 
 	// Overlay project cycle popup if active (bottom-left to avoid covering sidebar)
 	if popup := m.renderProjectCyclePopup(); popup != "" {
-		content = OverlayPopupBottomLeftDimmed(content, popup, m.width, targetContentHeight)
+		content = OverlayPopupBottomLeftDimmed(content, popup, m.width, h)
 	}
 
 	// Replace base content with task preview when pinned popup is active
@@ -129,7 +128,7 @@ func (m *AppModel) View() (result tea.View) { //nolint:gocyclo
 
 	// Overlay pinned tasks popup if active
 	if popup := m.renderPinnedPopup(); popup != "" {
-		content = OverlayPopupBottomLeft(content, popup, m.width, targetContentHeight)
+		content = OverlayPopupBottomLeft(content, popup, m.width, h)
 		// Overlay prefix hints on top of pinned popup when prefix is pending
 		if m.pinnedPendingPrefix != "" {
 			var pinnedPriority int
@@ -137,28 +136,27 @@ func (m *AppModel) View() (result tea.View) { //nolint:gocyclo
 				realIdx := m.pinnedPopupFiltered[m.pinnedPopupCursor]
 				pinnedPriority = m.pinnedPopupItems[realIdx].Task.Priority
 			}
-			prefixPopup := RenderPrefixPopup(m.pinnedPendingPrefix, PrefixHints{",": StatusPrefixHints, "!": BuildPriorityPrefixHints(pinnedPriority)}, m.width, targetContentHeight)
-			content = OverlayPopupBottomLeft(content, prefixPopup, m.width, targetContentHeight)
+			prefixPopup := RenderPrefixPopup(m.pinnedPendingPrefix, PrefixHints{",": StatusPrefixHints, "!": BuildPriorityPrefixHints(pinnedPriority)}, m.width, h)
+			content = OverlayPopupBottomLeft(content, prefixPopup, m.width, h)
 		}
 	}
 
 	// Overlay quick note popup if active
 	if popup := m.renderQuickNoteOverlay(); popup != "" {
-		content = OverlayPopupDimmed(content, popup, m.width, targetContentHeight)
+		content = OverlayPopupDimmed(content, popup, m.width, h)
 	}
 
 	// Overlay peek task detail if active
 	if popup := m.renderPeekOverlay(); popup != "" {
-		content = OverlayPopupDimmed(content, popup, m.width, targetContentHeight)
+		content = OverlayPopupDimmed(content, popup, m.width, h)
 	}
 
 	// Overlay confirm dialog last so it renders on top of all other popups
 	if popup := m.renderConfirmDialogOverlay(); popup != "" {
-		content = OverlayPopup(content, popup, m.width, targetContentHeight)
+		content = OverlayPopup(content, popup, m.width, h)
 	}
 
-	resultView.SetContent(m.applyBackground(content + "\n" + statusBar))
-	return resultView
+	return content
 }
 
 // renderPeekOverlay renders the peek task detail overlay when peekActive is true.

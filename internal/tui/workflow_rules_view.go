@@ -208,3 +208,6 @@ func (m *WorkflowRulesModel) ShouldCaptureEsc() bool {
 }
 
 func (m *WorkflowRulesModel) StatusBarLabel() string { return "Workflow Rules" }
+
+// IsFullHeight returns true because the workflow rules view renders its own footer.
+func (m *WorkflowRulesModel) IsFullHeight() bool { return true }

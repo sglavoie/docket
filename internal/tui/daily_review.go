@@ -349,3 +349,6 @@ func isToday(t time.Time) bool {
 }
 
 func (m *DailyReviewModel) StatusBarLabel() string { return "Daily Review" }
+
+// IsFullHeight returns true because the daily review renders its own footer.
+func (m *DailyReviewModel) IsFullHeight() bool { return true }

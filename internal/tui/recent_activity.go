@@ -478,3 +478,6 @@ func (m *RecentActivityModel) renderTaskLine(dt CrossProjectTask, selected bool,
 }
 
 func (m *RecentActivityModel) StatusBarLabel() string { return "Recent Activity" }
+
+// IsFullHeight returns true because the recent activity view renders its own footer.
+func (m *RecentActivityModel) IsFullHeight() bool { return true }

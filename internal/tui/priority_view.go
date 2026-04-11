@@ -341,3 +341,6 @@ func (m *PriorityViewModel) HandledKeys() []string {
 }
 
 func (m *PriorityViewModel) StatusBarLabel() string { return "Priority" }
+
+// IsFullHeight returns true because the priority view renders its own footer.
+func (m *PriorityViewModel) IsFullHeight() bool { return true }

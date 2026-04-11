@@ -355,3 +355,6 @@ func (m *NotesViewModel) StatusBarLabel() string {
 	}
 	return "Notes"
 }
+
+// IsFullHeight returns true because the notes view renders its own footer.
+func (m *NotesViewModel) IsFullHeight() bool { return true }

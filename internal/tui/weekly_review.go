@@ -456,3 +456,6 @@ func (m *WeeklyReviewModel) HandledKeys() []string {
 }
 
 func (m *WeeklyReviewModel) StatusBarLabel() string { return "Weekly Review" }
+
+// IsFullHeight returns true because the weekly review renders its own footer.
+func (m *WeeklyReviewModel) IsFullHeight() bool { return true }

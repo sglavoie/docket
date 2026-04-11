@@ -193,3 +193,6 @@ func (m *MetricsDashboardModel) HandledKeys() []string {
 }
 
 func (m *MetricsDashboardModel) StatusBarLabel() string { return "Metrics" }
+
+// IsFullHeight returns true because the metrics dashboard renders its own footer.
+func (m *MetricsDashboardModel) IsFullHeight() bool { return true }

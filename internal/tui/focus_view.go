@@ -174,3 +174,6 @@ func (m *FocusViewModel) HandledKeys() []string {
 }
 
 func (m *FocusViewModel) StatusBarLabel() string { return "Backlog" }
+
+// IsFullHeight returns true because the backlog view renders its own footer.
+func (m *FocusViewModel) IsFullHeight() bool { return true }

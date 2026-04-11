@@ -181,3 +181,6 @@ func (m *FocusBoardModel) HasTextInput() bool {
 }
 
 func (m *FocusBoardModel) StatusBarLabel() string { return "Focus Board" }
+
+// IsFullHeight returns true because the focus board renders its own footer.
+func (m *FocusBoardModel) IsFullHeight() bool { return true }
