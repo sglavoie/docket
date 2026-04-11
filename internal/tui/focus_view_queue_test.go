@@ -3,64 +3,8 @@ package tui
 import (
 	"testing"
 
-	"github.com/sglavoie/tt/internal/focus"
 	"github.com/sglavoie/tt/internal/models"
 )
-
-func TestFocusViewQueue(t *testing.T) {
-	t.Run("accept and remove from queue", func(t *testing.T) {
-		project := newTestFocusProject(t, "Test")
-		task1 := newTestFocusTask(t, "Task 1", 1, true)
-		task2 := newTestFocusTask(t, "Task 2", 2, true)
-
-		cfg := newTestFocusConfig([]*models.Project{project})
-		m := newTestFocusViewModel(cfg)
-
-		ft1 := FocusTask{Task: task1, Project: project}
-		ft2 := FocusTask{Task: task2, Project: project}
-
-		m.acceptIntoQueue(ft1)
-		m.acceptIntoQueue(ft2)
-		if len(*m.queue) != 2 {
-			t.Fatalf("expected 2 queued tasks, got %d", len(*m.queue))
-		}
-
-		m.acceptIntoQueue(ft1)
-		if len(*m.queue) != 2 {
-			t.Fatalf("expected 2 queued tasks after duplicate, got %d", len(*m.queue))
-		}
-
-		if !m.isInQueue(task1.ID) {
-			t.Error("expected task1 to be in queue")
-		}
-
-		m.removeFromQueue(0)
-		if len(*m.queue) != 1 {
-			t.Fatalf("expected 1 queued task after removal, got %d", len(*m.queue))
-		}
-		if m.isInQueue(task1.ID) {
-			t.Error("expected task1 to be removed from queue")
-		}
-	})
-
-	t.Run("reorder queue", func(t *testing.T) {
-		project := newTestFocusProject(t, "Test")
-		task1 := newTestFocusTask(t, "Task 1", 1, true)
-		task2 := newTestFocusTask(t, "Task 2", 2, true)
-
-		cfg := newTestFocusConfig([]*models.Project{project})
-		m := newTestFocusViewModel(cfg)
-
-		m.acceptIntoQueue(FocusTask{Task: task1, Project: project})
-		m.acceptIntoQueue(FocusTask{Task: task2, Project: project})
-
-		m.reorderQueue(0, 1)
-		q := *m.queue
-		if q[0].Task.Title != "Task 2" || q[1].Task.Title != "Task 1" {
-			t.Errorf("expected swapped order, got %s, %s", q[0].Task.Title, q[1].Task.Title)
-		}
-	})
-}
 
 func TestStaleQueuePruning(t *testing.T) {
 	project := newTestFocusProject(t, "Test")
@@ -195,31 +139,3 @@ func TestQueuePointerReconciliation(t *testing.T) {
 	})
 }
 
-func TestTopNonQueuedSuggestion(t *testing.T) {
-	project := newTestFocusProject(t, "Test")
-	task1 := newTestFocusTask(t, "Task 1", 1, true)
-	task2 := newTestFocusTask(t, "Task 2", 2, true)
-
-	cfg := newTestFocusConfig([]*models.Project{project})
-	m := newTestFocusViewModel(cfg)
-	m.tasks = []FocusTask{
-		{Task: task1, Project: project},
-		{Task: task2, Project: project},
-	}
-	m.ranked = focus.RankCrossProjectTasks(m.tasks, m.dismissedIDs, cfg)
-
-	m.acceptIntoQueue(m.ranked[0].FocusTask)
-
-	sft := m.topNonQueuedSuggestion()
-	if sft == nil {
-		t.Fatal("expected a non-queued suggestion")
-	}
-	if sft.Task.ID == m.ranked[0].Task.ID {
-		t.Error("topNonQueuedSuggestion should skip queued tasks")
-	}
-
-	m.acceptIntoQueue(sft.FocusTask)
-	if m.topNonQueuedSuggestion() != nil {
-		t.Error("expected nil when all suggestions are queued")
-	}
-}

@@ -6,28 +6,6 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 )
 
-// acceptIntoQueue adds a FocusTask to the work queue. No-op if already present.
-func (m *FocusViewModel) acceptIntoQueue(ft FocusTask) {
-	if m.isInQueue(ft.Task.ID) {
-		return
-	}
-	*m.queue = append(*m.queue, ft)
-	m.queueIDs[ft.Task.ID] = true
-	m.persistQueue()
-}
-
-// removeFromQueue removes the task at the given index from the queue.
-func (m *FocusViewModel) removeFromQueue(index int) {
-	q := *m.queue
-	if index < 0 || index >= len(q) {
-		return
-	}
-	id := q[index].Task.ID
-	*m.queue = append(q[:index], q[index+1:]...)
-	delete(m.queueIDs, id)
-	m.persistQueue()
-}
-
 // reorderQueue swaps adjacent items in the queue (from -> to).
 func (m *FocusViewModel) reorderQueue(from, to int) {
 	q := *m.queue
@@ -41,16 +19,6 @@ func (m *FocusViewModel) reorderQueue(from, to int) {
 // isInQueue checks if a task ID is in the work queue.
 func (m *FocusViewModel) isInQueue(taskID string) bool {
 	return m.queueIDs[taskID]
-}
-
-// topNonQueuedSuggestion returns the highest-ranked suggestion that isn't already in the queue.
-func (m *FocusViewModel) topNonQueuedSuggestion() *ScoredFocusTask {
-	for i := range m.ranked {
-		if !m.isInQueue(m.ranked[i].Task.ID) {
-			return &m.ranked[i]
-		}
-	}
-	return nil
 }
 
 // persistQueue saves the current queue state to config.

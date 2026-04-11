@@ -388,11 +388,6 @@ func NormalizedScore(task *models.Task, profile *ScoringProfile) float64 {
 	return ScorePercent(ComputeScore(task, profile), profile)
 }
 
-// FormatScore formats a float score as a display string (truncated to integer).
-func FormatScore(score float64) string {
-	return fmt.Sprintf("%d", int(score))
-}
-
 // FormatBreakdown returns a multi-line string showing each dimension's contribution.
 func FormatBreakdown(results []DimensionResult, formula Formula, totalScore float64, normalizedScore float64) string {
 	var lines []string
