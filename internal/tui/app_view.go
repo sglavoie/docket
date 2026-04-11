@@ -13,7 +13,7 @@ import (
 	"github.com/sglavoie/tt/internal/logging"
 )
 
-func (m *AppModel) View() (result tea.View) {
+func (m *AppModel) View() (result tea.View) { //nolint:gocyclo
 	defer func() {
 		result.AltScreen = true
 		result.KeyboardEnhancements.ReportEventTypes = true

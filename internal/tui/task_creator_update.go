@@ -287,13 +287,13 @@ func (m *TaskCreatorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) { //nolint:g
 			// Otherwise fall through to let text inputs handle the number
 
 		case "left", "h":
-			if model, cmd := m.handleHorizontalMove(section, idx, -1); model != nil {
-				return model, cmd
+			if model, moveCmd := m.handleHorizontalMove(section, idx, -1); model != nil {
+				return model, moveCmd
 			}
 
 		case "right", "l":
-			if model, cmd := m.handleHorizontalMove(section, idx, +1); model != nil {
-				return model, cmd
+			if model, moveCmd := m.handleHorizontalMove(section, idx, +1); model != nil {
+				return model, moveCmd
 			}
 
 		case "space":

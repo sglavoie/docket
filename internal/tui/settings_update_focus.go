@@ -4,7 +4,7 @@ import "charm.land/bubbles/v2/textinput"
 
 // focusedInput returns a pointer to the textinput.Model for the current
 // focusIndex, or nil if the index has no associated text input.
-func (m *SettingsModel) focusedInput() *textinput.Model {
+func (m *SettingsModel) focusedInput() *textinput.Model { //nolint:gocyclo
 	switch m.focusIndex {
 	case 0:
 		return &m.editorInput

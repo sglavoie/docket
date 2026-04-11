@@ -75,7 +75,7 @@ func (m *CommandPaletteModel) buildFooter() string {
 		toggles = append(toggles, "+H")
 	}
 	if m.sortField != SortByDefault {
-		switch m.sortField {
+		switch m.sortField { //nolint:exhaustive
 		case SortByPriority:
 			toggles = append(toggles, "P↓")
 		case SortByDueDate:
@@ -127,7 +127,7 @@ func (m *CommandPaletteModel) getContextualHint() string {
 
 	if len(m.filteredItems) > 0 && m.cursor < len(m.filteredItems) {
 		item := m.filteredItems[m.cursor].Item
-		switch item.Category {
+		switch item.Category { //nolint:exhaustive
 		case ItemCategoryTasks:
 			if m.isDirectActionEnabled() {
 				return "Tip: e=edit  g=view  x=complete  s=start  b=block  r=reopen  Tab=more"
@@ -153,7 +153,7 @@ func (m *CommandPaletteModel) getContextualHint() string {
 
 	categoryFilter, _ := m.parseQueryPrefix(query)
 	if categoryFilter != "" {
-		switch categoryFilter {
+		switch categoryFilter { //nolint:exhaustive
 		case ItemCategoryTasks:
 			return "Tip: Use priority:1-2 for high priority, @overdue for overdue tasks"
 		case ItemCategoryCommands:

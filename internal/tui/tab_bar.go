@@ -10,7 +10,7 @@ import (
 // with optional bottom border. Pass an optional accent color to override the
 // primary color for the foreground and border.
 func activeTabStyle(padding int, withBorder bool, accent ...color.Color) lipgloss.Style {
-	var fg color.Color = ColorPrimary
+	fg := ColorPrimary
 	if len(accent) > 0 && accent[0] != nil {
 		fg = accent[0]
 	}

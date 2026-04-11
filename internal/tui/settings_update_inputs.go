@@ -31,7 +31,7 @@ func (m *SettingsModel) updateFocusedInput(msg tea.Msg) tea.Cmd {
 	return cmd
 }
 
-func (m *SettingsModel) validateFocusedField() {
+func (m *SettingsModel) validateFocusedField() { //nolint:gocyclo
 	m.validationErr = ""
 
 	switch m.focusIndex {

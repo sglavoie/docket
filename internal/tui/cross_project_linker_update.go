@@ -135,7 +135,7 @@ func (m *CrossProjectLinkerModel) handleEnter() (tea.Model, tea.Cmd) {
 }
 
 func (m *CrossProjectLinkerModel) applySearchFilter() {
-	switch m.step {
+	switch m.step { //nolint:exhaustive
 	case StepSelectProject:
 		m.filterProjects()
 	case StepSelectTask:
@@ -200,7 +200,7 @@ func (m *CrossProjectLinkerModel) createLink() tea.Cmd {
 	targetRef := m.targetProject.ID + ":" + m.targetTask.ID
 	sourceRef := m.sourceProject.ID + ":" + m.sourceTask.ID
 
-	switch linkType {
+	switch linkType { //nolint:exhaustive
 	case LinkTypeBlocker:
 		if err := m.sourceTask.AddDependency(targetRef); err != nil {
 			return func() tea.Msg { return ErrorMsg{Err: fmt.Errorf("failed to add dependency: %w", err)} }

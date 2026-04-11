@@ -6,7 +6,7 @@ import "image/color"
 // Unmapped views (pickers, editors, selectors) inherit from parent via stack walk.
 var viewAccentMap map[ViewType]color.Color
 
-// buildViewAccentMap initialises the accent map. Called from ApplyTheme so that
+// buildViewAccentMap initializes the accent map. Called from ApplyTheme so that
 // palette overrides (if we add them later) are reflected on every theme change.
 func buildViewAccentMap() {
 	viewAccentMap = map[ViewType]color.Color{

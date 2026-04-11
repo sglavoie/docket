@@ -168,7 +168,7 @@ func TestRoundTrip_RecurrenceWeekdaysInMetadata(t *testing.T) {
 
 // TestRoundTrip_TaskWithAllMetadataFields exercises a task with every possible
 // metadata field set to verify no field interactions cause data loss.
-func TestRoundTrip_TaskWithAllMetadataFields(t *testing.T) {
+func TestRoundTrip_TaskWithAllMetadataFields(t *testing.T) { //nolint:gocyclo
 	epicID := "parent-epic"
 	due := time.Date(2024, 6, 15, 0, 0, 0, 0, time.Local)
 	completed := time.Date(2024, 6, 10, 14, 30, 0, 0, time.Local)

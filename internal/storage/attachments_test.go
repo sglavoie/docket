@@ -116,8 +116,8 @@ func TestCopyAttachmentCleansUpPartialFile(t *testing.T) {
 	}
 
 	// Remove the file manually to simulate cleanup, then retry
-	if err := os.Remove(destPath); err != nil {
-		t.Fatalf("failed to remove partial file: %v", err)
+	if rmErr := os.Remove(destPath); rmErr != nil {
+		t.Fatalf("failed to remove partial file: %v", rmErr)
 	}
 
 	// Retry should succeed

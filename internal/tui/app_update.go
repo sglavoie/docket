@@ -221,7 +221,7 @@ func (m *AppModel) Update(msg tea.Msg) (outModel tea.Model, outCmd tea.Cmd) { //
 			if m.hasActiveTextInput() {
 				break
 			}
-			switch m.currentView() {
+			switch m.currentView() { //nolint:exhaustive
 			case ViewFocusView:
 				if cmd := m.undoDailyPlanToggle(); cmd != nil {
 					return m, m.batchWithFocusRefresh(cmd)

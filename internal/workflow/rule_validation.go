@@ -191,7 +191,7 @@ func (a RuleAction) Validate() error {
 		return fmt.Errorf("action value is required")
 	}
 
-	switch a.ActionType {
+	switch a.ActionType { //nolint:exhaustive
 	case ActionSetActive, ActionSetPinned:
 		if a.Value != "true" && a.Value != "false" {
 			return fmt.Errorf("%s value must be 'true' or 'false'", a.ActionType)

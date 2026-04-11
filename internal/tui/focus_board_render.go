@@ -212,9 +212,10 @@ func (m *FocusBoardModel) View() tea.View { //nolint:gocyclo
 		}
 		rightParts = append(rightParts, fmt.Sprintf("Sort: %s %s", m.sort.Field.ShortString(), direction))
 	}
-	if m.tabs.Active == boardTabClosed {
+	switch m.tabs.Active {
+	case boardTabClosed:
 		rightParts = append(rightParts, fmt.Sprintf("%d closed", len(m.closedRows)))
-	} else if m.tabs.Active == boardTabToday {
+	case boardTabToday:
 		completedToday := 0
 		for _, r := range m.todayRows {
 			if r.Task.Status.IsComplete() {
@@ -222,7 +223,7 @@ func (m *FocusBoardModel) View() tea.View { //nolint:gocyclo
 			}
 		}
 		rightParts = append(rightParts, fmt.Sprintf("%d/%d done", completedToday, len(m.todayRows)))
-	} else {
+	default:
 		rightParts = append(rightParts, fmt.Sprintf("%d/%d items", len(m.filtered), len(m.rows)))
 	}
 	right := MutedStyle.Render(strings.Join(rightParts, " · "))

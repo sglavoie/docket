@@ -89,7 +89,7 @@ func (m *OutlinerModel) handleTaskViewKey(key string, onHeader bool) (tea.Model,
 	return nil, nil, false
 }
 
-func (m *OutlinerModel) handleUtilityKey(key string) (tea.Model, tea.Cmd, bool) {
+func (m *OutlinerModel) handleUtilityKey(key string) (tea.Model, tea.Cmd, bool) { //nolint:gocyclo
 	switch key {
 	case "v":
 		m.toggleMultiSelectMode()

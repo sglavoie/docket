@@ -11,7 +11,7 @@ import (
 )
 
 // renderFullWidth renders the traditional full-width tree view (sidebar disabled).
-func (m *ProjectTreeModel) renderFullWidth() string {
+func (m *ProjectTreeModel) renderFullWidth() string { //nolint:gocyclo
 	var b strings.Builder
 
 	// Title with inline filter/sort
@@ -305,7 +305,7 @@ func (m *ProjectTreeModel) renderWithSidebar() string {
 }
 
 // renderTreeContent renders just the tree portion (for split-pane layout).
-func (m *ProjectTreeModel) renderTreeContent(width int) string {
+func (m *ProjectTreeModel) renderTreeContent(width int) string { //nolint:gocyclo
 	var b strings.Builder
 
 	// Title with inline filter/sort

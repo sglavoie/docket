@@ -6,7 +6,7 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 )
 
-func (m *OutlinerModel) handleTaskMutationKey(key string, onHeader bool) (tea.Model, tea.Cmd, bool) {
+func (m *OutlinerModel) handleTaskMutationKey(key string, onHeader bool) (tea.Model, tea.Cmd, bool) { //nolint:gocyclo
 	switch key {
 	case "J":
 		if len(m.rows) == 0 || m.cursor >= len(m.rows) || onHeader {

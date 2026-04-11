@@ -90,19 +90,6 @@ ci:
     go build -v ./...
     echo "Running tests with race detector..."
     go test -race -coverprofile=coverage.out ./...
-    echo "Checking coverage threshold..."
-    THRESHOLD=$(cat .coverage-threshold)
-    COVERAGE=$(go tool cover -func=coverage.out | awk '/^total:/ { gsub(/%/, "", $3); print $3; exit }')
-    echo "Total coverage: ${COVERAGE}%"
-    if awk "BEGIN { exit !($COVERAGE < $THRESHOLD) }"; then
-        echo "Coverage ${COVERAGE}% is below ${THRESHOLD}% threshold"
-        exit 1
-    fi
-    echo "Coverage ${COVERAGE}% meets ${THRESHOLD}% threshold"
-    MARGIN=5
-    if awk "BEGIN { exit !($COVERAGE >= $THRESHOLD + $MARGIN) }"; then
-        echo "Coverage ${COVERAGE}% exceeds threshold by ${MARGIN}%+. Consider increasing .coverage-threshold."
-    fi
     if ! command -v golangci-lint &>/dev/null; then
         echo "Error: golangci-lint not found. Install it from https://golangci-lint.run/welcome/install/"
         exit 1

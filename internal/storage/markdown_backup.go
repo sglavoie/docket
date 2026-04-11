@@ -46,8 +46,8 @@ func RestoreFromBackup(project *models.Project) error {
 		return fmt.Errorf("%w: %w", tterrors.ErrReadFailed, err)
 	}
 
-	if _, err := ParseTasksMarkdownWithSections(string(backupContent)); err != nil {
-		return fmt.Errorf("backup file is invalid: %w", err)
+	if _, parseErr := ParseTasksMarkdownWithSections(string(backupContent)); parseErr != nil {
+		return fmt.Errorf("backup file is invalid: %w", parseErr)
 	}
 
 	currentContent, err := os.ReadFile(tasksPath)

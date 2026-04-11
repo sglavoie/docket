@@ -169,7 +169,7 @@ func (m *WeeklyReviewModel) renderAllSections() ([]string, int) {
 			if m.collapsedSections[int(section)] {
 				continue
 			}
-			switch section {
+			switch section { //nolint:exhaustive
 			case WeeklySectionStaleTasks:
 				for _, dt := range m.staleTasks {
 					allTasks = append(allTasks, dt.Task)

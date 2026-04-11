@@ -51,7 +51,7 @@ func upgradeKittyKeyboard() tea.Cmd {
 		if err != nil {
 			return nil
 		}
-		defer f.Close()
+		defer f.Close() //nolint:errcheck
 		_, _ = f.WriteString(ansi.KittyKeyboard(ansi.KittyReportAllKeysAsEscapeCodes|ansi.KittyReportAlternateKeys|ansi.KittyReportAssociatedKeys, 2))
 		return nil
 	}
