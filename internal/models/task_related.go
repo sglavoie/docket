@@ -35,11 +35,3 @@ func (t *Task) RemoveRelatedTo(relatedID string) {
 func (t *Task) HasRelatedTo(relatedID string) bool {
 	return slices.Contains(t.RelatedTo, relatedID)
 }
-
-// ClearRelatedTo removes all related task references.
-func (t *Task) ClearRelatedTo() {
-	if len(t.RelatedTo) > 0 {
-		t.RelatedTo = []string{}
-		t.UpdatedAt = time.Now()
-	}
-}

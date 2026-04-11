@@ -31,11 +31,6 @@ func (t *Task) ClearComments() {
 	}
 }
 
-// CommentCount returns the number of comments on the task.
-func (t *Task) CommentCount() int {
-	return len(t.Comments)
-}
-
 // ToggleCommentResolved flips the Resolved state of the comment at the given index.
 // Returns false if the index is out of range.
 func (t *Task) ToggleCommentResolved(index int) bool {
