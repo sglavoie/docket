@@ -325,34 +325,6 @@ func applyQuickEdit(task *models.Task, project *models.Project, result *quickEdi
 	return statusErr
 }
 
-// hasChanges returns true if the edit result differs from the original.
-func (r *quickEditResult) hasChanges(original *quickEditResult) bool {
-	if r.titleSet && r.title != original.title {
-		return true
-	}
-	if r.prioritySet && r.priority != original.priority {
-		return true
-	}
-	if len(r.tagsToAdd) > 0 || len(r.tagsToRemove) > 0 {
-		return true
-	}
-	if r.dueDateSet {
-		if r.dueDateClear && original.dueDate != nil {
-			return true
-		}
-		if r.dueDate != nil && (original.dueDate == nil || !r.dueDate.Equal(*original.dueDate)) {
-			return true
-		}
-	}
-	if r.sectionSet && r.section != original.section {
-		return true
-	}
-	if r.statusSet && r.status != original.status {
-		return true
-	}
-	return false
-}
-
 // renderQuickEditPreview renders a preview of what will change.
 func renderQuickEditPreview(result *quickEditResult, original *quickEditResult) string {
 	if result == nil {

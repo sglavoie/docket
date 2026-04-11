@@ -6,6 +6,14 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 )
 
+// testFlattenTaskTree flattens a task tree using the production
+// flattenTaskTreeWithFolds method with an empty expandedNodes map
+// (all nodes expanded), matching the removed flattenTaskTree behavior.
+func testFlattenTaskTree(tasks []*models.Task, ancestorIsLast []bool, rows *[]outlinerRow) {
+	m := &OutlinerModel{}
+	m.flattenTaskTreeWithFolds(tasks, ancestorIsLast, rows)
+}
+
 func TestBuildTreePrefix(t *testing.T) {
 	tests := []struct {
 		name           string
@@ -74,7 +82,7 @@ func TestFlattenTaskTree(t *testing.T) {
 	roots := []*models.Task{epic1, epic2}
 
 	var rows []outlinerRow
-	flattenTaskTree(roots, nil, &rows)
+	testFlattenTaskTree(roots, nil, &rows)
 
 	if len(rows) != 6 {
 		t.Fatalf("expected 6 rows, got %d", len(rows))
@@ -119,7 +127,7 @@ func TestFlattenTaskTreeDeep(t *testing.T) {
 	}
 
 	var rows []outlinerRow
-	flattenTaskTree([]*models.Task{tasks[0]}, nil, &rows)
+	testFlattenTaskTree([]*models.Task{tasks[0]}, nil, &rows)
 
 	if len(rows) != 6 {
 		t.Fatalf("expected 6 rows, got %d", len(rows))
@@ -201,7 +209,7 @@ func TestFlattenTaskTreeLeafAndParentConnectors(t *testing.T) {
 	roots := []*models.Task{epic1, epic2}
 
 	var rows []outlinerRow
-	flattenTaskTree(roots, nil, &rows)
+	testFlattenTaskTree(roots, nil, &rows)
 
 	if len(rows) != 9 {
 		t.Fatalf("expected 9 rows, got %d", len(rows))
@@ -276,7 +284,7 @@ func TestFlattenTaskTreeSliceAliasing(t *testing.T) {
 	roots := []*models.Task{root, root2}
 
 	var rows []outlinerRow
-	flattenTaskTree(roots, nil, &rows)
+	testFlattenTaskTree(roots, nil, &rows)
 
 	expected := []struct {
 		title  string
@@ -324,8 +332,8 @@ func TestFlattenTaskTreeNoState(t *testing.T) {
 	epic.Children = []*models.Task{child1, child2}
 
 	var rows1, rows2 []outlinerRow
-	flattenTaskTree([]*models.Task{epic}, nil, &rows1)
-	flattenTaskTree([]*models.Task{epic}, nil, &rows2)
+	testFlattenTaskTree([]*models.Task{epic}, nil, &rows1)
+	testFlattenTaskTree([]*models.Task{epic}, nil, &rows2)
 
 	if len(rows1) != len(rows2) {
 		t.Fatalf("different row counts: %d vs %d", len(rows1), len(rows2))

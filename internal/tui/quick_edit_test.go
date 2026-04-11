@@ -262,52 +262,6 @@ func TestApplyQuickEdit(t *testing.T) {
 	}
 }
 
-func TestHasChanges(t *testing.T) {
-	original := &quickEditResult{
-		title:    "Original",
-		priority: 3,
-	}
-
-	// No changes
-	result := &quickEditResult{
-		title:    "Original",
-		titleSet: true,
-	}
-	if result.hasChanges(original) {
-		t.Error("expected no changes for same title")
-	}
-
-	// Title changed
-	result = &quickEditResult{
-		title:    "Changed",
-		titleSet: true,
-	}
-	if !result.hasChanges(original) {
-		t.Error("expected changes for different title")
-	}
-
-	// Priority changed
-	result = &quickEditResult{
-		title:       "Original",
-		titleSet:    true,
-		priority:    1,
-		prioritySet: true,
-	}
-	if !result.hasChanges(original) {
-		t.Error("expected changes for different priority")
-	}
-
-	// Tags added
-	result = &quickEditResult{
-		title:     "Original",
-		titleSet:  true,
-		tagsToAdd: []string{"new"},
-	}
-	if !result.hasChanges(original) {
-		t.Error("expected changes for added tags")
-	}
-}
-
 func TestRenderQuickEditPreview(t *testing.T) {
 	original := &quickEditResult{
 		title:    "Original",

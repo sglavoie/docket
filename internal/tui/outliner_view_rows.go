@@ -82,32 +82,6 @@ func buildTreePrefix(ancestorIsLast []bool, isLast bool) string {
 	return b.String()
 }
 
-// flattenTaskTree recursively walks the task tree and produces a flat list of
-// outlinerRows with pre-computed connector prefixes. The ancestorIsLast stack
-// tracks whether each ancestor is its parent's last child, which determines
-// whether continuation pipes or spaces are drawn.
-func flattenTaskTree(tasks []*models.Task, ancestorIsLast []bool, rows *[]outlinerRow) {
-	for i, task := range tasks {
-		isLast := i == len(tasks)-1
-		prefix := ""
-		if len(ancestorIsLast) > 0 || len(tasks) > 0 {
-			prefix = buildTreePrefix(ancestorIsLast, isLast)
-		}
-		*rows = append(*rows, outlinerRow{task: task, prefix: prefix})
-
-		if len(task.Children) > 0 {
-			// Copy before appending to prevent slice aliasing: without the
-			// copy, siblings that recurse into children could share the same
-			// backing array, corrupting each other's ancestor trail when the
-			// capacity isn't exhausted.
-			child := make([]bool, len(ancestorIsLast)+1)
-			copy(child, ancestorIsLast)
-			child[len(ancestorIsLast)] = isLast
-			flattenTaskTree(task.Children, child, rows)
-		}
-	}
-}
-
 // matchesSearch parses structured filters from the query and fuzzy-matches
 // the remaining text against the task's title, tags, description, and comments.
 func matchesSearch(task *models.Task, query string) bool {
@@ -128,7 +102,7 @@ func (m *OutlinerModel) flattenTaskTreeWithFolds(tasks []*models.Task, ancestorI
 		*rows = append(*rows, outlinerRow{task: task, prefix: prefix})
 
 		if len(task.Children) > 0 && m.isExpanded(task.ID) {
-			// Copy before appending to prevent slice aliasing (see flattenTaskTree).
+			// Copy before appending to prevent slice aliasing.
 			child := make([]bool, len(ancestorIsLast)+1)
 			copy(child, ancestorIsLast)
 			child[len(ancestorIsLast)] = isLast
