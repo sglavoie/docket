@@ -1,0 +1,131 @@
+package cmd
+
+import (
+	"errors"
+	"testing"
+
+	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/testutil"
+	"github.com/sglavoie/tt/internal/tterrors"
+)
+
+func TestFindTaskByIdentifier(t *testing.T) {
+	project := testutil.NewTestProject("Test Project")
+
+	task1, err := models.NewTask("uuid-1", 1, models.TaskTypeTask, "First Task")
+	if err != nil {
+		t.Fatal(err)
+	}
+	task2, err := models.NewTask("uuid-2", 42, models.TaskTypeTask, "Second Task")
+	if err != nil {
+		t.Fatal(err)
+	}
+	task3, err := models.NewTask("uuid-3", 100, models.TaskTypeBug, "Bug Report")
+	if err != nil {
+		t.Fatal(err)
+	}
+	project.Tasks = []*models.Task{task1, task2, task3}
+
+	tests := []struct {
+		name       string
+		identifier string
+		wantTask   *models.Task
+	}{
+		{
+			name:       "find by short ID",
+			identifier: "1",
+			wantTask:   task1,
+		},
+		{
+			name:       "find by short ID larger number",
+			identifier: "42",
+			wantTask:   task2,
+		},
+		{
+			name:       "find by UUID",
+			identifier: "uuid-2",
+			wantTask:   task2,
+		},
+		{
+			name:       "find by title prefix case insensitive",
+			identifier: "bug",
+			wantTask:   task3,
+		},
+		{
+			name:       "find by exact title prefix",
+			identifier: "First",
+			wantTask:   task1,
+		},
+		{
+			name:       "find by longer title prefix",
+			identifier: "Second Ta",
+			wantTask:   task2,
+		},
+		{
+			name:       "not found returns nil",
+			identifier: "nonexistent",
+			wantTask:   nil,
+		},
+		{
+			name:       "short ID not found returns nil",
+			identifier: "999",
+			wantTask:   nil,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := FindTaskByIdentifier(project, tt.identifier)
+			if tt.wantTask == nil {
+				if err == nil {
+					t.Errorf("FindTaskByIdentifier(%q) = %v, want error", tt.identifier, got)
+				}
+			} else {
+				if err != nil {
+					t.Errorf("FindTaskByIdentifier(%q) returned unexpected error: %v", tt.identifier, err)
+				} else if got != tt.wantTask {
+					t.Errorf("FindTaskByIdentifier(%q) = %q, want %q", tt.identifier, got.Title, tt.wantTask.Title)
+				}
+			}
+		})
+	}
+}
+
+func TestFindTaskByIdentifierEmptyProject(t *testing.T) {
+	project := testutil.NewTestProject("Empty Project")
+
+	got, err := FindTaskByIdentifier(project, "1")
+	if err == nil {
+		t.Errorf("FindTaskByIdentifier on empty project should return error, got %v", got)
+	}
+}
+
+func TestFindTaskByIdentifierTitleMatchAmbiguous(t *testing.T) {
+	project := testutil.NewTestProject("Test Project")
+
+	task1, err := models.NewTask("uuid-1", 1, models.TaskTypeTask, "Apple Pie Recipe")
+	if err != nil {
+		t.Fatal(err)
+	}
+	task2, err := models.NewTask("uuid-2", 2, models.TaskTypeTask, "Apple Crumble Recipe")
+	if err != nil {
+		t.Fatal(err)
+	}
+	project.Tasks = []*models.Task{task1, task2}
+
+	_, findErr := FindTaskByIdentifier(project, "apple")
+	if findErr == nil {
+		t.Error("FindTaskByIdentifier should return error for ambiguous prefix")
+	}
+	if !errors.Is(findErr, tterrors.ErrAmbiguousIdentifier) {
+		t.Errorf("expected ErrAmbiguousIdentifier, got: %v", findErr)
+	}
+
+	got, findErr := FindTaskByIdentifier(project, "Apple Pie")
+	if findErr != nil {
+		t.Errorf("FindTaskByIdentifier returned unexpected error: %v", findErr)
+	}
+	if got != task1 {
+		t.Errorf("FindTaskByIdentifier should return task1, got %v", got)
+	}
+}
