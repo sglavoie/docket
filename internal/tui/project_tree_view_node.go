@@ -147,94 +147,14 @@ func (m *ProjectTreeModel) renderNodeWithWidth(node *TreeNode, selected bool, in
 	}
 
 	// Build indicators in semantic groups for visual clustering
-	// Organization group: section badge, children-elsewhere, short ID, custom section
-	var orgParts []string
-	if node.IsContextNode || m.viewMode == ViewModeCompleted || m.viewMode == ViewModeAll {
-		sectionName := task.Section
-		if sectionName == "" {
-			sectionName = "Active"
-		}
-		if m.viewMode == ViewModeAll {
-			sectionStyle := GetViewModeStyleForSection(task.Section)
-			orgParts = append(orgParts, sectionStyle.Render("@ "+sectionName))
-		} else {
-			orgParts = append(orgParts, SectionBadgeStyle.Render("@ "+sectionName))
-		}
+	groups := [4]string{
+		m.nodeOrgGroup(task, node),
+		m.nodeLifecycleGroup(task),
+		m.nodeStructureGroup(task),
+		m.nodeContentGroup(task),
 	}
-	if !node.IsContextNode && len(task.Children) > 0 {
-		if childBadge := m.renderChildrenInOtherSectionsBadge(task); childBadge != "" {
-			orgParts = append(orgParts, childBadge)
-		}
-	}
-	if m.columnConfig.IsVisible(ColCustomSection) && task.CustomSection != "" && !m.sidebar.IsEnabled() {
-		csColor := m.project.GetSectionColor(task.CustomSection)
-		csStyle := GetSectionColorStyle(csColor)
-		orgParts = append(orgParts, csStyle.Render("@ "+task.CustomSection))
-	}
-	orgGroup := JoinGroupParts(orgParts...)
 
-	// Lifecycle group: due date, snooze, recurrence
-	var lifecycleParts []string
-	if m.columnConfig.IsVisible(ColDueDate) {
-		if dueStr := formatDueDate(task); dueStr != "" {
-			lifecycleParts = append(lifecycleParts, dueStr)
-		}
-	}
-	if m.columnConfig.IsVisible(ColSnooze) && task.SnoozedUntil != nil {
-		snoozeStr := task.SnoozedUntil.Format("Jan 2")
-		if task.SnoozedUntil.Year() != time.Now().Year() {
-			snoozeStr = task.SnoozedUntil.Format("Jan 2 '06")
-		}
-		lifecycleParts = append(lifecycleParts, MutedStyle.Render("zzz "+snoozeStr))
-	}
-	if m.columnConfig.IsVisible(ColRecurrence) && task.IsRecurring() {
-		recurStr := "↻"
-		if task.Recurrence.Streak > 0 {
-			recurStr = fmt.Sprintf("↻%d", task.Recurrence.Streak)
-		}
-		lifecycleParts = append(lifecycleParts, MutedStyle.Render(recurStr))
-	}
-	lifecycleGroup := JoinGroupParts(lifecycleParts...)
-
-	// Structure group: dependencies, score
-	var structureParts []string
-	if m.columnConfig.IsVisible(ColDependencies) && !m.sidebar.IsEnabled() {
-		if s := renderDependencyIndicators(task, m.project); s != "" {
-			structureParts = append(structureParts, s)
-		}
-	}
-	if m.columnConfig.IsVisible(ColScore) && !m.sidebar.IsEnabled() && m.config != nil {
-		if profile := m.config.GetProjectScoringProfile(m.project.ID); profile != nil {
-			if badge := RenderScoreBadge(task, profile); badge != "" {
-				structureParts = append(structureParts, badge)
-			}
-		}
-	}
-	structureGroup := JoinGroupParts(structureParts...)
-
-	// Content group: comments, attachments, checklist, tags
-	var contentParts []string
-	if m.columnConfig.IsVisible(ColComments) {
-		if s := renderCommentIndicator(task); s != "" {
-			contentParts = append(contentParts, s)
-		}
-	}
-	if m.columnConfig.IsVisible(ColAttachments) {
-		if s := renderAttachmentIndicator(task); s != "" {
-			contentParts = append(contentParts, s)
-		}
-	}
-	if m.columnConfig.IsVisible(ColChecklist) {
-		if s := renderChecklistIndicator(task); s != "" {
-			contentParts = append(contentParts, s)
-		}
-	}
-	if m.columnConfig.IsVisible(ColTags) && len(task.Tags) > 0 && !m.sidebar.IsEnabled() {
-		contentParts = append(contentParts, renderTruncatedTags(task.Tags, 2, 8))
-	}
-	contentGroup := JoinGroupParts(contentParts...)
-
-	indicators := JoinIndicatorGroups(orgGroup, lifecycleGroup, structureGroup, contentGroup)
+	indicators := JoinIndicatorGroups(groups[:]...)
 	if indicators != "" {
 		indicators = " " + indicators
 	}
@@ -262,23 +182,9 @@ func (m *ProjectTreeModel) renderNodeWithWidth(node *TreeNode, selected bool, in
 	}
 	availableTitleWidth := maxWidth - baseUsed - lipgloss.Width(indicators)
 
-	// If title would be squeezed below 20 chars, progressively drop indicator groups
-	if availableTitleWidth < 20 {
-		indicators = JoinIndicatorGroups(orgGroup, lifecycleGroup, structureGroup)
-		if indicators != "" {
-			indicators = " " + indicators
-		}
-		availableTitleWidth = maxWidth - baseUsed - lipgloss.Width(indicators)
-	}
-	if availableTitleWidth < 20 {
-		indicators = JoinIndicatorGroups(orgGroup, lifecycleGroup)
-		if indicators != "" {
-			indicators = " " + indicators
-		}
-		availableTitleWidth = maxWidth - baseUsed - lipgloss.Width(indicators)
-	}
-	if availableTitleWidth < 20 {
-		indicators = JoinIndicatorGroups(orgGroup)
+	// If title would be squeezed below 20 chars, progressively drop trailing groups
+	for drop := 1; drop < len(groups) && availableTitleWidth < 20; drop++ {
+		indicators = JoinIndicatorGroups(groups[:len(groups)-drop]...)
 		if indicators != "" {
 			indicators = " " + indicators
 		}
@@ -307,6 +213,95 @@ func (m *ProjectTreeModel) renderNodeWithWidth(node *TreeNode, selected bool, in
 		queueIndicator, checkbox, indent, expandIcon, typeIcon, statusIcon, prioritySegment, stageSegment, idStr, title, progress, indicators)
 	isDimmed := task.Dimmed && !node.IsContextNode
 	return RenderSelectableRow(selected, task.Active, task.Pinned, m.cursorFlash, content, maxWidth, isDimmed)
+}
+
+func (m *ProjectTreeModel) nodeOrgGroup(task *models.Task, node *TreeNode) string {
+	var parts []string
+	if node.IsContextNode || m.viewMode == ViewModeCompleted || m.viewMode == ViewModeAll {
+		sectionName := task.Section
+		if sectionName == "" {
+			sectionName = "Active"
+		}
+		if m.viewMode == ViewModeAll {
+			parts = append(parts, GetViewModeStyleForSection(task.Section).Render("@ "+sectionName))
+		} else {
+			parts = append(parts, SectionBadgeStyle.Render("@ "+sectionName))
+		}
+	}
+	if !node.IsContextNode && len(task.Children) > 0 {
+		if childBadge := m.renderChildrenInOtherSectionsBadge(task); childBadge != "" {
+			parts = append(parts, childBadge)
+		}
+	}
+	if m.columnConfig.IsVisible(ColCustomSection) && task.CustomSection != "" && !m.sidebar.IsEnabled() {
+		csColor := m.project.GetSectionColor(task.CustomSection)
+		parts = append(parts, GetSectionColorStyle(csColor).Render("@ "+task.CustomSection))
+	}
+	return JoinGroupParts(parts...)
+}
+
+func (m *ProjectTreeModel) nodeLifecycleGroup(task *models.Task) string {
+	var parts []string
+	if m.columnConfig.IsVisible(ColDueDate) {
+		if dueStr := formatDueDate(task); dueStr != "" {
+			parts = append(parts, dueStr)
+		}
+	}
+	if m.columnConfig.IsVisible(ColSnooze) && task.SnoozedUntil != nil {
+		snoozeStr := task.SnoozedUntil.Format("Jan 2")
+		if task.SnoozedUntil.Year() != time.Now().Year() {
+			snoozeStr = task.SnoozedUntil.Format("Jan 2 '06")
+		}
+		parts = append(parts, MutedStyle.Render("zzz "+snoozeStr))
+	}
+	if m.columnConfig.IsVisible(ColRecurrence) && task.IsRecurring() {
+		recurStr := "↻"
+		if task.Recurrence.Streak > 0 {
+			recurStr = fmt.Sprintf("↻%d", task.Recurrence.Streak)
+		}
+		parts = append(parts, MutedStyle.Render(recurStr))
+	}
+	return JoinGroupParts(parts...)
+}
+
+func (m *ProjectTreeModel) nodeStructureGroup(task *models.Task) string {
+	var parts []string
+	if m.columnConfig.IsVisible(ColDependencies) && !m.sidebar.IsEnabled() {
+		if s := renderDependencyIndicators(task, m.project); s != "" {
+			parts = append(parts, s)
+		}
+	}
+	if m.columnConfig.IsVisible(ColScore) && !m.sidebar.IsEnabled() && m.config != nil {
+		if profile := m.config.GetProjectScoringProfile(m.project.ID); profile != nil {
+			if badge := RenderScoreBadge(task, profile); badge != "" {
+				parts = append(parts, badge)
+			}
+		}
+	}
+	return JoinGroupParts(parts...)
+}
+
+func (m *ProjectTreeModel) nodeContentGroup(task *models.Task) string {
+	var parts []string
+	if m.columnConfig.IsVisible(ColComments) {
+		if s := renderCommentIndicator(task); s != "" {
+			parts = append(parts, s)
+		}
+	}
+	if m.columnConfig.IsVisible(ColAttachments) {
+		if s := renderAttachmentIndicator(task); s != "" {
+			parts = append(parts, s)
+		}
+	}
+	if m.columnConfig.IsVisible(ColChecklist) {
+		if s := renderChecklistIndicator(task); s != "" {
+			parts = append(parts, s)
+		}
+	}
+	if m.columnConfig.IsVisible(ColTags) && len(task.Tags) > 0 && !m.sidebar.IsEnabled() {
+		parts = append(parts, renderTruncatedTags(task.Tags, 2, 8))
+	}
+	return JoinGroupParts(parts...)
 }
 
 // renderQuickEditNode renders a task node in quick edit mode.
