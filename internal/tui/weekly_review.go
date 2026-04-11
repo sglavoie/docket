@@ -446,7 +446,7 @@ func (m *WeeklyReviewModel) HandledKeys() []string {
 			"zR", "zM", "zp",
 			"tab", "n", "N",
 			"gP", "gi", "gb", "go", "gt", "gm", "gw", "gp",
-			"enter", "*", "m", "t",
+			"enter", "o", "*", "m", "t",
 			"e", "Z", "D", "ctrl+.", "r", "y", "Y",
 			"R", "ctrl+n",
 			"1", "2", "3", "4", "5",

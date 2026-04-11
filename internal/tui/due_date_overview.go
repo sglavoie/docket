@@ -447,7 +447,7 @@ func (m *DueDateOverviewModel) HandledKeys() []string {
 		stagePrefixKeys(),
 		[]string{
 			"g", "gp",
-			"enter", "F", "m", "t",
+			"enter", "o", "F", "m", "t",
 			"e", "Z", "D", "ctrl+.", "r", "y", "Y", "ctrl+y",
 			"1", "2", "3", "4", "5",
 			"esc",

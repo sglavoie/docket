@@ -116,7 +116,7 @@ func (m *FocusBoardModel) handleKeyMsg(msg tea.KeyPressMsg) (tea.Model, tea.Cmd)
 		return m.handleEnter()
 
 	// Open URL directly
-	case "o":
+	case "O":
 		if row := m.getRowAtCursor(); row != nil && row.Task.URL != "" {
 			return m, openBrowserCmd(row.Task.URL)
 		}
@@ -218,7 +218,7 @@ func (m *FocusBoardModel) HandledKeys() []string {
 			"g", "gp",
 			"tab", "[", "]",
 			"zp",
-			"enter", "o", "a", "x", "X",
+			"enter", "o", "O", "a", "x", "X",
 			"d", "D", "p", "e", "E", "t", "Z", "m",
 			"ctrl+.", "y", "Y", "ctrl+y", "S",
 			"r", "F", "Fx", "/",

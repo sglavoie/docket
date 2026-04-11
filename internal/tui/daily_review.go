@@ -338,7 +338,7 @@ func (m *DailyReviewModel) HandledKeys() []string {
 			"zR", "zM", "zp",
 			"tab", "n", "N",
 			"gd", "gt", "gs", "gl", "gf", "gr", "go", "gp",
-			"enter", "*", "F", "m", "t",
+			"enter", "o", "*", "F", "m", "t",
 			"e", "Z", "D", "ctrl+.", "r", "y", "Y",
 			"1", "2", "3", "4", "5",
 			"esc",

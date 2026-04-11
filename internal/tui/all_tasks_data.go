@@ -212,7 +212,7 @@ func (m *AllTasksViewModel) HandledKeys() []string {
 			"g", "gp",
 			"zR", "zM",
 			"tab", "n", "N",
-			"enter", "*", "F", "FP", "m", "t", "S", "v",
+			"enter", "o", "*", "F", "FP", "m", "t", "S", "v",
 			"e", "Z", "D", "ctrl+.", "r", "y", "Y", "ctrl+y",
 			"0", "+", "E", "X", "ctrl+g",
 			"{", "}",

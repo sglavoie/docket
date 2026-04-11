@@ -93,13 +93,22 @@ func flashIfJumped(oldCursor, newCursor int, flash *bool) tea.Cmd {
 }
 
 // handleCommonTaskAction handles task actions shared across secondary views:
-// t (tags), Z (snooze), D (delete confirm), e (edit), r (refresh),
-// y/Y/ctrl+y (clipboard), ctrl+. (quick note), ? (help).
+// o (task detail), t (tags), Z (snooze), D (delete confirm), e (edit),
+// r (refresh), y/Y/ctrl+y (clipboard), ctrl+. (quick note), ? (help).
 //
 // Returns (model, cmd, handled). When handled is false, the key was not
 // recognized and the caller should continue with view-specific handling.
 func handleCommonTaskAction(key string, v commonActionView) (tea.Model, tea.Cmd, bool) {
 	switch key {
+	case "o":
+		task, project := v.getTaskRef()
+		if task != nil && project != nil {
+			return v, func() tea.Msg {
+				return ShowTaskDetailMsg{Task: task, Project: project}
+			}, true
+		}
+		return v, nil, true
+
 	case "ctrl+.":
 		task, project := v.getTaskRef()
 		if task != nil && project != nil {

@@ -332,7 +332,7 @@ func (m *PriorityViewModel) HandledKeys() []string {
 		[]string{
 			"g", "gt",
 			"w", "x", "A",
-			"enter", "tab", "F", "m", "t", "/",
+			"enter", "o", "tab", "F", "m", "t", "/",
 			"e", "Z", "D", "ctrl+.", "r", "y", "Y", "ctrl+y",
 			"1", "2", "3", "4", "5",
 			"q", "esc",
