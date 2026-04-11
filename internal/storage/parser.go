@@ -164,18 +164,7 @@ func ParseTasksMarkdownWithSections(content string) (*ParseResult, error) {
 					Field:   "title",
 					Message: fmt.Sprintf("task #%d title is overlong (%d chars, max %d)", nextShortID, len(title), models.MaxTaskTitleLength),
 				})
-				task = &models.Task{
-					ShortID:         nextShortID,
-					Type:            taskType,
-					Title:           title,
-					Status:          models.StatusTodo,
-					Priority:        models.PriorityDefault,
-					Tags:            []string{},
-					DependsOn:       []string{},
-					RelatedTo:       []string{},
-					ScoreDimensions: map[string]int{},
-					Children:        []*models.Task{},
-				}
+				task = newFallbackTask(nextShortID, taskType, title)
 			} else if newTask, taskErr := models.NewTask("", nextShortID, taskType, title); taskErr != nil {
 				// Preserve tasks with invalid titles (e.g. empty) to avoid data loss
 				metadataWarnings = append(metadataWarnings, ParseWarning{
@@ -183,18 +172,7 @@ func ParseTasksMarkdownWithSections(content string) (*ParseResult, error) {
 					Field:   "title",
 					Message: fmt.Sprintf("task #%d has invalid title: %v", nextShortID, taskErr),
 				})
-				task = &models.Task{
-					ShortID:         nextShortID,
-					Type:            taskType,
-					Title:           title,
-					Status:          models.StatusTodo,
-					Priority:        models.PriorityDefault,
-					Tags:            []string{},
-					DependsOn:       []string{},
-					RelatedTo:       []string{},
-					ScoreDimensions: map[string]int{},
-					Children:        []*models.Task{},
-				}
+				task = newFallbackTask(nextShortID, taskType, title)
 			} else {
 				task = newTask
 			}
@@ -279,6 +257,24 @@ func ParseTasksMarkdownWithSections(content string) (*ParseResult, error) {
 		SectionColors: sectionColors,
 		Warnings:      metadataWarnings,
 	}, nil
+}
+
+// newFallbackTask creates a Task with safe defaults, bypassing NewTask
+// validation. Used when parsing tasks from disk that have invalid titles
+// (overlong, empty, etc.) — we preserve them as-is to avoid data loss.
+func newFallbackTask(shortID int, taskType models.TaskType, title string) *models.Task {
+	return &models.Task{
+		ShortID:         shortID,
+		Type:            taskType,
+		Title:           title,
+		Status:          models.StatusTodo,
+		Priority:        models.PriorityDefault,
+		Tags:            []string{},
+		DependsOn:       []string{},
+		RelatedTo:       []string{},
+		ScoreDimensions: map[string]int{},
+		Children:        []*models.Task{},
+	}
 }
 
 // assignMissingIDsAndTimestamps assigns UUIDs and timestamps to tasks that had
