@@ -38,16 +38,16 @@ func TestRecordUndoSnapshot(t *testing.T) {
 	}
 
 	// Verify snapshot was created
-	undoDir := GetUndoDir(project)
+	undoDir := getUndoDir(project)
 	snapshotPath := filepath.Join(undoDir, "0001.md")
 	if _, statErr := os.Stat(snapshotPath); os.IsNotExist(statErr) {
 		t.Error("snapshot file was not created")
 	}
 
 	// Verify metadata was created
-	meta, err := LoadUndoMeta(project)
+	meta, err := loadUndoMeta(project)
 	if err != nil {
-		t.Fatalf("LoadUndoMeta failed: %v", err)
+		t.Fatalf("loadUndoMeta failed: %v", err)
 	}
 
 	if len(meta.Entries) != 1 {
@@ -91,7 +91,7 @@ func TestRecordUndoSnapshotDisabled(t *testing.T) {
 	}
 
 	// Verify no undo directory was created
-	undoDir := GetUndoDir(project)
+	undoDir := getUndoDir(project)
 	if _, err := os.Stat(undoDir); !os.IsNotExist(err) {
 		t.Error("undo directory should not exist when disabled")
 	}
@@ -196,7 +196,7 @@ func TestPerformUndoCreatesRedoEntry(t *testing.T) {
 	}
 
 	// Redo snapshot file must exist
-	undoDir := GetUndoDir(project)
+	undoDir := getUndoDir(project)
 	redoFile := filepath.Join(undoDir, "redo_0001.md")
 	if _, statErr := os.Stat(redoFile); os.IsNotExist(statErr) {
 		t.Error("redo snapshot file was not created")
@@ -319,7 +319,7 @@ func TestNewMutationClearsRedoStack(t *testing.T) {
 	}
 
 	// Verify redo snapshot file is deleted
-	undoDir := GetUndoDir(project)
+	undoDir := getUndoDir(project)
 	redoFile := filepath.Join(undoDir, "redo_0001.md")
 	if _, statErr := os.Stat(redoFile); !os.IsNotExist(statErr) {
 		t.Error("redo snapshot file should have been deleted after new mutation")

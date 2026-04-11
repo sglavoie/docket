@@ -22,15 +22,15 @@ var (
 	blockerMetadataRegex = regexp.MustCompile(`^<!--\s*(.+?)\s*-->$`)
 )
 
-// BlockersPath returns the path to the blockers.md file for a project.
-func BlockersPath(project *models.Project) string {
+// blockersPath returns the path to the blockers.md file for a project.
+func blockersPath(project *models.Project) string {
 	return filepath.Join(project.Path, blockersFileName)
 }
 
 // LoadBlockers reads the blockers from a project's blockers.md file.
 // Returns an empty slice if the file doesn't exist.
 func LoadBlockers(project *models.Project) ([]*models.Blocker, error) {
-	path := BlockersPath(project)
+	path := blockersPath(project)
 	content, err := os.ReadFile(path)
 	if os.IsNotExist(err) {
 		return []*models.Blocker{}, nil
@@ -49,7 +49,7 @@ func SaveBlockers(project *models.Project, blockers []*models.Blocker) error {
 	}
 
 	content := renderBlockersMarkdown(blockers)
-	path := BlockersPath(project)
+	path := blockersPath(project)
 	return util.AtomicWriteFile(path, []byte(content), FilePermissions)
 }
 

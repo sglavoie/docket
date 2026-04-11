@@ -41,27 +41,27 @@ func TestMonthlyRecurrenceDateDrift(t *testing.T) {
 	}
 }
 
-// TestNewRecurrencePatternSetsOriginalDay verifies that NewRecurrencePattern
+// Test_newRecurrencePattern_setsOriginalDay verifies that newRecurrencePattern
 // correctly records the due date's day for monthly recurrences.
-func TestNewRecurrencePatternSetsOriginalDay(t *testing.T) {
+func Test_newRecurrencePattern_setsOriginalDay(t *testing.T) {
 	base := &RecurrencePattern{Interval: 1, Unit: RecurrenceMonthly}
 	due := time.Date(2023, time.January, 31, 0, 0, 0, 0, time.UTC)
 
-	got := NewRecurrencePattern(base, due)
+	got := newRecurrencePattern(base, due)
 	if got.OriginalDay != 31 {
 		t.Errorf("OriginalDay = %d, want 31", got.OriginalDay)
 	}
 
 	// Non-monthly: OriginalDay should not be set.
 	baseDaily := &RecurrencePattern{Interval: 1, Unit: RecurrenceDaily}
-	gotDaily := NewRecurrencePattern(baseDaily, due)
+	gotDaily := newRecurrencePattern(baseDaily, due)
 	if gotDaily.OriginalDay != 0 {
 		t.Errorf("OriginalDay for daily = %d, want 0", gotDaily.OriginalDay)
 	}
 
 	// Already has OriginalDay set: should not overwrite.
 	baseExisting := &RecurrencePattern{Interval: 1, Unit: RecurrenceMonthly, OriginalDay: 15}
-	gotExisting := NewRecurrencePattern(baseExisting, due)
+	gotExisting := newRecurrencePattern(baseExisting, due)
 	if gotExisting.OriginalDay != 15 {
 		t.Errorf("OriginalDay should not be overwritten: got %d, want 15", gotExisting.OriginalDay)
 	}

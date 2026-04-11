@@ -28,10 +28,10 @@ type RecurrencePattern struct {
 	OriginalDay int            `json:"original_day,omitempty"` // For monthly: the intended day-of-month (e.g. 31)
 }
 
-// NewRecurrencePattern creates a RecurrencePattern from an existing one, setting
+// newRecurrencePattern creates a RecurrencePattern from an existing one, setting
 // OriginalDay from the due date when the unit is monthly. This preserves the
 // intended day-of-month across months that have fewer days (e.g. Jan 31 → Mar 31).
-func NewRecurrencePattern(p *RecurrencePattern, dueDate time.Time) *RecurrencePattern {
+func newRecurrencePattern(p *RecurrencePattern, dueDate time.Time) *RecurrencePattern {
 	result := *p
 	if p.Unit == RecurrenceMonthly && p.OriginalDay == 0 {
 		result.OriginalDay = dueDate.Day()

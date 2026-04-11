@@ -174,9 +174,9 @@ Was blocked by CI.
 	}
 }
 
-func TestBlockersPathLocation(t *testing.T) {
+func Test_blockersPathLocation(t *testing.T) {
 	project := &models.Project{Path: "/tmp/test-project"}
-	path := BlockersPath(project)
+	path := blockersPath(project)
 	expected := filepath.Join("/tmp/test-project", "blockers.md")
 	if path != expected {
 		t.Errorf("expected %q, got %q", expected, path)

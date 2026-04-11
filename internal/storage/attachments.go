@@ -13,15 +13,15 @@ import (
 
 const attachmentsDirName = ".attachments"
 
-// GetAttachmentsDir returns the path to the attachments directory for a project.
-func GetAttachmentsDir(project *models.Project) string {
+// getAttachmentsDir returns the path to the attachments directory for a project.
+func getAttachmentsDir(project *models.Project) string {
 	return filepath.Join(project.Path, attachmentsDirName)
 }
 
 // GetTaskAttachmentsDir returns the path to the attachments directory for a specific task.
 // Uses the task's UUID as the directory name for stability (short IDs can be reused after archive).
 func GetTaskAttachmentsDir(project *models.Project, task *models.Task) string {
-	return filepath.Join(GetAttachmentsDir(project), task.ID)
+	return filepath.Join(getAttachmentsDir(project), task.ID)
 }
 
 // GetAttachmentPath returns the full path to a specific attachment file.

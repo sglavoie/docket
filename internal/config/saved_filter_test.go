@@ -156,9 +156,9 @@ func TestEffectiveLogic(t *testing.T) {
 
 // --- Migration tests ---
 
-func TestMigrateLegacyFilters_SavedViews(t *testing.T) {
+func TestMigrateLegacyFilters_savedViews(t *testing.T) {
 	c := NewConfig()
-	c.SavedViews = []SavedView{
+	c.SavedViews = []savedView{
 		{Name: "Bugs", FilterType: "bug", SortField: 1},
 		{Name: "High Pri", FilterPriority: 1, FilterActionable: true},
 	}
@@ -167,7 +167,7 @@ func TestMigrateLegacyFilters_SavedViews(t *testing.T) {
 		t.Fatal("expected migration to return true")
 	}
 	if len(c.SavedViews) != 0 {
-		t.Error("expected SavedViews to be cleared")
+		t.Error("expected savedViews to be cleared")
 	}
 	if len(c.SavedFilters) != 2 {
 		t.Fatalf("expected 2 saved filters, got %d", len(c.SavedFilters))
@@ -186,9 +186,9 @@ func TestMigrateLegacyFilters_SavedViews(t *testing.T) {
 	}
 }
 
-func TestMigrateLegacyFilters_SmartLists(t *testing.T) {
+func TestMigrateLegacyFilters_smartLists(t *testing.T) {
 	c := NewConfig()
-	c.SmartLists = []SmartList{
+	c.SmartLists = []smartList{
 		{
 			ID:   "sl-1",
 			Name: "Overdue",
@@ -205,7 +205,7 @@ func TestMigrateLegacyFilters_SmartLists(t *testing.T) {
 		t.Fatal("expected migration to return true")
 	}
 	if len(c.SmartLists) != 0 {
-		t.Error("expected SmartLists to be cleared")
+		t.Error("expected smartLists to be cleared")
 	}
 	if len(c.SavedFilters) != 1 {
 		t.Fatalf("expected 1 saved filter, got %d", len(c.SavedFilters))
@@ -231,8 +231,8 @@ func TestMigrateLegacyFilters_SmartLists(t *testing.T) {
 
 func TestMigrateLegacyFilters_Both(t *testing.T) {
 	c := NewConfig()
-	c.SavedViews = []SavedView{{Name: "V"}}
-	c.SmartLists = []SmartList{{ID: "s1", Name: "S"}}
+	c.SavedViews = []savedView{{Name: "V"}}
+	c.SmartLists = []smartList{{ID: "s1", Name: "S"}}
 
 	c.MigrateLegacyFilters()
 	if len(c.SavedFilters) != 2 {
@@ -255,7 +255,7 @@ func TestMigrateLegacyFilters_Empty(t *testing.T) {
 
 func TestMigrateLegacyFilters_Idempotent(t *testing.T) {
 	c := NewConfig()
-	c.SavedViews = []SavedView{{Name: "V"}}
+	c.SavedViews = []savedView{{Name: "V"}}
 	c.MigrateLegacyFilters()
 
 	count := len(c.SavedFilters)
@@ -341,10 +341,10 @@ func TestManager_MigrationOnLoad(t *testing.T) {
 
 	// Legacy fields should be cleared.
 	if len(cfg.SavedViews) != 0 {
-		t.Error("SavedViews should be empty after migration")
+		t.Error("savedViews should be empty after migration")
 	}
 	if len(cfg.SmartLists) != 0 {
-		t.Error("SmartLists should be empty after migration")
+		t.Error("smartLists should be empty after migration")
 	}
 
 	// SavedFilters should have 2 entries.

@@ -46,7 +46,7 @@ func ExtractActivityFromDescription(task *models.Task) {
 
 	// WriteActivity writes entries newest-first for human readability.
 	// Reverse them back to chronological order (oldest-first) which is the
-	// in-memory convention expected by DiffAndRecordActivity and PruneActivity.
+	// in-memory convention expected by diffAndRecordActivity and PruneActivity.
 	slices.Reverse(task.Activity)
 }
 

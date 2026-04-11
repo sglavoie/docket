@@ -62,7 +62,7 @@ func (r *FileSystemRepository) RestoreFromBackup(project *models.Project) error 
 
 // Exists implements ProjectRepository.
 func (r *FileSystemRepository) Exists(projectPath string) bool {
-	return ProjectExists(projectPath)
+	return projectExists(projectPath)
 }
 
 // CreateDir implements ProjectRepository.
@@ -72,7 +72,7 @@ func (r *FileSystemRepository) CreateDir(project *models.Project) error {
 
 // DeleteDir implements ProjectRepository.
 func (r *FileSystemRepository) DeleteDir(projectPath string) error {
-	return DeleteProjectDir(projectPath)
+	return deleteProjectDir(projectPath)
 }
 
 // BackupExists implements ProjectRepository.

@@ -8,13 +8,13 @@ import (
 
 // attachmentDelimiter is used to separate the filename from the original path
 // in serialized attachment metadata. Filenames and paths must not contain this
-// sequence — see ValidateAttachmentPath.
+// sequence — see validateAttachmentPath.
 const attachmentDelimiter = "||"
 
-// ValidateAttachmentPath returns an error if the path contains characters
+// validateAttachmentPath returns an error if the path contains characters
 // reserved by the storage format: the attachment delimiter ("||") or
 // semicolons (";"), which delimit multiple attachments in metadata.
-func ValidateAttachmentPath(path string) error {
+func validateAttachmentPath(path string) error {
 	if strings.Contains(path, attachmentDelimiter) {
 		return fmt.Errorf("path %q contains reserved delimiter %q", path, attachmentDelimiter)
 	}
@@ -29,10 +29,10 @@ func (t *Task) AddAttachment(filename string, isURL bool, originalPath string) e
 	if filename == "" {
 		return fmt.Errorf("attachment filename must not be empty")
 	}
-	if err := ValidateAttachmentPath(filename); err != nil {
+	if err := validateAttachmentPath(filename); err != nil {
 		return fmt.Errorf("adding attachment: %w", err)
 	}
-	if err := ValidateAttachmentPath(originalPath); err != nil {
+	if err := validateAttachmentPath(originalPath); err != nil {
 		return fmt.Errorf("adding attachment: %w", err)
 	}
 	attachment := Attachment{
@@ -52,7 +52,7 @@ func (t *Task) AddCodeReference(path string, lineNumber int) error {
 	if path == "" {
 		return fmt.Errorf("code reference path must not be empty")
 	}
-	if err := ValidateAttachmentPath(path); err != nil {
+	if err := validateAttachmentPath(path); err != nil {
 		return fmt.Errorf("adding code reference: %w", err)
 	}
 	attachment := Attachment{

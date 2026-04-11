@@ -325,13 +325,13 @@ func TestCreateProjectDir(t *testing.T) {
 		t.Error("tasks.md was not created")
 	}
 
-	// Verify ProjectExists returns true
-	if !ProjectExists(project.Path) {
-		t.Error("ProjectExists returned false but project exists")
+	// Verify projectExists returns true
+	if !projectExists(project.Path) {
+		t.Error("projectExists returned false but project exists")
 	}
 }
 
-func TestDeleteProjectDir(t *testing.T) {
+func Test_deleteProjectDir(t *testing.T) {
 	dir, cleanup := testutil.TempProjectDir(t)
 	defer cleanup()
 
@@ -342,8 +342,8 @@ func TestDeleteProjectDir(t *testing.T) {
 		t.Fatalf("CreateProjectDir failed: %v", err)
 	}
 
-	if err := DeleteProjectDir(project.Path); err != nil {
-		t.Fatalf("DeleteProjectDir failed: %v", err)
+	if err := deleteProjectDir(project.Path); err != nil {
+		t.Fatalf("deleteProjectDir failed: %v", err)
 	}
 
 	// Verify directory is gone
@@ -351,9 +351,9 @@ func TestDeleteProjectDir(t *testing.T) {
 		t.Error("project directory still exists after delete")
 	}
 
-	// Verify ProjectExists returns false
-	if ProjectExists(project.Path) {
-		t.Error("ProjectExists returned true but project was deleted")
+	// Verify projectExists returns false
+	if projectExists(project.Path) {
+		t.Error("projectExists returned true but project was deleted")
 	}
 }
 

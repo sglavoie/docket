@@ -8,10 +8,10 @@ import (
 	"github.com/sglavoie/tt/internal/util"
 )
 
-// ValidateDependencyChain checks whether adding a dependency from taskID to blockerID
+// validateDependencyChain checks whether adding a dependency from taskID to blockerID
 // would create a circular dependency within allTasks. Returns an error if a cycle
 // would be created, or if it would be a self-dependency.
-func ValidateDependencyChain(taskID, blockerID string, allTasks []*Task) error {
+func validateDependencyChain(taskID, blockerID string, allTasks []*Task) error {
 	if taskID == blockerID {
 		return fmt.Errorf("task cannot depend on itself")
 	}

@@ -6,17 +6,17 @@ import (
 	"github.com/google/uuid"
 )
 
-// SavedFilter is a unified filter preset that replaces both SavedView (flat
-// filter snapshots) and SmartList (compound criteria).  Mode selects which
+// SavedFilter is a unified filter preset that replaces both savedView (flat
+// filter snapshots) and smartList (compound criteria).  Mode selects which
 // field set is active: "snapshot" or "criteria".
 type SavedFilter struct {
 	ID   string `json:"id"`
 	Name string `json:"name"`
 
-	// Mode: "snapshot" (flat filters from SavedView) or "criteria" (compound rules from SmartList).
+	// Mode: "snapshot" (flat filters from savedView) or "criteria" (compound rules from smartList).
 	Mode string `json:"mode"`
 
-	// --- Snapshot mode (from SavedView) ---
+	// --- Snapshot mode (from savedView) ---
 	ViewMode         int               `json:"view_mode,omitempty"`
 	FilterType       string            `json:"filter_type,omitempty"`
 	FilterStatus     string            `json:"filter_status,omitempty"`
@@ -31,7 +31,7 @@ type SavedFilter struct {
 	SortAscending    bool              `json:"sort_ascending"`
 	CustomSectionTab string            `json:"custom_section_tab,omitempty"`
 
-	// --- Criteria mode (from SmartList) ---
+	// --- Criteria mode (from smartList) ---
 	Criteria         []SmartListCriterion `json:"criteria,omitempty"`
 	Logic            string               `json:"logic,omitempty"`
 	IncludeCompleted bool                 `json:"include_completed,omitempty"`
@@ -129,8 +129,8 @@ func (c *Config) GetTabFilters() []SavedFilter {
 
 // --- Migration helpers ---
 
-// savedViewToFilter converts a legacy SavedView into a SavedFilter with mode "snapshot".
-func savedViewToFilter(sv SavedView) SavedFilter {
+// savedViewToFilter converts a legacy savedView into a SavedFilter with mode "snapshot".
+func savedViewToFilter(sv savedView) SavedFilter {
 	return SavedFilter{
 		ID:               uuid.New().String(),
 		Name:             sv.Name,
@@ -151,8 +151,8 @@ func savedViewToFilter(sv SavedView) SavedFilter {
 	}
 }
 
-// smartListToFilter converts a legacy SmartList into a SavedFilter with mode "criteria".
-func smartListToFilter(sl SmartList) SavedFilter {
+// smartListToFilter converts a legacy smartList into a SavedFilter with mode "criteria".
+func smartListToFilter(sl smartList) SavedFilter {
 	return SavedFilter{
 		ID:               sl.ID,
 		Name:             sl.Name,
@@ -166,7 +166,7 @@ func smartListToFilter(sl SmartList) SavedFilter {
 	}
 }
 
-// MigrateLegacyFilters converts SavedViews and SmartLists to SavedFilters.
+// MigrateLegacyFilters converts savedViews and smartLists to SavedFilters.
 // It is idempotent: if both legacy slices are already empty nothing changes.
 // Returns true if a migration was performed.
 func (c *Config) MigrateLegacyFilters() bool {

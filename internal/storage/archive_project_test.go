@@ -315,12 +315,12 @@ func TestClearOrphanedParentRefs(t *testing.T) {
 	})
 }
 
-func TestGetArchiveFilePath(t *testing.T) {
+func Test_getArchiveFilePath(t *testing.T) {
 	project := &models.Project{
 		Path: "/home/user/projects/my-project",
 	}
 
-	archivePath := GetArchiveFilePath(project)
+	archivePath := getArchiveFilePath(project)
 	expected := "/home/user/projects/my-project/completed.md"
 
 	if archivePath != expected {

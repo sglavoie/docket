@@ -8,9 +8,9 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 )
 
-func TestGetTrashDir(t *testing.T) {
+func Test_getTrashDir(t *testing.T) {
 	dataDir := "/home/user/.tt"
-	trashDir := GetTrashDir(dataDir)
+	trashDir := getTrashDir(dataDir)
 	expected := "/home/user/.tt/.tt/trash"
 
 	if trashDir != expected {

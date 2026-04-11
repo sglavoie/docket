@@ -4,7 +4,7 @@ import (
 	"testing"
 )
 
-func TestValidateAttachmentPath(t *testing.T) {
+func Test_validateAttachmentPath(t *testing.T) {
 	tests := []struct {
 		name    string
 		path    string
@@ -20,9 +20,9 @@ func TestValidateAttachmentPath(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := ValidateAttachmentPath(tt.path)
+			err := validateAttachmentPath(tt.path)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("ValidateAttachmentPath(%q) error = %v, wantErr %v", tt.path, err, tt.wantErr)
+				t.Errorf("validateAttachmentPath(%q) error = %v, wantErr %v", tt.path, err, tt.wantErr)
 			}
 		})
 	}

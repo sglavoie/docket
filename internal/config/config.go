@@ -64,9 +64,9 @@ type ProjectViewState struct {
 	OutlinerFilterBarEnabled  bool              `json:"outliner_filter_bar_enabled"`           // Outliner filter bar toggle state
 }
 
-// SavedView represents a named filter+sort+view-mode preset that can be recalled instantly.
+// savedView represents a named filter+sort+view-mode preset that can be recalled instantly.
 // It captures everything defining "what tasks are visible and how they're ordered".
-type SavedView struct {
+type savedView struct {
 	Name             string            `json:"name"`
 	ViewMode         int               `json:"view_mode,omitempty"`
 	FilterType       string            `json:"filter_type,omitempty"`
@@ -153,7 +153,7 @@ type Config struct {
 	ScoringProfiles                []scoring.ScoringProfile     `json:"scoring_profiles,omitempty"`                  // Available scoring profiles
 	ProjectScoringProfile          map[string]string            `json:"project_scoring_profile,omitempty"`           // Project ID → scoring profile ID
 	ScoreFilterCustom              *float64                     `json:"score_filter_custom,omitempty"`               // Custom score filter threshold for FS→c
-	SavedViews                     []SavedView                  `json:"saved_views,omitempty"`                       // Legacy: migrated to SavedFilters
+	SavedViews                     []savedView                  `json:"saved_views,omitempty"`                       // Legacy: migrated to SavedFilters
 	SavedFilters                   []SavedFilter                `json:"saved_filters,omitempty"`                     // Unified filter presets (snapshot + criteria)
 	MaxPinnedBarItems              *int                         `json:"max_pinned_bar_items,omitempty"`              // nil=5, max pinned tasks in status bar
 	MaxRecentTaskVisits            *int                         `json:"max_recent_task_visits,omitempty"`            // nil=15, max tasks in quick-switch overlay
@@ -184,7 +184,7 @@ type Config struct {
 	SectionLimitWaiting            *int                         `json:"section_limit_waiting,omitempty"`
 	SectionLimitSomeday            *int                         `json:"section_limit_someday,omitempty"`
 	SectionLimitReview             *int                         `json:"section_limit_review,omitempty"`
-	SmartLists                     []SmartList                  `json:"smart_lists,omitempty"`         // User-defined smart list tabs for AllTasks view
+	SmartLists                     []smartList                  `json:"smart_lists,omitempty"`         // User-defined smart list tabs for AllTasks view
 	AllTasksTabOrder               []string                     `json:"all_tasks_tab_order,omitempty"` // Built-in tab names + smart list UUIDs
 	// Proactive alert system: review tracking
 	LastDailyReviewAt  *time.Time `json:"last_daily_review_at,omitempty"`

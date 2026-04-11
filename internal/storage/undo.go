@@ -30,28 +30,28 @@ type UndoMeta struct {
 	RedoEntries []UndoEntry `json:"redo_entries"`
 }
 
-// GetUndoDir returns the path to the .undo directory for a project.
-func GetUndoDir(project *models.Project) string {
+// getUndoDir returns the path to the .undo directory for a project.
+func getUndoDir(project *models.Project) string {
 	return filepath.Join(project.Path, undoDirName)
 }
 
 // getUndoMetaPath returns the path to the meta.json file.
 func getUndoMetaPath(project *models.Project) string {
-	return filepath.Join(GetUndoDir(project), undoMetaFileName)
+	return filepath.Join(getUndoDir(project), undoMetaFileName)
 }
 
 // getSnapshotPath returns the path to a specific snapshot file.
 func getSnapshotPath(project *models.Project, num int) string {
-	return filepath.Join(GetUndoDir(project), fmt.Sprintf("%04d.md", num))
+	return filepath.Join(getUndoDir(project), fmt.Sprintf("%04d.md", num))
 }
 
 // getRedoSnapshotPath returns the path to a specific redo snapshot file.
 func getRedoSnapshotPath(project *models.Project, num int) string {
-	return filepath.Join(GetUndoDir(project), fmt.Sprintf("redo_%04d.md", num))
+	return filepath.Join(getUndoDir(project), fmt.Sprintf("redo_%04d.md", num))
 }
 
-// LoadUndoMeta loads the undo metadata from disk.
-func LoadUndoMeta(project *models.Project) (*UndoMeta, error) {
+// loadUndoMeta loads the undo metadata from disk.
+func loadUndoMeta(project *models.Project) (*UndoMeta, error) {
 	metaPath := getUndoMetaPath(project)
 
 	data, err := os.ReadFile(metaPath)
@@ -88,7 +88,7 @@ func saveUndoMeta(project *models.Project, meta *UndoMeta) error {
 
 // LoadUndoHistory returns available undo entries sorted by number descending (most recent first).
 func LoadUndoHistory(project *models.Project) ([]UndoEntry, error) {
-	meta, err := LoadUndoMeta(project)
+	meta, err := loadUndoMeta(project)
 	if err != nil {
 		return nil, err
 	}
@@ -105,7 +105,7 @@ func LoadUndoHistory(project *models.Project) ([]UndoEntry, error) {
 
 // LoadRedoHistory returns available redo entries sorted by number descending (most recent first).
 func LoadRedoHistory(project *models.Project) ([]UndoEntry, error) {
-	meta, err := LoadUndoMeta(project)
+	meta, err := loadUndoMeta(project)
 	if err != nil {
 		return nil, err
 	}
@@ -119,8 +119,8 @@ func LoadRedoHistory(project *models.Project) ([]UndoEntry, error) {
 	return entries, nil
 }
 
-// ClearRedoStack deletes all redo snapshot files and clears the redo entries in meta.
-func ClearRedoStack(project *models.Project, meta *UndoMeta) {
+// clearRedoStack deletes all redo snapshot files and clears the redo entries in meta.
+func clearRedoStack(project *models.Project, meta *UndoMeta) {
 	for _, entry := range meta.RedoEntries {
 		_ = os.Remove(getRedoSnapshotPath(project, entry.Num))
 	}
@@ -129,7 +129,7 @@ func ClearRedoStack(project *models.Project, meta *UndoMeta) {
 
 // UndoHistoryExists checks if there is any undo history available.
 func UndoHistoryExists(project *models.Project) bool {
-	meta, err := LoadUndoMeta(project)
+	meta, err := loadUndoMeta(project)
 	if err != nil {
 		return false
 	}
@@ -138,7 +138,7 @@ func UndoHistoryExists(project *models.Project) bool {
 
 // RedoHistoryExists checks if there is any redo history available.
 func RedoHistoryExists(project *models.Project) bool {
-	meta, err := LoadUndoMeta(project)
+	meta, err := loadUndoMeta(project)
 	if err != nil {
 		return false
 	}
@@ -191,7 +191,7 @@ func RecordUndoSnapshot(project *models.Project, action, context string, maxDept
 		return nil // Undo disabled
 	}
 
-	undoDir := GetUndoDir(project)
+	undoDir := getUndoDir(project)
 
 	// Create undo directory if it doesn't exist
 	if err := os.MkdirAll(undoDir, DirPermissions); err != nil {
@@ -210,7 +210,7 @@ func RecordUndoSnapshot(project *models.Project, action, context string, maxDept
 	}
 
 	// Load existing metadata
-	meta, err := LoadUndoMeta(project)
+	meta, err := loadUndoMeta(project)
 	if err != nil {
 		// Start fresh if meta is corrupted
 		logging.Warn("undo metadata corrupted for %s, starting fresh: %v", project.Name, err)
@@ -248,7 +248,7 @@ func RecordUndoSnapshot(project *models.Project, action, context string, maxDept
 	}
 
 	// Clear redo stack — any new mutation invalidates redo history
-	ClearRedoStack(project, meta)
+	clearRedoStack(project, meta)
 
 	// Save metadata
 	if err := saveUndoMeta(project, meta); err != nil {
@@ -287,7 +287,7 @@ func pruneOldSnapshots(project *models.Project, meta *UndoMeta, maxDepth int) er
 // PerformUndo restores the most recent snapshot and updates the history.
 // Returns the action description of what was undone.
 func PerformUndo(project *models.Project) (string, error) {
-	meta, err := LoadUndoMeta(project)
+	meta, err := loadUndoMeta(project)
 	if err != nil {
 		return "", err
 	}
@@ -367,7 +367,7 @@ func PerformUndo(project *models.Project) (string, error) {
 // PerformRedo restores the most recent redo snapshot and pushes current state onto the undo stack.
 // Returns the action description of what was redone.
 func PerformRedo(project *models.Project) (string, error) {
-	meta, err := LoadUndoMeta(project)
+	meta, err := loadUndoMeta(project)
 	if err != nil {
 		return "", err
 	}

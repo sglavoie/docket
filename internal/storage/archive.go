@@ -18,8 +18,8 @@ import (
 const archiveFileName = "completed.md"
 const archiveRotationThreshold int64 = 5 * 1024 * 1024 // 5MB
 
-// GetArchiveFilePath returns the path to the project's archive file.
-func GetArchiveFilePath(project *models.Project) string {
+// getArchiveFilePath returns the path to the project's archive file.
+func getArchiveFilePath(project *models.Project) string {
 	return filepath.Join(project.Path, archiveFileName)
 }
 
@@ -96,7 +96,7 @@ func ArchiveTasks(project *models.Project) (int, error) {
 		return 0, nil
 	}
 
-	archivePath := GetArchiveFilePath(project)
+	archivePath := getArchiveFilePath(project)
 
 	// Rotate archive if needed before appending
 	if err := rotateArchiveIfNeeded(project.Path, archiveRotationThreshold); err != nil {

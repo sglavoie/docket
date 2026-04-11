@@ -11,9 +11,9 @@ import (
 	"github.com/sglavoie/tt/internal/util"
 )
 
-// DiffAndRecordActivity compares old and new task states and records activity entries.
+// diffAndRecordActivity compares old and new task states and records activity entries.
 // Tasks are matched by ID. New tasks (not in oldTasks) get a "created" entry.
-func DiffAndRecordActivity(oldTasks, newTasks []*models.Task, maxEntries int) {
+func diffAndRecordActivity(oldTasks, newTasks []*models.Task, maxEntries int) {
 	oldByID := make(map[string]*models.Task, len(oldTasks))
 	for _, t := range oldTasks {
 		oldByID[t.ID] = t

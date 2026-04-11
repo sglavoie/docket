@@ -155,7 +155,7 @@ func SaveProject(project *models.Project) error {
 	tasksPath := tasksFilePath(project.Path)
 	if oldContent, err := os.ReadFile(tasksPath); err == nil {
 		if oldResult, parseErr := ParseTasksMarkdownWithSections(string(oldContent)); parseErr == nil {
-			DiffAndRecordActivity(oldResult.Tasks, project.Tasks, MaxActivityEntries)
+			diffAndRecordActivity(oldResult.Tasks, project.Tasks, MaxActivityEntries)
 		} else {
 			logging.Warn("could not diff activity for %s: %v", project.Name, parseErr)
 		}
@@ -186,8 +186,8 @@ func SaveProjectLocked(project *models.Project) error {
 	})
 }
 
-// ProjectExists checks if a project directory and tasks file exist.
-func ProjectExists(projectPath string) bool {
+// projectExists checks if a project directory and tasks file exist.
+func projectExists(projectPath string) bool {
 	_, err := os.Stat(tasksFilePath(projectPath))
 	return err == nil
 }
@@ -201,7 +201,7 @@ func CreateProjectDir(project *models.Project) error {
 	return SaveProject(project)
 }
 
-// DeleteProjectDir removes a project's directory.
-func DeleteProjectDir(projectPath string) error {
+// deleteProjectDir removes a project's directory.
+func deleteProjectDir(projectPath string) error {
 	return os.RemoveAll(projectPath)
 }

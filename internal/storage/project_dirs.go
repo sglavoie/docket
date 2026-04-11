@@ -60,14 +60,14 @@ func FormatRelativeTime(t time.Time) string {
 	return fmt.Sprintf("%d days ago", days)
 }
 
-// GetTrashDir returns the path to the trash directory within the data directory.
-func GetTrashDir(dataDir string) string {
+// getTrashDir returns the path to the trash directory within the data directory.
+func getTrashDir(dataDir string) string {
 	return filepath.Join(dataDir, ".tt", "trash")
 }
 
 // TrashEntryExists checks if a project exists in the trash.
 func TrashEntryExists(slug, dataDir string) bool {
-	_, err := os.Stat(filepath.Join(GetTrashDir(dataDir), slug))
+	_, err := os.Stat(filepath.Join(getTrashDir(dataDir), slug))
 	return err == nil
 }
 
@@ -98,7 +98,7 @@ func RenameProjectDir(project *models.Project, oldSlug, newSlug, dataDir string)
 // MoveProjectToTrash moves a project directory to the trash folder.
 // Callers should use PurgeFromTrash first if a same-slug entry might exist.
 func MoveProjectToTrash(project *models.Project, dataDir string) error {
-	trashDir := GetTrashDir(dataDir)
+	trashDir := getTrashDir(dataDir)
 	trashPath := filepath.Join(trashDir, project.Slug)
 	if err := os.MkdirAll(trashDir, DirPermissions); err != nil {
 		return fmt.Errorf("failed to create trash directory: %w", err)
@@ -115,13 +115,13 @@ func PurgeFromTrash(slug, dataDir string) error {
 	if !TrashEntryExists(slug, dataDir) {
 		return nil
 	}
-	return os.RemoveAll(filepath.Join(GetTrashDir(dataDir), slug))
+	return os.RemoveAll(filepath.Join(getTrashDir(dataDir), slug))
 }
 
 // RestoreProjectFromTrash moves a project directory from trash back to the data directory.
 // Returns an error if the trash entry doesn't exist or if an active project with the same slug exists.
 func RestoreProjectFromTrash(slug, dataDir string) error {
-	trashPath := filepath.Join(GetTrashDir(dataDir), slug)
+	trashPath := filepath.Join(getTrashDir(dataDir), slug)
 	projectPath := filepath.Join(dataDir, "projects", slug)
 	if !TrashEntryExists(slug, dataDir) {
 		return fmt.Errorf("%w: '%s' not in trash", tterrors.ErrProjectNotFound, slug)
@@ -137,7 +137,7 @@ func RestoreProjectFromTrash(slug, dataDir string) error {
 
 // ListTrashedProjects returns the slugs of all projects in the trash.
 func ListTrashedProjects(dataDir string) ([]string, error) {
-	entries, err := os.ReadDir(GetTrashDir(dataDir))
+	entries, err := os.ReadDir(getTrashDir(dataDir))
 	if os.IsNotExist(err) {
 		return []string{}, nil
 	}

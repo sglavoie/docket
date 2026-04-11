@@ -216,7 +216,7 @@ func (m *Manager) Load() (*Config, error) { //nolint:gocyclo
 		}
 	}
 
-	// Migrate legacy SavedViews and SmartLists to unified SavedFilters.
+	// Migrate legacy savedViews and smartLists to unified SavedFilters.
 	if config.MigrateLegacyFilters() {
 		// Auto-save so legacy fields are cleared on disk.
 		if err := m.Save(&config); err != nil {

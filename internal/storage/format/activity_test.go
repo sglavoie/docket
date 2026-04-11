@@ -234,7 +234,7 @@ func TestFindUnescapedSeparator(t *testing.T) {
 func TestActivityRoundtripPreservesChronologicalOrder(t *testing.T) {
 	// WriteActivity writes newest-first for human readability.
 	// ExtractActivityFromDescription must reverse them back to chronological
-	// order (oldest-first) so that DiffAndRecordActivity and PruneActivity
+	// order (oldest-first) so that diffAndRecordActivity and PruneActivity
 	// work correctly (they append new entries at the end and keep the last N).
 	ts1 := time.Date(2025, 1, 10, 8, 0, 0, 0, time.Local)
 	ts2 := time.Date(2025, 1, 11, 9, 0, 0, 0, time.Local)

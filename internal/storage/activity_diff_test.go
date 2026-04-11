@@ -475,7 +475,7 @@ func TestDiffTaskSource(t *testing.T) {
 	}
 }
 
-func TestDiffAndRecordActivity_PrunesExcessEntries(t *testing.T) {
+func Test_diffAndRecordActivity_PrunesExcessEntries(t *testing.T) {
 	// Create "old" snapshot with a task that already has many activity entries
 	old, err := models.NewTask("1", 1, models.TaskTypeTask, "Test")
 	if err != nil {
@@ -501,7 +501,7 @@ func TestDiffAndRecordActivity_PrunesExcessEntries(t *testing.T) {
 	newT.Status = models.StatusInProgress
 
 	maxEntries := 10
-	DiffAndRecordActivity([]*models.Task{old}, []*models.Task{newT}, maxEntries)
+	diffAndRecordActivity([]*models.Task{old}, []*models.Task{newT}, maxEntries)
 
 	// Should be capped at maxEntries
 	if len(newT.Activity) != maxEntries {
@@ -528,7 +528,7 @@ func TestActivityOrderPreservedAcrossWriteAndParse(t *testing.T) {
 	// Regression test: WriteTasksMarkdown writes activity newest-first for
 	// readability, but ParseTasksMarkdown must reverse them back to
 	// chronological order (oldest-first). Without this, PruneActivity would
-	// discard recent entries and DiffAndRecordActivity would append out of order.
+	// discard recent entries and diffAndRecordActivity would append out of order.
 	ts1 := time.Date(2025, 1, 10, 8, 0, 0, 0, time.Local)
 	ts2 := time.Date(2025, 1, 11, 9, 0, 0, 0, time.Local)
 	ts3 := time.Date(2025, 1, 12, 10, 0, 0, 0, time.Local)

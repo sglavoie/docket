@@ -154,11 +154,11 @@ func DeleteNoteFrom(dir, filename string) error {
 
 // NotesExist returns true if the project has any notes.
 func NotesExist(project *models.Project) bool {
-	return NotesExistIn(NotesDir(project))
+	return notesExistIn(NotesDir(project))
 }
 
-// NotesExistIn returns true if the given directory has any notes.
-func NotesExistIn(dir string) bool {
+// notesExistIn returns true if the given directory has any notes.
+func notesExistIn(dir string) bool {
 	entries, err := os.ReadDir(dir)
 	if err != nil {
 		return false
