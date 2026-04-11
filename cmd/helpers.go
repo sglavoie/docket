@@ -122,6 +122,14 @@ func ConfirmStrict(prompt string, force bool) bool {
 	return strings.TrimSpace(strings.ToLower(response)) == "yes"
 }
 
+// applyConfigSettings applies config-driven settings to storage and external packages.
+func applyConfigSettings(cfg *config.Config) {
+	if cfg.MaxActivityEntries != nil {
+		storage.MaxActivityEntries = *cfg.MaxActivityEntries
+	}
+	external.SetFzfTimeout(cfg.GetFzfTimeout())
+}
+
 // LoadConfig loads the configuration file, creating it if it does not exist.
 // Returns the config, manager, and any error encountered.
 func LoadConfig() (*config.Config, *config.Manager, error) {
@@ -130,11 +138,7 @@ func LoadConfig() (*config.Config, *config.Manager, error) {
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to load config: %w", err)
 	}
-	// Apply config-driven storage settings
-	if cfg.MaxActivityEntries != nil {
-		storage.MaxActivityEntries = *cfg.MaxActivityEntries
-	}
-	external.SetFzfTimeout(cfg.GetFzfTimeout())
+	applyConfigSettings(cfg)
 	return cfg, configManager, nil
 }
 
@@ -147,10 +151,7 @@ func LoadConfigStrict() (*config.Config, *config.Manager, error) {
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to load config: %w", err)
 	}
-	if cfg.MaxActivityEntries != nil {
-		storage.MaxActivityEntries = *cfg.MaxActivityEntries
-	}
-	external.SetFzfTimeout(cfg.GetFzfTimeout())
+	applyConfigSettings(cfg)
 	return cfg, configManager, nil
 }
 
@@ -316,25 +317,26 @@ func (o MutateOutput) OutputProject(project *models.Project, fallback func()) er
 	return nil
 }
 
-// outputSingleTaskJSON marshals a task to indented JSON and prints it.
-func outputSingleTaskJSON(task *models.Task) error {
+type mutateTaskJSONEntry struct {
+	ID        string   `json:"id"`
+	ShortID   int      `json:"short_id"`
+	Type      string   `json:"type"`
+	Title     string   `json:"title"`
+	Status    string   `json:"status"`
+	Priority  int      `json:"priority"`
+	Tags      []string `json:"tags"`
+	Section   string   `json:"section,omitempty"`
+	CreatedAt string   `json:"created_at"`
+	UpdatedAt string   `json:"updated_at"`
+	DueDate   *string  `json:"due_date,omitempty"`
+}
+
+func taskToMutateJSONEntry(task *models.Task) mutateTaskJSONEntry {
 	tags := task.Tags
 	if tags == nil {
 		tags = []string{}
 	}
-	entry := struct {
-		ID        string   `json:"id"`
-		ShortID   int      `json:"short_id"`
-		Type      string   `json:"type"`
-		Title     string   `json:"title"`
-		Status    string   `json:"status"`
-		Priority  int      `json:"priority"`
-		Tags      []string `json:"tags"`
-		Section   string   `json:"section,omitempty"`
-		CreatedAt string   `json:"created_at"`
-		UpdatedAt string   `json:"updated_at"`
-		DueDate   *string  `json:"due_date,omitempty"`
-	}{
+	entry := mutateTaskJSONEntry{
 		ID:        task.ID,
 		ShortID:   task.ShortID,
 		Type:      task.Type.String(),
@@ -350,7 +352,11 @@ func outputSingleTaskJSON(task *models.Task) error {
 		s := task.DueDate.Format("2006-01-02T15:04:05Z07:00")
 		entry.DueDate = &s
 	}
-	data, err := json.MarshalIndent(entry, "", "  ")
+	return entry
+}
+
+func outputSingleTaskJSON(task *models.Task) error {
+	data, err := json.MarshalIndent(taskToMutateJSONEntry(task), "", "  ")
 	if err != nil {
 		return fmt.Errorf("marshal task to JSON: %w", err)
 	}
@@ -358,38 +364,10 @@ func outputSingleTaskJSON(task *models.Task) error {
 	return nil
 }
 
-// outputTasksJSON marshals a slice of tasks to indented JSON and prints it.
 func outputTasksJSON(tasks []*models.Task) error {
-	type taskEntry struct {
-		ID        string   `json:"id"`
-		ShortID   int      `json:"short_id"`
-		Type      string   `json:"type"`
-		Title     string   `json:"title"`
-		Status    string   `json:"status"`
-		Priority  int      `json:"priority"`
-		Tags      []string `json:"tags"`
-		Section   string   `json:"section,omitempty"`
-		CreatedAt string   `json:"created_at"`
-		UpdatedAt string   `json:"updated_at"`
-	}
-	entries := make([]taskEntry, 0, len(tasks))
+	entries := make([]mutateTaskJSONEntry, 0, len(tasks))
 	for _, task := range tasks {
-		tags := task.Tags
-		if tags == nil {
-			tags = []string{}
-		}
-		entries = append(entries, taskEntry{
-			ID:        task.ID,
-			ShortID:   task.ShortID,
-			Type:      task.Type.String(),
-			Title:     task.Title,
-			Status:    task.Status.String(),
-			Priority:  task.Priority,
-			Tags:      tags,
-			Section:   task.Section,
-			CreatedAt: task.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
-			UpdatedAt: task.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"),
-		})
+		entries = append(entries, taskToMutateJSONEntry(task))
 	}
 	data, err := json.MarshalIndent(entries, "", "  ")
 	if err != nil {
