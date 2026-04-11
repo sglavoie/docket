@@ -6,8 +6,6 @@ import (
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
-	"charm.land/lipgloss/v2"
-	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/alerts"
 )
@@ -471,7 +469,7 @@ func (m *NotificationCenterModel) buildAlertLines(prefixWidth, maxLabelWidth int
 				lines = append(lines, line)
 			}
 		} else {
-			truncated := truncateToWidth(full, maxLabelWidth)
+			truncated := truncateToVisualWidth(full, maxLabelWidth)
 			styled := m.styleAlertLine(truncated, item.details)
 			if item.dismissed {
 				styled = MutedStyle.Render(truncated)
@@ -501,21 +499,6 @@ func (m *NotificationCenterModel) severityPrefix(item alertCenterItem) string {
 	default:
 		return alertInfoDot
 	}
-}
-
-// truncateToWidth truncates a plain-text string to maxWidth terminal columns,
-// adding "…" if truncated.
-func truncateToWidth(s string, maxWidth int) string {
-	if maxWidth <= 0 {
-		return ""
-	}
-	if lipgloss.Width(s) <= maxWidth {
-		return s
-	}
-	if maxWidth < 2 {
-		return ansi.Truncate(s, maxWidth, "")
-	}
-	return ansi.Truncate(s, maxWidth-1, "") + "…"
 }
 
 var alertDetailsStyle = InfoStatusStyle
