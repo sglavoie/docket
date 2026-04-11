@@ -142,7 +142,7 @@ func concatKeys(groups ...[]string) []string {
 func globalAppKeys() []string {
 	return []string{
 		"ctrl+c", "alt+o", "alt+i", "|", "#", "esc", "q",
-		"ctrl+x", "ctrl+z", ":", ";", "ctrl+,", "ctrl+i", "ctrl+/",
+		"ctrl+x", "ctrl+z", ":", ";", "ctrl+,", "ctrl+i", "ctrl+/", `ctrl+\`,
 		"shift+space", "?", "alt+l",
 		// Semicolon prefix dispatches
 		";n", ";d", ";w", ";N", ";b", ";f", ";l", ";B", ";D", ";m", ";a", ";W", ";o",

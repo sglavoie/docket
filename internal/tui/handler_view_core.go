@@ -43,6 +43,15 @@ func (m *AppModel) handleViewCoreMessages(msg tea.Msg) (bool, tea.Cmd) {
 		m.popView()
 		return true, nil
 
+	case ShowKeybindingExplorerMsg:
+		explorer := NewKeybindingExplorerModel()
+		m.showView(ViewKeybindingExplorer, explorer)
+		return true, nil
+
+	case CloseKeybindingExplorerMsg:
+		m.popView()
+		return true, nil
+
 	case ShowTutorMsg:
 		m.showView(ViewTutor, NewTutorModel())
 		return true, nil

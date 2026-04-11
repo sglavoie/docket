@@ -39,21 +39,22 @@ type HelpProvider interface {
 
 // HelpViewModel is the model for the help view.
 type HelpViewModel struct {
-	items            []HelpItem
-	filteredItems    []filteredHelpItem
-	viewport         viewport.Model
-	searchInput      textinput.Model
-	searchMode       bool
-	searchQuery      string
-	width            int
-	height           int
-	sourceView       ViewType
-	viewName         string
-	ready            bool
-	sectionPositions []int    // Line numbers where each section header starts
-	currentSection   int      // Current section index for n/N navigation
-	activeTab        int      // Current tab (category) index
-	categories       []string // Ordered list of categories derived from items
+	items          []HelpItem
+	filteredItems  []filteredHelpItem
+	viewport       viewport.Model
+	searchInput    textinput.Model
+	searchMode     bool
+	searchQuery    string
+	width          int
+	height         int
+	sourceView     ViewType
+	viewName       string
+	ready          bool
+	activeTab      int      // Current tab (category) index
+	categories     []string // Ordered list of categories derived from items
+	isExplorer     bool     // True when used as global keybinding explorer
+	tabSearchMode  bool     // True when tab search input is active
+	tabSearchInput textinput.Model
 }
 
 // NewHelpViewModel creates a new help view model.
@@ -63,14 +64,53 @@ func NewHelpViewModel(items []HelpItem, sourceView ViewType, viewName string) *H
 	searchInput.CharLimit = 50
 	searchInput.SetWidth(30)
 
+	tabSearchInput := textinput.New()
+	tabSearchInput.Placeholder = "Search tabs..."
+	tabSearchInput.CharLimit = 30
+	tabSearchInput.SetWidth(20)
+
 	m := &HelpViewModel{
-		items:       items,
-		sourceView:  sourceView,
-		viewName:    viewName,
-		searchMode:  false,
-		searchInput: searchInput,
-		searchQuery: "",
-		ready:       false,
+		items:          items,
+		sourceView:     sourceView,
+		viewName:       viewName,
+		searchMode:     false,
+		searchInput:    searchInput,
+		searchQuery:    "",
+		ready:          false,
+		tabSearchInput: tabSearchInput,
+	}
+	m.filteredItems = make([]filteredHelpItem, len(items))
+	for i, item := range items {
+		m.filteredItems[i] = filteredHelpItem{HelpItem: item}
+	}
+	m.categories = m.buildCategories()
+	return m
+}
+
+// NewKeybindingExplorerModel creates a global keybinding explorer with auto-focused search.
+func NewKeybindingExplorerModel() *HelpViewModel {
+	items := GetKeybindingRegistry().GetAllDeduplicated()
+	searchInput := textinput.New()
+	searchInput.Placeholder = "Search keybindings..."
+	searchInput.CharLimit = 50
+	searchInput.SetWidth(30)
+	searchInput.Focus()
+
+	tabSearchInput := textinput.New()
+	tabSearchInput.Placeholder = "Search tabs..."
+	tabSearchInput.CharLimit = 30
+	tabSearchInput.SetWidth(20)
+
+	m := &HelpViewModel{
+		items:          items,
+		sourceView:     ViewKeybindingExplorer,
+		viewName:       "All Views",
+		searchMode:     true,
+		searchInput:    searchInput,
+		searchQuery:    "",
+		ready:          false,
+		isExplorer:     true,
+		tabSearchInput: tabSearchInput,
 	}
 	m.filteredItems = make([]filteredHelpItem, len(items))
 	for i, item := range items {
@@ -94,14 +134,42 @@ func (m *HelpViewModel) buildCategories() []string {
 	return cats
 }
 
-// HasActiveSearch returns true if search mode is active or a search filter is applied.
-func (m *HelpViewModel) HasActiveSearch() bool {
-	return m.searchMode || m.searchQuery != ""
+// matchTab fuzzy-matches the query against category names and selects the best match.
+func (m *HelpViewModel) matchTab(query string) {
+	if query == "" {
+		m.activeTab = 0 // "All" tab
+		m.filterItems()
+		m.viewport.SetContent(m.renderContent())
+		m.viewport.GotoTop()
+		return
+	}
+	bestIdx := 0
+	bestScore := 0
+	for i, cat := range m.categories {
+		score, _ := fuzzy.ScoreTermsWithPositions(cat, query)
+		if score > bestScore {
+			bestScore = score
+			bestIdx = i + 1 // +1 because tab 0 is "All"
+		}
+	}
+	if bestScore > 0 {
+		m.activeTab = bestIdx
+	} else {
+		m.activeTab = 0
+	}
+	m.filterItems()
+	m.viewport.SetContent(m.renderContent())
+	m.viewport.GotoTop()
 }
 
-// HasTextInput returns true when help search is active.
+// HasActiveSearch returns true if search mode is active or a search filter is applied.
+func (m *HelpViewModel) HasActiveSearch() bool {
+	return m.searchMode || m.searchQuery != "" || m.tabSearchMode
+}
+
+// HasTextInput returns true when help search or tab search is active.
 func (m *HelpViewModel) HasTextInput() bool {
-	return m.HasActiveSearch()
+	return m.searchMode || m.tabSearchMode
 }
 
 // IsFullHeight returns true because the help view renders its own footer.
@@ -109,7 +177,7 @@ func (m *HelpViewModel) IsFullHeight() bool {
 	return true
 }
 
-// ShouldCaptureEsc returns true when help search is active.
+// ShouldCaptureEsc returns true when help search or tab search is active.
 func (m *HelpViewModel) ShouldCaptureEsc() bool {
 	return m.HasActiveSearch()
 }
@@ -127,11 +195,15 @@ func (m *HelpViewModel) SetSize(width, height int) {
 	if m.searchMode || m.searchQuery != "" {
 		searchHeight = 2
 	}
+	tabSearchHeight := 0
+	if m.tabSearchMode {
+		tabSearchHeight = 2
+	}
 	statusBarHeight := 3 // blank line + separator + bar
 	tabBarHeight := m.tabBarLines()
 
 	viewportWidth := m.innerWidth()
-	viewportHeight := height - tabBarHeight - searchHeight - statusBarHeight + 1
+	viewportHeight := height - tabBarHeight - searchHeight - tabSearchHeight - statusBarHeight + 1
 
 	if viewportWidth < 1 {
 		viewportWidth = 1
@@ -153,6 +225,9 @@ func (m *HelpViewModel) SetSize(width, height int) {
 }
 
 func (m *HelpViewModel) Init() tea.Cmd {
+	if m.isExplorer {
+		return textinput.Blink
+	}
 	return nil
 }
 
@@ -172,9 +247,28 @@ func (m *HelpViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.searchMode = false
 				m.searchInput.Blur()
 				return m, nil
-			case "enter":
+			case "enter", "/":
 				m.searchMode = false
 				m.searchInput.Blur()
+				return m, nil
+			case `\`:
+				m.searchMode = false
+				m.searchInput.Blur()
+				m.tabSearchMode = true
+				m.tabSearchInput.SetValue("")
+				m.tabSearchInput.Focus()
+				return m, textinput.Blink
+			case "[":
+				CycleTab(&m.activeTab, len(m.categories)+1, -1)
+				m.filterItems()
+				m.viewport.SetContent(m.renderContent())
+				m.viewport.GotoTop()
+				return m, nil
+			case "]":
+				CycleTab(&m.activeTab, len(m.categories)+1, 1)
+				m.filterItems()
+				m.viewport.SetContent(m.renderContent())
+				m.viewport.GotoTop()
 				return m, nil
 			default:
 				var cmd tea.Cmd
@@ -187,8 +281,38 @@ func (m *HelpViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 
+		if m.tabSearchMode {
+			switch msg.String() {
+			case "esc", "enter", `\`:
+				m.tabSearchMode = false
+				m.tabSearchInput.Blur()
+				m.tabSearchInput.SetValue("")
+				return m, nil
+			case "/":
+				m.tabSearchMode = false
+				m.tabSearchInput.Blur()
+				m.tabSearchInput.SetValue("")
+				m.searchMode = true
+				m.searchInput.Focus()
+				return m, textinput.Blink
+			default:
+				var cmd tea.Cmd
+				m.tabSearchInput, cmd = m.tabSearchInput.Update(msg)
+				m.matchTab(m.tabSearchInput.Value())
+				return m, cmd
+			}
+		}
+
+		// Explorer-specific: ctrl+\ toggles close
+		if m.isExplorer && msg.String() == `ctrl+\` {
+			return m, func() tea.Msg { return CloseKeybindingExplorerMsg{} }
+		}
+
 		switch msg.String() {
 		case "?":
+			if m.isExplorer {
+				return m, nil // ? does not close the explorer
+			}
 			return m, func() tea.Msg {
 				return CloseHelpMsg{}
 			}
@@ -196,6 +320,28 @@ func (m *HelpViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.searchMode = true
 			m.searchInput.Focus()
 			return m, textinput.Blink
+		case `\`:
+			m.tabSearchMode = true
+			m.tabSearchInput.SetValue("")
+			m.tabSearchInput.Focus()
+			return m, textinput.Blink
+		case "backspace":
+			needsRefresh := false
+			if m.searchQuery != "" {
+				m.searchQuery = ""
+				m.searchInput.SetValue("")
+				needsRefresh = true
+			}
+			if m.activeTab != 0 {
+				m.activeTab = 0
+				needsRefresh = true
+			}
+			if needsRefresh {
+				m.filterItems()
+				m.viewport.SetContent(m.renderContent())
+				m.viewport.GotoTop()
+			}
+			return m, nil
 		case "esc":
 			if m.searchQuery != "" {
 				m.searchQuery = ""
@@ -204,6 +350,9 @@ func (m *HelpViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.viewport.SetContent(m.renderContent())
 				m.viewport.GotoTop()
 				return m, nil
+			}
+			if m.isExplorer {
+				return m, func() tea.Msg { return CloseKeybindingExplorerMsg{} }
 			}
 		case "[", "h":
 			CycleTab(&m.activeTab, len(m.categories)+1, -1)
@@ -229,36 +378,6 @@ func (m *HelpViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.viewport.HalfPageUp()
 		case "pgdown", "ctrl+d":
 			m.viewport.HalfPageDown()
-		case "n":
-			// Next section (with wrap)
-			if len(m.sectionPositions) > 0 {
-				startOffset := m.viewport.YOffset()
-				for i := 0; i < len(m.sectionPositions); i++ {
-					m.currentSection++
-					if m.currentSection >= len(m.sectionPositions) {
-						m.currentSection = 0
-					}
-					m.goToSection(m.currentSection)
-					if m.viewport.YOffset() != startOffset {
-						break
-					}
-				}
-			}
-		case "N":
-			// Previous section (with wrap)
-			if len(m.sectionPositions) > 0 {
-				startOffset := m.viewport.YOffset()
-				for i := 0; i < len(m.sectionPositions); i++ {
-					m.currentSection--
-					if m.currentSection < 0 {
-						m.currentSection = len(m.sectionPositions) - 1
-					}
-					m.goToSection(m.currentSection)
-					if m.viewport.YOffset() != startOffset {
-						break
-					}
-				}
-			}
 		}
 	}
 
@@ -311,7 +430,6 @@ func (m *HelpViewModel) filterItems() {
 
 func (m *HelpViewModel) renderContent() string {
 	if len(m.filteredItems) == 0 {
-		m.sectionPositions = nil
 		return MutedStyle.Render("No matching help items.")
 	}
 
@@ -327,10 +445,6 @@ func (m *HelpViewModel) renderContent() string {
 		}
 		categories[item.Category] = append(categories[item.Category], item)
 	}
-
-	// Track section positions for n/N navigation
-	m.sectionPositions = make([]int, 0, len(categoryOrder))
-	lineCount := 0
 
 	// Calculate column widths based on viewport width (not full width)
 	// Each column: keyWidth + separator(2) + descWidth
@@ -392,29 +506,19 @@ func (m *HelpViewModel) renderContent() string {
 	for i, category := range categoryOrder {
 		if i > 0 {
 			b.WriteString("\n")
-			lineCount++
 		}
 
-		// Record section position before writing header
-		// HelpCategoryStyle has MarginTop(1) which adds a blank line before the header
-		// We want to position at the blank line so the header appears consistently at top
-		m.sectionPositions = append(m.sectionPositions, lineCount)
-
-		// Category header - count actual lines in rendered output
 		header := HelpCategoryStyle.Render(category)
 		b.WriteString(header)
 		b.WriteString("\n")
-		lineCount += strings.Count(header, "\n") + 1
 
 		items := categories[category]
 
 		// Render items in 2-column layout
 		for j := 0; j < len(items); j += 2 {
-			// First column - wrap in columnStyle to ensure fixed width for proper alignment
 			item1 := items[j]
 			col1 := columnStyle.Render(renderHelpItem(item1.Key, item1.Description, item1.keyPositions, item1.descPositions))
 
-			// Second column (if exists)
 			var col2 string
 			if j+1 < len(items) {
 				item2 := items[j+1]
@@ -424,24 +528,10 @@ func (m *HelpViewModel) renderContent() string {
 			row := lipgloss.JoinHorizontal(lipgloss.Top, col1, strings.Repeat(" ", columnGap), col2)
 			b.WriteString(row)
 			b.WriteString("\n")
-			// Count actual lines in row (may be multi-line due to wrapped descriptions)
-			lineCount += strings.Count(row, "\n") + 1
 		}
 	}
 
 	return b.String()
-}
-
-// goToSection scrolls the viewport to show the given section index at the top.
-func (m *HelpViewModel) goToSection(idx int) {
-	if idx < 0 || idx >= len(m.sectionPositions) {
-		return
-	}
-	if idx == 0 {
-		m.viewport.GotoTop()
-	} else {
-		m.viewport.SetYOffset(m.sectionPositions[idx])
-	}
 }
 
 // tabBarLines returns the number of visual lines the tab bar occupies.
@@ -462,6 +552,14 @@ func (m *HelpViewModel) View() tea.View {
 	b.WriteString(pad)
 	b.WriteString(m.renderHelpTabBar())
 	b.WriteString("\n")
+
+	// Tab search bar
+	if m.tabSearchMode {
+		b.WriteString(pad)
+		b.WriteString(SubtitleStyle.Render("Tab: "))
+		b.WriteString(m.tabSearchInput.View())
+		b.WriteString("\n\n")
+	}
 
 	// Search bar
 	if m.searchMode {
@@ -492,13 +590,18 @@ func (m *HelpViewModel) View() tea.View {
 	b.WriteString("\n")
 
 	title := fmt.Sprintf("Help - %s", m.viewName)
+	closeKey := "? close"
+	if m.isExplorer {
+		title = "Keybinding Explorer"
+		closeKey = "ctrl+\\ close"
+	}
 	left := StatusBarStyle.Render(title)
 
 	scrollPercent := ""
 	if m.ready && m.viewport.TotalLineCount() > m.viewport.Height() {
 		scrollPercent = fmt.Sprintf(" %3.0f%%", m.viewport.ScrollPercent()*100)
 	}
-	right := HelpStyle.Render(fmt.Sprintf("[/]: tabs · / filter · j/k scroll · n/N sections · ? close%s", scrollPercent))
+	right := HelpStyle.Render(fmt.Sprintf("[/]: tabs · \\ find tab · / filter · bksp clear · j/k scroll · %s%s", closeKey, scrollPercent))
 
 	b.WriteString(renderStatusBarFooter(left, right, m.width))
 
@@ -565,4 +668,28 @@ type ShowHelpMsg struct {
 	Items      []HelpItem
 }
 
-func (m *HelpViewModel) StatusBarLabel() string { return "Help" }
+func (m *HelpViewModel) StatusBarLabel() string {
+	if m.isExplorer {
+		return "Explorer"
+	}
+	return "Help"
+}
+
+// HandledKeys returns the keys handled by the keybinding explorer view.
+func (m *HelpViewModel) HandledKeys() []string {
+	return []string{
+		"/", `\`, "backspace", "h", "l", "[", "]",
+		"j", "k", "up", "down",
+		"g", "G",
+		"ctrl+u", "ctrl+d",
+		"n", "N",
+		`ctrl+\`,
+		"?", "esc",
+	}
+}
+
+// ShowKeybindingExplorerMsg opens the global keybinding explorer.
+type ShowKeybindingExplorerMsg struct{}
+
+// CloseKeybindingExplorerMsg closes the global keybinding explorer.
+type CloseKeybindingExplorerMsg struct{}

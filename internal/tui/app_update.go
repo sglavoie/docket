@@ -279,6 +279,14 @@ func (m *AppModel) Update(msg tea.Msg) (outModel tea.Model, outCmd tea.Cmd) { //
 			if !m.hasActiveTextInput() {
 				return m, func() tea.Msg { return ShowGlobalSearchMsg{} }
 			}
+		case `ctrl+\`:
+			if !m.hasActiveTextInput() {
+				if m.currentView() == ViewKeybindingExplorer {
+					m.popView()
+					return m, nil
+				}
+				return m, func() tea.Msg { return ShowKeybindingExplorerMsg{} }
+			}
 		case "shift+space":
 			if !m.hasActiveTextInput() && !m.hasActiveMultiSelect() {
 				task := m.getCurrentCursorTask()

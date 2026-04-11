@@ -19,6 +19,16 @@ func (m *AppModel) globalCommands() []Command {
 			},
 		},
 		{
+			Name:        "keybinding explorer",
+			Description: "Browse all keybindings across all views",
+			Shortcut:    `ctrl+\`,
+			Category:    CategoryHelp,
+			Aliases:     []string{"shortcuts", "keys", "bindings", "hotkeys", "explorer"},
+			Handler: func() tea.Msg {
+				return ShowKeybindingExplorerMsg{}
+			},
+		},
+		{
 			Name:        "quit",
 			Description: "Quit the application",
 			Shortcut:    "ctrl+c",

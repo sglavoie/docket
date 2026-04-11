@@ -57,6 +57,7 @@ func session1SyncViews() []syncTestCase {
 		{ViewBulkEdit, &BulkEditModel{}},
 		{ViewBlockers, &BlockersModel{}},
 		{ViewMetricsDashboard, &MetricsDashboardModel{}},
+		{ViewKeybindingExplorer, &HelpViewModel{isExplorer: true}},
 	}
 }
 

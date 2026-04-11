@@ -106,6 +106,7 @@ const (
 	ViewStatusIconPicker
 	ViewNotificationCenter
 	ViewMessageLog
+	ViewKeybindingExplorer
 )
 
 // String returns the name of the ViewType for readable test output.
@@ -204,6 +205,7 @@ func (v ViewType) String() string {
 		ViewStatusIconPicker:      "StatusIconPicker",
 		ViewNotificationCenter:    "NotificationCenter",
 		ViewMessageLog:            "MessageLog",
+		ViewKeybindingExplorer:    "KeybindingExplorer",
 	}
 	if name, ok := names[v]; ok {
 		return name

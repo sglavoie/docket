@@ -70,6 +70,7 @@ func NewKeybindingRegistry() *KeybindingRegistry {
 	r.registerBlockersBindings()
 	r.registerCrossProjectLinkerBindings()
 	r.registerTutorBindings()
+	r.registerKeybindingExplorerBindings()
 	return r
 }
 
@@ -114,6 +115,28 @@ func (r *KeybindingRegistry) GetGlobalBindings() []HelpItem {
 				Category:    kb.Category,
 			})
 		}
+	}
+	return items
+}
+
+// GetAllDeduplicated returns all keybindings with duplicates removed.
+// Bindings with the same Key+Description are collapsed into one entry,
+// preserving the category from the first occurrence.
+func (r *KeybindingRegistry) GetAllDeduplicated() []HelpItem {
+	type dedupKey struct{ key, desc string }
+	seen := make(map[dedupKey]bool)
+	var items []HelpItem
+	for _, kb := range r.bindings {
+		dk := dedupKey{kb.Key, kb.Description}
+		if seen[dk] {
+			continue
+		}
+		seen[dk] = true
+		items = append(items, HelpItem{
+			Key:         kb.Key,
+			Description: kb.Description,
+			Category:    kb.Category,
+		})
 	}
 	return items
 }
@@ -329,5 +352,6 @@ func (r *KeybindingRegistry) registerGlobalBindings() {
 		Keybinding{Key: "ctrl+c", Description: "Quit", Category: "Navigation"},
 		Keybinding{Key: "esc", Description: "Back / close", Category: "Navigation"},
 		Keybinding{Key: "?", Description: "Toggle help", Category: "Navigation"},
+		Keybinding{Key: `ctrl+\`, Description: "Keybinding Explorer", Category: "Navigation"},
 	)
 }

@@ -36,6 +36,25 @@ func (r *KeybindingRegistry) registerAskViewBindings() {
 	)
 }
 
+func (r *KeybindingRegistry) registerKeybindingExplorerBindings() {
+	views := []ViewType{ViewKeybindingExplorer}
+	r.add(
+		Keybinding{Key: "/", Description: "Search keybindings", Category: "Explorer", Views: views},
+		Keybinding{Key: `\`, Description: "Search and focus tab", Category: "Explorer", Views: views},
+		Keybinding{Key: "Backspace", Description: "Clear search filter", Category: "Explorer", Views: views},
+		Keybinding{Key: "h/l", Description: "Previous/next category tab", Category: "Explorer", Views: views},
+		Keybinding{Key: "[/]", Description: "Previous/next category tab", Category: "Explorer", Views: views},
+		Keybinding{Key: "j/k", Description: "Scroll down/up", Category: "Explorer", Views: views},
+		Keybinding{Key: "↑/↓", Description: "Scroll down/up", Category: "Explorer", Views: views},
+		Keybinding{Key: "g/G", Description: "Go to top/bottom", Category: "Explorer", Views: views},
+		Keybinding{Key: "Ctrl+U/D", Description: "Page up/down", Category: "Explorer", Views: views},
+		Keybinding{Key: "n/N", Description: "Next/previous section", Category: "Explorer", Views: views},
+		Keybinding{Key: `ctrl+\`, Description: "Close explorer", Category: "Explorer", Views: views},
+		Keybinding{Key: "Esc", Description: "Clear search / close", Category: "Explorer", Views: views},
+		Keybinding{Key: "?", Description: "Toggle help (no-op in explorer)", Category: "Explorer", Views: views},
+	)
+}
+
 func (r *KeybindingRegistry) registerTutorBindings() {
 	views := []ViewType{ViewTutor}
 	r.add(
