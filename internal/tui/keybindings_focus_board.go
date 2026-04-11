@@ -38,6 +38,10 @@ func (r *KeybindingRegistry) registerFocusBoardBindings() {
 		// Scoring
 		Keybinding{Key: "S", Description: "Edit score dimensions", Category: "Scoring", Views: views},
 
+		// Cross-project
+		Keybinding{Key: "*", Description: "Toggle active flag", Category: "Actions", Views: views},
+		Keybinding{Key: "ctrl+b", Description: "Move task to project", Category: "Actions", Views: views},
+
 		// View
 		Keybinding{Key: "r", Description: "Refresh", Category: "View", Views: views},
 		Keybinding{Key: "zp", Description: "Toggle inline preview", Category: "View", Views: views},

@@ -81,8 +81,6 @@ func (m *FocusViewModel) handleKeyMsg(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) 
 	case "r":
 		m.refreshViewState()
 		return m, nil
-	case "*":
-		return taskOpsToggleActive(m)
 	case "1", "2", "3", "4", "5":
 		return taskOpsChangePriority(m, key)
 	case "D":

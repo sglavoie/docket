@@ -115,12 +115,6 @@ func (m *FocusBoardModel) handleKeyMsg(msg tea.KeyPressMsg) (tea.Model, tea.Cmd)
 	case "enter":
 		return m.handleEnter()
 
-	// Open URL directly
-	case "O":
-		if row := m.getRowAtCursor(); row != nil && row.Task.URL != "" {
-			return m, openBrowserCmd(row.Task.URL)
-		}
-
 	// Sort keys (1-5 for sort field, 0 to reset)
 	case "1", "2", "3", "4", "5", "0":
 		handleSortKey(key, &m.sort, func() {
@@ -143,15 +137,6 @@ func (m *FocusBoardModel) handleKeyMsg(msg tea.KeyPressMsg) (tea.Model, tea.Cmd)
 		if row := m.getRowAtCursor(); row != nil && row.Project != nil {
 			return m, func() tea.Msg {
 				return ShowProjectSelectorForMoveMsg{Task: row.Task, SourceProject: row.Project}
-			}
-		}
-		return m, nil
-
-	// Score editor
-	case "S":
-		if row := m.getRowAtCursor(); row != nil {
-			return m, func() tea.Msg {
-				return ShowScoreEditorMsg{Task: row.Task, Project: row.Project}
 			}
 		}
 		return m, nil
@@ -214,14 +199,14 @@ func (m *FocusBoardModel) HandledKeys() []string {
 		snoozePrefixKeys(),
 		linkedTaskPrefixKeys(),
 		stagePrefixKeys(),
+		commonActionKeys(),
 		[]string{
 			"g", "gp",
 			"tab", "[", "]",
 			"zp",
-			"enter", "o", "O", "a", "x", "X",
-			"d", "D", "p", "e", "E", "t", "Z", "m",
-			"ctrl+.", "y", "Y", "ctrl+y", "S",
-			"r", "F", "Fx", "/",
+			"enter", "a", "x", "X",
+			"d", "p", "E", "t", "m",
+			"F", "Fx", "/",
 			"1", "2", "3", "4", "5", "0",
 			"w", "u", "esc",
 		},

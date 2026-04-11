@@ -93,8 +93,9 @@ func flashIfJumped(oldCursor, newCursor int, flash *bool) tea.Cmd {
 }
 
 // handleCommonTaskAction handles task actions shared across secondary views:
-// o (task detail), t (tags), Z (snooze), D (delete confirm), e (edit),
-// r (refresh), y/Y/ctrl+y (clipboard), ctrl+. (quick note), ? (help).
+// o (task detail), Z (snooze), D (delete confirm), e (edit),
+// r (refresh), y/Y/ctrl+y (clipboard), ctrl+. (quick note), ? (help),
+// * (toggle active), S (score editor), O (open URL), ctrl+b (move to project).
 //
 // Returns (model, cmd, handled). When handled is false, the key was not
 // recognized and the caller should continue with view-specific handling.
@@ -158,6 +159,35 @@ func handleCommonTaskAction(key string, v commonActionView) (tea.Model, tea.Cmd,
 
 	case "?":
 		return v, helpCmd(v.viewID(), v.viewName(), v.GetHelpItems()), true
+
+	case "*":
+		model, cmd := taskOpsToggleActive(v)
+		return model, cmd, true
+
+	case "S":
+		task, project := v.getTaskRef()
+		if task != nil && project != nil {
+			return v, func() tea.Msg {
+				return ShowScoreEditorMsg{Task: task, Project: project}
+			}, true
+		}
+		return v, nil, true
+
+	case "O":
+		task, _ := v.getTaskRef()
+		if task != nil && task.URL != "" {
+			return v, openBrowserCmd(task.URL), true
+		}
+		return v, nil, true
+
+	case "ctrl+b":
+		task, project := v.getTaskRef()
+		if task != nil && project != nil {
+			return v, func() tea.Msg {
+				return ShowProjectSelectorForMoveMsg{Task: task, SourceProject: project}
+			}, true
+		}
+		return v, nil, true
 	}
 
 	return nil, nil, false

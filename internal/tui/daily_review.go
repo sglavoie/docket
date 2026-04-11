@@ -179,10 +179,6 @@ func (m *DailyReviewModel) handleKeyMsg(msg tea.KeyPressMsg) (tea.Model, tea.Cmd
 		m.calculateNavigation()
 		return m.goToPrevSection()
 
-	// Toggle active flag
-	case "*":
-		return taskOpsToggleActive(m)
-
 	// Toggle section collapse
 	case "tab":
 		return m.toggleCurrentSection()
@@ -333,13 +329,13 @@ func (m *DailyReviewModel) HandledKeys() []string {
 		snoozePrefixKeys(),
 		linkedTaskPrefixKeys(),
 		stagePrefixKeys(),
+		commonActionKeys(),
 		[]string{
 			"g",
 			"zR", "zM", "zp",
 			"tab", "n", "N",
 			"gd", "gt", "gs", "gl", "gf", "gr", "go", "gp",
-			"enter", "o", "*", "F", "m", "t",
-			"e", "Z", "D", "ctrl+.", "r", "y", "Y",
+			"enter", "F", "m", "t",
 			"1", "2", "3", "4", "5",
 			"esc",
 		},

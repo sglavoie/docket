@@ -445,10 +445,10 @@ func (m *DueDateOverviewModel) HandledKeys() []string {
 		snoozePrefixKeys(),
 		linkedTaskPrefixKeys(),
 		stagePrefixKeys(),
+		commonActionKeys(),
 		[]string{
 			"g", "gp",
-			"enter", "o", "F", "m", "t",
-			"e", "Z", "D", "ctrl+.", "r", "y", "Y", "ctrl+y",
+			"enter", "F", "m", "t",
 			"1", "2", "3", "4", "5",
 			"esc",
 		},

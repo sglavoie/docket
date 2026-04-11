@@ -129,15 +129,6 @@ func (m *PriorityViewModel) handleKeypress(msg tea.KeyPressMsg) (tea.Model, tea.
 		// Start suggested task (or jump to it if already in progress)
 		return m.startSuggestedTask()
 
-	case "S":
-		// Open score editor for task under cursor
-		if pt := m.getTaskAtCursor(); pt != nil {
-			return m, func() tea.Msg {
-				return ShowScoreEditorMsg{Task: pt.Task, Project: m.project}
-			}
-		}
-		return m, nil
-
 	case "x":
 		// Dismiss current suggestion
 		m.dismissSuggestion()

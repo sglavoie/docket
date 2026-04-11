@@ -163,10 +163,10 @@ func (m *FocusViewModel) HandledKeys() []string {
 		statusPrefixKeys(),
 		dueDatePrefixKeys(),
 		linkedTaskPrefixKeys(),
+		commonActionKeys(),
 		[]string{
 			"g", "gp",
-			"enter", "o", "J", "K", "*", "F", "m", "t",
-			"e", "Z", "D", "ctrl+.", "r", "y", "Y",
+			"enter", "J", "K", "F", "m", "t",
 			"1", "2", "3", "4", "5",
 			"w", "u", "esc",
 		},

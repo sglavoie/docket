@@ -103,6 +103,16 @@ func filterSubKeys() []string {
 	}
 }
 
+// commonActionKeys returns keys handled by handleCommonTaskAction, shared
+// across all secondary task list views.
+func commonActionKeys() []string {
+	return []string{
+		"o", "ctrl+.", "Z", "D", "e", "r",
+		"y", "Y", "ctrl+y", "?",
+		"*", "S", "O", "ctrl+b",
+	}
+}
+
 // commonPrimaryViewKeys returns keys handled by handleCommonPrimaryViewKey, shared
 // across ProjectTree and Outliner.
 func commonPrimaryViewKeys() []string {

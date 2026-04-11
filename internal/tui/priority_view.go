@@ -329,11 +329,11 @@ func (m *PriorityViewModel) HandledKeys() []string {
 		snoozePrefixKeys(),
 		linkedTaskPrefixKeys(),
 		stagePrefixKeys(),
+		commonActionKeys(),
 		[]string{
 			"g", "gt",
 			"w", "x", "A",
-			"enter", "o", "tab", "F", "m", "t", "/",
-			"e", "Z", "D", "ctrl+.", "r", "y", "Y", "ctrl+y",
+			"enter", "tab", "F", "m", "t", "/",
 			"1", "2", "3", "4", "5",
 			"q", "esc",
 		},

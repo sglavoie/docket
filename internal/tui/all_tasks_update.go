@@ -143,10 +143,6 @@ func (m *AllTasksViewModel) handleKeyMsg(msg tea.KeyPressMsg) (tea.Model, tea.Cm
 		m.toggleMultiSelectMode()
 		return m, nil
 
-	// Toggle active flag
-	case "*":
-		return taskOpsToggleActive(m)
-
 	// Sort keys (1-5 for sort field, 0 to reset)
 	case "1", "2", "3", "4", "5", "0":
 		handleSortKey(key, &m.sort, func() {
@@ -158,15 +154,6 @@ func (m *AllTasksViewModel) handleKeyMsg(msg tea.KeyPressMsg) (tea.Model, tea.Cm
 			m.clampCursor()
 			m.setStatus(fmt.Sprintf("Sort: %s %s", field, m.sortDirection()))
 		})
-		return m, nil
-
-	// Score editor
-	case "S":
-		if item := m.getTaskAtCursor(); item != nil {
-			return m, func() tea.Msg {
-				return ShowScoreEditorMsg{Task: item.Task, Project: item.Project}
-			}
-		}
 		return m, nil
 
 	// Criteria filter: create
