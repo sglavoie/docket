@@ -311,39 +311,14 @@ func (m *TaskJumperModel) renderTaskList() string {
 		maxTitleLen := max(m.listWidth-lipgloss.Width(prefix), 1)
 		title := truncateToVisualWidth(task.Title, maxTitleLen)
 
-		// Adjust positions for truncated title and apply highlighting
-		var titleRendered string
-		if len(ft.titlePositions) > 0 {
-			// Filter positions to only include those within the truncated title
-			titleRunes := []rune(title)
-			var validPositions []int
-			for _, p := range ft.titlePositions {
-				if p < len(titleRunes) {
-					validPositions = append(validPositions, p)
-				}
-			}
-			titleRendered = HighlightText(title, validPositions, NormalStyle)
-		} else {
-			titleRendered = title
-		}
+		titleRendered := highlightTruncated(title, ft.titlePositions)
 
 		line := prefix + titleRendered
 		if lipgloss.Width(line) > m.listWidth {
 			excess := lipgloss.Width(line) - m.listWidth
 			if lipgloss.Width(title) > excess {
 				title = truncateToVisualWidth(task.Title, max(maxTitleLen-excess, 1))
-				if len(ft.titlePositions) > 0 {
-					titleRunes := []rune(title)
-					var validPositions []int
-					for _, p := range ft.titlePositions {
-						if p < len(titleRunes) {
-							validPositions = append(validPositions, p)
-						}
-					}
-					titleRendered = HighlightText(title, validPositions, NormalStyle)
-				} else {
-					titleRendered = title
-				}
+				titleRendered = highlightTruncated(title, ft.titlePositions)
 				line = prefix + titleRendered
 			}
 		}

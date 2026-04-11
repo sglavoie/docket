@@ -160,3 +160,24 @@ func HighlightText(text string, positions []int, baseStyle lipgloss.Style) strin
 
 	return result.String()
 }
+
+// highlightTruncated highlights matched character positions in a
+// (possibly truncated) title.  Positions beyond the title length are
+// silently dropped.  When no positions remain, the plain title is
+// returned without any style wrapper.
+func highlightTruncated(title string, positions []int) string {
+	if len(positions) == 0 {
+		return title
+	}
+	titleRunes := []rune(title)
+	var valid []int
+	for _, p := range positions {
+		if p < len(titleRunes) {
+			valid = append(valid, p)
+		}
+	}
+	if len(valid) == 0 {
+		return title
+	}
+	return HighlightText(title, valid, NormalStyle)
+}

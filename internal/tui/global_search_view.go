@@ -314,37 +314,14 @@ func (m *GlobalSearchModel) renderTaskList(paneHeight int) string {
 			prefixWidth := lipgloss.Width(prefix)
 			maxTitleLen := max(m.listWidth-prefixWidth-2, 1)
 			title := truncateToVisualWidth(note.Title, maxTitleLen)
-			var titleRendered string
-			if len(fr.titlePositions) > 0 {
-				titleRunes := []rune(title)
-				var validPositions []int
-				for _, p := range fr.titlePositions {
-					if p < len(titleRunes) {
-						validPositions = append(validPositions, p)
-					}
-				}
-				titleRendered = HighlightText(title, validPositions, NormalStyle)
-			} else {
-				titleRendered = title
-			}
+			titleRendered := highlightTruncated(title, fr.titlePositions)
 			line := prefix + titleRendered
 			lineWidth := lipgloss.Width(line)
 			if lineWidth > m.listWidth {
 				excess := lineWidth - m.listWidth + 1
 				if lipgloss.Width(title) > excess {
 					title = truncateToVisualWidth(note.Title, maxTitleLen-excess)
-					if len(fr.titlePositions) > 0 {
-						titleRunes := []rune(title)
-						var validPositions []int
-						for _, p := range fr.titlePositions {
-							if p < len(titleRunes) {
-								validPositions = append(validPositions, p)
-							}
-						}
-						titleRendered = HighlightText(title, validPositions, NormalStyle)
-					} else {
-						titleRendered = title
-					}
+					titleRendered = highlightTruncated(title, fr.titlePositions)
 					line = prefix + titleRendered
 				}
 			}
@@ -386,24 +363,8 @@ func (m *GlobalSearchModel) renderTaskList(paneHeight int) string {
 		// Subtract extra buffer to ensure no wrapping
 		maxTitleLen := max(m.listWidth-prefixWidth-2, 1)
 		title := truncateToVisualWidth(task.Title, maxTitleLen)
+		titleRendered := highlightTruncated(title, fr.titlePositions)
 
-		// Adjust positions for truncated title and apply highlighting
-		var titleRendered string
-		if len(fr.titlePositions) > 0 {
-			// Filter positions to only include those within the truncated title
-			titleRunes := []rune(title)
-			var validPositions []int
-			for _, p := range fr.titlePositions {
-				if p < len(titleRunes) {
-					validPositions = append(validPositions, p)
-				}
-			}
-			titleRendered = HighlightText(title, validPositions, NormalStyle)
-		} else {
-			titleRendered = title
-		}
-
-		// Build line and verify total width doesn't exceed listWidth
 		// Append comment indicator if match came from a comment
 		if fr.matchSource == "comment" {
 			titleRendered += MutedStyle.Render(" [c]")
@@ -412,23 +373,10 @@ func (m *GlobalSearchModel) renderTaskList(paneHeight int) string {
 		line := prefix + titleRendered
 		lineWidth := lipgloss.Width(line)
 		if lineWidth > m.listWidth {
-			// Truncate title further if still too wide (recalculate without highlighting)
 			excess := lineWidth - m.listWidth + 3
 			if lipgloss.Width(title) > excess {
 				title = truncateToVisualWidth(task.Title, maxTitleLen-excess)
-				// Re-apply highlighting with new truncated title
-				if len(fr.titlePositions) > 0 {
-					titleRunes := []rune(title)
-					var validPositions []int
-					for _, p := range fr.titlePositions {
-						if p < len(titleRunes) {
-							validPositions = append(validPositions, p)
-						}
-					}
-					titleRendered = HighlightText(title, validPositions, NormalStyle)
-				} else {
-					titleRendered = title
-				}
+				titleRendered = highlightTruncated(title, fr.titlePositions)
 				line = prefix + titleRendered
 			}
 		}

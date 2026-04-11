@@ -450,37 +450,14 @@ func (m *NotesSearchModel) renderNoteList(paneHeight int) string {
 		maxTitleLen := max(m.listWidth-prefixWidth-2, 1)
 		title := truncateToVisualWidth(note.Title, maxTitleLen)
 
-		var titleRendered string
-		if len(fr.titlePositions) > 0 {
-			titleRunes := []rune(title)
-			var validPositions []int
-			for _, p := range fr.titlePositions {
-				if p < len(titleRunes) {
-					validPositions = append(validPositions, p)
-				}
-			}
-			titleRendered = HighlightText(title, validPositions, NormalStyle)
-		} else {
-			titleRendered = title
-		}
+		titleRendered := highlightTruncated(title, fr.titlePositions)
 
 		line := prefix + titleRendered
 		if lipgloss.Width(line) > m.listWidth {
 			excess := lipgloss.Width(line) - m.listWidth
 			if lipgloss.Width(title) > excess {
 				title = truncateToVisualWidth(note.Title, max(maxTitleLen-excess, 1))
-				if len(fr.titlePositions) > 0 {
-					titleRunes := []rune(title)
-					var validPositions []int
-					for _, p := range fr.titlePositions {
-						if p < len(titleRunes) {
-							validPositions = append(validPositions, p)
-						}
-					}
-					titleRendered = HighlightText(title, validPositions, NormalStyle)
-				} else {
-					titleRendered = title
-				}
+				titleRendered = highlightTruncated(title, fr.titlePositions)
 				line = prefix + titleRendered
 			}
 		}
