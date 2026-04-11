@@ -151,6 +151,28 @@ func (m *DailyReviewModel) loadTasks() {
 	m.calculateNavigation()
 }
 
+// crossTaskLess comparators for recurring sort patterns on CrossProjectTask slices.
+func byDueDateThenPriority(a, b CrossProjectTask) bool {
+	if !a.Task.DueDate.Equal(*b.Task.DueDate) {
+		return a.Task.DueDate.Before(*b.Task.DueDate)
+	}
+	return a.Task.Priority < b.Task.Priority
+}
+
+func byPriorityThenID(a, b CrossProjectTask) bool {
+	if a.Task.Priority != b.Task.Priority {
+		return a.Task.Priority < b.Task.Priority
+	}
+	return a.Task.ID < b.Task.ID
+}
+
+func byPriorityThenUpdatedAt(a, b CrossProjectTask) bool {
+	if a.Task.Priority != b.Task.Priority {
+		return a.Task.Priority < b.Task.Priority
+	}
+	return a.Task.UpdatedAt.After(b.Task.UpdatedAt)
+}
+
 // sortSections sorts each section by appropriate criteria.
 func (m *DailyReviewModel) sortSections() {
 	// Overdue: oldest first (most urgent)
@@ -158,69 +180,14 @@ func (m *DailyReviewModel) sortSections() {
 		return m.overdue[i].Task.DueDate.Before(*m.overdue[j].Task.DueDate)
 	})
 
-	// Due today: by priority, then by ID for stable ordering
-	sort.Slice(m.dueToday, func(i, j int) bool {
-		if m.dueToday[i].Task.Priority != m.dueToday[j].Task.Priority {
-			return m.dueToday[i].Task.Priority < m.dueToday[j].Task.Priority
-		}
-		return m.dueToday[i].Task.ID < m.dueToday[j].Task.ID
-	})
-
-	// Due soon: by due date then priority
-	sort.Slice(m.dueSoon, func(i, j int) bool {
-		if !m.dueSoon[i].Task.DueDate.Equal(*m.dueSoon[j].Task.DueDate) {
-			return m.dueSoon[i].Task.DueDate.Before(*m.dueSoon[j].Task.DueDate)
-		}
-		return m.dueSoon[i].Task.Priority < m.dueSoon[j].Task.Priority
-	})
-
-	// Due later: by due date then priority
-	sort.Slice(m.dueLater, func(i, j int) bool {
-		if !m.dueLater[i].Task.DueDate.Equal(*m.dueLater[j].Task.DueDate) {
-			return m.dueLater[i].Task.DueDate.Before(*m.dueLater[j].Task.DueDate)
-		}
-		return m.dueLater[i].Task.Priority < m.dueLater[j].Task.Priority
-	})
-
-	// Future: by due date then priority
-	sort.Slice(m.future, func(i, j int) bool {
-		if !m.future[i].Task.DueDate.Equal(*m.future[j].Task.DueDate) {
-			return m.future[i].Task.DueDate.Before(*m.future[j].Task.DueDate)
-		}
-		return m.future[i].Task.Priority < m.future[j].Task.Priority
-	})
-
-	// In progress: by priority then by updated date
-	sort.Slice(m.inProgress, func(i, j int) bool {
-		if m.inProgress[i].Task.Priority != m.inProgress[j].Task.Priority {
-			return m.inProgress[i].Task.Priority < m.inProgress[j].Task.Priority
-		}
-		return m.inProgress[i].Task.UpdatedAt.After(m.inProgress[j].Task.UpdatedAt)
-	})
-
-	// Blocked: by priority, then by ID for stable ordering
-	sort.Slice(m.blocked, func(i, j int) bool {
-		if m.blocked[i].Task.Priority != m.blocked[j].Task.Priority {
-			return m.blocked[i].Task.Priority < m.blocked[j].Task.Priority
-		}
-		return m.blocked[i].Task.ID < m.blocked[j].Task.ID
-	})
-
-	// In Review: by priority then by updated date
-	sort.Slice(m.inReview, func(i, j int) bool {
-		if m.inReview[i].Task.Priority != m.inReview[j].Task.Priority {
-			return m.inReview[i].Task.Priority < m.inReview[j].Task.Priority
-		}
-		return m.inReview[i].Task.UpdatedAt.After(m.inReview[j].Task.UpdatedAt)
-	})
-
-	// On Standby: by priority then by updated date
-	sort.Slice(m.inStandby, func(i, j int) bool {
-		if m.inStandby[i].Task.Priority != m.inStandby[j].Task.Priority {
-			return m.inStandby[i].Task.Priority < m.inStandby[j].Task.Priority
-		}
-		return m.inStandby[i].Task.UpdatedAt.After(m.inStandby[j].Task.UpdatedAt)
-	})
+	sort.Slice(m.dueToday, func(i, j int) bool { return byPriorityThenID(m.dueToday[i], m.dueToday[j]) })
+	sort.Slice(m.dueSoon, func(i, j int) bool { return byDueDateThenPriority(m.dueSoon[i], m.dueSoon[j]) })
+	sort.Slice(m.dueLater, func(i, j int) bool { return byDueDateThenPriority(m.dueLater[i], m.dueLater[j]) })
+	sort.Slice(m.future, func(i, j int) bool { return byDueDateThenPriority(m.future[i], m.future[j]) })
+	sort.Slice(m.inProgress, func(i, j int) bool { return byPriorityThenUpdatedAt(m.inProgress[i], m.inProgress[j]) })
+	sort.Slice(m.blocked, func(i, j int) bool { return byPriorityThenID(m.blocked[i], m.blocked[j]) })
+	sort.Slice(m.inReview, func(i, j int) bool { return byPriorityThenUpdatedAt(m.inReview[i], m.inReview[j]) })
+	sort.Slice(m.inStandby, func(i, j int) bool { return byPriorityThenUpdatedAt(m.inStandby[i], m.inStandby[j]) })
 
 	// Old: by UpdatedAt (oldest first), falling back to CreatedAt when zero
 	sort.Slice(m.old, func(i, j int) bool {
