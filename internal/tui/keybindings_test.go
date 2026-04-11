@@ -176,6 +176,76 @@ func TestContainsView(t *testing.T) {
 	}
 }
 
+func TestGetAllDeduplicatedPreservesScope(t *testing.T) {
+	r := NewKeybindingRegistry()
+	items := r.GetAllDeduplicated()
+
+	// Global bindings must have nil Views.
+	for _, item := range items {
+		if item.Key == "ctrl+c" && item.Description == "Quit" {
+			if item.Views != nil {
+				t.Error("Global binding 'ctrl+c' should have nil Views")
+			}
+			break
+		}
+	}
+
+	// View-specific binding with a single view.
+	for _, item := range items {
+		if item.Key == "Enter" && item.Description == "Select project" {
+			if len(item.Views) == 0 {
+				t.Error("Dashboard-only 'Enter' binding should have non-nil Views")
+			}
+			if !containsView(item.Views, ViewDashboard) {
+				t.Error("Dashboard-only 'Enter' binding should include ViewDashboard")
+			}
+			break
+		}
+	}
+
+	// Status bindings are shared across many views; verify union.
+	for _, item := range items {
+		if item.Key == ",s" && item.Description == "Start (in progress)" {
+			if len(item.Views) < 5 {
+				t.Errorf(",s binding should span many views, got %d", len(item.Views))
+			}
+			if item.Views == nil {
+				t.Error(",s binding should not be global")
+			}
+			break
+		}
+	}
+
+	// Every deduplicated item must have Views set (non-nil) for view-specific,
+	// or nil for global. Verify no empty-but-non-nil slices exist.
+	for _, item := range items {
+		if item.Views != nil && len(item.Views) == 0 {
+			t.Errorf("binding %q (%q) has empty non-nil Views slice", item.Key, item.Description)
+		}
+	}
+}
+
+func TestScopeText(t *testing.T) {
+	tests := []struct {
+		views []ViewType
+		want  string
+	}{
+		{nil, "Global"},
+		{[]ViewType{}, "Global"},
+		{[]ViewType{ViewDashboard}, "Dashboard"},
+		{[]ViewType{ViewDashboard, ViewProjectTree}, "Dashboard, ProjectTree"},
+		{[]ViewType{ViewDashboard, ViewProjectTree, ViewPriorityView}, "Dashboard, ProjectTree, PriorityView"},
+		{[]ViewType{ViewDashboard, ViewProjectTree, ViewPriorityView, ViewFocusView}, "4 views"},
+		{[]ViewType{ViewDashboard, ViewProjectTree, ViewPriorityView, ViewFocusView, ViewOutliner}, "5 views"},
+	}
+	for _, tc := range tests {
+		got := scopeText(tc.views)
+		if got != tc.want {
+			t.Errorf("scopeText(%v) = %q, want %q", tc.views, got, tc.want)
+		}
+	}
+}
+
 func TestKeybindingCategories(t *testing.T) {
 	r := NewKeybindingRegistry()
 

@@ -15,9 +15,10 @@ import (
 
 // HelpItem represents a single help entry.
 type HelpItem struct {
-	Key         string // e.g., "j/k", "ctrl+O"
-	Description string // e.g., "Move cursor"
-	Category    string // e.g., "Navigation", "Actions"
+	Key         string     // e.g., "j/k", "ctrl+O"
+	Description string     // e.g., "Move cursor"
+	Category    string     // e.g., "Navigation", "Actions"
+	Views       []ViewType // nil = global; populated by GetAllDeduplicated for explorer scope display
 }
 
 // filteredHelpItem pairs a HelpItem with fuzzy match positions for highlighting.
@@ -416,7 +417,12 @@ func (m *HelpViewModel) filterItems() {
 		descScore, descPos := fuzzy.ScoreTermsWithPositions(item.Description, m.searchQuery)
 		catScore, _ := fuzzy.ScoreTermsWithPositions(item.Category, m.searchQuery)
 
-		if keyScore > 0 || descScore > 0 || catScore > 0 {
+		scopeScore := 0
+		if m.isExplorer {
+			scopeScore, _ = fuzzy.ScoreTermsWithPositions(scopeText(item.Views), m.searchQuery)
+		}
+
+		if keyScore > 0 || descScore > 0 || catScore > 0 || scopeScore > 0 {
 			filtered = append(filtered, filteredHelpItem{
 				HelpItem:      item,
 				keyPositions:  keyPos,
@@ -450,7 +456,7 @@ func (m *HelpViewModel) renderContent() string {
 	// Each column: keyWidth + separator(2) + descWidth
 	// Total: 2 * (keyWidth + 2 + descWidth) + columnGap(4)
 	contentWidth := max(m.viewport.Width(), 1)
-	keyWidth := 12
+	keyWidth := 16
 	columnGap := 4
 	columnOverhead := keyWidth + 2 // key + separator
 	descWidth := max((contentWidth-2*columnOverhead-columnGap)/2, 1)
@@ -465,7 +471,7 @@ func (m *HelpViewModel) renderContent() string {
 	columnStyle := lipgloss.NewStyle().Width(columnWidth)
 
 	// renderHelpItem renders a single key+description pair with proper wrapping
-	renderHelpItem := func(key, desc string, keyPos, descPos []int) string {
+	renderHelpItem := func(key, desc string, keyPos, descPos []int, views []ViewType) string {
 		// Render key with highlight if positions present
 		var renderedKey string
 		if len(keyPos) > 0 {
@@ -474,12 +480,23 @@ func (m *HelpViewModel) renderContent() string {
 			renderedKey = keyStyle.Render(key)
 		}
 
+		// Build description text, appending plain scope suffix for proper wrapping
+		descText := desc
+		scopeSuffix := ""
+		if m.isExplorer {
+			scopeSuffix = "  · " + scopeText(views)
+			descText = desc + scopeSuffix
+		}
+
 		// Wrap description with indentation for continuation lines
 		// Indent = keyWidth + separator(2) so wrapped text aligns under description
-		wrappedDesc := wrapDescriptionWithIndent(desc, descWidth, keyWidth+2)
+		wrappedDesc := wrapDescriptionWithIndent(descText, descWidth, keyWidth+2)
 
-		// Split into lines and build the block
+		// Split into lines, apply scope styling across all lines
 		descLines := strings.Split(wrappedDesc, "\n")
+		if scopeSuffix != "" {
+			descLines = styleScopeLines(descLines)
+		}
 		var result strings.Builder
 
 		for i, line := range descLines {
@@ -517,12 +534,12 @@ func (m *HelpViewModel) renderContent() string {
 		// Render items in 2-column layout
 		for j := 0; j < len(items); j += 2 {
 			item1 := items[j]
-			col1 := columnStyle.Render(renderHelpItem(item1.Key, item1.Description, item1.keyPositions, item1.descPositions))
+			col1 := columnStyle.Render(renderHelpItem(item1.Key, item1.Description, item1.keyPositions, item1.descPositions, item1.Views))
 
 			var col2 string
 			if j+1 < len(items) {
 				item2 := items[j+1]
-				col2 = columnStyle.Render(renderHelpItem(item2.Key, item2.Description, item2.keyPositions, item2.descPositions))
+				col2 = columnStyle.Render(renderHelpItem(item2.Key, item2.Description, item2.keyPositions, item2.descPositions, item2.Views))
 			}
 
 			row := lipgloss.JoinHorizontal(lipgloss.Top, col1, strings.Repeat(" ", columnGap), col2)
@@ -686,6 +703,46 @@ func (m *HelpViewModel) HandledKeys() []string {
 		`ctrl+\`,
 		"?", "esc",
 	}
+}
+
+// styleScopeLines applies MutedStyle to scope text across wrapped lines.
+// Once the "· " marker is found, everything from that point onward (including
+// subsequent continuation lines) is styled as muted.
+func styleScopeLines(lines []string) []string {
+	inScope := false
+	for i, line := range lines {
+		if inScope {
+			// Entire line is scope continuation — style it all (preserve indent)
+			trimmed := strings.TrimLeft(line, " ")
+			indent := len(line) - len(trimmed)
+			lines[i] = strings.Repeat(" ", indent) + MutedStyle.Render(trimmed)
+			continue
+		}
+		trimmed := strings.TrimLeft(line, " ")
+		markerIdx := strings.Index(trimmed, "·")
+		if markerIdx >= 0 {
+			indent := len(line) - len(trimmed)
+			absIdx := indent + markerIdx
+			lines[i] = line[:absIdx] + MutedStyle.Render(line[absIdx:])
+			inScope = true
+		}
+	}
+	return lines
+}
+
+// scopeText returns a human-readable scope label for a set of views.
+func scopeText(views []ViewType) string {
+	if len(views) == 0 {
+		return "Global"
+	}
+	if len(views) <= 3 {
+		names := make([]string, len(views))
+		for i, v := range views {
+			names[i] = v.String()
+		}
+		return strings.Join(names, ", ")
+	}
+	return fmt.Sprintf("%d views", len(views))
 }
 
 // ShowKeybindingExplorerMsg opens the global keybinding explorer.

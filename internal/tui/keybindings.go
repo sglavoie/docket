@@ -121,28 +121,53 @@ func (r *KeybindingRegistry) GetGlobalBindings() []HelpItem {
 
 // GetAllDeduplicated returns all keybindings with duplicates removed.
 // Bindings with the same Key+Description are collapsed into one entry,
-// preserving the category from the first occurrence.
+// preserving the category from the first occurrence and merging Views.
 func (r *KeybindingRegistry) GetAllDeduplicated() []HelpItem {
 	type dedupKey struct{ key, desc string }
-	seen := make(map[dedupKey]bool)
+	index := make(map[dedupKey]int)
 	var items []HelpItem
 	for _, kb := range r.bindings {
 		dk := dedupKey{kb.Key, kb.Description}
-		if seen[dk] {
+		if idx, exists := index[dk]; exists {
+			existing := &items[idx]
+			if len(kb.Views) == 0 {
+				existing.Views = nil // promote to global
+			} else if existing.Views != nil {
+				existing.Views = appendUniqueViews(existing.Views, kb.Views)
+			}
 			continue
 		}
-		seen[dk] = true
-		items = append(items, HelpItem{
+		index[dk] = len(items)
+		item := HelpItem{
 			Key:         kb.Key,
 			Description: kb.Description,
 			Category:    kb.Category,
-		})
+		}
+		if len(kb.Views) > 0 {
+			item.Views = make([]ViewType, len(kb.Views))
+			copy(item.Views, kb.Views)
+		}
+		items = append(items, item)
 	}
 	return items
 }
 
 func containsView(views []ViewType, target ViewType) bool {
 	return slices.Contains(views, target)
+}
+
+func appendUniqueViews(existing, newViews []ViewType) []ViewType {
+	set := make(map[ViewType]bool, len(existing))
+	for _, v := range existing {
+		set[v] = true
+	}
+	for _, v := range newViews {
+		if !set[v] {
+			existing = append(existing, v)
+			set[v] = true
+		}
+	}
+	return existing
 }
 
 func (r *KeybindingRegistry) add(bindings ...Keybinding) {
