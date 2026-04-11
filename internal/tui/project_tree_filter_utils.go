@@ -1,0 +1,156 @@
+package tui
+
+import (
+	"fmt"
+
+	"github.com/sglavoie/tt/internal/models"
+)
+
+// formatDueDate returns a styled due date string for inline display.
+func formatDueDate(task *models.Task) string {
+	if task.DueDate == nil || task.Status.IsComplete() {
+		return ""
+	}
+	dateStr, style := ClassifyDueDate(task.DueDate)
+	return style.Render("📅 " + dateStr)
+}
+
+// getVisibleSiblings returns siblings of the given task that are currently visible.
+// This filters siblings using the same visibility logic as the tree display,
+// ensuring movement bounds checking matches what the user sees.
+func (m *ProjectTreeModel) getVisibleSiblings(task *models.Task) []*models.Task {
+	allSiblings := m.project.GetSiblings(task)
+	var visibleSiblings []*models.Task
+	for _, sibling := range allSiblings {
+		for _, node := range m.nodes {
+			if node.Task.ID == sibling.ID && m.passesFilters(node) {
+				visibleSiblings = append(visibleSiblings, sibling)
+				break
+			}
+		}
+	}
+	return visibleSiblings
+}
+
+// findVisibleSiblingIndex returns the index of task among its visible siblings, or -1 if not found.
+func (m *ProjectTreeModel) findVisibleSiblingIndex(task *models.Task, visibleSiblings []*models.Task) int {
+	for i, s := range visibleSiblings {
+		if s.ID == task.ID {
+			return i
+		}
+	}
+	return -1
+}
+
+// cycleFilter cycles through filter values, returning the next value in the sequence.
+// When current is the zero value, returns the first value. When current is the last value,
+// returns the zero value. If current is not found, returns the zero value.
+func cycleFilter[T comparable](current T, values []T) T {
+	var zero T
+	if current == zero {
+		if len(values) > 0 {
+			return values[0]
+		}
+		return zero
+	}
+	for i, v := range values {
+		if v == current {
+			if i+1 < len(values) {
+				return values[i+1]
+			}
+			return zero
+		}
+	}
+	return zero
+}
+
+// passesAttrFilters checks if a task passes all attribute filters.
+// Attribute filter keys: "bug.severity", "bug.reproducible", "idea.category", "idea.value",
+// "idea.validated", "effort" (task/idea), "task.worktype", "epic.scope", "story.points"
+func passesAttrFilters(task *models.Task, attrs map[string]string) bool { //nolint:gocyclo
+	if len(attrs) == 0 {
+		return true
+	}
+
+	for key, value := range attrs {
+		switch key {
+		case "bug.severity":
+			if task.Type != models.TaskTypeBug || task.BugAttrs == nil {
+				return false
+			}
+			if string(task.BugAttrs.Severity) != value {
+				return false
+			}
+		case "bug.reproducible":
+			if task.Type != models.TaskTypeBug || task.BugAttrs == nil {
+				return false
+			}
+			if string(task.BugAttrs.Reproducible) != value {
+				return false
+			}
+		case "idea.category":
+			if task.Type != models.TaskTypeIdea || task.IdeaAttrs == nil {
+				return false
+			}
+			if string(task.IdeaAttrs.Category) != value {
+				return false
+			}
+		case "idea.value":
+			if task.Type != models.TaskTypeIdea || task.IdeaAttrs == nil {
+				return false
+			}
+			if string(task.IdeaAttrs.Value) != value {
+				return false
+			}
+		case "idea.validated":
+			if task.Type != models.TaskTypeIdea || task.IdeaAttrs == nil {
+				return false
+			}
+			if !task.IdeaAttrs.Validated {
+				return false
+			}
+		case "effort":
+			// Effort can apply to Task or Idea types
+			switch task.Type {
+			case models.TaskTypeTask:
+				if task.TaskAttrs == nil || string(task.TaskAttrs.Effort) != value {
+					return false
+				}
+			case models.TaskTypeIdea:
+				if task.IdeaAttrs == nil || string(task.IdeaAttrs.Effort) != value {
+					return false
+				}
+			default:
+				return false
+			}
+		case "task.worktype":
+			if task.Type != models.TaskTypeTask || task.TaskAttrs == nil {
+				return false
+			}
+			if string(task.TaskAttrs.WorkType) != value {
+				return false
+			}
+		case "epic.scope":
+			if task.Type != models.TaskTypeEpic || task.EpicAttrs == nil {
+				return false
+			}
+			if string(task.EpicAttrs.Scope) != value {
+				return false
+			}
+		case "story.points":
+			if task.Type != models.TaskTypeStory || task.StoryAttrs == nil {
+				return false
+			}
+			// Parse expected points value
+			var expectedPoints int
+			var _, errScan = fmt.Sscanf(value, "%d", &expectedPoints)
+			if errScan != nil {
+				return false
+			}
+			if task.StoryAttrs.StoryPoints != expectedPoints {
+				return false
+			}
+		}
+	}
+	return true
+}
