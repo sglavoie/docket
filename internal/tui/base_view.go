@@ -125,6 +125,13 @@ func (s *InteractiveViewState) HasPendingPrefix() bool {
 	return s.pendingPrefix != ""
 }
 
+// SkipModifierInPrefix returns true when a prefix is pending and the key event
+// is a bare modifier press (Shift, Ctrl, Alt, etc.). Views should call this
+// before dispatching prefix keys and return early to keep the popup open.
+func (s *InteractiveViewState) SkipModifierInPrefix(msg tea.KeyPressMsg) bool {
+	return s.pendingPrefix != "" && isModifierOnly(msg)
+}
+
 // DefaultShouldCaptureEsc returns true if a pending prefix or confirm dialog is active.
 // Views should call this in their ShouldCaptureEsc() override and OR in their own conditions.
 // Views that also embed BaseSearchableView should additionally OR in m.SearchShouldCaptureEsc().

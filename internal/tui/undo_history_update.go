@@ -22,6 +22,9 @@ func (m *UndoHistoryModel) handleKeyPress(msg tea.KeyPressMsg) (tea.Model, tea.C
 		return m.handleDetailKeyPress(msg), nil
 	}
 
+	if m.SkipModifierInPrefix(msg) {
+		return m, nil
+	}
 	if m.pendingPrefix == "g" {
 		return m.handlePendingPrefix(msg), nil
 	}

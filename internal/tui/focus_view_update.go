@@ -28,6 +28,9 @@ func (m *FocusViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m *FocusViewModel) handleKeyMsg(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) { //nolint:gocyclo
 	key := msg.String()
 
+	if m.SkipModifierInPrefix(msg) {
+		return m, nil
+	}
 	if m.pendingPrefix != "" {
 		return m.handlePrefixKey(key)
 	}

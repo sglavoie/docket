@@ -175,6 +175,9 @@ func (m *LinkedTaskSelectorModel) handleKeypress(msg tea.KeyPressMsg) (tea.Model
 	key := msg.String()
 
 	// Handle pending prefix keys
+	if m.pendingPrefix != "" && isModifierOnly(msg) {
+		return m, nil
+	}
 	if m.pendingPrefix != "" {
 		prefix := m.pendingPrefix
 		m.pendingPrefix = ""

@@ -38,6 +38,9 @@ func (m *DashboardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) { //nolint:goc
 			return model, cmd
 		}
 
+		if m.SkipModifierInPrefix(msg) {
+			return m, nil
+		}
 		if m.pendingPrefix == "g" {
 			m.pendingPrefix = ""
 			_, cmd := handleGotoTopPrefix(msg.String(), &m.cursor, &m.cursorFlash)

@@ -20,6 +20,9 @@ func (m *CrossProjectLinkerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m *CrossProjectLinkerModel) handleKeypress(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	key := msg.String()
 
+	if m.pendingPrefix != "" && isModifierOnly(msg) {
+		return m, nil
+	}
 	if m.pendingPrefix != "" {
 		prefix := m.pendingPrefix
 		m.pendingPrefix = ""

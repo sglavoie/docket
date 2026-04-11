@@ -62,6 +62,9 @@ func (m *NotesViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) { //nolint:goc
 		m.clearStatus()
 
 		// Handle pending 'g' prefix key — always consume the second keystroke
+		if m.pendingPrefix != "" && isModifierOnly(msg) {
+			return m, nil
+		}
 		if m.pendingPrefix == "g" {
 			m.pendingPrefix = ""
 			if key == "X" && m.multiSelectMode {

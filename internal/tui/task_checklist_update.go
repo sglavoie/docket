@@ -106,6 +106,9 @@ func (m *TaskChecklistModel) updateNormalMode(msg tea.Msg) (tea.Model, tea.Cmd) 
 		m.BaseView.SetSize(msg.Width, msg.Height)
 		return m, nil
 	case tea.KeyPressMsg:
+		if m.SkipModifierInPrefix(msg) {
+			return m, nil
+		}
 		if m.pendingPrefix == "g" {
 			m.pendingPrefix = ""
 			_, cmd = handleGotoTopPrefix(msg.String(), &m.cursor, &m.cursorFlash)

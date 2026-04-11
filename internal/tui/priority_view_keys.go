@@ -20,6 +20,9 @@ func (m *PriorityViewModel) handleKeypress(msg tea.KeyPressMsg) (tea.Model, tea.
 	}
 
 	// Handle pending prefix keys (Vim-style gg)
+	if m.SkipModifierInPrefix(msg) {
+		return m, nil
+	}
 	if m.pendingPrefix != "" {
 		return m.handlePrefixKey(key)
 	}

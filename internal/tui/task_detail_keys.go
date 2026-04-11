@@ -9,6 +9,9 @@ func (m *TaskDetailModel) handleKeyMsg(msg tea.KeyPressMsg) (tea.Model, tea.Cmd)
 	key := msg.String()
 
 	// Handle pending prefix keys
+	if m.SkipModifierInPrefix(msg) {
+		return m, nil
+	}
 	if m.pendingPrefix != "" {
 		return m.handlePrefixKey(key)
 	}

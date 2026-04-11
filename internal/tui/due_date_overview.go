@@ -266,6 +266,9 @@ func (m *DueDateOverviewModel) handleKeyMsg(msg tea.KeyPressMsg) (tea.Model, tea
 	key := msg.String()
 
 	// Handle pending prefix keys (which-key style)
+	if m.SkipModifierInPrefix(msg) {
+		return m, nil
+	}
 	if m.pendingPrefix != "" {
 		return m.handlePrefixKey(key)
 	}

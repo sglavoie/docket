@@ -99,6 +99,9 @@ func (m *ScoreProfileManagerModel) handleKeypress(msg tea.KeyPressMsg) (tea.Mode
 	key := msg.String()
 
 	// Handle pending prefix keys
+	if m.pendingPrefix != "" && isModifierOnly(msg) {
+		return m, nil
+	}
 	if m.pendingPrefix != "" {
 		prefix := m.pendingPrefix
 		m.pendingPrefix = ""

@@ -13,6 +13,9 @@ func (c *inboxCore) handleKeyMsg(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		return c.model, nil
 	}
 
+	if c.pendingPrefix != "" && isModifierOnly(msg) {
+		return c.model, nil
+	}
 	if c.pendingPrefix != "" {
 		return c.handlePrefixKey(key)
 	}

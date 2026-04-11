@@ -11,6 +11,9 @@ import (
 
 // handlePinnedPopupKey handles key events when the pinned tasks popup is open.
 func (m *AppModel) handlePinnedPopupKey(msg tea.KeyPressMsg) (*AppModel, tea.Cmd) {
+	if m.pinnedPendingPrefix != "" && isModifierOnly(msg) {
+		return m, nil
+	}
 	if m.pinnedPendingPrefix != "" {
 		return m.handlePinnedPopupPrefixKey(msg)
 	}
