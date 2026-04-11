@@ -1,7 +1,7 @@
 package tui
 
 import (
-	"time"
+	"cmp"
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
@@ -86,7 +86,7 @@ func StatusOrder(status models.TaskStatus) int {
 func CompareTasks(a, b *models.Task, field SortField, projectID string, cfg *config.Config) int {
 	switch field {
 	case SortByPriority:
-		return compareInts(a.Priority, b.Priority)
+		return cmp.Compare(a.Priority, b.Priority)
 
 	case SortByDueDate:
 		if a.DueDate == nil && b.DueDate == nil {
@@ -98,13 +98,13 @@ func CompareTasks(a, b *models.Task, field SortField, projectID string, cfg *con
 		if b.DueDate == nil {
 			return -1 // nil goes after
 		}
-		return compareTimes(*a.DueDate, *b.DueDate)
+		return a.DueDate.Compare(*b.DueDate)
 
 	case SortByCreatedAt:
-		return compareTimes(a.CreatedAt, b.CreatedAt)
+		return a.CreatedAt.Compare(b.CreatedAt)
 
 	case SortByStatus:
-		return compareInts(StatusOrder(a.Status), StatusOrder(b.Status))
+		return cmp.Compare(StatusOrder(a.Status), StatusOrder(b.Status))
 
 	case SortByScore:
 		profile := cfg.GetProjectScoringProfile(projectID)
@@ -112,12 +112,7 @@ func CompareTasks(a, b *models.Task, field SortField, projectID string, cfg *con
 			scoreA := scoring.ComputeScore(a, profile)
 			scoreB := scoring.ComputeScore(b, profile)
 			// Higher score first (descending by default)
-			if scoreA > scoreB {
-				return -1
-			}
-			if scoreA < scoreB {
-				return 1
-			}
+			return -cmp.Compare(scoreA, scoreB)
 		}
 		return 0
 	default:
@@ -139,13 +134,8 @@ func CompareTasksCrossProject(a, b *models.Task, field SortField, projectIDA, pr
 		if pb != nil {
 			sb = scoring.ComputeScore(b, pb)
 		}
-		if sa > sb {
-			return -1
-		}
-		if sa < sb {
-			return 1
-		}
-		return 0
+		// Higher score first (descending by default)
+		return -cmp.Compare(sa, sb)
 	}
 	return CompareTasks(a, b, field, "", cfg)
 }
@@ -190,30 +180,10 @@ func sortHierarchical[T any](
 }
 
 // ApplySortDirection flips a comparison result if descending.
-func ApplySortDirection(cmp int, ascending bool) bool {
-	less := cmp < 0
+func ApplySortDirection(c int, ascending bool) bool {
+	less := c < 0
 	if !ascending {
 		less = !less
 	}
 	return less
-}
-
-func compareInts(a, b int) int {
-	if a < b {
-		return -1
-	}
-	if a > b {
-		return 1
-	}
-	return 0
-}
-
-func compareTimes(a, b time.Time) int {
-	if a.Before(b) {
-		return -1
-	}
-	if a.After(b) {
-		return 1
-	}
-	return 0
 }
