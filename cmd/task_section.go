@@ -92,11 +92,7 @@ func runTaskSection(cmd *cobra.Command, args []string) error {
 				project.EnsureSection(sectionName)
 			}
 
-			if isGTD {
-				task.Section = sectionName
-			} else {
-				task.CustomSection = sectionName
-			}
+			task.SetSection(sectionName)
 			return nil
 		})
 

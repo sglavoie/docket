@@ -416,11 +416,7 @@ func (m *ProjectTreeModel) applyBulkChanges(changes PendingChanges, tasks []*mod
 				t.RemoveTag(tag)
 			}
 			if changes.SetSection != nil {
-				if models.IsGTDSection(*changes.SetSection) || *changes.SetSection == "" {
-					t.Section = *changes.SetSection
-				} else {
-					t.CustomSection = *changes.SetSection
-				}
+				t.SetSection(*changes.SetSection)
 			}
 			if changes.ClearDueDate {
 				t.DueDate = nil

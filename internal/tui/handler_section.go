@@ -238,11 +238,9 @@ func (m *AppModel) handleSectionMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 // assignSection sets the section on a task. GTD sections and custom sections
 // are independent — assigning one does not clear the other.
 func assignSection(task *models.Task, section string) {
-	if models.IsGTDSection(section) || section == "" {
-		task.Section = section
-	} else if section == removeCustomSectionSentinel {
+	if section == removeCustomSectionSentinel {
 		task.CustomSection = ""
 	} else {
-		task.CustomSection = section
+		task.SetSection(section)
 	}
 }

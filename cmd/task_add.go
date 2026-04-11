@@ -204,18 +204,10 @@ func runTaskAdd(cmd *cobra.Command, args []string) error { //nolint:gocyclo
 			}
 			project.EnsureSection(taskSectionFlag)
 		}
-		if models.IsGTDSection(taskSectionFlag) {
-			task.Section = taskSectionFlag
-		} else {
-			task.CustomSection = taskSectionFlag
-		}
+		task.SetSection(taskSectionFlag)
 	} else if tmpl != nil && tmpl.Section != "" {
 		project.EnsureSection(tmpl.Section)
-		if models.IsGTDSection(tmpl.Section) {
-			task.Section = tmpl.Section
-		} else {
-			task.CustomSection = tmpl.Section
-		}
+		task.SetSection(tmpl.Section)
 	}
 
 	// Handle stage

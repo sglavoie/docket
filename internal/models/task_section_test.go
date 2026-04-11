@@ -2,6 +2,46 @@ package models
 
 import "testing"
 
+func TestSetSection_GTD(t *testing.T) {
+	task, err := NewTask("test-id", 1, TaskTypeTask, "Test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	task.SetSection(SectionNext)
+	if task.Section != SectionNext {
+		t.Errorf("expected Section=%q, got %q", SectionNext, task.Section)
+	}
+	if task.CustomSection != "" {
+		t.Errorf("expected CustomSection empty, got %q", task.CustomSection)
+	}
+}
+
+func TestSetSection_Empty(t *testing.T) {
+	task, err := NewTask("test-id", 1, TaskTypeTask, "Test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	task.Section = SectionNext
+	task.SetSection("")
+	if task.Section != "" {
+		t.Errorf("expected Section empty, got %q", task.Section)
+	}
+}
+
+func TestSetSection_Custom(t *testing.T) {
+	task, err := NewTask("test-id", 1, TaskTypeTask, "Test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	task.SetSection("Sprint-1")
+	if task.CustomSection != "Sprint-1" {
+		t.Errorf("expected CustomSection=%q, got %q", "Sprint-1", task.CustomSection)
+	}
+	if task.Section != "" {
+		t.Errorf("expected Section unchanged (empty), got %q", task.Section)
+	}
+}
+
 func TestNewTaskHasEmptySection(t *testing.T) {
 	task, err := NewTask("test-id", 1, TaskTypeTask, "Test Task")
 	if err != nil {

@@ -133,11 +133,7 @@ func runTemplateUse(cmd *cobra.Command, args []string) error {
 	task.Priority = t.GetEffectivePriority()
 	if t.Section != "" {
 		project.EnsureSection(t.Section)
-		if models.IsGTDSection(t.Section) {
-			task.Section = t.Section
-		} else {
-			task.CustomSection = t.Section
-		}
+		task.SetSection(t.Section)
 	}
 	for _, tag := range t.Tags {
 		task.AddTag(tag)

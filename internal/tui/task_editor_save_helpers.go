@@ -27,11 +27,7 @@ func (m *TaskEditorModel) saveTask() error {
 		task.Type = m.taskType
 		task.Priority = m.priority
 		task.ParentID = m.parentID
-		if models.IsGTDSection(m.section) || m.section == "" {
-			task.Section = m.section
-		} else {
-			task.CustomSection = m.section
-		}
+		task.SetSection(m.section)
 		task.DueDate = m.dueDate
 		task.Tags = append([]string{}, m.tags...)
 		task.Active = m.active
