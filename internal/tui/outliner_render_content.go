@@ -31,7 +31,18 @@ func (m *OutlinerModel) renderOutlinerTreeContent(width int) string {
 	var b strings.Builder
 	m.writeOutlinerHeader(&b, width, perspectiveLabel, searchIndicator)
 
-	viewport := m.computeOutlinerViewport(width)
+	extraFooter := 0
+	if notice != "" {
+		extraFooter += 2
+	}
+	if m.quickEdit.IsActive() {
+		extraFooter += 2
+	}
+	if m.statusMessage != "" {
+		extraFooter += 2
+	}
+
+	viewport := m.computeOutlinerViewport(width, extraFooter)
 	b.WriteString(m.renderOutlinerRows(viewport, width))
 
 	if viewport.searchHelpHeight > 0 {
@@ -207,8 +218,8 @@ func (m *OutlinerModel) outlinerEmptyMessage(perspective Perspective) string {
 	return EmptyStateNoTasks
 }
 
-func (m *OutlinerModel) computeOutlinerViewport(width int) outlinerViewport {
-	visibleRows := m.contentHeight()
+func (m *OutlinerModel) computeOutlinerViewport(width int, extraFooterLines int) outlinerViewport {
+	visibleRows := m.contentHeight() - extraFooterLines
 
 	if m.ac.IsActive() {
 		acLines := min(len(m.ac.Items), acVisibleCount)
