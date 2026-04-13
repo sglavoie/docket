@@ -54,7 +54,7 @@ func FormatCyclePosition(cfg *config.Config, projectID string) string {
 const EmptyStateFiltered = "No tasks match filters. Press 'F' then 'x' to clear."
 
 // EmptyStateNoTasks is the standard message shown when a view has no tasks at all.
-const EmptyStateNoTasks = "No tasks yet. Press 'a' to add one."
+const EmptyStateNoTasks = "No tasks yet. Press 'i' to add one."
 
 // EmptyStateClosed is the standard message shown when the closed/done tab has no tasks.
 const EmptyStateClosed = "No closed tasks."

@@ -123,7 +123,7 @@ func (m *ProjectTreeModel) renderFullWidth() string { //nolint:gocyclo
 
 	if len(visible) == 0 {
 		if len(m.project.Tasks) == 0 {
-			cardContent.WriteString(renderEmptyState(EmptyStateNoTasks, "Press 'a' to add a task"))
+			cardContent.WriteString(renderEmptyState(EmptyStateNoTasks, "Press 'i' to add a task"))
 		} else {
 			cardContent.WriteString(renderEmptyState(EmptyStateFiltered, "Press Esc to clear filters"))
 		}
@@ -415,7 +415,7 @@ func (m *ProjectTreeModel) renderTreeContent(width int) string { //nolint:gocycl
 
 	if len(visible) == 0 {
 		if len(m.project.Tasks) == 0 {
-			cardContent.WriteString(renderEmptyState(EmptyStateNoTasks, "Press 'a' to add a task"))
+			cardContent.WriteString(renderEmptyState(EmptyStateNoTasks, "Press 'i' to add a task"))
 		} else {
 			cardContent.WriteString(renderEmptyState(EmptyStateFiltered, "Press Esc to clear filters"))
 		}
