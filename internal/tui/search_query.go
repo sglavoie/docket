@@ -365,12 +365,9 @@ func matchesIsFilter(task *models.Task, filter string) bool {
 	case "blocked":
 		return task.Status == models.StatusBlocked
 	case "overdue":
-		if task.DueDate == nil || task.Status.IsComplete() {
-			return false
-		}
-		return task.DueDate.Before(time.Now())
+		return task.IsOverdue()
 	case "snoozed":
-		return task.SnoozedUntil != nil && task.SnoozedUntil.After(time.Now())
+		return task.IsSnoozed()
 	case "recurring":
 		return task.Recurrence != nil
 	case "leaf":
