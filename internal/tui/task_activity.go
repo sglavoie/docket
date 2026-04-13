@@ -199,16 +199,20 @@ func (m *TaskActivityModel) View() tea.View {
 
 // getEntries returns entries in the current sort order, filtered by active tab.
 // Default (sortAsc=false) is reverse chronological (newest first).
+// task.Activity is stored chronologically (oldest first via append),
+// so the default view reverses it to show newest first.
 func (m *TaskActivityModel) getEntries() []*models.ActivityEntry {
 	var source []*models.ActivityEntry
 	if m.sortAsc {
+		// Oldest first: same order as stored
+		source = make([]*models.ActivityEntry, len(m.task.Activity))
+		copy(source, m.task.Activity)
+	} else {
+		// Newest first: reverse the stored order
 		source = make([]*models.ActivityEntry, len(m.task.Activity))
 		for i, e := range m.task.Activity {
 			source[len(m.task.Activity)-1-i] = e
 		}
-	} else {
-		source = make([]*models.ActivityEntry, len(m.task.Activity))
-		copy(source, m.task.Activity)
 	}
 
 	// Apply tab filter

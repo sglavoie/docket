@@ -126,7 +126,22 @@ func (m *FocusBoardModel) handleDailyPlanReorder(delta int) (tea.Model, tea.Cmd)
 
 	// Swap in display slices and move cursor.
 	m.filtered[m.cursor], m.filtered[to] = m.filtered[to], m.filtered[m.cursor]
-	m.todayRows[m.cursor], m.todayRows[to] = m.todayRows[to], m.todayRows[m.cursor]
+
+	// todayRows may differ from filtered when search/filters are active,
+	// so look up the correct indices by task ID instead of using cursor position.
+	todayCurIdx, todayToIdx := -1, -1
+	for i, r := range m.todayRows {
+		switch r.Task.ID {
+		case curRow.Task.ID:
+			todayCurIdx = i
+		case targetRow.Task.ID:
+			todayToIdx = i
+		}
+	}
+	if todayCurIdx >= 0 && todayToIdx >= 0 {
+		m.todayRows[todayCurIdx], m.todayRows[todayToIdx] = m.todayRows[todayToIdx], m.todayRows[todayCurIdx]
+	}
+
 	m.cursor = to
 	return m, nil
 }

@@ -69,8 +69,12 @@ func blockerExecuteDelete(s *blockerViewState, ds blockerDataSource) tea.Cmd {
 }
 
 func blockerStartEdit(s *blockerViewState, ds blockerDataSource, item blockerItem) tea.Cmd {
+	idx := ds.findItemIndex(item.Blocker)
+	if idx < 0 {
+		return nil
+	}
 	s.editMode = true
-	s.editIndex = ds.findItemIndex(item.Blocker)
+	s.editIndex = idx
 	s.editTextInput.SetValue(blockerTextValue(item.Blocker))
 	s.editTextInput.Focus()
 	return textarea.Blink
