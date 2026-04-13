@@ -81,6 +81,28 @@ func TestProjectTreeView_CursorBounds(t *testing.T) {
 	}
 }
 
+func TestViewModeCycleIncludesAll(t *testing.T) {
+	// Verify that cycling view modes wraps correctly through all modes,
+	// including ViewModeAll (the last one).
+	seen := make(map[ViewMode]bool)
+	mode := ViewModeActive
+	for range int(ViewModeAll) + 2 { // One full cycle + 1 to verify wrap
+		seen[mode] = true
+		mode = (mode + 1) % (ViewModeAll + 1)
+	}
+	for vm := ViewModeActive; vm <= ViewModeAll; vm++ {
+		if !seen[vm] {
+			t.Errorf("view mode %d never reached during cycling", vm)
+		}
+	}
+	// After a full cycle, we should be back at Active
+	mode = ViewModeAll
+	mode = (mode + 1) % (ViewModeAll + 1)
+	if mode != ViewModeActive {
+		t.Errorf("expected wrap to ViewModeActive (0), got %d", mode)
+	}
+}
+
 func TestProjectTreeView_FilterState(t *testing.T) {
 	project := newTestProjectTreeProject(t, "Test", nil)
 	cfg := newTestProjectTreeConfig()

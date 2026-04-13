@@ -52,7 +52,7 @@ func (m *AppModel) viewModeCommands() []Command {
 		Aliases:     []string{"next view mode", "toggle view"},
 		Handler: func() tea.Msg {
 			if m.projectTree != nil {
-				m.projectTree.viewMode = (m.projectTree.viewMode + 1) % (ViewModeCompleted + 1)
+				m.projectTree.viewMode = (m.projectTree.viewMode + 1) % (ViewModeAll + 1)
 				m.projectTree.updateVisibility()
 			}
 			return nil
