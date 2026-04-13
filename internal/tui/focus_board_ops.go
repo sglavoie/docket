@@ -9,129 +9,33 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/config"
-	"github.com/sglavoie/tt/internal/logging"
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/storage"
 )
 
-// markDone marks the current task as done.
+// markDone marks the current task as done via the shared workflow pipeline.
 func (m *FocusBoardModel) markDone() (tea.Model, tea.Cmd) {
-	row := m.getRowAtCursor()
-	if row == nil {
-		return m, nil
-	}
-	task := row.Task
-	project := row.Project
-
-	if msg := task.CanTransitionTo(models.StatusDone); msg != "" {
-		m.setStatus(msg)
-		return m, nil
-	}
-
-	project.MutateTask(task.ID, func(t *models.Task) {
-		t.ApplyTransition(models.StatusDone)
-	})
-	if err := saveProjectSync(project); err != nil {
-		m.setStatus("Failed to save: " + err.Error())
-	} else {
-		m.setStatus(fmt.Sprintf("Marked #%d done", task.ShortID))
-		m.loadItems()
-		m.clampCursor()
-		return m, nil
-	}
-	return m, nil
+	return taskOpsChangeStatus(m, models.StatusDone)
 }
 
-// dismiss cancels the current task.
+// dismiss cancels the current task via the shared workflow pipeline.
 func (m *FocusBoardModel) dismiss() (tea.Model, tea.Cmd) {
-	row := m.getRowAtCursor()
-	if row == nil {
-		return m, nil
-	}
-	task := row.Task
-	project := row.Project
-
-	if msg := task.CanTransitionTo(models.StatusCanceled); msg != "" {
-		m.setStatus(msg)
-		return m, nil
-	}
-
-	project.MutateTask(task.ID, func(t *models.Task) {
-		t.ApplyTransition(models.StatusCanceled)
-	})
-	if err := saveProjectSync(project); err != nil {
-		m.setStatus("Failed to save: " + err.Error())
-	} else {
-		m.setStatus(fmt.Sprintf("Dismissed #%d", task.ShortID))
-		m.loadItems()
-		m.clampCursor()
-		return m, nil
-	}
-	return m, nil
+	return taskOpsChangeStatus(m, models.StatusCanceled)
 }
 
-// handleEnter opens URL or navigates to task.
+// handleEnter navigates to the task in its project.
 func (m *FocusBoardModel) handleEnter() (tea.Model, tea.Cmd) {
 	row := m.getRowAtCursor()
 	if row == nil {
 		return m, nil
 	}
-
-	// For all tasks, navigate to the task in its project
-	if row.isTask() {
-		return m, func() tea.Msg {
-			return FocusBoardSelectMsg{Task: row.Task, Project: row.Project}
-		}
+	return m, func() tea.Msg {
+		return FocusBoardSelectMsg{Task: row.Task, Project: row.Project}
 	}
-
-	// For actions: navigate to task or open URL
-	if row.isAction() {
-		if row.Task.URL != "" {
-			return m, openBrowserCmd(row.Task.URL)
-		}
-		// No URL — open task detail
-		return m, func() tea.Msg {
-			return ShowTaskDetailMsg{Task: row.Task, Project: row.Project}
-		}
-	}
-
-	return m, nil
 }
 
-// deleteItem deletes the action task at cursor.
+// deleteItem deletes the task at cursor via the shared workflow pipeline.
 func (m *FocusBoardModel) deleteItem() (tea.Model, tea.Cmd) {
-	row := m.getRowAtCursor()
-	if row == nil || !row.isAction() {
-		return m, nil
-	}
-
-	task := row.Task
-	project := row.Project
-
-	// Clean up attachments
-	if err := storage.CleanupTaskAttachments(project, task); err != nil {
-		logging.Warn("failed to clean up attachments for task %s: %v", task.ID, err)
-	}
-
-	// Remove task from project
-	var remaining []*models.Task
-	for _, t := range project.Tasks {
-		if t.ID != task.ID {
-			remaining = append(remaining, t)
-		}
-	}
-	project.Tasks = remaining
-	project.BuildTaskTree()
-
-	if err := saveProjectSync(project); err != nil {
-		m.setStatus("Failed to delete: " + err.Error())
-	} else {
-		m.setStatus(fmt.Sprintf("Deleted #%d", task.ShortID))
-		m.loadItems()
-		m.clampCursor()
-		return m, nil
-	}
-	return m, nil
+	return taskOpsDeleteTask(m)
 }
 
 // taskOpsView implementation for FocusBoardModel.
@@ -154,11 +58,7 @@ func (m *FocusBoardModel) viewName() string                  { return "Focus Boa
 
 func (m *FocusBoardModel) showDeleteConfirm(shortID int) {
 	if row := m.getRowAtCursor(); row != nil {
-		if row.isAction() {
-			m.confirm.Show("delete", fmt.Sprintf("Delete action #%d?", shortID))
-		} else {
-			m.setStatus("Use project tree to delete non-action tasks")
-		}
+		m.confirm.Show("delete", fmt.Sprintf("Delete task #%d?", shortID))
 	}
 }
 

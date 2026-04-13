@@ -9,7 +9,7 @@ import (
 	"github.com/sglavoie/tt/internal/util"
 )
 
-// loadItems loads Action tasks and aggregates active/due tasks across all projects.
+// loadItems loads and aggregates active/due tasks across all projects.
 func (m *FocusBoardModel) loadItems() {
 	m.rows = nil
 	m.nextRows = nil
@@ -41,7 +41,12 @@ func (m *FocusBoardModel) loadItems() {
 				m.todayRows = append(m.todayRows, row)
 			}
 
-			// Include if active or due soon
+			// Collect closed tasks for the Closed tab
+			if task.Status.IsComplete() {
+				m.closedRows = append(m.closedRows, row)
+			}
+
+			// Skip completed/snoozed for active tabs
 			if task.Status.IsComplete() || task.IsSnoozed() {
 				continue
 			}
@@ -91,13 +96,6 @@ func (m *FocusBoardModel) applyFilter() {
 	case boardTabToday:
 		m.filtered = make([]boardRow, len(m.todayRows))
 		copy(m.filtered, m.todayRows)
-	case boardTabActions:
-		m.filtered = nil
-		for _, r := range m.rows {
-			if r.isAction() {
-				m.filtered = append(m.filtered, r)
-			}
-		}
 	case boardTabActiveDue:
 		m.filtered = nil
 		for _, r := range m.rows {

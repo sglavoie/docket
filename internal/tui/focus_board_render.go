@@ -7,23 +7,13 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/fuzzy"
-	"github.com/sglavoie/tt/internal/models"
 )
 
 func (m *FocusBoardModel) View() tea.View { //nolint:gocyclo
 	var b strings.Builder
 
 	// Title
-	totalActions := 0
-	totalTasks := 0
-	for _, r := range m.rows {
-		if r.isAction() {
-			totalActions++
-		} else {
-			totalTasks++
-		}
-	}
-	subtitle := fmt.Sprintf("%d actions, %d tasks", totalActions, totalTasks)
+	subtitle := fmt.Sprintf("%d tasks", len(m.rows))
 	b.WriteString(renderFullscreenTitle("Focus Board", subtitle, m.AccentColor()))
 	b.WriteString("\n")
 
@@ -132,13 +122,13 @@ func (m *FocusBoardModel) View() tea.View { //nolint:gocyclo
 		} else if len(m.rows) == 0 {
 			b.WriteString(MutedStyle.Render("  " + EmptyStateNoTasks))
 			b.WriteString("\n\n")
-			b.WriteString(HelpStyle.Render("  Press a to add an action, or mark tasks as active in a project."))
+			b.WriteString(HelpStyle.Render("  Press a to add a task, or mark tasks as active in a project."))
 		} else {
 			b.WriteString(MutedStyle.Render("  " + EmptyStateNoMatch))
 		}
 		b.WriteString("\n\n")
 		b.WriteString(renderStatusMessages(m.statusMessage, m.err))
-		left := HelpStyle.Render("a add · tab switch · q close · ? help")
+		left := HelpStyle.Render("a add · tab switch · Esc close · ? help")
 		right := MutedStyle.Render("0 items")
 		b.WriteString(renderStatusBarFooter(left, right, m.width, m.AccentColor()))
 		return tea.NewView(b.String())
@@ -256,90 +246,41 @@ func (m *FocusBoardModel) renderRow(row boardRow, isSelected bool, maxTitleLen i
 		prefix = fmt.Sprintf("%3s ", rowNum)
 	}
 
-	if row.isAction() {
-		// Action item rendering
-		var sourceBadge string
-		if task.Source != "" {
-			sourceBadge = DependencyStyle.Render(fmt.Sprintf("[%s]", truncateToVisualWidth(task.Source, 10)))
-		} else {
-			sourceBadge = DependencyStyle.Render("[action]")
-		}
-		projectBadge := ""
-		if !row.Project.Internal {
-			projectBadge = " " + MutedStyle.Render(fmt.Sprintf("[%s]", truncateToVisualWidth(projectName, 12)))
-		}
-		urlIndicator := ""
-		if task.URL != "" {
-			urlIndicator = " ↗"
-		}
+	projectBadge := MutedStyle.Render(fmt.Sprintf("[%s]", projectName))
+	typeIcon := " " + GetTypeStyle(string(task.Type)).Render(task.Type.Icon())
 
-		statusMarker := ""
-		if isClosed {
-			if task.Status == models.StatusDone {
-				statusMarker = "[x] "
-			} else {
-				statusMarker = "[-] "
-			}
-		}
-
-		truncatedTitle := truncateToVisualWidth(task.Title, maxTitleLen)
-		title := m.highlightTitle(truncatedTitle, task.Title)
-		if isSelected && !task.Dimmed && !isClosed {
-			title = SelectedTaskTitleStyle.Render(title)
-		}
-		content := fmt.Sprintf("%s%s%s %s%s%s %s%s", queueIndicator, prefix, priorityBadge, sourceBadge, projectBadge, urlIndicator, statusMarker, title)
-
-		if len(task.Tags) > 0 {
-			content += " " + renderInlineTags(task.Tags)
-		}
-		if m.tabs.Active == boardTabToday && m.carriedOverIDs[task.ID] {
-			content += " " + MutedStyle.Render("(carried)")
-		}
-
-		if !task.Dimmed && isClosed {
-			content = MutedStyle.Render(content)
-		}
-
-		line := RenderSelectableRow(isSelected, task.Active, task.Pinned, m.cursorFlash, content, m.width-2, task.Dimmed)
-		b.WriteString(line)
-	} else {
-		// Regular task rendering
-		projectBadge := MutedStyle.Render(fmt.Sprintf("[%s]", projectName))
-		typeIcon := " " + GetTypeStyle(string(task.Type)).Render(task.Type.Icon())
-
-		dueStr := ""
-		if task.DueDate != nil {
-			dueStr = FormatRelativeDue(task.DueDate, true)
-		}
-
-		scoreBadge := ""
-		if profile := m.config.GetProjectScoringProfile(row.Project.ID); profile != nil {
-			scoreBadge = RenderScoreBadge(task, profile)
-		}
-
-		truncatedTitle := truncateToVisualWidth(task.Title, maxTitleLen)
-		title := m.highlightTitle(truncatedTitle, task.Title)
-		if isSelected && !task.Dimmed {
-			title = SelectedTaskTitleStyle.Render(title)
-		}
-		statusIcon := GetStatusBadge(string(task.Status), task.Status.Icon())
-		content := fmt.Sprintf("%s%s%s %s %s%s %s", queueIndicator, prefix, statusIcon, priorityBadge, projectBadge, typeIcon, title)
-
-		structureGroup := scoreBadge
-		lifecycleGroup := dueStr
-		contentGroup := renderTruncatedTags(task.Tags, 2, 8)
-		trailing := JoinIndicatorGroups(structureGroup, lifecycleGroup, contentGroup)
-		if trailing != "" {
-			content += " " + trailing
-		}
-		if m.tabs.Active == boardTabToday && m.carriedOverIDs[task.ID] {
-			content += " " + MutedStyle.Render("(carried)")
-		}
-
-		dimmed := task.Dimmed || (isClosed && m.tabs.Active == boardTabToday)
-		line := RenderSelectableRow(isSelected, task.Active, task.Pinned, m.cursorFlash, content, m.width-2, dimmed)
-		b.WriteString(line)
+	dueStr := ""
+	if task.DueDate != nil {
+		dueStr = FormatRelativeDue(task.DueDate, true)
 	}
+
+	scoreBadge := ""
+	if profile := m.config.GetProjectScoringProfile(row.Project.ID); profile != nil {
+		scoreBadge = RenderScoreBadge(task, profile)
+	}
+
+	truncatedTitle := truncateToVisualWidth(task.Title, maxTitleLen)
+	title := m.highlightTitle(truncatedTitle, task.Title)
+	if isSelected && !task.Dimmed {
+		title = SelectedTaskTitleStyle.Render(title)
+	}
+	statusIcon := GetStatusBadge(string(task.Status), task.Status.Icon())
+	content := fmt.Sprintf("%s%s%s %s %s%s %s", queueIndicator, prefix, statusIcon, priorityBadge, projectBadge, typeIcon, title)
+
+	structureGroup := scoreBadge
+	lifecycleGroup := dueStr
+	contentGroup := renderTruncatedTags(task.Tags, 2, 8)
+	trailing := JoinIndicatorGroups(structureGroup, lifecycleGroup, contentGroup)
+	if trailing != "" {
+		content += " " + trailing
+	}
+	if m.tabs.Active == boardTabToday && m.carriedOverIDs[task.ID] {
+		content += " " + MutedStyle.Render("(carried)")
+	}
+
+	dimmed := task.Dimmed || (isClosed && m.tabs.Active == boardTabToday)
+	line := RenderSelectableRow(isSelected, task.Active, task.Pinned, m.cursorFlash, content, m.width-2, dimmed)
+	b.WriteString(line)
 
 	return b.String()
 }

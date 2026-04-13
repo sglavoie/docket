@@ -70,12 +70,13 @@ func (m *FocusBoardModel) handleEditInput(msg tea.KeyPressMsg) (tea.Model, tea.C
 			row.Project.MutateTask(row.Task.ID, func(t *models.Task) {
 				t.Title = value
 			})
-			if err := saveProjectSync(row.Project); err != nil {
+			opts := BuildWorkflowOpts(m.projectService, row.Project, m.getConfig(), m.configManager, nil, "Edit Title", row.Task.Title)
+			if err := persistWithWorkflow(opts); err != nil {
 				m.setStatus("Failed to save: " + err.Error())
-			} else {
-				m.setStatus("Title updated")
-				m.loadItems()
-				m.clampCursor()
+				return m, nil
+			}
+			return m, func() tea.Msg {
+				return SaveCompleteMsg{SuccessMessage: "Title updated"}
 			}
 		}
 		return m, nil
@@ -86,7 +87,7 @@ func (m *FocusBoardModel) handleEditInput(msg tea.KeyPressMsg) (tea.Model, tea.C
 	}
 }
 
-// createItemFromInput parses the add input and creates an Action task.
+// createItemFromInput parses the add input and creates a task.
 func (m *FocusBoardModel) createItemFromInput(input string) (tea.Model, tea.Cmd) {
 	m.addMode = false
 	m.addInput.Blur()
@@ -154,13 +155,13 @@ func (m *FocusBoardModel) createItemFromInput(input string) (tea.Model, tea.Cmd)
 	targetProject.Tasks = append(targetProject.Tasks, task)
 	targetProject.BuildTaskTree()
 
-	if err := saveProjectSync(targetProject); err != nil {
+	opts := BuildWorkflowOpts(m.projectService, targetProject, m.getConfig(), m.configManager, nil, "Add Task", task.Title)
+	if err := persistWithWorkflow(opts); err != nil {
 		m.setStatus("Failed to save: " + err.Error())
 		return m, nil
 	}
 
-	m.setStatus(fmt.Sprintf("Added #%d: %s", task.ShortID, task.Title))
-	m.loadItems()
-	m.clampCursor()
-	return m, nil
+	return m, func() tea.Msg {
+		return SaveCompleteMsg{SuccessMessage: fmt.Sprintf("Added #%d: %s", task.ShortID, task.Title)}
+	}
 }

@@ -45,14 +45,9 @@ func (m *FocusBoardModel) handleKeyMsg(msg tea.KeyPressMsg) (tea.Model, tea.Cmd)
 
 	switch key {
 	case "esc":
-		if m.HasActiveFilters() {
-			m.ClearAllFilters()
-			m.applyFilter()
-			m.clampCursor()
-			m.setStatus("Filters cleared")
+		if RunEscCascade(m.escSteps()) {
 			return m, nil
 		}
-		return m, func() tea.Msg { return CloseFocusBoardMsg{} }
 
 	// Search
 	case "/":
@@ -87,7 +82,7 @@ func (m *FocusBoardModel) handleKeyMsg(msg tea.KeyPressMsg) (tea.Model, tea.Cmd)
 
 	// Quick-edit title
 	case "E":
-		if row := m.getRowAtCursor(); row != nil && row.isAction() {
+		if row := m.getRowAtCursor(); row != nil && row.isTask() {
 			m.editMode = true
 			m.editIdx = m.cursor
 			m.editInput.SetValue(row.Task.Title)

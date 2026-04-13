@@ -8,20 +8,19 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 )
 
-var focusBoardTabNames = []string{"Today", "All", "Actions", "Active/Due", "Next", "By Source", "By Priority", "By Score", "Closed"}
+var focusBoardTabNames = []string{"Today", "All", "Active/Due", "Next", "By Source", "By Priority", "By Score", "Closed"}
 
 const (
 	boardTabToday      = 0
-	boardTabActions    = 2
-	boardTabActiveDue  = 3
-	boardTabNext       = 4
-	boardTabBySource   = 5
-	boardTabByPriority = 6
-	boardTabByScore    = 7
-	boardTabClosed     = 8
+	boardTabActiveDue  = 2
+	boardTabNext       = 3
+	boardTabBySource   = 4
+	boardTabByPriority = 5
+	boardTabByScore    = 6
+	boardTabClosed     = 7
 )
 
-// boardRow is a unified display item: an Action task or an aggregated active/due task.
+// boardRow is a unified display item for an active/due task.
 type boardRow struct {
 	Task     *models.Task
 	Project  *models.Project
@@ -29,15 +28,11 @@ type boardRow struct {
 	Source   string
 }
 
-func (r boardRow) isAction() bool {
-	return false
-}
-
 func (r boardRow) isTask() bool {
 	return r.Task != nil
 }
 
-// FocusBoardModel displays Action tasks + aggregated active/due tasks in a unified view.
+// FocusBoardModel displays active/due tasks in a unified cross-project view.
 type FocusBoardModel struct {
 	BaseSearchableView
 	InteractiveViewState
@@ -88,7 +83,7 @@ type FocusBoardModel struct {
 // NewFocusBoardModel creates a new focus board model.
 func NewFocusBoardModel(cfg *config.Config, manager *config.Manager, dailyPlan *[]FocusTask, queueIDs, dailyPlanIDs, carriedOverIDs map[string]bool) *FocusBoardModel {
 	ti := textinput.New()
-	ti.Placeholder = "Action title (%project !priority #tag -s source -u url)"
+	ti.Placeholder = "Task title (%project !priority #tag -s source -u url)"
 	ti.CharLimit = 200
 	ti.SetWidth(60)
 
@@ -122,15 +117,18 @@ func (m *FocusBoardModel) Init() tea.Cmd {
 }
 
 func (m *FocusBoardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	if handled, cmd := handleCommonUpdateMsg(msg, func(w, h int) {
+		m.SetSize(w, h)
+		inputWidth := max(w-8, 30)
+		m.addInput.SetWidth(inputWidth)
+		m.editInput.SetWidth(inputWidth)
+	}, m.loadItems, m.clampCursor, m.setStatus); handled {
+		return m, cmd
+	}
+
 	switch msg := msg.(type) {
 	case CursorFlashClearMsg:
 		m.cursorFlash = false
-		return m, nil
-	case tea.WindowSizeMsg:
-		m.SetSize(msg.Width, msg.Height)
-		inputWidth := max(msg.Width-8, 30)
-		m.addInput.SetWidth(inputWidth)
-		m.editInput.SetWidth(inputWidth)
 		return m, nil
 
 	case FocusBoardRefreshMsg:
@@ -170,14 +168,46 @@ func (m *FocusBoardModel) clampCursor() {
 	m.ClampCursorTo(len(m.filtered))
 }
 
-// ShouldCaptureEsc returns true when add mode, search mode, or confirm dialog is active.
+// escSteps defines the Esc dismissal cascade: search → filters.
+func (m *FocusBoardModel) escSteps() []EscStep {
+	return []EscStep{
+		{Active: func() bool { return m.SearchQuery() != "" }, Clear: func() {
+			m.ClearSearch()
+			m.applyFilter()
+			m.clampCursor()
+			m.setStatus("Search cleared")
+		}},
+		FilterClearEscStep(m.HasActiveFilters, func() {
+			m.ClearAllFilters()
+			m.applyFilter()
+			m.clampCursor()
+			m.setStatus("Filters cleared")
+		}),
+	}
+}
+
+// ShouldCaptureEsc returns true when add mode, edit mode, search, prefix, confirm, or filters are active.
 func (m *FocusBoardModel) ShouldCaptureEsc() bool {
-	return m.addMode || m.editMode || m.searchActive || m.confirm.IsActive() || m.pendingPrefix != "" || m.HasActiveFilters()
+	return m.addMode || m.editMode || m.SearchShouldCaptureEsc() ||
+		m.DefaultShouldCaptureEsc() || AnyEscStepActive(m.escSteps())
 }
 
 // HasTextInput returns true when a text input is focused.
 func (m *FocusBoardModel) HasTextInput() bool {
 	return m.addMode || m.editMode || m.searchActive
+}
+
+// OnExit resets interactive state when the view is popped from the stack.
+func (m *FocusBoardModel) OnExit() {
+	m.addMode = false
+	m.editMode = false
+	m.addInput.Blur()
+	m.editInput.Blur()
+	m.ac.Clear()
+	m.pendingPrefix = ""
+	m.confirm.Cancel()
+	m.ClearSearch()
+	m.ClearAllFilters()
 }
 
 func (m *FocusBoardModel) StatusBarLabel() string { return "Focus Board" }

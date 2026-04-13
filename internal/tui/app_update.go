@@ -391,6 +391,12 @@ func (m *AppModel) Update(msg tea.Msg) (outModel tea.Model, outCmd tea.Cmd) { //
 				fv.loadTasks()
 			}
 		}
+		if v := m.views.Get(ViewFocusBoard); v != nil {
+			if fb, ok := v.(*FocusBoardModel); ok {
+				fb.loadItems()
+				fb.clampCursor()
+			}
+		}
 		if v := m.views.Get(ViewRecentActivity); v != nil {
 			if ra, ok := v.(*RecentActivityModel); ok {
 				ra.loadTasks()
