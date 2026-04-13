@@ -115,7 +115,7 @@ func reassignUnknownSections(project *models.Project, result *ParseResult) {
 		}
 
 		oldSection := task.Section
-		task.Section = models.SectionInbox
+		task.SetSection(models.SectionInbox)
 		result.Warnings = append(result.Warnings, ParseWarning{
 			Type:    format.WarningDataCorrection,
 			TaskID:  task.ID,
