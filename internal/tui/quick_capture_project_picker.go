@@ -60,8 +60,9 @@ func (p *QuickCaptureProjectPicker) handleKey(msg tea.KeyPressMsg) (tea.Cmd, boo
 		if p.cursor < len(p.filtered) {
 			selected := p.filtered[p.cursor]
 			return nil, true, ShowQuickCaptureMsg{
-				Project:     selected,
-				AllProjects: p.allProjects,
+				Project:           selected,
+				AllProjects:       p.allProjects,
+				FromGlobalCapture: true,
 			}
 		}
 		return nil, false, nil

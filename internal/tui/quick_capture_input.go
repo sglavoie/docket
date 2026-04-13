@@ -74,21 +74,23 @@ type quickCaptureInput struct {
 	parentCache  []*models.Task
 	sectionCache []string
 	projectCache []*models.Project
+	triggers     []ACTrigger // Active triggers (may exclude %project)
 
 	// Live preview
 	preview    *quickCaptureResult
 	previewErr string
 
 	// Context needed for parsing/preview
-	project     *models.Project
-	allProjects []*models.Project
+	project            *models.Project
+	allProjects        []*models.Project
+	skipProjectSyntax  bool // When true, %project syntax is disabled
 
 	// Layout
 	width int // Available width for preview wrapping
 }
 
 // newQuickCaptureInput creates a new quickCaptureInput with default textarea settings.
-func newQuickCaptureInput(project *models.Project, allProjects []*models.Project, placeholder string) quickCaptureInput {
+func newQuickCaptureInput(project *models.Project, allProjects []*models.Project, placeholder string, skipProject bool) quickCaptureInput {
 	input := textarea.New()
 	input.Placeholder = placeholder
 	input.CharLimit = 200
@@ -97,10 +99,22 @@ func newQuickCaptureInput(project *models.Project, allProjects []*models.Project
 	input.SetPromptFunc(0, func(info textarea.PromptInfo) string { return "" })
 	input.Focus()
 
+	triggers := quickCaptureTriggers
+	if skipProject {
+		triggers = make([]ACTrigger, 0, len(quickCaptureTriggers)-1)
+		for _, t := range quickCaptureTriggers {
+			if t.Mode != acModeProject {
+				triggers = append(triggers, t)
+			}
+		}
+	}
+
 	qci := quickCaptureInput{
-		input:       input,
-		project:     project,
-		allProjects: allProjects,
+		input:             input,
+		project:           project,
+		allProjects:       allProjects,
+		skipProjectSyntax: skipProject,
+		triggers:          triggers,
 	}
 	qci.initCaches()
 	return qci
@@ -170,7 +184,7 @@ func (q *quickCaptureInput) updateInput(msg tea.Msg) tea.Cmd {
 
 // refreshAutocomplete detects triggers and updates suggestion list.
 func (q *quickCaptureInput) refreshAutocomplete() {
-	mode, pos, partial := DetectTrigger(q.input.Value(), quickCaptureTriggers)
+	mode, pos, partial := DetectTrigger(q.input.Value(), q.triggers)
 	if mode == acModeNone {
 		q.ac.Clear()
 		return
@@ -209,7 +223,7 @@ func (q *quickCaptureInput) updatePreview() {
 		q.previewErr = ""
 		return
 	}
-	q.preview, q.previewErr = parseQuickCaptureForPreview(input, q.project, q.allProjects)
+	q.preview, q.previewErr = parseQuickCaptureForPreview(input, q.project, q.allProjects, q.skipProjectSyntax)
 }
 
 // renderPreview formats the parsed preview for display.

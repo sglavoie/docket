@@ -526,7 +526,7 @@ func TestParseQuickCapture(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result, err := parseQuickCapture(tt.input, project, nil)
+			result, err := parseQuickCapture(tt.input, project, nil, false)
 
 			if tt.wantErr {
 				if err == nil {

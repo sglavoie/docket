@@ -285,7 +285,7 @@ func (q *quickCaptureInput) acceptSuggestion() {
 		return
 	}
 
-	triggerChar := TriggerCharForMode(q.ac.Mode, quickCaptureTriggers)
+	triggerChar := TriggerCharForMode(q.ac.Mode, q.triggers)
 	newInput := q.ac.BuildAcceptedInput(q.input.Value(), triggerChar)
 
 	q.input.SetValue(newInput)

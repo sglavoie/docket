@@ -24,12 +24,17 @@ type QuickCaptureModel struct {
 }
 
 // NewQuickCaptureModel creates a new quick capture model.
-func NewQuickCaptureModel(project *models.Project, allProjects []*models.Project) *QuickCaptureModel {
+func NewQuickCaptureModel(project *models.Project, allProjects []*models.Project, fromGlobalCapture bool) *QuickCaptureModel {
+	placeholder := "^type Task title !priority #tag @due ~recur >parent /section $status %project"
+	if fromGlobalCapture {
+		placeholder = "^type Task title !priority #tag @due ~recur >parent /section $status"
+	}
 	m := &QuickCaptureModel{
 		quickCaptureInput: newQuickCaptureInput(
 			project,
 			allProjects,
-			"^type Task title !priority #tag @due ~recur >parent /section $status %project",
+			placeholder,
+			fromGlobalCapture,
 		),
 		width: 80,
 	}
@@ -132,7 +137,11 @@ func (m *QuickCaptureModel) View() tea.View {
 	if m.helpExpanded {
 		b.WriteString(m.renderSyntaxGuide())
 	} else {
-		b.WriteString(MutedStyle.Render("^type · !N · #tag · @date · ~recur · >parent · /section · $status · %project"))
+		helpLine := "^type · !N · #tag · @date · ~recur · >parent · /section · $status · %project"
+		if m.skipProjectSyntax {
+			helpLine = "^type · !N · #tag · @date · ~recur · >parent · /section · $status"
+		}
+		b.WriteString(MutedStyle.Render(helpLine))
 	}
 	b.WriteString("\n")
 	var helpText string
@@ -186,7 +195,9 @@ func (m *QuickCaptureModel) renderSyntaxGuide() string {
 		{">parent", "Parent task", ">42  >Login  (short ID or title prefix)"},
 		{"/section", "Section", "/next  /inbox  /waiting  /someday"},
 		{"$status", "Initial status", "$start  $blocked  $done  $review"},
-		{"%project", "Target project", "%myproject  (slug or name)"},
+	}
+	if !m.skipProjectSyntax {
+		rows = append(rows, row{"%project", "Target project", "%myproject  (slug or name)"})
 	}
 	var b strings.Builder
 	b.WriteString(MutedStyle.Render("Quick Capture Syntax"))
@@ -213,7 +224,7 @@ func (m *QuickCaptureModel) createTask(openAfter bool) tea.Cmd {
 		return nil
 	}
 
-	result, err := parseQuickCapture(input, m.project, m.allProjects)
+	result, err := parseQuickCapture(input, m.project, m.allProjects, m.skipProjectSyntax)
 	if err == nil {
 		if valErr := models.ValidateTaskTitle(result.title); valErr != nil {
 			m.err = valErr

@@ -30,6 +30,7 @@ func NewLinkedTaskCreatorModel(sourceTask *models.Task, project *models.Project,
 			project,
 			nil, // no cross-project capture for linked tasks
 			"^type Title !priority #tag @due ~recur /section $status",
+			true, // skip %project syntax
 		),
 		sourceTask: sourceTask,
 		linkType:   linkType,
@@ -193,7 +194,7 @@ func (m *LinkedTaskCreatorModel) createTask() tea.Cmd {
 	}
 
 	// Parse inline metadata from input
-	result, err := parseQuickCapture(input, m.project, nil)
+	result, err := parseQuickCapture(input, m.project, nil, false)
 	if err != nil {
 		m.err = err
 		return nil

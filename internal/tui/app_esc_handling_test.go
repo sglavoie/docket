@@ -36,7 +36,7 @@ func TestHandleEscKey_PropagatesForModalViews(t *testing.T) {
 		{
 			name:    "QuickCapture",
 			viewTyp: ViewQuickCapture,
-			view:    NewQuickCaptureModel(testutil.NewTestProjectWithTasks("test"), nil),
+			view:    NewQuickCaptureModel(testutil.NewTestProjectWithTasks("test"), nil, false),
 		},
 	}
 

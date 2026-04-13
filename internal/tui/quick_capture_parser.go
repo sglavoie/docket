@@ -12,7 +12,8 @@ import (
 
 // parseQuickCapture extracts metadata from the input string.
 // Syntax: "^bug Task title !1 #backend #urgent @tomorrow >3 %projectname"
-func parseQuickCapture(input string, project *models.Project, allProjects []*models.Project) (*quickCaptureResult, error) {
+// When skipProject is true, %project syntax is ignored (treated as literal text).
+func parseQuickCapture(input string, project *models.Project, allProjects []*models.Project, skipProject bool) (*quickCaptureResult, error) {
 	result := &quickCaptureResult{
 		taskType: models.TaskTypeTask, // default type
 		priority: 3,                   // default priority
@@ -77,18 +78,20 @@ func parseQuickCapture(input string, project *models.Project, allProjects []*mod
 	// Extract target project: %projectslug (for cross-project capture)
 	// Require % to be at start of string or preceded by whitespace
 	// Must be parsed before parent since parent is resolved against target project
-	projectRe := regexp.MustCompile(`(?:^|\s)%(\S+)`)
-	if match := projectRe.FindStringSubmatch(input); len(match) > 1 {
-		ref := match[1]
-		targetProject := resolveProject(ref, allProjects)
-		if targetProject == nil {
-			return nil, fmt.Errorf("project not found: %s", ref)
+	if !skipProject {
+		projectRe := regexp.MustCompile(`(?:^|\s)%(\S+)`)
+		if match := projectRe.FindStringSubmatch(input); len(match) > 1 {
+			ref := match[1]
+			targetProject := resolveProject(ref, allProjects)
+			if targetProject == nil {
+				return nil, fmt.Errorf("project not found: %s", ref)
+			}
+			result.targetProjectID = &targetProject.ID
+			result.targetProjectName = targetProject.Name
+			// Use target project for parent and section resolution
+			project = targetProject
+			input = projectRe.ReplaceAllString(input, " ")
 		}
-		result.targetProjectID = &targetProject.ID
-		result.targetProjectName = targetProject.Name
-		// Use target project for parent and section resolution
-		project = targetProject
-		input = projectRe.ReplaceAllString(input, " ")
 	}
 
 	// Extract parent: >ref (short ID or title prefix)
@@ -229,7 +232,7 @@ func resolveProject(ref string, allProjects []*models.Project) *models.Project {
 
 // parseQuickCaptureForPreview parses input for live preview without failing early.
 // Returns partial results and any validation error string.
-func parseQuickCaptureForPreview(input string, project *models.Project, allProjects []*models.Project) (*quickCaptureResult, string) { //nolint:gocyclo
+func parseQuickCaptureForPreview(input string, project *models.Project, allProjects []*models.Project, skipProject bool) (*quickCaptureResult, string) { //nolint:gocyclo
 	result := &quickCaptureResult{
 		taskType: models.TaskTypeTask,
 		priority: 3,
@@ -295,19 +298,21 @@ func parseQuickCaptureForPreview(input string, project *models.Project, allProje
 	// Extract target project (for cross-project capture)
 	// Require % to be at start of string or preceded by whitespace
 	// Must be parsed before parent since parent is resolved against target project
-	projectRe := regexp.MustCompile(`(?:^|\s)%(\S+)`)
-	if match := projectRe.FindStringSubmatch(input); len(match) > 1 {
-		ref := match[1]
-		targetProject := resolveProject(ref, allProjects)
-		if targetProject == nil && errMsg == "" {
-			errMsg = fmt.Sprintf("project not found: %s", ref)
-		} else if targetProject != nil {
-			result.targetProjectID = &targetProject.ID
-			result.targetProjectName = targetProject.Name
-			// Use target project for parent and section resolution
-			project = targetProject
+	if !skipProject {
+		projectRe := regexp.MustCompile(`(?:^|\s)%(\S+)`)
+		if match := projectRe.FindStringSubmatch(input); len(match) > 1 {
+			ref := match[1]
+			targetProject := resolveProject(ref, allProjects)
+			if targetProject == nil && errMsg == "" {
+				errMsg = fmt.Sprintf("project not found: %s", ref)
+			} else if targetProject != nil {
+				result.targetProjectID = &targetProject.ID
+				result.targetProjectName = targetProject.Name
+				// Use target project for parent and section resolution
+				project = targetProject
+			}
+			input = projectRe.ReplaceAllString(input, " ")
 		}
-		input = projectRe.ReplaceAllString(input, " ")
 	}
 
 	// Extract parent
