@@ -202,6 +202,7 @@ func (m *TaskChecklistModel) moveCursorBottom() {
 }
 
 func (m *TaskChecklistModel) beginAddMode() tea.Cmd {
+	m.ClearError()
 	m.addMode = true
 	m.textInput.Focus()
 	return textarea.Blink
@@ -210,9 +211,11 @@ func (m *TaskChecklistModel) beginAddMode() tea.Cmd {
 func (m *TaskChecklistModel) cancelAddMode() {
 	m.addMode = false
 	m.textInput.Reset()
+	m.ClearError()
 }
 
 func (m *TaskChecklistModel) cancelEditMode() {
 	m.editMode = false
 	m.editTextInput.Reset()
+	m.ClearError()
 }
