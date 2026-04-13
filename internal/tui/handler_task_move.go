@@ -38,6 +38,34 @@ func (m *AppModel) handleMoveTaskToProject(msg MoveTaskToProjectMsg) (bool, tea.
 		return true, nil
 	}
 
+	// Update persisted FocusQueue, DailyPlan, and RecentTaskVisits to reference the new project
+	movedTaskIDs := make(map[string]bool, len(result.MovedTasks))
+	for _, t := range result.MovedTasks {
+		movedTaskIDs[t.ID] = true
+	}
+	if m.config.ReassignTaskProject(movedTaskIDs, destProject.ID) > 0 {
+		if m.configManager != nil {
+			_ = m.configManager.Save(m.config)
+		}
+	}
+
+	// Update in-memory TUI focus queue and daily plan references
+	for i := range m.focusQueue {
+		if movedTaskIDs[m.focusQueue[i].Task.ID] {
+			m.focusQueue[i].Project = destProject
+		}
+	}
+	for i := range m.dailyPlan {
+		if movedTaskIDs[m.dailyPlan[i].Task.ID] {
+			m.dailyPlan[i].Project = destProject
+		}
+	}
+	for i := range m.recentTaskVisits {
+		if movedTaskIDs[m.recentTaskVisits[i].Task.ID] {
+			m.recentTaskVisits[i].Project = destProject
+		}
+	}
+
 	// Save both projects
 	return true, tea.Batch(
 		startLoading("Moving task..."),

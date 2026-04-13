@@ -228,6 +228,13 @@ func runTaskMoveTo(cmd *cobra.Command, args []string) error { //nolint:gocyclo
 		return fmt.Errorf("move operation returned no result")
 	}
 
+	// Update FocusQueue, DailyPlan, and RecentTaskVisits to point to the new project
+	movedTaskIDs := make(map[string]bool, len(result.MovedTasks))
+	for _, t := range result.MovedTasks {
+		movedTaskIDs[t.ID] = true
+	}
+	cfg.ReassignTaskProject(movedTaskIDs, destProject.ID)
+
 	// Save both projects (undo snapshot already recorded above for source project)
 	if err := SaveProject(sourceProject, &SaveOptions{Config: cfg, ConfigManager: configManager}); err != nil {
 		return err

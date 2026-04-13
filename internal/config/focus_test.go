@@ -38,6 +38,82 @@ func TestFocusQueueHelpers(t *testing.T) {
 	})
 }
 
+func TestReassignTaskProject(t *testing.T) {
+	t.Run("updates FocusQueue, DailyPlan, and RecentTaskVisits", func(t *testing.T) {
+		cfg := NewConfig()
+		cfg.FocusQueue = []FocusQueueItem{
+			{TaskID: "t1", ProjectID: "old-proj"},
+			{TaskID: "t2", ProjectID: "other-proj"},
+			{TaskID: "t3", ProjectID: "old-proj"},
+		}
+		cfg.DailyPlan = []DailyPlanItem{
+			{TaskID: "t1", ProjectID: "old-proj", PlannedDate: "2026-04-13"},
+			{TaskID: "t4", ProjectID: "old-proj", PlannedDate: "2026-04-13"},
+		}
+		cfg.RecentTaskVisits = []RecentTaskVisit{
+			{TaskID: "t1", ProjectID: "old-proj"},
+			{TaskID: "t5", ProjectID: "other-proj"},
+		}
+
+		movedIDs := map[string]bool{"t1": true, "t3": true}
+		updated := cfg.ReassignTaskProject(movedIDs, "new-proj")
+
+		// t1 in FocusQueue+DailyPlan+RecentTaskVisits (3), t3 in FocusQueue (1) → 4 updates
+		if updated != 4 {
+			t.Fatalf("expected 4 updates, got %d", updated)
+		}
+		// FocusQueue: t1→new-proj, t2→other-proj (unchanged), t3→new-proj
+		if cfg.FocusQueue[0].ProjectID != "new-proj" {
+			t.Errorf("FocusQueue[0] expected new-proj, got %s", cfg.FocusQueue[0].ProjectID)
+		}
+		if cfg.FocusQueue[1].ProjectID != "other-proj" {
+			t.Errorf("FocusQueue[1] should be unchanged, got %s", cfg.FocusQueue[1].ProjectID)
+		}
+		if cfg.FocusQueue[2].ProjectID != "new-proj" {
+			t.Errorf("FocusQueue[2] expected new-proj, got %s", cfg.FocusQueue[2].ProjectID)
+		}
+		// DailyPlan: t1→new-proj, t4→old-proj (not in moved set)
+		if cfg.DailyPlan[0].ProjectID != "new-proj" {
+			t.Errorf("DailyPlan[0] expected new-proj, got %s", cfg.DailyPlan[0].ProjectID)
+		}
+		if cfg.DailyPlan[1].ProjectID != "old-proj" {
+			t.Errorf("DailyPlan[1] should be unchanged, got %s", cfg.DailyPlan[1].ProjectID)
+		}
+		// RecentTaskVisits: t1→new-proj, t5→other-proj (unchanged)
+		if cfg.RecentTaskVisits[0].ProjectID != "new-proj" {
+			t.Errorf("RecentTaskVisits[0] expected new-proj, got %s", cfg.RecentTaskVisits[0].ProjectID)
+		}
+		if cfg.RecentTaskVisits[1].ProjectID != "other-proj" {
+			t.Errorf("RecentTaskVisits[1] should be unchanged, got %s", cfg.RecentTaskVisits[1].ProjectID)
+		}
+	})
+
+	t.Run("no-op when no tasks match", func(t *testing.T) {
+		cfg := NewConfig()
+		cfg.FocusQueue = []FocusQueueItem{
+			{TaskID: "t1", ProjectID: "proj-a"},
+		}
+		updated := cfg.ReassignTaskProject(map[string]bool{"t99": true}, "proj-b")
+		if updated != 0 {
+			t.Fatalf("expected 0 updates, got %d", updated)
+		}
+		if cfg.FocusQueue[0].ProjectID != "proj-a" {
+			t.Errorf("should be unchanged, got %s", cfg.FocusQueue[0].ProjectID)
+		}
+	})
+
+	t.Run("no-op when already correct project", func(t *testing.T) {
+		cfg := NewConfig()
+		cfg.FocusQueue = []FocusQueueItem{
+			{TaskID: "t1", ProjectID: "new-proj"},
+		}
+		updated := cfg.ReassignTaskProject(map[string]bool{"t1": true}, "new-proj")
+		if updated != 0 {
+			t.Fatalf("expected 0 updates (already correct), got %d", updated)
+		}
+	})
+}
+
 func TestFocusDismissedHelpers(t *testing.T) {
 	t.Run("SetFocusDismissedIDs replaces list", func(t *testing.T) {
 		cfg := NewConfig()

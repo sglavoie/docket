@@ -3,6 +3,7 @@ package cmd
 import (
 	"testing"
 
+	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/testutil"
 )
@@ -293,6 +294,56 @@ func TestMoveTaskToProject_NoOtherProjects(t *testing.T) {
 
 	if len(candidates) != 0 {
 		t.Error("expected no candidate projects when only one exists")
+	}
+}
+
+func TestMoveTaskToProject_UpdatesConfigReferences(t *testing.T) {
+	sourceProject := testutil.NewTestProject("Source")
+	destProject := testutil.NewTestProject("Dest")
+
+	task, err := models.NewTask("task-move-ref", sourceProject.GetNextShortID(), models.TaskTypeTask, "Moveable Task")
+	if err != nil {
+		t.Fatal(err)
+	}
+	sourceProject.Tasks = append(sourceProject.Tasks, task)
+	sourceProject.NextShortID++
+
+	// Set up config with the task in FocusQueue, DailyPlan, and RecentTaskVisits
+	cfg := config.NewConfig()
+	cfg.FocusQueue = []config.FocusQueueItem{
+		{TaskID: task.ID, ProjectID: sourceProject.ID},
+	}
+	cfg.DailyPlan = []config.DailyPlanItem{
+		{TaskID: task.ID, ProjectID: sourceProject.ID, PlannedDate: "2026-04-13"},
+	}
+	cfg.RecentTaskVisits = []config.RecentTaskVisit{
+		{TaskID: task.ID, ProjectID: sourceProject.ID},
+	}
+
+	// Perform the move
+	result, moveErr := sourceProject.MoveTaskToProject(task, destProject)
+	if moveErr != nil {
+		t.Fatalf("move failed: %v", moveErr)
+	}
+
+	// Simulate what the CLI does: update config references
+	movedTaskIDs := make(map[string]bool, len(result.MovedTasks))
+	for _, mt := range result.MovedTasks {
+		movedTaskIDs[mt.ID] = true
+	}
+	updated := cfg.ReassignTaskProject(movedTaskIDs, destProject.ID)
+
+	if updated != 3 {
+		t.Fatalf("expected 3 config entries updated, got %d", updated)
+	}
+	if cfg.FocusQueue[0].ProjectID != destProject.ID {
+		t.Errorf("FocusQueue not updated: got %s, want %s", cfg.FocusQueue[0].ProjectID, destProject.ID)
+	}
+	if cfg.DailyPlan[0].ProjectID != destProject.ID {
+		t.Errorf("DailyPlan not updated: got %s, want %s", cfg.DailyPlan[0].ProjectID, destProject.ID)
+	}
+	if cfg.RecentTaskVisits[0].ProjectID != destProject.ID {
+		t.Errorf("RecentTaskVisits not updated: got %s, want %s", cfg.RecentTaskVisits[0].ProjectID, destProject.ID)
 	}
 }
 
