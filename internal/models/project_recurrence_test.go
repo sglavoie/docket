@@ -490,9 +490,11 @@ func TestGenerateRecurringInstances_StreakFromZero(t *testing.T) {
 	}
 }
 
-// TestGenerateRecurringInstances_CustomSectionCarriedForward verifies that
-// the CustomSection field is carried forward to new recurring instances.
-func TestGenerateRecurringInstances_CustomSectionCarriedForward(t *testing.T) {
+// TestGenerateRecurringInstances_CustomSectionClearedForInbox verifies that
+// new recurring instances placed in Inbox do not carry forward CustomSection,
+// which would create a dual-section state (task appearing in both Inbox and
+// the custom section simultaneously).
+func TestGenerateRecurringInstances_CustomSectionClearedForInbox(t *testing.T) {
 	dueDate := time.Date(2025, 3, 10, 0, 0, 0, 0, time.UTC)
 	completedAt := time.Date(2025, 3, 10, 12, 0, 0, 0, time.UTC)
 	task := &Task{
@@ -525,9 +527,9 @@ func TestGenerateRecurringInstances_CustomSectionCarriedForward(t *testing.T) {
 	}
 
 	newTask := project.Tasks[0]
-	// CustomSection should be carried forward
-	if newTask.CustomSection != "Sprint-3" {
-		t.Errorf("CustomSection = %q, want %q", newTask.CustomSection, "Sprint-3")
+	// CustomSection must be empty to prevent dual-section state
+	if newTask.CustomSection != "" {
+		t.Errorf("CustomSection = %q, want empty (would cause dual-section with Inbox)", newTask.CustomSection)
 	}
 	// Section should be Inbox (for triage)
 	if newTask.Section != SectionInbox {
