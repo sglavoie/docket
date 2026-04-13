@@ -1,8 +1,6 @@
 package tui
 
 import (
-	"sort"
-
 	tea "charm.land/bubbletea/v2"
 )
 
@@ -97,6 +95,9 @@ func (m *ColumnPickerModel) StatusBarLabel() string { return "Display Columns" }
 
 // buildColumnToggles converts a list of selected column IDs into a toggle map.
 // Columns in the selected list are set to true, all others are set to false.
+// Always returns an explicit entry for every column so the user's choice
+// overrides any column hidden via the global defaults (Settings → Default
+// Columns); a nil map would fall through to those defaults.
 func buildColumnToggles(selected []string) map[string]bool {
 	selectedSet := make(map[string]bool, len(selected))
 	for _, id := range selected {
@@ -107,29 +108,5 @@ func buildColumnToggles(selected []string) map[string]bool {
 	for _, col := range AllColumns {
 		toggles[col.ID] = selectedSet[col.ID]
 	}
-
-	// Clean up: remove toggles that match the "all true" default to keep config minimal
-	allTrue := true
-	for _, v := range toggles {
-		if !v {
-			allTrue = false
-			break
-		}
-	}
-	if allTrue {
-		return nil // No overrides needed
-	}
-
-	// Sort keys for deterministic output
-	keys := make([]string, 0, len(toggles))
-	for k := range toggles {
-		keys = append(keys, k)
-	}
-	sort.Strings(keys)
-
-	result := make(map[string]bool, len(toggles))
-	for _, k := range keys {
-		result[k] = toggles[k]
-	}
-	return result
+	return toggles
 }

@@ -44,6 +44,9 @@ func (m *AppModel) saveCrossOutlinerState() {
 		return
 	}
 	m.config.CrossOutlinerCollapsedSections = maps.Clone(m.crossOutliner.collapsedSections)
+	if m.crossOutliner.columnConfig != nil {
+		m.config.CrossOutlinerColumnToggles = m.crossOutliner.columnConfig.Toggles()
+	}
 	if err := m.configManager.Save(m.config); err != nil {
 		logging.Warn("failed to save cross-outliner state: %v", err)
 	}

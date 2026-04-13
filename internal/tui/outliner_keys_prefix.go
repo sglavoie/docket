@@ -435,8 +435,12 @@ func (m *OutlinerModel) handleFilterPrefix(key string) (tea.Model, tea.Cmd) {
 		m.rebuildRows()
 		return m, nil
 	case "D":
+		source := ViewOutliner
+		if m.project == nil {
+			source = ViewCrossProjectOutliner
+		}
 		return m, func() tea.Msg {
-			return ShowColumnPickerMsg{Source: ViewOutliner, ColumnConfig: m.columnConfig}
+			return ShowColumnPickerMsg{Source: source, ColumnConfig: m.columnConfig}
 		}
 	case "x":
 		clearCommonFilters(&m.filter.CommonFilterState)

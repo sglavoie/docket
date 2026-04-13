@@ -336,16 +336,39 @@ func (m *AppModel) applyColumnToggles(source ViewType, toggles map[string]bool) 
 			m.config.SetProjectViewState(projectID, state)
 		}
 	case ViewOutliner:
-		priorityMode := resolvePriorityMode(projectID, m.config, "outliner")
-		if m.outliner != nil {
-			m.outliner.columnConfig = NewColumnConfig(toggles, m.config.OutlinerDefaultColumns, DefaultOutlinerColumns, priorityMode)
-			m.outliner.rebuildRows()
+		target := m.outliner
+		if m.currentView() == ViewTemporaryOutliner {
+			if v := m.views.Get(ViewTemporaryOutliner); v != nil {
+				if o, ok := v.(*OutlinerModel); ok {
+					target = o
+				}
+			}
 		}
-		if projectID != "" {
-			state, _ := m.config.GetProjectViewState(projectID)
+		if target == nil {
+			break
+		}
+		targetProjectID := ""
+		if target.project != nil {
+			targetProjectID = target.project.ID
+		}
+		priorityMode := resolvePriorityMode(targetProjectID, m.config, "outliner")
+		target.columnConfig = NewColumnConfig(toggles, m.config.OutlinerDefaultColumns, DefaultOutlinerColumns, priorityMode)
+		target.rebuildRows()
+		if targetProjectID != "" {
+			state, _ := m.config.GetProjectViewState(targetProjectID)
 			state.OutlinerColumnToggles = toggles
-			m.config.SetProjectViewState(projectID, state)
+			m.config.SetProjectViewState(targetProjectID, state)
 		}
+	case ViewCrossProjectOutliner:
+		priorityMode := ""
+		if m.config != nil {
+			priorityMode = m.config.OutlinerPriorityMode
+		}
+		if m.crossOutliner != nil {
+			m.crossOutliner.columnConfig = NewColumnConfig(toggles, m.config.OutlinerDefaultColumns, DefaultOutlinerColumns, priorityMode)
+			m.crossOutliner.rebuildRows()
+		}
+		m.config.CrossOutlinerColumnToggles = toggles
 	default:
 	}
 

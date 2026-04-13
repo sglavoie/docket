@@ -137,6 +137,8 @@ func NewOutlinerModel(project *models.Project, cfg *config.Config, cfgManager *c
 			outlinerToggles = vs.OutlinerColumnToggles
 			outlinerPriorityMode = vs.OutlinerPriorityMode
 		}
+	} else if cfg != nil && project == nil {
+		outlinerToggles = cfg.CrossOutlinerColumnToggles
 	}
 	if outlinerPriorityMode == "" && cfg != nil {
 		outlinerPriorityMode = cfg.OutlinerPriorityMode
