@@ -47,13 +47,16 @@ func TestCompleteMovesToCompletedFromSomeday(t *testing.T) {
 	}
 }
 
-func TestCompleteKeepsCustomSection(t *testing.T) {
+func TestCompleteClearsCustomSectionToPreventDualSection(t *testing.T) {
 	task := newLifecycleTestTask(t, "t1", 1)
 	task.CustomSection = "CustomSection"
 	task.Complete()
 
-	if task.CustomSection != "CustomSection" {
-		t.Errorf("expected custom section preserved, got %q", task.CustomSection)
+	if task.CustomSection != "" {
+		t.Errorf("expected CustomSection cleared to prevent dual-section state, got %q", task.CustomSection)
+	}
+	if task.Section != SectionCompleted {
+		t.Errorf("expected Section=%q, got %q", SectionCompleted, task.Section)
 	}
 }
 

@@ -487,11 +487,28 @@ func buildTargetedRestore(currentContent string, snapshotResult *ParseResult, ta
 		snapshotMap[t.ID] = t
 	}
 
+	// Build set of targeted task IDs for O(1) lookup
+	targetSet := make(map[string]bool, len(taskIDs))
+	for _, id := range taskIDs {
+		targetSet[id] = true
+	}
+
+	// Remove tasks that were newly created (exist in current but not in
+	// snapshot). Undoing a creation means the task should disappear.
+	filtered := make([]*models.Task, 0, len(currentResult.Tasks))
+	for _, t := range currentResult.Tasks {
+		if targetSet[t.ID] && snapshotMap[t.ID] == nil {
+			continue // Task was created after snapshot; remove it
+		}
+		filtered = append(filtered, t)
+	}
+	currentResult.Tasks = filtered
+
 	// Replace targeted tasks' fields
 	for _, taskID := range taskIDs {
 		snapTask, ok := snapshotMap[taskID]
 		if !ok {
-			continue // Task didn't exist in snapshot (was newly created); skip
+			continue // Task didn't exist in snapshot and was already removed above
 		}
 		for _, curTask := range currentResult.Tasks {
 			if curTask.ID == taskID {

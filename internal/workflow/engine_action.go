@@ -115,13 +115,13 @@ func applyAction(task *models.Task, action RuleAction) bool { //nolint:gocyclo
 		}
 	case ActionSetSection:
 		if models.IsGTDSection(action.Value) || action.Value == "" {
-			if task.Section != action.Value {
-				task.Section = action.Value
+			if task.Section != action.Value || task.CustomSection != "" {
+				task.SetSection(action.Value)
 				return true
 			}
 		} else {
-			if task.CustomSection != action.Value {
-				task.CustomSection = action.Value
+			if task.CustomSection != action.Value || task.Section != "" {
+				task.SetSection(action.Value)
 				return true
 			}
 		}

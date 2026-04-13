@@ -535,6 +535,65 @@ func TestPerformTargetedRedo(t *testing.T) {
 	}
 }
 
+func TestPerformTargetedUndoRemovesNewlyCreatedTask(t *testing.T) {
+	tmpDir := t.TempDir()
+	projectPath := filepath.Join(tmpDir, "test-project")
+	if err := os.MkdirAll(projectPath, 0755); err != nil {
+		t.Fatalf("failed to create project dir: %v", err)
+	}
+	project := &models.Project{ID: "test-id", Name: "Test Project", Slug: "test-project", Path: projectPath}
+
+	// Initial state: only task-a exists
+	initialContent := "# Project: Test Project\n\n" +
+		"## Task: Task A\n<!-- id: task-a, status: todo, priority: 3 -->\n"
+	tasksPath := filepath.Join(projectPath, "tasks.md")
+	if err := os.WriteFile(tasksPath, []byte(initialContent), 0644); err != nil {
+		t.Fatalf("failed to write tasks file: %v", err)
+	}
+
+	// Record targeted snapshot: task-new is the task about to be created
+	if err := RecordUndoSnapshot(project, "Add Task", "#2 Task New", 10, []string{"task-new"}); err != nil {
+		t.Fatalf("RecordUndoSnapshot failed: %v", err)
+	}
+
+	// Simulate creation: task-new is added
+	mutatedContent := "# Project: Test Project\n\n" +
+		"## Task: Task A\n<!-- id: task-a, status: todo, priority: 3 -->\n\n" +
+		"## Task: Task New\n<!-- id: task-new, status: todo, priority: 3 -->\n"
+	if err := os.WriteFile(tasksPath, []byte(mutatedContent), 0644); err != nil {
+		t.Fatalf("failed to write mutated tasks file: %v", err)
+	}
+
+	// Perform undo — task-new should be removed (it didn't exist in snapshot)
+	_, err := PerformUndo(project)
+	if err != nil {
+		t.Fatalf("PerformUndo failed: %v", err)
+	}
+
+	content, err := os.ReadFile(tasksPath)
+	if err != nil {
+		t.Fatalf("failed to read tasks file: %v", err)
+	}
+	result, err := ParseTasksMarkdownWithSections(string(content))
+	if err != nil {
+		t.Fatalf("failed to parse restored content: %v", err)
+	}
+
+	// task-a should still exist
+	found := false
+	for _, task := range result.Tasks {
+		if task.ID == "task-a" {
+			found = true
+		}
+		if task.ID == "task-new" {
+			t.Error("task-new should have been removed by targeted undo")
+		}
+	}
+	if !found {
+		t.Error("task-a should still exist after undo")
+	}
+}
+
 func TestPerformTargetedUndoFallsBackOnNilTaskIDs(t *testing.T) {
 	tmpDir := t.TempDir()
 	projectPath := filepath.Join(tmpDir, "test-project")

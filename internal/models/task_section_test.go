@@ -42,6 +42,36 @@ func TestSetSection_Custom(t *testing.T) {
 	}
 }
 
+func TestSetSection_GTDClearsCustom(t *testing.T) {
+	task, err := NewTask("test-id", 1, TaskTypeTask, "Test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	task.CustomSection = "Sprint-1"
+	task.SetSection(SectionInbox)
+	if task.Section != SectionInbox {
+		t.Errorf("expected Section=%q, got %q", SectionInbox, task.Section)
+	}
+	if task.CustomSection != "" {
+		t.Errorf("expected CustomSection cleared, got %q", task.CustomSection)
+	}
+}
+
+func TestSetSection_CustomClearsGTD(t *testing.T) {
+	task, err := NewTask("test-id", 1, TaskTypeTask, "Test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	task.Section = SectionNext
+	task.SetSection("Sprint-1")
+	if task.CustomSection != "Sprint-1" {
+		t.Errorf("expected CustomSection=%q, got %q", "Sprint-1", task.CustomSection)
+	}
+	if task.Section != "" {
+		t.Errorf("expected Section cleared, got %q", task.Section)
+	}
+}
+
 func TestNewTaskHasEmptySection(t *testing.T) {
 	task, err := NewTask("test-id", 1, TaskTypeTask, "Test Task")
 	if err != nil {
@@ -266,5 +296,128 @@ func TestTaskStartAutoTriageFromSomeday(t *testing.T) {
 
 	if task.Section != "" {
 		t.Errorf("expected section to be cleared after Start() from Someday, got %s", task.Section)
+	}
+}
+
+// Tests that lifecycle methods clear CustomSection to prevent dual-section state.
+
+func TestCompleteClearsCustomSection(t *testing.T) {
+	task, err := NewTask("test-id", 1, TaskTypeTask, "Test Task")
+	if err != nil {
+		t.Fatal(err)
+	}
+	task.CustomSection = "Sprint-1"
+
+	task.Complete()
+
+	if task.Section != SectionCompleted {
+		t.Errorf("expected Section=%q, got %q", SectionCompleted, task.Section)
+	}
+	if task.CustomSection != "" {
+		t.Errorf("expected CustomSection cleared, got %q", task.CustomSection)
+	}
+}
+
+func TestCancelClearsCustomSection(t *testing.T) {
+	task, err := NewTask("test-id", 1, TaskTypeTask, "Test Task")
+	if err != nil {
+		t.Fatal(err)
+	}
+	task.CustomSection = "Sprint-1"
+
+	task.Cancel()
+
+	if task.Section != SectionCompleted {
+		t.Errorf("expected Section=%q, got %q", SectionCompleted, task.Section)
+	}
+	if task.CustomSection != "" {
+		t.Errorf("expected CustomSection cleared, got %q", task.CustomSection)
+	}
+}
+
+func TestBlockClearsCustomSection(t *testing.T) {
+	task, err := NewTask("test-id", 1, TaskTypeTask, "Test Task")
+	if err != nil {
+		t.Fatal(err)
+	}
+	task.CustomSection = "Sprint-1"
+
+	task.Block()
+
+	if task.Section != SectionWaiting {
+		t.Errorf("expected Section=%q, got %q", SectionWaiting, task.Section)
+	}
+	if task.CustomSection != "" {
+		t.Errorf("expected CustomSection cleared, got %q", task.CustomSection)
+	}
+}
+
+func TestReviewClearsCustomSection(t *testing.T) {
+	task, err := NewTask("test-id", 1, TaskTypeTask, "Test Task")
+	if err != nil {
+		t.Fatal(err)
+	}
+	task.CustomSection = "Sprint-1"
+
+	task.Review()
+
+	if task.Section != SectionReview {
+		t.Errorf("expected Section=%q, got %q", SectionReview, task.Section)
+	}
+	if task.CustomSection != "" {
+		t.Errorf("expected CustomSection cleared, got %q", task.CustomSection)
+	}
+}
+
+func TestStandbyClearsCustomSection(t *testing.T) {
+	task, err := NewTask("test-id", 1, TaskTypeTask, "Test Task")
+	if err != nil {
+		t.Fatal(err)
+	}
+	task.CustomSection = "Sprint-1"
+
+	task.Standby()
+
+	if task.Section != SectionStandby {
+		t.Errorf("expected Section=%q, got %q", SectionStandby, task.Section)
+	}
+	if task.CustomSection != "" {
+		t.Errorf("expected CustomSection cleared, got %q", task.CustomSection)
+	}
+}
+
+func TestReopenClearsCustomSection(t *testing.T) {
+	task, err := NewTask("test-id", 1, TaskTypeTask, "Test Task")
+	if err != nil {
+		t.Fatal(err)
+	}
+	task.CustomSection = "Sprint-1"
+	task.Status = StatusDone
+
+	task.Reopen()
+
+	if task.Section != SectionInbox {
+		t.Errorf("expected Section=%q, got %q", SectionInbox, task.Section)
+	}
+	if task.CustomSection != "" {
+		t.Errorf("expected CustomSection cleared, got %q", task.CustomSection)
+	}
+}
+
+func TestStartFromNextClearsCustomSection(t *testing.T) {
+	task, err := NewTask("test-id", 1, TaskTypeTask, "Test Task")
+	if err != nil {
+		t.Fatal(err)
+	}
+	task.Section = SectionNext
+	task.CustomSection = "Sprint-1"
+
+	task.Start()
+
+	if task.Section != "" {
+		t.Errorf("expected Section cleared, got %q", task.Section)
+	}
+	if task.CustomSection != "" {
+		t.Errorf("expected CustomSection cleared, got %q", task.CustomSection)
 	}
 }

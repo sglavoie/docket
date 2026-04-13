@@ -414,7 +414,7 @@ func (m *OutlinerModel) crossHandleSectionMove(key string, cursorTask *models.Ta
 			return m, func() tea.Msg { return ErrorMsg{Err: fmt.Errorf("backup failed: %w", err)} }
 		}
 		proj.MutateTask(task.ID, func(t *models.Task) {
-			t.Section = section
+			t.SetSection(section)
 			if section == "" {
 				t.Activate()
 			}

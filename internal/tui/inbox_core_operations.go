@@ -139,7 +139,7 @@ func (c *inboxCore) sendToWaiting() tea.Cmd {
 
 	snapshot := captureInboxSnapshot(current)
 	if !project.MutateTask(task.ID, func(t *models.Task) {
-		t.Section = models.SectionWaiting
+		t.SetSection(models.SectionWaiting)
 	}) {
 		c.statusMessage = "Error: task no longer exists in project"
 		return nil

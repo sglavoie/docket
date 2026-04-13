@@ -18,6 +18,7 @@ func (t *Task) Complete() {
 	t.Active = false
 	t.SnoozedUntil = nil
 	t.Section = SectionCompleted
+	t.CustomSection = ""
 }
 
 // Start marks the task as in progress.
@@ -27,9 +28,11 @@ func (t *Task) Start() {
 	t.Status = StatusInProgress
 	t.UpdatedAt = time.Now()
 	t.SnoozedUntil = nil
-	// Auto-triage: move out of Inbox/Next/Waiting/Someday/Review/Standby when starting
+	// Auto-triage: move out of GTD holding sections when starting.
+	// Also clear CustomSection so the task doesn't appear in two places.
 	if t.Section == SectionInbox || t.Section == SectionNext || t.Section == SectionWaiting || t.Section == SectionSomeday || t.Section == SectionReview || t.Section == SectionStandby {
 		t.Section = ""
+		t.CustomSection = ""
 	}
 }
 
@@ -41,6 +44,7 @@ func (t *Task) Review() {
 	t.UpdatedAt = time.Now()
 	t.SnoozedUntil = nil
 	t.Section = SectionReview
+	t.CustomSection = ""
 }
 
 // Standby puts the task on hold.
@@ -51,6 +55,7 @@ func (t *Task) Standby() {
 	t.UpdatedAt = time.Now()
 	t.SnoozedUntil = nil
 	t.Section = SectionStandby
+	t.CustomSection = ""
 }
 
 // Block marks the task as blocked.
@@ -60,6 +65,7 @@ func (t *Task) Block() {
 	t.UpdatedAt = time.Now()
 	t.SnoozedUntil = nil
 	t.Section = SectionWaiting
+	t.CustomSection = ""
 }
 
 // Cancel marks the task as canceled.
@@ -73,6 +79,7 @@ func (t *Task) Cancel() {
 	t.Active = false
 	t.SnoozedUntil = nil
 	t.Section = SectionCompleted
+	t.CustomSection = ""
 }
 
 // Reopen sets the task back to todo status and moves it to the Inbox for re-processing.
@@ -83,6 +90,7 @@ func (t *Task) Reopen() {
 	t.Active = false
 	t.SnoozedUntil = nil
 	t.Section = SectionInbox
+	t.CustomSection = ""
 	t.UpdatedAt = time.Now()
 }
 

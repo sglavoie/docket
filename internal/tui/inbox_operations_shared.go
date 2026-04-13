@@ -171,7 +171,7 @@ func inboxHandleSectionPickerCore(v inboxOpsView, msg SectionPickerDoneMsg) bool
 
 	snapshot := v.inboxCaptureSnapshot(current)
 	if !project.MutateTask(task.ID, func(t *models.Task) {
-		t.Section = msg.Section
+		t.SetSection(msg.Section)
 	}) {
 		v.setInboxStatus("Error: task no longer exists in project")
 		return false

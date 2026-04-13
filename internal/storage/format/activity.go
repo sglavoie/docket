@@ -93,6 +93,10 @@ func parseActivityPayload(payload string, timestamp time.Time) *models.ActivityE
 
 // findUnescapedSeparator returns the index of the first unescaped " > " in s,
 // or -1 if none is found. An escaped separator is " \> ".
+// To distinguish an escaped separator from a literal backslash before a real
+// separator (e.g., "foo\\\\ > bar"), we count consecutive backslashes: an odd
+// count means the last backslash escapes the ">", an even count means all
+// backslashes are literal and the " > " is a real separator.
 func findUnescapedSeparator(s string) int {
 	searchFrom := 0
 	for {
@@ -101,8 +105,13 @@ func findUnescapedSeparator(s string) int {
 			return -1
 		}
 		idx += searchFrom
-		// Check if this " > " is escaped (preceded by "\")
-		if idx >= 1 && s[idx-1] == '\\' {
+		// Count consecutive backslashes immediately before the " > "
+		backslashes := 0
+		for i := idx - 1; i >= 0 && s[i] == '\\'; i-- {
+			backslashes++
+		}
+		// Odd number of backslashes means the ">" is escaped; even means it's real
+		if backslashes%2 == 1 {
 			searchFrom = idx + 3
 			continue
 		}

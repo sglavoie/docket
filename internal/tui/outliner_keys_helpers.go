@@ -49,7 +49,7 @@ func (m *OutlinerModel) sendTaskToSection(task *models.Task, section string) (te
 		return m, nil
 	}
 	m.project.MutateTask(task.ID, func(t *models.Task) {
-		t.Section = section
+		t.SetSection(section)
 		if section == "" {
 			t.Activate()
 		}
@@ -70,7 +70,7 @@ func (m *OutlinerModel) sendTasksToSectionBulk(section string) (tea.Model, tea.C
 	count := 0
 	for id := range m.selectedTasks {
 		if m.project.MutateTask(id, func(t *models.Task) {
-			t.Section = section
+			t.SetSection(section)
 			if section == "" {
 				t.Activate()
 			}

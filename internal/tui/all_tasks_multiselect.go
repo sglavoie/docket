@@ -183,7 +183,7 @@ func (m *AllTasksViewModel) handleBulkSectionMove(targetSection string) (tea.Mod
 			return false
 		}
 		project.MutateTask(item.Task.ID, func(t *models.Task) {
-			t.Section = targetSection
+			t.SetSection(targetSection)
 		})
 		return true
 	})

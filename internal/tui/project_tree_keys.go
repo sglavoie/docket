@@ -131,7 +131,7 @@ func (m *ProjectTreeModel) sendTasksToSection(section string, visible []*TreeNod
 		count := 0
 		for id := range m.selectedTasks {
 			if m.project.MutateTask(id, func(t *models.Task) {
-				t.Section = section
+				t.SetSection(section)
 				if section == "" {
 					t.Activate()
 				}
@@ -160,7 +160,7 @@ func (m *ProjectTreeModel) sendTasksToSection(section string, visible []*TreeNod
 		return false, nil
 	}
 	m.project.MutateTask(taskID, func(t *models.Task) {
-		t.Section = section
+		t.SetSection(section)
 		if section == "" {
 			t.Activate()
 		}

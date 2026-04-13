@@ -76,7 +76,7 @@ func (p *Project) MoveTaskToProject(task *Task, dest *Project) (*MoveTaskToProje
 
 		// Reset section if it doesn't exist in destination
 		if t.Section != "" && !destSectionSet[t.Section] {
-			t.Section = SectionNext
+			t.SetSection(SectionNext)
 		}
 
 		// Ensure custom section exists in destination

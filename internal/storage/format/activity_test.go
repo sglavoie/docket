@@ -180,6 +180,45 @@ func TestActivityRoundtripPlainValues(t *testing.T) {
 	}
 }
 
+func TestActivityRoundtripWithTrailingBackslash(t *testing.T) {
+	// Bug: a value ending in backslash (e.g., a file path) was mis-parsed
+	// because the escaped backslash (\\) before " > " made findUnescapedSeparator
+	// think the separator was escaped when it was actually a literal backslash.
+	task := &models.Task{
+		ID:      "test-1",
+		ShortID: 1,
+		Type:    models.TaskTypeTask,
+		Title:   "Test",
+		Activity: []*models.ActivityEntry{
+			{
+				Timestamp: time.Date(2025, 6, 15, 10, 30, 0, 0, time.Local),
+				Field:     "title",
+				OldValue:  `ends with\`,
+				NewValue:  "new value",
+			},
+		},
+	}
+
+	output := WriteActivity(task)
+	parsedTask := &models.Task{Description: output}
+	ExtractActivityFromDescription(parsedTask)
+
+	if len(parsedTask.Activity) != 1 {
+		t.Fatalf("expected 1 activity entry, got %d", len(parsedTask.Activity))
+	}
+
+	entry := parsedTask.Activity[0]
+	if entry.Field != "title" {
+		t.Errorf("field = %q, want %q", entry.Field, "title")
+	}
+	if entry.OldValue != `ends with\` {
+		t.Errorf("OldValue = %q, want %q", entry.OldValue, `ends with\`)
+	}
+	if entry.NewValue != "new value" {
+		t.Errorf("NewValue = %q, want %q", entry.NewValue, "new value")
+	}
+}
+
 func TestActivityBackwardsCompatibility(t *testing.T) {
 	// Existing unescaped entries (from before the fix) should still parse.
 	// This tests that the parser handles both escaped and unescaped " > ".
@@ -219,6 +258,9 @@ func TestFindUnescapedSeparator(t *testing.T) {
 		{" > ", 0},                     // at start
 		{`\> `, -1},                    // escaped at start
 		{`hello \> world > final`, 14}, // first unescaped at index 14
+		{`foo\\ > bar`, 5},             // double backslash (escaped literal \) before real separator
+		{`foo\\\\ > bar`, 7},           // four backslashes (two escaped literals) before real separator
+		{`foo\\\ > bar`, -1},           // three backslashes: two literal + one escaping the separator (odd=escaped)  //nolint:gocritic
 	}
 
 	for _, tt := range tests {
@@ -290,6 +332,9 @@ func TestEscapeUnescapeActivityValue(t *testing.T) {
 		`value with \> fake escape`,
 		"Use A > B > C",
 		"",
+		`trailing backslash\`,
+		`double trailing\\`,
+		`backslash before sep\ > rest`,
 	}
 
 	for _, original := range tests {
