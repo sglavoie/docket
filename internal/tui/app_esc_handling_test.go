@@ -4,6 +4,8 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
+
+	"github.com/sglavoie/tt/internal/testutil"
 )
 
 // TestHandleEscKey_PropagatesForModalViews verifies that views implementing
@@ -30,6 +32,11 @@ func TestHandleEscKey_PropagatesForModalViews(t *testing.T) {
 			name:    "TextEditor",
 			viewTyp: ViewTextEditor,
 			view:    NewTextEditorModel("title", "some value"),
+		},
+		{
+			name:    "QuickCapture",
+			viewTyp: ViewQuickCapture,
+			view:    NewQuickCaptureModel(testutil.NewTestProjectWithTasks("test"), nil),
 		},
 	}
 

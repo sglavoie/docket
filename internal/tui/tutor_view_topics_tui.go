@@ -192,8 +192,9 @@ Use ! followed by a number to set priority on the selected task:
 			Category: "TUI",
 			Content: `# Opening Quick Capture
 
-Press n to open the quick capture view. Type a task title with
-inline modifiers to set metadata as you type.
+Press i in project views or ;i from anywhere to open quick
+capture. Type a task title with inline modifiers to set
+metadata as you type.
 
 # Inline Syntax
 

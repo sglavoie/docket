@@ -408,6 +408,9 @@ type AppModel struct {
 	// Quick note overlay (ctrl+. to add a comment without opening the full comments view)
 	quickNoteOverlay *QuickNoteOverlay
 
+	// Quick capture project picker overlay (shown when quick capture has no project)
+	quickCaptureProjectPicker *QuickCaptureProjectPicker
+
 	// Peek task overlay (shift+space to hold-peek task detail)
 	peekTask   *models.Task
 	peekActive bool

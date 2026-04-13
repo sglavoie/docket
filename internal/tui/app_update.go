@@ -93,6 +93,23 @@ func (m *AppModel) Update(msg tea.Msg) (outModel tea.Model, outCmd tea.Cmd) { //
 			return m, tea.Batch(batchCmds...)
 		}
 
+		// Intercept keys when quick capture project picker overlay is active
+		if m.quickCaptureProjectPicker != nil {
+			inputCmd, dismiss, resultMsg := m.quickCaptureProjectPicker.handleKey(msg)
+			if dismiss {
+				m.quickCaptureProjectPicker = nil
+			}
+			var batchCmds []tea.Cmd
+			if inputCmd != nil {
+				batchCmds = append(batchCmds, inputCmd)
+			}
+			if resultMsg != nil {
+				captured := resultMsg
+				batchCmds = append(batchCmds, func() tea.Msg { return captured })
+			}
+			return m, tea.Batch(batchCmds...)
+		}
+
 		// Intercept keys when semicolon prefix is pending
 		if m.pendingSemicolonPrefix {
 			// Ignore modifier-only key events (e.g. Shift pressed alone)
@@ -128,6 +145,8 @@ func (m *AppModel) Update(msg tea.Msg) (outModel tea.Model, outCmd tea.Cmd) { //
 				return m, func() tea.Msg { return ShowWorkflowRulesMsg{} }
 			case "o":
 				return m, func() tea.Msg { return ShowGlobalOutlinerMsg{} }
+			case "i":
+				return m, m.resolveQuickCaptureCmd()
 			}
 			return m, nil
 		}
@@ -457,6 +476,16 @@ func (m *AppModel) Update(msg tea.Msg) (outModel tea.Model, outCmd tea.Cmd) { //
 	cmds = append(cmds, cmd)
 
 	return m, tea.Batch(cmds...)
+}
+
+// resolveQuickCaptureProject returns the best project for quick capture,
+// preferring the dashboard selection when on the dashboard view.
+func (m *AppModel) resolveQuickCaptureProject() tea.Msg {
+	return ShowQuickCaptureProjectPickerMsg{}
+}
+
+func (m *AppModel) resolveQuickCaptureCmd() tea.Cmd {
+	return func() tea.Msg { return m.resolveQuickCaptureProject() }
 }
 
 // isModifierOnly returns true when the key event is a bare modifier press

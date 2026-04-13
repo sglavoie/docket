@@ -22,15 +22,11 @@ func (m *AppModel) taskCommands() []Command {
 		{
 			Name:        "quick capture",
 			Description: "Quick capture a single task",
-			Shortcut:    "i",
+			Shortcut:    ";i",
 			Category:    CategoryTasks,
-			Views:       []ViewType{ViewProjectTree},
 			Aliases:     []string{"capture", "inbox"},
 			Handler: func() tea.Msg {
-				if m.currentProject != nil {
-					return ShowQuickCaptureMsg{Project: m.currentProject, AllProjects: m.config.Projects}
-				}
-				return StatusMsg("No project selected")
+				return m.resolveQuickCaptureProject()
 			},
 		},
 		{

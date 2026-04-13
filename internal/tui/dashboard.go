@@ -78,4 +78,13 @@ func (m *DashboardModel) GetPrefixPopupInfo() *PrefixPopupInfo {
 	}
 }
 
+// SelectedProject returns the currently highlighted project, or nil if none.
+func (m *DashboardModel) SelectedProject() *models.Project {
+	visible := m.visibleProjects()
+	if CursorInBounds(m.cursor, len(visible)) {
+		return visible[m.cursor]
+	}
+	return nil
+}
+
 func (m *DashboardModel) StatusBarLabel() string { return "Dashboard" }

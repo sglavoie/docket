@@ -165,6 +165,7 @@ var (
 		{Key: "b", Description: "backlog", Detail: "Cross-project task suggestions"},
 		{Key: "d", Description: "daily review", Detail: "Open Daily Review"},
 		{Key: "f", Description: "focus board", Detail: "Personal command center"},
+		{Key: "i", Description: "quick capture", Detail: "Quick task capture"},
 		{Key: "l", Description: "latest activity", Detail: "Recently modified tasks"},
 		{Key: "m", Description: "metrics", Detail: "Completion rates and throughput"},
 		{Key: "n", Description: "notifications", Detail: "Open Notification Center"},

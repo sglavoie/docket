@@ -141,6 +141,11 @@ func (m *AppModel) applyOverlays(content string, h int) string {
 		}
 	}
 
+	// Overlay quick capture project picker if active
+	if popup := m.renderQuickCaptureProjectPicker(); popup != "" {
+		content = OverlayPopupDimmed(content, popup, m.width, h)
+	}
+
 	// Overlay quick note popup if active
 	if popup := m.renderQuickNoteOverlay(); popup != "" {
 		content = OverlayPopupDimmed(content, popup, m.width, h)
@@ -254,6 +259,14 @@ func (m *AppModel) renderPeekOverlay() string {
 	renderedLines[len(renderedLines)-1] = renderTitledBottomBorder(footerText, actualWidth, borderStyle)
 
 	return strings.Join(renderedLines, "\n")
+}
+
+// renderQuickCaptureProjectPicker renders the project picker overlay when active.
+func (m *AppModel) renderQuickCaptureProjectPicker() string {
+	if m.quickCaptureProjectPicker == nil {
+		return ""
+	}
+	return m.quickCaptureProjectPicker.render(m.width)
 }
 
 // renderQuickNoteOverlay renders the quick note overlay popup when active.

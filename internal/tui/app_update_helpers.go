@@ -34,6 +34,9 @@ func (m *AppModel) hasActiveTextInput() bool {
 	if m.quickNoteOverlay != nil {
 		return true
 	}
+	if m.quickCaptureProjectPicker != nil {
+		return true
+	}
 	if caps := m.currentViewCapabilities(); caps != nil {
 		return caps.HasTextInput()
 	}

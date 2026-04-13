@@ -29,6 +29,11 @@ func (m *AppModel) handleViewActionMessages(msg tea.Msg) (bool, tea.Cmd) {
 		}
 		return true, nil
 
+	case ShowQuickCaptureProjectPickerMsg:
+		activeProjects := m.config.GetActiveProjects()
+		m.quickCaptureProjectPicker = newQuickCaptureProjectPicker(activeProjects, m.config.Projects)
+		return true, m.quickCaptureProjectPicker.initCmd()
+
 	case ShowQuickCaptureMsg:
 		if msg.Project != nil {
 			m.showView(ViewQuickCapture, NewQuickCaptureModel(msg.Project, msg.AllProjects))
