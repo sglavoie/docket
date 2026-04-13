@@ -504,11 +504,22 @@ func buildTargetedRestore(currentContent string, snapshotResult *ParseResult, ta
 	}
 	currentResult.Tasks = filtered
 
-	// Replace targeted tasks' fields
+	// Build a set of current task IDs for quick lookup
+	currentIDs := make(map[string]bool, len(currentResult.Tasks))
+	for _, t := range currentResult.Tasks {
+		currentIDs[t.ID] = true
+	}
+
+	// Replace targeted tasks' fields, or re-add tasks that were deleted
 	for _, taskID := range taskIDs {
 		snapTask, ok := snapshotMap[taskID]
 		if !ok {
 			continue // Task didn't exist in snapshot and was already removed above
+		}
+		if !currentIDs[taskID] {
+			// Task was deleted after snapshot; re-add it from the snapshot
+			currentResult.Tasks = append(currentResult.Tasks, snapTask)
+			continue
 		}
 		for _, curTask := range currentResult.Tasks {
 			if curTask.ID == taskID {

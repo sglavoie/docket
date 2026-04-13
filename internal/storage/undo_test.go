@@ -634,3 +634,65 @@ func TestPerformTargetedUndoFallsBackOnNilTaskIDs(t *testing.T) {
 		t.Error("full-file undo did not restore original content")
 	}
 }
+
+func TestPerformTargetedUndoRestoresDeletedTask(t *testing.T) {
+	tmpDir := t.TempDir()
+	projectPath := filepath.Join(tmpDir, "test-project")
+	if err := os.MkdirAll(projectPath, 0755); err != nil {
+		t.Fatalf("failed to create project dir: %v", err)
+	}
+	project := &models.Project{ID: "test-id", Name: "Test Project", Slug: "test-project", Path: projectPath}
+
+	// Initial state: two tasks exist
+	initialContent := "# Project: Test Project\n\n" +
+		"## Task: Task A\n<!-- id: task-a, status: todo, priority: 3 -->\n\n" +
+		"## Task: Task B\n<!-- id: task-b, status: todo, priority: 3 -->\n"
+	tasksPath := filepath.Join(projectPath, "tasks.md")
+	if err := os.WriteFile(tasksPath, []byte(initialContent), 0644); err != nil {
+		t.Fatalf("failed to write tasks file: %v", err)
+	}
+
+	// Record targeted snapshot: task-b is about to be deleted
+	if err := RecordUndoSnapshot(project, "Delete Task", "#2 Task B", 10, []string{"task-b"}); err != nil {
+		t.Fatalf("RecordUndoSnapshot failed: %v", err)
+	}
+
+	// Simulate deletion: task-b is removed from file
+	mutatedContent := "# Project: Test Project\n\n" +
+		"## Task: Task A\n<!-- id: task-a, status: todo, priority: 3 -->\n"
+	if err := os.WriteFile(tasksPath, []byte(mutatedContent), 0644); err != nil {
+		t.Fatalf("failed to write mutated tasks file: %v", err)
+	}
+
+	// Perform undo — task-b should be re-added (it existed in snapshot but not in current)
+	_, err := PerformUndo(project)
+	if err != nil {
+		t.Fatalf("PerformUndo failed: %v", err)
+	}
+
+	content, err := os.ReadFile(tasksPath)
+	if err != nil {
+		t.Fatalf("failed to read tasks file: %v", err)
+	}
+	result, err := ParseTasksMarkdownWithSections(string(content))
+	if err != nil {
+		t.Fatalf("failed to parse restored content: %v", err)
+	}
+
+	// Both tasks should exist
+	foundA, foundB := false, false
+	for _, task := range result.Tasks {
+		if task.ID == "task-a" {
+			foundA = true
+		}
+		if task.ID == "task-b" {
+			foundB = true
+		}
+	}
+	if !foundA {
+		t.Error("task-a should still exist after undo")
+	}
+	if !foundB {
+		t.Error("task-b should have been restored by targeted undo")
+	}
+}
