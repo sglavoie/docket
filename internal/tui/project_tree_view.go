@@ -48,7 +48,7 @@ func (m *ProjectTreeModel) HandledKeys() []string {
 		movePrefixKeys(),        // ma mn mi mw mr ms mK mJ
 		foldPrefixKeys(),        // za zo zc zR zM zv zp
 		typeChangeKeys(),        // < > H L
-		filterSubKeys(),         // Fp Ft Fs F# Fa FS Fr Fc F@ Fx Fd Fvs Fvl Fvd
+		filterSubKeys(),         // Fp FP Ft Fs F# Fa FS Fr Fc F@ Fx Fd Fvs Fvl Fvd
 		sortKeys(),              // 1 2 3 4 5 0
 		[]string{
 			"h", "l",

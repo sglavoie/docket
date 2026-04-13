@@ -412,6 +412,18 @@ func (m *OutlinerModel) handleFilterPrefix(key string) (tea.Model, tea.Cmd) {
 
 	// View-specific filter keys
 	switch key {
+	case "P":
+		if m.project != nil {
+			return m, nil // single-project: no-op
+		}
+		selected := m.filterProjects
+		projects := m.loadedProjects
+		return m, func() tea.Msg {
+			return ShowProjectFilterSelectorMsg{
+				Projects: projects,
+				Selected: selected,
+			}
+		}
 	case "v":
 		m.pendingPrefix = "Fv"
 		return m, nil
@@ -446,6 +458,7 @@ func (m *OutlinerModel) handleFilterPrefix(key string) (tea.Model, tea.Cmd) {
 		clearCommonFilters(&m.filter.CommonFilterState)
 		m.filter.Actionable = false
 		m.filter.Sections = make(map[string]bool)
+		m.filterProjects = make(map[string]bool)
 		m.ClearSearch()
 		m.rebuildRows()
 		return m, nil

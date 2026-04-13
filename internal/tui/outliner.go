@@ -85,6 +85,7 @@ type OutlinerModel struct {
 	OpenAtTask *models.Task
 
 	// Cross-project mode fields (used when m.project == nil)
+	filterProjects        map[string]bool   // Project IDs to include (empty = all)
 	loadedProjects        []*models.Project // Successfully loaded projects
 	crossLoading          bool              // True while cross-project load is in progress
 	crossSpinnerVisible   bool              // True once the 200ms delay has elapsed during load
@@ -153,6 +154,7 @@ func NewOutlinerModel(project *models.Project, cfg *config.Config, cfgManager *c
 		expandedNodes:     make(map[string]bool),
 		collapsedSections: make(map[string]bool),
 		customSectionTab:  make(map[string]int),
+		filterProjects:    make(map[string]bool),
 		filter:            NewFilterState(),
 		sort:              NewSortState(),
 		MultiSelectState:  MultiSelectState{selectedTasks: make(map[string]bool)},

@@ -183,6 +183,10 @@ func (m *OutlinerModel) crossProjectRebuildRows() {
 	// Grouping preserves project identity so ProjectID can be set on task rows.
 	var groups []projectTasksGroup
 	for _, proj := range m.loadedProjects {
+		if len(m.filterProjects) > 0 && !m.filterProjects[proj.ID] {
+			continue
+		}
+
 		roots := proj.GetRootTasks()
 
 		// Scope to zoomed task's children for cross-project zoom.

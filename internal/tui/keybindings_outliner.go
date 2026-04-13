@@ -66,6 +66,7 @@ func (r *KeybindingRegistry) registerOutlinerBindings() {
 		Keybinding{Key: "Fc", Description: "Toggle completed view", Category: "Filters", Views: views},
 		Keybinding{Key: "F@", Description: "Section filter selector", Category: "Filters", Views: views},
 		Keybinding{Key: "Fx", Description: "Clear all filters", Category: "Filters", Views: views},
+		Keybinding{Key: "FP", Description: "Filter by project (cross-project)", Category: "Filters", Views: views},
 		Keybinding{Key: "FS", Description: "Score threshold filter", Category: "Filters", Views: views},
 		Keybinding{Key: "Fvs", Description: "Save current view", Category: "Filters", Views: views},
 		Keybinding{Key: "Fvl", Description: "Load saved filter", Category: "Filters", Views: views},
@@ -153,6 +154,7 @@ func (r *KeybindingRegistry) registerCrossProjectOutlinerBindings() {
 
 		// Filters
 		Keybinding{Key: "C", Description: "Open context picker", Category: "Filters", Views: views},
+		Keybinding{Key: "FP", Description: "Filter by project", Category: "Filters", Views: views},
 
 		// Search
 		Keybinding{Key: "/", Description: "Search tasks", Category: "Search", Views: views},

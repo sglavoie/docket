@@ -1,6 +1,9 @@
 package tui
 
-import "strings"
+import (
+	"fmt"
+	"strings"
+)
 
 // clearActiveSavedFilter clears the active saved filter indicator and any
 // criteria filter. Called when the user manually changes filter/sort state.
@@ -36,6 +39,9 @@ func (m *OutlinerModel) activeFilterParts() []string {
 	}
 	if m.filter.Actionable {
 		parts = append(parts, "ready")
+	}
+	if len(m.filterProjects) > 0 {
+		parts = append(parts, fmt.Sprintf("proj:%d", len(m.filterProjects)))
 	}
 
 	return parts

@@ -114,6 +114,14 @@ func (m *OutlinerModel) buildPrefixHints() PrefixHints {
 			PrefixHint{Key: "@", Description: "section", Detail: "selector"},
 			PrefixHint{Key: "v", Description: "saved filters"},
 		)
+		if m.project == nil {
+			projDetail := "all"
+			if len(m.filterProjects) > 0 {
+				projDetail = fmt.Sprintf("%d selected", len(m.filterProjects))
+			}
+			fHints = append(fHints, PrefixHint{Key: "P", Description: "projects", Detail: projDetail, Active: len(m.filterProjects) > 0})
+		}
+		sortPrefixHintsLowercaseFirst(fHints)
 		hints["F"] = fHints
 	}
 
@@ -172,7 +180,7 @@ func (m *OutlinerModel) HandledKeys() []string {
 		movePrefixKeys(),       // ma mn mi mw mr ms mK mJ
 		foldPrefixKeys(),       // za zo zc zR zM zv zp
 		typeChangeKeys(),       // < > H L
-		filterSubKeys(),        // Fp Ft Fs F# Fa FS Fr Fc F@ Fx Fd Fvs Fvl Fvd
+		filterSubKeys(),        // Fp FP Ft Fs F# Fa FS Fr Fc F@ Fx Fd Fvs Fvl Fvd
 		sortKeys(),             // 1 2 3 4 5 0
 		[]string{
 			"h", "l",

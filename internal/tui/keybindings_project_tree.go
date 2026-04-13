@@ -105,6 +105,7 @@ func (r *KeybindingRegistry) registerProjectTreeBindings() {
 		Keybinding{Key: "F", Description: "Open filter popup", Category: "Filters", Views: views},
 		Keybinding{Key: "Fc", Description: "Toggle completed view", Category: "Filters", Views: views},
 		Keybinding{Key: "Fp", Description: "Toggle high priority filter", Category: "Filters", Views: views},
+		Keybinding{Key: "FP", Description: "Filter by project (cross-project)", Category: "Filters", Views: views},
 		Keybinding{Key: "Ft", Description: "Filter by type (sub-popup, use Ft since t is task prefix)", Category: "Filters", Views: views},
 		Keybinding{Key: "Fs", Description: "Filter by status (sub-popup)", Category: "Filters", Views: views},
 		Keybinding{Key: "F#", Description: "Filter by tag", Category: "Filters", Views: views},

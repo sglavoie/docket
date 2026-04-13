@@ -94,6 +94,7 @@ func (m *AppModel) filterCommands() []Command {
 					clearCommonFilters(&m.outliner.filter.CommonFilterState)
 					m.outliner.filter.Sections = make(map[string]bool)
 					m.outliner.filter.Actionable = false
+					m.outliner.filterProjects = make(map[string]bool)
 					m.outliner.ClearSearch()
 					m.outliner.rebuildRows()
 					return nil

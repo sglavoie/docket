@@ -107,6 +107,7 @@ const (
 	ViewNotificationCenter
 	ViewMessageLog
 	ViewKeybindingExplorer
+	ViewProjectFilterSelector
 )
 
 // String returns the name of the ViewType for readable test output.
@@ -206,6 +207,7 @@ func (v ViewType) String() string {
 		ViewNotificationCenter:    "NotificationCenter",
 		ViewMessageLog:            "MessageLog",
 		ViewKeybindingExplorer:    "KeybindingExplorer",
+		ViewProjectFilterSelector: "ProjectFilterSelector",
 	}
 	if name, ok := names[v]; ok {
 		return name

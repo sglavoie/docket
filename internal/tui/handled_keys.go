@@ -97,7 +97,7 @@ func movePrefixKeys() []string {
 // primary views (Fp, Ft, Fs, F#, Fa, FS, Fr, Fc, F@, Fx, Fd, Fvs, Fvl, Fvd).
 func filterSubKeys() []string {
 	return []string{
-		"Fp", "Ft", "Fs", "F#", "Fa", "FS",
+		"Fp", "FP", "Ft", "Fs", "F#", "Fa", "FS",
 		"Fr", "Fc", "F@", "Fx", "Fd",
 		"Fvs", "Fvl", "Fvd",
 	}

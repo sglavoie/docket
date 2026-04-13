@@ -1,5 +1,36 @@
 package tui
 
+import "sort"
+
+// sortPrefixHintsLowercaseFirst sorts hints in-place: lowercase keys first
+// (alphabetically), then non-letter keys, then uppercase keys (alphabetically).
+func sortPrefixHintsLowercaseFirst(hints []PrefixHint) {
+	sort.SliceStable(hints, func(i, j int) bool {
+		a, b := hints[i].Key, hints[j].Key
+		aLower := len(a) > 0 && a[0] >= 'a' && a[0] <= 'z'
+		bLower := len(b) > 0 && b[0] >= 'a' && b[0] <= 'z'
+		aUpper := len(a) > 0 && a[0] >= 'A' && a[0] <= 'Z'
+		bUpper := len(b) > 0 && b[0] >= 'A' && b[0] <= 'Z'
+		// lowercase < non-letter < uppercase
+		aRank := 1 // non-letter
+		if aLower {
+			aRank = 0
+		} else if aUpper {
+			aRank = 2
+		}
+		bRank := 1
+		if bLower {
+			bRank = 0
+		} else if bUpper {
+			bRank = 2
+		}
+		if aRank != bRank {
+			return aRank < bRank
+		}
+		return a < b
+	})
+}
+
 // PrefixHint represents a single key hint in a prefix popup.
 type PrefixHint struct {
 	Key          string
