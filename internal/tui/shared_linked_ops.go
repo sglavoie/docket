@@ -97,6 +97,12 @@ func handleTaskPrefixMsgKey(key string, task *models.Task, project *models.Proje
 // getMultiTasks returns selected tasks when in multi-select mode (nil if not).
 // Returns (handled, cmd).
 func handleTaskActionPrefixKey(key string, task *models.Task, project *models.Project, focusedTask *models.Task, getMultiTasks func() []*models.Task) (bool, tea.Cmd) {
+	multiTasks := func() []*models.Task {
+		if getMultiTasks == nil {
+			return nil
+		}
+		return getMultiTasks()
+	}
 	switch key {
 	case "n":
 		parentTask := focusedTask
@@ -115,7 +121,7 @@ func handleTaskActionPrefixKey(key string, task *models.Task, project *models.Pr
 			return CreateTaskMsg{ParentTask: parentTask, SkipTemplatePicker: false}
 		}
 	case "s":
-		if tasks := getMultiTasks(); len(tasks) > 0 {
+		if tasks := multiTasks(); len(tasks) > 0 {
 			return true, func() tea.Msg {
 				return ShowBulkSectionPickerMsg{Tasks: tasks, Project: project}
 			}
@@ -127,7 +133,7 @@ func handleTaskActionPrefixKey(key string, task *models.Task, project *models.Pr
 		}
 		return true, nil
 	case "t":
-		if tasks := getMultiTasks(); len(tasks) > 0 {
+		if tasks := multiTasks(); len(tasks) > 0 {
 			return true, func() tea.Msg {
 				return ShowBulkTagSelectorMsg{Tasks: tasks, Project: project}
 			}
