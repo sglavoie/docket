@@ -28,6 +28,15 @@ type ViewCapabilities interface {
 	IsFullHeight() bool
 }
 
+// PendingPrefixView is implemented by views that participate in multi-key
+// prefix sequences (e.g. filter prefix F, goto prefix g). When a prefix is
+// pending, the app shell must skip global single-character shortcuts so the
+// next key reaches the view's prefix dispatcher. Satisfied automatically by
+// views embedding InteractiveViewState.
+type PendingPrefixView interface {
+	HasPendingPrefix() bool
+}
+
 // StatusBarLabeler is implemented by views that provide their own status bar label.
 // Views without this interface show an empty label in the status bar.
 type StatusBarLabeler interface {

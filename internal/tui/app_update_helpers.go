@@ -57,6 +57,20 @@ func upgradeKittyKeyboard() tea.Cmd {
 	}
 }
 
+// hasActivePendingPrefix returns true if the current view is in the middle of
+// a multi-key prefix sequence. Used to suppress global single-character
+// shortcuts (e.g. #, q, w, u) that would otherwise hijack prefix sub-keys.
+func (m *AppModel) hasActivePendingPrefix() bool {
+	view := m.views.Get(m.currentView())
+	if view == nil {
+		return false
+	}
+	if p, ok := view.(PendingPrefixView); ok {
+		return p.HasPendingPrefix()
+	}
+	return false
+}
+
 // hasActiveMultiSelect returns true if any primary view has multi-select mode active.
 func (m *AppModel) hasActiveMultiSelect() bool {
 	if m.projectTree != nil && m.projectTree.multiSelectMode {

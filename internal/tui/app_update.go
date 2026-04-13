@@ -182,7 +182,7 @@ func (m *AppModel) Update(msg tea.Msg) (outModel tea.Model, outCmd tea.Cmd) { //
 				return m, nil
 			}
 		case "#":
-			if !m.hasActiveTextInput() {
+			if !m.hasActiveTextInput() && !m.hasActivePendingPrefix() {
 				m.pinnedPopupItems = m.collectPinnedTasks()
 				if len(m.pinnedPopupItems) == 0 {
 					m.setInfoStatus("No pinned tasks — press p on a task to pin it")
@@ -200,8 +200,8 @@ func (m *AppModel) Update(msg tea.Msg) (outModel tea.Model, outCmd tea.Cmd) { //
 				return m, cmd
 			}
 		case "q":
-			// Don't intercept q if there's an active text input
-			if m.hasActiveTextInput() {
+			// Don't intercept q if there's an active text input or pending prefix
+			if m.hasActiveTextInput() || m.hasActivePendingPrefix() {
 				break
 			}
 			if cmd := m.toggleQueue(); cmd != nil {
@@ -210,7 +210,7 @@ func (m *AppModel) Update(msg tea.Msg) (outModel tea.Model, outCmd tea.Cmd) { //
 			// Non-task views (including dashboard): q is a no-op
 			return m, nil
 		case "w":
-			if m.hasActiveTextInput() {
+			if m.hasActiveTextInput() || m.hasActivePendingPrefix() {
 				break
 			}
 			if cmd := m.toggleDailyPlan(); cmd != nil {
@@ -218,7 +218,7 @@ func (m *AppModel) Update(msg tea.Msg) (outModel tea.Model, outCmd tea.Cmd) { //
 			}
 			// Fall through to view's own w handler (inbox processor, waiting, etc.)
 		case "u":
-			if m.hasActiveTextInput() {
+			if m.hasActiveTextInput() || m.hasActivePendingPrefix() {
 				break
 			}
 			switch m.currentView() { //nolint:exhaustive

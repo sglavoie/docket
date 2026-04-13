@@ -452,6 +452,10 @@ func (m *OutlinerModel) handleFilterPrefix(key string) (tea.Model, tea.Cmd) {
 	}
 
 	// Common filter prefix keys
+	tagSource := ViewOutliner
+	if m.project == nil {
+		tagSource = ViewCrossProjectOutliner
+	}
 	result := handleCommonFilterPrefix(key, &m.filter.CommonFilterState, func() tea.Cmd {
 		var taskSlice []*models.Task
 		if m.project != nil {
@@ -461,7 +465,7 @@ func (m *OutlinerModel) handleFilterPrefix(key string) (tea.Model, tea.Cmd) {
 		}
 		tags := BuildTagList(taskSlice, false)
 		return func() tea.Msg {
-			return ShowTagFilterMsg{Tags: tags, Selected: m.filter.Tags, Source: ViewOutliner, Title: "Filter by Tags"}
+			return ShowTagFilterMsg{Tags: tags, Selected: m.filter.Tags, Source: tagSource, Title: "Filter by Tags"}
 		}
 	})
 	if cmd := applyCommonFilterResult(result, func(p string) { m.pendingPrefix = p }, func() { m.rebuildRows() }); cmd != nil {
