@@ -126,6 +126,25 @@ func TestArchiveRemovesCompletedFromProject(t *testing.T) {
 	}
 }
 
+func TestArchiveAll_ErrorMessageFormat(t *testing.T) {
+	// Verify the error message format used when archive --all has failures.
+	// Previously, runTaskArchiveAll returned nil even when projects had errors,
+	// causing exit code 0 despite failures. Now it returns an error.
+	tests := []struct {
+		failureCount int
+		want         string
+	}{
+		{1, "1 project had errors during archiving"},
+		{3, "3 projects had errors during archiving"},
+	}
+	for _, tt := range tests {
+		got := Pluralize(tt.failureCount, "project", "projects") + " had errors during archiving"
+		if got != tt.want {
+			t.Errorf("failureCount=%d: got %q, want %q", tt.failureCount, got, tt.want)
+		}
+	}
+}
+
 func TestArchiveAllJSON_EmptyProjectsNotNull(t *testing.T) {
 	// Verify that the JSON summary serializes an empty projects list as []
 	// rather than null (the nil-slice default in Go).

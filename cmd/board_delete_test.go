@@ -106,6 +106,64 @@ func TestBoardDeleteCleansUpReferences(t *testing.T) {
 	}
 }
 
+func TestBoardDeleteCleansUpConfigRefs(t *testing.T) {
+	boardDeleteForce = true
+	defer func() { boardDeleteForce = false }()
+
+	deps, project := testutil.SetupTestDepsWithProject(t, "Test Project")
+	defer deps.Cleanup()
+
+	viper.Set("config", deps.ConfigPath)
+	t.Cleanup(func() { viper.Set("config", "") })
+
+	oldStorageRepo := storage.DefaultRepository
+	storage.DefaultRepository = deps.Repository
+	t.Cleanup(func() { storage.DefaultRepository = oldStorageRepo })
+
+	// Create a task
+	task1 := testutil.NewTestTask("Task to delete", models.TaskTypeTask)
+	task1.ShortID = project.GetNextShortID()
+
+	// Surviving task
+	task2 := testutil.NewTestTask("Surviving task", models.TaskTypeTask)
+	task2.ShortID = project.GetNextShortID()
+
+	project.Tasks = []*models.Task{task1, task2}
+	project.BuildTaskTree()
+	deps.Repository.Projects[project.ID] = project
+
+	// Add task1 to FocusQueue and DailyPlan
+	deps.Config.FocusQueue = []config.FocusQueueItem{
+		{TaskID: task1.ID, ProjectID: project.ID},
+		{TaskID: task2.ID, ProjectID: project.ID},
+	}
+	deps.Config.DailyPlan = []config.DailyPlanItem{
+		{TaskID: task1.ID, ProjectID: project.ID, PlannedDate: "2026-04-13"},
+	}
+
+	manager := config.NewManager(deps.ConfigPath)
+	err := manager.Save(deps.Config)
+	testutil.AssertNoError(t, err)
+
+	// Delete task1
+	err = runBoardDelete(boardDeleteCmd, []string{fmt.Sprintf("%d", task1.ShortID)})
+	testutil.AssertNoError(t, err)
+
+	// Reload config and verify references were cleaned up
+	reloaded, loadErr := manager.Load()
+	testutil.AssertNoError(t, loadErr)
+
+	if len(reloaded.FocusQueue) != 1 {
+		t.Errorf("expected 1 FocusQueue entry after delete, got %d", len(reloaded.FocusQueue))
+	} else if reloaded.FocusQueue[0].TaskID != task2.ID {
+		t.Errorf("expected surviving FocusQueue entry to be task2, got %s", reloaded.FocusQueue[0].TaskID)
+	}
+
+	if len(reloaded.DailyPlan) != 0 {
+		t.Errorf("expected 0 DailyPlan entries after delete, got %d", len(reloaded.DailyPlan))
+	}
+}
+
 func TestBoardDeleteRemovesDescendants(t *testing.T) {
 	boardDeleteForce = true
 	defer func() { boardDeleteForce = false }()

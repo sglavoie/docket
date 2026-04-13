@@ -216,6 +216,7 @@ func runTaskArchiveAll(out MutateOutput) error {
 		for _, f := range failures {
 			fmt.Printf("  %s\n", f)
 		}
+		return fmt.Errorf("%s had errors during archiving", Pluralize(len(failures), "project", "projects"))
 	}
 	return nil
 }

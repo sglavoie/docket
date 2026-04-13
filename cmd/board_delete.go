@@ -123,6 +123,14 @@ func runBoardDelete(cmd *cobra.Command, args []string) error {
 	project.Tasks = remaining
 	project.BuildTaskTree()
 
+	// Clean up config references (FocusQueue, DailyPlan, RecentTaskVisits)
+	// for all deleted tasks including descendants.
+	if cfg.RemoveTaskRefs(idsToDelete) > 0 {
+		if err := mgr.Save(cfg); err != nil {
+			fmt.Fprintf(os.Stderr, "warning: failed to save config after cleaning task refs: %v\n", err)
+		}
+	}
+
 	if err := SaveProject(project, &SaveOptions{Config: cfg, ConfigManager: mgr}); err != nil {
 		return fmt.Errorf("failed to delete: %w", err)
 	}
