@@ -100,9 +100,9 @@ func init() {
 	workflowEditCmd.Flags().IntVar(&workflowEditPriority, "priority", 0, "rule priority (1=highest, runs first; 0=default, runs last)")
 
 	// Trigger flags
-	workflowEditCmd.Flags().StringSliceVarP(&workflowEditAddTriggerFields, "add-trigger-field", "f", nil, "add trigger field (can specify multiple)")
-	workflowEditCmd.Flags().StringSliceVarP(&workflowEditAddTriggerOps, "add-trigger-op", "o", nil, "add trigger operation (can specify multiple, defaults to 'equals')")
-	workflowEditCmd.Flags().StringSliceVarP(&workflowEditAddTriggerValues, "add-trigger-value", "V", nil, "add trigger value (can specify multiple)")
+	workflowEditCmd.Flags().StringArrayVarP(&workflowEditAddTriggerFields, "add-trigger-field", "f", nil, "add trigger field (can specify multiple)")
+	workflowEditCmd.Flags().StringArrayVarP(&workflowEditAddTriggerOps, "add-trigger-op", "o", nil, "add trigger operation (can specify multiple, defaults to 'equals')")
+	workflowEditCmd.Flags().StringArrayVarP(&workflowEditAddTriggerValues, "add-trigger-value", "V", nil, "add trigger value (can specify multiple)")
 	workflowEditCmd.Flags().StringVar(&workflowEditRemoveTriggers, "remove-trigger", "", "remove triggers by index (comma-separated, e.g., '0,2')")
 	workflowEditCmd.Flags().StringVar(&workflowEditSetTriggerLogic, "set-logic", "", "set trigger logic (and/or)")
 	workflowEditCmd.Flags().BoolVar(&workflowEditClearTriggers, "clear-triggers", false, "clear all triggers (use with add-trigger to replace)")

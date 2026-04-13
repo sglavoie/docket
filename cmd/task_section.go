@@ -73,12 +73,16 @@ func runTaskSection(cmd *cobra.Command, args []string) error {
 			// GTD sections live in task.Section; custom sections in task.CustomSection.
 			isGTD := models.IsGTDSection(sectionName) || sectionName == ""
 			if isGTD {
-				if task.Section == sectionName {
+				if task.Section == sectionName && task.CustomSection == "" {
 					alreadyInSection = true
 					skippedShortID = task.ShortID
 					return fmt.Errorf("no change needed")
 				}
-				oldSection = task.Section
+				if task.CustomSection != "" {
+					oldSection = task.CustomSection
+				} else {
+					oldSection = task.Section
+				}
 			} else {
 				if task.CustomSection == sectionName {
 					alreadyInSection = true

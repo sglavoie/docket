@@ -80,4 +80,47 @@ func TestTaskSectionSkipsAlreadyAssigned(t *testing.T) {
 			t.Errorf("task CustomSection = %q, want %q", savedTask.CustomSection, "MyCustom")
 		}
 	})
+
+	t.Run("clearing section clears CustomSection when Section is already empty", func(t *testing.T) {
+		deps, project := setupSectionCommandTest(t)
+
+		// Task has a custom section but Section field is empty
+		task := project.Tasks[0]
+		task.Section = ""
+		task.CustomSection = "Sprint-1"
+		project.EnsureSection("Sprint-1")
+		deps.Repository.Projects[project.ID] = project
+
+		err := runTaskSection(nil, []string{"1", ""})
+		testutil.AssertNoError(t, err)
+
+		savedProject := deps.Repository.Projects[project.ID]
+		savedTask := savedProject.GetTaskByShortID(task.ShortID)
+		if savedTask.CustomSection != "" {
+			t.Errorf("task CustomSection = %q, want empty after clearing", savedTask.CustomSection)
+		}
+		if savedTask.Section != "" {
+			t.Errorf("task Section = %q, want empty after clearing", savedTask.Section)
+		}
+	})
+
+	t.Run("clearing section skips when both Section and CustomSection are already empty", func(t *testing.T) {
+		deps, project := setupSectionCommandTest(t)
+
+		task := project.Tasks[0]
+		task.Section = ""
+		task.CustomSection = ""
+		deps.Repository.Projects[project.ID] = project
+
+		originalUpdatedAt := task.UpdatedAt
+
+		err := runTaskSection(nil, []string{"1", ""})
+		testutil.AssertNoError(t, err)
+
+		savedProject := deps.Repository.Projects[project.ID]
+		savedTask := savedProject.GetTaskByShortID(task.ShortID)
+		if savedTask.UpdatedAt != originalUpdatedAt {
+			t.Error("UpdatedAt should not change when section is already empty")
+		}
+	})
 }
