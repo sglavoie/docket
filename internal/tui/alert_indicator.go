@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"charm.land/lipgloss/v2"
+	"github.com/charmbracelet/x/ansi"
 )
 
 // alertIndicatorStyle is a bright style for the alert count indicator.
@@ -47,19 +48,38 @@ func overlayAlertIndicator(content string, indicator string, width int) string {
 	firstLineWidth := lipgloss.Width(firstLine)
 	indicatorWidth := lipgloss.Width(indicator)
 
-	// Need at least 2 chars gap between content and indicator
-	minGap := 2
-	if firstLineWidth+indicatorWidth+minGap > width {
-		// Not enough room; skip the indicator
+	var newFirst string
+	switch {
+	case firstLineWidth+indicatorWidth+2 <= width:
+		// Inline overlay: pad first line and append indicator (needs >=2 cell gap).
+		gap := width - firstLineWidth - indicatorWidth
+		newFirst = firstLine + strings.Repeat(" ", gap) + indicator
+	case isBoxTopBorder(firstLine) && firstLineWidth >= indicatorWidth+8:
+		// Splice indicator into the card top border near the right corner:
+		// "╭── Title ────────╮" becomes "╭── Title ──── 📫 N ─╮".
+		// Reserve " " + indicator + " " + "─╮" on the right (indicatorWidth+4 cells).
+		keep := firstLineWidth - indicatorWidth - 4
+		left := ansi.Cut(firstLine, 0, keep)
+		right := ansi.Cut(firstLine, firstLineWidth-2, firstLineWidth)
+		newFirst = left + " " + indicator + " " + right
+	default:
+		// Not enough room; skip the indicator.
 		return content
 	}
-
-	gap := width - firstLineWidth - indicatorWidth
-	spacer := strings.Repeat(" ", gap)
-	newFirst := firstLine + spacer + indicator
 
 	if len(lines) > 1 {
 		return newFirst + "\n" + lines[1]
 	}
 	return newFirst
+}
+
+// isBoxTopBorder reports whether line is a lipgloss rounded-top border,
+// i.e. it starts with ╭ and ends with ╮ (ignoring ANSI styling).
+func isBoxTopBorder(line string) bool {
+	stripped := ansi.Strip(line)
+	runes := []rune(stripped)
+	if len(runes) < 2 {
+		return false
+	}
+	return runes[0] == '╭' && runes[len(runes)-1] == '╮'
 }
