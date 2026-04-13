@@ -57,6 +57,48 @@ func (c *Config) ReassignTaskProject(taskIDs map[string]bool, newProjectID strin
 	return updated
 }
 
+// RemoveTaskRefs removes entries for the given task IDs from FocusQueue,
+// DailyPlan, and RecentTaskVisits. This must be called when tasks are
+// deleted or archived so that stale references don't persist in config.
+// Returns the number of entries removed.
+func (c *Config) RemoveTaskRefs(taskIDs map[string]bool) int {
+	removed := 0
+	if len(c.FocusQueue) > 0 {
+		filtered := c.FocusQueue[:0]
+		for _, item := range c.FocusQueue {
+			if taskIDs[item.TaskID] {
+				removed++
+				continue
+			}
+			filtered = append(filtered, item)
+		}
+		c.FocusQueue = filtered
+	}
+	if len(c.DailyPlan) > 0 {
+		filtered := c.DailyPlan[:0]
+		for _, item := range c.DailyPlan {
+			if taskIDs[item.TaskID] {
+				removed++
+				continue
+			}
+			filtered = append(filtered, item)
+		}
+		c.DailyPlan = filtered
+	}
+	if len(c.RecentTaskVisits) > 0 {
+		filtered := c.RecentTaskVisits[:0]
+		for _, visit := range c.RecentTaskVisits {
+			if taskIDs[visit.TaskID] {
+				removed++
+				continue
+			}
+			filtered = append(filtered, visit)
+		}
+		c.RecentTaskVisits = filtered
+	}
+	return removed
+}
+
 // maxFocusDismissedIDs is the maximum number of dismissed suggestion IDs to persist.
 // When exceeded, the oldest entries (at the end of the slice) are dropped.
 const maxFocusDismissedIDs = 200

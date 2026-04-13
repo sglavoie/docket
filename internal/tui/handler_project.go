@@ -59,6 +59,15 @@ func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 		if msg.Project != nil && m.config != nil && msg.Project.Archived && m.config.CurrentProject == msg.Project.ID {
 			m.config.CurrentProject = ""
 		}
+		// Clean up config references for tasks in the archived project
+		if msg.Project != nil {
+			taskIDs := make(map[string]bool, len(msg.Project.Tasks))
+			for _, t := range msg.Project.Tasks {
+				taskIDs[t.ID] = true
+			}
+			m.config.RemoveTaskRefs(taskIDs)
+		}
+		m.pruneDeletedTaskRefs()
 		if m.configManager != nil {
 			if err := m.configManager.Save(m.config); err != nil {
 				m.err = err
@@ -93,6 +102,7 @@ func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 		if err := m.configManager.Save(m.config); err != nil {
 			m.err = err
 		}
+		m.pruneDeletedTaskRefs()
 		// Pop back to dashboard since the project no longer exists
 		m.viewStack = m.viewStack[:1]
 		if m.dashboard != nil {

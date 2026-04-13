@@ -6,6 +6,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/tterrors"
 )
 
@@ -69,6 +70,16 @@ func runProjectArchive(cmd *cobra.Command, args []string) error {
 	wasCurrentProject := cfg.CurrentProject == project.ID
 	if wasCurrentProject {
 		cfg.CurrentProject = ""
+	}
+
+	// Clean up config references (FocusQueue, DailyPlan, RecentTaskVisits)
+	// for tasks in the archived project.
+	if err := storage.LoadProject(project); err == nil {
+		taskIDs := make(map[string]bool, len(project.Tasks))
+		for _, t := range project.Tasks {
+			taskIDs[t.ID] = true
+		}
+		cfg.RemoveTaskRefs(taskIDs)
 	}
 
 	if err := saveConfig(configManager, cfg); err != nil {

@@ -47,7 +47,7 @@ func runTaskArchive(cmd *cobra.Command, args []string) error {
 		return runTaskArchiveAll(out)
 	}
 
-	project, cfg, _, err := LoadCurrentProject()
+	project, cfg, configManager, err := LoadCurrentProject()
 	if err != nil {
 		return err
 	}
@@ -71,6 +71,18 @@ func runTaskArchive(cmd *cobra.Command, args []string) error {
 		if snapshotErr := storage.RecordUndoSnapshot(project, "Archive Tasks",
 			fmt.Sprintf("%d tasks", len(completedTasks)), *cfg.UndoHistoryDepth, nil); snapshotErr != nil {
 			fmt.Fprintf(os.Stderr, "warning: failed to record undo snapshot: %v\n", snapshotErr)
+		}
+	}
+
+	// Clean up config references (FocusQueue, DailyPlan, RecentTaskVisits)
+	// for all tasks being archived.
+	archivedIDs := make(map[string]bool, len(completedTasks))
+	for _, t := range completedTasks {
+		archivedIDs[t.ID] = true
+	}
+	if cfg.RemoveTaskRefs(archivedIDs) > 0 {
+		if saveErr := configManager.Save(cfg); saveErr != nil {
+			fmt.Fprintf(os.Stderr, "warning: failed to save config after cleaning task refs: %v\n", saveErr)
 		}
 	}
 
@@ -104,7 +116,7 @@ func runTaskArchive(cmd *cobra.Command, args []string) error {
 }
 
 func runTaskArchiveAll(out MutateOutput) error {
-	cfg, _, err := LoadConfigStrict()
+	cfg, configManager, err := LoadConfigStrict()
 	if err != nil {
 		return err
 	}
@@ -116,6 +128,7 @@ func runTaskArchiveAll(out MutateOutput) error {
 
 	projects := cfg.GetActiveProjects()
 	totalArchived := 0
+	configDirty := false
 	var failures []string
 	var results []projectResult
 
@@ -145,6 +158,15 @@ func runTaskArchiveAll(out MutateOutput) error {
 			}
 		}
 
+		// Clean up config references for archived tasks
+		archivedIDs := make(map[string]bool, len(completedTasks))
+		for _, t := range completedTasks {
+			archivedIDs[t.ID] = true
+		}
+		if cfg.RemoveTaskRefs(archivedIDs) > 0 {
+			configDirty = true
+		}
+
 		if backupErr := storage.BackupProject(project); backupErr != nil {
 			failures = append(failures, fmt.Sprintf("[%s] backup failed: %v", project.Name, backupErr))
 			continue
@@ -161,6 +183,13 @@ func runTaskArchiveAll(out MutateOutput) error {
 			fmt.Printf("[%s] Archived %s\n", project.Name, Pluralize(count, "task", "tasks"))
 		}
 		totalArchived += count
+	}
+
+	// Save config once after all projects are processed
+	if configDirty {
+		if saveErr := configManager.Save(cfg); saveErr != nil {
+			fmt.Fprintf(os.Stderr, "warning: failed to save config after cleaning task refs: %v\n", saveErr)
+		}
 	}
 
 	if out.JSON {

@@ -64,6 +64,66 @@ func (m *AppModel) invalidateFilterCaches() {
 	m.allTasksFilterCache = nil
 }
 
+// pruneDeletedTaskRefs removes tasks that no longer exist in any active project
+// from the in-memory focusQueue, dailyPlan, and recentTaskVisits.
+// It then persists the cleaned lists to config. Call this after task deletion
+// or archiving to prevent stale entries from being re-persisted.
+func (m *AppModel) pruneDeletedTaskRefs() {
+	// Build a set of all valid task IDs across loaded projects
+	validTasks := make(map[string]bool)
+	for _, p := range m.config.GetAllLoadableProjects() {
+		for _, t := range p.Tasks {
+			validTasks[t.ID] = true
+		}
+	}
+
+	dirty := false
+
+	// Prune focus queue
+	n := 0
+	for _, ft := range m.focusQueue {
+		if validTasks[ft.Task.ID] {
+			m.focusQueue[n] = ft
+			n++
+		} else {
+			delete(m.focusQueueIDs, ft.Task.ID)
+			dirty = true
+		}
+	}
+	m.focusQueue = m.focusQueue[:n]
+
+	// Prune daily plan
+	n = 0
+	for _, ft := range m.dailyPlan {
+		if validTasks[ft.Task.ID] {
+			m.dailyPlan[n] = ft
+			n++
+		} else {
+			delete(m.dailyPlanIDs, ft.Task.ID)
+			dirty = true
+		}
+	}
+	m.dailyPlan = m.dailyPlan[:n]
+
+	// Prune recent task visits
+	n = 0
+	for _, rv := range m.recentTaskVisits {
+		if validTasks[rv.Task.ID] {
+			m.recentTaskVisits[n] = rv
+			n++
+		} else {
+			dirty = true
+		}
+	}
+	m.recentTaskVisits = m.recentTaskVisits[:n]
+
+	if dirty {
+		m.persistFocusQueue()
+		m.persistDailyPlan()
+		m.persistRecentTaskVisits()
+	}
+}
+
 // saveConfigWarn attempts to save the config and logs a warning on failure.
 // Use this in TUI code where a config save failure is non-fatal.
 func saveConfigWarn(mgr *config.Manager, cfg *config.Config, context string) {

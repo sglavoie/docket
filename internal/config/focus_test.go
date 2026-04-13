@@ -114,6 +114,86 @@ func TestReassignTaskProject(t *testing.T) {
 	})
 }
 
+func TestRemoveTaskRefs(t *testing.T) {
+	t.Run("removes matching tasks from all three lists", func(t *testing.T) {
+		cfg := NewConfig()
+		cfg.FocusQueue = []FocusQueueItem{
+			{TaskID: "t1", ProjectID: "p1"},
+			{TaskID: "t2", ProjectID: "p1"},
+			{TaskID: "t3", ProjectID: "p2"},
+		}
+		cfg.DailyPlan = []DailyPlanItem{
+			{TaskID: "t1", ProjectID: "p1", PlannedDate: "2026-04-13"},
+			{TaskID: "t4", ProjectID: "p1", PlannedDate: "2026-04-13"},
+		}
+		cfg.RecentTaskVisits = []RecentTaskVisit{
+			{TaskID: "t1", ProjectID: "p1"},
+			{TaskID: "t5", ProjectID: "p2"},
+			{TaskID: "t3", ProjectID: "p2"},
+		}
+
+		removed := cfg.RemoveTaskRefs(map[string]bool{"t1": true, "t3": true})
+
+		// t1 in FocusQueue(1) + DailyPlan(1) + RecentTaskVisits(1) = 3
+		// t3 in FocusQueue(1) + RecentTaskVisits(1) = 2
+		// Total = 5
+		if removed != 5 {
+			t.Fatalf("expected 5 removals, got %d", removed)
+		}
+		// FocusQueue: only t2 remains
+		if len(cfg.FocusQueue) != 1 || cfg.FocusQueue[0].TaskID != "t2" {
+			t.Errorf("expected FocusQueue=[t2], got %v", cfg.FocusQueue)
+		}
+		// DailyPlan: only t4 remains
+		if len(cfg.DailyPlan) != 1 || cfg.DailyPlan[0].TaskID != "t4" {
+			t.Errorf("expected DailyPlan=[t4], got %v", cfg.DailyPlan)
+		}
+		// RecentTaskVisits: only t5 remains
+		if len(cfg.RecentTaskVisits) != 1 || cfg.RecentTaskVisits[0].TaskID != "t5" {
+			t.Errorf("expected RecentTaskVisits=[t5], got %v", cfg.RecentTaskVisits)
+		}
+	})
+
+	t.Run("no-op when no tasks match", func(t *testing.T) {
+		cfg := NewConfig()
+		cfg.FocusQueue = []FocusQueueItem{{TaskID: "t1", ProjectID: "p1"}}
+		cfg.DailyPlan = []DailyPlanItem{{TaskID: "t2", ProjectID: "p1", PlannedDate: "2026-04-13"}}
+		cfg.RecentTaskVisits = []RecentTaskVisit{{TaskID: "t3", ProjectID: "p1"}}
+
+		removed := cfg.RemoveTaskRefs(map[string]bool{"t99": true})
+
+		if removed != 0 {
+			t.Fatalf("expected 0 removals, got %d", removed)
+		}
+		if len(cfg.FocusQueue) != 1 || len(cfg.DailyPlan) != 1 || len(cfg.RecentTaskVisits) != 1 {
+			t.Error("lists should be unchanged")
+		}
+	})
+
+	t.Run("works with empty lists", func(t *testing.T) {
+		cfg := NewConfig()
+		removed := cfg.RemoveTaskRefs(map[string]bool{"t1": true})
+		if removed != 0 {
+			t.Fatalf("expected 0 removals on empty config, got %d", removed)
+		}
+	})
+
+	t.Run("removes all entries when all match", func(t *testing.T) {
+		cfg := NewConfig()
+		cfg.FocusQueue = []FocusQueueItem{
+			{TaskID: "t1", ProjectID: "p1"},
+			{TaskID: "t2", ProjectID: "p1"},
+		}
+		removed := cfg.RemoveTaskRefs(map[string]bool{"t1": true, "t2": true})
+		if removed != 2 {
+			t.Fatalf("expected 2 removals, got %d", removed)
+		}
+		if len(cfg.FocusQueue) != 0 {
+			t.Errorf("expected empty FocusQueue, got %v", cfg.FocusQueue)
+		}
+	})
+}
+
 func TestFocusDismissedHelpers(t *testing.T) {
 	t.Run("SetFocusDismissedIDs replaces list", func(t *testing.T) {
 		cfg := NewConfig()

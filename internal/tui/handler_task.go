@@ -98,6 +98,7 @@ func (m *AppModel) handleTaskMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint:go
 		return true, cmd
 
 	case TaskDeletedMsg:
+		m.pruneDeletedTaskRefs()
 		return true, m.handleWithRefresh(false, false, "")
 
 	case ArchiveCompletedTasksMsg:
@@ -107,6 +108,7 @@ func (m *AppModel) handleTaskMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint:go
 		return m.handleArchiveAllCompletedTasks()
 
 	case TasksArchivedMsg:
+		m.pruneDeletedTaskRefs()
 		statusMsg := fmt.Sprintf("Archived %d task(s) to completed.md", msg.Count)
 		if msg.Projects > 0 {
 			statusMsg = fmt.Sprintf("Archived %d task(s) across %d project(s)", msg.Count, msg.Projects)

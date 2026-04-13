@@ -57,7 +57,10 @@ func NewAppModel(cfg *config.Config, manager *config.Manager, opts ...AppOption)
 
 	// Hydrate focus queue from persisted config (only from active projects)
 	activeProjects := cfg.GetActiveProjects()
+	queueChanged := false
+	var updatedQueue []config.FocusQueueItem
 	for _, item := range cfg.GetFocusQueue() {
+		found := false
 		for _, p := range activeProjects {
 			if p.ID != item.ProjectID {
 				continue
@@ -68,9 +71,21 @@ func NewAppModel(cfg *config.Config, manager *config.Manager, opts ...AppOption)
 			if task := p.GetTaskByID(item.TaskID); task != nil && !task.Status.IsComplete() {
 				app.focusQueue = append(app.focusQueue, FocusTask{Task: task, Project: p})
 				app.focusQueueIDs[task.ID] = true
+				updatedQueue = append(updatedQueue, item)
+				found = true
 			}
 			break
 		}
+		if !found {
+			queueChanged = true
+		}
+	}
+	if queueChanged {
+		if updatedQueue == nil {
+			updatedQueue = []config.FocusQueueItem{}
+		}
+		cfg.SetFocusQueue(updatedQueue)
+		saveConfigWarn(manager, cfg, "focus queue pruning")
 	}
 	// Hydrate daily plan from persisted config (only from active projects, with carry-over logic)
 	today := time.Now().Format("2006-01-02")
@@ -127,7 +142,10 @@ func NewAppModel(cfg *config.Config, manager *config.Manager, opts ...AppOption)
 	}
 
 	// Hydrate recent task visits from persisted config
+	visitsChanged := false
+	var updatedVisits []config.RecentTaskVisit
 	for _, item := range cfg.GetRecentTaskVisits() {
+		found := false
 		for _, p := range activeProjects {
 			if p.ID != item.ProjectID {
 				continue
@@ -137,9 +155,21 @@ func NewAppModel(cfg *config.Config, manager *config.Manager, opts ...AppOption)
 			}
 			if task := p.GetTaskByID(item.TaskID); task != nil {
 				app.recentTaskVisits = append(app.recentTaskVisits, RecentTaskVisitEntry{Task: task, Project: p, Pinned: item.Pinned})
+				updatedVisits = append(updatedVisits, item)
+				found = true
 			}
 			break
 		}
+		if !found {
+			visitsChanged = true
+		}
+	}
+	if visitsChanged {
+		if updatedVisits == nil {
+			updatedVisits = []config.RecentTaskVisit{}
+		}
+		cfg.SetRecentTaskVisits(updatedVisits)
+		saveConfigWarn(manager, cfg, "recent task visits pruning")
 	}
 
 	// Ensure sandbox project exists
