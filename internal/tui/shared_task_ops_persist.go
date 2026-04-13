@@ -46,6 +46,10 @@ func workflowPersist(optsProvider func() WorkflowSaveOptions) persistFn {
 		project.MutateTask(taskID, mutate)
 		opts := optsProvider()
 		opts.PrevStates = prevStates
+		// Auto-set targeted undo for single-task operations
+		if len(opts.UndoTaskIDs) == 0 && opts.UndoAction != "" {
+			opts.UndoTaskIDs = []string{taskID}
+		}
 		if err := persistWithWorkflow(opts); err != nil {
 			return TaskOpResult{Err: err}
 		}
@@ -100,11 +104,12 @@ type WorkflowSaveOptions struct {
 	UndoAction    string
 	UndoContext   string
 	UndoDepth     int
+	UndoTaskIDs   []string // Tasks explicitly changed by user (enables targeted undo)
 }
 
 // BuildWorkflowOpts constructs a WorkflowSaveOptions from the given parameters.
 // It resolves UndoDepth from the config when undo fields are provided.
-func BuildWorkflowOpts(persister Persister, project *models.Project, cfg *config.Config, cfgManager *config.Manager, prevStates map[string]*models.Task, undoAction, undoContext string) WorkflowSaveOptions {
+func BuildWorkflowOpts(persister Persister, project *models.Project, cfg *config.Config, cfgManager *config.Manager, prevStates map[string]*models.Task, undoAction, undoContext string, undoTaskIDs []string) WorkflowSaveOptions {
 	opts := WorkflowSaveOptions{
 		Persister:     persister,
 		Project:       project,
@@ -113,6 +118,7 @@ func BuildWorkflowOpts(persister Persister, project *models.Project, cfg *config
 		PrevStates:    prevStates,
 		UndoAction:    undoAction,
 		UndoContext:   undoContext,
+		UndoTaskIDs:   undoTaskIDs,
 	}
 	if cfg != nil && cfg.UndoHistoryDepth != nil {
 		opts.UndoDepth = *cfg.UndoHistoryDepth
@@ -198,7 +204,7 @@ func persistWithWorkflow(opts WorkflowSaveOptions) error {
 
 	// Record undo snapshot BEFORE backup+save so it captures the pre-mutation state
 	if opts.UndoDepth > 0 && opts.UndoAction != "" {
-		_ = opts.Persister.RecordUndoSnapshot(opts.Project, opts.UndoAction, opts.UndoContext, opts.UndoDepth)
+		_ = opts.Persister.RecordUndoSnapshot(opts.Project, opts.UndoAction, opts.UndoContext, opts.UndoDepth, opts.UndoTaskIDs)
 	}
 
 	if err := opts.Persister.Backup(opts.Project); err != nil {
@@ -304,6 +310,40 @@ func processTUIDeferredMoves(_ Persister, srcProject *models.Project, moves []wo
 	return nil
 }
 
+// reapplySideEffects re-runs state-derived side effects (auto-unblock,
+// recurring instances, reorder) after an undo/redo restore. This ensures
+// only the user's explicit change is reverted while automated derivations
+// are freshly computed. Event-driven workflow rules are deliberately skipped.
+func reapplySideEffects(persister Persister, project *models.Project) error {
+	project.CheckAndAutoUnblock()
+	project.GenerateRecurringInstances()
+	project.ReorderRootTasksByCompletion()
+	if err := persister.Backup(project); err != nil {
+		return fmt.Errorf("failed to backup after undo/redo: %w", err)
+	}
+	if err := persister.Save(project); err != nil {
+		return fmt.Errorf("failed to save after undo/redo: %w", err)
+	}
+	_ = persister.Load(project)
+	return nil
+}
+
+// reapplyStorageSideEffects is like reapplySideEffects but uses the storage
+// package directly. Used by views that don't hold a Persister (e.g. UndoHistoryModel).
+func reapplyStorageSideEffects(project *models.Project) error {
+	project.CheckAndAutoUnblock()
+	project.GenerateRecurringInstances()
+	project.ReorderRootTasksByCompletion()
+	if err := storage.BackupProject(project); err != nil {
+		return fmt.Errorf("failed to backup after undo/redo: %w", err)
+	}
+	if err := storage.SaveProjectLocked(project); err != nil {
+		return fmt.Errorf("failed to save after undo/redo: %w", err)
+	}
+	_ = storage.LoadProject(project)
+	return nil
+}
+
 // performUndoCmd returns a tea.Cmd that restores the project from the most recent
 // undo snapshot. View-level rebuild (buildTree, rebuildRows) is handled by
 // handleWithRefresh on the main goroutine when UndoPerformedMsg is received.
@@ -318,6 +358,9 @@ func performUndoCmd(persister Persister, project *models.Project) tea.Cmd {
 		}
 		if err := persister.Load(project); err != nil {
 			return ErrorMsg{Err: fmt.Errorf("failed to reload after undo: %w", err)}
+		}
+		if err := reapplySideEffects(persister, project); err != nil {
+			return ErrorMsg{Err: err}
 		}
 		return UndoPerformedMsg{Action: action}
 	}
@@ -336,6 +379,9 @@ func performRedoCmd(persister Persister, project *models.Project) tea.Cmd {
 		}
 		if err := persister.Load(project); err != nil {
 			return ErrorMsg{Err: fmt.Errorf("failed to reload after redo: %w", err)}
+		}
+		if err := reapplySideEffects(persister, project); err != nil {
+			return ErrorMsg{Err: err}
 		}
 		return RedoPerformedMsg{Action: action}
 	}

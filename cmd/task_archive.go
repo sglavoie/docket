@@ -69,7 +69,7 @@ func runTaskArchive(cmd *cobra.Command, args []string) error {
 	// Record undo snapshot before archiving (this is destructive and important to undo)
 	if cfg.UndoHistoryDepth != nil && *cfg.UndoHistoryDepth > 0 {
 		if snapshotErr := storage.RecordUndoSnapshot(project, "Archive Tasks",
-			fmt.Sprintf("%d tasks", len(completedTasks)), *cfg.UndoHistoryDepth); snapshotErr != nil {
+			fmt.Sprintf("%d tasks", len(completedTasks)), *cfg.UndoHistoryDepth, nil); snapshotErr != nil {
 			fmt.Fprintf(os.Stderr, "warning: failed to record undo snapshot: %v\n", snapshotErr)
 		}
 	}
@@ -140,7 +140,7 @@ func runTaskArchiveAll(out MutateOutput) error {
 		// Record undo snapshot before archiving
 		if cfg.UndoHistoryDepth != nil && *cfg.UndoHistoryDepth > 0 {
 			if snapshotErr := storage.RecordUndoSnapshot(project, "Archive Tasks",
-				fmt.Sprintf("%d tasks", len(completedTasks)), *cfg.UndoHistoryDepth); snapshotErr != nil {
+				fmt.Sprintf("%d tasks", len(completedTasks)), *cfg.UndoHistoryDepth, nil); snapshotErr != nil {
 				fmt.Fprintf(os.Stderr, "warning: failed to record undo snapshot for %s: %v\n", project.Name, snapshotErr)
 			}
 		}

@@ -28,6 +28,7 @@ type prefixableView interface {
 	refreshView()                                                  // buildTree / loadTasks / rebuildRows
 	workflowPersistFn() persistFn                                  // for single-task operations
 	setUndoContext(action, detail string)                          // sets undo label before persist
+	setUndoTaskIDs(ids []string)                                   // sets targeted task IDs for undo
 	saveAndRefreshBulk(prevStates map[string]*models.Task) tea.Cmd // bulk: persist + refresh
 	setStatusMessage(msg string)                                   // sets the status bar text
 }

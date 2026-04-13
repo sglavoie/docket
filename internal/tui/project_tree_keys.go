@@ -140,8 +140,13 @@ func (m *ProjectTreeModel) sendTasksToSection(section string, visible []*TreeNod
 				count++
 			}
 		}
+		selectedIDs := make([]string, 0, len(m.selectedTasks))
+		for id := range m.selectedTasks {
+			selectedIDs = append(selectedIDs, id)
+		}
 		m.clearSelection()
 		m.setUndoContext(label, fmt.Sprintf("%d tasks", count))
+		m.undo.TaskIDs = selectedIDs
 		return true, m.saveAndRefreshWithPrevStates(prevStates)
 	}
 
@@ -162,6 +167,7 @@ func (m *ProjectTreeModel) sendTasksToSection(section string, visible []*TreeNod
 	})
 	m.project.RelocateTaskToEndOfSection(taskID, section)
 	m.setUndoContext(label, task.Title)
+	m.undo.TaskIDs = []string{taskID}
 	return true, m.saveAndRefreshWithPrevStates(prevStates)
 }
 

@@ -51,7 +51,7 @@ func TestRunUndo(t *testing.T) {
 		}
 
 		// Record undo snapshot (captures original state), then write current content
-		if err := storage.RecordUndoSnapshot(project, "test", "modified task", 10); err != nil {
+		if err := storage.RecordUndoSnapshot(project, "test", "modified task", 10, nil); err != nil {
 			t.Fatalf("failed to record undo snapshot: %v", err)
 		}
 		if err := os.WriteFile(tasksPath, []byte(currentContent), 0644); err != nil {
@@ -184,7 +184,7 @@ func TestRunUndo(t *testing.T) {
 		}
 
 		// Record a snapshot, mutate, then undo to create redo entries
-		if err := storage.RecordUndoSnapshot(project, "test", "", 10); err != nil {
+		if err := storage.RecordUndoSnapshot(project, "test", "", 10, nil); err != nil {
 			t.Fatalf("failed to record snapshot: %v", err)
 		}
 		if err := os.WriteFile(tasksPath, []byte(tasksContent), 0644); err != nil {

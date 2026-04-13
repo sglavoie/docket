@@ -199,15 +199,18 @@ func (m *AppModel) applyTagsToTask(task *models.Task, project *models.Project, s
 	// Refresh tree/outliner and set undo context
 	if m.projectTree != nil {
 		m.projectTree.setUndoContext("Set Tags", fmt.Sprintf("#%d %s", task.ShortID, task.Title))
+		m.projectTree.undo.TaskIDs = []string{task.ID}
 		m.projectTree.buildTree()
 	}
 	if m.outliner != nil {
 		m.outliner.setUndoContext("Set Tags", fmt.Sprintf("#%d %s", task.ShortID, task.Title))
+		m.outliner.undo.TaskIDs = []string{task.ID}
 		m.outliner.rebuildRows()
 	}
 	if m.crossOutliner != nil {
 		m.crossOutliner.crossUndoCtx.Set("Set Tags", fmt.Sprintf("#%d %s", task.ShortID, task.Title))
 		m.crossOutliner.crossUndoCtx.ProjectIDs = []string{project.ID}
+		m.crossOutliner.crossUndoCtx.TaskIDs = []string{task.ID}
 		m.crossOutliner.rebuildRows()
 	}
 
@@ -229,14 +232,17 @@ func (m *AppModel) applyTagsToTasks(tasks []*models.Task, project *models.Projec
 	}
 
 	// Refresh tree/outliner, clear selection, and set undo context
+	bulkIDs := taskIDsFromSlice(tasks)
 	if m.projectTree != nil {
 		m.projectTree.clearSelection()
 		m.projectTree.setUndoContext("Set Tags", fmt.Sprintf("%d tasks", len(tasks)))
+		m.projectTree.undo.TaskIDs = bulkIDs
 		m.projectTree.buildTree()
 	}
 	if m.outliner != nil {
 		m.outliner.clearMultiSelect()
 		m.outliner.setUndoContext("Set Tags", fmt.Sprintf("%d tasks", len(tasks)))
+		m.outliner.undo.TaskIDs = bulkIDs
 		m.outliner.rebuildRows()
 	}
 

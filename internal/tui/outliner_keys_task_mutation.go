@@ -37,6 +37,7 @@ func (m *OutlinerModel) handleTaskMutationKey(key string, onHeader bool) (tea.Mo
 			taskID := task.ID
 			m.project.SwapTasks(task, siblings[idx+1])
 			m.setUndoContext("Move Down", task.Title)
+			m.undo.TaskIDs = []string{task.ID}
 			m.rebuildRows()
 			m.moveCursorToTask(taskID)
 			return m, m.saveWithWorkflow(), true
@@ -72,6 +73,7 @@ func (m *OutlinerModel) handleTaskMutationKey(key string, onHeader bool) (tea.Mo
 			taskID := task.ID
 			m.project.SwapTasks(task, siblings[idx-1])
 			m.setUndoContext("Move Up", task.Title)
+			m.undo.TaskIDs = []string{task.ID}
 			m.rebuildRows()
 			m.moveCursorToTask(taskID)
 			return m, m.saveWithWorkflow(), true
@@ -115,6 +117,7 @@ func (m *OutlinerModel) handleTaskMutationKey(key string, onHeader bool) (tea.Mo
 		}
 		if IndentTask(m.project, task, candidate) {
 			m.setUndoContext("Indent", task.Title)
+			m.undo.TaskIDs = []string{task.ID}
 			m.validateZoomStack()
 			m.rebuildRows()
 			return m, m.saveWithWorkflow(), true
@@ -149,6 +152,7 @@ func (m *OutlinerModel) handleTaskMutationKey(key string, onHeader bool) (tea.Mo
 		}
 		if OutdentTask(m.project, task) {
 			m.setUndoContext("Outdent", task.Title)
+			m.undo.TaskIDs = []string{task.ID}
 			m.validateZoomStack()
 			m.rebuildRows()
 			return m, m.saveWithWorkflow(), true

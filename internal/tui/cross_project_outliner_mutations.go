@@ -54,7 +54,7 @@ func (m *OutlinerModel) crossPersistFn(_ *models.Project) persistFn {
 		}
 		// Record undo snapshot before mutation (reads current tasks.md)
 		if cfg != nil && cfg.UndoHistoryDepth != nil && *cfg.UndoHistoryDepth > 0 {
-			_ = svc.RecordUndoSnapshot(project, undoCtx.Action, undoCtx.Context, *cfg.UndoHistoryDepth)
+			_ = svc.RecordUndoSnapshot(project, undoCtx.Action, undoCtx.Context, *cfg.UndoHistoryDepth, nil)
 		}
 		if err := svc.Backup(project); err != nil {
 			return TaskOpResult{Err: fmt.Errorf("backup failed: %w", err)}
@@ -173,7 +173,7 @@ func (m *OutlinerModel) crossExecutePendingBulkStatus() (tea.Model, tea.Cmd) {
 		group := grouped[projID]
 		if undoDepth > 0 {
 			_ = svc.RecordUndoSnapshot(group.proj, "Bulk Status Change",
-				fmt.Sprintf("%d tasks -> %s", len(group.tasks), status), undoDepth)
+				fmt.Sprintf("%d tasks -> %s", len(group.tasks), status), undoDepth, nil)
 		}
 		if err := svc.Backup(group.proj); err != nil {
 			m.bulkOp.Clear()
@@ -263,7 +263,7 @@ func (m *OutlinerModel) crossHandleSnoozeMutation(key string) (tea.Cmd, bool) {
 	m.crossUndoCtx.Set("Snooze", row.task.Title)
 	m.crossUndoCtx.ProjectIDs = []string{proj.ID}
 	if m.config != nil && m.config.UndoHistoryDepth != nil && *m.config.UndoHistoryDepth > 0 {
-		_ = m.projectService.RecordUndoSnapshot(proj, "Snooze", row.task.Title, *m.config.UndoHistoryDepth)
+		_ = m.projectService.RecordUndoSnapshot(proj, "Snooze", row.task.Title, *m.config.UndoHistoryDepth, nil)
 	}
 	if err := m.projectService.Backup(proj); err != nil {
 		return func() tea.Msg { return ErrorMsg{Err: fmt.Errorf("backup failed: %w", err)} }, true
@@ -408,7 +408,7 @@ func (m *OutlinerModel) crossHandleSectionMove(key string, cursorTask *models.Ta
 		m.crossUndoCtx.ProjectIDs = []string{proj.ID}
 		svc := m.projectService
 		if m.config != nil && m.config.UndoHistoryDepth != nil && *m.config.UndoHistoryDepth > 0 {
-			_ = svc.RecordUndoSnapshot(proj, label, task.Title, *m.config.UndoHistoryDepth)
+			_ = svc.RecordUndoSnapshot(proj, label, task.Title, *m.config.UndoHistoryDepth, nil)
 		}
 		if err := svc.Backup(proj); err != nil {
 			return m, func() tea.Msg { return ErrorMsg{Err: fmt.Errorf("backup failed: %w", err)} }

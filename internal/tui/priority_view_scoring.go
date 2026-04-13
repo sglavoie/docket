@@ -269,7 +269,7 @@ func (m *PriorityViewModel) startSuggestedTask() (tea.Model, tea.Cmd) {
 	}
 
 	pf := workflowPersist(func() WorkflowSaveOptions {
-		return BuildWorkflowOpts(m.projectService, m.project, m.config, m.configManager, nil, "", "")
+		return BuildWorkflowOpts(m.projectService, m.project, m.config, m.configManager, nil, "", "", nil)
 	})
 	result := applyStatusChange(pf, m.project, task.ID, models.StatusInProgress)
 	if result.Err != nil {

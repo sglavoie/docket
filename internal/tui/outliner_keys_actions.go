@@ -44,6 +44,7 @@ func (m *OutlinerModel) handleConfirmDialog(key string) (tea.Model, tea.Cmd) {
 				return m, m.crossSaveProject(proj)
 			}
 			m.setUndoContext("Stop Recurrence", task.Title)
+			m.undo.TaskIDs = []string{task.ID}
 			m.rebuildRows()
 			m.setStatus(fmt.Sprintf("Stopped recurrence on #%d", task.ShortID))
 			return m, m.saveWithWorkflow()
@@ -117,6 +118,7 @@ func (m *OutlinerModel) applyBulkStatusChange(newStatus models.TaskStatus) (tea.
 		})
 	}
 	m.setUndoContext("Bulk Status Change", fmt.Sprintf("%d tasks -> %s", len(valid), newStatus))
+	m.undo.TaskIDs = taskIDsFromSlice(valid)
 	if err := m.saveAndRefreshWithPrevStates(prevStates); err != nil {
 		m.err = err
 		return m, func() tea.Msg { return ErrorMsg{Err: err} }
@@ -144,6 +146,7 @@ func (m *OutlinerModel) executePendingBulkStatus() (tea.Model, tea.Cmd) {
 		})
 	}
 	m.setUndoContext("Bulk Status Change", fmt.Sprintf("%d tasks -> %s", len(tasks), status))
+	m.undo.TaskIDs = taskIDsFromSlice(tasks)
 	if err := m.saveAndRefreshWithPrevStates(prevStates); err != nil {
 		m.err = err
 		m.bulkOp.Clear()
@@ -318,7 +321,7 @@ func (m *OutlinerModel) archiveCompletedTasks() (tea.Model, tea.Cmd) {
 	cmd := func() tea.Msg {
 		if undoDepth > 0 {
 			_ = svc.RecordUndoSnapshot(proj, "Archive Tasks",
-				fmt.Sprintf("%d tasks", completedCount), undoDepth)
+				fmt.Sprintf("%d tasks", completedCount), undoDepth, nil)
 		}
 		if err := svc.Backup(proj); err != nil {
 			return ErrorMsg{Err: fmt.Errorf("failed to create backup: %w", err)}

@@ -231,6 +231,7 @@ func (m *OutlinerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		m.project.BuildTaskTree()
 		m.setUndoContext("Reparent Task", task.Title)
+		m.undo.TaskIDs = []string{task.ID}
 		return m, m.saveAndRefreshBulk(prevStates)
 
 	case tea.KeyPressMsg:

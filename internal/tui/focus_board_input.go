@@ -70,7 +70,7 @@ func (m *FocusBoardModel) handleEditInput(msg tea.KeyPressMsg) (tea.Model, tea.C
 			row.Project.MutateTask(row.Task.ID, func(t *models.Task) {
 				t.Title = value
 			})
-			opts := BuildWorkflowOpts(m.projectService, row.Project, m.getConfig(), m.configManager, nil, "Edit Title", row.Task.Title)
+			opts := BuildWorkflowOpts(m.projectService, row.Project, m.getConfig(), m.configManager, nil, "Edit Title", row.Task.Title, nil)
 			if err := persistWithWorkflow(opts); err != nil {
 				m.setStatus("Failed to save: " + err.Error())
 				return m, nil
@@ -155,7 +155,7 @@ func (m *FocusBoardModel) createItemFromInput(input string) (tea.Model, tea.Cmd)
 	targetProject.Tasks = append(targetProject.Tasks, task)
 	targetProject.BuildTaskTree()
 
-	opts := BuildWorkflowOpts(m.projectService, targetProject, m.getConfig(), m.configManager, nil, "Add Task", task.Title)
+	opts := BuildWorkflowOpts(m.projectService, targetProject, m.getConfig(), m.configManager, nil, "Add Task", task.Title, nil)
 	if err := persistWithWorkflow(opts); err != nil {
 		m.setStatus("Failed to save: " + err.Error())
 		return m, nil

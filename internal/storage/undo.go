@@ -22,6 +22,7 @@ type UndoEntry struct {
 	Action    string    `json:"action"`
 	Context   string    `json:"context,omitempty"`
 	Timestamp time.Time `json:"timestamp"`
+	TaskIDs   []string  `json:"task_ids,omitempty"` // Tasks explicitly changed by user (nil = full-file undo)
 }
 
 // UndoMeta holds the metadata for all undo entries.
@@ -186,7 +187,9 @@ func GetCurrentContent(project *models.Project) (string, error) {
 
 // RecordUndoSnapshot captures the current state before a mutation.
 // If maxDepth is 0, undo recording is disabled.
-func RecordUndoSnapshot(project *models.Project, action, context string, maxDepth int) error {
+// taskIDs identifies the tasks explicitly changed by the user; when non-nil,
+// undo will only restore those tasks instead of replacing the entire file.
+func RecordUndoSnapshot(project *models.Project, action, context string, maxDepth int, taskIDs []string) error {
 	if maxDepth <= 0 {
 		return nil // Undo disabled
 	}
@@ -237,6 +240,7 @@ func RecordUndoSnapshot(project *models.Project, action, context string, maxDept
 		Action:    action,
 		Context:   context,
 		Timestamp: time.Now(),
+		TaskIDs:   taskIDs,
 	})
 
 	// Prune old entries if over limit
@@ -305,13 +309,13 @@ func PerformUndo(project *models.Project) (string, error) {
 	latest := meta.Entries[0]
 
 	// Read the snapshot content
-	content, err := GetSnapshotContent(project, latest.Num)
+	snapshotContent, err := GetSnapshotContent(project, latest.Num)
 	if err != nil {
 		return "", err
 	}
 
 	// Validate the snapshot is valid markdown
-	_, err = ParseTasksMarkdownWithSections(content)
+	snapshotResult, err := ParseTasksMarkdownWithSections(snapshotContent)
 	if err != nil {
 		return "", fmt.Errorf("snapshot is invalid: %w", err)
 	}
@@ -337,10 +341,24 @@ func PerformUndo(project *models.Project) (string, error) {
 		Action:    latest.Action,
 		Context:   latest.Context,
 		Timestamp: time.Now(),
+		TaskIDs:   latest.TaskIDs,
 	})
 
-	// Write the snapshot content to tasks.md
-	if err := util.AtomicWriteFile(tasksPath, []byte(content), FilePermissions); err != nil {
+	// Determine what to write: targeted restore or full-file restore
+	var restoreContent string
+	if len(latest.TaskIDs) > 0 {
+		restoreContent, err = buildTargetedRestore(string(currentContent), snapshotResult, latest.TaskIDs)
+		if err != nil {
+			// Fall back to full-file restore on error
+			logging.Warn("targeted undo failed, falling back to full restore: %v", err)
+			restoreContent = snapshotContent
+		}
+	} else {
+		restoreContent = snapshotContent
+	}
+
+	// Write the restored content to tasks.md
+	if err := util.AtomicWriteFile(tasksPath, []byte(restoreContent), FilePermissions); err != nil {
 		return "", fmt.Errorf("failed to restore from snapshot: %w", err)
 	}
 
@@ -391,7 +409,8 @@ func PerformRedo(project *models.Project) (string, error) {
 	}
 
 	// Validate the redo snapshot
-	if _, err := ParseTasksMarkdownWithSections(string(redoContent)); err != nil {
+	redoResult, err := ParseTasksMarkdownWithSections(string(redoContent))
+	if err != nil {
 		return "", fmt.Errorf("redo snapshot is invalid: %w", err)
 	}
 
@@ -416,10 +435,23 @@ func PerformRedo(project *models.Project) (string, error) {
 		Action:    latest.Action,
 		Context:   latest.Context,
 		Timestamp: time.Now(),
+		TaskIDs:   latest.TaskIDs,
 	})
 
+	// Determine what to write: targeted restore or full-file restore
+	var restoreContent string
+	if len(latest.TaskIDs) > 0 {
+		restoreContent, err = buildTargetedRestore(string(currentContent), redoResult, latest.TaskIDs)
+		if err != nil {
+			logging.Warn("targeted redo failed, falling back to full restore: %v", err)
+			restoreContent = string(redoContent)
+		}
+	} else {
+		restoreContent = string(redoContent)
+	}
+
 	// Restore from redo snapshot
-	if err := util.AtomicWriteFile(tasksPath, redoContent, FilePermissions); err != nil {
+	if err := util.AtomicWriteFile(tasksPath, []byte(restoreContent), FilePermissions); err != nil {
 		return "", fmt.Errorf("failed to restore from redo snapshot: %w", err)
 	}
 
@@ -439,4 +471,94 @@ func PerformRedo(project *models.Project) (string, error) {
 	}
 
 	return actionDesc, nil
+}
+
+// buildTargetedRestore parses the current content, replaces only the targeted
+// tasks with their versions from the snapshot, and re-serializes.
+func buildTargetedRestore(currentContent string, snapshotResult *ParseResult, taskIDs []string) (string, error) {
+	currentResult, err := ParseTasksMarkdownWithSections(currentContent)
+	if err != nil {
+		return "", fmt.Errorf("failed to parse current content: %w", err)
+	}
+
+	// Build snapshot task lookup
+	snapshotMap := make(map[string]*models.Task, len(snapshotResult.Tasks))
+	for _, t := range snapshotResult.Tasks {
+		snapshotMap[t.ID] = t
+	}
+
+	// Replace targeted tasks' fields
+	for _, taskID := range taskIDs {
+		snapTask, ok := snapshotMap[taskID]
+		if !ok {
+			continue // Task didn't exist in snapshot (was newly created); skip
+		}
+		for _, curTask := range currentResult.Tasks {
+			if curTask.ID == taskID {
+				restoreTaskFields(curTask, snapTask)
+				break
+			}
+		}
+	}
+
+	return WriteTasksMarkdownWithSections(
+		currentResult.ProjectName,
+		currentResult.Tasks,
+		currentResult.Sections,
+		currentResult.SectionColors,
+	), nil
+}
+
+// restoreTaskFields copies all persistent fields from src to dst, preserving
+// only the ID (must be identical) and computed tree pointers (Children, Parent,
+// Project, Level) which are rebuilt by BuildTaskTree.
+func restoreTaskFields(dst, src *models.Task) {
+	dst.ShortID = src.ShortID
+	dst.Type = src.Type
+	dst.Title = src.Title
+	dst.Description = src.Description
+	dst.Status = src.Status
+	dst.Priority = src.Priority
+	dst.ParentID = src.ParentID
+	dst.Section = src.Section
+	dst.CustomSection = src.CustomSection
+	dst.CreatedAt = src.CreatedAt
+	dst.UpdatedAt = src.UpdatedAt
+	dst.CompletedAt = src.CompletedAt
+	dst.DueDate = src.DueDate
+	dst.Active = src.Active
+	dst.Pinned = src.Pinned
+	dst.PinnedAt = src.PinnedAt
+	dst.Dimmed = src.Dimmed
+	dst.SnoozedUntil = src.SnoozedUntil
+	dst.Stage = src.Stage
+	dst.Source = src.Source
+	dst.URL = src.URL
+
+	// Deep copy slices and maps
+	dst.Tags = copyStringSlice(src.Tags)
+	dst.DependsOn = copyStringSlice(src.DependsOn)
+	dst.RelatedTo = copyStringSlice(src.RelatedTo)
+
+	// Copy complex types by reference (parsed fresh from snapshot)
+	dst.Comments = src.Comments
+	dst.Recurrence = src.Recurrence
+	dst.Attachments = src.Attachments
+	dst.Activity = src.Activity
+	dst.Checklist = src.Checklist
+	dst.ScoreDimensions = src.ScoreDimensions
+	dst.BugAttrs = src.BugAttrs
+	dst.IdeaAttrs = src.IdeaAttrs
+	dst.TaskAttrs = src.TaskAttrs
+	dst.StoryAttrs = src.StoryAttrs
+	dst.EpicAttrs = src.EpicAttrs
+}
+
+func copyStringSlice(s []string) []string {
+	if s == nil {
+		return nil
+	}
+	c := make([]string, len(s))
+	copy(c, s)
+	return c
 }

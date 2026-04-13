@@ -25,6 +25,7 @@ func handlePriorityPrefix(key string, v prefixableView) (tea.Cmd, bool) {
 		v.clearMultiSelect()
 		msg := fmt.Sprintf("Set priority %d on %d tasks", priority, count)
 		v.setUndoContext("Set Priority", msg)
+		v.setUndoTaskIDs(taskIDsFromSlice(tasks))
 		v.setStatusMessage(msg)
 		return v.saveAndRefreshBulk(prevStates), true
 	}
@@ -73,6 +74,7 @@ func handleStagePrefix(key string, v prefixableView, stages []string) (tea.Cmd, 
 		}
 		msg := fmt.Sprintf("Set stage %s on %d tasks", label, count)
 		v.setUndoContext("Set Stage", msg)
+		v.setUndoTaskIDs(taskIDsFromSlice(tasks))
 		v.setStatusMessage(msg)
 		return v.saveAndRefreshBulk(prevStates), true
 	}
@@ -109,6 +111,7 @@ func handleDueDatePrefix(key string, v prefixableView) (tea.Cmd, bool) {
 			count := applyBulkDueDate(project, tasks, dueDate)
 			v.clearMultiSelect()
 			v.setUndoContext("Set Due Date", fmt.Sprintf("%s on %d tasks", desc, count))
+			v.setUndoTaskIDs(taskIDsFromSlice(tasks))
 			return v.saveAndRefreshBulk(prevStates), true
 		}
 		task := v.getCursorTask()
@@ -179,6 +182,7 @@ func handleSnoozePrefix(key string, v prefixableView) (tea.Cmd, bool) {
 		}
 		v.clearMultiSelect()
 		v.setUndoContext("Snooze", fmt.Sprintf("%s on %d tasks", desc, count))
+		v.setUndoTaskIDs(taskIDsFromSlice(tasks))
 		return v.saveAndRefreshBulk(prevStates), true
 	}
 
@@ -190,6 +194,7 @@ func handleSnoozePrefix(key string, v prefixableView) (tea.Cmd, bool) {
 		t.SnoozedUntil = snoozeDate
 	})
 	v.setUndoContext("Snooze", fmt.Sprintf("%s: %s", desc, task.Title))
+	v.setUndoTaskIDs([]string{task.ID})
 	return v.saveAndRefreshBulk(prevStates), true
 }
 
@@ -217,6 +222,7 @@ func handleSkipRecurrence(v prefixableView) (tea.Cmd, bool) {
 	}
 	msg := fmt.Sprintf("Skipped: next due %s", dueStr)
 	v.setUndoContext("Skip Recurrence", task.Title)
+	v.setUndoTaskIDs([]string{task.ID})
 	v.setStatusMessage(msg)
 	return v.saveAndRefreshBulk(prevStates), true
 }
@@ -268,6 +274,7 @@ func handleDeferRecurrence(key string, v prefixableView) (tea.Cmd, bool) {
 	}
 	msg := fmt.Sprintf("Deferred %s: now due %s", desc, dueStr)
 	v.setUndoContext("Defer Recurrence", task.Title)
+	v.setUndoTaskIDs([]string{task.ID})
 	v.setStatusMessage(msg)
 	return v.saveAndRefreshBulk(prevStates), true
 }
@@ -287,6 +294,7 @@ func handleToggleActiveKey(v prefixableView) (tea.Cmd, bool) {
 		v.clearMultiSelect()
 		msg := fmt.Sprintf("Toggled active on %d tasks", count)
 		v.setUndoContext("Toggle Active", msg)
+		v.setUndoTaskIDs(taskIDsFromSlice(tasks))
 		v.setStatusMessage(msg)
 		return v.saveAndRefreshBulk(prevStates), true
 	}
@@ -323,6 +331,7 @@ func handleTogglePinnedKey(v prefixableView) (tea.Cmd, bool) {
 		v.clearMultiSelect()
 		msg := fmt.Sprintf("Toggled pin on %d tasks", count)
 		v.setUndoContext("Toggle Pin", msg)
+		v.setUndoTaskIDs(taskIDsFromSlice(tasks))
 		v.setStatusMessage(msg)
 		return v.saveAndRefreshBulk(prevStates), true
 	}
@@ -359,6 +368,7 @@ func handleToggleDimmedKey(v prefixableView) (tea.Cmd, bool) {
 		v.clearMultiSelect()
 		msg := fmt.Sprintf("Toggled dim on %d tasks", count)
 		v.setUndoContext("Toggle Dim", msg)
+		v.setUndoTaskIDs(taskIDsFromSlice(tasks))
 		v.setStatusMessage(msg)
 		return v.saveAndRefreshBulk(prevStates), true
 	}

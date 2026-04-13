@@ -54,6 +54,7 @@ func (m *ProjectTreeModel) handleMovementKeys(key string, visible []*TreeNode) (
 					m.cursor--
 				}
 				m.setUndoContext("Move Up", task.Title)
+				m.undo.TaskIDs = []string{task.ID, siblingAbove.ID}
 				return true, m.saveAndRefreshWithPrevStates(prevStates)
 			}
 		}
@@ -82,6 +83,7 @@ func (m *ProjectTreeModel) handleMovementKeys(key string, visible []*TreeNode) (
 					m.cursor++
 				}
 				m.setUndoContext("Move Down", task.Title)
+				m.undo.TaskIDs = []string{task.ID, siblingBelow.ID}
 				return true, m.saveAndRefreshWithPrevStates(prevStates)
 			}
 		}
@@ -94,6 +96,7 @@ func (m *ProjectTreeModel) handleMovementKeys(key string, visible []*TreeNode) (
 			prevStates := captureTaskStates(m.project.Tasks)
 			if IndentTask(m.project, task, candidate) {
 				m.setUndoContext("Indent", task.Title)
+				m.undo.TaskIDs = []string{task.ID}
 				return true, m.saveAndRefreshWithPrevStates(prevStates)
 			}
 		}
@@ -105,6 +108,7 @@ func (m *ProjectTreeModel) handleMovementKeys(key string, visible []*TreeNode) (
 			prevStates := captureTaskStates(m.project.Tasks)
 			if OutdentTask(m.project, task) {
 				m.setUndoContext("Outdent", task.Title)
+				m.undo.TaskIDs = []string{task.ID}
 				return true, m.saveAndRefreshWithPrevStates(prevStates)
 			}
 		}
@@ -145,6 +149,7 @@ func (m *ProjectTreeModel) moveTaskToTop(visible []*TreeNode) (tea.Model, tea.Cm
 		}
 	}
 	m.setUndoContext("Move to Top", task.Title)
+	m.undo.TaskIDs = []string{task.ID}
 	return m, m.saveAndRefreshWithPrevStates(prevStates)
 }
 
@@ -180,5 +185,6 @@ func (m *ProjectTreeModel) moveTaskToBottom(visible []*TreeNode) (tea.Model, tea
 		}
 	}
 	m.setUndoContext("Move to Bottom", task.Title)
+	m.undo.TaskIDs = []string{task.ID}
 	return m, m.saveAndRefreshWithPrevStates(prevStates)
 }

@@ -96,7 +96,7 @@ func runSandboxReset(cmd *cobra.Command, args []string) error {
 	if cfg.UndoHistoryDepth != nil {
 		undoDepth = *cfg.UndoHistoryDepth
 	}
-	if err := storage.RecordUndoSnapshot(sandbox, "reset sandbox", "", undoDepth); err != nil {
+	if err := storage.RecordUndoSnapshot(sandbox, "reset sandbox", "", undoDepth, nil); err != nil {
 		return fmt.Errorf("failed to record undo snapshot: %w", err)
 	}
 

@@ -60,6 +60,7 @@ func (m *OutlinerModel) sendTaskToSection(task *models.Task, section string) (te
 		label = "Move to Active"
 	}
 	m.setUndoContext(label, task.Title)
+	m.undo.TaskIDs = []string{task.ID}
 	m.rebuildRows()
 	return m, m.saveWithWorkflow()
 }
@@ -82,7 +83,12 @@ func (m *OutlinerModel) sendTasksToSectionBulk(section string) (tea.Model, tea.C
 	if section == "" {
 		label = "Move to Active"
 	}
+	selectedIDs := make([]string, 0, len(m.selectedTasks))
+	for id := range m.selectedTasks {
+		selectedIDs = append(selectedIDs, id)
+	}
 	m.setUndoContext(label, fmt.Sprintf("%d tasks", count))
+	m.undo.TaskIDs = selectedIDs
 	m.clearMultiSelect()
 	m.rebuildRows()
 	return m, m.saveWithWorkflow()
@@ -127,6 +133,7 @@ func (m *OutlinerModel) moveTaskToPosition(task *models.Task, toTop bool) (tea.M
 		label = "Move to Bottom"
 	}
 	m.setUndoContext(label, task.Title)
+	m.undo.TaskIDs = []string{task.ID}
 	m.rebuildRows()
 	return m, m.saveWithWorkflow()
 }

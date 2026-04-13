@@ -61,7 +61,7 @@ func (m *ProjectTreeModel) performRedo() tea.Cmd {
 // state, draining the pending undo context. Must be called at persist time
 // (inside closures) so the undo context reflects the latest state.
 func (m *ProjectTreeModel) buildWorkflowOpts(prevStates map[string]*models.Task) WorkflowSaveOptions {
-	opts := BuildWorkflowOpts(m.projectService, m.project, m.config, m.configManager, prevStates, m.undo.Action, m.undo.Context)
+	opts := BuildWorkflowOpts(m.projectService, m.project, m.config, m.configManager, prevStates, m.undo.Action, m.undo.Context, m.undo.TaskIDs)
 	m.undo.Clear()
 	return opts
 }
@@ -75,6 +75,11 @@ func (m *ProjectTreeModel) workflowPersistFn() persistFn {
 // setUndoContext sets the action context for the next save operation.
 func (m *ProjectTreeModel) setUndoContext(action, context string) {
 	m.undo.Set(action, context)
+}
+
+// setUndoTaskIDs sets the targeted task IDs for the next undo snapshot.
+func (m *ProjectTreeModel) setUndoTaskIDs(ids []string) {
+	m.undo.TaskIDs = ids
 }
 
 // getMultiSelectedTasks returns selected tasks when in multi-select mode, nil otherwise.
@@ -523,7 +528,7 @@ func (m *ProjectTreeModel) archiveCompletedTasks() tea.Cmd {
 		// Record undo snapshot before archiving
 		if undoDepth > 0 {
 			_ = ps.RecordUndoSnapshot(proj, "Archive Tasks",
-				fmt.Sprintf("%d tasks", completedCount), undoDepth)
+				fmt.Sprintf("%d tasks", completedCount), undoDepth, nil)
 		}
 
 		// Create backup before archiving

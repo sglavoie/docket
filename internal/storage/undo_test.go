@@ -32,7 +32,7 @@ func TestRecordUndoSnapshot(t *testing.T) {
 	}
 
 	// Record a snapshot
-	err := RecordUndoSnapshot(project, "Test Action", "test context", 10)
+	err := RecordUndoSnapshot(project, "Test Action", "test context", 10, nil)
 	if err != nil {
 		t.Fatalf("RecordUndoSnapshot failed: %v", err)
 	}
@@ -85,7 +85,7 @@ func TestRecordUndoSnapshotDisabled(t *testing.T) {
 	}
 
 	// Record with maxDepth 0 (disabled)
-	err := RecordUndoSnapshot(project, "Test", "", 0)
+	err := RecordUndoSnapshot(project, "Test", "", 0, nil)
 	if err != nil {
 		t.Fatalf("RecordUndoSnapshot with depth 0 failed: %v", err)
 	}
@@ -120,7 +120,7 @@ func TestPerformUndo(t *testing.T) {
 	}
 
 	// Record a snapshot
-	if err := RecordUndoSnapshot(project, "Add Task", "task1", 10); err != nil {
+	if err := RecordUndoSnapshot(project, "Add Task", "task1", 10, nil); err != nil {
 		t.Fatalf("RecordUndoSnapshot failed: %v", err)
 	}
 
@@ -170,7 +170,7 @@ func TestPerformUndoCreatesRedoEntry(t *testing.T) {
 		t.Fatalf("failed to write tasks file: %v", err)
 	}
 
-	if err := RecordUndoSnapshot(project, "Add Task", "task1", 10); err != nil {
+	if err := RecordUndoSnapshot(project, "Add Task", "task1", 10, nil); err != nil {
 		t.Fatalf("RecordUndoSnapshot failed: %v", err)
 	}
 
@@ -227,7 +227,7 @@ func TestPerformRedo(t *testing.T) {
 	if err := os.WriteFile(tasksPath, []byte(initialContent), 0644); err != nil {
 		t.Fatalf("failed to write tasks file: %v", err)
 	}
-	if err := RecordUndoSnapshot(project, "Add Task", "task1", 10); err != nil {
+	if err := RecordUndoSnapshot(project, "Add Task", "task1", 10, nil); err != nil {
 		t.Fatalf("RecordUndoSnapshot failed: %v", err)
 	}
 	if err := os.WriteFile(tasksPath, []byte(modifiedContent), 0644); err != nil {
@@ -287,7 +287,7 @@ func TestNewMutationClearsRedoStack(t *testing.T) {
 	if err := os.WriteFile(tasksPath, []byte(content1), 0644); err != nil {
 		t.Fatalf("failed to write tasks file: %v", err)
 	}
-	if err := RecordUndoSnapshot(project, "Action1", "", 10); err != nil {
+	if err := RecordUndoSnapshot(project, "Action1", "", 10, nil); err != nil {
 		t.Fatalf("RecordUndoSnapshot failed: %v", err)
 	}
 	if err := os.WriteFile(tasksPath, []byte(content2), 0644); err != nil {
@@ -309,7 +309,7 @@ func TestNewMutationClearsRedoStack(t *testing.T) {
 		t.Fatalf("failed to write tasks file: %v", err)
 	}
 	// First record the snapshot for content1 (current state is content1 after undo)
-	if err := RecordUndoSnapshot(project, "Action2", "", 10); err != nil {
+	if err := RecordUndoSnapshot(project, "Action2", "", 10, nil); err != nil {
 		t.Fatalf("RecordUndoSnapshot failed: %v", err)
 	}
 
@@ -341,7 +341,7 @@ func TestRedoRoundTrip(t *testing.T) {
 	if err := os.WriteFile(tasksPath, []byte(stateA), 0644); err != nil {
 		t.Fatalf("failed to write tasks file: %v", err)
 	}
-	if err := RecordUndoSnapshot(project, "Edit", "", 10); err != nil {
+	if err := RecordUndoSnapshot(project, "Edit", "", 10, nil); err != nil {
 		t.Fatalf("RecordUndoSnapshot failed: %v", err)
 	}
 	if err := os.WriteFile(tasksPath, []byte(stateB), 0644); err != nil {
@@ -391,7 +391,7 @@ func TestUndoHistoryPruning(t *testing.T) {
 		if err := os.WriteFile(tasksPath, []byte(content), 0644); err != nil {
 			t.Fatalf("failed to write tasks file: %v", err)
 		}
-		if err := RecordUndoSnapshot(project, "Action", "", maxDepth); err != nil {
+		if err := RecordUndoSnapshot(project, "Action", "", maxDepth, nil); err != nil {
 			t.Fatalf("RecordUndoSnapshot failed: %v", err)
 		}
 	}
@@ -404,5 +404,174 @@ func TestUndoHistoryPruning(t *testing.T) {
 
 	if len(entries) != maxDepth {
 		t.Errorf("expected %d entries after pruning, got %d", maxDepth, len(entries))
+	}
+}
+
+func TestPerformTargetedUndo(t *testing.T) {
+	tmpDir := t.TempDir()
+	projectPath := filepath.Join(tmpDir, "test-project")
+	if err := os.MkdirAll(projectPath, 0755); err != nil {
+		t.Fatalf("failed to create project dir: %v", err)
+	}
+	project := &models.Project{ID: "test-id", Name: "Test Project", Slug: "test-project", Path: projectPath}
+
+	// Initial state: task-a is todo, task-b is todo
+	initialContent := "# Project: Test Project\n\n" +
+		"## Task: Task A\n<!-- id: task-a, status: todo, priority: 3 -->\n\n" +
+		"## Task: Task B\n<!-- id: task-b, status: todo, priority: 2 -->\n"
+	tasksPath := filepath.Join(projectPath, "tasks.md")
+	if err := os.WriteFile(tasksPath, []byte(initialContent), 0644); err != nil {
+		t.Fatalf("failed to write tasks file: %v", err)
+	}
+
+	// Record snapshot with targeted task IDs (only task-a)
+	if err := RecordUndoSnapshot(project, "Complete Task", "#1 Task A", 10, []string{"task-a"}); err != nil {
+		t.Fatalf("RecordUndoSnapshot failed: %v", err)
+	}
+
+	// Simulate mutation: task-a becomes done, task-b becomes done (side effect)
+	mutatedContent := "# Project: Test Project\n\n" +
+		"## Task: Task A\n<!-- id: task-a, status: done, priority: 3 -->\n\n" +
+		"## Task: Task B\n<!-- id: task-b, status: done, priority: 2 -->\n"
+	if err := os.WriteFile(tasksPath, []byte(mutatedContent), 0644); err != nil {
+		t.Fatalf("failed to write mutated tasks file: %v", err)
+	}
+
+	// Perform undo — should only revert task-a, not task-b
+	_, err := PerformUndo(project)
+	if err != nil {
+		t.Fatalf("PerformUndo failed: %v", err)
+	}
+
+	// Parse the restored content
+	content, err := os.ReadFile(tasksPath)
+	if err != nil {
+		t.Fatalf("failed to read tasks file: %v", err)
+	}
+	result, err := ParseTasksMarkdownWithSections(string(content))
+	if err != nil {
+		t.Fatalf("failed to parse restored content: %v", err)
+	}
+
+	taskMap := make(map[string]*models.Task)
+	for _, task := range result.Tasks {
+		taskMap[task.ID] = task
+	}
+
+	// Task A should be reverted to todo
+	if taskMap["task-a"].Status != models.StatusTodo {
+		t.Errorf("expected task-a status 'todo', got %q", taskMap["task-a"].Status)
+	}
+
+	// Task B should remain done (not reverted — it was a side effect)
+	if taskMap["task-b"].Status != models.StatusDone {
+		t.Errorf("expected task-b status 'done' (side effect preserved), got %q", taskMap["task-b"].Status)
+	}
+}
+
+func TestPerformTargetedRedo(t *testing.T) {
+	tmpDir := t.TempDir()
+	projectPath := filepath.Join(tmpDir, "test-project")
+	if err := os.MkdirAll(projectPath, 0755); err != nil {
+		t.Fatalf("failed to create project dir: %v", err)
+	}
+	project := &models.Project{ID: "test-id", Name: "Test Project", Slug: "test-project", Path: projectPath}
+
+	// Initial state: task-a is todo, task-b is todo
+	initialContent := "# Project: Test Project\n\n" +
+		"## Task: Task A\n<!-- id: task-a, status: todo, priority: 3 -->\n\n" +
+		"## Task: Task B\n<!-- id: task-b, status: todo, priority: 2 -->\n"
+	tasksPath := filepath.Join(projectPath, "tasks.md")
+	if err := os.WriteFile(tasksPath, []byte(initialContent), 0644); err != nil {
+		t.Fatalf("failed to write tasks file: %v", err)
+	}
+
+	// Record targeted snapshot (only task-a)
+	if err := RecordUndoSnapshot(project, "Complete Task", "#1 Task A", 10, []string{"task-a"}); err != nil {
+		t.Fatalf("RecordUndoSnapshot failed: %v", err)
+	}
+
+	// Simulate mutation: task-a done, task-b done (side effect)
+	mutatedContent := "# Project: Test Project\n\n" +
+		"## Task: Task A\n<!-- id: task-a, status: done, priority: 3 -->\n\n" +
+		"## Task: Task B\n<!-- id: task-b, status: done, priority: 2 -->\n"
+	if err := os.WriteFile(tasksPath, []byte(mutatedContent), 0644); err != nil {
+		t.Fatalf("failed to write mutated tasks file: %v", err)
+	}
+
+	// Undo: targeted restore of task-a only
+	if _, err := PerformUndo(project); err != nil {
+		t.Fatalf("PerformUndo failed: %v", err)
+	}
+
+	// After undo: task-a=todo, task-b=done (side effect preserved)
+	// Now redo — should only re-apply task-a's change, not touch task-b
+	if _, err := PerformRedo(project); err != nil {
+		t.Fatalf("PerformRedo failed: %v", err)
+	}
+
+	content, err := os.ReadFile(tasksPath)
+	if err != nil {
+		t.Fatalf("failed to read tasks file: %v", err)
+	}
+	result, parseErr := ParseTasksMarkdownWithSections(string(content))
+	if parseErr != nil {
+		t.Fatalf("failed to parse restored content: %v", parseErr)
+	}
+
+	taskMap := make(map[string]*models.Task)
+	for _, task := range result.Tasks {
+		taskMap[task.ID] = task
+	}
+
+	// Task A should be redone to done
+	if taskMap["task-a"].Status != models.StatusDone {
+		t.Errorf("expected task-a status 'done' after redo, got %q", taskMap["task-a"].Status)
+	}
+
+	// Task B should remain done (preserved through both undo and redo)
+	if taskMap["task-b"].Status != models.StatusDone {
+		t.Errorf("expected task-b status 'done' after redo, got %q", taskMap["task-b"].Status)
+	}
+}
+
+func TestPerformTargetedUndoFallsBackOnNilTaskIDs(t *testing.T) {
+	tmpDir := t.TempDir()
+	projectPath := filepath.Join(tmpDir, "test-project")
+	if err := os.MkdirAll(projectPath, 0755); err != nil {
+		t.Fatalf("failed to create project dir: %v", err)
+	}
+	project := &models.Project{ID: "test-id", Name: "Test Project", Slug: "test-project", Path: projectPath}
+
+	// Initial state
+	initialContent := "# Project: Test Project\n\n## Task: Task A\n<!-- id: task-a, status: todo, priority: 3 -->\n"
+	tasksPath := filepath.Join(projectPath, "tasks.md")
+	if err := os.WriteFile(tasksPath, []byte(initialContent), 0644); err != nil {
+		t.Fatalf("failed to write tasks file: %v", err)
+	}
+
+	// Record snapshot with nil task IDs (full-file undo)
+	if err := RecordUndoSnapshot(project, "Delete Task", "#1 Task A", 10, nil); err != nil {
+		t.Fatalf("RecordUndoSnapshot failed: %v", err)
+	}
+
+	// Mutate
+	mutatedContent := "# Project: Test Project\n\n## Task: Task A\n<!-- id: task-a, status: done, priority: 1 -->\n"
+	if err := os.WriteFile(tasksPath, []byte(mutatedContent), 0644); err != nil {
+		t.Fatalf("failed to write mutated tasks file: %v", err)
+	}
+
+	// Undo — should do full-file restore
+	_, err := PerformUndo(project)
+	if err != nil {
+		t.Fatalf("PerformUndo failed: %v", err)
+	}
+
+	content, err := os.ReadFile(tasksPath)
+	if err != nil {
+		t.Fatalf("failed to read tasks file: %v", err)
+	}
+	if string(content) != initialContent {
+		t.Error("full-file undo did not restore original content")
 	}
 }

@@ -28,7 +28,7 @@ func (m *AppModel) handleArchiveCompletedTasks() (bool, tea.Cmd) {
 		// Record undo snapshot before archiving
 		if undoDepth > 0 {
 			_ = persister.RecordUndoSnapshot(project, "Archive Tasks",
-				fmt.Sprintf("%d tasks", completedCount), undoDepth)
+				fmt.Sprintf("%d tasks", completedCount), undoDepth, nil)
 		}
 
 		// Create backup before archiving

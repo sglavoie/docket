@@ -440,6 +440,7 @@ type UndoContext struct {
 	Action     string   // e.g. "Complete Task", "Set Priority"
 	Context    string   // e.g. task title or "3 tasks"
 	ProjectIDs []string // Affected project IDs (cross-project operations)
+	TaskIDs    []string // Task IDs explicitly changed by user (enables targeted undo)
 	// BackupPaths is intentionally omitted: storage.RestoreFromBackup derives
 	// the backup path from the project automatically, so callers never need to
 	// store it. Use crossHandleUndo → RestoreFromBackup for all undo operations.
@@ -456,6 +457,7 @@ func (u *UndoContext) Clear() {
 	u.Action = ""
 	u.Context = ""
 	u.ProjectIDs = nil
+	u.TaskIDs = nil
 }
 
 // DetailsPaneState manages state for a split-pane details view.

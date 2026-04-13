@@ -93,6 +93,7 @@ func (m *OutlinerModel) UnlinkSelectedSidebarTask(sourceTask *models.Task) tea.C
 	persister := m.projectService
 
 	m.setUndoContext("Unlink", sourceTask.Title)
+	m.undo.TaskIDs = []string{sourceTask.ID}
 	opts := m.buildWorkflowOpts(nil)
 	project := m.project
 	cfg := m.config

@@ -174,6 +174,10 @@ func (m *UndoHistoryModel) performUndo() tea.Cmd {
 			return ErrorMsg{Err: fmt.Errorf("failed to reload after undo: %w", err)}
 		}
 
+		if err := reapplyStorageSideEffects(project); err != nil {
+			return ErrorMsg{Err: err}
+		}
+
 		return UndoPerformedMsg{Action: actionDesc}
 	}
 }
@@ -189,6 +193,10 @@ func (m *UndoHistoryModel) performRedo() tea.Cmd {
 
 		if err := storage.LoadProject(project); err != nil {
 			return ErrorMsg{Err: fmt.Errorf("failed to reload after redo: %w", err)}
+		}
+
+		if err := reapplyStorageSideEffects(project); err != nil {
+			return ErrorMsg{Err: err}
 		}
 
 		return RedoPerformedMsg{Action: actionDesc}

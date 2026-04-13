@@ -338,6 +338,7 @@ func handleTypeChangeKey(key string, v prefixableView) (tea.Cmd, bool) {
 		msg = undoAction + ": " + strings.TrimSpace(strings.TrimPrefix(strings.TrimSpace(strings.TrimPrefix(msg, undoAction+":")), ""))
 		msg = undoAction + ": " + strings.TrimSpace(strings.TrimPrefix(strings.TrimSpace(strings.TrimPrefix(msg, undoAction+":")), ""))
 		v.setUndoContext(undoAction, undoAction+": "+strings.TrimSpace(strings.TrimPrefix(strings.TrimSpace(strings.TrimPrefix(msg, undoAction+":")), "")))
+		v.setUndoTaskIDs(taskIDsFromSlice(tasks))
 		v.setStatusMessage(fmt.Sprintf("%s: %d tasks", undoAction, changed))
 		return v.saveAndRefreshBulk(prevStates), true
 	}

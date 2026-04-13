@@ -380,7 +380,7 @@ func (m *AppModel) executeSandboxReset() tea.Cmd {
 		}
 
 		// Record undo snapshot before clearing (only captures tasks, not notes)
-		if err := storage.RecordUndoSnapshot(sandbox, "reset sandbox", "", undoDepth); err != nil {
+		if err := storage.RecordUndoSnapshot(sandbox, "reset sandbox", "", undoDepth, nil); err != nil {
 			return ErrorMsg{Err: fmt.Errorf("failed to record undo snapshot: %w", err)}
 		}
 

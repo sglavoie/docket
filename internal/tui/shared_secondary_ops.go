@@ -40,7 +40,7 @@ func taskOpsApply(v taskOpsView, op func(pf persistFn, project *models.Project, 
 	}
 
 	pf := workflowPersist(func() WorkflowSaveOptions {
-		return BuildWorkflowOpts(v.getPersister(), project, v.getConfig(), v.getConfigManager(), nil, "", "")
+		return BuildWorkflowOpts(v.getPersister(), project, v.getConfig(), v.getConfigManager(), nil, "", "", nil)
 	})
 	result := op(pf, project, task.ID)
 	if result.Err != nil {

@@ -45,6 +45,7 @@ func (m *ProjectTreeModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		m.project.BuildTaskTree()
 		m.setUndoContext("Reparent Task", task.Title)
+		m.undo.TaskIDs = []string{task.ID}
 		return m, m.saveAndRefreshBulk(prevStates)
 
 	case tea.KeyPressMsg:
@@ -94,6 +95,7 @@ func (m *ProjectTreeModel) handleConfirmation(msg tea.KeyPressMsg) (tea.Model, t
 			m.confirm.Cancel()
 			task.ClearRecurrence()
 			m.setUndoContext("Stop Recurrence", task.Title)
+			m.undo.TaskIDs = []string{task.ID}
 			m.setStatus(fmt.Sprintf("Stopped recurrence on #%d", task.ShortID))
 			return m, m.saveAndRefresh()
 		case "n", "N", "esc":

@@ -29,6 +29,7 @@ func (m *ProjectTreeModel) handleSingleStatusTransition(status models.TaskStatus
 
 	task := visible[m.cursor].Task
 	m.setUndoContext(StatusVerb(status)+" Task", fmt.Sprintf("#%d %s", task.ShortID, task.Title))
+	m.undo.TaskIDs = []string{task.ID}
 
 	pf := m.workflowPersistFn()
 	result := applyStatusChange(pf, m.project, task.ID, status)
@@ -77,6 +78,7 @@ func (m *ProjectTreeModel) handleBulkStatusTransition(status models.TaskStatus) 
 	}
 	m.clearSelection()
 	m.setUndoContext("Bulk Status Change", fmt.Sprintf("%d tasks -> %s", len(valid), status))
+	m.undo.TaskIDs = taskIDsFromSlice(valid)
 	return true, m.saveAndRefreshWithPrevStates(prevStates)
 }
 
@@ -95,8 +97,10 @@ func (m *ProjectTreeModel) executePendingBulkStatus() tea.Cmd {
 		task.ApplyTransition(m.bulkOp.GetStatus())
 	}
 
-	count := len(m.bulkOp.GetTasks())
+	bulkTasks := m.bulkOp.GetTasks()
+	count := len(bulkTasks)
 	m.setUndoContext("Bulk Status Change", fmt.Sprintf("%d tasks -> %s", count, m.bulkOp.GetStatus()))
+	m.undo.TaskIDs = taskIDsFromSlice(bulkTasks)
 	m.clearSelection()
 	m.clearPendingBulkStatus()
 
@@ -106,4 +110,13 @@ func (m *ProjectTreeModel) executePendingBulkStatus() tea.Cmd {
 // clearPendingBulkStatus clears the pending bulk status state.
 func (m *ProjectTreeModel) clearPendingBulkStatus() {
 	m.bulkOp.Clear()
+}
+
+// taskIDsFromSlice extracts task IDs from a slice of tasks.
+func taskIDsFromSlice(tasks []*models.Task) []string {
+	ids := make([]string, len(tasks))
+	for i, t := range tasks {
+		ids[i] = t.ID
+	}
+	return ids
 }

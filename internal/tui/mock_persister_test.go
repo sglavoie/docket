@@ -86,7 +86,7 @@ func (m *MockPersister) RestoreFromBackup(project *models.Project) error {
 	return m.RestoreFromBackupErr
 }
 
-func (m *MockPersister) RecordUndoSnapshot(project *models.Project, action, context string, depth int) error {
+func (m *MockPersister) RecordUndoSnapshot(project *models.Project, action, context string, depth int, _ []string) error {
 	return m.RecordUndoSnapshotErr
 }
 

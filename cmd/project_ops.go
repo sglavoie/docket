@@ -117,7 +117,7 @@ func SaveProject(project *models.Project, opts *SaveOptions) error {
 
 	// Record undo snapshot before backup+save so it captures the pre-mutation state
 	if opts != nil && opts.UndoAction != "" && opts.Config != nil && opts.Config.UndoHistoryDepth != nil && *opts.Config.UndoHistoryDepth > 0 {
-		if err := storage.RecordUndoSnapshot(project, opts.UndoAction, opts.UndoContext, *opts.Config.UndoHistoryDepth); err != nil {
+		if err := storage.RecordUndoSnapshot(project, opts.UndoAction, opts.UndoContext, *opts.Config.UndoHistoryDepth, nil); err != nil {
 			logging.Warn("failed to record undo snapshot: %v", err)
 		}
 	}

@@ -76,7 +76,7 @@ func runBoardDelete(cmd *cobra.Command, args []string) error {
 
 	if cfg.UndoHistoryDepth != nil && *cfg.UndoHistoryDepth > 0 {
 		if snapshotErr := storage.RecordUndoSnapshot(project, "Delete Action",
-			fmt.Sprintf("#%d %s", task.ShortID, task.Title), *cfg.UndoHistoryDepth); snapshotErr != nil {
+			fmt.Sprintf("#%d %s", task.ShortID, task.Title), *cfg.UndoHistoryDepth, nil); snapshotErr != nil {
 			fmt.Fprintf(os.Stderr, "warning: failed to record undo snapshot: %v\n", snapshotErr)
 		}
 	}

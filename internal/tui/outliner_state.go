@@ -33,7 +33,7 @@ func (m *OutlinerModel) setStatusMessage(msg string) {
 // buildWorkflowOpts constructs a WorkflowSaveOptions from the current model
 // state, draining the pending undo context.
 func (m *OutlinerModel) buildWorkflowOpts(prevStates map[string]*models.Task) WorkflowSaveOptions {
-	opts := BuildWorkflowOpts(m.projectService, m.project, m.config, m.configManager, prevStates, m.undo.Action, m.undo.Context)
+	opts := BuildWorkflowOpts(m.projectService, m.project, m.config, m.configManager, prevStates, m.undo.Action, m.undo.Context, m.undo.TaskIDs)
 	m.undo.Clear()
 	return opts
 }
@@ -58,6 +58,11 @@ func (m *OutlinerModel) saveAndRefreshWithPrevStates(prevStates map[string]*mode
 // setUndoContext sets the action context for the next save operation.
 func (m *OutlinerModel) setUndoContext(action, context string) {
 	m.undo.Set(action, context)
+}
+
+// setUndoTaskIDs sets the targeted task IDs for the next undo snapshot.
+func (m *OutlinerModel) setUndoTaskIDs(ids []string) {
+	m.undo.TaskIDs = ids
 }
 
 // performUndo restores the project from the most recent undo snapshot.

@@ -36,7 +36,9 @@ type Persister interface {
 	RestoreFromBackup(project *models.Project) error
 
 	// RecordUndoSnapshot creates an undo snapshot for the project.
-	RecordUndoSnapshot(project *models.Project, action, context string, depth int) error
+	// taskIDs identifies the tasks explicitly changed by the user; when non-nil,
+	// undo will only restore those tasks instead of replacing the entire file.
+	RecordUndoSnapshot(project *models.Project, action, context string, depth int, taskIDs []string) error
 
 	// ArchiveTasks moves completed tasks to the archive file.
 	ArchiveTasks(project *models.Project) (int, error)
@@ -125,8 +127,8 @@ func (s *ProjectService) RestoreFromBackup(project *models.Project) error {
 
 // RecordUndoSnapshot creates an undo snapshot for the project.
 // Returns an error if the snapshot cannot be created.
-func (s *ProjectService) RecordUndoSnapshot(project *models.Project, action, context string, depth int) error {
-	return storage.RecordUndoSnapshot(project, action, context, depth)
+func (s *ProjectService) RecordUndoSnapshot(project *models.Project, action, context string, depth int, taskIDs []string) error {
+	return storage.RecordUndoSnapshot(project, action, context, depth, taskIDs)
 }
 
 // ArchiveTasks moves completed tasks to the archive file.

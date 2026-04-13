@@ -82,7 +82,7 @@ func runTaskDelete(cmd *cobra.Command, args []string) error {
 	// Record undo snapshot
 	if cfg.UndoHistoryDepth != nil && *cfg.UndoHistoryDepth > 0 {
 		if snapshotErr := storage.RecordUndoSnapshot(project, "Delete Task",
-			fmt.Sprintf("#%d %s", task.ShortID, task.Title), *cfg.UndoHistoryDepth); snapshotErr != nil {
+			fmt.Sprintf("#%d %s", task.ShortID, task.Title), *cfg.UndoHistoryDepth, nil); snapshotErr != nil {
 			fmt.Fprintf(os.Stderr, "warning: failed to record undo snapshot: %v\n", snapshotErr)
 		}
 	}

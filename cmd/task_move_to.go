@@ -214,7 +214,7 @@ func runTaskMoveTo(cmd *cobra.Command, args []string) error { //nolint:gocyclo
 	// Record undo snapshot for the source project before the move
 	if cfg.UndoHistoryDepth != nil && *cfg.UndoHistoryDepth > 0 {
 		if snapshotErr := storage.RecordUndoSnapshot(sourceProject, "Move Task to Project",
-			fmt.Sprintf("#%d %s → %s", task.ShortID, task.Title, destProject.Name), *cfg.UndoHistoryDepth); snapshotErr != nil {
+			fmt.Sprintf("#%d %s → %s", task.ShortID, task.Title, destProject.Name), *cfg.UndoHistoryDepth, nil); snapshotErr != nil {
 			fmt.Fprintf(os.Stderr, "warning: failed to record undo snapshot: %v\n", snapshotErr)
 		}
 	}
