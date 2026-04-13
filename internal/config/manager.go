@@ -161,6 +161,8 @@ func (m *Manager) Load() (*Config, error) { //nolint:gocyclo
 	clampIntPtrMin(config.ReviewOldDays, "ReviewOldDays")
 	clampIntPtrMin(config.ReviewFutureDays, "ReviewFutureDays")
 	clampIntPtrMin(config.ReviewCompletedHours, "ReviewCompletedHours")
+	clampIntPtrMin(config.MaxPinnedBarItems, "MaxPinnedBarItems")
+	clampIntPtrMin(config.MaxRecentTaskVisits, "MaxRecentTaskVisits")
 
 	if config.Stages == nil {
 		config.Stages = []string{"Brainstorm", "Design", "Implement", "Test", "Review", "Deploy"}

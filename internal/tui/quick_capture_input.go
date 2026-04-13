@@ -81,9 +81,9 @@ type quickCaptureInput struct {
 	previewErr string
 
 	// Context needed for parsing/preview
-	project            *models.Project
-	allProjects        []*models.Project
-	skipProjectSyntax  bool // When true, %project syntax is disabled
+	project           *models.Project
+	allProjects       []*models.Project
+	skipProjectSyntax bool // When true, %project syntax is disabled
 
 	// Layout
 	width int // Available width for preview wrapping

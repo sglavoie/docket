@@ -339,3 +339,37 @@ func TestConfigManager_PositiveReviewFieldsUnchanged(t *testing.T) {
 		t.Errorf("expected ReviewOldDays 14, got %v", cfg.ReviewOldDays)
 	}
 }
+
+func TestConfigManager_NegativeMaxPinnedAndRecentClamped(t *testing.T) {
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, "test-config.json")
+
+	data, _ := json.Marshal(map[string]any{
+		"version":                1,
+		"data_dir":               "/tmp/tt-test",
+		"projects":               []any{},
+		"max_pinned_bar_items":   -5,
+		"max_recent_task_visits": -10,
+	})
+	if err := os.WriteFile(configPath, data, 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	manager := NewManager(configPath)
+	cfg, err := manager.Load()
+	if err != nil {
+		t.Fatalf("Load failed: %v", err)
+	}
+	if cfg.MaxPinnedBarItems == nil {
+		t.Fatal("MaxPinnedBarItems should not be nil")
+	}
+	if *cfg.MaxPinnedBarItems != 0 {
+		t.Errorf("expected MaxPinnedBarItems clamped to 0, got %d", *cfg.MaxPinnedBarItems)
+	}
+	if cfg.MaxRecentTaskVisits == nil {
+		t.Fatal("MaxRecentTaskVisits should not be nil")
+	}
+	if *cfg.MaxRecentTaskVisits != 0 {
+		t.Errorf("expected MaxRecentTaskVisits clamped to 0, got %d", *cfg.MaxRecentTaskVisits)
+	}
+}

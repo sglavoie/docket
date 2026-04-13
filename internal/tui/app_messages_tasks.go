@@ -200,9 +200,9 @@ type CloseParentSelectorMsg struct{}
 
 // ShowQuickCaptureMsg opens the quick capture input.
 type ShowQuickCaptureMsg struct {
-	Project            *models.Project
-	AllProjects        []*models.Project // All non-archived projects for cross-project capture
-	FromGlobalCapture  bool              // True when opened via ;i (project already selected)
+	Project           *models.Project
+	AllProjects       []*models.Project // All non-archived projects for cross-project capture
+	FromGlobalCapture bool              // True when opened via ;i (project already selected)
 }
 
 // CloseQuickCaptureMsg closes quick capture.

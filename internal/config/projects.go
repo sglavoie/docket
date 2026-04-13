@@ -75,6 +75,17 @@ func (c *Config) RemoveProject(id string) bool {
 		c.FocusQueue = filtered
 	}
 
+	// Clean up daily plan entries referencing this project
+	if len(c.DailyPlan) > 0 {
+		filtered := c.DailyPlan[:0]
+		for _, item := range c.DailyPlan {
+			if item.ProjectID != id {
+				filtered = append(filtered, item)
+			}
+		}
+		c.DailyPlan = filtered
+	}
+
 	// Clean up recent task visits referencing this project
 	if len(c.RecentTaskVisits) > 0 {
 		filtered := c.RecentTaskVisits[:0]

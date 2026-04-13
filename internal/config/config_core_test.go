@@ -184,3 +184,76 @@ func TestConfig_GetProjectPath(t *testing.T) {
 		t.Errorf("expected path '%s', got '%s'", expected, path)
 	}
 }
+
+func TestRemoveProject_CleansDailyPlan(t *testing.T) {
+	cfg := NewConfig()
+	cfg.AddProject(&models.Project{ID: "p1", Slug: "proj1", Name: "P1"})
+	cfg.AddProject(&models.Project{ID: "p2", Slug: "proj2", Name: "P2"})
+
+	cfg.DailyPlan = []DailyPlanItem{
+		{TaskID: "t1", ProjectID: "p1", PlannedDate: "2026-04-13"},
+		{TaskID: "t2", ProjectID: "p2", PlannedDate: "2026-04-13"},
+		{TaskID: "t3", ProjectID: "p1", PlannedDate: "2026-04-14"},
+	}
+
+	cfg.RemoveProject("p1")
+
+	if len(cfg.DailyPlan) != 1 {
+		t.Fatalf("expected 1 daily plan item after removal, got %d", len(cfg.DailyPlan))
+	}
+	if cfg.DailyPlan[0].ProjectID != "p2" {
+		t.Errorf("expected remaining item to be for p2, got %s", cfg.DailyPlan[0].ProjectID)
+	}
+}
+
+func TestRemoveProject_CleansAllReferences(t *testing.T) {
+	cfg := NewConfig()
+	cfg.AddProject(&models.Project{ID: "p1", Slug: "proj1", Name: "P1"})
+	cfg.CurrentProject = "p1"
+	cfg.ProjectScoringProfile = map[string]string{"p1": "default"}
+	cfg.ProjectViewStates = map[string]ProjectViewState{"p1": {}}
+	cfg.WorkflowEvalStates = map[string]WorkflowEvalState{"p1": {}}
+	cfg.FocusQueue = []FocusQueueItem{{TaskID: "t1", ProjectID: "p1"}}
+	cfg.DailyPlan = []DailyPlanItem{{TaskID: "t1", ProjectID: "p1"}}
+	cfg.RecentTaskVisits = []RecentTaskVisit{{TaskID: "t1", ProjectID: "p1"}}
+	cfg.CycleProjects = []string{"p1"}
+	cfg.ContextCycleProjects = map[string][]string{"personal": {"p1"}}
+	cfg.CustomContexts = map[string][]string{"work": {"p1"}}
+	cfg.ActionInboxProjectID = "p1"
+
+	cfg.RemoveProject("p1")
+
+	if cfg.CurrentProject != "" {
+		t.Error("CurrentProject should be cleared")
+	}
+	if _, ok := cfg.ProjectScoringProfile["p1"]; ok {
+		t.Error("ProjectScoringProfile should be cleaned")
+	}
+	if _, ok := cfg.ProjectViewStates["p1"]; ok {
+		t.Error("ProjectViewStates should be cleaned")
+	}
+	if _, ok := cfg.WorkflowEvalStates["p1"]; ok {
+		t.Error("WorkflowEvalStates should be cleaned")
+	}
+	if len(cfg.FocusQueue) != 0 {
+		t.Errorf("FocusQueue should be empty, got %d", len(cfg.FocusQueue))
+	}
+	if len(cfg.DailyPlan) != 0 {
+		t.Errorf("DailyPlan should be empty, got %d", len(cfg.DailyPlan))
+	}
+	if len(cfg.RecentTaskVisits) != 0 {
+		t.Errorf("RecentTaskVisits should be empty, got %d", len(cfg.RecentTaskVisits))
+	}
+	if len(cfg.CycleProjects) != 0 {
+		t.Errorf("CycleProjects should be empty, got %d", len(cfg.CycleProjects))
+	}
+	if len(cfg.ContextCycleProjects["personal"]) != 0 {
+		t.Errorf("ContextCycleProjects should be empty, got %d", len(cfg.ContextCycleProjects["personal"]))
+	}
+	if len(cfg.CustomContexts["work"]) != 0 {
+		t.Errorf("CustomContexts should be empty, got %d", len(cfg.CustomContexts["work"]))
+	}
+	if cfg.ActionInboxProjectID != "" {
+		t.Error("ActionInboxProjectID should be cleared")
+	}
+}
