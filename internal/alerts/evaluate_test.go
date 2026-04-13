@@ -164,7 +164,10 @@ func TestFormatTimeAgo(t *testing.T) {
 		past     time.Time
 		expected string
 	}{
+		{"just now", now.Add(-10 * time.Second), "just now"},
+		{"1 minute", now.Add(-90 * time.Second), "1 minute ago"},
 		{"minutes", now.Add(-30 * time.Minute), "30 minutes ago"},
+		{"1 hour", now.Add(-90 * time.Minute), "1 hour ago"},
 		{"hours", now.Add(-5 * time.Hour), "5 hours ago"},
 		{"yesterday", now.Add(-36 * time.Hour), "yesterday"},
 		{"days", now.Add(-72 * time.Hour), "3 days ago"},

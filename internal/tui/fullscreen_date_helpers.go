@@ -79,9 +79,15 @@ func formatRelativeDueVerbose(dueDate *time.Time) string {
 		return "next week"
 	case daysUntil < 30:
 		weeks := daysUntil / 7
+		if weeks == 1 {
+			return "in 1 week"
+		}
 		return fmt.Sprintf("in %d weeks", weeks)
 	default:
 		months := daysUntil / 30
+		if months == 1 {
+			return "in 1 month"
+		}
 		return fmt.Sprintf("in %d months", months)
 	}
 }
