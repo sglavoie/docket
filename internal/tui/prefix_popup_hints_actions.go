@@ -173,7 +173,7 @@ var (
 		{Key: "m", Description: "metrics", Detail: "Completion rates and throughput"},
 		{Key: "n", Description: "notifications", Detail: "Open Notification Center"},
 		{Key: "o", Description: "outliner", Detail: "Cross-project outliner"},
-		{Key: "t", Description: "task...", Detail: "Task actions (td: due date · tm: move · ts: section · tN: template)"},
+		{Key: "t", Description: "task...", Detail: "Task actions"},
 		{Key: "w", Description: "weekly review", Detail: "Open Weekly Review"},
 		{Key: "B", Description: "global blockers", Detail: "Blockers across all projects"},
 		{Key: "D", Description: "due date overview", Detail: "View tasks by due date"},
