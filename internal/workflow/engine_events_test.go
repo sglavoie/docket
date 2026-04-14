@@ -467,3 +467,183 @@ func TestEventTrigger_CustomSectionChanged_WildcardPattern(t *testing.T) {
 		t.Error("expected task to have 'section-changed' tag from wildcard section change")
 	}
 }
+
+func TestMatchesEventTrigger_SectionChanged_CustomSectionDoesNotFalseMatch(t *testing.T) {
+	// Bug: Moving from a GTD section to a custom section clears task.Section to "".
+	// The old code checked Section and CustomSection independently, so the Section
+	// change ("Next" -> "") falsely matched patterns like "*->" (move to Active).
+	// The fix uses effectiveSection to compare logical sections.
+
+	t.Run("GTD to custom does not trigger activate-on-active pattern", func(t *testing.T) {
+		prev := &models.Task{
+			ID:      "t1",
+			Section: "Next", CustomSection: "",
+		}
+		curr := &models.Task{
+			ID:      "t1",
+			Section: "", CustomSection: "Sprint-1",
+		}
+		trigger := RuleTrigger{
+			Field: FieldSectionChanged, Operation: OpEquals,
+			Value: "*->", // "*" -> Active (empty)
+		}
+		if matchesEventTrigger(curr, prev, trigger) {
+			t.Error("GTD-to-custom should NOT trigger *-> (activate) pattern")
+		}
+	})
+
+	t.Run("GTD to custom triggers wildcard pattern", func(t *testing.T) {
+		prev := &models.Task{
+			ID:      "t1",
+			Section: "Next", CustomSection: "",
+		}
+		curr := &models.Task{
+			ID:      "t1",
+			Section: "", CustomSection: "Sprint-1",
+		}
+		trigger := RuleTrigger{
+			Field: FieldSectionChanged, Operation: OpEquals,
+			Value: "*->*",
+		}
+		if !matchesEventTrigger(curr, prev, trigger) {
+			t.Error("GTD-to-custom should trigger *->* (any change) pattern")
+		}
+	})
+
+	t.Run("GTD to custom matches specific transition", func(t *testing.T) {
+		prev := &models.Task{
+			ID:      "t1",
+			Section: "Next", CustomSection: "",
+		}
+		curr := &models.Task{
+			ID:      "t1",
+			Section: "", CustomSection: "Sprint-1",
+		}
+		trigger := RuleTrigger{
+			Field: FieldSectionChanged, Operation: OpEquals,
+			Value: "Next->Sprint-1",
+		}
+		if !matchesEventTrigger(curr, prev, trigger) {
+			t.Error("should match exact transition Next->Sprint-1")
+		}
+	})
+
+	t.Run("custom to custom detects change", func(t *testing.T) {
+		prev := &models.Task{
+			ID:      "t1",
+			Section: "", CustomSection: "Sprint-1",
+		}
+		curr := &models.Task{
+			ID:      "t1",
+			Section: "", CustomSection: "Sprint-2",
+		}
+		trigger := RuleTrigger{
+			Field: FieldSectionChanged, Operation: OpEquals,
+			Value: "*->*",
+		}
+		if !matchesEventTrigger(curr, prev, trigger) {
+			t.Error("custom-to-custom should trigger *->* pattern")
+		}
+	})
+
+	t.Run("Active to custom triggers deactivate pattern", func(t *testing.T) {
+		prev := &models.Task{
+			ID:      "t1",
+			Section: "", CustomSection: "",
+		}
+		curr := &models.Task{
+			ID:      "t1",
+			Section: "", CustomSection: "Sprint-1",
+		}
+		trigger := RuleTrigger{
+			Field: FieldSectionChanged, Operation: OpEquals,
+			Value: "->*", // Active -> anything
+		}
+		if !matchesEventTrigger(curr, prev, trigger) {
+			t.Error("Active-to-custom should trigger ->* (deactivate) pattern")
+		}
+	})
+
+	t.Run("custom to Active triggers activate pattern", func(t *testing.T) {
+		prev := &models.Task{
+			ID:      "t1",
+			Section: "", CustomSection: "Sprint-1",
+		}
+		curr := &models.Task{
+			ID:      "t1",
+			Section: "", CustomSection: "",
+		}
+		trigger := RuleTrigger{
+			Field: FieldSectionChanged, Operation: OpEquals,
+			Value: "*->", // anything -> Active (empty)
+		}
+		if !matchesEventTrigger(curr, prev, trigger) {
+			t.Error("custom-to-Active should trigger *-> (activate) pattern")
+		}
+	})
+
+	t.Run("no change does not trigger", func(t *testing.T) {
+		prev := &models.Task{
+			ID:      "t1",
+			Section: "", CustomSection: "Sprint-1",
+		}
+		curr := &models.Task{
+			ID:      "t1",
+			Section: "", CustomSection: "Sprint-1",
+		}
+		trigger := RuleTrigger{
+			Field: FieldSectionChanged, Operation: OpEquals,
+			Value: "*->*",
+		}
+		if matchesEventTrigger(curr, prev, trigger) {
+			t.Error("same section should NOT trigger change event")
+		}
+	})
+}
+
+func TestMatchesTrigger_SectionUsesEffectiveSection(t *testing.T) {
+	// Bug: The FieldSection trigger used to decide which field to compare
+	// based on whether the trigger.Value was a GTD section name. This broke
+	// OpContains and caused a task in a custom section to match "section equals ''"
+	// because it compared the raw Section field instead of the effective section.
+
+	t.Run("contains matches GTD section", func(t *testing.T) {
+		task := &models.Task{ID: "t1", Section: "Next", CustomSection: ""}
+		trigger := RuleTrigger{Field: FieldSection, Operation: OpContains, Value: "ext"}
+		if !matchesTrigger(task, trigger) {
+			t.Error("'Next' contains 'ext', should match")
+		}
+	})
+
+	t.Run("contains matches custom section", func(t *testing.T) {
+		task := &models.Task{ID: "t1", Section: "", CustomSection: "Sprint-1"}
+		trigger := RuleTrigger{Field: FieldSection, Operation: OpContains, Value: "Sprint"}
+		if !matchesTrigger(task, trigger) {
+			t.Error("'Sprint-1' contains 'Sprint', should match")
+		}
+	})
+
+	t.Run("not_equals GTD section for task in custom section", func(t *testing.T) {
+		task := &models.Task{ID: "t1", Section: "", CustomSection: "Sprint-1"}
+		trigger := RuleTrigger{Field: FieldSection, Operation: OpNotEquals, Value: "Inbox"}
+		if !matchesTrigger(task, trigger) {
+			t.Error("task in Sprint-1 should not_equal Inbox")
+		}
+	})
+
+	t.Run("equals empty does not match custom section task", func(t *testing.T) {
+		task := &models.Task{ID: "t1", Section: "", CustomSection: "Sprint-1"}
+		trigger := RuleTrigger{Field: FieldSection, Operation: OpEquals, Value: ""}
+		if matchesTrigger(task, trigger) {
+			t.Error("task in Sprint-1 should NOT match section equals ''")
+		}
+	})
+
+	t.Run("equals empty matches Active view task", func(t *testing.T) {
+		task := &models.Task{ID: "t1", Section: "", CustomSection: ""}
+		trigger := RuleTrigger{Field: FieldSection, Operation: OpEquals, Value: ""}
+		if !matchesTrigger(task, trigger) {
+			t.Error("task in Active view should match section equals ''")
+		}
+	})
+}

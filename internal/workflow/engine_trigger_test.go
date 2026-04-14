@@ -506,9 +506,16 @@ func TestMatchesTrigger_SectionWithCustomSection(t *testing.T) {
 			expected:      false,
 		},
 		{
-			name:          "empty trigger matches empty GTD section",
+			name:          "empty trigger does not match task in custom section",
 			section:       "",
 			customSection: "Sprint-1",
+			trigger:       RuleTrigger{Field: FieldSection, Operation: OpEquals, Value: ""},
+			expected:      false,
+		},
+		{
+			name:          "empty trigger matches task in Active view",
+			section:       "",
+			customSection: "",
 			trigger:       RuleTrigger{Field: FieldSection, Operation: OpEquals, Value: ""},
 			expected:      true,
 		},

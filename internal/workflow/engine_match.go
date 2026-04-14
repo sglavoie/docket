@@ -94,19 +94,12 @@ func matchesEventTrigger(task, prev *models.Task, trigger RuleTrigger) bool { //
 		)
 
 	case FieldSectionChanged:
-		// Check both GTD Section and CustomSection for transitions.
-		// A change in either constitutes a section change.
-		sectionChanged := matchesTransition(
-			getPrevValue(prev, func(t *models.Task) string { return t.Section }),
-			task.Section,
-			trigger.Value,
-		)
-		if sectionChanged {
-			return true
-		}
+		// Use the effective section (CustomSection if set, otherwise Section)
+		// so that internal field clearing (e.g. Section="" when CustomSection
+		// is set) is not mistaken for a transition to the Active view.
 		return matchesTransition(
-			getPrevValue(prev, func(t *models.Task) string { return t.CustomSection }),
-			task.CustomSection,
+			getPrevValue(prev, effectiveSection),
+			effectiveSection(task),
 			trigger.Value,
 		)
 
@@ -214,6 +207,16 @@ func matchesPattern(value, pattern string) bool {
 		return true
 	}
 	return strings.EqualFold(value, pattern)
+}
+
+// effectiveSection returns the logical section for a task: CustomSection if
+// set, otherwise Section. This avoids confusing the internal empty-Section
+// representation (used when CustomSection is active) with the Active view.
+func effectiveSection(t *models.Task) string {
+	if t.CustomSection != "" {
+		return t.CustomSection
+	}
+	return t.Section
 }
 
 // getPrevValue safely gets a value from the previous task state.
@@ -372,14 +375,10 @@ func matchesTrigger(task *models.Task, trigger RuleTrigger) bool {
 	case FieldPriority:
 		fieldValue = strconv.Itoa(task.Priority)
 	case FieldSection:
-		// Section matching considers both GTD Section and CustomSection.
-		// GTD trigger values match against task.Section; non-GTD trigger values
-		// match against task.CustomSection (mirrors ActionSetSection behavior).
-		if models.IsGTDSection(trigger.Value) || trigger.Value == "" {
-			fieldValue = task.Section
-		} else {
-			fieldValue = task.CustomSection
-		}
+		// Use the effective section (CustomSection if set, otherwise Section)
+		// so that all operations (equals, not_equals, contains, etc.) compare
+		// against the logical section the task belongs to.
+		fieldValue = effectiveSection(task)
 	case FieldTags:
 		return matchesTagTrigger(task.Tags, trigger)
 	case FieldType:
