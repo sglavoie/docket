@@ -88,7 +88,7 @@ func (p *Project) RelocateTaskToEndOfSection(taskID string, section string) {
 	for i, t := range p.Tasks {
 		if t.ID == taskID {
 			taskIdx = i
-		} else if t.Section == section {
+		} else if t.Section == section || (t.CustomSection != "" && t.CustomSection == section) {
 			lastSectionIdx = i
 		}
 	}

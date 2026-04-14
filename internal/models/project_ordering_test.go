@@ -453,6 +453,59 @@ func TestRelocateTaskToEndOfSectionInterleaved(t *testing.T) {
 	}
 }
 
+func TestRelocateTaskToEndOfCustomSection(t *testing.T) {
+	project, err := NewProject("test", "Test", "/tmp/test")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// task1 is being moved to custom section "Backlog"
+	task1, err := NewTask("1", 1, TaskTypeTask, "Task 1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	task1.SetSection("Backlog") // Section="", CustomSection="Backlog"
+
+	// task2 is in Backlog already
+	task2, err := NewTask("2", 2, TaskTypeTask, "Task 2")
+	if err != nil {
+		t.Fatal(err)
+	}
+	task2.SetSection("Backlog")
+
+	// task3 is in a different section
+	task3, err := NewTask("3", 3, TaskTypeTask, "Task 3")
+	if err != nil {
+		t.Fatal(err)
+	}
+	task3.Section = SectionNext
+
+	// task4 is also in Backlog
+	task4, err := NewTask("4", 4, TaskTypeTask, "Task 4")
+	if err != nil {
+		t.Fatal(err)
+	}
+	task4.SetSection("Backlog")
+
+	project.Tasks = []*Task{task1, task2, task3, task4}
+
+	// task1 is first; after relocate it should be after task4 (last Backlog task)
+	project.RelocateTaskToEndOfSection("1", "Backlog")
+
+	ids := make([]string, len(project.Tasks))
+	for i, t := range project.Tasks {
+		ids[i] = t.ID
+	}
+	// Expected: [2, 3, 4, 1]
+	expected := []string{"2", "3", "4", "1"}
+	for i, id := range expected {
+		if ids[i] != id {
+			t.Errorf("position %d: expected %s, got %s (full: %v)", i, id, ids[i], ids)
+			break
+		}
+	}
+}
+
 func TestMoveChildTaskIgnoresBoundary(t *testing.T) {
 	project, err := NewProject("test", "Test", "/tmp/test")
 	if err != nil {
@@ -490,5 +543,92 @@ func TestMoveChildTaskIgnoresBoundary(t *testing.T) {
 	siblings := project.GetSiblings(child2)
 	if siblings[0].ID != "child2" {
 		t.Error("child2 should have moved up (boundary rules don't apply to non-root tasks)")
+	}
+}
+
+func TestSwapTasks(t *testing.T) {
+	project, err := NewProject("test", "Test", "/tmp/test")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	task1, err := NewTask("1", 1, TaskTypeTask, "Task 1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	task2, err := NewTask("2", 2, TaskTypeTask, "Task 2")
+	if err != nil {
+		t.Fatal(err)
+	}
+	task3, err := NewTask("3", 3, TaskTypeTask, "Task 3")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	project.Tasks = []*Task{task1, task2, task3}
+
+	// Swap task1 and task3 (non-adjacent)
+	project.SwapTasks(task1, task3)
+
+	if project.Tasks[0].ID != "3" || project.Tasks[2].ID != "1" {
+		t.Errorf("expected [3, 2, 1] but got [%s, %s, %s]",
+			project.Tasks[0].ID, project.Tasks[1].ID, project.Tasks[2].ID)
+	}
+	// task2 should be unchanged
+	if project.Tasks[1].ID != "2" {
+		t.Error("task2 should remain in position 1")
+	}
+}
+
+func TestSwapTasksNilTask(t *testing.T) {
+	project, err := NewProject("test", "Test", "/tmp/test")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	task1, err := NewTask("1", 1, TaskTypeTask, "Task 1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	project.Tasks = []*Task{task1}
+
+	// Swap with a task not in the project — should be a no-op
+	notInProject, err := NewTask("ghost", 99, TaskTypeTask, "Ghost")
+	if err != nil {
+		t.Fatal(err)
+	}
+	project.SwapTasks(task1, notInProject)
+
+	if project.Tasks[0].ID != "1" {
+		t.Error("swap with non-existent task should be a no-op")
+	}
+}
+
+func TestRelocateTaskToEndOfSectionCustomSectionNoOtherTasks(t *testing.T) {
+	project, err := NewProject("test", "Test", "/tmp/test")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Only task in the custom section
+	task1, err := NewTask("1", 1, TaskTypeTask, "Task 1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	task1.SetSection("Backlog")
+
+	task2, err := NewTask("2", 2, TaskTypeTask, "Task 2")
+	if err != nil {
+		t.Fatal(err)
+	}
+	task2.Section = SectionNext
+
+	project.Tasks = []*Task{task1, task2}
+
+	// Only one Backlog task — should be a no-op
+	project.RelocateTaskToEndOfSection("1", "Backlog")
+
+	if project.Tasks[0].ID != "1" || project.Tasks[1].ID != "2" {
+		t.Error("relocate should be no-op when task is only one in custom section")
 	}
 }
