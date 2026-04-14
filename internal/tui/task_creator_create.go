@@ -43,7 +43,6 @@ func (m *TaskCreatorModel) createTask() tea.Cmd {
 		Status:      models.StatusTodo,
 		Priority:    m.priority,
 		ParentID:    m.parentID,
-		Section:     m.section,
 		DueDate:     m.dueDate,
 		Pinned:      m.pinned,
 		Active:      m.active,
@@ -57,6 +56,9 @@ func (m *TaskCreatorModel) createTask() tea.Cmd {
 		CreatedAt:   now,
 		UpdatedAt:   now,
 	}
+
+	// Route section to correct field (GTD → Section, custom → CustomSection)
+	task.SetSection(m.section)
 
 	// Set PinnedAt if pinned
 	if m.pinned {
@@ -108,10 +110,10 @@ func (m *TaskCreatorModel) createTask() tea.Cmd {
 				Status:    models.StatusTodo,
 				Priority:  m.priority, // Inherit from parent
 				ParentID:  &task.ID,
-				Section:   m.section, // Inherit from parent
 				CreatedAt: now,
 				UpdatedAt: now,
 			}
+			subtask.SetSection(m.section) // Inherit from parent
 
 			// Inherit tags from parent
 			subtask.Tags = append([]string{}, m.tags...)
