@@ -16,3 +16,16 @@ func (t *Task) SetSection(name string) {
 		t.Section = ""
 	}
 }
+
+// InSection reports whether the task belongs to the given section.
+// It checks both the GTD Section field and the CustomSection field,
+// so callers do not need to know which field stores the section name.
+//
+// When CustomSection is set, the task belongs to that custom section
+// (not the Active view, even though Section is "").
+func (t *Task) InSection(name string) bool {
+	if t.CustomSection != "" {
+		return t.CustomSection == name
+	}
+	return t.Section == name
+}

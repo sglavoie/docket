@@ -24,7 +24,7 @@ func (m *CommandPaletteModel) findProjectWithTag(tag string) *models.Project {
 // findProjectWithSection returns the first project that contains the specified section.
 func (m *CommandPaletteModel) findProjectWithSection(section string) *models.Project {
 	for _, item := range m.allItems {
-		if item.Category == ItemCategoryTasks && item.Task != nil && item.Task.Section == section {
+		if item.Category == ItemCategoryTasks && item.Task != nil && item.Task.InSection(section) {
 			return item.Project
 		}
 	}

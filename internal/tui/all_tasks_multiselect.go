@@ -179,7 +179,7 @@ func (m *AllTasksViewModel) handleBulkClearDueDate() (tea.Model, tea.Cmd) {
 // handleBulkSectionMove moves all selected tasks to a target section.
 func (m *AllTasksViewModel) handleBulkSectionMove(targetSection string) (tea.Model, tea.Cmd) {
 	count := m.bulkApply(func(project *models.Project, item CrossProjectTask) bool {
-		if item.Task.Section == targetSection {
+		if item.Task.InSection(targetSection) {
 			return false
 		}
 		project.MutateTask(item.Task.ID, func(t *models.Task) {

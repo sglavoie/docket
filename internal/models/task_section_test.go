@@ -421,3 +421,48 @@ func TestStartFromNextClearsCustomSection(t *testing.T) {
 		t.Errorf("expected CustomSection cleared, got %q", task.CustomSection)
 	}
 }
+
+func TestInSection_GTDSection(t *testing.T) {
+	task, _ := NewTask("id", 1, TaskTypeTask, "T")
+	task.SetSection(SectionNext)
+
+	if !task.InSection(SectionNext) {
+		t.Error("expected InSection(Next) = true")
+	}
+	if task.InSection(SectionInbox) {
+		t.Error("expected InSection(Inbox) = false")
+	}
+	if task.InSection("Sprint-1") {
+		t.Error("expected InSection(Sprint-1) = false")
+	}
+}
+
+func TestInSection_CustomSection(t *testing.T) {
+	task, _ := NewTask("id", 1, TaskTypeTask, "T")
+	task.SetSection("Sprint-1")
+
+	if !task.InSection("Sprint-1") {
+		t.Error("expected InSection(Sprint-1) = true for custom section")
+	}
+	if task.InSection(SectionNext) {
+		t.Error("expected InSection(Next) = false for custom section task")
+	}
+	// task.Section is "" for custom sections; InSection("") should match
+	// only when CustomSection is also empty (i.e. Active view), not when
+	// the task is in a custom section.
+	if task.InSection("") {
+		t.Error("expected InSection('') = false when task is in a custom section")
+	}
+}
+
+func TestInSection_ActiveView(t *testing.T) {
+	task, _ := NewTask("id", 1, TaskTypeTask, "T")
+	task.SetSection("") // Active view
+
+	if !task.InSection("") {
+		t.Error("expected InSection('') = true for Active view task")
+	}
+	if task.InSection("Sprint-1") {
+		t.Error("expected InSection(Sprint-1) = false for Active view task")
+	}
+}

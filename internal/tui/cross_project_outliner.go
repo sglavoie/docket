@@ -358,7 +358,7 @@ func crossProjectSectionFilter(p Perspective) func(t *models.Task) bool {
 	default:
 		section := p.Name
 		return func(t *models.Task) bool {
-			return t.Section == section && !t.Status.IsComplete() && !t.IsSnoozed()
+			return t.InSection(section) && !t.Status.IsComplete() && !t.IsSnoozed()
 		}
 	}
 }

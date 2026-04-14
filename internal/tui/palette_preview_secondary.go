@@ -48,7 +48,7 @@ func (m *CommandPaletteModel) renderSectionPreview(item PaletteItem) string {
 
 	var tasksInSection []PaletteItem
 	for _, fi := range m.filteredItems {
-		if fi.Item.Category == ItemCategoryTasks && fi.Item.Task != nil && fi.Item.Task.Section == item.Section {
+		if fi.Item.Category == ItemCategoryTasks && fi.Item.Task != nil && fi.Item.Task.InSection(item.Section) {
 			tasksInSection = append(tasksInSection, fi.Item)
 		}
 	}

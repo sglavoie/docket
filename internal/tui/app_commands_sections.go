@@ -119,11 +119,14 @@ func (m *AppModel) sectionSendCommands() []Command {
 				node := m.projectTree.getSelectedNode()
 				if node != nil {
 					section := node.Task.Section
+					if node.Task.CustomSection != "" {
+						section = node.Task.CustomSection
+					}
 					if section == "" {
 						section = models.SectionInbox
 					}
 					for i, n := range m.projectTree.visibleNodes() {
-						if n.Task.Section == section && n.Task.IsRoot() {
+						if n.Task.InSection(section) && n.Task.IsRoot() {
 							m.projectTree.cursor = i
 							break
 						}
