@@ -7,7 +7,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/sglavoie/tt/internal/logging"
-	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 )
 
@@ -91,36 +90,7 @@ func runBoardDelete(cmd *cobra.Command, args []string) error {
 	}
 
 	// Filter out deleted tasks and clear dangling references
-	var remaining []*models.Task
-	for _, t := range project.Tasks {
-		if !idsToDelete[t.ID] {
-			if t.ParentID != nil && idsToDelete[*t.ParentID] {
-				t.ParentID = nil
-			}
-			// Clear dangling DependsOn references
-			if len(t.DependsOn) > 0 {
-				cleaned := t.DependsOn[:0]
-				for _, depID := range t.DependsOn {
-					if !idsToDelete[depID] {
-						cleaned = append(cleaned, depID)
-					}
-				}
-				t.DependsOn = cleaned
-			}
-			// Clear dangling RelatedTo references
-			if len(t.RelatedTo) > 0 {
-				cleaned := t.RelatedTo[:0]
-				for _, relID := range t.RelatedTo {
-					if !idsToDelete[relID] {
-						cleaned = append(cleaned, relID)
-					}
-				}
-				t.RelatedTo = cleaned
-			}
-			remaining = append(remaining, t)
-		}
-	}
-	project.Tasks = remaining
+	project.Tasks = filterDeletedTasks(project.Tasks, idsToDelete)
 	project.BuildTaskTree()
 
 	// Clean up config references (FocusQueue, DailyPlan, RecentTaskVisits)

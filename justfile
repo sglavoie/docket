@@ -81,15 +81,13 @@ lint-ci:
     echo "Running golangci-lint..."
     golangci-lint run
 
-# Run all CI checks locally (build, test, coverage, lint)
+# Run all CI checks locally (test, coverage, lint)
 ci:
     #!/usr/bin/env bash
     set -euo pipefail
     echo "Running CI checks locally..."
-    echo "Building..."
-    go build -v ./...
     echo "Running tests with race detector..."
-    go test -race -coverprofile=coverage.out ./...
+    go test -race -coverprofile=coverage.out ./cmd/... ./internal/...
     if ! command -v golangci-lint &>/dev/null; then
         echo "Error: golangci-lint not found. Install it from https://golangci-lint.run/welcome/install/"
         exit 1

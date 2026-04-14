@@ -86,6 +86,6 @@ func TestFocusBoardRefreshMsg_CancelsEditMode(t *testing.T) {
 	m.Update(FocusBoardRefreshMsg{})
 
 	if m.editMode {
-		t.Error("editMode should be cancelled by FocusBoardRefreshMsg")
+		t.Error("editMode should be canceled by FocusBoardRefreshMsg")
 	}
 }

@@ -242,66 +242,11 @@ func (m *HelpViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case tea.KeyPressMsg:
 		if m.searchMode {
-			switch msg.String() {
-			case "esc":
-				// Exit search mode but keep the filter active
-				m.searchMode = false
-				m.searchInput.Blur()
-				return m, nil
-			case "enter", "/":
-				m.searchMode = false
-				m.searchInput.Blur()
-				return m, nil
-			case `\`:
-				m.searchMode = false
-				m.searchInput.Blur()
-				m.tabSearchMode = true
-				m.tabSearchInput.SetValue("")
-				m.tabSearchInput.Focus()
-				return m, textinput.Blink
-			case "[":
-				CycleTab(&m.activeTab, len(m.categories)+1, -1)
-				m.filterItems()
-				m.viewport.SetContent(m.renderContent())
-				m.viewport.GotoTop()
-				return m, nil
-			case "]":
-				CycleTab(&m.activeTab, len(m.categories)+1, 1)
-				m.filterItems()
-				m.viewport.SetContent(m.renderContent())
-				m.viewport.GotoTop()
-				return m, nil
-			default:
-				var cmd tea.Cmd
-				m.searchInput, cmd = m.searchInput.Update(msg)
-				m.searchQuery = m.searchInput.Value()
-				m.filterItems()
-				m.viewport.SetContent(m.renderContent())
-				m.viewport.GotoTop()
-				return m, cmd
-			}
+			return m.updateSearchMode(msg)
 		}
 
 		if m.tabSearchMode {
-			switch msg.String() {
-			case "esc", "enter", `\`:
-				m.tabSearchMode = false
-				m.tabSearchInput.Blur()
-				m.tabSearchInput.SetValue("")
-				return m, nil
-			case "/":
-				m.tabSearchMode = false
-				m.tabSearchInput.Blur()
-				m.tabSearchInput.SetValue("")
-				m.searchMode = true
-				m.searchInput.Focus()
-				return m, textinput.Blink
-			default:
-				var cmd tea.Cmd
-				m.tabSearchInput, cmd = m.tabSearchInput.Update(msg)
-				m.matchTab(m.tabSearchInput.Value())
-				return m, cmd
-			}
+			return m.updateTabSearchMode(msg)
 		}
 
 		// Explorer-specific: ctrl+\ toggles close
@@ -387,6 +332,68 @@ func (m *HelpViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	cmds = append(cmds, cmd)
 
 	return m, tea.Batch(cmds...)
+}
+
+func (m *HelpViewModel) updateSearchMode(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "esc":
+		m.searchMode = false
+		m.searchInput.Blur()
+		return m, nil
+	case "enter", "/":
+		m.searchMode = false
+		m.searchInput.Blur()
+		return m, nil
+	case `\`:
+		m.searchMode = false
+		m.searchInput.Blur()
+		m.tabSearchMode = true
+		m.tabSearchInput.SetValue("")
+		m.tabSearchInput.Focus()
+		return m, textinput.Blink
+	case "[":
+		CycleTab(&m.activeTab, len(m.categories)+1, -1)
+		m.filterItems()
+		m.viewport.SetContent(m.renderContent())
+		m.viewport.GotoTop()
+		return m, nil
+	case "]":
+		CycleTab(&m.activeTab, len(m.categories)+1, 1)
+		m.filterItems()
+		m.viewport.SetContent(m.renderContent())
+		m.viewport.GotoTop()
+		return m, nil
+	default:
+		var cmd tea.Cmd
+		m.searchInput, cmd = m.searchInput.Update(msg)
+		m.searchQuery = m.searchInput.Value()
+		m.filterItems()
+		m.viewport.SetContent(m.renderContent())
+		m.viewport.GotoTop()
+		return m, cmd
+	}
+}
+
+func (m *HelpViewModel) updateTabSearchMode(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "esc", "enter", `\`:
+		m.tabSearchMode = false
+		m.tabSearchInput.Blur()
+		m.tabSearchInput.SetValue("")
+		return m, nil
+	case "/":
+		m.tabSearchMode = false
+		m.tabSearchInput.Blur()
+		m.tabSearchInput.SetValue("")
+		m.searchMode = true
+		m.searchInput.Focus()
+		return m, textinput.Blink
+	default:
+		var cmd tea.Cmd
+		m.tabSearchInput, cmd = m.tabSearchInput.Update(msg)
+		m.matchTab(m.tabSearchInput.Value())
+		return m, cmd
+	}
 }
 
 func (m *HelpViewModel) filterItems() {

@@ -68,7 +68,6 @@ type WorkflowWizardModel struct {
 
 	// Confirm discard overlay
 	confirmDiscard bool
-	confirmOverlay ConfirmDialog
 }
 
 // ShowWorkflowWizardMsg triggers opening the workflow rule wizard.

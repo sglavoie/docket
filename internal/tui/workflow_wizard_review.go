@@ -257,8 +257,8 @@ func (m *WorkflowWizardModel) renderNameReviewStep() string {
 
 	sb.WriteString(SubtitleStyle.Render("Rule preview:"))
 	sb.WriteString("\n\n")
-	sb.WriteString(fmt.Sprintf("  When: %s\n", lipgloss.NewStyle().Foreground(ColorPrimary).Render(triggerStr)))
-	sb.WriteString(fmt.Sprintf("  Then: %s\n", lipgloss.NewStyle().Foreground(ColorSecondary).Render(actionStr)))
+	fmt.Fprintf(&sb, "  When: %s\n", lipgloss.NewStyle().Foreground(ColorPrimary).Render(triggerStr))
+	fmt.Fprintf(&sb, "  Then: %s\n", lipgloss.NewStyle().Foreground(ColorSecondary).Render(actionStr))
 	sb.WriteString("\n")
 	sb.WriteString(SubtitleStyle.Render("Rule name:"))
 	sb.WriteString("\n\n")

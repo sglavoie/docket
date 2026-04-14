@@ -8,6 +8,14 @@ import (
 
 // handleViewActionMessages handles task action views such as priority, capture, blockers, and attachments.
 func (m *AppModel) handleViewActionMessages(msg tea.Msg) (bool, tea.Cmd) {
+	if handled, cmd := m.handleGlobalPickerMessages(msg); handled {
+		return handled, cmd
+	}
+	return m.handleCaptureAndBulkMessages(msg)
+}
+
+// handleGlobalPickerMessages handles global picker, status, priority, due date, section, and linked task messages.
+func (m *AppModel) handleGlobalPickerMessages(msg tea.Msg) (bool, tea.Cmd) {
 	switch msg := msg.(type) {
 	case ShowPriorityViewMsg:
 		if msg.Project != nil {
@@ -110,7 +118,14 @@ func (m *AppModel) handleViewActionMessages(msg tea.Msg) (bool, tea.Cmd) {
 				SourceProject: project,
 			}
 		}
+	}
 
+	return false, nil
+}
+
+// handleCaptureAndBulkMessages handles quick capture, bulk capture, bulk edit, and palette bulk messages.
+func (m *AppModel) handleCaptureAndBulkMessages(msg tea.Msg) (bool, tea.Cmd) {
+	switch msg := msg.(type) {
 	case ShowQuickCaptureMsg:
 		if msg.Project != nil {
 			m.showView(ViewQuickCapture, NewQuickCaptureModel(msg.Project, msg.AllProjects, msg.FromGlobalCapture))

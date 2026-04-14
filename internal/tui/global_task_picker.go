@@ -236,7 +236,7 @@ func (p *GlobalTaskPicker) render(width int) string {
 
 		for i := start; i < end; i++ {
 			t := p.filtered[i]
-			statusIcon := string(t.Status.Icon())
+			statusIcon := t.Status.Icon()
 			priorityStr := ""
 			if t.Priority > 0 {
 				priorityStr = fmt.Sprintf(" !%d", t.Priority)

@@ -97,36 +97,7 @@ func runTaskDelete(cmd *cobra.Command, args []string) error {
 	}
 
 	// Filter out deleted tasks and clear dangling references
-	var remaining []*models.Task
-	for _, t := range project.Tasks {
-		if !idsToDelete[t.ID] {
-			if t.ParentID != nil && idsToDelete[*t.ParentID] {
-				t.ParentID = nil
-			}
-			// Clear dangling DependsOn references
-			if len(t.DependsOn) > 0 {
-				cleaned := t.DependsOn[:0]
-				for _, depID := range t.DependsOn {
-					if !idsToDelete[depID] {
-						cleaned = append(cleaned, depID)
-					}
-				}
-				t.DependsOn = cleaned
-			}
-			// Clear dangling RelatedTo references
-			if len(t.RelatedTo) > 0 {
-				cleaned := t.RelatedTo[:0]
-				for _, relID := range t.RelatedTo {
-					if !idsToDelete[relID] {
-						cleaned = append(cleaned, relID)
-					}
-				}
-				t.RelatedTo = cleaned
-			}
-			remaining = append(remaining, t)
-		}
-	}
-	project.Tasks = remaining
+	project.Tasks = filterDeletedTasks(project.Tasks, idsToDelete)
 	project.BuildTaskTree()
 
 	// Clean up config references (FocusQueue, DailyPlan, RecentTaskVisits)
@@ -208,6 +179,40 @@ func filterDeletedTaskRefs(refs []string, projectSlug string, deletedTaskIDs map
 		filtered = append(filtered, ref)
 	}
 	return filtered
+}
+
+// filterDeletedTasks removes tasks in idsToDelete from the task list and cleans
+// up dangling ParentID, DependsOn, and RelatedTo references in surviving tasks.
+func filterDeletedTasks(tasks []*models.Task, idsToDelete map[string]bool) []*models.Task {
+	var remaining []*models.Task
+	for _, t := range tasks {
+		if idsToDelete[t.ID] {
+			continue
+		}
+		if t.ParentID != nil && idsToDelete[*t.ParentID] {
+			t.ParentID = nil
+		}
+		if len(t.DependsOn) > 0 {
+			cleaned := t.DependsOn[:0]
+			for _, depID := range t.DependsOn {
+				if !idsToDelete[depID] {
+					cleaned = append(cleaned, depID)
+				}
+			}
+			t.DependsOn = cleaned
+		}
+		if len(t.RelatedTo) > 0 {
+			cleaned := t.RelatedTo[:0]
+			for _, relID := range t.RelatedTo {
+				if !idsToDelete[relID] {
+					cleaned = append(cleaned, relID)
+				}
+			}
+			t.RelatedTo = cleaned
+		}
+		remaining = append(remaining, t)
+	}
+	return remaining
 }
 
 // collectTaskDescendantIDs collects IDs of root tasks and all their descendants.

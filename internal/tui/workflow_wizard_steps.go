@@ -110,6 +110,9 @@ func (m *WorkflowWizardModel) goForward() {
 		m.actionValueInput.Blur()
 		m.step = wizStepNameReview
 		m.nameInput.Focus()
+
+	case wizStepNameReview:
+		// Final step — nothing to advance to
 	}
 }
 

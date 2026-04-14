@@ -55,8 +55,44 @@ func NewAppModel(cfg *config.Config, manager *config.Manager, opts ...AppOption)
 		opt(app)
 	}
 
-	// Hydrate focus queue from persisted config (only from active projects)
 	activeProjects := cfg.GetActiveProjects()
+	app.hydrateFocusQueue(cfg, manager, activeProjects)
+	app.hydrateDailyPlan(cfg, manager, activeProjects)
+	app.hydrateRecentVisits(cfg, manager, activeProjects)
+
+	// Hydrate dismissed IDs
+	for _, id := range cfg.GetFocusDismissedIDs() {
+		app.focusDismissedIDs[id] = true
+	}
+
+	// Ensure sandbox project exists
+	if cfg.EnsureSandboxProject() {
+		saveConfigWarn(manager, cfg, "sandbox project creation")
+	}
+
+	// Initialize dashboard and register it
+	app.dashboard = NewDashboardModel(cfg, manager)
+	app.views.Register(ViewDashboard, app.dashboard)
+
+	// Record initial dashboard view in navigation history
+	app.navHistory.Record(NavEntry{ViewType: ViewDashboard})
+
+	// Register global commands
+	app.registerGlobalCommands()
+
+	// Load current project if set
+	if current := cfg.GetCurrentProject(); current != nil {
+		app.currentProject = current
+	}
+
+	ApplyTheme(NewThemeConfig(cfg))
+	app.dashboard.SetAccentColor(AccentDashboard)
+
+	return app
+}
+
+// hydrateFocusQueue restores the focus queue from persisted config, pruning stale entries.
+func (app *AppModel) hydrateFocusQueue(cfg *config.Config, manager *config.Manager, activeProjects []*models.Project) {
 	queueChanged := false
 	var updatedQueue []config.FocusQueueItem
 	for _, item := range cfg.GetFocusQueue() {
@@ -87,7 +123,10 @@ func NewAppModel(cfg *config.Config, manager *config.Manager, opts ...AppOption)
 		cfg.SetFocusQueue(updatedQueue)
 		saveConfigWarn(manager, cfg, "focus queue pruning")
 	}
-	// Hydrate daily plan from persisted config (only from active projects, with carry-over logic)
+}
+
+// hydrateDailyPlan restores the daily plan from persisted config with carry-over logic.
+func (app *AppModel) hydrateDailyPlan(cfg *config.Config, manager *config.Manager, activeProjects []*models.Project) {
 	today := time.Now().Format("2006-01-02")
 	var updatedPlan []config.DailyPlanItem
 	planChanged := false
@@ -108,17 +147,14 @@ func NewAppModel(cfg *config.Config, manager *config.Manager, opts ...AppOption)
 			break
 		}
 		if foundTask == nil || foundProject == nil {
-			// Task not found in any active project — prune
 			planChanged = true
 			continue
 		}
 		if item.PlannedDate < today {
 			if foundTask.Status.IsComplete() {
-				// Completed in a previous day — prune
 				planChanged = true
 				continue
 			}
-			// Carry over: bump date to today
 			item.PlannedDate = today
 			app.dailyPlanCarried++
 			app.dailyPlanCarriedIDs[foundTask.ID] = true
@@ -135,13 +171,10 @@ func NewAppModel(cfg *config.Config, manager *config.Manager, opts ...AppOption)
 		cfg.SetDailyPlan(updatedPlan)
 		saveConfigWarn(manager, cfg, "daily plan carry-over")
 	}
+}
 
-	// Hydrate dismissed IDs
-	for _, id := range cfg.GetFocusDismissedIDs() {
-		app.focusDismissedIDs[id] = true
-	}
-
-	// Hydrate recent task visits from persisted config
+// hydrateRecentVisits restores recent task visits from persisted config, pruning stale entries.
+func (app *AppModel) hydrateRecentVisits(cfg *config.Config, manager *config.Manager, activeProjects []*models.Project) {
 	visitsChanged := false
 	var updatedVisits []config.RecentTaskVisit
 	for _, item := range cfg.GetRecentTaskVisits() {
@@ -171,31 +204,6 @@ func NewAppModel(cfg *config.Config, manager *config.Manager, opts ...AppOption)
 		cfg.SetRecentTaskVisits(updatedVisits)
 		saveConfigWarn(manager, cfg, "recent task visits pruning")
 	}
-
-	// Ensure sandbox project exists
-	if cfg.EnsureSandboxProject() {
-		saveConfigWarn(manager, cfg, "sandbox project creation")
-	}
-
-	// Initialize dashboard and register it
-	app.dashboard = NewDashboardModel(cfg, manager)
-	app.views.Register(ViewDashboard, app.dashboard)
-
-	// Record initial dashboard view in navigation history
-	app.navHistory.Record(NavEntry{ViewType: ViewDashboard})
-
-	// Register global commands
-	app.registerGlobalCommands()
-
-	// Load current project if set
-	if current := cfg.GetCurrentProject(); current != nil {
-		app.currentProject = current
-	}
-
-	ApplyTheme(NewThemeConfig(cfg))
-	app.dashboard.SetAccentColor(AccentDashboard)
-
-	return app
 }
 
 // makePriorityHandler creates a command handler that sets task priority.
