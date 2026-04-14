@@ -10,7 +10,19 @@ import (
 )
 
 // loadItems loads and aggregates active/due tasks across all projects.
+// It cancels any active edit/add mode because the underlying data (m.filtered)
+// is about to be rebuilt, which would make the stale editIdx point at the
+// wrong row or go out of bounds.
 func (m *FocusBoardModel) loadItems() {
+	if m.editMode {
+		m.editMode = false
+		m.editInput.Blur()
+	}
+	if m.addMode {
+		m.addMode = false
+		m.addInput.Blur()
+		m.ac.Clear()
+	}
 	m.rows = nil
 	m.nextRows = nil
 	m.closedRows = nil
