@@ -361,6 +361,20 @@ func (m *TemplatePickerModel) renderPreviewPanel(t *template.TaskTemplate, width
 		}
 	}
 
+	// Variables
+	if template.HasVariables(t) {
+		vars := template.ExtractVariables(t)
+		lines = append(lines, "")
+		lines = append(lines, MutedStyle.Render("Variables:"))
+		for _, v := range vars {
+			entry := fmt.Sprintf("  {{%s}}", v.Name)
+			if v.Default != "" {
+				entry += MutedStyle.Render(fmt.Sprintf(" (default: %s)", v.Default))
+			}
+			lines = append(lines, entry)
+		}
+	}
+
 	// Apply scroll offset
 	if m.previewScroll > 0 && m.previewScroll < len(lines) {
 		lines = lines[m.previewScroll:]

@@ -119,6 +119,16 @@ func (m *AppModel) handleViewSettingsMessages(msg tea.Msg) (bool, tea.Cmd) { //n
 		m.refreshWorkflowRulesView()
 		return true, nil
 
+	case ShowWorkflowWizardMsg:
+		wizard := NewWorkflowWizardModel(m.config, m.configManager)
+		m.showView(ViewWorkflowWizard, wizard)
+		return true, wizard.Init()
+
+	case WorkflowWizardSavedMsg:
+		m.popView()
+		m.refreshWorkflowRulesView()
+		return true, nil
+
 	case WorkflowRuleEditedMsg:
 		m.popView()
 		m.refreshWorkflowRulesView()

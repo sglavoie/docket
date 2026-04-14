@@ -161,8 +161,10 @@ var (
 
 	// SemicolonPrefixHints contains hints for the ";" (tt global) prefix.
 	SemicolonPrefixHints = []PrefixHint{
+		{Key: ",", Description: "status update", Detail: "Change task status globally"},
 		{Key: "a", Description: "all tasks", Detail: "View all tasks across projects"},
 		{Key: "b", Description: "backlog", Detail: "Cross-project task suggestions"},
+		{Key: "c", Description: "linked task", Detail: "Create or link a related task"},
 		{Key: "d", Description: "daily review", Detail: "Open Daily Review"},
 		{Key: "f", Description: "focus board", Detail: "Personal command center"},
 		{Key: "i", Description: "quick capture", Detail: "Quick task capture"},
@@ -170,11 +172,20 @@ var (
 		{Key: "m", Description: "metrics", Detail: "Completion rates and throughput"},
 		{Key: "n", Description: "notifications", Detail: "Open Notification Center"},
 		{Key: "o", Description: "outliner", Detail: "Cross-project outliner"},
+		{Key: "t", Description: "task...", Detail: "Task actions (tm: move · tN: template)"},
 		{Key: "w", Description: "weekly review", Detail: "Open Weekly Review"},
 		{Key: "B", Description: "global blockers", Detail: "Blockers across all projects"},
 		{Key: "D", Description: "due date overview", Detail: "View tasks by due date"},
+		{Key: "I", Description: "bulk capture", Detail: "Bulk task capture in a project"},
 		{Key: "N", Description: "global notes", Detail: "Open global notes"},
 		{Key: "W", Description: "workflow rules", Detail: "Manage workflow automation rules"},
+		{Key: "{", Description: "note create", Detail: "Create note in a project"},
+	}
+
+	// SemicolonTPrefixHints contains hints for the ";t" (task actions) sub-prefix.
+	SemicolonTPrefixHints = []PrefixHint{
+		{Key: "m", Description: "move", Detail: "Move task to another project"},
+		{Key: "N", Description: "template", Detail: "Create task from template"},
 	}
 
 	// BlockerPrefixHints contains hints for the "b" (blocker/dependency) prefix.

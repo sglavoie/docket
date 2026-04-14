@@ -141,8 +141,33 @@ func (m *AppModel) applyOverlays(content string, h int) string {
 		}
 	}
 
-	// Overlay quick capture project picker if active
-	if popup := m.renderQuickCaptureProjectPicker(); popup != "" {
+	// Overlay global project picker if active
+	if popup := m.renderGlobalProjectPicker(); popup != "" {
+		content = OverlayPopupDimmed(content, popup, m.width, h)
+	}
+
+	// Overlay global task picker if active
+	if popup := m.renderGlobalTaskPicker(); popup != "" {
+		content = OverlayPopupDimmed(content, popup, m.width, h)
+	}
+
+	// Overlay status quick picker if active
+	if popup := m.renderStatusQuickPicker(); popup != "" {
+		content = OverlayPopupDimmed(content, popup, m.width, h)
+	}
+
+	// Overlay section quick picker if active (step 4 of global task move flow)
+	if popup := m.renderSectionQuickPicker(); popup != "" {
+		content = OverlayPopupDimmed(content, popup, m.width, h)
+	}
+
+	// Overlay link type quick picker if active (step 3 of global ;c linked task flow)
+	if popup := m.renderLinkTypeQuickPicker(); popup != "" {
+		content = OverlayPopupDimmed(content, popup, m.width, h)
+	}
+
+	// Overlay link mode quick picker if active (step 4 of global ;c linked task flow)
+	if popup := m.renderLinkModeQuickPicker(); popup != "" {
 		content = OverlayPopupDimmed(content, popup, m.width, h)
 	}
 
@@ -261,12 +286,49 @@ func (m *AppModel) renderPeekOverlay() string {
 	return strings.Join(renderedLines, "\n")
 }
 
-// renderQuickCaptureProjectPicker renders the project picker overlay when active.
-func (m *AppModel) renderQuickCaptureProjectPicker() string {
-	if m.quickCaptureProjectPicker == nil {
+// renderGlobalProjectPicker renders the global project picker overlay when active.
+func (m *AppModel) renderGlobalProjectPicker() string {
+	if m.globalProjectPicker == nil {
 		return ""
 	}
-	return m.quickCaptureProjectPicker.render(m.width)
+	return m.globalProjectPicker.render(m.width)
+}
+
+// renderGlobalTaskPicker renders the global task picker overlay when active.
+func (m *AppModel) renderGlobalTaskPicker() string {
+	if m.globalTaskPicker == nil {
+		return ""
+	}
+	return m.globalTaskPicker.render(m.width)
+}
+
+// renderStatusQuickPicker renders the status quick picker overlay when active.
+func (m *AppModel) renderStatusQuickPicker() string {
+	if m.statusQuickPicker == nil {
+		return ""
+	}
+	return m.statusQuickPicker.render(m.width)
+}
+
+func (m *AppModel) renderSectionQuickPicker() string {
+	if m.sectionQuickPicker == nil {
+		return ""
+	}
+	return m.sectionQuickPicker.render(m.width)
+}
+
+func (m *AppModel) renderLinkTypeQuickPicker() string {
+	if m.linkTypeQuickPicker == nil {
+		return ""
+	}
+	return m.linkTypeQuickPicker.render(m.width)
+}
+
+func (m *AppModel) renderLinkModeQuickPicker() string {
+	if m.linkModeQuickPicker == nil {
+		return ""
+	}
+	return m.linkModeQuickPicker.render(m.width)
 }
 
 // renderQuickNoteOverlay renders the quick note overlay popup when active.
@@ -295,8 +357,12 @@ func (m *AppModel) renderPrefixPopupOverlay() string {
 	return RenderPrefixPopup(info.Prefix, info.Hints, m.width, m.height)
 }
 
-// renderSemicolonPrefixPopup renders the ";" prefix popup when pendingSemicolonPrefix is true.
+// renderSemicolonPrefixPopup renders the ";" or ";t" prefix popup.
 func (m *AppModel) renderSemicolonPrefixPopup() string {
+	if m.pendingSemicolonTPrefix {
+		hints := PrefixHints{";t": SemicolonTPrefixHints}
+		return RenderPrefixPopup(";t", hints, m.width, m.height)
+	}
 	if !m.pendingSemicolonPrefix {
 		return ""
 	}

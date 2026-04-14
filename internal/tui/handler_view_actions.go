@@ -29,10 +29,78 @@ func (m *AppModel) handleViewActionMessages(msg tea.Msg) (bool, tea.Cmd) {
 		}
 		return true, nil
 
-	case ShowQuickCaptureProjectPickerMsg:
+	case ShowGlobalProjectPickerMsg:
 		activeProjects := m.config.GetActiveProjects()
-		m.quickCaptureProjectPicker = newQuickCaptureProjectPicker(activeProjects, m.config.Projects)
-		return true, m.quickCaptureProjectPicker.initCmd()
+		m.globalProjectPicker = newGlobalProjectPicker(activeProjects, m.config.Projects, msg.Purpose, msg.ExcludeIDs, msg.BackMsg)
+		return true, m.globalProjectPicker.initCmd()
+
+	case GlobalProjectPickerResultMsg:
+		return m.routeGlobalProjectPickerResult(msg)
+
+	case ShowGlobalTaskPickerMsg:
+		var backMsg tea.Msg = ShowGlobalProjectPickerMsg{Purpose: PickerPurposeStatusUpdate}
+		if msg.BackMsg != nil {
+			backMsg = msg.BackMsg
+		}
+		// Load project if not yet populated (may happen if project was never visited this session)
+		if len(msg.Project.Tasks) == 0 {
+			_ = m.persister.Load(msg.Project)
+		}
+		m.globalTaskPicker = newGlobalTaskPicker(msg.Project, msg.Purpose, backMsg)
+		return true, m.globalTaskPicker.initCmd()
+
+	case GlobalTaskPickerResultMsg:
+		return m.routeGlobalTaskPickerResult(msg)
+
+	case GlobalStatusAppliedMsg:
+		return m.handleGlobalStatusApplied(msg)
+
+	case GlobalMoveSectionSelectedMsg:
+		return m.handleGlobalMoveSectionSelected(msg)
+
+	case ShowGlobalLinkedTaskTypePickerMsg:
+		backMsg := ShowGlobalTaskPickerMsg{
+			Project: msg.Project,
+			Purpose: TaskPickerPurposeLinkedTask,
+			BackMsg: ShowGlobalProjectPickerMsg{Purpose: PickerPurposeLinkedTask},
+		}
+		m.linkTypeQuickPicker = newLinkTypeQuickPicker(msg.Task, msg.Project, backMsg)
+		return true, nil
+
+	case GlobalLinkedTaskTypeSelectedMsg:
+		m.globalLinkedTaskState.linkType = msg.LinkType
+		backMsg := ShowGlobalLinkedTaskTypePickerMsg{
+			Task:    msg.Task,
+			Project: msg.Project,
+		}
+		m.linkModeQuickPicker = newLinkModeQuickPicker(msg.Task, msg.Project, msg.LinkType, backMsg)
+		return true, nil
+
+	case GlobalLinkedTaskModeCreateMsg:
+		m.globalLinkedTaskState.sourceTask = nil
+		m.globalLinkedTaskState.sourceProject = nil
+		task := msg.Task
+		project := msg.Project
+		linkType := msg.LinkType
+		return true, func() tea.Msg {
+			return CreateLinkedTaskMsg{
+				SourceTask: task,
+				Project:    project,
+				LinkType:   linkType,
+			}
+		}
+
+	case GlobalLinkedTaskModeLinkMsg:
+		m.globalLinkedTaskState.sourceTask = nil
+		m.globalLinkedTaskState.sourceProject = nil
+		task := msg.Task
+		project := msg.Project
+		return true, func() tea.Msg {
+			return ShowCrossProjectLinkerMsg{
+				SourceTask:    task,
+				SourceProject: project,
+			}
+		}
 
 	case ShowQuickCaptureMsg:
 		if msg.Project != nil {
@@ -98,6 +166,187 @@ func (m *AppModel) handleViewActionMessages(msg tea.Msg) (bool, tea.Cmd) {
 	}
 
 	return false, nil
+}
+
+// routeGlobalProjectPickerResult dispatches the result of the global project picker
+// to the appropriate action based on the picker's purpose.
+func (m *AppModel) routeGlobalProjectPickerResult(msg GlobalProjectPickerResultMsg) (bool, tea.Cmd) {
+	if msg.Project == nil {
+		return true, nil
+	}
+	switch msg.Purpose {
+	case PickerPurposeQuickCapture:
+		return true, func() tea.Msg {
+			return ShowQuickCaptureMsg{
+				Project:           msg.Project,
+				AllProjects:       msg.AllProjects,
+				FromGlobalCapture: true,
+			}
+		}
+	case PickerPurposeBulkCapture:
+		return true, func() tea.Msg {
+			return ShowBulkCaptureMsg{Project: msg.Project}
+		}
+	case PickerPurposeNoteCreate:
+		return true, func() tea.Msg {
+			return ShowNoteCreatorMsg{Project: msg.Project}
+		}
+	case PickerPurposeStatusUpdate:
+		project := msg.Project
+		return true, func() tea.Msg {
+			return ShowGlobalTaskPickerMsg{
+				Project: project,
+				Purpose: TaskPickerPurposeStatusUpdate,
+				BackMsg: ShowGlobalProjectPickerMsg{Purpose: PickerPurposeStatusUpdate},
+			}
+		}
+	case PickerPurposeTaskMoveSource:
+		m.globalMoveState.sourceProject = msg.Project
+		project := msg.Project
+		return true, func() tea.Msg {
+			return ShowGlobalTaskPickerMsg{
+				Project: project,
+				Purpose: TaskPickerPurposeTaskMove,
+				BackMsg: ShowGlobalProjectPickerMsg{Purpose: PickerPurposeTaskMoveSource},
+			}
+		}
+	case PickerPurposeLinkedTask:
+		project := msg.Project
+		return true, func() tea.Msg {
+			return ShowGlobalTaskPickerMsg{
+				Project: project,
+				Purpose: TaskPickerPurposeLinkedTask,
+				BackMsg: ShowGlobalProjectPickerMsg{Purpose: PickerPurposeLinkedTask},
+			}
+		}
+	case PickerPurposeTemplatePick:
+		project := msg.Project
+		if err := m.persister.Load(project); err != nil {
+			return true, errorCmd("failed to load project: %w", err)
+		}
+		m.currentProject = project
+		return true, func() tea.Msg {
+			return ShowTemplatePickerMsg{Project: project}
+		}
+	case PickerPurposeTaskMoveDest:
+		destProject := msg.Project
+		if err := m.persister.Load(destProject); err != nil {
+			return true, errorCmd("failed to load destination project: %w", err)
+		}
+		m.globalMoveState.destProject = destProject
+		sourceProject := m.globalMoveState.sourceProject
+		sourceID := ""
+		if sourceProject != nil {
+			sourceID = sourceProject.ID
+		}
+		// Back from section picker → re-open dest project picker, with task picker as its back step.
+		sectionPickerBackMsg := ShowGlobalProjectPickerMsg{
+			Purpose:    PickerPurposeTaskMoveDest,
+			ExcludeIDs: []string{sourceID},
+			BackMsg: ShowGlobalTaskPickerMsg{
+				Project: sourceProject,
+				Purpose: TaskPickerPurposeTaskMove,
+				BackMsg: ShowGlobalProjectPickerMsg{Purpose: PickerPurposeTaskMoveSource},
+			},
+		}
+		m.sectionQuickPicker = newSectionQuickPicker(destProject, m.globalMoveState.sourceTask, sectionPickerBackMsg)
+		return true, nil
+	}
+	return true, nil
+}
+
+// routeGlobalTaskPickerResult dispatches the result of the global task picker
+// to the appropriate action based on the picker's purpose.
+func (m *AppModel) routeGlobalTaskPickerResult(msg GlobalTaskPickerResultMsg) (bool, tea.Cmd) {
+	if msg.Task == nil || msg.Project == nil {
+		return true, nil
+	}
+	switch msg.Purpose {
+	case TaskPickerPurposeStatusUpdate:
+		// backMsg re-opens task picker for the same project
+		backMsg := ShowGlobalTaskPickerMsg{
+			Project: msg.Project,
+			Purpose: TaskPickerPurposeStatusUpdate,
+			BackMsg: ShowGlobalProjectPickerMsg{Purpose: PickerPurposeStatusUpdate},
+		}
+		m.statusQuickPicker = newStatusQuickPicker(msg.Task, msg.Project, backMsg)
+		return true, nil
+	case TaskPickerPurposeTaskMove:
+		m.globalMoveState.sourceTask = msg.Task
+		sourceProject := m.globalMoveState.sourceProject
+		sourceID := ""
+		if sourceProject != nil {
+			sourceID = sourceProject.ID
+		}
+		taskPickerBackMsg := ShowGlobalProjectPickerMsg{Purpose: PickerPurposeTaskMoveSource}
+		return true, func() tea.Msg {
+			return ShowGlobalProjectPickerMsg{
+				Purpose:    PickerPurposeTaskMoveDest,
+				ExcludeIDs: []string{sourceID},
+				BackMsg: ShowGlobalTaskPickerMsg{
+					Project: sourceProject,
+					Purpose: TaskPickerPurposeTaskMove,
+					BackMsg: taskPickerBackMsg,
+				},
+			}
+		}
+	case TaskPickerPurposeLinkedTask:
+		m.globalLinkedTaskState.sourceTask = msg.Task
+		m.globalLinkedTaskState.sourceProject = msg.Project
+		backMsg := ShowGlobalTaskPickerMsg{
+			Project: msg.Project,
+			Purpose: TaskPickerPurposeLinkedTask,
+			BackMsg: ShowGlobalProjectPickerMsg{Purpose: PickerPurposeLinkedTask},
+		}
+		m.linkTypeQuickPicker = newLinkTypeQuickPicker(msg.Task, msg.Project, backMsg)
+		return true, nil
+	}
+	return true, nil
+}
+
+// handleGlobalStatusApplied applies a status change from the global status update flow.
+func (m *AppModel) handleGlobalStatusApplied(msg GlobalStatusAppliedMsg) (bool, tea.Cmd) {
+	m.statusQuickPicker = nil
+	result := applyStatusChange(simplePersist(m.persister), msg.Project, msg.Task.ID, msg.NewStatus)
+	if result.Err != nil {
+		return true, func() tea.Msg { return ErrorMsg{Err: result.Err} }
+	}
+	if result.StatusMessage != "" {
+		m.setSuccessStatus(result.StatusMessage)
+	}
+	var cmds []tea.Cmd
+	if result.Cmd != nil {
+		cmds = append(cmds, result.Cmd)
+	}
+	cmds = append(cmds, defaultStatusTimeout())
+	return true, tea.Batch(cmds...)
+}
+
+// handleGlobalMoveSectionSelected completes the ;tm global task-move workflow.
+// It sets the chosen section on the task, then emits MoveTaskToProjectMsg.
+func (m *AppModel) handleGlobalMoveSectionSelected(msg GlobalMoveSectionSelectedMsg) (bool, tea.Cmd) {
+	m.sectionQuickPicker = nil
+	task := m.globalMoveState.sourceTask
+	sourceProject := m.globalMoveState.sourceProject
+	destProject := m.globalMoveState.destProject
+	m.globalMoveState.sourceProject = nil
+	m.globalMoveState.sourceTask = nil
+	m.globalMoveState.destProject = nil
+
+	if task == nil || sourceProject == nil || destProject == nil {
+		return true, nil
+	}
+
+	task.SetSection(msg.Section)
+	destProjectID := destProject.ID
+	return true, func() tea.Msg {
+		return MoveTaskToProjectMsg{
+			Task:          task,
+			SourceProject: sourceProject,
+			DestProjectID: destProjectID,
+			FromGlobal:    true,
+		}
+	}
 }
 
 // handleViewSupportMessages handles blockers and attachment views.

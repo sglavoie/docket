@@ -45,7 +45,8 @@ func (r *KeybindingRegistry) registerWorkflowRulesBindings() {
 		Keybinding{Key: "g/G", Description: "Top/Bottom", Category: "Navigation", Views: views},
 		Keybinding{Key: "/", Description: "Search rules", Category: "Navigation", Views: views},
 		Keybinding{Key: "Space", Description: "Toggle enabled/disabled", Category: "Actions", Views: views},
-		Keybinding{Key: "n", Description: "New rule", Category: "Actions", Views: views},
+		Keybinding{Key: "n", Description: "New rule (form)", Category: "Actions", Views: views},
+		Keybinding{Key: "w", Description: "New rule (wizard)", Category: "Actions", Views: views},
 		Keybinding{Key: "e", Description: "Edit rule", Category: "Actions", Views: views},
 		Keybinding{Key: "d/D", Description: "Delete rule", Category: "Actions", Views: views},
 		Keybinding{Key: "J/K", Description: "Adjust rule priority", Category: "Actions", Views: views},
@@ -64,6 +65,16 @@ func (r *KeybindingRegistry) registerWorkflowDryRunBindings() {
 		Keybinding{Key: "g/G", Description: "Top/Bottom", Category: "Navigation", Views: views},
 		Keybinding{Key: "/", Description: "Search tasks", Category: "Navigation", Views: views},
 		Keybinding{Key: "Esc", Description: "Close", Category: "Navigation", Views: views},
+	)
+}
+
+func (r *KeybindingRegistry) registerWorkflowWizardBindings() {
+	views := []ViewType{ViewWorkflowWizard}
+	r.add(
+		Keybinding{Key: "j/k", Description: "Navigate list", Category: "Navigation", Views: views},
+		Keybinding{Key: "↑/↓", Description: "Navigate list", Category: "Navigation", Views: views},
+		Keybinding{Key: "Enter", Description: "Select / confirm", Category: "Actions", Views: views},
+		Keybinding{Key: "Esc", Description: "Back one step / cancel", Category: "Navigation", Views: views},
 	)
 }
 

@@ -179,14 +179,14 @@ func (m *WorkflowRulesModel) renderHelpText() string {
 
 	if len(m.filteredRules) == 0 {
 		if m.searchQuery == "" {
-			parts = []string{"/: search", "n: new rule", "Esc: close"}
+			parts = []string{"/: search", "n: new rule", "w: wizard", "Esc: close"}
 		} else {
-			parts = []string{"Esc: clear search", "n: new rule", "Esc: close"}
+			parts = []string{"Esc: clear search", "n: new rule", "w: wizard", "Esc: close"}
 		}
 	} else if m.isWideScreen() {
-		parts = []string{"/: search", "j/k: nav", "J/K: priority", "Space: toggle", "n: new", "e: edit", "d: delete", "t: dry run", "T: test rule", "Esc: close"}
+		parts = []string{"/: search", "j/k: nav", "J/K: priority", "Space: toggle", "n: new", "w: wizard", "e: edit", "d: delete", "t: dry run", "T: test rule", "Esc: close"}
 	} else {
-		parts = []string{"/: search", "j/k: nav", "J/K: priority", "Enter: preview", "Space: toggle", "n: new", "e: edit", "d: delete", "t: dry run", "Esc: close"}
+		parts = []string{"/: search", "j/k: nav", "J/K: priority", "Enter: preview", "Space: toggle", "n: new", "w: wizard", "e: edit", "d: delete", "t: dry run", "Esc: close"}
 	}
 
 	return renderWrappingHelpLine(strings.Join(parts, " · "), m.Width()-2)

@@ -22,6 +22,10 @@ func (m *AppModel) Update(msg tea.Msg) (outModel tea.Model, outCmd tea.Cmd) { //
 				m.viewStack = []ViewType{ViewDashboard}
 			}
 			m.pendingSemicolonPrefix = false
+			m.pendingSemicolonTPrefix = false
+			m.sectionQuickPicker = nil
+			m.linkTypeQuickPicker = nil
+			m.linkModeQuickPicker = nil
 			m.isLoading = false
 			m.showQuickSwitch = false
 			m.quickSwitchFiltering = false
@@ -93,11 +97,11 @@ func (m *AppModel) Update(msg tea.Msg) (outModel tea.Model, outCmd tea.Cmd) { //
 			return m, tea.Batch(batchCmds...)
 		}
 
-		// Intercept keys when quick capture project picker overlay is active
-		if m.quickCaptureProjectPicker != nil {
-			inputCmd, dismiss, resultMsg := m.quickCaptureProjectPicker.handleKey(msg)
+		// Intercept keys when global project picker overlay is active
+		if m.globalProjectPicker != nil {
+			inputCmd, dismiss, resultMsg := m.globalProjectPicker.handleKey(msg)
 			if dismiss {
-				m.quickCaptureProjectPicker = nil
+				m.globalProjectPicker = nil
 			}
 			var batchCmds []tea.Cmd
 			if inputCmd != nil {
@@ -108,6 +112,107 @@ func (m *AppModel) Update(msg tea.Msg) (outModel tea.Model, outCmd tea.Cmd) { //
 				batchCmds = append(batchCmds, func() tea.Msg { return captured })
 			}
 			return m, tea.Batch(batchCmds...)
+		}
+
+		// Intercept keys when global task picker overlay is active
+		if m.globalTaskPicker != nil {
+			inputCmd, dismiss, resultMsg := m.globalTaskPicker.handleKey(msg)
+			if dismiss {
+				m.globalTaskPicker = nil
+			}
+			var batchCmds []tea.Cmd
+			if inputCmd != nil {
+				batchCmds = append(batchCmds, inputCmd)
+			}
+			if resultMsg != nil {
+				captured := resultMsg
+				batchCmds = append(batchCmds, func() tea.Msg { return captured })
+			}
+			return m, tea.Batch(batchCmds...)
+		}
+
+		// Intercept keys when status quick picker overlay is active
+		if m.statusQuickPicker != nil {
+			inputCmd, dismiss, resultMsg := m.statusQuickPicker.handleKey(msg)
+			if dismiss {
+				m.statusQuickPicker = nil
+			}
+			var batchCmds []tea.Cmd
+			if inputCmd != nil {
+				batchCmds = append(batchCmds, inputCmd)
+			}
+			if resultMsg != nil {
+				captured := resultMsg
+				batchCmds = append(batchCmds, func() tea.Msg { return captured })
+			}
+			return m, tea.Batch(batchCmds...)
+		}
+
+		// Intercept keys when section quick picker overlay is active
+		if m.sectionQuickPicker != nil {
+			inputCmd, dismiss, resultMsg := m.sectionQuickPicker.handleKey(msg)
+			if dismiss {
+				m.sectionQuickPicker = nil
+			}
+			var batchCmds []tea.Cmd
+			if inputCmd != nil {
+				batchCmds = append(batchCmds, inputCmd)
+			}
+			if resultMsg != nil {
+				captured := resultMsg
+				batchCmds = append(batchCmds, func() tea.Msg { return captured })
+			}
+			return m, tea.Batch(batchCmds...)
+		}
+
+		// Intercept keys when link type quick picker overlay is active
+		if m.linkTypeQuickPicker != nil {
+			inputCmd, dismiss, resultMsg := m.linkTypeQuickPicker.handleKey(msg)
+			if dismiss {
+				m.linkTypeQuickPicker = nil
+			}
+			var batchCmds []tea.Cmd
+			if inputCmd != nil {
+				batchCmds = append(batchCmds, inputCmd)
+			}
+			if resultMsg != nil {
+				captured := resultMsg
+				batchCmds = append(batchCmds, func() tea.Msg { return captured })
+			}
+			return m, tea.Batch(batchCmds...)
+		}
+
+		// Intercept keys when link mode quick picker overlay is active
+		if m.linkModeQuickPicker != nil {
+			inputCmd, dismiss, resultMsg := m.linkModeQuickPicker.handleKey(msg)
+			if dismiss {
+				m.linkModeQuickPicker = nil
+			}
+			var batchCmds []tea.Cmd
+			if inputCmd != nil {
+				batchCmds = append(batchCmds, inputCmd)
+			}
+			if resultMsg != nil {
+				captured := resultMsg
+				batchCmds = append(batchCmds, func() tea.Msg { return captured })
+			}
+			return m, tea.Batch(batchCmds...)
+		}
+
+		// Intercept keys when semicolon-t sub-prefix is pending (;t → "m" move, "N" template)
+		if m.pendingSemicolonTPrefix {
+			m.pendingSemicolonTPrefix = false
+			switch msg.String() {
+			case "m":
+				return m, func() tea.Msg {
+					return ShowGlobalProjectPickerMsg{Purpose: PickerPurposeTaskMoveSource}
+				}
+			case "N":
+				return m, func() tea.Msg {
+					return ShowGlobalProjectPickerMsg{Purpose: PickerPurposeTemplatePick}
+				}
+			}
+			return m, nil
 		}
 
 		// Intercept keys when semicolon prefix is pending
@@ -147,6 +252,25 @@ func (m *AppModel) Update(msg tea.Msg) (outModel tea.Model, outCmd tea.Cmd) { //
 				return m, func() tea.Msg { return ShowGlobalOutlinerMsg{} }
 			case "i":
 				return m, m.resolveQuickCaptureCmd()
+			case "I":
+				return m, func() tea.Msg {
+					return ShowGlobalProjectPickerMsg{Purpose: PickerPurposeBulkCapture}
+				}
+			case "{":
+				return m, func() tea.Msg {
+					return ShowGlobalProjectPickerMsg{Purpose: PickerPurposeNoteCreate}
+				}
+			case ",":
+				return m, func() tea.Msg {
+					return ShowGlobalProjectPickerMsg{Purpose: PickerPurposeStatusUpdate}
+				}
+			case "c":
+				return m, func() tea.Msg {
+					return ShowGlobalProjectPickerMsg{Purpose: PickerPurposeLinkedTask}
+				}
+			case "t":
+				m.pendingSemicolonTPrefix = true
+				return m, nil
 			}
 			return m, nil
 		}
@@ -345,8 +469,9 @@ func (m *AppModel) Update(msg tea.Msg) (outModel tea.Model, outCmd tea.Cmd) { //
 		}
 
 	case ClearSemicolonPrefixMsg:
-		if m.pendingSemicolonPrefix {
+		if m.pendingSemicolonPrefix || m.pendingSemicolonTPrefix {
 			m.pendingSemicolonPrefix = false
+			m.pendingSemicolonTPrefix = false
 			m.setInfoStatus("prefix cleared")
 			return m, defaultStatusTimeout()
 		}
@@ -481,7 +606,7 @@ func (m *AppModel) Update(msg tea.Msg) (outModel tea.Model, outCmd tea.Cmd) { //
 // resolveQuickCaptureProject returns the best project for quick capture,
 // preferring the dashboard selection when on the dashboard view.
 func (m *AppModel) resolveQuickCaptureProject() tea.Msg {
-	return ShowQuickCaptureProjectPickerMsg{}
+	return ShowGlobalProjectPickerMsg{Purpose: PickerPurposeQuickCapture}
 }
 
 func (m *AppModel) resolveQuickCaptureCmd() tea.Cmd {

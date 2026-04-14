@@ -137,6 +137,8 @@ func (m *WorkflowRulesModel) handleRuleActionKey(key string) (bool, tea.Model, t
 		return true, m, nil
 	case "n":
 		return true, m, func() tea.Msg { return ShowWorkflowRuleCreatorMsg{} }
+	case "w":
+		return true, m, func() tea.Msg { return ShowWorkflowWizardMsg{} }
 	case "e":
 		if len(m.filteredRules) > 0 && m.cursor < len(m.filteredRules) {
 			rule := m.filteredRules[m.cursor]
@@ -171,7 +173,7 @@ func (m *WorkflowRulesModel) HandledKeys() []string {
 		// Navigation
 		"j", "down", "k", "up", "g", "G", "/",
 		// Actions
-		"space", "enter", "d", "D", "n", "e", "J", "K", "t", "T",
+		"space", "enter", "d", "D", "n", "w", "e", "J", "K", "t", "T",
 	}
 }
 

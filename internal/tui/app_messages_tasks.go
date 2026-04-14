@@ -342,6 +342,7 @@ type MoveTaskToProjectMsg struct {
 	Task          *models.Task
 	SourceProject *models.Project
 	DestProjectID string
+	FromGlobal    bool // true when triggered from the global ;tm workflow (skip popView)
 }
 
 // TaskMovedToProjectMsg signals a task was moved to another project.
@@ -349,9 +350,10 @@ type TaskMovedToProjectMsg struct {
 	Task          *models.Task
 	SourceProject *models.Project
 	DestProject   *models.Project
-	MovedCount    int // Number of tasks moved (including descendants)
-	ClearedDeps   int // Number of dependencies that were cleared
-	OldShortID    int // Original short ID before move
+	MovedCount    int  // Number of tasks moved (including descendants)
+	ClearedDeps   int  // Number of dependencies that were cleared
+	OldShortID    int  // Original short ID before move
+	FromGlobal    bool // true when triggered from the global ;tm workflow (skip popView)
 }
 
 // =============================================================================

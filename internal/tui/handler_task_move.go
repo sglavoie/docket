@@ -69,12 +69,12 @@ func (m *AppModel) handleMoveTaskToProject(msg MoveTaskToProjectMsg) (bool, tea.
 	// Save both projects
 	return true, tea.Batch(
 		startLoading("Moving task..."),
-		m.saveBothProjectsAsync(msg.SourceProject, destProject, result, oldShortID),
+		m.saveBothProjectsAsync(msg.SourceProject, destProject, result, oldShortID, msg.FromGlobal),
 	)
 }
 
 // saveBothProjectsAsync saves both source and destination projects after a cross-project move.
-func (m *AppModel) saveBothProjectsAsync(source, dest *models.Project, result *models.MoveTaskToProjectResult, oldShortID int) tea.Cmd {
+func (m *AppModel) saveBothProjectsAsync(source, dest *models.Project, result *models.MoveTaskToProjectResult, oldShortID int, fromGlobal bool) tea.Cmd {
 	persister := m.persister
 	return func() tea.Msg {
 		// Backup and save source project
@@ -106,6 +106,7 @@ func (m *AppModel) saveBothProjectsAsync(source, dest *models.Project, result *m
 			MovedCount:    len(result.MovedTasks),
 			ClearedDeps:   len(result.ClearedDeps),
 			OldShortID:    oldShortID,
+			FromGlobal:    fromGlobal,
 		}
 	}
 }
@@ -114,7 +115,9 @@ func (m *AppModel) saveBothProjectsAsync(source, dest *models.Project, result *m
 func (m *AppModel) handleTaskMovedToProject(msg TaskMovedToProjectMsg) (bool, tea.Cmd) {
 	m.isLoading = false
 	m.loadingMessage = ""
-	m.popView() // Close project selector
+	if !msg.FromGlobal {
+		m.popView() // Close project selector (not needed for global flow)
+	}
 	m.refreshProjectTree()
 	if m.outliner != nil {
 		m.outliner.rebuildRows()

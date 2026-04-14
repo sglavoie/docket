@@ -61,6 +61,7 @@ func NewKeybindingRegistry() *KeybindingRegistry {
 	r.registerTaskCommentsBindings()
 	r.registerWorkflowRulesBindings()
 	r.registerWorkflowDryRunBindings()
+	r.registerWorkflowWizardBindings()
 	r.registerTaskTemplatesBindings()
 	r.registerFilterBuilderBindings()
 	r.registerNotificationCenterBindings()
@@ -370,6 +371,11 @@ func (r *KeybindingRegistry) registerGlobalBindings() {
 		Keybinding{Key: ";W", Description: "Open Workflow Rules", Category: "Navigation"},
 		Keybinding{Key: ";o", Description: "Open Global Outliner", Category: "Navigation"},
 		Keybinding{Key: ";i", Description: "Quick Capture", Category: "Navigation"},
+		Keybinding{Key: ";I", Description: "Global Bulk Capture", Category: "Navigation"},
+		Keybinding{Key: ";{", Description: "Global Note Create", Category: "Navigation"},
+		Keybinding{Key: ";,", Description: "Global Status Update", Category: "Navigation"},
+		Keybinding{Key: ";c", Description: "Global Linked Task (create or link)", Category: "Navigation"},
+		Keybinding{Key: ";tN", Description: "Global Template Task Create", Category: "Navigation"},
 		Keybinding{Key: "ctrl+X", Description: "Switch project", Category: "Navigation"},
 		Keybinding{Key: "ctrl+Z", Description: "Undo/redo stack", Category: "Navigation"},
 		Keybinding{Key: "alt+o", Description: "History back", Category: "Navigation"},

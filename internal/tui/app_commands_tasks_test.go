@@ -29,8 +29,8 @@ func TestTaskCommands_QuickCapture(t *testing.T) {
 	}
 
 	result := cmd.Handler()
-	if _, ok := result.(ShowQuickCaptureProjectPickerMsg); !ok {
-		t.Errorf("expected ShowQuickCaptureProjectPickerMsg, got %T", result)
+	if _, ok := result.(ShowGlobalProjectPickerMsg); !ok {
+		t.Errorf("expected ShowGlobalProjectPickerMsg, got %T", result)
 	}
 }
 
@@ -45,8 +45,8 @@ func TestTaskCommands_QuickCapture_NilProject(t *testing.T) {
 	}
 
 	result := cmd.Handler()
-	if _, ok := result.(ShowQuickCaptureProjectPickerMsg); !ok {
-		t.Errorf("expected ShowQuickCaptureProjectPickerMsg, got %T", result)
+	if _, ok := result.(ShowGlobalProjectPickerMsg); !ok {
+		t.Errorf("expected ShowGlobalProjectPickerMsg, got %T", result)
 	}
 }
 
@@ -65,8 +65,8 @@ func TestTaskCommands_QuickCapture_DashboardNoProject(t *testing.T) {
 	}
 
 	result := cmd.Handler()
-	if _, ok := result.(ShowQuickCaptureProjectPickerMsg); !ok {
-		t.Fatalf("expected ShowQuickCaptureProjectPickerMsg, got %T", result)
+	if _, ok := result.(ShowGlobalProjectPickerMsg); !ok {
+		t.Fatalf("expected ShowGlobalProjectPickerMsg, got %T", result)
 	}
 }
 

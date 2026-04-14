@@ -155,6 +155,10 @@ func (m *AppModel) handleEscKey() (bool, tea.Cmd) {
 		m.pendingSemicolonPrefix = false
 		return true, nil
 	}
+	if m.pendingSemicolonTPrefix {
+		m.pendingSemicolonTPrefix = false
+		return true, nil
+	}
 	if caps := m.currentViewCapabilities(); caps != nil && caps.ShouldCaptureEsc() {
 		return false, nil
 	}

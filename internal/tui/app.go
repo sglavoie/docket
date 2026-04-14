@@ -57,6 +57,7 @@ const (
 	ViewWorkflowRules
 	ViewWorkflowRuleCreator
 	ViewWorkflowRuleEditor
+	ViewWorkflowWizard
 	ViewRecurrenceEditor
 	ViewTextEditor
 	ViewGlobalInboxProcessor
@@ -157,6 +158,7 @@ func (v ViewType) String() string {
 		ViewWorkflowRules:         "WorkflowRules",
 		ViewWorkflowRuleCreator:   "WorkflowRuleCreator",
 		ViewWorkflowRuleEditor:    "WorkflowRuleEditor",
+		ViewWorkflowWizard:        "WorkflowWizard",
 		ViewRecurrenceEditor:      "RecurrenceEditor",
 		ViewTextEditor:            "TextEditor",
 		ViewGlobalInboxProcessor:  "GlobalInboxProcessor",
@@ -392,7 +394,8 @@ type AppModel struct {
 	// for each project so switching back restores the same view.
 	projectLastView map[string]ViewType
 
-	pendingSemicolonPrefix bool
+	pendingSemicolonPrefix  bool
+	pendingSemicolonTPrefix bool // true after ";t" while waiting for the sub-key (e.g. "m")
 
 	// Proactive alert snapshots (ephemeral, regenerated on navigation)
 	rawAlerts       *alerts.AlertSnapshot // unfiltered (before dismissal filter)
@@ -408,8 +411,39 @@ type AppModel struct {
 	// Quick note overlay (ctrl+. to add a comment without opening the full comments view)
 	quickNoteOverlay *QuickNoteOverlay
 
-	// Quick capture project picker overlay (shown when quick capture has no project)
-	quickCaptureProjectPicker *QuickCaptureProjectPicker
+	// Global project picker overlay (shown for project selection in global workflows)
+	globalProjectPicker *GlobalProjectPicker
+
+	// Global task picker overlay (shown for task selection in global workflows)
+	globalTaskPicker *GlobalTaskPicker
+
+	// Status quick picker overlay (shown as step 3 of global status update flow)
+	statusQuickPicker *StatusQuickPicker
+
+	// Section quick picker overlay (shown as step 4 of global task move flow)
+	sectionQuickPicker *SectionQuickPicker
+
+	// Intermediate state for the global ;tm task-move workflow.
+	// Cleared on completion or cancellation.
+	globalMoveState struct {
+		sourceProject *models.Project
+		sourceTask    *models.Task
+		destProject   *models.Project
+	}
+
+	// Link type quick picker overlay (step 3 of global ;c linked task flow)
+	linkTypeQuickPicker *LinkTypeQuickPicker
+
+	// Link mode quick picker overlay (step 4 of global ;c linked task flow)
+	linkModeQuickPicker *LinkModeQuickPicker
+
+	// Intermediate state for the global ;c linked task creation workflow.
+	// Cleared on completion or cancellation.
+	globalLinkedTaskState struct {
+		sourceTask    *models.Task
+		sourceProject *models.Project
+		linkType      LinkType
+	}
 
 	// Peek task overlay (shift+space to hold-peek task detail)
 	peekTask   *models.Task
