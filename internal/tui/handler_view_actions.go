@@ -55,6 +55,15 @@ func (m *AppModel) handleViewActionMessages(msg tea.Msg) (bool, tea.Cmd) {
 	case GlobalStatusAppliedMsg:
 		return m.handleGlobalStatusApplied(msg)
 
+	case GlobalPriorityAppliedMsg:
+		return m.handleGlobalPriorityApplied(msg)
+
+	case GlobalDueDateAppliedMsg:
+		return m.handleGlobalDueDateApplied(msg)
+
+	case GlobalSectionChangedMsg:
+		return m.handleGlobalSectionChanged(msg)
+
 	case GlobalMoveSectionSelectedMsg:
 		return m.handleGlobalMoveSectionSelected(msg)
 
@@ -228,6 +237,33 @@ func (m *AppModel) routeGlobalProjectPickerResult(msg GlobalProjectPickerResultM
 		return true, func() tea.Msg {
 			return ShowTemplatePickerMsg{Project: project}
 		}
+	case PickerPurposePriorityUpdate:
+		project := msg.Project
+		return true, func() tea.Msg {
+			return ShowGlobalTaskPickerMsg{
+				Project: project,
+				Purpose: TaskPickerPurposePriorityUpdate,
+				BackMsg: ShowGlobalProjectPickerMsg{Purpose: PickerPurposePriorityUpdate},
+			}
+		}
+	case PickerPurposeDueDate:
+		project := msg.Project
+		return true, func() tea.Msg {
+			return ShowGlobalTaskPickerMsg{
+				Project: project,
+				Purpose: TaskPickerPurposeDueDate,
+				BackMsg: ShowGlobalProjectPickerMsg{Purpose: PickerPurposeDueDate},
+			}
+		}
+	case PickerPurposeSectionChange:
+		project := msg.Project
+		return true, func() tea.Msg {
+			return ShowGlobalTaskPickerMsg{
+				Project: project,
+				Purpose: TaskPickerPurposeSectionChange,
+				BackMsg: ShowGlobalProjectPickerMsg{Purpose: PickerPurposeSectionChange},
+			}
+		}
 	case PickerPurposeTaskMoveDest:
 		destProject := msg.Project
 		if err := m.persister.Load(destProject); err != nil {
@@ -300,6 +336,33 @@ func (m *AppModel) routeGlobalTaskPickerResult(msg GlobalTaskPickerResultMsg) (b
 		}
 		m.linkTypeQuickPicker = newLinkTypeQuickPicker(msg.Task, msg.Project, backMsg)
 		return true, nil
+	case TaskPickerPurposePriorityUpdate:
+		backMsg := ShowGlobalTaskPickerMsg{
+			Project: msg.Project,
+			Purpose: TaskPickerPurposePriorityUpdate,
+			BackMsg: ShowGlobalProjectPickerMsg{Purpose: PickerPurposePriorityUpdate},
+		}
+		m.priorityQuickPicker = newPriorityQuickPicker(msg.Task, msg.Project, backMsg)
+		return true, nil
+	case TaskPickerPurposeDueDate:
+		backMsg := ShowGlobalTaskPickerMsg{
+			Project: msg.Project,
+			Purpose: TaskPickerPurposeDueDate,
+			BackMsg: ShowGlobalProjectPickerMsg{Purpose: PickerPurposeDueDate},
+		}
+		m.dueDateQuickPicker = newDueDateQuickPicker(msg.Task, msg.Project, backMsg)
+		return true, nil
+	case TaskPickerPurposeSectionChange:
+		backMsg := ShowGlobalTaskPickerMsg{
+			Project: msg.Project,
+			Purpose: TaskPickerPurposeSectionChange,
+			BackMsg: ShowGlobalProjectPickerMsg{Purpose: PickerPurposeSectionChange},
+		}
+		if len(msg.Project.Tasks) == 0 {
+			_ = m.persister.Load(msg.Project)
+		}
+		m.sectionChangeQuickPicker = newSectionChangeQuickPicker(msg.Project, msg.Task, backMsg)
+		return true, nil
 	}
 	return true, nil
 }
@@ -308,6 +371,65 @@ func (m *AppModel) routeGlobalTaskPickerResult(msg GlobalTaskPickerResultMsg) (b
 func (m *AppModel) handleGlobalStatusApplied(msg GlobalStatusAppliedMsg) (bool, tea.Cmd) {
 	m.statusQuickPicker = nil
 	result := applyStatusChange(simplePersist(m.persister), msg.Project, msg.Task.ID, msg.NewStatus)
+	if result.Err != nil {
+		return true, func() tea.Msg { return ErrorMsg{Err: result.Err} }
+	}
+	if result.StatusMessage != "" {
+		m.setSuccessStatus(result.StatusMessage)
+	}
+	var cmds []tea.Cmd
+	if result.Cmd != nil {
+		cmds = append(cmds, result.Cmd)
+	}
+	cmds = append(cmds, defaultStatusTimeout())
+	return true, tea.Batch(cmds...)
+}
+
+// handleGlobalPriorityApplied applies a priority change from the global priority update flow.
+func (m *AppModel) handleGlobalPriorityApplied(msg GlobalPriorityAppliedMsg) (bool, tea.Cmd) {
+	m.priorityQuickPicker = nil
+	result := applyPriorityChange(simplePersist(m.persister), msg.Project, msg.Task.ID, msg.NewPriority)
+	if result.Err != nil {
+		return true, func() tea.Msg { return ErrorMsg{Err: result.Err} }
+	}
+	if result.StatusMessage != "" {
+		m.setSuccessStatus(result.StatusMessage)
+	}
+	var cmds []tea.Cmd
+	if result.Cmd != nil {
+		cmds = append(cmds, result.Cmd)
+	}
+	cmds = append(cmds, defaultStatusTimeout())
+	return true, tea.Batch(cmds...)
+}
+
+// handleGlobalDueDateApplied applies a due date change from the global ;td due date flow.
+func (m *AppModel) handleGlobalDueDateApplied(msg GlobalDueDateAppliedMsg) (bool, tea.Cmd) {
+	m.dueDateQuickPicker = nil
+	var result TaskOpResult
+	if msg.Clear {
+		result = applyClearDueDate(simplePersist(m.persister), msg.Project, msg.Task.ID)
+	} else {
+		result = applyQuickDueDate(simplePersist(m.persister), msg.Project, msg.Task.ID, msg.DaysFromNow)
+	}
+	if result.Err != nil {
+		return true, func() tea.Msg { return ErrorMsg{Err: result.Err} }
+	}
+	if result.StatusMessage != "" {
+		m.setSuccessStatus(result.StatusMessage)
+	}
+	var cmds []tea.Cmd
+	if result.Cmd != nil {
+		cmds = append(cmds, result.Cmd)
+	}
+	cmds = append(cmds, defaultStatusTimeout())
+	return true, tea.Batch(cmds...)
+}
+
+// handleGlobalSectionChanged applies a section change from the global ;ts section change flow.
+func (m *AppModel) handleGlobalSectionChanged(msg GlobalSectionChangedMsg) (bool, tea.Cmd) {
+	m.sectionChangeQuickPicker = nil
+	result := applySectionChange(simplePersist(m.persister), msg.Project, msg.Task.ID, msg.Section)
 	if result.Err != nil {
 		return true, func() tea.Msg { return ErrorMsg{Err: result.Err} }
 	}

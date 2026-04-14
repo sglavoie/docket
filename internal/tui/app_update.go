@@ -199,7 +199,58 @@ func (m *AppModel) Update(msg tea.Msg) (outModel tea.Model, outCmd tea.Cmd) { //
 			return m, tea.Batch(batchCmds...)
 		}
 
-		// Intercept keys when semicolon-t sub-prefix is pending (;t → "m" move, "N" template)
+		// Intercept keys when priority quick picker overlay is active
+		if m.priorityQuickPicker != nil {
+			inputCmd, dismiss, resultMsg := m.priorityQuickPicker.handleKey(msg)
+			if dismiss {
+				m.priorityQuickPicker = nil
+			}
+			var batchCmds []tea.Cmd
+			if inputCmd != nil {
+				batchCmds = append(batchCmds, inputCmd)
+			}
+			if resultMsg != nil {
+				captured := resultMsg
+				batchCmds = append(batchCmds, func() tea.Msg { return captured })
+			}
+			return m, tea.Batch(batchCmds...)
+		}
+
+		// Intercept keys when due date quick picker overlay is active
+		if m.dueDateQuickPicker != nil {
+			inputCmd, dismiss, resultMsg := m.dueDateQuickPicker.handleKey(msg)
+			if dismiss {
+				m.dueDateQuickPicker = nil
+			}
+			var batchCmds []tea.Cmd
+			if inputCmd != nil {
+				batchCmds = append(batchCmds, inputCmd)
+			}
+			if resultMsg != nil {
+				captured := resultMsg
+				batchCmds = append(batchCmds, func() tea.Msg { return captured })
+			}
+			return m, tea.Batch(batchCmds...)
+		}
+
+		// Intercept keys when section change quick picker overlay is active
+		if m.sectionChangeQuickPicker != nil {
+			inputCmd, dismiss, resultMsg := m.sectionChangeQuickPicker.handleKey(msg)
+			if dismiss {
+				m.sectionChangeQuickPicker = nil
+			}
+			var batchCmds []tea.Cmd
+			if inputCmd != nil {
+				batchCmds = append(batchCmds, inputCmd)
+			}
+			if resultMsg != nil {
+				captured := resultMsg
+				batchCmds = append(batchCmds, func() tea.Msg { return captured })
+			}
+			return m, tea.Batch(batchCmds...)
+		}
+
+		// Intercept keys when semicolon-t sub-prefix is pending (;t → "m" move, "N" template, "d" due date, "s" section)
 		if m.pendingSemicolonTPrefix {
 			m.pendingSemicolonTPrefix = false
 			switch msg.String() {
@@ -210,6 +261,14 @@ func (m *AppModel) Update(msg tea.Msg) (outModel tea.Model, outCmd tea.Cmd) { //
 			case "N":
 				return m, func() tea.Msg {
 					return ShowGlobalProjectPickerMsg{Purpose: PickerPurposeTemplatePick}
+				}
+			case "d":
+				return m, func() tea.Msg {
+					return ShowGlobalProjectPickerMsg{Purpose: PickerPurposeDueDate}
+				}
+			case "s":
+				return m, func() tea.Msg {
+					return ShowGlobalProjectPickerMsg{Purpose: PickerPurposeSectionChange}
 				}
 			}
 			return m, nil
@@ -271,6 +330,10 @@ func (m *AppModel) Update(msg tea.Msg) (outModel tea.Model, outCmd tea.Cmd) { //
 			case "t":
 				m.pendingSemicolonTPrefix = true
 				return m, nil
+			case "!":
+				return m, func() tea.Msg {
+					return ShowGlobalProjectPickerMsg{Purpose: PickerPurposePriorityUpdate}
+				}
 			}
 			return m, nil
 		}

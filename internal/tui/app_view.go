@@ -171,6 +171,21 @@ func (m *AppModel) applyOverlays(content string, h int) string {
 		content = OverlayPopupDimmed(content, popup, m.width, h)
 	}
 
+	// Overlay priority quick picker if active (step 3 of global ;! priority update flow)
+	if popup := m.renderPriorityQuickPicker(); popup != "" {
+		content = OverlayPopupDimmed(content, popup, m.width, h)
+	}
+
+	// Overlay due date quick picker if active (step 3 of global ;td due date flow)
+	if popup := m.renderDueDateQuickPicker(); popup != "" {
+		content = OverlayPopupDimmed(content, popup, m.width, h)
+	}
+
+	// Overlay section change quick picker if active (step 3 of global ;ts section change flow)
+	if popup := m.renderSectionChangeQuickPicker(); popup != "" {
+		content = OverlayPopupDimmed(content, popup, m.width, h)
+	}
+
 	// Overlay quick note popup if active
 	if popup := m.renderQuickNoteOverlay(); popup != "" {
 		content = OverlayPopupDimmed(content, popup, m.width, h)
@@ -329,6 +344,27 @@ func (m *AppModel) renderLinkModeQuickPicker() string {
 		return ""
 	}
 	return m.linkModeQuickPicker.render(m.width)
+}
+
+func (m *AppModel) renderPriorityQuickPicker() string {
+	if m.priorityQuickPicker == nil {
+		return ""
+	}
+	return m.priorityQuickPicker.render(m.width)
+}
+
+func (m *AppModel) renderDueDateQuickPicker() string {
+	if m.dueDateQuickPicker == nil {
+		return ""
+	}
+	return m.dueDateQuickPicker.render(m.width)
+}
+
+func (m *AppModel) renderSectionChangeQuickPicker() string {
+	if m.sectionChangeQuickPicker == nil {
+		return ""
+	}
+	return m.sectionChangeQuickPicker.render(m.width)
 }
 
 // renderQuickNoteOverlay renders the quick note overlay popup when active.

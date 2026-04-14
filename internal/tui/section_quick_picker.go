@@ -21,21 +21,34 @@ type GlobalMoveSectionSelectedMsg struct {
 	Section string // "" for Active, otherwise section name
 }
 
+// GlobalSectionChangedMsg is emitted when the user picks a new section in the
+// global ;ts section change workflow.
+type GlobalSectionChangedMsg struct {
+	Task    *models.Task
+	Project *models.Project
+	Section string // "" for Active, otherwise section name
+}
+
 var sectionPickerBreadcrumb = []string{"Source Project", "Select Task", "Destination", "Section"}
 
 // SectionQuickPicker is an overlay for choosing the destination section
-// when moving a task to another project via the global ;tm workflow.
-// Esc emits backMsg to return to the destination project picker.
+// when moving a task to another project via the global ;tm workflow,
+// or for changing a task's section via the global ;ts workflow.
+// Esc emits backMsg to return to the previous step.
 type SectionQuickPicker struct {
-	entries []sectionPickerEntry
-	cursor  int
-	task    *models.Task
-	project *models.Project // destination project
-	backMsg tea.Msg
+	entries       []sectionPickerEntry
+	cursor        int
+	task          *models.Task
+	project       *models.Project // destination or owning project
+	backMsg       tea.Msg
+	breadcrumb    []string
+	breadcrumbIdx int
+	resultFactory func(string) tea.Msg // called with selected section on enter
 }
 
 // newSectionQuickPicker creates a picker listing Active plus all sections
-// from the destination project.
+// from the destination project. Pre-selects Next if available, else Active.
+// Used by the ;tm global task-move workflow.
 func newSectionQuickPicker(destProject *models.Project, sourceTask *models.Task, backMsg tea.Msg) *SectionQuickPicker {
 	entries := []sectionPickerEntry{
 		{displayName: "Active", section: ""},
@@ -54,11 +67,55 @@ func newSectionQuickPicker(destProject *models.Project, sourceTask *models.Task,
 	}
 
 	return &SectionQuickPicker{
-		entries: entries,
-		cursor:  cursor,
-		task:    sourceTask,
-		project: destProject,
-		backMsg: backMsg,
+		entries:       entries,
+		cursor:        cursor,
+		task:          sourceTask,
+		project:       destProject,
+		backMsg:       backMsg,
+		breadcrumb:    sectionPickerBreadcrumb,
+		breadcrumbIdx: 3,
+		resultFactory: func(section string) tea.Msg {
+			return GlobalMoveSectionSelectedMsg{Section: section}
+		},
+	}
+}
+
+// newSectionChangeQuickPicker creates a picker for changing a task's section
+// within its own project. Pre-selects the task's current section.
+// Used by the ;ts global section change workflow.
+func newSectionChangeQuickPicker(project *models.Project, task *models.Task, backMsg tea.Msg) *SectionQuickPicker {
+	entries := []sectionPickerEntry{
+		{displayName: "Active", section: ""},
+	}
+	for _, s := range project.GetSections() {
+		entries = append(entries, sectionPickerEntry{displayName: s, section: s})
+	}
+
+	// Pre-select the task's current section (custom section takes precedence).
+	currentSection := task.CustomSection
+	if currentSection == "" {
+		currentSection = task.Section
+	}
+	cursor := 0
+	for i, e := range entries {
+		if e.section == currentSection {
+			cursor = i
+			break
+		}
+	}
+
+	bc := []string{"Select Project", "Select Task", "Choose Section"}
+	return &SectionQuickPicker{
+		entries:       entries,
+		cursor:        cursor,
+		task:          task,
+		project:       project,
+		backMsg:       backMsg,
+		breadcrumb:    bc,
+		breadcrumbIdx: 2,
+		resultFactory: func(section string) tea.Msg {
+			return GlobalSectionChangedMsg{Task: task, Project: project, Section: section}
+		},
 	}
 }
 
@@ -70,9 +127,7 @@ func (p *SectionQuickPicker) handleKey(msg tea.KeyPressMsg) (tea.Cmd, bool, tea.
 		return nil, true, p.backMsg
 
 	case "enter":
-		return nil, true, GlobalMoveSectionSelectedMsg{
-			Section: p.entries[p.cursor].section,
-		}
+		return nil, true, p.resultFactory(p.entries[p.cursor].section)
 
 	case "up", "ctrl+k", "ctrl+p", "k":
 		p.moveCursor(-1)
@@ -117,7 +172,7 @@ func (p *SectionQuickPicker) render(width int) string {
 	innerWidth := max(maxWidth, max(titleMinInner, footerMinInner))
 
 	var content strings.Builder
-	if bc := renderStepBreadcrumb(sectionPickerBreadcrumb, 3); bc != "" {
+	if bc := renderStepBreadcrumb(p.breadcrumb, p.breadcrumbIdx); bc != "" {
 		content.WriteString(bc)
 		content.WriteString("\n")
 	}

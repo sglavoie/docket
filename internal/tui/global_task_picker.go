@@ -20,6 +20,9 @@ const (
 	TaskPickerPurposeStatusUpdate TaskPickerPurpose = iota
 	TaskPickerPurposeTaskMove
 	TaskPickerPurposeLinkedTask
+	TaskPickerPurposePriorityUpdate
+	TaskPickerPurposeDueDate
+	TaskPickerPurposeSectionChange
 )
 
 // ShowGlobalTaskPickerMsg opens the global task picker overlay for the given project.
@@ -59,6 +62,12 @@ func taskPickerBreadcrumb(purpose TaskPickerPurpose) (steps []string, stepIdx in
 		return []string{"Source Project", "Select Task", "Destination", "Section"}, 1
 	case TaskPickerPurposeLinkedTask:
 		return []string{"Select Project", "Select Task", "Link Type", "Link Mode"}, 1
+	case TaskPickerPurposePriorityUpdate:
+		return []string{"Select Project", "Select Task", "Set Priority"}, 1
+	case TaskPickerPurposeDueDate:
+		return []string{"Select Project", "Select Task", "Set Due Date"}, 1
+	case TaskPickerPurposeSectionChange:
+		return []string{"Select Project", "Select Task", "Choose Section"}, 1
 	default:
 		return nil, 0
 	}

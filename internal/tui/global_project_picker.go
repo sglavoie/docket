@@ -25,6 +25,9 @@ const (
 	PickerPurposeTaskMoveDest
 	PickerPurposeLinkedTask
 	PickerPurposeTemplatePick
+	PickerPurposePriorityUpdate
+	PickerPurposeDueDate
+	PickerPurposeSectionChange
 )
 
 // renderStepBreadcrumb renders a compact "Step X > Step Y > Step Z" indicator
@@ -67,6 +70,12 @@ func pickerPurposeBreadcrumb(purpose PickerPurpose) (steps []string, stepIdx int
 		return []string{"Select Project", "Select Task", "Link Type", "Link Mode"}, 0
 	case PickerPurposeTemplatePick:
 		return []string{"Select Project", "Select Template", "Create Task"}, 0
+	case PickerPurposePriorityUpdate:
+		return []string{"Select Project", "Select Task", "Set Priority"}, 0
+	case PickerPurposeDueDate:
+		return []string{"Select Project", "Select Task", "Set Due Date"}, 0
+	case PickerPurposeSectionChange:
+		return []string{"Select Project", "Select Task", "Choose Section"}, 0
 	default:
 		return nil, 0
 	}

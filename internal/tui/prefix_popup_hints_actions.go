@@ -161,6 +161,7 @@ var (
 
 	// SemicolonPrefixHints contains hints for the ";" (tt global) prefix.
 	SemicolonPrefixHints = []PrefixHint{
+		{Key: "!", Description: "priority", Detail: "Change task priority globally"},
 		{Key: ",", Description: "status update", Detail: "Change task status globally"},
 		{Key: "a", Description: "all tasks", Detail: "View all tasks across projects"},
 		{Key: "b", Description: "backlog", Detail: "Cross-project task suggestions"},
@@ -172,7 +173,7 @@ var (
 		{Key: "m", Description: "metrics", Detail: "Completion rates and throughput"},
 		{Key: "n", Description: "notifications", Detail: "Open Notification Center"},
 		{Key: "o", Description: "outliner", Detail: "Cross-project outliner"},
-		{Key: "t", Description: "task...", Detail: "Task actions (tm: move · tN: template)"},
+		{Key: "t", Description: "task...", Detail: "Task actions (td: due date · tm: move · ts: section · tN: template)"},
 		{Key: "w", Description: "weekly review", Detail: "Open Weekly Review"},
 		{Key: "B", Description: "global blockers", Detail: "Blockers across all projects"},
 		{Key: "D", Description: "due date overview", Detail: "View tasks by due date"},
@@ -184,7 +185,9 @@ var (
 
 	// SemicolonTPrefixHints contains hints for the ";t" (task actions) sub-prefix.
 	SemicolonTPrefixHints = []PrefixHint{
+		{Key: "d", Description: "due date", Detail: "Set task due date globally"},
 		{Key: "m", Description: "move", Detail: "Move task to another project"},
+		{Key: "s", Description: "section", Detail: "Change task section globally"},
 		{Key: "N", Description: "template", Detail: "Create task from template"},
 	}
 

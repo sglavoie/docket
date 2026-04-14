@@ -423,6 +423,9 @@ type AppModel struct {
 	// Section quick picker overlay (shown as step 4 of global task move flow)
 	sectionQuickPicker *SectionQuickPicker
 
+	// Section change quick picker overlay (shown as step 3 of global ;ts section change flow)
+	sectionChangeQuickPicker *SectionQuickPicker
+
 	// Intermediate state for the global ;tm task-move workflow.
 	// Cleared on completion or cancellation.
 	globalMoveState struct {
@@ -436,6 +439,12 @@ type AppModel struct {
 
 	// Link mode quick picker overlay (step 4 of global ;c linked task flow)
 	linkModeQuickPicker *LinkModeQuickPicker
+
+	// Priority quick picker overlay (step 3 of global ;! priority update flow)
+	priorityQuickPicker *PriorityQuickPicker
+
+	// Due date quick picker overlay (step 3 of global ;td due date flow)
+	dueDateQuickPicker *DueDateQuickPicker
 
 	// Intermediate state for the global ;c linked task creation workflow.
 	// Cleared on completion or cancellation.
