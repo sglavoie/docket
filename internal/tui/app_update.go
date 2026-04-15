@@ -291,7 +291,7 @@ func (m *AppModel) Update(msg tea.Msg) (outModel tea.Model, outCmd tea.Cmd) { //
 				return m, func() tea.Msg { return ShowWeeklyReviewMsg{} }
 			case "N":
 				return m, func() tea.Msg { return ShowGlobalNotesMsg{} }
-			case "b":
+			case "q":
 				return m, func() tea.Msg { return ShowFocusViewMsg{} }
 			case "f":
 				return m, func() tea.Msg { return ShowFocusBoardMsg{} }
