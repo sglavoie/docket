@@ -86,10 +86,20 @@ func TestParseTaskContent(t *testing.T) {
 		testutil.AssertEqual(t, desc, "Actual content.")
 	})
 
-	t.Run("missing comment marker yields empty description", func(t *testing.T) {
+	t.Run("missing comment marker preserves content as description", func(t *testing.T) {
 		task := testutil.NewTestTask("Original Title", models.TaskTypeTask)
 
 		content := "# New Title\n\nNo comment here.\nSome text."
+		title, desc := parseTaskContent(content, task)
+
+		testutil.AssertEqual(t, title, "New Title")
+		testutil.AssertEqual(t, desc, "No comment here.\nSome text.")
+	})
+
+	t.Run("missing comment marker with empty description", func(t *testing.T) {
+		task := testutil.NewTestTask("Original Title", models.TaskTypeTask)
+
+		content := "# New Title"
 		title, desc := parseTaskContent(content, task)
 
 		testutil.AssertEqual(t, title, "New Title")
