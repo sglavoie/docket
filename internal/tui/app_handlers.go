@@ -44,6 +44,7 @@ func (m *AppModel) saveCrossOutlinerState() {
 		return
 	}
 	m.config.CrossOutlinerCollapsedSections = maps.Clone(m.crossOutliner.collapsedSections)
+	m.config.CrossOutlinerFilterHideDimmed = m.crossOutliner.filter.HideDimmed
 	if m.crossOutliner.columnConfig != nil {
 		m.config.CrossOutlinerColumnToggles = m.crossOutliner.columnConfig.Toggles()
 	}
@@ -75,6 +76,7 @@ func (m *AppModel) saveOutlinerFilterState() {
 	state.OutlinerFilterDueDate = int(m.outliner.filter.DueDate)
 	state.OutlinerFilterSections = filterSections
 	state.OutlinerFilterActionable = m.outliner.filter.Actionable
+	state.OutlinerFilterHideDimmed = m.outliner.filter.HideDimmed
 	state.OutlinerFilterScoreMin = m.outliner.filter.ScoreMin
 	state.OutlinerColumnToggles = m.outliner.columnConfig.Toggles()
 
@@ -130,6 +132,7 @@ func (m *AppModel) restoreOutlinerFilterState() {
 	m.outliner.filter.Priority = state.OutlinerFilterPriority
 	m.outliner.filter.DueDate = DueDateFilter(state.OutlinerFilterDueDate)
 	m.outliner.filter.Actionable = state.OutlinerFilterActionable
+	m.outliner.filter.HideDimmed = state.OutlinerFilterHideDimmed
 	m.outliner.filter.ScoreMin = state.OutlinerFilterScoreMin
 
 	// Restore attribute filters

@@ -419,6 +419,9 @@ func handleCommonFilterPrefix(key string, f *CommonFilterState, buildTagCmd func
 			f.Priority = 1
 		}
 		return FilterPrefixResult{Handled: true, Changed: true}
+	case "h":
+		f.HideDimmed = !f.HideDimmed
+		return FilterPrefixResult{Handled: true, Changed: true}
 	case "t":
 		return FilterPrefixResult{Handled: true, NewPrefix: "Ft"}
 	case "s":
@@ -503,10 +506,16 @@ func buildCommonFilterPrefixHints(f *CommonFilterState, includeDueDate, includeS
 		stageDetail = f.Stage
 	}
 
+	dimDetail := "off"
+	if f.HideDimmed {
+		dimDetail = "on"
+	}
+
 	hints = append(hints,
 		PrefixHint{Key: "a", Description: "attribute", Detail: attrDetail, Active: len(f.Attrs) > 0},
 		PrefixHint{Key: ".", Description: "stage", Detail: stageDetail, Active: f.Stage != ""},
 		PrefixHint{Key: "S", Description: "score", Detail: scoreDetail, Active: f.ScoreMin > 0},
+		PrefixHint{Key: "h", Description: "dimmed", Detail: dimDetail, Active: f.HideDimmed},
 		PrefixHint{Key: "D", Description: "columns"},
 		PrefixHint{Key: "x", Description: "clear-all"},
 	)

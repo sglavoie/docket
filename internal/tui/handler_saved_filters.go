@@ -137,6 +137,7 @@ func (m *AppModel) captureProjectTreeFilter(name, id string) config.SavedFilter 
 	sf.FilterPriority = pt.filter.Priority
 	sf.FilterDueDate = int(pt.filter.DueDate)
 	sf.FilterActionable = pt.filter.Actionable
+	sf.FilterHideDimmed = pt.filter.HideDimmed
 	sf.FilterScoreMin = pt.filter.ScoreMin
 	sf.SortField = int(pt.sort.Field)
 	sf.SortAscending = pt.sort.Ascending
@@ -182,6 +183,7 @@ func (m *AppModel) captureOutlinerFilter(name, id string) config.SavedFilter {
 	sf.FilterPriority = ol.filter.Priority
 	sf.FilterDueDate = int(ol.filter.DueDate)
 	sf.FilterActionable = ol.filter.Actionable
+	sf.FilterHideDimmed = ol.filter.HideDimmed
 	sf.FilterScoreMin = ol.filter.ScoreMin
 	sf.SortField = int(ol.sort.Field)
 	sf.SortAscending = ol.sort.Ascending
@@ -228,6 +230,7 @@ func (m *AppModel) applySavedFilterToTree(sf config.SavedFilter) {
 		pt.filter.Priority = sf.FilterPriority
 		pt.filter.DueDate = DueDateFilter(sf.FilterDueDate)
 		pt.filter.Actionable = sf.FilterActionable
+		pt.filter.HideDimmed = sf.FilterHideDimmed
 		pt.filter.ScoreMin = sf.FilterScoreMin
 		pt.sort.Field = SortField(sf.SortField)
 		pt.sort.Ascending = sf.SortAscending
@@ -296,6 +299,7 @@ func (m *AppModel) applySavedFilterToOutliner(sf config.SavedFilter) {
 		ol.filter.Priority = sf.FilterPriority
 		ol.filter.DueDate = DueDateFilter(sf.FilterDueDate)
 		ol.filter.Actionable = sf.FilterActionable
+		ol.filter.HideDimmed = sf.FilterHideDimmed
 		ol.filter.ScoreMin = sf.FilterScoreMin
 		ol.sort.Field = SortField(sf.SortField)
 		ol.sort.Ascending = sf.SortAscending
@@ -374,6 +378,7 @@ func (m *AppModel) buildProjectTreeViewSummary() string {
 		sections,
 		int(pt.filter.DueDate),
 		pt.filter.Actionable,
+		pt.filter.HideDimmed,
 		pt.filter.Attrs,
 		pt.filter.ScoreMin,
 		int(pt.sort.Field),
@@ -405,6 +410,7 @@ func (m *AppModel) buildOutlinerViewSummary() string {
 		sections,
 		int(ol.filter.DueDate),
 		ol.filter.Actionable,
+		ol.filter.HideDimmed,
 		ol.filter.Attrs,
 		ol.filter.ScoreMin,
 		int(ol.sort.Field),

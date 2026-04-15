@@ -113,6 +113,7 @@ func (r *KeybindingRegistry) registerProjectTreeBindings() {
 		Keybinding{Key: "Fd", Description: "Filter by due date (sub-popup)", Category: "Filters", Views: views},
 		Keybinding{Key: "Fa", Description: "Filter by attribute (sub-popup)", Category: "Filters", Views: views},
 		Keybinding{Key: "Fr", Description: "Toggle actionable/ready filter", Category: "Filters", Views: views},
+		Keybinding{Key: "Fh", Description: "Toggle hide dimmed tasks", Category: "Filters", Views: views},
 		Keybinding{Key: "Fx", Description: "Clear all filters", Category: "Filters", Views: views},
 
 		// Custom Section Tabs

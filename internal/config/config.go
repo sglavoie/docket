@@ -34,7 +34,8 @@ type ProjectViewState struct {
 	FilterTags                []string          `json:"filter_tags,omitempty"`
 	FilterSections            []string          `json:"filter_sections,omitempty"`
 	FilterDueDate             int               `json:"filter_due_date,omitempty"`
-	FilterActionable          bool              `json:"filter_actionable,omitempty"` // Actionable filter (F8)
+	FilterActionable          bool              `json:"filter_actionable,omitempty"`   // Actionable filter (F8)
+	FilterHideDimmed          bool              `json:"filter_hide_dimmed,omitempty"` // Hide dimmed tasks filter
 	SortField                 int               `json:"sort_field,omitempty"`
 	SortAscending             bool              `json:"sort_ascending"`
 	ShowCompleted             bool              `json:"show_completed"`
@@ -49,6 +50,7 @@ type ProjectViewState struct {
 	OutlinerFilterDueDate     int               `json:"outliner_filter_due_date,omitempty"`    // Outliner due date filter enum
 	OutlinerFilterSections    []string          `json:"outliner_filter_sections,omitempty"`    // Outliner section filter names
 	OutlinerFilterActionable  bool              `json:"outliner_filter_actionable,omitempty"`  // Outliner actionable filter
+	OutlinerFilterHideDimmed  bool              `json:"outliner_filter_hide_dimmed,omitempty"` // Outliner hide dimmed filter
 	OutlinerFilterAttrs       map[string]string `json:"outliner_filter_attrs,omitempty"`       // Outliner attribute filters
 	OutlinerFilterScoreMin    float64           `json:"outliner_filter_score_min,omitempty"`   // Outliner score threshold
 	TreeColumnToggles         map[string]bool   `json:"tree_column_toggles,omitempty"`         // Per-column visibility overrides for tree view
@@ -175,6 +177,7 @@ type Config struct {
 	CrossOutlinerSidebarEnabled    *bool                        `json:"cross_outliner_sidebar_enabled,omitempty"`    // nil=true; default sidebar state for cross-project outliner
 	CrossOutlinerCollapsedSections map[string]bool              `json:"cross_outliner_collapsed_sections,omitempty"` // Persisted collapsed sections for cross-project outliner
 	CrossOutlinerColumnToggles     map[string]bool              `json:"cross_outliner_column_toggles,omitempty"`     // Per-column visibility overrides for cross-project outliner
+	CrossOutlinerFilterHideDimmed  bool                         `json:"cross_outliner_filter_hide_dimmed,omitempty"` // Cross-project outliner hide dimmed filter
 	TreePriorityMode               string                       `json:"tree_priority_mode,omitempty"`                // Global priority display mode for tree view
 	OutlinerPriorityMode           string                       `json:"outliner_priority_mode,omitempty"`            // Global priority display mode for outliner view
 	Stages                         []string                     `json:"stages,omitempty"`                            // Workflow stages (e.g., Brainstorm, Design, Implement)

@@ -24,6 +24,7 @@ type CommonFilterState struct {
 	Attrs      map[string]string // type.attribute -> value
 	ScoreMin   float64           // minimum score threshold (0 = no filter)
 	Actionable bool              // only show tasks ready to work on (no blockers)
+	HideDimmed bool              // hide dimmed tasks
 	Stage      string            // filter by workflow stage
 }
 
@@ -36,6 +37,7 @@ func copyCommonFilterState(src *CommonFilterState) *CommonFilterState {
 		DueDate:    src.DueDate,
 		ScoreMin:   src.ScoreMin,
 		Actionable: src.Actionable,
+		HideDimmed: src.HideDimmed,
 		Stage:      src.Stage,
 	}
 	if len(src.Tags) > 0 {
@@ -53,6 +55,9 @@ func copyCommonFilterState(src *CommonFilterState) *CommonFilterState {
 // Views call this from their own passesFilters method before applying
 // view-specific logic. The projectID and cfg are needed for score filtering.
 func passesCommonFilters(task *models.Task, f *CommonFilterState, projectID string, cfg *config.Config) bool {
+	if f.HideDimmed && task.Dimmed {
+		return false
+	}
 	if f.Type != "" && task.Type != f.Type {
 		return false
 	}
@@ -116,6 +121,7 @@ func hasActiveCommonFilters(f *CommonFilterState) bool {
 		len(f.Attrs) > 0 ||
 		f.ScoreMin > 0 ||
 		f.Actionable ||
+		f.HideDimmed ||
 		f.Stage != ""
 }
 
@@ -129,6 +135,7 @@ func clearCommonFilters(f *CommonFilterState) {
 	f.Attrs = make(map[string]string)
 	f.ScoreMin = 0
 	f.Actionable = false
+	f.HideDimmed = false
 	f.Stage = ""
 }
 
@@ -175,6 +182,9 @@ func commonFilterParts(f *CommonFilterState) []string {
 	}
 	if f.Actionable {
 		parts = append(parts, "ready")
+	}
+	if f.HideDimmed {
+		parts = append(parts, "no-dim")
 	}
 	if f.Stage != "" {
 		parts = append(parts, "stage:"+f.Stage)

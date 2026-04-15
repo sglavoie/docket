@@ -25,6 +25,7 @@ type SavedFilter struct {
 	FilterSections   []string          `json:"filter_sections,omitempty"`
 	FilterDueDate    int               `json:"filter_due_date,omitempty"`
 	FilterActionable bool              `json:"filter_actionable,omitempty"`
+	FilterHideDimmed bool              `json:"filter_hide_dimmed,omitempty"`
 	FilterAttrs      map[string]string `json:"filter_attrs,omitempty"`
 	FilterScoreMin   float64           `json:"filter_score_min,omitempty"`
 	SortField        int               `json:"sort_field,omitempty"`

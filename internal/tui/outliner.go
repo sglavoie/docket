@@ -178,6 +178,7 @@ func NewOutlinerModel(project *models.Project, cfg *config.Config, cfgManager *c
 		if len(cfg.CrossOutlinerCollapsedSections) > 0 {
 			maps.Copy(m.collapsedSections, cfg.CrossOutlinerCollapsedSections)
 		}
+		m.filter.HideDimmed = cfg.CrossOutlinerFilterHideDimmed
 	}
 	return m
 }

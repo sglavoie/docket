@@ -94,11 +94,11 @@ func movePrefixKeys() []string {
 }
 
 // filterSubKeys returns the common F-prefix sub-key sequences registered by
-// primary views (Fp, Ft, Fs, F#, Fa, FS, Fr, Fc, F@, Fx, Fd, Fvs, Fvl, Fvd).
+// primary views (Fp, Ft, Fs, F#, Fa, FS, Fr, Fc, Fh, F@, Fx, Fd, Fvs, Fvl, Fvd).
 func filterSubKeys() []string {
 	return []string{
 		"Fp", "FP", "Ft", "Fs", "F#", "Fa", "FS",
-		"Fr", "Fc", "F@", "Fx", "Fd",
+		"Fr", "Fc", "Fh", "F@", "Fx", "Fd",
 		"Fvs", "Fvl", "Fvd",
 	}
 }
