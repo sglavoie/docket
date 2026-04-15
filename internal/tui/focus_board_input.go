@@ -67,10 +67,11 @@ func (m *FocusBoardModel) handleEditInput(msg tea.KeyPressMsg) (tea.Model, tea.C
 		}
 		if m.editIdx >= 0 && m.editIdx < len(m.filtered) {
 			row := m.filtered[m.editIdx]
+			oldTitle := row.Task.Title
 			row.Project.MutateTask(row.Task.ID, func(t *models.Task) {
 				t.Title = value
 			})
-			opts := BuildWorkflowOpts(m.projectService, row.Project, m.getConfig(), m.configManager, nil, "Edit Title", row.Task.Title, nil)
+			opts := BuildWorkflowOpts(m.projectService, row.Project, m.getConfig(), m.configManager, nil, "Edit Title", oldTitle, nil)
 			if err := persistWithWorkflow(opts); err != nil {
 				m.setStatus("Failed to save: " + err.Error())
 				return m, nil

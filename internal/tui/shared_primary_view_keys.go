@@ -237,11 +237,12 @@ func handleQuickEditKey(
 				qe.Exit()
 				return nil, nil
 			}
+			oldTitle := task.Title
 			project.MutateTask(task.ID, func(t *models.Task) {
 				t.Title = input
 			})
 			if onUndo != nil {
-				onUndo("Rename Task", task.Title)
+				onUndo("Rename Task", oldTitle)
 			}
 		} else {
 			result, err := parseQuickEdit(input, task, project)
