@@ -131,6 +131,11 @@ func parseEditedContent(content string, task *models.Task) (title, description s
 	title = task.Title // Default to original title
 	inDescription := false
 	foundComment := false
+	foundTitle := false
+
+	// Collect lines that come after the title but before the comment marker.
+	// If no comment marker is found, these become the description (fallback).
+	var preCommentLines []string
 
 	for _, line := range lines {
 		// Already in description section
@@ -140,8 +145,9 @@ func parseEditedContent(content string, task *models.Task) (title, description s
 		}
 
 		// Look for title line (first # line, only before the comment marker)
-		if !foundComment && len(line) >= 2 && line[0] == '#' && line[1] == ' ' {
+		if !foundComment && !foundTitle && len(line) >= 2 && line[0] == '#' && line[1] == ' ' {
 			title = strings.TrimSpace(line[2:])
+			foundTitle = true
 			continue
 		}
 
@@ -160,12 +166,29 @@ func parseEditedContent(content string, task *models.Task) (title, description s
 		if foundComment {
 			inDescription = true
 			descLines = append(descLines, line)
+			continue
 		}
+
+		// Before comment marker: accumulate lines in case comment is missing
+		if foundTitle {
+			preCommentLines = append(preCommentLines, line)
+		}
+	}
+
+	// If no comment marker was found, use pre-comment lines as description
+	// so that accidentally deleting the marker doesn't silently drop content.
+	if !foundComment && len(preCommentLines) > 0 {
+		descLines = preCommentLines
 	}
 
 	// Trim trailing empty lines
 	for len(descLines) > 0 && descLines[len(descLines)-1] == "" {
 		descLines = descLines[:len(descLines)-1]
+	}
+
+	// Trim leading empty lines
+	for len(descLines) > 0 && descLines[0] == "" {
+		descLines = descLines[1:]
 	}
 
 	// If title was cleared, keep the original

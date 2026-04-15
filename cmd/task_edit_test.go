@@ -94,7 +94,7 @@ func TestParseEditedContent(t *testing.T) {
 		testutil.AssertEqual(t, desc, "Description.")
 	})
 
-	t.Run("missing HTML comment marker", func(t *testing.T) {
+	t.Run("missing HTML comment marker preserves content as description", func(t *testing.T) {
 		task := testutil.NewTestTask("Original Title", models.TaskTypeTask)
 		task.Description = "Original description."
 
@@ -103,7 +103,7 @@ func TestParseEditedContent(t *testing.T) {
 		title, desc := parseEditedContent(content, task)
 
 		testutil.AssertEqual(t, title, "New Title")
-		testutil.AssertEqual(t, desc, "")
+		testutil.AssertEqual(t, desc, "No comment marker here.\n\nSome text.")
 	})
 
 	t.Run("# headers in description section are preserved as content", func(t *testing.T) {
@@ -158,6 +158,18 @@ func TestParseEditedContent(t *testing.T) {
 
 		testutil.AssertEqual(t, title, "Title")
 		testutil.AssertEqual(t, desc, "Actual description starts here.")
+	})
+
+	t.Run("missing comment marker with empty description", func(t *testing.T) {
+		task := testutil.NewTestTask("Original Title", models.TaskTypeTask)
+		task.Description = ""
+
+		content := "# New Title"
+
+		title, desc := parseEditedContent(content, task)
+
+		testutil.AssertEqual(t, title, "New Title")
+		testutil.AssertEqual(t, desc, "")
 	})
 
 	t.Run("H1 heading after comment is description not title", func(t *testing.T) {

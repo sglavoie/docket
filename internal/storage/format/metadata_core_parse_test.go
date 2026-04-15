@@ -216,6 +216,35 @@ func TestGTDSectionNotMigrated(t *testing.T) {
 	}
 }
 
+func TestNonGTDSectionClearedWhenCustomSectionPresent(t *testing.T) {
+	// When both section and custom_section are set and section is non-GTD,
+	// the section field should be cleared to prevent a non-GTD value lingering
+	// in the GTD field. CustomSection takes precedence.
+	task := &models.Task{}
+	ParseMetadata(task, "id: m3, status: todo, priority: 2, section: Backend, custom_section: Frontend")
+
+	if task.Section != "" {
+		t.Errorf("Section = %q, want empty (non-GTD value should be cleared)", task.Section)
+	}
+	if task.CustomSection != "Frontend" {
+		t.Errorf("CustomSection = %q, want %q (explicit custom_section takes precedence)", task.CustomSection, "Frontend")
+	}
+}
+
+func TestGTDSectionPreservedWithCustomSection(t *testing.T) {
+	// When section is a valid GTD section and custom_section is also set,
+	// both should be preserved (though this is an unusual state).
+	task := &models.Task{}
+	ParseMetadata(task, "id: m4, status: todo, priority: 2, section: Next, custom_section: Frontend")
+
+	if task.Section != "Next" {
+		t.Errorf("Section = %q, want %q (GTD section should be preserved)", task.Section, "Next")
+	}
+	if task.CustomSection != "Frontend" {
+		t.Errorf("CustomSection = %q, want %q", task.CustomSection, "Frontend")
+	}
+}
+
 func TestParseMetadata_EmptyAndMalformedComment(t *testing.T) {
 	tests := []struct {
 		name    string

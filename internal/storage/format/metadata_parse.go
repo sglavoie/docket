@@ -374,8 +374,14 @@ func ParseMetadata(task *models.Task, metaStr string) []ParseWarning { //nolint:
 		})
 	}
 
-	if task.Section != "" && !models.IsGTDSection(task.Section) && task.CustomSection == "" {
-		task.CustomSection = task.Section
+	if task.Section != "" && !models.IsGTDSection(task.Section) {
+		if task.CustomSection == "" {
+			// Migrate non-GTD section value to CustomSection.
+			task.CustomSection = task.Section
+		}
+		// Clear the non-GTD value from Section regardless. When CustomSection
+		// is already set, it takes precedence; leaving a stale non-GTD value
+		// in Section would confuse downstream code that reads Section directly.
 		task.Section = ""
 	}
 

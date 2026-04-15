@@ -110,18 +110,30 @@ func reassignUnknownSections(project *models.Project, result *ParseResult) {
 	}
 
 	for _, task := range project.Tasks {
-		if task.Section == "" || sectionSet[task.Section] {
+		// Check GTD section field
+		if task.Section != "" && !sectionSet[task.Section] {
+			oldSection := task.Section
+			task.SetSection(models.SectionInbox)
+			result.Warnings = append(result.Warnings, ParseWarning{
+				Type:    format.WarningDataCorrection,
+				TaskID:  task.ID,
+				Field:   "section",
+				Message: fmt.Sprintf("task #%d section %q not in project sections, reassigned to %q", task.ShortID, oldSection, models.SectionInbox),
+			})
 			continue
 		}
 
-		oldSection := task.Section
-		task.SetSection(models.SectionInbox)
-		result.Warnings = append(result.Warnings, ParseWarning{
-			Type:    format.WarningDataCorrection,
-			TaskID:  task.ID,
-			Field:   "section",
-			Message: fmt.Sprintf("task #%d section %q not in project sections, reassigned to %q", task.ShortID, oldSection, models.SectionInbox),
-		})
+		// Check custom section field
+		if task.CustomSection != "" && !sectionSet[task.CustomSection] {
+			oldSection := task.CustomSection
+			task.SetSection(models.SectionInbox)
+			result.Warnings = append(result.Warnings, ParseWarning{
+				Type:    format.WarningDataCorrection,
+				TaskID:  task.ID,
+				Field:   "custom_section",
+				Message: fmt.Sprintf("task #%d custom section %q not in project sections, reassigned to %q", task.ShortID, oldSection, models.SectionInbox),
+			})
+		}
 	}
 }
 
