@@ -23,7 +23,7 @@ func (m *AllTasksViewModel) View() tea.View {
 
 	if len(m.allTasks) == 0 {
 		b.WriteString("\n")
-		b.WriteString(renderEmptyState("No tasks found across projects.", "Press q to return to dashboard."))
+		b.WriteString(renderEmptyState("No tasks found across projects.", "Press Esc to return to dashboard."))
 		return tea.NewView(b.String())
 	}
 
@@ -50,8 +50,8 @@ func (m *AllTasksViewModel) View() tea.View {
 
 	if m.totalNavigableItems() == 0 {
 		b.WriteString(renderFilterAwareEmptyState(m.HasActiveFilters(),
-			EmptyStateFiltered, "[/] h/l tabs · q/Esc close",
-			"[/] tabs · Fx clear filters · q/Esc clear filters"))
+			EmptyStateFiltered, "[/] h/l tabs · Esc close",
+			"[/] tabs · Fx clear filters · Esc clear filters"))
 		return tea.NewView(b.String())
 	}
 

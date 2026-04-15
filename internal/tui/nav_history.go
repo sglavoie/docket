@@ -10,7 +10,7 @@ type NavEntry struct {
 }
 
 // NavHistory tracks a linear history of visited views for back/forward navigation.
-// It is orthogonal to the view stack (which handles hierarchical q/Esc navigation).
+// It is orthogonal to the view stack (which handles hierarchical Esc navigation).
 type NavHistory struct {
 	entries []NavEntry
 	cursor  int

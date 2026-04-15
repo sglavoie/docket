@@ -83,7 +83,7 @@ func (m *ScoreEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case tea.KeyPressMsg:
 		switch msg.String() {
-		case "esc", "q":
+		case "esc":
 			return m, func() tea.Msg {
 				return ScoreEditorDoneMsg{Task: m.task, Saved: false, Project: m.project}
 			}

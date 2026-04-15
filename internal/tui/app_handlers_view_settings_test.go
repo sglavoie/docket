@@ -51,7 +51,7 @@ func TestHandleViewMessagesSettingsStages(t *testing.T) {
 
 func TestHandleViewMessagesShowHelp(t *testing.T) {
 	app := newTestAppModel()
-	items := []HelpItem{{Key: "q", Description: "quit"}}
+	items := []HelpItem{{Key: "esc", Description: "close"}}
 
 	msg := ShowHelpMsg{Items: items, SourceView: ViewDashboard, ViewName: "Dashboard"}
 	handled, _ := app.handleViewMessages(msg)

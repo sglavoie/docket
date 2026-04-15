@@ -30,7 +30,7 @@ func (m *BulkEditModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		switch msg.String() {
-		case "esc", "q":
+		case "esc":
 			if m.tagMode == 2 {
 				m.tagMode = 0
 				return m, nil

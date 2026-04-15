@@ -31,7 +31,7 @@ func (m *WeeklyReviewModel) View() tea.View {
 
 	if totalCount == 0 {
 		b.WriteString("\n")
-		b.WriteString(renderEmptyState("All systems healthy — your projects are on track.", "Press q or Esc to close."))
+		b.WriteString(renderEmptyState("All systems healthy — your projects are on track.", "Press Esc to close."))
 		return tea.NewView(b.String())
 	}
 
@@ -500,7 +500,7 @@ func (m *WeeklyReviewModel) renderCompletionSummary() string {
 	}
 	b.WriteString("\n")
 
-	b.WriteString(HelpStyle.Render("Press q to close, any other key to return to review"))
+	b.WriteString(HelpStyle.Render("Press Esc to close, any other key to return to review"))
 
 	return b.String()
 }

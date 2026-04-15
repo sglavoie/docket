@@ -194,7 +194,7 @@ func TestExpandRegistryKeyCoverage(t *testing.T) {
 		{"h/l", []string{"h", "l"}},
 		{"[/]", []string{"[", "]"}},
 		{"{/}", []string{"{", "}"}},
-		{"q/Esc", []string{"q", "esc"}},
+		{"Esc", []string{"esc"}},
 		{"1-5", []string{"1", "2", "3", "4", "5"}},
 		{"1-9", []string{"1", "2", "3", "4", "5", "6", "7", "8", "9"}},
 		{"P0-P9", []string{"P0", "P1", "P2", "P3", "P4", "P5", "P6", "P7", "P8", "P9"}},

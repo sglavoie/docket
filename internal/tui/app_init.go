@@ -278,7 +278,6 @@ func (m *AppModel) registerGlobalCommands() {
 func getGlobalHelpItems() []HelpItem {
 	return []HelpItem{
 		{Key: "?", Description: "Show help", Category: "General"},
-		{Key: "q", Description: "Quit / go back", Category: "General"},
 		{Key: "esc", Description: "Go back / cancel", Category: "General"},
 		{Key: "ctrl+c", Description: "Quit application", Category: "General"},
 		{Key: "/", Description: "Search projects", Category: "Navigation"},

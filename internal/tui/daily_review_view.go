@@ -36,8 +36,8 @@ func (m *DailyReviewModel) View() tea.View {
 			b.WriteString("\n\n")
 		}
 		b.WriteString(renderFilterAwareEmptyState(m.HasActiveFilters(),
-			"No tasks to review.", "Your inbox is clear. Press q or Esc to close.",
-			"Press q or Esc to clear filters."))
+			"No tasks to review.", "Your inbox is clear. Press Esc to close.",
+			"Press Esc to clear filters."))
 		return tea.NewView(b.String())
 	}
 
@@ -56,7 +56,7 @@ func (m *DailyReviewModel) View() tea.View {
 	if m.totalTasks == 0 {
 		b.WriteString(renderFilterAwareEmptyState(m.HasActiveFilters(),
 			"No tasks in this tab.", "[/]: tabs · ? help",
-			"[/]: tabs · Fx clear filters · q/Esc clear filters · ? help"))
+			"[/]: tabs · Fx clear filters · Esc clear filters · ? help"))
 		return tea.NewView(b.String())
 	}
 

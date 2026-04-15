@@ -208,7 +208,7 @@ func (m *TaskDetailModel) GetHelpItems() []HelpItem {
 		{Key: "j/k", Description: "Scroll down/up", Category: "Navigation"},
 		{Key: "Ctrl+D/U", Description: "Half page down/up", Category: "Navigation"},
 		{Key: "g/G", Description: "Top/bottom (g also opens glow at top)", Category: "Navigation"},
-		{Key: "o/q/Esc", Description: "Close detail view", Category: "Navigation"},
+		{Key: "o/Esc", Description: "Close detail view", Category: "Navigation"},
 		{Key: ",s/d/b/x/o/r", Description: "Status: start/done/block/cancel/reopen/review", Category: "Actions"},
 		{Key: "!1-5", Description: "Set priority", Category: "Actions"},
 		{Key: "O", Description: "Open external URL", Category: "Actions"},

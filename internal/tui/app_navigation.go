@@ -141,7 +141,7 @@ func (m *AppModel) popView() tea.Cmd {
 	return nil
 }
 
-// handleEscKey handles the escape/q key for view navigation.
+// handleEscKey handles the escape key for view navigation.
 // Returns (handled, cmd): handled=true if the key was consumed (should not
 // propagate to views); cmd is non-nil when the pop triggers a side-effect
 // (e.g. ViewDidAppearMsg for the cross-project outliner).

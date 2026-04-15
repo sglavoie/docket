@@ -67,7 +67,7 @@ Description here.
 
 ### TUI Navigation Model
 
-The TUI uses a view stack pattern. Selecting a project pushes `ViewProjectTree`. Pressing Enter on a task opens glow for viewing. Pressing q/esc pops views until reaching dashboard where q quits.
+The TUI uses a view stack pattern. Selecting a project pushes `ViewProjectTree`. Pressing Enter on a task opens glow for viewing. Pressing Esc pops views until reaching dashboard.
 
 ### TUI Keybinding Constraints
 
@@ -86,9 +86,7 @@ Navigation aliases (`up`/`down`) are usually handled internally but not register
 
 ### TUI Esc/q Key Handling
 
-Esc and q have distinct behaviors:
+- `Esc` is the sole navigation/dismiss key: closes views, cancels input, exits modes, pops the view stack.
+- `q` is reserved exclusively for queue management (toggle queue panel). It has no quit/back/navigation role.
 
-- `Esc` dismisses the current action/mode (close expanded view, cancel input, exit focus mode)
-- `q` navigates one view up in the stack (pop the current view)
-
-The global `handleEscKey()` in `app_update.go` intercepts Esc/q before views receive them. Views that need to handle Esc internally (expanded views, input modes, delete confirmations) must be added to `handleEscKey()` to return `false`, allowing the key to propagate to the view's `Update()` method. See existing checks for ViewWorkflowRules, ViewTaskComments, etc. as examples.
+The global `handleEscKey()` in `app_update.go` intercepts Esc before views receive it. Views that need to handle Esc internally (expanded views, input modes, delete confirmations) must be added to `handleEscKey()` to return `false`, allowing the key to propagate to the view's `Update()` method. See existing checks for ViewWorkflowRules, ViewTaskComments, etc. as examples.

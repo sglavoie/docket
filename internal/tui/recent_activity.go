@@ -380,8 +380,8 @@ func (m *RecentActivityModel) View() tea.View {
 			b.WriteString("\n\n")
 		}
 		b.WriteString(renderFilterAwareEmptyState(m.HasActiveFilters(),
-			"No recent activity found.", "Press q or Esc to close.",
-			"Press q or Esc to clear filters."))
+			"No recent activity found.", "Press Esc to close.",
+			"Press Esc to clear filters."))
 		return tea.NewView(b.String())
 	}
 

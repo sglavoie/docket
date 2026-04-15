@@ -140,7 +140,7 @@ surfacing inbox tasks from every project in one flow.`,
 			Content: `# View Stack
 
 The TUI uses a stack-based navigation model. Each screen you open
-is pushed onto a stack. Press q to go back to the previous screen,
+is pushed onto a stack. Press Esc to go back to the previous screen,
 or Esc to dismiss the current action.
 
 # Movement
@@ -165,7 +165,7 @@ the outliner focuses on one level at a time with zoom navigation.
 # Zooming
 
 Press Enter on a parent task to zoom into its children. Press
-Esc or q to zoom back out. The zoom stack remembers your position
+Esc to zoom back out. The zoom stack remembers your position
 at each level.
 
 # Perspectives
@@ -229,7 +229,7 @@ upcoming deadlines, and recurring task overviews.
 # Accessing Reviews
 
 Open the command palette with : and type "daily review" or
-"weekly review". Press q to close when finished.`,
+"weekly review". Press Esc to close when finished.`,
 		},
 		{
 			Title:    "Sections",

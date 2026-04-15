@@ -277,7 +277,7 @@ func (m SelectorModel) View() tea.View {
 	}
 
 	if m.showHelp {
-		help := "j/k: Navigate · /: Search · Enter: Select · q/Esc: Cancel"
+		help := "j/k: Navigate · /: Search · Enter: Select · Esc: Cancel"
 		b.WriteString(HelpStyle.MarginTop(1).Render(help))
 	}
 

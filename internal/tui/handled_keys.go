@@ -141,7 +141,7 @@ func concatKeys(groups ...[]string) []string {
 // These are excluded from per-view invisible-binding checks.
 func globalAppKeys() []string {
 	return []string{
-		"ctrl+c", "alt+o", "alt+i", "|", "#", "esc", "q",
+		"q", "ctrl+c", "alt+o", "alt+i", "|", "#", "esc",
 		"ctrl+x", "ctrl+z", ":", ";", "ctrl+,", "ctrl+i", "ctrl+/", `ctrl+\`,
 		"shift+space", "?", "alt+l",
 		// Semicolon prefix dispatches
@@ -231,9 +231,9 @@ var registryKeyExpansions = map[string][]string{
 	"zo/zc":         {"zo", "zc"},
 	"ctrl+/":        {"ctrl+/"},
 	"Space/Enter":   {"space", "enter"},
-	"q/Esc":         {"q", "esc"},
+	"Esc":           {"esc"},
 	"o/Enter":       {"o", "enter"},
-	"p/q/Esc":       {"p", "q", "esc"},
+	"p/Esc":         {"p", "esc"},
 	"ctrl+U/D":      {"ctrl+u", "ctrl+d"},
 	"a/A":           {"a", "A"},
 	"d/D":           {"d", "D"},

@@ -378,7 +378,7 @@ func (m *NotesViewModel) GetHelpItems() []HelpItem {
 		HelpItem{Key: "a", Description: "Select all (multi-select)"},
 		HelpItem{Key: "gX", Description: "Deselect all (multi-select)"},
 		HelpItem{Key: "Z", Description: "Toggle fullscreen pane"},
-		HelpItem{Key: "q", Description: "Close notes view"},
+		HelpItem{Key: "esc", Description: "Close notes view"},
 	)
 	return items
 }

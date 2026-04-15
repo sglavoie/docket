@@ -229,7 +229,7 @@ func renderInboxFooter(width int) string {
 		{"j/k", "Navigate"},
 		{"gg/G", "First/last"},
 		{",s/d/b/x/o", "Status"},
-		{"q", "Quit"},
+		{"esc", "Back"},
 	}
 	var parts []string
 	for _, c := range controls {

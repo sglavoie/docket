@@ -241,7 +241,7 @@ func (m *SectionManagerModel) handleColorPickMode(msg tea.KeyPressMsg) (tea.Mode
 	paletteLen := len(SectionColorPalette)
 
 	switch msg.String() {
-	case "esc", "q":
+	case "esc":
 		m.colorPickMode = false
 		return m, nil
 

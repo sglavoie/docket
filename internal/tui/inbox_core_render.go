@@ -45,7 +45,7 @@ func (c *inboxCore) renderEmptyInbox() string {
 	content := SuccessStyle.Render(c.backend.emptyInboxText())
 	b.WriteString(BoxStyle.Render(content))
 	b.WriteString("\n\n")
-	b.WriteString(HelpKeyStyle.Render("q") + MutedStyle.Render(": "+c.backend.returnHint()))
+	b.WriteString(HelpKeyStyle.Render("esc") + MutedStyle.Render(": "+c.backend.returnHint()))
 
 	output := b.String()
 	if outputHeight := lipgloss.Height(output); outputHeight < c.height {

@@ -27,8 +27,8 @@ func (m *DueDateOverviewModel) View() tea.View {
 			b.WriteString("\n\n")
 		}
 		b.WriteString(renderFilterAwareEmptyState(m.HasActiveFilters(),
-			"No tasks with due dates found.", "Press q or Esc to close",
-			"Press q or Esc to clear filters."))
+			"No tasks with due dates found.", "Press Esc to close",
+			"Press Esc to clear filters."))
 		return tea.NewView(b.String())
 	}
 
@@ -42,8 +42,8 @@ func (m *DueDateOverviewModel) View() tea.View {
 
 	if m.totalTasks == 0 {
 		b.WriteString(renderFilterAwareEmptyState(m.HasActiveFilters(),
-			"No tasks in this category.", "[/] h/l tabs · q/Esc close",
-			"[/] h/l tabs · Fx clear filters · q/Esc clear filters"))
+			"No tasks in this category.", "[/] h/l tabs · Esc close",
+			"[/] h/l tabs · Fx clear filters · Esc clear filters"))
 		return tea.NewView(b.String())
 	}
 

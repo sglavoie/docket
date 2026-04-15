@@ -97,7 +97,7 @@ func (m *NotesViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) { //nolint:goc
 		}
 
 		// Multi-select exit takes priority over details pane routing
-		if m.multiSelectMode && (key == "esc" || key == "q") {
+		if m.multiSelectMode && key == "esc" {
 			m.multiSelectMode = false
 			m.selectedNotes = make(map[string]bool)
 			m.clearStatus()
