@@ -339,6 +339,11 @@ func (m *ProjectTreeModel) buildFilterPrefixHints() []PrefixHint {
 		readyDetail = "on"
 	}
 
+	dimDetail := "off"
+	if m.filter.HideDimmed {
+		dimDetail = "on"
+	}
+
 	attrDetail := "(none)"
 	if len(m.filter.Attrs) > 0 {
 		attrDetail = fmt.Sprintf("%d attrs", len(m.filter.Attrs))
@@ -349,7 +354,12 @@ func (m *ProjectTreeModel) buildFilterPrefixHints() []PrefixHint {
 		scoreDetail = fmt.Sprintf(">=%.0f", m.filter.ScoreMin)
 	}
 
-	return []PrefixHint{
+	stageDetail := "(all)"
+	if m.filter.Stage != "" {
+		stageDetail = m.filter.Stage
+	}
+
+	hints := []PrefixHint{
 		{Key: "c", Description: "completed", Detail: completedDetail, Active: m.viewMode == ViewModeCompleted},
 		{Key: "p", Description: "priority", Detail: priorityDetail, Active: m.filter.Priority != 0},
 		{Key: "t", Description: "type", Detail: typeDetail, Active: m.filter.Type != ""},
@@ -358,12 +368,16 @@ func (m *ProjectTreeModel) buildFilterPrefixHints() []PrefixHint {
 		{Key: "@", Description: "section", Detail: sectionDetail, Active: len(m.filter.Sections) > 0},
 		{Key: "d", Description: "due-date", Detail: dueDetail, Active: m.filter.DueDate != DueDateAll},
 		{Key: "a", Description: "attribute", Detail: attrDetail, Active: len(m.filter.Attrs) > 0},
+		{Key: ".", Description: "stage", Detail: stageDetail, Active: m.filter.Stage != ""},
 		{Key: "S", Description: "score", Detail: scoreDetail, Active: m.filter.ScoreMin > 0},
 		{Key: "r", Description: "ready", Detail: readyDetail, Active: m.filter.Actionable},
+		{Key: "h", Description: "dimmed", Detail: dimDetail, Active: m.filter.HideDimmed},
 		{Key: "v", Description: "saved filters"},
 		{Key: "D", Description: "columns"},
 		{Key: "x", Description: "clear-all"},
 	}
+	sortPrefixHintsLowercaseFirst(hints)
+	return hints
 }
 
 // getViewModeTitle returns the card title based on current view mode.
