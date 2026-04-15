@@ -6,14 +6,18 @@ func (p *Project) CountTasks() int {
 }
 
 // CountActiveSectionTasks returns the number of tasks in the Active section
-// (empty section) or with in_progress status regardless of section.
+// (empty section AND empty custom section) or with in_progress status regardless of section.
+// Tasks with a CustomSection are not in the Active view even though their
+// Section field is empty.
 func (p *Project) CountActiveSectionTasks() int {
 	count := 0
 	for _, task := range p.Tasks {
 		if task.IsComplete() {
 			continue
 		}
-		if task.Section == "" || task.Status == StatusInProgress {
+		if task.Status == StatusInProgress {
+			count++
+		} else if task.Section == "" && task.CustomSection == "" {
 			count++
 		}
 	}

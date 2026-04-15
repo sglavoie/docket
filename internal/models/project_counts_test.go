@@ -372,6 +372,52 @@ func TestCountBlockedTasks(t *testing.T) {
 	}
 }
 
+func TestCountActiveSectionTasksExcludesCustomSection(t *testing.T) {
+	project, err := NewProject("test", "Test", "/tmp/test")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Task in Active view (Section="", CustomSection="")
+	active, err := NewTask("1", 1, TaskTypeTask, "Active Task")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Task with CustomSection set — should NOT be counted as Active
+	// even though Section="" (which is the zero value when CustomSection is set).
+	custom, err := NewTask("2", 2, TaskTypeTask, "Custom Section Task")
+	if err != nil {
+		t.Fatal(err)
+	}
+	custom.SetSection("Sprint1")
+
+	// in_progress task in a custom section — should count (in_progress always counts)
+	ipCustom, err := NewTask("3", 3, TaskTypeTask, "InProgress Custom")
+	if err != nil {
+		t.Fatal(err)
+	}
+	ipCustom.SetSection("Sprint1")
+	ipCustom.Start()
+
+	// Task in a GTD section, not in_progress — should NOT count
+	gtd, err := NewTask("4", 4, TaskTypeTask, "Next Section Task")
+	if err != nil {
+		t.Fatal(err)
+	}
+	gtd.Section = SectionNext
+
+	project.Tasks = []*Task{active, custom, ipCustom, gtd}
+
+	// Expected: active (Section="", CustomSection="", todo) + ipCustom (in_progress) = 2
+	// NOT custom (has CustomSection, not in_progress)
+	// NOT gtd (has Section="Next", not in_progress)
+	got := project.CountActiveSectionTasks()
+	if got != 2 {
+		t.Errorf("expected 2 active section tasks, got %d", got)
+	}
+}
+
 func TestEmptyProjectCounts(t *testing.T) {
 	project, err := NewProject("test", "Test", "/tmp/test")
 	if err != nil {

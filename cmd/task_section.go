@@ -89,7 +89,11 @@ func runTaskSection(cmd *cobra.Command, args []string) error {
 					skippedShortID = task.ShortID
 					return fmt.Errorf("no change needed")
 				}
-				oldSection = task.CustomSection
+				if task.CustomSection != "" {
+					oldSection = task.CustomSection
+				} else {
+					oldSection = task.Section
+				}
 			}
 
 			if sectionName != "" {

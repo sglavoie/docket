@@ -90,3 +90,20 @@ func TestCheckAndAutoUnblockSkipsCrossProjectDeps(t *testing.T) {
 		t.Errorf("expected task to remain blocked due to cross-project dep, got %s", task.Status)
 	}
 }
+
+func TestCheckAndAutoUnblockCrossProjectDepOnly(t *testing.T) {
+	project := newDependencyTestProject(t, "test-proj")
+
+	// Task blocked solely by a cross-project dependency (no local deps).
+	// Must remain blocked because we cannot resolve cross-project refs locally.
+	task := newDependencyTestTask(t, "task1", 1, "Blocked Task")
+	task.DependsOn = []string{"other-project:remote-task"}
+	task.Status = StatusBlocked
+
+	project.Tasks = []*Task{task}
+
+	project.CheckAndAutoUnblock()
+	if task.Status != StatusBlocked {
+		t.Errorf("expected task to remain blocked with only cross-project dep, got %s", task.Status)
+	}
+}

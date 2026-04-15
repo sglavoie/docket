@@ -56,6 +56,9 @@ func (p *Project) dependsOnTransitive(sourceID, targetID string, visited map[str
 
 // CheckAndAutoUnblock checks all blocked tasks and transitions them to todo
 // if all their dependencies are complete.
+// Cross-project dependencies (format "projectID:taskID") cannot be resolved
+// locally and are conservatively treated as incomplete to prevent premature
+// unblocking.
 func (p *Project) CheckAndAutoUnblock() {
 	for _, task := range p.Tasks {
 		if task.Status != StatusBlocked || len(task.DependsOn) == 0 {
@@ -64,6 +67,12 @@ func (p *Project) CheckAndAutoUnblock() {
 
 		allComplete := true
 		for _, depID := range task.DependsOn {
+			if ParseTaskRef(depID).IsCrossProject() {
+				// Cross-project dep cannot be resolved locally;
+				// treat as incomplete to prevent premature unblocking.
+				allComplete = false
+				break
+			}
 			dep := p.GetTaskByID(depID)
 			if dep == nil || !dep.IsComplete() {
 				allComplete = false
