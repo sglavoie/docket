@@ -58,7 +58,7 @@ func (m *AppModel) viewCommands() []Command {
 		{
 			Name:        "backlog",
 			Description: "Cross-project task suggestions and backlog",
-			Shortcut:    ";b",
+			Shortcut:    ";q",
 			Category:    CategoryViews,
 			Aliases:     []string{"active tasks", "focus", "today tasks", "focus view", "suggestions", "what's next"},
 			Handler: func() tea.Msg {

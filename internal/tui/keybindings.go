@@ -360,7 +360,7 @@ func (r *KeybindingRegistry) registerGlobalBindings() {
 		Keybinding{Key: "ctrl+i", Description: "Open Global Inbox Processor", Category: "Navigation"},
 		Keybinding{Key: "shift+space", Description: "Hold to peek task detail", Category: "Navigation"},
 		Keybinding{Key: ";N", Description: "Open Global Notes", Category: "Navigation"},
-		Keybinding{Key: ";b", Description: "Open Backlog", Category: "Navigation"},
+		Keybinding{Key: ";q", Description: "Open Backlog", Category: "Navigation"},
 		Keybinding{Key: ";f", Description: "Open Focus Board", Category: "Navigation"},
 		Keybinding{Key: ";l", Description: "Open Recent Activity", Category: "Navigation"},
 		Keybinding{Key: ";B", Description: "Open Global Blockers", Category: "Navigation"},
