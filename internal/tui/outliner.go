@@ -178,6 +178,10 @@ func NewOutlinerModel(project *models.Project, cfg *config.Config, cfgManager *c
 		if len(cfg.CrossOutlinerCollapsedSections) > 0 {
 			maps.Copy(m.collapsedSections, cfg.CrossOutlinerCollapsedSections)
 		}
+		// Restore persisted per-task fold state for cross-project outliner
+		for id := range cfg.CrossOutlinerFoldState {
+			m.expandedNodes[id] = false
+		}
 		m.filter.Type = models.TaskType(cfg.CrossOutlinerFilterType)
 		m.filter.Status = models.TaskStatus(cfg.CrossOutlinerFilterStatus)
 		m.filter.Priority = cfg.CrossOutlinerFilterPriority

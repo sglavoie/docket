@@ -105,6 +105,58 @@ func TestValidateCrossZoomStackProjectIDScoping(t *testing.T) {
 	}
 }
 
+func TestSaveCrossOutlinerStatePersistsFoldState(t *testing.T) {
+	app := newTestAppModel()
+	app.crossOutliner = NewOutlinerModel(nil, app.config, app.configManager)
+	app.crossOutliner.expandedNodes["collapsed-task"] = false
+	app.crossOutliner.expandedNodes["expanded-task"] = true
+
+	app.saveCrossOutlinerState()
+
+	if !app.config.CrossOutlinerFoldState["collapsed-task"] {
+		t.Errorf("CrossOutlinerFoldState should contain collapsed-task=true, got %v", app.config.CrossOutlinerFoldState)
+	}
+	if _, ok := app.config.CrossOutlinerFoldState["expanded-task"]; ok {
+		t.Errorf("CrossOutlinerFoldState should not contain expanded-task (sparse), got %v", app.config.CrossOutlinerFoldState)
+	}
+	if len(app.config.CrossOutlinerFoldState) != 1 {
+		t.Errorf("CrossOutlinerFoldState should have exactly 1 entry, got %d", len(app.config.CrossOutlinerFoldState))
+	}
+}
+
+func TestSaveCrossOutlinerStateClearsFoldStateWhenAllExpanded(t *testing.T) {
+	app := newTestAppModel()
+	app.crossOutliner = NewOutlinerModel(nil, app.config, app.configManager)
+	app.config.CrossOutlinerFoldState = map[string]bool{"stale": true}
+	app.crossOutliner.expandedNodes["task1"] = true
+
+	app.saveCrossOutlinerState()
+
+	if app.config.CrossOutlinerFoldState != nil {
+		t.Errorf("CrossOutlinerFoldState should be nil when no nodes are collapsed, got %v", app.config.CrossOutlinerFoldState)
+	}
+}
+
+func TestNewOutlinerModelRestoresCrossFoldState(t *testing.T) {
+	app := newTestAppModel()
+	app.config.CrossOutlinerFoldState = map[string]bool{
+		"task-a": true,
+		"task-b": true,
+	}
+
+	m := NewOutlinerModel(nil, app.config, app.configManager)
+
+	if expanded, ok := m.expandedNodes["task-a"]; !ok || expanded {
+		t.Errorf("expandedNodes[task-a] should be false (collapsed), got ok=%v expanded=%v", ok, expanded)
+	}
+	if expanded, ok := m.expandedNodes["task-b"]; !ok || expanded {
+		t.Errorf("expandedNodes[task-b] should be false (collapsed), got ok=%v expanded=%v", ok, expanded)
+	}
+	if m.isExpanded("task-a") {
+		t.Errorf("isExpanded(task-a) should be false after restore")
+	}
+}
+
 func TestCrossProjectStatePreservationAfterReload(t *testing.T) {
 	const collapsedSection = models.SectionNext
 

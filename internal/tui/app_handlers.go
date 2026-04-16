@@ -44,6 +44,20 @@ func (m *AppModel) saveCrossOutlinerState() {
 		return
 	}
 	m.config.CrossOutlinerCollapsedSections = maps.Clone(m.crossOutliner.collapsedSections)
+
+	// Persist per-task fold state (only collapsed nodes, sparse representation)
+	collapsedNodes := make(map[string]bool)
+	for id, expanded := range m.crossOutliner.expandedNodes {
+		if !expanded {
+			collapsedNodes[id] = true
+		}
+	}
+	if len(collapsedNodes) > 0 {
+		m.config.CrossOutlinerFoldState = collapsedNodes
+	} else {
+		m.config.CrossOutlinerFoldState = nil
+	}
+
 	if m.crossOutliner.columnConfig != nil {
 		m.config.CrossOutlinerColumnToggles = m.crossOutliner.columnConfig.Toggles()
 	}

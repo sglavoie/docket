@@ -34,7 +34,7 @@ type ProjectViewState struct {
 	FilterTags                []string          `json:"filter_tags,omitempty"`
 	FilterSections            []string          `json:"filter_sections,omitempty"`
 	FilterDueDate             int               `json:"filter_due_date,omitempty"`
-	FilterActionable          bool              `json:"filter_actionable,omitempty"`   // Actionable filter (F8)
+	FilterActionable          bool              `json:"filter_actionable,omitempty"`  // Actionable filter (F8)
 	FilterHideDimmed          bool              `json:"filter_hide_dimmed,omitempty"` // Hide dimmed tasks filter
 	FilterStage               string            `json:"filter_stage,omitempty"`       // Tree workflow stage filter
 	SortField                 int               `json:"sort_field,omitempty"`
@@ -178,6 +178,7 @@ type Config struct {
 	OutlinerDefaultColumns         map[string]bool              `json:"outliner_default_columns,omitempty"`          // Global default column visibility for outliner view
 	CrossOutlinerSidebarEnabled    *bool                        `json:"cross_outliner_sidebar_enabled,omitempty"`    // nil=true; default sidebar state for cross-project outliner
 	CrossOutlinerCollapsedSections map[string]bool              `json:"cross_outliner_collapsed_sections,omitempty"` // Persisted collapsed sections for cross-project outliner
+	CrossOutlinerFoldState         map[string]bool              `json:"cross_outliner_fold_state,omitempty"`         // Collapsed task IDs in cross-project outliner (persists across restarts)
 	CrossOutlinerColumnToggles     map[string]bool              `json:"cross_outliner_column_toggles,omitempty"`     // Per-column visibility overrides for cross-project outliner
 	CrossOutlinerFilterType        string                       `json:"cross_outliner_filter_type,omitempty"`        // Cross-project outliner task type filter
 	CrossOutlinerFilterStatus      string                       `json:"cross_outliner_filter_status,omitempty"`      // Cross-project outliner status filter
