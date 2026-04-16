@@ -324,13 +324,5 @@ func (m *FocusBoardModel) computedTabNames() []string {
 
 // boardPriorityBadge returns a colored priority label for board items (P1, P2, etc.).
 func boardPriorityBadge(priority int) string {
-	label := fmt.Sprintf("P%d", priority)
-	switch priority {
-	case 1:
-		return OverdueStyle.Render(label)
-	case 2:
-		return DueSoonStyle.Render(label)
-	default:
-		return MutedStyle.Render(label)
-	}
+	return GetPriorityStyle(priority).Render(fmt.Sprintf("P%d", priority))
 }

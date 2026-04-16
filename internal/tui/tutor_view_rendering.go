@@ -48,11 +48,11 @@ func init() {
 		{`\btt\b`, primaryStyle.Bold(true), 0},
 
 		// Priority patterns: "Priority 1", "!1" through "!5"
-		{`Priority 1|!1`, Priority1Style, 0},
-		{`Priority 2|!2`, Priority2Style, 0},
-		{`Priority 3|!3`, Priority3Style, 0},
-		{`Priority 4|!4`, Priority4Style, 0},
-		{`Priority 5|!5`, Priority5Style, 0},
+		{`Priority 1|!1`, TitlePriority1Style, 0},
+		{`Priority 2|!2`, TitlePriority2Style, 0},
+		{`Priority 3|!3`, TitlePriority3Style, 0},
+		{`Priority 4|!4`, TitlePriority4Style, 0},
+		{`Priority 5|!5`, TitlePriority5Style, 0},
 
 		// Section names (colors derived from ViewMode constants in styles.go)
 		{`\bActive\b`, makeColorStyle(ColorViewActive), 0},

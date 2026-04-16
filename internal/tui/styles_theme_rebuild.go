@@ -232,12 +232,6 @@ func rebuildPriorityTitleStyles() {
 }
 
 func rebuildMiscStyles() {
-	Priority1Style = lipgloss.NewStyle().Foreground(ColorError).Bold(true)
-	Priority2Style = makeColorStyle(ColorWarning)
-	Priority3Style = makeColorStyle(ColorPrimary)
-	Priority4Style = makeColorStyle(ColorMuted)
-	Priority5Style = makeColorStyle(ColorMuted).Faint(true)
-
 	RuleKeywordStyle = makeColorStyle(ColorRuleKeyword)
 	RuleOperatorStyle = makeColorStyle(ColorRuleOperator)
 	RuleHighlightStyle = lipgloss.NewStyle().Foreground(ColorAccent).Bold(true)

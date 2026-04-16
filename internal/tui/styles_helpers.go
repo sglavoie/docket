@@ -67,21 +67,9 @@ func GetStatusStyle(status string) lipgloss.Style {
 }
 
 // GetPriorityStyle returns the appropriate style for a priority level.
+// Delegates to GetTitlePriorityStyle for unified palette-driven color sourcing.
 func GetPriorityStyle(priority int) lipgloss.Style {
-	switch priority {
-	case 1:
-		return Priority1Style
-	case 2:
-		return Priority2Style
-	case 3:
-		return Priority3Style
-	case 4:
-		return Priority4Style
-	case 5:
-		return Priority5Style
-	default:
-		return NormalStyle
-	}
+	return GetTitlePriorityStyle(priority)
 }
 
 // GetTitlePriorityStyle returns the title style for a priority level (1–5).

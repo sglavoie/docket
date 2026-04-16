@@ -436,12 +436,6 @@ var (
 				Foreground(ColorAccent).
 				Bold(true)
 
-	Priority1Style = lipgloss.NewStyle().Foreground(ColorError).Bold(true)
-	Priority2Style = makeColorStyle(ColorWarning)
-	Priority3Style = makeColorStyle(ColorPrimary)
-	Priority4Style = makeColorStyle(ColorMuted)
-	Priority5Style = makeColorStyle(ColorMuted).Faint(true)
-
 	TitlePriority1Style = lipgloss.NewStyle().Foreground(ColorPriority1Title).Bold(true).Italic(true)
 	TitlePriority2Style = lipgloss.NewStyle().Foreground(ColorPriority2Title).Bold(true)
 	TitlePriority3Style = lipgloss.NewStyle().Foreground(ColorPriority3Title)
