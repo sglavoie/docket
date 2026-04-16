@@ -137,16 +137,16 @@ func TestConfigManager_MigratesVersionZero(t *testing.T) {
 		t.Fatalf("Load failed: %v", err)
 	}
 
-	if cfg.Version != 1 {
-		t.Errorf("expected Version 1 after migration, got %d", cfg.Version)
+	if cfg.Version != 2 {
+		t.Errorf("expected Version 2 after migration, got %d", cfg.Version)
 	}
 
 	cfg2, err := manager.Load()
 	if err != nil {
 		t.Fatalf("second Load failed: %v", err)
 	}
-	if cfg2.Version != 1 {
-		t.Errorf("expected Version 1 on reload, got %d", cfg2.Version)
+	if cfg2.Version != 2 {
+		t.Errorf("expected Version 2 on reload, got %d", cfg2.Version)
 	}
 }
 
@@ -154,6 +154,7 @@ func TestConfigManager_PreservesExistingVersion(t *testing.T) {
 	tmpDir := t.TempDir()
 	configPath := filepath.Join(tmpDir, "test-config.json")
 
+	// v1 config gets migrated to v2 on load (v1→v2 migration).
 	data := []byte(`{"version": 1, "data_dir": "/tmp/test", "editor": "vim"}`)
 	if err := os.WriteFile(configPath, data, 0644); err != nil {
 		t.Fatalf("failed to write test config: %v", err)
@@ -165,8 +166,8 @@ func TestConfigManager_PreservesExistingVersion(t *testing.T) {
 		t.Fatalf("Load failed: %v", err)
 	}
 
-	if cfg.Version != 1 {
-		t.Errorf("expected Version 1, got %d", cfg.Version)
+	if cfg.Version != 2 {
+		t.Errorf("expected Version 2 (migrated from v1), got %d", cfg.Version)
 	}
 }
 

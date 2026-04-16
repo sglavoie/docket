@@ -67,25 +67,29 @@ func (m *SettingsModel) saveSettings() tea.Cmd {
 	m.config.Editor = editor
 	m.config.DefaultContext = context
 	m.config.UndoHistoryDepth = &undoDepth
-	m.config.TUIBackgroundColor = normalizeHexColor(m.bgColorInput.Value())
-	m.config.TUICursorColor = normalizeHexColor(m.cursorColorInput.Value())
-	m.config.TUICursorTextColor = normalizeHexColor(m.cursorTextColorInput.Value())
-	m.config.Palette = config.PaletteColors{
-		NormalText:     normalizeHexColor(m.normalTextInput.Value()),
-		Muted:          normalizeHexColor(m.mutedInput.Value()),
-		Primary:        normalizeHexColor(m.primaryInput.Value()),
-		Secondary:      normalizeHexColor(m.secondaryInput.Value()),
-		Accent:         normalizeHexColor(m.accentInput.Value()),
-		Success:        normalizeHexColor(m.successInput.Value()),
-		Warning:        normalizeHexColor(m.warningInput.Value()),
-		Error:          normalizeHexColor(m.errorColorInput.Value()),
-		Border:         normalizeHexColor(m.borderInput.Value()),
-		Priority1Title: normalizeHexColor(m.priority1TitleInput.Value()),
-		Priority2Title: normalizeHexColor(m.priority2TitleInput.Value()),
-		Priority3Title: normalizeHexColor(m.priority3TitleInput.Value()),
-		Priority4Title: normalizeHexColor(m.priority4TitleInput.Value()),
-		Priority5Title: normalizeHexColor(m.priority5TitleInput.Value()),
+	// Write active theme colors to ThemeDark (hardcoded for now; Session 3 adds toggle).
+	m.config.ThemeDark = config.Theme{
+		BackgroundColor: normalizeHexColor(m.bgColorInput.Value()),
+		CursorColor:     normalizeHexColor(m.cursorColorInput.Value()),
+		CursorTextColor: normalizeHexColor(m.cursorTextColorInput.Value()),
+		Palette: config.PaletteColors{
+			NormalText:     normalizeHexColor(m.normalTextInput.Value()),
+			Muted:          normalizeHexColor(m.mutedInput.Value()),
+			Primary:        normalizeHexColor(m.primaryInput.Value()),
+			Secondary:      normalizeHexColor(m.secondaryInput.Value()),
+			Accent:         normalizeHexColor(m.accentInput.Value()),
+			Success:        normalizeHexColor(m.successInput.Value()),
+			Warning:        normalizeHexColor(m.warningInput.Value()),
+			Error:          normalizeHexColor(m.errorColorInput.Value()),
+			Border:         normalizeHexColor(m.borderInput.Value()),
+			Priority1Title: normalizeHexColor(m.priority1TitleInput.Value()),
+			Priority2Title: normalizeHexColor(m.priority2TitleInput.Value()),
+			Priority3Title: normalizeHexColor(m.priority3TitleInput.Value()),
+			Priority4Title: normalizeHexColor(m.priority4TitleInput.Value()),
+			Priority5Title: normalizeHexColor(m.priority5TitleInput.Value()),
+		},
 	}
+	m.config.ActiveTheme = "dark"
 	m.config.DefaultProjectView = defaultProjectViewValues[m.defaultViewCursor]
 	m.config.ReviewDueSoonDays = &dueSoon
 	m.config.ReviewFutureDays = &futureDays

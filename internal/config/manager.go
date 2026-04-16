@@ -90,7 +90,10 @@ func (m *Manager) recoverFromBackup(primaryErr error) (Config, error) {
 // Load loads the configuration from file.
 func (m *Manager) Load() (*Config, error) { //nolint:gocyclo
 	if _, err := os.Stat(m.configPath); os.IsNotExist(err) {
-		return NewConfig(), nil
+		cfg := NewConfig()
+		cfg.MigratePaletteToThemes()
+		cfg.Version = CurrentConfigVersion
+		return cfg, nil
 	}
 
 	data, err := os.ReadFile(m.configPath)
@@ -226,6 +229,13 @@ func (m *Manager) Load() (*Config, error) { //nolint:gocyclo
 		}
 	}
 
+	// Migrate legacy flat palette/bg/cursor fields into ThemeDark/ThemeLight.
+	if config.MigratePaletteToThemes() {
+		if err := m.Save(&config); err != nil {
+			return nil, fmt.Errorf("failed to save config after palette theme migration: %w", err)
+		}
+	}
+
 	// Prune stale data that accumulates over time.
 	pruned := config.PruneExpiredAlertDismissals()
 	pruned = config.PruneFocusDismissedIDs() || pruned
@@ -249,7 +259,16 @@ func (m *Manager) Load() (*Config, error) { //nolint:gocyclo
 		if err := m.Save(&config); err != nil {
 			return nil, fmt.Errorf("failed to save config after version migration: %w", err)
 		}
-	} else if config.Version > CurrentConfigVersion {
+	}
+	if config.Version == 1 {
+		// v1 → v2: palette data already migrated into ThemeDark/ThemeLight by
+		// MigratePaletteToThemes() above. Just bump the version and save.
+		config.Version = 2
+		if err := m.Save(&config); err != nil {
+			return nil, fmt.Errorf("failed to save config after v1→v2 version bump: %w", err)
+		}
+	}
+	if config.Version > CurrentConfigVersion {
 		return nil, fmt.Errorf("config version %d not supported, please upgrade tt", config.Version)
 	}
 

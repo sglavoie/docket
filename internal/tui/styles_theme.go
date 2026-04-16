@@ -26,11 +26,12 @@ type ThemeConfig struct {
 
 // NewThemeConfig constructs a ThemeConfig from the application config.
 func NewThemeConfig(cfg *config.Config) ThemeConfig {
+	t := cfg.ActiveThemeConfig()
 	return ThemeConfig{
-		BgColor:       cfg.TUIBackgroundColor,
-		CursorBg:      cfg.TUICursorColor,
-		CursorFg:      cfg.TUICursorTextColor,
-		Palette:       cfg.Palette,
+		BgColor:       t.BackgroundColor,
+		CursorBg:      t.CursorColor,
+		CursorFg:      t.CursorTextColor,
+		Palette:       t.Palette,
 		ZebraStriping: cfg.ZebraStriping(),
 	}
 }

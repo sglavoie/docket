@@ -87,6 +87,15 @@ type savedView struct {
 	CustomSectionTab string            `json:"custom_section_tab,omitempty"`
 }
 
+// Theme groups palette colors together with background and cursor overrides for
+// a single named theme (dark or light). Empty strings mean "use ANSI default".
+type Theme struct {
+	Palette         PaletteColors `json:"palette,omitzero"`
+	BackgroundColor string        `json:"background_color,omitempty"`
+	CursorColor     string        `json:"cursor_color,omitempty"`
+	CursorTextColor string        `json:"cursor_text_color,omitempty"`
+}
+
 // PaletteColors holds user-configurable TUI palette overrides.
 // Empty strings mean "use ANSI default".
 type PaletteColors struct {
@@ -167,11 +176,14 @@ type Config struct {
 	MaxPinnedBarItems              *int                         `json:"max_pinned_bar_items,omitempty"`              // nil=5, max pinned tasks in status bar
 	MaxRecentTaskVisits            *int                         `json:"max_recent_task_visits,omitempty"`            // nil=15, max tasks in quick-switch overlay
 	ActionInboxProjectID           string                       `json:"action_inbox_project_id,omitempty"`           // Project ID for focus board action inbox
-	TUIBackgroundColor             string                       `json:"tui_background_color,omitempty"`              // HEX background color for TUI (#rgb or #rrggbb, empty = terminal default)
-	TUICursorColor                 string                       `json:"tui_cursor_color,omitempty"`                  // HEX background color for cursor/selection rows (empty = #4c0163)
-	TUICursorTextColor             string                       `json:"tui_cursor_text_color,omitempty"`             // HEX foreground color for cursor/selection text (empty = #fbeeff)
+	TUIBackgroundColor             string                       `json:"tui_background_color,omitempty"`              // HEX background color for TUI (#rgb or #rrggbb, empty = terminal default) — legacy, migrated to ThemeDark
+	TUICursorColor                 string                       `json:"tui_cursor_color,omitempty"`                  // HEX background color for cursor/selection rows (empty = #4c0163) — legacy, migrated to ThemeDark
+	TUICursorTextColor             string                       `json:"tui_cursor_text_color,omitempty"`             // HEX foreground color for cursor/selection text (empty = #fbeeff) — legacy, migrated to ThemeDark
 	TUIZebraStriping               *bool                        `json:"tui_zebra_striping,omitempty"`                // Alternating row backgrounds in task list views (default: false)
-	Palette                        PaletteColors                `json:"palette,omitzero"`                            // User-configurable TUI palette overrides
+	Palette                        PaletteColors                `json:"palette,omitzero"`                            // User-configurable TUI palette overrides — legacy, migrated to ThemeDark
+	ThemeDark                      Theme                        `json:"theme_dark,omitzero"`                         // Dark theme palette + bg/cursor colors
+	ThemeLight                     Theme                        `json:"theme_light,omitzero"`                        // Light theme palette + bg/cursor colors
+	ActiveTheme                    string                       `json:"active_theme,omitempty"`                      // "dark" or "light"; defaults to "dark"
 	DefaultProjectView             string                       `json:"default_project_view,omitempty"`              // Default view when opening a project: outliner, project_tree
 	FocusQueue                     []FocusQueueItem             `json:"focus_queue,omitempty"`                       // Persisted focus board work queue
 	DailyPlan                      []DailyPlanItem              `json:"daily_plan,omitempty"`                        // Persisted daily plan (tasks planned for today)
@@ -375,7 +387,7 @@ const (
 const DefaultUndoHistoryDepth = 50
 
 // CurrentConfigVersion is the latest config schema version supported by this build.
-const CurrentConfigVersion = 1
+const CurrentConfigVersion = 2
 
 // GetEditor returns the configured editor.
 func (c *Config) GetEditor() string {
@@ -550,4 +562,67 @@ func (c *Config) RemoveScoringProfile(id string) bool {
 		}
 	}
 	return false
+}
+
+// ActiveThemeConfig returns the Theme for the currently active theme.
+// Returns ThemeLight when ActiveTheme == "light", otherwise ThemeDark.
+func (c *Config) ActiveThemeConfig() Theme {
+	if c.ActiveTheme == "light" {
+		return c.ThemeLight
+	}
+	return c.ThemeDark
+}
+
+// SetActiveTheme writes a Theme to the named slot ("dark" or "light").
+func (c *Config) SetActiveTheme(name string, t Theme) {
+	if name == "light" {
+		c.ThemeLight = t
+	} else {
+		c.ThemeDark = t
+	}
+}
+
+// isThemeZero reports whether a Theme has no non-empty values.
+func isThemeZero(t Theme) bool {
+	return t.BackgroundColor == "" && t.CursorColor == "" && t.CursorTextColor == "" &&
+		t.Palette == (PaletteColors{})
+}
+
+// MigratePaletteToThemes migrates legacy flat palette/bg/cursor fields into the
+// new ThemeDark/ThemeLight slots. It follows the same pattern as MigrateLegacyFilters.
+// Returns true if any change was made (caller should save the config).
+func (c *Config) MigratePaletteToThemes() bool {
+	changed := false
+
+	// If ThemeDark is empty and any legacy field is set, copy legacy → ThemeDark.
+	legacyHasData := c.TUIBackgroundColor != "" || c.TUICursorColor != "" ||
+		c.TUICursorTextColor != "" || c.Palette != (PaletteColors{})
+	if isThemeZero(c.ThemeDark) && legacyHasData {
+		c.ThemeDark = Theme{
+			Palette:         c.Palette,
+			BackgroundColor: c.TUIBackgroundColor,
+			CursorColor:     c.TUICursorColor,
+			CursorTextColor: c.TUICursorTextColor,
+		}
+		// Zero out legacy fields.
+		c.Palette = PaletteColors{}
+		c.TUIBackgroundColor = ""
+		c.TUICursorColor = ""
+		c.TUICursorTextColor = ""
+		changed = true
+	}
+
+	// Ensure ThemeLight is populated with curated defaults.
+	if isThemeZero(c.ThemeLight) {
+		c.ThemeLight = DefaultLightTheme()
+		changed = true
+	}
+
+	// Ensure ActiveTheme has a value.
+	if c.ActiveTheme == "" {
+		c.ActiveTheme = "dark"
+		changed = true
+	}
+
+	return changed
 }
