@@ -111,13 +111,13 @@ var (
 	ActionStyle = lipgloss.NewStyle().
 			Foreground(ColorOrange)
 
-	EpicBadgeStyle   = makeBadgeStyle("135", "53")
-	StoryBadgeStyle  = makeBadgeStyle("39", "17")
-	TaskBadgeStyle   = makeBadgeStyle("42", "22")
-	BugBadgeStyle    = makeBadgeStyle("196", "52")
-	IdeaBadgeStyle   = makeBadgeStyle("214", "94")
+	EpicBadgeStyle   = lipgloss.NewStyle().Foreground(lipgloss.Color("135"))
+	StoryBadgeStyle  = lipgloss.NewStyle().Foreground(lipgloss.Color("39"))
+	TaskBadgeStyle   = lipgloss.NewStyle().Foreground(lipgloss.Color("42"))
+	BugBadgeStyle    = lipgloss.NewStyle().Foreground(lipgloss.Color("196"))
+	IdeaBadgeStyle   = lipgloss.NewStyle().Foreground(lipgloss.Color("214"))
 	NoteBadgeStyle   = makeBadgeStyle("248", "237")
-	ActionBadgeStyle = makeBadgeStyle("208", "94")
+	ActionBadgeStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("208"))
 
 	TodoBadgeStyle       = makeBadgeStyle("248", "236")
 	InProgressBadgeStyle = makeBadgeStyle("214", "94")
