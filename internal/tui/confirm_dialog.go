@@ -105,22 +105,41 @@ func (c *ConfirmDialog) RenderOverlay(width int) string {
 	// Render prompt text inside a bordered box
 	promptText := c.Prompt()
 
-	// Build detail section if present
+	// Build detail section if present.
+	// Track max plain-text width separately from styled lines so the box
+	// is sized based on visual widths, avoiding ANSI-aware wrapping bugs.
 	var detailLines []string
+	maxPlainWidth := lipgloss.Width(promptText)
 	if c.detail != nil {
 		d := c.detail
 		for _, item := range d.Items {
-			detailLines = append(detailLines, MutedStyle.Render("  "+item))
+			plain := "  " + item
+			if w := lipgloss.Width(plain); w > maxPlainWidth {
+				maxPlainWidth = w
+			}
+			detailLines = append(detailLines, MutedStyle.Render(plain))
 		}
 		if d.TotalCount > len(d.Items) {
 			remaining := d.TotalCount - len(d.Items)
-			detailLines = append(detailLines, MutedStyle.Render(fmt.Sprintf("  ...and %d more", remaining)))
+			plain := fmt.Sprintf("  ...and %d more", remaining)
+			if w := lipgloss.Width(plain); w > maxPlainWidth {
+				maxPlainWidth = w
+			}
+			detailLines = append(detailLines, MutedStyle.Render(plain))
 		}
 		if d.CascadeNote != "" {
-			detailLines = append(detailLines, WarningIconStyle.Render("  ⚠ "+d.CascadeNote))
+			plain := "  ⚠ " + d.CascadeNote
+			if w := lipgloss.Width(plain); w > maxPlainWidth {
+				maxPlainWidth = w
+			}
+			detailLines = append(detailLines, WarningIconStyle.Render(plain))
 		}
 		if d.UndoHint {
-			detailLines = append(detailLines, MutedStyle.Render("  Undo available (Ctrl+Z)"))
+			plain := "  Undo available (Ctrl+Z)"
+			if w := lipgloss.Width(plain); w > maxPlainWidth {
+				maxPlainWidth = w
+			}
+			detailLines = append(detailLines, MutedStyle.Render(plain))
 		}
 	}
 
@@ -141,23 +160,16 @@ func (c *ConfirmDialog) RenderOverlay(width int) string {
 	title := titleStyle.Render("Confirm")
 	footerText := MutedStyle.Render("y confirm · n/Esc cancel")
 
-	// Minimum inner width must accommodate title and footer border chrome.
-	// renderTitledTopBorder/renderTitledBottomBorder use e.g. "╭─ " + text + " ─╮"
-	// which is 5 chars of decoration + text visual width + at least 1 dash,
-	// minus 2 for the lipgloss border columns that are part of actualWidth
-	// but not innerWidth.
-	titleMinInner := lipgloss.Width(title) + 6 - 2
-	footerMinInner := lipgloss.Width(footerText) + 6 - 2
-	minInner := max(titleMinInner, footerMinInner)
+	// Minimum Width() value so titled borders fit (╭─ text ─…─╮ needs
+	// textWidth + 5 decoration chars + at least 1 dash = textWidth + 6).
+	// Width() in lipgloss v2 = total rendered width including border+padding.
+	titleMinWidth := lipgloss.Width(title) + 6
+	footerMinWidth := lipgloss.Width(footerText) + 6
+	minWidth := max(titleMinWidth, footerMinWidth)
 
-	// Size the box to fit widest line in content, cap at half the screen width
-	contentWidth := 0
-	for _, line := range strings.Split(content, "\n") {
-		if w := lipgloss.Width(line); w > contentWidth {
-			contentWidth = w
-		}
-	}
-	innerWidth := contentWidth + 2 // 1 padding each side
+	// Size the box to fit widest content line.
+	// Width(W) wraps content at W - 2(border) - 2(padding) = W - 4.
+	innerWidth := maxPlainWidth + 4 // 2 border + 2 padding
 	maxWidth := width / 2
 	if maxWidth < 30 {
 		maxWidth = width - 4
@@ -165,8 +177,8 @@ func (c *ConfirmDialog) RenderOverlay(width int) string {
 	if innerWidth > maxWidth {
 		innerWidth = maxWidth
 	}
-	if innerWidth < minInner {
-		innerWidth = minInner
+	if innerWidth < minWidth {
+		innerWidth = minWidth
 	}
 	boxStyle = boxStyle.Width(innerWidth)
 

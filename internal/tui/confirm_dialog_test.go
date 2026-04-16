@@ -1,6 +1,9 @@
 package tui
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 func TestConfirmDialog_Lifecycle(t *testing.T) {
 	var c ConfirmDialog
@@ -123,5 +126,21 @@ func TestConfirmDialog_Render(t *testing.T) {
 	rendered := c.RenderOverlay(80)
 	if rendered == "" {
 		t.Error("expected non-empty overlay when active")
+	}
+}
+
+func TestConfirmDialog_RenderOverlay_NoWrapping(t *testing.T) {
+	var c ConfirmDialog
+	c.ShowWithDetail("delete", "Delete this task?", &ConfirmDetail{
+		Items:    []string{"#1 A task with a longer title (task)"},
+		UndoHint: true,
+	})
+
+	rendered := c.RenderOverlay(120)
+
+	// Count lines: top border, prompt, blank, item, undo hint, bottom border = 6
+	lines := strings.Split(rendered, "\n")
+	if len(lines) != 6 {
+		t.Errorf("expected 6 lines (no wrapping), got %d:\n%s", len(lines), rendered)
 	}
 }
