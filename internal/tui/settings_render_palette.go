@@ -172,15 +172,19 @@ func (m *SettingsModel) renderPaletteColorsSection() string {
 	const labelWidth = 16
 	const indent = 18
 
-	m.renderColorInputField(&b, "Normal Text: ", m.normalTextInput, 4, labelWidth, indent, "Foreground for normal text", "")
-	m.renderColorInputField(&b, "Muted: ", m.mutedInput, 5, labelWidth, indent, "Subdued text and descriptions", "248")
-	m.renderColorInputField(&b, "Primary: ", m.primaryInput, 6, labelWidth, indent, "Primary accent color", "39")
-	m.renderColorInputField(&b, "Secondary: ", m.secondaryInput, 7, labelWidth, indent, "Secondary accent color", "33")
-	m.renderColorInputField(&b, "Accent: ", m.accentInput, 8, labelWidth, indent, "Highlight and accent color", "#f2eb16")
-	m.renderColorInputField(&b, "Success: ", m.successInput, 9, labelWidth, indent, "Success/completed status", "42")
-	m.renderColorInputField(&b, "Warning: ", m.warningInput, 10, labelWidth, indent, "Warning indicators", "214")
-	m.renderColorInputField(&b, "Error: ", m.errorColorInput, 11, labelWidth, indent, "Error indicators", "196")
-	m.renderColorInputField(&b, "Border: ", m.borderInput, 12, labelWidth, indent, "Border and divider color", "244")
+	b.WriteString(renderFormLabelWithWidth("Theme: ", labelWidth, m.focusIndex == 4))
+	b.WriteString(MutedStyle.Render("Dark"))
+	b.WriteString("\n")
+
+	m.renderColorInputField(&b, "Normal Text: ", m.normalTextInput, 5, labelWidth, indent, "Foreground for normal text", "")
+	m.renderColorInputField(&b, "Muted: ", m.mutedInput, 6, labelWidth, indent, "Subdued text and descriptions", "248")
+	m.renderColorInputField(&b, "Primary: ", m.primaryInput, 7, labelWidth, indent, "Primary accent color", "39")
+	m.renderColorInputField(&b, "Secondary: ", m.secondaryInput, 8, labelWidth, indent, "Secondary accent color", "33")
+	m.renderColorInputField(&b, "Accent: ", m.accentInput, 9, labelWidth, indent, "Highlight and accent color", "#f2eb16")
+	m.renderColorInputField(&b, "Success: ", m.successInput, 10, labelWidth, indent, "Success/completed status", "42")
+	m.renderColorInputField(&b, "Warning: ", m.warningInput, 11, labelWidth, indent, "Warning indicators", "214")
+	m.renderColorInputField(&b, "Error: ", m.errorColorInput, 12, labelWidth, indent, "Error indicators", "196")
+	m.renderColorInputField(&b, "Border: ", m.borderInput, 13, labelWidth, indent, "Border and divider color", "244")
 
 	return b.String()
 }
@@ -190,9 +194,9 @@ func (m *SettingsModel) renderPaletteBgCursorSection() string {
 	const labelWidth = 16
 	const indent = 18
 
-	m.renderColorInputField(&b, "Background: ", m.bgColorInput, 13, labelWidth, indent, "HEX background color for all TUI views", "")
-	m.renderColorInputField(&b, "Cursor BG: ", m.cursorColorInput, 14, labelWidth, indent, "HEX background color for selection/cursor rows", DefaultSelectedBg)
-	m.renderColorInputField(&b, "Cursor Text: ", m.cursorTextColorInput, 15, labelWidth, indent, "HEX foreground color for selection/cursor text", DefaultSelectedFg)
+	m.renderColorInputField(&b, "Background: ", m.bgColorInput, 14, labelWidth, indent, "HEX background color for all TUI views", "")
+	m.renderColorInputField(&b, "Cursor BG: ", m.cursorColorInput, 15, labelWidth, indent, "HEX background color for selection/cursor rows", DefaultSelectedBg)
+	m.renderColorInputField(&b, "Cursor Text: ", m.cursorTextColorInput, 16, labelWidth, indent, "HEX foreground color for selection/cursor text", DefaultSelectedFg)
 
 	return b.String()
 }
@@ -202,11 +206,11 @@ func (m *SettingsModel) renderPrioritiesSection() string {
 	const labelWidth = 16
 	const indent = 18
 
-	m.renderColorInputField(&b, "Priority 1: ", m.priority1TitleInput, 16, labelWidth, indent, "P1 Critical title color (bold+italic)", "#ffffff")
-	m.renderColorInputField(&b, "Priority 2: ", m.priority2TitleInput, 17, labelWidth, indent, "P2 High title color (bold)", "#d0d0d0")
-	m.renderColorInputField(&b, "Priority 3: ", m.priority3TitleInput, 18, labelWidth, indent, "P3 Normal title color", "#b8b8b8")
-	m.renderColorInputField(&b, "Priority 4: ", m.priority4TitleInput, 19, labelWidth, indent, "P4 Low title color", "#9e9e9e")
-	m.renderColorInputField(&b, "Priority 5: ", m.priority5TitleInput, 20, labelWidth, indent, "P5 Someday title color (faint)", "#6a6a6a")
+	m.renderColorInputField(&b, "Priority 1: ", m.priority1TitleInput, 17, labelWidth, indent, "P1 Critical title color (bold+italic)", "#ffffff")
+	m.renderColorInputField(&b, "Priority 2: ", m.priority2TitleInput, 18, labelWidth, indent, "P2 High title color (bold)", "#d0d0d0")
+	m.renderColorInputField(&b, "Priority 3: ", m.priority3TitleInput, 19, labelWidth, indent, "P3 Normal title color", "#b8b8b8")
+	m.renderColorInputField(&b, "Priority 4: ", m.priority4TitleInput, 20, labelWidth, indent, "P4 Low title color", "#9e9e9e")
+	m.renderColorInputField(&b, "Priority 5: ", m.priority5TitleInput, 21, labelWidth, indent, "P5 Someday title color (faint)", "#6a6a6a")
 
 	return b.String()
 }

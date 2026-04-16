@@ -13,84 +13,86 @@ func (m *SettingsModel) focusedInput() *textinput.Model { //nolint:gocyclo
 	case 2:
 		return &m.undoDepthInput
 	case 4:
-		return &m.normalTextInput
+		return nil // placeholder: theme toggle (Session 3)
 	case 5:
-		return &m.mutedInput
+		return &m.normalTextInput
 	case 6:
-		return &m.primaryInput
+		return &m.mutedInput
 	case 7:
-		return &m.secondaryInput
+		return &m.primaryInput
 	case 8:
-		return &m.accentInput
+		return &m.secondaryInput
 	case 9:
-		return &m.successInput
+		return &m.accentInput
 	case 10:
-		return &m.warningInput
+		return &m.successInput
 	case 11:
-		return &m.errorColorInput
+		return &m.warningInput
 	case 12:
-		return &m.borderInput
+		return &m.errorColorInput
 	case 13:
-		return &m.bgColorInput
+		return &m.borderInput
 	case 14:
-		return &m.cursorColorInput
+		return &m.bgColorInput
 	case 15:
-		return &m.cursorTextColorInput
+		return &m.cursorColorInput
 	case 16:
-		return &m.priority1TitleInput
+		return &m.cursorTextColorInput
 	case 17:
-		return &m.priority2TitleInput
+		return &m.priority1TitleInput
 	case 18:
-		return &m.priority3TitleInput
+		return &m.priority2TitleInput
 	case 19:
-		return &m.priority4TitleInput
+		return &m.priority3TitleInput
 	case 20:
-		return &m.priority5TitleInput
+		return &m.priority4TitleInput
 	case 21:
-		return &m.dueSoonInput
+		return &m.priority5TitleInput
 	case 22:
-		return &m.futureInput
+		return &m.dueSoonInput
 	case 23:
-		return &m.oldDaysInput
+		return &m.futureInput
 	case 24:
-		return &m.completedHoursInput
+		return &m.oldDaysInput
 	case 25:
+		return &m.completedHoursInput
+	case 26:
 		return &m.recentActivityInput
-	case 28:
-		return &m.maxPinnedInput
 	case 29:
-		return &m.maxRecentTaskVisitsInput
+		return &m.maxPinnedInput
 	case 30:
-		return &m.popupTimeoutInput
+		return &m.maxRecentTaskVisitsInput
 	case 31:
-		return &m.sectionLimitActiveInput
+		return &m.popupTimeoutInput
 	case 32:
-		return &m.sectionLimitNextInput
+		return &m.sectionLimitActiveInput
 	case 33:
-		return &m.sectionLimitInboxInput
+		return &m.sectionLimitNextInput
 	case 34:
-		return &m.sectionLimitStandbyInput
+		return &m.sectionLimitInboxInput
 	case 35:
-		return &m.sectionLimitWaitingInput
+		return &m.sectionLimitStandbyInput
 	case 36:
-		return &m.sectionLimitSomedayInput
+		return &m.sectionLimitWaitingInput
 	case 37:
-		return &m.sectionLimitReviewInput
+		return &m.sectionLimitSomedayInput
 	case 38:
-		return &m.attachmentEditorInput
+		return &m.sectionLimitReviewInput
 	case 39:
+		return &m.attachmentEditorInput
+	case 40:
 		return &m.codeEditorInput
-	case 75:
+	case 76:
 		return &m.alertDailyReviewHourInput
-	case 80:
+	case 81:
 		return &m.alertDueSoonDaysInput
-	case 82:
+	case 83:
 		return &m.alertStaleDaysInput
-	case 84:
+	case 85:
 		return &m.alertInboxThresholdInput
-	case 86:
+	case 87:
 		return &m.alertBlockedDaysInput
-	case 88:
+	case 89:
 		return &m.alertProjectStaleDaysInput
 	default:
 		return nil

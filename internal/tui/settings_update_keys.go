@@ -190,54 +190,54 @@ func (m *SettingsModel) handleGlobalKey(key string) (bool, tea.Cmd) { //nolint:g
 }
 
 func (m *SettingsModel) handleSpaceKey() {
-	if m.focusIndex == 26 {
+	if m.focusIndex == 27 {
 		m.recentActivityShowAll = !m.recentActivityShowAll
 	}
-	if m.focusIndex == 27 {
+	if m.focusIndex == 28 {
 		m.linkedTaskJump = !m.linkedTaskJump
 	}
-	if m.focusIndex >= 40 && m.focusIndex <= 52 {
-		idx := m.focusIndex - 40
-		if m.focusIndex == 41 {
+	if m.focusIndex >= 41 && m.focusIndex <= 53 {
+		idx := m.focusIndex - 41
+		if m.focusIndex == 42 {
 			m.treePriorityMode = (m.treePriorityMode + 1) % 3
 		} else {
 			m.treeColumnDefaults[idx] = !m.treeColumnDefaults[idx]
 		}
 	}
-	if m.focusIndex == 53 {
+	if m.focusIndex == 54 {
 		m.crossOutlinerSidebar = !m.crossOutlinerSidebar
 	}
-	if m.focusIndex == 90 {
+	if m.focusIndex == 91 {
 		m.zebraStriping = !m.zebraStriping
 	}
-	if m.focusIndex >= 54 && m.focusIndex <= 60 {
-		idx := m.focusIndex - 54
+	if m.focusIndex >= 55 && m.focusIndex <= 61 {
+		idx := m.focusIndex - 55
 		m.outlinerCollapsed[idx] = !m.outlinerCollapsed[idx]
 	}
-	if m.focusIndex >= 61 && m.focusIndex <= 73 {
-		if m.focusIndex == 62 {
+	if m.focusIndex >= 62 && m.focusIndex <= 74 {
+		if m.focusIndex == 63 {
 			m.outlinerPriorityMode = (m.outlinerPriorityMode + 1) % 3
 		} else {
-			idx := m.focusIndex - 61
+			idx := m.focusIndex - 62
 			m.outlinerColumnDefaults[idx] = !m.outlinerColumnDefaults[idx]
 		}
 	}
 	switch m.focusIndex {
-	case 74:
+	case 75:
 		m.alertDailyReviewEnabled = !m.alertDailyReviewEnabled
-	case 76:
+	case 77:
 		m.alertWeeklyReviewEnabled = !m.alertWeeklyReviewEnabled
-	case 78:
-		m.alertOverdueEnabled = !m.alertOverdueEnabled
 	case 79:
+		m.alertOverdueEnabled = !m.alertOverdueEnabled
+	case 80:
 		m.alertDueSoonEnabled = !m.alertDueSoonEnabled
-	case 81:
+	case 82:
 		m.alertStaleEnabled = !m.alertStaleEnabled
-	case 83:
+	case 84:
 		m.alertInboxEnabled = !m.alertInboxEnabled
-	case 85:
+	case 86:
 		m.alertBlockedEnabled = !m.alertBlockedEnabled
-	case 87:
+	case 88:
 		m.alertProjectHealthEnabled = !m.alertProjectHealthEnabled
 	}
 }
@@ -256,16 +256,16 @@ func (m *SettingsModel) handleLeftKey() {
 		m.defaultViewCursor--
 	}
 	switch m.focusIndex {
-	case 41:
+	case 42:
 		if m.treePriorityMode > 0 {
 			m.treePriorityMode--
 		}
-	case 62:
+	case 63:
 		if m.outlinerPriorityMode > 0 {
 			m.outlinerPriorityMode--
 		}
 	}
-	if m.focusIndex == 77 && m.alertWeeklyReviewDay > 0 {
+	if m.focusIndex == 78 && m.alertWeeklyReviewDay > 0 {
 		m.alertWeeklyReviewDay--
 	}
 }
@@ -281,16 +281,16 @@ func (m *SettingsModel) handleRightKey() {
 		m.defaultViewCursor++
 	}
 	switch m.focusIndex {
-	case 41:
+	case 42:
 		if m.treePriorityMode < 2 {
 			m.treePriorityMode++
 		}
-	case 62:
+	case 63:
 		if m.outlinerPriorityMode < 2 {
 			m.outlinerPriorityMode++
 		}
 	}
-	if m.focusIndex == 77 && m.alertWeeklyReviewDay < 6 {
+	if m.focusIndex == 78 && m.alertWeeklyReviewDay < 6 {
 		m.alertWeeklyReviewDay++
 	}
 }

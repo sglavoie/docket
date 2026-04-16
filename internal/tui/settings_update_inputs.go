@@ -18,7 +18,7 @@ func (m *SettingsModel) updateFocusedInput(msg tea.Msg) tea.Cmd {
 				}
 			}
 		}
-	case 89:
+	case 90:
 		if m.stageEditMode {
 			m.stageInput, cmd = m.stageInput.Update(msg)
 		}
@@ -47,59 +47,59 @@ func (m *SettingsModel) validateFocusedField() { //nolint:gocyclo
 		if err := m.validateUndoDepth(); err != nil {
 			m.validationErr = err.Error()
 		}
-	case 4, 5, 6, 7, 8, 9, 10, 11, 12:
+	case 5, 6, 7, 8, 9, 10, 11, 12, 13:
 		if err := m.validatePaletteColors(); err != nil {
 			m.validationErr = err.Error()
 		}
-	case 13:
+	case 14:
 		if err := m.validateBackgroundColor(); err != nil {
 			m.validationErr = err.Error()
 		}
-	case 14:
+	case 15:
 		if err := m.validateCursorColor(); err != nil {
 			m.validationErr = err.Error()
 		}
-	case 15:
+	case 16:
 		if err := m.validateCursorTextColor(); err != nil {
 			m.validationErr = err.Error()
 		}
-	case 16, 17, 18, 19, 20:
+	case 17, 18, 19, 20, 21:
 		if err := m.validatePriorityTitleColors(); err != nil {
 			m.validationErr = err.Error()
 		}
-	case 21, 22, 23, 24:
+	case 22, 23, 24, 25:
 		if err := m.validateReviewSettings(); err != nil {
 			m.validationErr = err.Error()
 		}
-	case 25:
+	case 26:
 		if err := m.validateRecentActivityLimit(); err != nil {
 			m.validationErr = err.Error()
 		}
-	case 28:
+	case 29:
 		if err := m.validateMaxPinnedBarItems(); err != nil {
 			m.validationErr = err.Error()
 		}
-	case 29:
+	case 30:
 		if err := m.validateMaxRecentTaskVisits(); err != nil {
 			m.validationErr = err.Error()
 		}
-	case 30:
+	case 31:
 		if err := m.validatePopupTimeout(); err != nil {
 			m.validationErr = err.Error()
 		}
-	case 31, 32, 33, 34, 35, 36, 37:
+	case 32, 33, 34, 35, 36, 37, 38:
 		if err := m.validateSectionLimits(); err != nil {
 			m.validationErr = err.Error()
 		}
-	case 38:
+	case 39:
 		if err := m.validateAttachmentEditor(); err != nil {
 			m.validationErr = err.Error()
 		}
-	case 39:
+	case 40:
 		if err := m.validateCodeEditor(); err != nil {
 			m.validationErr = err.Error()
 		}
-	case 75, 80, 82, 84, 86, 88:
+	case 76, 81, 83, 85, 87, 89:
 		if err := m.validateAlertSettings(); err != nil {
 			m.validationErr = err.Error()
 		}

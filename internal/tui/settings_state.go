@@ -16,7 +16,7 @@ var (
 	settingsTabNames = []string{"General", "Palette", "Review", "Behavior", "Attachments", "Project Tree", "Outliner", "Notifications", "Stages", "Appearance"}
 
 	// tabFieldCount declares how many focusable fields each tab has.
-	tabFieldCount = []int{4, 17, 4, 13, 2, 13, 21, 15, 1, 1}
+	tabFieldCount = []int{4, 18, 4, 13, 2, 13, 21, 15, 1, 1}
 
 	// tabFieldStart holds the starting focus index for each tab (computed in init).
 	tabFieldStart []int
@@ -28,7 +28,7 @@ var (
 	// nil means the tab has no sub-tabs (single section).
 	settingsTabSections = [][]settingsSection{
 		nil, // 0: General
-		{{"Palette Colors", 9}, {"Background & Cursor", 3}, {"Priorities", 5}}, // 1: Palette
+		{{"Palette Colors", 10}, {"Background & Cursor", 3}, {"Priorities", 5}}, // 1: Palette
 		nil, // 2: Review
 		{{"Recent Activity", 2}, {"Linked Tasks", 1}, {"Pinned Tasks", 1}, {"Recent Tasks", 1}, {"Popups", 1}, {"Section Limits", 7}}, // 3: Behavior
 		nil, // 4: Attachments
@@ -181,7 +181,7 @@ type SettingsModel struct {
 	stageAddMode       bool // true when adding (vs editing)
 	stageConfirmDelete ConfirmDialog
 
-	// Alert settings (Notifications tab, indices 61-75)
+	// Alert settings (Notifications tab, indices 75-89)
 	alertDailyReviewEnabled    bool
 	alertDailyReviewHourInput  textinput.Model
 	alertWeeklyReviewEnabled   bool
@@ -198,7 +198,7 @@ type SettingsModel struct {
 	alertProjectHealthEnabled  bool
 	alertProjectStaleDaysInput textinput.Model
 
-	// Section limit inputs (Behavior tab, indices 26-32)
+	// Section limit inputs (Behavior tab, indices 32-38)
 	sectionLimitActiveInput  textinput.Model
 	sectionLimitNextInput    textinput.Model
 	sectionLimitInboxInput   textinput.Model
@@ -212,7 +212,7 @@ type SettingsModel struct {
 	tabs               TabState
 	subTab             int  // active sub-tab index within current tab
 	subTabRowFocused   bool // true when [/] navigates sub-tabs instead of main tabs
-	focusIndex         int  // 0=editor .. 68=outlinerColumnDefaults, 69-83=alert settings
+	focusIndex         int  // 0=editor .. 74=outlinerColumnDefaults, 75-89=alert settings, 90=stages, 91=appearance
 	scrollOffset       int  // vertical scroll offset within current tab content
 	validationErr      string
 	stageValidationErr string // timed error shown in stages tab (auto-clears)

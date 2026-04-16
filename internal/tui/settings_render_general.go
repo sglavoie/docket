@@ -84,35 +84,35 @@ func (m *SettingsModel) renderReviewTab() string {
 	b.WriteString(MutedStyle.Render("(0 = hide section)"))
 	b.WriteString("\n\n")
 
-	b.WriteString(renderFormLabelWithWidth("Due Soon (days): ", labelWidth, m.focusIndex == 21))
+	b.WriteString(renderFormLabelWithWidth("Due Soon (days): ", labelWidth, m.focusIndex == 22))
 	b.WriteString(m.dueSoonInput.View())
 	b.WriteString("\n")
-	b.WriteString(renderFormFieldDesc("Tasks due within this many days", indent, m.focusIndex == 21))
+	b.WriteString(renderFormFieldDesc("Tasks due within this many days", indent, m.focusIndex == 22))
 
 	b.WriteString("\n")
 
-	b.WriteString(renderFormLabelWithWidth("Future (days): ", labelWidth, m.focusIndex == 22))
+	b.WriteString(renderFormLabelWithWidth("Future (days): ", labelWidth, m.focusIndex == 23))
 	b.WriteString(m.futureInput.View())
 	b.WriteString("\n")
-	b.WriteString(renderFormFieldDesc("Tasks due further out than this", indent, m.focusIndex == 22))
+	b.WriteString(renderFormFieldDesc("Tasks due further out than this", indent, m.focusIndex == 23))
 
 	b.WriteString("\n")
 
-	b.WriteString(renderFormLabelWithWidth("Old (days): ", labelWidth, m.focusIndex == 23))
+	b.WriteString(renderFormLabelWithWidth("Old (days): ", labelWidth, m.focusIndex == 24))
 	b.WriteString(m.oldDaysInput.View())
 	b.WriteString("       ")
 	b.WriteString(MutedStyle.Render("(based on last update)"))
 	b.WriteString("\n")
-	b.WriteString(renderFormFieldDesc("Tasks not updated in this many days", indent, m.focusIndex == 23))
+	b.WriteString(renderFormFieldDesc("Tasks not updated in this many days", indent, m.focusIndex == 24))
 
 	b.WriteString("\n")
 
-	b.WriteString(renderFormLabelWithWidth("Completed (hours): ", labelWidth, m.focusIndex == 24))
+	b.WriteString(renderFormLabelWithWidth("Completed (hours): ", labelWidth, m.focusIndex == 25))
 	b.WriteString(m.completedHoursInput.View())
 	b.WriteString("\n")
-	b.WriteString(renderFormFieldDesc("Show recently completed within this window", indent, m.focusIndex == 24))
+	b.WriteString(renderFormFieldDesc("Show recently completed within this window", indent, m.focusIndex == 25))
 
-	if m.focusIndex >= 21 && m.focusIndex <= 24 && m.validationErr != "" {
+	if m.focusIndex >= 22 && m.focusIndex <= 25 && m.validationErr != "" {
 		b.WriteString(strings.Repeat(" ", indent))
 		b.WriteString(ValidationErrorStyle.Render(m.validationErr))
 		b.WriteString("\n")
@@ -129,27 +129,27 @@ func (m *SettingsModel) renderAttachmentsTab() string {
 	b.WriteString(SubtitleStyle.Render("Editor Configuration"))
 	b.WriteString("\n\n")
 
-	b.WriteString(renderFormLabelWithWidth("Attachment Editor: ", labelWidth, m.focusIndex == 38))
+	b.WriteString(renderFormLabelWithWidth("Attachment Editor: ", labelWidth, m.focusIndex == 39))
 	b.WriteString(m.attachmentEditorInput.View())
-	b.WriteString("\n")
-	if m.focusIndex == 38 && m.validationErr != "" {
-		b.WriteString(strings.Repeat(" ", indent))
-		b.WriteString(ValidationErrorStyle.Render(m.validationErr))
-		b.WriteString("\n")
-	}
-	b.WriteString(renderFormFieldDesc("Editor for general attachments (empty = OS default)", indent, m.focusIndex == 38))
-
-	b.WriteString("\n")
-
-	b.WriteString(renderFormLabelWithWidth("Code Editor: ", labelWidth, m.focusIndex == 39))
-	b.WriteString(m.codeEditorInput.View())
 	b.WriteString("\n")
 	if m.focusIndex == 39 && m.validationErr != "" {
 		b.WriteString(strings.Repeat(" ", indent))
 		b.WriteString(ValidationErrorStyle.Render(m.validationErr))
 		b.WriteString("\n")
 	}
-	b.WriteString(renderFormFieldDesc("Editor for code references (empty = code)", indent, m.focusIndex == 39))
+	b.WriteString(renderFormFieldDesc("Editor for general attachments (empty = OS default)", indent, m.focusIndex == 39))
+
+	b.WriteString("\n")
+
+	b.WriteString(renderFormLabelWithWidth("Code Editor: ", labelWidth, m.focusIndex == 40))
+	b.WriteString(m.codeEditorInput.View())
+	b.WriteString("\n")
+	if m.focusIndex == 40 && m.validationErr != "" {
+		b.WriteString(strings.Repeat(" ", indent))
+		b.WriteString(ValidationErrorStyle.Render(m.validationErr))
+		b.WriteString("\n")
+	}
+	b.WriteString(renderFormFieldDesc("Editor for code references (empty = code)", indent, m.focusIndex == 40))
 
 	b.WriteString("\n")
 	b.WriteString(MutedStyle.Render("  ───────────────────────────────"))
@@ -170,7 +170,7 @@ func (m *SettingsModel) renderProjectTreeTab() string {
 	const labelWidth = 18
 	b.WriteString(SubtitleStyle.Render("Default Column Visibility"))
 	b.WriteString("\n\n")
-	m.renderColumnToggles(&b, m.treeColumnDefaults, 40, labelWidth, m.treePriorityMode)
+	m.renderColumnToggles(&b, m.treeColumnDefaults, 41, labelWidth, m.treePriorityMode)
 	return b.String()
 }
 
@@ -190,10 +190,10 @@ func (m *SettingsModel) renderOutlinerSidebarSection() string {
 	const labelWidth = 22
 	const indent = 24
 
-	b.WriteString(renderFormLabelWithWidth("Cross-Project Sidebar: ", labelWidth, m.focusIndex == 53))
-	b.WriteString(renderFormToggle("Enabled", "Disabled", m.crossOutlinerSidebar, m.focusIndex == 53))
+	b.WriteString(renderFormLabelWithWidth("Cross-Project Sidebar: ", labelWidth, m.focusIndex == 54))
+	b.WriteString(renderFormToggle("Enabled", "Disabled", m.crossOutlinerSidebar, m.focusIndex == 54))
 	b.WriteString("\n")
-	b.WriteString(renderFormFieldDesc("Show sidebar by default in cross-project outliner", indent, m.focusIndex == 53))
+	b.WriteString(renderFormFieldDesc("Show sidebar by default in cross-project outliner", indent, m.focusIndex == 54))
 
 	return b.String()
 }
@@ -204,7 +204,7 @@ func (m *SettingsModel) renderOutlinerSectionStateSection() string {
 	const indent = 24
 
 	for i, label := range outlinerSectionLabels {
-		focusIdx := 54 + i
+		focusIdx := 55 + i
 		b.WriteString(renderFormLabelWithWidth(label+": ", labelWidth, m.focusIndex == focusIdx))
 		b.WriteString(renderFormToggle("Collapsed", "Expanded", m.outlinerCollapsed[i], m.focusIndex == focusIdx))
 		b.WriteString("\n")
@@ -220,7 +220,7 @@ func (m *SettingsModel) renderOutlinerColumnVisibilitySection() string {
 	var b strings.Builder
 	const labelWidth = 22
 
-	m.renderColumnToggles(&b, m.outlinerColumnDefaults, 61, labelWidth, m.outlinerPriorityMode)
+	m.renderColumnToggles(&b, m.outlinerColumnDefaults, 62, labelWidth, m.outlinerPriorityMode)
 
 	return b.String()
 }
