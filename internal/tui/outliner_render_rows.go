@@ -163,7 +163,7 @@ func (m *OutlinerModel) renderTaskStageSegment(task *models.Task) string {
 }
 
 func (m *OutlinerModel) renderTaskTitleStyle(task *models.Task, selected bool) lipgloss.Style {
-	titleStyle := NormalStyle
+	titleStyle := GetTitlePriorityStyle(task.Priority)
 	switch {
 	case task.Status == models.StatusCanceled:
 		titleStyle = CanceledStyle

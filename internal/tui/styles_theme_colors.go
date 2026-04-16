@@ -9,6 +9,24 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 )
 
+// Default hex colors for priority title styling.
+const (
+	defaultColorPriority1Title = "#f93c39"
+	defaultColorPriority2Title = "#f7b831"
+	defaultColorPriority3Title = "#56c2f4"
+	defaultColorPriority4Title = "#cccccc"
+	defaultColorPriority5Title = "#bbbbbb"
+)
+
+// Priority title foreground colors, user-overridable via PaletteColors.
+var (
+	ColorPriority1Title = lipgloss.Color(defaultColorPriority1Title)
+	ColorPriority2Title = lipgloss.Color(defaultColorPriority2Title)
+	ColorPriority3Title = lipgloss.Color(defaultColorPriority3Title)
+	ColorPriority4Title = lipgloss.Color(defaultColorPriority4Title)
+	ColorPriority5Title = lipgloss.Color(defaultColorPriority5Title)
+)
+
 // darkenHex takes a 6-digit hex color (#rrggbb) and darkens each channel
 // toward 0 by factor (0.0 = unchanged, 1.0 = black). Returns #rrggbb.
 func darkenHex(hex string, factor float64) string {
@@ -110,6 +128,32 @@ func rebuildPalette(p config.PaletteColors) {
 	ColorLightGray = ColorMuted
 	ColorDiffContext = ColorMuted
 	ColorSubtleBorder = ColorBorder
+
+	if p.Priority1Title != "" {
+		ColorPriority1Title = lipgloss.Color(p.Priority1Title)
+	} else {
+		ColorPriority1Title = lipgloss.Color(defaultColorPriority1Title)
+	}
+	if p.Priority2Title != "" {
+		ColorPriority2Title = lipgloss.Color(p.Priority2Title)
+	} else {
+		ColorPriority2Title = lipgloss.Color(defaultColorPriority2Title)
+	}
+	if p.Priority3Title != "" {
+		ColorPriority3Title = lipgloss.Color(p.Priority3Title)
+	} else {
+		ColorPriority3Title = lipgloss.Color(defaultColorPriority3Title)
+	}
+	if p.Priority4Title != "" {
+		ColorPriority4Title = lipgloss.Color(p.Priority4Title)
+	} else {
+		ColorPriority4Title = lipgloss.Color(defaultColorPriority4Title)
+	}
+	if p.Priority5Title != "" {
+		ColorPriority5Title = lipgloss.Color(p.Priority5Title)
+	} else {
+		ColorPriority5Title = lipgloss.Color(defaultColorPriority5Title)
+	}
 
 	colorNormalText = p.NormalText
 }

@@ -84,6 +84,26 @@ func GetPriorityStyle(priority int) lipgloss.Style {
 	}
 }
 
+// GetTitlePriorityStyle returns the title style for a priority level (1–5).
+// Bold+Italic for P1, Bold for P2, plain for P3/P4, Faint for P5.
+// Out-of-range values fall back to P3.
+func GetTitlePriorityStyle(priority int) lipgloss.Style {
+	switch priority {
+	case 1:
+		return TitlePriority1Style
+	case 2:
+		return TitlePriority2Style
+	case 3:
+		return TitlePriority3Style
+	case 4:
+		return TitlePriority4Style
+	case 5:
+		return TitlePriority5Style
+	default:
+		return TitlePriority3Style
+	}
+}
+
 // GetTypeStyle returns the appropriate style for a task type.
 func GetTypeStyle(taskType string) lipgloss.Style {
 	switch taskType {

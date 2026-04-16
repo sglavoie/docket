@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"fmt"
 	"strings"
 
 	"charm.land/bubbles/v2/textinput"
@@ -60,15 +61,15 @@ func (m *SettingsModel) renderColorPreviewPane(width int) string {
 
 	b.WriteString(MutedStyle.Render("Priority"))
 	b.WriteString("\n")
-	b.WriteString(GetPriorityStyle(1).Render("◉ P1"))
-	b.WriteString("  ")
-	b.WriteString(GetPriorityStyle(2).Render("● P2"))
-	b.WriteString("  ")
-	b.WriteString(GetPriorityStyle(3).Render("◆ P3"))
-	b.WriteString("  ")
-	b.WriteString(GetPriorityStyle(4).Render("◇ P4"))
-	b.WriteString("  ")
-	b.WriteString(GetPriorityStyle(5).Render("· P5"))
+	for i, icon := range []string{"◉", "●", "◆", "◇", "·"} {
+		if i > 0 {
+			b.WriteString("  ")
+		}
+		p := i + 1
+		b.WriteString(GetPriorityStyle(p).Render(icon))
+		b.WriteString(" ")
+		b.WriteString(GetTitlePriorityStyle(p).Render(fmt.Sprintf("P%d", p)))
+	}
 	b.WriteString("\n\n")
 
 	b.WriteString(MutedStyle.Render("Types"))
@@ -137,6 +138,8 @@ func (m *SettingsModel) renderPaletteTab() string {
 	switch m.subTab {
 	case 1:
 		formContent = m.renderPaletteBgCursorSection()
+	case 2:
+		formContent = m.renderPrioritiesSection()
 	default:
 		formContent = m.renderPaletteColorsSection()
 	}
@@ -190,6 +193,20 @@ func (m *SettingsModel) renderPaletteBgCursorSection() string {
 	m.renderColorInputField(&b, "Background: ", m.bgColorInput, 13, labelWidth, indent, "HEX background color for all TUI views", "")
 	m.renderColorInputField(&b, "Cursor BG: ", m.cursorColorInput, 14, labelWidth, indent, "HEX background color for selection/cursor rows", DefaultSelectedBg)
 	m.renderColorInputField(&b, "Cursor Text: ", m.cursorTextColorInput, 15, labelWidth, indent, "HEX foreground color for selection/cursor text", DefaultSelectedFg)
+
+	return b.String()
+}
+
+func (m *SettingsModel) renderPrioritiesSection() string {
+	var b strings.Builder
+	const labelWidth = 16
+	const indent = 18
+
+	m.renderColorInputField(&b, "Priority 1: ", m.priority1TitleInput, 16, labelWidth, indent, "P1 Critical title color (bold+italic)", "#ffffff")
+	m.renderColorInputField(&b, "Priority 2: ", m.priority2TitleInput, 17, labelWidth, indent, "P2 High title color (bold)", "#d0d0d0")
+	m.renderColorInputField(&b, "Priority 3: ", m.priority3TitleInput, 18, labelWidth, indent, "P3 Normal title color", "#b8b8b8")
+	m.renderColorInputField(&b, "Priority 4: ", m.priority4TitleInput, 19, labelWidth, indent, "P4 Low title color", "#9e9e9e")
+	m.renderColorInputField(&b, "Priority 5: ", m.priority5TitleInput, 20, labelWidth, indent, "P5 Someday title color (faint)", "#6a6a6a")
 
 	return b.String()
 }

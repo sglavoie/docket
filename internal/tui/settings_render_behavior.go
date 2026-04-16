@@ -28,25 +28,25 @@ func (m *SettingsModel) renderBehaviorRecentActivitySection() string {
 	const labelWidth = 17
 	const indent = 19
 
-	b.WriteString(renderFormLabelWithWidth("Task limit: ", labelWidth, m.focusIndex == 20))
+	b.WriteString(renderFormLabelWithWidth("Task limit: ", labelWidth, m.focusIndex == 25))
 	b.WriteString(m.recentActivityInput.View())
 	b.WriteString("  ")
 	b.WriteString(MutedStyle.Render("(0 = no limit)"))
 	b.WriteString("\n")
 
-	if m.focusIndex == 20 && m.validationErr != "" {
+	if m.focusIndex == 25 && m.validationErr != "" {
 		b.WriteString(strings.Repeat(" ", indent))
 		b.WriteString(ValidationErrorStyle.Render(m.validationErr))
 		b.WriteString("\n")
 	}
-	b.WriteString(renderFormFieldDesc("Maximum tasks shown in recent activity", indent, m.focusIndex == 20))
+	b.WriteString(renderFormFieldDesc("Maximum tasks shown in recent activity", indent, m.focusIndex == 25))
 
 	b.WriteString("\n")
 
-	b.WriteString(renderFormLabelWithWidth("Show completed: ", labelWidth, m.focusIndex == 21))
-	b.WriteString(renderFormToggle("Yes", "No", m.recentActivityShowAll, m.focusIndex == 21))
+	b.WriteString(renderFormLabelWithWidth("Show completed: ", labelWidth, m.focusIndex == 26))
+	b.WriteString(renderFormToggle("Yes", "No", m.recentActivityShowAll, m.focusIndex == 26))
 	b.WriteString("\n")
-	b.WriteString(renderFormFieldDesc("Include completed tasks in recent activity view", indent, m.focusIndex == 21))
+	b.WriteString(renderFormFieldDesc("Include completed tasks in recent activity view", indent, m.focusIndex == 26))
 
 	return b.String()
 }
@@ -56,10 +56,10 @@ func (m *SettingsModel) renderBehaviorLinkedTasksSection() string {
 	const labelWidth = 17
 	const indent = 19
 
-	b.WriteString(renderFormLabelWithWidth("After creation: ", labelWidth, m.focusIndex == 22))
-	b.WriteString(renderFormToggle("Jump to new", "Stay on source", m.linkedTaskJump, m.focusIndex == 22))
+	b.WriteString(renderFormLabelWithWidth("After creation: ", labelWidth, m.focusIndex == 27))
+	b.WriteString(renderFormToggle("Jump to new", "Stay on source", m.linkedTaskJump, m.focusIndex == 27))
 	b.WriteString("\n")
-	b.WriteString(renderFormFieldDesc("Where to navigate after creating a linked task", indent, m.focusIndex == 22))
+	b.WriteString(renderFormFieldDesc("Where to navigate after creating a linked task", indent, m.focusIndex == 27))
 
 	return b.String()
 }
@@ -69,17 +69,17 @@ func (m *SettingsModel) renderBehaviorPinnedTasksSection() string {
 	const labelWidth = 17
 	const indent = 19
 
-	b.WriteString(renderFormLabelWithWidth("Bar limit: ", labelWidth, m.focusIndex == 23))
+	b.WriteString(renderFormLabelWithWidth("Bar limit: ", labelWidth, m.focusIndex == 28))
 	b.WriteString(m.maxPinnedInput.View())
 	b.WriteString("  ")
 	b.WriteString(MutedStyle.Render("(0=disable, 1-20)"))
 	b.WriteString("\n")
-	if m.focusIndex == 23 && m.validationErr != "" {
+	if m.focusIndex == 28 && m.validationErr != "" {
 		b.WriteString(strings.Repeat(" ", indent))
 		b.WriteString(ValidationErrorStyle.Render(m.validationErr))
 		b.WriteString("\n")
 	}
-	b.WriteString(renderFormFieldDesc("Maximum pinned tasks displayed in the bar", indent, m.focusIndex == 23))
+	b.WriteString(renderFormFieldDesc("Maximum pinned tasks displayed in the bar", indent, m.focusIndex == 28))
 
 	return b.String()
 }
@@ -89,17 +89,17 @@ func (m *SettingsModel) renderBehaviorRecentTasksSection() string {
 	const labelWidth = 17
 	const indent = 19
 
-	b.WriteString(renderFormLabelWithWidth("Task limit: ", labelWidth, m.focusIndex == 24))
+	b.WriteString(renderFormLabelWithWidth("Task limit: ", labelWidth, m.focusIndex == 29))
 	b.WriteString(m.maxRecentTaskVisitsInput.View())
 	b.WriteString("  ")
 	b.WriteString(MutedStyle.Render("(1-50, default 15)"))
 	b.WriteString("\n")
-	if m.focusIndex == 24 && m.validationErr != "" {
+	if m.focusIndex == 29 && m.validationErr != "" {
 		b.WriteString(strings.Repeat(" ", indent))
 		b.WriteString(ValidationErrorStyle.Render(m.validationErr))
 		b.WriteString("\n")
 	}
-	b.WriteString(renderFormFieldDesc("Maximum tasks shown in quick-switch overlay (Ctrl+R)", indent, m.focusIndex == 24))
+	b.WriteString(renderFormFieldDesc("Maximum tasks shown in quick-switch overlay (Ctrl+R)", indent, m.focusIndex == 29))
 
 	return b.String()
 }
@@ -109,17 +109,17 @@ func (m *SettingsModel) renderBehaviorPopupsSection() string {
 	const labelWidth = 17
 	const indent = 19
 
-	b.WriteString(renderFormLabelWithWidth("Auto-dismiss: ", labelWidth, m.focusIndex == 25))
+	b.WriteString(renderFormLabelWithWidth("Auto-dismiss: ", labelWidth, m.focusIndex == 30))
 	b.WriteString(m.popupTimeoutInput.View())
 	b.WriteString("  ")
 	b.WriteString(MutedStyle.Render("(0=stay, 1-30 seconds)"))
 	b.WriteString("\n")
-	if m.focusIndex == 25 && m.validationErr != "" {
+	if m.focusIndex == 30 && m.validationErr != "" {
 		b.WriteString(strings.Repeat(" ", indent))
 		b.WriteString(ValidationErrorStyle.Render(m.validationErr))
 		b.WriteString("\n")
 	}
-	b.WriteString(renderFormFieldDesc("Seconds before prefix popups auto-dismiss (0=disabled)", indent, m.focusIndex == 25))
+	b.WriteString(renderFormFieldDesc("Seconds before prefix popups auto-dismiss (0=disabled)", indent, m.focusIndex == 30))
 
 	return b.String()
 }
@@ -135,13 +135,13 @@ func (m *SettingsModel) renderBehaviorSectionLimitsSection() string {
 		input    *textinput.Model
 	}
 	fields := []limitField{
-		{"Active: ", 26, &m.sectionLimitActiveInput},
-		{"Next: ", 27, &m.sectionLimitNextInput},
-		{"Inbox: ", 28, &m.sectionLimitInboxInput},
-		{"Standby: ", 29, &m.sectionLimitStandbyInput},
-		{"Waiting: ", 30, &m.sectionLimitWaitingInput},
-		{"Someday: ", 31, &m.sectionLimitSomedayInput},
-		{"Review: ", 32, &m.sectionLimitReviewInput},
+		{"Active: ", 31, &m.sectionLimitActiveInput},
+		{"Next: ", 32, &m.sectionLimitNextInput},
+		{"Inbox: ", 33, &m.sectionLimitInboxInput},
+		{"Standby: ", 34, &m.sectionLimitStandbyInput},
+		{"Waiting: ", 35, &m.sectionLimitWaitingInput},
+		{"Someday: ", 36, &m.sectionLimitSomedayInput},
+		{"Review: ", 37, &m.sectionLimitReviewInput},
 	}
 	for _, f := range fields {
 		b.WriteString(renderFormLabelWithWidth(f.label, labelWidth, m.focusIndex == f.focusIdx))

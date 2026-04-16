@@ -61,6 +61,7 @@ func (m *SettingsModel) validateAll() error {
 		m.validateCursorColor,
 		m.validateCursorTextColor,
 		m.validatePaletteColors,
+		m.validatePriorityTitleColors,
 		m.validateReviewSettings,
 		m.validateRecentActivityLimit,
 		m.validateMaxPinnedBarItems,
@@ -299,6 +300,29 @@ func (m *SettingsModel) validatePaletteColors() error {
 		{m.warningInput, "warning"},
 		{m.errorColorInput, "error"},
 		{m.borderInput, "border"},
+	}
+	for _, inp := range inputs {
+		val := strings.TrimSpace(inp.input.Value())
+		if val == "" {
+			continue
+		}
+		if !hexColorRegex.MatchString(val) {
+			return fmt.Errorf("%s: must be hex color (e.g. aabbcc or #abc)", inp.name)
+		}
+	}
+	return nil
+}
+
+func (m *SettingsModel) validatePriorityTitleColors() error {
+	inputs := []struct {
+		input textinput.Model
+		name  string
+	}{
+		{m.priority1TitleInput, "priority 1 title"},
+		{m.priority2TitleInput, "priority 2 title"},
+		{m.priority3TitleInput, "priority 3 title"},
+		{m.priority4TitleInput, "priority 4 title"},
+		{m.priority5TitleInput, "priority 5 title"},
 	}
 	for _, inp := range inputs {
 		val := strings.TrimSpace(inp.input.Value())

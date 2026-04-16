@@ -347,10 +347,12 @@ func (tl TaskLine) Render() string {
 	maxTitleLen := max(tl.MaxTitle-3, 10)
 	title := truncateToVisualWidth(tl.Task.Title, maxTitleLen)
 	if tl.SearchQuery != "" {
-		title = HighlightSubstring(title, tl.SearchQuery, NormalStyle)
+		title = HighlightSubstring(title, tl.SearchQuery, GetTitlePriorityStyle(tl.Task.Priority))
 	}
 	if tl.IsSelected && !tl.Task.Dimmed {
 		title = SelectedTaskTitleStyle.Render(title)
+	} else {
+		title = GetTitlePriorityStyle(tl.Task.Priority).Render(title)
 	}
 
 	// Build priority segment: fixed-width when Layout set, variable otherwise.

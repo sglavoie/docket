@@ -58,6 +58,7 @@ func rebuildStyles() {
 	rebuildSidebarStyles()
 	rebuildCategoryStyles()
 	rebuildMiscStyles()
+	rebuildPriorityTitleStyles()
 }
 
 // ApplyTheme reconfigures cursor/selection colors and background propagation.

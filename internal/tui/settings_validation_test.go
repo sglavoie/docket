@@ -171,6 +171,67 @@ func TestCommitStageEdit_RenameDuplicate(t *testing.T) {
 	}
 }
 
+func TestValidatePriorityTitleColors(t *testing.T) {
+	tests := []struct {
+		name    string
+		p1      string
+		wantErr bool
+	}{
+		{"valid 6-digit hex", "#ff6600", false},
+		{"valid 6-digit no hash", "ff6600", false},
+		{"valid 3-digit hex", "#abc", false},
+		{"valid 3-digit no hash", "abc", false},
+		{"empty is valid", "", false},
+		{"whitespace only is valid", "  ", false},
+		{"invalid hex", "gggggg", true},
+		{"invalid format", "not-a-color", true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			p1 := textinput.New()
+			p1.SetValue(tt.p1)
+			m := &SettingsModel{
+				priority1TitleInput: p1,
+			}
+			err := m.validatePriorityTitleColors()
+			if (err != nil) != tt.wantErr {
+				t.Errorf("validatePriorityTitleColors() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+
+	// All 5 inputs: valid combination
+	t.Run("all valid", func(t *testing.T) {
+		m := newTestSettingsModelWithPriorities("#ffffff", "#d0d0d0", "#b8b8b8", "#9e9e9e", "#6a6a6a")
+		if err := m.validatePriorityTitleColors(); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
+
+	// One invalid among the 5
+	t.Run("p3 invalid", func(t *testing.T) {
+		m := newTestSettingsModelWithPriorities("#ffffff", "#d0d0d0", "not-hex", "#9e9e9e", "#6a6a6a")
+		if err := m.validatePriorityTitleColors(); err == nil {
+			t.Error("expected error for invalid p3 color")
+		}
+	})
+}
+
+func newTestSettingsModelWithPriorities(p1, p2, p3, p4, p5 string) *SettingsModel {
+	makeInput := func(val string) textinput.Model {
+		ti := textinput.New()
+		ti.SetValue(val)
+		return ti
+	}
+	return &SettingsModel{
+		priority1TitleInput: makeInput(p1),
+		priority2TitleInput: makeInput(p2),
+		priority3TitleInput: makeInput(p3),
+		priority4TitleInput: makeInput(p4),
+		priority5TitleInput: makeInput(p5),
+	}
+}
+
 func TestCommitStageEdit_RenameSelf(t *testing.T) {
 	m := &SettingsModel{
 		stages:        []string{"Brainstorm", "Design"},

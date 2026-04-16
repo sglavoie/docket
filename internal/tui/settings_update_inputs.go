@@ -18,7 +18,7 @@ func (m *SettingsModel) updateFocusedInput(msg tea.Msg) tea.Cmd {
 				}
 			}
 		}
-	case 84:
+	case 89:
 		if m.stageEditMode {
 			m.stageInput, cmd = m.stageInput.Update(msg)
 		}
@@ -63,39 +63,43 @@ func (m *SettingsModel) validateFocusedField() { //nolint:gocyclo
 		if err := m.validateCursorTextColor(); err != nil {
 			m.validationErr = err.Error()
 		}
-	case 16, 17, 18, 19:
+	case 16, 17, 18, 19, 20:
+		if err := m.validatePriorityTitleColors(); err != nil {
+			m.validationErr = err.Error()
+		}
+	case 21, 22, 23, 24:
 		if err := m.validateReviewSettings(); err != nil {
 			m.validationErr = err.Error()
 		}
-	case 20:
+	case 25:
 		if err := m.validateRecentActivityLimit(); err != nil {
 			m.validationErr = err.Error()
 		}
-	case 23:
+	case 28:
 		if err := m.validateMaxPinnedBarItems(); err != nil {
 			m.validationErr = err.Error()
 		}
-	case 24:
+	case 29:
 		if err := m.validateMaxRecentTaskVisits(); err != nil {
 			m.validationErr = err.Error()
 		}
-	case 25:
+	case 30:
 		if err := m.validatePopupTimeout(); err != nil {
 			m.validationErr = err.Error()
 		}
-	case 26, 27, 28, 29, 30, 31, 32:
+	case 31, 32, 33, 34, 35, 36, 37:
 		if err := m.validateSectionLimits(); err != nil {
 			m.validationErr = err.Error()
 		}
-	case 33:
+	case 38:
 		if err := m.validateAttachmentEditor(); err != nil {
 			m.validationErr = err.Error()
 		}
-	case 34:
+	case 39:
 		if err := m.validateCodeEditor(); err != nil {
 			m.validationErr = err.Error()
 		}
-	case 70, 75, 77, 79, 81, 83:
+	case 75, 80, 82, 84, 86, 88:
 		if err := m.validateAlertSettings(); err != nil {
 			m.validationErr = err.Error()
 		}

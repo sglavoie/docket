@@ -68,7 +68,7 @@ func (m *CommandPaletteModel) renderTaskPreview(item PaletteItem) string {
 	header := fmt.Sprintf("%s #%d: %s",
 		typeStyle.Render(task.Type.HeadingPrefix()),
 		task.ShortID,
-		task.Title)
+		GetTitlePriorityStyle(task.Priority).Render(task.Title))
 	styledHeader := TaskJumperPreviewHeaderStyle.Render(header)
 	b.WriteString(lipgloss.NewStyle().Width(max(m.previewWidth-2, 1)).Render(styledHeader))
 	b.WriteString("\n\n")

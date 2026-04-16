@@ -363,7 +363,7 @@ func (m *GlobalSearchModel) renderTaskList(paneHeight int) string {
 		// Subtract extra buffer to ensure no wrapping
 		maxTitleLen := max(m.listWidth-prefixWidth-2, 1)
 		title := truncateToVisualWidth(task.Title, maxTitleLen)
-		titleRendered := highlightTruncated(title, fr.titlePositions)
+		titleRendered := GetTitlePriorityStyle(task.Priority).Render(highlightTruncated(title, fr.titlePositions))
 
 		// Append comment indicator if match came from a comment
 		if fr.matchSource == "comment" {
@@ -376,7 +376,7 @@ func (m *GlobalSearchModel) renderTaskList(paneHeight int) string {
 			excess := lineWidth - m.listWidth + 3
 			if lipgloss.Width(title) > excess {
 				title = truncateToVisualWidth(task.Title, maxTitleLen-excess)
-				titleRendered = highlightTruncated(title, fr.titlePositions)
+				titleRendered = GetTitlePriorityStyle(task.Priority).Render(highlightTruncated(title, fr.titlePositions))
 				line = prefix + titleRendered
 			}
 		}
@@ -442,7 +442,7 @@ func (m *GlobalSearchModel) renderPreview() string {
 	header := fmt.Sprintf("%s #%d: %s",
 		typeStyle.Render(task.Type.HeadingPrefix()),
 		task.ShortID,
-		truncateToVisualWidth(task.Title, maxTitleLen))
+		GetTitlePriorityStyle(task.Priority).Render(truncateToVisualWidth(task.Title, maxTitleLen)))
 	b.WriteString(TaskJumperPreviewHeaderStyle.Render(header))
 	b.WriteString("\n\n")
 

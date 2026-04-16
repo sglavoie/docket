@@ -263,6 +263,8 @@ func (m *FocusBoardModel) renderRow(row boardRow, isSelected bool, maxTitleLen i
 	title := m.highlightTitle(truncatedTitle, task.Title)
 	if isSelected && !task.Dimmed {
 		title = SelectedTaskTitleStyle.Render(title)
+	} else {
+		title = GetTitlePriorityStyle(task.Priority).Render(title)
 	}
 	statusIcon := GetStatusBadge(string(task.Status), task.Status.Icon())
 	content := fmt.Sprintf("%s%s%s %s %s%s %s", queueIndicator, prefix, statusIcon, priorityBadge, projectBadge, typeIcon, title)

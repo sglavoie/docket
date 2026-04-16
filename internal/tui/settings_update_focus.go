@@ -37,50 +37,60 @@ func (m *SettingsModel) focusedInput() *textinput.Model { //nolint:gocyclo
 	case 15:
 		return &m.cursorTextColorInput
 	case 16:
-		return &m.dueSoonInput
+		return &m.priority1TitleInput
 	case 17:
-		return &m.futureInput
+		return &m.priority2TitleInput
 	case 18:
-		return &m.oldDaysInput
+		return &m.priority3TitleInput
 	case 19:
-		return &m.completedHoursInput
+		return &m.priority4TitleInput
 	case 20:
-		return &m.recentActivityInput
+		return &m.priority5TitleInput
+	case 21:
+		return &m.dueSoonInput
+	case 22:
+		return &m.futureInput
 	case 23:
-		return &m.maxPinnedInput
+		return &m.oldDaysInput
 	case 24:
-		return &m.maxRecentTaskVisitsInput
+		return &m.completedHoursInput
 	case 25:
-		return &m.popupTimeoutInput
-	case 26:
-		return &m.sectionLimitActiveInput
-	case 27:
-		return &m.sectionLimitNextInput
+		return &m.recentActivityInput
 	case 28:
-		return &m.sectionLimitInboxInput
+		return &m.maxPinnedInput
 	case 29:
-		return &m.sectionLimitStandbyInput
+		return &m.maxRecentTaskVisitsInput
 	case 30:
-		return &m.sectionLimitWaitingInput
+		return &m.popupTimeoutInput
 	case 31:
-		return &m.sectionLimitSomedayInput
+		return &m.sectionLimitActiveInput
 	case 32:
-		return &m.sectionLimitReviewInput
+		return &m.sectionLimitNextInput
 	case 33:
-		return &m.attachmentEditorInput
+		return &m.sectionLimitInboxInput
 	case 34:
+		return &m.sectionLimitStandbyInput
+	case 35:
+		return &m.sectionLimitWaitingInput
+	case 36:
+		return &m.sectionLimitSomedayInput
+	case 37:
+		return &m.sectionLimitReviewInput
+	case 38:
+		return &m.attachmentEditorInput
+	case 39:
 		return &m.codeEditorInput
-	case 70:
-		return &m.alertDailyReviewHourInput
 	case 75:
+		return &m.alertDailyReviewHourInput
+	case 80:
 		return &m.alertDueSoonDaysInput
-	case 77:
+	case 82:
 		return &m.alertStaleDaysInput
-	case 79:
+	case 84:
 		return &m.alertInboxThresholdInput
-	case 81:
+	case 86:
 		return &m.alertBlockedDaysInput
-	case 83:
+	case 88:
 		return &m.alertProjectStaleDaysInput
 	default:
 		return nil
