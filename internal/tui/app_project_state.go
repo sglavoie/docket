@@ -3,7 +3,6 @@ package tui
 import (
 	"maps"
 
-	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/logging"
 	"github.com/sglavoie/tt/internal/models"
 )
@@ -84,30 +83,25 @@ func (m *AppModel) saveProjectTreeState() {
 		}
 	}
 
-	state := config.ProjectViewState{
-		FilterType:        string(m.projectTree.filter.Type),
-		FilterStatus:      string(m.projectTree.filter.Status),
-		FilterPriority:    m.projectTree.filter.Priority,
-		FilterTags:        filterTags,
-		FilterSections:    filterSections,
-		FilterDueDate:     int(m.projectTree.filter.DueDate),
-		FilterActionable:  m.projectTree.filter.Actionable,
-		FilterHideDimmed:  m.projectTree.filter.HideDimmed,
-		SortField:         int(m.projectTree.sort.Field),
-		SortAscending:     m.projectTree.sort.Ascending,
-		SidebarEnabled:    m.projectTree.sidebar.IsEnabled(),
-		FilterBarEnabled:  m.projectTree.filterBar.IsEnabled(),
-		ViewMode:          int(m.projectTree.viewMode),
-		CustomSectionTab:  m.projectTree.activeCustomSectionFilter(),
-		TreeColumnToggles: m.projectTree.columnConfig.Toggles(),
-		TreeFoldState:     foldState,
-	}
-
-	// Preserve outliner column toggles and fold states from existing state
-	if existing, ok := m.config.ProjectViewStates[m.currentProject.ID]; ok {
-		state.OutlinerColumnToggles = existing.OutlinerColumnToggles
-		state.OutlinerFoldState = existing.OutlinerFoldState
-	}
+	// Read existing state to preserve outliner fields (read-modify-write).
+	state := m.config.ProjectViewStates[m.currentProject.ID]
+	state.FilterType = string(m.projectTree.filter.Type)
+	state.FilterStatus = string(m.projectTree.filter.Status)
+	state.FilterPriority = m.projectTree.filter.Priority
+	state.FilterTags = filterTags
+	state.FilterSections = filterSections
+	state.FilterDueDate = int(m.projectTree.filter.DueDate)
+	state.FilterActionable = m.projectTree.filter.Actionable
+	state.FilterHideDimmed = m.projectTree.filter.HideDimmed
+	state.FilterStage = m.projectTree.filter.Stage
+	state.SortField = int(m.projectTree.sort.Field)
+	state.SortAscending = m.projectTree.sort.Ascending
+	state.SidebarEnabled = m.projectTree.sidebar.IsEnabled()
+	state.FilterBarEnabled = m.projectTree.filterBar.IsEnabled()
+	state.ViewMode = int(m.projectTree.viewMode)
+	state.CustomSectionTab = m.projectTree.activeCustomSectionFilter()
+	state.TreeColumnToggles = m.projectTree.columnConfig.Toggles()
+	state.TreeFoldState = foldState
 
 	m.config.SetProjectViewState(m.currentProject.ID, state)
 	if err := m.configManager.Save(m.config); err != nil {
@@ -149,6 +143,7 @@ func (m *AppModel) restoreProjectTreeState() {
 	m.projectTree.filter.DueDate = DueDateFilter(state.FilterDueDate)
 	m.projectTree.filter.Actionable = state.FilterActionable
 	m.projectTree.filter.HideDimmed = state.FilterHideDimmed
+	m.projectTree.filter.Stage = state.FilterStage
 	m.projectTree.sort.Field = SortField(state.SortField)
 	m.projectTree.sort.Ascending = state.SortAscending
 	m.projectTree.sidebar.SetEnabled(state.SidebarEnabled)
@@ -226,6 +221,8 @@ func (m *AppModel) extractSharedStateFromTree() *sharedViewState {
 				DueDate:    m.projectTree.filter.DueDate,
 				ScoreMin:   m.projectTree.filter.ScoreMin,
 				Actionable: m.projectTree.filter.Actionable,
+				HideDimmed: m.projectTree.filter.HideDimmed,
+				Stage:      m.projectTree.filter.Stage,
 			},
 		},
 		Sort:             m.projectTree.sort,
@@ -262,6 +259,8 @@ func (m *AppModel) extractSharedStateFromOutliner() *sharedViewState {
 				DueDate:    m.outliner.filter.DueDate,
 				ScoreMin:   m.outliner.filter.ScoreMin,
 				Actionable: m.outliner.filter.Actionable,
+				HideDimmed: m.outliner.filter.HideDimmed,
+				Stage:      m.outliner.filter.Stage,
 			},
 		},
 		Sort:             m.outliner.sort,
@@ -294,6 +293,8 @@ func (m *AppModel) applySharedStateToTree(s *sharedViewState) {
 	m.projectTree.filter.DueDate = s.Filter.DueDate
 	m.projectTree.filter.ScoreMin = s.Filter.ScoreMin
 	m.projectTree.filter.Actionable = s.Filter.Actionable
+	m.projectTree.filter.HideDimmed = s.Filter.HideDimmed
+	m.projectTree.filter.Stage = s.Filter.Stage
 	m.projectTree.filter.Attrs = s.Filter.Attrs
 	m.projectTree.sort = s.Sort
 	m.projectTree.sidebar.SetEnabled(s.SidebarEnabled)
@@ -321,6 +322,8 @@ func (m *AppModel) applySharedStateToOutliner(s *sharedViewState) {
 	m.outliner.filter.DueDate = s.Filter.DueDate
 	m.outliner.filter.ScoreMin = s.Filter.ScoreMin
 	m.outliner.filter.Actionable = s.Filter.Actionable
+	m.outliner.filter.HideDimmed = s.Filter.HideDimmed
+	m.outliner.filter.Stage = s.Filter.Stage
 	m.outliner.filter.Attrs = s.Filter.Attrs
 	m.outliner.sort = s.Sort
 	m.outliner.sidebar.SetEnabled(s.SidebarEnabled)

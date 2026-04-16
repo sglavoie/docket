@@ -36,6 +36,7 @@ type ProjectViewState struct {
 	FilterDueDate             int               `json:"filter_due_date,omitempty"`
 	FilterActionable          bool              `json:"filter_actionable,omitempty"`   // Actionable filter (F8)
 	FilterHideDimmed          bool              `json:"filter_hide_dimmed,omitempty"` // Hide dimmed tasks filter
+	FilterStage               string            `json:"filter_stage,omitempty"`       // Tree workflow stage filter
 	SortField                 int               `json:"sort_field,omitempty"`
 	SortAscending             bool              `json:"sort_ascending"`
 	ShowCompleted             bool              `json:"show_completed"`
@@ -51,6 +52,7 @@ type ProjectViewState struct {
 	OutlinerFilterSections    []string          `json:"outliner_filter_sections,omitempty"`    // Outliner section filter names
 	OutlinerFilterActionable  bool              `json:"outliner_filter_actionable,omitempty"`  // Outliner actionable filter
 	OutlinerFilterHideDimmed  bool              `json:"outliner_filter_hide_dimmed,omitempty"` // Outliner hide dimmed filter
+	OutlinerFilterStage       string            `json:"outliner_filter_stage,omitempty"`       // Outliner workflow stage filter
 	OutlinerFilterAttrs       map[string]string `json:"outliner_filter_attrs,omitempty"`       // Outliner attribute filters
 	OutlinerFilterScoreMin    float64           `json:"outliner_filter_score_min,omitempty"`   // Outliner score threshold
 	TreeColumnToggles         map[string]bool   `json:"tree_column_toggles,omitempty"`         // Per-column visibility overrides for tree view
@@ -177,7 +179,20 @@ type Config struct {
 	CrossOutlinerSidebarEnabled    *bool                        `json:"cross_outliner_sidebar_enabled,omitempty"`    // nil=true; default sidebar state for cross-project outliner
 	CrossOutlinerCollapsedSections map[string]bool              `json:"cross_outliner_collapsed_sections,omitempty"` // Persisted collapsed sections for cross-project outliner
 	CrossOutlinerColumnToggles     map[string]bool              `json:"cross_outliner_column_toggles,omitempty"`     // Per-column visibility overrides for cross-project outliner
+	CrossOutlinerFilterType        string                       `json:"cross_outliner_filter_type,omitempty"`        // Cross-project outliner task type filter
+	CrossOutlinerFilterStatus      string                       `json:"cross_outliner_filter_status,omitempty"`      // Cross-project outliner status filter
+	CrossOutlinerFilterPriority    int                          `json:"cross_outliner_filter_priority,omitempty"`    // Cross-project outliner priority filter
+	CrossOutlinerFilterDueDate     int                          `json:"cross_outliner_filter_due_date,omitempty"`    // Cross-project outliner due date filter
+	CrossOutlinerFilterActionable  bool                         `json:"cross_outliner_filter_actionable,omitempty"`  // Cross-project outliner actionable filter
 	CrossOutlinerFilterHideDimmed  bool                         `json:"cross_outliner_filter_hide_dimmed,omitempty"` // Cross-project outliner hide dimmed filter
+	CrossOutlinerFilterStage       string                       `json:"cross_outliner_filter_stage,omitempty"`       // Cross-project outliner stage filter
+	CrossOutlinerFilterScoreMin    float64                      `json:"cross_outliner_filter_score_min,omitempty"`   // Cross-project outliner score threshold
+	CrossOutlinerFilterTags        []string                     `json:"cross_outliner_filter_tags,omitempty"`        // Cross-project outliner tag filter
+	CrossOutlinerFilterSections    []string                     `json:"cross_outliner_filter_sections,omitempty"`    // Cross-project outliner section filter
+	CrossOutlinerFilterAttrs       map[string]string            `json:"cross_outliner_filter_attrs,omitempty"`       // Cross-project outliner attribute filters
+	CrossOutlinerSortField         int                          `json:"cross_outliner_sort_field,omitempty"`         // Cross-project outliner sort field
+	CrossOutlinerSortAscending     bool                         `json:"cross_outliner_sort_ascending"`               // Cross-project outliner sort direction
+	CrossOutlinerFilterBarEnabled  bool                         `json:"cross_outliner_filter_bar_enabled"`           // Cross-project outliner filter bar toggle
 	TreePriorityMode               string                       `json:"tree_priority_mode,omitempty"`                // Global priority display mode for tree view
 	OutlinerPriorityMode           string                       `json:"outliner_priority_mode,omitempty"`            // Global priority display mode for outliner view
 	Stages                         []string                     `json:"stages,omitempty"`                            // Workflow stages (e.g., Brainstorm, Design, Implement)

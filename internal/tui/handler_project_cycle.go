@@ -86,6 +86,8 @@ func (m *AppModel) handleCycleProject(forward bool) (bool, tea.Cmd) {
 func (m *AppModel) switchToCycleProject(project *models.Project) (bool, tea.Cmd) {
 	m.saveCurrentProjectView()
 	m.saveProjectTreeState()
+	m.saveOutlinerToggleState()
+	m.saveOutlinerFilterState()
 	m.currentProject = project
 	m.config.CurrentProject = project.ID
 	if err := m.configManager.Save(m.config); err != nil {

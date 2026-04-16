@@ -12,6 +12,7 @@ func (m *AppModel) handleProjectViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 				fresh.queueIDs = m.focusQueueIDs
 				fresh.dailyPlanIDs = m.dailyPlanIDs
 				fresh.OpenAtTask = msg.OpenAtTask
+				m.restoreOutlinerFilterStateTo(fresh)
 				m.showView(ViewTemporaryOutliner, fresh)
 				return true, nil
 			}
@@ -33,6 +34,10 @@ func (m *AppModel) handleProjectViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 			} else {
 				m.restoreOutlinerFilterState()
 			}
+			// Persist the applied state so config stays in sync with the
+			// in-memory filter state (guards against refreshProjectTree
+			// restoring stale config values).
+			m.saveOutlinerFilterState()
 
 			if replacing {
 				m.replaceView(ViewOutliner, m.outliner)
@@ -50,6 +55,13 @@ func (m *AppModel) handleProjectViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 		return true, nil
 
 	case ShowGlobalOutlinerMsg:
+		// Save current view state so it persists if a different project's
+		// view is later created from inside the cross-outliner.
+		m.saveProjectTreeState()
+		if m.outliner != nil {
+			m.saveOutlinerToggleState()
+			m.saveOutlinerFilterState()
+		}
 		if m.crossOutliner == nil {
 			m.crossOutliner = NewOutlinerModel(nil, m.config, m.configManager)
 			m.crossOutliner.queueIDs = m.focusQueueIDs
@@ -87,6 +99,10 @@ func (m *AppModel) handleProjectViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 				m.refreshProjectTree()
 				if shared != nil {
 					m.applySharedStateToTree(shared)
+					// Persist the applied shared state so config stays in
+					// sync (guards against SaveCompleteMsg/RefreshMsg calling
+					// refreshProjectTree and restoring stale tree filters).
+					m.saveProjectTreeState()
 				}
 				m.replaceView(ViewProjectTree, m.projectTree)
 			} else {

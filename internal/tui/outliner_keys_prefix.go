@@ -461,7 +461,7 @@ func (m *OutlinerModel) handleFilterPrefix(key string) (tea.Model, tea.Cmd) {
 		m.filterProjects = make(map[string]bool)
 		m.ClearSearch()
 		m.rebuildRows()
-		return m, nil
+		return m, func() tea.Msg { return outlinerFilterStateChangedMsg{} }
 	}
 
 	// Common filter prefix keys

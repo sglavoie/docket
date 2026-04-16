@@ -44,10 +44,41 @@ func (m *AppModel) saveCrossOutlinerState() {
 		return
 	}
 	m.config.CrossOutlinerCollapsedSections = maps.Clone(m.crossOutliner.collapsedSections)
-	m.config.CrossOutlinerFilterHideDimmed = m.crossOutliner.filter.HideDimmed
 	if m.crossOutliner.columnConfig != nil {
 		m.config.CrossOutlinerColumnToggles = m.crossOutliner.columnConfig.Toggles()
 	}
+
+	// Persist all filter/sort state
+	m.config.CrossOutlinerFilterType = string(m.crossOutliner.filter.Type)
+	m.config.CrossOutlinerFilterStatus = string(m.crossOutliner.filter.Status)
+	m.config.CrossOutlinerFilterPriority = m.crossOutliner.filter.Priority
+	m.config.CrossOutlinerFilterDueDate = int(m.crossOutliner.filter.DueDate)
+	m.config.CrossOutlinerFilterActionable = m.crossOutliner.filter.Actionable
+	m.config.CrossOutlinerFilterHideDimmed = m.crossOutliner.filter.HideDimmed
+	m.config.CrossOutlinerFilterStage = m.crossOutliner.filter.Stage
+	m.config.CrossOutlinerFilterScoreMin = m.crossOutliner.filter.ScoreMin
+	m.config.CrossOutlinerSortField = int(m.crossOutliner.sort.Field)
+	m.config.CrossOutlinerSortAscending = m.crossOutliner.sort.Ascending
+	m.config.CrossOutlinerFilterBarEnabled = m.crossOutliner.filterBar.IsEnabled()
+
+	var crossTags []string
+	for tag := range m.crossOutliner.filter.Tags {
+		crossTags = append(crossTags, tag)
+	}
+	m.config.CrossOutlinerFilterTags = crossTags
+
+	var crossSections []string
+	for section := range m.crossOutliner.filter.Sections {
+		crossSections = append(crossSections, section)
+	}
+	m.config.CrossOutlinerFilterSections = crossSections
+
+	if len(m.crossOutliner.filter.Attrs) > 0 {
+		m.config.CrossOutlinerFilterAttrs = maps.Clone(m.crossOutliner.filter.Attrs)
+	} else {
+		m.config.CrossOutlinerFilterAttrs = nil
+	}
+
 	if err := m.configManager.Save(m.config); err != nil {
 		logging.Warn("failed to save cross-outliner state: %v", err)
 	}
@@ -55,34 +86,44 @@ func (m *AppModel) saveCrossOutlinerState() {
 
 // saveOutlinerFilterState persists the current outliner filter state to config.
 func (m *AppModel) saveOutlinerFilterState() {
-	if m.outliner == nil || m.outliner.project == nil {
+	if m.outliner == nil {
+		return
+	}
+	m.saveOutlinerFilterStateFrom(m.outliner)
+}
+
+// saveOutlinerFilterStateFrom persists the given outliner's filter state to config.
+// Used for both the primary and temporary outliners.
+func (m *AppModel) saveOutlinerFilterStateFrom(o *OutlinerModel) {
+	if o == nil || o.project == nil {
 		return
 	}
 
 	var filterTags []string
-	for tag := range m.outliner.filter.Tags {
+	for tag := range o.filter.Tags {
 		filterTags = append(filterTags, tag)
 	}
 	var filterSections []string
-	for section := range m.outliner.filter.Sections {
+	for section := range o.filter.Sections {
 		filterSections = append(filterSections, section)
 	}
 
-	state := m.config.ProjectViewStates[m.outliner.project.ID]
-	state.OutlinerFilterType = string(m.outliner.filter.Type)
-	state.OutlinerFilterStatus = string(m.outliner.filter.Status)
-	state.OutlinerFilterPriority = m.outliner.filter.Priority
+	state := m.config.ProjectViewStates[o.project.ID]
+	state.OutlinerFilterType = string(o.filter.Type)
+	state.OutlinerFilterStatus = string(o.filter.Status)
+	state.OutlinerFilterPriority = o.filter.Priority
 	state.OutlinerFilterTags = filterTags
-	state.OutlinerFilterDueDate = int(m.outliner.filter.DueDate)
+	state.OutlinerFilterDueDate = int(o.filter.DueDate)
 	state.OutlinerFilterSections = filterSections
-	state.OutlinerFilterActionable = m.outliner.filter.Actionable
-	state.OutlinerFilterHideDimmed = m.outliner.filter.HideDimmed
-	state.OutlinerFilterScoreMin = m.outliner.filter.ScoreMin
-	state.OutlinerColumnToggles = m.outliner.columnConfig.Toggles()
+	state.OutlinerFilterActionable = o.filter.Actionable
+	state.OutlinerFilterHideDimmed = o.filter.HideDimmed
+	state.OutlinerFilterStage = o.filter.Stage
+	state.OutlinerFilterScoreMin = o.filter.ScoreMin
+	state.OutlinerColumnToggles = o.columnConfig.Toggles()
 
 	// Persist fold state to disk (only collapsed nodes)
 	collapsedNodes := make(map[string]bool)
-	for id, expanded := range m.outliner.expandedNodes {
+	for id, expanded := range o.expandedNodes {
 		if !expanded {
 			collapsedNodes[id] = true
 		}
@@ -93,88 +134,99 @@ func (m *AppModel) saveOutlinerFilterState() {
 		state.OutlinerFoldState = nil
 	}
 
-	if len(m.outliner.collapsedSections) > 0 {
-		state.OutlinerCollapsedSections = m.outliner.collapsedSections
+	if len(o.collapsedSections) > 0 {
+		state.OutlinerCollapsedSections = o.collapsedSections
 	} else {
 		state.OutlinerCollapsedSections = nil
 	}
 
-	if len(m.outliner.filter.Attrs) > 0 {
+	if len(o.filter.Attrs) > 0 {
 		state.OutlinerFilterAttrs = make(map[string]string)
-		maps.Copy(state.OutlinerFilterAttrs, m.outliner.filter.Attrs)
+		maps.Copy(state.OutlinerFilterAttrs, o.filter.Attrs)
 	} else {
 		state.OutlinerFilterAttrs = nil
 	}
 
-	state.OutlinerSortField = int(m.outliner.sort.Field)
-	state.OutlinerSortAscending = m.outliner.sort.Ascending
-	state.OutlinerActivePerspective = m.outliner.activePerspective
-	state.OutlinerFilterBarEnabled = m.outliner.filterBar.IsEnabled()
+	state.OutlinerSortField = int(o.sort.Field)
+	state.OutlinerSortAscending = o.sort.Ascending
+	state.OutlinerActivePerspective = o.activePerspective
+	state.OutlinerFilterBarEnabled = o.filterBar.IsEnabled()
 
-	m.config.ProjectViewStates[m.outliner.project.ID] = state
+	m.config.ProjectViewStates[o.project.ID] = state
 	if err := m.configManager.Save(m.config); err != nil {
 		logging.Warn("failed to save config: %v", err)
 	}
 }
 
-// restoreOutlinerFilterState applies saved outliner filter state from config.
+// restoreOutlinerFilterState applies saved outliner filter state from config
+// to m.outliner.
 func (m *AppModel) restoreOutlinerFilterState() {
-	if m.outliner == nil || m.outliner.project == nil {
+	if m.outliner == nil {
 		return
 	}
-	state, exists := m.config.GetProjectViewState(m.outliner.project.ID)
+	m.restoreOutlinerFilterStateTo(m.outliner)
+}
+
+// restoreOutlinerFilterStateTo applies saved outliner filter state from config
+// to the given outliner model. Used for both the primary and temporary outliners.
+func (m *AppModel) restoreOutlinerFilterStateTo(o *OutlinerModel) {
+	if o == nil || o.project == nil {
+		return
+	}
+	state, exists := m.config.GetProjectViewState(o.project.ID)
 	if !exists {
 		return
 	}
 
-	m.outliner.filter.Type = models.TaskType(state.OutlinerFilterType)
-	m.outliner.filter.Status = models.TaskStatus(state.OutlinerFilterStatus)
-	m.outliner.filter.Priority = state.OutlinerFilterPriority
-	m.outliner.filter.DueDate = DueDateFilter(state.OutlinerFilterDueDate)
-	m.outliner.filter.Actionable = state.OutlinerFilterActionable
-	m.outliner.filter.HideDimmed = state.OutlinerFilterHideDimmed
-	m.outliner.filter.ScoreMin = state.OutlinerFilterScoreMin
+	o.filter.Type = models.TaskType(state.OutlinerFilterType)
+	o.filter.Status = models.TaskStatus(state.OutlinerFilterStatus)
+	o.filter.Priority = state.OutlinerFilterPriority
+	o.filter.DueDate = DueDateFilter(state.OutlinerFilterDueDate)
+	o.filter.Actionable = state.OutlinerFilterActionable
+	o.filter.HideDimmed = state.OutlinerFilterHideDimmed
+	o.filter.Stage = state.OutlinerFilterStage
+	o.filter.ScoreMin = state.OutlinerFilterScoreMin
 
 	// Restore attribute filters
 	if len(state.OutlinerFilterAttrs) > 0 {
-		m.outliner.filter.Attrs = make(map[string]string)
-		maps.Copy(m.outliner.filter.Attrs, state.OutlinerFilterAttrs)
+		o.filter.Attrs = make(map[string]string)
+		maps.Copy(o.filter.Attrs, state.OutlinerFilterAttrs)
 	}
 
 	// Restore tags - validate they still exist in the project
-	m.outliner.filter.Tags = validateSavedStringSet(state.OutlinerFilterTags, CollectProjectTagNames(m.outliner.project.Tasks))
+	o.filter.Tags = validateSavedStringSet(state.OutlinerFilterTags, CollectProjectTagNames(o.project.Tasks))
 
 	// Restore sections - validate they still exist
-	m.outliner.filter.Sections = validateSavedStringSet(state.OutlinerFilterSections, m.outliner.project.GetSections())
+	o.filter.Sections = validateSavedStringSet(state.OutlinerFilterSections, o.project.GetSections())
 
 	// Restore sort state
-	m.outliner.sort.Field = SortField(state.OutlinerSortField)
-	m.outliner.sort.Ascending = state.OutlinerSortAscending
+	o.sort.Field = SortField(state.OutlinerSortField)
+	o.sort.Ascending = state.OutlinerSortAscending
 
 	// Restore filter bar state
-	m.outliner.filterBar.SetEnabled(state.OutlinerFilterBarEnabled)
+	o.filterBar.SetEnabled(state.OutlinerFilterBarEnabled)
 
 	// Restore active perspective (0 is Snoozed, 1 is All/default;
 	// only override the default if explicitly saved as non-zero or if sort
 	// was also saved, indicating outliner state was persisted at least once)
 	if state.OutlinerActivePerspective != 0 || state.OutlinerSortField != 0 {
-		m.outliner.activePerspective = state.OutlinerActivePerspective
+		o.activePerspective = state.OutlinerActivePerspective
 	}
 
 	// Restore section collapse state from disk if no in-memory cache exists
-	if _, hasCached := m.outlinerToggleStates[m.outliner.project.ID]; !hasCached && len(state.OutlinerCollapsedSections) > 0 {
-		maps.Copy(m.outliner.collapsedSections, state.OutlinerCollapsedSections)
+	if _, hasCached := m.outlinerToggleStates[o.project.ID]; !hasCached && len(state.OutlinerCollapsedSections) > 0 {
+		maps.Copy(o.collapsedSections, state.OutlinerCollapsedSections)
 	}
 
 	// Restore fold state from disk if no in-memory toggle cache exists
-	if _, hasCached := m.outlinerToggleStates[m.outliner.project.ID]; !hasCached && len(state.OutlinerFoldState) > 0 {
-		m.outliner.ensureExpandedNodes()
+	if _, hasCached := m.outlinerToggleStates[o.project.ID]; !hasCached && len(state.OutlinerFoldState) > 0 {
+		o.ensureExpandedNodes()
 		for id := range state.OutlinerFoldState {
-			m.outliner.expandedNodes[id] = false
+			o.expandedNodes[id] = false
 		}
 	}
 
-	m.outliner.rebuildRows()
+	o.rebuildRows()
 }
 
 // reloadAndRefreshProjectTree reloads project from storage and refreshes the tree.

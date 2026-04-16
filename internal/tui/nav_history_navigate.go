@@ -74,6 +74,8 @@ func (m *AppModel) navigateToEntry(entry NavEntry) tea.Cmd {
 	defer m.navHistory.Unlock()
 
 	m.saveProjectTreeState()
+	m.saveOutlinerToggleState()
+	m.saveOutlinerFilterState()
 	m.saveCurrentViewFilterState()
 
 	// Reset view stack and project stack

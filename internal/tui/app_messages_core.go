@@ -42,6 +42,10 @@ type CursorFlashClearMsg struct{}
 // periodicSaveMsg triggers a periodic save of spatial state (cursor/fold).
 type periodicSaveMsg struct{}
 
+// outlinerFilterStateChangedMsg signals that the outliner's filter state was
+// modified (e.g. Fx clear) and should be persisted to config immediately.
+type outlinerFilterStateChangedMsg struct{}
+
 // StatusMsg sets a temporary status message (used by command palette handlers).
 type StatusMsg string
 

@@ -178,7 +178,32 @@ func NewOutlinerModel(project *models.Project, cfg *config.Config, cfgManager *c
 		if len(cfg.CrossOutlinerCollapsedSections) > 0 {
 			maps.Copy(m.collapsedSections, cfg.CrossOutlinerCollapsedSections)
 		}
+		m.filter.Type = models.TaskType(cfg.CrossOutlinerFilterType)
+		m.filter.Status = models.TaskStatus(cfg.CrossOutlinerFilterStatus)
+		m.filter.Priority = cfg.CrossOutlinerFilterPriority
+		m.filter.DueDate = DueDateFilter(cfg.CrossOutlinerFilterDueDate)
+		m.filter.Actionable = cfg.CrossOutlinerFilterActionable
 		m.filter.HideDimmed = cfg.CrossOutlinerFilterHideDimmed
+		m.filter.Stage = cfg.CrossOutlinerFilterStage
+		m.filter.ScoreMin = cfg.CrossOutlinerFilterScoreMin
+		m.sort.Field = SortField(cfg.CrossOutlinerSortField)
+		m.sort.Ascending = cfg.CrossOutlinerSortAscending
+		m.filterBar.SetEnabled(cfg.CrossOutlinerFilterBarEnabled)
+		if len(cfg.CrossOutlinerFilterTags) > 0 {
+			m.filter.Tags = make(map[string]bool, len(cfg.CrossOutlinerFilterTags))
+			for _, tag := range cfg.CrossOutlinerFilterTags {
+				m.filter.Tags[tag] = true
+			}
+		}
+		if len(cfg.CrossOutlinerFilterSections) > 0 {
+			m.filter.Sections = make(map[string]bool, len(cfg.CrossOutlinerFilterSections))
+			for _, section := range cfg.CrossOutlinerFilterSections {
+				m.filter.Sections[section] = true
+			}
+		}
+		if len(cfg.CrossOutlinerFilterAttrs) > 0 {
+			m.filter.Attrs = maps.Clone(cfg.CrossOutlinerFilterAttrs)
+		}
 	}
 	return m
 }

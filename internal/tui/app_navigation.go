@@ -171,11 +171,28 @@ func (m *AppModel) handleEscKey() (bool, tea.Cmd) {
 				resetter.OnExit()
 			}
 		}
+		// Save outliner filter state so it persists across navigation.
+		if closingView == ViewOutliner {
+			m.saveOutlinerToggleState()
+			m.saveOutlinerFilterState()
+		}
+		// Save temporary outliner's filter state so subsequent temporary
+		// outliners for the same project inherit any filter changes.
+		if closingView == ViewTemporaryOutliner {
+			if tempOutliner, ok := m.views.Get(ViewTemporaryOutliner).(*OutlinerModel); ok {
+				m.saveOutlinerFilterStateFrom(tempOutliner)
+			}
+		}
 		var cmd tea.Cmd
 		if isGlobalOverlayView(closingView) {
 			m.popToAnchorView()
 		} else {
 			cmd = m.popView()
+		}
+		// Rebuild outliner rows when returning from cross-outliner so the
+		// display reflects the current in-memory filter state (e.g. after Fx).
+		if closingView == ViewCrossProjectOutliner && m.outliner != nil {
+			m.outliner.rebuildRows()
 		}
 		// Restore previous project when popping a stacked project tree
 		if closingView == ViewProjectTree && m.currentView() == ViewProjectTree && len(m.projectStack) > 0 {

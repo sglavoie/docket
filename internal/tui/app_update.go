@@ -547,6 +547,17 @@ func (m *AppModel) Update(msg tea.Msg) (outModel tea.Model, outCmd tea.Cmd) { //
 			return periodicSaveMsg{}
 		})
 
+	case outlinerFilterStateChangedMsg:
+		// Persist filter state immediately so navigation (e.g. go drill-down
+		// from cross-outliner) reads the up-to-date cleared/changed values.
+		switch m.currentView() { //nolint:exhaustive
+		case ViewCrossProjectOutliner:
+			m.saveCrossOutlinerState()
+		default:
+			m.saveOutlinerFilterState()
+		}
+		return m, nil
+
 	case SaveStartMsg:
 		m.isLoading = true
 		m.loadingMessage = msg.Message
