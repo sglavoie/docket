@@ -113,6 +113,7 @@ func (m *OutlinerModel) renderOutlinerTitle(width int) string {
 		}
 		title += ")"
 		return TitleStyle.Render(title) + buildTitleFilterSuffix(&TitleParams{
+			FilterParts:   m.activeFilterParts(),
 			SortField:     m.sort.Field,
 			SortAscending: m.sort.Ascending,
 			Width:         width,
