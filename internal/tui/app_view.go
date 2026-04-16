@@ -426,9 +426,12 @@ func (m *AppModel) renderConfirmDialogOverlay() string {
 
 // applyBackground fills every line of content with the configured TUI
 // background color so no terminal default leaks through. Inner lipgloss
-// styles emit SGR resets (\x1b[0m) that clear the background mid-line,
-// so we re-inject the background escape after every reset and pad each
-// line to the full terminal width.
+// styles emit SGR resets (\x1b[m or \x1b[0m) that clear the background
+// mid-line, so we re-inject the background escape after every reset and
+// pad each line to the full terminal width.
+//
+// lipgloss v2 emits \x1b[m (empty-param reset) rather than \x1b[0m, so
+// both forms must be handled.
 func (m *AppModel) applyBackground(content string) string {
 	bg := m.config.TUIBackgroundColor
 	if bg == "" {
@@ -441,14 +444,16 @@ func (m *AppModel) applyBackground(content string) string {
 
 	lines := strings.Split(content, "\n")
 	for i, line := range lines {
-		// Re-apply background after every SGR reset within the line
-		patched := bgEsc + strings.ReplaceAll(line, "\x1b[0m", "\x1b[0m"+bgEsc)
+		// Re-apply background after every SGR reset within the line.
+		// lipgloss v2 emits \x1b[m (empty-param); handle \x1b[0m too.
+		patched := bgEsc + strings.ReplaceAll(line, "\x1b[m", "\x1b[m"+bgEsc)
+		patched = strings.ReplaceAll(patched, "\x1b[0m", "\x1b[0m"+bgEsc)
 		// Pad to full terminal width
 		pad := m.width - lipgloss.Width(line)
 		if pad > 0 {
 			patched += strings.Repeat(" ", pad)
 		}
-		lines[i] = patched + "\x1b[0m"
+		lines[i] = patched + "\x1b[m"
 	}
 	// Fill remaining vertical space with background-colored empty lines
 	emptyLine := bgEsc + strings.Repeat(" ", m.width) + "\x1b[0m"

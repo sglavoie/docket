@@ -133,11 +133,9 @@ func ApplyTheme(tc ThemeConfig) {
 		ZebraRowStyle = lipgloss.NewStyle().Background(ColorZebraBg)
 	}
 
-	var customBg color.Color
 	alwaysBg := ColorBackground
 	if tc.BgColor != "" {
-		customBg = lipgloss.Color(tc.BgColor)
-		alwaysBg = customBg
+		alwaysBg = lipgloss.Color(tc.BgColor)
 	}
 
 	StatusBarStyle = withOptionalBg(lipgloss.NewStyle().
@@ -166,56 +164,56 @@ func ApplyTheme(tc ThemeConfig) {
 	ChildrenBadgeStyle = withOptionalBg(lipgloss.NewStyle().
 		Foreground(ColorPrimary), alwaysBg)
 
-	DashboardCardStyle = withOptionalBg(lipgloss.NewStyle().
+	DashboardCardStyle = lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
 		BorderForeground(ColorBorder).
-		Padding(0, 1), customBg)
+		Padding(0, 1)
 
-	SidebarCardStyle = withOptionalBg(lipgloss.NewStyle().
+	SidebarCardStyle = lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
 		BorderForeground(ColorBorder).
-		Padding(0, 1), customBg)
+		Padding(0, 1)
 
-	SidebarCardFocusedStyle = withOptionalBg(lipgloss.NewStyle().
+	SidebarCardFocusedStyle = lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
 		BorderForeground(ColorPrimary).
-		Padding(0, 1), customBg)
+		Padding(0, 1)
 
-	SidebarStyle = withOptionalBg(lipgloss.NewStyle().
+	SidebarStyle = lipgloss.NewStyle().
 		BorderStyle(lipgloss.RoundedBorder()).
 		BorderForeground(ColorBorder).
-		Padding(1), customBg)
+		Padding(1)
 
-	TaskJumperListStyle = withOptionalBg(lipgloss.NewStyle().
+	TaskJumperListStyle = lipgloss.NewStyle().
 		Border(lipgloss.NormalBorder(), false, true, false, false).
-		BorderForeground(ColorBorder), customBg)
+		BorderForeground(ColorBorder)
 
-	TaskJumperPreviewStyle = withOptionalBg(lipgloss.NewStyle().
-		Padding(0, 1), customBg)
+	TaskJumperPreviewStyle = lipgloss.NewStyle().
+		Padding(0, 1)
 
-	OverlayBoxStyle = withOptionalBg(lipgloss.NewStyle().
+	OverlayBoxStyle = lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
 		BorderForeground(ColorPurple).
-		Padding(1, 2), customBg)
+		Padding(1, 2)
 
-	TagManagerBoxStyle = withOptionalBg(lipgloss.NewStyle().
+	TagManagerBoxStyle = lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
 		BorderForeground(ColorPrimary).
-		Padding(1, 2), customBg)
+		Padding(1, 2)
 
-	SelectorBaseStyle = withOptionalBg(lipgloss.NewStyle().
+	SelectorBaseStyle = lipgloss.NewStyle().
 		BorderStyle(lipgloss.NormalBorder()).
-		BorderForeground(ColorBorder), customBg)
+		BorderForeground(ColorBorder)
 
-	FilterViewBoxStyle = withOptionalBg(lipgloss.NewStyle().
+	FilterViewBoxStyle = lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
 		BorderForeground(ColorPrimary).
-		Padding(1, 2), customBg)
+		Padding(1, 2)
 
-	SuggestionBoxStyle = withOptionalBg(lipgloss.NewStyle().
+	SuggestionBoxStyle = lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
 		BorderForeground(ColorAccent).
-		Padding(0, 1), customBg)
+		Padding(0, 1)
 }
 
 // withOptionalBg applies a background color to a style if bg is non-nil.
