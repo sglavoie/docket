@@ -24,10 +24,15 @@ func (m *AppModel) handleSearchMessages(msg tea.Msg) (bool, tea.Cmd) {
 		return true, nil
 
 	case ShowCommandPaletteMsg:
-		// Pass the current view (before pushing the palette) for context-aware command filtering
-		// Pass the current project to filter tasks (nil = show all projects' tasks)
+		// Pass the current view (before pushing the palette) for context-aware command filtering.
+		// Scope tasks to currentProject only when the invoking view is project-scoped; Dashboard
+		// and cross-project views should list tasks from every project (nil = all projects).
 		currentView := m.currentView()
-		palette := NewCommandPaletteModel(m.config, m.configManager, m.commandRegistry, currentView, m.currentProject)
+		paletteProject := m.currentProject
+		if currentView == ViewDashboard || isGlobalNavView(currentView) {
+			paletteProject = nil
+		}
+		palette := NewCommandPaletteModel(m.config, m.configManager, m.commandRegistry, currentView, paletteProject)
 		// Apply pre-filter if specified (overrides last category)
 		if msg.PreFilter != "" {
 			palette.searchInput.SetValue(msg.PreFilter)
