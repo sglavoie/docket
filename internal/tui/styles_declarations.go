@@ -119,14 +119,14 @@ var (
 	NoteBadgeStyle   = makeBadgeStyle("248", "237")
 	ActionBadgeStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("208"))
 
-	TodoBadgeStyle       = makeBadgeStyle("248", "236")
-	InProgressBadgeStyle = makeBadgeStyle("214", "94")
-	ReviewBadgeStyle     = makeBadgeStyle("33", "17")
-	DoneBadgeStyle       = makeBadgeStyle("42", "22")
-	BlockedBadgeStyle    = makeBadgeStyle("196", "52")
-	StandbyBadgeStyle    = makeBadgeStyle("141", "53")
+	TodoBadgeStyle       = lipgloss.NewStyle().Foreground(lipgloss.Color("248"))
+	InProgressBadgeStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("214"))
+	ReviewBadgeStyle     = lipgloss.NewStyle().Foreground(lipgloss.Color("33"))
+	DoneBadgeStyle       = lipgloss.NewStyle().Foreground(lipgloss.Color("42"))
+	BlockedBadgeStyle    = lipgloss.NewStyle().Foreground(lipgloss.Color("196"))
+	StandbyBadgeStyle    = lipgloss.NewStyle().Foreground(lipgloss.Color("141"))
 	CanceledBadgeStyle   = makeBadgeStyle("248", "236")
-	StageBadgeStyle      = makeBadgeStyle("183", "236")
+	StageBadgeStyle      = lipgloss.NewStyle().Foreground(lipgloss.Color("183"))
 
 	BoxStyle = lipgloss.NewStyle().
 			Border(lipgloss.RoundedBorder()).
