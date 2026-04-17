@@ -429,7 +429,7 @@ func WrapCursor(current, listLen, delta int) int {
 // CycleTab advances a tab index by delta with wrapping.
 // delta is typically +1 (right) or -1 (left).
 func CycleTab(current *int, count, delta int) {
-	if count <= 0 {
+	if count <= 1 {
 		return
 	}
 	*current = ((*current+delta)%count + count) % count

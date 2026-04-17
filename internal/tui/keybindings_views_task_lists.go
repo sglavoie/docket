@@ -361,6 +361,7 @@ func (r *KeybindingRegistry) registerAllTasksBindings() {
 		Keybinding{Key: "+", Description: "Create smart list tab", Category: "Smart Lists", Views: views},
 		Keybinding{Key: "E", Description: "Edit current smart list tab", Category: "Smart Lists", Views: views},
 		Keybinding{Key: "X", Description: "Delete current smart list tab", Category: "Smart Lists", Views: views},
+		Keybinding{Key: "ctrl+e", Description: "Export task's project to Markdown", Category: "Actions", Views: views},
 		Keybinding{Key: "q", Description: "Toggle queue", Category: "Queue", Views: views},
 		Keybinding{Key: "Esc", Description: "Close all tasks view", Category: "View", Views: views},
 	)

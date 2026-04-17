@@ -1,6 +1,8 @@
 package tui
 
 import (
+	"time"
+
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/alerts"
@@ -457,6 +459,10 @@ type AppModel struct {
 	// Peek task overlay (shift+space to hold-peek task detail)
 	peekTask   *models.Task
 	peekActive bool
+
+	// Export state for repeat-press clipboard behaviour.
+	lastExportPath string
+	lastExportAt   time.Time
 }
 
 // pendingNoteMove holds state for a global note move operation.

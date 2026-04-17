@@ -100,6 +100,7 @@ func (r *KeybindingRegistry) registerProjectTreeBindings() {
 
 		// Project
 		Keybinding{Key: "ctrl+A", Description: "Archive/unarchive project", Category: "Project", Views: views},
+		Keybinding{Key: "ctrl+e", Description: "Export project to Markdown", Category: "Project", Views: views},
 
 		// Filter Popup (F prefix)
 		Keybinding{Key: "F", Description: "Open filter popup", Category: "Filters", Views: views},

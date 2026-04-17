@@ -123,6 +123,12 @@ func (m *OutlinerModel) handleKeyMsg(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		return model, cmd
 	}
 
+	// Export project to clean Markdown.
+	if key == "ctrl+e" {
+		project := m.project // nil in cross-project mode; AppModel resolver handles it
+		return m, func() tea.Msg { return ExportProjectMsg{Project: project} }
+	}
+
 	// Shared primary view keys (view switching, project cycling, secondary views, capture, etc.)
 	if cmd, handled := handleCommonPrimaryViewKey(key, m); handled {
 		return m, cmd

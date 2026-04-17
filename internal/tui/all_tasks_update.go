@@ -197,6 +197,11 @@ func (m *AllTasksViewModel) handleKeyMsg(msg tea.KeyPressMsg) (tea.Model, tea.Cm
 		return m, nil
 	}
 
+	// Export task's project to Markdown
+	if key == "ctrl+e" {
+		return m, func() tea.Msg { return ExportProjectMsg{} }
+	}
+
 	// Tab navigation
 	if handleTabCycleKey(key, &m.tabs, true, func() {
 		m.applyFiltersAndGroup()

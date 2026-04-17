@@ -476,6 +476,12 @@ func (m *ProjectTreeModel) handleKeyMsg(msg tea.KeyPressMsg, visible []*TreeNode
 		return m, nil
 	}
 
+	// Export project to clean Markdown.
+	if key == "ctrl+e" {
+		project := m.getProject()
+		return m, func() tea.Msg { return ExportProjectMsg{Project: project} }
+	}
+
 	// Special case for ctrl+a (archive project)
 	if key == "ctrl+a" {
 		if m.project.Sandbox {

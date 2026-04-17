@@ -12,6 +12,12 @@ import (
 // This differs from RenderTabBar which renders a single-line tab bar.
 // Pass an optional accent color to tint the active tab.
 func renderWrappingTabBar(tabs []string, activeIdx, availableWidth int, accent ...color.Color) string {
+	if len(tabs) == 0 {
+		return ""
+	}
+	if activeIdx < 0 || activeIdx >= len(tabs) {
+		activeIdx = 0
+	}
 	plainStyle := lipgloss.NewStyle().Padding(0, 1)
 	active := activeTabStyle(1, true, accent...)
 	inactive := inactiveTabStyle(1, true)

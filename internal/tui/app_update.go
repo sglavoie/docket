@@ -669,6 +669,9 @@ func (m *AppModel) Update(msg tea.Msg) (outModel tea.Model, outCmd tea.Cmd) { //
 	if handled, cmd := m.handleProjectCycleMessages(msg); handled {
 		return m, cmd
 	}
+	if handled, cmd := m.handleExportMessages(msg); handled {
+		return m, cmd
+	}
 
 	// Delegate to current view
 	cmd := m.delegateToCurrentView(msg)

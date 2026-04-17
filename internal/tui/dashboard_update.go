@@ -169,6 +169,9 @@ func (m *DashboardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) { //nolint:goc
 			}
 		case "g":
 			m.pendingPrefix = "g"
+		case "ctrl+e":
+			project := m.SelectedProject()
+			return m, func() tea.Msg { return ExportProjectMsg{Project: project} }
 		}
 	}
 
@@ -181,7 +184,7 @@ func (m *DashboardModel) HandledKeys() []string {
 		"j", "k", "up", "down", "G", "g", "enter", "/",
 		// Actions
 		"R", "n", "a", "S", "D", "e", "p",
-		"C", "ctrl+t", "@", "`", "~", "ctrl+p", "T", "b",
+		"C", "ctrl+t", "@", "`", "~", "ctrl+p", "T", "b", "ctrl+e",
 		// Quick-select pinned projects
 		"1", "2", "3", "4", "5", "6", "7", "8", "9",
 	}

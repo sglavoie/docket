@@ -160,7 +160,7 @@ func handleSortKey(key string, s *SortState, onReset func(), onToggle func(SortF
 // The afterCycle callback is called after the tab index changes so the
 // caller can refresh its data.
 func cycleCustomSectionTab(key string, tab *int, tabCount int, afterCycle func()) bool {
-	if tabCount == 0 {
+	if tabCount <= 1 {
 		return false
 	}
 	switch key {

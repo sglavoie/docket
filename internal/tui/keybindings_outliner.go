@@ -94,6 +94,7 @@ func (r *KeybindingRegistry) registerOutlinerBindings() {
 
 		// Project
 		Keybinding{Key: "ctrl+A", Description: "Archive/unarchive project", Category: "Project", Views: views},
+		Keybinding{Key: "ctrl+e", Description: "Export project to Markdown", Category: "Project", Views: views},
 
 		// Sidebar
 		Keybinding{Key: "Tab", Description: "Cycle sidebar (hide/view/focus)", Category: "Sidebar", Views: views},
@@ -163,6 +164,9 @@ func (r *KeybindingRegistry) registerCrossProjectOutlinerBindings() {
 		// Task Operations
 		Keybinding{Key: "o", Description: "View task details", Category: "Task Operations", Views: views},
 		Keybinding{Key: "ctrl+.", Description: "Quick note on selected task", Category: "Task Operations", Views: views},
+
+		// Project
+		Keybinding{Key: "ctrl+e", Description: "Export task's project to Markdown", Category: "Project", Views: views},
 
 		// Other
 		Keybinding{Key: "R", Description: "Reload from disk", Category: "Other", Views: views},

@@ -59,6 +59,12 @@ func RenderTabBar(tabs []string, activeIdx int, availableWidth int, padding int,
 // Active tabs always use the primary color. Tabs not in the map use the default muted color.
 // Pass an optional accent color to tint the active tab.
 func RenderColoredTabBar(tabs []string, activeIdx int, availableWidth int, padding int, tabColors map[string]string, accent ...color.Color) string {
+	if len(tabs) == 0 {
+		return ""
+	}
+	if activeIdx < 0 || activeIdx >= len(tabs) {
+		activeIdx = 0
+	}
 	plainStyle := lipgloss.NewStyle().Padding(0, padding)
 	totalWidth := 0
 	for _, name := range tabs {
