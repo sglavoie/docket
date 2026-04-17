@@ -206,7 +206,7 @@ func (m *ScoreEditorModel) View() tea.View {
 	dimStyle := NormalStyle
 	selectedStyle := OverlaySelectedStyle
 	mutedStyle := lipgloss.NewStyle().Foreground(ColorSubtleBorder)
-	scoreStyle := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("220"))
+	scoreStyle := lipgloss.NewStyle().Bold(true).Foreground(ColorAccent)
 
 	var lines []string
 	titleText := fmt.Sprintf("Score Editor: #%d %s", m.task.ShortID, m.task.Title)

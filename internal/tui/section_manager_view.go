@@ -79,7 +79,7 @@ func (m *SectionManagerModel) renderColorPicker() string {
 	b.WriteString("\n")
 
 	for i, pc := range SectionColorPalette {
-		style := lipgloss.NewStyle().Foreground(pc.Color)
+		style := lipgloss.NewStyle().Foreground(GetSectionColorValue(pc.Name))
 		swatch := " █ "
 		if i == m.colorCursor {
 			swatch = "[█]"

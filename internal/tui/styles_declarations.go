@@ -113,6 +113,8 @@ var (
 	ActionStyle = lipgloss.NewStyle().
 			Foreground(ColorOrange)
 
+	// Badge styles below are initial defaults only; rebuildBadgeStyles() overwrites
+	// them on every ApplyTheme call, making them theme-aware at runtime.
 	EpicBadgeStyle   = lipgloss.NewStyle().Foreground(lipgloss.Color("135"))
 	StoryBadgeStyle  = lipgloss.NewStyle().Foreground(lipgloss.Color("39"))
 	TaskBadgeStyle   = lipgloss.NewStyle().Foreground(lipgloss.Color("42"))

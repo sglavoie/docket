@@ -28,7 +28,7 @@ func RenderPrefixPopup(prefix string, hints PrefixHints, width, height int) stri
 	borderStyle := lipgloss.NewStyle().Foreground(ColorAccent)
 	titleKeyStyle := lipgloss.NewStyle().Foreground(ColorAccent).Bold(true)
 	titleCatFirstStyle := SuccessBoldStyle
-	titleCatRestStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("255"))
+	titleCatRestStyle := NormalStyle
 
 	var categoryTitle string
 	if strings.EqualFold(prefix, string(category[0])) {

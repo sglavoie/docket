@@ -25,18 +25,27 @@ func HasManualScores(task *models.Task, profile *scoring.ScoringProfile) bool {
 	return false
 }
 
+// scoreHighColor returns a theme-aware color for the high (pct 180-240) bucket.
+// Light theme uses a dark olive-green for legibility on cream; dark theme keeps ANSI 118.
+func scoreHighColor() color.Color {
+	if activeThemeName == "light" {
+		return lipgloss.Color("#4d7c0f")
+	}
+	return lipgloss.Color("118")
+}
+
 // scoreColor returns a color based on the score percentage using a 5-bucket gradient.
-// red(196) < orange(208) < yellow(226) < light-green(118) < green(42)
+// red(196) < warning < accent < high-green < green(42)
 func scoreColor(pct float64) color.Color {
 	switch {
 	case pct < 60:
 		return ColorError
 	case pct < 120:
-		return ColorOrange
+		return ColorWarning
 	case pct < 180:
 		return ColorAccent
 	case pct < 240:
-		return lipgloss.Color("118")
+		return scoreHighColor()
 	default:
 		return ColorSuccess
 	}
@@ -97,7 +106,7 @@ func renderScoreCardContent(task *models.Task, profile *scoring.ScoringProfile, 
 	lines = append(lines, "")
 
 	manualStyle := InfoStatusStyle
-	derivedStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("44"))
+	derivedStyle := lipgloss.NewStyle().Foreground(ColorSecondary)
 
 	maxNameWidth := 0
 	for _, r := range results {

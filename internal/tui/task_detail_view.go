@@ -300,13 +300,14 @@ func (m *TaskDetailModel) renderMarkdownDescription(contentWidth int) string {
 
 	innerWidth := max(contentWidth-CardBorderOverhead, 10)
 
-	// Return cached result if width hasn't changed
-	if m.renderedDesc != "" && m.renderedDescWidth == innerWidth {
+	// Return cached result if width and theme haven't changed
+	if m.renderedDesc != "" && m.renderedDescWidth == innerWidth && m.renderedDescTheme == activeThemeName {
 		return m.renderedDesc
 	}
 
 	m.renderedDesc = renderMarkdown(m.task.Description, innerWidth)
 	m.renderedDescWidth = innerWidth
+	m.renderedDescTheme = activeThemeName
 	return m.renderedDesc
 }
 

@@ -25,6 +25,7 @@ type TaskDetailModel struct {
 	mdRenderer        *glamour.TermRenderer
 	renderedDesc      string
 	renderedDescWidth int
+	renderedDescTheme string
 }
 
 // NewTaskDetailModel creates a new task detail view.

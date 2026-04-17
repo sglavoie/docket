@@ -75,18 +75,22 @@ func rebuildTaskStyles() {
 func rebuildBadgeStyles() {
 	EpicBadgeStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("135"))
 	StoryBadgeStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("39"))
-	TaskBadgeStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("42"))
+	TaskBadgeStyle = lipgloss.NewStyle().Foreground(ColorSuccess)
 	BugBadgeStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("196"))
-	IdeaBadgeStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("214"))
+	IdeaBadgeStyle = lipgloss.NewStyle().Foreground(ColorWarning)
 	NoteBadgeStyle = makeBadgeStyle("248", "237")
 	ActionBadgeStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("208"))
 
 	TodoBadgeStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("248"))
-	InProgressBadgeStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("214"))
+	InProgressBadgeStyle = lipgloss.NewStyle().Foreground(ColorWarning)
 	ReviewBadgeStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("33"))
-	DoneBadgeStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("42"))
+	DoneBadgeStyle = lipgloss.NewStyle().Foreground(ColorSuccess)
 	BlockedBadgeStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("196"))
-	StandbyBadgeStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("141"))
+	if activeThemeName == "light" {
+		StandbyBadgeStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#6d28d9"))
+	} else {
+		StandbyBadgeStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("141"))
+	}
 	CanceledBadgeStyle = makeBadgeStyle("248", "236")
 	if activeThemeName == "light" {
 		StageBadgeStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#7c3aed"))

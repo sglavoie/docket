@@ -9,8 +9,12 @@ import (
 // renderMarkdown renders the given text as styled terminal markdown using glamour.
 // Falls back to raw text on error.
 func renderMarkdown(text string, width int) string {
+	stylePath := "dark"
+	if activeThemeName == "light" {
+		stylePath = "light"
+	}
 	r, err := glamour.NewTermRenderer(
-		glamour.WithStylePath("dark"),
+		glamour.WithStylePath(stylePath),
 		glamour.WithWordWrap(width),
 	)
 	if err != nil {
