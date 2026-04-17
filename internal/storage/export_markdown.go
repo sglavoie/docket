@@ -31,6 +31,13 @@ func ExportProjectMarkdown(p *models.Project, destPath string) (string, error) {
 	}
 
 	data := WriteProjectMarkdownClean(p)
+
+	notes, err := ListNotes(p)
+	if err != nil {
+		return "", fmt.Errorf("list notes: %w", err)
+	}
+	data += writeNotesSectionClean(notes)
+
 	if err := os.WriteFile(destPath, []byte(data), 0600); err != nil {
 		return "", fmt.Errorf("write export file: %w", err)
 	}
@@ -57,6 +64,43 @@ func WriteProjectMarkdownClean(p *models.Project) string {
 	appendOrphanedTasksClean(&builder, p.Tasks, visited)
 
 	return builder.String()
+}
+
+// writeNotesSectionClean renders the trailing Notes section for a clean
+// project export. Returns "" when notes is empty; otherwise emits a
+// "\n---\n\n# Notes\n" separator followed by each note as "## Title",
+// an optional tags line, and the body verbatim. Notes flagged with a
+// ParseError get a " [parse error]" suffix on the heading.
+func writeNotesSectionClean(notes []*models.Note) string {
+	if len(notes) == 0 {
+		return ""
+	}
+
+	var b strings.Builder
+	b.WriteString("\n---\n\n# Notes\n")
+
+	for _, note := range notes {
+		b.WriteString("\n## ")
+		b.WriteString(note.Title)
+		if note.ParseError != "" {
+			b.WriteString(" [parse error]")
+		}
+		b.WriteString("\n")
+
+		if len(note.Tags) > 0 {
+			fmt.Fprintf(&b, "tags: %s\n", strings.Join(note.Tags, ", "))
+		}
+
+		if note.Body != "" {
+			b.WriteString("\n")
+			b.WriteString(note.Body)
+			if !strings.HasSuffix(note.Body, "\n") {
+				b.WriteString("\n")
+			}
+		}
+	}
+
+	return b.String()
 }
 
 func writeTaskClean(builder *strings.Builder, task *models.Task, allTasks []*models.Task, level int, visited map[string]bool) {
