@@ -144,3 +144,20 @@ func (m *Manager) WriteTheme(tf ThemeFile) error {
 	}
 	return os.WriteFile(path, append(data, '\n'), 0600)
 }
+
+// DeleteTheme removes the named theme file from ThemesDir.
+// Returns a sentinel-wrapped error if the file does not exist so
+// callers can distinguish "already gone" from other I/O failures.
+func (m *Manager) DeleteTheme(name string) error {
+	path, err := m.ThemePath(name) // validates name (no traversal)
+	if err != nil {
+		return err
+	}
+	if err := os.Remove(path); err != nil {
+		if os.IsNotExist(err) {
+			return fmt.Errorf("theme %q not found: %w", name, err)
+		}
+		return fmt.Errorf("delete theme %q: %w", name, err)
+	}
+	return nil
+}

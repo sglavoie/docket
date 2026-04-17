@@ -57,12 +57,32 @@ func (m *SettingsModel) renderColorInputField(b *strings.Builder, label string, 
 	}
 }
 
+// renderPresetNameLabel formats the active preset name (or "(built-in)" label)
+// in black on light themes and white on dark themes for contrast against the bg.
+func (m *SettingsModel) renderPresetNameLabel() string {
+	name := m.activePresetName
+	if name == "" {
+		if m.activeTheme == "light" {
+			name = "Light (built-in)"
+		} else {
+			name = "Dark (built-in)"
+		}
+	}
+	fg := lipgloss.Color("#ffffff")
+	if m.activeTheme == "light" {
+		fg = lipgloss.Color("#000000")
+	}
+	return lipgloss.NewStyle().Foreground(fg).Render(name)
+}
+
 func (m *SettingsModel) renderColorPreviewPane(width int) string {
 	var b strings.Builder
 
-	b.WriteString(SubtitleStyle.Render("Color Preview"))
+	b.WriteString(SubtitleStyle.MarginBottom(0).Render("Color Preview"))
 	b.WriteString("\n")
 	b.WriteString(MutedStyle.Render(strings.Repeat("─", min(width-1, 25))))
+	b.WriteString("\n")
+	b.WriteString(m.renderPresetNameLabel())
 	b.WriteString("\n\n")
 
 	b.WriteString(MutedStyle.Render("Status"))
@@ -176,6 +196,10 @@ func (m *SettingsModel) renderPaletteTab() string {
 	// Show inline error (e.g. "no saved presets found") even outside overlay.
 	if m.themePresetMode == presetModeNone && m.themePresetErr != "" {
 		formContent += "\n" + ValidationErrorStyle.Render(m.themePresetErr)
+	}
+	// Show transient flash (e.g. after preset deletion).
+	if m.themePresetFlash != "" {
+		formContent += "\n" + MutedStyle.Render(m.themePresetFlash)
 	}
 
 	if m.width < minPreviewWidth {

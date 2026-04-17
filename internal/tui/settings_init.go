@@ -26,10 +26,15 @@ func NewSettingsModel(cfg *config.Config, manager *config.Manager) *SettingsMode
 	activeTheme := cfg.ActiveThemeConfig()
 
 	var inactiveCfg config.Theme
+	var activePresetName, inactivePresetName string
 	if activeName == "light" {
 		inactiveCfg = cfg.ThemeDark
+		activePresetName = cfg.ThemeLightName
+		inactivePresetName = cfg.ThemeDarkName
 	} else {
 		inactiveCfg = cfg.ThemeLight
+		activePresetName = cfg.ThemeDarkName
+		inactivePresetName = cfg.ThemeLightName
 	}
 
 	return &SettingsModel{
@@ -141,6 +146,8 @@ func NewSettingsModel(cfg *config.Config, manager *config.Manager) *SettingsMode
 		themePresetInput:         newSettingsInput("preset name", 50, 30, "", false),
 		originalTheme:            NewThemeConfig(cfg),
 		activeTheme:              activeName,
+		activePresetName:         activePresetName,
+		inactivePresetName:       inactivePresetName,
 		inactiveThemeDraft:       themeToInactiveDraft(inactiveCfg),
 		focusIndex:               0,
 		tabs:                     TabState{Names: settingsTabNames},

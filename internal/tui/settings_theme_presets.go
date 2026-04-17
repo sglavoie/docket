@@ -34,6 +34,15 @@ type presetLoadedMsg struct{ name string }
 // presetResetMsg signals a successful slot reset.
 type presetResetMsg struct{}
 
+// presetDeletedMsg signals a successful preset file deletion.
+type presetDeletedMsg struct {
+	name      string
+	listEmpty bool
+}
+
+// presetFlashClearMsg clears the transient palette-tab footer flash.
+type presetFlashClearMsg struct{}
+
 // themeFromInputs reads the current active palette inputs and returns a config.Theme.
 func (m *SettingsModel) themeFromInputs() config.Theme {
 	return config.Theme{
@@ -115,11 +124,22 @@ func (m *SettingsModel) cancelPresetMode() {
 }
 
 // execPresetSave writes the current palette as a named ThemeFile on disk.
+// Also records the name as the active slot's preset so it survives the session.
 func (m *SettingsModel) execPresetSave(name string) tea.Cmd {
 	tf := config.NewThemeFile(name, m.activeTheme, AppVersion, m.themeFromInputs())
+	m.activePresetName = name
+	if m.activeTheme == "light" {
+		m.config.ThemeLightName = name
+	} else {
+		m.config.ThemeDarkName = name
+	}
+	cfg := m.config
 	mgr := m.configManager
 	return func() tea.Msg {
 		if err := mgr.WriteTheme(tf); err != nil {
+			return presetErrMsg{err: err.Error()}
+		}
+		if err := mgr.Save(cfg); err != nil {
 			return presetErrMsg{err: err.Error()}
 		}
 		return presetSavedMsg{name: name}
@@ -134,10 +154,13 @@ func (m *SettingsModel) execPresetLoad() tea.Cmd {
 	tf := m.themePresetList[m.themePresetCursor]
 	m.populatePaletteInputs(tf.Theme)
 	ApplyTheme(m.buildTentativeThemeConfig())
+	m.activePresetName = tf.Name
 	if m.activeTheme == "light" {
 		m.config.ThemeLight = tf.Theme
+		m.config.ThemeLightName = tf.Name
 	} else {
 		m.config.ThemeDark = tf.Theme
+		m.config.ThemeDarkName = tf.Name
 	}
 	cfg := m.config
 	mgr := m.configManager
@@ -150,14 +173,33 @@ func (m *SettingsModel) execPresetLoad() tea.Cmd {
 	}
 }
 
+// execPresetDelete removes the currently highlighted preset file from disk.
+func (m *SettingsModel) execPresetDelete() tea.Cmd {
+	if m.themePresetCursor >= len(m.themePresetList) {
+		return nil
+	}
+	name := m.themePresetList[m.themePresetCursor].Name
+	mgr := m.configManager
+	return func() tea.Msg {
+		if err := mgr.DeleteTheme(name); err != nil {
+			return presetErrMsg{err: err.Error()}
+		}
+		themes, _ := mgr.ListThemes()
+		return presetDeletedMsg{name: name, listEmpty: len(themes) == 0}
+	}
+}
+
 // execPresetReset clears the active slot to blank (runtime defaults apply at render time).
 func (m *SettingsModel) execPresetReset() tea.Cmd {
 	m.populatePaletteInputs(config.Theme{})
 	ApplyTheme(m.buildTentativeThemeConfig())
+	m.activePresetName = ""
 	if m.activeTheme == "light" {
 		m.config.ThemeLight = config.Theme{}
+		m.config.ThemeLightName = ""
 	} else {
 		m.config.ThemeDark = config.Theme{}
+		m.config.ThemeDarkName = ""
 	}
 	cfg := m.config
 	mgr := m.configManager
@@ -204,6 +246,16 @@ func (m *SettingsModel) handlePresetSaveKey(msg tea.KeyPressMsg) (bool, tea.Cmd)
 }
 
 func (m *SettingsModel) handlePresetLoadKey(key string) (bool, tea.Cmd) {
+	if m.themePresetConfirmDelete.IsActive() {
+		confirmed, handled := m.themePresetConfirmDelete.HandleKey(key)
+		if handled {
+			if confirmed {
+				return true, m.execPresetDelete()
+			}
+			return true, nil
+		}
+	}
+
 	switch key {
 	case "esc":
 		m.cancelPresetMode()
@@ -222,6 +274,12 @@ func (m *SettingsModel) handlePresetLoadKey(key string) (bool, tea.Cmd) {
 		cmd := m.execPresetLoad()
 		m.cancelPresetMode()
 		return true, cmd
+	case "D":
+		if len(m.themePresetList) > 0 {
+			name := m.themePresetList[m.themePresetCursor].Name
+			m.themePresetConfirmDelete.Show("delete", fmt.Sprintf("Delete preset '%s'?", name))
+		}
+		return true, nil
 	}
 	return true, nil
 }
@@ -270,6 +328,10 @@ func (m *SettingsModel) renderPresetSaveOverlay() string {
 }
 
 func (m *SettingsModel) renderPresetLoadOverlay() string {
+	if m.themePresetConfirmDelete.IsActive() {
+		return m.themePresetConfirmDelete.RenderOverlay(m.width)
+	}
+
 	var b strings.Builder
 	b.WriteString(SubtitleStyle.Render("Load Palette Preset"))
 	b.WriteString("\n\n")
@@ -283,7 +345,7 @@ func (m *SettingsModel) renderPresetLoadOverlay() string {
 		b.WriteString("\n")
 	}
 	b.WriteString("\n")
-	b.WriteString(MutedStyle.Render("j/k Navigate · Enter to load · Esc to cancel"))
+	b.WriteString(MutedStyle.Render("j/k Navigate · Enter load · D delete · Esc cancel"))
 	if m.themePresetErr != "" {
 		b.WriteString("\n")
 		b.WriteString(ValidationErrorStyle.Render(m.themePresetErr))

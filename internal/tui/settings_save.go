@@ -43,7 +43,11 @@ func (m *SettingsModel) SetSize(width, height int) {
 	m.height = height
 }
 
-func (m *SettingsModel) SupportsHelpShortcut() bool { return false }
+func (m *SettingsModel) SupportsHelpShortcut() bool { return true }
+
+func (m *SettingsModel) GetHelpItems() []HelpItem {
+	return GetKeybindingRegistry().GetForView(ViewSettings)
+}
 
 func (m *SettingsModel) Init() tea.Cmd {
 	return textinput.Blink
@@ -92,10 +96,14 @@ func (m *SettingsModel) saveSettings() tea.Cmd {
 	inactiveTheme := draftToTheme(m.inactiveThemeDraft)
 	if m.activeTheme == "light" {
 		m.config.ThemeLight = activeTheme
+		m.config.ThemeLightName = m.activePresetName
 		m.config.ThemeDark = inactiveTheme
+		m.config.ThemeDarkName = m.inactivePresetName
 	} else {
 		m.config.ThemeDark = activeTheme
+		m.config.ThemeDarkName = m.activePresetName
 		m.config.ThemeLight = inactiveTheme
+		m.config.ThemeLightName = m.inactivePresetName
 	}
 	m.config.ActiveTheme = m.activeTheme
 	m.config.DefaultProjectView = defaultProjectViewValues[m.defaultViewCursor]
@@ -290,8 +298,12 @@ func (m *SettingsModel) HandledKeys() []string {
 		"j", "k", "up", "down",
 		"a", "e", "d", "delete", "backspace",
 		"J", "K",
+		// Palette preset load overlay actions
+		"D",
 		// Confirmation keys (stage delete, palette reset)
 		"y", "Y", "n", "N",
+		// Help overlay
+		"?",
 	}
 }
 

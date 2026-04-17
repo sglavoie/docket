@@ -198,6 +198,9 @@ func (m *SettingsModel) handleGlobalKey(key string) (bool, tea.Cmd) { //nolint:g
 		}
 		return true, nil
 
+	case "?":
+		return true, helpCmd(ViewSettings, "Settings", m.GetHelpItems())
+
 	case "left", "h":
 		m.handleLeftKey()
 		return false, nil
@@ -249,6 +252,7 @@ func (m *SettingsModel) togglePaletteTheme() {
 	m.priority4TitleInput.SetValue(m.inactiveThemeDraft[15])
 	m.priority5TitleInput.SetValue(m.inactiveThemeDraft[16])
 	m.inactiveThemeDraft = snapshot
+	m.activePresetName, m.inactivePresetName = m.inactivePresetName, m.activePresetName
 	if m.activeTheme == "light" {
 		m.activeTheme = "dark"
 	} else {

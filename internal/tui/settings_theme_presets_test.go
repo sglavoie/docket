@@ -261,6 +261,151 @@ func TestPresetResetKey_Cancel(t *testing.T) {
 	}
 }
 
+// TestExecPresetDelete_RefreshesList seeds two presets, deletes the first,
+// and asserts the returned message signals a non-empty remaining list.
+func TestExecPresetDelete_RefreshesList(t *testing.T) {
+	m, dir := makePresetTestModel(t)
+	m.tabs.Active = paletteTabIndex
+
+	tf1 := config.NewThemeFile("alpha", "dark", "dev", config.Theme{})
+	tf2 := config.NewThemeFile("beta", "dark", "dev", config.Theme{})
+	if err := m.configManager.WriteTheme(tf1); err != nil {
+		t.Fatalf("WriteTheme alpha: %v", err)
+	}
+	if err := m.configManager.WriteTheme(tf2); err != nil {
+		t.Fatalf("WriteTheme beta: %v", err)
+	}
+
+	m.openPresetLoad()
+	if len(m.themePresetList) != 2 {
+		t.Fatalf("themePresetList len = %d, want 2", len(m.themePresetList))
+	}
+	m.themePresetCursor = 0
+	deletedName := m.themePresetList[0].Name
+
+	cmd := m.execPresetDelete()
+	if cmd == nil {
+		t.Fatal("execPresetDelete returned nil cmd")
+	}
+
+	msg := cmd()
+	dm, ok := msg.(presetDeletedMsg)
+	if !ok {
+		t.Fatalf("cmd() = %T, want presetDeletedMsg", msg)
+	}
+	if dm.name != deletedName {
+		t.Errorf("name = %q, want %q", dm.name, deletedName)
+	}
+	if dm.listEmpty {
+		t.Error("listEmpty = true, want false (one preset remains)")
+	}
+
+	deletedPath := filepath.Join(dir, "themes", deletedName+".json")
+	if _, err := os.Stat(deletedPath); !os.IsNotExist(err) {
+		t.Errorf("deleted file still exists at %s", deletedPath)
+	}
+}
+
+// TestExecPresetDelete_AutoClosesOnEmpty seeds one preset, deletes it, and
+// asserts the returned message signals an empty list.
+func TestExecPresetDelete_AutoClosesOnEmpty(t *testing.T) {
+	m, _ := makePresetTestModel(t)
+	m.tabs.Active = paletteTabIndex
+
+	tf := config.NewThemeFile("only-one", "dark", "dev", config.Theme{})
+	if err := m.configManager.WriteTheme(tf); err != nil {
+		t.Fatalf("WriteTheme: %v", err)
+	}
+
+	m.openPresetLoad()
+	m.themePresetCursor = 0
+
+	cmd := m.execPresetDelete()
+	if cmd == nil {
+		t.Fatal("execPresetDelete returned nil cmd")
+	}
+
+	msg := cmd()
+	dm, ok := msg.(presetDeletedMsg)
+	if !ok {
+		t.Fatalf("cmd() = %T, want presetDeletedMsg", msg)
+	}
+	if !dm.listEmpty {
+		t.Error("listEmpty = false, want true (last preset deleted)")
+	}
+}
+
+// TestHandlePresetLoadKey_DShowsConfirm verifies that pressing D in load mode
+// activates the confirm dialog.
+func TestHandlePresetLoadKey_DShowsConfirm(t *testing.T) {
+	m, _ := makePresetTestModel(t)
+	m.tabs.Active = paletteTabIndex
+
+	tf := config.NewThemeFile("my-preset", "dark", "dev", config.Theme{})
+	if err := m.configManager.WriteTheme(tf); err != nil {
+		t.Fatalf("WriteTheme: %v", err)
+	}
+	m.openPresetLoad()
+
+	handled, cmd := m.handlePresetLoadKey("D")
+	if !handled {
+		t.Fatal("expected handled=true for D in load mode")
+	}
+	if cmd != nil {
+		t.Error("expected nil cmd when showing confirm (no async work yet)")
+	}
+	if !m.themePresetConfirmDelete.IsActive() {
+		t.Error("themePresetConfirmDelete should be active after D")
+	}
+}
+
+// TestHandlePresetLoadKey_ConfirmCancel verifies that n dismisses the confirm
+// dialog while staying in presetModeLoad.
+func TestHandlePresetLoadKey_ConfirmCancel(t *testing.T) {
+	m, _ := makePresetTestModel(t)
+	m.tabs.Active = paletteTabIndex
+
+	tf := config.NewThemeFile("cancel-me", "dark", "dev", config.Theme{})
+	if err := m.configManager.WriteTheme(tf); err != nil {
+		t.Fatalf("WriteTheme: %v", err)
+	}
+	m.openPresetLoad()
+
+	// Activate confirm dialog.
+	m.themePresetConfirmDelete.Show("delete", "Delete preset 'cancel-me'?")
+
+	handled, cmd := m.handlePresetLoadKey("n")
+	if !handled {
+		t.Fatal("expected handled=true for n in confirm")
+	}
+	if cmd != nil {
+		t.Error("expected nil cmd on cancel")
+	}
+	if m.themePresetConfirmDelete.IsActive() {
+		t.Error("confirm dialog should be dismissed after n")
+	}
+	if m.themePresetMode != presetModeLoad {
+		t.Errorf("mode = %d, want presetModeLoad", m.themePresetMode)
+	}
+}
+
+// TestHandlePresetLoadKey_EmptyListDNoop verifies that D with an empty list
+// does not activate the confirm dialog.
+func TestHandlePresetLoadKey_EmptyListDNoop(t *testing.T) {
+	m, _ := makePresetTestModel(t)
+	m.tabs.Active = paletteTabIndex
+	m.themePresetMode = presetModeLoad
+	m.themePresetList = nil
+
+	handled, _ := m.handlePresetLoadKey("D")
+	if !handled {
+		t.Fatal("expected handled=true")
+	}
+	if m.themePresetConfirmDelete.IsActive() {
+		t.Error("confirm dialog must not activate when list is empty")
+	}
+}
+
 // TestPresetRoundTrip_SaveExportReimport verifies the full save→load cycle
 // produces a model with matching input values.
 func TestPresetRoundTrip_SaveExportReimport(t *testing.T) {

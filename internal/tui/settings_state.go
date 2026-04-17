@@ -210,14 +210,20 @@ type SettingsModel struct {
 	originalTheme ThemeConfig // snapshot at load time, restored on cancel
 
 	// themePreset* fields manage the save/load/reset overlay on the Palette tab.
-	themePresetMode   presetMode
-	themePresetInput  textinput.Model
-	themePresetList   []config.ThemeFile
-	themePresetCursor int
-	themePresetErr    string
+	themePresetMode          presetMode
+	themePresetInput         textinput.Model
+	themePresetList          []config.ThemeFile
+	themePresetCursor        int
+	themePresetErr           string
+	themePresetConfirmDelete ConfirmDialog
+	themePresetFlash         string // transient footer flash after delete
 
 	// activeTheme is "dark" or "light" — the palette currently shown in the inputs.
 	activeTheme string
+	// activePresetName is the name of the preset backing the active palette
+	// (empty = built-in defaults). inactivePresetName mirrors it for the other slot.
+	activePresetName   string
+	inactivePresetName string
 	// inactiveThemeDraft holds raw hex strings for the theme NOT currently shown.
 	// Ordered by palette-tab focus offset (slot 0 = NormalText … slot 16 = Priority5Title):
 	//   0-8:  NormalText, Muted, Primary, Secondary, Accent, Success, Warning, Error, Border

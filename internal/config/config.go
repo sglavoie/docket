@@ -182,7 +182,9 @@ type Config struct {
 	TUIZebraStriping               *bool                        `json:"tui_zebra_striping,omitempty"`                // Alternating row backgrounds in task list views (default: false)
 	Palette                        PaletteColors                `json:"palette,omitzero"`                            // User-configurable TUI palette overrides — legacy, migrated to ThemeDark
 	ThemeDark                      Theme                        `json:"theme_dark,omitzero"`                         // Dark theme palette + bg/cursor colors
+	ThemeDarkName                  string                       `json:"theme_dark_name,omitempty"`                   // Name of last loaded/saved dark preset; empty = built-in defaults
 	ThemeLight                     Theme                        `json:"theme_light,omitzero"`                        // Light theme palette + bg/cursor colors
+	ThemeLightName                 string                       `json:"theme_light_name,omitempty"`                  // Name of last loaded/saved light preset; empty = built-in defaults
 	ThemeLightRev                  int                          `json:"theme_light_rev,omitempty"`                   // Revision of ThemeLight defaults; triggers force-refresh when behind LightThemeDefaultsRev
 	ActiveTheme                    string                       `json:"active_theme,omitempty"`                      // "dark" or "light"; defaults to "dark"
 	DefaultProjectView             string                       `json:"default_project_view,omitempty"`              // Default view when opening a project: outliner, project_tree
@@ -621,6 +623,7 @@ func (c *Config) MigratePaletteToThemes() bool {
 		changed = true
 	} else if c.ThemeLightRev < LightThemeDefaultsRev {
 		c.ThemeLight = DefaultLightTheme()
+		c.ThemeLightName = ""
 		c.ThemeLightRev = LightThemeDefaultsRev
 		changed = true
 	}

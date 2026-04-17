@@ -87,6 +87,7 @@ func (r *KeybindingRegistry) registerSettingsBindings() {
 		Keybinding{Key: "Ctrl+S", Description: "Save palette preset (Palette tab)", Category: "Palette Presets", Views: views},
 		Keybinding{Key: "Ctrl+O", Description: "Open palette preset (Palette tab)", Category: "Palette Presets", Views: views},
 		Keybinding{Key: "Ctrl+R", Description: "Reset palette slot to defaults (Palette tab)", Category: "Palette Presets", Views: views},
+		Keybinding{Key: "D", Description: "Delete palette preset (Palette tab, load overlay)", Category: "Palette Presets", Views: views},
 		// Stages tab
 		Keybinding{Key: "j/k", Description: "Navigate stages (Stages tab)", Category: "Stages", Views: views},
 		Keybinding{Key: "↑/↓", Description: "Navigate stages (Stages tab)", Category: "Stages", Views: views},
@@ -99,5 +100,6 @@ func (r *KeybindingRegistry) registerSettingsBindings() {
 		Keybinding{Key: "y/Y", Description: "Confirm action", Category: "Actions", Views: views},
 		Keybinding{Key: "n/N", Description: "Cancel action", Category: "Actions", Views: views},
 		Keybinding{Key: "Esc", Description: "Cancel / close", Category: "Navigation", Views: views},
+		Keybinding{Key: "?", Description: "Toggle help", Category: "Navigation", Views: views},
 	)
 }
