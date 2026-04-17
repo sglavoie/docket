@@ -18,7 +18,19 @@ func NewSettingsModel(cfg *config.Config, manager *config.Manager) *SettingsMode
 	contexts := cfg.GetAllContexts()
 	stages := append([]string{}, cfg.Stages...)
 
+	activeName := cfg.ActiveTheme
+	if activeName == "" {
+		activeName = "dark"
+	}
+
 	activeTheme := cfg.ActiveThemeConfig()
+
+	var inactiveCfg config.Theme
+	if activeName == "light" {
+		inactiveCfg = cfg.ThemeDark
+	} else {
+		inactiveCfg = cfg.ThemeLight
+	}
 
 	return &SettingsModel{
 		config:                   cfg,
@@ -126,7 +138,10 @@ func NewSettingsModel(cfg *config.Config, manager *config.Manager) *SettingsMode
 		sectionLimitWaitingInput: newSettingsInput(strconv.Itoa(config.DefaultSectionLimitWaiting), 3, 6, strconv.Itoa(cfg.GetSectionLimit("Waiting")), false),
 		sectionLimitSomedayInput: newSettingsInput(strconv.Itoa(config.DefaultSectionLimitSomeday), 3, 6, strconv.Itoa(cfg.GetSectionLimit("Someday")), false),
 		sectionLimitReviewInput:  newSettingsInput(strconv.Itoa(config.DefaultSectionLimitReview), 3, 6, strconv.Itoa(cfg.GetSectionLimit("Review")), false),
+		themePresetInput:         newSettingsInput("preset name", 50, 30, "", false),
 		originalTheme:            NewThemeConfig(cfg),
+		activeTheme:              activeName,
+		inactiveThemeDraft:       themeToInactiveDraft(inactiveCfg),
 		focusIndex:               0,
 		tabs:                     TabState{Names: settingsTabNames},
 		width:                    80,
@@ -153,6 +168,35 @@ func settingsOptionCursor(options []string, value string, fallback int) int {
 		}
 	}
 	return fallback
+}
+
+// themeToInactiveDraft flattens a config.Theme into the 17-slot draft array
+// used by inactiveThemeDraft. Slot ordering matches palette-tab focus offsets:
+//
+//	0-8:  NormalText, Muted, Primary, Secondary, Accent, Success, Warning, Error, Border
+//	9-11: BackgroundColor, CursorColor, CursorTextColor
+//
+// 12-16: Priority1Title … Priority5Title
+func themeToInactiveDraft(t config.Theme) [17]string {
+	return [17]string{
+		t.Palette.NormalText,
+		t.Palette.Muted,
+		t.Palette.Primary,
+		t.Palette.Secondary,
+		t.Palette.Accent,
+		t.Palette.Success,
+		t.Palette.Warning,
+		t.Palette.Error,
+		t.Palette.Border,
+		t.BackgroundColor,
+		t.CursorColor,
+		t.CursorTextColor,
+		t.Palette.Priority1Title,
+		t.Palette.Priority2Title,
+		t.Palette.Priority3Title,
+		t.Palette.Priority4Title,
+		t.Palette.Priority5Title,
+	}
 }
 
 func initOutlinerCollapsed(cfg *config.Config) [7]bool {

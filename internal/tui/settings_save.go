@@ -67,8 +67,8 @@ func (m *SettingsModel) saveSettings() tea.Cmd {
 	m.config.Editor = editor
 	m.config.DefaultContext = context
 	m.config.UndoHistoryDepth = &undoDepth
-	// Write active theme colors to ThemeDark (hardcoded for now; Session 3 adds toggle).
-	m.config.ThemeDark = config.Theme{
+
+	activeTheme := config.Theme{
 		BackgroundColor: normalizeHexColor(m.bgColorInput.Value()),
 		CursorColor:     normalizeHexColor(m.cursorColorInput.Value()),
 		CursorTextColor: normalizeHexColor(m.cursorTextColorInput.Value()),
@@ -89,7 +89,15 @@ func (m *SettingsModel) saveSettings() tea.Cmd {
 			Priority5Title: normalizeHexColor(m.priority5TitleInput.Value()),
 		},
 	}
-	m.config.ActiveTheme = "dark"
+	inactiveTheme := draftToTheme(m.inactiveThemeDraft)
+	if m.activeTheme == "light" {
+		m.config.ThemeLight = activeTheme
+		m.config.ThemeDark = inactiveTheme
+	} else {
+		m.config.ThemeDark = activeTheme
+		m.config.ThemeLight = inactiveTheme
+	}
+	m.config.ActiveTheme = m.activeTheme
 	m.config.DefaultProjectView = defaultProjectViewValues[m.defaultViewCursor]
 	m.config.ReviewDueSoonDays = &dueSoon
 	m.config.ReviewFutureDays = &futureDays
@@ -234,6 +242,32 @@ func columnDefaultsToMap(defaults [13]bool) map[string]bool {
 	return m
 }
 
+// draftToTheme converts the 17-slot inactiveThemeDraft array back to a config.Theme.
+// Slot ordering mirrors themeToInactiveDraft in settings_init.go.
+func draftToTheme(d [17]string) config.Theme {
+	return config.Theme{
+		Palette: config.PaletteColors{
+			NormalText:     normalizeHexColor(d[0]),
+			Muted:          normalizeHexColor(d[1]),
+			Primary:        normalizeHexColor(d[2]),
+			Secondary:      normalizeHexColor(d[3]),
+			Accent:         normalizeHexColor(d[4]),
+			Success:        normalizeHexColor(d[5]),
+			Warning:        normalizeHexColor(d[6]),
+			Error:          normalizeHexColor(d[7]),
+			Border:         normalizeHexColor(d[8]),
+			Priority1Title: normalizeHexColor(d[12]),
+			Priority2Title: normalizeHexColor(d[13]),
+			Priority3Title: normalizeHexColor(d[14]),
+			Priority4Title: normalizeHexColor(d[15]),
+			Priority5Title: normalizeHexColor(d[16]),
+		},
+		BackgroundColor: normalizeHexColor(d[9]),
+		CursorColor:     normalizeHexColor(d[10]),
+		CursorTextColor: normalizeHexColor(d[11]),
+	}
+}
+
 // boolPtr returns a pointer to the given bool value.
 func boolPtr(b bool) *bool { return &b }
 
@@ -241,6 +275,25 @@ func (m *SettingsModel) HasTextInput() bool     { return true }
 func (m *SettingsModel) ShouldCaptureEsc() bool { return true }
 func (m *SettingsModel) IsFullHeight() bool     { return false }
 func (m *SettingsModel) StatusBarLabel() string { return "Settings" }
+
+// HandledKeys returns all keys the Settings view's Update method can process.
+// This is the complete set across all tabs and modes (palette presets, stages, etc.).
+func (m *SettingsModel) HandledKeys() []string {
+	return []string{
+		// Field navigation
+		"tab", "shift+tab", "[", "]", "(", ")", "space", "enter",
+		// Selector / tab navigation
+		"h", "l", "left", "right",
+		// Palette preset shortcuts (palette tab)
+		"ctrl+s", "ctrl+o", "ctrl+r",
+		// Stages tab navigation and actions
+		"j", "k", "up", "down",
+		"a", "e", "d", "delete", "backspace",
+		"J", "K",
+		// Confirmation keys (stage delete, palette reset)
+		"y", "Y", "n", "N",
+	}
+}
 
 // GetConfirmDialog implements ConfirmDialogProvider for the settings view.
 func (m *SettingsModel) GetConfirmDialog() *ConfirmDialog {

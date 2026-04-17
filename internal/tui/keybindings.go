@@ -72,6 +72,7 @@ func NewKeybindingRegistry() *KeybindingRegistry {
 	r.registerCrossProjectLinkerBindings()
 	r.registerTutorBindings()
 	r.registerKeybindingExplorerBindings()
+	r.registerSettingsBindings()
 	return r
 }
 

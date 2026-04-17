@@ -29,6 +29,13 @@ func session2SyncViews() []syncTestCase {
 	}
 }
 
+// session3SyncViews returns views introduced in session 3 (palette presets, settings).
+func session3SyncViews() []syncTestCase {
+	return []syncTestCase{
+		{ViewSettings, &SettingsModel{}},
+	}
+}
+
 // syncTestCase pairs a ViewType with a KeySyncView implementation.
 type syncTestCase struct {
 	view    ViewType
@@ -79,6 +86,7 @@ func TestKeybindingSyncAllViews(t *testing.T) {
 	}
 
 	allViews := append(session1SyncViews(), session2SyncViews()...)
+	allViews = append(allViews, session3SyncViews()...)
 	for _, tc := range allViews {
 		t.Run(tc.view.String(), func(t *testing.T) {
 			// Build set of keys from registry (view-specific + global bindings).
@@ -157,6 +165,8 @@ func TestViewTypeString(t *testing.T) {
 		ViewBulkEdit:            "BulkEdit",
 		ViewBlockers:            "Blockers",
 		ViewMetricsDashboard:    "MetricsDashboard",
+		// Session 3
+		ViewSettings: "Settings",
 		// Session 2
 		ViewDailyReview:           "DailyReview",
 		ViewWeeklyReview:          "WeeklyReview",

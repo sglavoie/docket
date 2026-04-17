@@ -70,3 +70,34 @@ func (r *KeybindingRegistry) registerTutorBindings() {
 		Keybinding{Key: "Esc", Description: "Close", Category: "Navigation", Views: views},
 	)
 }
+
+func (r *KeybindingRegistry) registerSettingsBindings() {
+	views := []ViewType{ViewSettings}
+	r.add(
+		// Field navigation
+		Keybinding{Key: "Tab/Shift+Tab", Description: "Navigate fields", Category: "Navigation", Views: views},
+		Keybinding{Key: "[/]", Description: "Cycle tabs", Category: "Navigation", Views: views},
+		Keybinding{Key: "(/)", Description: "Toggle sub-tab row focus", Category: "Navigation", Views: views},
+		Keybinding{Key: "h/l", Description: "Cycle selector left/right", Category: "Navigation", Views: views},
+		Keybinding{Key: "←/→", Description: "Cycle selector left/right", Category: "Navigation", Views: views},
+		// Common actions
+		Keybinding{Key: "Space", Description: "Toggle boolean / cycle selector", Category: "Actions", Views: views},
+		Keybinding{Key: "Enter", Description: "Save settings", Category: "Actions", Views: views},
+		// Palette tab
+		Keybinding{Key: "Ctrl+S", Description: "Save palette preset (Palette tab)", Category: "Palette Presets", Views: views},
+		Keybinding{Key: "Ctrl+O", Description: "Open palette preset (Palette tab)", Category: "Palette Presets", Views: views},
+		Keybinding{Key: "Ctrl+R", Description: "Reset palette slot to defaults (Palette tab)", Category: "Palette Presets", Views: views},
+		// Stages tab
+		Keybinding{Key: "j/k", Description: "Navigate stages (Stages tab)", Category: "Stages", Views: views},
+		Keybinding{Key: "↑/↓", Description: "Navigate stages (Stages tab)", Category: "Stages", Views: views},
+		Keybinding{Key: "a", Description: "Add stage (Stages tab)", Category: "Stages", Views: views},
+		Keybinding{Key: "e", Description: "Edit stage (Stages tab)", Category: "Stages", Views: views},
+		Keybinding{Key: "d/Delete", Description: "Delete stage (Stages tab)", Category: "Stages", Views: views},
+		Keybinding{Key: "Backspace", Description: "Delete stage (Stages tab)", Category: "Stages", Views: views},
+		Keybinding{Key: "J/K", Description: "Reorder stage (Stages tab)", Category: "Stages", Views: views},
+		// Confirmation (stage delete, palette reset)
+		Keybinding{Key: "y/Y", Description: "Confirm action", Category: "Actions", Views: views},
+		Keybinding{Key: "n/N", Description: "Cancel action", Category: "Actions", Views: views},
+		Keybinding{Key: "Esc", Description: "Cancel / close", Category: "Navigation", Views: views},
+	)
+}

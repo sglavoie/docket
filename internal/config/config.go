@@ -183,6 +183,7 @@ type Config struct {
 	Palette                        PaletteColors                `json:"palette,omitzero"`                            // User-configurable TUI palette overrides — legacy, migrated to ThemeDark
 	ThemeDark                      Theme                        `json:"theme_dark,omitzero"`                         // Dark theme palette + bg/cursor colors
 	ThemeLight                     Theme                        `json:"theme_light,omitzero"`                        // Light theme palette + bg/cursor colors
+	ThemeLightRev                  int                          `json:"theme_light_rev,omitempty"`                   // Revision of ThemeLight defaults; triggers force-refresh when behind LightThemeDefaultsRev
 	ActiveTheme                    string                       `json:"active_theme,omitempty"`                      // "dark" or "light"; defaults to "dark"
 	DefaultProjectView             string                       `json:"default_project_view,omitempty"`              // Default view when opening a project: outliner, project_tree
 	FocusQueue                     []FocusQueueItem             `json:"focus_queue,omitempty"`                       // Persisted focus board work queue
@@ -612,9 +613,15 @@ func (c *Config) MigratePaletteToThemes() bool {
 		changed = true
 	}
 
-	// Ensure ThemeLight is populated with curated defaults.
+	// Ensure ThemeLight is populated with curated defaults, and refresh when
+	// the stored revision is behind the current LightThemeDefaultsRev.
 	if isThemeZero(c.ThemeLight) {
 		c.ThemeLight = DefaultLightTheme()
+		c.ThemeLightRev = LightThemeDefaultsRev
+		changed = true
+	} else if c.ThemeLightRev < LightThemeDefaultsRev {
+		c.ThemeLight = DefaultLightTheme()
+		c.ThemeLightRev = LightThemeDefaultsRev
 		changed = true
 	}
 

@@ -55,10 +55,10 @@ func (m *OutlinerModel) renderOutlinerSectionHeaderRow(row outlinerRow, selected
 		indicator = "▸"
 	}
 
-	line := fmt.Sprintf("  %s %s (%d)",
+	line := fmt.Sprintf("  %s %s %s",
 		MutedStyle.Render(indicator),
 		sectionStyle.Render("@ "+displayName),
-		row.SectionCount,
+		MutedStyle.Render(fmt.Sprintf("(%d)", row.SectionCount)),
 	)
 
 	if limit := m.config.GetSectionLimit(row.SectionName); limit > 0 && row.SectionCount > limit {

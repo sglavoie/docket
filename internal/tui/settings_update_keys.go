@@ -8,6 +8,10 @@ import (
 )
 
 func (m *SettingsModel) handleKeyPress(msg tea.KeyPressMsg) (bool, tea.Cmd) {
+	// When a preset overlay is active on the palette tab, route there first.
+	if m.tabs.Active == paletteTabIndex && m.themePresetMode != presetModeNone {
+		return m.handlePresetKey(msg)
+	}
 	if handled := m.handleStageConfirmKey(msg.String()); handled {
 		return true, nil
 	}
@@ -165,6 +169,11 @@ func (m *SettingsModel) handleGlobalKey(key string) (bool, tea.Cmd) { //nolint:g
 		return true, m.saveSettings()
 
 	case "ctrl+s":
+		// On the palette tab, ctrl+s opens the save preset overlay.
+		if m.tabs.Active == paletteTabIndex {
+			m.openPresetSave()
+			return true, nil
+		}
 		if m.stageEditMode {
 			if cmd := m.commitStageEditCmd(); cmd != nil {
 				return true, cmd
@@ -175,6 +184,19 @@ func (m *SettingsModel) handleGlobalKey(key string) (bool, tea.Cmd) { //nolint:g
 			return true, nil
 		}
 		return true, m.saveSettings()
+
+	case "ctrl+o":
+		if m.tabs.Active == paletteTabIndex {
+			m.openPresetLoad()
+		}
+		return true, nil
+
+	case "ctrl+r":
+		if m.tabs.Active == paletteTabIndex {
+			m.themePresetMode = presetModeResetConfirm
+			m.themePresetErr = ""
+		}
+		return true, nil
 
 	case "left", "h":
 		m.handleLeftKey()
@@ -189,7 +211,56 @@ func (m *SettingsModel) handleGlobalKey(key string) (bool, tea.Cmd) { //nolint:g
 	}
 }
 
+func (m *SettingsModel) togglePaletteTheme() {
+	snapshot := [17]string{
+		m.normalTextInput.Value(),
+		m.mutedInput.Value(),
+		m.primaryInput.Value(),
+		m.secondaryInput.Value(),
+		m.accentInput.Value(),
+		m.successInput.Value(),
+		m.warningInput.Value(),
+		m.errorColorInput.Value(),
+		m.borderInput.Value(),
+		m.bgColorInput.Value(),
+		m.cursorColorInput.Value(),
+		m.cursorTextColorInput.Value(),
+		m.priority1TitleInput.Value(),
+		m.priority2TitleInput.Value(),
+		m.priority3TitleInput.Value(),
+		m.priority4TitleInput.Value(),
+		m.priority5TitleInput.Value(),
+	}
+	m.normalTextInput.SetValue(m.inactiveThemeDraft[0])
+	m.mutedInput.SetValue(m.inactiveThemeDraft[1])
+	m.primaryInput.SetValue(m.inactiveThemeDraft[2])
+	m.secondaryInput.SetValue(m.inactiveThemeDraft[3])
+	m.accentInput.SetValue(m.inactiveThemeDraft[4])
+	m.successInput.SetValue(m.inactiveThemeDraft[5])
+	m.warningInput.SetValue(m.inactiveThemeDraft[6])
+	m.errorColorInput.SetValue(m.inactiveThemeDraft[7])
+	m.borderInput.SetValue(m.inactiveThemeDraft[8])
+	m.bgColorInput.SetValue(m.inactiveThemeDraft[9])
+	m.cursorColorInput.SetValue(m.inactiveThemeDraft[10])
+	m.cursorTextColorInput.SetValue(m.inactiveThemeDraft[11])
+	m.priority1TitleInput.SetValue(m.inactiveThemeDraft[12])
+	m.priority2TitleInput.SetValue(m.inactiveThemeDraft[13])
+	m.priority3TitleInput.SetValue(m.inactiveThemeDraft[14])
+	m.priority4TitleInput.SetValue(m.inactiveThemeDraft[15])
+	m.priority5TitleInput.SetValue(m.inactiveThemeDraft[16])
+	m.inactiveThemeDraft = snapshot
+	if m.activeTheme == "light" {
+		m.activeTheme = "dark"
+	} else {
+		m.activeTheme = "light"
+	}
+}
+
 func (m *SettingsModel) handleSpaceKey() {
+	if m.focusIndex == 4 {
+		m.togglePaletteTheme()
+		return
+	}
 	if m.focusIndex == 27 {
 		m.recentActivityShowAll = !m.recentActivityShowAll
 	}
@@ -243,6 +314,10 @@ func (m *SettingsModel) handleSpaceKey() {
 }
 
 func (m *SettingsModel) handleLeftKey() {
+	if m.focusIndex == 4 {
+		m.togglePaletteTheme()
+		return
+	}
 	if m.focusIndex == 1 && len(m.contexts) > 0 {
 		if m.contextCursor > 0 {
 			m.contextCursor--
@@ -271,6 +346,10 @@ func (m *SettingsModel) handleLeftKey() {
 }
 
 func (m *SettingsModel) handleRightKey() {
+	if m.focusIndex == 4 {
+		m.togglePaletteTheme()
+		return
+	}
 	if m.focusIndex == 1 && len(m.contexts) > 0 {
 		if m.contextCursor >= 0 && m.contextCursor < len(m.contexts)-1 {
 			m.contextCursor++

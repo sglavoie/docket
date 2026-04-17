@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"image/color"
 	"strconv"
 
 	"charm.land/lipgloss/v2"
@@ -64,96 +65,53 @@ func lightenHex(hex string, factor float64) string {
 }
 
 // rebuildPalette resets the palette color variables from user overrides.
-// Empty fields fall back to ANSI defaults.
+// Empty fields fall back to the canonical defaults from config.DefaultTheme.
 func rebuildPalette(p config.PaletteColors) {
-	if p.Primary != "" {
-		ColorPrimary = lipgloss.Color(p.Primary)
-	} else {
-		ColorPrimary = lipgloss.Color("39")
+	defaults := config.DefaultTheme(activeThemeName)
+	d := defaults.Palette
+
+	fallback := func(v, def string) color.Color {
+		if v != "" {
+			return lipgloss.Color(v)
+		}
+		return lipgloss.Color(def)
 	}
-	if p.Secondary != "" {
-		ColorSecondary = lipgloss.Color(p.Secondary)
-	} else {
-		ColorSecondary = lipgloss.Color("33")
-	}
-	if p.Success != "" {
-		ColorSuccess = lipgloss.Color(p.Success)
-	} else {
-		ColorSuccess = lipgloss.Color("42")
-	}
-	if p.Warning != "" {
-		ColorWarning = lipgloss.Color(p.Warning)
-	} else {
-		ColorWarning = lipgloss.Color("214")
-	}
-	if p.Error != "" {
-		ColorError = lipgloss.Color(p.Error)
-	} else {
-		ColorError = lipgloss.Color("196")
-	}
-	if p.Muted != "" {
-		ColorMuted = lipgloss.Color(p.Muted)
-	} else {
-		ColorMuted = lipgloss.Color("248")
-	}
-	if p.Dimmed != "" {
-		ColorDimmed = lipgloss.Color(p.Dimmed)
-	} else {
-		ColorDimmed = lipgloss.Color("240")
-	}
-	if p.DimmedBg != "" {
-		ColorDimmedBg = lipgloss.Color(p.DimmedBg)
-	} else {
-		ColorDimmedBg = lipgloss.Color("237")
-	}
-	if p.DimmedFg != "" {
-		ColorDimmedFg = lipgloss.Color(p.DimmedFg)
-	} else {
-		ColorDimmedFg = lipgloss.Color("250")
-	}
-	if p.Border != "" {
-		ColorBorder = lipgloss.Color(p.Border)
-	} else {
-		ColorBorder = lipgloss.Color("244")
-	}
-	if p.Accent != "" {
-		ColorHighlight = lipgloss.Color(p.Accent)
-		ColorAccent = lipgloss.Color(p.Accent)
-	} else {
-		ColorHighlight = lipgloss.Color("#f2eb16")
-		ColorAccent = lipgloss.Color("226")
-	}
+
+	ColorPrimary = fallback(p.Primary, d.Primary)
+	ColorSecondary = fallback(p.Secondary, d.Secondary)
+	ColorSuccess = fallback(p.Success, d.Success)
+	ColorWarning = fallback(p.Warning, d.Warning)
+	ColorError = fallback(p.Error, d.Error)
+	ColorMuted = fallback(p.Muted, d.Muted)
+	ColorDimmed = fallback(p.Dimmed, d.Dimmed)
+	ColorDimmedBg = fallback(p.DimmedBg, d.DimmedBg)
+	ColorDimmedFg = fallback(p.DimmedFg, d.DimmedFg)
+	ColorBorder = fallback(p.Border, d.Border)
+
+	accent := fallback(p.Accent, d.Accent)
+	ColorHighlight = accent
+	ColorAccent = accent
 
 	ColorBadgeText = ColorMuted
 	ColorLightGray = ColorMuted
 	ColorDiffContext = ColorMuted
 	ColorSubtleBorder = ColorBorder
 
-	if p.Priority1Title != "" {
-		ColorPriority1Title = lipgloss.Color(p.Priority1Title)
+	ColorPriority1Title = fallback(p.Priority1Title, d.Priority1Title)
+	ColorPriority2Title = fallback(p.Priority2Title, d.Priority2Title)
+	ColorPriority3Title = fallback(p.Priority3Title, d.Priority3Title)
+	ColorPriority4Title = fallback(p.Priority4Title, d.Priority4Title)
+	ColorPriority5Title = fallback(p.Priority5Title, d.Priority5Title)
+
+	if p.NormalText != "" {
+		colorNormalText = p.NormalText
 	} else {
-		ColorPriority1Title = lipgloss.Color(defaultColorPriority1Title)
-	}
-	if p.Priority2Title != "" {
-		ColorPriority2Title = lipgloss.Color(p.Priority2Title)
-	} else {
-		ColorPriority2Title = lipgloss.Color(defaultColorPriority2Title)
-	}
-	if p.Priority3Title != "" {
-		ColorPriority3Title = lipgloss.Color(p.Priority3Title)
-	} else {
-		ColorPriority3Title = lipgloss.Color(defaultColorPriority3Title)
-	}
-	if p.Priority4Title != "" {
-		ColorPriority4Title = lipgloss.Color(p.Priority4Title)
-	} else {
-		ColorPriority4Title = lipgloss.Color(defaultColorPriority4Title)
-	}
-	if p.Priority5Title != "" {
-		ColorPriority5Title = lipgloss.Color(p.Priority5Title)
-	} else {
-		ColorPriority5Title = lipgloss.Color(defaultColorPriority5Title)
+		colorNormalText = d.NormalText
 	}
 
-	colorNormalText = p.NormalText
+	if activeThemeName == "light" {
+		ColorProgressEmpty = lipgloss.Color(d.Dimmed)
+	} else {
+		ColorProgressEmpty = ColorMuted
+	}
 }

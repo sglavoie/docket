@@ -125,6 +125,68 @@ func TestActiveThemeConfig(t *testing.T) {
 	}
 }
 
+func TestMigratePaletteToThemes_FreshConfig_SetsRev(t *testing.T) {
+	cfg := &Config{}
+
+	changed := cfg.MigratePaletteToThemes()
+	if !changed {
+		t.Fatal("expected changed=true for fresh config")
+	}
+
+	light := DefaultLightTheme()
+	if cfg.ThemeLight.BackgroundColor != light.BackgroundColor {
+		t.Errorf("ThemeLight.BackgroundColor = %q, want %q", cfg.ThemeLight.BackgroundColor, light.BackgroundColor)
+	}
+	if cfg.ThemeLightRev != LightThemeDefaultsRev {
+		t.Errorf("ThemeLightRev = %d, want %d", cfg.ThemeLightRev, LightThemeDefaultsRev)
+	}
+}
+
+func TestMigratePaletteToThemes_StaleRev_ForceRefresh(t *testing.T) {
+	customTheme := Theme{BackgroundColor: "#aabbcc", Palette: PaletteColors{Primary: "#001122"}}
+	cfg := &Config{
+		ThemeLight:    customTheme,
+		ThemeLightRev: 0, // stale
+		ActiveTheme:   "light",
+	}
+
+	changed := cfg.MigratePaletteToThemes()
+	if !changed {
+		t.Fatal("expected changed=true when ThemeLightRev is stale")
+	}
+
+	// ThemeLight must be overwritten with fresh defaults.
+	light := DefaultLightTheme()
+	if cfg.ThemeLight.BackgroundColor != light.BackgroundColor {
+		t.Errorf("ThemeLight.BackgroundColor = %q, want %q", cfg.ThemeLight.BackgroundColor, light.BackgroundColor)
+	}
+	if cfg.ThemeLightRev != LightThemeDefaultsRev {
+		t.Errorf("ThemeLightRev = %d, want %d", cfg.ThemeLightRev, LightThemeDefaultsRev)
+	}
+}
+
+func TestMigratePaletteToThemes_CurrentRev_NoOp(t *testing.T) {
+	light := DefaultLightTheme()
+	cfg := &Config{
+		ThemeLight:    light,
+		ThemeLightRev: LightThemeDefaultsRev,
+		ThemeDark:     Theme{BackgroundColor: "#000000"},
+		ActiveTheme:   "dark",
+	}
+	snapshot := *cfg
+
+	changed := cfg.MigratePaletteToThemes()
+	if changed {
+		t.Error("expected changed=false when ThemeLightRev is current")
+	}
+	if cfg.ThemeLight != snapshot.ThemeLight {
+		t.Error("ThemeLight must not be modified when rev is current")
+	}
+	if cfg.ThemeLightRev != snapshot.ThemeLightRev {
+		t.Errorf("ThemeLightRev changed unexpectedly: got %d, want %d", cfg.ThemeLightRev, snapshot.ThemeLightRev)
+	}
+}
+
 func TestConfigVersionBump_V1toV2(t *testing.T) {
 	tmpDir := t.TempDir()
 	configPath := filepath.Join(tmpDir, "v1-config.json")

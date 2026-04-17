@@ -111,6 +111,7 @@ func runRoot(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	tui.AppVersion = Version
 	return tui.RunApp(cfg, configManager, tui.WithCLIReference(CLIReference))
 }
 

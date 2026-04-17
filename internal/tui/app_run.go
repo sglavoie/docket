@@ -16,6 +16,10 @@ import (
 	"github.com/sglavoie/tt/internal/workflow"
 )
 
+// AppVersion is the application version string used when writing theme files.
+// Set this from the cmd package before calling RunApp.
+var AppVersion = "dev"
+
 // StartupEvalResult holds the result of workflow evaluation at TUI startup.
 type StartupEvalResult struct {
 	Evaluated     bool

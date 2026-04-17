@@ -17,6 +17,7 @@ const (
 
 // ThemeConfig bundles all user-configurable theme values for ApplyTheme.
 type ThemeConfig struct {
+	Name          string // "light" or "dark"
 	BgColor       string
 	CursorBg      string
 	CursorFg      string
@@ -28,6 +29,7 @@ type ThemeConfig struct {
 func NewThemeConfig(cfg *config.Config) ThemeConfig {
 	t := cfg.ActiveThemeConfig()
 	return ThemeConfig{
+		Name:          cfg.ActiveTheme,
 		BgColor:       t.BackgroundColor,
 		CursorBg:      t.CursorColor,
 		CursorFg:      t.CursorTextColor,
@@ -65,17 +67,20 @@ func rebuildStyles() {
 // ApplyTheme reconfigures cursor/selection colors and background propagation.
 // Call at startup and after settings save.
 func ApplyTheme(tc ThemeConfig) {
+	activeThemeName = tc.Name
 	rebuildPalette(tc.Palette)
 	rebuildStyles()
 	buildViewAccentMap()
 
+	themeDefaults := config.DefaultTheme(tc.Name)
+
 	effectiveBg := tc.CursorBg
 	if effectiveBg == "" {
-		effectiveBg = DefaultSelectedBg
+		effectiveBg = themeDefaults.CursorColor
 	}
 	effectiveFg := tc.CursorFg
 	if effectiveFg == "" {
-		effectiveFg = DefaultSelectedFg
+		effectiveFg = themeDefaults.CursorTextColor
 	}
 	effectiveFlash := lightenHex(effectiveBg, 0.4)
 
@@ -123,20 +128,25 @@ func ApplyTheme(tc ThemeConfig) {
 		Bold(true).
 		Foreground(ColorSelectedFg)
 
-	themeBgColor = tc.BgColor
+	// Resolve background: user override → theme default (fixes blank→wrong-default bug).
+	effectiveBgColor := tc.BgColor
+	if effectiveBgColor == "" {
+		effectiveBgColor = themeDefaults.BackgroundColor
+	}
+	themeBgColor = effectiveBgColor
 	zebraEnabled = tc.ZebraStriping
 
 	// Derive zebra background: darken custom bg 8%, or use default ColorZebraBg.
-	if tc.BgColor != "" {
-		derivedZebra := darkenHex(tc.BgColor, 0.08)
+	if effectiveBgColor != "" {
+		derivedZebra := darkenHex(effectiveBgColor, 0.08)
 		ZebraRowStyle = lipgloss.NewStyle().Background(lipgloss.Color(derivedZebra))
 	} else {
 		ZebraRowStyle = lipgloss.NewStyle().Background(ColorZebraBg)
 	}
 
 	alwaysBg := ColorBackground
-	if tc.BgColor != "" {
-		alwaysBg = lipgloss.Color(tc.BgColor)
+	if effectiveBgColor != "" {
+		alwaysBg = lipgloss.Color(effectiveBgColor)
 	}
 
 	StatusBarStyle = withOptionalBg(lipgloss.NewStyle().
@@ -232,10 +242,15 @@ func makeBadgeStyle(fg, bg string) lipgloss.Style {
 		Background(lipgloss.Color(bg))
 }
 
-// makeViewModeStyle creates a view mode tab style with the given background ANSI color.
-func makeViewModeStyle(bg string) lipgloss.Style {
+// makeViewModeStyle creates a view mode tab style with tone-aware background.
+// darkANSI is used on dark themes; lightHex (a curated hex color) on light themes.
+func makeViewModeStyle(darkANSI, lightHex string) lipgloss.Style {
+	bgStr := darkANSI
+	if activeThemeName == "light" {
+		bgStr = lightHex
+	}
 	return lipgloss.NewStyle().
-		Background(lipgloss.Color(bg)).
+		Background(lipgloss.Color(bgStr)).
 		Foreground(lipgloss.Color("15")).
 		Bold(true).
 		Padding(0, 1)

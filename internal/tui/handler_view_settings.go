@@ -1,6 +1,9 @@
 package tui
 
 import (
+	"fmt"
+	"time"
+
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/template"
@@ -29,6 +32,22 @@ func (m *AppModel) handleViewSettingsMessages(msg tea.Msg) (bool, tea.Cmd) { //n
 			m.dashboard.Refresh(m.config)
 		}
 		return true, nil
+
+	case presetSavedMsg:
+		m.setSuccessStatus("Preset saved: " + msg.name)
+		return true, defaultStatusTimeout()
+
+	case presetLoadedMsg:
+		m.setSuccessStatus("Preset loaded: " + msg.name)
+		return true, defaultStatusTimeout()
+
+	case presetResetMsg:
+		m.setInfoStatus("Palette slot reset to defaults")
+		return true, defaultStatusTimeout()
+
+	case presetErrMsg:
+		m.err = fmt.Errorf("preset error: %s", msg.err)
+		return true, statusTimeout(5 * time.Second)
 
 	case ShowWorkflowRulesMsg:
 		m.showView(ViewWorkflowRules, NewWorkflowRulesModel(m.config, m.configManager))

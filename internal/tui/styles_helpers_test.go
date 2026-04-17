@@ -22,7 +22,7 @@ func TestGetTitlePriorityStyle(t *testing.T) {
 		{2, true, false, false, lipgloss.Color(defaultColorPriority2Title)},
 		{3, false, false, false, lipgloss.Color(defaultColorPriority3Title)},
 		{4, false, false, false, lipgloss.Color(defaultColorPriority4Title)},
-		{5, false, false, true, lipgloss.Color(defaultColorPriority5Title)},
+		{5, false, false, false, lipgloss.Color(defaultColorPriority5Title)},
 	}
 
 	for _, tc := range tests {

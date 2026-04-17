@@ -209,6 +209,22 @@ type SettingsModel struct {
 
 	originalTheme ThemeConfig // snapshot at load time, restored on cancel
 
+	// themePreset* fields manage the save/load/reset overlay on the Palette tab.
+	themePresetMode   presetMode
+	themePresetInput  textinput.Model
+	themePresetList   []config.ThemeFile
+	themePresetCursor int
+	themePresetErr    string
+
+	// activeTheme is "dark" or "light" — the palette currently shown in the inputs.
+	activeTheme string
+	// inactiveThemeDraft holds raw hex strings for the theme NOT currently shown.
+	// Ordered by palette-tab focus offset (slot 0 = NormalText … slot 16 = Priority5Title):
+	//   0-8:  NormalText, Muted, Primary, Secondary, Accent, Success, Warning, Error, Border
+	//   9-11: BackgroundColor, CursorColor, CursorTextColor
+	//  12-16: Priority1Title … Priority5Title
+	inactiveThemeDraft [17]string
+
 	tabs               TabState
 	subTab             int  // active sub-tab index within current tab
 	subTabRowFocused   bool // true when [/] navigates sub-tabs instead of main tabs

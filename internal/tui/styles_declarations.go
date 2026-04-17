@@ -12,8 +12,10 @@ var (
 			Foreground(ColorSecondary).
 			MarginBottom(1)
 
-	// DimStyle applies the ANSI faint attribute to visually de-emphasize unfocused panes.
-	DimStyle = lipgloss.NewStyle().Faint(true)
+	// DimStyle applies the ANSI faint attribute plus an explicit muted color to
+	// visually de-emphasize unfocused panes. The explicit foreground ensures
+	// readable contrast on light themes where Faint alone would wash text out.
+	DimStyle = lipgloss.NewStyle().Foreground(ColorDimmed).Faint(true)
 
 	// DimmedTaskStyle applies a light gray background + dark text + italic to visually dim task lines.
 	DimmedTaskStyle = lipgloss.NewStyle().
@@ -160,7 +162,7 @@ var (
 				Foreground(ColorSuccess)
 
 	ProgressEmptyStyle = lipgloss.NewStyle().
-				Foreground(ColorMuted)
+				Foreground(ColorProgressEmpty)
 
 	ScrollbarThumbStyle = lipgloss.NewStyle().
 				Foreground(ColorPrimary)
@@ -224,8 +226,7 @@ var (
 				Foreground(ColorPrimary)
 
 	FieldDescriptionStyle = lipgloss.NewStyle().
-				Foreground(ColorMuted).
-				Faint(true)
+				Foreground(ColorMuted)
 
 	SelectorOptionStyle = lipgloss.NewStyle().
 				Foreground(ColorMuted).
@@ -266,16 +267,16 @@ var (
 			Bold(true).
 			Background(ColorBackground)
 
-	ViewModeActiveStyle    = makeViewModeStyle("34")
-	ViewModeNextStyle      = makeViewModeStyle("61")
-	ViewModeInboxStyle     = makeViewModeStyle("33")
-	ViewModeWaitingStyle   = makeViewModeStyle("214")
-	ViewModeSomedayStyle   = makeViewModeStyle("135")
-	ViewModeCompletedStyle = makeViewModeStyle("136")
-	ViewModeReviewStyle    = makeViewModeStyle("30")
-	ViewModeStandbyStyle   = makeViewModeStyle("141")
-	ViewModeSnoozedStyle   = makeViewModeStyle("95")
-	ViewModeAllStyle       = makeViewModeStyle("60")
+	ViewModeActiveStyle    = makeViewModeStyle("34", "#15803d")
+	ViewModeNextStyle      = makeViewModeStyle("61", "#3730a3")
+	ViewModeInboxStyle     = makeViewModeStyle("33", "#1d4ed8")
+	ViewModeWaitingStyle   = makeViewModeStyle("214", "#92400e")
+	ViewModeSomedayStyle   = makeViewModeStyle("135", "#6d28d9")
+	ViewModeCompletedStyle = makeViewModeStyle("136", "#4b5563")
+	ViewModeReviewStyle    = makeViewModeStyle("30", "#0f766e")
+	ViewModeStandbyStyle   = makeViewModeStyle("141", "#7c3aed")
+	ViewModeSnoozedStyle   = makeViewModeStyle("95", "#7c2d12")
+	ViewModeAllStyle       = makeViewModeStyle("60", "#0369a1")
 
 	FilterBadgeStyle = lipgloss.NewStyle().
 				Background(ColorWarning).
@@ -440,7 +441,7 @@ var (
 	TitlePriority2Style = lipgloss.NewStyle().Foreground(ColorPriority2Title).Bold(true)
 	TitlePriority3Style = lipgloss.NewStyle().Foreground(ColorPriority3Title)
 	TitlePriority4Style = lipgloss.NewStyle().Foreground(ColorPriority4Title)
-	TitlePriority5Style = lipgloss.NewStyle().Foreground(ColorPriority5Title).Faint(true)
+	TitlePriority5Style = lipgloss.NewStyle().Foreground(ColorPriority5Title)
 
 	RuleKeywordStyle   = makeColorStyle(ColorRuleKeyword)
 	RuleOperatorStyle  = makeColorStyle(ColorRuleOperator)

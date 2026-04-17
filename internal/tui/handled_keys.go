@@ -313,6 +313,8 @@ func normalizeDisplayKey(k string) string {
 		return "space"
 	case "Backspace", "backspace":
 		return "backspace"
+	case "Delete", "delete":
+		return "delete"
 	case "":
 		return ""
 	}

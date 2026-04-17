@@ -224,7 +224,7 @@ func (m *DashboardModel) renderProjectSummaryContent(project *models.Project) st
 
 	for _, s := range sectionOrder {
 		if count := sectionCounts[s.key]; count > 0 {
-			lines = append(lines, fmt.Sprintf("  %-12s%d", s.label, count))
+			lines = append(lines, NormalStyle.Render(fmt.Sprintf("  %-12s%d", s.label, count)))
 		}
 	}
 
@@ -245,7 +245,7 @@ func (m *DashboardModel) renderProjectSummaryContent(project *models.Project) st
 
 	for _, s := range statusOrder {
 		if count := statusCounts[s.status]; count > 0 {
-			lines = append(lines, fmt.Sprintf("  %s %-12s%d", s.status.Icon(), s.label, count))
+			lines = append(lines, NormalStyle.Render(fmt.Sprintf("  %s %-12s%d", s.status.Icon(), s.label, count)))
 		}
 	}
 

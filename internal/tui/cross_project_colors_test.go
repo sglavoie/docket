@@ -15,32 +15,45 @@ func TestProjectBadgeColorDeterministic(t *testing.T) {
 	}
 }
 
-func TestProjectBadgeColorNoPaletteCollision(t *testing.T) {
-	// Colors used by score_badge.go and shared_render.go that must not appear.
-	forbidden := map[string]bool{
-		"196": true,
-		"208": true,
-		"226": true,
-		"118": true,
-		"42":  true,
+func TestProjectBadgeColorPalettesAreHex(t *testing.T) {
+	for i, c := range projectColorPaletteDark {
+		if len(c) == 0 || c[0] != '#' {
+			t.Errorf("projectColorPaletteDark[%d] = %q, expected hex (#rrggbb)", i, c)
+		}
 	}
-	for _, c := range projectColorPalette {
-		if forbidden[c] {
-			t.Errorf("palette color %q collides with score_badge.go / shared_render.go colors", c)
+	for i, c := range projectColorPaletteLight {
+		if len(c) == 0 || c[0] != '#' {
+			t.Errorf("projectColorPaletteLight[%d] = %q, expected hex (#rrggbb)", i, c)
 		}
 	}
 }
 
 func TestProjectBadgeColorInPalette(t *testing.T) {
-	paletteSet := make(map[string]bool)
-	for _, c := range projectColorPalette {
-		paletteSet[c] = true
-	}
 	names := []string{"alpha", "beta", "gamma", "tt", "work", "home", "side", "hobby"}
+
+	darkSet := make(map[string]bool)
+	for _, c := range projectColorPaletteDark {
+		darkSet[c] = true
+	}
+	lightSet := make(map[string]bool)
+	for _, c := range projectColorPaletteLight {
+		lightSet[c] = true
+	}
+
+	activeThemeName = ""
 	for _, name := range names {
 		c := projectBadgeColor(name)
-		if !paletteSet[c] {
-			t.Errorf("projectBadgeColor(%q) = %q, not in palette", name, c)
+		if !darkSet[c] {
+			t.Errorf("dark theme: projectBadgeColor(%q) = %q, not in dark palette", name, c)
 		}
 	}
+
+	activeThemeName = "light"
+	for _, name := range names {
+		c := projectBadgeColor(name)
+		if !lightSet[c] {
+			t.Errorf("light theme: projectBadgeColor(%q) = %q, not in light palette", name, c)
+		}
+	}
+	activeThemeName = ""
 }

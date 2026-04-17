@@ -4,14 +4,24 @@ import (
 	"hash/fnv"
 )
 
-// projectColorPalette is a 12-color ANSI 256-color palette chosen to avoid
-// collision with score_badge.go (196,208,226,118,42) and shared_render.go colors.
-var projectColorPalette = [12]string{
-	"204", "214", "220", "154", "43", "39", "33", "99", "135", "170", "215", "87",
+// projectColorPaletteDark is a 12-color curated hex palette for dark themes:
+// bright and saturated for readability on dark backgrounds.
+var projectColorPaletteDark = [12]string{
+	"#ff6b9d", "#fb923c", "#facc15", "#a3e635",
+	"#34d399", "#60a5fa", "#38bdf8", "#a78bfa",
+	"#c084fc", "#f472b6", "#fbbf24", "#22d3ee",
+}
+
+// projectColorPaletteLight is a 12-color curated hex palette for light themes:
+// darker and sufficiently saturated for readability on light backgrounds.
+var projectColorPaletteLight = [12]string{
+	"#be123c", "#c2410c", "#a16207", "#4d7c0f",
+	"#15803d", "#0369a1", "#0e7490", "#6d28d9",
+	"#a21caf", "#be185d", "#b45309", "#0891b2",
 }
 
 // projectBadgeColor returns a deterministic palette color string for the given
-// project name using FNV32a hash modulo 12 over the palette above.
+// project name using FNV32a hash modulo 12 over the tone-appropriate palette.
 //
 // Call site: renderCrossProjectContent (cross_project_outliner.go) calls
 // projectBadgeColor(projName) directly and builds the badge inline — it does
@@ -21,6 +31,9 @@ var projectColorPalette = [12]string{
 func projectBadgeColor(projectName string) string {
 	h := fnv.New32a()
 	_, _ = h.Write([]byte(projectName))
-	idx := int(h.Sum32()) % len(projectColorPalette)
-	return projectColorPalette[idx]
+	idx := int(h.Sum32()) % 12
+	if activeThemeName == "light" {
+		return projectColorPaletteLight[idx]
+	}
+	return projectColorPaletteDark[idx]
 }

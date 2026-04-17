@@ -13,7 +13,7 @@ func rebuildTextStyles() {
 
 	TitleStyle = lipgloss.NewStyle().Bold(true).Foreground(ColorPrimary)
 	SubtitleStyle = lipgloss.NewStyle().Foreground(ColorSecondary).MarginBottom(1)
-	DimStyle = lipgloss.NewStyle().Faint(true)
+	DimStyle = lipgloss.NewStyle().Foreground(ColorDimmed).Faint(true)
 	DimmedTaskStyle = lipgloss.NewStyle().
 		Background(ColorDimmedBg).
 		Foreground(ColorDimmedFg).
@@ -88,7 +88,11 @@ func rebuildBadgeStyles() {
 	BlockedBadgeStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("196"))
 	StandbyBadgeStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("141"))
 	CanceledBadgeStyle = makeBadgeStyle("248", "236")
-	StageBadgeStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("183"))
+	if activeThemeName == "light" {
+		StageBadgeStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#7c3aed"))
+	} else {
+		StageBadgeStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("183"))
+	}
 
 	ArchivedBadgeStyle = lipgloss.NewStyle().Background(ColorWarning).Foreground(lipgloss.Color("0")).Padding(0, 1)
 	FilterBadgeStyle = lipgloss.NewStyle().Background(ColorWarning).Foreground(lipgloss.Color("0")).Padding(0, 1)
@@ -106,7 +110,7 @@ func rebuildLayoutStyles() {
 	StatusBarStyle = lipgloss.NewStyle().Foreground(ColorHighlight).Background(ColorBackground).Padding(0, 1)
 	TreeBranchStyle = lipgloss.NewStyle().Foreground(ColorBorder)
 	ProgressFullStyle = lipgloss.NewStyle().Foreground(ColorSuccess)
-	ProgressEmptyStyle = lipgloss.NewStyle().Foreground(ColorMuted)
+	ProgressEmptyStyle = lipgloss.NewStyle().Foreground(ColorProgressEmpty)
 	ScrollbarThumbStyle = lipgloss.NewStyle().Foreground(ColorPrimary)
 	ScrollbarTrackStyle = lipgloss.NewStyle().Foreground(ColorMuted)
 	ConfirmStyle = lipgloss.NewStyle().Background(ColorWarning).Foreground(lipgloss.Color("0")).Padding(0, 1).MarginTop(1)
@@ -137,7 +141,7 @@ func rebuildFormStyles() {
 	WarningMessageStyle = lipgloss.NewStyle().Foreground(ColorWarning)
 	FieldLabelStyle = lipgloss.NewStyle().Foreground(ColorMuted)
 	FieldLabelFocusedStyle = lipgloss.NewStyle().Bold(true).Foreground(ColorPrimary)
-	FieldDescriptionStyle = lipgloss.NewStyle().Foreground(ColorMuted).Faint(true)
+	FieldDescriptionStyle = lipgloss.NewStyle().Foreground(ColorMuted)
 	SelectorOptionStyle = lipgloss.NewStyle().Foreground(ColorMuted).Padding(0, 1)
 	SelectorOptionSelectedStyle = lipgloss.NewStyle().Bold(true).Foreground(ColorSelectedFg).Padding(0, 1)
 
@@ -166,16 +170,16 @@ func rebuildViewStyles() {
 	HelpFilterActiveStyle = lipgloss.NewStyle().Foreground(ColorWarning)
 	FocusModeStyle = lipgloss.NewStyle().Foreground(ColorSecondary).Bold(true).Background(ColorBackground)
 
-	ViewModeActiveStyle = makeViewModeStyle("34")
-	ViewModeNextStyle = makeViewModeStyle("61")
-	ViewModeInboxStyle = makeViewModeStyle("33")
-	ViewModeWaitingStyle = makeViewModeStyle("214")
-	ViewModeSomedayStyle = makeViewModeStyle("135")
-	ViewModeCompletedStyle = makeViewModeStyle("136")
-	ViewModeReviewStyle = makeViewModeStyle("30")
-	ViewModeStandbyStyle = makeViewModeStyle("141")
-	ViewModeSnoozedStyle = makeViewModeStyle("95")
-	ViewModeAllStyle = makeViewModeStyle("60")
+	ViewModeActiveStyle = makeViewModeStyle("34", "#15803d")
+	ViewModeNextStyle = makeViewModeStyle("61", "#3730a3")
+	ViewModeInboxStyle = makeViewModeStyle("33", "#1d4ed8")
+	ViewModeWaitingStyle = makeViewModeStyle("214", "#92400e")
+	ViewModeSomedayStyle = makeViewModeStyle("135", "#6d28d9")
+	ViewModeCompletedStyle = makeViewModeStyle("136", "#4b5563")
+	ViewModeReviewStyle = makeViewModeStyle("30", "#0f766e")
+	ViewModeStandbyStyle = makeViewModeStyle("141", "#7c3aed")
+	ViewModeSnoozedStyle = makeViewModeStyle("95", "#7c2d12")
+	ViewModeAllStyle = makeViewModeStyle("60", "#0369a1")
 }
 
 func rebuildSelectionStyles() {
@@ -228,7 +232,7 @@ func rebuildPriorityTitleStyles() {
 	TitlePriority2Style = lipgloss.NewStyle().Foreground(ColorPriority2Title).Bold(true)
 	TitlePriority3Style = lipgloss.NewStyle().Foreground(ColorPriority3Title)
 	TitlePriority4Style = lipgloss.NewStyle().Foreground(ColorPriority4Title)
-	TitlePriority5Style = lipgloss.NewStyle().Foreground(ColorPriority5Title).Faint(true)
+	TitlePriority5Style = lipgloss.NewStyle().Foreground(ColorPriority5Title)
 }
 
 func rebuildMiscStyles() {

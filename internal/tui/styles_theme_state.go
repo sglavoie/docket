@@ -2,6 +2,9 @@ package tui
 
 import "charm.land/lipgloss/v2"
 
+// activeThemeName holds the current theme name ("light" or "dark"; empty = not set).
+var activeThemeName string
+
 // themeBgColor holds the current TUI background color (empty = none/terminal default).
 var themeBgColor string
 
