@@ -122,3 +122,23 @@ func TestApplyThemeDarkEmptyCursorResolvesToDefaults(t *testing.T) {
 		t.Errorf("dark empty bg: themeBgColor = %q, want empty", themeBgColor)
 	}
 }
+
+func TestColorSelectedTextFgLightTheme(t *testing.T) {
+	ApplyTheme(ThemeConfig{Name: "light"})
+	t.Cleanup(func() { ApplyTheme(ThemeConfig{}) })
+
+	want := lipgloss.Color("#0f172a")
+	if ColorSelectedTextFg != want {
+		t.Errorf("light theme: ColorSelectedTextFg = %v, want %v", ColorSelectedTextFg, want)
+	}
+}
+
+func TestColorSelectedTextFgDarkTheme(t *testing.T) {
+	ApplyTheme(ThemeConfig{Name: ""})
+	t.Cleanup(func() { ApplyTheme(ThemeConfig{}) })
+
+	want := lipgloss.Color("#fbeeff")
+	if ColorSelectedTextFg != want {
+		t.Errorf("dark theme: ColorSelectedTextFg = %v, want %v", ColorSelectedTextFg, want)
+	}
+}

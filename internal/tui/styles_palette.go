@@ -31,6 +31,7 @@ var (
 	ColorViewStandby   = lipgloss.Color("141")
 	ColorViewSomeday   = lipgloss.Color("135")
 	ColorSelectedFg    = lipgloss.Color("#fbeeff")
+	ColorSelectedTextFg = lipgloss.Color("#fbeeff") // dark-theme default; set by ApplyTheme
 	ColorFlashBg       = lipgloss.Color("#7b2fa0")
 	ColorLightGray     = lipgloss.Color("252")
 	ColorSubtleBorder  = lipgloss.Color("240")

@@ -154,17 +154,17 @@ func rebuildFormStyles() {
 	FieldLabelFocusedStyle = lipgloss.NewStyle().Bold(true).Foreground(ColorPrimary)
 	FieldDescriptionStyle = lipgloss.NewStyle().Foreground(ColorMuted)
 	SelectorOptionStyle = lipgloss.NewStyle().Foreground(ColorMuted).Padding(0, 1)
-	SelectorOptionSelectedStyle = lipgloss.NewStyle().Bold(true).Foreground(ColorSelectedFg).Padding(0, 1)
+	SelectorOptionSelectedStyle = lipgloss.NewStyle().Bold(true).Foreground(ColorSelectedTextFg).Padding(0, 1)
 
 	FilterViewBoxStyle = lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(ColorPrimary).Padding(1, 2)
 	FilterItemStyle = lipgloss.NewStyle().Foreground(ColorMuted)
-	FilterItemSelectedStyle = lipgloss.NewStyle().Foreground(ColorSelectedFg).Bold(true)
+	FilterItemSelectedStyle = lipgloss.NewStyle().Foreground(ColorSelectedTextFg).Bold(true)
 	FilterValueStyle = lipgloss.NewStyle().Foreground(ColorSecondary)
 	FilterClearStyle = lipgloss.NewStyle().Foreground(ColorError)
 
 	TagManagerBoxStyle = lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(ColorPrimary).Padding(1, 2)
 	TagManagerItemStyle = lipgloss.NewStyle().Foreground(ColorMuted)
-	TagManagerItemSelectedStyle = lipgloss.NewStyle().Foreground(ColorSelectedFg).Bold(true)
+	TagManagerItemSelectedStyle = lipgloss.NewStyle().Foreground(ColorSelectedTextFg).Bold(true)
 	TagManagerCountStyle = lipgloss.NewStyle().Foreground(ColorSecondary)
 	TagManagerErrorStyle = lipgloss.NewStyle().Foreground(ColorError)
 
@@ -196,10 +196,10 @@ func rebuildViewStyles() {
 func rebuildSelectionStyles() {
 	TaskJumperSelectedStyle = lipgloss.NewStyle().Background(ColorSelectedBg).Foreground(ColorSelectedFg).Bold(true)
 	SelectedStyle = lipgloss.NewStyle().Background(ColorSelectedBg).Foreground(ColorSelectedFg).Bold(true)
-	SelectedItemTextStyle = BoldStyle.Foreground(ColorSelectedFg)
+	SelectedItemTextStyle = BoldStyle.Foreground(ColorSelectedTextFg)
 	SelectionRowStyle = lipgloss.NewStyle().Background(ColorSelectedBg)
 	CursorFlashRowStyle = lipgloss.NewStyle().Background(ColorFlashBg)
-	SelectedTaskTitleStyle = lipgloss.NewStyle().Bold(true).Foreground(ColorSelectedFg)
+	SelectedTaskTitleStyle = lipgloss.NewStyle().Bold(true).Foreground(ColorSelectedTextFg)
 	SelectionStyle = lipgloss.NewStyle().Foreground(ColorSecondary)
 	SelectionCheckStyle = lipgloss.NewStyle().Foreground(ColorSuccess).Bold(true)
 	SelectionCountStyle = lipgloss.NewStyle().Foreground(ColorWarning).Bold(true)

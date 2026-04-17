@@ -89,6 +89,11 @@ func ApplyTheme(tc ThemeConfig) {
 	ColorSelectedBg = lipgloss.Color(effectiveBg)
 	ColorSelectedFg = lipgloss.Color(effectiveFg)
 	ColorFlashBg = lipgloss.Color(effectiveFlash)
+	if tc.Name == "light" {
+		ColorSelectedTextFg = lipgloss.Color("#0f172a")
+	} else {
+		ColorSelectedTextFg = lipgloss.Color("#fbeeff")
+	}
 
 	SelectedStyle = lipgloss.NewStyle().
 		Background(ColorSelectedBg).
@@ -106,19 +111,19 @@ func ApplyTheme(tc ThemeConfig) {
 		Foreground(ColorSelectedFg).
 		Bold(true)
 
-	SelectedItemTextStyle = BoldStyle.Foreground(ColorSelectedFg)
+	SelectedItemTextStyle = BoldStyle.Foreground(ColorSelectedTextFg)
 
 	TagManagerItemSelectedStyle = lipgloss.NewStyle().
-		Foreground(ColorSelectedFg).
+		Foreground(ColorSelectedTextFg).
 		Bold(true)
 
 	FilterItemSelectedStyle = lipgloss.NewStyle().
-		Foreground(ColorSelectedFg).
+		Foreground(ColorSelectedTextFg).
 		Bold(true)
 
 	SelectorOptionSelectedStyle = lipgloss.NewStyle().
 		Bold(true).
-		Foreground(ColorSelectedFg).
+		Foreground(ColorSelectedTextFg).
 		Padding(0, 1)
 
 	DimmedSelectedStyle = lipgloss.NewStyle().
@@ -128,7 +133,7 @@ func ApplyTheme(tc ThemeConfig) {
 
 	SelectedTaskTitleStyle = lipgloss.NewStyle().
 		Bold(true).
-		Foreground(ColorSelectedFg)
+		Foreground(ColorSelectedTextFg)
 
 	// Resolve background: user override → theme default (fixes blank→wrong-default bug).
 	effectiveBgColor := tc.BgColor
