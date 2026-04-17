@@ -33,6 +33,7 @@ func NewDateInputModel(task *models.Task, project *models.Project) *DateInputMod
 	input.Focus()
 	input.CharLimit = 30
 	input.SetWidth(40)
+	applyThemedTextInput(&input)
 
 	// Pre-fill with current due date if set
 	if task.DueDate != nil {

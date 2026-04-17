@@ -116,6 +116,7 @@ func newGlobalProjectPicker(activeProjects, allProjects []*models.Project, purpo
 	ti.Placeholder = "Search projects..."
 	ti.CharLimit = 100
 	ti.Focus()
+	applyThemedTextInput(&ti)
 
 	// Filter out excluded projects
 	var projects []*models.Project

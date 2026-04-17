@@ -66,11 +66,13 @@ func newTagManagerModel(pt *ProjectTreeModel, project *models.Project) *TagManag
 	renameInput.Placeholder = "new tag name"
 	renameInput.CharLimit = 50
 	renameInput.SetWidth(30)
+	applyThemedTextInput(&renameInput)
 
 	addTagInput := textinput.New()
 	addTagInput.Placeholder = "tag name"
 	addTagInput.CharLimit = 50
 	addTagInput.SetWidth(30)
+	applyThemedTextInput(&addTagInput)
 
 	m := &TagManagerModel{
 		projectTree: pt,

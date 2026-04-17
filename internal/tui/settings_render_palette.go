@@ -10,26 +10,6 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 )
 
-// themedTextInputStyles builds a textinput.Styles using the active palette so
-// input text, prompt, placeholder, and cursor remain readable under both dark
-// and light themes. Without this, bubbles' defaults render text in terminal
-// default fg ("7"/none), which becomes near-invisible on a painted light bg.
-func themedTextInputStyles() textinput.Styles {
-	textFg := ColorMuted
-	if colorNormalText != "" {
-		textFg = lipgloss.Color(colorNormalText)
-	}
-	s := textinput.DefaultStyles(true)
-	s.Focused.Text = lipgloss.NewStyle().Foreground(textFg)
-	s.Focused.Prompt = lipgloss.NewStyle().Foreground(ColorMuted)
-	s.Focused.Placeholder = lipgloss.NewStyle().Foreground(ColorMuted)
-	s.Blurred.Text = lipgloss.NewStyle().Foreground(textFg)
-	s.Blurred.Prompt = lipgloss.NewStyle().Foreground(ColorMuted)
-	s.Blurred.Placeholder = lipgloss.NewStyle().Foreground(ColorMuted)
-	s.Cursor.Color = textFg
-	return s
-}
-
 // renderColorInputField renders a hex color input with swatch and validation error.
 // defaultColor is a lipgloss color string (ANSI code or hex) shown as a swatch when the input is empty.
 func (m *SettingsModel) renderColorInputField(b *strings.Builder, label string, input textinput.Model, focusIdx, labelWidth, indent int, desc string, defaultColor string) {

@@ -60,6 +60,7 @@ func NewGlobalSearchModel(cfg *config.Config) *GlobalSearchModel {
 	searchInput.CharLimit = 100
 	searchInput.SetWidth(40)
 	searchInput.Focus()
+	applyThemedTextInput(&searchInput)
 
 	projects := cfg.GetActiveProjects()
 

@@ -99,6 +99,7 @@ func NewTaskTemplateCreatorModel(cfg *config.Config, manager *config.Manager) *T
 	descInput.SetHeight(3)
 	descInput.CharLimit = 500
 	descInput.ShowLineNumbers = false
+	applyThemedTextarea(&descInput)
 
 	tagsInput := factory.NewTextInput("Tags (comma-separated)")
 	sectionInput := factory.NewTextInput("Section (optional)")

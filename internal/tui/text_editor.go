@@ -31,6 +31,7 @@ func NewTextEditorModel(fieldName, currentValue string) *TextEditorModel {
 	ta.ShowLineNumbers = false
 	ta.SetPromptFunc(0, func(info textarea.PromptInfo) string { return "" })
 	ta.Focus()
+	applyThemedTextarea(&ta)
 
 	return &TextEditorModel{
 		textarea:     ta,
@@ -147,6 +148,7 @@ func (m *TextEditorModel) View() tea.View {
 
 	b.WriteString(renderFullscreenTitle(title, ""))
 	b.WriteString("\n\n")
+	applyThemedTextarea(&m.textarea)
 	b.WriteString(m.textarea.View())
 	b.WriteString("\n")
 

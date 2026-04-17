@@ -18,6 +18,7 @@ func NewTaskEditorModel(project *models.Project, task *models.Task, cfg *config.
 	titleInput := factory.NewTitleInputWithValue(task.Title)
 	titleInput.Focus()
 	titleInput.SetPromptFunc(0, func(info textarea.PromptInfo) string { return "" })
+	applyThemedTextarea(&titleInput)
 
 	types := []models.TaskType{
 		models.TaskTypeTask,

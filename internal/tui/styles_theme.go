@@ -71,6 +71,8 @@ func ApplyTheme(tc ThemeConfig) {
 	rebuildPalette(tc.Palette)
 	rebuildStyles()
 	buildViewAccentMap()
+	ThemedTextInputStyles = themedTextInputStyles()
+	ThemedTextareaStyles = themedTextareaStyles()
 
 	themeDefaults := config.DefaultTheme(tc.Name)
 

@@ -27,6 +27,7 @@ func NewTaskAttachmentsModel(task *models.Task, project *models.Project, cfg *co
 	ti.Placeholder = "Enter file path, URL, or code ref (file:line)..."
 	ti.CharLimit = 500
 	ti.SetWidth(60)
+	applyThemedTextInput(&ti)
 
 	return &TaskAttachmentsModel{
 		task:      task,

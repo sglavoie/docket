@@ -58,12 +58,14 @@ func newBlockerViewState(editor string) blockerViewState {
 	ti.CharLimit = 500
 	ti.SetHeight(2)
 	ti.ShowLineNumbers = false
+	applyThemedTextarea(&ti)
 
 	editTi := textarea.New()
 	editTi.Placeholder = "Edit blocker..."
 	editTi.CharLimit = 2000
 	editTi.SetHeight(6)
 	editTi.ShowLineNumbers = false
+	applyThemedTextarea(&editTi)
 
 	return blockerViewState{
 		tabs:          TabState{Names: blockersTabNames},

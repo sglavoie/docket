@@ -94,8 +94,15 @@ func rebuildBadgeStyles() {
 		StageBadgeStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("183"))
 	}
 
-	ArchivedBadgeStyle = lipgloss.NewStyle().Background(ColorWarning).Foreground(lipgloss.Color("0")).Padding(0, 1)
-	FilterBadgeStyle = lipgloss.NewStyle().Background(ColorWarning).Foreground(lipgloss.Color("0")).Padding(0, 1)
+	// ColorWarning on light theme is dark brown (#92400e); use white text for
+	// readable contrast (~7:1). Dark theme Warning is orange (ANSI 214) where
+	// black text works well.
+	warningFg := lipgloss.Color("0")
+	if activeThemeName == "light" {
+		warningFg = lipgloss.Color("15")
+	}
+	ArchivedBadgeStyle = lipgloss.NewStyle().Background(ColorWarning).Foreground(warningFg).Padding(0, 1)
+	FilterBadgeStyle = lipgloss.NewStyle().Background(ColorWarning).Foreground(warningFg).Padding(0, 1)
 	SavedFilterBadgeStyle = lipgloss.NewStyle().Background(ColorSecondary).Foreground(lipgloss.Color("15")).Bold(true).Padding(0, 1)
 	FilterBadgeInactiveStyle = lipgloss.NewStyle().Background(ColorBackground).Foreground(ColorBadgeText).Padding(0, 1)
 	SectionBadgeStyle = lipgloss.NewStyle().Foreground(ColorBadgeText).Background(ColorBackground)
@@ -113,7 +120,11 @@ func rebuildLayoutStyles() {
 	ProgressEmptyStyle = lipgloss.NewStyle().Foreground(ColorProgressEmpty)
 	ScrollbarThumbStyle = lipgloss.NewStyle().Foreground(ColorPrimary)
 	ScrollbarTrackStyle = lipgloss.NewStyle().Foreground(ColorMuted)
-	ConfirmStyle = lipgloss.NewStyle().Background(ColorWarning).Foreground(lipgloss.Color("0")).Padding(0, 1).MarginTop(1)
+	confirmFg := lipgloss.Color("0")
+	if activeThemeName == "light" {
+		confirmFg = lipgloss.Color("15")
+	}
+	ConfirmStyle = lipgloss.NewStyle().Background(ColorWarning).Foreground(confirmFg).Padding(0, 1).MarginTop(1)
 	PrefixPopupStyle = lipgloss.NewStyle().Background(ColorBackground).Foreground(ColorLightGray).Padding(0, 1)
 	PrefixKeyStyle = lipgloss.NewStyle().Foreground(ColorPrimary).Bold(true)
 	PrefixDescStyle = lipgloss.NewStyle().Foreground(ColorMuted)

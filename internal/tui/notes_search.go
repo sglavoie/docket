@@ -63,6 +63,7 @@ func NewNotesSearchModel(project *models.Project) *NotesSearchModel {
 	searchInput.CharLimit = 100
 	searchInput.SetWidth(40)
 	searchInput.Focus()
+	applyThemedTextInput(&searchInput)
 
 	notes, _ := storage.ListNotes(project)
 

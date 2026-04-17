@@ -98,6 +98,7 @@ func newQuickCaptureInput(project *models.Project, allProjects []*models.Project
 	input.ShowLineNumbers = false
 	input.SetPromptFunc(0, func(info textarea.PromptInfo) string { return "" })
 	input.Focus()
+	applyThemedTextarea(&input)
 
 	triggers := quickCaptureTriggers
 	if skipProject {

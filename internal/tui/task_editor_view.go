@@ -61,6 +61,7 @@ func (m *TaskEditorModel) renderFieldRows() string {
 }
 
 func (m *TaskEditorModel) renderTitleRow() string {
+	applyThemedTextarea(&m.titleInput)
 	return m.renderFormLabel("Title", 0) + "\n" + m.titleInput.View()
 }
 

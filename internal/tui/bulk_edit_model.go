@@ -108,12 +108,14 @@ func NewBulkEditModel(tasks []*models.Task, project *models.Project) *BulkEditMo
 	m.tagAddInput.Placeholder = "Enter tag name..."
 	m.tagAddInput.CharLimit = 50
 	m.tagAddInput.SetWidth(30)
+	applyThemedTextInput(&m.tagAddInput)
 
 	// Initialize due date input.
 	m.dueDateInput = textinput.New()
 	m.dueDateInput.Placeholder = "e.g., tomorrow, +3d, fri, 2024-01-15"
 	m.dueDateInput.CharLimit = 30
 	m.dueDateInput.SetWidth(40)
+	applyThemedTextInput(&m.dueDateInput)
 
 	m.analyzeCurrentValues()
 	m.buildSectionOptions()

@@ -21,6 +21,7 @@ type TagAdder struct {
 func NewTagAdder() TagAdder {
 	input := textinput.New()
 	input.CharLimit = 50
+	applyThemedTextInput(&input)
 	return TagAdder{AddTagInput: input}
 }
 

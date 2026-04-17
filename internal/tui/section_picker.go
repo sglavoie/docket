@@ -220,6 +220,7 @@ func (m *SectionPickerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.addInput.Placeholder = ""
 					m.addInput.Focus()
 					m.addInput.CharLimit = 50
+					applyThemedTextInput(&m.addInput)
 					return m, textinput.Blink
 				}
 				section := selected.Name

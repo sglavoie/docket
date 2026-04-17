@@ -44,6 +44,7 @@ func NewTaskJumperModel(project *models.Project) *TaskJumperModel {
 	searchInput.CharLimit = 100
 	searchInput.SetWidth(40)
 	searchInput.Focus()
+	applyThemedTextInput(&searchInput)
 
 	m := &TaskJumperModel{
 		project:     project,

@@ -31,6 +31,7 @@ func NewSnoozeInputModel(task *models.Task, project *models.Project) *SnoozeInpu
 	input.Focus()
 	input.CharLimit = 30
 	input.SetWidth(40)
+	applyThemedTextInput(&input)
 
 	// Pre-fill with current snooze date if set
 	if task.SnoozedUntil != nil {

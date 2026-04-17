@@ -348,6 +348,7 @@ func (m *NotesViewModel) startRename() {
 	ti.CharLimit = 100
 	ti.SetWidth(50)
 	ti.Focus()
+	applyThemedTextInput(&ti)
 	m.renameInput = ti
 	m.renaming = true
 }

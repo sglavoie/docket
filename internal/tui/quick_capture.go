@@ -114,6 +114,7 @@ func (m *QuickCaptureModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m *QuickCaptureModel) View() tea.View {
 	var b strings.Builder
+	applyThemedTextarea(&m.input)
 	b.WriteString(m.input.View())
 	b.WriteString("\n")
 

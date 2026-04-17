@@ -86,11 +86,13 @@ func NewFocusBoardModel(cfg *config.Config, manager *config.Manager, dailyPlan *
 	ti.Placeholder = "Task title (%project !priority #tag -s source -u url)"
 	ti.CharLimit = 200
 	ti.SetWidth(60)
+	applyThemedTextInput(&ti)
 
 	ei := textinput.New()
 	ei.Placeholder = "New title"
 	ei.CharLimit = 200
 	ei.SetWidth(60)
+	applyThemedTextInput(&ei)
 
 	m := &FocusBoardModel{
 		config:         cfg,

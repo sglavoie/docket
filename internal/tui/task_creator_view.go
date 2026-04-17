@@ -77,6 +77,7 @@ func (m *TaskCreatorModel) renderFieldsTab() string {
 	// Title field (inline textarea)
 	b.WriteString(renderFormLabelShared("Title", 0, m.focusIndex))
 	b.WriteString("\n")
+	applyThemedTextarea(&m.titleInput)
 	b.WriteString(m.titleInput.View())
 	b.WriteString("\n")
 
@@ -155,7 +156,7 @@ func (m *TaskCreatorModel) renderChecklistTab() string {
 		b.WriteString(MutedStyle.Render("No checklist items. Press Ctrl+A to add one."))
 		b.WriteString("\n")
 	} else {
-		for i, item := range m.checklist {
+		for i := range m.checklist {
 			fieldIndex := m.checklistStartIndex() + i
 			isFocused := m.focusIndex == fieldIndex
 
@@ -165,7 +166,8 @@ func (m *TaskCreatorModel) renderChecklistTab() string {
 				fmt.Fprintf(&b, "  %d. ☐ ", i+1)
 			}
 
-			b.WriteString(item.View())
+			applyThemedTextInput(&m.checklist[i])
+			b.WriteString(m.checklist[i].View())
 			b.WriteString("\n")
 		}
 	}

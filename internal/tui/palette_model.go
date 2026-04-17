@@ -16,6 +16,7 @@ func NewCommandPaletteModel(cfg *config.Config, manager *config.Manager, registr
 	searchInput.CharLimit = 100
 	searchInput.SetWidth(40)
 	searchInput.Focus()
+	applyThemedTextInput(&searchInput)
 
 	// Load persisted recent items from config
 	recentPaletteSelections = nil

@@ -59,6 +59,7 @@ func NewAskViewModel(project *models.Project, cliReference string) *AskViewModel
 	ta.ShowLineNumbers = false
 	ta.SetPromptFunc(0, func(info textarea.PromptInfo) string { return "" })
 	ta.Focus()
+	applyThemedTextarea(&ta)
 
 	renderer, _ := glamour.NewTermRenderer(
 		glamour.WithStylePath("dark"),
@@ -450,6 +451,7 @@ func (m *AskViewModel) View() tea.View {
 	switch m.state {
 	case askStateInput:
 		b.WriteString(pad)
+		applyThemedTextarea(&m.textarea)
 		b.WriteString(m.textarea.View())
 		b.WriteString("\n")
 		footerLeft = HelpStyle.Render("Ctrl+S: submit")

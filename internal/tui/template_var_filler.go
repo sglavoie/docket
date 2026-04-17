@@ -37,6 +37,7 @@ func NewTemplateVarFillerModel(tmpl *template.TaskTemplate) *TemplateVarFillerMo
 		if i == 0 {
 			ti.Focus()
 		}
+		applyThemedTextInput(&ti)
 		inputs[i] = ti
 	}
 

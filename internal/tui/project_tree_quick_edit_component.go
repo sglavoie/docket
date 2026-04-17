@@ -23,6 +23,7 @@ func NewQuickEditComponent() *QuickEditComponent {
 	quickEditInput.Placeholder = "Edit task..."
 	quickEditInput.CharLimit = 200
 	quickEditInput.SetWidth(60)
+	applyThemedTextInput(&quickEditInput)
 
 	return &QuickEditComponent{
 		mode:     false,

@@ -40,6 +40,7 @@ func NewBulkCaptureModel(project *models.Project) *BulkCaptureModel {
 	input.SetWidth(60)
 	input.SetHeight(8)
 	input.ShowLineNumbers = false
+	applyThemedTextarea(&input)
 
 	return &BulkCaptureModel{
 		project: project,
@@ -106,6 +107,7 @@ func (m *BulkCaptureModel) View() tea.View {
 	b.WriteString(renderFullscreenTitle("Bulk Capture", ""))
 	b.WriteString("\n\n")
 
+	applyThemedTextarea(&m.input)
 	b.WriteString(m.input.View())
 	b.WriteString("\n\n")
 

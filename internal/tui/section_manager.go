@@ -73,11 +73,13 @@ func NewSectionManagerModel(pt *ProjectTreeModel, proj *models.Project, cfg *con
 	renameInput.Placeholder = "new section name"
 	renameInput.CharLimit = 50
 	renameInput.SetWidth(30)
+	applyThemedTextInput(&renameInput)
 
 	addInput := textinput.New()
 	addInput.Placeholder = "section name"
 	addInput.CharLimit = 50
 	addInput.SetWidth(30)
+	applyThemedTextInput(&addInput)
 
 	m := &SectionManagerModel{
 		projectTree:   pt,

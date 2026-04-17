@@ -51,6 +51,7 @@ func (m *TaskChecklistModel) renderChecklistHeader() string {
 func (m *TaskChecklistModel) renderEditMode(b *strings.Builder) tea.View {
 	b.WriteString(FieldLabelFocusedStyle.Render(fmt.Sprintf("Edit Item [%d]:", m.editIndex)))
 	b.WriteString("\n\n")
+	applyThemedTextarea(&m.editTextInput)
 	b.WriteString(m.editTextInput.View())
 	b.WriteString("\n\n")
 	b.WriteString(renderStatusBarFooter(HelpStyle.Render("Ctrl+S: save · Ctrl+E: external editor · Esc: cancel"), "", m.Width(), m.AccentColor()))
@@ -60,6 +61,7 @@ func (m *TaskChecklistModel) renderEditMode(b *strings.Builder) tea.View {
 func (m *TaskChecklistModel) renderAddMode(b *strings.Builder) tea.View {
 	b.WriteString(FieldLabelFocusedStyle.Render("Add Item:"))
 	b.WriteString("\n")
+	applyThemedTextarea(&m.textInput)
 	b.WriteString(m.textInput.View())
 	b.WriteString("\n\n")
 	b.WriteString(renderStatusBarFooter(HelpStyle.Render("Ctrl+S: save · Ctrl+E: external editor · Esc: cancel"), "", m.Width(), m.AccentColor()))

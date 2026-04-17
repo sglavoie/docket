@@ -62,6 +62,7 @@ func (m *TaskCommentsModel) renderEditMode(b *strings.Builder) tea.View {
 	b.WriteString("\n")
 	b.WriteString(MutedStyle.Render(FormatTimestampLabeled("Created", comment.CreatedAt)))
 	b.WriteString("\n\n")
+	applyThemedTextarea(&m.editTextInput)
 	b.WriteString(m.editTextInput.View())
 	b.WriteString("\n\n")
 	b.WriteString(renderStatusBarFooter(HelpStyle.Render("Ctrl+S: save · Ctrl+E: external editor · Esc: cancel"), "", m.Width(), m.AccentColor()))
@@ -71,6 +72,7 @@ func (m *TaskCommentsModel) renderEditMode(b *strings.Builder) tea.View {
 func (m *TaskCommentsModel) renderAddMode(b *strings.Builder) tea.View {
 	b.WriteString(FieldLabelFocusedStyle.Render("Add Comment:"))
 	b.WriteString("\n")
+	applyThemedTextarea(&m.textInput)
 	b.WriteString(m.textInput.View())
 	b.WriteString("\n\n")
 	b.WriteString(renderStatusBarFooter(HelpStyle.Render("Ctrl+S: save · Ctrl+E: external editor · Esc: cancel"), "", m.Width(), m.AccentColor()))

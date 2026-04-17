@@ -30,6 +30,7 @@ func NewStatusInputModel(project *models.Project, cfg *config.Config, mgr *confi
 	input.CharLimit = 120
 	input.SetWidth(60)
 	input.SetValue(project.Description)
+	applyThemedTextInput(&input)
 
 	return &StatusInputModel{
 		project:       project,

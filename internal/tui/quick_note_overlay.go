@@ -28,6 +28,7 @@ func newQuickNoteOverlay(task *models.Task, project *models.Project) *QuickNoteO
 	ti.SetHeight(3)
 	ti.ShowLineNumbers = false
 	ti.Focus()
+	applyThemedTextarea(&ti)
 	return &QuickNoteOverlay{
 		taskID:    task.ID,
 		taskTitle: task.Title,
@@ -103,6 +104,7 @@ func (q *QuickNoteOverlay) render(width int) string {
 	var content strings.Builder
 	content.WriteString(label)
 	content.WriteString("\n")
+	applyThemedTextarea(&q.input)
 	content.WriteString(q.input.View())
 
 	boxStyle := lipgloss.NewStyle().

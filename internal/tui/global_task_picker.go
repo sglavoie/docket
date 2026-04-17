@@ -82,6 +82,7 @@ func newGlobalTaskPicker(project *models.Project, purpose TaskPickerPurpose, bac
 	ti.Placeholder = "Search tasks..."
 	ti.CharLimit = 100
 	ti.Focus()
+	applyThemedTextInput(&ti)
 
 	// Collect non-completed tasks
 	var tasks []*models.Task

@@ -29,6 +29,7 @@ func NewSaveFilterInputModel(summary string) *SaveFilterInputModel {
 	input.Focus()
 	input.CharLimit = 50
 	input.SetWidth(40)
+	applyThemedTextInput(&input)
 
 	return &SaveFilterInputModel{
 		summary: summary,

@@ -34,12 +34,14 @@ func NewTaskChecklistModel(task *models.Task, project *models.Project) *TaskChec
 	ti.CharLimit = 500
 	ti.SetHeight(2)
 	ti.ShowLineNumbers = false
+	applyThemedTextarea(&ti)
 
 	editTi := textarea.New()
 	editTi.Placeholder = "Edit checklist item..."
 	editTi.CharLimit = 500
 	editTi.SetHeight(2)
 	editTi.ShowLineNumbers = false
+	applyThemedTextarea(&editTi)
 
 	return &TaskChecklistModel{
 		task:          task,

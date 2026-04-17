@@ -26,6 +26,7 @@ func NewSaveSearchInputModel(query string) *SaveSearchInputModel {
 	input.Focus()
 	input.CharLimit = 50
 	input.SetWidth(40)
+	applyThemedTextInput(&input)
 
 	return &SaveSearchInputModel{
 		query: query,

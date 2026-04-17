@@ -89,6 +89,7 @@ func blockerEditView(s *blockerViewState, ds blockerDataSource, b *strings.Build
 	b.WriteString("\n")
 	b.WriteString(MutedStyle.Render(FormatTimestampLabeled("Created", blocker.CreatedAt)))
 	b.WriteString("\n\n")
+	applyThemedTextarea(&s.editTextInput)
 	b.WriteString(s.editTextInput.View())
 	b.WriteString("\n\n")
 	b.WriteString(HelpStyle.Render("Ctrl+S: save · Ctrl+E: external editor · Esc: cancel"))
@@ -105,6 +106,7 @@ func blockerAddView(s *blockerViewState, ds blockerDataSource, b *strings.Builde
 			b.WriteString("\n")
 		}
 	}
+	applyThemedTextarea(&s.textInput)
 	b.WriteString(s.textInput.View())
 	b.WriteString("\n\n")
 	b.WriteString(HelpStyle.Render("Ctrl+S: save · Ctrl+E: external editor · Esc: cancel"))

@@ -362,6 +362,7 @@ func (m *ContextPickerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) { //nolint
 					m.renameInput.SetValue(selected.Name)
 					m.renameInput.Focus()
 					m.renameInput.CharLimit = 50
+					applyThemedTextInput(&m.renameInput)
 					m.clearStatus()
 					return m, textinput.Blink
 				} else if selected.IsCustom {

@@ -76,6 +76,7 @@ func NewGlobalTagManagerModel(cfg *config.Config) *GlobalTagManagerModel {
 	renameInput.Placeholder = "new tag name"
 	renameInput.CharLimit = 50
 	renameInput.SetWidth(30)
+	applyThemedTextInput(&renameInput)
 
 	m := &GlobalTagManagerModel{
 		config:      cfg,

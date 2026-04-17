@@ -15,6 +15,7 @@ import (
 // reflecting the current (possibly unsaved) form state.
 func (m *SettingsModel) buildTentativeThemeConfig() ThemeConfig {
 	return ThemeConfig{
+		Name:     m.activeTheme,
 		BgColor:  normalizeHexColor(m.bgColorInput.Value()),
 		CursorBg: normalizeHexColor(m.cursorColorInput.Value()),
 		CursorFg: normalizeHexColor(m.cursorTextColorInput.Value()),

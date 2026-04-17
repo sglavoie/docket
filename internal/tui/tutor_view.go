@@ -41,6 +41,7 @@ func NewTutorModel() *TutorModel {
 	searchInput.Placeholder = "Search topics..."
 	searchInput.CharLimit = 50
 	searchInput.SetWidth(25)
+	applyThemedTextInput(&searchInput)
 
 	m := &TutorModel{
 		topics:      tutorTopics(),

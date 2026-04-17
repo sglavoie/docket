@@ -60,6 +60,7 @@ func (f *FormFieldFactory) NewTextInput(placeholder string) textinput.Model {
 	ti.Placeholder = placeholder
 	ti.CharLimit = f.DefaultCharLimit
 	ti.SetWidth(f.DefaultWidth)
+	applyThemedTextInput(&ti)
 	return ti
 }
 

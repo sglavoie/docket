@@ -229,6 +229,7 @@ func (v *BaseSearchableView) InitSearchInput(placeholder string, charLimit, widt
 	v.searchInput.Placeholder = placeholder
 	v.searchInput.CharLimit = charLimit
 	v.searchInput.SetWidth(width)
+	applyThemedTextInput(&v.searchInput)
 }
 
 // HasActiveSearch returns true if search mode is active.

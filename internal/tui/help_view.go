@@ -64,11 +64,13 @@ func NewHelpViewModel(items []HelpItem, sourceView ViewType, viewName string) *H
 	searchInput.Placeholder = "Filter help..."
 	searchInput.CharLimit = 50
 	searchInput.SetWidth(30)
+	applyThemedTextInput(&searchInput)
 
 	tabSearchInput := textinput.New()
 	tabSearchInput.Placeholder = "Search tabs..."
 	tabSearchInput.CharLimit = 30
 	tabSearchInput.SetWidth(20)
+	applyThemedTextInput(&tabSearchInput)
 
 	m := &HelpViewModel{
 		items:          items,
@@ -96,11 +98,13 @@ func NewKeybindingExplorerModel() *HelpViewModel {
 	searchInput.CharLimit = 50
 	searchInput.SetWidth(30)
 	searchInput.Focus()
+	applyThemedTextInput(&searchInput)
 
 	tabSearchInput := textinput.New()
 	tabSearchInput.Placeholder = "Search tabs..."
 	tabSearchInput.CharLimit = 30
 	tabSearchInput.SetWidth(20)
+	applyThemedTextInput(&tabSearchInput)
 
 	m := &HelpViewModel{
 		items:          items,

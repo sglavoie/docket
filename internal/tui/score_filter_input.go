@@ -35,6 +35,7 @@ func (s *ScoreFilterInput) Enter(customValue *float64) {
 		ti.SetValue(fmt.Sprintf("%.0f", *customValue))
 	}
 	ti.Focus()
+	applyThemedTextInput(&ti)
 	s.Input = ti
 	s.active = true
 }

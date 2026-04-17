@@ -40,6 +40,7 @@ func NewSelectorModel(title string, items []SelectorItem) SelectorModel {
 	searchInput.Placeholder = "Type to search..."
 	searchInput.CharLimit = 50
 	searchInput.SetWidth(40)
+	applyThemedTextInput(&searchInput)
 
 	// Determine columns based on items
 	var columns []table.Column

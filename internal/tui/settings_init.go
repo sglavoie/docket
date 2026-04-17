@@ -165,6 +165,7 @@ func newSettingsInput(placeholder string, charLimit, width int, value string, fo
 	if focused {
 		input.Focus()
 	}
+	applyThemedTextInput(&input)
 	return input
 }
 

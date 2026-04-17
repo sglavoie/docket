@@ -113,6 +113,7 @@ func (m *TaskTemplateCreatorModel) renderFieldsTab() string {
 	// Description field - indent each line to align with other fields
 	b.WriteString(m.renderLabel("Desc", 6))
 	b.WriteString("\n")
+	applyThemedTextarea(&m.descInput)
 	descLines := strings.Split(m.descInput.View(), "\n")
 	indent := "              " // 14 chars to match label width
 	for i, line := range descLines {
