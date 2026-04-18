@@ -194,8 +194,8 @@ func (m *AppModel) showTaskCreatorForTemplate(taskTemplate *template.TaskTemplat
 	parentTask := m.pendingCreateTaskParent
 	m.pendingCreateTaskParent = nil
 	if m.currentProject != nil {
-		creator := NewTaskCreatorModelWithTemplate(m.currentProject, m.config, m.configManager, parentTask, taskTemplate)
-		m.showView(ViewTaskCreator, creator)
+		creator := NewTaskFormModelCreateFromTemplate(m.currentProject, m.config, m.configManager, parentTask, taskTemplate)
+		m.showView(ViewTaskForm, creator)
 		return true, creator.Init()
 	}
 

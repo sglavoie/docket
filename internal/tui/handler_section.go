@@ -178,6 +178,12 @@ func (m *AppModel) handleSectionMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 			)
 		}
 
+		// Form-based section pick (no task yet, e.g. TaskFormModel in create mode)
+		if msg.Task == nil && m.currentView() == ViewTaskForm {
+			cmd := m.views.Update(m.currentView(), msg)
+			return true, cmd
+		}
+
 		// Single task operation
 		if msg.Task != nil && msg.Project != nil {
 			if !msg.Project.MutateTask(msg.Task.ID, func(t *models.Task) {

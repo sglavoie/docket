@@ -75,7 +75,7 @@ func NewKeybindingRegistry() *KeybindingRegistry {
 	r.registerSettingsBindings()
 	r.registerRecurrenceEditorBindings()
 	r.registerQuickCaptureBindings()
-	r.registerTaskCreatorBindings()
+	r.registerTaskFormBindings()
 	return r
 }
 

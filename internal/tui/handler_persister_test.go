@@ -61,7 +61,7 @@ func TestDefaultPersisterIsProjectService(t *testing.T) {
 
 func TestHandleTaskCreatedMsgUsesPersister(t *testing.T) {
 	app, mockPersister, _ := newTestAppModelWithMockPersisterAndProject(t)
-	app.pushView(ViewTaskCreator)
+	app.pushView(ViewTaskForm)
 
 	task := &models.Task{ID: "test-task", Title: "Test Task"}
 	msg := TaskCreatedMsg{Task: task}
@@ -79,7 +79,7 @@ func TestHandleTaskCreatedMsgUsesPersister(t *testing.T) {
 
 func TestHandleTaskUpdatedMsgUsesPersister(t *testing.T) {
 	app, mockPersister, _ := newTestAppModelWithMockPersisterAndProject(t)
-	app.pushView(ViewTaskEditor)
+	app.pushView(ViewTaskForm)
 
 	msg := TaskUpdatedMsg{}
 	handled, _ := app.handleTaskMessages(msg)

@@ -31,8 +31,8 @@ func (m *AppModel) handleTaskMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint:go
 					return true, picker.Init()
 				}
 			}
-			// No templates or skipped, go directly to task creator
-			m.showView(ViewTaskCreator, NewTaskCreatorModel(m.currentProject, m.config, m.configManager, msg.ParentTask))
+			// No templates or skipped, go directly to task form
+			m.showView(ViewTaskForm, NewTaskFormModelCreate(m.currentProject, m.config, m.configManager, msg.ParentTask))
 		}
 		return true, nil
 
@@ -42,7 +42,7 @@ func (m *AppModel) handleTaskMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint:go
 			project = m.currentProject
 		}
 		if project != nil && msg.Task != nil {
-			m.showView(ViewTaskEditor, NewTaskEditorModel(project, msg.Task, m.config, m.configManager))
+			m.showView(ViewTaskForm, NewTaskFormModelEdit(project, msg.Task, m.config, m.configManager))
 		}
 		return true, nil
 

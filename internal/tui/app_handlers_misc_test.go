@@ -118,8 +118,8 @@ func TestViewStackNavigation(t *testing.T) {
 		t.Error("currentView should be ProjectTree after push")
 	}
 
-	app.pushView(ViewTaskEditor)
-	if app.currentView() != ViewTaskEditor {
+	app.pushView(ViewTaskForm)
+	if app.currentView() != ViewTaskForm {
 		t.Error("currentView should be TaskEditor after second push")
 	}
 	if len(app.viewStack) != 3 {

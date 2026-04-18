@@ -16,7 +16,7 @@ func TestHandleTaskMessagesCreateTask(t *testing.T) {
 	if !handled {
 		t.Error("CreateTaskMsg should be handled")
 	}
-	if app.currentView() != ViewTaskCreator {
+	if app.currentView() != ViewTaskForm {
 		t.Errorf("currentView should be TaskCreator, got %v", app.currentView())
 	}
 
@@ -47,14 +47,14 @@ func TestHandleTaskMessagesEditTask(t *testing.T) {
 	if !handled {
 		t.Error("EditTaskMsg should be handled")
 	}
-	if app.currentView() != ViewTaskEditor {
+	if app.currentView() != ViewTaskForm {
 		t.Errorf("currentView should be TaskEditor, got %v", app.currentView())
 	}
 }
 
 func TestHandleTaskMessagesTaskCreated(t *testing.T) {
 	app, _ := newTestAppModelWithProject()
-	app.pushView(ViewTaskCreator)
+	app.pushView(ViewTaskForm)
 
 	msg := TaskCreatedMsg{}
 	handled, _ := app.handleTaskMessages(msg)

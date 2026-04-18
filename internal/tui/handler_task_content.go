@@ -77,11 +77,11 @@ func (m *AppModel) handleTaskContentEdited(msg TaskContentEditedMsg) (bool, tea.
 				}
 
 				// Refresh task editor view first if it's open
-				if m.currentView() == ViewTaskEditor {
+				if m.currentView() == ViewTaskForm {
 					current := msg.Project.GetTaskByID(msg.Task.ID)
-					taskEditor := NewTaskEditorModel(msg.Project, current, m.config, m.configManager)
+					taskEditor := NewTaskFormModelEdit(msg.Project, current, m.config, m.configManager)
 					taskEditor.SetSize(m.width, m.height-2)
-					m.views.Register(ViewTaskEditor, taskEditor)
+					m.views.Register(ViewTaskForm, taskEditor)
 				}
 				return true, tea.Batch(
 					startLoading("Saving..."),
@@ -91,12 +91,12 @@ func (m *AppModel) handleTaskContentEdited(msg TaskContentEditedMsg) (bool, tea.
 		}
 	}
 
-	if m.currentView() == ViewTaskEditor && msg.Task != nil {
+	if m.currentView() == ViewTaskForm && msg.Task != nil {
 		current := msg.Project.GetTaskByID(msg.Task.ID)
 		if current != nil {
-			taskEditor := NewTaskEditorModel(msg.Project, current, m.config, m.configManager)
+			taskEditor := NewTaskFormModelEdit(msg.Project, current, m.config, m.configManager)
 			taskEditor.SetSize(m.width, m.height-2)
-			m.views.Register(ViewTaskEditor, taskEditor)
+			m.views.Register(ViewTaskForm, taskEditor)
 		}
 	}
 	return true, nil

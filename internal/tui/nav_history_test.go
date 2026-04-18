@@ -268,7 +268,7 @@ func TestIsTrackedView(t *testing.T) {
 	}
 
 	untracked := []ViewType{
-		ViewProjectCreator, ViewProjectEditor, ViewTaskCreator, ViewTaskEditor,
+		ViewProjectCreator, ViewProjectEditor, ViewTaskForm,
 		ViewHelp, ViewDateInput, ViewCommandPalette, ViewFilter,
 	}
 	for _, vt := range untracked {

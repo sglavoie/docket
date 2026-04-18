@@ -20,8 +20,6 @@ const (
 	ViewProjectTree
 	ViewProjectCreator
 	ViewProjectEditor
-	ViewTaskCreator
-	ViewTaskEditor
 	ViewSettings
 	ViewHelp
 	ViewDateInput
@@ -111,6 +109,7 @@ const (
 	ViewMessageLog
 	ViewKeybindingExplorer
 	ViewProjectFilterSelector
+	ViewTaskForm
 )
 
 // String returns the name of the ViewType for readable test output.
@@ -121,8 +120,6 @@ func (v ViewType) String() string {
 		ViewProjectTree:           "ProjectTree",
 		ViewProjectCreator:        "ProjectCreator",
 		ViewProjectEditor:         "ProjectEditor",
-		ViewTaskCreator:           "TaskCreator",
-		ViewTaskEditor:            "TaskEditor",
 		ViewSettings:              "Settings",
 		ViewHelp:                  "Help",
 		ViewDateInput:             "DateInput",
@@ -212,6 +209,7 @@ func (v ViewType) String() string {
 		ViewMessageLog:            "MessageLog",
 		ViewKeybindingExplorer:    "KeybindingExplorer",
 		ViewProjectFilterSelector: "ProjectFilterSelector",
+		ViewTaskForm:              "TaskForm",
 	}
 	if name, ok := names[v]; ok {
 		return name

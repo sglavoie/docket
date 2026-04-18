@@ -8,7 +8,7 @@ import (
 func TestHandleViewMessagesBack(t *testing.T) {
 	app := newTestAppModel()
 	app.pushView(ViewProjectTree)
-	app.pushView(ViewTaskEditor)
+	app.pushView(ViewTaskForm)
 
 	msg := BackMsg{}
 	handled, _ := app.handleViewMessages(msg)

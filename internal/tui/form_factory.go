@@ -5,6 +5,9 @@ import (
 	"charm.land/bubbles/v2/textinput"
 )
 
+// formFactory is a shared factory instance for resizing form fields.
+var formFactory = DefaultFormFieldFactory()
+
 // FormFieldFactory creates consistently configured input fields.
 // Use this to ensure uniform appearance and behavior across forms.
 type FormFieldFactory struct {

@@ -41,7 +41,7 @@ func session3SyncViews() []syncTestCase {
 func session8SyncViews() []syncTestCase {
 	return []syncTestCase{
 		{ViewQuickCapture, &QuickCaptureModel{}},
-		{ViewTaskCreator, &TaskCreatorModel{}},
+		{ViewTaskForm, &TaskFormModel{}},
 	}
 }
 
@@ -195,7 +195,7 @@ func TestViewTypeString(t *testing.T) {
 		ViewOutliner:              "Outliner",
 		// Session 8
 		ViewQuickCapture: "QuickCapture",
-		ViewTaskCreator:  "TaskCreator",
+		ViewTaskForm:     "TaskForm",
 	}
 	for v, want := range cases {
 		if got := v.String(); got != want {
