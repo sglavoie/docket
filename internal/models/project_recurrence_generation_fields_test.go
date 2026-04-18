@@ -78,3 +78,64 @@ func TestGenerateRecurringInstancesCopiesCorrectFields(t *testing.T) {
 		t.Errorf("DependsOn should not be copied, got %v", newTask.DependsOn)
 	}
 }
+
+func TestGenerateRecurringInstancesCopiesHasTime(t *testing.T) {
+	dueDate := time.Date(2024, 1, 15, 14, 30, 0, 0, time.Local)
+
+	task := &Task{
+		ID:         "task-1",
+		ShortID:    1,
+		Type:       TaskTypeTask,
+		Title:      "Daily standup",
+		Status:     StatusDone,
+		Priority:   3,
+		DueDate:    &dueDate,
+		HasTime:    true,
+		Recurrence: &RecurrencePattern{Interval: 1, Unit: RecurrenceDaily},
+	}
+
+	project := &Project{
+		Name:        "Test Project",
+		Tasks:       []*Task{task},
+		NextShortID: 2,
+	}
+
+	project.GenerateRecurringInstances()
+
+	newTask := project.Tasks[0]
+	if !newTask.HasTime {
+		t.Error("HasTime should be carried forward to the new recurring instance")
+	}
+	if newTask.DueDate == nil {
+		t.Fatal("new task should have a due date")
+	}
+}
+
+func TestGenerateRecurringInstancesNoHasTimeWhenFalse(t *testing.T) {
+	dueDate := time.Date(2024, 1, 15, 0, 0, 0, 0, time.Local)
+
+	task := &Task{
+		ID:         "task-2",
+		ShortID:    1,
+		Type:       TaskTypeTask,
+		Title:      "Weekly report",
+		Status:     StatusDone,
+		Priority:   3,
+		DueDate:    &dueDate,
+		HasTime:    false,
+		Recurrence: &RecurrencePattern{Interval: 1, Unit: RecurrenceWeekly},
+	}
+
+	project := &Project{
+		Name:        "Test Project",
+		Tasks:       []*Task{task},
+		NextShortID: 2,
+	}
+
+	project.GenerateRecurringInstances()
+
+	newTask := project.Tasks[0]
+	if newTask.HasTime {
+		t.Error("HasTime should be false when source task has HasTime=false")
+	}
+}

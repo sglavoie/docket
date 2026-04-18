@@ -90,6 +90,7 @@ func (p *Project) GenerateRecurringInstances() int {
 			ScoreDimensions: scoreDims,
 			Children:        []*Task{},
 			DueDate:         nextDue,
+			HasTime:         task.HasTime,
 			Recurrence:      newRecurrence,
 			Checklist:       checklist,
 			Stage:           task.Stage,

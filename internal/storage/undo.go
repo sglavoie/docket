@@ -554,6 +554,7 @@ func restoreTaskFields(dst, src *models.Task) {
 	dst.UpdatedAt = src.UpdatedAt
 	dst.CompletedAt = src.CompletedAt
 	dst.DueDate = src.DueDate
+	dst.HasTime = src.HasTime
 	dst.Active = src.Active
 	dst.Pinned = src.Pinned
 	dst.PinnedAt = src.PinnedAt

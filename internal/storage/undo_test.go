@@ -696,3 +696,25 @@ func TestPerformTargetedUndoRestoresDeletedTask(t *testing.T) {
 		t.Error("task-b should have been restored by targeted undo")
 	}
 }
+
+func TestRestoreTaskFieldsPreservesHasTime(t *testing.T) {
+	dst := &models.Task{ID: "test-id"}
+	src := &models.Task{
+		ID:      "test-id",
+		HasTime: true,
+		Status:  models.StatusTodo,
+		Title:   "Task with time",
+	}
+	restoreTaskFields(dst, src)
+	if !dst.HasTime {
+		t.Error("restoreTaskFields should preserve HasTime=true")
+	}
+
+	// Also verify false -> false doesn't set it
+	dst2 := &models.Task{ID: "test-id-2", HasTime: true}
+	src2 := &models.Task{ID: "test-id-2", HasTime: false}
+	restoreTaskFields(dst2, src2)
+	if dst2.HasTime {
+		t.Error("restoreTaskFields should restore HasTime=false")
+	}
+}
