@@ -21,7 +21,6 @@ func (m *TaskFormModel) renderScheduleTab() string {
 	if m.focusIndex == 0 {
 		applyThemedTextInput(&m.dueTextInput)
 		b.WriteString(m.dueTextInput.View())
-		b.WriteString(MutedStyle.Render("  d: presets"))
 	} else {
 		val := m.draft.dueInput
 		if val == "" && m.draft.dueDate == nil {
@@ -31,7 +30,6 @@ func (m *TaskFormModel) renderScheduleTab() string {
 		} else {
 			b.WriteString(scheduleDueDateDisplay(m.draft.dueDate))
 		}
-		b.WriteString(MutedStyle.Render("  Enter · d"))
 	}
 	b.WriteString("\n")
 
@@ -45,7 +43,6 @@ func (m *TaskFormModel) renderScheduleTab() string {
 			b.WriteString(val)
 		}
 	}
-	b.WriteString(MutedStyle.Render("  Enter"))
 	b.WriteString("\n")
 
 	return b.String()

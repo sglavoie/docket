@@ -162,7 +162,7 @@ func (m *TaskFormModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.focusNext()
 				m.syncInputFocus()
 				return m, nil
-			case "d":
+			case "ctrl+d":
 				m.duePicker = newFormDueDatePicker(m.draft.dueDate)
 				m.activeOverlay = formOverlayDue
 				return m, nil
@@ -190,8 +190,8 @@ func (m *TaskFormModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 
-		// ── URL textinput (field 1 on Details tab) ────────────────────────────
-		if m.activeTab == formTabDetails && m.focusIndex == 1 {
+		// ── URL textinput (field 0 on Details tab) ────────────────────────────
+		if m.activeTab == formTabDetails && m.focusIndex == 0 {
 			switch msg.String() {
 			case "tab":
 				m.commitURLInput()
@@ -244,8 +244,8 @@ func (m *TaskFormModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 
-		// ── Source textinput (field 2 on Details tab) ──────────────────────────
-		if m.activeTab == formTabDetails && m.focusIndex == 2 {
+		// ── Source textinput (field 1 on Details tab) ──────────────────────────
+		if m.activeTab == formTabDetails && m.focusIndex == 1 {
 			switch msg.String() {
 			case "tab":
 				m.commitSourceInput()
@@ -298,6 +298,52 @@ func (m *TaskFormModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 
+		// ── Priority inline editing (Basics tab, field 3) ─────────────────────
+		if m.activeTab == formTabBasics && m.focusIndex == 3 {
+			switch msg.String() {
+			case "1", "2", "3", "4", "5":
+				p, _ := strconv.Atoi(msg.String())
+				m.draft.priority = p
+				m.hasChanges = true
+				m.err = nil
+				return m, nil
+			case "up", "k":
+				if m.draft.priority > 1 {
+					m.draft.priority--
+					m.hasChanges = true
+					m.err = nil
+				}
+				return m, nil
+			case "down", "j":
+				if m.draft.priority < 5 {
+					m.draft.priority++
+					m.hasChanges = true
+					m.err = nil
+				}
+				return m, nil
+			}
+		}
+
+		// ── Type inline cycling (Basics tab, field 2) ──────────────────────────
+		if m.activeTab == formTabBasics && m.focusIndex == 2 {
+			types := models.AllTaskTypes()
+			curIdx := 0
+			for i, t := range types {
+				if t == m.draft.taskType {
+					curIdx = i
+					break
+				}
+			}
+			switch msg.String() {
+			case "h", "left":
+				m.applyTypeChange(types[(curIdx+len(types)-1)%len(types)])
+				return m, nil
+			case "l", "right":
+				m.applyTypeChange(types[(curIdx+1)%len(types)])
+				return m, nil
+			}
+		}
+
 		// ── Normal navigation ──────────────────────────────────────────────────
 		switch msg.String() {
 		case "]":
@@ -314,8 +360,6 @@ func (m *TaskFormModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "shift+tab":
 			m.focusPrev()
 			m.syncInputFocus()
-		case "d":
-			// `d` on Schedule/Due row is handled above; elsewhere it's a no-op.
 		case "c":
 			if m.activeTab == formTabChildren {
 				m.checklistExpanded = !m.checklistExpanded
@@ -368,8 +412,8 @@ func (m *TaskFormModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, m.handleChildrenEnter()
 			}
 		case "ctrl+e":
-			if m.activeTab == formTabDetails && m.focusIndex == 0 {
-				return m, m.handleDetailsEnter()
+			if m.activeTab == formTabBasics && m.focusIndex == 1 {
+				return m, m.handleBasicsEnter()
 			}
 		case "ctrl+s":
 			return m, m.handleSave()
@@ -417,19 +461,29 @@ func (m *TaskFormModel) handleBasicsEnter() tea.Cmd {
 		return nil
 
 	case 1:
+		// Description: open TextEditorModel.
+		currentDesc := m.draft.desc
+		return func() tea.Msg {
+			return ShowTextEditorMsg{FieldName: "formDesc", CurrentValue: currentDesc}
+		}
+
+	case 2:
 		// Type: open inline type picker
 		m.typePicker = newFormTypePicker(m.draft.taskType)
 		m.activeOverlay = formOverlayType
 		return nil
 
-	case 2:
+	case 3:
 		// Priority: open inline priority picker
 		m.priorityPicker = newFormPriorityPicker(m.draft.priority)
 		m.activeOverlay = formOverlayPriority
 		return nil
 
-	case 3:
-		// Parent: open full parent selector
+	case 4:
+		// Parent: open full parent selector (disabled for Epics)
+		if m.draft.taskType == models.TaskTypeEpic {
+			return nil
+		}
 		parents := m.buildValidParents()
 		return func() tea.Msg {
 			return OpenParentSelectorMsg{
@@ -440,7 +494,7 @@ func (m *TaskFormModel) handleBasicsEnter() tea.Cmd {
 			}
 		}
 
-	case 4:
+	case 5:
 		// Section: open section picker (Task=nil signals form context)
 		project := m.project
 		return func() tea.Msg {
@@ -450,13 +504,13 @@ func (m *TaskFormModel) handleBasicsEnter() tea.Cmd {
 			}
 		}
 
-	case 5:
+	case 6:
 		// Flags: open inline flags picker
 		m.flagsPicker = newFormFlagsPicker(m.draft.pinned, m.draft.active, m.draft.dimmed)
 		m.activeOverlay = formOverlayFlags
 		return nil
 
-	case 6:
+	case 7:
 		// Tags: open tag selector
 		tags := append([]string(nil), m.draft.tags...)
 		project := m.project
@@ -481,18 +535,12 @@ func (m *TaskFormModel) handleBasicsEnter() tea.Cmd {
 func (m *TaskFormModel) handleDetailsEnter() tea.Cmd {
 	switch m.focusIndex {
 	case 0:
-		// Description: open TextEditorModel.
-		currentDesc := m.draft.desc
-		return func() tea.Msg {
-			return ShowTextEditorMsg{FieldName: "formDesc", CurrentValue: currentDesc}
-		}
-	case 1:
 		// URL: textinput is focused; Enter commits and moves to Source.
 		m.commitURLInput()
 		m.focusNext()
 		m.syncInputFocus()
 		return nil
-	case 2:
+	case 1:
 		// Source: textinput is focused; Enter commits and wraps.
 		m.commitSourceInput()
 		m.focusNext()

@@ -6,18 +6,18 @@ import "github.com/sglavoie/tt/internal/models"
 const (
 	formTabBasics   = 0
 	formTabSchedule = 1
-	formTabDetails  = 2
-	formTabChildren = 3
+	formTabChildren = 2
+	formTabDetails  = 3
 	formTabCount    = 4
 )
 
-var formTabNames = []string{"Basics", "Schedule", "Details", "Children"}
+var formTabNames = []string{"Basics", "Schedule", "Children", "Details"}
 
 // Static field counts per tab (dynamic items like checklist are added on top).
 const (
-	formBasicsFieldCount   = 7 // Title, Type, Priority, Parent, Section, Flags, Tags
+	formBasicsFieldCount   = 8 // Title, Description, Type, Priority, Parent, Section, Flags, Tags
 	formScheduleFieldCount = 2 // Due, Recurrence
-	formDetailsFieldCount  = 3 // Description, URL, Source
+	formDetailsFieldCount  = 2 // URL, Source
 )
 
 // formStaticFieldCount returns the number of static focusable fields in a tab.

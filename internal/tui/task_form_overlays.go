@@ -399,26 +399,39 @@ func (m *TaskFormModel) closeInlineOverlay() {
 	m.attrPicker = nil
 }
 
+// applyTypeChange applies a task type change with all required side effects:
+// clears incompatible parent, clamps focusIndex, marks dirty.
+// No-op if newType == current type.
+func (m *TaskFormModel) applyTypeChange(newType models.TaskType) {
+	if newType == m.draft.taskType {
+		return
+	}
+	m.draft.taskType = newType
+	if m.draft.parentID != nil {
+		if p := formFindTask(m.project.Tasks, *m.draft.parentID); p == nil || !p.CanAddChild(newType) {
+			m.draft.parentID = nil
+		}
+	}
+	// Epics cannot have parents — clear parentID unconditionally.
+	if newType == models.TaskTypeEpic {
+		m.draft.parentID = nil
+	}
+	maxIdx := formBasicsFieldCount + formAttrFieldCount(newType) - 1
+	if m.focusIndex > maxIdx {
+		m.focusIndex = maxIdx
+	}
+	if m.isFieldDisabled(m.focusIndex) {
+		m.focusIndex++
+	}
+	m.hasChanges = true
+	m.err = nil
+}
+
 // applyFormOverlayResult merges an overlay result into the draft and marks dirty.
 func (m *TaskFormModel) applyFormOverlayResult(msg tea.Msg) {
 	switch msg := msg.(type) {
 	case TaskFormTypePickedMsg:
-		if msg.Type != m.draft.taskType {
-			m.draft.taskType = msg.Type
-			// Clear parent if it can no longer hold the new type.
-			if m.draft.parentID != nil {
-				if p := formFindTask(m.project.Tasks, *m.draft.parentID); p == nil || !p.CanAddChild(msg.Type) {
-					m.draft.parentID = nil
-				}
-			}
-			// Clamp focusIndex if it was on an attr row that no longer exists.
-			maxIdx := formBasicsFieldCount + formAttrFieldCount(msg.Type) - 1
-			if m.focusIndex > maxIdx {
-				m.focusIndex = maxIdx
-			}
-			m.hasChanges = true
-			m.err = nil
-		}
+		m.applyTypeChange(msg.Type)
 	case TaskFormPriorityPickedMsg:
 		m.draft.priority = msg.Priority
 		m.hasChanges = true

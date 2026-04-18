@@ -79,7 +79,7 @@ type TaskFormModel struct {
 	// Due date input (Schedule tab, field 0)
 	dueTextInput textinput.Model
 
-	// URL and Source inputs (Details tab, fields 1 and 2)
+	// URL and Source inputs (Details tab, fields 0 and 1)
 	urlTextInput    textinput.Model
 	sourceTextInput textinput.Model
 
@@ -314,7 +314,6 @@ func (m *TaskFormModel) HandledKeys() []string {
 		"ctrl+s",
 		"ctrl+v",
 		"ctrl+e",
-		"d",
 		"c",
 		"S",
 		"ctrl+a",
@@ -324,6 +323,9 @@ func (m *TaskFormModel) HandledKeys() []string {
 		"ctrl+k",
 		"ctrl+o",
 		"space",
+		"1", "2", "3", "4", "5",
+		"j", "k", "up", "down",
+		"h", "l", "left", "right",
 	}
 }
 
@@ -393,6 +395,9 @@ func (m *TaskFormModel) focusNext() {
 		return
 	}
 	m.focusIndex = (m.focusIndex + 1) % count
+	if m.isFieldDisabled(m.focusIndex) {
+		m.focusIndex = (m.focusIndex + 1) % count
+	}
 }
 
 func (m *TaskFormModel) focusPrev() {
@@ -401,6 +406,16 @@ func (m *TaskFormModel) focusPrev() {
 		return
 	}
 	m.focusIndex = (m.focusIndex + count - 1) % count
+	if m.isFieldDisabled(m.focusIndex) {
+		m.focusIndex = (m.focusIndex + count - 1) % count
+	}
+}
+
+// isFieldDisabled returns true when the field at the given index should be
+// skipped during navigation. Currently only the Parent row (Basics field 4)
+// is disabled — Epics are always top-level and cannot have a parent.
+func (m *TaskFormModel) isFieldDisabled(idx int) bool {
+	return m.activeTab == formTabBasics && idx == 4 && m.draft.taskType == models.TaskTypeEpic
 }
 
 // ── Title input helpers ───────────────────────────────────────────────────────
@@ -474,9 +489,9 @@ func (m *TaskFormModel) initURLInput(value string) {
 	}
 }
 
-// focusURLInput focuses the URL textinput when field 1 on the Details tab is active.
+// focusURLInput focuses the URL textinput when field 0 on the Details tab is active.
 func (m *TaskFormModel) focusURLInput() {
-	if m.activeTab == formTabDetails && m.focusIndex == 1 {
+	if m.activeTab == formTabDetails && m.focusIndex == 0 {
 		m.urlTextInput.Focus()
 	} else {
 		m.urlTextInput.Blur()
@@ -503,9 +518,9 @@ func (m *TaskFormModel) initSourceInput(value string) {
 	}
 }
 
-// focusSourceInput focuses the Source textinput when field 2 on the Details tab is active.
+// focusSourceInput focuses the Source textinput when field 1 on the Details tab is active.
 func (m *TaskFormModel) focusSourceInput() {
-	if m.activeTab == formTabDetails && m.focusIndex == 2 {
+	if m.activeTab == formTabDetails && m.focusIndex == 1 {
 		m.sourceTextInput.Focus()
 	} else {
 		m.sourceTextInput.Blur()

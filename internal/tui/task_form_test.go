@@ -38,21 +38,21 @@ func TestTaskForm_TabSwitchForward(t *testing.T) {
 		t.Errorf("after ]: expected tab %d, got %d", formTabSchedule, m.activeTab)
 	}
 	m = sendFormKey(m, syntheticKey(']'))
-	if m.activeTab != formTabDetails {
-		t.Errorf("after ]]: expected tab %d, got %d", formTabDetails, m.activeTab)
+	if m.activeTab != formTabChildren {
+		t.Errorf("after ]]: expected tab %d, got %d", formTabChildren, m.activeTab)
 	}
 	m = sendFormKey(m, syntheticKey(']'))
-	if m.activeTab != formTabChildren {
-		t.Errorf("after ]]]: expected tab %d, got %d", formTabChildren, m.activeTab)
+	if m.activeTab != formTabDetails {
+		t.Errorf("after ]]]: expected tab %d, got %d", formTabDetails, m.activeTab)
 	}
 }
 
 func TestTaskForm_TabSwitchBackward(t *testing.T) {
 	m := newTestTaskForm()
 	m = sendFormKey(m, syntheticKey('['))
-	// Wraps from Basics → Children (last tab).
-	if m.activeTab != formTabChildren {
-		t.Errorf("[: expected wrap to tab %d, got %d", formTabChildren, m.activeTab)
+	// Wraps from Basics → Details (last tab).
+	if m.activeTab != formTabDetails {
+		t.Errorf("[: expected wrap to tab %d, got %d", formTabDetails, m.activeTab)
 	}
 }
 
@@ -139,6 +139,46 @@ func TestTaskForm_ViewContainsTabBar(t *testing.T) {
 		if !strings.Contains(view, name) {
 			t.Errorf("view should contain tab name %q; got:\n%s", name, view)
 		}
+	}
+}
+
+func TestTaskForm_HelpPaneShownWhenWide(t *testing.T) {
+	m := newTestTaskForm() // default width=80 >= helpPaneMinWidth
+	view := m.View().Content
+	// Field-specific header for focusIndex 0 on Basics tab is "Title".
+	if !strings.Contains(view, "Title") {
+		t.Errorf("help pane should show field header 'Title' at width 80; got:\n%s", view)
+	}
+}
+
+func TestTaskForm_HelpPaneHiddenWhenNarrow(t *testing.T) {
+	m := newTestTaskForm()
+	m.width = 50 // below helpPaneMinWidth
+	view := m.View().Content
+	// With narrow width, help pane header should not appear.
+	// The word "Title" would also appear as a form field label, so check for
+	// a help-pane-specific phrase that only the pane produces.
+	if strings.Contains(view, "│") {
+		t.Errorf("help pane separator should be hidden at width 50; got:\n%s", view)
+	}
+}
+
+func TestTaskForm_HelpPaneFieldHeader_Priority(t *testing.T) {
+	m := newTestTaskForm()
+	m.focusIndex = 3 // Priority
+	view := m.View().Content
+	if !strings.Contains(view, "Priority") {
+		t.Errorf("help pane should show 'Priority' header at focusIndex 3; got:\n%s", view)
+	}
+}
+
+func TestTaskForm_HelpPaneHiddenDuringOverlay(t *testing.T) {
+	m := newTestTaskForm()
+	m.activeOverlay = formOverlayType // any non-none overlay
+	view := m.View().Content
+	// Help pane separator should not appear during overlay.
+	if strings.Contains(view, "│") {
+		t.Errorf("help pane should be hidden during overlay; got:\n%s", view)
 	}
 }
 
@@ -261,7 +301,7 @@ func sendFormMsg(m *TaskFormModel, msg tea.Msg) *TaskFormModel {
 
 func TestTaskForm_EnterOnType_OpensTypePicker(t *testing.T) {
 	m := newTestTaskForm()
-	m = navigateToField(m, 1)
+	m = navigateToField(m, 2)
 	m = sendFormKey(m, syntheticSpecialKey(tea.KeyEnter))
 	if m.activeOverlay != formOverlayType {
 		t.Errorf("expected formOverlayType, got %v", m.activeOverlay)
@@ -273,7 +313,7 @@ func TestTaskForm_EnterOnType_OpensTypePicker(t *testing.T) {
 
 func TestTaskForm_TypePicker_SelectBug_UpdatesDraft(t *testing.T) {
 	m := newTestTaskForm()
-	m = navigateToField(m, 1)
+	m = navigateToField(m, 2)
 	m = sendFormKey(m, syntheticSpecialKey(tea.KeyEnter))
 	// AllTaskTypes order: Epic(0), Story(1), Task(2, default), Bug(3), Idea(4)
 	// Default cursor is at Task(2). One 'j' press moves to Bug(3).
@@ -292,7 +332,7 @@ func TestTaskForm_TypePicker_SelectBug_UpdatesDraft(t *testing.T) {
 
 func TestTaskForm_TypePicker_EscCancels(t *testing.T) {
 	m := newTestTaskForm()
-	m = navigateToField(m, 1)
+	m = navigateToField(m, 2)
 	original := m.draft.taskType
 	m = sendFormKey(m, syntheticSpecialKey(tea.KeyEnter))
 	m = sendFormKey(m, syntheticSpecialKey(tea.KeyEscape))
@@ -308,7 +348,7 @@ func TestTaskForm_TypePicker_EscCancels(t *testing.T) {
 
 func TestTaskForm_EnterOnPriority_OpensPriorityPicker(t *testing.T) {
 	m := newTestTaskForm()
-	m = navigateToField(m, 2)
+	m = navigateToField(m, 3)
 	m = sendFormKey(m, syntheticSpecialKey(tea.KeyEnter))
 	if m.activeOverlay != formOverlayPriority {
 		t.Errorf("expected formOverlayPriority, got %v", m.activeOverlay)
@@ -317,7 +357,7 @@ func TestTaskForm_EnterOnPriority_OpensPriorityPicker(t *testing.T) {
 
 func TestTaskForm_PriorityPicker_DirectKey_UpdatesDraft(t *testing.T) {
 	m := newTestTaskForm()
-	m = navigateToField(m, 2)
+	m = navigateToField(m, 3)
 	m = sendFormKey(m, syntheticSpecialKey(tea.KeyEnter))
 	m = sendFormKey(m, syntheticKey('1')) // pick critical
 	if m.draft.priority != 1 {
@@ -333,7 +373,7 @@ func TestTaskForm_PriorityPicker_DirectKey_UpdatesDraft(t *testing.T) {
 
 func TestTaskForm_PriorityPicker_EscCancels(t *testing.T) {
 	m := newTestTaskForm()
-	m = navigateToField(m, 2)
+	m = navigateToField(m, 3)
 	original := m.draft.priority
 	m = sendFormKey(m, syntheticSpecialKey(tea.KeyEnter))
 	m = sendFormKey(m, syntheticSpecialKey(tea.KeyEscape))
@@ -346,7 +386,7 @@ func TestTaskForm_PriorityPicker_EscCancels(t *testing.T) {
 
 func TestTaskForm_EnterOnFlags_OpensFlagsPicker(t *testing.T) {
 	m := newTestTaskForm()
-	m = navigateToField(m, 5)
+	m = navigateToField(m, 6)
 	m = sendFormKey(m, syntheticSpecialKey(tea.KeyEnter))
 	if m.activeOverlay != formOverlayFlags {
 		t.Errorf("expected formOverlayFlags, got %v", m.activeOverlay)
@@ -355,7 +395,7 @@ func TestTaskForm_EnterOnFlags_OpensFlagsPicker(t *testing.T) {
 
 func TestTaskForm_FlagsPicker_Toggle_UpdatesDraft(t *testing.T) {
 	m := newTestTaskForm()
-	m = navigateToField(m, 5)
+	m = navigateToField(m, 6)
 	m = sendFormKey(m, syntheticSpecialKey(tea.KeyEnter)) // open (cursor=0=Pinned)
 	m = sendFormKey(m, syntheticSpecialKey(tea.KeySpace)) // toggle Pinned
 	m = sendFormKey(m, syntheticSpecialKey(tea.KeyEnter)) // confirm
@@ -369,7 +409,7 @@ func TestTaskForm_FlagsPicker_Toggle_UpdatesDraft(t *testing.T) {
 
 func TestTaskForm_FlagsPicker_EscCancels(t *testing.T) {
 	m := newTestTaskForm()
-	m = navigateToField(m, 5)
+	m = navigateToField(m, 6)
 	m = sendFormKey(m, syntheticSpecialKey(tea.KeyEnter))
 	m = sendFormKey(m, syntheticSpecialKey(tea.KeySpace)) // toggle but don't confirm
 	m = sendFormKey(m, syntheticSpecialKey(tea.KeyEscape))
@@ -448,7 +488,7 @@ func TestTaskForm_BasicsTab_RendersLabels(t *testing.T) {
 	m := newTestTaskForm()
 	m.activeTab = formTabBasics
 	view := m.View().Content
-	for _, label := range []string{"Title:", "Type:", "Priority:", "Parent:", "Section:", "Flags:", "Tags:"} {
+	for _, label := range []string{"Title:", "Description:", "Type:", "Priority:", "Parent:", "Section:", "Flags:", "Tags:"} {
 		if !strings.Contains(view, label) {
 			t.Errorf("Basics tab should contain label %q; got:\n%s", label, view)
 		}
@@ -457,7 +497,7 @@ func TestTaskForm_BasicsTab_RendersLabels(t *testing.T) {
 
 func TestTaskForm_BasicsTab_OverlayVisible_WhenTypePickerActive(t *testing.T) {
 	m := newTestTaskForm()
-	m = navigateToField(m, 1)
+	m = navigateToField(m, 2)
 	m = sendFormKey(m, syntheticSpecialKey(tea.KeyEnter))
 	view := m.View().Content
 	if !strings.Contains(view, "Set Type") {
@@ -492,9 +532,9 @@ func TestTaskForm_ScheduleTab_Due_ShowsPlaceholder_WhenEmpty(t *testing.T) {
 	m := newTestTaskForm()
 	m = navigateToScheduleField(m, 0)
 	view := m.View().Content
-	// Placeholder text should appear when no due date is set and field is focused.
-	if !strings.Contains(view, "d: presets") {
-		t.Errorf("Due field hint should show 'd: presets' when focused; got:\n%s", view)
+	// Ctrl+D presets hint should appear in the help pane when Due field is focused.
+	if !strings.Contains(view, "Ctrl+D") || !strings.Contains(view, "presets") {
+		t.Errorf("Due field help pane should show 'Ctrl+D' and 'presets' when focused; got:\n%s", view)
 	}
 }
 
@@ -510,7 +550,7 @@ func TestTaskForm_ScheduleTab_Due_TypedValue_SetsHasChanges(t *testing.T) {
 func TestTaskForm_ScheduleTab_Due_DKey_OpensDuePicker(t *testing.T) {
 	m := newTestTaskForm()
 	m = navigateToScheduleField(m, 0)
-	m = sendFormKey(m, syntheticKey('d'))
+	m = sendFormKey(m, syntheticCtrlKey('d'))
 	if m.activeOverlay != formOverlayDue {
 		t.Errorf("expected formOverlayDue, got %v", m.activeOverlay)
 	}
@@ -522,8 +562,8 @@ func TestTaskForm_ScheduleTab_Due_DKey_OpensDuePicker(t *testing.T) {
 func TestTaskForm_ScheduleTab_DuePicker_TodayKey_UpdatesDraft(t *testing.T) {
 	m := newTestTaskForm()
 	m = navigateToScheduleField(m, 0)
-	m = sendFormKey(m, syntheticKey('d')) // open picker
-	m = sendFormKey(m, syntheticKey('t')) // pick "today"
+	m = sendFormKey(m, syntheticCtrlKey('d')) // open picker
+	m = sendFormKey(m, syntheticKey('t'))     // pick "today"
 	if m.draft.dueDate == nil {
 		t.Error("expected draft.dueDate to be set after picking today")
 	}
@@ -543,8 +583,8 @@ func TestTaskForm_ScheduleTab_DuePicker_ClearKey_ClearsDraft(t *testing.T) {
 	m = navigateToScheduleField(m, 0)
 	// Pre-set a due date.
 	m.draft.dueInput = "2026-01-15"
-	m = sendFormKey(m, syntheticKey('d')) // open picker
-	m = sendFormKey(m, syntheticKey('0')) // pick "clear"
+	m = sendFormKey(m, syntheticCtrlKey('d')) // open picker
+	m = sendFormKey(m, syntheticKey('0'))     // pick "clear"
 	if m.draft.dueDate != nil {
 		t.Error("expected draft.dueDate=nil after clear")
 	}
@@ -556,7 +596,7 @@ func TestTaskForm_ScheduleTab_DuePicker_ClearKey_ClearsDraft(t *testing.T) {
 func TestTaskForm_ScheduleTab_DuePicker_EscCancels(t *testing.T) {
 	m := newTestTaskForm()
 	m = navigateToScheduleField(m, 0)
-	m = sendFormKey(m, syntheticKey('d')) // open picker
+	m = sendFormKey(m, syntheticCtrlKey('d')) // open picker
 	m = sendFormKey(m, syntheticSpecialKey(tea.KeyEscape))
 	if m.activeOverlay != formOverlayNone {
 		t.Error("expected overlay dismissed after Esc")
@@ -606,7 +646,7 @@ func TestTaskForm_ScheduleTab_RecurrenceEditorDoneMsg_Canceled_NoChange(t *testi
 func TestTaskForm_ScheduleTab_DuePicker_Render_ContainsTitleText(t *testing.T) {
 	m := newTestTaskForm()
 	m = navigateToScheduleField(m, 0)
-	m = sendFormKey(m, syntheticKey('d')) // open overlay
+	m = sendFormKey(m, syntheticCtrlKey('d')) // open overlay
 	view := m.View().Content
 	if !strings.Contains(view, "Set Due Date") {
 		t.Errorf("view should show 'Set Due Date' when due picker is active; got:\n%s", view)
@@ -616,7 +656,7 @@ func TestTaskForm_ScheduleTab_DuePicker_Render_ContainsTitleText(t *testing.T) {
 func TestTaskForm_ScheduleTab_NLDateRoundTrip(t *testing.T) {
 	m := newTestTaskForm()
 	m = navigateToScheduleField(m, 0)
-	m = sendFormKey(m, syntheticKey('d'))
+	m = sendFormKey(m, syntheticCtrlKey('d'))
 	// Pick "tomorrow" via 'm' key.
 	m = sendFormKey(m, syntheticKey('m'))
 	if m.draft.dueDate == nil {
@@ -673,36 +713,36 @@ func TestTaskForm_DetailsTab_RendersLabels(t *testing.T) {
 	m := newTestTaskForm()
 	m = navigateToDetailsField(m, 0)
 	view := m.View().Content
-	for _, label := range []string{"Description:", "URL:", "Source:"} {
+	for _, label := range []string{"URL:", "Source:"} {
 		if !strings.Contains(view, label) {
 			t.Errorf("Details tab should contain label %q; got:\n%s", label, view)
 		}
 	}
 }
 
-func TestTaskForm_DetailsTab_DescriptionEmpty_ShowsNone(t *testing.T) {
+func TestTaskForm_BasicsTab_DescriptionEmpty_ShowsNone(t *testing.T) {
 	m := newTestTaskForm()
-	m = navigateToDetailsField(m, 0)
+	m = navigateToField(m, 1)
 	view := m.View().Content
 	if !strings.Contains(view, "(none)") {
 		t.Errorf("empty description should show '(none)'; got:\n%s", view)
 	}
 }
 
-func TestTaskForm_DetailsTab_DescriptionFilled_ShowsPreview(t *testing.T) {
+func TestTaskForm_BasicsTab_DescriptionFilled_ShowsPreview(t *testing.T) {
 	m := newTestTaskForm()
 	m.draft.desc = "This is the description"
-	m = navigateToDetailsField(m, 0)
+	m = navigateToField(m, 1)
 	view := m.View().Content
 	if !strings.Contains(view, "This is the description") {
-		t.Errorf("Details tab should show description preview; got:\n%s", view)
+		t.Errorf("Basics tab should show description preview; got:\n%s", view)
 	}
 }
 
-func TestTaskForm_DetailsTab_EnterOnDescription_EmitsShowTextEditorMsg(t *testing.T) {
+func TestTaskForm_BasicsTab_EnterOnDescription_EmitsShowTextEditorMsg(t *testing.T) {
 	m := newTestTaskForm()
 	m.draft.desc = "current desc"
-	m = navigateToDetailsField(m, 0)
+	m = navigateToField(m, 1)
 	_, cmd := m.Update(syntheticSpecialKey(tea.KeyEnter))
 	if cmd == nil {
 		t.Fatal("expected Cmd from Enter on Description, got nil")
@@ -742,7 +782,7 @@ func TestTaskForm_TextEditorDoneMsg_Canceled_NoChange(t *testing.T) {
 
 func TestTaskForm_DetailsTab_URLTyping_SetsHasChanges(t *testing.T) {
 	m := newTestTaskForm()
-	m = navigateToDetailsField(m, 1)
+	m = navigateToDetailsField(m, 0)
 	before := m.hasChanges
 	m = sendFormKey(m, syntheticKey('h'))
 	if m.hasChanges == before && !m.hasChanges {
@@ -752,7 +792,7 @@ func TestTaskForm_DetailsTab_URLTyping_SetsHasChanges(t *testing.T) {
 
 func TestTaskForm_DetailsTab_SourceTyping_SetsHasChanges(t *testing.T) {
 	m := newTestTaskForm()
-	m = navigateToDetailsField(m, 2)
+	m = navigateToDetailsField(m, 1)
 	m = sendFormKey(m, syntheticKey('s'))
 	if !m.hasChanges {
 		t.Error("typing in Source field should set hasChanges=true")
@@ -1781,5 +1821,155 @@ func TestTaskForm_Save_EditHappyPath_MutatesTaskInProject(t *testing.T) {
 	}
 	if found.Priority != 5 {
 		t.Errorf("expected Priority=5, got %d", found.Priority)
+	}
+}
+
+// ── Session 1: Inline priority/type editing ───────────────────────────────────
+
+func TestPriorityDirectSet(t *testing.T) {
+	for _, want := range []int{1, 2, 3, 4, 5} {
+		m := newTestTaskForm()
+		m = navigateToField(m, 3)
+		m = sendFormKey(m, syntheticKey(rune('0'+want)))
+		if m.draft.priority != want {
+			t.Errorf("key '%d': expected priority=%d, got %d", want, want, m.draft.priority)
+		}
+		if !m.hasChanges {
+			t.Errorf("key '%d': expected hasChanges=true", want)
+		}
+		if m.activeOverlay != formOverlayNone {
+			t.Errorf("key '%d': expected no overlay open", want)
+		}
+	}
+}
+
+func TestPriorityCycleUpDown(t *testing.T) {
+	// k and up decrement, clamped at 1.
+	m := newTestTaskForm()
+	m = navigateToField(m, 3)
+	m.draft.priority = 3
+	m = sendFormKey(m, syntheticKey('k'))
+	if m.draft.priority != 2 {
+		t.Errorf("k from 3: expected 2, got %d", m.draft.priority)
+	}
+	m = sendFormKey(m, syntheticSpecialKey(tea.KeyUp))
+	if m.draft.priority != 1 {
+		t.Errorf("up from 2: expected 1, got %d", m.draft.priority)
+	}
+	// Clamp: k from 1 stays at 1.
+	m = sendFormKey(m, syntheticKey('k'))
+	if m.draft.priority != 1 {
+		t.Errorf("k from 1 (clamp): expected 1, got %d", m.draft.priority)
+	}
+
+	// j and down increment, clamped at 5.
+	m2 := newTestTaskForm()
+	m2 = navigateToField(m2, 3)
+	m2.draft.priority = 3
+	m2 = sendFormKey(m2, syntheticKey('j'))
+	if m2.draft.priority != 4 {
+		t.Errorf("j from 3: expected 4, got %d", m2.draft.priority)
+	}
+	m2 = sendFormKey(m2, syntheticSpecialKey(tea.KeyDown))
+	if m2.draft.priority != 5 {
+		t.Errorf("down from 4: expected 5, got %d", m2.draft.priority)
+	}
+	m2 = sendFormKey(m2, syntheticKey('j'))
+	if m2.draft.priority != 5 {
+		t.Errorf("j from 5 (clamp): expected 5, got %d", m2.draft.priority)
+	}
+	if !m2.hasChanges {
+		t.Error("expected hasChanges=true after cycling")
+	}
+}
+
+func TestTypeCycleHL(t *testing.T) {
+	// AllTaskTypes order: Epic(0), Story(1), Task(2), Bug(3), Idea(4).
+	// Default type is Task.
+	m := newTestTaskForm()
+	m = navigateToField(m, 2)
+
+	// l: Task → Bug.
+	m = sendFormKey(m, syntheticKey('l'))
+	if m.draft.taskType != models.TaskTypeBug {
+		t.Errorf("l from Task: expected Bug, got %v", m.draft.taskType)
+	}
+
+	// l: Bug → Idea.
+	m = sendFormKey(m, syntheticKey('l'))
+	if m.draft.taskType != models.TaskTypeIdea {
+		t.Errorf("l from Bug: expected Idea, got %v", m.draft.taskType)
+	}
+
+	// l: Idea → Epic (wrap around).
+	m = sendFormKey(m, syntheticKey('l'))
+	if m.draft.taskType != models.TaskTypeEpic {
+		t.Errorf("l from Idea (wrap): expected Epic, got %v", m.draft.taskType)
+	}
+
+	// h: Epic → Idea (wrap around).
+	m = sendFormKey(m, syntheticKey('h'))
+	if m.draft.taskType != models.TaskTypeIdea {
+		t.Errorf("h from Epic (wrap): expected Idea, got %v", m.draft.taskType)
+	}
+
+	// right arrow: Idea → Epic (wrap).
+	m.draft.taskType = models.TaskTypeIdea
+	m = sendFormKey(m, syntheticSpecialKey(tea.KeyRight))
+	if m.draft.taskType != models.TaskTypeEpic {
+		t.Errorf("right from Idea: expected Epic, got %v", m.draft.taskType)
+	}
+
+	// left arrow: Epic → Idea (wrap).
+	m = sendFormKey(m, syntheticSpecialKey(tea.KeyLeft))
+	if m.draft.taskType != models.TaskTypeIdea {
+		t.Errorf("left from Epic: expected Idea, got %v", m.draft.taskType)
+	}
+
+	if !m.hasChanges {
+		t.Error("expected hasChanges=true after type cycling")
+	}
+}
+
+func TestTypeCycleSideEffects(t *testing.T) {
+	project := testutil.NewTestProjectWithTasks("Test Project")
+	cfg := testutil.NewTestConfig()
+
+	// Find an Epic task to use as parent.
+	var epicTask *models.Task
+	for _, tsk := range project.Tasks {
+		if tsk.Type == models.TaskTypeEpic {
+			epicTask = tsk
+			break
+		}
+	}
+	if epicTask == nil {
+		t.Skip("test project has no Epic tasks")
+	}
+
+	// Set up form: draft is Task, parent is Epic (Epic can hold Task children).
+	m := NewTaskFormModelCreate(project, cfg, nil, nil)
+	m.draft.taskType = models.TaskTypeTask
+	epicID := epicTask.ID
+	m.draft.parentID = &epicID
+	m = navigateToField(m, 2)
+
+	// l: Task → Bug — Epic can hold Bug children; parent should be preserved.
+	m = sendFormKey(m, syntheticKey('l'))
+	if m.draft.taskType != models.TaskTypeBug {
+		t.Fatalf("expected Bug, got %v", m.draft.taskType)
+	}
+	if m.draft.parentID == nil {
+		t.Error("parent should be preserved when cycling to compatible type Bug")
+	}
+
+	// l three more times: Bug → Idea → Epic (wrap) — Epic can't hold Epic.
+	m = sendFormKey(m, syntheticKey('l')) // Bug → Idea
+	m = sendFormKey(m, syntheticKey('l')) // Idea → Epic (wrap)
+	if m.draft.taskType != models.TaskTypeEpic {
+		t.Fatalf("expected Epic, got %v", m.draft.taskType)
+	}
+	if m.draft.parentID != nil {
+		t.Error("parent should be cleared when cycling to Epic (Epic can't be child of Epic)")
 	}
 }

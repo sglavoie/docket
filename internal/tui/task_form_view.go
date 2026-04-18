@@ -5,7 +5,12 @@ import (
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 )
+
+// helpPaneMinWidth is the minimum terminal width at which the help pane is shown.
+// Below this threshold the form uses a single-column layout.
+const helpPaneMinWidth = 60
 
 func (m *TaskFormModel) View() tea.View {
 	var b strings.Builder
@@ -35,16 +40,33 @@ func (m *TaskFormModel) View() tea.View {
 		b.WriteString(m.renderFormOverlay())
 		b.WriteString("\n")
 	} else {
+		var tabContent string
 		switch m.activeTab {
 		case formTabBasics:
-			b.WriteString(m.renderBasicsTab())
+			tabContent = m.renderBasicsTab()
 		case formTabSchedule:
-			b.WriteString(m.renderScheduleTab())
+			tabContent = m.renderScheduleTab()
 		case formTabDetails:
-			b.WriteString(m.renderDetailsTab())
+			tabContent = m.renderDetailsTab()
 		case formTabChildren:
-			b.WriteString(m.renderChildrenTab())
+			tabContent = m.renderChildrenTab()
 		}
+
+		if m.width >= helpPaneMinWidth {
+			// Two-column: form content left, help pane right.
+			helpWidth := m.width * 35 / 100
+			if helpWidth > 30 {
+				helpWidth = 30
+			}
+			if helpWidth < 20 {
+				helpWidth = 20
+			}
+			helpPane := m.renderFormHelpPane(helpWidth)
+			b.WriteString(lipgloss.JoinHorizontal(lipgloss.Top, tabContent, "  ", helpPane))
+		} else {
+			b.WriteString(tabContent)
+		}
+		b.WriteString("\n")
 	}
 
 	// ── Error banner ──────────────────────────────────────────────────────────
@@ -54,9 +76,18 @@ func (m *TaskFormModel) View() tea.View {
 	}
 
 	// ── Footer ────────────────────────────────────────────────────────────────
-	helpText := "[]: tabs · Tab: next · Enter: open · Ctrl+S: save · Esc: cancel"
+	helpText := "[]: tabs · Tab: next · Ctrl+S: save · Esc: cancel"
 	if m.activeTab == formTabChildren {
-		helpText = "[]: tabs · c: checklist · S: subtasks · Ctrl+A: add item · Ctrl+T: add subtask · Ctrl+D: delete · Ctrl+J/K: reorder · Ctrl+S: save · Esc: cancel"
+		showSubtasks := m.mode == FormModeCreate && formTypeCanHaveSubtasks(m.draft.taskType)
+		helpText = "[]: tabs · Tab: next · c: checklist"
+		if showSubtasks {
+			helpText += " · S: subtasks"
+		}
+		helpText += " · Ctrl+A: add item"
+		if showSubtasks {
+			helpText += " · Ctrl+T: add subtask"
+		}
+		helpText += " · Ctrl+D: delete · Ctrl+J/K: reorder · Ctrl+S: save · Esc: cancel"
 	}
 	var out strings.Builder
 	out.WriteString(b.String())

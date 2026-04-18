@@ -67,7 +67,7 @@ func (m *AppModel) handleSectionMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 		return true, nil
 
 	case ShowSectionPickerMsg:
-		if msg.Task != nil && msg.Project != nil {
+		if msg.Project != nil {
 			m.showView(ViewSectionPicker, NewSectionPickerModel(msg.Task, msg.Project))
 		}
 		return true, nil

@@ -47,7 +47,7 @@ type SectionPickerDoneMsg struct {
 
 // NewSectionPickerModel creates a new section picker for task assignment.
 func NewSectionPickerModel(task *models.Task, project *models.Project) *SectionPickerModel {
-	sections := buildSectionPickerList(project)
+	sections := buildSectionPickerList(project, task)
 
 	picker := NewBasePicker(sections, PickerConfig{
 		Title:          "Assign Section",
@@ -59,9 +59,12 @@ func NewSectionPickerModel(task *models.Task, project *models.Project) *SectionP
 	})
 
 	// Pre-select current section (check CustomSection for non-GTD sections)
-	currentSection := task.Section
-	if currentSection == "" && task.CustomSection != "" {
-		currentSection = task.CustomSection
+	var currentSection string
+	if task != nil {
+		currentSection = task.Section
+		if currentSection == "" && task.CustomSection != "" {
+			currentSection = task.CustomSection
+		}
 	}
 	picker.SetCursorToID(currentSection)
 
@@ -73,7 +76,8 @@ func NewSectionPickerModel(task *models.Task, project *models.Project) *SectionP
 }
 
 // buildSectionPickerList builds a sorted list of sections with counts for assignment.
-func buildSectionPickerList(project *models.Project) []SectionInfo {
+// When task is nil (form context), the "remove custom section" sentinel is omitted.
+func buildSectionPickerList(project *models.Project, task *models.Task) []SectionInfo {
 	sectionCounts := make(map[string]int)
 
 	// Count GTD sections from task.Section, custom sections from task.CustomSection
@@ -103,13 +107,19 @@ func buildSectionPickerList(project *models.Project) []SectionInfo {
 		sections = append(sections, SectionInfo{Name: name, TaskCount: count, ColorName: colorName, IsCustom: isCustom})
 	}
 
-	// Sort: Next first, then alphabetically, with empty last
+	// Sort: built-in first (Next at top), then custom, empty last
 	sort.Slice(sections, func(i, j int) bool {
 		if sections[i].Name == "" {
 			return false
 		}
 		if sections[j].Name == "" {
 			return true
+		}
+		if !sections[i].IsCustom && sections[j].IsCustom {
+			return true
+		}
+		if sections[i].IsCustom && !sections[j].IsCustom {
+			return false
 		}
 		if sections[i].Name == models.SectionNext {
 			return true
@@ -120,16 +130,18 @@ func buildSectionPickerList(project *models.Project) []SectionInfo {
 		return sections[i].Name < sections[j].Name
 	})
 
-	// Append sentinel for removing custom section (only if any task has one)
-	hasCustom := false
-	for _, task := range project.Tasks {
-		if task.CustomSection != "" {
-			hasCustom = true
-			break
+	// Append sentinel for removing custom section (only for direct task edit, not form)
+	if task != nil {
+		hasCustom := false
+		for _, t := range project.Tasks {
+			if t.CustomSection != "" {
+				hasCustom = true
+				break
+			}
 		}
-	}
-	if hasCustom {
-		sections = append(sections, SectionInfo{Name: removeCustomSectionSentinel})
+		if hasCustom {
+			sections = append(sections, SectionInfo{Name: removeCustomSectionSentinel})
+		}
 	}
 
 	// Append sentinel for creating a new section
@@ -257,7 +269,10 @@ func (m *SectionPickerModel) View() tea.View {
 	var b strings.Builder
 
 	title := "Assign Section"
-	subtitle := fmt.Sprintf("Task #%d: %s", m.task.ShortID, m.task.Title)
+	subtitle := "New Task"
+	if m.task != nil {
+		subtitle = fmt.Sprintf("Task #%d: %s", m.task.ShortID, m.task.Title)
+	}
 	availableSubtitleWidth := max(m.Width()-lipgloss.Width(title)-2, 1)
 	subtitle = truncateToVisualWidth(subtitle, availableSubtitleWidth)
 	b.WriteString(renderFullscreenTitle(title, subtitle))
@@ -268,10 +283,10 @@ func (m *SectionPickerModel) View() tea.View {
 
 	// Current section — show both GTD and custom when both are set
 	var currentParts []string
-	if m.task.Section != "" {
+	if m.task != nil && m.task.Section != "" {
 		currentParts = append(currentParts, m.task.Section)
 	}
-	if m.task.CustomSection != "" {
+	if m.task != nil && m.task.CustomSection != "" {
 		currentParts = append(currentParts, "@"+m.task.CustomSection)
 	}
 	currentDisplay := "(no section)"
@@ -361,7 +376,11 @@ func (m *SectionPickerModel) renderSectionList(maxVisible, boxWidth int) string 
 		case removeCustomSectionSentinel:
 			displayText = "Remove Custom Section"
 		default:
-			displayText = item.DisplayText()
+			if !item.IsCustom && item.Name != "" {
+				displayText = GetViewModeStyleForSection(item.Name).Render(item.Name)
+			} else {
+				displayText = item.DisplayText()
+			}
 		}
 		countStr := TagManagerCountStyle.Render(fmt.Sprintf(" (%d)", item.CountValue()))
 
