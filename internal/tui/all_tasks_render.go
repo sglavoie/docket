@@ -206,7 +206,7 @@ func (m *AllTasksViewModel) renderTaskLine(item CrossProjectTask, isSelected boo
 
 	dueStr := ""
 	if task.DueDate != nil {
-		dueStr = FormatRelativeDue(task.DueDate, true)
+		dueStr = FormatRelativeDueTask(task, true, m.config.GetTimeFormat())
 	}
 
 	return RenderCrossProjectTaskLine(task, item.Project, m.config, isSelected, lineWidth, maxTitleLen, CrossProjectTaskLineOpts{

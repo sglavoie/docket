@@ -64,15 +64,17 @@ func renderTaskHeaderContent(task *models.Task, hasIncompleteDeps bool, showSnoo
 
 // renderDueDateContent builds the styled due date string with overdue/today/normal
 // coloring, and appends a recurrence line when the task has one.
-func renderDueDateContent(task *models.Task) string {
-	return renderDueDateContentOpts(task, false)
+// timeFormat is a Go time layout string (e.g. "15:04" or "3:04pm").
+func renderDueDateContent(task *models.Task, timeFormat string) string {
+	return renderDueDateContentOpts(task, false, timeFormat)
 }
 
 // renderDueDateContentOpts builds the styled due date string. When hideRecurrence
 // is true, the "Recurs:" line is omitted (useful when a dedicated Recurrence card
-// is shown nearby).
-func renderDueDateContentOpts(task *models.Task, hideRecurrence bool) string {
+// is shown nearby). timeFormat is a Go time layout string.
+func renderDueDateContentOpts(task *models.Task, hideRecurrence bool, timeFormat string) string {
 	dueAbsolute := task.DueDate.Format(util.DateFormat)
+	dueAbsolute = AppendTimeIfHasTime(task, dueAbsolute, timeFormat)
 	dueRelative := formatRelativeDueVerbose(task.DueDate)
 	dueLine := fmt.Sprintf("%s (%s)", dueAbsolute, dueRelative)
 

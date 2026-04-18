@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/atotto/clipboard"
 
 	"github.com/sglavoie/tt/internal/models"
 )
@@ -317,6 +318,37 @@ func (m *TaskCreatorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) { //nolint:g
 					}
 				}
 			}
+
+		case "ctrl+v":
+			// Paste clipboard text into focused text fields; create task from
+			// clipboard when focus is on a selector (non-text) field.
+			switch section {
+			case "title":
+				if text, err := clipboard.ReadAll(); err == nil && strings.TrimSpace(text) != "" {
+					m.titleInput.InsertString(text)
+				}
+			case "dueDate":
+				if text, err := clipboard.ReadAll(); err == nil && strings.TrimSpace(text) != "" {
+					m.dueDateInput += strings.TrimSpace(text)
+				}
+			case "checklist":
+				if idx >= 0 && idx < len(m.checklist) {
+					if text, err := clipboard.ReadAll(); err == nil && strings.TrimSpace(text) != "" {
+						m.checklist[idx].SetValue(m.checklist[idx].Value() + text)
+					}
+				}
+			case "subtask":
+				if idx >= 0 && idx < len(m.subtasks) {
+					if text, err := clipboard.ReadAll(); err == nil && strings.TrimSpace(text) != "" {
+						m.subtasks[idx].titleInput.SetValue(m.subtasks[idx].titleInput.Value() + text)
+					}
+				}
+			default:
+				// Selector field (type, parent, priority, section, flags,
+				// recurrence, tags, description): create task from clipboard.
+				return m, m.createTaskFromClipboard()
+			}
+			return m, nil
 		}
 	}
 

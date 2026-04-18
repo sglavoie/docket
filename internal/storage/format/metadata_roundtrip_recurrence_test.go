@@ -48,6 +48,72 @@ func TestRoundTrip_RecurrenceSubFields(t *testing.T) {
 	}
 }
 
+func TestRoundTrip_RecurrenceFromCompletion(t *testing.T) {
+	tests := []struct {
+		name string
+		r    *models.RecurrencePattern
+	}{
+		{
+			name: "daily from-completion",
+			r:    &models.RecurrencePattern{Interval: 1, Unit: models.RecurrenceDaily, Mode: models.RecurModeFromCompletion},
+		},
+		{
+			name: "every 3 days from-completion",
+			r:    &models.RecurrencePattern{Interval: 3, Unit: models.RecurrenceDaily, Mode: models.RecurModeFromCompletion},
+		},
+		{
+			name: "weekly:mon,fri from-completion",
+			r:    &models.RecurrencePattern{Interval: 1, Unit: models.RecurrenceWeekly, Weekdays: []int{1, 5}, Mode: models.RecurModeFromCompletion},
+		},
+		{
+			name: "monthly from-completion with streak",
+			r:    &models.RecurrencePattern{Interval: 1, Unit: models.RecurrenceMonthly, Mode: models.RecurModeFromCompletion, Streak: 2, MaxStreak: 5},
+		},
+		// from-due (default) should NOT persist ~ suffix
+		{
+			name: "daily from-due (no tilde)",
+			r:    &models.RecurrencePattern{Interval: 1, Unit: models.RecurrenceDaily},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			task := &models.Task{
+				ID:         "rc-mode-1",
+				Type:       models.TaskTypeTask,
+				Status:     models.StatusTodo,
+				Priority:   1,
+				Recurrence: tc.r,
+			}
+
+			parsed := &models.Task{}
+			warnings := parseWrittenMetadata(task, parsed)
+
+			if len(warnings) != 0 {
+				t.Errorf("got %d warnings, want 0: %v", len(warnings), warnings)
+			}
+			if parsed.Recurrence == nil {
+				t.Fatal("Recurrence is nil after round-trip")
+			}
+			if parsed.Recurrence.Interval != tc.r.Interval {
+				t.Errorf("Interval = %d, want %d", parsed.Recurrence.Interval, tc.r.Interval)
+			}
+			if parsed.Recurrence.Unit != tc.r.Unit {
+				t.Errorf("Unit = %q, want %q", parsed.Recurrence.Unit, tc.r.Unit)
+			}
+			if parsed.Recurrence.Mode != tc.r.Mode {
+				t.Errorf("Mode = %q, want %q", parsed.Recurrence.Mode, tc.r.Mode)
+			}
+			if parsed.Recurrence.Streak != tc.r.Streak {
+				t.Errorf("Streak = %d, want %d", parsed.Recurrence.Streak, tc.r.Streak)
+			}
+			if parsed.Recurrence.MaxStreak != tc.r.MaxStreak {
+				t.Errorf("MaxStreak = %d, want %d", parsed.Recurrence.MaxStreak, tc.r.MaxStreak)
+			}
+		})
+	}
+}
+
 func TestRoundTrip_RecurrenceMonthly(t *testing.T) {
 	task := &models.Task{
 		ID:       "monthly-task-1",

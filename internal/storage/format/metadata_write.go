@@ -48,7 +48,11 @@ func WriteMetadata(task *models.Task) string { //nolint:gocyclo
 	}
 
 	if task.DueDate != nil {
-		parts = append(parts, fmt.Sprintf("due: %s", task.DueDate.Format(util.DateFormat)))
+		if task.HasTime {
+			parts = append(parts, fmt.Sprintf("due: %s", task.DueDate.Format(util.DateTimeDueFormat)))
+		} else {
+			parts = append(parts, fmt.Sprintf("due: %s", task.DueDate.Format(util.DateFormat)))
+		}
 	}
 
 	if len(task.DependsOn) > 0 {
@@ -243,9 +247,12 @@ func FormatRecurrence(r *models.RecurrencePattern) string {
 			}
 		}
 		if len(days) > 0 {
-			return base + ":" + strings.Join(days, ",")
+			base = base + ":" + strings.Join(days, ",")
 		}
 	}
 
+	if r.Mode == models.RecurModeFromCompletion {
+		return base + "~"
+	}
 	return base
 }

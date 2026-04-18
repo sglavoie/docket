@@ -347,6 +347,12 @@ func (m *SettingsModel) handleLeftKey() {
 	if m.focusIndex == 78 && m.alertWeeklyReviewDay > 0 {
 		m.alertWeeklyReviewDay--
 	}
+	if m.focusIndex == 92 && m.weekEndDayCursor > 0 {
+		m.weekEndDayCursor--
+	}
+	if m.focusIndex == 93 && m.timeFormatCursor > 0 {
+		m.timeFormatCursor--
+	}
 }
 
 func (m *SettingsModel) handleRightKey() {
@@ -375,6 +381,12 @@ func (m *SettingsModel) handleRightKey() {
 	}
 	if m.focusIndex == 78 && m.alertWeeklyReviewDay < 6 {
 		m.alertWeeklyReviewDay++
+	}
+	if m.focusIndex == 92 && m.weekEndDayCursor < len(weekEndDayOptions)-1 {
+		m.weekEndDayCursor++
+	}
+	if m.focusIndex == 93 && m.timeFormatCursor < len(timeFormatOptions)-1 {
+		m.timeFormatCursor++
 	}
 }
 

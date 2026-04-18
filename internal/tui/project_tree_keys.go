@@ -316,6 +316,9 @@ func (m *ProjectTreeModel) handleMiscActionKeys(key string, _ []*TreeNode) (bool
 			return ShowProjectFocusViewMsg{Project: m.project}
 		}
 
+	case "ctrl+v":
+		return true, m.pasteFromClipboard()
+
 	case "A":
 		// Archive completed tasks (only in Completed view)
 		if m.viewMode == ViewModeCompleted {

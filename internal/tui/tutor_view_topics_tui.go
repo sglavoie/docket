@@ -203,11 +203,37 @@ metadata as you type.
 Prefixes: ^ type, ! priority, # tag, @ due date, > parent ID,
 / section, $ status, ~ recurrence, % project.
 
+# Due Date Tokens
+
+Date tokens for @ prefix:
+  today, tomorrow, yesterday
+  eod (end of day), eow (end of week), eom (end of month), eoy
+  this <weekday>  (e.g. this mon, this fri)
+  next <weekday>
+  +2d, +1w, +3m (relative offsets)
+
+Time-of-day can be appended with a space:
+  @tomorrow 5pm   @eow 17:00   @next mon 9:30am
+
 # Autocomplete
 
 As you type a prefix, suggestions appear. Tab completes the
 current suggestion. Quick capture parses everything in real time
-and shows a live preview of the task that will be created.`,
+and shows a live preview of the task that will be created.
+
+# Clipboard Paste (Ctrl+V)
+
+In any navigation view (project tree, outliner, quick capture
+nav mode) press Ctrl+V to create a task directly from the
+clipboard:
+
+  - Plain text → task title
+  - URL line   → title set to URL, URL attached to task
+  - Markdown link [title](url) → title + URL attachment
+  - Multi-line  → first line = title, rest = description
+
+The new task lands in your Inbox. If input is focused, Ctrl+V
+pastes text as normal.`,
 		},
 		{
 			Title:    "Reviews (Daily/Weekly)",

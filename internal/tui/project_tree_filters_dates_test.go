@@ -284,7 +284,7 @@ func TestFormatDueDate(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := formatDueDate(tt.task)
+			result := formatDueDate(tt.task, "15:04")
 			if tt.shouldEmpty {
 				if result != "" {
 					t.Errorf("formatDueDate() = %q, expected empty", result)

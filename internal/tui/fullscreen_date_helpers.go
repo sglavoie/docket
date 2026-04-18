@@ -6,6 +6,7 @@ import (
 
 	"charm.land/lipgloss/v2"
 
+	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/util"
 )
@@ -127,4 +128,23 @@ func ClassifyDueDate(dueDate *time.Time) (string, lipgloss.Style) {
 		}
 		return dueDate.Format("Jan 2"), DueDateStyle
 	}
+}
+
+// AppendTimeIfHasTime appends a formatted time suffix to s when task.HasTime is true.
+// goFmt is a Go time layout string, e.g. "15:04" (24h) or "3:04pm" (12h).
+func AppendTimeIfHasTime(task *models.Task, s string, goFmt string) string {
+	if task.HasTime && task.DueDate != nil {
+		return s + " " + task.DueDate.Format(goFmt)
+	}
+	return s
+}
+
+// FormatRelativeDueTask is like FormatRelativeDue but also appends a time suffix
+// when task.HasTime is true, formatted according to goFmt.
+func FormatRelativeDueTask(task *models.Task, styled bool, goFmt string) string {
+	s := FormatRelativeDue(task.DueDate, styled)
+	if task.HasTime && task.DueDate != nil {
+		s += " " + task.DueDate.Format(goFmt)
+	}
+	return s
 }

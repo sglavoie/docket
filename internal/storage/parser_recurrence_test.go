@@ -82,6 +82,50 @@ Meeting on Mon, Wed, Fri.
 	}
 }
 
+func TestParseTasksMarkdown_RecurrenceFromCompletion(t *testing.T) {
+	content := `# Project: Test Project
+
+## Task: Daily From Completion
+<!-- id: task1, status: todo, priority: 1, recur: 1d~ -->
+
+## Task: Weekly MWF From Completion
+<!-- id: task2, status: todo, priority: 1, recur: 2w:mon,fri~ -->
+`
+	_, tasks, err := ParseTasksMarkdown(content)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(tasks) != 2 {
+		t.Fatalf("expected 2 tasks, got %d", len(tasks))
+	}
+
+	t1 := tasks[0]
+	if t1.Recurrence == nil {
+		t.Fatal("task1: Recurrence is nil")
+	}
+	if t1.Recurrence.Mode != models.RecurModeFromCompletion {
+		t.Errorf("task1: Mode = %q, want %q", t1.Recurrence.Mode, models.RecurModeFromCompletion)
+	}
+	if t1.Recurrence.Interval != 1 || t1.Recurrence.Unit != models.RecurrenceDaily {
+		t.Errorf("task1: got interval=%d unit=%s, want 1 day", t1.Recurrence.Interval, t1.Recurrence.Unit)
+	}
+
+	t2 := tasks[1]
+	if t2.Recurrence == nil {
+		t.Fatal("task2: Recurrence is nil")
+	}
+	if t2.Recurrence.Mode != models.RecurModeFromCompletion {
+		t.Errorf("task2: Mode = %q, want %q", t2.Recurrence.Mode, models.RecurModeFromCompletion)
+	}
+	if t2.Recurrence.Interval != 2 || t2.Recurrence.Unit != models.RecurrenceWeekly {
+		t.Errorf("task2: got interval=%d unit=%s, want 2 week", t2.Recurrence.Interval, t2.Recurrence.Unit)
+	}
+	wantDays := []int{1, 5}
+	if len(t2.Recurrence.Weekdays) != len(wantDays) {
+		t.Errorf("task2: weekdays = %v, want %v", t2.Recurrence.Weekdays, wantDays)
+	}
+}
+
 func TestRecurrenceRoundTrip(t *testing.T) {
 	tests := []struct {
 		name       string
@@ -99,6 +143,11 @@ func TestRecurrenceRoundTrip(t *testing.T) {
 		{"weekly mon,wed,fri", &models.RecurrencePattern{Interval: 1, Unit: models.RecurrenceWeekly, Weekdays: []int{1, 3, 5}}},
 		{"biweekly tue,thu", &models.RecurrencePattern{Interval: 2, Unit: models.RecurrenceWeekly, Weekdays: []int{2, 4}}},
 		{"weekly all days", &models.RecurrencePattern{Interval: 1, Unit: models.RecurrenceWeekly, Weekdays: []int{0, 1, 2, 3, 4, 5, 6}}},
+		// from-completion mode
+		{"daily from-completion", &models.RecurrencePattern{Interval: 1, Unit: models.RecurrenceDaily, Mode: models.RecurModeFromCompletion}},
+		{"every 3 days from-completion", &models.RecurrencePattern{Interval: 3, Unit: models.RecurrenceDaily, Mode: models.RecurModeFromCompletion}},
+		{"weekly:mon,fri from-completion", &models.RecurrencePattern{Interval: 1, Unit: models.RecurrenceWeekly, Weekdays: []int{1, 5}, Mode: models.RecurModeFromCompletion}},
+		{"monthly from-completion", &models.RecurrencePattern{Interval: 1, Unit: models.RecurrenceMonthly, Mode: models.RecurModeFromCompletion}},
 	}
 
 	for _, tc := range tests {
@@ -141,6 +190,9 @@ func TestRecurrenceRoundTrip(t *testing.T) {
 						t.Errorf("weekday[%d] mismatch: got %d, want %d", i, parsed.Recurrence.Weekdays[i], wd)
 					}
 				}
+			}
+			if parsed.Recurrence.Mode != tc.recurrence.Mode {
+				t.Errorf("mode mismatch: got %q, want %q", parsed.Recurrence.Mode, tc.recurrence.Mode)
 			}
 		})
 	}

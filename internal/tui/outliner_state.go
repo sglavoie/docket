@@ -148,6 +148,23 @@ func (m *OutlinerModel) saveWithWorkflow() tea.Cmd {
 	}
 }
 
+// pasteFromClipboard reads the clipboard, creates a task in the project's
+// Inbox, registers an undo snapshot, and saves.
+func (m *OutlinerModel) pasteFromClipboard() tea.Cmd {
+	task, err := newInboxTaskFromClipboard(m.project)
+	if err != nil {
+		return func() tea.Msg { return StatusMsg("Clipboard is empty") }
+	}
+	title := task.Title
+	if len([]rune(title)) > 40 {
+		title = string([]rune(title)[:37]) + "..."
+	}
+	m.setUndoContext("Paste Task", task.Title)
+	m.undo.TaskIDs = []string{task.ID}
+	m.setStatus(fmt.Sprintf("Created \"%s\" in Inbox", title))
+	return m.saveWithWorkflow()
+}
+
 // archiveProject archives or unarchives the project and saves config.
 func (m *OutlinerModel) archiveProject() tea.Cmd {
 	if m.project.Archived {

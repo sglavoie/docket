@@ -33,6 +33,15 @@ func session2SyncViews() []syncTestCase {
 func session3SyncViews() []syncTestCase {
 	return []syncTestCase{
 		{ViewSettings, &SettingsModel{}},
+		{ViewRecurrenceEditor, &RecurrenceEditorModel{}},
+	}
+}
+
+// session8SyncViews returns the capture views introduced in session 8 (clipboard paste).
+func session8SyncViews() []syncTestCase {
+	return []syncTestCase{
+		{ViewQuickCapture, &QuickCaptureModel{}},
+		{ViewTaskCreator, &TaskCreatorModel{}},
 	}
 }
 
@@ -87,6 +96,7 @@ func TestKeybindingSyncAllViews(t *testing.T) {
 
 	allViews := append(session1SyncViews(), session2SyncViews()...)
 	allViews = append(allViews, session3SyncViews()...)
+	allViews = append(allViews, session8SyncViews()...)
 	for _, tc := range allViews {
 		t.Run(tc.view.String(), func(t *testing.T) {
 			// Build set of keys from registry (view-specific + global bindings).
@@ -166,7 +176,8 @@ func TestViewTypeString(t *testing.T) {
 		ViewBlockers:            "Blockers",
 		ViewMetricsDashboard:    "MetricsDashboard",
 		// Session 3
-		ViewSettings: "Settings",
+		ViewSettings:         "Settings",
+		ViewRecurrenceEditor: "RecurrenceEditor",
 		// Session 2
 		ViewDailyReview:           "DailyReview",
 		ViewWeeklyReview:          "WeeklyReview",
@@ -182,6 +193,9 @@ func TestViewTypeString(t *testing.T) {
 		ViewGlobalInboxProcessor:  "GlobalInboxProcessor",
 		ViewProjectTree:           "ProjectTree",
 		ViewOutliner:              "Outliner",
+		// Session 8
+		ViewQuickCapture: "QuickCapture",
+		ViewTaskCreator:  "TaskCreator",
 	}
 	for v, want := range cases {
 		if got := v.String(); got != want {

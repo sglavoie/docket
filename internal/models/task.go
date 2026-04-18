@@ -45,6 +45,7 @@ type Task struct {
 	UpdatedAt     time.Time          `json:"updated_at"`
 	CompletedAt   *time.Time         `json:"completed_at,omitempty"`
 	DueDate       *time.Time         `json:"due_date,omitempty"`
+	HasTime       bool               `json:"has_time,omitempty"`   // true when DueDate carries a meaningful clock time
 	DependsOn     []string           `json:"depends_on,omitempty"` // IDs of tasks this task depends on
 	RelatedTo     []string           `json:"related_to,omitempty"` // IDs of related tasks (bidirectional)
 	Pinned        bool               `json:"pinned,omitempty"`     // Whether the task is pinned

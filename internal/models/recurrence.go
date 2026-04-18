@@ -7,6 +7,19 @@ import (
 	"time"
 )
 
+// RecurMode determines the base date used when computing the next occurrence
+// after a task is completed.
+type RecurMode string
+
+const (
+	// RecurModeFromDue computes the next due date relative to the previous due
+	// date (default behavior; zero value is treated as this mode).
+	RecurModeFromDue RecurMode = "from_due"
+	// RecurModeFromCompletion computes the next due date relative to the actual
+	// completion timestamp, so late completions push the next due date forward.
+	RecurModeFromCompletion RecurMode = "from_completion"
+)
+
 // RecurrenceUnit represents the time unit for recurrence patterns.
 type RecurrenceUnit string
 
@@ -26,6 +39,7 @@ type RecurrencePattern struct {
 	Streak      int            `json:"streak,omitempty"`       // Current consecutive on-time completions
 	MaxStreak   int            `json:"max_streak,omitempty"`   // Best streak achieved
 	OriginalDay int            `json:"original_day,omitempty"` // For monthly: the intended day-of-month (e.g. 31)
+	Mode        RecurMode      `json:"mode,omitempty"`         // Base date for next-due computation (empty = FromDue)
 }
 
 // validRecurrenceUnits is the set of recognized recurrence time units.
@@ -60,32 +74,43 @@ func (r *RecurrencePattern) Validate() error {
 			return fmt.Errorf("invalid weekday %d, must be 0-6 (Sun-Sat)", wd)
 		}
 	}
+	if r.Mode != "" && r.Mode != RecurModeFromDue && r.Mode != RecurModeFromCompletion {
+		return fmt.Errorf("invalid recurrence mode %q, must be %q or %q", r.Mode, RecurModeFromDue, RecurModeFromCompletion)
+	}
 	return nil
 }
 
 // String returns a human-readable representation of the recurrence pattern.
+// A trailing "~" is appended when Mode is RecurModeFromCompletion.
 func (r *RecurrencePattern) String() string {
 	if r == nil {
 		return ""
 	}
+	var base string
 	if r.Interval == 1 {
 		switch r.Unit {
 		case RecurrenceDaily:
-			return "daily"
+			base = "daily"
 		case RecurrenceWeekly:
 			if len(r.Weekdays) > 0 {
-				return fmt.Sprintf("weekly on %s", weekdaysToString(r.Weekdays))
+				base = fmt.Sprintf("weekly on %s", weekdaysToString(r.Weekdays))
+			} else {
+				base = "weekly"
 			}
-			return "weekly"
 		case RecurrenceMonthly:
-			return "monthly"
+			base = "monthly"
 		case RecurrenceYearly:
-			return "yearly"
+			base = "yearly"
 		}
 	}
-	base := fmt.Sprintf("every %d %ss", r.Interval, r.Unit)
-	if r.Unit == RecurrenceWeekly && len(r.Weekdays) > 0 {
-		return fmt.Sprintf("%s on %s", base, weekdaysToString(r.Weekdays))
+	if base == "" {
+		base = fmt.Sprintf("every %d %ss", r.Interval, r.Unit)
+		if r.Unit == RecurrenceWeekly && len(r.Weekdays) > 0 {
+			base = fmt.Sprintf("every %d %ss on %s", r.Interval, r.Unit, weekdaysToString(r.Weekdays))
+		}
+	}
+	if r.Mode == RecurModeFromCompletion {
+		return base + "~"
 	}
 	return base
 }
@@ -229,60 +254,81 @@ func daysInMonth(year int, month time.Month) int {
 //   - "2d" (every 2 days), "3w" (every 3 weeks), "2m" (every 2 months), "1y" (every year)
 //   - "weekly:mon,wed,fri" (weekly on specific days)
 //
+// A trailing "~" on any form sets Mode to RecurModeFromCompletion:
+// "daily~", "2d~", "weekly:mon,fri~", "3w:mon~", etc.
+//
 // Returns nil if the string cannot be parsed.
 func ParseRecurrence(s string) *RecurrencePattern {
 	if s == "" {
 		return nil
 	}
 
+	// Strip trailing ~ and record mode.
+	mode := RecurModeFromDue
+	if strings.HasSuffix(s, "~") {
+		mode = RecurModeFromCompletion
+		s = s[:len(s)-1]
+		if s == "" {
+			return nil
+		}
+	}
+
+	var p *RecurrencePattern
+
 	// Handle simple keywords
 	switch s {
 	case "daily":
-		return &RecurrencePattern{Interval: 1, Unit: RecurrenceDaily}
+		p = &RecurrencePattern{Interval: 1, Unit: RecurrenceDaily}
 	case "weekly":
-		return &RecurrencePattern{Interval: 1, Unit: RecurrenceWeekly}
+		p = &RecurrencePattern{Interval: 1, Unit: RecurrenceWeekly}
 	case "biweekly":
-		return &RecurrencePattern{Interval: 2, Unit: RecurrenceWeekly}
+		p = &RecurrencePattern{Interval: 2, Unit: RecurrenceWeekly}
 	case "monthly":
-		return &RecurrencePattern{Interval: 1, Unit: RecurrenceMonthly}
+		p = &RecurrencePattern{Interval: 1, Unit: RecurrenceMonthly}
 	case "yearly":
-		return &RecurrencePattern{Interval: 1, Unit: RecurrenceYearly}
+		p = &RecurrencePattern{Interval: 1, Unit: RecurrenceYearly}
 	}
 
-	// Handle Nd, Nw, Nm, Ny format
-	if len(s) >= 2 {
+	if p == nil && len(s) >= 2 {
 		// Check for weekly:days format first
 		if len(s) > 7 && s[:7] == "weekly:" {
 			weekdays := parseWeekdays(s[7:])
 			if len(weekdays) > 0 {
-				return &RecurrencePattern{Interval: 1, Unit: RecurrenceWeekly, Weekdays: weekdays}
+				p = &RecurrencePattern{Interval: 1, Unit: RecurrenceWeekly, Weekdays: weekdays}
 			}
 		}
 
-		// Check for Nw:days format (e.g., "2w:mon,fri")
-		colonIdx := -1
-		for i, c := range s {
-			if c == ':' {
-				colonIdx = i
-				break
+		if p == nil {
+			// Check for Nw:days format (e.g., "2w:mon,fri")
+			colonIdx := -1
+			for i, c := range s {
+				if c == ':' {
+					colonIdx = i
+					break
+				}
 			}
-		}
-		if colonIdx > 1 {
-			basePattern := parseIntervalUnit(s[:colonIdx])
-			if basePattern != nil && basePattern.Unit == RecurrenceWeekly {
-				weekdays := parseWeekdays(s[colonIdx+1:])
-				if len(weekdays) > 0 {
-					basePattern.Weekdays = weekdays
-					return basePattern
+			if colonIdx > 1 {
+				basePattern := parseIntervalUnit(s[:colonIdx])
+				if basePattern != nil && basePattern.Unit == RecurrenceWeekly {
+					weekdays := parseWeekdays(s[colonIdx+1:])
+					if len(weekdays) > 0 {
+						basePattern.Weekdays = weekdays
+						p = basePattern
+					}
 				}
 			}
 		}
 
-		// Simple interval format (2d, 3w, etc.)
-		return parseIntervalUnit(s)
+		if p == nil {
+			// Simple interval format (2d, 3w, etc.)
+			p = parseIntervalUnit(s)
+		}
 	}
 
-	return nil
+	if p != nil && mode == RecurModeFromCompletion {
+		p.Mode = RecurModeFromCompletion
+	}
+	return p
 }
 
 // parseIntervalUnit parses formats like "2d", "3w", "1m", "2y".

@@ -243,7 +243,7 @@ func (m *ProjectTreeModel) nodeOrgGroup(task *models.Task, node *TreeNode) strin
 func (m *ProjectTreeModel) nodeLifecycleGroup(task *models.Task) string {
 	var parts []string
 	if m.columnConfig.IsVisible(ColDueDate) {
-		if dueStr := formatDueDate(task); dueStr != "" {
+		if dueStr := formatDueDate(task, m.config.GetTimeFormat()); dueStr != "" {
 			parts = append(parts, dueStr)
 		}
 	}

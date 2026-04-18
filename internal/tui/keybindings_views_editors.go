@@ -149,6 +149,23 @@ func (r *KeybindingRegistry) registerBlockersBindings() {
 	)
 }
 
+func (r *KeybindingRegistry) registerRecurrenceEditorBindings() {
+	views := []ViewType{ViewRecurrenceEditor}
+	r.add(
+		Keybinding{Key: "Tab/Shift+Tab", Description: "Navigate sections", Category: "Navigation", Views: views},
+		Keybinding{Key: "↑/↓", Description: "Adjust interval / navigate weekdays", Category: "Navigation", Views: views},
+		Keybinding{Key: "j/k", Description: "Adjust interval / navigate weekdays (vim-style)", Category: "Navigation", Views: views},
+		Keybinding{Key: "←/→", Description: "Cycle unit / navigate weekdays", Category: "Navigation", Views: views},
+		Keybinding{Key: "h/l", Description: "Cycle unit / navigate weekdays (vim-style)", Category: "Navigation", Views: views},
+		Keybinding{Key: "Space", Description: "Toggle weekday", Category: "Actions", Views: views},
+		Keybinding{Key: "0-9", Description: "Set interval", Category: "Actions", Views: views},
+		Keybinding{Key: "Backspace", Description: "Remove last digit", Category: "Actions", Views: views},
+		Keybinding{Key: "m", Description: "Toggle recurrence mode (from due ↔ from completion)", Category: "Actions", Views: views},
+		Keybinding{Key: "Enter", Description: "Confirm pattern", Category: "Actions", Views: views},
+		Keybinding{Key: "Esc", Description: "Cancel", Category: "Navigation", Views: views},
+	)
+}
+
 func (r *KeybindingRegistry) registerCrossProjectLinkerBindings() {
 	views := []ViewType{ViewCrossProjectLinker}
 	r.add(

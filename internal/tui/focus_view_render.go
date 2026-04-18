@@ -289,7 +289,7 @@ func (m *FocusViewModel) renderTaskLineWithPrefix(ft FocusTask, isSelected bool,
 
 	dueStr := ""
 	if task.DueDate != nil {
-		dueStr = FormatRelativeDue(task.DueDate, true)
+		dueStr = FormatRelativeDueTask(task, true, m.config.GetTimeFormat())
 	}
 
 	return RenderCrossProjectTaskLine(task, ft.Project, nil, isSelected, m.width, maxTitleLen, CrossProjectTaskLineOpts{

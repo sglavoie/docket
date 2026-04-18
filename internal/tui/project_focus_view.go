@@ -465,7 +465,7 @@ func (m *ProjectFocusViewModel) renderTaskLine(task *models.Task, isSelected boo
 
 	dueStr := ""
 	if task.DueDate != nil {
-		dueStr = FormatRelativeDue(task.DueDate, true)
+		dueStr = FormatRelativeDueTask(task, true, m.getConfig().GetTimeFormat())
 	}
 
 	// Build indicator groups

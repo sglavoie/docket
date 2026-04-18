@@ -249,8 +249,34 @@ the next due date.
 
 # Recurrence Patterns
 
-Supported patterns include daily, weekly, monthly, and custom
-intervals using number + unit: d for days, w for weeks.
+  daily, weekly, biweekly, monthly, yearly
+  Nd, Nw, Nm, Ny   (e.g. 3d = every 3 days, 2w = every 2 weeks)
+  weekly:mon,wed,fri  (specific weekdays)
+
+# Recurrence Mode
+
+By default the next due date is computed from the previous due
+date (from-due mode). Append ~ to any pattern to switch to
+from-completion mode, where the next due date is computed from
+the actual completion time:
+
+  ~daily    or   daily~    every day from completion
+  3d~             every 3 days from when you finish
+
+Late completions push the next occurrence forward instead of
+piling up on a fixed schedule.
+
+# CLI
+
+  tt task recur 5 weekly               # from-due (default)
+  tt task recur 5 daily --from completion
+  tt task add "Exercise" --recur 1d~ --due today
+
+# TUI
+
+In the recurrence editor press m to toggle between from-due
+and from-completion modes. The current mode is shown in the
+editor header.
 
 # How It Works
 

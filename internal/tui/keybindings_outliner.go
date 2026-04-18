@@ -110,6 +110,7 @@ func (r *KeybindingRegistry) registerOutlinerBindings() {
 		Keybinding{Key: "R", Description: "Reload from disk", Category: "Other", Views: views},
 		Keybinding{Key: "u", Description: "Undo last change", Category: "Other", Views: views},
 		Keybinding{Key: "ctrl+r", Description: "Redo", Category: "Other", Views: views},
+		Keybinding{Key: "ctrl+v", Description: "Create task from clipboard (nav mode) / paste text (search)", Category: "Task Operations", Views: views},
 	)
 
 	// Shared bindings

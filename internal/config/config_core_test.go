@@ -257,3 +257,80 @@ func TestRemoveProject_CleansAllReferences(t *testing.T) {
 		t.Error("ActionInboxProjectID should be cleared")
 	}
 }
+
+func TestConfig_GetWeekEndDay(t *testing.T) {
+	tests := []struct {
+		stored string
+		want   string
+	}{
+		{"", "sun"},
+		{"sun", "sun"},
+		{"sat", "sat"},
+		{"fri", "fri"},
+		{"invalid", "sun"},
+		{"SAT", "sun"}, // must be lowercase
+	}
+	for _, tt := range tests {
+		cfg := NewConfig()
+		cfg.WeekEndDay = tt.stored
+		if got := cfg.GetWeekEndDay(); got != tt.want {
+			t.Errorf("GetWeekEndDay() with stored=%q = %q, want %q", tt.stored, got, tt.want)
+		}
+	}
+}
+
+func TestValidateWeekEndDay(t *testing.T) {
+	valid := []string{"", "fri", "sat", "sun"}
+	for _, v := range valid {
+		if err := ValidateWeekEndDay(v); err != nil {
+			t.Errorf("ValidateWeekEndDay(%q) unexpected error: %v", v, err)
+		}
+	}
+	invalid := []string{"monday", "Sat", "sunday", "SAT", "FRI", "saturday"}
+	for _, v := range invalid {
+		if err := ValidateWeekEndDay(v); err == nil {
+			t.Errorf("ValidateWeekEndDay(%q) expected error, got nil", v)
+		}
+	}
+}
+
+func TestConfig_GetTimeFormat(t *testing.T) {
+	tests := []struct {
+		stored string
+		want   string
+	}{
+		{"", "15:04"},
+		{"24h", "15:04"},
+		{"12h", "3:04pm"},
+		{"invalid", "15:04"},
+	}
+	for _, tt := range tests {
+		cfg := NewConfig()
+		cfg.TimeFormat = tt.stored
+		if got := cfg.GetTimeFormat(); got != tt.want {
+			t.Errorf("GetTimeFormat() with stored=%q = %q, want %q", tt.stored, got, tt.want)
+		}
+	}
+}
+
+func TestConfig_GetTimeFormat_NilReceiver(t *testing.T) {
+	var cfg *Config
+	if got := cfg.GetTimeFormat(); got != "15:04" {
+		t.Errorf("GetTimeFormat() on nil receiver = %q, want %q", got, "15:04")
+	}
+}
+
+func TestValidateTimeFormat(t *testing.T) {
+	valid := []string{"", "12h", "24h"}
+	for _, v := range valid {
+		if err := ValidateTimeFormat(v); err != nil {
+			t.Errorf("ValidateTimeFormat(%q) unexpected error: %v", v, err)
+		}
+	}
+	invalid := []string{"12H", "24H", "12", "24", "hour", "AM", "12h24h"}
+	for _, v := range invalid {
+		if err := ValidateTimeFormat(v); err == nil {
+			t.Errorf("ValidateTimeFormat(%q) expected error, got nil", v)
+		}
+	}
+}

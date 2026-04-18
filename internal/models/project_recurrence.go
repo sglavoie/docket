@@ -58,6 +58,7 @@ func (p *Project) GenerateRecurringInstances() int {
 			Streak:      task.Recurrence.Streak,
 			MaxStreak:   task.Recurrence.MaxStreak,
 			OriginalDay: task.Recurrence.OriginalDay,
+			Mode:        task.Recurrence.Mode,
 		}
 
 		// Copy score dimensions from the completed task

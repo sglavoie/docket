@@ -194,7 +194,7 @@ func (m *OutlinerModel) HandledKeys() []string {
 			"gz", "gh", "gl", "gd", "gX",
 			"A", "C", "T", "v", "a",
 			"F", "/",
-			"ctrl+f", "ctrl+t", "ctrl+s", "ctrl+a", "ctrl+e",
+			"ctrl+f", "ctrl+t", "ctrl+s", "ctrl+a", "ctrl+e", "ctrl+v",
 			"[", "]",
 			"x",
 			"y", "Y", "ctrl+y",

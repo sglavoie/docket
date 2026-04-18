@@ -209,5 +209,6 @@ func (m *DueDateOverviewModel) formatDueDate(task *models.Task) string {
 		return "         "
 	}
 	dateStr, style := ClassifyDueDate(task.DueDate)
+	dateStr = AppendTimeIfHasTime(task, dateStr, m.config.GetTimeFormat())
 	return style.Render(fmt.Sprintf("%-9s", dateStr))
 }

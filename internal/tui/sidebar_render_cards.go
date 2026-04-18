@@ -15,8 +15,9 @@ func renderSidebarTaskCard(project *models.Project, task *models.Task, width int
 }
 
 // renderSidebarDueCard renders the due date card.
-func renderSidebarDueCard(task *models.Task, width int) string {
-	return renderSidebarCard("Due", renderDueDateContent(task), width, false, "")
+// timeFormat is a Go time layout string (e.g. "15:04" or "3:04pm").
+func renderSidebarDueCard(task *models.Task, width int, timeFormat string) string {
+	return renderSidebarCard("Due", renderDueDateContent(task, timeFormat), width, false, "")
 }
 
 // renderSidebarMetadataCard renders tags and section in a combined card.

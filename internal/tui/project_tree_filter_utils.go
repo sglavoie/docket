@@ -7,11 +7,13 @@ import (
 )
 
 // formatDueDate returns a styled due date string for inline display.
-func formatDueDate(task *models.Task) string {
+// timeFormat is a Go time layout string (e.g. "15:04" or "3:04pm").
+func formatDueDate(task *models.Task, timeFormat string) string {
 	if task.DueDate == nil || task.Status.IsComplete() {
 		return ""
 	}
 	dateStr, style := ClassifyDueDate(task.DueDate)
+	dateStr = AppendTimeIfHasTime(task, dateStr, timeFormat)
 	return style.Render("📅 " + dateStr)
 }
 

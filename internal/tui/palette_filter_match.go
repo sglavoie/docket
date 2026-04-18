@@ -79,8 +79,16 @@ func (m *CommandPaletteModel) taskMatchesFieldFilters(item PaletteItem, filters 
 
 			switch f.value {
 			case "overdue":
-				// Completed/canceled tasks are not overdue
-				if task.Status.IsComplete() || !dueDay.Before(today) {
+				// Completed/canceled tasks are not overdue.
+				// When HasTime is set, compare against current time; else compare date.
+				if task.Status.IsComplete() {
+					return false
+				}
+				if task.HasTime {
+					if !task.DueDate.Before(now) {
+						return false
+					}
+				} else if !dueDay.Before(today) {
 					return false
 				}
 			case "today":

@@ -352,6 +352,38 @@ func TestFormatRecurrence(t *testing.T) {
 			},
 			want: "1y",
 		},
+		// from-completion mode appends ~
+		{
+			name: "daily from-completion",
+			r:    &models.RecurrencePattern{Interval: 1, Unit: models.RecurrenceDaily, Mode: models.RecurModeFromCompletion},
+			want: "1d~",
+		},
+		{
+			name: "every 3 days from-completion",
+			r:    &models.RecurrencePattern{Interval: 3, Unit: models.RecurrenceDaily, Mode: models.RecurModeFromCompletion},
+			want: "3d~",
+		},
+		{
+			name: "weekly with weekdays from-completion",
+			r:    &models.RecurrencePattern{Interval: 1, Unit: models.RecurrenceWeekly, Weekdays: []int{1, 3, 5}, Mode: models.RecurModeFromCompletion},
+			want: "1w:mon,wed,fri~",
+		},
+		{
+			name: "biweekly mon,fri from-completion",
+			r:    &models.RecurrencePattern{Interval: 2, Unit: models.RecurrenceWeekly, Weekdays: []int{1, 5}, Mode: models.RecurModeFromCompletion},
+			want: "2w:mon,fri~",
+		},
+		{
+			name: "monthly from-completion",
+			r:    &models.RecurrencePattern{Interval: 1, Unit: models.RecurrenceMonthly, Mode: models.RecurModeFromCompletion},
+			want: "1m~",
+		},
+		// explicit from-due does not append ~
+		{
+			name: "daily explicit from-due",
+			r:    &models.RecurrencePattern{Interval: 1, Unit: models.RecurrenceDaily, Mode: models.RecurModeFromDue},
+			want: "1d",
+		},
 	}
 
 	for _, tt := range tests {
@@ -361,5 +393,80 @@ func TestFormatRecurrence(t *testing.T) {
 				t.Errorf("FormatRecurrence() = %q, want %q", got, tt.want)
 			}
 		})
+	}
+}
+
+func TestParseMetadata_RecurrenceFromCompletion(t *testing.T) {
+	tests := []struct {
+		name     string
+		metaStr  string
+		wantMode models.RecurMode
+	}{
+		{
+			name:     "1d~ sets from-completion",
+			metaStr:  "id: abc, status: todo, priority: 1, recur: 1d~",
+			wantMode: models.RecurModeFromCompletion,
+		},
+		{
+			name:     "1w:mon,fri~ sets from-completion",
+			metaStr:  "id: abc, status: todo, priority: 1, recur: 1w:mon,fri~",
+			wantMode: models.RecurModeFromCompletion,
+		},
+		{
+			name:     "1m~ sets from-completion",
+			metaStr:  "id: abc, status: todo, priority: 1, recur: 1m~",
+			wantMode: models.RecurModeFromCompletion,
+		},
+		{
+			name:     "1d (no ~) leaves mode empty",
+			metaStr:  "id: abc, status: todo, priority: 1, recur: 1d",
+			wantMode: "",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			task := &models.Task{}
+			warnings := ParseMetadata(task, tc.metaStr)
+			for _, w := range warnings {
+				if w.Field == "recur" {
+					t.Errorf("unexpected recur warning: %s", w.Message)
+				}
+			}
+			if task.Recurrence == nil {
+				t.Fatal("Recurrence is nil")
+			}
+			if task.Recurrence.Mode != tc.wantMode {
+				t.Errorf("Mode = %q, want %q", task.Recurrence.Mode, tc.wantMode)
+			}
+		})
+	}
+}
+
+func TestMetadata_RecurrenceFromCompletionRoundtrip(t *testing.T) {
+	original := &models.Task{
+		ID:       "fc-rt-1",
+		Status:   models.StatusTodo,
+		Priority: 1,
+		Recurrence: &models.RecurrencePattern{
+			Interval:  2,
+			Unit:      models.RecurrenceWeekly,
+			Weekdays:  []int{1, 5},
+			Streak:    3,
+			MaxStreak: 7,
+			Mode:      models.RecurModeFromCompletion,
+		},
+		CreatedAt: time.Date(2025, 1, 1, 0, 0, 0, 0, time.Local),
+	}
+
+	meta := WriteMetadata(original)
+	metaStr := strings.TrimPrefix(meta, "<!-- ")
+	metaStr = strings.TrimSuffix(metaStr, " -->")
+
+	parsed := &models.Task{}
+	ParseMetadata(parsed, metaStr)
+
+	if !recurrenceEqual(parsed.Recurrence, original.Recurrence) {
+		t.Errorf("Roundtrip failed:\n  got:  %+v\n  want: %+v", parsed.Recurrence, original.Recurrence)
 	}
 }

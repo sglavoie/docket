@@ -43,7 +43,7 @@ func renderSidebarContent(host SidebarHost, task *models.Task, width, height int
 
 	// Due card (only if due date set)
 	if task.DueDate != nil {
-		cards = append(cards, renderSidebarDueCard(task, width))
+		cards = append(cards, renderSidebarDueCard(task, width, cfg.GetTimeFormat()))
 	}
 
 	// Metadata card: tags + section (uses section color)

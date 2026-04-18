@@ -17,6 +17,7 @@ type RecurrenceEditorModel struct {
 	unitCursor int          // 0=day, 1=week, 2=month, 3=year
 	weekdays   map[int]bool // 0=Sun, 1=Mon, ..., 6=Sat (only for weekly)
 	units      []models.RecurrenceUnit
+	mode       models.RecurMode // from-due (default) or from-completion
 
 	// For preview calculation
 	dueDate *time.Time
@@ -72,6 +73,7 @@ func NewRecurrenceEditorModel(current *models.RecurrencePattern, dueDate *time.T
 		}
 
 		m.streak = current.Streak
+		m.mode = current.Mode
 	}
 
 	return m
@@ -157,6 +159,15 @@ func (m *RecurrenceEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					// Allow 0 temporarily to enable fresh input
 					m.intervalEditing = false
 				}
+			}
+			return m, nil
+
+		case "m":
+			// Toggle recurrence mode: from-due ↔ from-completion
+			if m.mode == models.RecurModeFromCompletion {
+				m.mode = models.RecurModeFromDue
+			} else {
+				m.mode = models.RecurModeFromCompletion
 			}
 			return m, nil
 		}
@@ -267,6 +278,7 @@ func (m *RecurrenceEditorModel) buildPattern() *models.RecurrencePattern {
 	pattern := &models.RecurrencePattern{
 		Interval: interval,
 		Unit:     m.units[m.unitCursor],
+		Mode:     m.mode,
 	}
 
 	// Add weekdays if weekly and any selected
@@ -347,6 +359,15 @@ func (m *RecurrenceEditorModel) View() tea.View {
 	}
 	b.WriteString("\n")
 
+	// Mode row
+	b.WriteString(FieldLabelStyle.Render("Mode:    "))
+	if m.mode == models.RecurModeFromCompletion {
+		b.WriteString(BoldStyle.Render("from completion"))
+	} else {
+		b.WriteString(MutedStyle.Render("from due (default)"))
+	}
+	b.WriteString("\n")
+
 	// Streak info (from existing pattern)
 	if m.streak > 0 {
 		b.WriteString(FieldLabelStyle.Render("Streak:  "))
@@ -376,7 +397,7 @@ func (m *RecurrenceEditorModel) View() tea.View {
 		b.WriteString("\n")
 	}
 
-	left := HelpStyle.Render("Tab: nav · ←→: select · Space: toggle · Enter: confirm")
+	left := HelpStyle.Render("Tab: nav · ←→: select · Space: toggle · m: mode · Enter: confirm")
 
 	var out strings.Builder
 	out.WriteString(renderFullscreenTitle("Custom Recurrence", ""))
@@ -476,3 +497,18 @@ type RecurrenceEditorDoneMsg struct {
 }
 
 func (m *RecurrenceEditorModel) StatusBarLabel() string { return "Recurrence" }
+
+// HandledKeys returns all keys the recurrence editor handles for keybinding sync.
+func (m *RecurrenceEditorModel) HandledKeys() []string {
+	return []string{
+		"tab", "shift+tab",
+		"up", "down", "j", "k",
+		"left", "right", "h", "l",
+		"space",
+		"0", "1", "2", "3", "4", "5", "6", "7", "8", "9",
+		"backspace",
+		"m",
+		"enter",
+		"esc",
+	}
+}

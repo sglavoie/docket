@@ -63,7 +63,7 @@ func (m *ProjectTreeModel) HandledKeys() []string {
 			"gv", "ga", "gn", "gi", "gw", "gs", "gc", "g*", "go", "gd", "gX",
 			"A", "C", "T", "v", "a",
 			"F", "/",
-			"ctrl+f", "ctrl+t", "ctrl+s", "ctrl+a", "ctrl+e",
+			"ctrl+f", "ctrl+t", "ctrl+s", "ctrl+a", "ctrl+e", "ctrl+v",
 			"[", "]",
 			"cx",
 			"y", "Y", "ctrl+y",

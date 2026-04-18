@@ -229,7 +229,7 @@ func (m *CommandPaletteModel) updateSearchMode(msg tea.KeyPressMsg) (tea.Model, 
 		}
 		return m, nil
 	case "ctrl+g":
-		// Quick view in glow (ctrl+v conflicts with paste)
+		// Quick view in glow (ctrl+v is reserved for paste-to-task)
 		if len(m.filteredItems) > 0 && m.cursor < len(m.filteredItems) {
 			item := m.filteredItems[m.cursor].Item
 			if item.Category == ItemCategoryTasks && item.Task != nil {

@@ -145,7 +145,7 @@ func (m *TaskDetailModel) renderHeaderSection(width int) string {
 // renderDueSection renders the due date card.
 // Omits the recurrence line since the task detail view has a dedicated Recurrence card.
 func (m *TaskDetailModel) renderDueSection(width int) string {
-	return renderCard("Due", renderDueDateContentOpts(m.task, m.task.IsRecurring()), width, DefaultCardConfig())
+	return renderCard("Due", renderDueDateContentOpts(m.task, m.task.IsRecurring(), m.config.GetTimeFormat()), width, DefaultCardConfig())
 }
 
 // renderRecurrenceSection renders the recurrence card with pattern and upcoming dates.

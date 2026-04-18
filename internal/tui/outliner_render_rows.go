@@ -225,7 +225,7 @@ func (m *OutlinerModel) renderTaskPrioritySegment(task *models.Task, colLayout *
 func (m *OutlinerModel) renderTaskLifecycleGroup(task *models.Task) string {
 	var lifecycleParts []string
 	if m.columnConfig.IsVisible(ColDueDate) {
-		if dueStr := formatDueDate(task); dueStr != "" {
+		if dueStr := formatDueDate(task, m.config.GetTimeFormat()); dueStr != "" {
 			lifecycleParts = append(lifecycleParts, dueStr)
 		}
 	}

@@ -6,10 +6,12 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/atotto/clipboard"
 	"github.com/google/uuid"
 
 	"github.com/sglavoie/tt/internal/logging"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/util"
 )
 
 func (m *TaskCreatorModel) createTask() tea.Cmd {
@@ -139,4 +141,70 @@ func (m *TaskCreatorModel) createTask() tea.Cmd {
 	}
 
 	return func() tea.Msg { return TaskCreatedMsg{Task: task} }
+}
+
+// createTaskFromClipboard reads the clipboard, parses it, and creates a task
+// directly in the Inbox of the current project. The creator form stays open.
+func (m *TaskCreatorModel) createTaskFromClipboard() tea.Cmd {
+	task, err := newInboxTaskFromClipboard(m.project)
+	if err != nil {
+		return func() tea.Msg { return StatusMsg("Clipboard is empty") }
+	}
+
+	if saveErr := saveProjectSync(m.project); saveErr != nil {
+		return func() tea.Msg { return ErrorMsg{Err: fmt.Errorf("failed to save: %w", saveErr)} }
+	}
+
+	title := task.Title
+	if len([]rune(title)) > 40 {
+		title = string([]rune(title)[:37]) + "..."
+	}
+	return func() tea.Msg { return StatusMsg(fmt.Sprintf("Created \"%s\" in Inbox", title)) }
+}
+
+// newInboxTaskFromClipboard reads the clipboard, parses it, builds a Task in
+// the project's Inbox, and appends it to project.Tasks. Callers are responsible
+// for persisting the project. Returns the created task, or an error if the
+// clipboard is empty or unreadable.
+func newInboxTaskFromClipboard(project *models.Project) (*models.Task, error) {
+	text, err := clipboard.ReadAll()
+	if err != nil || strings.TrimSpace(text) == "" {
+		return nil, fmt.Errorf("clipboard is empty")
+	}
+
+	pt := util.ParseClipboard(text)
+	if pt.Title == "" {
+		return nil, fmt.Errorf("clipboard is empty")
+	}
+
+	if !project.HasSection(models.SectionInbox) {
+		project.EnsureSection(models.SectionInbox)
+		project.SetSectionColor(models.SectionInbox, "red")
+	}
+
+	now := time.Now()
+	task := &models.Task{
+		ID:          uuid.New().String(),
+		ShortID:     project.GetNextShortID(),
+		Type:        models.TaskTypeTask,
+		Title:       pt.Title,
+		Description: pt.Description,
+		Status:      models.StatusTodo,
+		Priority:    3,
+		CreatedAt:   now,
+		UpdatedAt:   now,
+	}
+	task.SetSection(models.SectionInbox)
+
+	if pt.URL != "" {
+		if attachErr := task.AddAttachment(pt.URL, true, pt.URL); attachErr != nil {
+			logging.Warn("clipboard paste: failed to add URL attachment: %v", attachErr)
+		}
+	}
+
+	project.Tasks = append([]*models.Task{task}, project.Tasks...)
+	project.BuildTaskTree()
+	project.ReorderRootTasksByCompletion()
+
+	return task, nil
 }

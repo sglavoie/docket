@@ -208,6 +208,13 @@ func (m *OutlinerModel) handleUtilityKey(key string) (tea.Model, tea.Cmd, bool) 
 			return ShowSectionManagerMsg{ProjectTree: nil, Project: m.project}
 		}, true
 
+	case "ctrl+v":
+		if m.project == nil {
+			m.setStatus("open project outliner first (go)")
+			return m, nil, true
+		}
+		return m, m.pasteFromClipboard(), true
+
 	case "1", "2", "3", "4", "5", "0":
 		m.clearActiveSavedFilter()
 		handleSortKey(key, &m.sort,

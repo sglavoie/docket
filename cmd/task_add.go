@@ -23,6 +23,7 @@ var (
 	taskSectionFlag       string
 	taskStageFlag         string
 	taskRecurFlag         string
+	taskAddFromFlag       string
 	taskTemplateFlag      string
 	isEpic                bool
 	isStory               bool
@@ -73,6 +74,7 @@ func init() {
 	taskAddCmd.Flags().StringVar(&taskSectionFlag, "section", "", "section for the task (default: project's first section)")
 	taskAddCmd.Flags().StringVar(&taskStageFlag, "stage", "", "workflow stage (e.g., Brainstorm, Design, Implement)")
 	taskAddCmd.Flags().StringVar(&taskRecurFlag, "recur", "", "recurrence pattern (daily, weekly, monthly, yearly, Nd, Nw, Nm, Ny)")
+	taskAddCmd.Flags().StringVar(&taskAddFromFlag, "from", "", "recurrence mode with --recur: 'due' (default) or 'completion'")
 	taskAddCmd.Flags().StringVar(&taskTemplateFlag, "template", "", "create from template (ID or name)")
 
 	taskAddCmd.Flags().StringP("project", "p", "", "target project slug (default: current project)")
@@ -226,9 +228,22 @@ func runTaskAdd(cmd *cobra.Command, args []string) error { //nolint:gocyclo
 		if pattern == nil {
 			return tterrors.NewInvalidValueError("recurrence", taskRecurFlag, "use daily, weekly, weekly:mon,fri, monthly, yearly, Nd, Nw, Nm, Ny")
 		}
+		// --from overrides any mode embedded in the pattern string (e.g. trailing ~)
+		if cmd.Flags().Changed("from") {
+			switch taskAddFromFlag {
+			case "due":
+				pattern.Mode = models.RecurModeFromDue
+			case "completion":
+				pattern.Mode = models.RecurModeFromCompletion
+			default:
+				return fmt.Errorf("invalid --from value %q: must be 'due' or 'completion'", taskAddFromFlag)
+			}
+		}
 		if err := task.SetRecurrence(pattern); err != nil {
 			return fmt.Errorf("invalid recurrence pattern: %w", err)
 		}
+	} else if cmd.Flags().Changed("from") {
+		return fmt.Errorf("--from requires --recur to be set")
 	}
 
 	// Handle parent

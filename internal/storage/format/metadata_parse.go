@@ -214,6 +214,9 @@ func ParseMetadata(task *models.Task, metaStr string) []ParseWarning { //nolint:
 		case "due":
 			if t, err := time.ParseInLocation(util.DateFormat, value, time.Local); err == nil {
 				task.DueDate = &t
+			} else if t, err := time.ParseInLocation(util.DateTimeDueFormat, value, time.Local); err == nil {
+				task.DueDate = &t
+				task.HasTime = true
 			}
 		case "depends":
 			task.DependsOn = append(task.DependsOn, splitSemicolonDedup(value)...)

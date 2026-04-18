@@ -16,7 +16,7 @@ var (
 	settingsTabNames = []string{"General", "Palette", "Review", "Behavior", "Attachments", "Project Tree", "Outliner", "Notifications", "Stages", "Appearance"}
 
 	// tabFieldCount declares how many focusable fields each tab has.
-	tabFieldCount = []int{4, 18, 4, 13, 2, 13, 21, 15, 1, 1}
+	tabFieldCount = []int{4, 18, 4, 13, 2, 13, 21, 15, 1, 3}
 
 	// tabFieldStart holds the starting focus index for each tab (computed in init).
 	tabFieldStart []int
@@ -60,6 +60,18 @@ var (
 
 	// priorityModeValues maps cursor index to config string value.
 	priorityModeValues = []string{PriorityModeAll, PriorityModeConditional, PriorityModeHidden}
+
+	// weekEndDayOptions lists the display labels for the week-end day selector.
+	weekEndDayOptions = []string{"Friday", "Saturday", "Sunday"}
+
+	// weekEndDayValues maps cursor index to config string value.
+	weekEndDayValues = []string{"fri", "sat", "sun"}
+
+	// timeFormatOptions lists the display labels for the time format selector.
+	timeFormatOptions = []string{"12-hour (5:00pm)", "24-hour (17:00)"}
+
+	// timeFormatValues maps cursor index to config string value.
+	timeFormatValues = []string{"12h", "24h"}
 )
 
 func init() {
@@ -169,6 +181,8 @@ type SettingsModel struct {
 	outlinerPriorityMode     int      // 0=All, 1=Conditional, 2=Hidden
 	crossOutlinerSidebar     bool     // Default sidebar state for cross-project outliner
 	zebraStriping            bool     // Alternating row backgrounds in task list views
+	weekEndDayCursor         int      // Index into weekEndDayValues (0=fri, 1=sat, 2=sun)
+	timeFormatCursor         int      // Index into timeFormatValues (0=12h, 1=24h)
 	contexts                 []string
 	contextCursor            int // -1 for custom mode, 0+ for selecting from list
 

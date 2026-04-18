@@ -261,6 +261,9 @@ func (t *Task) IsOverdue() bool {
 		return false
 	}
 	now := time.Now()
+	if t.HasTime {
+		return t.DueDate.Before(now)
+	}
 	today := util.StartOfDay(now)
 	dueDay := util.StartOfDay(*t.DueDate)
 	return dueDay.Before(today)
@@ -376,17 +379,27 @@ func (t *Task) DeferRecurrence(days int) {
 }
 
 // NextDueDate calculates the next due date based on the recurrence pattern.
-// Uses fixed interval scheduling: next date is calculated from the current due date.
-// If the task has no due date, calculates from today.
+// For RecurModeFromDue (default): next date is calculated from the current due date.
+// For RecurModeFromCompletion: next date is calculated from CompletedAt (or now if nil).
+// If the task has no due date (FromDue mode), calculates from today.
 // If the task is not recurring, returns nil.
 func (t *Task) NextDueDate() *time.Time {
 	if t.Recurrence == nil {
 		return nil
 	}
 
-	baseDate := time.Now()
-	if t.DueDate != nil {
-		baseDate = *t.DueDate
+	var baseDate time.Time
+	if t.Recurrence.Mode == RecurModeFromCompletion {
+		if t.CompletedAt != nil {
+			baseDate = *t.CompletedAt
+		} else {
+			baseDate = time.Now()
+		}
+	} else {
+		baseDate = time.Now()
+		if t.DueDate != nil {
+			baseDate = *t.DueDate
+		}
 	}
 
 	next := calculateNextDate(baseDate, t.Recurrence)

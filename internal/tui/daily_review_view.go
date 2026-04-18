@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"maps"
 	"strings"
-	"time"
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
@@ -279,7 +278,7 @@ func (m *DailyReviewModel) sectionContextStr(dt CrossProjectTask, section DailyR
 		}
 	case SectionOverdue, SectionDueToday, SectionDueSoon, SectionDueLater, SectionFuture:
 		if task.DueDate != nil {
-			return m.formatDueDateContext(task.DueDate, section)
+			return m.formatDueDateContext(task, section)
 		}
 	case SectionInReview:
 		if task.DueDate != nil {
@@ -310,15 +309,17 @@ func (m *DailyReviewModel) sectionContextStr(dt CrossProjectTask, section DailyR
 }
 
 // formatDueDateContext formats due date with appropriate styling for context.
-func (m *DailyReviewModel) formatDueDateContext(dueDate *time.Time, section DailyReviewSection) string {
-	if dueDate == nil {
+func (m *DailyReviewModel) formatDueDateContext(task *models.Task, section DailyReviewSection) string {
+	if task.DueDate == nil {
 		return ""
 	}
 
 	// Future section uses MutedStyle with full date (always includes year).
 	if section == SectionFuture {
-		return MutedStyle.Render(dueDate.Format("Jan 2, 2006"))
+		dateStr := task.DueDate.Format("Jan 2, 2006")
+		dateStr = AppendTimeIfHasTime(task, dateStr, m.config.GetTimeFormat())
+		return MutedStyle.Render(dateStr)
 	}
 
-	return FormatRelativeDue(dueDate, true)
+	return FormatRelativeDueTask(task, true, m.config.GetTimeFormat())
 }

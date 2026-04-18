@@ -20,11 +20,16 @@ If only a date is given (no task ID), an interactive selector is shown.
 
 Accepted formats:
   tomorrow       Tomorrow's date
+  eod            End of today
+  eow            End of this week (configurable: fri/sat/sun)
+  eom            End of this month
+  eoy            End of this year
+  this <weekday> This week's occurrence (e.g. this fri)
+  next <weekday> Next occurrence of that weekday (e.g. next mon)
   +1d, +3d       Relative days from now
   +1w, +2w       Relative weeks from now
   +1m            Relative months from now
   2026-06-01     Exact date (YYYY-MM-DD)
-  mon-sun        Next occurrence of that weekday
   next week      7 days from today
   next month     Same day next month
   in N days/weeks/months  Relative offset
@@ -95,7 +100,7 @@ func runTaskSnooze(cmd *cobra.Command, args []string) error {
 	} else {
 		parsed, parseErr := util.ParseRelativeDate(dateStr)
 		if parseErr != nil {
-			return fmt.Errorf("invalid date %q: %w\nAccepted formats: YYYY-MM-DD, +Nd/+Nw/+Nm, today, tomorrow, mon-sun, next week/month, in N days/weeks/months", dateStr, parseErr)
+			return fmt.Errorf("invalid date %q: %w\nAccepted formats: YYYY-MM-DD, +Nd/+Nw/+Nm, today, tomorrow, eod/eow/eom/eoy, this <weekday>, next <weekday>, next week/month, in N days/weeks/months", dateStr, parseErr)
 		}
 		// Reject snoozing to today or the past since the task would be immediately visible
 		today := util.StartOfDay(time.Now())

@@ -10,8 +10,9 @@ import (
 
 // Standard date format constants for consistent formatting across the codebase.
 const (
-	DateFormat     = "2006-01-02"       // Date only (YYYY-MM-DD)
-	DateTimeFormat = "2006-01-02 15:04" // Date and time (YYYY-MM-DD HH:MM)
+	DateFormat        = "2006-01-02"       // Date only (YYYY-MM-DD)
+	DateTimeFormat    = "2006-01-02 15:04" // Date and time (YYYY-MM-DD HH:MM)
+	DateTimeDueFormat = "2006-01-02T15:04" // ISO-compatible due date+time (YYYY-MM-DDTHH:MM)
 )
 
 // Common time durations for date arithmetic and comparisons.
@@ -42,7 +43,10 @@ var (
 	relativeWeeksRe  = regexp.MustCompile(`^\+(\d+)w$`)
 	relativeMonthsRe = regexp.MustCompile(`^\+(\d+)m$`)
 	nextWeekdayRe    = regexp.MustCompile(`^next\s+(sun|sunday|mon|monday|tue|tuesday|wed|wednesday|thu|thursday|fri|friday|sat|saturday)$`)
+	thisWeekdayRe    = regexp.MustCompile(`^this\s+(sun|sunday|mon|monday|tue|tuesday|wed|wednesday|thu|thursday|fri|friday|sat|saturday)$`)
 	inDurationRe     = regexp.MustCompile(`^in\s+(\d+)\s+(day|days|week|weeks|month|months)$`)
+	time12hRe        = regexp.MustCompile(`^(\d{1,2})(?::(\d{2}))?(am|pm)$`)
+	time24hRe        = regexp.MustCompile(`^(\d{2}):(\d{2})$`)
 )
 
 // weekdays maps weekday name variations to time.Weekday values.
@@ -56,18 +60,39 @@ var weekdays = map[string]time.Weekday{
 	"sat": time.Saturday, "saturday": time.Saturday,
 }
 
+// isoWeekdayNum maps a time.Weekday to its ISO week position: Monday=1 … Sunday=7.
+func isoWeekdayNum(wd time.Weekday) int {
+	if wd == time.Sunday {
+		return 7
+	}
+	return int(wd)
+}
+
 // ParseRelativeDate parses a natural language date string into a time.Time.
 // Supported formats:
 //   - YYYY-MM-DD (e.g., 2024-01-15)
 //   - MM/DD/YYYY (e.g., 01/15/2024)
 //   - DD.MM.YYYY (e.g., 15.01.2024)
 //   - today, tomorrow, yesterday
+//   - eod (end of day = today), eom (end of month), eoy (end of year)
+//   - eow (end of week — uses Sunday by default; see ParseRelativeDateWithConfig)
 //   - +Nd (N days from now), +Nw (N weeks), +Nm (N months)
 //   - mon, tue, wed, thu, fri, sat, sun (next occurrence)
+//   - this <weekday> (this ISO-week occurrence; error if already past)
 //   - next <weekday> (skips this week)
 //   - next week, next month
 //   - in N days/weeks/months
+//
+// Uses Sunday as the configured week-end day for eow. Use
+// ParseRelativeDateWithConfig to pass a user-configured week-end day.
 func ParseRelativeDate(input string) (time.Time, error) {
+	return ParseRelativeDateWithConfig(input, "sun")
+}
+
+// ParseRelativeDateWithConfig parses a natural language date string like
+// ParseRelativeDate, but respects the weekEndDay setting for the eow token.
+// weekEndDay must be "fri", "sat", or "sun" (invalid values default to "sun").
+func ParseRelativeDateWithConfig(input, weekEndDay string) (time.Time, error) {
 	input = strings.ToLower(strings.TrimSpace(input))
 	now := time.Now()
 	today := StartOfDay(now)
@@ -89,12 +114,31 @@ func ParseRelativeDate(input string) (time.Time, error) {
 
 	// Keywords
 	switch input {
-	case "today":
+	case "today", "eod":
 		return today, nil
 	case "tomorrow":
 		return today.AddDate(0, 0, 1), nil
 	case "yesterday":
 		return today.AddDate(0, 0, -1), nil
+	case "eow":
+		var targetDay time.Weekday
+		switch weekEndDay {
+		case "fri":
+			targetDay = time.Friday
+		case "sat":
+			targetDay = time.Saturday
+		default:
+			targetDay = time.Sunday
+		}
+		daysUntil := int(targetDay) - int(today.Weekday())
+		if daysUntil < 0 {
+			daysUntil += 7
+		}
+		return today.AddDate(0, 0, daysUntil), nil
+	case "eom":
+		return time.Date(today.Year(), today.Month()+1, 0, 0, 0, 0, 0, today.Location()), nil
+	case "eoy":
+		return time.Date(today.Year(), 12, 31, 0, 0, 0, 0, today.Location()), nil
 	}
 
 	// Relative: +Nd (days)
@@ -113,6 +157,19 @@ func ParseRelativeDate(input string) (time.Time, error) {
 	if match := relativeMonthsRe.FindStringSubmatch(input); len(match) == 2 {
 		months, _ := strconv.Atoi(match[1])
 		return today.AddDate(0, months, 0), nil
+	}
+
+	// "this <weekday>" - this ISO-week occurrence; error if already past.
+	// Uses ISO week (Monday=1 … Sunday=7) so "this sun" on a Monday points
+	// forward to the end of the week, and "this mon" on a Sunday is past.
+	if match := thisWeekdayRe.FindStringSubmatch(input); len(match) == 2 {
+		targetDay := weekdays[match[1]]
+		daysOffset := isoWeekdayNum(targetDay) - isoWeekdayNum(today.Weekday())
+		if daysOffset < 0 {
+			dayName := match[1]
+			return time.Time{}, fmt.Errorf("'this %s' is in the past; did you mean 'next %s'?", dayName, dayName)
+		}
+		return today.AddDate(0, 0, daysOffset), nil
 	}
 
 	// Weekday names (e.g., "mon", "friday") - next occurrence within 1-7 days
@@ -157,4 +214,99 @@ func ParseRelativeDate(input string) (time.Time, error) {
 	}
 
 	return time.Time{}, fmt.Errorf("unrecognized date format: %s", input)
+}
+
+// looksLikeTime returns true if s matches a 12-hour or 24-hour time token.
+func looksLikeTime(s string) bool {
+	return time12hRe.MatchString(s) || time24hRe.MatchString(s)
+}
+
+// parseTimeOfDay parses a time-of-day token (e.g. "5pm", "17:00", "5:30pm")
+// and returns (hour, minute, error). Hour is in 24-hour form (0-23).
+func parseTimeOfDay(s string) (int, int, error) {
+	if m := time12hRe.FindStringSubmatch(s); len(m) == 4 {
+		h, _ := strconv.Atoi(m[1])
+		min := 0
+		if m[2] != "" {
+			min, _ = strconv.Atoi(m[2])
+		}
+		if h < 1 || h > 12 {
+			return 0, 0, fmt.Errorf("invalid 12-hour time %q: hour must be 1-12", s)
+		}
+		if min > 59 {
+			return 0, 0, fmt.Errorf("invalid time %q: minute must be 0-59", s)
+		}
+		if m[3] == "pm" && h != 12 {
+			h += 12
+		} else if m[3] == "am" && h == 12 {
+			h = 0
+		}
+		return h, min, nil
+	}
+	if m := time24hRe.FindStringSubmatch(s); len(m) == 3 {
+		h, _ := strconv.Atoi(m[1])
+		min, _ := strconv.Atoi(m[2])
+		if h > 23 {
+			return 0, 0, fmt.Errorf("invalid 24-hour time %q: hour must be 0-23", s)
+		}
+		if min > 59 {
+			return 0, 0, fmt.Errorf("invalid time %q: minute must be 0-59", s)
+		}
+		return h, min, nil
+	}
+	return 0, 0, fmt.Errorf("unrecognized time format: %q", s)
+}
+
+// splitDateTimeInput splits a lowercased input into (datePart, timePart).
+// timePart is non-empty only when the last word of input is a recognised time
+// token (12h or 24h). If the entire input is a time token, datePart is "".
+func splitDateTimeInput(input string) (datePart, timePart string) {
+	idx := strings.LastIndex(input, " ")
+	if idx < 0 {
+		if looksLikeTime(input) {
+			return "", input
+		}
+		return input, ""
+	}
+	candidate := input[idx+1:]
+	if looksLikeTime(candidate) {
+		return input[:idx], candidate
+	}
+	return input, ""
+}
+
+// ParseRelativeDateWithTime is like ParseRelativeDateWithConfig but also accepts
+// an optional time-of-day suffix ("5pm", "17:00", "5:30pm", "9am"). The suffix
+// may appear standalone ("5pm") or combined with any date token ("today 5pm",
+// "next mon 8am", "+2d 14:30").
+//
+// Returns (parsedTime, hasTime, error). When hasTime is false the time component
+// is midnight. Use ParseRelativeDate / ParseRelativeDateWithConfig for callers
+// that don't need time precision.
+func ParseRelativeDateWithTime(input, weekEndDay string) (time.Time, bool, error) {
+	input = strings.ToLower(strings.TrimSpace(input))
+
+	datePart, timePart := splitDateTimeInput(input)
+
+	if timePart != "" {
+		var base time.Time
+		if datePart == "" {
+			base = StartOfDay(time.Now())
+		} else {
+			var err error
+			base, err = ParseRelativeDateWithConfig(datePart, weekEndDay)
+			if err != nil {
+				return time.Time{}, false, fmt.Errorf("date part %q: %w", datePart, err)
+			}
+		}
+		h, m, err := parseTimeOfDay(timePart)
+		if err != nil {
+			return time.Time{}, false, err
+		}
+		result := time.Date(base.Year(), base.Month(), base.Day(), h, m, 0, 0, base.Location())
+		return result, true, nil
+	}
+
+	t, err := ParseRelativeDateWithConfig(input, weekEndDay)
+	return t, false, err
 }

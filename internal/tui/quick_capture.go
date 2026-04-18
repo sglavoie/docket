@@ -6,6 +6,7 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/atotto/clipboard"
 	"github.com/google/uuid"
 
 	"github.com/sglavoie/tt/internal/logging"
@@ -104,6 +105,15 @@ func (m *QuickCaptureModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.ac.Mode == acModeNone {
 				return m, m.createTask(true)
 			}
+
+		case "ctrl+v":
+			// Paste clipboard text into the input field.
+			if text, err := clipboard.ReadAll(); err == nil && strings.TrimSpace(text) != "" {
+				m.input.InsertString(text)
+				m.updatePreview()
+				m.refreshAutocomplete()
+			}
+			return m, nil
 		}
 	}
 
@@ -341,3 +351,8 @@ func (m *QuickCaptureModel) createTask(openAfter bool) tea.Cmd {
 }
 
 func (m *QuickCaptureModel) StatusBarLabel() string { return "Quick Capture" }
+
+// HandledKeys returns all keys QuickCaptureModel's Update method can process.
+func (m *QuickCaptureModel) HandledKeys() []string {
+	return []string{"enter", "ctrl+o", "ctrl+v"}
+}

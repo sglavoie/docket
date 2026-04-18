@@ -541,3 +541,19 @@ func (m *TaskCreatorModel) getFocusSection() (section string, idx int) {
 }
 
 func (m *TaskCreatorModel) StatusBarLabel() string { return "New Task" }
+
+// HandledKeys returns all keys TaskCreatorModel's Update method can process.
+func (m *TaskCreatorModel) HandledKeys() []string {
+	return []string{
+		// Tab navigation
+		"[", "]", "tab", "shift+tab",
+		// Field interaction
+		"enter", "left", "right", "h", "l",
+		"1", "2", "3", "4", "5",
+		"space", "r", "/",
+		// Actions
+		"ctrl+s", "ctrl+a", "ctrl+t", "ctrl+d",
+		"ctrl+j", "ctrl+k", "ctrl+o",
+		"ctrl+v",
+	}
+}
