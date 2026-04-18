@@ -1753,6 +1753,50 @@ func TestTaskForm_DueDatePresetPickerClearsHasTime(t *testing.T) {
 	}
 }
 
+func TestDateInput_PrefillPreservesHasTime(t *testing.T) {
+	project := testutil.NewTestProjectWithTasks("Test Project")
+	dueWithTime := time.Date(2026, 6, 15, 14, 30, 0, 0, time.Local)
+
+	task := &models.Task{
+		ID:      "test-due-time",
+		ShortID: 99,
+		Title:   "Test task",
+		DueDate: &dueWithTime,
+		HasTime: true,
+	}
+
+	m := NewDateInputModel(task, project)
+
+	// The pre-filled input should include the time component (ISO format).
+	got := m.input.Value()
+	want := "2026-06-15T14:30"
+	if got != want {
+		t.Errorf("DateInputModel prefill with HasTime=true: got %q, want %q", got, want)
+	}
+}
+
+func TestDateInput_PrefillDateOnly(t *testing.T) {
+	project := testutil.NewTestProjectWithTasks("Test Project")
+	due := time.Date(2026, 6, 15, 0, 0, 0, 0, time.Local)
+
+	task := &models.Task{
+		ID:      "test-due-date",
+		ShortID: 98,
+		Title:   "Test task",
+		DueDate: &due,
+		HasTime: false,
+	}
+
+	m := NewDateInputModel(task, project)
+
+	// The pre-filled input should be date-only.
+	got := m.input.Value()
+	want := "2026-06-15"
+	if got != want {
+		t.Errorf("DateInputModel prefill with HasTime=false: got %q, want %q", got, want)
+	}
+}
+
 func TestTaskForm_Save_BuildAttrs_BugType(t *testing.T) {
 	m := newBugTaskForm()
 	m.draft.bugAttrs.Severity = models.BugSeverityMajor

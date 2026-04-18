@@ -35,9 +35,13 @@ func NewDateInputModel(task *models.Task, project *models.Project) *DateInputMod
 	input.SetWidth(40)
 	applyThemedTextInput(&input)
 
-	// Pre-fill with current due date if set
+	// Pre-fill with current due date if set (preserve time component when present)
 	if task.DueDate != nil {
-		input.SetValue(task.DueDate.Format(util.DateFormat))
+		if task.HasTime {
+			input.SetValue(task.DueDate.Format(util.DateTimeDueFormat))
+		} else {
+			input.SetValue(task.DueDate.Format(util.DateFormat))
+		}
 	}
 
 	return &DateInputModel{
@@ -144,7 +148,11 @@ func (m *DateInputModel) View() tea.View {
 	// Current due date
 	if m.task.DueDate != nil {
 		b.WriteString(FieldLabelStyle.Render("Current: "))
-		b.WriteString(m.task.DueDate.Format("2006-01-02 (Monday)"))
+		dateStr := m.task.DueDate.Format("2006-01-02 (Monday)")
+		if m.task.HasTime {
+			dateStr += " " + m.task.DueDate.Format("15:04")
+		}
+		b.WriteString(dateStr)
 		b.WriteString("\n\n")
 	}
 
