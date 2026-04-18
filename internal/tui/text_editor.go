@@ -48,6 +48,11 @@ func (m *TextEditorModel) SetSize(width, height int) {
 	m.height = height
 	// Use same resize logic as other forms for consistent width
 	formFactory.ResizeTextarea(&m.textarea, width)
+	// Expand textarea to fill available vertical space.
+	// Reserve lines for: title (2), spacing (1), footer (1) = 4 lines overhead.
+	if taHeight := height - 4; taHeight > 5 {
+		m.textarea.SetHeight(taHeight)
+	}
 }
 
 func (m *TextEditorModel) Init() tea.Cmd {

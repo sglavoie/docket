@@ -417,7 +417,10 @@ func (m *TaskFormModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		case "ctrl+e":
 			if m.activeTab == formTabBasics && m.focusIndex == 1 {
-				return m, m.handleBasicsEnter()
+				currentDesc := m.draft.desc
+				return m, func() tea.Msg {
+					return TextEditorExternalMsg{FieldName: "formDesc", CurrentValue: currentDesc}
+				}
 			}
 		case "ctrl+s":
 			return m, m.handleSave()
