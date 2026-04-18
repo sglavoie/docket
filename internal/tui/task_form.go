@@ -192,6 +192,22 @@ func NewTaskFormModelCreateFromTemplate(
 		m.draft.desc = tmpl.Description
 	}
 
+	if len(tmpl.Checklist) > 0 {
+		for _, item := range tmpl.Checklist {
+			m.draft.checklist = append(m.draft.checklist, models.ChecklistItem{
+				Text: item,
+				Done: false,
+			})
+		}
+	} else if len(tmpl.Children) > 0 {
+		for _, child := range tmpl.Children {
+			m.draft.checklist = append(m.draft.checklist, models.ChecklistItem{
+				Text: child.Title,
+				Done: false,
+			})
+		}
+	}
+
 	return m
 }
 
