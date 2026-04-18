@@ -74,8 +74,11 @@ func (p *Project) MoveTaskToProject(task *Task, dest *Project) (*MoveTaskToProje
 		}
 		t.RelatedTo = newRelated
 
-		// Reset section if it doesn't exist in destination
-		if t.Section != "" && !destSectionSet[t.Section] {
+		// Reset section if it doesn't exist in destination.
+		// GTD sections (Inbox, Next, Waiting, etc.) are built-in and always
+		// valid, so only non-GTD sections stored in the Section field need
+		// the existence check.
+		if t.Section != "" && !IsGTDSection(t.Section) && !destSectionSet[t.Section] {
 			t.SetSection(SectionNext)
 		}
 

@@ -560,6 +560,70 @@ func TestMoveTaskToProjectEnsuresCustomSectionInDest(t *testing.T) {
 	}
 }
 
+func TestMoveTaskToProjectPreservesGTDSections(t *testing.T) {
+	sourceProj, err := NewProject("source", "Source Project", "/tmp/source")
+	if err != nil {
+		t.Fatal(err)
+	}
+	destProj, err := NewProject("dest", "Dest Project", "/tmp/dest")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Destination has no Inbox/Waiting sections in its sections list.
+	// GTD sections are built-in and should always be preserved.
+	destProj.Sections = []string{SectionNext}
+
+	inboxTask, err := NewTask("inbox1", 1, TaskTypeTask, "Inbox Task")
+	if err != nil {
+		t.Fatal(err)
+	}
+	inboxTask.Section = SectionInbox
+
+	waitingTask, err := NewTask("waiting1", 2, TaskTypeTask, "Waiting Task")
+	if err != nil {
+		t.Fatal(err)
+	}
+	waitingTask.Section = SectionWaiting
+
+	somedayTask, err := NewTask("someday1", 3, TaskTypeTask, "Someday Task")
+	if err != nil {
+		t.Fatal(err)
+	}
+	somedayTask.Section = SectionSomeday
+
+	sourceProj.Tasks = []*Task{inboxTask, waitingTask, somedayTask}
+	sourceProj.BuildTaskTree()
+
+	// Move inbox task — should keep Inbox section even though dest doesn't
+	// have Inbox in its sections list.
+	_, err = sourceProj.MoveTaskToProject(inboxTask, destProj)
+	if err != nil {
+		t.Fatalf("MoveTaskToProject (inbox) failed: %v", err)
+	}
+	if inboxTask.Section != SectionInbox {
+		t.Errorf("expected inbox task to keep Inbox section, got %q", inboxTask.Section)
+	}
+
+	// Move waiting task
+	_, err = sourceProj.MoveTaskToProject(waitingTask, destProj)
+	if err != nil {
+		t.Fatalf("MoveTaskToProject (waiting) failed: %v", err)
+	}
+	if waitingTask.Section != SectionWaiting {
+		t.Errorf("expected waiting task to keep Waiting section, got %q", waitingTask.Section)
+	}
+
+	// Move someday task
+	_, err = sourceProj.MoveTaskToProject(somedayTask, destProj)
+	if err != nil {
+		t.Fatalf("MoveTaskToProject (someday) failed: %v", err)
+	}
+	if somedayTask.Section != SectionSomeday {
+		t.Errorf("expected someday task to keep Someday section, got %q", somedayTask.Section)
+	}
+}
+
 func TestMoveTaskToProjectNilDest(t *testing.T) {
 	proj, err := NewProject("proj1", "Project 1", "/tmp/proj1")
 	if err != nil {
