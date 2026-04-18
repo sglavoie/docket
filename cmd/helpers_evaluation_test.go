@@ -49,6 +49,41 @@ func TestCaptureTaskStates(t *testing.T) {
 		}
 	})
 
+	t.Run("captures recurrence Mode and OriginalDay", func(t *testing.T) {
+		task := testutil.NewTestTaskWithStatus("Recurring", models.StatusTodo)
+		task.Recurrence = &models.RecurrencePattern{
+			Interval:    1,
+			Unit:        models.RecurrenceMonthly,
+			OriginalDay: 31,
+			Mode:        models.RecurModeFromCompletion,
+			Streak:      5,
+			MaxStreak:   10,
+		}
+
+		states := CaptureTaskStates([]*models.Task{task})
+		state := states[task.ID]
+
+		if state.Recurrence == nil {
+			t.Fatal("captured state should have Recurrence")
+		}
+		if state.Recurrence.OriginalDay != 31 {
+			t.Errorf("Recurrence.OriginalDay = %d, want 31", state.Recurrence.OriginalDay)
+		}
+		if state.Recurrence.Mode != models.RecurModeFromCompletion {
+			t.Errorf("Recurrence.Mode = %q, want %q", state.Recurrence.Mode, models.RecurModeFromCompletion)
+		}
+
+		// Mutating original should not affect captured state
+		task.Recurrence.Mode = models.RecurModeFromDue
+		task.Recurrence.OriginalDay = 1
+		if state.Recurrence.Mode != models.RecurModeFromCompletion {
+			t.Error("captured Recurrence.Mode should not change after original mutation")
+		}
+		if state.Recurrence.OriginalDay != 31 {
+			t.Error("captured Recurrence.OriginalDay should not change after original mutation")
+		}
+	})
+
 	t.Run("handles empty task list", func(t *testing.T) {
 		states := CaptureTaskStates([]*models.Task{})
 		if len(states) != 0 {

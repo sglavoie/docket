@@ -49,6 +49,9 @@ type inboxSnapshot struct {
 	dueDate       *time.Time
 	hasTime       bool
 	dependsOn     []string
+	status        models.TaskStatus
+	completedAt   *time.Time
+	active        bool
 }
 
 // captureInboxSnapshot creates a snapshot of task state for undo.
@@ -59,6 +62,12 @@ func captureInboxSnapshot(task *models.Task) *inboxSnapshot {
 		dueDate = &d
 	}
 
+	var completedAt *time.Time
+	if task.CompletedAt != nil {
+		c := *task.CompletedAt
+		completedAt = &c
+	}
+
 	return &inboxSnapshot{
 		section:       task.Section,
 		customSection: task.CustomSection,
@@ -67,6 +76,9 @@ func captureInboxSnapshot(task *models.Task) *inboxSnapshot {
 		dueDate:       dueDate,
 		hasTime:       task.HasTime,
 		dependsOn:     append([]string{}, task.DependsOn...),
+		status:        task.Status,
+		completedAt:   completedAt,
+		active:        task.Active,
 	}
 }
 
@@ -84,6 +96,14 @@ func restoreInboxSnapshot(task *models.Task, snap *inboxSnapshot) {
 		task.DueDate = nil
 	}
 	task.HasTime = snap.hasTime
+	task.Status = snap.status
+	task.Active = snap.active
+	if snap.completedAt != nil {
+		c := *snap.completedAt
+		task.CompletedAt = &c
+	} else {
+		task.CompletedAt = nil
+	}
 	task.UpdatedAt = time.Now()
 }
 

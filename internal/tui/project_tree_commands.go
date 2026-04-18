@@ -169,11 +169,13 @@ func copyTaskState(task *models.Task) *models.Task {
 	var recurrenceCopy *models.RecurrencePattern
 	if task.Recurrence != nil {
 		recurrenceCopy = &models.RecurrencePattern{
-			Interval:  task.Recurrence.Interval,
-			Unit:      task.Recurrence.Unit,
-			Skipped:   task.Recurrence.Skipped,
-			Streak:    task.Recurrence.Streak,
-			MaxStreak: task.Recurrence.MaxStreak,
+			Interval:    task.Recurrence.Interval,
+			Unit:        task.Recurrence.Unit,
+			Skipped:     task.Recurrence.Skipped,
+			Streak:      task.Recurrence.Streak,
+			MaxStreak:   task.Recurrence.MaxStreak,
+			OriginalDay: task.Recurrence.OriginalDay,
+			Mode:        task.Recurrence.Mode,
 		}
 		if len(task.Recurrence.Weekdays) > 0 {
 			recurrenceCopy.Weekdays = make([]int, len(task.Recurrence.Weekdays))

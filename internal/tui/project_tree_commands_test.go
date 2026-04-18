@@ -21,10 +21,12 @@ func TestCopyTaskStatePreservesAllFields(t *testing.T) {
 		DueDate:       &dueDate,
 		Description:   "Fix the login bug",
 		Recurrence: &models.RecurrencePattern{
-			Interval: 2,
-			Unit:     models.RecurrenceWeekly,
-			Weekdays: []int{1, 3, 5},
-			Streak:   3,
+			Interval:    2,
+			Unit:        models.RecurrenceWeekly,
+			Weekdays:    []int{1, 3, 5},
+			Streak:      3,
+			OriginalDay: 15,
+			Mode:        models.RecurModeFromCompletion,
 		},
 	}
 
@@ -76,6 +78,12 @@ func TestCopyTaskStatePreservesAllFields(t *testing.T) {
 	}
 	if len(copied.Recurrence.Weekdays) != 3 {
 		t.Fatalf("Recurrence.Weekdays: got %d items, want 3", len(copied.Recurrence.Weekdays))
+	}
+	if copied.Recurrence.OriginalDay != 15 {
+		t.Errorf("Recurrence.OriginalDay: got %d, want 15", copied.Recurrence.OriginalDay)
+	}
+	if copied.Recurrence.Mode != models.RecurModeFromCompletion {
+		t.Errorf("Recurrence.Mode: got %q, want %q", copied.Recurrence.Mode, models.RecurModeFromCompletion)
 	}
 
 	// Tags should be a deep copy
