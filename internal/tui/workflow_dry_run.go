@@ -190,6 +190,7 @@ func deepCopyTaskForDryRun(task *models.Task) *models.Task {
 		CustomSection: task.CustomSection,
 		CreatedAt:     task.CreatedAt,
 		UpdatedAt:     task.UpdatedAt,
+		HasTime:       task.HasTime,
 		Pinned:        task.Pinned,
 		Active:        task.Active,
 		Level:         task.Level,

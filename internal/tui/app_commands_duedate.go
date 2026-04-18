@@ -28,6 +28,7 @@ func (m *AppModel) dueDateCommands() []Command {
 					today := util.StartOfDay(now)
 					m.projectTree.project.MutateTask(task.ID, func(t *models.Task) {
 						t.DueDate = &today
+						t.HasTime = false
 					})
 					return TaskPropertyChangedMsg{Task: task, NeedsSave: true}
 				}
@@ -51,6 +52,7 @@ func (m *AppModel) dueDateCommands() []Command {
 					tomorrow := time.Date(now.Year(), now.Month(), now.Day()+1, 0, 0, 0, 0, now.Location())
 					m.projectTree.project.MutateTask(task.ID, func(t *models.Task) {
 						t.DueDate = &tomorrow
+						t.HasTime = false
 					})
 					return TaskPropertyChangedMsg{Task: task, NeedsSave: true}
 				}
@@ -74,6 +76,7 @@ func (m *AppModel) dueDateCommands() []Command {
 					nextWeek := time.Date(now.Year(), now.Month(), now.Day()+7, 0, 0, 0, 0, now.Location())
 					m.projectTree.project.MutateTask(task.ID, func(t *models.Task) {
 						t.DueDate = &nextWeek
+						t.HasTime = false
 					})
 					return TaskPropertyChangedMsg{Task: task, NeedsSave: true}
 				}
@@ -97,6 +100,7 @@ func (m *AppModel) dueDateCommands() []Command {
 					nextMonth := time.Date(now.Year(), now.Month(), now.Day()+30, 0, 0, 0, 0, now.Location())
 					m.projectTree.project.MutateTask(task.ID, func(t *models.Task) {
 						t.DueDate = &nextMonth
+						t.HasTime = false
 					})
 					return TaskPropertyChangedMsg{Task: task, NeedsSave: true}
 				}
@@ -118,6 +122,7 @@ func (m *AppModel) dueDateCommands() []Command {
 				if task != nil {
 					m.projectTree.project.MutateTask(task.ID, func(t *models.Task) {
 						t.DueDate = nil
+						t.HasTime = false
 					})
 					return TaskPropertyChangedMsg{Task: task, NeedsSave: true}
 				}

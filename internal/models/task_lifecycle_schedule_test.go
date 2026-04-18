@@ -72,6 +72,22 @@ func TestIsDueSoon(t *testing.T) {
 	if task.IsDueSoon(7) {
 		t.Error("expected not due soon when overdue")
 	}
+
+	// HasTime: task due earlier today should be overdue, not "due soon"
+	pastTime := time.Now().Add(-2 * time.Hour)
+	task.DueDate = &pastTime
+	task.HasTime = true
+	if task.IsDueSoon(7) {
+		t.Error("expected not due soon when HasTime and due time has passed")
+	}
+
+	// HasTime: task due later today should be "due soon"
+	futureTime := time.Now().Add(2 * time.Hour)
+	task.DueDate = &futureTime
+	task.HasTime = true
+	if !task.IsDueSoon(7) {
+		t.Error("expected due soon when HasTime and due time is within 7 days")
+	}
 }
 
 func TestNextNDueDates(t *testing.T) { //nolint:gocyclo

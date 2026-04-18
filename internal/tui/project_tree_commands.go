@@ -442,8 +442,10 @@ func (m *ProjectTreeModel) applyBulkChanges(changes PendingChanges, tasks []*mod
 			}
 			if changes.ClearDueDate {
 				t.DueDate = nil
+				t.HasTime = false
 			} else if changes.SetDueDate != nil {
 				t.DueDate = changes.SetDueDate
+				t.HasTime = false // Bulk edit always sets date-only values.
 			}
 			if changes.ClearRecurrence {
 				t.ClearRecurrence()

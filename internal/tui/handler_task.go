@@ -446,6 +446,7 @@ func (m *AppModel) handleDueDateChanged(msg DueDateChangedMsg) (bool, tea.Cmd) {
 		// The first task was already saved by DateInputModel
 		// Apply the same date to remaining tasks
 		newDate := msg.Task.DueDate
+		newHasTime := msg.Task.HasTime
 		count := 1 // First task already updated
 		projectMap := make(map[string]*models.Project)
 
@@ -463,6 +464,7 @@ func (m *AppModel) handleDueDateChanged(msg DueDateChangedMsg) (bool, tea.Cmd) {
 					} else {
 						t.DueDate = nil
 					}
+					t.HasTime = newHasTime
 				}) {
 					projectMap[item.Project.ID] = item.Project
 					count++

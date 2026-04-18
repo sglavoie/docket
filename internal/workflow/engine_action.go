@@ -143,12 +143,14 @@ func applyAction(task *models.Task, action RuleAction) bool { //nolint:gocyclo
 		if err == nil {
 			newDue := time.Now().AddDate(0, 0, days)
 			task.DueDate = &newDue
+			task.HasTime = false // Relative durations are always date-only.
 			task.UpdatedAt = time.Now()
 			return true
 		}
 	case ActionClearDue:
 		if task.DueDate != nil {
 			task.DueDate = nil
+			task.HasTime = false
 			task.UpdatedAt = time.Now()
 			return true
 		}

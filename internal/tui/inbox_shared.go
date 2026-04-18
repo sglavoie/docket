@@ -47,6 +47,7 @@ type inboxSnapshot struct {
 	priority      int
 	tags          []string
 	dueDate       *time.Time
+	hasTime       bool
 	dependsOn     []string
 }
 
@@ -64,6 +65,7 @@ func captureInboxSnapshot(task *models.Task) *inboxSnapshot {
 		priority:      task.Priority,
 		tags:          append([]string{}, task.Tags...),
 		dueDate:       dueDate,
+		hasTime:       task.HasTime,
 		dependsOn:     append([]string{}, task.DependsOn...),
 	}
 }
@@ -81,6 +83,7 @@ func restoreInboxSnapshot(task *models.Task, snap *inboxSnapshot) {
 	} else {
 		task.DueDate = nil
 	}
+	task.HasTime = snap.hasTime
 	task.UpdatedAt = time.Now()
 }
 

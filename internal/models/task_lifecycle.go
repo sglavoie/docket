@@ -271,12 +271,22 @@ func (t *Task) IsOverdue() bool {
 
 // IsDueSoon returns true if the task has a due date within the specified number
 // of days (inclusive) and is not overdue or complete.
-// Uses day-level comparison (normalizes to midnight local time).
+// When HasTime is set, uses exact time comparison so that a task whose specific
+// time has already passed is treated as overdue (not "due soon").
+// Otherwise uses day-level comparison (normalizes to midnight local time).
 func (t *Task) IsDueSoon(days int) bool {
 	if t.DueDate == nil || t.Status.IsComplete() {
 		return false
 	}
 	now := time.Now()
+	if t.HasTime {
+		// Time-aware: overdue if the exact time has passed
+		if t.DueDate.Before(now) {
+			return false
+		}
+		threshold := now.AddDate(0, 0, days)
+		return !t.DueDate.After(threshold)
+	}
 	today := util.StartOfDay(now)
 	dueDay := util.StartOfDay(*t.DueDate)
 	// Not overdue

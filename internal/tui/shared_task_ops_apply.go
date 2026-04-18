@@ -128,6 +128,7 @@ func applyQuickDueDate(pf persistFn, project *models.Project, taskID string, day
 
 	result := pf(project, taskID, func(t *models.Task) {
 		t.DueDate = &newDate
+		t.HasTime = false // Quick presets are always date-only.
 	})
 	if result.Err != nil || result.StatusMessage != "" {
 		return result
@@ -149,6 +150,7 @@ func applyClearDueDate(pf persistFn, project *models.Project, taskID string) Tas
 
 	result := pf(project, taskID, func(t *models.Task) {
 		t.DueDate = nil
+		t.HasTime = false
 	})
 	if result.Err != nil || result.StatusMessage != "" {
 		return result

@@ -304,6 +304,7 @@ func applyQuickEdit(task *models.Task, project *models.Project, result *quickEdi
 			} else {
 				t.DueDate = result.dueDate
 			}
+			t.HasTime = false // Quick edit always sets date-only values.
 		}
 
 		if result.sectionSet {
