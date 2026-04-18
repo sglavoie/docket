@@ -159,6 +159,51 @@ func TestRestoreInboxSnapshotRestoresCompletedAt(t *testing.T) {
 	}
 }
 
+func TestRestoreInboxSnapshotRestoresSnoozedUntil(t *testing.T) {
+	snoozedUntil := time.Date(2025, 5, 1, 0, 0, 0, 0, time.UTC)
+	task := &models.Task{
+		ID:           "t1",
+		Status:       models.StatusTodo,
+		Section:      models.SectionInbox,
+		SnoozedUntil: &snoozedUntil,
+		Tags:         []string{},
+		DependsOn:    []string{},
+	}
+
+	snap := captureInboxSnapshot(task)
+
+	// Verify snapshot captured the snooze date
+	if snap.snoozedUntil == nil {
+		t.Fatal("snapshot should capture snoozedUntil")
+	}
+	if !snap.snoozedUntil.Equal(snoozedUntil) {
+		t.Errorf("snapshot snoozedUntil: got %v, want %v", *snap.snoozedUntil, snoozedUntil)
+	}
+
+	// Simulate a status change that clears SnoozedUntil
+	task.ApplyTransition(models.StatusInProgress)
+	if task.SnoozedUntil != nil {
+		t.Fatal("precondition: SnoozedUntil should be cleared by Start()")
+	}
+
+	// Undo
+	restoreInboxSnapshot(task, snap)
+
+	if task.SnoozedUntil == nil {
+		t.Fatal("SnoozedUntil should be restored after undo")
+	}
+	if !task.SnoozedUntil.Equal(snoozedUntil) {
+		t.Errorf("SnoozedUntil after restore: got %v, want %v", *task.SnoozedUntil, snoozedUntil)
+	}
+
+	// Verify deep copy: mutating original should not affect restored value
+	newTime := time.Date(2099, 1, 1, 0, 0, 0, 0, time.UTC)
+	*snap.snoozedUntil = newTime
+	if task.SnoozedUntil.Equal(newTime) {
+		t.Error("SnoozedUntil should be a deep copy, not a shared pointer")
+	}
+}
+
 func TestCaptureInboxSnapshotNilCompletedAt(t *testing.T) {
 	task := &models.Task{
 		ID:        "t1",
