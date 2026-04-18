@@ -1736,6 +1736,23 @@ func TestTaskForm_Edit_PreservesHasTime(t *testing.T) {
 	}
 }
 
+func TestTaskForm_DueDatePresetPickerClearsHasTime(t *testing.T) {
+	m := newTestTaskForm()
+	m.draft.hasTime = true // simulate a previous time-of-day entry
+	tomorrow := time.Date(2026, 6, 16, 0, 0, 0, 0, time.Local)
+	pickedMsg := TaskFormDueDatePickedMsg{Date: &tomorrow}
+	m.activeOverlay = formOverlayDue
+	m.duePicker = newFormDueDatePicker(nil)
+	// Directly call applyFormOverlayResult to simulate the picker result.
+	m.applyFormOverlayResult(pickedMsg)
+	if m.draft.hasTime {
+		t.Error("expected hasTime=false after preset picker selection")
+	}
+	if m.draft.dueDate == nil {
+		t.Error("expected dueDate to be set")
+	}
+}
+
 func TestTaskForm_Save_BuildAttrs_BugType(t *testing.T) {
 	m := newBugTaskForm()
 	m.draft.bugAttrs.Severity = models.BugSeverityMajor

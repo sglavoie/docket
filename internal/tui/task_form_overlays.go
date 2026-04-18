@@ -444,6 +444,7 @@ func (m *TaskFormModel) applyFormOverlayResult(msg tea.Msg) {
 		m.err = nil
 	case TaskFormDueDatePickedMsg:
 		m.draft.dueDate = msg.Date
+		m.draft.hasTime = false // Preset picker always sets date-only.
 		if msg.Date == nil {
 			m.draft.dueInput = ""
 		} else {
