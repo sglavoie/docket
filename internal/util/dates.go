@@ -284,7 +284,14 @@ func splitDateTimeInput(input string) (datePart, timePart string) {
 // is midnight. Use ParseRelativeDate / ParseRelativeDateWithConfig for callers
 // that don't need time precision.
 func ParseRelativeDateWithTime(input, weekEndDay string) (time.Time, bool, error) {
-	input = strings.ToLower(strings.TrimSpace(input))
+	trimmed := strings.TrimSpace(input)
+
+	// Try ISO date+time format first (before lowercasing, since T separator is uppercase).
+	if t, err := time.ParseInLocation(DateTimeDueFormat, trimmed, time.Local); err == nil {
+		return t, true, nil
+	}
+
+	input = strings.ToLower(trimmed)
 
 	datePart, timePart := splitDateTimeInput(input)
 

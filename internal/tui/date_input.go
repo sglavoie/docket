@@ -92,6 +92,7 @@ func (m *DateInputModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if value == "" || strings.ToLower(value) == "none" || strings.ToLower(value) == "clear" {
 				if !m.project.MutateTask(m.task.ID, func(t *models.Task) {
 					t.DueDate = nil
+					t.HasTime = false
 				}) {
 					m.err = fmt.Errorf("task no longer exists in project")
 					return m, func() tea.Msg { return BackMsg{} }
@@ -99,8 +100,8 @@ func (m *DateInputModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, m.saveAndReturn()
 			}
 
-			// Parse the date
-			date, err := ParseDate(value)
+			// Parse the date (supports optional time-of-day suffix like "5pm")
+			date, hasTime, err := util.ParseRelativeDateWithTime(value, "sun")
 			if err != nil {
 				m.err = err
 				return m, nil
@@ -108,6 +109,7 @@ func (m *DateInputModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			if !m.project.MutateTask(m.task.ID, func(t *models.Task) {
 				t.DueDate = &date
+				t.HasTime = hasTime
 			}) {
 				m.err = fmt.Errorf("task no longer exists in project")
 				return m, func() tea.Msg { return BackMsg{} }

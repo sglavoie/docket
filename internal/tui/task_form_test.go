@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	tea "charm.land/bubbletea/v2"
 
@@ -1645,6 +1646,93 @@ func TestTaskForm_Save_ParsesDueDateFromInput(t *testing.T) {
 	}
 	if m.draft.dueDate.Year() != 2026 || int(m.draft.dueDate.Month()) != 6 || m.draft.dueDate.Day() != 15 {
 		t.Errorf("parsed wrong date: got %v", m.draft.dueDate)
+	}
+}
+
+func TestTaskForm_Save_ParsesDueDateWithTime(t *testing.T) {
+	m := newTestTaskForm()
+	m.draft.dueInput = "2026-06-15T14:30"
+	if err := m.parseDraftDueDate(); err != nil {
+		t.Fatalf("unexpected error parsing date+time: %v", err)
+	}
+	if m.draft.dueDate == nil {
+		t.Fatal("expected dueDate to be set")
+	}
+	if !m.draft.hasTime {
+		t.Error("expected hasTime=true for input with time component")
+	}
+	if m.draft.dueDate.Hour() != 14 || m.draft.dueDate.Minute() != 30 {
+		t.Errorf("expected 14:30, got %02d:%02d", m.draft.dueDate.Hour(), m.draft.dueDate.Minute())
+	}
+}
+
+func TestTaskForm_Save_ParsesDueDateWithTimeSuffix(t *testing.T) {
+	m := newTestTaskForm()
+	m.draft.dueInput = "tomorrow 5pm"
+	if err := m.parseDraftDueDate(); err != nil {
+		t.Fatalf("unexpected error parsing 'tomorrow 5pm': %v", err)
+	}
+	if m.draft.dueDate == nil {
+		t.Fatal("expected dueDate to be set")
+	}
+	if !m.draft.hasTime {
+		t.Error("expected hasTime=true for 'tomorrow 5pm'")
+	}
+	if m.draft.dueDate.Hour() != 17 {
+		t.Errorf("expected hour=17, got %d", m.draft.dueDate.Hour())
+	}
+}
+
+func TestTaskForm_Save_DateOnlyDoesNotSetHasTime(t *testing.T) {
+	m := newTestTaskForm()
+	m.draft.dueInput = "2026-06-15"
+	if err := m.parseDraftDueDate(); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if m.draft.hasTime {
+		t.Error("expected hasTime=false for date-only input")
+	}
+}
+
+func TestTaskForm_Save_ClearDueDateClearsHasTime(t *testing.T) {
+	m := newTestTaskForm()
+	m.draft.hasTime = true
+	m.draft.dueInput = "none"
+	if err := m.parseDraftDueDate(); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if m.draft.dueDate != nil {
+		t.Error("expected dueDate=nil")
+	}
+	if m.draft.hasTime {
+		t.Error("expected hasTime=false after clearing due date")
+	}
+}
+
+func TestTaskForm_Edit_PreservesHasTime(t *testing.T) {
+	project := &models.Project{
+		ID:   "test",
+		Name: "Test",
+		Path: t.TempDir(),
+	}
+	dueDate := time.Date(2026, 6, 15, 14, 30, 0, 0, time.Local)
+	task := &models.Task{
+		ID:      "task-1",
+		ShortID: 1,
+		Type:    models.TaskTypeTask,
+		Title:   "Test task",
+		Status:  models.StatusTodo,
+		DueDate: &dueDate,
+		HasTime: true,
+	}
+	project.Tasks = []*models.Task{task}
+
+	m := NewTaskFormModelEdit(project, task, nil, nil)
+	if !m.draft.hasTime {
+		t.Error("expected draft.hasTime=true when editing task with HasTime=true")
+	}
+	if m.draft.dueInput != "2026-06-15T14:30" {
+		t.Errorf("expected dueInput='2026-06-15T14:30', got %q", m.draft.dueInput)
 	}
 }
 

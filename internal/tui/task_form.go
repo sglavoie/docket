@@ -10,6 +10,7 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/template"
+	"github.com/sglavoie/tt/internal/util"
 )
 
 // formAttrsLabelWidth is the fixed label column width for type-attr rows.
@@ -46,6 +47,7 @@ type taskFormDraft struct {
 	tags       []string
 	dueDate    *time.Time
 	dueInput   string
+	hasTime    bool
 	recurrence *models.RecurrencePattern
 	desc       string
 	url        string
@@ -228,7 +230,8 @@ func NewTaskFormModelEdit(
 		dimmed:     task.Dimmed,
 		tags:       append([]string{}, task.Tags...),
 		dueDate:    cloneTime(task.DueDate),
-		dueInput:   formatDateInput(task.DueDate),
+		dueInput:   formatDateInput(task.DueDate, task.HasTime),
+		hasTime:    task.HasTime,
 		recurrence: cloneRecurrence(task.Recurrence),
 		desc:       task.Description,
 		url:        task.URL,
@@ -624,9 +627,13 @@ func cloneRecurrence(value *models.RecurrencePattern) *models.RecurrencePattern 
 }
 
 // formatDateInput formats a *time.Time as a "YYYY-MM-DD" string for text inputs.
-func formatDateInput(value *time.Time) string {
+// When hasTime is true, appends the time in "YYYY-MM-DDTHH:MM" format.
+func formatDateInput(value *time.Time, hasTime bool) string {
 	if value == nil {
 		return ""
+	}
+	if hasTime {
+		return value.Format(util.DateTimeDueFormat)
 	}
 	return value.Format("2006-01-02")
 }

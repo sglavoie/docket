@@ -55,18 +55,24 @@ func (m *TaskFormModel) commitAllTextInputs() {
 
 // parseDraftDueDate parses draft.dueInput and stores the result in draft.dueDate.
 // Empty / "none" / "clear" clears the due date. Returns an error for
-// unparseable input.
+// unparseable input. Supports optional time-of-day suffixes (e.g. "tomorrow 5pm").
 func (m *TaskFormModel) parseDraftDueDate() error {
 	value := strings.TrimSpace(m.draft.dueInput)
 	if value == "" || strings.EqualFold(value, "none") || strings.EqualFold(value, "clear") {
 		m.draft.dueDate = nil
+		m.draft.hasTime = false
 		return nil
 	}
-	date, err := ParseDate(value)
+	weekEndDay := "sun"
+	if m.config != nil {
+		weekEndDay = m.config.GetWeekEndDay()
+	}
+	date, hasTime, err := util.ParseRelativeDateWithTime(value, weekEndDay)
 	if err != nil {
 		return err
 	}
 	m.draft.dueDate = &date
+	m.draft.hasTime = hasTime
 	return nil
 }
 
@@ -125,6 +131,7 @@ func (m *TaskFormModel) saveCreate() tea.Cmd {
 		Priority:    m.draft.priority,
 		ParentID:    m.draft.parentID,
 		DueDate:     m.draft.dueDate,
+		HasTime:     m.draft.hasTime,
 		Pinned:      m.draft.pinned,
 		Active:      m.draft.active,
 		Dimmed:      m.draft.dimmed,
@@ -268,6 +275,7 @@ func (m *TaskFormModel) saveEdit() tea.Cmd {
 		t.ParentID = draft.parentID
 		t.SetSection(draft.section)
 		t.DueDate = draft.dueDate
+		t.HasTime = draft.hasTime
 		t.Tags = append([]string{}, draft.tags...)
 		t.Active = draft.active
 		t.Dimmed = draft.dimmed
