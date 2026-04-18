@@ -176,6 +176,10 @@ func evaluateRulesWithContextRecursive(evalCtx *EvaluationContext, rules []Workf
 			}
 		}
 
+		// Snapshot the task before applying actions so the recursive
+		// re-evaluation can detect what changed via event triggers.
+		preActionSnapshot := snapshotTaskForEvent(task)
+
 		modified := false
 		for _, mr := range matched {
 			rule := mr.rule
@@ -205,7 +209,7 @@ func evaluateRulesWithContextRecursive(evalCtx *EvaluationContext, rules []Workf
 
 		if modified {
 			result.ModifiedTasks = append(result.ModifiedTasks, task)
-			newChange := TaskChangeContext{Task: task, Previous: task}
+			newChange := TaskChangeContext{Task: task, Previous: preActionSnapshot}
 			newEvalCtx := &EvaluationContext{
 				Changes:     []TaskChangeContext{newChange},
 				AllTasks:    evalCtx.AllTasks,

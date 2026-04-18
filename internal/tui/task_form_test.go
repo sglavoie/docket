@@ -268,6 +268,52 @@ func TestTaskForm_ConfirmDiscard_NCancels(t *testing.T) {
 	}
 }
 
+func TestTaskForm_EditModeEscNoChanges_EmitsBackMsg(t *testing.T) {
+	// In edit mode, pressing Esc on the title field without making changes
+	// should emit BackMsg, not show a discard confirmation. The title is
+	// pre-filled so `draft.title != ""` is always true; only hasChanges matters.
+	project := testutil.NewTestProjectWithTasks("Test Project")
+	cfg := testutil.NewTestConfig()
+	if len(project.Tasks) == 0 {
+		t.Skip("test project has no tasks")
+	}
+	task := project.Tasks[0]
+	m := NewTaskFormModelEdit(project, task, cfg, nil)
+
+	// Title field is focused by default (Basics tab, field 0).
+	if m.activeTab != formTabBasics || m.focusIndex != 0 {
+		t.Fatalf("expected focus on Basics/0, got tab=%d focus=%d", m.activeTab, m.focusIndex)
+	}
+	// hasChanges is false because nothing was edited.
+	if m.hasChanges {
+		t.Fatal("hasChanges should be false initially in edit mode")
+	}
+
+	_, cmd := m.Update(syntheticSpecialKey(tea.KeyEscape))
+	if cmd == nil {
+		t.Fatal("expected a Cmd from Esc without changes in edit mode, got nil")
+	}
+	msg := cmd()
+	if _, ok := msg.(BackMsg); !ok {
+		t.Errorf("expected BackMsg from Esc in edit mode with no changes, got %T", msg)
+	}
+	if m.confirmDiscard {
+		t.Error("confirmDiscard should be false when Esc is pressed in edit mode without changes")
+	}
+}
+
+func TestTaskForm_CreateModeEscWithTitle_ShowsConfirmDiscard(t *testing.T) {
+	// In create mode, pressing Esc when a title has been typed should show
+	// the discard confirmation, even if hasChanges hasn't been marked.
+	m := newTestTaskForm()
+	// Simulate typing a title by setting both the textarea and draft.
+	m.titleInput.SetValue("Some title")
+	m = sendFormKey(m, syntheticSpecialKey(tea.KeyEscape))
+	if !m.confirmDiscard {
+		t.Error("expected confirmDiscard=true after Esc with non-empty title in create mode")
+	}
+}
+
 // ── interface compliance ───────────────────────────────────────────────────────
 
 func TestTaskForm_ShouldCaptureEsc(t *testing.T) {

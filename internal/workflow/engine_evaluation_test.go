@@ -431,3 +431,52 @@ func TestEvaluation_DueDateEventEndToEnd(t *testing.T) {
 		t.Error("expected SnoozedUntil to be set after due_date_changed trigger")
 	}
 }
+
+func TestEvaluation_RecursiveChainedEventTriggers(t *testing.T) {
+	// Rule 1: when priority == 1, set status to in_progress.
+	// Rule 2: when status changes from todo -> in_progress, add tag "started".
+	// Both rules should fire: rule 1 mutates the task, and the recursive
+	// re-evaluation should detect the status_changed event via the snapshot.
+	task := &models.Task{
+		ID:       "1",
+		Priority: 1,
+		Status:   models.StatusTodo,
+		Tags:     []string{},
+	}
+
+	rules := []WorkflowRule{
+		{
+			ID:      "rule-priority",
+			Name:    "High prio starts",
+			Enabled: true,
+			Trigger: RuleTrigger{Field: FieldPriority, Operation: OpEquals, Value: "1"},
+			Actions: []RuleAction{{ActionType: ActionSetStatus, Value: string(models.StatusInProgress)}},
+		},
+		{
+			ID:      "rule-status-tag",
+			Name:    "Tag on start",
+			Enabled: true,
+			Trigger: RuleTrigger{Field: FieldStatusChanged, Operation: OpEquals, Value: "todo->in_progress"},
+			Actions: []RuleAction{{ActionType: ActionAddTag, Value: "started"}},
+		},
+	}
+
+	evalCtx := &EvaluationContext{
+		Changes:  []TaskChangeContext{{Task: task, Previous: nil}},
+		AllTasks: []*models.Task{task},
+		TaskMap:  map[string]*models.Task{"1": task},
+	}
+
+	result := EvaluateRulesWithContext(evalCtx, rules)
+
+	if task.Status != models.StatusInProgress {
+		t.Errorf("expected status in_progress, got %s", task.Status)
+	}
+	if !task.HasTag("started") {
+		t.Errorf("expected tag 'started' from chained event trigger, got tags: %v", task.Tags)
+	}
+	// Both rules should have been applied.
+	if len(result.AppliedRules["1"]) != 2 {
+		t.Errorf("expected 2 applied rules, got %d: %v", len(result.AppliedRules["1"]), result.AppliedRules["1"])
+	}
+}
