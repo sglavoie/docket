@@ -132,6 +132,67 @@ func TestPaletteToggle_RenderSelection(t *testing.T) {
 	}
 }
 
+func TestPaletteToggle_DimmedFieldsPreserved(t *testing.T) {
+	dark := config.Theme{
+		Palette: config.PaletteColors{
+			NormalText: "#eeeeee",
+			Dimmed:     "#aaa111",
+			DimmedBg:   "#bbb222",
+			DimmedFg:   "#ccc333",
+		},
+	}
+	light := config.Theme{
+		Palette: config.PaletteColors{
+			NormalText: "#111111",
+			Dimmed:     "#ddd444",
+			DimmedBg:   "#eee555",
+			DimmedFg:   "#fff666",
+		},
+	}
+	cfg := &config.Config{
+		ActiveTheme: "dark",
+		ThemeDark:   dark,
+		ThemeLight:  light,
+	}
+	mgr := config.NewManager("/tmp/tt_dimmed_test.json")
+	m := NewSettingsModel(cfg, mgr)
+
+	// Active hidden dimmed should be populated from dark theme.
+	if m.activeHiddenDimmed[0] != "#aaa111" {
+		t.Errorf("initial activeHiddenDimmed[0] = %q, want #aaa111", m.activeHiddenDimmed[0])
+	}
+
+	// Toggle to light — hidden dimmed should swap.
+	m.togglePaletteTheme()
+	if m.activeHiddenDimmed[0] != "#ddd444" {
+		t.Errorf("after toggle activeHiddenDimmed[0] = %q, want #ddd444", m.activeHiddenDimmed[0])
+	}
+	if m.activeHiddenDimmed[1] != "#eee555" {
+		t.Errorf("after toggle activeHiddenDimmed[1] = %q, want #eee555", m.activeHiddenDimmed[1])
+	}
+
+	// Toggle back to dark — hidden dimmed should restore.
+	m.togglePaletteTheme()
+	if m.activeHiddenDimmed[0] != "#aaa111" {
+		t.Errorf("after re-toggle activeHiddenDimmed[0] = %q, want #aaa111", m.activeHiddenDimmed[0])
+	}
+
+	// Save should persist dimmed in both themes.
+	m.saveSettings()
+	if got := m.config.ThemeDark.Palette.Dimmed; got != "#aaa111" {
+		t.Errorf("ThemeDark.Palette.Dimmed = %q, want #aaa111", got)
+	}
+	if got := m.config.ThemeLight.Palette.Dimmed; got != "#ddd444" {
+		t.Errorf("ThemeLight.Palette.Dimmed = %q, want #ddd444", got)
+	}
+	if got := m.config.ThemeLight.Palette.DimmedBg; got != "#eee555" {
+		t.Errorf("ThemeLight.Palette.DimmedBg = %q, want #eee555", got)
+	}
+	if got := m.config.ThemeLight.Palette.DimmedFg; got != "#fff666" {
+		t.Errorf("ThemeLight.Palette.DimmedFg = %q, want #fff666", got)
+	}
+}
+
 func TestPaletteToggle_CancelReverts(t *testing.T) {
 	m := makeToggleTestModel(t)
 

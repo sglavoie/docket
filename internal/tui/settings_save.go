@@ -34,6 +34,9 @@ func (m *SettingsModel) buildTentativeThemeConfig() ThemeConfig {
 			Priority3Title: normalizeHexColor(m.priority3TitleInput.Value()),
 			Priority4Title: normalizeHexColor(m.priority4TitleInput.Value()),
 			Priority5Title: normalizeHexColor(m.priority5TitleInput.Value()),
+			Dimmed:         normalizeHexColor(m.activeHiddenDimmed[0]),
+			DimmedBg:       normalizeHexColor(m.activeHiddenDimmed[1]),
+			DimmedFg:       normalizeHexColor(m.activeHiddenDimmed[2]),
 		},
 	}
 }
@@ -92,6 +95,9 @@ func (m *SettingsModel) saveSettings() tea.Cmd {
 			Priority3Title: normalizeHexColor(m.priority3TitleInput.Value()),
 			Priority4Title: normalizeHexColor(m.priority4TitleInput.Value()),
 			Priority5Title: normalizeHexColor(m.priority5TitleInput.Value()),
+			Dimmed:         normalizeHexColor(m.activeHiddenDimmed[0]),
+			DimmedBg:       normalizeHexColor(m.activeHiddenDimmed[1]),
+			DimmedFg:       normalizeHexColor(m.activeHiddenDimmed[2]),
 		},
 	}
 	inactiveTheme := draftToTheme(m.inactiveThemeDraft)
@@ -253,9 +259,9 @@ func columnDefaultsToMap(defaults [13]bool) map[string]bool {
 	return m
 }
 
-// draftToTheme converts the 17-slot inactiveThemeDraft array back to a config.Theme.
+// draftToTheme converts the 20-slot inactiveThemeDraft array back to a config.Theme.
 // Slot ordering mirrors themeToInactiveDraft in settings_init.go.
-func draftToTheme(d [17]string) config.Theme {
+func draftToTheme(d [20]string) config.Theme {
 	return config.Theme{
 		Palette: config.PaletteColors{
 			NormalText:     normalizeHexColor(d[0]),
@@ -272,6 +278,9 @@ func draftToTheme(d [17]string) config.Theme {
 			Priority3Title: normalizeHexColor(d[14]),
 			Priority4Title: normalizeHexColor(d[15]),
 			Priority5Title: normalizeHexColor(d[16]),
+			Dimmed:         normalizeHexColor(d[17]),
+			DimmedBg:       normalizeHexColor(d[18]),
+			DimmedFg:       normalizeHexColor(d[19]),
 		},
 		BackgroundColor: normalizeHexColor(d[9]),
 		CursorColor:     normalizeHexColor(d[10]),

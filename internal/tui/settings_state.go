@@ -239,11 +239,17 @@ type SettingsModel struct {
 	activePresetName   string
 	inactivePresetName string
 	// inactiveThemeDraft holds raw hex strings for the theme NOT currently shown.
-	// Ordered by palette-tab focus offset (slot 0 = NormalText … slot 16 = Priority5Title):
-	//   0-8:  NormalText, Muted, Primary, Secondary, Accent, Success, Warning, Error, Border
-	//   9-11: BackgroundColor, CursorColor, CursorTextColor
-	//  12-16: Priority1Title … Priority5Title
-	inactiveThemeDraft [17]string
+	// Ordered by palette-tab focus offset (slot 0 = NormalText … slot 19 = DimmedFg):
+	//   0-8:   NormalText, Muted, Primary, Secondary, Accent, Success, Warning, Error, Border
+	//   9-11:  BackgroundColor, CursorColor, CursorTextColor
+	//  12-16:  Priority1Title … Priority5Title
+	//  17-19:  Dimmed, DimmedBg, DimmedFg (no UI input, carried through transparently)
+	inactiveThemeDraft [20]string
+
+	// activeHiddenDimmed stores the active theme's Dimmed/DimmedBg/DimmedFg palette
+	// values that have no corresponding input widget. They are preserved through
+	// save/toggle operations so settings save does not silently strip them.
+	activeHiddenDimmed [3]string
 
 	tabs               TabState
 	subTab             int  // active sub-tab index within current tab

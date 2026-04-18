@@ -151,6 +151,7 @@ func NewSettingsModel(cfg *config.Config, manager *config.Manager) *SettingsMode
 		activePresetName:         activePresetName,
 		inactivePresetName:       inactivePresetName,
 		inactiveThemeDraft:       themeToInactiveDraft(inactiveCfg),
+		activeHiddenDimmed:       themeHiddenDimmed(activeTheme),
 		focusIndex:               0,
 		tabs:                     TabState{Names: settingsTabNames},
 		width:                    80,
@@ -180,15 +181,15 @@ func settingsOptionCursor(options []string, value string, fallback int) int {
 	return fallback
 }
 
-// themeToInactiveDraft flattens a config.Theme into the 17-slot draft array
+// themeToInactiveDraft flattens a config.Theme into the 20-slot draft array
 // used by inactiveThemeDraft. Slot ordering matches palette-tab focus offsets:
 //
-//	0-8:  NormalText, Muted, Primary, Secondary, Accent, Success, Warning, Error, Border
-//	9-11: BackgroundColor, CursorColor, CursorTextColor
-//
-// 12-16: Priority1Title … Priority5Title
-func themeToInactiveDraft(t config.Theme) [17]string {
-	return [17]string{
+//	 0-8:   NormalText, Muted, Primary, Secondary, Accent, Success, Warning, Error, Border
+//	 9-11:  BackgroundColor, CursorColor, CursorTextColor
+//	12-16:  Priority1Title … Priority5Title
+//	17-19:  Dimmed, DimmedBg, DimmedFg (no UI input, carried through transparently)
+func themeToInactiveDraft(t config.Theme) [20]string {
+	return [20]string{
 		t.Palette.NormalText,
 		t.Palette.Muted,
 		t.Palette.Primary,
@@ -206,7 +207,16 @@ func themeToInactiveDraft(t config.Theme) [17]string {
 		t.Palette.Priority3Title,
 		t.Palette.Priority4Title,
 		t.Palette.Priority5Title,
+		t.Palette.Dimmed,
+		t.Palette.DimmedBg,
+		t.Palette.DimmedFg,
 	}
+}
+
+// themeHiddenDimmed extracts the Dimmed/DimmedBg/DimmedFg values from a theme
+// for storage in activeHiddenDimmed (these have no UI input widget).
+func themeHiddenDimmed(t config.Theme) [3]string {
+	return [3]string{t.Palette.Dimmed, t.Palette.DimmedBg, t.Palette.DimmedFg}
 }
 
 func initOutlinerCollapsed(cfg *config.Config) [7]bool {

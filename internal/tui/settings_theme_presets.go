@@ -88,6 +88,8 @@ func (m *SettingsModel) populatePaletteInputs(t config.Theme) {
 	m.priority3TitleInput.SetValue(t.Palette.Priority3Title)
 	m.priority4TitleInput.SetValue(t.Palette.Priority4Title)
 	m.priority5TitleInput.SetValue(t.Palette.Priority5Title)
+	// Preserve hidden palette fields (no UI input widgets for these).
+	m.activeHiddenDimmed = themeHiddenDimmed(t)
 }
 
 // openPresetSave enters save mode and focuses the name-input.

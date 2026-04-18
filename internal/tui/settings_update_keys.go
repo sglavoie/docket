@@ -215,7 +215,7 @@ func (m *SettingsModel) handleGlobalKey(key string) (bool, tea.Cmd) { //nolint:g
 }
 
 func (m *SettingsModel) togglePaletteTheme() {
-	snapshot := [17]string{
+	snapshot := [20]string{
 		m.normalTextInput.Value(),
 		m.mutedInput.Value(),
 		m.primaryInput.Value(),
@@ -233,6 +233,9 @@ func (m *SettingsModel) togglePaletteTheme() {
 		m.priority3TitleInput.Value(),
 		m.priority4TitleInput.Value(),
 		m.priority5TitleInput.Value(),
+		m.activeHiddenDimmed[0],
+		m.activeHiddenDimmed[1],
+		m.activeHiddenDimmed[2],
 	}
 	m.normalTextInput.SetValue(m.inactiveThemeDraft[0])
 	m.mutedInput.SetValue(m.inactiveThemeDraft[1])
@@ -251,6 +254,11 @@ func (m *SettingsModel) togglePaletteTheme() {
 	m.priority3TitleInput.SetValue(m.inactiveThemeDraft[14])
 	m.priority4TitleInput.SetValue(m.inactiveThemeDraft[15])
 	m.priority5TitleInput.SetValue(m.inactiveThemeDraft[16])
+	m.activeHiddenDimmed = [3]string{
+		m.inactiveThemeDraft[17],
+		m.inactiveThemeDraft[18],
+		m.inactiveThemeDraft[19],
+	}
 	m.inactiveThemeDraft = snapshot
 	m.activePresetName, m.inactivePresetName = m.inactivePresetName, m.activePresetName
 	if m.activeTheme == "light" {
