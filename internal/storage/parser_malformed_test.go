@@ -104,6 +104,41 @@ func TestParseTasksMarkdown_LineExceedingScannerBuffer(t *testing.T) {
 	}
 }
 
+// TestParseTasksMarkdown_MetadataWithoutID verifies that when a metadata comment
+// omits the id field, subsequent HTML comments in the description are NOT
+// consumed as additional metadata. Before the fix, the parser used task.ID == ""
+// as a proxy for "metadata not yet parsed", which failed when the metadata
+// existed but had no id field.
+func TestParseTasksMarkdown_MetadataWithoutID(t *testing.T) {
+	content := `# Project: Test
+
+## Task: No ID In Metadata
+<!-- status: todo, priority: 2 -->
+
+Description with <!-- a note: important --> embedded.
+`
+	result, err := ParseTasksMarkdownWithSections(content)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if len(result.Tasks) != 1 {
+		t.Fatalf("expected 1 task, got %d", len(result.Tasks))
+	}
+
+	task := result.Tasks[0]
+	if task.Status != models.StatusTodo {
+		t.Errorf("expected status todo, got %q", task.Status)
+	}
+	if task.Priority != 2 {
+		t.Errorf("expected priority 2, got %d", task.Priority)
+	}
+	// The HTML comment in the description must be preserved, not consumed as metadata
+	if !strings.Contains(task.Description, "<!-- a note: important -->") {
+		t.Errorf("expected description to contain HTML comment, got %q", task.Description)
+	}
+}
+
 func TestParseTasksMarkdown_CommentMarkerInDescription(t *testing.T) {
 	content := `# Project: Test
 

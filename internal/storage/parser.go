@@ -70,6 +70,7 @@ func ParseTasksMarkdownWithSections(content string) (*ParseResult, error) {
 	var descBuilder strings.Builder
 	var nextShortID = 1
 	var foundFirstTask bool
+	var metadataParsed bool
 	var metadataWarnings []ParseWarning
 
 	for scanner.Scan() {
@@ -187,12 +188,18 @@ func ParseTasksMarkdownWithSections(content string) (*ParseResult, error) {
 			}
 			nextShortID++
 			descBuilder.Reset()
+			metadataParsed = false
 			continue
 		}
 
-		// Check for metadata comment
-		if currentTask != nil && currentTask.Task.ID == "" {
+		// Check for metadata comment (only the first HTML comment after a heading).
+		// Uses a dedicated flag rather than checking task.ID == "" because a
+		// metadata comment might omit the id field, leaving ID empty. Without
+		// this flag, subsequent HTML comments in the description would be
+		// mis-consumed as metadata, causing silent data loss.
+		if currentTask != nil && !metadataParsed {
 			if matches := format.MetadataRegex().FindStringSubmatch(line); matches != nil {
+				metadataParsed = true
 				warnings := format.ParseMetadata(currentTask.Task, matches[1])
 				// Add task ID to warnings now that we have it
 				for i := range warnings {
