@@ -2122,3 +2122,64 @@ func TestTypeCycleSideEffects(t *testing.T) {
 		t.Error("parent should be cleared when cycling to Epic (Epic can't be child of Epic)")
 	}
 }
+
+// ── checklist blank-item handling ─────────────────────────────────────────────
+
+func TestTaskForm_Save_EditFiltersBlankChecklistItems(t *testing.T) {
+	m, cleanup := newSaveableEditForm(t)
+	defer cleanup()
+
+	m.draft.title = "Edited task"
+	m.titleInput.SetValue("Edited task")
+	m.draft.checklist = []models.ChecklistItem{
+		{Text: "keep me", Done: false},
+		{Text: "   ", Done: false}, // whitespace-only — should be filtered
+		{Text: "", Done: true},     // empty — should be filtered
+		{Text: "also keep", Done: true},
+	}
+
+	cmd := m.handleSave()
+	if cmd == nil {
+		t.Fatalf("expected non-nil Cmd; err=%v", m.err)
+	}
+	msg := cmd()
+	updated, ok := msg.(TaskUpdatedMsg)
+	if !ok {
+		t.Fatalf("expected TaskUpdatedMsg, got %T", msg)
+	}
+	if len(updated.Task.Checklist) != 2 {
+		t.Errorf("expected 2 checklist items (blanks filtered), got %d", len(updated.Task.Checklist))
+	}
+	if updated.Task.Checklist[0].Text != "keep me" {
+		t.Errorf("expected first item 'keep me', got %q", updated.Task.Checklist[0].Text)
+	}
+	if updated.Task.Checklist[1].Text != "also keep" {
+		t.Errorf("expected second item 'also keep', got %q", updated.Task.Checklist[1].Text)
+	}
+}
+
+func TestTaskForm_Children_ChecklistEdit_CommitBlank_RemovesItem(t *testing.T) {
+	m := newTestTaskForm()
+	m.draft.checklist = []models.ChecklistItem{{Text: "existing item"}}
+	m.checklistExpanded = true
+	m = navigateToChildrenTab(m)
+	m.focusIndex = 1 // focus the checklist item
+
+	// Open edit overlay for the existing item.
+	m = sendFormKey(m, syntheticSpecialKey(tea.KeyEnter))
+	if m.activeOverlay != formOverlayChecklistEdit {
+		t.Fatalf("expected checklist edit overlay, got %v", m.activeOverlay)
+	}
+
+	// Clear the input text (select all + delete) then confirm with Enter.
+	m.checklistItemInput.SetValue("")
+	m = sendFormKey(m, syntheticSpecialKey(tea.KeyEnter))
+
+	if m.activeOverlay != formOverlayNone {
+		t.Error("overlay should be dismissed after Enter")
+	}
+	if len(m.draft.checklist) != 0 {
+		t.Errorf("confirming blank text should remove the item; got %d items: %v",
+			len(m.draft.checklist), m.draft.checklist)
+	}
+}

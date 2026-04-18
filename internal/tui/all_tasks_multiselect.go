@@ -150,7 +150,8 @@ func (m *AllTasksViewModel) handleBulkDueDateChange(daysFromNow int) (tea.Model,
 
 	count := m.bulkApply(func(project *models.Project, item CrossProjectTask) bool {
 		project.MutateTask(item.Task.ID, func(t *models.Task) {
-			t.DueDate = &dueDate
+			d := dueDate // copy so each task owns its own *time.Time
+			t.DueDate = &d
 			t.HasTime = false // Bulk preset is always date-only.
 		})
 		return true

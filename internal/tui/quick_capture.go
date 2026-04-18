@@ -97,13 +97,19 @@ func (m *QuickCaptureModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "enter":
 			// Only create task if not in autocomplete mode
 			if m.ac.Mode == acModeNone {
-				return m, m.createTask(false)
+				return m, m.createTask(false, false)
+			}
+
+		case "ctrl+d":
+			// Create task and open description editor
+			if m.ac.Mode == acModeNone {
+				return m, m.createTask(true, false)
 			}
 
 		case "ctrl+o":
-			// Create task and open description editor
+			// Create task and open task detail view
 			if m.ac.Mode == acModeNone {
-				return m, m.createTask(true)
+				return m, m.createTask(false, true)
 			}
 
 		case "ctrl+v":
@@ -159,7 +165,7 @@ func (m *QuickCaptureModel) View() tea.View {
 	if m.isAutocompleteActive() {
 		helpText = "Tab: accept · ↑↓: navigate · Esc: dismiss"
 	} else {
-		helpText = "Enter: create · Ctrl+O: create & open · ?: help · Esc: cancel"
+		helpText = "Enter: create · Ctrl+O: create & open · Ctrl+D: create & edit desc · ?: help · Esc: cancel"
 	}
 
 	var out strings.Builder
@@ -225,7 +231,7 @@ func (m *QuickCaptureModel) renderSyntaxGuide() string {
 	return b.String()
 }
 
-func (m *QuickCaptureModel) createTask(openAfter bool) tea.Cmd {
+func (m *QuickCaptureModel) createTask(openContent, openDetail bool) tea.Cmd {
 	// All mutations run synchronously in the Update() goroutine to avoid
 	// data races with View() reading project.Tasks concurrently.
 
@@ -347,12 +353,14 @@ func (m *QuickCaptureModel) createTask(openAfter bool) tea.Cmd {
 		}
 	}
 
-	return func() tea.Msg { return TaskCreatedMsg{Task: task, Project: targetProject, OpenContent: openAfter} }
+	return func() tea.Msg {
+		return TaskCreatedMsg{Task: task, Project: targetProject, OpenContent: openContent, OpenDetail: openDetail}
+	}
 }
 
 func (m *QuickCaptureModel) StatusBarLabel() string { return "Quick Capture" }
 
 // HandledKeys returns all keys QuickCaptureModel's Update method can process.
 func (m *QuickCaptureModel) HandledKeys() []string {
-	return []string{"enter", "ctrl+o", "ctrl+v"}
+	return []string{"enter", "ctrl+d", "ctrl+o", "ctrl+v"}
 }

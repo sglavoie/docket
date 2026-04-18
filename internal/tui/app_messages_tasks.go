@@ -23,6 +23,7 @@ type TaskCreatedMsg struct {
 	Task        *models.Task
 	Project     *models.Project // target project (for cross-project + open-after)
 	OpenContent bool            // open description editor after creation
+	OpenDetail  bool            // open task detail view after creation
 }
 
 // TaskUpdatedMsg signals a task was modified.

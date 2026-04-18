@@ -72,16 +72,22 @@ func (m *AppModel) handleTaskMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint:go
 		cmd := m.views.Update(m.currentView(), msg)
 		m.syncInboxProcessor()
 
-		// If open-after requested, re-lookup the task (stale after reload) and open editor
-		if msg.OpenContent && msg.Task != nil {
+		// If open-after requested, re-lookup the task (stale after reload) and open
+		if msg.Task != nil && (msg.OpenContent || msg.OpenDetail) {
 			project := msg.Project
 			if project == nil {
 				project = m.currentProject
 			}
 			if project != nil {
 				if freshTask := project.GetTaskByID(msg.Task.ID); freshTask != nil {
+					var openMsg tea.Msg
+					if msg.OpenDetail {
+						openMsg = ShowTaskDetailMsg{Task: freshTask, Project: project}
+					} else {
+						openMsg = EditTaskContentMsg{Task: freshTask, Project: project}
+					}
 					return true, tea.Batch(cmd, statusTimeout(2*time.Second), func() tea.Msg {
-						return EditTaskContentMsg{Task: freshTask, Project: project}
+						return openMsg
 					})
 				}
 			}

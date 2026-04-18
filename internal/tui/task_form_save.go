@@ -283,7 +283,18 @@ func (m *TaskFormModel) saveEdit() tea.Cmd {
 		t.URL = draft.url
 		t.Source = draft.source
 		t.Description = strings.TrimSpace(draft.desc)
-		t.Checklist = append([]models.ChecklistItem(nil), draft.checklist...)
+		// Filter blank checklist items (consistent with saveCreate and the parser,
+		// which both skip empty-text items).
+		t.Checklist = nil
+		for _, item := range draft.checklist {
+			text := strings.TrimSpace(item.Text)
+			if text != "" {
+				t.Checklist = append(t.Checklist, models.ChecklistItem{
+					Text: text,
+					Done: item.Done,
+				})
+			}
+		}
 
 		t.BugAttrs = bugAttrs
 		t.IdeaAttrs = ideaAttrs

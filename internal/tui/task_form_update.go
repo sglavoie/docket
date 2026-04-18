@@ -113,7 +113,11 @@ func (m *TaskFormModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case "esc":
 				m.draft.title = m.titleInput.Value()
 				m.titleInput.Blur()
-				if m.hasChanges || m.draft.title != "" {
+				// In create mode, a non-empty title counts as unsaved work even
+				// if hasChanges hasn't been set yet. In edit mode, only hasChanges
+				// matters since the title was pre-filled from the existing task.
+				dirty := m.hasChanges || (m.mode == FormModeCreate && m.draft.title != "")
+				if dirty {
 					m.confirmDiscard = true
 				} else {
 					return m, func() tea.Msg { return BackMsg{} }

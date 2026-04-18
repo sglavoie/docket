@@ -462,7 +462,15 @@ func (m *TaskFormModel) applyFormOverlayResult(msg tea.Msg) {
 
 	case TaskFormChecklistItemEditedMsg:
 		if msg.Idx >= 0 && msg.Idx < len(m.draft.checklist) {
-			m.draft.checklist[msg.Idx].Text = msg.Text
+			if strings.TrimSpace(msg.Text) == "" {
+				// Remove the item when confirmed with blank text.
+				m.draft.checklist = append(
+					m.draft.checklist[:msg.Idx],
+					m.draft.checklist[msg.Idx+1:]...,
+				)
+			} else {
+				m.draft.checklist[msg.Idx].Text = msg.Text
+			}
 			m.hasChanges = true
 			m.err = nil
 		}
