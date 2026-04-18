@@ -252,6 +252,11 @@ func (m *AppModel) Update(msg tea.Msg) (outModel tea.Model, outCmd tea.Cmd) { //
 
 		// Intercept keys when semicolon-t sub-prefix is pending (;t → "m" move, "N" template, "d" due date, "s" section)
 		if m.pendingSemicolonTPrefix {
+			// Ignore modifier-only key events (e.g. Shift pressed alone)
+			// so the popup stays open while typing capital letters.
+			if isModifierOnly(msg) {
+				return m, nil
+			}
 			m.pendingSemicolonTPrefix = false
 			switch msg.String() {
 			case "m":
