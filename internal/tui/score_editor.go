@@ -32,6 +32,11 @@ type ScoreEditorModel struct {
 	sources []string // "manual", "derived", or "default" (for display)
 	cursor  int      // which dimension is focused
 
+	// Snapshot of task.ScoreDimensions at open time so that pressing 'd'
+	// (reset) can recompute derived values without mutating the live task.
+	// The live task is only modified on save.
+	scratchDims map[string]int
+
 	// Dimensions
 	width  int
 	height int
@@ -52,13 +57,21 @@ func NewScoreEditorModel(task *models.Task, project *models.Project, cfg *config
 		sources[i] = r.Source
 	}
 
+	// Snapshot current ScoreDimensions so 'd' (reset) can recompute
+	// without mutating the live task before save.
+	scratchDims := make(map[string]int, len(task.ScoreDimensions))
+	for k, v := range task.ScoreDimensions {
+		scratchDims[k] = v
+	}
+
 	return &ScoreEditorModel{
-		task:    task,
-		project: project,
-		config:  cfg,
-		profile: profile,
-		values:  values,
-		sources: sources,
+		task:        task,
+		project:     project,
+		config:      cfg,
+		profile:     profile,
+		values:      values,
+		sources:     sources,
+		scratchDims: scratchDims,
 	}
 }
 
@@ -120,13 +133,14 @@ func (m *ScoreEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 
 		case "d":
-			// Reset to derived/default
+			// Reset to derived/default using scratch state (don't mutate live task).
 			dim := &m.profile.Dimensions[m.cursor]
-			if m.task.ScoreDimensions != nil {
-				delete(m.task.ScoreDimensions, dim.ID)
-			}
-			// Recompute this dimension
+			delete(m.scratchDims, dim.ID)
+			// Temporarily apply scratch dims to task for recomputation, then restore.
+			origDims := m.task.ScoreDimensions
+			m.task.ScoreDimensions = m.scratchDims
 			result := scoring.ScoreBreakdown(m.task, m.profile)
+			m.task.ScoreDimensions = origDims
 			if m.cursor < len(result) {
 				m.values[m.cursor] = result[m.cursor].Value
 				m.sources[m.cursor] = result[m.cursor].Source

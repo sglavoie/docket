@@ -357,6 +357,48 @@ func TestDeferRecurrence(t *testing.T) {
 		}
 	})
 
+	t.Run("preserves time-of-day when HasTime is true", func(t *testing.T) {
+		task := newLifecycleTestTask(t, "t1", 1)
+		base := time.Date(2025, 6, 10, 15, 30, 0, 0, time.Local)
+		task.DueDate = &base
+		task.HasTime = true
+		task.Recurrence = &RecurrencePattern{
+			Unit:     RecurrenceDaily,
+			Interval: 1,
+		}
+
+		task.DeferRecurrence(2)
+
+		if task.DueDate == nil {
+			t.Fatal("expected due date to be set")
+		}
+		expected := time.Date(2025, 6, 12, 15, 30, 0, 0, time.Local)
+		if !task.DueDate.Equal(expected) {
+			t.Errorf("expected due date %v, got %v", expected, *task.DueDate)
+		}
+	})
+
+	t.Run("strips time when HasTime is false", func(t *testing.T) {
+		task := newLifecycleTestTask(t, "t1", 1)
+		base := time.Date(2025, 6, 10, 15, 30, 0, 0, time.Local)
+		task.DueDate = &base
+		task.HasTime = false
+		task.Recurrence = &RecurrencePattern{
+			Unit:     RecurrenceDaily,
+			Interval: 1,
+		}
+
+		task.DeferRecurrence(2)
+
+		if task.DueDate == nil {
+			t.Fatal("expected due date to be set")
+		}
+		expected := time.Date(2025, 6, 12, 0, 0, 0, 0, time.Local)
+		if !task.DueDate.Equal(expected) {
+			t.Errorf("expected due date %v, got %v", expected, *task.DueDate)
+		}
+	})
+
 	t.Run("no-op when not recurring", func(t *testing.T) {
 		task := newLifecycleTestTask(t, "t1", 1)
 		before := task.UpdatedAt
