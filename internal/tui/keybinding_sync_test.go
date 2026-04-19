@@ -37,6 +37,14 @@ func session3SyncViews() []syncTestCase {
 	}
 }
 
+// session4SyncViews returns the kanban views introduced in session 4.
+func session4SyncViews() []syncTestCase {
+	return []syncTestCase{
+		{ViewKanban, &KanbanModel{}},
+		{ViewCrossProjectKanban, &KanbanModel{}},
+	}
+}
+
 // session8SyncViews returns the capture views introduced in session 8 (clipboard paste).
 func session8SyncViews() []syncTestCase {
 	return []syncTestCase{
@@ -96,6 +104,7 @@ func TestKeybindingSyncAllViews(t *testing.T) {
 
 	allViews := append(session1SyncViews(), session2SyncViews()...)
 	allViews = append(allViews, session3SyncViews()...)
+	allViews = append(allViews, session4SyncViews()...)
 	allViews = append(allViews, session8SyncViews()...)
 	for _, tc := range allViews {
 		t.Run(tc.view.String(), func(t *testing.T) {
@@ -193,6 +202,9 @@ func TestViewTypeString(t *testing.T) {
 		ViewGlobalInboxProcessor:  "GlobalInboxProcessor",
 		ViewProjectTree:           "ProjectTree",
 		ViewOutliner:              "Outliner",
+		// Session 4
+		ViewKanban:             "Kanban",
+		ViewCrossProjectKanban: "CrossProjectKanban",
 		// Session 8
 		ViewQuickCapture: "QuickCapture",
 		ViewTaskForm:     "TaskForm",

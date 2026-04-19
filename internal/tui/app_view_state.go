@@ -128,6 +128,14 @@ func (m *AppModel) getCurrentCursorTask() *models.Task {
 			task, _ := m.globalInboxProcessor.getTaskRef()
 			return task
 		}
+	case ViewKanban, ViewCrossProjectKanban:
+		if v := m.views.Get(m.currentView()); v != nil {
+			if kb, ok := v.(*KanbanModel); ok {
+				if card := kb.getCursorCard(); card != nil {
+					return card.Task
+				}
+			}
+		}
 	default:
 		// Other view types don't have a cursor task.
 	}

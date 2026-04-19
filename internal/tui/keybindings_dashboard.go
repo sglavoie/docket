@@ -9,6 +9,7 @@ func (r *KeybindingRegistry) registerDashboardBindings() {
 		Keybinding{Key: "Enter", Description: "Select project", Category: "Navigation", Views: views},
 		Keybinding{Key: "1-9", Description: "Quick select pinned", Category: "Navigation", Views: views},
 		Keybinding{Key: "g/G", Description: "Go to first/last", Category: "Navigation", Views: views},
+		Keybinding{Key: "gk", Description: "Open kanban for selected project", Category: "Navigation", Views: views},
 		Keybinding{Key: "/", Description: "Search projects", Category: "Navigation", Views: views},
 		Keybinding{Key: "ctrl+T", Description: "Global tag manager", Category: "Navigation", Views: views},
 		Keybinding{Key: "b", Description: "Project blockers", Category: "Navigation", Views: views},

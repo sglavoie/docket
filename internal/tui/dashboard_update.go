@@ -43,7 +43,15 @@ func (m *DashboardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) { //nolint:goc
 		}
 		if m.pendingPrefix == "g" {
 			m.pendingPrefix = ""
-			_, cmd := handleGotoTopPrefix(msg.String(), &m.cursor, &m.cursorFlash)
+			key := msg.String()
+			if key == "k" {
+				if CursorInBounds(m.cursor, len(visible)) {
+					project := visible[m.cursor]
+					return m, func() tea.Msg { return ShowKanbanMsg{Project: project} }
+				}
+				return m, func() tea.Msg { return ShowCrossProjectKanbanMsg{} }
+			}
+			_, cmd := handleGotoTopPrefix(key, &m.cursor, &m.cursorFlash)
 			return m, cmd
 		}
 
@@ -181,7 +189,7 @@ func (m *DashboardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) { //nolint:goc
 func (m *DashboardModel) HandledKeys() []string {
 	return []string{
 		// Navigation
-		"j", "k", "up", "down", "G", "g", "enter", "/",
+		"j", "k", "up", "down", "G", "g", "gk", "enter", "/",
 		// Actions
 		"R", "n", "a", "S", "D", "e", "p",
 		"C", "ctrl+t", "@", "`", "~", "ctrl+p", "T", "b", "ctrl+e",

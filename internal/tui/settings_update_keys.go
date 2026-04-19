@@ -322,6 +322,18 @@ func (m *SettingsModel) handleSpaceKey() {
 		m.alertBlockedEnabled = !m.alertBlockedEnabled
 	case 88:
 		m.alertProjectHealthEnabled = !m.alertProjectHealthEnabled
+	case 94:
+		m.kanbanDefaultModeCursor = (m.kanbanDefaultModeCursor + 1) % len(kanbanModeOptions)
+	case 96:
+		m.kanbanShowEmptyColumns = !m.kanbanShowEmptyColumns
+	case 97:
+		m.kanbanDetailPaneVisible = !m.kanbanDetailPaneVisible
+	case 98:
+		m.kanbanDetailHeightCursor = (m.kanbanDetailHeightCursor + 1) % len(kanbanDetailHeightOptions)
+	}
+	if m.focusIndex >= 99 && m.focusIndex <= 104 {
+		idx := m.focusIndex - 99
+		m.kanbanEnabledModes[idx] = !m.kanbanEnabledModes[idx]
 	}
 }
 
@@ -361,6 +373,12 @@ func (m *SettingsModel) handleLeftKey() {
 	if m.focusIndex == 93 && m.timeFormatCursor > 0 {
 		m.timeFormatCursor--
 	}
+	if m.focusIndex == 94 && m.kanbanDefaultModeCursor > 0 {
+		m.kanbanDefaultModeCursor--
+	}
+	if m.focusIndex == 98 && m.kanbanDetailHeightCursor > 0 {
+		m.kanbanDetailHeightCursor--
+	}
 }
 
 func (m *SettingsModel) handleRightKey() {
@@ -395,6 +413,12 @@ func (m *SettingsModel) handleRightKey() {
 	}
 	if m.focusIndex == 93 && m.timeFormatCursor < len(timeFormatOptions)-1 {
 		m.timeFormatCursor++
+	}
+	if m.focusIndex == 94 && m.kanbanDefaultModeCursor < len(kanbanModeOptions)-1 {
+		m.kanbanDefaultModeCursor++
+	}
+	if m.focusIndex == 98 && m.kanbanDetailHeightCursor < len(kanbanDetailHeightOptions)-1 {
+		m.kanbanDetailHeightCursor++
 	}
 }
 

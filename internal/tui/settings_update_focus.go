@@ -94,6 +94,8 @@ func (m *SettingsModel) focusedInput() *textinput.Model { //nolint:gocyclo
 		return &m.alertBlockedDaysInput
 	case 89:
 		return &m.alertProjectStaleDaysInput
+	case 95:
+		return &m.kanbanStartColInput
 	default:
 		return nil
 	}

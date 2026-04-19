@@ -101,6 +101,8 @@ func (m *SettingsModel) focusLineInContent() int {
 		return 3
 	case 9:
 		return 0
+	case 10:
+		return localIdx * 3
 	}
 	return 0
 }
@@ -128,6 +130,8 @@ func (m *SettingsModel) View() tea.View {
 		content = m.renderStagesTab()
 	case 9:
 		content = m.renderAppearanceTab()
+	case 10:
+		content = m.renderKanbanTab()
 	}
 
 	contentLines := strings.Split(content, "\n")

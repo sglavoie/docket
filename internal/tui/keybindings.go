@@ -76,6 +76,7 @@ func NewKeybindingRegistry() *KeybindingRegistry {
 	r.registerRecurrenceEditorBindings()
 	r.registerQuickCaptureBindings()
 	r.registerTaskFormBindings()
+	r.registerKanbanBindings()
 	return r
 }
 
@@ -374,6 +375,7 @@ func (r *KeybindingRegistry) registerGlobalBindings() {
 		Keybinding{Key: "ctrl+/", Description: "Open Global Search", Category: "Navigation"},
 		Keybinding{Key: ";W", Description: "Open Workflow Rules", Category: "Navigation"},
 		Keybinding{Key: ";o", Description: "Open Global Outliner", Category: "Navigation"},
+		Keybinding{Key: ";k", Description: "Open Cross-Project Kanban", Category: "Navigation"},
 		Keybinding{Key: ";i", Description: "Quick Capture", Category: "Navigation"},
 		Keybinding{Key: ";I", Description: "Global Bulk Capture", Category: "Navigation"},
 		Keybinding{Key: ";{", Description: "Global Note Create", Category: "Navigation"},

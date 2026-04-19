@@ -110,6 +110,8 @@ const (
 	ViewKeybindingExplorer
 	ViewProjectFilterSelector
 	ViewTaskForm
+	ViewKanban
+	ViewCrossProjectKanban
 )
 
 // String returns the name of the ViewType for readable test output.
@@ -210,6 +212,8 @@ func (v ViewType) String() string {
 		ViewKeybindingExplorer:    "KeybindingExplorer",
 		ViewProjectFilterSelector: "ProjectFilterSelector",
 		ViewTaskForm:              "TaskForm",
+		ViewKanban:                "Kanban",
+		ViewCrossProjectKanban:    "CrossProjectKanban",
 	}
 	if name, ok := names[v]; ok {
 		return name
@@ -280,6 +284,9 @@ type AppModel struct {
 	// Session-only filter caches for views reconstructed during history navigation.
 	priorityViewFilterCache map[string]*PriorityViewCache // keyed by projectID
 	allTasksFilterCache     *AllTasksCache                // single global entry
+
+	// Kanban view session cache — keyed by project ID or "cross_project".
+	kanbanViewCache map[string]*KanbanViewCache
 
 	// Focus view session state (persists across view navigation within a session)
 	focusQueue        []FocusTask

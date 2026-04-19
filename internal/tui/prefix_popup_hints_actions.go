@@ -56,6 +56,7 @@ var (
 		{Key: "h", Description: "history", Detail: "Show task history"},
 		{Key: "X", Description: "deselect", Detail: "Clear selection"},
 		{Key: "l", Description: "activity", Detail: "Show project recent activity"},
+		{Key: "k", Description: "kanban", Detail: "Open kanban view for current project"},
 	}
 
 	// ProjectTreeMovePrefixHints contains "m" prefix hints for project tree move operations.
@@ -171,6 +172,7 @@ var (
 		{Key: "l", Description: "latest activity", Detail: "Recently modified tasks"},
 		{Key: "m", Description: "metrics", Detail: "Completion rates and throughput"},
 		{Key: "n", Description: "notifications", Detail: "Open Notification Center"},
+		{Key: "k", Description: "kanban", Detail: "Cross-project kanban"},
 		{Key: "o", Description: "outliner", Detail: "Cross-project outliner"},
 		{Key: "q", Description: "backlog", Detail: "Cross-project task suggestions"},
 		{Key: "t", Description: "task...", Detail: "Task actions"},

@@ -335,6 +335,12 @@ func (m *ProjectTreeModel) handlePrefixKey(key string, visible []*TreeNode) (tea
 			return m, func() tea.Msg {
 				return ShowProjectRecentActivityMsg{Project: project}
 			}
+		case "k":
+			// Open kanban view for this project
+			project := m.project
+			return m, func() tea.Msg {
+				return ShowKanbanMsg{Project: project}
+			}
 		}
 
 	case "m":

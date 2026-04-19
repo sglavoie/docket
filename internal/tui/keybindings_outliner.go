@@ -16,6 +16,7 @@ func (r *KeybindingRegistry) registerOutlinerBindings() {
 		Keybinding{Key: "gh", Description: "View activity log", Category: "Navigation", Views: views},
 		Keybinding{Key: "gz", Description: "Jump to Snoozed perspective", Category: "Navigation", Views: views},
 		Keybinding{Key: "gl", Description: "Project recent activity", Category: "Navigation", Views: views},
+		Keybinding{Key: "gk", Description: "Open kanban for current project", Category: "Navigation", Views: views},
 
 		// Perspectives
 		Keybinding{Key: "h/l", Description: "Cycle perspective left/right", Category: "Perspectives", Views: views},

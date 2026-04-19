@@ -199,6 +199,31 @@ func (m *SettingsModel) saveSettings() tea.Cmd {
 		m.config.OutlinerCollapsedSections = nil
 	}
 
+	// Kanban settings.
+	ks := &m.config.KanbanSettings
+	ks.DefaultMode = kanbanModeValues[m.kanbanDefaultModeCursor]
+	ks.DefaultStartColumn = strings.TrimSpace(m.kanbanStartColInput.Value())
+	showEmpty := m.kanbanShowEmptyColumns
+	ks.ShowEmptyColumns = &showEmpty
+	detailVisible := m.kanbanDetailPaneVisible
+	ks.DetailPaneVisible = &detailVisible
+	detailHeight := m.kanbanDetailHeightCursor + 1 // convert 0-based cursor to 1-based height
+	ks.DetailPaneHeight = &detailHeight
+	var enabledModes []string
+	allEnabled := true
+	for i, on := range m.kanbanEnabledModes {
+		if on {
+			enabledModes = append(enabledModes, kanbanModeValues[i])
+		} else {
+			allEnabled = false
+		}
+	}
+	if allEnabled {
+		ks.EnabledModes = nil // nil means all enabled (compact JSON)
+	} else {
+		ks.EnabledModes = enabledModes
+	}
+
 	mgr := m.configManager
 	cfg := m.config
 	return func() tea.Msg {

@@ -42,6 +42,7 @@ func NewAppModel(cfg *config.Config, manager *config.Manager, opts ...AppOption)
 		outlinerToggleStates:     make(map[string]*OutlinerToggleState),
 		projectTreeSpatialStates: make(map[string]*ProjectTreeSpatialState),
 		priorityViewFilterCache:  make(map[string]*PriorityViewCache),
+		kanbanViewCache:          make(map[string]*KanbanViewCache),
 		focusQueue:               []FocusTask{},
 		focusQueueIDs:            make(map[string]bool),
 		focusDismissedIDs:        make(map[string]bool),

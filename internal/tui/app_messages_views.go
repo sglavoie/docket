@@ -227,3 +227,15 @@ type DismissAlertMsg struct {
 type UndismissAlertMsg struct {
 	Key string
 }
+
+// =============================================================================
+// Kanban Messages (Show/Close Pattern)
+// =============================================================================
+
+// ShowKanbanMsg opens the per-project kanban view.
+type ShowKanbanMsg struct {
+	Project *models.Project
+}
+
+// ShowCrossProjectKanbanMsg opens the cross-project kanban view.
+type ShowCrossProjectKanbanMsg struct{}

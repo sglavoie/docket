@@ -312,6 +312,8 @@ func (m *AppModel) Update(msg tea.Msg) (outModel tea.Model, outCmd tea.Cmd) { //
 				return m, func() tea.Msg { return ShowAllTasksMsg{} }
 			case "W":
 				return m, func() tea.Msg { return ShowWorkflowRulesMsg{} }
+			case "k":
+				return m, func() tea.Msg { return ShowCrossProjectKanbanMsg{} }
 			case "o":
 				return m, func() tea.Msg { return ShowGlobalOutlinerMsg{} }
 			case "i":

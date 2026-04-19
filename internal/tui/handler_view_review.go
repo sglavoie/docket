@@ -237,6 +237,20 @@ func (m *AppModel) handleViewReviewMessages(msg tea.Msg) (bool, tea.Cmd) { //nol
 			}
 		}
 		return true, nil
+
+	case ShowKanbanMsg:
+		if msg.Project != nil {
+			kanban := NewKanbanModel(msg.Project, m.config, m.configManager, NewProjectService())
+			m.restoreKanbanState(kanban)
+			m.showView(ViewKanban, kanban)
+		}
+		return true, nil
+
+	case ShowCrossProjectKanbanMsg:
+		kanban := NewCrossProjectKanbanModel(m.config, m.configManager, NewProjectService())
+		m.restoreKanbanState(kanban)
+		m.showView(ViewCrossProjectKanban, kanban)
+		return true, nil
 	}
 
 	return false, nil

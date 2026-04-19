@@ -254,6 +254,9 @@ type Config struct {
 	// Date parsing
 	WeekEndDay string `json:"week_end_day,omitempty"` // "fri" | "sat" | "sun", default "sun"
 	TimeFormat string `json:"time_format,omitempty"`  // "12h" | "24h", default "24h"
+
+	// Kanban view settings
+	KanbanSettings KanbanSettings `json:"kanban_settings,omitzero"`
 }
 
 // AlertDismissal records a user-dismissed alert so it can be suppressed until
@@ -275,6 +278,18 @@ type DailyPlanItem struct {
 	TaskID      string `json:"task_id"`
 	ProjectID   string `json:"project_id"`
 	PlannedDate string `json:"planned_date"` // YYYY-MM-DD
+}
+
+// KanbanSettings holds persistent configuration for the kanban view.
+type KanbanSettings struct {
+	DefaultMode        string   `json:"default_mode,omitempty"`         // KanbanMode ID (default: "section")
+	DefaultStartColumn string   `json:"default_start_column,omitempty"` // Column ID to focus on open (default: "inbox")
+	EnabledModes       []string `json:"enabled_modes,omitempty"`        // Enabled KanbanMode IDs (all enabled when nil)
+	SectionColumnOrder []string `json:"section_column_order,omitempty"` // GTD section column order override
+	StatusColumnOrder  []string `json:"status_column_order,omitempty"`  // Status column order override
+	ShowEmptyColumns   *bool    `json:"show_empty_columns,omitempty"`   // nil=true: show columns even when empty
+	DetailPaneVisible  *bool    `json:"detail_pane_visible,omitempty"`  // nil=false: bottom detail pane hidden by default
+	DetailPaneHeight   *int     `json:"detail_pane_height,omitempty"`   // nil=3: number of detail pane lines
 }
 
 // RecentTaskVisit stores a task reference for the recent task quick-switch list.
@@ -300,6 +315,10 @@ func NewConfig() *Config {
 		Projects:          []*models.Project{},
 		SectionColors:     make(map[string]string),
 		ProjectViewStates: make(map[string]ProjectViewState),
+		KanbanSettings: KanbanSettings{
+			DefaultMode:        "section",
+			DefaultStartColumn: "inbox",
+		},
 	}
 }
 

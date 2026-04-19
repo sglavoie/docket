@@ -13,10 +13,10 @@ type settingsSection struct {
 }
 
 var (
-	settingsTabNames = []string{"General", "Palette", "Review", "Behavior", "Attachments", "Project Tree", "Outliner", "Notifications", "Stages", "Appearance"}
+	settingsTabNames = []string{"General", "Palette", "Review", "Behavior", "Attachments", "Project Tree", "Outliner", "Notifications", "Stages", "Appearance", "Kanban"}
 
 	// tabFieldCount declares how many focusable fields each tab has.
-	tabFieldCount = []int{4, 18, 4, 13, 2, 13, 21, 15, 1, 3}
+	tabFieldCount = []int{4, 18, 4, 13, 2, 13, 21, 15, 1, 3, 11}
 
 	// tabFieldStart holds the starting focus index for each tab (computed in init).
 	tabFieldStart []int
@@ -37,6 +37,7 @@ var (
 		{{"Reviews", 4}, {"Tasks", 9}, {"Projects", 2}},                   // 7: Notifications
 		nil, // 8: Stages
 		nil, // 9: Appearance
+		nil, // 10: Kanban
 	}
 
 	// weeklyReviewDayOptions lists the display labels for weekly review day selector.
@@ -72,6 +73,18 @@ var (
 
 	// timeFormatValues maps cursor index to config string value.
 	timeFormatValues = []string{"12h", "24h"}
+
+	// kanbanModeOptions lists the display labels for the kanban mode selector.
+	kanbanModeOptions = []string{"Section (GTD)", "Status", "Priority", "Stages", "Custom Sections", "Score Buckets"}
+
+	// kanbanModeValues maps cursor index to the KanbanMode ID string.
+	kanbanModeValues = []string{"section", "status", "priority", "stages", "custom_sections", "score_buckets"}
+
+	// kanbanModeLabels are short labels shown in the enabled-modes checkbox list.
+	kanbanModeLabels = []string{"Section (GTD)", "Status", "Priority", "Stages", "Custom Sections", "Score Buckets"}
+
+	// kanbanDetailHeightOptions lists the allowed detail pane heights.
+	kanbanDetailHeightOptions = []string{"1", "2", "3", "4", "5"}
 )
 
 func init() {
@@ -185,6 +198,14 @@ type SettingsModel struct {
 	timeFormatCursor         int      // Index into timeFormatValues (0=12h, 1=24h)
 	contexts                 []string
 	contextCursor            int // -1 for custom mode, 0+ for selecting from list
+
+	// Kanban settings (Kanban tab, index 94-104)
+	kanbanDefaultModeCursor  int             // Index into kanbanModeValues
+	kanbanStartColInput      textinput.Model // Default start column text input
+	kanbanShowEmptyColumns   bool            // Show columns even when empty
+	kanbanDetailPaneVisible  bool            // Bottom detail pane shown by default
+	kanbanDetailHeightCursor int             // Index into kanbanDetailHeightOptions (0=1 line .. 4=5 lines)
+	kanbanEnabledModes       [6]bool         // Enabled mode toggles (indexed by AllKanbanModes order)
 
 	// Stages settings (Stages tab, index 76)
 	savedStages        []string // snapshot at load time, for dirty detection

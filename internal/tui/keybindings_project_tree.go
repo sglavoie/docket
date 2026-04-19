@@ -55,6 +55,7 @@ func (r *KeybindingRegistry) registerProjectTreeBindings() {
 		Keybinding{Key: "ctrl+;", Description: "Toggle focus mode (zoom into subtree)", Category: "Task Operations", Views: views},
 		Keybinding{Key: "gh", Description: "View activity log", Category: "Task Operations", Views: views},
 		Keybinding{Key: "gl", Description: "Project recent activity", Category: "Navigation", Views: views},
+		Keybinding{Key: "gk", Description: "Open kanban for this project", Category: "Navigation", Views: views},
 
 		Keybinding{Key: "cx", Description: "Unlink linked task", Category: "Linked Tasks", Views: views},
 		Keybinding{Key: "x (sidebar)", Description: "Remove link", Category: "Linked Tasks", Views: views},

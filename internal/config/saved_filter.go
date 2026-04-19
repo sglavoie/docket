@@ -39,6 +39,12 @@ type SavedFilter struct {
 
 	// --- Tab behavior ---
 	ShowAsTab bool `json:"show_as_tab,omitempty"`
+
+	// --- Kanban board configuration ---
+	KanbanMode           string   `json:"kanban_mode,omitempty"`            // Column axis mode ID
+	KanbanVisibleColumns []string `json:"kanban_visible_columns,omitempty"` // Which columns are shown
+	KanbanColumnOrder    []string `json:"kanban_column_order,omitempty"`    // Custom column ordering
+	ShowAsKanbanTab      bool     `json:"show_as_kanban_tab,omitempty"`     // Pin as a kanban preset tab
 }
 
 // EffectiveLogic returns the logic operator for criteria mode, defaulting to "and".

@@ -176,6 +176,10 @@ func (m *AppModel) handleEscKey() (bool, tea.Cmd) {
 			m.saveOutlinerToggleState()
 			m.saveOutlinerFilterState()
 		}
+		// Save kanban view state (mode, cursor, scroll) so it persists across navigation.
+		if closingView == ViewKanban || closingView == ViewCrossProjectKanban {
+			m.saveKanbanState()
+		}
 		// Save temporary outliner's filter state so subsequent temporary
 		// outliners for the same project inherit any filter changes.
 		if closingView == ViewTemporaryOutliner {

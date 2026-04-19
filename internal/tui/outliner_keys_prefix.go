@@ -396,6 +396,13 @@ func (m *OutlinerModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) { //nol
 				return m.crossHandleGoDrillDown()
 			}
 			return m, nil
+		case "k":
+			// Open kanban view for this project (or cross-project kanban)
+			if m.project == nil {
+				return m, func() tea.Msg { return ShowCrossProjectKanbanMsg{} }
+			}
+			project := m.project
+			return m, func() tea.Msg { return ShowKanbanMsg{Project: project} }
 		}
 	}
 
