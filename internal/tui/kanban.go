@@ -2,6 +2,7 @@ package tui
 
 import (
 	"image/color"
+	"maps"
 
 	tea "charm.land/bubbletea/v2"
 
@@ -241,11 +242,40 @@ func (m *KanbanModel) IsFullHeight() bool { return true }
 // HasTextInput returns false — no text input is active for now.
 func (m *KanbanModel) HasTextInput() bool { return false }
 
+// HasPendingPrefix returns true while a multi-key prefix sequence is active.
+func (m *KanbanModel) HasPendingPrefix() bool { return m.pendingPrefix != "" }
+
+// GetPrefixPopupInfo returns prefix popup data for overlay rendering.
+func (m *KanbanModel) GetPrefixPopupInfo() *PrefixPopupInfo {
+	if m.pendingPrefix == "" {
+		return nil
+	}
+	var currentStage string
+	var currentPriority int
+	if task, _ := m.getTaskRef(); task != nil {
+		currentStage = task.Stage
+		currentPriority = task.Priority
+	}
+	hints := CommonTaskActionPrefixHints(m.config.Stages, currentStage, currentPriority)
+	hints["g"] = KanbanNavigationPrefixHints
+	maps.Copy(hints, buildCommonFilterPrefixPopupHints(&m.filter, m.config, true, true))
+	return &PrefixPopupInfo{
+		Prefix: m.pendingPrefix,
+		Hints:  hints,
+	}
+}
+
+// KanbanNavigationPrefixHints contains "g" prefix hints for kanban views.
+var KanbanNavigationPrefixHints = []PrefixHint{
+	{Key: "g", Description: "first", Detail: "Jump to top of column"},
+	{Key: "p", Description: "project", Detail: "Go to task in project"},
+}
+
 // ShouldCaptureEsc returns true when the axis manager popup, multi-select mode,
 // or another modal sub-component is open, preventing the global Esc handler
 // from popping the view.
 func (m *KanbanModel) ShouldCaptureEsc() bool {
-	return m.showAxisManager || m.multiSelectMode
+	return m.showAxisManager || m.multiSelectMode || m.pendingPrefix != ""
 }
 
 // enabledModeList returns the ordered list of modes that are currently enabled.
