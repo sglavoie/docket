@@ -7,7 +7,6 @@ import (
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/scoring"
 )
 
 // KanbanModel is the top-level BubbleTea model for both per-project and
@@ -33,9 +32,6 @@ type KanbanModel struct {
 
 	// Raw card list (before distribution)
 	allCards []KanbanCard
-
-	// Scoring profile (may be nil)
-	scoringProfile *scoring.ScoringProfile
 
 	// UI state
 	detailPaneVisible bool
@@ -203,7 +199,7 @@ func (m *KanbanModel) rebuildCols() {
 		ks.StatusColumnOrder,
 		stages,
 		customSections,
-		m.scoringProfile,
+		m.config,
 	)
 
 	// Clamp active column index.

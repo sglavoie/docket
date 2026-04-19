@@ -7,6 +7,23 @@ import (
 	"charm.land/lipgloss/v2"
 )
 
+// joinWithActiveColBorders joins parts with sep, coloring separators adjacent
+// to activeVisIdx with the accent color to visually indicate the focused column.
+func joinWithActiveColBorders(parts []string, sep string, activeVisIdx int, accent lipgloss.Style) string {
+	var sb strings.Builder
+	for i, part := range parts {
+		if i > 0 {
+			if i == activeVisIdx || i == activeVisIdx+1 {
+				sb.WriteString(accent.Render(sep))
+			} else {
+				sb.WriteString(sep)
+			}
+		}
+		sb.WriteString(part)
+	}
+	return sb.String()
+}
+
 // kanbanRender renders the full kanban view as a string.
 func kanbanRender(m *KanbanModel) string {
 	if m.width == 0 || m.height == 0 {
@@ -43,7 +60,7 @@ func kanbanRender(m *KanbanModel) string {
 	if maxVisForHint == 1 && len(m.columns) > 1 {
 		hint = MutedStyle.Render(fmt.Sprintf("col %d/%d  h/l: prev/next", m.activeCol+1, len(m.columns)))
 	} else {
-		hint = MutedStyle.Render("ctrl+g: cycle mode")
+		hint = MutedStyle.Render("`/~: cycle mode")
 	}
 	gap := m.width - lipgloss.Width(title) - lipgloss.Width(hint)
 	if gap > 0 {
@@ -120,58 +137,146 @@ func kanbanRender(m *KanbanModel) string {
 	_ = rightHintWidth // used indirectly via rightHint appending
 
 	// === Column headers ===
+	activeVisIdx := m.activeCol - startCol
+	accentSepStyle := lipgloss.NewStyle().Foreground(ColorPrimary)
 	headerParts := make([]string, 0, numVisible)
 	for i := startCol; i < endCol; i++ {
 		col := m.columns[i]
-		label := fmt.Sprintf(" %s %s (%d)", col.Icon, col.Label, len(col.Tasks))
-		label = truncateToVisualWidth(label, colWidth)
-		var hdrStyle lipgloss.Style
-		if i == m.activeCol {
-			hdrStyle = lipgloss.NewStyle().
-				Foreground(m.AccentColor()).
-				Bold(true).
-				Width(colWidth)
+		if m.mode == KanbanModeSection {
+			sectionStyle := GetViewModeStyleForSection(col.Label)
+			if i == m.activeCol {
+				sectionStyle = sectionStyle.Bold(true)
+			}
+			countStr := fmt.Sprintf(" (%d)", len(col.Tasks))
+			countWidth := lipgloss.Width(MutedStyle.Render(countStr))
+			maxBadgeWidth := colWidth - countWidth
+			if maxBadgeWidth < 0 {
+				maxBadgeWidth = 0
+			}
+			iconLabel := fmt.Sprintf(" %s %s", col.Icon, col.Label)
+			iconLabel = truncateToVisualWidth(iconLabel, maxBadgeWidth)
+			badge := sectionStyle.Render(iconLabel)
+			countStyle := MutedStyle
+			if i == m.activeCol {
+				countStyle = accentSepStyle
+			}
+			count := countStyle.Render(countStr)
+			combined := badge + count
+			w := lipgloss.Width(combined)
+			padding := colWidth - w
+			if padding < 0 {
+				padding = 0
+			}
+			headerParts = append(headerParts, combined+strings.Repeat(" ", padding))
 		} else {
-			hdrStyle = MutedStyle.Width(colWidth)
+			label := fmt.Sprintf(" %s %s (%d)", col.Icon, col.Label, len(col.Tasks))
+			label = truncateToVisualWidth(label, colWidth)
+			var hdrStyle lipgloss.Style
+			if i == m.activeCol {
+				hdrStyle = lipgloss.NewStyle().
+					Foreground(m.AccentColor()).
+					Bold(true).
+					Width(colWidth)
+			} else {
+				hdrStyle = MutedStyle.Width(colWidth)
+			}
+			headerParts = append(headerParts, hdrStyle.Render(label))
 		}
-		headerParts = append(headerParts, hdrStyle.Render(label))
 	}
-	sb.WriteString(leftHint + strings.Join(headerParts, colSep) + rightHint + "\n")
+	sb.WriteString(leftHint + joinWithActiveColBorders(headerParts, colSep, activeVisIdx, accentSepStyle) + rightHint + "\n")
 
 	// === Divider ===
 	divParts := make([]string, numVisible)
 	for i := range divParts {
-		divParts[i] = strings.Repeat("─", colWidth)
+		line := strings.Repeat("─", colWidth)
+		if i == activeVisIdx {
+			line = accentSepStyle.Render(line)
+		}
+		divParts[i] = line
 	}
-	sb.WriteString(strings.Repeat(" ", leftHintWidth) + strings.Join(divParts, divSep) + "\n")
+	sb.WriteString(strings.Repeat(" ", leftHintWidth) + joinWithActiveColBorders(divParts, divSep, activeVisIdx, accentSepStyle) + "\n")
+
+	// === Build display rows per column (with project group headers in cross-project mode) ===
+	type displayRow struct {
+		isHeader bool   // true = project group header
+		header   string // project name for header rows
+		card     *KanbanCard
+		taskIdx  int // index into col.Tasks (for cursor matching)
+	}
+	colDisplayRows := make([][]displayRow, numCols)
+	for i := range m.columns {
+		col := &m.columns[i]
+		if m.crossProject && len(col.Tasks) > 0 {
+			// Group tasks by project, insert header rows.
+			var rows []displayRow
+			lastProj := ""
+			for ti := range col.Tasks {
+				card := &col.Tasks[ti]
+				projName := ""
+				if card.Project != nil {
+					projName = card.Project.Name
+				}
+				if projName != lastProj {
+					rows = append(rows, displayRow{isHeader: true, header: projName})
+					lastProj = projName
+				}
+				rows = append(rows, displayRow{card: card, taskIdx: ti})
+			}
+			colDisplayRows[i] = rows
+		} else {
+			// No grouping — 1:1 mapping.
+			rows := make([]displayRow, len(col.Tasks))
+			for ti := range col.Tasks {
+				rows[ti] = displayRow{card: &col.Tasks[ti], taskIdx: ti}
+			}
+			colDisplayRows[i] = rows
+		}
+	}
 
 	// === Card rows ===
 	for row := 0; row < bodyRows; row++ {
 		rowParts := make([]string, 0, numVisible)
 		for i := startCol; i < endCol; i++ {
 			col := m.columns[i]
-			cardIdx := col.ScrollOffset + row
+			dRows := colDisplayRows[i]
+			dispIdx := col.ScrollOffset + row
 
-			// Last visible row: show overflow indicator if tasks are cut off.
-			if row == bodyRows-1 && len(col.Tasks)-col.ScrollOffset > bodyRows {
-				overflow := len(col.Tasks) - col.ScrollOffset - (bodyRows - 1)
-				overflowStr := fmt.Sprintf("  ...+%d more", overflow)
+			// Last visible row: show overflow indicator if display rows are cut off.
+			if row == bodyRows-1 && len(dRows)-col.ScrollOffset > bodyRows {
+				overflow := len(dRows) - col.ScrollOffset - (bodyRows - 1)
+				overflowStr := fmt.Sprintf("...+%d more", overflow)
 				rowParts = append(rowParts, MutedStyle.Width(colWidth).Render(overflowStr))
 				continue
 			}
 
-			if cardIdx >= len(col.Tasks) {
+			if dispIdx >= len(dRows) {
 				// Empty cell
 				rowParts = append(rowParts, strings.Repeat(" ", colWidth))
 				continue
 			}
 
-			card := col.Tasks[cardIdx]
+			dr := dRows[dispIdx]
+
+			// Project group header row.
+			if dr.isHeader {
+				headerText := truncateToVisualWidth(dr.header, colWidth-2)
+				headerStyle := lipgloss.NewStyle().
+					Background(ColorDimmedBg).
+					Foreground(ColorDimmedFg).
+					Bold(true).
+					Width(colWidth)
+				rowParts = append(rowParts, headerStyle.Render(headerText))
+				continue
+			}
+
+			card := dr.card
 			statusBadge := GetStatusBadge(string(card.Task.Status), card.Task.Status.Icon())
 			badgeWidth := lipgloss.Width(statusBadge)
+			typeBadge := GetTypeBadge(string(card.Task.Type), card.Task.Type.Icon())
+			typeBadgeWidth := lipgloss.Width(typeBadge)
 
-			// Selection indicator (1 char + 1 space, or 2 spaces when not in multi-select).
-			selIndicator := "  "
+			// Selection indicator: only shown in multi-select mode.
+			selIndicator := ""
 			isChecked := m.IsSelected(card.Task.ID)
 			if m.multiSelectMode {
 				if isChecked {
@@ -182,34 +287,23 @@ func kanbanRender(m *KanbanModel) string {
 			}
 			selWidth := lipgloss.Width(selIndicator)
 
-			// Project badge in cross-project mode (appended after title).
-			projBadge := ""
-			projBadgeWidth := 0
-			if m.crossProject && card.Project != nil {
-				projBadge = MutedStyle.Render(fmt.Sprintf("[%s]", truncateToVisualWidth(card.Project.Name, 8)))
-				projBadgeWidth = lipgloss.Width(projBadge) + 1 // +1 for space before badge
-			}
-
-			// Format: "[sel][badge] title [proj]"
-			prefixWidth := selWidth + badgeWidth + 1
-			maxTitleWidth := colWidth - prefixWidth - projBadgeWidth
+			// Format: "[sel]typeBadge statusBadge title"
+			prefixWidth := selWidth + typeBadgeWidth + badgeWidth + 1
+			maxTitleWidth := colWidth - prefixWidth
 			if maxTitleWidth < 0 {
 				maxTitleWidth = 0
 			}
 			title := truncateToVisualWidth(card.Task.Title, maxTitleWidth)
-			line := selIndicator + statusBadge + " " + title
-			if projBadge != "" {
-				line += " " + projBadge
-			}
+			line := selIndicator + typeBadge + statusBadge + " " + title
 
-			isFocused := i == m.activeCol && cardIdx == col.Cursor
+			isFocused := i == m.activeCol && dr.taskIdx == col.Cursor
 			isFlash := m.flashCardID != "" && card.Task.ID == m.flashCardID
 			var cell string
 			switch {
 			case isFocused:
-				cell = SelectedStyle.Width(colWidth).Render(line)
+				cell = SelectedLine(line, colWidth)
 			case isFlash:
-				cell = HighlightStyle.Width(colWidth).Render(line)
+				cell = SelectedFlashLine(line, colWidth)
 			case isChecked:
 				cell = ActiveStyle.Width(colWidth).Render(line)
 			default:
@@ -217,7 +311,7 @@ func kanbanRender(m *KanbanModel) string {
 			}
 			rowParts = append(rowParts, cell)
 		}
-		sb.WriteString(strings.Repeat(" ", leftHintWidth) + strings.Join(rowParts, colSep) + "\n")
+		sb.WriteString(strings.Repeat(" ", leftHintWidth) + joinWithActiveColBorders(rowParts, colSep, activeVisIdx, accentSepStyle) + "\n")
 	}
 
 	// Append detail pane (separator + info rows)

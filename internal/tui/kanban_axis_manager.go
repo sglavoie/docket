@@ -93,13 +93,22 @@ func (m *KanbanModel) toggleAxisMode(mode KanbanMode) {
 	}
 }
 
-// cycleAxisMode advances to the next enabled mode (ctrl+g).
+// cycleAxisMode advances to the next enabled mode (`).
 func (m *KanbanModel) cycleAxisMode() {
+	m.cycleAxisModeBy(1)
+}
+
+// cycleAxisModeBack moves to the previous enabled mode (~).
+func (m *KanbanModel) cycleAxisModeBack() {
+	m.cycleAxisModeBy(-1)
+}
+
+// cycleAxisModeBy cycles the mode by delta (+1 forward, -1 backward).
+func (m *KanbanModel) cycleAxisModeBy(delta int) {
 	enabled := m.enabledModeList()
 	if len(enabled) <= 1 {
 		return
 	}
-	// Find current mode index in enabled list
 	cur := -1
 	for i, em := range enabled {
 		if em == m.mode {
@@ -110,7 +119,7 @@ func (m *KanbanModel) cycleAxisMode() {
 	if cur < 0 {
 		cur = 0
 	}
-	m.mode = enabled[(cur+1)%len(enabled)]
+	m.mode = enabled[(cur+delta+len(enabled))%len(enabled)]
 	m.rebuildCols()
 	m.clampCursor()
 }
@@ -127,7 +136,7 @@ func (m *KanbanModel) renderAxisManagerPopup() string {
 	title := TitleStyle.Render("Kanban Axis Modes")
 	footerText := "space: toggle  j/k: move  esc: close"
 
-	const popupW = 32
+	const popupW = 40
 	innerW := popupW - 4 // border(2) + padding(2)
 
 	var lines []string

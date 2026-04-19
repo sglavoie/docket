@@ -39,7 +39,7 @@ func RenderPrefixPopup(prefix string, hints PrefixHints, width, height int) stri
 	title := titleKeyStyle.Render(prefix) + borderStyle.Render(" → ") + categoryTitle
 
 	maxAvailableHeight := max(
-		min(height-4, 20),
+		min(height-4, 30),
 		3,
 	)
 	onePerLine := len(keyHints) <= maxAvailableHeight

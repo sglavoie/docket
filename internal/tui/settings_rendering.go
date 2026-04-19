@@ -69,6 +69,8 @@ func (m *SettingsModel) focusLineInContent() int {
 			return localIdx
 		}
 	case 7:
+		return localIdx * 3
+	case 8:
 		switch m.subTab {
 		case 0:
 			return localIdx * 4
@@ -97,12 +99,10 @@ func (m *SettingsModel) focusLineInContent() int {
 		case 2:
 			return localIdx * 2
 		}
-	case 8:
-		return 3
 	case 9:
-		return 0
+		return 3
 	case 10:
-		return localIdx * 3
+		return 0
 	}
 	return 0
 }
@@ -125,13 +125,13 @@ func (m *SettingsModel) View() tea.View {
 	case 6:
 		content = m.renderOutlinerTab()
 	case 7:
-		content = m.renderNotificationsTab()
-	case 8:
-		content = m.renderStagesTab()
-	case 9:
-		content = m.renderAppearanceTab()
-	case 10:
 		content = m.renderKanbanTab()
+	case 8:
+		content = m.renderNotificationsTab()
+	case 9:
+		content = m.renderStagesTab()
+	case 10:
+		content = m.renderAppearanceTab()
 	}
 
 	contentLines := strings.Split(content, "\n")

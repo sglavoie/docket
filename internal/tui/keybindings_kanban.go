@@ -16,8 +16,9 @@ func (r *KeybindingRegistry) registerKanbanBindings() {
 
 		// View
 		Keybinding{Key: "Tab", Description: "Toggle bottom detail pane", Category: "View", Views: views},
-		Keybinding{Key: "ctrl+g", Description: "Cycle column axis mode", Category: "View", Views: views},
+		Keybinding{Key: "`/~", Description: "Cycle column axis mode forward/back", Category: "View", Views: views},
 		Keybinding{Key: "@", Description: "Open axis mode manager", Category: "View", Views: views},
+		Keybinding{Key: "?", Description: "Show help", Category: "View", Views: views},
 
 		// Multi-select
 		Keybinding{Key: "Space", Description: "Toggle multi-select on card", Category: "Multi-select", Views: views},
@@ -63,7 +64,7 @@ func (m *KanbanModel) HandledKeys() []string {
 		// Column move and reorder
 		[]string{"H", "L", "J", "K"},
 		// Modal/mode keys
-		[]string{"tab", "ctrl+g", "@", "space", "V"},
+		[]string{"tab", "`", "~", "@", "space", "V", "?"},
 		// Task navigation
 		[]string{"enter", "gp", "esc"},
 		// Direct action keys

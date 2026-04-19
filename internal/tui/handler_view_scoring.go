@@ -87,6 +87,13 @@ func (m *AppModel) handleScoringMessages(msg tea.Msg) (bool, tea.Cmd) {
 			if m.outliner != nil {
 				m.outliner.rebuildRows()
 			}
+			for _, vt := range []ViewType{ViewKanban, ViewCrossProjectKanban} {
+				if v := m.views.Get(vt); v != nil {
+					if kb, ok := v.(*KanbanModel); ok {
+						kb.rebuildCols()
+					}
+				}
+			}
 			m.setSuccessStatus(fmt.Sprintf("Score dimensions updated for task #%d", msg.Task.ShortID))
 		}
 		return true, nil

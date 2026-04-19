@@ -3,7 +3,9 @@ package tui
 import (
 	"testing"
 
+	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/scoring"
 	"github.com/sglavoie/tt/internal/testutil"
 )
 
@@ -26,7 +28,7 @@ func TestColumnForTask_Section(t *testing.T) {
 	for _, tc := range tests {
 		task := testutil.NewTestTask("t", models.TaskTypeTask)
 		task.Section = tc.section
-		got := columnForTask(task, KanbanModeSection, nil)
+		got := columnForTask(task, KanbanModeSection, nil, "")
 		if got != tc.want {
 			t.Errorf("section %q: want %q, got %q", tc.section, tc.want, got)
 		}
@@ -45,7 +47,7 @@ func TestColumnForTask_Status(t *testing.T) {
 	}
 	for _, tc := range tests {
 		task := testutil.NewTestTaskWithStatus("t", tc.status)
-		got := columnForTask(task, KanbanModeStatus, nil)
+		got := columnForTask(task, KanbanModeStatus, nil, "")
 		if got != tc.want {
 			t.Errorf("status %q: want %q, got %q", tc.status, tc.want, got)
 		}
@@ -66,7 +68,7 @@ func TestColumnForTask_Priority(t *testing.T) {
 	}
 	for _, tc := range tests {
 		task := testutil.NewTestTaskWithPriority("t", tc.priority)
-		got := columnForTask(task, KanbanModePriority, nil)
+		got := columnForTask(task, KanbanModePriority, nil, "")
 		if got != tc.want {
 			t.Errorf("priority %d: want %q, got %q", tc.priority, tc.want, got)
 		}
@@ -75,31 +77,68 @@ func TestColumnForTask_Priority(t *testing.T) {
 
 func TestColumnForTask_Stages(t *testing.T) {
 	task := testutil.NewTestTask("t", models.TaskTypeTask)
-	if got := columnForTask(task, KanbanModeStages, nil); got != "unset" {
+	if got := columnForTask(task, KanbanModeStages, nil, ""); got != "unset" {
 		t.Errorf("empty stage: want unset, got %q", got)
 	}
 	task.Stage = "design"
-	if got := columnForTask(task, KanbanModeStages, nil); got != "design" {
+	if got := columnForTask(task, KanbanModeStages, nil, ""); got != "design" {
 		t.Errorf("stage=design: want design, got %q", got)
 	}
 }
 
 func TestColumnForTask_CustomSections(t *testing.T) {
 	task := testutil.NewTestTask("t", models.TaskTypeTask)
-	if got := columnForTask(task, KanbanModeCustomSections, nil); got != "unset" {
+	if got := columnForTask(task, KanbanModeCustomSections, nil, ""); got != "unset" {
 		t.Errorf("empty custom section: want unset, got %q", got)
 	}
 	task.CustomSection = "sprint-1"
-	if got := columnForTask(task, KanbanModeCustomSections, nil); got != "sprint-1" {
+	if got := columnForTask(task, KanbanModeCustomSections, nil, ""); got != "sprint-1" {
 		t.Errorf("CustomSection=sprint-1: want sprint-1, got %q", got)
 	}
 }
 
 func TestColumnForTask_ScoreBuckets_NilProfile(t *testing.T) {
 	task := testutil.NewTestTask("t", models.TaskTypeTask)
-	got := columnForTask(task, KanbanModeScoreBuckets, nil)
+	cfg := &config.Config{}
+	got := columnForTask(task, KanbanModeScoreBuckets, cfg, "no-such-project")
 	if got != "0-25" {
 		t.Errorf("nil profile: want 0-25, got %q", got)
+	}
+}
+
+func TestColumnForTask_ScoreBuckets_WithProfile(t *testing.T) {
+	profile := scoring.NewWSJFProfile()
+	cfg := &config.Config{
+		ProjectScoringProfile: map[string]string{"proj1": profile.ID},
+		ScoringProfiles:       []scoring.ScoringProfile{profile},
+	}
+
+	// Task with high business value and low job size → high normalized score.
+	highTask := testutil.NewTestTask("high", models.TaskTypeTask)
+	highTask.ScoreDimensions = map[string]int{
+		"business_value":  10,
+		"time_criticality": 10,
+		"risk_reduction":  10,
+		"job_size":        1,
+	}
+
+	// Task with low values → low normalized score.
+	lowTask := testutil.NewTestTask("low", models.TaskTypeTask)
+	lowTask.ScoreDimensions = map[string]int{
+		"business_value":  1,
+		"time_criticality": 1,
+		"risk_reduction":  1,
+		"job_size":        5,
+	}
+
+	highCol := columnForTask(highTask, KanbanModeScoreBuckets, cfg, "proj1")
+	lowCol := columnForTask(lowTask, KanbanModeScoreBuckets, cfg, "proj1")
+
+	if highCol == "0-25" {
+		t.Errorf("high-score task should not be in 0-25, got %q", highCol)
+	}
+	if highCol == lowCol {
+		t.Errorf("high and low tasks should be in different buckets, both got %q", highCol)
 	}
 }
 

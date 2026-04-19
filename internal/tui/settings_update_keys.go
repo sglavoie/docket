@@ -159,7 +159,7 @@ func (m *SettingsModel) handleGlobalKey(key string) (bool, tea.Cmd) { //nolint:g
 		return true, nil
 
 	case "enter":
-		if m.tabs.Active == 8 && m.stageEditMode {
+		if m.tabs.Active == 9 && m.stageEditMode {
 			return true, m.commitStageEditCmd()
 		}
 		if err := m.validateAll(); err != nil {

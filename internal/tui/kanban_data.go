@@ -3,6 +3,7 @@ package tui
 import (
 	"slices"
 
+	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/scoring"
 )
@@ -53,25 +54,8 @@ func sectionColumnID(section string) string {
 	}
 }
 
-func sectionColumnIcon(section string) string {
-	switch section {
-	case models.SectionInbox:
-		return "⌐"
-	case models.SectionNext:
-		return "→"
-	case models.SectionWaiting:
-		return "⌛"
-	case models.SectionSomeday:
-		return "○"
-	case models.SectionReview:
-		return "◎"
-	case models.SectionStandby:
-		return "⏸"
-	case models.SectionCompleted:
-		return "✓"
-	default:
-		return "·"
-	}
+func sectionColumnIcon(_ string) string {
+	return "@"
 }
 
 // statusColumnDefs returns ordered KanbanColumn definitions for Status mode.
@@ -157,8 +141,9 @@ func scoreColumnDefs() []KanbanColumn {
 }
 
 // columnForTask returns the column ID that the task belongs to for the given mode.
-// For ScoreBuckets mode a scoring profile may be nil (task goes to "0-25").
-func columnForTask(task *models.Task, mode KanbanMode, profile *scoring.ScoringProfile) string {
+// For ScoreBuckets mode the profile is resolved per-project via cfg; if no
+// profile is assigned the task falls into "0-25".
+func columnForTask(task *models.Task, mode KanbanMode, cfg *config.Config, projectID string) string {
 	switch mode {
 	case KanbanModeSection:
 		s := task.Section
@@ -199,16 +184,17 @@ func columnForTask(task *models.Task, mode KanbanMode, profile *scoring.ScoringP
 		return task.CustomSection
 
 	case KanbanModeScoreBuckets:
+		profile := cfg.GetProjectScoringProfile(projectID)
 		if profile == nil {
 			return "0-25"
 		}
-		score := scoring.ComputeScore(task, profile)
+		score := scoring.NormalizedScore(task, profile)
 		switch {
-		case score > 0.75:
+		case score > 225:
 			return "76-100"
-		case score > 0.5:
+		case score > 150:
 			return "51-75"
-		case score > 0.25:
+		case score > 75:
 			return "26-50"
 		default:
 			return "0-25"
@@ -246,7 +232,7 @@ func rebuildColumns(
 	mode KanbanMode,
 	prev []KanbanColumn,
 	sectionOrder, statusOrder, stages, customSections []string,
-	profile *scoring.ScoringProfile,
+	cfg *config.Config,
 ) []KanbanColumn {
 	// Build base column set.
 	var cols []KanbanColumn
@@ -289,7 +275,7 @@ func rebuildColumns(
 
 	// Distribute cards.
 	for _, card := range cards {
-		colID := columnForTask(card.Task, mode, profile)
+		colID := columnForTask(card.Task, mode, cfg, card.Project.ID)
 		if ci, ok := idx[colID]; ok {
 			cols[ci].Tasks = append(cols[ci].Tasks, card)
 		} else {

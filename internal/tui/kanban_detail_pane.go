@@ -46,6 +46,9 @@ func (m *KanbanModel) renderKanbanDetailPane() string {
 	sep := MutedStyle.Render(" │ ")
 
 	var parts []string
+	if m.crossProject && project != nil {
+		parts = append(parts, MutedStyle.Render(project.Name))
+	}
 	if task.Priority > 0 {
 		parts = append(parts, renderPriorityBadge(task.Priority))
 	}
@@ -53,8 +56,16 @@ func (m *KanbanModel) renderKanbanDetailPane() string {
 		dueStr := FormatRelativeDueTask(task, true, "Jan 2")
 		parts = append(parts, "Due: "+dueStr)
 	}
-	if m.crossProject && project != nil {
-		parts = append(parts, MutedStyle.Render(project.Name))
+	if project != nil {
+		if profile := m.config.GetProjectScoringProfile(project.ID); profile != nil {
+			if scoreBadge := RenderScoreBadge(task, profile); scoreBadge != "" {
+				scoreStr := scoreBadge
+				if profile.Name != "" {
+					scoreStr += " " + MutedStyle.Render("("+profile.Name+")")
+				}
+				parts = append(parts, scoreStr)
+			}
+		}
 	}
 	if !task.UpdatedAt.IsZero() {
 		parts = append(parts, MutedStyle.Render(formatRelativeTime(task.UpdatedAt)))

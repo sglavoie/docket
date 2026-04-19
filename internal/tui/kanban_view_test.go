@@ -151,12 +151,12 @@ func TestKanbanRender_NarrowTerminal_SingleColumnMode(t *testing.T) {
 }
 
 func TestKanbanRender_WideTerminal_NormalHint(t *testing.T) {
-	// Width=200: multiple columns fit → normal ctrl+g hint
+	// Width=200: multiple columns fit → normal cycle mode hint
 	cols := []KanbanColumn{makeColN("inbox", 1), makeColN("next", 1)}
 	m := newRenderKanban(200, 24, cols)
 	got := kanbanRender(m)
-	if !strings.Contains(got, "ctrl+g") {
-		t.Errorf("wide terminal: expected ctrl+g hint, got:\n%s", got)
+	if !strings.Contains(got, "cycle mode") {
+		t.Errorf("wide terminal: expected cycle mode hint, got:\n%s", got)
 	}
 }
 

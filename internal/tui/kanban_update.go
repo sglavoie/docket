@@ -94,8 +94,11 @@ func (m *KanbanModel) handleKanbanKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) 
 	case "tab":
 		m.detailPaneVisible = !m.detailPaneVisible
 		return m, nil
-	case "ctrl+g":
+	case "`":
 		m.cycleAxisMode()
+		return m, nil
+	case "~":
+		m.cycleAxisModeBack()
 		return m, nil
 	case "@":
 		m.showAxisManager = true
@@ -111,6 +114,12 @@ func (m *KanbanModel) handleKanbanKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) 
 	case "V":
 		m.ToggleMode(&m.statusMsg, "Multi-select mode — space: select, H/L: bulk move, esc: exit")
 		return m, nil
+	case "?":
+		vt, vn := ViewKanban, "Kanban"
+		if m.crossProject {
+			vt, vn = ViewCrossProjectKanban, "Cross-Project Kanban"
+		}
+		return m, helpCmd(vt, vn, GetKeybindingRegistry().GetForView(vt))
 	}
 
 	// ── Direct action keys ────────────────────────────────────────────────
@@ -230,26 +239,82 @@ func (m *KanbanModel) handleKanbanPrefixKey(key string) (tea.Model, tea.Cmd) {
 func (m *KanbanModel) visibleBodyRows() int {
 	const fixedOverhead = 4
 	rows := m.height - fixedOverhead
+	if m.detailPaneVisible {
+		rows -= 1 + m.detailPaneHeight()
+	}
 	if rows < 1 {
 		rows = 1
 	}
 	return rows
 }
 
+// countDisplayRows returns the total number of display rows for a column,
+// including project group headers in cross-project mode.
+func (m *KanbanModel) countDisplayRows(colIdx int) int {
+	if colIdx < 0 || colIdx >= len(m.columns) {
+		return 0
+	}
+	col := &m.columns[colIdx]
+	if !m.crossProject || len(col.Tasks) == 0 {
+		return len(col.Tasks)
+	}
+	count := 0
+	lastProj := ""
+	for _, card := range col.Tasks {
+		projName := ""
+		if card.Project != nil {
+			projName = card.Project.Name
+		}
+		if projName != lastProj {
+			count++ // header row
+			lastProj = projName
+		}
+		count++
+	}
+	return count
+}
+
+// displayRowForTask returns the display row index for the given task index,
+// accounting for project group headers in cross-project mode.
+func (m *KanbanModel) displayRowForTask(colIdx, taskIdx int) int {
+	if colIdx < 0 || colIdx >= len(m.columns) {
+		return taskIdx
+	}
+	col := &m.columns[colIdx]
+	if !m.crossProject || len(col.Tasks) == 0 {
+		return taskIdx
+	}
+	dispRow := 0
+	lastProj := ""
+	for ti := 0; ti <= taskIdx && ti < len(col.Tasks); ti++ {
+		projName := ""
+		if col.Tasks[ti].Project != nil {
+			projName = col.Tasks[ti].Project.Name
+		}
+		if projName != lastProj {
+			dispRow++ // header row
+			lastProj = projName
+		}
+		if ti < taskIdx {
+			dispRow++
+		}
+	}
+	return dispRow
+}
+
 // clampScrollToVisible adjusts col.ScrollOffset so that col.Cursor is rendered
 // as an actual card (not hidden behind the overflow indicator).
 //
-// The kanban renderer reserves the last row of each column for an overflow
-// indicator when more tasks exist than visible rows. To guarantee the cursor
-// card is always rendered, we keep the cursor within [ScrollOffset,
-// ScrollOffset + visibleCards) where visibleCards = bodyRows - 1 (the
-// second-to-last row at most), with a minimum of 1.
+// ScrollOffset is in display-row space (includes project group headers in
+// cross-project mode). The cursor is in task-index space and is mapped to
+// display-row space via displayRowForTask.
 func (m *KanbanModel) clampScrollToVisible(colIdx int) {
 	if colIdx < 0 || colIdx >= len(m.columns) {
 		return
 	}
 	col := &m.columns[colIdx]
 	bodyRows := m.visibleBodyRows()
+	totalDispRows := m.countDisplayRows(colIdx)
 
 	// Reserve one row for the potential overflow indicator.
 	visibleCards := bodyRows - 1
@@ -257,18 +322,30 @@ func (m *KanbanModel) clampScrollToVisible(colIdx int) {
 		visibleCards = 1
 	}
 
+	// Get the display row of the cursor task.
+	cursorDispRow := m.displayRowForTask(colIdx, col.Cursor)
+
 	// Cursor above visible area — scroll up.
-	if col.Cursor < col.ScrollOffset {
-		col.ScrollOffset = col.Cursor
+	if cursorDispRow < col.ScrollOffset {
+		col.ScrollOffset = cursorDispRow
 	}
 
 	// Cursor below visible area — scroll down.
-	if col.Cursor >= col.ScrollOffset+visibleCards {
-		col.ScrollOffset = col.Cursor - visibleCards + 1
+	if cursorDispRow >= col.ScrollOffset+visibleCards {
+		col.ScrollOffset = cursorDispRow - visibleCards + 1
 	}
 
 	if col.ScrollOffset < 0 {
 		col.ScrollOffset = 0
+	}
+
+	// Don't scroll past end.
+	maxOff := totalDispRows - bodyRows
+	if maxOff < 0 {
+		maxOff = 0
+	}
+	if col.ScrollOffset > maxOff {
+		col.ScrollOffset = maxOff
 	}
 }
 
