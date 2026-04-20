@@ -42,7 +42,7 @@ func (m *AppModel) handleQuickSwitchPrefixKey(msg tea.KeyPressMsg) (*AppModel, t
 		if !ok {
 			return m, nil
 		}
-		result := applyStatusChange(simplePersist(m.persister), entry.Project, entry.Task.ID, status)
+		result := applyStatusChange(simplePersistWithUndo(m.persister, m.config, StatusVerb(status)+" Task"), entry.Project, entry.Task.ID, status)
 		m.setSuccessStatus(result.StatusMessage)
 	}
 
@@ -51,7 +51,7 @@ func (m *AppModel) handleQuickSwitchPrefixKey(msg tea.KeyPressMsg) (*AppModel, t
 		if !ok {
 			return m, nil
 		}
-		result := applyPriorityChange(simplePersist(m.persister), entry.Project, entry.Task.ID, priority)
+		result := applyPriorityChange(simplePersistWithUndo(m.persister, m.config, "Set Priority"), entry.Project, entry.Task.ID, priority)
 		m.setSuccessStatus(result.StatusMessage)
 	}
 

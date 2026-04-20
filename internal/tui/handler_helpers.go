@@ -53,6 +53,7 @@ func (m *AppModel) setInfoStatus(msg string) {
 func (m *AppModel) clearStatus() {
 	m.statusMessage = ""
 	m.statusIsInfo = false
+	m.err = nil
 }
 
 // invalidateFilterCaches clears data-dependent filter caches after a project

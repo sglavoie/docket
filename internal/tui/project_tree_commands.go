@@ -2,6 +2,8 @@ package tui
 
 import (
 	"fmt"
+	"maps"
+	"slices"
 
 	tea "charm.land/bubbletea/v2"
 
@@ -328,6 +330,8 @@ func (m *ProjectTreeModel) deleteTask() tea.Cmd {
 	m.deleteTarget = nil
 
 	m.setUndoContext("Delete Task", fmt.Sprintf("#%d %s", task.ShortID, task.Title))
+	deleteIDs := collectDescendantIDs(m.project.Tasks, map[string]bool{task.ID: true})
+	m.setUndoTaskIDs(slices.Collect(maps.Keys(deleteIDs)))
 
 	// Exit focus mode if focused task is being deleted
 	if m.focusedTask != nil && m.focusedTask.ID == task.ID {
@@ -353,6 +357,8 @@ func (m *ProjectTreeModel) bulkDeleteTasks() tea.Cmd {
 	}
 
 	m.setUndoContext("Delete Tasks", fmt.Sprintf("%d tasks", taskCount))
+	allDeleteIDs := collectDescendantIDs(m.project.Tasks, m.selectedTasks)
+	m.setUndoTaskIDs(slices.Collect(maps.Keys(allDeleteIDs)))
 
 	// Exit focus mode if focused task is among those being deleted
 	if m.focusedTask != nil && m.selectedTasks[m.focusedTask.ID] {

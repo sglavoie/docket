@@ -2,6 +2,8 @@ package tui
 
 import (
 	"fmt"
+	"maps"
+	"slices"
 
 	tea "charm.land/bubbletea/v2"
 
@@ -223,6 +225,9 @@ func (m *OutlinerModel) executeDelete() (tea.Model, tea.Cmd) {
 	m.deleteTarget = nil
 	m.clearStatus()
 
+	m.setUndoContext("Delete Task", fmt.Sprintf("#%d %s", task.ShortID, task.Title))
+	deleteIDs := collectDescendantIDs(m.project.Tasks, map[string]bool{task.ID: true})
+	m.setUndoTaskIDs(slices.Collect(maps.Keys(deleteIDs)))
 	pf := m.workflowPersistFn()
 	result := applyDeleteTask(pf, m.projectService, m.project, task.ID)
 	if result.Err != nil {
@@ -294,6 +299,7 @@ func (m *OutlinerModel) executeBulkDelete() (tea.Model, tea.Cmd) {
 
 	// Persist once
 	m.setUndoContext("Bulk Delete", fmt.Sprintf("%d tasks", count))
+	m.setUndoTaskIDs(slices.Collect(maps.Keys(idsToDelete)))
 	if err := m.saveAndRefreshWithPrevStates(prevStates); err != nil {
 		m.err = err
 		return m, func() tea.Msg { return ErrorMsg{Err: err} }

@@ -385,7 +385,7 @@ func (m *AppModel) routeGlobalTaskPickerResult(msg GlobalTaskPickerResultMsg) (b
 // handleGlobalStatusApplied applies a status change from the global status update flow.
 func (m *AppModel) handleGlobalStatusApplied(msg GlobalStatusAppliedMsg) (bool, tea.Cmd) {
 	m.statusQuickPicker = nil
-	result := applyStatusChange(simplePersist(m.persister), msg.Project, msg.Task.ID, msg.NewStatus)
+	result := applyStatusChange(simplePersistWithUndo(m.persister, m.config, StatusVerb(msg.NewStatus)+" Task"), msg.Project, msg.Task.ID, msg.NewStatus)
 	if result.Err != nil {
 		return true, func() tea.Msg { return ErrorMsg{Err: result.Err} }
 	}
@@ -403,7 +403,7 @@ func (m *AppModel) handleGlobalStatusApplied(msg GlobalStatusAppliedMsg) (bool, 
 // handleGlobalPriorityApplied applies a priority change from the global priority update flow.
 func (m *AppModel) handleGlobalPriorityApplied(msg GlobalPriorityAppliedMsg) (bool, tea.Cmd) {
 	m.priorityQuickPicker = nil
-	result := applyPriorityChange(simplePersist(m.persister), msg.Project, msg.Task.ID, msg.NewPriority)
+	result := applyPriorityChange(simplePersistWithUndo(m.persister, m.config, "Set Priority"), msg.Project, msg.Task.ID, msg.NewPriority)
 	if result.Err != nil {
 		return true, func() tea.Msg { return ErrorMsg{Err: result.Err} }
 	}
@@ -423,9 +423,9 @@ func (m *AppModel) handleGlobalDueDateApplied(msg GlobalDueDateAppliedMsg) (bool
 	m.dueDateQuickPicker = nil
 	var result TaskOpResult
 	if msg.Clear {
-		result = applyClearDueDate(simplePersist(m.persister), msg.Project, msg.Task.ID)
+		result = applyClearDueDate(simplePersistWithUndo(m.persister, m.config, "Clear Due Date"), msg.Project, msg.Task.ID)
 	} else {
-		result = applyQuickDueDate(simplePersist(m.persister), msg.Project, msg.Task.ID, msg.DaysFromNow)
+		result = applyQuickDueDate(simplePersistWithUndo(m.persister, m.config, "Set Due Date"), msg.Project, msg.Task.ID, msg.DaysFromNow)
 	}
 	if result.Err != nil {
 		return true, func() tea.Msg { return ErrorMsg{Err: result.Err} }
@@ -444,7 +444,7 @@ func (m *AppModel) handleGlobalDueDateApplied(msg GlobalDueDateAppliedMsg) (bool
 // handleGlobalSectionChanged applies a section change from the global ;ts section change flow.
 func (m *AppModel) handleGlobalSectionChanged(msg GlobalSectionChangedMsg) (bool, tea.Cmd) {
 	m.sectionChangeQuickPicker = nil
-	result := applySectionChange(simplePersist(m.persister), msg.Project, msg.Task.ID, msg.Section)
+	result := applySectionChange(simplePersistWithUndo(m.persister, m.config, "Move to Section"), msg.Project, msg.Task.ID, msg.Section)
 	if result.Err != nil {
 		return true, func() tea.Msg { return ErrorMsg{Err: result.Err} }
 	}

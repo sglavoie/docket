@@ -33,6 +33,23 @@ func simplePersist(p Persister) persistFn {
 	}
 }
 
+// simplePersistWithUndo returns a persistFn that records an undo snapshot
+// before persisting. Used by secondary views that have config access but don't
+// need the full workflow pipeline (e.g. pinned tasks popup, quick switch).
+func simplePersistWithUndo(p Persister, cfg *config.Config, undoAction string) persistFn {
+	return func(project *models.Project, taskID string, mutate func(*models.Task)) TaskOpResult {
+		if cfg != nil && cfg.UndoHistoryDepth != nil && *cfg.UndoHistoryDepth > 0 {
+			task := project.GetTaskByID(taskID)
+			ctx := ""
+			if task != nil {
+				ctx = fmt.Sprintf("#%d %s", task.ShortID, task.Title)
+			}
+			_ = p.RecordUndoSnapshot(project, undoAction, ctx, *cfg.UndoHistoryDepth, []string{taskID})
+		}
+		return withPersist(p, project, taskID, mutate)
+	}
+}
+
 // workflowPersist returns a persistFn that runs the full workflow pipeline
 // (auto-unblock, recurring generation, workflow rules, root reorder, undo
 // snapshots). The optsProvider is called at persist time so undo context
@@ -203,7 +220,10 @@ func persistWithWorkflow(opts WorkflowSaveOptions) error {
 	opts.Project.ReorderRootTasksByCompletion()
 
 	// Record undo snapshot BEFORE backup+save so it captures the pre-mutation state
-	if opts.UndoDepth > 0 && opts.UndoAction != "" {
+	if opts.UndoDepth > 0 {
+		if opts.UndoAction == "" {
+			opts.UndoAction = "Task Modified"
+		}
 		_ = opts.Persister.RecordUndoSnapshot(opts.Project, opts.UndoAction, opts.UndoContext, opts.UndoDepth, opts.UndoTaskIDs)
 	}
 

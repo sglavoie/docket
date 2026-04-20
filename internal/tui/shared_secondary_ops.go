@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"fmt"
 	"strconv"
 	"time"
 
@@ -33,14 +34,15 @@ type taskOpsView interface {
 // applies the result to the view, reloads, and returns the command.
 // It uses the full workflow pipeline (auto-unblock, recurring generation,
 // workflow rules, root reorder) so secondary views get parity with primary views.
-func taskOpsApply(v taskOpsView, op func(pf persistFn, project *models.Project, taskID string) TaskOpResult) tea.Cmd {
+func taskOpsApply(v taskOpsView, undoAction string, op func(pf persistFn, project *models.Project, taskID string) TaskOpResult) tea.Cmd {
 	task, project := v.getTaskRef()
 	if task == nil {
 		return nil
 	}
 
+	undoCtx := fmt.Sprintf("#%d %s", task.ShortID, task.Title)
 	pf := workflowPersist(func() WorkflowSaveOptions {
-		return BuildWorkflowOpts(v.getPersister(), project, v.getConfig(), v.getConfigManager(), nil, "", "", nil)
+		return BuildWorkflowOpts(v.getPersister(), project, v.getConfig(), v.getConfigManager(), nil, undoAction, undoCtx, []string{task.ID})
 	})
 	result := op(pf, project, task.ID)
 	if result.Err != nil {
@@ -58,7 +60,7 @@ func taskOpsApply(v taskOpsView, op func(pf persistFn, project *models.Project, 
 
 // taskOpsChangeStatus changes the status of the task at cursor.
 func taskOpsChangeStatus(v taskOpsView, newStatus models.TaskStatus) (tea.Model, tea.Cmd) {
-	cmd := taskOpsApply(v, func(pf persistFn, project *models.Project, taskID string) TaskOpResult {
+	cmd := taskOpsApply(v, StatusVerb(newStatus)+" Task", func(pf persistFn, project *models.Project, taskID string) TaskOpResult {
 		return applyStatusChange(pf, project, taskID, newStatus)
 	})
 	return v, cmd
@@ -67,7 +69,7 @@ func taskOpsChangeStatus(v taskOpsView, newStatus models.TaskStatus) (tea.Model,
 // taskOpsChangePriority changes the priority of the task at cursor.
 func taskOpsChangePriority(v taskOpsView, key string) (tea.Model, tea.Cmd) {
 	priority, _ := strconv.Atoi(key)
-	cmd := taskOpsApply(v, func(pf persistFn, project *models.Project, taskID string) TaskOpResult {
+	cmd := taskOpsApply(v, "Set Priority", func(pf persistFn, project *models.Project, taskID string) TaskOpResult {
 		return applyPriorityChange(pf, project, taskID, priority)
 	})
 	return v, cmd
@@ -75,7 +77,7 @@ func taskOpsChangePriority(v taskOpsView, key string) (tea.Model, tea.Cmd) {
 
 // taskOpsChangeStage changes the workflow stage of the task at cursor.
 func taskOpsChangeStage(v taskOpsView, stage string) (tea.Model, tea.Cmd) {
-	cmd := taskOpsApply(v, func(pf persistFn, project *models.Project, taskID string) TaskOpResult {
+	cmd := taskOpsApply(v, "Set Stage", func(pf persistFn, project *models.Project, taskID string) TaskOpResult {
 		return applyStageChange(pf, project, taskID, stage)
 	})
 	return v, cmd
@@ -83,7 +85,7 @@ func taskOpsChangeStage(v taskOpsView, stage string) (tea.Model, tea.Cmd) {
 
 // taskOpsSetQuickDueDate sets the due date to a relative number of days from today.
 func taskOpsSetQuickDueDate(v taskOpsView, daysFromNow int) (tea.Model, tea.Cmd) {
-	cmd := taskOpsApply(v, func(pf persistFn, project *models.Project, taskID string) TaskOpResult {
+	cmd := taskOpsApply(v, "Set Due Date", func(pf persistFn, project *models.Project, taskID string) TaskOpResult {
 		return applyQuickDueDate(pf, project, taskID, daysFromNow)
 	})
 	return v, cmd
@@ -91,7 +93,7 @@ func taskOpsSetQuickDueDate(v taskOpsView, daysFromNow int) (tea.Model, tea.Cmd)
 
 // taskOpsClearDueDate clears the due date from the task at cursor.
 func taskOpsClearDueDate(v taskOpsView) (tea.Model, tea.Cmd) {
-	cmd := taskOpsApply(v, func(pf persistFn, project *models.Project, taskID string) TaskOpResult {
+	cmd := taskOpsApply(v, "Clear Due Date", func(pf persistFn, project *models.Project, taskID string) TaskOpResult {
 		return applyClearDueDate(pf, project, taskID)
 	})
 	return v, cmd
@@ -99,7 +101,7 @@ func taskOpsClearDueDate(v taskOpsView) (tea.Model, tea.Cmd) {
 
 // taskOpsQuickSnooze sets the snooze date on the task at cursor.
 func taskOpsQuickSnooze(v taskOpsView, snoozeDate *time.Time) (tea.Model, tea.Cmd) {
-	cmd := taskOpsApply(v, func(pf persistFn, project *models.Project, taskID string) TaskOpResult {
+	cmd := taskOpsApply(v, "Snooze", func(pf persistFn, project *models.Project, taskID string) TaskOpResult {
 		return applyQuickSnooze(pf, project, taskID, snoozeDate)
 	})
 	return v, cmd
@@ -107,7 +109,7 @@ func taskOpsQuickSnooze(v taskOpsView, snoozeDate *time.Time) (tea.Model, tea.Cm
 
 // taskOpsToggleActive toggles the Active flag on the task at cursor.
 func taskOpsToggleActive(v taskOpsView) (tea.Model, tea.Cmd) {
-	cmd := taskOpsApply(v, func(pf persistFn, project *models.Project, taskID string) TaskOpResult {
+	cmd := taskOpsApply(v, "Toggle Active", func(pf persistFn, project *models.Project, taskID string) TaskOpResult {
 		return applyToggleActive(pf, project, taskID)
 	})
 	return v, cmd
@@ -115,7 +117,7 @@ func taskOpsToggleActive(v taskOpsView) (tea.Model, tea.Cmd) {
 
 // taskOpsRemoveFromFocus always sets Active = false (FocusView-specific).
 func taskOpsRemoveFromFocus(v taskOpsView, shortID int) (tea.Model, tea.Cmd) {
-	cmd := taskOpsApply(v, func(pf persistFn, project *models.Project, taskID string) TaskOpResult {
+	cmd := taskOpsApply(v, "Remove from Focus", func(pf persistFn, project *models.Project, taskID string) TaskOpResult {
 		return applyRemoveFromFocus(pf, project, taskID, shortID)
 	})
 	return v, cmd
@@ -123,7 +125,7 @@ func taskOpsRemoveFromFocus(v taskOpsView, shortID int) (tea.Model, tea.Cmd) {
 
 // taskOpsSectionMove moves the task at cursor to the specified GTD section.
 func taskOpsSectionMove(v taskOpsView, section string) (tea.Model, tea.Cmd) {
-	cmd := taskOpsApply(v, func(pf persistFn, project *models.Project, taskID string) TaskOpResult {
+	cmd := taskOpsApply(v, "Move to Section", func(pf persistFn, project *models.Project, taskID string) TaskOpResult {
 		return applySectionChange(pf, project, taskID, section)
 	})
 	return v, cmd
@@ -131,7 +133,7 @@ func taskOpsSectionMove(v taskOpsView, section string) (tea.Model, tea.Cmd) {
 
 // taskOpsTogglePinned toggles the Pinned flag on the task at cursor.
 func taskOpsTogglePinned(v taskOpsView) (tea.Model, tea.Cmd) {
-	cmd := taskOpsApply(v, func(pf persistFn, project *models.Project, taskID string) TaskOpResult {
+	cmd := taskOpsApply(v, "Toggle Pin", func(pf persistFn, project *models.Project, taskID string) TaskOpResult {
 		return applyTogglePinned(pf, project, taskID)
 	})
 	return v, cmd
@@ -139,7 +141,7 @@ func taskOpsTogglePinned(v taskOpsView) (tea.Model, tea.Cmd) {
 
 // taskOpsToggleDimmed toggles the Dimmed flag on the task at cursor.
 func taskOpsToggleDimmed(v taskOpsView) (tea.Model, tea.Cmd) {
-	cmd := taskOpsApply(v, func(pf persistFn, project *models.Project, taskID string) TaskOpResult {
+	cmd := taskOpsApply(v, "Toggle Dim", func(pf persistFn, project *models.Project, taskID string) TaskOpResult {
 		return applyToggleDimmed(pf, project, taskID)
 	})
 	return v, cmd
@@ -148,7 +150,7 @@ func taskOpsToggleDimmed(v taskOpsView) (tea.Model, tea.Cmd) {
 // taskOpsDeleteTask deletes the task at cursor.
 func taskOpsDeleteTask(v taskOpsView) (tea.Model, tea.Cmd) {
 	persister := v.getPersister()
-	cmd := taskOpsApply(v, func(pf persistFn, project *models.Project, taskID string) TaskOpResult {
+	cmd := taskOpsApply(v, "Delete Task", func(pf persistFn, project *models.Project, taskID string) TaskOpResult {
 		return applyDeleteTask(pf, persister, project, taskID)
 	})
 	return v, cmd

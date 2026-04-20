@@ -418,7 +418,7 @@ func (m *AppModel) outlinerCommands() []Command { //nolint:gocyclo
 				if task == nil || m.outliner == nil {
 					return nil
 				}
-				pf := simplePersist(NewProjectService())
+				pf := simplePersistWithUndo(NewProjectService(), m.config, "Toggle Dim")
 				result := applyToggleDimmed(pf, m.outliner.project, task.ID)
 				if result.Err != nil {
 					return ErrorMsg{Err: result.Err}

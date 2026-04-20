@@ -66,6 +66,8 @@ func (m *OutlinerModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) { //nol
 			if cursorTask == nil {
 				return m, nil
 			}
+			m.setUndoContext(StatusVerb(status)+" Task", fmt.Sprintf("#%d %s", cursorTask.ShortID, cursorTask.Title))
+			m.undo.TaskIDs = []string{cursorTask.ID}
 			pf := m.workflowPersistFn()
 			result := applyStatusChange(pf, m.project, cursorTask.ID, status)
 			if result.Err != nil {
