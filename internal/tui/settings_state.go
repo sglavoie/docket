@@ -12,6 +12,22 @@ type settingsSection struct {
 	FieldCount int
 }
 
+// Tab index constants for settings tabs. Used with tabFieldStart to compute
+// absolute focus indices, avoiding fragile hardcoded values.
+const (
+	tabGeneral       = 0
+	tabPalette       = 1
+	tabReview        = 2
+	tabBehavior      = 3
+	tabAttachments   = 4
+	tabProjectTree   = 5
+	tabOutliner      = 6
+	tabKanban        = 7
+	tabNotifications = 8
+	tabStages        = 9
+	tabAppearance    = 10
+)
+
 var (
 	settingsTabNames = []string{"General", "Palette", "Review", "Behavior", "Attachments", "Project Tree", "Outliner", "Kanban", "Notifications", "Stages", "Appearance"}
 

@@ -19,9 +19,6 @@ const (
 	presetModeResetConfirm            // y/n confirmation
 )
 
-// paletteTabIndex is the settings tab index for the Palette tab.
-const paletteTabIndex = 1
-
 // presetErrMsg carries an error from an async preset operation.
 type presetErrMsg struct{ err string }
 

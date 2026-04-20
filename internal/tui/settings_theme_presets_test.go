@@ -40,7 +40,7 @@ func makePresetTestModel(t *testing.T) (*SettingsModel, string) {
 // the theme file in the themes directory.
 func TestPresetSave_WritesFile(t *testing.T) {
 	m, dir := makePresetTestModel(t)
-	m.tabs.Active = paletteTabIndex
+	m.tabs.Active = tabPalette
 
 	// Open save mode.
 	m.openPresetSave()
@@ -71,7 +71,7 @@ func TestPresetSave_WritesFile(t *testing.T) {
 // in presetModeNone when no preset files exist.
 func TestPresetLoad_NoPresets(t *testing.T) {
 	m, _ := makePresetTestModel(t)
-	m.tabs.Active = paletteTabIndex
+	m.tabs.Active = tabPalette
 
 	m.openPresetLoad()
 
@@ -87,7 +87,7 @@ func TestPresetLoad_NoPresets(t *testing.T) {
 // the palette inputs from the loaded ThemeFile.
 func TestPresetLoad_UpdatesInputs(t *testing.T) {
 	m, _ := makePresetTestModel(t)
-	m.tabs.Active = paletteTabIndex
+	m.tabs.Active = tabPalette
 
 	// Write a preset manually.
 	presetTheme := config.Theme{
@@ -140,7 +140,7 @@ func TestPresetLoad_UpdatesInputs(t *testing.T) {
 // TestPresetReset_ClearsInputs verifies that execPresetReset blanks all palette inputs.
 func TestPresetReset_ClearsInputs(t *testing.T) {
 	m, _ := makePresetTestModel(t)
-	m.tabs.Active = paletteTabIndex
+	m.tabs.Active = tabPalette
 
 	// Confirm there's something to reset.
 	if m.bgColorInput.Value() == "" && m.normalTextInput.Value() == "" {
@@ -185,7 +185,7 @@ func TestPresetReset_ClearsInputs(t *testing.T) {
 // name in save mode closes the overlay and returns a save cmd.
 func TestPresetSaveKey_EnterSubmits(t *testing.T) {
 	m, _ := makePresetTestModel(t)
-	m.tabs.Active = paletteTabIndex
+	m.tabs.Active = tabPalette
 	m.openPresetSave()
 	m.themePresetInput.SetValue("demo")
 
@@ -205,7 +205,7 @@ func TestPresetSaveKey_EnterSubmits(t *testing.T) {
 // and keeps save mode active.
 func TestPresetSaveKey_EmptyNameRejects(t *testing.T) {
 	m, _ := makePresetTestModel(t)
-	m.tabs.Active = paletteTabIndex
+	m.tabs.Active = tabPalette
 	m.openPresetSave()
 	m.themePresetInput.SetValue("")
 
@@ -227,7 +227,7 @@ func TestPresetSaveKey_EmptyNameRejects(t *testing.T) {
 // TestPresetResetKey_Confirm verifies y/Y confirms the reset.
 func TestPresetResetKey_Confirm(t *testing.T) {
 	m, _ := makePresetTestModel(t)
-	m.tabs.Active = paletteTabIndex
+	m.tabs.Active = tabPalette
 	m.themePresetMode = presetModeResetConfirm
 
 	handled, cmd := m.handlePresetResetKey("y")
@@ -265,7 +265,7 @@ func TestPresetResetKey_Cancel(t *testing.T) {
 // and asserts the returned message signals a non-empty remaining list.
 func TestExecPresetDelete_RefreshesList(t *testing.T) {
 	m, dir := makePresetTestModel(t)
-	m.tabs.Active = paletteTabIndex
+	m.tabs.Active = tabPalette
 
 	tf1 := config.NewThemeFile("alpha", "dark", "dev", config.Theme{})
 	tf2 := config.NewThemeFile("beta", "dark", "dev", config.Theme{})
@@ -310,7 +310,7 @@ func TestExecPresetDelete_RefreshesList(t *testing.T) {
 // asserts the returned message signals an empty list.
 func TestExecPresetDelete_AutoClosesOnEmpty(t *testing.T) {
 	m, _ := makePresetTestModel(t)
-	m.tabs.Active = paletteTabIndex
+	m.tabs.Active = tabPalette
 
 	tf := config.NewThemeFile("only-one", "dark", "dev", config.Theme{})
 	if err := m.configManager.WriteTheme(tf); err != nil {
@@ -339,7 +339,7 @@ func TestExecPresetDelete_AutoClosesOnEmpty(t *testing.T) {
 // activates the confirm dialog.
 func TestHandlePresetLoadKey_DShowsConfirm(t *testing.T) {
 	m, _ := makePresetTestModel(t)
-	m.tabs.Active = paletteTabIndex
+	m.tabs.Active = tabPalette
 
 	tf := config.NewThemeFile("my-preset", "dark", "dev", config.Theme{})
 	if err := m.configManager.WriteTheme(tf); err != nil {
@@ -363,7 +363,7 @@ func TestHandlePresetLoadKey_DShowsConfirm(t *testing.T) {
 // dialog while staying in presetModeLoad.
 func TestHandlePresetLoadKey_ConfirmCancel(t *testing.T) {
 	m, _ := makePresetTestModel(t)
-	m.tabs.Active = paletteTabIndex
+	m.tabs.Active = tabPalette
 
 	tf := config.NewThemeFile("cancel-me", "dark", "dev", config.Theme{})
 	if err := m.configManager.WriteTheme(tf); err != nil {
@@ -393,7 +393,7 @@ func TestHandlePresetLoadKey_ConfirmCancel(t *testing.T) {
 // does not activate the confirm dialog.
 func TestHandlePresetLoadKey_EmptyListDNoop(t *testing.T) {
 	m, _ := makePresetTestModel(t)
-	m.tabs.Active = paletteTabIndex
+	m.tabs.Active = tabPalette
 	m.themePresetMode = presetModeLoad
 	m.themePresetList = nil
 
@@ -410,7 +410,7 @@ func TestHandlePresetLoadKey_EmptyListDNoop(t *testing.T) {
 // produces a model with matching input values.
 func TestPresetRoundTrip_SaveExportReimport(t *testing.T) {
 	m, _ := makePresetTestModel(t)
-	m.tabs.Active = paletteTabIndex
+	m.tabs.Active = tabPalette
 
 	// Save current inputs as "roundtrip" preset.
 	originalBg := m.bgColorInput.Value()

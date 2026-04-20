@@ -44,19 +44,19 @@ func (m *SettingsModel) focusLineInContent() int {
 	localIdx := m.focusIndex - subTabFieldStart(tab, m.subTab)
 
 	switch tab {
-	case 0:
+	case tabGeneral:
 		return localIdx * 5
-	case 1:
+	case tabPalette:
 		return localIdx * 3
-	case 2:
+	case tabReview:
 		return 3 + localIdx*4
-	case 3:
+	case tabBehavior:
 		return localIdx * 4
-	case 4:
+	case tabAttachments:
 		return 3 + localIdx*5
-	case 5:
+	case tabProjectTree:
 		return 3 + localIdx
-	case 6:
+	case tabOutliner:
 		switch m.subTab {
 		case 0:
 			return 0
@@ -68,9 +68,9 @@ func (m *SettingsModel) focusLineInContent() int {
 		case 2:
 			return localIdx
 		}
-	case 7:
+	case tabKanban:
 		return localIdx * 3
-	case 8:
+	case tabNotifications:
 		switch m.subTab {
 		case 0:
 			return localIdx * 4
@@ -99,9 +99,9 @@ func (m *SettingsModel) focusLineInContent() int {
 		case 2:
 			return localIdx * 2
 		}
-	case 9:
+	case tabStages:
 		return 3
-	case 10:
+	case tabAppearance:
 		return 0
 	}
 	return 0
@@ -110,27 +110,27 @@ func (m *SettingsModel) focusLineInContent() int {
 func (m *SettingsModel) View() tea.View {
 	var content string
 	switch m.tabs.Active {
-	case 0:
+	case tabGeneral:
 		content = m.renderGeneralTab()
-	case 1:
+	case tabPalette:
 		content = m.renderPaletteTab()
-	case 2:
+	case tabReview:
 		content = m.renderReviewTab()
-	case 3:
+	case tabBehavior:
 		content = m.renderBehaviorTab()
-	case 4:
+	case tabAttachments:
 		content = m.renderAttachmentsTab()
-	case 5:
+	case tabProjectTree:
 		content = m.renderProjectTreeTab()
-	case 6:
+	case tabOutliner:
 		content = m.renderOutlinerTab()
-	case 7:
+	case tabKanban:
 		content = m.renderKanbanTab()
-	case 8:
+	case tabNotifications:
 		content = m.renderNotificationsTab()
-	case 9:
+	case tabStages:
 		content = m.renderStagesTab()
-	case 10:
+	case tabAppearance:
 		content = m.renderAppearanceTab()
 	}
 

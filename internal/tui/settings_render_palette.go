@@ -259,22 +259,23 @@ func (m *SettingsModel) renderPaletteColorsSection() string {
 	var b strings.Builder
 	const labelWidth = 16
 	const indent = 18
+	base := subTabFieldStart(tabPalette, 0)
 
-	b.WriteString(renderFormLabelWithWidth("Theme: ", labelWidth, m.focusIndex == 4))
-	b.WriteString(renderFormToggle("Dark", "Light", m.activeTheme == "dark", m.focusIndex == 4))
+	b.WriteString(renderFormLabelWithWidth("Theme: ", labelWidth, m.focusIndex == base+0))
+	b.WriteString(renderFormToggle("Dark", "Light", m.activeTheme == "dark", m.focusIndex == base+0))
 	b.WriteString("\n")
-	b.WriteString(renderFormFieldDesc("Active palette — edits below apply to this theme", indent, m.focusIndex == 4))
+	b.WriteString(renderFormFieldDesc("Active palette — edits below apply to this theme", indent, m.focusIndex == base+0))
 	b.WriteString("\n")
 
-	m.renderColorInputField(&b, "Normal Text: ", m.normalTextInput, 5, labelWidth, indent, "Foreground for normal text", paletteSwatchDefault("normal_text", m.activeTheme))
-	m.renderColorInputField(&b, "Muted: ", m.mutedInput, 6, labelWidth, indent, "Subdued text and descriptions", paletteSwatchDefault("muted", m.activeTheme))
-	m.renderColorInputField(&b, "Primary: ", m.primaryInput, 7, labelWidth, indent, "Primary accent color", paletteSwatchDefault("primary", m.activeTheme))
-	m.renderColorInputField(&b, "Secondary: ", m.secondaryInput, 8, labelWidth, indent, "Secondary accent color", paletteSwatchDefault("secondary", m.activeTheme))
-	m.renderColorInputField(&b, "Accent: ", m.accentInput, 9, labelWidth, indent, "Highlight and accent color", paletteSwatchDefault("accent", m.activeTheme))
-	m.renderColorInputField(&b, "Success: ", m.successInput, 10, labelWidth, indent, "Success/completed status", paletteSwatchDefault("success", m.activeTheme))
-	m.renderColorInputField(&b, "Warning: ", m.warningInput, 11, labelWidth, indent, "Warning indicators", paletteSwatchDefault("warning", m.activeTheme))
-	m.renderColorInputField(&b, "Error: ", m.errorColorInput, 12, labelWidth, indent, "Error indicators", paletteSwatchDefault("error", m.activeTheme))
-	m.renderColorInputField(&b, "Border: ", m.borderInput, 13, labelWidth, indent, "Border and divider color", paletteSwatchDefault("border", m.activeTheme))
+	m.renderColorInputField(&b, "Normal Text: ", m.normalTextInput, base+1, labelWidth, indent, "Foreground for normal text", paletteSwatchDefault("normal_text", m.activeTheme))
+	m.renderColorInputField(&b, "Muted: ", m.mutedInput, base+2, labelWidth, indent, "Subdued text and descriptions", paletteSwatchDefault("muted", m.activeTheme))
+	m.renderColorInputField(&b, "Primary: ", m.primaryInput, base+3, labelWidth, indent, "Primary accent color", paletteSwatchDefault("primary", m.activeTheme))
+	m.renderColorInputField(&b, "Secondary: ", m.secondaryInput, base+4, labelWidth, indent, "Secondary accent color", paletteSwatchDefault("secondary", m.activeTheme))
+	m.renderColorInputField(&b, "Accent: ", m.accentInput, base+5, labelWidth, indent, "Highlight and accent color", paletteSwatchDefault("accent", m.activeTheme))
+	m.renderColorInputField(&b, "Success: ", m.successInput, base+6, labelWidth, indent, "Success/completed status", paletteSwatchDefault("success", m.activeTheme))
+	m.renderColorInputField(&b, "Warning: ", m.warningInput, base+7, labelWidth, indent, "Warning indicators", paletteSwatchDefault("warning", m.activeTheme))
+	m.renderColorInputField(&b, "Error: ", m.errorColorInput, base+8, labelWidth, indent, "Error indicators", paletteSwatchDefault("error", m.activeTheme))
+	m.renderColorInputField(&b, "Border: ", m.borderInput, base+9, labelWidth, indent, "Border and divider color", paletteSwatchDefault("border", m.activeTheme))
 
 	return b.String()
 }
@@ -283,10 +284,11 @@ func (m *SettingsModel) renderPaletteBgCursorSection() string {
 	var b strings.Builder
 	const labelWidth = 16
 	const indent = 18
+	base := subTabFieldStart(tabPalette, 1)
 
-	m.renderColorInputField(&b, "Background: ", m.bgColorInput, 14, labelWidth, indent, "HEX background color for all TUI views", paletteSwatchDefault("background", m.activeTheme))
-	m.renderColorInputField(&b, "Cursor BG: ", m.cursorColorInput, 15, labelWidth, indent, "HEX background color for selection/cursor rows", paletteSwatchDefault("cursor_bg", m.activeTheme))
-	m.renderColorInputField(&b, "Cursor Text: ", m.cursorTextColorInput, 16, labelWidth, indent, "HEX foreground color for selection/cursor text", paletteSwatchDefault("cursor_fg", m.activeTheme))
+	m.renderColorInputField(&b, "Background: ", m.bgColorInput, base+0, labelWidth, indent, "HEX background color for all TUI views", paletteSwatchDefault("background", m.activeTheme))
+	m.renderColorInputField(&b, "Cursor BG: ", m.cursorColorInput, base+1, labelWidth, indent, "HEX background color for selection/cursor rows", paletteSwatchDefault("cursor_bg", m.activeTheme))
+	m.renderColorInputField(&b, "Cursor Text: ", m.cursorTextColorInput, base+2, labelWidth, indent, "HEX foreground color for selection/cursor text", paletteSwatchDefault("cursor_fg", m.activeTheme))
 
 	return b.String()
 }
@@ -295,12 +297,13 @@ func (m *SettingsModel) renderPrioritiesSection() string {
 	var b strings.Builder
 	const labelWidth = 16
 	const indent = 18
+	base := subTabFieldStart(tabPalette, 2)
 
-	m.renderColorInputField(&b, "Priority 1: ", m.priority1TitleInput, 17, labelWidth, indent, "P1 Critical title color (bold+italic)", paletteSwatchDefault("priority1", m.activeTheme))
-	m.renderColorInputField(&b, "Priority 2: ", m.priority2TitleInput, 18, labelWidth, indent, "P2 High title color (bold)", paletteSwatchDefault("priority2", m.activeTheme))
-	m.renderColorInputField(&b, "Priority 3: ", m.priority3TitleInput, 19, labelWidth, indent, "P3 Normal title color", paletteSwatchDefault("priority3", m.activeTheme))
-	m.renderColorInputField(&b, "Priority 4: ", m.priority4TitleInput, 20, labelWidth, indent, "P4 Low title color", paletteSwatchDefault("priority4", m.activeTheme))
-	m.renderColorInputField(&b, "Priority 5: ", m.priority5TitleInput, 21, labelWidth, indent, "P5 Someday title color (faint)", paletteSwatchDefault("priority5", m.activeTheme))
+	m.renderColorInputField(&b, "Priority 1: ", m.priority1TitleInput, base+0, labelWidth, indent, "P1 Critical title color (bold+italic)", paletteSwatchDefault("priority1", m.activeTheme))
+	m.renderColorInputField(&b, "Priority 2: ", m.priority2TitleInput, base+1, labelWidth, indent, "P2 High title color (bold)", paletteSwatchDefault("priority2", m.activeTheme))
+	m.renderColorInputField(&b, "Priority 3: ", m.priority3TitleInput, base+2, labelWidth, indent, "P3 Normal title color", paletteSwatchDefault("priority3", m.activeTheme))
+	m.renderColorInputField(&b, "Priority 4: ", m.priority4TitleInput, base+3, labelWidth, indent, "P4 Low title color", paletteSwatchDefault("priority4", m.activeTheme))
+	m.renderColorInputField(&b, "Priority 5: ", m.priority5TitleInput, base+4, labelWidth, indent, "P5 Someday title color (faint)", paletteSwatchDefault("priority5", m.activeTheme))
 
 	return b.String()
 }

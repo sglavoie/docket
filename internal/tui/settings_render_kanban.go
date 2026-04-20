@@ -20,52 +20,51 @@ func (m *SettingsModel) renderKanbanTab() string {
 	var b strings.Builder
 	const labelWidth = 22
 	const indent = 24
+	base := tabFieldStart[tabKanban]
 
-	// Default Mode (94)
-	b.WriteString(renderFormLabelWithWidth("Default Mode: ", labelWidth, m.focusIndex == 94))
-	b.WriteString(renderEnumSelector(kanbanModeOptions, m.kanbanDefaultModeCursor, m.focusIndex == 94))
+	// Default Mode
+	b.WriteString(renderFormLabelWithWidth("Default Mode: ", labelWidth, m.focusIndex == base+0))
+	b.WriteString(renderEnumSelector(kanbanModeOptions, m.kanbanDefaultModeCursor, m.focusIndex == base+0))
 	b.WriteString("\n")
-	b.WriteString(renderFormFieldDesc("Column axis used when opening kanban", indent, m.focusIndex == 94))
+	b.WriteString(renderFormFieldDesc("Column axis used when opening kanban", indent, m.focusIndex == base+0))
 	b.WriteString("\n")
 
-	// Default Start Column (95)
-	b.WriteString(renderFormLabelWithWidth("Start Column: ", labelWidth, m.focusIndex == 95))
+	// Default Start Column
+	b.WriteString(renderFormLabelWithWidth("Start Column: ", labelWidth, m.focusIndex == base+1))
 	b.WriteString(m.kanbanStartColInput.View())
 	b.WriteString("\n")
-	b.WriteString(renderFormFieldDesc("Column ID to focus on open (e.g. inbox, next, todo)", indent, m.focusIndex == 95))
+	b.WriteString(renderFormFieldDesc("Column ID to focus on open (e.g. inbox, next, todo)", indent, m.focusIndex == base+1))
 	b.WriteString("\n")
 
-	// Show Empty Columns (96)
-	b.WriteString(renderFormLabelWithWidth("Empty Columns: ", labelWidth, m.focusIndex == 96))
-	b.WriteString(renderFormToggle("Show", "Hide", m.kanbanShowEmptyColumns, m.focusIndex == 96))
+	// Show Empty Columns
+	b.WriteString(renderFormLabelWithWidth("Empty Columns: ", labelWidth, m.focusIndex == base+2))
+	b.WriteString(renderFormToggle("Show", "Hide", m.kanbanShowEmptyColumns, m.focusIndex == base+2))
 	b.WriteString("\n")
-	b.WriteString(renderFormFieldDesc("Show columns with no tasks", indent, m.focusIndex == 96))
-	b.WriteString("\n")
-
-	// Detail Pane Visible (97)
-	b.WriteString(renderFormLabelWithWidth("Detail Pane: ", labelWidth, m.focusIndex == 97))
-	b.WriteString(renderFormToggle("Visible", "Hidden", m.kanbanDetailPaneVisible, m.focusIndex == 97))
-	b.WriteString("\n")
-	b.WriteString(renderFormFieldDesc("Show bottom detail pane by default (Tab toggles)", indent, m.focusIndex == 97))
+	b.WriteString(renderFormFieldDesc("Show columns with no tasks", indent, m.focusIndex == base+2))
 	b.WriteString("\n")
 
-	// Detail Pane Height (98)
-	b.WriteString(renderFormLabelWithWidth("Detail Pane Height: ", labelWidth, m.focusIndex == 98))
-	b.WriteString(renderEnumSelector(kanbanDetailHeightOptions, m.kanbanDetailHeightCursor, m.focusIndex == 98))
+	// Detail Pane Visible
+	b.WriteString(renderFormLabelWithWidth("Detail Pane: ", labelWidth, m.focusIndex == base+3))
+	b.WriteString(renderFormToggle("Visible", "Hidden", m.kanbanDetailPaneVisible, m.focusIndex == base+3))
 	b.WriteString("\n")
-	b.WriteString(renderFormFieldDesc("Number of lines for the detail pane (1–5)", indent, m.focusIndex == 98))
+	b.WriteString(renderFormFieldDesc("Show bottom detail pane by default (Tab toggles)", indent, m.focusIndex == base+3))
 	b.WriteString("\n")
 
-	// Enabled Modes (99–104)
+	// Detail Pane Height
+	b.WriteString(renderFormLabelWithWidth("Detail Pane Height: ", labelWidth, m.focusIndex == base+4))
+	b.WriteString(renderEnumSelector(kanbanDetailHeightOptions, m.kanbanDetailHeightCursor, m.focusIndex == base+4))
+	b.WriteString("\n")
+	b.WriteString(renderFormFieldDesc("Number of lines for the detail pane (1–5)", indent, m.focusIndex == base+4))
+	b.WriteString("\n")
+
+	// Enabled Modes (offsets 5–10)
 	b.WriteString(MutedStyle.Render("Enabled Axis Modes"))
 	b.WriteString("\n")
 	for i, label := range kanbanModeLabels {
-		focusIdx := 99 + i
+		focusIdx := base + 5 + i
 		b.WriteString(renderFormLabelWithWidth(label+": ", labelWidth, m.focusIndex == focusIdx))
 		b.WriteString(renderFormToggle("Enabled", "Disabled", m.kanbanEnabledModes[i], m.focusIndex == focusIdx))
 		b.WriteString("\n")
 	}
-	b.WriteString(renderFormFieldDesc("ctrl+g cycles through enabled modes only", indent, m.focusIndex >= 99 && m.focusIndex <= 104))
-
 	return b.String()
 }

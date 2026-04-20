@@ -40,7 +40,7 @@ func (m *SettingsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	cmd := m.updateFocusedInput(msg)
-	if m.tabs.Active == 1 {
+	if m.tabs.Active == tabPalette {
 		ApplyTheme(m.buildTentativeThemeConfig())
 	}
 	m.validateFocusedField()

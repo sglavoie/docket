@@ -9,7 +9,7 @@ import (
 
 func (m *SettingsModel) handleKeyPress(msg tea.KeyPressMsg) (bool, tea.Cmd) {
 	// When a preset overlay is active on the palette tab, route there first.
-	if m.tabs.Active == paletteTabIndex && m.themePresetMode != presetModeNone {
+	if m.tabs.Active == tabPalette && m.themePresetMode != presetModeNone {
 		return m.handlePresetKey(msg)
 	}
 	if handled := m.handleStageConfirmKey(msg.String()); handled {
@@ -22,7 +22,7 @@ func (m *SettingsModel) handleKeyPress(msg tea.KeyPressMsg) (bool, tea.Cmd) {
 }
 
 func (m *SettingsModel) handleStageConfirmKey(key string) bool {
-	if m.tabs.Active != 8 || !m.stageConfirmDelete.IsActive() {
+	if m.tabs.Active != tabStages || !m.stageConfirmDelete.IsActive() {
 		return false
 	}
 
@@ -40,7 +40,7 @@ func (m *SettingsModel) handleStageConfirmKey(key string) bool {
 }
 
 func (m *SettingsModel) handleStageListKey(key string) bool {
-	if m.tabs.Active != 8 || m.stageEditMode {
+	if m.tabs.Active != tabStages || m.stageEditMode {
 		return false
 	}
 
@@ -159,7 +159,7 @@ func (m *SettingsModel) handleGlobalKey(key string) (bool, tea.Cmd) { //nolint:g
 		return true, nil
 
 	case "enter":
-		if m.tabs.Active == 9 && m.stageEditMode {
+		if m.tabs.Active == tabStages && m.stageEditMode {
 			return true, m.commitStageEditCmd()
 		}
 		if err := m.validateAll(); err != nil {
@@ -170,7 +170,7 @@ func (m *SettingsModel) handleGlobalKey(key string) (bool, tea.Cmd) { //nolint:g
 
 	case "ctrl+s":
 		// On the palette tab, ctrl+s opens the save preset overlay.
-		if m.tabs.Active == paletteTabIndex {
+		if m.tabs.Active == tabPalette {
 			m.openPresetSave()
 			return true, nil
 		}
@@ -186,13 +186,13 @@ func (m *SettingsModel) handleGlobalKey(key string) (bool, tea.Cmd) { //nolint:g
 		return true, m.saveSettings()
 
 	case "ctrl+o":
-		if m.tabs.Active == paletteTabIndex {
+		if m.tabs.Active == tabPalette {
 			m.openPresetLoad()
 		}
 		return true, nil
 
 	case "ctrl+r":
-		if m.tabs.Active == paletteTabIndex {
+		if m.tabs.Active == tabPalette {
 			m.themePresetMode = presetModeResetConfirm
 			m.themePresetErr = ""
 		}
@@ -269,156 +269,195 @@ func (m *SettingsModel) togglePaletteTheme() {
 }
 
 func (m *SettingsModel) handleSpaceKey() {
-	if m.focusIndex == 4 {
-		m.togglePaletteTheme()
-		return
-	}
-	if m.focusIndex == 27 {
-		m.recentActivityShowAll = !m.recentActivityShowAll
-	}
-	if m.focusIndex == 28 {
-		m.linkedTaskJump = !m.linkedTaskJump
-	}
-	if m.focusIndex >= 41 && m.focusIndex <= 53 {
-		idx := m.focusIndex - 41
-		if m.focusIndex == 42 {
+	tab := tabForField(m.focusIndex)
+	local := m.focusIndex - tabFieldStart[tab]
+
+	switch tab {
+	case tabPalette:
+		if local == 0 {
+			m.togglePaletteTheme()
+		}
+	case tabBehavior:
+		switch local {
+		case 1: // show completed
+			m.recentActivityShowAll = !m.recentActivityShowAll
+		case 2: // after creation
+			m.linkedTaskJump = !m.linkedTaskJump
+		}
+	case tabProjectTree:
+		if local == 1 { // priority column
 			m.treePriorityMode = (m.treePriorityMode + 1) % 3
 		} else {
-			m.treeColumnDefaults[idx] = !m.treeColumnDefaults[idx]
+			m.treeColumnDefaults[local] = !m.treeColumnDefaults[local]
 		}
-	}
-	if m.focusIndex == 54 {
-		m.crossOutlinerSidebar = !m.crossOutlinerSidebar
-	}
-	if m.focusIndex == 91 {
-		m.zebraStriping = !m.zebraStriping
-	}
-	if m.focusIndex >= 55 && m.focusIndex <= 61 {
-		idx := m.focusIndex - 55
-		m.outlinerCollapsed[idx] = !m.outlinerCollapsed[idx]
-	}
-	if m.focusIndex >= 62 && m.focusIndex <= 74 {
-		if m.focusIndex == 63 {
+	case tabOutliner:
+		switch {
+		case local == 0:
+			m.crossOutlinerSidebar = !m.crossOutlinerSidebar
+		case local >= 1 && local <= 7:
+			m.outlinerCollapsed[local-1] = !m.outlinerCollapsed[local-1]
+		case local == 9: // priority column in column visibility
 			m.outlinerPriorityMode = (m.outlinerPriorityMode + 1) % 3
-		} else {
-			idx := m.focusIndex - 62
-			m.outlinerColumnDefaults[idx] = !m.outlinerColumnDefaults[idx]
+		case local >= 8 && local <= 20:
+			m.outlinerColumnDefaults[local-8] = !m.outlinerColumnDefaults[local-8]
 		}
-	}
-	switch m.focusIndex {
-	case 75:
-		m.alertDailyReviewEnabled = !m.alertDailyReviewEnabled
-	case 77:
-		m.alertWeeklyReviewEnabled = !m.alertWeeklyReviewEnabled
-	case 79:
-		m.alertOverdueEnabled = !m.alertOverdueEnabled
-	case 80:
-		m.alertDueSoonEnabled = !m.alertDueSoonEnabled
-	case 82:
-		m.alertStaleEnabled = !m.alertStaleEnabled
-	case 84:
-		m.alertInboxEnabled = !m.alertInboxEnabled
-	case 86:
-		m.alertBlockedEnabled = !m.alertBlockedEnabled
-	case 88:
-		m.alertProjectHealthEnabled = !m.alertProjectHealthEnabled
-	case 94:
-		m.kanbanDefaultModeCursor = (m.kanbanDefaultModeCursor + 1) % len(kanbanModeOptions)
-	case 96:
-		m.kanbanShowEmptyColumns = !m.kanbanShowEmptyColumns
-	case 97:
-		m.kanbanDetailPaneVisible = !m.kanbanDetailPaneVisible
-	case 98:
-		m.kanbanDetailHeightCursor = (m.kanbanDetailHeightCursor + 1) % len(kanbanDetailHeightOptions)
-	}
-	if m.focusIndex >= 99 && m.focusIndex <= 104 {
-		idx := m.focusIndex - 99
-		m.kanbanEnabledModes[idx] = !m.kanbanEnabledModes[idx]
+	case tabKanban:
+		switch {
+		case local == 0:
+			m.kanbanDefaultModeCursor = (m.kanbanDefaultModeCursor + 1) % len(kanbanModeOptions)
+		case local == 2:
+			m.kanbanShowEmptyColumns = !m.kanbanShowEmptyColumns
+		case local == 3:
+			m.kanbanDetailPaneVisible = !m.kanbanDetailPaneVisible
+		case local == 4:
+			m.kanbanDetailHeightCursor = (m.kanbanDetailHeightCursor + 1) % len(kanbanDetailHeightOptions)
+		case local >= 5 && local <= 10:
+			m.kanbanEnabledModes[local-5] = !m.kanbanEnabledModes[local-5]
+		}
+	case tabNotifications:
+		switch local {
+		case 0:
+			m.alertDailyReviewEnabled = !m.alertDailyReviewEnabled
+		case 2:
+			m.alertWeeklyReviewEnabled = !m.alertWeeklyReviewEnabled
+		case 4: // overdue
+			m.alertOverdueEnabled = !m.alertOverdueEnabled
+		case 5: // due soon
+			m.alertDueSoonEnabled = !m.alertDueSoonEnabled
+		case 7: // stale
+			m.alertStaleEnabled = !m.alertStaleEnabled
+		case 9: // inbox
+			m.alertInboxEnabled = !m.alertInboxEnabled
+		case 11: // blocked
+			m.alertBlockedEnabled = !m.alertBlockedEnabled
+		case 13: // project health
+			m.alertProjectHealthEnabled = !m.alertProjectHealthEnabled
+		}
+	case tabAppearance:
+		if local == 0 {
+			m.zebraStriping = !m.zebraStriping
+		}
 	}
 }
 
 func (m *SettingsModel) handleLeftKey() {
-	if m.focusIndex == 4 {
-		m.togglePaletteTheme()
-		return
-	}
-	if m.focusIndex == 1 && len(m.contexts) > 0 {
-		if m.contextCursor > 0 {
-			m.contextCursor--
-			m.contextInput.SetValue(m.contexts[m.contextCursor])
-		} else if m.contextCursor == -1 {
-			m.contextCursor = len(m.contexts) - 1
-			m.contextInput.SetValue(m.contexts[m.contextCursor])
+	tab := tabForField(m.focusIndex)
+	local := m.focusIndex - tabFieldStart[tab]
+
+	switch tab {
+	case tabGeneral:
+		switch local {
+		case 1: // context
+			if len(m.contexts) > 0 {
+				if m.contextCursor > 0 {
+					m.contextCursor--
+					m.contextInput.SetValue(m.contexts[m.contextCursor])
+				} else if m.contextCursor == -1 {
+					m.contextCursor = len(m.contexts) - 1
+					m.contextInput.SetValue(m.contexts[m.contextCursor])
+				}
+			}
+		case 3: // default view
+			if m.defaultViewCursor > 0 {
+				m.defaultViewCursor--
+			}
 		}
-	}
-	if m.focusIndex == 3 && m.defaultViewCursor > 0 {
-		m.defaultViewCursor--
-	}
-	switch m.focusIndex {
-	case 42:
-		if m.treePriorityMode > 0 {
+	case tabPalette:
+		if local == 0 {
+			m.togglePaletteTheme()
+		}
+	case tabProjectTree:
+		if local == 1 && m.treePriorityMode > 0 {
 			m.treePriorityMode--
 		}
-	case 63:
-		if m.outlinerPriorityMode > 0 {
+	case tabOutliner:
+		if local == 9 && m.outlinerPriorityMode > 0 {
 			m.outlinerPriorityMode--
 		}
-	}
-	if m.focusIndex == 78 && m.alertWeeklyReviewDay > 0 {
-		m.alertWeeklyReviewDay--
-	}
-	if m.focusIndex == 92 && m.weekEndDayCursor > 0 {
-		m.weekEndDayCursor--
-	}
-	if m.focusIndex == 93 && m.timeFormatCursor > 0 {
-		m.timeFormatCursor--
-	}
-	if m.focusIndex == 94 && m.kanbanDefaultModeCursor > 0 {
-		m.kanbanDefaultModeCursor--
-	}
-	if m.focusIndex == 98 && m.kanbanDetailHeightCursor > 0 {
-		m.kanbanDetailHeightCursor--
+	case tabKanban:
+		switch local {
+		case 0:
+			if m.kanbanDefaultModeCursor > 0 {
+				m.kanbanDefaultModeCursor--
+			}
+		case 4:
+			if m.kanbanDetailHeightCursor > 0 {
+				m.kanbanDetailHeightCursor--
+			}
+		}
+	case tabNotifications:
+		if local == 3 && m.alertWeeklyReviewDay > 0 {
+			m.alertWeeklyReviewDay--
+		}
+	case tabAppearance:
+		switch local {
+		case 1:
+			if m.weekEndDayCursor > 0 {
+				m.weekEndDayCursor--
+			}
+		case 2:
+			if m.timeFormatCursor > 0 {
+				m.timeFormatCursor--
+			}
+		}
 	}
 }
 
 func (m *SettingsModel) handleRightKey() {
-	if m.focusIndex == 4 {
-		m.togglePaletteTheme()
-		return
-	}
-	if m.focusIndex == 1 && len(m.contexts) > 0 {
-		if m.contextCursor >= 0 && m.contextCursor < len(m.contexts)-1 {
-			m.contextCursor++
-			m.contextInput.SetValue(m.contexts[m.contextCursor])
+	tab := tabForField(m.focusIndex)
+	local := m.focusIndex - tabFieldStart[tab]
+
+	switch tab {
+	case tabGeneral:
+		switch local {
+		case 1: // context
+			if len(m.contexts) > 0 && m.contextCursor >= 0 && m.contextCursor < len(m.contexts)-1 {
+				m.contextCursor++
+				m.contextInput.SetValue(m.contexts[m.contextCursor])
+			}
+		case 3: // default view
+			if m.defaultViewCursor < len(defaultProjectViewOptions)-1 {
+				m.defaultViewCursor++
+			}
 		}
-	}
-	if m.focusIndex == 3 && m.defaultViewCursor < len(defaultProjectViewOptions)-1 {
-		m.defaultViewCursor++
-	}
-	switch m.focusIndex {
-	case 42:
-		if m.treePriorityMode < 2 {
+	case tabPalette:
+		if local == 0 {
+			m.togglePaletteTheme()
+		}
+	case tabProjectTree:
+		if local == 1 && m.treePriorityMode < 2 {
 			m.treePriorityMode++
 		}
-	case 63:
-		if m.outlinerPriorityMode < 2 {
+	case tabOutliner:
+		if local == 9 && m.outlinerPriorityMode < 2 {
 			m.outlinerPriorityMode++
 		}
-	}
-	if m.focusIndex == 78 && m.alertWeeklyReviewDay < 6 {
-		m.alertWeeklyReviewDay++
-	}
-	if m.focusIndex == 92 && m.weekEndDayCursor < len(weekEndDayOptions)-1 {
-		m.weekEndDayCursor++
-	}
-	if m.focusIndex == 93 && m.timeFormatCursor < len(timeFormatOptions)-1 {
-		m.timeFormatCursor++
-	}
-	if m.focusIndex == 94 && m.kanbanDefaultModeCursor < len(kanbanModeOptions)-1 {
-		m.kanbanDefaultModeCursor++
-	}
-	if m.focusIndex == 98 && m.kanbanDetailHeightCursor < len(kanbanDetailHeightOptions)-1 {
-		m.kanbanDetailHeightCursor++
+	case tabKanban:
+		switch local {
+		case 0:
+			if m.kanbanDefaultModeCursor < len(kanbanModeOptions)-1 {
+				m.kanbanDefaultModeCursor++
+			}
+		case 4:
+			if m.kanbanDetailHeightCursor < len(kanbanDetailHeightOptions)-1 {
+				m.kanbanDetailHeightCursor++
+			}
+		}
+	case tabNotifications:
+		if local == 3 && m.alertWeeklyReviewDay < 6 {
+			m.alertWeeklyReviewDay++
+		}
+	case tabAppearance:
+		switch local {
+		case 1:
+			if m.weekEndDayCursor < len(weekEndDayOptions)-1 {
+				m.weekEndDayCursor++
+			}
+		case 2:
+			if m.timeFormatCursor < len(timeFormatOptions)-1 {
+				m.timeFormatCursor++
+			}
+		}
 	}
 }
 
