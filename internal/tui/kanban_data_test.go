@@ -333,6 +333,89 @@ func TestCollectStages_MergesGlobalAndProjectStages(t *testing.T) {
 	}
 }
 
+// ── filteredCards / tag filter ────────────────────────────────────────────────
+
+func TestKanbanFilteredCards_TagFilter(t *testing.T) {
+	proj := testutil.NewTestProject("p")
+	tagged := testutil.NewTestTask("tagged", models.TaskTypeTask)
+	tagged.Tags = []string{"urgent"}
+	untagged := testutil.NewTestTask("untagged", models.TaskTypeTask)
+	proj.Tasks = []*models.Task{tagged, untagged}
+
+	cfg := &config.Config{}
+	m := &KanbanModel{
+		config:   cfg,
+		allCards: []KanbanCard{{Task: tagged, Project: proj}, {Task: untagged, Project: proj}},
+		FilterMixin: FilterMixin{
+			filter: newFilterState(),
+		},
+	}
+
+	// No filter → all cards returned.
+	if got := len(m.filteredCards()); got != 2 {
+		t.Fatalf("no filter: want 2 cards, got %d", got)
+	}
+
+	// Set tag filter → only tagged card returned.
+	m.filter.Tags = map[string]bool{"urgent": true}
+	got := m.filteredCards()
+	if len(got) != 1 {
+		t.Fatalf("tag filter: want 1 card, got %d", len(got))
+	}
+	if got[0].Task.Title != "tagged" {
+		t.Errorf("tag filter: want 'tagged', got %q", got[0].Task.Title)
+	}
+}
+
+func TestKanbanRefreshAndClamp_AppliesTagFilter(t *testing.T) {
+	proj := testutil.NewTestProject("p")
+	tagged := testutil.NewTestTask("tagged", models.TaskTypeTask)
+	tagged.Section = models.SectionInbox
+	tagged.Tags = []string{"bug"}
+	untagged := testutil.NewTestTask("untagged", models.TaskTypeTask)
+	untagged.Section = models.SectionInbox
+	proj.Tasks = []*models.Task{tagged, untagged}
+
+	cfg := &config.Config{}
+	m := &KanbanModel{
+		config:   cfg,
+		mode:     KanbanModeSection,
+		allCards: []KanbanCard{{Task: tagged, Project: proj}, {Task: untagged, Project: proj}},
+		FilterMixin: FilterMixin{
+			filter: newFilterState(),
+		},
+	}
+	m.rebuildCols()
+
+	// Count inbox tasks before filter.
+	inboxCount := 0
+	for _, col := range m.columns {
+		if col.ID == "inbox" {
+			inboxCount = len(col.Tasks)
+		}
+	}
+	if inboxCount != 2 {
+		t.Fatalf("pre-filter inbox: want 2, got %d", inboxCount)
+	}
+
+	// Apply tag filter and rebuild.
+	m.filter.Tags = map[string]bool{"bug": true}
+	m.refreshAndClamp()
+
+	for _, col := range m.columns {
+		if col.ID == "inbox" {
+			if len(col.Tasks) != 1 {
+				t.Errorf("post-filter inbox: want 1, got %d", len(col.Tasks))
+			}
+			if len(col.Tasks) > 0 && col.Tasks[0].Task.Title != "tagged" {
+				t.Errorf("post-filter: want 'tagged', got %q", col.Tasks[0].Task.Title)
+			}
+			return
+		}
+	}
+	t.Error("inbox column not found")
+}
+
 func TestCollectStages_Deduplication(t *testing.T) {
 	proj := testutil.NewTestProject("p")
 	task := testutil.NewTestTask("t", models.TaskTypeTask)

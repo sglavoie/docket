@@ -220,6 +220,35 @@ func (m *OutlinerModel) crossProjectRebuildRows() {
 			})
 		}
 
+		if m.activeCriteriaFilter != nil {
+			tasks = filterTaskTree(tasks, func(t *models.Task) bool {
+				return passesSavedFilterCriteria(t, proj, m.activeCriteriaFilter, m.config)
+			})
+		}
+
+		if len(m.filter.Sections) > 0 {
+			tasks = filterTaskTree(tasks, func(t *models.Task) bool {
+				return m.filter.Sections[t.Section] || m.filter.Sections[t.CustomSection]
+			})
+		}
+
+		if m.filter.Actionable {
+			tasks = filterTaskTree(tasks, func(t *models.Task) bool {
+				if proj.HasIncompleteDependencies(t) {
+					return false
+				}
+				if t.Status == models.StatusBlocked {
+					return false
+				}
+				if t.Section == models.SectionInbox || t.Section == models.SectionNext ||
+					t.Section == models.SectionWaiting || t.Section == models.SectionSomeday ||
+					t.Section == models.SectionReview || t.Section == models.SectionStandby {
+					return false
+				}
+				return true
+			})
+		}
+
 		if len(tasks) == 0 {
 			continue
 		}

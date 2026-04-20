@@ -156,6 +156,15 @@ func (m *AppModel) handleTagMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint:goc
 				m.crossOutliner.rebuildRows()
 				m.crossOutliner.clampCursor()
 			}
+		case ViewKanban, ViewCrossProjectKanban:
+			for _, vt := range []ViewType{ViewKanban, ViewCrossProjectKanban} {
+				if v := m.views.Get(vt); v != nil {
+					if kb, ok := v.(*KanbanModel); ok {
+						kb.filter.Tags = tags
+						kb.refreshAndClamp()
+					}
+				}
+			}
 		case ViewNotes:
 			if v := m.views.Get(ViewNotes); v != nil {
 				if notesView, ok := v.(*NotesViewModel); ok {
