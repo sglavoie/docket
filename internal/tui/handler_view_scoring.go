@@ -45,15 +45,15 @@ func (m *AppModel) handleScoringMessages(msg tea.Msg) (bool, tea.Cmd) {
 			} else {
 				m.setInfoStatus("No scoring profile assigned — opening profile manager")
 				return true, func() tea.Msg {
-					return ShowScoreProfileManagerMsg{}
+					return ShowScoreProfileManagerMsg{ProjectID: msg.Project.ID}
 				}
 			}
 		}
 		return true, nil
 
 	case ShowScoreProfileManagerMsg:
-		projectID := ""
-		if m.currentProject != nil {
+		projectID := msg.ProjectID
+		if projectID == "" && m.currentProject != nil {
 			projectID = m.currentProject.ID
 		}
 		m.showView(ViewScoreProfileManager, NewScoreProfileManagerModel(m.config, m.configManager, projectID))
@@ -66,7 +66,12 @@ func (m *AppModel) handleScoringMessages(msg tea.Msg) (bool, tea.Cmd) {
 	case ScoreProfileChangedMsg:
 		if m.currentView() == ViewScoreProfileManager {
 			projectID := ""
-			if m.currentProject != nil {
+			if v := m.views.Get(ViewScoreProfileManager); v != nil {
+				if existing, ok := v.(*ScoreProfileManagerModel); ok {
+					projectID = existing.currentProjectID
+				}
+			}
+			if projectID == "" && m.currentProject != nil {
 				projectID = m.currentProject.ID
 			}
 			mgr := NewScoreProfileManagerModel(m.config, m.configManager, projectID)

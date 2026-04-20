@@ -171,7 +171,9 @@ type FocusBoardSelectMsg struct {
 // =============================================================================
 
 // ShowScoreProfileManagerMsg opens the scoring profile manager view.
-type ShowScoreProfileManagerMsg struct{}
+type ShowScoreProfileManagerMsg struct {
+	ProjectID string
+}
 
 // CloseScoreProfileManagerMsg closes the scoring profile manager view.
 type CloseScoreProfileManagerMsg struct{}
