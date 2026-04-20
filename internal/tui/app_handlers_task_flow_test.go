@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/testutil"
 )
 
@@ -378,6 +379,60 @@ func TestPruneDeletedTaskRefs(t *testing.T) {
 		// Recent visits: deleted task should be removed
 		if len(app.recentTaskVisits) != 1 {
 			t.Fatalf("expected 1 recent visit entry, got %d", len(app.recentTaskVisits))
+		}
+	})
+
+	t.Run("loads unloaded projects before pruning", func(t *testing.T) {
+		// Set up mock repository so persister.Load works without disk I/O
+		mockRepo := testutil.NewMockRepository()
+		oldRepo := storage.DefaultRepository
+		storage.DefaultRepository = mockRepo
+		defer func() { storage.DefaultRepository = oldRepo }()
+
+		app, project := newTestAppModelWithProject()
+		task1 := project.Tasks[0]
+
+		// Register the loaded project in the mock repo
+		mockRepo.Projects[project.ID] = project
+
+		// Create a second project with tasks and register it in the mock
+		// repository so persister.Load can populate it.
+		storedProject := testutil.NewTestProjectWithTasks("Other Project")
+		otherTask := storedProject.Tasks[0]
+		mockRepo.Projects[storedProject.ID] = storedProject
+
+		// Create a config entry with the same ID but nil Tasks,
+		// simulating a project the user hasn't navigated to yet.
+		otherProject := &models.Project{ID: storedProject.ID, Name: "Other Project"}
+		app.config.Projects = append(app.config.Projects, otherProject)
+
+		// Put tasks from both projects in the focus queue
+		app.focusQueue = []FocusTask{
+			{Task: task1, Project: project},
+			{Task: otherTask, Project: otherProject},
+		}
+		app.focusQueueIDs = map[string]bool{
+			task1.ID:     true,
+			otherTask.ID: true,
+		}
+		app.dailyPlan = []FocusTask{}
+		app.dailyPlanIDs = map[string]bool{}
+		app.recentTaskVisits = []RecentTaskVisitEntry{}
+
+		app.pruneDeletedTaskRefs()
+
+		// Both tasks should survive — the unloaded project's task must
+		// not be incorrectly pruned.
+		if len(app.focusQueue) != 2 {
+			t.Fatalf("expected 2 focus queue entries, got %d", len(app.focusQueue))
+		}
+		if !app.focusQueueIDs[otherTask.ID] {
+			t.Error("task from unloaded project should NOT be pruned")
+		}
+
+		// The other project should be unloaded again (Tasks reset to nil)
+		if otherProject.Tasks != nil {
+			t.Error("unloaded project should have Tasks reset to nil after pruning")
 		}
 	})
 

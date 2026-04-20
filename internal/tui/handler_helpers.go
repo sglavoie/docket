@@ -70,11 +70,23 @@ func (m *AppModel) invalidateFilterCaches() {
 // It then persists the cleaned lists to config. Call this after task deletion
 // or archiving to prevent stale entries from being re-persisted.
 func (m *AppModel) pruneDeletedTaskRefs() {
-	// Build a set of all valid task IDs across loaded projects
+	// Build a set of all valid task IDs across all projects.
+	// Projects not yet loaded from disk have nil Tasks; load them
+	// temporarily so their task IDs are not incorrectly pruned.
 	validTasks := make(map[string]bool)
 	for _, p := range m.config.GetAllLoadableProjects() {
+		wasUnloaded := p.Tasks == nil
+		if wasUnloaded {
+			if err := m.persister.Load(p); err != nil {
+				logging.Warn("pruneDeletedTaskRefs: failed to load project %s: %v", p.Name, err)
+				continue
+			}
+		}
 		for _, t := range p.Tasks {
 			validTasks[t.ID] = true
+		}
+		if wasUnloaded {
+			p.Tasks = nil
 		}
 	}
 
