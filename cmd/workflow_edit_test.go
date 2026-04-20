@@ -174,6 +174,115 @@ func TestCollectValidationErrors(t *testing.T) {
 	}
 }
 
+// TestRemoveTriggerFromLegacyRule verifies that --remove-trigger works on rules
+// that use the legacy single Trigger field (rather than the Triggers slice).
+// Before the fix, this would fail with "cannot remove from empty list" because
+// removeByIndices was called on the nil Triggers slice without first migrating
+// the legacy Trigger into it.
+func TestRemoveTriggerFromLegacyRule(t *testing.T) {
+	// Simulate a legacy rule with only the single Trigger field set
+	rule := workflow.WorkflowRule{
+		ID:      "test-legacy",
+		Name:    "Legacy Rule",
+		Enabled: true,
+		Trigger: workflow.RuleTrigger{
+			Field:     workflow.FieldStatus,
+			Operation: workflow.OpEquals,
+			Value:     "done",
+		},
+		// Triggers slice is empty (legacy format)
+		Actions: []workflow.RuleAction{
+			{ActionType: workflow.ActionAddTag, Value: "archived"},
+		},
+	}
+
+	// Verify the legacy trigger is accessible via GetTriggers()
+	triggers := rule.GetTriggers()
+	if len(triggers) != 1 {
+		t.Fatalf("expected 1 trigger via GetTriggers(), got %d", len(triggers))
+	}
+
+	// Now simulate what the edit command does after the fix:
+	// Migrate legacy trigger before removal
+	modifiedRule := rule
+	if len(modifiedRule.Triggers) == 0 && modifiedRule.Trigger.Field != "" {
+		modifiedRule.Triggers = []workflow.RuleTrigger{modifiedRule.Trigger}
+		modifiedRule.Trigger = workflow.RuleTrigger{}
+	}
+
+	// Verify migration happened
+	if len(modifiedRule.Triggers) != 1 {
+		t.Fatalf("expected 1 trigger after migration, got %d", len(modifiedRule.Triggers))
+	}
+	if modifiedRule.Trigger.Field != "" {
+		t.Error("expected legacy Trigger field to be cleared after migration")
+	}
+
+	// Now removeByIndices should work
+	result, err := removeByIndices(modifiedRule.Triggers, []int{0})
+	if err != nil {
+		t.Fatalf("removeByIndices failed: %v", err)
+	}
+	if len(result) != 0 {
+		t.Errorf("expected 0 triggers after removal, got %d", len(result))
+	}
+}
+
+// TestRemoveTriggerFromLegacyRuleAddNew verifies that removing the legacy trigger
+// and adding a new one in the same edit works correctly.
+func TestRemoveTriggerFromLegacyRuleAddNew(t *testing.T) {
+	rule := workflow.WorkflowRule{
+		ID:      "test-replace",
+		Name:    "Replace Trigger Rule",
+		Enabled: true,
+		Trigger: workflow.RuleTrigger{
+			Field:     workflow.FieldStatus,
+			Operation: workflow.OpEquals,
+			Value:     "done",
+		},
+		Actions: []workflow.RuleAction{
+			{ActionType: workflow.ActionAddTag, Value: "archived"},
+		},
+	}
+
+	modifiedRule := rule
+
+	// Migrate legacy trigger (happens for both --add-trigger and --remove-trigger paths)
+	if len(modifiedRule.Triggers) == 0 && modifiedRule.Trigger.Field != "" {
+		modifiedRule.Triggers = []workflow.RuleTrigger{modifiedRule.Trigger}
+		modifiedRule.Trigger = workflow.RuleTrigger{}
+	}
+
+	// Remove old trigger
+	var err error
+	modifiedRule.Triggers, err = removeByIndices(modifiedRule.Triggers, []int{0})
+	if err != nil {
+		t.Fatalf("removeByIndices failed: %v", err)
+	}
+
+	// Add new trigger
+	newTrigger := workflow.RuleTrigger{
+		Field:     workflow.FieldPriority,
+		Operation: workflow.OpEquals,
+		Value:     "1",
+	}
+	modifiedRule.Triggers = append(modifiedRule.Triggers, newTrigger)
+
+	// Validate the modified rule
+	errors := collectValidationErrors(&modifiedRule)
+	if len(errors) != 0 {
+		t.Errorf("expected no validation errors, got: %v", errors)
+	}
+
+	// Check final state
+	if len(modifiedRule.Triggers) != 1 {
+		t.Fatalf("expected 1 trigger, got %d", len(modifiedRule.Triggers))
+	}
+	if modifiedRule.Triggers[0].Field != workflow.FieldPriority {
+		t.Errorf("expected priority trigger, got %s", modifiedRule.Triggers[0].Field)
+	}
+}
+
 // Helper functions
 func equalIntSlices(a, b []int) bool {
 	if len(a) != len(b) {
