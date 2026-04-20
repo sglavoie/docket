@@ -204,6 +204,17 @@ func (m *KanbanModel) handleKanbanKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) 
 			}
 		}
 		return m, nil
+	case "M":
+		if m.mode == KanbanModeCustomSections {
+			card := m.getCursorCard()
+			if card != nil {
+				projects := m.loadedProjects
+				return m, func() tea.Msg {
+					return ShowCustomSectionPickerMsg{Task: card.Task, Project: card.Project, Projects: projects}
+				}
+			}
+		}
+		return m, nil
 	}
 
 	// ── Prefix key activators ─────────────────────────────────────────────

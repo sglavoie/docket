@@ -66,6 +66,61 @@ func (m *AppModel) handleSectionMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 		}
 		return true, nil
 
+	case ShowCustomSectionPickerMsg:
+		if msg.Task != nil && msg.Project != nil {
+			m.showView(ViewCustomSectionPicker, NewCustomSectionPickerModel(msg.Task, msg.Project, msg.Projects))
+		}
+		return true, nil
+
+	case CustomSectionPickerDoneMsg:
+		m.popView()
+		if msg.Canceled {
+			return true, nil
+		}
+		if msg.Task != nil && msg.Project != nil {
+			oldSection := msg.Task.CustomSection
+
+			if !msg.Project.MutateTask(msg.Task.ID, func(t *models.Task) {
+				if msg.Section == "" {
+					t.CustomSection = ""
+				} else {
+					t.SetSection(msg.Section)
+				}
+			}) {
+				return true, errorCmd("task no longer exists in project")
+			}
+
+			if msg.Section != "" {
+				msg.Project.EnsureSection(msg.Section)
+			}
+
+			// Remove old custom section if no tasks remain in it
+			if oldSection != "" && oldSection != msg.Section {
+				hasTasksInOld := false
+				for _, t := range msg.Project.Tasks {
+					if t.CustomSection == oldSection {
+						hasTasksInOld = true
+						break
+					}
+				}
+				if !hasTasksInOld {
+					msg.Project.RemoveSection(oldSection)
+				}
+			}
+
+			var successMsg string
+			if msg.Section == "" {
+				successMsg = "Removed custom section"
+			} else {
+				successMsg = fmt.Sprintf("Moved to %s", msg.Section)
+			}
+			return true, tea.Batch(
+				startLoading("Saving..."),
+				SaveProjectAsync(msg.Project, successMsg),
+			)
+		}
+		return true, nil
+
 	case ShowSectionPickerMsg:
 		if msg.Project != nil {
 			m.showView(ViewSectionPicker, NewSectionPickerModel(msg.Task, msg.Project))

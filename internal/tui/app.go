@@ -34,6 +34,7 @@ const (
 	ViewTagFilterSelector
 	ViewSectionFilterSelector
 	ViewSectionPicker
+	ViewCustomSectionPicker
 	ViewSectionManager
 	ViewPriorityPicker
 	ViewContextPicker
@@ -136,6 +137,7 @@ func (v ViewType) String() string {
 		ViewTagFilterSelector:     "TagFilterSelector",
 		ViewSectionFilterSelector: "SectionFilterSelector",
 		ViewSectionPicker:         "SectionPicker",
+		ViewCustomSectionPicker:   "CustomSectionPicker",
 		ViewSectionManager:        "SectionManager",
 		ViewPriorityPicker:        "PriorityPicker",
 		ViewContextPicker:         "ContextPicker",

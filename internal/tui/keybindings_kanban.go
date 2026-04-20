@@ -43,6 +43,7 @@ func (r *KeybindingRegistry) registerKanbanBindings() {
 		Keybinding{Key: "S", Description: "Edit score dimensions", Category: "Scoring", Views: views},
 		Keybinding{Key: "O", Description: "Open URL in browser", Category: "Actions", Views: views},
 		Keybinding{Key: "ctrl+b", Description: "Move task to project", Category: "Actions", Views: views},
+		Keybinding{Key: "M", Description: "Move to custom section (picker)", Category: "Actions", Views: views},
 	)
 	r.addForViews(views, statusBindings())
 	r.addForViews(views, priorityBindings())
@@ -72,7 +73,7 @@ func (m *KanbanModel) HandledKeys() []string {
 		// Prefix activators that appear in registry
 		[]string{"d", "m", "t", "F"},
 		// Clipboard and extra actions
-		[]string{"ctrl+.", "y", "Y", "ctrl+y", "*", "S", "O", "ctrl+b"},
+		[]string{"ctrl+.", "y", "Y", "ctrl+y", "*", "S", "O", "ctrl+b", "M"},
 		// Standard prefix sequences
 		statusPrefixKeys(),
 		priorityPrefixKeys(),

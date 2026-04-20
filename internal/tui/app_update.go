@@ -630,6 +630,15 @@ func (m *AppModel) Update(msg tea.Msg) (outModel tea.Model, outCmd tea.Cmd) { //
 		if m.globalInboxProcessor != nil {
 			m.globalInboxProcessor.loadAllInboxTasks()
 		}
+		// Refresh kanban views so column distribution reflects saved changes.
+		for _, vt := range []ViewType{ViewKanban, ViewCrossProjectKanban} {
+			if v := m.views.Get(vt); v != nil {
+				if kb, ok := v.(*KanbanModel); ok {
+					kb.reloadData()
+					kb.clampCursor()
+				}
+			}
+		}
 		return m, tea.Batch(saveCmds...)
 
 	case SaveErrorMsg:
