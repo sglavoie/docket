@@ -116,19 +116,19 @@ func TestColumnForTask_ScoreBuckets_WithProfile(t *testing.T) {
 	// Task with high business value and low job size → high normalized score.
 	highTask := testutil.NewTestTask("high", models.TaskTypeTask)
 	highTask.ScoreDimensions = map[string]int{
-		"business_value":  10,
+		"business_value":   10,
 		"time_criticality": 10,
-		"risk_reduction":  10,
-		"job_size":        1,
+		"risk_reduction":   10,
+		"job_size":         1,
 	}
 
 	// Task with low values → low normalized score.
 	lowTask := testutil.NewTestTask("low", models.TaskTypeTask)
 	lowTask.ScoreDimensions = map[string]int{
-		"business_value":  1,
+		"business_value":   1,
 		"time_criticality": 1,
-		"risk_reduction":  1,
-		"job_size":        5,
+		"risk_reduction":   1,
+		"job_size":         5,
 	}
 
 	highCol := columnForTask(highTask, KanbanModeScoreBuckets, cfg, "proj1")

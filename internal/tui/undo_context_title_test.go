@@ -119,16 +119,16 @@ type stubPersister struct {
 	recordedTaskIDs []string
 }
 
-func (s *stubPersister) Load(_ *models.Project) error                              { return nil }
-func (s *stubPersister) Save(_ *models.Project) error                              { return nil }
-func (s *stubPersister) Backup(_ *models.Project) error                            { return nil }
-func (s *stubPersister) SaveWithBackupSync(_ *models.Project) error                { return nil }
-func (s *stubPersister) SaveMultipleSync(_ []*models.Project) error                { return nil }
-func (s *stubPersister) BackupExists(_ *models.Project) bool                       { return false }
-func (s *stubPersister) RestoreFromBackup(_ *models.Project) error                 { return nil }
-func (s *stubPersister) ArchiveTasks(_ *models.Project) (int, error)               { return 0, nil }
-func (s *stubPersister) SaveWithBackup(_ *models.Project, _ string) tea.Cmd        { return nil }
-func (s *stubPersister) SaveMultiple(_ []*models.Project, _ string) tea.Cmd        { return nil }
+func (s *stubPersister) Load(_ *models.Project) error                       { return nil }
+func (s *stubPersister) Save(_ *models.Project) error                       { return nil }
+func (s *stubPersister) Backup(_ *models.Project) error                     { return nil }
+func (s *stubPersister) SaveWithBackupSync(_ *models.Project) error         { return nil }
+func (s *stubPersister) SaveMultipleSync(_ []*models.Project) error         { return nil }
+func (s *stubPersister) BackupExists(_ *models.Project) bool                { return false }
+func (s *stubPersister) RestoreFromBackup(_ *models.Project) error          { return nil }
+func (s *stubPersister) ArchiveTasks(_ *models.Project) (int, error)        { return 0, nil }
+func (s *stubPersister) SaveWithBackup(_ *models.Project, _ string) tea.Cmd { return nil }
+func (s *stubPersister) SaveMultiple(_ []*models.Project, _ string) tea.Cmd { return nil }
 func (s *stubPersister) RecordUndoSnapshot(_ *models.Project, action, ctx string, depth int, taskIDs []string) error {
 	s.recordedAction = action
 	s.recordedContext = ctx

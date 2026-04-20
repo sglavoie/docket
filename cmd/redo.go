@@ -41,8 +41,14 @@ func runRedo(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("redo failed: %w", err)
 	}
 
+	// Reload project and re-run side effects (auto-unblock, recurring
+	// generation, reorder) so the restored state is consistent — matching
+	// the TUI's reapplySideEffects behavior.
 	if err := storage.LoadProject(project); err != nil {
 		return fmt.Errorf("failed to reload project after redo: %w", err)
+	}
+	if err := reapplySideEffectsAndSave(project); err != nil {
+		return fmt.Errorf("failed to reapply side effects after redo: %w", err)
 	}
 
 	fmt.Printf("Redo: %s\n", actionDesc)

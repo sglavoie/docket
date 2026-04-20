@@ -2,10 +2,14 @@ package cmd
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 
 	"github.com/spf13/cobra"
 
+	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/util"
 )
 
 var undoCmd = &cobra.Command{
@@ -40,9 +44,14 @@ func runUndo(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("undo failed: %w", err)
 		}
 
-		// Reload project to get the restored state
+		// Reload project and re-run side effects (auto-unblock, recurring
+		// generation, reorder) so the restored state is consistent — matching
+		// the TUI's reapplySideEffects behavior.
 		if err := storage.LoadProject(project); err != nil {
 			return fmt.Errorf("failed to reload project after undo: %w", err)
+		}
+		if err := reapplySideEffectsAndSave(project); err != nil {
+			return fmt.Errorf("failed to reapply side effects after undo: %w", err)
 		}
 
 		fmt.Printf("Undone: %s\n", actionDesc)
@@ -56,4 +65,25 @@ func runUndo(cmd *cobra.Command, args []string) error {
 	}
 
 	return fmt.Errorf("no undo history available for project '%s'", project.Name)
+}
+
+// reapplySideEffectsAndSave re-runs state-derived side effects after an
+// undo/redo restore, then saves the result. This ensures automated
+// derivations (auto-unblock, recurring instances, completion reorder) are
+// freshly computed based on the restored snapshot.
+func reapplySideEffectsAndSave(project *models.Project) error {
+	project.CheckAndAutoUnblock()
+	project.GenerateRecurringInstances()
+	project.ReorderRootTasksByCompletion()
+
+	if err := os.MkdirAll(project.Path, 0o755); err != nil {
+		return fmt.Errorf("failed to ensure project directory: %w", err)
+	}
+	lockPath := filepath.Join(project.Path, storage.LockFileName)
+	return util.WithFileLock(lockPath, true, func() error {
+		if err := storage.BackupProject(project); err != nil {
+			return fmt.Errorf("failed to create backup: %w", err)
+		}
+		return storage.SaveProject(project)
+	})
 }
