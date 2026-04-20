@@ -93,9 +93,9 @@ func (m *KanbanModel) getTaskAndProject() (*models.Task, *models.Project) {
 	return m.getTaskRef()
 }
 
-// selectMsg returns a message to navigate to/view the focused task.
+// selectMsg returns a message to navigate to the task in its project.
 func (m *KanbanModel) selectMsg(task *models.Task, project *models.Project) tea.Msg {
-	return ShowTaskDetailMsg{Task: task, Project: project}
+	return KanbanSelectMsg{Task: task, Project: project}
 }
 
 // JumpToTop moves the cursor to the top of the active column (gg).

@@ -251,6 +251,13 @@ func (m *AppModel) handleViewReviewMessages(msg tea.Msg) (bool, tea.Cmd) { //nol
 		m.restoreKanbanState(kanban)
 		m.showView(ViewCrossProjectKanban, kanban)
 		return true, nil
+
+	case KanbanSelectMsg:
+		m.popView()
+		if msg.Task != nil && msg.Project != nil {
+			return true, m.navigateToTaskInProject(msg.Task, msg.Project)
+		}
+		return true, nil
 	}
 
 	return false, nil

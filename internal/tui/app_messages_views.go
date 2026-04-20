@@ -239,3 +239,9 @@ type ShowKanbanMsg struct {
 
 // ShowCrossProjectKanbanMsg opens the cross-project kanban view.
 type ShowCrossProjectKanbanMsg struct{}
+
+// KanbanSelectMsg navigates to a task's project from the kanban view.
+type KanbanSelectMsg struct {
+	Task    *models.Task
+	Project *models.Project
+}
