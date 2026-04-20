@@ -158,6 +158,46 @@ func TestComputeUrgencyScore(t *testing.T) {
 	}
 }
 
+func TestComputeSuggestionScore_SectionOrdering(t *testing.T) {
+	project := newTestPriorityProject(t)
+	m := NewPriorityViewModel(project, nil, nil)
+
+	makeTask := func(section string) *models.Task {
+		task, err := models.NewTask("1", 1, models.TaskTypeTask, "Test")
+		if err != nil {
+			t.Fatal(err)
+		}
+		task.Priority = 3
+		task.CreatedAt = time.Now().Add(-48 * time.Hour)
+		task.UpdatedAt = time.Now().Add(-48 * time.Hour)
+		task.Section = section
+		return task
+	}
+
+	nextScore := m.computeSuggestionScore(makeTask(models.SectionNext))
+	inboxScore := m.computeSuggestionScore(makeTask(models.SectionInbox))
+	waitingScore := m.computeSuggestionScore(makeTask(models.SectionWaiting))
+	reviewScore := m.computeSuggestionScore(makeTask(models.SectionReview))
+	standbyScore := m.computeSuggestionScore(makeTask(models.SectionStandby))
+	somedayScore := m.computeSuggestionScore(makeTask(models.SectionSomeday))
+
+	if nextScore <= inboxScore {
+		t.Errorf("Next score (%d) should be > Inbox score (%d)", nextScore, inboxScore)
+	}
+	if inboxScore <= waitingScore {
+		t.Errorf("Inbox score (%d) should be > Waiting score (%d)", inboxScore, waitingScore)
+	}
+	if reviewScore != waitingScore {
+		t.Errorf("Review score (%d) should equal Waiting score (%d)", reviewScore, waitingScore)
+	}
+	if waitingScore <= standbyScore {
+		t.Errorf("Waiting score (%d) should be > Standby score (%d)", waitingScore, standbyScore)
+	}
+	if standbyScore <= somedayScore {
+		t.Errorf("Standby score (%d) should be > Someday score (%d)", standbyScore, somedayScore)
+	}
+}
+
 func TestCategorizeByDueDate(t *testing.T) {
 	project := newTestPriorityProject(t)
 	m := NewPriorityViewModel(project, nil, nil)
