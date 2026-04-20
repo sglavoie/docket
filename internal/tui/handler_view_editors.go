@@ -70,6 +70,7 @@ func (m *AppModel) handleEditorMessages(msg tea.Msg) (bool, tea.Cmd) {
 		return m.handleTextEditorExternal(msg)
 
 	case TextEditorExternalDoneMsg:
+		m.clearStatus()
 		// Forward to text editor view to update its textarea
 		cmd := m.views.Update(m.currentView(), msg)
 		return true, cmd
@@ -78,6 +79,7 @@ func (m *AppModel) handleEditorMessages(msg tea.Msg) (bool, tea.Cmd) {
 		return m.handleGlowView(msg)
 
 	case GlowViewDoneMsg:
+		m.clearStatus()
 		return true, nil
 
 	case OpenLogDirMsg:
