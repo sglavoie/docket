@@ -276,6 +276,7 @@ func displayTaskShowJSON(task *models.Task) error {
 		UpdatedAt:       task.UpdatedAt,
 		CompletedAt:     task.CompletedAt,
 		DueDate:         task.DueDate,
+		HasTime:         task.HasTime,
 		DependsOn:       dependsOn,
 		RelatedTo:       relatedTo,
 		Pinned:          task.Pinned,
