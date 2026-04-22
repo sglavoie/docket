@@ -204,6 +204,72 @@ func TestHandleInlineTaskCreateRejectsInvalidTitle(t *testing.T) {
 	}
 }
 
+func TestHandleInlineTaskCreateDefaultsPriority(t *testing.T) {
+	tests := []struct {
+		name         string
+		priority     int
+		wantPriority int
+	}{
+		{"zero defaults to PriorityDefault", 0, models.PriorityDefault},
+		{"negative defaults to PriorityDefault", -1, models.PriorityDefault},
+		{"above range defaults to PriorityDefault", 6, models.PriorityDefault},
+		{"valid priority 1 preserved", 1, 1},
+		{"valid priority 5 preserved", 5, 5},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			app, _, project := newTestAppModelWithMockPersisterAndProject(t)
+
+			msg := InlineTaskCreateMsg{
+				Project:  project,
+				Title:    "Priority test task",
+				Priority: tt.priority,
+			}
+			app.handleTaskMessages(msg)
+
+			// The task is prepended, so it should be first
+			if len(project.Tasks) == 0 {
+				t.Fatal("Expected at least one task")
+			}
+			task := project.Tasks[0]
+			if task.Priority != tt.wantPriority {
+				t.Errorf("Priority = %d, want %d", task.Priority, tt.wantPriority)
+			}
+		})
+	}
+}
+
+func TestHandleInlineTaskCreateInitializesFields(t *testing.T) {
+	app, _, project := newTestAppModelWithMockPersisterAndProject(t)
+
+	msg := InlineTaskCreateMsg{
+		Project: project,
+		Title:   "Field init test",
+	}
+	app.handleTaskMessages(msg)
+
+	if len(project.Tasks) == 0 {
+		t.Fatal("Expected at least one task")
+	}
+	task := project.Tasks[0]
+
+	if task.Tags == nil {
+		t.Error("Tags should be initialized to empty slice, got nil")
+	}
+	if task.DependsOn == nil {
+		t.Error("DependsOn should be initialized to empty slice, got nil")
+	}
+	if task.RelatedTo == nil {
+		t.Error("RelatedTo should be initialized to empty slice, got nil")
+	}
+	if task.ScoreDimensions == nil {
+		t.Error("ScoreDimensions should be initialized to empty map, got nil")
+	}
+	if task.Children == nil {
+		t.Error("Children should be initialized to empty slice, got nil")
+	}
+}
+
 func TestSwitchToProjectUsesPersister(t *testing.T) {
 	app, mockPersister, _ := newTestAppModelWithMockPersisterAndProject(t)
 	newProject := testutil.NewTestProjectWithTasks("New Project")
