@@ -220,7 +220,7 @@ func (m *AppModel) handleViewReviewMessages(msg tea.Msg) (bool, tea.Cmd) { //nol
 
 	case ShowProjectFocusViewMsg:
 		if msg.Project != nil {
-			m.showView(ViewProjectFocusView, NewProjectFocusViewModel(msg.Project))
+			m.showView(ViewProjectFocusView, NewProjectFocusViewModel(msg.Project, m.config))
 		}
 		return true, nil
 

@@ -17,6 +17,7 @@ type ProjectFocusViewModel struct {
 	InteractiveViewState
 
 	project *models.Project
+	cfg     *config.Config
 
 	// Tasks
 	tasks []*models.Task
@@ -28,9 +29,10 @@ type ProjectFocusViewModel struct {
 }
 
 // NewProjectFocusViewModel creates a new project focus view model.
-func NewProjectFocusViewModel(project *models.Project) *ProjectFocusViewModel {
+func NewProjectFocusViewModel(project *models.Project, cfg *config.Config) *ProjectFocusViewModel {
 	m := &ProjectFocusViewModel{
 		project: project,
+		cfg:     cfg,
 	}
 	m.loadTasks()
 	return m
@@ -302,7 +304,7 @@ func (m *ProjectFocusViewModel) getTaskRef() (*models.Task, *models.Project) {
 }
 
 func (m *ProjectFocusViewModel) getPersister() Persister           { return defaultPersister }
-func (m *ProjectFocusViewModel) getConfig() *config.Config         { return nil }
+func (m *ProjectFocusViewModel) getConfig() *config.Config         { return m.cfg }
 func (m *ProjectFocusViewModel) getConfigManager() *config.Manager { return nil }
 func (m *ProjectFocusViewModel) reloadData()                       { m.loadTasks() }
 func (m *ProjectFocusViewModel) setErr(err error)                  { m.SetError(err) }

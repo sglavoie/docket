@@ -235,7 +235,7 @@ func (m *AppModel) reconstructProjectView(entry NavEntry) tea.Cmd {
 	case ViewUndoHistory:
 		m.showView(ViewUndoHistory, NewUndoHistoryModel(project))
 	case ViewProjectFocusView:
-		m.showView(ViewProjectFocusView, NewProjectFocusViewModel(project))
+		m.showView(ViewProjectFocusView, NewProjectFocusViewModel(project, m.config))
 	case ViewMetricsDashboard:
 		if m.metricsDashboard != nil {
 			m.metricsDashboard.computeMetrics()
