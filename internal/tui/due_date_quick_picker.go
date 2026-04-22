@@ -142,7 +142,9 @@ func (p *DueDateQuickPicker) render(width int) string {
 
 	titleText := "Set Due Date"
 	if p.task.DueDate != nil {
-		titleText = fmt.Sprintf("Set Due Date: %s", p.task.DueDate.Format("Mon Jan 2, 2006"))
+		dateStr := p.task.DueDate.Format("Mon Jan 2, 2006")
+		dateStr = AppendTimeIfHasTime(p.task, dateStr, "15:04")
+		titleText = fmt.Sprintf("Set Due Date: %s", dateStr)
 	}
 	title := lipgloss.NewStyle().Foreground(ColorPrimary).Bold(true).Render(
 		fmt.Sprintf("%s — %s", titleText, taskTitle),

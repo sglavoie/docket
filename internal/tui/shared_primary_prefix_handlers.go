@@ -219,6 +219,7 @@ func handleSkipRecurrence(v prefixableView) (tea.Cmd, bool) {
 	dueStr := "none"
 	if task.DueDate != nil {
 		dueStr = task.DueDate.Format("Mon Jan 2, 2006")
+		dueStr = AppendTimeIfHasTime(task, dueStr, "15:04")
 	}
 	msg := fmt.Sprintf("Skipped: next due %s", dueStr)
 	v.setUndoContext("Skip Recurrence", task.Title)
@@ -271,6 +272,7 @@ func handleDeferRecurrence(key string, v prefixableView) (tea.Cmd, bool) {
 	dueStr := "none"
 	if task.DueDate != nil {
 		dueStr = task.DueDate.Format("Mon Jan 2, 2006")
+		dueStr = AppendTimeIfHasTime(task, dueStr, "15:04")
 	}
 	msg := fmt.Sprintf("Deferred %s: now due %s", desc, dueStr)
 	v.setUndoContext("Defer Recurrence", task.Title)

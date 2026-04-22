@@ -392,9 +392,11 @@ func (m *TaskJumperModel) renderPreview() string {
 
 	// Due date
 	if task.DueDate != nil {
+		dateStr := task.DueDate.Format(util.DateFormat)
+		dateStr = AppendTimeIfHasTime(task, dateStr, "15:04")
 		fmt.Fprintf(&b, "%s %s\n",
 			MutedStyle.Render("Due:"),
-			task.DueDate.Format(util.DateFormat))
+			dateStr)
 	}
 
 	// Parent reference

@@ -110,9 +110,11 @@ func (m *CommandPaletteModel) renderTaskPreview(item PaletteItem) string {
 		} else if dueDay.Equal(today) {
 			dueStyle = DueTodayStyle
 		}
+		dateStr := task.DueDate.Format(util.DateFormat)
+		dateStr = AppendTimeIfHasTime(task, dateStr, "15:04")
 		fmt.Fprintf(&b, "%s %s\n",
 			MutedStyle.Render("Due:"),
-			dueStyle.Render(task.DueDate.Format(util.DateFormat)))
+			dueStyle.Render(dateStr))
 	}
 
 	if task.Parent != nil {

@@ -245,7 +245,9 @@ func (m *AppModel) renderPeekOverlay() string {
 
 	// Due date
 	if task.DueDate != nil {
-		sb.WriteString(MutedStyle.Render("Due: " + task.DueDate.Format("Mon Jan 2, 2006")))
+		dateStr := task.DueDate.Format("Mon Jan 2, 2006")
+		dateStr = AppendTimeIfHasTime(task, dateStr, "15:04")
+		sb.WriteString(MutedStyle.Render("Due: " + dateStr))
 		sb.WriteString("\n")
 	}
 
