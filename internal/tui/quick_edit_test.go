@@ -303,3 +303,45 @@ func TestRenderQuickEditPreview(t *testing.T) {
 		t.Errorf("expected '(no changes)', got '%s'", preview)
 	}
 }
+
+func TestQuickEditComponent_CustomSection_PreservedInOriginal(t *testing.T) {
+	task := &models.Task{
+		ID:       "test-id",
+		Title:    "Test Task",
+		Priority: 3,
+		Status:   models.StatusTodo,
+	}
+	// Place task in a custom section
+	task.SetSection("Sprint-1")
+	if task.Section != "" || task.CustomSection != "Sprint-1" {
+		t.Fatalf("precondition: expected Section=\"\", CustomSection=\"Sprint-1\"")
+	}
+
+	comp := NewQuickEditComponent()
+	comp.Enter(task, false)
+
+	// The original and preview should carry the custom section, not ""
+	if comp.GetOriginal().section != "Sprint-1" {
+		t.Errorf("expected original.section=%q, got %q", "Sprint-1", comp.GetOriginal().section)
+	}
+	if comp.GetPreview().section != "Sprint-1" {
+		t.Errorf("expected preview.section=%q, got %q", "Sprint-1", comp.GetPreview().section)
+	}
+}
+
+func TestQuickEditComponent_GTDSection_PreservedInOriginal(t *testing.T) {
+	task := &models.Task{
+		ID:       "test-id",
+		Title:    "Test Task",
+		Priority: 3,
+		Status:   models.StatusTodo,
+	}
+	task.SetSection("Waiting")
+
+	comp := NewQuickEditComponent()
+	comp.Enter(task, false)
+
+	if comp.GetOriginal().section != "Waiting" {
+		t.Errorf("expected original.section=%q, got %q", "Waiting", comp.GetOriginal().section)
+	}
+}

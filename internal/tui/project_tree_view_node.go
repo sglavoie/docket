@@ -219,11 +219,17 @@ func (m *ProjectTreeModel) nodeOrgGroup(task *models.Task, node *TreeNode) strin
 	var parts []string
 	if node.IsContextNode || m.viewMode == ViewModeCompleted || m.viewMode == ViewModeAll {
 		sectionName := task.Section
-		if sectionName == "" {
+		if sectionName == "" && task.CustomSection != "" {
+			sectionName = task.CustomSection
+		} else if sectionName == "" {
 			sectionName = "Active"
 		}
+		effectiveSection := task.Section
+		if effectiveSection == "" && task.CustomSection != "" {
+			effectiveSection = task.CustomSection
+		}
 		if m.viewMode == ViewModeAll {
-			parts = append(parts, GetViewModeStyleForSection(task.Section).Render("@ "+sectionName))
+			parts = append(parts, GetViewModeStyleForSection(effectiveSection).Render("@ "+sectionName))
 		} else {
 			parts = append(parts, SectionBadgeStyle.Render("@ "+sectionName))
 		}

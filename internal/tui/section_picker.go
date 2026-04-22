@@ -2,7 +2,6 @@ package tui
 
 import (
 	"fmt"
-	"maps"
 	"sort"
 	"strings"
 
@@ -80,18 +79,16 @@ func NewSectionPickerModel(task *models.Task, project *models.Project) *SectionP
 func buildSectionPickerList(project *models.Project, task *models.Task) []SectionInfo {
 	sectionCounts := make(map[string]int)
 
-	// Count GTD sections from task.Section, custom sections from task.CustomSection
-	for _, task := range project.Tasks {
-		sectionCounts[task.Section]++
-	}
-	customCounts := make(map[string]int)
+	// Count tasks per section: custom sections use CustomSection field,
+	// all others use Section field. This avoids double-counting tasks with
+	// CustomSection set (whose Section field is "").
 	for _, task := range project.Tasks {
 		if task.CustomSection != "" {
-			customCounts[task.CustomSection]++
+			sectionCounts[task.CustomSection]++
+		} else {
+			sectionCounts[task.Section]++
 		}
 	}
-	// Merge custom counts into sectionCounts (custom names won't collide with GTD names)
-	maps.Copy(sectionCounts, customCounts)
 
 	// Include all project-defined sections, even if empty
 	for _, section := range project.GetSections() {

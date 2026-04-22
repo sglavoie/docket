@@ -79,6 +79,13 @@ func (q *QuickEditComponent) Enter(task *models.Task, renameOnly bool) tea.Cmd {
 	q.input.Focus()
 	q.input.CursorEnd()
 
+	// Resolve effective section: custom sections are stored in
+	// CustomSection (with Section=""), so use it when present.
+	effectiveSection := task.Section
+	if effectiveSection == "" && task.CustomSection != "" {
+		effectiveSection = task.CustomSection
+	}
+
 	// Store original state
 	q.original = &quickEditResult{
 		title:       task.Title,
@@ -87,7 +94,7 @@ func (q *QuickEditComponent) Enter(task *models.Task, renameOnly bool) tea.Cmd {
 		prioritySet: true,
 		dueDate:     task.DueDate,
 		dueDateSet:  task.DueDate != nil,
-		section:     task.Section,
+		section:     effectiveSection,
 		sectionSet:  true,
 		status:      task.Status,
 		statusSet:   true,
@@ -101,7 +108,7 @@ func (q *QuickEditComponent) Enter(task *models.Task, renameOnly bool) tea.Cmd {
 		prioritySet: true,
 		dueDate:     task.DueDate,
 		dueDateSet:  task.DueDate != nil,
-		section:     task.Section,
+		section:     effectiveSection,
 		sectionSet:  true,
 		status:      task.Status,
 		statusSet:   true,

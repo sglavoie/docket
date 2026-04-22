@@ -83,7 +83,11 @@ func (m *BulkEditModel) analyzeCurrentValues() { //nolint:gocyclo
 
 	sections := make(map[string]int)
 	for _, task := range m.tasks {
-		sections[task.Section]++
+		if task.CustomSection != "" {
+			sections[task.CustomSection]++
+		} else {
+			sections[task.Section]++
+		}
 	}
 	if len(sections) == 1 {
 		for section := range sections {
@@ -179,7 +183,9 @@ func (m *BulkEditModel) buildSectionOptions() {
 	}
 
 	for _, task := range m.project.Tasks {
-		if task.Section != "" {
+		if task.CustomSection != "" {
+			sectionSet[task.CustomSection] = true
+		} else if task.Section != "" {
 			sectionSet[task.Section] = true
 		}
 	}

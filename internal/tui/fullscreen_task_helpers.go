@@ -107,15 +107,21 @@ func renderMetadataContent(task *models.Task, project *models.Project, innerWidt
 	}
 
 	sectionName := task.Section
-	if sectionName == "" {
+	if sectionName == "" && task.CustomSection != "" {
+		sectionName = task.CustomSection
+	} else if sectionName == "" {
 		sectionName = "Active"
 	}
-	sectionColor := project.GetSectionColor(task.Section)
+	effectiveSection := task.Section
+	if effectiveSection == "" && task.CustomSection != "" {
+		effectiveSection = task.CustomSection
+	}
+	sectionColor := project.GetSectionColor(effectiveSection)
 	sectionStyle := GetSectionColorStyle(sectionColor)
 	sectionLine := MutedStyle.Render("Section: ") + sectionStyle.Render(sectionName)
 	lines = append(lines, sectionLine)
 
-	if task.CustomSection != "" {
+	if task.CustomSection != "" && task.Section != "" {
 		csColor := project.GetSectionColor(task.CustomSection)
 		csStyle := GetSectionColorStyle(csColor)
 		csLine := MutedStyle.Render("Custom:  ") + csStyle.Render(task.CustomSection)

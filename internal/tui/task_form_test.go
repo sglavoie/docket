@@ -2229,3 +2229,95 @@ func TestTaskForm_Children_ChecklistEdit_CommitBlank_RemovesItem(t *testing.T) {
 			len(m.draft.checklist), m.draft.checklist)
 	}
 }
+
+// ── Custom section preservation in edit mode ──────────────────────────────────
+
+func TestTaskFormEdit_CustomSection_PreservedInDraft(t *testing.T) {
+	project := testutil.NewTestProjectWithTasks("Test Project")
+	cfg := testutil.NewTestConfig()
+	if len(project.Tasks) == 0 {
+		t.Skip("test project has no tasks")
+	}
+	task := project.Tasks[0]
+	// Place task in a custom section (Section="" and CustomSection="Sprint-1").
+	task.SetSection("Sprint-1")
+	if task.Section != "" || task.CustomSection != "Sprint-1" {
+		t.Fatalf("precondition: expected Section=\"\", CustomSection=\"Sprint-1\", got Section=%q, CustomSection=%q",
+			task.Section, task.CustomSection)
+	}
+
+	m := NewTaskFormModelEdit(project, task, cfg, nil)
+
+	// The draft should carry the custom section name, not "".
+	if m.draft.section != "Sprint-1" {
+		t.Errorf("expected draft.section=%q, got %q", "Sprint-1", m.draft.section)
+	}
+}
+
+func TestTaskFormEdit_GTDSection_PreservedInDraft(t *testing.T) {
+	project := testutil.NewTestProjectWithTasks("Test Project")
+	cfg := testutil.NewTestConfig()
+	if len(project.Tasks) == 0 {
+		t.Skip("test project has no tasks")
+	}
+	task := project.Tasks[0]
+	task.SetSection("Waiting")
+
+	m := NewTaskFormModelEdit(project, task, cfg, nil)
+
+	if m.draft.section != "Waiting" {
+		t.Errorf("expected draft.section=%q, got %q", "Waiting", m.draft.section)
+	}
+}
+
+func TestTaskFormEdit_ActiveSection_PreservedInDraft(t *testing.T) {
+	project := testutil.NewTestProjectWithTasks("Test Project")
+	cfg := testutil.NewTestConfig()
+	if len(project.Tasks) == 0 {
+		t.Skip("test project has no tasks")
+	}
+	task := project.Tasks[0]
+	task.SetSection("") // Active = Section="" and CustomSection=""
+
+	m := NewTaskFormModelEdit(project, task, cfg, nil)
+
+	if m.draft.section != "" {
+		t.Errorf("expected draft.section=\"\" (Active), got %q", m.draft.section)
+	}
+}
+
+func TestTaskFormEdit_CustomSection_RoundTrip(t *testing.T) {
+	project := testutil.NewTestProjectWithTasks("Test Project")
+	project.EnsureSection("Sprint-1")
+	cfg := testutil.NewTestConfig()
+	if len(project.Tasks) == 0 {
+		t.Skip("test project has no tasks")
+	}
+	task := project.Tasks[0]
+	task.SetSection("Sprint-1")
+
+	m := NewTaskFormModelEdit(project, task, cfg, nil)
+
+	// Simulate saving without changing anything: the section should survive.
+	// We need a temp dir for save.
+	tmpDir := t.TempDir()
+	project.Path = tmpDir
+	// Write a minimal tasks.md so save works.
+	os.WriteFile(filepath.Join(tmpDir, "tasks.md"), []byte("# Test Project\n"), 0o644)
+
+	cmd := m.handleSave()
+	if m.err != nil {
+		t.Fatalf("handleSave error: %v", m.err)
+	}
+	if cmd == nil {
+		t.Fatal("expected non-nil cmd from handleSave")
+	}
+
+	// Verify the task's section fields after save.
+	if task.CustomSection != "Sprint-1" {
+		t.Errorf("expected task.CustomSection=%q after save, got %q", "Sprint-1", task.CustomSection)
+	}
+	if task.Section != "" {
+		t.Errorf("expected task.Section=\"\" after save (custom section), got %q", task.Section)
+	}
+}
