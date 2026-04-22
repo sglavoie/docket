@@ -899,9 +899,27 @@ func (m *TaskFormModel) handleChecklistToggleDone() {
 }
 
 // buildValidParents returns tasks in the project that can parent the current draft type.
+// In edit mode, the task being edited and all its descendants are excluded to
+// prevent circular parent-child relationships.
 func (m *TaskFormModel) buildValidParents() []*models.Task {
+	// In edit mode, build a set of the task's own ID + all descendant IDs.
+	excluded := make(map[string]bool)
+	if m.mode == FormModeEdit && m.task != nil {
+		var collectDescendants func(t *models.Task)
+		collectDescendants = func(t *models.Task) {
+			excluded[t.ID] = true
+			for _, child := range t.Children {
+				collectDescendants(child)
+			}
+		}
+		collectDescendants(m.task)
+	}
+
 	var parents []*models.Task
 	for _, t := range m.project.Tasks {
+		if excluded[t.ID] {
+			continue
+		}
 		if t.CanAddChild(m.draft.taskType) {
 			parents = append(parents, t)
 		}

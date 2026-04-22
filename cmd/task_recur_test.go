@@ -371,6 +371,26 @@ func TestClearRecurrenceUpdatesTimestamp(t *testing.T) {
 	}
 }
 
+func TestRecurrenceModeChangeUpdatesTimestamp(t *testing.T) {
+	task := testutil.NewTestTask("Task", models.TaskTypeTask)
+	pattern := models.ParseRecurrence("weekly")
+	if err := task.SetRecurrence(pattern); err != nil {
+		t.Fatalf("SetRecurrence failed: %v", err)
+	}
+
+	originalTime := task.UpdatedAt
+
+	// Direct .Mode assignment (as cmd/task_recur.go --from alone does)
+	// does NOT automatically update UpdatedAt — the calling code must do it.
+	task.Recurrence.Mode = models.RecurModeFromCompletion
+	if task.Recurrence.Mode != models.RecurModeFromCompletion {
+		t.Error("expected mode to change to from_completion")
+	}
+	if task.UpdatedAt != originalTime {
+		t.Error("direct mode assignment should not auto-update UpdatedAt — the calling code must do it explicitly")
+	}
+}
+
 func TestParseRecurrenceWeekdayVariants(t *testing.T) {
 	tests := []struct {
 		input    string

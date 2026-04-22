@@ -2321,3 +2321,117 @@ func TestTaskFormEdit_CustomSection_RoundTrip(t *testing.T) {
 		t.Errorf("expected task.Section=\"\" after save (custom section), got %q", task.Section)
 	}
 }
+
+// ── buildValidParents tests ──────────────────────────────────────────────────
+
+func TestBuildValidParentsExcludesSelfInEditMode(t *testing.T) {
+	project := testutil.NewTestProjectWithTasks("Test")
+	cfg := testutil.NewTestConfig()
+
+	// Create an epic with a child story
+	epic := testutil.NewTestTask("Epic", models.TaskTypeEpic)
+	story := testutil.NewTestTask("Story", models.TaskTypeStory)
+	story.ParentID = &epic.ID
+	task := testutil.NewTestTask("Leaf Task", models.TaskTypeTask)
+	task.ParentID = &story.ID
+
+	project.Tasks = []*models.Task{epic, story, task}
+	project.BuildTaskTree()
+
+	// Edit the story — buildValidParents should NOT include the story or its child
+	m := NewTaskFormModelEdit(project, story, cfg, nil)
+	parents := m.buildValidParents()
+
+	for _, p := range parents {
+		if p.ID == story.ID {
+			t.Errorf("buildValidParents should exclude the task being edited (story)")
+		}
+		if p.ID == task.ID {
+			t.Errorf("buildValidParents should exclude descendants of the task being edited (leaf task)")
+		}
+	}
+
+	// The epic should still be present as a valid parent
+	found := false
+	for _, p := range parents {
+		if p.ID == epic.ID {
+			found = true
+		}
+	}
+	if !found {
+		t.Error("buildValidParents should include valid ancestors (epic)")
+	}
+}
+
+func TestBuildValidParentsIncludesAllInCreateMode(t *testing.T) {
+	project := testutil.NewTestProjectWithTasks("Test")
+	cfg := testutil.NewTestConfig()
+
+	epic := testutil.NewTestTask("Epic", models.TaskTypeEpic)
+	project.Tasks = []*models.Task{epic}
+	project.BuildTaskTree()
+
+	m := NewTaskFormModelCreate(project, cfg, nil, nil)
+	parents := m.buildValidParents()
+
+	found := false
+	for _, p := range parents {
+		if p.ID == epic.ID {
+			found = true
+		}
+	}
+	if !found {
+		t.Error("buildValidParents in create mode should include all valid parents")
+	}
+}
+
+// ── subtask edit empty title removal test ────────────────────────────────────
+
+func TestSubtaskEditEmptyTitleRemovesSubtask(t *testing.T) {
+	project := testutil.NewTestProjectWithTasks("Test")
+	cfg := testutil.NewTestConfig()
+
+	m := NewTaskFormModelCreate(project, cfg, nil, nil)
+	m.draft.taskType = models.TaskTypeEpic
+
+	// Add two subtask drafts
+	m.draft.subtasks = []formSubtaskDraft{
+		{title: "Sub 1", taskType: models.TaskTypeTask},
+		{title: "Sub 2", taskType: models.TaskTypeTask},
+	}
+
+	// Simulate confirming the edit of the first subtask with empty title
+	msg := TaskFormSubtaskEditedMsg{Idx: 0, Title: "", TaskType: models.TaskTypeTask}
+	m.applyFormOverlayResult(msg)
+
+	if len(m.draft.subtasks) != 1 {
+		t.Fatalf("expected 1 subtask after empty title edit, got %d", len(m.draft.subtasks))
+	}
+	if m.draft.subtasks[0].title != "Sub 2" {
+		t.Errorf("expected remaining subtask to be 'Sub 2', got %q", m.draft.subtasks[0].title)
+	}
+}
+
+func TestSubtaskEditNonEmptyTitlePreserved(t *testing.T) {
+	project := testutil.NewTestProjectWithTasks("Test")
+	cfg := testutil.NewTestConfig()
+
+	m := NewTaskFormModelCreate(project, cfg, nil, nil)
+	m.draft.taskType = models.TaskTypeEpic
+	m.draft.subtasks = []formSubtaskDraft{
+		{title: "Old Title", taskType: models.TaskTypeTask},
+	}
+
+	msg := TaskFormSubtaskEditedMsg{Idx: 0, Title: "New Title", TaskType: models.TaskTypeBug}
+	m.applyFormOverlayResult(msg)
+
+	if len(m.draft.subtasks) != 1 {
+		t.Fatalf("expected 1 subtask, got %d", len(m.draft.subtasks))
+	}
+	if m.draft.subtasks[0].title != "New Title" {
+		t.Errorf("expected title 'New Title', got %q", m.draft.subtasks[0].title)
+	}
+	if m.draft.subtasks[0].taskType != models.TaskTypeBug {
+		t.Errorf("expected type bug, got %s", m.draft.subtasks[0].taskType)
+	}
+}

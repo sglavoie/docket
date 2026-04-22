@@ -478,8 +478,17 @@ func (m *TaskFormModel) applyFormOverlayResult(msg tea.Msg) {
 
 	case TaskFormSubtaskEditedMsg:
 		if msg.Idx >= 0 && msg.Idx < len(m.draft.subtasks) {
-			m.draft.subtasks[msg.Idx].title = msg.Title
-			m.draft.subtasks[msg.Idx].taskType = msg.TaskType
+			if strings.TrimSpace(msg.Title) == "" {
+				// Remove the subtask when confirmed with blank title
+				// (consistent with checklist item handling above).
+				m.draft.subtasks = append(
+					m.draft.subtasks[:msg.Idx],
+					m.draft.subtasks[msg.Idx+1:]...,
+				)
+			} else {
+				m.draft.subtasks[msg.Idx].title = msg.Title
+				m.draft.subtasks[msg.Idx].taskType = msg.TaskType
+			}
 			m.hasChanges = true
 			m.err = nil
 		}

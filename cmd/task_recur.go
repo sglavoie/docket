@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/spf13/cobra"
 
@@ -191,6 +192,7 @@ func runTaskRecur(cmd *cobra.Command, args []string) error { //nolint:gocyclo
 			// --from alone: update mode on existing recurrence
 			oldPattern := task.Recurrence.String()
 			task.Recurrence.Mode = recurMode
+			task.UpdatedAt = time.Now()
 			if err := SaveProject(project, &SaveOptions{
 				Config: cfg, ConfigManager: configManager,
 				UndoAction: "Set Recurrence Mode", UndoContext: fmt.Sprintf("%s #%d", recurMode, task.ShortID),
