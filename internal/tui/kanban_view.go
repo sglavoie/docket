@@ -114,8 +114,8 @@ func kanbanRender(m *KanbanModel) string {
 		// separator(1) + configurable pane height
 		bodyRows -= 1 + m.detailPaneHeight()
 	}
-	if bodyRows < 0 {
-		bodyRows = 0
+	if bodyRows < 1 {
+		bodyRows = 1
 	}
 
 	// === Blank separator after title ===

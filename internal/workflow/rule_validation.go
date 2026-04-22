@@ -245,6 +245,9 @@ func ParseRelativeDuration(s string) (int, error) {
 			return 0, fmt.Errorf("invalid number: %s", numStr)
 		}
 		num = num*10 + int(char-'0')
+		if num > 9999 {
+			return 0, fmt.Errorf("duration too large: %s", numStr)
+		}
 	}
 	if num <= 0 {
 		return 0, fmt.Errorf("duration must be positive")

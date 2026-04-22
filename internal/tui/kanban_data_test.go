@@ -416,6 +416,47 @@ func TestKanbanRefreshAndClamp_AppliesTagFilter(t *testing.T) {
 	t.Error("inbox column not found")
 }
 
+func TestKanbanBuildTagCmd_CrossProjectSource(t *testing.T) {
+	cfg := &config.Config{}
+
+	// Single-project kanban should emit ViewKanban source.
+	m := &KanbanModel{
+		config:       cfg,
+		mode:         KanbanModeSection,
+		crossProject: false,
+		FilterMixin:  FilterMixin{filter: newFilterState()},
+	}
+	cmd := m.buildTagCmd()
+	if cmd == nil {
+		t.Fatal("expected non-nil cmd")
+	}
+	msg := cmd()
+	tagMsg, ok := msg.(ShowTagFilterMsg)
+	if !ok {
+		t.Fatalf("expected ShowTagFilterMsg, got %T", msg)
+	}
+	if tagMsg.Source != ViewKanban {
+		t.Errorf("single-project source = %v, want %v", tagMsg.Source, ViewKanban)
+	}
+
+	// Cross-project kanban should emit ViewCrossProjectKanban source.
+	m2 := &KanbanModel{
+		config:       cfg,
+		mode:         KanbanModeSection,
+		crossProject: true,
+		FilterMixin:  FilterMixin{filter: newFilterState()},
+	}
+	cmd2 := m2.buildTagCmd()
+	msg2 := cmd2()
+	tagMsg2, ok := msg2.(ShowTagFilterMsg)
+	if !ok {
+		t.Fatalf("expected ShowTagFilterMsg, got %T", msg2)
+	}
+	if tagMsg2.Source != ViewCrossProjectKanban {
+		t.Errorf("cross-project source = %v, want %v", tagMsg2.Source, ViewCrossProjectKanban)
+	}
+}
+
 func TestCollectStages_Deduplication(t *testing.T) {
 	proj := testutil.NewTestProject("p")
 	task := testutil.NewTestTask("t", models.TaskTypeTask)

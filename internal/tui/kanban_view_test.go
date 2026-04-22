@@ -174,6 +174,33 @@ func TestKanbanRender_DetailPane_VisibleWhenEnabled(t *testing.T) {
 	}
 }
 
+// ── minimal height (bodyRows clamped to 1) ──────────────────────────────────
+
+func TestKanbanRender_MinimalHeight_NoPanic(t *testing.T) {
+	// height=5: fixedOverhead=4 → bodyRows=1 (clamped minimum).
+	// Should render without panicking and still show a card row.
+	cols := []KanbanColumn{makeColN("inbox", 3)}
+	m := newRenderKanban(80, 5, cols)
+	got := kanbanRender(m)
+	if got == "" {
+		t.Error("minimal height: expected non-empty render")
+	}
+	if !strings.Contains(got, "inbox") {
+		t.Errorf("minimal height: expected column header 'inbox' in output")
+	}
+}
+
+func TestKanbanRender_TinyHeight_BelowOverhead(t *testing.T) {
+	// height=3: below fixedOverhead(4) → bodyRows clamped to 1.
+	// Must not panic.
+	cols := []KanbanColumn{makeColN("inbox", 5)}
+	m := newRenderKanban(80, 3, cols)
+	got := kanbanRender(m)
+	if got == "" {
+		t.Error("tiny height: expected non-empty render")
+	}
+}
+
 // ── long title truncation ─────────────────────────────────────────────────────
 
 func TestKanbanRender_LongTitleTruncated(t *testing.T) {

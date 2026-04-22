@@ -122,7 +122,11 @@ func (m *KanbanModel) buildTagCmd() tea.Cmd {
 	for _, card := range m.allCards {
 		tasks = append(tasks, card.Task)
 	}
-	return buildTagCmdFromTasks(tasks, m.filter.Tags, ViewKanban, "Filter by Tags")
+	source := ViewKanban
+	if m.crossProject {
+		source = ViewCrossProjectKanban
+	}
+	return buildTagCmdFromTasks(tasks, m.filter.Tags, source, "Filter by Tags")
 }
 
 // handleFilterPrefix handles the second key after pressing F (filter prefix).
