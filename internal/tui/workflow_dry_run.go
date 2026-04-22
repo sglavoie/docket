@@ -375,9 +375,11 @@ func detectChanges(original, modified *models.Task) []DryRunChange {
 	modDue := "(none)"
 	if original.DueDate != nil {
 		origDue = original.DueDate.Format("2006-01-02")
+		origDue = AppendTimeIfHasTime(original, origDue, "15:04")
 	}
 	if modified.DueDate != nil {
 		modDue = modified.DueDate.Format("2006-01-02")
+		modDue = AppendTimeIfHasTime(modified, modDue, "15:04")
 	}
 	if origDue != modDue {
 		changes = append(changes, DryRunChange{
