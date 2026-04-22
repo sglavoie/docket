@@ -14,9 +14,11 @@ import (
 func (m *FocusBoardModel) refreshAndClamp() { m.applyFilter(); m.clampCursor() }
 
 func (m *FocusBoardModel) buildTagCmd() tea.Cmd {
-	tasks := make([]*models.Task, len(m.rows))
-	for i := range m.rows {
-		tasks[i] = m.rows[i].Task
+	// Use allRows (all non-complete, non-snoozed) so the tag picker includes
+	// tags from tasks visible on any tab, not just active/due-soon ones.
+	tasks := make([]*models.Task, len(m.allRows))
+	for i := range m.allRows {
+		tasks[i] = m.allRows[i].Task
 	}
 	return buildTagCmdFromTasks(tasks, m.filter.Tags, ViewFocusBoard, "Filter by Tags")
 }

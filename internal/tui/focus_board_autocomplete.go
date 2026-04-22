@@ -157,9 +157,9 @@ func (m *FocusBoardModel) acceptBoardSuggestion() {
 
 // initBoardCaches builds tag and project caches for autocomplete.
 func (m *FocusBoardModel) initBoardCaches() {
-	// Cache tags from all rows
+	// Cache tags from all rows (allRows includes all non-complete/non-snoozed)
 	tagSet := make(map[string]bool)
-	for _, r := range m.rows {
+	for _, r := range m.allRows {
 		for _, tag := range r.Task.Tags {
 			tagSet[tag] = true
 		}

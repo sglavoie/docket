@@ -24,6 +24,7 @@ func (m *FocusBoardModel) loadItems() {
 		m.ac.Clear()
 	}
 	m.rows = nil
+	m.allRows = nil
 	m.nextRows = nil
 	m.closedRows = nil
 	m.todayRows = nil
@@ -62,6 +63,9 @@ func (m *FocusBoardModel) loadItems() {
 			if task.Status.IsComplete() || task.IsSnoozed() {
 				continue
 			}
+
+			// All non-complete, non-snoozed tasks for the "All" tab
+			m.allRows = append(m.allRows, row)
 
 			// Collect Next-section tasks (empty section defaults to Next)
 			if task.Section == "" || task.Section == models.SectionNext {
@@ -108,13 +112,15 @@ func (m *FocusBoardModel) applyFilter() {
 	case boardTabToday:
 		m.filtered = make([]boardRow, len(m.todayRows))
 		copy(m.filtered, m.todayRows)
+	case boardTabAll:
+		m.filtered = make([]boardRow, len(m.allRows))
+		copy(m.filtered, m.allRows)
+		sort.SliceStable(m.filtered, func(i, j int) bool {
+			return m.filtered[i].Priority < m.filtered[j].Priority
+		})
 	case boardTabActiveDue:
-		m.filtered = nil
-		for _, r := range m.rows {
-			if r.isTask() {
-				m.filtered = append(m.filtered, r)
-			}
-		}
+		m.filtered = make([]boardRow, len(m.rows))
+		copy(m.filtered, m.rows)
 	case boardTabNext:
 		m.filtered = make([]boardRow, len(m.nextRows))
 		copy(m.filtered, m.nextRows)

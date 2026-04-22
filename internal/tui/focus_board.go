@@ -12,6 +12,7 @@ var focusBoardTabNames = []string{"Today", "All", "Active/Due", "Next", "By Sour
 
 const (
 	boardTabToday      = 0
+	boardTabAll        = 1
 	boardTabActiveDue  = 2
 	boardTabNext       = 3
 	boardTabBySource   = 4
@@ -48,6 +49,7 @@ type FocusBoardModel struct {
 
 	// Data
 	rows           []boardRow
+	allRows        []boardRow // all non-complete, non-snoozed tasks for "All" tab
 	nextRows       []boardRow
 	closedRows     []boardRow
 	todayRows      []boardRow

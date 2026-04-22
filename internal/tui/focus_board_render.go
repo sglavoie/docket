@@ -213,6 +213,8 @@ func (m *FocusBoardModel) View() tea.View { //nolint:gocyclo
 			}
 		}
 		rightParts = append(rightParts, fmt.Sprintf("%d/%d done", completedToday, len(m.todayRows)))
+	case boardTabAll:
+		rightParts = append(rightParts, fmt.Sprintf("%d/%d items", len(m.filtered), len(m.allRows)))
 	default:
 		rightParts = append(rightParts, fmt.Sprintf("%d/%d items", len(m.filtered), len(m.rows)))
 	}
