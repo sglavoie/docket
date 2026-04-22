@@ -17,6 +17,7 @@ import (
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/storage/format"
 	"github.com/sglavoie/tt/internal/tterrors"
+	"github.com/sglavoie/tt/internal/util"
 )
 
 // Dependencies holds injectable dependencies for commands.
@@ -475,4 +476,16 @@ func LoadConfigAndProjectOrCurrent(args []string) (*models.Project, *config.Conf
 		}
 	}
 	return project, cfg, mgr, nil
+}
+
+// formatTaskDueDate returns a human-readable due date string for CLI output.
+// When the task carries a time component (HasTime), the time is included.
+func formatTaskDueDate(task *models.Task) string {
+	if task.DueDate == nil {
+		return "none"
+	}
+	if task.HasTime {
+		return task.DueDate.Format(util.DateTimeFormat)
+	}
+	return task.DueDate.Format(util.DateFormat)
 }

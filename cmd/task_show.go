@@ -148,7 +148,7 @@ func displayTaskDetail(task *models.Task) {
 	if task.DueDate != nil {
 		fmt.Printf("%s %s\n",
 			labelStyle.Render("Due:"),
-			valueStyle.Render(task.DueDate.Format(util.DateFormat)))
+			valueStyle.Render(formatTaskDueDate(task)))
 	}
 
 	// Description
@@ -193,6 +193,7 @@ type taskShowJSONEntry struct {
 	UpdatedAt       time.Time                 `json:"updated_at"`
 	CompletedAt     *time.Time                `json:"completed_at"`
 	DueDate         *time.Time                `json:"due_date"`
+	HasTime         bool                      `json:"has_time"`
 	DependsOn       []string                  `json:"depends_on"`
 	RelatedTo       []string                  `json:"related_to"`
 	Pinned          bool                      `json:"pinned"`

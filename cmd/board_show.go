@@ -122,7 +122,7 @@ func printActionDetails(task *models.Task, project *models.Project) error {
 		fmt.Printf("Tags:     %s\n", strings.Join(task.Tags, ", "))
 	}
 	if task.DueDate != nil {
-		fmt.Printf("Due:      %s\n", task.DueDate.Format("2006-01-02"))
+		fmt.Printf("Due:      %s\n", formatTaskDueDate(task))
 	}
 
 	fmt.Printf("Created:  %s\n", storage.FormatRelativeTime(task.CreatedAt))
