@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/spf13/cobra"
 
@@ -55,6 +56,9 @@ func runBoardEdit(cmd *cobra.Command, args []string) error {
 		return editorErr
 	}
 	c := external.EditorCommand(resolvedEditor, tasksFile)
+	c.Stdin = os.Stdin
+	c.Stdout = os.Stdout
+	c.Stderr = os.Stderr
 	if err := c.Run(); err != nil {
 		return fmt.Errorf("editor failed: %w", err)
 	}

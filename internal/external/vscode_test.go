@@ -163,6 +163,23 @@ func TestEditorCommandAddsWaitForVariants(t *testing.T) {
 	}
 }
 
+func TestEditorCommandReturnsNilStdio(t *testing.T) {
+	// EditorCommand returns an exec.Cmd with nil Stdin/Stdout/Stderr.
+	// Callers that run terminal editors (vim, nano) must set these to
+	// os.Stdin/os.Stdout/os.Stderr before calling Run(), otherwise the
+	// editor will fail silently. (This was a real bug in board_edit.go.)
+	cmd := EditorCommand("vim", "/tmp/test.md")
+	if cmd.Stdin != nil {
+		t.Error("expected EditorCommand to return cmd with nil Stdin")
+	}
+	if cmd.Stdout != nil {
+		t.Error("expected EditorCommand to return cmd with nil Stdout")
+	}
+	if cmd.Stderr != nil {
+		t.Error("expected EditorCommand to return cmd with nil Stderr")
+	}
+}
+
 func TestEditorDefaultFallback(t *testing.T) {
 	// Test the logic for choosing default editor
 	// When EDITOR is not set, should default to "code"
