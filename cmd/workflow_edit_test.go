@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/sglavoie/tt/internal/workflow"
@@ -280,6 +281,38 @@ func TestRemoveTriggerFromLegacyRuleAddNew(t *testing.T) {
 	}
 	if modifiedRule.Triggers[0].Field != workflow.FieldPriority {
 		t.Errorf("expected priority trigger, got %s", modifiedRule.Triggers[0].Field)
+	}
+}
+
+// TestCollectValidationErrors_LevelMismatch verifies that collectValidationErrors
+// catches project-level rules with task-level triggers (and vice versa).
+func TestCollectValidationErrors_LevelMismatch(t *testing.T) {
+	// Project-level rule with a task-level trigger should produce an error.
+	rule := &workflow.WorkflowRule{
+		ID:    "test-level",
+		Name:  "Bad Level Rule",
+		Level: workflow.RuleLevelProject,
+		Triggers: []workflow.RuleTrigger{
+			{Field: workflow.FieldStatus, Operation: workflow.OpEquals, Value: "done"},
+		},
+		Actions: []workflow.RuleAction{
+			{ActionType: workflow.ActionSetProjectStatus, Value: "active"},
+		},
+	}
+	errors := collectValidationErrors(rule)
+	if len(errors) == 0 {
+		t.Error("expected validation error for project-level rule with task-level trigger")
+	}
+
+	found := false
+	for _, e := range errors {
+		if strings.Contains(e, "project-level rule") || strings.Contains(e, "task-level") {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Errorf("expected level mismatch error, got: %v", errors)
 	}
 }
 

@@ -561,6 +561,17 @@ func collectValidationErrors(rule *workflow.WorkflowRule) []string {
 		}
 	}
 
+	// Validate scope and level consistency (matching WorkflowRule.Validate).
+	if err := rule.Validate(); err != nil {
+		// Only append scope/level errors that aren't already captured above.
+		errMsg := err.Error()
+		if strings.Contains(errMsg, "invalid scope") ||
+			strings.Contains(errMsg, "task-level rule") ||
+			strings.Contains(errMsg, "project-level rule") {
+			errors = append(errors, errMsg)
+		}
+	}
+
 	return errors
 }
 
