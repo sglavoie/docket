@@ -39,12 +39,11 @@ func (m *TaskChecklistModel) saveItem() tea.Cmd {
 }
 
 func (m *TaskChecklistModel) executeDelete() tea.Cmd {
+	// Mutate model state synchronously in Update() to avoid data races with View().
+	m.resolveTask()
 	if m.cursor < 0 || m.cursor >= len(m.task.Checklist) {
 		return func() tea.Msg { return ErrorMsg{Err: fmt.Errorf("invalid index")} }
 	}
-
-	// Mutate model state synchronously in Update() to avoid data races with View().
-	m.resolveTask()
 	m.task.Checklist = append(m.task.Checklist[:m.cursor], m.task.Checklist[m.cursor+1:]...)
 	if m.cursor >= len(m.task.Checklist) && m.cursor > 0 {
 		m.cursor--
@@ -99,12 +98,11 @@ func (m *TaskChecklistModel) saveEditedItem() tea.Cmd {
 }
 
 func (m *TaskChecklistModel) toggleItem() tea.Cmd {
+	// Mutate model state synchronously in Update() to avoid data races with View().
+	m.resolveTask()
 	if m.cursor < 0 || m.cursor >= len(m.task.Checklist) {
 		return nil
 	}
-
-	// Mutate model state synchronously in Update() to avoid data races with View().
-	m.resolveTask()
 	m.task.Checklist[m.cursor].Done = !m.task.Checklist[m.cursor].Done
 
 	task := m.task
@@ -120,6 +118,9 @@ func (m *TaskChecklistModel) toggleItem() tea.Cmd {
 func (m *TaskChecklistModel) reorderItem(from, to int) tea.Cmd {
 	// Mutate model state synchronously in Update() to avoid data races with View().
 	m.resolveTask()
+	if from < 0 || from >= len(m.task.Checklist) || to < 0 || to >= len(m.task.Checklist) {
+		return nil
+	}
 	m.task.Checklist[from], m.task.Checklist[to] = m.task.Checklist[to], m.task.Checklist[from]
 	m.cursor = to
 

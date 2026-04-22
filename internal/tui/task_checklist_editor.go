@@ -152,6 +152,10 @@ func (m *TaskChecklistModel) addItemInExternalEditor() tea.Cmd {
 }
 
 func (m *TaskChecklistModel) editItemInExternalEditorFromEditMode() tea.Cmd {
+	if m.editIndex >= len(m.task.Checklist) {
+		m.cancelEditMode()
+		return func() tea.Msg { return ErrorMsg{Err: fmt.Errorf("checklist item no longer exists")} }
+	}
 	item := m.task.Checklist[m.editIndex]
 	editIndex := m.editIndex
 

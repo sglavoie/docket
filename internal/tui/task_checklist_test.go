@@ -125,6 +125,117 @@ func TestTaskChecklistDeleteMutatesSynchronously(t *testing.T) {
 	}
 }
 
+func TestTaskChecklistReorderOOBAfterResolve(t *testing.T) {
+	project, err := models.NewProject("project-1", "Checklist Project", t.TempDir())
+	if err != nil {
+		t.Fatalf("NewProject: %v", err)
+	}
+
+	task, err := models.NewTask("task-1", 1, models.TaskTypeTask, "Test task")
+	if err != nil {
+		t.Fatalf("NewTask: %v", err)
+	}
+	task.Checklist = []models.ChecklistItem{
+		{Text: "item 1"},
+		{Text: "item 2"},
+	}
+	project.Tasks = []*models.Task{task}
+
+	model := NewTaskChecklistModel(task, project)
+	model.cursor = 0
+
+	// Simulate external deletion that makes indices invalid
+	task.Checklist = nil
+
+	// reorderItem must not panic when indices are out of bounds after resolveTask
+	cmd := model.reorderItem(0, 1)
+	if cmd != nil {
+		t.Fatal("expected nil command when indices are out of bounds")
+	}
+}
+
+func TestTaskChecklistToggleOOBAfterResolve(t *testing.T) {
+	project, err := models.NewProject("project-1", "Checklist Project", t.TempDir())
+	if err != nil {
+		t.Fatalf("NewProject: %v", err)
+	}
+
+	task, err := models.NewTask("task-1", 1, models.TaskTypeTask, "Test task")
+	if err != nil {
+		t.Fatalf("NewTask: %v", err)
+	}
+	task.Checklist = []models.ChecklistItem{{Text: "item"}}
+	project.Tasks = []*models.Task{task}
+
+	model := NewTaskChecklistModel(task, project)
+	model.cursor = 0
+
+	// Simulate external deletion
+	task.Checklist = nil
+
+	// toggleItem must not panic when cursor is out of bounds after resolveTask
+	cmd := model.toggleItem()
+	if cmd != nil {
+		t.Fatal("expected nil command when cursor is out of bounds")
+	}
+}
+
+func TestTaskChecklistDeleteOOBAfterResolve(t *testing.T) {
+	project, err := models.NewProject("project-1", "Checklist Project", t.TempDir())
+	if err != nil {
+		t.Fatalf("NewProject: %v", err)
+	}
+
+	task, err := models.NewTask("task-1", 1, models.TaskTypeTask, "Test task")
+	if err != nil {
+		t.Fatalf("NewTask: %v", err)
+	}
+	task.Checklist = []models.ChecklistItem{{Text: "item"}}
+	project.Tasks = []*models.Task{task}
+
+	model := NewTaskChecklistModel(task, project)
+	model.cursor = 0
+
+	// Simulate external deletion
+	task.Checklist = nil
+
+	// executeDelete must not panic when cursor is out of bounds after resolveTask
+	cmd := model.executeDelete()
+	if cmd == nil {
+		t.Fatal("expected non-nil error command when cursor is out of bounds")
+	}
+}
+
+func TestTaskChecklistEditExternalEditorFromEditModeOOB(t *testing.T) {
+	project, err := models.NewProject("project-1", "Checklist Project", t.TempDir())
+	if err != nil {
+		t.Fatalf("NewProject: %v", err)
+	}
+
+	task, err := models.NewTask("task-1", 1, models.TaskTypeTask, "Test task")
+	if err != nil {
+		t.Fatalf("NewTask: %v", err)
+	}
+	task.Checklist = []models.ChecklistItem{{Text: "item"}}
+	project.Tasks = []*models.Task{task}
+
+	model := NewTaskChecklistModel(task, project)
+	model.editMode = true
+	model.editIndex = 0
+
+	// Simulate external deletion
+	task.Checklist = nil
+
+	// Must not panic; should cancel edit mode and return error cmd
+	cmd := model.editItemInExternalEditorFromEditMode()
+	if cmd == nil {
+		t.Fatal("expected non-nil error command when editIndex is out of bounds")
+	}
+	if model.editMode {
+		t.Fatal("expected editMode to be cancelled when item was deleted externally")
+	}
+}
+
 func TestTaskChecklistSaveEditMutatesSynchronously(t *testing.T) {
 	project, err := models.NewProject("project-1", "Checklist Project", t.TempDir())
 	if err != nil {

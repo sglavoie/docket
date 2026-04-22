@@ -57,6 +57,10 @@ func (m *TaskCommentsModel) renderExpandedView(b *strings.Builder) tea.View {
 }
 
 func (m *TaskCommentsModel) renderEditMode(b *strings.Builder) tea.View {
+	if m.editIndex >= len(m.task.Comments) {
+		b.WriteString(ValidationErrorStyle.Render("Comment was deleted externally. Press Esc to cancel."))
+		return tea.NewView(b.String())
+	}
 	comment := m.task.Comments[m.editIndex]
 	b.WriteString(FieldLabelFocusedStyle.Render(fmt.Sprintf("Edit Comment [%d]:", m.editIndex)))
 	b.WriteString("\n")

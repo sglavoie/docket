@@ -169,6 +169,10 @@ func (m *TaskCommentsModel) toggleResolved() tea.Cmd {
 }
 
 func (m *TaskCommentsModel) editCommentInExternalEditorFromEditMode() tea.Cmd {
+	if m.editIndex >= len(m.task.Comments) {
+		m.cancelEditMode()
+		return func() tea.Msg { return ErrorMsg{Err: fmt.Errorf("comment was deleted externally")} }
+	}
 	comment := m.task.Comments[m.editIndex]
 	editIndex := m.editIndex
 	currentText := strings.TrimSpace(m.editTextInput.Value())

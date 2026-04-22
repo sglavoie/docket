@@ -149,6 +149,100 @@ func TestTaskCommentsSaveEditMutatesSynchronously(t *testing.T) {
 	}
 }
 
+func TestTaskCommentsRenderEditModeOOB(t *testing.T) {
+	project, err := models.NewProject("project-1", "Comments Project", t.TempDir())
+	if err != nil {
+		t.Fatalf("NewProject: %v", err)
+	}
+
+	task, err := models.NewTask("task-1", 1, models.TaskTypeTask, "Test task")
+	if err != nil {
+		t.Fatalf("NewTask: %v", err)
+	}
+	task.Comments = []*models.Comment{
+		{Text: "only comment", CreatedAt: time.Now()},
+	}
+	project.Tasks = []*models.Task{task}
+
+	model := NewTaskCommentsModel(task, project)
+	model.editMode = true
+	model.editIndex = 0
+
+	// Simulate external deletion of all comments
+	task.Comments = nil
+
+	// View() must not panic when editIndex is out of bounds
+	view := model.View()
+	if view.Content == "" {
+		t.Fatal("expected non-empty view output")
+	}
+}
+
+func TestTaskCommentsEditExternalEditorFromEditModeOOB(t *testing.T) {
+	project, err := models.NewProject("project-1", "Comments Project", t.TempDir())
+	if err != nil {
+		t.Fatalf("NewProject: %v", err)
+	}
+
+	task, err := models.NewTask("task-1", 1, models.TaskTypeTask, "Test task")
+	if err != nil {
+		t.Fatalf("NewTask: %v", err)
+	}
+	task.Comments = []*models.Comment{
+		{Text: "only comment", CreatedAt: time.Now()},
+	}
+	project.Tasks = []*models.Task{task}
+
+	model := NewTaskCommentsModel(task, project)
+	model.editMode = true
+	model.editIndex = 0
+
+	// Simulate external deletion of all comments
+	task.Comments = nil
+
+	// Must not panic; should cancel edit mode and return an error cmd
+	cmd := model.editCommentInExternalEditorFromEditMode()
+	if cmd == nil {
+		t.Fatal("expected non-nil error command when editIndex is out of bounds")
+	}
+	if model.editMode {
+		t.Fatal("expected editMode to be cancelled when comment was deleted externally")
+	}
+}
+
+func TestTaskCommentsSaveEditOOBAfterExternalDeletion(t *testing.T) {
+	project, err := models.NewProject("project-1", "Comments Project", t.TempDir())
+	if err != nil {
+		t.Fatalf("NewProject: %v", err)
+	}
+
+	task, err := models.NewTask("task-1", 1, models.TaskTypeTask, "Test task")
+	if err != nil {
+		t.Fatalf("NewTask: %v", err)
+	}
+	task.Comments = []*models.Comment{
+		{Text: "original", CreatedAt: time.Now()},
+	}
+	project.Tasks = []*models.Task{task}
+
+	model := NewTaskCommentsModel(task, project)
+	model.editMode = true
+	model.editIndex = 0
+	model.editTextInput.SetValue("edited text")
+
+	// Simulate external deletion of all comments
+	task.Comments = nil
+
+	// saveEditedComment should detect OOB and return error cmd
+	cmd := model.saveEditedComment()
+	if cmd == nil {
+		t.Fatal("expected non-nil error command when editIndex is out of bounds")
+	}
+	if model.editMode {
+		t.Fatal("expected editMode to be cancelled when comment was deleted externally")
+	}
+}
+
 func TestTaskCommentsToggleResolvedMutatesSynchronously(t *testing.T) {
 	project, err := models.NewProject("project-1", "Comments Project", t.TempDir())
 	if err != nil {
