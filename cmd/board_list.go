@@ -123,6 +123,7 @@ func runBoardList(cmd *cobra.Command, args []string) error {
 			CreatedAt time.Time  `json:"created_at"`
 			UpdatedAt time.Time  `json:"updated_at"`
 			DueDate   *time.Time `json:"due_date"`
+			HasTime   bool       `json:"has_time"`
 		}
 		entries := make([]actionJSONEntry, len(actions))
 		for i, a := range actions {
@@ -144,6 +145,7 @@ func runBoardList(cmd *cobra.Command, args []string) error {
 				CreatedAt: a.task.CreatedAt,
 				UpdatedAt: a.task.UpdatedAt,
 				DueDate:   a.task.DueDate,
+				HasTime:   a.task.HasTime,
 			}
 		}
 		data, err := json.MarshalIndent(entries, "", "  ")

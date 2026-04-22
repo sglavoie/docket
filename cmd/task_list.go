@@ -154,6 +154,7 @@ type taskJSONEntry struct {
 	CreatedAt     time.Time  `json:"created_at"`
 	UpdatedAt     time.Time  `json:"updated_at"`
 	DueDate       *time.Time `json:"due_date"`
+	HasTime       bool       `json:"has_time"`
 }
 
 func displayTaskJSON(tasks []*models.Task) error {
@@ -182,6 +183,7 @@ func displayTaskJSON(tasks []*models.Task) error {
 			CreatedAt:     t.CreatedAt,
 			UpdatedAt:     t.UpdatedAt,
 			DueDate:       t.DueDate,
+			HasTime:       t.HasTime,
 		}
 	}
 	data, err := json.MarshalIndent(entries, "", "  ")

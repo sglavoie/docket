@@ -74,7 +74,11 @@ func BuildTaskContext(project *models.Project) string {
 				fmt.Fprintf(&b, ", tags: %s", strings.Join(task.Tags, ","))
 			}
 			if task.DueDate != nil {
-				fmt.Fprintf(&b, ", due: %s", task.DueDate.Format("2006-01-02"))
+				dueFmt := "2006-01-02"
+				if task.HasTime {
+					dueFmt = "2006-01-02 15:04"
+				}
+				fmt.Fprintf(&b, ", due: %s", task.DueDate.Format(dueFmt))
 			}
 			b.WriteString(")\n")
 		}

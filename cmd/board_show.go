@@ -66,6 +66,7 @@ func runBoardShow(cmd *cobra.Command, args []string) error {
 			CreatedAt   time.Time  `json:"created_at"`
 			UpdatedAt   time.Time  `json:"updated_at"`
 			DueDate     *time.Time `json:"due_date"`
+			HasTime     bool       `json:"has_time"`
 		}
 		tags := task.Tags
 		if tags == nil {
@@ -90,6 +91,7 @@ func runBoardShow(cmd *cobra.Command, args []string) error {
 			CreatedAt:   task.CreatedAt,
 			UpdatedAt:   task.UpdatedAt,
 			DueDate:     task.DueDate,
+			HasTime:     task.HasTime,
 		}
 		data, err := json.MarshalIndent(entry, "", "  ")
 		if err != nil {
