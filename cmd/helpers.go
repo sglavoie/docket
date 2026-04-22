@@ -330,6 +330,7 @@ type mutateTaskJSONEntry struct {
 	CreatedAt string   `json:"created_at"`
 	UpdatedAt string   `json:"updated_at"`
 	DueDate   *string  `json:"due_date,omitempty"`
+	HasTime   bool     `json:"has_time"`
 }
 
 func taskToMutateJSONEntry(task *models.Task) mutateTaskJSONEntry {
@@ -352,6 +353,7 @@ func taskToMutateJSONEntry(task *models.Task) mutateTaskJSONEntry {
 	if task.DueDate != nil {
 		s := task.DueDate.Format("2006-01-02T15:04:05Z07:00")
 		entry.DueDate = &s
+		entry.HasTime = task.HasTime
 	}
 	return entry
 }
