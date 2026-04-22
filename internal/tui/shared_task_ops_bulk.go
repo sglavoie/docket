@@ -26,7 +26,13 @@ func applyBulkDueDate(project *models.Project, tasks []*models.Task, dueDate *ti
 	count := 0
 	for _, task := range tasks {
 		if project.MutateTask(task.ID, func(t *models.Task) {
-			t.DueDate = dueDate
+			if dueDate != nil {
+				d := *dueDate // copy so each task owns its own *time.Time
+				t.DueDate = &d
+			} else {
+				t.DueDate = nil
+			}
+			t.HasTime = false // Bulk presets are always date-only.
 		}) {
 			count++
 		}

@@ -175,7 +175,12 @@ func handleSnoozePrefix(key string, v prefixableView) (tea.Cmd, bool) {
 		count := 0
 		for _, task := range tasks {
 			if project.MutateTask(task.ID, func(t *models.Task) {
-				t.SnoozedUntil = snoozeDate
+				if snoozeDate != nil {
+					d := *snoozeDate // copy so each task owns its own *time.Time
+					t.SnoozedUntil = &d
+				} else {
+					t.SnoozedUntil = nil
+				}
 			}) {
 				count++
 			}
@@ -290,8 +295,11 @@ func handleToggleActiveKey(v prefixableView) (tea.Cmd, bool) {
 		prevStates := captureTaskStates(project.Tasks)
 		count := 0
 		for _, task := range tasks {
-			task.ToggleActive()
-			count++
+			if project.MutateTask(task.ID, func(t *models.Task) {
+				t.ToggleActive()
+			}) {
+				count++
+			}
 		}
 		v.clearMultiSelect()
 		msg := fmt.Sprintf("Toggled active on %d tasks", count)
@@ -327,8 +335,11 @@ func handleTogglePinnedKey(v prefixableView) (tea.Cmd, bool) {
 		prevStates := captureTaskStates(project.Tasks)
 		count := 0
 		for _, task := range tasks {
-			task.TogglePinned()
-			count++
+			if project.MutateTask(task.ID, func(t *models.Task) {
+				t.TogglePinned()
+			}) {
+				count++
+			}
 		}
 		v.clearMultiSelect()
 		msg := fmt.Sprintf("Toggled pin on %d tasks", count)
@@ -364,8 +375,11 @@ func handleToggleDimmedKey(v prefixableView) (tea.Cmd, bool) {
 		prevStates := captureTaskStates(project.Tasks)
 		count := 0
 		for _, task := range tasks {
-			task.ToggleDimmed()
-			count++
+			if project.MutateTask(task.ID, func(t *models.Task) {
+				t.ToggleDimmed()
+			}) {
+				count++
+			}
 		}
 		v.clearMultiSelect()
 		msg := fmt.Sprintf("Toggled dim on %d tasks", count)

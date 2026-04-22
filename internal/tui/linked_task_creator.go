@@ -194,7 +194,7 @@ func (m *LinkedTaskCreatorModel) createTask() tea.Cmd {
 	}
 
 	// Parse inline metadata from input
-	result, err := parseQuickCapture(input, m.project, nil, false)
+	result, err := parseQuickCapture(input, m.project, nil, true)
 	if err != nil {
 		m.err = err
 		return nil

@@ -182,7 +182,7 @@ func (m *BulkCaptureModel) createTasks() tea.Cmd {
 			continue
 		}
 
-		result, err := parseQuickCapture(line, m.project, nil, false)
+		result, err := parseQuickCapture(line, m.project, nil, true)
 		if err != nil {
 			errors = append(errors, lineError{
 				line:    len(failedLines) + 1, // Line number in the remaining content
