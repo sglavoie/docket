@@ -133,11 +133,7 @@ func runTaskRecur(cmd *cobra.Command, args []string) error { //nolint:gocyclo
 			return outputSingleTaskJSON(task)
 		}
 		if !out.Quiet {
-			dueStr := "none"
-			if task.DueDate != nil {
-				dueStr = task.DueDate.Format("Mon Jan 2, 2006")
-			}
-			fmt.Printf("Skipped: next due %s\n", dueStr)
+			fmt.Printf("Skipped: next due %s\n", formatTaskDueDate(task))
 		}
 		return nil
 	}
@@ -161,11 +157,7 @@ func runTaskRecur(cmd *cobra.Command, args []string) error { //nolint:gocyclo
 			return outputSingleTaskJSON(task)
 		}
 		if !out.Quiet {
-			dueStr := "none"
-			if task.DueDate != nil {
-				dueStr = task.DueDate.Format("Mon Jan 2, 2006")
-			}
-			fmt.Printf("Deferred: now due %s\n", dueStr)
+			fmt.Printf("Deferred: now due %s\n", formatTaskDueDate(task))
 		}
 		return nil
 	}
