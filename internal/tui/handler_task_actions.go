@@ -87,17 +87,26 @@ func (m *AppModel) handleInlineTaskCreate(msg InlineTaskCreateMsg) (bool, tea.Cm
 	}
 
 	// Create the task
+	priority := msg.Priority
+	if priority < 1 || priority > 5 {
+		priority = models.PriorityDefault
+	}
 	task := &models.Task{
-		ID:        uuid.New().String(),
-		ShortID:   msg.Project.GetNextShortID(),
-		Type:      models.TaskTypeTask,
-		Title:     msg.Title,
-		Status:    models.StatusTodo,
-		Priority:  msg.Priority,
-		Section:   models.SectionInbox,
-		DueDate:   msg.DueDate,
-		CreatedAt: time.Now(),
-		UpdatedAt: time.Now(),
+		ID:              uuid.New().String(),
+		ShortID:         msg.Project.GetNextShortID(),
+		Type:            models.TaskTypeTask,
+		Title:           msg.Title,
+		Status:          models.StatusTodo,
+		Priority:        priority,
+		Section:         models.SectionInbox,
+		DueDate:         msg.DueDate,
+		Tags:            []string{},
+		DependsOn:       []string{},
+		RelatedTo:       []string{},
+		ScoreDimensions: map[string]int{},
+		Children:        []*models.Task{},
+		CreatedAt:       time.Now(),
+		UpdatedAt:       time.Now(),
 	}
 
 	// Add tags
