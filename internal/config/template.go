@@ -197,7 +197,9 @@ func (c *Config) ResetChangedDefaultTemplates(enableTemplates bool) (updated, re
 			preservedEnabled := existing.Enabled
 			preservedUseCount := existing.UseCount
 			*existing = shipped
-			if !enableTemplates {
+			if enableTemplates {
+				existing.Enabled = true
+			} else {
 				existing.Enabled = preservedEnabled
 			}
 			existing.UseCount = preservedUseCount
@@ -212,7 +214,9 @@ func (c *Config) ResetChangedDefaultTemplates(enableTemplates bool) (updated, re
 
 	// Phase 2: Re-add deleted default templates
 	for _, t := range defaultMap {
-		if !enableTemplates {
+		if enableTemplates {
+			t.Enabled = true
+		} else {
 			t.Enabled = false
 		}
 		c.TaskTemplates = append(c.TaskTemplates, t)
