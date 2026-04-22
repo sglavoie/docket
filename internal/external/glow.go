@@ -124,7 +124,11 @@ func FormatTaskAsMarkdown(task *models.Task) string {
 	}
 
 	if task.DueDate != nil {
-		fmt.Fprintf(&b, "| Due | %s |\n", task.DueDate.Format(util.DateFormat))
+		dueFmt := util.DateFormat
+		if task.HasTime {
+			dueFmt = util.DateTimeFormat
+		}
+		fmt.Fprintf(&b, "| Due | %s |\n", task.DueDate.Format(dueFmt))
 	}
 
 	b.WriteString("\n")

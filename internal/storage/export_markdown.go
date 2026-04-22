@@ -148,7 +148,11 @@ func buildExportBadge(task *models.Task) string {
 		parts = append(parts, fmt.Sprintf("!%d", task.Priority))
 	}
 	if task.DueDate != nil {
-		parts = append(parts, "due "+task.DueDate.Format("2006-01-02"))
+		if task.HasTime {
+			parts = append(parts, "due "+task.DueDate.Format("2006-01-02 15:04"))
+		} else {
+			parts = append(parts, "due "+task.DueDate.Format("2006-01-02"))
+		}
 	}
 	if task.SnoozedUntil != nil {
 		parts = append(parts, "snoozed until "+task.SnoozedUntil.Format("2006-01-02"))
