@@ -103,6 +103,69 @@ func TestPriorityViewClampCursor(t *testing.T) {
 	}
 }
 
+func TestJumpToTask_UsesFilteredGroups(t *testing.T) {
+	project := newTestPriorityProject(t)
+
+	// Create tasks in different urgency groups
+	overdue := newTestTaskWithDueDate(t, "Overdue", -2)
+	overdue.Priority = 1
+	today := newTestTaskWithDueDate(t, "Today", 0)
+	today.Priority = 2
+	thisWeek := newTestTaskWithDueDate(t, "This week", 3)
+	thisWeek.Priority = 3
+
+	project.Tasks = []*models.Task{overdue, today, thisWeek}
+
+	m := NewPriorityViewModel(project, nil, nil)
+
+	// Without filters, jumpToTask should find the correct index
+	m.jumpToTask(thisWeek)
+	pt := m.getTaskAtCursor()
+	if pt == nil || pt.Task.ID != thisWeek.ID {
+		t.Errorf("jumpToTask without filters: expected 'This week', got cursor=%d", m.cursor)
+	}
+
+	// Activate search that excludes "Overdue" and "Today"
+	m.searchQuery = "This week"
+	m.recalculateNavigation()
+	m.clampCursor()
+
+	// Now jumpToTask should find "This week" at index 0 (only visible task)
+	m.jumpToTask(thisWeek)
+	pt = m.getTaskAtCursor()
+	if pt == nil || pt.Task.ID != thisWeek.ID {
+		t.Errorf("jumpToTask with search filter: expected 'This week' at cursor 0, got cursor=%d", m.cursor)
+	}
+	if m.cursor != 0 {
+		t.Errorf("jumpToTask with search filter: expected cursor=0 (only matching task), got cursor=%d", m.cursor)
+	}
+}
+
+func TestJumpToTask_BlockedTab(t *testing.T) {
+	project := newTestPriorityProject(t)
+
+	blockedTask := newTestTaskWithDueDate(t, "Blocked task", 1)
+	blockedTask.Status = models.StatusBlocked
+
+	normalTask := newTestTaskWithDueDate(t, "Normal task", 0)
+
+	project.Tasks = []*models.Task{blockedTask, normalTask}
+
+	m := NewPriorityViewModel(project, nil, nil)
+
+	// Switch to Blocked tab
+	m.tabs.Active = priorityTabBlocked
+	m.recalculateNavigation()
+	m.clampCursor()
+
+	// jumpToTask should find the blocked task in the waiting list
+	m.jumpToTask(blockedTask)
+	pt := m.getTaskAtCursor()
+	if pt == nil || pt.Task.ID != blockedTask.ID {
+		t.Errorf("jumpToTask on Blocked tab: expected 'Blocked task', got cursor=%d", m.cursor)
+	}
+}
+
 func TestHasActiveSearch(t *testing.T) {
 	project := newTestPriorityProject(t)
 	m := NewPriorityViewModel(project, nil, nil)

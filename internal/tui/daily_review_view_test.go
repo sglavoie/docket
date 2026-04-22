@@ -93,6 +93,45 @@ func TestDailyReview_ReviewCompletion(t *testing.T) {
 	}
 }
 
+func TestDailyReview_BuildTagCmdIncludesStandbyTasks(t *testing.T) {
+	cfg := &config.Config{Projects: []*models.Project{}}
+	m := newTestDailyReviewModel(cfg)
+
+	project, err := models.NewProject("p1", "Test", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Create a task with a unique tag and put it only in inStandby
+	standbyTask := newTestDailyReviewTask(t, "Standby task")
+	standbyTask.Tags = []string{"standby-only-tag"}
+	m.inStandby = []CrossProjectTask{{Task: standbyTask, Project: project}}
+
+	// buildTagCmd collects tasks from all sections to build the tag picker.
+	// Previously inStandby was omitted, so tags on standby tasks would be missing.
+	cmd := m.buildTagCmd()
+	if cmd == nil {
+		t.Fatal("expected non-nil command from buildTagCmd")
+	}
+
+	// Execute the command and verify the tag appears in the message
+	msg := cmd()
+	tagMsg, ok := msg.(ShowTagFilterMsg)
+	if !ok {
+		t.Fatalf("expected ShowTagFilterMsg, got %T", msg)
+	}
+	found := false
+	for _, tag := range tagMsg.Tags {
+		if tag.Name == "standby-only-tag" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Error("expected 'standby-only-tag' from inStandby section to appear in tag picker; it was missing")
+	}
+}
+
 func TestDailyReview_WithTasks_Render(t *testing.T) {
 	cfg := &config.Config{Projects: []*models.Project{}}
 	m := newTestDailyReviewModel(cfg)

@@ -145,7 +145,7 @@ func checkOverdueTasks(cfg AlertConfig, projects []ProjectData, now time.Time) [
 
 	for _, pd := range projects {
 		for _, task := range pd.Tasks {
-			if !task.Status.IsActive() || task.DueDate == nil {
+			if !task.Status.IsActive() || task.DueDate == nil || task.IsSnoozedAt(now) {
 				continue
 			}
 			dueDay := time.Date(task.DueDate.Year(), task.DueDate.Month(), task.DueDate.Day(), 0, 0, 0, 0, task.DueDate.Location())
@@ -176,7 +176,7 @@ func checkDueSoonTasks(cfg AlertConfig, projects []ProjectData, now time.Time) [
 
 	for _, pd := range projects {
 		for _, task := range pd.Tasks {
-			if !task.Status.IsActive() || task.DueDate == nil {
+			if !task.Status.IsActive() || task.DueDate == nil || task.IsSnoozedAt(now) {
 				continue
 			}
 			dueDay := time.Date(task.DueDate.Year(), task.DueDate.Month(), task.DueDate.Day(), 0, 0, 0, 0, task.DueDate.Location())
@@ -203,7 +203,7 @@ func checkStaleTasks(cfg AlertConfig, projects []ProjectData, now time.Time) []A
 
 	for _, pd := range projects {
 		for _, task := range pd.Tasks {
-			if !task.Status.IsActive() {
+			if !task.Status.IsActive() || task.IsSnoozedAt(now) {
 				continue
 			}
 			if task.UpdatedAt.Before(staleThreshold) {
@@ -222,13 +222,13 @@ func checkStaleTasks(cfg AlertConfig, projects []ProjectData, now time.Time) []A
 	return alerts
 }
 
-func checkInboxBacklog(cfg AlertConfig, projects []ProjectData, _ time.Time) []Alert {
+func checkInboxBacklog(cfg AlertConfig, projects []ProjectData, now time.Time) []Alert {
 	var alerts []Alert
 
 	for _, pd := range projects {
 		inboxCount := 0
 		for _, task := range pd.Tasks {
-			if task.Status.IsActive() && task.Section == models.SectionInbox {
+			if task.Status.IsActive() && task.Section == models.SectionInbox && !task.IsSnoozedAt(now) {
 				inboxCount++
 			}
 		}
@@ -252,7 +252,7 @@ func checkBlockedTasks(cfg AlertConfig, projects []ProjectData, now time.Time) [
 
 	for _, pd := range projects {
 		for _, task := range pd.Tasks {
-			if task.Status != models.StatusBlocked {
+			if task.Status != models.StatusBlocked || task.IsSnoozedAt(now) {
 				continue
 			}
 			// Use the activity log to find when the task last became blocked,

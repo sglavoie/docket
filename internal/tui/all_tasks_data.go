@@ -14,6 +14,7 @@ func (m *AllTasksViewModel) loadAllTasks() {
 
 	// Check if the active tab is a smart list that includes completed tasks
 	includeCompleted := m.activeTabIncludesCompleted()
+	m.loadedWithCompleted = includeCompleted
 
 	projects := m.config.GetActiveProjects()
 	for _, project := range projects {

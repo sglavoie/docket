@@ -262,8 +262,8 @@ func TestParseRelativeDuration(t *testing.T) {
 		{"+0d", 0, true},
 		{"+3x", 0, true},
 		{"abc", 0, true},
-		{"+99999d", 0, true},  // overflow protection
-		{"10000d", 0, true},   // exceeds max (9999)
+		{"+99999d", 0, true},   // overflow protection
+		{"10000d", 0, true},    // exceeds max (9999)
 		{"9999d", 9999, false}, // max allowed
 	}
 

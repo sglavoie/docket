@@ -234,10 +234,16 @@ func (t *Task) ToggleDimmed() {
 
 // IsSnoozed returns true if the task is snoozed (SnoozedUntil is set and after today).
 func (t *Task) IsSnoozed() bool {
+	return t.IsSnoozedAt(time.Now())
+}
+
+// IsSnoozedAt returns true if the task is snoozed relative to the given time.
+// Use this instead of IsSnoozed when the reference time is not time.Now()
+// (e.g., in alert evaluation with a deterministic clock).
+func (t *Task) IsSnoozedAt(now time.Time) bool {
 	if t.SnoozedUntil == nil {
 		return false
 	}
-	now := time.Now()
 	today := util.StartOfDay(now)
 	snoozeDay := util.StartOfDay(*t.SnoozedUntil)
 	return snoozeDay.After(today)

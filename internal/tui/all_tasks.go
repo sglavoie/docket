@@ -65,7 +65,8 @@ type AllTasksViewModel struct {
 	projectCache   map[string]*models.Project
 
 	// All loaded tasks (unfiltered)
-	allTasks []CrossProjectTask
+	allTasks            []CrossProjectTask
+	loadedWithCompleted bool // Whether allTasks was loaded with IncludeCompleted
 
 	// Grouped/filtered view
 	groups     []AllTasksGroup

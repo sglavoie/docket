@@ -87,6 +87,36 @@ func TestCheckOverdueTasks_DueToday(t *testing.T) {
 	}
 }
 
+func TestCheckOverdueTasks_SnoozedTaskIgnored(t *testing.T) {
+	now := time.Now()
+	dueDate := now.AddDate(0, 0, -8)
+	snoozeDate := now.AddDate(0, 0, 10) // must be in the future so IsSnoozed() returns true
+	task := testTask("snoozed overdue", models.StatusTodo, now)
+	task.DueDate = &dueDate
+	task.SnoozedUntil = &snoozeDate
+
+	projects := []ProjectData{testProject("proj1", task)}
+	alerts := checkOverdueTasks(DefaultAlertConfig(), projects, now)
+	if len(alerts) != 0 {
+		t.Fatalf("expected 0 alerts for snoozed task, got %d", len(alerts))
+	}
+}
+
+func TestCheckDueSoonTasks_SnoozedTaskIgnored(t *testing.T) {
+	now := time.Now()
+	dueDate := now.AddDate(0, 0, 1)
+	snoozeDate := now.AddDate(0, 0, 10) // must be in the future so IsSnoozed() returns true
+	task := testTask("snoozed soon", models.StatusTodo, now)
+	task.DueDate = &dueDate
+	task.SnoozedUntil = &snoozeDate
+
+	projects := []ProjectData{testProject("proj1", task)}
+	alerts := checkDueSoonTasks(DefaultAlertConfig(), projects, now)
+	if len(alerts) != 0 {
+		t.Fatalf("expected 0 alerts for snoozed task, got %d", len(alerts))
+	}
+}
+
 func TestCheckDueSoonTasks_DueWithinHorizon(t *testing.T) {
 	now := time.Date(2026, 2, 28, 10, 0, 0, 0, time.UTC)
 	dueDate := time.Date(2026, 3, 1, 0, 0, 0, 0, time.UTC)
@@ -162,6 +192,19 @@ func TestCheckStaleTasks_RecentTask(t *testing.T) {
 	}
 }
 
+func TestCheckStaleTasks_SnoozedTaskIgnored(t *testing.T) {
+	now := time.Now()
+	snoozeDate := now.AddDate(0, 0, 10) // must be in the future so IsSnoozed() returns true
+	task := testTask("snoozed stale", models.StatusTodo, now.AddDate(0, 0, -20))
+	task.SnoozedUntil = &snoozeDate
+
+	projects := []ProjectData{testProject("proj1", task)}
+	alerts := checkStaleTasks(DefaultAlertConfig(), projects, now)
+	if len(alerts) != 0 {
+		t.Fatalf("expected 0 alerts for snoozed stale task, got %d", len(alerts))
+	}
+}
+
 func TestCheckStaleTasks_CompletedIgnored(t *testing.T) {
 	now := time.Date(2026, 2, 28, 10, 0, 0, 0, time.UTC)
 	task := testTask("done stale", models.StatusDone, now.AddDate(0, 0, -30))
@@ -215,6 +258,43 @@ func TestCheckInboxBacklog_BelowThreshold(t *testing.T) {
 	alerts := checkInboxBacklog(DefaultAlertConfig(), projects, now)
 	if len(alerts) != 0 {
 		t.Fatalf("expected 0 alerts below threshold, got %d", len(alerts))
+	}
+}
+
+func TestCheckInboxBacklog_SnoozedInboxIgnored(t *testing.T) {
+	now := time.Now()
+	snoozeDate := now.AddDate(0, 0, 10) // must be in the future so IsSnoozed() returns true
+	var tasks []*models.Task
+	for i := range 6 {
+		task := testTask("snoozed-inbox", models.StatusTodo, now)
+		task.ID = "snoozed-" + string(rune('a'+i))
+		task.Section = models.SectionInbox
+		task.SnoozedUntil = &snoozeDate
+		tasks = append(tasks, task)
+	}
+
+	projects := []ProjectData{testProject("proj1", tasks...)}
+	alerts := checkInboxBacklog(DefaultAlertConfig(), projects, now)
+	if len(alerts) != 0 {
+		t.Fatalf("expected 0 alerts for snoozed inbox tasks, got %d", len(alerts))
+	}
+}
+
+func TestCheckBlockedTasks_SnoozedBlockedIgnored(t *testing.T) {
+	now := time.Now()
+	snoozeDate := now.AddDate(0, 0, 10) // must be in the future so IsSnoozed() returns true
+	task := testTask("snoozed blocked", models.StatusBlocked, now.AddDate(0, 0, -10))
+	task.SnoozedUntil = &snoozeDate
+	task.Activity = []*models.ActivityEntry{
+		{Field: "status", NewValue: "blocked", Timestamp: now.AddDate(0, 0, -10)},
+	}
+
+	projects := []ProjectData{testProject("proj1", task)}
+	cfg := DefaultAlertConfig()
+	cfg.BlockedDays = 7
+	alerts := checkBlockedTasks(cfg, projects, now)
+	if len(alerts) != 0 {
+		t.Fatalf("expected 0 alerts for snoozed blocked task, got %d", len(alerts))
 	}
 }
 

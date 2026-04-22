@@ -3,9 +3,11 @@ package tui
 import "github.com/sglavoie/tt/internal/models"
 
 // jumpToTask moves the cursor to the position of the given task in the list.
+// Uses the same filtered/search-narrowed groups as getTaskAtCursor so cursor
+// positions are consistent.
 func (m *PriorityViewModel) jumpToTask(task *models.Task) {
 	if m.tabs.Active == priorityTabByScore {
-		for i, pt := range m.scoredTasks {
+		for i, pt := range m.visibleScoredTasks() {
 			if pt.Task.ID == task.ID {
 				m.cursor = i
 				return
@@ -13,41 +15,29 @@ func (m *PriorityViewModel) jumpToTask(task *models.Task) {
 		}
 		return
 	}
+
+	overdue, today, thisWeek, later, backlog, waitingOn := m.filteredGroupsWithSubTab()
+
+	// For the Blocked tab, navigate waiting tasks directly
+	if m.tabs.Active == priorityTabBlocked {
+		for i, pt := range waitingOn {
+			if pt.Task.ID == task.ID {
+				m.cursor = i
+				return
+			}
+		}
+		return
+	}
+
 	index := 0
-	for _, pt := range m.overdue {
-		if pt.Task.ID == task.ID {
-			m.cursor = index
-			return
+	for _, group := range [][]*PriorityTask{overdue, today, thisWeek, later, backlog} {
+		for _, pt := range group {
+			if pt.Task.ID == task.ID {
+				m.cursor = index
+				return
+			}
+			index++
 		}
-		index++
-	}
-	for _, pt := range m.today {
-		if pt.Task.ID == task.ID {
-			m.cursor = index
-			return
-		}
-		index++
-	}
-	for _, pt := range m.thisWeek {
-		if pt.Task.ID == task.ID {
-			m.cursor = index
-			return
-		}
-		index++
-	}
-	for _, pt := range m.later {
-		if pt.Task.ID == task.ID {
-			m.cursor = index
-			return
-		}
-		index++
-	}
-	for _, pt := range m.backlog {
-		if pt.Task.ID == task.ID {
-			m.cursor = index
-			return
-		}
-		index++
 	}
 }
 

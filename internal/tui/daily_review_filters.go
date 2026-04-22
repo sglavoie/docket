@@ -12,7 +12,7 @@ func (m *DailyReviewModel) refreshAndClamp() { m.loadTasks(); m.clampCursor() }
 func (m *DailyReviewModel) buildTagCmd() tea.Cmd {
 	sections := [][]CrossProjectTask{
 		m.overdue, m.dueToday, m.dueSoon, m.dueLater,
-		m.future, m.inProgress, m.blocked, m.inReview, m.old, m.completed,
+		m.future, m.inProgress, m.blocked, m.inReview, m.inStandby, m.old, m.completed,
 	}
 	var tasks []*models.Task
 	for _, section := range sections {

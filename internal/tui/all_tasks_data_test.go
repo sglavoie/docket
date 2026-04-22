@@ -232,3 +232,34 @@ func TestProjectCountMultiple(t *testing.T) {
 		t.Errorf("want 2, got %d", got)
 	}
 }
+
+// ── loadedWithCompleted tracking ─────────────────────────────────────────────
+
+func TestLoadedWithCompletedTracked(t *testing.T) {
+	m := newMinimalAllTasksVM()
+	// Default tab is built-in (index 0), so IncludeCompleted should be false
+	m.tabEntries = []TabEntry{
+		{Name: "All", IsBuiltIn: true, BuiltInID: 0},
+	}
+	m.tabs.Names = []string{"All"}
+	m.tabs.Active = 0
+
+	// Simulate loadAllTasks behavior: loadedWithCompleted should match
+	// the active tab's IncludeCompleted setting
+	includeCompleted := m.activeTabIncludesCompleted()
+	m.loadedWithCompleted = includeCompleted
+
+	if m.loadedWithCompleted {
+		t.Error("built-in tab should set loadedWithCompleted=false")
+	}
+}
+
+func TestActiveTabIncludesCompletedOutOfBounds(t *testing.T) {
+	m := newMinimalAllTasksVM()
+	m.tabEntries = nil
+	m.tabs.Active = 5 // out of bounds
+
+	if m.activeTabIncludesCompleted() {
+		t.Error("out-of-bounds tab should return false for IncludeCompleted")
+	}
+}
