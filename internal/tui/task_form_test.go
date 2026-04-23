@@ -1906,6 +1906,77 @@ func TestTaskForm_Save_CreateHappyPath_EmitsTaskCreatedMsg(t *testing.T) {
 	}
 }
 
+func TestTaskForm_Save_CreateInitializesCollectionFields(t *testing.T) {
+	m, cleanup := newSaveableTestForm(t)
+	defer cleanup()
+
+	m.draft.title = "Field init test"
+	m.titleInput.SetValue("Field init test")
+
+	cmd := m.handleSave()
+	if cmd == nil {
+		t.Fatalf("expected non-nil Cmd; err=%v", m.err)
+	}
+	created := cmd().(TaskCreatedMsg)
+	task := created.Task
+
+	if task.DependsOn == nil {
+		t.Error("DependsOn should be initialized to empty slice, got nil")
+	}
+	if task.RelatedTo == nil {
+		t.Error("RelatedTo should be initialized to empty slice, got nil")
+	}
+	if task.ScoreDimensions == nil {
+		t.Error("ScoreDimensions should be initialized to empty map, got nil")
+	}
+	if task.Children == nil {
+		t.Error("Children should be initialized to empty slice, got nil")
+	}
+}
+
+func TestTaskForm_Save_CreateSubtasksInitializeCollectionFields(t *testing.T) {
+	m, cleanup := newSaveableTestForm(t)
+	defer cleanup()
+
+	m.draft.taskType = models.TaskTypeEpic
+	m.draft.title = "Parent Epic"
+	m.titleInput.SetValue("Parent Epic")
+	m.draft.subtasks = []formSubtaskDraft{
+		{title: "child one", taskType: models.TaskTypeTask},
+	}
+
+	cmd := m.handleSave()
+	if cmd == nil {
+		t.Fatalf("expected non-nil Cmd; err=%v", m.err)
+	}
+	_ = cmd()
+
+	// Find the subtask by title among all tasks
+	var subtask *models.Task
+	for _, t2 := range m.project.Tasks {
+		if t2.Title == "child one" {
+			subtask = t2
+			break
+		}
+	}
+	if subtask == nil {
+		t.Fatal("subtask 'child one' not found in project tasks")
+	}
+
+	if subtask.DependsOn == nil {
+		t.Error("subtask DependsOn should be initialized to empty slice, got nil")
+	}
+	if subtask.RelatedTo == nil {
+		t.Error("subtask RelatedTo should be initialized to empty slice, got nil")
+	}
+	if subtask.ScoreDimensions == nil {
+		t.Error("subtask ScoreDimensions should be initialized to empty map, got nil")
+	}
+	if subtask.Children == nil {
+		t.Error("subtask Children should be initialized to empty slice, got nil")
+	}
+}
+
 func TestTaskForm_Save_CreateHappyPath_AddsChecklistItems(t *testing.T) {
 	m, cleanup := newSaveableTestForm(t)
 	defer cleanup()

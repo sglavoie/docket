@@ -296,19 +296,23 @@ func (m *QuickCaptureModel) createTask(openContent, openDetail bool) tea.Cmd {
 
 	// Create task
 	task := &models.Task{
-		ID:            uuid.New().String(),
-		ShortID:       targetProject.GetNextShortID(),
-		Type:          result.taskType,
-		Title:         result.title,
-		Status:        models.StatusTodo,
-		Priority:      result.priority,
-		Section:       targetSection,
-		CustomSection: customSection,
-		ParentID:      result.parentID,
-		DueDate:       result.dueDate,
-		Recurrence:    result.recurrence,
-		CreatedAt:     time.Now(),
-		UpdatedAt:     time.Now(),
+		ID:              uuid.New().String(),
+		ShortID:         targetProject.GetNextShortID(),
+		Type:            result.taskType,
+		Title:           result.title,
+		Status:          models.StatusTodo,
+		Priority:        result.priority,
+		Section:         targetSection,
+		CustomSection:   customSection,
+		ParentID:        result.parentID,
+		DueDate:         result.dueDate,
+		Recurrence:      result.recurrence,
+		DependsOn:       []string{},
+		RelatedTo:       []string{},
+		ScoreDimensions: map[string]int{},
+		Children:        []*models.Task{},
+		CreatedAt:       time.Now(),
+		UpdatedAt:       time.Now(),
 	}
 
 	for _, tag := range result.tags {

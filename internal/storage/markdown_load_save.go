@@ -83,6 +83,9 @@ func validateCrossProjectRefs(project *models.Project, result *ParseResult) {
 }
 
 func filterProjectRefs(refs []string, dataDir, field, taskID string, warningMessage func(string) string, warnings *[]ParseWarning) []string {
+	if len(refs) == 0 {
+		return refs
+	}
 	var kept []string
 	for _, refValue := range refs {
 		ref := models.ParseTaskRef(refValue)

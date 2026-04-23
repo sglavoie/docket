@@ -234,19 +234,23 @@ func (m *BulkCaptureModel) createTasks() tea.Cmd {
 			}
 
 			task := &models.Task{
-				ID:            uuid.New().String(),
-				ShortID:       m.project.GetNextShortID(),
-				Type:          result.taskType,
-				Title:         result.title,
-				Status:        models.StatusTodo,
-				Priority:      result.priority,
-				Section:       targetSection,
-				CustomSection: customSection,
-				ParentID:      result.parentID,
-				DueDate:       result.dueDate,
-				Recurrence:    result.recurrence,
-				CreatedAt:     time.Now(),
-				UpdatedAt:     time.Now(),
+				ID:              uuid.New().String(),
+				ShortID:         m.project.GetNextShortID(),
+				Type:            result.taskType,
+				Title:           result.title,
+				Status:          models.StatusTodo,
+				Priority:        result.priority,
+				Section:         targetSection,
+				CustomSection:   customSection,
+				ParentID:        result.parentID,
+				DueDate:         result.dueDate,
+				Recurrence:      result.recurrence,
+				DependsOn:       []string{},
+				RelatedTo:       []string{},
+				ScoreDimensions: map[string]int{},
+				Children:        []*models.Task{},
+				CreatedAt:       time.Now(),
+				UpdatedAt:       time.Now(),
 			}
 
 			for _, tag := range result.tags {

@@ -208,21 +208,23 @@ func (m *LinkedTaskCreatorModel) createTask() tea.Cmd {
 
 	// Create the new task with parsed metadata
 	newTask := &models.Task{
-		ID:            uuid.New().String(),
-		ShortID:       m.project.GetNextShortID(),
-		Type:          result.taskType,
-		Title:         result.title,
-		Status:        models.StatusTodo,
-		Priority:      result.priority,
-		Section:       m.sourceTask.Section, // Inherit section from source by default
-		CustomSection: m.sourceTask.CustomSection,
-		DueDate:       result.dueDate,
-		Recurrence:    result.recurrence,
-		CreatedAt:     time.Now(),
-		UpdatedAt:     time.Now(),
-		DependsOn:     []string{},
-		RelatedTo:     []string{},
-		Tags:          []string{},
+		ID:              uuid.New().String(),
+		ShortID:         m.project.GetNextShortID(),
+		Type:            result.taskType,
+		Title:           result.title,
+		Status:          models.StatusTodo,
+		Priority:        result.priority,
+		Section:         m.sourceTask.Section, // Inherit section from source by default
+		CustomSection:   m.sourceTask.CustomSection,
+		DueDate:         result.dueDate,
+		Recurrence:      result.recurrence,
+		CreatedAt:       time.Now(),
+		UpdatedAt:       time.Now(),
+		DependsOn:       []string{},
+		RelatedTo:       []string{},
+		Tags:            []string{},
+		ScoreDimensions: map[string]int{},
+		Children:        []*models.Task{},
 	}
 
 	// Apply parsed section if explicitly set, otherwise keep inherited
