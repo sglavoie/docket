@@ -262,6 +262,49 @@ func TestApplyQuickEdit(t *testing.T) {
 	}
 }
 
+func TestApplyQuickEdit_InvalidStatusDoesNotMutate(t *testing.T) {
+	task := &models.Task{
+		ID:       "test-task-id",
+		Title:    "Original",
+		Priority: 3,
+		Tags:     []string{"old"},
+		Status:   models.StatusDone, // completed task cannot be started
+	}
+	now := task.UpdatedAt
+	project := &models.Project{
+		Tasks: []*models.Task{task},
+	}
+
+	result := &quickEditResult{
+		title:       "Changed Title",
+		titleSet:    true,
+		priority:    1,
+		prioritySet: true,
+		tagsToAdd:   []string{"new"},
+		status:      models.StatusInProgress,
+		statusSet:   true,
+	}
+
+	statusErr := applyQuickEdit(task, project, result)
+	if statusErr == "" {
+		t.Fatal("expected status error for done->in_progress transition")
+	}
+
+	// Verify no fields were mutated
+	if task.Title != "Original" {
+		t.Errorf("title should not change on status error, got %q", task.Title)
+	}
+	if task.Priority != 3 {
+		t.Errorf("priority should not change on status error, got %d", task.Priority)
+	}
+	if len(task.Tags) != 1 || task.Tags[0] != "old" {
+		t.Errorf("tags should not change on status error, got %v", task.Tags)
+	}
+	if task.UpdatedAt != now {
+		t.Error("UpdatedAt should not change on status error")
+	}
+}
+
 func TestRenderQuickEditPreview(t *testing.T) {
 	original := &quickEditResult{
 		title:    "Original",

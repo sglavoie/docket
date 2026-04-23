@@ -277,8 +277,19 @@ func parseQuickEditForPreview(input string, _ *models.Task, project *models.Proj
 
 // applyQuickEdit applies the parsed changes to the task.
 // Returns an error message if a status transition is invalid, empty string on success.
+// Validates the status transition before applying any mutations to avoid
+// in-memory changes that are never persisted when the caller aborts on error.
 func applyQuickEdit(task *models.Task, project *models.Project, result *quickEditResult) string {
-	var statusErr string
+	// Pre-validate status transition before mutating anything. Without this
+	// check, MutateTask would apply title/tag/priority changes in memory,
+	// but the caller returns early on status error and never saves — leaving
+	// the in-memory state diverged from disk.
+	if result.statusSet {
+		if msg := task.CanTransitionTo(result.status); msg != "" {
+			return msg
+		}
+	}
+
 	project.MutateTask(task.ID, func(t *models.Task) {
 		if result.titleSet && result.title != "" {
 			if models.ValidateTaskTitle(result.title) == nil {
@@ -312,14 +323,10 @@ func applyQuickEdit(task *models.Task, project *models.Project, result *quickEdi
 		}
 
 		if result.statusSet {
-			if msg := t.CanTransitionTo(result.status); msg != "" {
-				statusErr = msg
-			} else {
-				t.ApplyTransition(result.status)
-			}
+			t.ApplyTransition(result.status)
 		}
 	})
-	return statusErr
+	return ""
 }
 
 // renderQuickEditPreview renders a preview of what will change.
