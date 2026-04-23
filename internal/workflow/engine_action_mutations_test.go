@@ -192,3 +192,50 @@ func TestApplyAction_NewActions(t *testing.T) {
 		})
 	}
 }
+
+func TestApplyAction_UpdatesTimestamp(t *testing.T) {
+	tests := []struct {
+		name   string
+		action RuleAction
+		setup  func() *models.Task
+	}{
+		{
+			name:   "set priority updates UpdatedAt",
+			action: RuleAction{ActionType: ActionSetPriority, Value: "1"},
+			setup: func() *models.Task {
+				stale := time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC)
+				return &models.Task{ID: "1", Priority: 3, UpdatedAt: stale}
+			},
+		},
+		{
+			name:   "set section updates UpdatedAt",
+			action: RuleAction{ActionType: ActionSetSection, Value: "Inbox"},
+			setup: func() *models.Task {
+				stale := time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC)
+				return &models.Task{ID: "1", Section: "", UpdatedAt: stale}
+			},
+		},
+		{
+			name:   "set custom section updates UpdatedAt",
+			action: RuleAction{ActionType: ActionSetSection, Value: "Sprint-1"},
+			setup: func() *models.Task {
+				stale := time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC)
+				return &models.Task{ID: "1", UpdatedAt: stale}
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			task := tt.setup()
+			before := task.UpdatedAt
+			modified := applyAction(task, tt.action)
+			if !modified {
+				t.Fatal("expected action to modify the task")
+			}
+			if !task.UpdatedAt.After(before) {
+				t.Errorf("UpdatedAt was not advanced: before=%v, after=%v", before, task.UpdatedAt)
+			}
+		})
+	}
+}

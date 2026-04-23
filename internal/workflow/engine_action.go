@@ -111,17 +111,20 @@ func applyAction(task *models.Task, action RuleAction) bool { //nolint:gocyclo
 		newPriority, err := strconv.Atoi(action.Value)
 		if err == nil && newPriority >= models.PriorityMin && newPriority <= models.PriorityMax && task.Priority != newPriority {
 			task.Priority = newPriority
+			task.UpdatedAt = time.Now()
 			return true
 		}
 	case ActionSetSection:
 		if models.IsGTDSection(action.Value) || action.Value == "" {
 			if task.Section != action.Value || task.CustomSection != "" {
 				task.SetSection(action.Value)
+				task.UpdatedAt = time.Now()
 				return true
 			}
 		} else {
 			if task.CustomSection != action.Value || task.Section != "" {
 				task.SetSection(action.Value)
+				task.UpdatedAt = time.Now()
 				return true
 			}
 		}
