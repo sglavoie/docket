@@ -66,6 +66,17 @@ func TestApplyAction_NewActions(t *testing.T) {
 			shouldModify: true,
 		},
 		{
+			name:   "set active true clears dimmed",
+			action: RuleAction{ActionType: ActionSetActive, Value: "true"},
+			setupTask: func() *models.Task {
+				return &models.Task{ID: "1", Active: false, Dimmed: true}
+			},
+			expectedChange: func(t *models.Task) bool {
+				return t.Active && !t.Dimmed
+			},
+			shouldModify: true,
+		},
+		{
 			name:   "set active false",
 			action: RuleAction{ActionType: ActionSetActive, Value: "false"},
 			setupTask: func() *models.Task {

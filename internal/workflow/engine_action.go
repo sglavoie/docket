@@ -157,8 +157,11 @@ func applyAction(task *models.Task, action RuleAction) bool { //nolint:gocyclo
 	case ActionSetActive:
 		active := action.Value == "true"
 		if task.Active != active {
-			task.Active = active
-			task.UpdatedAt = time.Now()
+			if active {
+				task.Activate()
+			} else {
+				task.Deactivate()
+			}
 			return true
 		}
 	case ActionSetPinned:
