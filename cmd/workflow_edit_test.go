@@ -22,6 +22,7 @@ func TestParseCommaSeparatedIndices(t *testing.T) {
 		{"empty string", "", nil, false},
 		{"invalid format", "abc", nil, true},
 		{"mixed invalid", "0,abc,2", nil, true},
+		{"trailing chars rejected", "3abc", nil, true},
 	}
 
 	for _, tt := range tests {

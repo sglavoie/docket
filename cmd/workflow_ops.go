@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"slices"
+	"strconv"
 	"strings"
 	"time"
 
@@ -305,8 +306,8 @@ func parseCommaSeparatedIndices(s string) ([]int, error) {
 
 	for _, part := range parts {
 		part = strings.TrimSpace(part)
-		var idx int
-		if _, err := fmt.Sscanf(part, "%d", &idx); err != nil {
+		idx, err := strconv.Atoi(part)
+		if err != nil {
 			return nil, fmt.Errorf("invalid index: %s", part)
 		}
 		if !seen[idx] {
