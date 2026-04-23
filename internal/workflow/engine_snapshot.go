@@ -17,6 +17,9 @@ func snapshotTaskForEvent(task *models.Task) *models.Task {
 	var recCopy *models.RecurrencePattern
 	if task.Recurrence != nil {
 		rc := *task.Recurrence
+		if len(rc.Weekdays) > 0 {
+			rc.Weekdays = append([]int(nil), rc.Weekdays...)
+		}
 		recCopy = &rc
 	}
 
@@ -40,6 +43,6 @@ func snapshotTaskForEvent(task *models.Task) *models.Task {
 		Parent:        task.Parent,
 		Children:      task.Children,
 		Level:         task.Level,
-		DependsOn:     task.DependsOn,
+		DependsOn:     append([]string(nil), task.DependsOn...),
 	}
 }

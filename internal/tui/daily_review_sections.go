@@ -156,7 +156,10 @@ func byDueDateThenPriority(a, b CrossProjectTask) bool {
 	if !a.Task.DueDate.Equal(*b.Task.DueDate) {
 		return a.Task.DueDate.Before(*b.Task.DueDate)
 	}
-	return a.Task.Priority < b.Task.Priority
+	if a.Task.Priority != b.Task.Priority {
+		return a.Task.Priority < b.Task.Priority
+	}
+	return a.Task.ID < b.Task.ID
 }
 
 func byPriorityThenID(a, b CrossProjectTask) bool {
@@ -170,14 +173,20 @@ func byPriorityThenUpdatedAt(a, b CrossProjectTask) bool {
 	if a.Task.Priority != b.Task.Priority {
 		return a.Task.Priority < b.Task.Priority
 	}
-	return a.Task.UpdatedAt.After(b.Task.UpdatedAt)
+	if !a.Task.UpdatedAt.Equal(b.Task.UpdatedAt) {
+		return a.Task.UpdatedAt.After(b.Task.UpdatedAt)
+	}
+	return a.Task.ID < b.Task.ID
 }
 
 // sortSections sorts each section by appropriate criteria.
 func (m *DailyReviewModel) sortSections() {
-	// Overdue: oldest first (most urgent)
+	// Overdue: oldest first (most urgent), then by ID for stability
 	sort.Slice(m.overdue, func(i, j int) bool {
-		return m.overdue[i].Task.DueDate.Before(*m.overdue[j].Task.DueDate)
+		if !m.overdue[i].Task.DueDate.Equal(*m.overdue[j].Task.DueDate) {
+			return m.overdue[i].Task.DueDate.Before(*m.overdue[j].Task.DueDate)
+		}
+		return m.overdue[i].Task.ID < m.overdue[j].Task.ID
 	})
 
 	sort.Slice(m.dueToday, func(i, j int) bool { return byPriorityThenID(m.dueToday[i], m.dueToday[j]) })
@@ -199,7 +208,10 @@ func (m *DailyReviewModel) sortSections() {
 		if tj.IsZero() {
 			tj = m.old[j].Task.CreatedAt
 		}
-		return ti.Before(tj)
+		if !ti.Equal(tj) {
+			return ti.Before(tj)
+		}
+		return m.old[i].Task.ID < m.old[j].Task.ID
 	})
 
 	// Completed: most recent first
@@ -210,7 +222,10 @@ func (m *DailyReviewModel) sortSections() {
 		if m.completed[j].Task.CompletedAt == nil {
 			return true
 		}
-		return m.completed[i].Task.CompletedAt.After(*m.completed[j].Task.CompletedAt)
+		if !m.completed[i].Task.CompletedAt.Equal(*m.completed[j].Task.CompletedAt) {
+			return m.completed[i].Task.CompletedAt.After(*m.completed[j].Task.CompletedAt)
+		}
+		return m.completed[i].Task.ID < m.completed[j].Task.ID
 	})
 }
 

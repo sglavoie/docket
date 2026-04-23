@@ -118,9 +118,9 @@ func (m *WeeklyReviewModel) loadData() { //nolint:gocyclo
 
 		// Calculate no-activity days
 		if !latestUpdate.IsZero() {
-			wp.NoActivityDays = int(now.Sub(latestUpdate).Hours() / 24)
+			wp.NoActivityDays = util.DaysBetween(latestUpdate, now)
 		} else {
-			wp.NoActivityDays = int(now.Sub(project.CreatedAt).Hours() / 24)
+			wp.NoActivityDays = util.DaysBetween(project.CreatedAt, now)
 		}
 
 		// Project-level sections

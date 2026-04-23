@@ -155,3 +155,125 @@ func TestDailyReview_WithTasks_Render(t *testing.T) {
 		t.Error("expected output to contain 'Important task'")
 	}
 }
+
+func TestDailyReview_SortStability(t *testing.T) {
+	cfg := &config.Config{Projects: []*models.Project{}}
+	m := newTestDailyReviewModel(cfg)
+	m.SetSize(80, 24)
+
+	project, err := models.NewProject("p1", "Test", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	now := time.Now()
+
+	t.Run("byPriorityThenUpdatedAt_deterministic", func(t *testing.T) {
+		// Two tasks with same priority and same UpdatedAt — should sort by ID.
+		taskA := newTestDailyReviewTask(t, "Task A")
+		taskA.Priority = 2
+		taskA.UpdatedAt = now
+		taskA.ID = "zzz-last"
+
+		taskB := newTestDailyReviewTask(t, "Task B")
+		taskB.Priority = 2
+		taskB.UpdatedAt = now
+		taskB.ID = "aaa-first"
+
+		m.inProgress = []CrossProjectTask{
+			{Task: taskA, Project: project},
+			{Task: taskB, Project: project},
+		}
+		m.sortSections()
+
+		// taskB (aaa-first) should come before taskA (zzz-last)
+		if m.inProgress[0].Task.ID != "aaa-first" {
+			t.Errorf("expected aaa-first first, got %s", m.inProgress[0].Task.ID)
+		}
+	})
+
+	t.Run("byDueDateThenPriority_deterministic", func(t *testing.T) {
+		due := now.AddDate(0, 0, 3)
+		taskA := newTestDailyReviewTask(t, "Task A")
+		taskA.Priority = 2
+		taskA.DueDate = &due
+		taskA.ID = "zzz-last"
+
+		taskB := newTestDailyReviewTask(t, "Task B")
+		taskB.Priority = 2
+		taskB.DueDate = &due
+		taskB.ID = "aaa-first"
+
+		m.dueSoon = []CrossProjectTask{
+			{Task: taskA, Project: project},
+			{Task: taskB, Project: project},
+		}
+		m.sortSections()
+
+		if m.dueSoon[0].Task.ID != "aaa-first" {
+			t.Errorf("expected aaa-first first, got %s", m.dueSoon[0].Task.ID)
+		}
+	})
+
+	t.Run("overdue_deterministic", func(t *testing.T) {
+		due := now.AddDate(0, 0, -3)
+		taskA := newTestDailyReviewTask(t, "Task A")
+		taskA.DueDate = &due
+		taskA.ID = "zzz-last"
+
+		taskB := newTestDailyReviewTask(t, "Task B")
+		taskB.DueDate = &due
+		taskB.ID = "aaa-first"
+
+		m.overdue = []CrossProjectTask{
+			{Task: taskA, Project: project},
+			{Task: taskB, Project: project},
+		}
+		m.sortSections()
+
+		if m.overdue[0].Task.ID != "aaa-first" {
+			t.Errorf("expected aaa-first first, got %s", m.overdue[0].Task.ID)
+		}
+	})
+
+	t.Run("completed_deterministic", func(t *testing.T) {
+		completedAt := now
+		taskA := newTestDailyReviewTask(t, "Task A")
+		taskA.CompletedAt = &completedAt
+		taskA.ID = "zzz-last"
+
+		taskB := newTestDailyReviewTask(t, "Task B")
+		taskB.CompletedAt = &completedAt
+		taskB.ID = "aaa-first"
+
+		m.completed = []CrossProjectTask{
+			{Task: taskA, Project: project},
+			{Task: taskB, Project: project},
+		}
+		m.sortSections()
+
+		if m.completed[0].Task.ID != "aaa-first" {
+			t.Errorf("expected aaa-first first, got %s", m.completed[0].Task.ID)
+		}
+	})
+
+	t.Run("old_deterministic", func(t *testing.T) {
+		taskA := newTestDailyReviewTask(t, "Task A")
+		taskA.UpdatedAt = now.AddDate(0, 0, -30)
+		taskA.ID = "zzz-last"
+
+		taskB := newTestDailyReviewTask(t, "Task B")
+		taskB.UpdatedAt = now.AddDate(0, 0, -30)
+		taskB.ID = "aaa-first"
+
+		m.old = []CrossProjectTask{
+			{Task: taskA, Project: project},
+			{Task: taskB, Project: project},
+		}
+		m.sortSections()
+
+		if m.old[0].Task.ID != "aaa-first" {
+			t.Errorf("expected aaa-first first, got %s", m.old[0].Task.ID)
+		}
+	})
+}

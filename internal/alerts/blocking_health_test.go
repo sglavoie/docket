@@ -77,6 +77,25 @@ func TestCheckBlockedTasks_RecentActivityLogBlockedNoAlert(t *testing.T) {
 	}
 }
 
+func TestCheckBlockedTasks_CalendarDayNotHours(t *testing.T) {
+	// A task blocked 7 calendar days ago but only ~6.5 hours-based days
+	// (simulating a DST spring-forward scenario where hours/24 would give 6).
+	// With DaysBetween (calendar-day comparison) it should correctly give 7.
+	loc := time.FixedZone("Test", -5*3600) // UTC-5
+	blockedAt := time.Date(2026, 3, 1, 23, 30, 0, 0, loc)
+	now := time.Date(2026, 3, 8, 10, 0, 0, 0, loc) // 7 calendar days later, ~6.4 days in hours
+
+	task := testTask("blocked-dst", models.StatusBlocked, blockedAt)
+	cfg := DefaultAlertConfig()
+	cfg.BlockedDays = 7
+
+	projects := []ProjectData{testProject("proj-dst", task)}
+	alerts := checkBlockedTasks(cfg, projects, now)
+	if len(alerts) != 1 {
+		t.Fatalf("expected 1 alert for task blocked 7 calendar days, got %d", len(alerts))
+	}
+}
+
 func TestCheckProjectHealth_StaleProject(t *testing.T) {
 	now := time.Date(2026, 2, 28, 10, 0, 0, 0, time.UTC)
 	task := testTask("old", models.StatusTodo, now.AddDate(0, 0, -30))

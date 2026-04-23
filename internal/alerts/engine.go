@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/util"
 )
 
 // Evaluate runs all enabled checkers against the provided project data and returns an AlertSnapshot.
@@ -210,7 +211,7 @@ func checkStaleTasks(cfg AlertConfig, projects []ProjectData, now time.Time) []A
 				alerts = append(alerts, Alert{
 					Category:  CategoryStale,
 					Title:     task.Title,
-					Details:   fmt.Sprintf("No updates for %d days in %s", int(now.Sub(task.UpdatedAt).Hours()/24), pd.Project.Name),
+					Details:   fmt.Sprintf("No updates for %d days in %s", util.DaysBetween(task.UpdatedAt, now), pd.Project.Name),
 					TaskID:    task.ID,
 					ProjectID: pd.Project.ID,
 					Severity:  SeverityInfo,
@@ -258,7 +259,7 @@ func checkBlockedTasks(cfg AlertConfig, projects []ProjectData, now time.Time) [
 			// Use the activity log to find when the task last became blocked,
 			// rather than UpdatedAt which resets on any metadata edit.
 			blockedSince := findLastBlockedTransition(task)
-			daysSinceBlocked := int(now.Sub(blockedSince).Hours() / 24)
+			daysSinceBlocked := util.DaysBetween(blockedSince, now)
 			if daysSinceBlocked >= cfg.BlockedDays {
 				alerts = append(alerts, Alert{
 					Category:  CategoryBlocked,
@@ -311,7 +312,7 @@ func checkProjectHealth(cfg AlertConfig, projects []ProjectData, now time.Time) 
 			alerts = append(alerts, Alert{
 				Category:  CategoryProjectHealth,
 				Title:     fmt.Sprintf("%s: no activity", pd.Project.Name),
-				Details:   fmt.Sprintf("Last update %d days ago", int(now.Sub(latestUpdate).Hours()/24)),
+				Details:   fmt.Sprintf("Last update %d days ago", util.DaysBetween(latestUpdate, now)),
 				ProjectID: pd.Project.ID,
 				Severity:  SeverityInfo,
 			})
