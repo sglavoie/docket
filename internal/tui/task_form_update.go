@@ -54,6 +54,13 @@ func (m *TaskFormModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 
+	case TextEditorExternalDoneMsg:
+		// Direct Ctrl+E from task form (no TextEditor view on the stack).
+		if !msg.Canceled {
+			m.applyTextEditorResult(msg.FieldName, msg.Value)
+		}
+		return m, nil
+
 	case tea.KeyPressMsg:
 		// ── Discard confirmation ───────────────────────────────────────────────
 		if m.confirmDiscard {
