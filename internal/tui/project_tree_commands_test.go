@@ -55,12 +55,15 @@ func TestCopyTaskStatePreservesAllFields(t *testing.T) {
 		t.Errorf("Description: got %q, want %q", copied.Description, task.Description)
 	}
 
-	// DueDate should be the same pointer (it's a *time.Time, immutable value)
+	// DueDate should be a deep copy (distinct pointer, same value)
 	if copied.DueDate == nil {
 		t.Fatal("DueDate should not be nil")
 	}
 	if !copied.DueDate.Equal(*task.DueDate) {
 		t.Errorf("DueDate: got %v, want %v", *copied.DueDate, *task.DueDate)
+	}
+	if copied.DueDate == task.DueDate {
+		t.Error("DueDate should be a distinct pointer (deep copy), not aliased to original")
 	}
 
 	// Recurrence should be a deep copy

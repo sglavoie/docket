@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"maps"
 	"slices"
+	"time"
 
 	tea "charm.land/bubbletea/v2"
 
@@ -185,6 +186,15 @@ func copyTaskState(task *models.Task) *models.Task {
 		}
 	}
 
+	// Deep-copy DueDate so that pointer-replacing mutations on the original
+	// task after capture don't silently update the snapshot (same fix as
+	// cmd/workflow_ops.go copyTaskState and engine_snapshot.go).
+	var dueCopy *time.Time
+	if task.DueDate != nil {
+		d := *task.DueDate
+		dueCopy = &d
+	}
+
 	return &models.Task{
 		ID:            task.ID,
 		Status:        task.Status,
@@ -193,7 +203,7 @@ func copyTaskState(task *models.Task) *models.Task {
 		CustomSection: task.CustomSection,
 		Tags:          tagsCopy,
 		Type:          task.Type,
-		DueDate:       task.DueDate,
+		DueDate:       dueCopy,
 		Description:   task.Description,
 		Recurrence:    recurrenceCopy,
 		// Preserve parent/child relationships for hierarchical triggers
