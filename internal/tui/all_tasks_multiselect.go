@@ -209,6 +209,7 @@ func (m *AllTasksViewModel) handleBulkDelete() (tea.Model, tea.Cmd) {
 	}
 
 	totalDeleted := 0
+	allDeletedIDs := make(map[string]bool)
 	for projectID, items := range byProject {
 		project := m.projectCache[projectID]
 		if project == nil {
@@ -226,6 +227,9 @@ func (m *AllTasksViewModel) handleBulkDelete() (tea.Model, tea.Cmd) {
 			rootIDs[item.Task.ID] = true
 		}
 		idsToDelete := collectDescendantIDs(project.Tasks, rootIDs)
+		for id := range idsToDelete {
+			allDeletedIDs[id] = true
+		}
 
 		// Filter out deleted tasks and clean up dangling references
 		var remaining []*models.Task
@@ -265,6 +269,9 @@ func (m *AllTasksViewModel) handleBulkDelete() (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 	}
+
+	// Clean up config references (FocusQueue, DailyPlan, RecentTaskVisits)
+	cleanupConfigTaskRefs(m.config, m.configManager, allDeletedIDs)
 
 	m.finishBulk(fmt.Sprintf("Deleted %d tasks", totalDeleted))
 	return m, nil
