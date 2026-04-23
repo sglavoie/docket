@@ -149,9 +149,20 @@ func taskOpsToggleDimmed(v taskOpsView) (tea.Model, tea.Cmd) {
 
 // taskOpsDeleteTask deletes the task at cursor.
 func taskOpsDeleteTask(v taskOpsView) (tea.Model, tea.Cmd) {
+	// Collect descendant IDs before deletion so we can clean up config refs.
+	task, project := v.getTaskRef()
+	if task == nil {
+		return v, nil
+	}
+	deleteIDs := collectDescendantIDs(project.Tasks, map[string]bool{task.ID: true})
+
 	persister := v.getPersister()
 	cmd := taskOpsApply(v, "Delete Task", func(pf persistFn, project *models.Project, taskID string) TaskOpResult {
 		return applyDeleteTask(pf, persister, project, taskID)
 	})
+
+	// Clean up FocusQueue, DailyPlan, and RecentTaskVisits references.
+	cleanupConfigTaskRefs(v.getConfig(), v.getConfigManager(), deleteIDs)
+
 	return v, cmd
 }
