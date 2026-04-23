@@ -344,6 +344,9 @@ func (m *ProjectTreeModel) deleteTask() tea.Cmd {
 		return func() tea.Msg { return ErrorMsg{Err: result.Err} }
 	}
 
+	// Clean up FocusQueue, DailyPlan, and RecentTaskVisits references.
+	cleanupConfigTaskRefs(m.config, m.configManager, deleteIDs)
+
 	m.buildTree()
 	m.clampCursor()
 	return result.Cmd
@@ -372,6 +375,9 @@ func (m *ProjectTreeModel) bulkDeleteTasks() tea.Cmd {
 			return func() tea.Msg { return ErrorMsg{Err: result.Err} }
 		}
 	}
+
+	// Clean up FocusQueue, DailyPlan, and RecentTaskVisits references.
+	cleanupConfigTaskRefs(m.config, m.configManager, allDeleteIDs)
 
 	m.clearSelection()
 	m.buildTree()

@@ -181,3 +181,53 @@ func TestFocusBoardBuildTagCmd_UsesAllRows(t *testing.T) {
 		t.Error("buildTagCmd should include 'backlog' tag from non-active task in allRows")
 	}
 }
+
+// TestFocusBoardNextTab_ExcludesCustomSectionTasks verifies that the "Next"
+// tab does not include tasks with a custom section. A task with CustomSection
+// set has Section == "" (cleared by SetSection), but it belongs to the custom
+// section, not "Next".
+func TestFocusBoardNextTab_ExcludesCustomSectionTasks(t *testing.T) {
+	project, _ := models.NewProject("proj", "proj", "/tmp/test-proj")
+
+	// Task in Next section (Section="" with no CustomSection)
+	nextTask := makeBoardTask(t, "id-next", 1, "Next Task")
+	nextTask.Section = ""
+	nextTask.CustomSection = ""
+	nextRow := boardRow{Task: nextTask, Project: project, Source: project.Name}
+
+	// Task explicitly in Next section
+	explicitNext := makeBoardTask(t, "id-explicit-next", 2, "Explicit Next")
+	explicitNext.Section = models.SectionNext
+	explicitNext.CustomSection = ""
+	explicitNextRow := boardRow{Task: explicitNext, Project: project, Source: project.Name}
+
+	// Task in a custom section — Section is "" but CustomSection is set
+	customTask := makeBoardTask(t, "id-custom", 3, "Custom Section Task")
+	customTask.SetSection("MyBoard")
+	customRow := boardRow{Task: customTask, Project: project, Source: project.Name}
+
+	m := newTestFocusBoard()
+	m.allRows = []boardRow{nextRow, explicitNextRow, customRow}
+	m.nextRows = []boardRow{nextRow, explicitNextRow}
+
+	m.tabs.Active = boardTabNext
+	m.applyFilter()
+
+	// Only the two genuine Next tasks should appear
+	if len(m.filtered) != 2 {
+		t.Errorf("Next tab: expected 2 items, got %d", len(m.filtered))
+	}
+	ids := map[string]bool{}
+	for _, r := range m.filtered {
+		ids[r.Task.ID] = true
+	}
+	if !ids["id-next"] {
+		t.Error("Next tab: missing default-section task")
+	}
+	if !ids["id-explicit-next"] {
+		t.Error("Next tab: missing explicit-Next task")
+	}
+	if ids["id-custom"] {
+		t.Error("Next tab: custom-section task should not appear in Next tab")
+	}
+}
