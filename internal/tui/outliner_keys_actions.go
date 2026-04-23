@@ -234,6 +234,8 @@ func (m *OutlinerModel) executeDelete() (tea.Model, tea.Cmd) {
 		m.err = result.Err
 		return m, func() tea.Msg { return ErrorMsg{Err: result.Err} }
 	}
+	// Clean up config references (FocusQueue, DailyPlan, RecentTaskVisits)
+	cleanupConfigTaskRefs(m.config, m.configManager, deleteIDs)
 	m.rebuildRows()
 	return m, result.Cmd
 }
@@ -304,6 +306,9 @@ func (m *OutlinerModel) executeBulkDelete() (tea.Model, tea.Cmd) {
 		m.err = err
 		return m, func() tea.Msg { return ErrorMsg{Err: err} }
 	}
+
+	// Clean up config references (FocusQueue, DailyPlan, RecentTaskVisits)
+	cleanupConfigTaskRefs(m.config, m.configManager, idsToDelete)
 
 	m.clearMultiSelect()
 	m.setStatus(fmt.Sprintf("Deleted %d tasks", count))

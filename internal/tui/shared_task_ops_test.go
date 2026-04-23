@@ -162,6 +162,82 @@ func TestSectionForMoveKey(t *testing.T) {
 // persistWithWorkflow generates recurring instances after workflow rule
 // evaluation, not just before. This catches the case where a workflow rule
 // sets a recurring task to "done".
+func TestCleanupConfigTaskRefs(t *testing.T) {
+	t.Run("removes deleted task IDs from config lists", func(t *testing.T) {
+		cfg := config.NewConfig()
+		cfg.FocusQueue = []config.FocusQueueItem{
+			{TaskID: "t1", ProjectID: "p1"},
+			{TaskID: "t2", ProjectID: "p1"},
+		}
+		cfg.DailyPlan = []config.DailyPlanItem{
+			{TaskID: "t1", ProjectID: "p1", PlannedDate: "2026-04-23"},
+			{TaskID: "t3", ProjectID: "p1", PlannedDate: "2026-04-23"},
+		}
+		cfg.RecentTaskVisits = []config.RecentTaskVisit{
+			{TaskID: "t1", ProjectID: "p1"},
+			{TaskID: "t4", ProjectID: "p1"},
+		}
+
+		configPath := filepath.Join(t.TempDir(), "tt.json")
+		mgr := config.NewManager(configPath)
+		// Save initial config so the manager has a file to work with
+		if err := mgr.Save(cfg); err != nil {
+			t.Fatal(err)
+		}
+
+		idsToDelete := map[string]bool{"t1": true}
+		cleanupConfigTaskRefs(cfg, mgr, idsToDelete)
+
+		if len(cfg.FocusQueue) != 1 || cfg.FocusQueue[0].TaskID != "t2" {
+			t.Errorf("FocusQueue should only contain t2, got %v", cfg.FocusQueue)
+		}
+		if len(cfg.DailyPlan) != 1 || cfg.DailyPlan[0].TaskID != "t3" {
+			t.Errorf("DailyPlan should only contain t3, got %v", cfg.DailyPlan)
+		}
+		if len(cfg.RecentTaskVisits) != 1 || cfg.RecentTaskVisits[0].TaskID != "t4" {
+			t.Errorf("RecentTaskVisits should only contain t4, got %v", cfg.RecentTaskVisits)
+		}
+	})
+
+	t.Run("no-op with nil config or manager", func(t *testing.T) {
+		// Should not panic
+		cleanupConfigTaskRefs(nil, nil, map[string]bool{"t1": true})
+
+		cfg := config.NewConfig()
+		cleanupConfigTaskRefs(cfg, nil, map[string]bool{"t1": true})
+		cleanupConfigTaskRefs(nil, config.NewManager("/tmp/x.json"), map[string]bool{"t1": true})
+	})
+
+	t.Run("no-op with empty ID set", func(t *testing.T) {
+		cfg := config.NewConfig()
+		cfg.FocusQueue = []config.FocusQueueItem{{TaskID: "t1", ProjectID: "p1"}}
+		configPath := filepath.Join(t.TempDir(), "tt.json")
+		mgr := config.NewManager(configPath)
+
+		cleanupConfigTaskRefs(cfg, mgr, map[string]bool{})
+
+		if len(cfg.FocusQueue) != 1 {
+			t.Error("FocusQueue should be unchanged")
+		}
+	})
+
+	t.Run("no-op when no IDs match", func(t *testing.T) {
+		cfg := config.NewConfig()
+		cfg.FocusQueue = []config.FocusQueueItem{{TaskID: "t1", ProjectID: "p1"}}
+		configPath := filepath.Join(t.TempDir(), "tt.json")
+		mgr := config.NewManager(configPath)
+		if err := mgr.Save(cfg); err != nil {
+			t.Fatal(err)
+		}
+
+		cleanupConfigTaskRefs(cfg, mgr, map[string]bool{"t99": true})
+
+		if len(cfg.FocusQueue) != 1 || cfg.FocusQueue[0].TaskID != "t1" {
+			t.Error("FocusQueue should be unchanged")
+		}
+	})
+}
+
 func TestPersistWithWorkflow_GeneratesRecurringAfterRules(t *testing.T) {
 	cfg := testutil.NewTestConfig()
 	configPath := filepath.Join(t.TempDir(), "tt.json")

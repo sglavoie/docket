@@ -545,12 +545,15 @@ func (m *OutlinerModel) crossExecuteDelete() (tea.Model, tea.Cmd) {
 
 	m.crossUndoCtx.Set("Delete Task", task.Title)
 	m.crossUndoCtx.ProjectIDs = []string{proj.ID}
+	deleteIDs := collectDescendantIDs(proj.Tasks, map[string]bool{task.ID: true})
 	pf := m.crossPersistFn(proj)
 	result := applyDeleteTask(pf, m.projectService, proj, task.ID)
 	if result.Err != nil {
 		m.err = result.Err
 		return m, func() tea.Msg { return ErrorMsg{Err: result.Err} }
 	}
+	// Clean up config references (FocusQueue, DailyPlan, RecentTaskVisits)
+	cleanupConfigTaskRefs(m.config, m.configManager, deleteIDs)
 	m.rebuildRows()
 	return m, result.Cmd
 }

@@ -7,6 +7,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/logging"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
@@ -439,6 +440,20 @@ func dueDateFromDays(days int, isClear bool) (*time.Time, string) {
 	}
 	d := util.StartOfDay(time.Now().AddDate(0, 0, days))
 	return &d, dueDateLabel(days)
+}
+
+// cleanupConfigTaskRefs removes deleted task IDs from FocusQueue, DailyPlan,
+// and RecentTaskVisits in the config. This mirrors the cleanup done in
+// cmd/task_delete.go and prevents stale references from accumulating.
+func cleanupConfigTaskRefs(cfg *config.Config, mgr *config.Manager, idsToDelete map[string]bool) {
+	if cfg == nil || mgr == nil || len(idsToDelete) == 0 {
+		return
+	}
+	if cfg.RemoveTaskRefs(idsToDelete) > 0 {
+		if err := mgr.Save(cfg); err != nil {
+			logging.Warn("failed to save config after cleaning task refs: %v", err)
+		}
+	}
 }
 
 // collectDescendantIDs collects all IDs of a task and its descendants recursively.
