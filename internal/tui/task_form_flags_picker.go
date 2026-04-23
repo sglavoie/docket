@@ -51,8 +51,16 @@ func (p *formFlagsPicker) handleKey(msg tea.KeyPressMsg) (tea.Cmd, bool, tea.Msg
 			p.pinned = !p.pinned
 		case 1:
 			p.active = !p.active
+			// Active and Dimmed are mutually exclusive (see task_lifecycle.go).
+			if p.active {
+				p.dimmed = false
+			}
 		case 2:
 			p.dimmed = !p.dimmed
+			// Active and Dimmed are mutually exclusive (see task_lifecycle.go).
+			if p.dimmed {
+				p.active = false
+			}
 		}
 		return nil, false, nil
 	}

@@ -2506,3 +2506,65 @@ func TestSubtaskEditNonEmptyTitlePreserved(t *testing.T) {
 		t.Errorf("expected type bug, got %s", m.draft.subtasks[0].taskType)
 	}
 }
+
+// ── flags picker mutual exclusivity ──────────────────────────────────────────
+
+func TestFormFlagsPicker_ActiveDimmedMutualExclusion(t *testing.T) {
+	t.Run("setting active clears dimmed", func(t *testing.T) {
+		p := newFormFlagsPicker(false, false, true) // dimmed=true
+		if !p.dimmed {
+			t.Fatal("precondition: dimmed should be true")
+		}
+		// Move cursor to Active (index 1) and toggle
+		p.cursor = 1
+		p.handleKey(tea.KeyPressMsg{Code: ' '}) //nolint:errcheck
+		if !p.active {
+			t.Error("active should be true after toggle")
+		}
+		if p.dimmed {
+			t.Error("dimmed should be cleared when active is set")
+		}
+	})
+
+	t.Run("setting dimmed clears active", func(t *testing.T) {
+		p := newFormFlagsPicker(false, true, false) // active=true
+		if !p.active {
+			t.Fatal("precondition: active should be true")
+		}
+		// Move cursor to Dimmed (index 2) and toggle
+		p.cursor = 2
+		p.handleKey(tea.KeyPressMsg{Code: ' '}) //nolint:errcheck
+		if !p.dimmed {
+			t.Error("dimmed should be true after toggle")
+		}
+		if p.active {
+			t.Error("active should be cleared when dimmed is set")
+		}
+	})
+
+	t.Run("unsetting active does not affect dimmed", func(t *testing.T) {
+		p := newFormFlagsPicker(false, true, false) // active=true
+		// Toggle active off
+		p.cursor = 1
+		p.handleKey(tea.KeyPressMsg{Code: ' '}) //nolint:errcheck
+		if p.active {
+			t.Error("active should be false after toggle off")
+		}
+		if p.dimmed {
+			t.Error("dimmed should remain false")
+		}
+	})
+
+	t.Run("unsetting dimmed does not affect active", func(t *testing.T) {
+		p := newFormFlagsPicker(false, false, true) // dimmed=true
+		// Toggle dimmed off
+		p.cursor = 2
+		p.handleKey(tea.KeyPressMsg{Code: ' '}) //nolint:errcheck
+		if p.dimmed {
+			t.Error("dimmed should be false after toggle off")
+		}
+		if p.active {
+			t.Error("active should remain false")
+		}
+	})
+}
