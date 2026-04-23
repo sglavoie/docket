@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"testing"
+	"time"
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/testutil"
@@ -105,6 +106,35 @@ func TestCaptureTaskStates(t *testing.T) {
 		task.CustomSection = "Sprint-2"
 		if state.CustomSection != "Sprint-1" {
 			t.Errorf("captured state CustomSection should not change after original mutation")
+		}
+	})
+
+	t.Run("deep copies DueDate pointer", func(t *testing.T) {
+		task := testutil.NewTestTaskWithStatus("Task", models.StatusTodo)
+		due := time.Date(2025, 6, 15, 0, 0, 0, 0, time.Local)
+		task.DueDate = &due
+
+		states := CaptureTaskStates([]*models.Task{task})
+		state := states[task.ID]
+
+		if state.DueDate == nil {
+			t.Fatal("captured state DueDate should not be nil")
+		}
+		if !state.DueDate.Equal(due) {
+			t.Errorf("captured DueDate = %v, want %v", *state.DueDate, due)
+		}
+
+		// Mutating the original task's DueDate should not affect the captured state
+		newDue := time.Date(2025, 12, 25, 0, 0, 0, 0, time.Local)
+		task.DueDate = &newDue
+
+		if !state.DueDate.Equal(due) {
+			t.Errorf("captured DueDate changed to %v after original mutation, want %v", *state.DueDate, due)
+		}
+
+		// Also verify the pointers are distinct (not aliased)
+		if state.DueDate == task.DueDate {
+			t.Error("captured DueDate should be a distinct pointer, not aliased to the original")
 		}
 	})
 
