@@ -292,9 +292,9 @@ func (m *TaskFormModel) handleChildrenTabKey(msg tea.KeyPressMsg) (tea.Model, te
 	case "ctrl+d":
 		m.handleChildrenDelete()
 	case "ctrl+j":
-		m.handleChildrenReorderDown()
+		m.handleChildrenReorder(1)
 	case "ctrl+k":
-		m.handleChildrenReorderUp()
+		m.handleChildrenReorder(-1)
 	case "ctrl+o":
 		m.handleSubtaskToggleOptional()
 	case "space":
@@ -549,52 +549,34 @@ func (m *TaskFormModel) applyTextEditorResult(field, value string) {
 // - on a checklist item: opens checklist edit overlay
 // - on a subtask item: opens subtask edit overlay
 func (m *TaskFormModel) handleChildrenEnter() tea.Cmd {
+	// Section headers: toggle expand/collapse.
 	if m.focusIndex == 0 {
-		// Checklist section header.
 		m.checklistExpanded = !m.checklistExpanded
 		m.clampChildrenFocusIndex()
 		return nil
 	}
-
-	if m.checklistExpanded {
-		clEnd := 1 + len(m.draft.checklist)
-		if m.focusIndex >= 1 && m.focusIndex < clEnd {
-			itemIdx := m.focusIndex - 1
-			m.childrenEditIdx = itemIdx
-			m.childrenAddingNew = false
-			m.initChecklistItemInput(m.draft.checklist[itemIdx].Text)
-			m.checklistItemInput.Focus()
-			m.activeOverlay = formOverlayChecklistEdit
-			return nil
-		}
-	}
-
-	if m.mode != FormModeCreate || !formTypeCanHaveSubtasks(m.draft.taskType) {
-		return nil
-	}
-
-	stHeaderIdx := m.childrenSubtasksHeaderIdx()
-	if m.focusIndex == stHeaderIdx {
+	if stHeaderIdx := m.childrenSubtasksHeaderIdx(); m.focusIndex == stHeaderIdx {
 		m.subtasksExpanded = !m.subtasksExpanded
 		m.clampChildrenFocusIndex()
 		return nil
 	}
 
-	if m.subtasksExpanded {
-		stStart := stHeaderIdx + 1
-		stEnd := stStart + len(m.draft.subtasks)
-		if m.focusIndex >= stStart && m.focusIndex < stEnd {
-			itemIdx := m.focusIndex - stStart
-			m.childrenEditIdx = itemIdx
-			m.childrenAddingNew = false
-			m.initSubtaskItemInput(m.draft.subtasks[itemIdx].title)
-			m.subtaskItemInput.Focus()
-			m.subtaskTypeCursor = formSubtaskTypeCursorFor(m.draft.subtasks[itemIdx].taskType)
-			m.activeOverlay = formOverlaySubtaskEdit
-			return nil
-		}
+	kind, idx := m.focusedChildItem()
+	switch kind {
+	case childFocusChecklistItem:
+		m.childrenEditIdx = idx
+		m.childrenAddingNew = false
+		m.initChecklistItemInput(m.draft.checklist[idx].Text)
+		m.checklistItemInput.Focus()
+		m.activeOverlay = formOverlayChecklistEdit
+	case childFocusSubtaskItem:
+		m.childrenEditIdx = idx
+		m.childrenAddingNew = false
+		m.initSubtaskItemInput(m.draft.subtasks[idx].title)
+		m.subtaskItemInput.Focus()
+		m.subtaskTypeCursor = formSubtaskTypeCursorFor(m.draft.subtasks[idx].taskType)
+		m.activeOverlay = formOverlaySubtaskEdit
 	}
-
 	return nil
 }
 
@@ -632,135 +614,57 @@ func (m *TaskFormModel) handleChildrenCtrlT() tea.Cmd {
 
 // handleChildrenDelete deletes the currently focused checklist item or subtask.
 func (m *TaskFormModel) handleChildrenDelete() {
-	if m.focusIndex == 0 {
-		return // never delete the section header
-	}
-
-	if m.checklistExpanded {
-		clEnd := 1 + len(m.draft.checklist)
-		if m.focusIndex >= 1 && m.focusIndex < clEnd {
-			idx := m.focusIndex - 1
-			m.draft.checklist = append(m.draft.checklist[:idx], m.draft.checklist[idx+1:]...)
-			m.hasChanges = true
-			m.err = nil
-			m.clampChildrenFocusIndex()
-			return
-		}
-	}
-
-	if m.mode != FormModeCreate || !formTypeCanHaveSubtasks(m.draft.taskType) {
+	kind, idx := m.focusedChildItem()
+	switch kind {
+	case childFocusChecklistItem:
+		m.draft.checklist = append(m.draft.checklist[:idx], m.draft.checklist[idx+1:]...)
+	case childFocusSubtaskItem:
+		m.draft.subtasks = append(m.draft.subtasks[:idx], m.draft.subtasks[idx+1:]...)
+	default:
 		return
 	}
-	stHeaderIdx := m.childrenSubtasksHeaderIdx()
-	if m.subtasksExpanded {
-		stStart := stHeaderIdx + 1
-		stEnd := stStart + len(m.draft.subtasks)
-		if m.focusIndex >= stStart && m.focusIndex < stEnd {
-			idx := m.focusIndex - stStart
-			m.draft.subtasks = append(m.draft.subtasks[:idx], m.draft.subtasks[idx+1:]...)
-			m.hasChanges = true
-			m.err = nil
-			m.clampChildrenFocusIndex()
-		}
-	}
+	m.hasChanges = true
+	m.err = nil
+	m.clampChildrenFocusIndex()
 }
 
-// handleChildrenReorderDown moves the focused checklist item or subtask one position down.
-func (m *TaskFormModel) handleChildrenReorderDown() {
-	if m.checklistExpanded && m.focusIndex >= 1 {
-		clEnd := 1 + len(m.draft.checklist)
-		if m.focusIndex < clEnd {
-			idx := m.focusIndex - 1
-			if idx < len(m.draft.checklist)-1 {
-				m.draft.checklist[idx], m.draft.checklist[idx+1] = m.draft.checklist[idx+1], m.draft.checklist[idx]
-				m.focusIndex++
-				m.hasChanges = true
-				m.err = nil
-			}
+// handleChildrenReorder moves the focused checklist item or subtask by delta
+// positions (+1 = down, -1 = up).
+func (m *TaskFormModel) handleChildrenReorder(delta int) {
+	kind, idx := m.focusedChildItem()
+	switch kind {
+	case childFocusChecklistItem:
+		neighbor := idx + delta
+		if neighbor < 0 || neighbor >= len(m.draft.checklist) {
 			return
 		}
-	}
-
-	if m.mode != FormModeCreate || !formTypeCanHaveSubtasks(m.draft.taskType) {
-		return
-	}
-	stHeaderIdx := m.childrenSubtasksHeaderIdx()
-	if m.subtasksExpanded {
-		stStart := stHeaderIdx + 1
-		stEnd := stStart + len(m.draft.subtasks)
-		if m.focusIndex >= stStart && m.focusIndex < stEnd {
-			idx := m.focusIndex - stStart
-			if idx < len(m.draft.subtasks)-1 {
-				m.draft.subtasks[idx], m.draft.subtasks[idx+1] = m.draft.subtasks[idx+1], m.draft.subtasks[idx]
-				m.focusIndex++
-				m.hasChanges = true
-				m.err = nil
-			}
-		}
-	}
-}
-
-// handleChildrenReorderUp moves the focused checklist item or subtask one position up.
-func (m *TaskFormModel) handleChildrenReorderUp() {
-	if m.checklistExpanded && m.focusIndex >= 1 {
-		clEnd := 1 + len(m.draft.checklist)
-		if m.focusIndex < clEnd {
-			idx := m.focusIndex - 1
-			if idx > 0 {
-				m.draft.checklist[idx], m.draft.checklist[idx-1] = m.draft.checklist[idx-1], m.draft.checklist[idx]
-				m.focusIndex--
-				m.hasChanges = true
-				m.err = nil
-			}
+		m.draft.checklist[idx], m.draft.checklist[neighbor] = m.draft.checklist[neighbor], m.draft.checklist[idx]
+	case childFocusSubtaskItem:
+		neighbor := idx + delta
+		if neighbor < 0 || neighbor >= len(m.draft.subtasks) {
 			return
 		}
-	}
-
-	if m.mode != FormModeCreate || !formTypeCanHaveSubtasks(m.draft.taskType) {
+		m.draft.subtasks[idx], m.draft.subtasks[neighbor] = m.draft.subtasks[neighbor], m.draft.subtasks[idx]
+	default:
 		return
 	}
-	stHeaderIdx := m.childrenSubtasksHeaderIdx()
-	if m.subtasksExpanded {
-		stStart := stHeaderIdx + 1
-		stEnd := stStart + len(m.draft.subtasks)
-		if m.focusIndex >= stStart && m.focusIndex < stEnd {
-			idx := m.focusIndex - stStart
-			if idx > 0 {
-				m.draft.subtasks[idx], m.draft.subtasks[idx-1] = m.draft.subtasks[idx-1], m.draft.subtasks[idx]
-				m.focusIndex--
-				m.hasChanges = true
-				m.err = nil
-			}
-		}
-	}
+	m.focusIndex += delta
+	m.hasChanges = true
+	m.err = nil
 }
 
 // handleSubtaskToggleOptional toggles the optional flag on the focused subtask.
 func (m *TaskFormModel) handleSubtaskToggleOptional() {
-	if m.mode != FormModeCreate || !formTypeCanHaveSubtasks(m.draft.taskType) {
-		return
-	}
-	stHeaderIdx := m.childrenSubtasksHeaderIdx()
-	if m.subtasksExpanded {
-		stStart := stHeaderIdx + 1
-		stEnd := stStart + len(m.draft.subtasks)
-		if m.focusIndex >= stStart && m.focusIndex < stEnd {
-			idx := m.focusIndex - stStart
-			m.draft.subtasks[idx].optional = !m.draft.subtasks[idx].optional
-			m.hasChanges = true
-			m.err = nil
-		}
+	if kind, idx := m.focusedChildItem(); kind == childFocusSubtaskItem {
+		m.draft.subtasks[idx].optional = !m.draft.subtasks[idx].optional
+		m.hasChanges = true
+		m.err = nil
 	}
 }
 
 // handleChecklistToggleDone toggles the Done state of the focused checklist item.
 func (m *TaskFormModel) handleChecklistToggleDone() {
-	if !m.checklistExpanded {
-		return
-	}
-	clEnd := 1 + len(m.draft.checklist)
-	if m.focusIndex >= 1 && m.focusIndex < clEnd {
-		idx := m.focusIndex - 1
+	if kind, idx := m.focusedChildItem(); kind == childFocusChecklistItem {
 		m.draft.checklist[idx].Done = !m.draft.checklist[idx].Done
 		m.hasChanges = true
 		m.err = nil

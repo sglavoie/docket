@@ -404,6 +404,37 @@ func (m *TaskFormModel) childrenSubtasksHeaderIdx() int {
 	return idx
 }
 
+// childFocusKind identifies what the Children-tab focus points at.
+type childFocusKind int
+
+const (
+	childFocusNone          childFocusKind = iota
+	childFocusChecklistItem                // a checklist item (idx valid)
+	childFocusSubtaskItem                  // a subtask draft  (idx valid)
+)
+
+// focusedChildItem resolves the current focusIndex on the Children tab into
+// a (kind, localIndex) pair. Returns childFocusNone when the focus is on a
+// section header or out of range.
+func (m *TaskFormModel) focusedChildItem() (childFocusKind, int) {
+	if m.checklistExpanded && m.focusIndex >= 1 {
+		clEnd := 1 + len(m.draft.checklist)
+		if m.focusIndex < clEnd {
+			return childFocusChecklistItem, m.focusIndex - 1
+		}
+	}
+
+	if m.mode == FormModeCreate && formTypeCanHaveSubtasks(m.draft.taskType) && m.subtasksExpanded {
+		stStart := m.childrenSubtasksHeaderIdx() + 1
+		stEnd := stStart + len(m.draft.subtasks)
+		if m.focusIndex >= stStart && m.focusIndex < stEnd {
+			return childFocusSubtaskItem, m.focusIndex - stStart
+		}
+	}
+
+	return childFocusNone, -1
+}
+
 // clampChildrenFocusIndex ensures focusIndex is in range after section toggling.
 func (m *TaskFormModel) clampChildrenFocusIndex() {
 	count := m.fieldCountForChildren()
