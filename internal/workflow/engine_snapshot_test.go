@@ -14,7 +14,7 @@ func TestSnapshotTaskForEvent_DeepCopiesSlices(t *testing.T) {
 			DependsOn: []string{"dep-1", "dep-2", "dep-3"},
 		}
 
-		snap := snapshotTaskForEvent(task)
+		snap := CopyTaskState(task)
 
 		// Verify initial state
 		if len(snap.DependsOn) != 3 {
@@ -44,7 +44,7 @@ func TestSnapshotTaskForEvent_DeepCopiesSlices(t *testing.T) {
 			},
 		}
 
-		snap := snapshotTaskForEvent(task)
+		snap := CopyTaskState(task)
 
 		// Verify initial state
 		if len(snap.Recurrence.Weekdays) != 3 {
@@ -69,7 +69,7 @@ func TestSnapshotTaskForEvent_DeepCopiesSlices(t *testing.T) {
 			Tags: []string{"urgent", "backend", "api"},
 		}
 
-		snap := snapshotTaskForEvent(task)
+		snap := CopyTaskState(task)
 
 		// Mutate the original
 		task.Tags[1] = "frontend"
@@ -86,7 +86,7 @@ func TestSnapshotTaskForEvent_DeepCopiesSlices(t *testing.T) {
 			DueDate: &due,
 		}
 
-		snap := snapshotTaskForEvent(task)
+		snap := CopyTaskState(task)
 
 		// Replace original due date
 		newDue := time.Date(2025, 12, 25, 0, 0, 0, 0, time.UTC)
@@ -103,7 +103,7 @@ func TestSnapshotTaskForEvent_DeepCopiesSlices(t *testing.T) {
 			DependsOn: nil,
 		}
 
-		snap := snapshotTaskForEvent(task)
+		snap := CopyTaskState(task)
 
 		// append([]string(nil), nil...) returns nil, which is fine
 		if snap.DependsOn != nil {
@@ -117,7 +117,7 @@ func TestSnapshotTaskForEvent_DeepCopiesSlices(t *testing.T) {
 			DependsOn: []string{},
 		}
 
-		snap := snapshotTaskForEvent(task)
+		snap := CopyTaskState(task)
 
 		// append([]string(nil), []string{}...) returns nil
 		if len(snap.DependsOn) != 0 {

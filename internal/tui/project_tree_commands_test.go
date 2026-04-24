@@ -6,6 +6,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/testutil"
+	"github.com/sglavoie/tt/internal/workflow"
 )
 
 func TestCopyTaskStatePreservesAllFields(t *testing.T) {
@@ -30,7 +31,7 @@ func TestCopyTaskStatePreservesAllFields(t *testing.T) {
 		},
 	}
 
-	copied := copyTaskState(task)
+	copied := workflow.CopyTaskState(task)
 
 	// Verify all fields are copied
 	if copied.ID != task.ID {
@@ -113,16 +114,16 @@ func TestCopyTaskStateNilRecurrence(t *testing.T) {
 		Tags:   []string{},
 	}
 
-	copied := copyTaskState(task)
+	copied := workflow.CopyTaskState(task)
 	if copied.Recurrence != nil {
 		t.Error("Recurrence should be nil when original is nil")
 	}
 }
 
 func TestCopyTaskStateNilTask(t *testing.T) {
-	copied := copyTaskState(nil)
+	copied := workflow.CopyTaskState(nil)
 	if copied != nil {
-		t.Error("copyTaskState(nil) should return nil")
+		t.Error("workflow.CopyTaskState(nil) should return nil")
 	}
 }
 
@@ -146,7 +147,7 @@ func TestTaskStateChangedDetectsCustomSection(t *testing.T) {
 		Type:          models.TaskTypeTask,
 	}
 
-	if !taskStateChanged(current, prev) {
+	if !workflow.TaskStateChanged(current, prev) {
 		t.Error("taskStateChanged should detect CustomSection change from 'Sprint 1' to 'Sprint 2'")
 	}
 }
@@ -170,7 +171,7 @@ func TestTaskStateChangedDetectsDueDateChange(t *testing.T) {
 		Type:    models.TaskTypeTask,
 	}
 
-	if !taskStateChanged(current, prev) {
+	if !workflow.TaskStateChanged(current, prev) {
 		t.Error("taskStateChanged should detect DueDate change")
 	}
 }
@@ -300,7 +301,7 @@ func TestTaskStateChangedDetectsDueDateAddedRemoved(t *testing.T) {
 	current := &models.Task{ID: "t1", Status: models.StatusTodo, DueDate: &due, Tags: []string{}, Type: models.TaskTypeTask}
 	prev := &models.Task{ID: "t1", Status: models.StatusTodo, DueDate: nil, Tags: []string{}, Type: models.TaskTypeTask}
 
-	if !taskStateChanged(current, prev) {
+	if !workflow.TaskStateChanged(current, prev) {
 		t.Error("taskStateChanged should detect DueDate being added")
 	}
 
@@ -308,7 +309,7 @@ func TestTaskStateChangedDetectsDueDateAddedRemoved(t *testing.T) {
 	current2 := &models.Task{ID: "t1", Status: models.StatusTodo, DueDate: nil, Tags: []string{}, Type: models.TaskTypeTask}
 	prev2 := &models.Task{ID: "t1", Status: models.StatusTodo, DueDate: &due, Tags: []string{}, Type: models.TaskTypeTask}
 
-	if !taskStateChanged(current2, prev2) {
+	if !workflow.TaskStateChanged(current2, prev2) {
 		t.Error("taskStateChanged should detect DueDate being removed")
 	}
 }

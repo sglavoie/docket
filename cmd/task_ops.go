@@ -14,6 +14,7 @@ import (
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/tterrors"
 	"github.com/sglavoie/tt/internal/tui"
+	"github.com/sglavoie/tt/internal/workflow"
 )
 
 // FindTaskByIdentifier finds a task by short ID, UUID, or title prefix.
@@ -306,7 +307,7 @@ func WithTaskUpdateInProject(taskIdentifier string, updateFn func(*models.Projec
 	}
 
 	// Capture task states before changes for event-based workflow triggers
-	prevStates := CaptureTaskStates(project.Tasks)
+	prevStates := workflow.CaptureTaskStates(project.Tasks)
 
 	// Apply the update
 	if err := updateFn(project, task); err != nil {

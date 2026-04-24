@@ -7,6 +7,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui"
+	"github.com/sglavoie/tt/internal/workflow"
 )
 
 var taskPromoteCmd = &cobra.Command{
@@ -159,7 +160,7 @@ func updateTaskType(args []string, action string, out MutateOutput, update func(
 	oldType := task.Type
 
 	// Capture task states before changes for event-based workflow triggers
-	prevStates := CaptureTaskStates(project.Tasks)
+	prevStates := workflow.CaptureTaskStates(project.Tasks)
 
 	// Update type
 	if err := update(task); err != nil {

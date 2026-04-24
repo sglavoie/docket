@@ -9,6 +9,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/external"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/workflow"
 )
 
 var taskEditCmd = &cobra.Command{
@@ -101,7 +102,7 @@ func runTaskEdit(cmd *cobra.Command, args []string) error {
 	}
 
 	// Apply changes directly to the already-loaded task and save
-	prevStates := CaptureTaskStates(project.Tasks)
+	prevStates := workflow.CaptureTaskStates(project.Tasks)
 	task.Title = newTitle
 	task.Description = newDesc
 	task.UpdatedAt = time.Now()

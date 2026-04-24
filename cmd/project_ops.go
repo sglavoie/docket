@@ -52,7 +52,7 @@ func SaveProject(project *models.Project, opts *SaveOptions) error {
 
 			if opts.PrevStates != nil {
 				// Use context-aware evaluation with event triggers
-				evalCtx := BuildEvaluationContext(project.Tasks, opts.PrevStates, project.Name, project.ID)
+				evalCtx := workflow.BuildEvaluationContext(project.Tasks, opts.PrevStates, project.Name, project.ID)
 				result = workflow.EvaluateRulesWithContext(evalCtx, rules)
 			} else {
 				// Use standard evaluation (no event triggers)

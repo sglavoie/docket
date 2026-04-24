@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"maps"
 	"slices"
-	"time"
 
 	tea "charm.land/bubbletea/v2"
 
@@ -153,125 +152,7 @@ func (m *ProjectTreeModel) saveAndRefreshWithPrevStates(prevStates map[string]*m
 
 // captureTaskStates creates a snapshot of task states for event trigger detection.
 func captureTaskStates(tasks []*models.Task) map[string]*models.Task {
-	states := make(map[string]*models.Task, len(tasks))
-	for _, task := range tasks {
-		states[task.ID] = copyTaskState(task)
-	}
-	return states
-}
-
-// copyTaskState creates a shallow copy of task fields relevant for event detection.
-func copyTaskState(task *models.Task) *models.Task {
-	if task == nil {
-		return nil
-	}
-	tagsCopy := make([]string, len(task.Tags))
-	copy(tagsCopy, task.Tags)
-
-	// Copy recurrence if present
-	var recurrenceCopy *models.RecurrencePattern
-	if task.Recurrence != nil {
-		recurrenceCopy = &models.RecurrencePattern{
-			Interval:    task.Recurrence.Interval,
-			Unit:        task.Recurrence.Unit,
-			Skipped:     task.Recurrence.Skipped,
-			Streak:      task.Recurrence.Streak,
-			MaxStreak:   task.Recurrence.MaxStreak,
-			OriginalDay: task.Recurrence.OriginalDay,
-			Mode:        task.Recurrence.Mode,
-		}
-		if len(task.Recurrence.Weekdays) > 0 {
-			recurrenceCopy.Weekdays = make([]int, len(task.Recurrence.Weekdays))
-			copy(recurrenceCopy.Weekdays, task.Recurrence.Weekdays)
-		}
-	}
-
-	// Deep-copy DueDate so that pointer-replacing mutations on the original
-	// task after capture don't silently update the snapshot (same fix as
-	// cmd/workflow_ops.go copyTaskState and engine_snapshot.go).
-	var dueCopy *time.Time
-	if task.DueDate != nil {
-		d := *task.DueDate
-		dueCopy = &d
-	}
-
-	return &models.Task{
-		ID:            task.ID,
-		Status:        task.Status,
-		Priority:      task.Priority,
-		Section:       task.Section,
-		CustomSection: task.CustomSection,
-		Tags:          tagsCopy,
-		Type:          task.Type,
-		DueDate:       dueCopy,
-		Description:   task.Description,
-		Recurrence:    recurrenceCopy,
-		// Preserve parent/child relationships for hierarchical triggers
-		Parent:   task.Parent,
-		Children: task.Children,
-		Level:    task.Level,
-	}
-}
-
-// buildEvaluationContext creates an evaluation context for workflow rules.
-// Only tasks that actually changed are included in Changes to avoid excessive rule triggering.
-// AllTasks and TaskMap still contain all tasks for hierarchical trigger lookups.
-func buildEvaluationContext(tasks []*models.Task, prevStates map[string]*models.Task, projectName, projectID string) *workflow.EvaluationContext {
-	taskMap := make(map[string]*models.Task, len(tasks))
-	var changes []workflow.TaskChangeContext
-
-	for _, task := range tasks {
-		taskMap[task.ID] = task
-		prev := prevStates[task.ID]
-		if prev == nil || taskStateChanged(task, prev) {
-			changes = append(changes, workflow.TaskChangeContext{
-				Task:     task,
-				Previous: prev,
-			})
-		}
-	}
-
-	return &workflow.EvaluationContext{
-		Changes:     changes,
-		AllTasks:    tasks,
-		TaskMap:     taskMap,
-		ProjectName: projectName,
-		ProjectID:   projectID,
-	}
-}
-
-// taskStateChanged returns true if the task's workflow-relevant state changed.
-func taskStateChanged(current, prev *models.Task) bool {
-	if prev == nil {
-		return true
-	}
-	if current.Status != prev.Status ||
-		current.Priority != prev.Priority ||
-		current.Section != prev.Section ||
-		current.CustomSection != prev.CustomSection ||
-		current.Type != prev.Type {
-		return true
-	}
-	// Detect due date changes (added, removed, or modified)
-	switch {
-	case current.DueDate == nil && prev.DueDate == nil:
-		// no change
-	case current.DueDate == nil || prev.DueDate == nil:
-		return true // one is nil, the other is not
-	default:
-		if !current.DueDate.Equal(*prev.DueDate) {
-			return true
-		}
-	}
-	if len(current.Tags) != len(prev.Tags) {
-		return true
-	}
-	for i, tag := range current.Tags {
-		if tag != prev.Tags[i] {
-			return true
-		}
-	}
-	return false
+	return workflow.CaptureTaskStates(tasks)
 }
 
 // showDeleteConfirm shows the appropriate delete confirmation for a single task.

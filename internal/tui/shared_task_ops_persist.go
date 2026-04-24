@@ -154,7 +154,7 @@ func persistWithWorkflow(opts WorkflowSaveOptions) error {
 		if len(rules) > 0 {
 			var result *workflow.EvaluationResult
 			if opts.PrevStates != nil {
-				evalCtx := buildEvaluationContext(opts.Project.Tasks, opts.PrevStates, opts.Project.Name, opts.Project.ID)
+				evalCtx := workflow.BuildEvaluationContext(opts.Project.Tasks, opts.PrevStates, opts.Project.Name, opts.Project.ID)
 				result = workflow.EvaluateRulesWithContext(evalCtx, rules)
 			} else {
 				result = workflow.EvaluateRules(opts.Project.Tasks, rules)

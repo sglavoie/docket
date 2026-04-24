@@ -6,6 +6,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/testutil"
+	"github.com/sglavoie/tt/internal/workflow"
 )
 
 func TestCaptureTaskStates(t *testing.T) {
@@ -18,10 +19,10 @@ func TestCaptureTaskStates(t *testing.T) {
 		task2.Section = "In Progress"
 
 		tasks := []*models.Task{task1, task2}
-		states := CaptureTaskStates(tasks)
+		states := workflow.CaptureTaskStates(tasks)
 
 		if len(states) != 2 {
-			t.Fatalf("CaptureTaskStates() captured %d states, want 2", len(states))
+			t.Fatalf("workflow.CaptureTaskStates() captured %d states, want 2", len(states))
 		}
 
 		state1 := states[task1.ID]
@@ -38,7 +39,7 @@ func TestCaptureTaskStates(t *testing.T) {
 			t.Errorf("state1.Tags length = %d, want 2", len(state1.Tags))
 		}
 		if state1 == task1 {
-			t.Error("CaptureTaskStates() should create copies, not reference originals")
+			t.Error("workflow.CaptureTaskStates() should create copies, not reference originals")
 		}
 
 		state2 := states[task2.ID]
@@ -61,7 +62,7 @@ func TestCaptureTaskStates(t *testing.T) {
 			MaxStreak:   10,
 		}
 
-		states := CaptureTaskStates([]*models.Task{task})
+		states := workflow.CaptureTaskStates([]*models.Task{task})
 		state := states[task.ID]
 
 		if state.Recurrence == nil {
@@ -86,9 +87,9 @@ func TestCaptureTaskStates(t *testing.T) {
 	})
 
 	t.Run("handles empty task list", func(t *testing.T) {
-		states := CaptureTaskStates([]*models.Task{})
+		states := workflow.CaptureTaskStates([]*models.Task{})
 		if len(states) != 0 {
-			t.Errorf("CaptureTaskStates([]) should return empty map, got %d states", len(states))
+			t.Errorf("workflow.CaptureTaskStates([]) should return empty map, got %d states", len(states))
 		}
 	})
 
@@ -96,7 +97,7 @@ func TestCaptureTaskStates(t *testing.T) {
 		task := testutil.NewTestTaskWithStatus("Task", models.StatusTodo)
 		task.CustomSection = "Sprint-1"
 
-		states := CaptureTaskStates([]*models.Task{task})
+		states := workflow.CaptureTaskStates([]*models.Task{task})
 		state := states[task.ID]
 
 		if state.CustomSection != "Sprint-1" {
@@ -114,7 +115,7 @@ func TestCaptureTaskStates(t *testing.T) {
 		due := time.Date(2025, 6, 15, 0, 0, 0, 0, time.Local)
 		task.DueDate = &due
 
-		states := CaptureTaskStates([]*models.Task{task})
+		states := workflow.CaptureTaskStates([]*models.Task{task})
 		state := states[task.ID]
 
 		if state.DueDate == nil {
@@ -143,7 +144,7 @@ func TestCaptureTaskStates(t *testing.T) {
 		task.Priority = 3
 		task.Tags = []string{"original"}
 
-		states := CaptureTaskStates([]*models.Task{task})
+		states := workflow.CaptureTaskStates([]*models.Task{task})
 		capturedState := states[task.ID]
 
 		task.Priority = 5
@@ -171,10 +172,10 @@ func TestBuildEvaluationContext(t *testing.T) {
 		}
 
 		tasks := []*models.Task{task1, task2}
-		ctx := BuildEvaluationContext(tasks, prevStates, "TestProject", "proj-123")
+		ctx := workflow.BuildEvaluationContext(tasks, prevStates, "TestProject", "proj-123")
 
 		if ctx == nil {
-			t.Fatal("BuildEvaluationContext() returned nil")
+			t.Fatal("workflow.BuildEvaluationContext() returned nil")
 		}
 		if ctx.ProjectName != "TestProject" {
 			t.Errorf("ctx.ProjectName = %s, want TestProject", ctx.ProjectName)
@@ -219,7 +220,7 @@ func TestBuildEvaluationContext(t *testing.T) {
 		task := testutil.NewTestTaskWithStatus("Task", models.StatusTodo)
 		tasks := []*models.Task{task}
 
-		ctx := BuildEvaluationContext(tasks, map[string]*models.Task{}, "", "")
+		ctx := workflow.BuildEvaluationContext(tasks, map[string]*models.Task{}, "", "")
 
 		if len(ctx.Changes) != 1 {
 			t.Fatalf("ctx.Changes length = %d, want 1", len(ctx.Changes))
@@ -245,7 +246,7 @@ func TestBuildEvaluationContext(t *testing.T) {
 		}
 
 		tasks := []*models.Task{changed, unchanged}
-		ctx := BuildEvaluationContext(tasks, prevStates, "Test", "t1")
+		ctx := workflow.BuildEvaluationContext(tasks, prevStates, "Test", "t1")
 
 		// Only the changed task should be in Changes
 		if len(ctx.Changes) != 1 {
@@ -265,10 +266,10 @@ func TestBuildEvaluationContext(t *testing.T) {
 	})
 }
 
-func TestCmdTaskStateChanged(t *testing.T) {
+func TestTaskStateChanged(t *testing.T) {
 	t.Run("nil prev means changed", func(t *testing.T) {
 		task := testutil.NewTestTaskWithStatus("Task", models.StatusTodo)
-		if !cmdTaskStateChanged(task, nil) {
+		if !workflow.TaskStateChanged(task, nil) {
 			t.Error("expected changed when prev is nil")
 		}
 	})
@@ -281,7 +282,7 @@ func TestCmdTaskStateChanged(t *testing.T) {
 		prev.ID = task.ID
 		prev.Priority = 3
 		prev.Tags = []string{"a", "b"}
-		if cmdTaskStateChanged(task, prev) {
+		if workflow.TaskStateChanged(task, prev) {
 			t.Error("expected unchanged when all fields match")
 		}
 	})
@@ -290,7 +291,7 @@ func TestCmdTaskStateChanged(t *testing.T) {
 		task := testutil.NewTestTaskWithStatus("Task", models.StatusDone)
 		prev := testutil.NewTestTaskWithStatus("Task", models.StatusTodo)
 		prev.ID = task.ID
-		if !cmdTaskStateChanged(task, prev) {
+		if !workflow.TaskStateChanged(task, prev) {
 			t.Error("expected changed when status differs")
 		}
 	})
@@ -301,7 +302,7 @@ func TestCmdTaskStateChanged(t *testing.T) {
 		prev := testutil.NewTestTaskWithStatus("Task", models.StatusTodo)
 		prev.ID = task.ID
 		prev.Priority = 3
-		if !cmdTaskStateChanged(task, prev) {
+		if !workflow.TaskStateChanged(task, prev) {
 			t.Error("expected changed when priority differs")
 		}
 	})
@@ -312,7 +313,7 @@ func TestCmdTaskStateChanged(t *testing.T) {
 		prev := testutil.NewTestTaskWithStatus("Task", models.StatusTodo)
 		prev.ID = task.ID
 		prev.Tags = []string{"a", "b"}
-		if !cmdTaskStateChanged(task, prev) {
+		if !workflow.TaskStateChanged(task, prev) {
 			t.Error("expected changed when tags differ")
 		}
 	})
@@ -323,7 +324,7 @@ func TestCmdTaskStateChanged(t *testing.T) {
 		task.DueDate = &now
 		prev := testutil.NewTestTaskWithStatus("Task", models.StatusTodo)
 		prev.ID = task.ID
-		if !cmdTaskStateChanged(task, prev) {
+		if !workflow.TaskStateChanged(task, prev) {
 			t.Error("expected changed when due date added")
 		}
 	})
@@ -334,7 +335,7 @@ func TestCmdTaskStateChanged(t *testing.T) {
 		prev.ID = task.ID
 		now := time.Now()
 		prev.DueDate = &now
-		if !cmdTaskStateChanged(task, prev) {
+		if !workflow.TaskStateChanged(task, prev) {
 			t.Error("expected changed when due date removed")
 		}
 	})
@@ -345,7 +346,7 @@ func TestCmdTaskStateChanged(t *testing.T) {
 		prev := testutil.NewTestTaskWithStatus("Task", models.StatusTodo)
 		prev.ID = task.ID
 		prev.Section = models.SectionInbox
-		if !cmdTaskStateChanged(task, prev) {
+		if !workflow.TaskStateChanged(task, prev) {
 			t.Error("expected changed when section differs")
 		}
 	})
@@ -356,7 +357,7 @@ func TestCmdTaskStateChanged(t *testing.T) {
 		prev := testutil.NewTestTaskWithStatus("Task", models.StatusTodo)
 		prev.ID = task.ID
 		prev.Type = models.TaskTypeTask
-		if !cmdTaskStateChanged(task, prev) {
+		if !workflow.TaskStateChanged(task, prev) {
 			t.Error("expected changed when type differs")
 		}
 	})

@@ -6,6 +6,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/workflow"
 )
 
 var boardDoneCmd = &cobra.Command{
@@ -52,7 +53,7 @@ func runBoardDone(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	prevStates := CaptureTaskStates(project.Tasks)
+	prevStates := workflow.CaptureTaskStates(project.Tasks)
 
 	project.MutateTask(task.ID, func(t *models.Task) {
 		t.ApplyTransition(models.StatusDone)

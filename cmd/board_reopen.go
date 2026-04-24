@@ -6,6 +6,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/workflow"
 )
 
 var boardReopenCmd = &cobra.Command{
@@ -55,7 +56,7 @@ func runBoardReopen(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("cannot reopen: %s", msg)
 	}
 
-	prevStates := CaptureTaskStates(project.Tasks)
+	prevStates := workflow.CaptureTaskStates(project.Tasks)
 
 	project.MutateTask(task.ID, func(t *models.Task) {
 		t.ApplyTransition(models.StatusTodo)

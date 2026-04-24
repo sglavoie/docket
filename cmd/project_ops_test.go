@@ -428,7 +428,7 @@ func TestSaveProject_WorkflowRuleCompletesRecurringTask(t *testing.T) {
 	project.BuildTaskTree()
 
 	// Capture previous state (task is in_progress)
-	prevStates := CaptureTaskStates(project.Tasks)
+	prevStates := workflow.CaptureTaskStates(project.Tasks)
 
 	// Simulate the user completing the task (which triggers the rule evaluation path)
 	task.Status = models.StatusDone
