@@ -349,10 +349,7 @@ func (m *AppModel) handleTaskMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint:go
 
 	case LinkedTaskCreatedMsg:
 		m.popView()
-		m.refreshProjectTree()
-		if m.outliner != nil {
-			m.outliner.rebuildRows()
-		}
+		m.refreshAllViews()
 
 		// Determine link type name for status message
 		var linkName string
@@ -419,10 +416,7 @@ func (m *AppModel) handleTaskMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint:go
 
 	case CrossProjectLinkCreatedMsg:
 		m.popView()
-		m.refreshProjectTree()
-		if m.outliner != nil {
-			m.outliner.rebuildRows()
-		}
+		m.refreshAllViews()
 		// Determine link type name for status message
 		var linkName string
 		switch msg.LinkType {
@@ -501,18 +495,12 @@ func (m *AppModel) handleDueDateChanged(msg DueDateChangedMsg) (bool, tea.Cmd) {
 			)
 		}
 		m.setSuccessStatus(successMsg)
-		m.refreshProjectTree()
-		if m.outliner != nil {
-			m.outliner.rebuildRows()
-		}
+		m.refreshAllViews()
 		return true, defaultStatusTimeout()
 	}
 
 	m.pendingBulkTasks = nil
-	m.refreshProjectTree()
-	if m.outliner != nil {
-		m.outliner.rebuildRows()
-	}
+	m.refreshAllViews()
 	return true, nil
 }
 
@@ -520,10 +508,7 @@ func (m *AppModel) handleDueDateChanged(msg DueDateChangedMsg) (bool, tea.Cmd) {
 func (m *AppModel) handleLinkRemoved(msg LinkRemovedMsg) (bool, tea.Cmd) {
 	// Save task ID before refresh (project reload creates new task objects)
 	sourceTaskID := msg.SourceTask.ID
-	m.refreshProjectTree()
-	if m.outliner != nil {
-		m.outliner.rebuildRows()
-	}
+	m.refreshAllViews()
 	// Adjust cursors after link removal
 	if m.currentProject != nil {
 		task := m.currentProject.GetTaskByID(sourceTaskID)

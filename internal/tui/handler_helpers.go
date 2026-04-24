@@ -7,6 +7,15 @@ import (
 	"github.com/sglavoie/tt/internal/logging"
 )
 
+// refreshAllViews refreshes the project tree and rebuilds outliner rows.
+// Use this when task data has changed and both views need updating.
+func (m *AppModel) refreshAllViews() {
+	m.refreshProjectTree()
+	if m.outliner != nil {
+		m.outliner.rebuildRows()
+	}
+}
+
 // handleWithRefresh consolidates the common handler pattern of:
 // pop view → reload project → refresh tree → set status message.
 //
@@ -24,10 +33,7 @@ func (m *AppModel) handleWithRefresh(popView, reload bool, statusMsg string) tea
 		_ = m.persister.Load(m.currentProject)
 		m.invalidateFilterCaches()
 	}
-	m.refreshProjectTree()
-	if m.outliner != nil {
-		m.outliner.rebuildRows()
-	}
+	m.refreshAllViews()
 	if statusMsg != "" {
 		m.setSuccessStatus(statusMsg)
 		return defaultStatusTimeout()

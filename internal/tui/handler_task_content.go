@@ -125,10 +125,7 @@ func (m *AppModel) handleDescriptionEditorDone(msg DescriptionEditorDoneMsg) (bo
 	}
 
 	// Refresh project tree and save
-	m.refreshProjectTree()
-	if m.outliner != nil {
-		m.outliner.rebuildRows()
-	}
+	m.refreshAllViews()
 	return true, tea.Batch(
 		startLoading("Saving..."),
 		SaveProjectAsync(msg.Project, "Description updated"),

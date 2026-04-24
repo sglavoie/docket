@@ -118,10 +118,7 @@ func (m *AppModel) handleTaskMovedToProject(msg TaskMovedToProjectMsg) (bool, te
 	if !msg.FromGlobal {
 		m.popView() // Close project selector (not needed for global flow)
 	}
-	m.refreshProjectTree()
-	if m.outliner != nil {
-		m.outliner.rebuildRows()
-	}
+	m.refreshAllViews()
 	// Also refresh the focus board so the moved task disappears from its old position
 	if v := m.views.Get(ViewFocusBoard); v != nil {
 		v.Update(FocusBoardRefreshMsg{})
