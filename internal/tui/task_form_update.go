@@ -3,6 +3,7 @@ package tui
 import (
 	"strconv"
 
+	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/models"
@@ -145,166 +146,26 @@ func (m *TaskFormModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		// ── Due textinput (field 0 on Schedule tab) ────────────────────────────
 		if m.activeTab == formTabSchedule && m.focusIndex == 0 {
-			switch msg.String() {
-			case "tab":
-				m.commitDueInput()
-				m.focusNext()
-				m.syncInputFocus()
-				return m, nil
-			case "shift+tab":
-				m.commitDueInput()
-				m.focusPrev()
-				m.syncInputFocus()
-				return m, nil
-			case "[":
-				m.commitDueInput()
-				m.prevTab()
-				m.syncInputFocus()
-				m.err = nil
-				return m, nil
-			case "]":
-				m.commitDueInput()
-				m.nextTab()
-				m.syncInputFocus()
-				m.err = nil
-				return m, nil
-			case "enter":
-				m.commitDueInput()
-				m.focusNext()
-				m.syncInputFocus()
-				return m, nil
-			case "ctrl+d":
+			if msg.String() == "ctrl+d" {
 				m.duePicker = newFormDueDatePicker(m.draft.dueDate)
 				m.activeOverlay = formOverlayDue
 				return m, nil
-			case "ctrl+s":
-				m.commitDueInput()
-				return m, m.handleSave()
-			case "esc":
-				m.commitDueInput()
-				if m.hasChanges {
-					m.confirmDiscard = true
-				} else {
-					return m, func() tea.Msg { return BackMsg{} }
-				}
-				return m, nil
-			default:
-				before := m.dueTextInput.Value()
-				var cmd tea.Cmd
-				m.dueTextInput, cmd = m.dueTextInput.Update(msg)
-				after := m.dueTextInput.Value()
-				if before != after {
-					m.hasChanges = true
-					m.err = nil
-				}
+			}
+			if cmd, ok := m.handleTextInputKey(msg, m.commitDueInput, &m.dueTextInput); ok {
 				return m, cmd
 			}
 		}
 
 		// ── URL textinput (field 0 on Details tab) ────────────────────────────
 		if m.activeTab == formTabDetails && m.focusIndex == 0 {
-			switch msg.String() {
-			case "tab":
-				m.commitURLInput()
-				m.focusNext()
-				m.syncInputFocus()
-				return m, nil
-			case "shift+tab":
-				m.commitURLInput()
-				m.focusPrev()
-				m.syncInputFocus()
-				return m, nil
-			case "[":
-				m.commitURLInput()
-				m.prevTab()
-				m.syncInputFocus()
-				m.err = nil
-				return m, nil
-			case "]":
-				m.commitURLInput()
-				m.nextTab()
-				m.syncInputFocus()
-				m.err = nil
-				return m, nil
-			case "enter":
-				m.commitURLInput()
-				m.focusNext()
-				m.syncInputFocus()
-				return m, nil
-			case "ctrl+s":
-				m.commitURLInput()
-				return m, m.handleSave()
-			case "esc":
-				m.commitURLInput()
-				if m.hasChanges {
-					m.confirmDiscard = true
-				} else {
-					return m, func() tea.Msg { return BackMsg{} }
-				}
-				return m, nil
-			default:
-				before := m.urlTextInput.Value()
-				var cmd tea.Cmd
-				m.urlTextInput, cmd = m.urlTextInput.Update(msg)
-				after := m.urlTextInput.Value()
-				if before != after {
-					m.hasChanges = true
-					m.err = nil
-				}
+			if cmd, ok := m.handleTextInputKey(msg, m.commitURLInput, &m.urlTextInput); ok {
 				return m, cmd
 			}
 		}
 
 		// ── Source textinput (field 1 on Details tab) ──────────────────────────
 		if m.activeTab == formTabDetails && m.focusIndex == 1 {
-			switch msg.String() {
-			case "tab":
-				m.commitSourceInput()
-				m.focusNext()
-				m.syncInputFocus()
-				return m, nil
-			case "shift+tab":
-				m.commitSourceInput()
-				m.focusPrev()
-				m.syncInputFocus()
-				return m, nil
-			case "[":
-				m.commitSourceInput()
-				m.prevTab()
-				m.syncInputFocus()
-				m.err = nil
-				return m, nil
-			case "]":
-				m.commitSourceInput()
-				m.nextTab()
-				m.syncInputFocus()
-				m.err = nil
-				return m, nil
-			case "enter":
-				m.commitSourceInput()
-				m.focusNext()
-				m.syncInputFocus()
-				return m, nil
-			case "ctrl+s":
-				m.commitSourceInput()
-				return m, m.handleSave()
-			case "esc":
-				m.commitSourceInput()
-				if m.hasChanges {
-					m.confirmDiscard = true
-				} else {
-					return m, func() tea.Msg { return BackMsg{} }
-				}
-				return m, nil
-			default:
-				before := m.sourceTextInput.Value()
-				var cmd tea.Cmd
-				m.sourceTextInput, cmd = m.sourceTextInput.Update(msg)
-				after := m.sourceTextInput.Value()
-				if before != after {
-					m.hasChanges = true
-					m.err = nil
-				}
+			if cmd, ok := m.handleTextInputKey(msg, m.commitSourceInput, &m.sourceTextInput); ok {
 				return m, cmd
 			}
 		}
@@ -932,4 +793,60 @@ func (m *TaskFormModel) buildValidParents() []*models.Task {
 		}
 	}
 	return parents
+}
+
+// handleTextInputKey consolidates the common key handling for textinput fields
+// (due, URL, source). It calls commit before navigation/save/esc, and forwards
+// unrecognized keys to the textinput. Returns (cmd, true) if the key was consumed.
+func (m *TaskFormModel) handleTextInputKey(msg tea.KeyPressMsg, commit func(), input *textinput.Model) (tea.Cmd, bool) {
+	switch msg.String() {
+	case "tab":
+		commit()
+		m.focusNext()
+		m.syncInputFocus()
+		return nil, true
+	case "shift+tab":
+		commit()
+		m.focusPrev()
+		m.syncInputFocus()
+		return nil, true
+	case "[":
+		commit()
+		m.prevTab()
+		m.syncInputFocus()
+		m.err = nil
+		return nil, true
+	case "]":
+		commit()
+		m.nextTab()
+		m.syncInputFocus()
+		m.err = nil
+		return nil, true
+	case "enter":
+		commit()
+		m.focusNext()
+		m.syncInputFocus()
+		return nil, true
+	case "ctrl+s":
+		commit()
+		return m.handleSave(), true
+	case "esc":
+		commit()
+		if m.hasChanges {
+			m.confirmDiscard = true
+		} else {
+			return func() tea.Msg { return BackMsg{} }, true
+		}
+		return nil, true
+	default:
+		before := input.Value()
+		var cmd tea.Cmd
+		*input, cmd = input.Update(msg)
+		after := input.Value()
+		if before != after {
+			m.hasChanges = true
+			m.err = nil
+		}
+		return cmd, true
+	}
 }
