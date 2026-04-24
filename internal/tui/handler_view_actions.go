@@ -382,10 +382,10 @@ func (m *AppModel) routeGlobalTaskPickerResult(msg GlobalTaskPickerResultMsg) (b
 	return true, nil
 }
 
-// handleGlobalStatusApplied applies a status change from the global status update flow.
-func (m *AppModel) handleGlobalStatusApplied(msg GlobalStatusAppliedMsg) (bool, tea.Cmd) {
-	m.statusQuickPicker = nil
-	result := applyStatusChange(simplePersistWithUndo(m.persister, m.config, StatusVerb(msg.NewStatus)+" Task"), msg.Project, msg.Task.ID, msg.NewStatus)
+// finalizeGlobalOp converts a TaskOpResult into the (bool, tea.Cmd) pair
+// used by handleGlobal*Applied methods: show success status, forward any
+// workflow command, and append the default status timeout.
+func (m *AppModel) finalizeGlobalOp(result TaskOpResult) (bool, tea.Cmd) {
 	if result.Err != nil {
 		return true, func() tea.Msg { return ErrorMsg{Err: result.Err} }
 	}
@@ -400,22 +400,18 @@ func (m *AppModel) handleGlobalStatusApplied(msg GlobalStatusAppliedMsg) (bool, 
 	return true, tea.Batch(cmds...)
 }
 
+// handleGlobalStatusApplied applies a status change from the global status update flow.
+func (m *AppModel) handleGlobalStatusApplied(msg GlobalStatusAppliedMsg) (bool, tea.Cmd) {
+	m.statusQuickPicker = nil
+	result := applyStatusChange(simplePersistWithUndo(m.persister, m.config, StatusVerb(msg.NewStatus)+" Task"), msg.Project, msg.Task.ID, msg.NewStatus)
+	return m.finalizeGlobalOp(result)
+}
+
 // handleGlobalPriorityApplied applies a priority change from the global priority update flow.
 func (m *AppModel) handleGlobalPriorityApplied(msg GlobalPriorityAppliedMsg) (bool, tea.Cmd) {
 	m.priorityQuickPicker = nil
 	result := applyPriorityChange(simplePersistWithUndo(m.persister, m.config, "Set Priority"), msg.Project, msg.Task.ID, msg.NewPriority)
-	if result.Err != nil {
-		return true, func() tea.Msg { return ErrorMsg{Err: result.Err} }
-	}
-	if result.StatusMessage != "" {
-		m.setSuccessStatus(result.StatusMessage)
-	}
-	var cmds []tea.Cmd
-	if result.Cmd != nil {
-		cmds = append(cmds, result.Cmd)
-	}
-	cmds = append(cmds, defaultStatusTimeout())
-	return true, tea.Batch(cmds...)
+	return m.finalizeGlobalOp(result)
 }
 
 // handleGlobalDueDateApplied applies a due date change from the global ;td due date flow.
@@ -427,36 +423,14 @@ func (m *AppModel) handleGlobalDueDateApplied(msg GlobalDueDateAppliedMsg) (bool
 	} else {
 		result = applyQuickDueDate(simplePersistWithUndo(m.persister, m.config, "Set Due Date"), msg.Project, msg.Task.ID, msg.DaysFromNow)
 	}
-	if result.Err != nil {
-		return true, func() tea.Msg { return ErrorMsg{Err: result.Err} }
-	}
-	if result.StatusMessage != "" {
-		m.setSuccessStatus(result.StatusMessage)
-	}
-	var cmds []tea.Cmd
-	if result.Cmd != nil {
-		cmds = append(cmds, result.Cmd)
-	}
-	cmds = append(cmds, defaultStatusTimeout())
-	return true, tea.Batch(cmds...)
+	return m.finalizeGlobalOp(result)
 }
 
 // handleGlobalSectionChanged applies a section change from the global ;ts section change flow.
 func (m *AppModel) handleGlobalSectionChanged(msg GlobalSectionChangedMsg) (bool, tea.Cmd) {
 	m.sectionChangeQuickPicker = nil
 	result := applySectionChange(simplePersistWithUndo(m.persister, m.config, "Move to Section"), msg.Project, msg.Task.ID, msg.Section)
-	if result.Err != nil {
-		return true, func() tea.Msg { return ErrorMsg{Err: result.Err} }
-	}
-	if result.StatusMessage != "" {
-		m.setSuccessStatus(result.StatusMessage)
-	}
-	var cmds []tea.Cmd
-	if result.Cmd != nil {
-		cmds = append(cmds, result.Cmd)
-	}
-	cmds = append(cmds, defaultStatusTimeout())
-	return true, tea.Batch(cmds...)
+	return m.finalizeGlobalOp(result)
 }
 
 // handleGlobalMoveSectionSelected completes the ;tm global task-move workflow.
