@@ -171,10 +171,6 @@ func (m *AllTasksViewModel) setErr(err error)                  { m.err = err }
 func (m *AllTasksViewModel) setStatus(msg string)              { m.statusMessage = msg }
 
 // prefixDispatchView implementation.
-func (m *AllTasksViewModel) getTaskAndProject() (*models.Task, *models.Project) {
-	return m.getTaskRef()
-}
-
 func (m *AllTasksViewModel) selectMsg(task *models.Task, project *models.Project) tea.Msg {
 	return AllTasksSelectMsg{Task: task, Project: project}
 }

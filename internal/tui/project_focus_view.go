@@ -277,10 +277,6 @@ func (m *ProjectFocusViewModel) handlePrefixKey(key string) (tea.Model, tea.Cmd)
 
 // prefixDispatchView implementation for ProjectFocusViewModel.
 
-func (m *ProjectFocusViewModel) getTaskAndProject() (*models.Task, *models.Project) {
-	return m.getTaskRef()
-}
-
 func (m *ProjectFocusViewModel) selectMsg(_ *models.Task, _ *models.Project) tea.Msg {
 	return CloseProjectFocusViewMsg{}
 }

@@ -64,10 +64,6 @@ func (m *FocusBoardModel) showDeleteConfirm(shortID int) {
 
 // prefixDispatchView implementation.
 
-func (m *FocusBoardModel) getTaskAndProject() (*models.Task, *models.Project) {
-	return m.getTaskRef()
-}
-
 func (m *FocusBoardModel) selectMsg(task *models.Task, project *models.Project) tea.Msg {
 	return FocusBoardSelectMsg{Task: task, Project: project}
 }

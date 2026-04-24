@@ -32,9 +32,6 @@ func activateSecondaryPrefix(key string, always, gated string, hasItem bool) (st
 type prefixDispatchView interface {
 	taskOpsView
 
-	// getTaskAndProject returns the task and project at cursor.
-	getTaskAndProject() (*models.Task, *models.Project)
-
 	// selectMsg returns the tea.Msg to emit when gp (go to project) is used.
 	selectMsg(task *models.Task, project *models.Project) tea.Msg
 
@@ -98,7 +95,7 @@ func dispatchCommonPrefix(
 			cmd := v.JumpToTop()
 			return v, cmd, true
 		case "p":
-			task, project := v.getTaskAndProject()
+			task, project := v.getTaskRef()
 			if task != nil {
 				msg := v.selectMsg(task, project)
 				return v, func() tea.Msg { return msg }, true
@@ -123,7 +120,7 @@ func dispatchCommonPrefix(
 
 	case "s":
 		if key == "d" {
-			task, project := v.getTaskAndProject()
+			task, project := v.getTaskRef()
 			if task != nil {
 				return v, func() tea.Msg {
 					return SetSnoozeDateMsg{Task: task, Project: project}
@@ -139,7 +136,7 @@ func dispatchCommonPrefix(
 		return model, cmd, true
 
 	case "c":
-		task, project := v.getTaskAndProject()
+		task, project := v.getTaskRef()
 		if task == nil {
 			return v, nil, true
 		}
@@ -175,7 +172,7 @@ func dispatchDueDatePrefix(key string, v prefixDispatchView) (tea.Model, tea.Cmd
 		return model, cmd, true
 	}
 	if key == "d" {
-		task, project := v.getTaskAndProject()
+		task, project := v.getTaskRef()
 		if task != nil {
 			return v, func() tea.Msg {
 				return SetDueDateMsg{Task: task, Project: project}
@@ -188,7 +185,7 @@ func dispatchDueDatePrefix(key string, v prefixDispatchView) (tea.Model, tea.Cmd
 
 // dispatchTaskPrefix handles the t-prefix key sequence for task operations.
 func dispatchTaskPrefix(key string, v prefixDispatchView) (tea.Model, tea.Cmd) {
-	task, project := v.getTaskAndProject()
+	task, project := v.getTaskRef()
 	if task != nil {
 		if handled, cmd := handleTaskPrefixMsgKey(key, task, project); handled {
 			return v, cmd

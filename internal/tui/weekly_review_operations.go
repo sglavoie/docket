@@ -31,10 +31,6 @@ func (m *WeeklyReviewModel) setStatus(msg string)              { m.InteractiveVi
 
 // prefixDispatchView implementation.
 
-func (m *WeeklyReviewModel) getTaskAndProject() (*models.Task, *models.Project) {
-	return m.getTaskRef()
-}
-
 func (m *WeeklyReviewModel) selectMsg(task *models.Task, project *models.Project) tea.Msg {
 	return WeeklyReviewSelectTaskMsg{Task: task, Project: project}
 }

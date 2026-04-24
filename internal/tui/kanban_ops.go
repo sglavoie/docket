@@ -89,10 +89,6 @@ func (m *KanbanModel) setStatus(msg string) { m.statusMsg = msg }
 
 // ─── prefixDispatchView interface ─────────────────────────────────────────────
 
-func (m *KanbanModel) getTaskAndProject() (*models.Task, *models.Project) {
-	return m.getTaskRef()
-}
-
 // selectMsg returns a message to navigate to the task in its project.
 func (m *KanbanModel) selectMsg(task *models.Task, project *models.Project) tea.Msg {
 	return KanbanSelectMsg{Task: task, Project: project}

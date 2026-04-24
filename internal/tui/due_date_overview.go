@@ -362,10 +362,6 @@ func (m *DueDateOverviewModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) 
 
 // prefixDispatchView implementation for DueDateOverviewModel.
 
-func (m *DueDateOverviewModel) getTaskAndProject() (*models.Task, *models.Project) {
-	return m.getTaskRef()
-}
-
 func (m *DueDateOverviewModel) selectMsg(task *models.Task, project *models.Project) tea.Msg {
 	return GlobalSearchSelectMsg{Task: task, Project: project}
 }

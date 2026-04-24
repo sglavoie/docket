@@ -106,10 +106,6 @@ func (m *FocusViewModel) setStatus(msg string)              { m.statusMessage = 
 
 // prefixDispatchView implementation.
 
-func (m *FocusViewModel) getTaskAndProject() (*models.Task, *models.Project) {
-	return m.getTaskRef()
-}
-
 func (m *FocusViewModel) selectMsg(task *models.Task, project *models.Project) tea.Msg {
 	return FocusViewSelectMsg{Task: task, Project: project}
 }

@@ -25,10 +25,6 @@ func (m *DailyReviewModel) setStatus(msg string)              { m.InteractiveVie
 
 // prefixDispatchView implementation.
 
-func (m *DailyReviewModel) getTaskAndProject() (*models.Task, *models.Project) {
-	return m.getTaskRef()
-}
-
 func (m *DailyReviewModel) selectMsg(task *models.Task, project *models.Project) tea.Msg {
 	return DailyReviewSelectMsg{Task: task, Project: project}
 }

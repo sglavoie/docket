@@ -194,10 +194,6 @@ func (m *PriorityViewModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 
 // prefixDispatchView implementation for PriorityViewModel.
 
-func (m *PriorityViewModel) getTaskAndProject() (*models.Task, *models.Project) {
-	return m.getTaskRef()
-}
-
 func (m *PriorityViewModel) selectMsg(task *models.Task, project *models.Project) tea.Msg {
 	return PriorityViewSelectMsg{Task: task}
 }
