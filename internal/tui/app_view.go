@@ -141,54 +141,11 @@ func (m *AppModel) applyOverlays(content string, h int) string {
 		}
 	}
 
-	// Overlay global project picker if active
-	if popup := m.renderGlobalProjectPicker(); popup != "" {
-		content = OverlayPopupDimmed(content, popup, m.width, h)
-	}
-
-	// Overlay global task picker if active
-	if popup := m.renderGlobalTaskPicker(); popup != "" {
-		content = OverlayPopupDimmed(content, popup, m.width, h)
-	}
-
-	// Overlay status quick picker if active
-	if popup := m.renderStatusQuickPicker(); popup != "" {
-		content = OverlayPopupDimmed(content, popup, m.width, h)
-	}
-
-	// Overlay section quick picker if active (step 4 of global task move flow)
-	if popup := m.renderSectionQuickPicker(); popup != "" {
-		content = OverlayPopupDimmed(content, popup, m.width, h)
-	}
-
-	// Overlay link type quick picker if active (step 3 of global ;c linked task flow)
-	if popup := m.renderLinkTypeQuickPicker(); popup != "" {
-		content = OverlayPopupDimmed(content, popup, m.width, h)
-	}
-
-	// Overlay link mode quick picker if active (step 4 of global ;c linked task flow)
-	if popup := m.renderLinkModeQuickPicker(); popup != "" {
-		content = OverlayPopupDimmed(content, popup, m.width, h)
-	}
-
-	// Overlay priority quick picker if active (step 3 of global ;! priority update flow)
-	if popup := m.renderPriorityQuickPicker(); popup != "" {
-		content = OverlayPopupDimmed(content, popup, m.width, h)
-	}
-
-	// Overlay due date quick picker if active (step 3 of global ;td due date flow)
-	if popup := m.renderDueDateQuickPicker(); popup != "" {
-		content = OverlayPopupDimmed(content, popup, m.width, h)
-	}
-
-	// Overlay section change quick picker if active (step 3 of global ;ts section change flow)
-	if popup := m.renderSectionChangeQuickPicker(); popup != "" {
-		content = OverlayPopupDimmed(content, popup, m.width, h)
-	}
-
-	// Overlay quick note popup if active
-	if popup := m.renderQuickNoteOverlay(); popup != "" {
-		content = OverlayPopupDimmed(content, popup, m.width, h)
+	// Overlay dimmed picker/note popups (all share the same nil-check + render pattern)
+	for _, r := range m.dimmedOverlayRenderers() {
+		if popup := r.render(m.width); popup != "" {
+			content = OverlayPopupDimmed(content, popup, m.width, h)
+		}
 	}
 
 	// Overlay peek task detail if active
@@ -303,78 +260,46 @@ func (m *AppModel) renderPeekOverlay() string {
 	return strings.Join(renderedLines, "\n")
 }
 
-// renderGlobalProjectPicker renders the global project picker overlay when active.
-func (m *AppModel) renderGlobalProjectPicker() string {
-	if m.globalProjectPicker == nil {
-		return ""
-	}
-	return m.globalProjectPicker.render(m.width)
+// widthRenderer is satisfied by all overlay pickers/popups that render given a width.
+type widthRenderer interface {
+	render(width int) string
 }
 
-// renderGlobalTaskPicker renders the global task picker overlay when active.
-func (m *AppModel) renderGlobalTaskPicker() string {
-	if m.globalTaskPicker == nil {
-		return ""
+// dimmedOverlayRenderers returns the non-nil overlay renderers that are composited
+// with OverlayPopupDimmed. Order matters: later entries render on top.
+func (m *AppModel) dimmedOverlayRenderers() []widthRenderer {
+	var out []widthRenderer
+	if m.globalProjectPicker != nil {
+		out = append(out, m.globalProjectPicker)
 	}
-	return m.globalTaskPicker.render(m.width)
-}
-
-// renderStatusQuickPicker renders the status quick picker overlay when active.
-func (m *AppModel) renderStatusQuickPicker() string {
-	if m.statusQuickPicker == nil {
-		return ""
+	if m.globalTaskPicker != nil {
+		out = append(out, m.globalTaskPicker)
 	}
-	return m.statusQuickPicker.render(m.width)
-}
-
-func (m *AppModel) renderSectionQuickPicker() string {
-	if m.sectionQuickPicker == nil {
-		return ""
+	if m.statusQuickPicker != nil {
+		out = append(out, m.statusQuickPicker)
 	}
-	return m.sectionQuickPicker.render(m.width)
-}
-
-func (m *AppModel) renderLinkTypeQuickPicker() string {
-	if m.linkTypeQuickPicker == nil {
-		return ""
+	if m.sectionQuickPicker != nil {
+		out = append(out, m.sectionQuickPicker)
 	}
-	return m.linkTypeQuickPicker.render(m.width)
-}
-
-func (m *AppModel) renderLinkModeQuickPicker() string {
-	if m.linkModeQuickPicker == nil {
-		return ""
+	if m.linkTypeQuickPicker != nil {
+		out = append(out, m.linkTypeQuickPicker)
 	}
-	return m.linkModeQuickPicker.render(m.width)
-}
-
-func (m *AppModel) renderPriorityQuickPicker() string {
-	if m.priorityQuickPicker == nil {
-		return ""
+	if m.linkModeQuickPicker != nil {
+		out = append(out, m.linkModeQuickPicker)
 	}
-	return m.priorityQuickPicker.render(m.width)
-}
-
-func (m *AppModel) renderDueDateQuickPicker() string {
-	if m.dueDateQuickPicker == nil {
-		return ""
+	if m.priorityQuickPicker != nil {
+		out = append(out, m.priorityQuickPicker)
 	}
-	return m.dueDateQuickPicker.render(m.width)
-}
-
-func (m *AppModel) renderSectionChangeQuickPicker() string {
-	if m.sectionChangeQuickPicker == nil {
-		return ""
+	if m.dueDateQuickPicker != nil {
+		out = append(out, m.dueDateQuickPicker)
 	}
-	return m.sectionChangeQuickPicker.render(m.width)
-}
-
-// renderQuickNoteOverlay renders the quick note overlay popup when active.
-func (m *AppModel) renderQuickNoteOverlay() string {
-	if m.quickNoteOverlay == nil {
-		return ""
+	if m.sectionChangeQuickPicker != nil {
+		out = append(out, m.sectionChangeQuickPicker)
 	}
-	return m.quickNoteOverlay.render(m.width)
+	if m.quickNoteOverlay != nil {
+		out = append(out, m.quickNoteOverlay)
+	}
+	return out
 }
 
 // renderPrefixPopupOverlay checks if the current view has a pending prefix and
