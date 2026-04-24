@@ -216,6 +216,13 @@ func (m *TaskFormModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 
+		// ── Children-tab keys ─────────────────────────────────────────────────
+		if m.activeTab == formTabChildren {
+			if ret, cmd, handled := m.handleChildrenTabKey(msg); handled {
+				return ret, cmd
+			}
+		}
+
 		// ── Normal navigation ──────────────────────────────────────────────────
 		switch msg.String() {
 		case "]":
@@ -232,44 +239,6 @@ func (m *TaskFormModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "shift+tab":
 			m.focusPrev()
 			m.syncInputFocus()
-		case "c":
-			if m.activeTab == formTabChildren {
-				m.checklistExpanded = !m.checklistExpanded
-				m.clampChildrenFocusIndex()
-			}
-		case "S":
-			if m.activeTab == formTabChildren && m.mode == FormModeCreate && formTypeCanHaveSubtasks(m.draft.taskType) {
-				m.subtasksExpanded = !m.subtasksExpanded
-				m.clampChildrenFocusIndex()
-			}
-		case "ctrl+a":
-			if m.activeTab == formTabChildren {
-				return m, m.handleChildrenCtrlA()
-			}
-		case "ctrl+t":
-			if m.activeTab == formTabChildren {
-				return m, m.handleChildrenCtrlT()
-			}
-		case "ctrl+d":
-			if m.activeTab == formTabChildren {
-				m.handleChildrenDelete()
-			}
-		case "ctrl+j":
-			if m.activeTab == formTabChildren {
-				m.handleChildrenReorderDown()
-			}
-		case "ctrl+k":
-			if m.activeTab == formTabChildren {
-				m.handleChildrenReorderUp()
-			}
-		case "ctrl+o":
-			if m.activeTab == formTabChildren {
-				m.handleSubtaskToggleOptional()
-			}
-		case "space":
-			if m.activeTab == formTabChildren {
-				m.handleChecklistToggleDone()
-			}
 		case "enter":
 			if m.activeTab == formTabBasics {
 				return m, m.handleBasicsEnter()
@@ -302,6 +271,38 @@ func (m *TaskFormModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	return m, nil
+}
+
+// handleChildrenTabKey handles keys specific to the Children tab.
+// It returns handled=true when the key was consumed.
+func (m *TaskFormModel) handleChildrenTabKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd, bool) {
+	switch msg.String() {
+	case "c":
+		m.checklistExpanded = !m.checklistExpanded
+		m.clampChildrenFocusIndex()
+	case "S":
+		if m.mode == FormModeCreate && formTypeCanHaveSubtasks(m.draft.taskType) {
+			m.subtasksExpanded = !m.subtasksExpanded
+			m.clampChildrenFocusIndex()
+		}
+	case "ctrl+a":
+		return m, m.handleChildrenCtrlA(), true
+	case "ctrl+t":
+		return m, m.handleChildrenCtrlT(), true
+	case "ctrl+d":
+		m.handleChildrenDelete()
+	case "ctrl+j":
+		m.handleChildrenReorderDown()
+	case "ctrl+k":
+		m.handleChildrenReorderUp()
+	case "ctrl+o":
+		m.handleSubtaskToggleOptional()
+	case "space":
+		m.handleChecklistToggleDone()
+	default:
+		return m, nil, false
+	}
+	return m, nil, true
 }
 
 // handleScheduleEnter dispatches Enter key events for focused Schedule-tab rows.
