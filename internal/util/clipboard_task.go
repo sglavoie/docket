@@ -53,10 +53,7 @@ func ParseClipboard(text string) PastedTask {
 
 	// Collect remainder as description (lines after the title line, skip leading blanks).
 	rest := lines[titleLineIdx+1:]
-	var descLines []string
-	for _, l := range rest {
-		descLines = append(descLines, l)
-	}
+	descLines := append([]string{}, rest...)
 	pt.Description = strings.TrimSpace(strings.Join(descLines, "\n"))
 
 	return pt

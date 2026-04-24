@@ -4,6 +4,9 @@ import (
 	"fmt"
 	"strings"
 
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
+
 	"github.com/sglavoie/tt/internal/models"
 )
 
@@ -165,7 +168,7 @@ func renderFormFlagsValue(pinned, active, dimmed bool, focused bool) string {
 // Full attr editing is wired in Session 4.
 func renderFormTypeAttrsHeader(taskType models.TaskType) string {
 	sep := MutedStyle.Render(strings.Repeat("─", 3))
-	label := BoldStyle.Render(fmt.Sprintf(" %s ", strings.Title(string(taskType)))) //nolint:staticcheck
+	label := BoldStyle.Render(fmt.Sprintf(" %s ", cases.Title(language.English).String(string(taskType))))
 	return sep + label + MutedStyle.Render(strings.Repeat("─", 20)) + "\n"
 }
 

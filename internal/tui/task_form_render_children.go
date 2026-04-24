@@ -22,7 +22,7 @@ func (m *TaskFormModel) renderChildrenTab() string {
 	} else {
 		// Create mode but type doesn't support subtasks.
 		b.WriteString("\n")
-		b.WriteString(MutedStyle.Render(fmt.Sprintf("Switch to Epic or Story to add subtasks.")))
+		b.WriteString(MutedStyle.Render("Switch to Epic or Story to add subtasks."))
 		b.WriteString("\n")
 	}
 

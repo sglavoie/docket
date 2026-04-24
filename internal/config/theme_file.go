@@ -73,7 +73,7 @@ func (m *Manager) ThemesDir() string {
 // validateThemeName returns an error if name contains path-unsafe characters.
 func validateThemeName(name string) error {
 	if strings.ContainsAny(name, "/\\") || strings.Contains(name, "..") || !themeNameRegex.MatchString(name) {
-		return fmt.Errorf("invalid theme name %q: only [a-zA-Z0-9_.-] are allowed, no path separators or ..", name)
+		return fmt.Errorf("invalid theme name %q: only [a-zA-Z0-9_.-] allowed, no path separators or double dots", name)
 	}
 	return nil
 }
