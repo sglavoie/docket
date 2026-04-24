@@ -288,56 +288,62 @@ func pruneOldSnapshots(project *models.Project, meta *UndoMeta, maxDepth int) er
 	return nil
 }
 
-// PerformUndo restores the most recent snapshot and updates the history.
-// Returns the action description of what was undone.
-func PerformUndo(project *models.Project) (string, error) {
-	meta, err := loadUndoMeta(project)
-	if err != nil {
-		return "", err
-	}
+// restoreParams groups the direction-dependent parameters for performRestore.
+type restoreParams struct {
+	label          string                                        // "undo" or "redo" (for error messages)
+	sourceEntries  *[]UndoEntry                                  // entries to consume from
+	reverseEntries *[]UndoEntry                                  // entries to push the reverse snapshot onto
+	snapshotPath   func(project *models.Project, num int) string // path for source snapshot
+	reversePath    func(project *models.Project, num int) string // path for reverse snapshot
+}
 
-	if len(meta.Entries) == 0 {
-		return "", fmt.Errorf("no undo history available")
+// performRestore implements the shared undo/redo algorithm:
+// read the most recent source snapshot, capture the current file state as a
+// reverse snapshot, apply the restore (targeted or full-file), then clean up.
+func performRestore(project *models.Project, meta *UndoMeta, p restoreParams) (string, error) {
+	if len(*p.sourceEntries) == 0 {
+		return "", fmt.Errorf("no %s history available", p.label)
 	}
 
 	// Sort by num descending to get most recent
-	sort.Slice(meta.Entries, func(i, j int) bool {
-		return meta.Entries[i].Num > meta.Entries[j].Num
+	sort.Slice(*p.sourceEntries, func(i, j int) bool {
+		return (*p.sourceEntries)[i].Num > (*p.sourceEntries)[j].Num
 	})
 
-	// Get the most recent entry
-	latest := meta.Entries[0]
+	latest := (*p.sourceEntries)[0]
 
-	// Read the snapshot content
-	snapshotContent, err := GetSnapshotContent(project, latest.Num)
+	// Read and validate the snapshot
+	snapPath := p.snapshotPath(project, latest.Num)
+	snapBytes, err := os.ReadFile(snapPath)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to read %s snapshot %d: %w", p.label, latest.Num, err)
+	}
+	snapContent := string(snapBytes)
+
+	snapResult, err := ParseTasksMarkdownWithSections(snapContent)
+	if err != nil {
+		return "", fmt.Errorf("%s snapshot is invalid: %w", p.label, err)
 	}
 
-	// Validate the snapshot is valid markdown
-	snapshotResult, err := ParseTasksMarkdownWithSections(snapshotContent)
-	if err != nil {
-		return "", fmt.Errorf("snapshot is invalid: %w", err)
-	}
-
-	// Capture current state as redo snapshot before restoring
+	// Capture current state as a reverse snapshot
 	tasksPath := GetTasksFilePath(project)
-	currentContent, readErr := os.ReadFile(tasksPath)
-	if readErr != nil {
-		return "", fmt.Errorf("failed to read current state for redo snapshot: %w", readErr)
+	currentContent, err := os.ReadFile(tasksPath)
+	if err != nil {
+		return "", fmt.Errorf("failed to read current state for %s reverse snapshot: %w", p.label, err)
 	}
-	nextRedoNum := 1
-	for _, re := range meta.RedoEntries {
-		if re.Num >= nextRedoNum {
-			nextRedoNum = re.Num + 1
+
+	nextNum := 1
+	for _, e := range *p.reverseEntries {
+		if e.Num >= nextNum {
+			nextNum = e.Num + 1
 		}
 	}
-	redoPath := getRedoSnapshotPath(project, nextRedoNum)
-	if writeErr := util.AtomicWriteFile(redoPath, currentContent, FilePermissions); writeErr != nil {
-		return "", fmt.Errorf("failed to write redo snapshot: %w", writeErr)
+	revPath := p.reversePath(project, nextNum)
+	if err := util.AtomicWriteFile(revPath, currentContent, FilePermissions); err != nil {
+		return "", fmt.Errorf("failed to write %s reverse snapshot: %w", p.label, err)
 	}
-	meta.RedoEntries = append(meta.RedoEntries, UndoEntry{
-		Num:       nextRedoNum,
+	*p.reverseEntries = append(*p.reverseEntries, UndoEntry{
+		Num:       nextNum,
 		Action:    latest.Action,
 		Context:   latest.Context,
 		Timestamp: time.Now(),
@@ -345,41 +351,50 @@ func PerformUndo(project *models.Project) (string, error) {
 	})
 
 	// Determine what to write: targeted restore or full-file restore
-	var restoreContent string
+	restoreContent := snapContent
 	if len(latest.TaskIDs) > 0 {
-		restoreContent, err = buildTargetedRestore(string(currentContent), snapshotResult, latest.TaskIDs)
-		if err != nil {
-			// Fall back to full-file restore on error
-			logging.Warn("targeted undo failed, falling back to full restore: %v", err)
-			restoreContent = snapshotContent
+		targeted, tErr := buildTargetedRestore(string(currentContent), snapResult, latest.TaskIDs)
+		if tErr != nil {
+			logging.Warn("targeted %s failed, falling back to full restore: %v", p.label, tErr)
+		} else {
+			restoreContent = targeted
 		}
-	} else {
-		restoreContent = snapshotContent
 	}
 
-	// Write the restored content to tasks.md
 	if err := util.AtomicWriteFile(tasksPath, []byte(restoreContent), FilePermissions); err != nil {
-		return "", fmt.Errorf("failed to restore from snapshot: %w", err)
+		return "", fmt.Errorf("failed to restore from %s snapshot: %w", p.label, err)
 	}
 
-	// Remove the entry from metadata and save BEFORE deleting the snapshot file.
-	// If meta save fails, the snapshot file still exists and state is recoverable.
-	meta.Entries = meta.Entries[1:]
+	// Remove consumed entry and save meta BEFORE deleting the snapshot file.
+	*p.sourceEntries = (*p.sourceEntries)[1:]
 	if err := saveUndoMeta(project, meta); err != nil {
 		return "", err
 	}
 
 	// Delete consumed snapshot (cleanup — safe to fail)
-	snapshotPath := getSnapshotPath(project, latest.Num)
-	_ = os.Remove(snapshotPath)
+	_ = os.Remove(snapPath)
 
-	// Build action description
 	actionDesc := latest.Action
 	if latest.Context != "" {
 		actionDesc = fmt.Sprintf("%s: %s", latest.Action, latest.Context)
 	}
-
 	return actionDesc, nil
+}
+
+// PerformUndo restores the most recent snapshot and updates the history.
+// Returns the action description of what was undone.
+func PerformUndo(project *models.Project) (string, error) {
+	meta, err := loadUndoMeta(project)
+	if err != nil {
+		return "", err
+	}
+	return performRestore(project, meta, restoreParams{
+		label:          "undo",
+		sourceEntries:  &meta.Entries,
+		reverseEntries: &meta.RedoEntries,
+		snapshotPath:   getSnapshotPath,
+		reversePath:    getRedoSnapshotPath,
+	})
 }
 
 // PerformRedo restores the most recent redo snapshot and pushes current state onto the undo stack.
@@ -389,88 +404,13 @@ func PerformRedo(project *models.Project) (string, error) {
 	if err != nil {
 		return "", err
 	}
-
-	if len(meta.RedoEntries) == 0 {
-		return "", fmt.Errorf("no redo history available")
-	}
-
-	// Sort by num descending to get most recent redo entry
-	sort.Slice(meta.RedoEntries, func(i, j int) bool {
-		return meta.RedoEntries[i].Num > meta.RedoEntries[j].Num
+	return performRestore(project, meta, restoreParams{
+		label:          "redo",
+		sourceEntries:  &meta.RedoEntries,
+		reverseEntries: &meta.Entries,
+		snapshotPath:   getRedoSnapshotPath,
+		reversePath:    getSnapshotPath,
 	})
-
-	latest := meta.RedoEntries[0]
-
-	// Read the redo snapshot content
-	redoPath := getRedoSnapshotPath(project, latest.Num)
-	redoContent, err := os.ReadFile(redoPath)
-	if err != nil {
-		return "", fmt.Errorf("failed to read redo snapshot %d: %w", latest.Num, err)
-	}
-
-	// Validate the redo snapshot
-	redoResult, err := ParseTasksMarkdownWithSections(string(redoContent))
-	if err != nil {
-		return "", fmt.Errorf("redo snapshot is invalid: %w", err)
-	}
-
-	// Capture current state as undo snapshot before applying redo
-	tasksPath := GetTasksFilePath(project)
-	currentContent, readErr := os.ReadFile(tasksPath)
-	if readErr != nil {
-		return "", fmt.Errorf("failed to read current state for undo snapshot: %w", readErr)
-	}
-	nextUndoNum := 1
-	for _, e := range meta.Entries {
-		if e.Num >= nextUndoNum {
-			nextUndoNum = e.Num + 1
-		}
-	}
-	undoPath := getSnapshotPath(project, nextUndoNum)
-	if writeErr := util.AtomicWriteFile(undoPath, currentContent, FilePermissions); writeErr != nil {
-		return "", fmt.Errorf("failed to write undo snapshot: %w", writeErr)
-	}
-	meta.Entries = append(meta.Entries, UndoEntry{
-		Num:       nextUndoNum,
-		Action:    latest.Action,
-		Context:   latest.Context,
-		Timestamp: time.Now(),
-		TaskIDs:   latest.TaskIDs,
-	})
-
-	// Determine what to write: targeted restore or full-file restore
-	var restoreContent string
-	if len(latest.TaskIDs) > 0 {
-		restoreContent, err = buildTargetedRestore(string(currentContent), redoResult, latest.TaskIDs)
-		if err != nil {
-			logging.Warn("targeted redo failed, falling back to full restore: %v", err)
-			restoreContent = string(redoContent)
-		}
-	} else {
-		restoreContent = string(redoContent)
-	}
-
-	// Restore from redo snapshot
-	if err := util.AtomicWriteFile(tasksPath, []byte(restoreContent), FilePermissions); err != nil {
-		return "", fmt.Errorf("failed to restore from redo snapshot: %w", err)
-	}
-
-	// Remove the consumed redo entry and save meta BEFORE deleting the snapshot file.
-	// If meta save fails, the snapshot file still exists and state is recoverable.
-	meta.RedoEntries = meta.RedoEntries[1:]
-	if err := saveUndoMeta(project, meta); err != nil {
-		return "", err
-	}
-
-	// Delete consumed redo snapshot (cleanup — safe to fail)
-	_ = os.Remove(redoPath)
-
-	actionDesc := latest.Action
-	if latest.Context != "" {
-		actionDesc = fmt.Sprintf("%s: %s", latest.Action, latest.Context)
-	}
-
-	return actionDesc, nil
 }
 
 // buildTargetedRestore parses the current content, replaces only the targeted
