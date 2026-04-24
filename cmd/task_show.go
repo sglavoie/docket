@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -301,10 +300,5 @@ func displayTaskShowJSON(task *models.Task) error {
 		EpicAttrs:       task.EpicAttrs,
 	}
 
-	data, err := json.MarshalIndent(entry, "", "  ")
-	if err != nil {
-		return fmt.Errorf("marshal task to JSON: %w", err)
-	}
-	fmt.Println(string(data))
-	return nil
+	return printJSON(entry)
 }

@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"encoding/json"
 	"fmt"
 
 	"github.com/spf13/cobra"
@@ -54,14 +53,9 @@ func runWorkflowReset(cmd *cobra.Command, args []string) error {
 			return nil
 		}
 		if out.JSON {
-			data, err := json.MarshalIndent(struct {
+			return printJSON(struct {
 				Reset int `json:"reset"`
-			}{Reset: total}, "", "  ")
-			if err != nil {
-				return fmt.Errorf("marshal JSON: %w", err)
-			}
-			fmt.Println(string(data))
-			return nil
+			}{Reset: total})
 		}
 		fmt.Printf("Reset trigger counts for all %d rules\n", total)
 		return nil
@@ -88,16 +82,11 @@ func runWorkflowReset(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 	if out.JSON {
-		data, err := json.MarshalIndent(struct {
+		return printJSON(struct {
 			ID            string `json:"id"`
 			Name          string `json:"name"`
 			PreviousCount int64  `json:"previous_count"`
-		}{ID: ruleID, Name: ruleName, PreviousCount: oldCount}, "", "  ")
-		if err != nil {
-			return fmt.Errorf("marshal JSON: %w", err)
-		}
-		fmt.Println(string(data))
-		return nil
+		}{ID: ruleID, Name: ruleName, PreviousCount: oldCount})
 	}
 	fmt.Printf("Reset trigger count for %q [%s]: %d -> 0\n", ruleName, ruleID, oldCount)
 	return nil

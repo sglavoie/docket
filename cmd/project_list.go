@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"encoding/json"
 	"fmt"
 	"sort"
 	"strings"
@@ -100,12 +99,7 @@ func runProjectList(cmd *cobra.Command, args []string) error {
 			result = append(result, entry)
 		}
 
-		data, err := json.MarshalIndent(result, "", "  ")
-		if err != nil {
-			return fmt.Errorf("failed to marshal JSON: %w", err)
-		}
-		fmt.Println(string(data))
-		return nil
+		return printJSON(result)
 	}
 
 	if len(projects) == 0 {

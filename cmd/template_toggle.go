@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"encoding/json"
 	"fmt"
 
 	"github.com/spf13/cobra"
@@ -67,16 +66,11 @@ func runTemplateToggle(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 	if out.JSON {
-		data, err := json.MarshalIndent(struct {
+		return printJSON(struct {
 			ID      string `json:"id"`
 			Name    string `json:"name"`
 			Enabled bool   `json:"enabled"`
-		}{ID: templateID, Name: templateName, Enabled: enabled}, "", "  ")
-		if err != nil {
-			return fmt.Errorf("marshal JSON: %w", err)
-		}
-		fmt.Println(string(data))
-		return nil
+		}{ID: templateID, Name: templateName, Enabled: enabled})
 	}
 	fmt.Printf("Task template %q [%s] is now %s\n", templateName, templateID, status)
 	return nil

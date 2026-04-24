@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"encoding/json"
 	"fmt"
 
 	"github.com/spf13/cobra"
@@ -93,15 +92,10 @@ func runNoteEdit(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 	if out.JSON {
-		data, err := json.MarshalIndent(struct {
+		return printJSON(struct {
 			Filename string `json:"filename"`
 			Updated  bool   `json:"updated"`
-		}{Filename: updatedNote.Filename, Updated: true}, "", "  ")
-		if err != nil {
-			return fmt.Errorf("marshal JSON: %w", err)
-		}
-		fmt.Println(string(data))
-		return nil
+		}{Filename: updatedNote.Filename, Updated: true})
 	}
 	fmt.Println("Note updated.")
 	return nil

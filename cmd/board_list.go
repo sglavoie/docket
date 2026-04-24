@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -148,12 +147,7 @@ func runBoardList(cmd *cobra.Command, args []string) error {
 				HasTime:   a.task.HasTime,
 			}
 		}
-		data, err := json.MarshalIndent(entries, "", "  ")
-		if err != nil {
-			return fmt.Errorf("marshal actions to JSON: %w", err)
-		}
-		fmt.Println(string(data))
-		return nil
+		return printJSON(entries)
 	}
 
 	if len(actions) == 0 {

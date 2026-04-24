@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
 
@@ -92,12 +91,7 @@ func runNoteDelete(cmd *cobra.Command, args []string) error {
 			Filename: note.Filename,
 			Title:    note.Title,
 		}
-		data, err := json.MarshalIndent(entry, "", "  ")
-		if err != nil {
-			return fmt.Errorf("marshaling note: %w", err)
-		}
-		fmt.Println(string(data))
-		return nil
+		return printJSON(entry)
 	}
 
 	fmt.Printf("Deleted note: %s\n", note.Title)

@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"encoding/json"
 	"fmt"
 
 	"github.com/jedib0t/go-pretty/v6/table"
@@ -63,12 +62,7 @@ func runSectionList(cmd *cobra.Command, args []string) error {
 		for i, s := range visibleSections {
 			entries[i] = sectionEntry{Name: s, Tasks: counts[s]}
 		}
-		data, err := json.MarshalIndent(entries, "", "  ")
-		if err != nil {
-			return fmt.Errorf("marshal sections to JSON: %w", err)
-		}
-		fmt.Println(string(data))
-		return nil
+		return printJSON(entries)
 	}
 
 	if out.Quiet {

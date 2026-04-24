@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
 	"text/tabwriter"
@@ -48,12 +47,7 @@ func runThemeList(cmd *cobra.Command, args []string) error {
 		if themes == nil {
 			themes = []config.ThemeFile{}
 		}
-		data, err := json.MarshalIndent(themes, "", "  ")
-		if err != nil {
-			return fmt.Errorf("marshal JSON: %w", err)
-		}
-		fmt.Println(string(data))
-		return nil
+		return printJSON(themes)
 	}
 
 	if out.Quiet {

@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
 
@@ -77,15 +76,10 @@ func runProjectPurge(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 	if out.JSON {
-		data, err := json.MarshalIndent(struct {
+		return printJSON(struct {
 			Slug   string `json:"slug"`
 			Purged bool   `json:"purged"`
-		}{Slug: slug, Purged: true}, "", "  ")
-		if err != nil {
-			return fmt.Errorf("marshal JSON: %w", err)
-		}
-		fmt.Println(string(data))
-		return nil
+		}{Slug: slug, Purged: true})
 	}
 	fmt.Printf("Permanently deleted '%s'\n", slug)
 	return nil

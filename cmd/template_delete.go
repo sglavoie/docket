@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
 
@@ -74,15 +73,10 @@ func runTemplateDelete(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 	if out.JSON {
-		data, err := json.MarshalIndent(struct {
+		return printJSON(struct {
 			ID   string `json:"id"`
 			Name string `json:"name"`
-		}{ID: templateID, Name: templateName}, "", "  ")
-		if err != nil {
-			return fmt.Errorf("marshal JSON: %w", err)
-		}
-		fmt.Println(string(data))
-		return nil
+		}{ID: templateID, Name: templateName})
 	}
 	fmt.Printf("Deleted task template: %s [%s]\n", templateName, templateID)
 	return nil

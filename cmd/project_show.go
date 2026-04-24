@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"encoding/json"
 	"fmt"
 	"time"
 
@@ -216,10 +215,5 @@ func displayProjectShowJSON(project *models.Project) error {
 		TasksByType:      tasksByType,
 	}
 
-	data, err := json.MarshalIndent(entry, "", "  ")
-	if err != nil {
-		return fmt.Errorf("marshal project to JSON: %w", err)
-	}
-	fmt.Println(string(data))
-	return nil
+	return printJSON(entry)
 }

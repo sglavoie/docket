@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"encoding/json"
 	"fmt"
 	"slices"
 	"strings"
@@ -301,17 +300,12 @@ func runTemplateEdit(cmd *cobra.Command, args []string) error { //nolint:gocyclo
 		return nil
 	}
 	if out.JSON {
-		data, err := json.MarshalIndent(struct {
+		return printJSON(struct {
 			ID      string `json:"id"`
 			Name    string `json:"name"`
 			Type    string `json:"type"`
 			Summary string `json:"summary"`
-		}{ID: t.ID, Name: t.Name, Type: string(t.Type), Summary: t.Summary()}, "", "  ")
-		if err != nil {
-			return fmt.Errorf("marshal JSON: %w", err)
-		}
-		fmt.Println(string(data))
-		return nil
+		}{ID: t.ID, Name: t.Name, Type: string(t.Type), Summary: t.Summary()})
 	}
 	fmt.Printf("Updated task template: %s [%s]\n", t.Name, t.ID)
 	fmt.Printf("  %s\n", t.Summary())

@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -93,12 +92,7 @@ func runBoardShow(cmd *cobra.Command, args []string) error {
 			DueDate:     task.DueDate,
 			HasTime:     task.HasTime,
 		}
-		data, err := json.MarshalIndent(entry, "", "  ")
-		if err != nil {
-			return fmt.Errorf("marshal action to JSON: %w", err)
-		}
-		fmt.Println(string(data))
-		return nil
+		return printJSON(entry)
 	}
 
 	return printActionDetails(task, project)

@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"encoding/json"
 	"fmt"
 
 	"github.com/spf13/cobra"
@@ -70,16 +69,11 @@ func runWorkflowToggle(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 	if out.JSON {
-		data, err := json.MarshalIndent(struct {
+		return printJSON(struct {
 			ID      string `json:"id"`
 			Name    string `json:"name"`
 			Enabled bool   `json:"enabled"`
-		}{ID: ruleID, Name: ruleName, Enabled: enabled}, "", "  ")
-		if err != nil {
-			return fmt.Errorf("marshal JSON: %w", err)
-		}
-		fmt.Println(string(data))
-		return nil
+		}{ID: ruleID, Name: ruleName, Enabled: enabled})
 	}
 	fmt.Printf("Workflow rule %q [%s] is now %s\n", ruleName, ruleID, status)
 	return nil

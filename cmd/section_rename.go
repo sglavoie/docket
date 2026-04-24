@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"encoding/json"
 	"fmt"
 
 	"github.com/spf13/cobra"
@@ -69,16 +68,11 @@ func runSectionRename(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 	if out.JSON {
-		data, err := json.MarshalIndent(struct {
+		return printJSON(struct {
 			OldName string `json:"old_name"`
 			NewName string `json:"new_name"`
 			Project string `json:"project"`
-		}{OldName: oldName, NewName: newName, Project: project.Name}, "", "  ")
-		if err != nil {
-			return fmt.Errorf("marshal JSON: %w", err)
-		}
-		fmt.Println(string(data))
-		return nil
+		}{OldName: oldName, NewName: newName, Project: project.Name})
 	}
 	fmt.Printf("Renamed section '%s' to '%s'\n", oldName, newName)
 	return nil

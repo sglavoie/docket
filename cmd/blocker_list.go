@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"encoding/json"
 	"fmt"
 
 	"charm.land/lipgloss/v2"
@@ -76,12 +75,7 @@ func runBlockerList(cmd *cobra.Command, args []string) error {
 		if visibleBlockers == nil {
 			visibleBlockers = []*models.Blocker{}
 		}
-		data, err := json.MarshalIndent(visibleBlockers, "", "  ")
-		if err != nil {
-			return fmt.Errorf("marshal blockers to JSON: %w", err)
-		}
-		fmt.Println(string(data))
-		return nil
+		return printJSON(visibleBlockers)
 	}
 
 	if out.Quiet {

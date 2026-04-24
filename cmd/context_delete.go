@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
 
@@ -66,15 +65,10 @@ func runContextDelete(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 	if out.JSON {
-		data, err := json.MarshalIndent(struct {
+		return printJSON(struct {
 			Context string `json:"context"`
 			Deleted bool   `json:"deleted"`
-		}{Context: name, Deleted: true}, "", "  ")
-		if err != nil {
-			return fmt.Errorf("marshal JSON: %w", err)
-		}
-		fmt.Println(string(data))
-		return nil
+		}{Context: name, Deleted: true})
 	}
 	fmt.Printf("Deleted custom context '%s'\n", name)
 	return nil

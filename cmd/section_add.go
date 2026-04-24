@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"encoding/json"
 	"fmt"
 
 	"github.com/spf13/cobra"
@@ -67,15 +66,10 @@ func runSectionAdd(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 	if out.JSON {
-		data, err := json.MarshalIndent(struct {
+		return printJSON(struct {
 			Section string `json:"section"`
 			Project string `json:"project"`
-		}{Section: sectionName, Project: project.Name}, "", "  ")
-		if err != nil {
-			return fmt.Errorf("marshal JSON: %w", err)
-		}
-		fmt.Println(string(data))
-		return nil
+		}{Section: sectionName, Project: project.Name})
 	}
 	fmt.Printf("Added section '%s' to project '%s'\n", sectionName, project.Name)
 	return nil

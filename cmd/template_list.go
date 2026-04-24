@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"encoding/json"
 	"fmt"
 
 	"github.com/spf13/cobra"
@@ -180,10 +179,5 @@ func displayTemplateListJSON(defaultTemplates, customTemplates []template.TaskTe
 		entries = []templateJSONEntry{}
 	}
 
-	data, err := json.MarshalIndent(entries, "", "  ")
-	if err != nil {
-		return fmt.Errorf("marshal templates to JSON: %w", err)
-	}
-	fmt.Println(string(data))
-	return nil
+	return printJSON(entries)
 }

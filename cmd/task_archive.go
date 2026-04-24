@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
 
@@ -102,12 +101,7 @@ func runTaskArchive(cmd *cobra.Command, args []string) error {
 			ArchivedCount int    `json:"archived_count"`
 			Project       string `json:"project"`
 		}{ArchivedCount: count, Project: project.Name}
-		data, err := json.MarshalIndent(entry, "", "  ")
-		if err != nil {
-			return fmt.Errorf("marshal JSON: %w", err)
-		}
-		fmt.Println(string(data))
-		return nil
+		return printJSON(entry)
 	}
 	if !out.Quiet {
 		fmt.Printf("Archived %s to completed.md\n", Pluralize(count, "task", "tasks"))
@@ -200,12 +194,7 @@ func runTaskArchiveAll(out MutateOutput) error {
 			TotalArchived int             `json:"total_archived"`
 			Projects      []projectResult `json:"projects"`
 		}{TotalArchived: totalArchived, Projects: results}
-		data, err := json.MarshalIndent(summary, "", "  ")
-		if err != nil {
-			return fmt.Errorf("marshal JSON: %w", err)
-		}
-		fmt.Println(string(data))
-		return nil
+		return printJSON(summary)
 	}
 
 	if !out.Quiet {

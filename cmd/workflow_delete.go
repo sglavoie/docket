@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
 
@@ -77,15 +76,10 @@ func runWorkflowDelete(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 	if out.JSON {
-		data, err := json.MarshalIndent(struct {
+		return printJSON(struct {
 			ID   string `json:"id"`
 			Name string `json:"name"`
-		}{ID: ruleID, Name: ruleName}, "", "  ")
-		if err != nil {
-			return fmt.Errorf("marshal JSON: %w", err)
-		}
-		fmt.Println(string(data))
-		return nil
+		}{ID: ruleID, Name: ruleName})
 	}
 	fmt.Printf("Deleted workflow rule: %s [%s]\n", ruleName, ruleID)
 	return nil

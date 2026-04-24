@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"encoding/json"
 	"fmt"
 	"sort"
 
@@ -107,12 +106,7 @@ func runScoreRank(cmd *cobra.Command, args []string) error {
 			}
 		}
 
-		data, err := json.MarshalIndent(items, "", "  ")
-		if err != nil {
-			return fmt.Errorf("marshal JSON: %w", err)
-		}
-		fmt.Println(string(data))
-		return nil
+		return printJSON(items)
 	}
 
 	fmt.Printf("Tasks ranked by %s score (project: %s):\n\n", profile.Name, project.Name)

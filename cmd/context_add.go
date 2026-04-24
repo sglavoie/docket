@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"encoding/json"
 	"fmt"
 	"slices"
 
@@ -100,12 +99,7 @@ func runContextAdd(cmd *cobra.Command, args []string) error {
 			Context: contextName,
 			Project: project.Slug,
 		}
-		data, err := json.MarshalIndent(entry, "", "  ")
-		if err != nil {
-			return fmt.Errorf("marshaling context: %w", err)
-		}
-		fmt.Println(string(data))
-		return nil
+		return printJSON(entry)
 	}
 
 	fmt.Printf("Added project '%s' (%s) to custom context '%s'\n", project.Name, project.Slug, contextName)

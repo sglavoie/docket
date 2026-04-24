@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -214,12 +213,7 @@ func runTemplateAdd(cmd *cobra.Command, args []string) error {
 			Items:   len(children),
 			Summary: t.Summary(),
 		}
-		data, err := json.MarshalIndent(entry, "", "  ")
-		if err != nil {
-			return fmt.Errorf("marshal template to JSON: %w", err)
-		}
-		fmt.Println(string(data))
-		return nil
+		return printJSON(entry)
 	}
 
 	fmt.Printf("Created task template: %s [%s]\n", t.Name, t.ID)

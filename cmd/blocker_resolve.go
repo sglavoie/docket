@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"encoding/json"
 	"fmt"
 
 	"github.com/spf13/cobra"
@@ -44,11 +43,9 @@ func runBlockerResolve(cmd *cobra.Command, args []string) error {
 				return blockers, nil
 			}
 			if out.JSON {
-				data, err := json.MarshalIndent(blocker, "", "  ")
-				if err != nil {
-					return nil, fmt.Errorf("marshaling blocker: %w", err)
+				if err := printJSON(blocker); err != nil {
+					return nil, err
 				}
-				fmt.Println(string(data))
 				return blockers, nil
 			}
 			fmt.Printf("Blocker '%s' is already resolved.\n", blocker.Title)
@@ -60,11 +57,9 @@ func runBlockerResolve(cmd *cobra.Command, args []string) error {
 			return blockers, nil
 		}
 		if out.JSON {
-			data, err := json.MarshalIndent(blocker, "", "  ")
-			if err != nil {
-				return nil, fmt.Errorf("marshaling blocker: %w", err)
+			if err := printJSON(blocker); err != nil {
+				return nil, err
 			}
-			fmt.Println(string(data))
 			return blockers, nil
 		}
 		fmt.Printf("Resolved blocker: %s\n", blocker.Title)

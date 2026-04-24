@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -231,17 +230,12 @@ func runWorkflowAdd(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 	if out.JSON {
-		data, err := json.MarshalIndent(struct {
+		return printJSON(struct {
 			ID      string `json:"id"`
 			Name    string `json:"name"`
 			Enabled bool   `json:"enabled"`
 			Summary string `json:"summary"`
-		}{ID: rule.ID, Name: rule.Name, Enabled: rule.Enabled, Summary: rule.Summary()}, "", "  ")
-		if err != nil {
-			return fmt.Errorf("marshal JSON: %w", err)
-		}
-		fmt.Println(string(data))
-		return nil
+		}{ID: rule.ID, Name: rule.Name, Enabled: rule.Enabled, Summary: rule.Summary()})
 	}
 	fmt.Printf("Created workflow rule: %s [%s]\n", rule.Name, rule.ID)
 	if rule.IsProjectLevel() {

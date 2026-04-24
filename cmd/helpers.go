@@ -258,6 +258,16 @@ func saveConfig(mgr *config.Manager, cfg *config.Config) error {
 	return nil
 }
 
+// printJSON marshals v as indented JSON and prints it to stdout.
+func printJSON(v any) error {
+	data, err := json.MarshalIndent(v, "", "  ")
+	if err != nil {
+		return fmt.Errorf("marshal JSON: %w", err)
+	}
+	fmt.Println(string(data))
+	return nil
+}
+
 // addOutputFlags registers --json and --quiet flags on a command.
 // Use getOutputOpts to read them back in RunE.
 func addOutputFlags(cmd *cobra.Command) {
@@ -359,12 +369,7 @@ func taskToMutateJSONEntry(task *models.Task) mutateTaskJSONEntry {
 }
 
 func outputSingleTaskJSON(task *models.Task) error {
-	data, err := json.MarshalIndent(taskToMutateJSONEntry(task), "", "  ")
-	if err != nil {
-		return fmt.Errorf("marshal task to JSON: %w", err)
-	}
-	fmt.Println(string(data))
-	return nil
+	return printJSON(taskToMutateJSONEntry(task))
 }
 
 func outputTasksJSON(tasks []*models.Task) error {
@@ -372,12 +377,7 @@ func outputTasksJSON(tasks []*models.Task) error {
 	for _, task := range tasks {
 		entries = append(entries, taskToMutateJSONEntry(task))
 	}
-	data, err := json.MarshalIndent(entries, "", "  ")
-	if err != nil {
-		return fmt.Errorf("marshal tasks to JSON: %w", err)
-	}
-	fmt.Println(string(data))
-	return nil
+	return printJSON(entries)
 }
 
 // outputBlockerJSON marshals a blocker to indented JSON and prints it.
@@ -398,12 +398,7 @@ func outputBlockerJSON(blocker *models.Blocker) error {
 		s := blocker.ResolvedAt.Format("2006-01-02T15:04:05Z07:00")
 		entry.ResolvedAt = &s
 	}
-	data, err := json.MarshalIndent(entry, "", "  ")
-	if err != nil {
-		return fmt.Errorf("marshal blocker to JSON: %w", err)
-	}
-	fmt.Println(string(data))
-	return nil
+	return printJSON(entry)
 }
 
 // outputNoteJSON marshals a note (with its scope) to indented JSON and prints it.
@@ -412,7 +407,7 @@ func outputNoteJSON(note *models.Note, scope string) error {
 	if tags == nil {
 		tags = []string{}
 	}
-	entry := struct {
+	return printJSON(struct {
 		Filename string   `json:"filename"`
 		Title    string   `json:"title"`
 		Tags     []string `json:"tags"`
@@ -422,18 +417,12 @@ func outputNoteJSON(note *models.Note, scope string) error {
 		Title:    note.Title,
 		Tags:     tags,
 		Scope:    scope,
-	}
-	data, err := json.MarshalIndent(entry, "", "  ")
-	if err != nil {
-		return fmt.Errorf("marshal note to JSON: %w", err)
-	}
-	fmt.Println(string(data))
-	return nil
+	})
 }
 
 // outputSingleProjectJSON marshals a project to indented JSON and prints it.
 func outputSingleProjectJSON(project *models.Project) error {
-	entry := struct {
+	return printJSON(struct {
 		ID          string `json:"id"`
 		Slug        string `json:"slug"`
 		Name        string `json:"name"`
@@ -449,13 +438,7 @@ func outputSingleProjectJSON(project *models.Project) error {
 		Path:        project.Path,
 		Description: project.Description,
 		StatusIcon:  project.StatusIcon,
-	}
-	data, err := json.MarshalIndent(entry, "", "  ")
-	if err != nil {
-		return fmt.Errorf("marshal project to JSON: %w", err)
-	}
-	fmt.Println(string(data))
-	return nil
+	})
 }
 
 // LoadConfigAndProjectOrCurrent loads the config and looks up a project by slug

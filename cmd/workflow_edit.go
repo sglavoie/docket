@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -352,17 +351,12 @@ func runWorkflowEdit(cmd *cobra.Command, args []string) error { //nolint:gocyclo
 		return nil
 	}
 	if out.JSON {
-		data, err := json.MarshalIndent(struct {
+		return printJSON(struct {
 			ID      string `json:"id"`
 			Name    string `json:"name"`
 			Enabled bool   `json:"enabled"`
 			Summary string `json:"summary"`
-		}{ID: modifiedRule.ID, Name: modifiedRule.Name, Enabled: modifiedRule.Enabled, Summary: modifiedRule.Summary()}, "", "  ")
-		if err != nil {
-			return fmt.Errorf("marshal JSON: %w", err)
-		}
-		fmt.Println(string(data))
-		return nil
+		}{ID: modifiedRule.ID, Name: modifiedRule.Name, Enabled: modifiedRule.Enabled, Summary: modifiedRule.Summary()})
 	}
 
 	// Display final result

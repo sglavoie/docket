@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"encoding/json"
 	"fmt"
 
 	"github.com/spf13/cobra"
@@ -80,15 +79,10 @@ func runContextRemove(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 	if out.JSON {
-		data, err := json.MarshalIndent(struct {
+		return printJSON(struct {
 			Context string `json:"context"`
 			Project string `json:"project"`
-		}{Context: contextName, Project: project.Name}, "", "  ")
-		if err != nil {
-			return fmt.Errorf("marshal JSON: %w", err)
-		}
-		fmt.Println(string(data))
-		return nil
+		}{Context: contextName, Project: project.Name})
 	}
 	fmt.Printf("Removed '%s' from custom context '%s'\n", project.Name, contextName)
 	return nil

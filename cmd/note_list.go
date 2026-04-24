@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"encoding/json"
 	"fmt"
 	"slices"
 	"strings"
@@ -103,12 +102,7 @@ func runNoteList(cmd *cobra.Command, args []string) error {
 				Pinned:      n.Pinned,
 			}
 		}
-		data, err := json.MarshalIndent(entries, "", "  ")
-		if err != nil {
-			return fmt.Errorf("marshal notes to JSON: %w", err)
-		}
-		fmt.Println(string(data))
-		return nil
+		return printJSON(entries)
 	}
 
 	if len(notes) == 0 {

@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"encoding/json"
 	"fmt"
 
 	"github.com/spf13/cobra"
@@ -103,12 +102,7 @@ func runTemplateInit(cmd *cobra.Command, args []string) error { //nolint:gocyclo
 			for _, t := range defaults {
 				entries = append(entries, templateEntry{ID: t.ID, Name: t.Name, Category: t.Category, Summary: t.Summary()})
 			}
-			data, marshalErr := json.MarshalIndent(entries, "", "  ")
-			if marshalErr != nil {
-				return fmt.Errorf("marshal JSON: %w", marshalErr)
-			}
-			fmt.Println(string(data))
-			return nil
+			return printJSON(entries)
 		}
 		fmt.Println("Default task templates:")
 		fmt.Println()
@@ -155,17 +149,12 @@ func runTemplateInit(cmd *cobra.Command, args []string) error { //nolint:gocyclo
 			return nil
 		}
 		if out.JSON {
-			data, err := json.MarshalIndent(struct {
+			return printJSON(struct {
 				Updated   int      `json:"updated"`
 				Readded   int      `json:"readded"`
 				Unchanged int      `json:"unchanged"`
 				Affected  []string `json:"affected_ids"`
-			}{Updated: updated, Readded: readded, Unchanged: unchanged, Affected: affectedIDs}, "", "  ")
-			if err != nil {
-				return fmt.Errorf("marshal JSON: %w", err)
-			}
-			fmt.Println(string(data))
-			return nil
+			}{Updated: updated, Readded: readded, Unchanged: unchanged, Affected: affectedIDs})
 		}
 		fmt.Println("Reset changed default templates:")
 		fmt.Printf("  Updated: %d\n", updated)
@@ -212,30 +201,20 @@ func runTemplateInit(cmd *cobra.Command, args []string) error { //nolint:gocyclo
 
 	if added == 0 {
 		if out.JSON {
-			data, err := json.MarshalIndent(struct {
+			return printJSON(struct {
 				Added int    `json:"added"`
 				State string `json:"state"`
-			}{Added: 0, State: state}, "", "  ")
-			if err != nil {
-				return fmt.Errorf("marshal JSON: %w", err)
-			}
-			fmt.Println(string(data))
-			return nil
+			}{Added: 0, State: state})
 		}
 		fmt.Println("All default templates already exist.")
 		return nil
 	}
 
 	if out.JSON {
-		data, err := json.MarshalIndent(struct {
+		return printJSON(struct {
 			Added int    `json:"added"`
 			State string `json:"state"`
-		}{Added: added, State: state}, "", "  ")
-		if err != nil {
-			return fmt.Errorf("marshal JSON: %w", err)
-		}
-		fmt.Println(string(data))
-		return nil
+		}{Added: added, State: state})
 	}
 
 	fmt.Printf("Added %d default task template(s) (%s):\n", added, state)

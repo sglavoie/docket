@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -95,16 +94,11 @@ func runAttach(cmd *cobra.Command, args []string) error { //nolint:gocyclo
 			return nil
 		}
 		if out.JSON {
-			data, marshalErr := json.MarshalIndent(struct {
+			return printJSON(struct {
 				TaskShortID int    `json:"task_short_id"`
 				Attachment  string `json:"attachment"`
 				Type        string `json:"type"`
-			}{TaskShortID: task.ShortID, Attachment: url, Type: "url"}, "", "  ")
-			if marshalErr != nil {
-				return fmt.Errorf("marshal JSON: %w", marshalErr)
-			}
-			fmt.Println(string(data))
-			return nil
+			}{TaskShortID: task.ShortID, Attachment: url, Type: "url"})
 		}
 		fmt.Printf("Attached URL to #%d: %s\n", task.ShortID, url)
 		return nil
@@ -139,16 +133,11 @@ func runAttach(cmd *cobra.Command, args []string) error { //nolint:gocyclo
 			return nil
 		}
 		if out.JSON {
-			data, marshalErr := json.MarshalIndent(struct {
+			return printJSON(struct {
 				TaskShortID int    `json:"task_short_id"`
 				Attachment  string `json:"attachment"`
 				Type        string `json:"type"`
-			}{TaskShortID: task.ShortID, Attachment: fmt.Sprintf("%s:%d", codePath, lineNum), Type: "code_ref"}, "", "  ")
-			if marshalErr != nil {
-				return fmt.Errorf("marshal JSON: %w", marshalErr)
-			}
-			fmt.Println(string(data))
-			return nil
+			}{TaskShortID: task.ShortID, Attachment: fmt.Sprintf("%s:%d", codePath, lineNum), Type: "code_ref"})
 		}
 		// Check if file exists and show info message if not
 		if !storage.CodeReferenceFileExists(codePath) {
@@ -205,16 +194,11 @@ func runAttach(cmd *cobra.Command, args []string) error { //nolint:gocyclo
 		return nil
 	}
 	if out.JSON {
-		data, marshalErr := json.MarshalIndent(struct {
+		return printJSON(struct {
 			TaskShortID int    `json:"task_short_id"`
 			Attachment  string `json:"attachment"`
 			Type        string `json:"type"`
-		}{TaskShortID: task.ShortID, Attachment: filename, Type: "file"}, "", "  ")
-		if marshalErr != nil {
-			return fmt.Errorf("marshal JSON: %w", marshalErr)
-		}
-		fmt.Println(string(data))
-		return nil
+		}{TaskShortID: task.ShortID, Attachment: filename, Type: "file"})
 	}
 	fmt.Printf("Attached file to #%d: %s\n", task.ShortID, filename)
 	return nil

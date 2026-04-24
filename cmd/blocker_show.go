@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"encoding/json"
 	"fmt"
 
 	"github.com/spf13/cobra"
@@ -53,12 +52,7 @@ func runBlockerShow(cmd *cobra.Command, args []string) error {
 	}
 
 	if out.JSON {
-		data, err := json.MarshalIndent(blocker, "", "  ")
-		if err != nil {
-			return fmt.Errorf("marshal blocker to JSON: %w", err)
-		}
-		fmt.Println(string(data))
-		return nil
+		return printJSON(blocker)
 	}
 
 	if out.Quiet {

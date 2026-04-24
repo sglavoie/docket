@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"encoding/json"
 	"fmt"
 	"strconv"
 	"strings"
@@ -101,17 +100,12 @@ func runScoreSet(cmd *cobra.Command, args []string) error {
 		if dims == nil {
 			dims = make(map[string]int)
 		}
-		data, err := json.MarshalIndent(struct {
+		return printJSON(struct {
 			TaskID     string         `json:"task_id"`
 			ShortID    int            `json:"short_id"`
 			Title      string         `json:"title"`
 			Dimensions map[string]int `json:"dimensions"`
-		}{TaskID: task.ID, ShortID: task.ShortID, Title: task.Title, Dimensions: dims}, "", "  ")
-		if err != nil {
-			return fmt.Errorf("marshal JSON: %w", err)
-		}
-		fmt.Println(string(data))
-		return nil
+		}{TaskID: task.ID, ShortID: task.ShortID, Title: task.Title, Dimensions: dims})
 	}
 	fmt.Printf("Updated score dimensions for task #%d %q\n", task.ShortID, task.Title)
 	return nil

@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"encoding/json"
 	"fmt"
 	"sort"
 	"strings"
@@ -186,12 +185,7 @@ func displayTaskJSON(tasks []*models.Task) error {
 			HasTime:       t.HasTime,
 		}
 	}
-	data, err := json.MarshalIndent(entries, "", "  ")
-	if err != nil {
-		return fmt.Errorf("marshal tasks to JSON: %w", err)
-	}
-	fmt.Println(string(data))
-	return nil
+	return printJSON(entries)
 }
 
 // taskMatchesFilters returns true if the task passes all active CLI filters.

@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"encoding/json"
 	"fmt"
 
 	"github.com/spf13/cobra"
@@ -76,17 +75,12 @@ func runScoreAssign(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 	if out.JSON {
-		data, err := json.MarshalIndent(struct {
+		return printJSON(struct {
 			ProfileID   string `json:"profile_id"`
 			ProfileName string `json:"profile_name"`
 			ProjectID   string `json:"project_id"`
 			ProjectName string `json:"project_name"`
-		}{ProfileID: profile.ID, ProfileName: profile.Name, ProjectID: project.ID, ProjectName: project.Name}, "", "  ")
-		if err != nil {
-			return fmt.Errorf("marshal JSON: %w", err)
-		}
-		fmt.Println(string(data))
-		return nil
+		}{ProfileID: profile.ID, ProfileName: profile.Name, ProjectID: project.ID, ProjectName: project.Name})
 	}
 	fmt.Printf("Assigned profile %q to project %q\n", profile.Name, project.Name)
 	return nil
@@ -117,15 +111,10 @@ func runScoreUnassign(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 	if out.JSON {
-		data, err := json.MarshalIndent(struct {
+		return printJSON(struct {
 			ProjectID   string `json:"project_id"`
 			ProjectName string `json:"project_name"`
-		}{ProjectID: project.ID, ProjectName: project.Name}, "", "  ")
-		if err != nil {
-			return fmt.Errorf("marshal JSON: %w", err)
-		}
-		fmt.Println(string(data))
-		return nil
+		}{ProjectID: project.ID, ProjectName: project.Name})
 	}
 	fmt.Printf("Removed scoring profile from project %q\n", project.Name)
 	return nil

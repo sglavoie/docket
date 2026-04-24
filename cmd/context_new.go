@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"bufio"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -120,15 +119,10 @@ func runContextNew(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 	if out.JSON {
-		data, err := json.MarshalIndent(struct {
+		return printJSON(struct {
 			Context  string `json:"context"`
 			Projects int    `json:"projects"`
-		}{Context: name, Projects: len(selectedIDs)}, "", "  ")
-		if err != nil {
-			return fmt.Errorf("marshal JSON: %w", err)
-		}
-		fmt.Println(string(data))
-		return nil
+		}{Context: name, Projects: len(selectedIDs)})
 	}
 	fmt.Printf("Created custom context '%s' with %d project(s)\n", name, len(selectedIDs))
 	return nil
