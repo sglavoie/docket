@@ -38,7 +38,7 @@ type RecurrencePattern struct {
 	Skipped     int            `json:"skipped,omitempty"`      // Number of times this recurrence has been skipped
 	Streak      int            `json:"streak,omitempty"`       // Current consecutive on-time completions
 	MaxStreak   int            `json:"max_streak,omitempty"`   // Best streak achieved
-	OriginalDay int            `json:"original_day,omitempty"` // For monthly: the intended day-of-month (e.g. 31)
+	OriginalDay int            `json:"original_day,omitempty"` // For monthly/yearly: the intended day-of-month (e.g. 31 or 29)
 	Mode        RecurMode      `json:"mode,omitempty"`         // Base date for next-due computation (empty = FromDue)
 }
 
@@ -155,7 +155,7 @@ func calculateNextDate(base time.Time, r *RecurrencePattern) time.Time {
 		return addMonths(base, r.Interval, r.OriginalDay)
 
 	case RecurrenceYearly:
-		return addYears(base, r.Interval)
+		return addYears(base, r.Interval, r.OriginalDay)
 
 	default:
 		// Fallback to daily
@@ -229,9 +229,18 @@ func addMonths(base time.Time, months int, originalDay int) time.Time {
 
 // addYears adds N years to a date, clamping to the last day of the target month
 // when the original day doesn't exist (e.g. Feb 29 in a non-leap year → Feb 28).
-func addYears(base time.Time, years int) time.Time {
+// originalDay, when > 0, is the intended day-of-month (e.g. 29 for Feb 29);
+// it is used instead of base.Day() when larger, so that yearly recurrences
+// starting on Feb 29 snap back to the 29th in leap years rather than drifting
+// permanently to the 28th.
+func addYears(base time.Time, years int, originalDay int) time.Time {
 	year, month, day := base.Date()
 	hour, min, sec := base.Clock()
+
+	// Restore the intended day if OriginalDay is set and larger than base.Day().
+	if originalDay > day {
+		day = originalDay
+	}
 
 	targetYear := year + years
 	lastDay := daysInMonth(targetYear, month)

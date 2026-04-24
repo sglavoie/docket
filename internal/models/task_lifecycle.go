@@ -334,16 +334,18 @@ func (t *Task) IsDueThisWeek() bool {
 
 // SetRecurrence sets the recurrence pattern for the task.
 // Returns an error if the pattern is non-nil and fails validation.
-// For monthly patterns, OriginalDay is automatically populated from the task's
-// DueDate (if set) to prevent day-of-month drift across short months.
+// For monthly and yearly patterns, OriginalDay is automatically populated from
+// the task's DueDate (if set) to prevent day-of-month drift across short months
+// (monthly: e.g. Jan 31 → Feb 28 → Mar 31; yearly: e.g. Feb 29 → Feb 28 → Feb 29).
 func (t *Task) SetRecurrence(pattern *RecurrencePattern) error {
 	if pattern != nil {
 		if err := pattern.Validate(); err != nil {
 			return err
 		}
-		// Populate OriginalDay for monthly patterns so that months with fewer
-		// days (e.g., Feb 28) don't permanently drift the day-of-month.
-		if pattern.Unit == RecurrenceMonthly && pattern.OriginalDay == 0 && t.DueDate != nil {
+		// Populate OriginalDay for monthly/yearly patterns so that months with
+		// fewer days don't permanently drift the day-of-month.
+		needsOriginalDay := pattern.Unit == RecurrenceMonthly || pattern.Unit == RecurrenceYearly
+		if needsOriginalDay && pattern.OriginalDay == 0 && t.DueDate != nil {
 			pattern.OriginalDay = t.DueDate.Day()
 		}
 	}

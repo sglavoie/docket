@@ -56,9 +56,59 @@ func TestSetRecurrenceSetsOriginalDayFromDueDate(t *testing.T) {
 	}
 }
 
-// TestSetRecurrenceNoOriginalDayForNonMonthly verifies that SetRecurrence
-// does NOT set OriginalDay for non-monthly patterns.
-func TestSetRecurrenceNoOriginalDayForNonMonthly(t *testing.T) {
+// TestYearlyRecurrenceDateDrift verifies that OriginalDay preserves the
+// intended day-of-month across non-leap years for yearly recurrence on Feb 29.
+func TestYearlyRecurrenceDateDrift(t *testing.T) {
+	r := &RecurrencePattern{
+		Interval:    1,
+		Unit:        RecurrenceYearly,
+		OriginalDay: 29,
+	}
+
+	// Feb 29, 2024 (leap year) → Feb 28, 2025 (clamped, non-leap)
+	feb29 := time.Date(2024, time.February, 29, 10, 0, 0, 0, time.UTC)
+	feb28 := calculateNextDate(feb29, r)
+	if feb28.Day() != 28 || feb28.Month() != time.February || feb28.Year() != 2025 {
+		t.Errorf("Feb 29 2024 + 1y = %v, want Feb 28 2025", feb28)
+	}
+
+	// Feb 28, 2025 → Feb 28, 2026 (clamped, non-leap; OriginalDay=29 but Feb has 28)
+	feb28_2026 := calculateNextDate(feb28, r)
+	if feb28_2026.Day() != 28 || feb28_2026.Month() != time.February || feb28_2026.Year() != 2026 {
+		t.Errorf("Feb 28 2025 (orig 29) + 1y = %v, want Feb 28 2026", feb28_2026)
+	}
+
+	// Feb 28, 2026 → Feb 28, 2027 (clamped, non-leap)
+	feb28_2027 := calculateNextDate(feb28_2026, r)
+	if feb28_2027.Day() != 28 || feb28_2027.Month() != time.February || feb28_2027.Year() != 2027 {
+		t.Errorf("Feb 28 2026 (orig 29) + 1y = %v, want Feb 28 2027", feb28_2027)
+	}
+
+	// Feb 28, 2027 → Feb 29, 2028 (restored via OriginalDay, leap year!)
+	feb29_2028 := calculateNextDate(feb28_2027, r)
+	if feb29_2028.Day() != 29 || feb29_2028.Month() != time.February || feb29_2028.Year() != 2028 {
+		t.Errorf("Feb 28 2027 (orig 29) + 1y = %v, want Feb 29 2028", feb29_2028)
+	}
+}
+
+// TestSetRecurrenceSetsOriginalDayForYearly verifies that SetRecurrence
+// populates OriginalDay from the task's DueDate for yearly patterns.
+func TestSetRecurrenceSetsOriginalDayForYearly(t *testing.T) {
+	due := time.Date(2024, time.February, 29, 0, 0, 0, 0, time.UTC)
+	task := &Task{DueDate: &due, Tags: []string{}, DependsOn: []string{}, RelatedTo: []string{}}
+
+	pattern := &RecurrencePattern{Interval: 1, Unit: RecurrenceYearly}
+	if err := task.SetRecurrence(pattern); err != nil {
+		t.Fatalf("SetRecurrence failed: %v", err)
+	}
+	if task.Recurrence.OriginalDay != 29 {
+		t.Errorf("OriginalDay = %d, want 29", task.Recurrence.OriginalDay)
+	}
+}
+
+// TestSetRecurrenceNoOriginalDayForNonMonthlyYearly verifies that SetRecurrence
+// does NOT set OriginalDay for non-monthly/yearly patterns.
+func TestSetRecurrenceNoOriginalDayForNonMonthlyYearly(t *testing.T) {
 	due := time.Date(2023, time.January, 31, 0, 0, 0, 0, time.UTC)
 	task := &Task{DueDate: &due, Tags: []string{}, DependsOn: []string{}, RelatedTo: []string{}}
 
