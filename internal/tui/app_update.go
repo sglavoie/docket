@@ -12,6 +12,28 @@ import (
 	"github.com/sglavoie/tt/internal/storage"
 )
 
+// keyInterceptor is implemented by overlay widgets that intercept key presses
+// and return (inputCmd, dismissed, resultMsg).
+type keyInterceptor interface {
+	handleKey(msg tea.KeyPressMsg) (tea.Cmd, bool, tea.Msg)
+}
+
+// dispatchOverlayKey forwards a key to an overlay and assembles the resulting
+// tea.Cmd. The caller is responsible for nil-checking the overlay before
+// calling and for niling the field when dismiss is true.
+func dispatchOverlayKey(overlay keyInterceptor, msg tea.KeyPressMsg) (dismiss bool, cmd tea.Cmd) {
+	inputCmd, dismissed, resultMsg := overlay.handleKey(msg)
+	var cmds []tea.Cmd
+	if inputCmd != nil {
+		cmds = append(cmds, inputCmd)
+	}
+	if resultMsg != nil {
+		captured := resultMsg
+		cmds = append(cmds, func() tea.Msg { return captured })
+	}
+	return dismissed, tea.Batch(cmds...)
+}
+
 func (m *AppModel) Update(msg tea.Msg) (outModel tea.Model, outCmd tea.Cmd) { //nolint:gocyclo
 	defer func() {
 		if r := recover(); r != nil {
@@ -82,172 +104,92 @@ func (m *AppModel) Update(msg tea.Msg) (outModel tea.Model, outCmd tea.Cmd) { //
 
 		// Intercept keys when quick note overlay is active
 		if m.quickNoteOverlay != nil {
-			inputCmd, dismiss, resultMsg := m.quickNoteOverlay.handleKey(msg)
+			dismiss, cmd := dispatchOverlayKey(m.quickNoteOverlay, msg)
 			if dismiss {
 				m.quickNoteOverlay = nil
 			}
-			var batchCmds []tea.Cmd
-			if inputCmd != nil {
-				batchCmds = append(batchCmds, inputCmd)
-			}
-			if resultMsg != nil {
-				captured := resultMsg
-				batchCmds = append(batchCmds, func() tea.Msg { return captured })
-			}
-			return m, tea.Batch(batchCmds...)
+			return m, cmd
 		}
 
 		// Intercept keys when global project picker overlay is active
 		if m.globalProjectPicker != nil {
-			inputCmd, dismiss, resultMsg := m.globalProjectPicker.handleKey(msg)
+			dismiss, cmd := dispatchOverlayKey(m.globalProjectPicker, msg)
 			if dismiss {
 				m.globalProjectPicker = nil
 			}
-			var batchCmds []tea.Cmd
-			if inputCmd != nil {
-				batchCmds = append(batchCmds, inputCmd)
-			}
-			if resultMsg != nil {
-				captured := resultMsg
-				batchCmds = append(batchCmds, func() tea.Msg { return captured })
-			}
-			return m, tea.Batch(batchCmds...)
+			return m, cmd
 		}
 
 		// Intercept keys when global task picker overlay is active
 		if m.globalTaskPicker != nil {
-			inputCmd, dismiss, resultMsg := m.globalTaskPicker.handleKey(msg)
+			dismiss, cmd := dispatchOverlayKey(m.globalTaskPicker, msg)
 			if dismiss {
 				m.globalTaskPicker = nil
 			}
-			var batchCmds []tea.Cmd
-			if inputCmd != nil {
-				batchCmds = append(batchCmds, inputCmd)
-			}
-			if resultMsg != nil {
-				captured := resultMsg
-				batchCmds = append(batchCmds, func() tea.Msg { return captured })
-			}
-			return m, tea.Batch(batchCmds...)
+			return m, cmd
 		}
 
 		// Intercept keys when status quick picker overlay is active
 		if m.statusQuickPicker != nil {
-			inputCmd, dismiss, resultMsg := m.statusQuickPicker.handleKey(msg)
+			dismiss, cmd := dispatchOverlayKey(m.statusQuickPicker, msg)
 			if dismiss {
 				m.statusQuickPicker = nil
 			}
-			var batchCmds []tea.Cmd
-			if inputCmd != nil {
-				batchCmds = append(batchCmds, inputCmd)
-			}
-			if resultMsg != nil {
-				captured := resultMsg
-				batchCmds = append(batchCmds, func() tea.Msg { return captured })
-			}
-			return m, tea.Batch(batchCmds...)
+			return m, cmd
 		}
 
 		// Intercept keys when section quick picker overlay is active
 		if m.sectionQuickPicker != nil {
-			inputCmd, dismiss, resultMsg := m.sectionQuickPicker.handleKey(msg)
+			dismiss, cmd := dispatchOverlayKey(m.sectionQuickPicker, msg)
 			if dismiss {
 				m.sectionQuickPicker = nil
 			}
-			var batchCmds []tea.Cmd
-			if inputCmd != nil {
-				batchCmds = append(batchCmds, inputCmd)
-			}
-			if resultMsg != nil {
-				captured := resultMsg
-				batchCmds = append(batchCmds, func() tea.Msg { return captured })
-			}
-			return m, tea.Batch(batchCmds...)
+			return m, cmd
 		}
 
 		// Intercept keys when link type quick picker overlay is active
 		if m.linkTypeQuickPicker != nil {
-			inputCmd, dismiss, resultMsg := m.linkTypeQuickPicker.handleKey(msg)
+			dismiss, cmd := dispatchOverlayKey(m.linkTypeQuickPicker, msg)
 			if dismiss {
 				m.linkTypeQuickPicker = nil
 			}
-			var batchCmds []tea.Cmd
-			if inputCmd != nil {
-				batchCmds = append(batchCmds, inputCmd)
-			}
-			if resultMsg != nil {
-				captured := resultMsg
-				batchCmds = append(batchCmds, func() tea.Msg { return captured })
-			}
-			return m, tea.Batch(batchCmds...)
+			return m, cmd
 		}
 
 		// Intercept keys when link mode quick picker overlay is active
 		if m.linkModeQuickPicker != nil {
-			inputCmd, dismiss, resultMsg := m.linkModeQuickPicker.handleKey(msg)
+			dismiss, cmd := dispatchOverlayKey(m.linkModeQuickPicker, msg)
 			if dismiss {
 				m.linkModeQuickPicker = nil
 			}
-			var batchCmds []tea.Cmd
-			if inputCmd != nil {
-				batchCmds = append(batchCmds, inputCmd)
-			}
-			if resultMsg != nil {
-				captured := resultMsg
-				batchCmds = append(batchCmds, func() tea.Msg { return captured })
-			}
-			return m, tea.Batch(batchCmds...)
+			return m, cmd
 		}
 
 		// Intercept keys when priority quick picker overlay is active
 		if m.priorityQuickPicker != nil {
-			inputCmd, dismiss, resultMsg := m.priorityQuickPicker.handleKey(msg)
+			dismiss, cmd := dispatchOverlayKey(m.priorityQuickPicker, msg)
 			if dismiss {
 				m.priorityQuickPicker = nil
 			}
-			var batchCmds []tea.Cmd
-			if inputCmd != nil {
-				batchCmds = append(batchCmds, inputCmd)
-			}
-			if resultMsg != nil {
-				captured := resultMsg
-				batchCmds = append(batchCmds, func() tea.Msg { return captured })
-			}
-			return m, tea.Batch(batchCmds...)
+			return m, cmd
 		}
 
 		// Intercept keys when due date quick picker overlay is active
 		if m.dueDateQuickPicker != nil {
-			inputCmd, dismiss, resultMsg := m.dueDateQuickPicker.handleKey(msg)
+			dismiss, cmd := dispatchOverlayKey(m.dueDateQuickPicker, msg)
 			if dismiss {
 				m.dueDateQuickPicker = nil
 			}
-			var batchCmds []tea.Cmd
-			if inputCmd != nil {
-				batchCmds = append(batchCmds, inputCmd)
-			}
-			if resultMsg != nil {
-				captured := resultMsg
-				batchCmds = append(batchCmds, func() tea.Msg { return captured })
-			}
-			return m, tea.Batch(batchCmds...)
+			return m, cmd
 		}
 
 		// Intercept keys when section change quick picker overlay is active
 		if m.sectionChangeQuickPicker != nil {
-			inputCmd, dismiss, resultMsg := m.sectionChangeQuickPicker.handleKey(msg)
+			dismiss, cmd := dispatchOverlayKey(m.sectionChangeQuickPicker, msg)
 			if dismiss {
 				m.sectionChangeQuickPicker = nil
 			}
-			var batchCmds []tea.Cmd
-			if inputCmd != nil {
-				batchCmds = append(batchCmds, inputCmd)
-			}
-			if resultMsg != nil {
-				captured := resultMsg
-				batchCmds = append(batchCmds, func() tea.Msg { return captured })
-			}
-			return m, tea.Batch(batchCmds...)
+			return m, cmd
 		}
 
 		// Intercept keys when semicolon-t sub-prefix is pending (;t → "m" move, "N" template, "d" due date, "s" section)
