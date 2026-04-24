@@ -130,204 +130,65 @@ func handleFilterAttrKey(key string, f *CommonFilterState) (newPrefix string, ha
 }
 
 // handleFilterAttrSeverityKey applies bug severity filter.
-func handleFilterAttrSeverityKey(key string, f *CommonFilterState) bool {
-	switch key {
-	case "c":
-		f.Attrs["bug.severity"] = string(models.BugSeverityCritical)
-		f.Type = models.TaskTypeBug
-	case "j":
-		f.Attrs["bug.severity"] = string(models.BugSeverityMajor)
-		f.Type = models.TaskTypeBug
-	case "m":
-		f.Attrs["bug.severity"] = string(models.BugSeverityMinor)
-		f.Type = models.TaskTypeBug
-	case "o":
-		f.Attrs["bug.severity"] = string(models.BugSeverityCosmetic)
-		f.Type = models.TaskTypeBug
-	case "0":
-		delete(f.Attrs, "bug.severity")
-	default:
-		return false
-	}
-	return true
+type filterAttrSpec struct {
+	attrName   string
+	typeFilter models.TaskType // zero value = don't set type filter
+	keyMap     map[string]string
 }
 
-// handleFilterAttrReproducibleKey applies bug reproducible filter.
-func handleFilterAttrReproducibleKey(key string, f *CommonFilterState) bool {
-	switch key {
-	case "y":
-		f.Attrs["bug.reproducible"] = string(models.BugReproducibleYes)
-		f.Type = models.TaskTypeBug
-	case "n":
-		f.Attrs["bug.reproducible"] = string(models.BugReproducibleNo)
-		f.Type = models.TaskTypeBug
-	case "s":
-		f.Attrs["bug.reproducible"] = string(models.BugReproducibleSometimes)
-		f.Type = models.TaskTypeBug
-	case "0":
-		delete(f.Attrs, "bug.reproducible")
-	default:
-		return false
-	}
-	return true
+var filterAttrSpecs = map[string]filterAttrSpec{
+	"Fas": {"bug.severity", models.TaskTypeBug, map[string]string{
+		"c": string(models.BugSeverityCritical), "j": string(models.BugSeverityMajor),
+		"m": string(models.BugSeverityMinor), "o": string(models.BugSeverityCosmetic),
+	}},
+	"Far": {"bug.reproducible", models.TaskTypeBug, map[string]string{
+		"y": string(models.BugReproducibleYes), "n": string(models.BugReproducibleNo),
+		"s": string(models.BugReproducibleSometimes),
+	}},
+	"Fae": {"effort", "", map[string]string{
+		"s": string(models.EffortSmall), "m": string(models.EffortMedium),
+		"l": string(models.EffortLarge), "u": string(models.EffortUnknown),
+	}},
+	"Fac": {"idea.category", models.TaskTypeIdea, map[string]string{
+		"f": string(models.IdeaCategoryFeature), "i": string(models.IdeaCategoryImprovement),
+		"r": string(models.IdeaCategoryRefactor), "s": string(models.IdeaCategoryResearch),
+	}},
+	"Fav": {"idea.value", models.TaskTypeIdea, map[string]string{
+		"l": string(models.IdeaValueLow), "m": string(models.IdeaValueMedium),
+		"h": string(models.IdeaValueHigh),
+	}},
+	"Faw": {"task.worktype", models.TaskTypeTask, map[string]string{
+		"d": string(models.WorkTypeDevelopment), "o": string(models.WorkTypeDocumentation),
+		"t": string(models.WorkTypeTesting), "v": string(models.WorkTypeDevOps),
+		"e": string(models.WorkTypeDesign),
+	}},
+	"Fao": {"epic.scope", models.TaskTypeEpic, map[string]string{
+		"d": string(models.EpicScopeDefined), "e": string(models.EpicScopeEvolving),
+		"u": string(models.EpicScopeUndefined),
+	}},
+	"Fap": {"story.points", models.TaskTypeStory, map[string]string{
+		"1": "1", "2": "2", "3": "3", "5": "5", "8": "8",
+	}},
 }
 
-// handleFilterAttrEffortKey applies effort filter.
-func handleFilterAttrEffortKey(key string, f *CommonFilterState) bool {
-	switch key {
-	case "s":
-		f.Attrs["effort"] = string(models.EffortSmall)
-	case "m":
-		f.Attrs["effort"] = string(models.EffortMedium)
-	case "l":
-		f.Attrs["effort"] = string(models.EffortLarge)
-	case "u":
-		f.Attrs["effort"] = string(models.EffortUnknown)
-	case "0":
-		delete(f.Attrs, "effort")
-	default:
-		return false
-	}
-	return true
-}
-
-// handleFilterAttrCategoryKey applies idea category filter.
-func handleFilterAttrCategoryKey(key string, f *CommonFilterState) bool {
-	switch key {
-	case "f":
-		f.Attrs["idea.category"] = string(models.IdeaCategoryFeature)
-		f.Type = models.TaskTypeIdea
-	case "i":
-		f.Attrs["idea.category"] = string(models.IdeaCategoryImprovement)
-		f.Type = models.TaskTypeIdea
-	case "r":
-		f.Attrs["idea.category"] = string(models.IdeaCategoryRefactor)
-		f.Type = models.TaskTypeIdea
-	case "s":
-		f.Attrs["idea.category"] = string(models.IdeaCategoryResearch)
-		f.Type = models.TaskTypeIdea
-	case "0":
-		delete(f.Attrs, "idea.category")
-	default:
-		return false
-	}
-	return true
-}
-
-// handleFilterAttrValueKey applies idea value filter.
-func handleFilterAttrValueKey(key string, f *CommonFilterState) bool {
-	switch key {
-	case "l":
-		f.Attrs["idea.value"] = string(models.IdeaValueLow)
-		f.Type = models.TaskTypeIdea
-	case "m":
-		f.Attrs["idea.value"] = string(models.IdeaValueMedium)
-		f.Type = models.TaskTypeIdea
-	case "h":
-		f.Attrs["idea.value"] = string(models.IdeaValueHigh)
-		f.Type = models.TaskTypeIdea
-	case "0":
-		delete(f.Attrs, "idea.value")
-	default:
-		return false
-	}
-	return true
-}
-
-// handleFilterAttrWorktypeKey applies task worktype filter.
-func handleFilterAttrWorktypeKey(key string, f *CommonFilterState) bool {
-	switch key {
-	case "d":
-		f.Attrs["task.worktype"] = string(models.WorkTypeDevelopment)
-		f.Type = models.TaskTypeTask
-	case "o":
-		f.Attrs["task.worktype"] = string(models.WorkTypeDocumentation)
-		f.Type = models.TaskTypeTask
-	case "t":
-		f.Attrs["task.worktype"] = string(models.WorkTypeTesting)
-		f.Type = models.TaskTypeTask
-	case "v":
-		f.Attrs["task.worktype"] = string(models.WorkTypeDevOps)
-		f.Type = models.TaskTypeTask
-	case "e":
-		f.Attrs["task.worktype"] = string(models.WorkTypeDesign)
-		f.Type = models.TaskTypeTask
-	case "0":
-		delete(f.Attrs, "task.worktype")
-	default:
-		return false
-	}
-	return true
-}
-
-// handleFilterAttrScopeKey applies epic scope filter.
-func handleFilterAttrScopeKey(key string, f *CommonFilterState) bool {
-	switch key {
-	case "d":
-		f.Attrs["epic.scope"] = string(models.EpicScopeDefined)
-		f.Type = models.TaskTypeEpic
-	case "e":
-		f.Attrs["epic.scope"] = string(models.EpicScopeEvolving)
-		f.Type = models.TaskTypeEpic
-	case "u":
-		f.Attrs["epic.scope"] = string(models.EpicScopeUndefined)
-		f.Type = models.TaskTypeEpic
-	case "0":
-		delete(f.Attrs, "epic.scope")
-	default:
-		return false
-	}
-	return true
-}
-
-// handleFilterAttrPointsKey applies story points filter.
-func handleFilterAttrPointsKey(key string, f *CommonFilterState) bool {
-	switch key {
-	case "1":
-		f.Attrs["story.points"] = "1"
-		f.Type = models.TaskTypeStory
-	case "2":
-		f.Attrs["story.points"] = "2"
-		f.Type = models.TaskTypeStory
-	case "3":
-		f.Attrs["story.points"] = "3"
-		f.Type = models.TaskTypeStory
-	case "5":
-		f.Attrs["story.points"] = "5"
-		f.Type = models.TaskTypeStory
-	case "8":
-		f.Attrs["story.points"] = "8"
-		f.Type = models.TaskTypeStory
-	case "0":
-		delete(f.Attrs, "story.points")
-	default:
-		return false
-	}
-	return true
-}
-
-// handleFilterAttrSubKey dispatches attribute sub-prefix keys to the appropriate handler.
-// Returns true if the key was handled.
 func handleFilterAttrSubKey(prefix, key string, f *CommonFilterState) bool {
-	switch prefix {
-	case "Fas":
-		return handleFilterAttrSeverityKey(key, f)
-	case "Far":
-		return handleFilterAttrReproducibleKey(key, f)
-	case "Fae":
-		return handleFilterAttrEffortKey(key, f)
-	case "Fac":
-		return handleFilterAttrCategoryKey(key, f)
-	case "Fav":
-		return handleFilterAttrValueKey(key, f)
-	case "Faw":
-		return handleFilterAttrWorktypeKey(key, f)
-	case "Fao":
-		return handleFilterAttrScopeKey(key, f)
-	case "Fap":
-		return handleFilterAttrPointsKey(key, f)
+	spec, ok := filterAttrSpecs[prefix]
+	if !ok {
+		return false
 	}
-	return false
+	if key == "0" {
+		delete(f.Attrs, spec.attrName)
+		return true
+	}
+	val, ok := spec.keyMap[key]
+	if !ok {
+		return false
+	}
+	f.Attrs[spec.attrName] = val
+	if spec.typeFilter != "" {
+		f.Type = spec.typeFilter
+	}
+	return true
 }
 
 // handleFilterScoreKey applies a score threshold filter based on the key pressed.
