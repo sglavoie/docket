@@ -228,4 +228,136 @@ func TestBuildEvaluationContext(t *testing.T) {
 			t.Error("ctx.Changes[0].Previous should be nil when no previous state")
 		}
 	})
+
+	t.Run("excludes unchanged tasks from Changes", func(t *testing.T) {
+		changed := testutil.NewTestTaskWithStatus("Changed", models.StatusDone)
+		unchanged := testutil.NewTestTaskWithStatus("Unchanged", models.StatusTodo)
+
+		// Previous state: changed was Todo, unchanged was Todo
+		prevChanged := testutil.NewTestTaskWithStatus("Changed", models.StatusTodo)
+		prevChanged.ID = changed.ID
+		prevUnchanged := testutil.NewTestTaskWithStatus("Unchanged", models.StatusTodo)
+		prevUnchanged.ID = unchanged.ID
+
+		prevStates := map[string]*models.Task{
+			changed.ID:   prevChanged,
+			unchanged.ID: prevUnchanged,
+		}
+
+		tasks := []*models.Task{changed, unchanged}
+		ctx := BuildEvaluationContext(tasks, prevStates, "Test", "t1")
+
+		// Only the changed task should be in Changes
+		if len(ctx.Changes) != 1 {
+			t.Fatalf("ctx.Changes length = %d, want 1 (unchanged task should be excluded)", len(ctx.Changes))
+		}
+		if ctx.Changes[0].Task.ID != changed.ID {
+			t.Errorf("ctx.Changes[0].Task.ID = %s, want %s", ctx.Changes[0].Task.ID, changed.ID)
+		}
+
+		// AllTasks and TaskMap should still include all tasks
+		if len(ctx.AllTasks) != 2 {
+			t.Errorf("ctx.AllTasks length = %d, want 2", len(ctx.AllTasks))
+		}
+		if len(ctx.TaskMap) != 2 {
+			t.Errorf("ctx.TaskMap length = %d, want 2", len(ctx.TaskMap))
+		}
+	})
+}
+
+func TestCmdTaskStateChanged(t *testing.T) {
+	t.Run("nil prev means changed", func(t *testing.T) {
+		task := testutil.NewTestTaskWithStatus("Task", models.StatusTodo)
+		if !cmdTaskStateChanged(task, nil) {
+			t.Error("expected changed when prev is nil")
+		}
+	})
+
+	t.Run("same state means unchanged", func(t *testing.T) {
+		task := testutil.NewTestTaskWithStatus("Task", models.StatusTodo)
+		task.Priority = 3
+		task.Tags = []string{"a", "b"}
+		prev := testutil.NewTestTaskWithStatus("Task", models.StatusTodo)
+		prev.ID = task.ID
+		prev.Priority = 3
+		prev.Tags = []string{"a", "b"}
+		if cmdTaskStateChanged(task, prev) {
+			t.Error("expected unchanged when all fields match")
+		}
+	})
+
+	t.Run("status change detected", func(t *testing.T) {
+		task := testutil.NewTestTaskWithStatus("Task", models.StatusDone)
+		prev := testutil.NewTestTaskWithStatus("Task", models.StatusTodo)
+		prev.ID = task.ID
+		if !cmdTaskStateChanged(task, prev) {
+			t.Error("expected changed when status differs")
+		}
+	})
+
+	t.Run("priority change detected", func(t *testing.T) {
+		task := testutil.NewTestTaskWithStatus("Task", models.StatusTodo)
+		task.Priority = 1
+		prev := testutil.NewTestTaskWithStatus("Task", models.StatusTodo)
+		prev.ID = task.ID
+		prev.Priority = 3
+		if !cmdTaskStateChanged(task, prev) {
+			t.Error("expected changed when priority differs")
+		}
+	})
+
+	t.Run("tag change detected", func(t *testing.T) {
+		task := testutil.NewTestTaskWithStatus("Task", models.StatusTodo)
+		task.Tags = []string{"a", "b", "c"}
+		prev := testutil.NewTestTaskWithStatus("Task", models.StatusTodo)
+		prev.ID = task.ID
+		prev.Tags = []string{"a", "b"}
+		if !cmdTaskStateChanged(task, prev) {
+			t.Error("expected changed when tags differ")
+		}
+	})
+
+	t.Run("due date added detected", func(t *testing.T) {
+		task := testutil.NewTestTaskWithStatus("Task", models.StatusTodo)
+		now := time.Now()
+		task.DueDate = &now
+		prev := testutil.NewTestTaskWithStatus("Task", models.StatusTodo)
+		prev.ID = task.ID
+		if !cmdTaskStateChanged(task, prev) {
+			t.Error("expected changed when due date added")
+		}
+	})
+
+	t.Run("due date removed detected", func(t *testing.T) {
+		task := testutil.NewTestTaskWithStatus("Task", models.StatusTodo)
+		prev := testutil.NewTestTaskWithStatus("Task", models.StatusTodo)
+		prev.ID = task.ID
+		now := time.Now()
+		prev.DueDate = &now
+		if !cmdTaskStateChanged(task, prev) {
+			t.Error("expected changed when due date removed")
+		}
+	})
+
+	t.Run("section change detected", func(t *testing.T) {
+		task := testutil.NewTestTaskWithStatus("Task", models.StatusTodo)
+		task.Section = models.SectionNext
+		prev := testutil.NewTestTaskWithStatus("Task", models.StatusTodo)
+		prev.ID = task.ID
+		prev.Section = models.SectionInbox
+		if !cmdTaskStateChanged(task, prev) {
+			t.Error("expected changed when section differs")
+		}
+	})
+
+	t.Run("type change detected", func(t *testing.T) {
+		task := testutil.NewTestTaskWithStatus("Task", models.StatusTodo)
+		task.Type = models.TaskTypeBug
+		prev := testutil.NewTestTaskWithStatus("Task", models.StatusTodo)
+		prev.ID = task.ID
+		prev.Type = models.TaskTypeTask
+		if !cmdTaskStateChanged(task, prev) {
+			t.Error("expected changed when type differs")
+		}
+	})
 }

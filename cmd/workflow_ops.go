@@ -79,15 +79,20 @@ func copyTaskState(task *models.Task) *models.Task {
 
 // BuildEvaluationContext creates an evaluation context for workflow rules.
 // projectName and projectID are used for scope matching on rules.
+// Only tasks that actually changed (or are new) are included in the Changes
+// list so that state-based rules don't re-fire on every CLI operation.
 func BuildEvaluationContext(tasks []*models.Task, prevStates map[string]*models.Task, projectName, projectID string) *workflow.EvaluationContext {
-	changes := make([]workflow.TaskChangeContext, len(tasks))
 	taskMap := make(map[string]*models.Task, len(tasks))
+	var changes []workflow.TaskChangeContext
 
-	for i, task := range tasks {
+	for _, task := range tasks {
 		taskMap[task.ID] = task
-		changes[i] = workflow.TaskChangeContext{
-			Task:     task,
-			Previous: prevStates[task.ID], // nil if task is new
+		prev := prevStates[task.ID]
+		if prev == nil || cmdTaskStateChanged(task, prev) {
+			changes = append(changes, workflow.TaskChangeContext{
+				Task:     task,
+				Previous: prev,
+			})
 		}
 	}
 
@@ -98,6 +103,41 @@ func BuildEvaluationContext(tasks []*models.Task, prevStates map[string]*models.
 		ProjectName: projectName,
 		ProjectID:   projectID,
 	}
+}
+
+// cmdTaskStateChanged returns true if the task's workflow-relevant state changed.
+// This mirrors the TUI's taskStateChanged in project_tree_commands.go.
+func cmdTaskStateChanged(current, prev *models.Task) bool {
+	if prev == nil {
+		return true
+	}
+	if current.Status != prev.Status ||
+		current.Priority != prev.Priority ||
+		current.Section != prev.Section ||
+		current.CustomSection != prev.CustomSection ||
+		current.Type != prev.Type {
+		return true
+	}
+	// Detect due date changes (added, removed, or modified)
+	switch {
+	case current.DueDate == nil && prev.DueDate == nil:
+		// no change
+	case current.DueDate == nil || prev.DueDate == nil:
+		return true // one is nil, the other is not
+	default:
+		if !current.DueDate.Equal(*prev.DueDate) {
+			return true
+		}
+	}
+	if len(current.Tags) != len(prev.Tags) {
+		return true
+	}
+	for i, tag := range current.Tags {
+		if tag != prev.Tags[i] {
+			return true
+		}
+	}
+	return false
 }
 
 // WorkflowEvalResult holds the result of evaluating workflow rules for a project.
