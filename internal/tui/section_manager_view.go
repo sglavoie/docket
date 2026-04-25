@@ -48,6 +48,7 @@ func (m *SectionManagerModel) renderSectionList() string {
 		cursor := "  "
 		style := TagManagerItemStyle
 		if i == m.cursor {
+			cursor = "> "
 			style = TagManagerItemSelectedStyle
 		}
 
@@ -105,9 +106,9 @@ func (m *SectionManagerModel) footerHelp() string {
 		return "enter add · esc cancel"
 	}
 	if len(m.sections) > 0 {
-		return "j/k nav · enter filter · g go to · a add · r rename · c color · d del · q close"
+		return "j/k nav · enter filter · g go to · a add · r rename · c color · d del · esc close"
 	}
-	return "a add · q close"
+	return "a add · esc close"
 }
 
 func (m *SectionManagerModel) HasTextInput() bool { return m.renameMode || m.addMode }

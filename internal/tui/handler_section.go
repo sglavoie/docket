@@ -282,6 +282,7 @@ func (m *AppModel) handleSectionMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 
 	case CloseSectionManagerMsg:
 		m.popView()
+		m.reloadAndRefreshProjectTree()
 		return true, nil
 
 	case GoToSectionMsg:
@@ -300,6 +301,12 @@ func (m *AppModel) handleSectionMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 		return true, nil
 
 	case SectionRenamedMsg, SectionAddedMsg, SectionRemovedMsg:
+		if m.currentView() == ViewSectionManager {
+			// Let the message fall through to delegateToCurrentView
+			// so the section manager stays open and rebuilds its list.
+			// Project tree reload happens on CloseSectionManagerMsg.
+			return false, nil
+		}
 		m.popView()
 		m.reloadAndRefreshProjectTree()
 		return true, nil

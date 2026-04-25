@@ -25,7 +25,10 @@ func (m *SectionManagerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) { //nolin
 		return m, nil
 
 	case SectionRenamedMsg, SectionAddedMsg, SectionRemovedMsg:
-		return m, closeSectionManagerCmd()
+		m.buildSectionList()
+		m.renameMode = false
+		m.addMode = false
+		return m, nil
 
 	case SectionColorChangedMsg:
 		m.buildSectionList()
