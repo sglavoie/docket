@@ -39,7 +39,7 @@ func TestTaskForm_TabSwitchBackward(t *testing.T) {
 
 func TestTaskForm_TabSwitchWrapsForward(t *testing.T) {
 	m := newTestTaskForm()
-	for i := 0; i < formTabCount; i++ {
+	for range formTabCount {
 		m = sendFormKey(m, syntheticKey(']'))
 	}
 	if m.activeTab != formTabBasics {
@@ -62,7 +62,7 @@ func TestTaskForm_TabSwitchResetsFocusIndex(t *testing.T) {
 func TestTaskForm_FocusCyclesForward_Basics(t *testing.T) {
 	m := newTestTaskForm()
 	count := m.fieldCountForActiveTab()
-	for i := 0; i < count; i++ {
+	for range count {
 		m = sendFormKey(m, syntheticSpecialKey(tea.KeyTab))
 	}
 	if m.focusIndex != 0 {
@@ -81,7 +81,7 @@ func TestTaskForm_FocusCyclesBackward_Basics(t *testing.T) {
 
 func TestTaskForm_FocusNoOpOnEmptyTab(t *testing.T) {
 	m := newTestTaskForm()
-	for i := 0; i < formTabCount; i++ {
+	for range formTabCount {
 		m = sendFormKey(m, syntheticKey(']'))
 	}
 	m.activeTab = formTabChildren

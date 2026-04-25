@@ -15,7 +15,7 @@ import (
 func splitSemicolonDedup(value string) []string {
 	seen := make(map[string]bool)
 	var result []string
-	for _, item := range strings.Split(value, ";") {
+	for item := range strings.SplitSeq(value, ";") {
 		item = strings.TrimSpace(item)
 		if item != "" && !seen[item] {
 			seen[item] = true
@@ -43,7 +43,7 @@ func parseIntOrWarn(value, field string, warnings *[]ParseWarning) (int, bool) {
 // parseAttachments parses a semicolon-delimited attachment string into Attachment structs.
 func parseAttachments(value string, warnings *[]ParseWarning) []models.Attachment {
 	var result []models.Attachment
-	for _, att := range strings.Split(value, ";") {
+	for att := range strings.SplitSeq(value, ";") {
 		att = strings.TrimSpace(att)
 		if att == "" {
 			continue

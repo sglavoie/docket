@@ -71,7 +71,7 @@ func (m *AppModel) resolveExportProject(msg ExportProjectMsg) *models.Project {
 	if msg.Project != nil {
 		return msg.Project
 	}
-	switch m.currentView() {
+	switch m.currentView() { //nolint:exhaustive // only a few views support project export
 	case ViewDashboard:
 		return m.dashboard.SelectedProject()
 	case ViewProjectTree:

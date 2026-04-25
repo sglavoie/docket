@@ -192,23 +192,23 @@ func TestConfigVersionBump_V1toV2(t *testing.T) {
 	configPath := filepath.Join(tmpDir, "v1-config.json")
 
 	// Write a v1 config with legacy palette fields.
-	v1 := map[string]interface{}{
+	v1 := map[string]any{
 		"version":              1,
 		"data_dir":             tmpDir,
 		"editor":               "vim",
 		"default_context":      "work",
 		"tui_background_color": "#abcdef",
-		"palette": map[string]interface{}{
+		"palette": map[string]any{
 			"primary": "#123456",
 		},
-		"projects": []interface{}{},
+		"projects": []any{},
 	}
 	data, err := json.MarshalIndent(v1, "", "  ")
 	if err != nil {
 		t.Fatalf("marshal v1 config: %v", err)
 	}
-	if err := os.WriteFile(configPath, data, 0o600); err != nil {
-		t.Fatalf("write v1 config: %v", err)
+	if wErr := os.WriteFile(configPath, data, 0o600); wErr != nil {
+		t.Fatalf("write v1 config: %v", wErr)
 	}
 
 	manager := NewManager(configPath)

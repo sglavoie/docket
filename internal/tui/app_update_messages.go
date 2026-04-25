@@ -41,7 +41,7 @@ func (m *AppModel) handleGlobalMessage(msg tea.Msg) (bool, tea.Cmd) {
 		m.spinner, cmd = m.spinner.Update(msg)
 		return true, cmd
 	case ClearSemicolonPrefixMsg:
-		if !(m.pendingSemicolonPrefix || m.pendingSemicolonTPrefix) {
+		if !m.pendingSemicolonPrefix && !m.pendingSemicolonTPrefix {
 			return true, nil
 		}
 		m.pendingSemicolonPrefix = false

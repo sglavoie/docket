@@ -73,7 +73,7 @@ func overlayPopup(base, popup string, baseWidth, baseHeight, startCol int) strin
 
 func popupWidth(popup string) int {
 	width := 0
-	for _, line := range strings.Split(popup, "\n") {
+	for line := range strings.SplitSeq(popup, "\n") {
 		if lineWidth := lipgloss.Width(line); lineWidth > width {
 			width = lineWidth
 		}

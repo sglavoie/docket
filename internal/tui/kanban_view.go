@@ -25,6 +25,8 @@ func joinWithActiveColBorders(parts []string, sep string, activeVisIdx int, acce
 }
 
 // kanbanRender renders the full kanban view as a string.
+//
+//nolint:gocyclo // rendering hub with many layout branches
 func kanbanRender(m *KanbanModel) string {
 	if m.width == 0 || m.height == 0 {
 		return "Kanban loading..."
@@ -85,10 +87,7 @@ func kanbanRender(m *KanbanModel) string {
 	if maxVisible < 1 {
 		maxVisible = 1
 	}
-	numVisible := numCols
-	if numVisible > maxVisible {
-		numVisible = maxVisible
-	}
+	numVisible := min(numCols, maxVisible)
 
 	// Clamp horizontal scroll offset.
 	startCol := m.colScrollOff

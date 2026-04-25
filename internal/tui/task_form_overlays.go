@@ -29,6 +29,8 @@ const (
 // Returns empty string if no overlay is active.
 func (m *TaskFormModel) renderFormOverlay() string {
 	switch m.activeOverlay {
+	case formOverlayNone:
+		return ""
 	case formOverlayType:
 		if m.typePicker != nil {
 			return m.typePicker.render(m.width, m.draft.taskType)
@@ -97,7 +99,7 @@ func (m *TaskFormModel) handleFormOverlayKey(msg tea.KeyPressMsg) (tea.Cmd, bool
 	if dismiss {
 		// When canceling a brand-new item, remove it from the draft.
 		if result == nil && m.childrenAddingNew {
-			switch m.activeOverlay {
+			switch m.activeOverlay { //nolint:exhaustive // only checklist/subtask overlays have items to remove
 			case formOverlayChecklistEdit:
 				if m.childrenEditIdx >= 0 && m.childrenEditIdx < len(m.draft.checklist) {
 					m.draft.checklist = append(

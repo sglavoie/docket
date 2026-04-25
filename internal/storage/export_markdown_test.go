@@ -532,7 +532,7 @@ func TestExportProjectMarkdown_TasksAndNotesCombined(t *testing.T) {
 	if taskPos < 0 || sepPos < 0 || notesPos < 0 {
 		t.Fatalf("expected task, separator, and notes in output: %q", s)
 	}
-	if !(taskPos < sepPos && sepPos < notesPos) {
+	if taskPos >= sepPos || sepPos >= notesPos {
 		t.Errorf("expected task < --- < # Notes ordering: task=%d sep=%d notes=%d", taskPos, sepPos, notesPos)
 	}
 }

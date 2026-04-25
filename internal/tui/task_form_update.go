@@ -8,6 +8,7 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 )
 
+//nolint:gocyclo // main Update dispatch
 func (m *TaskFormModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	// ── External overlay results ───────────────────────────────────────────────

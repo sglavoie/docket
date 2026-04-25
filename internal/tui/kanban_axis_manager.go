@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
@@ -31,13 +32,7 @@ func (m *KanbanModel) toggleAxisMode(mode KanbanMode) {
 	enabled := m.enabledModeList()
 
 	// Check if mode is currently enabled
-	isEnabled := false
-	for _, em := range enabled {
-		if em == mode {
-			isEnabled = true
-			break
-		}
-	}
+	isEnabled := slices.Contains(enabled, mode)
 
 	if isEnabled {
 		// Guard: don't disable last enabled mode
@@ -79,13 +74,7 @@ func (m *KanbanModel) toggleAxisMode(mode KanbanMode) {
 	}
 
 	// If current mode is no longer enabled, switch to first enabled mode
-	currentEnabled := false
-	for _, em := range m.enabledModeList() {
-		if em == m.mode {
-			currentEnabled = true
-			break
-		}
-	}
+	currentEnabled := slices.Contains(m.enabledModeList(), m.mode)
 	if !currentEnabled && len(m.enabledModeList()) > 0 {
 		m.mode = m.enabledModeList()[0]
 		m.rebuildCols()

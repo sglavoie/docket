@@ -48,7 +48,7 @@ func FindTaskByIdentifier(project *models.Project, identifier string) (*models.T
 		// Build candidate list (show up to 5)
 		limit := min(len(matches), 5)
 		parts := make([]string, limit)
-		for i := 0; i < limit; i++ {
+		for i := range limit {
 			parts[i] = fmt.Sprintf("#%d %s", matches[i].ShortID, matches[i].Title)
 		}
 		candidates := strings.Join(parts, ", ")

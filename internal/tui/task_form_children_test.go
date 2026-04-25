@@ -120,7 +120,7 @@ func TestTaskForm_Children_ChecklistEdit_Cancel_RemovesNewItem(t *testing.T) {
 		t.Error("overlay should be dismissed after Esc")
 	}
 	if len(m.draft.checklist) != 0 {
-		t.Errorf("cancelled new checklist item should be removed; got %d items", len(m.draft.checklist))
+		t.Errorf("canceled new checklist item should be removed; got %d items", len(m.draft.checklist))
 	}
 }
 
@@ -256,7 +256,7 @@ func TestTaskForm_Children_SubtaskEdit_Cancel_RemovesNewSubtask(t *testing.T) {
 	m = sendFormKey(m, syntheticCtrlKey('t'))
 	m = sendFormKey(m, syntheticSpecialKey(tea.KeyEscape))
 	if len(m.draft.subtasks) != 0 {
-		t.Errorf("cancelled new subtask should be removed; got %d", len(m.draft.subtasks))
+		t.Errorf("canceled new subtask should be removed; got %d", len(m.draft.subtasks))
 	}
 }
 

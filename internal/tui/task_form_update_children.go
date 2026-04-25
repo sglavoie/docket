@@ -57,6 +57,8 @@ func (m *TaskFormModel) handleChildrenEnter() tea.Cmd {
 
 	kind, idx := m.focusedChildItem()
 	switch kind {
+	case childFocusNone:
+		return nil
 	case childFocusChecklistItem:
 		m.childrenEditIdx = idx
 		m.childrenAddingNew = false

@@ -51,9 +51,9 @@ func runThemeImport(cmd *cobra.Command, args []string) error {
 	if filepath.IsAbs(arg) || strings.ContainsAny(arg, `/\`) || strings.HasSuffix(arg, ".json") {
 		filePath = arg
 	} else {
-		p, err := configManager.ThemePath(arg)
-		if err != nil {
-			return err
+		p, themeErr := configManager.ThemePath(arg)
+		if themeErr != nil {
+			return themeErr
 		}
 		filePath = p
 	}

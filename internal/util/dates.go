@@ -258,7 +258,7 @@ func parseTimeOfDay(s string) (int, int, error) {
 }
 
 // splitDateTimeInput splits a lowercased input into (datePart, timePart).
-// timePart is non-empty only when the last word of input is a recognised time
+// timePart is non-empty only when the last word of input is a recognized time
 // token (12h or 24h). If the entire input is a time token, datePart is "".
 func splitDateTimeInput(input string) (datePart, timePart string) {
 	idx := strings.LastIndex(input, " ")

@@ -85,7 +85,7 @@ func NewCrossProjectKanbanModel(
 	return m
 }
 
-// newKanbanBase initialises fields common to both constructors.
+// newKanbanBase initializes fields common to both constructors.
 func newKanbanBase(cfg *config.Config, cfgMgr *config.Manager, svc *ProjectService) *KanbanModel {
 	ks := cfg.KanbanSettings
 	mode := KanbanModeFromID(ks.DefaultMode)
@@ -285,12 +285,4 @@ func (m *KanbanModel) enabledModeList() []KanbanMode {
 		return AllKanbanModes()
 	}
 	return m.enabledModes
-}
-
-// max returns the larger of two ints.
-func max(a, b int) int {
-	if a > b {
-		return a
-	}
-	return b
 }

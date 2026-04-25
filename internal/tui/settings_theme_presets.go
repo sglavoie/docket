@@ -214,6 +214,8 @@ func (m *SettingsModel) execPresetReset() tea.Cmd {
 // Must be called with the full KeyPressMsg so the save-mode textinput can be updated.
 func (m *SettingsModel) handlePresetKey(msg tea.KeyPressMsg) (bool, tea.Cmd) {
 	switch m.themePresetMode {
+	case presetModeNone:
+		return false, nil
 	case presetModeSave:
 		return m.handlePresetSaveKey(msg)
 	case presetModeLoad:
@@ -300,6 +302,8 @@ func (m *SettingsModel) handlePresetResetKey(key string) (bool, tea.Cmd) {
 // or empty string when no overlay is active.
 func (m *SettingsModel) renderPresetOverlay() string {
 	switch m.themePresetMode {
+	case presetModeNone:
+		return ""
 	case presetModeSave:
 		return m.renderPresetSaveOverlay()
 	case presetModeLoad:
@@ -356,7 +360,7 @@ func (m *SettingsModel) renderPresetResetOverlay() string {
 	var b strings.Builder
 	b.WriteString(SubtitleStyle.Render("Reset Palette Slot"))
 	b.WriteString("\n\n")
-	b.WriteString(fmt.Sprintf("Clear all %s palette colors back to defaults?\n", m.activeTheme))
+	fmt.Fprintf(&b, "Clear all %s palette colors back to defaults?\n", m.activeTheme)
 	b.WriteString("\n")
 	b.WriteString(MutedStyle.Render("y/Y Confirm · n/N/Esc Cancel"))
 	return OverlayBoxStyle.Render(b.String())

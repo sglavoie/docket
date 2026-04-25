@@ -467,7 +467,7 @@ type AppModel struct {
 	peekTask   *models.Task
 	peekActive bool
 
-	// Export state for repeat-press clipboard behaviour.
+	// Export state for repeat-press clipboard behavior.
 	lastExportPath string
 	lastExportAt   time.Time
 }

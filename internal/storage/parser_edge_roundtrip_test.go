@@ -63,7 +63,7 @@ func TestRoundTrip_DeepHierarchyPastLevel6(t *testing.T) {
 
 	content := WriteTasksMarkdown("Deep Test", tasks)
 
-	for _, line := range strings.Split(content, "\n") {
+	for line := range strings.SplitSeq(content, "\n") {
 		if strings.HasPrefix(line, "#") {
 			hashes := 0
 			for _, c := range line {

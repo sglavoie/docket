@@ -13,6 +13,7 @@ import (
 	"github.com/sglavoie/tt/internal/storage"
 )
 
+//nolint:gocyclo // table-driven test with many subtests
 func TestRunUndo(t *testing.T) {
 	t.Run("restores from undo history", func(t *testing.T) {
 		tmpDir := t.TempDir()

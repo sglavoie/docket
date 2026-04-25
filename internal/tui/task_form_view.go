@@ -54,10 +54,7 @@ func (m *TaskFormModel) View() tea.View {
 
 		if m.width >= helpPaneMinWidth {
 			// Two-column: form content left, help pane right.
-			helpWidth := m.width * 35 / 100
-			if helpWidth > 30 {
-				helpWidth = 30
-			}
+			helpWidth := min(m.width*35/100, 30)
 			if helpWidth < 20 {
 				helpWidth = 20
 			}

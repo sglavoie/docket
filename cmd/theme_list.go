@@ -62,9 +62,9 @@ func runThemeList(cmd *cobra.Command, args []string) error {
 	}
 
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	fmt.Fprintln(w, "NAME\tVARIANT\tCREATED")
+	_, _ = fmt.Fprintln(w, "NAME\tVARIANT\tCREATED")
 	for _, tf := range themes {
-		fmt.Fprintf(w, "%s\t%s\t%s\n", tf.Name, tf.Variant, tf.CreatedAt.Format("2006-01-02 15:04:05"))
+		_, _ = fmt.Fprintf(w, "%s\t%s\t%s\n", tf.Name, tf.Variant, tf.CreatedAt.Format("2006-01-02 15:04:05"))
 	}
 	_ = w.Flush()
 	return nil

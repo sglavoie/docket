@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"maps"
 	"strconv"
 	"strings"
 
@@ -60,9 +61,7 @@ func NewScoreEditorModel(task *models.Task, project *models.Project, cfg *config
 	// Snapshot current ScoreDimensions so 'd' (reset) can recompute
 	// without mutating the live task before save.
 	scratchDims := make(map[string]int, len(task.ScoreDimensions))
-	for k, v := range task.ScoreDimensions {
-		scratchDims[k] = v
-	}
+	maps.Copy(scratchDims, task.ScoreDimensions)
 
 	return &ScoreEditorModel{
 		task:        task,

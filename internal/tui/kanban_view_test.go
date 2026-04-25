@@ -9,7 +9,7 @@ import (
 )
 
 // newRenderKanban builds a minimal KanbanModel ready for rendering tests.
-// cols is set directly; FilterMixin is initialised so filteredCards() works.
+// cols is set directly; FilterMixin is initialized so filteredCards() works.
 func newRenderKanban(width, height int, cols []KanbanColumn) *KanbanModel {
 	cfg := testutil.NewTestConfig()
 	m := &KanbanModel{
@@ -28,7 +28,7 @@ func newRenderKanban(width, height int, cols []KanbanColumn) *KanbanModel {
 func makeColN(id string, n int) KanbanColumn {
 	proj := testutil.NewTestProject("p")
 	col := KanbanColumn{ID: id, Label: id, Icon: "·"}
-	for i := 0; i < n; i++ {
+	for range n {
 		t := testutil.NewTestTask("A title that may be long", models.TaskTypeTask)
 		col.Tasks = append(col.Tasks, KanbanCard{Task: t, Project: proj})
 	}

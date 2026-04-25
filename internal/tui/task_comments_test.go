@@ -206,7 +206,7 @@ func TestTaskCommentsEditExternalEditorFromEditModeOOB(t *testing.T) {
 		t.Fatal("expected non-nil error command when editIndex is out of bounds")
 	}
 	if model.editMode {
-		t.Fatal("expected editMode to be cancelled when comment was deleted externally")
+		t.Fatal("expected editMode to be canceled when comment was deleted externally")
 	}
 }
 
@@ -239,7 +239,7 @@ func TestTaskCommentsSaveEditOOBAfterExternalDeletion(t *testing.T) {
 		t.Fatal("expected non-nil error command when editIndex is out of bounds")
 	}
 	if model.editMode {
-		t.Fatal("expected editMode to be cancelled when comment was deleted externally")
+		t.Fatal("expected editMode to be canceled when comment was deleted externally")
 	}
 }
 

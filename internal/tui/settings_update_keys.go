@@ -268,6 +268,7 @@ func (m *SettingsModel) togglePaletteTheme() {
 	}
 }
 
+//nolint:gocyclo // toggles across many setting categories
 func (m *SettingsModel) handleSpaceKey() {
 	tab := tabForField(m.focusIndex)
 	local := m.focusIndex - tabFieldStart[tab]

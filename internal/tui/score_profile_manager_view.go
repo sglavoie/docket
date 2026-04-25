@@ -70,9 +70,7 @@ func (m *ScoreProfileManagerModel) View() tea.View {
 	if m.pickingPreset {
 		lines = append(lines, "")
 		lines = append(lines, titleStyle.Render("Select preset to add:"))
-		for _, optionLine := range m.renderPresetOptions() {
-			lines = append(lines, optionLine)
-		}
+		lines = append(lines, m.renderPresetOptions()...)
 	}
 
 	if m.statusMessage != "" {
@@ -147,6 +145,8 @@ func (m *ScoreProfileManagerModel) buildDetailPane(p *scoring.ScoringProfile, ma
 	for _, d := range p.Dimensions {
 		roleStr := ""
 		switch d.Role {
+		case scoring.RoleNone:
+			// no role suffix
 		case scoring.RoleNumerator:
 			roleStr = " [num]"
 		case scoring.RoleDenominator:

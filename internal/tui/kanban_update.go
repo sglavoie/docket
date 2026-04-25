@@ -26,6 +26,8 @@ func (m *KanbanModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 // handleKanbanKey dispatches key press events for the kanban view.
+//
+//nolint:gocyclo // key dispatch hub
 func (m *KanbanModel) handleKanbanKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	if m.showAxisManager {
 		return m.handleAxisManagerKey(msg)
@@ -373,10 +375,7 @@ func (m *KanbanModel) adjustHorizontalScroll() {
 	if maxVisible < 1 {
 		maxVisible = 1
 	}
-	numVisible := numCols
-	if numVisible > maxVisible {
-		numVisible = maxVisible
-	}
+	numVisible := min(numCols, maxVisible)
 
 	// Active column scrolled past right edge.
 	if m.activeCol >= m.colScrollOff+numVisible {

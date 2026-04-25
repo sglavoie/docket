@@ -33,7 +33,7 @@ func (m *KanbanModel) renderKanbanDetailPane() string {
 	sb.WriteString(strings.Repeat("─", w) + "\n")
 
 	if card == nil {
-		for i := 0; i < paneH; i++ {
+		for range paneH {
 			sb.WriteString("\n")
 		}
 		return sb.String()

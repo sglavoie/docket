@@ -25,7 +25,7 @@ func newTestKanban(cols []KanbanColumn) *KanbanModel {
 func makeCol(id string, n int) KanbanColumn {
 	proj := testutil.NewTestProject("p")
 	col := KanbanColumn{ID: id, Label: id}
-	for i := 0; i < n; i++ {
+	for range n {
 		t := testutil.NewTestTask("task", models.TaskTypeTask)
 		col.Tasks = append(col.Tasks, KanbanCard{Task: t, Project: proj})
 	}

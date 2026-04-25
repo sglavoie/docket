@@ -232,7 +232,7 @@ func TestTaskChecklistEditExternalEditorFromEditModeOOB(t *testing.T) {
 		t.Fatal("expected non-nil error command when editIndex is out of bounds")
 	}
 	if model.editMode {
-		t.Fatal("expected editMode to be cancelled when item was deleted externally")
+		t.Fatal("expected editMode to be canceled when item was deleted externally")
 	}
 }
 

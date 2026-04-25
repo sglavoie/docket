@@ -7,7 +7,7 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 )
 
-// makeToggleTestModel returns a SettingsModel initialised with explicit dark and
+// makeToggleTestModel returns a SettingsModel initialized with explicit dark and
 // light themes so toggle tests have deterministic values to assert on.
 func makeToggleTestModel(t *testing.T) *SettingsModel {
 	t.Helper()
