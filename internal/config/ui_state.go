@@ -7,6 +7,13 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 )
 
+// RecentPaletteItem tracks a recently selected item in the command palette.
+// Used to persist recent selections across sessions for boosted search results.
+type RecentPaletteItem struct {
+	Category string `json:"category"` // ItemCategory as string (Commands, Tasks, Projects, Tags, Sections)
+	ID       string `json:"id"`       // Command name, task ID, project slug, tag, or section name
+}
+
 // GetDefaultProjectView returns the configured default project view.
 // Returns "outliner" if not set or if the value is invalid.
 func (c *Config) GetDefaultProjectView() string {

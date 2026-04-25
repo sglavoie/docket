@@ -10,6 +10,12 @@ import (
 	"github.com/sglavoie/tt/internal/workflow"
 )
 
+// WorkflowEvalState tracks when workflow rules were last evaluated for a project.
+type WorkflowEvalState struct {
+	LastEvalTime time.Time `json:"last_eval_time"`
+	RulesHash    string    `json:"rules_hash,omitempty"`
+}
+
 // GetWorkflowRules returns all workflow rules.
 func (c *Config) GetWorkflowRules() []workflow.WorkflowRule {
 	if c.WorkflowRules == nil {

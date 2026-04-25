@@ -7,6 +7,28 @@ import (
 	"github.com/charmbracelet/x/ansi"
 )
 
+// keyInterceptor is implemented by overlay widgets that intercept key presses
+// and return (inputCmd, dismissed, resultMsg).
+type keyInterceptor interface {
+	handleKey(msg tea.KeyPressMsg) (tea.Cmd, bool, tea.Msg)
+}
+
+// dispatchOverlayKey forwards a key to an overlay and assembles the resulting
+// tea.Cmd. The caller is responsible for nil-checking the overlay before
+// calling and for niling the field when dismiss is true.
+func dispatchOverlayKey(overlay keyInterceptor, msg tea.KeyPressMsg) (dismiss bool, cmd tea.Cmd) {
+	inputCmd, dismissed, resultMsg := overlay.handleKey(msg)
+	var cmds []tea.Cmd
+	if inputCmd != nil {
+		cmds = append(cmds, inputCmd)
+	}
+	if resultMsg != nil {
+		captured := resultMsg
+		cmds = append(cmds, func() tea.Msg { return captured })
+	}
+	return dismissed, tea.Batch(cmds...)
+}
+
 func (m *AppModel) currentViewCapabilities() ViewCapabilities {
 	view := m.views.Get(m.currentView())
 	if view == nil {
@@ -48,6 +70,31 @@ func (m *AppModel) hasActiveTextInput() bool {
 	}
 	if caps := m.currentViewCapabilities(); caps != nil {
 		return caps.HasTextInput()
+	}
+	return false
+}
+
+// resolveQuickCaptureProject returns the best project for quick capture,
+// preferring the dashboard selection when on the dashboard view.
+func (m *AppModel) resolveQuickCaptureProject() tea.Msg {
+	return ShowGlobalProjectPickerMsg{Purpose: PickerPurposeQuickCapture}
+}
+
+func (m *AppModel) resolveQuickCaptureCmd() tea.Cmd {
+	return func() tea.Msg { return m.resolveQuickCaptureProject() }
+}
+
+// isModifierOnly returns true when the key event is a bare modifier press
+// (Shift, Ctrl, Alt, etc.) with no accompanying character.
+func isModifierOnly(msg tea.KeyPressMsg) bool {
+	switch msg.Code {
+	case tea.KeyLeftShift, tea.KeyRightShift,
+		tea.KeyLeftCtrl, tea.KeyRightCtrl,
+		tea.KeyLeftAlt, tea.KeyRightAlt,
+		tea.KeyLeftSuper, tea.KeyRightSuper,
+		tea.KeyLeftHyper, tea.KeyRightHyper,
+		tea.KeyLeftMeta, tea.KeyRightMeta:
+		return true
 	}
 	return false
 }
@@ -94,7 +141,6 @@ func (m *AppModel) hasActiveMultiSelect() bool {
 	if m.crossOutliner != nil && m.crossOutliner.multiSelectMode {
 		return true
 	}
-	// Check temporary outliner (not tracked in m.outliner)
 	if v := m.views.Get(ViewTemporaryOutliner); v != nil {
 		if o, ok := v.(*OutlinerModel); ok && o.multiSelectMode {
 			return true

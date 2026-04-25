@@ -1,0 +1,111 @@
+package tui
+
+import (
+	"charm.land/bubbles/v2/textinput"
+	tea "charm.land/bubbletea/v2"
+
+	"github.com/sglavoie/tt/internal/models"
+)
+
+// applyTextEditorResult merges a TextEditorModel result into the draft.
+func (m *TaskFormModel) applyTextEditorResult(field, value string) {
+	switch field {
+	case "formDesc":
+		m.draft.desc = value
+	case "bugWorkaround":
+		m.draft.bugAttrs.Workaround = value
+	case "storyPersona":
+		m.draft.storyAttrs.Persona = value
+	case "epicMilestone":
+		m.draft.epicAttrs.Milestone = value
+	case "epicSuccessMetrics":
+		m.draft.epicAttrs.SuccessMetrics = value
+	}
+	m.hasChanges = true
+	m.err = nil
+}
+
+// buildValidParents returns tasks in the project that can parent the current draft type.
+// In edit mode, the task being edited and all its descendants are excluded to
+// prevent circular parent-child relationships.
+func (m *TaskFormModel) buildValidParents() []*models.Task {
+	// In edit mode, build a set of the task's own ID + all descendant IDs.
+	excluded := make(map[string]bool)
+	if m.mode == FormModeEdit && m.task != nil {
+		var collectDescendants func(t *models.Task)
+		collectDescendants = func(t *models.Task) {
+			excluded[t.ID] = true
+			for _, child := range t.Children {
+				collectDescendants(child)
+			}
+		}
+		collectDescendants(m.task)
+	}
+
+	var parents []*models.Task
+	for _, t := range m.project.Tasks {
+		if excluded[t.ID] {
+			continue
+		}
+		if t.CanAddChild(m.draft.taskType) {
+			parents = append(parents, t)
+		}
+	}
+	return parents
+}
+
+// handleTextInputKey consolidates the common key handling for textinput fields
+// (due, URL, source). It calls commit before navigation/save/esc, and forwards
+// unrecognized keys to the textinput. Returns (cmd, true) if the key was consumed.
+func (m *TaskFormModel) handleTextInputKey(msg tea.KeyPressMsg, commit func(), input *textinput.Model) (tea.Cmd, bool) {
+	switch msg.String() {
+	case "tab":
+		commit()
+		m.focusNext()
+		m.syncInputFocus()
+		return nil, true
+	case "shift+tab":
+		commit()
+		m.focusPrev()
+		m.syncInputFocus()
+		return nil, true
+	case "[":
+		commit()
+		m.prevTab()
+		m.syncInputFocus()
+		m.err = nil
+		return nil, true
+	case "]":
+		commit()
+		m.nextTab()
+		m.syncInputFocus()
+		m.err = nil
+		return nil, true
+	case "enter":
+		commit()
+		m.focusNext()
+		m.syncInputFocus()
+		return nil, true
+	case "ctrl+s":
+		commit()
+		return m.handleSave(), true
+	case "esc":
+		commit()
+		if m.hasChanges {
+			m.confirmDiscard = true
+		} else {
+			return func() tea.Msg { return BackMsg{} }, true
+		}
+		return nil, true
+	default:
+		before := input.Value()
+		var cmd tea.Cmd
+		*input, cmd = input.Update(msg)
+		after := input.Value()
+		if before != after {
+			m.hasChanges = true
+			m.err = nil
+		}
+		return cmd, true
+	}
+}

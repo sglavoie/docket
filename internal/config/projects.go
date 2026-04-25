@@ -1,8 +1,10 @@
 package config
 
 import (
+	"path/filepath"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/sglavoie/tt/internal/models"
 )
@@ -160,6 +162,84 @@ func sortProjectsWithPinnedFirst(projects []*models.Project) {
 func (c *Config) GetSandboxProject() *models.Project {
 	for _, p := range c.Projects {
 		if p.Sandbox {
+			return p
+		}
+	}
+	return nil
+}
+
+// EnsureSandboxProject checks if a sandbox project exists and creates one if not.
+// Returns true if a new sandbox project was created.
+func (c *Config) EnsureSandboxProject() bool {
+	for _, p := range c.Projects {
+		if p.Sandbox {
+			return false
+		}
+	}
+	now := time.Now()
+	project := &models.Project{
+		ID:            "sandbox-" + now.Format("20060102150405"),
+		Slug:          "_sandbox",
+		Name:          "Sandbox",
+		Context:       "personal",
+		Path:          filepath.Join(c.GetInternalDir(), "sandbox"),
+		CreatedAt:     now,
+		UpdatedAt:     now,
+		Sandbox:       true,
+		Tasks:         []*models.Task{},
+		NextShortID:   1,
+		Sections:      []string{models.SectionNext},
+		SectionColors: make(map[string]string),
+	}
+	c.Projects = append(c.Projects, project)
+	return true
+}
+
+// EnsureActionInboxProject checks if the action inbox project exists and creates one if not.
+// Returns the project and true if a new project was created.
+func (c *Config) EnsureActionInboxProject() (*models.Project, bool) {
+	if c.ActionInboxProjectID != "" {
+		for _, p := range c.Projects {
+			if p.ID == c.ActionInboxProjectID {
+				return p, false
+			}
+		}
+	}
+
+	for _, p := range c.Projects {
+		if p.Internal && p.Slug == "action-inbox" {
+			c.ActionInboxProjectID = p.ID
+			return p, false
+		}
+	}
+
+	now := time.Now()
+	project := &models.Project{
+		ID:            "action-inbox-" + now.Format("20060102150405"),
+		Slug:          "action-inbox",
+		Name:          "Action Inbox",
+		Context:       "personal",
+		Path:          filepath.Join(c.GetInternalDir(), "action-inbox"),
+		CreatedAt:     now,
+		UpdatedAt:     now,
+		Internal:      true,
+		Tasks:         []*models.Task{},
+		NextShortID:   1,
+		Sections:      []string{models.SectionNext},
+		SectionColors: make(map[string]string),
+	}
+	c.Projects = append(c.Projects, project)
+	c.ActionInboxProjectID = project.ID
+	return project, true
+}
+
+// GetActionInboxProject returns the action inbox project, or nil if none exists.
+func (c *Config) GetActionInboxProject() *models.Project {
+	if c.ActionInboxProjectID == "" {
+		return nil
+	}
+	for _, p := range c.Projects {
+		if p.ID == c.ActionInboxProjectID {
 			return p
 		}
 	}

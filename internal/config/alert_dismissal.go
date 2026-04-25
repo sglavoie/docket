@@ -4,6 +4,14 @@ import (
 	"time"
 )
 
+// AlertDismissal records a user-dismissed alert so it can be suppressed until
+// it expires or the underlying condition resolves.
+type AlertDismissal struct {
+	Key         string    `json:"key"`
+	Category    string    `json:"category"`
+	DismissedAt time.Time `json:"dismissed_at"`
+}
+
 // alertDismissalMaxAge is the maximum age for an alert dismissal before it is pruned.
 const alertDismissalMaxAge = 30 * 24 * time.Hour
 

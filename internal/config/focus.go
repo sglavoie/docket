@@ -1,5 +1,18 @@
 package config
 
+// FocusQueueItem stores a task reference for the focus queue.
+type FocusQueueItem struct {
+	TaskID    string `json:"task_id"`
+	ProjectID string `json:"project_id"`
+}
+
+// DailyPlanItem stores a task reference for the daily plan.
+type DailyPlanItem struct {
+	TaskID      string `json:"task_id"`
+	ProjectID   string `json:"project_id"`
+	PlannedDate string `json:"planned_date"` // YYYY-MM-DD
+}
+
 // GetFocusQueue returns the persisted focus queue items.
 func (c *Config) GetFocusQueue() []FocusQueueItem {
 	return c.FocusQueue
