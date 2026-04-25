@@ -459,9 +459,9 @@ func (m *GlobalTagManagerModel) View() tea.View {
 	if m.renameMode {
 		footerHelp = "enter confirm · esc cancel"
 	} else if len(m.tags) > 0 {
-		footerHelp = "j/k nav · enter filter · r rename · q close"
+		footerHelp = "j/k nav · enter filter · r rename · Esc close"
 	} else {
-		footerHelp = "q close"
+		footerHelp = "Esc close"
 	}
 	b.WriteString(renderStatusBarFooter(HelpStyle.Render(footerHelp), "", m.width))
 

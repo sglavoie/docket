@@ -357,7 +357,7 @@ func (m *LinkedTaskSelectorModel) View() tea.View { //nolint:gocyclo
 		b.WriteString("\n\n")
 		b.WriteString(MutedStyle.Render("No linked tasks."))
 		b.WriteString("\n")
-		left := HelpStyle.Render("q close")
+		left := HelpStyle.Render("Esc close")
 		b.WriteString(renderStatusBarFooter(left, "", m.width, m.AccentColor()))
 		return tea.NewView(b.String())
 	}
@@ -407,7 +407,7 @@ func (m *LinkedTaskSelectorModel) View() tea.View { //nolint:gocyclo
 	if len(m.filtered) == 0 && len(m.relations) > 0 {
 		b.WriteString(MutedStyle.Render("No matching linked tasks."))
 		b.WriteString("\n")
-		left := HelpStyle.Render("Esc clear filter · q close")
+		left := HelpStyle.Render("Esc close")
 		b.WriteString(renderStatusBarFooter(left, "", m.width, m.AccentColor()))
 		return tea.NewView(b.String())
 	}

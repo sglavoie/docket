@@ -447,9 +447,9 @@ func (m *TagManagerModel) View() tea.View {
 	} else if m.renameMode {
 		helpText = "enter confirm · esc cancel"
 	} else if len(m.tags) > 0 {
-		helpText = "j/k nav · enter filter · a add · r rename · d del · q close"
+		helpText = "j/k nav · enter filter · a add · r rename · d del · Esc close"
 	} else {
-		helpText = "a add tag · q close"
+		helpText = "a add tag · Esc close"
 	}
 
 	var out strings.Builder

@@ -61,7 +61,7 @@ func (m *CrossProjectLinkerModel) viewProjectSelection() string {
 		}
 		b.WriteString("\n\n")
 		if m.SearchQuery() != "" {
-			b.WriteString(HelpStyle.Render("Esc clear filter · q close"))
+			b.WriteString(HelpStyle.Render("Esc close"))
 		} else {
 			b.WriteString(HelpStyle.Render("Esc cancel"))
 		}
@@ -122,7 +122,7 @@ func (m *CrossProjectLinkerModel) viewTaskSelection() string {
 		}
 		b.WriteString("\n\n")
 		if m.SearchQuery() != "" {
-			b.WriteString(HelpStyle.Render("Esc clear filter · q close"))
+			b.WriteString(HelpStyle.Render("Esc close"))
 		} else {
 			b.WriteString(HelpStyle.Render("Esc go back"))
 		}

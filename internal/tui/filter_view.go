@@ -316,9 +316,9 @@ func (m *FilterViewModel) View() tea.View {
 	// Footer
 	var helpText string
 	if len(m.items) > 0 {
-		helpText = fmt.Sprintf("q close · 1-%d clear · c clear all", len(m.items))
+		helpText = fmt.Sprintf("Esc close · 1-%d clear · c clear all", len(m.items))
 	} else {
-		helpText = "q close"
+		helpText = "Esc close"
 	}
 
 	var out strings.Builder
