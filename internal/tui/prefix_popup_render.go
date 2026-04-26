@@ -2,11 +2,34 @@ package tui
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
 )
+
+// groupOrder defines the canonical display order for pipeline groups.
+var groupOrder = []string{"Capture", "Organize", "Plan", "Review", "Support"}
+
+// groupRank maps group name → sort rank for pipeline groups.
+var groupRank = func() map[string]int {
+	m := make(map[string]int, len(groupOrder))
+	for i, g := range groupOrder {
+		m[g] = i
+	}
+	return m
+}()
+
+// hasGroups returns true if any hint has a non-empty Group field.
+func hasGroups(hints []PrefixHint) bool {
+	for _, h := range hints {
+		if h.Group != "" {
+			return true
+		}
+	}
+	return false
+}
 
 // RenderPrefixPopup renders a which-key style popup as a bordered overlay box.
 // Returns empty string if prefix is empty or not found in hints.
@@ -54,6 +77,11 @@ func RenderPrefixPopup(prefix string, hints PrefixHints, width, height int) stri
 	}
 
 	if onePerLine {
+		if hasGroups(keyHints) {
+			contentLines, contentWidth := renderGroupedPrefixHintLines(keyHints)
+			boxInnerWidth := min(max(contentWidth+4, minWidth), maxWidth)
+			return renderPrefixBox(title, contentLines, boxInnerWidth, borderStyle)
+		}
 		contentLines, contentWidth := renderAlignedPrefixHintLines(keyHints)
 		boxInnerWidth := min(max(contentWidth+4, minWidth), maxWidth)
 		return renderPrefixBox(title, contentLines, boxInnerWidth, borderStyle)
@@ -105,6 +133,108 @@ func renderAlignedPrefixHintLines(keyHints []PrefixHint) ([]string, int) {
 	}
 
 	return contentLines, contentWidth
+}
+
+// renderGroupedPrefixHintLines renders hints sorted into pipeline groups with
+// muted separator headers between each group (e.g. "── Capture ──────").
+func renderGroupedPrefixHintLines(hints []PrefixHint) ([]string, int) {
+	maxKeyWidth := 0
+	maxDescWidth := 0
+	maxIconWidth := 0
+	maxDetailWidth := 0
+	hasDetail := false
+	hasIcon := false
+
+	for _, hint := range hints {
+		if len(hint.Key) > maxKeyWidth {
+			maxKeyWidth = len(hint.Key)
+		}
+		if len(hint.Description) > maxDescWidth {
+			maxDescWidth = len(hint.Description)
+		}
+		if hint.Detail != "" {
+			hasDetail = true
+			if len(hint.Detail) > maxDetailWidth {
+				maxDetailWidth = len(hint.Detail)
+			}
+		}
+		if hint.RenderedIcon != "" {
+			hasIcon = true
+			if w := ansi.StringWidth(hint.RenderedIcon); w > maxIconWidth {
+				maxIconWidth = w
+			}
+		}
+	}
+
+	iconColWidth := 0
+	if hasIcon {
+		iconColWidth = maxIconWidth + 1
+	}
+
+	// Compute content line width from column widths.
+	contentWidth := maxKeyWidth + 2 + iconColWidth + maxDescWidth
+	if hasDetail {
+		contentWidth += 2 + maxDetailWidth
+	}
+
+	// Stable-sort by group rank, then lowercase-first within group.
+	sorted := make([]PrefixHint, len(hints))
+	copy(sorted, hints)
+	sort.SliceStable(sorted, func(i, j int) bool {
+		ri := groupRank[sorted[i].Group]
+		rj := groupRank[sorted[j].Group]
+		if ri != rj {
+			return ri < rj
+		}
+		a, b := sorted[i].Key, sorted[j].Key
+		aLower := len(a) > 0 && a[0] >= 'a' && a[0] <= 'z'
+		bLower := len(b) > 0 && b[0] >= 'a' && b[0] <= 'z'
+		aUpper := len(a) > 0 && a[0] >= 'A' && a[0] <= 'Z'
+		bUpper := len(b) > 0 && b[0] >= 'A' && b[0] <= 'Z'
+		aRank := 1
+		if aLower {
+			aRank = 0
+		} else if aUpper {
+			aRank = 2
+		}
+		bRank := 1
+		if bLower {
+			bRank = 0
+		} else if bUpper {
+			bRank = 2
+		}
+		if aRank != bRank {
+			return aRank < bRank
+		}
+		return a < b
+	})
+
+	var contentLines []string
+	currentGroup := ""
+
+	for _, hint := range sorted {
+		if hint.Group != currentGroup {
+			currentGroup = hint.Group
+			contentLines = append(contentLines, renderPipelineGroupHeader(currentGroup, contentWidth))
+		}
+		rendered, _ := renderAlignedPrefixHintLine(hint, maxKeyWidth, maxDescWidth, maxIconWidth, iconColWidth, hasDetail, hasIcon)
+		contentLines = append(contentLines, rendered)
+	}
+
+	return contentLines, contentWidth
+}
+
+// renderPipelineGroupHeader renders a muted separator line like "── Capture ──────".
+func renderPipelineGroupHeader(name string, totalWidth int) string {
+	const dash = "─"
+	prefix := dash + dash + " "
+	suffix := " "
+	remaining := totalWidth - len(prefix) - len(name) - len(suffix)
+	if remaining < 2 {
+		remaining = 2
+	}
+	text := prefix + name + suffix + strings.Repeat(dash, remaining)
+	return MutedStyle.Render(text)
 }
 
 func renderAlignedPrefixHintLine(hint PrefixHint, maxKeyWidth, maxDescWidth, maxIconWidth, iconColWidth int, hasDetail, hasIcon bool) (string, int) {

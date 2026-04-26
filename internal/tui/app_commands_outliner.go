@@ -307,12 +307,12 @@ func (m *AppModel) outlinerCommands() []Command { //nolint:gocyclo
 			},
 		},
 		{
-			Name:        "focus board",
-			Description: "Switch to focus board view",
+			Name:        "today",
+			Description: "Switch to today view",
 			Shortcut:    "ctrl+f",
 			Category:    CategoryViews,
 			Views:       []ViewType{ViewOutliner},
-			Aliases:     []string{"focus view", "focus board view"},
+			Aliases:     []string{"focus board", "focus view", "focus board view"},
 			Handler: func() tea.Msg {
 				return ShowFocusBoardMsg{}
 			},

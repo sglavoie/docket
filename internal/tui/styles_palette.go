@@ -42,15 +42,15 @@ var (
 	ColorZebraBg        = lipgloss.Color("235")
 	ColorProgressEmpty  = lipgloss.Color("248") // dark-theme default; set by rebuildPalette
 
-	// View accent colors — one per view category for spatial orientation.
-	AccentDashboard   = lipgloss.Color("39")  // blue
-	AccentProjectTree = lipgloss.Color("44")  // cyan
-	AccentFocus       = lipgloss.Color("42")  // green
-	AccentPriority    = lipgloss.Color("208") // orange
-	AccentReview      = lipgloss.Color("220") // yellow
-	AccentAllTasks    = lipgloss.Color("135") // purple
-	AccentMetrics     = lipgloss.Color("30")  // teal
-	AccentSearch      = lipgloss.Color("198") // magenta
+	// View accent colors — one per pipeline stage for spatial orientation.
+	AccentDashboard = lipgloss.Color("39")  // blue (dashboard)
+	AccentCapture   = lipgloss.Color("209") // coral/salmon (Capture stage)
+	AccentOrganize  = lipgloss.Color("75")  // sky blue (Organize stage)
+	AccentPlan      = lipgloss.Color("42")  // green (Plan stage)
+	AccentExecute   = lipgloss.Color("44")  // cyan (Execute stage)
+	AccentReview    = lipgloss.Color("220") // yellow (Review stage)
+	AccentSupport   = lipgloss.Color("245") // muted gray (Support stage)
+	AccentSearch    = lipgloss.Color("198") // magenta (search/command)
 
 )
 

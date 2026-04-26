@@ -7,6 +7,7 @@ func tutorConceptTopics() []TutorTopic {
 		tutorConceptTopicsWorkflow(),
 		tutorConceptTopicsPlanning(),
 		tutorConceptTopicsCustomization(),
+		tutorConceptTopicsPipeline(),
 	}
 
 	total := 0

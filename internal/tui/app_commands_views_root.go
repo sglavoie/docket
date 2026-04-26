@@ -66,11 +66,11 @@ func (m *AppModel) viewCommands() []Command {
 			},
 		},
 		{
-			Name:        "focus board",
-			Description: "Personal command center with external items and tasks",
+			Name:        "today",
+			Description: "Daily execution board",
 			Shortcut:    ";f",
 			Category:    CategoryViews,
-			Aliases:     []string{"board", "command center", "external items"},
+			Aliases:     []string{"focus board", "daily", "board", "command center", "external items"},
 			Handler: func() tea.Msg {
 				return ShowFocusBoardMsg{}
 			},

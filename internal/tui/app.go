@@ -113,6 +113,7 @@ const (
 	ViewTaskForm
 	ViewKanban
 	ViewCrossProjectKanban
+	ViewPipelineHub
 )
 
 // String returns the name of the ViewType for readable test output.
@@ -199,7 +200,7 @@ func (v ViewType) String() string {
 		ViewMetricsDashboard:      "MetricsDashboard",
 		ViewAllTasks:              "AllTasks",
 		ViewScoringProfilePicker:  "ScoringProfilePicker",
-		ViewFocusBoard:            "FocusBoard",
+		ViewFocusBoard:            "Today",
 		ViewOutliner:              "Outliner",
 		ViewTemporaryOutliner:     "TemporaryOutliner",
 		ViewCrossProjectOutliner:  "CrossProjectOutliner",
@@ -216,6 +217,7 @@ func (v ViewType) String() string {
 		ViewTaskForm:              "TaskForm",
 		ViewKanban:                "Kanban",
 		ViewCrossProjectKanban:    "CrossProjectKanban",
+		ViewPipelineHub:           "PipelineHub",
 	}
 	if name, ok := names[v]; ok {
 		return name

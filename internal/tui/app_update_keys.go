@@ -276,6 +276,8 @@ func (m *AppModel) handlePendingPrefixes(msg tea.KeyPressMsg) (bool, tea.Cmd) {
 	}
 	m.pendingSemicolonPrefix = false
 	switch msg.String() {
+	case ";":
+		return true, func() tea.Msg { return ShowPipelineHubMsg{} }
 	case "n":
 		return true, func() tea.Msg { return ShowNotificationCenterMsg{} }
 	case "d":

@@ -77,6 +77,7 @@ func NewKeybindingRegistry() *KeybindingRegistry {
 	r.registerQuickCaptureBindings()
 	r.registerTaskFormBindings()
 	r.registerKanbanBindings()
+	r.registerPipelineHubBindings()
 	return r
 }
 
@@ -366,7 +367,7 @@ func (r *KeybindingRegistry) registerGlobalBindings() {
 		Keybinding{Key: "shift+space", Description: "Hold to peek task detail", Category: "Navigation"},
 		Keybinding{Key: ";N", Description: "Open Global Notes", Category: "Navigation"},
 		Keybinding{Key: ";q", Description: "Open Backlog", Category: "Navigation"},
-		Keybinding{Key: ";f", Description: "Open Focus Board", Category: "Navigation"},
+		Keybinding{Key: ";f", Description: "Open Today", Category: "Navigation"},
 		Keybinding{Key: ";l", Description: "Open Recent Activity", Category: "Navigation"},
 		Keybinding{Key: ";B", Description: "Open Global Blockers", Category: "Navigation"},
 		Keybinding{Key: ";D", Description: "Open Due Date Overview", Category: "Navigation"},

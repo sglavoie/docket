@@ -40,6 +40,8 @@ func (m *AppModel) handleNavigateToView(msg NavigateToViewMsg) (bool, tea.Cmd) {
 			}
 			return m.handleViewMessages(ShowBlockersMsg{Project: project})
 		}
+	case ViewPipelineHub:
+		return m.handleViewMessages(ShowPipelineHubMsg{})
 	case ViewGlobalInboxProcessor:
 		return m.handleViewMessages(ShowGlobalInboxProcessorMsg{})
 	case ViewGlobalTagManager:

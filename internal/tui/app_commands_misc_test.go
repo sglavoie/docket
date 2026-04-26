@@ -457,9 +457,9 @@ func TestOutlinerCommands_FocusBoard(t *testing.T) {
 	app.outliner = NewOutlinerModel(project, app.config, app.configManager)
 
 	cmds := app.outlinerCommands()
-	cmd := findCommand(cmds, "focus board")
+	cmd := findCommand(cmds, "today")
 	if cmd == nil {
-		t.Fatal("expected to find 'focus board' command")
+		t.Fatal("expected to find 'today' command")
 	}
 
 	result := cmd.Handler()

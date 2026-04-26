@@ -13,38 +13,49 @@ func buildViewAccentMap() {
 		// Dashboard
 		ViewDashboard: AccentDashboard,
 
-		// Project Tree family (cyan)
-		ViewProjectTree:          AccentProjectTree,
-		ViewOutliner:             AccentProjectTree,
-		ViewTemporaryOutliner:    AccentProjectTree,
-		ViewCrossProjectOutliner: AccentProjectTree,
-		ViewNotes:                AccentProjectTree,
-		ViewGlobalNotes:          AccentProjectTree,
+		// Capture stage (coral/salmon)
+		ViewQuickCapture: AccentCapture,
+		ViewBulkCapture:  AccentCapture,
 
-		// Focus family (green)
-		ViewFocusView:        AccentFocus,
-		ViewProjectFocusView: AccentFocus,
-		ViewFocusBoard:       AccentFocus,
+		// Organize stage (sky blue)
+		ViewAllTasks:             AccentOrganize,
+		ViewGlobalInboxProcessor: AccentOrganize,
+		ViewInboxProcessor:       AccentOrganize,
+		ViewCrossProjectOutliner: AccentOrganize,
+		ViewCrossProjectKanban:   AccentOrganize,
 
-		// Priority family (orange)
-		ViewPriorityView:    AccentPriority,
-		ViewDueDateOverview: AccentPriority,
+		// Plan stage (green)
+		ViewFocusView:        AccentPlan,
+		ViewProjectFocusView: AccentPlan,
+		ViewFocusBoard:       AccentPlan,
+		ViewDueDateOverview:  AccentPlan,
+		ViewDailyReview:      AccentPlan,
+		ViewPriorityView:     AccentPlan,
 
-		// Review family (yellow)
-		ViewDailyReview:          AccentReview,
-		ViewWeeklyReview:         AccentReview,
-		ViewGlobalInboxProcessor: AccentReview,
-		ViewInboxProcessor:       AccentReview,
+		// Execute stage (cyan)
+		ViewProjectTree:       AccentExecute,
+		ViewOutliner:          AccentExecute,
+		ViewTemporaryOutliner: AccentExecute,
+		ViewKanban:            AccentExecute,
 
-		// All Tasks (purple)
-		ViewAllTasks: AccentAllTasks,
+		// Review stage (yellow)
+		ViewWeeklyReview:     AccentReview,
+		ViewMetricsDashboard: AccentReview,
+		ViewRecentActivity:   AccentReview,
 
-		// Metrics (teal)
-		ViewMetricsDashboard: AccentMetrics,
+		// Support stage (muted gray)
+		ViewGlobalBlockers:     AccentSupport,
+		ViewGlobalNotes:        AccentSupport,
+		ViewNotes:              AccentSupport,
+		ViewWorkflowRules:      AccentSupport,
+		ViewNotificationCenter: AccentSupport,
 
 		// Search / Command (magenta)
 		ViewGlobalSearch:   AccentSearch,
 		ViewCommandPalette: AccentSearch,
+
+		// Pipeline Hub (neutral — spans all stages)
+		ViewPipelineHub: AccentDashboard,
 	}
 }
 

@@ -54,7 +54,7 @@ func (m *FocusBoardModel) reloadData()                       { m.loadItems() }
 func (m *FocusBoardModel) setErr(err error)                  { m.statusMessage = err.Error() }
 func (m *FocusBoardModel) setStatus(msg string)              { m.statusMessage = msg }
 func (m *FocusBoardModel) viewID() ViewType                  { return ViewFocusBoard }
-func (m *FocusBoardModel) viewName() string                  { return "Focus Board" }
+func (m *FocusBoardModel) viewName() string                  { return "Today" }
 
 func (m *FocusBoardModel) showDeleteConfirm(shortID int) {
 	if row := m.getRowAtCursor(); row != nil {

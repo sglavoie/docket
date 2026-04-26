@@ -63,7 +63,12 @@ func (m *AppModel) renderStatusBar() string {
 		showHelp = false
 	}
 	if showHelp {
-		help = "Press : for commands, ? for help"
+		stage := pipelineStage(currentView)
+		if hint := pipelineNextHint(stage); hint != "" {
+			help = hint
+		} else {
+			help = "Press : for commands, ? for help"
+		}
 	}
 
 	accent := m.currentAccentColor()
@@ -144,12 +149,14 @@ func (m *AppModel) breadcrumbLabel(vt ViewType, maxProjectLen int) string {
 		return "Dashboard"
 	}
 
+	var label string
+
 	// Use the registered view's StatusBarLabel when available.
 	if view := m.views.Get(vt); view != nil {
 		if labeler, ok := view.(StatusBarLabeler); ok {
 			raw := labeler.StatusBarLabel()
 			// Strip "Project: " prefix from project tree label for compactness.
-			label := strings.TrimPrefix(raw, "Project: ")
+			label = strings.TrimPrefix(raw, "Project: ")
 			// Also strip cycle-position suffix (starts with " [") for compactness.
 			if idx := strings.Index(label, " ["); idx > 0 {
 				label = label[:idx]
@@ -157,28 +164,38 @@ func (m *AppModel) breadcrumbLabel(vt ViewType, maxProjectLen int) string {
 			if len(label) > maxProjectLen {
 				label = label[:maxProjectLen-1] + "…"
 			}
-			return label
 		}
 	}
 
 	// Fallback labels for views that don't implement StatusBarLabeler.
-	switch vt {
-	case ViewProjectTree:
-		if m.currentProject != nil {
-			name := m.currentProject.Name
-			if len(name) > maxProjectLen {
-				name = name[:maxProjectLen-1] + "…"
+	if label == "" {
+		switch vt {
+		case ViewProjectTree:
+			if m.currentProject != nil {
+				name := m.currentProject.Name
+				if len(name) > maxProjectLen {
+					name = name[:maxProjectLen-1] + "…"
+				}
+				label = name
+			} else {
+				label = "Project"
 			}
-			return name
+		case ViewFilter:
+			label = "Filter"
+		case ViewDailyReview:
+			label = "Daily Review"
+		case ViewWeeklyReview:
+			label = "Weekly Review"
 		}
-		return "Project"
-	case ViewFilter:
-		return "Filter"
-	case ViewDailyReview:
-		return "Daily Review"
-	case ViewWeeklyReview:
-		return "Weekly Review"
-	default:
 	}
-	return ""
+
+	if label == "" {
+		return ""
+	}
+
+	// Prepend pipeline stage when the view belongs to a named stage.
+	if stage := pipelineStage(vt); stage != "" {
+		return stage + ": " + label
+	}
+	return label
 }

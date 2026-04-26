@@ -150,6 +150,11 @@ func (m *AppModel) handleViewReviewMessages(msg tea.Msg) (bool, tea.Cmd) { //nol
 		m.showView(ViewFocusBoard, fb)
 		return true, nil
 
+	case ShowPipelineHubMsg:
+		hub := NewPipelineHubModel(m.config, m.configManager, m.focusQueueIDs, m.dailyPlanIDs)
+		m.showView(ViewPipelineHub, hub)
+		return true, nil
+
 	case CloseFocusBoardMsg:
 		m.popToAnchorView()
 		return true, nil

@@ -14,7 +14,7 @@ func (m *FocusBoardModel) View() tea.View { //nolint:gocyclo
 
 	// Title
 	subtitle := fmt.Sprintf("%d tasks", len(m.rows))
-	b.WriteString(renderFullscreenTitle("Focus Board", subtitle, m.AccentColor()))
+	b.WriteString(renderFullscreenTitle("Today", subtitle, m.AccentColor()))
 	b.WriteString("\n")
 
 	// Tab bar

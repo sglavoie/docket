@@ -45,6 +45,13 @@ func session4SyncViews() []syncTestCase {
 	}
 }
 
+// session6SyncViews returns the pipeline hub view introduced in session 6.
+func session6SyncViews() []syncTestCase {
+	return []syncTestCase{
+		{ViewPipelineHub, &PipelineHubModel{}},
+	}
+}
+
 // session8SyncViews returns the capture views introduced in session 8 (clipboard paste).
 func session8SyncViews() []syncTestCase {
 	return []syncTestCase{
@@ -105,6 +112,7 @@ func TestKeybindingSyncAllViews(t *testing.T) {
 	allViews := append(session1SyncViews(), session2SyncViews()...)
 	allViews = append(allViews, session3SyncViews()...)
 	allViews = append(allViews, session4SyncViews()...)
+	allViews = append(allViews, session6SyncViews()...)
 	allViews = append(allViews, session8SyncViews()...)
 	for _, tc := range allViews {
 		t.Run(tc.view.String(), func(t *testing.T) {
@@ -192,7 +200,7 @@ func TestViewTypeString(t *testing.T) {
 		ViewWeeklyReview:          "WeeklyReview",
 		ViewDueDateOverview:       "DueDateOverview",
 		ViewPriorityView:          "PriorityView",
-		ViewFocusBoard:            "FocusBoard",
+		ViewFocusBoard:            "Today",
 		ViewAllTasks:              "AllTasks",
 		ViewFocusView:             "FocusView",
 		ViewProjectFocusView:      "ProjectFocusView",
@@ -205,6 +213,8 @@ func TestViewTypeString(t *testing.T) {
 		// Session 4
 		ViewKanban:             "Kanban",
 		ViewCrossProjectKanban: "CrossProjectKanban",
+		// Session 6
+		ViewPipelineHub: "PipelineHub",
 		// Session 8
 		ViewQuickCapture: "QuickCapture",
 		ViewTaskForm:     "TaskForm",

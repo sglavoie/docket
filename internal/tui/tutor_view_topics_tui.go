@@ -175,6 +175,51 @@ group tasks differently. The outliner supports the same sort
 modes and filters as the project tree.`,
 		},
 		{
+			Title:    "Pipeline Views",
+			Category: "TUI",
+			Content: `# The Semicolon Shortcut
+
+Press ; from anywhere to open the stage shortcut popup. Hints
+are grouped by pipeline stage (Capture, Organize, Plan, Review,
+Support) so you can quickly find the view you need.
+
+# Pipeline Hub
+
+Press ;; to open the Pipeline Hub: a five-column overview of
+all pipeline stages with live task counts and one-keystroke
+navigation to any stage view.
+
+Navigate the Hub with h/l to move between columns and j/k to
+move within a column. Press Enter to open the highlighted view.
+Direct shortcut keys (q, f, d, w, etc.) also work from inside
+the Hub.
+
+# Stage Breadcrumb
+
+When a global overlay view is open, the breadcrumb prepends
+the pipeline stage name: "Plan: Backlog", "Review: Weekly",
+"Organize: All Tasks". This keeps you oriented as you switch
+between stage views.
+
+# Next-Step Footer Hints
+
+The status bar footer shows a contextual "next step" hint when
+you are inside a pipeline stage view:
+
+  Capture   Next: ctrl+i inbox | ;q backlog
+  Organize  Next: ;q backlog | ;f today
+  Plan      Next: Enter project | ;w review
+  Review    Next: ;i capture | ;q backlog
+
+# Shortcut Reference
+
+  Capture:  ;i quick capture, ;I bulk capture
+  Organize: ctrl+i inbox, ;a all tasks, ;o outliner, ;k kanban
+  Plan:     ;q backlog, ;f today, ;D due dates, ;d daily review
+  Execute:  Enter from Dashboard to open a project
+  Review:   ;w weekly review, ;m metrics, ;l activity log`,
+		},
+		{
 			Title:    "Priority",
 			Category: "TUI",
 			Content: `# Setting Priority in TUI

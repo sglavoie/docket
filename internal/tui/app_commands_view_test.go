@@ -83,9 +83,9 @@ func TestViewCommands_Backlog(t *testing.T) {
 func TestViewCommands_FocusBoard(t *testing.T) {
 	app := newTestAppModel()
 	cmds := app.viewCommands()
-	cmd := findCommand(cmds, "focus board")
+	cmd := findCommand(cmds, "today")
 	if cmd == nil {
-		t.Fatal("expected 'focus board' command")
+		t.Fatal("expected 'today' command")
 	}
 	msg := cmd.Handler()
 	if _, ok := msg.(ShowFocusBoardMsg); !ok {

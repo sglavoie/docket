@@ -28,9 +28,9 @@ func tutorCLITopics() []TutorTopic {
 		{
 			Title:    "Board (Actions)",
 			Category: "CLI",
-			Content: `# What Is the Focus Board
+			Content: `# What Is the Action Board
 
-The focus board manages lightweight action items from external
+The action board manages lightweight action items from external
 sources like Slack, GitHub, or email. Actions are stored as tasks
 in a dedicated action inbox project.
 
