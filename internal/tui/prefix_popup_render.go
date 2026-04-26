@@ -31,6 +31,24 @@ var groupAccentColor = map[string]color.Color{
 	"Support":  AccentSupport,
 }
 
+// groupBgColor maps group name → subtle dark background tint.
+var groupBgColor = map[string]color.Color{
+	"Capture":  lipgloss.Color("#3a2222"),
+	"Organize": lipgloss.Color("#1e2a3a"),
+	"Plan":     lipgloss.Color("#1e3322"),
+	"Review":   lipgloss.Color("#332e1a"),
+	"Support":  lipgloss.Color("#2c2c2c"),
+}
+
+// groupLightColor maps group name → lighter/pastel variant for detail text.
+var groupLightColor = map[string]color.Color{
+	"Capture":  lipgloss.Color("#e0a090"),
+	"Organize": lipgloss.Color("#90c0e0"),
+	"Plan":     lipgloss.Color("#80d0a0"),
+	"Review":   lipgloss.Color("#e0d090"),
+	"Support":  lipgloss.Color("#a0a0a0"),
+}
+
 // hasGroups returns true if any hint has a non-empty Group field.
 func hasGroups(hints []PrefixHint) bool {
 	for _, h := range hints {
@@ -135,7 +153,7 @@ func renderAlignedPrefixHintLines(keyHints []PrefixHint) ([]string, int) {
 	contentWidth := 0
 	contentLines := make([]string, 0, len(keyHints))
 	for _, hint := range keyHints {
-		rendered, lineWidth := renderAlignedPrefixHintLine(hint, maxKeyWidth, maxDescWidth, maxIconWidth, iconColWidth, hasDetail, hasIcon)
+		rendered, lineWidth := renderAlignedPrefixHintLine(hint, maxKeyWidth, maxDescWidth, maxIconWidth, iconColWidth, hasDetail, hasIcon, "")
 		contentLines = append(contentLines, rendered)
 		if lineWidth > contentWidth {
 			contentWidth = lineWidth
@@ -146,7 +164,7 @@ func renderAlignedPrefixHintLines(keyHints []PrefixHint) ([]string, int) {
 }
 
 // renderGroupedPrefixHintLines renders hints sorted into pipeline groups with
-// muted separator headers between each group (e.g. "── Capture ──────").
+// group names displayed as left-side labels on the first item of each group.
 func renderGroupedPrefixHintLines(hints []PrefixHint) ([]string, int) {
 	maxKeyWidth := 0
 	maxDescWidth := 0
@@ -181,8 +199,17 @@ func renderGroupedPrefixHintLines(hints []PrefixHint) ([]string, int) {
 		iconColWidth = maxIconWidth + 1
 	}
 
+	// Compute max group name width for left-label column.
+	maxGroupWidth := 0
+	for _, g := range groupOrder {
+		if len(g) > maxGroupWidth {
+			maxGroupWidth = len(g)
+		}
+	}
+	groupColWidth := maxGroupWidth + 2 // name + "  " gap
+
 	// Compute content line width from column widths.
-	contentWidth := maxKeyWidth + 2 + iconColWidth + maxDescWidth
+	contentWidth := groupColWidth + maxKeyWidth + 2 + iconColWidth + maxDescWidth
 	if hasDetail {
 		contentWidth += 2 + maxDetailWidth
 	}
@@ -227,39 +254,36 @@ func renderGroupedPrefixHintLines(hints []PrefixHint) ([]string, int) {
 
 	var contentLines []string
 	currentGroup := "\x00" // sentinel: no group yet
+	blankGroupCol := strings.Repeat(" ", groupColWidth)
 
 	for _, hint := range sorted {
+		rendered, _ := renderAlignedPrefixHintLine(hint, maxKeyWidth, maxDescWidth, maxIconWidth, iconColWidth, hasDetail, hasIcon, hint.Group)
+
 		if hint.Group != currentGroup {
 			currentGroup = hint.Group
 			if currentGroup != "" {
-				contentLines = append(contentLines, renderPipelineGroupHeader(currentGroup, contentWidth))
+				fgStyle := lipgloss.NewStyle()
+				if accent, ok := groupAccentColor[currentGroup]; ok {
+					fgStyle = fgStyle.Foreground(accent)
+				}
+				if bg, ok := groupBgColor[currentGroup]; ok {
+					fgStyle = fgStyle.Background(bg)
+				}
+				label := fgStyle.Render(fmt.Sprintf(" %-*s ", maxGroupWidth, currentGroup))
+				contentLines = append(contentLines, label+rendered)
+			} else {
+				contentLines = append(contentLines, blankGroupCol+rendered)
 			}
+		} else {
+			contentLines = append(contentLines, blankGroupCol+rendered)
 		}
-		rendered, _ := renderAlignedPrefixHintLine(hint, maxKeyWidth, maxDescWidth, maxIconWidth, iconColWidth, hasDetail, hasIcon)
-		contentLines = append(contentLines, rendered)
 	}
 
 	return contentLines, contentWidth
 }
 
-// renderPipelineGroupHeader renders a colored separator line like "── Capture ──────".
-func renderPipelineGroupHeader(name string, totalWidth int) string {
-	const dash = "─"
-	prefix := dash + dash + " "
-	suffix := " "
-	remaining := totalWidth - len(prefix) - len(name) - len(suffix)
-	if remaining < 2 {
-		remaining = 2
-	}
-	style := MutedStyle
-	if accent, ok := groupAccentColor[name]; ok {
-		style = lipgloss.NewStyle().Foreground(accent)
-	}
-	text := prefix + name + suffix + strings.Repeat(dash, remaining)
-	return style.Render(text)
-}
 
-func renderAlignedPrefixHintLine(hint PrefixHint, maxKeyWidth, maxDescWidth, maxIconWidth, iconColWidth int, hasDetail, hasIcon bool) (string, int) {
+func renderAlignedPrefixHintLine(hint PrefixHint, maxKeyWidth, maxDescWidth, maxIconWidth, iconColWidth int, hasDetail, hasIcon bool, group string) (string, int) {
 	keyStyle := PrefixKeyStyle
 	descStyle := PrefixDescStyle
 	detailStyle := MutedStyle
@@ -270,6 +294,13 @@ func renderAlignedPrefixHintLine(hint PrefixHint, maxKeyWidth, maxDescWidth, max
 	} else if hint.Active {
 		descStyle = WarningIconStyle
 		detailStyle = WarningIconStyle
+	} else if group != "" {
+		if accent, ok := groupAccentColor[group]; ok {
+			descStyle = lipgloss.NewStyle().Foreground(accent)
+		}
+		if light, ok := groupLightColor[group]; ok {
+			detailStyle = lipgloss.NewStyle().Foreground(light)
+		}
 	}
 
 	iconPart := ""
