@@ -6,6 +6,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"github.com/charmbracelet/x/ansi"
 )
 
 const (
@@ -27,7 +28,7 @@ func (m *PipelineHubModel) View() tea.View {
 
 	// Column layout
 	colCount := len(m.columns)
-	sepWidth := len(pipelineHubColSep) * (colCount - 1)
+	sepWidth := ansi.StringWidth(pipelineHubColSep) * (colCount - 1)
 	colWidth := max((m.width-sepWidth)/colCount, pipelineHubMinColWidth)
 
 	// Max entries across all columns (for row-count alignment)
@@ -62,12 +63,17 @@ func (m *PipelineHubModel) View() tea.View {
 		cells := make([]string, colCount)
 		for ci, col := range m.columns {
 			if ri < len(col.entries) {
-				plain := m.formatEntry(col.entries[ri], colWidth)
-				if ci == m.activeCol && ri == m.activeRow {
+				entry := col.entries[ri]
+				plain := m.formatEntry(entry, colWidth)
+				isSelected := ci == m.activeCol && ri == m.activeRow
+				noAction := entry.viewType == 0
+				if isSelected {
 					cells[ci] = lipgloss.NewStyle().
 						Background(ColorSelectedBg).
 						Foreground(ColorSelectedFg).
 						Render(plain)
+				} else if noAction {
+					cells[ci] = MutedStyle.Render(plain)
 				} else {
 					cells[ci] = plain
 				}
@@ -109,15 +115,15 @@ func (m *PipelineHubModel) formatEntry(e pipelineEntry, colWidth int) string {
 	return padRight(plain, colWidth)
 }
 
-// padRight returns s padded with spaces to exactly width characters.
-// Truncates with "…" if s is longer than width.
+// padRight returns s padded with spaces to exactly width visual characters.
+// Truncates with "…" if s is wider than width.
 func padRight(s string, width int) string {
-	n := len(s) // ASCII-safe: all keys/labels are ASCII
+	n := ansi.StringWidth(s)
 	if n >= width {
 		if width > 1 {
-			return s[:width-1] + "…"
+			return ansi.Truncate(s, width-1, "…")
 		}
-		return s[:width]
+		return ansi.Truncate(s, width, "")
 	}
 	return s + strings.Repeat(" ", width-n)
 }

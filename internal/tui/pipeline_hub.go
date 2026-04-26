@@ -6,6 +6,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/tt/internal/models"
 )
 
 // ShowPipelineHubMsg opens the Pipeline Hub view.
@@ -30,31 +31,42 @@ type pipelineColumn struct {
 type PipelineHubModel struct {
 	BaseView
 
-	columns   []pipelineColumn
-	activeCol int
-	activeRow int
-	config    *config.Config
-	manager   *config.Manager
-	counts    pipelineCounts
+	columns        []pipelineColumn
+	activeCol      int
+	activeRow      int
+	config         *config.Config
+	manager        *config.Manager
+	counts         pipelineCounts
+	currentProject *models.Project
 }
 
 // NewPipelineHubModel creates a Pipeline Hub model populated with live counts.
-func NewPipelineHubModel(cfg *config.Config, manager *config.Manager, queueIDs, dailyPlanIDs map[string]bool) *PipelineHubModel {
+func NewPipelineHubModel(cfg *config.Config, manager *config.Manager, queueIDs, dailyPlanIDs map[string]bool, contextProject *models.Project) *PipelineHubModel {
 	counts := loadPipelineCounts(cfg, queueIDs, dailyPlanIDs)
 	m := &PipelineHubModel{
-		config:  cfg,
-		manager: manager,
-		counts:  counts,
+		config:         cfg,
+		manager:        manager,
+		counts:         counts,
+		currentProject: contextProject,
 	}
 	m.buildColumns()
 	return m
 }
 
 func (m *PipelineHubModel) buildColumns() {
-	currentProject := m.config.GetCurrentProject()
-	executeLabel := "Open project"
-	if currentProject != nil {
-		executeLabel = currentProject.Name
+	executeEntries := []pipelineEntry{
+		{key: "Enter", label: "Open project"},
+		{key: "→", label: "Project Tree"},
+		{key: "→", label: "Outliner"},
+		{key: "→", label: "Kanban"},
+	}
+	if m.currentProject != nil {
+		executeEntries = []pipelineEntry{
+			{key: "Enter", label: m.currentProject.Name, viewType: ViewProjectTree},
+			{key: "→", label: "Project Tree", viewType: ViewProjectTree},
+			{key: "→", label: "Outliner", viewType: ViewOutliner},
+			{key: "→", label: "Kanban", viewType: ViewKanban},
+		}
 	}
 
 	m.columns = []pipelineColumn{
@@ -87,14 +99,9 @@ func (m *PipelineHubModel) buildColumns() {
 			},
 		},
 		{
-			name:   "Execute",
-			accent: AccentExecute,
-			entries: []pipelineEntry{
-				{key: "Enter", label: executeLabel},
-				{key: "→", label: "Project Tree"},
-				{key: "→", label: "Outliner"},
-				{key: "→", label: "Kanban"},
-			},
+			name:    "Execute",
+			accent:  AccentExecute,
+			entries: executeEntries,
 		},
 		{
 			name:   "Review",
@@ -146,6 +153,8 @@ func (m *PipelineHubModel) clampRow() {
 	}
 }
 
+const pipelineExecuteColIndex = 3
+
 func (m *PipelineHubModel) openSelectedEntry() tea.Cmd {
 	if m.activeCol >= len(m.columns) {
 		return nil
@@ -154,7 +163,28 @@ func (m *PipelineHubModel) openSelectedEntry() tea.Cmd {
 	if m.activeRow >= len(col.entries) {
 		return nil
 	}
-	return pipelineEntryCmd(col.entries[m.activeRow].viewType)
+	entry := col.entries[m.activeRow]
+	if m.activeCol == pipelineExecuteColIndex && m.currentProject != nil {
+		return m.executeEntryCmd(entry.viewType)
+	}
+	return pipelineEntryCmd(entry.viewType)
+}
+
+// executeEntryCmd returns a tea.Cmd for project-specific Execute column entries.
+func (m *PipelineHubModel) executeEntryCmd(vt ViewType) tea.Cmd {
+	p := m.currentProject
+	switch vt {
+	case ViewProjectTree:
+		if m.activeRow == 0 {
+			return func() tea.Msg { return SelectProjectMsg{Project: p} }
+		}
+		return func() tea.Msg { return ShowProjectTreeMsg{Project: p} }
+	case ViewOutliner:
+		return func() tea.Msg { return ShowOutlinerMsg{Project: p} }
+	case ViewKanban:
+		return func() tea.Msg { return ShowKanbanMsg{Project: p} }
+	}
+	return nil
 }
 
 // pipelineEntryCmd returns a tea.Cmd that emits the message to open the given view.

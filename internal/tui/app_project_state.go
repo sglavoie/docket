@@ -127,6 +127,48 @@ func (m *AppModel) switchToProject(project *models.Project, restoreState bool) {
 	m.views.Register(ViewProjectTree, m.projectTree)
 }
 
+// contextualProject resolves the project the user is currently looking at.
+// On the dashboard it returns the highlighted project; in project-specific views
+// it reads the project from the view model; in cross-project views it resolves
+// from the cursor task. Falls back to m.currentProject.
+func (m *AppModel) contextualProject() *models.Project {
+	cv := m.currentView()
+	switch cv {
+	case ViewDashboard:
+		if m.dashboard != nil {
+			if p := m.dashboard.SelectedProject(); p != nil {
+				return p
+			}
+		}
+	case ViewProjectTree:
+		if m.projectTree != nil {
+			return m.projectTree.project
+		}
+	case ViewOutliner:
+		if m.outliner != nil && m.outliner.project != nil {
+			return m.outliner.project
+		}
+	case ViewKanban:
+		if v := m.views.Get(ViewKanban); v != nil {
+			if kb, ok := v.(*KanbanModel); ok && kb.project != nil {
+				return kb.project
+			}
+		}
+	default:
+		if v := m.views.Get(cv); v != nil {
+			type taskRefProvider interface {
+				getTaskRef() (*models.Task, *models.Project)
+			}
+			if trp, ok := v.(taskRefProvider); ok {
+				if _, p := trp.getTaskRef(); p != nil {
+					return p
+				}
+			}
+		}
+	}
+	return m.currentProject
+}
+
 // restoreProjectTreeState applies saved filter/sort state to the current project tree.
 func (m *AppModel) restoreProjectTreeState() {
 	if m.projectTree == nil || m.currentProject == nil {

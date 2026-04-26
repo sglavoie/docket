@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"image/color"
 	"sort"
 	"strings"
 
@@ -20,6 +21,15 @@ var groupRank = func() map[string]int {
 	}
 	return m
 }()
+
+// groupAccentColor maps group name → pipeline accent color.
+var groupAccentColor = map[string]color.Color{
+	"Capture":  AccentCapture,
+	"Organize": AccentOrganize,
+	"Plan":     AccentPlan,
+	"Review":   AccentReview,
+	"Support":  AccentSupport,
+}
 
 // hasGroups returns true if any hint has a non-empty Group field.
 func hasGroups(hints []PrefixHint) bool {
@@ -178,11 +188,17 @@ func renderGroupedPrefixHintLines(hints []PrefixHint) ([]string, int) {
 	}
 
 	// Stable-sort by group rank, then lowercase-first within group.
+	// Empty-group entries sort before all named groups.
 	sorted := make([]PrefixHint, len(hints))
 	copy(sorted, hints)
 	sort.SliceStable(sorted, func(i, j int) bool {
-		ri := groupRank[sorted[i].Group]
-		rj := groupRank[sorted[j].Group]
+		ri, rj := -1, -1
+		if sorted[i].Group != "" {
+			ri = groupRank[sorted[i].Group]
+		}
+		if sorted[j].Group != "" {
+			rj = groupRank[sorted[j].Group]
+		}
 		if ri != rj {
 			return ri < rj
 		}
@@ -210,12 +226,14 @@ func renderGroupedPrefixHintLines(hints []PrefixHint) ([]string, int) {
 	})
 
 	var contentLines []string
-	currentGroup := ""
+	currentGroup := "\x00" // sentinel: no group yet
 
 	for _, hint := range sorted {
 		if hint.Group != currentGroup {
 			currentGroup = hint.Group
-			contentLines = append(contentLines, renderPipelineGroupHeader(currentGroup, contentWidth))
+			if currentGroup != "" {
+				contentLines = append(contentLines, renderPipelineGroupHeader(currentGroup, contentWidth))
+			}
 		}
 		rendered, _ := renderAlignedPrefixHintLine(hint, maxKeyWidth, maxDescWidth, maxIconWidth, iconColWidth, hasDetail, hasIcon)
 		contentLines = append(contentLines, rendered)
@@ -224,7 +242,7 @@ func renderGroupedPrefixHintLines(hints []PrefixHint) ([]string, int) {
 	return contentLines, contentWidth
 }
 
-// renderPipelineGroupHeader renders a muted separator line like "── Capture ──────".
+// renderPipelineGroupHeader renders a colored separator line like "── Capture ──────".
 func renderPipelineGroupHeader(name string, totalWidth int) string {
 	const dash = "─"
 	prefix := dash + dash + " "
@@ -233,8 +251,12 @@ func renderPipelineGroupHeader(name string, totalWidth int) string {
 	if remaining < 2 {
 		remaining = 2
 	}
+	style := MutedStyle
+	if accent, ok := groupAccentColor[name]; ok {
+		style = lipgloss.NewStyle().Foreground(accent)
+	}
 	text := prefix + name + suffix + strings.Repeat(dash, remaining)
-	return MutedStyle.Render(text)
+	return style.Render(text)
 }
 
 func renderAlignedPrefixHintLine(hint PrefixHint, maxKeyWidth, maxDescWidth, maxIconWidth, iconColWidth int, hasDetail, hasIcon bool) (string, int) {

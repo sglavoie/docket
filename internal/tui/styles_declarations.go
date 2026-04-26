@@ -193,7 +193,7 @@ var (
 			Bold(true)
 
 	PrefixDescStyle = lipgloss.NewStyle().
-			Foreground(ColorMuted)
+			Foreground(lipgloss.Color("255"))
 
 	InputStyle = lipgloss.NewStyle().
 			Border(lipgloss.RoundedBorder()).

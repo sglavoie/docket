@@ -151,7 +151,7 @@ func (m *AppModel) handleViewReviewMessages(msg tea.Msg) (bool, tea.Cmd) { //nol
 		return true, nil
 
 	case ShowPipelineHubMsg:
-		hub := NewPipelineHubModel(m.config, m.configManager, m.focusQueueIDs, m.dailyPlanIDs)
+		hub := NewPipelineHubModel(m.config, m.configManager, m.focusQueueIDs, m.dailyPlanIDs, m.contextualProject())
 		m.showView(ViewPipelineHub, hub)
 		return true, nil
 
