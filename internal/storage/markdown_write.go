@@ -113,8 +113,9 @@ func writeTaskPreservingOrder(builder *strings.Builder, task *models.Task, allTa
 	builder.WriteString("\n")
 
 	if task.Description != "" {
+		builder.WriteString("<!-- DESCRIPTION -->\n")
 		builder.WriteString(escapeDescription(task.Description))
-		builder.WriteString("\n")
+		builder.WriteString("\n<!-- /DESCRIPTION -->\n")
 	}
 
 	if len(task.Activity) > 0 {

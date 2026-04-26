@@ -133,19 +133,19 @@ func (m *FocusViewModel) View() tea.View { //nolint:gocyclo
 	var helpParts []string
 	switch m.tabs.Active {
 	case focusTabQueue:
-		helpParts = []string{"j/k nav", "x remove", "J/K reorder", "r refresh", "[/] tabs"}
+		helpParts = []string{"j/k nav", "x remove", "J/K reorder", "r refresh", "[ / ] tabs"}
 	case focusTabSuggested:
 		if m.showDismissed {
 			xLabel := "x dismiss"
 			if ft := m.getTaskAtCursor(); ft != nil && m.dismissedIDs[ft.Task.ID] {
 				xLabel = "x restore"
 			}
-			helpParts = []string{"j/k nav", "q add to queue", xLabel, "D hide dismissed", "[/] tabs"}
+			helpParts = []string{"j/k nav", "q add to queue", xLabel, "D hide dismissed", "[ / ] tabs"}
 		} else {
-			helpParts = []string{"j/k nav", "q add to queue", "x dismiss", "D show dismissed", "[/] tabs"}
+			helpParts = []string{"j/k nav", "q add to queue", "x dismiss", "D show dismissed", "[ / ] tabs"}
 		}
 	default:
-		helpParts = []string{"j/k nav", "[/] tabs", "(/) row focus", ",s/d/b/x status", "1-5 priority"}
+		helpParts = []string{"j/k nav", "[ / ] tabs", "( / ) row focus", ",s/d/b/x status", "1-5 priority"}
 	}
 	left := HelpStyle.Render(strings.Join(helpParts, " · "))
 	right := MutedStyle.Render(fmt.Sprintf("%d tasks", len(m.filtered)))

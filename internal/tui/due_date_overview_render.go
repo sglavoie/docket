@@ -42,8 +42,8 @@ func (m *DueDateOverviewModel) View() tea.View {
 
 	if m.totalTasks == 0 {
 		b.WriteString(renderFilterAwareEmptyState(m.HasActiveFilters(),
-			"No tasks in this category.", "[/] h/l tabs · Esc close",
-			"[/] h/l tabs · Fx clear filters · Esc clear filters"))
+			"No tasks in this category.", "[ / ] h/l tabs · Esc close",
+			"[ / ] h/l tabs · Fx clear filters · Esc clear filters"))
 		return tea.NewView(b.String())
 	}
 
@@ -77,7 +77,7 @@ func (m *DueDateOverviewModel) View() tea.View {
 	b.WriteString(strings.Join(applyScroll(lines, cursorLineIdx, contentHeight), "\n"))
 
 	// Footer
-	left := HelpStyle.Render("[/] tabs · ↑/↓ navigate · ,s/d/b/x/o status · 1-5 priority · dt/dm/dw due · e edit · ? help")
+	left := HelpStyle.Render("[ / ] tabs · ↑/↓ navigate · ,s/d/b/x/o status · 1-5 priority · dt/dm/dw due · e edit · ? help")
 	right := MutedStyle.Render(fmt.Sprintf("%d tasks", m.totalTasks))
 	b.WriteString(renderFullscreenFooterBlock(m.statusMessage, m.Error(), left, right, m.Width(), m.AccentColor()))
 

@@ -76,7 +76,7 @@ func (q *QuickNoteOverlay) handleKey(msg tea.KeyPressMsg) (tea.Cmd, bool, tea.Ms
 func (q *QuickNoteOverlay) render(width int) string {
 	borderStyle := lipgloss.NewStyle().Foreground(ColorPrimary)
 
-	title := lipgloss.NewStyle().Foreground(ColorPrimary).Bold(true).Render("Quick Note")
+	title := lipgloss.NewStyle().Foreground(ColorPrimary).Bold(true).Render("Quick Comment")
 
 	// Truncate task title if needed
 	taskTitle := q.taskTitle

@@ -77,7 +77,7 @@ func (r *KeybindingRegistry) registerOutlinerBindings() {
 		Keybinding{Key: "C", Description: "Context filter", Category: "Filters", Views: views},
 		Keybinding{Key: "gd", Description: "Cycle due date filter", Category: "Filters", Views: views},
 		Keybinding{Key: "ctrl+T", Description: "Tag manager", Category: "Filters", Views: views},
-		Keybinding{Key: "[/]", Description: "Cycle custom section tabs", Category: "Filters", Views: views},
+		Keybinding{Key: "[ / ]", Description: "Cycle custom section tabs", Category: "Filters", Views: views},
 		Keybinding{Key: "ctrl+S", Description: "Custom section manager", Category: "Filters", Views: views},
 
 		// Multi-select

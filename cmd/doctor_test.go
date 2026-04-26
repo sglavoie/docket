@@ -1,6 +1,9 @@
 package cmd
 
 import (
+	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/sglavoie/tt/internal/models"
@@ -321,6 +324,121 @@ func TestFixIssues_CleansDeadRelatedTo(t *testing.T) {
 	}
 	if len(task2.RelatedTo) > 0 && task2.RelatedTo[0] != task1.ID {
 		t.Errorf("expected RelatedTo[0] to be %q, got %q", task1.ID, task2.RelatedTo[0])
+	}
+}
+
+func TestCheckMissingDescriptionMarkers(t *testing.T) {
+	t.Run("flags project with old-format descriptions", func(t *testing.T) {
+		dir := t.TempDir()
+		project := testutil.NewTestProject("OldFormat")
+		project.Path = dir
+
+		task := testutil.NewTestTask("My Task", models.TaskTypeTask)
+		task.Description = "Some description"
+		project.Tasks = []*models.Task{task}
+
+		// Old-format file: description inline, no DESCRIPTION markers
+		content := "## Task: My Task\n<!-- id: " + task.ID + " -->\n\nSome description\n"
+		if err := os.WriteFile(filepath.Join(dir, "tasks.md"), []byte(content), 0o644); err != nil {
+			t.Fatalf("failed to write tasks.md: %v", err)
+		}
+
+		results := &doctorResults{}
+		checkMissingDescriptionMarkers([]*models.Project{project}, results)
+
+		if len(results.missingDescMarkers) != 1 {
+			t.Fatalf("expected 1 issue, got %d", len(results.missingDescMarkers))
+		}
+		if results.missingDescMarkers[0].project != "OldFormat" {
+			t.Errorf("expected project 'OldFormat', got %q", results.missingDescMarkers[0].project)
+		}
+	})
+
+	t.Run("no issue when tasks have no descriptions", func(t *testing.T) {
+		dir := t.TempDir()
+		project := testutil.NewTestProject("NoDesc")
+		project.Path = dir
+
+		task := testutil.NewTestTask("My Task", models.TaskTypeTask)
+		project.Tasks = []*models.Task{task}
+
+		content := "## Task: My Task\n<!-- id: " + task.ID + " -->\n"
+		if err := os.WriteFile(filepath.Join(dir, "tasks.md"), []byte(content), 0o644); err != nil {
+			t.Fatalf("failed to write tasks.md: %v", err)
+		}
+
+		results := &doctorResults{}
+		checkMissingDescriptionMarkers([]*models.Project{project}, results)
+
+		if len(results.missingDescMarkers) != 0 {
+			t.Fatalf("expected 0 issues, got %d", len(results.missingDescMarkers))
+		}
+	})
+}
+
+func TestCheckMissingDescriptionMarkers_NoFalsePositive_NewFormat(t *testing.T) {
+	dir := t.TempDir()
+	project := testutil.NewTestProject("NewFormat")
+	project.Path = dir
+
+	task := testutil.NewTestTask("My Task", models.TaskTypeTask)
+	task.Description = "Some description"
+	project.Tasks = []*models.Task{task}
+
+	// New-format file: description already wrapped in DESCRIPTION markers
+	content := "## Task: My Task\n<!-- id: " + task.ID + " -->\n\n<!-- DESCRIPTION -->\nSome description\n<!-- /DESCRIPTION -->\n"
+	if err := os.WriteFile(filepath.Join(dir, "tasks.md"), []byte(content), 0o644); err != nil {
+		t.Fatalf("failed to write tasks.md: %v", err)
+	}
+
+	results := &doctorResults{}
+	checkMissingDescriptionMarkers([]*models.Project{project}, results)
+
+	if len(results.missingDescMarkers) != 0 {
+		t.Fatalf("expected 0 issues (already new format), got %d", len(results.missingDescMarkers))
+	}
+}
+
+func TestDoctor_Fix_MigratesDescriptionMarkers(t *testing.T) {
+	dir := t.TempDir()
+	project := testutil.NewTestProject("MigrateTest")
+	project.Path = dir
+
+	task := testutil.NewTestTask("Task With Desc", models.TaskTypeTask)
+	task.ShortID = 1
+	task.Description = "Some description"
+	project.Tasks = []*models.Task{task}
+
+	// Write old-format file
+	content := "## Task: Task With Desc\n<!-- id: " + task.ID + " -->\n\nSome description\n"
+	if err := os.WriteFile(filepath.Join(dir, "tasks.md"), []byte(content), 0o644); err != nil {
+		t.Fatalf("failed to write tasks.md: %v", err)
+	}
+
+	// Check before fix — should be flagged
+	results := &doctorResults{}
+	checkMissingDescriptionMarkers([]*models.Project{project}, results)
+	if len(results.missingDescMarkers) != 1 {
+		t.Fatalf("expected 1 issue before fix, got %d", len(results.missingDescMarkers))
+	}
+
+	// Fix — SaveProjectLocked re-writes tasks.md with DESCRIPTION markers
+	fixMissingDescriptionMarkers(results.missingDescMarkers, []*models.Project{project})
+
+	// Check after fix — should be clean
+	results2 := &doctorResults{}
+	checkMissingDescriptionMarkers([]*models.Project{project}, results2)
+	if len(results2.missingDescMarkers) != 0 {
+		t.Fatalf("expected 0 issues after fix, got %d", len(results2.missingDescMarkers))
+	}
+
+	// Verify the written file contains DESCRIPTION markers
+	raw, err := os.ReadFile(filepath.Join(dir, "tasks.md"))
+	if err != nil {
+		t.Fatalf("failed to read tasks.md: %v", err)
+	}
+	if !strings.Contains(string(raw), "<!-- DESCRIPTION -->") {
+		t.Error("expected DESCRIPTION markers in tasks.md after fix")
 	}
 }
 

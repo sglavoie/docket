@@ -238,10 +238,14 @@ func ParseTasksMarkdownWithSections(content string) (*ParseResult, error) {
 	idWarnings := assignMissingIDsAndTimestamps(tasks)
 	metadataWarnings = append(metadataWarnings, idWarnings...)
 
-	// Extract activity and comments from task descriptions
+	// Extract activity and comments from task descriptions, then description block.
+	// ACTIVITY/COMMENTS are stripped first (sibling blocks outside DESCRIPTION markers).
+	// DESCRIPTION extraction runs on what remains.
 	for _, t := range tasks {
 		format.ExtractActivityFromDescription(t)
 		format.ExtractCommentsFromDescription(t)
+		descWarnings := format.ExtractDescriptionBlock(t)
+		metadataWarnings = append(metadataWarnings, descWarnings...)
 	}
 
 	normalizeUpdatedAt(tasks)

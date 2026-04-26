@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -30,18 +31,20 @@ type doctorIssue struct {
 }
 
 type doctorResults struct {
-	orphanedCrossRefs []doctorIssue
-	duplicateIDs      []doctorIssue
-	duplicateShortIDs []doctorIssue
-	deadDependencies  []doctorIssue
-	missingTaskFiles  []doctorIssue
-	brokenParentRefs  []doctorIssue
-	emptyProjects     []doctorIssue
+	orphanedCrossRefs  []doctorIssue
+	duplicateIDs       []doctorIssue
+	duplicateShortIDs  []doctorIssue
+	deadDependencies   []doctorIssue
+	missingTaskFiles   []doctorIssue
+	brokenParentRefs   []doctorIssue
+	emptyProjects      []doctorIssue
+	missingDescMarkers []doctorIssue
 }
 
 func (r *doctorResults) totalIssues() int {
 	return len(r.orphanedCrossRefs) + len(r.duplicateIDs) + len(r.duplicateShortIDs) +
-		len(r.deadDependencies) + len(r.missingTaskFiles) + len(r.brokenParentRefs)
+		len(r.deadDependencies) + len(r.missingTaskFiles) + len(r.brokenParentRefs) +
+		len(r.missingDescMarkers)
 }
 
 func runDoctor(cmd *cobra.Command, _ []string) error {
@@ -76,9 +79,11 @@ func runDoctor(cmd *cobra.Command, _ []string) error {
 	checkBrokenParentRefs(loadedProjects, results)
 	checkDeadDependencies(loadedProjects, results)
 	checkOrphanedCrossRefs(loadedProjects, cfg, results)
+	checkMissingDescriptionMarkers(loadedProjects, results)
 
 	if fix {
 		fixIssues(loadedProjects, cfg)
+		fixMissingDescriptionMarkers(results.missingDescMarkers, loadedProjects)
 	}
 
 	printResults(results)
@@ -359,6 +364,52 @@ func isValidCrossRef(ref models.TaskRef, cfg interface{ GetProject(string) *mode
 	return taskIDs[ref.TaskID]
 }
 
+func checkMissingDescriptionMarkers(projects []*models.Project, results *doctorResults) {
+	for _, project := range projects {
+		count := 0
+		for _, task := range project.Tasks {
+			if task.Description != "" {
+				count++
+			}
+		}
+		if count == 0 {
+			continue
+		}
+
+		rawData, err := os.ReadFile(filepath.Join(project.Path, "tasks.md"))
+		if err != nil {
+			continue // Missing file already handled by checkMissingTaskFiles
+		}
+
+		if !strings.Contains(string(rawData), "<!-- DESCRIPTION -->") {
+			results.missingDescMarkers = append(results.missingDescMarkers, doctorIssue{
+				project: project.Name,
+				detail:  fmt.Sprintf("%d task(s) with descriptions lack markers", count),
+			})
+		}
+	}
+}
+
+func fixMissingDescriptionMarkers(issues []doctorIssue, projects []*models.Project) {
+	if len(issues) == 0 {
+		return
+	}
+	flagged := make(map[string]bool, len(issues))
+	for _, issue := range issues {
+		flagged[issue.project] = true
+	}
+	for _, project := range projects {
+		if !flagged[project.Name] {
+			continue
+		}
+		if err := storage.SaveProjectLocked(project); err != nil {
+			fmt.Fprintf(os.Stderr, "error: failed to migrate description markers for project %s: %v\n", project.Name, err)
+			continue
+		}
+		fmt.Printf("  Fixed: migrated description markers for project %s\n", project.Name)
+	}
+}
+
 func buildTaskMap(project *models.Project) map[string]*models.Task {
 	m := make(map[string]*models.Task, len(project.Tasks))
 	for _, task := range project.Tasks {
@@ -382,6 +433,7 @@ func printResults(results *doctorResults) {
 	printSection("Broken parent refs", results.brokenParentRefs)
 	printSection("Dead dependency links", results.deadDependencies)
 	printSection("Orphaned cross-project refs", results.orphanedCrossRefs)
+	printSection("Missing description markers", results.missingDescMarkers)
 	printInfoSection("Empty projects", results.emptyProjects)
 }
 

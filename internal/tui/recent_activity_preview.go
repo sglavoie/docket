@@ -255,7 +255,7 @@ func (m *RecentActivityPreviewModel) View() tea.View {
 	if m.ready && m.viewport.TotalLineCount() > m.viewport.Height() {
 		scrollPercent = fmt.Sprintf(" %3.0f%%", m.viewport.ScrollPercent()*100)
 	}
-	footer := HelpStyle.Render(fmt.Sprintf("p/q/esc close · j/k scroll · g/G top/bottom%s", scrollPercent))
+	footer := HelpStyle.Render(fmt.Sprintf("p/esc close · j/k scroll · g/G top/bottom%s", scrollPercent))
 	b.WriteString(footer)
 
 	return tea.NewView(b.String())

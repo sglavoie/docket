@@ -166,8 +166,8 @@ var keysExcludedFromSync = map[string]bool{
 	"@ ctrl+h/l": true,
 
 	// Complex compound display entries that don't map to single key events
-	"h/l or [/]": true,
-	"(/) ":       true,
+	"h/l or [ / ]": true,
+	"( / ) ":       true,
 
 	// Recurrence keys: registered via statusBindings() for all views but only
 	// implemented in primary views (ProjectTree/Outliner) via handleDeferRecurrence.
@@ -223,7 +223,7 @@ var registryKeyExpansions = map[string][]string{
 	"J/K":           {"J", "K"},
 	"a/n":           {"a", "n"},
 	"d/x":           {"d", "x"},
-	"[/]":           {"[", "]"},
+	"[ / ]":         {"[", "]"},
 	"+/-":           {"+", "-"},
 	"h/l":           {"h", "l"},
 	"t/T":           {"t", "T"},
@@ -237,7 +237,7 @@ var registryKeyExpansions = map[string][]string{
 	"ctrl+U/D":      {"ctrl+u", "ctrl+d"},
 	"a/A":           {"a", "A"},
 	"d/D":           {"d", "D"},
-	"{/}":           {"{", "}"},
+	"{ / }":         {"{", "}"},
 	".1-.9":         {".1", ".2", ".3", ".4", ".5", ".6", ".7", ".8", ".9"},
 	"ctrl+d/u":      {"ctrl+d", "ctrl+u"},
 	"P0-P9":         {"P0", "P1", "P2", "P3", "P4", "P5", "P6", "P7", "P8", "P9"},

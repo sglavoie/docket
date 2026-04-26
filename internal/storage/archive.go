@@ -248,8 +248,9 @@ func writeArchivedTask(task *models.Task) string {
 
 	// Write description (escape heading-like lines to prevent parser corruption)
 	if task.Description != "" {
+		b.WriteString("<!-- DESCRIPTION -->\n")
 		b.WriteString(escapeDescription(task.Description))
-		b.WriteString("\n")
+		b.WriteString("\n<!-- /DESCRIPTION -->\n")
 	}
 
 	// Preserve activity logs for future metrics (cycle time, blocked)

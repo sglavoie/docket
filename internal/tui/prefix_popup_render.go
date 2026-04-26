@@ -282,7 +282,6 @@ func renderGroupedPrefixHintLines(hints []PrefixHint) ([]string, int) {
 	return contentLines, contentWidth
 }
 
-
 func renderAlignedPrefixHintLine(hint PrefixHint, maxKeyWidth, maxDescWidth, maxIconWidth, iconColWidth int, hasDetail, hasIcon bool, group string) (string, int) {
 	keyStyle := PrefixKeyStyle
 	descStyle := PrefixDescStyle

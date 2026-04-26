@@ -54,8 +54,8 @@ func (m *DailyReviewModel) View() tea.View {
 	// Render all sections
 	if m.totalTasks == 0 {
 		b.WriteString(renderFilterAwareEmptyState(m.HasActiveFilters(),
-			"No tasks in this tab.", "[/]: tabs · ? help",
-			"[/]: tabs · Fx clear filters · Esc clear filters · ? help"))
+			"No tasks in this tab.", "[ / ]: tabs · ? help",
+			"[ / ]: tabs · Fx clear filters · Esc clear filters · ? help"))
 		return tea.NewView(b.String())
 	}
 

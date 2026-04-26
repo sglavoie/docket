@@ -159,6 +159,87 @@ func TestRoundTrip_DescriptionEmptyAndWhitespace(t *testing.T) {
 	}
 }
 
+// TestBackwardCompat_NoDescriptionMarkers verifies that old-format markdown
+// (no <!-- DESCRIPTION --> markers) is parsed correctly: the description text
+// is preserved as-is without any mutation.
+func TestBackwardCompat_NoDescriptionMarkers(t *testing.T) {
+	content := `# Project: Test
+
+## Task: Old Task
+<!-- id: old-1, status: todo, priority: 2 -->
+
+This is a plain description
+with multiple lines
+and no DESCRIPTION markers.
+`
+
+	_, tasks, err := ParseTasksMarkdown(content)
+	if err != nil {
+		t.Fatalf("parse error: %v", err)
+	}
+	if len(tasks) != 1 {
+		t.Fatalf("expected 1 task, got %d", len(tasks))
+	}
+
+	want := "This is a plain description\nwith multiple lines\nand no DESCRIPTION markers."
+	if tasks[0].Description != want {
+		t.Errorf("description = %q, want %q", tasks[0].Description, want)
+	}
+}
+
+// TestBackwardCompat_MixedDescriptionMarkers verifies that a file containing
+// some tasks with <!-- DESCRIPTION --> markers and some without (old format)
+// is parsed correctly — both styles coexist without data loss.
+func TestBackwardCompat_MixedDescriptionMarkers(t *testing.T) {
+	content := `# Project: Test
+
+## Task: New Task
+<!-- id: new-1, status: todo, priority: 1 -->
+
+<!-- DESCRIPTION -->
+New-format description.
+<!-- /DESCRIPTION -->
+
+## Task: Old Task
+<!-- id: old-1, status: todo, priority: 2 -->
+
+Old-format description without markers.
+`
+
+	_, tasks, err := ParseTasksMarkdown(content)
+	if err != nil {
+		t.Fatalf("parse error: %v", err)
+	}
+	if len(tasks) != 2 {
+		t.Fatalf("expected 2 tasks, got %d", len(tasks))
+	}
+
+	byID := func(id string) *models.Task {
+		for _, t := range tasks {
+			if t.ID == id {
+				return t
+			}
+		}
+		return nil
+	}
+
+	newTask := byID("new-1")
+	if newTask == nil {
+		t.Fatal("new-1 not found")
+	}
+	if newTask.Description != "New-format description." {
+		t.Errorf("new task description = %q, want %q", newTask.Description, "New-format description.")
+	}
+
+	oldTask := byID("old-1")
+	if oldTask == nil {
+		t.Fatal("old-1 not found")
+	}
+	if oldTask.Description != "Old-format description without markers." {
+		t.Errorf("old task description = %q, want %q", oldTask.Description, "Old-format description without markers.")
+	}
+}
+
 // TestRoundTrip_DescriptionWithHTMLCommentLikeMetadata verifies that
 // descriptions containing lines that look like metadata comments don't
 // get incorrectly parsed as task metadata.

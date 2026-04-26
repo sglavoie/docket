@@ -3,7 +3,7 @@ package tui
 func (r *KeybindingRegistry) registerTaskFormBindings() {
 	views := []ViewType{ViewTaskForm}
 	r.add(
-		Keybinding{Key: "[/]", Description: "Switch tabs", Category: "Navigation", Views: views},
+		Keybinding{Key: "[ / ]", Description: "Switch tabs", Category: "Navigation", Views: views},
 		Keybinding{Key: "Tab/Shift+Tab", Description: "Navigate fields", Category: "Navigation", Views: views},
 		Keybinding{Key: "Enter", Description: "Open picker / confirm text field", Category: "Actions", Views: views},
 		Keybinding{Key: "Ctrl+S", Description: "Save", Category: "Actions", Views: views},

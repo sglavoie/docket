@@ -3,7 +3,7 @@ package tui
 import tea "charm.land/bubbletea/v2"
 
 // FormTabNavigable is implemented by form creators that support tab/shift+tab
-// field cycling and [/] tab switching with per-tab focus scoping.
+// field cycling and [ / ] tab switching with per-tab focus scoping.
 type FormTabNavigable interface {
 	blurCurrentField()
 	focusCurrentField() tea.Cmd
@@ -46,7 +46,7 @@ func handleFormTabKey(f FormTabNavigable, s formTabState, forward bool) tea.Cmd 
 	return f.focusCurrentField()
 }
 
-// handleFormTabSwitch handles [/] tab switching. firstTab is the lowest tab
+// handleFormTabSwitch handles [ / ] tab switching. firstTab is the lowest tab
 // index (typically 0), lastTab is the highest tab index to cycle through.
 func handleFormTabSwitch(f FormTabNavigable, s formTabState, firstTab, lastTab int, forward bool) tea.Cmd {
 	f.blurCurrentField()

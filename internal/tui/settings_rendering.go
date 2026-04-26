@@ -189,9 +189,9 @@ func (m *SettingsModel) View() tea.View {
 	}
 	helpPrefix := ""
 	if subTabNamesForTab(m.tabs.Active) != nil {
-		helpPrefix = "(/) sub-tabs · "
+		helpPrefix = "( / ) sub-tabs · "
 	}
-	left := HelpStyle.Render(helpPrefix + "[/]: tabs · Tab: fields · Space: toggle · Enter: save · Esc: cancel · ?: Help" + scrollHint)
+	left := HelpStyle.Render(helpPrefix + "[ / ]: tabs · Tab: fields · Space: toggle · Enter: save · Esc: cancel · ?: Help" + scrollHint)
 	right := MutedStyle.Render("Settings")
 	out.WriteString(renderStatusBarFooter(left, right, m.width))
 

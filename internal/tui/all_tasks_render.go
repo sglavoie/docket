@@ -50,8 +50,8 @@ func (m *AllTasksViewModel) View() tea.View {
 
 	if m.totalNavigableItems() == 0 {
 		b.WriteString(renderFilterAwareEmptyState(m.HasActiveFilters(),
-			EmptyStateFiltered, "[/] h/l tabs · Esc close",
-			"[/] tabs · Fx clear filters · Esc clear filters"))
+			EmptyStateFiltered, "[ / ] h/l tabs · Esc close",
+			"[ / ] tabs · Fx clear filters · Esc clear filters"))
 		return tea.NewView(b.String())
 	}
 
@@ -135,7 +135,7 @@ func (m *AllTasksViewModel) View() tea.View {
 	b.WriteString(AttachScrollbar(strings.Join(scrolledLines, "\n"), scrollbar))
 
 	// Footer
-	footerLeft := "j/k nav · [/] tabs · Ctrl+G group · ,s/d/b/x status · 1-5 sort · v multi"
+	footerLeft := "j/k nav · [ / ] tabs · Ctrl+G group · ,s/d/b/x status · 1-5 sort · v multi"
 	if m.multiSelectMode {
 		footerLeft = "MULTI-SELECT: space toggle · a select all · A deselect · ,s/d/b status · D delete · v exit"
 	}

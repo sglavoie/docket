@@ -402,7 +402,7 @@ func (m *ProjectFocusViewModel) View() tea.View {
 	// Footer
 	footerParts := "j/k nav · * unfocus · ,s/d/b/x status · 1-5 priority · dt/dm due"
 	if len(m.subTabNames) > 1 {
-		footerParts += " · [/] sections"
+		footerParts += " · [ / ] sections"
 	}
 	footerParts += " · ? help"
 	left := HelpStyle.Render(footerParts)
