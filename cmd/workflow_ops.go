@@ -230,13 +230,7 @@ func parseCommaSeparatedIndices(s string) ([]int, error) {
 	}
 
 	// Sort for consistent behavior
-	for i := 0; i < len(indices); i++ {
-		for j := i + 1; j < len(indices); j++ {
-			if indices[i] > indices[j] {
-				indices[i], indices[j] = indices[j], indices[i]
-			}
-		}
-	}
+	slices.Sort(indices)
 
 	return indices, nil
 }
@@ -262,13 +256,9 @@ func removeByIndices[T any](slice []T, indices []int) ([]T, error) {
 	// Sort indices in reverse order for safe removal
 	sortedIndices := make([]int, len(indices))
 	copy(sortedIndices, indices)
-	for i := range sortedIndices {
-		for j := i + 1; j < len(sortedIndices); j++ {
-			if sortedIndices[i] < sortedIndices[j] {
-				sortedIndices[i], sortedIndices[j] = sortedIndices[j], sortedIndices[i]
-			}
-		}
-	}
+	slices.SortFunc(sortedIndices, func(a, b int) int {
+		return b - a
+	})
 
 	result := make([]T, len(slice))
 	copy(result, slice)
