@@ -29,7 +29,7 @@ func TestPipelineHubModel_NoProjects(t *testing.T) {
 		t.Errorf("expected output to contain 'Pipeline Overview', got:\n%s", plain)
 	}
 	// All 5 stage names should appear.
-	for _, stage := range []string{"CAPTURE", "ORGANIZE", "PLAN", "EXECUTE", "REVIEW"} {
+	for _, stage := range []string{"CAPTURE", "ORGANIZE", "PLAN", "WORK", "EXECUTE", "REVIEW"} {
 		if !strings.Contains(plain, stage) {
 			t.Errorf("expected output to contain %q, got:\n%s", stage, plain)
 		}
@@ -64,8 +64,9 @@ func TestPipelineHubModel_Navigation(t *testing.T) {
 	simulateKey(m, "l")
 	simulateKey(m, "l")
 	simulateKey(m, "l")
-	if m.activeCol != 4 {
-		t.Errorf("after 4×l: col=%d, want 4", m.activeCol)
+	simulateKey(m, "l")
+	if m.activeCol != 5 {
+		t.Errorf("after 5×l: col=%d, want 5", m.activeCol)
 	}
 
 	// Wrap around right → back to 0

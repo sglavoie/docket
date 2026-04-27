@@ -11,7 +11,7 @@ import (
 )
 
 // groupOrder defines the canonical display order for pipeline groups.
-var groupOrder = []string{"Capture", "Organize", "Plan", "Review", "Support"}
+var groupOrder = []string{"Capture", "Organize", "Plan", "Work", "Review", "Support"}
 
 // groupRank maps group name → sort rank for pipeline groups.
 var groupRank = func() map[string]int {
@@ -27,6 +27,7 @@ var groupAccentColor = map[string]color.Color{
 	"Capture":  AccentCapture,
 	"Organize": AccentOrganize,
 	"Plan":     AccentPlan,
+	"Work":     AccentWork,
 	"Review":   AccentReview,
 	"Support":  AccentSupport,
 }
@@ -36,6 +37,7 @@ var groupBgColor = map[string]color.Color{
 	"Capture":  lipgloss.Color("#3a2222"),
 	"Organize": lipgloss.Color("#1e2a3a"),
 	"Plan":     lipgloss.Color("#1e3322"),
+	"Work":     lipgloss.Color("#332211"),
 	"Review":   lipgloss.Color("#332e1a"),
 	"Support":  lipgloss.Color("#2c2c2c"),
 }
@@ -45,6 +47,7 @@ var groupLightColor = map[string]color.Color{
 	"Capture":  lipgloss.Color("#e0a090"),
 	"Organize": lipgloss.Color("#90c0e0"),
 	"Plan":     lipgloss.Color("#80d0a0"),
+	"Work":     lipgloss.Color("#e0b080"),
 	"Review":   lipgloss.Color("#e0d090"),
 	"Support":  lipgloss.Color("#a0a0a0"),
 }

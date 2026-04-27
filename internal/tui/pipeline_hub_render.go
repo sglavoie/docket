@@ -11,7 +11,7 @@ import (
 
 const (
 	pipelineHubMinColWidth = 14
-	pipelineHubColSep      = " │ "
+	pipelineHubColSep      = "  "
 )
 
 // View implements tea.Model.
@@ -58,20 +58,31 @@ func (m *PipelineHubModel) View() tea.View {
 	b.WriteString(sepLine)
 	b.WriteString("\n")
 
+	// Pre-compute max key visual width per column.
+	colKeyWidth := make([]int, colCount)
+	for ci, col := range m.columns {
+		for _, entry := range col.entries {
+			if w := ansi.StringWidth(entry.key); w > colKeyWidth[ci] {
+				colKeyWidth[ci] = w
+			}
+		}
+	}
+
 	// Entry rows.
 	for ri := 0; ri < maxEntries; ri++ {
 		cells := make([]string, colCount)
 		for ci, col := range m.columns {
 			if ri < len(col.entries) {
 				entry := col.entries[ri]
-				plain := m.formatEntry(entry, colWidth)
+				plain := m.formatEntry(entry, colWidth, colKeyWidth[ci])
 				isSelected := ci == m.activeCol && ri == m.activeRow
 				noAction := entry.viewType == 0
 				if isSelected {
 					cells[ci] = lipgloss.NewStyle().
+						Width(colWidth).
 						Background(ColorSelectedBg).
 						Foreground(ColorSelectedFg).
-						Render(plain)
+						Render(strings.TrimRight(plain, " "))
 				} else if noAction {
 					cells[ci] = MutedStyle.Render(plain)
 				} else {
@@ -92,10 +103,10 @@ func (m *PipelineHubModel) View() tea.View {
 	return tea.NewView(b.String())
 }
 
-// renderSeparatorRow builds a ─┼─ separator line matching the column layout.
+// renderSeparatorRow builds a separator line matching the column layout.
 func (m *PipelineHubModel) renderSeparatorRow(colWidth int) string {
 	dash := strings.Repeat("─", colWidth)
-	sep := MutedStyle.Render("─┼─")
+	sep := MutedStyle.Render("──")
 	parts := make([]string, len(m.columns))
 	for i := range m.columns {
 		parts[i] = MutedStyle.Render(dash)
@@ -104,14 +115,17 @@ func (m *PipelineHubModel) renderSeparatorRow(colWidth int) string {
 }
 
 // formatEntry formats a pipeline entry as a fixed-width plain string.
-// Key is left-padded to 7 characters, followed by the label (with optional count).
-func (m *PipelineHubModel) formatEntry(e pipelineEntry, colWidth int) string {
+// Keys are left-padded to keyWidth (the longest key in the column), then 2 spaces, then label.
+func (m *PipelineHubModel) formatEntry(e pipelineEntry, colWidth, keyWidth int) string {
 	label := e.label
 	if e.count > 0 {
 		label = fmt.Sprintf("%s (%d)", label, e.count)
 	}
-	// "%-7s %s" — key in 7 chars, then space, then label
-	plain := fmt.Sprintf("%-7s %s", e.key, label)
+	keyPad := keyWidth - ansi.StringWidth(e.key)
+	if keyPad < 0 {
+		keyPad = 0
+	}
+	plain := e.key + strings.Repeat(" ", keyPad) + "  " + label
 	return padRight(plain, colWidth)
 }
 
@@ -121,7 +135,7 @@ func padRight(s string, width int) string {
 	n := ansi.StringWidth(s)
 	if n >= width {
 		if width > 1 {
-			return ansi.Truncate(s, width-1, "…")
+			return ansi.Truncate(s, width, "…")
 		}
 		return ansi.Truncate(s, width, "")
 	}

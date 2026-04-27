@@ -156,7 +156,7 @@ var (
 		{Key: "a", Description: "all tasks", Detail: "View all tasks across projects", Group: "Organize"},
 		{Key: "c", Description: "linked task", Detail: "Create or link a related task", Group: "Support"},
 		{Key: "d", Description: "daily review", Detail: "Open Daily Review", Group: "Plan"},
-		{Key: "f", Description: "today", Detail: "Daily execution board", Group: "Plan"},
+		{Key: "f", Description: "today", Detail: "Daily execution board", Group: "Work"},
 		{Key: "i", Description: "quick capture", Detail: "Quick task capture", Group: "Capture"},
 		{Key: "l", Description: "latest activity", Detail: "Recently modified tasks", Group: "Review"},
 		{Key: "m", Description: "metrics", Detail: "Completion rates and throughput", Group: "Review"},

@@ -93,9 +93,15 @@ func (m *PipelineHubModel) buildColumns() {
 			accent: AccentPlan,
 			entries: []pipelineEntry{
 				{key: ";q", label: "Backlog", count: m.counts.queueLen, viewType: ViewFocusView},
-				{key: ";f", label: "Today", count: m.counts.dailyPlanLen, viewType: ViewFocusBoard},
 				{key: ";D", label: "Due Dates", count: m.counts.overdueCount, viewType: ViewDueDateOverview},
 				{key: ";d", label: "Daily Review", viewType: ViewDailyReview},
+			},
+		},
+		{
+			name:   "Work",
+			accent: AccentWork,
+			entries: []pipelineEntry{
+				{key: ";f", label: "Today", count: m.counts.dailyPlanLen, viewType: ViewFocusBoard},
 			},
 		},
 		{
@@ -153,7 +159,7 @@ func (m *PipelineHubModel) clampRow() {
 	}
 }
 
-const pipelineExecuteColIndex = 3
+const pipelineExecuteColIndex = 4
 
 func (m *PipelineHubModel) openSelectedEntry() tea.Cmd {
 	if m.activeCol >= len(m.columns) {

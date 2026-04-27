@@ -5,14 +5,15 @@ func tutorConceptTopicsPipeline() []TutorTopic {
 		{
 			Title:    "The Task Pipeline",
 			Category: "Concepts",
-			Content: `# The Five Stages
+			Content: `# The Pipeline Stages
 
-tt organizes work into five pipeline stages. Each stage has
+tt organizes work into pipeline stages. Each stage has
 dedicated views and shortcuts.
 
   Capture   Get ideas and tasks in quickly
   Organize  Triage, categorize, and sort incoming work
   Plan      Decide what to work on next
+  Work      Execute your daily plan
   Execute   Do the work inside your projects
   Review    Reflect on progress and catch issues
 
@@ -37,12 +38,18 @@ and tags. Use cross-project views to see everything at once.
 # Plan
 
 Decide what to work on. The backlog ranks tasks by priority
-and urgency. Today holds the tasks you commit to for the day.
+and urgency.
 
   ;q  Backlog (suggestion-ranked focus queue)
-  ;f  Today (daily execution board)
   ;D  Due date overview
   ;d  Daily review
+
+# Work
+
+Your daily execution surface. Track what you committed to
+for the day and move tasks forward.
+
+  ;f  Today (daily execution board)
 
 # Execute
 
@@ -63,7 +70,7 @@ Reflect on what was done, catch stale work, and close loops.
 # Pipeline Hub
 
 Press ;; from anywhere to open the Pipeline Hub: a single
-overview screen showing all five stages with live counts and
+overview screen showing all stages with live counts and
 one-keystroke access to every stage view.`,
 		},
 	}

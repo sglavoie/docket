@@ -27,7 +27,7 @@ func buildViewAccentMap() {
 		// Plan stage (green)
 		ViewFocusView:        AccentPlan,
 		ViewProjectFocusView: AccentPlan,
-		ViewFocusBoard:       AccentPlan,
+		ViewFocusBoard:       AccentWork,
 		ViewDueDateOverview:  AccentPlan,
 		ViewDailyReview:      AccentPlan,
 		ViewPriorityView:     AccentPlan,

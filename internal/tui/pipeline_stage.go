@@ -8,8 +8,10 @@ func pipelineStage(vt ViewType) string {
 		return "Capture"
 	case ViewAllTasks, ViewGlobalInboxProcessor, ViewCrossProjectOutliner, ViewCrossProjectKanban:
 		return "Organize"
-	case ViewFocusView, ViewFocusBoard, ViewDueDateOverview, ViewDailyReview:
+	case ViewFocusView, ViewDueDateOverview, ViewDailyReview:
 		return "Plan"
+	case ViewFocusBoard:
+		return "Work"
 	case ViewWeeklyReview, ViewMetricsDashboard, ViewRecentActivity:
 		return "Review"
 	case ViewGlobalBlockers, ViewGlobalNotes, ViewWorkflowRules, ViewNotificationCenter:
@@ -27,7 +29,9 @@ func pipelineNextHint(stage string) string {
 	case "Organize":
 		return "Next: ;q backlog | ;f today"
 	case "Plan":
-		return "Next: Enter project | ;w review"
+		return "Next: ;f today | Enter project"
+	case "Work":
+		return "Next: ;w review | ;; hub"
 	case "Review":
 		return "Next: ;i capture | ;q backlog"
 	}

@@ -46,6 +46,7 @@ var (
 	AccentCapture   = lipgloss.Color("209") // coral/salmon (Capture stage)
 	AccentOrganize  = lipgloss.Color("75")  // sky blue (Organize stage)
 	AccentPlan      = lipgloss.Color("42")  // green (Plan stage)
+	AccentWork      = lipgloss.Color("208") // orange (Work stage)
 	AccentExecute   = lipgloss.Color("44")  // cyan (Execute stage)
 	AccentReview    = lipgloss.Color("220") // yellow (Review stage)
 	AccentSupport   = lipgloss.Color("245") // muted gray (Support stage)
