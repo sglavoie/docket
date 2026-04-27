@@ -199,62 +199,11 @@ func (m *CommandPaletteModel) updateSearchMode(msg tea.KeyPressMsg) (tea.Model, 
 			}
 		}
 		return m, nil
-	case "ctrl+x":
-		// Quick complete task (ctrl+m is same as Enter in terminals)
-		if len(m.filteredItems) > 0 && m.cursor < len(m.filteredItems) {
-			item := m.filteredItems[m.cursor].Item
-			if item.Category == ItemCategoryTasks && item.Task != nil && item.Project != nil {
-				task := item.Task
-				project := item.Project
-				if task.Status != models.StatusDone && task.Status != models.StatusCanceled {
-					return m, func() tea.Msg {
-						return CommandPaletteExecuteMsg{ResultMsg: CommandPaletteTaskActionMsg{
-							Task: task, Project: project, Action: "complete",
-						}}
-					}
-				}
-			}
-		}
-		return m, nil
-	case "ctrl+e":
-		// Quick edit task
-		if len(m.filteredItems) > 0 && m.cursor < len(m.filteredItems) {
-			item := m.filteredItems[m.cursor].Item
-			if item.Category == ItemCategoryTasks && item.Task != nil {
-				task := item.Task
-				return m, func() tea.Msg {
-					return CommandPaletteExecuteMsg{ResultMsg: EditTaskMsg{Task: task}}
-				}
-			}
-		}
-		return m, nil
-	case "ctrl+g":
-		// Quick view in glow (ctrl+v is reserved for paste-to-task)
-		if len(m.filteredItems) > 0 && m.cursor < len(m.filteredItems) {
-			item := m.filteredItems[m.cursor].Item
-			if item.Category == ItemCategoryTasks && item.Task != nil {
-				task := item.Task
-				return m, func() tea.Msg {
-					return CommandPaletteExecuteMsg{ResultMsg: GlowViewMsg{Task: task}}
-				}
-			}
-		}
-		return m, nil
-	case "ctrl+s":
-		// Quick start task
-		if len(m.filteredItems) > 0 && m.cursor < len(m.filteredItems) {
-			item := m.filteredItems[m.cursor].Item
-			if item.Category == ItemCategoryTasks && item.Task != nil && item.Project != nil {
-				task := item.Task
-				project := item.Project
-				if task.Status == models.StatusTodo {
-					return m, func() tea.Msg {
-						return CommandPaletteExecuteMsg{ResultMsg: CommandPaletteTaskActionMsg{
-							Task: task, Project: project, Action: "start",
-						}}
-					}
-				}
-			}
+	case "ctrl+x", "ctrl+e", "ctrl+g", "ctrl+s":
+		// Quick task actions (ctrl+x: complete, ctrl+e: edit, ctrl+g: glow, ctrl+s: start)
+		action := strings.TrimPrefix(msg.String(), "ctrl+")
+		if cmd := m.taskQuickAction(action); cmd != nil {
+			return m, cmd
 		}
 		return m, nil
 	case "ctrl+h":
@@ -304,55 +253,9 @@ func (m *CommandPaletteModel) updateSearchMode(msg tea.KeyPressMsg) (tea.Model, 
 		return m, nil
 	case "e", "g", "x", "s", "r", "b":
 		// Direct actions on tasks (when not actively typing a search)
-		if m.isDirectActionEnabled() && len(m.filteredItems) > 0 && m.cursor < len(m.filteredItems) {
-			item := m.filteredItems[m.cursor].Item
-			if item.Category == ItemCategoryTasks && item.Task != nil && item.Project != nil {
-				task := item.Task
-				project := item.Project
-				key := msg.String()
-
-				switch key {
-				case "e":
-					return m, func() tea.Msg {
-						return CommandPaletteExecuteMsg{ResultMsg: EditTaskMsg{Task: task}}
-					}
-				case "g":
-					return m, func() tea.Msg {
-						return CommandPaletteExecuteMsg{ResultMsg: GlowViewMsg{Task: task}}
-					}
-				case "x":
-					if task.Status != models.StatusDone && task.Status != models.StatusCanceled {
-						return m, func() tea.Msg {
-							return CommandPaletteExecuteMsg{ResultMsg: CommandPaletteTaskActionMsg{
-								Task: task, Project: project, Action: "complete",
-							}}
-						}
-					}
-				case "s":
-					if task.Status == models.StatusTodo {
-						return m, func() tea.Msg {
-							return CommandPaletteExecuteMsg{ResultMsg: CommandPaletteTaskActionMsg{
-								Task: task, Project: project, Action: "start",
-							}}
-						}
-					}
-				case "b":
-					if task.Status.IsActive() && task.Status != models.StatusBlocked {
-						return m, func() tea.Msg {
-							return CommandPaletteExecuteMsg{ResultMsg: CommandPaletteTaskActionMsg{
-								Task: task, Project: project, Action: "block",
-							}}
-						}
-					}
-				case "r":
-					if task.Status == models.StatusDone || task.Status == models.StatusCanceled {
-						return m, func() tea.Msg {
-							return CommandPaletteExecuteMsg{ResultMsg: CommandPaletteTaskActionMsg{
-								Task: task, Project: project, Action: "reopen",
-							}}
-						}
-					}
-				}
+		if m.isDirectActionEnabled() {
+			if cmd := m.taskQuickAction(msg.String()); cmd != nil {
+				return m, cmd
 			}
 		}
 		// Fall through to default if action not applicable
@@ -397,6 +300,75 @@ func (m *CommandPaletteModel) updateSearchMode(msg tea.KeyPressMsg) (tea.Model, 
 		m.filterItems()
 		return m, cmd
 	}
+}
+
+// taskQuickAction maps a single-letter action key to a task command for the
+// currently selected palette item. Returns nil when the action does not apply
+// (wrong item category, missing project, or status guard fails).
+// Accepted keys: e (edit), g (glow), x (complete), s (start), b (block), r (reopen).
+func (m *CommandPaletteModel) taskQuickAction(key string) tea.Cmd {
+	if len(m.filteredItems) == 0 || m.cursor >= len(m.filteredItems) {
+		return nil
+	}
+	item := m.filteredItems[m.cursor].Item
+	if item.Category != ItemCategoryTasks || item.Task == nil {
+		return nil
+	}
+	task := item.Task
+
+	// Actions that only need a task (no project required)
+	switch key {
+	case "e":
+		return func() tea.Msg {
+			return CommandPaletteExecuteMsg{ResultMsg: EditTaskMsg{Task: task}}
+		}
+	case "g":
+		return func() tea.Msg {
+			return CommandPaletteExecuteMsg{ResultMsg: GlowViewMsg{Task: task}}
+		}
+	}
+
+	// Remaining actions require a project and a status guard
+	if item.Project == nil {
+		return nil
+	}
+	project := item.Project
+
+	switch key {
+	case "x":
+		if task.Status != models.StatusDone && task.Status != models.StatusCanceled {
+			return func() tea.Msg {
+				return CommandPaletteExecuteMsg{ResultMsg: CommandPaletteTaskActionMsg{
+					Task: task, Project: project, Action: "complete",
+				}}
+			}
+		}
+	case "s":
+		if task.Status == models.StatusTodo {
+			return func() tea.Msg {
+				return CommandPaletteExecuteMsg{ResultMsg: CommandPaletteTaskActionMsg{
+					Task: task, Project: project, Action: "start",
+				}}
+			}
+		}
+	case "b":
+		if task.Status.IsActive() && task.Status != models.StatusBlocked {
+			return func() tea.Msg {
+				return CommandPaletteExecuteMsg{ResultMsg: CommandPaletteTaskActionMsg{
+					Task: task, Project: project, Action: "block",
+				}}
+			}
+		}
+	case "r":
+		if task.Status == models.StatusDone || task.Status == models.StatusCanceled {
+			return func() tea.Msg {
+				return CommandPaletteExecuteMsg{ResultMsg: CommandPaletteTaskActionMsg{
+					Task: task, Project: project, Action: "reopen",
+				}}
+			}
+		}
+	}
+	return nil
 }
 
 // updateActionMode handles key events when showing inline actions for an item.
