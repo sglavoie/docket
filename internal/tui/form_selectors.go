@@ -95,21 +95,3 @@ func renderEnumSelector(options []string, cursor int, focused bool) string {
 	}
 	return b.String()
 }
-
-// renderTextAttrPreview renders a text attribute field as a truncated preview.
-func renderTextAttrPreview(value string, focused bool) string {
-	if value == "" {
-		display := MutedStyle.Render("(Enter to edit)")
-		if focused {
-			return SelectorOptionSelectedStyle.Render(display)
-		}
-		return display
-	}
-	// Show truncated preview
-	display := strings.ReplaceAll(value, "\n", " ")
-	display = truncateToVisualWidth(display, 40)
-	if focused {
-		return SelectorOptionSelectedStyle.Render(display)
-	}
-	return display
-}
