@@ -1,6 +1,19 @@
 package tui
 
-import tea "charm.land/bubbletea/v2"
+import (
+	tea "charm.land/bubbletea/v2"
+
+	"github.com/sglavoie/tt/internal/models"
+)
+
+// selectedTreeTask returns the task under the project tree cursor,
+// or nil when the project tree is not active.
+func (m *AppModel) selectedTreeTask() *models.Task {
+	if m.projectTree == nil {
+		return nil
+	}
+	return m.projectTree.getSelectedTask()
+}
 
 func (m *AppModel) taskActionCommands() []Command { //nolint:gocyclo
 	return []Command{
@@ -21,9 +34,8 @@ func (m *AppModel) taskActionCommands() []Command { //nolint:gocyclo
 						Project: m.currentProject,
 					}
 				}
-				visible := m.projectTree.visibleNodes()
-				if CursorInBounds(m.projectTree.cursor, len(visible)) {
-					return EditTaskMsg{Task: visible[m.projectTree.cursor].Task}
+				if task := m.selectedTreeTask(); task != nil {
+					return EditTaskMsg{Task: task}
 				}
 				return StatusMsg("No task selected")
 			},
@@ -36,12 +48,8 @@ func (m *AppModel) taskActionCommands() []Command { //nolint:gocyclo
 			Views:       []ViewType{ViewProjectTree},
 			Aliases:     []string{"inline edit", "fast edit"},
 			Handler: func() tea.Msg {
-				if m.projectTree == nil {
-					return nil
-				}
-				visible := m.projectTree.visibleNodes()
-				if CursorInBounds(m.projectTree.cursor, len(visible)) {
-					m.projectTree.enterQuickEditMode(visible[m.projectTree.cursor].Task, false)
+				if task := m.selectedTreeTask(); task != nil {
+					m.projectTree.enterQuickEditMode(task, false)
 					return nil
 				}
 				return StatusMsg("No task selected")
@@ -55,12 +63,8 @@ func (m *AppModel) taskActionCommands() []Command { //nolint:gocyclo
 			Views:       []ViewType{ViewProjectTree},
 			Aliases:     []string{"rename", "change title"},
 			Handler: func() tea.Msg {
-				if m.projectTree == nil {
-					return nil
-				}
-				visible := m.projectTree.visibleNodes()
-				if CursorInBounds(m.projectTree.cursor, len(visible)) {
-					m.projectTree.enterQuickEditMode(visible[m.projectTree.cursor].Task, true)
+				if task := m.selectedTreeTask(); task != nil {
+					m.projectTree.enterQuickEditMode(task, true)
 					return nil
 				}
 				return StatusMsg("No task selected")
@@ -81,9 +85,7 @@ func (m *AppModel) taskActionCommands() []Command { //nolint:gocyclo
 					m.projectTree.showBulkDeleteConfirm()
 					return nil
 				}
-				visible := m.projectTree.visibleNodes()
-				if CursorInBounds(m.projectTree.cursor, len(visible)) {
-					task := visible[m.projectTree.cursor].Task
+				if task := m.selectedTreeTask(); task != nil {
 					m.projectTree.showDeleteConfirm(task)
 					return nil
 				}
@@ -98,12 +100,8 @@ func (m *AppModel) taskActionCommands() []Command { //nolint:gocyclo
 			Views:       []ViewType{ViewProjectTree},
 			Aliases:     []string{"yank title", "clipboard title"},
 			Handler: func() tea.Msg {
-				if m.projectTree == nil {
-					return nil
-				}
-				visible := m.projectTree.visibleNodes()
-				if CursorInBounds(m.projectTree.cursor, len(visible)) {
-					return CopyTaskTitleMsg{Task: visible[m.projectTree.cursor].Task}
+				if task := m.selectedTreeTask(); task != nil {
+					return CopyTaskTitleMsg{Task: task}
 				}
 				return StatusMsg("No task selected")
 			},
@@ -116,12 +114,8 @@ func (m *AppModel) taskActionCommands() []Command { //nolint:gocyclo
 			Views:       []ViewType{ViewProjectTree},
 			Aliases:     []string{"yank details", "clipboard details"},
 			Handler: func() tea.Msg {
-				if m.projectTree == nil {
-					return nil
-				}
-				visible := m.projectTree.visibleNodes()
-				if CursorInBounds(m.projectTree.cursor, len(visible)) {
-					return CopyTaskDetailsMsg{Task: visible[m.projectTree.cursor].Task}
+				if task := m.selectedTreeTask(); task != nil {
+					return CopyTaskDetailsMsg{Task: task}
 				}
 				return StatusMsg("No task selected")
 			},
@@ -134,12 +128,8 @@ func (m *AppModel) taskActionCommands() []Command { //nolint:gocyclo
 			Views:       []ViewType{ViewProjectTree},
 			Aliases:     []string{"yank description", "clipboard description"},
 			Handler: func() tea.Msg {
-				if m.projectTree == nil {
-					return nil
-				}
-				visible := m.projectTree.visibleNodes()
-				if CursorInBounds(m.projectTree.cursor, len(visible)) {
-					return CopyTaskTitleAndDescMsg{Task: visible[m.projectTree.cursor].Task}
+				if task := m.selectedTreeTask(); task != nil {
+					return CopyTaskTitleAndDescMsg{Task: task}
 				}
 				return StatusMsg("No task selected")
 			},
@@ -152,13 +142,9 @@ func (m *AppModel) taskActionCommands() []Command { //nolint:gocyclo
 			Views:       []ViewType{ViewProjectTree},
 			Aliases:     []string{"transfer task", "relocate task"},
 			Handler: func() tea.Msg {
-				if m.projectTree == nil || m.currentProject == nil {
-					return nil
-				}
-				visible := m.projectTree.visibleNodes()
-				if CursorInBounds(m.projectTree.cursor, len(visible)) {
+				if task := m.selectedTreeTask(); task != nil && m.currentProject != nil {
 					return ShowProjectSelectorForMoveMsg{
-						Task:          visible[m.projectTree.cursor].Task,
+						Task:          task,
 						SourceProject: m.currentProject,
 					}
 				}
@@ -173,12 +159,7 @@ func (m *AppModel) taskActionCommands() []Command { //nolint:gocyclo
 			Views:       []ViewType{ViewProjectTree},
 			Aliases:     []string{"star task", "flag task", "active flag"},
 			Handler: func() tea.Msg {
-				if m.projectTree == nil {
-					return nil
-				}
-				visible := m.projectTree.visibleNodes()
-				if CursorInBounds(m.projectTree.cursor, len(visible)) {
-					task := visible[m.projectTree.cursor].Task
+				if task := m.selectedTreeTask(); task != nil {
 					task.ToggleActive()
 					return TaskPropertyChangedMsg{Task: task, NeedsSave: true}
 				}
@@ -193,12 +174,7 @@ func (m *AppModel) taskActionCommands() []Command { //nolint:gocyclo
 			Views:       []ViewType{ViewProjectTree},
 			Aliases:     []string{"pin task", "unpin task"},
 			Handler: func() tea.Msg {
-				if m.projectTree == nil {
-					return nil
-				}
-				visible := m.projectTree.visibleNodes()
-				if CursorInBounds(m.projectTree.cursor, len(visible)) {
-					task := visible[m.projectTree.cursor].Task
+				if task := m.selectedTreeTask(); task != nil {
 					task.TogglePinned()
 					return TaskPropertyChangedMsg{Task: task, NeedsSave: true}
 				}
@@ -213,13 +189,9 @@ func (m *AppModel) taskActionCommands() []Command { //nolint:gocyclo
 			Views:       []ViewType{ViewProjectTree},
 			Aliases:     []string{"deadline", "due date picker"},
 			Handler: func() tea.Msg {
-				if m.projectTree == nil || m.currentProject == nil {
-					return nil
-				}
-				visible := m.projectTree.visibleNodes()
-				if CursorInBounds(m.projectTree.cursor, len(visible)) {
+				if task := m.selectedTreeTask(); task != nil && m.currentProject != nil {
 					return SetDueDateMsg{
-						Task:    visible[m.projectTree.cursor].Task,
+						Task:    task,
 						Project: m.currentProject,
 					}
 				}
@@ -234,13 +206,9 @@ func (m *AppModel) taskActionCommands() []Command { //nolint:gocyclo
 			Views:       []ViewType{ViewProjectTree},
 			Aliases:     []string{"change section", "assign section"},
 			Handler: func() tea.Msg {
-				if m.projectTree == nil || m.currentProject == nil {
-					return nil
-				}
-				visible := m.projectTree.visibleNodes()
-				if CursorInBounds(m.projectTree.cursor, len(visible)) {
+				if task := m.selectedTreeTask(); task != nil && m.currentProject != nil {
 					return ShowSectionPickerMsg{
-						Task:    visible[m.projectTree.cursor].Task,
+						Task:    task,
 						Project: m.currentProject,
 					}
 				}
@@ -255,12 +223,7 @@ func (m *AppModel) taskActionCommands() []Command { //nolint:gocyclo
 			Views:       []ViewType{ViewProjectTree},
 			Aliases:     []string{"tag task", "edit tags"},
 			Handler: func() tea.Msg {
-				if m.projectTree == nil || m.currentProject == nil {
-					return nil
-				}
-				visible := m.projectTree.visibleNodes()
-				if CursorInBounds(m.projectTree.cursor, len(visible)) {
-					task := visible[m.projectTree.cursor].Task
+				if task := m.selectedTreeTask(); task != nil && m.currentProject != nil {
 					return ShowTagSelectorMsg{
 						Task:        task,
 						Project:     m.currentProject,
@@ -278,13 +241,9 @@ func (m *AppModel) taskActionCommands() []Command { //nolint:gocyclo
 			Views:       []ViewType{ViewProjectTree},
 			Aliases:     []string{"add dependency", "link dependency"},
 			Handler: func() tea.Msg {
-				if m.projectTree == nil || m.currentProject == nil {
-					return nil
-				}
-				visible := m.projectTree.visibleNodes()
-				if CursorInBounds(m.projectTree.cursor, len(visible)) {
+				if task := m.selectedTreeTask(); task != nil && m.currentProject != nil {
 					return ManageDependenciesMsg{
-						Task:    visible[m.projectTree.cursor].Task,
+						Task:    task,
 						Project: m.currentProject,
 					}
 				}
@@ -299,13 +258,9 @@ func (m *AppModel) taskActionCommands() []Command { //nolint:gocyclo
 			Views:       []ViewType{ViewProjectTree},
 			Aliases:     []string{"dependency graph", "show dependencies"},
 			Handler: func() tea.Msg {
-				if m.projectTree == nil || m.currentProject == nil {
-					return nil
-				}
-				visible := m.projectTree.visibleNodes()
-				if CursorInBounds(m.projectTree.cursor, len(visible)) {
+				if task := m.selectedTreeTask(); task != nil && m.currentProject != nil {
 					return ShowDependencyViewerMsg{
-						Task:    visible[m.projectTree.cursor].Task,
+						Task:    task,
 						Project: m.currentProject,
 					}
 				}
@@ -320,13 +275,9 @@ func (m *AppModel) taskActionCommands() []Command { //nolint:gocyclo
 			Views:       []ViewType{ViewProjectTree},
 			Aliases:     []string{"edit description", "open editor"},
 			Handler: func() tea.Msg {
-				if m.projectTree == nil || m.currentProject == nil {
-					return nil
-				}
-				visible := m.projectTree.visibleNodes()
-				if CursorInBounds(m.projectTree.cursor, len(visible)) {
+				if task := m.selectedTreeTask(); task != nil && m.currentProject != nil {
 					return EditTaskContentMsg{
-						Task:    visible[m.projectTree.cursor].Task,
+						Task:    task,
 						Project: m.currentProject,
 					}
 				}
@@ -341,13 +292,9 @@ func (m *AppModel) taskActionCommands() []Command { //nolint:gocyclo
 			Views:       []ViewType{ViewProjectTree},
 			Aliases:     []string{"comments", "add comment"},
 			Handler: func() tea.Msg {
-				if m.projectTree == nil || m.currentProject == nil {
-					return nil
-				}
-				visible := m.projectTree.visibleNodes()
-				if CursorInBounds(m.projectTree.cursor, len(visible)) {
+				if task := m.selectedTreeTask(); task != nil && m.currentProject != nil {
 					return ShowTaskCommentsMsg{
-						Task:    visible[m.projectTree.cursor].Task,
+						Task:    task,
 						Project: m.currentProject,
 					}
 				}
@@ -362,13 +309,9 @@ func (m *AppModel) taskActionCommands() []Command { //nolint:gocyclo
 			Views:       []ViewType{ViewProjectTree},
 			Aliases:     []string{"attachments", "add attachment"},
 			Handler: func() tea.Msg {
-				if m.projectTree == nil || m.currentProject == nil {
-					return nil
-				}
-				visible := m.projectTree.visibleNodes()
-				if CursorInBounds(m.projectTree.cursor, len(visible)) {
+				if task := m.selectedTreeTask(); task != nil && m.currentProject != nil {
 					return ShowTaskAttachmentsMsg{
-						Task:    visible[m.projectTree.cursor].Task,
+						Task:    task,
 						Project: m.currentProject,
 					}
 				}
@@ -383,13 +326,9 @@ func (m *AppModel) taskActionCommands() []Command { //nolint:gocyclo
 			Views:       []ViewType{ViewProjectTree},
 			Aliases:     []string{"activity log", "task history"},
 			Handler: func() tea.Msg {
-				if m.projectTree == nil || m.currentProject == nil {
-					return nil
-				}
-				visible := m.projectTree.visibleNodes()
-				if CursorInBounds(m.projectTree.cursor, len(visible)) {
+				if task := m.selectedTreeTask(); task != nil && m.currentProject != nil {
 					return OpenTaskActivityMsg{
-						Task:    visible[m.projectTree.cursor].Task,
+						Task:    task,
 						Project: m.currentProject,
 					}
 				}

@@ -14,11 +14,7 @@ func (m *AppModel) linkedTaskCommands() []Command {
 			Views:       []ViewType{ViewProjectTree},
 			Aliases:     []string{"add blocker", "new blocker"},
 			Handler: func() tea.Msg {
-				if m.projectTree == nil {
-					return nil
-				}
-				task := m.projectTree.getSelectedTask()
-				if task != nil {
+				if task := m.selectedTreeTask(); task != nil {
 					return CreateLinkedTaskMsg{SourceTask: task, Project: m.projectTree.project, LinkType: LinkTypeBlocker}
 				}
 				return nil
@@ -32,11 +28,7 @@ func (m *AppModel) linkedTaskCommands() []Command {
 			Views:       []ViewType{ViewProjectTree},
 			Aliases:     []string{"add dependent", "new dependent"},
 			Handler: func() tea.Msg {
-				if m.projectTree == nil {
-					return nil
-				}
-				task := m.projectTree.getSelectedTask()
-				if task != nil {
+				if task := m.selectedTreeTask(); task != nil {
 					return CreateLinkedTaskMsg{SourceTask: task, Project: m.projectTree.project, LinkType: LinkTypeDependent}
 				}
 				return nil
@@ -50,11 +42,7 @@ func (m *AppModel) linkedTaskCommands() []Command {
 			Views:       []ViewType{ViewProjectTree},
 			Aliases:     []string{"add subtask", "new subtask"},
 			Handler: func() tea.Msg {
-				if m.projectTree == nil {
-					return nil
-				}
-				task := m.projectTree.getSelectedTask()
-				if task != nil {
+				if task := m.selectedTreeTask(); task != nil {
 					return CreateLinkedTaskMsg{SourceTask: task, Project: m.projectTree.project, LinkType: LinkTypeSubtask}
 				}
 				return nil
@@ -68,11 +56,7 @@ func (m *AppModel) linkedTaskCommands() []Command {
 			Views:       []ViewType{ViewProjectTree},
 			Aliases:     []string{"add follow-up", "new follow-up"},
 			Handler: func() tea.Msg {
-				if m.projectTree == nil {
-					return nil
-				}
-				task := m.projectTree.getSelectedTask()
-				if task != nil {
+				if task := m.selectedTreeTask(); task != nil {
 					return CreateLinkedTaskMsg{SourceTask: task, Project: m.projectTree.project, LinkType: LinkTypeFollowUp}
 				}
 				return nil
@@ -86,11 +70,7 @@ func (m *AppModel) linkedTaskCommands() []Command {
 			Views:       []ViewType{ViewProjectTree},
 			Aliases:     []string{"show linked", "go to linked"},
 			Handler: func() tea.Msg {
-				if m.projectTree == nil {
-					return nil
-				}
-				task := m.projectTree.getSelectedTask()
-				if task != nil {
+				if task := m.selectedTreeTask(); task != nil {
 					return ShowLinkedTaskSelectorMsg{Task: task, Project: m.projectTree.project}
 				}
 				return nil
@@ -104,11 +84,7 @@ func (m *AppModel) linkedTaskCommands() []Command {
 			Views:       []ViewType{ViewProjectTree},
 			Aliases:     []string{"remove link", "delete link"},
 			Handler: func() tea.Msg {
-				if m.projectTree == nil {
-					return nil
-				}
-				task := m.projectTree.getSelectedTask()
-				if task != nil {
+				if task := m.selectedTreeTask(); task != nil {
 					return ShowLinkedTaskSelectorMsg{Task: task, Project: m.projectTree.project, ForUnlink: true}
 				}
 				return nil
@@ -122,11 +98,7 @@ func (m *AppModel) linkedTaskCommands() []Command {
 			Views:       []ViewType{ViewProjectTree},
 			Aliases:     []string{"cross link", "inter-project link"},
 			Handler: func() tea.Msg {
-				if m.projectTree == nil {
-					return nil
-				}
-				task := m.projectTree.getSelectedTask()
-				if task != nil {
+				if task := m.selectedTreeTask(); task != nil {
 					return ShowCrossProjectLinkerMsg{SourceTask: task, SourceProject: m.projectTree.project}
 				}
 				return nil

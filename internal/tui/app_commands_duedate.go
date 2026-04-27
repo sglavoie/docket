@@ -19,11 +19,7 @@ func (m *AppModel) dueDateCommands() []Command {
 			Views:       []ViewType{ViewProjectTree},
 			Aliases:     []string{"today", "due now"},
 			Handler: func() tea.Msg {
-				if m.projectTree == nil {
-					return nil
-				}
-				task := m.projectTree.getSelectedTask()
-				if task != nil {
+				if task := m.selectedTreeTask(); task != nil {
 					now := time.Now()
 					today := util.StartOfDay(now)
 					m.projectTree.project.MutateTask(task.ID, func(t *models.Task) {
@@ -43,11 +39,7 @@ func (m *AppModel) dueDateCommands() []Command {
 			Views:       []ViewType{ViewProjectTree},
 			Aliases:     []string{"tomorrow"},
 			Handler: func() tea.Msg {
-				if m.projectTree == nil {
-					return nil
-				}
-				task := m.projectTree.getSelectedTask()
-				if task != nil {
+				if task := m.selectedTreeTask(); task != nil {
 					now := time.Now()
 					tomorrow := time.Date(now.Year(), now.Month(), now.Day()+1, 0, 0, 0, 0, now.Location())
 					m.projectTree.project.MutateTask(task.ID, func(t *models.Task) {
@@ -67,11 +59,7 @@ func (m *AppModel) dueDateCommands() []Command {
 			Views:       []ViewType{ViewProjectTree},
 			Aliases:     []string{"next week"},
 			Handler: func() tea.Msg {
-				if m.projectTree == nil {
-					return nil
-				}
-				task := m.projectTree.getSelectedTask()
-				if task != nil {
+				if task := m.selectedTreeTask(); task != nil {
 					now := time.Now()
 					nextWeek := time.Date(now.Year(), now.Month(), now.Day()+7, 0, 0, 0, 0, now.Location())
 					m.projectTree.project.MutateTask(task.ID, func(t *models.Task) {
@@ -91,11 +79,7 @@ func (m *AppModel) dueDateCommands() []Command {
 			Views:       []ViewType{ViewProjectTree},
 			Aliases:     []string{"next month"},
 			Handler: func() tea.Msg {
-				if m.projectTree == nil {
-					return nil
-				}
-				task := m.projectTree.getSelectedTask()
-				if task != nil {
+				if task := m.selectedTreeTask(); task != nil {
 					now := time.Now()
 					nextMonth := time.Date(now.Year(), now.Month(), now.Day()+30, 0, 0, 0, 0, now.Location())
 					m.projectTree.project.MutateTask(task.ID, func(t *models.Task) {
@@ -115,11 +99,7 @@ func (m *AppModel) dueDateCommands() []Command {
 			Views:       []ViewType{ViewProjectTree},
 			Aliases:     []string{"remove due date", "no due date"},
 			Handler: func() tea.Msg {
-				if m.projectTree == nil {
-					return nil
-				}
-				task := m.projectTree.getSelectedTask()
-				if task != nil {
+				if task := m.selectedTreeTask(); task != nil {
 					m.projectTree.project.MutateTask(task.ID, func(t *models.Task) {
 						t.DueDate = nil
 						t.HasTime = false
