@@ -148,28 +148,14 @@ func (m *AppModel) renderPinnedPopup() string {
 
 	content := strings.Join(contentLines, "\n")
 
-	boxStyle := lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(ColorPrimary).
-		Padding(0, 1).
-		Width(popupWidth)
-
-	rendered := boxStyle.Render(content)
-
-	lines := strings.Split(rendered, "\n")
-	if len(lines) >= 2 {
-		actualWidth := lipgloss.Width(lines[0])
-		lines[0] = renderTitledTopBorder(title, actualWidth, borderStyle)
-		var footer string
-		if m.pinnedPopupFiltering {
-			footer = MutedStyle.Render("↑↓ nav  enter confirm  esc clear")
-		} else if m.pinnedPopupFilter != "" {
-			footer = MutedStyle.Render("j/k nav  enter select  ,status  !pri  / filter  esc clear")
-		} else {
-			footer = MutedStyle.Render("j/k nav  / filter  J/K reorder  ,status  !pri  u unpin  r repin  ctrl+j/k scroll  ctrl+h/l section  esc close")
-		}
-		lines[len(lines)-1] = renderTitledBottomBorder(footer, actualWidth, borderStyle)
+	var footer string
+	if m.pinnedPopupFiltering {
+		footer = MutedStyle.Render("↑↓ nav  enter confirm  esc clear")
+	} else if m.pinnedPopupFilter != "" {
+		footer = MutedStyle.Render("j/k nav  enter select  ,status  !pri  / filter  esc clear")
+	} else {
+		footer = MutedStyle.Render("j/k nav  / filter  J/K reorder  ,status  !pri  u unpin  r repin  ctrl+j/k scroll  ctrl+h/l section  esc close")
 	}
 
-	return strings.Join(lines, "\n")
+	return renderTitledBox(content, popupWidth, title, footer, borderStyle)
 }

@@ -133,6 +133,30 @@ func renderTitledBottomBorder(footerText string, width int, borderStyle lipgloss
 	return result
 }
 
+// renderTitledBox renders content inside a rounded-border box with a titled top
+// border and a titled bottom border (footer). title and footer must already be
+// styled; borderStyle controls the frame characters and BorderForeground color.
+func renderTitledBox(content string, innerWidth int, title, footer string, borderStyle lipgloss.Style) string {
+	boxStyle := lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(borderStyle.GetForeground()).
+		Padding(0, 1).
+		Width(innerWidth)
+
+	rendered := boxStyle.Render(content)
+
+	lines := strings.Split(rendered, "\n")
+	if len(lines) < 2 {
+		return rendered
+	}
+
+	actualWidth := lipgloss.Width(lines[0])
+	lines[0] = renderTitledTopBorder(title, actualWidth, borderStyle)
+	lines[len(lines)-1] = renderTitledBottomBorder(footer, actualWidth, borderStyle)
+
+	return strings.Join(lines, "\n")
+}
+
 // renderCard renders a card with a titled border.
 // Uses lipgloss styling for proper ANSI-aware rendering.
 // When AccentColor is set, uses it for borders. When Focused with AccentColor,

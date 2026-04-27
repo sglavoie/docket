@@ -371,22 +371,6 @@ func renderCompactPrefixHintLines(keyHints []PrefixHint, availLineWidth int) []s
 // renderPrefixBox renders the bordered box with title and bottom "Esc" hint.
 func renderPrefixBox(title string, contentLines []string, innerWidth int, borderStyle lipgloss.Style) string {
 	content := strings.Join(contentLines, "\n")
-
-	boxStyle := lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(ColorAccent).
-		Padding(0, 1).
-		Width(innerWidth)
-
-	rendered := boxStyle.Render(content)
-	lines := strings.Split(rendered, "\n")
-	if len(lines) < 2 {
-		return rendered
-	}
-
-	actualWidth := lipgloss.Width(lines[0])
-	lines[0] = renderTitledTopBorder(title, actualWidth, borderStyle)
-	lines[len(lines)-1] = renderTitledBottomBorder(MutedStyle.Render("Esc to cancel"), actualWidth, borderStyle)
-
-	return strings.Join(lines, "\n")
+	footer := MutedStyle.Render("Esc to cancel")
+	return renderTitledBox(content, innerWidth, title, footer, borderStyle)
 }

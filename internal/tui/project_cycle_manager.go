@@ -442,23 +442,6 @@ func (m *AppModel) renderProjectCyclePopup() string {
 
 	content := strings.Join(contentLines, "\n")
 
-	boxStyle := lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(ColorPrimary).
-		Padding(0, 1).
-		// Width includes the border and padding, so use the full popup width
-		// to preserve the content area assumed by innerWidth above.
-		Width(popupWidth)
-
-	rendered := boxStyle.Render(content)
-
-	lines := strings.Split(rendered, "\n")
-	if len(lines) >= 2 {
-		actualWidth := lipgloss.Width(lines[0])
-		lines[0] = renderTitledTopBorder(title, actualWidth, borderStyle)
-		footer := MutedStyle.Render("1-9 jump · space toggle · p pin · enter go · esc close")
-		lines[len(lines)-1] = renderTitledBottomBorder(footer, actualWidth, borderStyle)
-	}
-
-	return strings.Join(lines, "\n")
+	footer := MutedStyle.Render("1-9 jump · space toggle · p pin · enter go · esc close")
+	return renderTitledBox(content, popupWidth, title, footer, borderStyle)
 }

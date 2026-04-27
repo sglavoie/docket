@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
-	"charm.land/lipgloss/v2"
 )
 
 // handleAxisManagerKey processes key events when the axis manager popup is open.
@@ -148,21 +147,6 @@ func (m *KanbanModel) renderAxisManagerPopup() string {
 
 	content := strings.Join(lines, "\n")
 
-	boxStyle := lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(ColorPrimary).
-		Padding(0, 1).
-		Width(popupW)
-
-	rendered := boxStyle.Render(content)
-
-	renderedLines := strings.Split(rendered, "\n")
-	if len(renderedLines) >= 2 {
-		actualWidth := lipgloss.Width(renderedLines[0])
-		renderedLines[0] = renderTitledTopBorder(title, actualWidth, InfoStatusStyle)
-		footer := MutedStyle.Render(footerText)
-		renderedLines[len(renderedLines)-1] = renderTitledBottomBorder(footer, actualWidth, InfoStatusStyle)
-	}
-
-	return strings.Join(renderedLines, "\n")
+	footer := MutedStyle.Render(footerText)
+	return renderTitledBox(content, popupW, title, footer, InfoStatusStyle)
 }

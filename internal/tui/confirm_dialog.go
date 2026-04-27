@@ -149,12 +149,6 @@ func (c *ConfirmDialog) RenderOverlay(width int) string {
 		content = promptText + "\n\n" + strings.Join(detailLines, "\n")
 	}
 
-	// Build box using lipgloss border
-	boxStyle := lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(ColorWarning).
-		Padding(0, 1)
-
 	// Title and footer text (computed early so we can size the box to fit)
 	titleStyle := lipgloss.NewStyle().Foreground(ColorWarning).Bold(true)
 	title := titleStyle.Render("Confirm")
@@ -180,21 +174,8 @@ func (c *ConfirmDialog) RenderOverlay(width int) string {
 	if innerWidth < minWidth {
 		innerWidth = minWidth
 	}
-	boxStyle = boxStyle.Width(innerWidth)
 
-	rendered := boxStyle.Render(content)
-
-	// Split into lines to replace top and bottom borders
-	lines := strings.Split(rendered, "\n")
-	if len(lines) < 2 {
-		return rendered
-	}
-
-	actualWidth := lipgloss.Width(lines[0])
-	lines[0] = renderTitledTopBorder(title, actualWidth, borderStyle)
-	lines[len(lines)-1] = renderTitledBottomBorder(footerText, actualWidth, borderStyle)
-
-	return strings.Join(lines, "\n")
+	return renderTitledBox(content, innerWidth, title, footerText, borderStyle)
 }
 
 // ConfirmResult is returned when a confirmation is resolved.

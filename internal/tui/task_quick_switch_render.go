@@ -132,26 +132,13 @@ func (m *AppModel) renderQuickSwitchPopup() string {
 	}
 
 	content := strings.Join(contentLines, "\n")
-	rendered := lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(ColorPrimary).
-		Padding(0, 1).
-		Width(popupWidth).
-		Render(content)
 
-	lines := strings.Split(rendered, "\n")
-	if len(lines) >= 2 {
-		actualWidth := lipgloss.Width(lines[0])
-		lines[0] = renderTitledTopBorder(title, actualWidth, borderStyle)
-
-		footer := MutedStyle.Render("j/k nav  / filter  1-9 jump  p pin  c toggle  ,status  !pri  x remove  esc close")
-		if m.quickSwitchFiltering {
-			footer = MutedStyle.Render("↑↓ nav  enter confirm  esc clear")
-		} else if m.quickSwitchFilter != "" {
-			footer = MutedStyle.Render("j/k nav  enter select  ,status  !pri  / filter  esc clear")
-		}
-		lines[len(lines)-1] = renderTitledBottomBorder(footer, actualWidth, borderStyle)
+	footer := MutedStyle.Render("j/k nav  / filter  1-9 jump  p pin  c toggle  ,status  !pri  x remove  esc close")
+	if m.quickSwitchFiltering {
+		footer = MutedStyle.Render("↑↓ nav  enter confirm  esc clear")
+	} else if m.quickSwitchFilter != "" {
+		footer = MutedStyle.Render("j/k nav  enter select  ,status  !pri  / filter  esc clear")
 	}
 
-	return strings.Join(lines, "\n")
+	return renderTitledBox(content, popupWidth, title, footer, borderStyle)
 }

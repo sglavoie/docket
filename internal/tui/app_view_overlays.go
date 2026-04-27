@@ -160,25 +160,8 @@ func (m *AppModel) renderPeekOverlay() string {
 		}
 	}
 
-	boxStyle := lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(ColorPrimary).
-		Padding(0, 1).
-		Width(innerWidth)
-
 	borderStyle := lipgloss.NewStyle().Foreground(ColorPrimary)
-	rendered := boxStyle.Render(sb.String())
-
-	renderedLines := strings.Split(rendered, "\n")
-	if len(renderedLines) < 2 {
-		return rendered
-	}
-
-	actualWidth := lipgloss.Width(renderedLines[0])
-	renderedLines[0] = renderTitledTopBorder(title, actualWidth, borderStyle)
-	renderedLines[len(renderedLines)-1] = renderTitledBottomBorder(footerText, actualWidth, borderStyle)
-
-	return strings.Join(renderedLines, "\n")
+	return renderTitledBox(sb.String(), innerWidth, title, footerText, borderStyle)
 }
 
 // widthRenderer is satisfied by all overlay pickers/popups that render given a width.

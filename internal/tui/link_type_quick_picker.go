@@ -153,24 +153,7 @@ func (p *LinkTypeQuickPicker) render(width int) string {
 		}
 	}
 
-	boxStyle := lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(ColorPrimary).
-		Padding(0, 1).
-		Width(innerWidth)
-
-	rendered := boxStyle.Render(content.String())
-
-	lines := strings.Split(rendered, "\n")
-	if len(lines) < 2 {
-		return rendered
-	}
-
-	actualWidth := lipgloss.Width(lines[0])
-	lines[0] = renderTitledTopBorder(title, actualWidth, borderStyle)
-	lines[len(lines)-1] = renderTitledBottomBorder(footerText, actualWidth, borderStyle)
-
-	return strings.Join(lines, "\n")
+	return renderTitledBox(content.String(), innerWidth, title, footerText, borderStyle)
 }
 
 // =============================================================================
@@ -331,22 +314,5 @@ func (p *LinkModeQuickPicker) render(width int) string {
 		}
 	}
 
-	boxStyle := lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(ColorPrimary).
-		Padding(0, 1).
-		Width(innerWidth)
-
-	rendered := boxStyle.Render(content.String())
-
-	lines := strings.Split(rendered, "\n")
-	if len(lines) < 2 {
-		return rendered
-	}
-
-	actualWidth := lipgloss.Width(lines[0])
-	lines[0] = renderTitledTopBorder(title, actualWidth, borderStyle)
-	lines[len(lines)-1] = renderTitledBottomBorder(footerText, actualWidth, borderStyle)
-
-	return strings.Join(lines, "\n")
+	return renderTitledBox(content.String(), innerWidth, title, footerText, borderStyle)
 }

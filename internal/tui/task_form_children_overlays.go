@@ -45,21 +45,7 @@ func (m *TaskFormModel) renderChecklistEditOverlay() string {
 	applyThemedTextInput(&m.checklistItemInput)
 	content := " " + m.checklistItemInput.View()
 
-	boxStyle := lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(ColorPrimary).
-		Padding(0, 1).
-		Width(innerWidth)
-
-	rendered := boxStyle.Render(content)
-	lines := strings.Split(rendered, "\n")
-	if len(lines) < 2 {
-		return rendered
-	}
-	actualWidth := lipgloss.Width(lines[0])
-	lines[0] = renderTitledTopBorder(title, actualWidth, borderStyle)
-	lines[len(lines)-1] = renderTitledBottomBorder(footerText, actualWidth, borderStyle)
-	return strings.Join(lines, "\n")
+	return renderTitledBox(content, innerWidth, title, footerText, borderStyle)
 }
 
 // TaskFormSubtaskEditedMsg is emitted when a subtask draft edit is confirmed.
@@ -121,19 +107,5 @@ func (m *TaskFormModel) renderSubtaskEditOverlay() string {
 		}
 	}
 
-	boxStyle := lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(ColorPrimary).
-		Padding(0, 1).
-		Width(innerWidth)
-
-	rendered := boxStyle.Render(content.String())
-	lines := strings.Split(rendered, "\n")
-	if len(lines) < 2 {
-		return rendered
-	}
-	actualWidth := lipgloss.Width(lines[0])
-	lines[0] = renderTitledTopBorder(title, actualWidth, borderStyle)
-	lines[len(lines)-1] = renderTitledBottomBorder(footerText, actualWidth, borderStyle)
-	return strings.Join(lines, "\n")
+	return renderTitledBox(content.String(), innerWidth, title, footerText, borderStyle)
 }
