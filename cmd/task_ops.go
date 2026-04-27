@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -468,13 +469,9 @@ func suggestSimilarTasks(tasks []*models.Task, identifier string, limit int) []s
 		}
 	}
 	// Sort by score descending
-	for i := 0; i < len(candidates)-1; i++ {
-		for j := i + 1; j < len(candidates); j++ {
-			if candidates[j].score > candidates[i].score {
-				candidates[i], candidates[j] = candidates[j], candidates[i]
-			}
-		}
-	}
+	slices.SortFunc(candidates, func(a, b scored) int {
+		return b.score - a.score
+	})
 	if len(candidates) > limit {
 		candidates = candidates[:limit]
 	}
