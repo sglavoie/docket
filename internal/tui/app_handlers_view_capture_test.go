@@ -20,12 +20,8 @@ func TestHandleViewMessagesCloseQuickCapture(t *testing.T) {
 	app := newTestAppModel()
 	app.pushView(ViewQuickCapture)
 
-	msg := CloseQuickCaptureMsg{}
-	handled, _ := app.handleViewMessages(msg)
+	app.Update(CloseQuickCaptureMsg{})
 
-	if !handled {
-		t.Error("CloseQuickCaptureMsg should be handled")
-	}
 	if app.currentView() != ViewDashboard {
 		t.Errorf("currentView should be Dashboard after closing quick capture, got %v", app.currentView())
 	}
@@ -49,12 +45,8 @@ func TestHandleViewMessagesCloseBulkCapture(t *testing.T) {
 	app := newTestAppModel()
 	app.pushView(ViewBulkCapture)
 
-	msg := CloseBulkCaptureMsg{}
-	handled, _ := app.handleViewMessages(msg)
+	app.Update(CloseBulkCaptureMsg{})
 
-	if !handled {
-		t.Error("CloseBulkCaptureMsg should be handled")
-	}
 	if app.currentView() != ViewDashboard {
 		t.Errorf("currentView should be Dashboard after closing bulk capture, got %v", app.currentView())
 	}

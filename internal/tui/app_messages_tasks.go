@@ -104,7 +104,7 @@ type ShowDependencyViewerMsg struct {
 }
 
 // CloseDependencyViewerMsg closes the dependency viewer.
-type CloseDependencyViewerMsg struct{}
+type CloseDependencyViewerMsg struct{ PopViewMsg }
 
 // DependencyViewerSelectMsg navigates to a task from dependency viewer.
 type DependencyViewerSelectMsg struct{ Task *models.Task }
@@ -125,7 +125,7 @@ type ShowUndoHistoryMsg struct {
 }
 
 // CloseUndoHistoryMsg closes the undo history view.
-type CloseUndoHistoryMsg struct{}
+type CloseUndoHistoryMsg struct{ PopViewMsg }
 
 // UndoPerformedMsg signals an undo operation completed.
 type UndoPerformedMsg struct {
@@ -193,7 +193,7 @@ type ParentSelectedMsg struct {
 }
 
 // CloseParentSelectorMsg closes the parent selector without selection.
-type CloseParentSelectorMsg struct{}
+type CloseParentSelectorMsg struct{ PopViewMsg }
 
 // =============================================================================
 // Quick Capture Messages (Show/Close Pattern)
@@ -207,7 +207,7 @@ type ShowQuickCaptureMsg struct {
 }
 
 // CloseQuickCaptureMsg closes quick capture.
-type CloseQuickCaptureMsg struct{}
+type CloseQuickCaptureMsg struct{ PopViewMsg }
 
 // =============================================================================
 // Bulk Capture Messages (Show/Close Pattern)
@@ -219,7 +219,7 @@ type ShowBulkCaptureMsg struct {
 }
 
 // CloseBulkCaptureMsg closes bulk capture.
-type CloseBulkCaptureMsg struct{}
+type CloseBulkCaptureMsg struct{ PopViewMsg }
 
 // =============================================================================
 // Task Comments Messages (Show/Close Pattern)
@@ -232,7 +232,7 @@ type ShowTaskCommentsMsg struct {
 }
 
 // CloseTaskCommentsMsg closes the comments view.
-type CloseTaskCommentsMsg struct{}
+type CloseTaskCommentsMsg struct{ PopViewMsg }
 
 // OpenQuickNoteMsg opens the quick note overlay for the given task.
 type OpenQuickNoteMsg struct {
@@ -263,7 +263,7 @@ type ShowTaskChecklistMsg struct {
 }
 
 // CloseTaskChecklistMsg closes the checklist view.
-type CloseTaskChecklistMsg struct{}
+type CloseTaskChecklistMsg struct{ PopViewMsg }
 
 // ChecklistItemAddedMsg signals a checklist item was added.
 type ChecklistItemAddedMsg struct{ Task *models.Task }
@@ -288,7 +288,7 @@ type OpenTaskActivityMsg struct {
 }
 
 // CloseTaskActivityMsg closes the activity log view.
-type CloseTaskActivityMsg struct{}
+type CloseTaskActivityMsg struct{ PopViewMsg }
 
 // =============================================================================
 // Task Detail Messages (Show/Close Pattern)
@@ -301,7 +301,7 @@ type ShowTaskDetailMsg struct {
 }
 
 // CloseTaskDetailMsg closes the task detail view.
-type CloseTaskDetailMsg struct{}
+type CloseTaskDetailMsg struct{ PopViewMsg }
 
 // =============================================================================
 // Task Attachments Messages (Show/Close Pattern)
@@ -314,7 +314,7 @@ type ShowTaskAttachmentsMsg struct {
 }
 
 // CloseTaskAttachmentsMsg closes the attachments view.
-type CloseTaskAttachmentsMsg struct{}
+type CloseTaskAttachmentsMsg struct{ PopViewMsg }
 
 // AttachmentAddedMsg signals an attachment was added.
 type AttachmentAddedMsg struct{ Task *models.Task }
@@ -336,7 +336,7 @@ type ShowProjectSelectorForMoveMsg struct {
 }
 
 // CloseProjectSelectorMsg closes the project selector without selection.
-type CloseProjectSelectorMsg struct{}
+type CloseProjectSelectorMsg struct{ PopViewMsg }
 
 // MoveTaskToProjectMsg requests moving a task to another project.
 type MoveTaskToProjectMsg struct {
@@ -414,7 +414,7 @@ type ShowLinkedTaskSelectorMsg struct {
 }
 
 // CloseLinkedTaskSelectorMsg closes the linked task selector.
-type CloseLinkedTaskSelectorMsg struct{}
+type CloseLinkedTaskSelectorMsg struct{ PopViewMsg }
 
 // LinkedTaskSelectedMsg signals a linked task was selected for navigation.
 type LinkedTaskSelectedMsg struct {
@@ -440,7 +440,7 @@ type ShowCrossProjectLinkerMsg struct {
 }
 
 // CloseCrossProjectLinkerMsg closes the cross-project linker.
-type CloseCrossProjectLinkerMsg struct{}
+type CloseCrossProjectLinkerMsg struct{ PopViewMsg }
 
 // CrossProjectLinkCreatedMsg signals a cross-project link was created.
 type CrossProjectLinkCreatedMsg struct {

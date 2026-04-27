@@ -24,12 +24,8 @@ func TestHandleTagMessagesCloseTagManager(t *testing.T) {
 	app := newTestAppModel()
 	app.pushView(ViewTagManager)
 
-	msg := CloseTagManagerMsg{}
-	handled, _ := app.handleTagMessages(msg)
+	app.Update(CloseTagManagerMsg{})
 
-	if !handled {
-		t.Error("CloseTagManagerMsg should be handled")
-	}
 	if app.currentView() != ViewDashboard {
 		t.Errorf("currentView should be Dashboard after closing tag manager, got %v", app.currentView())
 	}

@@ -1,7 +1,7 @@
 package tui
 
 // CloseHelpMsg is sent when the help view should close.
-type CloseHelpMsg struct{}
+type CloseHelpMsg struct{ PopViewMsg }
 
 // ShowHelpMsg is sent to show help for a specific view.
 type ShowHelpMsg struct {
@@ -14,4 +14,4 @@ type ShowHelpMsg struct {
 type ShowKeybindingExplorerMsg struct{}
 
 // CloseKeybindingExplorerMsg closes the global keybinding explorer.
-type CloseKeybindingExplorerMsg struct{}
+type CloseKeybindingExplorerMsg struct{ PopViewMsg }

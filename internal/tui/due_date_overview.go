@@ -452,7 +452,7 @@ func (m *DueDateOverviewModel) HandledKeys() []string {
 }
 
 // CloseDueDateOverviewMsg is sent when the overview should close.
-type CloseDueDateOverviewMsg struct{}
+type CloseDueDateOverviewMsg struct{ PopViewMsg }
 
 // DueDateOverviewSelectMsg is sent when a task is selected.
 type DueDateOverviewSelectMsg struct {

@@ -59,7 +59,7 @@ type CycleProjectMsg struct {
 type ShowTrashedProjectsMsg struct{}
 
 // CloseTrashedProjectsMsg closes the trashed projects picker.
-type CloseTrashedProjectsMsg struct{}
+type CloseTrashedProjectsMsg struct{ PopViewMsg }
 
 // RestoreFromTrashMsg requests restoration of a project from trash.
 type RestoreFromTrashMsg struct{ Slug string }

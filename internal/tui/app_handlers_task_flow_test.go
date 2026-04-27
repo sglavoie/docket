@@ -157,12 +157,8 @@ func TestHandleTaskMessagesCloseParentSelector(t *testing.T) {
 	app := newTestAppModel()
 	app.pushView(ViewParentSelector)
 
-	msg := CloseParentSelectorMsg{}
-	handled, _ := app.handleTaskMessages(msg)
+	app.Update(CloseParentSelectorMsg{})
 
-	if !handled {
-		t.Error("CloseParentSelectorMsg should be handled")
-	}
 	if app.currentView() != ViewDashboard {
 		t.Errorf("currentView should be Dashboard after closing selector, got %v", app.currentView())
 	}
@@ -172,12 +168,8 @@ func TestHandleTaskMessagesCloseProjectSelector(t *testing.T) {
 	app := newTestAppModel()
 	app.pushView(ViewProjectSelector)
 
-	msg := CloseProjectSelectorMsg{}
-	handled, _ := app.handleTaskMessages(msg)
+	app.Update(CloseProjectSelectorMsg{})
 
-	if !handled {
-		t.Error("CloseProjectSelectorMsg should be handled")
-	}
 	if app.currentView() != ViewDashboard {
 		t.Errorf("currentView should be Dashboard after closing selector, got %v", app.currentView())
 	}
@@ -268,12 +260,8 @@ func TestHandleTaskMessagesCloseLinkedTaskSelector(t *testing.T) {
 	app := newTestAppModel()
 	app.pushView(ViewLinkedTaskSelector)
 
-	msg := CloseLinkedTaskSelectorMsg{}
-	handled, _ := app.handleTaskMessages(msg)
+	app.Update(CloseLinkedTaskSelectorMsg{})
 
-	if !handled {
-		t.Error("CloseLinkedTaskSelectorMsg should be handled")
-	}
 	if app.currentView() != ViewDashboard {
 		t.Errorf("currentView should be Dashboard after closing selector, got %v", app.currentView())
 	}
@@ -298,12 +286,8 @@ func TestHandleTaskMessagesCloseCrossProjectLinker(t *testing.T) {
 	app := newTestAppModel()
 	app.pushView(ViewCrossProjectLinker)
 
-	msg := CloseCrossProjectLinkerMsg{}
-	handled, _ := app.handleTaskMessages(msg)
+	app.Update(CloseCrossProjectLinkerMsg{})
 
-	if !handled {
-		t.Error("CloseCrossProjectLinkerMsg should be handled")
-	}
 	if app.currentView() != ViewDashboard {
 		t.Errorf("currentView should be Dashboard after closing linker, got %v", app.currentView())
 	}

@@ -21,7 +21,7 @@ type ShowProjectPreviewMsg struct {
 }
 
 // CloseProjectPreviewMsg is sent when the project preview should close.
-type CloseProjectPreviewMsg struct{}
+type CloseProjectPreviewMsg struct{ PopViewMsg }
 
 // ProjectPreviewModel is the model for the project preview view.
 type ProjectPreviewModel struct {

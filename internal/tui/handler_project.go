@@ -166,10 +166,6 @@ func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 		m.showView(ViewTrashedProjects, NewTrashedProjectsModel(m.config.DataDir))
 		return true, nil
 
-	case CloseTrashedProjectsMsg:
-		m.popView()
-		return true, nil
-
 	case RestoreFromTrashMsg:
 		m.isLoading = true
 		m.loadingMessage = "Restoring..."

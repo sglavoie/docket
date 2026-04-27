@@ -19,10 +19,6 @@ func (m *AppModel) handleViewSelectionMessages(msg tea.Msg) (bool, tea.Cmd) {
 		}
 		return true, nil
 
-	case CloseFilterMsg:
-		m.popView()
-		return true, nil
-
 	case ShowTaskJumperMsg:
 		if msg.Project != nil {
 			m.taskJumper = NewTaskJumperModel(msg.Project)
@@ -47,18 +43,10 @@ func (m *AppModel) handleViewSelectionMessages(msg tea.Msg) (bool, tea.Cmd) {
 		}
 		return true, nil
 
-	case CloseTaskJumperMsg:
-		m.popView()
-		return true, nil
-
 	case ShowProjectPreviewMsg:
 		if msg.Project != nil {
 			m.showView(ViewProjectPreview, NewProjectPreviewModel(msg.Project, m.config, m.configManager))
 		}
-		return true, nil
-
-	case CloseProjectPreviewMsg:
-		m.popView()
 		return true, nil
 
 	case ShowStatusInputMsg:

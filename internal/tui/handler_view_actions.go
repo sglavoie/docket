@@ -26,10 +26,6 @@ func (m *AppModel) handleGlobalPickerMessages(msg tea.Msg) (bool, tea.Cmd) {
 		}
 		return true, nil
 
-	case ClosePriorityViewMsg:
-		m.popView()
-		return true, nil
-
 	case PriorityViewSelectMsg:
 		m.popView()
 		if msg.Task != nil && m.currentProject != nil {
@@ -132,18 +128,10 @@ func (m *AppModel) handleCaptureAndBulkMessages(msg tea.Msg) (bool, tea.Cmd) {
 		}
 		return true, nil
 
-	case CloseQuickCaptureMsg:
-		m.popView()
-		return true, nil
-
 	case ShowBulkCaptureMsg:
 		if msg.Project != nil {
 			m.showView(ViewBulkCapture, NewBulkCaptureModel(msg.Project))
 		}
-		return true, nil
-
-	case CloseBulkCaptureMsg:
-		m.popView()
 		return true, nil
 
 	case ShowBulkEditMsg:
@@ -470,16 +458,8 @@ func (m *AppModel) handleViewSupportMessages(msg tea.Msg) (bool, tea.Cmd) {
 		}
 		return true, nil
 
-	case CloseBlockersMsg:
-		m.popView()
-		return true, nil
-
 	case ShowGlobalBlockersMsg:
 		m.showView(ViewGlobalBlockers, NewGlobalBlockersModel(m.config))
-		return true, nil
-
-	case CloseGlobalBlockersMsg:
-		m.popToAnchorView()
 		return true, nil
 
 	case BlockerGoToProjectMsg:
@@ -502,10 +482,6 @@ func (m *AppModel) handleViewSupportMessages(msg tea.Msg) (bool, tea.Cmd) {
 			m.recordTaskVisit(msg.Task, msg.Project)
 			m.showView(ViewTaskAttachments, NewTaskAttachmentsModel(msg.Task, msg.Project, m.config))
 		}
-		return true, nil
-
-	case CloseTaskAttachmentsMsg:
-		m.popView()
 		return true, nil
 
 	case AttachmentAddedMsg, AttachmentDeletedMsg:

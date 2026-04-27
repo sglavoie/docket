@@ -54,7 +54,7 @@ type GlobalTagManagerModel struct {
 type ShowGlobalTagManagerMsg struct{}
 
 // CloseGlobalTagManagerMsg is sent when the global tag manager should close.
-type CloseGlobalTagManagerMsg struct{}
+type CloseGlobalTagManagerMsg struct{ PopViewMsg }
 
 // GlobalTagRenamedMsg is sent after a tag has been renamed across projects.
 type GlobalTagRenamedMsg struct {

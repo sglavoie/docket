@@ -44,7 +44,7 @@ const (
 type ShowWeeklyReviewMsg struct{}
 
 // CloseWeeklyReviewMsg closes the weekly review view.
-type CloseWeeklyReviewMsg struct{}
+type CloseWeeklyReviewMsg struct{ PopViewMsg }
 
 // WeeklyReviewRefreshMsg requests a refresh of the weekly review data.
 type WeeklyReviewRefreshMsg struct{}

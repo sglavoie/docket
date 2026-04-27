@@ -41,6 +41,19 @@ func (m *AppModel) Update(msg tea.Msg) (outModel tea.Model, outCmd tea.Cmd) { //
 		}
 	}()
 
+	// Handle all trivial close-view messages via the closeViewMsg interface.
+	// This eliminates individual case arms for ~35 Close*Msg types that only
+	// pop the view stack.
+	if cv, ok := msg.(closeViewMsg); ok {
+		switch cv.closePopStyle() {
+		case popToAnchor:
+			m.popToAnchorView()
+		default:
+			m.popView()
+		}
+		return m, nil
+	}
+
 	if handled, cmd := m.handleGlobalMessage(msg); handled {
 		return m, cmd
 	}

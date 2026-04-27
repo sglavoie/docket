@@ -223,12 +223,8 @@ func TestHandleProjectMessagesCloseTrashedProjects(t *testing.T) {
 	app := newTestAppModel()
 	app.pushView(ViewTrashedProjects)
 
-	msg := CloseTrashedProjectsMsg{}
-	handled, _ := app.handleProjectMessages(msg)
+	app.Update(CloseTrashedProjectsMsg{})
 
-	if !handled {
-		t.Error("CloseTrashedProjectsMsg should be handled")
-	}
 	if app.currentView() != ViewDashboard {
 		t.Errorf("currentView should be Dashboard after closing trashed projects, got %v", app.currentView())
 	}

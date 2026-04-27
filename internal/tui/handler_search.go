@@ -11,10 +11,6 @@ func (m *AppModel) handleSearchMessages(msg tea.Msg) (bool, tea.Cmd) {
 		m.showView(ViewGlobalSearch, m.globalSearch)
 		return true, m.globalSearch.Init()
 
-	case CloseGlobalSearchMsg:
-		m.popView()
-		return true, nil
-
 	case GlobalSearchSelectMsg:
 		m.popView()
 		if msg.Task != nil && msg.Project != nil {
@@ -41,10 +37,6 @@ func (m *AppModel) handleSearchMessages(msg tea.Msg) (bool, tea.Cmd) {
 		}
 		m.showView(ViewCommandPalette, palette)
 		return true, palette.Init()
-
-	case CloseCommandPaletteMsg:
-		m.popView()
-		return true, nil
 
 	case CommandPaletteExecuteMsg:
 		// Check if the inner message opens a modal view that should return to the palette

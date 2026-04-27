@@ -293,7 +293,7 @@ func (m *GlobalSearchModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 // CloseGlobalSearchMsg is sent when the global search should close.
-type CloseGlobalSearchMsg struct{}
+type CloseGlobalSearchMsg struct{ PopViewMsg }
 
 // GlobalSearchSelectMsg is sent when a task is selected from global search.
 type GlobalSearchSelectMsg struct {

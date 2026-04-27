@@ -172,7 +172,7 @@ type ShowBlockersMsg struct {
 }
 
 // CloseBlockersMsg requests closing the blockers view.
-type CloseBlockersMsg struct{}
+type CloseBlockersMsg struct{ PopViewMsg }
 
 // BlockerAddedMsg signals a blocker was added.
 type BlockerAddedMsg struct {

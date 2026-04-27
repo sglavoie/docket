@@ -43,7 +43,7 @@ type ShowTagManagerMsg struct {
 }
 
 // CloseTagManagerMsg is sent when the tag manager should close.
-type CloseTagManagerMsg struct{}
+type CloseTagManagerMsg struct{ PopViewMsg }
 
 // TagRenamedMsg is sent after a tag has been renamed.
 type TagRenamedMsg struct {

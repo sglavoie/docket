@@ -6,7 +6,7 @@ import "github.com/sglavoie/tt/internal/models"
 type ShowAllTasksMsg struct{}
 
 // CloseAllTasksMsg is sent when the all tasks view should close.
-type CloseAllTasksMsg struct{}
+type CloseAllTasksMsg struct{ PopToAnchorMsg }
 
 // AllTasksSelectMsg is sent when a task is selected for navigation.
 type AllTasksSelectMsg struct {

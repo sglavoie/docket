@@ -268,7 +268,7 @@ type toggleSavedFilterTabMsg struct {
 }
 
 // CloseCommandPaletteMsg is sent when the command palette should close.
-type CloseCommandPaletteMsg struct{}
+type CloseCommandPaletteMsg struct{ PopViewMsg }
 
 // CommandPaletteExecuteMsg wraps a command's result and signals the palette should close.
 // This ensures the palette closes and the command executes in the same update cycle.

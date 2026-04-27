@@ -19,10 +19,6 @@ func (m *AppModel) handleViewReviewMessages(msg tea.Msg) (bool, tea.Cmd) { //nol
 		m.showView(ViewDueDateOverview, ddo)
 		return true, nil
 
-	case CloseDueDateOverviewMsg:
-		m.popView()
-		return true, nil
-
 	case ShowMetricsDashboardMsg:
 		if msg.Project != nil {
 			m.metricsDashboard = NewMetricsDashboardModelForProject(m.config, msg.Project)
@@ -30,10 +26,6 @@ func (m *AppModel) handleViewReviewMessages(msg tea.Msg) (bool, tea.Cmd) { //nol
 			m.metricsDashboard = NewMetricsDashboardModel(m.config)
 		}
 		m.showView(ViewMetricsDashboard, m.metricsDashboard)
-		return true, nil
-
-	case CloseMetricsDashboardMsg:
-		m.popToAnchorView()
 		return true, nil
 
 	case MetricsDashboardSelectMsg:
@@ -44,10 +36,6 @@ func (m *AppModel) handleViewReviewMessages(msg tea.Msg) (bool, tea.Cmd) { //nol
 		dr.queueIDs = m.focusQueueIDs
 		dr.dailyPlanIDs = m.dailyPlanIDs
 		m.showView(ViewDailyReview, dr)
-		return true, nil
-
-	case CloseDailyReviewMsg:
-		m.popView()
 		return true, nil
 
 	case MarkDailyReviewDoneMsg:
@@ -93,10 +81,6 @@ func (m *AppModel) handleViewReviewMessages(msg tea.Msg) (bool, tea.Cmd) { //nol
 		m.showView(ViewWeeklyReview, wr)
 		return true, nil
 
-	case CloseWeeklyReviewMsg:
-		m.popView()
-		return true, nil
-
 	case WeeklyReviewSelectProjectMsg:
 		m.popView()
 		if msg.Project != nil {
@@ -117,10 +101,6 @@ func (m *AppModel) handleViewReviewMessages(msg tea.Msg) (bool, tea.Cmd) { //nol
 		m.showView(ViewAllTasks, atv)
 		return true, nil
 
-	case CloseAllTasksMsg:
-		m.popToAnchorView()
-		return true, nil
-
 	case AllTasksSelectMsg:
 		return m.popAndNavigateToTask(msg.Task, msg.Project)
 
@@ -137,10 +117,6 @@ func (m *AppModel) handleViewReviewMessages(msg tea.Msg) (bool, tea.Cmd) { //nol
 	case ShowPipelineHubMsg:
 		hub := NewPipelineHubModel(m.config, m.configManager, m.focusQueueIDs, m.dailyPlanIDs, m.contextualProject())
 		m.showView(ViewPipelineHub, hub)
-		return true, nil
-
-	case CloseFocusBoardMsg:
-		m.popToAnchorView()
 		return true, nil
 
 	case FocusBoardSelectMsg:
@@ -166,10 +142,6 @@ func (m *AppModel) handleViewReviewMessages(msg tea.Msg) (bool, tea.Cmd) { //nol
 		m.showView(ViewRecentActivity, ra)
 		return true, nil
 
-	case CloseRecentActivityMsg:
-		m.popToAnchorView()
-		return true, nil
-
 	case ShowProjectRecentActivityMsg:
 		if msg.Project != nil {
 			pra := NewProjectRecentActivityModel(m.config, msg.Project)
@@ -179,17 +151,9 @@ func (m *AppModel) handleViewReviewMessages(msg tea.Msg) (bool, tea.Cmd) { //nol
 		}
 		return true, nil
 
-	case CloseProjectRecentActivityMsg:
-		m.popView()
-		return true, nil
-
 	case ShowRecentActivityPreviewMsg:
 		preview := NewRecentActivityPreviewModel(msg.Task, msg.Project)
 		m.showView(ViewRecentActivityPreview, preview)
-		return true, nil
-
-	case CloseRecentActivityPreviewMsg:
-		m.popView()
 		return true, nil
 
 	case RecentActivitySelectMsg:
@@ -199,10 +163,6 @@ func (m *AppModel) handleViewReviewMessages(msg tea.Msg) (bool, tea.Cmd) { //nol
 		if msg.Project != nil {
 			m.showView(ViewProjectFocusView, NewProjectFocusViewModel(msg.Project, m.config))
 		}
-		return true, nil
-
-	case CloseProjectFocusViewMsg:
-		m.popView()
 		return true, nil
 
 	case DueDateOverviewSelectMsg:

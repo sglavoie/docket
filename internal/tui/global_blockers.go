@@ -197,7 +197,7 @@ func (m *GlobalBlockersModel) closeMsg() tea.Msg {
 type ShowGlobalBlockersMsg struct{}
 
 // CloseGlobalBlockersMsg requests closing the global blockers view.
-type CloseGlobalBlockersMsg struct{}
+type CloseGlobalBlockersMsg struct{ PopToAnchorMsg }
 
 func (m *GlobalBlockersModel) StatusBarLabel() string { return "Global Blockers" }
 

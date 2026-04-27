@@ -21,12 +21,8 @@ func TestHandleTaskMessagesCloseTaskComments(t *testing.T) {
 	app := newTestAppModel()
 	app.pushView(ViewTaskComments)
 
-	msg := CloseTaskCommentsMsg{}
-	handled, _ := app.handleTaskMessages(msg)
+	app.Update(CloseTaskCommentsMsg{})
 
-	if !handled {
-		t.Error("CloseTaskCommentsMsg should be handled")
-	}
 	if app.currentView() != ViewDashboard {
 		t.Errorf("currentView should be Dashboard after closing comments, got %v", app.currentView())
 	}

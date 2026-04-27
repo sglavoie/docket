@@ -6,12 +6,8 @@ func TestHandleViewMessagesCloseTaskJumper(t *testing.T) {
 	app := newTestAppModel()
 	app.pushView(ViewTaskJumper)
 
-	msg := CloseTaskJumperMsg{}
-	handled, _ := app.handleViewMessages(msg)
+	app.Update(CloseTaskJumperMsg{})
 
-	if !handled {
-		t.Error("CloseTaskJumperMsg should be handled")
-	}
 	if app.currentView() != ViewDashboard {
 		t.Errorf("currentView should be Dashboard after closing jumper, got %v", app.currentView())
 	}
@@ -35,12 +31,8 @@ func TestHandleViewMessagesCloseProjectPreview(t *testing.T) {
 	app := newTestAppModel()
 	app.pushView(ViewProjectPreview)
 
-	msg := CloseProjectPreviewMsg{}
-	handled, _ := app.handleViewMessages(msg)
+	app.Update(CloseProjectPreviewMsg{})
 
-	if !handled {
-		t.Error("CloseProjectPreviewMsg should be handled")
-	}
 	if app.currentView() != ViewDashboard {
 		t.Errorf("currentView should be Dashboard after closing preview, got %v", app.currentView())
 	}
@@ -64,12 +56,8 @@ func TestHandleViewMessagesCloseDueDateOverview(t *testing.T) {
 	app := newTestAppModel()
 	app.pushView(ViewDueDateOverview)
 
-	msg := CloseDueDateOverviewMsg{}
-	handled, _ := app.handleViewMessages(msg)
+	app.Update(CloseDueDateOverviewMsg{})
 
-	if !handled {
-		t.Error("CloseDueDateOverviewMsg should be handled")
-	}
 	if app.currentView() != ViewDashboard {
 		t.Errorf("currentView should be Dashboard after closing overview, got %v", app.currentView())
 	}
@@ -93,12 +81,8 @@ func TestHandleViewMessagesCloseDailyReview(t *testing.T) {
 	app := newTestAppModel()
 	app.pushView(ViewDailyReview)
 
-	msg := CloseDailyReviewMsg{}
-	handled, _ := app.handleViewMessages(msg)
+	app.Update(CloseDailyReviewMsg{})
 
-	if !handled {
-		t.Error("CloseDailyReviewMsg should be handled")
-	}
 	if app.currentView() != ViewDashboard {
 		t.Errorf("currentView should be Dashboard after closing review, got %v", app.currentView())
 	}
@@ -136,12 +120,8 @@ func TestHandleViewMessagesCloseProjectFocusView(t *testing.T) {
 	app := newTestAppModel()
 	app.pushView(ViewProjectFocusView)
 
-	msg := CloseProjectFocusViewMsg{}
-	handled, _ := app.handleViewMessages(msg)
+	app.Update(CloseProjectFocusViewMsg{})
 
-	if !handled {
-		t.Error("CloseProjectFocusViewMsg should be handled")
-	}
 	if app.currentView() != ViewDashboard {
 		t.Errorf("currentView should be Dashboard after closing project focus, got %v", app.currentView())
 	}
@@ -165,12 +145,8 @@ func TestHandleViewMessagesCloseGlobalSearch(t *testing.T) {
 	app := newTestAppModel()
 	app.pushView(ViewGlobalSearch)
 
-	msg := CloseGlobalSearchMsg{}
-	handled, _ := app.handleViewMessages(msg)
+	app.Update(CloseGlobalSearchMsg{})
 
-	if !handled {
-		t.Error("CloseGlobalSearchMsg should be handled")
-	}
 	if app.currentView() != ViewDashboard {
 		t.Errorf("currentView should be Dashboard after closing search, got %v", app.currentView())
 	}
@@ -180,12 +156,8 @@ func TestHandleViewMessagesCloseCommandPalette(t *testing.T) {
 	app := newTestAppModel()
 	app.pushView(ViewCommandPalette)
 
-	msg := CloseCommandPaletteMsg{}
-	handled, _ := app.handleViewMessages(msg)
+	app.Update(CloseCommandPaletteMsg{})
 
-	if !handled {
-		t.Error("CloseCommandPaletteMsg should be handled")
-	}
 	if app.currentView() != ViewDashboard {
 		t.Errorf("currentView should be Dashboard after closing palette, got %v", app.currentView())
 	}
@@ -209,12 +181,8 @@ func TestHandleViewMessagesClosePriorityView(t *testing.T) {
 	app := newTestAppModel()
 	app.pushView(ViewPriorityView)
 
-	msg := ClosePriorityViewMsg{}
-	handled, _ := app.handleViewMessages(msg)
+	app.Update(ClosePriorityViewMsg{})
 
-	if !handled {
-		t.Error("ClosePriorityViewMsg should be handled")
-	}
 	if app.currentView() != ViewDashboard {
 		t.Errorf("currentView should be Dashboard after closing priority view, got %v", app.currentView())
 	}
@@ -238,12 +206,8 @@ func TestHandleViewMessagesCloseWeeklyReview(t *testing.T) {
 	app := newTestAppModel()
 	app.pushView(ViewWeeklyReview)
 
-	msg := CloseWeeklyReviewMsg{}
-	handled, _ := app.handleViewMessages(msg)
+	app.Update(CloseWeeklyReviewMsg{})
 
-	if !handled {
-		t.Error("CloseWeeklyReviewMsg should be handled")
-	}
 	if app.currentView() != ViewDashboard {
 		t.Errorf("currentView should be Dashboard after closing weekly review, got %v", app.currentView())
 	}
@@ -295,12 +259,8 @@ func TestHandleViewMessagesCloseRecentActivity(t *testing.T) {
 	app := newTestAppModel()
 	app.pushView(ViewRecentActivity)
 
-	msg := CloseRecentActivityMsg{}
-	handled, _ := app.handleViewMessages(msg)
+	app.Update(CloseRecentActivityMsg{})
 
-	if !handled {
-		t.Error("CloseRecentActivityMsg should be handled")
-	}
 	if app.currentView() != ViewDashboard {
 		t.Errorf("currentView should be Dashboard after closing recent activity, got %v", app.currentView())
 	}
@@ -324,12 +284,8 @@ func TestHandleViewMessagesCloseBlockers(t *testing.T) {
 	app := newTestAppModel()
 	app.pushView(ViewBlockers)
 
-	msg := CloseBlockersMsg{}
-	handled, _ := app.handleViewMessages(msg)
+	app.Update(CloseBlockersMsg{})
 
-	if !handled {
-		t.Error("CloseBlockersMsg should be handled")
-	}
 	if app.currentView() != ViewDashboard {
 		t.Errorf("currentView should be Dashboard after closing blockers, got %v", app.currentView())
 	}
@@ -353,12 +309,8 @@ func TestHandleViewMessagesCloseGlobalBlockers(t *testing.T) {
 	app := newTestAppModel()
 	app.pushView(ViewGlobalBlockers)
 
-	msg := CloseGlobalBlockersMsg{}
-	handled, _ := app.handleViewMessages(msg)
+	app.Update(CloseGlobalBlockersMsg{})
 
-	if !handled {
-		t.Error("CloseGlobalBlockersMsg should be handled")
-	}
 	if app.currentView() != ViewDashboard {
 		t.Errorf("currentView should be Dashboard after closing global blockers, got %v", app.currentView())
 	}
@@ -383,12 +335,8 @@ func TestHandleViewMessagesCloseTaskAttachments(t *testing.T) {
 	app := newTestAppModel()
 	app.pushView(ViewTaskAttachments)
 
-	msg := CloseTaskAttachmentsMsg{}
-	handled, _ := app.handleViewMessages(msg)
+	app.Update(CloseTaskAttachmentsMsg{})
 
-	if !handled {
-		t.Error("CloseTaskAttachmentsMsg should be handled")
-	}
 	if app.currentView() != ViewDashboard {
 		t.Errorf("currentView should be Dashboard after closing attachments, got %v", app.currentView())
 	}

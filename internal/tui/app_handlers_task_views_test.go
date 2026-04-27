@@ -37,12 +37,8 @@ func TestHandleTaskMessagesCloseDependencyViewer(t *testing.T) {
 	app := newTestAppModel()
 	app.pushView(ViewDependencyViewer)
 
-	msg := CloseDependencyViewerMsg{}
-	handled, _ := app.handleTaskMessages(msg)
+	app.Update(CloseDependencyViewerMsg{})
 
-	if !handled {
-		t.Error("CloseDependencyViewerMsg should be handled")
-	}
 	if app.currentView() != ViewDashboard {
 		t.Errorf("currentView should be Dashboard after closing viewer, got %v", app.currentView())
 	}
@@ -66,12 +62,8 @@ func TestHandleTaskMessagesCloseUndoHistory(t *testing.T) {
 	app := newTestAppModel()
 	app.pushView(ViewUndoHistory)
 
-	msg := CloseUndoHistoryMsg{}
-	handled, _ := app.handleTaskMessages(msg)
+	app.Update(CloseUndoHistoryMsg{})
 
-	if !handled {
-		t.Error("CloseUndoHistoryMsg should be handled")
-	}
 	if app.currentView() != ViewDashboard {
 		t.Errorf("currentView should be Dashboard after closing undo history, got %v", app.currentView())
 	}
@@ -116,12 +108,8 @@ func TestHandleTaskMessagesCloseTaskDetail(t *testing.T) {
 	app := newTestAppModel()
 	app.pushView(ViewTaskDetail)
 
-	msg := CloseTaskDetailMsg{}
-	handled, _ := app.handleTaskMessages(msg)
+	app.Update(CloseTaskDetailMsg{})
 
-	if !handled {
-		t.Error("CloseTaskDetailMsg should be handled")
-	}
 	if app.currentView() != ViewDashboard {
 		t.Errorf("currentView should be Dashboard after closing detail, got %v", app.currentView())
 	}
@@ -146,12 +134,8 @@ func TestHandleTaskMessagesCloseTaskChecklist(t *testing.T) {
 	app := newTestAppModel()
 	app.pushView(ViewTaskChecklist)
 
-	msg := CloseTaskChecklistMsg{}
-	handled, _ := app.handleTaskMessages(msg)
+	app.Update(CloseTaskChecklistMsg{})
 
-	if !handled {
-		t.Error("CloseTaskChecklistMsg should be handled")
-	}
 	if app.currentView() != ViewDashboard {
 		t.Errorf("currentView should be Dashboard after closing checklist, got %v", app.currentView())
 	}
@@ -176,12 +160,8 @@ func TestHandleTaskMessagesCloseTaskActivity(t *testing.T) {
 	app := newTestAppModel()
 	app.pushView(ViewTaskActivity)
 
-	msg := CloseTaskActivityMsg{}
-	handled, _ := app.handleTaskMessages(msg)
+	app.Update(CloseTaskActivityMsg{})
 
-	if !handled {
-		t.Error("CloseTaskActivityMsg should be handled")
-	}
 	if app.currentView() != ViewDashboard {
 		t.Errorf("currentView should be Dashboard after closing activity, got %v", app.currentView())
 	}

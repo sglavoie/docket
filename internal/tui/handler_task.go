@@ -176,10 +176,6 @@ func (m *AppModel) handleTaskMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint:go
 		}
 		return true, nil
 
-	case CloseUndoHistoryMsg:
-		m.popView()
-		return true, nil
-
 	case UndoPerformedMsg:
 		fromViewer := m.currentView() == ViewUndoHistory
 		undoMsg := fmt.Sprintf("Undid: %s", msg.Action)
@@ -208,10 +204,6 @@ func (m *AppModel) handleTaskMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint:go
 		m.showView(ViewParentSelector, selector)
 		return true, selector.Init()
 
-	case CloseParentSelectorMsg:
-		m.popView()
-		return true, nil
-
 	case ParentSelectedMsg:
 		// Pop the parent selector view
 		m.popView()
@@ -226,10 +218,6 @@ func (m *AppModel) handleTaskMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint:go
 		}
 		return true, nil
 
-	case CloseTaskDetailMsg:
-		m.popView()
-		return true, nil
-
 	case ShowTaskCommentsMsg:
 		if msg.Task != nil && msg.Project != nil {
 			m.lastNavigatedTaskID = msg.Task.ID
@@ -238,20 +226,12 @@ func (m *AppModel) handleTaskMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint:go
 		}
 		return true, nil
 
-	case CloseTaskCommentsMsg:
-		m.popView()
-		return true, nil
-
 	case ShowTaskChecklistMsg:
 		if msg.Task != nil && msg.Project != nil {
 			m.lastNavigatedTaskID = msg.Task.ID
 			m.recordTaskVisit(msg.Task, msg.Project)
 			m.showView(ViewTaskChecklist, NewTaskChecklistModelWithEditor(msg.Task, msg.Project, m.config.Editor))
 		}
-		return true, nil
-
-	case CloseTaskChecklistMsg:
-		m.popView()
 		return true, nil
 
 	case ChecklistItemAddedMsg:
@@ -275,10 +255,6 @@ func (m *AppModel) handleTaskMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint:go
 			m.recordTaskVisit(msg.Task, msg.Project)
 			m.showView(ViewTaskActivity, NewTaskActivityModel(msg.Task, msg.Project))
 		}
-		return true, nil
-
-	case CloseTaskActivityMsg:
-		m.popView()
 		return true, nil
 
 	case OpenQuickNoteMsg:
@@ -329,10 +305,6 @@ func (m *AppModel) handleTaskMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint:go
 			projects := m.config.GetActiveProjects()
 			m.showView(ViewProjectSelector, NewProjectSelectorModel(projects, msg.Task, msg.SourceProject))
 		}
-		return true, nil
-
-	case CloseProjectSelectorMsg:
-		m.popView()
 		return true, nil
 
 	case MoveTaskToProjectMsg:
@@ -391,10 +363,6 @@ func (m *AppModel) handleTaskMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint:go
 		}
 		return true, nil
 
-	case CloseLinkedTaskSelectorMsg:
-		m.popView()
-		return true, nil
-
 	case LinkedTaskSelectedMsg:
 		m.popView()
 		// Check if this is a cross-project reference
@@ -408,10 +376,6 @@ func (m *AppModel) handleTaskMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint:go
 			linker := NewCrossProjectLinkerModel(msg.SourceTask, msg.SourceProject, m.config)
 			m.showView(ViewCrossProjectLinker, linker)
 		}
-		return true, nil
-
-	case CloseCrossProjectLinkerMsg:
-		m.popView()
 		return true, nil
 
 	case CrossProjectLinkCreatedMsg:

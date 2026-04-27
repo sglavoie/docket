@@ -12,7 +12,7 @@ type ShowNotesMsg struct {
 }
 
 // CloseNotesMsg closes the notes view.
-type CloseNotesMsg struct{}
+type CloseNotesMsg struct{ PopViewMsg }
 
 // NotesRefreshMsg refreshes the notes list.
 type NotesRefreshMsg struct{}
@@ -21,7 +21,7 @@ type NotesRefreshMsg struct{}
 type ShowGlobalNotesMsg struct{}
 
 // CloseGlobalNotesMsg closes the global notes view.
-type CloseGlobalNotesMsg struct{}
+type CloseGlobalNotesMsg struct{ PopToAnchorMsg }
 
 // MoveNoteToProjectMsg moves a note from global notes to a project.
 type MoveNoteToProjectMsg struct {

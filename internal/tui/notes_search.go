@@ -20,7 +20,7 @@ type ShowNotesSearchMsg struct {
 }
 
 // CloseNotesSearchMsg closes the notes search view.
-type CloseNotesSearchMsg struct{}
+type CloseNotesSearchMsg struct{ PopViewMsg }
 
 // NotesSearchSelectMsg selects a note from the search results.
 type NotesSearchSelectMsg struct {

@@ -75,9 +75,6 @@ func (m *AppModel) handleNotificationMessages(msg tea.Msg) (bool, tea.Cmd) {
 		m.setSuccessStatus("Alert restored")
 		return true, defaultStatusTimeout()
 
-	case CloseNotificationCenterMsg:
-		m.popView()
-		return true, nil
 	}
 
 	return false, nil

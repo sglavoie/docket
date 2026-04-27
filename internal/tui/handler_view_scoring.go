@@ -59,10 +59,6 @@ func (m *AppModel) handleScoringMessages(msg tea.Msg) (bool, tea.Cmd) {
 		m.showView(ViewScoreProfileManager, NewScoreProfileManagerModel(m.config, m.configManager, projectID))
 		return true, nil
 
-	case CloseScoreProfileManagerMsg:
-		m.popView()
-		return true, nil
-
 	case ScoreProfileChangedMsg:
 		if m.currentView() == ViewScoreProfileManager {
 			projectID := ""

@@ -37,10 +37,6 @@ func (m *AppModel) handleDependencyMessages(msg tea.Msg) (bool, tea.Cmd) {
 		}
 		return true, nil
 
-	case CloseDependencyViewerMsg:
-		m.popView()
-		return true, nil
-
 	case DependencyViewerSelectMsg:
 		m.popView()
 		if msg.Task != nil && m.projectTree != nil {

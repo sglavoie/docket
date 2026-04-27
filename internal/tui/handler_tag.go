@@ -21,10 +21,6 @@ func (m *AppModel) handleTagMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint:goc
 		}
 		return true, nil
 
-	case CloseTagManagerMsg:
-		m.popView()
-		return true, nil
-
 	case ShowTagSelectorMsg:
 		selector := NewTagSelectorModel(msg.Task, msg.Project, msg.CurrentTags)
 		m.showView(ViewTagSelector, selector)
@@ -183,10 +179,6 @@ func (m *AppModel) handleTagMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint:goc
 
 	case ShowGlobalTagManagerMsg:
 		m.showView(ViewGlobalTagManager, NewGlobalTagManagerModel(m.config))
-		return true, nil
-
-	case CloseGlobalTagManagerMsg:
-		m.popView()
 		return true, nil
 
 	case GlobalTagRenamedMsg:

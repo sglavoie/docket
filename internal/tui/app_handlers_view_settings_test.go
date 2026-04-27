@@ -71,12 +71,8 @@ func TestHandleViewMessagesCloseHelp(t *testing.T) {
 	app := newTestAppModel()
 	app.pushView(ViewHelp)
 
-	msg := CloseHelpMsg{}
-	handled, _ := app.handleViewMessages(msg)
+	app.Update(CloseHelpMsg{})
 
-	if !handled {
-		t.Error("CloseHelpMsg should be handled")
-	}
 	if app.currentView() != ViewDashboard {
 		t.Errorf("currentView should be Dashboard after closing help, got %v", app.currentView())
 	}
@@ -156,12 +152,8 @@ func TestHandleViewMessagesCloseFilter(t *testing.T) {
 	app := newTestAppModel()
 	app.pushView(ViewFilter)
 
-	msg := CloseFilterMsg{}
-	handled, _ := app.handleViewMessages(msg)
+	app.Update(CloseFilterMsg{})
 
-	if !handled {
-		t.Error("CloseFilterMsg should be handled")
-	}
 	if app.currentView() != ViewDashboard {
 		t.Errorf("currentView should be Dashboard after closing filter, got %v", app.currentView())
 	}
@@ -210,12 +202,8 @@ func TestHandleViewMessagesCloseNotificationCenter(t *testing.T) {
 	app := newTestAppModel()
 	app.pushView(ViewNotificationCenter)
 
-	msg := CloseNotificationCenterMsg{}
-	handled, _ := app.handleViewMessages(msg)
+	app.Update(CloseNotificationCenterMsg{})
 
-	if !handled {
-		t.Error("CloseNotificationCenterMsg should be handled")
-	}
 	if app.currentView() != ViewDashboard {
 		t.Errorf("currentView should be Dashboard after closing notification center, got %v", app.currentView())
 	}

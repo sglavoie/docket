@@ -31,7 +31,7 @@ type ShowMetricsDashboardMsg struct {
 }
 
 // CloseMetricsDashboardMsg closes the metrics dashboard view.
-type CloseMetricsDashboardMsg struct{}
+type CloseMetricsDashboardMsg struct{ PopToAnchorMsg }
 
 // MetricsDashboardSelectMsg navigates to a task from the metrics dashboard.
 type MetricsDashboardSelectMsg struct {

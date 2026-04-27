@@ -25,7 +25,7 @@ type ShowPriorityViewMsg struct {
 }
 
 // ClosePriorityViewMsg closes the priority overview.
-type ClosePriorityViewMsg struct{}
+type ClosePriorityViewMsg struct{ PopViewMsg }
 
 // ShowScoreEditorMsg opens the score dimension editor for a task.
 type ShowScoreEditorMsg struct {
@@ -53,7 +53,7 @@ type ToggleInfoPanelMsg struct{}
 type ShowDailyReviewMsg struct{}
 
 // CloseDailyReviewMsg closes the daily review view.
-type CloseDailyReviewMsg struct{}
+type CloseDailyReviewMsg struct{ PopViewMsg }
 
 // DailyReviewRefreshMsg requests a refresh of the daily review data.
 type DailyReviewRefreshMsg struct{}
@@ -100,7 +100,7 @@ type FocusViewSelectMsg struct {
 type ShowRecentActivityMsg struct{}
 
 // CloseRecentActivityMsg closes the recent activity view.
-type CloseRecentActivityMsg struct{}
+type CloseRecentActivityMsg struct{ PopToAnchorMsg }
 
 // ShowRecentActivityPreviewMsg opens a task preview from recent activity.
 type ShowRecentActivityPreviewMsg struct {
@@ -109,7 +109,7 @@ type ShowRecentActivityPreviewMsg struct {
 }
 
 // CloseRecentActivityPreviewMsg closes the recent activity task preview.
-type CloseRecentActivityPreviewMsg struct{}
+type CloseRecentActivityPreviewMsg struct{ PopViewMsg }
 
 // RecentActivitySelectMsg navigates to a task from recent activity.
 type RecentActivitySelectMsg struct {
@@ -123,7 +123,7 @@ type ShowProjectRecentActivityMsg struct {
 }
 
 // CloseProjectRecentActivityMsg closes the project-scoped recent activity view.
-type CloseProjectRecentActivityMsg struct{}
+type CloseProjectRecentActivityMsg struct{ PopViewMsg }
 
 // =============================================================================
 // Project Focus View Messages (Show/Close Pattern)
@@ -135,7 +135,7 @@ type ShowProjectFocusViewMsg struct {
 }
 
 // CloseProjectFocusViewMsg closes the project focus view.
-type CloseProjectFocusViewMsg struct{}
+type CloseProjectFocusViewMsg struct{ PopViewMsg }
 
 // =============================================================================
 // Tutor Messages
@@ -155,7 +155,7 @@ type TutorDismissedMsg struct{}
 type ShowFocusBoardMsg struct{}
 
 // CloseFocusBoardMsg closes the focus board view.
-type CloseFocusBoardMsg struct{}
+type CloseFocusBoardMsg struct{ PopToAnchorMsg }
 
 // FocusBoardRefreshMsg requests a refresh of the focus board data.
 type FocusBoardRefreshMsg struct{}
@@ -176,7 +176,7 @@ type ShowScoreProfileManagerMsg struct {
 }
 
 // CloseScoreProfileManagerMsg closes the scoring profile manager view.
-type CloseScoreProfileManagerMsg struct{}
+type CloseScoreProfileManagerMsg struct{ PopViewMsg }
 
 // ScoreProfileChangedMsg signals a scoring profile was added, deleted, assigned, or unassigned.
 type ScoreProfileChangedMsg struct{}
@@ -217,7 +217,7 @@ type CloseCrossOutlinerMsg struct{}
 type ShowNotificationCenterMsg struct{}
 
 // CloseNotificationCenterMsg closes the alert center view.
-type CloseNotificationCenterMsg struct{}
+type CloseNotificationCenterMsg struct{ PopViewMsg }
 
 // DismissAlertMsg requests dismissal of a specific alert.
 type DismissAlertMsg struct {

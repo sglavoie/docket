@@ -50,7 +50,7 @@ type ShowFilterMsg struct {
 }
 
 // CloseFilterMsg is sent when the filter view should close.
-type CloseFilterMsg struct{}
+type CloseFilterMsg struct{ PopViewMsg }
 
 // NewFilterViewModel creates a new filter view model.
 func NewFilterViewModel(pt *ProjectTreeModel) *FilterViewModel {

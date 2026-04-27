@@ -21,17 +21,9 @@ func (m *AppModel) handleNotesMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint:g
 		}
 		return true, nil
 
-	case CloseNotesMsg:
-		m.popView()
-		return true, nil
-
 	case ShowGlobalNotesMsg:
 		dir := storage.GlobalNotesDir(m.config.DataDir)
 		m.showView(ViewGlobalNotes, NewGlobalNotesViewModel(dir, m.config))
-		return true, nil
-
-	case CloseGlobalNotesMsg:
-		m.popToAnchorView()
 		return true, nil
 
 	case ShowGlobalNoteCreatorMsg:
@@ -80,10 +72,6 @@ func (m *AppModel) handleNotesMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint:g
 		if msg.Project != nil {
 			m.showView(ViewNotesSearch, NewNotesSearchModel(msg.Project))
 		}
-		return true, nil
-
-	case CloseNotesSearchMsg:
-		m.popView()
 		return true, nil
 
 	case NotesSearchSelectMsg:

@@ -441,7 +441,7 @@ func (m *TaskJumperModel) renderPreview() string {
 }
 
 // CloseTaskJumperMsg is sent when the task jumper should close without selection.
-type CloseTaskJumperMsg struct{}
+type CloseTaskJumperMsg struct{ PopViewMsg }
 
 // TaskJumperSelectMsg is sent when a task is selected from the jumper.
 type TaskJumperSelectMsg struct {
