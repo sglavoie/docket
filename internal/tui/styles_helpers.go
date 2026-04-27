@@ -8,13 +8,7 @@ import (
 
 // Status icon constants for TUI rendering.
 const (
-	StatusIconTodo       = "□"
-	StatusIconInProgress = "▶"
-	StatusIconReview     = "◑"
-	StatusIconStandby    = "⏸"
-	StatusIconDone       = "✓"
-	StatusIconBlocked    = "⊘"
-	StatusIconCanceled   = "✕"
+	StatusIconBlocked = "⊘"
 )
 
 // Priority icon constants for TUI rendering.

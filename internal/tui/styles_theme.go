@@ -8,13 +8,6 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 )
 
-// Default cursor/selection colors.
-const (
-	DefaultSelectedBg = "#4c0163"
-	DefaultSelectedFg = "#fbeeff"
-	DefaultFlashBg    = "#7b2fa0"
-)
-
 // ThemeConfig bundles all user-configurable theme values for ApplyTheme.
 type ThemeConfig struct {
 	Name          string // "light" or "dark"

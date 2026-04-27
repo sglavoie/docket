@@ -102,18 +102,6 @@ var (
 		{Key: "d", Description: "picker", Detail: "Open date picker"},
 	}
 
-	// SectionPrefixHints contains hints for the "s" (section focus) prefix in Review view.
-	SectionPrefixHints = []PrefixHint{
-		{Key: "d", Description: "overdue", Detail: "Jump to overdue section"},
-		{Key: "t", Description: "today", Detail: "Jump to today section"},
-		{Key: "s", Description: "due-soon", Detail: "Jump to due-soon section"},
-		{Key: "l", Description: "due-later", Detail: "Jump to due-later section"},
-		{Key: "f", Description: "future", Detail: "Jump to future section"},
-		{Key: "r", Description: "in review", Detail: "Focus in-review section"},
-		{Key: "S", Description: "on standby", Detail: "Focus on-standby section"},
-		{Key: "o", Description: "old", Detail: "Jump to old section"},
-	}
-
 	// CreateLinkedPrefixHints contains hints for the "c" (create linked) prefix.
 	CreateLinkedPrefixHints = []PrefixHint{
 		{Key: "b", Description: "blocker", Detail: "Create a blocking task"},

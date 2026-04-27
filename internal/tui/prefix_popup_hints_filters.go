@@ -124,21 +124,4 @@ var (
 		{Key: "d", Description: "delete", Detail: "Delete a saved filter"},
 		{Key: "c", Description: "criteria", Detail: "Create criteria filter"},
 	}
-
-	// FilterScorePrefixHints contains hints for the "FS" (filter score) sub-prefix.
-	// Kept for backward compatibility; prefer BuildFilterScorePrefixHints for dynamic hints.
-	FilterScorePrefixHints = []PrefixHint{
-		{Key: "1", Description: ">=30"},
-		{Key: "2", Description: ">=60"},
-		{Key: "3", Description: ">=90"},
-		{Key: "4", Description: ">=120"},
-		{Key: "5", Description: ">=150"},
-		{Key: "6", Description: ">=180"},
-		{Key: "7", Description: ">=210"},
-		{Key: "8", Description: ">=240"},
-		{Key: "9", Description: ">=270"},
-		{Key: "c", Description: "custom"},
-		{Key: "C", Description: "set value"},
-		{Key: "0", Description: "clear"},
-	}
 )
