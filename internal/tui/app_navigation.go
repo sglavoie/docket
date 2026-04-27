@@ -358,6 +358,17 @@ func (m *AppModel) getProjectLastView(projectID string) ViewType {
 	return defaultProjectViewType(m.config)
 }
 
+// popAndNavigateToTask pops the current view and navigates to a task in its project.
+// If either task or project is nil, it just pops and returns. This encapsulates the
+// common "select from overview" pattern used by many *SelectMsg handlers.
+func (m *AppModel) popAndNavigateToTask(task *models.Task, project *models.Project) (bool, tea.Cmd) {
+	m.popView()
+	if task != nil && project != nil {
+		return true, m.navigateToTaskInProject(task, project)
+	}
+	return true, nil
+}
+
 // navigateToTaskInProject switches to the given project using the user's
 // configured default view (or last-used view) and positions the cursor on
 // the specified task. When task is nil it just opens the project view.

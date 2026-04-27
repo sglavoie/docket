@@ -37,11 +37,7 @@ func (m *AppModel) handleViewReviewMessages(msg tea.Msg) (bool, tea.Cmd) { //nol
 		return true, nil
 
 	case MetricsDashboardSelectMsg:
-		m.popView()
-		if msg.Task != nil && msg.Project != nil {
-			return true, m.navigateToTaskInProject(msg.Task, msg.Project)
-		}
-		return true, nil
+		return m.popAndNavigateToTask(msg.Task, msg.Project)
 
 	case ShowDailyReviewMsg:
 		dr := NewDailyReviewModel(m.config, m.configManager)
@@ -109,18 +105,10 @@ func (m *AppModel) handleViewReviewMessages(msg tea.Msg) (bool, tea.Cmd) { //nol
 		return true, nil
 
 	case WeeklyReviewSelectTaskMsg:
-		m.popView()
-		if msg.Task != nil && msg.Project != nil {
-			return true, m.navigateToTaskInProject(msg.Task, msg.Project)
-		}
-		return true, nil
+		return m.popAndNavigateToTask(msg.Task, msg.Project)
 
 	case DailyReviewSelectMsg:
-		m.popView()
-		if msg.Task != nil && msg.Project != nil {
-			return true, m.navigateToTaskInProject(msg.Task, msg.Project)
-		}
-		return true, nil
+		return m.popAndNavigateToTask(msg.Task, msg.Project)
 
 	case ShowAllTasksMsg:
 		atv := NewAllTasksViewModel(m.config, m.configManager)
@@ -134,11 +122,7 @@ func (m *AppModel) handleViewReviewMessages(msg tea.Msg) (bool, tea.Cmd) { //nol
 		return true, nil
 
 	case AllTasksSelectMsg:
-		m.popView()
-		if msg.Task != nil && msg.Project != nil {
-			return true, m.navigateToTaskInProject(msg.Task, msg.Project)
-		}
-		return true, nil
+		return m.popAndNavigateToTask(msg.Task, msg.Project)
 
 	case ShowFocusBoardMsg:
 		m.reevaluateAlerts()
@@ -160,11 +144,7 @@ func (m *AppModel) handleViewReviewMessages(msg tea.Msg) (bool, tea.Cmd) { //nol
 		return true, nil
 
 	case FocusBoardSelectMsg:
-		m.popView()
-		if msg.Task != nil && msg.Project != nil {
-			return true, m.navigateToTaskInProject(msg.Task, msg.Project)
-		}
-		return true, nil
+		return m.popAndNavigateToTask(msg.Task, msg.Project)
 
 	case FocusBoardRefreshMsg:
 		if v := m.views.Get(ViewFocusBoard); v != nil {
@@ -177,11 +157,7 @@ func (m *AppModel) handleViewReviewMessages(msg tea.Msg) (bool, tea.Cmd) { //nol
 		return true, nil
 
 	case FocusViewSelectMsg:
-		m.popView()
-		if msg.Task != nil && msg.Project != nil {
-			return true, m.navigateToTaskInProject(msg.Task, msg.Project)
-		}
-		return true, nil
+		return m.popAndNavigateToTask(msg.Task, msg.Project)
 
 	case ShowRecentActivityMsg:
 		ra := NewRecentActivityModel(m.config)
@@ -217,11 +193,7 @@ func (m *AppModel) handleViewReviewMessages(msg tea.Msg) (bool, tea.Cmd) { //nol
 		return true, nil
 
 	case RecentActivitySelectMsg:
-		m.popView()
-		if msg.Task != nil && msg.Project != nil {
-			return true, m.navigateToTaskInProject(msg.Task, msg.Project)
-		}
-		return true, nil
+		return m.popAndNavigateToTask(msg.Task, msg.Project)
 
 	case ShowProjectFocusViewMsg:
 		if msg.Project != nil {
@@ -258,11 +230,7 @@ func (m *AppModel) handleViewReviewMessages(msg tea.Msg) (bool, tea.Cmd) { //nol
 		return true, nil
 
 	case KanbanSelectMsg:
-		m.popView()
-		if msg.Task != nil && msg.Project != nil {
-			return true, m.navigateToTaskInProject(msg.Task, msg.Project)
-		}
-		return true, nil
+		return m.popAndNavigateToTask(msg.Task, msg.Project)
 	}
 
 	return false, nil
