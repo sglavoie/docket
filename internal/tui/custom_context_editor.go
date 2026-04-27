@@ -32,9 +32,7 @@ type CustomContextEditorModel struct {
 	scrollOffset     int             // Scroll offset for project list
 	projectListMode  bool            // true when focus is on project list
 
-	// Discard confirmation
-	confirmDiscard     bool
-	confirmOverlay     ConfirmDialog
+	discardConfirmState
 	initialSelectedIDs map[string]bool
 }
 
@@ -506,15 +504,6 @@ func (m *CustomContextEditorModel) View() tea.View {
 	b.WriteString(renderStatusBarFooter(footerLeft, footerRight, m.width, m.AccentColor()))
 
 	return tea.NewView(b.String())
-}
-
-func (m *CustomContextEditorModel) GetConfirmDialog() *ConfirmDialog {
-	if m.confirmDiscard {
-		m.confirmOverlay.Show("discard", "Discard unsaved changes?")
-	} else {
-		m.confirmOverlay.Cancel()
-	}
-	return &m.confirmOverlay
 }
 
 func (m *CustomContextEditorModel) StatusBarLabel() string { return "Custom Context Editor" }

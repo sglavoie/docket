@@ -40,9 +40,7 @@ type ProjectEditorModel struct {
 	err        error
 	hasChanges bool
 
-	// Discard confirmation state
-	confirmDiscard bool
-	confirmOverlay ConfirmDialog
+	discardConfirmState
 }
 
 // NewProjectEditorModel creates a new project editor.
@@ -384,13 +382,4 @@ func (m *ProjectEditorModel) HasTextInput() bool     { return true }
 func (m *ProjectEditorModel) ShouldCaptureEsc() bool { return true }
 func (m *ProjectEditorModel) IsFullHeight() bool     { return false }
 
-// GetConfirmDialog returns the confirm dialog for overlay rendering.
-func (m *ProjectEditorModel) GetConfirmDialog() *ConfirmDialog {
-	if m.confirmDiscard {
-		m.confirmOverlay.Show("discard", "Discard unsaved changes?")
-	} else {
-		m.confirmOverlay.Cancel()
-	}
-	return &m.confirmOverlay
-}
 func (m *ProjectEditorModel) StatusBarLabel() string { return "Edit Project" }

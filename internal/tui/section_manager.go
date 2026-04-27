@@ -24,9 +24,8 @@ type SectionManagerModel struct {
 	errorMsg       string
 	colorPickMode  bool
 	colorCursor    int // Index in SectionColorPalette
-	confirmDiscard bool
-	confirmAction  string
-	confirmOverlay ConfirmDialog
+	confirmAction string
+	discardConfirmState
 }
 
 // ShowSectionManagerMsg is sent to open the section manager view.

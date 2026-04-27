@@ -22,8 +22,7 @@ type DateInputModel struct {
 	height         int
 	canceled       bool
 	initialValue   string
-	confirmDiscard bool
-	confirmOverlay ConfirmDialog
+	discardConfirmState
 }
 
 // NewDateInputModel creates a new date input model.
@@ -193,15 +192,6 @@ func (m *DateInputModel) HasTextInput() bool { return true }
 
 // ShouldCaptureEsc returns true so esc is handled by the view (cancels via BackMsg).
 func (m *DateInputModel) ShouldCaptureEsc() bool { return true }
-
-func (m *DateInputModel) GetConfirmDialog() *ConfirmDialog {
-	if m.confirmDiscard {
-		m.confirmOverlay.Show("discard", "Discard unsaved changes?")
-	} else {
-		m.confirmOverlay.Cancel()
-	}
-	return &m.confirmOverlay
-}
 
 func (m *DateInputModel) IsFullHeight() bool { return false }
 

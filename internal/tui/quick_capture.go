@@ -19,9 +19,8 @@ type QuickCaptureModel struct {
 	quickCaptureInput
 	width          int
 	height         int
-	helpExpanded   bool
-	confirmDiscard bool
-	confirmOverlay ConfirmDialog
+	helpExpanded bool
+	discardConfirmState
 }
 
 // NewQuickCaptureModel creates a new quick capture model.
@@ -189,15 +188,6 @@ func (m *QuickCaptureModel) ShouldCaptureEsc() bool {
 }
 
 // GetConfirmDialog returns the confirm dialog for overlay rendering.
-func (m *QuickCaptureModel) GetConfirmDialog() *ConfirmDialog {
-	if m.confirmDiscard {
-		m.confirmOverlay.Show("discard", "Discard unsaved changes?")
-	} else {
-		m.confirmOverlay.Cancel()
-	}
-	return &m.confirmOverlay
-}
-
 func (m *QuickCaptureModel) IsFullHeight() bool { return false }
 
 func (m *QuickCaptureModel) renderSyntaxGuide() string {

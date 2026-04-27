@@ -20,8 +20,7 @@ type SnoozeInputModel struct {
 	width          int
 	height         int
 	initialValue   string
-	confirmDiscard bool
-	confirmOverlay ConfirmDialog
+	discardConfirmState
 }
 
 // NewSnoozeInputModel creates a new snooze input model.
@@ -178,15 +177,6 @@ func (m *SnoozeInputModel) HasTextInput() bool { return true }
 
 // ShouldCaptureEsc returns true so esc is handled by the view (cancels via BackMsg).
 func (m *SnoozeInputModel) ShouldCaptureEsc() bool { return true }
-
-func (m *SnoozeInputModel) GetConfirmDialog() *ConfirmDialog {
-	if m.confirmDiscard {
-		m.confirmOverlay.Show("discard", "Discard unsaved changes?")
-	} else {
-		m.confirmOverlay.Cancel()
-	}
-	return &m.confirmOverlay
-}
 
 func (m *SnoozeInputModel) IsFullHeight() bool { return false }
 

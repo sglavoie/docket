@@ -29,9 +29,7 @@ type ProjectCreatorModel struct {
 
 	canceled bool
 
-	// Discard confirmation state
-	confirmDiscard bool
-	confirmOverlay ConfirmDialog
+	discardConfirmState
 }
 
 // NewProjectCreatorModel creates a new project creator.
@@ -285,13 +283,4 @@ func (m *ProjectCreatorModel) HasTextInput() bool     { return true }
 func (m *ProjectCreatorModel) ShouldCaptureEsc() bool { return true }
 func (m *ProjectCreatorModel) IsFullHeight() bool     { return false }
 
-// GetConfirmDialog returns the confirm dialog for overlay rendering.
-func (m *ProjectCreatorModel) GetConfirmDialog() *ConfirmDialog {
-	if m.confirmDiscard {
-		m.confirmOverlay.Show("discard", "Discard unsaved changes?")
-	} else {
-		m.confirmOverlay.Cancel()
-	}
-	return &m.confirmOverlay
-}
 func (m *ProjectCreatorModel) StatusBarLabel() string { return "New Project" }

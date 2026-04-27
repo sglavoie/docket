@@ -18,9 +18,7 @@ type TextEditorModel struct {
 	width        int
 	height       int
 
-	// Discard confirmation state
-	confirmDiscard bool
-	confirmOverlay ConfirmDialog
+	discardConfirmState
 }
 
 // NewTextEditorModel creates a new text editor popup.
@@ -170,15 +168,6 @@ func (m *TextEditorModel) HasTextInput() bool {
 
 func (m *TextEditorModel) ShouldCaptureEsc() bool { return true }
 
-// GetConfirmDialog returns the confirm dialog for overlay rendering.
-func (m *TextEditorModel) GetConfirmDialog() *ConfirmDialog {
-	if m.confirmDiscard {
-		m.confirmOverlay.Show("discard", "Discard unsaved changes?")
-	} else {
-		m.confirmOverlay.Cancel()
-	}
-	return &m.confirmOverlay
-}
 func (m *TextEditorModel) IsFullHeight() bool { return false }
 
 // ShowTextEditorMsg triggers showing the text editor popup.

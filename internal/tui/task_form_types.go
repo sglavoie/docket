@@ -113,8 +113,7 @@ type TaskFormModel struct {
 	// UI state
 	err            error
 	hasChanges     bool
-	confirmDiscard bool
-	confirmOverlay ConfirmDialog
+	discardConfirmState
 }
 
 // childFocusKind identifies what the Children-tab focus points at.

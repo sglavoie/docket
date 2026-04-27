@@ -40,9 +40,7 @@ type GlobalTagManagerModel struct {
 	renameTarget string
 	errorMsg     string
 
-	// Discard confirmation state
-	confirmDiscard bool
-	confirmOverlay ConfirmDialog
+	discardConfirmState
 
 	// Project picker state
 	showProjectPicker bool
@@ -506,14 +504,5 @@ func (m *GlobalTagManagerModel) renderProjectPicker() string {
 func (m *GlobalTagManagerModel) HasTextInput() bool     { return m.renameMode }
 func (m *GlobalTagManagerModel) ShouldCaptureEsc() bool { return m.renameMode || m.confirmDiscard }
 func (m *GlobalTagManagerModel) IsFullHeight() bool     { return false }
-
-func (m *GlobalTagManagerModel) GetConfirmDialog() *ConfirmDialog {
-	if m.confirmDiscard {
-		m.confirmOverlay.Show("discard", "Discard unsaved changes?")
-	} else {
-		m.confirmOverlay.Cancel()
-	}
-	return &m.confirmOverlay
-}
 
 func (m *GlobalTagManagerModel) StatusBarLabel() string { return "Global Tags" }

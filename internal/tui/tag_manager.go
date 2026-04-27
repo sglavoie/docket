@@ -31,9 +31,8 @@ type TagManagerModel struct {
 	addTagMode     bool
 	addTagInput    textinput.Model
 	errorMsg       string
-	confirmDiscard bool
-	confirmAction  string
-	confirmOverlay ConfirmDialog
+	confirmAction string
+	discardConfirmState
 }
 
 // ShowTagManagerMsg is sent to open the tag manager view.
@@ -467,14 +466,5 @@ func (m *TagManagerModel) ShouldCaptureEsc() bool {
 	return m.renameMode || m.addTagMode || m.confirmDiscard
 }
 func (m *TagManagerModel) IsFullHeight() bool { return false }
-
-func (m *TagManagerModel) GetConfirmDialog() *ConfirmDialog {
-	if m.confirmDiscard {
-		m.confirmOverlay.Show("discard", "Discard unsaved changes?")
-	} else {
-		m.confirmOverlay.Cancel()
-	}
-	return &m.confirmOverlay
-}
 
 func (m *TagManagerModel) StatusBarLabel() string { return "Tag Manager" }

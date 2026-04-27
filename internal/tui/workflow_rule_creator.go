@@ -104,9 +104,7 @@ type WorkflowRuleCreatorModel struct {
 	height int
 	err    error
 
-	// Discard confirmation state
-	confirmDiscard bool
-	confirmOverlay ConfirmDialog
+	discardConfirmState
 }
 
 // NewWorkflowRuleCreatorModel creates a new workflow rule creator.
@@ -391,16 +389,6 @@ type ShowWorkflowRuleEditorMsg struct {
 // ShouldCaptureEsc returns true to let the creator handle esc internally.
 func (m *WorkflowRuleCreatorModel) ShouldCaptureEsc() bool {
 	return true
-}
-
-// GetConfirmDialog returns the confirm dialog for overlay rendering.
-func (m *WorkflowRuleCreatorModel) GetConfirmDialog() *ConfirmDialog {
-	if m.confirmDiscard {
-		m.confirmOverlay.Show("discard", "Discard unsaved changes?")
-	} else {
-		m.confirmOverlay.Cancel()
-	}
-	return &m.confirmOverlay
 }
 
 func (m *WorkflowRuleCreatorModel) HasTextInput() bool     { return true }

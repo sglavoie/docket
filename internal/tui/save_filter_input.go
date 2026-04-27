@@ -18,8 +18,7 @@ type SaveFilterInputModel struct {
 	width          int
 	height         int
 	canceled       bool
-	confirmDiscard bool
-	confirmOverlay ConfirmDialog
+	discardConfirmState
 }
 
 // NewSaveFilterInputModel creates a new save view input model.
@@ -127,15 +126,6 @@ func (m *SaveFilterInputModel) HasTextInput() bool { return true }
 
 // ShouldCaptureEsc returns true so esc is handled by the view (cancels via BackMsg).
 func (m *SaveFilterInputModel) ShouldCaptureEsc() bool { return true }
-
-func (m *SaveFilterInputModel) GetConfirmDialog() *ConfirmDialog {
-	if m.confirmDiscard {
-		m.confirmOverlay.Show("discard", "Discard unsaved changes?")
-	} else {
-		m.confirmOverlay.Cancel()
-	}
-	return &m.confirmOverlay
-}
 
 func (m *SaveFilterInputModel) IsFullHeight() bool { return false }
 

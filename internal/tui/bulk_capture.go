@@ -21,8 +21,7 @@ type BulkCaptureModel struct {
 	created        int
 	width          int
 	height         int
-	confirmDiscard bool
-	confirmOverlay ConfirmDialog
+	discardConfirmState
 }
 
 // lineError represents a parsing error for a specific line.
@@ -146,16 +145,6 @@ func (m *BulkCaptureModel) HasTextInput() bool {
 // ShouldCaptureEsc returns true so the view always handles Esc internally.
 func (m *BulkCaptureModel) ShouldCaptureEsc() bool {
 	return true
-}
-
-// GetConfirmDialog returns the confirm dialog for the discard overlay.
-func (m *BulkCaptureModel) GetConfirmDialog() *ConfirmDialog {
-	if m.confirmDiscard {
-		m.confirmOverlay.Show("discard", "Discard unsaved changes?")
-	} else {
-		m.confirmOverlay.Cancel()
-	}
-	return &m.confirmOverlay
 }
 
 func (m *BulkCaptureModel) IsFullHeight() bool { return false }

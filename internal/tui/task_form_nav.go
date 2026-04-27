@@ -30,16 +30,6 @@ func (m *TaskFormModel) StatusBarLabel() string {
 	return "Edit Task"
 }
 
-// GetConfirmDialog returns the active confirm overlay (required by shell).
-func (m *TaskFormModel) GetConfirmDialog() *ConfirmDialog {
-	if m.confirmDiscard {
-		m.confirmOverlay.Show("discard", "Discard unsaved changes?")
-	} else {
-		m.confirmOverlay.Cancel()
-	}
-	return &m.confirmOverlay
-}
-
 // SupportsHelpShortcut is false while the form is a scaffold.
 func (m *TaskFormModel) SupportsHelpShortcut() bool { return false }
 

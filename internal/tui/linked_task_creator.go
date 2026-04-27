@@ -19,8 +19,7 @@ type LinkedTaskCreatorModel struct {
 	linkType       LinkType
 	width          int
 	height         int
-	confirmDiscard bool
-	confirmOverlay ConfirmDialog
+	discardConfirmState
 }
 
 // NewLinkedTaskCreatorModel creates a new linked task creator.
@@ -154,16 +153,6 @@ func (m *LinkedTaskCreatorModel) HasTextInput() bool {
 // ShouldCaptureEsc returns true so the view always handles Esc internally.
 func (m *LinkedTaskCreatorModel) ShouldCaptureEsc() bool {
 	return true
-}
-
-// GetConfirmDialog returns the confirm dialog for overlay rendering.
-func (m *LinkedTaskCreatorModel) GetConfirmDialog() *ConfirmDialog {
-	if m.confirmDiscard {
-		m.confirmOverlay.Show("discard", "Discard unsaved changes?")
-	} else {
-		m.confirmOverlay.Cancel()
-	}
-	return &m.confirmOverlay
 }
 
 func (m *LinkedTaskCreatorModel) IsFullHeight() bool { return false }

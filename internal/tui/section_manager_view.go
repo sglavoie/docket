@@ -119,13 +119,4 @@ func (m *SectionManagerModel) ShouldCaptureEsc() bool {
 
 func (m *SectionManagerModel) IsFullHeight() bool { return false }
 
-func (m *SectionManagerModel) GetConfirmDialog() *ConfirmDialog {
-	if m.confirmDiscard {
-		m.confirmOverlay.Show("discard", "Discard unsaved changes?")
-	} else {
-		m.confirmOverlay.Cancel()
-	}
-	return &m.confirmOverlay
-}
-
 func (m *SectionManagerModel) StatusBarLabel() string { return "Custom Section Manager" }

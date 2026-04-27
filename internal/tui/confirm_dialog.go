@@ -178,6 +178,23 @@ func (c *ConfirmDialog) RenderOverlay(width int) string {
 	return renderTitledBox(content, innerWidth, title, footerText, borderStyle)
 }
 
+// discardConfirmState bundles the confirmDiscard flag with a ConfirmDialog and
+// provides a standard GetConfirmDialog that shows "Discard unsaved changes?"
+// when confirmDiscard is true. Embed in view models to satisfy ConfirmDialogProvider.
+type discardConfirmState struct {
+	confirmDiscard bool
+	confirmOverlay ConfirmDialog
+}
+
+func (s *discardConfirmState) GetConfirmDialog() *ConfirmDialog {
+	if s.confirmDiscard {
+		s.confirmOverlay.Show("discard", "Discard unsaved changes?")
+	} else {
+		s.confirmOverlay.Cancel()
+	}
+	return &s.confirmOverlay
+}
+
 // ConfirmResult is returned when a confirmation is resolved.
 type ConfirmResult struct {
 	Action    string
