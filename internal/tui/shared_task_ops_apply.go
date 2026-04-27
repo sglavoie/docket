@@ -213,28 +213,70 @@ func applyQuickSnooze(pf persistFn, project *models.Project, taskID string, snoo
 	return result
 }
 
-// applyToggleActive toggles the Active flag on a task.
-func applyToggleActive(pf persistFn, project *models.Project, taskID string) TaskOpResult {
+// toggleSpec describes a boolean toggle operation on a task.
+type toggleSpec struct {
+	mutateFn func(t *models.Task)      // e.g. (*Task).TogglePinned
+	readFlag func(t *models.Task) bool // post-state getter, e.g. func(t) { return t.Pinned }
+	onFmt    string                    // format string when flag is true,  e.g. "Pinned task #%d"
+	offFmt   string                    // format string when flag is false, e.g. "Unpinned task #%d"
+}
+
+var (
+	toggleActive = toggleSpec{
+		mutateFn: (*models.Task).ToggleActive,
+		readFlag: func(t *models.Task) bool { return t.Active },
+		onFmt:    "Task #%d marked active",
+		offFmt:   "Task #%d unmarked active",
+	}
+	togglePinned = toggleSpec{
+		mutateFn: (*models.Task).TogglePinned,
+		readFlag: func(t *models.Task) bool { return t.Pinned },
+		onFmt:    "Pinned task #%d",
+		offFmt:   "Unpinned task #%d",
+	}
+	toggleDimmed = toggleSpec{
+		mutateFn: (*models.Task).ToggleDimmed,
+		readFlag: func(t *models.Task) bool { return t.Dimmed },
+		onFmt:    "Dimmed task #%d",
+		offFmt:   "Undimmed task #%d",
+	}
+)
+
+// applyToggleBool toggles a boolean flag on a task using the given spec.
+func applyToggleBool(pf persistFn, project *models.Project, taskID string, spec toggleSpec) TaskOpResult {
 	task := project.GetTaskByID(taskID)
 	if task == nil {
 		return TaskOpResult{StatusMessage: "Task no longer exists in project"}
 	}
 
-	wasActive := task.Active
-	result := pf(project, taskID, func(t *models.Task) {
-		t.ToggleActive()
-	})
+	result := pf(project, taskID, spec.mutateFn)
 	if result.Err != nil || result.StatusMessage != "" {
 		return result
 	}
 
-	msg := fmt.Sprintf("Task #%d marked active", task.ShortID)
-	if wasActive {
-		msg = fmt.Sprintf("Task #%d unmarked active", task.ShortID)
+	updated := project.GetTaskByID(taskID)
+	if updated != nil && spec.readFlag(updated) {
+		result.StatusMessage = fmt.Sprintf(spec.onFmt, updated.ShortID)
+	} else if updated != nil {
+		result.StatusMessage = fmt.Sprintf(spec.offFmt, updated.ShortID)
 	}
-	result.StatusMessage = msg
 	result.Cmd = func() tea.Msg { return TaskPropertyChangedMsg{Task: task} }
 	return result
+}
+
+// applyToggleActive toggles the Active flag on a task.
+func applyToggleActive(pf persistFn, project *models.Project, taskID string) TaskOpResult {
+	return applyToggleBool(pf, project, taskID, toggleActive)
+}
+
+// applyTogglePinned toggles the Pinned flag on a task.
+func applyTogglePinned(pf persistFn, project *models.Project, taskID string) TaskOpResult {
+	return applyToggleBool(pf, project, taskID, togglePinned)
+}
+
+// applyToggleDimmed toggles the Dimmed flag on a task.
+func applyToggleDimmed(pf persistFn, project *models.Project, taskID string) TaskOpResult {
+	return applyToggleBool(pf, project, taskID, toggleDimmed)
 }
 
 // applyRemoveFromFocus always sets Active = false (used by FocusView specifically).
@@ -358,60 +400,6 @@ func applyDeleteTask(pf persistFn, persister Persister, project *models.Project,
 			return TaskDeletedMsg{Task: task}
 		},
 	}
-}
-
-// applyTogglePinned toggles the Pinned flag on a task.
-func applyTogglePinned(pf persistFn, project *models.Project, taskID string) TaskOpResult {
-	task := project.GetTaskByID(taskID)
-	if task == nil {
-		return TaskOpResult{StatusMessage: "Task no longer exists in project"}
-	}
-
-	result := pf(project, taskID, func(t *models.Task) {
-		t.TogglePinned()
-	})
-	if result.Err != nil || result.StatusMessage != "" {
-		return result
-	}
-
-	// Re-read to get updated state
-	updated := project.GetTaskByID(taskID)
-	if updated != nil {
-		if updated.Pinned {
-			result.StatusMessage = fmt.Sprintf("Pinned task #%d", updated.ShortID)
-		} else {
-			result.StatusMessage = fmt.Sprintf("Unpinned task #%d", updated.ShortID)
-		}
-	}
-	result.Cmd = func() tea.Msg { return TaskPropertyChangedMsg{Task: task} }
-	return result
-}
-
-// applyToggleDimmed toggles the Dimmed flag on a task.
-func applyToggleDimmed(pf persistFn, project *models.Project, taskID string) TaskOpResult {
-	task := project.GetTaskByID(taskID)
-	if task == nil {
-		return TaskOpResult{StatusMessage: "Task no longer exists in project"}
-	}
-
-	result := pf(project, taskID, func(t *models.Task) {
-		t.ToggleDimmed()
-	})
-	if result.Err != nil || result.StatusMessage != "" {
-		return result
-	}
-
-	// Re-read to get updated state
-	updated := project.GetTaskByID(taskID)
-	if updated != nil {
-		if updated.Dimmed {
-			result.StatusMessage = fmt.Sprintf("Dimmed task #%d", updated.ShortID)
-		} else {
-			result.StatusMessage = fmt.Sprintf("Undimmed task #%d", updated.ShortID)
-		}
-	}
-	result.Cmd = func() tea.Msg { return TaskPropertyChangedMsg{Task: task} }
-	return result
 }
 
 // dueDateLabel returns a human-friendly label for a relative due date.

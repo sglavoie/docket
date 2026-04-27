@@ -286,24 +286,23 @@ func handleDeferRecurrence(key string, v prefixableView) (tea.Cmd, bool) {
 	return v.saveAndRefreshBulk(prevStates), true
 }
 
-// handleToggleActiveKey handles the * key for toggling the Active flag.
+// handleToggleKey handles toggling a boolean flag (active/pinned/dimmed) on one
+// or more tasks. The spec defines which flag to toggle and the status labels.
 // Returns (cmd, handled).
-func handleToggleActiveKey(v prefixableView) (tea.Cmd, bool) {
+func handleToggleKey(v prefixableView, spec toggleSpec, undoAction, bulkLabel string) (tea.Cmd, bool) {
 	project := v.getProject()
 
 	if tasks := v.getMultiSelectedTasks(); tasks != nil {
 		prevStates := captureTaskStates(project.Tasks)
 		count := 0
 		for _, task := range tasks {
-			if project.MutateTask(task.ID, func(t *models.Task) {
-				t.ToggleActive()
-			}) {
+			if project.MutateTask(task.ID, spec.mutateFn) {
 				count++
 			}
 		}
 		v.clearMultiSelect()
-		msg := fmt.Sprintf("Toggled active on %d tasks", count)
-		v.setUndoContext("Toggle Active", msg)
+		msg := fmt.Sprintf("Toggled %s on %d tasks", bulkLabel, count)
+		v.setUndoContext(undoAction, msg)
 		v.setUndoTaskIDs(taskIDsFromSlice(tasks))
 		v.setStatusMessage(msg)
 		return v.saveAndRefreshBulk(prevStates), true
@@ -313,97 +312,31 @@ func handleToggleActiveKey(v prefixableView) (tea.Cmd, bool) {
 	if task == nil {
 		return nil, true
 	}
-	v.setUndoContext("Toggle Active", task.Title)
-	result := applyToggleActive(v.workflowPersistFn(), project, task.ID)
+	v.setUndoContext(undoAction, task.Title)
+	result := applyToggleBool(v.workflowPersistFn(), project, task.ID, spec)
 	if result.Err != nil {
 		return func() tea.Msg { return ErrorMsg{Err: result.Err} }, true
 	}
-	cmds := []tea.Cmd{result.Cmd}
 	if result.StatusMessage != "" {
 		v.setStatusMessage(result.StatusMessage)
 	}
 	v.refreshView()
-	return tea.Batch(cmds...), true
+	return result.Cmd, true
+}
+
+// handleToggleActiveKey handles the * key for toggling the Active flag.
+func handleToggleActiveKey(v prefixableView) (tea.Cmd, bool) {
+	return handleToggleKey(v, toggleActive, "Toggle Active", "active")
 }
 
 // handleTogglePinnedKey handles the tp prefix key for toggling the Pinned flag.
-// Returns (cmd, handled).
 func handleTogglePinnedKey(v prefixableView) (tea.Cmd, bool) {
-	project := v.getProject()
-
-	if tasks := v.getMultiSelectedTasks(); tasks != nil {
-		prevStates := captureTaskStates(project.Tasks)
-		count := 0
-		for _, task := range tasks {
-			if project.MutateTask(task.ID, func(t *models.Task) {
-				t.TogglePinned()
-			}) {
-				count++
-			}
-		}
-		v.clearMultiSelect()
-		msg := fmt.Sprintf("Toggled pin on %d tasks", count)
-		v.setUndoContext("Toggle Pin", msg)
-		v.setUndoTaskIDs(taskIDsFromSlice(tasks))
-		v.setStatusMessage(msg)
-		return v.saveAndRefreshBulk(prevStates), true
-	}
-
-	task := v.getCursorTask()
-	if task == nil {
-		return nil, true
-	}
-	v.setUndoContext("Toggle Pin", task.Title)
-	result := applyTogglePinned(v.workflowPersistFn(), project, task.ID)
-	if result.Err != nil {
-		return func() tea.Msg { return ErrorMsg{Err: result.Err} }, true
-	}
-	cmds := []tea.Cmd{result.Cmd}
-	if result.StatusMessage != "" {
-		v.setStatusMessage(result.StatusMessage)
-	}
-	v.refreshView()
-	return tea.Batch(cmds...), true
+	return handleToggleKey(v, togglePinned, "Toggle Pin", "pin")
 }
 
 // handleToggleDimmedKey handles the td prefix key for toggling the Dimmed flag.
-// Returns (cmd, handled).
 func handleToggleDimmedKey(v prefixableView) (tea.Cmd, bool) {
-	project := v.getProject()
-
-	if tasks := v.getMultiSelectedTasks(); tasks != nil {
-		prevStates := captureTaskStates(project.Tasks)
-		count := 0
-		for _, task := range tasks {
-			if project.MutateTask(task.ID, func(t *models.Task) {
-				t.ToggleDimmed()
-			}) {
-				count++
-			}
-		}
-		v.clearMultiSelect()
-		msg := fmt.Sprintf("Toggled dim on %d tasks", count)
-		v.setUndoContext("Toggle Dim", msg)
-		v.setUndoTaskIDs(taskIDsFromSlice(tasks))
-		v.setStatusMessage(msg)
-		return v.saveAndRefreshBulk(prevStates), true
-	}
-
-	task := v.getCursorTask()
-	if task == nil {
-		return nil, true
-	}
-	v.setUndoContext("Toggle Dim", task.Title)
-	result := applyToggleDimmed(v.workflowPersistFn(), project, task.ID)
-	if result.Err != nil {
-		return func() tea.Msg { return ErrorMsg{Err: result.Err} }, true
-	}
-	cmds := []tea.Cmd{result.Cmd}
-	if result.StatusMessage != "" {
-		v.setStatusMessage(result.StatusMessage)
-	}
-	v.refreshView()
-	return tea.Batch(cmds...), true
+	return handleToggleKey(v, toggleDimmed, "Toggle Dim", "dim")
 }
 
 // handleTagKey handles the T key for tag filtering or bulk tag assignment.
