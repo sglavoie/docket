@@ -211,9 +211,7 @@ func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 				logging.Warn("failed to load project %s: %v", p.Name, err)
 			}
 		}
-		picker := NewProjectPickerModel(projects)
-		m.showView(ViewProjectPicker, picker)
-		return true, picker.Init()
+		return m.showViewInit(ViewProjectPicker, NewProjectPickerModel(projects))
 
 	case ProjectPickerDoneMsg:
 		m.popView() // Close picker

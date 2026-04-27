@@ -35,8 +35,7 @@ func (m *AppModel) handleSearchMessages(msg tea.Msg) (bool, tea.Cmd) {
 			palette.showTips = false
 			palette.filterItems()
 		}
-		m.showView(ViewCommandPalette, palette)
-		return true, palette.Init()
+		return m.showViewInit(ViewCommandPalette, palette)
 
 	case CommandPaletteExecuteMsg:
 		// Check if the inner message opens a modal view that should return to the palette

@@ -280,6 +280,13 @@ func (m *AppModel) showView(viewType ViewType, view View) {
 	m.setAccentOnView(view)
 }
 
+// showViewInit is showView + return true, view.Init(). Used by handlers that
+// create a view, push it, and immediately return its Init command.
+func (m *AppModel) showViewInit(viewType ViewType, view View) (bool, tea.Cmd) {
+	m.showView(viewType, view)
+	return true, view.Init()
+}
+
 // replaceView replaces the top of the view stack instead of pushing.
 // Used when switching between peer project views (ProjectTree, Outliner)
 // so the stack doesn't accumulate entries.

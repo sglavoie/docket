@@ -15,10 +15,7 @@ import (
 func (m *AppModel) handleSavedFilterMessages(msg tea.Msg) (bool, tea.Cmd) {
 	switch msg := msg.(type) {
 	case ShowSaveFilterDialogMsg:
-		summary := m.buildCurrentViewSummary()
-		dialog := NewSaveFilterInputModel(summary)
-		m.showView(ViewSaveFilterInput, dialog)
-		return true, dialog.Init()
+		return m.showViewInit(ViewSaveFilterInput, NewSaveFilterInputModel(m.buildCurrentViewSummary()))
 
 	case SaveFilterMsg:
 		sf := m.captureCurrentFilter(msg.Name)

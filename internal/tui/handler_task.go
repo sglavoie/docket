@@ -26,9 +26,7 @@ func (m *AppModel) handleTaskMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint:go
 				if len(enabledTemplates) > 0 {
 					// Store the parent task and show template picker
 					m.pendingCreateTaskParent = msg.ParentTask
-					picker := NewTemplatePickerModel(m.config, m.currentProject)
-					m.showView(ViewTaskTemplatePicker, picker)
-					return true, picker.Init()
+					return m.showViewInit(ViewTaskTemplatePicker, NewTemplatePickerModel(m.config, m.currentProject))
 				}
 			}
 			// No templates or skipped, go directly to task form
@@ -201,8 +199,7 @@ func (m *AppModel) handleTaskMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint:go
 	case OpenParentSelectorMsg:
 		selector := NewParentSelectorModel(msg.ValidParents, msg.CurrentID, msg.AllowNone, msg.Source)
 		selector.reparentTaskID = msg.ReparentTaskID
-		m.showView(ViewParentSelector, selector)
-		return true, selector.Init()
+		return m.showViewInit(ViewParentSelector, selector)
 
 	case ParentSelectedMsg:
 		// Pop the parent selector view

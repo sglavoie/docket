@@ -61,14 +61,10 @@ func (m *AppModel) handleViewSettingsMessages(msg tea.Msg) (bool, tea.Cmd) { //n
 		return true, nil
 
 	case ShowTaskTemplateCreatorMsg:
-		creator := NewTaskTemplateCreatorModel(m.config, m.configManager)
-		m.showView(ViewTaskTemplateCreator, creator)
-		return true, creator.Init()
+		return m.showViewInit(ViewTaskTemplateCreator, NewTaskTemplateCreatorModel(m.config, m.configManager))
 
 	case ShowTaskTemplateEditorMsg:
-		editor := NewTaskTemplateEditorModel(m.config, m.configManager, msg.Template)
-		m.showView(ViewTaskTemplateEditor, editor)
-		return true, editor.Init()
+		return m.showViewInit(ViewTaskTemplateEditor, NewTaskTemplateEditorModel(m.config, m.configManager, msg.Template))
 
 	case TaskTemplateCreatedMsg:
 		m.popView()
@@ -82,9 +78,7 @@ func (m *AppModel) handleViewSettingsMessages(msg tea.Msg) (bool, tea.Cmd) { //n
 
 	case ShowTemplatePickerMsg:
 		if msg.Project != nil {
-			picker := NewTemplatePickerModel(m.config, msg.Project)
-			m.showView(ViewTaskTemplatePicker, picker)
-			return true, picker.Init()
+			return m.showViewInit(ViewTaskTemplatePicker, NewTemplatePickerModel(m.config, msg.Project))
 		}
 		return true, nil
 
@@ -98,9 +92,7 @@ func (m *AppModel) handleViewSettingsMessages(msg tea.Msg) (bool, tea.Cmd) { //n
 
 		if msg.Template != nil && template.HasVariables(msg.Template) {
 			m.pendingVarFillerTemplate = msg.Template
-			filler := NewTemplateVarFillerModel(msg.Template)
-			m.showView(ViewTemplateVarFiller, filler)
-			return true, filler.Init()
+			return m.showViewInit(ViewTemplateVarFiller, NewTemplateVarFillerModel(msg.Template))
 		}
 
 		return m.showTaskCreatorForTemplate(msg.Template)
@@ -110,9 +102,7 @@ func (m *AppModel) handleViewSettingsMessages(msg tea.Msg) (bool, tea.Cmd) { //n
 		if msg.Canceled {
 			m.pendingVarFillerTemplate = nil
 			if m.currentProject != nil {
-				picker := NewTemplatePickerModel(m.config, m.currentProject)
-				m.showView(ViewTaskTemplatePicker, picker)
-				return true, picker.Init()
+				return m.showViewInit(ViewTaskTemplatePicker, NewTemplatePickerModel(m.config, m.currentProject))
 			}
 			return true, nil
 		}
@@ -124,14 +114,10 @@ func (m *AppModel) handleViewSettingsMessages(msg tea.Msg) (bool, tea.Cmd) { //n
 		return true, nil
 
 	case ShowWorkflowRuleCreatorMsg:
-		creator := NewWorkflowRuleCreatorModel(m.config, m.configManager)
-		m.showView(ViewWorkflowRuleCreator, creator)
-		return true, creator.Init()
+		return m.showViewInit(ViewWorkflowRuleCreator, NewWorkflowRuleCreatorModel(m.config, m.configManager))
 
 	case ShowWorkflowRuleEditorMsg:
-		editor := NewWorkflowRuleEditorModel(m.config, m.configManager, msg.Rule)
-		m.showView(ViewWorkflowRuleEditor, editor)
-		return true, editor.Init()
+		return m.showViewInit(ViewWorkflowRuleEditor, NewWorkflowRuleEditorModel(m.config, m.configManager, msg.Rule))
 
 	case WorkflowRuleCreatedMsg:
 		m.popView()
@@ -139,9 +125,7 @@ func (m *AppModel) handleViewSettingsMessages(msg tea.Msg) (bool, tea.Cmd) { //n
 		return true, nil
 
 	case ShowWorkflowWizardMsg:
-		wizard := NewWorkflowWizardModel(m.config, m.configManager)
-		m.showView(ViewWorkflowWizard, wizard)
-		return true, wizard.Init()
+		return m.showViewInit(ViewWorkflowWizard, NewWorkflowWizardModel(m.config, m.configManager))
 
 	case WorkflowWizardSavedMsg:
 		m.popView()
@@ -154,19 +138,13 @@ func (m *AppModel) handleViewSettingsMessages(msg tea.Msg) (bool, tea.Cmd) { //n
 		return true, nil
 
 	case ShowWorkflowDryRunMsg:
-		dryRun := NewWorkflowDryRunModel(m.config, m.configManager, m.persister, msg.SingleRule)
-		m.showView(ViewWorkflowDryRun, dryRun)
-		return true, dryRun.Init()
+		return m.showViewInit(ViewWorkflowDryRun, NewWorkflowDryRunModel(m.config, m.configManager, m.persister, msg.SingleRule))
 
 	case ShowFilterBuilderMsg:
-		builder := NewFilterBuilderModel(m.config, m.configManager)
-		m.showView(ViewFilterBuilder, builder)
-		return true, builder.Init()
+		return m.showViewInit(ViewFilterBuilder, NewFilterBuilderModel(m.config, m.configManager))
 
 	case ShowFilterEditorMsg:
-		builder := NewFilterEditorModel(m.config, m.configManager, msg.Filter)
-		m.showView(ViewFilterBuilder, builder)
-		return true, builder.Init()
+		return m.showViewInit(ViewFilterBuilder, NewFilterEditorModel(m.config, m.configManager, msg.Filter))
 
 	case FilterBuilderSavedMsg:
 		m.popView()
@@ -194,9 +172,7 @@ func (m *AppModel) showTaskCreatorForTemplate(taskTemplate *template.TaskTemplat
 	parentTask := m.pendingCreateTaskParent
 	m.pendingCreateTaskParent = nil
 	if m.currentProject != nil {
-		creator := NewTaskFormModelCreateFromTemplate(m.currentProject, m.config, m.configManager, parentTask, taskTemplate)
-		m.showView(ViewTaskForm, creator)
-		return true, creator.Init()
+		return m.showViewInit(ViewTaskForm, NewTaskFormModelCreateFromTemplate(m.currentProject, m.config, m.configManager, parentTask, taskTemplate))
 	}
 
 	return true, nil

@@ -29,9 +29,7 @@ func (m *AppModel) handleEditorMessages(msg tea.Msg) (bool, tea.Cmd) {
 		return true, cmd
 
 	case ShowTextEditorMsg:
-		editor := NewTextEditorModel(msg.FieldName, msg.CurrentValue)
-		m.showView(ViewTextEditor, editor)
-		return true, editor.Init()
+		return m.showViewInit(ViewTextEditor, NewTextEditorModel(msg.FieldName, msg.CurrentValue))
 
 	case ShowDescriptionEditorMsg:
 		// Store context for when editing completes
@@ -42,9 +40,7 @@ func (m *AppModel) handleEditorMessages(msg tea.Msg) (bool, tea.Cmd) {
 			Task:    msg.Task,
 			Project: msg.Project,
 		}
-		editor := NewTextEditorModel("description", msg.Task.Description)
-		m.showView(ViewTextEditor, editor)
-		return true, editor.Init()
+		return m.showViewInit(ViewTextEditor, NewTextEditorModel("description", msg.Task.Description))
 
 	case TextEditorDoneMsg:
 		m.popView()
