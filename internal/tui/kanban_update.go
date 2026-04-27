@@ -116,15 +116,9 @@ func (m *KanbanModel) handleKanbanKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) 
 	case "V":
 		m.ToggleMode(&m.statusMsg, "Multi-select mode — space: select, H/L: bulk move, esc: exit")
 		return m, nil
-	case "?":
-		vt, vn := ViewKanban, "Kanban"
-		if m.crossProject {
-			vt, vn = ViewCrossProjectKanban, "Cross-Project Kanban"
-		}
-		return m, helpCmd(vt, vn, GetKeybindingRegistry().GetForView(vt))
 	}
 
-	// ── Direct action keys ────────────────────────────────────────────────
+	// ── Kanban-specific action keys ──────────────────────────────────────
 	hasCard := m.getCursorCard() != nil
 	switch key {
 	case "a":
@@ -136,76 +130,8 @@ func (m *KanbanModel) handleKanbanKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) 
 			}
 		}
 	case "D":
+		// Kanban deletes immediately without a confirmation dialog.
 		return taskOpsDeleteTask(m)
-	case "e":
-		card := m.getCursorCard()
-		if card != nil {
-			return m, func() tea.Msg {
-				return EditTaskMsg{Task: card.Task, Project: card.Project}
-			}
-		}
-		return m, nil
-	case "o":
-		card := m.getCursorCard()
-		if card != nil {
-			return m, func() tea.Msg {
-				return ShowTaskDetailMsg{Task: card.Task, Project: card.Project}
-			}
-		}
-		return m, nil
-	case "Z":
-		card := m.getCursorCard()
-		if card != nil {
-			return m, func() tea.Msg {
-				return SetSnoozeDateMsg{Task: card.Task, Project: card.Project}
-			}
-		}
-		return m, nil
-	case "r":
-		m.reloadData()
-		m.clampCursor()
-		m.statusMsg = "Refreshed"
-		return m, nil
-	case "y", "Y", "ctrl+y":
-		card := m.getCursorCard()
-		if card != nil {
-			if cmd, handled := clipboardCmd(key, card.Task); handled {
-				return m, cmd
-			}
-		}
-		return m, nil
-	case "*":
-		return taskOpsToggleActive(m)
-	case "S":
-		card := m.getCursorCard()
-		if card != nil {
-			return m, func() tea.Msg {
-				return ShowScoreEditorMsg{Task: card.Task, Project: card.Project}
-			}
-		}
-		return m, nil
-	case "O":
-		card := m.getCursorCard()
-		if card != nil && card.Task.URL != "" {
-			return m, openBrowserCmd(card.Task.URL)
-		}
-		return m, nil
-	case "ctrl+.":
-		card := m.getCursorCard()
-		if card != nil {
-			return m, func() tea.Msg {
-				return OpenQuickNoteMsg{Task: card.Task, Project: card.Project}
-			}
-		}
-		return m, nil
-	case "ctrl+b":
-		card := m.getCursorCard()
-		if card != nil {
-			return m, func() tea.Msg {
-				return ShowProjectSelectorForMoveMsg{Task: card.Task, SourceProject: card.Project}
-			}
-		}
-		return m, nil
 	case "M":
 		if m.mode == KanbanModeCustomSections {
 			card := m.getCursorCard()
@@ -217,6 +143,11 @@ func (m *KanbanModel) handleKanbanKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) 
 			}
 		}
 		return m, nil
+	}
+
+	// ── Shared task action keys (o, e, Z, r, *, S, O, ctrl+., ctrl+b, ?, y/Y/ctrl+y) ──
+	if model, cmd, handled := handleCommonTaskAction(key, m); handled {
+		return model, cmd
 	}
 
 	// ── Prefix key activators ─────────────────────────────────────────────

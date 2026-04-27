@@ -87,6 +87,30 @@ func (m *KanbanModel) clampCursor() {
 func (m *KanbanModel) setErr(err error)     { m.statusMsg = err.Error() }
 func (m *KanbanModel) setStatus(msg string) { m.statusMsg = msg }
 
+// ─── commonActionView interface ───────────────────────────────────────────────
+
+func (m *KanbanModel) viewID() ViewType {
+	if m.crossProject {
+		return ViewCrossProjectKanban
+	}
+	return ViewKanban
+}
+
+func (m *KanbanModel) viewName() string {
+	if m.crossProject {
+		return "Cross-Project Kanban"
+	}
+	return "Kanban"
+}
+
+func (m *KanbanModel) GetHelpItems() []HelpItem {
+	return GetKeybindingRegistry().GetForView(m.viewID())
+}
+
+func (m *KanbanModel) showDeleteConfirm(_ int) {
+	// Kanban skips confirmation — D goes through taskOpsDeleteTask directly.
+}
+
 // ─── prefixDispatchView interface ─────────────────────────────────────────────
 
 // selectMsg returns a message to navigate to the task in its project.
