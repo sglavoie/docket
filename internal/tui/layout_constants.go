@@ -22,15 +22,6 @@ const (
 	// top and bottom borders.
 	CardVerticalBorderOverhead = 2
 
-	// DividerHeight is the height of a horizontal divider between sections.
-	DividerHeight = 1
-
-	// TabBarHeight is the height of a tab bar (text line + bottom border).
-	TabBarHeight = 2
-
-	// FilterBarHeight is the height of the filter bar when enabled.
-	FilterBarHeight = 2
-
 	// MinCardWidth is the minimum width for a content card to remain legible.
 	MinCardWidth = 20
 
@@ -62,9 +53,6 @@ const (
 
 	// SidebarContentOverhead is the horizontal overhead for sidebar content.
 	SidebarContentOverhead = 3
-
-	// AlertsCardHeight is the fixed height for the alerts card in dashboard.
-	AlertsCardHeight = 8
 
 	// DashboardBottomPaneHeight is the fixed height for the bottom info
 	// section (summary/alerts cards) in the dashboard. The top project

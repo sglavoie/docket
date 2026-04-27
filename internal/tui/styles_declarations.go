@@ -73,15 +73,6 @@ var (
 	DependencyStyle = lipgloss.NewStyle().
 			Foreground(ColorSecondary)
 
-	PriorityHighStyle = lipgloss.NewStyle().
-				Foreground(ColorError)
-
-	PriorityMediumStyle = lipgloss.NewStyle().
-				Foreground(ColorWarning)
-
-	PriorityLowStyle = lipgloss.NewStyle().
-				Foreground(ColorMuted)
-
 	DueDateStyle = lipgloss.NewStyle().
 			Foreground(ColorMuted)
 
@@ -137,11 +128,6 @@ var (
 			BorderForeground(ColorBorder).
 			Padding(1, 2)
 
-	SelectedBoxStyle = lipgloss.NewStyle().
-				Border(lipgloss.RoundedBorder()).
-				BorderForeground(ColorPrimary).
-				Padding(1, 2)
-
 	HelpStyle = lipgloss.NewStyle().
 			Foreground(ColorMuted)
 
@@ -153,12 +139,7 @@ var (
 			Background(ColorBackground).
 			Padding(0, 1)
 
-	TreeIndent = "  "
-
 	FormLabelWidth = 11
-
-	TreeBranchStyle = lipgloss.NewStyle().
-			Foreground(ColorBorder)
 
 	ProgressFullStyle = lipgloss.NewStyle().
 				Foreground(ColorSuccess)
@@ -177,12 +158,6 @@ var (
 				Foreground(lipgloss.Color("0")).
 				Padding(0, 1)
 
-	ConfirmStyle = lipgloss.NewStyle().
-			Background(ColorWarning).
-			Foreground(lipgloss.Color("0")).
-			Padding(0, 1).
-			MarginTop(1)
-
 	PrefixPopupStyle = lipgloss.NewStyle().
 				Background(ColorBackground).
 				Foreground(ColorLightGray).
@@ -194,24 +169,6 @@ var (
 
 	PrefixDescStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("255"))
-
-	InputStyle = lipgloss.NewStyle().
-			Border(lipgloss.RoundedBorder()).
-			BorderForeground(ColorBorder).
-			Padding(0, 1)
-
-	InputFocusedStyle = lipgloss.NewStyle().
-				Border(lipgloss.RoundedBorder()).
-				BorderForeground(ColorPrimary).
-				Padding(0, 1)
-
-	FormInputBorderStyle = lipgloss.NewStyle().
-				Border(lipgloss.NormalBorder()).
-				BorderForeground(ColorBorder)
-
-	FormInputBorderFocusedStyle = lipgloss.NewStyle().
-					Border(lipgloss.NormalBorder()).
-					BorderForeground(ColorPrimary)
 
 	ValidationErrorStyle = lipgloss.NewStyle().
 				Foreground(ColorError).
@@ -314,11 +271,6 @@ var (
 	FilterClearStyle = lipgloss.NewStyle().
 				Foreground(ColorError)
 
-	TaskJumperTitleStyle = lipgloss.NewStyle().
-				Bold(true).
-				Foreground(ColorPrimary).
-				MarginBottom(1)
-
 	TaskJumperListStyle = lipgloss.NewStyle().
 				Border(lipgloss.NormalBorder(), false, true, false, false).
 				BorderForeground(ColorBorder)
@@ -332,10 +284,6 @@ var (
 				Bold(true)
 
 	TaskJumperPreviewHeaderStyle = lipgloss.NewStyle().
-					Bold(true).
-					Foreground(ColorPrimary)
-
-	DueDateOverviewTitleStyle = lipgloss.NewStyle().
 					Bold(true).
 					Foreground(ColorPrimary)
 
@@ -413,10 +361,6 @@ var (
 				Foreground(ColorWarning).
 				Italic(true)
 
-	PriorityViewTitleStyle = lipgloss.NewStyle().
-				Bold(true).
-				Foreground(ColorPrimary)
-
 	PriorityWaitingHeaderStyle = lipgloss.NewStyle().
 					Foreground(ColorMuted).
 					Italic(true).
@@ -453,7 +397,6 @@ var (
 
 	MatchHighlightStyle       = lipgloss.NewStyle().Foreground(ColorHighlight)
 	TagInlineStyle            = lipgloss.NewStyle().Foreground(ColorSecondary)
-	PriorityInlineStyle       = lipgloss.NewStyle().Foreground(ColorWarning)
 	CheckmarkStyle            = lipgloss.NewStyle().Foreground(ColorSuccess)
 	WarningIconStyle          = lipgloss.NewStyle().Foreground(ColorWarning)
 	ErrorIconStyle            = lipgloss.NewStyle().Foreground(ColorError)
@@ -462,21 +405,14 @@ var (
 	BoldSecondaryStyle        = BoldStyle.Foreground(ColorSecondary)
 	BoldPrimaryUnderlineStyle = BoldStyle.Foreground(ColorPrimary).Underline(true)
 	PurpleStyle               = lipgloss.NewStyle().Foreground(ColorPurple)
-	OrangeStyle               = lipgloss.NewStyle().Foreground(ColorWarning)
-
-	SidebarStyle = lipgloss.NewStyle().
-			BorderStyle(lipgloss.RoundedBorder()).
-			BorderForeground(ColorBorder).
-			Padding(1)
+	SidebarStyle              = lipgloss.NewStyle().
+					BorderStyle(lipgloss.RoundedBorder()).
+					BorderForeground(ColorBorder).
+					Padding(1)
 
 	SidebarHeaderStyle = lipgloss.NewStyle().
 				Bold(true).
 				Foreground(ColorPrimary)
-
-	SidebarSectionHeaderStyle = lipgloss.NewStyle().
-					Bold(true).
-					Foreground(ColorSecondary).
-					Underline(true)
 
 	TagStyle = lipgloss.NewStyle().
 			Foreground(ColorSecondary).
@@ -554,8 +490,6 @@ var (
 	PinIndicatorStyle     = lipgloss.NewStyle().Foreground(ColorWarning)
 
 	DueThisWeekStyle = lipgloss.NewStyle().Foreground(ColorWarning)
-
-	HeaderBoldStyle = lipgloss.NewStyle().Bold(true)
 
 	PreviewWarningStyle = lipgloss.NewStyle().Foreground(ColorWarning)
 

@@ -32,7 +32,6 @@ func rebuildTextStyles() {
 	ErrorStatusStyle = lipgloss.NewStyle().Foreground(ColorError)
 	EmptyErrorStyle = lipgloss.NewStyle().Bold(true).Foreground(ColorError)
 	SeparatorStyle = lipgloss.NewStyle().Foreground(ColorMuted)
-	HeaderBoldStyle = lipgloss.NewStyle().Bold(true)
 }
 
 func rebuildTaskStyles() {
@@ -47,9 +46,6 @@ func rebuildTaskStyles() {
 	DueSoonStyle = lipgloss.NewStyle().Foreground(ColorWarning)
 	DependencyStyle = lipgloss.NewStyle().Foreground(ColorSecondary)
 
-	PriorityHighStyle = lipgloss.NewStyle().Foreground(ColorError)
-	PriorityMediumStyle = lipgloss.NewStyle().Foreground(ColorWarning)
-	PriorityLowStyle = lipgloss.NewStyle().Foreground(ColorMuted)
 	DueDateStyle = lipgloss.NewStyle().Foreground(ColorMuted)
 	DueTodayStyle = lipgloss.NewStyle().Foreground(ColorWarning)
 	BlockedByDepsStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("231")).Background(ColorError)
@@ -66,7 +62,6 @@ func rebuildTaskStyles() {
 	PinnedNumberStyle = lipgloss.NewStyle().Foreground(ColorWarning).Bold(true)
 	ActiveStyle = lipgloss.NewStyle().Foreground(ColorAccent)
 	TriagedBadgeStyle = lipgloss.NewStyle().Foreground(ColorWarning).Italic(true)
-	PriorityViewTitleStyle = lipgloss.NewStyle().Bold(true).Foreground(ColorPrimary)
 	PriorityWaitingHeaderStyle = lipgloss.NewStyle().Foreground(ColorMuted).Italic(true).MarginTop(1)
 	DueThisWeekStyle = lipgloss.NewStyle().Foreground(ColorWarning)
 	PreviewWarningStyle = lipgloss.NewStyle().Foreground(ColorWarning)
@@ -117,27 +112,18 @@ func rebuildBadgeStyles() {
 
 func rebuildLayoutStyles() {
 	BoxStyle = lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(ColorBorder).Padding(1, 2)
-	SelectedBoxStyle = lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(ColorPrimary).Padding(1, 2)
 	StatusBarStyle = lipgloss.NewStyle().Foreground(ColorHighlight).Background(ColorBackground).Padding(0, 1)
-	TreeBranchStyle = lipgloss.NewStyle().Foreground(ColorBorder)
 	ProgressFullStyle = lipgloss.NewStyle().Foreground(ColorSuccess)
 	ProgressEmptyStyle = lipgloss.NewStyle().Foreground(ColorProgressEmpty)
 	ScrollbarThumbStyle = lipgloss.NewStyle().Foreground(ColorPrimary)
 	ScrollbarTrackStyle = lipgloss.NewStyle().Foreground(ColorMuted)
-	confirmFg := lipgloss.Color("0")
-	if activeThemeName == "light" {
-		confirmFg = lipgloss.Color("15")
-	}
-	ConfirmStyle = lipgloss.NewStyle().Background(ColorWarning).Foreground(confirmFg).Padding(0, 1).MarginTop(1)
 	PrefixPopupStyle = lipgloss.NewStyle().Background(ColorBackground).Foreground(ColorLightGray).Padding(0, 1)
 	PrefixKeyStyle = lipgloss.NewStyle().Foreground(ColorPrimary).Bold(true)
 	PrefixDescStyle = lipgloss.NewStyle().Foreground(ColorMuted)
 
-	TaskJumperTitleStyle = lipgloss.NewStyle().Bold(true).Foreground(ColorPrimary).MarginBottom(1)
 	TaskJumperListStyle = lipgloss.NewStyle().Border(lipgloss.NormalBorder(), false, true, false, false).BorderForeground(ColorBorder)
 	TaskJumperPreviewStyle = lipgloss.NewStyle().Padding(0, 1)
 	TaskJumperPreviewHeaderStyle = lipgloss.NewStyle().Bold(true).Foreground(ColorPrimary)
-	DueDateOverviewTitleStyle = lipgloss.NewStyle().Bold(true).Foreground(ColorPrimary)
 	GroupHeaderStyle = lipgloss.NewStyle().Bold(true).Foreground(ColorSecondary).MarginTop(1)
 	SectionHeaderStyle = lipgloss.NewStyle().Bold(true).Foreground(ColorSecondary)
 
@@ -148,10 +134,6 @@ func rebuildLayoutStyles() {
 }
 
 func rebuildFormStyles() {
-	InputStyle = lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(ColorBorder).Padding(0, 1)
-	InputFocusedStyle = lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(ColorPrimary).Padding(0, 1)
-	FormInputBorderStyle = lipgloss.NewStyle().Border(lipgloss.NormalBorder()).BorderForeground(ColorBorder)
-	FormInputBorderFocusedStyle = lipgloss.NewStyle().Border(lipgloss.NormalBorder()).BorderForeground(ColorPrimary)
 	ValidationErrorStyle = lipgloss.NewStyle().Foreground(ColorError).MarginTop(1)
 	WarningMessageStyle = lipgloss.NewStyle().Foreground(ColorWarning)
 	FieldLabelStyle = lipgloss.NewStyle().Foreground(ColorMuted)
@@ -217,7 +199,6 @@ func rebuildSelectionStyles() {
 func rebuildSidebarStyles() {
 	SidebarStyle = lipgloss.NewStyle().BorderStyle(lipgloss.RoundedBorder()).BorderForeground(ColorBorder).Padding(1)
 	SidebarHeaderStyle = lipgloss.NewStyle().Bold(true).Foreground(ColorPrimary)
-	SidebarSectionHeaderStyle = lipgloss.NewStyle().Bold(true).Foreground(ColorSecondary).Underline(true)
 	SidebarCardStyle = lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(ColorBorder).Padding(0, 1)
 	SidebarCardFocusedStyle = lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(ColorPrimary).Padding(0, 1)
 	SidebarCardTitleStyle = lipgloss.NewStyle().Foreground(ColorMuted)
@@ -257,7 +238,6 @@ func rebuildMiscStyles() {
 	HighlightStyle = lipgloss.NewStyle().Background(ColorHighlight).Foreground(lipgloss.Color("0")).Bold(true)
 	MatchHighlightStyle = lipgloss.NewStyle().Foreground(ColorHighlight)
 	TagInlineStyle = lipgloss.NewStyle().Foreground(ColorSecondary)
-	PriorityInlineStyle = lipgloss.NewStyle().Foreground(ColorWarning)
 	CheckmarkStyle = lipgloss.NewStyle().Foreground(ColorSuccess)
 	WarningIconStyle = lipgloss.NewStyle().Foreground(ColorWarning)
 	ErrorIconStyle = lipgloss.NewStyle().Foreground(ColorError)
@@ -266,7 +246,6 @@ func rebuildMiscStyles() {
 	BoldSecondaryStyle = BoldStyle.Foreground(ColorSecondary)
 	BoldPrimaryUnderlineStyle = BoldStyle.Foreground(ColorPrimary).Underline(true)
 	PurpleStyle = lipgloss.NewStyle().Foreground(ColorPurple)
-	OrangeStyle = lipgloss.NewStyle().Foreground(ColorWarning)
 	DiffAddStyle = lipgloss.NewStyle().Foreground(ColorSuccess)
 	DiffRemoveStyle = lipgloss.NewStyle().Foreground(ColorError)
 	DiffContextStyle = lipgloss.NewStyle().Foreground(ColorDiffContext)

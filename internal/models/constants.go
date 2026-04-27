@@ -9,11 +9,6 @@ const (
 	PriorityDefault = 3 // Medium
 )
 
-// UI constants for input widths and layout dimensions.
-const (
-	DefaultInputWidth = 40 // Default width for text input fields
-)
-
 // ValidatePriority checks that a priority value is in the valid range.
 // If allowZero is true, 0 is accepted (meaning "use default").
 func ValidatePriority(value int, allowZero bool) error {

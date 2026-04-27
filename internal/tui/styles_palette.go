@@ -27,7 +27,6 @@ var (
 
 	ColorViewActive     = lipgloss.Color("34")
 	ColorViewNext       = lipgloss.Color("61")
-	ColorViewReview     = lipgloss.Color("30")
 	ColorViewStandby    = lipgloss.Color("141")
 	ColorViewSomeday    = lipgloss.Color("135")
 	ColorSelectedFg     = lipgloss.Color("#fbeeff")
