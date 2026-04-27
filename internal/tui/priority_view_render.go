@@ -145,60 +145,45 @@ func (m *PriorityViewModel) renderAllGroups(currentIndex *int) ([]string, int) {
 
 	overdue, today, thisWeek, later, backlog, waitingOn := m.filteredGroupsWithSubTab()
 
-	if len(overdue) > 0 {
-		lines = append(lines, renderGroupHeader("OVERDUE", len(overdue), true, m.Width()))
-		lines = append(lines, m.renderGroup(overdue, currentIndex, true, &cursorLineIdx, len(lines), &rowIndex, colLayout)...)
-		hasContent = true
+	// Standard groups: each has an optional header and isOverdue flag.
+	// An empty name means no header (used for the backlog group).
+	type taskGroup struct {
+		name      string
+		tasks     []*PriorityTask
+		isOverdue bool
 	}
-
-	if len(today) > 0 {
+	groups := []taskGroup{
+		{"OVERDUE", overdue, true},
+		{"DUE TODAY", today, false},
+		{"THIS WEEK", thisWeek, false},
+		{"LATER", later, false},
+		{"", backlog, false},
+	}
+	for _, g := range groups {
+		if len(g.tasks) == 0 {
+			continue
+		}
 		if hasContent {
 			lines = append(lines, separator)
 		}
-		lines = append(lines, renderGroupHeader("DUE TODAY", len(today), false, m.Width()))
-		lines = append(lines, m.renderGroup(today, currentIndex, false, &cursorLineIdx, len(lines), &rowIndex, colLayout)...)
-		hasContent = true
-	}
-
-	if len(thisWeek) > 0 {
-		if hasContent {
-			lines = append(lines, separator)
+		if g.name != "" {
+			lines = append(lines, renderGroupHeader(g.name, len(g.tasks), g.isOverdue, m.Width()))
 		}
-		lines = append(lines, renderGroupHeader("THIS WEEK", len(thisWeek), false, m.Width()))
-		lines = append(lines, m.renderGroup(thisWeek, currentIndex, false, &cursorLineIdx, len(lines), &rowIndex, colLayout)...)
+		lines = append(lines, m.renderGroup(g.tasks, currentIndex, g.isOverdue, &cursorLineIdx, len(lines), &rowIndex, colLayout)...)
 		hasContent = true
 	}
 
-	if len(later) > 0 {
-		if hasContent {
-			lines = append(lines, separator)
-		}
-		lines = append(lines, renderGroupHeader("LATER", len(later), false, m.Width()))
-		lines = append(lines, m.renderGroup(later, currentIndex, false, &cursorLineIdx, len(lines), &rowIndex, colLayout)...)
-		hasContent = true
-	}
-
-	if len(backlog) > 0 {
-		if hasContent {
-			lines = append(lines, separator)
-		}
-		lines = append(lines, m.renderGroup(backlog, currentIndex, false, &cursorLineIdx, len(lines), &rowIndex, colLayout)...)
-		hasContent = true
-	}
-
-	// Waiting On section (blocked tasks)
+	// Waiting On section (blocked tasks) — special rendering in non-Blocked tabs
 	if len(waitingOn) > 0 {
 		if hasContent {
 			lines = append(lines, separator)
 		}
-		// In Blocked tab, tasks are navigable (rendered as regular tasks)
 		if m.tabs.Active == priorityTabBlocked {
 			lines = append(lines, renderGroupHeader("BLOCKED / WAITING", len(waitingOn), false, m.Width()))
 			lines = append(lines, m.renderGroup(waitingOn, currentIndex, false, &cursorLineIdx, len(lines), &rowIndex, colLayout)...)
 		} else {
 			lines = append(lines, m.renderWaitingOnHeader())
 			if !m.waitingOnCollapsed {
-				// Waiting on tasks are not navigable in All tab
 				for _, pt := range waitingOn {
 					lines = append(lines, m.renderWaitingOnTask(pt))
 				}

@@ -135,36 +135,27 @@ func (m *DueDateOverviewModel) renderAllGroups(currentIndex *int, cursorLineIdx 
 		colLayout = ComputeTaskLineColumnLayout(allTasks, false)
 	}
 
-	if len(overdue) > 0 {
-		lines = append(lines, renderGroupHeader("Overdue", len(overdue), true, m.Width()))
-		lines = append(lines, m.renderGroup(overdue, currentIndex, cursorLineIdx, len(lines), colLayout, &rowIdx)...)
-		hasContent = true
+	type taskGroup struct {
+		name      string
+		tasks     []CrossProjectTask
+		isOverdue bool
 	}
-
-	if len(today) > 0 {
+	groups := []taskGroup{
+		{"Overdue", overdue, true},
+		{"Today", today, false},
+		{"This Week", thisWeek, false},
+		{"Later", later, false},
+	}
+	for _, g := range groups {
+		if len(g.tasks) == 0 {
+			continue
+		}
 		if hasContent {
 			lines = append(lines, separator)
 		}
-		lines = append(lines, renderGroupHeader("Today", len(today), false, m.Width()))
-		lines = append(lines, m.renderGroup(today, currentIndex, cursorLineIdx, len(lines), colLayout, &rowIdx)...)
+		lines = append(lines, renderGroupHeader(g.name, len(g.tasks), g.isOverdue, m.Width()))
+		lines = append(lines, m.renderGroup(g.tasks, currentIndex, cursorLineIdx, len(lines), colLayout, &rowIdx)...)
 		hasContent = true
-	}
-
-	if len(thisWeek) > 0 {
-		if hasContent {
-			lines = append(lines, separator)
-		}
-		lines = append(lines, renderGroupHeader("This Week", len(thisWeek), false, m.Width()))
-		lines = append(lines, m.renderGroup(thisWeek, currentIndex, cursorLineIdx, len(lines), colLayout, &rowIdx)...)
-		hasContent = true
-	}
-
-	if len(later) > 0 {
-		if hasContent {
-			lines = append(lines, separator)
-		}
-		lines = append(lines, renderGroupHeader("Later", len(later), false, m.Width()))
-		lines = append(lines, m.renderGroup(later, currentIndex, cursorLineIdx, len(lines), colLayout, &rowIdx)...)
 	}
 
 	return lines
