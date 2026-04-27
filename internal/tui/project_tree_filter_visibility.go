@@ -7,6 +7,12 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 )
 
+// isNonActiveGTDSection returns true for named GTD sections that are excluded
+// from the Active view mode (Inbox, Next, Waiting, Someday, Review, Standby).
+func isNonActiveGTDSection(section string) bool {
+	return section != "" && models.IsGTDSection(section) && section != models.SectionCompleted
+}
+
 // applyFilterChange refreshes visibility, prunes stale selections, and clamps the cursor.
 // Call this after any filter/view mutation to keep the UI consistent.
 func (m *ProjectTreeModel) applyFilterChange() {
@@ -115,43 +121,18 @@ func (m *ProjectTreeModel) passesFilters(node *TreeNode) bool { //nolint:gocyclo
 		// Apply view mode section logic
 		switch m.viewMode {
 		case ViewModeActive:
-			// Hide Inbox, Next, Waiting, Someday, Review, and Standby tasks
-			if node.Task.Section == models.SectionInbox || node.Task.Section == models.SectionNext || node.Task.Section == models.SectionWaiting || node.Task.Section == models.SectionSomeday || node.Task.Section == models.SectionReview || node.Task.Section == models.SectionStandby {
-				return false
-			}
-		case ViewModeNext:
-			// Only show Next tasks
-			if node.Task.Section != models.SectionNext {
-				return false
-			}
-		case ViewModeInbox:
-			// Only show Inbox tasks
-			if node.Task.Section != models.SectionInbox {
-				return false
-			}
-		case ViewModeWaiting:
-			// Only show Waiting tasks
-			if node.Task.Section != models.SectionWaiting {
-				return false
-			}
-		case ViewModeSomeday:
-			// Only show Someday tasks
-			if node.Task.Section != models.SectionSomeday {
-				return false
-			}
-		case ViewModeReview:
-			// Only show Review tasks
-			if node.Task.Section != models.SectionReview {
-				return false
-			}
-		case ViewModeStandby:
-			// Only show Standby tasks
-			if node.Task.Section != models.SectionStandby {
+			if isNonActiveGTDSection(node.Task.Section) {
 				return false
 			}
 		case ViewModeAll:
 			// Show all non-completed, non-snoozed tasks (no section filtering)
 		default:
+			// Single-section view modes (Next, Inbox, Waiting, Someday, Review, Standby)
+			if required := viewModeToSection(m.viewMode); required != "" {
+				if node.Task.Section != required {
+					return false
+				}
+			}
 		}
 	}
 
@@ -194,7 +175,7 @@ func (m *ProjectTreeModel) passesFilters(node *TreeNode) bool { //nolint:gocyclo
 			return false
 		}
 		// Hide Inbox/Next/Waiting/Someday/Review/Standby tasks (GTD-aligned - not immediately actionable)
-		if node.Task.Section == models.SectionInbox || node.Task.Section == models.SectionNext || node.Task.Section == models.SectionWaiting || node.Task.Section == models.SectionSomeday || node.Task.Section == models.SectionReview || node.Task.Section == models.SectionStandby {
+		if isNonActiveGTDSection(node.Task.Section) {
 			return false
 		}
 	}
