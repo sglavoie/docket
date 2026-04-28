@@ -1,6 +1,7 @@
 package workflow
 
 import (
+	"slices"
 	"strconv"
 	"strings"
 
@@ -322,12 +323,7 @@ func matchesTriggers(triggers []RuleTrigger, logic TriggerLogic, matcher func(Ru
 	}
 
 	if logic == LogicOr {
-		for _, trigger := range triggers {
-			if matcher(trigger) {
-				return true
-			}
-		}
-		return false
+		return slices.ContainsFunc(triggers, matcher)
 	}
 
 	for _, trigger := range triggers {
