@@ -6,6 +6,13 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 )
 
+// tagFilterApplicable is the minimal interface for views that can receive a tag
+// filter selection (used by applyTagFilterToView to avoid per-view type switches).
+type tagFilterApplicable interface {
+	getFilter() *CommonFilterState
+	refreshAndClamp()
+}
+
 // commonFilterView abstracts the per-view filter wiring needed by the shared
 // filter glue helpers. Views that embed CommonFilterState and support the
 // standard F-prefix filter system implement this to share the dispatch logic.

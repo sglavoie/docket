@@ -69,107 +69,7 @@ func (m *AppModel) handleTagMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint:goc
 		for _, tag := range msg.SelectedTags {
 			tags[tag] = true
 		}
-		switch msg.Source {
-		case ViewProjectTree:
-			if m.projectTree != nil {
-				m.projectTree.filter.Tags = tags
-				m.projectTree.updateVisibility()
-				m.projectTree.clampCursor()
-			}
-		case ViewFocusView:
-			if v := m.views.Get(ViewFocusView); v != nil {
-				if fv, ok := v.(*FocusViewModel); ok {
-					fv.filter.Tags = tags
-					fv.applyFilter()
-					fv.clampCursor()
-				}
-			}
-		case ViewFocusBoard:
-			if v := m.views.Get(ViewFocusBoard); v != nil {
-				if fb, ok := v.(*FocusBoardModel); ok {
-					fb.filter.Tags = tags
-					fb.applyFilter()
-					fb.clampCursor()
-				}
-			}
-		case ViewDueDateOverview:
-			if v := m.views.Get(ViewDueDateOverview); v != nil {
-				if ddo, ok := v.(*DueDateOverviewModel); ok {
-					ddo.filter.Tags = tags
-					ddo.loadTasksWithDueDates()
-					ddo.clampCursor()
-				}
-			}
-		case ViewDailyReview:
-			if v := m.views.Get(ViewDailyReview); v != nil {
-				if dr, ok := v.(*DailyReviewModel); ok {
-					dr.filter.Tags = tags
-					dr.loadTasks()
-					dr.clampCursor()
-				}
-			}
-		case ViewRecentActivity:
-			if v := m.views.Get(ViewRecentActivity); v != nil {
-				if ra, ok := v.(*RecentActivityModel); ok {
-					ra.filter.Tags = tags
-					ra.applyFilter()
-					ra.clampCursor()
-				}
-			}
-		case ViewPriorityView:
-			if v := m.views.Get(ViewPriorityView); v != nil {
-				if pv, ok := v.(*PriorityViewModel); ok {
-					pv.filter.Tags = tags
-					pv.loadActionableTasks()
-					pv.clampCursor()
-				}
-			}
-		case ViewAllTasks:
-			if v := m.views.Get(ViewAllTasks); v != nil {
-				if atv, ok := v.(*AllTasksViewModel); ok {
-					atv.filter.Tags = tags
-					atv.applyFiltersAndGroup()
-					atv.clampCursor()
-				}
-			}
-		case ViewOutliner:
-			target := m.outliner
-			if target == nil {
-				if v := m.views.Get(ViewTemporaryOutliner); v != nil {
-					if o, ok := v.(*OutlinerModel); ok {
-						target = o
-					}
-				}
-			}
-			if target != nil {
-				target.filter.Tags = tags
-				target.rebuildRows()
-				target.clampCursor()
-			}
-		case ViewCrossProjectOutliner:
-			if m.crossOutliner != nil {
-				m.crossOutliner.filter.Tags = tags
-				m.crossOutliner.rebuildRows()
-				m.crossOutliner.clampCursor()
-			}
-		case ViewKanban, ViewCrossProjectKanban:
-			for _, vt := range []ViewType{ViewKanban, ViewCrossProjectKanban} {
-				if v := m.views.Get(vt); v != nil {
-					if kb, ok := v.(*KanbanModel); ok {
-						kb.filter.Tags = tags
-						kb.refreshAndClamp()
-					}
-				}
-			}
-		case ViewNotes:
-			if v := m.views.Get(ViewNotes); v != nil {
-				if notesView, ok := v.(*NotesViewModel); ok {
-					notesView.filterTags = tags
-					notesView.loadNotes()
-				}
-			}
-		default:
-		}
+		m.applyTagFilterToView(msg.Source, tags)
 		return true, nil
 
 	case TagRenamedMsg:
@@ -315,6 +215,65 @@ func (m *AppModel) handleTagMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint:goc
 		return true, nil
 	}
 	return false, nil
+}
+
+// applyTagFilterToView dispatches a tag filter selection to the originating view.
+func (m *AppModel) applyTagFilterToView(source ViewType, tags map[string]bool) {
+	// Views that implement commonFilterView can be handled generically.
+	standardViews := []ViewType{
+		ViewFocusView, ViewFocusBoard, ViewDueDateOverview,
+		ViewDailyReview, ViewRecentActivity, ViewPriorityView,
+		ViewAllTasks, ViewKanban, ViewCrossProjectKanban,
+	}
+	for _, vt := range standardViews {
+		if source != vt {
+			continue
+		}
+		if v := m.views.Get(vt); v != nil {
+			if cfv, ok := v.(tagFilterApplicable); ok {
+				cfv.getFilter().Tags = tags
+				cfv.refreshAndClamp()
+			}
+		}
+		return
+	}
+
+	switch source {
+	case ViewProjectTree:
+		if m.projectTree != nil {
+			m.projectTree.filter.Tags = tags
+			m.projectTree.updateVisibility()
+			m.projectTree.clampCursor()
+		}
+	case ViewOutliner:
+		target := m.outliner
+		if target == nil {
+			if v := m.views.Get(ViewTemporaryOutliner); v != nil {
+				if o, ok := v.(*OutlinerModel); ok {
+					target = o
+				}
+			}
+		}
+		if target != nil {
+			target.filter.Tags = tags
+			target.rebuildRows()
+			target.clampCursor()
+		}
+	case ViewCrossProjectOutliner:
+		if m.crossOutliner != nil {
+			m.crossOutliner.filter.Tags = tags
+			m.crossOutliner.rebuildRows()
+			m.crossOutliner.clampCursor()
+		}
+	case ViewNotes:
+		if v := m.views.Get(ViewNotes); v != nil {
+			if notesView, ok := v.(*NotesViewModel); ok {
+				notesView.filterTags = tags
+				notesView.loadNotes()
+			}
+		}
+	default:
+	}
 }
 
 // applyColumnToggles applies the column toggle changes from the picker to the
