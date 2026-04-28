@@ -23,33 +23,36 @@ func matchesRuleWithContext(task, prev *models.Task, rule *WorkflowRule, evalCtx
 // matchesTriggerGroup recursively evaluates a nested trigger group against a task.
 func matchesTriggerGroup(task, prev *models.Task, group *TriggerGroup, evalCtx *EvaluationContext) bool {
 	logic := group.getLogic()
-
-	var results []bool
-	for _, trigger := range group.Triggers {
-		results = append(results, matchesTriggerWithContext(task, prev, trigger, evalCtx))
-	}
-	for _, sub := range group.Groups {
-		results = append(results, matchesTriggerGroup(task, prev, &sub, evalCtx))
-	}
-
-	if len(results) == 0 {
+	hasClauses := len(group.Triggers) > 0 || len(group.Groups) > 0
+	if !hasClauses {
 		return false
 	}
 
 	if logic == LogicOr {
-		for _, r := range results {
-			if r {
+		for _, trigger := range group.Triggers {
+			if matchesTriggerWithContext(task, prev, trigger, evalCtx) {
+				return true
+			}
+		}
+		for _, sub := range group.Groups {
+			if matchesTriggerGroup(task, prev, &sub, evalCtx) {
 				return true
 			}
 		}
 		return false
 	}
 
-	for _, r := range results {
-		if !r {
+	for _, trigger := range group.Triggers {
+		if !matchesTriggerWithContext(task, prev, trigger, evalCtx) {
 			return false
 		}
 	}
+	for _, sub := range group.Groups {
+		if !matchesTriggerGroup(task, prev, &sub, evalCtx) {
+			return false
+		}
+	}
+
 	return true
 }
 
