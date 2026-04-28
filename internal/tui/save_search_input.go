@@ -9,12 +9,12 @@ import (
 
 // SaveSearchInputModel handles naming a saved search.
 type SaveSearchInputModel struct {
-	query          string // The search query to save
-	input          textinput.Model
-	err            string
-	width          int
-	height         int
-	canceled       bool
+	query    string // The search query to save
+	input    textinput.Model
+	err      string
+	width    int
+	height   int
+	canceled bool
 	discardConfirmState
 }
 

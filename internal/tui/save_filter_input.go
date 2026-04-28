@@ -12,12 +12,12 @@ import (
 
 // SaveFilterInputModel handles naming a saved filter preset.
 type SaveFilterInputModel struct {
-	summary        string // Summary of active filters being saved
-	input          textinput.Model
-	err            string
-	width          int
-	height         int
-	canceled       bool
+	summary  string // Summary of active filters being saved
+	input    textinput.Model
+	err      string
+	width    int
+	height   int
+	canceled bool
 	discardConfirmState
 }
 

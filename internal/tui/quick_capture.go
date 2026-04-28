@@ -17,8 +17,8 @@ import (
 // QuickCaptureModel handles rapid task creation with inline metadata parsing.
 type QuickCaptureModel struct {
 	quickCaptureInput
-	width          int
-	height         int
+	width        int
+	height       int
 	helpExpanded bool
 	discardConfirmState
 }

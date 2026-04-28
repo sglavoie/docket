@@ -14,14 +14,14 @@ import (
 
 // DateInputModel handles setting a due date for a task.
 type DateInputModel struct {
-	task           *models.Task
-	project        *models.Project
-	input          textinput.Model
-	err            error
-	width          int
-	height         int
-	canceled       bool
-	initialValue   string
+	task         *models.Task
+	project      *models.Project
+	input        textinput.Model
+	err          error
+	width        int
+	height       int
+	canceled     bool
+	initialValue string
 	discardConfirmState
 }
 

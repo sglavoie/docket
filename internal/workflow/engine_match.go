@@ -14,27 +14,9 @@ func matchesRuleWithContext(task, prev *models.Task, rule *WorkflowRule, evalCtx
 	}
 
 	triggers := rule.GetTriggers()
-	if len(triggers) == 0 {
-		return false
-	}
-
-	logic := rule.GetTriggerLogic()
-
-	if logic == LogicOr {
-		for _, trigger := range triggers {
-			if matchesTriggerWithContext(task, prev, trigger, evalCtx) {
-				return true
-			}
-		}
-		return false
-	}
-
-	for _, trigger := range triggers {
-		if !matchesTriggerWithContext(task, prev, trigger, evalCtx) {
-			return false
-		}
-	}
-	return true
+	return matchesTriggers(triggers, rule.GetTriggerLogic(), func(trigger RuleTrigger) bool {
+		return matchesTriggerWithContext(task, prev, trigger, evalCtx)
+	})
 }
 
 // matchesTriggerGroup recursively evaluates a nested trigger group against a task.
@@ -334,6 +316,29 @@ func countIncompleteBlockers(task *models.Task, taskMap map[string]*models.Task)
 	return count
 }
 
+func matchesTriggers(triggers []RuleTrigger, logic TriggerLogic, matcher func(RuleTrigger) bool) bool {
+	if len(triggers) == 0 {
+		return false
+	}
+
+	if logic == LogicOr {
+		for _, trigger := range triggers {
+			if matcher(trigger) {
+				return true
+			}
+		}
+		return false
+	}
+
+	for _, trigger := range triggers {
+		if !matcher(trigger) {
+			return false
+		}
+	}
+
+	return true
+}
+
 // matchesRule checks if a task matches all of the rule's trigger conditions.
 // Handles single trigger (legacy), compound triggers, and nested TriggerGroup.
 func matchesRule(task *models.Task, rule *WorkflowRule) bool {
@@ -342,27 +347,9 @@ func matchesRule(task *models.Task, rule *WorkflowRule) bool {
 	}
 
 	triggers := rule.GetTriggers()
-	if len(triggers) == 0 {
-		return false
-	}
-
-	logic := rule.GetTriggerLogic()
-
-	if logic == LogicOr {
-		for _, trigger := range triggers {
-			if matchesTrigger(task, trigger) {
-				return true
-			}
-		}
-		return false
-	}
-
-	for _, trigger := range triggers {
-		if !matchesTrigger(task, trigger) {
-			return false
-		}
-	}
-	return true
+	return matchesTriggers(triggers, rule.GetTriggerLogic(), func(trigger RuleTrigger) bool {
+		return matchesTrigger(task, trigger)
+	})
 }
 
 // matchesTrigger checks if a task matches the rule's trigger condition.

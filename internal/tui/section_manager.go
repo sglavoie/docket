@@ -9,21 +9,21 @@ import (
 
 // SectionManagerModel is the model for the section management view.
 type SectionManagerModel struct {
-	projectTree    *ProjectTreeModel
-	project        *models.Project // Used directly when projectTree is nil
-	config         *config.Config
-	configManager  *config.Manager
-	sections       []SectionInfo
-	cursor         int
-	width          int
-	height         int
-	renameMode     bool
-	renameInput    textinput.Model
-	addMode        bool
-	addInput       textinput.Model
-	errorMsg       string
-	colorPickMode  bool
-	colorCursor    int // Index in SectionColorPalette
+	projectTree   *ProjectTreeModel
+	project       *models.Project // Used directly when projectTree is nil
+	config        *config.Config
+	configManager *config.Manager
+	sections      []SectionInfo
+	cursor        int
+	width         int
+	height        int
+	renameMode    bool
+	renameInput   textinput.Model
+	addMode       bool
+	addInput      textinput.Model
+	errorMsg      string
+	colorPickMode bool
+	colorCursor   int // Index in SectionColorPalette
 	confirmAction string
 	discardConfirmState
 }

@@ -19,18 +19,18 @@ type TagInfo struct {
 
 // TagManagerModel is the model for the tag management view.
 type TagManagerModel struct {
-	projectTree    *ProjectTreeModel
-	project        *models.Project // Used directly when projectTree is nil
-	tags           []TagInfo
-	cursor         int
-	width          int
-	height         int
-	renameMode     bool
-	renameInput    textinput.Model
-	renameTarget   string
-	addTagMode     bool
-	addTagInput    textinput.Model
-	errorMsg       string
+	projectTree   *ProjectTreeModel
+	project       *models.Project // Used directly when projectTree is nil
+	tags          []TagInfo
+	cursor        int
+	width         int
+	height        int
+	renameMode    bool
+	renameInput   textinput.Model
+	renameTarget  string
+	addTagMode    bool
+	addTagInput   textinput.Model
+	errorMsg      string
 	confirmAction string
 	discardConfirmState
 }

@@ -111,8 +111,8 @@ type TaskFormModel struct {
 	height int
 
 	// UI state
-	err            error
-	hasChanges     bool
+	err        error
+	hasChanges bool
 	discardConfirmState
 }
 

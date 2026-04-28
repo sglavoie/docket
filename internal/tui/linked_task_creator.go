@@ -15,10 +15,10 @@ import (
 // LinkedTaskCreatorModel handles creation of tasks linked to a source task.
 type LinkedTaskCreatorModel struct {
 	quickCaptureInput
-	sourceTask     *models.Task
-	linkType       LinkType
-	width          int
-	height         int
+	sourceTask *models.Task
+	linkType   LinkType
+	width      int
+	height     int
 	discardConfirmState
 }
 
