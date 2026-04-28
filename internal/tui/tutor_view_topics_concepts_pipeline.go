@@ -49,7 +49,7 @@ and urgency.
 Your daily execution surface. Track what you committed to
 for the day and move tasks forward.
 
-  ;f  Today (daily execution board)
+  ;w  Today (daily execution board)
 
 # Execute
 
@@ -63,7 +63,7 @@ tree, outliner, or kanban to move tasks forward.
 
 Reflect on what was done, catch stale work, and close loops.
 
-  ;w  Weekly review (structural health across projects)
+  ;r  Weekly review (structural health across projects)
   ;m  Metrics dashboard
   ;l  Recent activity log
 

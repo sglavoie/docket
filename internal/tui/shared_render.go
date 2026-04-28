@@ -173,7 +173,7 @@ type TaskLine struct {
 
 	// Optional elements
 	Queued          bool          // show "Q " queue indicator in accent color (else "  "); superseded by DailyPlanned
-	DailyPlanned    bool          // show "T " daily-plan indicator in accent color; takes precedence over Queued
+	DailyPlanned    bool          // show "w " daily-plan indicator in accent color; takes precedence over Queued
 	Active          bool          // show * active marker in cursor prefix
 	Pinned          bool          // show · pinned marker in cursor prefix
 	Prefix          string        // after queue indicator (e.g., star indicator "★ ")
@@ -199,7 +199,7 @@ type CrossProjectTaskLineOpts struct {
 	ShowRecurrence  bool          // show ↻ indicator with streak count for recurring tasks
 	MaxProjectLen   int           // project name truncation; 0 defaults to 12
 	Queued          bool          // show "Q " queue indicator in accent color (else "  "); superseded by DailyPlanned
-	DailyPlanned    bool          // show "T " daily-plan indicator in accent color; takes precedence over Queued
+	DailyPlanned    bool          // show "w " daily-plan indicator in accent color; takes precedence over Queued
 	Prefix          string        // prepended before the project badge (e.g. checkbox, date string)
 	StatusBadge     string        // pre-styled status badge override
 	DueStr          string        // right-aligned context string, already styled by caller
@@ -328,9 +328,9 @@ func (tl TaskLine) Render() string {
 
 	queueIndicator := "  "
 	if tl.DailyPlanned {
-		queueIndicator = ActiveStyle.Render("T") + " "
+		queueIndicator = ActiveStyle.Render("w") + " "
 	} else if tl.Queued {
-		queueIndicator = ActiveStyle.Render("Q") + " "
+		queueIndicator = ActiveStyle.Render("q") + " "
 	}
 
 	statusIcon := tl.StatusBadge

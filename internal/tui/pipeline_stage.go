@@ -27,11 +27,11 @@ func pipelineNextHint(stage string) string {
 	case "Capture":
 		return "Next: ctrl+i inbox | ;q backlog"
 	case "Organize":
-		return "Next: ;q backlog | ;f today"
+		return "Next: ;q backlog | ;w today"
 	case "Plan":
-		return "Next: ;f today | Enter project"
+		return "Next: ;w today | Enter project"
 	case "Work":
-		return "Next: ;w review | ;; hub"
+		return "Next: ;r review | ;; hub"
 	case "Review":
 		return "Next: ;i capture | ;q backlog"
 	}

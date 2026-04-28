@@ -292,7 +292,7 @@ func getGlobalHelpItems() []HelpItem {
 		{Key: ";n", Description: "Notification Center", Category: "Navigation"},
 		{Key: "ctrl+,", Description: "Settings", Category: "Navigation"},
 		{Key: ";d", Description: "Daily Review", Category: "Navigation"},
-		{Key: ";w", Description: "Weekly Review", Category: "Navigation"},
+		{Key: ";r", Description: "Weekly Review", Category: "Navigation"},
 		{Key: "alt+o", Description: "History back", Category: "Navigation"},
 		{Key: "alt+i", Description: "History forward", Category: "Navigation"},
 		{Key: "|", Description: "Recent tasks", Category: "Navigation"},

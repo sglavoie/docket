@@ -299,10 +299,10 @@ func (m *OutlinerModel) renderTaskContentGroup(task *models.Task) string {
 
 func (m *OutlinerModel) renderTaskQueueIndicator(task *models.Task) string {
 	if m.dailyPlanIDs[task.ID] {
-		return ActiveStyle.Render("T") + " "
+		return ActiveStyle.Render("w") + " "
 	}
 	if m.queueIDs[task.ID] {
-		return ActiveStyle.Render("Q") + " "
+		return ActiveStyle.Render("q") + " "
 	}
 	return "  "
 }

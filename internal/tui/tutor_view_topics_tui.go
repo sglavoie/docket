@@ -207,17 +207,17 @@ The status bar footer shows a contextual "next step" hint when
 you are inside a pipeline stage view:
 
   Capture   Next: ctrl+i inbox | ;q backlog
-  Organize  Next: ;q backlog | ;f today
-  Plan      Next: Enter project | ;w review
+  Organize  Next: ;q backlog | ;w today
+  Plan      Next: Enter project | ;r review
   Review    Next: ;i capture | ;q backlog
 
 # Shortcut Reference
 
   Capture:  ;i quick capture, ;I bulk capture
   Organize: ctrl+i inbox, ;a all tasks, ;o outliner, ;k kanban
-  Plan:     ;q backlog, ;f today, ;D due dates, ;d daily review
+  Plan:     ;q backlog, ;w today, ;D due dates, ;d daily review
   Execute:  Enter from Dashboard to open a project
-  Review:   ;w weekly review, ;m metrics, ;l activity log`,
+  Review:   ;r weekly review, ;m metrics, ;l activity log`,
 		},
 		{
 			Title:    "Priority",

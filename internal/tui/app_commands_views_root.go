@@ -38,7 +38,7 @@ func (m *AppModel) viewCommands() []Command {
 		{
 			Name:        "weekly review",
 			Description: "Strategic project health review",
-			Shortcut:    ";w",
+			Shortcut:    ";r",
 			Category:    CategoryViews,
 			Aliases:     []string{"weekly", "project health", "strategic review"},
 			Handler: func() tea.Msg {
@@ -68,7 +68,7 @@ func (m *AppModel) viewCommands() []Command {
 		{
 			Name:        "today",
 			Description: "Daily execution board",
-			Shortcut:    ";f",
+			Shortcut:    ";w",
 			Category:    CategoryViews,
 			Aliases:     []string{"focus board", "daily", "board", "command center", "external items"},
 			Handler: func() tea.Msg {

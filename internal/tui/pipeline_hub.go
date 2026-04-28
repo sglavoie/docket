@@ -101,7 +101,7 @@ func (m *PipelineHubModel) buildColumns() {
 			name:   "Work",
 			accent: AccentWork,
 			entries: []pipelineEntry{
-				{key: ";f", label: "Today", count: m.counts.dailyPlanLen, viewType: ViewFocusBoard},
+				{key: ";w", label: "Today", count: m.counts.dailyPlanLen, viewType: ViewFocusBoard},
 			},
 		},
 		{
@@ -113,7 +113,7 @@ func (m *PipelineHubModel) buildColumns() {
 			name:   "Review",
 			accent: AccentReview,
 			entries: []pipelineEntry{
-				{key: ";w", label: "Weekly", viewType: ViewWeeklyReview},
+				{key: ";r", label: "Weekly", viewType: ViewWeeklyReview},
 				{key: ";m", label: "Metrics", viewType: ViewMetricsDashboard},
 				{key: ";l", label: "Activity", viewType: ViewRecentActivity},
 			},

@@ -237,9 +237,9 @@ func (m *FocusBoardModel) renderRow(row boardRow, isSelected bool, maxTitleLen i
 	// Queue / daily-plan indicator: always 2 chars wide (first column).
 	queueIndicator := "  "
 	if m.dailyPlanIDs[task.ID] {
-		queueIndicator = ActiveStyle.Render("T") + " "
+		queueIndicator = ActiveStyle.Render("w") + " "
 	} else if m.queueIDs[task.ID] {
-		queueIndicator = ActiveStyle.Render("Q") + " "
+		queueIndicator = ActiveStyle.Render("q") + " "
 	}
 
 	// Row number prefix for Today tab, or plain indent.

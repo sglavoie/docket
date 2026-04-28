@@ -282,13 +282,13 @@ func (m *AppModel) handlePendingPrefixes(msg tea.KeyPressMsg) (bool, tea.Cmd) {
 		return true, func() tea.Msg { return ShowNotificationCenterMsg{} }
 	case "d":
 		return true, func() tea.Msg { return ShowDailyReviewMsg{} }
-	case "w":
+	case "r":
 		return true, func() tea.Msg { return ShowWeeklyReviewMsg{} }
 	case "N":
 		return true, func() tea.Msg { return ShowGlobalNotesMsg{} }
 	case "q":
 		return true, func() tea.Msg { return ShowFocusViewMsg{} }
-	case "f":
+	case "w":
 		return true, func() tea.Msg { return ShowFocusBoardMsg{} }
 	case "l":
 		return true, func() tea.Msg { return ShowRecentActivityMsg{} }
