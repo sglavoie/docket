@@ -271,7 +271,7 @@ func (q *quickCaptureInput) renderPreview() string {
 	}
 
 	if q.preview.status != "" && q.preview.status != models.StatusTodo {
-		parts = append(parts, q.preview.status.Icon()+" $"+string(q.preview.status))
+		parts = append(parts, q.preview.status.Icon()+" $"+statusShortcut(q.preview.status))
 	}
 
 	if q.preview.targetProjectName != "" {
@@ -286,6 +286,26 @@ func (q *quickCaptureInput) renderPreview() string {
 	}
 
 	return previewText
+}
+
+// statusShortcut maps a TaskStatus back to its quick-capture keyword.
+func statusShortcut(s models.TaskStatus) string {
+	switch s {
+	case models.StatusInProgress:
+		return "start"
+	case models.StatusReview:
+		return "review"
+	case models.StatusStandby:
+		return "standby"
+	case models.StatusBlocked:
+		return "blocked"
+	case models.StatusDone:
+		return "done"
+	case models.StatusCanceled:
+		return "canceled"
+	default:
+		return string(s)
+	}
 }
 
 // wrapPreviewText wraps preview text to fit within the specified width.
