@@ -264,6 +264,41 @@ func TestGenerateRecurringInstancesNonDoneStatuses(t *testing.T) {
 	}
 }
 
+func TestGenerateRecurringInstances_NonRecurringCompleted_Skipped(t *testing.T) {
+	completedAt := time.Date(2025, 3, 10, 9, 0, 0, 0, time.UTC)
+	task := &Task{
+		ID:          "non-rec",
+		ShortID:     1,
+		Type:        TaskTypeTask,
+		Title:       "Normal completed task",
+		Status:      StatusDone,
+		CompletedAt: &completedAt,
+		Recurrence:  nil,
+		Tags:        []string{"important"},
+	}
+
+	project := &Project{
+		Name:        "Edge Case Project",
+		Tasks:       []*Task{task},
+		NextShortID: 2,
+	}
+
+	count := project.GenerateRecurringInstances()
+
+	if count != 0 {
+		t.Errorf("expected 0 instances generated for non-recurring task, got %d", count)
+	}
+	if len(project.Tasks) != 1 {
+		t.Errorf("expected 1 task (unchanged), got %d", len(project.Tasks))
+	}
+	if project.Tasks[0].Title != "Normal completed task" {
+		t.Error("original task should not be modified")
+	}
+	if project.Tasks[0].Status != StatusDone {
+		t.Error("original task status should remain done")
+	}
+}
+
 func TestGenerateRecurringInstancesPreservesTaskType(t *testing.T) {
 	types := []TaskType{TaskTypeBug, TaskTypeIdea, TaskTypeEpic, TaskTypeStory}
 	dueDate := time.Date(2024, 1, 15, 10, 0, 0, 0, time.UTC)

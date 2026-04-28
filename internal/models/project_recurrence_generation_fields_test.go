@@ -139,3 +139,193 @@ func TestGenerateRecurringInstancesNoHasTimeWhenFalse(t *testing.T) {
 		t.Error("HasTime should be false when source task has HasTime=false")
 	}
 }
+
+func TestGenerateRecurringInstances_NewInstanceProperties(t *testing.T) {
+	dueDate := time.Date(2025, 3, 10, 0, 0, 0, 0, time.UTC)
+	completedAt := time.Date(2025, 3, 10, 12, 0, 0, 0, time.UTC)
+	task := &Task{
+		ID:          "props-task",
+		ShortID:     1,
+		Type:        TaskTypeBug,
+		Title:       "Fix login issue",
+		Status:      StatusDone,
+		Priority:    3,
+		Section:     SectionNext,
+		Tags:        []string{"backend", "auth", "urgent"},
+		DueDate:     &dueDate,
+		CompletedAt: &completedAt,
+		Recurrence: &RecurrencePattern{
+			Interval:  2,
+			Unit:      RecurrenceWeekly,
+			Weekdays:  []int{1, 3, 5},
+			Skipped:   4,
+			Streak:    2,
+			MaxStreak: 7,
+		},
+	}
+
+	project := &Project{
+		Name:        "Props Project",
+		Tasks:       []*Task{task},
+		NextShortID: 2,
+		Sections:    []string{SectionInbox, SectionNext},
+	}
+
+	project.GenerateRecurringInstances()
+
+	if len(project.Tasks) != 2 {
+		t.Fatalf("expected 2 tasks, got %d", len(project.Tasks))
+	}
+
+	newTask := project.Tasks[0]
+	origTask := project.Tasks[1]
+
+	if newTask.Status != StatusTodo {
+		t.Errorf("new task status = %s, want %s", newTask.Status, StatusTodo)
+	}
+	if newTask.Section != SectionInbox {
+		t.Errorf("new task section = %s, want %s", newTask.Section, SectionInbox)
+	}
+	if newTask.Type != TaskTypeBug {
+		t.Errorf("new task type = %s, want %s", newTask.Type, TaskTypeBug)
+	}
+	if newTask.Title != "Fix login issue" {
+		t.Errorf("new task title = %q, want %q", newTask.Title, "Fix login issue")
+	}
+	if newTask.Priority != 3 {
+		t.Errorf("new task priority = %d, want 3", newTask.Priority)
+	}
+	if len(newTask.Tags) != 3 {
+		t.Fatalf("new task tags length = %d, want 3", len(newTask.Tags))
+	}
+	if newTask.Tags[0] != "backend" || newTask.Tags[1] != "auth" || newTask.Tags[2] != "urgent" {
+		t.Errorf("new task tags = %v, want [backend auth urgent]", newTask.Tags)
+	}
+	newTask.Tags[0] = "mutated"
+	if len(origTask.Tags) > 0 && origTask.Tags[0] == "mutated" {
+		t.Error("tag slice should be a deep copy, not shared")
+	}
+
+	if newTask.Recurrence == nil {
+		t.Fatal("new task recurrence should not be nil")
+	}
+	if newTask.Recurrence.Interval != 2 {
+		t.Errorf("recurrence interval = %d, want 2", newTask.Recurrence.Interval)
+	}
+	if newTask.Recurrence.Unit != RecurrenceWeekly {
+		t.Errorf("recurrence unit = %s, want %s", newTask.Recurrence.Unit, RecurrenceWeekly)
+	}
+	if len(newTask.Recurrence.Weekdays) != 3 || newTask.Recurrence.Weekdays[0] != 1 {
+		t.Errorf("recurrence weekdays = %v, want [1 3 5]", newTask.Recurrence.Weekdays)
+	}
+	newTask.Recurrence.Weekdays[0] = 99
+
+	if newTask.Recurrence.Skipped != 4 {
+		t.Errorf("recurrence skipped = %d, want 4", newTask.Recurrence.Skipped)
+	}
+	if newTask.Recurrence.Streak != 3 {
+		t.Errorf("recurrence streak = %d, want 3", newTask.Recurrence.Streak)
+	}
+	if newTask.Recurrence.MaxStreak != 7 {
+		t.Errorf("recurrence max streak = %d, want 7 (unchanged)", newTask.Recurrence.MaxStreak)
+	}
+
+	if newTask.DueDate == nil {
+		t.Error("new task due date should not be nil")
+	}
+	if newTask.ID == origTask.ID {
+		t.Error("new task should have a different ID from original")
+	}
+	if newTask.ShortID != 2 {
+		t.Errorf("new task short ID = %d, want 2", newTask.ShortID)
+	}
+	if newTask.CreatedAt.IsZero() {
+		t.Error("new task CreatedAt should be set")
+	}
+	if newTask.UpdatedAt.IsZero() {
+		t.Error("new task UpdatedAt should be set")
+	}
+
+	if origTask.Recurrence != nil {
+		t.Error("original task recurrence should be nil after generation")
+	}
+}
+
+func TestGenerateRecurringInstances_CustomSectionClearedForInbox(t *testing.T) {
+	dueDate := time.Date(2025, 3, 10, 0, 0, 0, 0, time.UTC)
+	completedAt := time.Date(2025, 3, 10, 12, 0, 0, 0, time.UTC)
+	task := &Task{
+		ID:            "custom-section",
+		ShortID:       1,
+		Type:          TaskTypeTask,
+		Title:         "Task with custom section",
+		Status:        StatusDone,
+		Priority:      2,
+		Section:       SectionNext,
+		CustomSection: "Sprint-3",
+		DueDate:       &dueDate,
+		CompletedAt:   &completedAt,
+		Recurrence: &RecurrencePattern{
+			Interval: 1,
+			Unit:     RecurrenceWeekly,
+		},
+	}
+
+	project := &Project{
+		Name:        "CustomSection Test",
+		Tasks:       []*Task{task},
+		NextShortID: 2,
+		Sections:    []string{SectionInbox, SectionNext},
+	}
+
+	count := project.GenerateRecurringInstances()
+	if count != 1 {
+		t.Fatalf("expected 1 instance generated, got %d", count)
+	}
+
+	newTask := project.Tasks[0]
+	if newTask.CustomSection != "" {
+		t.Errorf("CustomSection = %q, want empty (would cause dual-section with Inbox)", newTask.CustomSection)
+	}
+	if newTask.Section != SectionInbox {
+		t.Errorf("Section = %q, want %q", newTask.Section, SectionInbox)
+	}
+}
+
+func TestGenerateRecurringInstances_OriginalDayCarriedForward(t *testing.T) {
+	dueDate := time.Date(2025, 1, 31, 0, 0, 0, 0, time.UTC)
+	completedAt := time.Date(2025, 1, 31, 10, 0, 0, 0, time.UTC)
+	task := &Task{
+		ID:          "monthly-31",
+		ShortID:     1,
+		Type:        TaskTypeTask,
+		Title:       "Monthly on 31st",
+		Status:      StatusDone,
+		DueDate:     &dueDate,
+		CompletedAt: &completedAt,
+		Recurrence: &RecurrencePattern{
+			Interval:    1,
+			Unit:        RecurrenceMonthly,
+			OriginalDay: 31,
+		},
+	}
+
+	project := &Project{
+		Name:        "OriginalDay Test",
+		Tasks:       []*Task{task},
+		NextShortID: 2,
+	}
+
+	count := project.GenerateRecurringInstances()
+	if count != 1 {
+		t.Fatalf("expected 1 instance generated, got %d", count)
+	}
+
+	newTask := project.Tasks[0]
+	if newTask.Recurrence == nil {
+		t.Fatal("new task should have recurrence pattern")
+	}
+	if newTask.Recurrence.OriginalDay != 31 {
+		t.Errorf("OriginalDay = %d, want 31 (must be carried forward to prevent month drift)", newTask.Recurrence.OriginalDay)
+	}
+}
