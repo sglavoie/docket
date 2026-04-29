@@ -55,6 +55,26 @@ func (m *AppModel) handleNotificationMessages(msg tea.Msg) (bool, tea.Cmd) {
 
 		return true, m.navigateToTaskInProject(nil, project)
 
+	case AlertCenterShowDetailMsg:
+		if msg.ProjectID == "" || msg.TaskID == "" {
+			return true, nil
+		}
+		project := m.config.GetProject(msg.ProjectID)
+		if project == nil {
+			return true, nil
+		}
+		task := project.GetTaskByID(msg.TaskID)
+		if task == nil {
+			_ = m.persister.Load(project)
+			task = project.GetTaskByID(msg.TaskID)
+		}
+		if task != nil {
+			return true, func() tea.Msg {
+				return ShowTaskDetailMsg{Task: task, Project: project}
+			}
+		}
+		return true, nil
+
 	case DismissAlertMsg:
 		m.config.DismissAlert(msg.Key, msg.Category)
 		if err := m.configManager.Save(m.config); err != nil {

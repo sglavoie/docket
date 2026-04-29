@@ -300,6 +300,13 @@ type ShowTaskDetailMsg struct {
 	Project *models.Project
 }
 
+// AlertCenterShowDetailMsg requests task detail view from the alert center.
+// Resolved at the app level since the notification center doesn't hold config.
+type AlertCenterShowDetailMsg struct {
+	TaskID    string
+	ProjectID string
+}
+
 // CloseTaskDetailMsg closes the task detail view.
 type CloseTaskDetailMsg struct{ PopViewMsg }
 

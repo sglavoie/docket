@@ -202,6 +202,14 @@ func (m *NotificationCenterModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.clampCursor()
 			m.expandedItem = -1
 
+		case "o":
+			if a := m.selectedAlert(); a != nil && a.TaskID != "" {
+				taskID, projectID := a.TaskID, a.ProjectID
+				return m, func() tea.Msg {
+					return AlertCenterShowDetailMsg{TaskID: taskID, ProjectID: projectID}
+				}
+			}
+
 		case "enter":
 			if a := m.selectedAlert(); a != nil {
 				return m, m.navigateToAlert(*a)
@@ -217,7 +225,7 @@ func (m *NotificationCenterModel) HandledKeys() []string {
 		// Navigation
 		"j", "down", "k", "up", "g", "G", "n", "N",
 		// Actions
-		"tab", "d", "D", "enter",
+		"tab", "d", "D", "o", "enter",
 	}
 }
 

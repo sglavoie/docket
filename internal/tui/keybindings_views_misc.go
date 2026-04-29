@@ -10,6 +10,7 @@ func (r *KeybindingRegistry) registerNotificationCenterBindings() {
 		Keybinding{Key: "Tab", Description: "Expand/collapse notification", Category: "Actions", Views: views},
 		Keybinding{Key: "d", Description: "Clear/restore notification", Category: "Actions", Views: views},
 		Keybinding{Key: "D", Description: "Toggle dismissed view", Category: "Actions", Views: views},
+		Keybinding{Key: "o", Description: "View task details", Category: "Actions", Views: views},
 		Keybinding{Key: "Enter", Description: "Navigate to notification", Category: "Actions", Views: views},
 		Keybinding{Key: "Esc", Description: "Close", Category: "Navigation", Views: views},
 	)
