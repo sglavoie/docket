@@ -76,6 +76,10 @@ func (m *AppModel) handleGlobalMessage(msg tea.Msg) (bool, tea.Cmd) {
 		return true, statusTimeout(5 * time.Second)
 	case NotesRefreshMsg:
 		m.refreshNotesSearchState()
+		if nv := m.getActiveNotesView(); nv != nil {
+			nv.tasksLoaded = false
+			nv.loadNotes()
+		}
 		return true, nil
 	}
 
