@@ -220,7 +220,7 @@ func isGlobalOverlayView(v ViewType) bool {
 	case ViewFocusView, ViewFocusBoard, ViewGlobalInboxProcessor,
 		ViewGlobalNotes, ViewRecentActivity, ViewGlobalBlockers,
 		ViewMetricsDashboard, ViewAllTasks, ViewWorkflowRules,
-		ViewPipelineHub:
+		ViewPipelineHub, ViewRoadmap:
 		return true
 	default:
 	}

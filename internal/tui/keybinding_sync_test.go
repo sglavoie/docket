@@ -60,6 +60,13 @@ func session8SyncViews() []syncTestCase {
 	}
 }
 
+// session9SyncViews returns the roadmap view introduced in session 9.
+func session9SyncViews() []syncTestCase {
+	return []syncTestCase{
+		{ViewRoadmap, &RoadmapModel{}},
+	}
+}
+
 // syncTestCase pairs a ViewType with a KeySyncView implementation.
 type syncTestCase struct {
 	view    ViewType
@@ -114,6 +121,7 @@ func TestKeybindingSyncAllViews(t *testing.T) {
 	allViews = append(allViews, session4SyncViews()...)
 	allViews = append(allViews, session6SyncViews()...)
 	allViews = append(allViews, session8SyncViews()...)
+	allViews = append(allViews, session9SyncViews()...)
 	for _, tc := range allViews {
 		t.Run(tc.view.String(), func(t *testing.T) {
 			// Build set of keys from registry (view-specific + global bindings).
@@ -218,6 +226,8 @@ func TestViewTypeString(t *testing.T) {
 		// Session 8
 		ViewQuickCapture: "QuickCapture",
 		ViewTaskForm:     "TaskForm",
+		// Session 9
+		ViewRoadmap: "Roadmap",
 	}
 	for v, want := range cases {
 		if got := v.String(); got != want {

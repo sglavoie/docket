@@ -175,6 +175,18 @@ func (m *AppModel) handleViewReviewMessages(msg tea.Msg) (bool, tea.Cmd) { //nol
 		}
 		return true, nil
 
+	case ShowRoadmapMsg:
+		if msg.Project != nil {
+			m.roadmap = NewRoadmapModelForProject(m.config, msg.Project)
+		} else {
+			m.roadmap = NewRoadmapModel(m.config)
+		}
+		m.showView(ViewRoadmap, m.roadmap)
+		return true, nil
+
+	case RoadmapSelectMsg:
+		return m.popAndNavigateToTask(msg.Task, msg.Project)
+
 	case ShowKanbanMsg:
 		if msg.Project != nil {
 			kanban := NewKanbanModel(msg.Project, m.config, m.configManager, NewProjectService())

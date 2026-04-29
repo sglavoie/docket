@@ -55,12 +55,14 @@ type Task struct {
 	Comments      []*Comment         `json:"comments,omitempty"`   // Timestamped comments/notes
 	Recurrence    *RecurrencePattern `json:"recurrence,omitempty"` // Recurrence pattern (nil = non-recurring)
 	Attachments   []Attachment       `json:"attachments,omitempty"`
-	SnoozedUntil  *time.Time         `json:"snoozed_until,omitempty"` // Task hidden until this date
-	Activity      []*ActivityEntry   `json:"activity,omitempty"`      // Persistent changelog of field changes
-	Checklist     []ChecklistItem    `json:"checklist,omitempty"`     // Checklist items for subtasks
-	Stage         string             `json:"stage,omitempty"`         // Workflow stage (e.g., "Brainstorm", "Design", "Implement")
-	Source        string             `json:"source,omitempty"`        // Origin of the task (e.g., "github", "jira")
-	URL           string             `json:"url,omitempty"`           // External reference URL
+	SnoozedUntil  *time.Time         `json:"snoozed_until,omitempty"`  // Task hidden until this date
+	Activity      []*ActivityEntry   `json:"activity,omitempty"`       // Persistent changelog of field changes
+	Checklist     []ChecklistItem    `json:"checklist,omitempty"`      // Checklist items for subtasks
+	Stage         string             `json:"stage,omitempty"`          // Workflow stage (e.g., "Brainstorm", "Design", "Implement")
+	StartDate     *time.Time         `json:"start_date,omitempty"`     // Planned/actual start date (used for Gantt scheduling)
+	EstimatedDays float64            `json:"estimated_days,omitempty"` // Estimated duration in working days (0 = unset)
+	Source        string             `json:"source,omitempty"`         // Origin of the task (e.g., "github", "jira")
+	URL           string             `json:"url,omitempty"`            // External reference URL
 	// Scoring dimensions: manual overrides for scoring profile dimensions (e.g., "impact": 4)
 	ScoreDimensions map[string]int `json:"score_dimensions,omitempty"`
 

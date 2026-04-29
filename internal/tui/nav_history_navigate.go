@@ -164,6 +164,14 @@ func (m *AppModel) reconstructGlobalView(entry NavEntry) tea.Cmd {
 			m.metricsDashboard = NewMetricsDashboardModel(m.config)
 			m.showView(ViewMetricsDashboard, m.metricsDashboard)
 		}
+	case ViewRoadmap:
+		if m.roadmap != nil {
+			m.roadmap.computeData()
+			m.showView(ViewRoadmap, m.roadmap)
+		} else {
+			m.roadmap = NewRoadmapModel(m.config)
+			m.showView(ViewRoadmap, m.roadmap)
+		}
 	case ViewCrossProjectOutliner:
 		m.crossOutliner = NewOutlinerModel(nil, m.config, m.configManager)
 		m.crossOutliner.queueIDs = m.focusQueueIDs
@@ -243,6 +251,14 @@ func (m *AppModel) reconstructProjectView(entry NavEntry) tea.Cmd {
 		} else {
 			m.metricsDashboard = NewMetricsDashboardModelForProject(m.config, project)
 			m.showView(ViewMetricsDashboard, m.metricsDashboard)
+		}
+	case ViewRoadmap:
+		if m.roadmap != nil {
+			m.roadmap.computeData()
+			m.showView(ViewRoadmap, m.roadmap)
+		} else {
+			m.roadmap = NewRoadmapModelForProject(m.config, project)
+			m.showView(ViewRoadmap, m.roadmap)
 		}
 	case ViewTemporaryOutliner:
 		fresh := NewOutlinerModel(project, m.config, m.configManager)

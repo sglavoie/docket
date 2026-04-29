@@ -413,6 +413,150 @@ func TestTaskForm_Save_EditFiltersBlankChecklistItems(t *testing.T) {
 	}
 }
 
+// ── parseDraftStartDate ───────────────────────────────────────────────────────
+
+func TestTaskForm_Save_ClearsStartDateOnNoneInput(t *testing.T) {
+	m := newTestTaskForm()
+	m.draft.startDateInput = "none"
+	if err := m.parseDraftStartDate(); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if m.draft.startDate != nil {
+		t.Error("parseDraftStartDate('none') should clear startDate")
+	}
+}
+
+func TestTaskForm_Save_ParsesStartDateFromISO(t *testing.T) {
+	m := newTestTaskForm()
+	m.draft.startDateInput = "2026-08-01"
+	if err := m.parseDraftStartDate(); err != nil {
+		t.Fatalf("unexpected error parsing ISO start date: %v", err)
+	}
+	if m.draft.startDate == nil {
+		t.Fatal("expected startDate to be set")
+	}
+	if m.draft.startDate.Year() != 2026 || int(m.draft.startDate.Month()) != 8 || m.draft.startDate.Day() != 1 {
+		t.Errorf("parsed wrong start date: got %v", m.draft.startDate)
+	}
+}
+
+func TestTaskForm_Save_InvalidStartDate_ReturnsError(t *testing.T) {
+	m := newTestTaskForm()
+	m.draft.startDateInput = "not-a-date-xyz"
+	if err := m.parseDraftStartDate(); err == nil {
+		t.Error("expected error for invalid start date input")
+	}
+}
+
+// ── parseDraftEstimatedDays ───────────────────────────────────────────────────
+
+func TestTaskForm_Save_ClearsEstimatedDaysOnNoneInput(t *testing.T) {
+	m := newTestTaskForm()
+	m.draft.estimatedDays = 5
+	m.draft.estimatedDaysInput = "none"
+	if err := m.parseDraftEstimatedDays(); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if m.draft.estimatedDays != 0 {
+		t.Error("parseDraftEstimatedDays('none') should reset estimatedDays to 0")
+	}
+}
+
+func TestTaskForm_Save_ParsesEstimatedDaysFloat(t *testing.T) {
+	m := newTestTaskForm()
+	m.draft.estimatedDaysInput = "3.5"
+	if err := m.parseDraftEstimatedDays(); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if m.draft.estimatedDays != 3.5 {
+		t.Errorf("expected estimatedDays=3.5, got %v", m.draft.estimatedDays)
+	}
+}
+
+func TestTaskForm_Save_NegativeEstimatedDays_ReturnsError(t *testing.T) {
+	m := newTestTaskForm()
+	m.draft.estimatedDaysInput = "-1"
+	if err := m.parseDraftEstimatedDays(); err == nil {
+		t.Error("expected error for negative estimated days")
+	}
+}
+
+func TestTaskForm_Save_InvalidEstimatedDays_ReturnsError(t *testing.T) {
+	m := newTestTaskForm()
+	m.draft.estimatedDaysInput = "abc"
+	if err := m.parseDraftEstimatedDays(); err == nil {
+		t.Error("expected error for non-numeric estimated days input")
+	}
+}
+
+// ── Create round-trip ─────────────────────────────────────────────────────────
+
+func TestTaskForm_Save_CreatePersistsStartDateAndEstimatedDays(t *testing.T) {
+	m, cleanup := newSaveableTestForm(t)
+	defer cleanup()
+
+	m.draft.title = "Timeline task"
+	m.titleInput.SetValue("Timeline task")
+	m.startDateTextInput.SetValue("2026-09-01")
+	m.estimatedDaysTextInput.SetValue("5")
+
+	cmd := m.handleSave()
+	if cmd == nil {
+		t.Fatalf("expected non-nil Cmd; err=%v", m.err)
+	}
+	created := cmd().(TaskCreatedMsg)
+	task := created.Task
+
+	if task.StartDate == nil {
+		t.Fatal("expected StartDate to be set on created task")
+	}
+	if task.StartDate.Year() != 2026 || int(task.StartDate.Month()) != 9 || task.StartDate.Day() != 1 {
+		t.Errorf("unexpected StartDate: %v", task.StartDate)
+	}
+	if task.EstimatedDays != 5 {
+		t.Errorf("expected EstimatedDays=5, got %v", task.EstimatedDays)
+	}
+}
+
+// ── Edit round-trip ───────────────────────────────────────────────────────────
+
+func TestTaskForm_Save_EditPersistsStartDateAndEstimatedDays(t *testing.T) {
+	m, cleanup := newSaveableEditForm(t)
+	defer cleanup()
+
+	taskID := m.task.ID
+	m.draft.title = "Timeline edit"
+	m.titleInput.SetValue("Timeline edit")
+	m.startDateTextInput.SetValue("2026-10-15")
+	m.estimatedDaysTextInput.SetValue("2.5")
+
+	cmd := m.handleSave()
+	if cmd == nil {
+		t.Fatalf("expected non-nil Cmd; err=%v", m.err)
+	}
+	_ = cmd()
+
+	var found *models.Task
+	for _, t2 := range m.project.Tasks {
+		if t2.ID == taskID {
+			found = t2
+			break
+		}
+	}
+	if found == nil {
+		t.Fatal("task not found in project after edit save")
+	}
+	if found.StartDate == nil {
+		t.Fatal("expected StartDate to be set after edit")
+	}
+	if found.StartDate.Year() != 2026 || int(found.StartDate.Month()) != 10 || found.StartDate.Day() != 15 {
+		t.Errorf("unexpected StartDate: %v", found.StartDate)
+	}
+	if found.EstimatedDays != 2.5 {
+		t.Errorf("expected EstimatedDays=2.5, got %v", found.EstimatedDays)
+	}
+}
+
 func TestTaskForm_Children_ChecklistEdit_CommitBlank_RemovesItem(t *testing.T) {
 	m := newTestTaskForm()
 	m.draft.checklist = []models.ChecklistItem{{Text: "existing item"}}

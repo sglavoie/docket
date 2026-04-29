@@ -58,6 +58,10 @@ func (m *TaskFormModel) helpPaneHeader() string {
 		case 0:
 			return "Due Date"
 		case 1:
+			return "Start Date"
+		case 2:
+			return "Estimated Days"
+		case 3:
 			return "Recurrence"
 		}
 	case formTabChildren:
@@ -134,7 +138,15 @@ func (m *TaskFormModel) scheduleHelpEntries() []helpEntry {
 			{key: "Ctrl+D", desc: "presets"},
 			{key: "Enter", desc: "confirm"},
 		}
-	case 1: // Recurrence
+	case 1: // Start Date
+		return []helpEntry{
+			{key: "Enter", desc: "confirm"},
+		}
+	case 2: // Estimated Days
+		return []helpEntry{
+			{key: "Enter", desc: "confirm"},
+		}
+	case 3: // Recurrence
 		return []helpEntry{
 			{key: "Enter", desc: "edit pattern"},
 		}

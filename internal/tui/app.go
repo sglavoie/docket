@@ -114,6 +114,7 @@ const (
 	ViewKanban
 	ViewCrossProjectKanban
 	ViewPipelineHub
+	ViewRoadmap
 )
 
 // String returns the name of the ViewType for readable test output.
@@ -218,6 +219,7 @@ func (v ViewType) String() string {
 		ViewKanban:                "Kanban",
 		ViewCrossProjectKanban:    "CrossProjectKanban",
 		ViewPipelineHub:           "PipelineHub",
+		ViewRoadmap:               "Roadmap",
 	}
 	if name, ok := names[v]; ok {
 		return name
@@ -273,6 +275,7 @@ type AppModel struct {
 	inboxProcessor       *InboxProcessorModel
 	globalInboxProcessor *GlobalInboxProcessorModel
 	metricsDashboard     *MetricsDashboardModel
+	roadmap              *RoadmapModel
 	allTasksView         *AllTasksViewModel
 	outliner             *OutlinerModel
 	crossOutliner        *OutlinerModel

@@ -46,6 +46,8 @@ func NewTaskFormModelCreate(
 	}
 	m.initTitleInput("")
 	m.initDueInput("")
+	m.initStartDateInput("")
+	m.initEstimatedDaysInput("")
 	m.initURLInput("")
 	m.initSourceInput("")
 	m.initChecklistItemInput("")
@@ -118,23 +120,27 @@ func NewTaskFormModelEdit(
 	}
 
 	draft := taskFormDraft{
-		taskType:   task.Type,
-		priority:   task.Priority,
-		parentID:   task.ParentID,
-		section:    effectiveSection,
-		pinned:     task.Pinned,
-		active:     task.Active,
-		dimmed:     task.Dimmed,
-		tags:       append([]string{}, task.Tags...),
-		dueDate:    cloneTime(task.DueDate),
-		dueInput:   formatDateInput(task.DueDate, task.HasTime),
-		hasTime:    task.HasTime,
-		recurrence: cloneRecurrence(task.Recurrence),
-		desc:       task.Description,
-		url:        task.URL,
-		source:     task.Source,
-		title:      task.Title,
-		checklist:  append([]models.ChecklistItem(nil), task.Checklist...),
+		taskType:           task.Type,
+		priority:           task.Priority,
+		parentID:           task.ParentID,
+		section:            effectiveSection,
+		pinned:             task.Pinned,
+		active:             task.Active,
+		dimmed:             task.Dimmed,
+		tags:               append([]string{}, task.Tags...),
+		dueDate:            cloneTime(task.DueDate),
+		dueInput:           formatDateInput(task.DueDate, task.HasTime),
+		hasTime:            task.HasTime,
+		recurrence:         cloneRecurrence(task.Recurrence),
+		startDate:          cloneTime(task.StartDate),
+		startDateInput:     formatDateInput(task.StartDate, false),
+		estimatedDays:      task.EstimatedDays,
+		estimatedDaysInput: formatEstimatedDaysInput(task.EstimatedDays),
+		desc:               task.Description,
+		url:                task.URL,
+		source:             task.Source,
+		title:              task.Title,
+		checklist:          append([]models.ChecklistItem(nil), task.Checklist...),
 	}
 
 	// Load type-specific attrs from the task.
@@ -168,6 +174,8 @@ func NewTaskFormModelEdit(
 	}
 	m.initTitleInput(draft.title)
 	m.initDueInput(draft.dueInput)
+	m.initStartDateInput(draft.startDateInput)
+	m.initEstimatedDaysInput(draft.estimatedDaysInput)
 	m.initURLInput(draft.url)
 	m.initSourceInput(draft.source)
 	m.initChecklistItemInput("")

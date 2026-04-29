@@ -55,6 +55,14 @@ func WriteMetadata(task *models.Task) string { //nolint:gocyclo
 		}
 	}
 
+	if task.StartDate != nil {
+		parts = append(parts, fmt.Sprintf("start: %s", task.StartDate.Format(util.DateFormat)))
+	}
+
+	if task.EstimatedDays > 0 {
+		parts = append(parts, fmt.Sprintf("estimated_days: %g", task.EstimatedDays))
+	}
+
 	if len(task.DependsOn) > 0 {
 		parts = append(parts, fmt.Sprintf("depends: %s", strings.Join(task.DependsOn, ";")))
 	}
@@ -200,6 +208,12 @@ func WriteMetadata(task *models.Task) string { //nolint:gocyclo
 		}
 		if task.EpicAttrs.SuccessMetrics != "" {
 			parts = append(parts, fmt.Sprintf("epic.metrics: %s", escapeNewlines(task.EpicAttrs.SuccessMetrics)))
+		}
+		if task.EpicAttrs.InitialChildCount > 0 {
+			parts = append(parts, fmt.Sprintf("epic.initial_children: %d", task.EpicAttrs.InitialChildCount))
+		}
+		if task.EpicAttrs.ScopeBaselinedAt != nil {
+			parts = append(parts, fmt.Sprintf("epic.scope_baselined: %s", task.EpicAttrs.ScopeBaselinedAt.Format(util.DateFormat)))
 		}
 	}
 

@@ -144,7 +144,8 @@ func isTrackedView(vt ViewType) bool {
 		ViewCrossProjectOutliner,
 		ViewTemporaryOutliner,
 		ViewFocusBoard,
-		ViewProjectRecentActivity:
+		ViewProjectRecentActivity,
+		ViewRoadmap:
 		return true
 	default:
 		return false
@@ -173,7 +174,8 @@ func isGlobalNavView(vt ViewType) bool {
 		ViewMetricsDashboard,
 		ViewCrossProjectOutliner,
 		ViewFocusBoard,
-		ViewAllTasks:
+		ViewAllTasks,
+		ViewRoadmap:
 		return true
 	default:
 		return false

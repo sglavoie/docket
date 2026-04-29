@@ -42,6 +42,7 @@ func buildViewAccentMap() {
 		ViewWeeklyReview:     AccentReview,
 		ViewMetricsDashboard: AccentReview,
 		ViewRecentActivity:   AccentReview,
+		ViewRoadmap:          AccentPlan,
 
 		// Support stage (muted gray)
 		ViewGlobalBlockers:     AccentSupport,

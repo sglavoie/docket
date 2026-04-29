@@ -142,6 +142,16 @@ func (m *AppModel) viewCommands() []Command {
 			},
 		},
 		{
+			Name:        "roadmap",
+			Description: "View Gantt chart, critical path, and forecasts",
+			Shortcut:    ";R",
+			Category:    CategoryViews,
+			Aliases:     []string{"gantt", "timeline", "schedule", "critical path", "forecast"},
+			Handler: func() tea.Msg {
+				return ShowRoadmapMsg{}
+			},
+		},
+		{
 			Name:        "project metrics",
 			Description: "View metrics for current project",
 			Category:    CategoryViews,

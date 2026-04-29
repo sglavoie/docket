@@ -95,6 +95,7 @@ func (m *PipelineHubModel) buildColumns() {
 				{key: ";q", label: "Backlog", count: m.counts.queueLen, viewType: ViewFocusView},
 				{key: ";D", label: "Due Dates", count: m.counts.overdueCount, viewType: ViewDueDateOverview},
 				{key: ";d", label: "Daily Review", viewType: ViewDailyReview},
+				{key: ";R", label: "Roadmap", viewType: ViewRoadmap},
 			},
 		},
 		{
@@ -218,6 +219,8 @@ func pipelineEntryCmd(vt ViewType) tea.Cmd {
 		return func() tea.Msg { return ShowMetricsDashboardMsg{} }
 	case ViewRecentActivity:
 		return func() tea.Msg { return ShowRecentActivityMsg{} }
+	case ViewRoadmap:
+		return func() tea.Msg { return ShowRoadmapMsg{} }
 	}
 	return nil
 }

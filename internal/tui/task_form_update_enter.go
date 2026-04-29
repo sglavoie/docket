@@ -19,6 +19,20 @@ func (m *TaskFormModel) handleScheduleEnter() tea.Cmd {
 		return nil
 
 	case 1:
+		// Start Date: commit input and move to Est. Days.
+		m.commitStartDateInput()
+		m.focusNext()
+		m.syncInputFocus()
+		return nil
+
+	case 2:
+		// Est. Days: commit input and move to Recurrence.
+		m.commitEstimatedDaysInput()
+		m.focusNext()
+		m.syncInputFocus()
+		return nil
+
+	case 3:
 		// Recurrence: open the recurrence editor as a full-screen overlay.
 		pattern := m.draft.recurrence
 		dueDate := m.draft.dueDate

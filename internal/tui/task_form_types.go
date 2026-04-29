@@ -34,22 +34,26 @@ const (
 // taskFormDraft holds all editable state for the form, independent of mode.
 // Populated from a new task (create) or an existing task (edit).
 type taskFormDraft struct {
-	title      string
-	taskType   models.TaskType
-	priority   int
-	parentID   *string
-	section    string
-	pinned     bool
-	active     bool
-	dimmed     bool
-	tags       []string
-	dueDate    *time.Time
-	dueInput   string
-	hasTime    bool
-	recurrence *models.RecurrencePattern
-	desc       string
-	url        string
-	source     string
+	title              string
+	taskType           models.TaskType
+	priority           int
+	parentID           *string
+	section            string
+	pinned             bool
+	active             bool
+	dimmed             bool
+	tags               []string
+	dueDate            *time.Time
+	dueInput           string
+	hasTime            bool
+	recurrence         *models.RecurrencePattern
+	startDate          *time.Time
+	startDateInput     string
+	estimatedDays      float64
+	estimatedDaysInput string
+	desc               string
+	url                string
+	source             string
 
 	// Type-specific attributes (only one set is active per taskType).
 	bugAttrs   models.BugAttrs
@@ -78,6 +82,10 @@ type TaskFormModel struct {
 
 	// Due date input (Schedule tab, field 0)
 	dueTextInput textinput.Model
+
+	// Start date and estimated days inputs (Schedule tab, fields 1 and 2)
+	startDateTextInput     textinput.Model
+	estimatedDaysTextInput textinput.Model
 
 	// URL and Source inputs (Details tab, fields 0 and 1)
 	urlTextInput    textinput.Model

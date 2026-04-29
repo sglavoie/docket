@@ -17,4 +17,4 @@ func makeTask(status models.TaskStatus, completedAt *time.Time, activity []*mode
 		CompletedAt: completedAt,
 		Activity:    activity,
 	}
-	}
+}

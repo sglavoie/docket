@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"fmt"
 	"time"
 
 	"charm.land/bubbles/v2/textinput"
@@ -21,6 +22,8 @@ func (m *TaskFormModel) initTitleInput(value string) {
 func (m *TaskFormModel) syncInputFocus() {
 	m.focusTitleInput()
 	m.focusDueInput()
+	m.focusStartDateInput()
+	m.focusEstimatedDaysInput()
 	m.focusURLInput()
 	m.focusSourceInput()
 }
@@ -59,6 +62,60 @@ func (m *TaskFormModel) focusDueInput() {
 func (m *TaskFormModel) commitDueInput() {
 	m.draft.dueInput = m.dueTextInput.Value()
 	m.dueTextInput.Blur()
+}
+
+// initStartDateInput creates and configures the start date textinput with an optional initial value.
+func (m *TaskFormModel) initStartDateInput(value string) {
+	m.startDateTextInput = textinput.New()
+	m.startDateTextInput.Placeholder = "tomorrow, +3d, 2026-01-15, none"
+	m.startDateTextInput.CharLimit = 40
+	m.startDateTextInput.SetWidth(40)
+	applyThemedTextInput(&m.startDateTextInput)
+	if value != "" {
+		m.startDateTextInput.SetValue(value)
+	}
+}
+
+// focusStartDateInput focuses the start date textinput when field 1 on the Schedule tab is active.
+func (m *TaskFormModel) focusStartDateInput() {
+	if m.activeTab == formTabSchedule && m.focusIndex == 1 {
+		m.startDateTextInput.Focus()
+	} else {
+		m.startDateTextInput.Blur()
+	}
+}
+
+// commitStartDateInput syncs the startDateTextInput value back into the draft.
+func (m *TaskFormModel) commitStartDateInput() {
+	m.draft.startDateInput = m.startDateTextInput.Value()
+	m.startDateTextInput.Blur()
+}
+
+// initEstimatedDaysInput creates and configures the estimated days textinput with an optional initial value.
+func (m *TaskFormModel) initEstimatedDaysInput(value string) {
+	m.estimatedDaysTextInput = textinput.New()
+	m.estimatedDaysTextInput.Placeholder = "e.g., 1, 3.5, 0.5"
+	m.estimatedDaysTextInput.CharLimit = 10
+	m.estimatedDaysTextInput.SetWidth(10)
+	applyThemedTextInput(&m.estimatedDaysTextInput)
+	if value != "" {
+		m.estimatedDaysTextInput.SetValue(value)
+	}
+}
+
+// focusEstimatedDaysInput focuses the estimated days textinput when field 2 on the Schedule tab is active.
+func (m *TaskFormModel) focusEstimatedDaysInput() {
+	if m.activeTab == formTabSchedule && m.focusIndex == 2 {
+		m.estimatedDaysTextInput.Focus()
+	} else {
+		m.estimatedDaysTextInput.Blur()
+	}
+}
+
+// commitEstimatedDaysInput syncs the estimatedDaysTextInput value back into the draft.
+func (m *TaskFormModel) commitEstimatedDaysInput() {
+	m.draft.estimatedDaysInput = m.estimatedDaysTextInput.Value()
+	m.estimatedDaysTextInput.Blur()
 }
 
 // initURLInput creates and configures the URL textinput with an optional initial value.
@@ -149,4 +206,13 @@ func formatDateInput(value *time.Time, hasTime bool) string {
 		return value.Format(util.DateTimeDueFormat)
 	}
 	return value.Format("2006-01-02")
+}
+
+// formatEstimatedDaysInput formats a float64 estimated days value as a string for text inputs.
+// Returns empty string when the value is zero.
+func formatEstimatedDaysInput(value float64) string {
+	if value == 0 {
+		return ""
+	}
+	return fmt.Sprintf("%g", value)
 }

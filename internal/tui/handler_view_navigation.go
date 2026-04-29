@@ -26,6 +26,8 @@ func (m *AppModel) handleNavigateToView(msg NavigateToViewMsg) (bool, tea.Cmd) {
 		return m.handleViewMessages(ShowDueDateOverviewMsg{})
 	case ViewMetricsDashboard:
 		return m.handleViewMessages(ShowMetricsDashboardMsg{})
+	case ViewRoadmap:
+		return m.handleViewMessages(ShowRoadmapMsg{})
 	case ViewPriorityView:
 		if project != nil {
 			if err := storage.LoadProject(project); err != nil {

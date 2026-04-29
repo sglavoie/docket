@@ -156,6 +156,20 @@ func (m *TaskFormModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 
+		// ── Start Date textinput (field 1 on Schedule tab) ────────────────────
+		if m.activeTab == formTabSchedule && m.focusIndex == 1 {
+			if cmd, ok := m.handleTextInputKey(msg, m.commitStartDateInput, &m.startDateTextInput); ok {
+				return m, cmd
+			}
+		}
+
+		// ── Est. Days textinput (field 2 on Schedule tab) ──────────────────────
+		if m.activeTab == formTabSchedule && m.focusIndex == 2 {
+			if cmd, ok := m.handleTextInputKey(msg, m.commitEstimatedDaysInput, &m.estimatedDaysTextInput); ok {
+				return m, cmd
+			}
+		}
+
 		// ── URL textinput (field 0 on Details tab) ────────────────────────────
 		if m.activeTab == formTabDetails && m.focusIndex == 0 {
 			if cmd, ok := m.handleTextInputKey(msg, m.commitURLInput, &m.urlTextInput); ok {

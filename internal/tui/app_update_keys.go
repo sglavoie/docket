@@ -306,6 +306,8 @@ func (m *AppModel) handlePendingPrefixes(msg tea.KeyPressMsg) (bool, tea.Cmd) {
 		return true, func() tea.Msg { return ShowCrossProjectKanbanMsg{} }
 	case "o":
 		return true, func() tea.Msg { return ShowGlobalOutlinerMsg{} }
+	case "R":
+		return true, func() tea.Msg { return ShowRoadmapMsg{} }
 	case "i":
 		return true, m.resolveQuickCaptureCmd()
 	case "I":

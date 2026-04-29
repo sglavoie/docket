@@ -170,6 +170,7 @@ var (
 		{Key: "D", Description: "due date overview", Detail: "View tasks by due date", Group: "Plan"},
 		{Key: "I", Description: "bulk capture", Detail: "Bulk task capture in a project", Group: "Capture"},
 		{Key: "N", Description: "global notes", Detail: "Open global notes", Group: "Support"},
+		{Key: "R", Description: "roadmap", Detail: "Gantt chart and critical path", Group: "Review"},
 		{Key: "W", Description: "workflow rules", Detail: "Manage workflow automation rules", Group: "Support"},
 		{Key: "{", Description: "note create", Detail: "Create note in a project", Group: "Support"},
 	}

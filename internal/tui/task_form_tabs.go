@@ -16,7 +16,7 @@ var formTabNames = []string{"Basics", "Schedule", "Children", "Details"}
 // Static field counts per tab (dynamic items like checklist are added on top).
 const (
 	formBasicsFieldCount   = 8 // Title, Description, Type, Priority, Parent, Section, Flags, Tags
-	formScheduleFieldCount = 2 // Due, Recurrence
+	formScheduleFieldCount = 4 // Due, StartDate, EstimatedDays, Recurrence
 	formDetailsFieldCount  = 2 // URL, Source
 )
 

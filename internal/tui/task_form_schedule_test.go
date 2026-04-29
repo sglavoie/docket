@@ -100,7 +100,7 @@ func TestTaskForm_ScheduleTab_DuePicker_EscCancels(t *testing.T) {
 
 func TestTaskForm_ScheduleTab_EnterOnRecurrence_EmitsShowRecurrenceEditorMsg(t *testing.T) {
 	m := newTestTaskForm()
-	m = navigateToScheduleField(m, 1)
+	m = navigateToScheduleField(m, 3)
 	_, cmd := m.Update(syntheticSpecialKey(tea.KeyEnter))
 	if cmd == nil {
 		t.Fatal("expected Cmd from Enter on Recurrence, got nil")

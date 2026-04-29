@@ -54,7 +54,8 @@ var metadataKeys = []string{
 	"idea.category", "idea.effort", "idea.value", "idea.validated",
 	"task.effort", "task.worktype",
 	"story.points", "story.persona",
-	"epic.scope", "epic.milestone", "epic.metrics",
+	"epic.scope", "epic.milestone", "epic.metrics", "epic.initial_children", "epic.scope_baselined",
+	"start", "estimated_days",
 }
 
 // MaxDimensionIDLength is the maximum allowed length for a score dimension ID.

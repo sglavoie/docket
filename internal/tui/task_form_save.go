@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -38,6 +39,24 @@ func (m *TaskFormModel) handleSave() tea.Cmd {
 		return nil
 	}
 
+	// Parse start date from text input (Schedule tab, field 1).
+	if err := m.parseDraftStartDate(); err != nil {
+		m.err = err
+		m.activeTab = formTabSchedule
+		m.focusIndex = 1
+		m.syncInputFocus()
+		return nil
+	}
+
+	// Parse estimated days from text input (Schedule tab, field 2).
+	if err := m.parseDraftEstimatedDays(); err != nil {
+		m.err = err
+		m.activeTab = formTabSchedule
+		m.focusIndex = 2
+		m.syncInputFocus()
+		return nil
+	}
+
 	if m.mode == FormModeCreate {
 		return m.saveCreate()
 	}
@@ -49,6 +68,8 @@ func (m *TaskFormModel) handleSave() tea.Cmd {
 func (m *TaskFormModel) commitAllTextInputs() {
 	m.draft.title = strings.TrimSpace(strings.ReplaceAll(m.titleInput.Value(), "\n", " "))
 	m.draft.dueInput = m.dueTextInput.Value()
+	m.draft.startDateInput = m.startDateTextInput.Value()
+	m.draft.estimatedDaysInput = m.estimatedDaysTextInput.Value()
 	m.draft.url = strings.TrimSpace(m.urlTextInput.Value())
 	m.draft.source = strings.TrimSpace(m.sourceTextInput.Value())
 }
@@ -73,6 +94,43 @@ func (m *TaskFormModel) parseDraftDueDate() error {
 	}
 	m.draft.dueDate = &date
 	m.draft.hasTime = hasTime
+	return nil
+}
+
+// parseDraftStartDate parses draft.startDateInput and stores the result in
+// draft.startDate. Empty / "none" / "clear" clears the start date.
+func (m *TaskFormModel) parseDraftStartDate() error {
+	value := strings.TrimSpace(m.draft.startDateInput)
+	if value == "" || strings.EqualFold(value, "none") || strings.EqualFold(value, "clear") {
+		m.draft.startDate = nil
+		return nil
+	}
+	weekEndDay := "sun"
+	if m.config != nil {
+		weekEndDay = m.config.GetWeekEndDay()
+	}
+	date, _, err := util.ParseRelativeDateWithTime(value, weekEndDay)
+	if err != nil {
+		return err
+	}
+	m.draft.startDate = &date
+	return nil
+}
+
+// parseDraftEstimatedDays parses draft.estimatedDaysInput and stores the
+// result in draft.estimatedDays. Empty / "none" / "clear" resets to 0.
+// Returns an error if the value is not a valid non-negative number.
+func (m *TaskFormModel) parseDraftEstimatedDays() error {
+	value := strings.TrimSpace(m.draft.estimatedDaysInput)
+	if value == "" || strings.EqualFold(value, "none") || strings.EqualFold(value, "clear") {
+		m.draft.estimatedDays = 0
+		return nil
+	}
+	days, err := strconv.ParseFloat(value, 64)
+	if err != nil || days < 0 {
+		return fmt.Errorf("estimated days must be a non-negative number")
+	}
+	m.draft.estimatedDays = days
 	return nil
 }
 
@@ -132,6 +190,8 @@ func (m *TaskFormModel) saveCreate() tea.Cmd {
 		ParentID:        m.draft.parentID,
 		DueDate:         m.draft.dueDate,
 		HasTime:         m.draft.hasTime,
+		StartDate:       m.draft.startDate,
+		EstimatedDays:   m.draft.estimatedDays,
 		Pinned:          m.draft.pinned,
 		Active:          m.draft.active,
 		Dimmed:          m.draft.dimmed,
@@ -289,6 +349,8 @@ func (m *TaskFormModel) saveEdit() tea.Cmd {
 		t.SetSection(draft.section)
 		t.DueDate = draft.dueDate
 		t.HasTime = draft.hasTime
+		t.StartDate = draft.startDate
+		t.EstimatedDays = draft.estimatedDays
 		t.Tags = append([]string{}, draft.tags...)
 		t.Active = draft.active
 		t.Dimmed = draft.dimmed

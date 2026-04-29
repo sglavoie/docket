@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"slices"
 	"strings"
+	"time"
 )
 
 // BugReproducible represents whether a bug can be reproduced.
@@ -254,9 +255,11 @@ func (s EpicScope) IsValid() bool { return isValidEnum(s, ValidEpicScope) }
 
 // EpicAttrs contains epic-specific attributes.
 type EpicAttrs struct {
-	Scope          EpicScope `json:"scope,omitempty"`
-	Milestone      string    `json:"milestone,omitempty"`       // free text
-	SuccessMetrics string    `json:"success_metrics,omitempty"` // free text, supports multi-line
+	Scope             EpicScope  `json:"scope,omitempty"`
+	Milestone         string     `json:"milestone,omitempty"`           // free text
+	SuccessMetrics    string     `json:"success_metrics,omitempty"`     // free text, supports multi-line
+	InitialChildCount int        `json:"initial_child_count,omitempty"` // set by explicit baseline action
+	ScopeBaselinedAt  *time.Time `json:"scope_baselined_at,omitempty"`  // when the baseline was last set
 }
 
 // Validate checks if all set fields have valid values.
@@ -272,7 +275,8 @@ func (a *EpicAttrs) Validate() error {
 
 // IsEmpty returns true if all fields are empty/zero values.
 func (a *EpicAttrs) IsEmpty() bool {
-	return a == nil || (a.Scope == "" && a.Milestone == "" && a.SuccessMetrics == "")
+	return a == nil || (a.Scope == "" && a.Milestone == "" && a.SuccessMetrics == "" &&
+		a.InitialChildCount == 0 && a.ScopeBaselinedAt == nil)
 }
 
 // Lazy-init helpers that ensure a type-specific attrs struct exists on a Task.
@@ -315,6 +319,16 @@ func (t *Task) EnsureEpicAttrs() *EpicAttrs {
 		t.EpicAttrs = &EpicAttrs{}
 	}
 	return t.EpicAttrs
+}
+
+// ScopeDelta returns the change in child count since the scope was baselined.
+// Returns (delta, true) when ScopeBaselinedAt is set, otherwise (0, false).
+// A positive delta means scope has grown; negative means tasks were removed.
+func (t *Task) ScopeDelta() (int, bool) {
+	if t.EpicAttrs == nil || t.EpicAttrs.ScopeBaselinedAt == nil {
+		return 0, false
+	}
+	return len(t.Children) - t.EpicAttrs.InitialChildCount, true
 }
 
 // Generic enum helpers.

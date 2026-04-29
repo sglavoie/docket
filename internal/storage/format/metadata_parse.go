@@ -10,6 +10,20 @@ import (
 	"github.com/sglavoie/tt/internal/util"
 )
 
+// parseFloatOrWarn parses a float64 value, appending a validation warning on failure.
+func parseFloatOrWarn(value, field string, warnings *[]ParseWarning) (float64, bool) {
+	v, err := strconv.ParseFloat(value, 64)
+	if err != nil {
+		*warnings = append(*warnings, ParseWarning{
+			Type:    WarningValidation,
+			Field:   field,
+			Message: fmt.Sprintf("invalid %s %q, ignoring: %v", field, value, err),
+		})
+		return 0, false
+	}
+	return v, true
+}
+
 // splitSemicolonDedup splits a semicolon-delimited string into unique, trimmed,
 // non-empty values, preserving insertion order. Used for tags, depends, related.
 func splitSemicolonDedup(value string) []string {
@@ -218,6 +232,14 @@ func ParseMetadata(task *models.Task, metaStr string) []ParseWarning { //nolint:
 				task.DueDate = &t
 				task.HasTime = true
 			}
+		case "start":
+			if t, err := time.ParseInLocation(util.DateFormat, value, time.Local); err == nil {
+				task.StartDate = &t
+			}
+		case "estimated_days":
+			if v, ok := parseFloatOrWarn(value, "estimated_days", &warnings); ok && v > 0 {
+				task.EstimatedDays = v
+			}
 		case "depends":
 			task.DependsOn = append(task.DependsOn, splitSemicolonDedup(value)...)
 		case "related":
@@ -327,6 +349,14 @@ func ParseMetadata(task *models.Task, metaStr string) []ParseWarning { //nolint:
 			task.EnsureEpicAttrs().Milestone = value
 		case "epic.metrics":
 			task.EnsureEpicAttrs().SuccessMetrics = unescapeNewlines(value)
+		case "epic.initial_children":
+			if v, ok := parseIntOrWarn(value, "epic.initial_children", &warnings); ok && v > 0 {
+				task.EnsureEpicAttrs().InitialChildCount = v
+			}
+		case "epic.scope_baselined":
+			if t, err := time.ParseInLocation(util.DateFormat, value, time.Local); err == nil {
+				task.EnsureEpicAttrs().ScopeBaselinedAt = &t
+			}
 		default:
 			if strings.HasPrefix(key, "score.") {
 				dimID := key[6:]
