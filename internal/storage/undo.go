@@ -501,6 +501,8 @@ func restoreTaskFields(dst, src *models.Task) {
 	dst.Dimmed = src.Dimmed
 	dst.SnoozedUntil = src.SnoozedUntil
 	dst.Stage = src.Stage
+	dst.StartDate = src.StartDate
+	dst.EstimatedDays = src.EstimatedDays
 	dst.Source = src.Source
 	dst.URL = src.URL
 

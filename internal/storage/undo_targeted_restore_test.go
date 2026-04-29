@@ -3,6 +3,7 @@ package storage
 import (
 	"os"
 	"testing"
+	"time"
 
 	"github.com/sglavoie/tt/internal/models"
 )
@@ -211,6 +212,39 @@ func TestPerformTargetedUndoRestoresDeletedTask(t *testing.T) {
 	}
 	if !foundB {
 		t.Error("task-b should have been restored by targeted undo")
+	}
+}
+
+func TestRestoreTaskFieldsPreservesStartDateAndEstimatedDays(t *testing.T) {
+	startDate := time.Date(2025, 3, 15, 0, 0, 0, 0, time.UTC)
+	src := &models.Task{
+		ID:            "test-id",
+		StartDate:     &startDate,
+		EstimatedDays: 5.5,
+		Status:        models.StatusTodo,
+		Title:         "Task with scheduling",
+	}
+
+	dst := &models.Task{ID: "test-id"}
+	restoreTaskFields(dst, src)
+
+	if dst.StartDate == nil || !dst.StartDate.Equal(startDate) {
+		t.Errorf("restoreTaskFields should preserve StartDate, got %v", dst.StartDate)
+	}
+	if dst.EstimatedDays != 5.5 {
+		t.Errorf("restoreTaskFields should preserve EstimatedDays, got %v", dst.EstimatedDays)
+	}
+
+	// Verify clearing works too
+	src2 := &models.Task{ID: "test-id-2", StartDate: nil, EstimatedDays: 0}
+	dst2 := &models.Task{ID: "test-id-2", StartDate: &startDate, EstimatedDays: 3.0}
+	restoreTaskFields(dst2, src2)
+
+	if dst2.StartDate != nil {
+		t.Error("restoreTaskFields should clear StartDate when src has nil")
+	}
+	if dst2.EstimatedDays != 0 {
+		t.Errorf("restoreTaskFields should clear EstimatedDays, got %v", dst2.EstimatedDays)
 	}
 }
 
