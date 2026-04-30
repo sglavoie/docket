@@ -248,13 +248,6 @@ func (m *ProjectFocusViewModel) handleKeyMsg(msg tea.KeyPressMsg) (tea.Model, te
 		m.setStatus("Refreshed")
 		return m, nil
 
-	// Copy
-	case "y", "Y", "ctrl+y":
-		if cmd, handled := clipboardCmd(key, m.getTaskAtCursor()); handled {
-			return m, cmd
-		}
-		return m, nil
-
 	// Help
 	case "?":
 		return m, helpCmd(ViewProjectFocusView, "Project Focus View", m.GetHelpItems())

@@ -119,7 +119,6 @@ func (r *KeybindingRegistry) registerOutlinerBindings() {
 	r.addForViews(views, sortBindings())
 	r.addForViews(views, movePrefixBindings())
 	r.addForViews(views, statusBindings())
-	r.addForViews(views, clipboardBindings())
 	r.addForViews(views, priorityBindings())
 	r.addForViews(views, dueDateBindings())
 	r.addForViews(views, stageBindings())

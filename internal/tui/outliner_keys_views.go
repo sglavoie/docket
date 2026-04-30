@@ -95,12 +95,6 @@ func (m *OutlinerModel) handleUtilityKey(key string) (tea.Model, tea.Cmd, bool) 
 		m.toggleMultiSelectMode()
 		return m, nil, true
 
-	case "y", "Y", "ctrl+y":
-		if handled, cmd := handleClipboardForPrefixableView(key, m); handled {
-			return m, cmd, true
-		}
-		return m, nil, true
-
 	case "T":
 		if m.project == nil {
 			tags := BuildTagList(m.crossMergedTaskSlice(), false)

@@ -395,4 +395,5 @@ func (r *KeybindingRegistry) registerGlobalBindings() {
 		Keybinding{Key: "?", Description: "Toggle help", Category: "Navigation"},
 		Keybinding{Key: `ctrl+\`, Description: "Keybinding Explorer", Category: "Navigation"},
 	)
+	r.add(clipboardBindings()...)
 }

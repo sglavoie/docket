@@ -36,9 +36,6 @@ func (r *KeybindingRegistry) registerKanbanBindings() {
 		Keybinding{Key: "t", Description: "Task prefix (tn/tr/ts/td/tp/...)", Category: "Actions", Views: views},
 		Keybinding{Key: "F", Description: "Filter prefix (Fp/Ft/Fs/...)", Category: "Filtering", Views: views},
 		Keybinding{Key: "ctrl+.", Description: "Quick note on focused task", Category: "Actions", Views: views},
-		Keybinding{Key: "y", Description: "Copy task title", Category: "Actions", Views: views},
-		Keybinding{Key: "Y", Description: "Copy task description", Category: "Actions", Views: views},
-		Keybinding{Key: "ctrl+Y", Description: "Copy title and description", Category: "Actions", Views: views},
 		Keybinding{Key: "*", Description: "Toggle active flag", Category: "Actions", Views: views},
 		Keybinding{Key: "S", Description: "Edit score dimensions", Category: "Scoring", Views: views},
 		Keybinding{Key: "O", Description: "Open URL in browser", Category: "Actions", Views: views},
@@ -72,8 +69,8 @@ func (m *KanbanModel) HandledKeys() []string {
 		[]string{"a", "D", "e", "o", "Z", "r"},
 		// Prefix activators that appear in registry
 		[]string{"d", "m", "t", "F"},
-		// Clipboard and extra actions
-		[]string{"ctrl+.", "y", "Y", "ctrl+y", "*", "S", "O", "ctrl+b", "M"},
+		// Extra actions
+		[]string{"ctrl+.", "*", "S", "O", "ctrl+b", "M"},
 		// Standard prefix sequences
 		statusPrefixKeys(),
 		priorityPrefixKeys(),

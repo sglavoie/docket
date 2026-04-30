@@ -58,9 +58,14 @@ func (m *AppModel) View() (result tea.View) { //nolint:gocyclo
 		content = overlayAlertIndicator(content, indicator, m.width)
 	}
 
-	// Full-height views render their own footer and skip the external status bar
+	// Full-height views render their own footer and skip the external status bar.
+	// Exception: when a transient status message is active (clipboard feedback,
+	// error, loading), replace the view's footer with the AppModel status bar.
 	if currentView := m.views.Get(m.currentView()); currentView != nil {
 		if caps, ok := currentView.(ViewCapabilities); ok && caps.IsFullHeight() {
+			if m.statusMessage != "" || m.err != nil || m.isLoading {
+				content = replaceFooter(content, m.renderStatusBar())
+			}
 			content = m.applyOverlays(content, m.height)
 			resultView.SetContent(m.applyBackground(content))
 			return resultView
@@ -82,4 +87,15 @@ func (m *AppModel) View() (result tea.View) { //nolint:gocyclo
 
 	resultView.SetContent(m.applyBackground(content + "\n" + statusBar))
 	return resultView
+}
+
+// replaceFooter swaps the last 2 lines of content (a full-height view's own
+// footer: separator + help text) with newFooter (the AppModel status bar).
+func replaceFooter(content, newFooter string) string {
+	lines := strings.Split(content, "\n")
+	if len(lines) < 2 {
+		return content
+	}
+	lines = lines[:len(lines)-2]
+	return strings.Join(lines, "\n") + "\n" + newFooter
 }

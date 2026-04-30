@@ -85,6 +85,11 @@ func (s *InteractiveViewState) SectionGoToPrev(sectionStarts []int) tea.Cmd {
 	return flashIfJumped(old, s.cursor, &s.cursorFlash)
 }
 
+// IsConfirmActive returns true if a confirm dialog is currently active.
+func (s *InteractiveViewState) IsConfirmActive() bool {
+	return s.confirm.IsActive()
+}
+
 // GetConfirmDialog returns a pointer to the embedded confirm dialog.
 func (s *InteractiveViewState) GetConfirmDialog() *ConfirmDialog {
 	return &s.confirm

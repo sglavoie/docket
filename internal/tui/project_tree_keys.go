@@ -236,12 +236,6 @@ func (m *ProjectTreeModel) handleTaskCRUDKeys(key string, visible []*TreeNode) (
 	return false, nil
 }
 
-// handleClipboardKeys handles y, Y, ctrl+y - clipboard operations.
-// Returns true if the key was handled.
-func (m *ProjectTreeModel) handleClipboardKeys(key string) (bool, tea.Cmd) {
-	return handleClipboardForPrefixableView(key, m)
-}
-
 // handleFilterOverlayKeys handles ctrl+f, ctrl+t, ctrl+s - filter/manager overlay operations.
 // Returns true if the key was handled.
 func (m *ProjectTreeModel) handleFilterOverlayKeys(key string) (bool, tea.Cmd) {
@@ -341,9 +335,6 @@ func (m *ProjectTreeModel) handleMiscActionKeys(key string, _ []*TreeNode) (bool
 // Returns true if the key was handled.
 func (m *ProjectTreeModel) handleActionKeys(key string, visible []*TreeNode) (bool, tea.Cmd) {
 	if handled, cmd := m.handleTaskCRUDKeys(key, visible); handled {
-		return handled, cmd
-	}
-	if handled, cmd := m.handleClipboardKeys(key); handled {
 		return handled, cmd
 	}
 	if handled, cmd := m.handleFilterOverlayKeys(key); handled {

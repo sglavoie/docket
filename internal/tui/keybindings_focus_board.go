@@ -31,9 +31,6 @@ func (r *KeybindingRegistry) registerFocusBoardBindings() {
 		Keybinding{Key: "Z", Description: "Snooze date picker", Category: "Actions", Views: views},
 		Keybinding{Key: "m", Description: "Move to section (ma/mn/mi/mw/ms/mr)", Category: "Actions", Views: views},
 		Keybinding{Key: "ctrl+.", Description: "Quick note on selected task", Category: "Actions", Views: views},
-		Keybinding{Key: "y", Description: "Copy task title", Category: "Actions", Views: views},
-		Keybinding{Key: "Y", Description: "Copy task description", Category: "Actions", Views: views},
-		Keybinding{Key: "ctrl+Y", Description: "Copy title and description", Category: "Actions", Views: views},
 
 		// Scoring
 		Keybinding{Key: "S", Description: "Edit score dimensions", Category: "Scoring", Views: views},

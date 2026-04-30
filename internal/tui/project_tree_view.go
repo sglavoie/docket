@@ -66,7 +66,6 @@ func (m *ProjectTreeModel) HandledKeys() []string {
 			"ctrl+f", "ctrl+t", "ctrl+s", "ctrl+a", "ctrl+e", "ctrl+v",
 			"shift+left", "shift+right",
 			"cx",
-			"y", "Y", "ctrl+y",
 		},
 	)
 }

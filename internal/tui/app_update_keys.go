@@ -4,7 +4,42 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
+
+	"github.com/sglavoie/tt/internal/models"
 )
+
+// currentViewAsModel returns the current view as a tea.Model for interface assertions.
+func (m *AppModel) currentViewAsModel() tea.Model {
+	return m.views.Get(m.currentView())
+}
+
+// handleGlobalClipboard handles y/Y/ctrl+y clipboard operations for the current view.
+// Returns (handled, cmd). If the view doesn't support clipboard, returns (false, nil)
+// so the key falls through to the view's own Update().
+func (m *AppModel) handleGlobalClipboard(key string) (bool, tea.Cmd) {
+	type multiSelector interface {
+		getCursorTask() *models.Task
+		getMultiSelectedTasks() []*models.Task
+		clearMultiSelect()
+	}
+	if mv, ok := m.currentViewAsModel().(multiSelector); ok {
+		return handleClipboardKey(key,
+			func() *models.Task { return mv.getCursorTask() },
+			func() []*models.Task { return mv.getMultiSelectedTasks() },
+			mv.clearMultiSelect,
+		)
+	}
+
+	type taskRefProvider interface {
+		getTaskRef() (*models.Task, *models.Project)
+	}
+	if tv, ok := m.currentViewAsModel().(taskRefProvider); ok {
+		task, _ := tv.getTaskRef()
+		return handleClipboardKey(key, func() *models.Task { return task }, nil, nil)
+	}
+
+	return false, nil
+}
 
 func (m *AppModel) handleGlobalKeyPress(msg tea.KeyPressMsg) (bool, tea.Cmd) { //nolint:gocyclo
 	// Handle pending sandbox reset confirmation before clearing status
@@ -138,6 +173,13 @@ func (m *AppModel) handleGlobalKeyPress(msg tea.KeyPressMsg) (bool, tea.Cmd) { /
 				return true, nil
 			}
 			return true, func() tea.Msg { return ShowKeybindingExplorerMsg{} }
+		}
+	case "y", "Y", "ctrl+y":
+		if m.hasActiveTextInput() || m.hasActivePendingPrefix() || m.hasActiveConfirmDialog() {
+			break
+		}
+		if handled, cmd := m.handleGlobalClipboard(msg.String()); handled {
+			return true, cmd
 		}
 	case "shift+space":
 		if !m.hasActiveTextInput() && !m.hasActiveMultiSelect() {

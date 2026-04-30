@@ -150,13 +150,6 @@ func handleCommonTaskAction(key string, v commonActionView) (tea.Model, tea.Cmd,
 		v.setStatus("Refreshed")
 		return v, nil, true
 
-	case "y", "Y", "ctrl+y":
-		task, _ := v.getTaskRef()
-		if cmd, handled := clipboardCmd(key, task); handled {
-			return v, cmd, true
-		}
-		return v, nil, true
-
 	case "?":
 		return v, helpCmd(v.viewID(), v.viewName(), v.GetHelpItems()), true
 

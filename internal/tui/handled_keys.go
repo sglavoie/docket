@@ -108,7 +108,7 @@ func filterSubKeys() []string {
 func commonActionKeys() []string {
 	return []string{
 		"o", "ctrl+.", "Z", "D", "e", "r",
-		"y", "Y", "ctrl+y", "?",
+		"?",
 		"*", "S", "O", "ctrl+b",
 	}
 }
@@ -144,6 +144,7 @@ func globalAppKeys() []string {
 		"q", "ctrl+c", "alt+o", "alt+i", "|", "#", "esc",
 		"ctrl+x", "ctrl+z", ":", ";", "ctrl+,", "ctrl+i", "ctrl+/", `ctrl+\`,
 		"shift+space", "?", "alt+l",
+		"y", "Y", "ctrl+y",
 		// Semicolon prefix dispatches
 		";;", ";n", ";d", ";r", ";N", ";q", ";w", ";l", ";B", ";D", ";m", ";a", ";W", ";o", ";k", ";i", ";I", ";{", ";,", ";c", ";tN", ";R",
 	}

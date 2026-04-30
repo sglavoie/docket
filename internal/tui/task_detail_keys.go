@@ -2,6 +2,8 @@ package tui
 
 import (
 	tea "charm.land/bubbletea/v2"
+
+	"github.com/sglavoie/tt/internal/models"
 )
 
 // handleKeyMsg dispatches key events for the task detail view.
@@ -114,12 +116,6 @@ func (m *TaskDetailModel) handleKeyMsg(msg tea.KeyPressMsg) (tea.Model, tea.Cmd)
 	case "?":
 		return m, helpCmd(ViewTaskDetail, "Task Detail", m.GetHelpItems())
 
-	// Clipboard
-	case "y", "Y", "ctrl+y":
-		if cmd, handled := clipboardCmd(key, m.task); handled {
-			return m, cmd
-		}
-		return m, nil
 	}
 
 	return m, nil
@@ -202,6 +198,11 @@ func (m *TaskDetailModel) handlePriorityPrefix(key string) (tea.Model, tea.Cmd) 
 	return m, nil
 }
 
+// getTaskRef returns the task and project for the current detail view.
+func (m *TaskDetailModel) getTaskRef() (*models.Task, *models.Project) {
+	return m.task, m.project
+}
+
 // GetHelpItems returns the help items for the task detail view.
 func (m *TaskDetailModel) GetHelpItems() []HelpItem {
 	return []HelpItem{
@@ -220,8 +221,5 @@ func (m *TaskDetailModel) GetHelpItems() []HelpItem {
 		{Key: "h", Description: "Activity history", Category: "Sub-views"},
 		{Key: "p", Description: "Dependencies", Category: "Sub-views"},
 		{Key: "S", Description: "Score editor", Category: "Sub-views"},
-		{Key: "y", Description: "Copy title", Category: "Clipboard"},
-		{Key: "Y", Description: "Copy description", Category: "Clipboard"},
-		{Key: "Ctrl+Y", Description: "Copy title and description", Category: "Clipboard"},
 	}
 }
