@@ -267,8 +267,18 @@ func (m *RecentActivityModel) handleKeyMsg(msg tea.KeyPressMsg) (tea.Model, tea.
 			}
 		}
 
-	case "[", "h", "]", "l":
-		if handleTabCycleKey(msg.String(), &m.tabs, true, func() {
+	case "tab":
+		m.tabs.Cycle(1)
+		m.applyFilter()
+		m.clampCursor()
+		return m, nil
+	case "shift+tab":
+		m.tabs.Cycle(-1)
+		m.applyFilter()
+		m.clampCursor()
+		return m, nil
+	case "shift+left", "shift+right":
+		if handleTabCycleKey(msg.String(), &m.tabs, func() {
 			m.applyFilter()
 			m.clampCursor()
 		}) {
@@ -355,7 +365,7 @@ func (m *RecentActivityModel) GetHelpItems() []HelpItem {
 func (m *RecentActivityModel) HandledKeys() []string {
 	return []string{
 		"j", "k", "up", "down", "g", "G", "ctrl+u", "ctrl+d",
-		"enter", "p", "ctrl+.", "/", "F", "[", "]", "r", "esc",
+		"enter", "p", "ctrl+.", "/", "F", "tab", "shift+left", "shift+right", "r", "esc",
 	}
 }
 
@@ -438,7 +448,7 @@ func (m *RecentActivityModel) View() tea.View {
 	b.WriteString(strings.Join(applyScroll(lines, m.cursor, contentHeight), "\n"))
 	b.WriteString("\n\n")
 
-	left := HelpStyle.Render("j/k nav · [ / ] tabs · Enter open · p preview · / filter · r refresh · ? help")
+	left := HelpStyle.Render("j/k nav · Tab tabs · Enter open · p preview · / filter · r refresh · ? help")
 	right := MutedStyle.Render(fmt.Sprintf("%d tasks", len(m.filtered)))
 	b.WriteString(renderStatusBarFooter(left, right, m.Width(), m.AccentColor()))
 

@@ -291,7 +291,17 @@ func (m *DueDateOverviewModel) handleKeyMsg(msg tea.KeyPressMsg) (tea.Model, tea
 	}
 
 	// Tab navigation
-	if handleTabCycleKey(key, &m.tabs, true, func() {
+	switch key {
+	case "tab":
+		m.tabs.Cycle(1)
+		m.applyTabFilter()
+		return m, nil
+	case "shift+tab":
+		m.tabs.Cycle(-1)
+		m.applyTabFilter()
+		return m, nil
+	}
+	if handleTabCycleKey(key, &m.tabs, func() {
 		m.applyTabFilter()
 	}) {
 		return m, nil
@@ -444,6 +454,7 @@ func (m *DueDateOverviewModel) HandledKeys() []string {
 		commonActionKeys(),
 		[]string{
 			"g", "gp",
+			"tab", "shift+left", "shift+right",
 			"enter", "F", "m", "t",
 			"1", "2", "3", "4", "5",
 			"esc",

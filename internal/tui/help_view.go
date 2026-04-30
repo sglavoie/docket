@@ -210,13 +210,13 @@ func (m *HelpViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.isExplorer {
 				return m, func() tea.Msg { return CloseKeybindingExplorerMsg{} }
 			}
-		case "[", "h":
+		case "shift+left":
 			CycleTab(&m.activeTab, len(m.categories)+1, -1)
 			m.filterItems()
 			m.viewport.SetContent(m.renderContent())
 			m.viewport.GotoTop()
 			return m, nil
-		case "]", "l":
+		case "shift+right":
 			CycleTab(&m.activeTab, len(m.categories)+1, 1)
 			m.filterItems()
 			m.viewport.SetContent(m.renderContent())
@@ -261,13 +261,13 @@ func (m *HelpViewModel) updateSearchMode(msg tea.KeyPressMsg) (tea.Model, tea.Cm
 		m.tabSearchInput.SetValue("")
 		m.tabSearchInput.Focus()
 		return m, textinput.Blink
-	case "[":
+	case "shift+left":
 		CycleTab(&m.activeTab, len(m.categories)+1, -1)
 		m.filterItems()
 		m.viewport.SetContent(m.renderContent())
 		m.viewport.GotoTop()
 		return m, nil
-	case "]":
+	case "shift+right":
 		CycleTab(&m.activeTab, len(m.categories)+1, 1)
 		m.filterItems()
 		m.viewport.SetContent(m.renderContent())

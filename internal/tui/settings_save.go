@@ -326,7 +326,7 @@ func (m *SettingsModel) StatusBarLabel() string { return "Settings" }
 func (m *SettingsModel) HandledKeys() []string {
 	return []string{
 		// Field navigation
-		"tab", "shift+tab", "[", "]", "(", ")", "space", "enter",
+		"tab", "shift+tab", "shift+left", "shift+right", "shift+up", "shift+down", "space", "enter",
 		// Selector / tab navigation
 		"h", "l", "left", "right",
 		// Palette preset shortcuts (palette tab)

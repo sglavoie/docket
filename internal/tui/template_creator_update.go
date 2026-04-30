@@ -52,13 +52,13 @@ func (m *TaskTemplateCreatorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) { //
 				return BackMsg{}
 			}
 
-		case "[", "]":
+		case "shift+left", "shift+right":
 			lastTab := templateTabChecklist
 			if m.currentTypeCanHaveChildren() {
 				lastTab = templateTabSubtasks
 			}
 			s := formTabState{&m.activeTab, &m.focusIndex, &m.scrollOffset}
-			return m, handleFormTabSwitch(m, s, templateTabFields, lastTab, msg.String() == "]")
+			return m, handleFormTabSwitch(m, s, templateTabFields, lastTab, msg.String() == "shift+right")
 
 		case "tab", "shift+tab":
 			m.hideSuggestions()

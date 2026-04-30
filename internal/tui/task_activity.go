@@ -89,12 +89,12 @@ func (m *TaskActivityModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.cursor = len(entries) - 1
 			}
 
-		case "[", "h":
-			CycleTab(&m.activeTab, len(activityTabNames), -1)
+		case "tab", "shift+right":
+			CycleTab(&m.activeTab, len(activityTabNames), 1)
 			m.cursor = 0
 
-		case "]", "l":
-			CycleTab(&m.activeTab, len(activityTabNames), 1)
+		case "shift+tab", "shift+left":
+			CycleTab(&m.activeTab, len(activityTabNames), -1)
 			m.cursor = 0
 
 		case "s":
@@ -191,7 +191,7 @@ func (m *TaskActivityModel) View() tea.View {
 		}
 	}
 
-	helpText := "[ / ]: tabs · j/k: navigate · s: sort · y: copy entry · Esc: close"
+	helpText := "Tab: tabs · j/k: navigate · s: sort · y: copy entry · Esc: close"
 	b.WriteString(HelpStyle.Render(renderWrappingHelpLine(helpText, m.Width())))
 
 	return tea.NewView(b.String())

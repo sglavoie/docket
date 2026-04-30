@@ -261,15 +261,15 @@ func (m *RoadmapModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "esc":
 			return m, func() tea.Msg { return CloseRoadmapMsg{} }
 
-		case "h", "[":
+		case "tab", "shift+right":
 			tab := int(m.activeTab)
-			CycleTab(&tab, len(roadmapTabNames), -1)
+			CycleTab(&tab, len(roadmapTabNames), 1)
 			m.activeTab = RoadmapTab(tab)
 			m.cursor = 0
 
-		case "l", "]":
+		case "shift+tab", "shift+left":
 			tab := int(m.activeTab)
-			CycleTab(&tab, len(roadmapTabNames), 1)
+			CycleTab(&tab, len(roadmapTabNames), -1)
 			m.activeTab = RoadmapTab(tab)
 			m.cursor = 0
 
@@ -434,7 +434,7 @@ func (m *RoadmapModel) selectedRow() (*models.Task, *models.Project) {
 // HandledKeys implements KeySyncView.
 func (m *RoadmapModel) HandledKeys() []string {
 	return []string{
-		"h", "[", "l", "]",
+		"tab", "shift+left", "shift+right",
 		"H", "L",
 		"j", "down", "k", "up",
 		"g", "G", "ctrl+d", "ctrl+u",

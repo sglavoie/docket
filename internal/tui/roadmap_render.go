@@ -43,14 +43,14 @@ func (m *RoadmapModel) View() tea.View {
 	var helpParts []string
 	switch m.activeTab {
 	case RoadmapTabTimeline:
-		helpParts = []string{"[ / ] tabs", "j/k cursor", "H/L scroll", "z zoom", "space expand", "↵ task"}
+		helpParts = []string{"Tab tabs", "j/k cursor", "H/L scroll", "z zoom", "space expand", "↵ task"}
 		if m.showCriticalPath {
 			helpParts = append(helpParts, "c normal")
 		} else {
 			helpParts = append(helpParts, "c crit path")
 		}
 	default:
-		helpParts = []string{"[ / ] tabs", "j/k cursor"}
+		helpParts = []string{"Tab tabs", "j/k cursor"}
 	}
 	if m.canToggle {
 		helpParts = append(helpParts, "s scope")

@@ -123,14 +123,14 @@ func (m *MetricsDashboardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "esc":
 			return m, func() tea.Msg { return CloseMetricsDashboardMsg{} }
 
-		case "[", "h":
-			tab := int(m.activeTab)
-			CycleTab(&tab, len(metricsTabNames), -1)
-			m.activeTab = MetricsTab(tab)
-			m.blockedCursor = 0
-		case "]", "l":
+		case "tab", "shift+right":
 			tab := int(m.activeTab)
 			CycleTab(&tab, len(metricsTabNames), 1)
+			m.activeTab = MetricsTab(tab)
+			m.blockedCursor = 0
+		case "shift+tab", "shift+left":
+			tab := int(m.activeTab)
+			CycleTab(&tab, len(metricsTabNames), -1)
 			m.activeTab = MetricsTab(tab)
 			m.blockedCursor = 0
 
@@ -184,7 +184,7 @@ func (m *MetricsDashboardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m *MetricsDashboardModel) HandledKeys() []string {
 	return []string{
-		"[", "h", "]", "l",
+		"tab", "shift+left", "shift+right",
 		"t", "T", "g", "r",
 		"j", "down", "k", "up",
 		"enter",

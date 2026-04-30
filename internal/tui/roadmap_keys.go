@@ -3,8 +3,7 @@ package tui
 func (r *KeybindingRegistry) registerRoadmapBindings() {
 	views := []ViewType{ViewRoadmap}
 	r.addForViews(views, []Keybinding{
-		{Key: "h/l", Description: "Switch tab", Category: "Navigation"},
-		{Key: "[ / ]", Description: "Switch tab", Category: "Navigation"},
+		{Key: "Tab / shift+← / shift+→", Description: "Switch tab", Category: "Navigation"},
 		{Key: "H/L", Description: "Horizontal scroll", Category: "Navigation"},
 		{Key: "j/k", Description: "Move cursor up/down", Category: "Navigation"},
 		{Key: "↑/↓", Description: "Move cursor up/down", Category: "Navigation"},

@@ -181,20 +181,25 @@ func (m *ProjectFocusViewModel) handleKeyMsg(msg tea.KeyPressMsg) (tea.Model, te
 
 	// Sub-tab navigation
 	switch key {
-	case "(", ")":
+	case "shift+down":
 		if len(m.subTabNames) > 1 {
-			m.subTabRowFocused = !m.subTabRowFocused
+			m.subTabRowFocused = true
 		}
 		return m, nil
-	case "[", "h":
+	case "shift+up":
 		if len(m.subTabNames) > 1 {
-			CycleTab(&m.subTab, len(m.subTabNames)+1, -1)
+			m.subTabRowFocused = false
+		}
+		return m, nil
+	case "tab", "shift+right":
+		if len(m.subTabNames) > 1 {
+			CycleTab(&m.subTab, len(m.subTabNames)+1, 1)
 			m.clampCursor()
 			return m, nil
 		}
-	case "]", "l":
+	case "shift+tab", "shift+left":
 		if len(m.subTabNames) > 1 {
-			CycleTab(&m.subTab, len(m.subTabNames)+1, 1)
+			CycleTab(&m.subTab, len(m.subTabNames)+1, -1)
 			m.clampCursor()
 			return m, nil
 		}
@@ -333,7 +338,7 @@ func (m *ProjectFocusViewModel) HandledKeys() []string {
 		statusPrefixKeys(),
 		dueDatePrefixKeys(),
 		[]string{
-			"g", "[", "]",
+			"g", "tab", "shift+left", "shift+right", "shift+up", "shift+down",
 			"enter", "*", "e", "r", "y", "Y",
 			"1", "2", "3", "4", "5",
 			"esc",
@@ -402,7 +407,7 @@ func (m *ProjectFocusViewModel) View() tea.View {
 	// Footer
 	footerParts := "j/k nav · * unfocus · ,s/d/b/x status · 1-5 priority · dt/dm due"
 	if len(m.subTabNames) > 1 {
-		footerParts += " · [ / ] sections"
+		footerParts += " · Tab sections"
 	}
 	footerParts += " · ? help"
 	left := HelpStyle.Render(footerParts)

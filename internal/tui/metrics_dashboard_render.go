@@ -29,7 +29,7 @@ func (m *MetricsDashboardModel) View() tea.View {
 	tabBar := RenderTabBar(metricsTabNames, int(m.activeTab), m.width, 1, m.AccentColor())
 
 	// Footer
-	helpParts := []string{"[ / ] tabs", "t/T range", "r refresh"}
+	helpParts := []string{"Tab tabs", "t/T range", "r refresh"}
 	if m.canToggle {
 		helpParts = append(helpParts[:2], append([]string{"g scope"}, helpParts[2:]...)...)
 	}

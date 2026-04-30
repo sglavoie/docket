@@ -162,6 +162,7 @@ func (m *FocusViewModel) HandledKeys() []string {
 		commonActionKeys(),
 		[]string{
 			"g", "gp",
+			"tab", "shift+left", "shift+right", "shift+up", "shift+down",
 			"enter", "J", "K", "F", "m", "t",
 			"1", "2", "3", "4", "5",
 			"w", "u", "esc",

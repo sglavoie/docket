@@ -155,16 +155,16 @@ func handleSortKey(key string, s *SortState, onReset func(), onToggle func(SortF
 	return true
 }
 
-// cycleCustomSectionTab handles [ and ] keys for cycling through custom
-// section tabs with wraparound. Returns true if the key was handled.
-// The afterCycle callback is called after the tab index changes so the
-// caller can refresh its data.
+// cycleCustomSectionTab handles shift+left and shift+right keys for cycling
+// through custom section tabs with wraparound. Returns true if the key was
+// handled. The afterCycle callback is called after the tab index changes so
+// the caller can refresh its data.
 func cycleCustomSectionTab(key string, tab *int, tabCount int, afterCycle func()) bool {
 	if tabCount <= 1 {
 		return false
 	}
 	switch key {
-	case "[":
+	case "shift+left":
 		if *tab > 0 {
 			*tab = *tab - 1
 		} else {
@@ -174,7 +174,7 @@ func cycleCustomSectionTab(key string, tab *int, tabCount int, afterCycle func()
 			afterCycle()
 		}
 		return true
-	case "]":
+	case "shift+right":
 		if *tab < tabCount-1 {
 			*tab = *tab + 1
 		} else {

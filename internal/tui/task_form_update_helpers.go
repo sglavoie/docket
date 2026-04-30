@@ -69,13 +69,13 @@ func (m *TaskFormModel) handleTextInputKey(msg tea.KeyPressMsg, commit func(), i
 		m.focusPrev()
 		m.syncInputFocus()
 		return nil, true
-	case "[":
+	case "shift+left":
 		commit()
 		m.prevTab()
 		m.syncInputFocus()
 		m.err = nil
 		return nil, true
-	case "]":
+	case "shift+right":
 		commit()
 		m.nextTab()
 		m.syncInputFocus()

@@ -193,7 +193,7 @@ func (m *PriorityViewModel) View() tea.View {
 			b.WriteString(HelpStyle.Render("Search: ") + m.SearchInputView())
 			b.WriteString("\n")
 		}
-		b.WriteString(HelpStyle.Render("[ / ]: tabs" + m.activeTabHint()))
+		b.WriteString(HelpStyle.Render("shift+←/→: tabs" + m.activeTabHint()))
 		return tea.NewView(b.String())
 	}
 
@@ -308,7 +308,7 @@ func (m *PriorityViewModel) View() tea.View {
 		b.WriteString(HelpStyle.Render("Search: ") + m.SearchInputView())
 		b.WriteString("\n")
 	}
-	left := HelpStyle.Render("↑/↓ navigate · / search · [ / ] tabs · F filter · s start suggested · ,s/,d status" + tabHint)
+	left := HelpStyle.Render("↑/↓ navigate · / search · shift+←/→ tabs · F filter · s start suggested · ,s/,d status" + tabHint)
 	right := MutedStyle.Render(fmt.Sprintf("%d tasks", m.totalTasks))
 	b.WriteString(renderStatusBarFooter(left, right, m.Width(), m.AccentColor()))
 
@@ -332,6 +332,7 @@ func (m *PriorityViewModel) HandledKeys() []string {
 		commonActionKeys(),
 		[]string{
 			"g", "gt",
+			"shift+left", "shift+right", "shift+up", "shift+down",
 			"w", "x", "A",
 			"enter", "tab", "F", "m", "t", "/",
 			"1", "2", "3", "4", "5",

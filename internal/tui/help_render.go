@@ -192,7 +192,7 @@ func (m *HelpViewModel) View() tea.View {
 	if m.ready && m.viewport.TotalLineCount() > m.viewport.Height() {
 		scrollPercent = fmt.Sprintf(" %3.0f%%", m.viewport.ScrollPercent()*100)
 	}
-	right := HelpStyle.Render(fmt.Sprintf("[ / ]: tabs · \\ find tab · / filter · bksp clear · j/k scroll · %s%s", closeKey, scrollPercent))
+	right := HelpStyle.Render(fmt.Sprintf("shift+←/→: tabs · \\ find tab · / filter · bksp clear · j/k scroll · %s%s", closeKey, scrollPercent))
 
 	b.WriteString(renderStatusBarFooter(left, right, m.width))
 
@@ -209,7 +209,7 @@ func (m *HelpViewModel) StatusBarLabel() string {
 // HandledKeys returns the keys handled by the keybinding explorer view.
 func (m *HelpViewModel) HandledKeys() []string {
 	return []string{
-		"/", `\`, "backspace", "h", "l", "[", "]",
+		"/", `\`, "backspace", "shift+left", "shift+right",
 		"j", "k", "up", "down",
 		"g", "G",
 		"ctrl+u", "ctrl+d",

@@ -259,8 +259,8 @@ func (m *GlobalSearchModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.cursor++
 			}
 			return m, nil
-		case "[", "]":
-			if handleTabCycleKey(key, &m.tabs, false, m.filterTasks) {
+		case "shift+left", "shift+right":
+			if handleTabCycleKey(key, &m.tabs, m.filterTasks) {
 				return m, nil
 			}
 		case "ctrl+o":

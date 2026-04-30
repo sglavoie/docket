@@ -114,7 +114,7 @@ func (m *WorkflowRuleCreatorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) { //
 				return BackMsg{}
 			}
 
-		case "[":
+		case "shift+left":
 			// Switch to previous tab
 			if m.activeTab > tabTriggers {
 				m.blurCurrentField()
@@ -124,7 +124,7 @@ func (m *WorkflowRuleCreatorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) { //
 			}
 			return m, nil
 
-		case "]":
+		case "shift+right":
 			// Switch to next tab
 			if m.activeTab < tabScope {
 				m.blurCurrentField()

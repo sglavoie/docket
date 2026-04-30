@@ -208,6 +208,7 @@ func (m *AllTasksViewModel) HandledKeys() []string {
 		commonActionKeys(),
 		[]string{
 			"g", "gp",
+			"shift+left", "shift+right",
 			"zR", "zM",
 			"tab", "n", "N",
 			"enter", "F", "FP", "m", "t", "v",

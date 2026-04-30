@@ -110,8 +110,8 @@ func (m *NotesViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) { //nolint:goc
 		}
 
 		switch key {
-		case "[", "h", "]", "l":
-			if handleTabCycleKey(key, &m.tabs, true, m.loadNotes) {
+		case "shift+left", "shift+right":
+			if handleTabCycleKey(key, &m.tabs, m.loadNotes) {
 				return m, nil
 			}
 		case "esc":

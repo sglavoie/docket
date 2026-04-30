@@ -37,7 +37,7 @@ func (m *TaskFormModel) SupportsHelpShortcut() bool { return false }
 // Must stay in sync with keybindings_task_form.go and the switch cases in Update().
 func (m *TaskFormModel) HandledKeys() []string {
 	return []string{
-		"[", "]",
+		"shift+left", "shift+right",
 		"tab", "shift+tab",
 		"enter",
 		"ctrl+s",

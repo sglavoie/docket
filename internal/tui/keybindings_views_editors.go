@@ -98,7 +98,7 @@ func (r *KeybindingRegistry) registerTaskTemplatesBindings() {
 func (r *KeybindingRegistry) registerFilterBuilderBindings() {
 	views := []ViewType{ViewFilterBuilder}
 	r.add(
-		Keybinding{Key: "[ / ]", Description: "Switch tabs (Criteria/Options)", Category: "Navigation", Views: views},
+		Keybinding{Key: "shift+← / shift+→", Description: "Switch tabs (Criteria/Options)", Category: "Navigation", Views: views},
 		Keybinding{Key: "Tab/Shift+Tab", Description: "Navigate fields", Category: "Navigation", Views: views},
 		Keybinding{Key: "j/k", Description: "Navigate fields (vim-style)", Category: "Navigation", Views: views},
 		Keybinding{Key: "↑/↓", Description: "Navigate fields", Category: "Navigation", Views: views},
@@ -135,8 +135,7 @@ func (r *KeybindingRegistry) registerBlockersBindings() {
 		Keybinding{Key: "j/k", Description: "Navigate up/down", Category: "Navigation", Views: views},
 		Keybinding{Key: "↑/↓", Description: "Navigate up/down", Category: "Navigation", Views: views},
 		Keybinding{Key: "g/G", Description: "Go to first/last", Category: "Navigation", Views: views},
-		Keybinding{Key: "[ / ]", Description: "Switch tabs", Category: "Navigation", Views: views},
-		Keybinding{Key: "h/l", Description: "Switch tabs", Category: "Navigation", Views: views},
+		Keybinding{Key: "Tab / shift+← / shift+→", Description: "Switch tabs", Category: "Navigation", Views: views},
 		Keybinding{Key: "a/n", Description: "Add blocker", Category: "Actions", Views: views},
 		Keybinding{Key: "e", Description: "Edit blocker", Category: "Actions", Views: views},
 		Keybinding{Key: "E", Description: "Edit in external editor", Category: "Actions", Views: views},

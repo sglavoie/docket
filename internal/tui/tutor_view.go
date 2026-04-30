@@ -141,14 +141,14 @@ func (m *TutorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) { //nolint:gocyclo
 				m.updateViewport()
 			}
 			return m, nil
-		case "[":
+		case "shift+left":
 			CycleTab(&m.activeTab, len(m.categories)+1, -1)
 			m.filterTopics()
 			m.selectedIndex = 0
 			m.listOffset = 0
 			m.updateViewport()
 			return m, nil
-		case "]":
+		case "shift+right":
 			CycleTab(&m.activeTab, len(m.categories)+1, 1)
 			m.filterTopics()
 			m.selectedIndex = 0
@@ -211,7 +211,7 @@ func (m *TutorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) { //nolint:gocyclo
 
 func (m *TutorModel) HandledKeys() []string {
 	return []string{
-		"/", "tab", "h", "l", "[", "]",
+		"/", "tab", "shift+left", "shift+right",
 		"up", "k", "down", "j",
 		"g", "G",
 		"ctrl+u", "ctrl+d",
@@ -519,7 +519,7 @@ func (m *TutorModel) View() tea.View {
 	if m.activePane == 1 {
 		paneHint = "content"
 	}
-	leftFooter := HelpStyle.Render(fmt.Sprintf("Tab: switch pane (%s) · [ / ]: tabs · /: search · j/k: navigate · Esc: close", paneHint))
+	leftFooter := HelpStyle.Render(fmt.Sprintf("Tab: switch pane (%s) · shift+←/→: tabs · /: search · j/k: navigate · Esc: close", paneHint))
 	rightFooter := ""
 	if m.ready && m.viewport.TotalLineCount() > m.viewport.Height() {
 		rightFooter = MutedStyle.Render(fmt.Sprintf("%3.0f%%", m.viewport.ScrollPercent()*100))

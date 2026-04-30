@@ -65,8 +65,8 @@ func (m *FocusBoardModel) handleKeyMsg(msg tea.KeyPressMsg) (tea.Model, tea.Cmd)
 		m.applyFilter()
 		m.clampCursor()
 		return m, nil
-	case "[", "h", "]", "l":
-		if handleTabCycleKey(key, &m.tabs, true, func() {
+	case "shift+left", "shift+right":
+		if handleTabCycleKey(key, &m.tabs, func() {
 			m.applyFilter()
 			m.clampCursor()
 		}) {
@@ -197,7 +197,7 @@ func (m *FocusBoardModel) HandledKeys() []string {
 		commonActionKeys(),
 		[]string{
 			"g", "gp",
-			"tab", "[", "]",
+			"tab", "shift+left", "shift+right",
 			"zp",
 			"enter", "a", "x", "X",
 			"d", "p", "E", "t", "m",

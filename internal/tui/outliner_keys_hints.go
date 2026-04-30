@@ -195,7 +195,7 @@ func (m *OutlinerModel) HandledKeys() []string {
 			"A", "C", "T", "v", "a",
 			"F", "/",
 			"ctrl+f", "ctrl+t", "ctrl+s", "ctrl+a", "ctrl+e", "ctrl+v",
-			"[", "]",
+			"shift+left", "shift+right",
 			"x",
 			"y", "Y", "ctrl+y",
 			// P0-P9 perspective switching

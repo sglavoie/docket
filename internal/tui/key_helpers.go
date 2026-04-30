@@ -28,3 +28,9 @@ func syntheticKeyStr(s string) tea.KeyPressMsg {
 func syntheticCtrlKey(r rune) tea.KeyPressMsg {
 	return tea.KeyPressMsg{Code: r, Mod: tea.ModCtrl}
 }
+
+// syntheticShiftKey constructs a KeyPressMsg for a shift+key combination.
+// code should be a special key rune (e.g. tea.KeyRight for shift+right).
+func syntheticShiftKey(code rune) tea.KeyPressMsg {
+	return tea.KeyPressMsg{Code: code, Mod: tea.ModShift}
+}

@@ -108,9 +108,14 @@ func (m *SettingsModel) handleGlobalKey(key string) (bool, tea.Cmd) { //nolint:g
 			return BackMsg{}
 		}
 
-	case "(", ")":
+	case "shift+down":
 		if subTabNamesForTab(m.tabs.Active) != nil {
-			m.subTabRowFocused = !m.subTabRowFocused
+			m.subTabRowFocused = true
+		}
+		return true, nil
+	case "shift+up":
+		if subTabNamesForTab(m.tabs.Active) != nil {
+			m.subTabRowFocused = false
 		}
 		return true, nil
 
@@ -129,12 +134,12 @@ func (m *SettingsModel) handleGlobalKey(key string) (bool, tea.Cmd) { //nolint:g
 		m.focusCurrentField()
 		return true, nil
 
-	case "[", "]":
+	case "shift+left", "shift+right":
 		m.blurCurrentField()
 		if m.subTabRowFocused && subTabNamesForTab(m.tabs.Active) != nil {
 			sections := settingsTabSections[m.tabs.Active]
 			delta := 1
-			if key == "[" {
+			if key == "shift+left" {
 				delta = -1
 			}
 			CycleTab(&m.subTab, len(sections), delta)
@@ -143,7 +148,7 @@ func (m *SettingsModel) handleGlobalKey(key string) (bool, tea.Cmd) { //nolint:g
 			m.focusCurrentField()
 			return true, nil
 		}
-		if handleTabCycleKey(key, &m.tabs, false, func() {
+		if handleTabCycleKey(key, &m.tabs, func() {
 			m.focusIndex = tabFieldStart[m.tabs.Active]
 			m.subTab = 0
 			m.subTabRowFocused = false

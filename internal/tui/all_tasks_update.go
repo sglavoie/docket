@@ -203,7 +203,7 @@ func (m *AllTasksViewModel) handleKeyMsg(msg tea.KeyPressMsg) (tea.Model, tea.Cm
 	}
 
 	// Tab navigation
-	if handleTabCycleKey(key, &m.tabs, true, func() {
+	if handleTabCycleKey(key, &m.tabs, func() {
 		// When the new tab's IncludeCompleted setting differs from what
 		// was loaded, we must reload all tasks so completed tasks are
 		// included or excluded correctly.

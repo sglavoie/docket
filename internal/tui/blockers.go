@@ -51,7 +51,7 @@ func (m *BlockersModel) HandledKeys() []string {
 	return []string{
 		// Navigation
 		"j", "down", "k", "up", "g", "G",
-		"[", "h", "]", "l",
+		"tab", "shift+left", "shift+right",
 		// Actions
 		"a", "n", "e", "E", "R", "d", "x", "enter",
 		// Add/edit mode

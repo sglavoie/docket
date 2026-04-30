@@ -19,7 +19,7 @@ func (m *FilterBuilderModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) { //nolint
 				return BackMsg{}
 			}
 
-		case "[":
+		case "shift+left":
 			if m.activeTab > slTabCriteria {
 				m.blurCurrentField()
 				m.activeTab--
@@ -28,7 +28,7 @@ func (m *FilterBuilderModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) { //nolint
 			}
 			return m, nil
 
-		case "]":
+		case "shift+right":
 			if m.activeTab < slTabOptions {
 				m.blurCurrentField()
 				m.activeTab++
@@ -143,7 +143,7 @@ func (m *FilterBuilderModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) { //nolint
 func (m *FilterBuilderModel) HandledKeys() []string {
 	return []string{
 		// Navigation between tabs
-		"[", "]",
+		"shift+left", "shift+right",
 		// Navigation between fields
 		"tab", "shift+tab", "enter",
 		"left", "right", "up", "down",

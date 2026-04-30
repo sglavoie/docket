@@ -47,12 +47,17 @@ func (m *PriorityViewModel) handleKeypress(msg tea.KeyPressMsg) (tea.Model, tea.
 
 	// Tab row focus switching
 	switch key {
-	case "(", ")":
+	case "shift+down":
 		if len(m.subTabNames) > 1 {
-			m.subTabRowFocused = !m.subTabRowFocused
+			m.subTabRowFocused = true
 		}
 		return m, nil
-	case "[", "h":
+	case "shift+up":
+		if len(m.subTabNames) > 1 {
+			m.subTabRowFocused = false
+		}
+		return m, nil
+	case "shift+left":
 		if m.subTabRowFocused && len(m.subTabNames) > 1 {
 			total := len(m.subTabNames) + 1
 			CycleTab(&m.subTab, total, -1)
@@ -66,7 +71,7 @@ func (m *PriorityViewModel) handleKeypress(msg tea.KeyPressMsg) (tea.Model, tea.
 			m.clampCursor()
 		}
 		return m, nil
-	case "]", "l":
+	case "shift+right":
 		if m.subTabRowFocused && len(m.subTabNames) > 1 {
 			total := len(m.subTabNames) + 1
 			CycleTab(&m.subTab, total, 1)

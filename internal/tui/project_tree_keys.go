@@ -284,7 +284,7 @@ func (m *ProjectTreeModel) handleMiscActionKeys(key string, _ []*TreeNode) (bool
 	case "?":
 		return true, helpCmd(ViewProjectTree, "Project Tree", m.GetHelpItems())
 
-	case "[", "]":
+	case "shift+left", "shift+right":
 		tabs := m.customSectionTabs()
 		if tabs != nil {
 			if cycleCustomSectionTab(key, &m.customSectionTab, len(tabs), func() {

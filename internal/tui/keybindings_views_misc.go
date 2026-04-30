@@ -43,8 +43,7 @@ func (r *KeybindingRegistry) registerKeybindingExplorerBindings() {
 		Keybinding{Key: "/", Description: "Search keybindings", Category: "Explorer", Views: views},
 		Keybinding{Key: `\`, Description: "Search and focus tab", Category: "Explorer", Views: views},
 		Keybinding{Key: "Backspace", Description: "Clear search filter", Category: "Explorer", Views: views},
-		Keybinding{Key: "h/l", Description: "Previous/next category tab", Category: "Explorer", Views: views},
-		Keybinding{Key: "[ / ]", Description: "Previous/next category tab", Category: "Explorer", Views: views},
+		Keybinding{Key: "shift+← / shift+→", Description: "Previous/next category tab", Category: "Explorer", Views: views},
 		Keybinding{Key: "j/k", Description: "Scroll down/up", Category: "Explorer", Views: views},
 		Keybinding{Key: "↑/↓", Description: "Scroll down/up", Category: "Explorer", Views: views},
 		Keybinding{Key: "g/G", Description: "Go to top/bottom", Category: "Explorer", Views: views},
@@ -62,8 +61,7 @@ func (r *KeybindingRegistry) registerTutorBindings() {
 		Keybinding{Key: "j/k", Description: "Navigate list / scroll content", Category: "Navigation", Views: views},
 		Keybinding{Key: "↑/↓", Description: "Navigate list / scroll content", Category: "Navigation", Views: views},
 		Keybinding{Key: "g/G", Description: "Scroll to top/bottom (content pane)", Category: "Navigation", Views: views},
-		Keybinding{Key: "h/l", Description: "Previous/next category", Category: "Navigation", Views: views},
-		Keybinding{Key: "[ / ]", Description: "Previous/next category", Category: "Navigation", Views: views},
+		Keybinding{Key: "shift+← / shift+→", Description: "Previous/next category", Category: "Navigation", Views: views},
 		Keybinding{Key: "Tab", Description: "Switch pane (list/content)", Category: "Navigation", Views: views},
 		Keybinding{Key: "/", Description: "Search", Category: "Navigation", Views: views},
 		Keybinding{Key: "Ctrl+U/D", Description: "Page up/down", Category: "Navigation", Views: views},
@@ -77,8 +75,8 @@ func (r *KeybindingRegistry) registerSettingsBindings() {
 	r.add(
 		// Field navigation
 		Keybinding{Key: "Tab/Shift+Tab", Description: "Navigate fields", Category: "Navigation", Views: views},
-		Keybinding{Key: "[ / ]", Description: "Cycle tabs", Category: "Navigation", Views: views},
-		Keybinding{Key: "( / )", Description: "Toggle sub-tab row focus", Category: "Navigation", Views: views},
+		Keybinding{Key: "shift+← / shift+→", Description: "Cycle tabs", Category: "Navigation", Views: views},
+		Keybinding{Key: "shift+↑ / shift+↓", Description: "Enter/exit sub-tab row focus", Category: "Navigation", Views: views},
 		Keybinding{Key: "h/l", Description: "Cycle selector left/right", Category: "Navigation", Views: views},
 		Keybinding{Key: "←/→", Description: "Cycle selector left/right", Category: "Navigation", Views: views},
 		// Common actions

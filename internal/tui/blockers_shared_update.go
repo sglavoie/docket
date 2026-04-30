@@ -119,8 +119,16 @@ func blockerUpdateShared(s *blockerViewState, ds blockerDataSource, msg tea.Msg)
 				s.confirm.Show("delete", "Delete blocker?")
 			}
 			return nil, nil, true
-		case "[", "h", "]", "l":
-			if handleTabCycleKey(keyMsg.String(), &s.tabs, true, func() {
+		case "tab":
+			s.tabs.Cycle(1)
+			blockerClampCursor(s, ds)
+			return nil, nil, true
+		case "shift+tab":
+			s.tabs.Cycle(-1)
+			blockerClampCursor(s, ds)
+			return nil, nil, true
+		case "shift+left", "shift+right":
+			if handleTabCycleKey(keyMsg.String(), &s.tabs, func() {
 				blockerClampCursor(s, ds)
 			}) {
 				return nil, nil, true

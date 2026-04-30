@@ -15,15 +15,15 @@ func TestTaskForm_TabSwitchForward(t *testing.T) {
 	if m.activeTab != formTabBasics {
 		t.Fatalf("expected initial tab %d, got %d", formTabBasics, m.activeTab)
 	}
-	m = sendFormKey(m, syntheticKey(']'))
+	m = sendFormKey(m, syntheticShiftKey(tea.KeyRight))
 	if m.activeTab != formTabSchedule {
 		t.Errorf("after ]: expected tab %d, got %d", formTabSchedule, m.activeTab)
 	}
-	m = sendFormKey(m, syntheticKey(']'))
+	m = sendFormKey(m, syntheticShiftKey(tea.KeyRight))
 	if m.activeTab != formTabChildren {
 		t.Errorf("after ]]: expected tab %d, got %d", formTabChildren, m.activeTab)
 	}
-	m = sendFormKey(m, syntheticKey(']'))
+	m = sendFormKey(m, syntheticShiftKey(tea.KeyRight))
 	if m.activeTab != formTabDetails {
 		t.Errorf("after ]]]: expected tab %d, got %d", formTabDetails, m.activeTab)
 	}
@@ -31,7 +31,7 @@ func TestTaskForm_TabSwitchForward(t *testing.T) {
 
 func TestTaskForm_TabSwitchBackward(t *testing.T) {
 	m := newTestTaskForm()
-	m = sendFormKey(m, syntheticKey('['))
+	m = sendFormKey(m, syntheticShiftKey(tea.KeyLeft))
 	if m.activeTab != formTabDetails {
 		t.Errorf("[: expected wrap to tab %d, got %d", formTabDetails, m.activeTab)
 	}
@@ -40,7 +40,7 @@ func TestTaskForm_TabSwitchBackward(t *testing.T) {
 func TestTaskForm_TabSwitchWrapsForward(t *testing.T) {
 	m := newTestTaskForm()
 	for range formTabCount {
-		m = sendFormKey(m, syntheticKey(']'))
+		m = sendFormKey(m, syntheticShiftKey(tea.KeyRight))
 	}
 	if m.activeTab != formTabBasics {
 		t.Errorf("full cycle: expected tab %d, got %d", formTabBasics, m.activeTab)
@@ -53,7 +53,7 @@ func TestTaskForm_TabSwitchResetsFocusIndex(t *testing.T) {
 	if m.focusIndex != 1 {
 		t.Fatalf("expected focusIndex 1, got %d", m.focusIndex)
 	}
-	m = sendFormKey(m, syntheticKey(']'))
+	m = sendFormKey(m, syntheticShiftKey(tea.KeyRight))
 	if m.focusIndex != 0 {
 		t.Errorf("tab switch should reset focusIndex; got %d", m.focusIndex)
 	}
@@ -82,7 +82,7 @@ func TestTaskForm_FocusCyclesBackward_Basics(t *testing.T) {
 func TestTaskForm_FocusNoOpOnEmptyTab(t *testing.T) {
 	m := newTestTaskForm()
 	for range formTabCount {
-		m = sendFormKey(m, syntheticKey(']'))
+		m = sendFormKey(m, syntheticShiftKey(tea.KeyRight))
 	}
 	m.activeTab = formTabChildren
 	m.focusIndex = 0

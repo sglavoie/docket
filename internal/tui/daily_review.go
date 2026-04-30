@@ -132,7 +132,7 @@ func (m *DailyReviewModel) handleKeyMsg(msg tea.KeyPressMsg) (tea.Model, tea.Cmd
 	m.err = nil
 
 	// Tab switching
-	if handleTabCycleKey(key, &m.tabs, true, func() {
+	if handleTabCycleKey(key, &m.tabs, func() {
 		m.focusedSection = nil
 		m.scrollOffset = 0
 		m.calculateNavigation()
@@ -332,6 +332,7 @@ func (m *DailyReviewModel) HandledKeys() []string {
 		commonActionKeys(),
 		[]string{
 			"g",
+			"shift+left", "shift+right",
 			"zR", "zM", "zp",
 			"tab", "n", "N",
 			"gd", "gt", "gs", "gl", "gf", "gr", "gS", "go", "gp",

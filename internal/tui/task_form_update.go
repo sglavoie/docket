@@ -101,14 +101,14 @@ func (m *TaskFormModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.focusPrev()
 				m.syncInputFocus()
 				return m, nil
-			case "[":
+			case "shift+left":
 				m.draft.title = m.titleInput.Value()
 				m.titleInput.Blur()
 				m.prevTab()
 				m.syncInputFocus()
 				m.err = nil
 				return m, nil
-			case "]":
+			case "shift+right":
 				m.draft.title = m.titleInput.Value()
 				m.titleInput.Blur()
 				m.nextTab()
@@ -239,11 +239,11 @@ func (m *TaskFormModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		// ── Normal navigation ──────────────────────────────────────────────────
 		switch msg.String() {
-		case "]":
+		case "shift+right":
 			m.nextTab()
 			m.syncInputFocus()
 			m.err = nil
-		case "[":
+		case "shift+left":
 			m.prevTab()
 			m.syncInputFocus()
 			m.err = nil

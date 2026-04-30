@@ -247,26 +247,16 @@ func handleZPrefix(key string, expandAll, collapseAll func()) bool {
 	return true // consume unknown z-key
 }
 
-// handleTabCycleKey handles the standard tab cycling keys ([ and ] with
-// optional h and l aliases). It calls Cycle on the TabState and then invokes
-// afterCycle. Set withHL to true for views that use h/l as tab cycle keys;
-// views that use h/l for other purposes (e.g., column movement) should pass
-// false. Returns true if the key was consumed.
-func handleTabCycleKey(key string, tabs *TabState, withHL bool, afterCycle func()) bool {
+// handleTabCycleKey handles the standard tab cycling keys (shift+left and
+// shift+right). It calls Cycle on the TabState and then invokes afterCycle.
+// Returns true if the key was consumed.
+func handleTabCycleKey(key string, tabs *TabState, afterCycle func()) bool {
 	delta := 0
 	switch key {
-	case "[":
+	case "shift+left":
 		delta = -1
-	case "]":
+	case "shift+right":
 		delta = 1
-	case "h":
-		if withHL {
-			delta = -1
-		}
-	case "l":
-		if withHL {
-			delta = 1
-		}
 	}
 	if delta == 0 {
 		return false

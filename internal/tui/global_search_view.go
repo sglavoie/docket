@@ -123,5 +123,5 @@ func (m *GlobalSearchModel) renderHelpText() string {
 	if m.ac.IsActive() {
 		return HelpStyle.Render("Tab: accept · ↑↓: navigate · Esc: dismiss")
 	}
-	return HelpStyle.Render(fmt.Sprintf("[ / ] tabs · ↑↓ nav · Enter · Ctrl+O completed · ?: help · Esc · %d results", len(m.filtered)))
+	return HelpStyle.Render(fmt.Sprintf("shift+←/→ tabs · ↑↓ nav · Enter · Ctrl+O completed · ?: help · Esc · %d results", len(m.filtered)))
 }

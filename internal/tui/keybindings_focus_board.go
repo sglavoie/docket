@@ -7,7 +7,7 @@ func (r *KeybindingRegistry) registerFocusBoardBindings() {
 		Keybinding{Key: "j/k", Description: "Navigate list", Category: "Navigation", Views: views},
 		Keybinding{Key: "gg/G", Description: "Jump to top/bottom", Category: "Navigation", Views: views},
 		Keybinding{Key: "ctrl+u/d", Description: "Page up/down", Category: "Navigation", Views: views},
-		Keybinding{Key: "Tab/[ / ]", Description: "Switch tabs", Category: "Navigation", Views: views},
+		Keybinding{Key: "Tab / shift+← / shift+→", Description: "Switch tabs", Category: "Navigation", Views: views},
 		Keybinding{Key: "Enter", Description: "Navigate to task / open URL", Category: "Navigation", Views: views},
 		Keybinding{Key: "gp", Description: "Go to task in project", Category: "Navigation", Views: views},
 		Keybinding{Key: "o", Description: "View task details", Category: "Navigation", Views: views},

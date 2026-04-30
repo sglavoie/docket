@@ -119,7 +119,7 @@ func (r *KeybindingRegistry) registerProjectTreeBindings() {
 		Keybinding{Key: "Fx", Description: "Clear all filters", Category: "Filters", Views: views},
 
 		// Custom Section Tabs
-		Keybinding{Key: "[ / ]", Description: "Cycle custom section tabs", Category: "Navigation", Views: views},
+		Keybinding{Key: "shift+← / shift+→", Description: "Cycle custom section tabs", Category: "Navigation", Views: views},
 
 		// Notes
 		Keybinding{Key: "{", Description: "Open notes view", Category: "Notes", Views: views},

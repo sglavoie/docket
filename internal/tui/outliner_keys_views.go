@@ -171,7 +171,7 @@ func (m *OutlinerModel) handleUtilityKey(key string) (tea.Model, tea.Cmd, bool) 
 		cmd, _ := handleToggleActiveKey(m)
 		return m, cmd, true
 
-	case "[", "]":
+	case "shift+left", "shift+right":
 		if tabs := m.customSectionTabs(); tabs != nil {
 			tab := m.customSectionTabIndex()
 			cycleCustomSectionTab(key, &tab, len(tabs), func() {

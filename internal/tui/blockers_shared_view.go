@@ -42,7 +42,7 @@ func blockerViewShared(s *blockerViewState, ds blockerDataSource) string {
 		blockerListView(s, ds, visible, &b)
 	}
 
-	helpText := "a: add · e: edit · R: resolve/unresolve · d: delete · g: go to project · Enter: expand · h/l/[ / ] tabs · Esc: close"
+	helpText := "a: add · e: edit · R: resolve/unresolve · d: delete · g: go to project · Enter: expand · Tab tabs · Esc: close"
 	b.WriteString(HelpStyle.Render(renderWrappingHelpLine(helpText, s.width)))
 
 	return b.String()

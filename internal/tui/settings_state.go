@@ -290,7 +290,7 @@ type SettingsModel struct {
 
 	tabs               TabState
 	subTab             int  // active sub-tab index within current tab
-	subTabRowFocused   bool // true when [ / ] navigates sub-tabs instead of main tabs
+	subTabRowFocused   bool // true when shift+left/right navigates sub-tabs instead of main tabs
 	focusIndex         int  // 0=editor .. 74=outlinerColumnDefaults, 75-89=alert settings, 90=stages, 91=appearance
 	scrollOffset       int  // vertical scroll offset within current tab content
 	validationErr      string

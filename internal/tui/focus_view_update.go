@@ -69,15 +69,20 @@ func (m *FocusViewModel) handleKeyMsg(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) 
 		return m.handleQueueReorder(1)
 	case "K":
 		return m.handleQueueReorder(-1)
-	case "(", ")":
+	case "shift+down":
 		if len(m.subTabNames) > 1 {
-			m.subTabRowFocused = !m.subTabRowFocused
+			m.subTabRowFocused = true
 		}
 		return m, nil
-	case "[", "h":
-		return m.handleTabNavigation(-1)
-	case "]", "l":
+	case "shift+up":
+		if len(m.subTabNames) > 1 {
+			m.subTabRowFocused = false
+		}
+		return m, nil
+	case "tab", "shift+right":
 		return m.handleTabNavigation(1)
+	case "shift+tab", "shift+left":
+		return m.handleTabNavigation(-1)
 	case "r":
 		m.refreshViewState()
 		return m, nil
