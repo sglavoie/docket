@@ -1,0 +1,122 @@
+package tui
+
+import "charm.land/lipgloss/v2"
+
+// Manager panel and sidebar styles.
+var (
+	TagManagerBoxStyle = lipgloss.NewStyle().
+				Border(lipgloss.RoundedBorder()).
+				BorderForeground(ColorPrimary).
+				Padding(1, 2)
+
+	TagManagerItemStyle = lipgloss.NewStyle().
+				Foreground(ColorMuted)
+
+	TagManagerItemSelectedStyle = lipgloss.NewStyle().
+					Foreground(ColorSelectedFg).
+					Bold(true)
+
+	TagManagerCountStyle = lipgloss.NewStyle().
+				Foreground(ColorSecondary)
+
+	TagManagerErrorStyle = lipgloss.NewStyle().
+				Foreground(ColorError)
+
+	SectionBadgeStyle = lipgloss.NewStyle().
+				Foreground(ColorBadgeText).
+				Background(ColorBackground)
+
+	ChildrenBadgeStyle = lipgloss.NewStyle().
+				Foreground(ColorPrimary).
+				Background(ColorBackground)
+
+	PinnedProjectStyle = lipgloss.NewStyle().
+				Foreground(ColorSuccess).
+				Bold(true)
+
+	PinnedNumberStyle = lipgloss.NewStyle().
+				Foreground(ColorWarning).
+				Bold(true)
+
+	ActiveStyle = lipgloss.NewStyle().
+			Foreground(ColorAccent)
+
+	TriagedBadgeStyle = lipgloss.NewStyle().
+				Foreground(ColorWarning).
+				Italic(true)
+
+	PriorityWaitingHeaderStyle = lipgloss.NewStyle().
+					Foreground(ColorMuted).
+					Italic(true).
+					MarginTop(1)
+
+	SuggestionBoxStyle = lipgloss.NewStyle().
+				Border(lipgloss.RoundedBorder()).
+				BorderForeground(ColorAccent).
+				Padding(0, 1)
+
+	SuggestionHeaderStyle = lipgloss.NewStyle().
+				Foreground(ColorAccent).
+				Bold(true)
+
+	SuggestionReasonStyle = lipgloss.NewStyle().
+				Foreground(ColorMuted).
+				Italic(true)
+
+	SuggestionStarStyle = lipgloss.NewStyle().
+				Foreground(ColorAccent).
+				Bold(true)
+
+	TitlePriority1Style = lipgloss.NewStyle().Foreground(ColorPriority1Title).Bold(true).Italic(true)
+	TitlePriority2Style = lipgloss.NewStyle().Foreground(ColorPriority2Title).Bold(true)
+	TitlePriority3Style = lipgloss.NewStyle().Foreground(ColorPriority3Title)
+	TitlePriority4Style = lipgloss.NewStyle().Foreground(ColorPriority4Title)
+	TitlePriority5Style = lipgloss.NewStyle().Foreground(ColorPriority5Title)
+
+	RuleKeywordStyle   = makeColorStyle(ColorRuleKeyword)
+	RuleOperatorStyle  = makeColorStyle(ColorRuleOperator)
+	RuleHighlightStyle = lipgloss.NewStyle().Foreground(ColorAccent).Bold(true)
+
+	HighlightStyle = lipgloss.NewStyle().Background(ColorHighlight).Foreground(lipgloss.Color("0")).Bold(true)
+
+	MatchHighlightStyle       = lipgloss.NewStyle().Foreground(ColorHighlight)
+	TagInlineStyle            = lipgloss.NewStyle().Foreground(ColorSecondary)
+	CheckmarkStyle            = lipgloss.NewStyle().Foreground(ColorSuccess)
+	WarningIconStyle          = lipgloss.NewStyle().Foreground(ColorWarning)
+	ErrorIconStyle            = lipgloss.NewStyle().Foreground(ColorError)
+	SuccessBoldStyle          = BoldStyle.Foreground(ColorSuccess)
+	BoldPrimaryStyle          = BoldStyle.Foreground(ColorPrimary)
+	BoldSecondaryStyle        = BoldStyle.Foreground(ColorSecondary)
+	BoldPrimaryUnderlineStyle = BoldStyle.Foreground(ColorPrimary).Underline(true)
+	PurpleStyle               = lipgloss.NewStyle().Foreground(ColorPurple)
+	SidebarStyle              = lipgloss.NewStyle().
+					BorderStyle(lipgloss.RoundedBorder()).
+					BorderForeground(ColorBorder).
+					Padding(1)
+
+	SidebarHeaderStyle = lipgloss.NewStyle().
+				Bold(true).
+				Foreground(ColorPrimary)
+
+	TagStyle = lipgloss.NewStyle().
+			Foreground(ColorSecondary).
+			Background(ColorBackground).
+			Padding(0, 1)
+
+	SidebarFocusBadgeStyle = lipgloss.NewStyle().
+				Foreground(ColorAccent).
+				Bold(true)
+
+	SidebarCardStyle = lipgloss.NewStyle().
+				Border(lipgloss.RoundedBorder()).
+				BorderForeground(ColorBorder).
+				Padding(0, 1)
+
+	SidebarCardFocusedStyle = lipgloss.NewStyle().
+				Border(lipgloss.RoundedBorder()).
+				BorderForeground(ColorPrimary).
+				Padding(0, 1)
+
+	SidebarCardTitleStyle = lipgloss.NewStyle().
+				Foreground(ColorMuted)
+)
