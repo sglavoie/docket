@@ -44,6 +44,9 @@ func (PopToAnchorMsg) closePopStyle() popStyle { return popToAnchor }
 // BackMsg requests navigation back to the previous view.
 type BackMsg struct{}
 
+// ShowAskMsg requests opening the AI assistant view.
+type ShowAskMsg struct{}
+
 // NavigateHistoryBackMsg requests navigation backward through view history.
 type NavigateHistoryBackMsg struct{}
 

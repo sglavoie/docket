@@ -5,42 +5,31 @@ import (
 	"os/exec"
 )
 
-// ShowAskMsg opens the AI assistant view.
-type ShowAskMsg struct{}
-
-// AskStreamStartMsg carries the streaming reader and command back to the
-// Update loop so they are assigned on the main goroutine, avoiding a data
-// race between the tea.Cmd goroutine and the model.
+// AskStreamStartMsg signals the start of a streaming response.
 type AskStreamStartMsg struct {
 	Reader    io.ReadCloser
 	Cmd       *exec.Cmd
 	FirstText string
 }
 
-// AskStreamChunkMsg delivers a chunk of streaming response text.
+// AskStreamChunkMsg contains a chunk of streamed text.
 type AskStreamChunkMsg struct {
 	Text string
 }
 
-// AskStreamDoneMsg signals the streaming response is complete.
+// AskStreamDoneMsg signals the end of streaming.
 type AskStreamDoneMsg struct {
-	FullResponse string
-	Err          error
+	Err error
 }
 
-// AskApplyCommandsMsg requests execution of extracted tt commands.
-type AskApplyCommandsMsg struct {
-	Commands []string
-}
-
-// AskCommandResultMsg reports the result of executing a tt command.
+// AskCommandResultMsg contains the result of executing a single command.
 type AskCommandResultMsg struct {
 	Command string
 	Output  string
 	Err     error
 }
 
-// AskCommandBatchMsg reports the results of executing all tt commands.
+// AskCommandBatchMsg contains results from multiple commands.
 type AskCommandBatchMsg struct {
 	Results []AskCommandResultMsg
 }
