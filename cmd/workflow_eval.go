@@ -1,228 +1,94 @@
 package cmd
 
 import (
-	"fmt"
+	"time"
 
-	"github.com/spf13/cobra"
-
+	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/tt/internal/logging"
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/storage"
-	"github.com/sglavoie/tt/internal/tterrors"
 	"github.com/sglavoie/tt/internal/workflow"
 )
 
-var (
-	evalAll     bool
-	evalForce   bool
-	evalDryRun  bool
-	evalQuiet   bool
-	evalProject string
-)
-
-var workflowEvalCmd = &cobra.Command{
-	Use:   "eval",
-	Short: "Evaluate workflow rules for tasks",
-	Long: `Evaluate workflow rules against tasks and apply matching actions.
-
-This command is useful for time-based rules (due_days, updated_days, created_days)
-that need periodic evaluation. Rules are normally only evaluated when tasks change,
-so this command allows running them on a schedule or manually.
-
-By default, evaluates only the current project. Use --all to evaluate all projects.
-Evaluation is skipped if recently run (configurable interval). Use --force to override.
-
-EXAMPLES
-
-  Evaluate current project:
-    tt workflow eval
-
-  Evaluate all projects:
-    tt workflow eval --all
-
-  Preview changes without saving (dry-run):
-    tt workflow eval --dry-run
-
-  Force evaluation even if recently run:
-    tt workflow eval --force
-
-  Silent mode for cron jobs:
-    tt workflow eval --all --quiet
-
-CRON EXAMPLE
-
-  # Evaluate all projects daily at 7am
-  0 7 * * * /usr/local/bin/tt workflow eval --all --quiet`,
-	RunE: runWorkflowEval,
+// WorkflowEvalResult holds the result of evaluating workflow rules for a project.
+type WorkflowEvalResult struct {
+	ProjectName       string
+	ModifiedTasks     int
+	RulesApplied      map[string]int // rule ID -> count of tasks affected
+	Skipped           bool           // true if evaluation was skipped (recently evaluated)
+	ProjectStatusSet  bool           // true if project status was auto-set
+	ProjectStatusIcon string         // new project status icon key (if set)
+	ProjectRuleName   string         // name of the project rule that matched
+	Error             error
 }
 
-func init() {
-	workflowCmd.AddCommand(workflowEvalCmd)
+// EvaluateProjectWorkflowRules evaluates workflow rules for a project.
+// If force is false and the project was recently evaluated, evaluation is skipped.
+// The project must already be loaded with tasks.
+// Returns the evaluation result and updates the eval state in config.
+func EvaluateProjectWorkflowRules(project *models.Project, cfg *config.Config, configManager *config.Manager, force bool) WorkflowEvalResult {
+	result := WorkflowEvalResult{
+		ProjectName:  project.Name,
+		RulesApplied: make(map[string]int),
+	}
 
-	workflowEvalCmd.Flags().BoolVar(&evalAll, "all", false, "Evaluate all projects")
-	workflowEvalCmd.Flags().BoolVarP(&evalForce, "force", "f", false, "Force evaluation even if recently run")
-	workflowEvalCmd.Flags().BoolVar(&evalDryRun, "dry-run", false, "Preview changes without saving")
-	workflowEvalCmd.Flags().BoolVar(&evalQuiet, "quiet", false, "Suppress output (for cron jobs)")
-	workflowEvalCmd.Flags().StringVar(&evalProject, "project", "", "Specific project to evaluate (name or ID)")
-}
-
-func runWorkflowEval(cmd *cobra.Command, args []string) error { //nolint:gocyclo
-	cfg, configManager, err := LoadConfig()
-	if err != nil {
-		return err
+	// Check if evaluation is needed
+	if !force && !cfg.ShouldEvaluateWorkflow(project.ID) {
+		result.Skipped = true
+		return result
 	}
 
 	rules := cfg.GetEnabledWorkflowRules()
 	if len(rules) == 0 {
-		if !evalQuiet {
-			fmt.Println("No enabled workflow rules. Use 'tt workflow init' or 'tt workflow toggle' to enable rules.")
-		}
-		return nil
+		result.Skipped = true
+		return result
 	}
 
-	var projects []*models.Project
+	// Run auto-unblock before rule evaluation
+	project.CheckAndAutoUnblock()
 
-	if evalProject != "" {
-		// Specific project
-		p := cfg.GetProject(evalProject)
-		if p == nil {
-			return tterrors.NewProjectNotFoundError(evalProject)
-		}
-		projects = append(projects, p)
-	} else if evalAll {
-		// All projects
-		for _, p := range cfg.Projects {
-			if !p.Archived {
-				projects = append(projects, p)
-			}
-		}
-	} else {
-		// Current project
-		p := cfg.GetCurrentProject()
-		if p == nil {
-			return NoCurrentProjectError()
-		}
-		projects = append(projects, p)
-	}
+	// Evaluate rules
+	evalResult := workflow.EvaluateRules(project.Tasks, rules)
 
-	if len(projects) == 0 {
-		if !evalQuiet {
-			fmt.Println("No projects to evaluate.")
-		}
-		return nil
-	}
+	result.ModifiedTasks = len(evalResult.ModifiedTasks)
+	result.RulesApplied = evalResult.RuleTriggerCounts
 
-	type evalResultItem struct {
-		project           *models.Project
-		modified          int
-		rulesApplied      map[string]int
-		skipped           bool
-		projectStatusSet  bool
-		projectStatusIcon string
-		projectRuleName   string
-		err               error
-	}
-
-	results := make([]evalResultItem, len(projects))
-	totalModified := 0
-	totalSkipped := 0
-	totalErrors := 0
-
-	for i, p := range projects {
-		results[i].project = p
-
-		// Load project tasks
-		if err := storage.LoadProject(p); err != nil {
-			results[i].err = fmt.Errorf("failed to load: %w", err)
-			totalErrors++
-			continue
+	// Only save if there were actual modifications
+	if result.ModifiedTasks > 0 {
+		if err := SaveProject(project, nil); err != nil {
+			result.Error = err
+			return result
 		}
 
-		if evalDryRun {
-			// Dry-run mode: evaluate but don't save
-			// Skip CheckAndAutoUnblock to avoid mutating state
-			evalResult := workflow.EvaluateRules(p.Tasks, rules)
-			results[i].modified = len(evalResult.ModifiedTasks)
-			results[i].rulesApplied = evalResult.RuleTriggerCounts
-
-			// Dry-run project-level eval
-			if p.StatusIconSource != "user" {
-				projCtx := &workflow.ProjectEvaluationContext{
-					Project: p,
-					Tasks:   p.Tasks,
-				}
-				projResult := workflow.EvaluateProjectRules(projCtx, rules)
-				if projResult.NewStatusIcon != "" {
-					results[i].projectStatusSet = true
-					results[i].projectStatusIcon = projResult.NewStatusIcon
-					results[i].projectRuleName = projResult.AppliedRuleName
-				}
-			}
-		} else {
-			// Normal evaluation
-			result := EvaluateProjectWorkflowRules(p, cfg, configManager, evalForce)
-			results[i].modified = result.ModifiedTasks
-			results[i].rulesApplied = result.RulesApplied
-			results[i].skipped = result.Skipped
-			results[i].projectStatusSet = result.ProjectStatusSet
-			results[i].projectStatusIcon = result.ProjectStatusIcon
-			results[i].projectRuleName = result.ProjectRuleName
-			results[i].err = result.Error
-		}
-
-		if results[i].err != nil {
-			totalErrors++
-		} else if results[i].skipped {
-			totalSkipped++
-		} else {
-			totalModified += results[i].modified
+		// Update trigger counts
+		if len(evalResult.RuleTriggerCounts) > 0 && configManager != nil {
+			cfg.IncrementRuleTriggerCounts(evalResult.RuleTriggerCounts)
 		}
 	}
 
-	// Output results
-	if !evalQuiet {
-		if evalDryRun {
-			fmt.Println("Dry-run results (no changes saved):")
-		} else {
-			fmt.Println("Workflow evaluation results:")
-		}
-		fmt.Println()
-
-		for _, r := range results {
-			name := r.project.Name
-			if r.err != nil {
-				fmt.Printf("  %s: ERROR - %v\n", name, r.err)
-			} else if r.skipped {
-				fmt.Printf("  %s: skipped (recently evaluated)\n", name)
-			} else if r.modified == 0 && !r.projectStatusSet {
-				fmt.Printf("  %s: no changes\n", name)
-			} else {
-				if r.modified > 0 {
-					ruleCount := len(r.rulesApplied)
-					fmt.Printf("  %s: %s modified by %s\n", name, Pluralize(r.modified, "task", "tasks"), Pluralize(ruleCount, "rule", "rules"))
-				}
-				if r.projectStatusSet {
-					if icon := models.ProjectStatusIconByKey(r.projectStatusIcon); icon != nil {
-						fmt.Printf("  %s: project status -> %s %s (rule: %s)\n", name, icon.Emoji, icon.Label, r.projectRuleName)
-					}
-				}
-			}
-		}
-
-		fmt.Println()
-		if totalErrors > 0 {
-			fmt.Printf("Summary: %s, %d skipped, %s modified\n", Pluralize(totalErrors, "error", "errors"), totalSkipped, Pluralize(totalModified, "task", "tasks"))
-		} else if totalModified > 0 {
-			fmt.Printf("Summary: %s modified across %s\n", Pluralize(totalModified, "task", "tasks"), Pluralize(len(projects)-totalSkipped, "project", "projects"))
-		} else if totalSkipped == len(projects) {
-			fmt.Println("All projects were recently evaluated. Use --force to re-evaluate.")
-		} else {
-			fmt.Println("No tasks matched any rules.")
+	// Evaluate project-level rules against aggregate task data
+	projResult := evaluateAndApplyProjectRules(project, cfg, rules)
+	result.ProjectStatusSet = projResult.ProjectStatusSet
+	result.ProjectStatusIcon = projResult.ProjectStatusIcon
+	result.ProjectRuleName = projResult.ProjectRuleName
+	if projResult.ProjectStatusSet {
+		for _, id := range projResult.TriggeredRuleIDs {
+			result.RulesApplied[id]++
 		}
 	}
 
-	if totalErrors > 0 {
-		return fmt.Errorf("%s had errors", Pluralize(totalErrors, "project", "projects"))
+	// Update eval state
+	cfg.SetWorkflowEvalState(project.ID, config.WorkflowEvalState{
+		LastEvalTime: time.Now(),
+		RulesHash:    cfg.ComputeWorkflowRulesHash(),
+	})
+
+	// Persist config changes
+	if configManager != nil {
+		if err := configManager.Save(cfg); err != nil {
+			// Non-fatal, just log
+			logging.Warn("failed to save workflow eval state: %v", err)
+		}
 	}
 
-	return nil
+	return result
 }
