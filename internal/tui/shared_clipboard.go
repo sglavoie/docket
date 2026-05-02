@@ -58,5 +58,3 @@ func handleClipboardKey(key string, getTask func() *models.Task, getMultiTasks f
 
 	return false, nil
 }
-
-

@@ -27,9 +27,9 @@ var (
 				Padding(0, 1)
 
 	FilterBadgeInactiveStyle = lipgloss.NewStyle().
-						Background(ColorBackground).
-						Foreground(ColorBadgeText).
-						Padding(0, 1)
+					Background(ColorBackground).
+					Foreground(ColorBadgeText).
+					Padding(0, 1)
 
 	FilterViewBoxStyle = lipgloss.NewStyle().
 				Border(lipgloss.RoundedBorder()).

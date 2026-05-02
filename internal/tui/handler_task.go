@@ -2,109 +2,92 @@ package tui
 
 import (
 	"fmt"
-	"time"
 
 	tea "charm.land/bubbletea/v2"
-
-	"github.com/sglavoie/tt/internal/models"
 )
 
 // handleTaskMessages handles task-related messages (create, edit, delete, status changes).
 // Returns true if the message was handled.
-func (m *AppModel) handleTaskMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint:gocyclo
-	// Delegate dependency messages to dedicated handler
+func (m *AppModel) handleTaskMessages(msg tea.Msg) (bool, tea.Cmd) {
+	// Delegate to specialized handlers by category
+
+	// Dependency messages (already delegated)
 	if handled, cmd := m.handleDependencyMessages(msg); handled {
 		return handled, cmd
 	}
 
+	// CRUD operations
+	if handled, cmd := m.handleTaskCRUDMessages(msg); handled {
+		return handled, cmd
+	}
+
+	// Archive operations
+	if handled, cmd := m.handleTaskArchiveMessages(msg); handled {
+		return handled, cmd
+	}
+
+	// Date-related messages (due dates, snooze)
+	if handled, cmd := m.handleTaskDateMessages(msg); handled {
+		return handled, cmd
+	}
+
+	// Undo/redo operations
+	if handled, cmd := m.handleTaskUndoMessages(msg); handled {
+		return handled, cmd
+	}
+
+	// Parent selector messages
+	if handled, cmd := m.handleTaskParentMessages(msg); handled {
+		return handled, cmd
+	}
+
+	// View-opening messages (detail, comments, checklist, activity)
+	if handled, cmd := m.handleTaskViewMessages(msg); handled {
+		return handled, cmd
+	}
+
+	// Checklist item messages
+	if handled, cmd := m.handleTaskChecklistMessages(msg); handled {
+		return handled, cmd
+	}
+
+	// Comment messages
+	if handled, cmd := m.handleTaskCommentMessages(msg); handled {
+		return handled, cmd
+	}
+
+	// Link-related messages (linked tasks, cross-project links)
+	if handled, cmd := m.handleTaskLinkMessages(msg); handled {
+		return handled, cmd
+	}
+
+	// Status and property change messages
+	if handled, cmd := m.handleTaskStatusPropertyMessages(msg); handled {
+		return handled, cmd
+	}
+
+	// Command palette task actions
+	if handled, cmd := m.handleTaskPaletteMessages(msg); handled {
+		return handled, cmd
+	}
+
+	// Content editing messages
+	if handled, cmd := m.handleTaskContentMessages(msg); handled {
+		return handled, cmd
+	}
+
+	// Move operations (already in separate file)
+	if handled, cmd := m.handleTaskMoveMessages(msg); handled {
+		return handled, cmd
+	}
+
+	return false, nil
+}
+
+// handleTaskArchiveMessages handles task archive messages.
+// Returns true if the message was handled.
+func (m *AppModel) handleTaskArchiveMessages(msg tea.Msg) (bool, tea.Cmd) {
 	switch msg := msg.(type) {
-	case CreateTaskMsg:
-		if m.currentProject != nil {
-			// Check if there are enabled templates (unless explicitly skipped)
-			if !msg.SkipTemplatePicker {
-				enabledTemplates := m.config.GetEnabledTaskTemplates()
-				if len(enabledTemplates) > 0 {
-					// Store the parent task and show template picker
-					m.pendingCreateTaskParent = msg.ParentTask
-					return m.showViewInit(ViewTaskTemplatePicker, NewTemplatePickerModel(m.config, m.currentProject))
-				}
-			}
-			// No templates or skipped, go directly to task form
-			m.showView(ViewTaskForm, NewTaskFormModelCreate(m.currentProject, m.config, m.configManager, msg.ParentTask))
-		}
-		return true, nil
-
-	case EditTaskMsg:
-		project := msg.Project
-		if project == nil {
-			project = m.currentProject
-		}
-		if project != nil && msg.Task != nil {
-			m.showView(ViewTaskForm, NewTaskFormModelEdit(project, msg.Task, m.config, m.configManager))
-		}
-		return true, nil
-
-	case TaskCreatedMsg:
-		// Common pattern: pop view, reload, refresh
-		m.handleWithRefresh(true, true, "")
-		// Navigate cursor to the newly created task
-		if msg.Task != nil && m.currentProject != nil {
-			if fresh := m.currentProject.GetTaskByID(msg.Task.ID); fresh != nil {
-				if m.projectTree != nil {
-					m.projectTree.NavigateToTask(fresh)
-				}
-				if m.outliner != nil {
-					m.outliner.NavigateToSidebarTask(fresh)
-				}
-			}
-		}
-		// Set status message showing section
-		if msg.Task != nil && msg.Task.Section != "" {
-			if msg.Task.CustomSection != "" {
-				m.setSuccessStatus(fmt.Sprintf("Created in %s (%s)", msg.Task.Section, msg.Task.CustomSection))
-			} else {
-				m.setSuccessStatus(fmt.Sprintf("Created in %s", msg.Task.Section))
-			}
-		}
-		// Delegate to current view (e.g., inbox processor) so it can reload its state
-		cmd := m.views.Update(m.currentView(), msg)
-		m.syncInboxProcessor()
-
-		// If open-after requested, re-lookup the task (stale after reload) and open
-		if msg.Task != nil && (msg.OpenContent || msg.OpenDetail) {
-			project := msg.Project
-			if project == nil {
-				project = m.currentProject
-			}
-			if project != nil {
-				if freshTask := project.GetTaskByID(msg.Task.ID); freshTask != nil {
-					var openMsg tea.Msg
-					if msg.OpenDetail {
-						openMsg = ShowTaskDetailMsg{Task: freshTask, Project: project}
-					} else {
-						openMsg = EditTaskContentMsg{Task: freshTask, Project: project}
-					}
-					return true, tea.Batch(cmd, statusTimeout(2*time.Second), func() tea.Msg {
-						return openMsg
-					})
-				}
-			}
-		}
-
-		return true, tea.Batch(cmd, statusTimeout(2*time.Second))
-
-	case TaskUpdatedMsg:
-		// Common pattern: pop view, reload, refresh
-		m.handleWithRefresh(true, true, "")
-		// Delegate to current view (e.g., inbox processor) so it can reload its state
-		cmd := m.views.Update(m.currentView(), msg)
-		m.syncInboxProcessor()
-		return true, cmd
-
-	case TaskDeletedMsg:
-		m.pruneDeletedTaskRefs()
-		return true, m.handleWithRefresh(false, false, "")
-
 	case ArchiveCompletedTasksMsg:
 		return m.handleArchiveCompletedTasks()
 
@@ -118,7 +101,14 @@ func (m *AppModel) handleTaskMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint:go
 			statusMsg = fmt.Sprintf("Archived %d task(s) across %d project(s)", msg.Count, msg.Projects)
 		}
 		return true, m.handleWithRefresh(false, false, statusMsg)
+	}
+	return false, nil
+}
 
+// handleTaskStatusPropertyMessages handles task status and property change messages.
+// Returns true if the message was handled.
+func (m *AppModel) handleTaskStatusPropertyMessages(msg tea.Msg) (bool, tea.Cmd) {
+	switch msg := msg.(type) {
 	case TaskStatusChangedMsg:
 		return true, m.handleWithRefresh(false, false, "")
 
@@ -130,7 +120,14 @@ func (m *AppModel) handleTaskMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint:go
 			cmd = tea.Batch(cmd, SaveProjectAsync(m.currentProject, ""))
 		}
 		return true, cmd
+	}
+	return false, nil
+}
 
+// handleTaskPaletteMessages handles command palette task action messages.
+// Returns true if the message was handled.
+func (m *AppModel) handleTaskPaletteMessages(msg tea.Msg) (bool, tea.Cmd) {
+	switch msg := msg.(type) {
 	case CommandPaletteTaskActionMsg:
 		return m.handleCommandPaletteTaskAction(msg)
 
@@ -139,7 +136,14 @@ func (m *AppModel) handleTaskMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint:go
 
 	case InlineTaskCreateMsg:
 		return m.handleInlineTaskCreate(msg)
+	}
+	return false, nil
+}
 
+// handleTaskContentMessages handles task content editing messages.
+// Returns true if the message was handled.
+func (m *AppModel) handleTaskContentMessages(msg tea.Msg) (bool, tea.Cmd) {
+	switch msg := msg.(type) {
 	case EditTaskContentMsg:
 		return m.handleEditTaskContent(msg)
 
@@ -148,155 +152,14 @@ func (m *AppModel) handleTaskMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint:go
 
 	case DescriptionEditorDoneMsg:
 		return m.handleDescriptionEditorDone(msg)
+	}
+	return false, nil
+}
 
-	case SetDueDateMsg:
-		if msg.Task != nil && msg.Project != nil {
-			m.showView(ViewDateInput, NewDateInputModel(msg.Task, msg.Project))
-		}
-		return true, nil
-
-	case SetSnoozeDateMsg:
-		if msg.Task != nil && msg.Project != nil {
-			m.showView(ViewSnoozeInput, NewSnoozeInputModel(msg.Task, msg.Project))
-		}
-		return true, nil
-
-	case SnoozeDateChangedMsg:
-		m.popView()
-		return true, nil
-
-	case DueDateChangedMsg:
-		return m.handleDueDateChanged(msg)
-
-	case ShowUndoHistoryMsg:
-		if msg.Project != nil {
-			m.showView(ViewUndoHistory, NewUndoHistoryModel(msg.Project))
-		}
-		return true, nil
-
-	case UndoPerformedMsg:
-		fromViewer := m.currentView() == ViewUndoHistory
-		undoMsg := fmt.Sprintf("Undid: %s", msg.Action)
-		cmd := m.handleWithRefresh(false, false, undoMsg)
-		if fromViewer {
-			if v := m.views.Get(ViewUndoHistory); v != nil {
-				v.(*UndoHistoryModel).reloadEntries()
-			}
-		}
-		return true, cmd
-
-	case RedoPerformedMsg:
-		fromViewer := m.currentView() == ViewUndoHistory
-		redoMsg := fmt.Sprintf("Redo: %s", msg.Action)
-		cmd := m.handleWithRefresh(false, false, redoMsg)
-		if fromViewer {
-			if v := m.views.Get(ViewUndoHistory); v != nil {
-				v.(*UndoHistoryModel).reloadEntries()
-			}
-		}
-		return true, cmd
-
-	case OpenParentSelectorMsg:
-		selector := NewParentSelectorModel(msg.ValidParents, msg.CurrentID, msg.AllowNone, msg.Source)
-		selector.reparentTaskID = msg.ReparentTaskID
-		return m.showViewInit(ViewParentSelector, selector)
-
-	case ParentSelectedMsg:
-		// Pop the parent selector view
-		m.popView()
-		// Forward the message directly to the underlying view (note/task creator)
-		return true, m.delegateToCurrentView(msg)
-
-	case ShowTaskDetailMsg:
-		if msg.Task != nil && msg.Project != nil {
-			m.lastNavigatedTaskID = msg.Task.ID
-			m.recordTaskVisit(msg.Task, msg.Project)
-			m.showView(ViewTaskDetail, NewTaskDetailModel(msg.Task, msg.Project, m.config, m.configManager))
-		}
-		return true, nil
-
-	case ShowTaskCommentsMsg:
-		if msg.Task != nil && msg.Project != nil {
-			m.lastNavigatedTaskID = msg.Task.ID
-			m.recordTaskVisit(msg.Task, msg.Project)
-			m.showView(ViewTaskComments, NewTaskCommentsModelWithEditor(msg.Task, msg.Project, m.config.Editor))
-		}
-		return true, nil
-
-	case ShowTaskChecklistMsg:
-		if msg.Task != nil && msg.Project != nil {
-			m.lastNavigatedTaskID = msg.Task.ID
-			m.recordTaskVisit(msg.Task, msg.Project)
-			m.showView(ViewTaskChecklist, NewTaskChecklistModelWithEditor(msg.Task, msg.Project, m.config.Editor))
-		}
-		return true, nil
-
-	case ChecklistItemAddedMsg:
-		m.setSuccessStatus("Checklist item added")
-		return true, defaultStatusTimeout()
-
-	case ChecklistItemDeletedMsg:
-		m.setSuccessStatus("Checklist item deleted")
-		return true, defaultStatusTimeout()
-
-	case ChecklistItemEditedMsg:
-		m.setSuccessStatus("Checklist item updated")
-		return true, defaultStatusTimeout()
-
-	case ChecklistItemToggledMsg:
-		return true, nil
-
-	case OpenTaskActivityMsg:
-		if msg.Task != nil && msg.Project != nil {
-			m.lastNavigatedTaskID = msg.Task.ID
-			m.recordTaskVisit(msg.Task, msg.Project)
-			m.showView(ViewTaskActivity, NewTaskActivityModel(msg.Task, msg.Project))
-		}
-		return true, nil
-
-	case OpenQuickNoteMsg:
-		if msg.Task != nil && msg.Project != nil {
-			m.quickNoteOverlay = newQuickNoteOverlay(msg.Task, msg.Project)
-			return true, m.quickNoteOverlay.initCmd()
-		}
-		return true, nil
-
-	case CommentAddedMsg:
-		m.quickNoteOverlay = nil
-		m.setSuccessStatus("Comment added")
-		// Delegate to current view so it can refresh stale task data
-		// (outliner rows contain clones from filterTaskTree)
-		viewCmd := m.delegateToCurrentView(msg)
-		return true, tea.Batch(defaultStatusTimeout(), viewCmd)
-
-	case CommentDeletedMsg:
-		m.setSuccessStatus("Comment deleted")
-		return true, defaultStatusTimeout()
-
-	case CommentEditedMsg:
-		m.setSuccessStatus("Comment updated")
-		return true, defaultStatusTimeout()
-
-	case CommentResolvedMsg:
-		if msg.Task != nil && len(msg.Task.Comments) > 0 {
-			// Find the toggled comment from the comments view cursor
-			if view := m.views.Get(ViewTaskComments); view != nil {
-				if commentsView, ok := view.(*TaskCommentsModel); ok {
-					idx := commentsView.cursor
-					if idx >= 0 && idx < len(msg.Task.Comments) {
-						if msg.Task.Comments[idx].Resolved {
-							m.setSuccessStatus("Comment resolved")
-						} else {
-							m.setSuccessStatus("Comment unresolved")
-						}
-						return true, defaultStatusTimeout()
-					}
-				}
-			}
-		}
-		m.setSuccessStatus("Comment resolved")
-		return true, defaultStatusTimeout()
-
+// handleTaskMoveMessages handles task move messages.
+// Returns true if the message was handled.
+func (m *AppModel) handleTaskMoveMessages(msg tea.Msg) (bool, tea.Cmd) {
+	switch msg := msg.(type) {
 	case ShowProjectSelectorForMoveMsg:
 		if msg.Task != nil && msg.SourceProject != nil {
 			projects := m.config.GetActiveProjects()
@@ -309,190 +172,6 @@ func (m *AppModel) handleTaskMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint:go
 
 	case TaskMovedToProjectMsg:
 		return m.handleTaskMovedToProject(msg)
-
-	case CreateLinkedTaskMsg:
-		if msg.SourceTask != nil && msg.Project != nil {
-			m.showView(ViewLinkedTaskCreator, NewLinkedTaskCreatorModel(msg.SourceTask, msg.Project, msg.LinkType))
-		}
-		return true, nil
-
-	case LinkedTaskCreatedMsg:
-		m.popView()
-		m.refreshAllViews()
-
-		// Determine link type name for status message
-		var linkName string
-		switch msg.LinkType {
-		case LinkTypeBlocker:
-			linkName = "blocker"
-		case LinkTypeDependent:
-			linkName = "dependent"
-		case LinkTypeSubtask:
-			linkName = "subtask"
-		case LinkTypeFollowUp:
-			linkName = "follow-up"
-		}
-		m.setSuccessStatus(fmt.Sprintf("Created %s #%d", linkName, msg.NewTask.ShortID))
-
-		// Jump to new task if configured
-		if m.config.GetLinkedTaskJumpToNew() && m.projectTree != nil && msg.NewTask != nil {
-			m.projectTree.JumpToTask(msg.NewTask)
-		}
-
-		return true, defaultStatusTimeout()
-
-	case ShowLinkedTaskSelectorMsg:
-		if msg.Task != nil && msg.Project != nil {
-			selector := NewLinkedTaskSelectorModelWithConfig(msg.Task, msg.Project, m.config)
-			// If no linked tasks, do nothing
-			if !selector.HasLinkedTasks() {
-				m.setInfoStatus("No linked tasks")
-				return true, defaultStatusTimeout()
-			}
-			// If single linked task with same project, jump directly (unless unlinking)
-			if !msg.ForUnlink {
-				if singleTask := selector.GetSingleLinkedTask(); singleTask != nil {
-					return m.handleLinkedTaskNavigation(singleTask, msg.Project)
-				}
-			}
-			// Multiple linked tasks, cross-project, or unlinking: show selector
-			m.showView(ViewLinkedTaskSelector, selector)
-		}
-		return true, nil
-
-	case LinkedTaskSelectedMsg:
-		m.popView()
-		// Check if this is a cross-project reference
-		if msg.TaskRef != "" {
-			return m.handleCrossProjectNavigation(msg.TaskRef)
-		}
-		return m.handleLinkedTaskNavigation(msg.Task, msg.Project)
-
-	case ShowCrossProjectLinkerMsg:
-		if msg.SourceTask != nil && msg.SourceProject != nil {
-			linker := NewCrossProjectLinkerModel(msg.SourceTask, msg.SourceProject, m.config)
-			m.showView(ViewCrossProjectLinker, linker)
-		}
-		return true, nil
-
-	case CrossProjectLinkCreatedMsg:
-		m.popView()
-		m.refreshAllViews()
-		// Determine link type name for status message
-		var linkName string
-		switch msg.LinkType {
-		case LinkTypeBlocker:
-			linkName = "blocker"
-		case LinkTypeDependent:
-			linkName = "dependency"
-		case LinkTypeFollowUp:
-			linkName = "related"
-		default:
-		}
-		m.setSuccessStatus(fmt.Sprintf("Linked #%d → %s #%d (%s)", msg.SourceTask.ShortID, msg.TargetProject.Name, msg.TargetTask.ShortID, linkName))
-		return true, statusTimeout(3 * time.Second)
-
-	case LinkRemovedMsg:
-		return m.handleLinkRemoved(msg)
 	}
 	return false, nil
-}
-
-// handleDueDateChanged handles the DueDateChangedMsg, including bulk operations.
-func (m *AppModel) handleDueDateChanged(msg DueDateChangedMsg) (bool, tea.Cmd) {
-	m.popView()
-
-	// Check if this is a bulk operation from palette
-	if len(m.pendingBulkTasks) > 1 && msg.Task != nil {
-		// The first task was already saved by DateInputModel
-		// Apply the same date to remaining tasks
-		newDate := msg.Task.DueDate
-		newHasTime := msg.Task.HasTime
-		count := 1 // First task already updated
-		projectMap := make(map[string]*models.Project)
-
-		for i, item := range m.pendingBulkTasks {
-			if i == 0 {
-				// Skip the first task (already saved by DateInputModel)
-				projectMap[item.Project.ID] = item.Project
-				continue
-			}
-			if item.Task != nil && item.Project != nil {
-				if item.Project.MutateTask(item.Task.ID, func(t *models.Task) {
-					if newDate != nil {
-						dateCopy := *newDate
-						t.DueDate = &dateCopy
-					} else {
-						t.DueDate = nil
-					}
-					t.HasTime = newHasTime
-				}) {
-					projectMap[item.Project.ID] = item.Project
-					count++
-				}
-			}
-		}
-
-		// Build list of projects to save (except first which was already saved)
-		var projectsToSave []*models.Project
-		for _, project := range projectMap {
-			if project.ID != m.pendingBulkTasks[0].Project.ID {
-				projectsToSave = append(projectsToSave, project)
-			}
-		}
-
-		var successMsg string
-		if newDate != nil {
-			successMsg = fmt.Sprintf("Set due date to %s for %d tasks", newDate.Format("2006-01-02"), count)
-		} else {
-			successMsg = fmt.Sprintf("Cleared due date for %d tasks", count)
-		}
-		m.pendingBulkTasks = nil
-
-		if len(projectsToSave) > 0 {
-			return true, tea.Batch(
-				startLoading("Saving..."),
-				SaveMultipleProjectsAsync(projectsToSave, successMsg),
-			)
-		}
-		m.setSuccessStatus(successMsg)
-		m.refreshAllViews()
-		return true, defaultStatusTimeout()
-	}
-
-	m.pendingBulkTasks = nil
-	m.refreshAllViews()
-	return true, nil
-}
-
-// handleLinkRemoved handles the LinkRemovedMsg and adjusts sidebar cursors.
-func (m *AppModel) handleLinkRemoved(msg LinkRemovedMsg) (bool, tea.Cmd) {
-	// Save task ID before refresh (project reload creates new task objects)
-	sourceTaskID := msg.SourceTask.ID
-	m.refreshAllViews()
-	// Adjust cursors after link removal
-	if m.currentProject != nil {
-		task := m.currentProject.GetTaskByID(sourceTaskID)
-		if task != nil {
-			if m.projectTree != nil {
-				m.projectTree.JumpToTask(task)
-				sidebarAdjustAfterLinkRemoval(m.currentProject, m.projectTree.sidebar, task)
-			}
-			if m.outliner != nil && m.outliner.sidebar != nil {
-				sidebarAdjustAfterLinkRemoval(m.currentProject, m.outliner.sidebar, task)
-			}
-		}
-	}
-	// Determine section name for status message
-	var sectionName string
-	switch msg.Section {
-	case 0:
-		sectionName = "blocker"
-	case 1:
-		sectionName = "dependent"
-	case 2:
-		sectionName = "related"
-	}
-	m.setSuccessStatus(fmt.Sprintf("Removed %s link", sectionName))
-	return true, defaultStatusTimeout()
 }
