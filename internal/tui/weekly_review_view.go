@@ -79,7 +79,7 @@ func (m *WeeklyReviewModel) View() tea.View {
 	if m.reviewCompleted {
 		reviewHint = "R: unmark"
 	}
-	fullLeft := "h/j/k/l nav · n/N section · " + reviewHint + " · ,s/d/b/x status"
+	fullLeft := "shift+←/→ tabs · n/N section · " + reviewHint + " · ,s/d/b/x status"
 	shortLeft := "n/N section · " + reviewHint + " · ? help"
 
 	rightText := fullRight

@@ -80,7 +80,7 @@ func (m *DailyReviewModel) View() tea.View {
 	if m.reviewCompleted {
 		reviewHint = "R: unmark"
 	}
-	left := HelpStyle.Render("h/j/k/l nav · n/N section · " + reviewHint + " · ? help")
+	left := HelpStyle.Render("shift+←/→ tabs · n/N section · " + reviewHint + " · ? help")
 	right := MutedStyle.Render(fmt.Sprintf("%d tasks", totalCount))
 	b.WriteString(renderFullscreenFooterBlock(m.statusMessage, m.err, left, right, m.width, m.AccentColor()))
 
