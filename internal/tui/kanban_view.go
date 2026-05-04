@@ -106,8 +106,8 @@ func kanbanRender(m *KanbanModel) string {
 	}
 
 	// === Height budget ===
-	// title(1) + blank(1) + header(1) + divider(1) = 4 fixed lines
-	const fixedOverhead = 4
+	// title(1) + blank(1) + header(1) + divider(1) + footer(2) = 6 fixed lines
+	const fixedOverhead = 6
 	bodyRows := m.height - fixedOverhead
 	if m.detailPaneVisible {
 		// separator(1) + configurable pane height
@@ -315,6 +315,11 @@ func kanbanRender(m *KanbanModel) string {
 
 	// Append detail pane (separator + info rows)
 	sb.WriteString(m.renderKanbanDetailPane())
+
+	// Footer help bar
+	left := HelpStyle.Render("h/l columns · j/k navigate · H/L move task · Enter open · Tab detail · ? help")
+	right := MutedStyle.Render(fmt.Sprintf("%d tasks", totalCards))
+	sb.WriteString(renderStatusBarFooter(left, right, m.width, m.AccentColor()))
 
 	result := sb.String()
 
