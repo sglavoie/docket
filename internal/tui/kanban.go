@@ -168,20 +168,28 @@ func (m *KanbanModel) getCursorCard() *KanbanCard {
 }
 
 // filteredCards returns m.allCards filtered by the active CommonFilterState.
-// Returns m.allCards unchanged when no filters are active.
+// Cancelled tasks are excluded in all modes except Status.
 func (m *KanbanModel) filteredCards() []KanbanCard {
-	if !hasActiveCommonFilters(&m.filter) {
+	hideCanceled := m.mode != KanbanModeStatus
+	hasFilters := hasActiveCommonFilters(&m.filter)
+	if !hideCanceled && !hasFilters {
 		return m.allCards
 	}
 	result := make([]KanbanCard, 0, len(m.allCards))
 	for _, card := range m.allCards {
-		projectID := ""
-		if card.Project != nil {
-			projectID = card.Project.ID
+		if hideCanceled && card.Task.Status == models.StatusCanceled {
+			continue
 		}
-		if passesCommonFilters(card.Task, &m.filter, projectID, m.config) {
-			result = append(result, card)
+		if hasFilters {
+			projectID := ""
+			if card.Project != nil {
+				projectID = card.Project.ID
+			}
+			if !passesCommonFilters(card.Task, &m.filter, projectID, m.config) {
+				continue
+			}
 		}
+		result = append(result, card)
 	}
 	return result
 }
