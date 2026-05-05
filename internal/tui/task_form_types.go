@@ -118,6 +118,12 @@ type TaskFormModel struct {
 	width  int
 	height int
 
+	// Open-after state: set when a subtask overlay confirms with Ctrl+O/Ctrl+D,
+	// triggering auto-save and subsequent navigation to the created subtask.
+	subtaskOpenIdx     int
+	subtaskOpenDetail  bool
+	subtaskOpenContent bool
+
 	// UI state
 	err        error
 	hasChanges bool

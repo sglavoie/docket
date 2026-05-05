@@ -17,10 +17,10 @@ func (r *KeybindingRegistry) registerTaskFormBindings() {
 		Keybinding{Key: "S", Description: "Toggle subtasks section", Category: "Children", Views: views},
 		Keybinding{Key: "Ctrl+A", Description: "Add checklist item", Category: "Children", Views: views},
 		Keybinding{Key: "Ctrl+T", Description: "Add subtask", Category: "Children", Views: views},
-		Keybinding{Key: "Ctrl+D", Description: "Delete focused item", Category: "Children", Views: views},
+		Keybinding{Key: "Ctrl+D", Description: "Delete item / save & edit subtask desc", Category: "Children", Views: views},
 		Keybinding{Key: "Ctrl+J", Description: "Move item down", Category: "Children", Views: views},
 		Keybinding{Key: "Ctrl+K", Description: "Move item up", Category: "Children", Views: views},
-		Keybinding{Key: "Ctrl+O", Description: "Toggle subtask optional", Category: "Children", Views: views},
+		Keybinding{Key: "Ctrl+O", Description: "Toggle optional / save & open subtask", Category: "Children", Views: views},
 		Keybinding{Key: "Space", Description: "Toggle checklist item done", Category: "Children", Views: views},
 	)
 }

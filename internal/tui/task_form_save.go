@@ -234,10 +234,13 @@ func (m *TaskFormModel) saveCreate() tea.Cmd {
 	m.project.Tasks = append(m.project.Tasks, task)
 
 	// Create subtask children for Epic/Story (create mode only).
+	var openAfterSubtask *models.Task
 	if formTypeCanHaveSubtasks(m.draft.taskType) {
+		draftIdx := 0
 		for _, st := range m.draft.subtasks {
 			stTitle := strings.TrimSpace(st.title)
 			if stTitle == "" {
+				draftIdx++
 				continue
 			}
 			subtask := &models.Task{
@@ -258,6 +261,10 @@ func (m *TaskFormModel) saveCreate() tea.Cmd {
 			subtask.SetSection(m.draft.section)
 			subtask.Tags = append([]string{}, m.draft.tags...)
 			m.project.Tasks = append(m.project.Tasks, subtask)
+			if (m.subtaskOpenDetail || m.subtaskOpenContent) && draftIdx == m.subtaskOpenIdx {
+				openAfterSubtask = subtask
+			}
+			draftIdx++
 		}
 	}
 
@@ -275,6 +282,16 @@ func (m *TaskFormModel) saveCreate() tea.Cmd {
 	if err := saveProjectSync(m.project); err != nil {
 		m.err = fmt.Errorf("failed to save project: %w", err)
 		return nil
+	}
+
+	if openAfterSubtask != nil {
+		openDetail := m.subtaskOpenDetail
+		openContent := m.subtaskOpenContent
+		m.subtaskOpenDetail = false
+		m.subtaskOpenContent = false
+		return func() tea.Msg {
+			return TaskCreatedMsg{Task: openAfterSubtask, OpenDetail: openDetail, OpenContent: openContent}
+		}
 	}
 
 	return func() tea.Msg { return TaskCreatedMsg{Task: task} }

@@ -121,6 +121,12 @@ func (m *TaskFormModel) handleFormOverlayKey(msg tea.KeyPressMsg) (tea.Cmd, bool
 	}
 	if result != nil {
 		m.applyFormOverlayResult(result)
+		if msg, ok := result.(TaskFormSubtaskEditedMsg); ok && (msg.OpenDetail || msg.OpenContent) {
+			m.subtaskOpenIdx = msg.Idx
+			m.subtaskOpenDetail = msg.OpenDetail
+			m.subtaskOpenContent = msg.OpenContent
+			return tea.Batch(cmd, m.handleSave()), true
+		}
 	}
 	return cmd, true
 }
