@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"image/color"
 	"testing"
 
 	"charm.land/lipgloss/v2"
@@ -22,8 +23,8 @@ func TestColorProgressEmptyDarkTheme(t *testing.T) {
 	ApplyTheme(ThemeConfig{Name: ""})
 	t.Cleanup(func() { ApplyTheme(ThemeConfig{}) })
 
-	// Empty palette → dark ANSI muted fallback "248".
-	want := lipgloss.Color("248")
+	// Empty palette → dark muted fallback "#565f89".
+	want := lipgloss.Color("#565f89")
 	if ColorProgressEmpty != want {
 		t.Errorf("dark theme: ColorProgressEmpty = %v, want %v", ColorProgressEmpty, want)
 	}
@@ -48,12 +49,12 @@ func TestMakeViewModeStyleDarkThemeBg(t *testing.T) {
 	activeThemeName = ""
 	t.Cleanup(func() { activeThemeName = "" })
 
-	darkANSI := "34"
+	darkHex := "#2e4a30"
 	lightHex := "#15803d"
-	s := makeViewModeStyle(darkANSI, lightHex)
+	s := makeViewModeStyle(darkHex, lightHex)
 
 	got := s.GetBackground()
-	want := lipgloss.Color(darkANSI)
+	want := lipgloss.Color(darkHex)
 	if got != want {
 		t.Errorf("dark theme: background = %v, want %v", got, want)
 	}
@@ -82,14 +83,14 @@ func TestRebuildPaletteDarkEmptyUsesDefaults(t *testing.T) {
 
 	rebuildPalette(config.PaletteColors{})
 
-	if ColorPrimary != lipgloss.Color("39") {
-		t.Errorf("dark empty palette: ColorPrimary = %v, want 39", ColorPrimary)
+	if ColorPrimary != lipgloss.Color("#7aa2f7") {
+		t.Errorf("dark empty palette: ColorPrimary = %v, want #7aa2f7", ColorPrimary)
 	}
-	if ColorMuted != lipgloss.Color("248") {
-		t.Errorf("dark empty palette: ColorMuted = %v, want 248", ColorMuted)
+	if ColorMuted != lipgloss.Color("#565f89") {
+		t.Errorf("dark empty palette: ColorMuted = %v, want #565f89", ColorMuted)
 	}
-	if colorNormalText != "" {
-		t.Errorf("dark empty palette: colorNormalText = %q, want empty", colorNormalText)
+	if colorNormalText != "#c0caf5" {
+		t.Errorf("dark empty palette: colorNormalText = %q, want #c0caf5", colorNormalText)
 	}
 }
 
@@ -112,14 +113,14 @@ func TestApplyThemeDarkEmptyCursorResolvesToDefaults(t *testing.T) {
 	ApplyTheme(ThemeConfig{Name: ""})
 	t.Cleanup(func() { ApplyTheme(ThemeConfig{}) })
 
-	if ColorSelectedBg != lipgloss.Color("#4c0163") {
-		t.Errorf("dark empty cursor: ColorSelectedBg = %v, want #4c0163", ColorSelectedBg)
+	if ColorSelectedBg != lipgloss.Color("#33467c") {
+		t.Errorf("dark empty cursor: ColorSelectedBg = %v, want #33467c", ColorSelectedBg)
 	}
-	if ColorSelectedFg != lipgloss.Color("#fbeeff") {
-		t.Errorf("dark empty cursor: ColorSelectedFg = %v, want #fbeeff", ColorSelectedFg)
+	if ColorSelectedFg != lipgloss.Color("#c0caf5") {
+		t.Errorf("dark empty cursor: ColorSelectedFg = %v, want #c0caf5", ColorSelectedFg)
 	}
-	if themeBgColor != "" {
-		t.Errorf("dark empty bg: themeBgColor = %q, want empty", themeBgColor)
+	if themeBgColor != "#1a1b26" {
+		t.Errorf("dark empty bg: themeBgColor = %q, want #1a1b26", themeBgColor)
 	}
 }
 
@@ -137,8 +138,42 @@ func TestColorSelectedTextFgDarkTheme(t *testing.T) {
 	ApplyTheme(ThemeConfig{Name: ""})
 	t.Cleanup(func() { ApplyTheme(ThemeConfig{}) })
 
-	want := lipgloss.Color("#fbeeff")
+	want := lipgloss.Color("#c0caf5")
 	if ColorSelectedTextFg != want {
 		t.Errorf("dark theme: ColorSelectedTextFg = %v, want %v", ColorSelectedTextFg, want)
+	}
+}
+
+func TestAllPaletteColorVarsSetAfterDarkTheme(t *testing.T) {
+	ApplyTheme(ThemeConfig{Name: ""})
+	t.Cleanup(func() { ApplyTheme(ThemeConfig{}) })
+
+	checks := []struct {
+		name string
+		got  color.Color
+		want string
+	}{
+		{"ColorPrimary", ColorPrimary, "#7aa2f7"},
+		{"ColorSecondary", ColorSecondary, "#7dcfff"},
+		{"ColorSuccess", ColorSuccess, "#9ece6a"},
+		{"ColorWarning", ColorWarning, "#e0af68"},
+		{"ColorError", ColorError, "#f7768e"},
+		{"ColorMuted", ColorMuted, "#565f89"},
+		{"ColorBorder", ColorBorder, "#3b3f5c"},
+		{"ColorAccent", ColorAccent, "#e0af68"},
+		{"ColorProgressEmpty", ColorProgressEmpty, "#565f89"},
+		{"ColorBadgeText", ColorBadgeText, "#565f89"},
+		{"ColorLightGray", ColorLightGray, "#565f89"},
+		{"ColorDiffContext", ColorDiffContext, "#565f89"},
+		{"ColorPriority1Title", ColorPriority1Title, "#f7768e"},
+		{"ColorPriority2Title", ColorPriority2Title, "#e0af68"},
+		{"ColorPriority3Title", ColorPriority3Title, "#7aa2f7"},
+		{"ColorPriority4Title", ColorPriority4Title, "#9aa5ce"},
+		{"ColorPriority5Title", ColorPriority5Title, "#565f89"},
+	}
+	for _, c := range checks {
+		if c.got != lipgloss.Color(c.want) {
+			t.Errorf("%s = %v, want %v", c.name, c.got, c.want)
+		}
 	}
 }

@@ -42,6 +42,7 @@ func TestThemeImport(t *testing.T) {
 			CursorColor:     "#112233",
 			CursorTextColor: "#ffffff",
 		}
+		deps.Config.ThemeDarkRev = config.DarkThemeDefaultsRev
 		testutil.AssertNoError(t, manager.Save(deps.Config))
 
 		// Export it.
@@ -73,6 +74,7 @@ func TestThemeImport(t *testing.T) {
 			CursorColor:     "#aabbcc",
 			CursorTextColor: "#ddee00",
 		}
+		deps.Config.ThemeDarkRev = config.DarkThemeDefaultsRev
 		testutil.AssertNoError(t, manager.Save(deps.Config))
 
 		themeExportSlot = "dark"

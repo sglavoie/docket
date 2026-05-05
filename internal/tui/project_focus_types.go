@@ -24,8 +24,6 @@ type ProjectFocusViewModel struct {
 	subTabNames      []string
 }
 
-
-
 // ProjectFocusNavigationPrefixHints contains "g" prefix hints for project focus view.
 var ProjectFocusNavigationPrefixHints = []PrefixHint{
 	{Key: "g", Description: "first", Detail: "Jump to first item"},

@@ -8,64 +8,64 @@ import (
 
 // Color palette.
 var (
-	ColorPrimary     = lipgloss.Color("39")
-	ColorSecondary   = lipgloss.Color("33")
-	ColorSuccess     = lipgloss.Color("42")
-	ColorWarning     = lipgloss.Color("214")
-	ColorError       = lipgloss.Color("196")
-	ColorMuted       = lipgloss.Color("248")
-	ColorDimmed      = lipgloss.Color("240")
-	ColorDimmedBg    = lipgloss.Color("237")
-	ColorDimmedFg    = lipgloss.Color("250")
-	ColorHighlight   = lipgloss.Color("#f2eb16")
-	ColorBackground  = lipgloss.Color("236")
-	ColorBorder      = lipgloss.Color("244")
+	ColorPrimary     = lipgloss.Color("#7aa2f7")
+	ColorSecondary   = lipgloss.Color("#7dcfff")
+	ColorSuccess     = lipgloss.Color("#9ece6a")
+	ColorWarning     = lipgloss.Color("#e0af68")
+	ColorError       = lipgloss.Color("#f7768e")
+	ColorMuted       = lipgloss.Color("#565f89")
+	ColorDimmed      = lipgloss.Color("#3b3f5c")
+	ColorDimmedBg    = lipgloss.Color("#24283b")
+	ColorDimmedFg    = lipgloss.Color("#9aa5ce")
+	ColorHighlight   = lipgloss.Color("#e0af68")
+	ColorBackground  = lipgloss.Color("#1a1b26")
+	ColorBorder      = lipgloss.Color("#3b3f5c")
 	ColorDiffContext = lipgloss.Color("249")
 	ColorBadgeText   = lipgloss.Color("249")
-	ColorAccent      = lipgloss.Color("226")
-	ColorSelectedBg  = lipgloss.Color("#4c0163")
+	ColorAccent      = lipgloss.Color("#e0af68")
+	ColorSelectedBg  = lipgloss.Color("#33467c")
 
-	ColorViewActive     = lipgloss.Color("34")
-	ColorViewNext       = lipgloss.Color("61")
-	ColorViewStandby    = lipgloss.Color("141")
-	ColorViewSomeday    = lipgloss.Color("135")
-	ColorSelectedFg     = lipgloss.Color("#fbeeff")
-	ColorSelectedTextFg = lipgloss.Color("#fbeeff") // dark-theme default; set by ApplyTheme
-	ColorFlashBg        = lipgloss.Color("#7b2fa0")
+	ColorViewActive     = lipgloss.Color("#9ece6a")
+	ColorViewNext       = lipgloss.Color("#7aa2f7")
+	ColorViewStandby    = lipgloss.Color("#bb9af7")
+	ColorViewSomeday    = lipgloss.Color("#9d7cd8")
+	ColorSelectedFg     = lipgloss.Color("#c0caf5")
+	ColorSelectedTextFg = lipgloss.Color("#c0caf5") // dark-theme default; set by ApplyTheme
+	ColorFlashBg        = lipgloss.Color("#8590b0") // derived: lightenHex("#33467c", 0.4)
 	ColorLightGray      = lipgloss.Color("252")
-	ColorSubtleBorder   = lipgloss.Color("240")
-	ColorPurple         = lipgloss.Color("135")
-	ColorOrange         = lipgloss.Color("208")
-	ColorRuleKeyword    = lipgloss.Color("14")
-	ColorRuleOperator   = lipgloss.Color("13")
-	ColorZebraBg        = lipgloss.Color("235")
-	ColorProgressEmpty  = lipgloss.Color("248") // dark-theme default; set by rebuildPalette
+	ColorSubtleBorder   = lipgloss.Color("#3b3f5c")
+	ColorPurple         = lipgloss.Color("#bb9af7")
+	ColorOrange         = lipgloss.Color("#ff9e64")
+	ColorRuleKeyword    = lipgloss.Color("#7dcfff")
+	ColorRuleOperator   = lipgloss.Color("#bb9af7")
+	ColorZebraBg        = lipgloss.Color("#16171f")
+	ColorProgressEmpty  = lipgloss.Color("#565f89") // dark-theme default; set by rebuildPalette
 
 	// View accent colors — one per pipeline stage for spatial orientation.
-	AccentDashboard = lipgloss.Color("39")  // blue (dashboard)
-	AccentCapture   = lipgloss.Color("209") // coral/salmon (Capture stage)
-	AccentOrganize  = lipgloss.Color("75")  // sky blue (Organize stage)
-	AccentPlan      = lipgloss.Color("42")  // green (Plan stage)
-	AccentWork      = lipgloss.Color("208") // orange (Work stage)
-	AccentExecute   = lipgloss.Color("44")  // cyan (Execute stage)
-	AccentReview    = lipgloss.Color("220") // yellow (Review stage)
-	AccentSupport   = lipgloss.Color("245") // muted gray (Support stage)
-	AccentSearch    = lipgloss.Color("198") // magenta (search/command)
+	AccentDashboard = lipgloss.Color("#7aa2f7") // blue (dashboard)
+	AccentCapture   = lipgloss.Color("#f7768e") // coral (Capture stage)
+	AccentOrganize  = lipgloss.Color("#7dcfff") // sky blue (Organize stage)
+	AccentPlan      = lipgloss.Color("#9ece6a") // green (Plan stage)
+	AccentWork      = lipgloss.Color("#ff9e64") // orange (Work stage)
+	AccentExecute   = lipgloss.Color("#73daca") // teal (Execute stage)
+	AccentReview    = lipgloss.Color("#e0af68") // amber (Review stage)
+	AccentSupport   = lipgloss.Color("#565f89") // muted gray (Support stage)
+	AccentSearch    = lipgloss.Color("#bb9af7") // purple (search/command)
 
 )
 
-// taskCountScaleDark is the 10-step gradient used in dark theme (bright ANSI).
+// taskCountScaleDark is the 10-step red-to-green gradient used in dark theme.
 var taskCountScaleDark = [10]color.Color{
-	lipgloss.Color("196"),
-	lipgloss.Color("202"),
-	lipgloss.Color("208"),
-	lipgloss.Color("214"),
-	lipgloss.Color("220"),
-	lipgloss.Color("226"),
-	lipgloss.Color("154"),
-	lipgloss.Color("118"),
-	lipgloss.Color("82"),
-	lipgloss.Color("42"),
+	lipgloss.Color("#f7768e"),
+	lipgloss.Color("#f09070"),
+	lipgloss.Color("#e8a858"),
+	lipgloss.Color("#e0af68"),
+	lipgloss.Color("#c8b860"),
+	lipgloss.Color("#b0c058"),
+	lipgloss.Color("#98c850"),
+	lipgloss.Color("#80d048"),
+	lipgloss.Color("#9ece6a"),
+	lipgloss.Color("#73daca"),
 }
 
 // taskCountScaleLight is the 10-step gradient used in light theme (muted hex).
@@ -111,18 +111,18 @@ type SectionColorEntry struct {
 	Color color.Color
 }
 
-// SectionColorPalette defines the available colors for sections (dark-theme ANSI values).
+// SectionColorPalette defines the available colors for sections (dark-theme hex values).
 var SectionColorPalette = []SectionColorEntry{
-	{"gray", lipgloss.Color("245")},
-	{"red", lipgloss.Color("196")},
+	{"gray", lipgloss.Color("#565f89")},
+	{"red", lipgloss.Color("#f7768e")},
 	{"orange", ColorOrange},
-	{"yellow", lipgloss.Color("220")},
-	{"green", lipgloss.Color("42")},
-	{"cyan", lipgloss.Color("44")},
-	{"blue", lipgloss.Color("33")},
+	{"yellow", lipgloss.Color("#e0af68")},
+	{"green", lipgloss.Color("#9ece6a")},
+	{"cyan", lipgloss.Color("#73daca")},
+	{"blue", lipgloss.Color("#7aa2f7")},
 	{"purple", ColorPurple},
-	{"magenta", lipgloss.Color("198")},
-	{"white", lipgloss.Color("255")},
+	{"magenta", lipgloss.Color("#ff6b9d")},
+	{"white", lipgloss.Color("#c0caf5")},
 }
 
 // sectionColorLight maps color names to muted hex values for light theme readability.

@@ -93,6 +93,7 @@ type Config struct {
 	Palette                        PaletteColors                `json:"palette,omitzero"`
 	ThemeDark                      Theme                        `json:"theme_dark,omitzero"`
 	ThemeDarkName                  string                       `json:"theme_dark_name,omitempty"`
+	ThemeDarkRev                   int                          `json:"theme_dark_rev,omitempty"`
 	ThemeLight                     Theme                        `json:"theme_light,omitzero"`
 	ThemeLightName                 string                       `json:"theme_light_name,omitempty"`
 	ThemeLightRev                  int                          `json:"theme_light_rev,omitempty"`

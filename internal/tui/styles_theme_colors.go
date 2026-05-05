@@ -10,13 +10,13 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 )
 
-// Default hex colors for priority title styling.
+// Default hex colors for priority title styling (Tokyo Night palette).
 const (
-	defaultColorPriority1Title = "#f93c39"
-	defaultColorPriority2Title = "#f7b831"
-	defaultColorPriority3Title = "#56c2f4"
-	defaultColorPriority4Title = "#cccccc"
-	defaultColorPriority5Title = "#bbbbbb"
+	defaultColorPriority1Title = "#f7768e"
+	defaultColorPriority2Title = "#e0af68"
+	defaultColorPriority3Title = "#7aa2f7"
+	defaultColorPriority4Title = "#9aa5ce"
+	defaultColorPriority5Title = "#565f89"
 )
 
 // Priority title foreground colors, user-overridable via PaletteColors.

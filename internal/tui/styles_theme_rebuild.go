@@ -48,7 +48,7 @@ func rebuildTaskStyles() {
 
 	DueDateStyle = lipgloss.NewStyle().Foreground(ColorMuted)
 	DueTodayStyle = lipgloss.NewStyle().Foreground(ColorWarning)
-	BlockedByDepsStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("231")).Background(ColorError)
+	BlockedByDepsStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#c0caf5")).Background(ColorError)
 
 	EpicStyle = lipgloss.NewStyle().Foreground(ColorPurple)
 	StoryStyle = lipgloss.NewStyle().Foreground(ColorPrimary)
@@ -68,35 +68,35 @@ func rebuildTaskStyles() {
 }
 
 func rebuildBadgeStyles() {
-	EpicBadgeStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("135"))
-	StoryBadgeStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("39"))
+	EpicBadgeStyle = lipgloss.NewStyle().Foreground(ColorPurple)
+	StoryBadgeStyle = lipgloss.NewStyle().Foreground(ColorPrimary)
 	TaskBadgeStyle = lipgloss.NewStyle().Foreground(ColorSuccess)
-	BugBadgeStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("196"))
+	BugBadgeStyle = lipgloss.NewStyle().Foreground(ColorError)
 	IdeaBadgeStyle = lipgloss.NewStyle().Foreground(ColorWarning)
-	NoteBadgeStyle = makeBadgeStyle("248", "237")
-	ActionBadgeStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("208"))
+	NoteBadgeStyle = lipgloss.NewStyle().Foreground(ColorMuted).Background(ColorDimmedBg)
+	ActionBadgeStyle = lipgloss.NewStyle().Foreground(ColorOrange)
 
-	TodoBadgeStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("248"))
+	TodoBadgeStyle = lipgloss.NewStyle().Foreground(ColorMuted)
 	InProgressBadgeStyle = lipgloss.NewStyle().Foreground(ColorWarning)
-	ReviewBadgeStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("33"))
+	ReviewBadgeStyle = lipgloss.NewStyle().Foreground(ColorSecondary)
 	DoneBadgeStyle = lipgloss.NewStyle().Foreground(ColorSuccess)
-	BlockedBadgeStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("196"))
+	BlockedBadgeStyle = lipgloss.NewStyle().Foreground(ColorError)
 	if activeThemeName == "light" {
 		StandbyBadgeStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#6d28d9"))
 	} else {
-		StandbyBadgeStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("141"))
+		StandbyBadgeStyle = lipgloss.NewStyle().Foreground(ColorViewStandby)
 	}
-	CanceledBadgeStyle = makeBadgeStyle("248", "236")
+	CanceledBadgeStyle = lipgloss.NewStyle().Foreground(ColorMuted).Background(ColorBackground)
 	if activeThemeName == "light" {
 		StageBadgeStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#7c3aed"))
 	} else {
-		StageBadgeStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("183"))
+		StageBadgeStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#9d7cd8"))
 	}
 
 	// ColorWarning on light theme is dark brown (#92400e); use white text for
-	// readable contrast (~7:1). Dark theme Warning is orange (ANSI 214) where
+	// readable contrast (~7:1). Dark theme Warning is navy bg color where
 	// black text works well.
-	warningFg := lipgloss.Color("0")
+	warningFg := lipgloss.Color("#1a1b26")
 	if activeThemeName == "light" {
 		warningFg = lipgloss.Color("15")
 	}
@@ -167,16 +167,16 @@ func rebuildViewStyles() {
 	HelpFilterActiveStyle = lipgloss.NewStyle().Foreground(ColorWarning)
 	FocusModeStyle = lipgloss.NewStyle().Foreground(ColorSecondary).Bold(true).Background(ColorBackground)
 
-	ViewModeActiveStyle = makeViewModeStyle("34", "#15803d")
-	ViewModeNextStyle = makeViewModeStyle("61", "#3730a3")
-	ViewModeInboxStyle = makeViewModeStyle("33", "#1d4ed8")
-	ViewModeWaitingStyle = makeViewModeStyle("214", "#92400e")
-	ViewModeSomedayStyle = makeViewModeStyle("135", "#6d28d9")
-	ViewModeCompletedStyle = makeViewModeStyle("136", "#4b5563")
-	ViewModeReviewStyle = makeViewModeStyle("30", "#0f766e")
-	ViewModeStandbyStyle = makeViewModeStyle("141", "#7c3aed")
-	ViewModeSnoozedStyle = makeViewModeStyle("95", "#7c2d12")
-	ViewModeAllStyle = makeViewModeStyle("60", "#0369a1")
+	ViewModeActiveStyle = makeViewModeStyle("#2e4a30", "#15803d")
+	ViewModeNextStyle = makeViewModeStyle("#2d3a6a", "#3730a3")
+	ViewModeInboxStyle = makeViewModeStyle("#1e3a5f", "#1d4ed8")
+	ViewModeWaitingStyle = makeViewModeStyle("#5c3a1e", "#92400e")
+	ViewModeSomedayStyle = makeViewModeStyle("#3d2a5c", "#6d28d9")
+	ViewModeCompletedStyle = makeViewModeStyle("#3b3f5c", "#4b5563")
+	ViewModeReviewStyle = makeViewModeStyle("#1e3a3f", "#0f766e")
+	ViewModeStandbyStyle = makeViewModeStyle("#4a2e6a", "#7c3aed")
+	ViewModeSnoozedStyle = makeViewModeStyle("#4a2e3a", "#7c2d12")
+	ViewModeAllStyle = makeViewModeStyle("#283352", "#0369a1")
 }
 
 func rebuildSelectionStyles() {
@@ -219,8 +219,8 @@ func rebuildCategoryStyles() {
 	CategorySectionStyle = lipgloss.NewStyle().Foreground(ColorPurple)
 	CategorySavedSearchStyle = lipgloss.NewStyle().Foreground(ColorWarning)
 	CategorySavedFilterStyle = lipgloss.NewStyle().Foreground(ColorSecondary)
-	CategoryNoteStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("108"))
-	CategoryViewStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("75"))
+	CategoryNoteStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#73daca"))
+	CategoryViewStyle = lipgloss.NewStyle().Foreground(ColorSecondary)
 }
 
 func rebuildPriorityTitleStyles() {
@@ -235,7 +235,7 @@ func rebuildMiscStyles() {
 	RuleKeywordStyle = makeColorStyle(ColorRuleKeyword)
 	RuleOperatorStyle = makeColorStyle(ColorRuleOperator)
 	RuleHighlightStyle = lipgloss.NewStyle().Foreground(ColorAccent).Bold(true)
-	HighlightStyle = lipgloss.NewStyle().Background(ColorHighlight).Foreground(lipgloss.Color("0")).Bold(true)
+	HighlightStyle = lipgloss.NewStyle().Background(ColorHighlight).Foreground(lipgloss.Color("#1a1b26")).Bold(true)
 	MatchHighlightStyle = lipgloss.NewStyle().Foreground(ColorHighlight)
 	TagInlineStyle = lipgloss.NewStyle().Foreground(ColorSecondary)
 	CheckmarkStyle = lipgloss.NewStyle().Foreground(ColorSuccess)

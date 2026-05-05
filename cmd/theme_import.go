@@ -77,6 +77,11 @@ func runThemeImport(cmd *cobra.Command, args []string) error {
 	}
 
 	cfg.SetActiveTheme(slot, tf.Theme)
+	if slot == "dark" {
+		cfg.ThemeDarkRev = config.DarkThemeDefaultsRev
+	} else {
+		cfg.ThemeLightRev = config.LightThemeDefaultsRev
+	}
 	if err := saveConfig(configManager, cfg); err != nil {
 		return err
 	}

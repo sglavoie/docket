@@ -34,22 +34,22 @@ var groupAccentColor = map[string]color.Color{
 
 // groupBgColor maps group name → subtle dark background tint.
 var groupBgColor = map[string]color.Color{
-	"Capture":  lipgloss.Color("#3a2222"),
-	"Organize": lipgloss.Color("#1e2a3a"),
-	"Plan":     lipgloss.Color("#1e3322"),
-	"Work":     lipgloss.Color("#332211"),
-	"Review":   lipgloss.Color("#332e1a"),
-	"Support":  lipgloss.Color("#2c2c2c"),
+	"Capture":  lipgloss.Color("#2a1f2a"),
+	"Organize": lipgloss.Color("#1e2535"),
+	"Plan":     lipgloss.Color("#1e2a22"),
+	"Work":     lipgloss.Color("#2a2218"),
+	"Review":   lipgloss.Color("#2a2618"),
+	"Support":  lipgloss.Color("#222228"),
 }
 
 // groupLightColor maps group name → lighter/pastel variant for detail text.
 var groupLightColor = map[string]color.Color{
-	"Capture":  lipgloss.Color("#e0a090"),
+	"Capture":  lipgloss.Color("#f0a0a0"),
 	"Organize": lipgloss.Color("#90c0e0"),
 	"Plan":     lipgloss.Color("#80d0a0"),
 	"Work":     lipgloss.Color("#e0b080"),
 	"Review":   lipgloss.Color("#e0d090"),
-	"Support":  lipgloss.Color("#a0a0a0"),
+	"Support":  lipgloss.Color("#9aa5ce"),
 }
 
 // hasGroups returns true if any hint has a non-empty Group field.

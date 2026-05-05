@@ -91,6 +91,7 @@ func TestThemeExport(t *testing.T) {
 			CursorColor:     "#112233",
 			CursorTextColor: "#ffffff",
 		}
+		deps.Config.ThemeDarkRev = config.DarkThemeDefaultsRev
 		testutil.AssertNoError(t, manager.Save(deps.Config))
 
 		err := runThemeExport(themeExportCmd, []string{"roundtrip"})

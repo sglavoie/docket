@@ -7,9 +7,9 @@ import (
 // projectColorPaletteDark is a 12-color curated hex palette for dark themes:
 // bright and saturated for readability on dark backgrounds.
 var projectColorPaletteDark = [12]string{
-	"#ff6b9d", "#fb923c", "#facc15", "#a3e635",
-	"#34d399", "#60a5fa", "#38bdf8", "#a78bfa",
-	"#c084fc", "#f472b6", "#fbbf24", "#22d3ee",
+	"#f7768e", "#ff9e64", "#e0af68", "#9ece6a",
+	"#73daca", "#7aa2f7", "#7dcfff", "#bb9af7",
+	"#9d7cd8", "#ff6b9d", "#cba050", "#2ac3de",
 }
 
 // projectColorPaletteLight is a 12-color curated hex palette for light themes:

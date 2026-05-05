@@ -4,7 +4,7 @@ package tui
 type askState int
 
 const (
-	askStateInput askState = iota // User is typing a query
-	askStateLoading               // Waiting for response from Claude
-	askStateResult                // Displaying result, awaiting user action
+	askStateInput   askState = iota // User is typing a query
+	askStateLoading                 // Waiting for response from Claude
+	askStateResult                  // Displaying result, awaiting user action
 )

@@ -85,7 +85,7 @@ func ApplyTheme(tc ThemeConfig) {
 	if tc.Name == "light" {
 		ColorSelectedTextFg = lipgloss.Color("#0f172a")
 	} else {
-		ColorSelectedTextFg = lipgloss.Color("#fbeeff")
+		ColorSelectedTextFg = lipgloss.Color("#c0caf5")
 	}
 
 	SelectedStyle = lipgloss.NewStyle().
@@ -243,15 +243,15 @@ func makeBadgeStyle(fg, bg string) lipgloss.Style {
 }
 
 // makeViewModeStyle creates a view mode tab style with tone-aware background.
-// darkANSI is used on dark themes; lightHex (a curated hex color) on light themes.
-func makeViewModeStyle(darkANSI, lightHex string) lipgloss.Style {
-	bgStr := darkANSI
+// dark is used on dark themes; lightHex (a curated hex color) on light themes.
+func makeViewModeStyle(dark, lightHex string) lipgloss.Style {
+	bgStr := dark
 	if activeThemeName == "light" {
 		bgStr = lightHex
 	}
 	return lipgloss.NewStyle().
 		Background(lipgloss.Color(bgStr)).
-		Foreground(lipgloss.Color("15")).
+		Foreground(lipgloss.Color("#c0caf5")).
 		Bold(true).
 		Padding(0, 1)
 }

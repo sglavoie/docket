@@ -171,6 +171,7 @@ func TestMigratePaletteToThemes_CurrentRev_NoOp(t *testing.T) {
 		ThemeLight:    light,
 		ThemeLightRev: LightThemeDefaultsRev,
 		ThemeDark:     Theme{BackgroundColor: "#000000"},
+		ThemeDarkRev:  DarkThemeDefaultsRev,
 		ActiveTheme:   "dark",
 	}
 	snapshot := *cfg

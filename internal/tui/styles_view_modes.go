@@ -4,16 +4,16 @@ import "charm.land/lipgloss/v2"
 
 // View mode and filter styles.
 var (
-	ViewModeActiveStyle    = makeViewModeStyle("34", "#15803d")
-	ViewModeNextStyle      = makeViewModeStyle("61", "#3730a3")
-	ViewModeInboxStyle     = makeViewModeStyle("33", "#1d4ed8")
-	ViewModeWaitingStyle   = makeViewModeStyle("214", "#92400e")
-	ViewModeSomedayStyle   = makeViewModeStyle("135", "#6d28d9")
-	ViewModeCompletedStyle = makeViewModeStyle("136", "#4b5563")
-	ViewModeReviewStyle    = makeViewModeStyle("30", "#0f766e")
-	ViewModeStandbyStyle   = makeViewModeStyle("141", "#7c3aed")
-	ViewModeSnoozedStyle   = makeViewModeStyle("95", "#7c2d12")
-	ViewModeAllStyle       = makeViewModeStyle("60", "#0369a1")
+	ViewModeActiveStyle    = makeViewModeStyle("#2e4a30", "#15803d")
+	ViewModeNextStyle      = makeViewModeStyle("#2d3a6a", "#3730a3")
+	ViewModeInboxStyle     = makeViewModeStyle("#1e3a5f", "#1d4ed8")
+	ViewModeWaitingStyle   = makeViewModeStyle("#5c3a1e", "#92400e")
+	ViewModeSomedayStyle   = makeViewModeStyle("#3d2a5c", "#6d28d9")
+	ViewModeCompletedStyle = makeViewModeStyle("#3b3f5c", "#4b5563")
+	ViewModeReviewStyle    = makeViewModeStyle("#1e3a3f", "#0f766e")
+	ViewModeStandbyStyle   = makeViewModeStyle("#4a2e6a", "#7c3aed")
+	ViewModeSnoozedStyle   = makeViewModeStyle("#4a2e3a", "#7c2d12")
+	ViewModeAllStyle       = makeViewModeStyle("#283352", "#0369a1")
 
 	FilterBadgeStyle = lipgloss.NewStyle().
 				Background(ColorWarning).
