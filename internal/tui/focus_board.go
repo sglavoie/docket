@@ -65,6 +65,9 @@ type FocusBoardModel struct {
 	// Filter
 	FilterMixin
 
+	// Multi-select
+	MultiSelectState
+
 	// Quick-add input
 	addMode  bool
 	addInput textinput.Model
@@ -106,9 +109,10 @@ func NewFocusBoardModel(cfg *config.Config, manager *config.Manager, dailyPlan *
 		carriedOverIDs: carriedOverIDs,
 		addInput:       ti,
 		editInput:      ei,
-		FilterMixin:    FilterMixin{filter: newFilterState()},
-		sort:           NewSortState(),
-		tabs:           TabState{Names: focusBoardTabNames},
+		FilterMixin:      FilterMixin{filter: newFilterState()},
+		MultiSelectState: MultiSelectState{selectedTasks: make(map[string]bool)},
+		sort:             NewSortState(),
+		tabs:             TabState{Names: focusBoardTabNames},
 	}
 	m.initFilterMixin(&m.pendingPrefix, cfg)
 	m.InitSearchInput("Search...", 100, 40)
@@ -175,6 +179,7 @@ func (m *FocusBoardModel) clampCursor() {
 // escSteps defines the Esc dismissal cascade: search → filters.
 func (m *FocusBoardModel) escSteps() []EscStep {
 	return []EscStep{
+		MultiSelectEscStep(func() bool { return m.multiSelectMode }, m.toggleMultiSelectMode),
 		{Active: func() bool { return m.SearchQuery() != "" }, Clear: func() {
 			m.ClearSearch()
 			m.applyFilter()

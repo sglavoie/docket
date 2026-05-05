@@ -93,6 +93,9 @@ type PriorityViewModel struct {
 	// Filter state
 	FilterMixin
 
+	// Multi-select
+	MultiSelectState
+
 	// Waiting On section state
 	waitingOnCollapsed bool
 
@@ -109,6 +112,7 @@ func NewPriorityViewModel(project *models.Project, cfg *config.Config, mgr *conf
 		waitingOnCollapsed: true,
 		dismissedIDs:       make(map[string]bool),
 		FilterMixin:        FilterMixin{filter: newFilterState()},
+		MultiSelectState:   MultiSelectState{selectedTasks: make(map[string]bool)},
 		tabs:               TabState{Names: priorityTabNames},
 	}
 	m.initFilterMixin(&m.pendingPrefix, cfg)
@@ -146,6 +150,7 @@ func (m *PriorityViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 // escSteps defines the Esc dismissal cascade: search → filters.
 func (m *PriorityViewModel) escSteps() []EscStep {
 	return []EscStep{
+		MultiSelectEscStep(func() bool { return m.multiSelectMode }, m.toggleMultiSelectMode),
 		{Active: func() bool { return m.SearchQuery() != "" }, Clear: func() {
 			m.ClearSearch()
 			m.recalculateNavigation()
@@ -309,6 +314,9 @@ func (m *PriorityViewModel) View() tea.View {
 		b.WriteString("\n")
 	}
 	left := HelpStyle.Render("↑/↓ navigate · / search · shift+←/→ tabs · F filter · s start suggested · ,s/,d status" + tabHint)
+	if m.multiSelectMode {
+		left = HelpStyle.Render("MULTI-SELECT: space toggle · a all · A deselect · ,/! status/priority · v exit")
+	}
 	right := MutedStyle.Render(fmt.Sprintf("%d tasks", m.totalTasks))
 	b.WriteString(renderStatusBarFooter(left, right, m.Width(), m.AccentColor()))
 
@@ -329,6 +337,7 @@ func (m *PriorityViewModel) HandledKeys() []string {
 		snoozePrefixKeys(),
 		linkedTaskPrefixKeys(),
 		stagePrefixKeys(),
+		blockerPrefixKeySet(),
 		commonActionKeys(),
 		[]string{
 			"g", "gt",
@@ -336,7 +345,7 @@ func (m *PriorityViewModel) HandledKeys() []string {
 			"w", "x", "A",
 			"enter", "tab", "F", "m", "t", "/",
 			"1", "2", "3", "4", "5",
-			"esc",
+			"v", "esc",
 		},
 	)
 }
@@ -345,3 +354,32 @@ func (m *PriorityViewModel) StatusBarLabel() string { return "Priority" }
 
 // IsFullHeight returns true because the priority view renders its own footer.
 func (m *PriorityViewModel) IsFullHeight() bool { return true }
+
+// Multi-select helpers.
+
+func (m *PriorityViewModel) toggleMultiSelectMode() {
+	m.ToggleMode(&m.statusMessage, "Multi-select: space=toggle, a=all, A=deselect")
+}
+
+func (m *PriorityViewModel) toggleTaskSelection() {
+	pt := m.getTaskAtCursor()
+	if pt == nil {
+		return
+	}
+	m.ToggleAndUpdateStatus(pt.Task.ID, &m.statusMessage, "Multi-select: space=toggle", "%d selected")
+}
+
+func (m *PriorityViewModel) selectAllVisible() {
+	overdue, today, thisWeek, later, backlog, waitingOn := m.filteredGroupsWithSubTab()
+	for _, group := range [][]*PriorityTask{overdue, today, thisWeek, later, backlog, waitingOn} {
+		for _, pt := range group {
+			m.selectedTasks[pt.Task.ID] = true
+		}
+	}
+	m.UpdateStatus(&m.statusMessage, "Multi-select: space=toggle", "%d selected")
+}
+
+func (m *PriorityViewModel) deselectAll() {
+	m.ClearSelection()
+	m.UpdateStatus(&m.statusMessage, "Multi-select: space=toggle", "%d selected")
+}

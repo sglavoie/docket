@@ -50,6 +50,7 @@ func (m *AllTasksViewModel) deselectAll() {
 }
 
 // getSelectedItemsByProject returns all selected items grouped by project ID.
+// Retained for handleBulkDelete which uses the CrossProjectTask type directly.
 func (m *AllTasksViewModel) getSelectedItemsByProject() map[string][]CrossProjectTask {
 	byProject := make(map[string][]CrossProjectTask)
 	for _, group := range m.groups {
@@ -62,32 +63,17 @@ func (m *AllTasksViewModel) getSelectedItemsByProject() map[string][]CrossProjec
 	return byProject
 }
 
-// bulkApply iterates selected tasks grouped by project, backs up each project,
-// calls mutate for each item, and saves. Returns the count from mutate calls,
-// or -1 if a backup or save failed (with statusMessage already set).
-func (m *AllTasksViewModel) bulkApply(mutate func(project *models.Project, item CrossProjectTask) bool) int {
-	byProject := m.getSelectedItemsByProject()
-	count := 0
-	for projectID, items := range byProject {
-		project := m.projectCache[projectID]
-		if project == nil {
-			continue
-		}
-		if err := m.projectService.Backup(project); err != nil {
-			m.setStatus(fmt.Sprintf("Failed to backup project %s: %v", project.Name, err))
-			return -1
-		}
-		for _, item := range items {
-			if mutate(project, item) {
-				count++
+// getSelectedBulkItems returns all selected tasks as a flat slice of bulkTaskItem.
+func (m *AllTasksViewModel) getSelectedBulkItems() []bulkTaskItem {
+	var items []bulkTaskItem
+	for _, group := range m.groups {
+		for _, item := range group.Tasks {
+			if m.selectedTasks[item.Task.ID] {
+				items = append(items, bulkTaskItem{Task: item.Task, Project: item.Project})
 			}
 		}
-		if err := m.projectService.Save(project); err != nil {
-			m.setStatus(fmt.Sprintf("Failed to save project %s: %v", project.Name, err))
-			return -1
-		}
 	}
-	return count
+	return items
 }
 
 // finishBulk clears multiselect state, sets the status message, and refreshes.
@@ -99,18 +85,20 @@ func (m *AllTasksViewModel) finishBulk(statusMsg string) {
 
 // handleBulkStatusChange applies a status change to all selected tasks across projects.
 func (m *AllTasksViewModel) handleBulkStatusChange(newStatus models.TaskStatus) (tea.Model, tea.Cmd) {
-	count := m.bulkApply(func(project *models.Project, item CrossProjectTask) bool {
-		var changed bool
-		project.MutateTask(item.Task.ID, func(t *models.Task) {
-			if t.CanTransitionTo(newStatus) != "" {
-				return
+	items := m.getSelectedBulkItems()
+	count, err := taskOpsApplyBulk(m, items, StatusVerb(newStatus)+" Task",
+		func(project *models.Project, taskID string) bool {
+			task := project.GetTaskByID(taskID)
+			if task == nil || task.CanTransitionTo(newStatus) != "" {
+				return false
 			}
-			t.ApplyTransition(newStatus)
-			changed = true
+			project.MutateTask(taskID, func(t *models.Task) {
+				t.ApplyTransition(newStatus)
+			})
+			return true
 		})
-		return changed
-	})
-	if count < 0 {
+	if err != nil {
+		m.setStatus(fmt.Sprintf("Error: %v", err))
 		return m, nil
 	}
 	if count == 0 {
@@ -123,16 +111,20 @@ func (m *AllTasksViewModel) handleBulkStatusChange(newStatus models.TaskStatus) 
 
 // handleBulkPriorityChange sets the priority on all selected tasks across projects.
 func (m *AllTasksViewModel) handleBulkPriorityChange(priority int) (tea.Model, tea.Cmd) {
-	count := m.bulkApply(func(project *models.Project, item CrossProjectTask) bool {
-		if item.Task.Priority == priority {
-			return false
-		}
-		project.MutateTask(item.Task.ID, func(t *models.Task) {
-			t.Priority = priority
+	items := m.getSelectedBulkItems()
+	count, err := taskOpsApplyBulk(m, items, "Set Priority",
+		func(project *models.Project, taskID string) bool {
+			task := project.GetTaskByID(taskID)
+			if task == nil || task.Priority == priority {
+				return false
+			}
+			project.MutateTask(taskID, func(t *models.Task) {
+				t.Priority = priority
+			})
+			return true
 		})
-		return true
-	})
-	if count < 0 {
+	if err != nil {
+		m.setStatus(fmt.Sprintf("Error: %v", err))
 		return m, nil
 	}
 	if count == 0 {
@@ -145,18 +137,19 @@ func (m *AllTasksViewModel) handleBulkPriorityChange(priority int) (tea.Model, t
 
 // handleBulkDueDateChange sets a due date on all selected tasks.
 func (m *AllTasksViewModel) handleBulkDueDateChange(daysFromNow int) (tea.Model, tea.Cmd) {
-	dueDate := time.Now().AddDate(0, 0, daysFromNow)
-	dueDate = util.StartOfDay(dueDate)
-
-	count := m.bulkApply(func(project *models.Project, item CrossProjectTask) bool {
-		project.MutateTask(item.Task.ID, func(t *models.Task) {
-			d := dueDate // copy so each task owns its own *time.Time
-			t.DueDate = &d
-			t.HasTime = false // Bulk preset is always date-only.
+	items := m.getSelectedBulkItems()
+	dueDate := util.StartOfDay(time.Now().AddDate(0, 0, daysFromNow))
+	count, err := taskOpsApplyBulk(m, items, "Set Due Date",
+		func(project *models.Project, taskID string) bool {
+			project.MutateTask(taskID, func(t *models.Task) {
+				d := dueDate
+				t.DueDate = &d
+				t.HasTime = false
+			})
+			return true
 		})
-		return true
-	})
-	if count < 0 {
+	if err != nil {
+		m.setStatus(fmt.Sprintf("Error: %v", err))
 		return m, nil
 	}
 	m.finishBulk(fmt.Sprintf("Due date %s on %d tasks", dueDateLabel(daysFromNow), count))
@@ -165,14 +158,17 @@ func (m *AllTasksViewModel) handleBulkDueDateChange(daysFromNow int) (tea.Model,
 
 // handleBulkClearDueDate clears due dates on all selected tasks.
 func (m *AllTasksViewModel) handleBulkClearDueDate() (tea.Model, tea.Cmd) {
-	count := m.bulkApply(func(project *models.Project, item CrossProjectTask) bool {
-		project.MutateTask(item.Task.ID, func(t *models.Task) {
-			t.DueDate = nil
-			t.HasTime = false
+	items := m.getSelectedBulkItems()
+	count, err := taskOpsApplyBulk(m, items, "Clear Due Date",
+		func(project *models.Project, taskID string) bool {
+			project.MutateTask(taskID, func(t *models.Task) {
+				t.DueDate = nil
+				t.HasTime = false
+			})
+			return true
 		})
-		return true
-	})
-	if count < 0 {
+	if err != nil {
+		m.setStatus(fmt.Sprintf("Error: %v", err))
 		return m, nil
 	}
 	m.finishBulk(fmt.Sprintf("Cleared due date on %d tasks", count))
@@ -181,16 +177,20 @@ func (m *AllTasksViewModel) handleBulkClearDueDate() (tea.Model, tea.Cmd) {
 
 // handleBulkSectionMove moves all selected tasks to a target section.
 func (m *AllTasksViewModel) handleBulkSectionMove(targetSection string) (tea.Model, tea.Cmd) {
-	count := m.bulkApply(func(project *models.Project, item CrossProjectTask) bool {
-		if item.Task.InSection(targetSection) {
-			return false
-		}
-		project.MutateTask(item.Task.ID, func(t *models.Task) {
-			t.SetSection(targetSection)
+	items := m.getSelectedBulkItems()
+	count, err := taskOpsApplyBulk(m, items, "Move to Section",
+		func(project *models.Project, taskID string) bool {
+			task := project.GetTaskByID(taskID)
+			if task == nil || task.InSection(targetSection) {
+				return false
+			}
+			project.MutateTask(taskID, func(t *models.Task) {
+				t.SetSection(targetSection)
+			})
+			return true
 		})
-		return true
-	})
-	if count < 0 {
+	if err != nil {
+		m.setStatus(fmt.Sprintf("Error: %v", err))
 		return m, nil
 	}
 	if count == 0 {

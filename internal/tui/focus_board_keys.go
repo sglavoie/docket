@@ -37,8 +37,31 @@ func (m *FocusBoardModel) handleKeyMsg(msg tea.KeyPressMsg) (tea.Model, tea.Cmd)
 		return m.handleDailyPlanReorder(-1)
 	}
 
+	// Multi-select key handling
+	if m.multiSelectMode {
+		switch key {
+		case "v":
+			m.toggleMultiSelectMode()
+			return m, nil
+		case "space":
+			m.toggleTaskSelection()
+			return m, nil
+		case "a":
+			m.selectAllVisible()
+			return m, nil
+		case "A":
+			m.deselectAll()
+			return m, nil
+		}
+		switch key {
+		case ",", "!", "d", "s", "m", ".":
+			m.pendingPrefix = key
+			return m, nil
+		}
+	}
+
 	// Activate prefix keys: F always, ,!g gated on item, mc gated on item
-	if prefix, ok := activateSecondaryPrefix(key, "gzF", ",!dsmct.", m.getRowAtCursor() != nil); ok {
+	if prefix, ok := activateSecondaryPrefix(key, "gzF", ",!dsmctb.", m.getRowAtCursor() != nil); ok {
 		m.pendingPrefix = prefix
 		return m, nil
 	}
@@ -155,6 +178,14 @@ func (m *FocusBoardModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
+	if m.multiSelectMode && m.SelectedCount() > 0 {
+		if model, cmd, handled := dispatchBulkPrefix(prefix, key, m, m.getSelectedBulkItems()); handled {
+			m.ExitMultiSelect()
+			return model, cmd
+		}
+		return m, nil
+	}
+
 	viewSpecific := func(pfx, k string) (tea.Model, tea.Cmd, bool) {
 		if pfx == "z" && k == "p" {
 			m.previewMode = !m.previewMode
@@ -185,6 +216,45 @@ func (m *FocusBoardModel) GetHelpItems() []HelpItem {
 	return GetKeybindingRegistry().GetForView(ViewFocusBoard)
 }
 
+// Multi-select helpers.
+
+func (m *FocusBoardModel) toggleMultiSelectMode() {
+	m.ToggleMode(&m.statusMessage, "Multi-select: space=toggle, a=all, A=deselect")
+}
+
+func (m *FocusBoardModel) toggleTaskSelection() {
+	row := m.getRowAtCursor()
+	if row == nil || !row.isTask() {
+		return
+	}
+	m.ToggleAndUpdateStatus(row.Task.ID, &m.statusMessage, "Multi-select: space=toggle", "%d selected")
+}
+
+func (m *FocusBoardModel) selectAllVisible() {
+	for _, row := range m.filtered {
+		if row.isTask() {
+			m.selectedTasks[row.Task.ID] = true
+		}
+	}
+	m.UpdateStatus(&m.statusMessage, "Multi-select: space=toggle", "%d selected")
+}
+
+func (m *FocusBoardModel) deselectAll() {
+	m.ClearSelection()
+	m.UpdateStatus(&m.statusMessage, "Multi-select: space=toggle", "%d selected")
+}
+
+// getSelectedBulkItems returns selected tasks as bulkTaskItem slice.
+func (m *FocusBoardModel) getSelectedBulkItems() []bulkTaskItem {
+	var items []bulkTaskItem
+	for _, row := range m.filtered {
+		if row.isTask() && m.selectedTasks[row.Task.ID] {
+			items = append(items, bulkTaskItem{Task: row.Task, Project: row.Project})
+		}
+	}
+	return items
+}
+
 func (m *FocusBoardModel) HandledKeys() []string {
 	return concatKeys(
 		[]string{"j", "k", "J", "K", "G", "ctrl+u", "ctrl+d"}, // FocusBoard registry has j/k and ctrl+u/d but not ↑/↓
@@ -194,6 +264,7 @@ func (m *FocusBoardModel) HandledKeys() []string {
 		snoozePrefixKeys(),
 		linkedTaskPrefixKeys(),
 		stagePrefixKeys(),
+		blockerPrefixKeySet(),
 		commonActionKeys(),
 		[]string{
 			"g", "gp",
@@ -203,7 +274,7 @@ func (m *FocusBoardModel) HandledKeys() []string {
 			"d", "p", "E", "t", "m",
 			"F", "Fx", "/",
 			"1", "2", "3", "4", "5", "0",
-			"w", "u", "esc",
+			"v", "w", "u", "esc",
 		},
 	)
 }

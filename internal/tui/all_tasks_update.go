@@ -95,7 +95,7 @@ func (m *AllTasksViewModel) handleKeyMsg(msg tea.KeyPressMsg) (tea.Model, tea.Cm
 	}
 
 	// Activate prefix mode
-	if prefix, ok := activateSecondaryPrefix(key, "gzF", ",!dsmct.", m.getTaskAtCursor() != nil); ok {
+	if prefix, ok := activateSecondaryPrefix(key, "gzF", ",!dsmctb.", m.getTaskAtCursor() != nil); ok {
 		m.pendingPrefix = prefix
 		return m, nil
 	}

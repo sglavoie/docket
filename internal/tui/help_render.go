@@ -8,7 +8,140 @@ import (
 	"charm.land/lipgloss/v2"
 )
 
+// prefixGroupOrder defines the display order for prefix groups in "by prefix" mode.
+var prefixGroupOrder = []string{
+	",", "!", ".", "d", "s", "c", "m", "t", "b", "z", "F",
+}
+
+// prefixGroupLabels maps registry Category names to their prefix group key.
+// Categories not present here are shown under "Direct Keys".
+var prefixGroupLabels = map[string]string{
+	"Status":            ",",
+	"Recurrence":        ",",
+	"Priority":          "!",
+	"Stage (. prefix)":  ".",
+	"Due Date":          "d",
+	"Snooze":            "s",
+	"Linked Tasks":      "c",
+	"Task (t prefix)":   "t",
+	"Folds":             "z",
+	"Move (m prefix)":   "m",
+	"Blockers (b prefix)": "b",
+	"Filters":           "F",
+}
+
+// renderByPrefixContent renders the help items grouped by prefix category.
+func (m *HelpViewModel) renderByPrefixContent() string {
+	if len(m.filteredItems) == 0 {
+		return MutedStyle.Render("No matching help items.")
+	}
+
+	contentWidth := max(m.viewport.Width(), 1)
+	keyWidth := 16
+	columnGap := 4
+	columnOverhead := keyWidth + 2
+	descWidth := max((contentWidth-2*columnOverhead-columnGap)/2, 1)
+	columnWidth := keyWidth + 2 + descWidth
+
+	keyStyle := lipgloss.NewStyle().
+		Width(keyWidth).
+		Align(lipgloss.Right).
+		Foreground(ColorSecondary)
+	columnStyle := lipgloss.NewStyle().Width(columnWidth)
+
+	renderItem := func(item filteredHelpItem) string {
+		var renderedKey string
+		if len(item.keyPositions) > 0 {
+			renderedKey = keyStyle.Render(HighlightText(item.Key, item.keyPositions, TagInlineStyle))
+		} else {
+			renderedKey = keyStyle.Render(item.Key)
+		}
+		descText := item.Description
+		scopeSuffix := ""
+		if m.isExplorer {
+			scopeSuffix = "  · " + scopeText(item.Views)
+			descText = item.Description + scopeSuffix
+		}
+		wrappedDesc := wrapDescriptionWithIndent(descText, descWidth, keyWidth+2)
+		descLines := strings.Split(wrappedDesc, "\n")
+		if scopeSuffix != "" {
+			descLines = styleScopeLines(descLines)
+		}
+		var result strings.Builder
+		for i, line := range descLines {
+			if i == 0 {
+				result.WriteString(renderedKey)
+				result.WriteString("  ")
+				if len(item.descPositions) > 0 {
+					result.WriteString(HighlightText(line, item.descPositions, NormalStyle))
+				} else {
+					result.WriteString(line)
+				}
+			} else {
+				result.WriteString("\n")
+				result.WriteString(line)
+			}
+		}
+		return result.String()
+	}
+
+	// Bucket items by prefix group key
+	buckets := make(map[string][]filteredHelpItem)
+	var directItems []filteredHelpItem
+	for _, item := range m.filteredItems {
+		if group, ok := prefixGroupLabels[item.Category]; ok {
+			buckets[group] = append(buckets[group], item)
+		} else {
+			directItems = append(directItems, item)
+		}
+	}
+
+	var b strings.Builder
+	first := true
+
+	renderSection := func(header string, items []filteredHelpItem) {
+		if len(items) == 0 {
+			return
+		}
+		if !first {
+			b.WriteString("\n")
+		}
+		first = false
+		b.WriteString(HelpCategoryStyle.Render(header))
+		b.WriteString("\n")
+		for j := 0; j < len(items); j += 2 {
+			col1 := columnStyle.Render(renderItem(items[j]))
+			var col2 string
+			if j+1 < len(items) {
+				col2 = columnStyle.Render(renderItem(items[j+1]))
+			}
+			row := lipgloss.JoinHorizontal(lipgloss.Top, col1, strings.Repeat(" ", columnGap), col2)
+			b.WriteString(row)
+			b.WriteString("\n")
+		}
+	}
+
+	for _, prefix := range prefixGroupOrder {
+		items, ok := buckets[prefix]
+		if !ok {
+			continue
+		}
+		catName := prefixCategoryNames[prefix]
+		header := fmt.Sprintf("%s  (%s)", catName, prefix)
+		renderSection(header, items)
+	}
+	if len(directItems) > 0 {
+		renderSection("direct keys", directItems)
+	}
+
+	return b.String()
+}
+
 func (m *HelpViewModel) renderContent() string {
+	if m.byPrefixMode {
+		return m.renderByPrefixContent()
+	}
+
 	if len(m.filteredItems) == 0 {
 		return MutedStyle.Render("No matching help items.")
 	}
@@ -192,7 +325,15 @@ func (m *HelpViewModel) View() tea.View {
 	if m.ready && m.viewport.TotalLineCount() > m.viewport.Height() {
 		scrollPercent = fmt.Sprintf(" %3.0f%%", m.viewport.ScrollPercent()*100)
 	}
-	right := HelpStyle.Render(fmt.Sprintf("shift+←/→: tabs · \\ find tab · / filter · bksp clear · j/k scroll · %s%s", closeKey, scrollPercent))
+	explorerHints := ""
+	if m.isExplorer {
+		prefixLabel := "by prefix"
+		if m.byPrefixMode {
+			prefixLabel = "by category"
+		}
+		explorerHints = fmt.Sprintf(" · p: %s", prefixLabel)
+	}
+	right := HelpStyle.Render(fmt.Sprintf("shift+←/→: tabs · \\ find tab · / filter · bksp clear · j/k scroll · %s%s%s", closeKey, explorerHints, scrollPercent))
 
 	b.WriteString(renderStatusBarFooter(left, right, m.width))
 

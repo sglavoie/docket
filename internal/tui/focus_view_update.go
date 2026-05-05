@@ -45,7 +45,30 @@ func (m *FocusViewModel) handleKeyMsg(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) 
 		return m, nil
 	}
 
-	if prefix, ok := activateSecondaryPrefix(key, "gzF", ",!dsmct.", m.getTaskAtCursor() != nil); ok {
+	// Multi-select key handling
+	if m.multiSelectMode {
+		switch key {
+		case "v":
+			m.toggleMultiSelectMode()
+			return m, nil
+		case "space":
+			m.toggleTaskSelection()
+			return m, nil
+		case "a":
+			m.selectAllVisible()
+			return m, nil
+		case "A":
+			m.deselectAll()
+			return m, nil
+		}
+		switch key {
+		case ",", "!", "d", "s", "m", ".":
+			m.pendingPrefix = key
+			return m, nil
+		}
+	}
+
+	if prefix, ok := activateSecondaryPrefix(key, "gzF", ",!dsmctb.", m.getTaskAtCursor() != nil); ok {
 		m.pendingPrefix = prefix
 		return m, nil
 	}
@@ -110,6 +133,14 @@ func (m *FocusViewModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 	m.pendingPrefix = ""
 
 	if key == "esc" {
+		return m, nil
+	}
+
+	if m.multiSelectMode && m.SelectedCount() > 0 {
+		if model, cmd, handled := dispatchBulkPrefix(prefix, key, m, m.getSelectedBulkItems()); handled {
+			m.ExitMultiSelect()
+			return model, cmd
+		}
 		return m, nil
 	}
 

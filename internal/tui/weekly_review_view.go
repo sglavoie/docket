@@ -91,6 +91,9 @@ func (m *WeeklyReviewModel) View() tea.View {
 		rightText = shortRight
 	}
 	left := HelpStyle.Render(leftText)
+	if m.multiSelectMode {
+		left = HelpStyle.Render("MULTI-SELECT: space toggle · a all · A deselect · ,/! status/priority · v exit")
+	}
 	right := MutedStyle.Render(rightText)
 	b.WriteString(renderFullscreenFooterBlock(m.statusMessage, m.err, left, right, m.width, m.AccentColor()))
 

@@ -55,6 +55,9 @@ type DailyReviewModel struct {
 	// Filter
 	FilterMixin
 
+	// Multi-select
+	MultiSelectState
+
 	// Navigation
 	totalTasks        int
 	sectionStarts     []int                // Starting index of each section
@@ -72,6 +75,7 @@ func NewDailyReviewModel(cfg *config.Config, mgr *config.Manager) *DailyReviewMo
 		ViewBundle:        ViewBundle{config: cfg, configManager: mgr},
 		collapsedSections: make(map[int]bool),
 		FilterMixin:       FilterMixin{filter: newFilterState()},
+		MultiSelectState:  MultiSelectState{selectedTasks: make(map[string]bool)},
 		tabs:              TabState{Names: dailyReviewTabNames},
 	}
 	if t := cfg.GetLastDailyReviewAt(); t != nil && isToday(*t) {
@@ -141,8 +145,31 @@ func (m *DailyReviewModel) handleKeyMsg(msg tea.KeyPressMsg) (tea.Model, tea.Cmd
 		return m, nil
 	}
 
+	// Multi-select key handling
+	if m.multiSelectMode {
+		switch key {
+		case "v":
+			m.toggleMultiSelectMode()
+			return m, nil
+		case "space":
+			m.toggleTaskSelection()
+			return m, nil
+		case "a":
+			m.selectAllVisible()
+			return m, nil
+		case "A":
+			m.deselectAll()
+			return m, nil
+		}
+		switch key {
+		case ",", "!", "d", "s", "m", ".":
+			m.pendingPrefix = key
+			return m, nil
+		}
+	}
+
 	// Activate prefix mode
-	if prefix, ok := activateSecondaryPrefix(key, "gzF", ",!dsmct.", m.getTaskAtCursor() != nil); ok {
+	if prefix, ok := activateSecondaryPrefix(key, "gzF", ",!dsmctb.", m.getTaskAtCursor() != nil); ok {
 		m.pendingPrefix = prefix
 		return m, nil
 	}
@@ -212,6 +239,14 @@ func (m *DailyReviewModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 	m.pendingPrefix = "" // Always clear prefix
 
 	if key == "esc" {
+		return m, nil
+	}
+
+	if m.multiSelectMode && m.SelectedCount() > 0 {
+		if model, cmd, handled := dispatchBulkPrefix(prefix, key, m, m.getSelectedBulkItems()); handled {
+			m.ExitMultiSelect()
+			return model, cmd
+		}
 		return m, nil
 	}
 
@@ -293,6 +328,7 @@ func (m *DailyReviewModel) HasFocusedSection() bool {
 // escSteps defines the Esc dismissal cascade: section focus → filters.
 func (m *DailyReviewModel) escSteps() []EscStep {
 	return []EscStep{
+		MultiSelectEscStep(func() bool { return m.multiSelectMode }, m.toggleMultiSelectMode),
 		{Active: m.HasFocusedSection, Clear: func() {
 			m.focusedSection = nil
 			m.calculateNavigation()
@@ -329,6 +365,7 @@ func (m *DailyReviewModel) HandledKeys() []string {
 		snoozePrefixKeys(),
 		linkedTaskPrefixKeys(),
 		stagePrefixKeys(),
+		blockerPrefixKeySet(),
 		commonActionKeys(),
 		[]string{
 			"g",
@@ -338,7 +375,7 @@ func (m *DailyReviewModel) HandledKeys() []string {
 			"gd", "gt", "gs", "gl", "gf", "gr", "gS", "go", "gp",
 			"enter", "F", "m", "t", "R",
 			"1", "2", "3", "4", "5",
-			"esc",
+			"v", "esc",
 		},
 	)
 }
@@ -353,3 +390,50 @@ func (m *DailyReviewModel) StatusBarLabel() string { return "Daily Review" }
 
 // IsFullHeight returns true because the daily review renders its own footer.
 func (m *DailyReviewModel) IsFullHeight() bool { return true }
+
+// Multi-select helpers.
+
+func (m *DailyReviewModel) toggleMultiSelectMode() {
+	m.ToggleMode(&m.statusMessage, "Multi-select: space=toggle, a=all, A=deselect")
+}
+
+func (m *DailyReviewModel) toggleTaskSelection() {
+	dt := m.getTaskAtCursor()
+	if dt == nil {
+		return
+	}
+	m.ToggleAndUpdateStatus(dt.Task.ID, &m.statusMessage, "Multi-select: space=toggle", "%d selected")
+}
+
+func (m *DailyReviewModel) selectAllVisible() {
+	for _, tasks := range [][]CrossProjectTask{
+		m.overdue, m.dueToday, m.dueSoon, m.dueLater, m.future,
+		m.inProgress, m.blocked, m.inReview, m.inStandby, m.old, m.completed,
+	} {
+		for _, t := range tasks {
+			m.selectedTasks[t.Task.ID] = true
+		}
+	}
+	m.UpdateStatus(&m.statusMessage, "Multi-select: space=toggle", "%d selected")
+}
+
+func (m *DailyReviewModel) deselectAll() {
+	m.ClearSelection()
+	m.UpdateStatus(&m.statusMessage, "Multi-select: space=toggle", "%d selected")
+}
+
+// getSelectedBulkItems returns selected tasks as bulkTaskItem slice.
+func (m *DailyReviewModel) getSelectedBulkItems() []bulkTaskItem {
+	var items []bulkTaskItem
+	for _, tasks := range [][]CrossProjectTask{
+		m.overdue, m.dueToday, m.dueSoon, m.dueLater, m.future,
+		m.inProgress, m.blocked, m.inReview, m.inStandby, m.old, m.completed,
+	} {
+		for _, t := range tasks {
+			if m.selectedTasks[t.Task.ID] {
+				items = append(items, bulkTaskItem{Task: t.Task, Project: t.Project})
+			}
+		}
+	}
+	return items
+}

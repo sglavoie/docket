@@ -289,6 +289,7 @@ func (m *PriorityViewModel) renderTaskLine(pt *PriorityTask, isOverdue bool, isS
 	if isSuggested {
 		starPrefix = SuggestionStarStyle.Render("★ ")
 	}
+	starPrefix = m.Checkbox(task.ID) + starPrefix
 
 	// Adjust title width for star indicator
 	adjustedMaxTitleLen := maxTitleLen

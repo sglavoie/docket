@@ -156,6 +156,16 @@ func dispatchCommonPrefix(
 			return model, cmd, true
 		}
 		return v, nil, true
+
+	case "b":
+		task, project := v.getTaskRef()
+		if task == nil {
+			return v, nil, true
+		}
+		if handled, cmd := handleBlockerPrefixKey(key, task, project); handled {
+			return v, cmd, true
+		}
+		return v, nil, true
 	}
 
 	return nil, nil, false

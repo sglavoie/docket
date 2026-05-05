@@ -18,7 +18,14 @@ func (m *ProjectFocusViewModel) HandledKeys() []string {
 	return concatKeys(
 		listNavigationKeys(),
 		statusPrefixKeys(),
+		priorityPrefixKeys(),
 		dueDatePrefixKeys(),
+		snoozePrefixKeys(),
+		linkedTaskPrefixKeys(),
+		stagePrefixKeys(),
+		movePrefixKeys(),
+		taskPrefixKeySet(),
+		blockerPrefixKeySet(),
 		[]string{
 			"g", "tab", "shift+left", "shift+right", "shift+up", "shift+down",
 			"enter", "*", "e", "r", "y", "Y",

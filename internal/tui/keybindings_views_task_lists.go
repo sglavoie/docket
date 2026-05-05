@@ -39,6 +39,7 @@ func (r *KeybindingRegistry) registerPriorityViewBindings() {
 		Keybinding{Key: "Tab", Description: "Toggle waiting section", Category: "View", Views: views},
 		Keybinding{Key: "A", Description: "All tasks", Category: "Views", Views: views},
 		Keybinding{Key: "r", Description: "Refresh (clears dismissed)", Category: "View", Views: views},
+		Keybinding{Key: "v", Description: "Toggle multi-select", Category: "Multi-select", Views: views},
 		Keybinding{Key: "q", Description: "Toggle queue", Category: "Queue", Views: views},
 		Keybinding{Key: "Esc", Description: "Close priority view", Category: "View", Views: views},
 	)
@@ -48,6 +49,7 @@ func (r *KeybindingRegistry) registerPriorityViewBindings() {
 	r.addForViews(views, dueDateBindings())
 	r.addForViews(views, snoozeBindings())
 	r.addForViews(views, linkedTaskBindings())
+	r.addForViews(views, blockerPrefixBindings())
 }
 
 func (r *KeybindingRegistry) registerInboxProcessorBindings() {
@@ -61,28 +63,36 @@ func (r *KeybindingRegistry) registerInboxProcessorBindings() {
 		Keybinding{Key: "q", Description: "Toggle queue", Category: "Queue", Views: views},
 		Keybinding{Key: "Esc", Description: "Close inbox processing", Category: "Navigation", Views: views},
 
-		// Status
-		Keybinding{Key: ",s", Description: "Start (in progress)", Category: "Status", Views: views},
-		Keybinding{Key: ",d", Description: "Mark done (creates next for recurring)", Category: "Status", Views: views},
-		Keybinding{Key: ",b", Description: "Block task", Category: "Status", Views: views},
-		Keybinding{Key: ",x", Description: "Cancel task", Category: "Status", Views: views},
-		Keybinding{Key: ",o", Description: "Reopen (todo)", Category: "Status", Views: views},
-
 		// Operations
-		Keybinding{Key: "s", Description: "Assign section", Category: "Operations", Views: views},
+		Keybinding{Key: "ss", Description: "Assign section", Category: "Operations", Views: views},
 		Keybinding{Key: "1-5", Description: "Set priority (quick)", Category: "Operations", Views: views},
-		Keybinding{Key: "t", Description: "Manage tags", Category: "Operations", Views: views},
-		Keybinding{Key: "c", Description: "Create subtask", Category: "Operations", Views: views},
+		Keybinding{Key: "tt", Description: "Manage tags", Category: "Operations", Views: views},
+		Keybinding{Key: "cn", Description: "Create subtask", Category: "Operations", Views: views},
 		Keybinding{Key: "e", Description: "Edit task (title/description)", Category: "Operations", Views: views},
-		Keybinding{Key: "d", Description: "Set due date", Category: "Operations", Views: views},
 		Keybinding{Key: "D", Description: "Delete task", Category: "Operations", Views: views},
-		Keybinding{Key: "b", Description: "Manage dependencies (blockers)", Category: "Operations", Views: views},
 		Keybinding{Key: "w", Description: "Send to Waiting section", Category: "Operations", Views: views},
 		Keybinding{Key: "u", Description: "Undo last operation on current task", Category: "Operations", Views: views},
 
 		// Recurring Tasks
 		Keybinding{Key: "e", Description: "Edit task to set/view recurrence pattern", Category: "Recurring", Views: views},
+
+		// Stage (manual subset — no F. filter)
+		Keybinding{Key: ".1-.9", Description: "Set stage (by position)", Category: "Stage (. prefix)", Views: views},
+		Keybinding{Key: ".0", Description: "Clear stage", Category: "Stage (. prefix)", Views: views},
+
+		// Move (manual subset — no mK/mJ reorder)
+		Keybinding{Key: "ma", Description: "Send task to Active", Category: "Move (m prefix)", Views: views},
+		Keybinding{Key: "mn", Description: "Send task to Next", Category: "Move (m prefix)", Views: views},
+		Keybinding{Key: "mi", Description: "Send task to Inbox", Category: "Move (m prefix)", Views: views},
+		Keybinding{Key: "mw", Description: "Send task to Waiting", Category: "Move (m prefix)", Views: views},
+		Keybinding{Key: "mr", Description: "Send task to Review", Category: "Move (m prefix)", Views: views},
+		Keybinding{Key: "ms", Description: "Send task to Someday", Category: "Move (m prefix)", Views: views},
 	)
+	r.addForViews(views, statusBindings())
+	r.addForViews(views, priorityBindings())
+	r.addForViews(views, dueDateBindings())
+	r.addForViews(views, snoozeBindings())
+	r.addForViews(views, blockerPrefixBindings())
 }
 
 func (r *KeybindingRegistry) registerGlobalInboxProcessorBindings() {
@@ -96,25 +106,33 @@ func (r *KeybindingRegistry) registerGlobalInboxProcessorBindings() {
 		Keybinding{Key: "q", Description: "Toggle queue", Category: "Queue", Views: views},
 		Keybinding{Key: "Esc", Description: "Close inbox processing", Category: "Navigation", Views: views},
 
-		// Status
-		Keybinding{Key: ",s", Description: "Start (in progress)", Category: "Status", Views: views},
-		Keybinding{Key: ",d", Description: "Mark done", Category: "Status", Views: views},
-		Keybinding{Key: ",b", Description: "Block task", Category: "Status", Views: views},
-		Keybinding{Key: ",x", Description: "Cancel task", Category: "Status", Views: views},
-		Keybinding{Key: ",o", Description: "Reopen (todo)", Category: "Status", Views: views},
-
 		// Operations
-		Keybinding{Key: "s", Description: "Assign section", Category: "Operations", Views: views},
+		Keybinding{Key: "ss", Description: "Assign section", Category: "Operations", Views: views},
 		Keybinding{Key: "1-5", Description: "Set priority (quick)", Category: "Operations", Views: views},
-		Keybinding{Key: "t", Description: "Manage tags", Category: "Operations", Views: views},
-		Keybinding{Key: "c", Description: "Create subtask", Category: "Operations", Views: views},
+		Keybinding{Key: "tt", Description: "Manage tags", Category: "Operations", Views: views},
+		Keybinding{Key: "cn", Description: "Create subtask", Category: "Operations", Views: views},
 		Keybinding{Key: "e", Description: "Edit task (title/description)", Category: "Operations", Views: views},
-		Keybinding{Key: "d", Description: "Set due date", Category: "Operations", Views: views},
 		Keybinding{Key: "D", Description: "Delete task", Category: "Operations", Views: views},
-		Keybinding{Key: "b", Description: "Manage dependencies (blockers)", Category: "Operations", Views: views},
 		Keybinding{Key: "w", Description: "Send to Waiting section", Category: "Operations", Views: views},
 		Keybinding{Key: "u", Description: "Undo last operation on current task", Category: "Operations", Views: views},
+
+		// Stage (manual subset — no F. filter)
+		Keybinding{Key: ".1-.9", Description: "Set stage (by position)", Category: "Stage (. prefix)", Views: views},
+		Keybinding{Key: ".0", Description: "Clear stage", Category: "Stage (. prefix)", Views: views},
+
+		// Move (manual subset — no mK/mJ reorder)
+		Keybinding{Key: "ma", Description: "Send task to Active", Category: "Move (m prefix)", Views: views},
+		Keybinding{Key: "mn", Description: "Send task to Next", Category: "Move (m prefix)", Views: views},
+		Keybinding{Key: "mi", Description: "Send task to Inbox", Category: "Move (m prefix)", Views: views},
+		Keybinding{Key: "mw", Description: "Send task to Waiting", Category: "Move (m prefix)", Views: views},
+		Keybinding{Key: "mr", Description: "Send task to Review", Category: "Move (m prefix)", Views: views},
+		Keybinding{Key: "ms", Description: "Send task to Someday", Category: "Move (m prefix)", Views: views},
 	)
+	r.addForViews(views, statusBindings())
+	r.addForViews(views, priorityBindings())
+	r.addForViews(views, dueDateBindings())
+	r.addForViews(views, snoozeBindings())
+	r.addForViews(views, blockerPrefixBindings())
 }
 
 func (r *KeybindingRegistry) registerDueDateOverviewBindings() {
@@ -141,6 +159,7 @@ func (r *KeybindingRegistry) registerDueDateOverviewBindings() {
 		Keybinding{Key: "F", Description: "Filter prefix (type/status/tags/attr/score)", Category: "Filter", Views: views},
 		Keybinding{Key: "r", Description: "Refresh", Category: "View", Views: views},
 		Keybinding{Key: "gp", Description: "Go to task in project", Category: "View", Views: views},
+		Keybinding{Key: "v", Description: "Toggle multi-select", Category: "Multi-select", Views: views},
 		Keybinding{Key: "q", Description: "Toggle queue", Category: "Queue", Views: views},
 		Keybinding{Key: "Esc", Description: "Close due date overview", Category: "View", Views: views},
 	)
@@ -150,6 +169,7 @@ func (r *KeybindingRegistry) registerDueDateOverviewBindings() {
 	r.addForViews(views, dueDateBindings())
 	r.addForViews(views, snoozeBindings())
 	r.addForViews(views, linkedTaskBindings())
+	r.addForViews(views, blockerPrefixBindings())
 }
 
 func (r *KeybindingRegistry) registerDailyReviewBindings() {
@@ -189,6 +209,7 @@ func (r *KeybindingRegistry) registerDailyReviewBindings() {
 		Keybinding{Key: "r", Description: "Refresh", Category: "View", Views: views},
 		Keybinding{Key: "R", Description: "Toggle review completion", Category: "View", Views: views},
 		Keybinding{Key: "gp", Description: "Go to task in project", Category: "View", Views: views},
+		Keybinding{Key: "v", Description: "Toggle multi-select", Category: "Multi-select", Views: views},
 		Keybinding{Key: "q", Description: "Toggle queue", Category: "Queue", Views: views},
 		Keybinding{Key: "Esc", Description: "Close review", Category: "View", Views: views},
 	)
@@ -198,6 +219,7 @@ func (r *KeybindingRegistry) registerDailyReviewBindings() {
 	r.addForViews(views, dueDateBindings())
 	r.addForViews(views, snoozeBindings())
 	r.addForViews(views, linkedTaskBindings())
+	r.addForViews(views, blockerPrefixBindings())
 }
 
 func (r *KeybindingRegistry) registerWeeklyReviewBindings() {
@@ -236,6 +258,7 @@ func (r *KeybindingRegistry) registerWeeklyReviewBindings() {
 		Keybinding{Key: "R", Description: "Mark section reviewed", Category: "Review", Views: views},
 		Keybinding{Key: "ctrl+n", Description: "Next unreviewed section", Category: "Review", Views: views},
 		Keybinding{Key: "gp", Description: "Go to project/task", Category: "View", Views: views},
+		Keybinding{Key: "v", Description: "Toggle multi-select", Category: "Multi-select", Views: views},
 		Keybinding{Key: "q", Description: "Toggle queue", Category: "Queue", Views: views},
 		Keybinding{Key: "Esc", Description: "Close weekly review", Category: "View", Views: views},
 	)
@@ -245,6 +268,7 @@ func (r *KeybindingRegistry) registerWeeklyReviewBindings() {
 	r.addForViews(views, dueDateBindings())
 	r.addForViews(views, snoozeBindings())
 	r.addForViews(views, linkedTaskBindings())
+	r.addForViews(views, blockerPrefixBindings())
 }
 
 func (r *KeybindingRegistry) registerFocusViewBindings() {
@@ -277,11 +301,18 @@ func (r *KeybindingRegistry) registerFocusViewBindings() {
 		Keybinding{Key: "q", Description: "Toggle queue", Category: "Queue", Views: views},
 		Keybinding{Key: "w", Description: "Plan for today", Category: "Daily Plan", Views: views},
 		Keybinding{Key: "u", Description: "Undo last plan toggle", Category: "Daily Plan", Views: views},
+		Keybinding{Key: "v", Description: "Toggle multi-select", Category: "Multi-select", Views: views},
 		Keybinding{Key: "Esc", Description: "Close view", Category: "View", Views: views},
 	)
 	r.addForViews(views, statusBindings())
+	r.addForViews(views, priorityBindings())
+	r.addForViews(views, stageBindings())
 	r.addForViews(views, dueDateBindings())
+	r.addForViews(views, snoozeBindings())
 	r.addForViews(views, linkedTaskBindings())
+	r.addForViews(views, movePrefixBindings())
+	r.addForViews(views, taskPrefixBindings())
+	r.addForViews(views, blockerPrefixBindings())
 }
 
 func (r *KeybindingRegistry) registerProjectFocusViewBindings() {
@@ -301,11 +332,15 @@ func (r *KeybindingRegistry) registerProjectFocusViewBindings() {
 		Keybinding{Key: "q", Description: "Toggle queue", Category: "Queue", Views: views},
 		Keybinding{Key: "Esc", Description: "Close focus view", Category: "View", Views: views},
 	)
-	// Only status and due-date prefixes are activated by this view's handler
-	// (activateSecondaryPrefix(",dg", "", false)); priority, stage, snooze, linked
-	// task prefixes are intentionally absent to avoid ghost bindings.
 	r.addForViews(views, statusBindings())
+	r.addForViews(views, priorityBindings())
+	r.addForViews(views, stageBindings())
 	r.addForViews(views, dueDateBindings())
+	r.addForViews(views, snoozeBindings())
+	r.addForViews(views, linkedTaskBindings())
+	r.addForViews(views, movePrefixBindings())
+	r.addForViews(views, taskPrefixBindings())
+	r.addForViews(views, blockerPrefixBindings())
 }
 
 func (r *KeybindingRegistry) registerAllTasksBindings() {
@@ -353,4 +388,5 @@ func (r *KeybindingRegistry) registerAllTasksBindings() {
 	r.addForViews(views, dueDateBindings())
 	r.addForViews(views, snoozeBindings())
 	r.addForViews(views, linkedTaskBindings())
+	r.addForViews(views, blockerPrefixBindings())
 }

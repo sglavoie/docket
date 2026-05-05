@@ -54,6 +54,9 @@ type DueDateOverviewModel struct {
 	// Filter
 	FilterMixin
 
+	// Multi-select
+	MultiSelectState
+
 	// Navigation
 	totalTasks  int
 	groupStarts []int // Starting index of each group in flattened view
@@ -65,10 +68,11 @@ type DueDateOverviewModel struct {
 // NewDueDateOverviewModel creates a new due date overview model.
 func NewDueDateOverviewModel(cfg *config.Config, mgr *config.Manager) *DueDateOverviewModel {
 	m := &DueDateOverviewModel{
-		ViewBundle:     ViewBundle{config: cfg, configManager: mgr},
-		projectService: NewProjectService(),
-		FilterMixin:    FilterMixin{filter: newFilterState()},
-		tabs:           TabState{Names: dueDateTabNames},
+		ViewBundle:       ViewBundle{config: cfg, configManager: mgr},
+		projectService:   NewProjectService(),
+		FilterMixin:      FilterMixin{filter: newFilterState()},
+		MultiSelectState: MultiSelectState{selectedTasks: make(map[string]bool)},
+		tabs:             TabState{Names: dueDateTabNames},
 	}
 	m.initFilterMixin(&m.pendingPrefix, cfg)
 	m.loadTasksWithDueDates()
@@ -284,8 +288,31 @@ func (m *DueDateOverviewModel) handleKeyMsg(msg tea.KeyPressMsg) (tea.Model, tea
 		return m, nil
 	}
 
+	// Multi-select key handling
+	if m.multiSelectMode {
+		switch key {
+		case "v":
+			m.toggleMultiSelectMode()
+			return m, nil
+		case "space":
+			m.toggleTaskSelection()
+			return m, nil
+		case "a":
+			m.selectAllVisible()
+			return m, nil
+		case "A":
+			m.deselectAll()
+			return m, nil
+		}
+		switch key {
+		case ",", "!", "d", "s", "m", ".":
+			m.pendingPrefix = key
+			return m, nil
+		}
+	}
+
 	// Activate prefix mode
-	if prefix, ok := activateSecondaryPrefix(key, "gzF", ",!dsmct.", m.getTaskAtCursor() != nil); ok {
+	if prefix, ok := activateSecondaryPrefix(key, "gzF", ",!dsmctb.", m.getTaskAtCursor() != nil); ok {
 		m.pendingPrefix = prefix
 		return m, nil
 	}
@@ -354,6 +381,14 @@ func (m *DueDateOverviewModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) 
 		return m, nil // Cancel prefix mode
 	}
 
+	if m.multiSelectMode && m.SelectedCount() > 0 {
+		if model, cmd, handled := dispatchBulkPrefix(prefix, key, m, m.getSelectedBulkItems()); handled {
+			m.ExitMultiSelect()
+			return model, cmd
+		}
+		return m, nil
+	}
+
 	viewSpecific := func(pfx, k string) (tea.Model, tea.Cmd, bool) {
 		if pfx == "z" && k == "p" {
 			m.previewMode = !m.previewMode
@@ -420,9 +455,10 @@ func (m *DueDateOverviewModel) clampCursor() {
 	m.ClampCursorTo(m.totalTasks)
 }
 
-// escSteps defines the Esc dismissal cascade: filters.
+// escSteps defines the Esc dismissal cascade: multi-select → filters.
 func (m *DueDateOverviewModel) escSteps() []EscStep {
 	return []EscStep{
+		MultiSelectEscStep(func() bool { return m.multiSelectMode }, m.toggleMultiSelectMode),
 		FilterClearEscStep(m.HasActiveFilters, func() {
 			m.ClearAllFilters()
 			m.loadTasksWithDueDates()
@@ -451,13 +487,14 @@ func (m *DueDateOverviewModel) HandledKeys() []string {
 		snoozePrefixKeys(),
 		linkedTaskPrefixKeys(),
 		stagePrefixKeys(),
+		blockerPrefixKeySet(),
 		commonActionKeys(),
 		[]string{
 			"g", "gp",
 			"tab", "shift+left", "shift+right",
 			"enter", "F", "m", "t",
 			"1", "2", "3", "4", "5",
-			"esc",
+			"v", "esc",
 		},
 	)
 }
@@ -481,3 +518,45 @@ func (m *DueDateOverviewModel) StatusBarLabel() string { return "Due Dates" }
 
 // IsFullHeight returns true because the due date overview renders its own footer.
 func (m *DueDateOverviewModel) IsFullHeight() bool { return true }
+
+// Multi-select helpers.
+
+func (m *DueDateOverviewModel) toggleMultiSelectMode() {
+	m.ToggleMode(&m.statusMessage, "Multi-select: space=toggle, a=all, A=deselect")
+}
+
+func (m *DueDateOverviewModel) toggleTaskSelection() {
+	dt := m.getTaskAtCursor()
+	if dt == nil {
+		return
+	}
+	m.ToggleAndUpdateStatus(dt.Task.ID, &m.statusMessage, "Multi-select: space=toggle", "%d selected")
+}
+
+func (m *DueDateOverviewModel) selectAllVisible() {
+	overdue, today, thisWeek, later := m.visibleGroups()
+	for _, group := range [][]CrossProjectTask{overdue, today, thisWeek, later} {
+		for _, t := range group {
+			m.selectedTasks[t.Task.ID] = true
+		}
+	}
+	m.UpdateStatus(&m.statusMessage, "Multi-select: space=toggle", "%d selected")
+}
+
+func (m *DueDateOverviewModel) deselectAll() {
+	m.ClearSelection()
+	m.UpdateStatus(&m.statusMessage, "Multi-select: space=toggle", "%d selected")
+}
+
+// getSelectedBulkItems returns selected tasks as bulkTaskItem slice.
+func (m *DueDateOverviewModel) getSelectedBulkItems() []bulkTaskItem {
+	var items []bulkTaskItem
+	for _, group := range [][]CrossProjectTask{m.overdue, m.today, m.thisWeek, m.later} {
+		for _, t := range group {
+			if m.selectedTasks[t.Task.ID] {
+				items = append(items, bulkTaskItem{Task: t.Task, Project: t.Project})
+			}
+		}
+	}
+	return items
+}

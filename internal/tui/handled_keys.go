@@ -22,12 +22,22 @@ func listNavigationKeys() []string {
 
 // inboxProcessorKeys returns the key set shared by InboxProcessorModel and GlobalInboxProcessorModel.
 func inboxProcessorKeys() []string {
-	return []string{
-		"j", "k", "g", "G",
-		"enter", "n",
-		",s", ",d", ",b", ",x", ",o",
-		"s", "1", "2", "3", "4", "5", "t", "c", "e", "d", "D", "b", "w", "u",
-	}
+	return concatKeys(
+		[]string{
+			"j", "k", "g", "G",
+			"enter", "n",
+			"1", "2", "3", "4", "5",
+			"e", "D", "w", "u",
+			"ss", "tt", "cn",
+		},
+		statusPrefixKeys(),   // ,s ,d ,b ,S ,o ,x ,r
+		priorityPrefixKeys(), // !1 !2 !3 !4 !5
+		dueDatePrefixKeys(),  // dt dm dw dn d0 dd
+		snoozePrefixKeys(),   // st sw sm sn s0 sd
+		blockerPrefixKeySet(), // bb bm
+		[]string{".1", ".2", ".3", ".4", ".5", ".6", ".7", ".8", ".9", ".0"},
+		[]string{"ma", "mn", "mi", "mw", "mr", "ms"},
+	)
 }
 
 // statusPrefixKeys returns the status prefix sequences handled by dispatchCommonPrefix.
@@ -126,6 +136,11 @@ func commonPrimaryViewKeys() []string {
 		"u",
 		"S", "ctrl+.", "ctrl+m",
 	}
+}
+
+// multiSelectKeys returns the key set for multi-select mode (v, space, a, A).
+func multiSelectKeys() []string {
+	return []string{"v", "space", "a", "A"}
 }
 
 // concatKeys concatenates multiple key-set slices into one.

@@ -55,6 +55,9 @@ type FocusViewModel struct {
 	// Filter
 	FilterMixin
 
+	// Multi-select
+	MultiSelectState
+
 	// Inline preview
 	previewMode bool
 
@@ -71,8 +74,9 @@ func NewFocusViewModel(cfg *config.Config, mgr *config.Manager, queue *[]FocusTa
 		queueIDs:       queueIDs,
 		dailyPlanIDs:   dailyPlanIDs,
 		dismissedIDs:   dismissedIDs,
-		FilterMixin:    FilterMixin{filter: newFilterState()},
-		tabs:           TabState{Names: focusTabNames},
+		FilterMixin:      FilterMixin{filter: newFilterState()},
+		MultiSelectState: MultiSelectState{selectedTasks: make(map[string]bool)},
+		tabs:             TabState{Names: focusTabNames},
 	}
 	m.initFilterMixin(&m.pendingPrefix, cfg)
 	m.loadTasks()
@@ -123,9 +127,10 @@ func (m *FocusViewModel) clampCursor() {
 	m.ClampCursorTo(len(m.filtered))
 }
 
-// escSteps defines the Esc dismissal cascade: filters.
+// escSteps defines the Esc dismissal cascade: multi-select → filters.
 func (m *FocusViewModel) escSteps() []EscStep {
 	return []EscStep{
+		MultiSelectEscStep(func() bool { return m.multiSelectMode }, m.toggleMultiSelectMode),
 		{Active: func() bool { return m.showDismissed }, Clear: func() {
 			m.showDismissed = false
 			m.recomputeSuggested()
@@ -157,15 +162,21 @@ func (m *FocusViewModel) HandledKeys() []string {
 	return concatKeys(
 		listNavigationKeys(),
 		statusPrefixKeys(),
+		priorityPrefixKeys(),
 		dueDatePrefixKeys(),
+		snoozePrefixKeys(),
 		linkedTaskPrefixKeys(),
+		stagePrefixKeys(),
+		movePrefixKeys(),
+		taskPrefixKeySet(),
+		blockerPrefixKeySet(),
 		commonActionKeys(),
 		[]string{
 			"g", "gp",
 			"tab", "shift+left", "shift+right", "shift+up", "shift+down",
 			"enter", "J", "K", "F", "m", "t",
 			"1", "2", "3", "4", "5",
-			"w", "u", "esc",
+			"v", "w", "u", "esc",
 		},
 	)
 }
@@ -174,3 +185,40 @@ func (m *FocusViewModel) StatusBarLabel() string { return "Backlog" }
 
 // IsFullHeight returns true because the backlog view renders its own footer.
 func (m *FocusViewModel) IsFullHeight() bool { return true }
+
+// Multi-select helpers.
+
+func (m *FocusViewModel) toggleMultiSelectMode() {
+	m.ToggleMode(&m.statusMessage, "Multi-select: space=toggle, a=all, A=deselect")
+}
+
+func (m *FocusViewModel) toggleTaskSelection() {
+	ft := m.getTaskAtCursor()
+	if ft == nil {
+		return
+	}
+	m.ToggleAndUpdateStatus(ft.Task.ID, &m.statusMessage, "Multi-select: space=toggle", "%d selected")
+}
+
+func (m *FocusViewModel) selectAllVisible() {
+	for _, ft := range m.filtered {
+		m.selectedTasks[ft.Task.ID] = true
+	}
+	m.UpdateStatus(&m.statusMessage, "Multi-select: space=toggle", "%d selected")
+}
+
+func (m *FocusViewModel) deselectAll() {
+	m.ClearSelection()
+	m.UpdateStatus(&m.statusMessage, "Multi-select: space=toggle", "%d selected")
+}
+
+// getSelectedBulkItems returns selected tasks as bulkTaskItem slice.
+func (m *FocusViewModel) getSelectedBulkItems() []bulkTaskItem {
+	var items []bulkTaskItem
+	for _, ft := range m.filtered {
+		if m.selectedTasks[ft.Task.ID] {
+			items = append(items, bulkTaskItem{Task: ft.Task, Project: ft.Project})
+		}
+	}
+	return items
+}

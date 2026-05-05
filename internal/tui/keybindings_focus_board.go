@@ -42,6 +42,7 @@ func (r *KeybindingRegistry) registerFocusBoardBindings() {
 		// View
 		Keybinding{Key: "r", Description: "Refresh", Category: "View", Views: views},
 		Keybinding{Key: "zp", Description: "Toggle inline preview", Category: "View", Views: views},
+		Keybinding{Key: "v", Description: "Toggle multi-select", Category: "Multi-select", Views: views},
 
 		// Filtering
 		Keybinding{Key: "F", Description: "Filter (F-prefix)", Category: "Filtering", Views: views},
@@ -58,4 +59,5 @@ func (r *KeybindingRegistry) registerFocusBoardBindings() {
 	r.addForViews(views, dueDateBindings())
 	r.addForViews(views, snoozeBindings())
 	r.addForViews(views, linkedTaskBindings())
+	r.addForViews(views, blockerPrefixBindings())
 }

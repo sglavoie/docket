@@ -152,7 +152,7 @@ func (m *KanbanModel) handleKanbanKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) 
 
 	// ── Prefix key activators ─────────────────────────────────────────────
 	// "g" and "F" activate unconditionally; others require a card.
-	if prefix, ok := activateSecondaryPrefix(key, "gF", ",!dsmct.", hasCard); ok {
+	if prefix, ok := activateSecondaryPrefix(key, "gzF", ",!dsmctb.", hasCard); ok {
 		m.pendingPrefix = prefix
 		return m, nil
 	}
@@ -169,7 +169,15 @@ func (m *KanbanModel) handleKanbanPrefixKey(key string) (tea.Model, tea.Cmd) {
 		return m, nil // Cancel prefix
 	}
 
-	if model, cmd, handled := dispatchCommonPrefix(prefix, key, m, nil); handled {
+	viewSpecific := func(pfx, k string) (tea.Model, tea.Cmd, bool) {
+		if pfx == "z" {
+			handleZPrefix(k, func() {}, func() {})
+			return m, nil, true
+		}
+		return nil, nil, false
+	}
+
+	if model, cmd, handled := dispatchCommonPrefix(prefix, key, m, viewSpecific); handled {
 		return model, cmd
 	}
 

@@ -50,7 +50,7 @@ func (m *ProjectFocusViewModel) handleKeyMsg(msg tea.KeyPressMsg) (tea.Model, te
 	m.clearStatus()
 
 	// Activate prefix mode
-	if prefix, ok := activateSecondaryPrefix(key, ",dg", "", false); ok {
+	if prefix, ok := activateSecondaryPrefix(key, "gzF", ",!dsmctb.", m.getTaskAtCursor() != nil); ok {
 		m.pendingPrefix = prefix
 		return m, nil
 	}
@@ -141,7 +141,15 @@ func (m *ProjectFocusViewModel) handlePrefixKey(key string) (tea.Model, tea.Cmd)
 		return m, nil // Cancel prefix mode
 	}
 
-	if model, cmd, handled := dispatchCommonPrefix(prefix, key, m, nil); handled {
+	viewSpecific := func(pfx, k string) (tea.Model, tea.Cmd, bool) {
+		if pfx == "z" {
+			handleZPrefix(k, func() {}, func() {})
+			return m, nil, true
+		}
+		return nil, nil, false
+	}
+
+	if model, cmd, handled := dispatchCommonPrefix(prefix, key, m, viewSpecific); handled {
 		return model, cmd
 	}
 

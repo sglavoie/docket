@@ -33,7 +33,32 @@ func CommonTaskActionPrefixHints(stages []string, currentStage string, currentPr
 		"c": CreateLinkedPrefixHints,
 		"m": SecondaryViewMovePrefixHints,
 		"t": TaskPrefixHints,
+		"b": BlockerPrefixHints,
 	}
+}
+
+// FullPrefixHints builds the complete prefix hint map for a view.
+// Base includes all task action hints. Extra hints (g, z, F-sub) are view-specific.
+func FullPrefixHints(stages []string, currentStage string, currentPriority int, extras PrefixHints) PrefixHints {
+	base := CommonTaskActionPrefixHints(stages, currentStage, currentPriority)
+	for k, v := range extras {
+		base[k] = v
+	}
+	return base
+}
+
+// overrideHintDetail returns a shallow copy of hints with the Detail field of
+// the entry matching key replaced. If key is not found, the original slice is returned.
+func overrideHintDetail(hints []PrefixHint, key, detail string) []PrefixHint {
+	result := make([]PrefixHint, len(hints))
+	copy(result, hints)
+	for i, h := range result {
+		if h.Key == key {
+			result[i].Detail = detail
+			return result
+		}
+	}
+	return result
 }
 
 // BuildFilterScorePrefixHints builds dynamic filter score hints showing the

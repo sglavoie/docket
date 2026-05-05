@@ -265,6 +265,8 @@ func (m *KanbanModel) GetPrefixPopupInfo() *PrefixPopupInfo {
 		currentPriority = task.Priority
 	}
 	hints := CommonTaskActionPrefixHints(m.config.Stages, currentStage, currentPriority)
+	// In Kanban, starting a task also moves its card to the In Progress column
+	hints[","] = overrideHintDetail(hints[","], "s", "move to In Progress column")
 	hints["g"] = KanbanNavigationPrefixHints
 	maps.Copy(hints, buildCommonFilterPrefixPopupHints(&m.filter, m.config, true, true))
 	return &PrefixPopupInfo{

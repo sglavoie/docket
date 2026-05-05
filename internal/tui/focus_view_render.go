@@ -147,6 +147,9 @@ func (m *FocusViewModel) View() tea.View { //nolint:gocyclo
 	default:
 		helpParts = []string{"j/k nav", "Tab tabs", "shift+↑/↓ row focus", ",s/d/b/x status", "1-5 priority"}
 	}
+	if m.multiSelectMode {
+		helpParts = []string{"space toggle", "a all", "A deselect", ",/! status/priority", "v exit"}
+	}
 	left := HelpStyle.Render(strings.Join(helpParts, " · "))
 	right := MutedStyle.Render(fmt.Sprintf("%d tasks", len(m.filtered)))
 	b.WriteString(renderStatusBarFooter(left, right, m.width, m.AccentColor()))
@@ -164,7 +167,7 @@ func (m *FocusViewModel) renderQueueLines() ([]string, int) {
 	for i, ft := range m.filtered {
 		isSelected := i == m.cursor
 		// Number prefix for queue items
-		numPrefix := MutedStyle.Render(fmt.Sprintf("%d. ", i+1))
+		numPrefix := m.Checkbox(ft.Task.ID) + MutedStyle.Render(fmt.Sprintf("%d. ", i+1))
 		line := m.renderTaskLineWithPrefix(ft, isSelected, maxTitleLen, numPrefix, m.queueIDs[ft.Task.ID], m.dailyPlanIDs[ft.Task.ID], layout, rowIndex)
 		lines = append(lines, line)
 		rowIndex++
@@ -191,14 +194,14 @@ func (m *FocusViewModel) renderSuggestedLines() ([]string, int) {
 		isDismissed := m.showDismissed && m.dismissedIDs[ft.Task.ID]
 
 		// Prefix for dismissed or star indicator
-		prefix := ""
+		prefix := m.Checkbox(ft.Task.ID)
 		if isDismissed {
-			prefix = MutedStyle.Render("[dismissed] ")
+			prefix += MutedStyle.Render("[dismissed] ")
 		}
 
 		// Star indicator on the first non-dismissed, non-queued item
 		if !starShown && !isDismissed && !m.isInQueue(ft.Task.ID) {
-			prefix = DueSoonStyle.Render("* ")
+			prefix += DueSoonStyle.Render("* ")
 			starShown = true
 		}
 
@@ -223,7 +226,7 @@ func (m *FocusViewModel) renderStandardLines() ([]string, int) {
 
 	for i, ft := range m.filtered {
 		isSelected := i == m.cursor
-		line := m.renderTaskLineWithPrefix(ft, isSelected, maxTitleLen, "", m.queueIDs[ft.Task.ID], m.dailyPlanIDs[ft.Task.ID], layout, rowIndex)
+		line := m.renderTaskLineWithPrefix(ft, isSelected, maxTitleLen, m.Checkbox(ft.Task.ID), m.queueIDs[ft.Task.ID], m.dailyPlanIDs[ft.Task.ID], layout, rowIndex)
 		lines = append(lines, line)
 		rowIndex++
 	}

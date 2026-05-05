@@ -82,6 +82,9 @@ type WeeklyReviewModel struct {
 	upcomingWeek      []WeeklyReviewTask
 	recurringOverview []WeeklyReviewTask
 
+	// Multi-select
+	MultiSelectState
+
 	// Navigation
 	totalItems        int
 	sectionStarts     []int
@@ -109,6 +112,7 @@ func NewWeeklyReviewModel(cfg *config.Config, mgr *config.Manager) *WeeklyReview
 		collapsedSections: make(map[int]bool),
 		reviewedSections:  make(map[WeeklyReviewSection]bool),
 		mutationCounts:    make(map[string]int),
+		MultiSelectState:  MultiSelectState{selectedTasks: make(map[string]bool)},
 		tabs:              TabState{Names: weeklyReviewTabNames},
 	}
 	if t := cfg.GetLastWeeklyReviewAt(); t != nil {
@@ -206,8 +210,31 @@ func (m *WeeklyReviewModel) handleKeyMsg(msg tea.KeyPressMsg) (tea.Model, tea.Cm
 		return m, nil
 	}
 
+	// Multi-select key handling
+	if m.multiSelectMode {
+		switch key {
+		case "v":
+			m.toggleMultiSelectMode()
+			return m, nil
+		case "space":
+			m.toggleTaskSelection()
+			return m, nil
+		case "a":
+			m.selectAllVisible()
+			return m, nil
+		case "A":
+			m.deselectAll()
+			return m, nil
+		}
+		switch key {
+		case ",", "!", "d", "s", "m", ".":
+			m.pendingPrefix = key
+			return m, nil
+		}
+	}
+
 	// Activate prefix mode
-	if prefix, ok := activateSecondaryPrefix(key, "gzF", ",!dsmct.", m.getTaskAtCursor() != nil); ok {
+	if prefix, ok := activateSecondaryPrefix(key, "gzF", ",!dsmctb.", m.getTaskAtCursor() != nil); ok {
 		m.pendingPrefix = prefix
 		return m, nil
 	}
@@ -305,6 +332,14 @@ func (m *WeeklyReviewModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 	m.pendingPrefix = ""
 
 	if key == "esc" {
+		return m, nil
+	}
+
+	if m.multiSelectMode && m.SelectedCount() > 0 {
+		if model, cmd, handled := dispatchBulkPrefix(prefix, key, m, m.getSelectedBulkItems()); handled {
+			m.ExitMultiSelect()
+			return model, cmd
+		}
 		return m, nil
 	}
 
@@ -411,6 +446,7 @@ func (m *WeeklyReviewModel) HasFocusedSection() bool {
 // escSteps defines the Esc dismissal cascade: section focus.
 func (m *WeeklyReviewModel) escSteps() []EscStep {
 	return []EscStep{
+		MultiSelectEscStep(func() bool { return m.multiSelectMode }, m.toggleMultiSelectMode),
 		{Active: m.HasFocusedSection, Clear: func() {
 			m.focusedSection = nil
 			m.calculateNavigation()
@@ -441,6 +477,7 @@ func (m *WeeklyReviewModel) HandledKeys() []string {
 		snoozePrefixKeys(),
 		linkedTaskPrefixKeys(),
 		stagePrefixKeys(),
+		blockerPrefixKeySet(),
 		commonActionKeys(),
 		[]string{
 			"g",
@@ -451,7 +488,7 @@ func (m *WeeklyReviewModel) HandledKeys() []string {
 			"enter", "m", "t",
 			"R", "ctrl+n",
 			"1", "2", "3", "4", "5",
-			"esc",
+			"v", "esc",
 		},
 	)
 }
@@ -460,3 +497,48 @@ func (m *WeeklyReviewModel) StatusBarLabel() string { return "Weekly Review" }
 
 // IsFullHeight returns true because the weekly review renders its own footer.
 func (m *WeeklyReviewModel) IsFullHeight() bool { return true }
+
+// Multi-select helpers.
+
+func (m *WeeklyReviewModel) toggleMultiSelectMode() {
+	m.ToggleMode(&m.statusMessage, "Multi-select: space=toggle, a=all, A=deselect")
+}
+
+func (m *WeeklyReviewModel) toggleTaskSelection() {
+	wt := m.getTaskAtCursor()
+	if wt == nil {
+		return
+	}
+	m.ToggleAndUpdateStatus(wt.Task.ID, &m.statusMessage, "Multi-select: space=toggle", "%d selected")
+}
+
+func (m *WeeklyReviewModel) selectAllVisible() {
+	for _, tasks := range [][]WeeklyReviewTask{
+		m.staleTasks, m.priorityMismatch, m.upcomingWeek, m.recurringOverview,
+	} {
+		for _, t := range tasks {
+			m.selectedTasks[t.Task.ID] = true
+		}
+	}
+	m.UpdateStatus(&m.statusMessage, "Multi-select: space=toggle", "%d selected")
+}
+
+func (m *WeeklyReviewModel) deselectAll() {
+	m.ClearSelection()
+	m.UpdateStatus(&m.statusMessage, "Multi-select: space=toggle", "%d selected")
+}
+
+// getSelectedBulkItems returns selected tasks as bulkTaskItem slice.
+func (m *WeeklyReviewModel) getSelectedBulkItems() []bulkTaskItem {
+	var items []bulkTaskItem
+	for _, tasks := range [][]WeeklyReviewTask{
+		m.staleTasks, m.priorityMismatch, m.upcomingWeek, m.recurringOverview,
+	} {
+		for _, t := range tasks {
+			if m.selectedTasks[t.Task.ID] {
+				items = append(items, bulkTaskItem{Task: t.Task, Project: t.Project})
+			}
+		}
+	}
+	return items
+}

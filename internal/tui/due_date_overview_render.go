@@ -78,6 +78,9 @@ func (m *DueDateOverviewModel) View() tea.View {
 
 	// Footer
 	left := HelpStyle.Render("Tab tabs · ↑/↓ navigate · ,s/d/b/x/o status · 1-5 priority · dt/dm/dw due · e edit · ? help")
+	if m.multiSelectMode {
+		left = HelpStyle.Render("MULTI-SELECT: space toggle · a all · A deselect · ,/! status/priority · v exit")
+	}
 	right := MutedStyle.Render(fmt.Sprintf("%d tasks", m.totalTasks))
 	b.WriteString(renderFullscreenFooterBlock(m.statusMessage, m.Error(), left, right, m.Width(), m.AccentColor()))
 
@@ -187,7 +190,7 @@ func (m *DueDateOverviewModel) renderTaskLine(dt CrossProjectTask, isSelected bo
 		Queued:        m.queueIDs[dt.Task.ID],
 		DailyPlanned:  m.dailyPlanIDs[dt.Task.ID],
 		MaxProjectLen: 15,
-		Prefix:        dateStr + " ",
+		Prefix:        m.Checkbox(dt.Task.ID) + dateStr + " ",
 		Flash:         m.cursorFlash,
 		Layout:        layout,
 		RowIndex:      rowIndex,

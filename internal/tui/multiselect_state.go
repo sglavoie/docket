@@ -74,6 +74,18 @@ func (s *MultiSelectState) UpdateStatus(statusMsg *string, noSelMsg, withSelFmt 
 	}
 }
 
+// Checkbox returns "[x] " if id is selected, "[ ] " if not, or "" when not in
+// multi-select mode. Use this to prepend a selection indicator to task lines.
+func (s *MultiSelectState) Checkbox(id string) string {
+	if !s.multiSelectMode {
+		return ""
+	}
+	if s.selectedTasks[id] {
+		return "[x] "
+	}
+	return "[ ] "
+}
+
 // FinishBulk exits multi-select mode and sets the status message to msg.
 func (s *MultiSelectState) FinishBulk(statusMsg *string, msg string) {
 	s.ExitMultiSelect()

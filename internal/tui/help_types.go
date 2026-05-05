@@ -46,6 +46,7 @@ type HelpViewModel struct {
 	activeTab      int      // Current tab (category) index
 	categories     []string // Ordered list of categories derived from items
 	isExplorer     bool     // True when used as global keybinding explorer
+	byPrefixMode   bool     // True when grouping by prefix category (explorer only)
 	tabSearchMode  bool     // True when tab search input is active
 	tabSearchInput textinput.Model
 }

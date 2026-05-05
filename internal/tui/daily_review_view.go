@@ -81,6 +81,9 @@ func (m *DailyReviewModel) View() tea.View {
 		reviewHint = "R: unmark"
 	}
 	left := HelpStyle.Render("shift+←/→ tabs · n/N section · " + reviewHint + " · ? help")
+	if m.multiSelectMode {
+		left = HelpStyle.Render("MULTI-SELECT: space toggle · a all · A deselect · ,/! status/priority · v exit")
+	}
 	right := MutedStyle.Render(fmt.Sprintf("%d tasks", totalCount))
 	b.WriteString(renderFullscreenFooterBlock(m.statusMessage, m.err, left, right, m.width, m.AccentColor()))
 
@@ -117,6 +120,8 @@ func (m *DailyReviewModel) GetPrefixPopupInfo() *PrefixPopupInfo {
 		currentPriority = ct.Task.Priority
 	}
 	hints := CommonTaskActionPrefixHints(m.config.Stages, currentStage, currentPriority)
+	// In DailyReview, marking done also auto-advances the next recurring occurrence
+	hints[","] = overrideHintDetail(hints[","], "d", "done + auto-advance")
 	hints["g"] = DailyReviewNavigationPrefixHints
 	hints["z"] = append(SectionFoldPrefixHints, PrefixHint{Key: "p", Description: "preview", Detail: "Toggle inline preview"})
 	// Merge filter prefix hints (no DueDate or Status — sections group by these)
@@ -262,6 +267,7 @@ func (m *DailyReviewModel) renderTaskLine(dt CrossProjectTask, section DailyRevi
 		HideLowPriority: true,
 		DueStr:          m.sectionContextStr(dt, section),
 		ShowRecurrence:  true,
+		Prefix:          m.Checkbox(task.ID),
 		Flash:           m.cursorFlash,
 		Layout:          layout,
 		RowIndex:        rowIndex,

@@ -113,12 +113,21 @@ func (c *inboxCore) GetPrefixPopupInfo() *PrefixPopupInfo {
 	if c.pendingPrefix == "" {
 		return nil
 	}
+	var currentStage string
+	var currentPriority int
+	if task, _ := c.currentTaskRef(); task != nil {
+		currentStage = task.Stage
+		currentPriority = task.Priority
+	}
+	hints := CommonTaskActionPrefixHints(c.config.Stages, currentStage, currentPriority)
+	hints["g"] = NavigationPrefixHints
+	// In Inbox, ss (double-tap s) opens the section picker
+	snoozeHints := make([]PrefixHint, len(hints["s"]))
+	copy(snoozeHints, hints["s"])
+	hints["s"] = append(snoozeHints, PrefixHint{Key: "s", Description: "section", Detail: "section picker"})
 	return &PrefixPopupInfo{
 		Prefix: c.pendingPrefix,
-		Hints: PrefixHints{
-			",": StatusPrefixHints,
-			"g": NavigationPrefixHints,
-		},
+		Hints:  hints,
 	}
 }
 

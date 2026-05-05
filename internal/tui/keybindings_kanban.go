@@ -41,6 +41,7 @@ func (r *KeybindingRegistry) registerKanbanBindings() {
 		Keybinding{Key: "O", Description: "Open URL in browser", Category: "Actions", Views: views},
 		Keybinding{Key: "ctrl+b", Description: "Move task to project", Category: "Actions", Views: views},
 		Keybinding{Key: "M", Description: "Move to custom section (picker)", Category: "Actions", Views: views},
+		Keybinding{Key: "zR/zM", Description: "Expand/collapse all groups", Category: "View", Views: views},
 	)
 	r.addForViews(views, statusBindings())
 	r.addForViews(views, priorityBindings())
@@ -50,6 +51,7 @@ func (r *KeybindingRegistry) registerKanbanBindings() {
 	r.addForViews(views, stageBindings())
 	r.addForViews(views, movePrefixBindings())
 	r.addForViews(views, taskPrefixBindings())
+	r.addForViews(views, blockerPrefixBindings())
 }
 
 // HandledKeys returns all keys that KanbanModel.Update() can process, for use
@@ -71,6 +73,8 @@ func (m *KanbanModel) HandledKeys() []string {
 		[]string{"d", "m", "t", "F"},
 		// Extra actions
 		[]string{"ctrl+.", "*", "S", "O", "ctrl+b", "M"},
+		// Fold keys
+		[]string{"zR", "zM"},
 		// Standard prefix sequences
 		statusPrefixKeys(),
 		priorityPrefixKeys(),
@@ -80,5 +84,6 @@ func (m *KanbanModel) HandledKeys() []string {
 		stagePrefixKeys(),
 		movePrefixKeys(),
 		taskPrefixKeySet(),
+		blockerPrefixKeySet(),
 	)
 }

@@ -234,6 +234,12 @@ func (m *HelpViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.viewport.HalfPageUp()
 		case "pgdown", "ctrl+d":
 			m.viewport.HalfPageDown()
+		case "p":
+			if m.isExplorer {
+				m.byPrefixMode = !m.byPrefixMode
+				m.viewport.SetContent(m.renderContent())
+				m.viewport.GotoTop()
+			}
 		}
 	}
 

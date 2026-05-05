@@ -22,8 +22,8 @@ func (c *inboxCore) handleKeyMsg(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 
 	c.err = nil
 
-	if key == "," || key == "g" {
-		c.pendingPrefix = key
+	if prefix, ok := activateSecondaryPrefix(key, "g", ",!dsmctb.", true); ok {
+		c.pendingPrefix = prefix
 		return c.model, nil
 	}
 
@@ -49,30 +49,15 @@ func (c *inboxCore) handleKeyMsg(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		}
 		return c.model, nil
 
-	case "s":
-		return c.model, inboxOpenSectionPicker(c)
-
 	case "1", "2", "3", "4", "5":
 		return c.model, c.setPriorityQuick(key)
-
-	case "t":
-		return c.model, inboxOpenTagSelector(c)
 
 	case "e":
 		return c.model, inboxOpenTaskEditor(c)
 
-	case "c":
-		return c.model, inboxOpenSubtaskCreator(c)
-
-	case "d":
-		return c.model, inboxOpenDueDateInput(c)
-
 	case "D":
 		inboxDeletePrompt(c, &c.confirm)
 		return c.model, nil
-
-	case "b":
-		return c.model, inboxOpenDependencySelector(c)
 
 	case "w":
 		return c.model, c.sendToWaiting()
@@ -113,6 +98,58 @@ func (c *inboxCore) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 		if key == "g" {
 			c.currentIndex = 0
 			return c.model, nil
+		}
+	case "!":
+		if priority, ok := PriorityForPrefixKey(key); ok {
+			return c.model, c.changePriority(priority)
+		}
+	case "d":
+		if key == "d" {
+			return c.model, inboxOpenDueDateInput(c)
+		}
+		if days, isClear, ok := DueDateDaysForPrefixKey(key); ok {
+			if isClear {
+				return c.model, c.clearDueDate()
+			}
+			return c.model, c.setQuickDueDate(days)
+		}
+	case "s":
+		if key == "s" {
+			return c.model, inboxOpenSectionPicker(c)
+		}
+		if key == "d" {
+			return c.model, c.openSnoozePicker()
+		}
+		snoozeDate, _, ok := resolveQuickSnoozeDate(key)
+		if !ok {
+			return c.model, nil
+		}
+		return c.model, c.setSnooze(snoozeDate)
+	case ".":
+		stage := StageForPrefixKey(key, c.config.Stages)
+		if stage != nil {
+			return c.model, c.setStage(*stage)
+		}
+	case "m":
+		section, ok := sectionForMoveKey(key)
+		if ok {
+			return c.model, c.moveToSection(section)
+		}
+	case "t":
+		if key == "t" {
+			return c.model, inboxOpenTagSelector(c)
+		}
+	case "c":
+		if key == "n" {
+			return c.model, inboxOpenSubtaskCreator(c)
+		}
+	case "b":
+		task, project := c.currentTaskRef()
+		if task == nil {
+			return c.model, nil
+		}
+		if handled, cmd := handleBlockerPrefixKey(key, task, project); handled {
+			return c.model, cmd
 		}
 	}
 

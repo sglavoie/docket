@@ -9,6 +9,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/util"
 )
 
 func (c *inboxCore) recordAction(actionType string, snapshot *inboxSnapshot) {
@@ -197,4 +198,145 @@ func (c *inboxCore) inboxCaptureSnapshot(task *models.Task) *inboxSnapshot {
 }
 func (c *inboxCore) inboxRecordAction(desc string, snapshot *inboxSnapshot) {
 	c.recordAction(desc, snapshot)
+}
+
+func (c *inboxCore) changePriority(priority int) tea.Cmd {
+	task, project := c.currentTaskRef()
+	if task == nil {
+		return nil
+	}
+	snapshot := captureInboxSnapshot(task)
+	project.MutateTask(task.ID, func(t *models.Task) {
+		t.Priority = priority
+	})
+	c.recordAction(fmt.Sprintf("priority set to %d", priority), snapshot)
+	c.statusMessage = fmt.Sprintf("Priority set to %d", priority)
+	return c.backend.saveCmd()
+}
+
+func (c *inboxCore) setQuickDueDate(days int) tea.Cmd {
+	task, project := c.currentTaskRef()
+	if task == nil {
+		return nil
+	}
+	current := project.GetTaskByID(task.ID)
+	if current == nil {
+		c.statusMessage = "Error: task no longer exists in project"
+		return nil
+	}
+	dueDate := util.StartOfDay(time.Now()).AddDate(0, 0, days)
+	snapshot := captureInboxSnapshot(current)
+	project.MutateTask(task.ID, func(t *models.Task) {
+		t.DueDate = &dueDate
+		t.HasTime = false
+	})
+	c.recordAction("due date set", snapshot)
+	c.statusMessage = fmt.Sprintf("Due date set to %s", dueDate.Format("Jan 2"))
+	return c.backend.saveCmd()
+}
+
+func (c *inboxCore) clearDueDate() tea.Cmd {
+	task, project := c.currentTaskRef()
+	if task == nil {
+		return nil
+	}
+	current := project.GetTaskByID(task.ID)
+	if current == nil {
+		c.statusMessage = "Error: task no longer exists in project"
+		return nil
+	}
+	snapshot := captureInboxSnapshot(current)
+	project.MutateTask(task.ID, func(t *models.Task) {
+		t.DueDate = nil
+		t.HasTime = false
+	})
+	c.recordAction("due date cleared", snapshot)
+	c.statusMessage = "Due date cleared"
+	return c.backend.saveCmd()
+}
+
+func (c *inboxCore) setSnooze(snoozeDate *time.Time) tea.Cmd {
+	task, project := c.currentTaskRef()
+	if task == nil {
+		return nil
+	}
+	current := project.GetTaskByID(task.ID)
+	if current == nil {
+		c.statusMessage = "Error: task no longer exists in project"
+		return nil
+	}
+	snapshot := captureInboxSnapshot(current)
+	project.MutateTask(task.ID, func(t *models.Task) {
+		t.SnoozedUntil = snoozeDate
+	})
+	c.recordAction("snooze updated", snapshot)
+	if snoozeDate == nil {
+		c.statusMessage = "Snooze cleared"
+	} else {
+		c.statusMessage = fmt.Sprintf("Snoozed until %s", snoozeDate.Format("Mon Jan 2"))
+	}
+	return c.backend.saveCmd()
+}
+
+func (c *inboxCore) setStage(stage string) tea.Cmd {
+	task, project := c.currentTaskRef()
+	if task == nil {
+		return nil
+	}
+	current := project.GetTaskByID(task.ID)
+	if current == nil {
+		c.statusMessage = "Error: task no longer exists in project"
+		return nil
+	}
+	snapshot := captureInboxSnapshot(current)
+	project.MutateTask(task.ID, func(t *models.Task) {
+		t.Stage = stage
+	})
+	c.recordAction("stage updated", snapshot)
+	if stage == "" {
+		c.statusMessage = "Stage cleared"
+	} else {
+		c.statusMessage = fmt.Sprintf("Stage set to %s", stage)
+	}
+	return c.backend.saveCmd()
+}
+
+func (c *inboxCore) moveToSection(section string) tea.Cmd {
+	task, project := c.currentTaskRef()
+	if task == nil {
+		return nil
+	}
+	current := project.GetTaskByID(task.ID)
+	if current == nil {
+		c.statusMessage = "Error: task no longer exists in project"
+		return nil
+	}
+	snapshot := captureInboxSnapshot(current)
+	if !project.MutateTask(task.ID, func(t *models.Task) {
+		t.SetSection(section)
+	}) {
+		c.statusMessage = "Error: task no longer exists in project"
+		return nil
+	}
+	sectionName := section
+	if sectionName == "" {
+		sectionName = "Active"
+	}
+	c.recordAction(fmt.Sprintf("moved to %s", sectionName), snapshot)
+	c.statusMessage = fmt.Sprintf("Moved to %s", sectionName)
+	if c.backend.shouldProcessOnSectionChange(task, project) {
+		c.processedIDs[task.ID] = true
+		return tea.Batch(c.backend.saveCmd(), c.advanceToNext(true))
+	}
+	return c.backend.saveCmd()
+}
+
+func (c *inboxCore) openSnoozePicker() tea.Cmd {
+	task, project := c.currentTaskRef()
+	if task == nil {
+		return nil
+	}
+	return func() tea.Msg {
+		return SetSnoozeDateMsg{Task: task, Project: project}
+	}
 }

@@ -87,8 +87,31 @@ func (m *PriorityViewModel) handleKeypress(msg tea.KeyPressMsg) (tea.Model, tea.
 		return m, nil
 	}
 
+	// Multi-select key handling
+	if m.multiSelectMode {
+		switch key {
+		case "v":
+			m.toggleMultiSelectMode()
+			return m, nil
+		case "space":
+			m.toggleTaskSelection()
+			return m, nil
+		case "a":
+			m.selectAllVisible()
+			return m, nil
+		case "A":
+			m.deselectAll()
+			return m, nil
+		}
+		switch key {
+		case ",", "!", "d", "s", "m", ".":
+			m.pendingPrefix = key
+			return m, nil
+		}
+	}
+
 	// Activate prefix mode
-	if prefix, ok := activateSecondaryPrefix(key, "gzF", ",!dsmct.", m.getTaskAtCursor() != nil); ok {
+	if prefix, ok := activateSecondaryPrefix(key, "gzF", ",!dsmctb.", m.getTaskAtCursor() != nil); ok {
 		m.pendingPrefix = prefix
 		return m, nil
 	}
@@ -162,6 +185,14 @@ func (m *PriorityViewModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 		return m, nil // Cancel prefix mode
 	}
 
+	if m.multiSelectMode && m.SelectedCount() > 0 {
+		if model, cmd, handled := dispatchBulkPrefix(prefix, key, m, m.getSelectedBulkItems()); handled {
+			m.ExitMultiSelect()
+			return model, cmd
+		}
+		return m, nil
+	}
+
 	viewSpecific := func(pfx, k string) (tea.Model, tea.Cmd, bool) {
 		if pfx == "g" {
 			switch k {
@@ -209,4 +240,17 @@ func (m *PriorityViewModel) handleFilterPrefix(key string) (tea.Model, tea.Cmd) 
 
 func (m *PriorityViewModel) handleFilterSubPrefix(prefix, key string) (tea.Model, tea.Cmd) {
 	return m.handlePriorityFilterSubPrefix(prefix, key)
+}
+
+// getSelectedBulkItems returns selected tasks as bulkTaskItem slice.
+func (m *PriorityViewModel) getSelectedBulkItems() []bulkTaskItem {
+	var items []bulkTaskItem
+	for _, group := range [][]*PriorityTask{m.overdue, m.today, m.thisWeek, m.later, m.backlog, m.waitingOn} {
+		for _, pt := range group {
+			if m.selectedTasks[pt.Task.ID] {
+				items = append(items, bulkTaskItem{Task: pt.Task, Project: m.project})
+			}
+		}
+	}
+	return items
 }
