@@ -304,7 +304,7 @@ func (m *ParentSelectorModel) renderList() string {
 			}
 			line := fmt.Sprintf("%s%s", cursor, "(None)")
 			if m.Cursor == 0 {
-				line = SelectorOptionSelectedStyle.Render(line)
+				line = SelectedLine(line, m.Width())
 			} else {
 				line = MutedStyle.Render(line)
 			}
@@ -339,7 +339,7 @@ func (m *ParentSelectorModel) renderList() string {
 			line := prefix + title
 
 			if m.Cursor == cursorIdx {
-				line = SelectedItemTextStyle.Render(line)
+				line = SelectedLine(line, m.Width())
 			}
 
 			b.WriteString(line)
