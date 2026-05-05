@@ -308,6 +308,8 @@ type AppModel struct {
 	dailyPlanCarriedShown bool                   // true once the carry-over status message has been shown
 	lastDailyPlanToggle   *dailyPlanToggleAction // last w-key action for undo
 	lastQueueToggle       *queueToggleAction     // last q-key action for undo
+	lastDailyPlanToggleRedo *dailyPlanToggleAction // last undone w-key action for redo
+	lastQueueToggleRedo     *queueToggleAction     // last undone q-key action for redo
 
 	// Current project context
 	currentProject *models.Project

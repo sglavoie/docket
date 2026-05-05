@@ -68,6 +68,7 @@ func (m *AppModel) toggleDailyPlan() tea.Cmd {
 		}
 		m.setInfoStatus(fmt.Sprintf("Added to today's plan: %s", task.Title))
 	}
+	m.lastDailyPlanToggleRedo = nil
 	m.persistDailyPlan()
 	return defaultStatusTimeout()
 }
@@ -78,6 +79,7 @@ func (m *AppModel) undoDailyPlanToggle() tea.Cmd {
 	if action == nil {
 		return nil
 	}
+	m.lastDailyPlanToggleRedo = action
 	m.lastDailyPlanToggle = nil
 
 	if action.WasAdd {
@@ -106,6 +108,49 @@ func (m *AppModel) undoDailyPlanToggle() tea.Cmd {
 		}
 		m.setInfoStatus(fmt.Sprintf("Undone: %s", action.Task.Title))
 	}
+	return defaultStatusTimeout()
+}
+
+// redoDailyPlanToggle replays the last undone toggleDailyPlan action.
+func (m *AppModel) redoDailyPlanToggle() tea.Cmd {
+	action := m.lastDailyPlanToggleRedo
+	if action == nil {
+		return nil
+	}
+	m.lastDailyPlanToggleRedo = nil
+
+	if action.WasAdd {
+		// Redo add: re-add to daily plan.
+		if !m.dailyPlanIDs[action.Task.ID] {
+			m.dailyPlan = append(m.dailyPlan, FocusTask{Task: action.Task, Project: action.Project})
+			m.dailyPlanIDs[action.Task.ID] = true
+			m.persistDailyPlan()
+		}
+		// Mutual exclusivity: remove from queue if present.
+		if action.WasInQueue && m.focusQueueIDs[action.Task.ID] {
+			for i, ft := range m.focusQueue {
+				if ft.Task.ID == action.Task.ID {
+					m.focusQueue = append(m.focusQueue[:i], m.focusQueue[i+1:]...)
+					break
+				}
+			}
+			delete(m.focusQueueIDs, action.Task.ID)
+			m.persistFocusQueue()
+		}
+		m.setInfoStatus(fmt.Sprintf("Redone: %s", action.Task.Title))
+	} else {
+		// Redo remove: re-remove from daily plan.
+		for i, ft := range m.dailyPlan {
+			if ft.Task.ID == action.Task.ID {
+				m.dailyPlan = append(m.dailyPlan[:i], m.dailyPlan[i+1:]...)
+				break
+			}
+		}
+		delete(m.dailyPlanIDs, action.Task.ID)
+		m.persistDailyPlan()
+		m.setInfoStatus(fmt.Sprintf("Redone: %s", action.Task.Title))
+	}
+	m.lastDailyPlanToggle = action
 	return defaultStatusTimeout()
 }
 

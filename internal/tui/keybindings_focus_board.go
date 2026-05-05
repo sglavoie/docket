@@ -16,6 +16,7 @@ func (r *KeybindingRegistry) registerFocusBoardBindings() {
 		Keybinding{Key: "w", Description: "Plan for today", Category: "Daily Plan", Views: views},
 		Keybinding{Key: "J/K", Description: "Reorder today items", Category: "Daily Plan", Views: views},
 		Keybinding{Key: "u", Description: "Undo last queue/plan toggle", Category: "Queue", Views: views},
+		Keybinding{Key: "ctrl+r", Description: "Redo last queue/plan toggle", Category: "Queue", Views: views},
 		Keybinding{Key: "Esc", Description: "Close", Category: "Navigation", Views: views},
 
 		// Actions

@@ -129,6 +129,13 @@ func (m *AppModel) handleGlobalKeyPress(msg tea.KeyPressMsg) (bool, tea.Cmd) { /
 		if cmd := m.handleUndoToggle(); cmd != nil {
 			return true, cmd
 		}
+	case "ctrl+r":
+		if m.hasActiveTextInput() || m.hasActivePendingPrefix() {
+			break
+		}
+		if cmd := m.handleRedoToggle(); cmd != nil {
+			return true, cmd
+		}
 	case "ctrl+z":
 		if !m.hasActiveTextInput() && m.currentProject != nil && m.currentView() != ViewUndoHistory {
 			project := m.currentProject
@@ -418,6 +425,9 @@ func (m *AppModel) handleUndoToggle() tea.Cmd {
 		if cmd := m.undoDailyPlanToggle(); cmd != nil {
 			return m.batchWithFocusRefresh(cmd)
 		}
+		if cmd := m.undoQueueToggle(); cmd != nil {
+			return m.batchWithFocusRefresh(cmd)
+		}
 	case ViewFocusBoard:
 		if cmd := m.undoDailyPlanToggle(); cmd != nil {
 			return m.batchWithFocusRefresh(cmd)
@@ -427,5 +437,18 @@ func (m *AppModel) handleUndoToggle() tea.Cmd {
 		}
 	}
 
+	return nil
+}
+
+func (m *AppModel) handleRedoToggle() tea.Cmd {
+	switch m.currentView() { //nolint:exhaustive
+	case ViewFocusView, ViewFocusBoard:
+		if cmd := m.redoDailyPlanToggle(); cmd != nil {
+			return m.batchWithFocusRefresh(cmd)
+		}
+		if cmd := m.redoQueueToggle(); cmd != nil {
+			return m.batchWithFocusRefresh(cmd)
+		}
+	}
 	return nil
 }

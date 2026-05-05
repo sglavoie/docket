@@ -274,7 +274,7 @@ func (m *FocusBoardModel) HandledKeys() []string {
 			"d", "p", "E", "t", "m",
 			"F", "Fx", "/",
 			"1", "2", "3", "4", "5", "0",
-			"v", "w", "u", "esc",
+			"v", "w", "u", "ctrl+r", "esc",
 		},
 	)
 }

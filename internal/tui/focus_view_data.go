@@ -84,31 +84,29 @@ func (m *FocusViewModel) applyFilter() {
 	switch m.tabs.Active {
 	case focusTabQueue:
 		m.applyQueueFilter()
-		return
 	case focusTabSuggested:
 		m.applySuggestedFilter()
-		return
-	}
-
-	baseTasks := m.baseFilteredTasks()
-	switch m.tabs.Active {
-	case focusTabByProject:
-		m.filtered = make([]FocusTask, len(baseTasks))
-		copy(m.filtered, baseTasks)
-		sort.SliceStable(m.filtered, func(i, j int) bool {
-			return m.filtered[i].Project.Name < m.filtered[j].Project.Name
-		})
-	case focusTabByDueDate:
-		m.filtered = nil
-		for _, ft := range baseTasks {
-			if ft.Task.DueDate == nil {
-				continue
-			}
-			m.filtered = append(m.filtered, ft)
-		}
 	default:
-		m.filtered = make([]FocusTask, len(baseTasks))
-		copy(m.filtered, baseTasks)
+		baseTasks := m.baseFilteredTasks()
+		switch m.tabs.Active {
+		case focusTabByProject:
+			m.filtered = make([]FocusTask, len(baseTasks))
+			copy(m.filtered, baseTasks)
+			sort.SliceStable(m.filtered, func(i, j int) bool {
+				return m.filtered[i].Project.Name < m.filtered[j].Project.Name
+			})
+		case focusTabByDueDate:
+			m.filtered = nil
+			for _, ft := range baseTasks {
+				if ft.Task.DueDate == nil {
+					continue
+				}
+				m.filtered = append(m.filtered, ft)
+			}
+		default:
+			m.filtered = make([]FocusTask, len(baseTasks))
+			copy(m.filtered, baseTasks)
+		}
 	}
 
 	m.computeSubTabs()
@@ -121,7 +119,7 @@ func (m *FocusViewModel) computeSubTabs() {
 	today := util.StartOfDay(now)
 
 	switch m.tabs.Active {
-	case focusTabByProject:
+	case focusTabQueue, focusTabSuggested, focusTabByProject:
 		seen := map[string]bool{}
 		var names []string
 		for _, ft := range m.filtered {
@@ -253,7 +251,7 @@ func (m *FocusViewModel) applySubTabFilter(now, today time.Time) {
 	var narrowed []FocusTask
 	for _, ft := range m.filtered {
 		switch m.tabs.Active {
-		case focusTabByProject:
+		case focusTabQueue, focusTabSuggested, focusTabByProject:
 			if ft.Project.Name == filter {
 				narrowed = append(narrowed, ft)
 			}
