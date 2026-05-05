@@ -137,7 +137,11 @@ func (m *ProjectTreeModel) passesFilters(node *TreeNode) bool { //nolint:gocyclo
 	}
 
 	// Apply common filters (type, status, priority, tags, due date, attrs, score)
-	if !passesCommonFilters(node.Task, &m.filter.CommonFilterState, m.project.ID, m.config) {
+	projectID := ""
+	if m.project != nil {
+		projectID = m.project.ID
+	}
+	if !passesCommonFilters(node.Task, &m.filter.CommonFilterState, projectID, m.config) {
 		return false
 	}
 
@@ -167,7 +171,7 @@ func (m *ProjectTreeModel) passesFilters(node *TreeNode) bool { //nolint:gocyclo
 	// Apply actionable filter (hide tasks not ready to work on)
 	if m.filter.Actionable {
 		// Hide tasks with incomplete dependencies
-		if m.project.HasIncompleteDependencies(node.Task) {
+		if m.project != nil && m.project.HasIncompleteDependencies(node.Task) {
 			return false
 		}
 		// Hide manually-blocked tasks

@@ -108,6 +108,9 @@ func (m *AppModel) handleProjectViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 			} else {
 				if m.projectTree == nil || m.currentProject == nil || msg.Project.ID != m.currentProject.ID {
 					m.switchToProject(msg.Project, true)
+				} else {
+					m.currentProject = msg.Project
+					m.refreshProjectTree()
 				}
 				m.showView(ViewProjectTree, m.projectTree)
 			}

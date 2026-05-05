@@ -111,6 +111,9 @@ func (m *AppModel) saveProjectTreeState() {
 // It saves current state, loads the project from storage, applies colors, and creates the tree.
 // Pass restoreState=false to skip restoring saved filter/sort state (e.g., when applying custom filters).
 func (m *AppModel) switchToProject(project *models.Project, restoreState bool) {
+	if project == nil {
+		return
+	}
 	m.saveProjectTreeState()
 	m.currentProject = project
 	_ = m.persister.Load(project)

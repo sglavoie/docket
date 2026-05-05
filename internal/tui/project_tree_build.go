@@ -3,6 +3,10 @@ package tui
 import "github.com/sglavoie/tt/internal/models"
 
 func (m *ProjectTreeModel) buildTree() {
+	if m.project == nil {
+		return
+	}
+
 	// Preserve expanded state before rebuilding
 	expandedState := make(map[string]bool)
 	for _, node := range m.nodes {

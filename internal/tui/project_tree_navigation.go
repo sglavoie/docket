@@ -51,6 +51,9 @@ func (m *ProjectTreeModel) handleNavigationKeys(key string, visible []*TreeNode)
 // Snoozed is included only when the project has snoozed tasks.
 func (m *ProjectTreeModel) cyclableViewModes() []ViewMode {
 	modes := []ViewMode{ViewModeActive, ViewModeNext, ViewModeInbox, ViewModeWaiting, ViewModeSomeday}
+	if m.project == nil {
+		return modes
+	}
 	for _, task := range m.project.Tasks {
 		if task.IsSnoozed() {
 			return append(modes, ViewModeSnoozed)
