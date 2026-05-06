@@ -93,9 +93,9 @@ func renderHorizontalDivider(width int, opts ...DividerOption) string {
 
 	style := lipgloss.NewStyle().Foreground(cfg.color)
 
-	dividerLine := strings.Repeat("━", width)
+	dividerLine := strings.Repeat("─", width)
 	if cfg.rightIndicator != "" && len(cfg.rightIndicator) < width {
-		dividerLine = strings.Repeat("━", width-len(cfg.rightIndicator)) + cfg.rightIndicator
+		dividerLine = strings.Repeat("─", width-len(cfg.rightIndicator)) + cfg.rightIndicator
 	}
 
 	return style.Render(dividerLine)

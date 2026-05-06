@@ -31,10 +31,7 @@ func (m *RecentActivityModel) GetHelpItems() []HelpItem {
 }
 
 func (m *RecentActivityModel) HandledKeys() []string {
-	return []string{
-		"j", "k", "up", "down", "g", "G", "ctrl+u", "ctrl+d",
-		"enter", "p", "ctrl+.", "/", "F", "tab", "shift+left", "shift+right", "r", "esc",
-	}
+	return m.buildKeyMap().HandledKeys()
 }
 
 func (m *RecentActivityModel) clampCursor() {

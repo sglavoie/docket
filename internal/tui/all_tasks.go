@@ -1,8 +1,11 @@
 package tui
 
 import (
+	tea "charm.land/bubbletea/v2"
+
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/keymap"
 )
 
 // AllTasksGroupBy represents the grouping strategy for the all tasks view.
@@ -111,7 +114,33 @@ func NewAllTasksViewModel(cfg *config.Config, mgr *config.Manager) *AllTasksView
 		FilterMixin:      FilterMixin{filter: newFilterState()},
 	}
 	m.buildTabEntries()
-	m.initFilterMixin(&m.pendingPrefix, cfg)
+	km := m.buildKeyMap()
+	m.Dispatcher = keymap.NewDispatcher(km)
+	m.Dispatcher.ModalGuards = []keymap.ModalGuard{
+		{
+			Active: func() bool { return m.confirm.IsActive() },
+			Handle: func(key string) (tea.Model, tea.Cmd, bool) {
+				action := m.confirm.Action()
+				if confirmed, handled := m.HandleConfirmKey(key); handled {
+					if confirmed {
+						if action == "delete-smart-list" {
+							model, cmd := m.handleDeleteSavedFilterTab()
+							return model, cmd, true
+						}
+						if m.multiSelectMode && m.SelectedCount() > 0 {
+							model, cmd := m.handleBulkDelete()
+							return model, cmd, true
+						}
+						model, cmd := taskOpsDeleteTask(m)
+						return model, cmd, true
+					}
+					return m, nil, true
+				}
+				return nil, nil, false
+			},
+		},
+	}
+	m.initFilterMixinWithDispatcher(m.Dispatcher, cfg)
 	m.loadAllTasks()
 	return m
 }

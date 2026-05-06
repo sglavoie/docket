@@ -433,15 +433,7 @@ func (m *RoadmapModel) selectedRow() (*models.Task, *models.Project) {
 
 // HandledKeys implements KeySyncView.
 func (m *RoadmapModel) HandledKeys() []string {
-	return []string{
-		"tab", "shift+left", "shift+right",
-		"H", "L",
-		"j", "down", "k", "up",
-		"g", "G", "ctrl+d", "ctrl+u",
-		"z", "space", "enter", "o",
-		"s", "t", "T", "c", "r",
-		"?",
-	}
+	return m.buildKeyMap().HandledKeys()
 }
 
 func (m *RoadmapModel) StatusBarLabel() string { return "Roadmap" }

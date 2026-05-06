@@ -3,6 +3,8 @@ package tui
 import (
 	"slices"
 	"sync"
+
+	"github.com/sglavoie/tt/internal/tui/keymap"
 )
 
 // Keybinding represents a single keyboard shortcut with metadata.
@@ -35,51 +37,80 @@ func GetKeybindingRegistry() *KeybindingRegistry {
 func NewKeybindingRegistry() *KeybindingRegistry {
 	r := &KeybindingRegistry{}
 	r.registerGlobalBindings()
-	r.registerDashboardBindings()
-	r.registerProjectTreeBindings()
-	r.registerPriorityViewBindings()
-	r.registerInboxProcessorBindings()
-	r.registerGlobalInboxProcessorBindings()
-	r.registerDueDateOverviewBindings()
-	r.registerDailyReviewBindings()
-	r.registerWeeklyReviewBindings()
-	r.registerFocusViewBindings()
-	r.registerProjectFocusViewBindings()
-	r.registerTaskAttachmentsBindings()
-	r.registerCustomContextEditorBindings()
-	r.registerNotesBindings()
-	r.registerRecentActivityBindings()
-	r.registerProjectRecentActivityBindings()
-	r.registerProjectPreviewBindings()
-	r.registerScoreProfileManagerBindings()
-	r.registerMetricsDashboardBindings()
-	r.registerAllTasksBindings()
-	r.registerFocusBoardBindings()
-	r.registerOutlinerBindings()
-	r.registerCrossProjectOutlinerBindings()
-	r.registerTaskChecklistBindings()
-	r.registerTaskCommentsBindings()
-	r.registerWorkflowRulesBindings()
-	r.registerWorkflowDryRunBindings()
-	r.registerWorkflowWizardBindings()
-	r.registerTaskTemplatesBindings()
-	r.registerFilterBuilderBindings()
-	r.registerNotificationCenterBindings()
-	r.registerMessageLogBindings()
-	r.registerAskViewBindings()
-	r.registerBulkEditBindings()
-	r.registerBlockersBindings()
-	r.registerCrossProjectLinkerBindings()
-	r.registerTutorBindings()
-	r.registerKeybindingExplorerBindings()
-	r.registerSettingsBindings()
-	r.registerRecurrenceEditorBindings()
-	r.registerQuickCaptureBindings()
-	r.registerTaskFormBindings()
-	r.registerKanbanBindings()
-	r.registerPipelineHubBindings()
-	r.registerRoadmapBindings()
+	// All other views use the declarative keymap:
+	viewReg := BuildRegistryFromKeyMaps(migratedViewKeymaps())
+	r.add(viewReg.bindings...)
 	return r
+}
+
+// BuildRegistryFromKeyMaps builds a KeybindingRegistry from a map of ViewType to KeyMap.
+// Each view's non-hidden HelpItems are added as view-specific bindings.
+func BuildRegistryFromKeyMaps(views map[ViewType]*keymap.KeyMap) *KeybindingRegistry {
+	r := &KeybindingRegistry{}
+	for view, km := range views {
+		for _, item := range km.HelpItems() {
+			r.add(Keybinding{
+				Key:         item.Key,
+				Description: item.Description,
+				Category:    item.Category,
+				Views:       []ViewType{view},
+			})
+		}
+	}
+	return r
+}
+
+// migratedViewKeymaps returns keymaps for all views that have been fully migrated
+// to the declarative keymap system. Zero-value model instances are used here because
+// buildKeyMap() only creates closures (which capture the model pointer) — the closures
+// are never executed, so nil fields are safe.
+func migratedViewKeymaps() map[ViewType]*keymap.KeyMap {
+	return map[ViewType]*keymap.KeyMap{
+		ViewDashboard:             (&DashboardModel{}).buildKeyMap(),
+		ViewProjectTree:           (&ProjectTreeModel{}).buildKeyMap(),
+		ViewOutliner:              (&OutlinerModel{}).buildKeyMap(),
+		ViewCrossProjectOutliner:  (&OutlinerModel{}).buildKeyMap(),
+		ViewAllTasks:              (&AllTasksViewModel{}).buildKeyMap(),
+		ViewFocusBoard:            (&FocusBoardModel{}).buildKeyMap(),
+		ViewKanban:                (&KanbanModel{}).buildKeyMap(),
+		ViewCrossProjectKanban:    (&KanbanModel{}).buildKeyMap(),
+		ViewPriorityView:          (&PriorityViewModel{}).buildKeyMap(),
+		ViewDueDateOverview:       (&DueDateOverviewModel{}).buildKeyMap(),
+		ViewInboxProcessor:        (&InboxProcessorModel{}).buildKeyMap(),
+		ViewGlobalInboxProcessor:  (&GlobalInboxProcessorModel{}).buildKeyMap(),
+		ViewDailyReview:           (&DailyReviewModel{}).buildKeyMap(),
+		ViewWeeklyReview:          (&WeeklyReviewModel{}).buildKeyMap(),
+		ViewFocusView:             (&FocusViewModel{}).buildKeyMap(),
+		ViewProjectFocusView:      (&ProjectFocusViewModel{}).buildKeyMap(),
+		ViewRecentActivity:        (&RecentActivityModel{}).buildKeyMap(),
+		ViewProjectRecentActivity: (&RecentActivityModel{}).buildKeyMap(),
+		ViewTaskChecklist:         (&TaskChecklistModel{}).buildKeyMap(),
+		ViewTaskComments:          (&TaskCommentsModel{}).buildKeyMap(),
+		ViewWorkflowRules:         (&WorkflowRulesModel{}).buildKeyMap(),
+		ViewWorkflowDryRun:        (&WorkflowDryRunModel{}).buildKeyMap(),
+		ViewWorkflowWizard:        (&WorkflowWizardModel{}).buildKeyMap(),
+		ViewTaskTemplates:         (&TaskTemplatesModel{}).buildKeyMap(),
+		ViewFilterBuilder:         (&FilterBuilderModel{}).buildKeyMap(),
+		ViewBulkEdit:              (&BulkEditModel{}).buildKeyMap(),
+		ViewBlockers:              (&BlockersModel{}).buildKeyMap(),
+		ViewCrossProjectLinker:    (&CrossProjectLinkerModel{}).buildKeyMap(),
+		ViewNotificationCenter:    (&NotificationCenterModel{}).buildKeyMap(),
+		ViewMessageLog:            (&MessageLogViewModel{}).buildKeyMap(),
+		ViewAsk:                   (&AskViewModel{}).buildKeyMap(),
+		ViewTutor:                 (&TutorModel{}).buildKeyMap(),
+		ViewKeybindingExplorer:    (&HelpViewModel{isExplorer: true}).buildKeyMap(),
+		ViewScoreProfileManager:   (&ScoreProfileManagerModel{}).buildKeyMap(),
+		ViewTaskAttachments:       (&TaskAttachmentsModel{}).buildKeyMap(),
+		ViewMetricsDashboard:      (&MetricsDashboardModel{}).buildKeyMap(),
+		ViewRoadmap:               (&RoadmapModel{}).buildKeyMap(),
+		ViewNotes:                 (&NotesViewModel{}).buildKeyMap(),
+		ViewGlobalNotes:           (&NotesViewModel{}).buildKeyMap(),
+		ViewPipelineHub:           (&PipelineHubModel{}).buildKeyMap(),
+		ViewQuickCapture:          (&QuickCaptureModel{}).buildKeyMap(),
+		ViewTaskForm:              (&TaskFormModel{}).buildKeyMap(),
+		ViewProjectPreview:        (&ProjectPreviewModel{}).buildKeyMap(),
+		ViewCustomContextEditor:   (&CustomContextEditorModel{}).buildKeyMap(),
+	}
 }
 
 // GetForView returns help items for the specified view, including global bindings.
@@ -182,176 +213,11 @@ func (r *KeybindingRegistry) add(bindings ...Keybinding) {
 	r.bindings = append(r.bindings, bindings...)
 }
 
-// addForViews stamps a slice of partially-constructed bindings with the given views and adds them.
-func (r *KeybindingRegistry) addForViews(views []ViewType, bindings []Keybinding) {
-	for i := range bindings {
-		bindings[i].Views = views
-	}
-	r.add(bindings...)
-}
-
-// Shared keybinding groups reused across multiple views.
-
-func statusBindings() []Keybinding {
-	return []Keybinding{
-		{Key: ",s", Description: "Start (in progress)", Category: "Status"},
-		{Key: ",d", Description: "Mark done", Category: "Status"},
-		{Key: ",b", Description: "Block task", Category: "Status"},
-		{Key: ",S", Description: "Put task on standby", Category: "Status"},
-		{Key: ",o", Description: "Reopen (todo)", Category: "Status"},
-		{Key: ",x", Description: "Cancel task", Category: "Status"},
-		{Key: ",r", Description: "Send to review", Category: "Status"},
-		{Key: ",k", Description: "Skip recurrence", Category: "Recurrence"},
-		{Key: ",Dt", Description: "Defer recurrence 1 day", Category: "Recurrence"},
-		{Key: ",D3", Description: "Defer recurrence 3 days", Category: "Recurrence"},
-		{Key: ",Dw", Description: "Defer recurrence 1 week", Category: "Recurrence"},
-		{Key: ",DW", Description: "Defer recurrence 2 weeks", Category: "Recurrence"},
-		{Key: ",Dm", Description: "Defer recurrence 1 month", Category: "Recurrence"},
-	}
-}
-
-func priorityBindings() []Keybinding {
-	return []Keybinding{
-		{Key: "!1", Description: "Set priority: Critical", Category: "Priority"},
-		{Key: "!2", Description: "Set priority: High", Category: "Priority"},
-		{Key: "!3", Description: "Set priority: Normal", Category: "Priority"},
-		{Key: "!4", Description: "Set priority: Low", Category: "Priority"},
-		{Key: "!5", Description: "Set priority: Someday", Category: "Priority"},
-	}
-}
-
-func stageBindings() []Keybinding {
-	return []Keybinding{
-		{Key: ".1-.9", Description: "Set stage (by position)", Category: "Stage (. prefix)"},
-		{Key: ".0", Description: "Clear stage", Category: "Stage (. prefix)"},
-		{Key: "F.", Description: "Filter by stage", Category: "Filters"},
-	}
-}
-
-func dueDateBindings() []Keybinding {
-	return []Keybinding{
-		{Key: "dt", Description: "Due today", Category: "Due Date"},
-		{Key: "dm", Description: "Due tomorrow", Category: "Due Date"},
-		{Key: "dw", Description: "Due in a week", Category: "Due Date"},
-		{Key: "dn", Description: "Due in a month", Category: "Due Date"},
-		{Key: "d0", Description: "Clear due date", Category: "Due Date"},
-		{Key: "dd", Description: "Open date picker", Category: "Due Date"},
-	}
-}
-
 func clipboardBindings() []Keybinding {
 	return []Keybinding{
 		{Key: "y", Description: "Copy title", Category: "Clipboard"},
 		{Key: "Y", Description: "Copy description", Category: "Clipboard"},
 		{Key: "ctrl+Y", Description: "Copy title and description", Category: "Clipboard"},
-	}
-}
-
-func snoozeBindings() []Keybinding {
-	return []Keybinding{
-		{Key: "st", Description: "Snooze until tomorrow", Category: "Snooze"},
-		{Key: "sw", Description: "Snooze 1 week", Category: "Snooze"},
-		{Key: "sm", Description: "Snooze 1 month", Category: "Snooze"},
-		{Key: "sn", Description: "Snooze until next Monday", Category: "Snooze"},
-		{Key: "s0", Description: "Clear snooze", Category: "Snooze"},
-		{Key: "sd", Description: "Open snooze date picker", Category: "Snooze"},
-	}
-}
-
-func linkedTaskBindings() []Keybinding {
-	return []Keybinding{
-		{Key: "cb", Description: "Create blocker", Category: "Linked Tasks"},
-		{Key: "cd", Description: "Create dependent", Category: "Linked Tasks"},
-		{Key: "cs", Description: "Create subtask", Category: "Linked Tasks"},
-		{Key: "cf", Description: "Create follow-up", Category: "Linked Tasks"},
-		{Key: "cn", Description: "Navigate linked tasks", Category: "Linked Tasks"},
-		{Key: "cp", Description: "Cross-project link", Category: "Linked Tasks"},
-	}
-}
-
-func projectCyclingBindings() []Keybinding {
-	return []Keybinding{
-		{Key: "`", Description: "Next project in cycle", Category: "Project Cycling"},
-		{Key: "~", Description: "Previous project in cycle", Category: "Project Cycling"},
-		{Key: "@", Description: "Open cycle manager", Category: "Project Cycling"},
-		{Key: "@ j/k", Description: "Move cursor in popup", Category: "Project Cycling"},
-		{Key: "@ space", Description: "Toggle cycle membership", Category: "Project Cycling"},
-		{Key: "@ 1-9", Description: "Jump to project by number", Category: "Project Cycling"},
-		{Key: "@ enter/g", Description: "Navigate to project", Category: "Project Cycling"},
-		{Key: "@ p", Description: "Toggle pin on project", Category: "Project Cycling"},
-		{Key: "@ c/C", Description: "Switch / clear context filter", Category: "Project Cycling"},
-		{Key: "@ u", Description: "Clear all cycle selections", Category: "Project Cycling"},
-		{Key: "@ ctrl+j/k", Description: "Scroll preview tree", Category: "Project Cycling"},
-		{Key: "@ ctrl+h/l", Description: "Cycle preview section", Category: "Project Cycling"},
-	}
-}
-
-func taskPrefixBindings() []Keybinding {
-	return []Keybinding{
-		{Key: "tn", Description: "New task (no template)", Category: "Task (t prefix)"},
-		{Key: "tN", Description: "New task (with template picker)", Category: "Task (t prefix)"},
-		{Key: "tr", Description: "Rename task (inline)", Category: "Task (t prefix)"},
-		{Key: "ts", Description: "Change section", Category: "Task (t prefix)"},
-		{Key: "to", Description: "Open in external editor", Category: "Task (t prefix)"},
-		{Key: "tp", Description: "Pin/unpin task", Category: "Task (t prefix)"},
-		{Key: "td", Description: "Dim/undim task", Category: "Task (t prefix)"},
-		{Key: "tt", Description: "Manage tags", Category: "Task (t prefix)"},
-		{Key: "tc", Description: "View/add comments", Category: "Task (t prefix)"},
-		{Key: "ta", Description: "View/add attachments", Category: "Task (t prefix)"},
-		{Key: "tl", Description: "Edit checklist", Category: "Task (t prefix)"},
-		{Key: "te", Description: "Edit description", Category: "Task (t prefix)"},
-		{Key: "tm", Description: "Move to another project", Category: "Task (t prefix)"},
-		{Key: "tD", Description: "Delete task", Category: "Task (t prefix)"},
-	}
-}
-
-func foldBindings() []Keybinding {
-	return []Keybinding{
-		{Key: "za", Description: "Toggle fold", Category: "Folds"},
-		{Key: "zo/zc", Description: "Expand/collapse fold", Category: "Folds"},
-		{Key: "zR/zM", Description: "Expand/collapse all", Category: "Folds"},
-		{Key: "zv", Description: "Focus on subtree", Category: "Folds"},
-		{Key: "zp", Description: "Toggle inline preview", Category: "Folds"},
-	}
-}
-
-func typeChangeBindings() []Keybinding {
-	return []Keybinding{
-		{Key: "<", Description: "Promote type", Category: "Type Changes"},
-		{Key: ">", Description: "Demote type", Category: "Type Changes"},
-		{Key: "H", Description: "Cycle leaf left", Category: "Type Changes"},
-		{Key: "L", Description: "Cycle leaf right", Category: "Type Changes"},
-	}
-}
-
-func sortBindings() []Keybinding {
-	return []Keybinding{
-		{Key: "1", Description: "Sort by priority", Category: "Sort"},
-		{Key: "2", Description: "Sort by due date", Category: "Sort"},
-		{Key: "3", Description: "Sort by created", Category: "Sort"},
-		{Key: "4", Description: "Sort by status", Category: "Sort"},
-		{Key: "5", Description: "Sort by score", Category: "Sort"},
-		{Key: "0", Description: "Reset sort", Category: "Sort"},
-	}
-}
-
-func movePrefixBindings() []Keybinding {
-	return []Keybinding{
-		{Key: "ma", Description: "Send task(s) to Active", Category: "Move (m prefix)"},
-		{Key: "mn", Description: "Send task(s) to Next", Category: "Move (m prefix)"},
-		{Key: "mi", Description: "Send task(s) to Inbox", Category: "Move (m prefix)"},
-		{Key: "mw", Description: "Send task(s) to Waiting", Category: "Move (m prefix)"},
-		{Key: "mr", Description: "Send task(s) to Review", Category: "Move (m prefix)"},
-		{Key: "ms", Description: "Send task(s) to Someday", Category: "Move (m prefix)"},
-		{Key: "mK", Description: "Move task to top of section", Category: "Move (m prefix)"},
-		{Key: "mJ", Description: "Move task to bottom of section", Category: "Move (m prefix)"},
-	}
-}
-
-func blockerPrefixBindings() []Keybinding {
-	return []Keybinding{
-		{Key: "bb", Description: "View blockers/dependencies", Category: "Blockers (b prefix)"},
-		{Key: "bm", Description: "Manage dependencies", Category: "Blockers (b prefix)"},
 	}
 }
 

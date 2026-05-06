@@ -3,6 +3,7 @@ package tui
 import (
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/keymap"
 )
 
 var recentActivityTabNames = []string{"All", "Active", "Completed"}
@@ -44,7 +45,9 @@ func NewRecentActivityModel(cfg *config.Config) *RecentActivityModel {
 	if !cfg.GetRecentActivityShowAll() {
 		m.tabs.Active = recentActivityTabActive
 	}
-	m.initFilterMixin(&m.pendingPrefix, cfg)
+	km := m.buildKeyMap()
+	m.Dispatcher = keymap.NewDispatcher(km)
+	m.initFilterMixinWithDispatcher(m.Dispatcher, cfg)
 	m.InitSearchInput("Filter tasks...", 100, 40)
 	m.loadTasks()
 	return m
@@ -61,7 +64,9 @@ func NewProjectRecentActivityModel(cfg *config.Config, project *models.Project) 
 	if !cfg.GetRecentActivityShowAll() {
 		m.tabs.Active = recentActivityTabActive
 	}
-	m.initFilterMixin(&m.pendingPrefix, cfg)
+	km := m.buildKeyMap()
+	m.Dispatcher = keymap.NewDispatcher(km)
+	m.initFilterMixinWithDispatcher(m.Dispatcher, cfg)
 	m.InitSearchInput("Filter tasks...", 100, 40)
 	m.loadTasks()
 	return m

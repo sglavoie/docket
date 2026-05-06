@@ -251,9 +251,10 @@ func (m *ProjectTreeModel) renderChildrenInOtherSectionsBadge(task *models.Task)
 
 // GetPrefixPopupInfo returns prefix popup data for overlay rendering.
 func (m *ProjectTreeModel) GetPrefixPopupInfo() *PrefixPopupInfo {
-	if m.pendingPrefix == "" {
+	if m.Dispatcher == nil || !m.Dispatcher.HasPendingPrefix() {
 		return nil
 	}
+	prefix := m.Dispatcher.PendingPrefix()
 	var currentStage string
 	var currentPriority int
 	if task := m.getCursorTask(); task != nil {
@@ -283,7 +284,7 @@ func (m *ProjectTreeModel) GetPrefixPopupInfo() *PrefixPopupInfo {
 	hints["F."] = BuildFilterStagePrefixHints(m.config.Stages, m.filter.Stage)
 	hints["Fv"] = SavedFilterPrefixHints
 	return &PrefixPopupInfo{
-		Prefix: m.pendingPrefix,
+		Prefix: prefix,
 		Hints:  hints,
 	}
 }

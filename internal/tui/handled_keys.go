@@ -13,143 +13,6 @@ type KeySyncView interface {
 	HandledKeys() []string
 }
 
-// listNavigationKeys returns keys handled by views that use handleListNavigation.
-// pgup/pgdown are intentional aliases for ctrl+u/ctrl+d and are excluded here
-// since they don't appear separately in the registry.
-func listNavigationKeys() []string {
-	return []string{"j", "k", "up", "down", "G", "ctrl+u", "ctrl+d"}
-}
-
-// inboxProcessorKeys returns the key set shared by InboxProcessorModel and GlobalInboxProcessorModel.
-func inboxProcessorKeys() []string {
-	return concatKeys(
-		[]string{
-			"j", "k", "g", "G",
-			"enter", "n",
-			"1", "2", "3", "4", "5",
-			"e", "D", "u",
-			"ctrl+s", "ctrl+t", "ctrl+w",
-		},
-		statusPrefixKeys(),   // ,s ,d ,b ,S ,o ,x ,r
-		priorityPrefixKeys(), // !1 !2 !3 !4 !5
-		snoozePrefixKeys(),   // st sw sm sn s0 sd
-		[]string{".1", ".2", ".3", ".4", ".5", ".6", ".7", ".8", ".9", ".0"},
-		[]string{"ma", "mn", "mi", "mw", "mr", "ms"},
-	)
-}
-
-// statusPrefixKeys returns the status prefix sequences handled by dispatchCommonPrefix.
-// Does not include recurrence keys (,k ,Dt ,D3 ,Dw ,DW ,Dm) — those are
-// intentionally excluded (keysExcludedFromSync) since only primary views handle them.
-func statusPrefixKeys() []string {
-	return []string{",s", ",d", ",b", ",S", ",o", ",x", ",r"}
-}
-
-// priorityPrefixKeys returns the priority prefix sequences (!1–!5).
-func priorityPrefixKeys() []string {
-	return []string{"!1", "!2", "!3", "!4", "!5"}
-}
-
-// dueDatePrefixKeys returns the due-date prefix sequences (d+).
-func dueDatePrefixKeys() []string {
-	return []string{"dt", "dm", "dw", "dn", "d0", "dd"}
-}
-
-// snoozePrefixKeys returns the snooze prefix sequences (s+).
-func snoozePrefixKeys() []string {
-	return []string{"st", "sw", "sm", "sn", "s0", "sd"}
-}
-
-// linkedTaskPrefixKeys returns the linked-task prefix sequences (c+).
-func linkedTaskPrefixKeys() []string {
-	return []string{"cb", "cd", "cs", "cf", "cn", "cp"}
-}
-
-// stagePrefixKeys returns stage prefix sequences (.1–.9, .0, F.).
-func stagePrefixKeys() []string {
-	return []string{".1", ".2", ".3", ".4", ".5", ".6", ".7", ".8", ".9", ".0", "F."}
-}
-
-// sortKeys returns sort key sequences (1–5 and 0).
-func sortKeys() []string {
-	return []string{"1", "2", "3", "4", "5", "0"}
-}
-
-// foldPrefixKeys returns fold prefix sequences (z+).
-func foldPrefixKeys() []string {
-	return []string{"za", "zo", "zc", "zR", "zM", "zv", "zp"}
-}
-
-// typeChangeKeys returns type-change key sequences (<, >, H, L).
-func typeChangeKeys() []string {
-	return []string{"<", ">", "H", "L"}
-}
-
-// blockerPrefixKeySet returns blocker prefix sequences (bb, bm).
-func blockerPrefixKeySet() []string {
-	return []string{"bb", "bm"}
-}
-
-// taskPrefixKeySet returns task prefix sequences (t+).
-func taskPrefixKeySet() []string {
-	return []string{"tn", "tN", "tr", "ts", "to", "tp", "td", "tt", "tc", "ta", "tl", "te", "tm", "tD"}
-}
-
-// movePrefixKeys returns move-prefix sequences registered by movePrefixBindings.
-// mS (Standby) is handled by sectionForMoveKey but not registered; see keysExcludedFromSync.
-func movePrefixKeys() []string {
-	return []string{"ma", "mn", "mi", "mw", "mr", "ms", "mK", "mJ"}
-}
-
-// filterSubKeys returns the common F-prefix sub-key sequences registered by
-// primary views (Fp, Ft, Fs, F#, Fa, FS, Fr, Fc, Fh, F@, Fx, Fd, Fvs, Fvl, Fvd).
-func filterSubKeys() []string {
-	return []string{
-		"Fp", "FP", "Ft", "Fs", "F#", "Fa", "FS",
-		"Fr", "Fc", "Fh", "F@", "Fx", "Fd",
-		"Fvs", "Fvl", "Fvd",
-	}
-}
-
-// commonActionKeys returns keys handled by handleCommonTaskAction, shared
-// across all secondary task list views.
-func commonActionKeys() []string {
-	return []string{
-		"o", "ctrl+.", "Z", "D", "e", "r",
-		"?",
-		"*", "S", "O", "ctrl+b",
-	}
-}
-
-// commonPrimaryViewKeys returns keys handled by handleCommonPrimaryViewKey, shared
-// across ProjectTree and Outliner.
-func commonPrimaryViewKeys() []string {
-	return []string{
-		"ctrl+p", "ctrl+o",
-		"`", "~", "@",
-		"B", "p", "w", "W",
-		"i", "I",
-		"\\", "{", "}",
-		"R", "ctrl+r", "ctrl+l",
-		"u",
-		"S", "ctrl+.", "ctrl+m",
-	}
-}
-
-// multiSelectKeys returns the key set for multi-select mode (v, space, a, A).
-func multiSelectKeys() []string {
-	return []string{"v", "space", "a", "A"}
-}
-
-// concatKeys concatenates multiple key-set slices into one.
-func concatKeys(groups ...[]string) []string {
-	var out []string
-	for _, g := range groups {
-		out = append(out, g...)
-	}
-	return out
-}
-
 // globalAppKeys returns keys handled at the AppModel level for all views.
 // These are excluded from per-view invisible-binding checks.
 func globalAppKeys() []string {
@@ -181,9 +44,8 @@ var keysExcludedFromSync = map[string]bool{
 
 	// Legacy entries removed (replaced by shift+arrow keys)
 
-	// Recurrence keys: registered via statusBindings() for all views but only
-	// implemented in primary views (ProjectTree/Outliner) via handleDeferRecurrence.
-	// Secondary views silently consume the prefix without acting.
+	// Recurrence keys: only implemented in primary views (ProjectTree/Outliner)
+	// via handleDeferRecurrence. Secondary views silently consume the prefix.
 	",k":  true,
 	",Dt": true,
 	",D3": true,

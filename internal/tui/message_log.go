@@ -112,10 +112,7 @@ func (m *MessageLogViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m *MessageLogViewModel) HandledKeys() []string {
-	return []string{
-		"j", "down", "k", "up", "g", "G",
-		"ctrl+d", "ctrl+u",
-	}
+	return m.buildKeyMap().HandledKeys()
 }
 
 func (m *MessageLogViewModel) View() tea.View {

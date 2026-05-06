@@ -193,33 +193,17 @@ func (m *AllTasksViewModel) viewName() string { return "All Tasks" }
 
 // GetHelpItems returns help items for this view.
 func (m *AllTasksViewModel) GetHelpItems() []HelpItem {
-	return GetKeybindingRegistry().GetForView(ViewAllTasks)
+	km := m.buildKeyMap()
+	out := km.HelpItems()
+	result := make([]HelpItem, len(out))
+	for i, h := range out {
+		result[i] = HelpItem{Key: h.Key, Description: h.Description, Category: h.Category}
+	}
+	return result
 }
 
 func (m *AllTasksViewModel) HandledKeys() []string {
-	return concatKeys(
-		listNavigationKeys(),
-		statusPrefixKeys(),
-		priorityPrefixKeys(),
-		dueDatePrefixKeys(),
-		snoozePrefixKeys(),
-		linkedTaskPrefixKeys(),
-		stagePrefixKeys(),
-		blockerPrefixKeySet(),
-		commonActionKeys(),
-		[]string{
-			"g", "gp",
-			"shift+left", "shift+right",
-			"zR", "zM",
-			"tab", "n", "N",
-			"enter", "F", "FP", "m", "t", "v",
-			"0", "+", "E", "X", "ctrl+g",
-			"{", "}",
-			"1", "2", "3", "4", "5",
-			"ctrl+e",
-			"esc",
-		},
-	)
+	return m.buildKeyMap().HandledKeys()
 }
 
 // HasActiveFilters returns true if any filter is currently active.

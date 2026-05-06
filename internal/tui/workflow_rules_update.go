@@ -169,12 +169,7 @@ func (m *WorkflowRulesModel) handleRuleActionKey(key string) (bool, tea.Model, t
 }
 
 func (m *WorkflowRulesModel) HandledKeys() []string {
-	return []string{
-		// Navigation
-		"j", "down", "k", "up", "g", "G", "/",
-		// Actions
-		"space", "enter", "d", "D", "n", "w", "e", "J", "K", "t", "T",
-	}
+	return m.buildKeyMap().HandledKeys()
 }
 
 // filterRules filters allRules based on the current search query.

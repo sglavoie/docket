@@ -8,6 +8,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/keymap"
 	"github.com/sglavoie/tt/internal/util"
 )
 
@@ -74,7 +75,24 @@ func NewDueDateOverviewModel(cfg *config.Config, mgr *config.Manager) *DueDateOv
 		MultiSelectState: MultiSelectState{selectedTasks: make(map[string]bool)},
 		tabs:             TabState{Names: dueDateTabNames},
 	}
-	m.initFilterMixin(&m.pendingPrefix, cfg)
+	km := m.buildKeyMap()
+	m.Dispatcher = keymap.NewDispatcher(km)
+	m.Dispatcher.ModalGuards = []keymap.ModalGuard{
+		{
+			Active: func() bool { return m.confirm.IsActive() },
+			Handle: func(key string) (tea.Model, tea.Cmd, bool) {
+				if confirmed, handled := m.HandleConfirmKey(key); handled {
+					if confirmed {
+						model, cmd := m.deleteTask()
+						return model, cmd, true
+					}
+					return m, nil, true
+				}
+				return nil, nil, false
+			},
+		},
+	}
+	m.initFilterMixinWithDispatcher(m.Dispatcher, cfg)
 	m.loadTasksWithDueDates()
 	return m
 }
@@ -267,141 +285,9 @@ func (m *DueDateOverviewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 // handleKeyMsg handles keyboard input.
 func (m *DueDateOverviewModel) handleKeyMsg(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
-	key := msg.String()
-
-	// Handle pending prefix keys (which-key style)
-	if m.SkipModifierInPrefix(msg) {
-		return m, nil
-	}
-	if m.pendingPrefix != "" {
-		return m.handlePrefixKey(key)
-	}
-
-	// Clear previous error on any key
-	m.ClearError()
-
-	// Handle confirm dialog
-	if confirmed, handled := m.HandleConfirmKey(key); handled {
-		if confirmed {
-			return m.deleteTask()
-		}
-		return m, nil
-	}
-
-	// Multi-select key handling
-	if m.multiSelectMode {
-		switch key {
-		case "v":
-			m.toggleMultiSelectMode()
-			return m, nil
-		case "space":
-			m.toggleTaskSelection()
-			return m, nil
-		case "a":
-			m.selectAllVisible()
-			return m, nil
-		case "A":
-			m.deselectAll()
-			return m, nil
-		}
-		switch key {
-		case ",", "!", "d", "s", "m", ".":
-			m.pendingPrefix = key
-			return m, nil
-		}
-	}
-
-	// Activate prefix mode
-	if prefix, ok := activateSecondaryPrefix(key, "gzF", ",!dsmctb.", m.getTaskAtCursor() != nil); ok {
-		m.pendingPrefix = prefix
-		return m, nil
-	}
-
-	// Tab navigation
-	switch key {
-	case "tab":
-		m.tabs.Cycle(1)
-		m.applyTabFilter()
-		return m, nil
-	case "shift+tab":
-		m.tabs.Cycle(-1)
-		m.applyTabFilter()
-		return m, nil
-	}
-	if handleTabCycleKey(key, &m.tabs, func() {
-		m.applyTabFilter()
-	}) {
-		return m, nil
-	}
-
-	switch key {
-	case "esc":
-		if RunEscCascade(m.escSteps()) {
-			return m, nil
-		}
-		return m, func() tea.Msg {
-			return CloseDueDateOverviewMsg{}
-		}
-
-	case "enter":
-		if dt := m.getTaskAtCursor(); dt != nil {
-			return m, func() tea.Msg {
-				return DueDateOverviewSelectMsg{Task: dt.Task, Project: dt.Project}
-			}
-		}
-		return m, nil
-
-	// Toggle active flag
-	case "*":
-		return m.toggleActive()
-
-	// Priority changes
-	case "1", "2", "3", "4", "5":
-		return m.changeTaskPriority(key)
-	}
-
-	// Shared task actions: e, r, y/Y/ctrl+y, t, Z, D, ?
-	if model, cmd, handled := handleCommonTaskAction(key, m); handled {
+	if model, cmd, handled := m.Dispatcher.Dispatch(msg); handled {
 		return model, cmd
 	}
-
-	if handled, cmd := handleListNavigation(key, &m.cursor, m.totalTasks, m.Height(), &m.cursorFlash); handled {
-		return m, cmd
-	}
-
-	return m, nil
-}
-
-// handlePrefixKey handles the second key in a prefix key sequence.
-func (m *DueDateOverviewModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
-	prefix := m.pendingPrefix
-	m.pendingPrefix = "" // Always clear prefix
-
-	if key == "esc" {
-		return m, nil // Cancel prefix mode
-	}
-
-	if m.multiSelectMode && m.SelectedCount() > 0 {
-		if model, cmd, handled := dispatchBulkPrefix(prefix, key, m, m.getSelectedBulkItems()); handled {
-			m.ExitMultiSelect()
-			return model, cmd
-		}
-		return m, nil
-	}
-
-	viewSpecific := func(pfx, k string) (tea.Model, tea.Cmd, bool) {
-		if pfx == "z" && k == "p" {
-			m.previewMode = !m.previewMode
-			return m, nil, true
-		}
-		return nil, nil, false
-	}
-
-	if model, cmd, handled := dispatchCommonPrefix(prefix, key, m, viewSpecific); handled {
-		return model, cmd
-	}
-
-	// Invalid prefix sequence - ignore
 	return m, nil
 }
 
@@ -475,28 +361,17 @@ func (m *DueDateOverviewModel) ShouldCaptureEsc() bool {
 
 // GetHelpItems returns help items for this view.
 func (m *DueDateOverviewModel) GetHelpItems() []HelpItem {
-	return GetKeybindingRegistry().GetForView(ViewDueDateOverview)
+	km := m.buildKeyMap()
+	out := km.HelpItems()
+	result := make([]HelpItem, len(out))
+	for i, h := range out {
+		result[i] = HelpItem{Key: h.Key, Description: h.Description, Category: h.Category}
+	}
+	return result
 }
 
 func (m *DueDateOverviewModel) HandledKeys() []string {
-	return concatKeys(
-		listNavigationKeys(),
-		statusPrefixKeys(),
-		priorityPrefixKeys(),
-		dueDatePrefixKeys(),
-		snoozePrefixKeys(),
-		linkedTaskPrefixKeys(),
-		stagePrefixKeys(),
-		blockerPrefixKeySet(),
-		commonActionKeys(),
-		[]string{
-			"g", "gp",
-			"tab", "shift+left", "shift+right",
-			"enter", "F", "m", "t",
-			"1", "2", "3", "4", "5",
-			"v", "esc",
-		},
-	)
+	return m.buildKeyMap().HandledKeys()
 }
 
 // CloseDueDateOverviewMsg is sent when the overview should close.

@@ -141,17 +141,7 @@ func (m *FilterBuilderModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) { //nolint
 }
 
 func (m *FilterBuilderModel) HandledKeys() []string {
-	return []string{
-		// Navigation between tabs
-		"shift+left", "shift+right",
-		// Navigation between fields
-		"tab", "shift+tab", "enter",
-		"left", "right", "up", "down",
-		"h", "l", "k", "j",
-		// Actions
-		"space", "+", "-",
-		"ctrl+s",
-	}
+	return m.buildKeyMap().HandledKeys()
 }
 
 // isInTextInput returns true if the current focus is on a text input field.

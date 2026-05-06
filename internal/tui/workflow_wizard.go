@@ -156,11 +156,7 @@ func (m *WorkflowWizardModel) ShouldCaptureEsc() bool {
 
 // HandledKeys returns the keys this view handles.
 func (m *WorkflowWizardModel) HandledKeys() []string {
-	return []string{
-		"j", "down", "k", "up",
-		"enter",
-		"esc",
-	}
+	return m.buildKeyMap().HandledKeys()
 }
 
 // HasTextInput returns true when a text input step is active.

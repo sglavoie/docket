@@ -165,14 +165,7 @@ func (m *TaskChecklistModel) handleNormalKey(key string) tea.Cmd {
 }
 
 func (m *TaskChecklistModel) HandledKeys() []string {
-	return []string{
-		// Normal mode navigation
-		"j", "down", "k", "up", "g", "G",
-		// Normal mode actions
-		"a", "n", "e", "E", "d", "x", "space", "enter", "J", "K",
-		// Edit/add mode
-		"ctrl+s", "ctrl+e",
-	}
+	return m.buildKeyMap().HandledKeys()
 }
 
 func (m *TaskChecklistModel) hasSelection() bool {

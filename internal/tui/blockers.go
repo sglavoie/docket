@@ -48,15 +48,7 @@ func (m *BlockersModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m *BlockersModel) HandledKeys() []string {
-	return []string{
-		// Navigation
-		"j", "down", "k", "up", "g", "G",
-		"tab", "shift+left", "shift+right",
-		// Actions
-		"a", "n", "e", "E", "R", "d", "x", "enter",
-		// Add/edit mode
-		"ctrl+s", "ctrl+e",
-	}
+	return m.buildKeyMap().HandledKeys()
 }
 
 func (m *BlockersModel) View() tea.View {

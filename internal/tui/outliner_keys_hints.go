@@ -7,11 +7,17 @@ import (
 
 // GetPrefixPopupInfo returns prefix popup data for overlay rendering.
 func (m *OutlinerModel) GetPrefixPopupInfo() *PrefixPopupInfo {
-	if m.pendingPrefix == "" {
+	var prefix string
+	if m.Dispatcher != nil && m.Dispatcher.HasPendingPrefix() {
+		prefix = m.Dispatcher.PendingPrefix()
+	} else {
+		prefix = m.pendingPrefix
+	}
+	if prefix == "" {
 		return nil
 	}
 	return &PrefixPopupInfo{
-		Prefix: m.pendingPrefix,
+		Prefix: prefix,
 		Hints:  m.buildPrefixHints(),
 	}
 }
@@ -77,7 +83,11 @@ func (m *OutlinerModel) buildPrefixHints() PrefixHints {
 	hints["z"] = OutlinerFoldPrefixHints
 
 	// Add perspective hints with active annotation
-	if m.pendingPrefix == "P" {
+	activePfx := m.pendingPrefix
+	if m.Dispatcher != nil && m.Dispatcher.HasPendingPrefix() {
+		activePfx = m.Dispatcher.PendingPrefix()
+	}
+	if activePfx == "P" {
 		annotated := make([]PrefixHint, len(OutlinerPerspectivePrefixHints))
 		copy(annotated, OutlinerPerspectivePrefixHints)
 		idx := m.activePerspective
@@ -129,7 +139,7 @@ func (m *OutlinerModel) buildPrefixHints() PrefixHints {
 	hints["Fv"] = SavedFilterPrefixHints
 
 	// Annotate current task's status as active in status hints and dim recurrence hints
-	if m.pendingPrefix == "," && len(m.rows) > 0 && m.cursor < len(m.rows) && m.rows[m.cursor].task != nil {
+	if activePfx == "," && len(m.rows) > 0 && m.cursor < len(m.rows) && m.rows[m.cursor].task != nil {
 		task := m.rows[m.cursor].task
 		currentStatus := string(task.Status)
 		notRecurring := task.Recurrence == nil
@@ -152,55 +162,9 @@ func (m *OutlinerModel) buildPrefixHints() PrefixHints {
 	return hints
 }
 
-// HandledKeys returns all keys OutlinerModel can handle (ViewOutliner set).
-// ViewCrossProjectOutliner is a subset handled by the same model; cross-project
-// unique keys (go) are excluded here and tested separately.
+// HandledKeys returns all keys OutlinerModel can handle.
 func (m *OutlinerModel) HandledKeys() []string {
-	return concatKeys(
-		[]string{"j", "k", "G", "ctrl+u", "ctrl+d"}, // Outliner registry has j/k and ctrl+d/u but not ↑/↓
-		// commonPrimaryViewKeys() minus ctrl+o (ctrl+o opens outliner but isn't registered for ViewOutliner)
-		[]string{
-			"ctrl+p",
-			"`", "~", "@",
-			"B", "p", "w", "W",
-			"i", "I",
-			"\\", "{", "}",
-			"R", "ctrl+r", "ctrl+l",
-			"u",
-			"S", "ctrl+.", "ctrl+m",
-		},
-		statusPrefixKeys(),     // ,s ,d ,b ,S ,o ,x ,r
-		priorityPrefixKeys(),   // !1-!5
-		dueDatePrefixKeys(),    // dt dm dw dn d0 dd
-		snoozePrefixKeys(),     // st sw sm sn s0 sd
-		stagePrefixKeys(),      // .1-.9 .0 F.
-		linkedTaskPrefixKeys(), // cb cd cs cf cn cp
-		blockerPrefixKeySet(),  // bb bm
-		taskPrefixKeySet(),     // tn tN tr ts to tp td tt tc ta tl te tm tD
-		movePrefixKeys(),       // ma mn mi mw mr ms mK mJ
-		foldPrefixKeys(),       // za zo zc zR zM zv zp
-		typeChangeKeys(),       // < > H L
-		filterSubKeys(),        // Fp FP Ft Fs F# Fa FS Fr Fc F@ Fx Fd Fvs Fvl Fvd
-		sortKeys(),             // 1 2 3 4 5 0
-		[]string{
-			"h", "l",
-			"enter", "space", "tab",
-			"g", "backspace",
-			"n", "N",
-			"f",
-			"K", "J", "right", "left",
-			"o", "e", "E", "D",
-			"*",
-			"gz", "gh", "gl", "gd", "gX", "gk",
-			"A", "C", "T", "v", "a",
-			"F", "/",
-			"ctrl+f", "ctrl+t", "ctrl+s", "ctrl+a", "ctrl+e", "ctrl+v",
-			"shift+left", "shift+right",
-			"x",
-			// P0-P9 perspective switching
-			"P0", "P1", "P2", "P3", "P4", "P5", "P6", "P7", "P8", "P9",
-		},
-	)
+	return m.buildKeyMap().HandledKeys()
 }
 
 // GetHelpItems returns help items for the outliner view.

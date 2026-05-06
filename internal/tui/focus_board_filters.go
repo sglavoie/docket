@@ -1,7 +1,6 @@
 package tui
 
 import (
-	"maps"
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
@@ -69,31 +68,18 @@ func (m *FocusBoardModel) renderActiveFilterIndicator() string {
 
 // GetPrefixPopupInfo returns prefix popup data for overlay rendering.
 func (m *FocusBoardModel) GetPrefixPopupInfo() *PrefixPopupInfo {
-	if m.pendingPrefix == "" {
+	if m.Dispatcher == nil || !m.Dispatcher.HasPendingPrefix() {
 		return nil
 	}
-	var currentStage string
-	var currentPriority int
-	if row := m.getRowAtCursor(); row != nil {
-		currentStage = row.Task.Stage
-		currentPriority = row.Task.Priority
+	prefix := m.Dispatcher.PendingPrefix()
+	var hints []PrefixHint
+	for _, h := range m.Dispatcher.PrefixHints() {
+		hints = append(hints, PrefixHint{Key: h.Key, Description: h.Description})
 	}
-	hints := CommonTaskActionPrefixHints(m.config.Stages, currentStage, currentPriority)
-	hints["g"] = FocusBoardNavigationPrefixHints
-	hints["z"] = []PrefixHint{
-		{Key: "p", Description: "preview", Detail: "Toggle inline preview"},
-	}
-	maps.Copy(hints, buildCommonFilterPrefixPopupHints(&m.filter, m.config, true, true))
 	return &PrefixPopupInfo{
-		Prefix: m.pendingPrefix,
-		Hints:  hints,
+		Prefix: prefix,
+		Hints:  PrefixHints{prefix: hints},
 	}
-}
-
-// FocusBoardNavigationPrefixHints contains "g" prefix hints for focus board.
-var FocusBoardNavigationPrefixHints = []PrefixHint{
-	{Key: "g", Description: "first", Detail: "Jump to first item"},
-	{Key: "p", Description: "go to project", Detail: "Navigate to task in project tree"},
 }
 
 // matchesSearch returns true if the board row matches the search query.

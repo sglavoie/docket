@@ -2,7 +2,6 @@ package tui
 
 import (
 	"fmt"
-	"maps"
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
@@ -245,25 +244,17 @@ func (m *FocusViewModel) renderSubTabBar() string {
 
 // GetPrefixPopupInfo returns prefix popup data for overlay rendering.
 func (m *FocusViewModel) GetPrefixPopupInfo() *PrefixPopupInfo {
-	if m.pendingPrefix == "" {
+	if m.Dispatcher == nil || !m.Dispatcher.HasPendingPrefix() {
 		return nil
 	}
-	var currentStage string
-	var currentPriority int
-	if ft := m.getTaskAtCursor(); ft != nil {
-		currentStage = ft.Task.Stage
-		currentPriority = ft.Task.Priority
+	prefix := m.Dispatcher.PendingPrefix()
+	var hints []PrefixHint
+	for _, h := range m.Dispatcher.PrefixHints() {
+		hints = append(hints, PrefixHint{Key: h.Key, Description: h.Description})
 	}
-	hints := CommonTaskActionPrefixHints(m.config.Stages, currentStage, currentPriority)
-	hints["g"] = FocusViewNavigationPrefixHints
-	hints["z"] = []PrefixHint{
-		{Key: "p", Description: "preview", Detail: "Toggle inline preview"},
-	}
-	// Merge filter prefix hints (no DueDate category -- view has "By Due Date" tab)
-	maps.Copy(hints, buildCommonFilterPrefixPopupHints(&m.filter, m.config, false, true))
 	return &PrefixPopupInfo{
-		Prefix: m.pendingPrefix,
-		Hints:  hints,
+		Prefix: prefix,
+		Hints:  PrefixHints{prefix: hints},
 	}
 }
 

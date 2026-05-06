@@ -2,7 +2,6 @@ package tui
 
 import (
 	"fmt"
-	"maps"
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
@@ -148,34 +147,17 @@ func (m *AllTasksViewModel) View() tea.View {
 
 // GetPrefixPopupInfo returns prefix popup data for overlay rendering.
 func (m *AllTasksViewModel) GetPrefixPopupInfo() *PrefixPopupInfo {
-	if m.pendingPrefix == "" {
+	if m.Dispatcher == nil || !m.Dispatcher.HasPendingPrefix() {
 		return nil
 	}
-	var currentStage string
-	var currentPriority int
-	if ct := m.getTaskAtCursor(); ct != nil {
-		currentStage = ct.Task.Stage
-		currentPriority = ct.Task.Priority
-	}
-	hints := CommonTaskActionPrefixHints(m.config.Stages, currentStage, currentPriority)
-	hints["g"] = AllTasksNavigationPrefixHints
-	hints["z"] = append(SectionFoldPrefixHints, PrefixHint{Key: "p", Description: "preview", Detail: "Toggle inline preview"})
-	// Merge filter prefix hints
-	maps.Copy(hints, buildCommonFilterPrefixPopupHints(&m.filter, m.config, true, true))
-	// Add project filter hint to the F prefix (before the clear-all entry)
-	if fHints, ok := hints["F"]; ok {
-		detail := "(all)"
-		if len(m.projectFilter) > 0 {
-			detail = fmt.Sprintf("%d projects", len(m.projectFilter))
-		}
-		// Insert before the last entry (clear-all)
-		projectHint := PrefixHint{Key: "P", Description: "project", Detail: detail, Active: len(m.projectFilter) > 0}
-		last := fHints[len(fHints)-1]
-		hints["F"] = append(fHints[:len(fHints)-1], projectHint, last)
+	prefix := m.Dispatcher.PendingPrefix()
+	var hints []PrefixHint
+	for _, h := range m.Dispatcher.PrefixHints() {
+		hints = append(hints, PrefixHint{Key: h.Key, Description: h.Description})
 	}
 	return &PrefixPopupInfo{
-		Prefix: m.pendingPrefix,
-		Hints:  hints,
+		Prefix: prefix,
+		Hints:  PrefixHints{prefix: hints},
 	}
 }
 

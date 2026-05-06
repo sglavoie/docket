@@ -140,14 +140,7 @@ func (m *BulkEditModel) Init() tea.Cmd {
 }
 
 func (m *BulkEditModel) HandledKeys() []string {
-	return []string{
-		// Normal navigation
-		"tab", "down", "j", "shift+tab", "up", "k",
-		// Field interaction
-		"enter", "space", "l", "right", "h", "left",
-		// Tag operations
-		"a", "r",
-	}
+	return m.buildKeyMap().HandledKeys()
 }
 
 func (m *BulkEditModel) GetHelpItems() []HelpItem {

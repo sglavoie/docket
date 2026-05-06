@@ -4,6 +4,8 @@ import (
 	"fmt"
 
 	tea "charm.land/bubbletea/v2"
+
+	"github.com/sglavoie/tt/internal/tui/keymap"
 )
 
 // InteractiveViewState provides common interactive state for views that
@@ -16,6 +18,10 @@ type InteractiveViewState struct {
 	pendingPrefix string
 	statusMessage string
 	confirm       ConfirmDialog
+	// Dispatcher is the declarative keymap dispatcher for this view.
+	// When non-nil it is the authoritative source of prefix state;
+	// pendingPrefix is kept for views not yet migrated.
+	Dispatcher *keymap.Dispatcher
 }
 
 // setStatus sets the status message.
@@ -30,6 +36,9 @@ func (s *InteractiveViewState) clearStatus() {
 
 // HasPendingPrefix returns true if waiting for second key in a prefix sequence.
 func (s *InteractiveViewState) HasPendingPrefix() bool {
+	if s.Dispatcher != nil {
+		return s.Dispatcher.HasPendingPrefix()
+	}
 	return s.pendingPrefix != ""
 }
 
@@ -37,6 +46,9 @@ func (s *InteractiveViewState) HasPendingPrefix() bool {
 // is a bare modifier press (Shift, Ctrl, Alt, etc.). Views should call this
 // before dispatching prefix keys and return early to keep the popup open.
 func (s *InteractiveViewState) SkipModifierInPrefix(msg tea.KeyPressMsg) bool {
+	if s.Dispatcher != nil {
+		return s.Dispatcher.HasPendingPrefix() && isModifierOnly(msg)
+	}
 	return s.pendingPrefix != "" && isModifierOnly(msg)
 }
 
@@ -44,6 +56,9 @@ func (s *InteractiveViewState) SkipModifierInPrefix(msg tea.KeyPressMsg) bool {
 // Views should call this in their ShouldCaptureEsc() override and OR in their own conditions.
 // Views that also embed BaseSearchableView should additionally OR in m.SearchShouldCaptureEsc().
 func (s *InteractiveViewState) DefaultShouldCaptureEsc() bool {
+	if s.Dispatcher != nil {
+		return s.Dispatcher.HasPendingPrefix() || s.confirm.IsActive()
+	}
 	return s.pendingPrefix != "" || s.confirm.IsActive()
 }
 

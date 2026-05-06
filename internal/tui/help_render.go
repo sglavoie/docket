@@ -349,15 +349,7 @@ func (m *HelpViewModel) StatusBarLabel() string {
 
 // HandledKeys returns the keys handled by the keybinding explorer view.
 func (m *HelpViewModel) HandledKeys() []string {
-	return []string{
-		"/", `\`, "backspace", "shift+left", "shift+right",
-		"j", "k", "up", "down",
-		"g", "G",
-		"ctrl+u", "ctrl+d",
-		"n", "N",
-		`ctrl+\`,
-		"?", "esc",
-	}
+	return m.buildKeyMap().HandledKeys()
 }
 
 // wrapDescriptionWithIndent wraps text to fit within width, indenting continuation

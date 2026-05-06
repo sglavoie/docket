@@ -9,6 +9,7 @@ import (
 	"github.com/sglavoie/tt/internal/logging"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/tui/keymap"
 )
 
 // SortField represents the field to sort tasks by.
@@ -253,6 +254,8 @@ func NewProjectTreeModel(project *models.Project, cfg *config.Config, manager *c
 	}
 	m.InitSearchInput("Search tasks...", 100, 40)
 	m.buildTree()
+	km := m.buildKeyMap()
+	m.Dispatcher = keymap.NewDispatcher(km)
 	return m
 }
 

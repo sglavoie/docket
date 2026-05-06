@@ -34,28 +34,8 @@ func (m *TaskFormModel) StatusBarLabel() string {
 func (m *TaskFormModel) SupportsHelpShortcut() bool { return false }
 
 // HandledKeys returns all keys TaskFormModel's Update method can process.
-// Must stay in sync with keybindings_task_form.go and the switch cases in Update().
 func (m *TaskFormModel) HandledKeys() []string {
-	return []string{
-		"shift+left", "shift+right",
-		"tab", "shift+tab",
-		"enter",
-		"ctrl+s",
-		"ctrl+v",
-		"ctrl+e",
-		"c",
-		"S",
-		"ctrl+a",
-		"ctrl+t",
-		"ctrl+d",
-		"ctrl+j",
-		"ctrl+k",
-		"ctrl+o",
-		"space",
-		"1", "2", "3", "4", "5",
-		"j", "k", "up", "down",
-		"h", "l", "left", "right",
-	}
+	return m.buildKeyMap().HandledKeys()
 }
 
 func (m *TaskFormModel) nextTab() {

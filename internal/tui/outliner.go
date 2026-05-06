@@ -10,6 +10,7 @@ import (
 	"github.com/sglavoie/tt/internal/logging"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/tui/keymap"
 )
 
 // ZoomEntry records the state at a single zoom level so cursor position can
@@ -163,6 +164,8 @@ func NewOutlinerModel(project *models.Project, cfg *config.Config, cfgManager *c
 	// Seed default collapsed sections from config
 	maps.Copy(m.collapsedSections, cfg.GetOutlinerCollapsedSections())
 	m.InitSearchInput("Search tasks...", 100, 30)
+	km := m.buildKeyMap()
+	m.Dispatcher = keymap.NewDispatcher(km)
 	// Restore sidebar and filter bar state from config
 	if project != nil {
 		if state, exists := cfg.GetProjectViewState(project.ID); exists {

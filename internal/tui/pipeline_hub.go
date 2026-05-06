@@ -230,5 +230,5 @@ func (m *PipelineHubModel) StatusBarLabel() string { return "Pipeline" }
 func (m *PipelineHubModel) IsFullHeight() bool { return true }
 
 func (m *PipelineHubModel) HandledKeys() []string {
-	return []string{"h", "l", "j", "k", "enter"}
+	return m.buildKeyMap().HandledKeys()
 }

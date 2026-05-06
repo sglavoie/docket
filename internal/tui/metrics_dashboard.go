@@ -183,13 +183,7 @@ func (m *MetricsDashboardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m *MetricsDashboardModel) HandledKeys() []string {
-	return []string{
-		"tab", "shift+left", "shift+right",
-		"t", "T", "g", "r",
-		"j", "down", "k", "up",
-		"enter",
-		"?",
-	}
+	return m.buildKeyMap().HandledKeys()
 }
 
 func (m *MetricsDashboardModel) StatusBarLabel() string { return "Metrics" }

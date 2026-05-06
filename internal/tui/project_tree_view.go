@@ -22,6 +22,15 @@ func (m *ProjectTreeModel) View() tea.View {
 
 // GetHelpItems returns the help items for the project tree view.
 func (m *ProjectTreeModel) GetHelpItems() []HelpItem {
+	if m.Dispatcher != nil {
+		km := m.buildKeyMap()
+		raw := km.HelpItems()
+		out := make([]HelpItem, len(raw))
+		for i, h := range raw {
+			out[i] = HelpItem{Key: h.Key, Description: h.Description, Category: h.Category}
+		}
+		return out
+	}
 	archiveDesc := "Archive project"
 	if m.project != nil && m.project.Archived {
 		archiveDesc = "Unarchive project"
@@ -34,40 +43,7 @@ func (m *ProjectTreeModel) GetHelpItems() []HelpItem {
 
 // HandledKeys returns all keys ProjectTreeModel can handle, for sync testing.
 func (m *ProjectTreeModel) HandledKeys() []string {
-	return concatKeys(
-		[]string{"j", "k", "G"}, // ProjectTree registry has j/k and gg/G but not ctrl+u/d or ↑/↓
-		commonPrimaryViewKeys(), // ctrl+p, ctrl+o, `, ~, @, B, p, w, i, I, \, {, }, R, ctrl+r, ctrl+l, u, S, ctrl+., ctrl+m
-		statusPrefixKeys(),      // ,s ,d ,b ,S ,o ,x ,r
-		priorityPrefixKeys(),    // !1-!5
-		dueDatePrefixKeys(),     // dt dm dw dn d0 dd
-		snoozePrefixKeys(),      // st sw sm sn s0 sd
-		stagePrefixKeys(),       // .1-.9 .0 F.
-		linkedTaskPrefixKeys(),  // cb cd cs cf cn cp
-		blockerPrefixKeySet(),   // bb bm
-		taskPrefixKeySet(),      // tn tN tr ts to tp td tt tc ta tl te tm tD
-		movePrefixKeys(),        // ma mn mi mw mr ms mK mJ
-		foldPrefixKeys(),        // za zo zc zR zM zv zp
-		typeChangeKeys(),        // < > H L
-		filterSubKeys(),         // Fp FP Ft Fs F# Fa FS Fr Fc F@ Fx Fd Fvs Fvl Fvd
-		sortKeys(),              // 1 2 3 4 5 0
-		[]string{
-			"h", "l",
-			"enter", "space", "tab",
-			"g",
-			"n", "N",
-			"f",
-			"K", "J", "right", "left",
-			"o", "e", "E", "D",
-			"*", "ctrl+;",
-			"gz", "gh", "gl",
-			"gv", "ga", "gn", "gi", "gw", "gs", "gc", "g*", "go", "gd", "gX", "gk",
-			"A", "C", "T", "v", "a",
-			"F", "/",
-			"ctrl+f", "ctrl+t", "ctrl+s", "ctrl+a", "ctrl+e", "ctrl+v",
-			"shift+left", "shift+right",
-			"cx",
-		},
-	)
+	return m.buildKeyMap().HandledKeys()
 }
 
 // NavigateToTask expands parent nodes and positions cursor on the given task.

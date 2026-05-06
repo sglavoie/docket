@@ -28,10 +28,18 @@ func (m *OutlinerModel) handleFilterPrefix(key string) (tea.Model, tea.Cmd) {
 			}
 		}
 	case "v":
-		m.pendingPrefix = "Fv"
+		if m.Dispatcher != nil {
+			m.Dispatcher.SetPendingPrefix("Fv")
+		} else {
+			m.pendingPrefix = "Fv"
+		}
 		return m, nil
 	case "d":
-		m.pendingPrefix = "Fd"
+		if m.Dispatcher != nil {
+			m.Dispatcher.SetPendingPrefix("Fd")
+		} else {
+			m.pendingPrefix = "Fd"
+		}
 		return m, nil
 	case "c":
 		if m.activePerspective == PerspectiveCompleted {
@@ -84,7 +92,14 @@ func (m *OutlinerModel) handleFilterPrefix(key string) (tea.Model, tea.Cmd) {
 			return ShowTagFilterMsg{Tags: tags, Selected: m.filter.Tags, Source: tagSource, Title: "Filter by Tags"}
 		}
 	})
-	if cmd := applyCommonFilterResult(result, func(p string) { m.pendingPrefix = p }, func() { m.rebuildRows() }); cmd != nil {
+	setPfx := func(p string) {
+		if m.Dispatcher != nil {
+			m.Dispatcher.SetPendingPrefix(p)
+		} else {
+			m.pendingPrefix = p
+		}
+	}
+	if cmd := applyCommonFilterResult(result, setPfx, func() { m.rebuildRows() }); cmd != nil {
 		return m, cmd
 	}
 	if result.Changed {

@@ -6,6 +6,7 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/focus"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/keymap"
 )
 
 var focusTabNames = []string{"Queue", "Suggested", "By Project", "By Due Date"}
@@ -78,7 +79,24 @@ func NewFocusViewModel(cfg *config.Config, mgr *config.Manager, queue *[]FocusTa
 		MultiSelectState: MultiSelectState{selectedTasks: make(map[string]bool)},
 		tabs:             TabState{Names: focusTabNames},
 	}
-	m.initFilterMixin(&m.pendingPrefix, cfg)
+	km := m.buildKeyMap()
+	m.Dispatcher = keymap.NewDispatcher(km)
+	m.Dispatcher.ModalGuards = []keymap.ModalGuard{
+		{
+			Active: func() bool { return m.confirm.IsActive() },
+			Handle: func(key string) (tea.Model, tea.Cmd, bool) {
+				if confirmed, handled := m.HandleConfirmKey(key); handled {
+					if confirmed {
+						model, cmd := taskOpsDeleteTask(m)
+						return model, cmd, true
+					}
+					return m, nil, true
+				}
+				return nil, nil, false
+			},
+		},
+	}
+	m.initFilterMixinWithDispatcher(m.Dispatcher, cfg)
 	m.loadTasks()
 	return m
 }
@@ -155,30 +173,17 @@ func (m *FocusViewModel) viewName() string { return "Backlog" }
 
 // GetHelpItems returns help items for this view.
 func (m *FocusViewModel) GetHelpItems() []HelpItem {
-	return GetKeybindingRegistry().GetForView(ViewFocusView)
+	km := m.buildKeyMap()
+	out := km.HelpItems()
+	result := make([]HelpItem, len(out))
+	for i, h := range out {
+		result[i] = HelpItem{Key: h.Key, Description: h.Description, Category: h.Category}
+	}
+	return result
 }
 
 func (m *FocusViewModel) HandledKeys() []string {
-	return concatKeys(
-		listNavigationKeys(),
-		statusPrefixKeys(),
-		priorityPrefixKeys(),
-		dueDatePrefixKeys(),
-		snoozePrefixKeys(),
-		linkedTaskPrefixKeys(),
-		stagePrefixKeys(),
-		movePrefixKeys(),
-		taskPrefixKeySet(),
-		blockerPrefixKeySet(),
-		commonActionKeys(),
-		[]string{
-			"g", "gp",
-			"tab", "shift+left", "shift+right", "shift+up", "shift+down",
-			"enter", "J", "K", "F", "m", "t",
-			"1", "2", "3", "4", "5",
-			"v", "w", "u", "ctrl+r", "esc",
-		},
-	)
+	return m.buildKeyMap().HandledKeys()
 }
 
 func (m *FocusViewModel) StatusBarLabel() string { return "Backlog" }

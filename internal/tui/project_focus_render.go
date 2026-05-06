@@ -11,28 +11,17 @@ import (
 
 // GetHelpItems returns help items for this view.
 func (m *ProjectFocusViewModel) GetHelpItems() []HelpItem {
-	return GetKeybindingRegistry().GetForView(ViewProjectFocusView)
+	km := m.buildKeyMap()
+	out := km.HelpItems()
+	result := make([]HelpItem, len(out))
+	for i, h := range out {
+		result[i] = HelpItem{Key: h.Key, Description: h.Description, Category: h.Category}
+	}
+	return result
 }
 
 func (m *ProjectFocusViewModel) HandledKeys() []string {
-	return concatKeys(
-		listNavigationKeys(),
-		statusPrefixKeys(),
-		priorityPrefixKeys(),
-		dueDatePrefixKeys(),
-		snoozePrefixKeys(),
-		linkedTaskPrefixKeys(),
-		stagePrefixKeys(),
-		movePrefixKeys(),
-		taskPrefixKeySet(),
-		blockerPrefixKeySet(),
-		[]string{
-			"g", "tab", "shift+left", "shift+right", "shift+up", "shift+down",
-			"enter", "*", "e", "r", "y", "Y",
-			"1", "2", "3", "4", "5",
-			"esc",
-		},
-	)
+	return m.buildKeyMap().HandledKeys()
 }
 
 func (m *ProjectFocusViewModel) View() tea.View {
@@ -128,16 +117,17 @@ func (m *ProjectFocusViewModel) renderSubTabBar() string {
 
 // GetPrefixPopupInfo returns prefix popup data for overlay rendering.
 func (m *ProjectFocusViewModel) GetPrefixPopupInfo() *PrefixPopupInfo {
-	if m.pendingPrefix == "" {
+	if m.Dispatcher == nil || !m.Dispatcher.HasPendingPrefix() {
 		return nil
 	}
+	prefix := m.Dispatcher.PendingPrefix()
+	var hints []PrefixHint
+	for _, h := range m.Dispatcher.PrefixHints() {
+		hints = append(hints, PrefixHint{Key: h.Key, Description: h.Description})
+	}
 	return &PrefixPopupInfo{
-		Prefix: m.pendingPrefix,
-		Hints: PrefixHints{
-			",": StatusPrefixHints,
-			"d": DueDatePrefixHints,
-			"g": ProjectFocusNavigationPrefixHints,
-		},
+		Prefix: prefix,
+		Hints:  PrefixHints{prefix: hints},
 	}
 }
 

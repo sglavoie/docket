@@ -7,6 +7,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/keymap"
 )
 
 // WeeklyReviewProject wraps a project with computed metrics.
@@ -133,6 +134,36 @@ func NewWeeklyReviewModel(cfg *config.Config, mgr *config.Manager) *WeeklyReview
 			}
 		}
 	}
+	km := m.buildKeyMap()
+	m.Dispatcher = keymap.NewDispatcher(km)
+	m.Dispatcher.ModalGuards = []keymap.ModalGuard{
+		{
+			Active: func() bool { return m.showingSummary },
+			Handle: func(key string) (tea.Model, tea.Cmd, bool) {
+				if key == "esc" {
+					return m, func() tea.Msg { return CloseWeeklyReviewMsg{} }, true
+				}
+				m.showingSummary = false
+				return m, nil, true
+			},
+		},
+		{
+			Active: func() bool { return m.confirm.IsActive() },
+			Handle: func(key string) (tea.Model, tea.Cmd, bool) {
+				if confirmed, handled := m.HandleConfirmKey(key); handled {
+					if confirmed {
+						model, cmd := taskOpsDeleteTask(m)
+						if m.err == nil {
+							m.trackMutation("delete")
+						}
+						return model, cmd, true
+					}
+					return m, nil, true
+				}
+				return nil, nil, false
+			},
+		},
+	}
 	m.loadData()
 	return m
 }
@@ -164,150 +195,9 @@ func (m *WeeklyReviewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 // handleKeyMsg handles keyboard input.
 func (m *WeeklyReviewModel) handleKeyMsg(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
-	key := msg.String()
-
-	// Handle completion summary overlay
-	if m.showingSummary {
-		if key == "esc" {
-			return m, func() tea.Msg {
-				return CloseWeeklyReviewMsg{}
-			}
-		}
-		m.showingSummary = false
-		return m, nil
-	}
-
-	// Handle confirmation dialog
-	if confirmed, handled := m.HandleConfirmKey(key); handled {
-		if confirmed {
-			model, cmd := taskOpsDeleteTask(m)
-			if m.err == nil {
-				m.trackMutation("delete")
-			}
-			return model, cmd
-		}
-		return m, nil
-	}
-
-	// Handle pending prefix keys
-	if m.SkipModifierInPrefix(msg) {
-		return m, nil
-	}
-	if m.pendingPrefix != "" {
-		return m.handlePrefixKey(key)
-	}
-
-	// Clear previous error on any key
-	m.err = nil
-
-	// Tab switching
-	if handleTabCycleKey(key, &m.tabs, func() {
-		m.focusedSection = nil
-		m.scrollOffset = 0
-		m.calculateNavigation()
-		m.clampCursor()
-	}) {
-		return m, nil
-	}
-
-	// Multi-select key handling
-	if m.multiSelectMode {
-		switch key {
-		case "v":
-			m.toggleMultiSelectMode()
-			return m, nil
-		case "space":
-			m.toggleTaskSelection()
-			return m, nil
-		case "a":
-			m.selectAllVisible()
-			return m, nil
-		case "A":
-			m.deselectAll()
-			return m, nil
-		}
-		switch key {
-		case ",", "!", "d", "s", "m", ".":
-			m.pendingPrefix = key
-			return m, nil
-		}
-	}
-
-	// Activate prefix mode
-	if prefix, ok := activateSecondaryPrefix(key, "gzF", ",!dsmctb.", m.getTaskAtCursor() != nil); ok {
-		m.pendingPrefix = prefix
-		return m, nil
-	}
-
-	// Navigation
-	if handled, cmd := handleListNavigation(key, &m.cursor, m.totalItems, m.Height(), &m.cursorFlash); handled {
-		return m, cmd
-	}
-
-	switch key {
-	case "esc":
-		if RunEscCascade(m.escSteps()) {
-			return m, nil
-		}
-		return m, func() tea.Msg {
-			return CloseWeeklyReviewMsg{}
-		}
-
-	case "enter":
-		return m.handleEnter()
-
-	// Section navigation
-	case "n":
-		m.focusedSection = nil
-		m.calculateNavigation()
-		return m.goToNextSection()
-	case "N":
-		m.focusedSection = nil
-		m.calculateNavigation()
-		return m.goToPrevSection()
-	case "ctrl+n":
-		return m.goToNextUnreviewed()
-
-	// Toggle review completion / mark section reviewed
-	case "R":
-		if m.reviewCompleted {
-			m.reviewCompleted = false
-			m.showingSummary = false
-			for k := range m.reviewedSections {
-				delete(m.reviewedSections, k)
-			}
-			// Re-auto-review empty sections
-			m.loadData()
-			return m, func() tea.Msg { return ResetWeeklyReviewMsg{} }
-		}
-		return m.markCurrentSectionReviewed()
-
-	// Toggle active flag (task only)
-	case "*":
-		model, cmd := taskOpsToggleActive(m)
-		if m.err == nil {
-			m.trackMutation("active")
-		}
-		return model, cmd
-
-	// Toggle section collapse
-	case "tab":
-		return m.toggleCurrentSection()
-
-	// Priority changes (task only)
-	case "1", "2", "3", "4", "5":
-		model, cmd := taskOpsChangePriority(m, key)
-		if m.err == nil {
-			m.trackMutation("priority")
-		}
+	if model, cmd, handled := m.Dispatcher.Dispatch(msg); handled {
 		return model, cmd
 	}
-
-	// Common task actions (tags, snooze, delete, edit, refresh, copy, help)
-	if model, cmd, handled := handleCommonTaskAction(key, m); handled {
-		return model, cmd
-	}
-
 	return m, nil
 }
 
@@ -323,118 +213,6 @@ func (m *WeeklyReviewModel) handleEnter() (tea.Model, tea.Cmd) {
 			return WeeklyReviewSelectTaskMsg{Task: dt.Task, Project: dt.Project}
 		}
 	}
-	return m, nil
-}
-
-// handlePrefixKey handles the second key in a prefix key sequence.
-func (m *WeeklyReviewModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
-	prefix := m.pendingPrefix
-	m.pendingPrefix = ""
-
-	if key == "esc" {
-		return m, nil
-	}
-
-	if m.multiSelectMode && m.SelectedCount() > 0 {
-		if model, cmd, handled := dispatchBulkPrefix(prefix, key, m, m.getSelectedBulkItems()); handled {
-			m.ExitMultiSelect()
-			return model, cmd
-		}
-		return m, nil
-	}
-
-	viewSpecific := func(pfx, k string) (tea.Model, tea.Cmd, bool) {
-		switch pfx {
-		case "z":
-			if k == "p" {
-				m.previewMode = !m.previewMode
-				return m, nil, true
-			}
-			handleZPrefix(k, func() {
-				ExpandAllSections(m.collapsedSections)
-				m.calculateNavigation()
-				m.clampCursor()
-			}, func() {
-				sectionInts := make([]int, len(m.sectionOrder))
-				for i, s := range m.sectionOrder {
-					sectionInts[i] = int(s)
-				}
-				CollapseAllSections(m.collapsedSections, sectionInts)
-				m.calculateNavigation()
-				m.clampCursor()
-			})
-			return m, nil, true
-
-		case "g":
-			// Let gg (jump-to-top) fall through to common dispatch
-			if k == "g" {
-				return nil, nil, false
-			}
-			// gp: go-to-project (common dispatch handles task gp; override for project rows)
-			if k == "p" {
-				if wp := m.getProjectAtCursor(); wp != nil {
-					return m, func() tea.Msg {
-						return WeeklyReviewSelectProjectMsg{Project: wp.Project}
-					}, true
-				}
-				// Fall through to common gp (task go-to-project)
-				return nil, nil, false
-			}
-			// Section-focus sub-keys (moved from s prefix)
-			var targetSection *WeeklyReviewSection
-			switch k {
-			case "P":
-				s := WeeklySectionStaleProjects
-				targetSection = &s
-			case "i":
-				s := WeeklySectionInboxBacklog
-				targetSection = &s
-			case "b":
-				s := WeeklySectionBlockedWork
-				targetSection = &s
-			case "o":
-				s := WeeklySectionOvercommitted
-				targetSection = &s
-			case "t":
-				s := WeeklySectionStaleTasks
-				targetSection = &s
-			case "m":
-				s := WeeklySectionPriorityMismatch
-				targetSection = &s
-			case "w":
-				s := WeeklySectionUpcomingWeek
-				targetSection = &s
-			case "r":
-				s := WeeklySectionRecurringOverview
-				targetSection = &s
-			}
-			if targetSection != nil {
-				model, cmd := m.toggleSectionFocus(*targetSection)
-				return model, cmd, true
-			}
-			return m, nil, true
-		}
-		return nil, nil, false
-	}
-
-	if model, cmd, handled := dispatchCommonPrefix(prefix, key, m, viewSpecific); handled {
-		if m.err == nil {
-			switch prefix {
-			case ",":
-				m.trackMutation("status")
-			case "!":
-				m.trackMutation("priority")
-			case "d":
-				m.trackMutation("due_date")
-			case "s":
-				m.trackMutation("snooze")
-			case "m":
-				m.trackMutation("move")
-			}
-		}
-		return model, cmd
-	}
-
 	return m, nil
 }
 
@@ -465,32 +243,17 @@ func (m *WeeklyReviewModel) viewName() string { return "Weekly Review" }
 
 // GetHelpItems returns help items for this view.
 func (m *WeeklyReviewModel) GetHelpItems() []HelpItem {
-	return GetKeybindingRegistry().GetForView(ViewWeeklyReview)
+	km := m.buildKeyMap()
+	out := km.HelpItems()
+	result := make([]HelpItem, len(out))
+	for i, h := range out {
+		result[i] = HelpItem{Key: h.Key, Description: h.Description, Category: h.Category}
+	}
+	return result
 }
 
 func (m *WeeklyReviewModel) HandledKeys() []string {
-	return concatKeys(
-		listNavigationKeys(),
-		statusPrefixKeys(),
-		priorityPrefixKeys(),
-		dueDatePrefixKeys(),
-		snoozePrefixKeys(),
-		linkedTaskPrefixKeys(),
-		stagePrefixKeys(),
-		blockerPrefixKeySet(),
-		commonActionKeys(),
-		[]string{
-			"g",
-			"shift+left", "shift+right",
-			"zR", "zM", "zp",
-			"tab", "n", "N",
-			"gP", "gi", "gb", "go", "gt", "gm", "gw", "gp",
-			"enter", "m", "t",
-			"R", "ctrl+n",
-			"1", "2", "3", "4", "5",
-			"v", "esc",
-		},
-	)
+	return m.buildKeyMap().HandledKeys()
 }
 
 func (m *WeeklyReviewModel) StatusBarLabel() string { return "Weekly Review" }

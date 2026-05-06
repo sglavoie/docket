@@ -8,6 +8,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/keymap"
 )
 
 // KanbanModel is the top-level BubbleTea model for both per-project and
@@ -42,8 +43,8 @@ type KanbanModel struct {
 	height            int
 	accentColor       color.Color
 
-	// Pending prefix key
-	pendingPrefix string
+	// Dispatcher routes key events through the declarative KeyMap.
+	Dispatcher *keymap.Dispatcher
 
 	// Multi-select state
 	MultiSelectState
@@ -100,7 +101,9 @@ func newKanbanBase(cfg *config.Config, cfgMgr *config.Manager, svc *ProjectServi
 		mode:          mode,
 		FilterMixin:   FilterMixin{filter: newFilterState()},
 	}
-	m.initFilterMixin(&m.pendingPrefix, cfg)
+	km := m.buildKeyMap()
+	m.Dispatcher = keymap.NewDispatcher(km)
+	m.initFilterMixinWithDispatcher(m.Dispatcher, cfg)
 
 	// Resolve enabled modes from config.
 	if len(ks.EnabledModes) > 0 {
@@ -251,13 +254,16 @@ func (m *KanbanModel) IsFullHeight() bool { return true }
 func (m *KanbanModel) HasTextInput() bool { return false }
 
 // HasPendingPrefix returns true while a multi-key prefix sequence is active.
-func (m *KanbanModel) HasPendingPrefix() bool { return m.pendingPrefix != "" }
+func (m *KanbanModel) HasPendingPrefix() bool {
+	return m.Dispatcher != nil && m.Dispatcher.HasPendingPrefix()
+}
 
 // GetPrefixPopupInfo returns prefix popup data for overlay rendering.
 func (m *KanbanModel) GetPrefixPopupInfo() *PrefixPopupInfo {
-	if m.pendingPrefix == "" {
+	if m.Dispatcher == nil || !m.Dispatcher.HasPendingPrefix() {
 		return nil
 	}
+	prefix := m.Dispatcher.PendingPrefix()
 	var currentStage string
 	var currentPriority int
 	if task, _ := m.getTaskRef(); task != nil {
@@ -270,7 +276,7 @@ func (m *KanbanModel) GetPrefixPopupInfo() *PrefixPopupInfo {
 	hints["g"] = KanbanNavigationPrefixHints
 	maps.Copy(hints, buildCommonFilterPrefixPopupHints(&m.filter, m.config, true, true))
 	return &PrefixPopupInfo{
-		Prefix: m.pendingPrefix,
+		Prefix: prefix,
 		Hints:  hints,
 	}
 }
@@ -285,7 +291,7 @@ var KanbanNavigationPrefixHints = []PrefixHint{
 // or another modal sub-component is open, preventing the global Esc handler
 // from popping the view.
 func (m *KanbanModel) ShouldCaptureEsc() bool {
-	return m.showAxisManager || m.multiSelectMode || m.pendingPrefix != ""
+	return m.showAxisManager || m.multiSelectMode || (m.Dispatcher != nil && m.Dispatcher.HasPendingPrefix())
 }
 
 // enabledModeList returns the ordered list of modes that are currently enabled.

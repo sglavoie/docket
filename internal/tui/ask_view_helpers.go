@@ -21,12 +21,7 @@ func (m *AskViewModel) ShouldCaptureEsc() bool {
 }
 
 func (m *AskViewModel) HandledKeys() []string {
-	return []string{
-		// Input state
-		"ctrl+s",
-		// Result state
-		"a", "n",
-	}
+	return m.buildKeyMap().HandledKeys()
 }
 
 func (m *AskViewModel) GetHelpItems() []HelpItem {

@@ -10,6 +10,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/tui/keymap"
 	"github.com/sglavoie/tt/internal/util"
 )
 
@@ -335,17 +336,17 @@ func (m *NotesViewModel) GetPrefixPopupInfo() *PrefixPopupInfo {
 	if m.pendingPrefix == "" {
 		return nil
 	}
-	gHints := make([]PrefixHint, 0, len(NavigationPrefixHints)+1)
-	gHints = append(gHints, NavigationPrefixHints...)
-	if m.multiSelectMode {
-		gHints = append(gHints, PrefixHint{Key: "X", Description: "deselect-all", Detail: "Clear all selections"})
-	}
-	hints := PrefixHints{
-		"g": gHints,
+	km := m.buildKeyMap()
+	d := keymap.NewDispatcher(km)
+	d.SetPendingPrefix(m.pendingPrefix)
+	rawHints := d.PrefixHints()
+	hints := make([]PrefixHint, 0, len(rawHints))
+	for _, h := range rawHints {
+		hints = append(hints, PrefixHint{Key: h.Key, Description: h.Description})
 	}
 	return &PrefixPopupInfo{
 		Prefix: m.pendingPrefix,
-		Hints:  hints,
+		Hints:  PrefixHints{m.pendingPrefix: hints},
 	}
 }
 

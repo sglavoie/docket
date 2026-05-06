@@ -9,6 +9,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/keymap"
 )
 
 // PriorityGroup represents a category of tasks by urgency.
@@ -115,7 +116,24 @@ func NewPriorityViewModel(project *models.Project, cfg *config.Config, mgr *conf
 		MultiSelectState:   MultiSelectState{selectedTasks: make(map[string]bool)},
 		tabs:               TabState{Names: priorityTabNames},
 	}
-	m.initFilterMixin(&m.pendingPrefix, cfg)
+	km := m.buildKeyMap()
+	m.Dispatcher = keymap.NewDispatcher(km)
+	m.Dispatcher.ModalGuards = []keymap.ModalGuard{
+		{
+			Active: func() bool { return m.confirm.IsActive() },
+			Handle: func(key string) (tea.Model, tea.Cmd, bool) {
+				if confirmed, handled := m.HandleConfirmKey(key); handled {
+					if confirmed {
+						model, cmd := m.deleteTask()
+						return model, cmd, true
+					}
+					return m, nil, true
+				}
+				return nil, nil, false
+			},
+		},
+	}
+	m.initFilterMixinWithDispatcher(m.Dispatcher, cfg)
 	m.InitSearchInput("Search tasks...", 100, 30)
 	m.loadActionableTasks()
 	return m
@@ -325,29 +343,17 @@ func (m *PriorityViewModel) View() tea.View {
 
 // GetHelpItems returns help items for this view.
 func (m *PriorityViewModel) GetHelpItems() []HelpItem {
-	return GetKeybindingRegistry().GetForView(ViewPriorityView)
+	km := m.buildKeyMap()
+	out := km.HelpItems()
+	result := make([]HelpItem, len(out))
+	for i, h := range out {
+		result[i] = HelpItem{Key: h.Key, Description: h.Description, Category: h.Category}
+	}
+	return result
 }
 
 func (m *PriorityViewModel) HandledKeys() []string {
-	return concatKeys(
-		listNavigationKeys(),
-		statusPrefixKeys(),
-		priorityPrefixKeys(),
-		dueDatePrefixKeys(),
-		snoozePrefixKeys(),
-		linkedTaskPrefixKeys(),
-		stagePrefixKeys(),
-		blockerPrefixKeySet(),
-		commonActionKeys(),
-		[]string{
-			"g", "gt",
-			"shift+left", "shift+right", "shift+up", "shift+down",
-			"w", "x", "A",
-			"enter", "tab", "F", "m", "t", "/",
-			"1", "2", "3", "4", "5",
-			"v", "esc",
-		},
-	)
+	return m.buildKeyMap().HandledKeys()
 }
 
 func (m *PriorityViewModel) StatusBarLabel() string { return "Priority" }

@@ -6,6 +6,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/tt/internal/tui/keymap"
 )
 
 // DailyReviewSection represents the different sections in review.
@@ -82,7 +83,24 @@ func NewDailyReviewModel(cfg *config.Config, mgr *config.Manager) *DailyReviewMo
 		m.reviewCompleted = true
 		m.completedAt = *t
 	}
-	m.initFilterMixin(&m.pendingPrefix, cfg)
+	km := m.buildKeyMap()
+	m.Dispatcher = keymap.NewDispatcher(km)
+	m.Dispatcher.ModalGuards = []keymap.ModalGuard{
+		{
+			Active: func() bool { return m.confirm.IsActive() },
+			Handle: func(key string) (tea.Model, tea.Cmd, bool) {
+				if confirmed, handled := m.HandleConfirmKey(key); handled {
+					if confirmed {
+						model, cmd := taskOpsDeleteTask(m)
+						return model, cmd, true
+					}
+					return m, nil, true
+				}
+				return nil, nil, false
+			},
+		},
+	}
+	m.initFilterMixinWithDispatcher(m.Dispatcher, cfg)
 	m.loadTasks()
 	return m
 }
@@ -114,209 +132,9 @@ func (m *DailyReviewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 // handleKeyMsg handles keyboard input.
 func (m *DailyReviewModel) handleKeyMsg(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
-	key := msg.String()
-
-	// Handle confirm dialog first
-	if confirmed, handled := m.HandleConfirmKey(key); handled {
-		if confirmed {
-			return taskOpsDeleteTask(m)
-		}
-		return m, nil
-	}
-
-	// Handle pending prefix keys (which-key style)
-	if m.SkipModifierInPrefix(msg) {
-		return m, nil
-	}
-	if m.pendingPrefix != "" {
-		return m.handlePrefixKey(key)
-	}
-
-	// Clear previous error on any key
-	m.err = nil
-
-	// Tab switching
-	if handleTabCycleKey(key, &m.tabs, func() {
-		m.focusedSection = nil
-		m.scrollOffset = 0
-		m.calculateNavigation()
-		m.clampCursor()
-	}) {
-		return m, nil
-	}
-
-	// Multi-select key handling
-	if m.multiSelectMode {
-		switch key {
-		case "v":
-			m.toggleMultiSelectMode()
-			return m, nil
-		case "space":
-			m.toggleTaskSelection()
-			return m, nil
-		case "a":
-			m.selectAllVisible()
-			return m, nil
-		case "A":
-			m.deselectAll()
-			return m, nil
-		}
-		switch key {
-		case ",", "!", "d", "s", "m", ".":
-			m.pendingPrefix = key
-			return m, nil
-		}
-	}
-
-	// Activate prefix mode
-	if prefix, ok := activateSecondaryPrefix(key, "gzF", ",!dsmctb.", m.getTaskAtCursor() != nil); ok {
-		m.pendingPrefix = prefix
-		return m, nil
-	}
-
-	// Navigation
-	if handled, cmd := handleListNavigation(key, &m.cursor, m.totalTasks, m.Height(), &m.cursorFlash); handled {
-		return m, cmd
-	}
-
-	switch key {
-	case "esc":
-		if RunEscCascade(m.escSteps()) {
-			return m, nil
-		}
-		return m, func() tea.Msg {
-			return CloseDailyReviewMsg{}
-		}
-
-	case "enter":
-		if dt := m.getTaskAtCursor(); dt != nil {
-			return m, func() tea.Msg {
-				return DailyReviewSelectMsg{Task: dt.Task, Project: dt.Project}
-			}
-		}
-		return m, nil
-
-	// Section navigation (reset focus to show all sections)
-	case "n":
-		m.focusedSection = nil
-		m.calculateNavigation()
-		return m.goToNextSection()
-	case "N":
-		m.focusedSection = nil
-		m.calculateNavigation()
-		return m.goToPrevSection()
-
-	// Toggle section collapse
-	case "tab":
-		return m.toggleCurrentSection()
-
-	// Priority changes
-	case "1", "2", "3", "4", "5":
-		return taskOpsChangePriority(m, key)
-
-	// Toggle daily review completion
-	case "R":
-		if m.reviewCompleted {
-			m.reviewCompleted = false
-			return m, func() tea.Msg { return ResetDailyReviewMsg{} }
-		}
-		m.reviewCompleted = true
-		m.completedAt = time.Now()
-		return m, func() tea.Msg { return MarkDailyReviewDoneMsg{} }
-	}
-
-	// Common task actions (tags, snooze, delete, edit, refresh, copy, help)
-	if model, cmd, handled := handleCommonTaskAction(key, m); handled {
+	if model, cmd, handled := m.Dispatcher.Dispatch(msg); handled {
 		return model, cmd
 	}
-
-	return m, nil
-}
-
-// handlePrefixKey handles the second key in a prefix key sequence.
-func (m *DailyReviewModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
-	prefix := m.pendingPrefix
-	m.pendingPrefix = "" // Always clear prefix
-
-	if key == "esc" {
-		return m, nil
-	}
-
-	if m.multiSelectMode && m.SelectedCount() > 0 {
-		if model, cmd, handled := dispatchBulkPrefix(prefix, key, m, m.getSelectedBulkItems()); handled {
-			m.ExitMultiSelect()
-			return model, cmd
-		}
-		return m, nil
-	}
-
-	viewSpecific := func(pfx, k string) (tea.Model, tea.Cmd, bool) {
-		switch pfx {
-		case "z":
-			if k == "p" {
-				m.previewMode = !m.previewMode
-				return m, nil, true
-			}
-			handleZPrefix(k, func() {
-				ExpandAllSections(m.collapsedSections)
-				m.calculateNavigation()
-				m.clampCursor()
-			}, func() {
-				sectionInts := make([]int, len(m.sectionOrder))
-				for i, s := range m.sectionOrder {
-					sectionInts[i] = int(s)
-				}
-				CollapseAllSections(m.collapsedSections, sectionInts)
-				m.calculateNavigation()
-				m.clampCursor()
-			})
-			return m, nil, true
-
-		case "g":
-			// Let gg (jump-to-top) and gp (go-to-project) fall through to common dispatch
-			if k == "g" || k == "p" {
-				return nil, nil, false
-			}
-			var targetSection *DailyReviewSection
-			switch k {
-			case "d":
-				s := SectionOverdue
-				targetSection = &s
-			case "t":
-				s := SectionDueToday
-				targetSection = &s
-			case "s":
-				s := SectionDueSoon
-				targetSection = &s
-			case "l":
-				s := SectionDueLater
-				targetSection = &s
-			case "f":
-				s := SectionFuture
-				targetSection = &s
-			case "r":
-				s := SectionInReview
-				targetSection = &s
-			case "S":
-				s := SectionOnStandby
-				targetSection = &s
-			case "o":
-				s := SectionOld
-				targetSection = &s
-			}
-			if targetSection != nil {
-				model, cmd := m.toggleSectionFocus(*targetSection)
-				return model, cmd, true
-			}
-			return m, nil, true
-		}
-		return nil, nil, false
-	}
-
-	if model, cmd, handled := dispatchCommonPrefix(prefix, key, m, viewSpecific); handled {
-		return model, cmd
-	}
-
 	return m, nil
 }
 
@@ -353,31 +171,17 @@ func (m *DailyReviewModel) viewName() string { return "Review" }
 
 // GetHelpItems returns help items for this view.
 func (m *DailyReviewModel) GetHelpItems() []HelpItem {
-	return GetKeybindingRegistry().GetForView(ViewDailyReview)
+	km := m.buildKeyMap()
+	out := km.HelpItems()
+	result := make([]HelpItem, len(out))
+	for i, h := range out {
+		result[i] = HelpItem{Key: h.Key, Description: h.Description, Category: h.Category}
+	}
+	return result
 }
 
 func (m *DailyReviewModel) HandledKeys() []string {
-	return concatKeys(
-		listNavigationKeys(),
-		statusPrefixKeys(),
-		priorityPrefixKeys(),
-		dueDatePrefixKeys(),
-		snoozePrefixKeys(),
-		linkedTaskPrefixKeys(),
-		stagePrefixKeys(),
-		blockerPrefixKeySet(),
-		commonActionKeys(),
-		[]string{
-			"g",
-			"shift+left", "shift+right",
-			"zR", "zM", "zp",
-			"tab", "n", "N",
-			"gd", "gt", "gs", "gl", "gf", "gr", "gS", "go", "gp",
-			"enter", "F", "m", "t", "R",
-			"1", "2", "3", "4", "5",
-			"v", "esc",
-		},
-	)
+	return m.buildKeyMap().HandledKeys()
 }
 
 // isToday returns true if t falls on the current calendar day.

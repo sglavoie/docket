@@ -121,7 +121,7 @@ func (m *InboxProcessorModel) viewType() ViewType   { return ViewInboxProcessor 
 func (m *InboxProcessorModel) helpViewName() string { return "Inbox Processor" }
 
 func (m *InboxProcessorModel) HandledKeys() []string {
-	return inboxProcessorKeys()
+	return m.buildKeyMap().HandledKeys()
 }
 
 func (m *InboxProcessorModel) StatusBarLabel() string { return "Inbox" }

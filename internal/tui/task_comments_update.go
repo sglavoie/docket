@@ -188,14 +188,7 @@ func (m *TaskCommentsModel) handleNormalKey(key string) tea.Cmd {
 }
 
 func (m *TaskCommentsModel) HandledKeys() []string {
-	return []string{
-		// Normal mode navigation
-		"j", "down", "k", "up", "g", "G",
-		// Normal mode actions
-		"a", "n", "e", "E", "d", "x", "r", "y", "enter",
-		// Edit/add mode
-		"ctrl+s", "ctrl+e",
-	}
+	return m.buildKeyMap().HandledKeys()
 }
 
 func (m *TaskCommentsModel) hasSelection() bool {

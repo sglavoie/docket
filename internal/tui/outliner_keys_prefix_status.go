@@ -22,7 +22,11 @@ func (m *OutlinerModel) handleStatusPrefix(key string, cursorTask *models.Task) 
 		return m, cmd
 	}
 	if key == "D" {
-		m.pendingPrefix = ",D"
+		if m.Dispatcher != nil {
+			m.Dispatcher.SetPendingPrefix(",D")
+		} else {
+			m.pendingPrefix = ",D"
+		}
 		return m, nil
 	}
 	if status, ok := StatusForPrefixKey(key); ok {

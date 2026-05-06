@@ -7,6 +7,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/keymap"
 )
 
 // inboxBackend abstracts the differences between local and global inbox processors.
@@ -80,4 +81,22 @@ func (c *inboxCore) initCore(backend inboxBackend, model tea.Model, cfg *config.
 	c.processingHistory = []processingAction{}
 	c.backend = backend
 	c.model = model
+
+	km := c.buildKeyMap()
+	c.Dispatcher = keymap.NewDispatcher(km)
+	c.Dispatcher.ModalGuards = []keymap.ModalGuard{
+		{
+			Active: func() bool { return c.confirm.IsActive() },
+			Handle: func(key string) (tea.Model, tea.Cmd, bool) {
+				if confirmed, handled := c.confirm.HandleKey(key); handled {
+					if confirmed {
+						return c.model, c.executeDelete(), true
+					}
+					c.statusMessage = ""
+					return c.model, nil, true
+				}
+				return nil, nil, false
+			},
+		},
+	}
 }

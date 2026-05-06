@@ -4,17 +4,6 @@ import (
 	tea "charm.land/bubbletea/v2"
 )
 
-// commonActionView extends taskOpsView with the additional methods needed
-// by handleCommonTaskAction to dispatch shared task actions.
-type commonActionView interface {
-	taskOpsView
-	clampCursor()
-	viewID() ViewType
-	viewName() string
-	GetHelpItems() []HelpItem
-	showDeleteConfirm(shortID int)
-}
-
 // handleGotoTopPrefix handles the common "gg" → jump-to-top key sequence.
 // Call this when pendingPrefix == "g". It resets the cursor to 0 and invokes
 // any extra callbacks (e.g. resetting a scroll offset). Returns true so
@@ -92,100 +81,6 @@ func flashIfJumped(oldCursor, newCursor int, flash *bool) tea.Cmd {
 	return nil
 }
 
-// handleCommonTaskAction handles task actions shared across secondary views:
-// o (task detail), Z (snooze), D (delete confirm), e (edit),
-// r (refresh), y/Y/ctrl+y (clipboard), ctrl+. (quick note), ? (help),
-// * (toggle active), S (score editor), O (open URL), ctrl+b (move to project).
-//
-// Returns (model, cmd, handled). When handled is false, the key was not
-// recognized and the caller should continue with view-specific handling.
-func handleCommonTaskAction(key string, v commonActionView) (tea.Model, tea.Cmd, bool) {
-	switch key {
-	case "o":
-		task, project := v.getTaskRef()
-		if task != nil && project != nil {
-			return v, func() tea.Msg {
-				return ShowTaskDetailMsg{Task: task, Project: project}
-			}, true
-		}
-		return v, nil, true
-
-	case "ctrl+.":
-		task, project := v.getTaskRef()
-		if task != nil && project != nil {
-			return v, func() tea.Msg {
-				return OpenQuickNoteMsg{Task: task, Project: project}
-			}, true
-		}
-		return v, nil, true
-
-	case "Z":
-		task, project := v.getTaskRef()
-		if task != nil {
-			return v, func() tea.Msg {
-				return SetSnoozeDateMsg{Task: task, Project: project}
-			}, true
-		}
-		return v, nil, true
-
-	case "D":
-		task, _ := v.getTaskRef()
-		if task != nil {
-			v.showDeleteConfirm(task.ShortID)
-		}
-		return v, nil, true
-
-	case "e":
-		task, project := v.getTaskRef()
-		if task != nil {
-			return v, func() tea.Msg {
-				return EditTaskMsg{Task: task, Project: project}
-			}, true
-		}
-		return v, nil, true
-
-	case "r":
-		v.reloadData()
-		v.clampCursor()
-		v.setStatus("Refreshed")
-		return v, nil, true
-
-	case "?":
-		return v, helpCmd(v.viewID(), v.viewName(), v.GetHelpItems()), true
-
-	case "*":
-		model, cmd := taskOpsToggleActive(v)
-		return model, cmd, true
-
-	case "S":
-		task, project := v.getTaskRef()
-		if task != nil && project != nil {
-			return v, func() tea.Msg {
-				return ShowScoreEditorMsg{Task: task, Project: project}
-			}, true
-		}
-		return v, nil, true
-
-	case "O":
-		task, _ := v.getTaskRef()
-		if task != nil && task.URL != "" {
-			return v, openBrowserCmd(task.URL), true
-		}
-		return v, nil, true
-
-	case "ctrl+b":
-		task, project := v.getTaskRef()
-		if task != nil && project != nil {
-			return v, func() tea.Msg {
-				return ShowProjectSelectorForMoveMsg{Task: task, SourceProject: project}
-			}, true
-		}
-		return v, nil, true
-	}
-
-	return nil, nil, false
-}
-
 // getCurrentSectionIdx returns the index of the section (or group) whose start
 // position is ≤ cursor. sectionStarts must be sorted ascending. Returns 0 if
 // cursor is before all sections.
@@ -221,23 +116,6 @@ func navigateToPrevSection(cursor int, sectionStarts []int) int {
 		prev = len(sectionStarts) - 1
 	}
 	return sectionStarts[prev]
-}
-
-// handleZPrefix handles the z-prefix key sequence common to views with
-// collapsible sections: zR expands all, zM collapses all. expandAll and
-// collapseAll perform the actual state mutation and navigation recalculation.
-// Returns true if the key was handled (including unknown z-keys, which are
-// consumed as no-ops).
-func handleZPrefix(key string, expandAll, collapseAll func()) bool {
-	switch key {
-	case "R":
-		expandAll()
-		return true
-	case "M":
-		collapseAll()
-		return true
-	}
-	return true // consume unknown z-key
 }
 
 // handleTabCycleKey handles the standard tab cycling keys (shift+left and

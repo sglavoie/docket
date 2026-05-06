@@ -79,9 +79,7 @@ func (m *CrossProjectLinkerModel) Init() tea.Cmd {
 }
 
 func (m *CrossProjectLinkerModel) HandledKeys() []string {
-	return []string{
-		"/", "enter", "up", "k", "down", "j", "g", "G",
-	}
+	return m.buildKeyMap().HandledKeys()
 }
 
 // HasTextInput returns true when search mode is active.

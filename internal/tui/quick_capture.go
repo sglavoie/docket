@@ -356,5 +356,5 @@ func (m *QuickCaptureModel) StatusBarLabel() string { return "Quick Capture" }
 
 // HandledKeys returns all keys QuickCaptureModel's Update method can process.
 func (m *QuickCaptureModel) HandledKeys() []string {
-	return []string{"enter", "ctrl+d", "ctrl+o", "ctrl+v"}
+	return m.buildKeyMap().HandledKeys()
 }

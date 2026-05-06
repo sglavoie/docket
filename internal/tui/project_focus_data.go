@@ -5,6 +5,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/keymap"
 )
 
 // NewProjectFocusViewModel creates a new project focus view model.
@@ -13,6 +14,8 @@ func NewProjectFocusViewModel(project *models.Project, cfg *config.Config) *Proj
 		project: project,
 		cfg:     cfg,
 	}
+	km := m.buildKeyMap()
+	m.Dispatcher = keymap.NewDispatcher(km)
 	m.loadTasks()
 	return m
 }

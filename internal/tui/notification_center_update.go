@@ -99,12 +99,7 @@ func (m *NotificationCenterModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 // HandledKeys returns the list of keys this view handles.
 func (m *NotificationCenterModel) HandledKeys() []string {
-	return []string{
-		// Navigation
-		"j", "down", "k", "up", "g", "G", "n", "N",
-		// Actions
-		"tab", "d", "D", "o", "enter",
-	}
+	return m.buildKeyMap().HandledKeys()
 }
 
 // ShouldCaptureEsc returns true so the view handles its own esc/q.

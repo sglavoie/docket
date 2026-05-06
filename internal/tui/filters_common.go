@@ -11,6 +11,7 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/scoring"
+	"github.com/sglavoie/tt/internal/tui/keymap"
 )
 
 // CommonFilterState contains the filter fields shared across views that support
@@ -294,16 +295,17 @@ func renderFilterBadge(parts []string) string {
 type FilterMixin struct {
 	filter    CommonFilterState
 	filterCfg *config.Config
-	prefixPtr *string // points to InteractiveViewState.pendingPrefix
+
+	// dispatcher is the keymap dispatcher; when non-nil it owns prefix state.
+	dispatcher *keymap.Dispatcher
 
 	// Active criteria filter (set when a criteria-mode SavedFilter is loaded)
 	activeCriteriaFilter *config.SavedFilter
 }
 
-// initFilterMixin wires the mixin to the view's pending prefix and config.
-// Call this in the view constructor after the struct is allocated.
-func (fm *FilterMixin) initFilterMixin(pendingPrefix *string, cfg *config.Config) {
-	fm.prefixPtr = pendingPrefix
+// initFilterMixinWithDispatcher wires the mixin to a declarative dispatcher and config.
+func (fm *FilterMixin) initFilterMixinWithDispatcher(d *keymap.Dispatcher, cfg *config.Config) {
+	fm.dispatcher = d
 	fm.filterCfg = cfg
 }
 
@@ -315,9 +317,11 @@ func newFilterState() CommonFilterState {
 	}
 }
 
-func (fm *FilterMixin) getFilter() *CommonFilterState   { return &fm.filter }
-func (fm *FilterMixin) getConfig() *config.Config       { return fm.filterCfg }
-func (fm *FilterMixin) setFilterPendingPrefix(p string) { *fm.prefixPtr = p }
+func (fm *FilterMixin) getFilter() *CommonFilterState { return &fm.filter }
+func (fm *FilterMixin) getConfig() *config.Config     { return fm.filterCfg }
+func (fm *FilterMixin) setFilterPendingPrefix(p string) {
+	fm.dispatcher.SetPendingPrefix(p)
+}
 func (fm *FilterMixin) HasActiveFilters() bool {
 	return hasActiveCommonFilters(&fm.filter) || fm.activeCriteriaFilter != nil
 }

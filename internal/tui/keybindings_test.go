@@ -15,94 +15,93 @@ func TestNewKeybindingRegistry(t *testing.T) {
 }
 
 func TestGetForView_Dashboard(t *testing.T) {
-	r := NewKeybindingRegistry()
-	items := r.GetForView(ViewDashboard)
-
-	if len(items) == 0 {
-		t.Fatal("No items returned for Dashboard view")
+	// Dashboard is migrated to declarative keymap; verify via buildKeyMap().
+	m := &DashboardModel{}
+	keys := m.buildKeyMap().HandledKeys()
+	if len(keys) == 0 {
+		t.Fatal("No keys returned from DashboardModel.buildKeyMap()")
 	}
-
 	foundJK := false
 	foundEnter := false
-	for _, item := range items {
-		if item.Key == "j/k" && item.Category == "Navigation" {
+	for _, k := range keys {
+		if k == "j" || k == "k" {
 			foundJK = true
 		}
-		if item.Key == "Enter" && item.Description == "Select project" {
+		if k == "enter" {
 			foundEnter = true
 		}
 	}
 	if !foundJK {
-		t.Error("Expected j/k navigation binding for Dashboard")
+		t.Error("Expected j/k navigation keys in Dashboard keymap")
 	}
 	if !foundEnter {
-		t.Error("Expected Enter binding for Dashboard")
+		t.Error("Expected enter key in Dashboard keymap")
 	}
 }
 
 func TestGetForView_ProjectTree(t *testing.T) {
-	r := NewKeybindingRegistry()
-	items := r.GetForView(ViewProjectTree)
-
-	if len(items) == 0 {
-		t.Fatal("No items returned for ProjectTree view")
+	// ProjectTree is migrated to declarative keymap; verify via buildKeyMap().
+	m := &ProjectTreeModel{}
+	keys := m.buildKeyMap().HandledKeys()
+	if len(keys) == 0 {
+		t.Fatal("No keys returned from ProjectTreeModel.buildKeyMap()")
 	}
 
-	foundFolds := false
+	foundFold := false
 	foundStatus := false
-	for _, item := range items {
-		if item.Category == "Folds" {
-			foundFolds = true
+	for _, k := range keys {
+		if k == "za" || k == "zo" || k == "zc" {
+			foundFold = true
 		}
-		if item.Key == ",s" && item.Category == "Status" {
+		if k == ",s" {
 			foundStatus = true
 		}
 	}
-	if !foundFolds {
-		t.Error("Expected Folds category bindings for ProjectTree")
+	if !foundFold {
+		t.Error("Expected fold keys (za/zo/zc) in ProjectTree keymap")
 	}
 	if !foundStatus {
-		t.Error("Expected status change bindings for ProjectTree")
+		t.Error("Expected status change key ',s' in ProjectTree keymap")
 	}
 }
 
-func TestGetForView_PriorityView(t *testing.T) {
-	r := NewKeybindingRegistry()
-	items := r.GetForView(ViewPriorityView)
-
-	if len(items) == 0 {
-		t.Fatal("No items returned for Priority view")
+func TestGetForView_InboxProcessorPriority(t *testing.T) {
+	// InboxProcessor is migrated to declarative keymap; verify via buildKeyMap().
+	m := &InboxProcessorModel{}
+	keys := m.buildKeyMap().HandledKeys()
+	if len(keys) == 0 {
+		t.Fatal("No keys returned from InboxProcessorModel.buildKeyMap()")
 	}
-
-	foundPriority := false
-	for _, item := range items {
-		if item.Key == "1-5" && item.Description == "Set priority (1=highest)" {
-			foundPriority = true
+	// Priority keys 1-5 should be handled.
+	found1 := false
+	for _, k := range keys {
+		if k == "1" {
+			found1 = true
 			break
 		}
 	}
-	if !foundPriority {
-		t.Error("Expected priority setting binding for PriorityView")
+	if !found1 {
+		t.Error("Expected priority key '1' in InboxProcessor keymap")
 	}
 }
 
 func TestGetForView_InboxProcessor(t *testing.T) {
-	r := NewKeybindingRegistry()
-	items := r.GetForView(ViewInboxProcessor)
-
-	if len(items) == 0 {
-		t.Fatal("No items returned for InboxProcessor view")
+	// InboxProcessor is migrated to declarative keymap; verify via buildKeyMap().
+	m := &InboxProcessorModel{}
+	keys := m.buildKeyMap().HandledKeys()
+	if len(keys) == 0 {
+		t.Fatal("No keys returned from InboxProcessorModel.buildKeyMap()")
 	}
-
-	foundSkip := false
-	for _, item := range items {
-		if item.Key == "n" && item.Description == "Skip task (move to next without processing)" {
-			foundSkip = true
+	// 'n' is the skip/next key in the inbox processor.
+	foundN := false
+	for _, k := range keys {
+		if k == "n" {
+			foundN = true
 			break
 		}
 	}
-	if !foundSkip {
-		t.Error("Expected skip task binding for InboxProcessor")
+	if !foundN {
+		t.Error("Expected 'n' key in InboxProcessor keymap")
 	}
 }
 
@@ -203,11 +202,13 @@ func TestGetAllDeduplicatedPreservesScope(t *testing.T) {
 		}
 	}
 
-	// Status bindings are shared across many views; verify union.
+	// Status bindings are shared across registry views; verify non-global scope.
+	// Note: views migrated to declarative keymaps no longer appear in the registry,
+	// so the count reflects only the remaining registry-based views (Outliner, ProjectTree).
 	for _, item := range items {
 		if item.Key == ",s" && item.Description == "Start (in progress)" {
-			if len(item.Views) < 5 {
-				t.Errorf(",s binding should span many views, got %d", len(item.Views))
+			if len(item.Views) < 2 {
+				t.Errorf(",s binding should span at least 2 views, got %d", len(item.Views))
 			}
 			if item.Views == nil {
 				t.Error(",s binding should not be global")
@@ -247,21 +248,40 @@ func TestScopeText(t *testing.T) {
 }
 
 func TestKeybindingCategories(t *testing.T) {
-	r := NewKeybindingRegistry()
-
-	projectTreeItems := r.GetForView(ViewProjectTree)
-	categories := make(map[string]bool)
-	for _, item := range projectTreeItems {
-		categories[item.Category] = true
+	// ProjectTree is migrated to declarative keymap; verify via buildKeyMap().
+	m := &ProjectTreeModel{}
+	keys := m.buildKeyMap().HandledKeys()
+	if len(keys) == 0 {
+		t.Fatal("No keys from ProjectTreeModel.buildKeyMap()")
 	}
 
-	expectedCategories := []string{
-		"Navigation", "Folds", "Status", "Task Operations",
-		"Views", "Filters", "Sort", "Multi-select", "Clipboard",
-	}
-	for _, cat := range expectedCategories {
-		if !categories[cat] {
-			t.Errorf("Expected category %q in ProjectTree bindings", cat)
+	// Spot-check that the keymap includes keys from the expected categories.
+	hasNav := false
+	hasFold := false
+	hasStatus := false
+	hasFilter := false
+	for _, k := range keys {
+		switch {
+		case k == "j" || k == "k" || k == "G":
+			hasNav = true
+		case k == "za" || k == "zo":
+			hasFold = true
+		case k == ",s" || k == ",d":
+			hasStatus = true
+		case k == "F" || k == "Fp" || k == "Fx":
+			hasFilter = true
 		}
+	}
+	if !hasNav {
+		t.Error("Expected navigation keys in ProjectTree keymap")
+	}
+	if !hasFold {
+		t.Error("Expected fold keys in ProjectTree keymap")
+	}
+	if !hasStatus {
+		t.Error("Expected status keys in ProjectTree keymap")
+	}
+	if !hasFilter {
+		t.Error("Expected filter keys in ProjectTree keymap")
 	}
 }

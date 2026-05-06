@@ -153,7 +153,7 @@ func (m *GlobalInboxProcessorModel) viewType() ViewType   { return ViewGlobalInb
 func (m *GlobalInboxProcessorModel) helpViewName() string { return "Global Inbox Processor" }
 
 func (m *GlobalInboxProcessorModel) HandledKeys() []string {
-	return inboxProcessorKeys()
+	return m.buildKeyMap().HandledKeys()
 }
 
 func (m *GlobalInboxProcessorModel) StatusBarLabel() string { return "Global Inbox" }

@@ -170,9 +170,5 @@ func (m *CustomContextEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) { //
 }
 
 func (m *CustomContextEditorModel) HandledKeys() []string {
-	return []string{
-		"tab", "/", "enter", "space",
-		"up", "k", "down", "j",
-		"ctrl+s", "a", "A",
-	}
+	return m.buildKeyMap().HandledKeys()
 }

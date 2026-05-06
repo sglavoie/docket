@@ -52,4 +52,6 @@ func (m *ProjectFocusViewModel) IsFullHeight() bool { return true }
 func (m *ProjectFocusViewModel) HasTextInput() bool { return false }
 
 // HasPendingPrefix returns true while a multi-key prefix sequence is active.
-func (m *ProjectFocusViewModel) HasPendingPrefix() bool { return m.pendingPrefix != "" }
+func (m *ProjectFocusViewModel) HasPendingPrefix() bool {
+	return m.InteractiveViewState.HasPendingPrefix()
+}

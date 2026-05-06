@@ -18,13 +18,8 @@ func (m *RecentActivityModel) buildTagCmd() tea.Cmd {
 }
 
 // handleRecentActivityFilterPrefix handles the second key after pressing F (filter prefix) in recent activity.
+// NOTE: With Dispatcher wiring, this is only called from the keymap actions (not directly from prefix dispatch).
 func (m *RecentActivityModel) handleRecentActivityFilterPrefix(key string) (tea.Model, tea.Cmd) {
-	// View-specific: "d" opens the due-date sub-prefix
-	if key == "d" {
-		m.pendingPrefix = "Fd"
-		return m, nil
-	}
-
 	if cmd, handled := handleFilterPrefixForView(m, key); handled {
 		return m, cmd
 	}

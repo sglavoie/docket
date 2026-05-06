@@ -30,12 +30,9 @@ func (m *RecentActivityModel) handleKeyMsg(msg tea.KeyPressMsg) (tea.Model, tea.
 		return model, cmd
 	}
 
-	// Handle pending filter prefix keys
-	if m.SkipModifierInPrefix(msg) {
-		return m, nil
-	}
-	if m.pendingPrefix != "" {
-		return m.handleRecentActivityPrefixKey(msg.String())
+	// Dispatcher handles all registered keys (navigation, filter prefix, actions).
+	if model, cmd, handled := m.Dispatcher.Dispatch(msg); handled {
+		return model, cmd
 	}
 
 	switch msg.String() {
@@ -52,63 +49,6 @@ func (m *RecentActivityModel) handleKeyMsg(msg tea.KeyPressMsg) (tea.Model, tea.
 			return CloseRecentActivityMsg{}
 		}
 
-	case "enter":
-		if m.cursor >= 0 && m.cursor < len(m.filtered) {
-			dt := m.filtered[m.cursor]
-			return m, func() tea.Msg {
-				return RecentActivitySelectMsg(dt)
-			}
-		}
-
-	case "ctrl+.":
-		if m.cursor >= 0 && m.cursor < len(m.filtered) {
-			dt := m.filtered[m.cursor]
-			return m, func() tea.Msg {
-				return OpenQuickNoteMsg(dt)
-			}
-		}
-
-	case "g":
-		m.pendingPrefix = "g"
-		return m, nil
-
-	case "p":
-		if m.cursor >= 0 && m.cursor < len(m.filtered) {
-			dt := m.filtered[m.cursor]
-			return m, func() tea.Msg {
-				return ShowRecentActivityPreviewMsg{Task: dt, Project: dt.Project}
-			}
-		}
-
-	case "tab":
-		m.tabs.Cycle(1)
-		m.applyFilter()
-		m.clampCursor()
-		return m, nil
-	case "shift+tab":
-		m.tabs.Cycle(-1)
-		m.applyFilter()
-		m.clampCursor()
-		return m, nil
-	case "shift+left", "shift+right":
-		if handleTabCycleKey(msg.String(), &m.tabs, func() {
-			m.applyFilter()
-			m.clampCursor()
-		}) {
-			return m, nil
-		}
-
-	case "r":
-		m.loadTasks()
-		m.clampCursor()
-
-	case "F":
-		m.pendingPrefix = "F"
-		return m, nil
-
-	case "/":
-		return m, m.ActivateSearch()
-
 	case "?":
 		viewType := ViewRecentActivity
 		viewName := "Recent Activity"
@@ -119,46 +59,18 @@ func (m *RecentActivityModel) handleKeyMsg(msg tea.KeyPressMsg) (tea.Model, tea.
 		return m, helpCmd(viewType, viewName, m.GetHelpItems())
 	}
 
-	if handled, cmd := handleListNavigation(msg.String(), &m.cursor, len(m.filtered), m.Height(), &m.cursorFlash); handled {
-		return m, cmd
-	}
-
-	return m, nil
-}
-
-// handleRecentActivityPrefixKey handles prefix key sequences for recent activity.
-func (m *RecentActivityModel) handleRecentActivityPrefixKey(key string) (tea.Model, tea.Cmd) {
-	prefix := m.pendingPrefix
-	m.pendingPrefix = ""
-
-	if key == "esc" {
-		return m, nil
-	}
-
-	switch prefix {
-	case "g":
-		if key == "g" {
-			m.cursor = 0
-		}
-		return m, nil
-	case "F":
-		return m.handleRecentActivityFilterPrefix(key)
-	case "Ft", "Fs", "Fd", "Fa", "Fas", "Far", "Fae", "Fac", "Fav", "Faw", "Fao", "Fap", "FS":
-		return m.handleRecentActivityFilterSubPrefix(prefix, key)
-	}
-
 	return m, nil
 }
 
 // GetPrefixPopupInfo returns prefix popup data for overlay rendering.
 func (m *RecentActivityModel) GetPrefixPopupInfo() *PrefixPopupInfo {
-	if m.pendingPrefix == "" {
+	if m.Dispatcher == nil || !m.Dispatcher.HasPendingPrefix() {
 		return nil
 	}
 	// All filter categories enabled for recent activity
 	hints := buildCommonFilterPrefixPopupHints(&m.filter, m.config, true, true)
 	return &PrefixPopupInfo{
-		Prefix: m.pendingPrefix,
+		Prefix: m.Dispatcher.PendingPrefix(),
 		Hints:  hints,
 	}
 }

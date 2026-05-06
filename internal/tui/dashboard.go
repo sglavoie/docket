@@ -5,6 +5,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/keymap"
 )
 
 // DashboardModel represents the dashboard view.
@@ -35,6 +36,8 @@ func NewDashboardModel(cfg *config.Config, manager *config.Manager) *DashboardMo
 	}
 	m.InitSearchInput("Search projects...", 100, 40)
 	m.loadProjects()
+	km := m.buildKeyMap()
+	m.Dispatcher = keymap.NewDispatcher(km)
 	return m
 }
 

@@ -91,7 +91,5 @@ func (m *WorkflowDryRunModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m *WorkflowDryRunModel) HandledKeys() []string {
-	return []string{
-		"j", "down", "k", "up", "g", "G", "/",
-	}
+	return m.buildKeyMap().HandledKeys()
 }

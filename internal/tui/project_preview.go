@@ -109,11 +109,7 @@ func (m *ProjectPreviewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m *ProjectPreviewModel) HandledKeys() []string {
-	return []string{
-		"p", "s",
-		"up", "k", "down", "j", "g", "G",
-		"ctrl+u", "ctrl+d",
-	}
+	return m.buildKeyMap().HandledKeys()
 }
 
 func (m *ProjectPreviewModel) renderContent() string {

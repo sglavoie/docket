@@ -159,11 +159,5 @@ func (m *TutorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) { //nolint:gocyclo
 }
 
 func (m *TutorModel) HandledKeys() []string {
-	return []string{
-		"/", "tab", "shift+left", "shift+right",
-		"up", "k", "down", "j",
-		"g", "G",
-		"ctrl+u", "ctrl+d",
-		"enter",
-	}
+	return m.buildKeyMap().HandledKeys()
 }

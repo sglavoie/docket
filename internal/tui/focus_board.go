@@ -6,6 +6,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/keymap"
 )
 
 var focusBoardTabNames = []string{"Today", "All", "Active/Due", "Next", "By Source", "By Priority", "By Score", "Closed"}
@@ -114,7 +115,24 @@ func NewFocusBoardModel(cfg *config.Config, manager *config.Manager, dailyPlan *
 		sort:             NewSortState(),
 		tabs:             TabState{Names: focusBoardTabNames},
 	}
-	m.initFilterMixin(&m.pendingPrefix, cfg)
+	km := m.buildKeyMap()
+	m.Dispatcher = keymap.NewDispatcher(km)
+	m.Dispatcher.ModalGuards = []keymap.ModalGuard{
+		{
+			Active: func() bool { return m.confirm.IsActive() },
+			Handle: func(key string) (tea.Model, tea.Cmd, bool) {
+				if confirmed, handled := m.HandleConfirmKey(key); handled {
+					if confirmed {
+						model, cmd := m.deleteItem()
+						return model, cmd, true
+					}
+					return m, nil, true
+				}
+				return nil, nil, false
+			},
+		},
+	}
+	m.initFilterMixinWithDispatcher(m.Dispatcher, cfg)
 	m.InitSearchInput("Search...", 100, 40)
 	m.loadItems()
 	return m
@@ -213,7 +231,9 @@ func (m *FocusBoardModel) OnExit() {
 	m.addInput.Blur()
 	m.editInput.Blur()
 	m.ac.Clear()
-	m.pendingPrefix = ""
+	if m.Dispatcher != nil {
+		m.Dispatcher.ClearPrefix()
+	}
 	m.confirm.Cancel()
 	m.ClearSearch()
 	m.ClearAllFilters()

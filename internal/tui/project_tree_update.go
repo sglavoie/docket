@@ -1,8 +1,6 @@
 package tui
 
 import (
-	"fmt"
-
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/models"
@@ -78,104 +76,19 @@ func (m *ProjectTreeModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 // handleKeyMsg dispatches key messages to appropriate handlers.
-func (m *ProjectTreeModel) handleKeyMsg(msg tea.KeyPressMsg, visible []*TreeNode) (tea.Model, tea.Cmd) {
-	key := msg.String()
-
-	// Handle pending prefix keys first (which-key style two-key sequences)
-	if m.SkipModifierInPrefix(msg) {
-		return m, nil
-	}
-	if m.pendingPrefix != "" {
-		return m.handlePrefixKey(key, visible)
-	}
-
+func (m *ProjectTreeModel) handleKeyMsg(msg tea.KeyPressMsg, _ []*TreeNode) (tea.Model, tea.Cmd) {
 	// Sidebar keys have priority when sidebar is focused
 	if m.sidebar.IsFocused() {
 		_, cmd := m.sidebar.HandleKeys(m, msg)
-		// When sidebar is focused, consume all keys to prevent tree navigation
 		return m, cmd
 	}
 
-	// Prefix key activation (shared across primary views)
-	cursorOnTask := CursorInBounds(m.cursor, len(visible))
-	if prefix, ok := activatePrefixKey(key, cursorOnTask); ok {
-		m.pendingPrefix = prefix
-		return m, nil
-	}
-	if isPrefixKeySkippedOnHeader(key, cursorOnTask) {
-		m.setStatus("Move cursor to a task first")
-		return m, nil
-	}
-
-	// Special case for search activation
-	if key == "/" && !m.confirm.IsActive() {
-		return m, m.ActivateSearch()
-	}
-
-	// Esc cascade: dismiss the first active layer
-	if key == "esc" {
-		RunEscCascade(m.escSteps())
-		return m, nil
-	}
-
-	// Export project to clean Markdown.
-	if key == "ctrl+e" {
-		project := m.getProject()
-		return m, func() tea.Msg { return ExportProjectMsg{Project: project} }
-	}
-
-	// Special case for ctrl+a (archive project)
-	if key == "ctrl+a" {
-		if m.project.Sandbox {
-			return m, func() tea.Msg {
-				return ErrorMsg{Err: fmt.Errorf("cannot archive the sandbox project")}
-			}
+	// Dispatcher handles all remaining keys
+	if model, cmd, handled := m.Dispatcher.Dispatch(msg); handled {
+		if model != nil {
+			return model, cmd
 		}
-		if m.project.Archived {
-			m.confirm.Show("unarchive", "Are you sure you want to unarchive this project?")
-		} else {
-			m.confirm.Show("archive", "Are you sure you want to archive this project?")
-		}
-		return m, nil
-	}
-
-	// Shared primary view keys (view switching, project cycling, secondary views, capture, etc.)
-	if cmd, handled := handleCommonPrimaryViewKey(key, m); handled {
 		return m, cmd
 	}
-
-	// Context filter (capital C, doesn't conflict with lowercase c prefix)
-	if key == "C" {
-		return m, func() tea.Msg {
-			return ShowContextPickerMsg{}
-		}
-	}
-
-	// Try each handler group
-	if handled, cmd := m.handleNavigationKeys(key, visible); handled {
-		return m, cmd
-	}
-	if handled, cmd := m.handleTypeKeys(key); handled {
-		return m, cmd
-	}
-	if handled, cmd := m.handleMovementKeys(key, visible); handled {
-		return m, cmd
-	}
-	if handled, cmd := m.handleSelectionKeys(key, visible); handled {
-		return m, cmd
-	}
-	if handled, cmd := m.handleFilterBarKeys(key); handled {
-		return m, cmd
-	}
-	if handled, cmd := m.handleFilterKeys(key); handled {
-		return m, cmd
-	}
-	if handled, cmd := m.handleSortKeys(key); handled {
-		return m, cmd
-	}
-	if handled, cmd := m.handleActionKeys(key, visible); handled {
-		return m, cmd
-	}
-
 	return m, nil
 }

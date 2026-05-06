@@ -104,7 +104,13 @@ func (m *KanbanModel) viewName() string {
 }
 
 func (m *KanbanModel) GetHelpItems() []HelpItem {
-	return GetKeybindingRegistry().GetForView(m.viewID())
+	km := m.buildKeyMap()
+	out := km.HelpItems()
+	result := make([]HelpItem, len(out))
+	for i, h := range out {
+		result[i] = HelpItem{Key: h.Key, Description: h.Description, Category: h.Category}
+	}
+	return result
 }
 
 func (m *KanbanModel) showDeleteConfirm(_ int) {

@@ -110,6 +110,17 @@ func (c *inboxCore) View() tea.View {
 
 // GetPrefixPopupInfo returns prefix popup data for overlay rendering.
 func (c *inboxCore) GetPrefixPopupInfo() *PrefixPopupInfo {
+	if c.Dispatcher != nil && c.Dispatcher.HasPendingPrefix() {
+		prefix := c.Dispatcher.PendingPrefix()
+		var hints []PrefixHint
+		for _, h := range c.Dispatcher.PrefixHints() {
+			hints = append(hints, PrefixHint{Key: h.Key, Description: h.Description})
+		}
+		return &PrefixPopupInfo{
+			Prefix: prefix,
+			Hints:  PrefixHints{prefix: hints},
+		}
+	}
 	if c.pendingPrefix == "" {
 		return nil
 	}
