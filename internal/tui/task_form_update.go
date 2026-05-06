@@ -282,6 +282,9 @@ func (m *TaskFormModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, func() tea.Msg { return BackMsg{} }
 			}
 		}
+
+	case tea.PasteMsg:
+		return m.handlePaste(msg)
 	}
 
 	return m, nil

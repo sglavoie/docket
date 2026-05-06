@@ -17,6 +17,14 @@ func (m *NotesViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) { //nolint:goc
 	case CursorFlashClearMsg:
 		m.cursorFlash = false
 		return m, nil
+	case tea.PasteMsg:
+		if m.renaming {
+			var cmd tea.Cmd
+			m.renameInput, cmd = m.renameInput.Update(msg)
+			return m, cmd
+		}
+		return m, nil
+
 	case tea.KeyPressMsg:
 		key := msg.String()
 

@@ -54,6 +54,47 @@ func (m *TaskFormModel) buildValidParents() []*models.Task {
 	return parents
 }
 
+// handlePaste forwards a tea.PasteMsg to the currently focused text input.
+func (m *TaskFormModel) handlePaste(msg tea.PasteMsg) (tea.Model, tea.Cmd) {
+	markDirty := func() {
+		m.hasChanges = true
+		m.err = nil
+	}
+	switch {
+	case m.activeTab == formTabBasics && m.focusIndex == 0:
+		var cmd tea.Cmd
+		m.titleInput, cmd = m.titleInput.Update(msg)
+		markDirty()
+		return m, cmd
+	case m.activeTab == formTabSchedule && m.focusIndex == 0:
+		var cmd tea.Cmd
+		m.dueTextInput, cmd = m.dueTextInput.Update(msg)
+		markDirty()
+		return m, cmd
+	case m.activeTab == formTabSchedule && m.focusIndex == 1:
+		var cmd tea.Cmd
+		m.startDateTextInput, cmd = m.startDateTextInput.Update(msg)
+		markDirty()
+		return m, cmd
+	case m.activeTab == formTabSchedule && m.focusIndex == 2:
+		var cmd tea.Cmd
+		m.estimatedDaysTextInput, cmd = m.estimatedDaysTextInput.Update(msg)
+		markDirty()
+		return m, cmd
+	case m.activeTab == formTabDetails && m.focusIndex == 0:
+		var cmd tea.Cmd
+		m.urlTextInput, cmd = m.urlTextInput.Update(msg)
+		markDirty()
+		return m, cmd
+	case m.activeTab == formTabDetails && m.focusIndex == 1:
+		var cmd tea.Cmd
+		m.sourceTextInput, cmd = m.sourceTextInput.Update(msg)
+		markDirty()
+		return m, cmd
+	}
+	return m, nil
+}
+
 // handleTextInputKey consolidates the common key handling for textinput fields
 // (due, URL, source). It calls commit before navigation/save/esc, and forwards
 // unrecognized keys to the textinput. Returns (cmd, true) if the key was consumed.

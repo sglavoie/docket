@@ -72,6 +72,14 @@ func (m *GlobalTagManagerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return CloseGlobalTagManagerMsg{}
 		}
 
+	case tea.PasteMsg:
+		if m.renameMode {
+			var cmd tea.Cmd
+			m.renameInput, cmd = m.renameInput.Update(msg)
+			return m, cmd
+		}
+		return m, nil
+
 	case tea.KeyPressMsg:
 		// Handle discard confirmation
 		if m.confirmDiscard {

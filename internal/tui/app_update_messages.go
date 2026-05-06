@@ -13,6 +13,13 @@ import (
 
 func (m *AppModel) handleGlobalMessage(msg tea.Msg) (bool, tea.Cmd) {
 	switch msg := msg.(type) {
+	case tea.PasteMsg:
+		if m.quickNoteOverlay != nil {
+			var cmd tea.Cmd
+			m.quickNoteOverlay.input, cmd = m.quickNoteOverlay.input.Update(msg)
+			return true, cmd
+		}
+		return false, nil
 	case tea.KeyPressMsg:
 		return m.handleGlobalKeyPress(msg)
 	case tea.KeyboardEnhancementsMsg:
