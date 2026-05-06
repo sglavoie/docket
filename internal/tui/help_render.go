@@ -16,18 +16,18 @@ var prefixGroupOrder = []string{
 // prefixGroupLabels maps registry Category names to their prefix group key.
 // Categories not present here are shown under "Direct Keys".
 var prefixGroupLabels = map[string]string{
-	"Status":            ",",
-	"Recurrence":        ",",
-	"Priority":          "!",
-	"Stage (. prefix)":  ".",
-	"Due Date":          "d",
-	"Snooze":            "s",
-	"Linked Tasks":      "c",
-	"Task (t prefix)":   "t",
-	"Folds":             "z",
-	"Move (m prefix)":   "m",
+	"Status":              ",",
+	"Recurrence":          ",",
+	"Priority":            "!",
+	"Stage (. prefix)":    ".",
+	"Due Date":            "d",
+	"Snooze":              "s",
+	"Linked Tasks":        "c",
+	"Task (t prefix)":     "t",
+	"Folds":               "z",
+	"Move (m prefix)":     "m",
 	"Blockers (b prefix)": "b",
-	"Filters":           "F",
+	"Filters":             "F",
 }
 
 // renderByPrefixContent renders the help items grouped by prefix category.

@@ -68,12 +68,12 @@ type FocusViewModel struct {
 // NewFocusViewModel creates a new focus view model.
 func NewFocusViewModel(cfg *config.Config, mgr *config.Manager, queue *[]FocusTask, queueIDs map[string]bool, dailyPlanIDs map[string]bool, dismissedIDs map[string]bool) *FocusViewModel {
 	m := &FocusViewModel{
-		ViewBundle:     ViewBundle{config: cfg, configManager: mgr},
-		projectService: NewProjectService(),
-		queue:          queue,
-		queueIDs:       queueIDs,
-		dailyPlanIDs:   dailyPlanIDs,
-		dismissedIDs:   dismissedIDs,
+		ViewBundle:       ViewBundle{config: cfg, configManager: mgr},
+		projectService:   NewProjectService(),
+		queue:            queue,
+		queueIDs:         queueIDs,
+		dailyPlanIDs:     dailyPlanIDs,
+		dismissedIDs:     dismissedIDs,
 		FilterMixin:      FilterMixin{filter: newFilterState()},
 		MultiSelectState: MultiSelectState{selectedTasks: make(map[string]bool)},
 		tabs:             TabState{Names: focusTabNames},

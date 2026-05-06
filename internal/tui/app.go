@@ -301,13 +301,13 @@ type AppModel struct {
 	focusDismissedIDs map[string]bool
 
 	// Daily plan session state (persists across view navigation within a session)
-	dailyPlan             []FocusTask
-	dailyPlanIDs          map[string]bool
-	dailyPlanCarried      int                    // count of items carried over from a previous day
-	dailyPlanCarriedIDs   map[string]bool        // task IDs that were carried over (for visual indicator)
-	dailyPlanCarriedShown bool                   // true once the carry-over status message has been shown
-	lastDailyPlanToggle   *dailyPlanToggleAction // last w-key action for undo
-	lastQueueToggle       *queueToggleAction     // last q-key action for undo
+	dailyPlan               []FocusTask
+	dailyPlanIDs            map[string]bool
+	dailyPlanCarried        int                    // count of items carried over from a previous day
+	dailyPlanCarriedIDs     map[string]bool        // task IDs that were carried over (for visual indicator)
+	dailyPlanCarriedShown   bool                   // true once the carry-over status message has been shown
+	lastDailyPlanToggle     *dailyPlanToggleAction // last w-key action for undo
+	lastQueueToggle         *queueToggleAction     // last q-key action for undo
 	lastDailyPlanToggleRedo *dailyPlanToggleAction // last undone w-key action for redo
 	lastQueueToggleRedo     *queueToggleAction     // last undone q-key action for redo
 

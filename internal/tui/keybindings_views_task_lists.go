@@ -64,17 +64,13 @@ func (r *KeybindingRegistry) registerInboxProcessorBindings() {
 		Keybinding{Key: "Esc", Description: "Close inbox processing", Category: "Navigation", Views: views},
 
 		// Operations
-		Keybinding{Key: "ss", Description: "Assign section", Category: "Operations", Views: views},
+		Keybinding{Key: "ctrl+s", Description: "Assign section", Category: "Operations", Views: views},
 		Keybinding{Key: "1-5", Description: "Set priority (quick)", Category: "Operations", Views: views},
-		Keybinding{Key: "tt", Description: "Manage tags", Category: "Operations", Views: views},
-		Keybinding{Key: "cn", Description: "Create subtask", Category: "Operations", Views: views},
+		Keybinding{Key: "ctrl+t", Description: "Manage tags", Category: "Operations", Views: views},
 		Keybinding{Key: "e", Description: "Edit task (title/description)", Category: "Operations", Views: views},
 		Keybinding{Key: "D", Description: "Delete task", Category: "Operations", Views: views},
-		Keybinding{Key: "w", Description: "Send to Waiting section", Category: "Operations", Views: views},
+		Keybinding{Key: "ctrl+w", Description: "Send to Waiting section", Category: "Operations", Views: views},
 		Keybinding{Key: "u", Description: "Undo last operation on current task", Category: "Operations", Views: views},
-
-		// Recurring Tasks
-		Keybinding{Key: "e", Description: "Edit task to set/view recurrence pattern", Category: "Recurring", Views: views},
 
 		// Stage (manual subset — no F. filter)
 		Keybinding{Key: ".1-.9", Description: "Set stage (by position)", Category: "Stage (. prefix)", Views: views},
@@ -90,9 +86,7 @@ func (r *KeybindingRegistry) registerInboxProcessorBindings() {
 	)
 	r.addForViews(views, statusBindings())
 	r.addForViews(views, priorityBindings())
-	r.addForViews(views, dueDateBindings())
 	r.addForViews(views, snoozeBindings())
-	r.addForViews(views, blockerPrefixBindings())
 }
 
 func (r *KeybindingRegistry) registerGlobalInboxProcessorBindings() {
@@ -107,13 +101,12 @@ func (r *KeybindingRegistry) registerGlobalInboxProcessorBindings() {
 		Keybinding{Key: "Esc", Description: "Close inbox processing", Category: "Navigation", Views: views},
 
 		// Operations
-		Keybinding{Key: "ss", Description: "Assign section", Category: "Operations", Views: views},
+		Keybinding{Key: "ctrl+s", Description: "Assign section", Category: "Operations", Views: views},
 		Keybinding{Key: "1-5", Description: "Set priority (quick)", Category: "Operations", Views: views},
-		Keybinding{Key: "tt", Description: "Manage tags", Category: "Operations", Views: views},
-		Keybinding{Key: "cn", Description: "Create subtask", Category: "Operations", Views: views},
+		Keybinding{Key: "ctrl+t", Description: "Manage tags", Category: "Operations", Views: views},
 		Keybinding{Key: "e", Description: "Edit task (title/description)", Category: "Operations", Views: views},
 		Keybinding{Key: "D", Description: "Delete task", Category: "Operations", Views: views},
-		Keybinding{Key: "w", Description: "Send to Waiting section", Category: "Operations", Views: views},
+		Keybinding{Key: "ctrl+w", Description: "Send to Waiting section", Category: "Operations", Views: views},
 		Keybinding{Key: "u", Description: "Undo last operation on current task", Category: "Operations", Views: views},
 
 		// Stage (manual subset — no F. filter)
@@ -130,9 +123,7 @@ func (r *KeybindingRegistry) registerGlobalInboxProcessorBindings() {
 	)
 	r.addForViews(views, statusBindings())
 	r.addForViews(views, priorityBindings())
-	r.addForViews(views, dueDateBindings())
 	r.addForViews(views, snoozeBindings())
-	r.addForViews(views, blockerPrefixBindings())
 }
 
 func (r *KeybindingRegistry) registerDueDateOverviewBindings() {

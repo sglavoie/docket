@@ -241,9 +241,9 @@ func renderInboxOperationsPanel() string {
 	b.WriteString("\n")
 
 	ops := []struct{ key, desc string }{
-		{"s", "Section"}, {"1-5", "Priority"}, {"t", "Manage tags"},
-		{"c", "Create subtask"}, {"e", "Edit"}, {"d", "Due date"},
-		{"w", "Waiting"}, {"b", "Dependencies"}, {"D", "Delete"}, {"u", "Undo"},
+		{"ctrl+s", "Section"}, {"1-5", "Priority"}, {"ctrl+t", "Tags"},
+		{"e", "Edit"}, {"ctrl+w", "Waiting"}, {"D", "Delete"},
+		{"s*", "Snooze"}, {"m*", "Move"}, {"u", "Undo"},
 	}
 
 	var lines []string

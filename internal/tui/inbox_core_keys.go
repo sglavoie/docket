@@ -22,7 +22,7 @@ func (c *inboxCore) handleKeyMsg(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 
 	c.err = nil
 
-	if prefix, ok := activateSecondaryPrefix(key, "g", ",!dsmctb.", true); ok {
+	if prefix, ok := activateSecondaryPrefix(key, "g", ",!sm.", true); ok {
 		c.pendingPrefix = prefix
 		return c.model, nil
 	}
@@ -59,8 +59,14 @@ func (c *inboxCore) handleKeyMsg(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		inboxDeletePrompt(c, &c.confirm)
 		return c.model, nil
 
-	case "w":
+	case "ctrl+w":
 		return c.model, c.sendToWaiting()
+
+	case "ctrl+s":
+		return c.model, inboxOpenSectionPicker(c)
+
+	case "ctrl+t":
+		return c.model, inboxOpenTagSelector(c)
 
 	case "u":
 		return c.model, c.undoLastAction()
@@ -103,20 +109,7 @@ func (c *inboxCore) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 		if priority, ok := PriorityForPrefixKey(key); ok {
 			return c.model, c.changePriority(priority)
 		}
-	case "d":
-		if key == "d" {
-			return c.model, inboxOpenDueDateInput(c)
-		}
-		if days, isClear, ok := DueDateDaysForPrefixKey(key); ok {
-			if isClear {
-				return c.model, c.clearDueDate()
-			}
-			return c.model, c.setQuickDueDate(days)
-		}
 	case "s":
-		if key == "s" {
-			return c.model, inboxOpenSectionPicker(c)
-		}
 		if key == "d" {
 			return c.model, c.openSnoozePicker()
 		}
@@ -134,22 +127,6 @@ func (c *inboxCore) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 		section, ok := sectionForMoveKey(key)
 		if ok {
 			return c.model, c.moveToSection(section)
-		}
-	case "t":
-		if key == "t" {
-			return c.model, inboxOpenTagSelector(c)
-		}
-	case "c":
-		if key == "n" {
-			return c.model, inboxOpenSubtaskCreator(c)
-		}
-	case "b":
-		task, project := c.currentTaskRef()
-		if task == nil {
-			return c.model, nil
-		}
-		if handled, cmd := handleBlockerPrefixKey(key, task, project); handled {
-			return c.model, cmd
 		}
 	}
 
