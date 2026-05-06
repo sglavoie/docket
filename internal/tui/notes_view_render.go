@@ -50,7 +50,7 @@ func (m *NotesViewModel) View() tea.View {
 	}
 
 	// Fullscreen mode: show only the focused pane using full usable height
-	usable := max(m.Height()-8, 4)
+	usable := max(m.Height()-9, 4)
 
 	if m.fullscreenPane && m.detailsPane.Focused {
 		// Fullscreen details pane
@@ -70,6 +70,7 @@ func (m *NotesViewModel) View() tea.View {
 				b.WriteString("\n")
 			}
 		}
+		b.WriteString("\n")
 		b.WriteString(m.renderStatusBar())
 	} else if m.fullscreenPane && !m.detailsPane.Focused {
 		// Fullscreen list pane: temporarily override listHeight
@@ -112,6 +113,7 @@ func (m *NotesViewModel) View() tea.View {
 			}
 		}
 
+		b.WriteString("\n")
 		b.WriteString(m.renderStatusBar())
 	}
 	return tea.NewView(b.String())

@@ -300,7 +300,7 @@ func (m *NotesViewModel) SetSize(width, height int) {
 	m.BaseView.SetSize(width, height)
 	// Split: top half for list, 1 for divider, bottom half for details
 	// Reserve 4 lines for title/count header, 2 for tab bar, and 2 for footer
-	usable := max(height-8, 4)
+	usable := max(height-9, 4)
 	m.listHeight = usable / 2
 	m.detailsPane.Height = usable - m.listHeight - 1 // -1 for divider
 }
