@@ -11,6 +11,7 @@ var (
 		{Key: "o", Description: "reopen", Detail: "Reopen a closed task"},
 		{Key: "r", Description: "review", Detail: "Send task to review"},
 		{Key: "S", Description: "standby", Detail: "Put task on standby"},
+		{Key: "m", Description: "maybe", Detail: "Set task to maybe"},
 		{Key: "k", Description: "skip", Detail: "Skip next recurrence"},
 		{Key: "D", Description: "defer", Detail: "Defer recurrence"},
 	}

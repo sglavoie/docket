@@ -15,9 +15,10 @@ func TestGetStatusIndexCoversAllStatuses(t *testing.T) {
 		{models.StatusInProgress, 1},
 		{models.StatusReview, 2},
 		{models.StatusStandby, 3},
-		{models.StatusDone, 4},
-		{models.StatusBlocked, 5},
-		{models.StatusCanceled, 6},
+		{models.StatusMaybe, 4},
+		{models.StatusDone, 5},
+		{models.StatusBlocked, 6},
+		{models.StatusCanceled, 7},
 	}
 
 	for _, tt := range tests {

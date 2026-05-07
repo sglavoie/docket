@@ -22,6 +22,7 @@ func TestStatusForPrefixKey(t *testing.T) {
 		{"o", models.StatusTodo, true},
 		{"x", models.StatusCanceled, true},
 		{"r", models.StatusReview, true},
+		{"m", models.StatusMaybe, true},
 		{"z", "", false},
 		{"", "", false},
 	}
@@ -44,6 +45,7 @@ func TestStatusVerb(t *testing.T) {
 		{models.StatusTodo, "reopened"},
 		{models.StatusCanceled, "canceled"},
 		{models.StatusReview, "sent to review"},
+		{models.StatusMaybe, "set to maybe"},
 	}
 	for _, tt := range tests {
 		got := StatusVerb(tt.status)

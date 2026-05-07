@@ -49,6 +49,8 @@ func handleFilterStatusKey(key string, f *CommonFilterState) bool {
 		f.Status = models.StatusDone
 	case "x":
 		f.Status = models.StatusCanceled
+	case "m":
+		f.Status = models.StatusMaybe
 	case "0":
 		f.Status = ""
 	default:

@@ -31,12 +31,12 @@ func TestStatusGroup(t *testing.T) {
 	if pn.Key != "," {
 		t.Errorf("StatusGroup: want key ',', got %q", pn.Key)
 	}
-	// 7 status children (no SkipRecurrence, no DeferChildren)
-	if len(pn.Children) != 7 {
-		t.Errorf("StatusGroup: want 7 children, got %d", len(pn.Children))
+	// 8 status children (no SkipRecurrence, no DeferChildren)
+	if len(pn.Children) != 8 {
+		t.Errorf("StatusGroup: want 8 children, got %d", len(pn.Children))
 	}
 	keys := childBindingKeys(pn.Children)
-	for _, k := range []string{"s", "d", "b", "o", "x", "r", "S"} {
+	for _, k := range []string{"s", "d", "b", "o", "x", "r", "S", "m"} {
 		if !slices.Contains(keys, k) {
 			t.Errorf("StatusGroup: missing key %q", k)
 		}
@@ -51,9 +51,9 @@ func TestStatusGroupWithDeferChildren(t *testing.T) {
 	}
 	entries := StatusGroup(deps)
 	pn := entries[0].PrefixNode
-	// 7 status + 1 defer prefix = 8
-	if len(pn.Children) != 8 {
-		t.Errorf("StatusGroup+Defer: want 8 children, got %d", len(pn.Children))
+	// 8 status + 1 defer prefix = 9
+	if len(pn.Children) != 9 {
+		t.Errorf("StatusGroup+Defer: want 9 children, got %d", len(pn.Children))
 	}
 	// Verify ,D is a PrefixNode
 	var deferEntry *Entry

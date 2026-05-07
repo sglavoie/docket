@@ -24,6 +24,7 @@ func StatusGroup(deps StatusDeps) []Entry {
 		Bind("x", "Cancel task", cat, deps.ChangeStatus("canceled")),
 		Bind("r", "Send to review", cat, deps.ChangeStatus("review")),
 		Bind("S", "Put task on standby", cat, deps.ChangeStatus("standby")),
+		Bind("m", "Set to maybe", cat, deps.ChangeStatus("maybe")),
 	}
 
 	if deps.SkipRecurrence != nil {

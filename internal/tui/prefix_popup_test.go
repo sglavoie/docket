@@ -137,6 +137,7 @@ func TestStatusPrefixHints_Contents(t *testing.T) {
 		"o": "reopen",
 		"r": "review",
 		"S": "standby",
+		"m": "maybe",
 		"k": "skip",
 		"D": "defer",
 	}

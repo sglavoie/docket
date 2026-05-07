@@ -303,6 +303,8 @@ func statusShortcut(s models.TaskStatus) string {
 		return "done"
 	case models.StatusCanceled:
 		return "canceled"
+	case models.StatusMaybe:
+		return "maybe"
 	default:
 		return string(s)
 	}

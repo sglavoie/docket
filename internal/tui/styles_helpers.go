@@ -49,6 +49,8 @@ func GetStatusStyle(status string) lipgloss.Style {
 		return ReviewStyle
 	case "standby":
 		return StandbyStyle
+	case "maybe":
+		return MaybeStyle
 	case "done":
 		return DoneStyle
 	case "blocked":
@@ -141,6 +143,8 @@ func GetStatusBadge(status, icon string) string {
 		return ReviewBadgeStyle.Render(icon)
 	case "standby":
 		return StandbyBadgeStyle.Render(icon)
+	case "maybe":
+		return MaybeBadgeStyle.Render(icon)
 	case "done":
 		return DoneBadgeStyle.Render(icon)
 	case "blocked":

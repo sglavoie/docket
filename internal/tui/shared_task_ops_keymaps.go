@@ -70,6 +70,8 @@ func StatusForPrefixKey(key string) (models.TaskStatus, bool) {
 		return models.StatusReview, true
 	case "S":
 		return models.StatusStandby, true
+	case "m":
+		return models.StatusMaybe, true
 	}
 	return "", false
 }
@@ -91,6 +93,8 @@ func StatusVerb(status models.TaskStatus) string {
 		return "sent to review"
 	case models.StatusStandby:
 		return "put on standby"
+	case models.StatusMaybe:
+		return "set to maybe"
 	}
 	return string(status)
 }

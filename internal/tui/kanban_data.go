@@ -60,7 +60,7 @@ func sectionColumnIcon(_ string) string {
 
 // statusColumnDefs returns ordered KanbanColumn definitions for Status mode.
 func statusColumnDefs(order []string) []KanbanColumn {
-	defaults := []string{"todo", "in_progress", "review", "blocked", "standby", "done", "canceled"}
+	defaults := []string{"todo", "in_progress", "review", "blocked", "standby", "maybe", "done", "canceled"}
 	if len(order) == 0 {
 		order = defaults
 	}
@@ -70,6 +70,7 @@ func statusColumnDefs(order []string) []KanbanColumn {
 		"review":      "Review",
 		"blocked":     "Blocked",
 		"standby":     "Standby",
+		"maybe":       "Maybe",
 		"done":        "Done",
 		"canceled":    "Canceled",
 	}
@@ -79,6 +80,7 @@ func statusColumnDefs(order []string) []KanbanColumn {
 		"review":      "◎",
 		"blocked":     "⊗",
 		"standby":     "⏸",
+		"maybe":       "❓",
 		"done":        "✓",
 		"canceled":    "✗",
 	}

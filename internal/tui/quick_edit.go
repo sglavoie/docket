@@ -142,6 +142,9 @@ func parseQuickEdit(input string, _ *models.Task, project *models.Project) (*qui
 		case "standby", "hold":
 			result.status = models.StatusStandby
 			result.statusSet = true
+		case "maybe":
+			result.status = models.StatusMaybe
+			result.statusSet = true
 		default:
 			return nil, fmt.Errorf("invalid status: $%s", match[1])
 		}
@@ -254,6 +257,9 @@ func parseQuickEditForPreview(input string, _ *models.Task, project *models.Proj
 			result.statusSet = true
 		case "standby", "hold":
 			result.status = models.StatusStandby
+			result.statusSet = true
+		case "maybe":
+			result.status = models.StatusMaybe
 			result.statusSet = true
 		default:
 			if errMsg == "" {

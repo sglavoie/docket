@@ -58,6 +58,17 @@ func (t *Task) Standby() {
 	t.CustomSection = ""
 }
 
+// Maybe marks the task as a tentative consideration.
+// The task is moved to the Someday section.
+// Snooze is cleared since maybe tasks should remain visible for review.
+func (t *Task) Maybe() {
+	t.Status = StatusMaybe
+	t.UpdatedAt = time.Now()
+	t.SnoozedUntil = nil
+	t.Section = SectionSomeday
+	t.CustomSection = ""
+}
+
 // Block marks the task as blocked.
 // Snooze is cleared since a blocked task needs visibility for tracking blockers.
 func (t *Task) Block() {
@@ -106,7 +117,7 @@ func (t *Task) CanTransitionTo(newStatus TaskStatus) string {
 	}
 	switch newStatus {
 	case StatusInProgress:
-		if t.Status != StatusTodo && t.Status != StatusBlocked && t.Status != StatusReview && t.Status != StatusStandby {
+		if t.Status != StatusTodo && t.Status != StatusBlocked && t.Status != StatusReview && t.Status != StatusStandby && t.Status != StatusMaybe {
 			return fmt.Sprintf("cannot start task from '%s' status", t.Status)
 		}
 	case StatusDone:
@@ -133,6 +144,10 @@ func (t *Task) CanTransitionTo(newStatus TaskStatus) string {
 		if !t.Status.IsActive() || t.Status == StatusStandby {
 			return fmt.Sprintf("cannot put task on standby from '%s' status", t.Status)
 		}
+	case StatusMaybe:
+		if !t.Status.IsActive() || t.Status == StatusMaybe {
+			return fmt.Sprintf("cannot set task to maybe from '%s' status", t.Status)
+		}
 	}
 	return ""
 }
@@ -156,6 +171,8 @@ func (t *Task) ApplyTransition(newStatus TaskStatus) {
 		t.Review()
 	case StatusStandby:
 		t.Standby()
+	case StatusMaybe:
+		t.Maybe()
 	}
 }
 

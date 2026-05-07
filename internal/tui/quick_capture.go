@@ -317,6 +317,8 @@ func (m *QuickCaptureModel) createTask(openContent, openDetail bool) tea.Cmd {
 		task.Review()
 	case models.StatusStandby:
 		task.Standby()
+	case models.StatusMaybe:
+		task.Maybe()
 	default:
 	}
 

@@ -39,9 +39,11 @@ func (m *AppModel) outlinerCommands() []Command { //nolint:gocyclo
 		{Name: "start task", Description: "Set task status to in progress", Shortcut: ",s", Category: CategoryStatus, Views: []ViewType{ViewOutliner}, Aliases: []string{"begin task", "in progress"}, Handler: outlinerStatusHandler(models.StatusInProgress)},
 		{Name: "complete task", Description: "Set task status to done", Shortcut: ",d", Category: CategoryStatus, Views: []ViewType{ViewOutliner}, Aliases: []string{"done task", "finish task", "mark done"}, Handler: outlinerStatusHandler(models.StatusDone)},
 		{Name: "block task", Description: "Set task status to blocked", Shortcut: ",b", Category: CategoryStatus, Views: []ViewType{ViewOutliner}, Aliases: []string{"blocked task", "mark blocked"}, Handler: outlinerStatusHandler(models.StatusBlocked)},
+		{Name: "standby task", Description: "Set task status to standby", Shortcut: ",S", Category: CategoryStatus, Views: []ViewType{ViewOutliner}, Aliases: []string{"standby", "pause task"}, Handler: outlinerStatusHandler(models.StatusStandby)},
 		{Name: "cancel task", Description: "Set task status to canceled", Shortcut: ",x", Category: CategoryStatus, Views: []ViewType{ViewOutliner}, Aliases: []string{"canceled task", "mark canceled"}, Handler: outlinerStatusHandler(models.StatusCanceled)},
 		{Name: "reopen task", Description: "Reopen a completed or canceled task", Shortcut: ",o", Category: CategoryStatus, Views: []ViewType{ViewOutliner}, Aliases: []string{"reopen", "undo complete", "mark todo"}, Handler: outlinerStatusHandler(models.StatusTodo)},
 		{Name: "review task", Description: "Set task status to review", Shortcut: ",r", Category: CategoryStatus, Views: []ViewType{ViewOutliner}, Aliases: []string{"mark review", "in review"}, Handler: outlinerStatusHandler(models.StatusReview)},
+		{Name: "maybe task", Description: "Set task status to maybe", Shortcut: ",m", Category: CategoryStatus, Views: []ViewType{ViewOutliner}, Aliases: []string{"maybe", "someday task"}, Handler: outlinerStatusHandler(models.StatusMaybe)},
 		{
 			Name:        "outliner sort by priority",
 			Description: "Sort tasks by priority",

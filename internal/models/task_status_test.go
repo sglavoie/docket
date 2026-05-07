@@ -6,7 +6,7 @@ import (
 )
 
 func TestTaskStatusIsValid(t *testing.T) {
-	valid := []TaskStatus{StatusTodo, StatusInProgress, StatusReview, StatusStandby, StatusDone, StatusBlocked, StatusCanceled}
+	valid := []TaskStatus{StatusTodo, StatusInProgress, StatusReview, StatusStandby, StatusMaybe, StatusDone, StatusBlocked, StatusCanceled}
 	for _, s := range valid {
 		if !s.IsValid() {
 			t.Errorf("expected %q to be valid", s)
@@ -29,7 +29,7 @@ func TestTaskStatusIsComplete(t *testing.T) {
 		}
 	}
 
-	notComplete := []TaskStatus{StatusTodo, StatusInProgress, StatusReview, StatusStandby, StatusBlocked}
+	notComplete := []TaskStatus{StatusTodo, StatusInProgress, StatusReview, StatusStandby, StatusMaybe, StatusBlocked}
 	for _, s := range notComplete {
 		if s.IsComplete() {
 			t.Errorf("expected %q to not be complete", s)
@@ -38,7 +38,7 @@ func TestTaskStatusIsComplete(t *testing.T) {
 }
 
 func TestTaskStatusIsActive(t *testing.T) {
-	active := []TaskStatus{StatusTodo, StatusInProgress, StatusReview, StatusStandby, StatusBlocked}
+	active := []TaskStatus{StatusTodo, StatusInProgress, StatusReview, StatusStandby, StatusMaybe, StatusBlocked}
 	for _, s := range active {
 		if !s.IsActive() {
 			t.Errorf("expected %q to be active", s)
@@ -64,6 +64,7 @@ func TestTaskStatusIcon(t *testing.T) {
 		{StatusDone, "✓"},
 		{StatusBlocked, "⊘"},
 		{StatusStandby, "⏸"},
+		{StatusMaybe, "❓"},
 		{StatusCanceled, "✕"},
 		{TaskStatus("unknown"), "?"},
 	}
@@ -88,6 +89,7 @@ func TestParseTaskStatusExtended(t *testing.T) {
 		{"blocked", StatusBlocked, true},
 		{"canceled", StatusCanceled, true},
 		{"standby", StatusStandby, true},
+		{"maybe", StatusMaybe, true},
 		{"unknown", TaskStatus("unknown"), false},
 		{"", TaskStatus(""), false},
 		{"DONE", TaskStatus("DONE"), false},
@@ -107,8 +109,8 @@ func TestParseTaskStatusExtended(t *testing.T) {
 
 func TestAllTaskStatuses(t *testing.T) {
 	statuses := AllTaskStatuses()
-	if len(statuses) != 7 {
-		t.Errorf("expected 7 statuses, got %d", len(statuses))
+	if len(statuses) != 8 {
+		t.Errorf("expected 8 statuses, got %d", len(statuses))
 	}
 	for _, s := range statuses {
 		if !s.IsValid() {

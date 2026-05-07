@@ -92,6 +92,17 @@ Examples:
 	RunE: runTaskStandby,
 }
 
+var taskMaybeCmd = &cobra.Command{
+	Use:   "maybe [id...]",
+	Short: "Mark task(s) as maybe",
+	Long: `Mark one or more tasks as maybe (considering but not committed).
+
+Examples:
+  tt task maybe 5
+  tt task maybe 1 2 3`,
+	RunE: runTaskMaybe,
+}
+
 func init() {
 	taskCmd.AddCommand(taskCompleteCmd)
 	taskCmd.AddCommand(taskStartCmd)
@@ -100,10 +111,11 @@ func init() {
 	taskCmd.AddCommand(taskReopenCmd)
 	taskCmd.AddCommand(taskReviewCmd)
 	taskCmd.AddCommand(taskStandbyCmd)
+	taskCmd.AddCommand(taskMaybeCmd)
 
 	for _, sub := range []*cobra.Command{
 		taskCompleteCmd, taskStartCmd, taskBlockCmd, taskCancelCmd,
-		taskReopenCmd, taskReviewCmd, taskStandbyCmd,
+		taskReopenCmd, taskReviewCmd, taskStandbyCmd, taskMaybeCmd,
 	} {
 		addOutputFlags(sub)
 	}
@@ -182,6 +194,16 @@ func runTaskStandby(cmd *cobra.Command, args []string) error {
 	})
 }
 
+func runTaskMaybe(cmd *cobra.Command, args []string) error {
+	out, err := getOutputOpts(cmd)
+	if err != nil {
+		return err
+	}
+	return updateTaskStatus(args, "maybe", out, false, func(t *models.Task) {
+		t.Maybe()
+	})
+}
+
 // actionToTargetStatus maps CLI action names to the target TaskStatus.
 var actionToTargetStatus = map[string]models.TaskStatus{
 	"complete": models.StatusDone,
@@ -191,6 +213,7 @@ var actionToTargetStatus = map[string]models.TaskStatus{
 	"reopen":   models.StatusTodo,
 	"review":   models.StatusReview,
 	"standby":  models.StatusStandby,
+	"maybe":    models.StatusMaybe,
 }
 
 func updateTaskStatus(args []string, action string, out MutateOutput, force bool, update func(*models.Task)) error { //nolint:gocyclo
@@ -253,6 +276,7 @@ func updateTaskStatus(args []string, action string, out MutateOutput, force bool
 		"reopen":   "Reopened",
 		"review":   "Set to review",
 		"standby":  "Set to standby",
+		"maybe":    "Set to maybe",
 	}
 	verb := actionVerbs[action]
 	if verb == "" {

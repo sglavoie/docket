@@ -196,6 +196,49 @@ func TestStandbyFromTodo(t *testing.T) {
 	}
 }
 
+func TestMaybe(t *testing.T) {
+	task := newLifecycleTestTask(t, "t1", 1)
+	task.Start()
+	before := task.UpdatedAt
+	task.Maybe()
+
+	if task.Status != StatusMaybe {
+		t.Errorf("expected StatusMaybe, got %s", task.Status)
+	}
+	if task.Section != SectionSomeday {
+		t.Errorf("expected Section Someday, got %q", task.Section)
+	}
+	if !task.UpdatedAt.After(before) && task.UpdatedAt != before {
+		t.Error("expected UpdatedAt to be updated")
+	}
+}
+
+func TestMaybeFromTodo(t *testing.T) {
+	task := newLifecycleTestTask(t, "t1", 1)
+	task.Section = SectionInbox
+	task.Maybe()
+
+	if task.Status != StatusMaybe {
+		t.Errorf("expected StatusMaybe, got %s", task.Status)
+	}
+	if task.Section != SectionSomeday {
+		t.Errorf("expected Section Someday, got %q", task.Section)
+	}
+}
+
+func TestMaybeClearsCustomSectionToPreventDualSection(t *testing.T) {
+	task := newLifecycleTestTask(t, "t1", 1)
+	task.CustomSection = "CustomSection"
+	task.Maybe()
+
+	if task.CustomSection != "" {
+		t.Errorf("expected CustomSection cleared to prevent dual-section state, got %q", task.CustomSection)
+	}
+	if task.Section != SectionSomeday {
+		t.Errorf("expected Section=%q, got %q", SectionSomeday, task.Section)
+	}
+}
+
 func TestReopen(t *testing.T) {
 	task := newLifecycleTestTask(t, "t1", 1)
 	task.Complete()

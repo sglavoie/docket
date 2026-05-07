@@ -12,7 +12,7 @@ import (
 // Shell completion values for enumerated flags.
 var (
 	taskTypeCompletions   = []string{"epic", "story", "task", "bug", "idea"}
-	statusCompletions     = []string{"todo", "in_progress", "review", "standby", "done", "blocked", "canceled"}
+	statusCompletions     = []string{"todo", "in_progress", "review", "standby", "maybe", "done", "blocked", "canceled"}
 	sortCompletions       = []string{"priority", "created", "updated", "status", "title"}
 	categoryCompletions   = []string{"bug", "feature", "process"}
 	statusIconCompletions = []string{"planning", "wip", "active", "review", "testing", "stabilizing", "maintenance", "bugfix", "paused", "archived"}

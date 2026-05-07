@@ -248,6 +248,8 @@ func (m *LinkedTaskCreatorModel) createTask() tea.Cmd {
 		newTask.Review()
 	case models.StatusStandby:
 		newTask.Standby()
+	case models.StatusMaybe:
+		newTask.Maybe()
 	default:
 	}
 

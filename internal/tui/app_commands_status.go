@@ -113,5 +113,20 @@ func (m *AppModel) statusCommands() []Command {
 				return nil
 			},
 		},
+		{
+			Name:        "maybe task",
+			Description: "Set task status to maybe",
+			Shortcut:    ",m",
+			Category:    CategoryStatus,
+			Views:       []ViewType{ViewProjectTree},
+			Aliases:     []string{"maybe", "someday task"},
+			Handler: func() tea.Msg {
+				if m.projectTree != nil {
+					visible := m.projectTree.visibleNodes()
+					m.projectTree.handleStatusTransition(models.StatusMaybe, visible)
+				}
+				return nil
+			},
+		},
 	}
 }

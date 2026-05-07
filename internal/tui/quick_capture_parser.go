@@ -149,8 +149,10 @@ func parseQuickCapture(input string, project *models.Project, allProjects []*mod
 			result.status = models.StatusReview
 		case "standby", "hold":
 			result.status = models.StatusStandby
+		case "maybe":
+			result.status = models.StatusMaybe
 		default:
-			return nil, fmt.Errorf("invalid status: $%s (use $start, $blocked, $done, $canceled, $review, $standby)", match[1])
+			return nil, fmt.Errorf("invalid status: $%s (use $start, $blocked, $done, $canceled, $review, $standby, $maybe)", match[1])
 		}
 		input = statusRe.ReplaceAllString(input, " ")
 	}
@@ -371,6 +373,8 @@ func parseQuickCaptureForPreview(input string, project *models.Project, allProje
 			result.status = models.StatusReview
 		case "standby", "hold":
 			result.status = models.StatusStandby
+		case "maybe":
+			result.status = models.StatusMaybe
 		default:
 			if errMsg == "" {
 				errMsg = fmt.Sprintf("invalid status: $%s", match[1])

@@ -20,6 +20,7 @@ var (
 		{Key: "b", Description: "blocked"},
 		{Key: "d", Description: "done"},
 		{Key: "x", Description: "canceled"},
+		{Key: "m", Description: "maybe"},
 		{Key: "0", Description: "clear"},
 	}
 

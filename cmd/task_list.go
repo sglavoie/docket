@@ -54,7 +54,7 @@ func init() {
 	taskCmd.AddCommand(taskListCmd)
 
 	taskListCmd.Flags().StringVarP(&listTaskType, "type", "t", "", "filter by type (epic, story, task, bug, idea)")
-	taskListCmd.Flags().StringVarP(&listTaskStatus, "status", "s", "", "filter by status (todo, in_progress, review, standby, done, blocked, canceled)")
+	taskListCmd.Flags().StringVarP(&listTaskStatus, "status", "s", "", "filter by status (todo, in_progress, review, standby, maybe, done, blocked, canceled)")
 	taskListCmd.Flags().IntVarP(&listPriority, "priority", "P", 0, "filter by priority (1-5)")
 	taskListCmd.Flags().StringVarP(&listTag, "tag", "T", "", "filter by tag")
 	taskListCmd.Flags().BoolVarP(&listShowAll, "all", "a", false, "include completed/canceled tasks")
@@ -234,8 +234,9 @@ var statusOrder = map[models.TaskStatus]int{
 	models.StatusBlocked:    2,
 	models.StatusTodo:       3,
 	models.StatusStandby:    4,
-	models.StatusDone:       5,
-	models.StatusCanceled:   6,
+	models.StatusMaybe:      5,
+	models.StatusDone:       6,
+	models.StatusCanceled:   7,
 }
 
 func sortTasks(tasks []*models.Task, field string) error {
@@ -353,6 +354,8 @@ func printTaskNode(task *models.Task, depth int, matches func(*models.Task) bool
 	case models.StatusReview:
 		style = style.Foreground(lipgloss.Color("214"))
 	case models.StatusStandby:
+		style = style.Foreground(lipgloss.Color("141"))
+	case models.StatusMaybe:
 		style = style.Foreground(lipgloss.Color("141"))
 	case models.StatusBlocked:
 		style = style.Foreground(lipgloss.Color("196"))

@@ -33,6 +33,7 @@ func init() {
 		{`\bblocked\b`, BlockedStyle, 0},
 		{`\breview\b`, ReviewStyle, 0},
 		{`\bstandby\b`, StandbyStyle, 0},
+		{`\bmaybe\b`, makeColorStyle(ColorViewSomeday), 0},
 		{`\btodo\b`, TodoStyle, 0},
 		{`\bdone\b`, DoneStyle, 0},
 
@@ -79,7 +80,7 @@ func init() {
 		{`\bj/k\b`, keybindStyle, 0},
 		{`\bJ/K\b`, keybindStyle, 0},
 		// Comma-prefix bindings at start of line: ,s ,d ,b ,o ,x ,S
-		{`^(,[sdboxrS])\s`, keybindStyle, 1},
+		{`^(,[sdboxrSm])\s`, keybindStyle, 1},
 		// "using , followed" — color the comma
 		{`using (,) followed`, keybindStyle, 1},
 		// "Press X" patterns for single-char keys
