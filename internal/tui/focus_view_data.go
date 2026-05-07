@@ -279,6 +279,28 @@ func (m *FocusViewModel) computeDueDateSubTabs(now, today time.Time) {
 	}
 }
 
+func (m *FocusViewModel) toggleDismiss() {
+	if m.tabs.Active != focusTabSuggested {
+		return
+	}
+	ft := m.getTaskAtCursor()
+	if ft == nil {
+		return
+	}
+	taskID := ft.Task.ID
+
+	if m.dismissedIDs[taskID] {
+		delete(m.dismissedIDs, taskID)
+		m.setStatus(fmt.Sprintf("Restored: %s", ft.Task.Title))
+	} else {
+		m.dismissedIDs[taskID] = true
+		m.setStatus(fmt.Sprintf("Dismissed: %s", ft.Task.Title))
+	}
+	m.persistDismissed()
+	m.recomputeSuggested()
+	m.clampCursor()
+}
+
 func (m *FocusViewModel) pruneDismissedIDs() {
 	if len(m.dismissedIDs) == 0 {
 		return

@@ -672,6 +672,19 @@ func (m *FocusViewModel) buildKeyMap() *keymap.KeyMap {
 		}),
 	)
 
+	// Dismiss / remove
+	entries = append(entries,
+		keymap.Bind("x", "Dismiss or remove from queue", "Actions", func() (tea.Model, tea.Cmd) {
+			switch m.tabs.Active {
+			case focusTabQueue:
+				m.removeFromQueue()
+			case focusTabSuggested:
+				m.toggleDismiss()
+			}
+			return m, nil
+		}),
+	)
+
 	// Refresh
 	entries = append(entries,
 		keymap.Bind("r", "Refresh", "View", func() (tea.Model, tea.Cmd) {
