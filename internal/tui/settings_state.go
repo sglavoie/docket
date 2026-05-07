@@ -32,7 +32,7 @@ var (
 	settingsTabNames = []string{"General", "Palette", "Review", "Behavior", "Attachments", "Project Tree", "Outliner", "Kanban", "Notifications", "Stages", "Appearance"}
 
 	// tabFieldCount declares how many focusable fields each tab has.
-	tabFieldCount = []int{4, 18, 4, 13, 2, 13, 21, 11, 15, 1, 3}
+	tabFieldCount = []int{5, 18, 4, 13, 2, 13, 21, 11, 15, 1, 3}
 
 	// tabFieldStart holds the starting focus index for each tab (computed in init).
 	tabFieldStart []int
@@ -171,6 +171,7 @@ type SettingsModel struct {
 	configManager *config.Manager
 
 	editorInput              textinput.Model
+	notesEditorInput         textinput.Model
 	contextInput             textinput.Model
 	undoDepthInput           textinput.Model
 	bgColorInput             textinput.Model

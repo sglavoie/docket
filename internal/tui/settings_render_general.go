@@ -20,7 +20,19 @@ func (m *SettingsModel) renderGeneralTab() string {
 
 	b.WriteString("\n")
 
-	b.WriteString(renderFormLabelWithWidth("Default Context: ", labelWidth, m.focusIndex == base+1))
+	b.WriteString(renderFormLabelWithWidth("Notes Editor: ", labelWidth, m.focusIndex == base+1))
+	b.WriteString(m.notesEditorInput.View())
+	b.WriteString("\n")
+	if m.focusIndex == base+1 && m.validationErr != "" {
+		b.WriteString(strings.Repeat(" ", indent))
+		b.WriteString(ValidationErrorStyle.Render(m.validationErr))
+		b.WriteString("\n")
+	}
+	b.WriteString(renderFormFieldDesc("Editor for opening notes with Ctrl+O (empty = code)", indent, m.focusIndex == base+1))
+
+	b.WriteString("\n")
+
+	b.WriteString(renderFormLabelWithWidth("Default Context: ", labelWidth, m.focusIndex == base+2))
 	b.WriteString(m.contextInput.View())
 	b.WriteString("\n")
 
@@ -37,40 +49,40 @@ func (m *SettingsModel) renderGeneralTab() string {
 				b.WriteString(MutedStyle.Render(", "))
 			}
 		}
-		if m.focusIndex == base+1 {
+		if m.focusIndex == base+2 {
 			b.WriteString(HelpStyle.Render("  (←/→ to select, or type custom)"))
 		}
 		b.WriteString("\n")
 	}
-
-	if m.focusIndex == base+1 && m.validationErr != "" {
-		b.WriteString(strings.Repeat(" ", indent))
-		b.WriteString(ValidationErrorStyle.Render(m.validationErr))
-		b.WriteString("\n")
-	}
-	b.WriteString(renderFormFieldDesc("Default context for new projects", indent, m.focusIndex == base+1))
-
-	b.WriteString("\n")
-
-	b.WriteString(renderFormLabelWithWidth("Undo History Depth: ", labelWidth, m.focusIndex == base+2))
-	b.WriteString(m.undoDepthInput.View())
-	b.WriteString("  ")
-	b.WriteString(MutedStyle.Render("(0=disable, max 1000)"))
-	b.WriteString("\n")
 
 	if m.focusIndex == base+2 && m.validationErr != "" {
 		b.WriteString(strings.Repeat(" ", indent))
 		b.WriteString(ValidationErrorStyle.Render(m.validationErr))
 		b.WriteString("\n")
 	}
-	b.WriteString(renderFormFieldDesc("Number of undo steps to keep in history", indent, m.focusIndex == base+2))
+	b.WriteString(renderFormFieldDesc("Default context for new projects", indent, m.focusIndex == base+2))
 
 	b.WriteString("\n")
 
-	b.WriteString(renderFormLabelWithWidth("Default View: ", labelWidth, m.focusIndex == base+3))
-	b.WriteString(renderEnumSelector(defaultProjectViewOptions, m.defaultViewCursor, m.focusIndex == base+3))
+	b.WriteString(renderFormLabelWithWidth("Undo History Depth: ", labelWidth, m.focusIndex == base+3))
+	b.WriteString(m.undoDepthInput.View())
+	b.WriteString("  ")
+	b.WriteString(MutedStyle.Render("(0=disable, max 1000)"))
 	b.WriteString("\n")
-	b.WriteString(renderFormFieldDesc("View shown when opening a project", indent, m.focusIndex == base+3))
+
+	if m.focusIndex == base+3 && m.validationErr != "" {
+		b.WriteString(strings.Repeat(" ", indent))
+		b.WriteString(ValidationErrorStyle.Render(m.validationErr))
+		b.WriteString("\n")
+	}
+	b.WriteString(renderFormFieldDesc("Number of undo steps to keep in history", indent, m.focusIndex == base+3))
+
+	b.WriteString("\n")
+
+	b.WriteString(renderFormLabelWithWidth("Default View: ", labelWidth, m.focusIndex == base+4))
+	b.WriteString(renderEnumSelector(defaultProjectViewOptions, m.defaultViewCursor, m.focusIndex == base+4))
+	b.WriteString("\n")
+	b.WriteString(renderFormFieldDesc("View shown when opening a project", indent, m.focusIndex == base+4))
 
 	return b.String()
 }

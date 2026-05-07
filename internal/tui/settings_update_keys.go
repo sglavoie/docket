@@ -353,7 +353,7 @@ func (m *SettingsModel) handleLeftKey() {
 	switch tab {
 	case tabGeneral:
 		switch local {
-		case 1: // context
+		case 2: // context
 			if len(m.contexts) > 0 {
 				if m.contextCursor > 0 {
 					m.contextCursor--
@@ -363,7 +363,7 @@ func (m *SettingsModel) handleLeftKey() {
 					m.contextInput.SetValue(m.contexts[m.contextCursor])
 				}
 			}
-		case 3: // default view
+		case 4: // default view
 			if m.defaultViewCursor > 0 {
 				m.defaultViewCursor--
 			}
@@ -416,12 +416,12 @@ func (m *SettingsModel) handleRightKey() {
 	switch tab {
 	case tabGeneral:
 		switch local {
-		case 1: // context
+		case 2: // context
 			if len(m.contexts) > 0 && m.contextCursor >= 0 && m.contextCursor < len(m.contexts)-1 {
 				m.contextCursor++
 				m.contextInput.SetValue(m.contexts[m.contextCursor])
 			}
-		case 3: // default view
+		case 4: // default view
 			if m.defaultViewCursor < len(defaultProjectViewOptions)-1 {
 				m.defaultViewCursor++
 			}

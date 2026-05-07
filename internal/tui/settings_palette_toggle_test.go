@@ -109,7 +109,7 @@ func TestPaletteToggle_SavePersistsBoth(t *testing.T) {
 
 func TestPaletteToggle_RenderSelection(t *testing.T) {
 	m := makeToggleTestModel(t)
-	m.focusIndex = 4
+	m.focusIndex = 5
 
 	// Active = dark → Dark must be marked selected.
 	m.activeTheme = "dark"

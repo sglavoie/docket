@@ -41,6 +41,7 @@ func NewSettingsModel(cfg *config.Config, manager *config.Manager) *SettingsMode
 		config:                   cfg,
 		configManager:            manager,
 		editorInput:              newSettingsInput("code", 256, 40, cfg.Editor, true),
+		notesEditorInput:         newSettingsInput("code", 256, 40, cfg.NotesEditor, false),
 		contextInput:             newSettingsInput("personal", 50, 30, cfg.DefaultContext, false),
 		undoDepthInput:           newSettingsInput(strconv.Itoa(config.DefaultUndoHistoryDepth), 4, 10, strconv.Itoa(undoDepthValue), false),
 		bgColorInput:             newSettingsInput("(none)", 7, 10, activeTheme.BackgroundColor, false),

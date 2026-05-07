@@ -56,6 +56,34 @@ func (m *NotesViewModel) viewCurrentNote() tea.Cmd {
 	})
 }
 
+func (m *NotesViewModel) openInNotesEditor() tea.Cmd {
+	if len(m.notes) == 0 || m.cursor >= len(m.notes) {
+		return nil
+	}
+	note := m.notes[m.cursor]
+
+	configEditor := ""
+	if m.config != nil {
+		configEditor = m.config.GetNotesEditor()
+	}
+	editor, editorErr := external.ResolveEditor(configEditor)
+	if editorErr != nil {
+		return errorCmd("%s", editorErr)
+	}
+	path := storage.NoteFilePathIn(m.effectiveDir(), note.Filename)
+	c := external.EditorCommand(editor, path)
+
+	oldFilename := note.Filename
+	dir := m.effectiveDir()
+	return tea.ExecProcess(c, func(err error) tea.Msg {
+		reloaded, loadErr := storage.LoadNoteFrom(dir, oldFilename)
+		if loadErr == nil && reloaded.Title != note.Title {
+			_, _ = storage.RenameNoteIn(dir, oldFilename, reloaded.Title)
+		}
+		return NotesRefreshMsg{}
+	})
+}
+
 func (m *NotesViewModel) editCurrentNote() tea.Cmd {
 	if len(m.notes) == 0 || m.cursor >= len(m.notes) {
 		return nil

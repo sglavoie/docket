@@ -14,8 +14,10 @@ func (m *SettingsModel) focusedInput() *textinput.Model { //nolint:gocyclo
 		case 0:
 			return &m.editorInput
 		case 1:
-			return &m.contextInput
+			return &m.notesEditorInput
 		case 2:
+			return &m.contextInput
+		case 3:
 			return &m.undoDepthInput
 		}
 	case tabPalette:

@@ -40,7 +40,10 @@ type NotesViewModel struct {
 	project  *models.Project
 	notesDir string // when set, use path-based storage (global notes mode)
 	isGlobal bool   // true when operating on global notes
-	config   interface{ GetEditor() string }
+	config   interface {
+		GetEditor() string
+		GetNotesEditor() string
+	}
 
 	notes       []*models.Note
 	cursor      int
@@ -169,6 +172,7 @@ type noteLinkUndoEntry struct {
 // notesConfig is a minimal interface for config access.
 type notesConfig interface {
 	GetEditor() string
+	GetNotesEditor() string
 }
 
 // NewNotesViewModel creates a new notes view.

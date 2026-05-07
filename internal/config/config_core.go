@@ -110,3 +110,12 @@ func (c *Config) GetCodeEditor() string {
 	}
 	return c.CodeEditor
 }
+
+// GetNotesEditor returns the configured editor for opening notes with Ctrl+O.
+// Defaults to "code" (VS Code) if not set.
+func (c *Config) GetNotesEditor() string {
+	if c.NotesEditor == "" {
+		return "code"
+	}
+	return c.NotesEditor
+}
