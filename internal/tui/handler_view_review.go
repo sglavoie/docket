@@ -136,7 +136,7 @@ func (m *AppModel) handleViewReviewMessages(msg tea.Msg) (bool, tea.Cmd) { //nol
 		return m.popAndNavigateToTask(msg.Task, msg.Project)
 
 	case ShowRecentActivityMsg:
-		ra := NewRecentActivityModel(m.config)
+		ra := NewRecentActivityModel(m.config, m.configManager)
 		ra.queueIDs = m.focusQueueIDs
 		ra.dailyPlanIDs = m.dailyPlanIDs
 		m.showView(ViewRecentActivity, ra)
@@ -144,7 +144,7 @@ func (m *AppModel) handleViewReviewMessages(msg tea.Msg) (bool, tea.Cmd) { //nol
 
 	case ShowProjectRecentActivityMsg:
 		if msg.Project != nil {
-			pra := NewProjectRecentActivityModel(m.config, msg.Project)
+			pra := NewProjectRecentActivityModel(m.config, m.configManager, msg.Project)
 			pra.queueIDs = m.focusQueueIDs
 			pra.dailyPlanIDs = m.dailyPlanIDs
 			m.showView(ViewProjectRecentActivity, pra)

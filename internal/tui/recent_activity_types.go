@@ -17,7 +17,8 @@ const (
 type RecentActivityModel struct {
 	BaseSearchableView
 	InteractiveViewState
-	config *config.Config
+	config        *config.Config
+	configManager *config.Manager
 
 	// Queue / daily-plan indicator support
 	queueIDs     map[string]bool
@@ -36,9 +37,10 @@ type RecentActivityModel struct {
 }
 
 // NewRecentActivityModel creates a new recent activity model.
-func NewRecentActivityModel(cfg *config.Config) *RecentActivityModel {
+func NewRecentActivityModel(cfg *config.Config, mgr *config.Manager) *RecentActivityModel {
 	m := &RecentActivityModel{
-		config:      cfg,
+		config:        cfg,
+		configManager: mgr,
 		FilterMixin: FilterMixin{filter: newFilterState()},
 		tabs:        TabState{Names: recentActivityTabNames},
 	}
@@ -54,10 +56,11 @@ func NewRecentActivityModel(cfg *config.Config) *RecentActivityModel {
 }
 
 // NewProjectRecentActivityModel creates a project-scoped recent activity model.
-func NewProjectRecentActivityModel(cfg *config.Config, project *models.Project) *RecentActivityModel {
+func NewProjectRecentActivityModel(cfg *config.Config, mgr *config.Manager, project *models.Project) *RecentActivityModel {
 	m := &RecentActivityModel{
-		config:       cfg,
-		projectScope: project,
+		config:        cfg,
+		configManager: mgr,
+		projectScope:  project,
 		FilterMixin:  FilterMixin{filter: newFilterState()},
 		tabs:         TabState{Names: recentActivityTabNames},
 	}

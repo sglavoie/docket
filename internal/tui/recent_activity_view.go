@@ -89,7 +89,7 @@ func (m *RecentActivityModel) View() tea.View {
 	b.WriteString(strings.Join(applyScroll(lines, m.cursor, contentHeight), "\n"))
 	b.WriteString("\n\n")
 
-	left := HelpStyle.Render("j/k nav · Tab tabs · Enter open · p preview · / filter · r refresh · ? help")
+	left := HelpStyle.Render("j/k nav · Tab tabs · Enter open · p preview · , status · / filter · r refresh · ? help")
 	right := MutedStyle.Render(fmt.Sprintf("%d tasks", len(m.filtered)))
 	b.WriteString(renderStatusBarFooter(left, right, m.Width(), m.AccentColor()))
 

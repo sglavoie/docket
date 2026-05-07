@@ -3,6 +3,7 @@ package tui
 import (
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/keymap"
 )
 
@@ -149,6 +150,23 @@ func (m *RecentActivityModel) buildKeyMap() *keymap.KeyMap {
 			}
 		},
 	})...)
+
+	// Status group: "," prefix
+	statusEntries := keymap.StatusGroup(keymap.StatusDeps{
+		ChangeStatus: func(status string) keymap.Action {
+			s := models.TaskStatus(status)
+			return func() (tea.Model, tea.Cmd) {
+				return taskOpsChangeStatus(m, s)
+			}
+		},
+	})
+	if len(statusEntries) > 0 && statusEntries[0].PrefixNode != nil {
+		statusEntries[0].PrefixNode.Gate = func() bool {
+			t, _ := m.getTaskRef()
+			return t != nil
+		}
+	}
+	entries = append(entries, statusEntries...)
 
 	return &keymap.KeyMap{
 		ViewName: "RecentActivity",

@@ -123,7 +123,7 @@ func (m *AppModel) reconstructGlobalView(entry NavEntry) tea.Cmd {
 		ddo.dailyPlanIDs = m.dailyPlanIDs
 		m.showView(ViewDueDateOverview, ddo)
 	case ViewRecentActivity:
-		ra := NewRecentActivityModel(m.config)
+		ra := NewRecentActivityModel(m.config, m.configManager)
 		ra.queueIDs = m.focusQueueIDs
 		ra.dailyPlanIDs = m.dailyPlanIDs
 		m.showView(ViewRecentActivity, ra)
@@ -266,7 +266,7 @@ func (m *AppModel) reconstructProjectView(entry NavEntry) tea.Cmd {
 		fresh.dailyPlanIDs = m.dailyPlanIDs
 		m.showView(ViewTemporaryOutliner, fresh)
 	case ViewProjectRecentActivity:
-		pra := NewProjectRecentActivityModel(m.config, project)
+		pra := NewProjectRecentActivityModel(m.config, m.configManager, project)
 		pra.queueIDs = m.focusQueueIDs
 		pra.dailyPlanIDs = m.dailyPlanIDs
 		m.showView(ViewProjectRecentActivity, pra)

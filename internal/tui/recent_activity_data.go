@@ -4,9 +4,15 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 )
+
+func (m *RecentActivityModel) getPersister() Persister           { return defaultPersister }
+func (m *RecentActivityModel) getConfigManager() *config.Manager { return m.configManager }
+func (m *RecentActivityModel) reloadData()                       { m.loadTasks() }
+func (m *RecentActivityModel) setErr(err error)                  { m.setStatus(err.Error()) }
 
 // getTaskRef returns the focused task and its project for queue toggling.
 func (m *RecentActivityModel) getTaskRef() (*models.Task, *models.Project) {

@@ -67,10 +67,13 @@ func (m *RecentActivityModel) GetPrefixPopupInfo() *PrefixPopupInfo {
 	if m.Dispatcher == nil || !m.Dispatcher.HasPendingPrefix() {
 		return nil
 	}
-	// All filter categories enabled for recent activity
-	hints := buildCommonFilterPrefixPopupHints(&m.filter, m.config, true, true)
+	prefix := m.Dispatcher.PendingPrefix()
+	var hints []PrefixHint
+	for _, h := range m.Dispatcher.PrefixHints() {
+		hints = append(hints, PrefixHint{Key: h.Key, Description: h.Description})
+	}
 	return &PrefixPopupInfo{
-		Prefix: m.Dispatcher.PendingPrefix(),
-		Hints:  hints,
+		Prefix: prefix,
+		Hints:  PrefixHints{prefix: hints},
 	}
 }
