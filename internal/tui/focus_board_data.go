@@ -96,6 +96,8 @@ func (m *FocusBoardModel) loadItems() {
 		return posMap[m.todayRows[i].Task.ID] < posMap[m.todayRows[j].Task.ID]
 	})
 
+	m.expandTodayChildren()
+
 	// Sort by priority ascending, then preserve original order within same priority
 	sort.SliceStable(m.rows, func(i, j int) bool {
 		if m.rows[i].Priority != m.rows[j].Priority {
@@ -213,4 +215,39 @@ func (m *FocusBoardModel) scorePercent(r boardRow) float64 {
 	}
 	score := scoring.ComputeScore(r.Task, profile)
 	return scoring.ScorePercent(score, profile)
+}
+
+// expandTodayChildren inserts descendants of explicitly planned items into todayRows.
+func (m *FocusBoardModel) expandTodayChildren() {
+	seen := make(map[string]bool, len(m.todayRows))
+	for _, r := range m.todayRows {
+		seen[r.Task.ID] = true
+	}
+
+	var expanded []boardRow
+	for _, r := range m.todayRows {
+		expanded = append(expanded, r)
+		if m.dailyPlanIDs[r.Task.ID] {
+			m.collectChildren(&expanded, r.Task, r.Project, 1, seen)
+		}
+	}
+	m.todayRows = expanded
+}
+
+// collectChildren recursively appends child rows depth-first.
+func (m *FocusBoardModel) collectChildren(out *[]boardRow, parent *models.Task, project *models.Project, depth int, seen map[string]bool) {
+	for _, child := range parent.Children {
+		if seen[child.ID] {
+			continue
+		}
+		seen[child.ID] = true
+		*out = append(*out, boardRow{
+			Task:        child,
+			Project:     project,
+			Priority:    child.Priority,
+			Source:      project.Name,
+			IndentLevel: depth,
+		})
+		m.collectChildren(out, child, project, depth+1, seen)
+	}
 }

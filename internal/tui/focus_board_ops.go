@@ -97,6 +97,11 @@ func (m *FocusBoardModel) handleDailyPlanReorder(delta int) (tea.Model, tea.Cmd)
 	curRow := m.filtered[m.cursor]
 	targetRow := m.filtered[to]
 
+	// Auto-expanded children cannot be reordered — they follow their parent.
+	if curRow.IndentLevel > 0 || targetRow.IndentLevel > 0 {
+		return m, nil
+	}
+
 	// Only reorder within the same completion group (active-first partition).
 	if curRow.Task.Status.IsComplete() != targetRow.Task.Status.IsComplete() {
 		return m, nil

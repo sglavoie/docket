@@ -24,10 +24,11 @@ const (
 
 // boardRow is a unified display item for an active/due task.
 type boardRow struct {
-	Task     *models.Task
-	Project  *models.Project
-	Priority int
-	Source   string
+	Task        *models.Task
+	Project     *models.Project
+	Priority    int
+	Source      string
+	IndentLevel int // >0 for auto-expanded children of planned items in Today tab
 }
 
 func (r boardRow) isTask() bool {

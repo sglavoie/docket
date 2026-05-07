@@ -138,6 +138,7 @@ func (m *FocusBoardModel) View() tea.View { //nolint:gocyclo
 	var lines []string
 	maxTitleLen := max(m.width-FocusBoardTitlePadding, FocusBoardMinTitleWidth)
 
+	plannedIdx := 0
 	for i, row := range m.filtered {
 		isSelected := i == m.cursor
 
@@ -149,8 +150,9 @@ func (m *FocusBoardModel) View() tea.View { //nolint:gocyclo
 		}
 
 		rowNum := ""
-		if m.tabs.Active == boardTabToday {
-			rowNum = fmt.Sprintf("%d.", i+1)
+		if m.tabs.Active == boardTabToday && row.IndentLevel == 0 {
+			plannedIdx++
+			rowNum = fmt.Sprintf("%d.", plannedIdx)
 		}
 		line := m.renderRow(row, isSelected, maxTitleLen, rowNum)
 		lines = append(lines, line)
@@ -207,12 +209,17 @@ func (m *FocusBoardModel) View() tea.View { //nolint:gocyclo
 		rightParts = append(rightParts, fmt.Sprintf("%d closed", len(m.closedRows)))
 	case boardTabToday:
 		completedToday := 0
+		plannedTotal := 0
 		for _, r := range m.todayRows {
+			if r.IndentLevel > 0 {
+				continue
+			}
+			plannedTotal++
 			if r.Task.Status.IsComplete() {
 				completedToday++
 			}
 		}
-		rightParts = append(rightParts, fmt.Sprintf("%d/%d done", completedToday, len(m.todayRows)))
+		rightParts = append(rightParts, fmt.Sprintf("%d/%d done", completedToday, plannedTotal))
 	case boardTabAll:
 		rightParts = append(rightParts, fmt.Sprintf("%d/%d items", len(m.filtered), len(m.allRows)))
 	default:
@@ -233,6 +240,10 @@ func (m *FocusBoardModel) renderRow(row boardRow, isSelected bool, maxTitleLen i
 
 	priorityBadge := boardPriorityBadge(task.Priority)
 	isClosed := task.Status.IsComplete()
+
+	// Indentation for auto-expanded children
+	indent := strings.Repeat("  ", row.IndentLevel)
+	maxTitleLen -= row.IndentLevel * 2
 
 	// Queue / daily-plan indicator: always 2 chars wide (first column).
 	queueIndicator := "  "
@@ -269,7 +280,7 @@ func (m *FocusBoardModel) renderRow(row boardRow, isSelected bool, maxTitleLen i
 		title = GetTitlePriorityStyle(task.Priority).Render(title)
 	}
 	statusIcon := GetStatusBadge(string(task.Status), task.Status.Icon())
-	content := fmt.Sprintf("%s%s%s %s %s%s %s", queueIndicator, prefix, statusIcon, priorityBadge, projectBadge, typeIcon, title)
+	content := fmt.Sprintf("%s%s%s%s %s %s%s %s", indent, queueIndicator, prefix, statusIcon, priorityBadge, projectBadge, typeIcon, title)
 
 	structureGroup := scoreBadge
 	lifecycleGroup := dueStr
@@ -315,12 +326,17 @@ func (m *FocusBoardModel) computedTabNames() []string {
 	names := make([]string, len(focusBoardTabNames))
 	copy(names, focusBoardTabNames)
 	completedToday := 0
+	plannedTotal := 0
 	for _, r := range m.todayRows {
+		if r.IndentLevel > 0 {
+			continue
+		}
+		plannedTotal++
 		if r.Task.Status.IsComplete() {
 			completedToday++
 		}
 	}
-	names[boardTabToday] = fmt.Sprintf("Today (%d/%d)", completedToday, len(m.todayRows))
+	names[boardTabToday] = fmt.Sprintf("Today (%d/%d)", completedToday, plannedTotal)
 	return names
 }
 
