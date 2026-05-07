@@ -31,12 +31,12 @@ func MoveGroup(deps MoveDeps) []Entry {
 
 	children := []Entry{
 		sectionBind("a", "Send task(s) to Active", ""),
-		sectionBind("n", "Send task(s) to Next", "next"),
-		sectionBind("i", "Send task(s) to Inbox", "inbox"),
-		sectionBind("w", "Send task(s) to Waiting", "waiting"),
-		sectionBind("r", "Send task(s) to Review", "review"),
-		sectionBind("s", "Send task(s) to Someday", "someday"),
-		sectionBind("S", "Send task(s) to Standby", "standby"),
+		sectionBind("n", "Send task(s) to Next", "Next"),
+		sectionBind("i", "Send task(s) to Inbox", "Inbox"),
+		sectionBind("w", "Send task(s) to Waiting", "Waiting"),
+		sectionBind("r", "Send task(s) to Review", "Review"),
+		sectionBind("s", "Send task(s) to Someday", "Someday"),
+		sectionBind("S", "Send task(s) to Standby", "Standby"),
 		Bind("K", "Move task to top of section", cat, deps.MoveToTop),
 		Bind("J", "Move task to bottom of section", cat, deps.MoveToBottom),
 	}
