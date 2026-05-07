@@ -99,6 +99,7 @@ func (m *GlobalSearchModel) getStatusSuggestions(partial string) []ACSuggestion 
 		{"in_progress", "◐"},
 		{"review", "◑"},
 		{"standby", "⏸"},
+		{"maybe", "❓"},
 		{"done", "●"},
 		{"blocked", "◈"},
 		{"canceled", "✕"},

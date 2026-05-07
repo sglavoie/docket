@@ -241,6 +241,7 @@ func (m *DashboardModel) renderProjectSummaryContent(project *models.Project) st
 		{models.StatusInProgress, "In Progress"},
 		{models.StatusReview, "Review"},
 		{models.StatusStandby, "Standby"},
+		{models.StatusMaybe, "Maybe"},
 		{models.StatusBlocked, "Blocked"},
 	}
 

@@ -92,6 +92,7 @@ func searchStatusSuggestions(partial string) []ACSuggestion {
 		{"in_progress", "◐"},
 		{"review", "◑"},
 		{"standby", "⏸"},
+		{"maybe", "❓"},
 		{"done", "●"},
 		{"blocked", "◈"},
 		{"canceled", "✕"},

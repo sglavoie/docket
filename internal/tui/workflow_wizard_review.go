@@ -272,7 +272,7 @@ func (m *WorkflowWizardModel) triggerValueInputHint() string {
 	field := m.selectedTriggerField()
 	switch field {
 	case workflow.FieldStatus:
-		return "e.g. todo, in_progress, done, blocked, canceled"
+		return "e.g. todo, in_progress, maybe, done, blocked, canceled"
 	case workflow.FieldPriority, workflow.FieldLevel, workflow.FieldDueDays,
 		workflow.FieldCreatedDays, workflow.FieldUpdatedDays, workflow.FieldBlockerCount,
 		workflow.FieldDependencyCount, workflow.FieldChildrenProgress,
@@ -305,7 +305,7 @@ func (m *WorkflowWizardModel) actionValueInputHint() string {
 	action := m.selectedActionType()
 	switch action {
 	case workflow.ActionSetStatus:
-		return "e.g. todo, in_progress, done, blocked, canceled"
+		return "e.g. todo, in_progress, maybe, done, blocked, canceled"
 	case workflow.ActionSetPriority:
 		return "numeric: 1 (highest) to 99, 0 = unset"
 	case workflow.ActionSetSection:

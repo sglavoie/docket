@@ -186,6 +186,7 @@ func (q *quickCaptureInput) getStatusSuggestions(partial string) []ACSuggestion 
 		{"start", "◐", "in progress + activate"},
 		{"review", "◑", "send to review"},
 		{"standby", "⏸", "put on hold"},
+		{"maybe", "❓", "tentative / someday"},
 		{"blocked", "◈", "blocked"},
 		{"done", "●", "completed"},
 		{"canceled", "✕", "canceled"},

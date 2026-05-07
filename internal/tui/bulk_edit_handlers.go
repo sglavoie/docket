@@ -134,6 +134,7 @@ func (m *BulkEditModel) handleEnter() (tea.Model, tea.Cmd) {
 				models.StatusInProgress,
 				models.StatusReview,
 				models.StatusStandby,
+				models.StatusMaybe,
 				models.StatusDone,
 				models.StatusBlocked,
 				models.StatusCanceled,

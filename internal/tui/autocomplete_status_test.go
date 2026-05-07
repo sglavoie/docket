@@ -8,7 +8,7 @@ func TestGlobalSearchStatusSuggestionsIncludeAllStatuses(t *testing.T) {
 	m := &GlobalSearchModel{}
 	suggestions := m.getStatusSuggestions("")
 
-	want := []string{"todo", "in_progress", "review", "standby", "done", "blocked", "canceled"}
+	want := []string{"todo", "in_progress", "review", "standby", "maybe", "done", "blocked", "canceled"}
 	if len(suggestions) != len(want) {
 		t.Fatalf("got %d suggestions, want %d", len(suggestions), len(want))
 	}
@@ -50,7 +50,7 @@ func TestQuickCaptureStatusSuggestionsIncludeAllStatuses(t *testing.T) {
 	q := &quickCaptureInput{}
 	suggestions := q.getStatusSuggestions("")
 
-	want := []string{"start", "review", "standby", "blocked", "done", "canceled"}
+	want := []string{"start", "review", "standby", "maybe", "blocked", "done", "canceled"}
 	if len(suggestions) != len(want) {
 		t.Fatalf("got %d suggestions, want %d", len(suggestions), len(want))
 	}

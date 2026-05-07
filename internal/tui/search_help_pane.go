@@ -25,7 +25,7 @@ func renderSearchHelpPane(width, height int) string {
 	b.WriteString("\n")
 	b.WriteString(prefix.Render("$status") + muted.Render("  Status"))
 	b.WriteString("\n")
-	b.WriteString(muted.Render("  " + wrapValues([]string{"todo", "in_progress", "review", "standby", "done", "blocked", "canceled"}, wrapWidth)))
+	b.WriteString(muted.Render("  " + wrapValues([]string{"todo", "in_progress", "review", "standby", "maybe", "done", "blocked", "canceled"}, wrapWidth)))
 	b.WriteString("\n")
 	b.WriteString(prefix.Render("^type") + muted.Render("  Task type"))
 	b.WriteString("\n")

@@ -20,7 +20,7 @@ type SLField struct {
 
 var smartListFields = []SLField{
 	{Name: "type", Operations: []string{"equals", "not_equals"}, ValueType: "enum", EnumValues: []string{"epic", "story", "task", "bug", "idea"}},
-	{Name: "status", Operations: []string{"equals", "not_equals"}, ValueType: "enum", EnumValues: []string{"todo", "in_progress", "review", "standby", "blocked", "done", "canceled"}},
+	{Name: "status", Operations: []string{"equals", "not_equals"}, ValueType: "enum", EnumValues: []string{"todo", "in_progress", "review", "standby", "maybe", "blocked", "done", "canceled"}},
 	{Name: "priority", Operations: []string{"equals", "less_than", "greater_than"}, ValueType: "enum", EnumValues: []string{"1", "2", "3", "4", "5"}},
 	{Name: "tags", Operations: []string{"contains"}, ValueType: "text"},
 	{Name: "due_date", Operations: []string{"equals"}, ValueType: "enum", EnumValues: []string{"overdue", "today", "this_week", "none"}},

@@ -23,6 +23,7 @@ var statusPickerEntries = []statusPickerEntry{
 	{models.StatusInProgress, "s", "in progress"},
 	{models.StatusReview, "r", "review"},
 	{models.StatusStandby, "S", "standby"},
+	{models.StatusMaybe, "m", "maybe"},
 	{models.StatusDone, "d", "done"},
 	{models.StatusBlocked, "b", "blocked"},
 	{models.StatusCanceled, "x", "canceled"},
