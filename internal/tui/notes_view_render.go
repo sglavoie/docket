@@ -49,12 +49,9 @@ func (m *NotesViewModel) View() tea.View {
 		b.WriteString("\n\n")
 	}
 
-	// Fullscreen mode: show only the focused pane using full usable height
-	usable := max(m.Height()-9, 4)
-
 	if m.fullscreenPane && m.detailsPane.Focused {
-		// Fullscreen details pane
-		fullHeight := usable
+		// Fullscreen details pane (overhead: title + \n + \n before status + status bar)
+		fullHeight := max(m.Height()-2, 4)
 		var detailsContent string
 		if len(m.notes) > 0 && m.cursor < len(m.notes) {
 			detailsContent = m.renderDetailsPane(m.notes[m.cursor], m.Width(), fullHeight)
@@ -73,7 +70,8 @@ func (m *NotesViewModel) View() tea.View {
 		b.WriteString("\n")
 		b.WriteString(m.renderStatusBar())
 	} else if m.fullscreenPane && !m.detailsPane.Focused {
-		// Fullscreen list pane: temporarily override listHeight
+		// Fullscreen list pane (same header overhead as split view)
+		usable := max(m.Height()-5, 4)
 		origListHeight := m.listHeight
 		m.listHeight = usable
 		b.WriteString(m.renderListPane())

@@ -298,9 +298,8 @@ func (m *NotesViewModel) Init() tea.Cmd {
 
 func (m *NotesViewModel) SetSize(width, height int) {
 	m.BaseView.SetSize(width, height)
-	// Split: top half for list, 1 for divider, bottom half for details
-	// Reserve 4 lines for title/count header, 2 for tab bar, and 2 for footer
-	usable := max(height-9, 4)
+	// Reserve 4 for header (title + tab bar + count + blank line), 1 for status bar
+	usable := max(height-4, 4)
 	m.listHeight = usable / 2
 	m.detailsPane.Height = usable - m.listHeight - 1 // -1 for divider
 }
