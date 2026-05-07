@@ -434,11 +434,33 @@ func (m *OutlinerModel) buildKeyMap() *keymap.KeyMap {
 	moveEntries := keymap.MoveGroup(keymap.MoveDeps{
 		MoveToSection: func(section string) keymap.Action {
 			return func() (tea.Model, tea.Cmd) {
-				return m.handleSectionMovePrefixOutliner(section, cursorTask())
+				if m.project == nil {
+					if m.multiSelectMode && len(m.selectedTasks) > 0 {
+						m.setStatus("bulk section move not supported in cross-project mode")
+						return m, nil
+					}
+					return m.crossSendTaskToSection(section)
+				}
+				if m.multiSelectMode && len(m.selectedTasks) > 0 {
+					return m.sendTasksToSectionBulk(section)
+				}
+				return m.sendTaskToSection(cursorTask(), section)
 			}
 		},
-		MoveToTop:    func() (tea.Model, tea.Cmd) { return m.handleSectionMovePrefixOutliner("K", cursorTask()) },
-		MoveToBottom: func() (tea.Model, tea.Cmd) { return m.handleSectionMovePrefixOutliner("J", cursorTask()) },
+		MoveToTop: func() (tea.Model, tea.Cmd) {
+			task := cursorTask()
+			if task == nil {
+				return m, nil
+			}
+			return m.moveTaskToPosition(task, true)
+		},
+		MoveToBottom: func() (tea.Model, tea.Cmd) {
+			task := cursorTask()
+			if task == nil {
+				return m, nil
+			}
+			return m.moveTaskToPosition(task, false)
+		},
 	})
 	if len(moveEntries) > 0 && moveEntries[0].PrefixNode != nil {
 		moveEntries[0].PrefixNode.Gate = hasTask

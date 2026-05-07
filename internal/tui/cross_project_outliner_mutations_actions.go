@@ -40,42 +40,47 @@ func (m *OutlinerModel) crossToggleDimmed(row outlinerRow, proj *models.Project)
 	return m, result.Cmd
 }
 
+// crossSendTaskToSection moves the cursor task to the specified section in cross-project mode.
+func (m *OutlinerModel) crossSendTaskToSection(section string) (tea.Model, tea.Cmd) {
+	row, proj, valid := m.crossGetMutationTarget()
+	if !valid {
+		return m, nil
+	}
+	task := row.task
+	label := "Move to " + section
+	if section == "" {
+		label = "Move to Active"
+	}
+	m.crossUndoCtx.Set(label, task.Title)
+	m.crossUndoCtx.ProjectIDs = []string{proj.ID}
+	svc := m.projectService
+	if m.config != nil && m.config.UndoHistoryDepth != nil && *m.config.UndoHistoryDepth > 0 {
+		_ = svc.RecordUndoSnapshot(proj, label, task.Title, *m.config.UndoHistoryDepth, nil)
+	}
+	if err := svc.Backup(proj); err != nil {
+		return m, func() tea.Msg { return ErrorMsg{Err: fmt.Errorf("backup failed: %w", err)} }
+	}
+	proj.MutateTask(task.ID, func(t *models.Task) {
+		t.SetSection(section)
+		if section == "" {
+			t.Activate()
+		}
+	})
+	proj.RelocateTaskToEndOfSection(task.ID, section)
+	if err := svc.Save(proj); err != nil {
+		return m, func() tea.Msg { return ErrorMsg{Err: fmt.Errorf("save failed: %w", err)} }
+	}
+	_ = svc.Load(proj)
+	m.rebuildRows()
+	return m, nil
+}
+
 // crossHandleSectionMove handles the m prefix in cross-project mode.
 // Section keys (ma/mn/mi/mw/ms/mr/mS) move the cursor task to a section.
 // mK/mJ delegate to moveTaskToPosition which already handles cross-project.
 func (m *OutlinerModel) crossHandleSectionMove(key string, cursorTask *models.Task) (tea.Model, tea.Cmd) {
 	if section, ok := sectionForMoveKey(key); ok {
-		row, proj, valid := m.crossGetMutationTarget()
-		if !valid {
-			return m, nil
-		}
-		task := row.task
-		label := "Move to " + section
-		if section == "" {
-			label = "Move to Active"
-		}
-		m.crossUndoCtx.Set(label, task.Title)
-		m.crossUndoCtx.ProjectIDs = []string{proj.ID}
-		svc := m.projectService
-		if m.config != nil && m.config.UndoHistoryDepth != nil && *m.config.UndoHistoryDepth > 0 {
-			_ = svc.RecordUndoSnapshot(proj, label, task.Title, *m.config.UndoHistoryDepth, nil)
-		}
-		if err := svc.Backup(proj); err != nil {
-			return m, func() tea.Msg { return ErrorMsg{Err: fmt.Errorf("backup failed: %w", err)} }
-		}
-		proj.MutateTask(task.ID, func(t *models.Task) {
-			t.SetSection(section)
-			if section == "" {
-				t.Activate()
-			}
-		})
-		proj.RelocateTaskToEndOfSection(task.ID, section)
-		if err := svc.Save(proj); err != nil {
-			return m, func() tea.Msg { return ErrorMsg{Err: fmt.Errorf("save failed: %w", err)} }
-		}
-		_ = svc.Load(proj)
-		m.rebuildRows()
-		return m, nil
+		return m.crossSendTaskToSection(section)
 	}
 	switch key {
 	case "K":
