@@ -14,14 +14,10 @@ import (
 //
 // In multi-select mode with selections active, routes to crossApplyBulkStatusChange.
 //
-// Returns (model, cmd, true) when the key maps to a status and was consumed.
-// Returns (nil, nil, false) when not in cross-project mode or no status mapping.
-func (m *OutlinerModel) crossHandleStatusMutation(key string) (tea.Model, tea.Cmd, bool) {
+// Returns (model, cmd, true) when the status change was consumed.
+// Returns (nil, nil, false) when not in cross-project mode.
+func (m *OutlinerModel) crossHandleStatusMutation(status models.TaskStatus) (tea.Model, tea.Cmd, bool) {
 	if m.project != nil {
-		return nil, nil, false
-	}
-	status, ok := StatusForPrefixKey(key)
-	if !ok {
 		return nil, nil, false
 	}
 	if m.multiSelectMode && len(m.selectedTasks) > 0 {

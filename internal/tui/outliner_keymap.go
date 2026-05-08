@@ -328,7 +328,7 @@ func (m *OutlinerModel) buildKeyMap() *keymap.KeyMap {
 					return m, nil
 				}
 				if m.project == nil {
-					if model, cmd, handled := m.crossHandleStatusMutation(string(s)); handled {
+					if model, cmd, handled := m.crossHandleStatusMutation(s); handled {
 						return model, cmd
 					}
 					return m, nil

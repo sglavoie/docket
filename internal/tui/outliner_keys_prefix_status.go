@@ -12,8 +12,10 @@ import (
 func (m *OutlinerModel) handleStatusPrefix(key string, cursorTask *models.Task) (tea.Model, tea.Cmd) {
 	// Cross-project: route to resolved project; recurrence ops need single-project context.
 	if m.project == nil {
-		if model, cmd, handled := m.crossHandleStatusMutation(key); handled {
-			return model, cmd
+		if status, ok := StatusForPrefixKey(key); ok {
+			if model, cmd, handled := m.crossHandleStatusMutation(status); handled {
+				return model, cmd
+			}
 		}
 		return m, nil
 	}
