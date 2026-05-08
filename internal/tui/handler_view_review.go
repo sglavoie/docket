@@ -119,6 +119,12 @@ func (m *AppModel) handleViewReviewMessages(msg tea.Msg) (bool, tea.Cmd) { //nol
 		m.showView(ViewPipelineHub, hub)
 		return true, nil
 
+	case PipelineHubCaptureMsg:
+		m.popView()
+		return true, func() tea.Msg {
+			return ShowGlobalProjectPickerMsg{Purpose: msg.Purpose}
+		}
+
 	case FocusBoardSelectMsg:
 		return m.popAndNavigateToTask(msg.Task, msg.Project)
 

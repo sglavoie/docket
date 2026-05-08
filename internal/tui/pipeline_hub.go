@@ -12,6 +12,10 @@ import (
 // ShowPipelineHubMsg opens the Pipeline Hub view.
 type ShowPipelineHubMsg struct{}
 
+// PipelineHubCaptureMsg is emitted when Enter is pressed on a capture entry
+// in the pipeline hub. The app pops the hub before opening the project picker.
+type PipelineHubCaptureMsg struct{ Purpose PickerPurpose }
+
 // pipelineEntry is a single row within a pipeline column.
 type pipelineEntry struct {
 	key      string   // display shortcut key
@@ -221,6 +225,10 @@ func pipelineEntryCmd(vt ViewType) tea.Cmd {
 		return func() tea.Msg { return ShowRecentActivityMsg{} }
 	case ViewRoadmap:
 		return func() tea.Msg { return ShowRoadmapMsg{} }
+	case ViewQuickCapture:
+		return func() tea.Msg { return PipelineHubCaptureMsg{Purpose: PickerPurposeQuickCapture} }
+	case ViewBulkCapture:
+		return func() tea.Msg { return PipelineHubCaptureMsg{Purpose: PickerPurposeBulkCapture} }
 	}
 	return nil
 }
