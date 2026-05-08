@@ -77,9 +77,8 @@ func (c *inboxCore) buildKeyMap() *keymap.KeyMap {
 		keymap.Bind("e", "Edit task (title/description)", "Operations", func() (tea.Model, tea.Cmd) {
 			return c.model, inboxOpenTaskEditor(c)
 		}),
-		keymap.Bind("D", "Delete task", "Operations", func() (tea.Model, tea.Cmd) {
-			inboxDeletePrompt(c, &c.confirm)
-			return c.model, nil
+		keymap.Bind("D", "Mark done", "Operations", func() (tea.Model, tea.Cmd) {
+			return c.model, c.changeTaskStatus(models.StatusDone, StatusVerb(models.StatusDone))
 		}),
 		keymap.Bind("ctrl+w", "Send to Waiting section", "Operations", func() (tea.Model, tea.Cmd) {
 			return c.model, c.sendToWaiting()

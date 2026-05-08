@@ -206,4 +206,10 @@ func ParseDate(input string) (time.Time, error) {
 	return util.ParseRelativeDate(input)
 }
 
+// ParseFlexibleDate is like ParseDate but also accepts bare shorthand without
+// the leading +: "3d" (3 days), "2w" (2 weeks), "1m" (1 month).
+func ParseFlexibleDate(input string) (time.Time, error) {
+	return util.ParseFlexibleDate(input)
+}
+
 func (m *DateInputModel) StatusBarLabel() string { return "Set Due Date" }

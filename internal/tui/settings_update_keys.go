@@ -289,6 +289,10 @@ func (m *SettingsModel) handleSpaceKey() {
 			m.recentActivityShowAll = !m.recentActivityShowAll
 		case 2: // after creation
 			m.linkedTaskJump = !m.linkedTaskJump
+		case 13: // start view
+			m.startViewCursor = (m.startViewCursor + 1) % len(startViewOptions)
+		case 14: // task form collapsed
+			m.taskFormCollapsed = !m.taskFormCollapsed
 		}
 	case tabProjectTree:
 		if local == 1 { // priority column
@@ -374,6 +378,10 @@ func (m *SettingsModel) handleLeftKey() {
 		if local == 0 {
 			m.togglePaletteTheme()
 		}
+	case tabBehavior:
+		if local == 13 && m.startViewCursor > 0 {
+			m.startViewCursor--
+		}
 	case tabProjectTree:
 		if local == 1 && m.treePriorityMode > 0 {
 			m.treePriorityMode--
@@ -431,6 +439,10 @@ func (m *SettingsModel) handleRightKey() {
 	case tabPalette:
 		if local == 0 {
 			m.togglePaletteTheme()
+		}
+	case tabBehavior:
+		if local == 13 && m.startViewCursor < len(startViewOptions)-1 {
+			m.startViewCursor++
 		}
 	case tabProjectTree:
 		if local == 1 && m.treePriorityMode < 2 {

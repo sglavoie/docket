@@ -6,8 +6,8 @@ type CommonTaskActionDeps struct {
 	ViewTask Action
 	// SnoozeDatePicker opens the snooze date picker dialog.
 	SnoozeDatePicker Action
-	// DeleteTask triggers task deletion (may show confirm dialog).
-	DeleteTask Action
+	// MarkDone marks the current task as done.
+	MarkDone Action
 	// EditTask opens inline task editing.
 	EditTask Action
 	// ToggleHelp shows or hides the help panel.
@@ -31,7 +31,7 @@ func CommonTaskActionGroup(deps CommonTaskActionDeps) []Entry {
 	entries := []Entry{
 		Bind("o", "View task details", cat, deps.ViewTask),
 		Bind("Z", "Snooze date picker", cat, deps.SnoozeDatePicker),
-		Bind("D", "Delete task", cat, deps.DeleteTask),
+		Bind("D", "Mark done", cat, deps.MarkDone),
 		Bind("e", "Edit task", cat, deps.EditTask),
 		Bind("?", "Toggle help", cat, deps.ToggleHelp),
 		Bind("*", "Toggle active flag", cat, deps.ToggleActive),

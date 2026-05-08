@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"image/color"
 
 	tea "charm.land/bubbletea/v2"
 
@@ -13,11 +14,13 @@ import (
 // confirmation dialogs. Embed this in view models to eliminate duplicate
 // field declarations and HasPendingPrefix() methods.
 type InteractiveViewState struct {
-	cursor        int
-	cursorFlash   bool
-	pendingPrefix string
-	statusMessage string
-	confirm       ConfirmDialog
+	cursor          int
+	cursorFlash     bool
+	mutationFlash   bool
+	mutationFlashBg color.Color
+	pendingPrefix   string
+	statusMessage   string
+	confirm         ConfirmDialog
 	// Dispatcher is the declarative keymap dispatcher for this view.
 	// When non-nil it is the authoritative source of prefix state;
 	// pendingPrefix is kept for views not yet migrated.

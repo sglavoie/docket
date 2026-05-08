@@ -27,6 +27,9 @@ func (m *KanbanModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 // handleKanbanKey dispatches key press events for the kanban view.
 func (m *KanbanModel) handleKanbanKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
+	if m.showModePicker {
+		return m.handleModePickerKey(msg)
+	}
 	// Axis manager captures all keys when open (needs full KeyPressMsg).
 	if m.showAxisManager {
 		return m.handleAxisManagerKey(msg)

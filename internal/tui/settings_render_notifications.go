@@ -48,7 +48,7 @@ func (m *SettingsModel) renderNotificationsReviewsSection() string {
 	b.WriteString("\n")
 
 	b.WriteString(renderFormLabelWithWidth("Review Day: ", labelWidth, m.focusIndex == base+3))
-	b.WriteString(renderEnumSelector(weeklyReviewDayOptions, m.alertWeeklyReviewDay, m.focusIndex == base+3))
+	b.WriteString(renderEnumSelector(weeklyReviewDayOptions, m.alertWeeklyReviewDay, m.focusIndex == base+3, m.width-indent))
 	b.WriteString("\n")
 	b.WriteString(renderFormFieldDesc("Day of week for weekly review reminder", indent, m.focusIndex == base+3))
 

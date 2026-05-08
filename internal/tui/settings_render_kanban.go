@@ -24,7 +24,7 @@ func (m *SettingsModel) renderKanbanTab() string {
 
 	// Default Mode
 	b.WriteString(renderFormLabelWithWidth("Default Mode: ", labelWidth, m.focusIndex == base+0))
-	b.WriteString(renderEnumSelector(kanbanModeOptions, m.kanbanDefaultModeCursor, m.focusIndex == base+0))
+	b.WriteString(renderEnumSelector(kanbanModeOptions, m.kanbanDefaultModeCursor, m.focusIndex == base+0, m.width-indent))
 	b.WriteString("\n")
 	b.WriteString(renderFormFieldDesc("Column axis used when opening kanban", indent, m.focusIndex == base+0))
 	b.WriteString("\n")
@@ -52,7 +52,7 @@ func (m *SettingsModel) renderKanbanTab() string {
 
 	// Detail Pane Height
 	b.WriteString(renderFormLabelWithWidth("Detail Pane Height: ", labelWidth, m.focusIndex == base+4))
-	b.WriteString(renderEnumSelector(kanbanDetailHeightOptions, m.kanbanDetailHeightCursor, m.focusIndex == base+4))
+	b.WriteString(renderEnumSelector(kanbanDetailHeightOptions, m.kanbanDetailHeightCursor, m.focusIndex == base+4, m.width-indent))
 	b.WriteString("\n")
 	b.WriteString(renderFormFieldDesc("Number of lines for the detail pane (1–5)", indent, m.focusIndex == base+4))
 	b.WriteString("\n")

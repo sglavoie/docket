@@ -80,7 +80,7 @@ func (m *SettingsModel) renderGeneralTab() string {
 	b.WriteString("\n")
 
 	b.WriteString(renderFormLabelWithWidth("Default View: ", labelWidth, m.focusIndex == base+4))
-	b.WriteString(renderEnumSelector(defaultProjectViewOptions, m.defaultViewCursor, m.focusIndex == base+4))
+	b.WriteString(renderEnumSelector(defaultProjectViewOptions, m.defaultViewCursor, m.focusIndex == base+4, m.width-indent))
 	b.WriteString("\n")
 	b.WriteString(renderFormFieldDesc("View shown when opening a project", indent, m.focusIndex == base+4))
 

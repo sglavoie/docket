@@ -881,9 +881,9 @@ func (m *ProjectTreeModel) buildKeyMap() *keymap.KeyMap {
 			}
 			return m, nil
 		}),
-		keymap.Bind("D", "Delete task", "Task Operations", func() (tea.Model, tea.Cmd) {
-			handleDeleteConfirmKey(m)
-			return m, nil
+		keymap.Bind("D", "Mark done", "Task Operations", func() (tea.Model, tea.Cmd) {
+			_, cmd := m.handleStatusTransition(models.StatusDone, visible())
+			return m, cmd
 		}),
 		keymap.Bind("*", "Toggle active flag", "Task Operations", func() (tea.Model, tea.Cmd) {
 			cmd, _ := handleToggleActiveKey(m) //nolint:errcheck

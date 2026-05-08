@@ -104,16 +104,19 @@ func buildTestProject() *models.Project {
 }
 
 func rowTitles(rows []outlinerRow) []string {
-	titles := make([]string, len(rows))
-	for i, r := range rows {
+	var titles []string
+	for _, r := range rows {
+		if r.IsSeparator {
+			continue
+		}
 		if r.IsSectionHeader {
 			displayName := r.SectionName
 			if displayName == "" {
 				displayName = "Active"
 			}
-			titles[i] = "[" + displayName + "]"
+			titles = append(titles, "["+displayName+"]")
 		} else {
-			titles[i] = r.task.Title
+			titles = append(titles, r.task.Title)
 		}
 	}
 	return titles

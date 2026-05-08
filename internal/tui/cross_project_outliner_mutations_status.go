@@ -38,8 +38,9 @@ func (m *OutlinerModel) crossHandleStatusMutation(status models.TaskStatus) (tea
 	if result.StatusMessage != "" {
 		m.setStatus(result.StatusMessage)
 	}
-	m.rebuildRows()
-	return m, result.Cmd, true
+	m.mutationFlash = true
+	m.mutationFlashBg = statusMutationFlashBg(status)
+	return m, tea.Batch(result.Cmd, mutationFlashTimeout()), true
 }
 
 // crossApplyBulkStatusChange collects selected tasks from current rows, shows a

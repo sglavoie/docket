@@ -164,11 +164,14 @@ func (m *AppModel) handleEscKey() (bool, tea.Cmd) {
 	}
 	if m.currentView() != ViewDashboard {
 		closingView := m.currentView()
-		// Give the closing view a chance to reset any interactive state
-		// (text inputs, edit modes) before it is popped from the stack.
+		// Capture the view label for the Esc undo hint before any state changes.
+		var closingLabel string
 		if view := m.views.Get(closingView); view != nil {
 			if resetter, ok := view.(ViewExitResetter); ok {
 				resetter.OnExit()
+			}
+			if labeler, ok := view.(StatusBarLabeler); ok {
+				closingLabel = labeler.StatusBarLabel()
 			}
 		}
 		// Save outliner filter state so it persists across navigation.
@@ -199,6 +202,7 @@ func (m *AppModel) handleEscKey() (bool, tea.Cmd) {
 			m.outliner.rebuildRows()
 		}
 		// Restore previous project when popping a stacked project tree
+		statusAlreadySet := false
 		if closingView == ViewProjectTree && m.currentView() == ViewProjectTree && len(m.projectStack) > 0 {
 			prevID := m.projectStack[len(m.projectStack)-1]
 			m.projectStack = m.projectStack[:len(m.projectStack)-1]
@@ -206,7 +210,12 @@ func (m *AppModel) handleEscKey() (bool, tea.Cmd) {
 				m.switchToProject(prev, true)
 			} else {
 				m.setInfoStatus("Previous project no longer exists")
+				statusAlreadySet = true
 			}
+		}
+		if !statusAlreadySet && closingLabel != "" {
+			m.setInfoStatus("Closed " + closingLabel + " — Alt+O to reopen")
+			return true, tea.Batch(cmd, defaultStatusTimeout())
 		}
 		return true, cmd
 	}

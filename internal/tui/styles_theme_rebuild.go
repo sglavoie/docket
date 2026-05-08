@@ -47,6 +47,14 @@ func rebuildTaskStyles() {
 	DueSoonStyle = lipgloss.NewStyle().Foreground(ColorWarning)
 	DependencyStyle = lipgloss.NewStyle().Foreground(ColorSecondary)
 
+	if activeThemeName == "light" {
+		BlockedRowStyle = lipgloss.NewStyle().Background(lipgloss.Color("#fde8e8"))
+		OverdueRowStyle = lipgloss.NewStyle().Background(lipgloss.Color("#fef3e2"))
+	} else {
+		BlockedRowStyle = lipgloss.NewStyle().Background(lipgloss.Color("#2e1515"))
+		OverdueRowStyle = lipgloss.NewStyle().Background(lipgloss.Color("#2d1f0e"))
+	}
+
 	DueDateStyle = lipgloss.NewStyle().Foreground(ColorMuted)
 	DueTodayStyle = lipgloss.NewStyle().Foreground(ColorWarning)
 	blockedDepsFg := lipgloss.Color("#c0caf5")

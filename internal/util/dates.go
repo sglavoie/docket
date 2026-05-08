@@ -47,6 +47,7 @@ var (
 	inDurationRe     = regexp.MustCompile(`^in\s+(\d+)\s+(day|days|week|weeks|month|months)$`)
 	time12hRe        = regexp.MustCompile(`^(\d{1,2})(?::(\d{2}))?(am|pm)$`)
 	time24hRe        = regexp.MustCompile(`^(\d{2}):(\d{2})$`)
+	flexShorthandRe  = regexp.MustCompile(`^(\d+)(d|w|m)$`)
 )
 
 // weekdays maps weekday name variations to time.Weekday values.
@@ -214,6 +215,34 @@ func ParseRelativeDateWithConfig(input, weekEndDay string) (time.Time, error) {
 	}
 
 	return time.Time{}, fmt.Errorf("unrecognized date format: %s", input)
+}
+
+// ParseFlexibleDate is like ParseRelativeDate but also accepts bare shorthand
+// without the leading +: "3d" (3 days), "2w" (2 weeks), "1m" (1 month).
+func ParseFlexibleDate(input string) (time.Time, error) {
+	return ParseFlexibleDateWithConfig(input, "sun")
+}
+
+// ParseFlexibleDateWithConfig is like ParseRelativeDateWithConfig but also
+// accepts bare shorthand: "3d", "2w", "1m".
+func ParseFlexibleDateWithConfig(input, weekEndDay string) (time.Time, error) {
+	t, err := ParseRelativeDateWithConfig(input, weekEndDay)
+	if err == nil {
+		return t, nil
+	}
+	if match := flexShorthandRe.FindStringSubmatch(strings.ToLower(strings.TrimSpace(input))); len(match) == 3 {
+		n, _ := strconv.Atoi(match[1])
+		today := StartOfDay(time.Now())
+		switch match[2] {
+		case "d":
+			return today.AddDate(0, 0, n), nil
+		case "w":
+			return today.AddDate(0, 0, n*7), nil
+		case "m":
+			return today.AddDate(0, n, 0), nil
+		}
+	}
+	return time.Time{}, err
 }
 
 // looksLikeTime returns true if s matches a 12-hour or 24-hour time token.

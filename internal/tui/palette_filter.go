@@ -150,6 +150,10 @@ func (m *CommandPaletteModel) filterItems() { //nolint:gocyclo
 		for i, item := range sorted {
 			m.filteredItems[i] = filteredPaletteItem{Item: item}
 		}
+		// Inject "Frequent" section when browsing without any filter
+		if categoryFilter == "" && !isRecentFilter {
+			m.injectFrequentItems()
+		}
 		m.restoreCursorPosition()
 		return
 	}
@@ -296,6 +300,47 @@ func (m *CommandPaletteModel) isItemPinned(item PaletteItem) bool {
 		return false
 	}
 	return m.pinnedCommands[item.Command.Name]
+}
+
+// injectFrequentItems prepends a "Frequent" section to filteredItems using the top items
+// from recentPaletteSelections sorted by usage count. Only items used more than once are shown.
+// The frequent items are marked with IsFrequent=true; they are duplicates of regular items.
+func (m *CommandPaletteModel) injectFrequentItems() {
+	if len(recentPaletteSelections) == 0 {
+		return
+	}
+
+	// Sort by count descending to find most-used items
+	ranked := make([]recentSelection, len(recentPaletteSelections))
+	copy(ranked, recentPaletteSelections)
+	sort.SliceStable(ranked, func(i, j int) bool {
+		return ranked[i].Count > ranked[j].Count
+	})
+
+	const maxFrequent = 7
+	var frequentItems []filteredPaletteItem
+	for _, rs := range ranked {
+		if rs.Count < 2 || len(frequentItems) >= maxFrequent {
+			break
+		}
+		// Find the matching PaletteItem in the already-built filteredItems
+		for _, fi := range m.filteredItems {
+			id := m.getItemID(fi.Item)
+			if fi.Item.Category == rs.Category && id == rs.ID {
+				frequentItems = append(frequentItems, filteredPaletteItem{
+					Item:       fi.Item,
+					IsFrequent: true,
+				})
+				break
+			}
+		}
+	}
+
+	if len(frequentItems) == 0 {
+		return
+	}
+
+	m.filteredItems = append(frequentItems, m.filteredItems...)
 }
 
 // persistCategoryFilter saves the category filter to config when a category prefix is used.

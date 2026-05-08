@@ -24,6 +24,7 @@ func NewCommandPaletteModel(cfg *config.Config, manager *config.Manager, registr
 		recentPaletteSelections = append(recentPaletteSelections, recentSelection{
 			Category: ItemCategory(item.Category),
 			ID:       item.ID,
+			Count:    item.Count,
 		})
 	}
 

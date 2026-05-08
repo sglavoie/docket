@@ -18,6 +18,10 @@ func (m *SettingsModel) renderBehaviorTab() string {
 		return m.renderBehaviorPopupsSection()
 	case 5:
 		return m.renderBehaviorSectionLimitsSection()
+	case 6:
+		return m.renderBehaviorStartupSection()
+	case 7:
+		return m.renderBehaviorTaskFormSection()
 	default:
 		return m.renderBehaviorRecentActivitySection()
 	}
@@ -162,6 +166,34 @@ func (m *SettingsModel) renderBehaviorSectionLimitsSection() string {
 			b.WriteString("\n")
 		}
 	}
+
+	return b.String()
+}
+
+func (m *SettingsModel) renderBehaviorStartupSection() string {
+	var b strings.Builder
+	const labelWidth = 17
+	const indent = 19
+	base := subTabFieldStart(tabBehavior, 6)
+
+	b.WriteString(renderFormLabelWithWidth("Start view: ", labelWidth, m.focusIndex == base+0))
+	b.WriteString(renderEnumSelector(startViewOptions, m.startViewCursor, m.focusIndex == base+0, m.width-indent))
+	b.WriteString("\n")
+	b.WriteString(renderFormFieldDesc("View shown when the application starts", indent, m.focusIndex == base+0))
+
+	return b.String()
+}
+
+func (m *SettingsModel) renderBehaviorTaskFormSection() string {
+	var b strings.Builder
+	const labelWidth = 17
+	const indent = 19
+	base := subTabFieldStart(tabBehavior, 7)
+
+	b.WriteString(renderFormLabelWithWidth("Default mode: ", labelWidth, m.focusIndex == base+0))
+	b.WriteString(renderFormToggle("Collapsed", "Expanded", m.taskFormCollapsed, m.focusIndex == base+0))
+	b.WriteString("\n")
+	b.WriteString(renderFormFieldDesc("Show only essential fields when opening the task form", indent, m.focusIndex == base+0))
 
 	return b.String()
 }

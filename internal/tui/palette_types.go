@@ -93,6 +93,7 @@ var categoryOrder = []ItemCategory{
 type recentSelection struct {
 	Category ItemCategory
 	ID       string // command name, task ID, project slug, tag, or section name
+	Count    int    // total number of times this item has been selected
 }
 
 // recentPaletteSelections stores recently selected items for the current session.
@@ -152,6 +153,7 @@ type filteredPaletteItem struct {
 	NamePositions []int      // Positions of matched characters in Name
 	MatchedField  MatchField // Which field was matched (for preview display)
 	MatchedTerm   string     // The search term that matched (for preview display)
+	IsFrequent    bool       // Item appears in the Frequent section (duplicate of a regular item)
 }
 
 // inlineTaskPreview holds parsed metadata for inline task creation preview.

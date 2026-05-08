@@ -230,6 +230,11 @@ func (m *OutlinerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.cursorFlash = false
 		return m, nil
 
+	case MutationFlashClearMsg:
+		m.mutationFlash = false
+		m.rebuildRows()
+		return m, nil
+
 	case CommentAddedMsg:
 		// Rebuild rows so cloned tasks from filterTaskTree() pick up the
 		// in-place comment mutation on the original task.

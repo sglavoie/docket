@@ -81,6 +81,44 @@ func (m *KanbanModel) toggleAxisMode(mode KanbanMode) {
 	}
 }
 
+// handleModePickerKey processes key events when the mode picker popup is open.
+func (m *KanbanModel) handleModePickerKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
+	modes := AllKanbanModes()
+	key := msg.String()
+	switch key {
+	case "esc", "`":
+		m.showModePicker = false
+	default:
+		for i, mode := range modes {
+			if key == fmt.Sprintf("%d", i+1) {
+				m.showModePicker = false
+				m.mode = mode
+				m.rebuildCols()
+				m.clampCursor()
+				break
+			}
+		}
+	}
+	return m, nil
+}
+
+// buildModePickerHints builds the PrefixHints for the mode picker popup.
+func (m *KanbanModel) buildModePickerHints() PrefixHints {
+	modes := AllKanbanModes()
+	hints := make([]PrefixHint, 0, len(modes))
+	for i, mode := range modes {
+		icon := KanbanModeIcons[mode]
+		name := KanbanModeNames[mode]
+		hints = append(hints, PrefixHint{
+			Key:          fmt.Sprintf("%d", i+1),
+			Description:  name,
+			RenderedIcon: icon,
+			Active:       mode == m.mode,
+		})
+	}
+	return PrefixHints{"`": hints}
+}
+
 // cycleAxisMode advances to the next enabled mode (`).
 func (m *KanbanModel) cycleAxisMode() {
 	m.cycleAxisModeBy(1)

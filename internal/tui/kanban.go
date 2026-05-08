@@ -38,6 +38,7 @@ type KanbanModel struct {
 	// UI state
 	detailPaneVisible bool
 	showAxisManager   bool
+	showModePicker    bool
 	axisCursor        int // cursor position within axis manager popup
 	width             int
 	height            int
@@ -291,7 +292,7 @@ var KanbanNavigationPrefixHints = []PrefixHint{
 // or another modal sub-component is open, preventing the global Esc handler
 // from popping the view.
 func (m *KanbanModel) ShouldCaptureEsc() bool {
-	return m.showAxisManager || m.multiSelectMode || (m.Dispatcher != nil && m.Dispatcher.HasPendingPrefix())
+	return m.showAxisManager || m.showModePicker || m.multiSelectMode || (m.Dispatcher != nil && m.Dispatcher.HasPendingPrefix())
 }
 
 // enabledModeList returns the ordered list of modes that are currently enabled.

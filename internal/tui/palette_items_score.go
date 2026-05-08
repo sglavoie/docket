@@ -103,19 +103,32 @@ func (m *CommandPaletteModel) getItemID(item PaletteItem) string {
 }
 
 // recordRecentSelection adds an item to the recent selections list.
-// Most recent items are at the front. Duplicates are moved to the front.
+// Most recent items are at the front. Duplicates are moved to the front with incremented count.
 func recordRecentSelection(item PaletteItem, itemID string) {
+	existingCount := 0
 	for i, recent := range recentPaletteSelections {
 		if recent.Category == item.Category && recent.ID == itemID {
+			existingCount = recent.Count
 			recentPaletteSelections = append(recentPaletteSelections[:i], recentPaletteSelections[i+1:]...)
 			break
 		}
 	}
 
-	recentPaletteSelections = append([]recentSelection{{Category: item.Category, ID: itemID}}, recentPaletteSelections...)
+	recentPaletteSelections = append([]recentSelection{{Category: item.Category, ID: itemID, Count: existingCount + 1}}, recentPaletteSelections...)
 	if len(recentPaletteSelections) > maxRecentItems {
 		recentPaletteSelections = recentPaletteSelections[:maxRecentItems]
 	}
+}
+
+// getItemFrequencyCount returns how many times an item has been selected.
+func (m *CommandPaletteModel) getItemFrequencyCount(item PaletteItem) int {
+	itemID := m.getItemID(item)
+	for _, recent := range recentPaletteSelections {
+		if recent.Category == item.Category && recent.ID == itemID {
+			return recent.Count
+		}
+	}
+	return 0
 }
 
 // persistRecentSelections saves the current recent selections to config.
@@ -129,6 +142,7 @@ func (m *CommandPaletteModel) persistRecentSelections() {
 		configItems = append(configItems, config.RecentPaletteItem{
 			Category: string(r.Category),
 			ID:       r.ID,
+			Count:    r.Count,
 		})
 	}
 

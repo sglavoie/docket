@@ -584,12 +584,8 @@ func (m *WeeklyReviewModel) buildKeyMap() *keymap.KeyMap {
 			}
 			return m, func() tea.Msg { return SetSnoozeDateMsg{Task: task, Project: project} }
 		},
-		DeleteTask: func() (tea.Model, tea.Cmd) {
-			task, _ := m.getTaskRef()
-			if task != nil {
-				m.showDeleteConfirm(task.ShortID)
-			}
-			return m, nil
+		MarkDone: func() (tea.Model, tea.Cmd) {
+			return taskOpsChangeStatus(m, models.StatusDone)
 		},
 		EditTask: func() (tea.Model, tea.Cmd) {
 			task, project := m.getTaskRef()

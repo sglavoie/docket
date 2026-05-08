@@ -342,8 +342,9 @@ func (m *OutlinerModel) buildKeyMap() *keymap.KeyMap {
 					return m, func() tea.Msg { return ErrorMsg{Err: result.Err} }
 				}
 				m.setStatus(result.StatusMessage)
-				m.rebuildRows()
-				return m, result.Cmd
+				m.mutationFlash = true
+				m.mutationFlashBg = statusMutationFlashBg(s)
+				return m, tea.Batch(result.Cmd, mutationFlashTimeout())
 			}
 		},
 		HasRecurrence: func() bool {
@@ -779,9 +780,8 @@ func (m *OutlinerModel) buildKeyMap() *keymap.KeyMap {
 			model, cmd, _ := m.handleTaskViewKey("E", onHeader())
 			return model, cmd
 		}),
-		keymap.Bind("D", "Delete task", "Task Operations", func() (tea.Model, tea.Cmd) {
-			model, cmd, _ := m.handleTaskViewKey("D", onHeader())
-			return model, cmd
+		keymap.Bind("D", "Mark done", "Task Operations", func() (tea.Model, tea.Cmd) {
+			return m.handleStatusPrefix("d", cursorTask())
 		}),
 		keymap.Bind("ctrl+f", "Filter summary", "Filters", func() (tea.Model, tea.Cmd) {
 			model, cmd, _ := m.handleTaskViewKey("ctrl+f", onHeader())

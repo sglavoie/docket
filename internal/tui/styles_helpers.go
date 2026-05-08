@@ -1,9 +1,12 @@
 package tui
 
 import (
+	"image/color"
 	"strings"
 
 	"charm.land/lipgloss/v2"
+
+	"github.com/sglavoie/tt/internal/models"
 )
 
 // Status icon constants for TUI rendering.
@@ -153,6 +156,36 @@ func GetStatusBadge(status, icon string) string {
 		return CanceledBadgeStyle.Render(icon)
 	default:
 		return NormalStyle.Render(icon)
+	}
+}
+
+// statusMutationFlashBg returns a subtle background color for a status-specific mutation flash.
+func statusMutationFlashBg(status models.TaskStatus) color.Color {
+	if activeThemeName == "light" {
+		switch status {
+		case models.StatusDone:
+			return lipgloss.Color("#d4edda")
+		case models.StatusBlocked:
+			return lipgloss.Color("#f8d7da")
+		case models.StatusInProgress:
+			return lipgloss.Color("#fff3cd")
+		case models.StatusReview:
+			return lipgloss.Color("#e6d6f8")
+		default:
+			return ColorFlashBg
+		}
+	}
+	switch status {
+	case models.StatusDone:
+		return lipgloss.Color("#1a3825")
+	case models.StatusBlocked:
+		return lipgloss.Color("#3d1515")
+	case models.StatusInProgress:
+		return lipgloss.Color("#3d2e00")
+	case models.StatusReview:
+		return lipgloss.Color("#1f1f3d")
+	default:
+		return ColorFlashBg
 	}
 }
 

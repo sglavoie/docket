@@ -18,18 +18,35 @@ func (m *CommandPaletteModel) countLinesForRange(startIdx, endIdx int, showHeade
 
 	lines := 0
 	var currentCategory ItemCategory
+	var inFrequentSection bool
 	if startIdx > 0 {
-		currentCategory = m.filteredItems[startIdx-1].Item.Category
+		prev := m.filteredItems[startIdx-1]
+		inFrequentSection = prev.IsFrequent
+		if !inFrequentSection {
+			currentCategory = prev.Item.Category
+		}
 	}
 
 	for i := startIdx; i <= endIdx; i++ {
-		item := m.filteredItems[i].Item
-		if showHeaders && item.Category != currentCategory {
-			if currentCategory != "" {
+		fi := m.filteredItems[i]
+		if showHeaders {
+			if fi.IsFrequent && !inFrequentSection {
+				// Start of frequent section: one header line, no blank before it
 				lines++
+				inFrequentSection = true
+			} else if !fi.IsFrequent && inFrequentSection {
+				// Transition from frequent to regular: blank separator + category header
+				lines++ // blank separator
+				lines++ // category header
+				currentCategory = fi.Item.Category
+				inFrequentSection = false
+			} else if !fi.IsFrequent && fi.Item.Category != currentCategory {
+				if currentCategory != "" {
+					lines++ // blank separator
+				}
+				lines++ // category header
+				currentCategory = fi.Item.Category
 			}
-			lines++
-			currentCategory = item.Category
 		}
 		lines++
 	}
@@ -113,8 +130,13 @@ func (m *CommandPaletteModel) renderItemList() string {
 	scrollOffset := m.calculateScrollOffset(maxVisible, showHeaders)
 
 	var currentCategory ItemCategory
+	var inFrequentSection bool
 	if scrollOffset > 0 {
-		currentCategory = m.filteredItems[scrollOffset-1].Item.Category
+		prev := m.filteredItems[scrollOffset-1]
+		inFrequentSection = prev.IsFrequent
+		if !inFrequentSection {
+			currentCategory = prev.Item.Category
+		}
 	}
 
 	linesRendered := 0
@@ -122,21 +144,48 @@ func (m *CommandPaletteModel) renderItemList() string {
 		filtered := m.filteredItems[i]
 		item := filtered.Item
 
-		if showHeaders && item.Category != currentCategory {
-			if currentCategory != "" {
+		if showHeaders {
+			if filtered.IsFrequent && !inFrequentSection {
+				// Start of frequent section
+				b.WriteString(m.renderFrequentHeader())
+				b.WriteString("\n")
+				linesRendered++
+				inFrequentSection = true
+				if linesRendered >= maxVisible {
+					break
+				}
+			} else if !filtered.IsFrequent && inFrequentSection {
+				// Transition from frequent to regular section
+				inFrequentSection = false
 				b.WriteString("\n")
 				linesRendered++
 				if linesRendered >= maxVisible {
 					break
 				}
-			}
-			header := m.renderCategoryHeader(item.Category)
-			b.WriteString(header)
-			b.WriteString("\n")
-			linesRendered++
-			currentCategory = item.Category
-			if linesRendered >= maxVisible {
-				break
+				header := m.renderCategoryHeader(item.Category)
+				b.WriteString(header)
+				b.WriteString("\n")
+				linesRendered++
+				currentCategory = item.Category
+				if linesRendered >= maxVisible {
+					break
+				}
+			} else if !filtered.IsFrequent && item.Category != currentCategory {
+				if currentCategory != "" {
+					b.WriteString("\n")
+					linesRendered++
+					if linesRendered >= maxVisible {
+						break
+					}
+				}
+				header := m.renderCategoryHeader(item.Category)
+				b.WriteString(header)
+				b.WriteString("\n")
+				linesRendered++
+				currentCategory = item.Category
+				if linesRendered >= maxVisible {
+					break
+				}
 			}
 		}
 
@@ -187,15 +236,28 @@ func (m *CommandPaletteModel) renderScrollIndicator(scrollOffset, maxVisible, wi
 }
 
 // renderCategoryHeader renders a section header for a category.
+// Frequent items (duplicates) are excluded from the count.
 func (m *CommandPaletteModel) renderCategoryHeader(cat ItemCategory) string {
 	name := getCategoryDisplayName(cat)
 	count := 0
 	for _, filtered := range m.filteredItems {
-		if filtered.Item.Category == cat {
+		if !filtered.IsFrequent && filtered.Item.Category == cat {
 			count++
 		}
 	}
 
 	header := fmt.Sprintf("── %s (%d) ", name, count)
+	return MutedStyle.Render(header)
+}
+
+// renderFrequentHeader renders the section header for the Frequent section.
+func (m *CommandPaletteModel) renderFrequentHeader() string {
+	count := 0
+	for _, fi := range m.filteredItems {
+		if fi.IsFrequent {
+			count++
+		}
+	}
+	header := fmt.Sprintf("── Frequent (%d) ", count)
 	return MutedStyle.Render(header)
 }

@@ -10,6 +10,22 @@ import (
 
 // handleScheduleEnter dispatches Enter key events for focused Schedule-tab rows.
 func (m *TaskFormModel) handleScheduleEnter() tea.Cmd {
+	if m.collapsedSchedule {
+		switch m.focusIndex {
+		case 0:
+			m.commitDueInput()
+			m.focusNext()
+			m.syncInputFocus()
+			return nil
+		case 1:
+			m.collapsedSchedule = false
+			m.focusIndex = 0
+			m.syncInputFocus()
+			return nil
+		}
+		return nil
+	}
+
 	switch m.focusIndex {
 	case 0:
 		// Due: textinput is already focused; Enter commits and moves to Recurrence.
@@ -48,6 +64,27 @@ func (m *TaskFormModel) handleScheduleEnter() tea.Cmd {
 
 // handleBasicsEnter dispatches Enter key events for focused Basics-tab rows.
 func (m *TaskFormModel) handleBasicsEnter() tea.Cmd {
+	if m.collapsedBasics {
+		switch m.focusIndex {
+		case 0:
+			return nil
+		case 1:
+			m.typePicker = newFormTypePicker(m.draft.taskType)
+			m.activeOverlay = formOverlayType
+			return nil
+		case 2:
+			m.priorityPicker = newFormPriorityPicker(m.draft.priority)
+			m.activeOverlay = formOverlayPriority
+			return nil
+		case 3:
+			m.collapsedBasics = false
+			m.focusIndex = 0
+			m.syncInputFocus()
+			return nil
+		}
+		return nil
+	}
+
 	switch m.focusIndex {
 	case 0:
 		// Title: focus textarea (already focused by focusTitleInput, no-op here)

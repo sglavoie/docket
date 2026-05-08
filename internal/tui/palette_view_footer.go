@@ -6,6 +6,7 @@ import (
 )
 
 // buildSubtitle builds the subtitle showing item counts.
+// Frequent-section items (duplicates) are excluded from counts.
 func (m *CommandPaletteModel) buildSubtitle() string {
 	if m.actionMode {
 		return fmt.Sprintf("%d available", len(m.availableActions))
@@ -13,7 +14,9 @@ func (m *CommandPaletteModel) buildSubtitle() string {
 
 	counts := make(map[ItemCategory]int)
 	for _, filtered := range m.filteredItems {
-		counts[filtered.Item.Category]++
+		if !filtered.IsFrequent {
+			counts[filtered.Item.Category]++
+		}
 	}
 
 	var parts []string
@@ -28,7 +31,13 @@ func (m *CommandPaletteModel) buildSubtitle() string {
 	}
 
 	if len(parts) == 0 {
-		return fmt.Sprintf("%d items", len(m.filteredItems))
+		total := 0
+		for _, fi := range m.filteredItems {
+			if !fi.IsFrequent {
+				total++
+			}
+		}
+		return fmt.Sprintf("%d items", total)
 	}
 
 	return strings.Join(parts, " · ")
@@ -39,7 +48,9 @@ func (m *CommandPaletteModel) buildSubtitle() string {
 func (m *CommandPaletteModel) buildFooter() string {
 	counts := make(map[ItemCategory]int)
 	for _, filtered := range m.filteredItems {
-		counts[filtered.Item.Category]++
+		if !filtered.IsFrequent {
+			counts[filtered.Item.Category]++
+		}
 	}
 
 	type catLabel struct {
@@ -93,6 +104,9 @@ func (m *CommandPaletteModel) buildFooter() string {
 
 	query := strings.TrimSpace(m.searchInput.Value())
 	if query == "" {
+		if tip := m.getMostUsedCommandTip(); tip != "" {
+			return fmt.Sprintf("+ create | : filter | # jump | Tip: %s", tip)
+		}
 		return "+ create | : filter | # jump | \"exact\" | -exclude | @due | priority:N"
 	}
 
@@ -161,5 +175,31 @@ func (m *CommandPaletteModel) getContextualHint() string {
 		}
 	}
 
+	return ""
+}
+
+// getMostUsedCommandTip returns a shortcut hint for the most-frequently used command.
+// Returns empty string if no command with a shortcut has been used more than once.
+func (m *CommandPaletteModel) getMostUsedCommandTip() string {
+	var best *recentSelection
+	for i := range recentPaletteSelections {
+		rs := &recentPaletteSelections[i]
+		if rs.Category != ItemCategoryCommands || rs.Count < 2 {
+			continue
+		}
+		if best == nil || rs.Count > best.Count {
+			best = rs
+		}
+	}
+	if best == nil {
+		return ""
+	}
+	for _, item := range m.allItems {
+		if item.Category == ItemCategoryCommands && item.Command != nil && item.Command.Name == best.ID {
+			if item.Command.Shortcut != "" {
+				return fmt.Sprintf("%s → %s", item.Command.Name, item.Command.Shortcut)
+			}
+		}
+	}
 	return ""
 }

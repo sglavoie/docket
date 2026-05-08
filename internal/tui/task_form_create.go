@@ -33,16 +33,22 @@ func NewTaskFormModelCreate(
 		}
 	}
 
+	var collapsed bool
+	if cfg != nil {
+		collapsed = cfg.GetTaskFormCollapsed()
+	}
 	m := &TaskFormModel{
-		mode:          FormModeCreate,
-		project:       project,
-		draft:         draft,
-		config:        cfg,
-		configManager: mgr,
-		activeTab:     formTabBasics,
-		focusIndex:    0,
-		width:         80,
-		height:        24,
+		mode:             FormModeCreate,
+		project:          project,
+		draft:            draft,
+		config:           cfg,
+		configManager:    mgr,
+		activeTab:        formTabBasics,
+		focusIndex:       0,
+		collapsedBasics:  collapsed,
+		collapsedSchedule: collapsed,
+		width:            80,
+		height:           24,
 	}
 	m.initTitleInput("")
 	m.initDueInput("")
@@ -160,17 +166,23 @@ func NewTaskFormModelEdit(
 		draft.epicAttrs = *task.EpicAttrs
 	}
 
+	var collapsed bool
+	if cfg != nil {
+		collapsed = cfg.GetTaskFormCollapsed()
+	}
 	m := &TaskFormModel{
-		mode:          FormModeEdit,
-		project:       project,
-		task:          task,
-		draft:         draft,
-		config:        cfg,
-		configManager: mgr,
-		activeTab:     formTabBasics,
-		focusIndex:    0,
-		width:         80,
-		height:        24,
+		mode:             FormModeEdit,
+		project:          project,
+		task:             task,
+		draft:            draft,
+		config:           cfg,
+		configManager:    mgr,
+		activeTab:        formTabBasics,
+		focusIndex:       0,
+		collapsedBasics:  collapsed,
+		collapsedSchedule: collapsed,
+		width:            80,
+		height:           24,
 	}
 	m.initTitleInput(draft.title)
 	m.initDueInput(draft.dueInput)

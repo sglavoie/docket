@@ -514,22 +514,11 @@ func (m *AllTasksViewModel) buildKeyMap() *keymap.KeyMap {
 			}
 			return m, func() tea.Msg { return SetSnoozeDateMsg{Task: task, Project: project} }
 		},
-		DeleteTask: func() (tea.Model, tea.Cmd) {
+		MarkDone: func() (tea.Model, tea.Cmd) {
 			if m.multiSelectMode && m.SelectedCount() > 0 {
-				m.confirm.Show("bulk-delete", fmt.Sprintf("Delete %d selected tasks?", m.SelectedCount()))
-				return m, nil
+				return m.handleBulkStatusChange(models.StatusDone)
 			}
-			if m.tabs.Active >= 0 && m.tabs.Active < len(m.tabEntries) {
-				if entry := m.tabEntries[m.tabs.Active]; !entry.IsBuiltIn {
-					m.confirm.Show("delete-smart-list", fmt.Sprintf("Delete smart list %q?", entry.Name))
-					return m, nil
-				}
-			}
-			task, _ := m.getTaskRef()
-			if task != nil {
-				m.showDeleteConfirm(task.ShortID)
-			}
-			return m, nil
+			return taskOpsChangeStatus(m, models.StatusDone)
 		},
 		EditTask: func() (tea.Model, tea.Cmd) {
 			task, project := m.getTaskRef()

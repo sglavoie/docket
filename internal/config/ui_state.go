@@ -10,8 +10,9 @@ import (
 // RecentPaletteItem tracks a recently selected item in the command palette.
 // Used to persist recent selections across sessions for boosted search results.
 type RecentPaletteItem struct {
-	Category string `json:"category"` // ItemCategory as string (Commands, Tasks, Projects, Tags, Sections)
-	ID       string `json:"id"`       // Command name, task ID, project slug, tag, or section name
+	Category string `json:"category"`        // ItemCategory as string (Commands, Tasks, Projects, Tags, Sections)
+	ID       string `json:"id"`              // Command name, task ID, project slug, tag, or section name
+	Count    int    `json:"count,omitempty"` // How many times this item has been selected
 }
 
 // GetDefaultProjectView returns the configured default project view.
@@ -23,6 +24,27 @@ func (c *Config) GetDefaultProjectView() string {
 	default:
 		return "outliner"
 	}
+}
+
+// GetStartView returns the configured start view string.
+// Returns "dashboard" for invalid or missing values.
+func (c *Config) GetStartView() string {
+	switch c.StartView {
+	case "focus-board", "cross-project-outliner", "all-tasks",
+		"daily-review", "backlog", "priority", "due-dates":
+		return c.StartView
+	default:
+		return "dashboard"
+	}
+}
+
+// GetTaskFormCollapsed returns whether the task form starts collapsed.
+// Defaults to false (expanded) when not set to preserve existing behavior.
+func (c *Config) GetTaskFormCollapsed() bool {
+	if c.TaskFormCollapsed == nil {
+		return false
+	}
+	return *c.TaskFormCollapsed
 }
 
 // GetCycleProjects returns active projects that are in the cycle list, in order.

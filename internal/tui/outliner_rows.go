@@ -162,6 +162,7 @@ func (m *OutlinerModel) rebuildRows() {
 		m.buildRowsWithSectionHeaders(tasks)
 	} else {
 		m.flattenTaskTreeWithFolds(tasks, nil, &m.rows)
+		m.insertDepth0Separators()
 	}
 	m.clampCursor()
 
@@ -182,6 +183,9 @@ func (m *OutlinerModel) buildRowsWithSectionHeaders(tasks []*models.Task) {
 			continue
 		}
 
+		if len(m.rows) > 0 {
+			m.rows = append(m.rows, outlinerRow{IsSeparator: true})
+		}
 		m.rows = append(m.rows, outlinerRow{
 			IsSectionHeader: true,
 			SectionName:     sectionName,

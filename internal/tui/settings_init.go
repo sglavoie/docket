@@ -154,6 +154,8 @@ func NewSettingsModel(cfg *config.Config, manager *config.Manager) *SettingsMode
 		inactivePresetName:       inactivePresetName,
 		inactiveThemeDraft:       themeToInactiveDraft(inactiveCfg),
 		activeHiddenDimmed:       themeHiddenDimmed(activeTheme),
+		startViewCursor:          settingsOptionCursor(startViewValues, cfg.GetStartView(), 0),
+		taskFormCollapsed:        cfg.GetTaskFormCollapsed(),
 		kanbanDefaultModeCursor:  settingsOptionCursor(kanbanModeValues, cfg.KanbanSettings.DefaultMode, 0),
 		kanbanStartColInput:      newSettingsInput("inbox", 30, 20, cfg.KanbanSettings.DefaultStartColumn, false),
 		kanbanShowEmptyColumns:   cfg.KanbanSettings.ShowEmptyColumns == nil || *cfg.KanbanSettings.ShowEmptyColumns,

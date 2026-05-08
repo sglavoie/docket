@@ -24,9 +24,9 @@ type QuickCaptureModel struct {
 
 // NewQuickCaptureModel creates a new quick capture model.
 func NewQuickCaptureModel(project *models.Project, allProjects []*models.Project, fromGlobalCapture bool) *QuickCaptureModel {
-	placeholder := "^type Task title !priority #tag @due ~recur >parent /section $status %project"
+	placeholder := "^type Task title !urgent #tag @due/due:fri ~recur >parent /section $status %project"
 	if fromGlobalCapture {
-		placeholder = "^type Task title !priority #tag @due ~recur >parent /section $status"
+		placeholder = "^type Task title !urgent #tag @due/due:fri ~recur >parent /section $status"
 	}
 	m := &QuickCaptureModel{
 		quickCaptureInput: newQuickCaptureInput(
@@ -144,9 +144,9 @@ func (m *QuickCaptureModel) View() tea.View {
 	if m.helpExpanded {
 		b.WriteString(m.renderSyntaxGuide())
 	} else {
-		helpLine := "^type · !N · #tag · @date · ~recur · >parent · /section · $status · %project"
+		helpLine := "^type · !N/word · #tag · @date/due: · ~recur · >parent · /section · $status · %project"
 		if m.skipProjectSyntax {
-			helpLine = "^type · !N · #tag · @date · ~recur · >parent · /section · $status"
+			helpLine = "^type · !N/word · #tag · @date/due: · ~recur · >parent · /section · $status"
 		}
 		b.WriteString(MutedStyle.Render(helpLine))
 	}
@@ -186,9 +186,9 @@ func (m *QuickCaptureModel) renderSyntaxGuide() string {
 	type row struct{ prefix, desc, examples string }
 	rows := []row{
 		{"^type", "Task type", "^epic  ^story  ^task  ^bug  ^idea"},
-		{"!N", "Priority (1-5)", "!1 urgent  !2 high  !3 normal  !4 low  !5 lowest"},
+		{"!N/!word", "Priority (1-5)", "!1  !urgent/!high → !1  !normal → !3  !low → !5"},
 		{"#tag", "Add tag", "#backend  #urgent  (multiple allowed)"},
-		{"@date", "Due date", "@tomorrow  @friday  @jan15  @+3d  @+1w"},
+		{"@date", "Due date", "@tomorrow  @friday  @+3d · or: due:tomorrow  due:fri  due:3d"},
 		{"~recur", "Recurrence", "~daily  ~weekly  ~2w  ~monthly"},
 		{">parent", "Parent task", ">42  >Login  (short ID or title prefix)"},
 		{"/section", "Section", "/next  /inbox  /waiting  /someday"},

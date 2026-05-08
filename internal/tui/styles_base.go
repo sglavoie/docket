@@ -29,6 +29,12 @@ var (
 				Foreground(ColorSelectedFg).
 				Italic(true)
 
+	// BlockedRowStyle applies a subtle red background tint to blocked rows.
+	BlockedRowStyle = lipgloss.NewStyle().Background(lipgloss.Color("#2e1515"))
+
+	// OverdueRowStyle applies a subtle amber background tint to overdue rows.
+	OverdueRowStyle = lipgloss.NewStyle().Background(lipgloss.Color("#2d1f0e"))
+
 	// SelectedTaskTitleStyle is applied to the task title on the selected row.
 	SelectedTaskTitleStyle = lipgloss.NewStyle().
 				Bold(true).

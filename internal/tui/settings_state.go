@@ -32,7 +32,7 @@ var (
 	settingsTabNames = []string{"General", "Palette", "Review", "Behavior", "Attachments", "Project Tree", "Outliner", "Kanban", "Notifications", "Stages", "Appearance"}
 
 	// tabFieldCount declares how many focusable fields each tab has.
-	tabFieldCount = []int{5, 18, 4, 13, 2, 14, 23, 11, 15, 1, 3}
+	tabFieldCount = []int{5, 18, 4, 15, 2, 14, 23, 11, 15, 1, 3}
 
 	// tabFieldStart holds the starting focus index for each tab (computed in init).
 	tabFieldStart []int
@@ -46,7 +46,7 @@ var (
 		nil, // 0: General
 		{{"Palette Colors", 10}, {"Background & Cursor", 3}, {"Priorities", 5}}, // 1: Palette
 		nil, // 2: Review
-		{{"Recent Activity", 2}, {"Linked Tasks", 1}, {"Pinned Tasks", 1}, {"Recent Tasks", 1}, {"Popups", 1}, {"Section Limits", 7}}, // 3: Behavior
+		{{"Recent Activity", 2}, {"Linked Tasks", 1}, {"Pinned Tasks", 1}, {"Recent Tasks", 1}, {"Popups", 1}, {"Section Limits", 7}, {"Startup", 1}, {"Task Form", 1}}, // 3: Behavior
 		nil, // 4: Attachments
 		nil, // 5: Project Tree
 		{{"Sidebar", 2}, {"Section State", 7}, {"Column Visibility", 14}}, // 6: Outliner
@@ -101,6 +101,12 @@ var (
 
 	// kanbanDetailHeightOptions lists the allowed detail pane heights.
 	kanbanDetailHeightOptions = []string{"1", "2", "3", "4", "5"}
+
+	// startViewOptions lists display labels for the start view selector.
+	startViewOptions = []string{"Dashboard", "Focus Board", "Cross-Project Outliner", "All Tasks", "Daily Review", "Backlog", "Priority", "Due Dates"}
+
+	// startViewValues maps cursor index to config string value.
+	startViewValues = []string{"dashboard", "focus-board", "cross-project-outliner", "all-tasks", "daily-review", "backlog", "priority", "due-dates"}
 )
 
 func init() {
@@ -216,6 +222,9 @@ type SettingsModel struct {
 	timeFormatCursor         int      // Index into timeFormatValues (0=12h, 1=24h)
 	contexts                 []string
 	contextCursor            int // -1 for custom mode, 0+ for selecting from list
+
+	startViewCursor   int  // Index into startViewValues
+	taskFormCollapsed bool // Whether task form starts collapsed
 
 	// Kanban settings (Kanban tab, index 94-104)
 	kanbanDefaultModeCursor  int             // Index into kanbanModeValues

@@ -159,4 +159,6 @@ type Config struct {
 	WeekEndDay                     string                       `json:"week_end_day,omitempty"`
 	TimeFormat                     string                       `json:"time_format,omitempty"`
 	KanbanSettings                 KanbanSettings               `json:"kanban_settings,omitzero"`
+	StartView                      string                       `json:"start_view,omitempty"`
+	TaskFormCollapsed              *bool                        `json:"task_form_collapsed,omitempty"`
 }

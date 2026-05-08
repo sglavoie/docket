@@ -220,3 +220,41 @@ func TestDaysBetween(t *testing.T) {
 		t.Errorf("DaysBetween(same day) = %d, want 0", got)
 	}
 }
+
+func TestParseFlexibleDate(t *testing.T) {
+	today := StartOfDay(time.Now())
+
+	tests := []struct {
+		name    string
+		input   string
+		want    time.Time
+		wantErr bool
+	}{
+		// Bare shorthand (new in ParseFlexibleDate)
+		{"3d = 3 days", "3d", today.AddDate(0, 0, 3), false},
+		{"7d = 7 days", "7d", today.AddDate(0, 0, 7), false},
+		{"2w = 2 weeks", "2w", today.AddDate(0, 0, 14), false},
+		{"1m = 1 month", "1m", today.AddDate(0, 1, 0), false},
+		// Standard inputs still work
+		{"tomorrow", "tomorrow", today.AddDate(0, 0, 1), false},
+		{"today", "today", today, false},
+		{"+3d", "+3d", today.AddDate(0, 0, 3), false},
+		{"+2w", "+2w", today.AddDate(0, 0, 14), false},
+		{"in 5 days", "in 5 days", today.AddDate(0, 0, 5), false},
+		// Invalid
+		{"gibberish", "gibberish", time.Time{}, true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := ParseFlexibleDate(tt.input)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("ParseFlexibleDate(%q) error = %v, wantErr %v", tt.input, err, tt.wantErr)
+				return
+			}
+			if !tt.wantErr && !got.Equal(tt.want) {
+				t.Errorf("ParseFlexibleDate(%q) = %v, want %v", tt.input, got, tt.want)
+			}
+		})
+	}
+}

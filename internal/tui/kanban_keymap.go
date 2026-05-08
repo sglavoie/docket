@@ -106,8 +106,8 @@ func (m *KanbanModel) buildKeyMap() *keymap.KeyMap {
 			m.detailPaneVisible = !m.detailPaneVisible
 			return m, nil
 		}),
-		keymap.Bind("`", "Cycle axis mode forward", "View", func() (tea.Model, tea.Cmd) {
-			m.cycleAxisMode()
+		keymap.Bind("`", "Open mode picker", "View", func() (tea.Model, tea.Cmd) {
+			m.showModePicker = true
 			return m, nil
 		}),
 		keymap.Bind("~", "Cycle axis mode back", "View", func() (tea.Model, tea.Cmd) {
@@ -535,8 +535,8 @@ func (m *KanbanModel) buildKeyMap() *keymap.KeyMap {
 			}
 			return m, func() tea.Msg { return SetSnoozeDateMsg{Task: task, Project: project} }
 		},
-		DeleteTask: func() (tea.Model, tea.Cmd) {
-			return taskOpsDeleteTask(m)
+		MarkDone: func() (tea.Model, tea.Cmd) {
+			return taskOpsChangeStatus(m, models.StatusDone)
 		},
 		EditTask: func() (tea.Model, tea.Cmd) {
 			task, project := m.getTaskRef()

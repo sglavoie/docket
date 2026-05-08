@@ -569,7 +569,7 @@ func (m *FocusViewModel) buildKeyMap() *keymap.KeyMap {
 			}
 			return m, func() tea.Msg { return SetSnoozeDateMsg{Task: task, Project: project} }
 		},
-		DeleteTask: func() (tea.Model, tea.Cmd) {
+		MarkDone: func() (tea.Model, tea.Cmd) {
 			// D on Suggested tab toggles dismissed
 			if m.tabs.Active == focusTabSuggested {
 				m.showDismissed = !m.showDismissed
@@ -577,11 +577,7 @@ func (m *FocusViewModel) buildKeyMap() *keymap.KeyMap {
 				m.clampCursor()
 				return m, nil
 			}
-			task, _ := m.getTaskRef()
-			if task != nil {
-				m.showDeleteConfirm(task.ShortID)
-			}
-			return m, nil
+			return taskOpsChangeStatus(m, models.StatusDone)
 		},
 		EditTask: func() (tea.Model, tea.Cmd) {
 			task, project := m.getTaskRef()

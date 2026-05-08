@@ -16,15 +16,18 @@ func (m *WeeklyReviewModel) View() tea.View {
 	var b strings.Builder
 
 	// Title
-	var subtitle string
+	var title, subtitle string
 	if m.reviewCompleted {
+		title = "Weekly Review"
 		subtitle = fmt.Sprintf("completed %s at %s", m.completedAt.Format("Mon"), m.completedAt.Format("15:04"))
 	} else if totalCount > 0 {
-		subtitle = fmt.Sprintf("%d projects, %d tasks | %d/8 reviewed", projectCount, taskCount, m.reviewedCount())
+		title = fmt.Sprintf("Weekly Review (%d/8)", m.reviewedCount())
+		subtitle = fmt.Sprintf("%d projects, %d tasks", projectCount, taskCount)
 	} else {
+		title = "Weekly Review"
 		subtitle = "all clear"
 	}
-	b.WriteString(renderFullscreenTitle("Weekly Review", subtitle, m.AccentColor()))
+	b.WriteString(renderFullscreenTitle(title, subtitle, m.AccentColor()))
 	b.WriteString("\n")
 
 	if totalCount == 0 {

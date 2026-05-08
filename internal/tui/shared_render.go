@@ -334,6 +334,12 @@ func SelectedFlashLine(line string, width int) string {
 	return SelectedStyle.Background(ColorFlashBg).Width(width).Render(stripped)
 }
 
+// MutationFlashLine renders the line with a status-specific flash background.
+func MutationFlashLine(line string, width int, bg color.Color) string {
+	stripped := ansi.Strip(line)
+	return SelectedStyle.Background(bg).Width(width).Render(stripped)
+}
+
 // Render assembles the task line string from the configured fields.
 func (tl TaskLine) Render() string {
 	// Standard 5-char prefix: [dim(1)][active(1)][pin(1)] + [T/Q(2)]

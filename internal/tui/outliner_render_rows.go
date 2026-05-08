@@ -69,6 +69,9 @@ func (m *OutlinerModel) renderOutlinerSectionHeaderRow(row outlinerRow, selected
 	}
 
 	if selected {
+		if m.mutationFlash {
+			return MutationFlashLine(line, rowWidth, m.mutationFlashBg)
+		}
 		if m.cursorFlash {
 			return SelectedFlashLine(line, rowWidth)
 		}
@@ -110,7 +113,7 @@ func (m *OutlinerModel) renderOutlinerTaskRow(row outlinerRow, selected bool, ro
 		indicators,
 	)
 
-	line = m.applyTaskRowLineStyle(line, task, selected, rowWidth, rowIndex)
+	line = m.applyTaskRowLineStyle(line, task, proj, selected, rowWidth, rowIndex)
 
 	if m.previewMode && rowIndex == m.cursor {
 		var b strings.Builder
@@ -352,7 +355,7 @@ func (m *OutlinerModel) renderTaskTitle(task *models.Task, titleStyle lipgloss.S
 	return HighlightText(truncatedTitle, positions, titleStyle)
 }
 
-func (m *OutlinerModel) applyTaskRowLineStyle(line string, task *models.Task, selected bool, rowWidth, rowIndex int) string {
+func (m *OutlinerModel) applyTaskRowLineStyle(line string, task *models.Task, proj *models.Project, selected bool, rowWidth, rowIndex int) string {
 	if task.Dimmed {
 		if selected {
 			return DimSelectedLine(line, rowWidth)
@@ -360,10 +363,19 @@ func (m *OutlinerModel) applyTaskRowLineStyle(line string, task *models.Task, se
 		return DimLine(line)
 	}
 	if selected {
+		if m.mutationFlash {
+			return MutationFlashLine(line, rowWidth, m.mutationFlashBg)
+		}
 		if m.cursorFlash {
 			return SelectedFlashLine(line, rowWidth)
 		}
 		return SelectedLine(line, rowWidth)
+	}
+	if task.Status == models.StatusBlocked || (proj != nil && proj.HasIncompleteDependencies(task)) {
+		return BlockedRowStyle.Width(rowWidth).Render(line)
+	}
+	if task.IsOverdue() {
+		return OverdueRowStyle.Width(rowWidth).Render(line)
 	}
 	return ZebraLine(line, rowWidth, rowIndex)
 }

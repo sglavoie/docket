@@ -3,6 +3,8 @@ package tui
 import (
 	"fmt"
 	"strings"
+
+	"charm.land/lipgloss/v2"
 )
 
 // renderFormLabelShared renders a form field label with fixed width alignment.
@@ -79,19 +81,70 @@ func renderContextSelectorShared(contexts []string, contextCursor int, focused b
 	return b.String()
 }
 
-// renderEnumSelector renders a generic enum selector with (none) as first option.
-func renderEnumSelector(options []string, cursor int, focused bool) string {
-	var b strings.Builder
+// renderEnumSelector renders a generic enum selector with optional windowing.
+// When maxWidth > 0 and the rendered options exceed it, a sliding window
+// centered on cursor is shown with < > scroll indicators.
+func renderEnumSelector(options []string, cursor int, focused bool, maxWidth int) string {
+	rendered := make([]string, len(options))
 	for i, opt := range options {
 		if i == cursor {
 			if focused {
-				b.WriteString(SelectorOptionSelectedStyle.Render(fmt.Sprintf("[%s]", opt)))
+				rendered[i] = SelectorOptionSelectedStyle.Render(fmt.Sprintf("[%s]", opt))
 			} else {
-				b.WriteString(BoldStyle.Render(fmt.Sprintf("[%s]", opt)))
+				rendered[i] = BoldStyle.Render(fmt.Sprintf("[%s]", opt))
 			}
 		} else {
-			b.WriteString(SelectorOptionStyle.Render(fmt.Sprintf(" %s ", opt)))
+			rendered[i] = SelectorOptionStyle.Render(fmt.Sprintf(" %s ", opt))
 		}
+	}
+
+	totalWidth := 0
+	for _, r := range rendered {
+		totalWidth += lipgloss.Width(r)
+	}
+	if maxWidth <= 0 || totalWidth <= maxWidth {
+		return strings.Join(rendered, "")
+	}
+
+	budget := maxWidth - 4 // reserve 2 chars each for "< " and " >"
+	if budget < 1 {
+		budget = 1
+	}
+
+	lo, hi := cursor, cursor+1
+	used := lipgloss.Width(rendered[cursor])
+	for lo > 0 || hi < len(rendered) {
+		if lo > 0 {
+			w := lipgloss.Width(rendered[lo-1])
+			if used+w <= budget {
+				lo--
+				used += w
+			} else {
+				break
+			}
+		}
+		if hi < len(rendered) {
+			w := lipgloss.Width(rendered[hi])
+			if used+w <= budget {
+				hi++
+				used += w
+			} else {
+				break
+			}
+		}
+	}
+
+	var b strings.Builder
+	if lo > 0 {
+		b.WriteString(MutedStyle.Render("< "))
+	} else {
+		b.WriteString("  ")
+	}
+	for i := lo; i < hi; i++ {
+		b.WriteString(rendered[i])
+	}
+	if hi < len(rendered) {
+		b.WriteString(MutedStyle.Render(" >"))
 	}
 	return b.String()
 }

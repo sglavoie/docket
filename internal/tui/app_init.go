@@ -302,7 +302,38 @@ func getGlobalHelpItems() []HelpItem {
 const periodicSaveInterval = 60 * time.Second
 
 func (m *AppModel) Init() tea.Cmd {
-	return tea.Tick(periodicSaveInterval, func(time.Time) tea.Msg {
-		return periodicSaveMsg{}
-	})
+	cmds := []tea.Cmd{
+		tea.Tick(periodicSaveInterval, func(time.Time) tea.Msg {
+			return periodicSaveMsg{}
+		}),
+	}
+	if sv := m.config.GetStartView(); sv != "dashboard" {
+		vt := startViewTypeFromString(sv)
+		cmds = append(cmds, func() tea.Msg {
+			return NavigateToViewMsg{ViewType: vt}
+		})
+	}
+	return tea.Batch(cmds...)
+}
+
+// startViewTypeFromString maps a start view config string to a ViewType.
+func startViewTypeFromString(sv string) ViewType {
+	switch sv {
+	case "focus-board":
+		return ViewFocusBoard
+	case "cross-project-outliner":
+		return ViewCrossProjectOutliner
+	case "all-tasks":
+		return ViewAllTasks
+	case "daily-review":
+		return ViewDailyReview
+	case "backlog":
+		return ViewFocusView
+	case "priority":
+		return ViewPriorityView
+	case "due-dates":
+		return ViewDueDateOverview
+	default:
+		return ViewDashboard
+	}
 }

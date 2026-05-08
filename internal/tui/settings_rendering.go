@@ -14,7 +14,7 @@ func (m *SettingsModel) renderColumnToggles(b *strings.Builder, toggles [14]bool
 		focusIdx := startIdx + i
 		b.WriteString(renderFormLabelWithWidth(col.Label+": ", labelWidth, m.focusIndex == focusIdx))
 		if col.ID == ColPriority {
-			b.WriteString(renderEnumSelector(priorityModeOptions, priorityCursor, m.focusIndex == focusIdx))
+			b.WriteString(renderEnumSelector(priorityModeOptions, priorityCursor, m.focusIndex == focusIdx, m.width-(labelWidth+2)))
 		} else {
 			b.WriteString(renderFormToggle("Visible", "Hidden", toggles[i], m.focusIndex == focusIdx))
 		}

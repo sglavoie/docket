@@ -71,6 +71,9 @@ type ClearSemicolonPrefixMsg struct{}
 // CursorFlashClearMsg clears the cursor flash highlight after a timeout.
 type CursorFlashClearMsg struct{}
 
+// MutationFlashClearMsg clears the mutation flash highlight after a timeout.
+type MutationFlashClearMsg struct{}
+
 // periodicSaveMsg triggers a periodic save of spatial state (cursor/fold).
 type periodicSaveMsg struct{}
 
@@ -148,5 +151,15 @@ const CursorFlashDuration = 150 * time.Millisecond
 func cursorFlashTimeout() tea.Cmd {
 	return tea.Tick(CursorFlashDuration, func(time.Time) tea.Msg {
 		return CursorFlashClearMsg{}
+	})
+}
+
+// MutationFlashDuration is how long the mutation flash highlight stays visible.
+const MutationFlashDuration = 500 * time.Millisecond
+
+// mutationFlashTimeout returns a command that clears the mutation flash after MutationFlashDuration.
+func mutationFlashTimeout() tea.Cmd {
+	return tea.Tick(MutationFlashDuration, func(time.Time) tea.Msg {
+		return MutationFlashClearMsg{}
 	})
 }

@@ -58,6 +58,7 @@ type PrefixPopupProvider interface {
 
 // prefixCategoryNames maps prefix characters to human-readable category names.
 var prefixCategoryNames = map[string]string{
+	"`":   "mode",
 	",":   "status",
 	"z":   "fold",
 	"g":   "go-to",

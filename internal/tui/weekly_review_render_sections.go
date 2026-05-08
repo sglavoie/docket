@@ -122,21 +122,25 @@ func (m *WeeklyReviewModel) renderSectionItem(section WeeklyReviewSection, index
 // renderSectionHeader renders a section header.
 func (m *WeeklyReviewModel) renderSectionHeader(section WeeklyReviewSection, count int, collapsed bool, isSelected bool, width int) string {
 	var style lipgloss.Style
-	switch section {
-	case WeeklySectionStaleProjects, WeeklySectionStaleTasks:
+	if m.reviewedSections[section] {
 		style = MutedStyle
-	case WeeklySectionBlockedWork:
-		style = BlockedStyle
-	case WeeklySectionInboxBacklog:
-		style = DueTodayStyle
-	case WeeklySectionOvercommitted:
-		style = OverdueStyle
-	case WeeklySectionPriorityMismatch:
-		style = DueSoonStyle
-	case WeeklySectionRecurringOverview:
-		style = SectionHeaderStyle
-	default:
-		style = SectionHeaderStyle
+	} else {
+		switch section {
+		case WeeklySectionStaleProjects, WeeklySectionStaleTasks:
+			style = MutedStyle
+		case WeeklySectionBlockedWork:
+			style = BlockedStyle
+		case WeeklySectionInboxBacklog:
+			style = DueTodayStyle
+		case WeeklySectionOvercommitted:
+			style = OverdueStyle
+		case WeeklySectionPriorityMismatch:
+			style = DueSoonStyle
+		case WeeklySectionRecurringOverview:
+			style = SectionHeaderStyle
+		default:
+			style = SectionHeaderStyle
+		}
 	}
 	checkbox := "[ ] "
 	if m.reviewedSections[section] {

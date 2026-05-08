@@ -15,6 +15,68 @@ const formBasicsLabelWidth = 13 // "Description:" (12 chars) + 1 pad = 13
 
 // renderBasicsTab renders the Basics tab: Title, Type, Priority, Parent, Section, Flags, Tags.
 func (m *TaskFormModel) renderBasicsTab() string {
+	if m.collapsedBasics {
+		return m.renderBasicsTabCollapsed()
+	}
+	return m.renderBasicsTabExpanded()
+}
+
+// renderBasicsTabCollapsed renders the Basics tab in collapsed mode: Title, Type, Priority, expand row.
+func (m *TaskFormModel) renderBasicsTabCollapsed() string {
+	var b strings.Builder
+	const lw = formBasicsLabelWidth
+
+	// 0: Title
+	b.WriteString(renderFormLabelWithWidth("Title:", lw, m.focusIndex == 0))
+	b.WriteString("\n")
+	applyThemedTextarea(&m.titleInput)
+	b.WriteString(m.titleInput.View())
+	b.WriteString("\n")
+
+	// 1: Type
+	b.WriteString(renderFormLabelWithWidth("Type:", lw, m.focusIndex == 1))
+	{
+		icon := GetTypeBadge(string(m.draft.taskType), m.draft.taskType.Icon())
+		val := fmt.Sprintf("%s %s", icon, m.draft.taskType.HeadingPrefix())
+		if m.focusIndex == 1 {
+			b.WriteString(SelectorOptionSelectedStyle.Render(val))
+		} else {
+			b.WriteString(val)
+		}
+	}
+	b.WriteString("\n")
+
+	// 2: Priority
+	b.WriteString(renderFormLabelWithWidth("Priority:", lw, m.focusIndex == 2))
+	{
+		icon := GetPriorityStyle(m.draft.priority).Render(PriorityIcon(m.draft.priority))
+		lbl := formPriorityLabel(m.draft.priority)
+		val := fmt.Sprintf("%s %s", icon, lbl)
+		if m.focusIndex == 2 {
+			b.WriteString(SelectorOptionSelectedStyle.Render(val))
+		} else {
+			b.WriteString(val)
+		}
+	}
+	b.WriteString("\n")
+
+	// 3: Expand row
+	expandLabel := MutedStyle.Render("+ more fields")
+	if m.focusIndex == 3 {
+		expandLabel = SelectorOptionSelectedStyle.Render("+ more fields")
+	}
+	b.WriteString(renderFormLabelWithWidth("", lw, false))
+	b.WriteString(expandLabel)
+	if m.focusIndex == 3 {
+		b.WriteString(HelpStyle.Render("  (Enter to expand)"))
+	}
+	b.WriteString("\n")
+
+	return b.String()
+}
+
+// renderBasicsTabExpanded renders the full Basics tab with all 8 fields.
+func (m *TaskFormModel) renderBasicsTabExpanded() string {
 	var b strings.Builder
 	const lw = formBasicsLabelWidth
 

@@ -36,6 +36,10 @@ func (m *TaskDetailModel) View() tea.View {
 		sections = append(sections, m.renderRecurrenceSection(contentWidth))
 	}
 
+	if m.task.Description != "" {
+		sections = append(sections, m.renderDescriptionSection(contentWidth))
+	}
+
 	sections = append(sections, m.renderMetadataSection(contentWidth))
 
 	if m.config != nil {
@@ -51,10 +55,6 @@ func (m *TaskDetailModel) View() tea.View {
 	hasDeps := len(m.task.DependsOn) > 0 || len(m.project.GetBlockedByTasks(m.task)) > 0
 	if hasDeps || len(m.task.RelatedTo) > 0 {
 		sections = append(sections, m.renderDependenciesSection(contentWidth))
-	}
-
-	if m.task.Description != "" {
-		sections = append(sections, m.renderDescriptionSection(contentWidth))
 	}
 
 	if len(m.task.Comments) > 0 {

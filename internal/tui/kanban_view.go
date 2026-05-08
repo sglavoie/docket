@@ -323,6 +323,12 @@ func kanbanRender(m *KanbanModel) string {
 
 	result := sb.String()
 
+	// Overlay mode picker popup when active
+	if m.showModePicker {
+		popup := RenderPrefixPopup("`", m.buildModePickerHints(), m.width, m.height)
+		result = OverlayPopupDimmed(result, popup, m.width, m.height)
+	}
+
 	// Overlay axis manager popup when active
 	if m.showAxisManager {
 		popup := m.renderAxisManagerPopup()

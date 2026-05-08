@@ -31,11 +31,11 @@ func parseQuickCapture(input string, project *models.Project, allProjects []*mod
 		input = typeRe.ReplaceAllString(input, " ")
 	}
 
-	// Extract priority: !1 through !5
+	// Extract priority: !1–!5 or word aliases (!urgent, !high, !normal, !low, !lowest)
 	// Require ! to be at start of string or preceded by whitespace
-	priorityRe := regexp.MustCompile(`(?:^|\s)!([1-5])`)
+	priorityRe := regexp.MustCompile(`(?i)(?:^|\s)!(critical|urgent|high|normal|medium|lowest|low|[1-5])`)
 	if match := priorityRe.FindStringSubmatch(input); len(match) > 1 {
-		result.priority, _ = strconv.Atoi(match[1])
+		result.priority = parsePriorityToken(match[1])
 		input = priorityRe.ReplaceAllString(input, " ")
 	}
 
@@ -61,6 +61,23 @@ func parseQuickCapture(input string, project *models.Project, allProjects []*mod
 		}
 		result.dueDate = &date
 		input = dueDateRe.ReplaceAllString(input, " ")
+	}
+
+	// Extract due date alias: due:value (tolerant alternative to @date)
+	// Also accepts bare shorthand: due:3d, due:2w, due:1m
+	// Require "due:" to be at start of string or preceded by whitespace
+	dueColonRe := regexp.MustCompile(`(?i)(?:^|\s)due:(next\s+\w+|in\s+\d+\s+\w+|\S+)`)
+	if result.dueDate == nil {
+		if match := dueColonRe.FindStringSubmatch(input); len(match) > 1 {
+			date, err := ParseFlexibleDate(match[1])
+			if err != nil {
+				return nil, fmt.Errorf("invalid date: %s", match[1])
+			}
+			result.dueDate = &date
+			input = dueColonRe.ReplaceAllString(input, " ")
+		}
+	} else {
+		input = dueColonRe.ReplaceAllString(input, " ")
 	}
 
 	// Extract recurrence: ~pattern (e.g., ~daily, ~weekly, ~2w)
@@ -232,6 +249,22 @@ func resolveProject(ref string, allProjects []*models.Project) *models.Project {
 	return best.project
 }
 
+// parsePriorityToken converts a priority token (numeric or word alias) to 1–5.
+// Word mappings: critical/urgent/high→1, normal/medium→3, low/lowest→5.
+func parsePriorityToken(token string) int {
+	switch strings.ToLower(token) {
+	case "critical", "urgent", "high":
+		return 1
+	case "normal", "medium":
+		return 3
+	case "low", "lowest":
+		return 5
+	default:
+		p, _ := strconv.Atoi(token)
+		return p
+	}
+}
+
 // parseQuickCaptureForPreview parses input for live preview without failing early.
 // Returns partial results and any validation error string.
 func parseQuickCaptureForPreview(input string, project *models.Project, allProjects []*models.Project, skipProject bool) (*quickCaptureResult, string) { //nolint:gocyclo
@@ -251,11 +284,11 @@ func parseQuickCaptureForPreview(input string, project *models.Project, allProje
 		input = typeRe.ReplaceAllString(input, " ")
 	}
 
-	// Extract priority
+	// Extract priority: !1–!5 or word aliases (!urgent, !high, !normal, !low, !lowest)
 	// Require ! to be at start of string or preceded by whitespace
-	priorityRe := regexp.MustCompile(`(?:^|\s)!([1-5])`)
+	priorityRe := regexp.MustCompile(`(?i)(?:^|\s)!(critical|urgent|high|normal|medium|lowest|low|[1-5])`)
 	if match := priorityRe.FindStringSubmatch(input); len(match) > 1 {
-		result.priority, _ = strconv.Atoi(match[1])
+		result.priority = parsePriorityToken(match[1])
 		input = priorityRe.ReplaceAllString(input, " ")
 	}
 
@@ -282,6 +315,26 @@ func parseQuickCaptureForPreview(input string, project *models.Project, allProje
 			result.dueDate = &date
 		}
 		input = dueDateRe.ReplaceAllString(input, " ")
+	}
+
+	// Extract due date alias: due:value (tolerant alternative to @date)
+	// Also accepts bare shorthand: due:3d, due:2w, due:1m
+	// Require "due:" to be at start of string or preceded by whitespace
+	dueColonRe := regexp.MustCompile(`(?i)(?:^|\s)due:(next\s+\w+|in\s+\d+\s+\w+|\S+)`)
+	if result.dueDate == nil {
+		if match := dueColonRe.FindStringSubmatch(input); len(match) > 1 {
+			date, err := ParseFlexibleDate(match[1])
+			if err != nil {
+				if errMsg == "" {
+					errMsg = fmt.Sprintf("invalid date: %s", match[1])
+				}
+			} else {
+				result.dueDate = &date
+			}
+			input = dueColonRe.ReplaceAllString(input, " ")
+		}
+	} else {
+		input = dueColonRe.ReplaceAllString(input, " ")
 	}
 
 	// Extract recurrence

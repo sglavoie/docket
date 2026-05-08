@@ -52,7 +52,13 @@ func (m *TaskFormModel) prevTab() {
 // Basics tab includes dynamic type-attr rows. Children tab is computed dynamically.
 func (m *TaskFormModel) fieldCountForActiveTab() int {
 	if m.activeTab == formTabBasics {
+		if m.collapsedBasics {
+			return 4 // Title, Type, Priority, "+ more fields"
+		}
 		return formBasicsFieldCount + formAttrFieldCount(m.draft.taskType)
+	}
+	if m.activeTab == formTabSchedule && m.collapsedSchedule {
+		return 2 // Due, "+ more fields"
 	}
 	if m.activeTab == formTabChildren {
 		return m.fieldCountForChildren()

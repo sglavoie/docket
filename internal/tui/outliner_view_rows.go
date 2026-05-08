@@ -111,6 +111,32 @@ func (m *OutlinerModel) flattenTaskTreeWithFolds(tasks []*models.Task, ancestorI
 	}
 }
 
+// insertDepth0Separators inserts a blank separator row between depth-0 task
+// groups that have visible children. Only separator rows are added — never at
+// the start or end of the list.
+func (m *OutlinerModel) insertDepth0Separators() {
+	if len(m.rows) <= 1 {
+		return
+	}
+	isRoot := func(prefix string) bool {
+		return strings.HasPrefix(prefix, connectorBranch) ||
+			strings.HasPrefix(prefix, connectorLastItem)
+	}
+	prevWasChild := false
+	result := make([]outlinerRow, 0, len(m.rows)+4)
+	for _, row := range m.rows {
+		if row.task != nil && !row.IsSectionHeader {
+			rootRow := isRoot(row.prefix)
+			if rootRow && prevWasChild {
+				result = append(result, outlinerRow{IsSeparator: true})
+			}
+			prevWasChild = !rootRow
+		}
+		result = append(result, row)
+	}
+	m.rows = result
+}
+
 // isExpanded returns true if the node should show its children.
 // When the expandedNodes map is empty (default), all nodes are expanded.
 func (m *OutlinerModel) isExpanded(taskID string) bool {
