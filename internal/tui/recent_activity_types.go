@@ -41,8 +41,8 @@ func NewRecentActivityModel(cfg *config.Config, mgr *config.Manager) *RecentActi
 	m := &RecentActivityModel{
 		config:        cfg,
 		configManager: mgr,
-		FilterMixin: FilterMixin{filter: newFilterState()},
-		tabs:        TabState{Names: recentActivityTabNames},
+		FilterMixin:   FilterMixin{filter: newFilterState()},
+		tabs:          TabState{Names: recentActivityTabNames},
 	}
 	if !cfg.GetRecentActivityShowAll() {
 		m.tabs.Active = recentActivityTabActive
@@ -61,8 +61,8 @@ func NewProjectRecentActivityModel(cfg *config.Config, mgr *config.Manager, proj
 		config:        cfg,
 		configManager: mgr,
 		projectScope:  project,
-		FilterMixin:  FilterMixin{filter: newFilterState()},
-		tabs:         TabState{Names: recentActivityTabNames},
+		FilterMixin:   FilterMixin{filter: newFilterState()},
+		tabs:          TabState{Names: recentActivityTabNames},
 	}
 	if !cfg.GetRecentActivityShowAll() {
 		m.tabs.Active = recentActivityTabActive

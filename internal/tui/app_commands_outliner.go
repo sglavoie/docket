@@ -396,7 +396,7 @@ func (m *AppModel) outlinerCommands() []Command { //nolint:gocyclo
 		{
 			Name:        "manage dependencies",
 			Description: "Manage task dependencies",
-			Shortcut:    "td",
+			Shortcut:    "bm",
 			Category:    CategoryTasks,
 			Views:       []ViewType{ViewOutliner},
 			Aliases:     []string{"add dependency", "link dependency"},
@@ -404,6 +404,21 @@ func (m *AppModel) outlinerCommands() []Command { //nolint:gocyclo
 				task := cursorTask()
 				if task != nil && m.outliner != nil {
 					return ManageDependenciesMsg{Task: task, Project: m.outliner.project}
+				}
+				return nil
+			},
+		},
+		{
+			Name:        "manage decisions",
+			Description: "View and manage design/architecture decisions for this task",
+			Shortcut:    "td",
+			Category:    CategoryDecisions,
+			Views:       []ViewType{ViewOutliner},
+			Aliases:     []string{"decisions", "design decisions", "architecture decisions"},
+			Handler: func() tea.Msg {
+				task := cursorTask()
+				if task != nil && m.outliner != nil {
+					return ShowTaskDecisionsMsg{Task: task, Project: m.outliner.project}
 				}
 				return nil
 			},

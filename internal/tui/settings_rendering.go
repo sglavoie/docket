@@ -9,7 +9,7 @@ import (
 
 // renderColumnToggles renders 13 column visibility toggles.
 // The Priority column (index 1) is rendered as a 3-way enum selector instead of a toggle.
-func (m *SettingsModel) renderColumnToggles(b *strings.Builder, toggles [13]bool, startIdx, labelWidth int, priorityCursor int) {
+func (m *SettingsModel) renderColumnToggles(b *strings.Builder, toggles [14]bool, startIdx, labelWidth int, priorityCursor int) {
 	for i, col := range AllColumns {
 		focusIdx := startIdx + i
 		b.WriteString(renderFormLabelWithWidth(col.Label+": ", labelWidth, m.focusIndex == focusIdx))

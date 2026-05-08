@@ -297,6 +297,13 @@ func (m *ProjectFocusViewModel) buildKeyMap() *keymap.KeyMap {
 			}
 			return m, func() tea.Msg { return ShowProjectSelectorForMoveMsg{Task: task, SourceProject: project} }
 		},
+		ViewDecisions: func() (tea.Model, tea.Cmd) {
+			task, project := m.getTaskRef()
+			if task == nil {
+				return m, nil
+			}
+			return m, func() tea.Msg { return ShowTaskDecisionsMsg{Task: task, Project: project} }
+		},
 		DeleteTask: func() (tea.Model, tea.Cmd) {
 			// No delete in this view
 			return m, nil

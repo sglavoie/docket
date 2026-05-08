@@ -53,6 +53,7 @@ type Task struct {
 	Active        bool               `json:"active,omitempty"`     // Whether the task is flagged as active
 	Dimmed        bool               `json:"dimmed,omitempty"`     // Whether the task is visually dimmed
 	Comments      []*Comment         `json:"comments,omitempty"`   // Timestamped comments/notes
+	Decisions     []*Decision        `json:"decisions,omitempty"`  // Design/architecture decisions
 	Recurrence    *RecurrencePattern `json:"recurrence,omitempty"` // Recurrence pattern (nil = non-recurring)
 	Attachments   []Attachment       `json:"attachments,omitempty"`
 	SnoozedUntil  *time.Time         `json:"snoozed_until,omitempty"`  // Task hidden until this date

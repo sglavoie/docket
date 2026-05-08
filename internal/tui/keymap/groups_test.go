@@ -270,11 +270,11 @@ func TestTaskPrefixGroup(t *testing.T) {
 	if pn.Key != "t" {
 		t.Errorf("TaskPrefixGroup: want key 't', got %q", pn.Key)
 	}
-	if len(pn.Children) != 14 {
-		t.Errorf("TaskPrefixGroup: want 14 children, got %d", len(pn.Children))
+	if len(pn.Children) != 15 {
+		t.Errorf("TaskPrefixGroup: want 15 children, got %d", len(pn.Children))
 	}
 	keys := childBindingKeys(pn.Children)
-	for _, k := range []string{"n", "N", "r", "s", "o", "p", "d", "t", "c", "a", "l", "e", "m", "D"} {
+	for _, k := range []string{"n", "N", "r", "s", "o", "p", "h", "t", "c", "a", "l", "e", "m", "d", "D"} {
 		if !slices.Contains(keys, k) {
 			t.Errorf("TaskPrefixGroup: missing key %q", k)
 		}

@@ -79,6 +79,7 @@ func session1SyncViews() []syncTestCase {
 		{ViewDashboard, &DashboardModel{}},
 		{ViewTaskChecklist, &TaskChecklistModel{}},
 		{ViewTaskComments, &TaskCommentsModel{}},
+		{ViewTaskDecisions, &TaskDecisionsModel{}},
 		{ViewTaskAttachments, &TaskAttachmentsModel{}},
 		{ViewMessageLog, &MessageLogViewModel{}},
 		{ViewNotificationCenter, &NotificationCenterModel{}},

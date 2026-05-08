@@ -23,6 +23,7 @@ const (
 	ColProgress      = "progress"
 	ColRecurrence    = "recurrence"
 	ColSnooze        = "snooze"
+	ColDecisions     = "decisions"
 	ColShortID       = "short_id"
 )
 
@@ -40,6 +41,7 @@ var DefaultTreeColumns = map[string]bool{
 	ColProgress:      true,
 	ColRecurrence:    true,
 	ColSnooze:        true,
+	ColDecisions:     true,
 	ColShortID:       true,
 }
 
@@ -57,6 +59,7 @@ var DefaultOutlinerColumns = map[string]bool{
 	ColProgress:      true,
 	ColRecurrence:    true,
 	ColSnooze:        true,
+	ColDecisions:     true,
 	ColShortID:       true,
 }
 

@@ -517,7 +517,7 @@ func (m *OutlinerModel) buildKeyMap() *keymap.KeyMap {
 			return m.handleTaskPrefix("p", cursorTask())
 		},
 		ToggleDim: func() (tea.Model, tea.Cmd) {
-			return m.handleTaskPrefix("d", cursorTask())
+			return m.handleTaskPrefix("h", cursorTask())
 		},
 		ManageTags: func() (tea.Model, tea.Cmd) {
 			return m.handleTaskPrefix("t", cursorTask())
@@ -536,6 +536,9 @@ func (m *OutlinerModel) buildKeyMap() *keymap.KeyMap {
 		},
 		MoveToProject: func() (tea.Model, tea.Cmd) {
 			return m.handleTaskPrefix("m", cursorTask())
+		},
+		ViewDecisions: func() (tea.Model, tea.Cmd) {
+			return m.handleTaskPrefix("d", cursorTask())
 		},
 		DeleteTask: func() (tea.Model, tea.Cmd) {
 			return m.handleTaskPrefix("D", cursorTask())

@@ -304,6 +304,11 @@ func (m *ProjectTreeModel) nodeContentGroup(task *models.Task) string {
 			parts = append(parts, s)
 		}
 	}
+	if m.columnConfig.IsVisible(ColDecisions) {
+		if s := renderDecisionIndicator(task); s != "" {
+			parts = append(parts, s)
+		}
+	}
 	if m.columnConfig.IsVisible(ColTags) && len(task.Tags) > 0 && !m.sidebar.IsEnabled() {
 		parts = append(parts, renderTruncatedTags(task.Tags, 2, 8))
 	}

@@ -41,8 +41,8 @@ func (m *OutlinerModel) handleTaskPrefix(key string, cursorTask *models.Task) (t
 		if key == "p" {
 			return m.crossTogglePinned(row, proj)
 		}
-		// td → dim/undim
-		if key == "d" {
+		// th → dim/undim
+		if key == "h" {
 			return m.crossToggleDimmed(row, proj)
 		}
 		// tD → delete

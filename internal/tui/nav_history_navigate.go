@@ -293,6 +293,9 @@ func (m *AppModel) reconstructTaskView(entry NavEntry) tea.Cmd {
 	case ViewTaskComments:
 		m.lastNavigatedTaskID = task.ID
 		m.showView(ViewTaskComments, NewTaskCommentsModelWithEditor(task, project, m.config.Editor))
+	case ViewTaskDecisions:
+		m.lastNavigatedTaskID = task.ID
+		m.showView(ViewTaskDecisions, NewTaskDecisionsModelWithEditor(task, project, m.config.Editor))
 	case ViewTaskChecklist:
 		m.lastNavigatedTaskID = task.ID
 		m.showView(ViewTaskChecklist, NewTaskChecklistModelWithEditor(task, project, m.config.Editor))

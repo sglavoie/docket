@@ -32,7 +32,7 @@ var (
 	settingsTabNames = []string{"General", "Palette", "Review", "Behavior", "Attachments", "Project Tree", "Outliner", "Kanban", "Notifications", "Stages", "Appearance"}
 
 	// tabFieldCount declares how many focusable fields each tab has.
-	tabFieldCount = []int{5, 18, 4, 13, 2, 13, 21, 11, 15, 1, 3}
+	tabFieldCount = []int{5, 18, 4, 13, 2, 14, 22, 11, 15, 1, 3}
 
 	// tabFieldStart holds the starting focus index for each tab (computed in init).
 	tabFieldStart []int
@@ -49,7 +49,7 @@ var (
 		{{"Recent Activity", 2}, {"Linked Tasks", 1}, {"Pinned Tasks", 1}, {"Recent Tasks", 1}, {"Popups", 1}, {"Section Limits", 7}}, // 3: Behavior
 		nil, // 4: Attachments
 		nil, // 5: Project Tree
-		{{"Sidebar", 1}, {"Section State", 7}, {"Column Visibility", 13}}, // 6: Outliner
+		{{"Sidebar", 1}, {"Section State", 7}, {"Column Visibility", 14}}, // 6: Outliner
 		nil, // 7: Kanban
 		{{"Reviews", 4}, {"Tasks", 9}, {"Projects", 2}}, // 8: Notifications
 		nil, // 9: Stages
@@ -205,8 +205,8 @@ type SettingsModel struct {
 	codeEditorInput          textinput.Model
 	defaultViewCursor        int      // Index into defaultProjectViewOptions
 	outlinerCollapsed        [7]bool  // Per-section default collapse state (indexed by outlinerSectionNames)
-	treeColumnDefaults       [13]bool // Global default column visibility for tree view
-	outlinerColumnDefaults   [13]bool // Global default column visibility for outliner view
+	treeColumnDefaults       [14]bool // Global default column visibility for tree view
+	outlinerColumnDefaults   [14]bool // Global default column visibility for outliner view
 	treePriorityMode         int      // 0=All, 1=Conditional, 2=Hidden
 	outlinerPriorityMode     int      // 0=All, 1=Conditional, 2=Hidden
 	crossOutlinerSidebar     bool     // Default sidebar state for cross-project outliner

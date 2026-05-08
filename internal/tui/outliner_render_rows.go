@@ -294,6 +294,11 @@ func (m *OutlinerModel) renderTaskContentGroup(task *models.Task) string {
 			contentParts = append(contentParts, checklist)
 		}
 	}
+	if m.columnConfig.IsVisible(ColDecisions) {
+		if decisions := renderDecisionIndicator(task); decisions != "" {
+			contentParts = append(contentParts, decisions)
+		}
+	}
 	return JoinGroupParts(contentParts...)
 }
 

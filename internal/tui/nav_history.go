@@ -134,6 +134,7 @@ func isTrackedView(vt ViewType) bool {
 		ViewTutor,
 		ViewScoreProfileManager,
 		ViewTaskComments,
+		ViewTaskDecisions,
 		ViewTaskChecklist,
 		ViewTaskDetail,
 		ViewTaskAttachments,
@@ -185,7 +186,7 @@ func isGlobalNavView(vt ViewType) bool {
 // isTaskScopedView returns true if the view is scoped to a specific task.
 func isTaskScopedView(vt ViewType) bool {
 	switch vt {
-	case ViewTaskComments, ViewTaskChecklist, ViewTaskDetail, ViewTaskAttachments, ViewTaskActivity:
+	case ViewTaskComments, ViewTaskDecisions, ViewTaskChecklist, ViewTaskDetail, ViewTaskAttachments, ViewTaskActivity:
 		return true
 	default:
 		return false

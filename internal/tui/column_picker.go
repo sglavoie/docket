@@ -27,6 +27,7 @@ var AllColumns = []ColumnInfo{
 	{ID: ColComments, Label: "Comments"},
 	{ID: ColAttachments, Label: "Attachments"},
 	{ID: ColChecklist, Label: "Checklist"},
+	{ID: ColDecisions, Label: "Decisions"},
 	{ID: ColProgress, Label: "Progress"},
 	{ID: ColRecurrence, Label: "Recurrence"},
 	{ID: ColSnooze, Label: "Snooze"},

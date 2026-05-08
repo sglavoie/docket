@@ -115,6 +115,7 @@ const (
 	ViewCrossProjectKanban
 	ViewPipelineHub
 	ViewRoadmap
+	ViewTaskDecisions
 )
 
 // String returns the name of the ViewType for readable test output.
@@ -220,6 +221,7 @@ func (v ViewType) String() string {
 		ViewCrossProjectKanban:    "CrossProjectKanban",
 		ViewPipelineHub:           "PipelineHub",
 		ViewRoadmap:               "Roadmap",
+		ViewTaskDecisions:         "TaskDecisions",
 	}
 	if name, ok := names[v]; ok {
 		return name

@@ -97,6 +97,19 @@ func renderCommentIndicator(task *models.Task) string {
 	return MutedStyle.Render(fmt.Sprintf("💬 %d", len(task.Comments)))
 }
 
+// renderDecisionIndicator renders a compact decision count indicator.
+// Shows unresolved/total when some are resolved, otherwise just total.
+func renderDecisionIndicator(task *models.Task) string {
+	if len(task.Decisions) == 0 {
+		return ""
+	}
+	unresolved := task.UnresolvedDecisionCount()
+	if unresolved < len(task.Decisions) {
+		return MutedStyle.Render(fmt.Sprintf("📋 %d/%d", unresolved, len(task.Decisions)))
+	}
+	return MutedStyle.Render(fmt.Sprintf("📋 %d", len(task.Decisions)))
+}
+
 // renderAttachmentIndicator renders a compact attachment count indicator.
 func renderAttachmentIndicator(task *models.Task) string {
 	if !task.HasAttachments() {

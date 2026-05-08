@@ -130,6 +130,19 @@ func writeTaskClean(builder *strings.Builder, task *models.Task, allTasks []*mod
 		builder.WriteString("\n")
 	}
 
+	if len(task.Decisions) > 0 {
+		builder.WriteString("\n**Decisions:**\n")
+		for _, d := range task.Decisions {
+			fmt.Fprintf(builder, "- **[%s]** %s\n", string(d.Category), d.Text)
+			if d.Rationale != "" {
+				fmt.Fprintf(builder, "  *Rationale:* %s\n", d.Rationale)
+			}
+			if d.Resolved {
+				builder.WriteString("  *(resolved)*\n")
+			}
+		}
+	}
+
 	for _, child := range getChildrenInOrder(task.ID, allTasks) {
 		builder.WriteString("\n")
 		writeTaskClean(builder, child, allTasks, level+1, visited)

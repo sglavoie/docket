@@ -57,7 +57,7 @@ func handleLinkedTaskPrefixKey(key string, task *models.Task, project *models.Pr
 
 // handleTaskPrefixMsgKey handles the message-only subset of the "t" prefix
 // dispatch: to (edit content), tc (comments), ta (attachments), tl (checklist),
-// te (description editor), tm (move to project).
+// te (description editor), tm (move to project), td (decisions).
 // These keys produce identical messages across ProjectTree and Outliner.
 // Returns (handled, cmd).
 func handleTaskPrefixMsgKey(key string, task *models.Task, project *models.Project) (bool, tea.Cmd) {
@@ -85,6 +85,10 @@ func handleTaskPrefixMsgKey(key string, task *models.Task, project *models.Proje
 	case "m":
 		return true, func() tea.Msg {
 			return ShowProjectSelectorForMoveMsg{Task: task, SourceProject: project}
+		}
+	case "d":
+		return true, func() tea.Msg {
+			return ShowTaskDecisionsMsg{Task: task, Project: project}
 		}
 	}
 	return false, nil

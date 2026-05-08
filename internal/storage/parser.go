@@ -244,6 +244,7 @@ func ParseTasksMarkdownWithSections(content string) (*ParseResult, error) {
 	for _, t := range tasks {
 		format.ExtractActivityFromDescription(t)
 		format.ExtractCommentsFromDescription(t)
+		format.ExtractDecisionsFromDescription(t)
 		descWarnings := format.ExtractDescriptionBlock(t)
 		metadataWarnings = append(metadataWarnings, descWarnings...)
 	}

@@ -251,8 +251,8 @@ func priorityModeToCursor(mode string) int {
 
 // initColumnDefaults converts a config map to a [13]bool array using AllColumns order.
 // nil map or missing keys default to true (visible).
-func initColumnDefaults(cfgMap map[string]bool) [13]bool {
-	var result [13]bool
+func initColumnDefaults(cfgMap map[string]bool) [14]bool {
+	var result [14]bool
 	for i, col := range AllColumns {
 		if cfgMap != nil {
 			if v, ok := cfgMap[col.ID]; ok {
@@ -267,7 +267,7 @@ func initColumnDefaults(cfgMap map[string]bool) [13]bool {
 
 // columnDefaultsToMap converts a [13]bool array back to a config map.
 // Returns nil if all columns are visible (to keep config clean).
-func columnDefaultsToMap(defaults [13]bool) map[string]bool {
+func columnDefaultsToMap(defaults [14]bool) map[string]bool {
 	allTrue := true
 	for _, v := range defaults {
 		if !v {
@@ -278,7 +278,7 @@ func columnDefaultsToMap(defaults [13]bool) map[string]bool {
 	if allTrue {
 		return nil
 	}
-	m := make(map[string]bool, 13)
+	m := make(map[string]bool, 14)
 	for i, col := range AllColumns {
 		m[col.ID] = defaults[i]
 	}

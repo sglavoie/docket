@@ -56,6 +56,11 @@ func (m *AppModel) handleTaskMessages(msg tea.Msg) (bool, tea.Cmd) {
 		return handled, cmd
 	}
 
+	// Decision messages
+	if handled, cmd := m.handleTaskDecisionMessages(msg); handled {
+		return handled, cmd
+	}
+
 	// Link-related messages (linked tasks, cross-project links)
 	if handled, cmd := m.handleTaskLinkMessages(msg); handled {
 		return handled, cmd

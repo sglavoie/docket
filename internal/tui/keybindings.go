@@ -86,6 +86,7 @@ func migratedViewKeymaps() map[ViewType]*keymap.KeyMap {
 		ViewProjectRecentActivity: (&RecentActivityModel{}).buildKeyMap(),
 		ViewTaskChecklist:         (&TaskChecklistModel{}).buildKeyMap(),
 		ViewTaskComments:          (&TaskCommentsModel{}).buildKeyMap(),
+		ViewTaskDecisions:         (&TaskDecisionsModel{}).buildKeyMap(),
 		ViewWorkflowRules:         (&WorkflowRulesModel{}).buildKeyMap(),
 		ViewWorkflowDryRun:        (&WorkflowDryRunModel{}).buildKeyMap(),
 		ViewWorkflowWizard:        (&WorkflowWizardModel{}).buildKeyMap(),

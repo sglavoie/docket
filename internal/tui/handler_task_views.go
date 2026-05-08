@@ -17,6 +17,9 @@ func (m *AppModel) handleTaskViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 	case ShowTaskChecklistMsg:
 		return m.handleShowTaskChecklist(msg)
 
+	case ShowTaskDecisionsMsg:
+		return m.handleShowTaskDecisions(msg)
+
 	case OpenTaskActivityMsg:
 		return m.handleOpenTaskActivity(msg)
 	}
@@ -49,6 +52,16 @@ func (m *AppModel) handleShowTaskChecklist(msg ShowTaskChecklistMsg) (bool, tea.
 		m.lastNavigatedTaskID = msg.Task.ID
 		m.recordTaskVisit(msg.Task, msg.Project)
 		m.showView(ViewTaskChecklist, NewTaskChecklistModelWithEditor(msg.Task, msg.Project, m.config.Editor))
+	}
+	return true, nil
+}
+
+// handleShowTaskDecisions handles the ShowTaskDecisionsMsg.
+func (m *AppModel) handleShowTaskDecisions(msg ShowTaskDecisionsMsg) (bool, tea.Cmd) {
+	if msg.Task != nil && msg.Project != nil {
+		m.lastNavigatedTaskID = msg.Task.ID
+		m.recordTaskVisit(msg.Task, msg.Project)
+		m.showView(ViewTaskDecisions, NewTaskDecisionsModelWithEditor(msg.Task, msg.Project, m.config.Editor))
 	}
 	return true, nil
 }

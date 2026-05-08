@@ -253,6 +253,31 @@ type CommentEditedMsg struct{ Task *models.Task }
 type CommentResolvedMsg struct{ Task *models.Task }
 
 // =============================================================================
+// Task Decisions Messages (Show/Close Pattern)
+// =============================================================================
+
+// ShowTaskDecisionsMsg opens the decisions view for a task.
+type ShowTaskDecisionsMsg struct {
+	Task    *models.Task
+	Project *models.Project
+}
+
+// CloseTaskDecisionsMsg closes the decisions view.
+type CloseTaskDecisionsMsg struct{ PopViewMsg }
+
+// DecisionAddedMsg signals a decision was added.
+type DecisionAddedMsg struct{ Task *models.Task }
+
+// DecisionDeletedMsg signals a decision was deleted.
+type DecisionDeletedMsg struct{ Task *models.Task }
+
+// DecisionEditedMsg signals a decision was edited.
+type DecisionEditedMsg struct{ Task *models.Task }
+
+// DecisionResolvedMsg signals a decision's resolved state was toggled.
+type DecisionResolvedMsg struct{ Task *models.Task }
+
+// =============================================================================
 // Task Checklist Messages (Show/Close Pattern)
 // =============================================================================
 

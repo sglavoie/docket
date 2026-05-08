@@ -28,6 +28,8 @@ type TaskPrefixDeps struct {
 	EditDescription Action
 	// MoveToProject opens the project selector for moving the task.
 	MoveToProject Action
+	// ViewDecisions opens the task decisions view.
+	ViewDecisions Action
 	// DeleteTask deletes the current task (may show confirm dialog).
 	DeleteTask Action
 }
@@ -42,13 +44,14 @@ func TaskPrefixGroup(deps TaskPrefixDeps) []Entry {
 		Bind("s", "Change section", cat, deps.ChangeSection),
 		Bind("o", "Open in external editor", cat, deps.OpenEditor),
 		Bind("p", "Pin/unpin task", cat, deps.TogglePin),
-		Bind("d", "Dim/undim task", cat, deps.ToggleDim),
+		Bind("h", "Dim/undim task", cat, deps.ToggleDim),
 		Bind("t", "Manage tags", cat, deps.ManageTags),
 		Bind("c", "View/add comments", cat, deps.ViewComments),
 		Bind("a", "View/add attachments", cat, deps.ViewAttachments),
 		Bind("l", "Edit checklist", cat, deps.EditChecklist),
 		Bind("e", "Edit description", cat, deps.EditDescription),
 		Bind("m", "Move to another project", cat, deps.MoveToProject),
+		Bind("d", "View/add decisions", cat, deps.ViewDecisions),
 		Bind("D", "Delete task", cat, deps.DeleteTask),
 	}
 	return []Entry{Prefix("t", "Task actions", cat, children)}

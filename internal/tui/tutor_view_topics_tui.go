@@ -58,7 +58,7 @@ but don't need to act on right now.
 
 # How to Dim
 
-  td  Toggle dim on the current task
+  th  Toggle dim on the current task
 
 Dimmed tasks remain in all views and filters. Dimming is
 purely visual — it does not affect status, priority, or

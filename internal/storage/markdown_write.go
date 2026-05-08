@@ -128,6 +128,11 @@ func writeTaskPreservingOrder(builder *strings.Builder, task *models.Task, allTa
 		builder.WriteString(format.WriteComments(task))
 	}
 
+	if len(task.Decisions) > 0 {
+		builder.WriteString("\n")
+		builder.WriteString(format.WriteDecisions(task))
+	}
+
 	for _, child := range getChildrenInOrder(task.ID, allTasks) {
 		builder.WriteString("\n")
 		writeTaskPreservingOrder(builder, child, allTasks, level+1, visited)
