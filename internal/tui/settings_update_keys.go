@@ -300,12 +300,14 @@ func (m *SettingsModel) handleSpaceKey() {
 		switch {
 		case local == 0:
 			m.crossOutlinerSidebar = !m.crossOutlinerSidebar
-		case local >= 1 && local <= 7:
-			m.outlinerCollapsed[local-1] = !m.outlinerCollapsed[local-1]
-		case local == 9: // priority column in column visibility
+		case local == 1:
+			m.crossOutlinerCycleOnly = !m.crossOutlinerCycleOnly
+		case local >= 2 && local <= 8:
+			m.outlinerCollapsed[local-2] = !m.outlinerCollapsed[local-2]
+		case local == 10: // priority column in column visibility
 			m.outlinerPriorityMode = (m.outlinerPriorityMode + 1) % 3
-		case local >= 8 && local <= 20:
-			m.outlinerColumnDefaults[local-8] = !m.outlinerColumnDefaults[local-8]
+		case local >= 9 && local <= 21:
+			m.outlinerColumnDefaults[local-9] = !m.outlinerColumnDefaults[local-9]
 		}
 	case tabKanban:
 		switch {
@@ -377,7 +379,7 @@ func (m *SettingsModel) handleLeftKey() {
 			m.treePriorityMode--
 		}
 	case tabOutliner:
-		if local == 9 && m.outlinerPriorityMode > 0 {
+		if local == 10 && m.outlinerPriorityMode > 0 {
 			m.outlinerPriorityMode--
 		}
 	case tabKanban:
@@ -435,7 +437,7 @@ func (m *SettingsModel) handleRightKey() {
 			m.treePriorityMode++
 		}
 	case tabOutliner:
-		if local == 9 && m.outlinerPriorityMode < 2 {
+		if local == 10 && m.outlinerPriorityMode < 2 {
 			m.outlinerPriorityMode++
 		}
 	case tabKanban:

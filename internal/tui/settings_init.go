@@ -80,6 +80,7 @@ func NewSettingsModel(cfg *config.Config, manager *config.Manager) *SettingsMode
 		treePriorityMode:         priorityModeToCursor(cfg.TreePriorityMode),
 		outlinerPriorityMode:     priorityModeToCursor(cfg.OutlinerPriorityMode),
 		crossOutlinerSidebar:     cfg.CrossOutlinerSidebarEnabled == nil || *cfg.CrossOutlinerSidebarEnabled,
+		crossOutlinerCycleOnly:   cfg.CrossOutlinerCycleOnly != nil && *cfg.CrossOutlinerCycleOnly,
 		zebraStriping:            cfg.ZebraStriping(),
 		weekEndDayCursor:         settingsOptionCursor(weekEndDayValues, cfg.GetWeekEndDay(), 2),
 		timeFormatCursor:         settingsOptionCursor(timeFormatValues, cfg.TimeFormat, 1),

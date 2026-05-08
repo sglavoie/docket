@@ -158,6 +158,7 @@ func (m *SettingsModel) saveSettings() tea.Cmd {
 	}
 
 	m.config.CrossOutlinerSidebarEnabled = boolPtr(m.crossOutlinerSidebar)
+	m.config.CrossOutlinerCycleOnly = boolPtr(m.crossOutlinerCycleOnly)
 	m.config.TUIZebraStriping = boolPtr(m.zebraStriping)
 	m.config.WeekEndDay = weekEndDayValues[m.weekEndDayCursor]
 	m.config.TimeFormat = timeFormatValues[m.timeFormatCursor]

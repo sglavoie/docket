@@ -109,6 +109,7 @@ type Config struct {
 	TreeDefaultColumns             map[string]bool              `json:"tree_default_columns,omitempty"`
 	OutlinerDefaultColumns         map[string]bool              `json:"outliner_default_columns,omitempty"`
 	CrossOutlinerSidebarEnabled    *bool                        `json:"cross_outliner_sidebar_enabled,omitempty"`
+	CrossOutlinerCycleOnly         *bool                        `json:"cross_outliner_cycle_only,omitempty"`
 	CrossOutlinerCollapsedSections map[string]bool              `json:"cross_outliner_collapsed_sections,omitempty"`
 	CrossOutlinerFoldState         map[string]bool              `json:"cross_outliner_fold_state,omitempty"`
 	CrossOutlinerColumnToggles     map[string]bool              `json:"cross_outliner_column_toggles,omitempty"`

@@ -32,7 +32,7 @@ var (
 	settingsTabNames = []string{"General", "Palette", "Review", "Behavior", "Attachments", "Project Tree", "Outliner", "Kanban", "Notifications", "Stages", "Appearance"}
 
 	// tabFieldCount declares how many focusable fields each tab has.
-	tabFieldCount = []int{5, 18, 4, 13, 2, 14, 22, 11, 15, 1, 3}
+	tabFieldCount = []int{5, 18, 4, 13, 2, 14, 23, 11, 15, 1, 3}
 
 	// tabFieldStart holds the starting focus index for each tab (computed in init).
 	tabFieldStart []int
@@ -49,7 +49,7 @@ var (
 		{{"Recent Activity", 2}, {"Linked Tasks", 1}, {"Pinned Tasks", 1}, {"Recent Tasks", 1}, {"Popups", 1}, {"Section Limits", 7}}, // 3: Behavior
 		nil, // 4: Attachments
 		nil, // 5: Project Tree
-		{{"Sidebar", 1}, {"Section State", 7}, {"Column Visibility", 14}}, // 6: Outliner
+		{{"Sidebar", 2}, {"Section State", 7}, {"Column Visibility", 14}}, // 6: Outliner
 		nil, // 7: Kanban
 		{{"Reviews", 4}, {"Tasks", 9}, {"Projects", 2}}, // 8: Notifications
 		nil, // 9: Stages
@@ -210,6 +210,7 @@ type SettingsModel struct {
 	treePriorityMode         int      // 0=All, 1=Conditional, 2=Hidden
 	outlinerPriorityMode     int      // 0=All, 1=Conditional, 2=Hidden
 	crossOutlinerSidebar     bool     // Default sidebar state for cross-project outliner
+	crossOutlinerCycleOnly   bool     // Restrict cross-project outliner to cycle projects only
 	zebraStriping            bool     // Alternating row backgrounds in task list views
 	weekEndDayCursor         int      // Index into weekEndDayValues (0=fri, 1=sat, 2=sun)
 	timeFormatCursor         int      // Index into timeFormatValues (0=12h, 1=24h)

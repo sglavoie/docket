@@ -59,7 +59,7 @@ func (m *SettingsModel) focusLineInContent() int {
 	case tabOutliner:
 		switch m.subTab {
 		case 0:
-			return 0
+			return localIdx * 3
 		case 1:
 			if localIdx == 0 {
 				return 0

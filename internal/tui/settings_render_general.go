@@ -211,6 +211,11 @@ func (m *SettingsModel) renderOutlinerSidebarSection() string {
 	b.WriteString("\n")
 	b.WriteString(renderFormFieldDesc("Show sidebar by default in cross-project outliner", indent, m.focusIndex == base+0))
 
+	b.WriteString(renderFormLabelWithWidth("Cycle Projects Only: ", labelWidth, m.focusIndex == base+1))
+	b.WriteString(renderFormToggle("Enabled", "Disabled", m.crossOutlinerCycleOnly, m.focusIndex == base+1))
+	b.WriteString("\n")
+	b.WriteString(renderFormFieldDesc("Only show projects in the current cycle (context-aware)", indent, m.focusIndex == base+1))
+
 	return b.String()
 }
 

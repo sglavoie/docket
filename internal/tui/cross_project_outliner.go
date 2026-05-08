@@ -62,7 +62,16 @@ func (m *OutlinerModel) loadCrossProjectsCmd() tea.Cmd {
 	cfg := m.config
 	svc := m.projectService
 	return func() tea.Msg {
-		projects := cfg.GetActiveProjects()
+		var projects []*models.Project
+		if cfg.CrossOutlinerCycleOnly != nil && *cfg.CrossOutlinerCycleOnly {
+			ctxKey := cfg.FilterContext
+			if cfg.FilterCustomContext != "" {
+				ctxKey = "+" + cfg.FilterCustomContext
+			}
+			projects = cfg.GetCycleProjectsForContext(ctxKey)
+		} else {
+			projects = cfg.GetActiveProjects()
+		}
 		var loaded []*models.Project
 		var failed []string
 		for _, p := range projects {
