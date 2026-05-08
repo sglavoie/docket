@@ -49,7 +49,11 @@ func rebuildTaskStyles() {
 
 	DueDateStyle = lipgloss.NewStyle().Foreground(ColorMuted)
 	DueTodayStyle = lipgloss.NewStyle().Foreground(ColorWarning)
-	BlockedByDepsStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#c0caf5")).Background(ColorError)
+	blockedDepsFg := lipgloss.Color("#c0caf5")
+	if activeThemeName == "light" {
+		blockedDepsFg = lipgloss.Color("#ffffff")
+	}
+	BlockedByDepsStyle = lipgloss.NewStyle().Foreground(blockedDepsFg).Background(ColorError)
 
 	EpicStyle = lipgloss.NewStyle().Foreground(ColorPurple)
 	StoryStyle = lipgloss.NewStyle().Foreground(ColorPrimary)
@@ -241,7 +245,11 @@ func rebuildMiscStyles() {
 	RuleKeywordStyle = makeColorStyle(ColorRuleKeyword)
 	RuleOperatorStyle = makeColorStyle(ColorRuleOperator)
 	RuleHighlightStyle = lipgloss.NewStyle().Foreground(ColorAccent).Bold(true)
-	HighlightStyle = lipgloss.NewStyle().Background(ColorHighlight).Foreground(lipgloss.Color("#1a1b26")).Bold(true)
+	highlightFg := lipgloss.Color("#1a1b26")
+	if activeThemeName == "light" {
+		highlightFg = lipgloss.Color("#ffffff")
+	}
+	HighlightStyle = lipgloss.NewStyle().Background(ColorHighlight).Foreground(highlightFg).Bold(true)
 	MatchHighlightStyle = lipgloss.NewStyle().Foreground(ColorHighlight)
 	TagInlineStyle = lipgloss.NewStyle().Foreground(ColorSecondary)
 	CheckmarkStyle = lipgloss.NewStyle().Foreground(ColorSuccess)

@@ -55,19 +55,29 @@ func rebuildStyles() {
 	rebuildCategoryStyles()
 	rebuildMiscStyles()
 	rebuildPriorityTitleStyles()
+	rebuildGroupColors()
 }
 
 // ApplyTheme reconfigures cursor/selection colors and background propagation.
 // Call at startup and after settings save.
 func ApplyTheme(tc ThemeConfig) {
 	activeThemeName = tc.Name
+
+	themeDefaults := config.DefaultTheme(tc.Name)
+
+	effectiveBgColor := tc.BgColor
+	if effectiveBgColor == "" {
+		effectiveBgColor = themeDefaults.BackgroundColor
+	}
+	themeBgColor = effectiveBgColor
+	ColorBackground = lipgloss.Color(effectiveBgColor)
+
+	rebuildAccentColors()
 	rebuildPalette(tc.Palette)
 	rebuildStyles()
 	buildViewAccentMap()
 	ThemedTextInputStyles = themedTextInputStyles()
 	ThemedTextareaStyles = themedTextareaStyles()
-
-	themeDefaults := config.DefaultTheme(tc.Name)
 
 	effectiveBg := tc.CursorBg
 	if effectiveBg == "" {
@@ -128,12 +138,6 @@ func ApplyTheme(tc ThemeConfig) {
 		Bold(true).
 		Foreground(ColorSelectedTextFg)
 
-	// Resolve background: user override → theme default (fixes blank→wrong-default bug).
-	effectiveBgColor := tc.BgColor
-	if effectiveBgColor == "" {
-		effectiveBgColor = themeDefaults.BackgroundColor
-	}
-	themeBgColor = effectiveBgColor
 	zebraEnabled = tc.ZebraStriping
 
 	// Derive zebra background: darken custom bg 8%, or use default ColorZebraBg.
@@ -246,12 +250,14 @@ func makeBadgeStyle(fg, bg string) lipgloss.Style {
 // dark is used on dark themes; lightHex (a curated hex color) on light themes.
 func makeViewModeStyle(dark, lightHex string) lipgloss.Style {
 	bgStr := dark
+	fgStr := "#c0caf5"
 	if activeThemeName == "light" {
 		bgStr = lightHex
+		fgStr = "#ffffff"
 	}
 	return lipgloss.NewStyle().
 		Background(lipgloss.Color(bgStr)).
-		Foreground(lipgloss.Color("#c0caf5")).
+		Foreground(lipgloss.Color(fgStr)).
 		Bold(true).
 		Padding(0, 1)
 }

@@ -64,6 +64,31 @@ func lightenHex(hex string, factor float64) string {
 	return fmt.Sprintf("#%02x%02x%02x", lighten(r), lighten(g), lighten(b))
 }
 
+// rebuildAccentColors sets pipeline accent colors appropriate for the active theme.
+func rebuildAccentColors() {
+	if activeThemeName == "light" {
+		AccentDashboard = lipgloss.Color("#1e40af")
+		AccentCapture = lipgloss.Color("#b91c1c")
+		AccentOrganize = lipgloss.Color("#0e7490")
+		AccentPlan = lipgloss.Color("#15803d")
+		AccentWork = lipgloss.Color("#c2410c")
+		AccentExecute = lipgloss.Color("#0f766e")
+		AccentReview = lipgloss.Color("#92400e")
+		AccentSupport = lipgloss.Color("#4b5563")
+		AccentSearch = lipgloss.Color("#7c3aed")
+	} else {
+		AccentDashboard = lipgloss.Color("#7aa2f7")
+		AccentCapture = lipgloss.Color("#f7768e")
+		AccentOrganize = lipgloss.Color("#7dcfff")
+		AccentPlan = lipgloss.Color("#9ece6a")
+		AccentWork = lipgloss.Color("#ff9e64")
+		AccentExecute = lipgloss.Color("#73daca")
+		AccentReview = lipgloss.Color("#e0af68")
+		AccentSupport = lipgloss.Color("#565f89")
+		AccentSearch = lipgloss.Color("#bb9af7")
+	}
+}
+
 // rebuildPalette resets the palette color variables from user overrides.
 // Empty fields fall back to the canonical defaults from config.DefaultTheme.
 func rebuildPalette(p config.PaletteColors) {

@@ -32,7 +32,7 @@ var groupAccentColor = map[string]color.Color{
 	"Support":  AccentSupport,
 }
 
-// groupBgColor maps group name → subtle dark background tint.
+// groupBgColor maps group name → subtle background tint.
 var groupBgColor = map[string]color.Color{
 	"Capture":  lipgloss.Color("#2a1f2a"),
 	"Organize": lipgloss.Color("#1e2535"),
@@ -50,6 +50,61 @@ var groupLightColor = map[string]color.Color{
 	"Work":     lipgloss.Color("#e0b080"),
 	"Review":   lipgloss.Color("#e0d090"),
 	"Support":  lipgloss.Color("#9aa5ce"),
+}
+
+// rebuildGroupColors sets theme-appropriate group color maps.
+func rebuildGroupColors() {
+	if activeThemeName == "light" {
+		groupBgColor = map[string]color.Color{
+			"Capture":  lipgloss.Color("#f5e6e8"),
+			"Organize": lipgloss.Color("#e4edf5"),
+			"Plan":     lipgloss.Color("#e4f0e8"),
+			"Work":     lipgloss.Color("#f5ece4"),
+			"Review":   lipgloss.Color("#f5f0e0"),
+			"Support":  lipgloss.Color("#eaeaee"),
+		}
+		groupAccentColor = map[string]color.Color{
+			"Capture":  lipgloss.Color("#b91c1c"),
+			"Organize": lipgloss.Color("#0e7490"),
+			"Plan":     lipgloss.Color("#15803d"),
+			"Work":     lipgloss.Color("#c2410c"),
+			"Review":   lipgloss.Color("#92400e"),
+			"Support":  lipgloss.Color("#4b5563"),
+		}
+		groupLightColor = map[string]color.Color{
+			"Capture":  lipgloss.Color("#9f1239"),
+			"Organize": lipgloss.Color("#155e75"),
+			"Plan":     lipgloss.Color("#166534"),
+			"Work":     lipgloss.Color("#9a3412"),
+			"Review":   lipgloss.Color("#78350f"),
+			"Support":  lipgloss.Color("#6b7280"),
+		}
+	} else {
+		groupBgColor = map[string]color.Color{
+			"Capture":  lipgloss.Color("#2a1f2a"),
+			"Organize": lipgloss.Color("#1e2535"),
+			"Plan":     lipgloss.Color("#1e2a22"),
+			"Work":     lipgloss.Color("#2a2218"),
+			"Review":   lipgloss.Color("#2a2618"),
+			"Support":  lipgloss.Color("#222228"),
+		}
+		groupAccentColor = map[string]color.Color{
+			"Capture":  AccentCapture,
+			"Organize": AccentOrganize,
+			"Plan":     AccentPlan,
+			"Work":     AccentWork,
+			"Review":   AccentReview,
+			"Support":  AccentSupport,
+		}
+		groupLightColor = map[string]color.Color{
+			"Capture":  lipgloss.Color("#f0a0a0"),
+			"Organize": lipgloss.Color("#90c0e0"),
+			"Plan":     lipgloss.Color("#80d0a0"),
+			"Work":     lipgloss.Color("#e0b080"),
+			"Review":   lipgloss.Color("#e0d090"),
+			"Support":  lipgloss.Color("#9aa5ce"),
+		}
+	}
 }
 
 // hasGroups returns true if any hint has a non-empty Group field.
