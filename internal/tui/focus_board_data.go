@@ -2,6 +2,7 @@ package tui
 
 import (
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/sglavoie/tt/internal/models"
@@ -228,26 +229,53 @@ func (m *FocusBoardModel) expandTodayChildren() {
 	for _, r := range m.todayRows {
 		expanded = append(expanded, r)
 		if m.dailyPlanIDs[r.Task.ID] {
-			m.collectChildren(&expanded, r.Task, r.Project, 1, seen)
+			m.collectChildren(&expanded, r.Task, r.Project, nil, seen)
 		}
 	}
 	m.todayRows = expanded
 }
 
-// collectChildren recursively appends child rows depth-first.
-func (m *FocusBoardModel) collectChildren(out *[]boardRow, parent *models.Task, project *models.Project, depth int, seen map[string]bool) {
+// collectChildren recursively appends child rows depth-first with tree connectors.
+func (m *FocusBoardModel) collectChildren(out *[]boardRow, parent *models.Task, project *models.Project, ancestorIsLast []bool, seen map[string]bool) {
+	visible := make([]*models.Task, 0, len(parent.Children))
 	for _, child := range parent.Children {
-		if seen[child.ID] {
-			continue
+		if !seen[child.ID] {
+			visible = append(visible, child)
 		}
-		seen[child.ID] = true
-		*out = append(*out, boardRow{
-			Task:        child,
-			Project:     project,
-			Priority:    child.Priority,
-			Source:      project.Name,
-			IndentLevel: depth,
-		})
-		m.collectChildren(out, child, project, depth+1, seen)
 	}
+	for i, child := range visible {
+		seen[child.ID] = true
+		isLast := i == len(visible)-1
+		*out = append(*out, boardRow{
+			Task:       child,
+			Project:    project,
+			Priority:   child.Priority,
+			Source:     project.Name,
+			TreePrefix: buildBoardTreePrefix(ancestorIsLast, isLast),
+		})
+		next := make([]bool, len(ancestorIsLast)+1)
+		copy(next, ancestorIsLast)
+		next[len(ancestorIsLast)] = isLast
+		m.collectChildren(out, child, project, next, seen)
+	}
+}
+
+// buildBoardTreePrefix builds a tree prefix with shorter horizontal lines
+// (one fewer ─) to fit the focus board's compact layout.
+func buildBoardTreePrefix(ancestorIsLast []bool, isLast bool) string {
+	var b strings.Builder
+	b.WriteByte(' ')
+	for _, last := range ancestorIsLast {
+		if last {
+			b.WriteString("     ")
+		} else {
+			b.WriteString("│    ")
+		}
+	}
+	if isLast {
+		b.WriteString("└─── ")
+	} else {
+		b.WriteString("├─── ")
+	}
+	return b.String()
 }

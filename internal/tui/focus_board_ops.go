@@ -98,7 +98,7 @@ func (m *FocusBoardModel) handleDailyPlanReorder(delta int) (tea.Model, tea.Cmd)
 	targetRow := m.filtered[to]
 
 	// Auto-expanded children cannot be reordered — they follow their parent.
-	if curRow.IndentLevel > 0 || targetRow.IndentLevel > 0 {
+	if curRow.TreePrefix != "" || targetRow.TreePrefix != "" {
 		return m, nil
 	}
 

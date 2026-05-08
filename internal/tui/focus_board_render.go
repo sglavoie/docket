@@ -150,7 +150,7 @@ func (m *FocusBoardModel) View() tea.View { //nolint:gocyclo
 		}
 
 		rowNum := ""
-		if m.tabs.Active == boardTabToday && row.IndentLevel == 0 {
+		if m.tabs.Active == boardTabToday && row.TreePrefix == "" {
 			plannedIdx++
 			rowNum = fmt.Sprintf("%d.", plannedIdx)
 		}
@@ -163,6 +163,9 @@ func (m *FocusBoardModel) View() tea.View { //nolint:gocyclo
 		row := m.getRowAtCursor()
 		if row != nil {
 			indent := "        " // align with board row content
+			if row.TreePrefix != "" {
+				indent += strings.Repeat("    ", strings.Count(row.TreePrefix, connectorPipe)+strings.Count(row.TreePrefix, connectorSpace)+1)
+			}
 			pLines := inlinePreviewLines(row.Task, indent, m.width)
 			if len(pLines) > 0 {
 				insertAt := m.cursor + 1
@@ -211,7 +214,7 @@ func (m *FocusBoardModel) View() tea.View { //nolint:gocyclo
 		completedToday := 0
 		plannedTotal := 0
 		for _, r := range m.todayRows {
-			if r.IndentLevel > 0 {
+			if r.TreePrefix != "" {
 				continue
 			}
 			plannedTotal++
@@ -241,9 +244,9 @@ func (m *FocusBoardModel) renderRow(row boardRow, isSelected bool, maxTitleLen i
 	priorityBadge := boardPriorityBadge(task.Priority)
 	isClosed := task.Status.IsComplete()
 
-	// Indentation for auto-expanded children
-	indent := strings.Repeat("  ", row.IndentLevel)
-	maxTitleLen -= row.IndentLevel * 2
+	// Tree prefix for auto-expanded children
+	indent := MutedStyle.Render(row.TreePrefix)
+	maxTitleLen -= len(row.TreePrefix)
 
 	// Queue / daily-plan indicator: always 2 chars wide (first column).
 	queueIndicator := "  "
@@ -280,7 +283,7 @@ func (m *FocusBoardModel) renderRow(row boardRow, isSelected bool, maxTitleLen i
 		title = GetTitlePriorityStyle(task.Priority).Render(title)
 	}
 	statusIcon := GetStatusBadge(string(task.Status), task.Status.Icon())
-	content := fmt.Sprintf("%s%s%s%s %s %s%s %s", indent, queueIndicator, prefix, statusIcon, priorityBadge, projectBadge, typeIcon, title)
+	content := fmt.Sprintf("%s%s%s%s %s %s%s %s", queueIndicator, indent, prefix, statusIcon, priorityBadge, projectBadge, typeIcon, title)
 
 	structureGroup := scoreBadge
 	lifecycleGroup := dueStr
@@ -328,7 +331,7 @@ func (m *FocusBoardModel) computedTabNames() []string {
 	completedToday := 0
 	plannedTotal := 0
 	for _, r := range m.todayRows {
-		if r.IndentLevel > 0 {
+		if r.TreePrefix != "" {
 			continue
 		}
 		plannedTotal++

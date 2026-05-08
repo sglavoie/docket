@@ -28,7 +28,7 @@ type boardRow struct {
 	Project     *models.Project
 	Priority    int
 	Source      string
-	IndentLevel int // >0 for auto-expanded children of planned items in Today tab
+	TreePrefix string // non-empty for auto-expanded children of planned items in Today tab
 }
 
 func (r boardRow) isTask() bool {
