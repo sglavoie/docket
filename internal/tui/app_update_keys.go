@@ -211,6 +211,10 @@ func (m *AppModel) handleActiveKeyOverlay(msg tea.KeyPressMsg) (bool, tea.Cmd) {
 		_, cmd := m.handlePinnedPopupKey(msg)
 		return true, cmd
 	}
+	if m.showProjectCyclePicker {
+		_, cmd := m.handleProjectCyclePickerKey(msg)
+		return true, cmd
+	}
 	if m.showProjectCycle {
 		_, cmd := m.handleProjectCycleKey(msg)
 		return true, cmd

@@ -29,6 +29,7 @@ func (m *AppModel) Update(msg tea.Msg) (outModel tea.Model, outCmd tea.Cmd) { //
 			m.quickSwitchShowCompleted = false
 			m.showPinnedPopup = false
 			m.pinnedPopupFiltering = false
+			m.showProjectCyclePicker = false
 			m.showProjectCycle = false
 			m.pendingSandboxReset = false
 			m.pendingBulkTasks = nil

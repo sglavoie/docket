@@ -37,8 +37,8 @@ func (m *ProjectTreeModel) buildKeyMap() *keymap.KeyMap {
 		OpenOutliner: func() (tea.Model, tea.Cmd) {
 			return m, func() tea.Msg { return ShowOutlinerMsg{Project: m.getProject()} }
 		},
-		NextProject: func() (tea.Model, tea.Cmd) {
-			return m, func() tea.Msg { return CycleProjectMsg{Forward: true} }
+		OpenProjectCyclePicker: func() (tea.Model, tea.Cmd) {
+			return m, func() tea.Msg { return ShowProjectCyclePickerMsg{} }
 		},
 		PrevProject: func() (tea.Model, tea.Cmd) {
 			return m, func() tea.Msg { return CycleProjectMsg{Forward: false} }

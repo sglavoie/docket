@@ -7,8 +7,8 @@ type CommonPrimaryViewDeps struct {
 	OpenOutliner Action
 	// OpenProjectTree opens or toggles the project tree view.
 	OpenProjectTree Action
-	// NextProject cycles to the next project.
-	NextProject Action
+	// OpenProjectCyclePicker opens the numbered project cycle picker.
+	OpenProjectCyclePicker Action
 	// PrevProject cycles to the previous project.
 	PrevProject Action
 	// OpenCycleManager opens the cycle manager popup.
@@ -49,7 +49,7 @@ func CommonPrimaryViewGroup(deps CommonPrimaryViewDeps) []Entry {
 	entries := []Entry{
 		Bind("ctrl+p", "Open project tree view", cat, deps.OpenProjectTree),
 		Bind("ctrl+o", "Open outliner view", cat, deps.OpenOutliner),
-		Bind("`", "Next project in cycle", "Project Cycling", deps.NextProject),
+		Bind("`", "Open project picker", "Project Cycling", deps.OpenProjectCyclePicker),
 		Bind("~", "Previous project in cycle", "Project Cycling", deps.PrevProject),
 		Bind("@", "Open cycle manager", "Project Cycling", deps.OpenCycleManager),
 		Bind("B", "Project blockers", cat, deps.ProjectBlockers),

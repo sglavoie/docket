@@ -51,6 +51,9 @@ type CycleProjectMsg struct {
 	Forward bool // true = next, false = previous
 }
 
+// ShowProjectCyclePickerMsg opens the numbered project cycle picker popup.
+type ShowProjectCyclePickerMsg struct{}
+
 // =============================================================================
 // Trash Messages (Show/Close Pattern)
 // =============================================================================

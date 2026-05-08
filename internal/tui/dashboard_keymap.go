@@ -85,8 +85,8 @@ func (m *DashboardModel) buildKeyMap() *keymap.KeyMap {
 
 	// Project cycling
 	entries = append(entries,
-		keymap.Bind("`", "Next project in cycle", "Project Cycling", func() (tea.Model, tea.Cmd) {
-			return m, func() tea.Msg { return CycleProjectMsg{Forward: true} }
+		keymap.Bind("`", "Open project picker", "Project Cycling", func() (tea.Model, tea.Cmd) {
+			return m, func() tea.Msg { return ShowProjectCyclePickerMsg{} }
 		}),
 		keymap.Bind("~", "Previous project in cycle", "Project Cycling", func() (tea.Model, tea.Cmd) {
 			return m, func() tea.Msg { return CycleProjectMsg{Forward: false} }

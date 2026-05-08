@@ -398,7 +398,8 @@ type AppModel struct {
 	pinnedPreviewTaskID  string            // task ID the preview cursor was set for
 
 	// Project cycle popup state
-	showProjectCycle      bool
+	showProjectCyclePicker bool
+	showProjectCycle       bool
 	projectCycleCursor    int
 	projectCycleScroll    int // scroll offset for cycle popup viewport
 	projectCycleItems     []ProjectInfo

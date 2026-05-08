@@ -28,20 +28,16 @@ func TestNavCommands_ProjectCycle(t *testing.T) {
 	}
 }
 
-func TestNavCommands_NextProject(t *testing.T) {
+func TestNavCommands_ProjectPicker(t *testing.T) {
 	app := newTestAppModel()
 	cmds := app.navCommands()
-	cmd := findCommand(cmds, "next project")
+	cmd := findCommand(cmds, "project picker")
 	if cmd == nil {
-		t.Fatal("expected 'next project' command")
+		t.Fatal("expected 'project picker' command")
 	}
 	msg := cmd.Handler()
-	m, ok := msg.(CycleProjectMsg)
-	if !ok {
-		t.Errorf("expected CycleProjectMsg, got %T", msg)
-	}
-	if !m.Forward {
-		t.Error("expected Forward to be true")
+	if _, ok := msg.(ShowProjectCyclePickerMsg); !ok {
+		t.Errorf("expected ShowProjectCyclePickerMsg, got %T", msg)
 	}
 }
 

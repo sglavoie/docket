@@ -24,13 +24,13 @@ func (m *AppModel) navCommands() []Command {
 			},
 		},
 		{
-			Name:        "next project",
-			Description: "Switch to next project in cycle",
+			Name:        "project picker",
+			Description: "Open project cycle picker",
 			Shortcut:    "`",
 			Category:    CategoryNavigation,
 			Views:       []ViewType{ViewDashboard, ViewProjectTree, ViewOutliner},
 			Handler: func() tea.Msg {
-				return CycleProjectMsg{Forward: true}
+				return ShowProjectCyclePickerMsg{}
 			},
 		},
 		{

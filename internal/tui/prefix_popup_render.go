@@ -120,6 +120,12 @@ func hasGroups(hints []PrefixHint) bool {
 // RenderPrefixPopup renders a which-key style popup as a bordered overlay box.
 // Returns empty string if prefix is empty or not found in hints.
 func RenderPrefixPopup(prefix string, hints PrefixHints, width, height int) string {
+	return RenderPrefixPopupWithCategory(prefix, "", hints, width, height)
+}
+
+// RenderPrefixPopupWithCategory renders a prefix popup with a custom category name.
+// If category is empty, it falls back to prefixCategoryNames or the prefix itself.
+func RenderPrefixPopupWithCategory(prefix, category string, hints PrefixHints, width, height int) string {
 	if prefix == "" {
 		return ""
 	}
@@ -129,9 +135,11 @@ func RenderPrefixPopup(prefix string, hints PrefixHints, width, height int) stri
 		return ""
 	}
 
-	category := prefixCategoryNames[prefix]
 	if category == "" {
-		category = prefix
+		category = prefixCategoryNames[prefix]
+		if category == "" {
+			category = prefix
+		}
 	}
 
 	borderStyle := lipgloss.NewStyle().Foreground(ColorAccent)

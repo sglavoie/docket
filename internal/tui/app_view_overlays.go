@@ -40,6 +40,12 @@ func (m *AppModel) applyOverlays(content string, h int) string {
 		content = OverlayPopupBottomLeftDimmed(content, popup, m.width, h)
 	}
 
+	// Overlay project cycle picker popup if active
+	if m.showProjectCyclePicker {
+		popup := RenderPrefixPopupWithCategory("`", "project", m.buildProjectCyclePickerHints(), m.width, h)
+		content = OverlayPopupDimmed(content, popup, m.width, h)
+	}
+
 	// Replace base content with task preview when pinned popup is active
 	if m.showPinnedPopup && len(m.pinnedPopupItems) > 0 {
 		if preview := m.renderPinnedPreviewBackground(); preview != "" {

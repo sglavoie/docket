@@ -21,10 +21,94 @@ func (m *AppModel) handleProjectCycleMessages(msg tea.Msg) (bool, tea.Cmd) {
 		}
 		return true, nil
 
+	case ShowProjectCyclePickerMsg:
+		return m.handleShowProjectCyclePicker()
+
 	case CycleProjectMsg:
 		return m.handleCycleProject(msg.Forward)
 	}
 	return false, nil
+}
+
+// handleShowProjectCyclePicker opens the numbered project picker popup.
+func (m *AppModel) handleShowProjectCyclePicker() (bool, tea.Cmd) {
+	contextKey := m.config.FilterContext
+	if m.config.FilterCustomContext != "" {
+		contextKey = "+" + m.config.FilterCustomContext
+	}
+	cycleProjects := m.config.GetCycleProjectsForContext(contextKey)
+
+	if len(cycleProjects) == 0 {
+		if m.config.FilterCustomContext != "" {
+			m.setInfoStatus(fmt.Sprintf("No projects in cycle for +%s. Press @ to configure.", m.config.FilterCustomContext))
+		} else if m.config.FilterContext != "" {
+			m.setInfoStatus(fmt.Sprintf("No projects in cycle for context: %s. Press @ to configure.", m.config.FilterContext))
+		} else {
+			m.setInfoStatus("No projects in cycle. Press @ to configure.")
+		}
+		return true, defaultStatusTimeout()
+	}
+
+	if len(cycleProjects) == 1 {
+		if m.currentProject == nil || m.currentProject.ID != cycleProjects[0].ID {
+			return m.switchToCycleProject(cycleProjects[0])
+		}
+		m.setInfoStatus("Only one project in cycle")
+		return true, defaultStatusTimeout()
+	}
+
+	m.showProjectCyclePicker = true
+	return true, nil
+}
+
+// handleProjectCyclePickerKey handles key events when the project cycle picker is open.
+func (m *AppModel) handleProjectCyclePickerKey(msg tea.KeyPressMsg) (*AppModel, tea.Cmd) {
+	if isModifierOnly(msg) {
+		return m, nil
+	}
+	switch msg.String() {
+	case "escape", "`":
+		m.showProjectCyclePicker = false
+		return m, nil
+
+	case "1", "2", "3", "4", "5", "6", "7", "8", "9":
+		contextKey := m.config.FilterContext
+		if m.config.FilterCustomContext != "" {
+			contextKey = "+" + m.config.FilterCustomContext
+		}
+		cycleProjects := m.config.GetCycleProjectsForContext(contextKey)
+		idx := int(msg.String()[0]-'0') - 1
+		if idx < len(cycleProjects) {
+			m.showProjectCyclePicker = false
+			_, cmd := m.switchToCycleProject(cycleProjects[idx])
+			return m, cmd
+		}
+		return m, nil
+	}
+	return m, nil
+}
+
+// buildProjectCyclePickerHints builds the hints for the project cycle picker popup.
+func (m *AppModel) buildProjectCyclePickerHints() PrefixHints {
+	contextKey := m.config.FilterContext
+	if m.config.FilterCustomContext != "" {
+		contextKey = "+" + m.config.FilterCustomContext
+	}
+	cycleProjects := m.config.GetCycleProjectsForContext(contextKey)
+
+	var hints []PrefixHint
+	for i, p := range cycleProjects {
+		if i >= 9 {
+			break
+		}
+		hint := PrefixHint{
+			Key:         fmt.Sprintf("%d", i+1),
+			Description: p.Name,
+			Active:      m.currentProject != nil && m.currentProject.ID == p.ID,
+		}
+		hints = append(hints, hint)
+	}
+	return PrefixHints{"`": hints}
 }
 
 // handleCycleProject cycles through configured projects.
