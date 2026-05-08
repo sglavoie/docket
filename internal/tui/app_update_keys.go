@@ -150,7 +150,7 @@ func (m *AppModel) handleGlobalKeyPress(msg tea.KeyPressMsg) (bool, tea.Cmd) { /
 			return true, func() tea.Msg { return ShowCommandPaletteMsg{} }
 		}
 	case ";":
-		if !m.hasActiveTextInput() {
+		if !m.hasActiveTextInput() && !m.hasActivePendingPrefix() {
 			m.pendingSemicolonPrefix = true
 			timeout := m.config.GetPopupTimeoutSeconds()
 			if timeout <= 0 {
