@@ -176,6 +176,26 @@ func (m *DashboardModel) buildKeyMap() *keymap.KeyMap {
 			project := m.SelectedProject()
 			return m, func() tea.Msg { return ExportProjectMsg{Project: project} }
 		}),
+		keymap.Bind("i", "Quick capture", "Actions", func() (tea.Model, tea.Cmd) {
+			visible := m.visibleProjects()
+			if CursorInBounds(m.cursor, len(visible)) {
+				project := visible[m.cursor]
+				return m, func() tea.Msg {
+					return ShowQuickCaptureMsg{Project: project, AllProjects: m.config.GetActiveProjects()}
+				}
+			}
+			return m, nil
+		}),
+		keymap.Bind("I", "Bulk capture", "Actions", func() (tea.Model, tea.Cmd) {
+			visible := m.visibleProjects()
+			if CursorInBounds(m.cursor, len(visible)) {
+				project := visible[m.cursor]
+				return m, func() tea.Msg {
+					return ShowBulkCaptureMsg{Project: project}
+				}
+			}
+			return m, nil
+		}),
 		// Quick-select pinned projects
 		keymap.Bind("1", "Quick select pinned 1", "Actions", func() (tea.Model, tea.Cmd) {
 			return m, m.quickSelectPinned(1)
