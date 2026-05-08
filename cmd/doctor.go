@@ -10,6 +10,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/storage/format"
 )
 
 var doctorCmd = &cobra.Command{
@@ -39,12 +40,13 @@ type doctorResults struct {
 	brokenParentRefs   []doctorIssue
 	emptyProjects      []doctorIssue
 	missingDescMarkers []doctorIssue
+	autoRepaired       []doctorIssue
 }
 
 func (r *doctorResults) totalIssues() int {
 	return len(r.orphanedCrossRefs) + len(r.duplicateIDs) + len(r.duplicateShortIDs) +
 		len(r.deadDependencies) + len(r.missingTaskFiles) + len(r.brokenParentRefs) +
-		len(r.missingDescMarkers)
+		len(r.missingDescMarkers) + len(r.autoRepaired)
 }
 
 func runDoctor(cmd *cobra.Command, _ []string) error {
@@ -61,16 +63,27 @@ func runDoctor(cmd *cobra.Command, _ []string) error {
 	// don't report false positives for refs pointing to archived projects.
 	allProjects := cfg.Projects
 	var loadedProjects []*models.Project
+	results := &doctorResults{}
 	for _, project := range allProjects {
-		if err := storage.LoadProject(project); err != nil {
-			fmt.Fprintf(os.Stderr, "warning: skipping project %s: %v\n", project.Name, err)
+		loadResult, loadErr := storage.LoadProjectWithWarnings(project)
+		if loadErr != nil {
+			fmt.Fprintf(os.Stderr, "warning: skipping project %s: %v\n", project.Name, loadErr)
 			continue
 		}
 		project.BuildTaskTree()
 		loadedProjects = append(loadedProjects, project)
+		if loadResult != nil {
+			for _, w := range loadResult.Warnings {
+				if w.Type == format.WarningDataCorrection {
+					results.autoRepaired = append(results.autoRepaired, doctorIssue{
+						project: project.Name,
+						task:    w.TaskID,
+						detail:  w.Message,
+					})
+				}
+			}
+		}
 	}
-
-	results := &doctorResults{}
 
 	checkMissingTaskFiles(projects, results)
 	checkEmptyProjects(loadedProjects, results)
@@ -82,6 +95,7 @@ func runDoctor(cmd *cobra.Command, _ []string) error {
 	checkMissingDescriptionMarkers(loadedProjects, results)
 
 	if fix {
+		fixAutoRepaired(results.autoRepaired, loadedProjects)
 		fixIssues(loadedProjects, cfg)
 		fixMissingDescriptionMarkers(results.missingDescMarkers, loadedProjects)
 	}
@@ -334,6 +348,26 @@ func fixIssues(projects []*models.Project, cfg interface{ GetProject(string) *mo
 	}
 }
 
+func fixAutoRepaired(issues []doctorIssue, projects []*models.Project) {
+	if len(issues) == 0 {
+		return
+	}
+	affected := make(map[string]bool, len(issues))
+	for _, issue := range issues {
+		affected[issue.project] = true
+	}
+	for _, project := range projects {
+		if !affected[project.Name] {
+			continue
+		}
+		if err := storage.SaveProjectLocked(project); err != nil {
+			fmt.Fprintf(os.Stderr, "error: failed to save project %s: %v\n", project.Name, err)
+			continue
+		}
+		fmt.Printf("  Fixed: persisted auto-repaired data for project %s\n", project.Name)
+	}
+}
+
 // cleanRefs filters DependsOn refs, removing broken same-project and cross-project refs.
 func cleanRefs(refs []string, cfg interface{ GetProject(string) *models.Project }, projectTaskMaps map[string]map[string]bool, taskMap map[string]*models.Task) []string {
 	var valid []string
@@ -427,6 +461,7 @@ func buildTaskIDSet(project *models.Project) map[string]bool {
 }
 
 func printResults(results *doctorResults) {
+	printSection("Auto-repaired on load", results.autoRepaired)
 	printSection("Missing task files", results.missingTaskFiles)
 	printSection("Duplicate task IDs", results.duplicateIDs)
 	printSection("Duplicate short IDs", results.duplicateShortIDs)

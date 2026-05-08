@@ -67,6 +67,9 @@ func RunApp(cfg *config.Config, manager *config.Manager, opts ...AppOption) erro
 			if n := len(current.Warnings); n > 0 {
 				model.statusMessage = fmt.Sprintf("%d data issue(s) auto-repaired (run tt doctor for details)", n)
 				model.statusIsInfo = true
+				if err := storage.SaveProjectLocked(current); err != nil {
+					logging.Warn("failed to persist auto-repaired data: %v", err)
+				}
 			}
 		}
 	}
