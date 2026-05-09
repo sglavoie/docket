@@ -460,6 +460,37 @@ func TestIsOverdueConsistentWithDueDateFilter(t *testing.T) {
 	}
 }
 
+func TestHasTaskOnlyFilters(t *testing.T) {
+	tests := []struct {
+		name    string
+		filters *ParsedSearchQuery
+		want    bool
+	}{
+		{"empty", &ParsedSearchQuery{}, false},
+		{"text only", &ParsedSearchQuery{TextQuery: "foo"}, false},
+		{"project slug only", &ParsedSearchQuery{ProjectSlug: "proj"}, false},
+		{"has presence only", &ParsedSearchQuery{HasPresence: []string{"tag"}}, false},
+		{"no presence only", &ParsedSearchQuery{NoPresence: []string{"description"}}, false},
+		{"is state only", &ParsedSearchQuery{IsState: []string{"pinned"}}, false},
+		{"tags only", &ParsedSearchQuery{Tags: []string{"backend"}}, false},
+		{"priorities", &ParsedSearchQuery{Priorities: []int{1}}, true},
+		{"statuses", &ParsedSearchQuery{Statuses: []models.TaskStatus{models.StatusTodo}}, true},
+		{"types", &ParsedSearchQuery{Types: []models.TaskType{models.TaskTypeBug}}, true},
+		{"due date", &ParsedSearchQuery{DueDateFilter: "today"}, true},
+		{"section", &ParsedSearchQuery{Section: "next"}, true},
+		{"active only", &ParsedSearchQuery{ActiveOnly: true}, true},
+		{"task-only + shared", &ParsedSearchQuery{Priorities: []int{1}, Tags: []string{"x"}}, true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.filters.HasTaskOnlyFilters(); got != tt.want {
+				t.Errorf("HasTaskOnlyFilters() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
 // stringSliceEqual compares two string slices, treating nil and empty as equal.
 func stringSliceEqual(a, b []string) bool {
 	if len(a) == 0 && len(b) == 0 {

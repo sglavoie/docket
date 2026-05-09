@@ -43,6 +43,8 @@ func noteMatchesFilters(note *models.Note, filters *ParsedSearchQuery) bool {
 	}
 	for _, f := range filters.IsState {
 		switch f {
+		case "note":
+			// Always true — a note is a note.
 		case "pinned":
 			if !note.Pinned {
 				return false
@@ -113,6 +115,10 @@ func (m *GlobalSearchModel) filterTasks() {
 		}
 
 		if result.IsNote() {
+			if m.parsedFilters.HasTaskOnlyFilters() {
+				continue
+			}
+
 			// Apply applicable has:/no:/is: filters to notes
 			if !noteMatchesFilters(result.Note, m.parsedFilters) {
 				continue

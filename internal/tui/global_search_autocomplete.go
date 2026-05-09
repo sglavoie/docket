@@ -232,6 +232,7 @@ func (m *GlobalSearchModel) getHasSuggestions(partial string) []ACSuggestion {
 // getIsSuggestions returns autocomplete suggestions for is: filters.
 func (m *GlobalSearchModel) getIsSuggestions(partial string) []ACSuggestion {
 	states := []struct{ name, desc string }{
+		{"note", "notes only"},
 		{"pinned", "pinned tasks"},
 		{"active", "active tasks"},
 		{"dimmed", "dimmed tasks"},

@@ -42,6 +42,17 @@ func (p *ParsedSearchQuery) HasFilters() bool {
 		p.ProjectSlug != ""
 }
 
+// HasTaskOnlyFilters returns true if any task-specific filters are active
+// that have no meaning for notes (which lack these properties).
+func (p *ParsedSearchQuery) HasTaskOnlyFilters() bool {
+	return len(p.Priorities) > 0 ||
+		len(p.Statuses) > 0 ||
+		len(p.Types) > 0 ||
+		p.DueDateFilter != "" ||
+		p.Section != "" ||
+		p.ActiveOnly
+}
+
 // ParseSearchQuery extracts structured filters from a search query string.
 // Syntax mirrors quick capture:
 //   - !N or !N-M for priority (1-5 or range)
@@ -356,6 +367,8 @@ func matchesHasFilter(task *models.Task, filter string) bool {
 // matchesIsFilter returns true if the task matches the specified state.
 func matchesIsFilter(task *models.Task, filter string) bool {
 	switch filter {
+	case "note":
+		return false
 	case "pinned":
 		return task.Pinned
 	case "active":
