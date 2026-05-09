@@ -84,6 +84,10 @@ func (m *TaskDetailModel) handleKeyMsg(msg tea.KeyPressMsg) (tea.Model, tea.Cmd)
 		return m, func() tea.Msg {
 			return ShowScoreEditorMsg{Task: m.task, Project: m.project}
 		}
+	case "D":
+		return m, func() tea.Msg {
+			return ShowTaskDecisionsMsg{Task: m.task, Project: m.project}
+		}
 	case "d":
 		return m, func() tea.Msg {
 			return SetDueDateMsg{Task: m.task, Project: m.project}
@@ -221,5 +225,6 @@ func (m *TaskDetailModel) GetHelpItems() []HelpItem {
 		{Key: "h", Description: "Activity history", Category: "Sub-views"},
 		{Key: "p", Description: "Dependencies", Category: "Sub-views"},
 		{Key: "S", Description: "Score editor", Category: "Sub-views"},
+		{Key: "D", Description: "Decisions", Category: "Sub-views"},
 	}
 }

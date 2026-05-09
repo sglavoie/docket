@@ -96,6 +96,12 @@ func renderDueDateContentOpts(task *models.Task, hideRecurrence bool, timeFormat
 // renderMetadataContent builds the tags, section, custom section, and type-specific
 // attributes content shared by sidebar and task detail.
 func renderMetadataContent(task *models.Task, project *models.Project, innerWidth int, showAttrs ...bool) string {
+	return renderMetadataContentOpts(task, project, innerWidth, false, showAttrs...)
+}
+
+// renderMetadataContentOpts is like renderMetadataContent but can optionally hide
+// the section/custom-section lines (when they are shown elsewhere, e.g. in the header).
+func renderMetadataContentOpts(task *models.Task, project *models.Project, innerWidth int, hideSection bool, showAttrs ...bool) string {
 	var lines []string
 
 	if len(task.Tags) > 0 {
@@ -106,26 +112,28 @@ func renderMetadataContent(task *models.Task, project *models.Project, innerWidt
 		lines = append(lines, strings.Join(tagParts, " "))
 	}
 
-	sectionName := task.Section
-	if sectionName == "" && task.CustomSection != "" {
-		sectionName = task.CustomSection
-	} else if sectionName == "" {
-		sectionName = "Active"
-	}
-	effectiveSection := task.Section
-	if effectiveSection == "" && task.CustomSection != "" {
-		effectiveSection = task.CustomSection
-	}
-	sectionColor := project.GetSectionColor(effectiveSection)
-	sectionStyle := GetSectionColorStyle(sectionColor)
-	sectionLine := MutedStyle.Render("Section: ") + sectionStyle.Render(sectionName)
-	lines = append(lines, sectionLine)
+	if !hideSection {
+		sectionName := task.Section
+		if sectionName == "" && task.CustomSection != "" {
+			sectionName = task.CustomSection
+		} else if sectionName == "" {
+			sectionName = "Active"
+		}
+		effectiveSection := task.Section
+		if effectiveSection == "" && task.CustomSection != "" {
+			effectiveSection = task.CustomSection
+		}
+		sectionColor := project.GetSectionColor(effectiveSection)
+		sectionStyle := GetSectionColorStyle(sectionColor)
+		sectionLine := MutedStyle.Render("Section: ") + sectionStyle.Render(sectionName)
+		lines = append(lines, sectionLine)
 
-	if task.CustomSection != "" && task.Section != "" {
-		csColor := project.GetSectionColor(task.CustomSection)
-		csStyle := GetSectionColorStyle(csColor)
-		csLine := MutedStyle.Render("Custom:  ") + csStyle.Render(task.CustomSection)
-		lines = append(lines, csLine)
+		if task.CustomSection != "" && task.Section != "" {
+			csColor := project.GetSectionColor(task.CustomSection)
+			csStyle := GetSectionColorStyle(csColor)
+			csLine := MutedStyle.Render("Custom:  ") + csStyle.Render(task.CustomSection)
+			lines = append(lines, csLine)
+		}
 	}
 
 	if task.Source != "" {

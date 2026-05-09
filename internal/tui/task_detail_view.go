@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 
 	"github.com/sglavoie/tt/internal/logging"
 	"github.com/sglavoie/tt/internal/models"
@@ -40,12 +41,24 @@ func (m *TaskDetailModel) View() tea.View {
 		sections = append(sections, m.renderDescriptionSection(contentWidth))
 	}
 
-	sections = append(sections, m.renderMetadataSection(contentWidth))
+	if metaCard := m.renderMetadataSection(contentWidth); metaCard != "" {
+		sections = append(sections, metaCard)
+	}
 
+	// Score + Activity side-by-side
+	var scoreCard string
 	if m.config != nil {
 		if profile := m.config.GetProjectScoringProfile(m.project.ID); profile != nil {
-			sections = append(sections, m.renderScoreSection(contentWidth, profile))
+			leftWidth := contentWidth / 2
+			scoreCard = m.renderScoreSection(leftWidth, profile)
 		}
+	}
+	if scoreCard != "" {
+		rightWidth := contentWidth - contentWidth/2
+		sections = append(sections, lipgloss.JoinHorizontal(lipgloss.Top,
+			scoreCard, m.renderActivitySection(rightWidth)))
+	} else {
+		sections = append(sections, m.renderActivitySection(contentWidth))
 	}
 
 	if len(m.task.Checklist) > 0 {
@@ -57,15 +70,24 @@ func (m *TaskDetailModel) View() tea.View {
 		sections = append(sections, m.renderDependenciesSection(contentWidth))
 	}
 
-	if len(m.task.Comments) > 0 {
+	// Comments + Decisions side-by-side
+	hasComments := len(m.task.Comments) > 0
+	hasDecisions := len(m.task.Decisions) > 0
+	if hasComments && hasDecisions {
+		leftWidth := contentWidth / 2
+		rightWidth := contentWidth - leftWidth
+		sections = append(sections, lipgloss.JoinHorizontal(lipgloss.Top,
+			m.renderCommentsSection(leftWidth),
+			m.renderDecisionsSection(rightWidth)))
+	} else if hasComments {
 		sections = append(sections, m.renderCommentsSection(contentWidth))
+	} else if hasDecisions {
+		sections = append(sections, m.renderDecisionsSection(contentWidth))
 	}
 
 	if m.task.HasAttachments() {
 		sections = append(sections, m.renderAttachmentsSection(contentWidth))
 	}
-
-	sections = append(sections, m.renderActivitySection(contentWidth))
 
 	// Join sections
 	body := strings.Join(sections, "\n")
@@ -125,19 +147,34 @@ func (m *TaskDetailModel) renderFooter() string {
 		right = HelpStyle.Render(fmt.Sprintf("%d%% (%d/%d)", pct, m.scrollOffset+1, m.totalLines))
 	}
 
-	left := HelpStyle.Render("j/k: scroll · ,: status · !: priority · e: edit · c: comments · d: due · h: history · Esc: close")
+	left := HelpStyle.Render("j/k: scroll · ,: status · !: priority · e: edit · c: comments · D: decisions · d: due · h: history · Esc: close")
 	return renderStatusBarFooter(left, right, m.width, m.AccentColor())
 }
 
-// renderHeaderSection renders the task header card.
+// renderHeaderSection renders the task header card with section badge.
 func (m *TaskDetailModel) renderHeaderSection(width int) string {
 	content := renderTaskHeaderContent(m.task, m.project.HasIncompleteDependencies(m.task), true)
 
-	cfg := DefaultCardConfig()
-	sectionColor := m.project.GetSectionColor(m.task.Section)
-	if m.task.CustomSection != "" {
-		sectionColor = m.project.GetSectionColor(m.task.CustomSection)
+	effectiveSection := m.task.Section
+	if effectiveSection == "" && m.task.CustomSection != "" {
+		effectiveSection = m.task.CustomSection
 	}
+	sectionColor := m.project.GetSectionColor(effectiveSection)
+
+	// Append section badge to the type/status/ID line (line index 1)
+	sectionName := effectiveSection
+	if sectionName == "" {
+		sectionName = "Active"
+	}
+	sectionStyle := GetSectionColorStyle(sectionColor)
+	badge := sectionStyle.Render("[" + sectionName + "]")
+	lines := strings.Split(content, "\n")
+	if len(lines) > 1 {
+		lines[1] = lines[1] + " " + badge
+	}
+	content = strings.Join(lines, "\n")
+
+	cfg := DefaultCardConfig()
 	cfg.AccentColor = GetSectionColorValue(sectionColor)
 	return renderCard("Task", content, width, cfg)
 }
@@ -172,12 +209,15 @@ func (m *TaskDetailModel) renderRecurrenceSection(width int) string {
 	return renderCard("Recurrence", strings.Join(lines, "\n"), width, DefaultCardConfig())
 }
 
-// renderMetadataSection renders tags, section, and type-specific attributes.
+// renderMetadataSection renders tags, source, URL, and type-specific attributes.
+// Section lines are hidden here since they appear in the header badge.
+// Returns "" if no content remains after hiding sections.
 func (m *TaskDetailModel) renderMetadataSection(width int) string {
-	content := renderMetadataContent(m.task, m.project, width-6)
-	sectionColor := m.project.GetSectionColor(m.task.Section)
+	content := renderMetadataContentOpts(m.task, m.project, width-6, true)
+	if strings.TrimSpace(content) == "" {
+		return ""
+	}
 	cfg := DefaultCardConfig()
-	cfg.AccentColor = GetSectionColorValue(sectionColor)
 	return renderCard("Info", content, width, cfg)
 }
 
@@ -340,6 +380,31 @@ func (m *TaskDetailModel) renderCommentsSection(width int) string {
 	}
 
 	return renderCard("Comments", strings.Join(lines, "\n"), width, DefaultCardConfig())
+}
+
+// renderDecisionsSection renders all decisions with category and timestamps.
+func (m *TaskDetailModel) renderDecisionsSection(width int) string {
+	var lines []string
+
+	for i, decision := range m.task.Decisions {
+		if i > 0 {
+			lines = append(lines, "")
+		}
+		relative := formatRelativeTime(decision.CreatedAt)
+		header := relative + " [" + string(decision.Category) + "]:"
+		if decision.Resolved {
+			header += " [resolved]"
+		}
+		lines = append(lines, MutedStyle.Render(header))
+		rendered := renderMarkdown(decision.Text, width-CardBorderOverhead)
+		if decision.Resolved {
+			lines = append(lines, MutedStyle.Render(rendered))
+		} else {
+			lines = append(lines, rendered)
+		}
+	}
+
+	return renderCard("Decisions", strings.Join(lines, "\n"), width, DefaultCardConfig())
 }
 
 // renderAttachmentsSection renders all attachments.
