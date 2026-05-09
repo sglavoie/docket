@@ -10,6 +10,7 @@ import (
 )
 
 func (m *RecentActivityModel) getPersister() Persister           { return defaultPersister }
+func (m *RecentActivityModel) getConfig() *config.Config         { return m.config }
 func (m *RecentActivityModel) getConfigManager() *config.Manager { return m.configManager }
 func (m *RecentActivityModel) reloadData()                       { m.loadTasks() }
 func (m *RecentActivityModel) setErr(err error)                  { m.setStatus(err.Error()) }

@@ -11,11 +11,13 @@ import (
 // NewProjectFocusViewModel creates a new project focus view model.
 func NewProjectFocusViewModel(project *models.Project, cfg *config.Config) *ProjectFocusViewModel {
 	m := &ProjectFocusViewModel{
-		project: project,
-		cfg:     cfg,
+		project:     project,
+		cfg:         cfg,
+		FilterMixin: FilterMixin{filter: newFilterState()},
 	}
 	km := m.buildKeyMap()
 	m.Dispatcher = keymap.NewDispatcher(km)
+	m.initFilterMixinWithDispatcher(m.Dispatcher, cfg)
 	m.loadTasks()
 	return m
 }

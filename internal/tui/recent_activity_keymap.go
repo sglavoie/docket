@@ -3,7 +3,6 @@ package tui
 import (
 	tea "charm.land/bubbletea/v2"
 
-	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/keymap"
 )
 
@@ -84,13 +83,6 @@ func (m *RecentActivityModel) buildKeyMap() *keymap.KeyMap {
 			}
 			return m, nil
 		}),
-		keymap.Bind("ctrl+.", "Quick note on selected task", "Actions", func() (tea.Model, tea.Cmd) {
-			if m.cursor >= 0 && m.cursor < len(m.filtered) {
-				dt := m.filtered[m.cursor]
-				return m, func() tea.Msg { return OpenQuickNoteMsg(dt) }
-			}
-			return m, nil
-		}),
 		keymap.Bind("r", "Refresh", "Actions", func() (tea.Model, tea.Cmd) {
 			m.loadTasks()
 			m.clampCursor()
@@ -151,22 +143,37 @@ func (m *RecentActivityModel) buildKeyMap() *keymap.KeyMap {
 		},
 	})...)
 
-	// Status group: "," prefix
-	statusEntries := keymap.StatusGroup(keymap.StatusDeps{
-		ChangeStatus: func(status string) keymap.Action {
-			s := models.TaskStatus(status)
-			return func() (tea.Model, tea.Cmd) {
-				return taskOpsChangeStatus(m, s)
-			}
-		},
-	})
-	if len(statusEntries) > 0 && statusEntries[0].PrefixNode != nil {
-		statusEntries[0].PrefixNode.Gate = func() bool {
-			t, _ := m.getTaskRef()
-			return t != nil
-		}
+	// Standard task action groups: Status, Priority, DueDate, Snooze, Move,
+	// LinkedTask, TaskPrefix, Stage, Blocker, CommonTaskAction.
+	var stages []string
+	if m.config != nil {
+		stages = m.config.Stages
 	}
-	entries = append(entries, statusEntries...)
+	hasItem := func() bool {
+		t, _ := m.getTaskRef()
+		return t != nil
+	}
+	entries = append(entries, buildStandardTaskActionEntries(TaskKeymapDeps{
+		View:    m,
+		HasItem: hasItem,
+		Stages:  stages,
+		ToggleHelp: func() (tea.Model, tea.Cmd) {
+			viewType := ViewRecentActivity
+			viewName := "Recent Activity"
+			if m.projectScope != nil {
+				viewType = ViewProjectRecentActivity
+				viewName = "Project Activity"
+			}
+			return m, helpCmd(viewType, viewName, m.GetHelpItems())
+		},
+		QuickNote: func() (tea.Model, tea.Cmd) {
+			task, project := m.getTaskRef()
+			if task == nil {
+				return m, nil
+			}
+			return m, func() tea.Msg { return OpenQuickNoteMsg{Task: task, Project: project} }
+		},
+	})...)
 
 	return &keymap.KeyMap{
 		ViewName: "RecentActivity",

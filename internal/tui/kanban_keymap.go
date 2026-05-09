@@ -172,321 +172,67 @@ func (m *KanbanModel) buildKeyMap() *keymap.KeyMap {
 		}),
 	)
 
-	// --- Status group: "," prefix, gated on hasCard ---
-	statusEntries := keymap.StatusGroup(keymap.StatusDeps{
-		ChangeStatus: func(status string) keymap.Action {
-			s := models.TaskStatus(status)
-			return func() (tea.Model, tea.Cmd) {
-				return taskOpsChangeStatus(m, s)
-			}
+	// --- Task action groups (Status, Priority, DueDate, Snooze, Move, Linked, TaskPrefix, Stage, Blocker, CommonTaskAction) ---
+	entries = append(entries, buildStandardTaskActionEntries(TaskKeymapDeps{
+		View:    m,
+		HasItem: hasCard,
+		Stages:  stages,
+		ToggleHelp: func() (tea.Model, tea.Cmd) {
+			return m, helpCmd(m.viewID(), m.viewName(), m.GetHelpItems())
 		},
-		HasRecurrence:  nil,
-		SkipRecurrence: nil,
-		DeferChildren:  nil,
-	})
-	if len(statusEntries) > 0 && statusEntries[0].PrefixNode != nil {
-		statusEntries[0].PrefixNode.Gate = hasCard
-	}
-	entries = append(entries, statusEntries...)
-
-	// --- Priority group: "!" prefix, gated on hasCard ---
-	priorityEntries := keymap.PriorityGroup(keymap.PriorityDeps{
-		ChangePriority: func(key string) keymap.Action {
-			return func() (tea.Model, tea.Cmd) {
-				return taskOpsChangePriority(m, key)
-			}
-		},
-	})
-	if len(priorityEntries) > 0 && priorityEntries[0].PrefixNode != nil {
-		priorityEntries[0].PrefixNode.Gate = hasCard
-	}
-	entries = append(entries, priorityEntries...)
-
-	// --- Due date group: "d" prefix, gated on hasCard ---
-	bulkSetDueDate := func(days int) keymap.Action {
-		return func() (tea.Model, tea.Cmd) {
-			if m.multiSelectMode && m.SelectedCount() > 0 {
-				dueDate := util.StartOfDay(time.Now().AddDate(0, 0, days))
-				var count int
-				for _, col := range m.columns {
-					for i := range col.Tasks {
-						card := &col.Tasks[i]
-						if !m.IsSelected(card.Task.ID) {
-							continue
-						}
-						pf := workflowPersist(func() WorkflowSaveOptions {
-							return BuildWorkflowOpts(m.getPersister(), card.Project, m.config, m.configManager, nil, "", "", nil)
-						})
-						d := dueDate
-						pf(card.Project, card.Task.ID, func(t *models.Task) {
-							t.DueDate = &d
-							t.HasTime = false
-						})
-						count++
-					}
-				}
-				m.ExitMultiSelect()
-				m.setStatus(fmt.Sprintf("Due date set on %d tasks", count))
-				m.reloadData()
-				m.clampCursor()
-				return m, nil
-			}
-			return taskOpsSetQuickDueDate(m, days)
-		}
-	}
-	dueDateEntries := keymap.DueDateGroup(keymap.DueDateDeps{
-		DueToday:    bulkSetDueDate(0),
-		DueTomorrow: bulkSetDueDate(1),
-		DueInAWeek:  bulkSetDueDate(7),
-		DueInAMonth: bulkSetDueDate(30),
-		ClearDueDate: func() (tea.Model, tea.Cmd) {
-			return taskOpsClearDueDate(m)
-		},
-		OpenDatePicker: func() (tea.Model, tea.Cmd) {
-			task, project := m.getTaskRef()
-			if task == nil {
-				return m, nil
-			}
-			return m, func() tea.Msg { return SetDueDateMsg{Task: task, Project: project} }
-		},
-	})
-	if len(dueDateEntries) > 0 && dueDateEntries[0].PrefixNode != nil {
-		dueDateEntries[0].PrefixNode.Gate = hasCard
-	}
-	entries = append(entries, dueDateEntries...)
-
-	// --- Snooze group: "s" prefix, gated on hasCard ---
-	snoozeDateAction := func(key string) keymap.Action {
-		return func() (tea.Model, tea.Cmd) {
-			snoozeDate, _, ok := resolveQuickSnoozeDate(key)
-			if !ok {
-				return m, nil
-			}
-			return taskOpsQuickSnooze(m, snoozeDate)
-		}
-	}
-	snoozeEntries := keymap.SnoozeGroup(keymap.SnoozeDeps{
-		SnoozeTomorrow:   snoozeDateAction("t"),
-		SnoozeOneWeek:    snoozeDateAction("w"),
-		SnoozeOneMonth:   snoozeDateAction("m"),
-		SnoozeNextMonday: snoozeDateAction("n"),
-		ClearSnooze:      snoozeDateAction("0"),
-		OpenDatePicker: func() (tea.Model, tea.Cmd) {
-			task, project := m.getTaskRef()
-			if task == nil {
-				return m, nil
-			}
-			return m, func() tea.Msg { return SetSnoozeDateMsg{Task: task, Project: project} }
-		},
-	})
-	if len(snoozeEntries) > 0 && snoozeEntries[0].PrefixNode != nil {
-		snoozeEntries[0].PrefixNode.Gate = hasCard
-	}
-	entries = append(entries, snoozeEntries...)
-
-	// --- Move group: "m" prefix, gated on hasCard ---
-	moveEntries := keymap.MoveGroup(keymap.MoveDeps{
-		MoveToSection: func(section string) keymap.Action {
-			return func() (tea.Model, tea.Cmd) {
-				return taskOpsSectionMove(m, section)
-			}
-		},
-		MoveToTop:    func() (tea.Model, tea.Cmd) { return m, nil },
-		MoveToBottom: func() (tea.Model, tea.Cmd) { return m, nil },
-	})
-	if len(moveEntries) > 0 && moveEntries[0].PrefixNode != nil {
-		moveEntries[0].PrefixNode.Gate = hasCard
-	}
-	entries = append(entries, moveEntries...)
-
-	// --- Linked task group: "c" prefix, gated on hasCard ---
-	linkedEntries := keymap.LinkedTaskGroup(keymap.LinkedTaskDeps{
-		CreateBlocker: func() (tea.Model, tea.Cmd) {
-			task, project := m.getTaskRef()
-			if task == nil {
-				return m, nil
-			}
-			return m, func() tea.Msg {
-				return CreateLinkedTaskMsg{SourceTask: task, Project: project, LinkType: LinkTypeBlocker}
-			}
-		},
-		CreateDependent: func() (tea.Model, tea.Cmd) {
-			task, project := m.getTaskRef()
-			if task == nil {
-				return m, nil
-			}
-			return m, func() tea.Msg {
-				return CreateLinkedTaskMsg{SourceTask: task, Project: project, LinkType: LinkTypeDependent}
-			}
-		},
-		CreateSubtask: func() (tea.Model, tea.Cmd) {
-			task, project := m.getTaskRef()
-			if task == nil {
-				return m, nil
-			}
-			return m, func() tea.Msg {
-				return CreateLinkedTaskMsg{SourceTask: task, Project: project, LinkType: LinkTypeSubtask}
-			}
-		},
-		CreateFollowUp: func() (tea.Model, tea.Cmd) {
-			task, project := m.getTaskRef()
-			if task == nil {
-				return m, nil
-			}
-			return m, func() tea.Msg {
-				return CreateLinkedTaskMsg{SourceTask: task, Project: project, LinkType: LinkTypeFollowUp}
-			}
-		},
-		NavigateLinked: func() (tea.Model, tea.Cmd) {
-			task, project := m.getTaskRef()
-			if task == nil {
-				return m, nil
-			}
-			return m, func() tea.Msg { return ShowLinkedTaskSelectorMsg{Task: task, Project: project} }
-		},
-		CrossProjectLink: nil,
-		UnlinkTask:       nil,
-	})
-	if len(linkedEntries) > 0 && linkedEntries[0].PrefixNode != nil {
-		linkedEntries[0].PrefixNode.Gate = hasCard
-	}
-	entries = append(entries, linkedEntries...)
-
-	// --- Task prefix group: "t" prefix, gated on hasCard ---
-	taskPrefixEntries := keymap.TaskPrefixGroup(keymap.TaskPrefixDeps{
-		NewTask: func() (tea.Model, tea.Cmd) {
+		OpenURL: func() (tea.Model, tea.Cmd) {
 			task, _ := m.getTaskRef()
-			if task == nil {
+			if task == nil || task.URL == "" {
 				return m, nil
 			}
-			return m, func() tea.Msg { return CreateTaskMsg{ParentTask: task, SkipTemplatePicker: true} }
-		},
-		NewTaskWithTemplate: func() (tea.Model, tea.Cmd) {
-			task, _ := m.getTaskRef()
-			if task == nil {
-				return m, nil
-			}
-			return m, func() tea.Msg { return CreateTaskMsg{ParentTask: task, SkipTemplatePicker: false} }
-		},
-		RenameTask: func() (tea.Model, tea.Cmd) {
-			task, project := m.getTaskRef()
-			if task == nil {
-				return m, nil
-			}
-			return m, func() tea.Msg { return EditTaskMsg{Task: task, Project: project} }
-		},
-		ChangeSection: func() (tea.Model, tea.Cmd) {
-			task, project := m.getTaskRef()
-			if task == nil {
-				return m, nil
-			}
-			return m, func() tea.Msg { return ShowSectionPickerMsg{Task: task, Project: project} }
-		},
-		OpenEditor: func() (tea.Model, tea.Cmd) {
-			task, project := m.getTaskRef()
-			if task == nil {
-				return m, nil
-			}
-			return m, func() tea.Msg { return EditTaskContentMsg{Task: task, Project: project} }
-		},
-		TogglePin: func() (tea.Model, tea.Cmd) { return taskOpsTogglePinned(m) },
-		ToggleDim: func() (tea.Model, tea.Cmd) { return taskOpsToggleDimmed(m) },
-		ManageTags: func() (tea.Model, tea.Cmd) {
-			task, project := m.getTaskRef()
-			if task == nil {
-				return m, nil
-			}
-			tags := append([]string{}, task.Tags...)
-			return m, func() tea.Msg {
-				return ShowTagSelectorMsg{Task: task, Project: project, CurrentTags: tags}
-			}
-		},
-		ViewComments: func() (tea.Model, tea.Cmd) {
-			task, project := m.getTaskRef()
-			if task == nil {
-				return m, nil
-			}
-			return m, func() tea.Msg { return ShowTaskCommentsMsg{Task: task, Project: project} }
-		},
-		ViewAttachments: func() (tea.Model, tea.Cmd) {
-			task, project := m.getTaskRef()
-			if task == nil {
-				return m, nil
-			}
-			return m, func() tea.Msg { return ShowTaskAttachmentsMsg{Task: task, Project: project} }
-		},
-		EditChecklist: func() (tea.Model, tea.Cmd) {
-			task, project := m.getTaskRef()
-			if task == nil {
-				return m, nil
-			}
-			return m, func() tea.Msg { return ShowTaskChecklistMsg{Task: task, Project: project} }
-		},
-		EditDescription: func() (tea.Model, tea.Cmd) {
-			task, project := m.getTaskRef()
-			if task == nil {
-				return m, nil
-			}
-			return m, func() tea.Msg { return ShowDescriptionEditorMsg{Task: task, Project: project} }
+			return m, openBrowserCmd(task.URL)
 		},
 		MoveToProject: func() (tea.Model, tea.Cmd) {
 			task, project := m.getTaskRef()
-			if task == nil {
+			if task == nil || project == nil {
 				return m, nil
 			}
 			return m, func() tea.Msg { return ShowProjectSelectorForMoveMsg{Task: task, SourceProject: project} }
 		},
-		ViewDecisions: func() (tea.Model, tea.Cmd) {
+		QuickNote: func() (tea.Model, tea.Cmd) {
 			task, project := m.getTaskRef()
-			if task == nil {
+			if task == nil || project == nil {
 				return m, nil
 			}
-			return m, func() tea.Msg { return ShowTaskDecisionsMsg{Task: task, Project: project} }
+			return m, func() tea.Msg { return OpenQuickNoteMsg{Task: task, Project: project} }
 		},
-		DeleteTask: func() (tea.Model, tea.Cmd) {
-			return taskOpsDeleteTask(m)
-		},
-	})
-	if len(taskPrefixEntries) > 0 && taskPrefixEntries[0].PrefixNode != nil {
-		taskPrefixEntries[0].PrefixNode.Gate = hasCard
-	}
-	entries = append(entries, taskPrefixEntries...)
-
-	// --- Stage group: "." prefix, gated on hasCard ---
-	stageEntries := keymap.StageGroup(keymap.StageDeps{
-		Stages: stages,
-		ChangeStage: func(stage string) keymap.Action {
+		DueDateSet: func(days int) keymap.Action {
 			return func() (tea.Model, tea.Cmd) {
-				return taskOpsChangeStage(m, stage)
+				if m.multiSelectMode && m.SelectedCount() > 0 {
+					dueDate := util.StartOfDay(time.Now().AddDate(0, 0, days))
+					var count int
+					for _, col := range m.columns {
+						for i := range col.Tasks {
+							card := &col.Tasks[i]
+							if !m.IsSelected(card.Task.ID) {
+								continue
+							}
+							pf := workflowPersist(func() WorkflowSaveOptions {
+								return BuildWorkflowOpts(m.getPersister(), card.Project, m.config, m.configManager, nil, "", "", nil)
+							})
+							d := dueDate
+							pf(card.Project, card.Task.ID, func(t *models.Task) {
+								t.DueDate = &d
+								t.HasTime = false
+							})
+							count++
+						}
+					}
+					m.ExitMultiSelect()
+					m.setStatus(fmt.Sprintf("Due date set on %d tasks", count))
+					m.reloadData()
+					m.clampCursor()
+					return m, nil
+				}
+				return taskOpsSetQuickDueDate(m, days)
 			}
 		},
-	})
-	if len(stageEntries) > 0 && stageEntries[0].PrefixNode != nil {
-		stageEntries[0].PrefixNode.Gate = hasCard
-	}
-	entries = append(entries, stageEntries...)
-
-	// --- Blocker group: "b" prefix, gated on hasCard ---
-	blockerEntries := keymap.BlockerGroup(keymap.BlockerDeps{
-		ViewDependencies: func() (tea.Model, tea.Cmd) {
-			task, project := m.getTaskRef()
-			if task == nil {
-				return m, nil
-			}
-			return m, func() tea.Msg { return ShowDependencyViewerMsg{Task: task, Project: project} }
-		},
-		ManageDependencies: func() (tea.Model, tea.Cmd) {
-			task, project := m.getTaskRef()
-			if task == nil {
-				return m, nil
-			}
-			return m, func() tea.Msg { return ManageDependenciesMsg{Task: task, Project: project} }
-		},
-	})
-	if len(blockerEntries) > 0 && blockerEntries[0].PrefixNode != nil {
-		blockerEntries[0].PrefixNode.Gate = hasCard
-	}
-	entries = append(entries, blockerEntries...)
+	})...)
 
 	// --- Filter group: "F" prefix, no gate ---
 	filterEntries := keymap.FilterGroup(keymap.FilterDeps{
@@ -518,68 +264,6 @@ func (m *KanbanModel) buildKeyMap() *keymap.KeyMap {
 		StageFilterNames: stages,
 	})
 	entries = append(entries, filterEntries...)
-
-	// --- Common task actions: o, Z, D, e, ?, *, S, O, ctrl+b, ctrl+. ---
-	entries = append(entries, keymap.CommonTaskActionGroup(keymap.CommonTaskActionDeps{
-		ViewTask: func() (tea.Model, tea.Cmd) {
-			task, project := m.getTaskRef()
-			if task == nil || project == nil {
-				return m, nil
-			}
-			return m, func() tea.Msg { return ShowTaskDetailMsg{Task: task, Project: project} }
-		},
-		SnoozeDatePicker: func() (tea.Model, tea.Cmd) {
-			task, project := m.getTaskRef()
-			if task == nil {
-				return m, nil
-			}
-			return m, func() tea.Msg { return SetSnoozeDateMsg{Task: task, Project: project} }
-		},
-		MarkDone: func() (tea.Model, tea.Cmd) {
-			return taskOpsChangeStatus(m, models.StatusDone)
-		},
-		EditTask: func() (tea.Model, tea.Cmd) {
-			task, project := m.getTaskRef()
-			if task == nil {
-				return m, nil
-			}
-			return m, func() tea.Msg { return EditTaskMsg{Task: task, Project: project} }
-		},
-		ToggleHelp: func() (tea.Model, tea.Cmd) {
-			return m, helpCmd(m.viewID(), m.viewName(), m.GetHelpItems())
-		},
-		ToggleActive: func() (tea.Model, tea.Cmd) {
-			return taskOpsToggleActive(m)
-		},
-		EditScore: func() (tea.Model, tea.Cmd) {
-			task, project := m.getTaskRef()
-			if task == nil || project == nil {
-				return m, nil
-			}
-			return m, func() tea.Msg { return ShowScoreEditorMsg{Task: task, Project: project} }
-		},
-		OpenURL: func() (tea.Model, tea.Cmd) {
-			task, _ := m.getTaskRef()
-			if task == nil || task.URL == "" {
-				return m, nil
-			}
-			return m, openBrowserCmd(task.URL)
-		},
-		MoveToProject: func() (tea.Model, tea.Cmd) {
-			task, project := m.getTaskRef()
-			if task == nil || project == nil {
-				return m, nil
-			}
-			return m, func() tea.Msg { return ShowProjectSelectorForMoveMsg{Task: task, SourceProject: project} }
-		},
-		QuickNote: func() (tea.Model, tea.Cmd) {
-			task, project := m.getTaskRef()
-			if task == nil || project == nil {
-				return m, nil
-			}
-			return m, func() tea.Msg { return OpenQuickNoteMsg{Task: task, Project: project} }
-		},
-	})...)
 
 	viewName := "Kanban"
 	if m.crossProject {

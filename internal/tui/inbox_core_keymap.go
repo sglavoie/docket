@@ -192,6 +192,187 @@ func (c *inboxCore) buildKeyMap() *keymap.KeyMap {
 	})
 	entries = append(entries, moveEntries...)
 
+	// --- Due date group: "d" prefix ---
+	dueDateEntries := keymap.DueDateGroup(keymap.DueDateDeps{
+		DueToday:    func() (tea.Model, tea.Cmd) { return c.model, c.setQuickDueDate(0) },
+		DueTomorrow: func() (tea.Model, tea.Cmd) { return c.model, c.setQuickDueDate(1) },
+		DueInAWeek:  func() (tea.Model, tea.Cmd) { return c.model, c.setQuickDueDate(7) },
+		DueInAMonth: func() (tea.Model, tea.Cmd) { return c.model, c.setQuickDueDate(30) },
+		ClearDueDate: func() (tea.Model, tea.Cmd) { return c.model, c.clearDueDate() },
+		OpenDatePicker: func() (tea.Model, tea.Cmd) {
+			task, project := c.currentTaskRef()
+			if task == nil {
+				return c.model, nil
+			}
+			return c.model, func() tea.Msg { return SetDueDateMsg{Task: task, Project: project} }
+		},
+	})
+	entries = append(entries, dueDateEntries...)
+
+	// --- Linked task group: "c" prefix ---
+	linkedEntries := keymap.LinkedTaskGroup(keymap.LinkedTaskDeps{
+		CreateBlocker: func() (tea.Model, tea.Cmd) {
+			task, project := c.currentTaskRef()
+			if task == nil {
+				return c.model, nil
+			}
+			return c.model, func() tea.Msg {
+				return CreateLinkedTaskMsg{SourceTask: task, Project: project, LinkType: LinkTypeBlocker}
+			}
+		},
+		CreateDependent: func() (tea.Model, tea.Cmd) {
+			task, project := c.currentTaskRef()
+			if task == nil {
+				return c.model, nil
+			}
+			return c.model, func() tea.Msg {
+				return CreateLinkedTaskMsg{SourceTask: task, Project: project, LinkType: LinkTypeDependent}
+			}
+		},
+		CreateSubtask: func() (tea.Model, tea.Cmd) {
+			task, project := c.currentTaskRef()
+			if task == nil {
+				return c.model, nil
+			}
+			return c.model, func() tea.Msg {
+				return CreateLinkedTaskMsg{SourceTask: task, Project: project, LinkType: LinkTypeSubtask}
+			}
+		},
+		CreateFollowUp: func() (tea.Model, tea.Cmd) {
+			task, project := c.currentTaskRef()
+			if task == nil {
+				return c.model, nil
+			}
+			return c.model, func() tea.Msg {
+				return CreateLinkedTaskMsg{SourceTask: task, Project: project, LinkType: LinkTypeFollowUp}
+			}
+		},
+		NavigateLinked: func() (tea.Model, tea.Cmd) {
+			task, project := c.currentTaskRef()
+			if task == nil {
+				return c.model, nil
+			}
+			return c.model, func() tea.Msg { return ShowLinkedTaskSelectorMsg{Task: task, Project: project} }
+		},
+		CrossProjectLink: nil,
+		UnlinkTask:       nil,
+	})
+	entries = append(entries, linkedEntries...)
+
+	// --- Task prefix group: "t" prefix ---
+	taskPrefixEntries := keymap.TaskPrefixGroup(keymap.TaskPrefixDeps{
+		NewTask: func() (tea.Model, tea.Cmd) {
+			task, _ := c.currentTaskRef()
+			if task == nil {
+				return c.model, nil
+			}
+			return c.model, func() tea.Msg { return CreateTaskMsg{ParentTask: task, SkipTemplatePicker: true} }
+		},
+		NewTaskWithTemplate: func() (tea.Model, tea.Cmd) {
+			task, _ := c.currentTaskRef()
+			if task == nil {
+				return c.model, nil
+			}
+			return c.model, func() tea.Msg { return CreateTaskMsg{ParentTask: task, SkipTemplatePicker: false} }
+		},
+		RenameTask: func() (tea.Model, tea.Cmd) {
+			task, project := c.currentTaskRef()
+			if task == nil {
+				return c.model, nil
+			}
+			return c.model, func() tea.Msg { return EditTaskMsg{Task: task, Project: project} }
+		},
+		ChangeSection: func() (tea.Model, tea.Cmd) {
+			task, project := c.currentTaskRef()
+			if task == nil {
+				return c.model, nil
+			}
+			return c.model, func() tea.Msg { return ShowSectionPickerMsg{Task: task, Project: project} }
+		},
+		OpenEditor: func() (tea.Model, tea.Cmd) {
+			task, project := c.currentTaskRef()
+			if task == nil {
+				return c.model, nil
+			}
+			return c.model, func() tea.Msg { return EditTaskContentMsg{Task: task, Project: project} }
+		},
+		TogglePin: func() (tea.Model, tea.Cmd) { return c.model, nil },
+		ToggleDim: func() (tea.Model, tea.Cmd) { return c.model, nil },
+		ManageTags: func() (tea.Model, tea.Cmd) {
+			task, project := c.currentTaskRef()
+			if task == nil {
+				return c.model, nil
+			}
+			tags := append([]string{}, task.Tags...)
+			return c.model, func() tea.Msg {
+				return ShowTagSelectorMsg{Task: task, Project: project, CurrentTags: tags}
+			}
+		},
+		ViewComments: func() (tea.Model, tea.Cmd) {
+			task, project := c.currentTaskRef()
+			if task == nil {
+				return c.model, nil
+			}
+			return c.model, func() tea.Msg { return ShowTaskCommentsMsg{Task: task, Project: project} }
+		},
+		ViewAttachments: func() (tea.Model, tea.Cmd) {
+			task, project := c.currentTaskRef()
+			if task == nil {
+				return c.model, nil
+			}
+			return c.model, func() tea.Msg { return ShowTaskAttachmentsMsg{Task: task, Project: project} }
+		},
+		EditChecklist: func() (tea.Model, tea.Cmd) {
+			task, project := c.currentTaskRef()
+			if task == nil {
+				return c.model, nil
+			}
+			return c.model, func() tea.Msg { return ShowTaskChecklistMsg{Task: task, Project: project} }
+		},
+		EditDescription: func() (tea.Model, tea.Cmd) {
+			task, project := c.currentTaskRef()
+			if task == nil {
+				return c.model, nil
+			}
+			return c.model, func() tea.Msg { return ShowDescriptionEditorMsg{Task: task, Project: project} }
+		},
+		MoveToProject: func() (tea.Model, tea.Cmd) {
+			task, project := c.currentTaskRef()
+			if task == nil {
+				return c.model, nil
+			}
+			return c.model, func() tea.Msg { return ShowProjectSelectorForMoveMsg{Task: task, SourceProject: project} }
+		},
+		ViewDecisions: func() (tea.Model, tea.Cmd) {
+			task, project := c.currentTaskRef()
+			if task == nil {
+				return c.model, nil
+			}
+			return c.model, func() tea.Msg { return ShowTaskDecisionsMsg{Task: task, Project: project} }
+		},
+		DeleteTask: func() (tea.Model, tea.Cmd) { return c.model, nil },
+	})
+	entries = append(entries, taskPrefixEntries...)
+
+	// --- Blocker group: "b" prefix ---
+	blockerEntries := keymap.BlockerGroup(keymap.BlockerDeps{
+		ViewDependencies: func() (tea.Model, tea.Cmd) {
+			task, project := c.currentTaskRef()
+			if task == nil {
+				return c.model, nil
+			}
+			return c.model, func() tea.Msg { return ShowDependencyViewerMsg{Task: task, Project: project} }
+		},
+		ManageDependencies: func() (tea.Model, tea.Cmd) {
+			task, project := c.currentTaskRef()
+			if task == nil {
+				return c.model, nil
+			}
+			return c.model, func() tea.Msg { return ManageDependenciesMsg{Task: task, Project: project} }
+		},
+	})
+	entries = append(entries, blockerEntries...)
+
 	viewName := "Inbox Processor"
 	if c.backend != nil {
 		viewName = c.backend.helpViewName()

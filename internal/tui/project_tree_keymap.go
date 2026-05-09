@@ -133,18 +133,6 @@ func (m *ProjectTreeModel) buildKeyMap() *keymap.KeyMap {
 		},
 	})...)
 
-	// S (score editor), ctrl+. (quick note) — task-specific shared actions
-	entries = append(entries,
-		keymap.Bind("S", "Edit score dimensions", "Scoring", func() (tea.Model, tea.Cmd) {
-			cmd, _ := handleResolvedTaskKey("S", m, m.getProject())
-			return m, cmd
-		}),
-		keymap.Bind("ctrl+.", "Quick note on task", "Task Operations", func() (tea.Model, tea.Cmd) {
-			cmd, _ := handleResolvedTaskKey("ctrl+.", m, m.getProject())
-			return m, cmd
-		}),
-	)
-
 	// Navigation: j, k, G, h, l, n, N
 	entries = append(entries,
 		keymap.Bind("j", "Move cursor down", "Navigation", func() (tea.Model, tea.Cmd) {
@@ -840,6 +828,72 @@ func (m *ProjectTreeModel) buildKeyMap() *keymap.KeyMap {
 		}, keymap.AsHidden()),
 	)
 
+	// Common task actions: o, Z, D, e, ?, *, S, O, ctrl+b, ctrl+.
+	entries = append(entries, keymap.CommonTaskActionGroup(keymap.CommonTaskActionDeps{
+		ViewTask: func() (tea.Model, tea.Cmd) {
+			v := visible()
+			if CursorInBounds(m.cursor, len(v)) {
+				task := v[m.cursor].Task
+				project := m.project
+				m.clearSelection()
+				return m, func() tea.Msg { return ShowTaskDetailMsg{Task: task, Project: project} }
+			}
+			return m, nil
+		},
+		SnoozeDatePicker: func() (tea.Model, tea.Cmd) {
+			task, project := resolveTaskAndProject(m, m.getProject())
+			if task == nil {
+				return m, nil
+			}
+			return m, func() tea.Msg { return SetSnoozeDateMsg{Task: task, Project: project} }
+		},
+		MarkDone: func() (tea.Model, tea.Cmd) {
+			_, cmd := m.handleStatusTransition(models.StatusDone, visible())
+			return m, cmd
+		},
+		EditTask: func() (tea.Model, tea.Cmd) {
+			v := visible()
+			if m.multiSelectMode && len(m.selectedTasks) > 0 {
+				return m, func() tea.Msg {
+					return ShowBulkEditMsg{Tasks: m.getSelectedTasks(), Project: m.project}
+				}
+			}
+			if CursorInBounds(m.cursor, len(v)) {
+				return m, func() tea.Msg { return EditTaskMsg{Task: v[m.cursor].Task} }
+			}
+			return m, nil
+		},
+		ToggleHelp: func() (tea.Model, tea.Cmd) {
+			return m, helpCmd(ViewProjectTree, "Project Tree", GetKeybindingRegistry().GetForView(ViewProjectTree))
+		},
+		ToggleActive: func() (tea.Model, tea.Cmd) {
+			cmd, _ := handleToggleActiveKey(m) //nolint:errcheck
+			return m, cmd
+		},
+		EditScore: func() (tea.Model, tea.Cmd) {
+			cmd, _ := handleResolvedTaskKey("S", m, m.getProject())
+			return m, cmd
+		},
+		OpenURL: func() (tea.Model, tea.Cmd) {
+			task, _ := resolveTaskAndProject(m, m.getProject())
+			if task == nil || task.URL == "" {
+				return m, nil
+			}
+			return m, openBrowserCmd(task.URL)
+		},
+		MoveToProject: func() (tea.Model, tea.Cmd) {
+			task, project := resolveTaskAndProject(m, m.getProject())
+			if task == nil || project == nil {
+				return m, nil
+			}
+			return m, func() tea.Msg { return ShowProjectSelectorForMoveMsg{Task: task, SourceProject: project} }
+		},
+		QuickNote: func() (tea.Model, tea.Cmd) {
+			cmd, _ := handleResolvedTaskKey("ctrl+.", m, m.getProject())
+			return m, cmd
+		},
+	})...)
+
 	// Action keys
 	entries = append(entries,
 		keymap.Bind("enter", "View task details", "Navigation", func() (tea.Model, tea.Cmd) {
@@ -852,42 +906,12 @@ func (m *ProjectTreeModel) buildKeyMap() *keymap.KeyMap {
 			}
 			return m, nil
 		}),
-		keymap.Bind("o", "View task details", "Task Operations", func() (tea.Model, tea.Cmd) {
-			v := visible()
-			if CursorInBounds(m.cursor, len(v)) {
-				task := v[m.cursor].Task
-				project := m.project
-				m.clearSelection()
-				return m, func() tea.Msg { return ShowTaskDetailMsg{Task: task, Project: project} }
-			}
-			return m, nil
-		}, keymap.AsHidden()),
-		keymap.Bind("e", "Edit task", "Task Operations", func() (tea.Model, tea.Cmd) {
-			v := visible()
-			if m.multiSelectMode && len(m.selectedTasks) > 0 {
-				return m, func() tea.Msg {
-					return ShowBulkEditMsg{Tasks: m.getSelectedTasks(), Project: m.project}
-				}
-			}
-			if CursorInBounds(m.cursor, len(v)) {
-				return m, func() tea.Msg { return EditTaskMsg{Task: v[m.cursor].Task} }
-			}
-			return m, nil
-		}),
 		keymap.Bind("E", "Quick edit (inline)", "Task Operations", func() (tea.Model, tea.Cmd) {
 			v := visible()
 			if CursorInBounds(m.cursor, len(v)) {
 				m.enterQuickEditMode(v[m.cursor].Task, false)
 			}
 			return m, nil
-		}),
-		keymap.Bind("D", "Mark done", "Task Operations", func() (tea.Model, tea.Cmd) {
-			_, cmd := m.handleStatusTransition(models.StatusDone, visible())
-			return m, cmd
-		}),
-		keymap.Bind("*", "Toggle active flag", "Task Operations", func() (tea.Model, tea.Cmd) {
-			cmd, _ := handleToggleActiveKey(m) //nolint:errcheck
-			return m, cmd
 		}),
 		keymap.Bind("ctrl+;", "Toggle focus mode", "Navigation", func() (tea.Model, tea.Cmd) {
 			v := visible()

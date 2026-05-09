@@ -48,15 +48,6 @@ func (m *RecentActivityModel) handleKeyMsg(msg tea.KeyPressMsg) (tea.Model, tea.
 		return m, func() tea.Msg {
 			return CloseRecentActivityMsg{}
 		}
-
-	case "?":
-		viewType := ViewRecentActivity
-		viewName := "Recent Activity"
-		if m.projectScope != nil {
-			viewType = ViewProjectRecentActivity
-			viewName = "Project Activity"
-		}
-		return m, helpCmd(viewType, viewName, m.GetHelpItems())
 	}
 
 	return m, nil

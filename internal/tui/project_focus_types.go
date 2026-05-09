@@ -11,6 +11,7 @@ import (
 type ProjectFocusViewModel struct {
 	BaseView
 	InteractiveViewState
+	FilterMixin
 
 	project *models.Project
 	cfg     *config.Config

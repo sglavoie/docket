@@ -766,22 +766,66 @@ func (m *OutlinerModel) buildKeyMap() *keymap.KeyMap {
 		}, keymap.AsHidden()),
 	)
 
-	// --- Task view keys ---
-	entries = append(entries,
-		keymap.Bind("o", "View task details", "Task Operations", func() (tea.Model, tea.Cmd) {
+	// Common task actions: o, Z, D, e, ?, *, S, O, ctrl+b, ctrl+.
+	entries = append(entries, keymap.CommonTaskActionGroup(keymap.CommonTaskActionDeps{
+		ViewTask: func() (tea.Model, tea.Cmd) {
 			model, cmd, _ := m.handleTaskViewKey("o", onHeader())
 			return model, cmd
-		}),
-		keymap.Bind("e", "Edit task", "Task Operations", func() (tea.Model, tea.Cmd) {
+		},
+		SnoozeDatePicker: func() (tea.Model, tea.Cmd) {
+			task := cursorTask()
+			if task == nil {
+				return m, nil
+			}
+			return m, func() tea.Msg { return SetSnoozeDateMsg{Task: task, Project: m.project} }
+		},
+		MarkDone: func() (tea.Model, tea.Cmd) {
+			return m.handleStatusPrefix("d", cursorTask())
+		},
+		EditTask: func() (tea.Model, tea.Cmd) {
 			model, cmd, _ := m.handleTaskViewKey("e", onHeader())
 			return model, cmd
-		}),
+		},
+		ToggleHelp: func() (tea.Model, tea.Cmd) {
+			return m, helpCmd(ViewOutliner, "Outliner", GetKeybindingRegistry().GetForView(ViewOutliner))
+		},
+		ToggleActive: func() (tea.Model, tea.Cmd) {
+			model, cmd, _ := m.handleUtilityKey("*")
+			return model, cmd
+		},
+		EditScore: func() (tea.Model, tea.Cmd) {
+			return m, func() tea.Msg {
+				return ShowScoreEditorMsg{Task: cursorTask(), Project: m.project}
+			}
+		},
+		OpenURL: func() (tea.Model, tea.Cmd) {
+			task := cursorTask()
+			if task == nil || task.URL == "" {
+				return m, nil
+			}
+			return m, openBrowserCmd(task.URL)
+		},
+		MoveToProject: func() (tea.Model, tea.Cmd) {
+			task := cursorTask()
+			if task == nil || m.project == nil {
+				return m, nil
+			}
+			return m, func() tea.Msg { return ShowProjectSelectorForMoveMsg{Task: task, SourceProject: m.project} }
+		},
+		QuickNote: func() (tea.Model, tea.Cmd) {
+			task := cursorTask()
+			if task == nil {
+				return m, nil
+			}
+			return m, func() tea.Msg { return OpenQuickNoteMsg{Task: task, Project: m.project} }
+		},
+	})...)
+
+	// --- Task view keys ---
+	entries = append(entries,
 		keymap.Bind("E", "Quick edit (inline)", "Task Operations", func() (tea.Model, tea.Cmd) {
 			model, cmd, _ := m.handleTaskViewKey("E", onHeader())
 			return model, cmd
-		}),
-		keymap.Bind("D", "Mark done", "Task Operations", func() (tea.Model, tea.Cmd) {
-			return m.handleStatusPrefix("d", cursorTask())
 		}),
 		keymap.Bind("ctrl+f", "Filter summary", "Filters", func() (tea.Model, tea.Cmd) {
 			model, cmd, _ := m.handleTaskViewKey("ctrl+f", onHeader())
@@ -830,10 +874,6 @@ func (m *OutlinerModel) buildKeyMap() *keymap.KeyMap {
 			model, cmd, _ := m.handleUtilityKey("f")
 			return model, cmd
 		}),
-		keymap.Bind("*", "Toggle active flag", "Task Operations", func() (tea.Model, tea.Cmd) {
-			model, cmd, _ := m.handleUtilityKey("*")
-			return model, cmd
-		}),
 		keymap.Bind("shift+left", "Previous custom section tab", "Navigation", func() (tea.Model, tea.Cmd) {
 			model, cmd, _ := m.handleUtilityKey("shift+left")
 			return model, cmd
@@ -867,11 +907,6 @@ func (m *OutlinerModel) buildKeyMap() *keymap.KeyMap {
 		}),
 		keymap.Bind("x", "Unlink task (sidebar)", "Sidebar", func() (tea.Model, tea.Cmd) {
 			return m, nil
-		}),
-		keymap.Bind("S", "Edit score dimensions", "Scoring", func() (tea.Model, tea.Cmd) {
-			return m, func() tea.Msg {
-				return ShowScoreEditorMsg{Task: cursorTask(), Project: m.project}
-			}
 		}),
 	)
 

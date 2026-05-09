@@ -3,7 +3,6 @@ package tui
 import (
 	tea "charm.land/bubbletea/v2"
 
-	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/keymap"
 )
 
@@ -72,281 +71,43 @@ func (m *ProjectFocusViewModel) buildKeyMap() *keymap.KeyMap {
 		}),
 	}))
 
-	// --- Status group: "," prefix, gated on hasItem ---
-	statusEntries := keymap.StatusGroup(keymap.StatusDeps{
-		ChangeStatus: func(status string) keymap.Action {
-			s := models.TaskStatus(status)
-			return func() (tea.Model, tea.Cmd) { return taskOpsChangeStatus(m, s) }
+	// --- Standard task action groups ---
+	entries = append(entries, buildStandardTaskActionEntries(TaskKeymapDeps{
+		View:    m,
+		HasItem: hasItem,
+		Stages:  stages,
+		ToggleHelp: func() (tea.Model, tea.Cmd) {
+			return m, helpCmd(ViewProjectFocusView, "Project Focus", m.GetHelpItems())
 		},
-		HasRecurrence:  nil,
-		SkipRecurrence: nil,
-		DeferChildren:  nil,
-	})
-	if len(statusEntries) > 0 && statusEntries[0].PrefixNode != nil {
-		statusEntries[0].PrefixNode.Gate = hasItem
-	}
-	entries = append(entries, statusEntries...)
+		ToggleActive: func() (tea.Model, tea.Cmd) { return m.toggleActive() },
+		DeleteTask:   func() (tea.Model, tea.Cmd) { return m, nil },
+	})...)
 
-	// --- Priority group: "!" prefix, gated on hasItem ---
-	priorityEntries := keymap.PriorityGroup(keymap.PriorityDeps{
-		ChangePriority: func(key string) keymap.Action {
-			return func() (tea.Model, tea.Cmd) { return taskOpsChangePriority(m, key) }
+	// --- Filter group: "F" prefix ---
+	entries = append(entries, keymap.FilterGroup(keymap.FilterDeps{
+		FilterByTags:     func() (tea.Model, tea.Cmd) { return m.handleFilterPrefix("#") },
+		TogglePriority:   func() (tea.Model, tea.Cmd) { return m.handleFilterPrefix("p") },
+		ToggleHideDimmed: func() (tea.Model, tea.Cmd) { return m.handleFilterPrefix("h") },
+		ClearFilters:     func() (tea.Model, tea.Cmd) { return m.handleFilterPrefix("x") },
+		TypeKey: func(key string) keymap.Action {
+			return func() (tea.Model, tea.Cmd) { return m.handleFilterSubPrefix("Ft", key) }
 		},
-	})
-	if len(priorityEntries) > 0 && priorityEntries[0].PrefixNode != nil {
-		priorityEntries[0].PrefixNode.Gate = hasItem
-	}
-	entries = append(entries, priorityEntries...)
-
-	// --- Due date group: "d" prefix, gated on hasItem ---
-	dueDateEntries := keymap.DueDateGroup(keymap.DueDateDeps{
-		DueToday:     func() (tea.Model, tea.Cmd) { return taskOpsSetQuickDueDate(m, 0) },
-		DueTomorrow:  func() (tea.Model, tea.Cmd) { return taskOpsSetQuickDueDate(m, 1) },
-		DueInAWeek:   func() (tea.Model, tea.Cmd) { return taskOpsSetQuickDueDate(m, 7) },
-		DueInAMonth:  func() (tea.Model, tea.Cmd) { return taskOpsSetQuickDueDate(m, 30) },
-		ClearDueDate: func() (tea.Model, tea.Cmd) { return taskOpsClearDueDate(m) },
-		OpenDatePicker: func() (tea.Model, tea.Cmd) {
-			task, project := m.getTaskRef()
-			if task == nil {
-				return m, nil
-			}
-			return m, func() tea.Msg { return SetDueDateMsg{Task: task, Project: project} }
+		StatusKey: func(key string) keymap.Action {
+			return func() (tea.Model, tea.Cmd) { return m.handleFilterSubPrefix("Fs", key) }
 		},
-	})
-	if len(dueDateEntries) > 0 && dueDateEntries[0].PrefixNode != nil {
-		dueDateEntries[0].PrefixNode.Gate = hasItem
-	}
-	entries = append(entries, dueDateEntries...)
-
-	// --- Snooze group: "s" prefix, gated on hasItem ---
-	snoozeDateAction := func(key string) keymap.Action {
-		return func() (tea.Model, tea.Cmd) {
-			snoozeDate, _, ok := resolveQuickSnoozeDate(key)
-			if !ok {
-				return m, nil
-			}
-			return taskOpsQuickSnooze(m, snoozeDate)
-		}
-	}
-	snoozeEntries := keymap.SnoozeGroup(keymap.SnoozeDeps{
-		SnoozeTomorrow:   snoozeDateAction("t"),
-		SnoozeOneWeek:    snoozeDateAction("w"),
-		SnoozeOneMonth:   snoozeDateAction("m"),
-		SnoozeNextMonday: snoozeDateAction("n"),
-		ClearSnooze:      snoozeDateAction("0"),
-		OpenDatePicker: func() (tea.Model, tea.Cmd) {
-			task, project := m.getTaskRef()
-			if task == nil {
-				return m, nil
-			}
-			return m, func() tea.Msg { return SetSnoozeDateMsg{Task: task, Project: project} }
+		DueDateKey: func(key string) keymap.Action {
+			return func() (tea.Model, tea.Cmd) { return m.handleFilterSubPrefix("Fd", key) }
 		},
-	})
-	if len(snoozeEntries) > 0 && snoozeEntries[0].PrefixNode != nil {
-		snoozeEntries[0].PrefixNode.Gate = hasItem
-	}
-	entries = append(entries, snoozeEntries...)
-
-	// --- Move group: "m" prefix, gated on hasItem ---
-	moveEntries := keymap.MoveGroup(keymap.MoveDeps{
-		MoveToSection: func(section string) keymap.Action {
-			return func() (tea.Model, tea.Cmd) { return taskOpsSectionMove(m, section) }
+		AttrDirectKey: func(key string) keymap.Action {
+			return func() (tea.Model, tea.Cmd) { return m.handleFilterSubPrefix("Fa", key) }
 		},
-		MoveToTop:    func() (tea.Model, tea.Cmd) { return m, nil },
-		MoveToBottom: func() (tea.Model, tea.Cmd) { return m, nil },
-	})
-	if len(moveEntries) > 0 && moveEntries[0].PrefixNode != nil {
-		moveEntries[0].PrefixNode.Gate = hasItem
-	}
-	entries = append(entries, moveEntries...)
-
-	// --- Linked task group: "c" prefix, gated on hasItem ---
-	linkedEntries := keymap.LinkedTaskGroup(keymap.LinkedTaskDeps{
-		CreateBlocker: func() (tea.Model, tea.Cmd) {
-			task, project := m.getTaskRef()
-			if task == nil {
-				return m, nil
-			}
-			return m, func() tea.Msg {
-				return CreateLinkedTaskMsg{SourceTask: task, Project: project, LinkType: LinkTypeBlocker}
-			}
+		AttrSubKey: func(prefix, key string) keymap.Action {
+			return func() (tea.Model, tea.Cmd) { return m.handleFilterSubPrefix(prefix, key) }
 		},
-		CreateDependent: func() (tea.Model, tea.Cmd) {
-			task, project := m.getTaskRef()
-			if task == nil {
-				return m, nil
-			}
-			return m, func() tea.Msg {
-				return CreateLinkedTaskMsg{SourceTask: task, Project: project, LinkType: LinkTypeDependent}
-			}
+		ScoreKey: func(key string) keymap.Action {
+			return func() (tea.Model, tea.Cmd) { return m.handleFilterSubPrefix("FS", key) }
 		},
-		CreateSubtask: func() (tea.Model, tea.Cmd) {
-			task, project := m.getTaskRef()
-			if task == nil {
-				return m, nil
-			}
-			return m, func() tea.Msg {
-				return CreateLinkedTaskMsg{SourceTask: task, Project: project, LinkType: LinkTypeSubtask}
-			}
-		},
-		CreateFollowUp: func() (tea.Model, tea.Cmd) {
-			task, project := m.getTaskRef()
-			if task == nil {
-				return m, nil
-			}
-			return m, func() tea.Msg {
-				return CreateLinkedTaskMsg{SourceTask: task, Project: project, LinkType: LinkTypeFollowUp}
-			}
-		},
-		NavigateLinked: func() (tea.Model, tea.Cmd) {
-			task, project := m.getTaskRef()
-			if task == nil {
-				return m, nil
-			}
-			return m, func() tea.Msg { return ShowLinkedTaskSelectorMsg{Task: task, Project: project} }
-		},
-		CrossProjectLink: nil,
-		UnlinkTask:       nil,
-	})
-	if len(linkedEntries) > 0 && linkedEntries[0].PrefixNode != nil {
-		linkedEntries[0].PrefixNode.Gate = hasItem
-	}
-	entries = append(entries, linkedEntries...)
-
-	// --- Task prefix group: "t" prefix, gated on hasItem ---
-	taskPrefixEntries := keymap.TaskPrefixGroup(keymap.TaskPrefixDeps{
-		NewTask: func() (tea.Model, tea.Cmd) {
-			task, _ := m.getTaskRef()
-			if task == nil {
-				return m, nil
-			}
-			return m, func() tea.Msg { return CreateTaskMsg{ParentTask: task, SkipTemplatePicker: true} }
-		},
-		NewTaskWithTemplate: func() (tea.Model, tea.Cmd) {
-			task, _ := m.getTaskRef()
-			if task == nil {
-				return m, nil
-			}
-			return m, func() tea.Msg { return CreateTaskMsg{ParentTask: task, SkipTemplatePicker: false} }
-		},
-		RenameTask: func() (tea.Model, tea.Cmd) {
-			task, project := m.getTaskRef()
-			if task == nil {
-				return m, nil
-			}
-			return m, func() tea.Msg { return EditTaskMsg{Task: task, Project: project} }
-		},
-		ChangeSection: func() (tea.Model, tea.Cmd) {
-			task, project := m.getTaskRef()
-			if task == nil {
-				return m, nil
-			}
-			return m, func() tea.Msg { return ShowSectionPickerMsg{Task: task, Project: project} }
-		},
-		OpenEditor: func() (tea.Model, tea.Cmd) {
-			task, project := m.getTaskRef()
-			if task == nil {
-				return m, nil
-			}
-			return m, func() tea.Msg { return EditTaskContentMsg{Task: task, Project: project} }
-		},
-		TogglePin: func() (tea.Model, tea.Cmd) { return taskOpsTogglePinned(m) },
-		ToggleDim: func() (tea.Model, tea.Cmd) { return taskOpsToggleDimmed(m) },
-		ManageTags: func() (tea.Model, tea.Cmd) {
-			task, project := m.getTaskRef()
-			if task == nil {
-				return m, nil
-			}
-			tags := append([]string{}, task.Tags...)
-			return m, func() tea.Msg {
-				return ShowTagSelectorMsg{Task: task, Project: project, CurrentTags: tags}
-			}
-		},
-		ViewComments: func() (tea.Model, tea.Cmd) {
-			task, project := m.getTaskRef()
-			if task == nil {
-				return m, nil
-			}
-			return m, func() tea.Msg { return ShowTaskCommentsMsg{Task: task, Project: project} }
-		},
-		ViewAttachments: func() (tea.Model, tea.Cmd) {
-			task, project := m.getTaskRef()
-			if task == nil {
-				return m, nil
-			}
-			return m, func() tea.Msg { return ShowTaskAttachmentsMsg{Task: task, Project: project} }
-		},
-		EditChecklist: func() (tea.Model, tea.Cmd) {
-			task, project := m.getTaskRef()
-			if task == nil {
-				return m, nil
-			}
-			return m, func() tea.Msg { return ShowTaskChecklistMsg{Task: task, Project: project} }
-		},
-		EditDescription: func() (tea.Model, tea.Cmd) {
-			task, project := m.getTaskRef()
-			if task == nil {
-				return m, nil
-			}
-			return m, func() tea.Msg { return ShowDescriptionEditorMsg{Task: task, Project: project} }
-		},
-		MoveToProject: func() (tea.Model, tea.Cmd) {
-			task, project := m.getTaskRef()
-			if task == nil {
-				return m, nil
-			}
-			return m, func() tea.Msg { return ShowProjectSelectorForMoveMsg{Task: task, SourceProject: project} }
-		},
-		ViewDecisions: func() (tea.Model, tea.Cmd) {
-			task, project := m.getTaskRef()
-			if task == nil {
-				return m, nil
-			}
-			return m, func() tea.Msg { return ShowTaskDecisionsMsg{Task: task, Project: project} }
-		},
-		DeleteTask: func() (tea.Model, tea.Cmd) {
-			// No delete in this view
-			return m, nil
-		},
-	})
-	if len(taskPrefixEntries) > 0 && taskPrefixEntries[0].PrefixNode != nil {
-		taskPrefixEntries[0].PrefixNode.Gate = hasItem
-	}
-	entries = append(entries, taskPrefixEntries...)
-
-	// --- Stage group: "." prefix, gated on hasItem ---
-	stageEntries := keymap.StageGroup(keymap.StageDeps{
-		Stages: stages,
-		ChangeStage: func(stage string) keymap.Action {
-			return func() (tea.Model, tea.Cmd) { return taskOpsChangeStage(m, stage) }
-		},
-	})
-	if len(stageEntries) > 0 && stageEntries[0].PrefixNode != nil {
-		stageEntries[0].PrefixNode.Gate = hasItem
-	}
-	entries = append(entries, stageEntries...)
-
-	// --- Blocker group: "b" prefix, gated on hasItem ---
-	blockerEntries := keymap.BlockerGroup(keymap.BlockerDeps{
-		ViewDependencies: func() (tea.Model, tea.Cmd) {
-			task, project := m.getTaskRef()
-			if task == nil {
-				return m, nil
-			}
-			return m, func() tea.Msg { return ShowDependencyViewerMsg{Task: task, Project: project} }
-		},
-		ManageDependencies: func() (tea.Model, tea.Cmd) {
-			task, project := m.getTaskRef()
-			if task == nil {
-				return m, nil
-			}
-			return m, func() tea.Msg { return ManageDependenciesMsg{Task: task, Project: project} }
-		},
-	})
-	if len(blockerEntries) > 0 && blockerEntries[0].PrefixNode != nil {
-		blockerEntries[0].PrefixNode.Gate = hasItem
-	}
-	entries = append(entries, blockerEntries...)
+	})...)
 
 	// --- View-specific direct bindings ---
 
@@ -402,23 +163,6 @@ func (m *ProjectFocusViewModel) buildKeyMap() *keymap.KeyMap {
 	entries = append(entries,
 		keymap.Bind("enter", "Close and return to project tree", "Navigation", func() (tea.Model, tea.Cmd) {
 			return m, func() tea.Msg { return CloseProjectFocusViewMsg{} }
-		}),
-	)
-
-	// Toggle active flag
-	entries = append(entries,
-		keymap.Bind("*", "Remove from focus", "Actions", func() (tea.Model, tea.Cmd) {
-			return m.toggleActive()
-		}),
-	)
-
-	// Edit task
-	entries = append(entries,
-		keymap.Bind("e", "Edit task", "Actions", func() (tea.Model, tea.Cmd) {
-			if task := m.getTaskAtCursor(); task != nil {
-				return m, func() tea.Msg { return EditTaskMsg{Task: task} }
-			}
-			return m, nil
 		}),
 	)
 

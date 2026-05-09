@@ -83,6 +83,9 @@ type WeeklyReviewModel struct {
 	upcomingWeek      []WeeklyReviewTask
 	recurringOverview []WeeklyReviewTask
 
+	// Filter
+	FilterMixin
+
 	// Multi-select
 	MultiSelectState
 
@@ -115,6 +118,7 @@ func NewWeeklyReviewModel(cfg *config.Config, mgr *config.Manager) *WeeklyReview
 		mutationCounts:    make(map[string]int),
 		MultiSelectState:  MultiSelectState{selectedTasks: make(map[string]bool)},
 		tabs:              TabState{Names: weeklyReviewTabNames},
+		FilterMixin:       FilterMixin{filter: newFilterState()},
 	}
 	if t := cfg.GetLastWeeklyReviewAt(); t != nil {
 		tYear, tWeek := t.ISOWeek()
@@ -164,6 +168,7 @@ func NewWeeklyReviewModel(cfg *config.Config, mgr *config.Manager) *WeeklyReview
 			},
 		},
 	}
+	m.initFilterMixinWithDispatcher(m.Dispatcher, cfg)
 	m.loadData()
 	return m
 }
