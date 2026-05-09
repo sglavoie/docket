@@ -88,6 +88,22 @@ func (m *AppModel) handleGlobalMessage(msg tea.Msg) (bool, tea.Cmd) {
 			nv.loadNotes()
 		}
 		return true, nil
+	case systemAppearanceCheckMsg:
+		if !m.config.GetAutoTheme() {
+			return true, nil
+		}
+		detector := m.appearanceDetector
+		return true, func() tea.Msg {
+			return systemAppearanceResultMsg{Appearance: detector.Detect()}
+		}
+	case systemAppearanceResultMsg:
+		cmd := m.handleAppearanceResult(msg)
+		if m.config.GetAutoTheme() {
+			return true, tea.Batch(cmd, tea.Tick(appearanceCheckInterval, func(time.Time) tea.Msg {
+				return systemAppearanceCheckMsg{}
+			}))
+		}
+		return true, cmd
 	}
 
 	return false, nil

@@ -31,6 +31,11 @@ func (m *AppModel) handleViewSettingsMessages(msg tea.Msg) (bool, tea.Cmd) { //n
 		if m.dashboard != nil {
 			m.dashboard.Refresh(m.config)
 		}
+		if m.config.GetAutoTheme() {
+			return true, tea.Tick(appearanceCheckInterval, func(time.Time) tea.Msg {
+				return systemAppearanceCheckMsg{}
+			})
+		}
 		return true, nil
 
 	case presetSavedMsg:

@@ -5,6 +5,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/sglavoie/tt/internal/appearance"
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 )
@@ -29,6 +30,7 @@ func NewAppModel(cfg *config.Config, manager *config.Manager, opts ...AppOption)
 	app := &AppModel{
 		config:                   cfg,
 		configManager:            manager,
+		appearanceDetector:       appearance.NewDetector(),
 		persister:                NewProjectService(),
 		viewStack:                []ViewType{ViewDashboard},
 		width:                    80,
@@ -300,12 +302,18 @@ func getGlobalHelpItems() []HelpItem {
 }
 
 const periodicSaveInterval = 60 * time.Second
+const appearanceCheckInterval = 30 * time.Second
 
 func (m *AppModel) Init() tea.Cmd {
 	cmds := []tea.Cmd{
 		tea.Tick(periodicSaveInterval, func(time.Time) tea.Msg {
 			return periodicSaveMsg{}
 		}),
+	}
+	if m.config.GetAutoTheme() {
+		cmds = append(cmds, tea.Tick(appearanceCheckInterval, func(time.Time) tea.Msg {
+			return systemAppearanceCheckMsg{}
+		}))
 	}
 	if sv := m.config.GetStartView(); sv != "dashboard" {
 		vt := startViewTypeFromString(sv)

@@ -161,4 +161,5 @@ type Config struct {
 	KanbanSettings                 KanbanSettings               `json:"kanban_settings,omitzero"`
 	StartView                      string                       `json:"start_view,omitempty"`
 	TaskFormCollapsed              *bool                        `json:"task_form_collapsed,omitempty"`
+	AutoTheme                      *bool                        `json:"auto_theme,omitempty"`
 }

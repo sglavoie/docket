@@ -346,8 +346,11 @@ func (m *SettingsModel) handleSpaceKey() {
 			m.alertProjectHealthEnabled = !m.alertProjectHealthEnabled
 		}
 	case tabAppearance:
-		if local == 0 {
+		switch local {
+		case 0:
 			m.zebraStriping = !m.zebraStriping
+		case 3:
+			m.autoTheme = !m.autoTheme
 		}
 	}
 }

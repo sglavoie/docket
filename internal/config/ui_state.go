@@ -47,6 +47,16 @@ func (c *Config) GetTaskFormCollapsed() bool {
 	return *c.TaskFormCollapsed
 }
 
+// GetAutoTheme returns whether automatic OS appearance detection is enabled.
+// Defaults to true (enabled); on non-macOS platforms the detector always returns Unknown so the
+// setting has no visible effect.
+func (c *Config) GetAutoTheme() bool {
+	if c.AutoTheme == nil {
+		return true
+	}
+	return *c.AutoTheme
+}
+
 // GetCycleProjects returns active projects that are in the cycle list, in order.
 // Filters out archived projects and projects that no longer exist.
 func (c *Config) GetCycleProjects() []*models.Project {

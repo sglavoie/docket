@@ -5,6 +5,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/sglavoie/tt/internal/appearance"
 	"github.com/sglavoie/tt/internal/models"
 )
 
@@ -102,6 +103,12 @@ type OpenDataFolderMsg struct {
 
 // OpenLogDirMsg opens the log directory in Finder.
 type OpenLogDirMsg struct{}
+
+// systemAppearanceCheckMsg triggers a background check of the OS appearance.
+type systemAppearanceCheckMsg struct{}
+
+// systemAppearanceResultMsg carries the result of an OS appearance detection.
+type systemAppearanceResultMsg struct{ Appearance appearance.SystemAppearance }
 
 // =============================================================================
 // Async Save Messages

@@ -6,6 +6,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/alerts"
+	"github.com/sglavoie/tt/internal/appearance"
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/template"
@@ -253,6 +254,9 @@ type AllTasksCache struct {
 type AppModel struct {
 	config        *config.Config
 	configManager *config.Manager
+
+	// OS appearance detector for auto-theme sync
+	appearanceDetector appearance.Detector
 
 	// Persister for project persistence operations (enables testing with mocks)
 	persister Persister

@@ -32,7 +32,7 @@ var (
 	settingsTabNames = []string{"General", "Palette", "Review", "Behavior", "Attachments", "Project Tree", "Outliner", "Kanban", "Notifications", "Stages", "Appearance"}
 
 	// tabFieldCount declares how many focusable fields each tab has.
-	tabFieldCount = []int{5, 18, 4, 15, 2, 14, 23, 11, 15, 1, 3}
+	tabFieldCount = []int{5, 18, 4, 15, 2, 14, 23, 11, 15, 1, 4}
 
 	// tabFieldStart holds the starting focus index for each tab (computed in init).
 	tabFieldStart []int
@@ -220,6 +220,7 @@ type SettingsModel struct {
 	zebraStriping            bool     // Alternating row backgrounds in task list views
 	weekEndDayCursor         int      // Index into weekEndDayValues (0=fri, 1=sat, 2=sun)
 	timeFormatCursor         int      // Index into timeFormatValues (0=12h, 1=24h)
+	autoTheme                bool     // Sync theme with macOS system appearance
 	contexts                 []string
 	contextCursor            int // -1 for custom mode, 0+ for selecting from list
 

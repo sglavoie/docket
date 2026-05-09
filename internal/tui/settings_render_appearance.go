@@ -27,5 +27,12 @@ func (m *SettingsModel) renderAppearanceTab() string {
 	b.WriteString("\n")
 	b.WriteString(renderFormFieldDesc("Clock format for tasks with a due time", indent, m.focusIndex == base+2))
 
+	b.WriteString("\n")
+
+	b.WriteString(renderFormLabelWithWidth("Auto Theme: ", labelWidth, m.focusIndex == base+3))
+	b.WriteString(renderFormToggle("Enabled", "Disabled", m.autoTheme, m.focusIndex == base+3))
+	b.WriteString("\n")
+	b.WriteString(renderFormFieldDesc("Sync theme with macOS system appearance", indent, m.focusIndex == base+3))
+
 	return b.String()
 }
