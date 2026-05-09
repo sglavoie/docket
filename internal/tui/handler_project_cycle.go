@@ -67,7 +67,7 @@ func (m *AppModel) handleProjectCyclePickerKey(msg tea.KeyPressMsg) (*AppModel, 
 		return m, nil
 	}
 	switch msg.String() {
-	case "escape", "`":
+	case "esc", "`":
 		m.showProjectCyclePicker = false
 		return m, nil
 
