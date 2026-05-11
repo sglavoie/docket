@@ -106,7 +106,22 @@ func TestShouldShowAlertIndicatorWithAlertsOnUnsupportedView(t *testing.T) {
 }
 
 func TestShouldShowAlertIndicatorSupportedViews(t *testing.T) {
-	supported := []ViewType{ViewDashboard, ViewProjectTree, ViewOutliner, ViewFocusBoard}
+	supported := []ViewType{
+		ViewDashboard, ViewProjectTree, ViewOutliner, ViewTemporaryOutliner, ViewFocusBoard,
+		ViewKanban, ViewCrossProjectKanban,
+		ViewCrossProjectOutliner,
+		ViewDailyReview, ViewWeeklyReview,
+		ViewPriorityView,
+		ViewMetricsDashboard,
+		ViewAllTasks,
+		ViewRecentActivity,
+		ViewRoadmap, ViewPipelineHub,
+		ViewDueDateOverview,
+		ViewFocusView, ViewProjectFocusView,
+		ViewBlockers, ViewGlobalBlockers,
+		ViewProjectRecentActivity,
+		ViewGlobalInboxProcessor, ViewGlobalNotes,
+	}
 	for _, view := range supported {
 		app := newTestAppModel()
 		app.viewStack = []ViewType{view}

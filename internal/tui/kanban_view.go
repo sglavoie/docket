@@ -64,9 +64,12 @@ func kanbanRender(m *KanbanModel) string {
 	} else {
 		hint = MutedStyle.Render("`/~: cycle mode")
 	}
-	gap := m.width - lipgloss.Width(title) - lipgloss.Width(hint)
+	const alertReserve = 10
+	gap := m.width - lipgloss.Width(title) - lipgloss.Width(hint) - alertReserve
 	if gap > 0 {
 		title += strings.Repeat(" ", gap) + hint
+	} else {
+		title += "  " + hint
 	}
 	sb.WriteString(title + "\n")
 
