@@ -241,7 +241,7 @@ func (m *FocusBoardModel) renderRow(row boardRow, isSelected bool, maxTitleLen i
 	task := row.Task
 	projectName := truncateToVisualWidth(row.Project.Name, 10)
 
-	priorityBadge := boardPriorityBadge(task.Priority)
+	priorityBadge := renderPriorityBadge(task.Priority)
 	isClosed := task.Status.IsComplete()
 
 	// Tree prefix for auto-expanded children
@@ -343,7 +343,3 @@ func (m *FocusBoardModel) computedTabNames() []string {
 	return names
 }
 
-// boardPriorityBadge returns a colored priority label for board items (P1, P2, etc.).
-func boardPriorityBadge(priority int) string {
-	return GetPriorityStyle(priority).Render(fmt.Sprintf("P%d", priority))
-}
