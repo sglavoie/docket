@@ -194,7 +194,7 @@ func (m *FocusBoardModel) View() tea.View { //nolint:gocyclo
 	} else if m.tabs.Active == boardTabClosed {
 		left = HelpStyle.Render("d reopen · D delete · o open URL · ? help")
 	} else {
-		left = HelpStyle.Render("a add · x done · X dismiss · p priority · e edit · enter open/go")
+		left = HelpStyle.Render("a add · x done · X dismiss · n/N parents · e edit · enter open/go")
 	}
 	var rightParts []string
 	if indicator := m.renderActiveFilterIndicator(); indicator != "" {

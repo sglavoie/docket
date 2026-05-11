@@ -36,16 +36,47 @@ func (m *FocusViewModel) handleQueueReorder(delta int) (tea.Model, tea.Cmd) {
 	if m.tabs.Active != focusTabQueue {
 		return m, nil
 	}
-
-	q := *m.queue
-	to := m.cursor + delta
-	if m.cursor < 0 || m.cursor >= len(q) || to < 0 || to >= len(q) {
+	if m.cursor < 0 || m.cursor >= len(m.filtered) {
 		return m, nil
 	}
 
-	m.reorderQueue(m.cursor, to)
-	m.cursor = to
+	cur := m.filtered[m.cursor]
+	if cur.TreePrefix != "" {
+		return m, nil
+	}
+
+	target := m.cursor + delta
+	for target >= 0 && target < len(m.filtered) && m.filtered[target].TreePrefix != "" {
+		target += delta
+	}
+	if target < 0 || target >= len(m.filtered) {
+		return m, nil
+	}
+
+	q := *m.queue
+	fromQ, toQ := -1, -1
+	targetID := m.filtered[target].Task.ID
+	for i, ft := range q {
+		if ft.Task.ID == cur.Task.ID {
+			fromQ = i
+		}
+		if ft.Task.ID == targetID {
+			toQ = i
+		}
+	}
+	if fromQ < 0 || toQ < 0 {
+		return m, nil
+	}
+
+	m.reorderQueue(fromQ, toQ)
 	m.applyFilter()
+
+	for i, ft := range m.filtered {
+		if ft.Task.ID == cur.Task.ID {
+			m.cursor = i
+			break
+		}
+	}
 	return m, nil
 }
 

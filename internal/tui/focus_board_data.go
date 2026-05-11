@@ -260,6 +260,18 @@ func (m *FocusBoardModel) collectChildren(out *[]boardRow, parent *models.Task, 
 	}
 }
 
+// parentRowIndices returns the indices of rows in m.filtered that are parent
+// tasks (TreePrefix == ""), used by n/N navigation to jump between parents.
+func (m *FocusBoardModel) parentRowIndices() []int {
+	var indices []int
+	for i, row := range m.filtered {
+		if row.TreePrefix == "" {
+			indices = append(indices, i)
+		}
+	}
+	return indices
+}
+
 // buildBoardTreePrefix builds a tree prefix with shorter horizontal lines
 // (one fewer ─) to fit the focus board's compact layout.
 func buildBoardTreePrefix(ancestorIsLast []bool, isLast bool) string {

@@ -423,6 +423,16 @@ func (m *FocusViewModel) buildKeyMap() *keymap.KeyMap {
 		}),
 	)
 
+	// Parent navigation
+	entries = append(entries,
+		keymap.Bind("n", "Next parent task", "Navigation", func() (tea.Model, tea.Cmd) {
+			return m, m.SectionGoToNext(m.parentRowIndices())
+		}),
+		keymap.Bind("N", "Previous parent task", "Navigation", func() (tea.Model, tea.Cmd) {
+			return m, m.SectionGoToPrev(m.parentRowIndices())
+		}),
+	)
+
 	// Priority keys: 1-5
 	for _, k := range []string{"1", "2", "3", "4", "5"} {
 		key := k

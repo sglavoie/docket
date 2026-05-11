@@ -493,6 +493,16 @@ func (m *FocusBoardModel) buildKeyMap() *keymap.KeyMap {
 		}),
 	)
 
+	// Parent navigation
+	entries = append(entries,
+		keymap.Bind("n", "Next parent task", "Navigation", func() (tea.Model, tea.Cmd) {
+			return m, m.SectionGoToNext(m.parentRowIndices())
+		}),
+		keymap.Bind("N", "Previous parent task", "Navigation", func() (tea.Model, tea.Cmd) {
+			return m, m.SectionGoToPrev(m.parentRowIndices())
+		}),
+	)
+
 	// Assign to project (hidden, duplicates ctrl+b)
 	entries = append(entries,
 		keymap.Bind("P", "Assign to project", "Actions", func() (tea.Model, tea.Cmd) {

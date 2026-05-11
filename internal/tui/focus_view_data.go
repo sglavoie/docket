@@ -111,6 +111,7 @@ func (m *FocusViewModel) applyFilter() {
 
 	m.computeSubTabs()
 	m.applySubTabFilter(now, today)
+	m.expandFilteredChildren()
 }
 
 // computeSubTabs builds the dynamic sub-tab names based on active tab and filtered tasks.
@@ -299,6 +300,61 @@ func (m *FocusViewModel) toggleDismiss() {
 	m.persistDismissed()
 	m.recomputeSuggested()
 	m.clampCursor()
+}
+
+// expandFilteredChildren re-orders m.filtered so that child tasks appear
+// indented under their parents using tree connectors. Tasks whose parent is
+// also in m.filtered are skipped at the top level and reinserted as children.
+func (m *FocusViewModel) expandFilteredChildren() {
+	filteredIDs := make(map[string]bool, len(m.filtered))
+	for _, ft := range m.filtered {
+		filteredIDs[ft.Task.ID] = true
+	}
+
+	var expanded []FocusTask
+	for _, ft := range m.filtered {
+		if ft.Task.ParentID != nil && filteredIDs[*ft.Task.ParentID] {
+			continue
+		}
+		expanded = append(expanded, ft)
+		m.collectBacklogChildren(&expanded, ft.Task, ft.Project, nil, filteredIDs)
+	}
+	m.filtered = expanded
+}
+
+// collectBacklogChildren recursively appends children of parent that are
+// present in filteredIDs, setting TreePrefix via buildBoardTreePrefix.
+func (m *FocusViewModel) collectBacklogChildren(out *[]FocusTask, parent *models.Task, project *models.Project, ancestorIsLast []bool, filteredIDs map[string]bool) {
+	var visible []*models.Task
+	for _, child := range parent.Children {
+		if filteredIDs[child.ID] {
+			visible = append(visible, child)
+		}
+	}
+	for i, child := range visible {
+		isLast := i == len(visible)-1
+		*out = append(*out, FocusTask{
+			Task:       child,
+			Project:    project,
+			TreePrefix: buildBoardTreePrefix(ancestorIsLast, isLast),
+		})
+		next := make([]bool, len(ancestorIsLast)+1)
+		copy(next, ancestorIsLast)
+		next[len(ancestorIsLast)] = isLast
+		m.collectBacklogChildren(out, child, project, next, filteredIDs)
+	}
+}
+
+// parentRowIndices returns the indices of rows in m.filtered that are parent
+// tasks (TreePrefix == ""), used by n/N navigation to jump between parents.
+func (m *FocusViewModel) parentRowIndices() []int {
+	var indices []int
+	for i, ft := range m.filtered {
+		if ft.TreePrefix == "" {
+			indices = append(indices, i)
+		}
+	}
+	return indices
 }
 
 func (m *FocusViewModel) pruneDismissedIDs() {

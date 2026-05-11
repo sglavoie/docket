@@ -132,7 +132,7 @@ func (m *FocusViewModel) View() tea.View { //nolint:gocyclo
 	var helpParts []string
 	switch m.tabs.Active {
 	case focusTabQueue:
-		helpParts = []string{"j/k nav", "x remove", "J/K reorder", "r refresh", "Tab tabs"}
+		helpParts = []string{"j/k nav", "n/N parents", "x remove", "J/K reorder", "r refresh", "Tab tabs"}
 	case focusTabSuggested:
 		if m.showDismissed {
 			xLabel := "x dismiss"
@@ -144,7 +144,7 @@ func (m *FocusViewModel) View() tea.View { //nolint:gocyclo
 			helpParts = []string{"j/k nav", "q add to queue", "x dismiss", "D show dismissed", "Tab tabs"}
 		}
 	default:
-		helpParts = []string{"j/k nav", "Tab tabs", "shift+↑/↓ row focus", ",s/d/b/x status", "1-5 priority"}
+		helpParts = []string{"j/k nav", "n/N parents", "Tab tabs", "shift+↑/↓ row focus", ",s/d/b/x status", "1-5 priority"}
 	}
 	if m.multiSelectMode {
 		helpParts = []string{"space toggle", "a all", "A deselect", ",/! status/priority", "v exit"}
@@ -162,12 +162,20 @@ func (m *FocusViewModel) renderQueueLines() ([]string, int) {
 	maxTitleLen := max(m.width-FocusViewQueueTitlePadding, FocusViewMinTitleWidth)
 	layout := m.computeColumnLayout()
 	rowIndex := 0
+	parentNum := 0
 
 	for i, ft := range m.filtered {
 		isSelected := i == m.cursor
-		// Number prefix for queue items
-		numPrefix := m.Checkbox(ft.Task.ID) + MutedStyle.Render(fmt.Sprintf("%d. ", i+1))
-		line := m.renderTaskLineWithPrefix(ft, isSelected, maxTitleLen, numPrefix, m.queueIDs[ft.Task.ID], m.dailyPlanIDs[ft.Task.ID], layout, rowIndex)
+		titleLen := maxTitleLen
+		var prefix string
+		if ft.TreePrefix != "" {
+			prefix = MutedStyle.Render(ft.TreePrefix) + m.Checkbox(ft.Task.ID)
+			titleLen = max(maxTitleLen-lipgloss.Width(ft.TreePrefix), FocusViewMinTitleWidth)
+		} else {
+			parentNum++
+			prefix = m.Checkbox(ft.Task.ID) + MutedStyle.Render(fmt.Sprintf("%d. ", parentNum))
+		}
+		line := m.renderTaskLineWithPrefix(ft, isSelected, titleLen, prefix, m.queueIDs[ft.Task.ID], m.dailyPlanIDs[ft.Task.ID], layout, rowIndex)
 		lines = append(lines, line)
 		rowIndex++
 	}
@@ -194,6 +202,11 @@ func (m *FocusViewModel) renderSuggestedLines() ([]string, int) {
 
 		// Prefix for dismissed or star indicator
 		prefix := m.Checkbox(ft.Task.ID)
+		titleLen := maxTitleLen
+		if ft.TreePrefix != "" {
+			prefix = MutedStyle.Render(ft.TreePrefix) + prefix
+			titleLen = max(maxTitleLen-lipgloss.Width(ft.TreePrefix), FocusViewMinTitleWidth)
+		}
 		if isDismissed {
 			prefix += MutedStyle.Render("[dismissed] ")
 		}
@@ -204,7 +217,7 @@ func (m *FocusViewModel) renderSuggestedLines() ([]string, int) {
 			starShown = true
 		}
 
-		line := m.renderTaskLineWithPrefix(ft, isSelected, maxTitleLen, prefix, m.isInQueue(ft.Task.ID), m.dailyPlanIDs[ft.Task.ID], layout, rowIndex)
+		line := m.renderTaskLineWithPrefix(ft, isSelected, titleLen, prefix, m.isInQueue(ft.Task.ID), m.dailyPlanIDs[ft.Task.ID], layout, rowIndex)
 		lines = append(lines, line)
 		rowIndex++
 
@@ -225,7 +238,13 @@ func (m *FocusViewModel) renderStandardLines() ([]string, int) {
 
 	for i, ft := range m.filtered {
 		isSelected := i == m.cursor
-		line := m.renderTaskLineWithPrefix(ft, isSelected, maxTitleLen, m.Checkbox(ft.Task.ID), m.queueIDs[ft.Task.ID], m.dailyPlanIDs[ft.Task.ID], layout, rowIndex)
+		prefix := m.Checkbox(ft.Task.ID)
+		titleLen := maxTitleLen
+		if ft.TreePrefix != "" {
+			prefix = MutedStyle.Render(ft.TreePrefix) + prefix
+			titleLen = max(maxTitleLen-lipgloss.Width(ft.TreePrefix), FocusViewMinTitleWidth)
+		}
+		line := m.renderTaskLineWithPrefix(ft, isSelected, titleLen, prefix, m.queueIDs[ft.Task.ID], m.dailyPlanIDs[ft.Task.ID], layout, rowIndex)
 		lines = append(lines, line)
 		rowIndex++
 	}

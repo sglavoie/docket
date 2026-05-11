@@ -10,8 +10,9 @@ import (
 
 // FocusTask wraps a task with its parent project for cross-project display.
 type FocusTask struct {
-	Task    *models.Task
-	Project *models.Project
+	Task       *models.Task
+	Project    *models.Project
+	TreePrefix string
 }
 
 // CollectActionableTasks filters actionable tasks from already-loaded projects.
