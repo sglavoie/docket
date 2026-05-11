@@ -4,6 +4,8 @@ import (
 	"fmt"
 
 	tea "charm.land/bubbletea/v2"
+
+	"github.com/sglavoie/tt/internal/models"
 )
 
 // handleTaskMessages handles task-related messages (create, edit, delete, status changes).
@@ -115,6 +117,9 @@ func (m *AppModel) handleTaskArchiveMessages(msg tea.Msg) (bool, tea.Cmd) {
 func (m *AppModel) handleTaskStatusPropertyMessages(msg tea.Msg) (bool, tea.Cmd) {
 	switch msg := msg.(type) {
 	case TaskStatusChangedMsg:
+		if msg.Task != nil && msg.Task.Status == models.StatusDone {
+			m.sessionStats.tasksCompleted++
+		}
 		return true, m.handleWithRefresh(false, false, "")
 
 	case TaskPropertyChangedMsg:

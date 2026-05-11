@@ -152,6 +152,19 @@ func (m *FocusBoardModel) createItemFromInput(input string) (tea.Model, tea.Cmd)
 	if len(result.tags) > 0 {
 		task.Tags = result.tags
 	}
+	for _, tag := range result.tagsToRemove {
+		task.RemoveTag(tag)
+	}
+	if result.dueDate != nil {
+		task.DueDate = result.dueDate
+		task.HasTime = false
+	}
+	if result.section != "" {
+		task.SetSection(result.section)
+	}
+	if result.statusSet {
+		task.Status = result.status
+	}
 
 	targetProject.Tasks = append(targetProject.Tasks, task)
 	targetProject.BuildTaskTree()

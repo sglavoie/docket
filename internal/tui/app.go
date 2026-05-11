@@ -117,6 +117,7 @@ const (
 	ViewPipelineHub
 	ViewRoadmap
 	ViewTaskDecisions
+	ViewAttrFilterPicker
 )
 
 // String returns the name of the ViewType for readable test output.
@@ -223,6 +224,7 @@ func (v ViewType) String() string {
 		ViewPipelineHub:           "PipelineHub",
 		ViewRoadmap:               "Roadmap",
 		ViewTaskDecisions:         "TaskDecisions",
+		ViewAttrFilterPicker:      "AttrFilterPicker",
 	}
 	if name, ok := names[v]; ok {
 		return name
@@ -248,6 +250,12 @@ type AllTasksCache struct {
 	Filter    CommonFilterState
 	GroupBy   AllTasksGroupBy
 	TabActive int
+}
+
+// sessionStats tracks task activity during a single TUI session for the end-of-session summary.
+type sessionStats struct {
+	tasksCompleted int
+	tasksCreated   int
 }
 
 // AppModel is the main TUI model with a view stack.
@@ -328,6 +336,9 @@ type AppModel struct {
 	// Terminal too narrow or short to render properly
 	tooNarrow bool
 	tooShort  bool
+
+	// Session stats tracked across the lifetime of the TUI session.
+	sessionStats sessionStats
 
 	// State
 	err           error

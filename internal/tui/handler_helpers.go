@@ -55,6 +55,11 @@ func (m *AppModel) setInfoStatus(msg string) {
 	m.messageLog.Append(msg, MessageLogLevelInfo)
 }
 
+// setUndoableInfoStatus sets an info status message with an appended "(u to undo)" hint.
+func (m *AppModel) setUndoableInfoStatus(msg string) {
+	m.setInfoStatus(msg + " (u to undo)")
+}
+
 // clearStatus clears the status message and resets the info flag.
 func (m *AppModel) clearStatus() {
 	m.statusMessage = ""

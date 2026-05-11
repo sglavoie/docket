@@ -622,6 +622,13 @@ func (m *OutlinerModel) buildKeyMap() *keymap.KeyMap {
 				return m.handleOutlinerFilterSubKey(prefix, key)
 			}
 		},
+		OpenAttrPicker: func() (tea.Model, tea.Cmd) {
+			source := ViewOutliner
+			if m.project == nil {
+				source = ViewCrossProjectOutliner
+			}
+			return m, func() tea.Msg { return ShowAttrFilterPickerMsg{Source: source} }
+		},
 		ScoreKey: func(key string) keymap.Action {
 			return func() (tea.Model, tea.Cmd) {
 				return m.handleOutlinerFilterSubKey("FS", key)

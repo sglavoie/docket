@@ -283,6 +283,7 @@ func (m *AppModel) applyTagsToTask(task *models.Task, project *models.Project, s
 		m.crossOutliner.rebuildRows()
 	}
 
+	m.setUndoableInfoStatus(fmt.Sprintf("Tagged #%d", task.ShortID))
 	return nil
 }
 
@@ -315,6 +316,7 @@ func (m *AppModel) applyTagsToTasks(tasks []*models.Task, project *models.Projec
 		m.outliner.rebuildRows()
 	}
 
+	m.setUndoableInfoStatus(fmt.Sprintf("Tagged %d tasks", len(tasks)))
 	return nil
 }
 
@@ -339,6 +341,9 @@ func (m *AppModel) processMessage(msg tea.Msg) (bool, tea.Cmd) {
 		return true, cmd
 	}
 	if handled, cmd := m.handleTagMessages(msg); handled {
+		return true, cmd
+	}
+	if handled, cmd := m.handleAttrFilterMessages(msg); handled {
 		return true, cmd
 	}
 	if handled, cmd := m.handleSectionMessages(msg); handled {

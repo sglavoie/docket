@@ -104,6 +104,9 @@ func (m *ProjectFocusViewModel) buildKeyMap() *keymap.KeyMap {
 		AttrSubKey: func(prefix, key string) keymap.Action {
 			return func() (tea.Model, tea.Cmd) { return m.handleFilterSubPrefix(prefix, key) }
 		},
+		OpenAttrPicker: func() (tea.Model, tea.Cmd) {
+			return m, func() tea.Msg { return ShowAttrFilterPickerMsg{Source: ViewProjectFocusView} }
+		},
 		ScoreKey: func(key string) keymap.Action {
 			return func() (tea.Model, tea.Cmd) { return m.handleFilterSubPrefix("FS", key) }
 		},

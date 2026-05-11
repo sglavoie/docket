@@ -136,6 +136,9 @@ func (m *RecentActivityModel) buildKeyMap() *keymap.KeyMap {
 				return m.handleRecentActivityFilterSubPrefix(prefix, key)
 			}
 		},
+		OpenAttrPicker: func() (tea.Model, tea.Cmd) {
+			return m, func() tea.Msg { return ShowAttrFilterPickerMsg{Source: ViewRecentActivity} }
+		},
 		ScoreKey: func(key string) keymap.Action {
 			return func() (tea.Model, tea.Cmd) {
 				return m.handleRecentActivityFilterSubPrefix("FS", key)

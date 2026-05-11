@@ -71,6 +71,9 @@ func (m *AppModel) Update(msg tea.Msg) (outModel tea.Model, outCmd tea.Cmd) { //
 	if handled, cmd := m.handleTagMessages(msg); handled {
 		return m, cmd
 	}
+	if handled, cmd := m.handleAttrFilterMessages(msg); handled {
+		return m, cmd
+	}
 	if handled, cmd := m.handleSectionMessages(msg); handled {
 		return m, cmd
 	}

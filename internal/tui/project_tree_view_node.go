@@ -212,7 +212,9 @@ func (m *ProjectTreeModel) renderNodeWithWidth(node *TreeNode, selected bool, in
 	content := fmt.Sprintf("%s%s%s%s%s %s %s%s%s%s%s%s",
 		queueIndicator, checkbox, indent, expandIcon, typeIcon, statusIcon, prioritySegment, stageSegment, idStr, title, progress, indicators)
 	isDimmed := task.Dimmed && !node.IsContextNode
-	return RenderSelectableRow(selected, task.Active, task.Pinned, m.cursorFlash, content, maxWidth, isDimmed)
+	isOverdue := task.IsOverdue()
+	isBlocked := task.Status == models.StatusBlocked || m.project.HasIncompleteDependencies(task)
+	return RenderSelectableRow(selected, task.Active, task.Pinned, m.cursorFlash, isOverdue, isBlocked, content, maxWidth, isDimmed)
 }
 
 func (m *ProjectTreeModel) nodeOrgGroup(task *models.Task, node *TreeNode) string {

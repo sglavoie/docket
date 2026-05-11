@@ -16,10 +16,13 @@ type FilterDeps struct {
 	// Nil disables the due-date sub-prefix.
 	DueDateKey func(key string) Action
 	// AttrDirectKey returns an Action for direct Fa keys (V, 0).
+	// Deprecated: kept for backward compatibility; use OpenAttrPicker instead.
 	AttrDirectKey func(key string) Action
 	// AttrSubKey returns an Action for an attribute sub-prefix leaf key.
-	// prefix is one of Fas/Far/Fae/Fac/Fav/Faw/Fao/Fap; key is the leaf.
+	// Deprecated: kept for backward compatibility; use OpenAttrPicker instead.
 	AttrSubKey func(prefix, key string) Action
+	// OpenAttrPicker opens the attribute filter picker overlay (replaces Fa sub-prefixes).
+	OpenAttrPicker Action
 	// ScoreKey returns an Action for a FS sub-key (1-9, c, 0).
 	ScoreKey func(key string) Action
 	// StageFilterKey returns an Action for a F. sub-key (0, 1-9, a-z).
@@ -69,75 +72,6 @@ func FilterGroup(deps FilterDeps) []Entry {
 		fdEntry = &e
 	}
 
-	// --- Fa attribute sub-prefixes ---
-	fasChildren := []Entry{
-		Bind("c", "Severity: Critical", cat, deps.AttrSubKey("Fas", "c")),
-		Bind("j", "Severity: Major", cat, deps.AttrSubKey("Fas", "j")),
-		Bind("m", "Severity: Minor", cat, deps.AttrSubKey("Fas", "m")),
-		Bind("o", "Severity: Cosmetic", cat, deps.AttrSubKey("Fas", "o")),
-		Bind("0", "Clear severity filter", cat, deps.AttrSubKey("Fas", "0")),
-	}
-	farChildren := []Entry{
-		Bind("y", "Reproducible: Yes", cat, deps.AttrSubKey("Far", "y")),
-		Bind("n", "Reproducible: No", cat, deps.AttrSubKey("Far", "n")),
-		Bind("s", "Reproducible: Sometimes", cat, deps.AttrSubKey("Far", "s")),
-		Bind("0", "Clear reproducible filter", cat, deps.AttrSubKey("Far", "0")),
-	}
-	faeChildren := []Entry{
-		Bind("s", "Effort: Small", cat, deps.AttrSubKey("Fae", "s")),
-		Bind("m", "Effort: Medium", cat, deps.AttrSubKey("Fae", "m")),
-		Bind("l", "Effort: Large", cat, deps.AttrSubKey("Fae", "l")),
-		Bind("u", "Effort: Unknown", cat, deps.AttrSubKey("Fae", "u")),
-		Bind("0", "Clear effort filter", cat, deps.AttrSubKey("Fae", "0")),
-	}
-	facChildren := []Entry{
-		Bind("f", "Category: Feature", cat, deps.AttrSubKey("Fac", "f")),
-		Bind("i", "Category: Improvement", cat, deps.AttrSubKey("Fac", "i")),
-		Bind("r", "Category: Refactor", cat, deps.AttrSubKey("Fac", "r")),
-		Bind("s", "Category: Research", cat, deps.AttrSubKey("Fac", "s")),
-		Bind("0", "Clear category filter", cat, deps.AttrSubKey("Fac", "0")),
-	}
-	favChildren := []Entry{
-		Bind("l", "Value: Low", cat, deps.AttrSubKey("Fav", "l")),
-		Bind("m", "Value: Medium", cat, deps.AttrSubKey("Fav", "m")),
-		Bind("h", "Value: High", cat, deps.AttrSubKey("Fav", "h")),
-		Bind("0", "Clear value filter", cat, deps.AttrSubKey("Fav", "0")),
-	}
-	fawChildren := []Entry{
-		Bind("d", "Worktype: Development", cat, deps.AttrSubKey("Faw", "d")),
-		Bind("o", "Worktype: Documentation", cat, deps.AttrSubKey("Faw", "o")),
-		Bind("t", "Worktype: Testing", cat, deps.AttrSubKey("Faw", "t")),
-		Bind("v", "Worktype: DevOps", cat, deps.AttrSubKey("Faw", "v")),
-		Bind("e", "Worktype: Design", cat, deps.AttrSubKey("Faw", "e")),
-		Bind("0", "Clear worktype filter", cat, deps.AttrSubKey("Faw", "0")),
-	}
-	faoChildren := []Entry{
-		Bind("d", "Scope: Defined", cat, deps.AttrSubKey("Fao", "d")),
-		Bind("e", "Scope: Evolving", cat, deps.AttrSubKey("Fao", "e")),
-		Bind("u", "Scope: Undefined", cat, deps.AttrSubKey("Fao", "u")),
-		Bind("0", "Clear scope filter", cat, deps.AttrSubKey("Fao", "0")),
-	}
-	fapChildren := []Entry{
-		Bind("1", "Points: 1", cat, deps.AttrSubKey("Fap", "1")),
-		Bind("2", "Points: 2", cat, deps.AttrSubKey("Fap", "2")),
-		Bind("3", "Points: 3", cat, deps.AttrSubKey("Fap", "3")),
-		Bind("5", "Points: 5", cat, deps.AttrSubKey("Fap", "5")),
-		Bind("8", "Points: 8", cat, deps.AttrSubKey("Fap", "8")),
-		Bind("0", "Clear points filter", cat, deps.AttrSubKey("Fap", "0")),
-	}
-
-	faChildren := []Entry{
-		Prefix("s", "Bug severity", cat, fasChildren),
-		Prefix("r", "Bug reproducible", cat, farChildren),
-		Prefix("e", "Effort", cat, faeChildren),
-		Prefix("c", "Idea category", cat, facChildren),
-		Prefix("v", "Idea value", cat, favChildren),
-		Prefix("w", "Task worktype", cat, fawChildren),
-		Prefix("o", "Epic scope", cat, faoChildren),
-		Prefix("p", "Story points", cat, fapChildren),
-		Bind("V", "Toggle validated ideas", cat, deps.AttrDirectKey("V")),
-		Bind("0", "Clear all attribute filters", cat, deps.AttrDirectKey("0")),
-	}
 
 	// --- FS: score threshold filter ---
 	fsScoreChildren := []Entry{
@@ -183,7 +117,7 @@ func FilterGroup(deps FilterDeps) []Entry {
 		fChildren = append(fChildren, *fdEntry)
 	}
 	fChildren = append(fChildren,
-		Prefix("a", "Filter by attribute (sub-popup)", cat, faChildren),
+		Bind("a", "Filter by attribute (picker)", cat, deps.OpenAttrPicker),
 		Prefix("S", "Score threshold filter", cat, fsScoreChildren),
 	)
 	if fDotEntry != nil {

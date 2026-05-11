@@ -87,8 +87,43 @@ func RunApp(cfg *config.Config, manager *config.Manager, opts ...AppOption) erro
 		}
 	}()
 
-	_, err := p.Run()
+	finalModel, err := p.Run()
+	if app, ok := finalModel.(*AppModel); ok {
+		printSessionSummary(app.sessionStats)
+	}
 	return err
+}
+
+// printSessionSummary writes a brief session summary to stderr after the TUI exits.
+func printSessionSummary(stats sessionStats) {
+	if stats.tasksCompleted == 0 && stats.tasksCreated == 0 {
+		return
+	}
+	var parts []string
+	if stats.tasksCompleted > 0 {
+		suffix := "task"
+		if stats.tasksCompleted != 1 {
+			suffix = "tasks"
+		}
+		parts = append(parts, fmt.Sprintf("%d %s completed", stats.tasksCompleted, suffix))
+	}
+	if stats.tasksCreated > 0 {
+		suffix := "task"
+		if stats.tasksCreated != 1 {
+			suffix = "tasks"
+		}
+		parts = append(parts, fmt.Sprintf("%d %s created", stats.tasksCreated, suffix))
+	}
+	if len(parts) > 0 {
+		msg := "Session: "
+		for i, p := range parts {
+			if i > 0 {
+				msg += ", "
+			}
+			msg += p
+		}
+		fmt.Fprintln(os.Stderr, msg)
+	}
 }
 
 // evaluateWorkflowAtStartup evaluates workflow rules for the current project if needed.

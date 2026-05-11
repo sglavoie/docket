@@ -329,6 +329,9 @@ func (m *FocusBoardModel) buildKeyMap() *keymap.KeyMap {
 				return m.handleFocusBoardFilterSubPrefix(prefix, key)
 			}
 		},
+		OpenAttrPicker: func() (tea.Model, tea.Cmd) {
+			return m, func() tea.Msg { return ShowAttrFilterPickerMsg{Source: ViewFocusBoard} }
+		},
 		ScoreKey: func(key string) keymap.Action {
 			return func() (tea.Model, tea.Cmd) {
 				return m.handleFocusBoardFilterSubPrefix("FS", key)

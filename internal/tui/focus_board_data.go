@@ -111,6 +111,17 @@ func (m *FocusBoardModel) loadItems() {
 	m.initBoardCaches()
 }
 
+// completedTodayCount returns the number of today's planned tasks that are complete.
+func (m *FocusBoardModel) completedTodayCount() int {
+	count := 0
+	for _, row := range m.todayRows {
+		if row.Task.Status.IsComplete() {
+			count++
+		}
+	}
+	return count
+}
+
 // applyFilter filters rows based on the active tab.
 func (m *FocusBoardModel) applyFilter() {
 	switch m.tabs.Active {

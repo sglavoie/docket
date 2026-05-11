@@ -23,7 +23,7 @@ func handlePriorityPrefix(key string, v prefixableView) (tea.Cmd, bool) {
 		prevStates := captureTaskStates(project.Tasks)
 		count := applyBulkPriority(project, tasks, priority)
 		v.clearMultiSelect()
-		msg := fmt.Sprintf("Set priority %d on %d tasks", priority, count)
+		msg := fmt.Sprintf("Set priority %d on %d tasks (u to undo)", priority, count)
 		v.setUndoContext("Set Priority", msg)
 		v.setUndoTaskIDs(taskIDsFromSlice(tasks))
 		v.setStatusMessage(msg)
@@ -72,7 +72,7 @@ func handleStagePrefix(key string, v prefixableView, stages []string) (tea.Cmd, 
 		if label == "" {
 			label = "cleared"
 		}
-		msg := fmt.Sprintf("Set stage %s on %d tasks", label, count)
+		msg := fmt.Sprintf("Set stage %s on %d tasks (u to undo)", label, count)
 		v.setUndoContext("Set Stage", msg)
 		v.setUndoTaskIDs(taskIDsFromSlice(tasks))
 		v.setStatusMessage(msg)
@@ -226,7 +226,7 @@ func handleSkipRecurrence(v prefixableView) (tea.Cmd, bool) {
 		dueStr = task.DueDate.Format("Mon Jan 2, 2006")
 		dueStr = AppendTimeIfHasTime(task, dueStr, "15:04")
 	}
-	msg := fmt.Sprintf("Skipped: next due %s", dueStr)
+	msg := fmt.Sprintf("Skipped: next due %s (u to undo)", dueStr)
 	v.setUndoContext("Skip Recurrence", task.Title)
 	v.setUndoTaskIDs([]string{task.ID})
 	v.setStatusMessage(msg)
@@ -279,7 +279,7 @@ func handleDeferRecurrence(key string, v prefixableView) (tea.Cmd, bool) {
 		dueStr = task.DueDate.Format("Mon Jan 2, 2006")
 		dueStr = AppendTimeIfHasTime(task, dueStr, "15:04")
 	}
-	msg := fmt.Sprintf("Deferred %s: now due %s", desc, dueStr)
+	msg := fmt.Sprintf("Deferred %s: now due %s (u to undo)", desc, dueStr)
 	v.setUndoContext("Defer Recurrence", task.Title)
 	v.setUndoTaskIDs([]string{task.ID})
 	v.setStatusMessage(msg)
@@ -301,7 +301,7 @@ func handleToggleKey(v prefixableView, spec toggleSpec, undoAction, bulkLabel st
 			}
 		}
 		v.clearMultiSelect()
-		msg := fmt.Sprintf("Toggled %s on %d tasks", bulkLabel, count)
+		msg := fmt.Sprintf("Toggled %s on %d tasks (u to undo)", bulkLabel, count)
 		v.setUndoContext(undoAction, msg)
 		v.setUndoTaskIDs(taskIDsFromSlice(tasks))
 		v.setStatusMessage(msg)

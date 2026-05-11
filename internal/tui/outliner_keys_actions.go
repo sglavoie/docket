@@ -126,7 +126,7 @@ func (m *OutlinerModel) applyBulkStatusChange(newStatus models.TaskStatus) (tea.
 		return m, func() tea.Msg { return ErrorMsg{Err: err} }
 	}
 
-	m.setStatus(fmt.Sprintf("Changed %d tasks to %s", len(valid), newStatus))
+	m.setStatus(fmt.Sprintf("Changed %d tasks to %s (u to undo)", len(valid), newStatus))
 	m.clearMultiSelect()
 	return m, nil
 }

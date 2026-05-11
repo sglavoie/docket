@@ -7,6 +7,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/fuzzy"
+	"github.com/sglavoie/tt/internal/models"
 )
 
 func (m *FocusBoardModel) View() tea.View { //nolint:gocyclo
@@ -41,7 +42,7 @@ func (m *FocusBoardModel) View() tea.View { //nolint:gocyclo
 		if m.isAutocompleteActive() {
 			b.WriteString(MutedStyle.Render("    Tab: accept · ↑↓: navigate · Esc: dismiss"))
 		} else {
-			b.WriteString(MutedStyle.Render("    %project · !priority · #tag · -s source · -u url"))
+			b.WriteString(MutedStyle.Render("    %project · !priority · #tag · @date · /section · $status · -s source · -u url"))
 		}
 		b.WriteString("\n")
 		addBlockHeight++
@@ -113,6 +114,15 @@ func (m *FocusBoardModel) View() tea.View { //nolint:gocyclo
 			b.WriteString(MutedStyle.Render("  " + EmptyStateFiltered))
 			b.WriteString("\n\n")
 			b.WriteString(HelpStyle.Render("  Press Fx to clear filters, or Esc to dismiss."))
+		} else if m.tabs.Active == boardTabToday && m.completedTodayCount() > 0 {
+			n := m.completedTodayCount()
+			suffix := "task"
+			if n != 1 {
+				suffix = "tasks"
+			}
+			b.WriteString(SuccessStyle.Render(fmt.Sprintf("  All done for today! %d %s completed.", n, suffix)))
+			b.WriteString("\n\n")
+			b.WriteString(HelpStyle.Render("  Press w to plan more, or Esc to close."))
 		} else if m.tabs.Active == boardTabToday {
 			b.WriteString(MutedStyle.Render("  No tasks planned for today"))
 			b.WriteString("\n\n")
@@ -297,7 +307,9 @@ func (m *FocusBoardModel) renderRow(row boardRow, isSelected bool, maxTitleLen i
 	}
 
 	dimmed := task.Dimmed || (isClosed && m.tabs.Active == boardTabToday)
-	line := RenderSelectableRow(isSelected, task.Active, task.Pinned, m.cursorFlash, content, m.width-2, dimmed)
+	isOverdue := task.IsOverdue()
+	isBlocked := task.Status == models.StatusBlocked || row.Project.HasIncompleteDependencies(task)
+	line := RenderSelectableRow(isSelected, task.Active, task.Pinned, m.cursorFlash, isOverdue, isBlocked, content, m.width-2, dimmed)
 	b.WriteString(line)
 
 	return b.String()

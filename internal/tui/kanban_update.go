@@ -165,7 +165,7 @@ func (m *KanbanModel) adjustHorizontalScroll() {
 		return
 	}
 
-	const minColWidth = 20
+	const minColWidth = 25
 	maxVisible := (m.width + 1) / (minColWidth + 1)
 	if maxVisible < 1 {
 		maxVisible = 1

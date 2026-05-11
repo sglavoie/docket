@@ -80,7 +80,7 @@ func kanbanRender(m *KanbanModel) string {
 	}
 
 	// === Compute visible columns ===
-	const minColWidth = 20
+	const minColWidth = 25
 	const colSep = "│"
 	const divSep = "┼"
 

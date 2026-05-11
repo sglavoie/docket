@@ -389,11 +389,12 @@ func TestBlockerGroup(t *testing.T) {
 
 func TestFilterGroup_Base(t *testing.T) {
 	deps := FilterDeps{
-		TypeKey:       func(string) Action { return nilAction },
-		StatusKey:     func(string) Action { return nilAction },
-		AttrDirectKey: func(string) Action { return nilAction },
-		AttrSubKey:    func(string, string) Action { return nilAction },
-		ScoreKey:      func(string) Action { return nilAction },
+		TypeKey:        func(string) Action { return nilAction },
+		StatusKey:      func(string) Action { return nilAction },
+		AttrDirectKey:  func(string) Action { return nilAction },
+		AttrSubKey:     func(string, string) Action { return nilAction },
+		OpenAttrPicker: nilAction,
+		ScoreKey:       func(string) Action { return nilAction },
 	}
 	entries := FilterGroup(deps)
 	if len(entries) != 1 {
@@ -416,6 +417,7 @@ func TestFilterGroup_WithDueDateAndStage(t *testing.T) {
 		DueDateKey:       func(string) Action { return nilAction },
 		AttrDirectKey:    func(string) Action { return nilAction },
 		AttrSubKey:       func(string, string) Action { return nilAction },
+		OpenAttrPicker:   nilAction,
 		ScoreKey:         func(string) Action { return nilAction },
 		StageFilterKey:   func(string) Action { return nilAction },
 		StageFilterNames: []string{"Backlog"},
@@ -428,31 +430,32 @@ func TestFilterGroup_WithDueDateAndStage(t *testing.T) {
 	}
 }
 
-func TestFilterGroup_AttrSubPrefixDepth(t *testing.T) {
+func TestFilterGroup_AttrPickerBind(t *testing.T) {
 	deps := FilterDeps{
-		TypeKey:       func(string) Action { return nilAction },
-		StatusKey:     func(string) Action { return nilAction },
-		AttrDirectKey: func(string) Action { return nilAction },
-		AttrSubKey:    func(string, string) Action { return nilAction },
-		ScoreKey:      func(string) Action { return nilAction },
+		TypeKey:        func(string) Action { return nilAction },
+		StatusKey:      func(string) Action { return nilAction },
+		AttrDirectKey:  func(string) Action { return nilAction },
+		AttrSubKey:     func(string, string) Action { return nilAction },
+		OpenAttrPicker: nilAction,
+		ScoreKey:       func(string) Action { return nilAction },
 	}
 	entries := FilterGroup(deps)
 	pn := entries[0].PrefixNode
 
-	// Locate Fa prefix
-	var faPrefixNode *PrefixNode
+	// Fa is now a direct bind (picker), not a sub-prefix node.
+	var faEntry *Entry
 	for _, e := range pn.Children {
-		if e.PrefixNode != nil && e.PrefixNode.Key == "a" {
-			faPrefixNode = e.PrefixNode
+		if e.Binding != nil && e.Binding.Key == "a" {
+			eCopy := e
+			faEntry = &eCopy
 			break
 		}
 	}
-	if faPrefixNode == nil {
-		t.Fatal("FilterGroup: missing 'a' (Fa) PrefixNode under F")
+	if faEntry == nil {
+		t.Fatal("FilterGroup: missing 'a' (Fa) entry under F")
 	}
-	// Fa has 8 sub-prefix nodes (s,r,e,c,v,w,o,p) + 2 direct (V, 0) = 10
-	if len(faPrefixNode.Children) != 10 {
-		t.Errorf("Fa children: want 10, got %d", len(faPrefixNode.Children))
+	if faEntry.PrefixNode != nil {
+		t.Error("Fa should be a direct bind (picker), not a sub-prefix node")
 	}
 }
 

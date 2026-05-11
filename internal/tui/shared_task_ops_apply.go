@@ -71,7 +71,7 @@ func applyStatusChange(pf persistFn, project *models.Project, taskID string, new
 		return result
 	}
 
-	result.StatusMessage = fmt.Sprintf("Task #%d -> %s", task.ShortID, newStatus)
+	result.StatusMessage = fmt.Sprintf("Task #%d -> %s (u to undo)", task.ShortID, newStatus)
 	result.Cmd = func() tea.Msg { return TaskStatusChangedMsg{Task: task} }
 	return result
 }
@@ -93,7 +93,7 @@ func applyPriorityChange(pf persistFn, project *models.Project, taskID string, p
 		return result
 	}
 
-	result.StatusMessage = fmt.Sprintf("Priority set to %d", priority)
+	result.StatusMessage = fmt.Sprintf("Priority set to %d (u to undo)", priority)
 	return result
 }
 
@@ -115,9 +115,9 @@ func applyStageChange(pf persistFn, project *models.Project, taskID string, stag
 	}
 
 	if stage == "" {
-		result.StatusMessage = "Stage cleared"
+		result.StatusMessage = "Stage cleared (u to undo)"
 	} else {
-		result.StatusMessage = fmt.Sprintf("Stage set to %s", stage)
+		result.StatusMessage = fmt.Sprintf("Stage set to %s (u to undo)", stage)
 	}
 	return result
 }
@@ -319,7 +319,7 @@ func applySectionChange(pf persistFn, project *models.Project, taskID string, se
 	if sectionName == "" {
 		sectionName = "Active"
 	}
-	result.StatusMessage = fmt.Sprintf("Moved to %s", sectionName)
+	result.StatusMessage = fmt.Sprintf("Moved to %s (u to undo)", sectionName)
 	result.Cmd = func() tea.Msg { return TaskPropertyChangedMsg{Task: task} }
 	return result
 }
@@ -395,7 +395,7 @@ func applyDeleteTask(pf persistFn, persister Persister, project *models.Project,
 	}
 
 	return TaskOpResult{
-		StatusMessage: fmt.Sprintf("Deleted task #%d", shortID),
+		StatusMessage: fmt.Sprintf("Deleted task #%d (u to undo)", shortID),
 		Cmd: func() tea.Msg {
 			return TaskDeletedMsg{Task: task}
 		},

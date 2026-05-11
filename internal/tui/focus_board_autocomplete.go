@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/sglavoie/tt/internal/fuzzy"
 	"github.com/sglavoie/tt/internal/models"
@@ -11,12 +12,18 @@ import (
 
 // boardAddResult holds parsed metadata from focus board quick-add input.
 type boardAddResult struct {
-	title       string
-	source      string
-	url         string
-	priority    int
-	tags        []string
-	projectSlug string
+	title        string
+	source       string
+	url          string
+	priority     int
+	tags         []string
+	tagsToRemove []string
+	projectSlug  string
+	dueDate      *time.Time
+	dueDateClear bool
+	section      string
+	status       models.TaskStatus
+	statusSet    bool
 }
 
 // boardTriggers defines the trigger characters for focus board autocomplete.
@@ -179,11 +186,72 @@ func (m *FocusBoardModel) initBoardCaches() {
 	m.acProjectCache = m.config.GetAllLoadableProjects()
 }
 
-// parseBoardAddInput extracts title and optional prefix tokens (%project, !N, #tag)
-// alongside existing --source, --url, --priority flags.
+// parseBoardAddInput extracts title and optional prefix tokens (%project, !N, #tag,
+// -#tag, @date, /section, $status) alongside --source, --url, --priority flags.
 func parseBoardAddInput(input string) boardAddResult {
-	parts := strings.Fields(input)
 	var result boardAddResult
+
+	// Extract -#tag (remove tag) before #tag so the dash isn't left as a stray token.
+	removeTagMatches := qeRemoveTagRe.FindAllStringSubmatch(input, -1)
+	for _, match := range removeTagMatches {
+		if len(match) > 1 {
+			result.tagsToRemove = append(result.tagsToRemove, match[1])
+		}
+	}
+	input = qeRemoveTagRe.ReplaceAllString(input, " ")
+
+	// Extract @date / @0 (clear).
+	if match := qeDueDateRe.FindStringSubmatch(input); len(match) > 1 {
+		if match[1] == "0" {
+			result.dueDateClear = true
+		} else if date, err := ParseDate(match[1]); err == nil {
+			result.dueDate = &date
+		}
+		input = qeDueDateRe.ReplaceAllString(input, " ")
+	}
+
+	// Extract /section.
+	if match := qeSectionRe.FindStringSubmatch(input); len(match) > 1 {
+		if match[1] != "0" {
+			result.section = match[1]
+		}
+		input = qeSectionRe.ReplaceAllString(input, " ")
+	}
+
+	// Extract $status.
+	if match := qeStatusRe.FindStringSubmatch(input); len(match) > 1 {
+		statusStr := strings.ToLower(match[1])
+		switch statusStr {
+		case "start", "started", "progress":
+			result.status = models.StatusInProgress
+			result.statusSet = true
+		case "blocked", "block":
+			result.status = models.StatusBlocked
+			result.statusSet = true
+		case "done", "complete", "completed":
+			result.status = models.StatusDone
+			result.statusSet = true
+		case "canceled", "cancel":
+			result.status = models.StatusCanceled
+			result.statusSet = true
+		case "todo", "open", "reopen":
+			result.status = models.StatusTodo
+			result.statusSet = true
+		case "review":
+			result.status = models.StatusReview
+			result.statusSet = true
+		case "standby", "hold":
+			result.status = models.StatusStandby
+			result.statusSet = true
+		case "maybe":
+			result.status = models.StatusMaybe
+			result.statusSet = true
+		}
+		input = qeStatusRe.ReplaceAllString(input, " ")
+	}
+
+	// Process remaining tokens for %project, !N, #tag, --source, --url, --priority.
+	parts := strings.Fields(input)
 	var titleParts []string
 
 	for i := 0; i < len(parts); i++ {

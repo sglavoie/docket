@@ -46,8 +46,21 @@ func renderSidebarContent(host SidebarHost, task *models.Task, width, height int
 		cards = append(cards, renderSidebarDueCard(task, width, cfg.GetTimeFormat()))
 	}
 
-	// Metadata card: tags + section (uses section color)
-	cards = append(cards, renderSidebarMetadataCard(project, task, width, sectionColor))
+	// Dependencies card (blockers are actionable — show early)
+	hasDeps := len(task.DependsOn) > 0 || len(project.GetBlockedByTasks(task)) > 0
+	if hasDeps {
+		cards = append(cards, renderSidebarDependenciesCard(host, task, width, cardInnerWidth))
+	}
+
+	// Checklist card (progress tracking — actionable)
+	if len(task.Checklist) > 0 {
+		cards = append(cards, renderSidebarChecklistCard(task, width))
+	}
+
+	// Description card (content — show before metadata)
+	if task.Description != "" {
+		cards = append(cards, renderSidebarDescriptionCard(task, width))
+	}
 
 	// Score card (only if scoring profile assigned)
 	if cfg != nil {
@@ -56,38 +69,25 @@ func renderSidebarContent(host SidebarHost, task *models.Task, width, height int
 		}
 	}
 
-	// Checklist card (only if has checklist items)
-	if len(task.Checklist) > 0 {
-		cards = append(cards, renderSidebarChecklistCard(task, width))
-	}
-
-	// Dependencies card (only if has dependencies)
-	hasDeps := len(task.DependsOn) > 0 || len(project.GetBlockedByTasks(task)) > 0
-	if hasDeps {
-		cards = append(cards, renderSidebarDependenciesCard(host, task, width, cardInnerWidth))
-	}
-
-	// Related tasks card (only if has related tasks)
-	if len(task.RelatedTo) > 0 {
-		cards = append(cards, renderSidebarRelatedCard(host, task, width, cardInnerWidth))
-	}
-
-	// Activity card
-	cards = append(cards, renderSidebarActivityCard(task, width))
+	// Metadata card: tags + section (uses section color)
+	cards = append(cards, renderSidebarMetadataCard(project, task, width, sectionColor))
 
 	// Comments card (only if has comments)
 	if len(task.Comments) > 0 {
 		cards = append(cards, renderSidebarCommentsCard(task, width))
 	}
 
+	// Activity card
+	cards = append(cards, renderSidebarActivityCard(task, width))
+
+	// Related tasks card (only if has related tasks)
+	if len(task.RelatedTo) > 0 {
+		cards = append(cards, renderSidebarRelatedCard(host, task, width, cardInnerWidth))
+	}
+
 	// Attachments card (only if has attachments)
 	if task.HasAttachments() {
 		cards = append(cards, renderSidebarAttachmentsCard(task, width))
-	}
-
-	// Description card (only if has description)
-	if task.Description != "" {
-		cards = append(cards, renderSidebarDescriptionCard(task, width))
 	}
 
 	// Help hint at bottom if sidebar focused

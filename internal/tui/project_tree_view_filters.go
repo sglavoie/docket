@@ -111,6 +111,8 @@ func (m *ProjectTreeModel) renderViewModeIndicator() string {
 	inboxLabel := fmt.Sprintf("Inbox[%d]", inboxCount)
 	if m.viewMode == ViewModeInbox {
 		parts = append(parts, ViewModeInboxStyle.Render(inboxLabel))
+	} else if inboxCount > 0 {
+		parts = append(parts, ViewModeInboxStyle.Render(inboxLabel))
 	} else {
 		parts = append(parts, MutedStyle.Render(inboxLabel))
 	}
@@ -131,29 +133,46 @@ func (m *ProjectTreeModel) renderViewModeIndicator() string {
 		parts = append(parts, MutedStyle.Render(somedayLabel))
 	}
 
-	// Review view
-	reviewLabel := fmt.Sprintf("Review[%d]", reviewCount)
-	if m.viewMode == ViewModeReview {
-		parts = append(parts, ViewModeReviewStyle.Render(reviewLabel))
-	} else {
-		parts = append(parts, MutedStyle.Render(reviewLabel))
-	}
-
-	// Standby view
-	standbyLabel := fmt.Sprintf("Standby[%d]", standbyCount)
-	if m.viewMode == ViewModeStandby {
-		parts = append(parts, ViewModeStandbyStyle.Render(standbyLabel))
-	} else {
-		parts = append(parts, MutedStyle.Render(standbyLabel))
-	}
-
-	// Snoozed indicator (only show if there are snoozed tasks)
-	if snoozedCount > 0 {
-		snoozedLabel := fmt.Sprintf("Snoozed[%d]", snoozedCount)
-		if m.viewMode == ViewModeSnoozed {
-			parts = append(parts, ViewModeSnoozedStyle.Render(snoozedLabel))
+	// Review, Standby, Snoozed: collapse into More[N] on narrow terminals.
+	narrowMode := m.Width() < 100
+	isCollapsedActive := m.viewMode == ViewModeReview || m.viewMode == ViewModeStandby || m.viewMode == ViewModeSnoozed
+	if narrowMode {
+		if isCollapsedActive {
+			// Show only the active collapsed tab so user can see their current location.
+			switch m.viewMode {
+			case ViewModeReview:
+				parts = append(parts, ViewModeReviewStyle.Render(fmt.Sprintf("Review[%d]", reviewCount)))
+			case ViewModeStandby:
+				parts = append(parts, ViewModeStandbyStyle.Render(fmt.Sprintf("Standby[%d]", standbyCount)))
+			case ViewModeSnoozed:
+				parts = append(parts, ViewModeSnoozedStyle.Render(fmt.Sprintf("Snoozed[%d]", snoozedCount)))
+			}
 		} else {
-			parts = append(parts, MutedStyle.Render(snoozedLabel))
+			moreCount := reviewCount + standbyCount + snoozedCount
+			parts = append(parts, MutedStyle.Render(fmt.Sprintf("More[%d]", moreCount)))
+		}
+	} else {
+		reviewLabel := fmt.Sprintf("Review[%d]", reviewCount)
+		if m.viewMode == ViewModeReview || reviewCount > 0 {
+			parts = append(parts, ViewModeReviewStyle.Render(reviewLabel))
+		} else {
+			parts = append(parts, MutedStyle.Render(reviewLabel))
+		}
+
+		standbyLabel := fmt.Sprintf("Standby[%d]", standbyCount)
+		if m.viewMode == ViewModeStandby {
+			parts = append(parts, ViewModeStandbyStyle.Render(standbyLabel))
+		} else {
+			parts = append(parts, MutedStyle.Render(standbyLabel))
+		}
+
+		if snoozedCount > 0 {
+			snoozedLabel := fmt.Sprintf("Snoozed[%d]", snoozedCount)
+			if m.viewMode == ViewModeSnoozed {
+				parts = append(parts, ViewModeSnoozedStyle.Render(snoozedLabel))
+			} else {
+				parts = append(parts, MutedStyle.Render(snoozedLabel))
+			}
 		}
 	}
 

@@ -27,9 +27,12 @@ func (m *AppModel) handleInboxMessages(msg tea.Msg) (bool, tea.Cmd) {
 			_ = m.persister.Load(m.currentProject)
 		}
 		m.refreshProjectTree()
-		if msg.ProcessedCount > 0 || msg.SkippedCount > 0 {
-			m.setSuccessStatus(fmt.Sprintf("Inbox processing complete: %d processed, %d skipped",
-				msg.ProcessedCount, msg.SkippedCount))
+		if msg.ProcessedCount > 0 {
+			m.setSuccessStatus(fmt.Sprintf("Inbox clear! %d triaged. Next: plan your day (;w)",
+				msg.ProcessedCount))
+		} else if msg.SkippedCount > 0 {
+			m.setSuccessStatus(fmt.Sprintf("Inbox processing complete: %d skipped",
+				msg.SkippedCount))
 		}
 		return true, nil
 

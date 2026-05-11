@@ -13,7 +13,7 @@ import (
 )
 
 // IndicatorGroupSep is the dim separator rendered between indicator groups.
-var IndicatorGroupSep = MutedStyle.Render(" · ")
+var IndicatorGroupSep = MutedStyle.Render(" │ ")
 
 // JoinIndicatorGroups joins non-empty group strings with a dim "·" separator.
 // Empty groups are skipped so no orphan separators appear.
@@ -421,7 +421,13 @@ func (tl TaskLine) Render() string {
 			line = SelectedLine(line, 0)
 		}
 	} else if !tl.Task.Dimmed && !tl.IsSelected && !tl.Flash {
-		line = ZebraLine(line, tl.ViewWidth, tl.RowIndex)
+		if tl.Task.Status == models.StatusBlocked {
+			line = BlockedRowStyle.Width(tl.ViewWidth).Render(line)
+		} else if tl.Task.IsOverdue() {
+			line = OverdueRowStyle.Width(tl.ViewWidth).Render(line)
+		} else {
+			line = ZebraLine(line, tl.ViewWidth, tl.RowIndex)
+		}
 	}
 
 	return line

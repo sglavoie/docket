@@ -272,7 +272,8 @@ func RenderCursorPrefix(selected, active, pinned, dimmed bool) string {
 }
 
 // RenderSelectableRow renders a row with cursor prefix and optional full-width selection highlight.
-func RenderSelectableRow(selected, active, pinned, flash bool, content string, width int, dimmed ...bool) string {
+// overdue and blocked apply a subtle background tint when the row is not selected or dimmed.
+func RenderSelectableRow(selected, active, pinned, flash, overdue, blocked bool, content string, width int, dimmed ...bool) string {
 	isDimmed := len(dimmed) > 0 && dimmed[0]
 	row := RenderCursorPrefix(selected, active, pinned, isDimmed) + content
 	// Truncate to prevent terminal wrapping.
@@ -290,6 +291,12 @@ func RenderSelectableRow(selected, active, pinned, flash bool, content string, w
 			return SelectedFlashLine(row, width)
 		}
 		return SelectedLine(row, width)
+	}
+	if blocked {
+		return BlockedRowStyle.Width(width).Render(row)
+	}
+	if overdue {
+		return OverdueRowStyle.Width(width).Render(row)
 	}
 	return row
 }

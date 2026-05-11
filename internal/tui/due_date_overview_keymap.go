@@ -320,6 +320,9 @@ func (m *DueDateOverviewModel) buildKeyMap() *keymap.KeyMap {
 				return m.handleDueDateFilterSubPrefix(prefix, key)
 			}
 		},
+		OpenAttrPicker: func() (tea.Model, tea.Cmd) {
+			return m, func() tea.Msg { return ShowAttrFilterPickerMsg{Source: ViewDueDateOverview} }
+		},
 		ScoreKey: func(key string) keymap.Action {
 			return func() (tea.Model, tea.Cmd) {
 				return m.handleDueDateFilterSubPrefix("FS", key)

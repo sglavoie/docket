@@ -117,9 +117,9 @@ func ParseRelativeDateWithConfig(input, weekEndDay string) (time.Time, error) {
 	switch input {
 	case "today", "eod":
 		return today, nil
-	case "tomorrow":
+	case "tomorrow", "tmrw", "tom":
 		return today.AddDate(0, 0, 1), nil
-	case "yesterday":
+	case "yesterday", "ytd":
 		return today.AddDate(0, 0, -1), nil
 	case "eow":
 		var targetDay time.Weekday

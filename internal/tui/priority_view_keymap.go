@@ -329,6 +329,9 @@ func (m *PriorityViewModel) buildKeyMap() *keymap.KeyMap {
 		AttrSubKey: func(prefix, key string) keymap.Action {
 			return func() (tea.Model, tea.Cmd) { return m.handlePriorityFilterSubPrefix(prefix, key) }
 		},
+		OpenAttrPicker: func() (tea.Model, tea.Cmd) {
+			return m, func() tea.Msg { return ShowAttrFilterPickerMsg{Source: ViewPriorityView} }
+		},
 		ScoreKey: func(key string) keymap.Action {
 			return func() (tea.Model, tea.Cmd) { return m.handlePriorityFilterSubPrefix("FS", key) }
 		},

@@ -64,6 +64,9 @@ func (m *AppModel) handleEditTask(msg EditTaskMsg) (bool, tea.Cmd) {
 
 // handleTaskCreated handles the TaskCreatedMsg.
 func (m *AppModel) handleTaskCreated(msg TaskCreatedMsg) (bool, tea.Cmd) {
+	if msg.Task != nil {
+		m.sessionStats.tasksCreated++
+	}
 	// Common pattern: pop view, reload, refresh
 	m.handleWithRefresh(true, true, "")
 

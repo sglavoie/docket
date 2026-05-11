@@ -44,7 +44,7 @@ func (m *AppModel) handleViewReviewMessages(msg tea.Msg) (bool, tea.Cmd) { //nol
 			logging.Warn("failed to save config: %v", err)
 		}
 		m.reevaluateAlerts()
-		m.setSuccessStatus("Daily review completed")
+		m.setSuccessStatus("Review complete! Next: start working (;w)")
 		return true, nil
 
 	case MarkWeeklyReviewDoneMsg:
