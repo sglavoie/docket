@@ -13,14 +13,22 @@ import (
 func (m *FocusBoardModel) View() tea.View { //nolint:gocyclo
 	var b strings.Builder
 
-	// Title
-	subtitle := fmt.Sprintf("%d tasks", len(m.rows))
-	b.WriteString(renderFullscreenTitle("Today", subtitle, m.AccentColor()))
-	b.WriteString("\n")
-
-	// Tab bar
-	b.WriteString(renderTabBarWithOptionalSubTabs(m.computedTabNames(), m.tabs.Active, nil, false, m.width, m.AccentColor()))
-	b.WriteString("\n")
+	if m.tunnelMode {
+		// Tunnel mode: show current task as header, hide tab bar
+		title := "Focus Mode"
+		if row := m.getRowAtCursor(); row != nil && row.Task != nil {
+			title = "Currently: " + row.Task.Title
+		}
+		b.WriteString(renderFullscreenTitle(title, "", m.AccentColor()))
+		b.WriteString("\n")
+	} else {
+		// Normal mode: show title + tab bar
+		subtitle := fmt.Sprintf("%d tasks", len(m.rows))
+		b.WriteString(renderFullscreenTitle("Today", subtitle, m.AccentColor()))
+		b.WriteString("\n")
+		b.WriteString(renderTabBarWithOptionalSubTabs(m.computedTabNames(), m.tabs.Active, nil, false, m.width, m.AccentColor()))
+		b.WriteString("\n")
+	}
 
 	// Search input
 	inputBlockHeight := 0
@@ -100,8 +108,12 @@ func (m *FocusBoardModel) View() tea.View { //nolint:gocyclo
 		addBlockHeight++
 	}
 
-	// Calculate available height
-	contentHeight := fullscreenContentHeight(m.height, 3) // tab bar(2) + status(1)
+	// Calculate available height (tunnel mode has no tab bar: save 2 lines)
+	tabOverhead := 3 // tab bar(2) + status(1)
+	if m.tunnelMode {
+		tabOverhead = 1 // status(1) only
+	}
+	contentHeight := fullscreenContentHeight(m.height, tabOverhead)
 	if m.addMode {
 		contentHeight -= addBlockHeight
 	}
@@ -306,7 +318,7 @@ func (m *FocusBoardModel) renderRow(row boardRow, isSelected bool, maxTitleLen i
 		content += " " + MutedStyle.Render("(carried)")
 	}
 
-	dimmed := task.Dimmed || (isClosed && m.tabs.Active == boardTabToday)
+	dimmed := task.Dimmed || (isClosed && m.tabs.Active == boardTabToday) || (m.tunnelMode && !isSelected)
 	isOverdue := task.IsOverdue()
 	isBlocked := task.Status == models.StatusBlocked || row.Project.HasIncompleteDependencies(task)
 	line := RenderSelectableRow(isSelected, task.Active, task.Pinned, m.cursorFlash, isOverdue, isBlocked, content, m.width-2, dimmed)

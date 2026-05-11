@@ -356,6 +356,10 @@ func renderAlignedPrefixHintLine(hint PrefixHint, maxKeyWidth, maxDescWidth, max
 		keyStyle = MutedStyle
 		descStyle = MutedStyle
 		detailStyle = MutedStyle
+	} else if hint.Danger {
+		keyStyle = ErrorStatusStyle
+		descStyle = ErrorStatusStyle
+		detailStyle = ErrorStatusStyle
 	} else if hint.Active {
 		descStyle = WarningIconStyle
 		detailStyle = WarningIconStyle

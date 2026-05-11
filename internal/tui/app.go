@@ -254,8 +254,10 @@ type AllTasksCache struct {
 
 // sessionStats tracks task activity during a single TUI session for the end-of-session summary.
 type sessionStats struct {
-	tasksCompleted int
-	tasksCreated   int
+	tasksCompleted  int
+	tasksCreated    int
+	tasksInProgress int
+	tasksSnoozed    int
 }
 
 // AppModel is the main TUI model with a view stack.

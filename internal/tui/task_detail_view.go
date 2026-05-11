@@ -24,25 +24,22 @@ func (m *TaskDetailModel) View() tea.View {
 	// Determine content width (capped, centered if wider)
 	contentWidth := min(m.width, maxContentWidth)
 
-	// Build all sections
-	var sections []string
+	// Build sections grouped into three clusters: Overview, Planning, History.
+	// Labeled dividers are inserted between non-empty clusters.
+	var overviewSections, planningSections, historySections []string
 
-	sections = append(sections, m.renderHeaderSection(contentWidth))
-
+	overviewSections = append(overviewSections, m.renderHeaderSection(contentWidth))
 	if m.task.DueDate != nil {
-		sections = append(sections, m.renderDueSection(contentWidth))
+		overviewSections = append(overviewSections, m.renderDueSection(contentWidth))
 	}
-
 	if m.task.IsRecurring() {
-		sections = append(sections, m.renderRecurrenceSection(contentWidth))
+		overviewSections = append(overviewSections, m.renderRecurrenceSection(contentWidth))
 	}
-
 	if m.task.Description != "" {
-		sections = append(sections, m.renderDescriptionSection(contentWidth))
+		overviewSections = append(overviewSections, m.renderDescriptionSection(contentWidth))
 	}
-
 	if metaCard := m.renderMetadataSection(contentWidth); metaCard != "" {
-		sections = append(sections, metaCard)
+		overviewSections = append(overviewSections, metaCard)
 	}
 
 	// Score + Activity side-by-side
@@ -55,19 +52,17 @@ func (m *TaskDetailModel) View() tea.View {
 	}
 	if scoreCard != "" {
 		rightWidth := contentWidth - contentWidth/2
-		sections = append(sections, lipgloss.JoinHorizontal(lipgloss.Top,
+		planningSections = append(planningSections, lipgloss.JoinHorizontal(lipgloss.Top,
 			scoreCard, m.renderActivitySection(rightWidth)))
 	} else {
-		sections = append(sections, m.renderActivitySection(contentWidth))
+		planningSections = append(planningSections, m.renderActivitySection(contentWidth))
 	}
-
 	if len(m.task.Checklist) > 0 {
-		sections = append(sections, m.renderChecklistSection(contentWidth))
+		planningSections = append(planningSections, m.renderChecklistSection(contentWidth))
 	}
-
 	hasDeps := len(m.task.DependsOn) > 0 || len(m.project.GetBlockedByTasks(m.task)) > 0
 	if hasDeps || len(m.task.RelatedTo) > 0 {
-		sections = append(sections, m.renderDependenciesSection(contentWidth))
+		planningSections = append(planningSections, m.renderDependenciesSection(contentWidth))
 	}
 
 	// Comments + Decisions side-by-side
@@ -76,17 +71,28 @@ func (m *TaskDetailModel) View() tea.View {
 	if hasComments && hasDecisions {
 		leftWidth := contentWidth / 2
 		rightWidth := contentWidth - leftWidth
-		sections = append(sections, lipgloss.JoinHorizontal(lipgloss.Top,
+		historySections = append(historySections, lipgloss.JoinHorizontal(lipgloss.Top,
 			m.renderCommentsSection(leftWidth),
 			m.renderDecisionsSection(rightWidth)))
 	} else if hasComments {
-		sections = append(sections, m.renderCommentsSection(contentWidth))
+		historySections = append(historySections, m.renderCommentsSection(contentWidth))
 	} else if hasDecisions {
-		sections = append(sections, m.renderDecisionsSection(contentWidth))
+		historySections = append(historySections, m.renderDecisionsSection(contentWidth))
+	}
+	if m.task.HasAttachments() {
+		historySections = append(historySections, m.renderAttachmentsSection(contentWidth))
 	}
 
-	if m.task.HasAttachments() {
-		sections = append(sections, m.renderAttachmentsSection(contentWidth))
+	// Assemble final section list with labeled cluster dividers
+	var sections []string
+	sections = append(sections, overviewSections...)
+	if len(planningSections) > 0 {
+		sections = append(sections, renderDetailSectionDivider("Planning", contentWidth))
+		sections = append(sections, planningSections...)
+	}
+	if len(historySections) > 0 {
+		sections = append(sections, renderDetailSectionDivider("History", contentWidth))
+		sections = append(sections, historySections...)
 	}
 
 	// Join sections
@@ -127,6 +133,13 @@ func (m *TaskDetailModel) View() tea.View {
 	footer := m.renderFooter()
 
 	return tea.NewView(titleBar + "\n" + content + "\n" + footer)
+}
+
+// renderDetailSectionDivider renders a labeled cluster divider line.
+func renderDetailSectionDivider(label string, width int) string {
+	prefix := "── " + label + " "
+	remaining := max(width-len(prefix), 0)
+	return MutedStyle.Render(prefix + strings.Repeat("─", remaining))
 }
 
 // renderTitleBar renders the top title bar.

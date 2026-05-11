@@ -7,7 +7,7 @@ var (
 		{Key: "s", Description: "start", Detail: "Set task to in-progress"},
 		{Key: "d", Description: "done", Detail: "Mark task as completed"},
 		{Key: "b", Description: "block", Detail: "Mark task as blocked"},
-		{Key: "x", Description: "cancel", Detail: "Cancel the task"},
+		{Key: "x", Description: "cancel", Detail: "Cancel the task", Danger: true},
 		{Key: "o", Description: "reopen", Detail: "Reopen a closed task"},
 		{Key: "r", Description: "review", Detail: "Send task to review"},
 		{Key: "S", Description: "standby", Detail: "Put task on standby"},
@@ -147,7 +147,7 @@ var (
 		{Key: "d", Description: "decisions", Detail: "View/add decisions"},
 		{Key: "e", Description: "description", Detail: "Edit description"},
 		{Key: "m", Description: "move", Detail: "Move to another project"},
-		{Key: "D", Description: "delete", Detail: "Delete task"},
+		{Key: "D", Description: "delete", Detail: "Delete task", Danger: true},
 	}
 
 	// SemicolonPrefixHints contains hints for the ";" (tt global) prefix.

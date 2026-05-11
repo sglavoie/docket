@@ -12,6 +12,12 @@ import (
 // This differs from RenderTabBar which renders a single-line tab bar.
 // Pass an optional accent color to tint the active tab.
 func renderWrappingTabBar(tabs []string, activeIdx, availableWidth int, accent ...color.Color) string {
+	return renderWrappingTabBarColored(tabs, activeIdx, nil, availableWidth, accent...)
+}
+
+// renderWrappingTabBarColored is like renderWrappingTabBar but accepts per-tab
+// foreground colors for inactive tabs (nil entry = default muted color).
+func renderWrappingTabBarColored(tabs []string, activeIdx int, tabColors []color.Color, availableWidth int, accent ...color.Color) string {
 	if len(tabs) == 0 {
 		return ""
 	}
@@ -36,6 +42,9 @@ func renderWrappingTabBar(tabs []string, activeIdx, availableWidth int, accent .
 		}
 		if i == activeIdx {
 			currentRow = append(currentRow, active.Render(name))
+		} else if i < len(tabColors) && tabColors[i] != nil {
+			colored := inactiveTabStyle(1, true).Foreground(tabColors[i])
+			currentRow = append(currentRow, colored.Render(name))
 		} else {
 			currentRow = append(currentRow, inactive.Render(name))
 		}

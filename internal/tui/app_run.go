@@ -89,6 +89,17 @@ func RunApp(cfg *config.Config, manager *config.Manager, opts ...AppOption) erro
 
 	finalModel, err := p.Run()
 	if app, ok := finalModel.(*AppModel); ok {
+		if app.currentProject != nil {
+			now := time.Now()
+			for _, t := range app.currentProject.Tasks {
+				if t.Status == models.StatusInProgress {
+					app.sessionStats.tasksInProgress++
+				}
+				if t.SnoozedUntil != nil && t.SnoozedUntil.After(now) {
+					app.sessionStats.tasksSnoozed++
+				}
+			}
+		}
 		printSessionSummary(app.sessionStats)
 	}
 	return err
@@ -96,7 +107,7 @@ func RunApp(cfg *config.Config, manager *config.Manager, opts ...AppOption) erro
 
 // printSessionSummary writes a brief session summary to stderr after the TUI exits.
 func printSessionSummary(stats sessionStats) {
-	if stats.tasksCompleted == 0 && stats.tasksCreated == 0 {
+	if stats.tasksCompleted == 0 && stats.tasksCreated == 0 && stats.tasksInProgress == 0 && stats.tasksSnoozed == 0 {
 		return
 	}
 	var parts []string
@@ -113,6 +124,20 @@ func printSessionSummary(stats sessionStats) {
 			suffix = "tasks"
 		}
 		parts = append(parts, fmt.Sprintf("%d %s created", stats.tasksCreated, suffix))
+	}
+	if stats.tasksInProgress > 0 {
+		suffix := "task"
+		if stats.tasksInProgress != 1 {
+			suffix = "tasks"
+		}
+		parts = append(parts, fmt.Sprintf("%d %s in progress", stats.tasksInProgress, suffix))
+	}
+	if stats.tasksSnoozed > 0 {
+		suffix := "task"
+		if stats.tasksSnoozed != 1 {
+			suffix = "tasks"
+		}
+		parts = append(parts, fmt.Sprintf("%d %s snoozed", stats.tasksSnoozed, suffix))
 	}
 	if len(parts) > 0 {
 		msg := "Session: "

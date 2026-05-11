@@ -84,7 +84,9 @@ type FocusBoardModel struct {
 	editInput textinput.Model
 	editIdx   int
 
-	previewMode bool
+	previewMode    bool
+	tunnelMode     bool
+	initialTabSet  bool
 }
 
 // NewFocusBoardModel creates a new focus board model.
@@ -130,6 +132,20 @@ func NewFocusBoardModel(cfg *config.Config, manager *config.Manager, dailyPlan *
 					return m, nil, true
 				}
 				return nil, nil, false
+			},
+		},
+		{
+			Active: func() bool { return m.tunnelMode },
+			Handle: func(key string) (tea.Model, tea.Cmd, bool) {
+				switch key {
+				case "j", "k", "up", "down", "G", "ctrl+u", "ctrl+d", "enter", "space", "ctrl+f":
+					return nil, nil, false // pass through to normal dispatch
+				case "esc":
+					m.tunnelMode = false
+					return m, nil, true
+				default:
+					return m, nil, true // swallow all other keys
+				}
 			},
 		},
 	}
@@ -214,9 +230,9 @@ func (m *FocusBoardModel) escSteps() []EscStep {
 	}
 }
 
-// ShouldCaptureEsc returns true when add mode, edit mode, search, prefix, confirm, or filters are active.
+// ShouldCaptureEsc returns true when tunnel mode, add mode, edit mode, search, prefix, confirm, or filters are active.
 func (m *FocusBoardModel) ShouldCaptureEsc() bool {
-	return m.addMode || m.editMode || m.SearchShouldCaptureEsc() ||
+	return m.tunnelMode || m.addMode || m.editMode || m.SearchShouldCaptureEsc() ||
 		m.DefaultShouldCaptureEsc() || AnyEscStepActive(m.escSteps())
 }
 

@@ -89,8 +89,9 @@ func (d *DetailsPaneState) ResetScroll() {
 // Embed or include this in view models to avoid repeating activeTab int
 // plus a module-level tabNames slice.
 type TabState struct {
-	Active int
-	Names  []string
+	Active    int
+	Names     []string
+	TabColors []color.Color // per-tab inactive foreground override (nil entry = default muted)
 }
 
 // Cycle advances the active tab by delta with wrapping.
@@ -104,5 +105,5 @@ func (t *TabState) Count() int { return len(t.Names) }
 // RenderBar renders the tab bar at the given width.
 // Pass an optional accent color to highlight the active tab with a distinct color.
 func (t *TabState) RenderBar(width int, accent ...color.Color) string {
-	return renderWrappingTabBar(t.Names, t.Active, width, accent...)
+	return renderWrappingTabBarColored(t.Names, t.Active, t.TabColors, width, accent...)
 }

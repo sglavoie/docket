@@ -129,3 +129,14 @@ func (s *InteractiveViewState) HandleConfirmKey(key string) (confirmed, handled 
 	c, h := s.confirm.HandleKey(key)
 	return c, h
 }
+
+// restoreCursorByID searches items for the task matching taskID using getID
+// and returns its index, or -1 if not found.
+func restoreCursorByID[T any](taskID string, items []T, getID func(T) string) int {
+	for i, item := range items {
+		if getID(item) == taskID {
+			return i
+		}
+	}
+	return -1
+}

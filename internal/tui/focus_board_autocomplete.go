@@ -186,6 +186,25 @@ func (m *FocusBoardModel) initBoardCaches() {
 	m.acProjectCache = m.config.GetAllLoadableProjects()
 }
 
+// parseBoardPriority parses a priority value from s, accepting both numeric ("1"-"5")
+// and named forms (critical/crit/c=1, high/h=2, medium/med/m=3, low/l=4, minimal/min=5).
+func parseBoardPriority(s string) (int, bool) {
+	if len(s) == 1 && s[0] >= '1' && s[0] <= '5' {
+		return int(s[0] - '0'), true
+	}
+	synonyms := map[string]int{
+		"critical": 1, "crit": 1, "c": 1,
+		"high": 2, "h": 2,
+		"medium": 3, "med": 3, "m": 3,
+		"low": 4, "l": 4,
+		"minimal": 5, "min": 5,
+	}
+	if p, ok := synonyms[strings.ToLower(s)]; ok {
+		return p, true
+	}
+	return 0, false
+}
+
 // parseBoardAddInput extracts title and optional prefix tokens (%project, !N, #tag,
 // -#tag, @date, /section, $status) alongside --source, --url, --priority flags.
 func parseBoardAddInput(input string) boardAddResult {
@@ -268,15 +287,17 @@ func parseBoardAddInput(input string) boardAddResult {
 			}
 		case parts[i] == "--priority" || parts[i] == "-p":
 			if i+1 < len(parts) {
-				if p := parts[i+1]; len(p) == 1 && p[0] >= '1' && p[0] <= '5' {
-					result.priority = int(p[0] - '0')
+				if p, ok := parseBoardPriority(parts[i+1]); ok {
+					result.priority = p
 				}
 				i++
 			}
 		case strings.HasPrefix(parts[i], "%") && len(parts[i]) > 1:
 			result.projectSlug = parts[i][1:]
-		case strings.HasPrefix(parts[i], "!") && len(parts[i]) == 2 && parts[i][1] >= '1' && parts[i][1] <= '5':
-			result.priority = int(parts[i][1] - '0')
+		case strings.HasPrefix(parts[i], "!") && len(parts[i]) > 1:
+			if p, ok := parseBoardPriority(parts[i][1:]); ok {
+				result.priority = p
+			}
 		case strings.HasPrefix(parts[i], "#") && len(parts[i]) > 1:
 			result.tags = append(result.tags, parts[i][1:])
 		default:

@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"image/color"
 	"sort"
 	"time"
 
@@ -73,14 +74,17 @@ func (m *AllTasksViewModel) buildTabEntries() {
 	m.tabEntries = entries
 
 	names := make([]string, len(entries))
+	tabColors := make([]color.Color, len(entries))
 	for i, e := range entries {
 		if !e.IsBuiltIn {
 			names[i] = "● " + e.Name
+			tabColors[i] = ColorAccent
 		} else {
 			names[i] = e.Name
 		}
 	}
 	m.tabs.Names = names
+	m.tabs.TabColors = tabColors
 
 	// Clamp active tab in case entries shrank
 	if m.tabs.Active >= len(entries) {

@@ -7,6 +7,27 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 )
 
+// hasActiveTasks returns true if any loaded task has status InProgress.
+func (m *AllTasksViewModel) hasActiveTasks() bool {
+	for _, item := range m.allTasks {
+		if item.Task != nil && item.Task.Status == models.StatusInProgress {
+			return true
+		}
+	}
+	return false
+}
+
+// findBuiltInTabEntryIndex returns the tab entry index for the given built-in tab ID,
+// or -1 if not found.
+func (m *AllTasksViewModel) findBuiltInTabEntryIndex(builtInID int) int {
+	for i, entry := range m.tabEntries {
+		if entry.IsBuiltIn && entry.BuiltInID == builtInID {
+			return i
+		}
+	}
+	return -1
+}
+
 // loadAllTasks loads tasks from all active projects.
 func (m *AllTasksViewModel) loadAllTasks() {
 	m.allTasks = nil
@@ -35,6 +56,16 @@ func (m *AllTasksViewModel) loadAllTasks() {
 	}
 
 	m.applyFiltersAndGroup()
+
+	if !m.initialTabSet {
+		m.initialTabSet = true
+		if m.hasActiveTasks() {
+			if idx := m.findBuiltInTabEntryIndex(builtInTabActive); idx >= 0 {
+				m.tabs.Active = idx
+				m.applyFiltersAndGroup()
+			}
+		}
+	}
 }
 
 // activeTabIncludesCompleted returns true if the current tab is a smart list
@@ -166,7 +197,36 @@ func (m *AllTasksViewModel) getTaskRef() (*models.Task, *models.Project) {
 
 func (m *AllTasksViewModel) getPersister() Persister           { return m.projectService }
 func (m *AllTasksViewModel) getConfigManager() *config.Manager { return m.configManager }
-func (m *AllTasksViewModel) reloadData()                       { m.loadAllTasks() }
+func (m *AllTasksViewModel) reloadData() {
+	var taskID string
+	if item := m.getTaskAtCursor(); item != nil && item.Task != nil {
+		taskID = item.Task.ID
+	}
+	m.loadAllTasks()
+	if taskID != "" {
+		if idx := m.findNavigableIndex(taskID); idx >= 0 {
+			m.cursor = idx
+		}
+	}
+}
+
+// findNavigableIndex returns the navigable cursor position (header + task rows)
+// for the task with the given ID, or -1 if not found.
+func (m *AllTasksViewModel) findNavigableIndex(taskID string) int {
+	pos := 0
+	for _, group := range m.groups {
+		pos++ // header row
+		if !m.collapsedGroups[group.Name] {
+			for _, item := range group.Tasks {
+				if item.Task != nil && item.Task.ID == taskID {
+					return pos
+				}
+				pos++
+			}
+		}
+	}
+	return -1
+}
 func (m *AllTasksViewModel) setErr(err error)                  { m.err = err }
 func (m *AllTasksViewModel) setStatus(msg string)              { m.statusMessage = msg }
 

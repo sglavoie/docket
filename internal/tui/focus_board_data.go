@@ -109,6 +109,14 @@ func (m *FocusBoardModel) loadItems() {
 
 	m.applyFilter()
 	m.initBoardCaches()
+
+	if !m.initialTabSet {
+		m.initialTabSet = true
+		if len(m.dailyPlanIDs) == 0 {
+			m.tabs.Active = boardTabActiveDue
+			m.applyFilter()
+		}
+	}
 }
 
 // completedTodayCount returns the number of today's planned tasks that are complete.

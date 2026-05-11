@@ -39,6 +39,7 @@ type PrefixHint struct {
 	Group        string // Pipeline group name (e.g. "Capture", "Plan"); empty = ungrouped
 	Active       bool   // When true, description and detail are rendered in orange
 	Disabled     bool   // When true, all columns are rendered dimmed (muted)
+	Danger       bool   // When true, key and description are rendered in error/danger color
 	RenderedIcon string // Pre-styled icon string prepended before the description column
 }
 

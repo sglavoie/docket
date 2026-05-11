@@ -50,7 +50,23 @@ func (m *FocusBoardModel) getTaskRef() (*models.Task, *models.Project) {
 
 func (m *FocusBoardModel) getPersister() Persister           { return m.projectService }
 func (m *FocusBoardModel) getConfigManager() *config.Manager { return m.configManager }
-func (m *FocusBoardModel) reloadData()                       { m.loadItems() }
+func (m *FocusBoardModel) reloadData() {
+	var taskID string
+	if row := m.getRowAtCursor(); row != nil && row.Task != nil {
+		taskID = row.Task.ID
+	}
+	m.loadItems()
+	if taskID != "" {
+		if idx := restoreCursorByID(taskID, m.filtered, func(r boardRow) string {
+			if r.Task != nil {
+				return r.Task.ID
+			}
+			return ""
+		}); idx >= 0 {
+			m.cursor = idx
+		}
+	}
+}
 func (m *FocusBoardModel) setErr(err error)                  { m.statusMessage = err.Error() }
 func (m *FocusBoardModel) setStatus(msg string)              { m.statusMessage = msg }
 func (m *FocusBoardModel) viewID() ViewType                  { return ViewFocusBoard }

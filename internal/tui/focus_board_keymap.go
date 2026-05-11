@@ -486,6 +486,14 @@ func (m *FocusBoardModel) buildKeyMap() *keymap.KeyMap {
 		}),
 	)
 
+	// Tunnel mode
+	entries = append(entries,
+		keymap.Bind("ctrl+f", "Toggle tunnel mode", "View", func() (tea.Model, tea.Cmd) {
+			m.tunnelMode = !m.tunnelMode
+			return m, nil
+		}),
+	)
+
 	// Refresh
 	entries = append(entries,
 		keymap.Bind("r", "Refresh", "View", func() (tea.Model, tea.Cmd) {

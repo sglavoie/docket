@@ -26,9 +26,13 @@ func (m *AllTasksViewModel) View() tea.View {
 		return tea.NewView(b.String())
 	}
 
-	// Tab bar + filter badge
+	// Tab bar + filter badge: use ColorAccent for saved-filter tabs
+	tabAccent := m.AccentColor()
+	if m.tabs.Active >= 0 && m.tabs.Active < len(m.tabEntries) && !m.tabEntries[m.tabs.Active].IsBuiltIn {
+		tabAccent = ColorAccent
+	}
 	chrome, chromeLines := renderFullscreenChrome(
-		m.tabs.RenderBar(m.Width(), m.AccentColor()),
+		m.tabs.RenderBar(m.Width(), tabAccent),
 		m.renderActiveFilterIndicator(),
 		false,
 	)

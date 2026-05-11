@@ -9,6 +9,15 @@ import (
 // applyOverlays composites all popup/overlay layers onto the base content.
 // h is the overlay positioning height (m.height for full-height views,
 // targetContentHeight for views with an external status bar).
+//
+// Overlay visual contract:
+//   - View-local prefix popups: no dim (user is mid-chord, context stays visible)
+//   - Global prefix popups (";"): dim (full-screen mode change)
+//   - Quick-switch popup: no dim (navigational, lightweight)
+//   - Project cycle picker: dim (selection overlay)
+//   - Pickers/selection overlays (dimmedOverlayRenderers): dim
+//   - Peek/preview: dim (replaces context with detail)
+//   - Confirm dialogs: dim (destructive action requires focus)
 func (m *AppModel) applyOverlays(content string, h int) string {
 	// Overlay prefix popup if the current view provides one
 	if popup := m.renderPrefixPopupOverlay(); popup != "" {
@@ -82,7 +91,7 @@ func (m *AppModel) applyOverlays(content string, h int) string {
 
 	// Overlay confirm dialog last so it renders on top of all other popups
 	if popup := m.renderConfirmDialogOverlay(); popup != "" {
-		content = OverlayPopup(content, popup, m.width, h)
+		content = OverlayPopupDimmed(content, popup, m.width, h)
 	}
 
 	return content

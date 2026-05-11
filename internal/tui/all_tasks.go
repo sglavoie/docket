@@ -99,6 +99,8 @@ type AllTasksViewModel struct {
 
 	// Inline preview
 	previewMode bool
+
+	initialTabSet bool
 }
 
 // NewAllTasksViewModel creates a new all tasks view model.
