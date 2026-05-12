@@ -153,7 +153,7 @@ func (m *WorkflowRulesModel) listNameWidth() int {
 }
 
 func (m *WorkflowRulesModel) renderSelectedRuleRow(b *strings.Builder, status, defaultMarker, name string, rule workflow.WorkflowRule) {
-	prefix := fmt.Sprintf("▸ %s %s", status, defaultMarker)
+	prefix := fmt.Sprintf("%s %s %s", IconCursorRight, status, defaultMarker)
 	nameHighlighted := SelectedItemTextStyle.Render(name)
 	if m.searchQuery != "" {
 		nameHighlighted = HighlightSubstring(name, m.searchQuery, SelectedItemTextStyle)

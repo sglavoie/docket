@@ -63,11 +63,10 @@ func (m *AppModel) renderStatusBar() string {
 		showHelp = false
 	}
 	if showHelp {
-		stage := pipelineStage(currentView)
-		if hint := pipelineNextHint(stage); hint != "" {
+		if hint := pipelineNextHint(currentView); hint != "" {
 			help = hint
 		} else {
-			help = "Press : for commands, ? for help"
+			help = ";; pipeline · : commands · ? help"
 		}
 	}
 

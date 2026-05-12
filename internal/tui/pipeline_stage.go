@@ -20,19 +20,25 @@ func pipelineStage(vt ViewType) string {
 	return ""
 }
 
-// pipelineNextHint returns a contextual "next step" hint string for a pipeline stage.
-// Returns "" for stages that should show the default help text (Support, or no stage).
-func pipelineNextHint(stage string) string {
-	switch stage {
-	case "Capture":
+// pipelineNextHint returns a contextual "next step" hint string for a view.
+// Returns "" for views that should show the default help text.
+func pipelineNextHint(vt ViewType) string {
+	switch vt {
+	case ViewQuickCapture, ViewBulkCapture:
 		return "Next: ctrl+i inbox | ;q backlog"
-	case "Organize":
+	case ViewAllTasks, ViewGlobalInboxProcessor, ViewCrossProjectOutliner, ViewCrossProjectKanban:
 		return "Next: ;q backlog | ;w today"
-	case "Plan":
+	case ViewFocusView:
+		return "ctrl+t today | ctrl+f weekly | Next: ;w today"
+	case ViewDueDateOverview, ViewRoadmap:
 		return "Next: ;w today | Enter project"
-	case "Work":
-		return "Next: ;r review | ;; hub"
-	case "Review":
+	case ViewDailyReview:
+		return "ctrl+f weekly | Next: ;w today"
+	case ViewFocusBoard:
+		return "ctrl+t backlog | Next: ;r review | ;; hub"
+	case ViewWeeklyReview:
+		return "ctrl+f daily | Next: ;i capture | ;q backlog"
+	case ViewMetricsDashboard, ViewRecentActivity:
 		return "Next: ;i capture | ;q backlog"
 	}
 	return ""

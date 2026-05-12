@@ -17,7 +17,7 @@ const (
 	barCharActive  = "█"
 	barCharPlanned = "░"
 	barCharBlocked = "─"
-	todayMarkerStr = "▼"
+	todayMarkerStr = IconTodayMarker
 	milestoneChar  = "◆"
 )
 
@@ -194,9 +194,9 @@ func (m *RoadmapModel) renderGanttRow(row TimelineRow, colWidth, visibleCols int
 	// Collapse indicator.
 	if row.Task != nil && len(row.Task.Children) > 0 {
 		if row.Collapsed {
-			labelText += MutedStyle.Render(" ▶")
+			labelText += MutedStyle.Render(" " + IconCollapsed)
 		} else {
-			labelText += MutedStyle.Render(" ▼")
+			labelText += MutedStyle.Render(" " + IconExpanded)
 		}
 	}
 

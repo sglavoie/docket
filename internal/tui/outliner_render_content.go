@@ -179,7 +179,13 @@ func (m *OutlinerModel) renderOutlinerEmptyState(width int, perspective Perspect
 		b.WriteString("\n")
 	}
 
-	b.WriteString(MutedStyle.Render(m.outlinerEmptyMessage(perspective)))
+	emptyMsg := m.outlinerEmptyMessage(perspective)
+	b.WriteString(MutedStyle.Render(emptyMsg))
+	if emptyMsg == EmptyStateNoTasks && m.project != nil &&
+		m.SearchQuery() == "" && (m.Dispatcher == nil || !m.Dispatcher.HasPendingPrefix()) {
+		b.WriteString("\n\n")
+		b.WriteString(HelpStyle.Render("i add · : commands · ? help · esc back"))
+	}
 	if notice != "" {
 		b.WriteString("\n\n")
 		b.WriteString(PreviewWarningStyle.Render(notice))

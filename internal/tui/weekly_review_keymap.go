@@ -510,6 +510,13 @@ func (m *WeeklyReviewModel) buildKeyMap() *keymap.KeyMap {
 		}, keymap.AsHidden()),
 	)
 
+	// ctrl+f: switch to Daily Review (scope toggle)
+	entries = append(entries,
+		keymap.Bind("ctrl+f", "Switch to Daily Review", "Navigation", func() (tea.Model, tea.Cmd) {
+			return m, func() tea.Msg { return ShowDailyReviewMsg{} }
+		}),
+	)
+
 	return &keymap.KeyMap{
 		ViewName: "Weekly Review",
 		Entries:  entries,

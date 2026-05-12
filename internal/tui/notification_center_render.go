@@ -124,7 +124,7 @@ func (m *NotificationCenterModel) buildAlertLines(prefixWidth, maxLabelWidth int
 		prefix := "  "
 		isSelected := i == m.cursor
 		if isSelected {
-			prefix = BoldPrimaryStyle.Render("▸ ")
+			prefix = BoldPrimaryStyle.Render(IconCursorRight + " ")
 		}
 		sev := m.severityPrefix(item)
 		flash := isSelected && m.cursorFlash

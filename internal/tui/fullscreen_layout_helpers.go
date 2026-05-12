@@ -207,6 +207,17 @@ func renderEmptyState(msg string, helpText string) string {
 	return s
 }
 
+// renderContextualEmptyState renders an empty-state block with view-specific
+// action hints. hints are formatted as "key action" pairs joined by " · ".
+// Only call this when there are no tasks, no active filters, and no pending prefix.
+func renderContextualEmptyState(msg string, hints []string) string {
+	s := MutedStyle.Render(msg)
+	if len(hints) > 0 {
+		s += "\n\n" + HelpStyle.Render(strings.Join(hints, " · "))
+	}
+	return s
+}
+
 // renderFilterAwareEmptyState returns an empty-state block that adapts its message
 // based on whether filters are active. When hasFilters is true, it shows the
 // standard "No tasks match current filters" message with filterHelpText; otherwise

@@ -76,7 +76,7 @@ func statusColumnDefs(order []string) []KanbanColumn {
 	}
 	icons := map[string]string{
 		"todo":        "○",
-		"in_progress": "▶",
+		"in_progress": IconInProgress,
 		"review":      "◎",
 		"blocked":     "⊗",
 		"standby":     "⏸",
@@ -117,7 +117,7 @@ func stageColumnDefs(stages []string) []KanbanColumn {
 	cols := make([]KanbanColumn, 0, len(stages)+1)
 	cols = append(cols, KanbanColumn{ID: "unset", Label: "Unset", Icon: "·"})
 	for _, s := range stages {
-		cols = append(cols, KanbanColumn{ID: s, Label: s, Icon: "▶"})
+		cols = append(cols, KanbanColumn{ID: s, Label: s, Icon: IconInProgress})
 	}
 	return cols
 }

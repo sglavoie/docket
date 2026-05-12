@@ -26,9 +26,9 @@ func (m *ProjectTreeModel) renderNodeWithWidth(node *TreeNode, selected bool, in
 	expandIcon := "  "
 	if node.HasFilteredChildren {
 		if node.Expanded {
-			expandIcon = "▼ "
+			expandIcon = IconExpanded + " "
 		} else {
-			expandIcon = "▶ "
+			expandIcon = IconCollapsed + " "
 		}
 		indent = MutedStyle.Render(node.TreePrefix)
 	} else if node.TreePrefix != "" {

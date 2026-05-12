@@ -6,6 +6,13 @@ import (
 	"charm.land/lipgloss/v2"
 )
 
+// Semantic color contract:
+// Green (ColorSuccess) = completion, positive state (done tasks, diffs added)
+// Red   (ColorError)   = danger, critical, overdue, blocked
+// Yellow(ColorWarning) = caution, due soon, attention needed
+// Blue  (ColorPrimary) = information, navigation, neutral emphasis
+// Gray  (ColorMuted)   = disabled, inactive, secondary
+
 // Color palette.
 var (
 	ColorPrimary     = lipgloss.Color("#7aa2f7")

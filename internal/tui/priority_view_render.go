@@ -252,9 +252,9 @@ func (m *PriorityViewModel) renderScoreRanking(currentIndex *int, cursorLineIdx 
 
 // renderWaitingOnHeader renders the collapsible waiting on section header.
 func (m *PriorityViewModel) renderWaitingOnHeader() string {
-	indicator := "▶"
+	indicator := IconCollapsed
 	if !m.waitingOnCollapsed {
-		indicator = "▼"
+		indicator = IconExpanded
 	}
 	header := fmt.Sprintf("%s Waiting On (%d blocked)", indicator, len(m.waitingOn))
 	return PriorityWaitingHeaderStyle.Render(header)

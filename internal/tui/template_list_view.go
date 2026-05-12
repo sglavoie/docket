@@ -142,7 +142,7 @@ func (m *TaskTemplatesModel) listNameWidth() int {
 }
 
 func (m *TaskTemplatesModel) renderSelectedTemplateRow(b *strings.Builder, status, defaultMarker, name string, t template.TaskTemplate) {
-	b.WriteString(SelectedItemTextStyle.Render(fmt.Sprintf("▸ %s %s%s", status, defaultMarker, name)))
+	b.WriteString(SelectedItemTextStyle.Render(fmt.Sprintf("%s %s %s%s", IconCursorRight, status, defaultMarker, name)))
 	b.WriteString("\n")
 
 	if m.isWideScreen() {

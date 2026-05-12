@@ -391,6 +391,7 @@ type AppModel struct {
 	// Navigation history for back/forward (Alt+O / Alt+I)
 	navHistory          *NavHistory
 	lastNavigatedTaskID string
+	lastNavEntry        NavEntry // previous view for ctrl+6 quick toggle
 
 	// Recent task visits for quick-switch (Alt+R)
 	recentTaskVisits          []RecentTaskVisitEntry

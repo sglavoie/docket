@@ -144,7 +144,7 @@ func (m *TaskTemplateCreatorModel) renderChecklistTab() string {
 			isFocused := m.focusIndex == fieldIndex
 
 			if isFocused {
-				b.WriteString(SelectedItemTextStyle.Render(fmt.Sprintf("▸ %d. ☐ ", i+1)))
+				b.WriteString(SelectedItemTextStyle.Render(fmt.Sprintf("%s %d. ☐ ", IconCursorRight, i+1)))
 			} else {
 				fmt.Fprintf(&b, "  %d. ☐ ", i+1)
 			}
@@ -188,7 +188,7 @@ func (m *TaskTemplateCreatorModel) renderSubtasksTab() string {
 			typeLabel := string(subtaskTypes[st.typeCursor])
 
 			if isFocused {
-				b.WriteString(SelectedItemTextStyle.Render(fmt.Sprintf("▸ %d. %s [%s] ", i+1, optMarker, typeLabel)))
+				b.WriteString(SelectedItemTextStyle.Render(fmt.Sprintf("%s %d. %s [%s] ", IconCursorRight, i+1, optMarker, typeLabel)))
 			} else {
 				fmt.Fprintf(&b, "  %d. %s [%s] ", i+1, optMarker, typeLabel)
 			}
@@ -207,7 +207,7 @@ func (m *TaskTemplateCreatorModel) renderSubtasksTab() string {
 func (m *TaskTemplateCreatorModel) renderLabel(label string, fieldIndex int) string {
 	isFocused := m.focusIndex == fieldIndex
 	if isFocused {
-		return SelectedItemTextStyle.Render(fmt.Sprintf("▸ %-10s ", label))
+		return SelectedItemTextStyle.Render(fmt.Sprintf("%s %-10s ", IconCursorRight, label))
 	}
 	return fmt.Sprintf("  %-10s ", label)
 }
@@ -283,7 +283,7 @@ func (m *TaskTemplateCreatorModel) renderSuggestionsDropdown(suggestions []strin
 		suggestion := suggestions[i]
 		if i == m.suggestionCursor {
 			b.WriteString(indent)
-			b.WriteString(SelectorOptionSelectedStyle.Render("▸ " + suggestion))
+			b.WriteString(SelectorOptionSelectedStyle.Render(IconCursorRight + " " + suggestion))
 		} else {
 			b.WriteString(indent)
 			b.WriteString(MutedStyle.Render("  " + suggestion))

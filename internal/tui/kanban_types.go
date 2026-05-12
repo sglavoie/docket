@@ -29,7 +29,7 @@ var KanbanModeIcons = map[KanbanMode]string{
 	KanbanModeSection:        "§",
 	KanbanModeStatus:         "◎",
 	KanbanModePriority:       "!",
-	KanbanModeStages:         "▶",
+	KanbanModeStages:         IconInProgress,
 	KanbanModeCustomSections: "⊞",
 	KanbanModeScoreBuckets:   "◈",
 }

@@ -5,7 +5,17 @@ import (
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 )
+
+// renderDefaultHint renders "(default: X)" in muted style when current differs from def.
+// Returns empty string when def is empty or current matches def.
+func renderDefaultHint(current, def string) string {
+	if def == "" || current == def {
+		return ""
+	}
+	return "  " + MutedStyle.Render("(default: "+def+")")
+}
 
 // renderColumnToggles renders 13 column visibility toggles.
 // The Priority column (index 1) is rendered as a 3-way enum selector instead of a toggle.
@@ -139,7 +149,7 @@ func (m *SettingsModel) View() tea.View {
 
 	focusLine := -1
 	for i, line := range contentLines {
-		if strings.Contains(line, "▸") {
+		if strings.Contains(line, IconCursorRight) {
 			focusLine = i
 			break
 		}
@@ -181,20 +191,86 @@ func (m *SettingsModel) View() tea.View {
 		out.WriteString("\n\n")
 	}
 
-	out.WriteString(visibleContent)
+	if m.searchActive {
+		out.WriteString(m.renderSearchOverlay(visibleHeight))
+	} else {
+		out.WriteString(visibleContent)
+	}
 	out.WriteString("\n")
 
 	scrollHint := ""
-	if len(contentLines) > visibleHeight {
+	if !m.searchActive && len(contentLines) > visibleHeight {
 		scrollHint = fmt.Sprintf(" (%d/%d)", m.scrollOffset+1, maxScroll+1)
 	}
-	helpPrefix := ""
+	helpPrefix := "/ search · "
 	if visualSubTabNamesForVTab(m.visualTab) != nil {
-		helpPrefix = "shift+↑/↓ sub-tabs · "
+		helpPrefix += "shift+↑/↓ sub-tabs · "
 	}
-	left := HelpStyle.Render(helpPrefix + "shift+←/→: tabs · Tab: fields · Space: toggle · Enter: save · Esc: cancel · ?: Help" + scrollHint)
+	helpText := helpPrefix + "shift+←/→: tabs · Tab: fields · Space: toggle · Enter: save · Esc: cancel · ctrl+d: reset · ?: Help" + scrollHint
+	var left string
+	if m.searchStatusMsg != "" {
+		left = HelpStyle.Render(m.searchStatusMsg)
+	} else if m.searchActive {
+		left = HelpStyle.Render("↑/↓ navigate · Enter: jump · Esc: cancel")
+	} else {
+		if lipgloss.Width(helpText) > m.width-20 {
+			line1 := helpPrefix + "shift+←/→: tabs · Tab: fields · Space: toggle · Enter: save"
+			line2 := "ctrl+d: reset · Esc: cancel · ?: Help" + scrollHint
+			left = HelpStyle.Render(line1) + "\n" + HelpStyle.Render(line2)
+		} else {
+			left = HelpStyle.Render(helpText)
+		}
+	}
 	right := MutedStyle.Render("Settings")
 	out.WriteString(renderStatusBarFooter(left, right, m.width))
 
 	return tea.NewView(out.String())
+}
+
+// renderSearchOverlay renders the search input and filtered results list.
+func (m *SettingsModel) renderSearchOverlay(visibleHeight int) string {
+	var b strings.Builder
+
+	b.WriteString("  ")
+	b.WriteString(m.searchInput.View())
+	b.WriteString("\n\n")
+
+	if len(m.searchResults) == 0 {
+		b.WriteString(MutedStyle.Render("  No matches"))
+		b.WriteString("\n")
+		return b.String()
+	}
+
+	maxVisible := visibleHeight - 3
+	if maxVisible < 1 {
+		maxVisible = 1
+	}
+	start := 0
+	if m.searchCursor >= maxVisible {
+		start = m.searchCursor - maxVisible + 1
+	}
+	end := start + maxVisible
+	if end > len(m.searchResults) {
+		end = len(m.searchResults)
+	}
+
+	for i := start; i < end; i++ {
+		result := m.searchResults[i]
+		prefix := "  "
+		label := result.TabLabel + " › " + result.Label
+		if i == m.searchCursor {
+			b.WriteString(BoldPrimaryStyle.Render(prefix+IconCursorRight+" ") + BoldStyle.Render(label))
+		} else {
+			b.WriteString(MutedStyle.Render(prefix+"  ") + label)
+		}
+		b.WriteString("\n")
+	}
+
+	if len(m.searchResults) > maxVisible {
+		shown := fmt.Sprintf("  (%d/%d)", m.searchCursor+1, len(m.searchResults))
+		b.WriteString(MutedStyle.Render(shown))
+		b.WriteString("\n")
+	}
+
+	return b.String()
 }

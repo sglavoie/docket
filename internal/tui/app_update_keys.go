@@ -91,6 +91,19 @@ func (m *AppModel) handleGlobalKeyPress(msg tea.KeyPressMsg) (bool, tea.Cmd) { /
 		return true, m.navigateHistoryBack()
 	case "alt+i":
 		return true, m.navigateHistoryForward()
+	case "ctrl+6":
+		if !m.hasActiveTextInput() && m.lastNavEntry.ViewType != 0 {
+			currentEntry := NavEntry{ViewType: m.currentView()}
+			if m.currentProject != nil && !isGlobalNavView(m.currentView()) {
+				currentEntry.ProjectID = m.currentProject.ID
+			}
+			if isTaskScopedView(m.currentView()) {
+				currentEntry.TaskID = m.lastNavigatedTaskID
+			}
+			targetEntry := m.lastNavEntry
+			m.lastNavEntry = currentEntry
+			return true, m.navigateToEntry(targetEntry)
+		}
 	case "alt+l":
 		if !m.hasActiveTextInput() {
 			return true, func() tea.Msg { return ShowMessageLogMsg{} }

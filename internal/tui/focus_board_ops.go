@@ -15,15 +15,17 @@ import (
 // markDone marks the current task as done via the shared workflow pipeline.
 func (m *FocusBoardModel) markDone() (tea.Model, tea.Cmd) {
 	model, cmd := taskOpsChangeStatus(m, models.StatusDone)
+	m.setMutationFlash(statusMutationFlashBg(models.StatusDone))
 	m.zenAdvance()
-	return model, cmd
+	return model, tea.Batch(cmd, mutationFlashTimeout())
 }
 
 // dismiss cancels the current task via the shared workflow pipeline.
 func (m *FocusBoardModel) dismiss() (tea.Model, tea.Cmd) {
 	model, cmd := taskOpsChangeStatus(m, models.StatusCanceled)
+	m.setMutationFlash(statusMutationFlashBg(models.StatusCanceled))
 	m.zenAdvance()
-	return model, cmd
+	return model, tea.Batch(cmd, mutationFlashTimeout())
 }
 
 // zenAdvance moves the cursor to the next incomplete task when in zen/tunnel mode.

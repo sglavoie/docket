@@ -132,9 +132,9 @@ func (m *OutlinerModel) renderTaskFoldIndicator(task *models.Task) string {
 		return ""
 	}
 	if m.isExpanded(task.ID) {
-		return MutedStyle.Render("▾") + " "
+		return MutedStyle.Render(IconExpanded) + " "
 	}
-	return MutedStyle.Render("▸") + " "
+	return MutedStyle.Render(IconCollapsed) + " "
 }
 
 func (m *OutlinerModel) renderTaskProjectBadge(row outlinerRow) string {

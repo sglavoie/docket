@@ -57,7 +57,7 @@ func (m *CommandPaletteModel) getTaskActions(item PaletteItem) []PaletteAction {
 	if task.Status == models.StatusTodo {
 		actions = append(actions, PaletteAction{
 			Name:    "Start",
-			Icon:    "▶",
+			Icon:    IconScrollRight,
 			KeyHint: "s",
 			Handler: func() tea.Msg {
 				return CommandPaletteTaskActionMsg{Task: task, Project: project, Action: "start"}
@@ -211,7 +211,7 @@ func (m *CommandPaletteModel) getBulkActionsForSelectedTasks() []PaletteAction {
 		items := selectedItems
 		actions = append(actions, PaletteAction{
 			Name:    fmt.Sprintf("Start all (%d)", len(items)),
-			Icon:    "▶",
+			Icon:    IconScrollRight,
 			KeyHint: "s",
 			Handler: func() tea.Msg {
 				return CommandPaletteBulkActionMsg{Action: "start", Tasks: items}

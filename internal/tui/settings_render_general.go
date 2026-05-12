@@ -10,6 +10,7 @@ func (m *SettingsModel) renderGeneralTab() string {
 
 	b.WriteString(renderFormLabelWithWidth("Editor: ", labelWidth, m.focusIndex == base+0))
 	b.WriteString(m.editorInput.View())
+	b.WriteString(renderDefaultHint(m.editorInput.Value(), "code"))
 	b.WriteString("\n")
 	if m.focusIndex == base+0 && m.validationErr != "" {
 		b.WriteString(strings.Repeat(" ", indent))
@@ -34,6 +35,7 @@ func (m *SettingsModel) renderGeneralTab() string {
 
 	b.WriteString(renderFormLabelWithWidth("Default Context: ", labelWidth, m.focusIndex == base+2))
 	b.WriteString(m.contextInput.View())
+	b.WriteString(renderDefaultHint(m.contextInput.Value(), "personal"))
 	b.WriteString("\n")
 
 	if len(m.contexts) > 0 {
@@ -68,6 +70,7 @@ func (m *SettingsModel) renderGeneralTab() string {
 	b.WriteString(m.undoDepthInput.View())
 	b.WriteString("  ")
 	b.WriteString(MutedStyle.Render("(0=disable, max 1000)"))
+	b.WriteString(renderDefaultHint(m.undoDepthInput.Value(), "50"))
 	b.WriteString("\n")
 
 	if m.focusIndex == base+3 && m.validationErr != "" {
@@ -81,6 +84,7 @@ func (m *SettingsModel) renderGeneralTab() string {
 
 	b.WriteString(renderFormLabelWithWidth("Default View: ", labelWidth, m.focusIndex == base+4))
 	b.WriteString(renderEnumSelector(defaultProjectViewOptions, m.defaultViewCursor, m.focusIndex == base+4, m.width-indent))
+	b.WriteString(renderDefaultHint(defaultProjectViewOptions[m.defaultViewCursor], "Outliner"))
 	b.WriteString("\n")
 	b.WriteString(renderFormFieldDesc("View shown when opening a project", indent, m.focusIndex == base+4))
 
@@ -100,6 +104,7 @@ func (m *SettingsModel) renderReviewTab() string {
 
 	b.WriteString(renderFormLabelWithWidth("Due Soon (days): ", labelWidth, m.focusIndex == base+0))
 	b.WriteString(m.dueSoonInput.View())
+	b.WriteString(renderDefaultHint(m.dueSoonInput.Value(), "7"))
 	b.WriteString("\n")
 	b.WriteString(renderFormFieldDesc("Tasks due within this many days", indent, m.focusIndex == base+0))
 
@@ -107,6 +112,7 @@ func (m *SettingsModel) renderReviewTab() string {
 
 	b.WriteString(renderFormLabelWithWidth("Future (days): ", labelWidth, m.focusIndex == base+1))
 	b.WriteString(m.futureInput.View())
+	b.WriteString(renderDefaultHint(m.futureInput.Value(), "30"))
 	b.WriteString("\n")
 	b.WriteString(renderFormFieldDesc("Tasks due further out than this", indent, m.focusIndex == base+1))
 
@@ -116,6 +122,7 @@ func (m *SettingsModel) renderReviewTab() string {
 	b.WriteString(m.oldDaysInput.View())
 	b.WriteString("       ")
 	b.WriteString(MutedStyle.Render("(based on last update)"))
+	b.WriteString(renderDefaultHint(m.oldDaysInput.Value(), "14"))
 	b.WriteString("\n")
 	b.WriteString(renderFormFieldDesc("Tasks not updated in this many days", indent, m.focusIndex == base+2))
 
@@ -123,6 +130,7 @@ func (m *SettingsModel) renderReviewTab() string {
 
 	b.WriteString(renderFormLabelWithWidth("Completed (hours): ", labelWidth, m.focusIndex == base+3))
 	b.WriteString(m.completedHoursInput.View())
+	b.WriteString(renderDefaultHint(m.completedHoursInput.Value(), "24"))
 	b.WriteString("\n")
 	b.WriteString(renderFormFieldDesc("Show recently completed within this window", indent, m.focusIndex == base+3))
 
@@ -132,6 +140,7 @@ func (m *SettingsModel) renderReviewTab() string {
 	b.WriteString(m.staleTaskDaysInput.View())
 	b.WriteString("       ")
 	b.WriteString(MutedStyle.Render("(0 = disabled)"))
+	b.WriteString(renderDefaultHint(m.staleTaskDaysInput.Value(), "0"))
 	b.WriteString("\n")
 	b.WriteString(renderFormFieldDesc("Show inline stale badge on tasks not updated in this many days", indent, m.focusIndex == base+4))
 
@@ -268,7 +277,7 @@ func (m *SettingsModel) renderStagesTab() string {
 	} else {
 		for i, stage := range m.stages {
 			if i == m.stageCursor {
-				b.WriteString(BoldPrimaryStyle.Render("  ▸ "))
+				b.WriteString(BoldPrimaryStyle.Render("  " + IconCursorRight + " "))
 				b.WriteString(StageBadgeStyle.Render(stage))
 			} else {
 				b.WriteString(MutedStyle.Render("    "))

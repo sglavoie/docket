@@ -196,6 +196,7 @@ func init() {
 		offset += count
 	}
 	settingsFieldCount = offset
+	settingsFields = buildSettingsFieldRegistry()
 }
 
 // tabForField returns which tab a given focusIndex belongs to.
@@ -393,6 +394,12 @@ type SettingsModel struct {
 
 	width  int
 	height int
+
+	searchActive    bool
+	searchInput     textinput.Model
+	searchResults   []settingsFieldMeta
+	searchCursor    int
+	searchStatusMsg string
 }
 
 // syncVisualFromOld sets visualTab and visualSubTab to match the current

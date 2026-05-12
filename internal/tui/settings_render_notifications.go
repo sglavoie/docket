@@ -30,6 +30,7 @@ func (m *SettingsModel) renderNotificationsReviewsSection() string {
 	b.WriteString(m.alertDailyReviewHourInput.View())
 	b.WriteString("  ")
 	b.WriteString(MutedStyle.Render("(0-23)"))
+	b.WriteString(renderDefaultHint(m.alertDailyReviewHourInput.Value(), "9"))
 	b.WriteString("\n")
 	if m.focusIndex == base+1 && m.validationErr != "" {
 		b.WriteString(strings.Repeat(" ", indent))
@@ -49,6 +50,7 @@ func (m *SettingsModel) renderNotificationsReviewsSection() string {
 
 	b.WriteString(renderFormLabelWithWidth("Review Day: ", labelWidth, m.focusIndex == base+3))
 	b.WriteString(renderEnumSelector(weeklyReviewDayOptions, m.alertWeeklyReviewDay, m.focusIndex == base+3, m.width-indent))
+	b.WriteString(renderDefaultHint(weeklyReviewDayOptions[m.alertWeeklyReviewDay], "Monday"))
 	b.WriteString("\n")
 	b.WriteString(renderFormFieldDesc("Day of week for weekly review reminder", indent, m.focusIndex == base+3))
 
@@ -74,6 +76,7 @@ func (m *SettingsModel) renderNotificationsTasksSection() string {
 
 	b.WriteString(renderFormLabelWithWidth("Due Soon (days): ", labelWidth, m.focusIndex == base+2))
 	b.WriteString(m.alertDueSoonDaysInput.View())
+	b.WriteString(renderDefaultHint(m.alertDueSoonDaysInput.Value(), "3"))
 	b.WriteString("\n")
 	if m.focusIndex == base+2 && m.validationErr != "" {
 		b.WriteString(strings.Repeat(" ", indent))
@@ -90,6 +93,7 @@ func (m *SettingsModel) renderNotificationsTasksSection() string {
 
 	b.WriteString(renderFormLabelWithWidth("Stale (days): ", labelWidth, m.focusIndex == base+4))
 	b.WriteString(m.alertStaleDaysInput.View())
+	b.WriteString(renderDefaultHint(m.alertStaleDaysInput.Value(), "14"))
 	b.WriteString("\n")
 	if m.focusIndex == base+4 && m.validationErr != "" {
 		b.WriteString(strings.Repeat(" ", indent))
@@ -106,6 +110,7 @@ func (m *SettingsModel) renderNotificationsTasksSection() string {
 
 	b.WriteString(renderFormLabelWithWidth("Inbox Threshold: ", labelWidth, m.focusIndex == base+6))
 	b.WriteString(m.alertInboxThresholdInput.View())
+	b.WriteString(renderDefaultHint(m.alertInboxThresholdInput.Value(), "5"))
 	b.WriteString("\n")
 	if m.focusIndex == base+6 && m.validationErr != "" {
 		b.WriteString(strings.Repeat(" ", indent))
@@ -122,6 +127,7 @@ func (m *SettingsModel) renderNotificationsTasksSection() string {
 
 	b.WriteString(renderFormLabelWithWidth("Blocked (days): ", labelWidth, m.focusIndex == base+8))
 	b.WriteString(m.alertBlockedDaysInput.View())
+	b.WriteString(renderDefaultHint(m.alertBlockedDaysInput.Value(), "7"))
 	b.WriteString("\n")
 	if m.focusIndex == base+8 && m.validationErr != "" {
 		b.WriteString(strings.Repeat(" ", indent))
@@ -145,6 +151,7 @@ func (m *SettingsModel) renderNotificationsProjectsSection() string {
 
 	b.WriteString(renderFormLabelWithWidth("Stale (days): ", labelWidth, m.focusIndex == base+1))
 	b.WriteString(m.alertProjectStaleDaysInput.View())
+	b.WriteString(renderDefaultHint(m.alertProjectStaleDaysInput.Value(), "14"))
 	b.WriteString("\n")
 	if m.focusIndex == base+1 && m.validationErr != "" {
 		b.WriteString(strings.Repeat(" ", indent))

@@ -58,9 +58,14 @@ func (m *AllTasksViewModel) View() tea.View {
 	contentHeight := fullscreenContentHeight(m.Height(), chromeLines)
 
 	if m.totalNavigableItems() == 0 {
-		b.WriteString(renderFilterAwareEmptyState(m.HasActiveFilters(),
-			EmptyStateFiltered, "shift+←/→ tabs · Esc close",
-			"shift+←/→ tabs · Fx clear filters · Esc clear filters"))
+		if m.HasActiveFilters() {
+			b.WriteString(renderEmptyState(EmptyStateFiltered, "shift+←/→ tabs · Fx clear filters · Esc close"))
+		} else if m.Dispatcher == nil || !m.Dispatcher.HasPendingPrefix() {
+			b.WriteString(renderContextualEmptyState(EmptyStateNoTasks,
+				[]string{"i add", "F filters", ": commands", "? help"}))
+		} else {
+			b.WriteString(renderEmptyState(EmptyStateNoTasks, "shift+←/→ tabs · Esc close"))
+		}
 		return tea.NewView(b.String())
 	}
 
@@ -202,7 +207,7 @@ func (m *AllTasksViewModel) renderTaskLine(item CrossProjectTask, isSelected boo
 		dueStr = FormatRelativeDueTask(task, true, m.config.GetTimeFormat())
 	}
 
-	return RenderCrossProjectTaskLine(task, item.Project, m.config, isSelected, lineWidth, maxTitleLen, CrossProjectTaskLineOpts{
+	line := RenderCrossProjectTaskLine(task, item.Project, m.config, isSelected, lineWidth, maxTitleLen, CrossProjectTaskLineOpts{
 		Queued:        m.queueIDs[task.ID],
 		DailyPlanned:  m.dailyPlanIDs[task.ID],
 		ShowTags:      true,
@@ -214,6 +219,10 @@ func (m *AllTasksViewModel) renderTaskLine(item CrossProjectTask, isSelected boo
 		RowIndex:      rowIndex,
 		Layout:        layout,
 	})
+	if isSelected && m.mutationFlash {
+		return MutationFlashLine(line, lineWidth, m.mutationFlashBg)
+	}
+	return line
 }
 
 // renderOverflowPicker renders the overflow tab picker when there are more tabs

@@ -341,7 +341,7 @@ func (m *SettingsModel) renderPresetLoadOverlay() string {
 	for i, tf := range m.themePresetList {
 		line := fmt.Sprintf("%-20s  %-5s  %s", tf.Name, tf.Variant, tf.CreatedAt.Format("2006-01-02"))
 		if i == m.themePresetCursor {
-			b.WriteString(SelectedStyle.Render("▸ " + line))
+			b.WriteString(SelectedStyle.Render(IconCursorRight + " " + line))
 		} else {
 			b.WriteString("  " + line)
 		}

@@ -28,6 +28,7 @@ func (m *DashboardModel) renderInfoSection(width int, selected *models.Project) 
 	cfg.Height = DashboardBottomPaneHeight
 
 	hasRecent := selected != nil
+	hasPipeline := true
 	var scoringProfile *scoring.ScoringProfile
 	hasTopScored := false
 	if selected != nil {
@@ -50,6 +51,9 @@ func (m *DashboardModel) renderInfoSection(width int, selected *models.Project) 
 		numCards++
 	}
 	if hasTopScored {
+		numCards++
+	}
+	if hasPipeline {
 		numCards++
 	}
 
@@ -91,6 +95,11 @@ func (m *DashboardModel) renderInfoSection(width int, selected *models.Project) 
 		if topContent != "" {
 			cards = append(cards, dashboardPanelCard{title: "Top Scored", content: topContent, width: otherCardW})
 		}
+	}
+
+	if hasPipeline {
+		pipelineContent := m.renderPipelineCardContent(otherContentW)
+		cards = append(cards, dashboardPanelCard{title: "Pipeline", content: pipelineContent, width: otherCardW})
 	}
 
 	alertsContent := m.renderGlobalAlerts(alertsContentW)
@@ -413,4 +422,30 @@ func (m *DashboardModel) renderRecentTasksContentWithWidth(project *models.Proje
 	}
 
 	return strings.Join(lines, "\n")
+}
+
+// renderPipelineCardContent renders a compact pipeline stage summary for the dashboard info card.
+func (m *DashboardModel) renderPipelineCardContent(width int) string {
+	pc := m.pipelineCounts
+	stages := []struct {
+		name  string
+		count int
+	}{
+		{"Organize", pc.inboxCount},
+		{"Plan", pc.queueLen},
+		{"Work", pc.dailyPlanLen},
+		{"Execute", pc.inProgressCount},
+		{"Review", pc.completedTodayCount},
+	}
+
+	var parts []string
+	for _, s := range stages {
+		parts = append(parts, fmt.Sprintf("%s(%d)", s.name, s.count))
+	}
+	line := strings.Join(parts, " → ")
+	hint := MutedStyle.Render(";; to open hub")
+	return strings.Join([]string{
+		truncateToVisualWidth(line, width),
+		hint,
+	}, "\n")
 }

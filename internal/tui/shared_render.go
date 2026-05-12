@@ -82,9 +82,9 @@ type SectionHeaderOpts struct {
 // Callers are responsible for applying selection/zebra highlights on the
 // returned string.
 func renderSectionHeader(opts SectionHeaderOpts) string {
-	indicator := "▾"
+	indicator := IconExpanded
 	if opts.Collapsed {
-		indicator = "▸"
+		indicator = IconCollapsed
 	}
 	indPart := MutedStyle.Render(indicator)
 	namePart := opts.AccentColor.Bold(true).Render(opts.Prefix + opts.Name)

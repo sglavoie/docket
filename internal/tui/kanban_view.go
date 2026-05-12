@@ -129,11 +129,11 @@ func kanbanRender(m *KanbanModel) string {
 	leftHint := ""
 	rightHint := ""
 	if startCol > 0 {
-		leftHint = MutedStyle.Render("◀")
+		leftHint = MutedStyle.Render(IconScrollLeft)
 		leftHintWidth = 1
 	}
 	if endCol < numCols {
-		rightHint = MutedStyle.Render("▶")
+		rightHint = MutedStyle.Render(IconScrollRight)
 		rightHintWidth = 1
 	}
 	_ = rightHintWidth // used indirectly via rightHint appending

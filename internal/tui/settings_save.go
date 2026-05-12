@@ -337,6 +337,10 @@ func (m *SettingsModel) HandledKeys() []string {
 		"tab", "shift+tab", "shift+left", "shift+right", "shift+up", "shift+down", "space", "enter",
 		// Selector / tab navigation
 		"h", "l", "left", "right",
+		// Search overlay
+		"/",
+		// Reset focused field to default
+		"ctrl+d",
 		// Palette preset shortcuts (palette tab)
 		"ctrl+s", "ctrl+o", "ctrl+r",
 		// Stages tab navigation and actions

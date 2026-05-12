@@ -49,7 +49,7 @@ func (m *TemplatePickerModel) renderListPanel(width int) string {
 				name := truncateToVisualWidth(t.Name, maxNameLen)
 
 				if listIdx == m.cursor {
-					b.WriteString(SelectedStyle.Render(fmt.Sprintf("▸ %s", name)))
+					b.WriteString(SelectedStyle.Render(fmt.Sprintf("%s %s", IconCursorRight, name)))
 				} else {
 					fmt.Fprintf(&b, "  %s", name)
 				}
@@ -64,7 +64,7 @@ func (m *TemplatePickerModel) renderListPanel(width int) string {
 	b.WriteString(MutedStyle.Render("───────────"))
 	b.WriteString("\n")
 	if m.cursor == len(m.filteredTemplates) {
-		b.WriteString(SelectedStyle.Render("▸ Skip"))
+		b.WriteString(SelectedStyle.Render(IconCursorRight + " Skip"))
 	} else {
 		b.WriteString(MutedStyle.Render("  Skip"))
 	}

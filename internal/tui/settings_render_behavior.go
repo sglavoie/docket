@@ -39,6 +39,7 @@ func (m *SettingsModel) renderBehaviorRecentActivitySection() string {
 	b.WriteString(m.recentActivityInput.View())
 	b.WriteString("  ")
 	b.WriteString(MutedStyle.Render("(0 = no limit)"))
+	b.WriteString(renderDefaultHint(m.recentActivityInput.Value(), "20"))
 	b.WriteString("\n")
 
 	if m.focusIndex == base+0 && m.validationErr != "" {
@@ -50,8 +51,13 @@ func (m *SettingsModel) renderBehaviorRecentActivitySection() string {
 
 	b.WriteString("\n")
 
+	showAllVal := "No"
+	if m.recentActivityShowAll {
+		showAllVal = "Yes"
+	}
 	b.WriteString(renderFormLabelWithWidth("Show completed: ", labelWidth, m.focusIndex == base+1))
 	b.WriteString(renderFormToggle("Yes", "No", m.recentActivityShowAll, m.focusIndex == base+1))
+	b.WriteString(renderDefaultHint(showAllVal, "No"))
 	b.WriteString("\n")
 	b.WriteString(renderFormFieldDesc("Include completed tasks in recent activity view", indent, m.focusIndex == base+1))
 
@@ -82,6 +88,7 @@ func (m *SettingsModel) renderBehaviorPinnedTasksSection() string {
 	b.WriteString(m.maxPinnedInput.View())
 	b.WriteString("  ")
 	b.WriteString(MutedStyle.Render("(0=disable, 1-20)"))
+	b.WriteString(renderDefaultHint(m.maxPinnedInput.Value(), "5"))
 	b.WriteString("\n")
 	if m.focusIndex == base+0 && m.validationErr != "" {
 		b.WriteString(strings.Repeat(" ", indent))
@@ -102,7 +109,8 @@ func (m *SettingsModel) renderBehaviorRecentTasksSection() string {
 	b.WriteString(renderFormLabelWithWidth("Task limit: ", labelWidth, m.focusIndex == base+0))
 	b.WriteString(m.maxRecentTaskVisitsInput.View())
 	b.WriteString("  ")
-	b.WriteString(MutedStyle.Render("(1-50, default 15)"))
+	b.WriteString(MutedStyle.Render("(1-50)"))
+	b.WriteString(renderDefaultHint(m.maxRecentTaskVisitsInput.Value(), "15"))
 	b.WriteString("\n")
 	if m.focusIndex == base+0 && m.validationErr != "" {
 		b.WriteString(strings.Repeat(" ", indent))
@@ -124,6 +132,7 @@ func (m *SettingsModel) renderBehaviorPopupsSection() string {
 	b.WriteString(m.popupTimeoutInput.View())
 	b.WriteString("  ")
 	b.WriteString(MutedStyle.Render("(0=stay, 1-30 seconds)"))
+	b.WriteString(renderDefaultHint(m.popupTimeoutInput.Value(), "0"))
 	b.WriteString("\n")
 	if m.focusIndex == base+0 && m.validationErr != "" {
 		b.WriteString(strings.Repeat(" ", indent))
@@ -142,18 +151,19 @@ func (m *SettingsModel) renderBehaviorSectionLimitsSection() string {
 	base := subTabFieldStart(tabBehavior, 5)
 
 	type limitField struct {
-		label string
-		local int
-		input *textinput.Model
+		label  string
+		local  int
+		input  *textinput.Model
+		defVal string
 	}
 	fields := []limitField{
-		{"Active: ", 0, &m.sectionLimitActiveInput},
-		{"Next: ", 1, &m.sectionLimitNextInput},
-		{"Inbox: ", 2, &m.sectionLimitInboxInput},
-		{"Standby: ", 3, &m.sectionLimitStandbyInput},
-		{"Waiting: ", 4, &m.sectionLimitWaitingInput},
-		{"Someday: ", 5, &m.sectionLimitSomedayInput},
-		{"Review: ", 6, &m.sectionLimitReviewInput},
+		{"Active: ", 0, &m.sectionLimitActiveInput, "5"},
+		{"Next: ", 1, &m.sectionLimitNextInput, "5"},
+		{"Inbox: ", 2, &m.sectionLimitInboxInput, "5"},
+		{"Standby: ", 3, &m.sectionLimitStandbyInput, "5"},
+		{"Waiting: ", 4, &m.sectionLimitWaitingInput, "3"},
+		{"Someday: ", 5, &m.sectionLimitSomedayInput, "10"},
+		{"Review: ", 6, &m.sectionLimitReviewInput, "5"},
 	}
 	for _, f := range fields {
 		focusIdx := base + f.local
@@ -161,6 +171,7 @@ func (m *SettingsModel) renderBehaviorSectionLimitsSection() string {
 		b.WriteString(f.input.View())
 		b.WriteString("  ")
 		b.WriteString(MutedStyle.Render("(0=disabled, max 999)"))
+		b.WriteString(renderDefaultHint(f.input.Value(), f.defVal))
 		b.WriteString("\n")
 		if m.focusIndex == focusIdx && m.validationErr != "" {
 			b.WriteString(strings.Repeat(" ", indent))
@@ -180,6 +191,7 @@ func (m *SettingsModel) renderBehaviorStartupSection() string {
 
 	b.WriteString(renderFormLabelWithWidth("Start view: ", labelWidth, m.focusIndex == base+0))
 	b.WriteString(renderEnumSelector(startViewOptions, m.startViewCursor, m.focusIndex == base+0, m.width-indent))
+	b.WriteString(renderDefaultHint(startViewOptions[m.startViewCursor], "Dashboard"))
 	b.WriteString("\n")
 	b.WriteString(renderFormFieldDesc("View shown when the application starts", indent, m.focusIndex == base+0))
 
@@ -192,8 +204,13 @@ func (m *SettingsModel) renderBehaviorTaskFormSection() string {
 	const indent = 19
 	base := subTabFieldStart(tabBehavior, 7)
 
+	taskFormVal := "Expanded"
+	if m.taskFormCollapsed {
+		taskFormVal = "Collapsed"
+	}
 	b.WriteString(renderFormLabelWithWidth("Default mode: ", labelWidth, m.focusIndex == base+0))
 	b.WriteString(renderFormToggle("Collapsed", "Expanded", m.taskFormCollapsed, m.focusIndex == base+0))
+	b.WriteString(renderDefaultHint(taskFormVal, "Expanded"))
 	b.WriteString("\n")
 	b.WriteString(renderFormFieldDesc("Show only essential fields when opening the task form", indent, m.focusIndex == base+0))
 
@@ -208,6 +225,7 @@ func (m *SettingsModel) renderBehaviorFocusBoardSection() string {
 
 	b.WriteString(renderFormLabelWithWidth("Default mode: ", labelWidth, m.focusIndex == base+0))
 	b.WriteString(renderEnumSelector(focusBoardModeOptions, m.focusBoardModeCursor, m.focusIndex == base+0, m.width-indent))
+	b.WriteString(renderDefaultHint(focusBoardModeOptions[m.focusBoardModeCursor], "List"))
 	b.WriteString("\n")
 	b.WriteString(renderFormFieldDesc("Starting focus mode when the Focus Board opens (List/Tunnel/Zen)", indent, m.focusIndex == base+0))
 

@@ -197,6 +197,10 @@ func (m *FocusBoardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.cursorFlash = false
 		return m, nil
 
+	case MutationFlashClearMsg:
+		m.mutationFlash = false
+		return m, nil
+
 	case FocusBoardRefreshMsg:
 		m.loadItems()
 		m.clampCursor()

@@ -472,6 +472,13 @@ func (m *FocusViewModel) buildKeyMap() *keymap.KeyMap {
 		}, keymap.AsHidden()),
 	)
 
+	// ctrl+t: switch to Today / Work mode
+	entries = append(entries,
+		keymap.Bind("ctrl+t", "Switch to Today (Work mode)", "Navigation", func() (tea.Model, tea.Cmd) {
+			return m, func() tea.Msg { return ShowFocusBoardMsg{} }
+		}),
+	)
+
 	return &keymap.KeyMap{
 		ViewName: "Backlog",
 		Entries:  entries,

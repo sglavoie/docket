@@ -180,14 +180,14 @@ func (m *ProjectPickerModel) renderProjectDetail(width, height int) string {
 	lines++
 
 	if overdue > 0 {
-		overdueStr := WarningIconStyle.Render(fmt.Sprintf("%d", overdue))
+		overdueStr := OverdueStyle.Render(fmt.Sprintf("%d", overdue))
 		b.WriteString(MutedStyle.Render("Overdue: ") + overdueStr)
 	} else {
 		b.WriteString(MutedStyle.Render("Overdue: ") + "0")
 	}
 	b.WriteString("  ")
 	if blocked > 0 {
-		blockedStr := WarningIconStyle.Render(fmt.Sprintf("%d", blocked))
+		blockedStr := BlockedStyle.Render(fmt.Sprintf("%d", blocked))
 		b.WriteString(MutedStyle.Render("Blocked: ") + blockedStr)
 	} else {
 		b.WriteString(MutedStyle.Render("Blocked: ") + "0")

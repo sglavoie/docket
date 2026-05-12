@@ -69,7 +69,7 @@ func (m *SettingsModel) renderColorPreviewPane(width int) string {
 	b.WriteString("\n")
 	b.WriteString(GetStatusBadge("todo", "□ Todo"))
 	b.WriteString("  ")
-	b.WriteString(GetStatusBadge("in_progress", "▶ In Progress"))
+	b.WriteString(GetStatusBadge("in_progress", IconInProgress+" In Progress"))
 	b.WriteString("  ")
 	b.WriteString(GetStatusBadge("done", "✓ Done"))
 	b.WriteString("\n")
@@ -129,7 +129,7 @@ func (m *SettingsModel) renderColorPreviewPane(width int) string {
 
 	b.WriteString(MutedStyle.Render("Selection"))
 	b.WriteString("\n")
-	b.WriteString(SelectedStyle.Render("▸ Selected cursor row"))
+	b.WriteString(SelectedStyle.Render(IconCursorRight + " Selected cursor row"))
 	b.WriteString("\n\n")
 
 	b.WriteString(MutedStyle.Render("View Modes"))

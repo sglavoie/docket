@@ -330,7 +330,7 @@ func TestTaskForm_Children_TaskTypeHidesSubtasksSection(t *testing.T) {
 	m := newTestTaskForm()
 	m = navigateToChildrenTab(m)
 	view := m.View().Content
-	if strings.Contains(view, "▼ Subtasks") || strings.Contains(view, "▶ Subtasks") {
+	if strings.Contains(view, IconExpanded+" Subtasks") || strings.Contains(view, IconCollapsed+" Subtasks") {
 		t.Errorf("Children tab for Task type should not show Subtasks section header; got:\n%s", view)
 	}
 }

@@ -4,10 +4,15 @@ import (
 	"fmt"
 	"time"
 
+	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
 )
 
 func (m *SettingsModel) handleKeyPress(msg tea.KeyPressMsg) (bool, tea.Cmd) {
+	// When search overlay is active, consume all keys there.
+	if m.searchActive {
+		return m.handleSearchKey(msg)
+	}
 	// When a preset overlay is active on the palette tab, route there first.
 	if m.tabs.Active == tabPalette && m.themePresetMode != presetModeNone {
 		return m.handlePresetKey(msg)
@@ -203,6 +208,24 @@ func (m *SettingsModel) handleGlobalKey(key string) (bool, tea.Cmd) { //nolint:g
 			m.themePresetMode = presetModeResetConfirm
 			m.themePresetErr = ""
 		}
+		return true, nil
+
+	case "/":
+		si := textinput.New()
+		si.Placeholder = "search settings..."
+		si.CharLimit = 100
+		si.SetWidth(SearchInputWidth(m.width))
+		applyThemedTextInput(&si)
+		si.Focus()
+		m.searchInput = si
+		m.searchActive = true
+		m.searchResults = searchSettingsFields("")
+		m.searchCursor = 0
+		m.searchStatusMsg = ""
+		return true, textinput.Blink
+
+	case "ctrl+d":
+		m.handleResetToDefault()
 		return true, nil
 
 	case "?":
@@ -502,4 +525,186 @@ func (m *SettingsModel) commitStageEditCmd() tea.Cmd {
 		})
 	}
 	return nil
+}
+
+// handleSearchKey consumes all keys when the settings search overlay is active.
+func (m *SettingsModel) handleSearchKey(msg tea.KeyPressMsg) (bool, tea.Cmd) {
+	key := msg.String()
+	switch key {
+	case "esc":
+		m.searchActive = false
+		m.searchInput.Blur()
+		return true, nil
+	case "enter":
+		if len(m.searchResults) > 0 && m.searchCursor < len(m.searchResults) {
+			result := m.searchResults[m.searchCursor]
+			m.blurCurrentField()
+			m.focusIndex = result.FocusIndex
+			m.tabs.Active = result.Tab
+			m.subTab = result.SubTab
+			m.syncVisualFromOld()
+			m.focusCurrentField()
+			m.scrollOffset = 0
+		}
+		m.searchActive = false
+		m.searchInput.Blur()
+		return true, nil
+	case "j", "down", "ctrl+j":
+		if m.searchCursor < len(m.searchResults)-1 {
+			m.searchCursor++
+		}
+		return true, nil
+	case "k", "up", "ctrl+k":
+		if m.searchCursor > 0 {
+			m.searchCursor--
+		}
+		return true, nil
+	default:
+		old := m.searchInput.Value()
+		var cmd tea.Cmd
+		m.searchInput, cmd = m.searchInput.Update(msg)
+		if m.searchInput.Value() != old {
+			m.searchResults = searchSettingsFields(m.searchInput.Value())
+			m.searchCursor = 0
+		}
+		return true, cmd
+	}
+}
+
+// handleResetToDefault resets the currently focused field to its default value.
+//
+//nolint:gocyclo // covers all field types across every settings tab
+func (m *SettingsModel) handleResetToDefault() {
+	meta, ok := settingsFieldByIndex(m.focusIndex)
+	if !ok {
+		return
+	}
+
+	tab := tabForField(m.focusIndex)
+	local := m.focusIndex - tabFieldStart[tab]
+	resetDone := false
+
+	switch tab {
+	case tabGeneral:
+		switch local {
+		case 0:
+			m.editorInput.SetValue("code")
+			resetDone = true
+		case 1:
+			m.notesEditorInput.SetValue("")
+			resetDone = true
+		case 2:
+			m.contextInput.SetValue("personal")
+			m.contextCursor = settingsOptionCursor(m.contexts, "personal", -1)
+			resetDone = true
+		case 3:
+			m.undoDepthInput.SetValue("50")
+			resetDone = true
+		case 4:
+			m.defaultViewCursor = 0
+			resetDone = true
+		}
+	case tabReview:
+		switch local {
+		case 0:
+			m.dueSoonInput.SetValue("7")
+			resetDone = true
+		case 1:
+			m.futureInput.SetValue("30")
+			resetDone = true
+		case 2:
+			m.oldDaysInput.SetValue("14")
+			resetDone = true
+		case 3:
+			m.completedHoursInput.SetValue("24")
+			resetDone = true
+		case 4:
+			m.staleTaskDaysInput.SetValue("0")
+			resetDone = true
+		}
+	case tabBehavior:
+		switch local {
+		case 0:
+			m.recentActivityInput.SetValue("20")
+			resetDone = true
+		case 1:
+			m.recentActivityShowAll = false
+			resetDone = true
+		case 2:
+			m.linkedTaskJump = false
+			resetDone = true
+		case 3:
+			m.maxPinnedInput.SetValue("5")
+			resetDone = true
+		case 4:
+			m.maxRecentTaskVisitsInput.SetValue("15")
+			resetDone = true
+		case 5:
+			m.popupTimeoutInput.SetValue("0")
+			resetDone = true
+		case 6:
+			m.sectionLimitActiveInput.SetValue("5")
+			resetDone = true
+		case 7:
+			m.sectionLimitNextInput.SetValue("5")
+			resetDone = true
+		case 8:
+			m.sectionLimitInboxInput.SetValue("5")
+			resetDone = true
+		case 9:
+			m.sectionLimitStandbyInput.SetValue("5")
+			resetDone = true
+		case 10:
+			m.sectionLimitWaitingInput.SetValue("3")
+			resetDone = true
+		case 11:
+			m.sectionLimitSomedayInput.SetValue("10")
+			resetDone = true
+		case 12:
+			m.sectionLimitReviewInput.SetValue("5")
+			resetDone = true
+		case 13:
+			m.startViewCursor = 0
+			resetDone = true
+		case 14:
+			m.taskFormCollapsed = false
+			resetDone = true
+		case 15:
+			m.focusBoardModeCursor = 0
+			resetDone = true
+		}
+	case tabAttachments:
+		switch local {
+		case 0:
+			m.attachmentEditorInput.SetValue("")
+			resetDone = true
+		case 1:
+			m.codeEditorInput.SetValue("code")
+			resetDone = true
+		}
+	case tabAppearance:
+		switch local {
+		case 0:
+			m.zebraStriping = false
+			resetDone = true
+		case 1:
+			m.weekEndDayCursor = 2 // Sunday
+			resetDone = true
+		case 2:
+			m.timeFormatCursor = 1 // 24-hour
+			resetDone = true
+		case 3:
+			m.autoTheme = false
+			resetDone = true
+		}
+	}
+
+	if !resetDone {
+		return
+	}
+	label := meta.Default
+	if label == "" {
+		label = "(empty)"
+	}
+	m.searchStatusMsg = "Reset to default: " + label
 }

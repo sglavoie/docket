@@ -215,7 +215,9 @@ func (m *FocusBoardModel) buildKeyMap() *keymap.KeyMap {
 					}
 					return m, nil
 				}
-				return taskOpsChangeStatus(m, s)
+				model, cmd := taskOpsChangeStatus(m, s)
+				m.setMutationFlash(statusMutationFlashBg(s))
+				return model, tea.Batch(cmd, mutationFlashTimeout())
 			}
 		},
 		PriorityChange: func(key string) keymap.Action {
@@ -242,7 +244,10 @@ func (m *FocusBoardModel) buildKeyMap() *keymap.KeyMap {
 					}
 					return m, nil
 				}
-				return taskOpsChangePriority(m, key)
+				p, _ := PriorityForPrefixKey(key)
+				model, cmd := taskOpsChangePriority(m, key)
+				m.setMutationFlash(priorityMutationFlashBg(p))
+				return model, tea.Batch(cmd, mutationFlashTimeout())
 			}
 		},
 		DueDateSet:   bulkSetDueDate,
@@ -554,6 +559,13 @@ func (m *FocusBoardModel) buildKeyMap() *keymap.KeyMap {
 				return ShowProjectSelectorForMoveMsg{Task: row.Task, SourceProject: row.Project}
 			}
 		}, keymap.AsHidden()),
+	)
+
+	// ctrl+t: switch to Backlog / Plan mode
+	entries = append(entries,
+		keymap.Bind("ctrl+t", "Switch to Backlog (Plan mode)", "Navigation", func() (tea.Model, tea.Cmd) {
+			return m, func() tea.Msg { return ShowFocusViewMsg{} }
+		}),
 	)
 
 	return &keymap.KeyMap{

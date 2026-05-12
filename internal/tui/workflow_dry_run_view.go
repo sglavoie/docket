@@ -147,7 +147,7 @@ func (m *WorkflowDryRunModel) renderTaskList(paneHeight int) string {
 		title := truncateToVisualWidth(result.Task.Title, titleWidth)
 
 		if i == m.cursor {
-			line := SelectedItemTextStyle.Render(fmt.Sprintf("▸ %s", title))
+			line := SelectedItemTextStyle.Render(fmt.Sprintf("%s %s", IconCursorRight, title))
 			rowBuilder.WriteString(line)
 			rowBuilder.WriteString(" ")
 			rowBuilder.WriteString(changeCount)
@@ -189,7 +189,7 @@ func (m *WorkflowDryRunModel) renderDetailPane() string {
 	b.WriteString(BoldStyle.Render("Matched Rules"))
 	b.WriteString("\n")
 	for _, name := range result.MatchedRules {
-		fmt.Fprintf(&b, "  %s %s\n", keywordStyle.Render("▸"), name)
+		fmt.Fprintf(&b, "  %s %s\n", keywordStyle.Render(IconCursorRight), name)
 	}
 	b.WriteString("\n")
 
@@ -243,7 +243,7 @@ func (m *WorkflowDryRunModel) renderTaskListWithDetails(paneHeight int) string {
 		projectName := truncateToVisualWidth(result.ProjectName, max(m.Width()-8, 1))
 
 		if i == m.cursor {
-			b.WriteString(SelectedItemTextStyle.Render(fmt.Sprintf("▸ %s", title)))
+			b.WriteString(SelectedItemTextStyle.Render(fmt.Sprintf("%s %s", IconCursorRight, title)))
 			b.WriteString(" ")
 			b.WriteString(MutedStyle.Render("[" + projectName + "]"))
 			b.WriteString("\n")

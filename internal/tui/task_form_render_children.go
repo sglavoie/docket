@@ -36,15 +36,15 @@ func (m *TaskFormModel) renderChildrenChecklistSection() string {
 
 	headerFocused := m.activeTab == formTabChildren && m.focusIndex == 0
 	count := len(m.draft.checklist)
-	expandIcon := "▶"
+	expandIcon := IconCollapsed
 	if m.checklistExpanded {
-		expandIcon = "▼"
+		expandIcon = IconExpanded
 	}
 	headerLabel := fmt.Sprintf("%s Checklist (%d)", expandIcon, count)
 	sep := MutedStyle.Render(strings.Repeat("─", 3))
 
 	if headerFocused {
-		b.WriteString(FieldLabelFocusedStyle.Render("▸ "))
+		b.WriteString(FieldLabelFocusedStyle.Render(IconCursorRight + " "))
 		b.WriteString(sep)
 		b.WriteString(BoldStyle.Render(" " + headerLabel + " "))
 		b.WriteString(MutedStyle.Render(strings.Repeat("─", 16)))
@@ -84,7 +84,7 @@ func (m *TaskFormModel) renderChecklistItemRow(i int, item models.ChecklistItem,
 	line := fmt.Sprintf("%s %s", checkIcon, text)
 	if focused {
 		hint := MutedStyle.Render("  Enter: edit · Space: check · Ctrl+D: del · Ctrl+J/K: move")
-		return FieldLabelFocusedStyle.Render("  ▸ ") + SelectorOptionSelectedStyle.Render(line) + hint + "\n"
+		return FieldLabelFocusedStyle.Render("  "+IconCursorRight+" ") + SelectorOptionSelectedStyle.Render(line) + hint + "\n"
 	}
 	return "    " + line + "\n"
 }
@@ -98,15 +98,15 @@ func (m *TaskFormModel) renderChildrenSubtasksSection() string {
 	headerIdx := m.childrenSubtasksHeaderIdx()
 	headerFocused := m.activeTab == formTabChildren && m.focusIndex == headerIdx
 	count := len(m.draft.subtasks)
-	expandIcon := "▶"
+	expandIcon := IconCollapsed
 	if m.subtasksExpanded {
-		expandIcon = "▼"
+		expandIcon = IconExpanded
 	}
 	headerLabel := fmt.Sprintf("%s Subtasks (%d)", expandIcon, count)
 	sep := MutedStyle.Render(strings.Repeat("─", 3))
 
 	if headerFocused {
-		b.WriteString(FieldLabelFocusedStyle.Render("▸ "))
+		b.WriteString(FieldLabelFocusedStyle.Render(IconCursorRight + " "))
 		b.WriteString(sep)
 		b.WriteString(BoldStyle.Render(" " + headerLabel + " "))
 		b.WriteString(MutedStyle.Render(strings.Repeat("─", 16)))
@@ -148,7 +148,7 @@ func renderSubtaskItemRow(i int, st formSubtaskDraft, focused bool) string {
 	line := fmt.Sprintf("%s  %s%s", badge, title, optional)
 	if focused {
 		hint := MutedStyle.Render("  Enter: edit · Ctrl+O: optional · Ctrl+D: del · Ctrl+J/K: move")
-		return FieldLabelFocusedStyle.Render("  ▸ ") + SelectorOptionSelectedStyle.Render(line) + hint + "\n"
+		return FieldLabelFocusedStyle.Render("  "+IconCursorRight+" ") + SelectorOptionSelectedStyle.Render(line) + hint + "\n"
 	}
 	return "    " + line + "\n"
 }

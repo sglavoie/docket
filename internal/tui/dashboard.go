@@ -24,6 +24,14 @@ type DashboardModel struct {
 
 	// Delete state
 	deleteTarget *models.Project // project to delete
+
+	// Pipeline summary counts for the pipeline info card.
+	pipelineCounts pipelineCounts
+}
+
+// SetPipelineCounts updates the cached pipeline counts shown in the info section.
+func (m *DashboardModel) SetPipelineCounts(counts pipelineCounts) {
+	m.pipelineCounts = counts
 }
 
 // NewDashboardModel creates a new dashboard model.

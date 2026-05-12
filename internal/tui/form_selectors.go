@@ -23,7 +23,7 @@ func renderFormLabelShared(label string, focusIdx int, currentFocus int) string 
 func renderFormLabelWithWidth(label string, labelWidth int, focused bool) string {
 	padded := fmt.Sprintf("%-*s", labelWidth, label)
 	if focused {
-		return FieldLabelFocusedStyle.Render("▸ " + padded)
+		return FieldLabelFocusedStyle.Render(IconCursorRight + " " + padded)
 	}
 	return FieldLabelStyle.Render("  " + padded)
 }

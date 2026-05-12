@@ -141,7 +141,9 @@ func (m *AllTasksViewModel) buildKeyMap() *keymap.KeyMap {
 				if m.multiSelectMode && m.SelectedCount() > 0 {
 					return m.handleBulkStatusChange(s)
 				}
-				return taskOpsChangeStatus(m, s)
+				model, cmd := taskOpsChangeStatus(m, s)
+				m.setMutationFlash(statusMutationFlashBg(s))
+				return model, tea.Batch(cmd, mutationFlashTimeout())
 			}
 		},
 		PriorityChange: func(key string) keymap.Action {
@@ -150,7 +152,10 @@ func (m *AllTasksViewModel) buildKeyMap() *keymap.KeyMap {
 					p, _ := PriorityForPrefixKey(key)
 					return m.handleBulkPriorityChange(p)
 				}
-				return taskOpsChangePriority(m, key)
+				p, _ := PriorityForPrefixKey(key)
+				model, cmd := taskOpsChangePriority(m, key)
+				m.setMutationFlash(priorityMutationFlashBg(p))
+				return model, tea.Batch(cmd, mutationFlashTimeout())
 			}
 		},
 		DueDateSet: func(days int) keymap.Action {
@@ -179,7 +184,9 @@ func (m *AllTasksViewModel) buildKeyMap() *keymap.KeyMap {
 			if m.multiSelectMode && m.SelectedCount() > 0 {
 				return m.handleBulkStatusChange(models.StatusDone)
 			}
-			return taskOpsChangeStatus(m, models.StatusDone)
+			model, cmd := taskOpsChangeStatus(m, models.StatusDone)
+			m.setMutationFlash(statusMutationFlashBg(models.StatusDone))
+			return model, tea.Batch(cmd, mutationFlashTimeout())
 		},
 	})...)
 

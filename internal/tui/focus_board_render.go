@@ -143,7 +143,12 @@ func (m *FocusBoardModel) View() tea.View { //nolint:gocyclo
 		} else if m.tabs.Active == boardTabClosed {
 			emptyContent = MutedStyle.Render("  " + EmptyStateClosed)
 		} else if len(m.rows) == 0 {
-			emptyContent = renderEmptyState("  "+EmptyStateNoTasks, "  Press a to add a task, or mark tasks as active in a project.")
+			if m.Dispatcher == nil || !m.Dispatcher.HasPendingPrefix() {
+				emptyContent = renderContextualEmptyState("  "+EmptyStateNoTasks,
+					[]string{";i capture", ";q backlog", ": commands", "? help"})
+			} else {
+				emptyContent = renderEmptyState("  "+EmptyStateNoTasks, "  Press a to add a task, or mark tasks as active in a project.")
+			}
 		} else {
 			emptyContent = MutedStyle.Render("  " + EmptyStateNoMatch)
 		}
@@ -323,7 +328,7 @@ func (m *FocusBoardModel) renderRow(row boardRow, isSelected bool, maxTitleLen i
 	if rowNum != "" {
 		if isFirstPlanItem {
 			// ▶ in accent color + rowNum left-padded to match normal 4-char width
-			prefix = ActiveStyle.Render("▶") + fmt.Sprintf("%-2s ", rowNum)
+			prefix = ActiveStyle.Render(IconScrollRight) + fmt.Sprintf("%-2s ", rowNum)
 		} else {
 			prefix = fmt.Sprintf("%3s ", rowNum)
 		}
@@ -384,6 +389,9 @@ func (m *FocusBoardModel) renderRow(row boardRow, isSelected bool, maxTitleLen i
 	isOverdue := task.IsOverdue()
 	isBlocked := task.Status == models.StatusBlocked || row.Project.HasIncompleteDependencies(task)
 	line := RenderSelectableRow(isSelected, task.Active, task.Pinned, m.cursorFlash, isOverdue, isBlocked, content, m.width-2, dimmed)
+	if isSelected && m.mutationFlash {
+		line = MutationFlashLine(line, m.width-2, m.mutationFlashBg)
+	}
 	b.WriteString(line)
 
 	// Escalation hint: P3+ tasks due within the escalation window on the Today tab
