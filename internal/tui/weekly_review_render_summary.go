@@ -43,7 +43,7 @@ func (m *WeeklyReviewModel) GetPrefixPopupInfo() *PrefixPopupInfo {
 	}
 	hints := CommonTaskActionPrefixHints(m.config.Stages, currentStage, currentPriority)
 	hints["g"] = WeeklyReviewNavigationPrefixHints
-	hints["z"] = append(SectionFoldPrefixHints, PrefixHint{Key: "p", Description: "preview", Detail: "Toggle inline preview"})
+	hints["f"] = append(SectionFoldPrefixHints, PrefixHint{Key: "p", Description: "preview", Detail: "Toggle inline preview"})
 	return &PrefixPopupInfo{
 		Prefix: m.pendingPrefix,
 		Hints:  hints,

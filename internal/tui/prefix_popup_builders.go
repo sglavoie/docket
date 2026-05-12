@@ -22,14 +22,14 @@ func BuildPriorityPrefixHints(currentPriority int) []PrefixHint {
 // CommonTaskActionPrefixHints returns the prefix hints shared across most
 // task-operating views: status (,), priority (!), stage (.), due date (d),
 // snooze (s), create-linked (c), and move (m). Views extend the returned
-// map with their view-specific entries (e.g. "g" navigation, "z" folds).
+// map with their view-specific entries (e.g. "g" navigation, "f" folds).
 func CommonTaskActionPrefixHints(stages []string, currentStage string, currentPriority int) PrefixHints {
 	return PrefixHints{
 		",":     StatusPrefixHints,
 		"!":     BuildPriorityPrefixHints(currentPriority),
-		"alt+.": BuildStagePrefixHints(stages, currentStage),
+		"s":     BuildStagePrefixHints(stages, currentStage),
 		"d":     DueDatePrefixHints,
-		"s":     SnoozePrefixHints,
+		"z":     SnoozePrefixHints,
 		"c":     CreateLinkedPrefixHints,
 		"m":     SecondaryViewMovePrefixHints,
 		"t":     TaskPrefixHints,
@@ -85,7 +85,7 @@ func BuildFilterScorePrefixHints(cfg *config.Config) []PrefixHint {
 	}
 }
 
-// BuildStagePrefixHints builds dynamic stage hints for the "alt+." (stage) prefix.
+// BuildStagePrefixHints builds dynamic stage hints for the "s" (stage) prefix.
 // Keys 1-9 map to the first 9 configured stages, 0 clears.
 func BuildStagePrefixHints(stages []string, currentStage string) []PrefixHint {
 	hints := make([]PrefixHint, 0, len(stages)+1)

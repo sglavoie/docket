@@ -61,8 +61,8 @@ func (m *ProjectFocusViewModel) buildKeyMap() *keymap.KeyMap {
 		},
 	})...)
 
-	// --- z prefix: no-ops for zR, zM ---
-	entries = append(entries, keymap.Prefix("z", "View", "View", []keymap.Entry{
+	// --- f prefix: no-ops for fR, fM ---
+	entries = append(entries, keymap.Prefix("f", "View", "View", []keymap.Entry{
 		keymap.Bind("R", "Expand all (no-op)", "View", func() (tea.Model, tea.Cmd) {
 			return m, nil
 		}),

@@ -16,7 +16,7 @@ var (
 		{Key: "D", Description: "defer", Detail: "Defer recurrence"},
 	}
 
-	// FoldPrefixHints contains hints for the "z" (fold) prefix.
+	// FoldPrefixHints contains hints for the "f" (fold) prefix.
 	FoldPrefixHints = []PrefixHint{
 		{Key: "a", Description: "toggle", Detail: "Toggle fold on current node"},
 		{Key: "o", Description: "open", Detail: "Expand current node"},
@@ -96,7 +96,7 @@ var (
 		{Key: "d", Description: "picker", Detail: "Open date picker"},
 	}
 
-	// SnoozePrefixHints contains hints for the "s" (snooze) prefix.
+	// SnoozePrefixHints contains hints for the "z" (snooze) prefix.
 	SnoozePrefixHints = []PrefixHint{
 		{Key: "t", Description: "tomorrow", Detail: "Snooze until tomorrow"},
 		{Key: "w", Description: "+week", Detail: "Snooze for one week"},
@@ -117,7 +117,7 @@ var (
 		{Key: "x", Description: "unlink", Detail: "Remove a link"},
 	}
 
-	// OutlinerFoldPrefixHints contains "z" prefix hints for outliner fold operations.
+	// OutlinerFoldPrefixHints contains "f" prefix hints for outliner fold operations.
 	OutlinerFoldPrefixHints = []PrefixHint{
 		{Key: "a", Description: "toggle", Detail: "Toggle fold on current node"},
 		{Key: "o", Description: "expand", Detail: "Expand current node"},
@@ -131,7 +131,7 @@ var (
 		{Key: "3", Description: "depth-3", Detail: "Expand to third level"},
 	}
 
-	// SectionFoldPrefixHints contains hints for the "z" (fold) prefix in section-based views.
+	// SectionFoldPrefixHints contains hints for the "f" (fold) prefix in section-based views.
 	SectionFoldPrefixHints = []PrefixHint{
 		{Key: "R", Description: "expand-all", Detail: "Expand all sections"},
 		{Key: "M", Description: "collapse-all", Detail: "Collapse all sections"},

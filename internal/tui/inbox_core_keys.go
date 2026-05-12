@@ -43,7 +43,7 @@ func (c *inboxCore) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 		if priority, ok := PriorityForPrefixKey(key); ok {
 			return c.model, c.changePriority(priority)
 		}
-	case "s":
+	case "z":
 		if key == "d" {
 			return c.model, c.openSnoozePicker()
 		}
@@ -52,7 +52,7 @@ func (c *inboxCore) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 			return c.model, nil
 		}
 		return c.model, c.setSnooze(snoozeDate)
-	case "alt+.":
+	case "s":
 		stage := StageForPrefixKey(key, c.config.Stages)
 		if stage != nil {
 			return c.model, c.setStage(*stage)

@@ -314,15 +314,15 @@ the task quickly.`,
 		{
 			Title:    "Stages",
 			Category: "TUI",
-			Content: `# Setting Stages with alt+. Prefix
+			Content: `# Setting Stages with s Prefix
 
-Press alt+. on a selected task to open the stage overlay.
+Press s on a selected task to open the stage overlay.
 Keys 1-9 map to your configured stages. Press 0 to clear
 the stage.
 
-  alt+. 1  Set first stage (e.g., Brainstorm)
-  alt+. 2  Set second stage (e.g., Design)
-  alt+. 0  Clear stage
+  s 1  Set first stage (e.g., Brainstorm)
+  s 2  Set second stage (e.g., Design)
+  s 0  Clear stage
 
 # Filtering by Stage
 
@@ -443,7 +443,7 @@ Works with prefix-chord mutations applied to a single task:
   !1-5      Set priority
   d1-9      Set quick due date (today, tomorrow, +3d, +1w, +2w, +1m)
   d0        Clear due date
-  alt+.1-9  Set workflow stage
+  s1-9      Set workflow stage
 
 # Behavior
 

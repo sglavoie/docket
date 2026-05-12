@@ -338,7 +338,7 @@ func buildStandardTaskActionEntries(deps TaskKeymapDeps) []keymap.Entry {
 	}
 	entries = append(entries, taskPrefixEntries...)
 
-	// --- Stage group: "alt+." prefix ---
+	// --- Stage group: "s" prefix ---
 	stageChange := func(stage string) keymap.Action {
 		if deps.StageChange != nil {
 			return deps.StageChange(stage)

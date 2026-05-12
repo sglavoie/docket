@@ -281,7 +281,7 @@ func (m *ProjectTreeModel) GetPrefixPopupInfo() *PrefixPopupInfo {
 		currentPriority = task.Priority
 	}
 	hints := CommonTaskActionPrefixHints(m.config.Stages, currentStage, currentPriority)
-	hints["z"] = FoldPrefixHints
+	hints["f"] = FoldPrefixHints
 	hints["g"] = ProjectTreeNavigationPrefixHints
 	hints["m"] = ProjectTreeMovePrefixHints // override: tree uses tree moves
 	hints["t"] = TaskPrefixHints

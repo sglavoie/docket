@@ -10,7 +10,7 @@ import (
 
 // prefixGroupOrder defines the display order for prefix groups in "by prefix" mode.
 var prefixGroupOrder = []string{
-	",", "!", ".", "d", "s", "c", "m", "t", "b", "z", "F",
+	",", "!", "s", "d", "z", "c", "m", "t", "b", "f", "F",
 }
 
 // prefixGroupLabels maps registry Category names to their prefix group key.
@@ -19,12 +19,12 @@ var prefixGroupLabels = map[string]string{
 	"Status":               ",",
 	"Recurrence":           ",",
 	"Priority":             "!",
-	"Stage (alt+. prefix)": "alt+.",
+	"Stage (s prefix)": "s",
 	"Due Date":             "d",
-	"Snooze":               "s",
+	"Snooze":               "z",
 	"Linked Tasks":         "c",
 	"Task (t prefix)":      "t",
-	"Folds":                "z",
+	"Folds":                "f",
 	"Move (m prefix)":      "m",
 	"Blockers (b prefix)":  "b",
 	"Filters":              "F",

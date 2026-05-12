@@ -155,8 +155,8 @@ func TestSnoozeGroup(t *testing.T) {
 		t.Fatalf("SnoozeGroup: want 1 top-level entry")
 	}
 	pn := entries[0].PrefixNode
-	if pn.Key != "s" {
-		t.Errorf("SnoozeGroup: want key 's', got %q", pn.Key)
+	if pn.Key != "z" {
+		t.Errorf("SnoozeGroup: want key 'z', got %q", pn.Key)
 	}
 	if len(pn.Children) != 6 {
 		t.Errorf("SnoozeGroup: want 6 children, got %d", len(pn.Children))
@@ -288,8 +288,8 @@ func TestFoldGroup(t *testing.T) {
 		t.Fatalf("FoldGroup: want 1 top-level entry")
 	}
 	pn := entries[0].PrefixNode
-	if pn.Key != "z" {
-		t.Errorf("FoldGroup: want key 'z', got %q", pn.Key)
+	if pn.Key != "f" {
+		t.Errorf("FoldGroup: want key 'f', got %q", pn.Key)
 	}
 	if len(pn.Children) != 10 {
 		t.Errorf("FoldGroup: want 10 children, got %d", len(pn.Children))
@@ -309,8 +309,8 @@ func TestStageGroup_Empty(t *testing.T) {
 		t.Fatalf("StageGroup: want 1 top-level entry")
 	}
 	pn := entries[0].PrefixNode
-	if pn.Key != "alt+." {
-		t.Errorf("StageGroup: want key 'alt+.', got %q", pn.Key)
+	if pn.Key != "s" {
+		t.Errorf("StageGroup: want key 's', got %q", pn.Key)
 	}
 	// Only "0" (clear) when no stages
 	if len(pn.Children) != 1 {

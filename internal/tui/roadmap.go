@@ -314,10 +314,6 @@ func (m *RoadmapModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			half := m.visibleRows() / 2
 			m.cursor = max(m.cursor-half, 0)
 
-		case "z":
-			m.zoom = ZoomLevel((int(m.zoom) + 1) % 3)
-			m.computeData()
-
 		case "space":
 			if m.activeTab == RoadmapTabTimeline && m.cursor < len(m.rows) {
 				row := m.rows[m.cursor]
@@ -339,12 +335,6 @@ func (m *RoadmapModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, func() tea.Msg {
 					return ShowTaskDetailMsg{Task: task, Project: project}
 				}
-			}
-
-		case "s":
-			if m.canToggle {
-				m.isGlobal = !m.isGlobal
-				m.computeData()
 			}
 
 		case "t":

@@ -47,5 +47,5 @@ type deleteConfirmView interface {
 
 // taskSpecificPrefixKeys lists prefix keys that require the cursor to be on a task.
 var taskSpecificPrefixKeys = map[string]bool{
-	",": true, "!": true, "d": true, "s": true, "t": true, "b": true, "m": true, "alt+.": true, "c": true,
+	",": true, "!": true, "d": true, "z": true, "t": true, "b": true, "m": true, "s": true, "c": true,
 }

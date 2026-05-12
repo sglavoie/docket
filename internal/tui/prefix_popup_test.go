@@ -70,10 +70,10 @@ func TestRenderPrefixPopup_StatusPrefix(t *testing.T) {
 
 func TestRenderPrefixPopup_FoldPrefix(t *testing.T) {
 	hints := PrefixHints{
-		"z": FoldPrefixHints,
+		"f": FoldPrefixHints,
 	}
 
-	result := RenderPrefixPopup("z", hints, 200, 40)
+	result := RenderPrefixPopup("f", hints, 200, 40)
 
 	// Should contain fold hints
 	for _, hint := range FoldPrefixHints {

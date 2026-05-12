@@ -18,7 +18,7 @@ func (m *OutlinerModel) handlePerspectivePrefix(key string) (tea.Model, tea.Cmd)
 	return m, nil
 }
 
-// handleStagePrefixOutliner handles the alt+. prefix key for setting workflow stage.
+// handleStagePrefixOutliner handles the s prefix key for setting workflow stage.
 func (m *OutlinerModel) handleStagePrefixOutliner(key string) (tea.Model, tea.Cmd) {
 	if m.project == nil {
 		if cmd, ok := m.crossHandleStageMutation(key); ok {

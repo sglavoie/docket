@@ -90,8 +90,8 @@ func (m *KanbanModel) buildKeyMap() *keymap.KeyMap {
 		},
 	})...)
 
-	// --- z prefix: zR, zM (no-op stubs in kanban) ---
-	entries = append(entries, keymap.Prefix("z", "View", "View", []keymap.Entry{
+	// --- f prefix: fR, fM (no-op stubs in kanban) ---
+	entries = append(entries, keymap.Prefix("f", "View", "View", []keymap.Entry{
 		keymap.Bind("R", "Expand all sections", "View", func() (tea.Model, tea.Cmd) {
 			return m, nil
 		}),

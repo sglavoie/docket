@@ -197,7 +197,7 @@ func dispatchBulkPrefix(prefix, key string, v taskOpsView, items []bulkTaskItem)
 			return v, nil, true
 		}
 
-	case "s":
+	case "z":
 		snoozeDate, _, ok := resolveQuickSnoozeDate(key)
 		if ok {
 			count, err := taskOpsApplyBulk(v, items, "Snooze",
@@ -215,7 +215,7 @@ func dispatchBulkPrefix(prefix, key string, v taskOpsView, items []bulkTaskItem)
 			return v, nil, true
 		}
 
-	case "alt+.":
+	case "s":
 		if stage := StageForPrefixKey(key, v.getConfig().Stages); stage != nil {
 			count, err := taskOpsApplyBulk(v, items, "Set Stage",
 				func(project *models.Project, taskID string) bool {

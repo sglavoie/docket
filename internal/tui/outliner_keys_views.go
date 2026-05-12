@@ -116,7 +116,7 @@ func (m *OutlinerModel) handleUtilityKey(key string) (tea.Model, tea.Cmd, bool) 
 			return ShowContextPickerMsg{}
 		}, true
 
-	case "f":
+	case "alt+f":
 		if m.project == nil {
 			return m, nil, true
 		}

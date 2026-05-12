@@ -1,6 +1,6 @@
 package keymap
 
-// StageDeps holds action closures for the "alt+." stage prefix group.
+// StageDeps holds action closures for the "s" stage prefix group.
 type StageDeps struct {
 	// ChangeStage returns an Action that sets the named stage ("" = clear).
 	ChangeStage func(stage string) Action
@@ -21,11 +21,11 @@ func stageKeyForIndex(i int) string {
 	return ""
 }
 
-// StageGroup returns entries for the "alt+." prefix: workflow stage assignment.
+// StageGroup returns entries for the "s" prefix: workflow stage assignment.
 // Children are built dynamically from deps.Stages; the group should be
 // rebuilt when the project changes (e.g. via buildKeyMap on project switch).
 func StageGroup(deps StageDeps) []Entry {
-	cat := "Stage (alt+. prefix)"
+	cat := "Stage (s prefix)"
 	children := []Entry{
 		Bind("0", "Clear stage", cat, deps.ChangeStage("")),
 	}
@@ -37,5 +37,5 @@ func StageGroup(deps StageDeps) []Entry {
 		name := stage
 		children = append(children, Bind(key, "Set stage: "+name, cat, deps.ChangeStage(name)))
 	}
-	return []Entry{Prefix("alt+.", "Stage", cat, children)}
+	return []Entry{Prefix("s", "Stage", cat, children)}
 }

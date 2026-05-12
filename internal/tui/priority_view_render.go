@@ -33,7 +33,7 @@ func (m *PriorityViewModel) GetPrefixPopupInfo() *PrefixPopupInfo {
 	}
 	hints := CommonTaskActionPrefixHints(m.config.Stages, currentStage, currentPriority)
 	hints["g"] = PriorityViewNavigationPrefixHints
-	hints["z"] = []PrefixHint{
+	hints["f"] = []PrefixHint{
 		{Key: "p", Description: "preview", Detail: "Toggle inline preview"},
 	}
 	// Merge filter prefix hints (due date + status both included)

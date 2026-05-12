@@ -80,7 +80,7 @@ func (m *OutlinerModel) buildPrefixHints() PrefixHints {
 		hints["g"] = OutlinerNavigationPrefixHints
 	}
 	hints["m"] = ProjectTreeMovePrefixHints // override: outliner uses tree moves
-	hints["z"] = OutlinerFoldPrefixHints
+	hints["f"] = OutlinerFoldPrefixHints
 
 	// Add perspective hints with active annotation
 	activePfx := m.pendingPrefix

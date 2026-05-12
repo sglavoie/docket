@@ -100,7 +100,7 @@ func (m *AppModel) otherCommands() []Command {
 		{
 			Name:        "project focus",
 			Description: "Project-scoped focus view",
-			Shortcut:    "f",
+			Shortcut:    "alt+f",
 			Category:    CategoryViews,
 			Views:       projectTreeAndOutlinerViews(),
 			Aliases:     []string{"focus mode", "project active tasks"},

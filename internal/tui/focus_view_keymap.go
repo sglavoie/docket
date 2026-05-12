@@ -67,8 +67,8 @@ func (m *FocusViewModel) buildKeyMap() *keymap.KeyMap {
 		},
 	})...)
 
-	// --- z prefix: zp (toggle preview only) ---
-	entries = append(entries, keymap.Prefix("z", "Preview", "View", []keymap.Entry{
+	// --- f prefix: fp (toggle preview only) ---
+	entries = append(entries, keymap.Prefix("f", "Preview", "View", []keymap.Entry{
 		keymap.Bind("p", "Toggle inline preview", "View", func() (tea.Model, tea.Cmd) {
 			m.previewMode = !m.previewMode
 			return m, nil

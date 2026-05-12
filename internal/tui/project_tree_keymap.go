@@ -210,9 +210,7 @@ func (m *ProjectTreeModel) buildKeyMap() *keymap.KeyMap {
 			keymap.Bind("n", "Go to Next view", "Views", setViewMode(ViewModeNext)),
 			keymap.Bind("i", "Go to Inbox view", "Views", setViewMode(ViewModeInbox)),
 			keymap.Bind("w", "Go to Waiting view", "Views", setViewMode(ViewModeWaiting)),
-			keymap.Bind("s", "Go to Someday view", "Views", setViewMode(ViewModeSomeday)),
 			keymap.Bind("c", "Go to Completed view", "Views", setViewMode(ViewModeCompleted)),
-			keymap.Bind("z", "Go to Snoozed view", "Views", setViewMode(ViewModeSnoozed)),
 			keymap.Bind("*", "Go to All view", "Views", setViewMode(ViewModeAll)),
 			keymap.Bind("r", "Go to Review view", "Views", setViewMode(ViewModeReview)),
 			keymap.Bind("S", "Go to Standby view", "Views", setViewMode(ViewModeStandby)),
@@ -669,7 +667,7 @@ func (m *ProjectTreeModel) buildKeyMap() *keymap.KeyMap {
 	}
 	entries = append(entries, taskPrefixEntries...)
 
-	// Stage group: alt+. prefix — map stage name back to a prefix key using StageForPrefixKey inverse.
+	// Stage group: s prefix — map stage name back to a prefix key using StageForPrefixKey inverse.
 	// We use handleStagePrefix with the key that would resolve to the given stage.
 	stageEntries := keymap.StageGroup(keymap.StageDeps{
 		Stages: stages,
@@ -958,7 +956,7 @@ func (m *ProjectTreeModel) buildKeyMap() *keymap.KeyMap {
 			}
 			return m, nil
 		}),
-		keymap.Bind("f", "Focus view (project)", "Views", func() (tea.Model, tea.Cmd) {
+		keymap.Bind("alt+f", "Focus view (project)", "Views", func() (tea.Model, tea.Cmd) {
 			return m, func() tea.Msg { return ShowProjectFocusViewMsg{Project: m.project} }
 		}),
 		keymap.Bind("C", "Filter by context", "Filters", func() (tea.Model, tea.Cmd) {

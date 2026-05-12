@@ -66,8 +66,8 @@ func (m *AllTasksViewModel) buildKeyMap() *keymap.KeyMap {
 		},
 	})...)
 
-	// --- z prefix: zp, zR, zM ---
-	entries = append(entries, keymap.Prefix("z", "View", "View", []keymap.Entry{
+	// --- f prefix: fp, fR, fM ---
+	entries = append(entries, keymap.Prefix("f", "View", "View", []keymap.Entry{
 		keymap.Bind("p", "Toggle inline preview", "View", func() (tea.Model, tea.Cmd) {
 			m.previewMode = !m.previewMode
 			return m, nil

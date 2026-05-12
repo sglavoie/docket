@@ -61,12 +61,12 @@ type PrefixPopupProvider interface {
 var prefixCategoryNames = map[string]string{
 	"`":     "mode",
 	",":     "status",
-	"z":     "fold",
+	"f":     "fold",
 	"g":     "go-to",
 	"m":     "move",
 	"!":     "priority",
 	"d":     "due-date",
-	"s":     "snooze",
+	"z":     "snooze",
 	"c":     "create",
 	"t":     "task",
 	"b":     "blockers",
@@ -87,7 +87,7 @@ var prefixCategoryNames = map[string]string{
 	"FS":    "filter-score",
 	"F.":    "filter-stage",
 	"Fv":    "saved-filters",
-	"alt+.": "stage",
+	"s": "stage",
 	";":     "tt",
 	";t":    "task",
 }

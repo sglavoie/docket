@@ -53,7 +53,7 @@ func (m *OutlinerModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 	case "P":
 		return m.handlePerspectivePrefix(key)
 
-	case "alt+.":
+	case "s":
 		return m.handleStagePrefixOutliner(key)
 
 	case "!":
@@ -62,10 +62,10 @@ func (m *OutlinerModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 	case "d":
 		return m.handleDueDatePrefixOutliner(key)
 
-	case "s":
+	case "z":
 		return m.handleSnoozePrefixOutliner(key)
 
-	case "z":
+	case "f":
 		return m.handleFoldPrefix(key, cursorTask)
 
 	case "F":

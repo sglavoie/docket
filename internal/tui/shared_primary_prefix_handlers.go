@@ -47,7 +47,7 @@ func handlePriorityPrefix(key string, v prefixableView) (tea.Cmd, bool) {
 	return tea.Batch(result.Cmd, mutationFlashTimeout(), recordRepeatPriority(priority)), true
 }
 
-// handleStagePrefix handles the alt+. prefix key for setting workflow stage.
+// handleStagePrefix handles the s prefix key for setting workflow stage.
 // Returns (cmd, handled). When handled is false the key was not recognized.
 func handleStagePrefix(key string, v prefixableView, stages []string) (tea.Cmd, bool) {
 	stage := StageForPrefixKey(key, stages)

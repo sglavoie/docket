@@ -50,7 +50,7 @@ func TestGetForView_ProjectTree(t *testing.T) {
 	foundFold := false
 	foundStatus := false
 	for _, k := range keys {
-		if k == "za" || k == "zo" || k == "zc" {
+		if k == "fa" || k == "fo" || k == "fc" {
 			foundFold = true
 		}
 		if k == ",s" {
@@ -58,7 +58,7 @@ func TestGetForView_ProjectTree(t *testing.T) {
 		}
 	}
 	if !foundFold {
-		t.Error("Expected fold keys (za/zo/zc) in ProjectTree keymap")
+		t.Error("Expected fold keys (fa/fo/fc) in ProjectTree keymap")
 	}
 	if !foundStatus {
 		t.Error("Expected status change key ',s' in ProjectTree keymap")
@@ -264,7 +264,7 @@ func TestKeybindingCategories(t *testing.T) {
 		switch {
 		case k == "j" || k == "k" || k == "G":
 			hasNav = true
-		case k == "za" || k == "zo":
+		case k == "fa" || k == "fo":
 			hasFold = true
 		case k == ",s" || k == ",d":
 			hasStatus = true

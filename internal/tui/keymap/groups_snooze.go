@@ -1,6 +1,6 @@
 package keymap
 
-// SnoozeDeps holds action closures for the "s" snooze prefix group.
+// SnoozeDeps holds action closures for the "z" snooze prefix group.
 type SnoozeDeps struct {
 	// SnoozeTomorrow snoozes until tomorrow.
 	SnoozeTomorrow Action
@@ -16,7 +16,7 @@ type SnoozeDeps struct {
 	OpenDatePicker Action
 }
 
-// SnoozeGroup returns entries for the "s" prefix: quick snooze scheduling.
+// SnoozeGroup returns entries for the "z" prefix: quick snooze scheduling.
 func SnoozeGroup(deps SnoozeDeps) []Entry {
 	cat := "Snooze"
 	children := []Entry{
@@ -27,5 +27,5 @@ func SnoozeGroup(deps SnoozeDeps) []Entry {
 		Bind("0", "Clear snooze", cat, deps.ClearSnooze),
 		Bind("d", "Open snooze date picker", cat, deps.OpenDatePicker),
 	}
-	return []Entry{Prefix("s", "Snooze", cat, children)}
+	return []Entry{Prefix("z", "Snooze", cat, children)}
 }

@@ -101,7 +101,7 @@ func (m *AppModel) taskCommands() []Command {
 		{
 			Name:        "collapse all",
 			Description: "Collapse all tasks in tree",
-			Shortcut:    "z",
+			Shortcut:    "f",
 			Category:    CategoryTasks,
 			Views:       []ViewType{ViewProjectTree},
 			Aliases:     []string{"fold all", "close all"},
