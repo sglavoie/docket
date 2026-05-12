@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"image/color"
 
 	tea "charm.land/bubbletea/v2"
 
@@ -135,6 +136,7 @@ type TreeNode struct {
 	HasFilteredChildren bool   // True if any children pass current filters (used for collapse arrow)
 	MatchPositions      []int  // Match positions within title for search highlighting
 	TreePrefix          string // Pre-computed connector prefix (├── , └── , etc.)
+	TopGroupIndex       int    // Index of the root ancestor (0-based); children inherit from root
 }
 
 // ProjectTreeModel represents the project tree view.
@@ -272,6 +274,17 @@ func (m *ProjectTreeModel) activeCustomSectionFilter() string {
 // HasActiveSearch returns true if search mode is active or a search filter is applied.
 func (m *ProjectTreeModel) HasActiveSearch() bool {
 	return m.IsSearchMode() || m.SearchQuery() != ""
+}
+
+// ActiveMode implements ModeIndicator.
+func (m *ProjectTreeModel) ActiveMode() (string, color.Color) {
+	if m.multiSelectMode {
+		return fmt.Sprintf("MULTI-SELECT: %d", m.SelectedCount()), ColorWarning
+	}
+	if m.IsSearchMode() {
+		return "SEARCH", AccentSearch
+	}
+	return "", nil
 }
 
 // HasTextInput returns true when the project tree has an active text input.

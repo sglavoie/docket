@@ -204,6 +204,8 @@ type ShowQuickCaptureMsg struct {
 	Project           *models.Project
 	AllProjects       []*models.Project // All non-archived projects for cross-project capture
 	FromGlobalCapture bool              // True when opened via ;i (project already selected)
+	SuggestedTag      string            // Pre-fill with #tag when single active tag filter
+	SuggestedSection  string            // Pre-fill with /section when in a specific section view
 }
 
 // CloseQuickCaptureMsg closes quick capture.

@@ -291,11 +291,11 @@ func TestFoldGroup(t *testing.T) {
 	if pn.Key != "z" {
 		t.Errorf("FoldGroup: want key 'z', got %q", pn.Key)
 	}
-	if len(pn.Children) != 7 {
-		t.Errorf("FoldGroup: want 7 children, got %d", len(pn.Children))
+	if len(pn.Children) != 10 {
+		t.Errorf("FoldGroup: want 10 children, got %d", len(pn.Children))
 	}
 	keys := childBindingKeys(pn.Children)
-	for _, k := range []string{"a", "o", "c", "R", "M", "v", "p"} {
+	for _, k := range []string{"a", "o", "c", "R", "M", "v", "p", "1", "2", "3"} {
 		if !slices.Contains(keys, k) {
 			t.Errorf("FoldGroup: missing key %q", k)
 		}

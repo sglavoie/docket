@@ -264,7 +264,7 @@ func (m *TaskDetailModel) renderChecklistSection(width int) string {
 		lines = append(lines, fmt.Sprintf("  %s %s", marker, style.Render(item.Text)))
 	}
 
-	return renderCard("Checklist", strings.Join(lines, "\n"), width, DefaultCardConfig())
+	return renderCard(IconChecklist+" Checklist", strings.Join(lines, "\n"), width, DefaultCardConfig())
 }
 
 // renderDependenciesSection renders blocked-by, blocking, and related tasks.
@@ -392,7 +392,7 @@ func (m *TaskDetailModel) renderCommentsSection(width int) string {
 		}
 	}
 
-	return renderCard("Comments", strings.Join(lines, "\n"), width, DefaultCardConfig())
+	return renderCard(IconComment+" Comments", strings.Join(lines, "\n"), width, DefaultCardConfig())
 }
 
 // renderDecisionsSection renders all decisions with category and timestamps.
@@ -417,7 +417,7 @@ func (m *TaskDetailModel) renderDecisionsSection(width int) string {
 		}
 	}
 
-	return renderCard("Decisions", strings.Join(lines, "\n"), width, DefaultCardConfig())
+	return renderCard(IconDecision+" Decisions", strings.Join(lines, "\n"), width, DefaultCardConfig())
 }
 
 // renderAttachmentsSection renders all attachments.
@@ -432,11 +432,11 @@ func (m *TaskDetailModel) renderAttachmentsSection(width int) string {
 			link := Hyperlink(attachment.Filename, attachment.Filename)
 			lines = append(lines, MutedStyle.Render("🔗 ")+link)
 		} else {
-			lines = append(lines, MutedStyle.Render("📎 ")+attachment.Filename)
+			lines = append(lines, MutedStyle.Render(IconAttachment+" ")+attachment.Filename)
 		}
 	}
 
-	return renderCard("Attachments", strings.Join(lines, "\n"), width, DefaultCardConfig())
+	return renderCard(IconAttachment+" Attachments", strings.Join(lines, "\n"), width, DefaultCardConfig())
 }
 
 // renderActivitySection renders activity timestamps.

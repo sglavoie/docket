@@ -14,4 +14,9 @@ const (
 	IconScrollRight = "▶" // filled rightward: scroll-right hint
 	IconInProgress  = "▶" // filled rightward: kanban in-progress status icon
 	IconTodayMarker = "▼" // filled downward: today position marker in roadmap
+
+	IconComment    = "▪" // solid square: comment indicator
+	IconDecision   = "▫" // hollow square: decision indicator
+	IconAttachment = "⊕" // circle-plus: attachment indicator
+	IconChecklist  = "☑" // checkbox: checklist progress indicator
 )

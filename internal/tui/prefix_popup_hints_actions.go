@@ -25,6 +25,9 @@ var (
 		{Key: "M", Description: "collapse-all", Detail: "Collapse all nodes"},
 		{Key: "v", Description: "focus", Detail: "Focus on current subtree"},
 		{Key: "p", Description: "preview", Detail: "Toggle inline preview for cursor task"},
+		{Key: "1", Description: "depth-1", Detail: "Collapse to top level only"},
+		{Key: "2", Description: "depth-2", Detail: "Expand to second level"},
+		{Key: "3", Description: "depth-3", Detail: "Expand to third level"},
 	}
 
 	// NavigationPrefixHints contains hints for the "g" (go/navigation) prefix - basic version.
@@ -123,6 +126,9 @@ var (
 		{Key: "M", Description: "collapse-all", Detail: "Collapse all nodes"},
 		{Key: "v", Description: "focus", Detail: "Focus on current subtree"},
 		{Key: "p", Description: "preview", Detail: "Toggle inline preview for cursor task"},
+		{Key: "1", Description: "depth-1", Detail: "Collapse to top level only"},
+		{Key: "2", Description: "depth-2", Detail: "Expand to second level"},
+		{Key: "3", Description: "depth-3", Detail: "Expand to third level"},
 	}
 
 	// SectionFoldPrefixHints contains hints for the "z" (fold) prefix in section-based views.

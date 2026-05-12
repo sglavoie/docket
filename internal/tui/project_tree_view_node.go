@@ -214,7 +214,11 @@ func (m *ProjectTreeModel) renderNodeWithWidth(node *TreeNode, selected bool, in
 	isDimmed := task.Dimmed && !node.IsContextNode
 	isOverdue := task.IsOverdue()
 	isBlocked := task.Status == models.StatusBlocked || m.project.HasIncompleteDependencies(task)
-	return RenderSelectableRow(selected, task.Active, task.Pinned, m.cursorFlash, isOverdue, isBlocked, content, maxWidth, isDimmed)
+	row := RenderSelectableRow(selected, task.Active, task.Pinned, m.cursorFlash, isOverdue, isBlocked, content, maxWidth, isDimmed)
+	if !zebraEnabled && !selected && !isDimmed && !isOverdue && !isBlocked && node.TopGroupIndex%2 == 1 {
+		row = TreeGroupOddBgStyle.Width(maxWidth).Render(row)
+	}
+	return row
 }
 
 func (m *ProjectTreeModel) nodeOrgGroup(task *models.Task, node *TreeNode) string {

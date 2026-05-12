@@ -29,6 +29,9 @@ var (
 				Foreground(ColorSelectedFg).
 				Italic(true)
 
+	// ShadowStyle renders a dark background cell for overlay drop-shadows (1 char wide).
+	ShadowStyle = lipgloss.NewStyle().Background(lipgloss.Color("#1a1a1a"))
+
 	// BlockedRowStyle applies a subtle red background tint to blocked rows.
 	BlockedRowStyle = lipgloss.NewStyle().Background(lipgloss.Color("#2e1515"))
 

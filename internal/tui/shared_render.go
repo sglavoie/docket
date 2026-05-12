@@ -131,9 +131,9 @@ func renderCommentIndicator(task *models.Task) string {
 	}
 	unresolved := task.UnresolvedCommentCount()
 	if unresolved < len(task.Comments) {
-		return MutedStyle.Render(fmt.Sprintf("💬 %d/%d", unresolved, len(task.Comments)))
+		return MutedStyle.Render(fmt.Sprintf("%s %d/%d", IconComment, unresolved, len(task.Comments)))
 	}
-	return MutedStyle.Render(fmt.Sprintf("💬 %d", len(task.Comments)))
+	return MutedStyle.Render(fmt.Sprintf("%s %d", IconComment, len(task.Comments)))
 }
 
 // renderDecisionIndicator renders a compact decision count indicator.
@@ -144,9 +144,9 @@ func renderDecisionIndicator(task *models.Task) string {
 	}
 	unresolved := task.UnresolvedDecisionCount()
 	if unresolved < len(task.Decisions) {
-		return MutedStyle.Render(fmt.Sprintf("📋 %d/%d", unresolved, len(task.Decisions)))
+		return MutedStyle.Render(fmt.Sprintf("%s %d/%d", IconDecision, unresolved, len(task.Decisions)))
 	}
-	return MutedStyle.Render(fmt.Sprintf("📋 %d", len(task.Decisions)))
+	return MutedStyle.Render(fmt.Sprintf("%s %d", IconDecision, len(task.Decisions)))
 }
 
 // renderAttachmentIndicator renders a compact attachment count indicator.
@@ -154,7 +154,7 @@ func renderAttachmentIndicator(task *models.Task) string {
 	if !task.HasAttachments() {
 		return ""
 	}
-	return MutedStyle.Render(fmt.Sprintf("📎 %d", task.AttachmentCount()))
+	return MutedStyle.Render(fmt.Sprintf("%s %d", IconAttachment, task.AttachmentCount()))
 }
 
 // renderChecklistIndicator renders a compact checklist progress indicator.
@@ -168,7 +168,7 @@ func renderChecklistIndicator(task *models.Task) string {
 			completed++
 		}
 	}
-	return MutedStyle.Render(fmt.Sprintf("✅%d/%d", completed, len(task.Checklist)))
+	return MutedStyle.Render(fmt.Sprintf("%s%d/%d", IconChecklist, completed, len(task.Checklist)))
 }
 
 // renderProgressFraction renders an inline progress bar + fraction for parent tasks.

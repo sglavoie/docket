@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"time"
 
 	tea "charm.land/bubbletea/v2"
 
@@ -119,6 +120,10 @@ func (m *AppModel) handleTaskStatusPropertyMessages(msg tea.Msg) (bool, tea.Cmd)
 	case TaskStatusChangedMsg:
 		if msg.Task != nil && msg.Task.Status == models.StatusDone {
 			m.sessionStats.tasksCompleted++
+			m.updateStreak()
+			m.handleWithRefresh(false, false, "")
+			m.setSuccessStatus(fmt.Sprintf("Done! (%d today)", m.sessionStats.tasksCompleted))
+			return true, defaultStatusTimeout()
 		}
 		return true, m.handleWithRefresh(false, false, "")
 
@@ -184,4 +189,20 @@ func (m *AppModel) handleTaskMoveMessages(msg tea.Msg) (bool, tea.Cmd) {
 		return m.handleTaskMovedToProject(msg)
 	}
 	return false, nil
+}
+
+// updateStreak bumps or resets the consecutive-day completion streak on task done.
+func (m *AppModel) updateStreak() {
+	today := time.Now().Format("2006-01-02")
+	yesterday := time.Now().AddDate(0, 0, -1).Format("2006-01-02")
+	if m.config.StreakLastDate == today {
+		return
+	}
+	if m.config.StreakLastDate == yesterday {
+		m.config.StreakCount++
+	} else {
+		m.config.StreakCount = 1
+	}
+	m.config.StreakLastDate = today
+	saveConfigWarn(m.configManager, m.config, "streak update")
 }

@@ -23,7 +23,8 @@ type QuickCaptureModel struct {
 }
 
 // NewQuickCaptureModel creates a new quick capture model.
-func NewQuickCaptureModel(project *models.Project, allProjects []*models.Project, fromGlobalCapture bool) *QuickCaptureModel {
+// initialText pre-populates the input field (e.g., "#tag /section" from active filters).
+func NewQuickCaptureModel(project *models.Project, allProjects []*models.Project, fromGlobalCapture bool, initialText ...string) *QuickCaptureModel {
 	placeholder := "^type Task title !urgent #tag @due/due:fri ~recur >parent /section $status %project"
 	if fromGlobalCapture {
 		placeholder = "^type Task title !urgent #tag @due/due:fri ~recur >parent /section $status"
@@ -36,6 +37,11 @@ func NewQuickCaptureModel(project *models.Project, allProjects []*models.Project
 			fromGlobalCapture,
 		),
 		width: 80,
+	}
+	if len(initialText) > 0 && initialText[0] != "" {
+		m.input.SetValue(initialText[0])
+		m.input.CursorEnd()
+		m.updatePreview()
 	}
 	return m
 }
@@ -233,17 +239,17 @@ func (m *QuickCaptureModel) renderSyntaxGuide() string {
 	prefixStyle := MatchHighlightStyle
 	type row struct{ prefix, desc, examples string }
 	rows := []row{
-		{"^type", "Task type", "^epic  ^story  ^task  ^bug  ^idea"},
-		{"!N/!word", "Priority (1-5)", "!1  !urgent/!high → !1  !normal → !3  !low → !5"},
-		{"#tag", "Add tag", "#backend  #urgent  (multiple allowed)"},
+		{"^type", "Task type", "^epic  ^story  ^task  ^bug  ^idea  · or: type:bug"},
+		{"!N/!word", "Priority (1-5)", "!1  !urgent/!high → !1  !normal → !3  !low → !5  · or: pri:2"},
+		{"#tag", "Add tag", "#backend  #urgent  (multiple allowed)  · or: tag:backend"},
 		{"@date", "Due date", "@tomorrow  @friday  @+3d · or: due:tomorrow  due:fri  due:3d"},
-		{"~recur", "Recurrence", "~daily  ~weekly  ~2w  ~monthly"},
-		{">parent", "Parent task", ">42  >Login  (short ID or title prefix)"},
-		{"/section", "Section", "/next  /inbox  /waiting  /someday"},
-		{"$status", "Initial status", "$start  $blocked  $done  $review"},
+		{"~recur", "Recurrence", "~daily  ~weekly  ~2w  ~monthly  · or: recur:weekly"},
+		{">parent", "Parent task", ">42  >Login  (short ID or title prefix)  · or: parent:42"},
+		{"/section", "Section", "/next  /inbox  /waiting  /someday  · or: sec:next"},
+		{"$status", "Initial status", "$start  $blocked  $done  $review  · or: status:done"},
 	}
 	if !m.skipProjectSyntax {
-		rows = append(rows, row{"%project", "Target project", "%myproject  (slug or name)"})
+		rows = append(rows, row{"%project", "Target project", "%myproject  (slug or name)  · or: p:myproject"})
 	}
 	var b strings.Builder
 	b.WriteString(MutedStyle.Render("Quick Capture Syntax"))

@@ -148,6 +148,14 @@ func ApplyTheme(tc ThemeConfig) {
 		ZebraRowStyle = lipgloss.NewStyle().Background(ColorZebraBg)
 	}
 
+	// Derive tree group background: darken custom bg 4%, or use default ColorTreeGroupBg.
+	if effectiveBgColor != "" {
+		derivedGroupBg := darkenHex(effectiveBgColor, 0.04)
+		TreeGroupOddBgStyle = lipgloss.NewStyle().Background(lipgloss.Color(derivedGroupBg))
+	} else {
+		TreeGroupOddBgStyle = lipgloss.NewStyle().Background(ColorTreeGroupBg)
+	}
+
 	alwaysBg := ColorBackground
 	if effectiveBgColor != "" {
 		alwaysBg = lipgloss.Color(effectiveBgColor)

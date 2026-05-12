@@ -119,7 +119,7 @@ func renderSidebarAttachmentsCard(task *models.Task, width int) string {
 			link := Hyperlink(attachment.Filename, displayName)
 			lines = append(lines, MutedStyle.Render("🔗 ")+link)
 		} else {
-			lines = append(lines, MutedStyle.Render("📎 ")+displayName)
+			lines = append(lines, MutedStyle.Render(IconAttachment+" ")+displayName)
 		}
 	}
 

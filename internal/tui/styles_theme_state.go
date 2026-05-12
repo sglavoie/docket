@@ -16,3 +16,6 @@ var zebraEnabled bool
 
 // ZebraRowStyle is the background style applied to odd-indexed rows when zebra is enabled.
 var ZebraRowStyle = lipgloss.NewStyle().Background(ColorZebraBg)
+
+// TreeGroupOddBgStyle is applied to nodes in odd top-level groups for visual region separation.
+var TreeGroupOddBgStyle = lipgloss.NewStyle().Background(ColorTreeGroupBg)

@@ -294,6 +294,18 @@ func (m *OutlinerModel) buildKeyMap() *keymap.KeyMap {
 			task := cursorTask()
 			return m.handleFoldPrefix("p", task)
 		},
+		CollapseToDepth1: func() (tea.Model, tea.Cmd) {
+			m.collapseToDepth(0)
+			return m, nil
+		},
+		CollapseToDepth2: func() (tea.Model, tea.Cmd) {
+			m.collapseToDepth(1)
+			return m, nil
+		},
+		CollapseToDepth3: func() (tea.Model, tea.Cmd) {
+			m.collapseToDepth(2)
+			return m, nil
+		},
 	})...)
 
 	// --- StatusGroup: , prefix ---

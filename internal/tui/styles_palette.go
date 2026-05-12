@@ -46,6 +46,7 @@ var (
 	ColorRuleKeyword    = lipgloss.Color("#7dcfff")
 	ColorRuleOperator   = lipgloss.Color("#bb9af7")
 	ColorZebraBg        = lipgloss.Color("#16171f")
+	ColorTreeGroupBg    = lipgloss.Color("#141520") // subtle tint for odd top-level groups
 	ColorProgressEmpty  = lipgloss.Color("#565f89") // dark-theme default; set by rebuildPalette
 
 	// View accent colors — one per pipeline stage for spatial orientation.

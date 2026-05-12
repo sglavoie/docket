@@ -1,6 +1,9 @@
 package tui
 
 import (
+	"fmt"
+	"image/color"
+
 	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
 
@@ -289,6 +292,29 @@ func (m *FocusBoardModel) ShouldCaptureEsc() bool {
 // IsZenMode returns true when zen mode is active (deepest focus level — hides status bar).
 func (m *FocusBoardModel) IsZenMode() bool {
 	return m.focusMode == focusModeZen
+}
+
+// ActiveMode implements ModeIndicator.
+func (m *FocusBoardModel) ActiveMode() (string, color.Color) {
+	switch m.focusMode {
+	case focusModeZen:
+		return "ZEN", ColorPurple
+	case focusModeTunnel:
+		return "TUNNEL", ColorOrange
+	}
+	if m.multiSelectMode {
+		return fmt.Sprintf("MULTI-SELECT: %d", m.SelectedCount()), ColorWarning
+	}
+	if m.addMode {
+		return "ADD", ColorSuccess
+	}
+	if m.editMode {
+		return "EDIT", ColorWarning
+	}
+	if m.IsSearchMode() {
+		return "SEARCH", AccentSearch
+	}
+	return "", nil
 }
 
 // HasTextInput returns true when a text input is focused.

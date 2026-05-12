@@ -16,6 +16,12 @@ type FoldDeps struct {
 	FocusSubtree Action
 	// ToggleInlinePreview toggles the inline task preview.
 	ToggleInlinePreview Action
+	// CollapseToDepth1 collapses all nodes deeper than depth 1.
+	CollapseToDepth1 Action
+	// CollapseToDepth2 collapses all nodes deeper than depth 2.
+	CollapseToDepth2 Action
+	// CollapseToDepth3 collapses all nodes deeper than depth 3.
+	CollapseToDepth3 Action
 }
 
 // FoldGroup returns entries for the "z" prefix: fold / collapse operations.
@@ -29,6 +35,9 @@ func FoldGroup(deps FoldDeps) []Entry {
 		Bind("M", "Collapse all", cat, deps.CollapseAll),
 		Bind("v", "Focus on subtree", cat, deps.FocusSubtree),
 		Bind("p", "Toggle inline preview", cat, deps.ToggleInlinePreview),
+		Bind("1", "Collapse to depth 1", cat, deps.CollapseToDepth1),
+		Bind("2", "Collapse to depth 2", cat, deps.CollapseToDepth2),
+		Bind("3", "Collapse to depth 3", cat, deps.CollapseToDepth3),
 	}
 	return []Entry{Prefix("z", "Folds", cat, children)}
 }

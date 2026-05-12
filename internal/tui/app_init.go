@@ -33,6 +33,7 @@ func NewAppModel(cfg *config.Config, manager *config.Manager, opts ...AppOption)
 		appearanceDetector:       appearance.NewDetector(),
 		persister:                NewProjectService(),
 		viewStack:                []ViewType{ViewDashboard},
+		sessionStats:             sessionStats{sessionStart: time.Now()},
 		width:                    80,
 		height:                   24,
 		views:                    NewViewRegistry(),

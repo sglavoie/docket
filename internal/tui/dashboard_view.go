@@ -3,6 +3,7 @@ package tui
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	tea "charm.land/bubbletea/v2"
 
@@ -70,5 +71,19 @@ func (m *DashboardModel) projectCardTitle(visible []*models.Project) string {
 	if m.showArchived {
 		return fmt.Sprintf("Archived (%d)", len(visible))
 	}
-	return fmt.Sprintf("Projects (%d)", len(visible))
+	title := fmt.Sprintf("Projects (%d)", len(visible))
+	if m.config.StreakCount > 0 && isStreakActive(m.config.StreakLastDate) {
+		title += fmt.Sprintf("  ⚡ %dd", m.config.StreakCount)
+	}
+	return title
+}
+
+// isStreakActive returns true if the streak date is today or yesterday (still continuable).
+func isStreakActive(dateStr string) bool {
+	if dateStr == "" {
+		return false
+	}
+	today := time.Now().Format("2006-01-02")
+	yesterday := time.Now().AddDate(0, 0, -1).Format("2006-01-02")
+	return dateStr == today || dateStr == yesterday
 }

@@ -19,6 +19,18 @@ func parseQuickCapture(input string, project *models.Project, allProjects []*mod
 		priority: 3,                   // default priority
 	}
 
+	// Extract task type alias: type:X → same as ^X (case-insensitive)
+	typeAliasRe := regexp.MustCompile(`(?i)(?:^|\s)type:(epic|story|task|bug|idea|note)`)
+	if match := typeAliasRe.FindStringSubmatch(input); len(match) > 1 {
+		taskType, ok := models.ParseTaskTypeInsensitive(match[1])
+		if !ok {
+			return nil, fmt.Errorf("invalid task type: %s", match[1])
+		}
+		result.taskType = taskType
+		result.aliasesUsed = append(result.aliasesUsed, "type:")
+		input = typeAliasRe.ReplaceAllString(input, " ")
+	}
+
 	// Extract task type: ^epic, ^story, ^task, ^bug, ^idea, ^note (case-insensitive)
 	// Require ^ to be at start of string or preceded by whitespace
 	typeRe := regexp.MustCompile(`(?i)(?:^|\s)\^(epic|story|task|bug|idea|note)`)
@@ -31,12 +43,33 @@ func parseQuickCapture(input string, project *models.Project, allProjects []*mod
 		input = typeRe.ReplaceAllString(input, " ")
 	}
 
+	// Extract priority alias: pri:X or priority:X → same as !X (case-insensitive)
+	priAliasRe := regexp.MustCompile(`(?i)(?:^|\s)(?:pri|priority):(critical|urgent|high|normal|medium|lowest|low|cr|ur|hi|no|med|me|lo|c|u|h|n|m|l|[1-5])`)
+	if match := priAliasRe.FindStringSubmatch(input); len(match) > 1 {
+		result.priority = parsePriorityToken(match[1])
+		result.aliasesUsed = append(result.aliasesUsed, "pri:")
+		input = priAliasRe.ReplaceAllString(input, " ")
+	}
+
 	// Extract priority: !1–!5, full word aliases, or short prefix forms (!h, !med, !lo, etc.)
 	// Require ! to be at start of string or preceded by whitespace
 	priorityRe := regexp.MustCompile(`(?i)(?:^|\s)!(critical|urgent|high|normal|medium|lowest|low|cr|ur|hi|no|med|me|lo|c|u|h|n|m|l|[1-5])`)
 	if match := priorityRe.FindStringSubmatch(input); len(match) > 1 {
 		result.priority = parsePriorityToken(match[1])
 		input = priorityRe.ReplaceAllString(input, " ")
+	}
+
+	// Extract tag alias: tag:name → same as #name (case-insensitive, multiple allowed)
+	tagAliasRe := regexp.MustCompile(`(?i)(?:^|\s)tag:([\w][\w.-]*)`)
+	tagAliasMatches := tagAliasRe.FindAllStringSubmatch(input, -1)
+	if len(tagAliasMatches) > 0 {
+		for _, match := range tagAliasMatches {
+			if len(match) > 1 {
+				result.tags = append(result.tags, match[1])
+			}
+		}
+		result.aliasesUsed = append(result.aliasesUsed, "tag:")
+		input = tagAliasRe.ReplaceAllString(input, " ")
 	}
 
 	// Extract tags: #word
@@ -80,6 +113,18 @@ func parseQuickCapture(input string, project *models.Project, allProjects []*mod
 		input = dueColonRe.ReplaceAllString(input, " ")
 	}
 
+	// Extract recurrence alias: recur:pattern → same as ~pattern (case-insensitive)
+	recurAliasRe := regexp.MustCompile(`(?i)(?:^|\s)recur:(\S+)`)
+	if match := recurAliasRe.FindStringSubmatch(input); len(match) > 1 {
+		pattern := models.ParseRecurrence(match[1])
+		if pattern == nil {
+			return nil, fmt.Errorf("invalid recurrence: %s", match[1])
+		}
+		result.recurrence = pattern
+		result.aliasesUsed = append(result.aliasesUsed, "recur:")
+		input = recurAliasRe.ReplaceAllString(input, " ")
+	}
+
 	// Extract recurrence: ~pattern (e.g., ~daily, ~weekly, ~2w)
 	// Require ~ to be at start of string or preceded by whitespace
 	recurRe := regexp.MustCompile(`(?:^|\s)~(\S+)`)
@@ -90,6 +135,24 @@ func parseQuickCapture(input string, project *models.Project, allProjects []*mod
 		}
 		result.recurrence = pattern
 		input = recurRe.ReplaceAllString(input, " ")
+	}
+
+	// Extract project alias: p:slug or proj:slug → same as %slug (case-insensitive)
+	// Must be parsed before parent since parent is resolved against target project
+	if !skipProject {
+		projAliasRe := regexp.MustCompile(`(?i)(?:^|\s)(?:p|proj):(\S+)`)
+		if match := projAliasRe.FindStringSubmatch(input); len(match) > 1 {
+			ref := match[1]
+			targetProject := resolveProject(ref, allProjects)
+			if targetProject == nil {
+				return nil, fmt.Errorf("project not found: %s", ref)
+			}
+			result.targetProjectID = &targetProject.ID
+			result.targetProjectName = targetProject.Name
+			result.aliasesUsed = append(result.aliasesUsed, "p:")
+			project = targetProject
+			input = projAliasRe.ReplaceAllString(input, " ")
+		}
 	}
 
 	// Extract target project: %projectslug (for cross-project capture)
@@ -111,6 +174,22 @@ func parseQuickCapture(input string, project *models.Project, allProjects []*mod
 		}
 	}
 
+	// Extract parent alias: parent:ref → same as >ref (case-insensitive)
+	parentAliasRe := regexp.MustCompile(`(?i)(?:^|\s)parent:(\S+)`)
+	if match := parentAliasRe.FindStringSubmatch(input); len(match) > 1 {
+		ref := match[1]
+		parent := resolveParent(ref, project)
+		if parent == nil {
+			return nil, fmt.Errorf("parent not found: %s", ref)
+		}
+		if !result.taskType.CanBeChildOf(parent.Type) {
+			return nil, fmt.Errorf("%s cannot be child of %s", result.taskType.HeadingPrefix(), parent.Type.HeadingPrefix())
+		}
+		result.parentID = &parent.ID
+		result.aliasesUsed = append(result.aliasesUsed, "parent:")
+		input = parentAliasRe.ReplaceAllString(input, " ")
+	}
+
 	// Extract parent: >ref (short ID or title prefix)
 	// Require > to be at start of string or preceded by whitespace
 	parentRe := regexp.MustCompile(`(?:^|\s)>(\S+)`)
@@ -125,6 +204,25 @@ func parseQuickCapture(input string, project *models.Project, allProjects []*mod
 		}
 		result.parentID = &parent.ID
 		input = parentRe.ReplaceAllString(input, " ")
+	}
+
+	// Extract section alias: sec:name or section:name → same as /name (case-insensitive)
+	secAliasRe := regexp.MustCompile(`(?i)(?:^|\s)(?:sec|section):(\S+)`)
+	if match := secAliasRe.FindStringSubmatch(input); len(match) > 1 {
+		sectionName := match[1]
+		found := false
+		for _, s := range project.GetSections() {
+			if strings.EqualFold(s, sectionName) {
+				result.section = s
+				found = true
+				break
+			}
+		}
+		if !found {
+			return nil, fmt.Errorf("section not found: %s", sectionName)
+		}
+		result.aliasesUsed = append(result.aliasesUsed, "sec:")
+		input = secAliasRe.ReplaceAllString(input, " ")
 	}
 
 	// Extract section: /SectionName (case-insensitive matching)
@@ -145,6 +243,33 @@ func parseQuickCapture(input string, project *models.Project, allProjects []*mod
 			return nil, fmt.Errorf("section not found: %s", sectionName)
 		}
 		input = sectionRe.ReplaceAllString(input, " ")
+	}
+
+	// Extract status alias: status:X → same as $X (case-insensitive)
+	statusAliasRe := regexp.MustCompile(`(?i)(?:^|\s)status:(\w+)`)
+	if match := statusAliasRe.FindStringSubmatch(input); len(match) > 1 {
+		statusStr := strings.ToLower(match[1])
+		switch statusStr {
+		case "start":
+			result.status = models.StatusInProgress
+			result.activate = true
+		case "blocked":
+			result.status = models.StatusBlocked
+		case "done":
+			result.status = models.StatusDone
+		case "canceled":
+			result.status = models.StatusCanceled
+		case "review":
+			result.status = models.StatusReview
+		case "standby", "hold":
+			result.status = models.StatusStandby
+		case "maybe":
+			result.status = models.StatusMaybe
+		default:
+			return nil, fmt.Errorf("invalid status: status:%s (use start, blocked, done, canceled, review, standby, maybe)", match[1])
+		}
+		result.aliasesUsed = append(result.aliasesUsed, "status:")
+		input = statusAliasRe.ReplaceAllString(input, " ")
 	}
 
 	// Extract status: $start, $blocked, $done, $canceled
@@ -287,6 +412,16 @@ func parseQuickCaptureForPreview(input string, project *models.Project, allProje
 	}
 	var errMsg string
 
+	// Extract task type alias: type:X → same as ^X (case-insensitive)
+	typeAliasRe := regexp.MustCompile(`(?i)(?:^|\s)type:(epic|story|task|bug|idea|note)`)
+	if match := typeAliasRe.FindStringSubmatch(input); len(match) > 1 {
+		if taskType, ok := models.ParseTaskTypeInsensitive(match[1]); ok {
+			result.taskType = taskType
+			result.aliasesUsed = append(result.aliasesUsed, "type:")
+		}
+		input = typeAliasRe.ReplaceAllString(input, " ")
+	}
+
 	// Extract task type
 	// Require ^ to be at start of string or preceded by whitespace
 	typeRe := regexp.MustCompile(`(?i)(?:^|\s)\^(epic|story|task|bug|idea|note)`)
@@ -297,12 +432,33 @@ func parseQuickCaptureForPreview(input string, project *models.Project, allProje
 		input = typeRe.ReplaceAllString(input, " ")
 	}
 
+	// Extract priority alias: pri:X or priority:X → same as !X (case-insensitive)
+	priAliasRe := regexp.MustCompile(`(?i)(?:^|\s)(?:pri|priority):(critical|urgent|high|normal|medium|lowest|low|cr|ur|hi|no|med|me|lo|c|u|h|n|m|l|[1-5])`)
+	if match := priAliasRe.FindStringSubmatch(input); len(match) > 1 {
+		result.priority = parsePriorityToken(match[1])
+		result.aliasesUsed = append(result.aliasesUsed, "pri:")
+		input = priAliasRe.ReplaceAllString(input, " ")
+	}
+
 	// Extract priority: !1–!5, full word aliases, or short prefix forms (!h, !med, !lo, etc.)
 	// Require ! to be at start of string or preceded by whitespace
 	priorityRe := regexp.MustCompile(`(?i)(?:^|\s)!(critical|urgent|high|normal|medium|lowest|low|cr|ur|hi|no|med|me|lo|c|u|h|n|m|l|[1-5])`)
 	if match := priorityRe.FindStringSubmatch(input); len(match) > 1 {
 		result.priority = parsePriorityToken(match[1])
 		input = priorityRe.ReplaceAllString(input, " ")
+	}
+
+	// Extract tag alias: tag:name → same as #name (case-insensitive, multiple allowed)
+	tagAliasRe := regexp.MustCompile(`(?i)(?:^|\s)tag:([\w][\w.-]*)`)
+	tagAliasMatches := tagAliasRe.FindAllStringSubmatch(input, -1)
+	if len(tagAliasMatches) > 0 {
+		for _, match := range tagAliasMatches {
+			if len(match) > 1 {
+				result.tags = append(result.tags, match[1])
+			}
+		}
+		result.aliasesUsed = append(result.aliasesUsed, "tag:")
+		input = tagAliasRe.ReplaceAllString(input, " ")
 	}
 
 	// Extract tags
@@ -350,6 +506,19 @@ func parseQuickCaptureForPreview(input string, project *models.Project, allProje
 		input = dueColonRe.ReplaceAllString(input, " ")
 	}
 
+	// Extract recurrence alias: recur:pattern → same as ~pattern (case-insensitive)
+	recurAliasRe := regexp.MustCompile(`(?i)(?:^|\s)recur:(\S+)`)
+	if match := recurAliasRe.FindStringSubmatch(input); len(match) > 1 {
+		pattern := models.ParseRecurrence(match[1])
+		if pattern == nil && errMsg == "" {
+			errMsg = fmt.Sprintf("invalid recurrence: %s", match[1])
+		} else if pattern != nil {
+			result.recurrence = pattern
+			result.aliasesUsed = append(result.aliasesUsed, "recur:")
+		}
+		input = recurAliasRe.ReplaceAllString(input, " ")
+	}
+
 	// Extract recurrence
 	// Require ~ to be at start of string or preceded by whitespace
 	recurRe := regexp.MustCompile(`(?:^|\s)~(\S+)`)
@@ -361,6 +530,25 @@ func parseQuickCaptureForPreview(input string, project *models.Project, allProje
 			result.recurrence = pattern
 		}
 		input = recurRe.ReplaceAllString(input, " ")
+	}
+
+	// Extract project alias: p:slug or proj:slug → same as %slug (case-insensitive)
+	// Must be parsed before parent since parent is resolved against target project
+	if !skipProject {
+		projAliasRe := regexp.MustCompile(`(?i)(?:^|\s)(?:p|proj):(\S+)`)
+		if match := projAliasRe.FindStringSubmatch(input); len(match) > 1 {
+			ref := match[1]
+			targetProject := resolveProject(ref, allProjects)
+			if targetProject == nil && errMsg == "" {
+				errMsg = fmt.Sprintf("project not found: %s", ref)
+			} else if targetProject != nil {
+				result.targetProjectID = &targetProject.ID
+				result.targetProjectName = targetProject.Name
+				result.aliasesUsed = append(result.aliasesUsed, "p:")
+				project = targetProject
+			}
+			input = projAliasRe.ReplaceAllString(input, " ")
+		}
 	}
 
 	// Extract target project (for cross-project capture)
@@ -383,6 +571,24 @@ func parseQuickCaptureForPreview(input string, project *models.Project, allProje
 		}
 	}
 
+	// Extract parent alias: parent:ref → same as >ref (case-insensitive)
+	parentAliasRe := regexp.MustCompile(`(?i)(?:^|\s)parent:(\S+)`)
+	if match := parentAliasRe.FindStringSubmatch(input); len(match) > 1 {
+		ref := match[1]
+		parent := resolveParent(ref, project)
+		if parent == nil && errMsg == "" {
+			errMsg = fmt.Sprintf("parent not found: %s", ref)
+		} else if parent != nil {
+			if !result.taskType.CanBeChildOf(parent.Type) && errMsg == "" {
+				errMsg = fmt.Sprintf("%s cannot be child of %s", result.taskType.HeadingPrefix(), parent.Type.HeadingPrefix())
+			} else {
+				result.parentID = &parent.ID
+				result.aliasesUsed = append(result.aliasesUsed, "parent:")
+			}
+		}
+		input = parentAliasRe.ReplaceAllString(input, " ")
+	}
+
 	// Extract parent
 	// Require > to be at start of string or preceded by whitespace
 	parentRe := regexp.MustCompile(`(?:^|\s)>(\S+)`)
@@ -399,6 +605,27 @@ func parseQuickCaptureForPreview(input string, project *models.Project, allProje
 			}
 		}
 		input = parentRe.ReplaceAllString(input, " ")
+	}
+
+	// Extract section alias: sec:name or section:name → same as /name (case-insensitive)
+	secAliasRe := regexp.MustCompile(`(?i)(?:^|\s)(?:sec|section):(\S+)`)
+	if match := secAliasRe.FindStringSubmatch(input); len(match) > 1 {
+		sectionName := match[1]
+		found := false
+		for _, s := range project.GetSections() {
+			if strings.EqualFold(s, sectionName) {
+				result.section = s
+				found = true
+				break
+			}
+		}
+		if !found && errMsg == "" {
+			errMsg = fmt.Sprintf("section not found: %s", sectionName)
+		}
+		if found {
+			result.aliasesUsed = append(result.aliasesUsed, "sec:")
+		}
+		input = secAliasRe.ReplaceAllString(input, " ")
 	}
 
 	// Extract section
@@ -418,6 +645,41 @@ func parseQuickCaptureForPreview(input string, project *models.Project, allProje
 			errMsg = fmt.Sprintf("section not found: %s", sectionName)
 		}
 		input = sectionRe.ReplaceAllString(input, " ")
+	}
+
+	// Extract status alias: status:X → same as $X (case-insensitive)
+	statusAliasRe := regexp.MustCompile(`(?i)(?:^|\s)status:(\w+)`)
+	if match := statusAliasRe.FindStringSubmatch(input); len(match) > 1 {
+		statusStr := strings.ToLower(match[1])
+		switch statusStr {
+		case "start":
+			result.status = models.StatusInProgress
+			result.activate = true
+			result.aliasesUsed = append(result.aliasesUsed, "status:")
+		case "blocked":
+			result.status = models.StatusBlocked
+			result.aliasesUsed = append(result.aliasesUsed, "status:")
+		case "done":
+			result.status = models.StatusDone
+			result.aliasesUsed = append(result.aliasesUsed, "status:")
+		case "canceled":
+			result.status = models.StatusCanceled
+			result.aliasesUsed = append(result.aliasesUsed, "status:")
+		case "review":
+			result.status = models.StatusReview
+			result.aliasesUsed = append(result.aliasesUsed, "status:")
+		case "standby", "hold":
+			result.status = models.StatusStandby
+			result.aliasesUsed = append(result.aliasesUsed, "status:")
+		case "maybe":
+			result.status = models.StatusMaybe
+			result.aliasesUsed = append(result.aliasesUsed, "status:")
+		default:
+			if errMsg == "" {
+				errMsg = fmt.Sprintf("invalid status: status:%s", match[1])
+			}
+		}
+		input = statusAliasRe.ReplaceAllString(input, " ")
 	}
 
 	// Extract status

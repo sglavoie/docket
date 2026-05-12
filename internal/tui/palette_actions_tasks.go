@@ -120,7 +120,7 @@ func (m *CommandPaletteModel) getTaskActions(item PaletteItem) []PaletteAction {
 		},
 		PaletteAction{
 			Name:    "Copy reference",
-			Icon:    "📋",
+			Icon:    IconDecision,
 			KeyHint: "c",
 			Handler: func() tea.Msg {
 				return CopyTaskReferenceMsg{Task: task}

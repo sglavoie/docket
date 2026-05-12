@@ -43,6 +43,28 @@ func (m *OutlinerModel) collapseAllParents(tasks []*models.Task) {
 	}
 }
 
+// collapseToDepth expands nodes at depth < N and collapses nodes at depth >= N.
+func (m *OutlinerModel) collapseToDepth(depth int) {
+	m.ensureExpandedNodes()
+	var walk func(tasks []*models.Task)
+	walk = func(tasks []*models.Task) {
+		for _, task := range tasks {
+			if len(task.Children) > 0 {
+				m.expandedNodes[task.ID] = task.Level < depth
+				walk(task.Children)
+			}
+		}
+	}
+	if m.project != nil {
+		walk(m.project.GetRootTasks())
+	} else {
+		for _, p := range m.loadedProjects {
+			walk(p.GetRootTasks())
+		}
+	}
+	m.rebuildRows()
+}
+
 // sendTaskToSection moves the cursor task to the specified section.
 func (m *OutlinerModel) sendTaskToSection(task *models.Task, section string) (tea.Model, tea.Cmd) {
 	if task == nil {

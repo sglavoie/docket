@@ -233,6 +233,20 @@ func (m *ProjectTreeModel) renderTreeContent(width int, focused bool) string { /
 			}
 		}
 
+		// Count blank separator lines between top-level groups
+		numGroupSeps := 0
+		for i := 1; i < len(visible); i++ {
+			if visible[i].TopGroupIndex != visible[i-1].TopGroupIndex {
+				numGroupSeps++
+			}
+		}
+		if numGroupSeps > 0 {
+			availableHeight -= numGroupSeps
+			if availableHeight < 1 {
+				availableHeight = 1
+			}
+		}
+
 		cardContentWidth := width - CardBorderOverhead
 
 		// Reserve 1 char for scrollbar when content overflows
@@ -265,8 +279,13 @@ func (m *ProjectTreeModel) renderTreeContent(width int, focused bool) string { /
 
 		// Render visible tasks (with adjusted width for card content)
 		var lines []string
+		prevGroupIdx := -1
 		for i := startIdx; i < endIdx; i++ {
 			node := visible[i]
+			if prevGroupIdx >= 0 && node.TopGroupIndex != prevGroupIdx {
+				lines = append(lines, "")
+			}
+			prevGroupIdx = node.TopGroupIndex
 			inSelection := m.selectedTasks[node.Task.ID]
 			lines = append(lines, m.renderNodeWithWidth(node, i == m.cursor, inSelection, cardContentWidth))
 			// Append inline preview lines after the cursor task

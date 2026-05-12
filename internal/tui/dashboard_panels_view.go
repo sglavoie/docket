@@ -334,7 +334,7 @@ func (m *DashboardModel) renderGlobalAlerts(_ int) string {
 		lines = append(lines, DueSoonStyle.Render(fmt.Sprintf("📥 Inbox backlog: %s", strings.Join(inboxProjects, ", "))))
 	}
 	if totalCompletedThisWeek > 0 {
-		lines = append(lines, SuccessStyle.Render(fmt.Sprintf("✅ %d completed this week", totalCompletedThisWeek)))
+		lines = append(lines, SuccessStyle.Render(fmt.Sprintf("%s %d completed this week", IconChecklist, totalCompletedThisWeek)))
 	}
 
 	globalNotes, _ := storage.ListNotesFrom(storage.GlobalNotesDir(m.config.DataDir))

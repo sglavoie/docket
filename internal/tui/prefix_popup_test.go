@@ -164,6 +164,9 @@ func TestFoldPrefixHints_Contents(t *testing.T) {
 		"M": "collapse-all",
 		"v": "focus",
 		"p": "preview",
+		"1": "depth-1",
+		"2": "depth-2",
+		"3": "depth-3",
 	}
 
 	for _, hint := range FoldPrefixHints {

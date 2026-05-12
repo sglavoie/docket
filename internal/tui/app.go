@@ -254,6 +254,7 @@ type AllTasksCache struct {
 
 // sessionStats tracks task activity during a single TUI session for the end-of-session summary.
 type sessionStats struct {
+	sessionStart    time.Time
 	tasksCompleted  int
 	tasksCreated    int
 	tasksInProgress int

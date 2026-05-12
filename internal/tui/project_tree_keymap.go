@@ -73,8 +73,15 @@ func (m *ProjectTreeModel) buildKeyMap() *keymap.KeyMap {
 		QuickCapture: func() (tea.Model, tea.Cmd) {
 			cfg := m.getConfig()
 			project := m.getProject()
+			suggestedTag := m.singleActiveTag()
+			suggestedSection := m.singleActiveSection()
 			return m, func() tea.Msg {
-				return ShowQuickCaptureMsg{Project: project, AllProjects: cfg.Projects}
+				return ShowQuickCaptureMsg{
+					Project:          project,
+					AllProjects:      cfg.Projects,
+					SuggestedTag:     suggestedTag,
+					SuggestedSection: suggestedSection,
+				}
 			}
 		},
 		BulkCapture: func() (tea.Model, tea.Cmd) {
@@ -337,6 +344,27 @@ func (m *ProjectTreeModel) buildKeyMap() *keymap.KeyMap {
 		},
 		ToggleInlinePreview: func() (tea.Model, tea.Cmd) {
 			m.previewMode = !m.previewMode
+			return m, nil
+		},
+		CollapseToDepth1: func() (tea.Model, tea.Cmd) {
+			for _, node := range m.nodes {
+				node.Expanded = false
+			}
+			m.updateVisibility()
+			return m, nil
+		},
+		CollapseToDepth2: func() (tea.Model, tea.Cmd) {
+			for _, node := range m.nodes {
+				node.Expanded = node.Level < 1
+			}
+			m.updateVisibility()
+			return m, nil
+		},
+		CollapseToDepth3: func() (tea.Model, tea.Cmd) {
+			for _, node := range m.nodes {
+				node.Expanded = node.Level < 2
+			}
+			m.updateVisibility()
 			return m, nil
 		},
 	})...)

@@ -96,6 +96,21 @@ func (m *AppModel) renderStatusBar() string {
 		}
 	}
 
+	// Prepend mode badge when the current view is in a named mode.
+	if view := m.views.Get(currentView); view != nil {
+		if mi, ok := view.(ModeIndicator); ok {
+			if label, c := mi.ActiveMode(); label != "" {
+				badge := lipgloss.NewStyle().
+					Bold(true).
+					Background(c).
+					Foreground(ColorBackground).
+					Padding(0, 1).
+					Render(label)
+				left = badge + " " + left
+			}
+		}
+	}
+
 	right := HelpStyle.Render(help)
 	gap := max(m.width-lipgloss.Width(left)-lipgloss.Width(right), 1)
 	spacer := ThemeSpacer(gap)

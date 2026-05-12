@@ -101,6 +101,13 @@ type ActiveFilterProvider interface {
 	ActiveFilterCount() int
 }
 
+// ModeIndicator is implemented by views that can be in a named mode (search,
+// multi-select, zen, tunnel, etc.). The status bar shows a colored badge when
+// a mode is active. Returns ("", nil) when in normal mode.
+type ModeIndicator interface {
+	ActiveMode() (label string, c color.Color)
+}
+
 // AccentColorSetter is implemented by views that support contextual accent color
 // injection from the app shell. BaseView provides the default implementation.
 type AccentColorSetter interface {

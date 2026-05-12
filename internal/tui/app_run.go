@@ -4,9 +4,11 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/logging"
@@ -110,45 +112,54 @@ func printSessionSummary(stats sessionStats) {
 	if stats.tasksCompleted == 0 && stats.tasksCreated == 0 && stats.tasksInProgress == 0 && stats.tasksSnoozed == 0 {
 		return
 	}
+
+	greenStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("2"))
+	yellowStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("3"))
+
 	var parts []string
 	if stats.tasksCompleted > 0 {
-		suffix := "task"
-		if stats.tasksCompleted != 1 {
-			suffix = "tasks"
-		}
-		parts = append(parts, fmt.Sprintf("%d %s completed", stats.tasksCompleted, suffix))
+		parts = append(parts, greenStyle.Render(fmt.Sprintf("%d", stats.tasksCompleted))+" completed")
 	}
 	if stats.tasksCreated > 0 {
-		suffix := "task"
-		if stats.tasksCreated != 1 {
-			suffix = "tasks"
-		}
-		parts = append(parts, fmt.Sprintf("%d %s created", stats.tasksCreated, suffix))
-	}
-	if stats.tasksInProgress > 0 {
-		suffix := "task"
-		if stats.tasksInProgress != 1 {
-			suffix = "tasks"
-		}
-		parts = append(parts, fmt.Sprintf("%d %s in progress", stats.tasksInProgress, suffix))
+		parts = append(parts, fmt.Sprintf("%d created", stats.tasksCreated))
 	}
 	if stats.tasksSnoozed > 0 {
-		suffix := "task"
-		if stats.tasksSnoozed != 1 {
-			suffix = "tasks"
-		}
-		parts = append(parts, fmt.Sprintf("%d %s snoozed", stats.tasksSnoozed, suffix))
+		parts = append(parts, fmt.Sprintf("%d snoozed", stats.tasksSnoozed))
 	}
+
+	header := "Session"
+	if dur := sessionDurationStr(stats.sessionStart); dur != "" {
+		header = "Session (" + dur + ")"
+	}
+
+	var msg string
 	if len(parts) > 0 {
-		msg := "Session: "
-		for i, p := range parts {
-			if i > 0 {
-				msg += ", "
-			}
-			msg += p
-		}
-		fmt.Fprintln(os.Stderr, msg)
+		msg = header + ": " + strings.Join(parts, ", ")
+	} else {
+		msg = header + ":"
 	}
+	if stats.tasksInProgress > 0 {
+		msg += " · " + yellowStyle.Render(fmt.Sprintf("%d", stats.tasksInProgress)) + " still in progress"
+	}
+	fmt.Fprintln(os.Stderr, msg)
+}
+
+// sessionDurationStr formats elapsed time since start as "Xm" or "Xh Ym".
+// Returns empty string when elapsed is under one minute.
+func sessionDurationStr(start time.Time) string {
+	if start.IsZero() {
+		return ""
+	}
+	d := time.Since(start).Round(time.Minute)
+	h := int(d.Hours())
+	m := int(d.Minutes()) % 60
+	if h > 0 {
+		return fmt.Sprintf("%dh %dm", h, m)
+	}
+	if m > 0 {
+		return fmt.Sprintf("%dm", m)
+	}
+	return ""
 }
 
 // evaluateWorkflowAtStartup evaluates workflow rules for the current project if needed.

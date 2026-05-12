@@ -1,6 +1,8 @@
 package tui
 
 import (
+	"strings"
+
 	"charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/models"
@@ -11,7 +13,15 @@ func (m *AppModel) handleCaptureAndBulkMessages(msg tea.Msg) (bool, tea.Cmd) {
 	switch msg := msg.(type) {
 	case ShowQuickCaptureMsg:
 		if msg.Project != nil {
-			model := NewQuickCaptureModel(msg.Project, msg.AllProjects, msg.FromGlobalCapture)
+			var parts []string
+			if msg.SuggestedTag != "" {
+				parts = append(parts, "#"+msg.SuggestedTag)
+			}
+			if msg.SuggestedSection != "" {
+				parts = append(parts, "/"+msg.SuggestedSection)
+			}
+			initialText := strings.Join(parts, " ")
+			model := NewQuickCaptureModel(msg.Project, msg.AllProjects, msg.FromGlobalCapture, initialText)
 			overlayWidth := max(min(m.width*3/5, m.width-4), 60)
 			model.SetSize(overlayWidth, 0)
 			m.quickCaptureOverlay = model

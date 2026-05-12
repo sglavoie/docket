@@ -279,7 +279,7 @@ func (m *DashboardModel) projectRowStatusIndicator(p *models.Project, dueSoonDay
 		parts = append(parts, DueSoonStyle.Render(fmt.Sprintf("🚧%d", blockerCount)))
 	}
 	if completedCount > 0 {
-		parts = append(parts, MutedStyle.Render(fmt.Sprintf("✅%d", completedCount)))
+		parts = append(parts, MutedStyle.Render(fmt.Sprintf("%s%d", IconChecklist, completedCount)))
 	}
 	return strings.Join(parts, " ")
 }

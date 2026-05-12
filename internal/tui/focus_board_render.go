@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	"charm.land/lipgloss/v2"
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/fuzzy"
@@ -567,6 +568,23 @@ func (m *FocusBoardModel) computedTabNames() []string {
 			completedToday++
 		}
 	}
-	names[boardTabToday] = fmt.Sprintf("Today (%d/%d)", completedToday, plannedTotal)
+	if plannedTotal > 0 {
+		pct := float64(completedToday) / float64(plannedTotal) * 100
+		fullStyle := lipgloss.NewStyle().Foreground(ColorAccent)
+		if pct >= 80 {
+			fullStyle = lipgloss.NewStyle().Foreground(ColorSuccess)
+		}
+		filled := int(float64(8) * pct / 100)
+		var bar strings.Builder
+		for range filled {
+			bar.WriteString(fullStyle.Render("█"))
+		}
+		for range 8 - filled {
+			bar.WriteString(ProgressEmptyStyle.Render("░"))
+		}
+		names[boardTabToday] = fmt.Sprintf("Today (%d/%d) %s", completedToday, plannedTotal, bar.String())
+	} else {
+		names[boardTabToday] = fmt.Sprintf("Today (%d/%d)", completedToday, plannedTotal)
+	}
 	return names
 }

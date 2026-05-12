@@ -47,6 +47,7 @@ type quickCaptureResult struct {
 	activate          bool              // Whether to activate task (for $start)
 	targetProjectID   *string           // Target project ID for cross-project capture
 	targetProjectName string            // Target project name (for preview display)
+	aliasesUsed       []string          // Alias forms used, e.g. ["tag:", "pri:"]
 }
 
 // quickCaptureTriggers defines the trigger characters for quick capture autocomplete.
@@ -279,6 +280,11 @@ func (q *quickCaptureInput) renderPreview() string {
 	}
 
 	previewText := strings.Join(parts, " · ")
+
+	// Append alias hint if any alias forms were used
+	if len(q.preview.aliasesUsed) > 0 {
+		previewText += " " + MutedStyle.Render("(via: "+strings.Join(q.preview.aliasesUsed, ", ")+")")
+	}
 
 	// Wrap text if width is set and preview exceeds it
 	if q.width > 0 {

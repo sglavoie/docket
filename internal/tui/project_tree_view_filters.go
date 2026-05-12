@@ -454,3 +454,25 @@ func (m *ProjectTreeModel) getSingleFilteredSectionColor() string {
 	}
 	return m.project.GetSectionColor(sectionName)
 }
+
+// singleActiveTag returns the single active tag filter name, or "" if zero or multiple tags are filtered.
+func (m *ProjectTreeModel) singleActiveTag() string {
+	if len(m.filter.Tags) != 1 {
+		return ""
+	}
+	for tag := range m.filter.Tags {
+		return tag
+	}
+	return ""
+}
+
+// singleActiveSection returns the section to suggest for quick capture based on active filters or view mode.
+// Prefers an explicit single-section filter; falls back to the current view mode's section.
+func (m *ProjectTreeModel) singleActiveSection() string {
+	if len(m.filter.Sections) == 1 {
+		for name := range m.filter.Sections {
+			return name
+		}
+	}
+	return viewModeToSection(m.viewMode)
+}
