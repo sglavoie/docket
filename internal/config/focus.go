@@ -112,6 +112,20 @@ func (c *Config) RemoveTaskRefs(taskIDs map[string]bool) int {
 	return removed
 }
 
+// GetFocusBoardDefaultMode returns the default focus mode for the Focus Board.
+// Returns "list" if not set.
+func (c *Config) GetFocusBoardDefaultMode() string {
+	if c.FocusBoardDefaultMode == "" {
+		return "list"
+	}
+	return c.FocusBoardDefaultMode
+}
+
+// SetFocusBoardDefaultMode sets the default focus mode for the Focus Board.
+func (c *Config) SetFocusBoardDefaultMode(mode string) {
+	c.FocusBoardDefaultMode = mode
+}
+
 // maxFocusDismissedIDs is the maximum number of dismissed suggestion IDs to persist.
 // When exceeded, the oldest entries (at the end of the slice) are dropped.
 const maxFocusDismissedIDs = 200

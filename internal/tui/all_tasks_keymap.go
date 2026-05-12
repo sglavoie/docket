@@ -313,28 +313,36 @@ func (m *AllTasksViewModel) buildKeyMap() *keymap.KeyMap {
 		}),
 	)
 
-	// Tab navigation
+	// Tab navigation — cycle through all tabs (including overflow), wrapping.
+	// Entering the overflow zone opens the picker automatically.
+	cycleTab := func(delta int) {
+		total := len(m.allTabEntries)
+		if total <= 1 {
+			return
+		}
+		m.activeTabIdx = ((m.activeTabIdx+delta)%total + total) % total
+		m.tabs.Active = min(m.activeTabIdx, len(m.tabEntries)-1)
+		if m.activeTabIdx >= overflowTabCap-1 && len(m.allTabEntries) > overflowTabCap {
+			// Clamp cursor to the entry we just landed on.
+			m.overflowPickerCursor = m.activeTabIdx - (overflowTabCap - 1)
+			m.overflowPickerOpen = true
+		} else {
+			m.overflowPickerOpen = false
+		}
+		if m.activeTabIncludesCompleted() != m.loadedWithCompleted {
+			m.loadAllTasks()
+		} else {
+			m.applyFiltersAndGroup()
+		}
+		m.clampCursor()
+	}
 	entries = append(entries,
 		keymap.Bind("shift+left", "Previous tab", "Navigation", func() (tea.Model, tea.Cmd) {
-			handleTabCycleKey("shift+left", &m.tabs, func() {
-				if m.activeTabIncludesCompleted() != m.loadedWithCompleted {
-					m.loadAllTasks()
-				} else {
-					m.applyFiltersAndGroup()
-				}
-				m.clampCursor()
-			})
+			cycleTab(-1)
 			return m, nil
 		}, keymap.AsHidden()),
 		keymap.Bind("shift+right", "Next tab", "Navigation", func() (tea.Model, tea.Cmd) {
-			handleTabCycleKey("shift+right", &m.tabs, func() {
-				if m.activeTabIncludesCompleted() != m.loadedWithCompleted {
-					m.loadAllTasks()
-				} else {
-					m.applyFiltersAndGroup()
-				}
-				m.clampCursor()
-			})
+			cycleTab(1)
 			return m, nil
 		}, keymap.AsHidden()),
 	)
@@ -371,26 +379,22 @@ func (m *AllTasksViewModel) buildKeyMap() *keymap.KeyMap {
 			return m, func() tea.Msg { return ShowFilterBuilderMsg{} }
 		}),
 		keymap.Bind("E", "Edit current smart list tab", "Smart Lists", func() (tea.Model, tea.Cmd) {
-			if m.tabs.Active >= 0 && m.tabs.Active < len(m.tabEntries) {
-				entry := m.tabEntries[m.tabs.Active]
-				if !entry.IsBuiltIn {
-					sf := m.config.GetSavedFilter(entry.SavedFilterID)
-					if sf != nil && sf.Mode == "criteria" {
-						filter := *sf
-						return m, func() tea.Msg {
-							return ShowFilterEditorMsg{Filter: &filter}
-						}
+			entry := m.activeTabEntry()
+			if entry != nil && !entry.IsBuiltIn && !entry.IsOverflow {
+				sf := m.config.GetSavedFilter(entry.SavedFilterID)
+				if sf != nil && sf.Mode == "criteria" {
+					filter := *sf
+					return m, func() tea.Msg {
+						return ShowFilterEditorMsg{Filter: &filter}
 					}
 				}
 			}
 			return m, nil
 		}),
 		keymap.Bind("X", "Delete current smart list tab", "Smart Lists", func() (tea.Model, tea.Cmd) {
-			if m.tabs.Active >= 0 && m.tabs.Active < len(m.tabEntries) {
-				entry := m.tabEntries[m.tabs.Active]
-				if !entry.IsBuiltIn {
-					m.confirm.Show("delete-smart-list", fmt.Sprintf("Delete smart list %q?", entry.Name))
-				}
+			entry := m.activeTabEntry()
+			if entry != nil && !entry.IsBuiltIn && !entry.IsOverflow {
+				m.confirm.Show("delete-smart-list", fmt.Sprintf("Delete smart list %q?", entry.Name))
 			}
 			return m, nil
 		}),

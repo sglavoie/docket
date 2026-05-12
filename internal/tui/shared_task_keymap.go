@@ -114,10 +114,10 @@ func buildStandardTaskActionEntries(deps TaskKeymapDeps) []keymap.Entry {
 		return taskOpsClearDueDate(v)
 	}
 	dueDateEntries := keymap.DueDateGroup(keymap.DueDateDeps{
-		DueToday:    setDueDate(0),
-		DueTomorrow: setDueDate(1),
-		DueInAWeek:  setDueDate(7),
-		DueInAMonth: setDueDate(30),
+		DueToday:     setDueDate(0),
+		DueTomorrow:  setDueDate(1),
+		DueInAWeek:   setDueDate(7),
+		DueInAMonth:  setDueDate(30),
 		ClearDueDate: clearDueDate,
 		OpenDatePicker: func() (tea.Model, tea.Cmd) {
 			task, project := v.getTaskRef()
@@ -338,7 +338,7 @@ func buildStandardTaskActionEntries(deps TaskKeymapDeps) []keymap.Entry {
 	}
 	entries = append(entries, taskPrefixEntries...)
 
-	// --- Stage group: "." prefix ---
+	// --- Stage group: "alt+." prefix ---
 	stageChange := func(stage string) keymap.Action {
 		if deps.StageChange != nil {
 			return deps.StageChange(stage)

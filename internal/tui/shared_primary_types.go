@@ -33,7 +33,7 @@ type prefixableView interface {
 	setUndoTaskIDs(ids []string)                                   // sets targeted task IDs for undo
 	saveAndRefreshBulk(prevStates map[string]*models.Task) tea.Cmd // bulk: persist + refresh
 	setStatusMessage(msg string)                                   // sets the status bar text
-	setMutationFlash(bg color.Color)                              // triggers mutation flash with semantic color
+	setMutationFlash(bg color.Color)                               // triggers mutation flash with semantic color
 }
 
 // deleteConfirmView is the interface that views must implement to use the
@@ -47,5 +47,5 @@ type deleteConfirmView interface {
 
 // taskSpecificPrefixKeys lists prefix keys that require the cursor to be on a task.
 var taskSpecificPrefixKeys = map[string]bool{
-	",": true, "!": true, "d": true, "s": true, "t": true, "b": true, "m": true, ".": true, "c": true,
+	",": true, "!": true, "d": true, "s": true, "t": true, "b": true, "m": true, "alt+.": true, "c": true,
 }

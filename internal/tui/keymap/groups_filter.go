@@ -72,7 +72,6 @@ func FilterGroup(deps FilterDeps) []Entry {
 		fdEntry = &e
 	}
 
-
 	// --- FS: score threshold filter ---
 	fsScoreChildren := []Entry{
 		Bind("1", "Score ≥ 30", cat, deps.ScoreKey("1")),

@@ -70,6 +70,8 @@ type Config struct {
 	RecentActivityShowAll          *bool                        `json:"recent_activity_show_all,omitempty"`
 	WeeklyStaleProjectDays         *int                         `json:"weekly_stale_project_days,omitempty"`
 	WeeklyStaleTaskDays            *int                         `json:"weekly_stale_task_days,omitempty"`
+	StaleTaskDays                  *int                         `json:"stale_task_days,omitempty"`
+	PriorityEscalationDays         *int                         `json:"priority_escalation_days,omitempty"`
 	WeeklyInboxThreshold           *int                         `json:"weekly_inbox_threshold,omitempty"`
 	WeeklyBlockedThreshold         *int                         `json:"weekly_blocked_threshold,omitempty"`
 	WeeklyInProgressThreshold      *int                         `json:"weekly_in_progress_threshold,omitempty"`
@@ -103,6 +105,7 @@ type Config struct {
 	FocusQueue                     []FocusQueueItem             `json:"focus_queue,omitempty"`
 	DailyPlan                      []DailyPlanItem              `json:"daily_plan,omitempty"`
 	FocusDismissedIDs              []string                     `json:"focus_dismissed_ids,omitempty"`
+	FocusBoardDefaultMode          string                       `json:"focus_board_default_mode,omitempty"`
 	AlertDismissals                []AlertDismissal             `json:"alert_dismissals,omitempty"`
 	RecentTaskVisits               []RecentTaskVisit            `json:"recent_task_visits,omitempty"`
 	OutlinerCollapsedSections      map[string]bool              `json:"outliner_collapsed_sections,omitempty"`

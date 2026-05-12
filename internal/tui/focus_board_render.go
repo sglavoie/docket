@@ -3,6 +3,7 @@ package tui
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	tea "charm.land/bubbletea/v2"
 
@@ -11,9 +12,13 @@ import (
 )
 
 func (m *FocusBoardModel) View() tea.View { //nolint:gocyclo
+	if m.focusMode == focusModeZen {
+		return m.renderZenMode()
+	}
+
 	var b strings.Builder
 
-	if m.tunnelMode {
+	if m.focusMode == focusModeTunnel {
 		// Tunnel mode: show current task as header, hide tab bar
 		title := "Focus Mode"
 		if row := m.getRowAtCursor(); row != nil && row.Task != nil {
@@ -110,7 +115,7 @@ func (m *FocusBoardModel) View() tea.View { //nolint:gocyclo
 
 	// Calculate available height (tunnel mode has no tab bar: save 2 lines)
 	tabOverhead := 3 // tab bar(2) + status(1)
-	if m.tunnelMode {
+	if m.focusMode == focusModeTunnel {
 		tabOverhead = 1 // status(1) only
 	}
 	contentHeight := fullscreenContentHeight(m.height, tabOverhead)
@@ -178,11 +183,13 @@ func (m *FocusBoardModel) View() tea.View { //nolint:gocyclo
 		}
 
 		rowNum := ""
+		isFirstPlanItem := false
 		if m.tabs.Active == boardTabToday && row.TreePrefix == "" {
 			plannedIdx++
 			rowNum = fmt.Sprintf("%d.", plannedIdx)
+			isFirstPlanItem = plannedIdx == 1
 		}
-		line := m.renderRow(row, isSelected, maxTitleLen, rowNum)
+		line := m.renderRow(row, isSelected, maxTitleLen, rowNum, isFirstPlanItem)
 		lines = append(lines, line)
 	}
 
@@ -210,7 +217,11 @@ func (m *FocusBoardModel) View() tea.View { //nolint:gocyclo
 		}
 	}
 
-	b.WriteString(strings.Join(applyScroll(lines, m.cursor, contentHeight), "\n"))
+	contentStr := strings.Join(applyScroll(lines, m.cursor, contentHeight), "\n")
+	if m.focusMode == focusModeList {
+		contentStr = TabContentBgStyle.Width(m.width).Render(contentStr)
+	}
+	b.WriteString(contentStr)
 	b.WriteString("\n\n")
 
 	b.WriteString(renderStatusMessages(m.statusMessage, m.err))
@@ -286,7 +297,7 @@ func (m *FocusBoardModel) View() tea.View { //nolint:gocyclo
 }
 
 // renderRow renders a single board row line.
-func (m *FocusBoardModel) renderRow(row boardRow, isSelected bool, maxTitleLen int, rowNum string) string {
+func (m *FocusBoardModel) renderRow(row boardRow, isSelected bool, maxTitleLen int, rowNum string, isFirstPlanItem bool) string {
 	var b strings.Builder
 
 	task := row.Task
@@ -310,7 +321,12 @@ func (m *FocusBoardModel) renderRow(row boardRow, isSelected bool, maxTitleLen i
 	// Row number prefix for Today tab, or plain indent.
 	prefix := ""
 	if rowNum != "" {
-		prefix = fmt.Sprintf("%3s ", rowNum)
+		if isFirstPlanItem {
+			// ▶ in accent color + rowNum left-padded to match normal 4-char width
+			prefix = ActiveStyle.Render("▶") + fmt.Sprintf("%-2s ", rowNum)
+		} else {
+			prefix = fmt.Sprintf("%3s ", rowNum)
+		}
 	}
 
 	projectBadge := MutedStyle.Render(fmt.Sprintf("[%s]", projectName))
@@ -340,9 +356,22 @@ func (m *FocusBoardModel) renderRow(row boardRow, isSelected bool, maxTitleLen i
 	if task.EstimatedDays > 0 {
 		estimateStr = MutedStyle.Render("(" + formatEstimateDays(task.EstimatedDays) + ")")
 	}
+	staleBadge := ""
+	if threshold := m.config.GetStaleTaskDays(); threshold > 0 {
+		effectiveUpdate := task.UpdatedAt
+		if effectiveUpdate.IsZero() {
+			effectiveUpdate = task.CreatedAt
+		}
+		if !effectiveUpdate.IsZero() {
+			days := int(time.Since(effectiveUpdate).Hours() / 24)
+			if days >= threshold {
+				staleBadge = MutedStyle.Render("stale")
+			}
+		}
+	}
 	structureGroup := scoreBadge
 	lifecycleGroup := dueStr
-	contentGroup := renderTruncatedTags(task.Tags, 2, 8)
+	contentGroup := JoinGroupParts(renderTruncatedTags(task.Tags, 2, 8), staleBadge)
 	trailing := JoinIndicatorGroups(structureGroup, lifecycleGroup, contentGroup, estimateStr)
 	if trailing != "" {
 		content += " " + trailing
@@ -351,11 +380,21 @@ func (m *FocusBoardModel) renderRow(row boardRow, isSelected bool, maxTitleLen i
 		content += " " + MutedStyle.Render("(carried)")
 	}
 
-	dimmed := task.Dimmed || (isClosed && m.tabs.Active == boardTabToday) || (m.tunnelMode && !isSelected)
+	dimmed := task.Dimmed || (isClosed && m.tabs.Active == boardTabToday) || (m.focusMode == focusModeTunnel && !isSelected)
 	isOverdue := task.IsOverdue()
 	isBlocked := task.Status == models.StatusBlocked || row.Project.HasIncompleteDependencies(task)
 	line := RenderSelectableRow(isSelected, task.Active, task.Pinned, m.cursorFlash, isOverdue, isBlocked, content, m.width-2, dimmed)
 	b.WriteString(line)
+
+	// Escalation hint: P3+ tasks due within the escalation window on the Today tab
+	if m.tabs.Active == boardTabToday && task.Priority >= 3 && task.DueDate != nil {
+		if escalationDays := m.config.GetPriorityEscalationDays(); escalationDays > 0 {
+			if task.DueDate.Before(time.Now().AddDate(0, 0, escalationDays+1)) {
+				b.WriteString("\n")
+				b.WriteString("      " + InfoStatusStyle.Render("↑ Due soon — consider P2"))
+			}
+		}
+	}
 
 	return b.String()
 }
@@ -408,6 +447,103 @@ func (m *FocusBoardModel) highlightTitle(truncatedTitle, fullTitle string) strin
 	return HighlightText(truncatedTitle, validPositions, NormalStyle)
 }
 
+// renderZenMode renders the deepest focus mode: a single centered card with title,
+// description, and checklist. The status bar is suppressed by app_view.go (IsZenMode check).
+func (m *FocusBoardModel) renderZenMode() tea.View {
+	var b strings.Builder
+
+	// Header (no tab bar)
+	headerTitle := "Zen Focus"
+	if row := m.getRowAtCursor(); row != nil && row.Task != nil {
+		headerTitle = "Currently: " + row.Task.Title
+	}
+	b.WriteString(renderFullscreenTitle(headerTitle, "", m.AccentColor()))
+	b.WriteString("\n")
+
+	row := m.getRowAtCursor()
+	if row == nil || row.Task == nil {
+		b.WriteString(MutedStyle.Render("  No task selected"))
+		return tea.NewView(b.String())
+	}
+
+	task := row.Task
+
+	// Build card body
+	var body strings.Builder
+	body.WriteString(renderPriorityBadge(task.Priority))
+	body.WriteString("  ")
+	body.WriteString(GetStatusBadge(string(task.Status), task.Status.Icon()))
+	body.WriteString("  ")
+	body.WriteString(GetTypeStyle(string(task.Type)).Render(task.Type.Icon()))
+	body.WriteString("\n")
+
+	if task.Description != "" {
+		body.WriteString("\n")
+		for _, line := range strings.Split(strings.TrimSpace(task.Description), "\n") {
+			body.WriteString(MutedStyle.Render(strings.TrimSpace(line)))
+			body.WriteString("\n")
+		}
+	}
+
+	if len(task.Checklist) > 0 {
+		body.WriteString("\n")
+		for _, item := range task.Checklist {
+			check := "☐"
+			if item.Done {
+				check = "☑"
+			}
+			body.WriteString(MutedStyle.Render(fmt.Sprintf("  %s %s", check, item.Text)))
+			body.WriteString("\n")
+		}
+	}
+
+	cardWidth := min(m.width-8, 80)
+	if cardWidth < 20 {
+		cardWidth = 20
+	}
+	cardCfg := CardConfig{
+		Style:       SidebarCardStyle,
+		TitleStyle:  TitleStyle,
+		AccentColor: m.AccentColor(),
+	}
+	card := renderCard(task.Title, strings.TrimRight(body.String(), "\n"), cardWidth, cardCfg)
+
+	// Center vertically
+	cardLines := strings.Count(card, "\n") + 1
+	availHeight := fullscreenContentHeight(m.height, 2) // 2: header + footer hint
+	topPad := (availHeight - cardLines) / 2
+	if topPad < 1 {
+		topPad = 1
+	}
+
+	// Center horizontally
+	leftPad := (m.width - cardWidth) / 2
+	if leftPad < 0 {
+		leftPad = 0
+	}
+	leftStr := strings.Repeat(" ", leftPad)
+
+	for i := 0; i < topPad; i++ {
+		b.WriteString("\n")
+	}
+	for _, line := range strings.Split(card, "\n") {
+		b.WriteString(leftStr + line + "\n")
+	}
+
+	// Footer hint
+	remaining := 0
+	for _, r := range m.filtered {
+		if r.Task != nil && !r.Task.Status.IsComplete() {
+			remaining++
+		}
+	}
+	hint := HelpStyle.Render(fmt.Sprintf("  x done · X dismiss · E edit · enter open · j/k nav · Esc exit  (%d remaining)", remaining))
+	b.WriteString("\n")
+	b.WriteString(hint)
+
+	return tea.NewView(b.String())
+}
+
 // computedTabNames returns the tab name slice with a dynamic "Today (done/total)" label.
 func (m *FocusBoardModel) computedTabNames() []string {
 	names := make([]string, len(focusBoardTabNames))
@@ -426,4 +562,3 @@ func (m *FocusBoardModel) computedTabNames() []string {
 	names[boardTabToday] = fmt.Sprintf("Today (%d/%d)", completedToday, plannedTotal)
 	return names
 }
-

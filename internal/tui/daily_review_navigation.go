@@ -3,15 +3,15 @@ package tui
 import tea "charm.land/bubbletea/v2"
 
 // dailyReviewTabNames are the tab labels for the daily review view.
-var dailyReviewTabNames = []string{"Due", "Active", "In Review", "Stale", "Done"}
+var dailyReviewTabNames = []string{"Due", "Done", "Active", "In Review", "Stale"}
 
 // dailyReviewTabSections maps each tab index to the sections it contains.
 var dailyReviewTabSections = [][]DailyReviewSection{
 	{SectionOverdue, SectionDueToday, SectionDueSoon, SectionDueLater, SectionFuture}, // Due
-	{SectionInProgress, SectionBlocked},                                               // Active
-	{SectionInReview, SectionOnStandby},                                               // In Review
-	{SectionOld},                                                                      // Stale
-	{SectionCompleted},                                                                // Done
+	{SectionCompleted},                  // Done
+	{SectionInProgress, SectionBlocked}, // Active
+	{SectionInReview, SectionOnStandby}, // In Review
+	{SectionOld},                        // Stale
 }
 
 // calculateNavigation builds navigation indices including section headers.

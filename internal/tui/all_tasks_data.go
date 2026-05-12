@@ -61,6 +61,7 @@ func (m *AllTasksViewModel) loadAllTasks() {
 		m.initialTabSet = true
 		if m.hasActiveTasks() {
 			if idx := m.findBuiltInTabEntryIndex(builtInTabActive); idx >= 0 {
+				m.activeTabIdx = idx
 				m.tabs.Active = idx
 				m.applyFiltersAndGroup()
 			}
@@ -71,11 +72,8 @@ func (m *AllTasksViewModel) loadAllTasks() {
 // activeTabIncludesCompleted returns true if the current tab is a smart list
 // with IncludeCompleted enabled.
 func (m *AllTasksViewModel) activeTabIncludesCompleted() bool {
-	if m.tabs.Active < 0 || m.tabs.Active >= len(m.tabEntries) {
-		return false
-	}
-	entry := m.tabEntries[m.tabs.Active]
-	if entry.IsBuiltIn {
+	entry := m.activeTabEntry()
+	if entry == nil || entry.IsBuiltIn || entry.IsOverflow {
 		return false
 	}
 	sf := m.config.GetSavedFilter(entry.SavedFilterID)
@@ -227,8 +225,8 @@ func (m *AllTasksViewModel) findNavigableIndex(taskID string) int {
 	}
 	return -1
 }
-func (m *AllTasksViewModel) setErr(err error)                  { m.err = err }
-func (m *AllTasksViewModel) setStatus(msg string)              { m.statusMessage = msg }
+func (m *AllTasksViewModel) setErr(err error)     { m.err = err }
+func (m *AllTasksViewModel) setStatus(msg string) { m.statusMessage = msg }
 
 // prefixDispatchView implementation.
 func (m *AllTasksViewModel) selectMsg(task *models.Task, project *models.Project) tea.Msg {

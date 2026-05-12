@@ -146,8 +146,8 @@ func TestDailyReview_WithTasks_Render(t *testing.T) {
 	task.Status = models.StatusInProgress
 	m.inProgress = []CrossProjectTask{{Task: task, Project: project}}
 
-	// Switch to Active tab (index 1) which shows in_progress and blocked
-	m.tabs.Active = 1
+	// Switch to Active tab (index 2) which shows in_progress and blocked
+	m.tabs.Active = 2
 	m.calculateNavigation()
 
 	output := m.View().Content

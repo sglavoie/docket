@@ -11,7 +11,10 @@ func (m *AppModel) handleCaptureAndBulkMessages(msg tea.Msg) (bool, tea.Cmd) {
 	switch msg := msg.(type) {
 	case ShowQuickCaptureMsg:
 		if msg.Project != nil {
-			m.showView(ViewQuickCapture, NewQuickCaptureModel(msg.Project, msg.AllProjects, msg.FromGlobalCapture))
+			model := NewQuickCaptureModel(msg.Project, msg.AllProjects, msg.FromGlobalCapture)
+			overlayWidth := max(min(m.width*3/5, m.width-4), 60)
+			model.SetSize(overlayWidth, 0)
+			m.quickCaptureOverlay = model
 		}
 		return true, nil
 

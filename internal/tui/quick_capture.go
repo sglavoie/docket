@@ -168,6 +168,54 @@ func (m *QuickCaptureModel) View() tea.View {
 	return tea.NewView(out.String())
 }
 
+// renderOverlayContent returns the core input+preview+help content for use inside
+// the floating overlay box. It skips the fullscreen title and status bar footer.
+func (m *QuickCaptureModel) renderOverlayContent() string {
+	var b strings.Builder
+	applyThemedTextarea(&m.input)
+	b.WriteString(m.input.View())
+	b.WriteString("\n")
+
+	if ac := m.renderAutocomplete(); ac != "" {
+		b.WriteString(ac)
+	}
+
+	b.WriteString("\n")
+
+	if m.err != nil {
+		b.WriteString(ValidationErrorStyle.Render(m.err.Error()))
+		b.WriteString("\n\n")
+	} else if preview := m.renderPreview(); preview != "" {
+		b.WriteString(preview)
+		b.WriteString("\n\n")
+	}
+
+	if m.helpExpanded {
+		b.WriteString(m.renderSyntaxGuide())
+	} else {
+		helpLine := "^type · !N/word · #tag · @date/due: · ~recur · >parent · /section · $status · %project"
+		if m.skipProjectSyntax {
+			helpLine = "^type · !N/word · #tag · @date/due: · ~recur · >parent · /section · $status"
+		}
+		b.WriteString(MutedStyle.Render(helpLine))
+	}
+
+	if m.confirmDiscard {
+		b.WriteString("\n")
+		b.WriteString(ValidationErrorStyle.Render("Discard input? (y/n)"))
+	}
+
+	return b.String()
+}
+
+// overlayHelpText returns the footer help text shown in the overlay.
+func (m *QuickCaptureModel) overlayHelpText() string {
+	if m.isAutocompleteActive() {
+		return "Tab: accept · ↑↓: navigate · Esc: dismiss"
+	}
+	return "Enter: create · Ctrl+O: open · Ctrl+D: edit desc · ?: help · Esc: cancel"
+}
+
 // HasTextInput returns true because quick capture uses a textarea input.
 func (m *QuickCaptureModel) HasTextInput() bool {
 	return true

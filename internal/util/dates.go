@@ -44,11 +44,22 @@ var (
 	relativeMonthsRe = regexp.MustCompile(`^\+(\d+)m$`)
 	nextWeekdayRe    = regexp.MustCompile(`^next\s+(sun|sunday|mon|monday|tue|tuesday|wed|wednesday|thu|thursday|fri|friday|sat|saturday)$`)
 	thisWeekdayRe    = regexp.MustCompile(`^this\s+(sun|sunday|mon|monday|tue|tuesday|wed|wednesday|thu|thursday|fri|friday|sat|saturday)$`)
-	inDurationRe     = regexp.MustCompile(`^in\s+(\d+)\s+(day|days|week|weeks|month|months)$`)
+	inDurationRe     = regexp.MustCompile(`^in\s+(\d+)\s+(day|days|week|weeks|month|months|year|years)$`)
 	time12hRe        = regexp.MustCompile(`^(\d{1,2})(?::(\d{2}))?(am|pm)$`)
 	time24hRe        = regexp.MustCompile(`^(\d{2}):(\d{2})$`)
 	flexShorthandRe  = regexp.MustCompile(`^(\d+)(d|w|m)$`)
+	monthDayRe       = regexp.MustCompile(`^(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\s+(\d{1,2})$`)
+	dayMonthRe       = regexp.MustCompile(`^(\d{1,2})\s+(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)$`)
+	nextYearRe       = regexp.MustCompile(`^next\s+year$`)
 )
+
+// months maps abbreviated month names to time.Month values.
+var months = map[string]time.Month{
+	"jan": time.January, "feb": time.February, "mar": time.March,
+	"apr": time.April, "may": time.May, "jun": time.June,
+	"jul": time.July, "aug": time.August, "sep": time.September,
+	"oct": time.October, "nov": time.November, "dec": time.December,
+}
 
 // weekdays maps weekday name variations to time.Weekday values.
 var weekdays = map[string]time.Weekday{
@@ -81,8 +92,10 @@ func isoWeekdayNum(wd time.Weekday) int {
 //   - mon, tue, wed, thu, fri, sat, sun (next occurrence)
 //   - this <weekday> (this ISO-week occurrence; error if already past)
 //   - next <weekday> (skips this week)
-//   - next week, next month
-//   - in N days/weeks/months
+//   - next week, next month, next year
+//   - in N days/weeks/months/years
+//   - dec 15, jan 3 (month day; next year if already past)
+//   - 15 dec, 3 jan (day month; same logic)
 //
 // Uses Sunday as the configured week-end day for eow. Use
 // ParseRelativeDateWithConfig to pass a user-configured week-end day.
@@ -182,12 +195,15 @@ func ParseRelativeDateWithConfig(input, weekEndDay string) (time.Time, error) {
 		return today.AddDate(0, 0, daysUntil), nil
 	}
 
-	// "next week" / "next month"
+	// "next week" / "next month" / "next year"
 	if input == "next week" {
 		return today.AddDate(0, 0, 7), nil
 	}
 	if input == "next month" {
 		return today.AddDate(0, 1, 0), nil
+	}
+	if nextYearRe.MatchString(input) {
+		return today.AddDate(1, 0, 0), nil
 	}
 
 	// "next <weekday>" - always at least 7 days away (skips this week)
@@ -201,7 +217,7 @@ func ParseRelativeDateWithConfig(input, weekEndDay string) (time.Time, error) {
 		return today.AddDate(0, 0, daysUntil), nil
 	}
 
-	// "in N days/weeks/months"
+	// "in N days/weeks/months/years"
 	if match := inDurationRe.FindStringSubmatch(input); len(match) == 3 {
 		n, _ := strconv.Atoi(match[1])
 		switch match[2] {
@@ -211,10 +227,42 @@ func ParseRelativeDateWithConfig(input, weekEndDay string) (time.Time, error) {
 			return today.AddDate(0, 0, n*7), nil
 		case "month", "months":
 			return today.AddDate(0, n, 0), nil
+		case "year", "years":
+			return today.AddDate(n, 0, 0), nil
 		}
 	}
 
+	// "dec 15" or "15 dec" — month name + day number
+	if match := monthDayRe.FindStringSubmatch(input); len(match) == 3 {
+		return parseMonthDay(match[1], match[2], today)
+	}
+	if match := dayMonthRe.FindStringSubmatch(input); len(match) == 3 {
+		return parseMonthDay(match[2], match[1], today)
+	}
+
 	return time.Time{}, fmt.Errorf("unrecognized date format: %s", input)
+}
+
+// parseMonthDay builds a date from a 3-letter month abbreviation and a day string.
+// If the resulting date is in the past, the next occurrence (next year) is returned.
+// Returns an error if the day is out of range for the given month.
+func parseMonthDay(monthStr, dayStr string, today time.Time) (time.Time, error) {
+	month, ok := months[monthStr]
+	if !ok {
+		return time.Time{}, fmt.Errorf("unrecognized month: %s", monthStr)
+	}
+	day, _ := strconv.Atoi(dayStr)
+	year := today.Year()
+	candidate := time.Date(year, month, day, 0, 0, 0, 0, today.Location())
+	// Validate: time.Date normalises out-of-range days (e.g. Feb 30 → Mar 2).
+	// If the resulting month/day differs, the input day is invalid for this month.
+	if candidate.Month() != month || candidate.Day() != day {
+		return time.Time{}, fmt.Errorf("invalid date: %s %d", monthStr, day)
+	}
+	if !candidate.After(today) {
+		candidate = time.Date(year+1, month, day, 0, 0, 0, 0, today.Location())
+	}
+	return candidate, nil
 }
 
 // ParseFlexibleDate is like ParseRelativeDate but also accepts bare shorthand

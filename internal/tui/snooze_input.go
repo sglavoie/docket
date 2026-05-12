@@ -162,6 +162,8 @@ func (m *SnoozeInputModel) View() tea.View {
 			"  +1w            1 week from now\n" +
 			"  +1m            1 month from now\n" +
 			"  mon, tue, ...  Next occurrence of weekday\n" +
+			"  dec 15         Dec 15 (next year if past)\n" +
+			"  next year      1 year from today\n" +
 			"  none           Clear snooze\n\n" +
 			BoldStyle.Render("Controls") + "\n" +
 			"  Enter          Save\n" +

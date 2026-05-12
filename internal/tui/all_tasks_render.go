@@ -28,7 +28,7 @@ func (m *AllTasksViewModel) View() tea.View {
 
 	// Tab bar + filter badge: use ColorAccent for saved-filter tabs
 	tabAccent := m.AccentColor()
-	if m.tabs.Active >= 0 && m.tabs.Active < len(m.tabEntries) && !m.tabEntries[m.tabs.Active].IsBuiltIn {
+	if entry := m.activeTabEntry(); entry != nil && !entry.IsBuiltIn && !entry.IsOverflow {
 		tabAccent = ColorAccent
 	}
 	chrome, chromeLines := renderFullscreenChrome(
@@ -47,6 +47,12 @@ func (m *AllTasksViewModel) View() tea.View {
 
 	b.WriteString("\n")
 	chromeLines++ // trailing blank
+
+	// Overflow picker overlay: render instead of task list when open.
+	if m.overflowPickerOpen {
+		b.WriteString(m.renderOverflowPicker())
+		return tea.NewView(b.String())
+	}
 
 	// Calculate available height for task list
 	contentHeight := fullscreenContentHeight(m.Height(), chromeLines)
@@ -135,7 +141,8 @@ func (m *AllTasksViewModel) View() tea.View {
 
 	scrolledLines := applyPersistentScroll(lines, cursorLineIdx, contentHeight, &m.scrollOffset)
 	scrollbar := RenderScrollbar(len(lines), contentHeight, m.scrollOffset)
-	b.WriteString(AttachScrollbar(strings.Join(scrolledLines, "\n"), scrollbar))
+	tintedContent := TabContentBgStyle.Width(m.Width()).Render(strings.Join(scrolledLines, "\n"))
+	b.WriteString(AttachScrollbar(tintedContent, scrollbar))
 
 	// Footer
 	footerLeft := "j/k nav · shift+←/→ tabs · Ctrl+G group · ,s/d/b/x status · 1-5 sort · v multi"
@@ -207,6 +214,31 @@ func (m *AllTasksViewModel) renderTaskLine(item CrossProjectTask, isSelected boo
 		RowIndex:      rowIndex,
 		Layout:        layout,
 	})
+}
+
+// renderOverflowPicker renders the overflow tab picker when there are more tabs
+// than the visible cap. Shown in place of the task list.
+func (m *AllTasksViewModel) renderOverflowPicker() string {
+	overflowEntries := m.allTabEntries[overflowTabCap-1:]
+	var b strings.Builder
+
+	b.WriteString(MutedStyle.Render("  Select tab  ·  ↑/↓ navigate  ·  Enter select  ·  Esc cancel"))
+	b.WriteString("\n\n")
+
+	for i, e := range overflowEntries {
+		name := e.Name
+		if !e.IsBuiltIn {
+			name = "● " + name
+		}
+		if i == m.overflowPickerCursor {
+			b.WriteString(SelectedStyle.Render("  " + name))
+		} else {
+			b.WriteString("  " + name)
+		}
+		b.WriteString("\n")
+	}
+
+	return b.String()
 }
 
 // renderActiveFilterIndicator returns a compact indicator of all active filters.

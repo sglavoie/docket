@@ -104,6 +104,10 @@ type WeeklyReviewModel struct {
 	mutationCounts   map[string]int
 	showingSummary   bool
 
+	// Priority drift detection
+	priorityDriftWarning string
+	priorityDriftPct     int
+
 	// Review completion state
 	reviewCompleted bool
 	completedAt     time.Time

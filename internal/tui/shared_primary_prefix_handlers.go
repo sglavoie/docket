@@ -44,10 +44,10 @@ func handlePriorityPrefix(key string, v prefixableView) (tea.Cmd, bool) {
 	}
 	v.setMutationFlash(priorityMutationFlashBg(priority))
 	v.refreshView()
-	return tea.Batch(result.Cmd, mutationFlashTimeout()), true
+	return tea.Batch(result.Cmd, mutationFlashTimeout(), recordRepeatPriority(priority)), true
 }
 
-// handleStagePrefix handles the . prefix key for setting workflow stage.
+// handleStagePrefix handles the alt+. prefix key for setting workflow stage.
 // Returns (cmd, handled). When handled is false the key was not recognized.
 func handleStagePrefix(key string, v prefixableView, stages []string) (tea.Cmd, bool) {
 	stage := StageForPrefixKey(key, stages)
@@ -97,7 +97,7 @@ func handleStagePrefix(key string, v prefixableView, stages []string) (tea.Cmd, 
 		v.setStatusMessage(result.StatusMessage)
 	}
 	v.refreshView()
-	return result.Cmd, true
+	return tea.Batch(result.Cmd, recordRepeatStage(*stage)), true
 }
 
 // handleDueDatePrefix handles the d prefix key for setting due dates.
@@ -120,12 +120,15 @@ func handleDueDatePrefix(key string, v prefixableView) (tea.Cmd, bool) {
 			return nil, true
 		}
 		var result TaskOpResult
+		var recordCmd tea.Cmd
 		if isClear {
 			v.setUndoContext("Set Due Date", fmt.Sprintf("cleared: %s", task.Title))
 			result = applyClearDueDate(v.workflowPersistFn(), project, task.ID)
+			recordCmd = recordRepeatClearDueDate()
 		} else {
 			v.setUndoContext("Set Due Date", fmt.Sprintf("%s: %s", dueDateLabel(days), task.Title))
 			result = applyQuickDueDate(v.workflowPersistFn(), project, task.ID, days)
+			recordCmd = recordRepeatQuickDueDate(days)
 		}
 		if result.Err != nil {
 			return func() tea.Msg { return ErrorMsg{Err: result.Err} }, true
@@ -134,7 +137,7 @@ func handleDueDatePrefix(key string, v prefixableView) (tea.Cmd, bool) {
 			v.setStatusMessage(result.StatusMessage)
 		}
 		v.refreshView()
-		return result.Cmd, true
+		return tea.Batch(result.Cmd, recordCmd), true
 	}
 
 	if key == "d" {

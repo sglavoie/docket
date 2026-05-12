@@ -52,6 +52,7 @@ type TabEntry struct {
 	IsBuiltIn     bool
 	BuiltInID     int
 	SavedFilterID string
+	IsOverflow    bool // placeholder "More…" entry — not a real filter
 }
 
 // AllTasksViewModel displays all tasks across all projects.
@@ -80,8 +81,12 @@ type AllTasksViewModel struct {
 	collapsedGroups map[string]bool
 
 	// Tabs
-	tabs       TabState
-	tabEntries []TabEntry
+	tabs                 TabState
+	tabEntries           []TabEntry // visible entries (capped at overflowTabCap)
+	allTabEntries        []TabEntry // full list including overflow
+	activeTabIdx         int        // real index into allTabEntries
+	overflowPickerOpen   bool
+	overflowPickerCursor int
 
 	// Filter
 	FilterMixin

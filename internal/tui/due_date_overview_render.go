@@ -177,7 +177,7 @@ func (m *DueDateOverviewModel) renderGroup(tasks []CrossProjectTask, currentInde
 // renderTaskLine renders a single task line.
 func (m *DueDateOverviewModel) renderTaskLine(dt CrossProjectTask, isSelected bool, maxTitleLen int, layout *ColumnLayout, rowIndex int) string {
 	dateStr := m.formatDueDate(dt.Task)
-	return RenderCrossProjectTaskLine(dt.Task, dt.Project, nil, isSelected, m.Width(), maxTitleLen, CrossProjectTaskLineOpts{
+	return RenderCrossProjectTaskLine(dt.Task, dt.Project, m.config, isSelected, m.Width(), maxTitleLen, CrossProjectTaskLineOpts{
 		Queued:        m.queueIDs[dt.Task.ID],
 		DailyPlanned:  m.dailyPlanIDs[dt.Task.ID],
 		MaxProjectLen: 15,

@@ -52,7 +52,7 @@ func (c *inboxCore) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 			return c.model, nil
 		}
 		return c.model, c.setSnooze(snoozeDate)
-	case ".":
+	case "alt+.":
 		stage := StageForPrefixKey(key, c.config.Stages)
 		if stage != nil {
 			return c.model, c.setStage(*stage)

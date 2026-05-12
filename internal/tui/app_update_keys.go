@@ -197,6 +197,14 @@ func (m *AppModel) handleGlobalKeyPress(msg tea.KeyPressMsg) (bool, tea.Cmd) { /
 			}
 			return true, nil
 		}
+	case ".":
+		if !m.hasActiveTextInput() && m.lastRepeatableAction != nil {
+			if pv, ok := m.currentViewAsModel().(prefixableView); ok {
+				if pv.getCursorTask() != nil {
+					return true, m.lastRepeatableAction.apply(pv)
+				}
+			}
+		}
 	}
 
 	return false, nil
@@ -223,6 +231,13 @@ func (m *AppModel) handleActiveKeyOverlay(msg tea.KeyPressMsg) (bool, tea.Cmd) {
 		dismiss, cmd := dispatchOverlayKey(m.quickNoteOverlay, msg)
 		if dismiss {
 			m.quickNoteOverlay = nil
+		}
+		return true, cmd
+	}
+	if m.quickCaptureOverlay != nil {
+		newModel, cmd := m.quickCaptureOverlay.Update(msg)
+		if qc, ok := newModel.(*QuickCaptureModel); ok {
+			m.quickCaptureOverlay = qc
 		}
 		return true, cmd
 	}

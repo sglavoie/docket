@@ -126,6 +126,10 @@ func (m *SettingsModel) validateReviewSettings() error {
 		return err
 	}
 
+	if _, err := validateIntInRange(m.staleTaskDaysInput.Value(), "stale badge days", 0, math.MaxInt); err != nil {
+		return err
+	}
+
 	return nil
 }
 

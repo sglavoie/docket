@@ -314,15 +314,15 @@ the task quickly.`,
 		{
 			Title:    "Stages",
 			Category: "TUI",
-			Content: `# Setting Stages with . Prefix
+			Content: `# Setting Stages with alt+. Prefix
 
-Press . (dot) on a selected task to open the stage overlay.
+Press alt+. on a selected task to open the stage overlay.
 Keys 1-9 map to your configured stages. Press 0 to clear
 the stage.
 
-  .1  Set first stage (e.g., Brainstorm)
-  .2  Set second stage (e.g., Design)
-  .0  Clear stage
+  alt+. 1  Set first stage (e.g., Brainstorm)
+  alt+. 2  Set second stage (e.g., Design)
+  alt+. 0  Clear stage
 
 # Filtering by Stage
 
@@ -425,6 +425,30 @@ depth is configurable via the undo_history_depth setting.
 Each undo restores the tasks.md file to its state before the
 last change. The command reports what was undone and how many
 more undo steps remain.`,
+		},
+		{
+			Title:    "Repeat Last Action",
+			Category: "TUI",
+			Content: `# Repeat Last Action (.)
+
+Press . to repeat the last prefix-chord action on the current task.
+
+Example: set priority 2 with !2, move to the next task with j,
+press . to set P2 again — no need to re-enter the prefix.
+
+# Supported Actions
+
+Works with prefix-chord mutations applied to a single task:
+
+  !1-5      Set priority
+  d1-9      Set quick due date (today, tomorrow, +3d, +1w, +2w, +1m)
+  d0        Clear due date
+  alt+.1-9  Set workflow stage
+
+# Behavior
+
+The stored action is replaced each time a new prefix-chord
+mutation completes. It persists for the duration of the session.`,
 		},
 	}
 }

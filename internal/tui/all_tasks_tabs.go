@@ -24,6 +24,9 @@ const (
 	builtInTabByScore = 5
 )
 
+// overflowTabCap is the maximum number of visible tabs (including the "More…" entry).
+const overflowTabCap = 7
+
 // buildTabEntries constructs the ordered list of tab entries from config.
 // If AllTasksTabOrder is set, it determines ordering; otherwise built-in tabs
 // come first followed by saved filters with ShowAsTab=true in definition order.
@@ -71,33 +74,58 @@ func (m *AllTasksViewModel) buildTabEntries() {
 		}
 	}
 
-	m.tabEntries = entries
+	// Store the full list; then cap visible entries at overflowTabCap.
+	m.allTabEntries = entries
+	if len(entries) > overflowTabCap {
+		visible := make([]TabEntry, overflowTabCap)
+		copy(visible, entries[:overflowTabCap-1])
+		visible[overflowTabCap-1] = TabEntry{Name: "More…", IsOverflow: true}
+		m.tabEntries = visible
+	} else {
+		m.tabEntries = entries
+	}
 
-	names := make([]string, len(entries))
-	tabColors := make([]color.Color, len(entries))
-	for i, e := range entries {
-		if !e.IsBuiltIn {
+	names := make([]string, len(m.tabEntries))
+	tabColors := make([]color.Color, len(m.tabEntries))
+	for i, e := range m.tabEntries {
+		switch {
+		case e.IsOverflow:
+			names[i] = "More…"
+		case !e.IsBuiltIn:
 			names[i] = "● " + e.Name
 			tabColors[i] = ColorAccent
-		} else {
+		default:
 			names[i] = e.Name
 		}
 	}
 	m.tabs.Names = names
 	m.tabs.TabColors = tabColors
 
-	// Clamp active tab in case entries shrank
-	if m.tabs.Active >= len(entries) {
-		m.tabs.Active = 0
+	// Clamp activeTabIdx and sync tabs.Active.
+	if m.activeTabIdx >= len(m.allTabEntries) {
+		m.activeTabIdx = 0
 	}
+	m.tabs.Active = min(m.activeTabIdx, len(m.tabEntries)-1)
+}
+
+// activeTabEntry returns the TabEntry for the currently active tab,
+// using activeTabIdx into allTabEntries.
+func (m *AllTasksViewModel) activeTabEntry() *TabEntry {
+	if m.activeTabIdx >= 0 && m.activeTabIdx < len(m.allTabEntries) {
+		return &m.allTabEntries[m.activeTabIdx]
+	}
+	if m.tabs.Active >= 0 && m.tabs.Active < len(m.tabEntries) {
+		return &m.tabEntries[m.tabs.Active]
+	}
+	return nil
 }
 
 // applyTabFilter filters tasks based on the active tab entry.
 func (m *AllTasksViewModel) applyTabFilter(tasks []CrossProjectTask) []CrossProjectTask {
-	if m.tabs.Active < 0 || m.tabs.Active >= len(m.tabEntries) {
+	entry := m.activeTabEntry()
+	if entry == nil || entry.IsOverflow {
 		return tasks
 	}
-	entry := m.tabEntries[m.tabs.Active]
 
 	if entry.IsBuiltIn {
 		return m.applyBuiltInTabFilter(tasks, entry.BuiltInID)
@@ -197,14 +225,14 @@ func (m *AllTasksViewModel) applySavedFilterToAllTasks(tasks []CrossProjectTask,
 }
 
 // ensureTabOrderInitialized populates AllTasksTabOrder from the current
-// tabEntries if it hasn't been set yet, so that reordering has something
+// allTabEntries if it hasn't been set yet, so that reordering has something
 // to permute.
 func (m *AllTasksViewModel) ensureTabOrderInitialized() {
 	if len(m.config.AllTasksTabOrder) > 0 {
 		return
 	}
-	order := make([]string, len(m.tabEntries))
-	for i, e := range m.tabEntries {
+	order := make([]string, len(m.allTabEntries))
+	for i, e := range m.allTabEntries {
 		if e.IsBuiltIn {
 			order[i] = e.Name
 		} else {
@@ -216,13 +244,14 @@ func (m *AllTasksViewModel) ensureTabOrderInitialized() {
 
 // moveTabLeft swaps the active tab with the one to its left.
 func (m *AllTasksViewModel) moveTabLeft() {
-	if m.tabs.Active <= 0 {
+	entry := m.activeTabEntry()
+	if entry == nil || entry.IsOverflow || m.activeTabIdx <= 0 {
 		return
 	}
 	m.ensureTabOrderInitialized()
-	i := m.tabs.Active
+	i := m.activeTabIdx
 	m.config.AllTasksTabOrder[i-1], m.config.AllTasksTabOrder[i] = m.config.AllTasksTabOrder[i], m.config.AllTasksTabOrder[i-1]
-	m.tabs.Active--
+	m.activeTabIdx--
 	m.buildTabEntries()
 	if err := m.configManager.Save(m.config); err != nil {
 		logging.Warn("failed to save config: %v", err)
@@ -232,13 +261,14 @@ func (m *AllTasksViewModel) moveTabLeft() {
 
 // moveTabRight swaps the active tab with the one to its right.
 func (m *AllTasksViewModel) moveTabRight() {
-	if m.tabs.Active >= len(m.tabEntries)-1 {
+	entry := m.activeTabEntry()
+	if entry == nil || entry.IsOverflow || m.activeTabIdx >= len(m.allTabEntries)-1 {
 		return
 	}
 	m.ensureTabOrderInitialized()
-	i := m.tabs.Active
+	i := m.activeTabIdx
 	m.config.AllTasksTabOrder[i], m.config.AllTasksTabOrder[i+1] = m.config.AllTasksTabOrder[i+1], m.config.AllTasksTabOrder[i]
-	m.tabs.Active++
+	m.activeTabIdx++
 	m.buildTabEntries()
 	if err := m.configManager.Save(m.config); err != nil {
 		logging.Warn("failed to save config: %v", err)
@@ -248,11 +278,8 @@ func (m *AllTasksViewModel) moveTabRight() {
 
 // handleDeleteSavedFilterTab deletes the saved filter on the currently active tab.
 func (m *AllTasksViewModel) handleDeleteSavedFilterTab() (tea.Model, tea.Cmd) {
-	if m.tabs.Active < 0 || m.tabs.Active >= len(m.tabEntries) {
-		return m, nil
-	}
-	entry := m.tabEntries[m.tabs.Active]
-	if entry.IsBuiltIn || entry.SavedFilterID == "" {
+	entry := m.activeTabEntry()
+	if entry == nil || entry.IsBuiltIn || entry.IsOverflow || entry.SavedFilterID == "" {
 		return m, nil
 	}
 	id := entry.SavedFilterID

@@ -67,6 +67,8 @@ func (m *SettingsModel) focusedInput() *textinput.Model { //nolint:gocyclo
 			return &m.oldDaysInput
 		case 3:
 			return &m.completedHoursInput
+		case 4:
+			return &m.staleTaskDaysInput
 		}
 	case tabBehavior:
 		switch local {

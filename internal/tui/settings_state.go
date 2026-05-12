@@ -53,6 +53,7 @@ var visualTabSubTabs = [][]visualSubTabRef{
 		{"Section Limits", tabBehavior, 5},
 		{"Startup", tabBehavior, 6},
 		{"Task Form", tabBehavior, 7},
+		{"Focus Board", tabBehavior, 8},
 		{"Attachments", tabAttachments, 0},
 	},
 	// vtab 1: Appearance = old Palette sub-sections + old Appearance
@@ -104,7 +105,7 @@ var (
 	settingsTabNames = []string{"General", "Palette", "Review", "Behavior", "Attachments", "Project Tree", "Outliner", "Kanban", "Notifications", "Stages", "Appearance"}
 
 	// tabFieldCount declares how many focusable fields each tab has.
-	tabFieldCount = []int{5, 18, 4, 15, 2, 14, 23, 11, 15, 1, 4}
+	tabFieldCount = []int{5, 18, 5, 16, 2, 14, 23, 11, 15, 1, 4}
 
 	// tabFieldStart holds the starting focus index for each tab (computed in init).
 	tabFieldStart []int
@@ -118,7 +119,7 @@ var (
 		nil, // 0: General
 		{{"Palette Colors", 10}, {"Background & Cursor", 3}, {"Priorities", 5}}, // 1: Palette
 		nil, // 2: Review
-		{{"Recent Activity", 2}, {"Linked Tasks", 1}, {"Pinned Tasks", 1}, {"Recent Tasks", 1}, {"Popups", 1}, {"Section Limits", 7}, {"Startup", 1}, {"Task Form", 1}}, // 3: Behavior
+		{{"Recent Activity", 2}, {"Linked Tasks", 1}, {"Pinned Tasks", 1}, {"Recent Tasks", 1}, {"Popups", 1}, {"Section Limits", 7}, {"Startup", 1}, {"Task Form", 1}, {"Focus Board", 1}}, // 3: Behavior
 		nil, // 4: Attachments
 		nil, // 5: Project Tree
 		{{"Sidebar", 2}, {"Section State", 7}, {"Column Visibility", 14}}, // 6: Outliner
@@ -179,6 +180,12 @@ var (
 
 	// startViewValues maps cursor index to config string value.
 	startViewValues = []string{"dashboard", "focus-board", "cross-project-outliner", "all-tasks", "daily-review", "backlog", "priority", "due-dates"}
+
+	// focusBoardModeOptions lists display labels for the focus board default mode selector.
+	focusBoardModeOptions = []string{"List", "Tunnel", "Zen"}
+
+	// focusBoardModeValues maps cursor index to config string value.
+	focusBoardModeValues = []string{"list", "tunnel", "zen"}
 )
 
 func init() {
@@ -273,6 +280,7 @@ type SettingsModel struct {
 	futureInput              textinput.Model
 	oldDaysInput             textinput.Model
 	completedHoursInput      textinput.Model
+	staleTaskDaysInput       textinput.Model
 	recentActivityInput      textinput.Model
 	recentActivityShowAll    bool // Whether to show completed tasks in recent activity by default
 	linkedTaskJump           bool // Whether to jump to new task after linked creation
@@ -296,8 +304,9 @@ type SettingsModel struct {
 	contexts                 []string
 	contextCursor            int // -1 for custom mode, 0+ for selecting from list
 
-	startViewCursor   int  // Index into startViewValues
-	taskFormCollapsed bool // Whether task form starts collapsed
+	startViewCursor      int  // Index into startViewValues
+	taskFormCollapsed    bool // Whether task form starts collapsed
+	focusBoardModeCursor int  // Index into focusBoardModeValues
 
 	// Kanban settings (Kanban tab, index 94-104)
 	kanbanDefaultModeCursor  int             // Index into kanbanModeValues

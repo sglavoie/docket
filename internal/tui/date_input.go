@@ -28,7 +28,7 @@ type DateInputModel struct {
 // NewDateInputModel creates a new date input model.
 func NewDateInputModel(task *models.Task, project *models.Project) *DateInputModel {
 	input := textinput.New()
-	input.Placeholder = "e.g., 2024-01-15, tomorrow, +3d, fri, none"
+	input.Placeholder = "e.g., 2024-01-15, dec 15, tomorrow, +3d, fri, none"
 	input.Focus()
 	input.CharLimit = 30
 	input.SetWidth(40)
@@ -177,6 +177,9 @@ func (m *DateInputModel) View() tea.View {
 			"  mon, tue, ...  Next occurrence of weekday\n" +
 			"  next mon       Next Monday (skips this week)\n" +
 			"  in 2 weeks     2 weeks from now\n" +
+			"  dec 15         Dec 15 (next year if past)\n" +
+			"  next year      1 year from today\n" +
+			"  in 3 years     3 years from today\n" +
 			"  none           Clear due date\n\n" +
 			BoldStyle.Render("Controls") + "\n" +
 			"  Enter          Save\n" +

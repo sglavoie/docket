@@ -35,12 +35,19 @@ func (m *AppModel) Update(msg tea.Msg) (outModel tea.Model, outCmd tea.Cmd) { //
 			m.pendingBulkTasks = nil
 			m.pendingBulkSectionTasks = nil
 			m.pendingBulkNotes = nil
+			m.quickCaptureOverlay = nil
 			m.statusMessage = ""
 			m.loadingMessage = ""
 			outModel = m
 			outCmd = nil
 		}
 	}()
+
+	// Close quick capture overlay without touching the view stack.
+	if _, ok := msg.(CloseQuickCaptureMsg); ok {
+		m.quickCaptureOverlay = nil
+		return m, nil
+	}
 
 	// Handle all trivial close-view messages via the closeViewMsg interface.
 	// This eliminates individual case arms for ~35 Close*Msg types that only
@@ -88,6 +95,15 @@ func (m *AppModel) Update(msg tea.Msg) (outModel tea.Model, outCmd tea.Cmd) { //
 	}
 	if handled, cmd := m.handleExportMessages(msg); handled {
 		return m, cmd
+	}
+
+	// Forward unhandled messages to the quick capture overlay for textarea ticking.
+	if m.quickCaptureOverlay != nil {
+		newModel, overlayCmd := m.quickCaptureOverlay.Update(msg)
+		if qc, ok := newModel.(*QuickCaptureModel); ok {
+			m.quickCaptureOverlay = qc
+		}
+		return m, tea.Batch(overlayCmd, tea.Batch(m.delegateToCurrentView(msg)))
 	}
 
 	return m, tea.Batch(m.delegateToCurrentView(msg))

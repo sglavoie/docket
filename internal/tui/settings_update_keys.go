@@ -295,6 +295,8 @@ func (m *SettingsModel) handleSpaceKey() {
 			m.startViewCursor = (m.startViewCursor + 1) % len(startViewOptions)
 		case 14: // task form collapsed
 			m.taskFormCollapsed = !m.taskFormCollapsed
+		case 15: // focus board default mode
+			m.focusBoardModeCursor = (m.focusBoardModeCursor + 1) % len(focusBoardModeOptions)
 		}
 	case tabProjectTree:
 		if local == 1 { // priority column
@@ -384,8 +386,11 @@ func (m *SettingsModel) handleLeftKey() {
 			m.togglePaletteTheme()
 		}
 	case tabBehavior:
-		if local == 13 && m.startViewCursor > 0 {
+		switch {
+		case local == 13 && m.startViewCursor > 0:
 			m.startViewCursor--
+		case local == 15 && m.focusBoardModeCursor > 0:
+			m.focusBoardModeCursor--
 		}
 	case tabProjectTree:
 		if local == 1 && m.treePriorityMode > 0 {
@@ -446,8 +451,11 @@ func (m *SettingsModel) handleRightKey() {
 			m.togglePaletteTheme()
 		}
 	case tabBehavior:
-		if local == 13 && m.startViewCursor < len(startViewOptions)-1 {
+		switch {
+		case local == 13 && m.startViewCursor < len(startViewOptions)-1:
 			m.startViewCursor++
+		case local == 15 && m.focusBoardModeCursor < len(focusBoardModeOptions)-1:
+			m.focusBoardModeCursor++
 		}
 	case tabProjectTree:
 		if local == 1 && m.treePriorityMode < 2 {

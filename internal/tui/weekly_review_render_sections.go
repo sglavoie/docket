@@ -1,6 +1,8 @@
 package tui
 
 import (
+	"fmt"
+
 	"charm.land/lipgloss/v2"
 
 	"github.com/sglavoie/tt/internal/models"
@@ -64,6 +66,9 @@ func (m *WeeklyReviewModel) renderAllSections() ([]string, int) {
 		if !collapsed {
 			if hint := getWeeklySectionHint(section); hint != "" {
 				lines = append(lines, "    "+MutedStyle.Render(hint))
+			}
+			if section == WeeklySectionPriorityMismatch && m.priorityDriftWarning != "" {
+				lines = append(lines, "    "+PreviewWarningStyle.Render(m.priorityDriftWarning))
 			}
 			for idx := range count {
 				isSelected := currentIndex == m.cursor
@@ -146,5 +151,9 @@ func (m *WeeklyReviewModel) renderSectionHeader(section WeeklyReviewSection, cou
 	if m.reviewedSections[section] {
 		checkbox = "[x] "
 	}
-	return renderCollapsibleHeader(checkbox+getWeeklySectionName(section), count, collapsed, isSelected, m.cursorFlash, style, width)
+	sectionName := getWeeklySectionName(section)
+	if section == WeeklySectionPriorityMismatch && m.priorityDriftPct > 0 {
+		sectionName = fmt.Sprintf("%s — %d%% high-priority", sectionName, m.priorityDriftPct)
+	}
+	return renderCollapsibleHeader(checkbox+sectionName, count, collapsed, isSelected, m.cursorFlash, style, width)
 }

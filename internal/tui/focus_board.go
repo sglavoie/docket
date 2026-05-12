@@ -18,11 +18,17 @@ const (
 	boardTabClosed = 3
 )
 
+const (
+	focusModeList   = 0
+	focusModeTunnel = 1
+	focusModeZen    = 2
+)
+
 // boardGroupBy controls the grouping mode applied to the "All" tab.
 type boardGroupBy int
 
 const (
-	boardGroupByNone     boardGroupBy = iota
+	boardGroupByNone boardGroupBy = iota
 	boardGroupBySource
 	boardGroupByPriority
 	boardGroupByScore
@@ -92,7 +98,7 @@ type FocusBoardModel struct {
 	editIdx   int
 
 	previewMode   bool
-	tunnelMode    bool
+	focusMode     int // 0=list, 1=tunnel, 2=zen
 	initialTabSet bool
 	groupBy       boardGroupBy // grouping mode for the All tab
 }
@@ -111,6 +117,14 @@ func NewFocusBoardModel(cfg *config.Config, manager *config.Manager, dailyPlan *
 	ei.SetWidth(60)
 	applyThemedTextInput(&ei)
 
+	initialFocusMode := focusModeList
+	switch cfg.GetFocusBoardDefaultMode() {
+	case "tunnel":
+		initialFocusMode = focusModeTunnel
+	case "zen":
+		initialFocusMode = focusModeZen
+	}
+
 	m := &FocusBoardModel{
 		config:           cfg,
 		configManager:    manager,
@@ -121,6 +135,7 @@ func NewFocusBoardModel(cfg *config.Config, manager *config.Manager, dailyPlan *
 		carriedOverIDs:   carriedOverIDs,
 		addInput:         ti,
 		editInput:        ei,
+		focusMode:        initialFocusMode,
 		FilterMixin:      FilterMixin{filter: newFilterState()},
 		MultiSelectState: MultiSelectState{selectedTasks: make(map[string]bool)},
 		sort:             NewSortState(),
@@ -143,16 +158,16 @@ func NewFocusBoardModel(cfg *config.Config, manager *config.Manager, dailyPlan *
 			},
 		},
 		{
-			Active: func() bool { return m.tunnelMode },
+			Active: func() bool { return m.focusMode > focusModeList },
 			Handle: func(key string) (tea.Model, tea.Cmd, bool) {
 				switch key {
-				case "j", "k", "up", "down", "G", "ctrl+u", "ctrl+d", "enter", "space", "ctrl+f":
-					return nil, nil, false // pass through to normal dispatch
-				case "esc":
-					m.tunnelMode = false
-					return m, nil, true
+				case "tab", "shift+tab", "shift+left", "shift+right",
+					"/", "a", "v", "A",
+					"1", "2", "3", "4", "5", "0",
+					"n", "N", "r", "J", "K":
+					return m, nil, true // swallow non-zen keys
 				default:
-					return m, nil, true // swallow all other keys
+					return nil, nil, false // pass through to normal dispatch
 				}
 			},
 		},
@@ -261,10 +276,15 @@ func (m *FocusBoardModel) escSteps() []EscStep {
 	}
 }
 
-// ShouldCaptureEsc returns true when tunnel mode, add mode, edit mode, search, prefix, confirm, or filters are active.
+// ShouldCaptureEsc returns true when add mode, edit mode, search, prefix, confirm, or filters are active.
 func (m *FocusBoardModel) ShouldCaptureEsc() bool {
-	return m.tunnelMode || m.addMode || m.editMode || m.SearchShouldCaptureEsc() ||
+	return m.addMode || m.editMode || m.SearchShouldCaptureEsc() ||
 		m.DefaultShouldCaptureEsc() || AnyEscStepActive(m.escSteps())
+}
+
+// IsZenMode returns true when zen mode is active (deepest focus level — hides status bar).
+func (m *FocusBoardModel) IsZenMode() bool {
+	return m.focusMode == focusModeZen
 }
 
 // HasTextInput returns true when a text input is focused.

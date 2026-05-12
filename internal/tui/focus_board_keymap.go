@@ -515,10 +515,10 @@ func (m *FocusBoardModel) buildKeyMap() *keymap.KeyMap {
 		}),
 	)
 
-	// Tunnel mode
+	// Focus mode cycle: List → Tunnel → Zen → List
 	entries = append(entries,
-		keymap.Bind("ctrl+f", "Toggle tunnel mode", "View", func() (tea.Model, tea.Cmd) {
-			m.tunnelMode = !m.tunnelMode
+		keymap.Bind("ctrl+f", "Cycle focus mode (List/Tunnel/Zen)", "View", func() (tea.Model, tea.Cmd) {
+			m.focusMode = (m.focusMode + 1) % 3
 			return m, nil
 		}),
 	)

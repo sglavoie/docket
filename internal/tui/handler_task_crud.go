@@ -67,8 +67,10 @@ func (m *AppModel) handleTaskCreated(msg TaskCreatedMsg) (bool, tea.Cmd) {
 	if msg.Task != nil {
 		m.sessionStats.tasksCreated++
 	}
-	// Common pattern: pop view, reload, refresh
-	m.handleWithRefresh(true, true, "")
+	// When created from the floating overlay, close it without popping the view stack.
+	fromOverlay := m.quickCaptureOverlay != nil
+	m.quickCaptureOverlay = nil
+	m.handleWithRefresh(!fromOverlay, true, "")
 
 	// Navigate cursor to the newly created task
 	if msg.Task != nil && m.currentProject != nil {

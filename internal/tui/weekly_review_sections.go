@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"fmt"
 	"sort"
 	"time"
 
@@ -21,6 +22,8 @@ func (m *WeeklyReviewModel) loadData() { //nolint:gocyclo
 	m.priorityMismatch = nil
 	m.upcomingWeek = nil
 	m.recurringOverview = nil
+	m.priorityDriftWarning = ""
+	m.priorityDriftPct = 0
 
 	now := time.Now()
 	today := util.StartOfDay(now)
@@ -34,6 +37,8 @@ func (m *WeeklyReviewModel) loadData() { //nolint:gocyclo
 	staleProjectThreshold := now.AddDate(0, 0, -staleProjectDays)
 	staleTaskThreshold := now.AddDate(0, 0, -staleTaskDays)
 	weekFromNow := today.AddDate(0, 0, 8) // Next 7 days (exclusive end)
+
+	var totalActive, highPriCount int
 
 	projects := m.config.GetActiveProjects()
 	for _, project := range projects {
@@ -51,6 +56,11 @@ func (m *WeeklyReviewModel) loadData() { //nolint:gocyclo
 			}
 			if task.IsSnoozed() {
 				continue
+			}
+
+			totalActive++
+			if task.Priority <= 2 {
+				highPriCount++
 			}
 
 			// Track latest update (fall back to CreatedAt when UpdatedAt is zero)
@@ -135,6 +145,18 @@ func (m *WeeklyReviewModel) loadData() { //nolint:gocyclo
 		}
 		if wp.InProgressCount >= inProgressThreshold {
 			m.overcommitted = append(m.overcommitted, wp)
+		}
+	}
+
+	// Priority drift warning: flag when >40% of active tasks are P1/P2
+	if totalActive > 0 {
+		pct := highPriCount * 100 / totalActive
+		if pct > 40 {
+			m.priorityDriftPct = pct
+			m.priorityDriftWarning = fmt.Sprintf(
+				"⚠  %d%% of active tasks are P1/P2 (%d of %d). Consider re-evaluating priorities.",
+				pct, highPriCount, totalActive,
+			)
 		}
 	}
 

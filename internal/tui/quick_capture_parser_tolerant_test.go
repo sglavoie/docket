@@ -134,10 +134,10 @@ func TestParseQuickCaptureDueColon(t *testing.T) {
 			wantHasDueDate: true,
 		},
 		{
-			name:         "invalid due: date returns error",
-			input:        "Fix bug due:notadate",
-			wantErr:      true,
-			errContains:  "invalid date",
+			name:        "invalid due: date returns error",
+			input:       "Fix bug due:notadate",
+			wantErr:     true,
+			errContains: "invalid date",
 		},
 		{
 			name:           "@date takes precedence over due: (@ parsed first)",

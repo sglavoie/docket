@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"image/color"
 	"strings"
+	"time"
 
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
@@ -74,7 +75,7 @@ type SectionHeaderOpts struct {
 
 // renderSectionHeader renders a standardized collapsible section header:
 //
-//	  ▾ [prefix]Name (count) ─────
+//	▾ [prefix]Name (count) ─────
 //
 // AccentColor is applied to the name; indicator and count use MutedStyle.
 // When Width > 0 a trailing horizontal rule fills the remaining line width.
@@ -312,7 +313,22 @@ func RenderCrossProjectTaskLine(
 			scoreBadge = RenderScoreBadge(task, profile)
 		}
 	}
-	contentGroup := JoinGroupParts(tagsStr, scoreBadge)
+	staleBadge := ""
+	if cfg != nil {
+		if threshold := cfg.GetStaleTaskDays(); threshold > 0 {
+			effectiveUpdate := task.UpdatedAt
+			if effectiveUpdate.IsZero() {
+				effectiveUpdate = task.CreatedAt
+			}
+			if !effectiveUpdate.IsZero() {
+				days := int(time.Since(effectiveUpdate).Hours() / 24)
+				if days >= threshold {
+					staleBadge = MutedStyle.Render("stale")
+				}
+			}
+		}
+	}
+	contentGroup := JoinGroupParts(tagsStr, scoreBadge, staleBadge)
 
 	postTitle := JoinIndicatorGroups(structureGroup, lifecycleGroup, contentGroup)
 	if postTitle != "" {

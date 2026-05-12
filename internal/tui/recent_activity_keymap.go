@@ -70,7 +70,7 @@ func (m *RecentActivityModel) buildKeyMap() *keymap.KeyMap {
 		keymap.Bind("enter", "Open task in project", "Actions", func() (tea.Model, tea.Cmd) {
 			if m.cursor >= 0 && m.cursor < len(m.filtered) {
 				dt := m.filtered[m.cursor]
-				return m, func() tea.Msg { return RecentActivitySelectMsg(dt) }
+				return m, func() tea.Msg { return RecentActivitySelectMsg{Task: dt.Task, Project: dt.Project} }
 			}
 			return m, nil
 		}),

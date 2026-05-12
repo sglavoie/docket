@@ -111,9 +111,9 @@ type TaskFormModel struct {
 	subtaskTypeCursor  int // cursor within formSubtaskTypes[] for subtask edit overlay
 
 	// Navigation state
-	activeTab        int
-	focusIndex       int
-	collapsedBasics  bool // true = show only Title/Type/Priority + expand row
+	activeTab         int
+	focusIndex        int
+	collapsedBasics   bool // true = show only Title/Type/Priority + expand row
 	collapsedSchedule bool // true = show only Due + expand row
 
 	// Dimensions

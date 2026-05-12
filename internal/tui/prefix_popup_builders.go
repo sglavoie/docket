@@ -27,7 +27,7 @@ func CommonTaskActionPrefixHints(stages []string, currentStage string, currentPr
 	return PrefixHints{
 		",": StatusPrefixHints,
 		"!": BuildPriorityPrefixHints(currentPriority),
-		".": BuildStagePrefixHints(stages, currentStage),
+		"alt+.": BuildStagePrefixHints(stages, currentStage),
 		"d": DueDatePrefixHints,
 		"s": SnoozePrefixHints,
 		"c": CreateLinkedPrefixHints,
@@ -85,7 +85,7 @@ func BuildFilterScorePrefixHints(cfg *config.Config) []PrefixHint {
 	}
 }
 
-// BuildStagePrefixHints builds dynamic stage hints for the "." (stage) prefix.
+// BuildStagePrefixHints builds dynamic stage hints for the "alt+." (stage) prefix.
 // Keys 1-9 map to the first 9 configured stages, 0 clears.
 func BuildStagePrefixHints(stages []string, currentStage string) []PrefixHint {
 	hints := make([]PrefixHint, 0, len(stages)+1)

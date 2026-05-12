@@ -48,7 +48,7 @@ func (m *WeeklyReviewModel) renderTaskLine(dt WeeklyReviewTask, section WeeklyRe
 	default:
 	}
 
-	return RenderCrossProjectTaskLine(task, dt.Project, nil, isSelected, m.width, maxTitleLen, CrossProjectTaskLineOpts{
+	return RenderCrossProjectTaskLine(task, dt.Project, m.config, isSelected, m.width, maxTitleLen, CrossProjectTaskLineOpts{
 		Queued:          m.queueIDs[task.ID],
 		DailyPlanned:    m.dailyPlanIDs[task.ID],
 		HideLowPriority: true,

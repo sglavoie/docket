@@ -38,17 +38,17 @@ func NewTaskFormModelCreate(
 		collapsed = cfg.GetTaskFormCollapsed()
 	}
 	m := &TaskFormModel{
-		mode:             FormModeCreate,
-		project:          project,
-		draft:            draft,
-		config:           cfg,
-		configManager:    mgr,
-		activeTab:        formTabBasics,
-		focusIndex:       0,
-		collapsedBasics:  collapsed,
+		mode:              FormModeCreate,
+		project:           project,
+		draft:             draft,
+		config:            cfg,
+		configManager:     mgr,
+		activeTab:         formTabBasics,
+		focusIndex:        0,
+		collapsedBasics:   collapsed,
 		collapsedSchedule: collapsed,
-		width:            80,
-		height:           24,
+		width:             80,
+		height:            24,
 	}
 	m.initTitleInput("")
 	m.initDueInput("")
@@ -171,18 +171,18 @@ func NewTaskFormModelEdit(
 		collapsed = cfg.GetTaskFormCollapsed()
 	}
 	m := &TaskFormModel{
-		mode:             FormModeEdit,
-		project:          project,
-		task:             task,
-		draft:            draft,
-		config:           cfg,
-		configManager:    mgr,
-		activeTab:        formTabBasics,
-		focusIndex:       0,
-		collapsedBasics:  collapsed,
+		mode:              FormModeEdit,
+		project:           project,
+		task:              task,
+		draft:             draft,
+		config:            cfg,
+		configManager:     mgr,
+		activeTab:         formTabBasics,
+		focusIndex:        0,
+		collapsedBasics:   collapsed,
 		collapsedSchedule: collapsed,
-		width:            80,
-		height:           24,
+		width:             80,
+		height:            24,
 	}
 	m.initTitleInput(draft.title)
 	m.initDueInput(draft.dueInput)

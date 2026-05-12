@@ -146,6 +146,19 @@ func (m *AppModel) buildBreadcrumb() string {
 	if len(crumb) > maxLen {
 		crumb = crumb[:maxLen-1] + "…"
 	}
+
+	// Esc-preview: show what pressing Esc will return to.
+	if len(m.viewStack) >= 2 && m.currentView() != ViewDashboard {
+		prevVT := m.viewStack[len(m.viewStack)-2]
+		prevLabel := m.breadcrumbLabel(prevVT, maxProjectLen)
+		if prevLabel != "" {
+			hint := MutedStyle.Render(" ← " + prevLabel)
+			if lipgloss.Width(crumb)+lipgloss.Width(hint) <= maxLen {
+				crumb += hint
+			}
+		}
+	}
+
 	return crumb
 }
 

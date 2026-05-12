@@ -305,7 +305,7 @@ func (m *FocusViewModel) renderTaskLineWithPrefix(ft FocusTask, isSelected bool,
 		dueStr = FormatRelativeDueTask(task, true, m.config.GetTimeFormat())
 	}
 
-	return RenderCrossProjectTaskLine(task, ft.Project, nil, isSelected, m.width, maxTitleLen, CrossProjectTaskLineOpts{
+	return RenderCrossProjectTaskLine(task, ft.Project, m.config, isSelected, m.width, maxTitleLen, CrossProjectTaskLineOpts{
 		Queued:       queued,
 		DailyPlanned: dailyPlanned,
 		ShowTags:     true,

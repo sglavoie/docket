@@ -87,7 +87,7 @@ var prefixCategoryNames = map[string]string{
 	"FS":  "filter-score",
 	"F.":  "filter-stage",
 	"Fv":  "saved-filters",
-	".":   "stage",
+	"alt+.": "stage",
 	";":   "tt",
 	";t":  "task",
 }

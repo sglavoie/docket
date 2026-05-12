@@ -36,6 +36,12 @@ func (m *WeeklyReviewModel) View() tea.View {
 		return tea.NewView(b.String())
 	}
 
+	// Progress bar (Goal-Gradient: show progress toward review completion)
+	if !m.reviewCompleted {
+		b.WriteString(m.renderWeeklyProgressBar())
+		b.WriteString("\n")
+	}
+
 	// Tab bar
 	chrome, chromeLines := renderFullscreenChrome(m.renderTabBar(), "", true)
 	b.WriteString(chrome)
@@ -72,7 +78,8 @@ func (m *WeeklyReviewModel) View() tea.View {
 		}
 	}
 
-	b.WriteString(strings.Join(applyPersistentScroll(lines, cursorLineIndex, contentHeight, &m.scrollOffset), "\n"))
+	contentStr := strings.Join(applyPersistentScroll(lines, cursorLineIndex, contentHeight, &m.scrollOffset), "\n")
+	b.WriteString(TabContentBgStyle.Width(m.width).Render(contentStr))
 
 	// Footer — progressively shorten when terminal is narrow
 	reviewed := m.reviewedCount()
@@ -101,4 +108,43 @@ func (m *WeeklyReviewModel) View() tea.View {
 	b.WriteString(renderFullscreenFooterBlock(m.statusMessage, m.err, left, right, m.width, m.AccentColor()))
 
 	return tea.NewView(b.String())
+}
+
+func (m *WeeklyReviewModel) renderWeeklyProgressBar() string {
+	const total = 8
+	reviewed := m.reviewedCount()
+	percent := float64(reviewed) / float64(total) * 100
+
+	barWidth := min(m.width-4, 32)
+	if barWidth < 4 {
+		return ""
+	}
+
+	var bar string
+	if reviewed == total {
+		bar = RenderProgressBar(percent, barWidth)
+	} else {
+		filled := int(float64(barWidth) * percent / 100)
+		var sb strings.Builder
+		accentStyle := lipgloss.NewStyle().Foreground(m.AccentColor())
+		for range filled {
+			sb.WriteString(accentStyle.Render("█"))
+		}
+		for range barWidth - filled {
+			sb.WriteString(ProgressEmptyStyle.Render("░"))
+		}
+		bar = sb.String()
+	}
+
+	var label string
+	switch {
+	case reviewed == total:
+		label = "All sections reviewed!"
+	case reviewed >= total-1:
+		label = fmt.Sprintf("Almost there — %d/%d reviewed", reviewed, total)
+	default:
+		label = fmt.Sprintf("%d/%d reviewed", reviewed, total)
+	}
+
+	return bar + " " + MutedStyle.Render(label)
 }

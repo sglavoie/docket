@@ -19,6 +19,13 @@ func (m *AppModel) handleGlobalMessage(msg tea.Msg) (bool, tea.Cmd) {
 			m.quickNoteOverlay.input, cmd = m.quickNoteOverlay.input.Update(msg)
 			return true, cmd
 		}
+		if m.quickCaptureOverlay != nil {
+			newModel, cmd := m.quickCaptureOverlay.Update(msg)
+			if qc, ok := newModel.(*QuickCaptureModel); ok {
+				m.quickCaptureOverlay = qc
+			}
+			return true, cmd
+		}
 		return false, nil
 	case tea.KeyPressMsg:
 		return m.handleGlobalKeyPress(msg)
@@ -55,6 +62,9 @@ func (m *AppModel) handleGlobalMessage(msg tea.Msg) (bool, tea.Cmd) {
 		m.pendingSemicolonTPrefix = false
 		m.setInfoStatus("prefix cleared")
 		return true, defaultStatusTimeout()
+	case RecordRepeatableActionMsg:
+		m.lastRepeatableAction = msg.Action
+		return true, nil
 	case periodicSaveMsg:
 		m.saveProjectTreeState()
 		m.saveOutlinerFilterState()

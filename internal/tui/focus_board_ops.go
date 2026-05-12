@@ -14,12 +14,35 @@ import (
 
 // markDone marks the current task as done via the shared workflow pipeline.
 func (m *FocusBoardModel) markDone() (tea.Model, tea.Cmd) {
-	return taskOpsChangeStatus(m, models.StatusDone)
+	model, cmd := taskOpsChangeStatus(m, models.StatusDone)
+	m.zenAdvance()
+	return model, cmd
 }
 
 // dismiss cancels the current task via the shared workflow pipeline.
 func (m *FocusBoardModel) dismiss() (tea.Model, tea.Cmd) {
-	return taskOpsChangeStatus(m, models.StatusCanceled)
+	model, cmd := taskOpsChangeStatus(m, models.StatusCanceled)
+	m.zenAdvance()
+	return model, cmd
+}
+
+// zenAdvance moves the cursor to the next incomplete task when in zen/tunnel mode.
+func (m *FocusBoardModel) zenAdvance() {
+	if m.focusMode == focusModeList {
+		return
+	}
+	for i := m.cursor; i < len(m.filtered); i++ {
+		if m.filtered[i].Task != nil && !m.filtered[i].Task.Status.IsComplete() {
+			m.cursor = i
+			return
+		}
+	}
+	for i := 0; i < m.cursor && i < len(m.filtered); i++ {
+		if m.filtered[i].Task != nil && !m.filtered[i].Task.Status.IsComplete() {
+			m.cursor = i
+			return
+		}
+	}
 }
 
 // handleEnter navigates to the task in its project.
@@ -67,10 +90,10 @@ func (m *FocusBoardModel) reloadData() {
 		}
 	}
 }
-func (m *FocusBoardModel) setErr(err error)                  { m.statusMessage = err.Error() }
-func (m *FocusBoardModel) setStatus(msg string)              { m.statusMessage = msg }
-func (m *FocusBoardModel) viewID() ViewType                  { return ViewFocusBoard }
-func (m *FocusBoardModel) viewName() string                  { return "Today" }
+func (m *FocusBoardModel) setErr(err error)     { m.statusMessage = err.Error() }
+func (m *FocusBoardModel) setStatus(msg string) { m.statusMessage = msg }
+func (m *FocusBoardModel) viewID() ViewType     { return ViewFocusBoard }
+func (m *FocusBoardModel) viewName() string     { return "Today" }
 
 func (m *FocusBoardModel) showDeleteConfirm(shortID int) {
 	if row := m.getRowAtCursor(); row != nil {

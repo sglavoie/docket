@@ -33,10 +33,13 @@ func (m *DailyReviewModel) loadTasks() {
 	futureDays := m.config.GetReviewFutureDays()
 	oldDays := m.config.GetReviewOldDays()
 	completedHours := m.config.GetReviewCompletedHours()
+	escalationDays := m.config.GetPriorityEscalationDays()
 
 	// Calculate threshold dates
 	// Due Soon: tomorrow through dueSoonDays (e.g., days 1-7)
 	dueSoonEnd := today.AddDate(0, 0, dueSoonDays+1)
+	// Escalation: tasks due within this window (exclusive end; includes overdue)
+	escalationEnd := today.AddDate(0, 0, escalationDays+1)
 	// Future: tasks due in >= futureDays (e.g., 300+ days)
 	futureStart := today.AddDate(0, 0, futureDays)
 	// Due Later: between Due Soon and Future (e.g., days 8-299)
@@ -93,6 +96,11 @@ func (m *DailyReviewModel) loadTasks() {
 			// 4. Overdue: DueDate < today
 			if task.DueDate != nil {
 				dueDay := util.StartOfDay(*task.DueDate)
+
+				// Flag P3+ tasks due within escalation window for priority upgrade hint
+				if escalationDays > 0 && task.Priority >= 3 && dueDay.Before(escalationEnd) {
+					dt.SuggestEscalation = true
+				}
 
 				if dueDay.Before(today) {
 					m.overdue = append(m.overdue, dt)

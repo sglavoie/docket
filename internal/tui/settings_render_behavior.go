@@ -22,6 +22,8 @@ func (m *SettingsModel) renderBehaviorTab() string {
 		return m.renderBehaviorStartupSection()
 	case 7:
 		return m.renderBehaviorTaskFormSection()
+	case 8:
+		return m.renderBehaviorFocusBoardSection()
 	default:
 		return m.renderBehaviorRecentActivitySection()
 	}
@@ -194,6 +196,20 @@ func (m *SettingsModel) renderBehaviorTaskFormSection() string {
 	b.WriteString(renderFormToggle("Collapsed", "Expanded", m.taskFormCollapsed, m.focusIndex == base+0))
 	b.WriteString("\n")
 	b.WriteString(renderFormFieldDesc("Show only essential fields when opening the task form", indent, m.focusIndex == base+0))
+
+	return b.String()
+}
+
+func (m *SettingsModel) renderBehaviorFocusBoardSection() string {
+	var b strings.Builder
+	const labelWidth = 17
+	const indent = 19
+	base := subTabFieldStart(tabBehavior, 8)
+
+	b.WriteString(renderFormLabelWithWidth("Default mode: ", labelWidth, m.focusIndex == base+0))
+	b.WriteString(renderEnumSelector(focusBoardModeOptions, m.focusBoardModeCursor, m.focusIndex == base+0, m.width-indent))
+	b.WriteString("\n")
+	b.WriteString(renderFormFieldDesc("Starting focus mode when the Focus Board opens (List/Tunnel/Zen)", indent, m.focusIndex == base+0))
 
 	return b.String()
 }

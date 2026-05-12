@@ -81,7 +81,8 @@ func (m *DailyReviewModel) View() tea.View {
 		}
 	}
 
-	b.WriteString(strings.Join(applyPersistentScroll(lines, cursorLineIndex, contentHeight, &m.scrollOffset), "\n"))
+	contentStr := strings.Join(applyPersistentScroll(lines, cursorLineIndex, contentHeight, &m.scrollOffset), "\n")
+	b.WriteString(TabContentBgStyle.Width(m.width).Render(contentStr))
 
 	// Footer
 	reviewHint := "R: mark reviewed"
@@ -272,7 +273,7 @@ func (m *DailyReviewModel) renderTaskLine(dt CrossProjectTask, section DailyRevi
 		statusBadge = GetStatusStyle(string(task.Status)).Render(task.Status.Icon())
 	}
 
-	return RenderCrossProjectTaskLine(task, dt.Project, nil, isSelected, m.width, maxTitleLen, CrossProjectTaskLineOpts{
+	line := RenderCrossProjectTaskLine(task, dt.Project, m.config, isSelected, m.width, maxTitleLen, CrossProjectTaskLineOpts{
 		Queued:          m.queueIDs[task.ID],
 		DailyPlanned:    m.dailyPlanIDs[task.ID],
 		StatusBadge:     statusBadge,
@@ -284,6 +285,10 @@ func (m *DailyReviewModel) renderTaskLine(dt CrossProjectTask, section DailyRevi
 		Layout:          layout,
 		RowIndex:        rowIndex,
 	})
+	if dt.SuggestEscalation {
+		line += "\n" + "      " + InfoStatusStyle.Render("↑ Due soon — consider P2")
+	}
+	return line
 }
 
 // sectionContextStr returns the right-aligned context string for a task in a section.

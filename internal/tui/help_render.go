@@ -19,7 +19,7 @@ var prefixGroupLabels = map[string]string{
 	"Status":              ",",
 	"Recurrence":          ",",
 	"Priority":            "!",
-	"Stage (. prefix)":    ".",
+	"Stage (alt+. prefix)": "alt+.",
 	"Due Date":            "d",
 	"Snooze":              "s",
 	"Linked Tasks":        "c",

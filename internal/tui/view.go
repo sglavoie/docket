@@ -87,6 +87,13 @@ type ViewExitResetter interface {
 	OnExit()
 }
 
+// ZenModeView is implemented by views that support a zen focus mode. When
+// IsZenMode returns true, the app shell suppresses transient status bar
+// overlays so the view is presented without any chrome.
+type ZenModeView interface {
+	IsZenMode() bool
+}
+
 // ActiveFilterProvider is implemented by views that support filtering and can
 // report how many filters are currently active. Used by the status bar to show
 // a filter pill when filters are active.

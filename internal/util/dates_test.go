@@ -207,6 +207,49 @@ func TestParseDateWithTime(t *testing.T) {
 	}
 }
 
+func TestParseNaturalLanguageDates(t *testing.T) {
+	today := StartOfDay(time.Now())
+
+	nextOccurrence := func(m time.Month, day int) time.Time {
+		candidate := time.Date(today.Year(), m, day, 0, 0, 0, 0, today.Location())
+		if !candidate.After(today) {
+			candidate = time.Date(today.Year()+1, m, day, 0, 0, 0, 0, today.Location())
+		}
+		return candidate
+	}
+
+	tests := []struct {
+		name    string
+		input   string
+		want    time.Time
+		wantErr bool
+	}{
+		{"dec 15", "dec 15", nextOccurrence(time.December, 15), false},
+		{"jan 3", "jan 3", nextOccurrence(time.January, 3), false},
+		{"15 dec", "15 dec", nextOccurrence(time.December, 15), false},
+		{"3 jan", "3 jan", nextOccurrence(time.January, 3), false},
+		{"sep 1", "sep 1", nextOccurrence(time.September, 1), false},
+		{"feb 30 is invalid", "feb 30", time.Time{}, true},
+		{"feb 0 is invalid", "feb 0", time.Time{}, true},
+		{"next year", "next year", today.AddDate(1, 0, 0), false},
+		{"in 1 year", "in 1 year", today.AddDate(1, 0, 0), false},
+		{"in 3 years", "in 3 years", today.AddDate(3, 0, 0), false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := ParseRelativeDate(tt.input)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("ParseRelativeDate(%q) error = %v, wantErr %v", tt.input, err, tt.wantErr)
+				return
+			}
+			if !tt.wantErr && !got.Equal(tt.want) {
+				t.Errorf("ParseRelativeDate(%q) = %v, want %v", tt.input, got, tt.want)
+			}
+		})
+	}
+}
+
 func TestDaysBetween(t *testing.T) {
 	a := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 	b := time.Date(2024, 1, 10, 0, 0, 0, 0, time.UTC)

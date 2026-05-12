@@ -173,7 +173,8 @@ func RenderPrefixPopupWithCategory(prefix, category string, hints PrefixHints, w
 	titleCatRestStyle := NormalStyle
 
 	var title string
-	if len(prefix) > 1 {
+	isModifierKey := strings.Contains(prefix, "+")
+	if len(prefix) > 1 && !isModifierKey {
 		breadcrumb := buildPrefixBreadcrumb(prefix)
 		if breadcrumb == "" {
 			breadcrumb = strings.ToUpper(category)

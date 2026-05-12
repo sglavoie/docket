@@ -21,6 +21,8 @@ func globalAppKeys() []string {
 		"ctrl+x", "ctrl+z", ":", ";", "ctrl+,", "ctrl+i", "ctrl+/", `ctrl+\`,
 		"shift+space", "?", "alt+l",
 		"y", "Y", "ctrl+y",
+		// . is the repeat-last-action key (global).
+		".",
 		// Semicolon prefix dispatches
 		";;", ";n", ";d", ";r", ";N", ";q", ";w", ";l", ";B", ";D", ";m", ";a", ";W", ";o", ";k", ";i", ";I", ";{", ";,", ";c", ";tN", ";R",
 	}

@@ -66,7 +66,7 @@ type DailyReviewModel struct {
 	collapsedSections map[int]bool         // Track collapsed sections
 	sectionOrder      []DailyReviewSection // Order of non-empty sections
 	focusedSection    *DailyReviewSection  // nil = all shown, otherwise show only this section
-	tabs              TabState             // 0=Due, 1=Active, 2=In Review, 3=Stale, 4=Done
+	tabs              TabState             // 0=Due, 1=Done, 2=Active, 3=In Review, 4=Stale
 	scrollOffset      int
 	previewMode       bool
 }

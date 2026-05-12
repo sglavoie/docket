@@ -215,7 +215,7 @@ func dispatchBulkPrefix(prefix, key string, v taskOpsView, items []bulkTaskItem)
 			return v, nil, true
 		}
 
-	case ".":
+	case "alt+.":
 		if stage := StageForPrefixKey(key, v.getConfig().Stages); stage != nil {
 			count, err := taskOpsApplyBulk(v, items, "Set Stage",
 				func(project *models.Project, taskID string) bool {

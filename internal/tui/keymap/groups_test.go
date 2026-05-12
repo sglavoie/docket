@@ -309,8 +309,8 @@ func TestStageGroup_Empty(t *testing.T) {
 		t.Fatalf("StageGroup: want 1 top-level entry")
 	}
 	pn := entries[0].PrefixNode
-	if pn.Key != "." {
-		t.Errorf("StageGroup: want key '.', got %q", pn.Key)
+	if pn.Key != "alt+." {
+		t.Errorf("StageGroup: want key 'alt+.', got %q", pn.Key)
 	}
 	// Only "0" (clear) when no stages
 	if len(pn.Children) != 1 {

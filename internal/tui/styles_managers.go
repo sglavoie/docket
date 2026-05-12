@@ -119,4 +119,8 @@ var (
 
 	SidebarCardTitleStyle = lipgloss.NewStyle().
 				Foreground(ColorMuted)
+
+	// TabContentBgStyle is applied to the content area below tab bars to create
+	// a subtle Common Region visual grouping. Rebuilt by rebuildLayoutStyles().
+	TabContentBgStyle = lipgloss.NewStyle()
 )

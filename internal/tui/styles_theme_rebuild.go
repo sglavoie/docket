@@ -149,6 +149,22 @@ func rebuildLayoutStyles() {
 	SuggestionHeaderStyle = lipgloss.NewStyle().Foreground(ColorAccent).Bold(true)
 	SuggestionReasonStyle = lipgloss.NewStyle().Foreground(ColorMuted).Italic(true)
 	SuggestionStarStyle = lipgloss.NewStyle().Foreground(ColorAccent).Bold(true)
+
+	// Derive the tab content tint: 1-shade offset from the effective background.
+	bgHex := "#1a1b26"
+	if activeThemeName == "light" {
+		bgHex = "#f6f6f0"
+	}
+	if themeBgColor != "" {
+		bgHex = themeBgColor
+	}
+	var tabBgHex string
+	if activeThemeName == "light" {
+		tabBgHex = darkenHex(bgHex, 0.03)
+	} else {
+		tabBgHex = lightenHex(bgHex, 0.05)
+	}
+	TabContentBgStyle = lipgloss.NewStyle().Background(lipgloss.Color(tabBgHex))
 }
 
 func rebuildFormStyles() {

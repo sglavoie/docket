@@ -118,6 +118,8 @@ func (m *SettingsModel) saveSettings() tea.Cmd {
 	m.config.ReviewFutureDays = &futureDays
 	m.config.ReviewOldDays = &oldDays
 	m.config.ReviewCompletedHours = &completedHours
+	staleTaskDays, _ := strconv.Atoi(strings.TrimSpace(m.staleTaskDaysInput.Value()))
+	m.config.StaleTaskDays = &staleTaskDays
 	recentActivityLimit, _ := strconv.Atoi(strings.TrimSpace(m.recentActivityInput.Value()))
 	m.config.RecentActivityLimit = &recentActivityLimit
 	m.config.RecentActivityShowAll = &m.recentActivityShowAll
@@ -161,6 +163,7 @@ func (m *SettingsModel) saveSettings() tea.Cmd {
 	m.config.CrossOutlinerCycleOnly = boolPtr(m.crossOutlinerCycleOnly)
 	m.config.StartView = startViewValues[m.startViewCursor]
 	m.config.TaskFormCollapsed = boolPtr(m.taskFormCollapsed)
+	m.config.SetFocusBoardDefaultMode(focusBoardModeValues[m.focusBoardModeCursor])
 	m.config.TUIZebraStriping = boolPtr(m.zebraStriping)
 	m.config.WeekEndDay = weekEndDayValues[m.weekEndDayCursor]
 	m.config.TimeFormat = timeFormatValues[m.timeFormatCursor]

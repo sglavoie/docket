@@ -11,19 +11,27 @@ func TestHandleViewMessagesShowQuickCapture(t *testing.T) {
 	if !handled {
 		t.Error("ShowQuickCaptureMsg should be handled")
 	}
-	if app.currentView() != ViewQuickCapture {
-		t.Errorf("currentView should be QuickCapture, got %v", app.currentView())
+	if app.quickCaptureOverlay == nil {
+		t.Error("quickCaptureOverlay should be set after ShowQuickCaptureMsg")
+	}
+	// Quick capture is now an overlay — it must not push onto the view stack.
+	if app.currentView() == ViewQuickCapture {
+		t.Error("ViewQuickCapture must not be pushed onto the view stack (it is now an overlay)")
 	}
 }
 
 func TestHandleViewMessagesCloseQuickCapture(t *testing.T) {
-	app := newTestAppModel()
-	app.pushView(ViewQuickCapture)
+	app, project := newTestAppModelWithProject()
+	// Set up the overlay (new behavior: overlay, not view stack)
+	app.quickCaptureOverlay = NewQuickCaptureModel(project, nil, false)
 
 	app.Update(CloseQuickCaptureMsg{})
 
+	if app.quickCaptureOverlay != nil {
+		t.Error("quickCaptureOverlay should be nil after CloseQuickCaptureMsg")
+	}
 	if app.currentView() != ViewDashboard {
-		t.Errorf("currentView should be Dashboard after closing quick capture, got %v", app.currentView())
+		t.Errorf("currentView should remain Dashboard after closing quick capture overlay, got %v", app.currentView())
 	}
 }
 

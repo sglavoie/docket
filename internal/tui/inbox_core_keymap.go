@@ -194,10 +194,10 @@ func (c *inboxCore) buildKeyMap() *keymap.KeyMap {
 
 	// --- Due date group: "d" prefix ---
 	dueDateEntries := keymap.DueDateGroup(keymap.DueDateDeps{
-		DueToday:    func() (tea.Model, tea.Cmd) { return c.model, c.setQuickDueDate(0) },
-		DueTomorrow: func() (tea.Model, tea.Cmd) { return c.model, c.setQuickDueDate(1) },
-		DueInAWeek:  func() (tea.Model, tea.Cmd) { return c.model, c.setQuickDueDate(7) },
-		DueInAMonth: func() (tea.Model, tea.Cmd) { return c.model, c.setQuickDueDate(30) },
+		DueToday:     func() (tea.Model, tea.Cmd) { return c.model, c.setQuickDueDate(0) },
+		DueTomorrow:  func() (tea.Model, tea.Cmd) { return c.model, c.setQuickDueDate(1) },
+		DueInAWeek:   func() (tea.Model, tea.Cmd) { return c.model, c.setQuickDueDate(7) },
+		DueInAMonth:  func() (tea.Model, tea.Cmd) { return c.model, c.setQuickDueDate(30) },
 		ClearDueDate: func() (tea.Model, tea.Cmd) { return c.model, c.clearDueDate() },
 		OpenDatePicker: func() (tea.Model, tea.Cmd) {
 			task, project := c.currentTaskRef()

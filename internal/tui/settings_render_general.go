@@ -126,7 +126,16 @@ func (m *SettingsModel) renderReviewTab() string {
 	b.WriteString("\n")
 	b.WriteString(renderFormFieldDesc("Show recently completed within this window", indent, m.focusIndex == base+3))
 
-	if m.focusIndex >= base && m.focusIndex <= base+3 && m.validationErr != "" {
+	b.WriteString("\n")
+
+	b.WriteString(renderFormLabelWithWidth("Stale badge (days): ", labelWidth, m.focusIndex == base+4))
+	b.WriteString(m.staleTaskDaysInput.View())
+	b.WriteString("       ")
+	b.WriteString(MutedStyle.Render("(0 = disabled)"))
+	b.WriteString("\n")
+	b.WriteString(renderFormFieldDesc("Show inline stale badge on tasks not updated in this many days", indent, m.focusIndex == base+4))
+
+	if m.focusIndex >= base && m.focusIndex <= base+4 && m.validationErr != "" {
 		b.WriteString(strings.Repeat(" ", indent))
 		b.WriteString(ValidationErrorStyle.Render(m.validationErr))
 		b.WriteString("\n")

@@ -108,6 +108,24 @@ func (c *Config) GetLinkedTaskJumpToNew() bool {
 	return *c.LinkedTaskJumpToNew
 }
 
+// GetStaleTaskDays returns the number of days without update before showing an inline stale badge.
+// Returns 14 if not set. 0 disables the badge.
+func (c *Config) GetStaleTaskDays() int {
+	if c.StaleTaskDays == nil {
+		return 14
+	}
+	return *c.StaleTaskDays
+}
+
+// GetPriorityEscalationDays returns the number of days from due date within which P3+ tasks
+// get an escalation hint. Returns 3 if not set.
+func (c *Config) GetPriorityEscalationDays() int {
+	if c.PriorityEscalationDays == nil {
+		return 3
+	}
+	return *c.PriorityEscalationDays
+}
+
 // GetOutlinerCollapsedSections returns the default collapsed sections for the outliner.
 // Returns an empty map if not set.
 func (c *Config) GetOutlinerCollapsedSections() map[string]bool {

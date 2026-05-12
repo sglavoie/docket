@@ -327,6 +327,9 @@ type AppModel struct {
 	lastDailyPlanToggleRedo *dailyPlanToggleAction // last undone w-key action for redo
 	lastQueueToggleRedo     *queueToggleAction     // last undone q-key action for redo
 
+	// Last repeatable prefix-chord action for . (dot) key replay.
+	lastRepeatableAction *repeatableAction
+
 	// Current project context
 	currentProject *models.Project
 
@@ -417,11 +420,11 @@ type AppModel struct {
 	// Project cycle popup state
 	showProjectCyclePicker bool
 	showProjectCycle       bool
-	projectCycleCursor    int
-	projectCycleScroll    int // scroll offset for cycle popup viewport
-	projectCycleItems     []ProjectInfo
-	projectCyclePreview   *ProjectTreeModel // cached preview tree for highlighted project
-	projectCyclePreviewID string            // project ID the preview was built for
+	projectCycleCursor     int
+	projectCycleScroll     int // scroll offset for cycle popup viewport
+	projectCycleItems      []ProjectInfo
+	projectCyclePreview    *ProjectTreeModel // cached preview tree for highlighted project
+	projectCyclePreviewID  string            // project ID the preview was built for
 
 	// Last project-level view used (ProjectTree, Outliner) for cycle preservation
 	lastProjectView ViewType
@@ -446,6 +449,9 @@ type AppModel struct {
 
 	// Quick note overlay (ctrl+. to add a comment without opening the full comments view)
 	quickNoteOverlay *QuickNoteOverlay
+
+	// Quick capture overlay (;i) — rendered as a floating centered box instead of a full view.
+	quickCaptureOverlay *QuickCaptureModel
 
 	// Global project picker overlay (shown for project selection in global workflows)
 	globalProjectPicker *GlobalProjectPicker

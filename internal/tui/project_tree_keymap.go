@@ -641,7 +641,7 @@ func (m *ProjectTreeModel) buildKeyMap() *keymap.KeyMap {
 	}
 	entries = append(entries, taskPrefixEntries...)
 
-	// Stage group: . prefix — map stage name back to a prefix key using StageForPrefixKey inverse.
+	// Stage group: alt+. prefix — map stage name back to a prefix key using StageForPrefixKey inverse.
 	// We use handleStagePrefix with the key that would resolve to the given stage.
 	stageEntries := keymap.StageGroup(keymap.StageDeps{
 		Stages: stages,

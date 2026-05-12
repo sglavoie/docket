@@ -61,9 +61,14 @@ func (m *AppModel) View() (result tea.View) { //nolint:gocyclo
 	// Full-height views render their own footer and skip the external status bar.
 	// Exception: when a transient status message is active (clipboard feedback,
 	// error, loading), replace the view's footer with the AppModel status bar.
+	// Further exception: zen mode suppresses even transient status overlays.
 	if currentView := m.views.Get(m.currentView()); currentView != nil {
 		if caps, ok := currentView.(ViewCapabilities); ok && caps.IsFullHeight() {
-			if m.statusMessage != "" || m.err != nil || m.isLoading {
+			inZen := false
+			if zenView, ok := currentView.(ZenModeView); ok {
+				inZen = zenView.IsZenMode()
+			}
+			if !inZen && (m.statusMessage != "" || m.err != nil || m.isLoading) {
 				content = replaceFooter(content, m.renderStatusBar())
 			}
 			content = m.applyOverlays(content, m.height)
