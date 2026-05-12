@@ -9,17 +9,23 @@ import (
 	"github.com/sglavoie/tt/internal/tui/keymap"
 )
 
-var focusBoardTabNames = []string{"Today", "All", "Active/Due", "Next", "By Source", "By Priority", "By Score", "Closed"}
+var focusBoardTabNames = []string{"Today", "All", "Next", "Closed"}
 
 const (
-	boardTabToday      = 0
-	boardTabAll        = 1
-	boardTabActiveDue  = 2
-	boardTabNext       = 3
-	boardTabBySource   = 4
-	boardTabByPriority = 5
-	boardTabByScore    = 6
-	boardTabClosed     = 7
+	boardTabToday  = 0
+	boardTabAll    = 1
+	boardTabNext   = 2
+	boardTabClosed = 3
+)
+
+// boardGroupBy controls the grouping mode applied to the "All" tab.
+type boardGroupBy int
+
+const (
+	boardGroupByNone     boardGroupBy = iota
+	boardGroupBySource
+	boardGroupByPriority
+	boardGroupByScore
 )
 
 // boardRow is a unified display item for an active/due task.
@@ -28,7 +34,8 @@ type boardRow struct {
 	Project     *models.Project
 	Priority    int
 	Source      string
-	TreePrefix string // non-empty for auto-expanded children of planned items in Today tab
+	TreePrefix  string // non-empty for auto-expanded children of planned items in Today tab
+	GroupHeader string // non-empty for non-selectable group separator rows (Task will be nil)
 }
 
 func (r boardRow) isTask() bool {
@@ -84,9 +91,10 @@ type FocusBoardModel struct {
 	editInput textinput.Model
 	editIdx   int
 
-	previewMode    bool
-	tunnelMode     bool
-	initialTabSet  bool
+	previewMode   bool
+	tunnelMode    bool
+	initialTabSet bool
+	groupBy       boardGroupBy // grouping mode for the All tab
 }
 
 // NewFocusBoardModel creates a new focus board model.
@@ -206,9 +214,32 @@ func (m *FocusBoardModel) getRowAtCursor() *boardRow {
 	return &m.filtered[m.cursor]
 }
 
-// clampCursor ensures cursor is within valid range.
+// clampCursor ensures cursor is within valid range, then skips past group headers.
 func (m *FocusBoardModel) clampCursor() {
 	m.ClampCursorTo(len(m.filtered))
+	m.skipGroupHeaderForward()
+}
+
+// skipGroupHeaderForward advances cursor past any group header it lands on.
+func (m *FocusBoardModel) skipGroupHeaderForward() {
+	for m.cursor < len(m.filtered) && m.filtered[m.cursor].GroupHeader != "" {
+		m.cursor++
+		if m.cursor >= len(m.filtered) {
+			m.cursor = len(m.filtered) - 1
+			break
+		}
+	}
+}
+
+// skipGroupHeaderBackward retreats cursor past any group header it lands on.
+func (m *FocusBoardModel) skipGroupHeaderBackward() {
+	for m.cursor >= 0 && m.cursor < len(m.filtered) && m.filtered[m.cursor].GroupHeader != "" {
+		if m.cursor == 0 {
+			m.skipGroupHeaderForward()
+			return
+		}
+		m.cursor--
+	}
 }
 
 // escSteps defines the Esc dismissal cascade: search → filters.

@@ -133,6 +133,13 @@ func (m *AppModel) buildBreadcrumb() string {
 		return ""
 	}
 
+	// Deep stacks: abbreviate to last 2 segments with a depth indicator.
+	if len(parts) > 3 {
+		depth := len(parts)
+		abbreviated := "… > " + strings.Join(parts[len(parts)-2:], sep)
+		return abbreviated + " " + MutedStyle.Render(fmt.Sprintf("[%d]", depth))
+	}
+
 	crumb := strings.Join(parts, sep)
 	// Truncate total breadcrumb if it would crowd out the help text.
 	maxLen := max(m.width/2, 20)

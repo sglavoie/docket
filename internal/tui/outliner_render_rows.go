@@ -50,16 +50,14 @@ func (m *OutlinerModel) renderOutlinerSectionHeaderRow(row outlinerRow, selected
 	}
 
 	sectionStyle := GetViewModeStyleForSection(row.SectionName)
-	indicator := "▾"
-	if m.collapsedSections[row.effectiveCollapseKey()] {
-		indicator = "▸"
-	}
 
-	line := fmt.Sprintf("  %s %s %s",
-		MutedStyle.Render(indicator),
-		sectionStyle.Render("@ "+displayName),
-		MutedStyle.Render(fmt.Sprintf("(%d)", row.SectionCount)),
-	)
+	line := renderSectionHeader(SectionHeaderOpts{
+		Name:        displayName,
+		Count:       row.SectionCount,
+		Collapsed:   m.collapsedSections[row.effectiveCollapseKey()],
+		AccentColor: sectionStyle,
+		Prefix:      "@ ",
+	})
 
 	if limit := m.config.GetSectionLimit(row.SectionName); limit > 0 && row.SectionCount > limit {
 		line += "  " + PreviewWarningStyle.Render(sectionLimitWarning(row.SectionCount-limit, limit))

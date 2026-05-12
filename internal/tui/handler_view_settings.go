@@ -19,8 +19,10 @@ func (m *AppModel) handleViewSettingsMessages(msg tea.Msg) (bool, tea.Cmd) { //n
 	case SettingsStagesMsg:
 		sm := NewSettingsModel(m.config, m.configManager)
 		sm.blurCurrentField()
-		sm.tabs.Active = 8
-		sm.focusIndex = tabFieldStart[8]
+		sm.tabs.Active = tabStages
+		sm.subTab = 0
+		sm.focusIndex = tabFieldStart[tabStages]
+		sm.syncVisualFromOld()
 		sm.focusCurrentField()
 		m.showView(ViewSettings, sm)
 		return true, nil

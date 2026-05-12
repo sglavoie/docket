@@ -15,7 +15,9 @@ func renderSearchHelpPane(width, height int) string {
 
 	var b strings.Builder
 
-	b.WriteString(prefix.Render("!N") + muted.Render(" or ") + prefix.Render("!N-M") + muted.Render("  Priority (1-5 or range)"))
+	b.WriteString(prefix.Render("!N") + muted.Render("/") + prefix.Render("!word") + muted.Render("/") + prefix.Render("!N-M") + muted.Render("  Priority"))
+	b.WriteString("\n")
+	b.WriteString(muted.Render("  " + wrapValues([]string{"1-5", "critical", "urgent", "high", "normal", "medium", "low", "h", "med", "lo..."}, wrapWidth)))
 	b.WriteString("\n")
 	b.WriteString(prefix.Render("#tag") + muted.Render("  Tags (AND logic)"))
 	b.WriteString("\n")

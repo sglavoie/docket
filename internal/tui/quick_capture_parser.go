@@ -31,9 +31,9 @@ func parseQuickCapture(input string, project *models.Project, allProjects []*mod
 		input = typeRe.ReplaceAllString(input, " ")
 	}
 
-	// Extract priority: !1–!5 or word aliases (!urgent, !high, !normal, !low, !lowest)
+	// Extract priority: !1–!5, full word aliases, or short prefix forms (!h, !med, !lo, etc.)
 	// Require ! to be at start of string or preceded by whitespace
-	priorityRe := regexp.MustCompile(`(?i)(?:^|\s)!(critical|urgent|high|normal|medium|lowest|low|[1-5])`)
+	priorityRe := regexp.MustCompile(`(?i)(?:^|\s)!(critical|urgent|high|normal|medium|lowest|low|cr|ur|hi|no|med|me|lo|c|u|h|n|m|l|[1-5])`)
 	if match := priorityRe.FindStringSubmatch(input); len(match) > 1 {
 		result.priority = parsePriorityToken(match[1])
 		input = priorityRe.ReplaceAllString(input, " ")
@@ -249,10 +249,23 @@ func resolveProject(ref string, allProjects []*models.Project) *models.Project {
 	return best.project
 }
 
-// parsePriorityToken converts a priority token (numeric or word alias) to 1–5.
+// parsePriorityToken converts a priority token (numeric, word alias, or short prefix) to 1–5.
 // Word mappings: critical/urgent/high→1, normal/medium→3, low/lowest→5.
+// Short prefixes: c/cr/u/ur/h/hi→1, n/no/m/me/med→3, l/lo→5.
 func parsePriorityToken(token string) int {
-	switch strings.ToLower(token) {
+	abbrev := map[string]int{
+		"c": 1, "cr": 1,
+		"u": 1, "ur": 1,
+		"h": 1, "hi": 1,
+		"n": 3, "no": 3,
+		"m": 3, "me": 3, "med": 3,
+		"l": 5, "lo": 5,
+	}
+	lower := strings.ToLower(token)
+	if p, ok := abbrev[lower]; ok {
+		return p
+	}
+	switch lower {
 	case "critical", "urgent", "high":
 		return 1
 	case "normal", "medium":
@@ -284,9 +297,9 @@ func parseQuickCaptureForPreview(input string, project *models.Project, allProje
 		input = typeRe.ReplaceAllString(input, " ")
 	}
 
-	// Extract priority: !1–!5 or word aliases (!urgent, !high, !normal, !low, !lowest)
+	// Extract priority: !1–!5, full word aliases, or short prefix forms (!h, !med, !lo, etc.)
 	// Require ! to be at start of string or preceded by whitespace
-	priorityRe := regexp.MustCompile(`(?i)(?:^|\s)!(critical|urgent|high|normal|medium|lowest|low|[1-5])`)
+	priorityRe := regexp.MustCompile(`(?i)(?:^|\s)!(critical|urgent|high|normal|medium|lowest|low|cr|ur|hi|no|med|me|lo|c|u|h|n|m|l|[1-5])`)
 	if match := priorityRe.FindStringSubmatch(input); len(match) > 1 {
 		result.priority = parsePriorityToken(match[1])
 		input = priorityRe.ReplaceAllString(input, " ")

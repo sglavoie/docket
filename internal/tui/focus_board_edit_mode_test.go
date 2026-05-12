@@ -111,11 +111,11 @@ func TestFocusBoardAllTab_IncludesNonActiveTasks(t *testing.T) {
 	m.allRows = []boardRow{activeRow, nextRow}
 	m.nextRows = []boardRow{nextRow}
 
-	// Active/Due tab should only show active tasks
-	m.tabs.Active = boardTabActiveDue
+	// Next tab should only show next tasks
+	m.tabs.Active = boardTabNext
 	m.applyFilter()
 	if len(m.filtered) != 1 {
-		t.Errorf("Active/Due tab: expected 1 item, got %d", len(m.filtered))
+		t.Errorf("Next tab: expected 1 item, got %d", len(m.filtered))
 	}
 
 	// All tab should show both tasks

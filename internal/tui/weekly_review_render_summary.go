@@ -23,7 +23,11 @@ func (m *WeeklyReviewModel) renderTabBar() string {
 	for i, name := range m.tabs.Names {
 		labels[i] = fmt.Sprintf("%s (%d)", name, tabCounts[i])
 	}
-	return renderWrappingTabBar(labels, m.tabs.Active, m.width, m.AccentColor())
+	emptyTabs := make([]bool, len(tabCounts))
+	for i, c := range tabCounts {
+		emptyTabs[i] = c == 0
+	}
+	return renderWrappingTabBarWithEmpty(labels, m.tabs.Active, emptyTabs, m.width, m.AccentColor())
 }
 
 // GetPrefixPopupInfo returns prefix popup data for overlay rendering.

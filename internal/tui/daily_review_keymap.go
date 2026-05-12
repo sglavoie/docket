@@ -130,7 +130,7 @@ func (m *DailyReviewModel) buildKeyMap() *keymap.KeyMap {
 				}
 				return m, nil
 			}
-			return taskOpsSetQuickDueDate(m, days)
+			return reviewSetQuickDueDate(m, days)
 		}
 	}
 	bulkClearDueDate := func() (tea.Model, tea.Cmd) {
@@ -152,7 +152,7 @@ func (m *DailyReviewModel) buildKeyMap() *keymap.KeyMap {
 			}
 			return m, nil
 		}
-		return taskOpsClearDueDate(m)
+		return reviewClearDueDate(m)
 	}
 	snoozeDateAction := func(key string) keymap.Action {
 		return func() (tea.Model, tea.Cmd) {
@@ -175,7 +175,7 @@ func (m *DailyReviewModel) buildKeyMap() *keymap.KeyMap {
 				}
 				return m, nil
 			}
-			return taskOpsQuickSnooze(m, snoozeDate)
+			return reviewQuickSnooze(m, snoozeDate)
 		}
 	}
 	entries = append(entries, buildStandardTaskActionEntries(TaskKeymapDeps{
@@ -216,7 +216,7 @@ func (m *DailyReviewModel) buildKeyMap() *keymap.KeyMap {
 					}
 					return m, nil
 				}
-				return taskOpsChangeStatus(m, s)
+				return reviewChangeStatus(m, s)
 			}
 		},
 		PriorityChange: func(key string) keymap.Action {
@@ -243,7 +243,7 @@ func (m *DailyReviewModel) buildKeyMap() *keymap.KeyMap {
 					}
 					return m, nil
 				}
-				return taskOpsChangePriority(m, key)
+				return reviewChangePriority(m, key)
 			}
 		},
 		DueDateSet:   bulkSetDueDate,
@@ -272,7 +272,7 @@ func (m *DailyReviewModel) buildKeyMap() *keymap.KeyMap {
 					}
 					return m, nil
 				}
-				return taskOpsSectionMove(m, section)
+				return reviewSectionMove(m, section)
 			}
 		},
 		StageChange: func(stage string) keymap.Action {
@@ -298,7 +298,7 @@ func (m *DailyReviewModel) buildKeyMap() *keymap.KeyMap {
 					}
 					return m, nil
 				}
-				return taskOpsChangeStage(m, stage)
+				return reviewChangeStage(m, stage)
 			}
 		},
 		OpenURL: func() (tea.Model, tea.Cmd) {
@@ -433,7 +433,7 @@ func (m *DailyReviewModel) buildKeyMap() *keymap.KeyMap {
 		key := k
 		entries = append(entries,
 			keymap.Bind(key, "Set priority "+key, "Actions", func() (tea.Model, tea.Cmd) {
-				return taskOpsChangePriority(m, key)
+				return reviewChangePriority(m, key)
 			}, keymap.AsHidden()),
 		)
 	}

@@ -72,6 +72,62 @@ func TestParseSearchQuery_HyphenatedDottedTags(t *testing.T) {
 	}
 }
 
+func TestParseSearchQuery_PriorityAbbreviations(t *testing.T) {
+	tests := []struct {
+		name           string
+		input          string
+		wantPriorities []int
+		wantText       string
+	}{
+		{"numeric !1", "!1", []int{1}, ""},
+		{"numeric !5", "!5", []int{5}, ""},
+		{"range !1-3", "!1-3", []int{1, 2, 3}, ""},
+		{"abbrev !h (high)", "!h", []int{1}, ""},
+		{"abbrev !hi (high)", "!hi", []int{1}, ""},
+		{"abbrev !c (critical)", "!c", []int{1}, ""},
+		{"abbrev !cr (critical)", "!cr", []int{1}, ""},
+		{"abbrev !u (urgent)", "!u", []int{1}, ""},
+		{"abbrev !ur (urgent)", "!ur", []int{1}, ""},
+		{"abbrev !m (medium)", "!m", []int{3}, ""},
+		{"abbrev !me (medium)", "!me", []int{3}, ""},
+		{"abbrev !med (medium)", "!med", []int{3}, ""},
+		{"abbrev !n (normal)", "!n", []int{3}, ""},
+		{"abbrev !no (normal)", "!no", []int{3}, ""},
+		{"abbrev !l (low)", "!l", []int{5}, ""},
+		{"abbrev !lo (low)", "!lo", []int{5}, ""},
+		{"full word !high", "!high", []int{1}, ""},
+		{"full word !critical", "!critical", []int{1}, ""},
+		{"full word !urgent", "!urgent", []int{1}, ""},
+		{"full word !normal", "!normal", []int{3}, ""},
+		{"full word !medium", "!medium", []int{3}, ""},
+		{"full word !low", "!low", []int{5}, ""},
+		{"full word !lowest", "!lowest", []int{5}, ""},
+		{"case insensitive !High", "!High", []int{1}, ""},
+		{"case insensitive !MED", "!MED", []int{3}, ""},
+		{"abbrev with text", "fix bug !h", []int{1}, "fix bug"},
+		{"multiple abbrevs", "!h !lo", []int{1, 5}, ""},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := ParseSearchQuery(tt.input)
+
+			if len(result.Priorities) != len(tt.wantPriorities) {
+				t.Fatalf("ParseSearchQuery(%q).Priorities = %v, want %v", tt.input, result.Priorities, tt.wantPriorities)
+			}
+			for i, p := range result.Priorities {
+				if p != tt.wantPriorities[i] {
+					t.Errorf("ParseSearchQuery(%q).Priorities[%d] = %d, want %d", tt.input, i, p, tt.wantPriorities[i])
+				}
+			}
+
+			if result.TextQuery != tt.wantText {
+				t.Errorf("ParseSearchQuery(%q).TextQuery = %q, want %q", tt.input, result.TextQuery, tt.wantText)
+			}
+		})
+	}
+}
+
 func TestParseSearchQuery_AllStatuses(t *testing.T) {
 	tests := []struct {
 		name       string

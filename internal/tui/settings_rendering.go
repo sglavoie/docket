@@ -27,8 +27,8 @@ func (m *SettingsModel) renderColumnToggles(b *strings.Builder, toggles [14]bool
 func (m *SettingsModel) settingsContentHeight() int {
 	// Title (1) + tab bar with border (2) + blank line (1) + footer (1) + padding (1)
 	h := m.height - TabbedViewChrome
-	// Subtract 1 extra line when sub-tab row is visible
-	if subTabNamesForTab(m.tabs.Active) != nil {
+	// Subtract 1 extra line when visual sub-tab row is visible
+	if visualSubTabNamesForVTab(m.visualTab) != nil {
 		h--
 	}
 	if h < 3 {
@@ -169,14 +169,15 @@ func (m *SettingsModel) View() tea.View {
 	out.WriteString(renderFullscreenTitle("Settings", ""))
 	out.WriteString("\n")
 
-	subNames := subTabNamesForTab(m.tabs.Active)
-	if subNames != nil {
-		out.WriteString(renderTabBarWithOptionalSubTabs(settingsTabNames, m.tabs.Active, subNames, m.subTabRowFocused, m.width))
+	visualSubNames := visualSubTabNamesForVTab(m.visualTab)
+	if visualSubNames != nil {
+		out.WriteString(renderTabBarWithOptionalSubTabs(settingsVisualTabNames, m.visualTab, visualSubNames, m.subTabRowFocused, m.width))
 		out.WriteString("\n")
-		out.WriteString(renderSubTabBarWithFocus(subNames, m.subTab, m.subTabRowFocused, m.width))
+		out.WriteString(renderSubTabBarWithFocus(visualSubNames, m.visualSubTab, m.subTabRowFocused, m.width))
 		out.WriteString("\n\n")
 	} else {
-		out.WriteString(m.tabs.RenderBar(m.width))
+		visualTabState := TabState{Names: settingsVisualTabNames, Active: m.visualTab}
+		out.WriteString(visualTabState.RenderBar(m.width))
 		out.WriteString("\n\n")
 	}
 
@@ -188,7 +189,7 @@ func (m *SettingsModel) View() tea.View {
 		scrollHint = fmt.Sprintf(" (%d/%d)", m.scrollOffset+1, maxScroll+1)
 	}
 	helpPrefix := ""
-	if subTabNamesForTab(m.tabs.Active) != nil {
+	if visualSubTabNamesForVTab(m.visualTab) != nil {
 		helpPrefix = "shift+↑/↓ sub-tabs · "
 	}
 	left := HelpStyle.Render(helpPrefix + "shift+←/→: tabs · Tab: fields · Space: toggle · Enter: save · Esc: cancel · ?: Help" + scrollHint)

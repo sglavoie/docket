@@ -21,7 +21,15 @@ func (m *DailyReviewModel) View() tea.View {
 	if m.reviewCompleted {
 		subtitle = fmt.Sprintf("completed today at %s", m.completedAt.Format("15:04"))
 	} else if totalCount > 0 {
-		subtitle = fmt.Sprintf("%d tasks across %d sections", totalCount, len(m.sectionOrder))
+		progressBar := ""
+		if m.reviewedCount > 0 {
+			pct := float64(m.reviewedCount) / float64(totalCount) * 100
+			if pct > 100 {
+				pct = 100
+			}
+			progressBar = " " + RenderProgressBar(pct, 8)
+		}
+		subtitle = fmt.Sprintf("(%d/%d reviewed)%s", m.reviewedCount, totalCount, progressBar)
 	} else {
 		subtitle = "all caught up"
 	}
@@ -105,7 +113,11 @@ func (m *DailyReviewModel) renderReviewTabBar() string {
 		labels[i] = fmt.Sprintf("%s (%d)", name, tabCounts[i])
 	}
 
-	return renderWrappingTabBar(labels, m.tabs.Active, m.width, m.AccentColor())
+	emptyTabs := make([]bool, len(tabCounts))
+	for i, c := range tabCounts {
+		emptyTabs[i] = c == 0
+	}
+	return renderWrappingTabBarWithEmpty(labels, m.tabs.Active, emptyTabs, m.width, m.AccentColor())
 }
 
 // GetPrefixPopupInfo returns prefix popup data for overlay rendering.

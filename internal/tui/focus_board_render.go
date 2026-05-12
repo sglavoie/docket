@@ -122,32 +122,27 @@ func (m *FocusBoardModel) View() tea.View { //nolint:gocyclo
 	// Empty state
 	if len(m.filtered) == 0 {
 		b.WriteString("\n")
+		var emptyContent string
 		if m.HasActiveFilters() {
-			b.WriteString(MutedStyle.Render("  " + EmptyStateFiltered))
-			b.WriteString("\n\n")
-			b.WriteString(HelpStyle.Render("  Press Fx to clear filters, or Esc to dismiss."))
+			emptyContent = renderEmptyState("  "+EmptyStateFiltered, "  Press Fx to clear filters, or Esc to dismiss.")
 		} else if m.tabs.Active == boardTabToday && m.completedTodayCount() > 0 {
 			n := m.completedTodayCount()
 			suffix := "task"
 			if n != 1 {
 				suffix = "tasks"
 			}
-			b.WriteString(SuccessStyle.Render(fmt.Sprintf("  All done for today! %d %s completed.", n, suffix)))
-			b.WriteString("\n\n")
-			b.WriteString(HelpStyle.Render("  Press w to plan more, or Esc to close."))
+			emptyContent = SuccessStyle.Render(fmt.Sprintf("  All done for today! %d %s completed.", n, suffix)) +
+				"\n\n" + HelpStyle.Render("  Press w to plan more, or Esc to close.")
 		} else if m.tabs.Active == boardTabToday {
-			b.WriteString(MutedStyle.Render("  No tasks planned for today"))
-			b.WriteString("\n\n")
-			b.WriteString(HelpStyle.Render("  Press w on any task to plan it for today."))
+			emptyContent = renderEmptyState("  No tasks planned for today", "  Press w on any task to plan it for today.")
 		} else if m.tabs.Active == boardTabClosed {
-			b.WriteString(MutedStyle.Render("  " + EmptyStateClosed))
+			emptyContent = MutedStyle.Render("  " + EmptyStateClosed)
 		} else if len(m.rows) == 0 {
-			b.WriteString(MutedStyle.Render("  " + EmptyStateNoTasks))
-			b.WriteString("\n\n")
-			b.WriteString(HelpStyle.Render("  Press a to add a task, or mark tasks as active in a project."))
+			emptyContent = renderEmptyState("  "+EmptyStateNoTasks, "  Press a to add a task, or mark tasks as active in a project.")
 		} else {
-			b.WriteString(MutedStyle.Render("  " + EmptyStateNoMatch))
+			emptyContent = MutedStyle.Render("  " + EmptyStateNoMatch)
 		}
+		b.WriteString(emptyContent)
 		b.WriteString("\n\n")
 		b.WriteString(renderStatusMessages(m.statusMessage, m.err))
 		left := HelpStyle.Render("a add · tab switch · Esc close · ? help")
@@ -163,6 +158,17 @@ func (m *FocusBoardModel) View() tea.View { //nolint:gocyclo
 	plannedIdx := 0
 	for i, row := range m.filtered {
 		isSelected := i == m.cursor
+
+		// Group header rows are non-selectable dividers
+		if row.GroupHeader != "" {
+			line := renderSectionHeader(SectionHeaderOpts{
+				Name:        row.GroupHeader,
+				AccentColor: ActiveStyle,
+				Width:       m.width,
+			})
+			lines = append(lines, line)
+			continue
+		}
 
 		// Quick-edit mode for the selected row
 		if m.editMode && i == m.editIdx {
@@ -229,6 +235,14 @@ func (m *FocusBoardModel) View() tea.View { //nolint:gocyclo
 		}
 		rightParts = append(rightParts, fmt.Sprintf("Sort: %s %s", m.sort.Field.ShortString(), direction))
 	}
+	if m.tabs.Active == boardTabAll && m.groupBy != boardGroupByNone {
+		groupLabel := map[boardGroupBy]string{
+			boardGroupBySource:   "source",
+			boardGroupByPriority: "priority",
+			boardGroupByScore:    "score",
+		}[m.groupBy]
+		rightParts = append(rightParts, "grouped by "+groupLabel)
+	}
 	switch m.tabs.Active {
 	case boardTabClosed:
 		rightParts = append(rightParts, fmt.Sprintf("%d closed", len(m.closedRows)))
@@ -245,10 +259,25 @@ func (m *FocusBoardModel) View() tea.View { //nolint:gocyclo
 			}
 		}
 		rightParts = append(rightParts, fmt.Sprintf("%d/%d done", completedToday, plannedTotal))
+		if est := sumEstimatesForRows(m.filtered); est > 0 {
+			rightParts = append(rightParts, formatEstimateDays(est)+" est")
+		}
 	case boardTabAll:
-		rightParts = append(rightParts, fmt.Sprintf("%d/%d items", len(m.filtered), len(m.allRows)))
+		taskCount := 0
+		for _, r := range m.filtered {
+			if r.GroupHeader == "" {
+				taskCount++
+			}
+		}
+		rightParts = append(rightParts, fmt.Sprintf("%d/%d items", taskCount, len(m.allRows)))
+		if est := sumEstimatesForRows(m.filtered); est > 0 {
+			rightParts = append(rightParts, formatEstimateDays(est)+" est")
+		}
 	default:
 		rightParts = append(rightParts, fmt.Sprintf("%d/%d items", len(m.filtered), len(m.rows)))
+		if est := sumEstimatesForRows(m.filtered); est > 0 {
+			rightParts = append(rightParts, formatEstimateDays(est)+" est")
+		}
 	}
 	right := MutedStyle.Render(strings.Join(rightParts, " · "))
 	b.WriteString(renderStatusBarFooter(left, right, m.width, m.AccentColor()))
@@ -307,10 +336,14 @@ func (m *FocusBoardModel) renderRow(row boardRow, isSelected bool, maxTitleLen i
 	statusIcon := GetStatusBadge(string(task.Status), task.Status.Icon())
 	content := fmt.Sprintf("%s%s%s%s %s %s%s %s", queueIndicator, indent, prefix, statusIcon, priorityBadge, projectBadge, typeIcon, title)
 
+	estimateStr := ""
+	if task.EstimatedDays > 0 {
+		estimateStr = MutedStyle.Render("(" + formatEstimateDays(task.EstimatedDays) + ")")
+	}
 	structureGroup := scoreBadge
 	lifecycleGroup := dueStr
 	contentGroup := renderTruncatedTags(task.Tags, 2, 8)
-	trailing := JoinIndicatorGroups(structureGroup, lifecycleGroup, contentGroup)
+	trailing := JoinIndicatorGroups(structureGroup, lifecycleGroup, contentGroup, estimateStr)
 	if trailing != "" {
 		content += " " + trailing
 	}
@@ -325,6 +358,33 @@ func (m *FocusBoardModel) renderRow(row boardRow, isSelected bool, maxTitleLen i
 	b.WriteString(line)
 
 	return b.String()
+}
+
+// formatEstimateDays formats an estimated-days value as a human-readable duration.
+// Values under 1 day are shown in hours (8h/day); 1+ days shown as days.
+func formatEstimateDays(days float64) string {
+	if days < 1 {
+		hours := days * 8
+		if hours == float64(int(hours)) {
+			return fmt.Sprintf("~%dh", int(hours))
+		}
+		return fmt.Sprintf("~%.1fh", hours)
+	}
+	if days == float64(int(days)) {
+		return fmt.Sprintf("~%dd", int(days))
+	}
+	return fmt.Sprintf("~%.1fd", days)
+}
+
+// sumEstimatesForRows returns the total estimated days across all board rows.
+func sumEstimatesForRows(rows []boardRow) float64 {
+	var total float64
+	for _, r := range rows {
+		if r.Task != nil {
+			total += r.Task.EstimatedDays
+		}
+	}
+	return total
 }
 
 // highlightTitle returns the truncated title with search match positions highlighted.

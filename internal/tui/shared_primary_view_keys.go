@@ -215,6 +215,10 @@ func handleTypeChangeKey(key string, v prefixableView) (tea.Cmd, bool) {
 		v.setStatusMessage(result.StatusMessage)
 		v.refreshView()
 	}
+	if updated := project.GetTaskByID(task.ID); updated != nil {
+		v.setMutationFlash(typeMutationFlashBg(updated.Type))
+		cmds = append(cmds, mutationFlashTimeout())
+	}
 	return tea.Batch(cmds...), true
 }
 

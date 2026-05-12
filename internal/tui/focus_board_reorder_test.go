@@ -126,7 +126,7 @@ func TestHandleDailyPlanReorder_NoFilterActive(t *testing.T) {
 func TestHandleDailyPlanReorder_WrongTab(t *testing.T) {
 	// Reorder should be a no-op on non-Today tabs.
 	m := &FocusBoardModel{
-		tabs: TabState{Active: boardTabActiveDue},
+		tabs: TabState{Active: boardTabAll},
 	}
 	m.cursor = 0
 	model, cmd := m.handleDailyPlanReorder(1)

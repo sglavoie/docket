@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"fmt"
 	"sort"
 	"strings"
 	"time"
@@ -113,7 +114,7 @@ func (m *FocusBoardModel) loadItems() {
 	if !m.initialTabSet {
 		m.initialTabSet = true
 		if len(m.dailyPlanIDs) == 0 {
-			m.tabs.Active = boardTabActiveDue
+			m.tabs.Active = boardTabAll
 			m.applyFilter()
 		}
 	}
@@ -130,7 +131,7 @@ func (m *FocusBoardModel) completedTodayCount() int {
 	return count
 }
 
-// applyFilter filters rows based on the active tab.
+// applyFilter filters rows based on the active tab, then applies groupBy headers for the All tab.
 func (m *FocusBoardModel) applyFilter() {
 	switch m.tabs.Active {
 	case boardTabToday:
@@ -142,35 +143,12 @@ func (m *FocusBoardModel) applyFilter() {
 		sort.SliceStable(m.filtered, func(i, j int) bool {
 			return m.filtered[i].Priority < m.filtered[j].Priority
 		})
-	case boardTabActiveDue:
-		m.filtered = make([]boardRow, len(m.rows))
-		copy(m.filtered, m.rows)
 	case boardTabNext:
 		m.filtered = make([]boardRow, len(m.nextRows))
 		copy(m.filtered, m.nextRows)
 		sort.SliceStable(m.filtered, func(i, j int) bool {
 			return m.filtered[i].Priority < m.filtered[j].Priority
 		})
-	case boardTabBySource:
-		m.filtered = make([]boardRow, len(m.rows))
-		copy(m.filtered, m.rows)
-		sort.SliceStable(m.filtered, func(i, j int) bool {
-			return m.filtered[i].Source < m.filtered[j].Source
-		})
-	case boardTabByPriority:
-		m.filtered = make([]boardRow, len(m.rows))
-		copy(m.filtered, m.rows)
-		sort.SliceStable(m.filtered, func(i, j int) bool {
-			return m.filtered[i].Priority < m.filtered[j].Priority
-		})
-	case boardTabByScore:
-		m.filtered = nil
-		for _, r := range m.rows {
-			profile := m.config.GetProjectScoringProfile(r.Project.ID)
-			if profile != nil {
-				m.filtered = append(m.filtered, r)
-			}
-		}
 	case boardTabClosed:
 		m.filtered = make([]boardRow, len(m.closedRows))
 		copy(m.filtered, m.closedRows)
@@ -194,14 +172,68 @@ func (m *FocusBoardModel) applyFilter() {
 		m.filtered = passed
 	}
 
-	// Apply sorting: user-selected field, or default score-descending on By Score tab
+	// Apply sorting
 	if m.sort.Field != SortByDefault {
 		m.applySorting()
-	} else if m.tabs.Active == boardTabByScore {
-		sort.SliceStable(m.filtered, func(i, j int) bool {
-			return m.scorePercent(m.filtered[i]) > m.scorePercent(m.filtered[j])
-		})
 	}
+
+	// Insert group-header rows for the All tab when a groupBy mode is active
+	if m.tabs.Active == boardTabAll && m.groupBy != boardGroupByNone {
+		m.filtered = m.insertGroupHeaders(m.filtered)
+	}
+}
+
+// insertGroupHeaders sorts filtered rows by the active groupBy key and inserts
+// non-selectable header rows at group boundaries.
+func (m *FocusBoardModel) insertGroupHeaders(rows []boardRow) []boardRow {
+	if len(rows) == 0 {
+		return rows
+	}
+
+	keyOf := func(r boardRow) string {
+		switch m.groupBy {
+		case boardGroupBySource:
+			if r.Source == "" {
+				return "(no source)"
+			}
+			return r.Source
+		case boardGroupByPriority:
+			return fmt.Sprintf("P%d", r.Priority)
+		case boardGroupByScore:
+			pct := m.scorePercent(r)
+			switch {
+			case pct >= 80:
+				return "High score (≥80%)"
+			case pct >= 50:
+				return "Medium score (50–79%)"
+			default:
+				return "Low score (<50%)"
+			}
+		}
+		return ""
+	}
+
+	// Sort by group key, stable so within-group order is preserved
+	sort.SliceStable(rows, func(i, j int) bool {
+		ki, kj := keyOf(rows[i]), keyOf(rows[j])
+		if m.groupBy == boardGroupByScore {
+			// Score groups: high first
+			return m.scorePercent(rows[i]) > m.scorePercent(rows[j])
+		}
+		return ki < kj
+	})
+
+	var out []boardRow
+	var lastKey string
+	for _, r := range rows {
+		k := keyOf(r)
+		if k != lastKey {
+			out = append(out, boardRow{GroupHeader: k})
+			lastKey = k
+		}
+		out = append(out, r)
+	}
+	return out
 }
 
 // applySorting sorts the filtered rows based on the current sort field.

@@ -52,6 +52,7 @@ type DailyReviewModel struct {
 	// Review completion state
 	reviewCompleted bool
 	completedAt     time.Time
+	reviewedCount   int // number of tasks acted on this session
 
 	// Filter
 	FilterMixin

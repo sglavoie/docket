@@ -147,8 +147,12 @@ func (m *OutlinerModel) crossHandleTypeChange(key string) (tea.Cmd, bool) {
 	if result.StatusMessage != "" {
 		m.setStatus(result.StatusMessage)
 	}
+	m.mutationFlash = true
+	if updated := proj.GetTaskByID(row.task.ID); updated != nil {
+		m.mutationFlashBg = typeMutationFlashBg(updated.Type)
+	}
 	m.rebuildRows()
-	return result.Cmd, true
+	return tea.Batch(result.Cmd, mutationFlashTimeout()), true
 }
 
 // crossExecuteDelete performs a delete of m.deleteTarget in cross-project mode.

@@ -28,6 +28,78 @@ const (
 	tabAppearance    = 10
 )
 
+// settingsVisualTabNames are the 5 consolidated tab names shown in the tab bar.
+var settingsVisualTabNames = []string{"General", "Appearance", "Views", "Review", "Notifications"}
+
+// visualSubTabRef maps a visual sub-tab to the underlying old tab and sub-tab index.
+type visualSubTabRef struct {
+	name      string
+	oldTab    int
+	oldSubTab int
+}
+
+// visualTabSubTabs defines the sub-tab structure for each of the 5 visual tabs.
+// The old tab routing (tabForField, subTabForField, etc.) is unchanged; this
+// layer is purely for navigation and display.
+var visualTabSubTabs = [][]visualSubTabRef{
+	// vtab 0: General = old General + old Behavior sub-sections + old Attachments
+	{
+		{"General", tabGeneral, 0},
+		{"Recent Activity", tabBehavior, 0},
+		{"Linked Tasks", tabBehavior, 1},
+		{"Pinned Tasks", tabBehavior, 2},
+		{"Recent Tasks", tabBehavior, 3},
+		{"Popups", tabBehavior, 4},
+		{"Section Limits", tabBehavior, 5},
+		{"Startup", tabBehavior, 6},
+		{"Task Form", tabBehavior, 7},
+		{"Attachments", tabAttachments, 0},
+	},
+	// vtab 1: Appearance = old Palette sub-sections + old Appearance
+	{
+		{"Palette Colors", tabPalette, 0},
+		{"Background & Cursor", tabPalette, 1},
+		{"Priorities", tabPalette, 2},
+		{"Appearance", tabAppearance, 0},
+	},
+	// vtab 2: Views = old Project Tree + old Outliner sub-sections + old Kanban
+	{
+		{"Project Tree", tabProjectTree, 0},
+		{"Sidebar", tabOutliner, 0},
+		{"Section State", tabOutliner, 1},
+		{"Column Visibility", tabOutliner, 2},
+		{"Kanban", tabKanban, 0},
+	},
+	// vtab 3: Review (single section, no sub-tab bar)
+	{
+		{"Review", tabReview, 0},
+	},
+	// vtab 4: Notifications = old Notifications sub-sections + old Stages
+	{
+		{"Reviews", tabNotifications, 0},
+		{"Tasks", tabNotifications, 1},
+		{"Projects", tabNotifications, 2},
+		{"Stages", tabStages, 0},
+	},
+}
+
+// visualSubTabNamesForVTab returns the display names for visual sub-tabs within vt,
+// or nil when there is only one section (no sub-tab bar needed).
+func visualSubTabNamesForVTab(vt int) []string {
+	if vt < 0 || vt >= len(visualTabSubTabs) {
+		return nil
+	}
+	refs := visualTabSubTabs[vt]
+	if len(refs) <= 1 {
+		return nil
+	}
+	names := make([]string, len(refs))
+	for i, r := range refs {
+		names[i] = r.name
+	}
+	return names
+}
+
 var (
 	settingsTabNames = []string{"General", "Palette", "Review", "Behavior", "Attachments", "Project Tree", "Outliner", "Kanban", "Notifications", "Stages", "Appearance"}
 
@@ -301,8 +373,10 @@ type SettingsModel struct {
 	activeHiddenDimmed [3]string
 
 	tabs               TabState
-	subTab             int  // active sub-tab index within current tab
+	subTab             int  // active sub-tab index within current old tab (field routing)
 	subTabRowFocused   bool // true when shift+left/right navigates sub-tabs instead of main tabs
+	visualTab          int  // active visual tab (0-4), for tab bar display
+	visualSubTab       int  // active sub-tab within the visual tab, for sub-tab bar display
 	focusIndex         int  // 0=editor .. 74=outlinerColumnDefaults, 75-89=alert settings, 90=stages, 91=appearance
 	scrollOffset       int  // vertical scroll offset within current tab content
 	validationErr      string
@@ -310,4 +384,44 @@ type SettingsModel struct {
 
 	width  int
 	height int
+}
+
+// syncVisualFromOld sets visualTab and visualSubTab to match the current
+// tabs.Active (old tab) and subTab (old sub-tab index).
+func (m *SettingsModel) syncVisualFromOld() {
+	for vt, refs := range visualTabSubTabs {
+		for vs, ref := range refs {
+			if ref.oldTab == m.tabs.Active && ref.oldSubTab == m.subTab {
+				m.visualTab = vt
+				m.visualSubTab = vs
+				return
+			}
+		}
+	}
+	// Fallback: match by old tab only
+	for vt, refs := range visualTabSubTabs {
+		for vs, ref := range refs {
+			if ref.oldTab == m.tabs.Active {
+				m.visualTab = vt
+				m.visualSubTab = vs
+				return
+			}
+		}
+	}
+}
+
+// setFromVisual updates tabs.Active, subTab, and focusIndex from the current
+// visualTab and visualSubTab.
+func (m *SettingsModel) setFromVisual() {
+	if m.visualTab >= len(visualTabSubTabs) {
+		return
+	}
+	refs := visualTabSubTabs[m.visualTab]
+	if m.visualSubTab >= len(refs) {
+		m.visualSubTab = 0
+	}
+	ref := refs[m.visualSubTab]
+	m.tabs.Active = ref.oldTab
+	m.subTab = ref.oldSubTab
+	m.focusIndex = subTabFieldStart(ref.oldTab, ref.oldSubTab)
 }

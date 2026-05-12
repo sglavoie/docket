@@ -248,8 +248,29 @@ func (m *AppModel) renderSemicolonPrefixPopup() string {
 	if !m.pendingSemicolonPrefix {
 		return ""
 	}
-	hints := PrefixHints{";": SemicolonPrefixHints}
+	hints := PrefixHints{";": m.buildSemicolonHints()}
 	return RenderPrefixPopup(";", hints, m.width, m.height)
+}
+
+// buildSemicolonHints returns a copy of SemicolonPrefixHints with context-dependent disabling.
+// Shortcuts pointing to empty/unavailable data are dimmed so users understand at a glance
+// which destinations are currently active.
+func (m *AppModel) buildSemicolonHints() []PrefixHint {
+	hints := make([]PrefixHint, len(SemicolonPrefixHints))
+	copy(hints, SemicolonPrefixHints)
+
+	hasAlerts := m.alertCount() > 0
+	hasWorkflowRules := m.config != nil && len(m.config.WorkflowRules) > 0
+
+	for i := range hints {
+		switch hints[i].Key {
+		case "n":
+			hints[i].Disabled = !hasAlerts
+		case "W":
+			hints[i].Disabled = !hasWorkflowRules
+		}
+	}
+	return hints
 }
 
 // renderConfirmDialogOverlay checks if the current view has an active confirm

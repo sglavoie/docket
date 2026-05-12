@@ -189,6 +189,58 @@ func statusMutationFlashBg(status models.TaskStatus) color.Color {
 	}
 }
 
+// priorityMutationFlashBg returns a subtle background tint for a priority-specific mutation flash.
+func priorityMutationFlashBg(priority int) color.Color {
+	if activeThemeName == "light" {
+		switch priority {
+		case 1:
+			return lipgloss.Color("#f8d7da")
+		case 2:
+			return lipgloss.Color("#fff3cd")
+		case 3:
+			return lipgloss.Color("#dbe8ff")
+		default:
+			return ColorFlashBg
+		}
+	}
+	switch priority {
+	case 1:
+		return lipgloss.Color("#3d1a20")
+	case 2:
+		return lipgloss.Color("#3d2e00")
+	case 3:
+		return lipgloss.Color("#182035")
+	default:
+		return ColorFlashBg
+	}
+}
+
+// typeMutationFlashBg returns a subtle background tint for a type-specific mutation flash.
+func typeMutationFlashBg(taskType models.TaskType) color.Color {
+	if activeThemeName == "light" {
+		switch taskType {
+		case models.TaskTypeEpic:
+			return lipgloss.Color("#ede0ff")
+		case models.TaskTypeBug:
+			return lipgloss.Color("#f8d7da")
+		case models.TaskTypeIdea:
+			return lipgloss.Color("#fff3cd")
+		default:
+			return ColorFlashBg
+		}
+	}
+	switch taskType {
+	case models.TaskTypeEpic:
+		return lipgloss.Color("#2b1f45")
+	case models.TaskTypeBug:
+		return lipgloss.Color("#3d1520")
+	case models.TaskTypeIdea:
+		return lipgloss.Color("#3d2e00")
+	default:
+		return ColorFlashBg
+	}
+}
+
 // GetStageBadge returns the stage name rendered as a styled badge.
 func GetStageBadge(stage string) string {
 	if stage == "" {

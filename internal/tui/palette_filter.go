@@ -150,9 +150,10 @@ func (m *CommandPaletteModel) filterItems() { //nolint:gocyclo
 		for i, item := range sorted {
 			m.filteredItems[i] = filteredPaletteItem{Item: item}
 		}
-		// Inject "Frequent" section when browsing without any filter
+		// Inject "Recent" and "Suggested" sections when browsing without any filter
 		if categoryFilter == "" && !isRecentFilter {
 			m.injectFrequentItems()
+			m.injectSuggestedItems()
 		}
 		m.restoreCursorPosition()
 		return
@@ -302,32 +303,25 @@ func (m *CommandPaletteModel) isItemPinned(item PaletteItem) bool {
 	return m.pinnedCommands[item.Command.Name]
 }
 
-// injectFrequentItems prepends a "Frequent" section to filteredItems using the top items
-// from recentPaletteSelections sorted by usage count. Only items used more than once are shown.
-// The frequent items are marked with IsFrequent=true; they are duplicates of regular items.
+// injectFrequentItems prepends a "Recent" section to filteredItems using the top items
+// from recentPaletteSelections in recency order (most recently used first), max 5.
+// The recent items are marked with IsFrequent=true; they are duplicates of regular items.
 func (m *CommandPaletteModel) injectFrequentItems() {
 	if len(recentPaletteSelections) == 0 {
 		return
 	}
 
-	// Sort by count descending to find most-used items
-	ranked := make([]recentSelection, len(recentPaletteSelections))
-	copy(ranked, recentPaletteSelections)
-	sort.SliceStable(ranked, func(i, j int) bool {
-		return ranked[i].Count > ranked[j].Count
-	})
-
-	const maxFrequent = 7
-	var frequentItems []filteredPaletteItem
-	for _, rs := range ranked {
-		if rs.Count < 2 || len(frequentItems) >= maxFrequent {
+	// recentPaletteSelections is already ordered most-recent-first; use recency order directly.
+	const maxRecent = 5
+	var recentItems []filteredPaletteItem
+	for _, rs := range recentPaletteSelections {
+		if len(recentItems) >= maxRecent {
 			break
 		}
-		// Find the matching PaletteItem in the already-built filteredItems
 		for _, fi := range m.filteredItems {
 			id := m.getItemID(fi.Item)
 			if fi.Item.Category == rs.Category && id == rs.ID {
-				frequentItems = append(frequentItems, filteredPaletteItem{
+				recentItems = append(recentItems, filteredPaletteItem{
 					Item:       fi.Item,
 					IsFrequent: true,
 				})
@@ -336,11 +330,79 @@ func (m *CommandPaletteModel) injectFrequentItems() {
 		}
 	}
 
-	if len(frequentItems) == 0 {
+	if len(recentItems) == 0 {
 		return
 	}
 
-	m.filteredItems = append(frequentItems, m.filteredItems...)
+	m.filteredItems = append(recentItems, m.filteredItems...)
+}
+
+// injectSuggestedItems appends a "Suggested" section after the Recent section.
+// Suggested items are commands applicable to the current view that have never been used
+// (not in recentPaletteSelections). Limited to 3 items, preferring action/filter categories.
+func (m *CommandPaletteModel) injectSuggestedItems() {
+	// Build set of already-used command IDs.
+	usedIDs := make(map[string]bool, len(recentPaletteSelections))
+	for _, rs := range recentPaletteSelections {
+		if rs.Category == ItemCategoryCommands {
+			usedIDs[rs.ID] = true
+		}
+	}
+
+	// Priority order for suggested categories.
+	priorityCategories := []CommandCategory{
+		CategoryFilters,
+		CategoryActions,
+		CategorySort,
+		CategoryStatus,
+		CategoryViews,
+	}
+
+	// Collect candidates by priority category.
+	byCategory := make(map[CommandCategory][]PaletteItem)
+	for _, fi := range m.filteredItems {
+		if fi.Item.Category != ItemCategoryCommands || fi.Item.Command == nil {
+			continue
+		}
+		id := m.getItemID(fi.Item)
+		if usedIDs[id] {
+			continue
+		}
+		cat := fi.Item.Command.Category
+		byCategory[cat] = append(byCategory[cat], fi.Item)
+	}
+
+	const maxSuggested = 3
+	var suggested []filteredPaletteItem
+	for _, cat := range priorityCategories {
+		for _, item := range byCategory[cat] {
+			if len(suggested) >= maxSuggested {
+				break
+			}
+			suggested = append(suggested, filteredPaletteItem{
+				Item:        item,
+				IsSuggested: true,
+			})
+		}
+		if len(suggested) >= maxSuggested {
+			break
+		}
+	}
+
+	if len(suggested) == 0 {
+		return
+	}
+
+	// Insert suggested items after the recent (IsFrequent) block and before regular items.
+	splitIdx := 0
+	for splitIdx < len(m.filteredItems) && m.filteredItems[splitIdx].IsFrequent {
+		splitIdx++
+	}
+	result := make([]filteredPaletteItem, 0, len(m.filteredItems)+len(suggested))
+	result = append(result, m.filteredItems[:splitIdx]...)
+	result = append(result, suggested...)
+	result = append(result, m.filteredItems[splitIdx:]...)
+	m.filteredItems = result
 }
 
 // persistCategoryFilter saves the category filter to config when a category prefix is used.

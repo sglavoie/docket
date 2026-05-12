@@ -28,12 +28,14 @@ func (m *FocusBoardModel) buildKeyMap() *keymap.KeyMap {
 		CursorDown: func() (tea.Model, tea.Cmd) {
 			if m.cursor < len(m.filtered)-1 {
 				m.cursor++
+				m.skipGroupHeaderForward()
 			}
 			return m, nil
 		},
 		CursorUp: func() (tea.Model, tea.Cmd) {
 			if m.cursor > 0 {
 				m.cursor--
+				m.skipGroupHeaderBackward()
 			}
 			return m, nil
 		},
@@ -56,7 +58,8 @@ func (m *FocusBoardModel) buildKeyMap() *keymap.KeyMap {
 		},
 	})...)
 
-	// --- Goto group: g prefix (gg = top, gp = go to project) ---
+	// --- Goto group: g prefix (gg = top, gp = go to project, gs/gy/gc/gx = group-by) ---
+	groupByCat := "Group By"
 	entries = append(entries, keymap.GotoGroup(keymap.GotoDeps{
 		JumpToTop: func() (tea.Model, tea.Cmd) { return m, m.JumpToTop() },
 		GoToProject: func() (tea.Model, tea.Cmd) {
@@ -65,6 +68,32 @@ func (m *FocusBoardModel) buildKeyMap() *keymap.KeyMap {
 				return m, nil
 			}
 			return m, func() tea.Msg { return FocusBoardSelectMsg{Task: task, Project: project} }
+		},
+		Extra: []keymap.Entry{
+			keymap.Bind("s", "Group by source", groupByCat, func() (tea.Model, tea.Cmd) {
+				m.groupBy = boardGroupBySource
+				m.applyFilter()
+				m.clampCursor()
+				return m, nil
+			}),
+			keymap.Bind("y", "Group by priority", groupByCat, func() (tea.Model, tea.Cmd) {
+				m.groupBy = boardGroupByPriority
+				m.applyFilter()
+				m.clampCursor()
+				return m, nil
+			}),
+			keymap.Bind("c", "Group by score", groupByCat, func() (tea.Model, tea.Cmd) {
+				m.groupBy = boardGroupByScore
+				m.applyFilter()
+				m.clampCursor()
+				return m, nil
+			}),
+			keymap.Bind("x", "Clear grouping", groupByCat, func() (tea.Model, tea.Cmd) {
+				m.groupBy = boardGroupByNone
+				m.applyFilter()
+				m.clampCursor()
+				return m, nil
+			}),
 		},
 	})...)
 

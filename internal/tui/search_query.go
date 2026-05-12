@@ -55,7 +55,7 @@ func (p *ParsedSearchQuery) HasTaskOnlyFilters() bool {
 
 // ParseSearchQuery extracts structured filters from a search query string.
 // Syntax mirrors quick capture:
-//   - !N or !N-M for priority (1-5 or range)
+//   - !N, !N-M, or !alias for priority (1-5, range, or word/abbreviation)
 //   - #tag for tags
 //   - @today, @tomorrow, @week, @overdue, @none for due date filters
 //   - $status for status (todo, in_progress, review, standby, maybe, done, blocked, canceled)
@@ -65,9 +65,9 @@ func (p *ParsedSearchQuery) HasTaskOnlyFilters() bool {
 func ParseSearchQuery(input string) *ParsedSearchQuery {
 	result := &ParsedSearchQuery{}
 
-	// Extract priority: !N or !N-M (range)
+	// Extract priority: !N, !N-M (range), or word/abbreviation aliases
 	priorityRangeRe := regexp.MustCompile(`\s*!([1-5])-([1-5])\s*`)
-	prioritySingleRe := regexp.MustCompile(`\s*!([1-5])\s*`)
+	priorityTokenRe := regexp.MustCompile(`(?i)\s*!(critical|urgent|high|normal|medium|lowest|low|cr|ur|hi|no|med|me|lo|c|u|h|n|m|l|[1-5])\s*`)
 
 	// Handle range first
 	for _, match := range priorityRangeRe.FindAllStringSubmatch(input, -1) {
@@ -86,16 +86,16 @@ func ParseSearchQuery(input string) *ParsedSearchQuery {
 	}
 	input = priorityRangeRe.ReplaceAllString(input, " ")
 
-	// Then single priorities
-	for _, match := range prioritySingleRe.FindAllStringSubmatch(input, -1) {
+	// Then single priorities (numeric or abbreviation)
+	for _, match := range priorityTokenRe.FindAllStringSubmatch(input, -1) {
 		if len(match) == 2 {
-			p, _ := strconv.Atoi(match[1])
-			if !containsInt(result.Priorities, p) {
+			p := parsePriorityToken(match[1])
+			if p >= 1 && p <= 5 && !containsInt(result.Priorities, p) {
 				result.Priorities = append(result.Priorities, p)
 			}
 		}
 	}
-	input = prioritySingleRe.ReplaceAllString(input, " ")
+	input = priorityTokenRe.ReplaceAllString(input, " ")
 
 	// Extract tags: #word
 	tagRe := regexp.MustCompile(`\s*#([\w][\w.-]*)\s*`)

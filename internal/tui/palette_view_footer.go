@@ -6,7 +6,7 @@ import (
 )
 
 // buildSubtitle builds the subtitle showing item counts.
-// Frequent-section items (duplicates) are excluded from counts.
+// Recent and Suggested section items (duplicates) are excluded from counts.
 func (m *CommandPaletteModel) buildSubtitle() string {
 	if m.actionMode {
 		return fmt.Sprintf("%d available", len(m.availableActions))
@@ -14,7 +14,7 @@ func (m *CommandPaletteModel) buildSubtitle() string {
 
 	counts := make(map[ItemCategory]int)
 	for _, filtered := range m.filteredItems {
-		if !filtered.IsFrequent {
+		if !filtered.IsFrequent && !filtered.IsSuggested {
 			counts[filtered.Item.Category]++
 		}
 	}
@@ -33,7 +33,7 @@ func (m *CommandPaletteModel) buildSubtitle() string {
 	if len(parts) == 0 {
 		total := 0
 		for _, fi := range m.filteredItems {
-			if !fi.IsFrequent {
+			if !fi.IsFrequent && !fi.IsSuggested {
 				total++
 			}
 		}
@@ -48,7 +48,7 @@ func (m *CommandPaletteModel) buildSubtitle() string {
 func (m *CommandPaletteModel) buildFooter() string {
 	counts := make(map[ItemCategory]int)
 	for _, filtered := range m.filteredItems {
-		if !filtered.IsFrequent {
+		if !filtered.IsFrequent && !filtered.IsSuggested {
 			counts[filtered.Item.Category]++
 		}
 	}

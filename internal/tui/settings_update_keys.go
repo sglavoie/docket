@@ -109,12 +109,12 @@ func (m *SettingsModel) handleGlobalKey(key string) (bool, tea.Cmd) { //nolint:g
 		}
 
 	case "shift+down":
-		if subTabNamesForTab(m.tabs.Active) != nil {
+		if visualSubTabNamesForVTab(m.visualTab) != nil {
 			m.subTabRowFocused = true
 		}
 		return true, nil
 	case "shift+up":
-		if subTabNamesForTab(m.tabs.Active) != nil {
+		if visualSubTabNamesForVTab(m.visualTab) != nil {
 			m.subTabRowFocused = false
 		}
 		return true, nil
@@ -131,33 +131,35 @@ func (m *SettingsModel) handleGlobalKey(key string) (bool, tea.Cmd) { //nolint:g
 		}
 		m.tabs.Active = tabForField(m.focusIndex)
 		m.subTab = subTabForField(m.focusIndex)
+		m.syncVisualFromOld()
 		m.focusCurrentField()
 		return true, nil
 
 	case "shift+left", "shift+right":
 		m.blurCurrentField()
-		if m.subTabRowFocused && subTabNamesForTab(m.tabs.Active) != nil {
-			sections := settingsTabSections[m.tabs.Active]
-			delta := 1
-			if key == "shift+left" {
-				delta = -1
-			}
-			CycleTab(&m.subTab, len(sections), delta)
+		delta := 1
+		if key == "shift+left" {
+			delta = -1
+		}
+		if m.subTabRowFocused && visualSubTabNamesForVTab(m.visualTab) != nil {
+			// Cycle within the current visual tab's sub-tabs
+			refs := visualTabSubTabs[m.visualTab]
+			CycleTab(&m.visualSubTab, len(refs), delta)
+			m.tabs.Active = refs[m.visualSubTab].oldTab
+			m.subTab = refs[m.visualSubTab].oldSubTab
 			m.focusIndex = subTabFieldStart(m.tabs.Active, m.subTab)
 			m.scrollOffset = 0
 			m.focusCurrentField()
 			return true, nil
 		}
-		if handleTabCycleKey(key, &m.tabs, func() {
-			m.focusIndex = tabFieldStart[m.tabs.Active]
-			m.subTab = 0
-			m.subTabRowFocused = false
-			m.scrollOffset = 0
-			m.focusCurrentField()
-		}) {
-			return true, nil
-		}
-		return false, nil
+		// Cycle visual tabs
+		CycleTab(&m.visualTab, len(settingsVisualTabNames), delta)
+		m.visualSubTab = 0
+		m.setFromVisual()
+		m.subTabRowFocused = false
+		m.scrollOffset = 0
+		m.focusCurrentField()
+		return true, nil
 
 	case "space":
 		m.handleSpaceKey()

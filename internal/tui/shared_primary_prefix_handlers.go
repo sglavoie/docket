@@ -42,8 +42,9 @@ func handlePriorityPrefix(key string, v prefixableView) (tea.Cmd, bool) {
 	if result.StatusMessage != "" {
 		v.setStatusMessage(result.StatusMessage)
 	}
+	v.setMutationFlash(priorityMutationFlashBg(priority))
 	v.refreshView()
-	return result.Cmd, true
+	return tea.Batch(result.Cmd, mutationFlashTimeout()), true
 }
 
 // handleStagePrefix handles the . prefix key for setting workflow stage.

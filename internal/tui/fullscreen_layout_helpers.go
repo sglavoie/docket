@@ -171,29 +171,30 @@ func renderGroupHeader(name string, count int, isOverdue bool, width int) string
 	return styled
 }
 
-// renderCollapsibleHeader renders a collapsible section/group header with cursor
-// indicator, collapse toggle, name, count, and selection highlight.
-// If width > 0, a trailing horizontal rule fills the remaining line width.
+// renderCollapsibleHeader renders a collapsible section/group header.
+// It is a thin wrapper around renderSectionHeader that also applies selection
+// highlighting. Use renderSectionHeader directly when callers need to apply
+// their own highlighting (e.g. ZebraLine, MutationFlashLine).
 func renderCollapsibleHeader(name string, count int, collapsed, isSelected, flash bool, style lipgloss.Style, width int) string {
-	indicator := "▼"
-	if collapsed {
-		indicator = "▶"
-	}
-	cursor := "  "
-	header := fmt.Sprintf("%s%s %s (%d)", cursor, indicator, name, count)
-	styled := style.Bold(true).Render(header)
-	visibleWidth := lipgloss.Width(styled)
-	if width > visibleWidth+2 {
-		styled += " " + MutedStyle.Render(strings.Repeat("─", width-visibleWidth-1))
-	}
+	line := renderSectionHeader(SectionHeaderOpts{
+		Name:        name,
+		Count:       count,
+		Collapsed:   collapsed,
+		AccentColor: style,
+		Width:       width,
+	})
 	if isSelected {
 		if flash {
-			return SelectedFlashLine(styled, 0)
+			return SelectedFlashLine(line, 0)
 		}
-		return SelectedLine(styled, 0)
+		return SelectedLine(line, 0)
 	}
-	return styled
+	return line
 }
+
+// Spacing rule: 1 blank line between sections, 0 blank lines between rows
+// within a section. Use renderEmptyState / renderFilterAwareEmptyState for
+// empty-state blocks so spacing is embedded and not duplicated at call sites.
 
 // renderEmptyState returns the standard empty-state block used when a view has
 // no visible tasks. msg is rendered in MutedStyle; helpText (if non-empty) is

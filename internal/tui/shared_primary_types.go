@@ -1,6 +1,8 @@
 package tui
 
 import (
+	"image/color"
+
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/config"
@@ -31,6 +33,7 @@ type prefixableView interface {
 	setUndoTaskIDs(ids []string)                                   // sets targeted task IDs for undo
 	saveAndRefreshBulk(prevStates map[string]*models.Task) tea.Cmd // bulk: persist + refresh
 	setStatusMessage(msg string)                                   // sets the status bar text
+	setMutationFlash(bg color.Color)                              // triggers mutation flash with semantic color
 }
 
 // deleteConfirmView is the interface that views must implement to use the

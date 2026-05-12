@@ -213,7 +213,7 @@ func (m *AppModel) handleEscKey() (bool, tea.Cmd) {
 				statusAlreadySet = true
 			}
 		}
-		if !statusAlreadySet && closingLabel != "" {
+		if !statusAlreadySet && closingLabel != "" && closingView != ViewCommandPalette {
 			m.setInfoStatus("Closed " + closingLabel + " — Alt+O to reopen")
 			return true, tea.Batch(cmd, defaultStatusTimeout())
 		}

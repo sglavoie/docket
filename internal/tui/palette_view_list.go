@@ -19,10 +19,12 @@ func (m *CommandPaletteModel) countLinesForRange(startIdx, endIdx int, showHeade
 	lines := 0
 	var currentCategory ItemCategory
 	var inFrequentSection bool
+	var inSuggestedSection bool
 	if startIdx > 0 {
 		prev := m.filteredItems[startIdx-1]
 		inFrequentSection = prev.IsFrequent
-		if !inFrequentSection {
+		inSuggestedSection = prev.IsSuggested
+		if !inFrequentSection && !inSuggestedSection {
 			currentCategory = prev.Item.Category
 		}
 	}
@@ -31,21 +33,30 @@ func (m *CommandPaletteModel) countLinesForRange(startIdx, endIdx int, showHeade
 		fi := m.filteredItems[i]
 		if showHeaders {
 			if fi.IsFrequent && !inFrequentSection {
-				// Start of frequent section: one header line, no blank before it
+				// Start of recent section: one header line, no blank before it
 				lines++
 				inFrequentSection = true
-			} else if !fi.IsFrequent && inFrequentSection {
-				// Transition from frequent to regular: blank separator + category header
+			} else if fi.IsSuggested && !inSuggestedSection {
+				// Start of suggested section: blank separator + header
 				lines++ // blank separator
-				lines++ // category header
-				currentCategory = fi.Item.Category
+				lines++ // suggested header
+				inSuggestedSection = true
 				inFrequentSection = false
-			} else if !fi.IsFrequent && fi.Item.Category != currentCategory {
-				if currentCategory != "" {
+			} else if !fi.IsFrequent && !fi.IsSuggested {
+				if inFrequentSection || inSuggestedSection {
+					// Transition from special section to regular categories
 					lines++ // blank separator
+					lines++ // category header
+					currentCategory = fi.Item.Category
+					inFrequentSection = false
+					inSuggestedSection = false
+				} else if fi.Item.Category != currentCategory {
+					if currentCategory != "" {
+						lines++ // blank separator
+					}
+					lines++ // category header
+					currentCategory = fi.Item.Category
 				}
-				lines++ // category header
-				currentCategory = fi.Item.Category
 			}
 		}
 		lines++
@@ -131,10 +142,12 @@ func (m *CommandPaletteModel) renderItemList() string {
 
 	var currentCategory ItemCategory
 	var inFrequentSection bool
+	var inSuggestedSection bool
 	if scrollOffset > 0 {
 		prev := m.filteredItems[scrollOffset-1]
 		inFrequentSection = prev.IsFrequent
-		if !inFrequentSection {
+		inSuggestedSection = prev.IsSuggested
+		if !inFrequentSection && !inSuggestedSection {
 			currentCategory = prev.Item.Category
 		}
 	}
@@ -146,7 +159,7 @@ func (m *CommandPaletteModel) renderItemList() string {
 
 		if showHeaders {
 			if filtered.IsFrequent && !inFrequentSection {
-				// Start of frequent section
+				// Start of recent section
 				b.WriteString(m.renderFrequentHeader())
 				b.WriteString("\n")
 				linesRendered++
@@ -154,37 +167,55 @@ func (m *CommandPaletteModel) renderItemList() string {
 				if linesRendered >= maxVisible {
 					break
 				}
-			} else if !filtered.IsFrequent && inFrequentSection {
-				// Transition from frequent to regular section
+			} else if filtered.IsSuggested && !inSuggestedSection {
+				// Start of suggested section
+				b.WriteString("\n")
+				linesRendered++
+				if linesRendered >= maxVisible {
+					break
+				}
+				b.WriteString(m.renderSuggestedHeader())
+				b.WriteString("\n")
+				linesRendered++
+				inSuggestedSection = true
 				inFrequentSection = false
-				b.WriteString("\n")
-				linesRendered++
 				if linesRendered >= maxVisible {
 					break
 				}
-				header := m.renderCategoryHeader(item.Category)
-				b.WriteString(header)
-				b.WriteString("\n")
-				linesRendered++
-				currentCategory = item.Category
-				if linesRendered >= maxVisible {
-					break
-				}
-			} else if !filtered.IsFrequent && item.Category != currentCategory {
-				if currentCategory != "" {
+			} else if !filtered.IsFrequent && !filtered.IsSuggested {
+				if inFrequentSection || inSuggestedSection {
+					// Transition from special section to regular categories
+					inFrequentSection = false
+					inSuggestedSection = false
 					b.WriteString("\n")
 					linesRendered++
 					if linesRendered >= maxVisible {
 						break
 					}
-				}
-				header := m.renderCategoryHeader(item.Category)
-				b.WriteString(header)
-				b.WriteString("\n")
-				linesRendered++
-				currentCategory = item.Category
-				if linesRendered >= maxVisible {
-					break
+					header := m.renderCategoryHeader(item.Category)
+					b.WriteString(header)
+					b.WriteString("\n")
+					linesRendered++
+					currentCategory = item.Category
+					if linesRendered >= maxVisible {
+						break
+					}
+				} else if item.Category != currentCategory {
+					if currentCategory != "" {
+						b.WriteString("\n")
+						linesRendered++
+						if linesRendered >= maxVisible {
+							break
+						}
+					}
+					header := m.renderCategoryHeader(item.Category)
+					b.WriteString(header)
+					b.WriteString("\n")
+					linesRendered++
+					currentCategory = item.Category
+					if linesRendered >= maxVisible {
+						break
+					}
 				}
 			}
 		}
@@ -241,7 +272,7 @@ func (m *CommandPaletteModel) renderCategoryHeader(cat ItemCategory) string {
 	name := getCategoryDisplayName(cat)
 	count := 0
 	for _, filtered := range m.filteredItems {
-		if !filtered.IsFrequent && filtered.Item.Category == cat {
+		if !filtered.IsFrequent && !filtered.IsSuggested && filtered.Item.Category == cat {
 			count++
 		}
 	}
@@ -250,7 +281,7 @@ func (m *CommandPaletteModel) renderCategoryHeader(cat ItemCategory) string {
 	return MutedStyle.Render(header)
 }
 
-// renderFrequentHeader renders the section header for the Frequent section.
+// renderFrequentHeader renders the section header for the Recent section.
 func (m *CommandPaletteModel) renderFrequentHeader() string {
 	count := 0
 	for _, fi := range m.filteredItems {
@@ -258,6 +289,18 @@ func (m *CommandPaletteModel) renderFrequentHeader() string {
 			count++
 		}
 	}
-	header := fmt.Sprintf("── Frequent (%d) ", count)
+	header := fmt.Sprintf("── Recent (%d) ", count)
+	return MutedStyle.Render(header)
+}
+
+// renderSuggestedHeader renders the section header for the Suggested section.
+func (m *CommandPaletteModel) renderSuggestedHeader() string {
+	count := 0
+	for _, fi := range m.filteredItems {
+		if fi.IsSuggested {
+			count++
+		}
+	}
+	header := fmt.Sprintf("── Suggested (%d) ", count)
 	return MutedStyle.Render(header)
 }

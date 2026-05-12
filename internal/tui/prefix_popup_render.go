@@ -117,6 +117,31 @@ func hasGroups(hints []PrefixHint) bool {
 	return false
 }
 
+// buildPrefixBreadcrumb builds a human-readable breadcrumb string for multi-level prefixes.
+// For "Ft" it returns "FILTER > TYPE"; for "Fas" it returns "FILTER > ATTR > SEVERITY".
+// Returns empty string for single-character prefixes.
+func buildPrefixBreadcrumb(prefix string) string {
+	if len(prefix) <= 1 {
+		return ""
+	}
+	var parts []string
+	prevName := ""
+	for i := 1; i <= len(prefix); i++ {
+		seg := prefix[:i]
+		name := prefixCategoryNames[seg]
+		if name == "" {
+			name = seg
+		}
+		display := strings.ToUpper(name)
+		if prevName != "" && strings.HasPrefix(strings.ToLower(name), strings.ToLower(prevName)+"-") {
+			display = strings.ToUpper(name[len(prevName)+1:])
+		}
+		parts = append(parts, display)
+		prevName = name
+	}
+	return strings.Join(parts, " > ")
+}
+
 // RenderPrefixPopup renders a which-key style popup as a bordered overlay box.
 // Returns empty string if prefix is empty or not found in hints.
 func RenderPrefixPopup(prefix string, hints PrefixHints, width, height int) string {
@@ -147,13 +172,33 @@ func RenderPrefixPopupWithCategory(prefix, category string, hints PrefixHints, w
 	titleCatFirstStyle := SuccessBoldStyle
 	titleCatRestStyle := NormalStyle
 
-	var categoryTitle string
-	if strings.EqualFold(prefix, string(category[0])) {
-		categoryTitle = titleCatFirstStyle.Render(string(category[0])) + titleCatRestStyle.Render(category[1:])
+	var title string
+	if len(prefix) > 1 {
+		breadcrumb := buildPrefixBreadcrumb(prefix)
+		if breadcrumb == "" {
+			breadcrumb = strings.ToUpper(category)
+		}
+		// Render breadcrumb: each segment separated by " > ", last segment bold
+		segments := strings.Split(breadcrumb, " > ")
+		var renderedParts []string
+		for i, seg := range segments {
+			if i == len(segments)-1 {
+				renderedParts = append(renderedParts, SuccessBoldStyle.Render(seg))
+			} else {
+				renderedParts = append(renderedParts, MutedStyle.Render(seg))
+			}
+		}
+		crumbStr := strings.Join(renderedParts, MutedStyle.Render(" > "))
+		title = titleKeyStyle.Render(prefix) + borderStyle.Render(" → ") + crumbStr
 	} else {
-		categoryTitle = titleCatRestStyle.Render(category)
+		var categoryTitle string
+		if strings.EqualFold(prefix, string(category[0])) {
+			categoryTitle = titleCatFirstStyle.Render(string(category[0])) + titleCatRestStyle.Render(category[1:])
+		} else {
+			categoryTitle = titleCatRestStyle.Render(category)
+		}
+		title = titleKeyStyle.Render(prefix) + borderStyle.Render(" → ") + categoryTitle
 	}
-	title := titleKeyStyle.Render(prefix) + borderStyle.Render(" → ") + categoryTitle
 
 	maxAvailableHeight := max(
 		min(height-4, 30),

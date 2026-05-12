@@ -105,5 +105,5 @@ func (t *TabState) Count() int { return len(t.Names) }
 // RenderBar renders the tab bar at the given width.
 // Pass an optional accent color to highlight the active tab with a distinct color.
 func (t *TabState) RenderBar(width int, accent ...color.Color) string {
-	return renderWrappingTabBarColored(t.Names, t.Active, t.TabColors, width, accent...)
+	return renderWrappingTabBarColored(t.Names, t.Active, t.TabColors, nil, width, accent...)
 }

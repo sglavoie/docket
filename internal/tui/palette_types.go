@@ -153,7 +153,8 @@ type filteredPaletteItem struct {
 	NamePositions []int      // Positions of matched characters in Name
 	MatchedField  MatchField // Which field was matched (for preview display)
 	MatchedTerm   string     // The search term that matched (for preview display)
-	IsFrequent    bool       // Item appears in the Frequent section (duplicate of a regular item)
+	IsFrequent    bool       // Item appears in the Recent section (duplicate of a regular item)
+	IsSuggested   bool       // Item appears in the Suggested section (commands not yet used)
 }
 
 // inlineTaskPreview holds parsed metadata for inline task creation preview.

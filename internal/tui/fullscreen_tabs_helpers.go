@@ -12,12 +12,14 @@ import (
 // This differs from RenderTabBar which renders a single-line tab bar.
 // Pass an optional accent color to tint the active tab.
 func renderWrappingTabBar(tabs []string, activeIdx, availableWidth int, accent ...color.Color) string {
-	return renderWrappingTabBarColored(tabs, activeIdx, nil, availableWidth, accent...)
+	return renderWrappingTabBarColored(tabs, activeIdx, nil, nil, availableWidth, accent...)
 }
 
 // renderWrappingTabBarColored is like renderWrappingTabBar but accepts per-tab
-// foreground colors for inactive tabs (nil entry = default muted color).
-func renderWrappingTabBarColored(tabs []string, activeIdx int, tabColors []color.Color, availableWidth int, accent ...color.Color) string {
+// foreground colors for inactive tabs (nil entry = default muted color) and an
+// optional emptyTabs slice. When emptyTabs[i] is true and i is not the active tab,
+// the tab is rendered faint to indicate it has no items.
+func renderWrappingTabBarColored(tabs []string, activeIdx int, tabColors []color.Color, emptyTabs []bool, availableWidth int, accent ...color.Color) string {
 	if len(tabs) == 0 {
 		return ""
 	}
@@ -42,11 +44,15 @@ func renderWrappingTabBarColored(tabs []string, activeIdx int, tabColors []color
 		}
 		if i == activeIdx {
 			currentRow = append(currentRow, active.Render(name))
-		} else if i < len(tabColors) && tabColors[i] != nil {
-			colored := inactiveTabStyle(1, true).Foreground(tabColors[i])
-			currentRow = append(currentRow, colored.Render(name))
 		} else {
-			currentRow = append(currentRow, inactive.Render(name))
+			s := inactive
+			if i < len(tabColors) && tabColors[i] != nil {
+				s = inactiveTabStyle(1, true).Foreground(tabColors[i])
+			}
+			if i < len(emptyTabs) && emptyTabs[i] {
+				s = s.Faint(true)
+			}
+			currentRow = append(currentRow, s.Render(name))
 		}
 		currentWidth += tabWidth
 	}
@@ -55,6 +61,13 @@ func renderWrappingTabBarColored(tabs []string, activeIdx int, tabColors []color
 	}
 
 	return strings.Join(rows, "\n")
+}
+
+// renderWrappingTabBarWithEmpty renders a tab bar and dims empty inactive tabs.
+// emptyTabs[i] == true means tab i has zero items and should be rendered faint
+// (unless it is the active tab). Pass nil to disable dimming.
+func renderWrappingTabBarWithEmpty(tabs []string, activeIdx int, emptyTabs []bool, availableWidth int, accent ...color.Color) string {
+	return renderWrappingTabBarColored(tabs, activeIdx, nil, emptyTabs, availableWidth, accent...)
 }
 
 // renderSubTabBarWithFocus renders a sub-tab bar row with a ▐ focus indicator.

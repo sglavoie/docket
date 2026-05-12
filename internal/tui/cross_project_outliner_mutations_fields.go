@@ -33,8 +33,10 @@ func (m *OutlinerModel) crossHandlePriorityMutation(key string) (tea.Cmd, bool) 
 	if result.StatusMessage != "" {
 		m.setStatus(result.StatusMessage)
 	}
+	m.mutationFlash = true
+	m.mutationFlashBg = priorityMutationFlashBg(priority)
 	m.rebuildRows()
-	return result.Cmd, true
+	return tea.Batch(result.Cmd, mutationFlashTimeout()), true
 }
 
 // crossHandleSnoozeMutation resolves the owning project from the cursor row,
