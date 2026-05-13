@@ -1,6 +1,8 @@
 package tui
 
 import (
+	"sort"
+
 	"github.com/sglavoie/tt/internal/models"
 )
 
@@ -14,6 +16,54 @@ var SectionOrder = []string{
 	models.SectionReview,
 	models.SectionStandby,
 	models.SectionSomeday,
+}
+
+// BuildSectionOrder extends SectionOrder with custom sections found in the
+// given tasks. Custom sections are appended after canonical GTD sections in
+// alphabetical order.
+func BuildSectionOrder(tasks []*models.Task) []string {
+	customSet := make(map[string]bool)
+	for _, t := range tasks {
+		if t.CustomSection != "" {
+			customSet[t.CustomSection] = true
+		}
+	}
+	if len(customSet) == 0 {
+		return SectionOrder
+	}
+	customs := make([]string, 0, len(customSet))
+	for name := range customSet {
+		customs = append(customs, name)
+	}
+	sort.Strings(customs)
+	result := make([]string, len(SectionOrder), len(SectionOrder)+len(customs))
+	copy(result, SectionOrder)
+	return append(result, customs...)
+}
+
+// BuildCrossProjectSectionOrder extends SectionOrder with custom sections
+// found across all project groups. Custom sections are appended after
+// canonical GTD sections in alphabetical order.
+func BuildCrossProjectSectionOrder(groups []projectTasksGroup) []string {
+	customSet := make(map[string]bool)
+	for _, g := range groups {
+		for _, t := range g.tasks {
+			if t.CustomSection != "" {
+				customSet[t.CustomSection] = true
+			}
+		}
+	}
+	if len(customSet) == 0 {
+		return SectionOrder
+	}
+	customs := make([]string, 0, len(customSet))
+	for name := range customSet {
+		customs = append(customs, name)
+	}
+	sort.Strings(customs)
+	result := make([]string, len(SectionOrder), len(SectionOrder)+len(customs))
+	copy(result, SectionOrder)
+	return append(result, customs...)
 }
 
 // Perspective defines a named filter+sort preset for the outliner view.

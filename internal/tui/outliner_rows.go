@@ -172,12 +172,12 @@ func (m *OutlinerModel) rebuildRows() {
 	}
 }
 
-// buildRowsWithSectionHeaders groups tasks by GTD section and inserts collapsible
-// section headers for the All perspective.
+// buildRowsWithSectionHeaders groups tasks by section (GTD + custom) and
+// inserts collapsible section headers for the All perspective.
 func (m *OutlinerModel) buildRowsWithSectionHeaders(tasks []*models.Task) {
 	tasksBySection := m.groupTasksBySection(tasks)
 
-	for _, sectionName := range SectionOrder {
+	for _, sectionName := range BuildSectionOrder(tasks) {
 		sectionTasks := tasksBySection[sectionName]
 		if len(sectionTasks) == 0 {
 			continue
@@ -198,11 +198,21 @@ func (m *OutlinerModel) buildRowsWithSectionHeaders(tasks []*models.Task) {
 	}
 }
 
-// groupTasksBySection groups tasks by their GTD section, preserving hierarchy.
+// effectiveDisplaySection returns the section name used for grouping tasks
+// under section headers. Tasks with a CustomSection are bucketed under that
+// name rather than the empty-string Active bucket.
+func effectiveDisplaySection(t *models.Task) string {
+	if t.CustomSection != "" {
+		return t.CustomSection
+	}
+	return t.Section
+}
+
+// groupTasksBySection groups tasks by their effective display section, preserving hierarchy.
 func (m *OutlinerModel) groupTasksBySection(tasks []*models.Task) map[string][]*models.Task {
 	groups := make(map[string][]*models.Task)
 	for _, task := range tasks {
-		groups[task.Section] = append(groups[task.Section], task)
+		groups[effectiveDisplaySection(task)] = append(groups[effectiveDisplaySection(task)], task)
 	}
 	return groups
 }

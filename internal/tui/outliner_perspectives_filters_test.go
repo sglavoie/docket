@@ -306,3 +306,60 @@ func TestReviewPerspective(t *testing.T) {
 		t.Error("Review should reject snoozed tasks")
 	}
 }
+
+func TestBuildSectionOrderNoCustomSections(t *testing.T) {
+	tasks := []*models.Task{
+		{Section: ""},
+		{Section: models.SectionNext},
+	}
+	order := BuildSectionOrder(tasks)
+	if len(order) != len(SectionOrder) {
+		t.Errorf("expected %d entries (same as SectionOrder), got %d", len(SectionOrder), len(order))
+	}
+}
+
+func TestBuildSectionOrderAppendsCustomAlphabetically(t *testing.T) {
+	tasks := []*models.Task{
+		{Section: "", CustomSection: "Zulu"},
+		{Section: "", CustomSection: "Alpha"},
+		{Section: models.SectionNext},
+	}
+	order := BuildSectionOrder(tasks)
+	wantLen := len(SectionOrder) + 2
+	if len(order) != wantLen {
+		t.Fatalf("expected %d entries, got %d: %v", wantLen, len(order), order)
+	}
+	if order[len(SectionOrder)] != "Alpha" {
+		t.Errorf("first custom section should be Alpha, got %q", order[len(SectionOrder)])
+	}
+	if order[len(SectionOrder)+1] != "Zulu" {
+		t.Errorf("second custom section should be Zulu, got %q", order[len(SectionOrder)+1])
+	}
+}
+
+func TestBuildSectionOrderDeduplicates(t *testing.T) {
+	tasks := []*models.Task{
+		{CustomSection: "Sprint"},
+		{CustomSection: "Sprint"},
+	}
+	order := BuildSectionOrder(tasks)
+	customCount := len(order) - len(SectionOrder)
+	if customCount != 1 {
+		t.Errorf("expected 1 custom section, got %d", customCount)
+	}
+}
+
+func TestBuildCrossProjectSectionOrderMergesProjects(t *testing.T) {
+	groups := []projectTasksGroup{
+		{projectID: "p1", tasks: []*models.Task{{CustomSection: "Beta"}}},
+		{projectID: "p2", tasks: []*models.Task{{CustomSection: "Alpha"}}},
+	}
+	order := BuildCrossProjectSectionOrder(groups)
+	wantLen := len(SectionOrder) + 2
+	if len(order) != wantLen {
+		t.Fatalf("expected %d entries, got %d: %v", wantLen, len(order), order)
+	}
+	if order[len(SectionOrder)] != "Alpha" || order[len(SectionOrder)+1] != "Beta" {
+		t.Errorf("custom sections should be [Alpha, Beta], got %v", order[len(SectionOrder):])
+	}
+}

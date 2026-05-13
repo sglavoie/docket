@@ -26,7 +26,7 @@ func (m *OutlinerModel) buildCrossProjectRowsWithSectionHeaders(groups []project
 	for _, g := range groups {
 		bySection := make(map[string][]*models.Task)
 		for _, t := range g.tasks {
-			bySection[t.Section] = append(bySection[t.Section], t)
+			bySection[effectiveDisplaySection(t)] = append(bySection[effectiveDisplaySection(t)], t)
 		}
 		for section, tasks := range bySection {
 			sectionsPerProject[section] = append(sectionsPerProject[section], sectionGroup{
@@ -36,7 +36,7 @@ func (m *OutlinerModel) buildCrossProjectRowsWithSectionHeaders(groups []project
 		}
 	}
 
-	for _, sectionName := range SectionOrder {
+	for _, sectionName := range BuildCrossProjectSectionOrder(groups) {
 		projGroups := sectionsPerProject[sectionName]
 		if len(projGroups) == 0 {
 			continue

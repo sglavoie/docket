@@ -139,3 +139,108 @@ func TestBuildCrossProjectRowsAllGroupsEmpty(t *testing.T) {
 		t.Errorf("expected empty rows for empty groups, got %d rows", len(m.rows))
 	}
 }
+
+func TestBuildCrossProjectRowsCustomSectionHeaders(t *testing.T) {
+	m := minimalOutliner()
+
+	customTask := &models.Task{ID: "ct1", Title: "Custom task", CustomSection: "Sprint-1"}
+	activeTask := makeTask("at1", "Active task", "")
+
+	groups := []projectTasksGroup{{
+		projectID: "proj-1",
+		tasks:     []*models.Task{customTask, activeTask},
+	}}
+
+	m.buildCrossProjectRowsWithSectionHeaders(groups)
+
+	var headers []string
+	for _, row := range m.rows {
+		if row.IsSectionHeader {
+			name := row.SectionName
+			if name == "" {
+				name = "Active"
+			}
+			headers = append(headers, name)
+		}
+	}
+
+	want := []string{"Active", "Sprint-1"}
+	if len(headers) != len(want) {
+		t.Fatalf("expected headers %v, got %v", want, headers)
+	}
+	for i, w := range want {
+		if headers[i] != w {
+			t.Errorf("header[%d]: want %q, got %q", i, w, headers[i])
+		}
+	}
+}
+
+func TestBuildCrossProjectRowsCustomSectionPlacement(t *testing.T) {
+	m := minimalOutliner()
+
+	customTask := &models.Task{ID: "ct1", Title: "Custom task", CustomSection: "Sprint-1"}
+	activeTask := makeTask("at1", "Active task", "")
+
+	groups := []projectTasksGroup{{
+		projectID: "proj-1",
+		tasks:     []*models.Task{customTask, activeTask},
+	}}
+
+	m.buildCrossProjectRowsWithSectionHeaders(groups)
+
+	currentSection := ""
+	taskSections := make(map[string]string)
+	for _, row := range m.rows {
+		if row.IsSectionHeader {
+			currentSection = row.SectionName
+		} else if row.task != nil {
+			taskSections[row.task.Title] = currentSection
+		}
+	}
+
+	if got := taskSections["Custom task"]; got != "Sprint-1" {
+		t.Errorf("Custom task should be under Sprint-1, got %q", got)
+	}
+	if got := taskSections["Active task"]; got != "" {
+		t.Errorf("Active task should be under Active (empty), got %q", got)
+	}
+}
+
+func TestBuildCrossProjectRowsMultipleCustomSectionsOrdered(t *testing.T) {
+	m := minimalOutliner()
+
+	groups := []projectTasksGroup{
+		{
+			projectID: "p1",
+			tasks: []*models.Task{
+				{ID: "t1", Title: "T1", CustomSection: "Zulu"},
+				{ID: "t3", Title: "T3", Section: models.SectionInbox},
+			},
+		},
+		{
+			projectID: "p2",
+			tasks: []*models.Task{
+				{ID: "t2", Title: "T2", CustomSection: "Alpha"},
+			},
+		},
+	}
+
+	m.buildCrossProjectRowsWithSectionHeaders(groups)
+
+	var headers []string
+	for _, row := range m.rows {
+		if row.IsSectionHeader {
+			headers = append(headers, row.SectionName)
+		}
+	}
+
+	want := []string{models.SectionInbox, "Alpha", "Zulu"}
+	if len(headers) != len(want) {
+		t.Fatalf("expected headers %v, got %v", want, headers)
+	}
+	for i, w := range want {
+		if headers[i] != w {
+			t.Errorf("header[%d]: want %q, got %q", i, w, headers[i])
+		}
+	}
+}
