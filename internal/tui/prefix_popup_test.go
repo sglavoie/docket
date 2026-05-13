@@ -158,10 +158,6 @@ func TestStatusPrefixHints_Contents(t *testing.T) {
 func TestFoldPrefixHints_Contents(t *testing.T) {
 	expectedKeys := map[string]string{
 		"a": "toggle",
-		"o": "open",
-		"c": "close",
-		"R": "expand-all",
-		"M": "collapse-all",
 		"v": "focus",
 		"p": "preview",
 		"1": "depth-1",

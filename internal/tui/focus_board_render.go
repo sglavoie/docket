@@ -276,6 +276,9 @@ func (m *FocusBoardModel) View() tea.View { //nolint:gocyclo
 			}
 		}
 		rightParts = append(rightParts, fmt.Sprintf("%d/%d done", completedToday, plannedTotal))
+		if m.childDepthLimit >= 0 {
+			rightParts = append(rightParts, fmt.Sprintf("fold:%d", m.childDepthLimit))
+		}
 		if est := sumEstimatesForRows(m.filtered); est > 0 {
 			rightParts = append(rightParts, formatEstimateDays(est)+" est")
 		}

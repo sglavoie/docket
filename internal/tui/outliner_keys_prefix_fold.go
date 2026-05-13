@@ -21,41 +21,6 @@ func (m *OutlinerModel) handleFoldPrefix(key string, cursorTask *models.Task) (t
 			m.rebuildRows()
 		}
 		return m, nil
-	case "o":
-		// Expand
-		if cursorTask != nil && len(cursorTask.Children) > 0 {
-			m.ensureExpandedNodes()
-			m.expandedNodes[cursorTask.ID] = true
-			m.rebuildRows()
-		}
-		return m, nil
-	case "c":
-		// Collapse
-		if cursorTask != nil && len(cursorTask.Children) > 0 {
-			m.ensureExpandedNodes()
-			m.expandedNodes[cursorTask.ID] = false
-			m.rebuildRows()
-		}
-		return m, nil
-	case "R":
-		// Expand all
-		m.expandedNodes = make(map[string]bool)
-		m.rebuildRows()
-		return m, nil
-	case "M":
-		// Collapse all - mark all parent tasks as collapsed
-		if m.project == nil {
-			m.ensureExpandedNodes()
-			for _, p := range m.loadedProjects {
-				m.collapseAllParents(p.GetRootTasks())
-			}
-			m.rebuildRows()
-			return m, nil
-		}
-		m.ensureExpandedNodes()
-		m.collapseAllParents(m.project.GetRootTasks())
-		m.rebuildRows()
-		return m, nil
 	case "v":
 		// Zoom into current task.
 		if cursorTask != nil && len(cursorTask.Children) > 0 {

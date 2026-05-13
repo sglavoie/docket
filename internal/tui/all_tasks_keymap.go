@@ -66,35 +66,14 @@ func (m *AllTasksViewModel) buildKeyMap() *keymap.KeyMap {
 		},
 	})...)
 
-	// --- f prefix: fp, fR, fM ---
+	// --- f prefix: fa (toggle fold), fp (preview) ---
 	entries = append(entries, keymap.Prefix("f", "View", "View", []keymap.Entry{
+		keymap.Bind("a", "Toggle group fold", "Folds", func() (tea.Model, tea.Cmd) {
+			m.toggleGroupCollapse()
+			return m, nil
+		}),
 		keymap.Bind("p", "Toggle inline preview", "View", func() (tea.Model, tea.Cmd) {
 			m.previewMode = !m.previewMode
-			return m, nil
-		}),
-		keymap.Bind("R", "Expand all groups", "View", func() (tea.Model, tea.Cmd) {
-			ExpandAllSections(m.collapsedGroups)
-			m.calculateNavigation()
-			m.clampCursor()
-			return m, nil
-		}),
-		keymap.Bind("M", "Collapse all groups", "View", func() (tea.Model, tea.Cmd) {
-			groupNames := make([]string, len(m.groups))
-			for i, g := range m.groups {
-				groupNames[i] = g.Name
-			}
-			CollapseAllSections(m.collapsedGroups, groupNames)
-			m.calculateNavigation()
-			if len(m.groupStarts) > 0 {
-				best := m.groupStarts[0]
-				for _, start := range m.groupStarts {
-					if start <= m.cursor {
-						best = start
-					}
-				}
-				m.cursor = best
-			}
-			m.clampCursor()
 			return m, nil
 		}),
 	}))

@@ -90,16 +90,6 @@ func (m *KanbanModel) buildKeyMap() *keymap.KeyMap {
 		},
 	})...)
 
-	// --- f prefix: fR, fM (no-op stubs in kanban) ---
-	entries = append(entries, keymap.Prefix("f", "View", "View", []keymap.Entry{
-		keymap.Bind("R", "Expand all sections", "View", func() (tea.Model, tea.Cmd) {
-			return m, nil
-		}),
-		keymap.Bind("M", "Collapse all sections", "View", func() (tea.Model, tea.Cmd) {
-			return m, nil
-		}),
-	}))
-
 	// --- View mode keys ---
 	entries = append(entries,
 		keymap.Bind("tab", "Toggle bottom detail pane", "View", func() (tea.Model, tea.Cmd) {

@@ -97,12 +97,29 @@ func (m *FocusBoardModel) buildKeyMap() *keymap.KeyMap {
 		},
 	})...)
 
-	// --- f prefix: fp (toggle preview only, NOT full FoldGroup) ---
-	entries = append(entries, keymap.Prefix("f", "Preview", "View", []keymap.Entry{
+	// --- f prefix: fold/collapse operations + preview ---
+	isTodayTab := func() bool { return m.tabs.Active == boardTabToday }
+	setDepth := func(depth int, label string) keymap.Action {
+		return func() (tea.Model, tea.Cmd) {
+			m.childDepthLimit = depth
+			clear(m.collapsedParents)
+			m.rebuildTodayChildren()
+			m.setStatus(label)
+			return m, nil
+		}
+	}
+	entries = append(entries, keymap.Prefix("f", "Folds", "View", []keymap.Entry{
+		keymap.Bind("a", "Toggle fold", "Folds", func() (tea.Model, tea.Cmd) {
+			m.toggleFoldAtCursor()
+			return m, nil
+		}, keymap.WithGate(isTodayTab)),
 		keymap.Bind("p", "Toggle inline preview", "View", func() (tea.Model, tea.Cmd) {
 			m.previewMode = !m.previewMode
 			return m, nil
 		}),
+		keymap.Bind("1", "Collapse to root only", "Folds", setDepth(0, "Fold: root items only"), keymap.WithGate(isTodayTab)),
+		keymap.Bind("2", "Expand to depth 2", "Folds", setDepth(1, "Fold: depth 2"), keymap.WithGate(isTodayTab)),
+		keymap.Bind("3", "Expand to depth 3", "Folds", setDepth(2, "Fold: depth 3"), keymap.WithGate(isTodayTab)),
 	}))
 
 	// --- Standard task action groups (Status, Priority, DueDate, Snooze, Move,

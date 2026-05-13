@@ -19,10 +19,6 @@ var (
 	// FoldPrefixHints contains hints for the "f" (fold) prefix.
 	FoldPrefixHints = []PrefixHint{
 		{Key: "a", Description: "toggle", Detail: "Toggle fold on current node"},
-		{Key: "o", Description: "open", Detail: "Expand current node"},
-		{Key: "c", Description: "close", Detail: "Collapse current node"},
-		{Key: "R", Description: "expand-all", Detail: "Expand all nodes"},
-		{Key: "M", Description: "collapse-all", Detail: "Collapse all nodes"},
 		{Key: "v", Description: "focus", Detail: "Focus on current subtree"},
 		{Key: "p", Description: "preview", Detail: "Toggle inline preview for cursor task"},
 		{Key: "1", Description: "depth-1", Detail: "Collapse to top level only"},
@@ -120,21 +116,11 @@ var (
 	// OutlinerFoldPrefixHints contains "f" prefix hints for outliner fold operations.
 	OutlinerFoldPrefixHints = []PrefixHint{
 		{Key: "a", Description: "toggle", Detail: "Toggle fold on current node"},
-		{Key: "o", Description: "expand", Detail: "Expand current node"},
-		{Key: "c", Description: "collapse", Detail: "Collapse current node"},
-		{Key: "R", Description: "expand-all", Detail: "Expand all nodes"},
-		{Key: "M", Description: "collapse-all", Detail: "Collapse all nodes"},
 		{Key: "v", Description: "focus", Detail: "Focus on current subtree"},
 		{Key: "p", Description: "preview", Detail: "Toggle inline preview for cursor task"},
 		{Key: "1", Description: "depth-1", Detail: "Collapse to top level only"},
 		{Key: "2", Description: "depth-2", Detail: "Expand to second level"},
 		{Key: "3", Description: "depth-3", Detail: "Expand to third level"},
-	}
-
-	// SectionFoldPrefixHints contains hints for the "f" (fold) prefix in section-based views.
-	SectionFoldPrefixHints = []PrefixHint{
-		{Key: "R", Description: "expand-all", Detail: "Expand all sections"},
-		{Key: "M", Description: "collapse-all", Detail: "Collapse all sections"},
 	}
 
 	// TaskPrefixHints contains hints for the "t" (task action) prefix.

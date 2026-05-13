@@ -136,7 +136,10 @@ func (m *DailyReviewModel) GetPrefixPopupInfo() *PrefixPopupInfo {
 	// In DailyReview, marking done also auto-advances the next recurring occurrence
 	hints[","] = overrideHintDetail(hints[","], "d", "done + auto-advance")
 	hints["g"] = DailyReviewNavigationPrefixHints
-	hints["f"] = append(SectionFoldPrefixHints, PrefixHint{Key: "p", Description: "preview", Detail: "Toggle inline preview"})
+	hints["f"] = []PrefixHint{
+		{Key: "a", Description: "toggle", Detail: "Toggle section fold"},
+		{Key: "p", Description: "preview", Detail: "Toggle inline preview"},
+	}
 	// Merge filter prefix hints (no DueDate or Status — sections group by these)
 	maps.Copy(hints, buildCommonFilterPrefixPopupHints(&m.filter, m.config, false, false))
 	return &PrefixPopupInfo{

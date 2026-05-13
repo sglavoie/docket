@@ -33,16 +33,6 @@ func (m *OutlinerModel) markAllExpanded(tasks []*models.Task) {
 	}
 }
 
-// collapseAllParents marks all parent tasks as collapsed recursively.
-func (m *OutlinerModel) collapseAllParents(tasks []*models.Task) {
-	for _, task := range tasks {
-		if len(task.Children) > 0 {
-			m.expandedNodes[task.ID] = false
-			m.collapseAllParents(task.Children)
-		}
-	}
-}
-
 // collapseToDepth expands nodes at depth < N and collapses nodes at depth >= N.
 func (m *OutlinerModel) collapseToDepth(depth int) {
 	m.ensureExpandedNodes()

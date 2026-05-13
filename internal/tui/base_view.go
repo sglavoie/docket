@@ -119,20 +119,6 @@ func CycleTab(current *int, count, delta int) {
 	*current = ((*current+delta)%count + count) % count
 }
 
-// ExpandAllSections clears the collapsed map so all sections are visible.
-func ExpandAllSections[K comparable](collapsed map[K]bool) {
-	for k := range collapsed {
-		delete(collapsed, k)
-	}
-}
-
-// CollapseAllSections marks all given keys as collapsed.
-func CollapseAllSections[K comparable](collapsed map[K]bool, keys []K) {
-	for _, k := range keys {
-		collapsed[k] = true
-	}
-}
-
 // ToggleSection flips a section's collapsed state.
 func ToggleSection[K comparable](collapsed map[K]bool, key K) {
 	collapsed[key] = !collapsed[key]

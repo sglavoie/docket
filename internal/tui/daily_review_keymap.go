@@ -82,26 +82,13 @@ func (m *DailyReviewModel) buildKeyMap() *keymap.KeyMap {
 		},
 	})...)
 
-	// --- f prefix: fp (preview), fR (expand all), fM (collapse all) ---
+	// --- f prefix: fa (toggle fold), fp (preview) ---
 	entries = append(entries, keymap.Prefix("f", "View", "View", []keymap.Entry{
+		keymap.Bind("a", "Toggle section fold", "Folds", func() (tea.Model, tea.Cmd) {
+			return m.toggleCurrentSection()
+		}),
 		keymap.Bind("p", "Toggle inline preview", "View", func() (tea.Model, tea.Cmd) {
 			m.previewMode = !m.previewMode
-			return m, nil
-		}),
-		keymap.Bind("R", "Expand all sections", "View", func() (tea.Model, tea.Cmd) {
-			ExpandAllSections(m.collapsedSections)
-			m.calculateNavigation()
-			m.clampCursor()
-			return m, nil
-		}),
-		keymap.Bind("M", "Collapse all sections", "View", func() (tea.Model, tea.Cmd) {
-			sectionInts := make([]int, len(m.sectionOrder))
-			for i, s := range m.sectionOrder {
-				sectionInts[i] = int(s)
-			}
-			CollapseAllSections(m.collapsedSections, sectionInts)
-			m.calculateNavigation()
-			m.clampCursor()
 			return m, nil
 		}),
 	}))

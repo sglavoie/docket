@@ -270,22 +270,6 @@ func (m *OutlinerModel) buildKeyMap() *keymap.KeyMap {
 			task := cursorTask()
 			return m.handleFoldPrefix("a", task)
 		},
-		ExpandFold: func() (tea.Model, tea.Cmd) {
-			task := cursorTask()
-			return m.handleFoldPrefix("o", task)
-		},
-		CollapseFold: func() (tea.Model, tea.Cmd) {
-			task := cursorTask()
-			return m.handleFoldPrefix("c", task)
-		},
-		ExpandAll: func() (tea.Model, tea.Cmd) {
-			task := cursorTask()
-			return m.handleFoldPrefix("R", task)
-		},
-		CollapseAll: func() (tea.Model, tea.Cmd) {
-			task := cursorTask()
-			return m.handleFoldPrefix("M", task)
-		},
 		FocusSubtree: func() (tea.Model, tea.Cmd) {
 			task := cursorTask()
 			return m.handleFoldPrefix("v", task)

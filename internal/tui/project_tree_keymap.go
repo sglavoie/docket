@@ -294,40 +294,6 @@ func (m *ProjectTreeModel) buildKeyMap() *keymap.KeyMap {
 			}
 			return m, nil
 		},
-		ExpandFold: func() (tea.Model, tea.Cmd) {
-			v := visible()
-			if CursorInBounds(m.cursor, len(v)) {
-				node := v[m.cursor]
-				node.Expanded = true
-				m.updateVisibility()
-			}
-			return m, nil
-		},
-		CollapseFold: func() (tea.Model, tea.Cmd) {
-			v := visible()
-			if CursorInBounds(m.cursor, len(v)) {
-				node := v[m.cursor]
-				node.Expanded = false
-				m.updateVisibility()
-			}
-			return m, nil
-		},
-		ExpandAll: func() (tea.Model, tea.Cmd) {
-			for _, node := range m.nodes {
-				node.Expanded = true
-			}
-			m.updateVisibility()
-			return m, nil
-		},
-		CollapseAll: func() (tea.Model, tea.Cmd) {
-			for _, node := range m.nodes {
-				if node.Level > 0 {
-					node.Expanded = false
-				}
-			}
-			m.updateVisibility()
-			return m, nil
-		},
 		FocusSubtree: func() (tea.Model, tea.Cmd) {
 			v := visible()
 			if CursorInBounds(m.cursor, len(v)) {

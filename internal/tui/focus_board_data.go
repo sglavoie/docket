@@ -269,6 +269,53 @@ func (m *FocusBoardModel) scorePercent(r boardRow) float64 {
 	return scoring.ScorePercent(score, profile)
 }
 
+// rebuildTodayChildren strips auto-expanded children and re-expands with the current depth limit.
+func (m *FocusBoardModel) rebuildTodayChildren() {
+	var roots []boardRow
+	for _, r := range m.todayRows {
+		if r.TreePrefix == "" {
+			roots = append(roots, r)
+		}
+	}
+	m.todayRows = roots
+	m.expandTodayChildren()
+	m.applyFilter()
+	m.clampCursor()
+}
+
+// toggleFoldAtCursor toggles the collapsed state of the parent task at or containing the cursor.
+func (m *FocusBoardModel) toggleFoldAtCursor() {
+	row := m.getRowAtCursor()
+	if row == nil || row.Task == nil {
+		return
+	}
+	var parentID string
+	if row.TreePrefix == "" {
+		if len(row.Task.Children) == 0 {
+			return
+		}
+		parentID = row.Task.ID
+	} else {
+		for _, r := range m.filtered {
+			if r.TreePrefix == "" && r.Task != nil {
+				parentID = r.Task.ID
+			}
+			if r.Task != nil && r.Task.ID == row.Task.ID {
+				break
+			}
+		}
+	}
+	if parentID == "" {
+		return
+	}
+	if m.collapsedParents[parentID] {
+		delete(m.collapsedParents, parentID)
+	} else {
+		m.collapsedParents[parentID] = true
+	}
+	m.rebuildTodayChildren()
+}
+
 // expandTodayChildren inserts descendants of explicitly planned items into todayRows.
 func (m *FocusBoardModel) expandTodayChildren() {
 	seen := make(map[string]bool, len(m.todayRows))
@@ -288,6 +335,12 @@ func (m *FocusBoardModel) expandTodayChildren() {
 
 // collectChildren recursively appends child rows depth-first with tree connectors.
 func (m *FocusBoardModel) collectChildren(out *[]boardRow, parent *models.Task, project *models.Project, ancestorIsLast []bool, seen map[string]bool) {
+	if m.childDepthLimit >= 0 && len(ancestorIsLast) >= m.childDepthLimit {
+		return
+	}
+	if m.collapsedParents[parent.ID] {
+		return
+	}
 	visible := make([]*models.Task, 0, len(parent.Children))
 	for _, child := range parent.Children {
 		if !seen[child.ID] {

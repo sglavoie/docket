@@ -66,13 +66,14 @@ type FocusBoardModel struct {
 	dailyPlan    *[]FocusTask // shared with AppModel for reordering
 
 	// Data
-	rows           []boardRow
-	allRows        []boardRow // all non-complete, non-snoozed tasks for "All" tab
-	nextRows       []boardRow
-	closedRows     []boardRow
-	todayRows      []boardRow
-	filtered       []boardRow
-	carriedOverIDs map[string]bool
+	rows             []boardRow
+	allRows          []boardRow // all non-complete, non-snoozed tasks for "All" tab
+	nextRows         []boardRow
+	closedRows       []boardRow
+	todayRows        []boardRow
+	filtered         []boardRow
+	carriedOverIDs   map[string]bool
+	collapsedParents map[string]bool // per-parent collapsed state in Today tab
 
 	// Tabs
 	tabs TabState
@@ -100,10 +101,11 @@ type FocusBoardModel struct {
 	editInput textinput.Model
 	editIdx   int
 
-	previewMode   bool
-	focusMode     int // 0=list, 1=tunnel, 2=zen
-	initialTabSet bool
-	groupBy       boardGroupBy // grouping mode for the All tab
+	previewMode     bool
+	focusMode       int // 0=list, 1=tunnel, 2=zen
+	childDepthLimit int // -1 = unlimited (default), 0/1/2 = max child depth in Today tab
+	initialTabSet   bool
+	groupBy         boardGroupBy // grouping mode for the All tab
 }
 
 // NewFocusBoardModel creates a new focus board model.
@@ -136,9 +138,11 @@ func NewFocusBoardModel(cfg *config.Config, manager *config.Manager, dailyPlan *
 		dailyPlan:        dailyPlan,
 		dailyPlanIDs:     dailyPlanIDs,
 		carriedOverIDs:   carriedOverIDs,
+		collapsedParents: make(map[string]bool),
 		addInput:         ti,
 		editInput:        ei,
 		focusMode:        initialFocusMode,
+		childDepthLimit:  -1,
 		FilterMixin:      FilterMixin{filter: newFilterState()},
 		MultiSelectState: MultiSelectState{selectedTasks: make(map[string]bool)},
 		sort:             NewSortState(),
