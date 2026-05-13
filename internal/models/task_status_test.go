@@ -63,8 +63,8 @@ func TestTaskStatusIcon(t *testing.T) {
 		{StatusReview, "◑"},
 		{StatusDone, "✓"},
 		{StatusBlocked, "⊘"},
-		{StatusStandby, "⏸"},
-		{StatusMaybe, "❓"},
+		{StatusStandby, "‖"},
+		{StatusMaybe, "¿"},
 		{StatusCanceled, "✕"},
 		{TaskStatus("unknown"), "?"},
 	}

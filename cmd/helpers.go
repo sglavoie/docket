@@ -12,6 +12,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/external"
+	"github.com/sglavoie/tt/internal/icons"
 	"github.com/sglavoie/tt/internal/logging"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
@@ -49,7 +50,7 @@ func TaskMsg(projectName, verb string, task *models.Task) string {
 // successMsg formats a success message with a ✓ prefix.
 // Format: "✓ <message>"
 func successMsg(format string, args ...any) string {
-	return "✓ " + fmt.Sprintf(format, args...)
+	return icons.Get("success") + " " + fmt.Sprintf(format, args...)
 }
 
 // NoItemsMsg returns a standardized "no <thing> found" message with an actionable hint.
@@ -129,6 +130,7 @@ func applyConfigSettings(cfg *config.Config) {
 		storage.MaxActivityEntries = *cfg.MaxActivityEntries
 	}
 	external.SetFzfTimeout(cfg.GetFzfTimeout())
+	icons.SetUseEmoji(cfg.GetUseEmoji())
 }
 
 // LoadConfig loads the configuration file, creating it if it does not exist.

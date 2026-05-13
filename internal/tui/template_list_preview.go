@@ -6,6 +6,7 @@ import (
 
 	"charm.land/lipgloss/v2"
 
+	"github.com/sglavoie/tt/internal/icons"
 	"github.com/sglavoie/tt/internal/template"
 )
 
@@ -95,7 +96,7 @@ func (m *TaskTemplatesModel) renderTemplateDetails(t template.TaskTemplate, isDe
 	if len(t.Checklist) > 0 {
 		lines = append(lines, "", MutedStyle.Render("Checklist:"))
 		for _, item := range t.Checklist {
-			lines = append(lines, "  ☐ "+item)
+			lines = append(lines, "  "+icons.Get("checkbox.unchecked")+" "+item)
 		}
 	}
 	if len(t.Children) > 0 {

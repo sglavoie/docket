@@ -7,6 +7,7 @@ import (
 
 	"charm.land/lipgloss/v2"
 
+	"github.com/sglavoie/tt/internal/icons"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/util"
 )
@@ -296,10 +297,10 @@ func (m *CommandPaletteModel) writeProjectHealthPreview(b *strings.Builder, proj
 		fmt.Fprintf(b, "  %s %d high priority\n", WarningIconStyle.Render("!"), highPriority)
 	}
 	if blocked > 0 {
-		fmt.Fprintf(b, "  %s %d blocked\n", ErrorIconStyle.Render("◈"), blocked)
+		fmt.Fprintf(b, "  %s %d blocked\n", ErrorIconStyle.Render(icons.Get("blocked_dot")), blocked)
 	}
 	if overdue == 0 && dueToday == 0 && blocked == 0 {
-		fmt.Fprintf(b, "  %s No urgent items\n", CheckmarkStyle.Render("✓"))
+		fmt.Fprintf(b, "  %s No urgent items\n", CheckmarkStyle.Render(icons.Get("success")))
 	}
 
 	b.WriteString("\n")

@@ -67,7 +67,7 @@ func NewStatusIconPickerModel(project *models.Project) *StatusIconPickerModel {
 	for _, icon := range models.AllProjectStatusIcons() {
 		items = append(items, StatusIconInfo{
 			Key:   icon.Key,
-			Emoji: icon.Emoji,
+			Emoji: icon.DisplayIcon(),
 			Label: icon.Label,
 		})
 	}
@@ -142,7 +142,7 @@ func (m *StatusIconPickerModel) View() tea.View {
 	// Show current icon
 	if m.project.StatusIcon != "" {
 		if icon := models.ProjectStatusIconByKey(m.project.StatusIcon); icon != nil {
-			b.WriteString(MutedStyle.Render(fmt.Sprintf("Current: %s %s", icon.Emoji, icon.Label)))
+			b.WriteString(MutedStyle.Render(fmt.Sprintf("Current: %s %s", icon.DisplayIcon(), icon.Label)))
 		} else {
 			b.WriteString(MutedStyle.Render(fmt.Sprintf("Current: %s", m.project.StatusIcon)))
 		}

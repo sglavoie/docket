@@ -3,6 +3,8 @@ package models
 import (
 	"fmt"
 	"strings"
+
+	"github.com/sglavoie/tt/internal/icons"
 )
 
 // TaskStatus represents the current state of a task.
@@ -68,21 +70,21 @@ func (s TaskStatus) IsActive() bool {
 func (s TaskStatus) Icon() string {
 	switch s {
 	case StatusTodo:
-		return "□"
+		return icons.Get("status.todo")
 	case StatusInProgress:
-		return "▶"
+		return icons.Get("status.in_progress")
 	case StatusReview:
-		return "◑"
+		return icons.Get("status.review")
 	case StatusStandby:
-		return "⏸"
+		return icons.Get("status.standby")
 	case StatusDone:
-		return "✓"
+		return icons.Get("status.done")
 	case StatusBlocked:
-		return "⊘"
+		return icons.Get("status.blocked")
 	case StatusCanceled:
-		return "✕"
+		return icons.Get("status.canceled")
 	case StatusMaybe:
-		return "❓"
+		return icons.Get("status.maybe")
 	default:
 		return "?"
 	}

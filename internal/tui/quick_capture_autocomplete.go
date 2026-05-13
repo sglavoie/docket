@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/sglavoie/tt/internal/fuzzy"
+	"github.com/sglavoie/tt/internal/icons"
 	"github.com/sglavoie/tt/internal/models"
 )
 
@@ -47,12 +48,12 @@ func (q *quickCaptureInput) getTypeSuggestions(partial string) []ACSuggestion {
 		name string
 		icon string
 	}{
-		{"epic", "◆"},
-		{"story", "◇"},
-		{"task", "□"},
-		{"bug", "⚠"},
-		{"idea", "💡"},
-		{"note", "📝"},
+		{"epic", icons.Get("type.epic")},
+		{"story", icons.Get("type.story")},
+		{"task", icons.Get("type.task")},
+		{"bug", icons.Get("type.bug")},
+		{"idea", icons.Get("idea")},
+		{"note", icons.Get("note_type")},
 	}
 
 	var suggestions []ACSuggestion
@@ -183,13 +184,13 @@ func (q *quickCaptureInput) getStatusSuggestions(partial string) []ACSuggestion 
 		icon string
 		desc string
 	}{
-		{"start", "◐", "in progress + activate"},
-		{"review", "◑", "send to review"},
-		{"standby", "⏸", "put on hold"},
-		{"maybe", "❓", "tentative / someday"},
-		{"blocked", "◈", "blocked"},
-		{"done", "●", "completed"},
-		{"canceled", "✕", "canceled"},
+		{"start", icons.Get("status.in_progress"), "in progress + activate"},
+		{"review", icons.Get("status.review"), "send to review"},
+		{"standby", icons.Get("status.standby"), "put on hold"},
+		{"maybe", icons.Get("status.maybe"), "tentative / someday"},
+		{"blocked", icons.Get("blocked_dot"), "blocked"},
+		{"done", icons.Get("status.done"), "completed"},
+		{"canceled", icons.Get("status.canceled"), "canceled"},
 	}
 
 	var suggestions []ACSuggestion

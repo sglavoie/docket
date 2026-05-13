@@ -8,6 +8,7 @@ import (
 	"charm.land/lipgloss/v2"
 
 	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/tt/internal/icons"
 )
 
 // renderColorInputField renders a hex color input with swatch and validation error.
@@ -67,29 +68,29 @@ func (m *SettingsModel) renderColorPreviewPane(width int) string {
 
 	b.WriteString(MutedStyle.Render("Status"))
 	b.WriteString("\n")
-	b.WriteString(GetStatusBadge("todo", "□ Todo"))
+	b.WriteString(GetStatusBadge("todo", icons.Get("status.todo")+" Todo"))
 	b.WriteString("  ")
-	b.WriteString(GetStatusBadge("in_progress", IconInProgress+" In Progress"))
+	b.WriteString(GetStatusBadge("in_progress", icons.Get("status.in_progress")+" In Progress"))
 	b.WriteString("  ")
-	b.WriteString(GetStatusBadge("done", "✓ Done"))
+	b.WriteString(GetStatusBadge("done", icons.Get("status.done")+" Done"))
 	b.WriteString("\n")
-	b.WriteString(GetStatusBadge("review", "◑ Review"))
+	b.WriteString(GetStatusBadge("review", icons.Get("status.review")+" Review"))
 	b.WriteString("  ")
-	b.WriteString(GetStatusBadge("standby", "⏸ Standby"))
+	b.WriteString(GetStatusBadge("standby", icons.Get("status.standby")+" Standby"))
 	b.WriteString("  ")
-	b.WriteString(GetStatusBadge("blocked", "⊘ Blocked"))
+	b.WriteString(GetStatusBadge("blocked", icons.Get("status.blocked")+" Blocked"))
 	b.WriteString("\n")
-	b.WriteString(GetStatusBadge("canceled", "✕ Canceled"))
+	b.WriteString(GetStatusBadge("canceled", icons.Get("status.canceled")+" Canceled"))
 	b.WriteString("\n\n")
 
 	b.WriteString(MutedStyle.Render("Priority"))
 	b.WriteString("\n")
-	for i, icon := range []string{"◉", "●", "◆", "◇", "·"} {
+	for i := range 5 {
 		if i > 0 {
 			b.WriteString("  ")
 		}
 		p := i + 1
-		b.WriteString(GetPriorityStyle(p).Render(icon))
+		b.WriteString(GetPriorityStyle(p).Render(PriorityIcon(p)))
 		b.WriteString(" ")
 		b.WriteString(GetTitlePriorityStyle(p).Render(fmt.Sprintf("P%d", p)))
 	}
@@ -120,11 +121,11 @@ func (m *SettingsModel) renderColorPreviewPane(width int) string {
 	b.WriteString(MutedStyle.Render(" · "))
 	b.WriteString(ActiveStyle.Render("Accent"))
 	b.WriteString("\n")
-	b.WriteString(SuccessStyle.Render("✓ Success"))
+	b.WriteString(SuccessStyle.Render(icons.Get("success") + " Success"))
 	b.WriteString("  ")
-	b.WriteString(WarningMessageStyle.Render("⚠ Warning"))
+	b.WriteString(WarningMessageStyle.Render(icons.Get("warning") + " Warning"))
 	b.WriteString("  ")
-	b.WriteString(ErrorStatusStyle.Render("✕ Error"))
+	b.WriteString(ErrorStatusStyle.Render(icons.Get("error") + " Error"))
 	b.WriteString("\n\n")
 
 	b.WriteString(MutedStyle.Render("Selection"))

@@ -165,6 +165,7 @@ type Config struct {
 	StartView                      string                       `json:"start_view,omitempty"`
 	TaskFormCollapsed              *bool                        `json:"task_form_collapsed,omitempty"`
 	AutoTheme                      *bool                        `json:"auto_theme,omitempty"`
+	UseEmoji                       *bool                        `json:"use_emoji,omitempty"`
 	StreakCount                    int                          `json:"streak_count,omitempty"`
 	StreakLastDate                 string                       `json:"streak_last_date,omitempty"`
 }

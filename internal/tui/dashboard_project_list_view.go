@@ -6,6 +6,7 @@ import (
 
 	"charm.land/lipgloss/v2"
 
+	"github.com/sglavoie/tt/internal/icons"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 )
@@ -267,19 +268,19 @@ func (m *DashboardModel) projectRowStatusIndicator(p *models.Project, dueSoonDay
 
 	var parts []string
 	if overdue > 0 {
-		parts = append(parts, OverdueStyle.Render(fmt.Sprintf("🔥%d", overdue)))
+		parts = append(parts, OverdueStyle.Render(fmt.Sprintf("%s%d", icons.Get("overdue"), overdue)))
 	}
 	if dueSoon > 0 {
-		parts = append(parts, DueSoonStyle.Render(fmt.Sprintf("⏰%d", dueSoon)))
+		parts = append(parts, DueSoonStyle.Render(fmt.Sprintf("%s%d", icons.Get("due_today"), dueSoon)))
 	}
 	if blocked > 0 {
-		parts = append(parts, MutedStyle.Render(fmt.Sprintf("◈%d", blocked)))
+		parts = append(parts, MutedStyle.Render(fmt.Sprintf("%s%d", icons.Get("blocked_dot"), blocked)))
 	}
 	if blockerCount > 0 {
-		parts = append(parts, DueSoonStyle.Render(fmt.Sprintf("🚧%d", blockerCount)))
+		parts = append(parts, DueSoonStyle.Render(fmt.Sprintf("%s%d", icons.Get("blockers"), blockerCount)))
 	}
 	if completedCount > 0 {
-		parts = append(parts, MutedStyle.Render(fmt.Sprintf("%s%d", IconChecklist, completedCount)))
+		parts = append(parts, MutedStyle.Render(fmt.Sprintf("%s%d", IconChecklist(), completedCount)))
 	}
 	return strings.Join(parts, " ")
 }
@@ -319,7 +320,7 @@ func appendProjectRowBadge(content string, maxWidth, noteCount int, scoreCoverag
 	}
 
 	if noteCount > 0 {
-		content = appendIfFits(content, MutedStyle.Render(fmt.Sprintf("📝%d", noteCount)))
+		content = appendIfFits(content, MutedStyle.Render(fmt.Sprintf("%s%d", icons.Get("notes"), noteCount)))
 	}
 	if scoreCoverageBadge != "" {
 		content = appendIfFits(content, scoreCoverageBadge)

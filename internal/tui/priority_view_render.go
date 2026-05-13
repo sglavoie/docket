@@ -7,6 +7,7 @@ import (
 
 	"charm.land/lipgloss/v2"
 
+	"github.com/sglavoie/tt/internal/icons"
 	"github.com/sglavoie/tt/internal/models"
 )
 
@@ -73,7 +74,7 @@ func (m *PriorityViewModel) renderSuggestionSection() string {
 	}
 
 	// Star indicator
-	star := SuggestionStarStyle.Render("★")
+	star := SuggestionStarStyle.Render(icons.Get("star"))
 
 	// Build the task line
 	taskLine := TaskLine{
@@ -287,7 +288,7 @@ func (m *PriorityViewModel) renderTaskLine(pt *PriorityTask, isOverdue bool, isS
 	isSuggested := m.suggestion != nil && m.suggestion.Task.Task.ID == task.ID
 	starPrefix := "  "
 	if isSuggested {
-		starPrefix = SuggestionStarStyle.Render("★ ")
+		starPrefix = SuggestionStarStyle.Render(icons.Get("star") + " ")
 	}
 	starPrefix = m.Checkbox(task.ID) + starPrefix
 
@@ -359,7 +360,7 @@ func (m *PriorityViewModel) renderWaitingOnTask(pt *PriorityTask) string {
 	task := pt.Task
 
 	// Blocked status icon
-	statusIcon := BlockedStyle.Render(StatusIconBlocked)
+	statusIcon := BlockedStyle.Render(icons.Get("status.blocked"))
 
 	// Type icon with badge style
 	typeIcon := GetTypeBadge(string(task.Type), task.Type.Icon())

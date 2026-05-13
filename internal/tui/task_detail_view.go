@@ -7,6 +7,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 
+	"github.com/sglavoie/tt/internal/icons"
 	"github.com/sglavoie/tt/internal/logging"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/scoring"
@@ -255,16 +256,16 @@ func (m *TaskDetailModel) renderChecklistSection(width int) string {
 	lines = append(lines, MutedStyle.Render(header))
 
 	for _, item := range m.task.Checklist {
-		marker := "☐"
+		marker := icons.Get("checkbox.unchecked")
 		style := NormalStyle
 		if item.Done {
-			marker = "☑"
+			marker = icons.Get("checkbox.checked")
 			style = MutedStyle
 		}
 		lines = append(lines, fmt.Sprintf("  %s %s", marker, style.Render(item.Text)))
 	}
 
-	return renderCard(IconChecklist+" Checklist", strings.Join(lines, "\n"), width, DefaultCardConfig())
+	return renderCard(IconChecklist()+" Checklist", strings.Join(lines, "\n"), width, DefaultCardConfig())
 }
 
 // renderDependenciesSection renders blocked-by, blocking, and related tasks.
@@ -392,7 +393,7 @@ func (m *TaskDetailModel) renderCommentsSection(width int) string {
 		}
 	}
 
-	return renderCard(IconComment+" Comments", strings.Join(lines, "\n"), width, DefaultCardConfig())
+	return renderCard(IconComment()+" Comments", strings.Join(lines, "\n"), width, DefaultCardConfig())
 }
 
 // renderDecisionsSection renders all decisions with category and timestamps.
@@ -417,7 +418,7 @@ func (m *TaskDetailModel) renderDecisionsSection(width int) string {
 		}
 	}
 
-	return renderCard(IconDecision+" Decisions", strings.Join(lines, "\n"), width, DefaultCardConfig())
+	return renderCard(IconDecision()+" Decisions", strings.Join(lines, "\n"), width, DefaultCardConfig())
 }
 
 // renderAttachmentsSection renders all attachments.
@@ -432,11 +433,11 @@ func (m *TaskDetailModel) renderAttachmentsSection(width int) string {
 			link := Hyperlink(attachment.Filename, attachment.Filename)
 			lines = append(lines, MutedStyle.Render("🔗 ")+link)
 		} else {
-			lines = append(lines, MutedStyle.Render(IconAttachment+" ")+attachment.Filename)
+			lines = append(lines, MutedStyle.Render(IconAttachment()+" ")+attachment.Filename)
 		}
 	}
 
-	return renderCard(IconAttachment+" Attachments", strings.Join(lines, "\n"), width, DefaultCardConfig())
+	return renderCard(IconAttachment()+" Attachments", strings.Join(lines, "\n"), width, DefaultCardConfig())
 }
 
 // renderActivitySection renders activity timestamps.

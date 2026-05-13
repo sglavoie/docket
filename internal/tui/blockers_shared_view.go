@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/sglavoie/tt/internal/icons"
 	"github.com/sglavoie/tt/internal/storage"
 )
 
@@ -153,14 +154,14 @@ func blockerListItemView(s *blockerViewState, ds blockerDataSource, item blocker
 	line.WriteString("  ")
 
 	if blocker.IsResolved() {
-		line.WriteString(DoneStyle.Render("✓ "))
+		line.WriteString(DoneStyle.Render(icons.Get("success") + " "))
 		if selected {
 			line.WriteString(MutedStyle.Render(blocker.Title))
 		} else {
 			line.WriteString(MutedStyle.Render(blocker.Title))
 		}
 	} else {
-		line.WriteString(DueSoonStyle.Render("🚧 "))
+		line.WriteString(DueSoonStyle.Render(icons.Get("blockers") + " "))
 		if selected {
 			line.WriteString(BoldStyle.Render(blocker.Title))
 		} else {

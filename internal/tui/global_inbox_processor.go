@@ -7,6 +7,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/tt/internal/icons"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 )
@@ -143,10 +144,10 @@ func (m *GlobalInboxProcessorModel) headerSubtitleExtra() string {
 	return fmt.Sprintf(" from %d projects", len(m.projectCache))
 }
 func (m *GlobalInboxProcessorModel) emptyStateText() string {
-	return "✓ All inboxes are empty! All tasks have been triaged."
+	return icons.Get("success") + " All inboxes are empty! All tasks have been triaged."
 }
 func (m *GlobalInboxProcessorModel) emptyInboxText() string {
-	return "✓ All inboxes are empty! No tasks to process across any project."
+	return icons.Get("success") + " All inboxes are empty! No tasks to process across any project."
 }
 func (m *GlobalInboxProcessorModel) returnHint() string   { return "return to dashboard" }
 func (m *GlobalInboxProcessorModel) viewType() ViewType   { return ViewGlobalInboxProcessor }

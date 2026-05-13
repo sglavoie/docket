@@ -7,6 +7,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/tt/internal/icons"
 	"github.com/sglavoie/tt/internal/scoring"
 )
 
@@ -209,7 +210,7 @@ func (m *ScoringProfilePickerModel) View() tea.View {
 
 			check := "  "
 			if opt.IsCurrent {
-				check = "✓ "
+				check = icons.Get("success") + " "
 			}
 
 			line := fmt.Sprintf("%s%s%s", cursor, check, opt.DisplayText())

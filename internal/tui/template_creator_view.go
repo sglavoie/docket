@@ -5,6 +5,8 @@ import (
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
+
+	"github.com/sglavoie/tt/internal/icons"
 )
 
 func (m *TaskTemplateCreatorModel) View() tea.View {
@@ -144,9 +146,9 @@ func (m *TaskTemplateCreatorModel) renderChecklistTab() string {
 			isFocused := m.focusIndex == fieldIndex
 
 			if isFocused {
-				b.WriteString(SelectedItemTextStyle.Render(fmt.Sprintf("%s %d. ☐ ", IconCursorRight, i+1)))
+				b.WriteString(SelectedItemTextStyle.Render(fmt.Sprintf("%s %d. %s ", IconCursorRight, i+1, icons.Get("checkbox.unchecked"))))
 			} else {
-				fmt.Fprintf(&b, "  %d. ☐ ", i+1)
+				fmt.Fprintf(&b, "  %d. %s ", i+1, icons.Get("checkbox.unchecked"))
 			}
 
 			b.WriteString(item.View())

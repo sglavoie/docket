@@ -1,5 +1,7 @@
 package models
 
+import "github.com/sglavoie/tt/internal/icons"
+
 // ProjectStatusIcon represents a curated status icon for a project phase.
 type ProjectStatusIcon struct {
 	Key   string
@@ -33,4 +35,9 @@ func ProjectStatusIconByKey(key string) *ProjectStatusIcon {
 		}
 	}
 	return nil
+}
+
+// DisplayIcon returns the icon string for this status, respecting the UseEmoji setting.
+func (p *ProjectStatusIcon) DisplayIcon() string {
+	return icons.Get("project." + p.Key)
 }

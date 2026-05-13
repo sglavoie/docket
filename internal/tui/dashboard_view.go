@@ -8,6 +8,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/tt/internal/icons"
 	"github.com/sglavoie/tt/internal/models"
 )
 
@@ -73,7 +74,7 @@ func (m *DashboardModel) projectCardTitle(visible []*models.Project) string {
 	}
 	title := fmt.Sprintf("Projects (%d)", len(visible))
 	if m.config.StreakCount > 0 && isStreakActive(m.config.StreakLastDate) {
-		title += fmt.Sprintf("  ⚡ %dd", m.config.StreakCount)
+		title += fmt.Sprintf("  %s %dd", icons.Get("streak"), m.config.StreakCount)
 	}
 	return title
 }

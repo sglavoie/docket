@@ -111,6 +111,11 @@ func (c *Config) GetCodeEditor() string {
 	return c.CodeEditor
 }
 
+// GetUseEmoji returns whether emoji icons are enabled. Defaults to false (Unicode symbols).
+func (c *Config) GetUseEmoji() bool {
+	return c.UseEmoji != nil && *c.UseEmoji
+}
+
 // GetNotesEditor returns the configured editor for opening notes with Ctrl+O.
 // Defaults to "code" (VS Code) if not set.
 func (c *Config) GetNotesEditor() string {

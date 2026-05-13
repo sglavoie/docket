@@ -1,6 +1,10 @@
 package tui
 
-import tea "charm.land/bubbletea/v2"
+import (
+	tea "charm.land/bubbletea/v2"
+
+	"github.com/sglavoie/tt/internal/icons"
+)
 
 // getTagActions returns inline actions for a tag item.
 func (m *CommandPaletteModel) getTagActions(item PaletteItem) []PaletteAction {
@@ -13,7 +17,7 @@ func (m *CommandPaletteModel) getTagActions(item PaletteItem) []PaletteAction {
 	return []PaletteAction{
 		{
 			Name:    "Filter by tag",
-			Icon:    "🏷",
+			Icon:    icons.Get("tag"),
 			KeyHint: "enter",
 			Handler: func() tea.Msg {
 				if project != nil {
@@ -24,7 +28,7 @@ func (m *CommandPaletteModel) getTagActions(item PaletteItem) []PaletteAction {
 		},
 		{
 			Name:    "Manage tags",
-			Icon:    "⚙",
+			Icon:    icons.Get("settings"),
 			KeyHint: "t",
 			Handler: func() tea.Msg {
 				return ShowGlobalTagManagerMsg{}
@@ -44,7 +48,7 @@ func (m *CommandPaletteModel) getSectionActions(item PaletteItem) []PaletteActio
 	return []PaletteAction{
 		{
 			Name:    "Filter by section",
-			Icon:    "📂",
+			Icon:    icons.Get("folder"),
 			KeyHint: "enter",
 			Handler: func() tea.Msg {
 				if project != nil {
@@ -101,7 +105,7 @@ func (m *CommandPaletteModel) getSavedSearchActions(item PaletteItem) []PaletteA
 	return []PaletteAction{
 		{
 			Name:    "Run search",
-			Icon:    "🔍",
+			Icon:    icons.Get("search"),
 			KeyHint: "enter",
 			Handler: func() tea.Msg {
 				return ExecuteSavedSearchMsg{Query: query}
@@ -109,7 +113,7 @@ func (m *CommandPaletteModel) getSavedSearchActions(item PaletteItem) []PaletteA
 		},
 		{
 			Name:    "Delete",
-			Icon:    "✕",
+			Icon:    icons.Get("close"),
 			KeyHint: "d",
 			Handler: func() tea.Msg {
 				return DeleteSavedSearchMsg{Name: name}
@@ -145,10 +149,10 @@ func (m *CommandPaletteModel) getSavedFilterActions(item PaletteItem) []PaletteA
 	}
 
 	tabName := "Show as tab"
-	tabIcon := "☐"
+	tabIcon := icons.Get("checkbox.unchecked")
 	if sf.ShowAsTab {
 		tabName = "Hide from tabs"
-		tabIcon = "☑"
+		tabIcon = icons.Get("checkbox.checked")
 	}
 	filterID := sf.ID
 	currentTab := sf.ShowAsTab
@@ -163,7 +167,7 @@ func (m *CommandPaletteModel) getSavedFilterActions(item PaletteItem) []PaletteA
 		},
 		PaletteAction{
 			Name:    "Delete",
-			Icon:    "✕",
+			Icon:    icons.Get("close"),
 			KeyHint: "d",
 			Handler: func() tea.Msg {
 				return DeleteSavedFilterMsg{ID: sf.ID}

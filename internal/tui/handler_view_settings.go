@@ -6,6 +6,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/sglavoie/tt/internal/icons"
 	"github.com/sglavoie/tt/internal/template"
 )
 
@@ -30,6 +31,7 @@ func (m *AppModel) handleViewSettingsMessages(msg tea.Msg) (bool, tea.Cmd) { //n
 	case SettingsSavedMsg:
 		m.popView()
 		ApplyTheme(NewThemeConfig(m.config))
+		icons.SetUseEmoji(m.config.GetUseEmoji())
 		if m.dashboard != nil {
 			m.dashboard.Refresh(m.config)
 		}

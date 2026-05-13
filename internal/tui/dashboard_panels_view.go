@@ -7,6 +7,7 @@ import (
 
 	"charm.land/lipgloss/v2"
 
+	"github.com/sglavoie/tt/internal/icons"
 	"github.com/sglavoie/tt/internal/logging"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/scoring"
@@ -176,9 +177,9 @@ func (m *DashboardModel) renderProjectSummaryContent(project *models.Project) st
 	var statusLine string
 	if icon := models.ProjectStatusIconByKey(project.StatusIcon); icon != nil {
 		if project.Description != "" {
-			statusLine = fmt.Sprintf("%s %s — %s", icon.Emoji, icon.Label, project.Description)
+			statusLine = fmt.Sprintf("%s %s — %s", icon.DisplayIcon(), icon.Label, project.Description)
 		} else {
-			statusLine = fmt.Sprintf("%s %s", icon.Emoji, icon.Label)
+			statusLine = fmt.Sprintf("%s %s", icon.DisplayIcon(), icon.Label)
 		}
 	} else if project.Description != "" {
 		statusLine = project.Description
@@ -256,7 +257,13 @@ func (m *DashboardModel) renderProjectSummaryContent(project *models.Project) st
 
 	for _, s := range statusOrder {
 		if count := statusCounts[s.status]; count > 0 {
-			lines = append(lines, NormalStyle.Render(fmt.Sprintf("  %s %-12s%d", s.status.Icon(), s.label, count)))
+			icon := s.status.Icon()
+			iconW := lipgloss.Width(icon)
+			labelCol := 14 - iconW
+			if labelCol < 1 {
+				labelCol = 1
+			}
+			lines = append(lines, NormalStyle.Render(fmt.Sprintf("  %s %-*s%d", icon, labelCol, s.label, count)))
 		}
 	}
 
@@ -319,27 +326,27 @@ func (m *DashboardModel) renderGlobalAlerts(_ int) string {
 
 	var lines []string
 	if totalOverdue > 0 {
-		lines = append(lines, OverdueStyle.Render(fmt.Sprintf("🔥 %d overdue", totalOverdue)))
+		lines = append(lines, OverdueStyle.Render(fmt.Sprintf("%s %d overdue", icons.Get("overdue"), totalOverdue)))
 	}
 	if totalDueToday > 0 {
-		lines = append(lines, DueSoonStyle.Render(fmt.Sprintf("⏰ %d due today", totalDueToday)))
+		lines = append(lines, DueSoonStyle.Render(fmt.Sprintf("%s %d due today", icons.Get("due_today"), totalDueToday)))
 	}
 	if totalBlocked > 0 {
-		lines = append(lines, MutedStyle.Render(fmt.Sprintf("◈ %d blocked", totalBlocked)))
+		lines = append(lines, MutedStyle.Render(fmt.Sprintf("%s %d blocked", icons.Get("blocked_dot"), totalBlocked)))
 	}
 	if totalBlockers > 0 {
-		lines = append(lines, DueSoonStyle.Render(fmt.Sprintf("🚧 %d active blockers", totalBlockers)))
+		lines = append(lines, DueSoonStyle.Render(fmt.Sprintf("%s %d active blockers", icons.Get("blockers"), totalBlockers)))
 	}
 	if len(inboxProjects) > 0 {
-		lines = append(lines, DueSoonStyle.Render(fmt.Sprintf("📥 Inbox backlog: %s", strings.Join(inboxProjects, ", "))))
+		lines = append(lines, DueSoonStyle.Render(fmt.Sprintf("%s Inbox backlog: %s", icons.Get("inbox"), strings.Join(inboxProjects, ", "))))
 	}
 	if totalCompletedThisWeek > 0 {
-		lines = append(lines, SuccessStyle.Render(fmt.Sprintf("%s %d completed this week", IconChecklist, totalCompletedThisWeek)))
+		lines = append(lines, SuccessStyle.Render(fmt.Sprintf("%s %d completed this week", IconChecklist(), totalCompletedThisWeek)))
 	}
 
 	globalNotes, _ := storage.ListNotesFrom(storage.GlobalNotesDir(m.config.DataDir))
 	if len(globalNotes) > 0 {
-		lines = append(lines, MutedStyle.Render(fmt.Sprintf("📝 %d global notes", len(globalNotes))))
+		lines = append(lines, MutedStyle.Render(fmt.Sprintf("%s %d global notes", icons.Get("notes"), len(globalNotes))))
 	}
 
 	if len(lines) == 0 {

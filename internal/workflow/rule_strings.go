@@ -80,7 +80,7 @@ func (a RuleAction) String() string {
 		return fmt.Sprintf("set recurrence to %s", a.Value)
 	case ActionSetProjectStatus:
 		if icon := models.ProjectStatusIconByKey(a.Value); icon != nil {
-			return fmt.Sprintf("set project status to %s %s", icon.Emoji, icon.Label)
+			return fmt.Sprintf("set project status to %s %s", icon.DisplayIcon(), icon.Label)
 		}
 		return fmt.Sprintf("set project status to %s", a.Value)
 	default:

@@ -4,6 +4,7 @@ import (
 	"slices"
 
 	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/tt/internal/icons"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/scoring"
 )
@@ -74,15 +75,15 @@ func statusColumnDefs(order []string) []KanbanColumn {
 		"done":        "Done",
 		"canceled":    "Canceled",
 	}
-	icons := map[string]string{
-		"todo":        "○",
-		"in_progress": IconInProgress,
-		"review":      "◎",
-		"blocked":     "⊗",
-		"standby":     "⏸",
-		"maybe":       "❓",
-		"done":        "✓",
-		"canceled":    "✗",
+	colIcons := map[string]string{
+		"todo":        icons.Get("kanban.todo"),
+		"in_progress": icons.Get("status.in_progress"),
+		"review":      icons.Get("kanban.review"),
+		"blocked":     icons.Get("kanban.blocked"),
+		"standby":     icons.Get("status.standby"),
+		"maybe":       icons.Get("status.maybe"),
+		"done":        icons.Get("kanban.done"),
+		"canceled":    icons.Get("kanban.canceled"),
 	}
 	cols := make([]KanbanColumn, 0, len(order))
 	for _, id := range order {
@@ -93,7 +94,7 @@ func statusColumnDefs(order []string) []KanbanColumn {
 		cols = append(cols, KanbanColumn{
 			ID:    id,
 			Label: label,
-			Icon:  icons[id],
+			Icon:  colIcons[id],
 		})
 	}
 	return cols
@@ -135,10 +136,10 @@ func customSectionColumnDefs(sections []string) []KanbanColumn {
 // scoreColumnDefs returns ordered KanbanColumn definitions for ScoreBuckets mode.
 func scoreColumnDefs() []KanbanColumn {
 	return []KanbanColumn{
-		{ID: "0-25", Label: "0–25%", Icon: "◈"},
-		{ID: "26-50", Label: "26–50%", Icon: "◈"},
-		{ID: "51-75", Label: "51–75%", Icon: "◈"},
-		{ID: "76-100", Label: "76–100%", Icon: "◈"},
+		{ID: "0-25", Label: "0–25%", Icon: icons.Get("score_bucket")},
+		{ID: "26-50", Label: "26–50%", Icon: icons.Get("score_bucket")},
+		{ID: "51-75", Label: "51–75%", Icon: icons.Get("score_bucket")},
+		{ID: "76-100", Label: "76–100%", Icon: icons.Get("score_bucket")},
 	}
 }
 

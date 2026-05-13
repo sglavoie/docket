@@ -131,7 +131,7 @@ func (m *ProjectPreviewModel) renderContent() string {
 		b.WriteString(BoldStyle.Render("Status"))
 		b.WriteString("\n")
 		if icon := models.ProjectStatusIconByKey(p.StatusIcon); icon != nil {
-			fmt.Fprintf(&b, "%s %s", icon.Emoji, icon.Label)
+			fmt.Fprintf(&b, "%s %s", icon.DisplayIcon(), icon.Label)
 			if hasDesc {
 				b.WriteString(" — ")
 				b.WriteString(p.Description)

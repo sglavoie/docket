@@ -1,44 +1,23 @@
 package tui
 
 import (
+	"fmt"
 	"image/color"
 	"strings"
 
 	"charm.land/lipgloss/v2"
 
+	"github.com/sglavoie/tt/internal/icons"
 	"github.com/sglavoie/tt/internal/models"
 )
 
-// Status icon constants for TUI rendering.
-const (
-	StatusIconBlocked = "⊘"
-)
-
-// Priority icon constants for TUI rendering.
-const (
-	PriorityIcon1 = "◉"
-	PriorityIcon2 = "●"
-	PriorityIcon3 = "◆"
-	PriorityIcon4 = "◇"
-	PriorityIcon5 = "·"
-)
-
-// PriorityIcon returns the unicode icon for a priority level (1-5).
+// PriorityIcon returns the icon for a priority level (1-5).
 func PriorityIcon(priority int) string {
-	switch priority {
-	case 1:
-		return PriorityIcon1
-	case 2:
-		return PriorityIcon2
-	case 3:
-		return PriorityIcon3
-	case 4:
-		return PriorityIcon4
-	case 5:
-		return PriorityIcon5
-	default:
-		return PriorityIcon3
+	key := fmt.Sprintf("priority.%d", priority)
+	if v := icons.Get(key); v != "" {
+		return v
 	}
+	return icons.Get("priority.3")
 }
 
 // GetStatusStyle returns the appropriate style for a task status.

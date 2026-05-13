@@ -7,6 +7,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/sglavoie/tt/internal/icons"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/util"
@@ -154,7 +155,8 @@ func (m *WeeklyReviewModel) loadData() { //nolint:gocyclo
 		if pct > 40 {
 			m.priorityDriftPct = pct
 			m.priorityDriftWarning = fmt.Sprintf(
-				"⚠  %d%% of active tasks are P1/P2 (%d of %d). Consider re-evaluating priorities.",
+				"%s  %d%% of active tasks are P1/P2 (%d of %d). Consider re-evaluating priorities.",
+				icons.Get("warning"),
 				pct, highPriCount, totalActive,
 			)
 		}

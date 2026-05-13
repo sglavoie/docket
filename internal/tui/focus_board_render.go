@@ -5,10 +5,11 @@ import (
 	"strings"
 	"time"
 
-	"charm.land/lipgloss/v2"
 	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 
 	"github.com/sglavoie/tt/internal/fuzzy"
+	"github.com/sglavoie/tt/internal/icons"
 	"github.com/sglavoie/tt/internal/models"
 )
 
@@ -500,9 +501,9 @@ func (m *FocusBoardModel) renderZenMode() tea.View {
 	if len(task.Checklist) > 0 {
 		body.WriteString("\n")
 		for _, item := range task.Checklist {
-			check := "☐"
+			check := icons.Get("checkbox.unchecked")
 			if item.Done {
-				check = "☑"
+				check = icons.Get("checkbox.checked")
 			}
 			body.WriteString(MutedStyle.Render(fmt.Sprintf("  %s %s", check, item.Text)))
 			body.WriteString("\n")

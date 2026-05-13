@@ -139,7 +139,7 @@ func (p *Project) StatusIconEmoji() string {
 		return ""
 	}
 	if icon := ProjectStatusIconByKey(p.StatusIcon); icon != nil {
-		return icon.Emoji
+		return icon.DisplayIcon()
 	}
 	return ""
 }

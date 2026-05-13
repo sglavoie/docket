@@ -25,15 +25,15 @@ func BuildPriorityPrefixHints(currentPriority int) []PrefixHint {
 // map with their view-specific entries (e.g. "g" navigation, "f" folds).
 func CommonTaskActionPrefixHints(stages []string, currentStage string, currentPriority int) PrefixHints {
 	return PrefixHints{
-		",":     StatusPrefixHints,
-		"!":     BuildPriorityPrefixHints(currentPriority),
-		"s":     BuildStagePrefixHints(stages, currentStage),
-		"d":     DueDatePrefixHints,
-		"z":     SnoozePrefixHints,
-		"c":     CreateLinkedPrefixHints,
-		"m":     SecondaryViewMovePrefixHints,
-		"t":     TaskPrefixHints,
-		"b":     BlockerPrefixHints,
+		",": StatusPrefixHints,
+		"!": BuildPriorityPrefixHints(currentPriority),
+		"s": BuildStagePrefixHints(stages, currentStage),
+		"d": DueDatePrefixHints,
+		"z": SnoozePrefixHints,
+		"c": CreateLinkedPrefixHints,
+		"m": SecondaryViewMovePrefixHints,
+		"t": TaskPrefixHints,
+		"b": BlockerPrefixHints,
 	}
 }
 

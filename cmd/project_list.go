@@ -10,6 +10,7 @@ import (
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/spf13/cobra"
 
+	"github.com/sglavoie/tt/internal/icons"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 )
@@ -128,7 +129,7 @@ func runProjectList(cmd *cobra.Command, args []string) error {
 		indicator := " "
 		name := p.Name
 		if p.Pinned {
-			name = "📌 " + name
+			name = icons.Get("pinned") + " " + name
 		}
 		if p.ID == cfg.CurrentProject {
 			indicator = "*"

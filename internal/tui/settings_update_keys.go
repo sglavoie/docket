@@ -378,6 +378,8 @@ func (m *SettingsModel) handleSpaceKey() {
 			m.zebraStriping = !m.zebraStriping
 		case 3:
 			m.autoTheme = !m.autoTheme
+		case 4:
+			m.useEmoji = !m.useEmoji
 		}
 	}
 }
@@ -695,6 +697,9 @@ func (m *SettingsModel) handleResetToDefault() {
 			resetDone = true
 		case 3:
 			m.autoTheme = false
+			resetDone = true
+		case 4:
+			m.useEmoji = false
 			resetDone = true
 		}
 	}

@@ -235,11 +235,11 @@ func TestFocusViewRenderPriorityBadge(t *testing.T) {
 		priority  int
 		wantBadge string
 	}{
-		{1, PriorityIcon1},
-		{2, PriorityIcon2},
-		{3, PriorityIcon3},
-		{4, PriorityIcon4},
-		{5, PriorityIcon5},
+		{1, PriorityIcon(1)},
+		{2, PriorityIcon(2)},
+		{3, PriorityIcon(3)},
+		{4, PriorityIcon(4)},
+		{5, PriorityIcon(5)},
 	}
 
 	for _, tt := range tests {

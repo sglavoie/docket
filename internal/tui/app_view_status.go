@@ -5,6 +5,8 @@ import (
 	"strings"
 
 	"charm.land/lipgloss/v2"
+
+	"github.com/sglavoie/tt/internal/icons"
 )
 
 func (m *AppModel) renderStatusBar() string {
@@ -27,7 +29,7 @@ func (m *AppModel) renderStatusBar() string {
 
 	// Show error message if present.
 	if m.err != nil {
-		msg := ErrorStatusStyle.Render("✗ " + m.err.Error())
+		msg := ErrorStatusStyle.Render(icons.Get("error") + " " + m.err.Error())
 		return separator + "\n" + renderLeftAlignedMsg(msg)
 	}
 
@@ -37,7 +39,7 @@ func (m *AppModel) renderStatusBar() string {
 		if m.statusIsInfo {
 			msg = InfoStatusStyle.Render("· " + m.statusMessage)
 		} else {
-			msg = SuccessStyle.Render("✓ " + m.statusMessage)
+			msg = SuccessStyle.Render(icons.Get("success") + " " + m.statusMessage)
 		}
 		return separator + "\n" + renderLeftAlignedMsg(msg)
 	}

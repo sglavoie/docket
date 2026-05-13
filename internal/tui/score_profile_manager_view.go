@@ -7,6 +7,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 
+	"github.com/sglavoie/tt/internal/icons"
 	"github.com/sglavoie/tt/internal/scoring"
 )
 
@@ -53,7 +54,7 @@ func (m *ScoreProfileManagerModel) View() tea.View {
 
 			check := "  "
 			if p.ID == assignedID {
-				check = checkStyle.Render("✓ ")
+				check = checkStyle.Render(icons.Get("success") + " ")
 			}
 
 			summary := formulaStyle.Render(fmt.Sprintf("(%s)", p.Formula))

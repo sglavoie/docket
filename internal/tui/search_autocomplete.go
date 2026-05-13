@@ -3,6 +3,8 @@ package tui
 import (
 	"fmt"
 	"strings"
+
+	"github.com/sglavoie/tt/internal/icons"
 )
 
 // searchTriggers defines the trigger characters for project search autocomplete.
@@ -88,14 +90,14 @@ func searchStatusSuggestions(partial string) []ACSuggestion {
 		name string
 		icon string
 	}{
-		{"todo", "○"},
-		{"in_progress", "◐"},
-		{"review", "◑"},
-		{"standby", "⏸"},
-		{"maybe", "❓"},
-		{"done", "●"},
-		{"blocked", "◈"},
-		{"canceled", "✕"},
+		{"todo", icons.Get("kanban.todo")},
+		{"in_progress", icons.Get("status.in_progress")},
+		{"review", icons.Get("status.review")},
+		{"standby", icons.Get("status.standby")},
+		{"maybe", icons.Get("status.maybe")},
+		{"done", icons.Get("status.done")},
+		{"blocked", icons.Get("blocked_dot")},
+		{"canceled", icons.Get("status.canceled")},
 	}
 	var suggestions []ACSuggestion
 	partialLower := strings.ToLower(partial)
@@ -115,12 +117,12 @@ func searchTypeSuggestions(partial string) []ACSuggestion {
 		name string
 		icon string
 	}{
-		{"epic", "◆"},
-		{"story", "◇"},
-		{"task", "□"},
-		{"bug", "⚠"},
-		{"idea", "💡"},
-		{"note", "📝"},
+		{"epic", icons.Get("type.epic")},
+		{"story", icons.Get("type.story")},
+		{"task", icons.Get("type.task")},
+		{"bug", icons.Get("type.bug")},
+		{"idea", icons.Get("idea")},
+		{"note", icons.Get("note_type")},
 	}
 	var suggestions []ACSuggestion
 	partialLower := strings.ToLower(partial)

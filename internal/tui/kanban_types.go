@@ -1,6 +1,9 @@
 package tui
 
-import "github.com/sglavoie/tt/internal/models"
+import (
+	"github.com/sglavoie/tt/internal/icons"
+	"github.com/sglavoie/tt/internal/models"
+)
 
 // KanbanMode defines the axis by which tasks are distributed into columns.
 type KanbanMode int
@@ -31,7 +34,7 @@ var KanbanModeIcons = map[KanbanMode]string{
 	KanbanModePriority:       "!",
 	KanbanModeStages:         IconInProgress,
 	KanbanModeCustomSections: "⊞",
-	KanbanModeScoreBuckets:   "◈",
+	KanbanModeScoreBuckets:   icons.Get("score_bucket"),
 }
 
 // KanbanModeID returns the stable string ID used for persistence.

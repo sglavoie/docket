@@ -7,6 +7,7 @@ import (
 
 	"charm.land/lipgloss/v2"
 
+	"github.com/sglavoie/tt/internal/icons"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/util"
 )
@@ -20,9 +21,9 @@ func (m *CommandPaletteModel) renderPaletteItemWithHighlight(filtered filteredPa
 	checkboxLen := 0
 	if item.Category == ItemCategoryTasks && item.Task != nil {
 		if m.selectedTasks[item.Task.ID] {
-			checkbox = SelectedCheckboxStyle.Render("☑ ")
+			checkbox = SelectedCheckboxStyle.Render(icons.Get("checkbox.checked") + " ")
 		} else if len(m.selectedTasks) > 0 {
-			checkbox = MutedStyle.Render("☐ ")
+			checkbox = MutedStyle.Render(icons.Get("checkbox.unchecked") + " ")
 		}
 		if checkbox != "" {
 			checkboxLen = 2
@@ -97,10 +98,10 @@ func (m *CommandPaletteModel) renderCategoryBadge(cat ItemCategory, selected boo
 		badge = "> CMD"
 		style = CategoryCommandStyle
 	case ItemCategoryTasks:
-		badge = "☐ TSK"
+		badge = icons.Get("checkbox.unchecked") + " TSK"
 		style = CategoryTaskStyle
 	case ItemCategoryProjects:
-		badge = "◈ PRJ"
+		badge = icons.Get("blocked_dot") + " PRJ"
 		style = CategoryProjectStyle
 	case ItemCategoryTags:
 		badge = "# TAG"
@@ -109,7 +110,7 @@ func (m *CommandPaletteModel) renderCategoryBadge(cat ItemCategory, selected boo
 		badge = "§ SEC"
 		style = CategorySectionStyle
 	case ItemCategorySavedSearch:
-		badge = "★ SAV"
+		badge = icons.Get("star") + " SAV"
 		style = CategorySavedSearchStyle
 	case ItemCategorySavedFilter:
 		badge = "⊡ SVW"

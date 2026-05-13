@@ -5,6 +5,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/sglavoie/tt/internal/icons"
 	"github.com/sglavoie/tt/internal/models"
 )
 
@@ -35,7 +36,7 @@ func (m *CommandPaletteModel) getTaskActions(item PaletteItem) []PaletteAction {
 		},
 		{
 			Name:    "Edit",
-			Icon:    "✏",
+			Icon:    icons.Get("edit"),
 			KeyHint: "e",
 			Handler: func() tea.Msg {
 				return EditTaskMsg{Task: task}
@@ -46,7 +47,7 @@ func (m *CommandPaletteModel) getTaskActions(item PaletteItem) []PaletteAction {
 	if task.Status != models.StatusDone && task.Status != models.StatusCanceled {
 		actions = append(actions, PaletteAction{
 			Name:    "Complete",
-			Icon:    "✓",
+			Icon:    icons.Get("status.done"),
 			KeyHint: "x",
 			Handler: func() tea.Msg {
 				return CommandPaletteTaskActionMsg{Task: task, Project: project, Action: "complete"}
@@ -68,7 +69,7 @@ func (m *CommandPaletteModel) getTaskActions(item PaletteItem) []PaletteAction {
 	if task.Status.IsActive() && task.Status != models.StatusBlocked {
 		actions = append(actions, PaletteAction{
 			Name:    "Block",
-			Icon:    "◈",
+			Icon:    icons.Get("blocked_dot"),
 			KeyHint: "b",
 			Handler: func() tea.Msg {
 				return CommandPaletteTaskActionMsg{Task: task, Project: project, Action: "block"}
@@ -79,7 +80,7 @@ func (m *CommandPaletteModel) getTaskActions(item PaletteItem) []PaletteAction {
 	if task.Status == models.StatusInProgress {
 		actions = append(actions, PaletteAction{
 			Name:    "Review",
-			Icon:    "◑",
+			Icon:    icons.Get("status.review"),
 			KeyHint: "R",
 			Handler: func() tea.Msg {
 				return CommandPaletteTaskActionMsg{Task: task, Project: project, Action: "review"}
@@ -90,7 +91,7 @@ func (m *CommandPaletteModel) getTaskActions(item PaletteItem) []PaletteAction {
 	if task.Status.IsActive() {
 		actions = append(actions, PaletteAction{
 			Name:    "Cancel",
-			Icon:    "✕",
+			Icon:    icons.Get("status.canceled"),
 			KeyHint: "X",
 			Handler: func() tea.Msg {
 				return CommandPaletteTaskActionMsg{Task: task, Project: project, Action: "cancel"}
@@ -101,7 +102,7 @@ func (m *CommandPaletteModel) getTaskActions(item PaletteItem) []PaletteAction {
 	if task.Status == models.StatusDone || task.Status == models.StatusCanceled {
 		actions = append(actions, PaletteAction{
 			Name:    "Reopen",
-			Icon:    "↺",
+			Icon:    icons.Get("recur"),
 			KeyHint: "r",
 			Handler: func() tea.Msg {
 				return CommandPaletteTaskActionMsg{Task: task, Project: project, Action: "reopen"}
@@ -112,7 +113,7 @@ func (m *CommandPaletteModel) getTaskActions(item PaletteItem) []PaletteAction {
 	actions = append(actions,
 		PaletteAction{
 			Name:    "Set due date",
-			Icon:    "📅",
+			Icon:    icons.Get("date"),
 			KeyHint: "d",
 			Handler: func() tea.Msg {
 				return SetDueDateMsg{Task: task, Project: project}
@@ -120,7 +121,7 @@ func (m *CommandPaletteModel) getTaskActions(item PaletteItem) []PaletteAction {
 		},
 		PaletteAction{
 			Name:    "Copy reference",
-			Icon:    IconDecision,
+			Icon:    IconDecision(),
 			KeyHint: "c",
 			Handler: func() tea.Msg {
 				return CopyTaskReferenceMsg{Task: task}
@@ -199,7 +200,7 @@ func (m *CommandPaletteModel) getBulkActionsForSelectedTasks() []PaletteAction {
 		items := selectedItems
 		actions = append(actions, PaletteAction{
 			Name:    fmt.Sprintf("Complete all (%d)", len(items)),
-			Icon:    "✓",
+			Icon:    icons.Get("status.done"),
 			KeyHint: "x",
 			Handler: func() tea.Msg {
 				return CommandPaletteBulkActionMsg{Action: "complete", Tasks: items}
@@ -251,7 +252,7 @@ func (m *CommandPaletteModel) getBulkActionsForSelectedTasks() []PaletteAction {
 		},
 		PaletteAction{
 			Name:    "Clear selection",
-			Icon:    "✕",
+			Icon:    icons.Get("close"),
 			KeyHint: "c",
 			Handler: func() tea.Msg {
 				return CommandPaletteClearSelectionMsg{}

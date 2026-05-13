@@ -86,6 +86,7 @@ func NewSettingsModel(cfg *config.Config, manager *config.Manager) *SettingsMode
 		weekEndDayCursor:         settingsOptionCursor(weekEndDayValues, cfg.GetWeekEndDay(), 2),
 		timeFormatCursor:         settingsOptionCursor(timeFormatValues, cfg.TimeFormat, 1),
 		autoTheme:                cfg.GetAutoTheme(),
+		useEmoji:                 cfg.GetUseEmoji(),
 		contexts:                 contexts,
 		contextCursor:            settingsOptionCursor(contexts, cfg.DefaultContext, -1),
 		savedStages:              append([]string{}, stages...),

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/sglavoie/tt/internal/icons"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 )
@@ -53,7 +54,7 @@ func sectionLimitWarning(over, limit int) string {
 	if over == 1 {
 		word = "task"
 	}
-	return fmt.Sprintf("⚠ %d %s over section limit (%d)", over, word, limit)
+	return fmt.Sprintf("%s %d %s over section limit (%d)", icons.Get("warning"), over, word, limit)
 }
 
 // renderViewModeIndicator returns a styled indicator for the current view mode with counts.
@@ -188,7 +189,7 @@ func (m *ProjectTreeModel) renderViewModeIndicator() string {
 	// Blockers indicator (only show if there are active blockers)
 	blockerCount := storage.GetActiveBlockerCount(m.project)
 	if blockerCount > 0 {
-		blockerLabel := fmt.Sprintf("🚧%d", blockerCount)
+		blockerLabel := fmt.Sprintf("%s%d", icons.Get("blockers"), blockerCount)
 		parts = append(parts, DueSoonStyle.Render(blockerLabel))
 	}
 

@@ -46,5 +46,17 @@ func (m *SettingsModel) renderAppearanceTab() string {
 	b.WriteString("\n")
 	b.WriteString(renderFormFieldDesc("Sync theme with macOS system appearance", indent, m.focusIndex == base+3))
 
+	b.WriteString("\n")
+
+	useEmojiVal := "Disabled"
+	if m.useEmoji {
+		useEmojiVal = "Enabled"
+	}
+	b.WriteString(renderFormLabelWithWidth("Use Emoji: ", labelWidth, m.focusIndex == base+4))
+	b.WriteString(renderFormToggle("Enabled", "Disabled", m.useEmoji, m.focusIndex == base+4))
+	b.WriteString(renderDefaultHint(useEmojiVal, "Disabled"))
+	b.WriteString("\n")
+	b.WriteString(renderFormFieldDesc("Use emoji icons instead of Unicode symbols", indent, m.focusIndex == base+4))
+
 	return b.String()
 }

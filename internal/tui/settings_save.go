@@ -168,6 +168,7 @@ func (m *SettingsModel) saveSettings() tea.Cmd {
 	m.config.WeekEndDay = weekEndDayValues[m.weekEndDayCursor]
 	m.config.TimeFormat = timeFormatValues[m.timeFormatCursor]
 	m.config.AutoTheme = boolPtr(m.autoTheme)
+	m.config.UseEmoji = boolPtr(m.useEmoji)
 
 	m.config.Stages = append(make([]string, 0, len(m.stages)), m.stages...)
 

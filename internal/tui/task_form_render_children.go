@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/sglavoie/tt/internal/icons"
 	"github.com/sglavoie/tt/internal/models"
 )
 
@@ -73,9 +74,9 @@ func (m *TaskFormModel) renderChildrenChecklistSection() string {
 
 // renderChecklistItemRow renders a single checklist item row.
 func (m *TaskFormModel) renderChecklistItemRow(i int, item models.ChecklistItem, focused bool) string {
-	checkIcon := "☐"
+	checkIcon := icons.Get("checkbox.unchecked")
 	if item.Done {
-		checkIcon = "☑"
+		checkIcon = icons.Get("checkbox.checked")
 	}
 	text := item.Text
 	if text == "" {

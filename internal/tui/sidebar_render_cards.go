@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/sglavoie/tt/internal/icons"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/scoring"
 )
@@ -47,10 +48,10 @@ func renderSidebarChecklistCard(task *models.Task, width int) string {
 			lines = append(lines, MutedStyle.Render(fmt.Sprintf("  ... +%d more", remaining)))
 			break
 		}
-		marker := "☐"
+		marker := icons.Get("checkbox.unchecked")
 		style := NormalStyle
 		if item.Done {
-			marker = "☑"
+			marker = icons.Get("checkbox.checked")
 			style = MutedStyle
 		}
 		lines = append(lines, fmt.Sprintf("  %s %s", marker, style.Render(item.Text)))
@@ -119,7 +120,7 @@ func renderSidebarAttachmentsCard(task *models.Task, width int) string {
 			link := Hyperlink(attachment.Filename, displayName)
 			lines = append(lines, MutedStyle.Render("🔗 ")+link)
 		} else {
-			lines = append(lines, MutedStyle.Render(IconAttachment+" ")+displayName)
+			lines = append(lines, MutedStyle.Render(IconAttachment()+" ")+displayName)
 		}
 	}
 

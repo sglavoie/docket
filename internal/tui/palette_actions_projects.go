@@ -1,6 +1,10 @@
 package tui
 
-import tea "charm.land/bubbletea/v2"
+import (
+	tea "charm.land/bubbletea/v2"
+
+	"github.com/sglavoie/tt/internal/icons"
+)
 
 // getProjectActions returns inline actions for a project item.
 func (m *CommandPaletteModel) getProjectActions(item PaletteItem) []PaletteAction {
@@ -20,7 +24,7 @@ func (m *CommandPaletteModel) getProjectActions(item PaletteItem) []PaletteActio
 		},
 		{
 			Name:    "Edit",
-			Icon:    "✏",
+			Icon:    icons.Get("edit"),
 			KeyHint: "e",
 			Handler: func() tea.Msg {
 				return EditProjectMsg{Project: project}
@@ -32,7 +36,7 @@ func (m *CommandPaletteModel) getProjectActions(item PaletteItem) []PaletteActio
 		if project.Archived {
 			actions = append(actions, PaletteAction{
 				Name:    "Restore",
-				Icon:    "↺",
+				Icon:    icons.Get("recur"),
 				KeyHint: "r",
 				Handler: func() tea.Msg {
 					project.Unarchive()
@@ -53,11 +57,10 @@ func (m *CommandPaletteModel) getProjectActions(item PaletteItem) []PaletteActio
 	}
 
 	pinName := "Pin"
-	pinIcon := "📌"
 	if project.Pinned {
 		pinName = "Unpin"
-		pinIcon = "📍"
 	}
+	pinIcon := icons.Get("pinned")
 
 	actions = append(actions, PaletteAction{
 		Name:    pinName,

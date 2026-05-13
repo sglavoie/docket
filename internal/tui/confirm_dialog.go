@@ -5,6 +5,8 @@ import (
 	"strings"
 
 	"charm.land/lipgloss/v2"
+
+	"github.com/sglavoie/tt/internal/icons"
 )
 
 // ConfirmDialogProvider is implemented by view models that have a confirm dialog.
@@ -128,7 +130,7 @@ func (c *ConfirmDialog) RenderOverlay(width int) string {
 			detailLines = append(detailLines, MutedStyle.Render(plain))
 		}
 		if d.CascadeNote != "" {
-			plain := "  ⚠ " + d.CascadeNote
+			plain := "  " + icons.Get("warning") + " " + d.CascadeNote
 			if w := lipgloss.Width(plain); w > maxPlainWidth {
 				maxPlainWidth = w
 			}

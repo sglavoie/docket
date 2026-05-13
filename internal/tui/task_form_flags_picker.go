@@ -6,6 +6,8 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+
+	"github.com/sglavoie/tt/internal/icons"
 )
 
 // TaskFormFlagsPickedMsg is emitted when the user confirms flag selection.
@@ -88,9 +90,9 @@ func (p *formFlagsPicker) render(width int) string {
 
 	var content strings.Builder
 	for i, r := range rows {
-		checked := "☐"
+		checked := icons.Get("checkbox.unchecked")
 		if r.val {
-			checked = "☑"
+			checked = icons.Get("checkbox.checked")
 		}
 		line := fmt.Sprintf(" %s %s", checked, r.label)
 		lineWidth := lipgloss.Width(line)

@@ -164,7 +164,7 @@ func runProjectEdit(cmd *cobra.Command, args []string) error {
 		}
 		if statusIconChanged {
 			if icon := models.ProjectStatusIconByKey(project.StatusIcon); icon != nil {
-				fmt.Printf("  Status icon: %s %s\n", icon.Emoji, icon.Label)
+				fmt.Printf("  Status icon: %s %s\n", icon.DisplayIcon(), icon.Label)
 			} else {
 				fmt.Printf("  Status icon: (cleared)\n")
 			}

@@ -3,6 +3,7 @@ package tui
 import (
 	"fmt"
 
+	"github.com/sglavoie/tt/internal/icons"
 	"github.com/sglavoie/tt/internal/models"
 )
 
@@ -14,7 +15,7 @@ func formatDueDate(task *models.Task, timeFormat string) string {
 	}
 	dateStr, style := ClassifyDueDate(task.DueDate)
 	dateStr = AppendTimeIfHasTime(task, dateStr, timeFormat)
-	return style.Render("📅 " + dateStr)
+	return style.Render(icons.Get("date") + " " + dateStr)
 }
 
 // getVisibleSiblings returns siblings of the given task that are currently visible.

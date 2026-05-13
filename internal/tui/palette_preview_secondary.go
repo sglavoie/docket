@@ -6,6 +6,8 @@ import (
 	"strings"
 
 	"charm.land/lipgloss/v2"
+
+	"github.com/sglavoie/tt/internal/icons"
 )
 
 // renderTagPreview shows tasks with this tag.
@@ -89,7 +91,7 @@ func (m *CommandPaletteModel) renderSavedSearchPreview(item PaletteItem) string 
 	}
 	var b strings.Builder
 
-	b.WriteString(TaskJumperPreviewHeaderStyle.Render(CategorySavedSearchStyle.Render("★ " + item.Name)))
+	b.WriteString(TaskJumperPreviewHeaderStyle.Render(CategorySavedSearchStyle.Render(icons.Get("star") + " " + item.Name)))
 	b.WriteString("\n\n")
 
 	b.WriteString(SubtitleStyle.Render("Query"))

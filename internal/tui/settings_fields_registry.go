@@ -184,12 +184,13 @@ func buildSettingsFieldRegistry() []settingsFieldMeta {
 	base = tabFieldStart[tabStages]
 	add(base+0, tabStages, 0, "Notifications > Stages", "Stages", "stages workflow kanban pipeline custom", "")
 
-	// Tab 10: Appearance (4 fields)
+	// Tab 10: Appearance (5 fields)
 	base = tabFieldStart[tabAppearance]
 	add(base+0, tabAppearance, 0, "Appearance", "Zebra Striping", "zebra striping rows alternating background", "Disabled")
 	add(base+1, tabAppearance, 0, "Appearance", "Week-End Day", "week end day friday saturday sunday eow", "Sunday")
 	add(base+2, tabAppearance, 0, "Appearance", "Time Format", "time format 12 24 hour clock", "24-hour (17:00)")
 	add(base+3, tabAppearance, 0, "Appearance", "Auto Theme", "auto theme macos system appearance dark light", "Disabled")
+	add(base+4, tabAppearance, 0, "Appearance", "Use Emoji", "emoji unicode icons symbols dashboard palette", "Disabled")
 
 	return fields
 }
