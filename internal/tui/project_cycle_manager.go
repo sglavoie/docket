@@ -86,7 +86,7 @@ func (m *AppModel) sortCycleItemsSelectedFirst() {
 }
 
 // closeProjectCyclePopup closes the popup and does cleanup.
-func (m *AppModel) closeProjectCyclePopup() {
+func (m *AppModel) closeProjectCyclePopup() tea.Cmd {
 	m.showProjectCycle = false
 	m.projectCycleScroll = 0
 	m.invalidateCyclePreview()
@@ -103,6 +103,7 @@ func (m *AppModel) closeProjectCyclePopup() {
 	if dash != nil {
 		dash.Refresh(m.config)
 	}
+	return m.crossOutliner.reloadCrossProjects()
 }
 
 // handleProjectCycleKey handles key events when the project cycle popup is open.
@@ -114,9 +115,9 @@ func (m *AppModel) handleProjectCycleKey(msg tea.KeyPressMsg) (*AppModel, tea.Cm
 	case "1", "2", "3", "4", "5", "6", "7", "8", "9":
 		idx := int(msg.String()[0]-'0') - 1
 		if idx < len(m.projectCycleItems) {
-			m.closeProjectCyclePopup()
+			reloadCmd := m.closeProjectCyclePopup()
 			_, cmd := m.switchToCycleProject(m.projectCycleItems[idx].Project)
-			return m, cmd
+			return m, tea.Batch(reloadCmd, cmd)
 		}
 		return m, nil
 
@@ -164,10 +165,10 @@ func (m *AppModel) handleProjectCycleKey(msg tea.KeyPressMsg) (*AppModel, tea.Cm
 		// Navigate to highlighted project
 		if m.projectCycleCursor < len(m.projectCycleItems) {
 			project := m.projectCycleItems[m.projectCycleCursor].Project
-			m.closeProjectCyclePopup()
-			return m, func() tea.Msg {
+			reloadCmd := m.closeProjectCyclePopup()
+			return m, tea.Batch(reloadCmd, func() tea.Msg {
 				return SelectProjectMsg{Project: project}
-			}
+			})
 		}
 		return m, nil
 
@@ -252,13 +253,13 @@ func (m *AppModel) handleProjectCycleKey(msg tea.KeyPressMsg) (*AppModel, tea.Cm
 		return m, nil
 
 	case "esc", "@":
-		m.closeProjectCyclePopup()
-		return m, nil
+		reloadCmd := m.closeProjectCyclePopup()
+		return m, reloadCmd
 
 	default:
 		// Close popup and let the key pass through
-		m.closeProjectCyclePopup()
-		return m, nil
+		reloadCmd := m.closeProjectCyclePopup()
+		return m, reloadCmd
 	}
 }
 
