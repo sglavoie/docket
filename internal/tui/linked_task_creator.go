@@ -84,7 +84,17 @@ func (m *LinkedTaskCreatorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case "enter":
 			if m.ac.Mode == acModeNone {
-				return m, m.createTask()
+				return m, m.createTask(false, false)
+			}
+
+		case "ctrl+d":
+			if m.ac.Mode == acModeNone {
+				return m, m.createTask(true, false)
+			}
+
+		case "ctrl+o":
+			if m.ac.Mode == acModeNone {
+				return m, m.createTask(false, true)
 			}
 		}
 	}
@@ -130,7 +140,7 @@ func (m *LinkedTaskCreatorModel) View() tea.View {
 	if m.isAutocompleteActive() {
 		helpText = "Tab: accept · ↑↓: navigate · Esc: dismiss"
 	} else {
-		helpText = "Enter: create · Esc: cancel"
+		helpText = "Enter: create · Ctrl+O: create & open · Ctrl+D: create & edit desc · Esc: cancel"
 	}
 
 	title := fmt.Sprintf("New %s", linkName)
@@ -172,7 +182,7 @@ func (m *LinkedTaskCreatorModel) linkTypeName() string {
 	}
 }
 
-func (m *LinkedTaskCreatorModel) createTask() tea.Cmd {
+func (m *LinkedTaskCreatorModel) createTask(openContent, openDetail bool) tea.Cmd {
 	// All mutations run synchronously in the Update() goroutine to avoid
 	// data races with View() reading project.Tasks concurrently.
 
@@ -310,10 +320,12 @@ func (m *LinkedTaskCreatorModel) createTask() tea.Cmd {
 	linkType := m.linkType
 	return func() tea.Msg {
 		return LinkedTaskCreatedMsg{
-			SourceTask: sourceTask,
-			NewTask:    newTask,
-			Project:    project,
-			LinkType:   linkType,
+			SourceTask:  sourceTask,
+			NewTask:     newTask,
+			Project:     project,
+			LinkType:    linkType,
+			OpenContent: openContent,
+			OpenDetail:  openDetail,
 		}
 	}
 }

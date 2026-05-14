@@ -430,10 +430,12 @@ type CreateLinkedTaskMsg struct {
 
 // LinkedTaskCreatedMsg signals a linked task was created.
 type LinkedTaskCreatedMsg struct {
-	SourceTask *models.Task
-	NewTask    *models.Task
-	Project    *models.Project
-	LinkType   LinkType
+	SourceTask  *models.Task
+	NewTask     *models.Task
+	Project     *models.Project
+	LinkType    LinkType
+	OpenContent bool
+	OpenDetail  bool
 }
 
 // =============================================================================

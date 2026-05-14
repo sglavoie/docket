@@ -67,6 +67,26 @@ func (m *AppModel) handleLinkedTaskCreated(msg LinkedTaskCreatedMsg) (bool, tea.
 		m.projectTree.JumpToTask(msg.NewTask)
 	}
 
+	if msg.NewTask != nil && (msg.OpenContent || msg.OpenDetail) {
+		project := msg.Project
+		if project == nil {
+			project = m.currentProject
+		}
+		if project != nil {
+			if freshTask := project.GetTaskByID(msg.NewTask.ID); freshTask != nil {
+				var openMsg tea.Msg
+				if msg.OpenDetail {
+					openMsg = ShowTaskDetailMsg{Task: freshTask, Project: project}
+				} else {
+					openMsg = EditTaskContentMsg{Task: freshTask, Project: project}
+				}
+				return true, tea.Batch(statusTimeout(2*time.Second), func() tea.Msg {
+					return openMsg
+				})
+			}
+		}
+	}
+
 	return true, defaultStatusTimeout()
 }
 
