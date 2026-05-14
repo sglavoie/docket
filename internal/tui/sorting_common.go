@@ -82,6 +82,31 @@ func StatusOrder(status models.TaskStatus) int {
 	}
 }
 
+// TodayStatusOrder ranks statuses by activeness for the Focus Board Today tab.
+// In-progress first, review pushed below other active statuses, complete last.
+func TodayStatusOrder(status models.TaskStatus) int {
+	switch status {
+	case models.StatusInProgress:
+		return 0
+	case models.StatusTodo:
+		return 1
+	case models.StatusBlocked:
+		return 2
+	case models.StatusStandby:
+		return 3
+	case models.StatusMaybe:
+		return 4
+	case models.StatusReview:
+		return 5
+	case models.StatusDone:
+		return 6
+	case models.StatusCanceled:
+		return 7
+	default:
+		return 8
+	}
+}
+
 // CompareTasks compares two tasks based on the given sort field.
 // Returns -1 if a < b, 0 if equal, 1 if a > b.
 // The projectID and cfg are needed for score-based comparison.
