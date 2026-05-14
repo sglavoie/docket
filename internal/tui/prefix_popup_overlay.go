@@ -11,13 +11,13 @@ import (
 // Both base and popup are rendered strings. baseWidth and baseHeight define the
 // dimensions of the base content area.
 func OverlayPopup(base, popup string, baseWidth, baseHeight int) string {
-	return overlayPopup(base, popup, baseWidth, baseHeight, max((baseWidth-popupWidth(popup))/2, 0), false)
+	return overlayPopup(base, popup, baseWidth, baseHeight, max((baseWidth-popupWidth(popup))/2, 0), true)
 }
 
 // OverlayPopupBottomLeft places a popup string on top of base content at bottom-left.
 // Same as OverlayPopup but left-aligned with a 1-column margin instead of centered.
 func OverlayPopupBottomLeft(base, popup string, baseWidth, baseHeight int) string {
-	return overlayPopup(base, popup, baseWidth, baseHeight, 1, false)
+	return overlayPopup(base, popup, baseWidth, baseHeight, 1, true)
 }
 
 // DimContent applies DimStyle to every line of content, visually receding it
@@ -77,7 +77,7 @@ func overlayPopup(base, popup string, baseWidth, baseHeight, startCol int, withS
 	if withShadow {
 		shadowChar := ShadowStyle.Render(" ")
 		// Right shadow: 1 char to the right of each popup line.
-		for i := range popupLines {
+		for i := 1; i < len(popupLines); i++ {
 			row := startRow + i
 			if row >= len(baseLines) {
 				break
@@ -92,7 +92,7 @@ func overlayPopup(base, popup string, baseWidth, baseHeight, startCol int, withS
 		if shadowRow < len(baseLines) {
 			shadowStart := startCol + 1
 			if shadowStart < baseWidth {
-				shadowWidth := min(maxPopupWidth+1, baseWidth-shadowStart)
+				shadowWidth := min(maxPopupWidth, baseWidth-shadowStart)
 				if shadowWidth > 0 {
 					bottomShadow := ShadowStyle.Width(shadowWidth).Render("")
 					baseLines[shadowRow] = overlayLineAt(baseLines[shadowRow], bottomShadow, shadowStart, baseWidth)
