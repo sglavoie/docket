@@ -163,3 +163,134 @@ func TestTaskForm_Save_CreateHappyPath_AddsSubtasksForEpic(t *testing.T) {
 		t.Errorf("expected 3 new tasks (1 epic + 2 subtasks), got %d", got)
 	}
 }
+
+// ── Dimmed-aware insertion ──────────────────────────────────────────────────
+
+func makeDimmedTask(id, title, section string) *models.Task {
+	t := &models.Task{
+		ID:              id,
+		Title:           title,
+		Status:          models.StatusTodo,
+		Dimmed:          true,
+		DependsOn:       []string{},
+		RelatedTo:       []string{},
+		ScoreDimensions: map[string]int{},
+		Children:        []*models.Task{},
+	}
+	t.SetSection(section)
+	return t
+}
+
+func TestTaskForm_Save_Create_InsertsBeforeDimmedSameSection(t *testing.T) {
+	m, cleanup := newSaveableTestForm(t)
+	defer cleanup()
+
+	m.project.Tasks = append(m.project.Tasks, makeDimmedTask("d1", "Dimmed existing", models.SectionNext))
+
+	m.draft.title = "New important task"
+	m.titleInput.SetValue("New important task")
+	m.draft.section = models.SectionNext
+
+	cmd := m.handleSave()
+	if cmd == nil {
+		t.Fatalf("expected non-nil Cmd; err=%v", m.err)
+	}
+	_ = cmd()
+
+	newIdx, dimmedIdx := -1, -1
+	for i, task := range m.project.Tasks {
+		switch task.Title {
+		case "New important task":
+			newIdx = i
+		case "Dimmed existing":
+			dimmedIdx = i
+		}
+	}
+	if newIdx < 0 {
+		t.Fatal("new task not found in project tasks")
+	}
+	if dimmedIdx < 0 {
+		t.Fatal("dimmed task not found in project tasks")
+	}
+	if newIdx >= dimmedIdx {
+		t.Errorf("new task at idx=%d should precede dimmed task at idx=%d", newIdx, dimmedIdx)
+	}
+}
+
+func TestTaskForm_Save_Create_NoDimmedInSectionAppendsNormally(t *testing.T) {
+	m, cleanup := newSaveableTestForm(t)
+	defer cleanup()
+
+	existing := &models.Task{
+		ID:              "e1",
+		Title:           "Existing non-dimmed",
+		Status:          models.StatusTodo,
+		DependsOn:       []string{},
+		RelatedTo:       []string{},
+		ScoreDimensions: map[string]int{},
+		Children:        []*models.Task{},
+	}
+	existing.SetSection(models.SectionNext)
+	m.project.Tasks = append(m.project.Tasks, existing)
+
+	m.draft.title = "New task"
+	m.titleInput.SetValue("New task")
+	m.draft.section = models.SectionNext
+
+	cmd := m.handleSave()
+	if cmd == nil {
+		t.Fatalf("expected non-nil Cmd; err=%v", m.err)
+	}
+	_ = cmd()
+
+	existingIdx, newIdx := -1, -1
+	for i, task := range m.project.Tasks {
+		switch task.Title {
+		case "Existing non-dimmed":
+			existingIdx = i
+		case "New task":
+			newIdx = i
+		}
+	}
+	if existingIdx < 0 || newIdx < 0 {
+		t.Fatal("could not find one or both tasks")
+	}
+	if newIdx <= existingIdx {
+		t.Errorf("new task (idx=%d) should be after existing non-dimmed task (idx=%d)", newIdx, existingIdx)
+	}
+}
+
+func TestTaskForm_Save_Create_DimmedInDifferentSectionIgnored(t *testing.T) {
+	m, cleanup := newSaveableTestForm(t)
+	defer cleanup()
+
+	m.project.Tasks = append(m.project.Tasks, makeDimmedTask("d1", "Dimmed in Inbox", models.SectionInbox))
+
+	m.draft.title = "New Next task"
+	m.titleInput.SetValue("New Next task")
+	m.draft.section = models.SectionNext
+
+	cmd := m.handleSave()
+	if cmd == nil {
+		t.Fatalf("expected non-nil Cmd; err=%v", m.err)
+	}
+	_ = cmd()
+
+	newIdx, inboxDimmedIdx := -1, -1
+	for i, task := range m.project.Tasks {
+		switch task.Title {
+		case "New Next task":
+			newIdx = i
+		case "Dimmed in Inbox":
+			inboxDimmedIdx = i
+		}
+	}
+	if newIdx < 0 || inboxDimmedIdx < 0 {
+		t.Fatal("could not find one or both tasks")
+	}
+	// The dimmed task is in a different section — it must not pull the new task
+	// before it. The new task should be appended after the Inbox-dimmed task.
+	if newIdx <= inboxDimmedIdx {
+		t.Errorf("new Next task (idx=%d) should not be inserted before Inbox-dimmed task (idx=%d)", newIdx, inboxDimmedIdx)
+	}
+}

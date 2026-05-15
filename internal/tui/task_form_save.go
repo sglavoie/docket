@@ -231,7 +231,7 @@ func (m *TaskFormModel) saveCreate() tea.Cmd {
 		})
 	}
 
-	m.project.Tasks = append(m.project.Tasks, task)
+	m.project.Tasks = insertBeforeDimmedInSection(m.project.Tasks, task)
 
 	// Create subtask children for Epic/Story (create mode only).
 	var openAfterSubtask *models.Task
@@ -414,4 +414,28 @@ func (m *TaskFormModel) saveEdit() tea.Cmd {
 	}
 
 	return func() tea.Msg { return TaskUpdatedMsg{Task: task} }
+}
+
+// insertBeforeDimmedInSection inserts newTask before the first dimmed root
+// task that shares newTask's effective section. Falls back to append when none
+// is found. Child tasks (non-nil ParentID) are always appended — their
+// position is managed by the tree, not section order.
+func insertBeforeDimmedInSection(tasks []*models.Task, newTask *models.Task) []*models.Task {
+	if newTask.ParentID != nil {
+		return append(tasks, newTask)
+	}
+	newSection := effectiveDisplaySection(newTask)
+	for i, t := range tasks {
+		if t.ParentID != nil {
+			continue
+		}
+		if t.Dimmed && effectiveDisplaySection(t) == newSection {
+			result := make([]*models.Task, 0, len(tasks)+1)
+			result = append(result, tasks[:i]...)
+			result = append(result, newTask)
+			result = append(result, tasks[i:]...)
+			return result
+		}
+	}
+	return append(tasks, newTask)
 }
