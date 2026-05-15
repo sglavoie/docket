@@ -121,6 +121,10 @@ func (m *AllTasksViewModel) buildKeyMap() *keymap.KeyMap {
 					return m.handleBulkStatusChange(s)
 				}
 				model, cmd := taskOpsChangeStatus(m, s)
+				if s == models.StatusDone {
+					m.setCompletionFlash()
+					return model, tea.Batch(cmd, completionFlashScheduler())
+				}
 				m.setMutationFlash(statusMutationFlashBg(s))
 				return model, tea.Batch(cmd, mutationFlashTimeout())
 			}
@@ -164,8 +168,8 @@ func (m *AllTasksViewModel) buildKeyMap() *keymap.KeyMap {
 				return m.handleBulkStatusChange(models.StatusDone)
 			}
 			model, cmd := taskOpsChangeStatus(m, models.StatusDone)
-			m.setMutationFlash(statusMutationFlashBg(models.StatusDone))
-			return model, tea.Batch(cmd, mutationFlashTimeout())
+			m.setCompletionFlash()
+			return model, tea.Batch(cmd, completionFlashScheduler())
 		},
 	})...)
 

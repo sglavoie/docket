@@ -168,6 +168,37 @@ func statusMutationFlashBg(status models.TaskStatus) color.Color {
 	}
 }
 
+// completionFlashBg returns the background color for a given frame (0..2) of the
+// task-completion ramp. The ramp goes saturated → bright → muted-success to give
+// task completion a distinct peak feel relative to ordinary status mutations.
+// Frames outside the 0..2 range clamp to the nearest end.
+func completionFlashBg(frame int) color.Color {
+	if frame < 0 {
+		frame = 0
+	}
+	if frame > 2 {
+		frame = 2
+	}
+	if activeThemeName == "light" {
+		switch frame {
+		case 0:
+			return lipgloss.Color("#9ece6a")
+		case 1:
+			return lipgloss.Color("#c6f0a8")
+		default:
+			return lipgloss.Color("#d4edda")
+		}
+	}
+	switch frame {
+	case 0:
+		return lipgloss.Color("#3f6a2a")
+	case 1:
+		return lipgloss.Color("#2b4d1a")
+	default:
+		return lipgloss.Color("#1a3825")
+	}
+}
+
 // priorityMutationFlashBg returns a subtle background tint for a priority-specific mutation flash.
 func priorityMutationFlashBg(priority int) color.Color {
 	if activeThemeName == "light" {

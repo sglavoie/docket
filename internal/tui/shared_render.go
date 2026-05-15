@@ -257,6 +257,7 @@ func ZebraLine(line string, width int, rowIndex int) string {
 // The core badge sequence (status → type → priority → title) is always rendered.
 type TaskLine struct {
 	Task       *models.Task
+	Project    *models.Project // optional; enables hero attribute (blocked-by-deps) selection
 	IsSelected bool
 	MaxTitle   int // maximum title width; clamped to minimum 10
 
@@ -377,6 +378,7 @@ func RenderCrossProjectTaskLine(
 
 	return TaskLine{
 		Task:            task,
+		Project:         proj,
 		IsSelected:      isCursor,
 		MaxTitle:        maxTitleLen,
 		Queued:          opts.Queued,
@@ -486,25 +488,46 @@ func (tl TaskLine) Render() string {
 	// Build stage segment. When Layout reserves a stage column, pad the
 	// rendered badge (or an empty placeholder) so the title column stays
 	// aligned across rows.
+	stageBadge := tl.StageBadge
 	var stageSegment string
 	if tl.Layout != nil && tl.Layout.HasStage {
-		if tl.StageBadge != "" {
-			stageSegment = PadBadge(tl.StageBadge, tl.Layout.StageWidth) + " "
+		if stageBadge != "" {
+			stageSegment = PadBadge(stageBadge, tl.Layout.StageWidth) + " "
 		} else {
 			stageSegment = EmptyBadge(tl.Layout.StageWidth) + " "
 		}
-	} else if tl.StageBadge != "" {
-		stageSegment = tl.StageBadge + " "
+	} else if stageBadge != "" {
+		stageSegment = stageBadge + " "
 	}
 
+	// Von Restorff: when a hero attribute applies, demote the non-hero badges
+	// so the single most urgent attribute reads at full saturation.
+	hero := pickHeroAttribute(tl.Task, tl.Project)
+	if hero != HeroNone && !tl.Task.Dimmed {
+		if !statusIsHero(hero) {
+			statusIcon = demoteBadge(statusIcon)
+		}
+		typeIcon = demoteBadge(typeIcon)
+		if !priorityIsHero(hero) && prioritySegment != "" {
+			prioritySegment = demoteBadge(strings.TrimRight(prioritySegment, " ")) + " "
+		}
+		if stageSegment != "" && stageBadge != "" {
+			stageSegment = demoteBadge(strings.TrimRight(stageSegment, " ")) + " "
+		}
+	}
+
+	dueStr := tl.DueStr
+	if hero != HeroNone && !tl.Task.Dimmed && dueStr != "" && !dueIsHero(hero) {
+		dueStr = demoteBadge(dueStr)
+	}
 	line := fmt.Sprintf("%s%s%s%s%s %s %s%s%s%s", cursorPrefix, queueIndicator, tl.Prefix, tl.PreBadges, statusIcon, typeIcon, prioritySegment, stageSegment, title, tl.PostTitle)
-	if tl.DueStr != "" {
+	if dueStr != "" {
 		if tl.ViewWidth > 0 {
-			leftWidth := max(tl.ViewWidth-lipgloss.Width(tl.DueStr)-1, 1)
+			leftWidth := max(tl.ViewWidth-lipgloss.Width(dueStr)-1, 1)
 			line = truncateToVisualWidth(line, leftWidth)
-			line += strings.Repeat(" ", max(leftWidth-lipgloss.Width(line), 0)) + " " + tl.DueStr
+			line += strings.Repeat(" ", max(leftWidth-lipgloss.Width(line), 0)) + " " + dueStr
 		} else {
-			line += " " + tl.DueStr
+			line += " " + dueStr
 		}
 	}
 

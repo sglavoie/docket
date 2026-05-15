@@ -17,7 +17,8 @@ type TitleParams struct {
 	FilterParts   []string
 	SortField     SortField
 	SortAscending bool
-	Width         int // 0 = no truncation
+	Width         int    // 0 = no truncation
+	Counter       string // optional right-aligned open-loops counter (Zeigarnik)
 }
 
 // renderProjectTitle renders the project title line with context, notes indicator,
@@ -55,6 +56,17 @@ func renderProjectTitle(project *models.Project, cfg *config.Config, params *Tit
 		filterSuffix := buildTitleFilterSuffix(params, lipgloss.Width(b.String()))
 		if filterSuffix != "" {
 			b.WriteString(filterSuffix)
+		}
+	}
+
+	// Append right-aligned open-loops counter if provided and there's room.
+	if params != nil && params.Counter != "" && params.Width > 0 {
+		base := b.String()
+		counter := MutedStyle.Render(params.Counter)
+		gap := params.Width - lipgloss.Width(base) - lipgloss.Width(counter) - titleCounterAlertReserve
+		if gap > 0 {
+			b.WriteString(strings.Repeat(" ", gap))
+			b.WriteString(counter)
 		}
 	}
 

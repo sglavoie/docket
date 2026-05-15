@@ -55,6 +55,17 @@ func kanbanRender(m *KanbanModel) string {
 			subtitle += " · " + name
 		}
 	}
+	// Zeigarnik counter: the right-hand gap-fill slot below is owned by the
+	// column-scroll / mode-cycle hint, so the counter rides in the subtitle
+	// instead. Suppress when the terminal is narrow enough that the hint
+	// becomes the column-position indicator — the user's screen is too tight
+	// for a passive counter to earn its space.
+	narrowKanban := (m.width+1)/21 < 1 || ((m.width+1)/21 == 1 && len(m.columns) > 1)
+	if !narrowKanban {
+		if counter := FormatOpenLoops(m.openLoops); counter != "" {
+			subtitle += " · " + counter
+		}
+	}
 	title := renderFullscreenTitle(modeIcon+" "+modeName, subtitle, m.AccentColor())
 	// When terminal is too narrow for more than one column, show a position
 	// indicator instead of the mode-cycling hint so the user can orient themselves.
@@ -278,8 +289,19 @@ func kanbanRender(m *KanbanModel) string {
 
 			card := dr.card
 			statusBadge := GetStatusBadge(string(card.Task.Status), card.Task.Status.Icon())
-			badgeWidth := lipgloss.Width(statusBadge)
 			typeBadge := GetTypeBadge(string(card.Task.Type), card.Task.Type.Icon())
+
+			// Von Restorff: demote non-hero badges per card so a single attribute
+			// can read at full saturation.
+			hero := pickHeroAttribute(card.Task, card.Project)
+			if hero != HeroNone && !card.Task.Dimmed {
+				if !statusIsHero(hero) {
+					statusBadge = demoteBadge(statusBadge)
+				}
+				typeBadge = demoteBadge(typeBadge)
+			}
+
+			badgeWidth := lipgloss.Width(statusBadge)
 			typeBadgeWidth := lipgloss.Width(typeBadge)
 
 			// Selection indicator: only shown in multi-select mode.

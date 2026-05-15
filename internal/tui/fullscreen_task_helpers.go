@@ -28,6 +28,29 @@ func renderFullscreenTitle(title, subtitle string, accent ...color.Color) string
 	return t
 }
 
+// titleCounterAlertReserve mirrors the alert-indicator reserve used by
+// kanban_view.go so the right-aligned open-loops counter never collides with
+// the proactive-alert badge rendered by the app shell.
+const titleCounterAlertReserve = 10
+
+// renderFullscreenTitleWithCounter wraps renderFullscreenTitle with a
+// right-aligned open-loops counter. The counter is dropped silently when
+// width <= 0, counter == "", or there isn't enough room left after the title +
+// subtitle + alert reserve to render it cleanly (the subtitle wins because it
+// is view-state-specific).
+func renderFullscreenTitleWithCounter(title, subtitle, counter string, width int, accent ...color.Color) string {
+	base := renderFullscreenTitle(title, subtitle, accent...)
+	if counter == "" || width <= 0 {
+		return base
+	}
+	rendered := MutedStyle.Render(counter)
+	gap := width - lipgloss.Width(base) - lipgloss.Width(rendered) - titleCounterAlertReserve
+	if gap <= 0 {
+		return base
+	}
+	return base + strings.Repeat(" ", gap) + rendered
+}
+
 // renderPriorityBadge renders a priority indicator with color styling.
 func renderPriorityBadge(priority int) string {
 	return GetPriorityStyle(priority).Render(PriorityIcon(priority))

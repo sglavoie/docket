@@ -26,7 +26,7 @@ func (m *FocusBoardModel) View() tea.View { //nolint:gocyclo
 		if row := m.getRowAtCursor(); row != nil && row.Task != nil {
 			title = "Currently: " + row.Task.Title
 		}
-		b.WriteString(renderFullscreenTitle(title, "", m.AccentColor()))
+		b.WriteString(renderFullscreenTitleWithCounter(title, "", FormatOpenLoops(m.openLoops), m.width, m.AccentColor()))
 		b.WriteString("\n")
 	} else {
 		// Normal mode: show title + tab bar
@@ -34,7 +34,7 @@ func (m *FocusBoardModel) View() tea.View { //nolint:gocyclo
 		if name := PerspectiveLensName(m.activePerspective); name != "" {
 			subtitle += " · " + name
 		}
-		b.WriteString(renderFullscreenTitle("Today", subtitle, m.AccentColor()))
+		b.WriteString(renderFullscreenTitleWithCounter("Today", subtitle, FormatOpenLoops(m.openLoops), m.width, m.AccentColor()))
 		b.WriteString("\n")
 		b.WriteString(renderTabBarWithOptionalSubTabs(m.computedTabNames(), m.tabs.Active, nil, false, m.width, m.AccentColor()))
 		b.WriteString("\n")
@@ -350,11 +350,6 @@ func (m *FocusBoardModel) renderRow(row boardRow, isSelected bool, maxTitleLen i
 		dueStr = FormatRelativeDue(task.DueDate, true)
 	}
 
-	scoreBadge := ""
-	if profile := m.config.GetProjectScoringProfile(row.Project.ID); profile != nil {
-		scoreBadge = RenderScoreBadge(task, profile)
-	}
-
 	truncatedTitle := truncateToVisualWidth(task.Title, maxTitleLen)
 	title := m.highlightTitle(truncatedTitle, task.Title)
 	if isSelected && !task.Dimmed {
@@ -372,6 +367,22 @@ func (m *FocusBoardModel) renderRow(row boardRow, isSelected bool, maxTitleLen i
 	if colLayout != nil && colLayout.HasPriority {
 		priorityBadge = PadBadge(priorityBadge, colLayout.PriorityWidth)
 	}
+
+	// Von Restorff: demote non-hero badges so the most urgent attribute stands out.
+	hero := pickHeroAttribute(task, row.Project)
+	if hero != HeroNone && !task.Dimmed {
+		if !statusIsHero(hero) {
+			statusIcon = demoteBadge(statusIcon)
+		}
+		typeIcon = " " + demoteBadge(strings.TrimPrefix(typeIcon, " "))
+		if !priorityIsHero(hero) {
+			priorityBadge = demoteBadge(priorityBadge)
+		}
+		if dueStr != "" && !dueIsHero(hero) {
+			dueStr = demoteBadge(dueStr)
+		}
+	}
+
 	content := fmt.Sprintf("%s%s%s%s %s %s%s %s", queueIndicator, indent, prefix, statusIcon, priorityBadge, projectBadge, typeIcon, title)
 
 	estimateStr := ""
@@ -392,7 +403,7 @@ func (m *FocusBoardModel) renderRow(row boardRow, isSelected bool, maxTitleLen i
 		}
 	}
 	checklistInd := renderChecklistBar(task, m.width)
-	structureGroup := JoinGroupParts(scoreBadge, checklistInd)
+	structureGroup := checklistInd
 	lifecycleGroup := dueStr
 	contentGroup := JoinGroupParts(renderTruncatedTags(task.Tags, 2, 8), staleBadge)
 	trailing := JoinIndicatorGroups(structureGroup, lifecycleGroup, contentGroup, estimateStr)

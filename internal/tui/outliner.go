@@ -101,7 +101,13 @@ type OutlinerModel struct {
 	crossLastZoomDepth   int
 	crossLastTaskCount   int
 	crossForceRebuild    bool // When true, bypasses the memoization guard on next rebuild
+
+	// openLoops mirrors AppModel.openLoops for the title-row Zeigarnik counter.
+	openLoops OpenLoops
 }
+
+// setOpenLoops injects the latest cross-project open-loop counts into the view.
+func (m *OutlinerModel) setOpenLoops(o OpenLoops) { m.openLoops = o }
 
 // primaryProjectView interface implementation for shared key dispatch.
 func (m *OutlinerModel) getProject() *models.Project       { return m.project }
@@ -232,6 +238,11 @@ func (m *OutlinerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case MutationFlashClearMsg:
 		m.mutationFlash = false
+		m.rebuildRows()
+		return m, nil
+
+	case CompletionFlashFrameMsg:
+		m.advanceCompletionFlashFrame(msg.Frame)
 		m.rebuildRows()
 		return m, nil
 

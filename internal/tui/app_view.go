@@ -39,6 +39,11 @@ func (m *AppModel) View() (result tea.View) { //nolint:gocyclo
 		return tea.NewView(m.applyBackground(style.Render(msg)))
 	}
 
+	if current := m.views.Get(m.currentView()); current != nil {
+		if injector, ok := current.(openLoopsAware); ok {
+			injector.setOpenLoops(m.openLoops)
+		}
+	}
 	resultView := m.views.View(m.currentView())
 	content := resultView.Content
 	if content == "" {

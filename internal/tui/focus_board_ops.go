@@ -15,9 +15,9 @@ import (
 // markDone marks the current task as done via the shared workflow pipeline.
 func (m *FocusBoardModel) markDone() (tea.Model, tea.Cmd) {
 	model, cmd := taskOpsChangeStatus(m, models.StatusDone)
-	m.setMutationFlash(statusMutationFlashBg(models.StatusDone))
+	m.setCompletionFlash()
 	m.zenAdvance()
-	return model, tea.Batch(cmd, mutationFlashTimeout())
+	return model, tea.Batch(cmd, completionFlashScheduler())
 }
 
 // dismiss cancels the current task via the shared workflow pipeline.

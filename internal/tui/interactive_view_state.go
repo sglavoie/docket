@@ -9,18 +9,31 @@ import (
 	"github.com/sglavoie/tt/internal/tui/keymap"
 )
 
+// FlashKind classifies a mutation flash so renderers and frame schedulers can
+// distinguish a normal status/priority change (single solid background) from
+// a task-completion peak moment (multi-frame green ramp).
+type FlashKind int
+
+const (
+	// FlashMutation is the default single-frame flash for status/priority/type/etc.
+	FlashMutation FlashKind = iota
+	// FlashCompletion is a 3-frame green-ramp pulse for task completion.
+	FlashCompletion
+)
+
 // InteractiveViewState provides common interactive state for views that
 // support cursor navigation, prefix key sequences, status messages, and
 // confirmation dialogs. Embed this in view models to eliminate duplicate
 // field declarations and HasPendingPrefix() methods.
 type InteractiveViewState struct {
-	cursor          int
-	cursorFlash     bool
-	mutationFlash   bool
-	mutationFlashBg color.Color
-	pendingPrefix   string
-	statusMessage   string
-	confirm         ConfirmDialog
+	cursor            int
+	cursorFlash       bool
+	mutationFlash     bool
+	mutationFlashBg   color.Color
+	mutationFlashKind FlashKind
+	pendingPrefix     string
+	statusMessage     string
+	confirm           ConfirmDialog
 	// Dispatcher is the declarative keymap dispatcher for this view.
 	// When non-nil it is the authoritative source of prefix state;
 	// pendingPrefix is kept for views not yet migrated.
@@ -134,6 +147,24 @@ func (s *InteractiveViewState) HandleConfirmKey(key string) (confirmed, handled 
 func (s *InteractiveViewState) setMutationFlash(bg color.Color) {
 	s.mutationFlash = true
 	s.mutationFlashBg = bg
+	s.mutationFlashKind = FlashMutation
+}
+
+// setCompletionFlash enables the multi-frame completion ramp at frame 0.
+// Pair with completionFlashScheduler() to advance the frames.
+func (s *InteractiveViewState) setCompletionFlash() {
+	s.mutationFlash = true
+	s.mutationFlashBg = completionFlashBg(0)
+	s.mutationFlashKind = FlashCompletion
+}
+
+// advanceCompletionFlashFrame updates the background to the given frame's color.
+// No-op when the current flash is not a completion ramp.
+func (s *InteractiveViewState) advanceCompletionFlashFrame(frame int) {
+	if !s.mutationFlash || s.mutationFlashKind != FlashCompletion {
+		return
+	}
+	s.mutationFlashBg = completionFlashBg(frame)
 }
 
 // restoreCursorByID searches items for the task matching taskID using getID

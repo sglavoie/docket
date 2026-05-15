@@ -120,6 +120,21 @@ func (m *OutlinerModel) renderOutlinerTaskRow(row outlinerRow, selected bool, ro
 	titleStyle := m.renderTaskTitleStyle(task, selected)
 	prioritySegment := m.renderTaskPrioritySegment(task, colLayout)
 	indicators := m.renderTaskIndicators(task, proj)
+
+	// Von Restorff: demote non-hero badges so the most urgent attribute stands out.
+	hero := pickHeroAttribute(task, proj)
+	if hero != HeroNone && !task.Dimmed {
+		if !statusIsHero(hero) {
+			statusIcon = demoteBadge(statusIcon)
+		}
+		typeIcon = demoteBadge(typeIcon)
+		if !priorityIsHero(hero) && prioritySegment != "" {
+			prioritySegment = demoteBadge(strings.TrimRight(prioritySegment, " ")) + " "
+		}
+		if task.Stage != "" && stageSegment != "" {
+			stageSegment = demoteBadge(strings.TrimRight(stageSegment, " ")) + " "
+		}
+	}
 	cursorPrefix := RenderCursorPrefix(selected, task.Active, task.Pinned, task.Dimmed)
 	queueIndicator := m.renderTaskQueueIndicator(task)
 	checkbox := m.renderTaskCheckbox(task)
@@ -300,11 +315,6 @@ func (m *OutlinerModel) renderTaskStructureGroup(task *models.Task, proj *models
 	if m.columnConfig.IsVisible(ColDependencies) && !m.sidebar.IsEnabled() && proj != nil {
 		if indicators := renderDependencyIndicators(task, proj); indicators != "" {
 			structureParts = append(structureParts, indicators)
-		}
-	}
-	if m.columnConfig.IsVisible(ColScore) && m.config != nil && proj != nil {
-		if profile := m.config.GetProjectScoringProfile(proj.ID); profile != nil && HasManualScores(task, profile) {
-			structureParts = append(structureParts, RenderScoreBadge(task, profile))
 		}
 	}
 	return JoinGroupParts(structureParts...)

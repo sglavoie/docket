@@ -318,8 +318,13 @@ type AppModel struct {
 	focusDismissedIDs map[string]bool
 
 	// Daily plan session state (persists across view navigation within a session)
-	dailyPlan               []FocusTask
-	dailyPlanIDs            map[string]bool
+	dailyPlan    []FocusTask
+	dailyPlanIDs map[string]bool
+
+	// openLoops caches the cross-project counts surfaced in the title row
+	// (Zeigarnik). Recomputed via RefreshOpenLoopsMsg after every mutation,
+	// so paint paths can read it without an extra full-tree walk.
+	openLoops               OpenLoops
 	dailyPlanCarried        int                    // count of items carried over from a previous day
 	dailyPlanCarriedIDs     map[string]bool        // task IDs that were carried over (for visual indicator)
 	dailyPlanCarriedShown   bool                   // true once the carry-over status message has been shown
@@ -353,6 +358,11 @@ type AppModel struct {
 	statusIsInfo    bool           // When true, render status with InfoStatusStyle instead of SuccessStyle
 	statusUndoCb    func() tea.Cmd // When non-nil and not expired, pressing `u` invokes this callback
 	statusExpiresAt time.Time      // Deadline after which statusUndoCb is no longer valid
+
+	// Today-cleared banner: shown for ~5s after the last planned Today task
+	// is marked done for the first time on a given day. Takes precedence over
+	// statusMessage within its TTL.
+	todayClearedBanner string
 
 	// Loading state for async operations
 	isLoading      bool
@@ -500,9 +510,10 @@ type AppModel struct {
 		linkType      LinkType
 	}
 
-	// Peek task overlay (shift+space to hold-peek task detail)
-	peekTask   *models.Task
-	peekActive bool
+	// Peek task overlay (space to hold-peek task detail)
+	peekTask    *models.Task
+	peekProject *models.Project
+	peekActive  bool
 
 	// Export state for repeat-press clipboard behavior.
 	lastExportPath string

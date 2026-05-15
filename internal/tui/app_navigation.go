@@ -151,6 +151,7 @@ func (m *AppModel) popView() tea.Cmd {
 func (m *AppModel) handleEscKey() (bool, tea.Cmd) {
 	if m.peekActive {
 		m.peekTask = nil
+		m.peekProject = nil
 		m.peekActive = false
 		return true, nil
 	}

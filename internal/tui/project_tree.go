@@ -199,7 +199,13 @@ type ProjectTreeModel struct {
 	// renderNodeWithWidth to align badge columns across visible rows.
 	// Nil when column alignment is disabled (e.g., narrow terminals).
 	colLayout *ColumnLayout
+
+	// openLoops mirrors AppModel.openLoops for the title-row Zeigarnik counter.
+	openLoops OpenLoops
 }
+
+// setOpenLoops injects the latest cross-project open-loop counts into the view.
+func (m *ProjectTreeModel) setOpenLoops(o OpenLoops) { m.openLoops = o }
 
 // primaryProjectView interface implementation for shared key dispatch.
 func (m *ProjectTreeModel) getProject() *models.Project { return m.project }

@@ -5,7 +5,6 @@ import (
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
-	"charm.land/lipgloss/v2"
 
 	"github.com/sglavoie/tt/internal/icons"
 	"github.com/sglavoie/tt/internal/logging"
@@ -43,18 +42,21 @@ func (m *TaskDetailModel) View() tea.View {
 		overviewSections = append(overviewSections, metaCard)
 	}
 
-	// Score + Activity side-by-side
-	var scoreCard string
+	// Score + Activity grouped under a single "Planning" frame (Law of Proximity).
+	// Falls back to a bare Activity card when no scoring profile is configured.
+	var planningHasFrame bool
+	var scoreProfile *scoring.ScoringProfile
 	if m.config != nil {
-		if profile := m.config.GetProjectScoringProfile(m.project.ID); profile != nil {
-			leftWidth := contentWidth / 2
-			scoreCard = m.renderScoreSection(leftWidth, profile)
-		}
+		scoreProfile = m.config.GetProjectScoringProfile(m.project.ID)
 	}
-	if scoreCard != "" {
-		rightWidth := contentWidth - contentWidth/2
-		planningSections = append(planningSections, lipgloss.JoinHorizontal(lipgloss.Top,
-			scoreCard, m.renderActivitySection(rightWidth)))
+	if scoreProfile != nil {
+		innerW := max(contentWidth-CardBorderOverhead, 4)
+		leftCol := innerW / 2
+		rightCol := innerW - leftCol
+		scoreCol := renderClusterColumn("Score", renderScoreCardContent(m.task, scoreProfile, leftCol-2), leftCol)
+		activityCol := renderClusterColumn("Activity", buildActivityContent(m.task), rightCol)
+		planningSections = append(planningSections, renderClusterFrame("Planning", []string{scoreCol, activityCol}, contentWidth))
+		planningHasFrame = true
 	} else {
 		planningSections = append(planningSections, m.renderActivitySection(contentWidth))
 	}
@@ -74,13 +76,23 @@ func (m *TaskDetailModel) View() tea.View {
 	hasAttachments := m.task.HasAttachments()
 	hasHistory := hasComments || hasDecisions || hasAttachments
 
+	// When both Comments and Decisions are present and the cluster is expanded,
+	// group them under a single "History" frame (Law of Proximity). With only
+	// one of the pair, keep the existing single-card render.
+	historyHasFrame := false
 	if hasHistory && m.historyExpanded {
 		if hasComments && hasDecisions {
-			leftWidth := contentWidth / 2
-			rightWidth := contentWidth - leftWidth
-			historySections = append(historySections, lipgloss.JoinHorizontal(lipgloss.Top,
-				m.renderCommentsSection(leftWidth),
-				m.renderDecisionsSection(rightWidth)))
+			innerW := max(contentWidth-CardBorderOverhead, 4)
+			leftCol := innerW / 2
+			rightCol := innerW - leftCol
+			commentsCol := renderClusterColumn("Comments", buildCommentsContent(m.task, leftCol-2), leftCol)
+			decisionsCol := renderClusterColumn("Decisions", buildDecisionsContent(m.task, rightCol-2), rightCol)
+			frameLabel := "History"
+			if summary := historyCountsSummary(len(m.task.Comments), len(m.task.Decisions), 0); summary != "" {
+				frameLabel = "History (" + summary + ")"
+			}
+			historySections = append(historySections, renderClusterFrame(frameLabel, []string{commentsCol, decisionsCol}, contentWidth))
+			historyHasFrame = true
 		} else if hasComments {
 			historySections = append(historySections, m.renderCommentsSection(contentWidth))
 		} else if hasDecisions {
@@ -91,18 +103,24 @@ func (m *TaskDetailModel) View() tea.View {
 		}
 	}
 
-	// Assemble final section list with labeled cluster dividers
+	// Assemble final section list with labeled cluster dividers.
+	// When an outer cluster frame already supplies the label, skip the divider
+	// so the cluster doesn't get a duplicate title.
 	var sections []string
 	sections = append(sections, overviewSections...)
 	if len(planningSections) > 0 {
-		sections = append(sections, renderDetailSectionDivider("Planning", contentWidth))
+		if !planningHasFrame {
+			sections = append(sections, renderDetailSectionDivider("Planning", contentWidth))
+		}
 		sections = append(sections, planningSections...)
 	}
 	if hasHistory {
-		commentsN := len(m.task.Comments)
-		decisionsN := len(m.task.Decisions)
-		attachmentsN := len(m.task.Attachments)
-		sections = append(sections, renderHistoryClusterDivider(commentsN, decisionsN, attachmentsN, m.historyExpanded, contentWidth))
+		if !historyHasFrame {
+			commentsN := len(m.task.Comments)
+			decisionsN := len(m.task.Decisions)
+			attachmentsN := len(m.task.Attachments)
+			sections = append(sections, renderHistoryClusterDivider(commentsN, decisionsN, attachmentsN, m.historyExpanded, contentWidth))
+		}
 		sections = append(sections, historySections...)
 	}
 
@@ -192,8 +210,7 @@ func historyCountsSummary(commentsN, decisionsN, attachmentsN int) string {
 
 // renderTitleBar renders the top title bar.
 func (m *TaskDetailModel) renderTitleBar() string {
-	title := renderFullscreenTitle("Task Detail", fmt.Sprintf("#%d", m.task.ShortID), m.AccentColor())
-	return title
+	return renderFullscreenTitleWithCounter("Task Detail", fmt.Sprintf("#%d", m.task.ShortID), FormatOpenLoops(m.openLoops), m.width, m.AccentColor())
 }
 
 // renderFooter renders the bottom footer with scroll position and help.
@@ -420,9 +437,14 @@ func (m *TaskDetailModel) renderDescriptionSection(width int) string {
 
 // renderCommentsSection renders all comments with timestamps.
 func (m *TaskDetailModel) renderCommentsSection(width int) string {
-	var lines []string
+	return renderCard(IconComment()+" Comments", buildCommentsContent(m.task, width-CardBorderOverhead), width, DefaultCardConfig())
+}
 
-	for i, comment := range m.task.Comments {
+// buildCommentsContent returns the bare comments body (no card border).
+// innerWidth is the visual width available for markdown rendering.
+func buildCommentsContent(task *models.Task, innerWidth int) string {
+	var lines []string
+	for i, comment := range task.Comments {
 		if i > 0 {
 			lines = append(lines, "")
 		}
@@ -432,22 +454,26 @@ func (m *TaskDetailModel) renderCommentsSection(width int) string {
 			timestampLine += " [resolved]"
 		}
 		lines = append(lines, MutedStyle.Render(timestampLine))
-		rendered := renderMarkdown(comment.Text, width-CardBorderOverhead)
+		rendered := renderMarkdown(comment.Text, innerWidth)
 		if comment.Resolved {
 			lines = append(lines, MutedStyle.Render(rendered))
 		} else {
 			lines = append(lines, rendered)
 		}
 	}
-
-	return renderCard(IconComment()+" Comments", strings.Join(lines, "\n"), width, DefaultCardConfig())
+	return strings.Join(lines, "\n")
 }
 
 // renderDecisionsSection renders all decisions with category and timestamps.
 func (m *TaskDetailModel) renderDecisionsSection(width int) string {
-	var lines []string
+	return renderCard(IconDecision()+" Decisions", buildDecisionsContent(m.task, width-CardBorderOverhead), width, DefaultCardConfig())
+}
 
-	for i, decision := range m.task.Decisions {
+// buildDecisionsContent returns the bare decisions body (no card border).
+// innerWidth is the visual width available for markdown rendering.
+func buildDecisionsContent(task *models.Task, innerWidth int) string {
+	var lines []string
+	for i, decision := range task.Decisions {
 		if i > 0 {
 			lines = append(lines, "")
 		}
@@ -457,15 +483,14 @@ func (m *TaskDetailModel) renderDecisionsSection(width int) string {
 			header += " [resolved]"
 		}
 		lines = append(lines, MutedStyle.Render(header))
-		rendered := renderMarkdown(decision.Text, width-CardBorderOverhead)
+		rendered := renderMarkdown(decision.Text, innerWidth)
 		if decision.Resolved {
 			lines = append(lines, MutedStyle.Render(rendered))
 		} else {
 			lines = append(lines, rendered)
 		}
 	}
-
-	return renderCard(IconDecision()+" Decisions", strings.Join(lines, "\n"), width, DefaultCardConfig())
+	return strings.Join(lines, "\n")
 }
 
 // renderAttachmentsSection renders all attachments.
@@ -489,17 +514,20 @@ func (m *TaskDetailModel) renderAttachmentsSection(width int) string {
 
 // renderActivitySection renders activity timestamps.
 func (m *TaskDetailModel) renderActivitySection(width int) string {
+	return renderCard("Activity", buildActivityContent(m.task), width, DefaultCardConfig())
+}
+
+// buildActivityContent returns the bare activity body (no card border).
+func buildActivityContent(task *models.Task) string {
 	var lines []string
-
-	if !m.task.CreatedAt.IsZero() {
-		lines = append(lines, formatActivityEntry("Created", m.task.CreatedAt))
+	if !task.CreatedAt.IsZero() {
+		lines = append(lines, formatActivityEntry("Created", task.CreatedAt))
 	}
-	if m.task.CompletedAt != nil {
-		lines = append(lines, formatActivityEntry("Completed", *m.task.CompletedAt))
+	if task.CompletedAt != nil {
+		lines = append(lines, formatActivityEntry("Completed", *task.CompletedAt))
 	}
-	if !m.task.UpdatedAt.IsZero() && !m.task.UpdatedAt.Equal(m.task.CreatedAt) {
-		lines = append(lines, formatActivityEntry("Modified", m.task.UpdatedAt))
+	if !task.UpdatedAt.IsZero() && !task.UpdatedAt.Equal(task.CreatedAt) {
+		lines = append(lines, formatActivityEntry("Modified", task.UpdatedAt))
 	}
-
-	return renderCard("Activity", strings.Join(lines, "\n"), width, DefaultCardConfig())
+	return strings.Join(lines, "\n")
 }

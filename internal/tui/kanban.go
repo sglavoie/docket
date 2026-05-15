@@ -62,7 +62,13 @@ type KanbanModel struct {
 
 	// Flash animation: task ID briefly highlighted in the target column after H/L move.
 	flashCardID string
+
+	// openLoops mirrors AppModel.openLoops for the title-row Zeigarnik counter.
+	openLoops OpenLoops
 }
+
+// setOpenLoops injects the latest cross-project open-loop counts into the view.
+func (m *KanbanModel) setOpenLoops(o OpenLoops) { m.openLoops = o }
 
 // NewKanbanModel creates a per-project kanban view.
 func NewKanbanModel(

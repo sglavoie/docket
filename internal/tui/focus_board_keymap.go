@@ -206,6 +206,10 @@ func (m *FocusBoardModel) buildKeyMap() *keymap.KeyMap {
 					return m, nil
 				}
 				model, cmd := taskOpsChangeStatus(m, s)
+				if s == models.StatusDone {
+					m.setCompletionFlash()
+					return model, tea.Batch(cmd, completionFlashScheduler())
+				}
 				m.setMutationFlash(statusMutationFlashBg(s))
 				return model, tea.Batch(cmd, mutationFlashTimeout())
 			}
@@ -455,7 +459,7 @@ func (m *FocusBoardModel) buildKeyMap() *keymap.KeyMap {
 			m.toggleMultiSelectMode()
 			return m, nil
 		}),
-		keymap.Bind("space", "Toggle selection", "Multi-select", func() (tea.Model, tea.Cmd) {
+		keymap.Bind("space", "Toggle selection (multi-select) / hold to peek", "Multi-select", func() (tea.Model, tea.Cmd) {
 			if m.multiSelectMode {
 				m.toggleTaskSelection()
 			}

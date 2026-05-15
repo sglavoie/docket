@@ -46,8 +46,11 @@ func (m *OutlinerModel) handleStatusPrefix(key string, cursorTask *models.Task) 
 			return m, func() tea.Msg { return ErrorMsg{Err: result.Err} }
 		}
 		m.setStatus(result.StatusMessage)
-		m.mutationFlash = true
-		m.mutationFlashBg = statusMutationFlashBg(status)
+		if status == models.StatusDone {
+			m.setCompletionFlash()
+			return m, tea.Batch(result.Cmd, completionFlashScheduler())
+		}
+		m.setMutationFlash(statusMutationFlashBg(status))
 		return m, tea.Batch(result.Cmd, mutationFlashTimeout())
 	}
 

@@ -105,6 +105,7 @@ func (m *ProjectTreeModel) renderTreeContent(width int, focused bool) string { /
 		SortField:     m.sort.Field,
 		SortAscending: m.sort.Ascending,
 		Width:         width,
+		Counter:       FormatOpenLoops(m.openLoops),
 	}
 	b.WriteString(renderProjectTitle(m.project, m.config, titleParams))
 	b.WriteString("\n")

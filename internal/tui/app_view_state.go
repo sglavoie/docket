@@ -44,10 +44,12 @@ func (m *AppModel) delegateToCurrentView(msg tea.Msg) tea.Cmd {
 
 	// Update peek task if active (cursor may have moved)
 	if m.peekActive {
-		if task := m.getCurrentCursorTask(); task != nil {
+		if task, project := m.getCurrentCursorTaskAndProject(); task != nil {
 			m.peekTask = task
+			m.peekProject = project
 		} else {
 			m.peekTask = nil
+			m.peekProject = nil
 			m.peekActive = false
 		}
 	}
@@ -94,6 +96,50 @@ func (m *AppModel) delegateToCurrentView(msg tea.Msg) tea.Cmd {
 	}
 
 	return cmd
+}
+
+// getCurrentCursorTaskAndProject returns the task and project under the cursor in
+// the current primary view, or (nil, nil) when no task is selected. The project
+// pointer enables overlays (e.g. peek) that need scoring profile lookups.
+func (m *AppModel) getCurrentCursorTaskAndProject() (*models.Task, *models.Project) {
+	switch m.currentView() {
+	case ViewProjectTree:
+		if m.projectTree != nil {
+			return m.projectTree.getTaskRef()
+		}
+	case ViewOutliner:
+		if m.outliner != nil {
+			return m.outliner.getTaskRef()
+		}
+	case ViewTemporaryOutliner:
+		if v := m.views.Get(ViewTemporaryOutliner); v != nil {
+			if o, ok := v.(*OutlinerModel); ok {
+				return o.getTaskRef()
+			}
+		}
+	case ViewCrossProjectOutliner:
+		if m.crossOutliner != nil {
+			return m.crossOutliner.getTaskRef()
+		}
+	case ViewInboxProcessor:
+		if m.inboxProcessor != nil {
+			return m.inboxProcessor.getTaskRef()
+		}
+	case ViewGlobalInboxProcessor:
+		if m.globalInboxProcessor != nil {
+			return m.globalInboxProcessor.getTaskRef()
+		}
+	case ViewKanban, ViewCrossProjectKanban:
+		if v := m.views.Get(m.currentView()); v != nil {
+			if kb, ok := v.(*KanbanModel); ok {
+				if card := kb.getCursorCard(); card != nil {
+					return card.Task, card.Project
+				}
+			}
+		}
+	default:
+	}
+	return nil, nil
 }
 
 // getCurrentCursorTask returns the task under the cursor in the current primary view,

@@ -70,6 +70,7 @@ func (m *AppModel) handleGlobalKeyPress(msg tea.KeyPressMsg) (bool, tea.Cmd) { /
 	if m.peekActive {
 		if msg.String() == "esc" {
 			m.peekTask = nil
+			m.peekProject = nil
 			m.peekActive = false
 		}
 		return true, nil
@@ -210,11 +211,12 @@ func (m *AppModel) handleGlobalKeyPress(msg tea.KeyPressMsg) (bool, tea.Cmd) { /
 		if handled, cmd := m.handleGlobalClipboard(msg.String()); handled {
 			return true, cmd
 		}
-	case "shift+space":
+	case "space":
 		if !m.hasActiveTextInput() && !m.hasActiveMultiSelect() {
-			task := m.getCurrentCursorTask()
+			task, project := m.getCurrentCursorTaskAndProject()
 			if task != nil {
 				m.peekTask = task
+				m.peekProject = project
 				m.peekActive = true
 			}
 			return true, nil

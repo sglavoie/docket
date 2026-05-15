@@ -79,6 +79,7 @@ func (m *PriorityViewModel) renderSuggestionSection() string {
 	// Build the task line
 	taskLine := TaskLine{
 		Task:       task,
+		Project:    m.project,
 		Active:     task.Active,
 		Pinned:     task.Pinned,
 		MaxTitle:   titleWidth,
@@ -234,6 +235,7 @@ func (m *PriorityViewModel) renderScoreRanking(currentIndex *int, cursorLineIdx 
 
 		line := TaskLine{
 			Task:         pt.Task,
+			Project:      m.project,
 			IsSelected:   isSelected,
 			Queued:       m.queueIDs[pt.Task.ID],
 			DailyPlanned: m.dailyPlanIDs[pt.Task.ID],
@@ -342,6 +344,7 @@ func (m *PriorityViewModel) renderTaskLine(pt *PriorityTask, isOverdue bool, isS
 
 	return TaskLine{
 		Task:         task,
+		Project:      m.project,
 		IsSelected:   isSelected,
 		Queued:       m.queueIDs[task.ID],
 		DailyPlanned: m.dailyPlanIDs[task.ID],

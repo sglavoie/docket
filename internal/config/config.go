@@ -168,4 +168,5 @@ type Config struct {
 	UseEmoji                       *bool                        `json:"use_emoji,omitempty"`
 	StreakCount                    int                          `json:"streak_count,omitempty"`
 	StreakLastDate                 string                       `json:"streak_last_date,omitempty"`
+	TodayClearedAt                 string                       `json:"today_cleared_at,omitempty"`
 }

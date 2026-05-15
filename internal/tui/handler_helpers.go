@@ -49,6 +49,7 @@ func (m *AppModel) setSuccessStatus(msg string) {
 	m.statusMessage = msg
 	m.statusIsInfo = false
 	m.messageLog.Append(msg, MessageLogLevelSuccess)
+	m.openLoops = ComputeOpenLoops(m.config, m.dailyPlanIDs)
 }
 
 // setInfoStatus sets a status message with informational styling (neutral color, no checkmark).

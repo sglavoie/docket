@@ -3,6 +3,8 @@ package tui
 import (
 	"fmt"
 	"strings"
+
+	"charm.land/lipgloss/v2"
 )
 
 type outlinerViewport struct {
@@ -129,14 +131,33 @@ func (m *OutlinerModel) renderOutlinerTitle(width int) string {
 	return renderProjectTitle(m.project, m.config, titleParams)
 }
 
-func (m *OutlinerModel) writeOutlinerHeader(b *strings.Builder, width int, perspectiveLabel, searchIndicator string) {
-	b.WriteString(m.renderOutlinerTitle(width))
-	b.WriteString(perspectiveLabel)
-	b.WriteString(searchIndicator)
-	if m.multiSelectMode {
-		b.WriteString("  ")
-		b.WriteString(SelectionCountStyle.Render(fmt.Sprintf("[MULTI-SELECT: %d selected]", m.SelectedCount())))
+// appendOpenLoopsCounter right-aligns the open-loops counter at the end of an
+// already-assembled title line. Must be called after every inline title-row
+// element (perspective label, search indicator, multi-select badge) has been
+// appended so the counter doesn't push them off the right edge.
+func (m *OutlinerModel) appendOpenLoopsCounter(line string, width int) string {
+	counter := FormatOpenLoops(m.openLoops)
+	if counter == "" || width <= 0 {
+		return line
 	}
+	rendered := MutedStyle.Render(counter)
+	gap := width - lipgloss.Width(line) - lipgloss.Width(rendered) - titleCounterAlertReserve
+	if gap <= 0 {
+		return line
+	}
+	return line + strings.Repeat(" ", gap) + rendered
+}
+
+func (m *OutlinerModel) writeOutlinerHeader(b *strings.Builder, width int, perspectiveLabel, searchIndicator string) {
+	var line strings.Builder
+	line.WriteString(m.renderOutlinerTitle(width))
+	line.WriteString(perspectiveLabel)
+	line.WriteString(searchIndicator)
+	if m.multiSelectMode {
+		line.WriteString("  ")
+		line.WriteString(SelectionCountStyle.Render(fmt.Sprintf("[MULTI-SELECT: %d selected]", m.SelectedCount())))
+	}
+	b.WriteString(m.appendOpenLoopsCounter(line.String(), width))
 	b.WriteString("\n")
 
 	if m.ac.IsActive() {
@@ -158,9 +179,11 @@ func (m *OutlinerModel) writeOutlinerHeader(b *strings.Builder, width int, persp
 
 func (m *OutlinerModel) renderOutlinerEmptyState(width int, perspective Perspective, perspectiveLabel, searchIndicator, breadcrumb, notice string) string {
 	var b strings.Builder
-	b.WriteString(m.renderOutlinerTitle(width))
-	b.WriteString(perspectiveLabel)
-	b.WriteString(searchIndicator)
+	var line strings.Builder
+	line.WriteString(m.renderOutlinerTitle(width))
+	line.WriteString(perspectiveLabel)
+	line.WriteString(searchIndicator)
+	b.WriteString(m.appendOpenLoopsCounter(line.String(), width))
 	b.WriteString("\n")
 
 	if m.ac.IsActive() {

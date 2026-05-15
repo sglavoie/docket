@@ -99,7 +99,16 @@ type FocusBoardModel struct {
 	// 0..9 selects a preset from PerspectivePresets() and AND-composes with
 	// the active tab filter.
 	activePerspective int
+
+	// openLoops mirrors AppModel.openLoops, injected before render via
+	// setOpenLoops. Used to render the Zeigarnik counter in the title row.
+	openLoops OpenLoops
 }
+
+// setOpenLoops injects the latest cross-project open-loop counts into the
+// view. Called by AppModel before each render so the title-row counter stays
+// in sync with mutations across daily-driver views.
+func (m *FocusBoardModel) setOpenLoops(o OpenLoops) { m.openLoops = o }
 
 // NewFocusBoardModel creates a new focus board model.
 func NewFocusBoardModel(cfg *config.Config, manager *config.Manager, dailyPlan *[]FocusTask, queueIDs, dailyPlanIDs, carriedOverIDs map[string]bool) *FocusBoardModel {
@@ -200,6 +209,10 @@ func (m *FocusBoardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case MutationFlashClearMsg:
 		m.mutationFlash = false
+		return m, nil
+
+	case CompletionFlashFrameMsg:
+		m.advanceCompletionFlashFrame(msg.Frame)
 		return m, nil
 
 	case FocusBoardRefreshMsg:

@@ -19,7 +19,7 @@ func globalAppKeys() []string {
 	return []string{
 		"q", "ctrl+c", "alt+o", "alt+i", "|", "#", "esc",
 		"ctrl+x", "ctrl+z", ":", ";", "ctrl+,", "ctrl+i", "ctrl+/", `ctrl+\`,
-		"shift+space", "?", "alt+l",
+		"space", "?", "alt+l",
 		"y", "Y", "ctrl+y",
 		// . is the repeat-last-action key (global).
 		".",

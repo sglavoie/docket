@@ -296,13 +296,6 @@ func (m *ProjectTreeModel) nodeStructureGroup(task *models.Task) string {
 			parts = append(parts, s)
 		}
 	}
-	if m.columnConfig.IsVisible(ColScore) && !m.sidebar.IsEnabled() && m.config != nil {
-		if profile := m.config.GetProjectScoringProfile(m.project.ID); profile != nil {
-			if badge := RenderScoreBadge(task, profile); badge != "" {
-				parts = append(parts, badge)
-			}
-		}
-	}
 	return JoinGroupParts(parts...)
 }
 

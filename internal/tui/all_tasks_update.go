@@ -29,6 +29,10 @@ func (m *AllTasksViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case MutationFlashClearMsg:
 		m.mutationFlash = false
 		return m, nil
+
+	case CompletionFlashFrameMsg:
+		m.advanceCompletionFlashFrame(msg.Frame)
+		return m, nil
 	}
 
 	return m, nil

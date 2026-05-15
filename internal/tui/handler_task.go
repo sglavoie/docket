@@ -6,6 +6,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/sglavoie/tt/internal/icons"
 	"github.com/sglavoie/tt/internal/models"
 )
 
@@ -123,7 +124,11 @@ func (m *AppModel) handleTaskStatusPropertyMessages(msg tea.Msg) (bool, tea.Cmd)
 			m.updateStreak()
 			m.handleWithRefresh(false, false, "")
 			m.setSuccessStatus(fmt.Sprintf("Done! (%d today)", m.sessionStats.tasksCompleted))
-			return true, defaultStatusTimeout()
+			cmd := defaultStatusTimeout()
+			if bannerCmd := m.maybeFireTodayCleared(); bannerCmd != nil {
+				cmd = tea.Batch(cmd, bannerCmd)
+			}
+			return true, cmd
 		}
 		return true, m.handleWithRefresh(false, false, "")
 
@@ -205,4 +210,33 @@ func (m *AppModel) updateStreak() {
 	}
 	m.config.StreakLastDate = today
 	saveConfigWarn(m.configManager, m.config, "streak update")
+}
+
+// maybeFireTodayCleared evaluates whether this status mutation cleared the
+// Today plan for the first time today. When it did, it sets the Today-cleared
+// banner (with the current streak count) and returns the banner-timeout cmd.
+// Returns nil when the banner should not fire (Today empty, not yet complete,
+// or already fired today).
+func (m *AppModel) maybeFireTodayCleared() tea.Cmd {
+	if m.config == nil {
+		return nil
+	}
+	loops := m.openLoops
+	if loops.TodayTotal == 0 || loops.TodayDone != loops.TodayTotal {
+		return nil
+	}
+	today := time.Now().Format("2006-01-02")
+	if m.config.TodayClearedAt == today {
+		return nil
+	}
+	m.config.TodayClearedAt = today
+	saveConfigWarn(m.configManager, m.config, "today-cleared timestamp")
+
+	streak := m.config.StreakCount
+	unit := "day"
+	if streak != 1 {
+		unit = "days"
+	}
+	m.todayClearedBanner = fmt.Sprintf("%s Today cleared. Streak: %d %s.", icons.Get("streak"), streak, unit)
+	return todayClearedBannerTimeout()
 }

@@ -31,7 +31,13 @@ type TaskDetailModel struct {
 	// (Comments, Decisions, Attachments). When false, only a one-line summary
 	// header is rendered. Toggled by `H`. Intentionally not persisted.
 	historyExpanded bool
+
+	// openLoops mirrors AppModel.openLoops for the title-row Zeigarnik counter.
+	openLoops OpenLoops
 }
+
+// setOpenLoops injects the latest cross-project open-loop counts into the view.
+func (m *TaskDetailModel) setOpenLoops(o OpenLoops) { m.openLoops = o }
 
 // NewTaskDetailModel creates a new task detail view.
 func NewTaskDetailModel(task *models.Task, project *models.Project, cfg *config.Config, mgr *config.Manager) *TaskDetailModel {

@@ -33,8 +33,9 @@ func (m *AppModel) handleGlobalMessage(msg tea.Msg) (bool, tea.Cmd) {
 		m.keyboardEnhancements = msg
 		return true, upgradeKittyKeyboard()
 	case tea.KeyReleaseMsg:
-		if msg.String() == "shift+space" && m.peekActive {
+		if msg.String() == "space" && m.peekActive {
 			m.peekTask = nil
+			m.peekProject = nil
 			m.peekActive = false
 		}
 		return true, nil
@@ -91,6 +92,12 @@ func (m *AppModel) handleGlobalMessage(msg tea.Msg) (bool, tea.Cmd) {
 		m.loadingMessage = ""
 		m.err = msg.Err
 		return true, statusTimeout(5 * time.Second)
+	case RefreshOpenLoopsMsg:
+		m.openLoops = ComputeOpenLoops(m.config, m.dailyPlanIDs)
+		return true, nil
+	case TodayClearedBannerClearMsg:
+		m.todayClearedBanner = ""
+		return true, nil
 	case NotesRefreshMsg:
 		m.refreshNotesSearchState()
 		if nv := m.getActiveNotesView(); nv != nil {
@@ -150,6 +157,7 @@ func (m *AppModel) handleSaveComplete(msg SaveCompleteMsg) tea.Cmd {
 	m.loadingMessage = ""
 	m.setSuccessStatus(msg.SuccessMessage)
 	m.invalidateFilterCaches()
+	m.openLoops = ComputeOpenLoops(m.config, m.dailyPlanIDs)
 	m.refreshProjectTree()
 	if m.allTasksView != nil {
 		m.allTasksView.loadAllTasks()

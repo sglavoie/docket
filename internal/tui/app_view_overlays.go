@@ -1,9 +1,13 @@
 package tui
 
 import (
+	"fmt"
 	"strings"
 
 	"charm.land/lipgloss/v2"
+
+	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/scoring"
 )
 
 // applyOverlays composites all popup/overlay layers onto the base content.
@@ -137,6 +141,14 @@ func (m *AppModel) renderPeekOverlay() string {
 		priorityNames := map[int]string{1: "Critical", 2: "High", 3: "Normal", 4: "Low", 5: "Someday"}
 		if name, ok := priorityNames[task.Priority]; ok {
 			sb.WriteString(MutedStyle.Render("Priority: " + name))
+			sb.WriteString("\n")
+		}
+	}
+
+	// Score (when the project has a scoring profile and the task has manual scores)
+	if m.peekProject != nil && m.config != nil {
+		if profile := m.config.GetProjectScoringProfile(m.peekProject.ID); profile != nil && HasManualScores(task, profile) {
+			sb.WriteString(renderPeekScoreLine(task, profile))
 			sb.WriteString("\n")
 		}
 	}
@@ -294,6 +306,25 @@ func (m *AppModel) renderConfirmDialogOverlay() string {
 		return ""
 	}
 	return cd.RenderOverlay(m.width)
+}
+
+// renderPeekScoreLine renders the peek "Score:" line with the colored composite
+// badge followed by manually-scored dimensions ("· name=value"). Derived/default
+// dimensions are omitted to keep the line compact.
+func renderPeekScoreLine(task *models.Task, profile *scoring.ScoringProfile) string {
+	badge := RenderScoreBadge(task, profile)
+	var parts []string
+	for _, r := range scoring.ScoreBreakdown(task, profile) {
+		if r.Source != "manual" {
+			continue
+		}
+		parts = append(parts, fmt.Sprintf("%s %d", strings.ToLower(r.DimensionName), r.Value))
+	}
+	line := MutedStyle.Render("Score: ") + badge
+	if len(parts) > 0 {
+		line += " " + MutedStyle.Render("· "+strings.Join(parts, " · "))
+	}
+	return line
 }
 
 // renderQuickCaptureOverlay renders the floating quick capture box when the

@@ -33,6 +33,13 @@ func (m *AppModel) renderStatusBar() string {
 		return separator + "\n" + renderLeftAlignedMsg(msg)
 	}
 
+	// Today-cleared banner takes precedence over the regular status message
+	// for the duration of its TTL — Peak-End Rule punctuation for daily completion.
+	if m.todayClearedBanner != "" {
+		msg := TodayClearedBannerStyle.Render(m.todayClearedBanner)
+		return separator + "\n" + renderLeftAlignedMsg(msg)
+	}
+
 	// Show temporary status message if present.
 	if m.statusMessage != "" {
 		var msg string

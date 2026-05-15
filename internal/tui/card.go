@@ -157,6 +157,32 @@ func renderTitledBox(content string, innerWidth int, title, footer string, borde
 	return strings.Join(lines, "\n")
 }
 
+// renderClusterFrame renders a single outer card titled `label` that groups
+// multiple bare inner columns side-by-side. Inner columns should be produced
+// by renderClusterColumn (or any caller that pre-pads each column to its
+// target visual width) and contain no card border of their own — the outer
+// frame supplies the only border, so the cluster reads as one chunk under
+// the Law of Proximity.
+func renderClusterFrame(label string, innerColumns []string, width int) string {
+	if len(innerColumns) == 0 {
+		return ""
+	}
+	inner := lipgloss.JoinHorizontal(lipgloss.Top, innerColumns...)
+	return renderCard(label, inner, width, DefaultCardConfig())
+}
+
+// renderClusterColumn formats a single column for use inside renderClusterFrame.
+// It pads `content` to the given visual width and prepends a styled title
+// heading so the column remains identifiable without its own border.
+func renderClusterColumn(title, content string, width int) string {
+	if width < 1 {
+		width = 1
+	}
+	heading := SidebarCardTitleStyle.Render(title)
+	body := heading + "\n" + content
+	return lipgloss.NewStyle().Width(width).Padding(0, 1).Render(body)
+}
+
 // renderCard renders a card with a titled border.
 // Uses lipgloss styling for proper ANSI-aware rendering.
 // When AccentColor is set, uses it for borders. When Focused with AccentColor,

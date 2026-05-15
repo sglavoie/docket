@@ -338,8 +338,11 @@ func (m *OutlinerModel) buildKeyMap() *keymap.KeyMap {
 					return m, func() tea.Msg { return ErrorMsg{Err: result.Err} }
 				}
 				m.setStatus(result.StatusMessage)
-				m.mutationFlash = true
-				m.mutationFlashBg = statusMutationFlashBg(s)
+				if s == models.StatusDone {
+					m.setCompletionFlash()
+					return m, tea.Batch(result.Cmd, completionFlashScheduler())
+				}
+				m.setMutationFlash(statusMutationFlashBg(s))
 				return m, tea.Batch(result.Cmd, mutationFlashTimeout())
 			}
 		},
@@ -842,7 +845,7 @@ func (m *OutlinerModel) buildKeyMap() *keymap.KeyMap {
 			m.toggleMultiSelectMode()
 			return m, nil
 		}),
-		keymap.Bind("space", "Toggle selection", "Multi-select", func() (tea.Model, tea.Cmd) {
+		keymap.Bind("space", "Toggle selection (multi-select) / hold to peek", "Multi-select", func() (tea.Model, tea.Cmd) {
 			if m.multiSelectMode {
 				if len(m.rows) > 0 && m.cursor >= 0 && m.cursor < len(m.rows) &&
 					!m.rows[m.cursor].IsSectionHeader && !m.rows[m.cursor].IsSeparator && m.rows[m.cursor].task != nil {

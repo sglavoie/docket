@@ -732,19 +732,11 @@ func (m *ProjectTreeModel) buildKeyMap() *keymap.KeyMap {
 
 	// Selection/expansion keys
 	entries = append(entries,
-		keymap.Bind("space", "Expand/collapse or toggle selection", "Navigation", func() (tea.Model, tea.Cmd) {
+		keymap.Bind("space", "Toggle selection (multi-select) / hold to peek (use zo for fold)", "Navigation", func() (tea.Model, tea.Cmd) {
 			v := visible()
 			if m.multiSelectMode {
 				if CursorInBounds(m.cursor, len(v)) {
 					m.toggleSelection(v[m.cursor].Task)
-				}
-				return m, nil
-			}
-			if CursorInBounds(m.cursor, len(v)) {
-				node := v[m.cursor]
-				if len(node.Task.Children) > 0 {
-					node.Expanded = !node.Expanded
-					m.updateVisibility()
 				}
 			}
 			return m, nil

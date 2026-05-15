@@ -111,6 +111,7 @@ func (m *RecentActivityModel) renderTaskLine(dt CrossProjectTask, selected bool,
 	relTime := MutedStyle.Render("  " + storage.FormatRelativeTime(task.UpdatedAt))
 	return TaskLine{
 		Task:         task,
+		Project:      dt.Project,
 		IsSelected:   selected,
 		Queued:       m.queueIDs[task.ID],
 		DailyPlanned: m.dailyPlanIDs[task.ID],

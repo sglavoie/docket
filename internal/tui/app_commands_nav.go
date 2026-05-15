@@ -76,16 +76,17 @@ func (m *AppModel) navCommands() []Command {
 		},
 		{
 			Name:        "peek task detail",
-			Description: "Hold shift+space to peek at the selected task's details",
-			Shortcut:    "shift+space",
+			Description: "Hold space to peek at the selected task's details",
+			Shortcut:    "space",
 			Category:    CategoryNavigation,
 			Aliases:     []string{"peek task", "task peek", "preview task"},
 			Handler: func() tea.Msg {
-				task := m.getCurrentCursorTask()
+				task, project := m.getCurrentCursorTaskAndProject()
 				if task == nil {
 					return nil
 				}
 				m.peekTask = task
+				m.peekProject = project
 				m.peekActive = true
 				return nil
 			},

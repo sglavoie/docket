@@ -92,6 +92,8 @@ func NewAppModel(cfg *config.Config, manager *config.Manager, opts ...AppOption)
 	ApplyTheme(NewThemeConfig(cfg))
 	app.dashboard.SetAccentColor(AccentDashboard)
 
+	app.openLoops = ComputeOpenLoops(cfg, app.dailyPlanIDs)
+
 	return app
 }
 

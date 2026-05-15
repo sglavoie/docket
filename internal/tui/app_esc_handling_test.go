@@ -119,14 +119,14 @@ func TestHandleEscKey_DismissesPeekOverlay(t *testing.T) {
 	}
 }
 
-// TestShiftSpaceActivatesPeek verifies that shift+space sets peekTask when a cursor task exists.
-func TestShiftSpaceActivatesPeek(t *testing.T) {
+// TestSpaceActivatesPeek verifies that space sets peekTask when a cursor task exists.
+func TestSpaceActivatesPeek(t *testing.T) {
 	app, project := newTestAppModelWithProject()
 	app.projectTree = NewProjectTreeModel(project, app.config, nil)
 	app.viewStack = []ViewType{ViewProjectTree}
 
-	// Simulate shift+space press
-	msg := tea.KeyPressMsg{Code: tea.KeySpace, Mod: tea.ModShift}
+	// Simulate space press
+	msg := tea.KeyPressMsg{Code: tea.KeySpace}
 	app.Update(msg)
 
 	// peekTask may or may not be set depending on whether projectTree has cursor task
@@ -135,20 +135,20 @@ func TestShiftSpaceActivatesPeek(t *testing.T) {
 	_ = app.peekTask
 }
 
-// TestKeyReleaseMsg_ClearsPeek verifies that shift+space release clears peek state.
+// TestKeyReleaseMsg_ClearsPeek verifies that space release clears peek state.
 func TestKeyReleaseMsg_ClearsPeek(t *testing.T) {
 	app, project := newTestAppModelWithProject()
 	app.peekTask = project.Tasks[0]
 	app.peekActive = true
 
-	msg := tea.KeyReleaseMsg{Code: tea.KeySpace, Mod: tea.ModShift}
+	msg := tea.KeyReleaseMsg{Code: tea.KeySpace}
 	result, _ := app.Update(msg)
 	appResult := result.(*AppModel)
 
 	if appResult.peekActive {
-		t.Error("peekActive should be false after shift+space release")
+		t.Error("peekActive should be false after space release")
 	}
 	if appResult.peekTask != nil {
-		t.Error("peekTask should be nil after shift+space release")
+		t.Error("peekTask should be nil after space release")
 	}
 }

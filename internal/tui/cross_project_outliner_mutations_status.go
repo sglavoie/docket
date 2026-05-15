@@ -38,8 +38,11 @@ func (m *OutlinerModel) crossHandleStatusMutation(status models.TaskStatus) (tea
 	if result.StatusMessage != "" {
 		m.setStatus(result.StatusMessage)
 	}
-	m.mutationFlash = true
-	m.mutationFlashBg = statusMutationFlashBg(status)
+	if status == models.StatusDone {
+		m.setCompletionFlash()
+		return m, tea.Batch(result.Cmd, completionFlashScheduler()), true
+	}
+	m.setMutationFlash(statusMutationFlashBg(status))
 	return m, tea.Batch(result.Cmd, mutationFlashTimeout()), true
 }
 
