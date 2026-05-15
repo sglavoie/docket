@@ -162,13 +162,50 @@ func renderChecklistIndicator(task *models.Task) string {
 	if len(task.Checklist) == 0 {
 		return ""
 	}
+	completed, total := checklistCounts(task)
+	return MutedStyle.Render(fmt.Sprintf("%s%d/%d", IconChecklist(), completed, total))
+}
+
+// renderChecklistIndicatorCompact renders the smallest checklist progress form
+// (no icon, plain "X/Y") suitable for very narrow containers like Kanban cards.
+func renderChecklistIndicatorCompact(task *models.Task) string {
+	if len(task.Checklist) == 0 {
+		return ""
+	}
+	completed, total := checklistCounts(task)
+	return MutedStyle.Render(fmt.Sprintf("%d/%d", completed, total))
+}
+
+// renderChecklistBar renders a checklist progress bar of the form "[▓▓▓░░] 3/5".
+// When the available width is too small to render a meaningful bar, falls back
+// to renderChecklistIndicator. Returns "" when the checklist is empty.
+func renderChecklistBar(task *models.Task, width int) string {
+	if len(task.Checklist) == 0 {
+		return ""
+	}
+	const minBarWidth = 12
+	if width < minBarWidth {
+		return renderChecklistIndicator(task)
+	}
+	completed, total := checklistCounts(task)
+	percent := float64(completed) / float64(total) * 100
+	bar := "[" + RenderProgressBar(percent, 5) + "]"
+	fraction := fmt.Sprintf("%d/%d", completed, total)
+	if completed == total {
+		return bar + " " + SuccessStyle.Render(fraction)
+	}
+	return bar + " " + MutedStyle.Render(fraction)
+}
+
+// checklistCounts returns (completed, total) for a task's checklist.
+func checklistCounts(task *models.Task) (int, int) {
 	completed := 0
 	for _, item := range task.Checklist {
 		if item.Done {
 			completed++
 		}
 	}
-	return MutedStyle.Render(fmt.Sprintf("%s%d/%d", IconChecklist(), completed, len(task.Checklist)))
+	return completed, len(task.Checklist)
 }
 
 // renderProgressFraction renders an inline progress bar + fraction for parent tasks.
@@ -288,6 +325,9 @@ func RenderCrossProjectTaskLine(
 		badgeStyle = lipgloss.NewStyle().Foreground(opts.BadgeColor)
 	}
 	projectBadge := badgeStyle.Render(fmt.Sprintf("[%s]", truncateToVisualWidth(proj.Name, maxProjLen)))
+	if opts.Layout != nil && opts.Layout.HasProject {
+		projectBadge = PadBadge(projectBadge, opts.Layout.ProjectWidth)
+	}
 	preBadges := opts.Prefix + projectBadge + " "
 
 	// Build indicator groups
@@ -428,7 +468,14 @@ func (tl TaskLine) Render() string {
 		title = GetTitlePriorityStyle(tl.Task.Priority).Render(title)
 	}
 
-	// Build priority segment: fixed-width when Layout set, variable otherwise.
+	// Fixed-width badge columns when Layout is set, variable otherwise.
+	if tl.Layout != nil && tl.Layout.HasStatus {
+		statusIcon = PadBadge(statusIcon, tl.Layout.StatusWidth)
+	}
+	if tl.Layout != nil && tl.Layout.HasType {
+		typeIcon = PadBadge(typeIcon, tl.Layout.TypeWidth)
+	}
+
 	var prioritySegment string
 	if tl.Layout != nil && tl.Layout.HasPriority {
 		prioritySegment = PadBadge(priorityBadge, tl.Layout.PriorityWidth) + " "
@@ -436,9 +483,17 @@ func (tl TaskLine) Render() string {
 		prioritySegment = priorityBadge + " "
 	}
 
-	// Build stage segment (variable width, no column padding).
+	// Build stage segment. When Layout reserves a stage column, pad the
+	// rendered badge (or an empty placeholder) so the title column stays
+	// aligned across rows.
 	var stageSegment string
-	if tl.StageBadge != "" {
+	if tl.Layout != nil && tl.Layout.HasStage {
+		if tl.StageBadge != "" {
+			stageSegment = PadBadge(tl.StageBadge, tl.Layout.StageWidth) + " "
+		} else {
+			stageSegment = EmptyBadge(tl.Layout.StageWidth) + " "
+		}
+	} else if tl.StageBadge != "" {
 		stageSegment = tl.StageBadge + " "
 	}
 

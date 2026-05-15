@@ -50,6 +50,12 @@ func (m *TaskDetailModel) handleKeyMsg(msg tea.KeyPressMsg) (tea.Model, tea.Cmd)
 		m.scrollOffset = m.totalLines
 		m.clampScroll()
 		return m, nil
+	case "H":
+		m.historyExpanded = !m.historyExpanded
+		// Re-clamp scroll: total lines change when the History cluster
+		// expands or collapses, so the previous offset may now exceed bounds.
+		m.clampScroll()
+		return m, nil
 
 	// Prefix keys
 	case ",":
@@ -207,6 +213,24 @@ func (m *TaskDetailModel) getTaskRef() (*models.Task, *models.Project) {
 	return m.task, m.project
 }
 
+// HandledKeys returns every key the task detail view's Update can process.
+// Matches the cases in handleKeyMsg plus prefix entry keys; status/priority
+// suffix keys are reachable only via the "," and "!" prefixes and are not
+// listed individually here.
+func (m *TaskDetailModel) HandledKeys() []string {
+	return []string{
+		"esc", "enter",
+		"j", "down", "k", "up",
+		"ctrl+d", "ctrl+u",
+		"G",
+		"H",
+		",", "!",
+		"c", "l", "a", "h", "p", "S", "D", "d",
+		"o", "O", "e", "g",
+		"?",
+	}
+}
+
 // GetHelpItems returns the help items for the task detail view.
 func (m *TaskDetailModel) GetHelpItems() []HelpItem {
 	return []HelpItem{
@@ -214,6 +238,7 @@ func (m *TaskDetailModel) GetHelpItems() []HelpItem {
 		{Key: "Ctrl+D/U", Description: "Half page down/up", Category: "Navigation"},
 		{Key: "g/G", Description: "Top/bottom (g also opens glow at top)", Category: "Navigation"},
 		{Key: "o/Esc", Description: "Close detail view", Category: "Navigation"},
+		{Key: "H", Description: "Toggle History cluster (collapse/expand)", Category: "Navigation"},
 		{Key: ",s/d/b/x/o/r", Description: "Status: start/done/block/cancel/reopen/review", Category: "Actions"},
 		{Key: "!1-5", Description: "Set priority", Category: "Actions"},
 		{Key: "O", Description: "Open external URL", Category: "Actions"},

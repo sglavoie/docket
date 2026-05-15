@@ -258,6 +258,36 @@ func (m *KanbanModel) buildKeyMap() *keymap.KeyMap {
 	})
 	entries = append(entries, filterEntries...)
 
+	// --- Perspective lens (cross-project mode only): "P" prefix ---
+	if m.crossProject {
+		entries = append(entries, BuildPerspectivePrefixEntry(PerspectivePrefixDeps{
+			SelectByKey: func(perspKey int) (tea.Model, tea.Cmd) {
+				m.activePerspective = perspKey
+				m.rebuildCols()
+				m.clampCursor()
+				name := PerspectiveLensName(perspKey)
+				if name != "" {
+					m.setStatus(fmt.Sprintf("Perspective: %s", name))
+				}
+				return m, nil
+			},
+			CycleNext: func() (tea.Model, tea.Cmd) {
+				m.activePerspective = CyclePerspectiveLens(m.activePerspective, 1)
+				m.rebuildCols()
+				m.clampCursor()
+				m.setStatus(fmt.Sprintf("Perspective: %s", PerspectiveLensName(m.activePerspective)))
+				return m, nil
+			},
+			CyclePrev: func() (tea.Model, tea.Cmd) {
+				m.activePerspective = CyclePerspectiveLens(m.activePerspective, -1)
+				m.rebuildCols()
+				m.clampCursor()
+				m.setStatus(fmt.Sprintf("Perspective: %s", PerspectiveLensName(m.activePerspective)))
+				return m, nil
+			},
+		}))
+	}
+
 	viewName := "Kanban"
 	if m.crossProject {
 		viewName = "Cross-Project Kanban"

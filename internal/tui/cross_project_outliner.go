@@ -62,25 +62,19 @@ func (m *OutlinerModel) loadCrossProjectsCmd() tea.Cmd {
 	cfg := m.config
 	svc := m.projectService
 	return func() tea.Msg {
-		var projects []*models.Project
-		if cfg.CrossOutlinerCycleOnly != nil && *cfg.CrossOutlinerCycleOnly {
-			ctxKey := cfg.FilterContext
+		cycleOnly := cfg.CrossOutlinerCycleOnly != nil && *cfg.CrossOutlinerCycleOnly
+		var ctxKey string
+		if cycleOnly {
+			ctxKey = cfg.FilterContext
 			if cfg.FilterCustomContext != "" {
 				ctxKey = "+" + cfg.FilterCustomContext
 			}
-			projects = cfg.GetCycleProjectsForContext(ctxKey)
-		} else {
-			projects = cfg.GetActiveProjects()
 		}
-		var loaded []*models.Project
-		var failed []string
-		for _, p := range projects {
-			if err := svc.Load(p); err != nil {
-				failed = append(failed, p.Name)
-				continue
-			}
-			loaded = append(loaded, p)
-		}
+		_, loaded, failed := LoadCrossScopeTasks(cfg, svc, CrossScopeOpts{
+			ActiveOnly:        true,
+			CycleProjectsOnly: cycleOnly,
+			ContextKey:        ctxKey,
+		})
 		return crossProjectsLoadedMsg{
 			projects:    loaded,
 			failedNames: failed,

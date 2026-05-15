@@ -19,6 +19,7 @@ func (m *WeeklyReviewModel) renderAllSections() ([]string, int) {
 	var colLayout *ColumnLayout
 	if m.width >= MinColumnAlignWidth {
 		var allTasks []*models.Task
+		var allItems []CrossProjectTask
 		for _, section := range m.sectionOrder {
 			if m.collapsedSections[int(section)] {
 				continue
@@ -27,22 +28,32 @@ func (m *WeeklyReviewModel) renderAllSections() ([]string, int) {
 			case WeeklySectionStaleTasks:
 				for _, dt := range m.staleTasks {
 					allTasks = append(allTasks, dt.Task)
+					allItems = append(allItems, CrossProjectTask{Task: dt.Task, Project: dt.Project})
 				}
 			case WeeklySectionPriorityMismatch:
 				for _, dt := range m.priorityMismatch {
 					allTasks = append(allTasks, dt.Task)
+					allItems = append(allItems, CrossProjectTask{Task: dt.Task, Project: dt.Project})
 				}
 			case WeeklySectionUpcomingWeek:
 				for _, dt := range m.upcomingWeek {
 					allTasks = append(allTasks, dt.Task)
+					allItems = append(allItems, CrossProjectTask{Task: dt.Task, Project: dt.Project})
 				}
 			case WeeklySectionRecurringOverview:
 				for _, dt := range m.recurringOverview {
 					allTasks = append(allTasks, dt.Task)
+					allItems = append(allItems, CrossProjectTask{Task: dt.Task, Project: dt.Project})
 				}
 			}
 		}
-		colLayout = ComputeTaskLineColumnLayout(allTasks, true)
+		colLayout = ComputeBadgeWidths(allTasks, BadgeWidthOpts{
+			HideLowPriority: true,
+			IncludeStatus:   true,
+			IncludeType:     true,
+			IncludeStage:    true,
+			ProjectNameFor:  crossProjectNameLookup(allItems),
+		})
 	}
 
 	rowIdx := 0

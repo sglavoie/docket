@@ -90,3 +90,13 @@ Navigation aliases (`up`/`down`) are usually handled internally but not register
 - `q` is reserved exclusively for queue management (toggle queue panel). It has no quit/back/navigation role.
 
 The global `handleEscKey()` in `app_update.go` intercepts Esc before views receive it. Views that need to handle Esc internally (expanded views, input modes, delete confirmations) must be added to `handleEscKey()` to return `false`, allowing the key to propagate to the view's `Update()` method. See existing checks for ViewWorkflowRules, ViewTaskComments, etc. as examples.
+
+### TUI Status & Undo Toasts
+
+Destructive but reversible mutations (delete, archive, bulk status/priority change) call `setUndoableStatus(msg, undoCb)` in `handler_helpers.go`. The toast displays for `UndoToastTimeout` (6s); within that window, pressing `u` invokes `undoCb`. A second call replaces both the callback and `statusExpiresAt`, so rapid back-to-back destructions cleanly undo only the most recent one — the older `UndoToastTimeoutMsg` tick is benign because its handler checks `statusExpiresAt` before clearing.
+
+Non-destructive success messages use the plain (2s) status path. Do not bind `u` as a global keybinding; it works only while the model-level guard is true.
+
+### TUI Column Alignment
+
+List-row renderers (Focus Board, Kanban, Outliner, All-Tasks, Daily/Weekly review, Due Date, Priority, Global Search, etc.) share badge column widths through `ColumnLayout` in `column_layout.go`. The struct tracks `PriorityWidth`, `StatusWidth`, `TypeWidth`, `StageWidth`, and `ProjectWidth`; call `ComputeBadgeWidths(...)` once per render pass and pass the result down to the row renderer in `shared_render.go`. Use `PadBadge` for consistent left-padding of empty slots — never hand-pad strings.

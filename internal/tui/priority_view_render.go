@@ -111,13 +111,18 @@ func (m *PriorityViewModel) computeColumnLayout() *ColumnLayout {
 	if m.Width() < MinColumnAlignWidth {
 		return nil
 	}
+	opts := BadgeWidthOpts{
+		IncludeStatus: true,
+		IncludeType:   true,
+		IncludeStage:  true,
+	}
 	if m.tabs.Active == priorityTabByScore {
 		scored := m.visibleScoredTasks()
 		tasks := make([]*models.Task, 0, len(scored))
 		for _, pt := range scored {
 			tasks = append(tasks, pt.Task)
 		}
-		return ComputeTaskLineColumnLayout(tasks, false)
+		return ComputeBadgeWidths(tasks, opts)
 	}
 	overdue, today, thisWeek, later, backlog, waitingOn := m.filteredGroupsWithSubTab()
 	var tasks []*models.Task
@@ -126,7 +131,7 @@ func (m *PriorityViewModel) computeColumnLayout() *ColumnLayout {
 			tasks = append(tasks, pt.Task)
 		}
 	}
-	return ComputeTaskLineColumnLayout(tasks, false)
+	return ComputeBadgeWidths(tasks, opts)
 }
 
 // renderAllGroups renders all task groups and returns the lines.

@@ -397,7 +397,7 @@ func applyDeleteTask(pf persistFn, persister Persister, project *models.Project,
 	return TaskOpResult{
 		StatusMessage: fmt.Sprintf("Deleted task #%d (u to undo)", shortID),
 		Cmd: func() tea.Msg {
-			return TaskDeletedMsg{Task: task}
+			return TaskDeletedMsg{Task: task, Project: project}
 		},
 	}
 }

@@ -293,7 +293,12 @@ func (m *FocusViewModel) computeColumnLayout() *ColumnLayout {
 	for _, ft := range m.filtered {
 		tasks = append(tasks, ft.Task)
 	}
-	return ComputeTaskLineColumnLayout(tasks, false)
+	return ComputeBadgeWidths(tasks, BadgeWidthOpts{
+		IncludeStatus:  true,
+		IncludeType:    true,
+		IncludeStage:   true,
+		ProjectNameFor: focusTaskNameLookup(m.filtered),
+	})
 }
 
 // renderTaskLineWithPrefix renders a single task line with an optional prefix.

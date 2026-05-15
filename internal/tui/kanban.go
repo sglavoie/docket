@@ -53,6 +53,10 @@ type KanbanModel struct {
 	// Filter state
 	FilterMixin
 
+	// Perspective lens (cross-project mode only). PerspectiveInactive (-1)
+	// means no lens is applied; 0..9 selects a preset from PerspectivePresets().
+	activePerspective int
+
 	// Status message (temporary, auto-clears)
 	statusMsg string
 
@@ -82,7 +86,8 @@ func NewCrossProjectKanbanModel(
 ) *KanbanModel {
 	m := newKanbanBase(cfg, cfgMgr, svc)
 	m.crossProject = true
-	m.loadedProjects = cfg.GetActiveProjects()
+	_, projects, _ := LoadCrossScopeTasks(cfg, svc, CrossScopeOpts{ActiveOnly: true})
+	m.loadedProjects = projects
 	m.load()
 	return m
 }
@@ -96,11 +101,12 @@ func newKanbanBase(cfg *config.Config, cfgMgr *config.Manager, svc *ProjectServi
 	}
 
 	m := &KanbanModel{
-		config:        cfg,
-		configManager: cfgMgr,
-		svc:           svc,
-		mode:          mode,
-		FilterMixin:   FilterMixin{filter: newFilterState()},
+		config:            cfg,
+		configManager:     cfgMgr,
+		svc:               svc,
+		mode:              mode,
+		FilterMixin:       FilterMixin{filter: newFilterState()},
+		activePerspective: PerspectiveInactive,
 	}
 	km := m.buildKeyMap()
 	m.Dispatcher = keymap.NewDispatcher(km)
@@ -172,11 +178,16 @@ func (m *KanbanModel) getCursorCard() *KanbanCard {
 }
 
 // filteredCards returns m.allCards filtered by the active CommonFilterState.
-// Cancelled tasks are excluded in all modes except Status.
+// Cancelled tasks are excluded in all modes except Status. In cross-project
+// mode an active perspective lens further narrows the result.
 func (m *KanbanModel) filteredCards() []KanbanCard {
 	hideCanceled := m.mode != KanbanModeStatus
 	hasFilters := hasActiveCommonFilters(&m.filter)
-	if !hideCanceled && !hasFilters {
+	var perspFilter func(*models.Task) bool
+	if m.crossProject {
+		perspFilter = PerspectiveLensFilter(m.activePerspective)
+	}
+	if !hideCanceled && !hasFilters && perspFilter == nil {
 		return m.allCards
 	}
 	result := make([]KanbanCard, 0, len(m.allCards))
@@ -192,6 +203,9 @@ func (m *KanbanModel) filteredCards() []KanbanCard {
 			if !passesCommonFilters(card.Task, &m.filter, projectID, m.config) {
 				continue
 			}
+		}
+		if perspFilter != nil && !perspFilter(card.Task) {
+			continue
 		}
 		result = append(result, card)
 	}

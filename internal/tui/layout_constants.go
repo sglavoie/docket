@@ -7,10 +7,18 @@ package tui
 // render pass. When non-nil, badge columns are padded to fixed widths so
 // metadata aligns vertically across all rows. Nil = current variable behavior.
 type ColumnLayout struct {
-	PriorityWidth int  // 1 when any row shows priority badge; 0 if all hidden
-	ShortIDWidth  int  // max rendered "#N" visual width; 0 if column not visible
-	HasPriority   bool // true if any visible row has a priority badge shown
-	HasShortID    bool // true if short ID column is visible and any row has an ID
+	PriorityWidth int // 1 when any row shows priority badge; 0 if all hidden
+	ShortIDWidth  int // max rendered "#N" visual width; 0 if column not visible
+	StatusWidth   int // max rendered status badge visual width; 0 when column inactive
+	TypeWidth     int // max rendered type badge visual width; 0 when column inactive
+	StageWidth    int // max rendered stage badge visual width; 0 when no row has a stage
+	ProjectWidth  int // max rendered "[project]" badge visual width (cross-project views); 0 when not in use
+	HasPriority   bool
+	HasShortID    bool
+	HasStatus     bool
+	HasType       bool
+	HasStage      bool
+	HasProject    bool
 }
 
 const (
@@ -58,6 +66,10 @@ const (
 	// section (summary/alerts cards) in the dashboard. The top project
 	// list gets whatever vertical space remains after reserving this.
 	DashboardBottomPaneHeight = 12
+
+	// CompactCardHeight is the height reserved for an inert one-line
+	// summary row in compact dashboard card mode.
+	CompactCardHeight = 1
 
 	// FocusTitleMaxWidth is the maximum width for truncated titles in focus mode indicators.
 	FocusTitleMaxWidth = 40

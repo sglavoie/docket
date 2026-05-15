@@ -26,6 +26,11 @@ type TaskDetailModel struct {
 	renderedDesc      string
 	renderedDescWidth int
 	renderedDescTheme string
+
+	// historyExpanded controls progressive disclosure of the History cluster
+	// (Comments, Decisions, Attachments). When false, only a one-line summary
+	// header is rendered. Toggled by `H`. Intentionally not persisted.
+	historyExpanded bool
 }
 
 // NewTaskDetailModel creates a new task detail view.

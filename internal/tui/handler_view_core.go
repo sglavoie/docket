@@ -63,6 +63,15 @@ func (m *AppModel) handleViewCoreMessages(msg tea.Msg) (bool, tea.Cmd) {
 		m.clearStatus()
 		return true, nil
 
+	case UndoToastTimeoutMsg:
+		// Only clear if the deadline that fired this tick is still the
+		// active one. A newer toast (with later expiresAt) may have
+		// replaced this one — leave its callback alone.
+		if m.statusUndoCb != nil && !time.Now().Before(m.statusExpiresAt) {
+			m.clearStatus()
+		}
+		return true, nil
+
 	case StatusMsg:
 		m.setSuccessStatus(string(msg))
 		return true, defaultStatusTimeout()

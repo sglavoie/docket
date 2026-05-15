@@ -31,10 +31,16 @@ func (m *FocusBoardModel) View() tea.View { //nolint:gocyclo
 	} else {
 		// Normal mode: show title + tab bar
 		subtitle := fmt.Sprintf("%d tasks", len(m.rows))
+		if name := PerspectiveLensName(m.activePerspective); name != "" {
+			subtitle += " · " + name
+		}
 		b.WriteString(renderFullscreenTitle("Today", subtitle, m.AccentColor()))
 		b.WriteString("\n")
 		b.WriteString(renderTabBarWithOptionalSubTabs(m.computedTabNames(), m.tabs.Active, nil, false, m.width, m.AccentColor()))
 		b.WriteString("\n")
+		if name := PerspectiveLensName(m.activePerspective); name != "" {
+			b.WriteString(MutedStyle.Render("  Perspective: "+name) + "\n")
+		}
 	}
 
 	// Search input
@@ -167,6 +173,22 @@ func (m *FocusBoardModel) View() tea.View { //nolint:gocyclo
 	var lines []string
 	maxTitleLen := max(m.width-FocusBoardTitlePadding, FocusBoardMinTitleWidth)
 
+	// Compute badge widths once per render pass for column alignment.
+	var colLayout *ColumnLayout
+	if m.width >= MinColumnAlignWidth {
+		tasks := make([]*models.Task, 0, len(m.filtered))
+		for _, r := range m.filtered {
+			if r.Task != nil {
+				tasks = append(tasks, r.Task)
+			}
+		}
+		colLayout = ComputeBadgeWidths(tasks, BadgeWidthOpts{
+			IncludeStatus: true,
+			IncludeType:   true,
+			IncludeStage:  true,
+		})
+	}
+
 	plannedIdx := 0
 	for i, row := range m.filtered {
 		isSelected := i == m.cursor
@@ -196,7 +218,7 @@ func (m *FocusBoardModel) View() tea.View { //nolint:gocyclo
 			rowNum = fmt.Sprintf("%d.", plannedIdx)
 			isFirstPlanItem = plannedIdx == 1
 		}
-		line := m.renderRow(row, isSelected, maxTitleLen, rowNum, isFirstPlanItem)
+		line := m.renderRow(row, isSelected, maxTitleLen, rowNum, isFirstPlanItem, colLayout)
 		lines = append(lines, line)
 	}
 
@@ -253,14 +275,6 @@ func (m *FocusBoardModel) View() tea.View { //nolint:gocyclo
 		}
 		rightParts = append(rightParts, fmt.Sprintf("Sort: %s %s", m.sort.Field.ShortString(), direction))
 	}
-	if m.tabs.Active == boardTabAll && m.groupBy != boardGroupByNone {
-		groupLabel := map[boardGroupBy]string{
-			boardGroupBySource:   "source",
-			boardGroupByPriority: "priority",
-			boardGroupByScore:    "score",
-		}[m.groupBy]
-		rightParts = append(rightParts, "grouped by "+groupLabel)
-	}
 	switch m.tabs.Active {
 	case boardTabClosed:
 		rightParts = append(rightParts, fmt.Sprintf("%d closed", len(m.closedRows)))
@@ -283,17 +297,6 @@ func (m *FocusBoardModel) View() tea.View { //nolint:gocyclo
 		if est := sumEstimatesForRows(m.filtered); est > 0 {
 			rightParts = append(rightParts, formatEstimateDays(est)+" est")
 		}
-	case boardTabAll:
-		taskCount := 0
-		for _, r := range m.filtered {
-			if r.GroupHeader == "" {
-				taskCount++
-			}
-		}
-		rightParts = append(rightParts, fmt.Sprintf("%d/%d items", taskCount, len(m.allRows)))
-		if est := sumEstimatesForRows(m.filtered); est > 0 {
-			rightParts = append(rightParts, formatEstimateDays(est)+" est")
-		}
 	default:
 		rightParts = append(rightParts, fmt.Sprintf("%d/%d items", len(m.filtered), len(m.rows)))
 		if est := sumEstimatesForRows(m.filtered); est > 0 {
@@ -307,7 +310,7 @@ func (m *FocusBoardModel) View() tea.View { //nolint:gocyclo
 }
 
 // renderRow renders a single board row line.
-func (m *FocusBoardModel) renderRow(row boardRow, isSelected bool, maxTitleLen int, rowNum string, isFirstPlanItem bool) string {
+func (m *FocusBoardModel) renderRow(row boardRow, isSelected bool, maxTitleLen int, rowNum string, isFirstPlanItem bool, colLayout *ColumnLayout) string {
 	var b strings.Builder
 
 	task := row.Task
@@ -360,6 +363,15 @@ func (m *FocusBoardModel) renderRow(row boardRow, isSelected bool, maxTitleLen i
 		title = GetTitlePriorityStyle(task.Priority).Render(title)
 	}
 	statusIcon := GetStatusBadge(string(task.Status), task.Status.Icon())
+	if colLayout != nil && colLayout.HasStatus {
+		statusIcon = PadBadge(statusIcon, colLayout.StatusWidth)
+	}
+	if colLayout != nil && colLayout.HasType {
+		typeIcon = " " + PadBadge(GetTypeStyle(string(task.Type)).Render(task.Type.Icon()), colLayout.TypeWidth)
+	}
+	if colLayout != nil && colLayout.HasPriority {
+		priorityBadge = PadBadge(priorityBadge, colLayout.PriorityWidth)
+	}
 	content := fmt.Sprintf("%s%s%s%s %s %s%s %s", queueIndicator, indent, prefix, statusIcon, priorityBadge, projectBadge, typeIcon, title)
 
 	estimateStr := ""
@@ -379,7 +391,8 @@ func (m *FocusBoardModel) renderRow(row boardRow, isSelected bool, maxTitleLen i
 			}
 		}
 	}
-	structureGroup := scoreBadge
+	checklistInd := renderChecklistBar(task, m.width)
+	structureGroup := JoinGroupParts(scoreBadge, checklistInd)
 	lifecycleGroup := dueStr
 	contentGroup := JoinGroupParts(renderTruncatedTags(task.Tags, 2, 8), staleBadge)
 	trailing := JoinIndicatorGroups(structureGroup, lifecycleGroup, contentGroup, estimateStr)

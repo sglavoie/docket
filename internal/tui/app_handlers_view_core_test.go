@@ -2,7 +2,11 @@ package tui
 
 import (
 	"errors"
+	"strings"
 	"testing"
+	"time"
+
+	tea "charm.land/bubbletea/v2"
 )
 
 func TestHandleViewMessagesBack(t *testing.T) {
@@ -136,5 +140,85 @@ func TestHandleViewMessagesStatusClearResetsInfoFlag(t *testing.T) {
 	}
 	if app.statusIsInfo {
 		t.Error("statusIsInfo should be cleared by StatusClearMsg")
+	}
+}
+
+func TestSetUndoableStatusStoresCallbackAndExpiry(t *testing.T) {
+	app := newTestAppModel()
+	called := false
+	cmd := app.setUndoableStatus("Deleted '#1 thing' · u to undo · ⌃Z for history", func() tea.Cmd {
+		called = true
+		return nil
+	})
+
+	if app.statusMessage == "" {
+		t.Error("statusMessage should be set")
+	}
+	if !app.statusIsInfo {
+		t.Error("undo toast should be info-styled")
+	}
+	if app.statusUndoCb == nil {
+		t.Error("statusUndoCb should be stored")
+	}
+	if !time.Now().Before(app.statusExpiresAt) {
+		t.Error("statusExpiresAt should be in the future")
+	}
+	if cmd == nil {
+		t.Error("setUndoableStatus should return a tick cmd")
+	}
+	app.statusUndoCb()
+	if !called {
+		t.Error("stored callback should be invokable")
+	}
+}
+
+func TestUndoToastTimeoutClearsExpiredToast(t *testing.T) {
+	app := newTestAppModel()
+	_ = app.setUndoableStatus("toast", func() tea.Cmd { return nil })
+	// Force the toast to look already-expired so the timeout handler clears it.
+	app.statusExpiresAt = time.Now().Add(-time.Second)
+
+	handled, _ := app.handleViewMessages(UndoToastTimeoutMsg{})
+	if !handled {
+		t.Error("UndoToastTimeoutMsg should be handled")
+	}
+	if app.statusMessage != "" {
+		t.Errorf("expired toast should be cleared, got %q", app.statusMessage)
+	}
+	if app.statusUndoCb != nil {
+		t.Error("statusUndoCb should be nil after timeout clear")
+	}
+}
+
+func TestUndoToastTimeoutLeavesReplacedToastAlone(t *testing.T) {
+	app := newTestAppModel()
+	// First toast — its tick is still pending.
+	_ = app.setUndoableStatus("first", func() tea.Cmd { return nil })
+	firstExpiry := app.statusExpiresAt
+	// Replacement toast extends the deadline.
+	_ = app.setUndoableStatus("second", func() tea.Cmd { return nil })
+
+	if !app.statusExpiresAt.After(firstExpiry) {
+		t.Fatal("replacement toast should push expiresAt later")
+	}
+
+	// First tick fires now (Now() < replacement expiresAt) — must NOT clear.
+	handled, _ := app.handleViewMessages(UndoToastTimeoutMsg{})
+	if !handled {
+		t.Error("UndoToastTimeoutMsg should be handled")
+	}
+	if !strings.Contains(app.statusMessage, "second") {
+		t.Errorf("replacement toast should remain, got %q", app.statusMessage)
+	}
+}
+
+func TestFormatUndoToastIncludesContext(t *testing.T) {
+	got := formatUndoToast("Delete Task", "#42 Login flow")
+	want := "Delete Task '#42 Login flow' · u to undo · ⌃Z for history"
+	if got != want {
+		t.Errorf("formatUndoToast = %q, want %q", got, want)
+	}
+	if formatUndoToast("Bulk Edit", "") != "Bulk Edit · u to undo · ⌃Z for history" {
+		t.Error("formatUndoToast should omit empty context")
 	}
 }

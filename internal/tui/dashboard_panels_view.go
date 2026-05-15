@@ -21,10 +21,19 @@ type dashboardPanelCard struct {
 	width   int
 }
 
-// renderInfoSection renders the info cards below the project list.
-// Wide (>= DashboardInfoSectionWideMinWidth): cards side-by-side.
-// Narrow: cards stacked vertically.
+// renderInfoSection dispatches between the compact (default) and full
+// dashboard info card layouts based on m.dashboardCompactCards.
 func (m *DashboardModel) renderInfoSection(width int, selected *models.Project) string {
+	if m.dashboardCompactCards {
+		return m.renderInfoSectionCompact(width, selected)
+	}
+	return m.renderInfoSectionFull(width, selected)
+}
+
+// renderInfoSectionFull renders all four info cards regardless of whether
+// they carry actionable content. Used when the user has toggled `, c` to
+// opt out of compact mode.
+func (m *DashboardModel) renderInfoSectionFull(width int, selected *models.Project) string {
 	cfg := DashboardCardConfig()
 	cfg.Height = DashboardBottomPaneHeight
 
@@ -107,6 +116,218 @@ func (m *DashboardModel) renderInfoSection(width int, selected *models.Project) 
 	cards = append(cards, dashboardPanelCard{title: "Alerts", content: alertsContent, width: alertsCardW})
 
 	return renderDashboardCards(width, wide, cfg, cards)
+}
+
+// infoCardKind enumerates the four info cards in canonical compact-mode order.
+type infoCardKind int
+
+const (
+	infoCardAlerts infoCardKind = iota
+	infoCardTopScored
+	infoCardPipeline
+	infoCardRecent
+)
+
+// infoCardSpec carries enough information to render either a full card or a
+// one-line inert summary row for a single info card.
+type infoCardSpec struct {
+	kind       infoCardKind
+	title      string
+	actionable bool
+	summary    string
+}
+
+// renderInfoSectionCompact renders actionable cards in the usual grid and
+// collapses inert cards into one-line summary rows beneath. Card order
+// within each partition: Alerts → Top Scored → Pipeline → Recent.
+func (m *DashboardModel) renderInfoSectionCompact(width int, selected *models.Project) string {
+	cfg := DashboardCardConfig()
+	cfg.Height = DashboardBottomPaneHeight
+
+	alertLines := m.computeGlobalAlertLines()
+
+	var scoringProfile *scoring.ScoringProfile
+	var bestTask *models.Task
+	var bestScore float64
+	if selected != nil {
+		scoringProfile = m.config.GetProjectScoringProfile(selected.ID)
+		if scoringProfile != nil {
+			for _, task := range selected.Tasks {
+				if task == nil || task.Status.IsComplete() {
+					continue
+				}
+				score := scoring.ComputeScore(task, scoringProfile)
+				if bestTask == nil || score > bestScore {
+					bestTask = task
+					bestScore = score
+				}
+			}
+		}
+	}
+
+	var recentTasks []*models.Task
+	if selected != nil {
+		recentTasks = storage.GetRecentTasks(selected.Tasks, 5)
+	}
+
+	specs := []infoCardSpec{
+		{kind: infoCardAlerts, title: "Alerts", actionable: len(alertLines) > 0, summary: "clear"},
+	}
+	if selected != nil && scoringProfile != nil {
+		specs = append(specs, infoCardSpec{
+			kind:       infoCardTopScored,
+			title:      "Top Scored",
+			actionable: bestTask != nil,
+			summary:    "no scoring candidates",
+		})
+	}
+	specs = append(specs, infoCardSpec{
+		kind:       infoCardPipeline,
+		title:      "Pipeline",
+		actionable: m.pipelineHasContent(),
+		summary:    "idle",
+	})
+	if selected != nil {
+		recentTitle := fmt.Sprintf("Recent — %s", selected.Name)
+		specs = append(specs, infoCardSpec{
+			kind:       infoCardRecent,
+			title:      recentTitle,
+			actionable: len(recentTasks) > 0,
+			summary:    "no tasks",
+		})
+	} else {
+		specs = append(specs, infoCardSpec{
+			kind:       infoCardRecent,
+			title:      "Recent",
+			actionable: false,
+			summary:    "no project selected",
+		})
+	}
+
+	var actionable, inert []infoCardSpec
+	for _, s := range specs {
+		if s.actionable {
+			actionable = append(actionable, s)
+		} else {
+			inert = append(inert, s)
+		}
+	}
+
+	cards := m.buildActionableInfoCards(actionable, width, selected, scoringProfile, alertLines, recentTasks)
+	wide := m.width >= DashboardInfoSectionWideMinWidth && len(cards) > 1
+
+	var b strings.Builder
+	if len(cards) > 0 {
+		b.WriteString(renderDashboardCards(width, wide, cfg, cards))
+	}
+	for i, s := range inert {
+		if b.Len() > 0 || i > 0 {
+			b.WriteString("\n")
+		}
+		b.WriteString(renderCompactInertRow(s.title, s.summary, width))
+	}
+	return b.String()
+}
+
+// pipelineHasContent returns true when any pipeline stage has a non-zero count.
+func (m *DashboardModel) pipelineHasContent() bool {
+	pc := m.pipelineCounts
+	return pc.inboxCount > 0 || pc.queueLen > 0 || pc.dailyPlanLen > 0 ||
+		pc.inProgressCount > 0 || pc.completedTodayCount > 0
+}
+
+// renderCompactInertRow renders a single inert-card summary row in muted style.
+func renderCompactInertRow(title, summary string, width int) string {
+	line := fmt.Sprintf("%s · %s", title, summary)
+	return MutedStyle.Render(truncateToVisualWidth(line, max(width, 1)))
+}
+
+// buildActionableInfoCards converts actionable specs into rendered card payloads.
+func (m *DashboardModel) buildActionableInfoCards(
+	specs []infoCardSpec,
+	width int,
+	selected *models.Project,
+	scoringProfile *scoring.ScoringProfile,
+	alertLines []string,
+	recentTasks []*models.Task,
+) []dashboardPanelCard {
+	if len(specs) == 0 {
+		return nil
+	}
+
+	numCards := len(specs)
+	wide := m.width >= DashboardInfoSectionWideMinWidth && numCards > 1
+
+	hasAlerts := false
+	for _, s := range specs {
+		if s.kind == infoCardAlerts {
+			hasAlerts = true
+			break
+		}
+	}
+
+	otherCardW := width
+	alertsCardW := width
+	if wide {
+		if hasAlerts {
+			alertsReduction := width / 10
+			otherCount := numCards - 1
+			if otherCount > 0 {
+				alertsCardW = width/numCards - alertsReduction
+				otherCardW = (width - alertsCardW) / otherCount
+			} else {
+				alertsCardW = width
+			}
+		} else {
+			otherCardW = width / numCards
+		}
+		if alertsCardW < MinCardWidth {
+			alertsCardW = MinCardWidth
+		}
+		if otherCardW < MinCardWidth {
+			otherCardW = MinCardWidth
+		}
+	}
+
+	cards := make([]dashboardPanelCard, 0, numCards)
+	for _, s := range specs {
+		w := otherCardW
+		if s.kind == infoCardAlerts {
+			w = alertsCardW
+		}
+		contentW := max(w-CardBorderOverhead, 1)
+
+		var title, content string
+		switch s.kind {
+		case infoCardAlerts:
+			title = "Alerts"
+			if len(alertLines) > 0 {
+				content = strings.Join(alertLines, "\n")
+			} else {
+				content = MutedStyle.Render("No alerts")
+			}
+		case infoCardTopScored:
+			title = "Top Scored"
+			content = m.renderTopScoredContent(selected, scoringProfile, contentW)
+		case infoCardPipeline:
+			title = "Pipeline"
+			content = m.renderPipelineCardContent(contentW)
+		case infoCardRecent:
+			if selected != nil {
+				title = fmt.Sprintf("Recent — %s", truncateToVisualWidth(selected.Name, w-16))
+				if len(recentTasks) > 0 {
+					content = m.renderRecentTasksContentWithWidth(selected, contentW)
+				} else {
+					content = MutedStyle.Render(EmptyStateNoTasks)
+				}
+			} else {
+				title = "Recent"
+				content = MutedStyle.Render("no project selected")
+			}
+		}
+		cards = append(cards, dashboardPanelCard{title: title, content: content, width: w})
+	}
+	return cards
 }
 
 // renderProjectSummarySection renders the project summary card and alerts card.
@@ -279,6 +500,22 @@ func (m *DashboardModel) renderProjectSummaryContent(project *models.Project) st
 
 // renderGlobalAlerts aggregates alert counts across all active projects.
 func (m *DashboardModel) renderGlobalAlerts(_ int) string {
+	lines := m.computeGlobalAlertLines()
+	if len(lines) == 0 {
+		return MutedStyle.Render("No alerts")
+	}
+	return strings.Join(lines, "\n")
+}
+
+// globalAlertCount returns the number of distinct alert lines that would render.
+// Zero means the alert card is inert.
+func (m *DashboardModel) globalAlertCount() int {
+	return len(m.computeGlobalAlertLines())
+}
+
+// computeGlobalAlertLines walks all active projects and produces the rendered
+// alert lines. Both renderGlobalAlerts and globalAlertCount consume this.
+func (m *DashboardModel) computeGlobalAlertLines() []string {
 	var totalOverdue, totalDueToday, totalBlocked, totalBlockers, totalCompletedThisWeek int
 	var inboxProjects []string
 
@@ -349,10 +586,7 @@ func (m *DashboardModel) renderGlobalAlerts(_ int) string {
 		lines = append(lines, MutedStyle.Render(fmt.Sprintf("%s %d global notes", icons.Get("notes"), len(globalNotes))))
 	}
 
-	if len(lines) == 0 {
-		return MutedStyle.Render("No alerts")
-	}
-	return strings.Join(lines, "\n")
+	return lines
 }
 
 // renderTopScoredContent returns the highest-scored incomplete task with a score bar.
@@ -396,21 +630,45 @@ func (m *DashboardModel) renderRecentTasksContentWithWidth(project *models.Proje
 
 	titleWidth := max(contentWidth-5, MinTitleTruncWidth)
 
+	// Align badge columns across the 5 rows. Narrow cards skip alignment.
+	var layout *ColumnLayout
+	if contentWidth >= MinColumnAlignWidth {
+		layout = ComputeBadgeWidths(recentTasks, BadgeWidthOpts{
+			IncludeStatus: true,
+			IncludeType:   true,
+			IncludeStage:  true,
+		})
+	}
+
 	var lines []string
 	for _, task := range recentTasks {
 		timeStr := storage.FormatRelativeTime(task.UpdatedAt)
+		typeBadge := GetTypeBadge(string(task.Type), task.Type.Icon())
+		statusBadge := GetStatusBadge(string(task.Status), task.Status.Icon())
 		stageBadge := GetStageBadge(task.Stage)
 		stageSegment := ""
-		if stageBadge != "" {
+		if layout != nil && layout.HasStage {
+			if stageBadge == "" {
+				stageSegment = EmptyBadge(layout.StageWidth) + " "
+			} else {
+				stageSegment = PadBadge(stageBadge, layout.StageWidth) + " "
+			}
+		} else if stageBadge != "" {
 			stageSegment = stageBadge + " "
+		}
+		if layout != nil && layout.HasType {
+			typeBadge = PadBadge(typeBadge, layout.TypeWidth)
+		}
+		if layout != nil && layout.HasStatus {
+			statusBadge = PadBadge(statusBadge, layout.StatusWidth)
 		}
 
 		if lipgloss.Width(task.Title)+2+lipgloss.Width(timeStr) <= titleWidth {
 			gap := max(titleWidth-lipgloss.Width(task.Title)-lipgloss.Width(timeStr), 2)
 			line := fmt.Sprintf("%s %s%s %s%s%s",
-				GetTypeBadge(string(task.Type), task.Type.Icon()),
+				typeBadge,
 				stageSegment,
-				GetStatusBadge(string(task.Status), task.Status.Icon()),
+				statusBadge,
 				task.Title,
 				strings.Repeat(" ", gap),
 				MutedStyle.Render(timeStr))
@@ -419,9 +677,9 @@ func (m *DashboardModel) renderRecentTasksContentWithWidth(project *models.Proje
 		}
 
 		line1 := fmt.Sprintf("%s %s%s %s",
-			GetTypeBadge(string(task.Type), task.Type.Icon()),
+			typeBadge,
 			stageSegment,
-			GetStatusBadge(string(task.Status), task.Status.Icon()),
+			statusBadge,
 			truncateAndPad(task.Title, titleWidth))
 		padding := max(contentWidth-lipgloss.Width(timeStr), 0)
 		line2 := MutedStyle.Render(strings.Repeat(" ", padding) + timeStr)

@@ -1,6 +1,9 @@
 package tui
 
 import (
+	"fmt"
+	"time"
+
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/config"
@@ -60,10 +63,39 @@ func (m *AppModel) setUndoableInfoStatus(msg string) {
 	m.setInfoStatus(msg + " (u to undo)")
 }
 
+// UndoToastTimeout is how long a transient undo-available toast remains
+// dismissible by the inline `u` key before it auto-clears.
+const UndoToastTimeout = 6 * time.Second
+
+// setUndoableStatus sets an info-styled status message that the user can
+// undo via the inline `u` key while the toast is still on screen. The
+// undoCb is invoked when `u` is pressed within UndoToastTimeout; once the
+// timeout elapses (or the toast is replaced), the callback is dropped.
+// Returns a tea.Cmd that clears the toast after the timeout.
+func (m *AppModel) setUndoableStatus(msg string, undoCb func() tea.Cmd) tea.Cmd {
+	m.setInfoStatus(msg)
+	m.statusUndoCb = undoCb
+	m.statusExpiresAt = time.Now().Add(UndoToastTimeout)
+	return tea.Tick(UndoToastTimeout, func(time.Time) tea.Msg {
+		return UndoToastTimeoutMsg{}
+	})
+}
+
+// formatUndoToast renders the canonical "<action> '<context>' · u to undo · ⌃Z for history"
+// toast string. The context is omitted if empty, producing "<action> · u to undo · ⌃Z for history".
+func formatUndoToast(action, context string) string {
+	if context == "" {
+		return fmt.Sprintf("%s · u to undo · ⌃Z for history", action)
+	}
+	return fmt.Sprintf("%s '%s' · u to undo · ⌃Z for history", action, context)
+}
+
 // clearStatus clears the status message and resets the info flag.
 func (m *AppModel) clearStatus() {
 	m.statusMessage = ""
 	m.statusIsInfo = false
+	m.statusUndoCb = nil
+	m.statusExpiresAt = time.Time{}
 	m.err = nil
 }
 

@@ -5,6 +5,8 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
+
+	"github.com/sglavoie/tt/internal/storage"
 )
 
 // handleTaskCRUDMessages handles task CRUD messages (create, edit, delete).
@@ -134,5 +136,28 @@ func (m *AppModel) handleTaskUpdated(msg TaskUpdatedMsg) (bool, tea.Cmd) {
 // handleTaskDeleted handles the TaskDeletedMsg.
 func (m *AppModel) handleTaskDeleted(msg TaskDeletedMsg) (bool, tea.Cmd) {
 	m.pruneDeletedTaskRefs()
-	return true, m.handleWithRefresh(false, false, "")
+	refreshCmd := m.handleWithRefresh(false, false, "")
+
+	project := msg.Project
+	if project == nil {
+		project = m.currentProject
+	}
+	if project == nil {
+		return true, refreshCmd
+	}
+
+	// Pull the latest undo snapshot so the toast labels exactly what
+	// `u` will undo. Falling back to the in-message task title would
+	// drift if the project has no undo entry recorded.
+	entries, err := storage.LoadUndoHistory(project)
+	if err != nil || len(entries) == 0 {
+		return true, refreshCmd
+	}
+	latest := entries[0]
+
+	toast := formatUndoToast(latest.Action, latest.Context)
+	undoCb := func() tea.Cmd {
+		return performUndoCmd(m.persister, project)
+	}
+	return true, tea.Batch(refreshCmd, m.setUndoableStatus(toast, undoCb))
 }

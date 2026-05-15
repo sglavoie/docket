@@ -27,6 +27,10 @@ type DashboardModel struct {
 
 	// Pipeline summary counts for the pipeline info card.
 	pipelineCounts pipelineCounts
+
+	// dashboardCompactCards collapses inert info cards (no actionable
+	// content) into one-line summary rows. Default true; toggled by `,c`.
+	dashboardCompactCards bool
 }
 
 // SetPipelineCounts updates the cached pipeline counts shown in the info section.
@@ -37,10 +41,11 @@ func (m *DashboardModel) SetPipelineCounts(counts pipelineCounts) {
 // NewDashboardModel creates a new dashboard model.
 func NewDashboardModel(cfg *config.Config, manager *config.Manager) *DashboardModel {
 	m := &DashboardModel{
-		config:              cfg,
-		configManager:       manager,
-		filterContext:       cfg.FilterContext,       // Load persisted context filter
-		filterCustomContext: cfg.FilterCustomContext, // Load persisted custom context filter
+		config:                cfg,
+		configManager:         manager,
+		filterContext:         cfg.FilterContext,       // Load persisted context filter
+		filterCustomContext:   cfg.FilterCustomContext, // Load persisted custom context filter
+		dashboardCompactCards: true,
 	}
 	m.InitSearchInput("Search projects...", 100, 40)
 	m.loadProjects()

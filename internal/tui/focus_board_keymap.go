@@ -58,8 +58,7 @@ func (m *FocusBoardModel) buildKeyMap() *keymap.KeyMap {
 		},
 	})...)
 
-	// --- Goto group: g prefix (gg = top, gp = go to project, gs/gy/gc/gx = group-by) ---
-	groupByCat := "Group By"
+	// --- Goto group: g prefix (gg = top, gp = go to project) ---
 	entries = append(entries, keymap.GotoGroup(keymap.GotoDeps{
 		JumpToTop: func() (tea.Model, tea.Cmd) { return m, m.JumpToTop() },
 		GoToProject: func() (tea.Model, tea.Cmd) {
@@ -68,32 +67,6 @@ func (m *FocusBoardModel) buildKeyMap() *keymap.KeyMap {
 				return m, nil
 			}
 			return m, func() tea.Msg { return FocusBoardSelectMsg{Task: task, Project: project} }
-		},
-		Extra: []keymap.Entry{
-			keymap.Bind("s", "Group by source", groupByCat, func() (tea.Model, tea.Cmd) {
-				m.groupBy = boardGroupBySource
-				m.applyFilter()
-				m.clampCursor()
-				return m, nil
-			}),
-			keymap.Bind("y", "Group by priority", groupByCat, func() (tea.Model, tea.Cmd) {
-				m.groupBy = boardGroupByPriority
-				m.applyFilter()
-				m.clampCursor()
-				return m, nil
-			}),
-			keymap.Bind("c", "Group by score", groupByCat, func() (tea.Model, tea.Cmd) {
-				m.groupBy = boardGroupByScore
-				m.applyFilter()
-				m.clampCursor()
-				return m, nil
-			}),
-			keymap.Bind("x", "Clear grouping", groupByCat, func() (tea.Model, tea.Cmd) {
-				m.groupBy = boardGroupByNone
-				m.applyFilter()
-				m.clampCursor()
-				return m, nil
-			}),
 		},
 	})...)
 
@@ -565,18 +538,32 @@ func (m *FocusBoardModel) buildKeyMap() *keymap.KeyMap {
 		}),
 	)
 
-	// Assign to project (hidden, duplicates ctrl+b)
-	entries = append(entries,
-		keymap.Bind("P", "Assign to project", "Actions", func() (tea.Model, tea.Cmd) {
-			row := m.getRowAtCursor()
-			if row == nil || row.Project == nil {
-				return m, nil
+	// Perspective lens: "P" prefix (P0–P9, PP next, PN prev)
+	entries = append(entries, BuildPerspectivePrefixEntry(PerspectivePrefixDeps{
+		SelectByKey: func(perspKey int) (tea.Model, tea.Cmd) {
+			m.activePerspective = perspKey
+			m.applyFilter()
+			m.clampCursor()
+			if name := PerspectiveLensName(perspKey); name != "" {
+				m.setStatus(fmt.Sprintf("Perspective: %s", name))
 			}
-			return m, func() tea.Msg {
-				return ShowProjectSelectorForMoveMsg{Task: row.Task, SourceProject: row.Project}
-			}
-		}, keymap.AsHidden()),
-	)
+			return m, nil
+		},
+		CycleNext: func() (tea.Model, tea.Cmd) {
+			m.activePerspective = CyclePerspectiveLens(m.activePerspective, 1)
+			m.applyFilter()
+			m.clampCursor()
+			m.setStatus(fmt.Sprintf("Perspective: %s", PerspectiveLensName(m.activePerspective)))
+			return m, nil
+		},
+		CyclePrev: func() (tea.Model, tea.Cmd) {
+			m.activePerspective = CyclePerspectiveLens(m.activePerspective, -1)
+			m.applyFilter()
+			m.clampCursor()
+			m.setStatus(fmt.Sprintf("Perspective: %s", PerspectiveLensName(m.activePerspective)))
+			return m, nil
+		},
+	}))
 
 	// ctrl+t: switch to Backlog / Plan mode
 	entries = append(entries,

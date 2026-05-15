@@ -5,6 +5,8 @@ import (
 	"strings"
 
 	"charm.land/lipgloss/v2"
+
+	"github.com/sglavoie/tt/internal/models"
 )
 
 // renderTaskList renders the filtered task list.
@@ -17,8 +19,24 @@ func (m *GlobalSearchModel) renderTaskList(paneHeight int) string {
 	maxVisible := paneHeight
 	scrollOffset := calcScrollOffset(m.cursor, maxVisible)
 
+	// Compute badge widths once per render pass for column alignment.
+	var colLayout *ColumnLayout
+	if m.listWidth >= MinColumnAlignWidth {
+		tasks := make([]*models.Task, 0, len(m.filtered))
+		for _, fr := range m.filtered {
+			if fr.result.Task != nil {
+				tasks = append(tasks, fr.result.Task)
+			}
+		}
+		colLayout = ComputeBadgeWidths(tasks, BadgeWidthOpts{
+			IncludeStatus: true,
+			IncludeType:   true,
+			IncludeStage:  true,
+		})
+	}
+
 	for i := scrollOffset; i < len(m.filtered) && i < scrollOffset+maxVisible; i++ {
-		line := m.renderTaskListRow(i, m.filtered[i])
+		line := m.renderTaskListRow(i, m.filtered[i], colLayout)
 		b.WriteString(line)
 		b.WriteString("\n")
 	}
@@ -26,11 +44,11 @@ func (m *GlobalSearchModel) renderTaskList(paneHeight int) string {
 	return b.String()
 }
 
-func (m *GlobalSearchModel) renderTaskListRow(index int, filteredResult filteredSearchResult) string {
+func (m *GlobalSearchModel) renderTaskListRow(index int, filteredResult filteredSearchResult, colLayout *ColumnLayout) string {
 	if filteredResult.result.IsNote() {
 		return m.renderNoteSearchRow(index, filteredResult)
 	}
-	return m.renderTaskSearchRow(index, filteredResult)
+	return m.renderTaskSearchRow(index, filteredResult, colLayout)
 }
 
 func (m *GlobalSearchModel) renderNoteSearchRow(index int, filteredResult filteredSearchResult) string {
@@ -63,16 +81,28 @@ func (m *GlobalSearchModel) renderNoteSearchRow(index int, filteredResult filter
 	return line
 }
 
-func (m *GlobalSearchModel) renderTaskSearchRow(index int, filteredResult filteredSearchResult) string {
+func (m *GlobalSearchModel) renderTaskSearchRow(index int, filteredResult filteredSearchResult, colLayout *ColumnLayout) string {
 	task := filteredResult.result.Task
 	cursor := m.searchRowCursor(index)
 	typeIcon := GetTypeBadge(string(task.Type), task.Type.Icon())
+	if colLayout != nil && colLayout.HasType {
+		typeIcon = PadBadge(typeIcon, colLayout.TypeWidth)
+	}
 	stageBadge := GetStageBadge(task.Stage)
 	stageSegment := ""
-	if stageBadge != "" {
+	if colLayout != nil && colLayout.HasStage {
+		if stageBadge == "" {
+			stageSegment = EmptyBadge(colLayout.StageWidth) + " "
+		} else {
+			stageSegment = PadBadge(stageBadge, colLayout.StageWidth) + " "
+		}
+	} else if stageBadge != "" {
 		stageSegment = stageBadge + " "
 	}
 	statusIcon := GetStatusBadge(string(task.Status), task.Status.Icon())
+	if colLayout != nil && colLayout.HasStatus {
+		statusIcon = PadBadge(statusIcon, colLayout.StatusWidth)
+	}
 	projectSlug := truncateToVisualWidth(filteredResult.result.Project.Slug, 8)
 	projectName := MutedStyle.Render(fmt.Sprintf("[%s]", projectSlug))
 	shortID := MutedStyle.Render(fmt.Sprintf("#%-4d", task.ShortID))

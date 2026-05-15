@@ -76,6 +76,14 @@ func (m *DashboardModel) buildKeyMap() *keymap.KeyMap {
 		keymap.Bind("W", "Workflow rules", "Navigation", func() (tea.Model, tea.Cmd) { return m, nil }),
 	}))
 
+	// , prefix: ,c = toggle compact info cards
+	entries = append(entries, keymap.Prefix(",", "View…", "View", []keymap.Entry{
+		keymap.Bind("c", "Toggle compact info cards", "View", func() (tea.Model, tea.Cmd) {
+			m.dashboardCompactCards = !m.dashboardCompactCards
+			return m, nil
+		}),
+	}))
+
 	// @ opens the cycle manager popup (sub-keys are handled inside the popup itself).
 	entries = append(entries,
 		keymap.Bind("@", "Open cycle manager", "Project Cycling", func() (tea.Model, tea.Cmd) {

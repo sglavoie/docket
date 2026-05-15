@@ -50,6 +50,11 @@ func kanbanRender(m *KanbanModel) string {
 			subtitle += fmt.Sprintf(" · %d filters", n)
 		}
 	}
+	if m.crossProject {
+		if name := PerspectiveLensName(m.activePerspective); name != "" {
+			subtitle += " · " + name
+		}
+	}
 	title := renderFullscreenTitle(modeIcon+" "+modeName, subtitle, m.AccentColor())
 	// When terminal is too narrow for more than one column, show a position
 	// indicator instead of the mode-cycling hint so the user can orient themselves.
@@ -289,14 +294,26 @@ func kanbanRender(m *KanbanModel) string {
 			}
 			selWidth := lipgloss.Width(selIndicator)
 
-			// Format: "[sel]typeBadge statusBadge title"
+			// Optional checklist indicator (compact "3/5" form), only on wide-enough cards.
+			const minCardWidthForChecklist = 18
+			checklistInd := ""
+			checklistWidth := 0
+			if colWidth >= minCardWidthForChecklist {
+				if ind := renderChecklistIndicatorCompact(card.Task); ind != "" {
+					checklistInd = " " + ind
+					checklistWidth = lipgloss.Width(checklistInd)
+				}
+			}
+
+			// Format: "[sel]typeBadge statusBadge title [checklist]"
 			prefixWidth := selWidth + typeBadgeWidth + badgeWidth + 1
-			maxTitleWidth := colWidth - prefixWidth
+			maxTitleWidth := colWidth - prefixWidth - checklistWidth
 			if maxTitleWidth < 0 {
 				maxTitleWidth = 0
+				checklistInd = "" // not enough room; drop indicator
 			}
 			title := truncateToVisualWidth(card.Task.Title, maxTitleWidth)
-			line := selIndicator + typeBadge + statusBadge + " " + title
+			line := selIndicator + typeBadge + statusBadge + " " + title + checklistInd
 
 			isFocused := i == m.activeCol && dr.taskIdx == col.Cursor
 			isFlash := m.flashCardID != "" && card.Task.ID == m.flashCardID

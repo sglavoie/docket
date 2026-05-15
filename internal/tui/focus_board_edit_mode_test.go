@@ -13,17 +13,18 @@ import (
 func newTestFocusBoard() *FocusBoardModel {
 	dp := []FocusTask(nil)
 	return &FocusBoardModel{
-		config:         &config.Config{},
-		projectService: NewProjectService(),
-		dailyPlan:      &dp,
-		dailyPlanIDs:   map[string]bool{},
-		queueIDs:       map[string]bool{},
-		carriedOverIDs: map[string]bool{},
-		addInput:       textinput.New(),
-		editInput:      textinput.New(),
-		FilterMixin:    FilterMixin{filter: newFilterState()},
-		sort:           NewSortState(),
-		tabs:           TabState{Names: focusBoardTabNames},
+		config:            &config.Config{},
+		projectService:    NewProjectService(),
+		dailyPlan:         &dp,
+		dailyPlanIDs:      map[string]bool{},
+		queueIDs:          map[string]bool{},
+		carriedOverIDs:    map[string]bool{},
+		addInput:          textinput.New(),
+		editInput:         textinput.New(),
+		FilterMixin:       FilterMixin{filter: newFilterState()},
+		sort:              NewSortState(),
+		tabs:              TabState{Names: focusBoardTabNames},
+		activePerspective: PerspectiveInactive,
 	}
 }
 
@@ -87,54 +88,6 @@ func TestFocusBoardRefreshMsg_CancelsEditMode(t *testing.T) {
 
 	if m.editMode {
 		t.Error("editMode should be canceled by FocusBoardRefreshMsg")
-	}
-}
-
-// TestFocusBoardAllTab_IncludesNonActiveTasks verifies that the "All" tab shows
-// all non-complete, non-snoozed tasks — not just active/due-soon ones.
-func TestFocusBoardAllTab_IncludesNonActiveTasks(t *testing.T) {
-	project, _ := models.NewProject("proj", "proj", "/tmp/test-proj")
-
-	// Active task (in m.rows)
-	activeTask := makeBoardTask(t, "id-active", 1, "Active Task")
-	activeTask.Active = true
-	activeRow := boardRow{Task: activeTask, Project: project, Source: project.Name}
-
-	// Non-active, non-due task (only in m.allRows, not in m.rows)
-	nextTask := makeBoardTask(t, "id-next", 2, "Next Task")
-	nextTask.Active = false
-	nextTask.Section = models.SectionNext
-	nextRow := boardRow{Task: nextTask, Project: project, Source: project.Name}
-
-	m := newTestFocusBoard()
-	m.rows = []boardRow{activeRow}
-	m.allRows = []boardRow{activeRow, nextRow}
-	m.nextRows = []boardRow{nextRow}
-
-	// Next tab should only show next tasks
-	m.tabs.Active = boardTabNext
-	m.applyFilter()
-	if len(m.filtered) != 1 {
-		t.Errorf("Next tab: expected 1 item, got %d", len(m.filtered))
-	}
-
-	// All tab should show both tasks
-	m.tabs.Active = boardTabAll
-	m.applyFilter()
-	if len(m.filtered) != 2 {
-		t.Errorf("All tab: expected 2 items, got %d", len(m.filtered))
-	}
-
-	// Verify both tasks are present
-	ids := map[string]bool{}
-	for _, r := range m.filtered {
-		ids[r.Task.ID] = true
-	}
-	if !ids["id-active"] {
-		t.Error("All tab: missing active task")
-	}
-	if !ids["id-next"] {
-		t.Error("All tab: missing next task")
 	}
 }
 

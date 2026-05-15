@@ -273,6 +273,29 @@ func (m *ProjectTreeModel) renderTreeContent(width int, focused bool) string { /
 		// Compute column layout for the visible slice (alignment guard: >= MinColumnAlignWidth)
 		if cardContentWidth >= MinColumnAlignWidth {
 			m.colLayout = ComputeTreeColumnLayout(visible[startIdx:endIdx], m.columnConfig)
+			// Augment with status/type/stage widths from the same node set.
+			tasks := make([]*models.Task, 0, endIdx-startIdx)
+			for _, n := range visible[startIdx:endIdx] {
+				if n != nil && n.Task != nil {
+					tasks = append(tasks, n.Task)
+				}
+			}
+			if badge := ComputeBadgeWidths(tasks, BadgeWidthOpts{
+				IncludeStatus: true,
+				IncludeType:   true,
+				IncludeStage:  true,
+			}); badge != nil {
+				if m.colLayout == nil {
+					m.colLayout = badge
+				} else {
+					m.colLayout.HasStatus = badge.HasStatus
+					m.colLayout.StatusWidth = badge.StatusWidth
+					m.colLayout.HasType = badge.HasType
+					m.colLayout.TypeWidth = badge.TypeWidth
+					m.colLayout.HasStage = badge.HasStage
+					m.colLayout.StageWidth = badge.StageWidth
+				}
+			}
 		} else {
 			m.colLayout = nil
 		}

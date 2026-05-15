@@ -12,29 +12,18 @@ import (
 	"github.com/sglavoie/tt/internal/tui/keymap"
 )
 
-var focusBoardTabNames = []string{"Today", "All", "Next", "Closed"}
+var focusBoardTabNames = []string{"Today", "Next", "Closed"}
 
 const (
 	boardTabToday  = 0
-	boardTabAll    = 1
-	boardTabNext   = 2
-	boardTabClosed = 3
+	boardTabNext   = 1
+	boardTabClosed = 2
 )
 
 const (
 	focusModeList   = 0
 	focusModeTunnel = 1
 	focusModeZen    = 2
-)
-
-// boardGroupBy controls the grouping mode applied to the "All" tab.
-type boardGroupBy int
-
-const (
-	boardGroupByNone boardGroupBy = iota
-	boardGroupBySource
-	boardGroupByPriority
-	boardGroupByScore
 )
 
 // boardRow is a unified display item for an active/due task.
@@ -67,7 +56,7 @@ type FocusBoardModel struct {
 
 	// Data
 	rows             []boardRow
-	allRows          []boardRow // all non-complete, non-snoozed tasks for "All" tab
+	allRows          []boardRow // all non-complete, non-snoozed tasks — used as tag pool for autocomplete and tag filter picker
 	nextRows         []boardRow
 	closedRows       []boardRow
 	todayRows        []boardRow
@@ -105,7 +94,11 @@ type FocusBoardModel struct {
 	focusMode       int // 0=list, 1=tunnel, 2=zen
 	childDepthLimit int // -1 = unlimited (default), 0/1/2 = max child depth in Today tab
 	initialTabSet   bool
-	groupBy         boardGroupBy // grouping mode for the All tab
+
+	// Perspective lens. PerspectiveInactive (-1) means no lens is applied;
+	// 0..9 selects a preset from PerspectivePresets() and AND-composes with
+	// the active tab filter.
+	activePerspective int
 }
 
 // NewFocusBoardModel creates a new focus board model.
@@ -131,22 +124,23 @@ func NewFocusBoardModel(cfg *config.Config, manager *config.Manager, dailyPlan *
 	}
 
 	m := &FocusBoardModel{
-		config:           cfg,
-		configManager:    manager,
-		projectService:   NewProjectService(),
-		queueIDs:         queueIDs,
-		dailyPlan:        dailyPlan,
-		dailyPlanIDs:     dailyPlanIDs,
-		carriedOverIDs:   carriedOverIDs,
-		collapsedParents: make(map[string]bool),
-		addInput:         ti,
-		editInput:        ei,
-		focusMode:        initialFocusMode,
-		childDepthLimit:  -1,
-		FilterMixin:      FilterMixin{filter: newFilterState()},
-		MultiSelectState: MultiSelectState{selectedTasks: make(map[string]bool)},
-		sort:             NewSortState(),
-		tabs:             TabState{Names: focusBoardTabNames},
+		config:            cfg,
+		configManager:     manager,
+		projectService:    NewProjectService(),
+		queueIDs:          queueIDs,
+		dailyPlan:         dailyPlan,
+		dailyPlanIDs:      dailyPlanIDs,
+		carriedOverIDs:    carriedOverIDs,
+		collapsedParents:  make(map[string]bool),
+		addInput:          ti,
+		editInput:         ei,
+		focusMode:         initialFocusMode,
+		childDepthLimit:   -1,
+		FilterMixin:       FilterMixin{filter: newFilterState()},
+		MultiSelectState:  MultiSelectState{selectedTasks: make(map[string]bool)},
+		sort:              NewSortState(),
+		tabs:              TabState{Names: focusBoardTabNames},
+		activePerspective: PerspectiveInactive,
 	}
 	km := m.buildKeyMap()
 	m.Dispatcher = keymap.NewDispatcher(km)

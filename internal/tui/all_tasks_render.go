@@ -79,14 +79,22 @@ func (m *AllTasksViewModel) View() tea.View {
 	var colLayout *ColumnLayout
 	if lineWidth >= MinColumnAlignWidth {
 		var visibleTasks []*models.Task
+		var visibleItems []CrossProjectTask
 		for _, group := range m.groups {
 			if !m.collapsedGroups[group.Name] {
 				for _, item := range group.Tasks {
 					visibleTasks = append(visibleTasks, item.Task)
+					visibleItems = append(visibleItems, item)
 				}
 			}
 		}
-		colLayout = ComputeTaskLineColumnLayout(visibleTasks, false)
+		colLayout = ComputeBadgeWidths(visibleTasks, BadgeWidthOpts{
+			IncludeStatus:  true,
+			IncludeType:    true,
+			IncludeStage:   true,
+			ProjectNameFor: crossProjectNameLookup(visibleItems),
+			MaxProjectLen:  15,
+		})
 	}
 
 	// Render groups with task lines

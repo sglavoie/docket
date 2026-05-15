@@ -139,6 +139,15 @@ func (m *AppModel) handleGlobalKeyPress(msg tea.KeyPressMsg) (bool, tea.Cmd) { /
 		if m.hasActiveTextInput() || m.hasActivePendingPrefix() {
 			break
 		}
+		// Inline undo toast: when an undo-available toast is on screen,
+		// `u` triggers its callback rather than the view-local undo
+		// (queue/daily-plan toggle). The toast wins because it is the
+		// most recent destructive action the user just took.
+		if m.statusUndoCb != nil && time.Now().Before(m.statusExpiresAt) {
+			cb := m.statusUndoCb
+			m.clearStatus()
+			return true, cb()
+		}
 		if cmd := m.handleUndoToggle(); cmd != nil {
 			return true, cmd
 		}

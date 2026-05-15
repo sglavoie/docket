@@ -351,3 +351,13 @@ func PadBadge(rendered string, width int) string {
 	}
 	return rendered + strings.Repeat(" ", width-current)
 }
+
+// EmptyBadge returns a whitespace placeholder sized to width. Used by row
+// renderers to keep badge columns aligned when a row has no badge for a
+// given column. Returns "" when width <= 0.
+func EmptyBadge(width int) string {
+	if width <= 0 {
+		return ""
+	}
+	return strings.Repeat(" ", width)
+}

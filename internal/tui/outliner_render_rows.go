@@ -15,6 +15,30 @@ func (m *OutlinerModel) renderOutlinerRows(viewport outlinerViewport, width int)
 	var colLayout *ColumnLayout
 	if viewport.rowWidth >= MinColumnAlignWidth {
 		colLayout = ComputeOutlinerColumnLayout(m.rows[viewport.startIdx:viewport.endIdx], m.columnConfig)
+		// Augment with status/type/stage widths from the same row set.
+		var visibleTasks []*models.Task
+		for _, row := range m.rows[viewport.startIdx:viewport.endIdx] {
+			if row.IsSectionHeader || row.IsSeparator || row.task == nil {
+				continue
+			}
+			visibleTasks = append(visibleTasks, row.task)
+		}
+		if badge := ComputeBadgeWidths(visibleTasks, BadgeWidthOpts{
+			IncludeStatus: true,
+			IncludeType:   true,
+			IncludeStage:  true,
+		}); badge != nil {
+			if colLayout == nil {
+				colLayout = badge
+			} else {
+				colLayout.HasStatus = badge.HasStatus
+				colLayout.StatusWidth = badge.StatusWidth
+				colLayout.HasType = badge.HasType
+				colLayout.TypeWidth = badge.TypeWidth
+				colLayout.HasStage = badge.HasStage
+				colLayout.StageWidth = badge.StageWidth
+			}
+		}
 	}
 
 	var rowBuilder strings.Builder
@@ -86,7 +110,13 @@ func (m *OutlinerModel) renderOutlinerTaskRow(row outlinerRow, selected bool, ro
 	proj := m.resolveProjectForRow(row)
 	typeIcon := GetTypeBadge(string(task.Type), task.Type.Icon())
 	statusIcon := m.renderTaskStatusIcon(task, proj)
-	stageSegment := m.renderTaskStageSegment(task)
+	stageSegment := m.renderTaskStageSegment(task, colLayout)
+	if colLayout != nil && colLayout.HasStatus {
+		statusIcon = PadBadge(statusIcon, colLayout.StatusWidth)
+	}
+	if colLayout != nil && colLayout.HasType {
+		typeIcon = PadBadge(typeIcon, colLayout.TypeWidth)
+	}
 	titleStyle := m.renderTaskTitleStyle(task, selected)
 	prioritySegment := m.renderTaskPrioritySegment(task, colLayout)
 	indicators := m.renderTaskIndicators(task, proj)
@@ -156,8 +186,15 @@ func (m *OutlinerModel) renderTaskStatusIcon(task *models.Task, proj *models.Pro
 	return statusIcon
 }
 
-func (m *OutlinerModel) renderTaskStageSegment(task *models.Task) string {
-	if badge := GetStageBadge(task.Stage); badge != "" {
+func (m *OutlinerModel) renderTaskStageSegment(task *models.Task, colLayout *ColumnLayout) string {
+	badge := GetStageBadge(task.Stage)
+	if colLayout != nil && colLayout.HasStage {
+		if badge == "" {
+			return EmptyBadge(colLayout.StageWidth) + " "
+		}
+		return PadBadge(badge, colLayout.StageWidth) + " "
+	}
+	if badge != "" {
 		return badge + " "
 	}
 	return ""

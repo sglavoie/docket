@@ -85,9 +85,22 @@ func (m *ProjectTreeModel) renderNodeWithWidth(node *TreeNode, selected bool, in
 		statusIcon = GetStatusBadge(string(task.Status), task.Status.Icon())
 	}
 
+	if m.colLayout != nil && m.colLayout.HasStatus {
+		statusIcon = PadBadge(statusIcon, m.colLayout.StatusWidth)
+	}
+	if m.colLayout != nil && m.colLayout.HasType {
+		typeIcon = PadBadge(typeIcon, m.colLayout.TypeWidth)
+	}
+
 	stageBadge := GetStageBadge(task.Stage)
 	var stageSegment string
-	if stageBadge != "" {
+	if m.colLayout != nil && m.colLayout.HasStage {
+		if stageBadge == "" {
+			stageSegment = EmptyBadge(m.colLayout.StageWidth) + " "
+		} else {
+			stageSegment = PadBadge(stageBadge, m.colLayout.StageWidth) + " "
+		}
+	} else if stageBadge != "" {
 		stageSegment = stageBadge + " "
 	}
 

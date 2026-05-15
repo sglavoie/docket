@@ -66,6 +66,12 @@ type ErrorMsg struct{ Err error }
 // StatusClearMsg clears the status message after a timeout.
 type StatusClearMsg struct{}
 
+// UndoToastTimeoutMsg fires when an undo-available toast's window has
+// elapsed. The handler clears the toast only if it has not been replaced
+// by a newer toast (checked via statusExpiresAt) so back-to-back
+// destructive actions do not cancel each other prematurely.
+type UndoToastTimeoutMsg struct{}
+
 // ClearSemicolonPrefixMsg clears a pending semicolon prefix if it has not been resolved.
 type ClearSemicolonPrefixMsg struct{}
 

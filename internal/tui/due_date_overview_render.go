@@ -121,12 +121,20 @@ func (m *DueDateOverviewModel) renderAllGroups(currentIndex *int, cursorLineIdx 
 	var colLayout *ColumnLayout
 	if m.Width() >= MinColumnAlignWidth {
 		var allTasks []*models.Task
+		var allItems []CrossProjectTask
 		for _, g := range [][]CrossProjectTask{overdue, today, thisWeek, later} {
 			for _, dt := range g {
 				allTasks = append(allTasks, dt.Task)
+				allItems = append(allItems, dt)
 			}
 		}
-		colLayout = ComputeTaskLineColumnLayout(allTasks, false)
+		colLayout = ComputeBadgeWidths(allTasks, BadgeWidthOpts{
+			IncludeStatus:  true,
+			IncludeType:    true,
+			IncludeStage:   true,
+			ProjectNameFor: crossProjectNameLookup(allItems),
+			MaxProjectLen:  15,
+		})
 	}
 
 	type taskGroup struct {

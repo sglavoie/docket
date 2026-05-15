@@ -29,8 +29,13 @@ type TaskCreatedMsg struct {
 // TaskUpdatedMsg signals a task was modified.
 type TaskUpdatedMsg struct{ Task *models.Task }
 
-// TaskDeletedMsg signals a task was deleted.
-type TaskDeletedMsg struct{ Task *models.Task }
+// TaskDeletedMsg signals a task was deleted. Project carries the project
+// the task was deleted from so the post-delete handler can wire an undo
+// toast that targets the correct project's snapshot history.
+type TaskDeletedMsg struct {
+	Task    *models.Task
+	Project *models.Project
+}
 
 // TaskStatusChangedMsg signals a task's status changed (complete, start, etc).
 type TaskStatusChangedMsg struct{ Task *models.Task }

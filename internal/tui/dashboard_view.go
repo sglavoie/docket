@@ -6,6 +6,7 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/icons"
@@ -48,8 +49,9 @@ func (m *DashboardModel) renderDashboard(visible []*models.Project, chromeHeight
 		default:
 		}
 		if infoContent != "" {
-			// Fixed height: reserve space for bottom pane first, top pane gets the rest
-			bottomHeight = DashboardBottomPaneHeight + 1 // +1 for the gap newline
+			// Reserve actual rendered height (cards + any compact inert rows) plus
+			// the newline gap separating the project list from the info section.
+			bottomHeight = lipgloss.Height(infoContent) + 1
 		}
 	}
 

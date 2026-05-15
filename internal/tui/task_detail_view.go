@@ -66,22 +66,29 @@ func (m *TaskDetailModel) View() tea.View {
 		planningSections = append(planningSections, m.renderDependenciesSection(contentWidth))
 	}
 
-	// Comments + Decisions side-by-side
+	// History cluster: Comments + Decisions + Attachments.
+	// Progressive disclosure: collapsed by default (header-only summary),
+	// expanded when m.historyExpanded is true. Empty history → not rendered.
 	hasComments := len(m.task.Comments) > 0
 	hasDecisions := len(m.task.Decisions) > 0
-	if hasComments && hasDecisions {
-		leftWidth := contentWidth / 2
-		rightWidth := contentWidth - leftWidth
-		historySections = append(historySections, lipgloss.JoinHorizontal(lipgloss.Top,
-			m.renderCommentsSection(leftWidth),
-			m.renderDecisionsSection(rightWidth)))
-	} else if hasComments {
-		historySections = append(historySections, m.renderCommentsSection(contentWidth))
-	} else if hasDecisions {
-		historySections = append(historySections, m.renderDecisionsSection(contentWidth))
-	}
-	if m.task.HasAttachments() {
-		historySections = append(historySections, m.renderAttachmentsSection(contentWidth))
+	hasAttachments := m.task.HasAttachments()
+	hasHistory := hasComments || hasDecisions || hasAttachments
+
+	if hasHistory && m.historyExpanded {
+		if hasComments && hasDecisions {
+			leftWidth := contentWidth / 2
+			rightWidth := contentWidth - leftWidth
+			historySections = append(historySections, lipgloss.JoinHorizontal(lipgloss.Top,
+				m.renderCommentsSection(leftWidth),
+				m.renderDecisionsSection(rightWidth)))
+		} else if hasComments {
+			historySections = append(historySections, m.renderCommentsSection(contentWidth))
+		} else if hasDecisions {
+			historySections = append(historySections, m.renderDecisionsSection(contentWidth))
+		}
+		if hasAttachments {
+			historySections = append(historySections, m.renderAttachmentsSection(contentWidth))
+		}
 	}
 
 	// Assemble final section list with labeled cluster dividers
@@ -91,8 +98,11 @@ func (m *TaskDetailModel) View() tea.View {
 		sections = append(sections, renderDetailSectionDivider("Planning", contentWidth))
 		sections = append(sections, planningSections...)
 	}
-	if len(historySections) > 0 {
-		sections = append(sections, renderDetailSectionDivider("History", contentWidth))
+	if hasHistory {
+		commentsN := len(m.task.Comments)
+		decisionsN := len(m.task.Decisions)
+		attachmentsN := len(m.task.Attachments)
+		sections = append(sections, renderHistoryClusterDivider(commentsN, decisionsN, attachmentsN, m.historyExpanded, contentWidth))
 		sections = append(sections, historySections...)
 	}
 
@@ -143,6 +153,43 @@ func renderDetailSectionDivider(label string, width int) string {
 	return MutedStyle.Render(prefix + strings.Repeat("─", remaining))
 }
 
+// renderHistoryClusterDivider renders the History cluster divider with an
+// inline summary of counts and an expand/collapse hint. When collapsed, the
+// summary acts as the only content; when expanded, it labels the sections
+// rendered below.
+func renderHistoryClusterDivider(commentsN, decisionsN, attachmentsN int, expanded bool, width int) string {
+	summary := historyCountsSummary(commentsN, decisionsN, attachmentsN)
+	var hint string
+	if expanded {
+		hint = "⏷ press H to collapse"
+	} else {
+		hint = "⏵ press H to expand"
+	}
+	prefix := "── History "
+	if summary != "" {
+		prefix += "(" + summary + ") "
+	}
+	prefix += hint + " "
+	remaining := max(width-len(prefix), 0)
+	return MutedStyle.Render(prefix + strings.Repeat("─", remaining))
+}
+
+// historyCountsSummary builds a "3 comments · 1 decision · 2 attachments" string,
+// omitting zero entries and pluralizing correctly.
+func historyCountsSummary(commentsN, decisionsN, attachmentsN int) string {
+	var parts []string
+	if commentsN > 0 {
+		parts = append(parts, fmt.Sprintf("%d %s", commentsN, pluralize(commentsN, "comment", "comments")))
+	}
+	if decisionsN > 0 {
+		parts = append(parts, fmt.Sprintf("%d %s", decisionsN, pluralize(decisionsN, "decision", "decisions")))
+	}
+	if attachmentsN > 0 {
+		parts = append(parts, fmt.Sprintf("%d %s", attachmentsN, pluralize(attachmentsN, "attachment", "attachments")))
+	}
+	return strings.Join(parts, " · ")
+}
+
 // renderTitleBar renders the top title bar.
 func (m *TaskDetailModel) renderTitleBar() string {
 	title := renderFullscreenTitle("Task Detail", fmt.Sprintf("#%d", m.task.ShortID), m.AccentColor())
@@ -161,7 +208,7 @@ func (m *TaskDetailModel) renderFooter() string {
 		right = HelpStyle.Render(fmt.Sprintf("%d%% (%d/%d)", pct, m.scrollOffset+1, m.totalLines))
 	}
 
-	left := HelpStyle.Render("j/k: scroll · ,: status · !: priority · e: edit · c: comments · D: decisions · d: due · h: history · Esc: close")
+	left := HelpStyle.Render("j/k: scroll · ,: status · !: priority · e: edit · c: comments · D: decisions · d: due · h: history · H: toggle history · Esc: close")
 	return renderStatusBarFooter(left, right, m.width, m.AccentColor())
 }
 

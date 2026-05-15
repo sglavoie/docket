@@ -37,11 +37,13 @@ func session3SyncViews() []syncTestCase {
 	}
 }
 
-// session4SyncViews returns the kanban views introduced in session 4.
+// session4SyncViews returns the kanban views introduced in session 4 and the
+// task detail view registered as part of the UX refinement wave (Item 4).
 func session4SyncViews() []syncTestCase {
 	return []syncTestCase{
 		{ViewKanban, &KanbanModel{}},
 		{ViewCrossProjectKanban, &KanbanModel{}},
+		{ViewTaskDetail, &TaskDetailModel{}},
 	}
 }
 
@@ -175,6 +177,7 @@ func TestViewTypeString(t *testing.T) {
 		// Session 4
 		ViewKanban:             "Kanban",
 		ViewCrossProjectKanban: "CrossProjectKanban",
+		ViewTaskDetail:         "TaskDetail",
 		// Session 6
 		ViewPipelineHub: "PipelineHub",
 		// Session 8

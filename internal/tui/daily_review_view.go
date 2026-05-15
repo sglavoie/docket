@@ -174,14 +174,22 @@ func (m *DailyReviewModel) renderAllSections() ([]string, int) {
 	var colLayout *ColumnLayout
 	if m.width >= MinColumnAlignWidth {
 		var allTasks []*models.Task
+		var allItems []CrossProjectTask
 		for _, section := range m.sectionOrder {
 			if !m.collapsedSections[int(section)] {
 				for _, dt := range m.getSectionTasks(section) {
 					allTasks = append(allTasks, dt.Task)
+					allItems = append(allItems, dt)
 				}
 			}
 		}
-		colLayout = ComputeTaskLineColumnLayout(allTasks, true)
+		colLayout = ComputeBadgeWidths(allTasks, BadgeWidthOpts{
+			HideLowPriority: true,
+			IncludeStatus:   true,
+			IncludeType:     true,
+			IncludeStage:    true,
+			ProjectNameFor:  crossProjectNameLookup(allItems),
+		})
 	}
 
 	rowIdx := 0

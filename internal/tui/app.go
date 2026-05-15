@@ -347,10 +347,12 @@ type AppModel struct {
 	sessionStats sessionStats
 
 	// State
-	err           error
-	quitting      bool
-	statusMessage string // Temporary status message (auto-clears after timeout)
-	statusIsInfo  bool   // When true, render status with InfoStatusStyle instead of SuccessStyle
+	err             error
+	quitting        bool
+	statusMessage   string         // Temporary status message (auto-clears after timeout)
+	statusIsInfo    bool           // When true, render status with InfoStatusStyle instead of SuccessStyle
+	statusUndoCb    func() tea.Cmd // When non-nil and not expired, pressing `u` invokes this callback
+	statusExpiresAt time.Time      // Deadline after which statusUndoCb is no longer valid
 
 	// Loading state for async operations
 	isLoading      bool
