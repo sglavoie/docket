@@ -511,9 +511,15 @@ type AppModel struct {
 	}
 
 	// Peek task overlay (space to hold-peek task detail)
-	peekTask    *models.Task
-	peekProject *models.Project
-	peekActive  bool
+	peekTask        *models.Task
+	peekProject     *models.Project
+	peekActive      bool
+	peekLeftOffset  int
+	peekRightOffset int
+	peekFocusRight  bool // false = left (description), true = right
+	peekLeftLines   int  // cached total line count for left pane
+	peekRightLines  int  // cached total line count for right pane
+	peekPaneHeight  int  // cached visible height per pane
 
 	// Export state for repeat-press clipboard behavior.
 	lastExportPath string

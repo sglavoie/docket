@@ -112,6 +112,13 @@ func (m *NotesViewModel) clearStatus() {
 	m.statusIsError = false
 }
 
+// IsMultiSelectActive reports whether multi-select mode is on. NotesViewModel
+// has its own multiSelectMode field rather than embedding MultiSelectState, so
+// this method exposes it to the global multi-select interface dispatch.
+func (m *NotesViewModel) IsMultiSelectActive() bool {
+	return m.multiSelectMode
+}
+
 // handleConfirmKey processes a key when the confirm dialog is active.
 // Returns (confirmed, handled). On cancel, clears the status message.
 // Mirrors InteractiveViewState.HandleConfirmKey for views that don't embed it.

@@ -150,9 +150,7 @@ func (m *AppModel) popView() tea.Cmd {
 // (e.g. ViewDidAppearMsg for the cross-project outliner).
 func (m *AppModel) handleEscKey() (bool, tea.Cmd) {
 	if m.peekActive {
-		m.peekTask = nil
-		m.peekProject = nil
-		m.peekActive = false
+		m.dismissPeek()
 		return true, nil
 	}
 	if m.pendingSemicolonPrefix {

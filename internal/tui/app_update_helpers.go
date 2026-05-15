@@ -146,21 +146,13 @@ func (m *AppModel) hasActiveConfirmDialog() bool {
 	return false
 }
 
-// hasActiveMultiSelect returns true if any primary view has multi-select mode active.
+// hasActiveMultiSelect returns true if the current view has multi-select mode active.
 func (m *AppModel) hasActiveMultiSelect() bool {
-	if m.projectTree != nil && m.projectTree.multiSelectMode {
-		return true
+	type multiSelectStateful interface {
+		IsMultiSelectActive() bool
 	}
-	if m.outliner != nil && m.outliner.multiSelectMode {
-		return true
-	}
-	if m.crossOutliner != nil && m.crossOutliner.multiSelectMode {
-		return true
-	}
-	if v := m.views.Get(ViewTemporaryOutliner); v != nil {
-		if o, ok := v.(*OutlinerModel); ok && o.multiSelectMode {
-			return true
-		}
+	if v, ok := m.currentViewAsModel().(multiSelectStateful); ok {
+		return v.IsMultiSelectActive()
 	}
 	return false
 }

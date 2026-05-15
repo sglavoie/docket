@@ -85,9 +85,7 @@ func (m *AppModel) navCommands() []Command {
 				if task == nil {
 					return nil
 				}
-				m.peekTask = task
-				m.peekProject = project
-				m.peekActive = true
+				m.activatePeek(task, project)
 				return nil
 			},
 		},

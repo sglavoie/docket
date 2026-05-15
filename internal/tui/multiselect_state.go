@@ -37,6 +37,12 @@ func (s *MultiSelectState) SelectedCount() int {
 	return len(s.selectedTasks)
 }
 
+// IsMultiSelectActive reports whether multi-select mode is on. Used by the
+// global key dispatcher to keep space bound to toggle-select instead of peek.
+func (s *MultiSelectState) IsMultiSelectActive() bool {
+	return s.multiSelectMode
+}
+
 // ExitMultiSelect deactivates multi-select mode and clears all selections.
 func (s *MultiSelectState) ExitMultiSelect() {
 	s.multiSelectMode = false

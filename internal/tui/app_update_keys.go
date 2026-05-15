@@ -66,12 +66,26 @@ func (m *AppModel) handleGlobalKeyPress(msg tea.KeyPressMsg) (bool, tea.Cmd) { /
 		return true, cmd
 	}
 
-	// Intercept keys when peek overlay is active
+	// Intercept keys when peek overlay is active: handle scroll, pane focus,
+	// and dismiss; block everything else so the underlying view is frozen.
 	if m.peekActive {
-		if msg.String() == "esc" {
-			m.peekTask = nil
-			m.peekProject = nil
-			m.peekActive = false
+		switch msg.String() {
+		case "esc":
+			m.dismissPeek()
+		case "tab", "shift+tab":
+			m.peekFocusRight = !m.peekFocusRight
+		case "up", "k":
+			if m.peekFocusRight {
+				m.peekRightOffset = clampPeekOffset(m.peekRightOffset-1, m.peekRightLines, m.peekPaneHeight)
+			} else {
+				m.peekLeftOffset = clampPeekOffset(m.peekLeftOffset-1, m.peekLeftLines, m.peekPaneHeight)
+			}
+		case "down", "j":
+			if m.peekFocusRight {
+				m.peekRightOffset = clampPeekOffset(m.peekRightOffset+1, m.peekRightLines, m.peekPaneHeight)
+			} else {
+				m.peekLeftOffset = clampPeekOffset(m.peekLeftOffset+1, m.peekLeftLines, m.peekPaneHeight)
+			}
 		}
 		return true, nil
 	}
@@ -212,15 +226,20 @@ func (m *AppModel) handleGlobalKeyPress(msg tea.KeyPressMsg) (bool, tea.Cmd) { /
 			return true, cmd
 		}
 	case "space":
-		if !m.hasActiveTextInput() && !m.hasActiveMultiSelect() {
-			task, project := m.getCurrentCursorTaskAndProject()
-			if task != nil {
-				m.peekTask = task
-				m.peekProject = project
-				m.peekActive = true
-			}
-			return true, nil
+		if m.hasActiveTextInput() || m.hasActivePendingPrefix() {
+			break
 		}
+		if m.hasActiveMultiSelect() {
+			return false, nil
+		}
+		if m.currentView() == ViewTaskDetail {
+			return false, nil
+		}
+		task, project := m.getCurrentCursorTaskAndProject()
+		if task != nil {
+			m.activatePeek(task, project)
+		}
+		return true, nil
 	case ".":
 		if !m.hasActiveTextInput() && m.lastRepeatableAction != nil {
 			if pv, ok := m.currentViewAsModel().(prefixableView); ok {

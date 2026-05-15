@@ -34,9 +34,7 @@ func (m *AppModel) handleGlobalMessage(msg tea.Msg) (bool, tea.Cmd) {
 		return true, upgradeKittyKeyboard()
 	case tea.KeyReleaseMsg:
 		if msg.String() == "space" && m.peekActive {
-			m.peekTask = nil
-			m.peekProject = nil
-			m.peekActive = false
+			m.dismissPeek()
 		}
 		return true, nil
 	case tea.WindowSizeMsg:
