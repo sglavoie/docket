@@ -137,6 +137,89 @@ func (m *OutlinerModel) crossHandleDueDateMutation(key string) (tea.Cmd, bool) {
 	return result.Cmd, true
 }
 
+// crossHandleSkipRecurrence handles the ,k key in cross-project mode.
+// Advances the due date to the next occurrence of a recurring task, mirroring
+// handleSkipRecurrence for single-project views.
+//
+// Returns (cmd, true) when the key was consumed.
+func (m *OutlinerModel) crossHandleSkipRecurrence() (tea.Cmd, bool) {
+	row, proj, valid := m.crossGetMutationTarget()
+	if !valid {
+		return nil, true
+	}
+	if !row.task.IsRecurring() {
+		m.setStatus("Task is not recurring")
+		return nil, true
+	}
+
+	m.crossUndoCtx.Set("Skip Recurrence", row.task.Title)
+	m.crossUndoCtx.ProjectIDs = []string{proj.ID}
+	if m.config != nil && m.config.UndoHistoryDepth != nil && *m.config.UndoHistoryDepth > 0 {
+		_ = m.projectService.RecordUndoSnapshot(proj, "Skip Recurrence", row.task.Title, *m.config.UndoHistoryDepth, nil)
+	}
+	if err := m.projectService.Backup(proj); err != nil {
+		return func() tea.Msg { return ErrorMsg{Err: fmt.Errorf("backup failed: %w", err)} }, true
+	}
+	proj.MutateTask(row.task.ID, func(t *models.Task) {
+		t.SkipRecurrence()
+	})
+	if err := m.projectService.Save(proj); err != nil {
+		return func() tea.Msg { return ErrorMsg{Err: fmt.Errorf("save failed: %w", err)} }, true
+	}
+	_ = m.projectService.Load(proj)
+
+	dueStr := "none"
+	if row.task.DueDate != nil {
+		dueStr = row.task.DueDate.Format("Mon Jan 2, 2006")
+		dueStr = AppendTimeIfHasTime(row.task, dueStr, "15:04")
+	}
+	m.setStatus(fmt.Sprintf("Skipped: next due %s (u to undo)", dueStr))
+	m.rebuildRows()
+	return nil, true
+}
+
+// crossHandleDeferRecurrence handles the ,D prefix in cross-project mode.
+// Sub-keys: t=1d, 3=3d, w=1w, W=2w, m=1m. Returns (nil, false) for unknown keys.
+func (m *OutlinerModel) crossHandleDeferRecurrence(key string) (tea.Cmd, bool) {
+	days, desc, ok := resolveDeferDays(key)
+	if !ok {
+		return nil, false
+	}
+	row, proj, valid := m.crossGetMutationTarget()
+	if !valid {
+		return nil, true
+	}
+	if !row.task.IsRecurring() {
+		m.setStatus("Task is not recurring")
+		return nil, true
+	}
+
+	m.crossUndoCtx.Set("Defer Recurrence", row.task.Title)
+	m.crossUndoCtx.ProjectIDs = []string{proj.ID}
+	if m.config != nil && m.config.UndoHistoryDepth != nil && *m.config.UndoHistoryDepth > 0 {
+		_ = m.projectService.RecordUndoSnapshot(proj, "Defer Recurrence", row.task.Title, *m.config.UndoHistoryDepth, nil)
+	}
+	if err := m.projectService.Backup(proj); err != nil {
+		return func() tea.Msg { return ErrorMsg{Err: fmt.Errorf("backup failed: %w", err)} }, true
+	}
+	proj.MutateTask(row.task.ID, func(t *models.Task) {
+		t.DeferRecurrence(days)
+	})
+	if err := m.projectService.Save(proj); err != nil {
+		return func() tea.Msg { return ErrorMsg{Err: fmt.Errorf("save failed: %w", err)} }, true
+	}
+	_ = m.projectService.Load(proj)
+
+	dueStr := "none"
+	if row.task.DueDate != nil {
+		dueStr = row.task.DueDate.Format("Mon Jan 2, 2006")
+		dueStr = AppendTimeIfHasTime(row.task, dueStr, "15:04")
+	}
+	m.setStatus(fmt.Sprintf("Deferred %s: now due %s (u to undo)", desc, dueStr))
+	m.rebuildRows()
+	return nil, true
+}
+
 // crossHandleStageMutation handles the . prefix in cross-project mode.
 // Maps key to a stage name and applies the change.
 // Returns (cmd, true) when the key was consumed.

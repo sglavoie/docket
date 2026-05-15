@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"errors"
 	"testing"
 	"time"
 
@@ -333,5 +334,84 @@ func TestApplyDeleteTask_ClearsDanglingRefsWhenAllDeleted(t *testing.T) {
 	// SaveWithBackupSync should have been called since no tasks remain
 	if len(mock.SaveWithBackupSyncCall) != 1 {
 		t.Fatalf("expected SaveWithBackupSync to be called once, got %d", len(mock.SaveWithBackupSyncCall))
+	}
+}
+
+func nilPF(t *testing.T) persistFn {
+	t.Helper()
+	return func(proj *models.Project, taskID string, mutate func(*models.Task)) TaskOpResult {
+		t.Fatal("persistFn must not be called when project is nil")
+		return TaskOpResult{}
+	}
+}
+
+func TestApplyStatusChange_NilProject(t *testing.T) {
+	result := applyStatusChange(nilPF(t), nil, "task-1", models.StatusDone)
+	if !errors.Is(result.Err, errNilProject) {
+		t.Errorf("expected errNilProject, got %v", result.Err)
+	}
+}
+
+func TestApplyPriorityChange_NilProject(t *testing.T) {
+	result := applyPriorityChange(nilPF(t), nil, "task-1", 1)
+	if !errors.Is(result.Err, errNilProject) {
+		t.Errorf("expected errNilProject, got %v", result.Err)
+	}
+}
+
+func TestApplyStageChange_NilProject(t *testing.T) {
+	result := applyStageChange(nilPF(t), nil, "task-1", "planning")
+	if !errors.Is(result.Err, errNilProject) {
+		t.Errorf("expected errNilProject, got %v", result.Err)
+	}
+}
+
+func TestApplyQuickDueDate_NilProject(t *testing.T) {
+	result := applyQuickDueDate(nilPF(t), nil, "task-1", 1)
+	if !errors.Is(result.Err, errNilProject) {
+		t.Errorf("expected errNilProject, got %v", result.Err)
+	}
+}
+
+func TestApplyClearDueDate_NilProject(t *testing.T) {
+	result := applyClearDueDate(nilPF(t), nil, "task-1")
+	if !errors.Is(result.Err, errNilProject) {
+		t.Errorf("expected errNilProject, got %v", result.Err)
+	}
+}
+
+func TestApplyQuickSnooze_NilProject(t *testing.T) {
+	result := applyQuickSnooze(nilPF(t), nil, "task-1", nil)
+	if !errors.Is(result.Err, errNilProject) {
+		t.Errorf("expected errNilProject, got %v", result.Err)
+	}
+}
+
+func TestApplyToggleBool_NilProject(t *testing.T) {
+	result := applyToggleBool(nilPF(t), nil, "task-1", toggleActive)
+	if !errors.Is(result.Err, errNilProject) {
+		t.Errorf("expected errNilProject, got %v", result.Err)
+	}
+}
+
+func TestApplyRemoveFromFocus_NilProject(t *testing.T) {
+	result := applyRemoveFromFocus(nilPF(t), nil, "task-1", 1)
+	if !errors.Is(result.Err, errNilProject) {
+		t.Errorf("expected errNilProject, got %v", result.Err)
+	}
+}
+
+func TestApplySectionChange_NilProject(t *testing.T) {
+	result := applySectionChange(nilPF(t), nil, "task-1", "someSection")
+	if !errors.Is(result.Err, errNilProject) {
+		t.Errorf("expected errNilProject, got %v", result.Err)
+	}
+}
+
+func TestApplyDeleteTask_NilProject(t *testing.T) {
+	mock := NewMockPersister()
+	result := applyDeleteTask(nilPF(t), mock, nil, "task-1")
+	if !errors.Is(result.Err, errNilProject) {
+		t.Errorf("expected errNilProject, got %v", result.Err)
 	}
 }

@@ -295,24 +295,19 @@ func (m *OutlinerModel) buildKeyMap() *keymap.KeyMap {
 	// --- StatusGroup: , prefix ---
 	deferRecurrenceChildren := keymap.DeferRecurrenceGroup(
 		func() (tea.Model, tea.Cmd) {
-			cmd, _ := handleDeferRecurrence("t", m)
-			return m, cmd
+			return m.handleDeferRecurrenceOutliner("t")
 		},
 		func() (tea.Model, tea.Cmd) {
-			cmd, _ := handleDeferRecurrence("3", m)
-			return m, cmd
+			return m.handleDeferRecurrenceOutliner("3")
 		},
 		func() (tea.Model, tea.Cmd) {
-			cmd, _ := handleDeferRecurrence("w", m)
-			return m, cmd
+			return m.handleDeferRecurrenceOutliner("w")
 		},
 		func() (tea.Model, tea.Cmd) {
-			cmd, _ := handleDeferRecurrence("W", m)
-			return m, cmd
+			return m.handleDeferRecurrenceOutliner("W")
 		},
 		func() (tea.Model, tea.Cmd) {
-			cmd, _ := handleDeferRecurrence("m", m)
-			return m, cmd
+			return m.handleDeferRecurrenceOutliner("m")
 		},
 	)
 	statusEntries := keymap.StatusGroup(keymap.StatusDeps{
@@ -351,8 +346,7 @@ func (m *OutlinerModel) buildKeyMap() *keymap.KeyMap {
 			return task != nil && task.Recurrence != nil
 		},
 		SkipRecurrence: func() (tea.Model, tea.Cmd) {
-			cmd, _ := handleSkipRecurrence(m)
-			return m, cmd
+			return m.handleSkipRecurrenceOutliner()
 		},
 		DeferChildren: deferRecurrenceChildren,
 	})
@@ -365,8 +359,7 @@ func (m *OutlinerModel) buildKeyMap() *keymap.KeyMap {
 	priorityEntries := keymap.PriorityGroup(keymap.PriorityDeps{
 		ChangePriority: func(key string) keymap.Action {
 			return func() (tea.Model, tea.Cmd) {
-				cmd, _ := handlePriorityPrefix(key, m)
-				return m, cmd
+				return m.handlePriorityPrefixOutliner(key)
 			}
 		},
 	})
@@ -378,28 +371,22 @@ func (m *OutlinerModel) buildKeyMap() *keymap.KeyMap {
 	// --- DueDateGroup: d prefix ---
 	dueDateEntries := keymap.DueDateGroup(keymap.DueDateDeps{
 		DueToday: func() (tea.Model, tea.Cmd) {
-			cmd, _ := handleDueDatePrefix("t", m)
-			return m, cmd
+			return m.handleDueDatePrefixOutliner("t")
 		},
 		DueTomorrow: func() (tea.Model, tea.Cmd) {
-			cmd, _ := handleDueDatePrefix("m", m)
-			return m, cmd
+			return m.handleDueDatePrefixOutliner("m")
 		},
 		DueInAWeek: func() (tea.Model, tea.Cmd) {
-			cmd, _ := handleDueDatePrefix("w", m)
-			return m, cmd
+			return m.handleDueDatePrefixOutliner("w")
 		},
 		DueInAMonth: func() (tea.Model, tea.Cmd) {
-			cmd, _ := handleDueDatePrefix("n", m)
-			return m, cmd
+			return m.handleDueDatePrefixOutliner("n")
 		},
 		ClearDueDate: func() (tea.Model, tea.Cmd) {
-			cmd, _ := handleDueDatePrefix("0", m)
-			return m, cmd
+			return m.handleDueDatePrefixOutliner("0")
 		},
 		OpenDatePicker: func() (tea.Model, tea.Cmd) {
-			cmd, _ := handleDueDatePrefix("d", m)
-			return m, cmd
+			return m.handleDueDatePrefixOutliner("d")
 		},
 	})
 	if len(dueDateEntries) > 0 && dueDateEntries[0].PrefixNode != nil {
@@ -410,8 +397,7 @@ func (m *OutlinerModel) buildKeyMap() *keymap.KeyMap {
 	// --- SnoozeGroup: s prefix ---
 	snoozeDateAction := func(key string) keymap.Action {
 		return func() (tea.Model, tea.Cmd) {
-			cmd, _ := handleSnoozePrefix(key, m)
-			return m, cmd
+			return m.handleSnoozePrefixOutliner(key)
 		}
 	}
 	snoozeEntries := keymap.SnoozeGroup(keymap.SnoozeDeps{
@@ -421,8 +407,7 @@ func (m *OutlinerModel) buildKeyMap() *keymap.KeyMap {
 		SnoozeNextMonday: snoozeDateAction("n"),
 		ClearSnooze:      snoozeDateAction("0"),
 		OpenDatePicker: func() (tea.Model, tea.Cmd) {
-			cmd, _ := handleSnoozePrefix("d", m)
-			return m, cmd
+			return m.handleSnoozePrefixOutliner("d")
 		},
 	})
 	if len(snoozeEntries) > 0 && snoozeEntries[0].PrefixNode != nil {

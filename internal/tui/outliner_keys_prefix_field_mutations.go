@@ -73,3 +73,27 @@ func (m *OutlinerModel) handleSnoozePrefixOutliner(key string) (tea.Model, tea.C
 	}
 	return m, nil
 }
+
+// handleSkipRecurrenceOutliner handles the ,k key for skipping the next
+// occurrence of a recurring task, routing to the cross-project variant when
+// no single project is active.
+func (m *OutlinerModel) handleSkipRecurrenceOutliner() (tea.Model, tea.Cmd) {
+	if m.project == nil {
+		cmd, _ := m.crossHandleSkipRecurrence()
+		return m, cmd
+	}
+	cmd, _ := handleSkipRecurrence(m)
+	return m, cmd
+}
+
+// handleDeferRecurrenceOutliner handles the ,D prefix for deferring a
+// recurring task, routing to the cross-project variant when no single project
+// is active.
+func (m *OutlinerModel) handleDeferRecurrenceOutliner(key string) (tea.Model, tea.Cmd) {
+	if m.project == nil {
+		cmd, _ := m.crossHandleDeferRecurrence(key)
+		return m, cmd
+	}
+	cmd, _ := handleDeferRecurrence(key, m)
+	return m, cmd
+}

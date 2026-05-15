@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -13,6 +14,8 @@ import (
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/util"
 )
+
+var errNilProject = errors.New("internal: nil project")
 
 // analyzeBulkStatusTransition separates tasks that can transition to newStatus
 // from those blocked by transition rules or incomplete dependencies.
@@ -34,6 +37,9 @@ func analyzeBulkStatusTransition(project *models.Project, tasks []*models.Task, 
 // It handles backup, mutation, save, and reload. The caller is responsible for
 // refreshing its view-specific data (loadTasks, clampCursor, etc.).
 func applyStatusChange(pf persistFn, project *models.Project, taskID string, newStatus models.TaskStatus) TaskOpResult {
+	if project == nil {
+		return TaskOpResult{Err: errNilProject}
+	}
 	task := project.GetTaskByID(taskID)
 	if task == nil {
 		return TaskOpResult{StatusMessage: "Task no longer exists in project"}
@@ -78,6 +84,9 @@ func applyStatusChange(pf persistFn, project *models.Project, taskID string, new
 
 // applyPriorityChange sets the priority on a task.
 func applyPriorityChange(pf persistFn, project *models.Project, taskID string, priority int) TaskOpResult {
+	if project == nil {
+		return TaskOpResult{Err: errNilProject}
+	}
 	task := project.GetTaskByID(taskID)
 	if task == nil {
 		return TaskOpResult{StatusMessage: "Task no longer exists in project"}
@@ -99,6 +108,9 @@ func applyPriorityChange(pf persistFn, project *models.Project, taskID string, p
 
 // applyStageChange sets the workflow stage on a task.
 func applyStageChange(pf persistFn, project *models.Project, taskID string, stage string) TaskOpResult {
+	if project == nil {
+		return TaskOpResult{Err: errNilProject}
+	}
 	task := project.GetTaskByID(taskID)
 	if task == nil {
 		return TaskOpResult{StatusMessage: "Task no longer exists in project"}
@@ -124,6 +136,9 @@ func applyStageChange(pf persistFn, project *models.Project, taskID string, stag
 
 // applyQuickDueDate sets the due date relative to today.
 func applyQuickDueDate(pf persistFn, project *models.Project, taskID string, daysFromNow int) TaskOpResult {
+	if project == nil {
+		return TaskOpResult{Err: errNilProject}
+	}
 	newDate := time.Now().AddDate(0, 0, daysFromNow)
 	newDate = util.StartOfDay(newDate)
 
@@ -141,6 +156,9 @@ func applyQuickDueDate(pf persistFn, project *models.Project, taskID string, day
 
 // applyClearDueDate removes the due date from a task.
 func applyClearDueDate(pf persistFn, project *models.Project, taskID string) TaskOpResult {
+	if project == nil {
+		return TaskOpResult{Err: errNilProject}
+	}
 	task := project.GetTaskByID(taskID)
 	if task == nil {
 		return TaskOpResult{StatusMessage: "Task no longer exists in project"}
@@ -193,6 +211,9 @@ func resolveQuickSnoozeDate(key string) (snoozeDate *time.Time, desc string, ok 
 
 // applyQuickSnooze sets the snooze date on a task.
 func applyQuickSnooze(pf persistFn, project *models.Project, taskID string, snoozeDate *time.Time) TaskOpResult {
+	if project == nil {
+		return TaskOpResult{Err: errNilProject}
+	}
 	task := project.GetTaskByID(taskID)
 	if task == nil {
 		return TaskOpResult{StatusMessage: "Task no longer exists in project"}
@@ -244,6 +265,9 @@ var (
 
 // applyToggleBool toggles a boolean flag on a task using the given spec.
 func applyToggleBool(pf persistFn, project *models.Project, taskID string, spec toggleSpec) TaskOpResult {
+	if project == nil {
+		return TaskOpResult{Err: errNilProject}
+	}
 	task := project.GetTaskByID(taskID)
 	if task == nil {
 		return TaskOpResult{StatusMessage: "Task no longer exists in project"}
@@ -281,6 +305,9 @@ func applyToggleDimmed(pf persistFn, project *models.Project, taskID string) Tas
 
 // applyRemoveFromFocus always sets Active = false (used by FocusView specifically).
 func applyRemoveFromFocus(pf persistFn, project *models.Project, taskID string, shortID int) TaskOpResult {
+	if project == nil {
+		return TaskOpResult{Err: errNilProject}
+	}
 	task := project.GetTaskByID(taskID)
 	if task == nil {
 		return TaskOpResult{StatusMessage: "Task no longer exists in project"}
@@ -300,6 +327,9 @@ func applyRemoveFromFocus(pf persistFn, project *models.Project, taskID string, 
 
 // applySectionChange sets the GTD section on a task.
 func applySectionChange(pf persistFn, project *models.Project, taskID string, section string) TaskOpResult {
+	if project == nil {
+		return TaskOpResult{Err: errNilProject}
+	}
 	task := project.GetTaskByID(taskID)
 	if task == nil {
 		return TaskOpResult{StatusMessage: "Task no longer exists in project"}
@@ -329,6 +359,9 @@ func applySectionChange(pf persistFn, project *models.Project, taskID string, se
 // The persister is used to save the project directly when all tasks are deleted
 // (the persistFn requires a task ID, which is unavailable when the list is empty).
 func applyDeleteTask(pf persistFn, persister Persister, project *models.Project, taskID string) TaskOpResult {
+	if project == nil {
+		return TaskOpResult{Err: errNilProject}
+	}
 	task := project.GetTaskByID(taskID)
 	if task == nil {
 		return TaskOpResult{StatusMessage: "Task no longer exists in project"}
