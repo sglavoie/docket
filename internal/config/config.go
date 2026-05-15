@@ -50,6 +50,9 @@ type Config struct {
 	ContextCycleProjects           map[string][]string          `json:"context_cycle_projects,omitempty"`
 	ShowInfoPanel                  *bool                        `json:"show_info_panel,omitempty"`
 	InfoPanelMode                  *int                         `json:"info_panel_mode,omitempty"`
+	DashboardBottomLayout          *int                         `json:"dashboard_bottom_layout,omitempty"`
+	DashboardHorizontalSplitPct    *int                         `json:"dashboard_horizontal_split_pct,omitempty"`
+	DashboardVerticalSplitPct      *int                         `json:"dashboard_vertical_split_pct,omitempty"`
 	RecentPaletteItems             []RecentPaletteItem          `json:"recent_palette_items,omitempty"`
 	LastPaletteCategory            string                       `json:"last_palette_category,omitempty"`
 	PaletteSearchHistory           []string                     `json:"palette_search_history,omitempty"`

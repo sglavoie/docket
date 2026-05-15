@@ -160,6 +160,9 @@ func NewSettingsModel(cfg *config.Config, manager *config.Manager) *SettingsMode
 		startViewCursor:          settingsOptionCursor(startViewValues, cfg.GetStartView(), 0),
 		taskFormCollapsed:        cfg.GetTaskFormCollapsed(),
 		focusBoardModeCursor:     settingsOptionCursor(focusBoardModeValues, cfg.GetFocusBoardDefaultMode(), 0),
+		dashboardLayoutCursor:    initDashboardLayoutCursor(cfg.GetDashboardBottomLayout()),
+		dashboardHorizSplitInput: newSettingsInput(strconv.Itoa(config.DefaultDashboardHorizontalSplitPct), 2, 6, strconv.Itoa(cfg.GetDashboardHorizontalSplitPct()), false),
+		dashboardVertSplitInput:  newSettingsInput(strconv.Itoa(config.DefaultDashboardVerticalSplitPct), 2, 6, strconv.Itoa(cfg.GetDashboardVerticalSplitPct()), false),
 		kanbanDefaultModeCursor:  settingsOptionCursor(kanbanModeValues, cfg.KanbanSettings.DefaultMode, 0),
 		kanbanStartColInput:      newSettingsInput("inbox", 30, 20, cfg.KanbanSettings.DefaultStartColumn, false),
 		kanbanShowEmptyColumns:   cfg.KanbanSettings.ShowEmptyColumns == nil || *cfg.KanbanSettings.ShowEmptyColumns,
@@ -268,6 +271,15 @@ func initKanbanEnabledModes(ids []string) [6]bool {
 		result[i] = idSet[v]
 	}
 	return result
+}
+
+// initDashboardLayoutCursor clamps the layout enum into a valid cursor index.
+func initDashboardLayoutCursor(v config.DashboardBottomLayout) int {
+	i := int(v)
+	if i < 0 || i >= len(dashboardLayoutOptions) {
+		return 0
+	}
+	return i
 }
 
 func initOutlinerCollapsed(cfg *config.Config) [7]bool {

@@ -2,10 +2,13 @@ package tui
 
 import (
 	"fmt"
+	"strconv"
 	"time"
 
 	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
+
+	"github.com/sglavoie/tt/internal/config"
 )
 
 func (m *SettingsModel) handleKeyPress(msg tea.KeyPressMsg) (bool, tea.Cmd) {
@@ -320,6 +323,8 @@ func (m *SettingsModel) handleSpaceKey() {
 			m.taskFormCollapsed = !m.taskFormCollapsed
 		case 15: // focus board default mode
 			m.focusBoardModeCursor = (m.focusBoardModeCursor + 1) % len(focusBoardModeOptions)
+		case 16: // dashboard bottom layout
+			m.dashboardLayoutCursor = (m.dashboardLayoutCursor + 1) % len(dashboardLayoutOptions)
 		}
 	case tabProjectTree:
 		if local == 1 { // priority column
@@ -416,6 +421,8 @@ func (m *SettingsModel) handleLeftKey() {
 			m.startViewCursor--
 		case local == 15 && m.focusBoardModeCursor > 0:
 			m.focusBoardModeCursor--
+		case local == 16 && m.dashboardLayoutCursor > 0:
+			m.dashboardLayoutCursor--
 		}
 	case tabProjectTree:
 		if local == 1 && m.treePriorityMode > 0 {
@@ -481,6 +488,8 @@ func (m *SettingsModel) handleRightKey() {
 			m.startViewCursor++
 		case local == 15 && m.focusBoardModeCursor < len(focusBoardModeOptions)-1:
 			m.focusBoardModeCursor++
+		case local == 16 && m.dashboardLayoutCursor < len(dashboardLayoutOptions)-1:
+			m.dashboardLayoutCursor++
 		}
 	case tabProjectTree:
 		if local == 1 && m.treePriorityMode < 2 {
@@ -673,6 +682,15 @@ func (m *SettingsModel) handleResetToDefault() {
 			resetDone = true
 		case 15:
 			m.focusBoardModeCursor = 0
+			resetDone = true
+		case 16:
+			m.dashboardLayoutCursor = 0
+			resetDone = true
+		case 17:
+			m.dashboardHorizSplitInput.SetValue(strconv.Itoa(config.DefaultDashboardHorizontalSplitPct))
+			resetDone = true
+		case 18:
+			m.dashboardVertSplitInput.SetValue(strconv.Itoa(config.DefaultDashboardVerticalSplitPct))
 			resetDone = true
 		}
 	case tabAttachments:

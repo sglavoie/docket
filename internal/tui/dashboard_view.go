@@ -25,34 +25,63 @@ func (m *DashboardModel) View() tea.View {
 	return tea.NewView(b.String())
 }
 
-// renderDashboard renders the always-stacked dashboard: full-width projects on top,
-// optional info section below.
+// renderDashboard dispatches between the configured dashboard layouts.
+// Horizontal stacks the project list on top of the bottom info section,
+// Vertical renders them side-by-side, and ListOnly hides the bottom section.
+// Vertical layout falls back to horizontal on narrow terminals; an active
+// search query or InfoPanelOff forces the list-only path regardless of layout.
 func (m *DashboardModel) renderDashboard(visible []*models.Project, chromeHeight int) string {
+	layout := m.config.GetDashboardBottomLayout()
+	panelMode := m.config.GetInfoPanelMode()
+
+	if layout == config.DashboardLayoutListOnly || panelMode == config.InfoPanelOff || m.SearchQuery() != "" {
+		return m.renderDashboardListOnly(visible, chromeHeight)
+	}
+
+	if layout == config.DashboardLayoutVertical && m.width >= DashboardInfoSectionWideMinWidth {
+		return m.renderDashboardVertical(visible, chromeHeight, panelMode)
+	}
+	return m.renderDashboardHorizontal(visible, chromeHeight, panelMode)
+}
+
+// renderDashboardListOnly renders the project list at full width with no bottom info section.
+func (m *DashboardModel) renderDashboardListOnly(visible []*models.Project, chromeHeight int) string {
+	cardWidth := max(m.width-2, MinCardWidth)
+	cardTitle := m.projectCardTitle(visible)
+	cardContent := m.renderProjectList(visible, chromeHeight, cardWidth, 0)
+	cfg := DashboardCardConfig()
+	return renderCard(cardTitle, cardContent, cardWidth, cfg)
+}
+
+// renderDashboardHorizontal renders the classic stacked layout: full-width
+// project list on top, info section below. The info pane height is derived
+// from GetDashboardHorizontalSplitPct (project-list share) and clamped against
+// DashboardBottomPaneHeight as a floor.
+func (m *DashboardModel) renderDashboardHorizontal(visible []*models.Project, chromeHeight int, panelMode config.InfoPanelMode) string {
 	var b strings.Builder
 
 	cardWidth := max(m.width-2, MinCardWidth)
 
-	// Reserve fixed height for bottom info section, then render it
+	pct := m.config.GetDashboardHorizontalSplitPct()
+	totalHeight := max(m.height-chromeHeight, 0)
+	paneHeight := max(totalHeight*(100-pct)/100, DashboardBottomPaneHeight)
+
+	var selected *models.Project
+	if len(visible) > 0 && m.cursor >= 0 && m.cursor < len(visible) {
+		selected = visible[m.cursor]
+	}
+
 	var infoContent string
+	switch panelMode {
+	case config.InfoPanelInfoCards:
+		infoContent = m.renderInfoSection(cardWidth, paneHeight, selected)
+	case config.InfoPanelProjectSummary:
+		infoContent = m.renderProjectSummarySection(cardWidth, paneHeight, selected, false)
+	}
+
 	bottomHeight := 0
-	panelMode := m.config.GetInfoPanelMode()
-	if panelMode != config.InfoPanelOff && m.SearchQuery() == "" {
-		var selected *models.Project
-		if len(visible) > 0 && m.cursor >= 0 && m.cursor < len(visible) {
-			selected = visible[m.cursor]
-		}
-		switch panelMode {
-		case config.InfoPanelInfoCards:
-			infoContent = m.renderInfoSection(cardWidth, selected)
-		case config.InfoPanelProjectSummary:
-			infoContent = m.renderProjectSummarySection(cardWidth, selected)
-		default:
-		}
-		if infoContent != "" {
-			// Reserve actual rendered height (cards + any compact inert rows) plus
-			// the newline gap separating the project list from the info section.
-			bottomHeight = lipgloss.Height(infoContent) + 1
-		}
+	if infoContent != "" {
+		bottomHeight = lipgloss.Height(infoContent) + 1
 	}
 
 	cardTitle := m.projectCardTitle(visible)
@@ -67,6 +96,49 @@ func (m *DashboardModel) renderDashboard(visible []*models.Project, chromeHeight
 	}
 
 	return b.String()
+}
+
+// renderDashboardVertical renders the project list and info section side by side.
+// Pane widths are derived from GetDashboardVerticalSplitPct (project-list share).
+// Both panes share the full available height; the info column auto-stacks
+// because its width sits below DashboardInfoSectionWideMinWidth in practice.
+func (m *DashboardModel) renderDashboardVertical(visible []*models.Project, chromeHeight int, panelMode config.InfoPanelMode) string {
+	totalWidth := max(m.width-2, MinCardWidth)
+	pct := m.config.GetDashboardVerticalSplitPct()
+
+	listWidth := max(totalWidth*pct/100, TreeMinWidth)
+	if listWidth > totalWidth-MinCardWidth {
+		listWidth = totalWidth - MinCardWidth
+	}
+	if listWidth < TreeMinWidth {
+		listWidth = TreeMinWidth
+	}
+	infoWidth := max(totalWidth-listWidth, MinCardWidth)
+
+	paneHeight := max(m.height-chromeHeight-CardVerticalBorderOverhead, DashboardBottomPaneHeight)
+
+	var selected *models.Project
+	if len(visible) > 0 && m.cursor >= 0 && m.cursor < len(visible) {
+		selected = visible[m.cursor]
+	}
+
+	var infoContent string
+	switch panelMode {
+	case config.InfoPanelInfoCards:
+		infoContent = m.renderInfoSection(infoWidth, paneHeight, selected)
+	case config.InfoPanelProjectSummary:
+		infoContent = m.renderProjectSummarySection(infoWidth, paneHeight, selected, true)
+	}
+
+	cardTitle := m.projectCardTitle(visible)
+	cardContent := m.renderProjectList(visible, chromeHeight, listWidth, 0)
+	cfg := DashboardCardConfig()
+	listCard := renderCard(cardTitle, cardContent, listWidth, cfg)
+
+	if infoContent == "" {
+		return listCard
+	}
+	return lipgloss.JoinHorizontal(lipgloss.Top, listCard, infoContent)
 }
 
 // projectCardTitle returns the title for the project list card.

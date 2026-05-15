@@ -37,9 +37,14 @@ func (m *SettingsModel) renderColumnToggles(b *strings.Builder, toggles [14]bool
 func (m *SettingsModel) settingsContentHeight() int {
 	// Title (1) + tab bar with border (2) + blank line (1) + footer (1) + padding (1)
 	h := m.height - TabbedViewChrome
-	// Subtract 1 extra line when visual sub-tab row is visible
-	if visualSubTabNamesForVTab(m.visualTab) != nil {
-		h--
+	// Subtract rows the visual sub-tab bar consumes (may wrap to >1 row when
+	// labels overflow available width).
+	if names := visualSubTabNamesForVTab(m.visualTab); names != nil {
+		rows := wrappingTabBarRows(names, m.width-2)
+		if rows < 1 {
+			rows = 1
+		}
+		h -= rows
 	}
 	if h < 3 {
 		return 3

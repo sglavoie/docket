@@ -24,6 +24,8 @@ func (m *SettingsModel) renderBehaviorTab() string {
 		return m.renderBehaviorTaskFormSection()
 	case 8:
 		return m.renderBehaviorFocusBoardSection()
+	case 9:
+		return m.renderBehaviorDashboardSection()
 	default:
 		return m.renderBehaviorRecentActivitySection()
 	}
@@ -228,6 +230,51 @@ func (m *SettingsModel) renderBehaviorFocusBoardSection() string {
 	b.WriteString(renderDefaultHint(focusBoardModeOptions[m.focusBoardModeCursor], "List"))
 	b.WriteString("\n")
 	b.WriteString(renderFormFieldDesc("Starting focus mode when the Focus Board opens (List/Tunnel/Zen)", indent, m.focusIndex == base+0))
+
+	return b.String()
+}
+
+func (m *SettingsModel) renderBehaviorDashboardSection() string {
+	var b strings.Builder
+	const labelWidth = 17
+	const indent = 19
+	base := subTabFieldStart(tabBehavior, 9)
+
+	b.WriteString(renderFormLabelWithWidth("Layout: ", labelWidth, m.focusIndex == base+0))
+	b.WriteString(renderEnumSelector(dashboardLayoutOptions, m.dashboardLayoutCursor, m.focusIndex == base+0, m.width-indent))
+	b.WriteString(renderDefaultHint(dashboardLayoutOptions[m.dashboardLayoutCursor], "Horizontal"))
+	b.WriteString("\n")
+	b.WriteString(renderFormFieldDesc("Dashboard bottom section layout (Horizontal=top/bottom, Vertical=side-by-side, List only=hide bottom)", indent, m.focusIndex == base+0))
+
+	b.WriteString("\n")
+
+	b.WriteString(renderFormLabelWithWidth("Horiz Split %: ", labelWidth, m.focusIndex == base+1))
+	b.WriteString(m.dashboardHorizSplitInput.View())
+	b.WriteString("  ")
+	b.WriteString(MutedStyle.Render("(10-90)"))
+	b.WriteString(renderDefaultHint(m.dashboardHorizSplitInput.Value(), "70"))
+	b.WriteString("\n")
+	if m.focusIndex == base+1 && m.validationErr != "" {
+		b.WriteString(strings.Repeat(" ", indent))
+		b.WriteString(ValidationErrorStyle.Render(m.validationErr))
+		b.WriteString("\n")
+	}
+	b.WriteString(renderFormFieldDesc("Project-list height share in Horizontal layout", indent, m.focusIndex == base+1))
+
+	b.WriteString("\n")
+
+	b.WriteString(renderFormLabelWithWidth("Vert Split %: ", labelWidth, m.focusIndex == base+2))
+	b.WriteString(m.dashboardVertSplitInput.View())
+	b.WriteString("  ")
+	b.WriteString(MutedStyle.Render("(10-90)"))
+	b.WriteString(renderDefaultHint(m.dashboardVertSplitInput.Value(), "60"))
+	b.WriteString("\n")
+	if m.focusIndex == base+2 && m.validationErr != "" {
+		b.WriteString(strings.Repeat(" ", indent))
+		b.WriteString(ValidationErrorStyle.Render(m.validationErr))
+		b.WriteString("\n")
+	}
+	b.WriteString(renderFormFieldDesc("Project-list width share in Vertical layout", indent, m.focusIndex == base+2))
 
 	return b.String()
 }

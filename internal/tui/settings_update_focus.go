@@ -94,6 +94,10 @@ func (m *SettingsModel) focusedInput() *textinput.Model { //nolint:gocyclo
 			return &m.sectionLimitSomedayInput
 		case 12:
 			return &m.sectionLimitReviewInput
+		case 17:
+			return &m.dashboardHorizSplitInput
+		case 18:
+			return &m.dashboardVertSplitInput
 		}
 	case tabAttachments:
 		switch local {

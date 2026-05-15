@@ -73,16 +73,44 @@ func renderWrappingTabBarWithEmpty(tabs []string, activeIdx int, emptyTabs []boo
 // renderSubTabBarWithFocus renders a sub-tab bar row with a ▐ focus indicator.
 // tabs is the list of tab names, activeIdx is the active tab, focused indicates
 // whether this row has focus (shows ▐) or not (shows space), and width is the
-// available width for the tab bar.
+// available width for the tab bar. The bar wraps to multiple rows when tab
+// labels overflow; the focus indicator is prefixed only to the first row.
 func renderSubTabBarWithFocus(tabs []string, activeIdx int, focused bool, width int, accent ...color.Color) string {
-	bar := RenderTabBar(tabs, activeIdx, width-2, 1, accent...)
-
+	bar := renderWrappingTabBar(tabs, activeIdx, width-2, accent...)
+	lines := strings.Split(bar, "\n")
+	prefix := " "
 	if focused {
-		bar = FocusIndicator + bar
-	} else {
-		bar = " " + bar
+		prefix = FocusIndicator
 	}
-	return bar
+	lines[0] = prefix + lines[0]
+	return strings.Join(lines, "\n")
+}
+
+// wrappingTabBarRows returns the number of rows renderWrappingTabBar would
+// produce for the given tabs and availableWidth. Used to size the surrounding
+// layout (e.g. scroll viewport) before rendering.
+func wrappingTabBarRows(tabs []string, availableWidth int) int {
+	if len(tabs) == 0 {
+		return 0
+	}
+	plainStyle := lipgloss.NewStyle().Padding(0, 1)
+	rows := 0
+	currentWidth := 0
+	haveCurrent := false
+	for _, name := range tabs {
+		tabWidth := lipgloss.Width(plainStyle.Render(name))
+		if currentWidth+tabWidth > availableWidth && haveCurrent {
+			rows++
+			currentWidth = 0
+			haveCurrent = false
+		}
+		currentWidth += tabWidth
+		haveCurrent = true
+	}
+	if haveCurrent {
+		rows++
+	}
+	return rows
 }
 
 // renderTabFiller returns a bottom-border filler element that extends a tab row

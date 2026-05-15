@@ -23,19 +23,19 @@ type dashboardPanelCard struct {
 
 // renderInfoSection dispatches between the compact (default) and full
 // dashboard info card layouts based on m.dashboardCompactCards.
-func (m *DashboardModel) renderInfoSection(width int, selected *models.Project) string {
+func (m *DashboardModel) renderInfoSection(width, paneHeight int, selected *models.Project) string {
 	if m.dashboardCompactCards {
-		return m.renderInfoSectionCompact(width, selected)
+		return m.renderInfoSectionCompact(width, paneHeight, selected)
 	}
-	return m.renderInfoSectionFull(width, selected)
+	return m.renderInfoSectionFull(width, paneHeight, selected)
 }
 
 // renderInfoSectionFull renders all four info cards regardless of whether
 // they carry actionable content. Used when the user has toggled `, c` to
 // opt out of compact mode.
-func (m *DashboardModel) renderInfoSectionFull(width int, selected *models.Project) string {
+func (m *DashboardModel) renderInfoSectionFull(width, paneHeight int, selected *models.Project) string {
 	cfg := DashboardCardConfig()
-	cfg.Height = DashboardBottomPaneHeight
+	cfg.Height = paneHeight
 
 	hasRecent := selected != nil
 	hasPipeline := true
@@ -140,9 +140,9 @@ type infoCardSpec struct {
 // renderInfoSectionCompact renders actionable cards in the usual grid and
 // collapses inert cards into one-line summary rows beneath. Card order
 // within each partition: Alerts → Top Scored → Pipeline → Recent.
-func (m *DashboardModel) renderInfoSectionCompact(width int, selected *models.Project) string {
+func (m *DashboardModel) renderInfoSectionCompact(width, paneHeight int, selected *models.Project) string {
 	cfg := DashboardCardConfig()
-	cfg.Height = DashboardBottomPaneHeight
+	cfg.Height = paneHeight
 
 	alertLines := m.computeGlobalAlertLines()
 
@@ -331,9 +331,11 @@ func (m *DashboardModel) buildActionableInfoCards(
 }
 
 // renderProjectSummarySection renders the project summary card and alerts card.
-func (m *DashboardModel) renderProjectSummarySection(width int, selected *models.Project) string {
+// When stack is true, the cards are stacked vertically at full width regardless
+// of available horizontal room; otherwise they render side-by-side when wide.
+func (m *DashboardModel) renderProjectSummarySection(width, paneHeight int, selected *models.Project, stack bool) string {
 	cfg := DashboardCardConfig()
-	cfg.Height = DashboardBottomPaneHeight
+	cfg.Height = paneHeight
 
 	numCards := 1
 	hasSummary := selected != nil
@@ -341,7 +343,7 @@ func (m *DashboardModel) renderProjectSummarySection(width int, selected *models
 		numCards++
 	}
 
-	wide := m.width >= DashboardInfoSectionWideMinWidth && numCards > 1
+	wide := !stack && m.width >= DashboardInfoSectionWideMinWidth && numCards > 1
 	summaryCardW := width
 	alertsCardW := width
 	if wide {

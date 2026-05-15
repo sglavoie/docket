@@ -110,6 +110,11 @@ func buildSettingsFieldRegistry() []settingsFieldMeta {
 	// subTab 8: Focus Board
 	base = subTabFieldStart(tabBehavior, 8)
 	add(base+0, tabBehavior, 8, "General > Focus Board", "Default Mode", "focus board mode list tunnel zen", "List")
+	// subTab 9: Dashboard
+	base = subTabFieldStart(tabBehavior, 9)
+	add(base+0, tabBehavior, 9, "General > Dashboard", "Layout", "dashboard bottom layout horizontal vertical list only split", "Horizontal")
+	add(base+1, tabBehavior, 9, "General > Dashboard", "Horizontal Split %", "dashboard horizontal split percent ratio height", strconv.Itoa(config.DefaultDashboardHorizontalSplitPct))
+	add(base+2, tabBehavior, 9, "General > Dashboard", "Vertical Split %", "dashboard vertical split percent ratio width", strconv.Itoa(config.DefaultDashboardVerticalSplitPct))
 
 	// Tab 4: Attachments (2 fields)
 	base = tabFieldStart[tabAttachments]

@@ -62,9 +62,10 @@ const (
 	// SidebarContentOverhead is the horizontal overhead for sidebar content.
 	SidebarContentOverhead = 3
 
-	// DashboardBottomPaneHeight is the fixed height for the bottom info
-	// section (summary/alerts cards) in the dashboard. The top project
-	// list gets whatever vertical space remains after reserving this.
+	// DashboardBottomPaneHeight is the minimum-clamp height for the bottom
+	// info section (summary/alerts cards) in the dashboard horizontal
+	// layout. Session 2 will compute the actual height from the configured
+	// horizontal split percentage and clamp the result against this value.
 	DashboardBottomPaneHeight = 12
 
 	// CompactCardHeight is the height reserved for an inert one-line

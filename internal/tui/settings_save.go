@@ -164,6 +164,13 @@ func (m *SettingsModel) saveSettings() tea.Cmd {
 	m.config.StartView = startViewValues[m.startViewCursor]
 	m.config.TaskFormCollapsed = boolPtr(m.taskFormCollapsed)
 	m.config.SetFocusBoardDefaultMode(focusBoardModeValues[m.focusBoardModeCursor])
+	m.config.SetDashboardBottomLayout(config.DashboardBottomLayout(m.dashboardLayoutCursor))
+	if pct, err := strconv.Atoi(strings.TrimSpace(m.dashboardHorizSplitInput.Value())); err == nil {
+		m.config.SetDashboardHorizontalSplitPct(pct)
+	}
+	if pct, err := strconv.Atoi(strings.TrimSpace(m.dashboardVertSplitInput.Value())); err == nil {
+		m.config.SetDashboardVerticalSplitPct(pct)
+	}
 	m.config.TUIZebraStriping = boolPtr(m.zebraStriping)
 	m.config.WeekEndDay = weekEndDayValues[m.weekEndDayCursor]
 	m.config.TimeFormat = timeFormatValues[m.timeFormatCursor]

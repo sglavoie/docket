@@ -181,6 +181,85 @@ func (c *Config) SetShowInfoPanel(show bool) {
 	c.ShowInfoPanel = &show
 }
 
+// DashboardBottomLayout selects how the dashboard splits its project list and
+// bottom info section.
+type DashboardBottomLayout int
+
+const (
+	DashboardLayoutHorizontal DashboardBottomLayout = 0 // top/bottom (default)
+	DashboardLayoutVertical   DashboardBottomLayout = 1 // side-by-side
+	DashboardLayoutListOnly   DashboardBottomLayout = 2 // hide bottom section
+	dashboardLayoutCount                            = 3
+)
+
+const (
+	DefaultDashboardHorizontalSplitPct = 70
+	DefaultDashboardVerticalSplitPct   = 60
+	MinDashboardSplitPct               = 10
+	MaxDashboardSplitPct               = 90
+)
+
+// GetDashboardBottomLayout returns the configured dashboard bottom-section layout.
+// Defaults to DashboardLayoutHorizontal when unset; clamps invalid stored values.
+func (c *Config) GetDashboardBottomLayout() DashboardBottomLayout {
+	if c.DashboardBottomLayout == nil {
+		return DashboardLayoutHorizontal
+	}
+	v := DashboardBottomLayout(*c.DashboardBottomLayout)
+	if v < 0 || v >= dashboardLayoutCount {
+		return DashboardLayoutHorizontal
+	}
+	return v
+}
+
+// SetDashboardBottomLayout stores the dashboard bottom-section layout.
+func (c *Config) SetDashboardBottomLayout(v DashboardBottomLayout) {
+	i := int(v)
+	c.DashboardBottomLayout = &i
+}
+
+// GetDashboardHorizontalSplitPct returns the project-list height share (10–90)
+// in horizontal layout. Defaults to DefaultDashboardHorizontalSplitPct.
+func (c *Config) GetDashboardHorizontalSplitPct() int {
+	if c.DashboardHorizontalSplitPct == nil {
+		return DefaultDashboardHorizontalSplitPct
+	}
+	return clampSplitPct(*c.DashboardHorizontalSplitPct)
+}
+
+// SetDashboardHorizontalSplitPct stores the horizontal split percentage,
+// clamped to [MinDashboardSplitPct, MaxDashboardSplitPct].
+func (c *Config) SetDashboardHorizontalSplitPct(pct int) {
+	v := clampSplitPct(pct)
+	c.DashboardHorizontalSplitPct = &v
+}
+
+// GetDashboardVerticalSplitPct returns the project-list width share (10–90)
+// in vertical layout. Defaults to DefaultDashboardVerticalSplitPct.
+func (c *Config) GetDashboardVerticalSplitPct() int {
+	if c.DashboardVerticalSplitPct == nil {
+		return DefaultDashboardVerticalSplitPct
+	}
+	return clampSplitPct(*c.DashboardVerticalSplitPct)
+}
+
+// SetDashboardVerticalSplitPct stores the vertical split percentage, clamped
+// to [MinDashboardSplitPct, MaxDashboardSplitPct].
+func (c *Config) SetDashboardVerticalSplitPct(pct int) {
+	v := clampSplitPct(pct)
+	c.DashboardVerticalSplitPct = &v
+}
+
+func clampSplitPct(pct int) int {
+	if pct < MinDashboardSplitPct {
+		return MinDashboardSplitPct
+	}
+	if pct > MaxDashboardSplitPct {
+		return MaxDashboardSplitPct
+	}
+	return pct
+}
+
 // GetTutorDismissed returns whether the tutor prompt has been dismissed.
 // Defaults to false if not set.
 func (c *Config) GetTutorDismissed() bool {
