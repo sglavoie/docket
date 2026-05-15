@@ -199,25 +199,39 @@ func (m *HelpViewModel) renderContent() string {
 		// Indent = keyWidth + separator(2) so wrapped text aligns under description
 		wrappedDesc := wrapDescriptionWithIndent(descText, descWidth, keyWidth+2)
 
-		// Split into lines, apply scope styling across all lines
 		descLines := strings.Split(wrappedDesc, "\n")
-		if scopeSuffix != "" {
-			descLines = styleScopeLines(descLines)
-		}
-		var result strings.Builder
 
-		for i, line := range descLines {
-			if i == 0 {
-				// First line: key + separator + description
-				result.WriteString(renderedKey)
-				result.WriteString("  ")
-				if len(descPos) > 0 {
-					result.WriteString(HighlightText(line, descPos, NormalStyle))
-				} else {
-					result.WriteString(line)
+		// HighlightText must run on plain text (before ANSI injection by styleScopeLines).
+		if scopeSuffix != "" && len(descPos) > 0 {
+			firstLine := descLines[0]
+			if markerIdx := strings.Index(firstLine, "·"); markerIdx >= 0 {
+				scopeStart := markerIdx
+				for scopeStart > 0 && firstLine[scopeStart-1] == ' ' {
+					scopeStart--
+				}
+				descLines[0] = HighlightText(firstLine[:scopeStart], descPos, NormalStyle) +
+					MutedStyle.Render(firstLine[scopeStart:])
+				for i := 1; i < len(descLines); i++ {
+					t := strings.TrimLeft(descLines[i], " ")
+					descLines[i] = strings.Repeat(" ", len(descLines[i])-len(t)) + MutedStyle.Render(t)
 				}
 			} else {
-				// Continuation lines are already indented by wrapDescriptionWithIndent
+				descLines[0] = HighlightText(firstLine, descPos, NormalStyle)
+				descLines = styleScopeLines(descLines)
+			}
+		} else if scopeSuffix != "" {
+			descLines = styleScopeLines(descLines)
+		} else if len(descPos) > 0 {
+			descLines[0] = HighlightText(descLines[0], descPos, NormalStyle)
+		}
+
+		var result strings.Builder
+		for i, line := range descLines {
+			if i == 0 {
+				result.WriteString(renderedKey)
+				result.WriteString("  ")
+				result.WriteString(line)
+			} else {
 				result.WriteString("\n")
 				result.WriteString(line)
 			}
