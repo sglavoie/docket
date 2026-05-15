@@ -309,7 +309,10 @@ Open the command palette with : and type "daily review" or
 
 Press t then s on a selected task (ts) to open the section picker. Choose
 from Active, Next, Inbox, Waiting, or Someday to reassign
-the task quickly.`,
+the task quickly.
+
+Tasks in the Someday section are excluded from stale notifications
+regardless of how long they have been inactive.`,
 		},
 		{
 			Title:    "Stages",

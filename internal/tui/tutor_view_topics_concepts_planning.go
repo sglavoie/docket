@@ -62,6 +62,9 @@ for example when more urgent work arrived. Someday captures
 tasks you might do eventually. Review holds tasks awaiting
 code review, QA, or approval.
 
+Tasks in Someday are excluded from stale notifications — they
+will not appear in the notification center for being inactive.
+
 # Custom Sections
 
 Beyond the built-in sections, you can create your own to match

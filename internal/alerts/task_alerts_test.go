@@ -216,6 +216,18 @@ func TestCheckStaleTasks_CompletedIgnored(t *testing.T) {
 	}
 }
 
+func TestCheckStaleTasks_SomedayIgnored(t *testing.T) {
+	now := time.Date(2026, 2, 28, 10, 0, 0, 0, time.UTC)
+	task := testTask("someday stale", models.StatusTodo, now.AddDate(0, 0, -30))
+	task.Section = models.SectionSomeday
+
+	projects := []ProjectData{testProject("proj1", task)}
+	alerts := checkStaleTasks(DefaultAlertConfig(), projects, now)
+	if len(alerts) != 0 {
+		t.Fatalf("expected 0 alerts for Someday task, got %d", len(alerts))
+	}
+}
+
 func TestCheckStaleTasks_ExactThresholdBoundary(t *testing.T) {
 	now := time.Date(2026, 2, 28, 10, 0, 0, 0, time.UTC)
 	task := testTask("boundary", models.StatusTodo, now.AddDate(0, 0, -14))

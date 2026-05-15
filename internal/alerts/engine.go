@@ -204,7 +204,7 @@ func checkStaleTasks(cfg AlertConfig, projects []ProjectData, now time.Time) []A
 
 	for _, pd := range projects {
 		for _, task := range pd.Tasks {
-			if !task.Status.IsActive() || task.IsSnoozedAt(now) {
+			if !task.Status.IsActive() || task.IsSnoozedAt(now) || task.Section == models.SectionSomeday {
 				continue
 			}
 			if task.UpdatedAt.Before(staleThreshold) {
