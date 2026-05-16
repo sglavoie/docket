@@ -74,7 +74,7 @@ func (m *WeeklyReviewModel) loadData() { //nolint:gocyclo
 			}
 
 			// Inbox count
-			if task.Section == models.SectionInbox {
+			if task.Section == models.SectionInbox && task.IsRoot() {
 				wp.InboxCount++
 			}
 

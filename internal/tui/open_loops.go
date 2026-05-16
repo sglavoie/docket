@@ -62,7 +62,7 @@ func ComputeOpenLoops(cfg *config.Config, dailyPlanIDs map[string]bool) OpenLoop
 				continue
 			}
 
-			if task.Section == models.SectionInbox {
+			if task.Section == models.SectionInbox && task.IsRoot() {
 				out.Inbox++
 			}
 			if task.IsOverdue() {

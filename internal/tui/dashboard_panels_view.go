@@ -557,7 +557,7 @@ func (m *DashboardModel) computeGlobalAlertLines(selectedProject *models.Project
 
 		inboxCount := 0
 		for _, task := range p.Tasks {
-			if task != nil && task.Section == models.SectionInbox && !task.Status.IsComplete() {
+			if task != nil && task.Section == models.SectionInbox && task.IsRoot() && !task.Status.IsComplete() {
 				inboxCount++
 			}
 		}

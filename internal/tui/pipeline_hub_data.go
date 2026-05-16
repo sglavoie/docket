@@ -49,14 +49,10 @@ func loadPipelineCounts(cfg *config.Config, queueIDs, dailyPlanIDs map[string]bo
 }
 
 func countInbox(task *models.Task) int {
-	n := 0
 	if task.Section == models.SectionInbox && !task.IsComplete() && !task.IsSnoozed() {
-		n++
+		return 1
 	}
-	for _, child := range task.Children {
-		n += countInbox(child)
-	}
-	return n
+	return 0
 }
 
 func countOverdue(task *models.Task) int {
