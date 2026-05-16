@@ -99,6 +99,15 @@ func (m *AppModel) renderStatusBar() string {
 		}
 	} else {
 		left = accentBarStyle.Render(status)
+		if m.currentView() == ViewDashboard && m.openLoops.TodayTotal > 0 {
+			pill := fmt.Sprintf("· today: %d/%d done", m.openLoops.TodayDone, m.openLoops.TodayTotal)
+			if m.openLoops.TodayDone == m.openLoops.TodayTotal {
+				pill = SuccessStyle.Render("· today: ✓ all done")
+			} else {
+				pill = MutedStyle.Render(pill)
+			}
+			left += " " + pill
+		}
 	}
 
 	// Add filter pill if current view has active filters.

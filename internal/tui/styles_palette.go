@@ -32,22 +32,23 @@ var (
 	ColorAccent      = lipgloss.Color("#e0af68")
 	ColorSelectedBg  = lipgloss.Color("#33467c")
 
-	ColorViewActive     = lipgloss.Color("#9ece6a")
-	ColorViewNext       = lipgloss.Color("#7aa2f7")
-	ColorViewStandby    = lipgloss.Color("#bb9af7")
-	ColorViewSomeday    = lipgloss.Color("#9d7cd8")
-	ColorSelectedFg     = lipgloss.Color("#c0caf5")
-	ColorSelectedTextFg = lipgloss.Color("#c0caf5") // dark-theme default; set by ApplyTheme
-	ColorFlashBg        = lipgloss.Color("#8590b0") // derived: lightenHex("#33467c", 0.4)
-	ColorLightGray      = lipgloss.Color("252")
-	ColorSubtleBorder   = lipgloss.Color("#3b3f5c")
-	ColorPurple         = lipgloss.Color("#bb9af7")
-	ColorOrange         = lipgloss.Color("#ff9e64")
-	ColorRuleKeyword    = lipgloss.Color("#7dcfff")
-	ColorRuleOperator   = lipgloss.Color("#bb9af7")
-	ColorZebraBg        = lipgloss.Color("#16171f")
-	ColorTreeGroupBg    = lipgloss.Color("#141520") // subtle tint for odd top-level groups
-	ColorProgressEmpty  = lipgloss.Color("#565f89") // dark-theme default; set by rebuildPalette
+	ColorViewActive      = lipgloss.Color("#9ece6a")
+	ColorViewNext        = lipgloss.Color("#7aa2f7")
+	ColorViewStandby     = lipgloss.Color("#bb9af7")
+	ColorViewSomeday     = lipgloss.Color("#9d7cd8")
+	ColorSelectedFg      = lipgloss.Color("#c0caf5")
+	ColorSelectedTextFg  = lipgloss.Color("#c0caf5") // dark-theme default; set by ApplyTheme
+	ColorFlashBg         = lipgloss.Color("#8590b0") // derived: lightenHex("#33467c", 0.4)
+	ColorLightGray       = lipgloss.Color("252")
+	ColorSubtleBorder    = lipgloss.Color("#3b3f5c")
+	ColorPurple          = lipgloss.Color("#bb9af7")
+	ColorOrange          = lipgloss.Color("#ff9e64")
+	ColorRuleKeyword     = lipgloss.Color("#7dcfff")
+	ColorRuleOperator    = lipgloss.Color("#bb9af7")
+	ColorZebraBg         = lipgloss.Color("#16171f")
+	ColorTreeGroupBg     = lipgloss.Color("#141520") // subtle tint for odd top-level groups
+	ColorFirstPlanItemBg = lipgloss.Color("#1e1f2e") // subtle elevated bg for the first today plan item
+	ColorProgressEmpty   = lipgloss.Color("#565f89") // dark-theme default; set by rebuildPalette
 
 	// View accent colors — one per pipeline stage for spatial orientation.
 	AccentDashboard = lipgloss.Color("#7aa2f7") // blue (dashboard)

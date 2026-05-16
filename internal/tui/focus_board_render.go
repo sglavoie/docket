@@ -20,6 +20,18 @@ func (m *FocusBoardModel) View() tea.View { //nolint:gocyclo
 
 	var b strings.Builder
 
+	completedToday := 0
+	plannedTotal := 0
+	for _, r := range m.todayRows {
+		if r.TreePrefix != "" {
+			continue
+		}
+		plannedTotal++
+		if r.Task.Status.IsComplete() {
+			completedToday++
+		}
+	}
+
 	if m.focusMode == focusModeTunnel {
 		// Tunnel mode: show current task as header, hide tab bar
 		title := "Focus Mode"
@@ -30,11 +42,30 @@ func (m *FocusBoardModel) View() tea.View { //nolint:gocyclo
 		b.WriteString("\n")
 	} else {
 		// Normal mode: show title + tab bar
-		subtitle := fmt.Sprintf("%d tasks", len(m.rows))
+		title := "Today"
+		titleColor := m.AccentColor()
+		var subtitle string
+		if m.tabs.Active == boardTabToday {
+			switch {
+			case plannedTotal == 0 && m.openLoops.Overdue > 0:
+				subtitle = fmt.Sprintf("0 planned · ⚠ %d overdue", m.openLoops.Overdue)
+				titleColor = ColorWarning
+			case plannedTotal == 0:
+				subtitle = "0 planned"
+			case completedToday == plannedTotal:
+				title = "Today ✓"
+				subtitle = "All done!"
+				titleColor = ColorSuccess
+			default:
+				subtitle = fmt.Sprintf("%d tasks · %d/%d done", len(m.rows), completedToday, plannedTotal)
+			}
+		} else {
+			subtitle = fmt.Sprintf("%d tasks", len(m.rows))
+		}
 		if name := PerspectiveLensName(m.activePerspective); name != "" {
 			subtitle += " · " + name
 		}
-		b.WriteString(renderFullscreenTitleWithCounter("Today", subtitle, FormatOpenLoops(m.openLoops), m.width, m.AccentColor()))
+		b.WriteString(renderFullscreenTitleWithCounter(title, subtitle, FormatOpenLoops(m.openLoops), m.width, titleColor))
 		b.WriteString("\n")
 		b.WriteString(renderTabBarWithOptionalSubTabs(m.computedTabNames(), m.tabs.Active, nil, false, m.width, m.AccentColor()))
 		b.WriteString("\n")
@@ -259,11 +290,17 @@ func (m *FocusBoardModel) View() tea.View { //nolint:gocyclo
 	// Footer
 	var left string
 	if m.addMode || m.editMode {
-		left = HelpStyle.Render("Enter: save · Esc: cancel")
+		left = HelpStyle.Render("enter save · Esc cancel")
+	} else if m.multiSelectMode {
+		left = HelpStyle.Render("x done · space toggle · A deselect")
 	} else if m.tabs.Active == boardTabClosed {
-		left = HelpStyle.Render("d reopen · D delete · o open URL · ? help")
+		left = HelpStyle.Render("d reopen · enter open · D delete")
+	} else if m.tabs.Active == boardTabToday && completedToday == plannedTotal && plannedTotal > 0 {
+		left = HelpStyle.Render("w plan more · a add · Esc close")
+	} else if m.tabs.Active == boardTabToday {
+		left = HelpStyle.Render("x done · a add · enter open")
 	} else {
-		left = HelpStyle.Render("a add · x done · X dismiss · n/N parents · e edit · enter open/go")
+		left = HelpStyle.Render("w plan today · a add · enter open")
 	}
 	var rightParts []string
 	if indicator := m.renderActiveFilterIndicator(); indicator != "" {
@@ -280,17 +317,6 @@ func (m *FocusBoardModel) View() tea.View { //nolint:gocyclo
 	case boardTabClosed:
 		rightParts = append(rightParts, fmt.Sprintf("%d closed", len(m.closedRows)))
 	case boardTabToday:
-		completedToday := 0
-		plannedTotal := 0
-		for _, r := range m.todayRows {
-			if r.TreePrefix != "" {
-				continue
-			}
-			plannedTotal++
-			if r.Task.Status.IsComplete() {
-				completedToday++
-			}
-		}
 		rightParts = append(rightParts, fmt.Sprintf("%d/%d done", completedToday, plannedTotal))
 		if m.childDepthLimit >= 0 {
 			rightParts = append(rightParts, fmt.Sprintf("fold:%d", m.childDepthLimit))
@@ -424,6 +450,9 @@ func (m *FocusBoardModel) renderRow(row boardRow, isSelected bool, maxTitleLen i
 	line := RenderSelectableRow(isSelected, task.Active, task.Pinned, m.cursorFlash, isOverdue, isBlocked, content, m.width-2, dimmed)
 	if isSelected && m.mutationFlash {
 		line = MutationFlashLine(line, m.width-2, m.mutationFlashBg)
+	}
+	if isFirstPlanItem && !isSelected && !dimmed && !isBlocked && !isOverdue {
+		line = FirstPlanItemStyle.Width(m.width - 2).Render(strings.TrimRight(line, " "))
 	}
 	b.WriteString(line)
 

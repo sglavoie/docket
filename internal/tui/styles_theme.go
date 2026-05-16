@@ -156,6 +156,14 @@ func ApplyTheme(tc ThemeConfig) {
 		TreeGroupOddBgStyle = lipgloss.NewStyle().Background(ColorTreeGroupBg)
 	}
 
+	// Derive first plan item background: lighten custom bg 12%, or use default ColorFirstPlanItemBg.
+	if effectiveBgColor != "" {
+		derivedFirstPlan := lightenHex(effectiveBgColor, 0.12)
+		FirstPlanItemStyle = lipgloss.NewStyle().Background(lipgloss.Color(derivedFirstPlan))
+	} else {
+		FirstPlanItemStyle = lipgloss.NewStyle().Background(ColorFirstPlanItemBg)
+	}
+
 	alwaysBg := ColorBackground
 	if effectiveBgColor != "" {
 		alwaysBg = lipgloss.Color(effectiveBgColor)

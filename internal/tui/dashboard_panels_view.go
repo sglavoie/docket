@@ -112,7 +112,7 @@ func (m *DashboardModel) renderInfoSectionFull(width, paneHeight int, selected *
 		cards = append(cards, dashboardPanelCard{title: "Pipeline", content: pipelineContent, width: otherCardW})
 	}
 
-	alertsContent := m.renderGlobalAlerts(alertsContentW)
+	alertsContent := m.renderGlobalAlerts(alertsContentW, selected)
 	cards = append(cards, dashboardPanelCard{title: "Alerts", content: alertsContent, width: alertsCardW})
 
 	return renderDashboardCards(width, wide, cfg, cards)
@@ -144,7 +144,7 @@ func (m *DashboardModel) renderInfoSectionCompact(width, paneHeight int, selecte
 	cfg := DashboardCardConfig()
 	cfg.Height = paneHeight
 
-	alertLines := m.computeGlobalAlertLines()
+	alertLines := m.computeGlobalAlertLines(selected)
 
 	var scoringProfile *scoring.ScoringProfile
 	var bestTask *models.Task
@@ -364,7 +364,7 @@ func (m *DashboardModel) renderProjectSummarySection(width, paneHeight int, sele
 		cards = append(cards, dashboardPanelCard{title: summaryTitle, content: summaryContent, width: summaryCardW})
 	}
 
-	alertsContent := m.renderGlobalAlerts(alertsContentW)
+	alertsContent := m.renderGlobalAlerts(alertsContentW, selected)
 	cards = append(cards, dashboardPanelCard{title: "Alerts", content: alertsContent, width: alertsCardW})
 
 	return renderDashboardCards(width, wide, cfg, cards)
@@ -501,8 +501,8 @@ func (m *DashboardModel) renderProjectSummaryContent(project *models.Project) st
 }
 
 // renderGlobalAlerts aggregates alert counts across all active projects.
-func (m *DashboardModel) renderGlobalAlerts(_ int) string {
-	lines := m.computeGlobalAlertLines()
+func (m *DashboardModel) renderGlobalAlerts(_ int, selectedProject *models.Project) string {
+	lines := m.computeGlobalAlertLines(selectedProject)
 	if len(lines) == 0 {
 		return MutedStyle.Render("No alerts")
 	}
@@ -511,14 +511,14 @@ func (m *DashboardModel) renderGlobalAlerts(_ int) string {
 
 // globalAlertCount returns the number of distinct alert lines that would render.
 // Zero means the alert card is inert.
-func (m *DashboardModel) globalAlertCount() int {
-	return len(m.computeGlobalAlertLines())
+func (m *DashboardModel) globalAlertCount(selectedProject *models.Project) int {
+	return len(m.computeGlobalAlertLines(selectedProject))
 }
 
 // computeGlobalAlertLines walks all active projects and produces the rendered
 // alert lines. Both renderGlobalAlerts and globalAlertCount consume this.
-func (m *DashboardModel) computeGlobalAlertLines() []string {
-	var totalOverdue, totalDueToday, totalBlocked, totalBlockers, totalCompletedThisWeek int
+func (m *DashboardModel) computeGlobalAlertLines(selectedProject *models.Project) []string {
+	var totalOverdue, totalDueToday, totalBlocked, totalBlockers, totalCompletedThisWeek, todayPlannedCount int
 	var inboxProjects []string
 
 	now := time.Now()
@@ -543,6 +543,9 @@ func (m *DashboardModel) computeGlobalAlertLines() []string {
 		for _, task := range p.Tasks {
 			if task == nil {
 				continue
+			}
+			if task.Section == models.SectionNext && !task.Status.IsComplete() {
+				todayPlannedCount++
 			}
 			if task.DueDate != nil && !task.Status.IsComplete() && util.StartOfDay(*task.DueDate).Equal(today) {
 				totalDueToday++
@@ -588,23 +591,54 @@ func (m *DashboardModel) computeGlobalAlertLines() []string {
 		lines = append(lines, MutedStyle.Render(fmt.Sprintf("%s %d global notes", icons.Get("notes"), len(globalNotes))))
 	}
 
+	if todayPlannedCount == 0 && selectedProject != nil {
+		profile := m.config.GetProjectScoringProfile(selectedProject.ID)
+		if suggested := bestScoredTask(selectedProject, profile); suggested != nil {
+			lines = append(lines, renderSuggestedTask(suggested))
+		}
+	}
+
 	return lines
 }
 
-// renderTopScoredContent returns the highest-scored incomplete task with a score bar.
-func (m *DashboardModel) renderTopScoredContent(project *models.Project, profile *scoring.ScoringProfile, contentWidth int) string {
-	var bestTask *models.Task
+// bestScoredTask returns the highest-scored active task in a project, or nil if none exist.
+// Skips completed tasks and tasks in Someday/Completed sections. When profile is nil, returns
+// the first active task without scoring.
+func bestScoredTask(project *models.Project, profile *scoring.ScoringProfile) *models.Task {
+	var best *models.Task
 	var bestScore float64
 	for _, task := range project.Tasks {
 		if task == nil || task.Status.IsComplete() {
 			continue
 		}
-		score := scoring.ComputeScore(task, profile)
-		if bestTask == nil || score > bestScore {
-			bestTask = task
-			bestScore = score
+		if task.Section == models.SectionSomeday || task.Section == models.SectionCompleted {
+			continue
+		}
+		if profile != nil {
+			score := scoring.ComputeScore(task, profile)
+			if best == nil || score > bestScore {
+				best = task
+				bestScore = score
+			}
+		} else if best == nil {
+			best = task
 		}
 	}
+	return best
+}
+
+// renderSuggestedTask formats a single suggested-task alert line.
+func renderSuggestedTask(t *models.Task) string {
+	typeIcon := GetTypeBadge(string(t.Type), t.Type.Icon())
+	title := truncateToVisualWidth(t.Title, 40)
+	prefix := DueSoonStyle.Render("▸ Suggested:")
+	rest := MutedStyle.Render(fmt.Sprintf(" %s %s", typeIcon, title))
+	return prefix + rest
+}
+
+// renderTopScoredContent returns the highest-scored incomplete task with a score bar.
+func (m *DashboardModel) renderTopScoredContent(project *models.Project, profile *scoring.ScoringProfile, contentWidth int) string {
+	bestTask := bestScoredTask(project, profile)
 	if bestTask == nil {
 		return ""
 	}
@@ -700,7 +734,7 @@ func (m *DashboardModel) renderPipelineCardContent(width int) string {
 	}{
 		{"Organize", pc.inboxCount},
 		{"Plan", pc.queueLen},
-		{"Work", pc.dailyPlanLen},
+		{"Today", pc.dailyPlanLen},
 		{"Execute", pc.inProgressCount},
 		{"Review", pc.completedTodayCount},
 	}
