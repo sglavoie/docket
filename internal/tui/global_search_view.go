@@ -43,7 +43,7 @@ func (m *GlobalSearchModel) View() tea.View {
 
 	// Handle edge cases
 	if len(m.allTasks) == 0 {
-		out.WriteString(MutedStyle.Render("No tasks found in any project."))
+		out.WriteString(MutedStyle.Render(EmptyStateCrossProject))
 		out.WriteString("\n\n")
 		out.WriteString(m.renderHelpText())
 		return tea.NewView(out.String())
@@ -51,7 +51,7 @@ func (m *GlobalSearchModel) View() tea.View {
 
 	query := strings.TrimSpace(m.searchInput.Value())
 	if query == "" && !m.hideCompleted && m.tabs.Active != globalSearchTabNotes {
-		out.WriteString(MutedStyle.Render("Type to search across all tasks..."))
+		out.WriteString(MutedStyle.Render(EmptyStateSearchPrompt))
 		out.WriteString("\n\n")
 		out.WriteString(m.renderHelpText())
 		return tea.NewView(out.String())

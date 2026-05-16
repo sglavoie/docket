@@ -20,6 +20,24 @@ func pipelineStage(vt ViewType) string {
 	return ""
 }
 
+// captureNextHint returns the next-step hint shown after a successful first-task quick-capture.
+// taskCountBefore is the number of tasks in the project before the capture; returns "" otherwise.
+func captureNextHint(taskCountBefore int) string {
+	if taskCountBefore == 0 {
+		return "plan it today (;w) or process inbox (ctrl+i)"
+	}
+	return ""
+}
+
+// pipelineNextHintOnboarding returns a special next-step hint for empty-state views.
+// Called when no tasks exist yet so beginners get an actionable prompt.
+func pipelineNextHintOnboarding(vt ViewType) string {
+	if vt == ViewAllTasks {
+		return "Next: capture a task (ctrl+i) or open Quick Capture (:)"
+	}
+	return ""
+}
+
 // pipelineNextHint returns a contextual "next step" hint string for a view.
 // Returns "" for views that should show the default help text.
 func pipelineNextHint(vt ViewType) string {

@@ -91,6 +91,15 @@ func formatUndoToast(action, context string) string {
 	return fmt.Sprintf("%s '%s' · u to undo · ⌃Z for history", action, context)
 }
 
+// formatSuccessWithNext renders "<action> — <nextHint>" for status messages that guide the
+// user to their next step. Returns action unchanged when nextHint is empty.
+func formatSuccessWithNext(action, nextHint string) string {
+	if nextHint == "" {
+		return action
+	}
+	return action + " — " + nextHint
+}
+
 // clearStatus clears the status message and resets the info flag.
 func (m *AppModel) clearStatus() {
 	m.statusMessage = ""

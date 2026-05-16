@@ -111,7 +111,7 @@ func parseQuickEdit(input string, _ *models.Task, project *models.Project) (*qui
 				}
 			}
 			if !found {
-				return nil, fmt.Errorf("section not found: %s", sectionName)
+				return nil, fmt.Errorf("section not found: '%s' (use section name or /inbox /next /someday)", sectionName)
 			}
 		}
 		input = qeSectionRe.ReplaceAllString(input, " ")
@@ -227,7 +227,7 @@ func parseQuickEditForPreview(input string, _ *models.Task, project *models.Proj
 				}
 			}
 			if !found && errMsg == "" {
-				errMsg = fmt.Sprintf("section not found: %s", sectionName)
+				errMsg = fmt.Sprintf("section not found: '%s' (use section name or /inbox /next /someday)", sectionName)
 			}
 		}
 		input = qeSectionRe.ReplaceAllString(input, " ")

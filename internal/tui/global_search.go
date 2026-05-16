@@ -56,7 +56,7 @@ type GlobalSearchModel struct {
 // NewGlobalSearchModel creates a new global search model.
 func NewGlobalSearchModel(cfg *config.Config) *GlobalSearchModel {
 	searchInput := textinput.New()
-	searchInput.Placeholder = "Search all tasks..."
+	searchInput.Placeholder = "Search tasks… ($status #tag @due ^type)"
 	searchInput.CharLimit = 100
 	searchInput.SetWidth(40)
 	searchInput.Focus()

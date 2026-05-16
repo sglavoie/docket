@@ -228,6 +228,7 @@ func (r *KeybindingRegistry) registerGlobalBindings() {
 		Keybinding{Key: ":", Description: "Command palette", Category: "Navigation"},
 		Keybinding{Key: "|", Description: "Recent tasks", Category: "Navigation"},
 		Keybinding{Key: "#", Description: "Pinned tasks", Category: "Navigation"},
+		Keybinding{Key: ";;", Description: "Open Pipeline Hub", Category: "Navigation"},
 		Keybinding{Key: ";n", Description: "Open Notification Center", Category: "Navigation"},
 		Keybinding{Key: "ctrl+,", Description: "Open Settings", Category: "Navigation"},
 		Keybinding{Key: ";d", Description: "Open Daily Review", Category: "Navigation"},

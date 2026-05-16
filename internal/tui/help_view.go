@@ -9,7 +9,7 @@ import (
 // NewHelpViewModel creates a new help view model.
 func NewHelpViewModel(items []HelpItem, sourceView ViewType, viewName string) *HelpViewModel {
 	searchInput := textinput.New()
-	searchInput.Placeholder = "Filter help..."
+	searchInput.Placeholder = "Search keybindings..."
 	searchInput.CharLimit = 50
 	searchInput.SetWidth(30)
 	applyThemedTextInput(&searchInput)

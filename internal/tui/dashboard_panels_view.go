@@ -184,7 +184,7 @@ func (m *DashboardModel) renderInfoSectionCompact(width, paneHeight int, selecte
 	specs = append(specs, infoCardSpec{
 		kind:       infoCardPipeline,
 		title:      "Pipeline",
-		actionable: m.pipelineHasContent(),
+		actionable: m.pipelineHasContent() || selected == nil,
 		summary:    "idle",
 	})
 	if selected != nil {

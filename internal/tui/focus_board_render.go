@@ -183,9 +183,10 @@ func (m *FocusBoardModel) View() tea.View { //nolint:gocyclo
 			}
 		}
 		colLayout = ComputeBadgeWidths(tasks, BadgeWidthOpts{
-			IncludeStatus: true,
-			IncludeType:   true,
-			IncludeStage:  true,
+			HideLowPriority: true,
+			IncludeStatus:   true,
+			IncludeType:     true,
+			IncludeStage:    true,
 		})
 	}
 
@@ -317,6 +318,9 @@ func (m *FocusBoardModel) renderRow(row boardRow, isSelected bool, maxTitleLen i
 	projectName := truncateToVisualWidth(row.Project.Name, 10)
 
 	priorityBadge := renderPriorityBadge(task.Priority)
+	if task.Priority > 2 {
+		priorityBadge = ""
+	}
 	isClosed := task.Status.IsComplete()
 
 	// Tree prefix for auto-expanded children

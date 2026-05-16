@@ -176,7 +176,12 @@ func (m *TaskDetailModel) handleStatusPrefix(key string) (tea.Model, tea.Cmd) {
 		m.task = fresh
 	}
 
-	return m, result.Cmd
+	if targetStatus == models.StatusDone {
+		m.setCompletionFlash()
+		return m, tea.Batch(result.Cmd, completionFlashScheduler())
+	}
+	m.setMutationFlash(statusMutationFlashBg(targetStatus))
+	return m, tea.Batch(result.Cmd, mutationFlashTimeout())
 }
 
 // handlePriorityPrefix handles priority keys after the "!" prefix.

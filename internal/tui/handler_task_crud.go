@@ -72,6 +72,10 @@ func (m *AppModel) handleTaskCreated(msg TaskCreatedMsg) (bool, tea.Cmd) {
 	// When created from the floating overlay, close it without popping the view stack.
 	fromOverlay := m.quickCaptureOverlay != nil
 	m.quickCaptureOverlay = nil
+	preCaptureCount := 0
+	if m.currentProject != nil {
+		preCaptureCount = len(m.currentProject.Tasks)
+	}
 	m.handleWithRefresh(!fromOverlay, true, "")
 
 	// Navigate cursor to the newly created task
@@ -92,6 +96,13 @@ func (m *AppModel) handleTaskCreated(msg TaskCreatedMsg) (bool, tea.Cmd) {
 			m.setSuccessStatus(fmt.Sprintf("Created in %s (%s)", msg.Task.Section, msg.Task.CustomSection))
 		} else {
 			m.setSuccessStatus(fmt.Sprintf("Created in %s", msg.Task.Section))
+		}
+	}
+
+	// Override with onboarding next-step hint when this was the first task captured
+	if fromOverlay && msg.Task != nil {
+		if hint := captureNextHint(preCaptureCount); hint != "" {
+			m.setSuccessStatus(formatSuccessWithNext("Task captured", hint))
 		}
 	}
 

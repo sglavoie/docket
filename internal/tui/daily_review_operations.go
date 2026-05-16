@@ -47,6 +47,9 @@ func taskOpsApplyReview(m *DailyReviewModel, undoAction string, op func(pf persi
 	}
 	m.reloadData()
 	m.clampCursor()
+	if m.getTotalTaskCount() == 0 && result.Err == nil {
+		m.setStatus("Daily review complete. All tasks reviewed.")
+	}
 	return result.Cmd
 }
 

@@ -37,9 +37,7 @@ func (m *ProjectFocusViewModel) View() tea.View {
 	b.WriteString("\n\n")
 
 	if len(m.tasks) == 0 {
-		b.WriteString(MutedStyle.Render("No tasks in focus."))
-		b.WriteString("\n\n")
-		b.WriteString(HelpStyle.Render("Mark tasks as active with * in the project tree."))
+		b.WriteString(renderEmptyState("No tasks in focus.", "Mark tasks as active with * in the project tree."))
 		b.WriteString("\n")
 		left := HelpStyle.Render("q return")
 		b.WriteString(renderStatusBarFooter(left, "", m.Width(), m.AccentColor()))

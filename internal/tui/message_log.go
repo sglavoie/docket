@@ -122,7 +122,7 @@ func (m *MessageLogViewModel) View() tea.View {
 	visible := m.visibleLines()
 	var lines []string
 	if len(m.entries) == 0 {
-		lines = append(lines, MutedStyle.Render("  (no messages yet)"))
+		lines = append(lines, MutedStyle.Render(EmptyStateNoMessages))
 	} else {
 		start := m.scroll
 		if start > len(m.entries)-1 {

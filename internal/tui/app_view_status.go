@@ -75,7 +75,12 @@ func (m *AppModel) renderStatusBar() string {
 		if hint := pipelineNextHint(currentView); hint != "" {
 			help = hint
 		} else {
-			help = ";; pipeline · : commands · ? help"
+			help = ";; hub · : cmd · ? help"
+		}
+		if !m.openLoops.HasTasks {
+			if onboarding := pipelineNextHintOnboarding(currentView); onboarding != "" {
+				help = onboarding
+			}
 		}
 	}
 
@@ -87,7 +92,11 @@ func (m *AppModel) renderStatusBar() string {
 
 	var left string
 	if m.currentView() == ViewDashboard && !m.config.GetTutorDismissed() {
-		left = accentBarStyle.Render("Dashboard") + ": Run " + InfoStatusStyle.Render("tutor") + " command to start. Dismiss with " + InfoStatusStyle.Render("|")
+		if !m.openLoops.HasTasks {
+			left = accentBarStyle.Render("Dashboard") + ": " + InfoStatusStyle.Render("Capture your first task (ctrl+i or :)")
+		} else {
+			left = accentBarStyle.Render("Dashboard") + ": Run " + InfoStatusStyle.Render("tutor") + " command to start. Dismiss with " + InfoStatusStyle.Render("|")
+		}
 	} else {
 		left = accentBarStyle.Render(status)
 	}

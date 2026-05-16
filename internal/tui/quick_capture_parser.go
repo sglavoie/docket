@@ -145,7 +145,7 @@ func parseQuickCapture(input string, project *models.Project, allProjects []*mod
 			ref := match[1]
 			targetProject := resolveProject(ref, allProjects)
 			if targetProject == nil {
-				return nil, fmt.Errorf("project not found: %s", ref)
+				return nil, fmt.Errorf("project not found: '%s' (use %%project-slug or name)", ref)
 			}
 			result.targetProjectID = &targetProject.ID
 			result.targetProjectName = targetProject.Name
@@ -164,7 +164,7 @@ func parseQuickCapture(input string, project *models.Project, allProjects []*mod
 			ref := match[1]
 			targetProject := resolveProject(ref, allProjects)
 			if targetProject == nil {
-				return nil, fmt.Errorf("project not found: %s", ref)
+				return nil, fmt.Errorf("project not found: '%s' (use %%project-slug or name)", ref)
 			}
 			result.targetProjectID = &targetProject.ID
 			result.targetProjectName = targetProject.Name
@@ -180,7 +180,7 @@ func parseQuickCapture(input string, project *models.Project, allProjects []*mod
 		ref := match[1]
 		parent := resolveParent(ref, project)
 		if parent == nil {
-			return nil, fmt.Errorf("parent not found: %s", ref)
+			return nil, fmt.Errorf("parent not found: '%s' (use >short-id or title prefix)", ref)
 		}
 		if !result.taskType.CanBeChildOf(parent.Type) {
 			return nil, fmt.Errorf("%s cannot be child of %s", result.taskType.HeadingPrefix(), parent.Type.HeadingPrefix())
@@ -197,7 +197,7 @@ func parseQuickCapture(input string, project *models.Project, allProjects []*mod
 		ref := match[1]
 		parent := resolveParent(ref, project)
 		if parent == nil {
-			return nil, fmt.Errorf("parent not found: %s", ref)
+			return nil, fmt.Errorf("parent not found: '%s' (use >short-id or title prefix)", ref)
 		}
 		if !result.taskType.CanBeChildOf(parent.Type) {
 			return nil, fmt.Errorf("%s cannot be child of %s", result.taskType.HeadingPrefix(), parent.Type.HeadingPrefix())
@@ -219,7 +219,7 @@ func parseQuickCapture(input string, project *models.Project, allProjects []*mod
 			}
 		}
 		if !found {
-			return nil, fmt.Errorf("section not found: %s", sectionName)
+			return nil, fmt.Errorf("section not found: '%s' (use section name or /inbox /next /someday)", sectionName)
 		}
 		result.aliasesUsed = append(result.aliasesUsed, "sec:")
 		input = secAliasRe.ReplaceAllString(input, " ")
@@ -240,7 +240,7 @@ func parseQuickCapture(input string, project *models.Project, allProjects []*mod
 			}
 		}
 		if !found {
-			return nil, fmt.Errorf("section not found: %s", sectionName)
+			return nil, fmt.Errorf("section not found: '%s' (use section name or /inbox /next /someday)", sectionName)
 		}
 		input = sectionRe.ReplaceAllString(input, " ")
 	}
@@ -266,7 +266,7 @@ func parseQuickCapture(input string, project *models.Project, allProjects []*mod
 		case "maybe":
 			result.status = models.StatusMaybe
 		default:
-			return nil, fmt.Errorf("invalid status: status:%s (use start, blocked, done, canceled, review, standby, maybe)", match[1])
+			return nil, fmt.Errorf("invalid status: status:%s (use start, blocked, done, canceled, review, standby, hold, maybe)", match[1])
 		}
 		result.aliasesUsed = append(result.aliasesUsed, "status:")
 		input = statusAliasRe.ReplaceAllString(input, " ")
@@ -294,7 +294,7 @@ func parseQuickCapture(input string, project *models.Project, allProjects []*mod
 		case "maybe":
 			result.status = models.StatusMaybe
 		default:
-			return nil, fmt.Errorf("invalid status: $%s (use $start, $blocked, $done, $canceled, $review, $standby, $maybe)", match[1])
+			return nil, fmt.Errorf("invalid status: $%s (use $start, $blocked, $done, $canceled, $review, $standby, $hold, $maybe)", match[1])
 		}
 		input = statusRe.ReplaceAllString(input, " ")
 	}
@@ -540,7 +540,7 @@ func parseQuickCaptureForPreview(input string, project *models.Project, allProje
 			ref := match[1]
 			targetProject := resolveProject(ref, allProjects)
 			if targetProject == nil && errMsg == "" {
-				errMsg = fmt.Sprintf("project not found: %s", ref)
+				errMsg = fmt.Sprintf("project not found: '%s' (use %%project-slug or name)", ref)
 			} else if targetProject != nil {
 				result.targetProjectID = &targetProject.ID
 				result.targetProjectName = targetProject.Name
@@ -560,7 +560,7 @@ func parseQuickCaptureForPreview(input string, project *models.Project, allProje
 			ref := match[1]
 			targetProject := resolveProject(ref, allProjects)
 			if targetProject == nil && errMsg == "" {
-				errMsg = fmt.Sprintf("project not found: %s", ref)
+				errMsg = fmt.Sprintf("project not found: '%s' (use %%project-slug or name)", ref)
 			} else if targetProject != nil {
 				result.targetProjectID = &targetProject.ID
 				result.targetProjectName = targetProject.Name
@@ -577,7 +577,7 @@ func parseQuickCaptureForPreview(input string, project *models.Project, allProje
 		ref := match[1]
 		parent := resolveParent(ref, project)
 		if parent == nil && errMsg == "" {
-			errMsg = fmt.Sprintf("parent not found: %s", ref)
+			errMsg = fmt.Sprintf("parent not found: '%s' (use >short-id or title prefix)", ref)
 		} else if parent != nil {
 			if !result.taskType.CanBeChildOf(parent.Type) && errMsg == "" {
 				errMsg = fmt.Sprintf("%s cannot be child of %s", result.taskType.HeadingPrefix(), parent.Type.HeadingPrefix())
@@ -596,7 +596,7 @@ func parseQuickCaptureForPreview(input string, project *models.Project, allProje
 		ref := match[1]
 		parent := resolveParent(ref, project)
 		if parent == nil && errMsg == "" {
-			errMsg = fmt.Sprintf("parent not found: %s", ref)
+			errMsg = fmt.Sprintf("parent not found: '%s' (use >short-id or title prefix)", ref)
 		} else if parent != nil {
 			if !result.taskType.CanBeChildOf(parent.Type) && errMsg == "" {
 				errMsg = fmt.Sprintf("%s cannot be child of %s", result.taskType.HeadingPrefix(), parent.Type.HeadingPrefix())
@@ -620,7 +620,7 @@ func parseQuickCaptureForPreview(input string, project *models.Project, allProje
 			}
 		}
 		if !found && errMsg == "" {
-			errMsg = fmt.Sprintf("section not found: %s", sectionName)
+			errMsg = fmt.Sprintf("section not found: '%s' (use section name or /inbox /next /someday)", sectionName)
 		}
 		if found {
 			result.aliasesUsed = append(result.aliasesUsed, "sec:")
@@ -642,7 +642,7 @@ func parseQuickCaptureForPreview(input string, project *models.Project, allProje
 			}
 		}
 		if !found && errMsg == "" {
-			errMsg = fmt.Sprintf("section not found: %s", sectionName)
+			errMsg = fmt.Sprintf("section not found: '%s' (use section name or /inbox /next /someday)", sectionName)
 		}
 		input = sectionRe.ReplaceAllString(input, " ")
 	}

@@ -48,5 +48,5 @@ func NewTutorModel() *TutorModel {
 }
 
 func (m *TutorModel) buildCategories() []string {
-	return []string{"Concepts", "CLI", "TUI"}
+	return []string{"Getting Started", "Concepts", "CLI", "TUI"}
 }

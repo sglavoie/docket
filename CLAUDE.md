@@ -100,3 +100,25 @@ Non-destructive success messages use the plain (2s) status path. Do not bind `u`
 ### TUI Column Alignment
 
 List-row renderers (Focus Board, Kanban, Outliner, All-Tasks, Daily/Weekly review, Due Date, Priority, Global Search, etc.) share badge column widths through `ColumnLayout` in `column_layout.go`. The struct tracks `PriorityWidth`, `StatusWidth`, `TypeWidth`, `StageWidth`, and `ProjectWidth`; call `ComputeBadgeWidths(...)` once per render pass and pass the result down to the row renderer in `shared_render.go`. Use `PadBadge` for consistent left-padding of empty slots — never hand-pad strings.
+
+## UX Metrics
+
+### Primary User Flows
+
+The three primary flows covered by smoke tests in `internal/tui/primary_flows_test.go`:
+
+1. **Capture → Inbox** (`TestCaptureCreatesInboxTask`): `parseQuickCapture` with no `/section` sigil sets `result.section = ""`, which `createTask` routes to `SectionInbox`.
+2. **Inbox → Today** (`TestMoveToTodayUpdatesStatus`): `task.SetSection(models.SectionNext)` moves a task from Inbox to the Next (today) queue without touching its status.
+3. **Today → Complete** (`TestCompleteTodayTaskUpdatesProgress`): `task.Complete()` on a SectionNext task sets `StatusDone`, moves to `SectionCompleted`, and records `CompletedAt`.
+
+### Risky Config Flags
+
+| Field | Location | Risk | Notes |
+|-------|----------|------|-------|
+| `DashboardBottomLayout` | `config.UIState.GetDashboardLayout()` | Low | Enum 0/1/2 (horizontal/vertical/list-only); invalid stored values clamp to 0. Do not store raw int — use the named constants. |
+| `OpenLoops.HasTasks` | `tui.OpenLoops` (runtime struct, not persisted) | None | Computed on load; drives onboarding hint. Not a config field. |
+
+### Success Proxies
+
+- **Onboarding completion**: `OpenLoops.HasTasks == true` after first capture — the zero-task hint in the dashboard status bar disappears, confirming the user completed the capture flow.
+- **Streak retention**: `task.Recurrence.Streak` — non-zero means the user has completed recurring tasks consecutively. Displayed in the task detail view.

@@ -16,6 +16,7 @@ type OpenLoops struct {
 	TodayDone  int
 	TodayTotal int
 	Overdue    int
+	HasTasks   bool // true when at least one task exists across all projects
 }
 
 // IsZero reports whether all counter components are zero, in which case the
@@ -48,6 +49,7 @@ func ComputeOpenLoops(cfg *config.Config, dailyPlanIDs map[string]bool) OpenLoop
 	_, projects, _ := LoadCrossScopeTasks(cfg, svc, CrossScopeOpts{})
 	for _, project := range projects {
 		for _, task := range project.Tasks {
+			out.HasTasks = true
 			// Today scope: include planned tasks regardless of completion (matches Focus Board).
 			if dailyPlanIDs != nil && dailyPlanIDs[task.ID] {
 				out.TodayTotal++
@@ -80,10 +82,14 @@ func FormatOpenLoops(o OpenLoops) string {
 		parts = append(parts, fmt.Sprintf("inbox %d", o.Inbox))
 	}
 	if o.TodayTotal > 0 {
-		parts = append(parts, fmt.Sprintf("today %d/%d", o.TodayDone, o.TodayTotal))
+		if o.TodayDone == o.TodayTotal {
+			parts = append(parts, SuccessStyle.Render("today ✓"))
+		} else {
+			parts = append(parts, fmt.Sprintf("today %d/%d", o.TodayDone, o.TodayTotal))
+		}
 	}
 	if o.Overdue > 0 {
-		parts = append(parts, fmt.Sprintf("overdue %d", o.Overdue))
+		parts = append(parts, PreviewWarningStyle.Render(fmt.Sprintf("overdue %d", o.Overdue)))
 	}
 	if len(parts) == 0 {
 		return ""

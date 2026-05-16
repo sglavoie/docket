@@ -91,7 +91,7 @@ func kanbanRender(m *KanbanModel) string {
 
 	numCols := len(m.columns)
 	if numCols == 0 {
-		sb.WriteString("\n" + MutedStyle.Render("  No tasks to display."))
+		sb.WriteString("\n" + MutedStyle.Render(EmptyStateNoTasks))
 		return sb.String()
 	}
 

@@ -38,7 +38,12 @@ func (m *ProjectTreeModel) handleSingleStatusTransition(status models.TaskStatus
 	}
 	m.buildTree()
 	m.clampCursor()
-	return true, result.Cmd
+	if status == models.StatusDone {
+		m.setCompletionFlash()
+		return true, tea.Batch(result.Cmd, completionFlashScheduler())
+	}
+	m.setMutationFlash(statusMutationFlashBg(status))
+	return true, tea.Batch(result.Cmd, mutationFlashTimeout())
 }
 
 // handleBulkStatusTransition applies a status change to all multi-selected tasks.

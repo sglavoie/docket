@@ -24,9 +24,9 @@ func (m *NotificationCenterModel) View() tea.View {
 
 	if len(m.items) == 0 {
 		if m.showDismissed {
-			b.WriteString(MutedStyle.Render("  No alerts — everything looks good!"))
+			b.WriteString(MutedStyle.Render("  " + EmptyStateNoAlerts))
 		} else {
-			msg := "  No alerts — everything looks good!"
+			msg := "  " + EmptyStateNoAlerts
 			if m.rawSnapshot != nil && m.rawSnapshot.TotalCount > 0 {
 				msg = fmt.Sprintf("  All alerts dismissed (%d hidden). Press D to show.", m.rawSnapshot.TotalCount)
 			}
