@@ -192,21 +192,24 @@ func ParseTasksMarkdownWithSections(content string) (*ParseResult, error) {
 			continue
 		}
 
-		// Check for metadata comment (only the first HTML comment after a heading).
+		// Check for metadata comment on the first non-empty line after a heading.
 		// Uses a dedicated flag rather than checking task.ID == "" because a
-		// metadata comment might omit the id field, leaving ID empty. Without
-		// this flag, subsequent HTML comments in the description would be
-		// mis-consumed as metadata, causing silent data loss.
+		// metadata comment might omit the id field, leaving ID empty. Once the
+		// description starts, stop attempting metadata parsing so later HTML
+		// comments in the description are preserved verbatim.
 		if currentTask != nil && !metadataParsed {
-			if matches := format.MetadataRegex().FindStringSubmatch(line); matches != nil {
-				metadataParsed = true
-				warnings := format.ParseMetadata(currentTask.Task, matches[1])
-				// Add task ID to warnings now that we have it
-				for i := range warnings {
-					warnings[i].TaskID = currentTask.Task.ID
+			if trimmed := strings.TrimSpace(line); trimmed != "" {
+				if matches := format.MetadataRegex().FindStringSubmatch(line); matches != nil && format.LooksLikeMetadata(matches[1]) {
+					metadataParsed = true
+					warnings := format.ParseMetadata(currentTask.Task, matches[1])
+					// Add task ID to warnings now that we have it
+					for i := range warnings {
+						warnings[i].TaskID = currentTask.Task.ID
+					}
+					metadataWarnings = append(metadataWarnings, warnings...)
+					continue
 				}
-				metadataWarnings = append(metadataWarnings, warnings...)
-				continue
+				metadataParsed = true
 			}
 		}
 

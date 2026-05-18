@@ -30,7 +30,7 @@ func (t *Task) Start() {
 	t.SnoozedUntil = nil
 	// Auto-triage: move out of GTD holding sections when starting.
 	// Also clear CustomSection so the task doesn't appear in two places.
-	if t.Section == SectionInbox || t.Section == SectionNext || t.Section == SectionWaiting || t.Section == SectionSomeday || t.Section == SectionReview || t.Section == SectionStandby {
+	if t.Section == SectionInbox || t.Section == SectionNext || t.Section == SectionWaiting || t.Section == SectionSomeday || t.Section == SectionReview || t.Section == SectionStandby || t.Section == SectionCompleted {
 		t.Section = ""
 		t.CustomSection = ""
 	}

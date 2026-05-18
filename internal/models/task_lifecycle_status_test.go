@@ -109,6 +109,20 @@ func TestStartAutoTriagesFromStandby(t *testing.T) {
 	}
 }
 
+func TestStartAutoTriagesFromCompleted(t *testing.T) {
+	task := newLifecycleTestTask(t, "t1", 1)
+	task.Section = SectionCompleted
+	task.CustomSection = "Done"
+	task.Start()
+
+	if task.Section != "" {
+		t.Errorf("expected section cleared from Completed, got %q", task.Section)
+	}
+	if task.CustomSection != "" {
+		t.Errorf("expected custom section cleared from Completed, got %q", task.CustomSection)
+	}
+}
+
 func TestBlock(t *testing.T) {
 	task := newLifecycleTestTask(t, "t1", 1)
 	task.Block()

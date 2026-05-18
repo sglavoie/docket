@@ -19,6 +19,25 @@ func MetadataRegex() *regexp.Regexp {
 	return metadataRegex
 }
 
+// LooksLikeMetadata reports whether a comment payload starts with a recognized
+// metadata key. This lets the parser distinguish task metadata from arbitrary
+// HTML comments that appear at the start of a description.
+func LooksLikeMetadata(metaStr string) bool {
+	key := extractMetadataKey(metaStr)
+	if key == "" {
+		return false
+	}
+	if strings.HasPrefix(key, "score.") {
+		return isValidDimensionID(strings.TrimPrefix(key, "score."))
+	}
+	for _, known := range metadataKeys {
+		if key == known {
+			return true
+		}
+	}
+	return false
+}
+
 // WarningType categorizes the kind of warning for appropriate handling.
 type WarningType int
 

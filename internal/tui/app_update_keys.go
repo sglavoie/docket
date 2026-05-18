@@ -136,7 +136,7 @@ func (m *AppModel) handleGlobalKeyPress(msg tea.KeyPressMsg) (bool, tea.Cmd) { /
 			return true, cmd
 		}
 	case "q":
-		if m.hasActiveTextInput() || m.hasActivePendingPrefix() {
+		if m.hasActiveTextInput() || m.hasActivePendingPrefix() || m.hasActiveConfirmDialog() {
 			break
 		}
 		if cmd := m.toggleQueue(); cmd != nil {
