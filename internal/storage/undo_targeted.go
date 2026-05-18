@@ -106,6 +106,7 @@ func restoreTaskFields(dst, src *models.Task) {
 
 	// Copy complex types by reference (parsed fresh from snapshot)
 	dst.Comments = src.Comments
+	dst.Decisions = src.Decisions
 	dst.Recurrence = src.Recurrence
 	dst.Attachments = src.Attachments
 	dst.Activity = src.Activity

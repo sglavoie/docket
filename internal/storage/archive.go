@@ -240,9 +240,8 @@ func writeArchivedTask(task *models.Task) string {
 	// Write heading (always level 3 for archived tasks)
 	fmt.Fprintf(&b, "### %s: %s\n", task.Type.HeadingPrefix(), task.Title)
 
-	// Write metadata — use the canonical WriteMetadata to preserve ALL fields
-	// (custom_section, depends, related, checklist, stage, source, url,
-	// score dimensions, type-specific attrs, code ref attachments, etc.)
+	// Write metadata using the canonical metadata writer; non-metadata blocks
+	// (description, activity, comments, decisions) are preserved separately below.
 	b.WriteString(format.WriteMetadata(task))
 	b.WriteString("\n")
 
@@ -263,6 +262,12 @@ func writeArchivedTask(task *models.Task) string {
 	if len(task.Comments) > 0 {
 		b.WriteString("\n")
 		b.WriteString(format.WriteComments(task))
+	}
+
+	// Preserve decisions to prevent data loss when archiving
+	if len(task.Decisions) > 0 {
+		b.WriteString("\n")
+		b.WriteString(format.WriteDecisions(task))
 	}
 
 	return b.String()

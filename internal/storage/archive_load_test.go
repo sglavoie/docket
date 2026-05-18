@@ -385,3 +385,71 @@ func TestArchivePreservesAllMetadataFields(t *testing.T) { //nolint:gocyclo
 		t.Errorf("attachment[2].OriginalPath: got %q, want %q", loaded.Attachments[2].OriginalPath, "/home/user/project/main.go")
 	}
 }
+
+func TestArchivePreservesDecisions(t *testing.T) {
+	tmpDir := t.TempDir()
+	project := &models.Project{Path: tmpDir, Name: "TestProj"}
+
+	now := time.Date(2025, 6, 10, 14, 30, 0, 0, time.Local)
+	task := &models.Task{
+		ID:          "decision-task-1",
+		Title:       "Task with decisions",
+		Type:        models.TaskTypeTask,
+		Status:      models.StatusDone,
+		Priority:    2,
+		Description: "Keep this description intact.",
+		CreatedAt:   now.Add(-24 * time.Hour),
+		UpdatedAt:   now,
+		CompletedAt: &now,
+		Decisions: []*models.Decision{
+			{
+				Text:      "Use SQLite for local storage",
+				Rationale: "Keeps setup simple for a CLI app",
+				Category:  models.DecisionCategoryArchitecture,
+				CreatedAt: now.Add(-2 * time.Hour),
+			},
+			{
+				Text:      "Hide the beta workflow toggle",
+				Rationale: "Reduce support burden until behavior stabilizes",
+				Category:  models.DecisionCategoryUX,
+				CreatedAt: now.Add(-time.Hour),
+				Resolved:  true,
+			},
+		},
+	}
+
+	content := WriteArchivedTasks(project.Name, []*models.Task{task})
+	archivePath := filepath.Join(tmpDir, "completed.md")
+	if err := os.WriteFile(archivePath, []byte(content), 0644); err != nil {
+		t.Fatalf("failed to write archive: %v", err)
+	}
+
+	tasks := LoadArchivedTasks(project)
+	if len(tasks) != 1 {
+		t.Fatalf("expected 1 task, got %d", len(tasks))
+	}
+
+	loaded := tasks[0]
+	if loaded.Description != task.Description {
+		t.Fatalf("description mismatch: got %q, want %q", loaded.Description, task.Description)
+	}
+	if len(loaded.Decisions) != len(task.Decisions) {
+		t.Fatalf("expected %d decisions, got %d", len(task.Decisions), len(loaded.Decisions))
+	}
+
+	for i, want := range task.Decisions {
+		got := loaded.Decisions[i]
+		if got.Text != want.Text {
+			t.Errorf("decision[%d].Text = %q, want %q", i, got.Text, want.Text)
+		}
+		if got.Rationale != want.Rationale {
+			t.Errorf("decision[%d].Rationale = %q, want %q", i, got.Rationale, want.Rationale)
+		}
+		if got.Category != want.Category {
+			t.Errorf("decision[%d].Category = %q, want %q", i, got.Category, want.Category)
+		}
+		if got.Resolved != want.Resolved {
+			t.Errorf("decision[%d].Resolved = %t, want %t", i, got.Resolved, want.Resolved)
+		}
+	}
+}

@@ -215,6 +215,136 @@ func TestPerformTargetedUndoRestoresDeletedTask(t *testing.T) {
 	}
 }
 
+func TestPerformTargetedUndoRestoresDecisionsForTargetedTasks(t *testing.T) {
+	project, tasksPath := newUndoTestProject(t)
+
+	now := time.Date(2025, 3, 20, 9, 0, 0, 0, time.UTC)
+	initialTasks := []*models.Task{
+		{
+			ID:        "task-a",
+			ShortID:   1,
+			Type:      models.TaskTypeTask,
+			Title:     "Task A",
+			Status:    models.StatusTodo,
+			Priority:  3,
+			CreatedAt: now,
+			UpdatedAt: now,
+			Decisions: []*models.Decision{
+				{
+					Text:      "Use SQLite",
+					Rationale: "Simple local setup",
+					Category:  models.DecisionCategoryArchitecture,
+					CreatedAt: now,
+				},
+			},
+		},
+		{
+			ID:        "task-b",
+			ShortID:   2,
+			Type:      models.TaskTypeTask,
+			Title:     "Task B",
+			Status:    models.StatusTodo,
+			Priority:  2,
+			CreatedAt: now,
+			UpdatedAt: now,
+			Decisions: []*models.Decision{
+				{
+					Text:      "Stay CLI-only",
+					Rationale: "Avoid splitting focus",
+					Category:  models.DecisionCategoryScope,
+					CreatedAt: now.Add(time.Hour),
+				},
+			},
+		},
+	}
+	writeUndoTasks(t, tasksPath, WriteTasksMarkdown("Test Project", initialTasks))
+
+	if err := RecordUndoSnapshot(project, "Update decision", "#1 Task A", 10, []string{"task-a"}); err != nil {
+		t.Fatalf("RecordUndoSnapshot failed: %v", err)
+	}
+
+	mutatedTasks := []*models.Task{
+		{
+			ID:        "task-a",
+			ShortID:   1,
+			Type:      models.TaskTypeTask,
+			Title:     "Task A",
+			Status:    models.StatusTodo,
+			Priority:  3,
+			CreatedAt: now,
+			UpdatedAt: now.Add(2 * time.Hour),
+			Decisions: []*models.Decision{
+				{
+					Text:      "Use Postgres",
+					Rationale: "Prepare for sync features",
+					Category:  models.DecisionCategoryArchitecture,
+					CreatedAt: now.Add(2 * time.Hour),
+					Resolved:  true,
+				},
+			},
+		},
+		{
+			ID:        "task-b",
+			ShortID:   2,
+			Type:      models.TaskTypeTask,
+			Title:     "Task B",
+			Status:    models.StatusDone,
+			Priority:  2,
+			CreatedAt: now,
+			UpdatedAt: now.Add(2 * time.Hour),
+			Decisions: []*models.Decision{
+				{
+					Text:      "Build a web UI",
+					Rationale: "Broaden adoption",
+					Category:  models.DecisionCategoryUX,
+					CreatedAt: now.Add(3 * time.Hour),
+				},
+			},
+		},
+	}
+	writeUndoTasks(t, tasksPath, WriteTasksMarkdown("Test Project", mutatedTasks))
+
+	if _, err := PerformUndo(project); err != nil {
+		t.Fatalf("PerformUndo failed: %v", err)
+	}
+
+	content, err := os.ReadFile(tasksPath)
+	if err != nil {
+		t.Fatalf("failed to read tasks file: %v", err)
+	}
+	result, err := ParseTasksMarkdownWithSections(string(content))
+	if err != nil {
+		t.Fatalf("failed to parse restored content: %v", err)
+	}
+
+	taskMap := make(map[string]*models.Task)
+	for _, task := range result.Tasks {
+		taskMap[task.ID] = task
+	}
+
+	taskA := taskMap["task-a"]
+	if len(taskA.Decisions) != 1 {
+		t.Fatalf("task-a should have 1 decision after undo, got %d", len(taskA.Decisions))
+	}
+	if taskA.Decisions[0].Text != "Use SQLite" {
+		t.Errorf("task-a decision text = %q, want %q", taskA.Decisions[0].Text, "Use SQLite")
+	}
+	if taskA.Decisions[0].Resolved {
+		t.Error("task-a decision should not be resolved after undo")
+	}
+
+	taskB := taskMap["task-b"]
+	if len(taskB.Decisions) != 1 {
+		t.Fatalf("task-b should have 1 decision after undo, got %d", len(taskB.Decisions))
+	}
+	if taskB.Decisions[0].Text != "Build a web UI" {
+		t.Errorf("task-b decision text = %q, want %q", taskB.Decisions[0].Text, "Build a web UI")
+	}
+	if taskB.Status != models.StatusDone {
+		t.Errorf("task-b status = %q, want %q", taskB.Status, models.StatusDone)
+	}
+}
+
 func TestRestoreTaskFieldsPreservesStartDateAndEstimatedDays(t *testing.T) {
 	startDate := time.Date(2025, 3, 15, 0, 0, 0, 0, time.UTC)
 	src := &models.Task{
