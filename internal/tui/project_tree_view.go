@@ -46,6 +46,59 @@ func (m *ProjectTreeModel) HandledKeys() []string {
 	return m.buildKeyMap().HandledKeys()
 }
 
+func (m *ProjectTreeModel) selectCustomSectionTab(section string) {
+	m.customSectionTab = 0
+	if section == "" {
+		return
+	}
+
+	if tabs := m.customSectionTabs(); tabs != nil {
+		for i, tab := range tabs {
+			if tab == section {
+				m.customSectionTab = i
+				return
+			}
+		}
+	}
+}
+
+func (m *ProjectTreeModel) selectViewForTask(task *models.Task) {
+	m.customSectionTab = 0
+	if task == nil {
+		return
+	}
+	if task.IsSnoozed() {
+		m.viewMode = ViewModeSnoozed
+		return
+	}
+	if task.IsComplete() {
+		m.viewMode = ViewModeCompleted
+		return
+	}
+	if task.CustomSection != "" {
+		m.viewMode = ViewModeAll
+		m.selectCustomSectionTab(task.CustomSection)
+		return
+	}
+
+	switch task.Section {
+	case models.SectionNext:
+		m.viewMode = ViewModeNext
+	case models.SectionInbox:
+		m.viewMode = ViewModeInbox
+	case models.SectionWaiting:
+		m.viewMode = ViewModeWaiting
+	case models.SectionSomeday:
+		m.viewMode = ViewModeSomeday
+	case models.SectionReview:
+		m.viewMode = ViewModeReview
+	case models.SectionStandby:
+		m.viewMode = ViewModeStandby
+	default:
+		m.viewMode = ViewModeActive
+	}
+}
+
 // NavigateToTask expands parent nodes and positions cursor on the given task.
 // If the task is filtered out, it clears filters and switches view modes as needed.
 // Returns a tea.Cmd that sends a status message if filters were cleared.
@@ -74,7 +127,7 @@ func (m *ProjectTreeModel) NavigateToTask(task *models.Task) tea.Cmd {
 	// Check if any filters are active before clearing
 	hadFilters := m.filter.Type != "" || m.filter.Status != "" || m.filter.Priority != 0 ||
 		len(m.filter.Tags) > 0 || len(m.filter.Sections) > 0 || m.filter.DueDate != DueDateAll ||
-		m.SearchQuery() != "" || m.focusedTask != nil
+		m.SearchQuery() != "" || m.focusedTask != nil || m.customSectionTab != 0
 
 	// Clear focus mode first
 	if m.focusedTask != nil {
@@ -82,27 +135,7 @@ func (m *ProjectTreeModel) NavigateToTask(task *models.Task) tea.Cmd {
 	}
 
 	// Determine appropriate view mode based on task state
-	if task.IsComplete() {
-		m.viewMode = ViewModeCompleted
-	} else {
-		// Switch to view mode that includes the task's section
-		switch task.Section {
-		case models.SectionNext:
-			m.viewMode = ViewModeNext
-		case models.SectionInbox:
-			m.viewMode = ViewModeInbox
-		case models.SectionWaiting:
-			m.viewMode = ViewModeWaiting
-		case models.SectionSomeday:
-			m.viewMode = ViewModeSomeday
-		case models.SectionReview:
-			m.viewMode = ViewModeReview
-		case models.SectionStandby:
-			m.viewMode = ViewModeStandby
-		default:
-			m.viewMode = ViewModeActive
-		}
-	}
+	m.selectViewForTask(task)
 
 	// Clear all filters that might hide the task
 	m.filter.Type = ""

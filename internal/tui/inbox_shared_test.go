@@ -1,9 +1,11 @@
 package tui
 
 import (
+	"strings"
 	"testing"
 	"time"
 
+	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 )
 
@@ -219,5 +221,24 @@ func TestCaptureInboxSnapshotNilCompletedAt(t *testing.T) {
 	}
 	if snap.status != models.StatusTodo {
 		t.Errorf("status: got %q, want %q", snap.status, models.StatusTodo)
+	}
+}
+
+func TestRenderInboxCurrentSettingsShowsCustomSection(t *testing.T) {
+	task := &models.Task{
+		ID:        "t1",
+		Priority:  3,
+		Tags:      []string{},
+		DependsOn: []string{},
+	}
+	task.SetSection("Sprint-1")
+
+	rendered := renderInboxCurrentSettings(task, &config.Config{SectionColors: map[string]string{}})
+
+	if !strings.Contains(rendered, "Sprint-1") {
+		t.Fatalf("expected custom section name in current settings, got %q", rendered)
+	}
+	if strings.Contains(rendered, "(no section)") {
+		t.Fatalf("expected custom section instead of no section placeholder, got %q", rendered)
 	}
 }

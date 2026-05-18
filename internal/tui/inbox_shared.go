@@ -211,7 +211,10 @@ func renderInboxTaskDisplay(task *models.Task, width int, willLeave bool, projec
 func renderInboxCurrentSettings(task *models.Task, cfg *config.Config) string {
 	var lines []string
 
-	section := task.Section
+	section := task.CustomSection
+	if section == "" {
+		section = task.Section
+	}
 	if section == "" {
 		section = "(no section)"
 	}

@@ -3,7 +3,6 @@ package tui
 import (
 	tea "charm.land/bubbletea/v2"
 
-	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/tui/keymap"
 )
@@ -221,27 +220,7 @@ func (b *projectTreeKeymapBuilder) gotoEntries() []keymap.Entry {
 				}
 
 				task := node.Task
-				if task.IsComplete() {
-					m.viewMode = ViewModeCompleted
-				} else {
-					switch task.Section {
-					case models.SectionNext:
-						m.viewMode = ViewModeNext
-					case models.SectionInbox:
-						m.viewMode = ViewModeInbox
-					case models.SectionWaiting:
-						m.viewMode = ViewModeWaiting
-					case models.SectionSomeday:
-						m.viewMode = ViewModeSomeday
-					case models.SectionReview:
-						m.viewMode = ViewModeReview
-					case models.SectionStandby:
-						m.viewMode = ViewModeStandby
-					default:
-						m.viewMode = ViewModeActive
-					}
-				}
-
+				m.selectViewForTask(task)
 				m.buildTree()
 				return m, m.NavigateToTask(task)
 			}),

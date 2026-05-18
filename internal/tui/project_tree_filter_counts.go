@@ -79,7 +79,10 @@ func (m *ProjectTreeModel) calculateFilterCounts() {
 func (m *ProjectTreeModel) countChildrenBySection(task *models.Task) map[string]int {
 	counts := make(map[string]int)
 	for _, child := range task.Children {
-		section := child.Section
+		section := child.CustomSection
+		if section == "" {
+			section = child.Section
+		}
 		if section == "" {
 			section = "Active"
 		}

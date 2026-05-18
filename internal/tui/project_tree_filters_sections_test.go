@@ -188,3 +188,39 @@ func TestCountChildrenBySection(t *testing.T) {
 		})
 	}
 }
+
+func TestCountChildrenBySectionUsesCustomSectionNames(t *testing.T) {
+	parent := &models.Task{
+		ID:       "parent",
+		Type:     models.TaskTypeEpic,
+		Children: []*models.Task{},
+	}
+
+	activeChild := &models.Task{
+		ID:       "active",
+		Type:     models.TaskTypeTask,
+		Children: []*models.Task{},
+	}
+
+	customChild := &models.Task{
+		ID:       "custom",
+		Type:     models.TaskTypeTask,
+		Children: []*models.Task{},
+	}
+	customChild.SetSection("Sprint-1")
+
+	parent.Children = []*models.Task{activeChild, customChild}
+
+	m := &ProjectTreeModel{}
+	got := m.countChildrenBySection(parent)
+
+	if got["Active"] != 1 {
+		t.Fatalf("expected 1 Active child, got %d", got["Active"])
+	}
+	if got["Sprint-1"] != 1 {
+		t.Fatalf("expected 1 Sprint-1 child, got %d", got["Sprint-1"])
+	}
+	if _, ok := got[""]; ok {
+		t.Fatalf("expected custom sections to avoid empty-key counts, got %v", got)
+	}
+}
