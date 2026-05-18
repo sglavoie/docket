@@ -1,251 +1,10 @@
 package tui
 
 import (
-	"fmt"
 	"strconv"
-	"time"
-
-	"charm.land/bubbles/v2/textinput"
-	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/config"
 )
-
-func (m *SettingsModel) handleKeyPress(msg tea.KeyPressMsg) (bool, tea.Cmd) {
-	// When search overlay is active, consume all keys there.
-	if m.searchActive {
-		return m.handleSearchKey(msg)
-	}
-	// When a preset overlay is active on the palette tab, route there first.
-	if m.tabs.Active == tabPalette && m.themePresetMode != presetModeNone {
-		return m.handlePresetKey(msg)
-	}
-	if handled := m.handleStageConfirmKey(msg.String()); handled {
-		return true, nil
-	}
-	if handled := m.handleStageListKey(msg.String()); handled {
-		return true, nil
-	}
-	return m.handleGlobalKey(msg.String())
-}
-
-func (m *SettingsModel) handleStageConfirmKey(key string) bool {
-	if m.tabs.Active != tabStages || !m.stageConfirmDelete.IsActive() {
-		return false
-	}
-
-	confirmed, handled := m.stageConfirmDelete.HandleKey(key)
-	if !handled {
-		return false
-	}
-	if confirmed && len(m.stages) > 0 {
-		m.stages = append(m.stages[:m.stageCursor], m.stages[m.stageCursor+1:]...)
-		if m.stageCursor >= len(m.stages) && m.stageCursor > 0 {
-			m.stageCursor--
-		}
-	}
-	return true
-}
-
-func (m *SettingsModel) handleStageListKey(key string) bool {
-	if m.tabs.Active != tabStages || m.stageEditMode {
-		return false
-	}
-
-	switch key {
-	case "j", "down":
-		if len(m.stages) > 0 && m.stageCursor < len(m.stages)-1 {
-			m.stageCursor++
-		}
-		return true
-	case "k", "up":
-		if len(m.stages) > 0 && m.stageCursor > 0 {
-			m.stageCursor--
-		}
-		return true
-	case "a":
-		m.stageEditMode = true
-		m.stageAddMode = true
-		m.stageInput.SetValue("")
-		m.stageInput.Focus()
-		return true
-	case "d", "delete", "backspace":
-		if len(m.stages) > 0 {
-			m.stageConfirmDelete.Show("delete", fmt.Sprintf("Delete stage '%s'?", m.stages[m.stageCursor]))
-		}
-		return true
-	case "J":
-		if len(m.stages) > 1 && m.stageCursor < len(m.stages)-1 {
-			m.stages[m.stageCursor], m.stages[m.stageCursor+1] = m.stages[m.stageCursor+1], m.stages[m.stageCursor]
-			m.stageCursor++
-		}
-		return true
-	case "K":
-		if len(m.stages) > 1 && m.stageCursor > 0 {
-			m.stages[m.stageCursor], m.stages[m.stageCursor-1] = m.stages[m.stageCursor-1], m.stages[m.stageCursor]
-			m.stageCursor--
-		}
-		return true
-	case "e":
-		if len(m.stages) > 0 {
-			m.stageEditMode = true
-			m.stageAddMode = false
-			m.stageInput.SetValue(m.stages[m.stageCursor])
-			m.stageInput.Focus()
-		}
-		return true
-	default:
-		return false
-	}
-}
-
-func (m *SettingsModel) handleGlobalKey(key string) (bool, tea.Cmd) { //nolint:gocyclo
-	switch key {
-	case "esc":
-		if m.stageEditMode {
-			m.stageEditMode = false
-			m.stageAddMode = false
-			m.stageInput.Blur()
-			return true, nil
-		}
-		if m.subTabRowFocused {
-			m.subTabRowFocused = false
-			return true, nil
-		}
-		return true, func() tea.Msg {
-			return BackMsg{}
-		}
-
-	case "shift+down":
-		if visualSubTabNamesForVTab(m.visualTab) != nil {
-			m.subTabRowFocused = true
-		}
-		return true, nil
-	case "shift+up":
-		if visualSubTabNamesForVTab(m.visualTab) != nil {
-			m.subTabRowFocused = false
-		}
-		return true, nil
-
-	case "tab", "shift+tab":
-		if m.stageEditMode {
-			return false, nil
-		}
-		m.blurCurrentField()
-		if key == "tab" {
-			m.focusIndex = (m.focusIndex + 1) % settingsFieldCount
-		} else {
-			m.focusIndex = (m.focusIndex + settingsFieldCount - 1) % settingsFieldCount
-		}
-		m.tabs.Active = tabForField(m.focusIndex)
-		m.subTab = subTabForField(m.focusIndex)
-		m.syncVisualFromOld()
-		m.focusCurrentField()
-		return true, nil
-
-	case "shift+left", "shift+right":
-		m.blurCurrentField()
-		delta := 1
-		if key == "shift+left" {
-			delta = -1
-		}
-		if m.subTabRowFocused && visualSubTabNamesForVTab(m.visualTab) != nil {
-			// Cycle within the current visual tab's sub-tabs
-			refs := visualTabSubTabs[m.visualTab]
-			CycleTab(&m.visualSubTab, len(refs), delta)
-			m.tabs.Active = refs[m.visualSubTab].oldTab
-			m.subTab = refs[m.visualSubTab].oldSubTab
-			m.focusIndex = subTabFieldStart(m.tabs.Active, m.subTab)
-			m.scrollOffset = 0
-			m.focusCurrentField()
-			return true, nil
-		}
-		// Cycle visual tabs
-		CycleTab(&m.visualTab, len(settingsVisualTabNames), delta)
-		m.visualSubTab = 0
-		m.setFromVisual()
-		m.subTabRowFocused = false
-		m.scrollOffset = 0
-		m.focusCurrentField()
-		return true, nil
-
-	case "space":
-		m.handleSpaceKey()
-		return true, nil
-
-	case "enter":
-		if m.tabs.Active == tabStages && m.stageEditMode {
-			return true, m.commitStageEditCmd()
-		}
-		if err := m.validateAll(); err != nil {
-			m.validationErr = err.Error()
-			return true, nil
-		}
-		return true, m.saveSettings()
-
-	case "ctrl+s":
-		// On the palette tab, ctrl+s opens the save preset overlay.
-		if m.tabs.Active == tabPalette {
-			m.openPresetSave()
-			return true, nil
-		}
-		if m.stageEditMode {
-			if cmd := m.commitStageEditCmd(); cmd != nil {
-				return true, cmd
-			}
-		}
-		if err := m.validateAll(); err != nil {
-			m.validationErr = err.Error()
-			return true, nil
-		}
-		return true, m.saveSettings()
-
-	case "ctrl+o":
-		if m.tabs.Active == tabPalette {
-			m.openPresetLoad()
-		}
-		return true, nil
-
-	case "ctrl+r":
-		if m.tabs.Active == tabPalette {
-			m.themePresetMode = presetModeResetConfirm
-			m.themePresetErr = ""
-		}
-		return true, nil
-
-	case "/":
-		si := textinput.New()
-		si.Placeholder = "search settings..."
-		si.CharLimit = 100
-		si.SetWidth(SearchInputWidth(m.width))
-		applyThemedTextInput(&si)
-		si.Focus()
-		m.searchInput = si
-		m.searchActive = true
-		m.searchResults = searchSettingsFields("")
-		m.searchCursor = 0
-		m.searchStatusMsg = ""
-		return true, textinput.Blink
-
-	case "ctrl+d":
-		m.handleResetToDefault()
-		return true, nil
-
-	case "?":
-		return true, helpCmd(ViewSettings, "Settings", m.GetHelpItems())
-
-	case "left", "h":
-		m.handleLeftKey()
-		return false, nil
-
-	case "right", "l":
-		m.handleRightKey()
-		return false, nil
-
-	default:
-		return false, nil
-	}
-}
 
 func (m *SettingsModel) togglePaletteTheme() {
 	snapshot := [20]string{
@@ -313,21 +72,21 @@ func (m *SettingsModel) handleSpaceKey() {
 		}
 	case tabBehavior:
 		switch local {
-		case 1: // show completed
+		case 1:
 			m.recentActivityShowAll = !m.recentActivityShowAll
-		case 2: // after creation
+		case 2:
 			m.linkedTaskJump = !m.linkedTaskJump
-		case 13: // start view
+		case 13:
 			m.startViewCursor = (m.startViewCursor + 1) % len(startViewOptions)
-		case 14: // task form collapsed
+		case 14:
 			m.taskFormCollapsed = !m.taskFormCollapsed
-		case 15: // focus board default mode
+		case 15:
 			m.focusBoardModeCursor = (m.focusBoardModeCursor + 1) % len(focusBoardModeOptions)
-		case 16: // dashboard bottom layout
+		case 16:
 			m.dashboardLayoutCursor = (m.dashboardLayoutCursor + 1) % len(dashboardLayoutOptions)
 		}
 	case tabProjectTree:
-		if local == 1 { // priority column
+		if local == 1 {
 			m.treePriorityMode = (m.treePriorityMode + 1) % 3
 		} else {
 			m.treeColumnDefaults[local] = !m.treeColumnDefaults[local]
@@ -340,7 +99,7 @@ func (m *SettingsModel) handleSpaceKey() {
 			m.crossOutlinerCycleOnly = !m.crossOutlinerCycleOnly
 		case local >= 2 && local <= 8:
 			m.outlinerCollapsed[local-2] = !m.outlinerCollapsed[local-2]
-		case local == 10: // priority column in column visibility
+		case local == 10:
 			m.outlinerPriorityMode = (m.outlinerPriorityMode + 1) % 3
 		case local >= 9 && local <= 21:
 			m.outlinerColumnDefaults[local-9] = !m.outlinerColumnDefaults[local-9]
@@ -364,17 +123,17 @@ func (m *SettingsModel) handleSpaceKey() {
 			m.alertDailyReviewEnabled = !m.alertDailyReviewEnabled
 		case 2:
 			m.alertWeeklyReviewEnabled = !m.alertWeeklyReviewEnabled
-		case 4: // overdue
+		case 4:
 			m.alertOverdueEnabled = !m.alertOverdueEnabled
-		case 5: // due soon
+		case 5:
 			m.alertDueSoonEnabled = !m.alertDueSoonEnabled
-		case 7: // stale
+		case 7:
 			m.alertStaleEnabled = !m.alertStaleEnabled
-		case 9: // inbox
+		case 9:
 			m.alertInboxEnabled = !m.alertInboxEnabled
-		case 11: // blocked
+		case 11:
 			m.alertBlockedEnabled = !m.alertBlockedEnabled
-		case 13: // project health
+		case 13:
 			m.alertProjectHealthEnabled = !m.alertProjectHealthEnabled
 		}
 	case tabAppearance:
@@ -396,7 +155,7 @@ func (m *SettingsModel) handleLeftKey() {
 	switch tab {
 	case tabGeneral:
 		switch local {
-		case 2: // context
+		case 2:
 			if len(m.contexts) > 0 {
 				if m.contextCursor > 0 {
 					m.contextCursor--
@@ -406,7 +165,7 @@ func (m *SettingsModel) handleLeftKey() {
 					m.contextInput.SetValue(m.contexts[m.contextCursor])
 				}
 			}
-		case 4: // default view
+		case 4:
 			if m.defaultViewCursor > 0 {
 				m.defaultViewCursor--
 			}
@@ -468,12 +227,12 @@ func (m *SettingsModel) handleRightKey() {
 	switch tab {
 	case tabGeneral:
 		switch local {
-		case 2: // context
+		case 2:
 			if len(m.contexts) > 0 && m.contextCursor >= 0 && m.contextCursor < len(m.contexts)-1 {
 				m.contextCursor++
 				m.contextInput.SetValue(m.contexts[m.contextCursor])
 			}
-		case 4: // default view
+		case 4:
 			if m.defaultViewCursor < len(defaultProjectViewOptions)-1 {
 				m.defaultViewCursor++
 			}
@@ -525,60 +284,6 @@ func (m *SettingsModel) handleRightKey() {
 				m.timeFormatCursor++
 			}
 		}
-	}
-}
-
-func (m *SettingsModel) commitStageEditCmd() tea.Cmd {
-	if err := m.commitStageEdit(); err != nil {
-		m.stageValidationErr = err.Error()
-		return tea.Tick(2*time.Second, func(time.Time) tea.Msg {
-			return stageValidationClearMsg{}
-		})
-	}
-	return nil
-}
-
-// handleSearchKey consumes all keys when the settings search overlay is active.
-func (m *SettingsModel) handleSearchKey(msg tea.KeyPressMsg) (bool, tea.Cmd) {
-	key := msg.String()
-	switch key {
-	case "esc":
-		m.searchActive = false
-		m.searchInput.Blur()
-		return true, nil
-	case "enter":
-		if len(m.searchResults) > 0 && m.searchCursor < len(m.searchResults) {
-			result := m.searchResults[m.searchCursor]
-			m.blurCurrentField()
-			m.focusIndex = result.FocusIndex
-			m.tabs.Active = result.Tab
-			m.subTab = result.SubTab
-			m.syncVisualFromOld()
-			m.focusCurrentField()
-			m.scrollOffset = 0
-		}
-		m.searchActive = false
-		m.searchInput.Blur()
-		return true, nil
-	case "j", "down", "ctrl+j":
-		if m.searchCursor < len(m.searchResults)-1 {
-			m.searchCursor++
-		}
-		return true, nil
-	case "k", "up", "ctrl+k":
-		if m.searchCursor > 0 {
-			m.searchCursor--
-		}
-		return true, nil
-	default:
-		old := m.searchInput.Value()
-		var cmd tea.Cmd
-		m.searchInput, cmd = m.searchInput.Update(msg)
-		if m.searchInput.Value() != old {
-			m.searchResults = searchSettingsFields(m.searchInput.Value())
-			m.searchCursor = 0
-		}
-		return true, cmd
 	}
 }
 
@@ -708,10 +413,10 @@ func (m *SettingsModel) handleResetToDefault() {
 			m.zebraStriping = false
 			resetDone = true
 		case 1:
-			m.weekEndDayCursor = 2 // Sunday
+			m.weekEndDayCursor = 2
 			resetDone = true
 		case 2:
-			m.timeFormatCursor = 1 // 24-hour
+			m.timeFormatCursor = 1
 			resetDone = true
 		case 3:
 			m.autoTheme = false
