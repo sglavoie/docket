@@ -361,3 +361,41 @@ func TestGenerateRecurringInstancesEmptyProject(t *testing.T) {
 		}
 	})
 }
+
+func TestGenerateRecurringInstancesNewIDIsValidUUID(t *testing.T) {
+	// Verify that GenerateRecurringInstances assigns a proper RFC 4122 UUID to
+	// the new instance (not the old non-standard timestamp-based format).
+	dueDate := time.Date(2025, 3, 1, 0, 0, 0, 0, time.UTC)
+	task := &Task{
+		ID:         "parent-id",
+		ShortID:    1,
+		Type:       TaskTypeTask,
+		Title:      "Recurring UUID test",
+		Status:     StatusDone,
+		DueDate:    &dueDate,
+		Recurrence: &RecurrencePattern{Interval: 1, Unit: RecurrenceWeekly},
+	}
+
+	project := &Project{
+		Tasks:       []*Task{task},
+		NextShortID: 2,
+	}
+
+	project.GenerateRecurringInstances()
+
+	if len(project.Tasks) < 1 {
+		t.Fatal("expected at least one task after generation")
+	}
+	newTask := project.Tasks[0]
+	if newTask.ID == "" {
+		t.Fatal("expected new task to have a non-empty ID")
+	}
+	if newTask.ID == task.ID {
+		t.Errorf("new task must not reuse the completed task's ID, got %q", newTask.ID)
+	}
+	// UUID v4 format: 8-4-4-4-12 hex chars with hyphens
+	// len("xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx") == 36
+	if len(newTask.ID) != 36 {
+		t.Errorf("expected standard UUID (36 chars), got %q (len %d)", newTask.ID, len(newTask.ID))
+	}
+}

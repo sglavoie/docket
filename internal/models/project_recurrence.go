@@ -1,11 +1,10 @@
 package models
 
 import (
-	"crypto/rand"
-	"fmt"
 	"maps"
-	"sync/atomic"
 	"time"
+
+	"github.com/google/uuid"
 
 	"github.com/sglavoie/tt/internal/util"
 )
@@ -75,7 +74,7 @@ func (p *Project) GenerateRecurringInstances() int {
 		}
 
 		newTask := &Task{
-			ID:              generateUUID(),
+			ID:              uuid.New().String(),
 			ShortID:         p.GetNextShortID(),
 			Type:            task.Type,
 			Title:           task.Title,
@@ -137,18 +136,4 @@ func (p *Project) GenerateRecurringInstances() int {
 	}
 
 	return generated
-}
-
-// uuidCounter is an atomic counter to ensure uniqueness when generateUUID
-// is called multiple times within the same nanosecond (e.g., in a loop).
-var uuidCounter atomic.Uint64
-
-// generateUUID creates a new unique ID string using timestamp, random bytes,
-// and an atomic counter. This avoids collisions when called rapidly in a loop
-// (e.g., generating multiple recurring task instances).
-func generateUUID() string {
-	var b [8]byte
-	_, _ = rand.Read(b[:])
-	seq := uuidCounter.Add(1)
-	return fmt.Sprintf("%s-%x-%d", time.Now().Format("20060102150405.000000000"), b, seq)
 }

@@ -382,15 +382,22 @@ func (t *Task) ClearRecurrence() {
 // SkipRecurrence advances the due date to the next occurrence without completing
 // the task. Increments the Skipped counter and resets the Streak to 0 (skipping
 // breaks a streak). No-op if the task is not recurring.
+//
+// The next date is always computed from the current due date (or today when no
+// due date is set), regardless of the recurrence mode. The mode only governs
+// post-completion scheduling; skipping is schedule-based and should not be
+// influenced by when the task was (or will be) completed.
 func (t *Task) SkipRecurrence() {
 	if t.Recurrence == nil {
 		return
 	}
 
-	next := t.NextDueDate()
-	if next != nil {
-		t.DueDate = next
+	base := time.Now()
+	if t.DueDate != nil {
+		base = *t.DueDate
 	}
+	next := calculateNextDate(base, t.Recurrence)
+	t.DueDate = &next
 	t.Recurrence.Skipped++
 	t.Recurrence.Streak = 0
 	t.UpdatedAt = time.Now()

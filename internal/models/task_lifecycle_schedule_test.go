@@ -357,6 +357,59 @@ func TestSkipRecurrence(t *testing.T) {
 			t.Errorf("expected skipped 3, got %d", task.Recurrence.Skipped)
 		}
 	})
+
+	t.Run("FromCompletion mode advances from due date not from now", func(t *testing.T) {
+		// Bug fix: SkipRecurrence must always advance from the scheduled due date,
+		// regardless of recurrence mode. Previously, FromCompletion mode would
+		// compute the next date from time.Now() when CompletedAt was nil, causing
+		// the new due date to depend on when the task was skipped rather than
+		// when it was due.
+		task := newLifecycleTestTask(t, "t1", 1)
+		base := time.Date(2025, 6, 1, 0, 0, 0, 0, time.Local) // due June 1
+		task.DueDate = &base
+		task.Recurrence = &RecurrencePattern{
+			Unit:     RecurrenceWeekly,
+			Interval: 1,
+			Streak:   3,
+			Mode:     RecurModeFromCompletion,
+		}
+		// CompletedAt intentionally nil — task is being skipped, not completed.
+
+		task.SkipRecurrence()
+
+		// Must advance from June 1 (due date), not from today.
+		expected := time.Date(2025, 6, 8, 0, 0, 0, 0, time.Local)
+		if task.DueDate == nil || !task.DueDate.Equal(expected) {
+			t.Errorf("expected due date %v (from due date), got %v", expected, task.DueDate)
+		}
+		if task.Recurrence.Streak != 0 {
+			t.Errorf("expected streak 0 after skip, got %d", task.Recurrence.Streak)
+		}
+	})
+
+	t.Run("no due date falls back to today", func(t *testing.T) {
+		task := newLifecycleTestTask(t, "t1", 1)
+		task.DueDate = nil
+		task.Recurrence = &RecurrencePattern{
+			Unit:     RecurrenceDaily,
+			Interval: 1,
+		}
+
+		before := time.Now()
+		task.SkipRecurrence()
+		after := time.Now()
+
+		if task.DueDate == nil {
+			t.Fatal("expected DueDate to be set after skip")
+		}
+		// Next date should be tomorrow (base=today + 1 day).
+		// Allow a 1-second window around the call to handle clock ticks.
+		minExpected := before.AddDate(0, 0, 1).Add(-time.Second)
+		maxExpected := after.AddDate(0, 0, 1).Add(time.Second)
+		if task.DueDate.Before(minExpected) || task.DueDate.After(maxExpected) {
+			t.Errorf("expected due date ~tomorrow, got %v", task.DueDate)
+		}
+	})
 }
 
 func TestDeferRecurrence(t *testing.T) {
