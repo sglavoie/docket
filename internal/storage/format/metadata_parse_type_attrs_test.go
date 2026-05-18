@@ -281,3 +281,104 @@ func TestParseMetadata_CrossTypeAttrWarning(t *testing.T) {
 		})
 	}
 }
+
+func TestParseMetadata_InvalidTypeSpecificValuesWarnAndSkip(t *testing.T) {
+	tests := []struct {
+		name       string
+		taskType   models.TaskType
+		metaStr    string
+		wantFields []string
+		assertTask func(*testing.T, *models.Task)
+	}{
+		{
+			name:       "bug enums",
+			taskType:   models.TaskTypeBug,
+			metaStr:    "id: b1, status: todo, priority: 2, bug.reproducible: maybe, bug.severity: blocker",
+			wantFields: []string{"bug.reproducible", "bug.severity"},
+			assertTask: func(t *testing.T, task *models.Task) {
+				t.Helper()
+				if task.BugAttrs != nil {
+					t.Errorf("BugAttrs = %+v, want nil", task.BugAttrs)
+				}
+			},
+		},
+		{
+			name:       "idea enums",
+			taskType:   models.TaskTypeIdea,
+			metaStr:    "id: i1, status: todo, priority: 2, idea.category: random, idea.effort: gigantic, idea.value: huge",
+			wantFields: []string{"idea.category", "idea.effort", "idea.value"},
+			assertTask: func(t *testing.T, task *models.Task) {
+				t.Helper()
+				if task.IdeaAttrs != nil {
+					t.Errorf("IdeaAttrs = %+v, want nil", task.IdeaAttrs)
+				}
+			},
+		},
+		{
+			name:       "task enums",
+			taskType:   models.TaskTypeTask,
+			metaStr:    "id: t1, status: todo, priority: 2, task.effort: tiny, task.worktype: qa",
+			wantFields: []string{"task.effort", "task.worktype"},
+			assertTask: func(t *testing.T, task *models.Task) {
+				t.Helper()
+				if task.TaskAttrs != nil {
+					t.Errorf("TaskAttrs = %+v, want nil", task.TaskAttrs)
+				}
+			},
+		},
+		{
+			name:       "story points negative",
+			taskType:   models.TaskTypeStory,
+			metaStr:    "id: s1, status: todo, priority: 2, story.points: -1",
+			wantFields: []string{"story.points"},
+			assertTask: func(t *testing.T, task *models.Task) {
+				t.Helper()
+				if task.StoryAttrs != nil {
+					t.Errorf("StoryAttrs = %+v, want nil", task.StoryAttrs)
+				}
+			},
+		},
+		{
+			name:       "story points non-numeric",
+			taskType:   models.TaskTypeStory,
+			metaStr:    "id: s2, status: todo, priority: 2, story.points: many",
+			wantFields: []string{"story.points"},
+			assertTask: func(t *testing.T, task *models.Task) {
+				t.Helper()
+				if task.StoryAttrs != nil {
+					t.Errorf("StoryAttrs = %+v, want nil", task.StoryAttrs)
+				}
+			},
+		},
+		{
+			name:       "epic scope",
+			taskType:   models.TaskTypeEpic,
+			metaStr:    "id: e1, status: todo, priority: 2, epic.scope: tentative",
+			wantFields: []string{"epic.scope"},
+			assertTask: func(t *testing.T, task *models.Task) {
+				t.Helper()
+				if task.EpicAttrs != nil {
+					t.Errorf("EpicAttrs = %+v, want nil", task.EpicAttrs)
+				}
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			task := &models.Task{Type: tc.taskType}
+			warnings := ParseMetadata(task, tc.metaStr)
+
+			if len(warnings) != len(tc.wantFields) {
+				t.Fatalf("got %d warnings, want %d: %v", len(warnings), len(tc.wantFields), warnings)
+			}
+			for _, field := range tc.wantFields {
+				if !hasWarningField(warnings, field) {
+					t.Errorf("expected warning for field %q, got %v", field, warnings)
+				}
+			}
+
+			tc.assertTask(t, task)
+		})
+	}
+}

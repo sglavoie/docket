@@ -10,15 +10,19 @@ import (
 	"github.com/sglavoie/tt/internal/util"
 )
 
+func addValidationWarning(warnings *[]ParseWarning, field, format string, args ...any) {
+	*warnings = append(*warnings, ParseWarning{
+		Type:    WarningValidation,
+		Field:   field,
+		Message: fmt.Sprintf(format, args...),
+	})
+}
+
 // parseFloatOrWarn parses a float64 value, appending a validation warning on failure.
 func parseFloatOrWarn(value, field string, warnings *[]ParseWarning) (float64, bool) {
 	v, err := strconv.ParseFloat(value, 64)
 	if err != nil {
-		*warnings = append(*warnings, ParseWarning{
-			Type:    WarningValidation,
-			Field:   field,
-			Message: fmt.Sprintf("invalid %s %q, ignoring: %v", field, value, err),
-		})
+		addValidationWarning(warnings, field, "invalid %s %q, ignoring: %v", field, value, err)
 		return 0, false
 	}
 	return v, true
@@ -44,14 +48,39 @@ func splitSemicolonDedup(value string) []string {
 func parseIntOrWarn(value, field string, warnings *[]ParseWarning) (int, bool) {
 	v, err := strconv.Atoi(value)
 	if err != nil {
-		*warnings = append(*warnings, ParseWarning{
-			Type:    WarningValidation,
-			Field:   field,
-			Message: fmt.Sprintf("invalid %s %q, ignoring: %v", field, value, err),
-		})
+		addValidationWarning(warnings, field, "invalid %s %q, ignoring: %v", field, value, err)
 		return 0, false
 	}
 	return v, true
+}
+
+func parseTimeOrWarn(value, field string, warnings *[]ParseWarning) (time.Time, bool) {
+	if t, ok := ParseTimeField(value); ok {
+		return t, true
+	}
+	addValidationWarning(warnings, field, "invalid %s %q, ignoring", field, value)
+	return time.Time{}, false
+}
+
+func parseDateOrWarn(value, field string, warnings *[]ParseWarning) (time.Time, bool) {
+	if t, err := time.ParseInLocation(util.DateFormat, value, time.Local); err == nil {
+		return t, true
+	}
+	addValidationWarning(warnings, field, "invalid %s %q, ignoring", field, value)
+	return time.Time{}, false
+}
+
+func parseDueOrWarn(task *models.Task, value string, warnings *[]ParseWarning) {
+	if t, err := time.ParseInLocation(util.DateFormat, value, time.Local); err == nil {
+		task.DueDate = &t
+		return
+	}
+	if t, err := time.ParseInLocation(util.DateTimeDueFormat, value, time.Local); err == nil {
+		task.DueDate = &t
+		task.HasTime = true
+		return
+	}
+	addValidationWarning(warnings, "due", "invalid due %q, ignoring", value)
 }
 
 // parseAttachments parses a semicolon-delimited attachment string into Attachment structs.
@@ -189,21 +218,15 @@ func ParseMetadata(task *models.Task, metaStr string) []ParseWarning { //nolint:
 		case "status":
 			if status, ok := models.ParseTaskStatus(value); ok {
 				task.Status = status
+			} else {
+				addValidationWarning(&warnings, "status", "invalid status %q, using default", value)
 			}
 		case "priority":
 			p, err := strconv.Atoi(value)
 			if err != nil {
-				warnings = append(warnings, ParseWarning{
-					Type:    WarningValidation,
-					Field:   "priority",
-					Message: fmt.Sprintf("invalid priority '%s', using default", value),
-				})
+				addValidationWarning(&warnings, "priority", "invalid priority %q, using default", value)
 			} else if err := models.ValidatePriority(p, false); err != nil {
-				warnings = append(warnings, ParseWarning{
-					Type:    WarningValidation,
-					Field:   "priority",
-					Message: fmt.Sprintf("priority %d out of range (%d-%d), using default", p, models.PriorityMin, models.PriorityMax),
-				})
+				addValidationWarning(&warnings, "priority", "priority %d out of range (%d-%d), using default", p, models.PriorityMin, models.PriorityMax)
 			} else {
 				task.Priority = p
 			}
@@ -214,26 +237,21 @@ func ParseMetadata(task *models.Task, metaStr string) []ParseWarning { //nolint:
 		case "tags":
 			task.Tags = append(task.Tags, splitSemicolonDedup(value)...)
 		case "created":
-			if t, ok := ParseTimeField(value); ok {
+			if t, ok := parseTimeOrWarn(value, "created", &warnings); ok {
 				task.CreatedAt = t
 			}
 		case "updated":
-			if t, ok := ParseTimeField(value); ok {
+			if t, ok := parseTimeOrWarn(value, "updated", &warnings); ok {
 				task.UpdatedAt = t
 			}
 		case "completed":
-			if t, ok := ParseTimeField(value); ok {
+			if t, ok := parseTimeOrWarn(value, "completed", &warnings); ok {
 				task.CompletedAt = &t
 			}
 		case "due":
-			if t, err := time.ParseInLocation(util.DateFormat, value, time.Local); err == nil {
-				task.DueDate = &t
-			} else if t, err := time.ParseInLocation(util.DateTimeDueFormat, value, time.Local); err == nil {
-				task.DueDate = &t
-				task.HasTime = true
-			}
+			parseDueOrWarn(task, value, &warnings)
 		case "start":
-			if t, err := time.ParseInLocation(util.DateFormat, value, time.Local); err == nil {
+			if t, ok := parseDateOrWarn(value, "start", &warnings); ok {
 				task.StartDate = &t
 			}
 		case "estimated_days":
@@ -287,7 +305,7 @@ func ParseMetadata(task *models.Task, metaStr string) []ParseWarning { //nolint:
 				recurSubFields.hasAny = true
 			}
 		case "snoozed":
-			if t, err := time.ParseInLocation(util.DateFormat, value, time.Local); err == nil {
+			if t, ok := parseDateOrWarn(value, "snoozed", &warnings); ok {
 				task.SnoozedUntil = &t
 			}
 		case "attachments":
@@ -320,31 +338,75 @@ func ParseMetadata(task *models.Task, metaStr string) []ParseWarning { //nolint:
 		case "url":
 			task.URL = value
 		case "bug.reproducible":
-			task.EnsureBugAttrs().Reproducible = models.BugReproducible(value)
+			reproducible := models.BugReproducible(value)
+			if !reproducible.IsValid() {
+				addValidationWarning(&warnings, "bug.reproducible", "invalid bug.reproducible %q, ignoring", value)
+				break
+			}
+			task.EnsureBugAttrs().Reproducible = reproducible
 		case "bug.severity":
-			task.EnsureBugAttrs().Severity = models.BugSeverity(value)
+			severity := models.BugSeverity(value)
+			if !severity.IsValid() {
+				addValidationWarning(&warnings, "bug.severity", "invalid bug.severity %q, ignoring", value)
+				break
+			}
+			task.EnsureBugAttrs().Severity = severity
 		case "bug.workaround":
 			task.EnsureBugAttrs().Workaround = unescapeNewlines(value)
 		case "idea.category":
-			task.EnsureIdeaAttrs().Category = models.IdeaCategory(value)
+			category := models.IdeaCategory(value)
+			if !category.IsValid() {
+				addValidationWarning(&warnings, "idea.category", "invalid idea.category %q, ignoring", value)
+				break
+			}
+			task.EnsureIdeaAttrs().Category = category
 		case "idea.effort":
-			task.EnsureIdeaAttrs().Effort = models.EffortEstimate(value)
+			effort := models.EffortEstimate(value)
+			if !effort.IsValid() {
+				addValidationWarning(&warnings, "idea.effort", "invalid idea.effort %q, ignoring", value)
+				break
+			}
+			task.EnsureIdeaAttrs().Effort = effort
 		case "idea.value":
-			task.EnsureIdeaAttrs().Value = models.IdeaValue(value)
+			ideaValue := models.IdeaValue(value)
+			if !ideaValue.IsValid() {
+				addValidationWarning(&warnings, "idea.value", "invalid idea.value %q, ignoring", value)
+				break
+			}
+			task.EnsureIdeaAttrs().Value = ideaValue
 		case "idea.validated":
 			task.EnsureIdeaAttrs().Validated = value == "true"
 		case "task.effort":
-			task.EnsureTaskAttrs().Effort = models.EffortEstimate(value)
+			effort := models.EffortEstimate(value)
+			if !effort.IsValid() {
+				addValidationWarning(&warnings, "task.effort", "invalid task.effort %q, ignoring", value)
+				break
+			}
+			task.EnsureTaskAttrs().Effort = effort
 		case "task.worktype":
-			task.EnsureTaskAttrs().WorkType = models.WorkType(value)
+			workType := models.WorkType(value)
+			if !workType.IsValid() {
+				addValidationWarning(&warnings, "task.worktype", "invalid task.worktype %q, ignoring", value)
+				break
+			}
+			task.EnsureTaskAttrs().WorkType = workType
 		case "story.points":
-			if points, err := strconv.Atoi(value); err == nil {
+			if points, ok := parseIntOrWarn(value, "story.points", &warnings); ok {
+				if points < 0 {
+					addValidationWarning(&warnings, "story.points", "invalid story.points %d (must be non-negative), ignoring", points)
+					break
+				}
 				task.EnsureStoryAttrs().StoryPoints = points
 			}
 		case "story.persona":
 			task.EnsureStoryAttrs().Persona = unescapeNewlines(value)
 		case "epic.scope":
-			task.EnsureEpicAttrs().Scope = models.EpicScope(value)
+			scope := models.EpicScope(value)
+			if !scope.IsValid() {
+				addValidationWarning(&warnings, "epic.scope", "invalid epic.scope %q, ignoring", value)
+				break
+			}
+			task.EnsureEpicAttrs().Scope = scope
 		case "epic.milestone":
 			task.EnsureEpicAttrs().Milestone = value
 		case "epic.metrics":

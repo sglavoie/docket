@@ -225,7 +225,7 @@ func TestRoundTrip_TaskWithAllMetadataFields(t *testing.T) { //nolint:gocyclo
 				"urgency": 5,
 			},
 			BugAttrs: &models.BugAttrs{
-				Reproducible: "always",
+				Reproducible: models.BugReproducibleYes,
 				Severity:     "critical",
 				Workaround:   "Restart the service",
 			},
@@ -327,8 +327,8 @@ func TestRoundTrip_TaskWithAllMetadataFields(t *testing.T) { //nolint:gocyclo
 	if p.BugAttrs == nil {
 		t.Fatal("BugAttrs should not be nil")
 	}
-	if p.BugAttrs.Reproducible != "always" {
-		t.Errorf("BugAttrs.Reproducible = %q, want 'always'", p.BugAttrs.Reproducible)
+	if p.BugAttrs.Reproducible != models.BugReproducibleYes {
+		t.Errorf("BugAttrs.Reproducible = %q, want %q", p.BugAttrs.Reproducible, models.BugReproducibleYes)
 	}
 	if p.BugAttrs.Severity != "critical" {
 		t.Errorf("BugAttrs.Severity = %q, want 'critical'", p.BugAttrs.Severity)

@@ -149,6 +149,15 @@ func containsString(s, substr string) bool {
 	return len(s) >= len(substr) && (s == substr || len(s) > 0 && (s[:len(substr)] == substr || containsString(s[1:], substr)))
 }
 
+func hasWarningField(warnings []ParseWarning, field string) bool {
+	for _, w := range warnings {
+		if w.Field == field {
+			return true
+		}
+	}
+	return false
+}
+
 func parseWrittenMetadata(task, parsed *models.Task) []ParseWarning {
 	metaStr := WriteMetadata(task)
 	content := metaStr[5 : len(metaStr)-4]

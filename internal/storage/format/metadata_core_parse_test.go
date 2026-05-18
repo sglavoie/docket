@@ -317,3 +317,79 @@ func TestParseMetadata_NoDuplicateWithSingleDep(t *testing.T) {
 		t.Errorf("DependsOn[0] = %q, want %q", task.DependsOn[0], "only-one")
 	}
 }
+
+func TestParseMetadata_InvalidStatusWarnsAndPreservesExistingValue(t *testing.T) {
+	task := &models.Task{
+		ID:       "existing-id",
+		Status:   models.StatusTodo,
+		Priority: 2,
+	}
+
+	warnings := ParseMetadata(task, "id: parsed-id, status: invalid_status, priority: 2")
+
+	if task.ID != "parsed-id" {
+		t.Errorf("ID = %q, want %q", task.ID, "parsed-id")
+	}
+	if task.Status != models.StatusTodo {
+		t.Errorf("Status = %q, want %q", task.Status, models.StatusTodo)
+	}
+	if len(warnings) != 1 {
+		t.Fatalf("got %d warnings, want 1: %v", len(warnings), warnings)
+	}
+	if !hasWarningField(warnings, "status") {
+		t.Errorf("expected warning for field %q, got %v", "status", warnings)
+	}
+}
+
+func TestParseMetadata_InvalidTimeFieldsWarnAndPreserveExistingValues(t *testing.T) {
+	created := time.Date(2025, 1, 10, 8, 0, 0, 0, time.Local)
+	updated := time.Date(2025, 1, 11, 9, 15, 0, 0, time.Local)
+	completed := time.Date(2025, 1, 12, 10, 30, 0, 0, time.Local)
+	due := time.Date(2025, 2, 1, 0, 0, 0, 0, time.Local)
+	start := time.Date(2025, 1, 9, 0, 0, 0, 0, time.Local)
+	snoozed := time.Date(2025, 1, 20, 0, 0, 0, 0, time.Local)
+
+	task := &models.Task{
+		CreatedAt:    created,
+		UpdatedAt:    updated,
+		CompletedAt:  timePtr(completed),
+		DueDate:      timePtr(due),
+		StartDate:    timePtr(start),
+		SnoozedUntil: timePtr(snoozed),
+		HasTime:      true,
+	}
+
+	warnings := ParseMetadata(task, "created: not-a-date, updated: nope, completed: later, due: tomorrow-ish, start: 2025/01/09, snoozed: soon")
+
+	if !task.CreatedAt.Equal(created) {
+		t.Errorf("CreatedAt = %v, want %v", task.CreatedAt, created)
+	}
+	if !task.UpdatedAt.Equal(updated) {
+		t.Errorf("UpdatedAt = %v, want %v", task.UpdatedAt, updated)
+	}
+	if task.CompletedAt == nil || !task.CompletedAt.Equal(completed) {
+		t.Errorf("CompletedAt = %v, want %v", task.CompletedAt, completed)
+	}
+	if task.DueDate == nil || !task.DueDate.Equal(due) {
+		t.Errorf("DueDate = %v, want %v", task.DueDate, due)
+	}
+	if task.StartDate == nil || !task.StartDate.Equal(start) {
+		t.Errorf("StartDate = %v, want %v", task.StartDate, start)
+	}
+	if task.SnoozedUntil == nil || !task.SnoozedUntil.Equal(snoozed) {
+		t.Errorf("SnoozedUntil = %v, want %v", task.SnoozedUntil, snoozed)
+	}
+	if !task.HasTime {
+		t.Error("HasTime should remain unchanged when due parsing fails")
+	}
+
+	wantFields := []string{"created", "updated", "completed", "due", "start", "snoozed"}
+	if len(warnings) != len(wantFields) {
+		t.Fatalf("got %d warnings, want %d: %v", len(warnings), len(wantFields), warnings)
+	}
+	for _, field := range wantFields {
+		if !hasWarningField(warnings, field) {
+			t.Errorf("expected warning for field %q, got %v", field, warnings)
+		}
+	}
+}
