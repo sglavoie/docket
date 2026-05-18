@@ -129,6 +129,9 @@ func RestoreProjectFromTrash(slug, dataDir string) error {
 	if _, err := os.Stat(projectPath); err == nil {
 		return fmt.Errorf("%w: '%s' already exists; rename or delete it first", tterrors.ErrProjectExists, slug)
 	}
+	if err := os.MkdirAll(filepath.Dir(projectPath), DirPermissions); err != nil {
+		return fmt.Errorf("failed to create projects directory: %w", err)
+	}
 	if err := os.Rename(trashPath, projectPath); err != nil {
 		return fmt.Errorf("failed to restore project from trash: %w", err)
 	}

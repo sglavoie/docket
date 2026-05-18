@@ -4,7 +4,9 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/testutil"
 	"github.com/sglavoie/tt/internal/tterrors"
 )
@@ -128,4 +130,58 @@ func TestFindTaskByIdentifierTitleMatchAmbiguous(t *testing.T) {
 	if got != task1 {
 		t.Errorf("FindTaskByIdentifier should return task1, got %v", got)
 	}
+}
+
+func TestFindActionTaskByID(t *testing.T) {
+	project := testutil.NewTestProject("Test Project")
+
+	prefixTask, err := models.NewTask("123abcde-0000-0000-0000-000000000000", 42, models.TaskTypeTask, "Prefix Task")
+	if err != nil {
+		t.Fatal(err)
+	}
+	shortIDTask, err := models.NewTask("other-uuid", 123, models.TaskTypeTask, "Short ID Task")
+	if err != nil {
+		t.Fatal(err)
+	}
+	project.Tasks = []*models.Task{prefixTask, shortIDTask}
+	project.NextShortID = 124
+
+	repo := testutil.NewMockRepository()
+	if err := repo.Save(project); err != nil {
+		t.Fatal(err)
+	}
+
+	oldRepo := storage.DefaultRepository
+	storage.DefaultRepository = repo
+	defer func() { storage.DefaultRepository = oldRepo }()
+
+	cfg := &config.Config{
+		Projects: []*models.Project{project},
+	}
+
+	t.Run("mixed numeric prefix matches UUID prefix", func(t *testing.T) {
+		gotTask, gotProject := FindActionTaskByID(cfg, "123abc")
+		if gotTask == nil {
+			t.Fatal("expected task match for UUID prefix")
+		}
+		if gotTask.ID != prefixTask.ID {
+			t.Fatalf("FindActionTaskByID returned %q, want %q", gotTask.ID, prefixTask.ID)
+		}
+		if gotProject != project {
+			t.Fatal("expected matching project to be returned")
+		}
+	})
+
+	t.Run("pure numeric query still matches short ID", func(t *testing.T) {
+		gotTask, gotProject := FindActionTaskByID(cfg, "123")
+		if gotTask == nil {
+			t.Fatal("expected task match for short ID")
+		}
+		if gotTask.ID != shortIDTask.ID {
+			t.Fatalf("FindActionTaskByID returned %q, want %q", gotTask.ID, shortIDTask.ID)
+		}
+		if gotProject != project {
+			t.Fatal("expected matching project to be returned")
+		}
+	})
 }

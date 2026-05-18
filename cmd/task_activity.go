@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -108,8 +109,8 @@ func parseDuration(s string) (time.Duration, error) {
 	unit := s[len(s)-1]
 	numStr := s[:len(s)-1]
 
-	var num int
-	if _, err := fmt.Sscanf(numStr, "%d", &num); err != nil {
+	num, err := strconv.Atoi(numStr)
+	if err != nil {
 		return 0, fmt.Errorf("invalid number: %q", numStr)
 	}
 	if num <= 0 {

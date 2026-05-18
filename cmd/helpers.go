@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -200,11 +201,8 @@ func LoadCurrentProject() (*models.Project, *config.Config, *config.Manager, err
 // FindActionTaskByID searches all loadable projects for a task by short ID or UUID prefix.
 // Returns the task and its project, or nil, nil if not found.
 func FindActionTaskByID(cfg *config.Config, query string) (*models.Task, *models.Project) {
-	var shortID int
-	isShortID := false
-	if _, err := fmt.Sscanf(query, "%d", &shortID); err == nil {
-		isShortID = true
-	}
+	shortID, err := strconv.Atoi(query)
+	isShortID := err == nil
 
 	for _, project := range cfg.GetAllLoadableProjects() {
 		if err := storage.LoadProject(project); err != nil {

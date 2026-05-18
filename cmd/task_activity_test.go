@@ -18,6 +18,7 @@ func TestParseDuration_ValidInputs(t *testing.T) {
 		{"7d", 7 * util.Day},
 		{"1w", 1 * util.Week},
 		{"2w", 2 * util.Week},
+		{" 3d ", 3 * util.Day},
 	}
 
 	for _, tc := range tests {
@@ -45,6 +46,9 @@ func TestParseDuration_InvalidInputs(t *testing.T) {
 		{"-1w", "negative weeks"},
 		{"3x", "unknown unit"},
 		{"abc", "non-numeric"},
+		{"1xd", "trailing junk in number"},
+		{"2--w", "malformed number"},
+		{"3 h", "embedded whitespace"},
 	}
 
 	for _, tc := range tests {

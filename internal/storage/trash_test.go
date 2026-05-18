@@ -225,6 +225,37 @@ func TestRestoreProjectFromTrash(t *testing.T) {
 	}
 }
 
+func TestRestoreProjectFromTrash_CreatesMissingProjectsDir(t *testing.T) {
+	tmpDir := t.TempDir()
+	dataDir := filepath.Join(tmpDir, "tt-data")
+	trashPath := filepath.Join(dataDir, ".tt", "trash", "my-project")
+	projectDir := filepath.Join(dataDir, "projects", "my-project")
+
+	if err := os.MkdirAll(trashPath, 0755); err != nil {
+		t.Fatalf("failed to create trash dir: %v", err)
+	}
+	tasksContent := "# Project: My Project\n"
+	if err := os.WriteFile(filepath.Join(trashPath, "tasks.md"), []byte(tasksContent), 0644); err != nil {
+		t.Fatalf("failed to write tasks.md: %v", err)
+	}
+
+	if err := RestoreProjectFromTrash("my-project", dataDir); err != nil {
+		t.Fatalf("RestoreProjectFromTrash failed: %v", err)
+	}
+
+	if _, err := os.Stat(projectDir); os.IsNotExist(err) {
+		t.Fatal("project directory should be restored even when projects dir is missing")
+	}
+
+	content, err := os.ReadFile(filepath.Join(projectDir, "tasks.md"))
+	if err != nil {
+		t.Fatalf("failed to read restored tasks.md: %v", err)
+	}
+	if string(content) != tasksContent {
+		t.Error("tasks.md content should be preserved after restore")
+	}
+}
+
 func TestRestoreProjectFromTrash_NotExists(t *testing.T) {
 	tmpDir := t.TempDir()
 	dataDir := filepath.Join(tmpDir, "tt-data")
