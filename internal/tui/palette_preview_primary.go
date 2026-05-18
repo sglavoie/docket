@@ -95,7 +95,11 @@ func (m *CommandPaletteModel) renderTaskPreview(item PaletteItem) string {
 			strings.Join(tags, ", "))
 	}
 
-	if task.Section != "" {
+	if task.CustomSection != "" {
+		fmt.Fprintf(&b, "%s %s\n",
+			MutedStyle.Render("Section:"),
+			task.CustomSection)
+	} else if task.Section != "" {
 		fmt.Fprintf(&b, "%s %s\n",
 			MutedStyle.Render("Section:"),
 			task.Section)

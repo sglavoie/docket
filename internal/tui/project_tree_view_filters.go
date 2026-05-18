@@ -84,8 +84,10 @@ func (m *ProjectTreeModel) renderViewModeIndicator() string {
 		case models.SectionStandby:
 			standbyCount++
 		default:
-			// Empty section = Active
-			activeCount++
+			// Empty section = Active; custom-section tasks are not "Active"
+			if task.CustomSection == "" {
+				activeCount++
+			}
 		}
 	}
 

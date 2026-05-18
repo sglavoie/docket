@@ -337,8 +337,6 @@ func (m *QuickCaptureModel) createTask(openContent, openDetail bool) tea.Cmd {
 		Title:           result.title,
 		Status:          models.StatusTodo,
 		Priority:        result.priority,
-		Section:         targetSection,
-		CustomSection:   customSection,
 		ParentID:        result.parentID,
 		DueDate:         result.dueDate,
 		Recurrence:      result.recurrence,
@@ -348,6 +346,13 @@ func (m *QuickCaptureModel) createTask(openContent, openDetail bool) tea.Cmd {
 		Children:        []*models.Task{},
 		CreatedAt:       time.Now(),
 		UpdatedAt:       time.Now(),
+	}
+	// Use SetSection to maintain the invariant: GTD sections stored in Section,
+	// custom sections stored in CustomSection (never both non-empty).
+	if customSection != "" {
+		task.SetSection(customSection)
+	} else {
+		task.SetSection(targetSection)
 	}
 
 	for _, tag := range result.tags {

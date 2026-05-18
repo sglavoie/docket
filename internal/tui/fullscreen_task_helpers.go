@@ -150,13 +150,6 @@ func renderMetadataContentOpts(task *models.Task, project *models.Project, inner
 		sectionStyle := GetSectionColorStyle(sectionColor)
 		sectionLine := MutedStyle.Render("Section: ") + sectionStyle.Render(sectionName)
 		lines = append(lines, sectionLine)
-
-		if task.CustomSection != "" && task.Section != "" {
-			csColor := project.GetSectionColor(task.CustomSection)
-			csStyle := GetSectionColorStyle(csColor)
-			csLine := MutedStyle.Render("Custom:  ") + csStyle.Render(task.CustomSection)
-			lines = append(lines, csLine)
-		}
 	}
 
 	if task.Source != "" {
