@@ -21,8 +21,13 @@ func ComputeTreeColumnLayout(nodes []*TreeNode, columnConfig *ColumnConfig) *Col
 
 		// Priority (inline, before stage badge)
 		if columnConfig.ShouldShowPriority(task.Priority) {
-			cl.HasPriority = true
-			cl.PriorityWidth = 1
+			badge := renderPriorityBadge(task.Priority)
+			if w := lipgloss.Width(badge); w > 0 {
+				cl.HasPriority = true
+				if w > cl.PriorityWidth {
+					cl.PriorityWidth = w
+				}
+			}
 		}
 
 		// Short ID (pre-title in the tree format string)
@@ -54,8 +59,13 @@ func ComputeOutlinerColumnLayout(rows []outlinerRow, columnConfig *ColumnConfig)
 
 		// Priority (pre-title in outliner)
 		if columnConfig.ShouldShowPriority(task.Priority) {
-			cl.HasPriority = true
-			cl.PriorityWidth = 1
+			badge := renderPriorityBadge(task.Priority)
+			if w := lipgloss.Width(badge); w > 0 {
+				cl.HasPriority = true
+				if w > cl.PriorityWidth {
+					cl.PriorityWidth = w
+				}
+			}
 		}
 	}
 	if !hasRows {
@@ -157,8 +167,13 @@ func ComputeBadgeWidths(tasks []*models.Task, opts BadgeWidthOpts) *ColumnLayout
 
 		showPriority := !opts.HideLowPriority || task.Priority <= 2
 		if showPriority {
-			cl.HasPriority = true
-			cl.PriorityWidth = 1
+			badge := renderPriorityBadge(task.Priority)
+			if w := lipgloss.Width(badge); w > 0 {
+				cl.HasPriority = true
+				if w > cl.PriorityWidth {
+					cl.PriorityWidth = w
+				}
+			}
 		}
 
 		if opts.IncludeStatus {

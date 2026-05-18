@@ -129,7 +129,9 @@ func (m *OutlinerModel) renderOutlinerTaskRow(row outlinerRow, selected bool, ro
 		}
 		typeIcon = demoteBadge(typeIcon)
 		if !priorityIsHero(hero) && prioritySegment != "" {
-			prioritySegment = demoteBadge(strings.TrimRight(prioritySegment, " ")) + " "
+			if trimmed := strings.TrimRight(prioritySegment, " "); trimmed != "" {
+				prioritySegment = demoteBadge(trimmed) + " "
+			}
 		}
 		if task.Stage != "" && stageSegment != "" {
 			stageSegment = demoteBadge(strings.TrimRight(stageSegment, " ")) + " "

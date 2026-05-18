@@ -521,7 +521,9 @@ func (tl TaskLine) Render() string {
 		}
 		typeIcon = demoteBadge(typeIcon)
 		if !priorityIsHero(hero) && prioritySegment != "" {
-			prioritySegment = demoteBadge(strings.TrimRight(prioritySegment, " ")) + " "
+			if trimmed := strings.TrimRight(prioritySegment, " "); trimmed != "" {
+				prioritySegment = demoteBadge(trimmed) + " "
+			}
 		}
 		if stageSegment != "" && stageBadge != "" {
 			stageSegment = demoteBadge(strings.TrimRight(stageSegment, " ")) + " "

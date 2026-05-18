@@ -3,6 +3,7 @@ package tui
 import (
 	"testing"
 
+	"github.com/sglavoie/tt/internal/icons"
 	"github.com/sglavoie/tt/internal/models"
 )
 
@@ -105,6 +106,23 @@ func TestComputeBadgeWidthsAllOptional(t *testing.T) {
 	}
 	if cl.HasStatus || cl.HasType || cl.HasStage || cl.HasProject {
 		t.Errorf("optional columns should remain unset when not requested, got %+v", cl)
+	}
+}
+
+func TestComputeBadgeWidthsPriorityEmojiWidth(t *testing.T) {
+	icons.SetUseEmoji(true)
+	t.Cleanup(func() { icons.SetUseEmoji(false) })
+
+	t1 := &models.Task{Priority: 1, Status: models.StatusTodo, Type: models.TaskTypeTask}
+	cl := ComputeBadgeWidths([]*models.Task{t1}, BadgeWidthOpts{})
+	if cl == nil {
+		t.Fatal("expected non-nil layout")
+	}
+	if !cl.HasPriority {
+		t.Error("HasPriority should be true")
+	}
+	if cl.PriorityWidth != 2 {
+		t.Errorf("PriorityWidth = %d, want 2 (emoji priority icons are visual width 2)", cl.PriorityWidth)
 	}
 }
 

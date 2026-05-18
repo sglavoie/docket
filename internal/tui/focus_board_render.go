@@ -394,8 +394,11 @@ func (m *FocusBoardModel) renderRow(row boardRow, isSelected bool, maxTitleLen i
 	if colLayout != nil && colLayout.HasType {
 		typeIcon = " " + PadBadge(GetTypeStyle(string(task.Type)).Render(task.Type.Icon()), colLayout.TypeWidth)
 	}
+	var prioritySegment string
 	if colLayout != nil && colLayout.HasPriority {
-		priorityBadge = PadBadge(priorityBadge, colLayout.PriorityWidth)
+		prioritySegment = PadBadge(priorityBadge, colLayout.PriorityWidth) + " "
+	} else if priorityBadge != "" {
+		prioritySegment = priorityBadge + " "
 	}
 
 	// Von Restorff: demote non-hero badges so the most urgent attribute stands out.
@@ -405,15 +408,17 @@ func (m *FocusBoardModel) renderRow(row boardRow, isSelected bool, maxTitleLen i
 			statusIcon = demoteBadge(statusIcon)
 		}
 		typeIcon = " " + demoteBadge(strings.TrimPrefix(typeIcon, " "))
-		if !priorityIsHero(hero) {
-			priorityBadge = demoteBadge(priorityBadge)
+		if !priorityIsHero(hero) && prioritySegment != "" {
+			if trimmed := strings.TrimRight(prioritySegment, " "); trimmed != "" {
+				prioritySegment = demoteBadge(trimmed) + " "
+			}
 		}
 		if dueStr != "" && !dueIsHero(hero) {
 			dueStr = demoteBadge(dueStr)
 		}
 	}
 
-	content := fmt.Sprintf("%s%s%s%s %s %s%s %s", queueIndicator, indent, prefix, statusIcon, priorityBadge, projectBadge, typeIcon, title)
+	content := fmt.Sprintf("%s%s%s%s %s%s%s %s", queueIndicator, indent, prefix, statusIcon, prioritySegment, projectBadge, typeIcon, title)
 
 	estimateStr := ""
 	if task.EstimatedDays > 0 {
