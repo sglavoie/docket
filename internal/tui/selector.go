@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"os"
 	"sort"
 	"strings"
 
@@ -9,6 +10,7 @@ import (
 	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"github.com/mattn/go-isatty"
 
 	"github.com/sglavoie/tt/internal/fuzzy"
 	"github.com/sglavoie/tt/internal/selector"
@@ -299,10 +301,21 @@ func (m SelectorModel) IsCanceled() bool {
 	return m.canceled
 }
 
+func selectorHasInteractiveTerminal() bool {
+	stdin := os.Stdin.Fd()
+	stdout := os.Stdout.Fd()
+
+	return (isatty.IsTerminal(stdin) || isatty.IsCygwinTerminal(stdin)) &&
+		(isatty.IsTerminal(stdout) || isatty.IsCygwinTerminal(stdout))
+}
+
 // RunSelector runs the selector TUI and returns the selected item.
 func RunSelector(title string, items []SelectorItem) (*SelectorItem, error) {
 	if len(items) == 0 {
 		return nil, fmt.Errorf("no items to select from")
+	}
+	if !selectorHasInteractiveTerminal() {
+		return nil, fmt.Errorf("interactive selector requires terminal stdin/stdout")
 	}
 
 	model := NewSelectorModel(title, items)
