@@ -111,7 +111,7 @@ func (m *OutlinerModel) moveTaskToPosition(task *models.Task, toTop bool) (tea.M
 	if m.project == nil {
 		return m.crossMoveTaskToPosition(task, toTop)
 	}
-	siblings := m.getSiblings(task, m.project)
+	siblings := m.visibleSiblings(m.cursor)
 	idx := -1
 	for i, s := range siblings {
 		if s.ID == task.ID {
@@ -132,10 +132,16 @@ func (m *OutlinerModel) moveTaskToPosition(task *models.Task, toTop bool) (tea.M
 
 	if toTop {
 		for i := idx - 1; i >= 0; i-- {
+			if task.IsRoot() && task.IsComplete() && !siblings[i].IsComplete() {
+				break
+			}
 			m.project.SwapTasks(task, siblings[i])
 		}
 	} else {
 		for i := idx + 1; i < len(siblings); i++ {
+			if task.IsRoot() && !task.IsComplete() && siblings[i].IsComplete() {
+				break
+			}
 			m.project.SwapTasks(task, siblings[i])
 		}
 	}
@@ -156,7 +162,7 @@ func (m *OutlinerModel) crossMoveTaskToPosition(task *models.Task, toTop bool) (
 	if !ok || row.task.ID != task.ID {
 		return m, nil
 	}
-	siblings := m.getSiblings(task, proj)
+	siblings := m.visibleSiblings(m.cursor)
 	idx := -1
 	for i, s := range siblings {
 		if s.ID == task.ID {
@@ -175,10 +181,16 @@ func (m *OutlinerModel) crossMoveTaskToPosition(task *models.Task, toTop bool) (
 	}
 	if toTop {
 		for i := idx - 1; i >= 0; i-- {
+			if task.IsRoot() && task.IsComplete() && !siblings[i].IsComplete() {
+				break
+			}
 			proj.SwapTasks(task, siblings[i])
 		}
 	} else {
 		for i := idx + 1; i < len(siblings); i++ {
+			if task.IsRoot() && !task.IsComplete() && siblings[i].IsComplete() {
+				break
+			}
 			proj.SwapTasks(task, siblings[i])
 		}
 	}
@@ -261,6 +273,67 @@ func (m *OutlinerModel) getSiblings(task *models.Task, proj *models.Project) []*
 		}
 	}
 	return proj.GetRootTasks()
+}
+
+// parentIDOf returns the parent task ID for t, or "" if t is a root.
+func parentIDOf(t *models.Task) string {
+	if t == nil || t.ParentID == nil {
+		return ""
+	}
+	return *t.ParentID
+}
+
+// visibleSiblings returns the contiguous run of sibling rows in m.rows around
+// cursorIdx — tasks sharing the same parent ID and ProjectID as the cursor row,
+// uninterrupted by section headers, separators, or rows with a different parent.
+// Returns nil when cursorIdx is out of range or points at a header/separator/nil
+// task row. The contiguous-run semantics confine J/K reorders to a single
+// section bucket (and to a single project in cross-project mode) without
+// dereferencing potentially stale cloned-parent Children slices.
+func (m *OutlinerModel) visibleSiblings(cursorIdx int) []*models.Task {
+	if cursorIdx < 0 || cursorIdx >= len(m.rows) {
+		return nil
+	}
+	cursorRow := m.rows[cursorIdx]
+	if cursorRow.IsSectionHeader || cursorRow.IsSeparator || cursorRow.task == nil {
+		return nil
+	}
+	cursorParentID := parentIDOf(cursorRow.task)
+	cursorProjectID := cursorRow.ProjectID
+
+	inRun := func(row outlinerRow) bool {
+		if row.IsSectionHeader || row.IsSeparator || row.task == nil {
+			return false
+		}
+		if parentIDOf(row.task) != cursorParentID {
+			return false
+		}
+		if row.ProjectID != cursorProjectID {
+			return false
+		}
+		return true
+	}
+
+	var leftSide []*models.Task
+	for i := cursorIdx - 1; i >= 0; i-- {
+		if !inRun(m.rows[i]) {
+			break
+		}
+		leftSide = append(leftSide, m.rows[i].task)
+	}
+	// Reverse leftSide so siblings appear in row order.
+	for i, j := 0, len(leftSide)-1; i < j; i, j = i+1, j-1 {
+		leftSide[i], leftSide[j] = leftSide[j], leftSide[i]
+	}
+
+	siblings := append(leftSide, cursorRow.task)
+	for i := cursorIdx + 1; i < len(m.rows); i++ {
+		if !inRun(m.rows[i]) {
+			break
+		}
+		siblings = append(siblings, m.rows[i].task)
+	}
+	return siblings
 }
 
 // moveCursorToTask positions the cursor on the row matching the given task ID.

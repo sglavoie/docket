@@ -18,21 +18,34 @@ func formatDueDate(task *models.Task, timeFormat string) string {
 	return style.Render(icons.Get("date") + " " + dateStr)
 }
 
-// getVisibleSiblings returns siblings of the given task that are currently visible.
-// This filters siblings using the same visibility logic as the tree display,
-// ensuring movement bounds checking matches what the user sees.
+// getVisibleSiblings returns siblings of the given task in the order they
+// appear in the rendered tree, after filters and sort have been applied.
+// Sourcing order from m.nodes (not m.project.GetSiblings) ensures J/K reorder
+// swaps with the visually adjacent sibling even when sortNodes has reordered
+// the display (Active/Snoozed view modes, explicit sort).
 func (m *ProjectTreeModel) getVisibleSiblings(task *models.Task) []*models.Task {
-	allSiblings := m.project.GetSiblings(task)
-	var visibleSiblings []*models.Task
-	for _, sibling := range allSiblings {
-		for _, node := range m.nodes {
-			if node.Task.ID == sibling.ID && m.passesFilters(node) {
-				visibleSiblings = append(visibleSiblings, sibling)
-				break
-			}
-		}
+	var parentID string
+	if task.ParentID != nil {
+		parentID = *task.ParentID
 	}
-	return visibleSiblings
+	var siblings []*models.Task
+	for _, node := range m.nodes {
+		if node == nil || node.Task == nil {
+			continue
+		}
+		if !m.passesFilters(node) {
+			continue
+		}
+		var nodeParentID string
+		if node.Task.ParentID != nil {
+			nodeParentID = *node.Task.ParentID
+		}
+		if nodeParentID != parentID {
+			continue
+		}
+		siblings = append(siblings, node.Task)
+	}
+	return siblings
 }
 
 // findVisibleSiblingIndex returns the index of task among its visible siblings, or -1 if not found.

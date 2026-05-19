@@ -19,10 +19,16 @@ func (m *OutlinerModel) handleTaskMutationKey(key string, onHeader bool) (tea.Mo
 				return m, nil, true
 			}
 			task = row.task
-			siblings := m.getSiblings(task, proj)
+			siblings := m.visibleSiblings(m.cursor)
 			idx := m.siblingIndex(siblings, task.ID)
 			if idx >= 0 && idx < len(siblings)-1 {
-				proj.SwapTasks(task, siblings[idx+1])
+				siblingBelow := siblings[idx+1]
+				if task.IsRoot() && !task.IsComplete() && siblingBelow.IsComplete() {
+					return m, func() tea.Msg {
+						return MoveBlockedMsg{Reason: "cannot move uncompleted task below completed task"}
+					}, true
+				}
+				proj.SwapTasks(task, siblingBelow)
 				m.crossUndoCtx.Set("Move Down", task.Title)
 				m.crossUndoCtx.ProjectIDs = []string{proj.ID}
 				m.rebuildRows()
@@ -31,11 +37,17 @@ func (m *OutlinerModel) handleTaskMutationKey(key string, onHeader bool) (tea.Mo
 			}
 			return m, nil, true
 		}
-		siblings := m.getSiblings(task, m.project)
+		siblings := m.visibleSiblings(m.cursor)
 		idx := m.siblingIndex(siblings, task.ID)
 		if idx >= 0 && idx < len(siblings)-1 {
+			siblingBelow := siblings[idx+1]
+			if task.IsRoot() && !task.IsComplete() && siblingBelow.IsComplete() {
+				return m, func() tea.Msg {
+					return MoveBlockedMsg{Reason: "cannot move uncompleted task below completed task"}
+				}, true
+			}
 			taskID := task.ID
-			m.project.SwapTasks(task, siblings[idx+1])
+			m.project.SwapTasks(task, siblingBelow)
 			m.setUndoContext("Move Down", task.Title)
 			m.undo.TaskIDs = []string{task.ID}
 			m.rebuildRows()
@@ -55,10 +67,16 @@ func (m *OutlinerModel) handleTaskMutationKey(key string, onHeader bool) (tea.Mo
 				return m, nil, true
 			}
 			task = row.task
-			siblings := m.getSiblings(task, proj)
+			siblings := m.visibleSiblings(m.cursor)
 			idx := m.siblingIndex(siblings, task.ID)
 			if idx > 0 {
-				proj.SwapTasks(task, siblings[idx-1])
+				siblingAbove := siblings[idx-1]
+				if task.IsRoot() && task.IsComplete() && !siblingAbove.IsComplete() {
+					return m, func() tea.Msg {
+						return MoveBlockedMsg{Reason: "cannot move completed task above uncompleted task"}
+					}, true
+				}
+				proj.SwapTasks(task, siblingAbove)
 				m.crossUndoCtx.Set("Move Up", task.Title)
 				m.crossUndoCtx.ProjectIDs = []string{proj.ID}
 				m.rebuildRows()
@@ -67,11 +85,17 @@ func (m *OutlinerModel) handleTaskMutationKey(key string, onHeader bool) (tea.Mo
 			}
 			return m, nil, true
 		}
-		siblings := m.getSiblings(task, m.project)
+		siblings := m.visibleSiblings(m.cursor)
 		idx := m.siblingIndex(siblings, task.ID)
 		if idx > 0 {
+			siblingAbove := siblings[idx-1]
+			if task.IsRoot() && task.IsComplete() && !siblingAbove.IsComplete() {
+				return m, func() tea.Msg {
+					return MoveBlockedMsg{Reason: "cannot move completed task above uncompleted task"}
+				}, true
+			}
 			taskID := task.ID
-			m.project.SwapTasks(task, siblings[idx-1])
+			m.project.SwapTasks(task, siblingAbove)
 			m.setUndoContext("Move Up", task.Title)
 			m.undo.TaskIDs = []string{task.ID}
 			m.rebuildRows()

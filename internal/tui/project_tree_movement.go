@@ -31,6 +31,11 @@ func (m *ProjectTreeModel) handleTypeKeys(key string) (bool, tea.Cmd) {
 func (m *ProjectTreeModel) handleMovementKeys(key string, visible []*TreeNode) (bool, tea.Cmd) {
 	switch key {
 	case "K":
+		if m.sort.Field != SortByDefault {
+			return true, func() tea.Msg {
+				return MoveBlockedMsg{Reason: "cannot reorder while a sort is active"}
+			}
+		}
 		// Move task up (swap with sibling above)
 		if CursorInBounds(m.cursor, len(visible)) {
 			task := visible[m.cursor].Task
@@ -60,6 +65,11 @@ func (m *ProjectTreeModel) handleMovementKeys(key string, visible []*TreeNode) (
 		}
 		return true, nil
 	case "J":
+		if m.sort.Field != SortByDefault {
+			return true, func() tea.Msg {
+				return MoveBlockedMsg{Reason: "cannot reorder while a sort is active"}
+			}
+		}
 		// Move task down (swap with sibling below)
 		if CursorInBounds(m.cursor, len(visible)) {
 			task := visible[m.cursor].Task
@@ -120,6 +130,11 @@ func (m *ProjectTreeModel) handleMovementKeys(key string, visible []*TreeNode) (
 // moveTaskToTop moves the current task to the top of its visible siblings
 // by repeatedly swapping up, matching the proven K (swap-up) mechanism.
 func (m *ProjectTreeModel) moveTaskToTop(visible []*TreeNode) (tea.Model, tea.Cmd) {
+	if m.sort.Field != SortByDefault {
+		return m, func() tea.Msg {
+			return MoveBlockedMsg{Reason: "cannot reorder while a sort is active"}
+		}
+	}
 	if !CursorInBounds(m.cursor, len(visible)) {
 		return m, nil
 	}
@@ -156,6 +171,11 @@ func (m *ProjectTreeModel) moveTaskToTop(visible []*TreeNode) (tea.Model, tea.Cm
 // moveTaskToBottom moves the current task to the bottom of its visible siblings
 // by repeatedly swapping down, matching the proven J (swap-down) mechanism.
 func (m *ProjectTreeModel) moveTaskToBottom(visible []*TreeNode) (tea.Model, tea.Cmd) {
+	if m.sort.Field != SortByDefault {
+		return m, func() tea.Msg {
+			return MoveBlockedMsg{Reason: "cannot reorder while a sort is active"}
+		}
+	}
 	if !CursorInBounds(m.cursor, len(visible)) {
 		return m, nil
 	}
