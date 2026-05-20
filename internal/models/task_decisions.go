@@ -1,9 +1,18 @@
 package models
 
-import "time"
+import (
+	"strings"
+	"time"
+)
 
-// AddDecision adds a new timestamped decision to the task.
+// AddDecision adds a new timestamped decision to the task. Decisions with
+// empty/whitespace-only text are silently dropped because they cannot be
+// round-tripped through the markdown decisions block (the parser uses an
+// empty text to detect the end of a decision and would lose the entry).
 func (t *Task) AddDecision(text, rationale string, category DecisionCategory) {
+	if strings.TrimSpace(text) == "" {
+		return
+	}
 	decision := &Decision{
 		Text:      text,
 		Rationale: rationale,

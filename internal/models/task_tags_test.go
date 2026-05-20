@@ -218,3 +218,26 @@ func TestHasTag(t *testing.T) {
 		t.Error("expected HasTag to return false for missing tag")
 	}
 }
+
+// TestHasTagEmptyReturnsFalse verifies that HasTag rejects empty/whitespace
+// inputs even if a malformed empty tag somehow ended up in Tags (e.g. via
+// direct field assignment bypassing AddTag validation). Without this guard,
+// HasTag("") could match an empty entry and a missing/unset filter argument
+// would treat every task as tagged.
+func TestHasTagEmptyReturnsFalse(t *testing.T) {
+	task, err := NewTask("t", 1, TaskTypeTask, "Test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Simulate a corrupt empty tag that bypassed AddTag.
+	task.Tags = []string{"", "backend"}
+	if task.HasTag("") {
+		t.Error("HasTag(\"\") should return false even if Tags contains an empty string")
+	}
+	if task.HasTag("   ") {
+		t.Error("HasTag(\"   \") should normalize to empty and return false")
+	}
+	if !task.HasTag("backend") {
+		t.Error("HasTag should still match real tags when an empty entry is present")
+	}
+}

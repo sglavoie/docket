@@ -61,7 +61,13 @@ func (t *Task) RemoveTag(tag string) {
 }
 
 // HasTag returns true if the task has the given tag. The tag is normalized
-// (trimmed) before comparison.
+// (trimmed) before comparison. An empty/whitespace-only tag always returns
+// false so a missing or unset filter argument cannot accidentally match a
+// malformed empty tag that bypassed validation.
 func (t *Task) HasTag(tag string) bool {
-	return slices.Contains(t.Tags, normalizeTag(tag))
+	normalized := normalizeTag(tag)
+	if normalized == "" {
+		return false
+	}
+	return slices.Contains(t.Tags, normalized)
 }

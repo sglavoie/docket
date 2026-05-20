@@ -118,3 +118,39 @@ func TestTaskDependencyUpdatesTimestamp(t *testing.T) {
 		t.Error("UpdatedAt should be updated after ClearDependencies()")
 	}
 }
+
+// TestAddDependencyRejectsEmptyBlocker verifies that AddDependency refuses an
+// empty blocker ID. Allowing it would silently insert "" into DependsOn and
+// cause every empty-string lookup to match (mirroring the FindActionTaskByID
+// empty-prefix family of bugs).
+func TestAddDependencyRejectsEmptyBlocker(t *testing.T) {
+	task, err := NewTask("task", 1, TaskTypeTask, "Task")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := task.AddDependency(""); err == nil {
+		t.Fatal("AddDependency(\"\") should return an error")
+	}
+	if len(task.DependsOn) != 0 {
+		t.Errorf("DependsOn should remain empty after rejected add, got %v", task.DependsOn)
+	}
+}
+
+// TestHasDependencyEmptyReturnsFalse verifies that HasDependency("") never
+// matches, even if a malformed empty entry somehow ended up in DependsOn.
+func TestHasDependencyEmptyReturnsFalse(t *testing.T) {
+	task, err := NewTask("task", 1, TaskTypeTask, "Task")
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Simulate a corrupt on-disk entry bypassing AddDependency.
+	task.DependsOn = []string{""}
+	if task.HasDependency("") {
+		t.Error("HasDependency(\"\") should return false even if DependsOn contains an empty string")
+	}
+	// Sanity: a real id still matches.
+	task.DependsOn = append(task.DependsOn, "real-id")
+	if !task.HasDependency("real-id") {
+		t.Error("HasDependency should still return true for a real id")
+	}
+}

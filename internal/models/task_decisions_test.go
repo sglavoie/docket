@@ -206,3 +206,27 @@ func TestIsValidDecisionCategory(t *testing.T) {
 		}
 	}
 }
+
+// TestAddDecisionDropsEmptyText verifies that AddDecision rejects
+// empty/whitespace-only text. Such decisions cannot round-trip through the
+// markdown decisions block because the parser uses an empty text to detect
+// the end of a decision and would silently lose the entry.
+func TestAddDecisionDropsEmptyText(t *testing.T) {
+	cases := []struct {
+		name string
+		text string
+	}{
+		{"empty string", ""},
+		{"spaces only", "   "},
+		{"tab and newline", "\t\n"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			task := &Task{}
+			task.AddDecision(tc.text, "rationale", DecisionCategoryDesign)
+			if len(task.Decisions) != 0 {
+				t.Errorf("expected 0 decisions for empty text %q, got %d", tc.text, len(task.Decisions))
+			}
+		})
+	}
+}

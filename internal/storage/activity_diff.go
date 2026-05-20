@@ -129,6 +129,8 @@ func orDefault(s, fallback string) string {
 }
 
 // diffTags returns a string like "+backend +api -frontend" for tag changes.
+// Duplicates in either input are collapsed so the output never repeats the
+// same +tag or -tag entry.
 func diffTags(oldTags, newTags []string) string {
 	oldSet := make(map[string]bool, len(oldTags))
 	for _, t := range oldTags {
@@ -141,24 +143,30 @@ func diffTags(oldTags, newTags []string) string {
 
 	var parts []string
 
-	// Added tags
+	// Added tags (deduplicated by iterating the new-set keys via newTags order)
+	addedSeen := make(map[string]bool, len(newTags))
 	added := make([]string, 0)
 	for _, t := range newTags {
-		if !oldSet[t] {
-			added = append(added, t)
+		if oldSet[t] || addedSeen[t] {
+			continue
 		}
+		addedSeen[t] = true
+		added = append(added, t)
 	}
 	sort.Strings(added)
 	for _, t := range added {
 		parts = append(parts, "+"+t)
 	}
 
-	// Removed tags
+	// Removed tags (deduplicated similarly)
+	removedSeen := make(map[string]bool, len(oldTags))
 	removed := make([]string, 0)
 	for _, t := range oldTags {
-		if !newSet[t] {
-			removed = append(removed, t)
+		if newSet[t] || removedSeen[t] {
+			continue
 		}
+		removedSeen[t] = true
+		removed = append(removed, t)
 	}
 	sort.Strings(removed)
 	for _, t := range removed {
