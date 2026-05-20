@@ -200,7 +200,12 @@ func LoadCurrentProject() (*models.Project, *config.Config, *config.Manager, err
 
 // FindActionTaskByID searches all loadable projects for a task by short ID or UUID prefix.
 // Returns the task and its project, or nil, nil if not found.
+// An empty query never matches; HasPrefix("", "") would otherwise match the
+// first task in the first loadable project.
 func FindActionTaskByID(cfg *config.Config, query string) (*models.Task, *models.Project) {
+	if query == "" {
+		return nil, nil
+	}
 	shortID, err := strconv.Atoi(query)
 	isShortID := err == nil
 

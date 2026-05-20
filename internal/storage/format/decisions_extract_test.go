@@ -201,6 +201,62 @@ Third rationale
 	})
 }
 
+// TestExtractDecisionsFromDescription_ResolvedNoCategory ensures the parser
+// recognizes the "resolved" suffix when no category clause is present.
+// Previously the parser positionally assigned parts[1] to category, which
+// caused "resolved" to be misassigned as the category string and silently
+// dropped the resolved flag.
+func TestExtractDecisionsFromDescription_ResolvedNoCategory(t *testing.T) {
+	description := `Task description
+
+<!-- DECISIONS -->
+<!-- decision: 2026-05-07 14:30, resolved -->
+Decision without category
+<!-- rationale -->
+Rationale text
+<!-- /DECISIONS -->`
+
+	task := &models.Task{Description: description}
+	ExtractDecisionsFromDescription(task)
+
+	if len(task.Decisions) != 1 {
+		t.Fatalf("got %d decisions, want 1", len(task.Decisions))
+	}
+	d := task.Decisions[0]
+	if !d.Resolved {
+		t.Error("expected decision to be resolved")
+	}
+	if d.Category != "" {
+		t.Errorf("Category = %q, want empty", d.Category)
+	}
+}
+
+// TestExtractDecisionsFromDescription_FieldsAnyOrder ensures the parser
+// recognizes "category:" and "resolved" regardless of their position
+// in the comma-separated decision header.
+func TestExtractDecisionsFromDescription_FieldsAnyOrder(t *testing.T) {
+	description := `<!-- DECISIONS -->
+<!-- decision: 2026-05-07 14:30, resolved, category:design -->
+Reorder test
+<!-- rationale -->
+Rationale
+<!-- /DECISIONS -->`
+
+	task := &models.Task{Description: description}
+	ExtractDecisionsFromDescription(task)
+
+	if len(task.Decisions) != 1 {
+		t.Fatalf("got %d decisions, want 1", len(task.Decisions))
+	}
+	d := task.Decisions[0]
+	if !d.Resolved {
+		t.Error("expected decision to be resolved")
+	}
+	if d.Category != models.DecisionCategoryDesign {
+		t.Errorf("Category = %q, want %q", d.Category, models.DecisionCategoryDesign)
+	}
+}
+
 func TestExtractDecisionsFromDescription_EscapedText(t *testing.T) {
 	description := `Task description
 

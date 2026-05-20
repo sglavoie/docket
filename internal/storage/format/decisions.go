@@ -77,17 +77,21 @@ func ExtractDecisionsFromDescription(task *models.Task) {
 				parts[i] = strings.TrimSpace(parts[i])
 			}
 
+			// Parse fields by recognized prefix rather than position so
+			// that a header missing the category (e.g. "<!-- decision: ts,
+			// resolved -->") still records the resolved flag instead of
+			// misassigning "resolved" to category.
 			if len(parts) >= 1 {
 				if t, ok := ParseTimeField(parts[0]); ok {
 					current.createdAt = t
 				}
 			}
-			if len(parts) >= 2 {
-				catStr := strings.TrimPrefix(parts[1], "category:")
-				current.category = models.DecisionCategory(strings.TrimSpace(catStr))
-			}
-			for _, p := range parts[2:] {
-				if strings.TrimSpace(p) == "resolved" {
+			for _, p := range parts[1:] {
+				switch {
+				case strings.HasPrefix(p, "category:"):
+					catStr := strings.TrimPrefix(p, "category:")
+					current.category = models.DecisionCategory(strings.TrimSpace(catStr))
+				case p == "resolved":
 					current.resolved = true
 				}
 			}

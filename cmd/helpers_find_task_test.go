@@ -184,4 +184,14 @@ func TestFindActionTaskByID(t *testing.T) {
 			t.Fatal("expected matching project to be returned")
 		}
 	})
+
+	// Regression: an empty query previously matched the first task in the
+	// first loadable project because HasPrefix("", "") is true. Guard against
+	// returning arbitrary tasks for what is effectively a missing argument.
+	t.Run("empty query returns no match", func(t *testing.T) {
+		gotTask, gotProject := FindActionTaskByID(cfg, "")
+		if gotTask != nil || gotProject != nil {
+			t.Fatalf("FindActionTaskByID(\"\") should return (nil, nil); got %v / %v", gotTask, gotProject)
+		}
+	})
 }
