@@ -118,6 +118,13 @@ func (p *Project) GenerateRecurringInstances() int {
 		}
 		if task.EpicAttrs != nil {
 			copied := *task.EpicAttrs
+			// Deep-copy the *time.Time so old/new tasks don't share the
+			// underlying time value (a later in-place modification of one
+			// would otherwise leak into the other).
+			if task.EpicAttrs.ScopeBaselinedAt != nil {
+				baselined := *task.EpicAttrs.ScopeBaselinedAt
+				copied.ScopeBaselinedAt = &baselined
+			}
 			newTask.EpicAttrs = &copied
 		}
 

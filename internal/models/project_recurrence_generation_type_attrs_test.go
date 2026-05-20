@@ -129,6 +129,48 @@ func TestGenerateRecurringInstancesCopiesTypeAttrs(t *testing.T) {
 		}
 	})
 
+	t.Run("EpicAttrs deep-copies ScopeBaselinedAt pointer", func(t *testing.T) {
+		baseline := time.Date(2024, 1, 1, 9, 0, 0, 0, time.UTC)
+		task := &Task{
+			ID:         "task-epic",
+			ShortID:    1,
+			Type:       TaskTypeEpic,
+			Title:      "Recurring Epic",
+			Status:     StatusDone,
+			DueDate:    &dueDate,
+			Recurrence: &RecurrencePattern{Interval: 1, Unit: RecurrenceMonthly},
+			EpicAttrs: &EpicAttrs{
+				Scope:             EpicScopeDefined,
+				Milestone:         "Q1",
+				InitialChildCount: 3,
+				ScopeBaselinedAt:  &baseline,
+			},
+		}
+		project := &Project{Tasks: []*Task{task}, NextShortID: 2}
+		project.GenerateRecurringInstances()
+
+		newTask := project.Tasks[0]
+		if newTask.EpicAttrs == nil {
+			t.Fatal("EpicAttrs should be copied to new instance")
+		}
+		if newTask.EpicAttrs.ScopeBaselinedAt == nil {
+			t.Fatal("ScopeBaselinedAt should be copied (non-nil)")
+		}
+		if !newTask.EpicAttrs.ScopeBaselinedAt.Equal(baseline) {
+			t.Errorf("ScopeBaselinedAt = %v, want %v", *newTask.EpicAttrs.ScopeBaselinedAt, baseline)
+		}
+		// The two pointers must reference distinct underlying time values so a
+		// later mutation of one does not silently bleed into the other.
+		if newTask.EpicAttrs.ScopeBaselinedAt == task.EpicAttrs.ScopeBaselinedAt {
+			t.Error("ScopeBaselinedAt pointer is shared between old and new task (must be deep-copied)")
+		}
+		mutated := time.Date(2099, 12, 31, 0, 0, 0, 0, time.UTC)
+		*task.EpicAttrs.ScopeBaselinedAt = mutated
+		if newTask.EpicAttrs.ScopeBaselinedAt.Equal(mutated) {
+			t.Error("mutating original ScopeBaselinedAt leaked into the new instance")
+		}
+	})
+
 	t.Run("nil attrs not copied", func(t *testing.T) {
 		task := &Task{
 			ID:         "task-5",

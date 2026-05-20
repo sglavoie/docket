@@ -9,8 +9,14 @@ import (
 )
 
 // AddRelatedTo adds a related task ID if not already present.
-// Returns an error if relatedID is the task's own ID (self-reference).
+// Returns an error if relatedID is empty or is the task's own ID
+// (self-reference). An empty relatedID would silently corrupt the RelatedTo
+// list and match every empty lookup, so it must be rejected (mirrors
+// AddDependency).
 func (t *Task) AddRelatedTo(relatedID string) error {
+	if relatedID == "" {
+		return fmt.Errorf("related task ID cannot be empty")
+	}
 	if relatedID == t.ID {
 		return fmt.Errorf("task cannot be related to itself")
 	}
@@ -32,6 +38,12 @@ func (t *Task) RemoveRelatedTo(relatedID string) {
 }
 
 // HasRelatedTo returns true if the task is related to the given task ID.
+// An empty relatedID always returns false so a missing argument cannot
+// accidentally match a malformed empty entry stored on disk (mirrors
+// HasDependency).
 func (t *Task) HasRelatedTo(relatedID string) bool {
+	if relatedID == "" {
+		return false
+	}
 	return slices.Contains(t.RelatedTo, relatedID)
 }

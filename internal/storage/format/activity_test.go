@@ -323,6 +323,81 @@ func TestActivityRoundtripPreservesChronologicalOrder(t *testing.T) {
 	}
 }
 
+func TestActivityRoundtripEmptyNewValue(t *testing.T) {
+	// Bug: clearing a field (e.g., stage: "Design" -> "") wrote
+	// "stage: Design >  -->" which the regex trimmed back to "stage: Design >".
+	// On reparse it became a single-value entry with NewValue="Design >",
+	// destroying both the OldValue and the empty-NewValue semantic.
+	cases := []struct {
+		name  string
+		field string
+		old   string
+		new   string
+	}{
+		{"stage cleared", "stage", "Design", ""},
+		{"source cleared", "source", "github", ""},
+		{"url cleared", "url", "https://example.com", ""},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			task := &models.Task{
+				Activity: []*models.ActivityEntry{{
+					Timestamp: time.Date(2025, 6, 15, 10, 30, 0, 0, time.Local),
+					Field:     tc.field,
+					OldValue:  tc.old,
+					NewValue:  tc.new,
+				}},
+			}
+
+			output := WriteActivity(task)
+			parsedTask := &models.Task{Description: output}
+			ExtractActivityFromDescription(parsedTask)
+
+			if len(parsedTask.Activity) != 1 {
+				t.Fatalf("expected 1 activity entry, got %d", len(parsedTask.Activity))
+			}
+			entry := parsedTask.Activity[0]
+			if entry.Field != tc.field {
+				t.Errorf("field = %q, want %q", entry.Field, tc.field)
+			}
+			if entry.OldValue != tc.old {
+				t.Errorf("OldValue = %q, want %q", entry.OldValue, tc.old)
+			}
+			if entry.NewValue != tc.new {
+				t.Errorf("NewValue = %q, want %q", entry.NewValue, tc.new)
+			}
+		})
+	}
+}
+
+func TestActivityRoundtripLiteralEmptyMarkerValue(t *testing.T) {
+	// Ensure a real value of "\e" (the sentinel) is not confused with empty.
+	task := &models.Task{
+		Activity: []*models.ActivityEntry{{
+			Timestamp: time.Date(2025, 6, 15, 10, 30, 0, 0, time.Local),
+			Field:     "stage",
+			OldValue:  "Design",
+			NewValue:  `\e`,
+		}},
+	}
+
+	output := WriteActivity(task)
+	parsedTask := &models.Task{Description: output}
+	ExtractActivityFromDescription(parsedTask)
+
+	if len(parsedTask.Activity) != 1 {
+		t.Fatalf("expected 1 activity entry, got %d", len(parsedTask.Activity))
+	}
+	entry := parsedTask.Activity[0]
+	if entry.NewValue != `\e` {
+		t.Errorf("NewValue = %q, want %q", entry.NewValue, `\e`)
+	}
+	if entry.OldValue != "Design" {
+		t.Errorf("OldValue = %q, want %q", entry.OldValue, "Design")
+	}
+}
+
 func TestEscapeUnescapeActivityValue(t *testing.T) {
 	tests := []string{
 		"simple value",

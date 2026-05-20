@@ -21,6 +21,15 @@ var activityEndRegex = regexp.MustCompile(`^<!--\s*/ACTIVITY\s*-->$`)
 // or "<!-- act: 2025-01-29 14:30, created -->"
 var activityEntryRegex = regexp.MustCompile(`^<!--\s*act:\s*(.+?),\s*(.+?)\s*-->$`)
 
+// emptyValueMarker is the sentinel emitted by the writer when an activity entry
+// value (typically the new value of a cleared field) is empty. Without it, the
+// regex's trailing \s* would consume the trailing space the writer leaves
+// before "-->", making "field: old >  -->" parse identically to a single-value
+// entry with NewValue "old >". The marker is unambiguous because escapeActivityValue
+// doubles any literal backslash, so a real "\e" in a value is always serialized
+// as "\\e" and never collides with the bare sentinel.
+const emptyValueMarker = `\e`
+
 // ExtractActivityFromDescription parses the ACTIVITY block from task description.
 // It extracts activity entries and returns the cleaned description (without the activity block).
 func ExtractActivityFromDescription(task *models.Task) {
@@ -74,11 +83,18 @@ func parseActivityPayload(payload string, timestamp time.Time) *models.ActivityE
 	// Check for "old > new" pattern using the first unescaped " > " separator.
 	// Escaped occurrences (" \> ") in values are unescaped after splitting.
 	if idx := findUnescapedSeparator(value); idx >= 0 {
+		rawNew := value[idx+3:]
+		var newVal string
+		if rawNew == emptyValueMarker {
+			newVal = ""
+		} else {
+			newVal = unescapeActivityValue(rawNew)
+		}
 		return &models.ActivityEntry{
 			Timestamp: timestamp,
 			Field:     field,
 			OldValue:  unescapeActivityValue(value[:idx]),
-			NewValue:  unescapeActivityValue(value[idx+3:]),
+			NewValue:  newVal,
 		}
 	}
 
@@ -158,7 +174,11 @@ func WriteActivity(task *models.Task) string {
 			// Single-value entry (e.g., tags: +backend +api)
 			fmt.Fprintf(&b, "<!-- act: %s, %s: %s -->\n", ts, entry.Field, escapeActivityValue(entry.NewValue))
 		} else {
-			fmt.Fprintf(&b, "<!-- act: %s, %s: %s > %s -->\n", ts, entry.Field, escapeActivityValue(entry.OldValue), escapeActivityValue(entry.NewValue))
+			newSerialized := escapeActivityValue(entry.NewValue)
+			if entry.NewValue == "" {
+				newSerialized = emptyValueMarker
+			}
+			fmt.Fprintf(&b, "<!-- act: %s, %s: %s > %s -->\n", ts, entry.Field, escapeActivityValue(entry.OldValue), newSerialized)
 		}
 	}
 

@@ -99,3 +99,31 @@ func TestSlugifyASCIIStillTruncates(t *testing.T) {
 		t.Errorf("slug length = %d, want <= 60", len(slug))
 	}
 }
+
+// TestNoteLinkRejectsEmptyTaskID verifies that AddLink/HasLink/RemoveLink all
+// guard against empty task IDs. An empty ID would otherwise silently pollute
+// LinkedTasks and cause every empty-string lookup to match (mirrors the
+// AddDependency/AddRelatedTo empty-ID guards).
+func TestNoteLinkRejectsEmptyTaskID(t *testing.T) {
+	n := NewNote("notes")
+
+	n.AddLink("")
+	if len(n.LinkedTasks) != 0 {
+		t.Errorf("AddLink(\"\") should be a no-op, LinkedTasks = %v", n.LinkedTasks)
+	}
+
+	// Simulate a corrupt entry sneaking in (e.g., from a malformed file).
+	n.LinkedTasks = []string{"", "real-id"}
+	if n.HasLink("") {
+		t.Error("HasLink(\"\") should return false even if LinkedTasks contains an empty string")
+	}
+	if !n.HasLink("real-id") {
+		t.Error("HasLink should still match real IDs")
+	}
+
+	beforeLen := len(n.LinkedTasks)
+	n.RemoveLink("")
+	if len(n.LinkedTasks) != beforeLen {
+		t.Errorf("RemoveLink(\"\") should not modify LinkedTasks; before=%d after=%d", beforeLen, len(n.LinkedTasks))
+	}
+}

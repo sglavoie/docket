@@ -80,7 +80,12 @@ func (n *Note) SetTags(tags []string) {
 }
 
 // AddLink adds a task UUID to the linked tasks list if not already present.
+// Empty IDs are silently rejected so a malformed input cannot corrupt the
+// LinkedTasks slice and cause every empty lookup to match.
 func (n *Note) AddLink(taskID string) {
+	if taskID == "" {
+		return
+	}
 	if slices.Contains(n.LinkedTasks, taskID) {
 		return
 	}
@@ -89,7 +94,12 @@ func (n *Note) AddLink(taskID string) {
 }
 
 // RemoveLink removes a task UUID from the linked tasks list.
+// Empty IDs are a no-op (mirrors AddLink so we never accidentally remove an
+// orphaned empty entry that snuck in via a corrupted file).
 func (n *Note) RemoveLink(taskID string) {
+	if taskID == "" {
+		return
+	}
 	for i, id := range n.LinkedTasks {
 		if id == taskID {
 			n.LinkedTasks = append(n.LinkedTasks[:i], n.LinkedTasks[i+1:]...)
@@ -100,7 +110,12 @@ func (n *Note) RemoveLink(taskID string) {
 }
 
 // HasLink returns true if the note is linked to the given task UUID.
+// An empty taskID always returns false so a missing argument cannot
+// accidentally match a malformed empty entry stored on disk.
 func (n *Note) HasLink(taskID string) bool {
+	if taskID == "" {
+		return false
+	}
 	return slices.Contains(n.LinkedTasks, taskID)
 }
 
