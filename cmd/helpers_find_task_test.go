@@ -102,6 +102,43 @@ func TestFindTaskByIdentifierEmptyProject(t *testing.T) {
 	}
 }
 
+// Regression: an empty identifier previously matched an arbitrary task because
+// strings.HasPrefix(title, "") is always true. With a single task it would
+// silently succeed; with multiple it produced a misleading "ambiguous" error.
+// Empty input must yield ErrTaskNotFound so callers can surface a clear error.
+func TestFindTaskByIdentifierEmptyIdentifier(t *testing.T) {
+	project := testutil.NewTestProject("Test Project")
+
+	task1, err := models.NewTask("uuid-1", 1, models.TaskTypeTask, "First Task")
+	if err != nil {
+		t.Fatal(err)
+	}
+	task2, err := models.NewTask("uuid-2", 2, models.TaskTypeTask, "Second Task")
+	if err != nil {
+		t.Fatal(err)
+	}
+	project.Tasks = []*models.Task{task1, task2}
+
+	got, findErr := FindTaskByIdentifier(project, "")
+	if findErr == nil {
+		t.Fatalf("FindTaskByIdentifier(\"\") should return error, got task %v", got)
+	}
+	if !errors.Is(findErr, tterrors.ErrTaskNotFound) {
+		t.Errorf("expected ErrTaskNotFound, got: %v", findErr)
+	}
+
+	// Also verify single-task case where empty input would have silently matched.
+	soloProject := testutil.NewTestProject("Solo")
+	solo, err := models.NewTask("uuid-solo", 7, models.TaskTypeTask, "Solo Task")
+	if err != nil {
+		t.Fatal(err)
+	}
+	soloProject.Tasks = []*models.Task{solo}
+	if _, findErr := FindTaskByIdentifier(soloProject, ""); findErr == nil {
+		t.Errorf("FindTaskByIdentifier(\"\") on single-task project should error")
+	}
+}
+
 func TestFindTaskByIdentifierTitleMatchAmbiguous(t *testing.T) {
 	project := testutil.NewTestProject("Test Project")
 

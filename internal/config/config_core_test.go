@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -317,6 +318,30 @@ func TestConfig_GetTimeFormat_NilReceiver(t *testing.T) {
 	var cfg *Config
 	if got := cfg.GetTimeFormat(); got != "15:04" {
 		t.Errorf("GetTimeFormat() on nil receiver = %q, want %q", got, "15:04")
+	}
+}
+
+func TestConfig_GetPopupTimeoutSeconds(t *testing.T) {
+	cases := []struct {
+		stored *int
+		want   int
+	}{
+		{nil, 0},
+		{intPtr(0), 0},
+		{intPtr(5), 5},
+		{intPtr(-1), 0},
+		{intPtr(-1000), 0},
+	}
+	for _, tc := range cases {
+		cfg := NewConfig()
+		cfg.PopupTimeoutSeconds = tc.stored
+		if got := cfg.GetPopupTimeoutSeconds(); got != tc.want {
+			storedDesc := "nil"
+			if tc.stored != nil {
+				storedDesc = fmt.Sprintf("%d", *tc.stored)
+			}
+			t.Errorf("stored=%s: expected %d, got %d", storedDesc, tc.want, got)
+		}
 	}
 }
 

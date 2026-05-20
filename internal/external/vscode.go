@@ -81,19 +81,18 @@ func needsWaitFlag(editor string) bool {
 
 // EditInExternalEditor opens content in an external editor and returns the modified content.
 func EditInExternalEditor(editor string, content string, extension string) (string, error) {
-	// Create temp file
+	resolvedEditor, resolveErr := ResolveEditor(editor)
+	if resolveErr != nil {
+		return "", resolveErr
+	}
+	editor = resolvedEditor
+
 	tmpPath, err := CreateTempFileWithContent(content, "tt-edit-", extension)
 	if err != nil {
 		return "", err
 	}
 	defer func() { _ = os.Remove(tmpPath) }()
 
-	// Get editor command
-	resolvedEditor, resolveErr := ResolveEditor(editor)
-	if resolveErr != nil {
-		return "", resolveErr
-	}
-	editor = resolvedEditor
 	cmd := EditorCommand(editor, tmpPath)
 
 	cmd.Stdin = os.Stdin

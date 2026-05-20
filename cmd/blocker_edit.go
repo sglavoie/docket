@@ -49,7 +49,8 @@ func runBlockerEdit(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	return WithBlockerUpdate(args[0], func(blockers []*models.Blocker, blocker *models.Blocker) ([]*models.Blocker, error) {
+	var updatedBlocker *models.Blocker
+	if err := WithBlockerUpdate(args[0], func(blockers []*models.Blocker, blocker *models.Blocker) ([]*models.Blocker, error) {
 		modified := false
 
 		if cmd.Flags().Changed("title") {
@@ -77,16 +78,18 @@ func runBlockerEdit(cmd *cobra.Command, args []string) error {
 			return blockers, tterrors.NewNoChangesError("--title, --description, or --unresolve flags")
 		}
 
-		if out.Quiet {
-			return blockers, nil
-		}
-		if out.JSON {
-			if err := printJSON(blocker); err != nil {
-				return nil, err
-			}
-			return blockers, nil
-		}
-		fmt.Printf("Updated blocker: %s\n", blocker.Title)
+		updatedBlocker = blocker
 		return blockers, nil
-	})
+	}); err != nil {
+		return err
+	}
+
+	if out.Quiet || updatedBlocker == nil {
+		return nil
+	}
+	if out.JSON {
+		return printJSON(updatedBlocker)
+	}
+	fmt.Printf("Updated blocker: %s\n", updatedBlocker.Title)
+	return nil
 }

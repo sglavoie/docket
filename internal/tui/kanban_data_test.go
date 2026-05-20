@@ -234,6 +234,39 @@ func TestRebuildColumns_ClampsOutOfBoundsCursor(t *testing.T) {
 	t.Error("inbox column not found")
 }
 
+func TestRebuildColumns_ClampsOutOfBoundsScrollOffset(t *testing.T) {
+	cards := []KanbanCard{makeTestCard(models.SectionInbox, models.StatusTodo)}
+	prev := []KanbanColumn{{ID: "inbox", Cursor: 0, ScrollOffset: 50}}
+	cols := rebuildColumns(cards, KanbanModeSection, prev, nil, nil, nil, nil, nil)
+	for _, c := range cols {
+		if c.ID == "inbox" {
+			if c.ScrollOffset >= len(c.Tasks) {
+				t.Errorf("ScrollOffset not clamped: got %d for %d tasks", c.ScrollOffset, len(c.Tasks))
+			}
+			return
+		}
+	}
+	t.Error("inbox column not found")
+}
+
+func TestRebuildColumns_ClampsNegativeCursor(t *testing.T) {
+	cards := []KanbanCard{makeTestCard(models.SectionInbox, models.StatusTodo)}
+	prev := []KanbanColumn{{ID: "inbox", Cursor: -5, ScrollOffset: -3}}
+	cols := rebuildColumns(cards, KanbanModeSection, prev, nil, nil, nil, nil, nil)
+	for _, c := range cols {
+		if c.ID == "inbox" {
+			if c.Cursor != 0 {
+				t.Errorf("negative cursor not clamped: got %d", c.Cursor)
+			}
+			if c.ScrollOffset != 0 {
+				t.Errorf("negative ScrollOffset not clamped: got %d", c.ScrollOffset)
+			}
+			return
+		}
+	}
+	t.Error("inbox column not found")
+}
+
 func TestRebuildColumns_StatusMode(t *testing.T) {
 	todo := testutil.NewTestTaskWithStatus("t1", models.StatusTodo)
 	done := testutil.NewTestTaskWithStatus("t2", models.StatusDone)

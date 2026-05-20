@@ -117,6 +117,40 @@ func TestAlertThresholdGetters_Defaults(t *testing.T) {
 	}
 }
 
+func TestGetAlertDailyReviewHour_ClampOutOfRange(t *testing.T) {
+	cases := []int{-1, -100, 24, 25, 99}
+	for _, v := range cases {
+		c := &Config{AlertDailyReviewHour: intPtr(v)}
+		if got := c.GetAlertDailyReviewHour(); got != DefaultAlertDailyReviewHour {
+			t.Errorf("stored=%d: expected default %d, got %d", v, DefaultAlertDailyReviewHour, got)
+		}
+	}
+	// Boundary valid values must pass through unchanged.
+	for _, v := range []int{0, 12, 23} {
+		c := &Config{AlertDailyReviewHour: intPtr(v)}
+		if got := c.GetAlertDailyReviewHour(); got != v {
+			t.Errorf("stored=%d: expected pass-through, got %d", v, got)
+		}
+	}
+}
+
+func TestGetAlertWeeklyReviewDay_ClampOutOfRange(t *testing.T) {
+	cases := []int{-1, -7, 7, 8, 99}
+	for _, v := range cases {
+		c := &Config{AlertWeeklyReviewDay: intPtr(v)}
+		if got := c.GetAlertWeeklyReviewDay(); got != DefaultAlertWeeklyReviewDay {
+			t.Errorf("stored=%d: expected default %d, got %d", v, DefaultAlertWeeklyReviewDay, got)
+		}
+	}
+	// Boundary valid values must pass through unchanged.
+	for _, v := range []int{0, 3, 6} {
+		c := &Config{AlertWeeklyReviewDay: intPtr(v)}
+		if got := c.GetAlertWeeklyReviewDay(); got != v {
+			t.Errorf("stored=%d: expected pass-through, got %d", v, got)
+		}
+	}
+}
+
 func TestAlertThresholdGetters_CustomValues(t *testing.T) {
 	c := &Config{
 		AlertDueSoonDays:      intPtr(7),

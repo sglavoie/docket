@@ -281,6 +281,8 @@ func ParseMetadata(task *models.Task, metaStr string) []ParseWarning { //nolint:
 		case "recur":
 			if pattern := models.ParseRecurrence(value); pattern != nil {
 				task.Recurrence = pattern
+			} else {
+				addValidationWarning(&warnings, "recur", "invalid recurrence %q, ignoring", value)
 			}
 		// Buffer recurrence sub-fields for order-independent parsing.
 		// Applied to task.Recurrence after all keys are processed.

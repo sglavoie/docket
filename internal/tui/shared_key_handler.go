@@ -23,6 +23,10 @@ func handleGotoTopPrefix(key string, cursor *int, flash *bool, extras ...func())
 
 // jumpCursor moves cursor by delta within [0, total-1].
 func jumpCursor(cursor *int, total, delta int) {
+	if total <= 0 {
+		*cursor = 0
+		return
+	}
 	*cursor += delta
 	if *cursor >= total {
 		*cursor = total - 1

@@ -180,6 +180,59 @@ func TestEditorCommandReturnsNilStdio(t *testing.T) {
 	}
 }
 
+func TestEditInExternalEditor_NoEditorAvailable(t *testing.T) {
+	// Reset env so ResolveEditor only sees impossible binaries.
+	origPath := os.Getenv("PATH")
+	origVisual := os.Getenv("VISUAL")
+	origEditor := os.Getenv("EDITOR")
+	t.Cleanup(func() {
+		_ = os.Setenv("PATH", origPath)
+		_ = os.Setenv("VISUAL", origVisual)
+		_ = os.Setenv("EDITOR", origEditor)
+	})
+	if err := os.Setenv("PATH", ""); err != nil {
+		t.Fatalf("setenv PATH: %v", err)
+	}
+	if err := os.Unsetenv("VISUAL"); err != nil {
+		t.Fatalf("unsetenv VISUAL: %v", err)
+	}
+	if err := os.Unsetenv("EDITOR"); err != nil {
+		t.Fatalf("unsetenv EDITOR: %v", err)
+	}
+
+	// Snapshot the temp dir contents before the call so we can detect
+	// whether a temp file was created and leaked.
+	dir := os.TempDir()
+	before, err := os.ReadDir(dir)
+	if err != nil {
+		t.Fatalf("read tempdir: %v", err)
+	}
+	beforeNames := make(map[string]bool, len(before))
+	for _, e := range before {
+		beforeNames[e.Name()] = true
+	}
+
+	_, err = EditInExternalEditor("tt-nonexistent-editor-xyz", "hello", ".md")
+	if err == nil {
+		t.Fatal("expected error when no editor is available")
+	}
+
+	after, err := os.ReadDir(dir)
+	if err != nil {
+		t.Fatalf("read tempdir after: %v", err)
+	}
+	for _, e := range after {
+		if beforeNames[e.Name()] {
+			continue
+		}
+		// New entries with our prefix indicate a leaked temp file created
+		// before the editor-resolution failure.
+		if filepath.Ext(e.Name()) == ".md" && len(e.Name()) > len("tt-edit-") && e.Name()[:len("tt-edit-")] == "tt-edit-" {
+			t.Errorf("leaked temp file %q — editor should be resolved before creating temp file", e.Name())
+		}
+	}
+}
+
 func TestEditorDefaultFallback(t *testing.T) {
 	// Test the logic for choosing default editor
 	// When EDITOR is not set, should default to "code"

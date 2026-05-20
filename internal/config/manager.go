@@ -291,7 +291,7 @@ func (m *Manager) Save(config *Config) error {
 		if err := m.BackupConfig(); err != nil {
 			altPath := m.configPath + ".bak2"
 			if altErr := m.backupConfigToPath(altPath); altErr != nil {
-				fmt.Fprintf(os.Stderr, "warning: config backup failed: %v\n", err)
+				fmt.Fprintf(os.Stderr, "warning: config backup failed (primary: %v; alt %s: %v)\n", err, altPath, altErr)
 			}
 		}
 

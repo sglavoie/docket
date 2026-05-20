@@ -194,21 +194,22 @@ func runTemplateUse(cmd *cobra.Command, args []string) error {
 	project.BuildTaskTree()
 	project.ReorderRootTasksByCompletion()
 
-	// Increment use count
-	cfg.IncrementTemplateUseCount(t.ID)
-	if err := saveConfig(configManager, cfg); err != nil {
-		return err
-	}
-
 	// Update project timestamp
 	project.UpdatedAt = time.Now()
 
-	// Save project
+	// Save project first so a template counter bump isn't persisted when
+	// the task creation itself fails.
 	if err := SaveProject(project, &SaveOptions{
 		EvaluateRules: true, Config: cfg, ConfigManager: projectConfigManager,
 		UndoAction: "Use Template", UndoContext: fmt.Sprintf("%s -> #%d %s", t.Name, shortID, title),
 	}); err != nil {
 		return tterrors.NewSaveProjectError(project.Name, err)
+	}
+
+	// Increment use count
+	cfg.IncrementTemplateUseCount(t.ID)
+	if err := saveConfig(configManager, cfg); err != nil {
+		return err
 	}
 
 	fmt.Printf("Created %s #%d: %s (from template %q)\n", task.Type.HeadingPrefix(), shortID, title, t.Name)

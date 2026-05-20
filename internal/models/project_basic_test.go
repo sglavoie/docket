@@ -147,6 +147,42 @@ func TestNewProject_EmptyIDReturnsError(t *testing.T) {
 	}
 }
 
+// TestMutateTask_EmptyIDReturnsFalse verifies that MutateTask("") never
+// matches even if a malformed empty entry somehow ended up in p.Tasks
+// (mirrors GetTaskByID's empty-id guard).
+func TestMutateTask_EmptyIDReturnsFalse(t *testing.T) {
+	project, err := NewProject("test", "Test", "/tmp/test")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	good, err := NewTask("good-id", 1, TaskTypeTask, "Good Task")
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Simulate a corrupt on-disk entry bypassing NewTask.
+	corrupt, err := NewTask("placeholder", 2, TaskTypeTask, "Corrupt Task")
+	if err != nil {
+		t.Fatal(err)
+	}
+	corrupt.ID = ""
+	project.Tasks = []*Task{corrupt, good}
+
+	called := false
+	found := project.MutateTask("", func(_ *Task) { called = true })
+	if found || called {
+		t.Errorf("MutateTask(\"\") should return false and not invoke fn, got found=%v called=%v", found, called)
+	}
+	// Sanity: a real id still matches.
+	found = project.MutateTask("good-id", func(task *Task) { task.Title = "Updated" })
+	if !found {
+		t.Error("MutateTask(\"good-id\") should return true")
+	}
+	if good.Title != "Updated" {
+		t.Errorf("expected Title 'Updated', got %q", good.Title)
+	}
+}
+
 func TestNewProject_WhitespaceIDReturnsError(t *testing.T) {
 	_, err := NewProject("   ", "My Project", "/path")
 	if err == nil {

@@ -238,6 +238,77 @@ func TestBuildMultiSelectProjectFzfInput_PreselectedMarker(t *testing.T) {
 	})
 }
 
+func TestSanitizeFzfField(t *testing.T) {
+	cases := []struct {
+		in   string
+		want string
+	}{
+		{"plain", "plain"},
+		{"with\ttab", "with tab"},
+		{"with\nnewline", "with newline"},
+		{"with\r\ncrlf", "with  crlf"},
+		{"\t\nmixed\t\n", "  mixed  "},
+		{"", ""},
+	}
+	for _, tc := range cases {
+		got := sanitizeFzfField(tc.in)
+		if got != tc.want {
+			t.Errorf("sanitizeFzfField(%q) = %q, want %q", tc.in, got, tc.want)
+		}
+	}
+}
+
+func TestTaskTitleWithTabDoesNotBreakFzfInput(t *testing.T) {
+	// A task title containing a tab character would corrupt fzf's tab-delimited
+	// input — the column count would no longer be 4 and parsing would break.
+	tasks := []*models.Task{
+		{ShortID: 7, Type: models.TaskTypeTask, Status: models.StatusTodo, Title: "Title\twith\ttabs"},
+	}
+
+	var lines []string
+	for _, task := range tasks {
+		line := fmt.Sprintf("#%d\t%s\t%s\t%s",
+			task.ShortID,
+			task.Type.Icon(),
+			task.Status.Icon(),
+			sanitizeFzfField(task.Title))
+		lines = append(lines, line)
+	}
+	parts := strings.Split(lines[0], "\t")
+	if len(parts) != 4 {
+		t.Errorf("expected 4 tab-separated parts after sanitization, got %d (line=%q)", len(parts), lines[0])
+	}
+	if strings.Contains(parts[3], "\t") {
+		t.Errorf("expected no tabs in title field after sanitization, got %q", parts[3])
+	}
+}
+
+func TestProjectFieldsWithNewlinesDoNotBreakFzfInput(t *testing.T) {
+	// Newlines in a project Name would split a single project across multiple
+	// fzf lines and break selection.
+	projects := []*models.Project{
+		{Slug: "p1", Name: "name\nwith\nnewlines", Context: "ctx\twith\ttab"},
+	}
+
+	var lines []string
+	for _, p := range projects {
+		line := fmt.Sprintf("%s\t%s (%s)\t%s\t%d tasks",
+			sanitizeFzfField(p.Slug),
+			sanitizeFzfField(p.Name),
+			sanitizeFzfField(p.Slug),
+			sanitizeFzfField(p.Context),
+			p.CountTasks())
+		lines = append(lines, line)
+	}
+	if strings.Count(lines[0], "\n") != 0 {
+		t.Errorf("expected no newlines in sanitized line, got %q", lines[0])
+	}
+	parts := strings.Split(lines[0], "\t")
+	if len(parts) != 4 {
+		t.Errorf("expected 4 tab-separated parts after sanitization, got %d (line=%q)", len(parts), lines[0])
+	}
+}
+
 func TestParseMultiSelectOutput(t *testing.T) {
 	taskMap := map[int]*models.Task{
 		1: {ShortID: 1, Title: "First task"},

@@ -73,18 +73,6 @@ func runTaskArchive(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	// Clean up config references (FocusQueue, DailyPlan, RecentTaskVisits)
-	// for all tasks being archived.
-	archivedIDs := make(map[string]bool, len(completedTasks))
-	for _, t := range completedTasks {
-		archivedIDs[t.ID] = true
-	}
-	if cfg.RemoveTaskRefs(archivedIDs) > 0 {
-		if saveErr := configManager.Save(cfg); saveErr != nil {
-			fmt.Fprintf(os.Stderr, "warning: failed to save config after cleaning task refs: %v\n", saveErr)
-		}
-	}
-
 	// Create backup before archiving
 	if backupErr := storage.BackupProject(project); backupErr != nil {
 		return fmt.Errorf("failed to create backup: %w", backupErr)
@@ -94,6 +82,19 @@ func runTaskArchive(cmd *cobra.Command, args []string) error {
 	count, err := storage.ArchiveTasks(project)
 	if err != nil {
 		return fmt.Errorf("failed to archive tasks: %w", err)
+	}
+
+	// Clean up config references (FocusQueue, DailyPlan, RecentTaskVisits)
+	// for all tasks being archived. Done after successful archive so a
+	// failed archive doesn't strip refs to tasks still in tasks.md.
+	archivedIDs := make(map[string]bool, len(completedTasks))
+	for _, t := range completedTasks {
+		archivedIDs[t.ID] = true
+	}
+	if cfg.RemoveTaskRefs(archivedIDs) > 0 {
+		if saveErr := configManager.Save(cfg); saveErr != nil {
+			fmt.Fprintf(os.Stderr, "warning: failed to save config after cleaning task refs: %v\n", saveErr)
+		}
 	}
 
 	if out.JSON {
@@ -152,15 +153,6 @@ func runTaskArchiveAll(out MutateOutput) error {
 			}
 		}
 
-		// Clean up config references for archived tasks
-		archivedIDs := make(map[string]bool, len(completedTasks))
-		for _, t := range completedTasks {
-			archivedIDs[t.ID] = true
-		}
-		if cfg.RemoveTaskRefs(archivedIDs) > 0 {
-			configDirty = true
-		}
-
 		if backupErr := storage.BackupProject(project); backupErr != nil {
 			failures = append(failures, fmt.Sprintf("[%s] backup failed: %v", project.Name, backupErr))
 			continue
@@ -170,6 +162,16 @@ func runTaskArchiveAll(out MutateOutput) error {
 		if err != nil {
 			failures = append(failures, fmt.Sprintf("[%s] archive failed: %v", project.Name, err))
 			continue
+		}
+
+		// Clean up config references for archived tasks AFTER successful
+		// archive, so failures don't strip refs to tasks still in tasks.md.
+		archivedIDs := make(map[string]bool, len(completedTasks))
+		for _, t := range completedTasks {
+			archivedIDs[t.ID] = true
+		}
+		if cfg.RemoveTaskRefs(archivedIDs) > 0 {
+			configDirty = true
 		}
 
 		results = append(results, projectResult{Name: project.Name, Archived: count})

@@ -248,14 +248,21 @@ func (m *AppModel) popToAnchorView() {
 			if top == ViewDashboard {
 				m.reevaluateAlerts()
 			}
+			if v := m.views.Get(top); v != nil {
+				m.setAccentOnView(v)
+			}
 			return
 		default:
 		}
 		m.viewStack = m.viewStack[:len(m.viewStack)-1]
 	}
 	// Stack has 1 entry — re-evaluate if it's the dashboard
-	if m.currentView() == ViewDashboard {
+	cv := m.currentView()
+	if cv == ViewDashboard {
 		m.reevaluateAlerts()
+	}
+	if v := m.views.Get(cv); v != nil {
+		m.setAccentOnView(v)
 	}
 }
 
@@ -383,11 +390,11 @@ func (m *AppModel) getProjectLastView(projectID string) ViewType {
 // If either task or project is nil, it just pops and returns. This encapsulates the
 // common "select from overview" pattern used by many *SelectMsg handlers.
 func (m *AppModel) popAndNavigateToTask(task *models.Task, project *models.Project) (bool, tea.Cmd) {
-	m.popView()
+	popCmd := m.popView()
 	if task != nil && project != nil {
 		return true, m.navigateToTaskInProject(task, project)
 	}
-	return true, nil
+	return true, popCmd
 }
 
 // navigateToTaskInProject switches to the given project using the user's

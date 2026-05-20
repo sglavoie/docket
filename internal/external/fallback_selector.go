@@ -2,12 +2,15 @@ package external
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
+	"io"
 	"os"
 	"strconv"
 	"strings"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tterrors"
 )
 
 // fallbackSelectOne prints a numbered list and reads a selection from stdin.
@@ -21,13 +24,16 @@ func fallbackSelectOne(items []string, prompt string) (int, error) {
 
 	reader := bufio.NewReader(os.Stdin)
 	line, err := reader.ReadString('\n')
-	if err != nil {
+	if err != nil && !errors.Is(err, io.EOF) {
 		return 0, fmt.Errorf("failed to read input: %w", err)
 	}
 
 	line = strings.TrimSpace(line)
-	n, err := strconv.Atoi(line)
-	if err != nil || n < 1 || n > len(items) {
+	if line == "" {
+		return 0, tterrors.ErrCanceled
+	}
+	n, convErr := strconv.Atoi(line)
+	if convErr != nil || n < 1 || n > len(items) {
 		return 0, fmt.Errorf("invalid selection: %s (enter a number between 1 and %d)", line, len(items))
 	}
 	return n - 1, nil
@@ -83,17 +89,20 @@ func FallbackMultiSelectTasks(tasks []*models.Task, prompt string) ([]*models.Ta
 
 	reader := bufio.NewReader(os.Stdin)
 	line, err := reader.ReadString('\n')
-	if err != nil {
+	if err != nil && !errors.Is(err, io.EOF) {
 		return nil, fmt.Errorf("failed to read input: %w", err)
 	}
 
 	// Normalize: replace commas with spaces, then split on whitespace
 	normalized := strings.ReplaceAll(strings.TrimSpace(line), ",", " ")
+	if normalized == "" {
+		return nil, tterrors.ErrCanceled
+	}
 	var selected []*models.Task
 	for part := range strings.FieldsSeq(normalized) {
 		part = strings.TrimSpace(part)
-		n, err := strconv.Atoi(part)
-		if err != nil || n < 1 || n > len(tasks) {
+		n, convErr := strconv.Atoi(part)
+		if convErr != nil || n < 1 || n > len(tasks) {
 			return nil, fmt.Errorf("invalid selection: %s (enter a number between 1 and %d)", part, len(tasks))
 		}
 		selected = append(selected, tasks[n-1])

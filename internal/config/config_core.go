@@ -94,9 +94,12 @@ func (c *Config) ZebraStriping() bool {
 }
 
 // GetPopupTimeoutSeconds returns the auto-dismiss timeout for prefix popups in seconds.
-// Returns 0 when nil (disabled — popup stays until manual dismiss).
+// Returns 0 when nil or when the stored value is negative (disabled — popup stays until manual dismiss).
 func (c *Config) GetPopupTimeoutSeconds() int {
 	if c.PopupTimeoutSeconds == nil {
+		return 0
+	}
+	if *c.PopupTimeoutSeconds < 0 {
 		return 0
 	}
 	return *c.PopupTimeoutSeconds

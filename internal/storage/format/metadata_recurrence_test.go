@@ -26,6 +26,38 @@ func TestParseMetadata_RecurrenceStreakFields(t *testing.T) {
 	}
 }
 
+func TestParseMetadata_InvalidRecurEmitsWarning(t *testing.T) {
+	tests := []struct {
+		name    string
+		value   string
+		wantSub string
+	}{
+		{"garbage", "notarecur", "notarecur"},
+		{"bad unit", "1z", "1z"},
+		{"empty trailing tilde", "~", "~"},
+		{"weekly-no-days", "weekly:", "weekly:"},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			task := &models.Task{}
+			warnings := ParseMetadata(task, "id: abc, status: todo, priority: 1, recur: "+tc.value)
+			if task.Recurrence != nil {
+				t.Errorf("Recurrence should be nil for invalid value %q, got %+v", tc.value, task.Recurrence)
+			}
+			found := false
+			for _, w := range warnings {
+				if w.Field == "recur" && strings.Contains(w.Message, "invalid recurrence") && strings.Contains(w.Message, tc.wantSub) {
+					found = true
+					break
+				}
+			}
+			if !found {
+				t.Errorf("expected invalid-recurrence warning containing %q, got warnings: %v", tc.wantSub, warnings)
+			}
+		})
+	}
+}
+
 func TestParseMetadata_RecurrenceStreakFieldsIgnoredWithoutRecur(t *testing.T) {
 	task := &models.Task{}
 	warnings := ParseMetadata(task, "id: abc, status: todo, priority: 1, recur.streak: 5")

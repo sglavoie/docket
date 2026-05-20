@@ -230,3 +230,36 @@ func TestRelocateTaskToEndOfSectionCustomSectionNoOtherTasks(t *testing.T) {
 		t.Error("relocate should be no-op when task is only one in custom section")
 	}
 }
+
+// TestRelocateTaskToEndOfSectionEmptyID verifies that an empty taskID is a
+// no-op even when a corrupt task with an empty ID exists in the slice
+// (mirrors GetTaskByID's empty-id guard).
+func TestRelocateTaskToEndOfSectionEmptyID(t *testing.T) {
+	project, err := NewProject("test", "Test", "/tmp/test")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	corrupt, err := NewTask("placeholder", 1, TaskTypeTask, "Corrupt")
+	if err != nil {
+		t.Fatal(err)
+	}
+	corrupt.ID = ""
+	corrupt.Section = SectionNext
+
+	good, err := NewTask("good", 2, TaskTypeTask, "Good")
+	if err != nil {
+		t.Fatal(err)
+	}
+	good.Section = SectionNext
+
+	project.Tasks = []*Task{corrupt, good}
+
+	// Empty taskID must not match the corrupt task and must leave the slice
+	// untouched.
+	project.RelocateTaskToEndOfSection("", SectionNext)
+
+	if len(project.Tasks) != 2 || project.Tasks[0] != corrupt || project.Tasks[1] != good {
+		t.Errorf("expected slice unchanged, got %+v", project.Tasks)
+	}
+}

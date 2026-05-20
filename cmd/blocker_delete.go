@@ -60,11 +60,11 @@ func runBlockerDelete(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	return WithBlockerUpdate(args[0], func(blockers []*models.Blocker, blocker *models.Blocker) ([]*models.Blocker, error) {
+	var deleted *models.Blocker
+	canceled := false
+	if err := WithBlockerUpdate(args[0], func(blockers []*models.Blocker, blocker *models.Blocker) ([]*models.Blocker, error) {
 		if !ConfirmYN(fmt.Sprintf("Delete blocker '%s'? [y/N]: ", blocker.Title), blockerDeleteForce) {
-			if !out.Quiet {
-				fmt.Fprintf(os.Stderr, "Canceled\n")
-			}
+			canceled = true
 			return blockers, nil
 		}
 
@@ -74,18 +74,25 @@ func runBlockerDelete(cmd *cobra.Command, args []string) error {
 				newBlockers = append(newBlockers, b)
 			}
 		}
-
-		if out.Quiet {
-			return newBlockers, nil
-		}
-		if out.JSON {
-			if err := printJSON(blocker); err != nil {
-				return nil, err
-			}
-			return newBlockers, nil
-		}
-
-		fmt.Printf("Deleted blocker: %s\n", blocker.Title)
+		deleted = blocker
 		return newBlockers, nil
-	})
+	}); err != nil {
+		return err
+	}
+
+	if canceled {
+		if !out.Quiet {
+			fmt.Fprintf(os.Stderr, "Canceled\n")
+		}
+		return nil
+	}
+
+	if out.Quiet || deleted == nil {
+		return nil
+	}
+	if out.JSON {
+		return printJSON(deleted)
+	}
+	fmt.Printf("Deleted blocker: %s\n", deleted.Title)
+	return nil
 }

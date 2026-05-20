@@ -82,7 +82,13 @@ func (p *Project) MoveTaskDown(task *Task) error {
 // in the given section within the Tasks slice. This ensures that when a
 // task is moved to a new section, it appears at the bottom rather than
 // retaining its original position (which could place it at the top).
+// An empty taskID is a no-op so a caller passing an unset identifier
+// cannot accidentally relocate a task whose own ID became empty after a
+// malformed parse (mirrors GetTaskByID's empty-id guard).
 func (p *Project) RelocateTaskToEndOfSection(taskID string, section string) {
+	if taskID == "" {
+		return
+	}
 	taskIdx := -1
 	lastSectionIdx := -1
 	for i, t := range p.Tasks {

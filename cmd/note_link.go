@@ -50,14 +50,18 @@ func runNoteLink(cmd *cobra.Command, args []string) error {
 
 	if noteLinkRemove {
 		note.RemoveLink(task.ID)
-		fmt.Printf("Unlinked note '%s' from task #%d '%s'\n", note.Title, task.ShortID, task.Title)
 	} else {
 		note.AddLink(task.ID)
-		fmt.Printf("Linked note '%s' to task #%d '%s'\n", note.Title, task.ShortID, task.Title)
 	}
 
 	if err := storage.SaveNote(project, note); err != nil {
 		return fmt.Errorf("failed to save note: %w", err)
+	}
+
+	if noteLinkRemove {
+		fmt.Printf("Unlinked note '%s' from task #%d '%s'\n", note.Title, task.ShortID, task.Title)
+	} else {
+		fmt.Printf("Linked note '%s' to task #%d '%s'\n", note.Title, task.ShortID, task.Title)
 	}
 
 	return nil

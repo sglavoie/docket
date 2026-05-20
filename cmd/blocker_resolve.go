@@ -37,32 +37,31 @@ func runBlockerResolve(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	return WithBlockerUpdate(args[0], func(blockers []*models.Blocker, blocker *models.Blocker) ([]*models.Blocker, error) {
+	var resolved *models.Blocker
+	alreadyResolved := false
+	if err := WithBlockerUpdate(args[0], func(blockers []*models.Blocker, blocker *models.Blocker) ([]*models.Blocker, error) {
 		if blocker.IsResolved() {
-			if out.Quiet {
-				return blockers, nil
-			}
-			if out.JSON {
-				if err := printJSON(blocker); err != nil {
-					return nil, err
-				}
-				return blockers, nil
-			}
-			fmt.Printf("Blocker '%s' is already resolved.\n", blocker.Title)
+			alreadyResolved = true
+			resolved = blocker
 			return blockers, nil
 		}
-
 		blocker.Resolve()
-		if out.Quiet {
-			return blockers, nil
-		}
-		if out.JSON {
-			if err := printJSON(blocker); err != nil {
-				return nil, err
-			}
-			return blockers, nil
-		}
-		fmt.Printf("Resolved blocker: %s\n", blocker.Title)
+		resolved = blocker
 		return blockers, nil
-	})
+	}); err != nil {
+		return err
+	}
+
+	if out.Quiet || resolved == nil {
+		return nil
+	}
+	if out.JSON {
+		return printJSON(resolved)
+	}
+	if alreadyResolved {
+		fmt.Printf("Blocker '%s' is already resolved.\n", resolved.Title)
+	} else {
+		fmt.Printf("Resolved blocker: %s\n", resolved.Title)
+	}
+	return nil
 }

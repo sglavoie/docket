@@ -305,8 +305,19 @@ func rebuildColumns(
 		if len(c.Tasks) == 0 {
 			cols[i].Cursor = 0
 			cols[i].ScrollOffset = 0
-		} else if c.Cursor >= len(c.Tasks) {
+			continue
+		}
+		if c.Cursor >= len(c.Tasks) {
 			cols[i].Cursor = len(c.Tasks) - 1
+		}
+		if c.Cursor < 0 {
+			cols[i].Cursor = 0
+		}
+		if c.ScrollOffset < 0 {
+			cols[i].ScrollOffset = 0
+		}
+		if c.ScrollOffset >= len(c.Tasks) {
+			cols[i].ScrollOffset = len(c.Tasks) - 1
 		}
 	}
 

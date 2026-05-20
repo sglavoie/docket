@@ -121,8 +121,14 @@ func (p *Project) Unpin() {
 }
 
 // MutateTask looks up a task by ID, calls fn to mutate it, and sets UpdatedAt.
-// Returns false if the task was not found.
+// Returns false if the task was not found. An empty taskID always returns
+// false so a caller passing an unset identifier cannot accidentally mutate a
+// task whose own ID became empty after a malformed parse (mirrors the guard
+// in GetTaskByID).
 func (p *Project) MutateTask(taskID string, fn func(*Task)) bool {
+	if taskID == "" {
+		return false
+	}
 	for _, t := range p.Tasks {
 		if t.ID == taskID {
 			fn(t)

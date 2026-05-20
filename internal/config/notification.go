@@ -148,17 +148,27 @@ func (c *Config) GetAlertProjectStaleDays() int {
 }
 
 // GetAlertDailyReviewHour returns the hour of day (0-23) for daily review reminders.
+// Out-of-range stored values fall back to the default to avoid alerts that never fire.
 func (c *Config) GetAlertDailyReviewHour() int {
 	if c.AlertDailyReviewHour == nil {
 		return DefaultAlertDailyReviewHour
 	}
-	return *c.AlertDailyReviewHour
+	v := *c.AlertDailyReviewHour
+	if v < 0 || v > 23 {
+		return DefaultAlertDailyReviewHour
+	}
+	return v
 }
 
 // GetAlertWeeklyReviewDay returns the day of week (0=Sunday) for weekly review reminders.
+// Out-of-range stored values fall back to the default to avoid alerts that never fire.
 func (c *Config) GetAlertWeeklyReviewDay() int {
 	if c.AlertWeeklyReviewDay == nil {
 		return DefaultAlertWeeklyReviewDay
 	}
-	return *c.AlertWeeklyReviewDay
+	v := *c.AlertWeeklyReviewDay
+	if v < 0 || v > 6 {
+		return DefaultAlertWeeklyReviewDay
+	}
+	return v
 }

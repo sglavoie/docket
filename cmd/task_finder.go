@@ -14,6 +14,12 @@ import (
 // FindTaskByIdentifier finds a task by short ID, UUID, or title prefix.
 // Returns an error if no match is found or if a title prefix matches multiple tasks.
 func FindTaskByIdentifier(project *models.Project, identifier string) (*models.Task, error) {
+	// Guard empty identifier: HasPrefix("anything", "") below is always true,
+	// so without this check an empty arg silently matches the first task.
+	if identifier == "" {
+		return nil, tterrors.NewTaskNotFoundError(identifier)
+	}
+
 	// Try as short ID first (must be purely numeric)
 	if shortID, err := strconv.Atoi(identifier); err == nil {
 		if task := project.GetTaskByShortID(shortID); task != nil {

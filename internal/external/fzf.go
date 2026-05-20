@@ -27,6 +27,14 @@ func SetFzfTimeout(seconds int) {
 	}
 }
 
+// sanitizeFzfField replaces characters that would corrupt fzf's tab-delimited
+// line format. Tabs become spaces and newlines/carriage-returns become spaces
+// so a single field cannot span multiple lines or split columns.
+func sanitizeFzfField(s string) string {
+	r := strings.NewReplacer("\t", " ", "\n", " ", "\r", " ")
+	return r.Replace(s)
+}
+
 // FzfAvailable checks if fzf is installed and available.
 func FzfAvailable() bool {
 	_, err := CachedFzfPath()
@@ -49,7 +57,12 @@ func FzfSelectProject(projects []*models.Project, prompt string) (*models.Projec
 	projectMap := make(map[string]*models.Project)
 
 	for _, p := range projects {
-		line := fmt.Sprintf("%s\t%s (%s)\t%s\t%d tasks", p.Slug, p.Name, p.Slug, p.Context, p.CountTasks())
+		line := fmt.Sprintf("%s\t%s (%s)\t%s\t%d tasks",
+			sanitizeFzfField(p.Slug),
+			sanitizeFzfField(p.Name),
+			sanitizeFzfField(p.Slug),
+			sanitizeFzfField(p.Context),
+			p.CountTasks())
 		lines = append(lines, line)
 		projectMap[p.Slug] = p
 	}
@@ -122,7 +135,7 @@ func FzfSelectTask(tasks []*models.Task, prompt string, previewCmd string) (*mod
 			t.ShortID,
 			t.Type.Icon(),
 			t.Status.Icon(),
-			t.Title)
+			sanitizeFzfField(t.Title))
 		lines = append(lines, line)
 		taskMap[t.ShortID] = t
 	}
@@ -209,7 +222,13 @@ func FzfMultiSelectProjects(projects []*models.Project, prompt string, preselect
 		if preselectedIDs[p.ID] {
 			marker = "*"
 		}
-		line := fmt.Sprintf("%s\t%s %s (%s)\t%s\t%d tasks", p.Slug, marker, p.Name, p.Slug, p.Context, p.CountTasks())
+		line := fmt.Sprintf("%s\t%s %s (%s)\t%s\t%d tasks",
+			sanitizeFzfField(p.Slug),
+			marker,
+			sanitizeFzfField(p.Name),
+			sanitizeFzfField(p.Slug),
+			sanitizeFzfField(p.Context),
+			p.CountTasks())
 		lines = append(lines, line)
 		projectMap[p.Slug] = p
 	}
@@ -255,8 +274,11 @@ func FzfMultiSelectProjects(projects []*models.Project, prompt string, preselect
 	// Parse selections - slug is the first tab-delimited field.
 	var selectedProjects []*models.Project
 	for line := range strings.SplitSeq(output, "\n") {
+		if line == "" {
+			continue
+		}
 		parts := strings.SplitN(line, "\t", 2)
-		if len(parts) > 0 {
+		if len(parts) > 0 && parts[0] != "" {
 			if project, ok := projectMap[parts[0]]; ok {
 				selectedProjects = append(selectedProjects, project)
 			}
@@ -288,7 +310,7 @@ func FzfMultiSelectTasks(tasks []*models.Task, prompt string) ([]*models.Task, e
 			t.ShortID,
 			t.Type.Icon(),
 			t.Status.Icon(),
-			t.Title)
+			sanitizeFzfField(t.Title))
 		lines = append(lines, line)
 		taskMap[t.ShortID] = t
 	}
@@ -334,9 +356,15 @@ func FzfMultiSelectTasks(tasks []*models.Task, prompt string) ([]*models.Task, e
 	// Parse selections
 	var selectedTasks []*models.Task
 	for line := range strings.SplitSeq(output, "\n") {
+		if line == "" {
+			continue
+		}
 		parts := strings.Split(line, "\t")
 		if len(parts) > 0 {
 			idStr := strings.TrimPrefix(parts[0], "#")
+			if idStr == "" {
+				continue
+			}
 			var shortID int
 			if _, err := fmt.Sscanf(idStr, "%d", &shortID); err == nil {
 				if task, ok := taskMap[shortID]; ok {

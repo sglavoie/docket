@@ -143,6 +143,32 @@ func TestViewStackNavigation(t *testing.T) {
 	}
 }
 
+func TestPopAndNavigateToTaskNilTaskReturnsPopCmd(t *testing.T) {
+	app := newTestAppModel()
+	// Set up: push a tracked view and then ViewCrossProjectOutliner so popping
+	// back to it will trigger a ViewDidAppearMsg command.
+	app.pushView(ViewCrossProjectOutliner)
+	app.pushView(ViewTaskForm)
+
+	handled, cmd := app.popAndNavigateToTask(nil, nil)
+	if !handled {
+		t.Error("popAndNavigateToTask should return handled=true")
+	}
+	if app.currentView() != ViewCrossProjectOutliner {
+		t.Errorf("expected current view ViewCrossProjectOutliner, got %v", app.currentView())
+	}
+	// When popping into ViewCrossProjectOutliner, popView returns a cmd
+	// that sends ViewDidAppearMsg. With nil task/project, that cmd must
+	// be propagated back to the caller, not dropped.
+	if cmd == nil {
+		t.Fatal("expected pop cmd when popping into ViewCrossProjectOutliner")
+	}
+	msg := cmd()
+	if _, ok := msg.(ViewDidAppearMsg); !ok {
+		t.Errorf("expected ViewDidAppearMsg, got %T", msg)
+	}
+}
+
 func TestStatusTimeout(t *testing.T) {
 	cmd := statusTimeout(100 * time.Millisecond)
 	if cmd == nil {
