@@ -93,6 +93,14 @@ func TaskStateChanged(current, prev *models.Task) bool {
 			return true
 		}
 	}
+	if len(current.DependsOn) != len(prev.DependsOn) {
+		return true
+	}
+	for i, dep := range current.DependsOn {
+		if dep != prev.DependsOn[i] {
+			return true
+		}
+	}
 	return false
 }
 

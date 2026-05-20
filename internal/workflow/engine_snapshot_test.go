@@ -125,3 +125,32 @@ func TestSnapshotTaskForEvent_DeepCopiesSlices(t *testing.T) {
 		}
 	})
 }
+
+func TestTaskStateChanged_DependsOn(t *testing.T) {
+	t.Run("different DependsOn length returns true", func(t *testing.T) {
+		prev := &models.Task{ID: "t", DependsOn: []string{"a"}}
+		current := &models.Task{ID: "t", DependsOn: []string{"a", "b"}}
+
+		if !TaskStateChanged(current, prev) {
+			t.Errorf("TaskStateChanged with differing DependsOn length = false, want true")
+		}
+	})
+
+	t.Run("same length but different IDs returns true", func(t *testing.T) {
+		prev := &models.Task{ID: "t", DependsOn: []string{"a", "b"}}
+		current := &models.Task{ID: "t", DependsOn: []string{"a", "c"}}
+
+		if !TaskStateChanged(current, prev) {
+			t.Errorf("TaskStateChanged with differing DependsOn IDs = false, want true")
+		}
+	})
+
+	t.Run("identical DependsOn returns false", func(t *testing.T) {
+		prev := &models.Task{ID: "t", DependsOn: []string{"a", "b"}}
+		current := &models.Task{ID: "t", DependsOn: []string{"a", "b"}}
+
+		if TaskStateChanged(current, prev) {
+			t.Errorf("TaskStateChanged with identical DependsOn = true, want false")
+		}
+	})
+}
