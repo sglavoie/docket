@@ -75,7 +75,9 @@ func MatchTerms(text, query string) bool {
 
 // ScoreWithPositions returns both a match score and the indices in text where matches occurred.
 // Returns 0 score and nil positions if there is no match.
-// Positions are 0-indexed byte positions in the original text (before lowercasing).
+// Positions are 0-indexed rune positions in the original text (before lowercasing);
+// callers that need to slice the original string by these positions must index
+// via []rune(text), not by byte offset.
 func ScoreWithPositions(text, pattern string) (int, []int) {
 	if pattern == "" {
 		return 1, nil

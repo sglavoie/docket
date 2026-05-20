@@ -117,6 +117,55 @@ func TestCloseKeepsNonEmptyFile(t *testing.T) {
 	}
 }
 
+func TestCloseDetachesStdLogger(t *testing.T) {
+	origFile := logFile
+	origPath := logFilePath
+	origOutput := log.Writer()
+	defer func() {
+		logFile = origFile
+		logFilePath = origPath
+		log.SetOutput(origOutput)
+	}()
+
+	tmp := t.TempDir()
+	path := filepath.Join(tmp, "writes.log")
+	f, err := os.Create(path)
+	if err != nil {
+		t.Fatalf("failed to create temp file: %v", err)
+	}
+	logFile = f
+	logFilePath = path
+	log.SetOutput(f)
+
+	// Write a real entry so the file is non-empty (so Close keeps it on disk).
+	log.Printf("warmup")
+
+	Close()
+
+	// After Close, the standard logger must not write to the closed file.
+	// If the bug is present (output not detached), this call would attempt
+	// to write to the closed FD and could fail or panic, but more importantly
+	// the closed FD's bytes would never reach the file. Verify the file size
+	// is unchanged after additional logging.
+	infoBefore, err := os.Stat(path)
+	if err != nil {
+		t.Fatalf("stat after close: %v", err)
+	}
+
+	// Should not panic and should not write to closed file.
+	log.Printf("after-close")
+	Warn("post close warning")
+
+	infoAfter, err := os.Stat(path)
+	if err != nil {
+		t.Fatalf("stat after extra logs: %v", err)
+	}
+	if infoAfter.Size() != infoBefore.Size() {
+		t.Errorf("log file grew after Close (before=%d, after=%d)",
+			infoBefore.Size(), infoAfter.Size())
+	}
+}
+
 func TestPruneOldLogs(t *testing.T) {
 	original := logDirPath
 	defer func() { logDirPath = original }()

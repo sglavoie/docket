@@ -149,7 +149,7 @@ func (m *AppModel) saveOutlinerFilterStateFrom(o *OutlinerModel) {
 	}
 
 	if len(o.collapsedSections) > 0 {
-		state.OutlinerCollapsedSections = o.collapsedSections
+		state.OutlinerCollapsedSections = maps.Clone(o.collapsedSections)
 	} else {
 		state.OutlinerCollapsedSections = nil
 	}

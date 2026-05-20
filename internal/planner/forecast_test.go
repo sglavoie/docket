@@ -196,3 +196,29 @@ func TestWeightedVelocityMixedEffort(t *testing.T) {
 		t.Errorf("expected weighted velocity %f, got %f", want, got)
 	}
 }
+
+// TestForecastNilParent verifies the function handles a nil parent without panicking.
+func TestForecastNilParent(t *testing.T) {
+	result := ForecastCompletion(nil, 1.0, refNow)
+	if result == nil {
+		t.Fatal("expected non-nil result for nil parent")
+	}
+	if result.RemainingCount != 0 || result.RemainingWeightedDays != 0 {
+		t.Errorf("expected empty result for nil parent, got %+v", result)
+	}
+}
+
+// TestForecastTinyVelocityNoOverflow verifies the forecast date stays sane
+// when velocity is microscopically small (would otherwise overflow Duration).
+func TestForecastTinyVelocityNoOverflow(t *testing.T) {
+	child := newTask("c1")
+	parent := withChildren(newTask("parent"), child)
+	result := ForecastCompletion(parent, 1e-30, refNow)
+	if result.ForecastDate.IsZero() {
+		t.Error("expected non-zero ForecastDate even with tiny velocity")
+	}
+	// ForecastDate should be capped, not garbage (must be after refNow).
+	if !result.ForecastDate.After(refNow) {
+		t.Errorf("ForecastDate %v not after refNow %v", result.ForecastDate, refNow)
+	}
+}

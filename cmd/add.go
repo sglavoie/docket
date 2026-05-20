@@ -85,13 +85,18 @@ func parseInlineMetadata(input string) (title string, priority int, tags []strin
 		// Safe: regex guarantees match[1] is a single digit 1-5.
 		priority, _ = strconv.Atoi(priorityMatch[1])
 		input = inlinePriorityRe.ReplaceAllString(input, " ")
-	} else {
-		// Check for out-of-range priority (e.g., !0, !6, !99)
-		invalidMatch := invalidPriorityRe.FindStringSubmatch(input)
-		if len(invalidMatch) > 1 {
-			fmt.Fprintf(os.Stderr, "warning: !%s ignored (priority must be 1-5)\n", invalidMatch[1])
-			input = invalidPriorityRe.ReplaceAllString(input, " ")
+	}
+	// Always strip remaining out-of-range priority tokens (e.g. !0, !6, !99) so
+	// they don't leak into the title. Without this second pass, an input like
+	// "Fix !1 something !9 else" would leave "!9" in the title (only the first
+	// matching pattern was stripped).
+	if invalidPriorityRe.MatchString(input) {
+		for _, match := range invalidPriorityRe.FindAllStringSubmatch(input, -1) {
+			if len(match) > 1 {
+				fmt.Fprintf(os.Stderr, "warning: !%s ignored (priority must be 1-5)\n", match[1])
+			}
 		}
+		input = invalidPriorityRe.ReplaceAllString(input, " ")
 	}
 
 	// Match tag pattern: #word

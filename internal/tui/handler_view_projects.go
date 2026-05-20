@@ -77,13 +77,11 @@ func (m *AppModel) handleProjectViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 
 	case CloseGlobalOutlinerMsg:
 		m.saveCrossOutlinerState()
-		m.popToAnchorView()
-		return true, nil
+		return true, m.popToAnchorView()
 
 	case CloseCrossOutlinerMsg:
 		m.saveCrossOutlinerState()
-		m.popToAnchorView()
-		return true, nil
+		return true, m.popToAnchorView()
 
 	case ShowProjectTreeMsg:
 		if msg.Project != nil {

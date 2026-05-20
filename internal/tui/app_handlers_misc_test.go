@@ -3,6 +3,8 @@ package tui
 import (
 	"testing"
 	"time"
+
+	tea "charm.land/bubbletea/v2"
 )
 
 func TestHandleTagMessagesShowTagManager(t *testing.T) {
@@ -167,6 +169,86 @@ func TestPopAndNavigateToTaskNilTaskReturnsPopCmd(t *testing.T) {
 	if _, ok := msg.(ViewDidAppearMsg); !ok {
 		t.Errorf("expected ViewDidAppearMsg, got %T", msg)
 	}
+}
+
+// TestCloseViewMsgPropagatesPopCmd verifies that the generic closeViewMsg
+// handler in Update() forwards the tea.Cmd returned by popView() (or
+// popToAnchorView()) when the revealed view is ViewCrossProjectOutliner.
+// Previously the cmd was dropped, leaving the outliner unaware that it had
+// just become visible and stale after mutations performed in a sub-view.
+func TestCloseViewMsgPropagatesPopCmd(t *testing.T) {
+	t.Run("popOne", func(t *testing.T) {
+		app := newTestAppModel()
+		app.pushView(ViewCrossProjectOutliner)
+		app.pushView(ViewTaskDetail)
+
+		_, cmd := app.Update(CloseTaskDetailMsg{})
+		if app.currentView() != ViewCrossProjectOutliner {
+			t.Fatalf("expected ViewCrossProjectOutliner, got %v", app.currentView())
+		}
+		if cmd == nil {
+			t.Fatal("expected ViewDidAppearMsg cmd, got nil")
+		}
+		msg := cmd()
+		// Batched cmds drain through tea.Batch — execute eagerly.
+		if batch, ok := msg.(tea.BatchMsg); ok {
+			found := false
+			for _, c := range batch {
+				if c == nil {
+					continue
+				}
+				if _, ok := c().(ViewDidAppearMsg); ok {
+					found = true
+					break
+				}
+			}
+			if !found {
+				t.Errorf("expected ViewDidAppearMsg in batch, got %v", batch)
+			}
+			return
+		}
+		if _, ok := msg.(ViewDidAppearMsg); !ok {
+			t.Errorf("expected ViewDidAppearMsg, got %T", msg)
+		}
+	})
+
+	t.Run("popToAnchor", func(t *testing.T) {
+		app := newTestAppModel()
+		app.pushView(ViewCrossProjectOutliner)
+		// Push a non-anchor view that the anchor-pop will unwind past.
+		app.pushView(ViewTaskDetail)
+		// Push a global overlay-style anchor target. CloseFocusBoardMsg is
+		// declared with PopToAnchorMsg so this exercises the popToAnchor arm.
+		app.pushView(ViewFocusBoard)
+
+		_, cmd := app.Update(CloseFocusBoardMsg{})
+		if app.currentView() != ViewCrossProjectOutliner {
+			t.Fatalf("expected ViewCrossProjectOutliner, got %v", app.currentView())
+		}
+		if cmd == nil {
+			t.Fatal("expected ViewDidAppearMsg cmd, got nil")
+		}
+		msg := cmd()
+		if batch, ok := msg.(tea.BatchMsg); ok {
+			found := false
+			for _, c := range batch {
+				if c == nil {
+					continue
+				}
+				if _, ok := c().(ViewDidAppearMsg); ok {
+					found = true
+					break
+				}
+			}
+			if !found {
+				t.Errorf("expected ViewDidAppearMsg in batch, got %v", batch)
+			}
+			return
+		}
+		if _, ok := msg.(ViewDidAppearMsg); !ok {
+			t.Errorf("expected ViewDidAppearMsg, got %T", msg)
+		}
+	})
 }
 
 func TestStatusTimeout(t *testing.T) {

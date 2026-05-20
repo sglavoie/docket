@@ -2,9 +2,65 @@ package storage
 
 import (
 	"testing"
+	"time"
 
 	"github.com/sglavoie/tt/internal/models"
 )
+
+// TestDiffTaskDueTimeOfDayChange exercises the activity diff when only the
+// clock component of a time-bearing due date changes (same calendar day).
+// Regression: the previous formatter rendered both values as YYYY-MM-DD, so
+// the diff silently dropped the change and no activity entry was recorded.
+func TestDiffTaskDueTimeOfDayChange(t *testing.T) {
+	old, err := models.NewTask("1", 1, models.TaskTypeTask, "Test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	morning := time.Date(2024, 1, 15, 9, 0, 0, 0, time.Local)
+	old.DueDate = &morning
+	old.HasTime = true
+
+	newTask, err := models.NewTask("1", 1, models.TaskTypeTask, "Test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	evening := time.Date(2024, 1, 15, 18, 30, 0, 0, time.Local)
+	newTask.DueDate = &evening
+	newTask.HasTime = true
+
+	diffTask(old, newTask)
+
+	found := findActivity(newTask, "due")
+	if found == nil {
+		t.Fatal("expected due activity entry for time-of-day change")
+	}
+	if found.OldValue == found.NewValue {
+		t.Errorf("expected distinct old/new values, both were %q", found.OldValue)
+	}
+}
+
+// TestDiffTaskDueDateOnlyUnchanged ensures the date-only path still treats
+// equal days as unchanged (does not regress the common case).
+func TestDiffTaskDueDateOnlyUnchanged(t *testing.T) {
+	old, err := models.NewTask("1", 1, models.TaskTypeTask, "Test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	d := time.Date(2024, 1, 15, 0, 0, 0, 0, time.Local)
+	old.DueDate = &d
+	newTask, err := models.NewTask("1", 1, models.TaskTypeTask, "Test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	d2 := time.Date(2024, 1, 15, 0, 0, 0, 0, time.Local)
+	newTask.DueDate = &d2
+
+	diffTask(old, newTask)
+
+	if findActivity(newTask, "due") != nil {
+		t.Fatal("expected no due activity entry when date unchanged")
+	}
+}
 
 func TestDiffTaskRecurrenceAdded(t *testing.T) {
 	old, err := models.NewTask("1", 1, models.TaskTypeTask, "Test")

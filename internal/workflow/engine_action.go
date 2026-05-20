@@ -181,7 +181,7 @@ func applyAction(task *models.Task, action RuleAction) bool { //nolint:gocyclo
 		commentText := "[Workflow] " + action.Value
 		if len(task.Comments) > 0 {
 			last := task.Comments[len(task.Comments)-1]
-			if last.Text == commentText {
+			if last != nil && last.Text == commentText {
 				return false
 			}
 		}

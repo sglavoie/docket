@@ -139,6 +139,51 @@ func TestFindTaskByIdentifierEmptyIdentifier(t *testing.T) {
 	}
 }
 
+// Regression: when a query matches one title exactly and is also a prefix of
+// other titles, the exact match must win. Previously the ambiguity check fired
+// even though the user typed the full title verbatim, forcing them to fall
+// back to short ID.
+func TestFindTaskByIdentifierExactMatchPreferred(t *testing.T) {
+	project := testutil.NewTestProject("Test Project")
+
+	exact, err := models.NewTask("uuid-1", 1, models.TaskTypeTask, "Apple Pie")
+	if err != nil {
+		t.Fatal(err)
+	}
+	longer, err := models.NewTask("uuid-2", 2, models.TaskTypeTask, "Apple Pie Recipe")
+	if err != nil {
+		t.Fatal(err)
+	}
+	project.Tasks = []*models.Task{exact, longer}
+
+	got, findErr := FindTaskByIdentifier(project, "Apple Pie")
+	if findErr != nil {
+		t.Fatalf("expected exact match to win, got error: %v", findErr)
+	}
+	if got != exact {
+		t.Fatalf("expected exact match (#%d), got #%d", exact.ShortID, got.ShortID)
+	}
+
+	// Case-insensitive exact match should still win.
+	got, findErr = FindTaskByIdentifier(project, "apple pie")
+	if findErr != nil {
+		t.Fatalf("expected case-insensitive exact match to win, got error: %v", findErr)
+	}
+	if got != exact {
+		t.Fatalf("case-insensitive: expected exact match (#%d), got #%d", exact.ShortID, got.ShortID)
+	}
+
+	// Two tasks with identical titles should still report ambiguity.
+	dup, err := models.NewTask("uuid-3", 3, models.TaskTypeTask, "Apple Pie")
+	if err != nil {
+		t.Fatal(err)
+	}
+	project.Tasks = append(project.Tasks, dup)
+	if _, findErr := FindTaskByIdentifier(project, "Apple Pie"); findErr == nil {
+		t.Error("expected ambiguous error when two tasks share an exact title")
+	}
+}
+
 func TestFindTaskByIdentifierTitleMatchAmbiguous(t *testing.T) {
 	project := testutil.NewTestProject("Test Project")
 

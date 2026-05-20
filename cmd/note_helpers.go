@@ -60,7 +60,20 @@ func findNoteIn(dir, query string) (*models.Note, error) {
 		return nil, fmt.Errorf("failed to list notes: %w", err)
 	}
 
+	// Two-pass search: prefer an exact title match (case-insensitive) over a
+	// prefix or substring match. Without this, querying "meeting" when notes
+	// "meeting" and "meeting-followup" both exist silently returned whichever
+	// note happened to be listed first.
 	lowerQuery := strings.ToLower(query)
+	for _, note := range notes {
+		if strings.ToLower(note.Title) == lowerQuery {
+			return note, nil
+		}
+		nameWithoutExt := strings.TrimSuffix(note.Filename, ".md")
+		if strings.ToLower(nameWithoutExt) == lowerQuery {
+			return note, nil
+		}
+	}
 	for _, note := range notes {
 		if strings.HasPrefix(strings.ToLower(note.Title), lowerQuery) {
 			return note, nil

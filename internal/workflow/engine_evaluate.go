@@ -208,7 +208,9 @@ func evaluateRulesWithContextRecursive(evalCtx *EvaluationContext, rules []Workf
 		}
 
 		if modified {
-			result.ModifiedTasks = append(result.ModifiedTasks, task)
+			if !containsTask(result.ModifiedTasks, task) {
+				result.ModifiedTasks = append(result.ModifiedTasks, task)
+			}
 			newChange := TaskChangeContext{Task: task, Previous: preActionSnapshot}
 			newEvalCtx := &EvaluationContext{
 				Changes:     []TaskChangeContext{newChange},
@@ -220,6 +222,17 @@ func evaluateRulesWithContextRecursive(evalCtx *EvaluationContext, rules []Workf
 			evaluateRulesWithContextRecursive(newEvalCtx, rules, ctx, result)
 		}
 	}
+}
+
+// containsTask reports whether tasks already contains t (pointer equality).
+// Used to deduplicate ModifiedTasks during recursive rule evaluation.
+func containsTask(tasks []*models.Task, t *models.Task) bool {
+	for _, existing := range tasks {
+		if existing == t {
+			return true
+		}
+	}
+	return false
 }
 
 func getFieldFromAction(actionType ActionType) string {

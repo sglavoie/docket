@@ -75,6 +75,12 @@ func (m *AppModel) restoreKanbanState(kb *KanbanModel) {
 		}
 		if scroll, exists := cache.ColScrollOffsets[col.ID]; exists {
 			col.ScrollOffset = scroll
+			if col.ScrollOffset < 0 {
+				col.ScrollOffset = 0
+			}
+			if col.ScrollOffset >= len(col.Tasks) {
+				col.ScrollOffset = max(0, len(col.Tasks)-1)
+			}
 		}
 		if col.ID == cache.ActiveColID {
 			activeColIdx = i

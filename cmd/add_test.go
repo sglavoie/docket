@@ -83,6 +83,23 @@ func TestParseInlineMetadata(t *testing.T) {
 			wantTags:     nil,
 		},
 		{
+			// Regression: previously the invalid-priority sweep was guarded by
+			// "no valid priority found", so a valid !1 followed by an invalid
+			// !9 left the !9 token embedded in the title.
+			name:         "valid priority then invalid priority both stripped",
+			input:        "Fix !1 something !9 else",
+			wantTitle:    "Fix something else",
+			wantPriority: 1,
+			wantTags:     nil,
+		},
+		{
+			name:         "multi-digit invalid priority stripped",
+			input:        "Fix bug !99",
+			wantTitle:    "Fix bug",
+			wantPriority: 0,
+			wantTags:     nil,
+		},
+		{
 			name:         "tag with underscore",
 			input:        "Add feature #code_review",
 			wantTitle:    "Add feature",

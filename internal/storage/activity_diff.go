@@ -74,7 +74,7 @@ func diffTask(old, new *models.Task) {
 		record("tags", "", tagChanges)
 	}
 
-	recordIfDiff("due", formatTimePtr(old.DueDate), formatTimePtr(new.DueDate))
+	recordIfDiff("due", formatDuePtr(old.DueDate, old.HasTime), formatDuePtr(new.DueDate, new.HasTime))
 	recordIfDiff("snoozed", formatTimePtr(old.SnoozedUntil), formatTimePtr(new.SnoozedUntil))
 
 	// Boolean fields
@@ -179,6 +179,21 @@ func diffTags(oldTags, newTags []string) string {
 func formatTimePtr(d *time.Time) string {
 	if d == nil {
 		return "none"
+	}
+	return d.Format(util.DateFormat)
+}
+
+// formatDuePtr formats a due date for activity diffing. When hasTime is true,
+// the clock component is included so that an hour/minute change on the same
+// day still produces a distinct value (and therefore an activity entry).
+// Without this, formatTimePtr's date-only format would silently swallow
+// time-of-day edits on time-bearing due dates.
+func formatDuePtr(d *time.Time, hasTime bool) string {
+	if d == nil {
+		return "none"
+	}
+	if hasTime {
+		return d.Format(util.DateTimeDueFormat)
 	}
 	return d.Format(util.DateFormat)
 }

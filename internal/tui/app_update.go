@@ -53,13 +53,14 @@ func (m *AppModel) Update(msg tea.Msg) (outModel tea.Model, outCmd tea.Cmd) { //
 	// This eliminates individual case arms for ~35 Close*Msg types that only
 	// pop the view stack.
 	if cv, ok := msg.(closeViewMsg); ok {
+		var cmd tea.Cmd
 		switch cv.closePopStyle() {
 		case popToAnchor:
-			m.popToAnchorView()
+			cmd = m.popToAnchorView()
 		default:
-			m.popView()
+			cmd = m.popView()
 		}
-		return m, nil
+		return m, cmd
 	}
 
 	if handled, cmd := m.handleGlobalMessage(msg); handled {

@@ -194,7 +194,7 @@ func (m *AppModel) handleEscKey() (bool, tea.Cmd) {
 		}
 		var cmd tea.Cmd
 		if isGlobalOverlayView(closingView) {
-			m.popToAnchorView()
+			cmd = m.popToAnchorView()
 		} else {
 			cmd = m.popView()
 		}
@@ -240,7 +240,9 @@ func isGlobalOverlayView(v ViewType) bool {
 
 // popToAnchorView pops the view stack until the top is a project-level view
 // (ProjectTree, Outliner) or the Dashboard, or the stack has only one entry.
-func (m *AppModel) popToAnchorView() {
+// Returns a tea.Cmd when popping reveals ViewCrossProjectOutliner so the
+// outliner can trigger an eager reload (mirrors popView's behavior).
+func (m *AppModel) popToAnchorView() tea.Cmd {
 	for len(m.viewStack) > 1 {
 		top := m.viewStack[len(m.viewStack)-1]
 		switch top {
@@ -251,7 +253,10 @@ func (m *AppModel) popToAnchorView() {
 			if v := m.views.Get(top); v != nil {
 				m.setAccentOnView(v)
 			}
-			return
+			if top == ViewCrossProjectOutliner {
+				return func() tea.Msg { return ViewDidAppearMsg{} }
+			}
+			return nil
 		default:
 		}
 		m.viewStack = m.viewStack[:len(m.viewStack)-1]
@@ -264,6 +269,10 @@ func (m *AppModel) popToAnchorView() {
 	if v := m.views.Get(cv); v != nil {
 		m.setAccentOnView(v)
 	}
+	if cv == ViewCrossProjectOutliner {
+		return func() tea.Msg { return ViewDidAppearMsg{} }
+	}
+	return nil
 }
 
 // currentAccentColor returns the accent color for the topmost mapped view in

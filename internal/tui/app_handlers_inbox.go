@@ -47,7 +47,7 @@ func (m *AppModel) handleInboxMessages(msg tea.Msg) (bool, tea.Cmd) {
 		return true, nil
 
 	case CloseGlobalInboxProcessorMsg:
-		m.popToAnchorView()
+		popCmd := m.popToAnchorView()
 		// Refresh dashboard to reflect any changes
 		if m.dashboard != nil {
 			m.dashboard.Refresh(m.config)
@@ -56,7 +56,7 @@ func (m *AppModel) handleInboxMessages(msg tea.Msg) (bool, tea.Cmd) {
 			m.setSuccessStatus(fmt.Sprintf("Global inbox processing complete: %d processed, %d skipped",
 				msg.ProcessedCount, msg.SkippedCount))
 		}
-		return true, nil
+		return true, popCmd
 
 	case GlobalInboxProjectSavedMsg:
 		// Forward to the global inbox processor

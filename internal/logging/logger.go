@@ -2,6 +2,7 @@ package logging
 
 import (
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"path/filepath"
@@ -68,12 +69,15 @@ func Warn(format string, args ...any) {
 }
 
 // Close closes the log file and removes it if empty.
+// It also detaches the standard logger from the file so subsequent
+// log.Printf or Warn calls do not write to a closed descriptor.
 func Close() {
 	if logFile == nil {
 		return
 	}
 	path := logFilePath
 	info, statErr := logFile.Stat()
+	log.SetOutput(io.Discard)
 	_ = logFile.Close()
 	logFile = nil
 	if statErr == nil && info.Size() == 0 && path != "" {

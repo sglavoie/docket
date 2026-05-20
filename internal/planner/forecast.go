@@ -100,11 +100,17 @@ func confidenceForCount(completed int) Confidence {
 // When velocity is zero the ForecastDate is the zero time (no forecast
 // possible), but RemainingWeightedDays and Confidence are still populated.
 func ForecastCompletion(parent *models.Task, velocity float64, now time.Time) *ForecastResult {
+	if parent == nil {
+		return &ForecastResult{Velocity: velocity}
+	}
 	var remainingDays float64
 	var remainingCount int
 	var completedCount int
 
 	for _, child := range parent.Children {
+		if child == nil {
+			continue
+		}
 		if child.IsComplete() {
 			completedCount++
 			continue
@@ -123,6 +129,11 @@ func ForecastCompletion(parent *models.Task, velocity float64, now time.Time) *F
 
 	if velocity > 0 && remainingDays > 0 {
 		daysToComplete := remainingDays / velocity
+		// Cap absurd values to prevent time.Duration overflow (~106k days = ~292 years).
+		const maxForecastDays = 100000
+		if daysToComplete > maxForecastDays {
+			daysToComplete = maxForecastDays
+		}
 		result.ForecastDate = now.Add(daysToduration(daysToComplete))
 	}
 

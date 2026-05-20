@@ -251,9 +251,14 @@ func runTaskRecur(cmd *cobra.Command, args []string) error { //nolint:gocyclo
 
 	// Warn when setting monthly recurrence on a task whose due date falls on
 	// day 29–31: those days don't exist in all months, so the recurrence will
-	// silently clamp to the last day of shorter months.
+	// silently clamp to the last day of shorter months. Yearly recurrence on
+	// Feb 29 clamps to Feb 28 in non-leap years for the same reason.
 	if pattern.Unit == models.RecurrenceMonthly && task.DueDate != nil && task.DueDate.Day() > 28 {
 		fmt.Fprintf(os.Stderr, "warning: due date is on day %d; months with fewer days will use the last day instead\n", task.DueDate.Day())
+	}
+	if pattern.Unit == models.RecurrenceYearly && task.DueDate != nil &&
+		task.DueDate.Month() == time.February && task.DueDate.Day() == 29 {
+		fmt.Fprintf(os.Stderr, "warning: due date is Feb 29; non-leap years will use Feb 28 instead\n")
 	}
 
 	if err := SaveProject(project, &SaveOptions{

@@ -35,10 +35,23 @@ func FindTaskByIdentifier(project *models.Project, identifier string) (*models.T
 	// Try as title prefix (case-insensitive)
 	lowerID := strings.ToLower(identifier)
 	var matches []*models.Task
+	var exactMatches []*models.Task
 	for _, task := range project.Tasks {
-		if strings.HasPrefix(strings.ToLower(task.Title), lowerID) {
+		lowerTitle := strings.ToLower(task.Title)
+		if lowerTitle == lowerID {
+			exactMatches = append(exactMatches, task)
+		}
+		if strings.HasPrefix(lowerTitle, lowerID) {
 			matches = append(matches, task)
 		}
+	}
+
+	// Prefer a unique exact (case-insensitive) match over prefix ambiguity.
+	// Without this, querying "Apple Pie" when tasks "Apple Pie" and
+	// "Apple Pie Recipe" exist would return "ambiguous", even though the
+	// user typed the full title verbatim.
+	if len(exactMatches) == 1 {
+		return exactMatches[0], nil
 	}
 
 	if len(matches) == 1 {
