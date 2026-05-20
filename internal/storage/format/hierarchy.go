@@ -52,18 +52,17 @@ func BuildHierarchy(parsedTasks []*ParsedTask) ([]*models.Task, []ParseWarning) 
 		prevLevel = level
 
 		// If task already has an explicit parent ID from metadata, skip
-		if task.ParentID != nil {
-			levelStack[level] = task
-			continue
-		}
-
-		// Find potential parent at a higher level (lower number)
-		for checkLevel := level - 1; checkLevel >= 2; checkLevel-- {
-			if parent, ok := levelStack[checkLevel]; ok {
-				// Check if this task type can be a child of the parent type
-				if task.Type.CanBeChildOf(parent.Type) {
-					task.ParentID = &parent.ID
-					break
+		// parent inference but still maintain the level stack so siblings
+		// and descendants attach correctly.
+		if task.ParentID == nil {
+			// Find potential parent at a higher level (lower number)
+			for checkLevel := level - 1; checkLevel >= 2; checkLevel-- {
+				if parent, ok := levelStack[checkLevel]; ok {
+					// Check if this task type can be a child of the parent type
+					if task.Type.CanBeChildOf(parent.Type) {
+						task.ParentID = &parent.ID
+						break
+					}
 				}
 			}
 		}
@@ -71,8 +70,10 @@ func BuildHierarchy(parsedTasks []*ParsedTask) ([]*models.Task, []ParseWarning) 
 		// Update the stack
 		levelStack[level] = task
 
-		// Clear any lower levels (higher numbers) since we've moved past them
-		for l := level + 1; l <= 6; l++ {
+		// Clear any lower levels (higher numbers) since we've moved past them.
+		// Cap at maxHeadingLevel+1 to handle clamped levels (prevLevel+1 can
+		// exceed 6 if the previous heading was already at level 6).
+		for l := level + 1; l <= 7; l++ {
 			delete(levelStack, l)
 		}
 	}

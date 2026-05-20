@@ -350,3 +350,36 @@ func TestBuildHierarchy_TypeRestrictions(t *testing.T) {
 		})
 	}
 }
+
+// TestBuildHierarchy_ExplicitParentClearsStaleStack ensures that a task with
+// an explicit ParentID does not leave stale deeper-level entries in the
+// internal level stack. Previously, a level-2 task with a preset parent
+// skipped the cleanup loop, so a later level-N task at the same indentation
+// would attach to an unrelated sibling's child from an earlier group.
+func TestBuildHierarchy_ExplicitParentClearsStaleStack(t *testing.T) {
+	parsedTasks := []*ParsedTask{
+		{Task: &models.Task{ID: "epic1", Type: models.TaskTypeEpic, Title: "Epic 1"}, Level: 2},
+		{Task: &models.Task{ID: "story1", Type: models.TaskTypeStory, Title: "Story 1"}, Level: 3},
+		{Task: &models.Task{ID: "epic2", Type: models.TaskTypeEpic, Title: "Epic 2", ParentID: strPtr("external-epic")}, Level: 2},
+		{Task: &models.Task{ID: "task1", Type: models.TaskTypeTask, Title: "Task 1"}, Level: 3},
+	}
+
+	tasks, _ := BuildHierarchy(parsedTasks)
+
+	var task1 *models.Task
+	for _, t := range tasks {
+		if t.ID == "task1" {
+			task1 = t
+			break
+		}
+	}
+	if task1 == nil {
+		t.Fatal("task1 not found")
+	}
+	if task1.ParentID == nil {
+		t.Fatal("task1 should have parent epic2, got nil")
+	}
+	if *task1.ParentID != "epic2" {
+		t.Errorf("task1 should be child of epic2 (the most recent level-2 task), got %s", *task1.ParentID)
+	}
+}
