@@ -240,6 +240,86 @@ Old-format description without markers.
 	}
 }
 
+// TestRoundTrip_DescriptionWithBlockMarkers verifies that descriptions
+// containing literal block-marker lines (`<!-- COMMENTS -->`, etc.) survive
+// write→parse without being consumed by the block extractors and without
+// losing content between markers.
+func TestRoundTrip_DescriptionWithBlockMarkers(t *testing.T) {
+	tests := []struct {
+		name string
+		desc string
+	}{
+		{
+			name: "comments markers in body",
+			desc: "Foo\n<!-- COMMENTS -->\nbar\n<!-- /COMMENTS -->\nBaz",
+		},
+		{
+			name: "activity markers in body",
+			desc: "Outer\n<!-- ACTIVITY -->\ninner activity-looking line\n<!-- /ACTIVITY -->\nTail",
+		},
+		{
+			name: "decisions markers in body",
+			desc: "Pre\n<!-- DECISIONS -->\nmid\n<!-- /DECISIONS -->\nPost",
+		},
+		{
+			name: "description markers in body",
+			desc: "Before\n<!-- DESCRIPTION -->\nshould not nest\n<!-- /DESCRIPTION -->\nAfter",
+		},
+		{
+			name: "mixed block markers",
+			desc: "Top\n<!-- COMMENTS -->\nc1\n<!-- /COMMENTS -->\nMid\n<!-- ACTIVITY -->\na1\n<!-- /ACTIVITY -->\nEnd",
+		},
+		{
+			name: "literal backslash before block marker",
+			desc: "X\n\\<!-- COMMENTS -->\nY",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			tasks := []*models.Task{
+				{
+					ID:          "t1",
+					ShortID:     1,
+					Type:        models.TaskTypeTask,
+					Title:       "Test Task",
+					Description: tc.desc,
+					Status:      models.StatusTodo,
+					Priority:    3,
+					Tags:        []string{},
+					DependsOn:   []string{},
+					RelatedTo:   []string{},
+					CreatedAt:   time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
+				},
+			}
+
+			content := WriteTasksMarkdown("Test", tasks)
+			_, parsed, err := ParseTasksMarkdown(content)
+			if err != nil {
+				t.Fatalf("parse error: %v", err)
+			}
+
+			if len(parsed) != 1 {
+				t.Fatalf("expected 1 task, got %d", len(parsed))
+			}
+
+			if parsed[0].Description != tc.desc {
+				t.Errorf("description mismatch:\n  got:  %q\n  want: %q", parsed[0].Description, tc.desc)
+			}
+
+			if len(parsed[0].Comments) != 0 {
+				t.Errorf("phantom Comments parsed: %+v", parsed[0].Comments)
+			}
+			if len(parsed[0].Activity) != 0 {
+				t.Errorf("phantom Activity parsed: %+v", parsed[0].Activity)
+			}
+			if len(parsed[0].Decisions) != 0 {
+				t.Errorf("phantom Decisions parsed: %+v", parsed[0].Decisions)
+			}
+		})
+	}
+}
+
 // TestRoundTrip_DescriptionWithHTMLCommentLikeMetadata verifies that
 // descriptions containing lines that look like metadata comments don't
 // get incorrectly parsed as task metadata.

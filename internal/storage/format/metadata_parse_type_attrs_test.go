@@ -208,6 +208,18 @@ func TestParseMetadata_EpicAttrs(t *testing.T) {
 	}
 }
 
+func TestParseMetadata_EpicScopeBaselinedInvalidEmitsWarning(t *testing.T) {
+	task := &models.Task{Type: models.TaskTypeEpic}
+	warnings := ParseMetadata(task, "id: e1, status: todo, priority: 2, epic.scope_baselined: not-a-date")
+
+	if !hasWarningField(warnings, "epic.scope_baselined") {
+		t.Errorf("expected WarningValidation for field epic.scope_baselined, got %v", warnings)
+	}
+	if task.EpicAttrs != nil && task.EpicAttrs.ScopeBaselinedAt != nil {
+		t.Errorf("ScopeBaselinedAt should be nil for invalid date, got %v", task.EpicAttrs.ScopeBaselinedAt)
+	}
+}
+
 func TestParseMetadata_CrossTypeAttrWarning(t *testing.T) {
 	tests := []struct {
 		name      string

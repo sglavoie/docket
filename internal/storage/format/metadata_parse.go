@@ -416,7 +416,7 @@ func ParseMetadata(task *models.Task, metaStr string) []ParseWarning { //nolint:
 				task.EnsureEpicAttrs().InitialChildCount = v
 			}
 		case "epic.scope_baselined":
-			if t, err := time.ParseInLocation(util.DateFormat, value, time.Local); err == nil {
+			if t, ok := parseDateOrWarn(value, "epic.scope_baselined", &warnings); ok {
 				task.EnsureEpicAttrs().ScopeBaselinedAt = &t
 			}
 		default:

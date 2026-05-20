@@ -110,7 +110,18 @@ func TodayStatusOrder(status models.TaskStatus) int {
 // CompareTasks compares two tasks based on the given sort field.
 // Returns -1 if a < b, 0 if equal, 1 if a > b.
 // The projectID and cfg are needed for score-based comparison.
+// Ties on the primary key are broken by task.ID (lexicographic) to keep
+// the ordering deterministic and to satisfy strict weak ordering when
+// the result is fed through sort.Slice.
 func CompareTasks(a, b *models.Task, field SortField, projectID string, cfg *config.Config) int {
+	primary := compareTasksPrimary(a, b, field, projectID, cfg)
+	if primary != 0 {
+		return primary
+	}
+	return cmp.Compare(a.ID, b.ID)
+}
+
+func compareTasksPrimary(a, b *models.Task, field SortField, projectID string, cfg *config.Config) int {
 	switch field {
 	case SortByPriority:
 		return cmp.Compare(a.Priority, b.Priority)
@@ -149,7 +160,8 @@ func CompareTasks(a, b *models.Task, field SortField, projectID string, cfg *con
 }
 
 // CompareTasksCrossProject compares two tasks that may belong to different projects.
-// Each task has its own projectID for score resolution.
+// Each task has its own projectID for score resolution. Ties are broken by
+// task.ID for deterministic ordering under sort.Slice.
 func CompareTasksCrossProject(a, b *models.Task, field SortField, projectIDA, projectIDB string, cfg *config.Config) int {
 	if field == SortByScore {
 		pa := cfg.GetProjectScoringProfile(projectIDA)
@@ -162,7 +174,10 @@ func CompareTasksCrossProject(a, b *models.Task, field SortField, projectIDA, pr
 			sb = scoring.ComputeScore(b, pb)
 		}
 		// Higher score first (descending by default)
-		return -cmp.Compare(sa, sb)
+		if c := -cmp.Compare(sa, sb); c != 0 {
+			return c
+		}
+		return cmp.Compare(a.ID, b.ID)
 	}
 	return CompareTasks(a, b, field, "", cfg)
 }
@@ -206,11 +221,13 @@ func sortHierarchical[T any](
 	return result
 }
 
-// ApplySortDirection flips a comparison result if descending.
+// ApplySortDirection converts a three-way compare result into a Less
+// boolean honoring the sort direction. Equal items (c == 0) return false
+// in both directions so that the resulting predicate satisfies strict
+// weak ordering — required by sort.Slice/sort.Stable.
 func ApplySortDirection(c int, ascending bool) bool {
-	less := c < 0
-	if !ascending {
-		less = !less
+	if ascending {
+		return c < 0
 	}
-	return less
+	return c > 0
 }

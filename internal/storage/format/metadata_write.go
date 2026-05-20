@@ -223,6 +223,12 @@ func WriteMetadata(task *models.Task) string { //nolint:gocyclo
 			if k == "" {
 				continue
 			}
+			// Skip dimension IDs that contain characters outside [a-zA-Z0-9_].
+			// Writing such keys would produce metadata that the splitter cannot
+			// recognize as a key boundary, corrupting adjacent values on re-parse.
+			if !isValidDimensionID(k) {
+				continue
+			}
 			parts = append(parts, fmt.Sprintf("score.%s: %d", k, task.ScoreDimensions[k]))
 		}
 	}

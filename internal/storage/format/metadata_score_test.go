@@ -116,6 +116,56 @@ func TestScoreDimensions_RoundTrip(t *testing.T) {
 	}
 }
 
+func TestWriteMetadata_SkipsInvalidScoreDimensionIDs(t *testing.T) {
+	tests := []struct {
+		name      string
+		dimension string
+	}{
+		{"hyphen in ID", "foo-bar"},
+		{"dot in ID", "foo.bar"},
+		{"space in ID", "foo bar"},
+		{"colon in ID", "foo:bar"},
+		{"comma in ID", "foo,bar"},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			task := &models.Task{
+				ID:       "score-invalid",
+				Type:     models.TaskTypeTask,
+				Status:   models.StatusTodo,
+				Priority: 2,
+				URL:      "http://example.com/page",
+				ScoreDimensions: map[string]int{
+					tc.dimension: 5,
+					"valid":      7,
+				},
+			}
+
+			meta := WriteMetadata(task)
+			if containsString(meta, "score."+tc.dimension) {
+				t.Errorf("WriteMetadata = %q, should not contain invalid dim %q", meta, tc.dimension)
+			}
+			if !containsString(meta, "score.valid: 7") {
+				t.Errorf("WriteMetadata = %q, should contain valid dim", meta)
+			}
+
+			// Round-trip: adjacent fields (url) must not absorb the dropped score key.
+			content := meta[5 : len(meta)-4]
+			parsed := &models.Task{}
+			ParseMetadata(parsed, content)
+			if parsed.URL != task.URL {
+				t.Errorf("URL corrupted by invalid score dim: got %q, want %q", parsed.URL, task.URL)
+			}
+			if _, ok := parsed.ScoreDimensions[tc.dimension]; ok {
+				t.Errorf("invalid dim %q should not survive round-trip", tc.dimension)
+			}
+			if parsed.ScoreDimensions["valid"] != 7 {
+				t.Errorf("valid dim lost: got %v", parsed.ScoreDimensions)
+			}
+		})
+	}
+}
+
 func TestScoreDimensions_EmptyNotWritten(t *testing.T) {
 	task := &models.Task{
 		ID:       "score-empty",

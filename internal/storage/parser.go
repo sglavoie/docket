@@ -250,6 +250,9 @@ func ParseTasksMarkdownWithSections(content string) (*ParseResult, error) {
 		format.ExtractDecisionsFromDescription(t)
 		descWarnings := format.ExtractDescriptionBlock(t)
 		metadataWarnings = append(metadataWarnings, descWarnings...)
+		// Now that all block extractors have run, restore literal block-marker
+		// lines that the writer escaped to prevent them from being mis-parsed.
+		t.Description = unescapeBlockMarkers(t.Description)
 	}
 
 	normalizeUpdatedAt(tasks)

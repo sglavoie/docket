@@ -191,6 +191,38 @@ func TestLoadActionableTasks(t *testing.T) { //nolint:gocyclo
 		}
 	})
 
+	t.Run("urgency sort is stable for equal scores", func(t *testing.T) {
+		project := newTestPriorityProject(t)
+
+		// Build five tasks with identical priority/type/status so they all
+		// produce the same coarse-integer UrgencyScore. Insertion order must
+		// be preserved by a stable sort; an unstable sort can flip them.
+		var tasks []*models.Task
+		ids := []string{"a", "b", "c", "d", "e"}
+		for i, id := range ids {
+			task, err := models.NewTask(id, i+1, models.TaskTypeTask, "Task "+id)
+			if err != nil {
+				t.Fatal(err)
+			}
+			task.Priority = 3
+			tasks = append(tasks, task)
+		}
+		project.Tasks = tasks
+
+		m := NewPriorityViewModel(project, nil, nil)
+
+		if len(m.backlog) != len(ids) {
+			t.Fatalf("expected %d backlog tasks, got %d", len(ids), len(m.backlog))
+		}
+		for i, id := range ids {
+			if m.backlog[i].Task.ID != id {
+				t.Errorf("position %d: got ID %q, want %q (full order=%v)",
+					i, m.backlog[i].Task.ID, id, priorityIDs(m.backlog))
+				return
+			}
+		}
+	})
+
 	t.Run("totalTasks excludes waitingOn", func(t *testing.T) {
 		project := newTestPriorityProject(t)
 

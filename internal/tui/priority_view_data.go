@@ -60,9 +60,11 @@ func (m *PriorityViewModel) loadActionableTasks() {
 		}
 	}
 
-	// Sort each group by urgency score (higher = more urgent)
+	// Sort each group by urgency score (higher = more urgent). Use a stable
+	// sort because UrgencyScore is a coarse integer and ties are common; an
+	// unstable sort would flip order between reloads.
 	sortByUrgency := func(tasks []*PriorityTask) {
-		sort.Slice(tasks, func(i, j int) bool {
+		sort.SliceStable(tasks, func(i, j int) bool {
 			return tasks[i].UrgencyScore > tasks[j].UrgencyScore
 		})
 	}

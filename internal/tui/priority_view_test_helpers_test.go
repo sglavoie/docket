@@ -32,3 +32,11 @@ func newTestPriorityProject(t *testing.T) *models.Project {
 func intPtr(i int) *int {
 	return &i
 }
+
+func priorityIDs(tasks []*PriorityTask) []string {
+	ids := make([]string, len(tasks))
+	for i, pt := range tasks {
+		ids[i] = pt.Task.ID
+	}
+	return ids
+}
