@@ -76,17 +76,24 @@ func ParseTasksMarkdownWithSections(content string) (*ParseResult, error) {
 	for scanner.Scan() {
 		line := scanner.Text()
 
-		// Check for project title
-		if matches := projectRegex.FindStringSubmatch(line); matches != nil {
-			projectName = strings.TrimSpace(matches[1])
-			if len(projectName) > models.MaxProjectNameLength {
-				metadataWarnings = append(metadataWarnings, ParseWarning{
-					Type:    format.WarningValidation,
-					Field:   "project_name",
-					Message: fmt.Sprintf("project name exceeds %d chars", models.MaxProjectNameLength),
-				})
+		// Check for project title. Only honored before the first task heading:
+		// once we're inside a task body, a `# Project: ...` line is part of the
+		// description (it may appear in old-format files that predate the
+		// description-line escape logic, or in manually pasted content). Without
+		// this guard the project name silently gets overwritten and the line is
+		// dropped from the description, causing data loss on round-trip.
+		if !foundFirstTask {
+			if matches := projectRegex.FindStringSubmatch(line); matches != nil {
+				projectName = strings.TrimSpace(matches[1])
+				if len(projectName) > models.MaxProjectNameLength {
+					metadataWarnings = append(metadataWarnings, ParseWarning{
+						Type:    format.WarningValidation,
+						Field:   "project_name",
+						Message: fmt.Sprintf("project name exceeds %d chars", models.MaxProjectNameLength),
+					})
+				}
+				continue
 			}
-			continue
 		}
 
 		// Check for sections metadata (only before first task)

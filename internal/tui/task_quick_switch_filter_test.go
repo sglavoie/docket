@@ -78,6 +78,47 @@ func TestQuickSwitchFilter(t *testing.T) {
 		}
 	})
 
+	t.Run("equal-score matches preserve recency order deterministically", func(t *testing.T) {
+		app := newTestAppForQuickSwitch()
+		p := &models.Project{ID: "p1", Name: "Project 1"}
+		// All titles match "fix" with identical fuzzy scores; ensure the
+		// rebuilt filter preserves recency (the order in recentTaskVisits)
+		// across runs rather than non-deterministically reordering.
+		app.recentTaskVisits = []RecentTaskVisitEntry{
+			{Task: &models.Task{ID: "t1", Title: "fix"}, Project: p},
+			{Task: &models.Task{ID: "t2", Title: "fix"}, Project: p},
+			{Task: &models.Task{ID: "t3", Title: "fix"}, Project: p},
+		}
+		app.quickSwitchFilter = "fix"
+
+		var firstOrder []string
+		for run := 0; run < 5; run++ {
+			app.rebuildQuickSwitchFilter()
+			order := make([]string, 0, len(app.quickSwitchFiltered))
+			for _, idx := range app.quickSwitchFiltered {
+				order = append(order, app.recentTaskVisits[idx].Task.ID)
+			}
+			if run == 0 {
+				firstOrder = order
+				continue
+			}
+			for i, id := range order {
+				if id != firstOrder[i] {
+					t.Errorf("equal-score order shuffled across runs: run0=%v run%d=%v", firstOrder, run, order)
+					return
+				}
+			}
+		}
+		// Recency (input order) must be preserved when scores tie.
+		want := []string{"t1", "t2", "t3"}
+		for i, id := range firstOrder {
+			if id != want[i] {
+				t.Errorf("expected recency order %v, got %v", want, firstOrder)
+				break
+			}
+		}
+	})
+
 	t.Run("pinned entries rank first in filtered results", func(t *testing.T) {
 		app := newTestAppForQuickSwitch()
 		p := &models.Project{ID: "p1", Name: "Project 1"}

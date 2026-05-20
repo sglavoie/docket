@@ -132,6 +132,29 @@ func TestConfig_CurrentProject(t *testing.T) {
 	}
 }
 
+// TestRemoveProject_ClearsCurrentBySlug covers legacy configs where
+// CurrentProject was stored as the project's slug rather than its ID.
+// Without slug-aware clearing the field would dangle and GetCurrentProject
+// would silently keep returning nil while leaving stale data on disk.
+func TestRemoveProject_ClearsCurrentBySlug(t *testing.T) {
+	cfg := NewConfig()
+	project := &models.Project{
+		ID:   "p1",
+		Slug: "legacy-slug",
+		Name: "Legacy",
+	}
+	cfg.AddProject(project)
+	// Simulate legacy state: CurrentProject holds the slug, not the ID.
+	cfg.CurrentProject = "legacy-slug"
+
+	if !cfg.RemoveProject("p1") {
+		t.Fatal("RemoveProject should return true")
+	}
+	if cfg.CurrentProject != "" {
+		t.Errorf("CurrentProject should be cleared when removed project's slug matches; got %q", cfg.CurrentProject)
+	}
+}
+
 func TestConfig_GetActiveArchivedProjects(t *testing.T) {
 	cfg := NewConfig()
 

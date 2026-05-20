@@ -47,8 +47,20 @@ func (m *AppModel) rebuildQuickSwitchFilter() {
 		}
 	}
 
-	sort.Slice(pinned, func(i, j int) bool { return pinned[i].score > pinned[j].score })
-	sort.Slice(unpinned, func(i, j int) bool { return unpinned[i].score > unpinned[j].score })
+	// Stable sort + idx tiebreak so equal-score entries preserve recency order
+	// (entries are already in recency order; sort.Slice is not stable).
+	sort.SliceStable(pinned, func(i, j int) bool {
+		if pinned[i].score != pinned[j].score {
+			return pinned[i].score > pinned[j].score
+		}
+		return pinned[i].idx < pinned[j].idx
+	})
+	sort.SliceStable(unpinned, func(i, j int) bool {
+		if unpinned[i].score != unpinned[j].score {
+			return unpinned[i].score > unpinned[j].score
+		}
+		return unpinned[i].idx < unpinned[j].idx
+	})
 
 	all := append(pinned, unpinned...)
 	m.quickSwitchFiltered = make([]int, 0, len(all))

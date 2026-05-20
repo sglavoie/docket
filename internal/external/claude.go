@@ -1,6 +1,7 @@
 package external
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -48,6 +49,13 @@ func ClaudeAskStreaming(ctx context.Context, query, systemPrompt string) (io.Rea
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to create stdout pipe: %w", err)
 	}
+
+	// Capture stderr into a buffer rather than inheriting the parent's
+	// terminal stderr. The caller streams stdout into a TUI; if claude
+	// writes to stderr (warnings, auth errors, deprecation notices) those
+	// bytes would otherwise interleave with the bubbletea render and
+	// corrupt the screen.
+	cmd.Stderr = &bytes.Buffer{}
 
 	if err := cmd.Start(); err != nil {
 		return nil, nil, fmt.Errorf("failed to start claude: %w", err)

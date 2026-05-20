@@ -360,3 +360,36 @@ func TestRoundTrip_DescriptionWithHTMLCommentLikeMetadata(t *testing.T) {
 		t.Error("description should preserve the HTML comment-like line")
 	}
 }
+
+// TestParse_ProjectHeaderInDescriptionDoesNotOverrideName verifies that a
+// `# Project: ...` line appearing inside an old-format description (no escape
+// applied, e.g. files predating the description-line escape logic, or content
+// pasted from another project file) does NOT silently overwrite the project
+// name or get consumed from the description. Regression test for a real
+// data-loss bug.
+func TestParse_ProjectHeaderInDescriptionDoesNotOverrideName(t *testing.T) {
+	content := `# Project: Real Name
+
+## Task: Test
+<!-- id: t1, status: todo, priority: 3 -->
+
+# Project: Pasted From Elsewhere
+Just describing something.
+`
+	pname, tasks, err := ParseTasksMarkdown(content)
+	if err != nil {
+		t.Fatalf("parse error: %v", err)
+	}
+	if pname != "Real Name" {
+		t.Errorf("project name was overridden by description text: got %q, want %q", pname, "Real Name")
+	}
+	if len(tasks) != 1 {
+		t.Fatalf("expected 1 task, got %d", len(tasks))
+	}
+	if !strings.Contains(tasks[0].Description, "# Project: Pasted From Elsewhere") {
+		t.Errorf("description should preserve the project-header-like line, got %q", tasks[0].Description)
+	}
+	if !strings.Contains(tasks[0].Description, "Just describing something.") {
+		t.Errorf("description should preserve following lines, got %q", tasks[0].Description)
+	}
+}

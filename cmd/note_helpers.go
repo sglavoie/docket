@@ -39,7 +39,14 @@ func findNote(project *models.Project, query string) (*models.Note, error) {
 }
 
 // findNoteIn locates a note in a directory by exact filename or title prefix match.
+// An empty query is rejected: HasPrefix(anything, "") and Contains(anything, "")
+// both return true, so without this guard an empty arg silently matches the first
+// note (e.g. `tt note delete ""` would delete the first note found).
 func findNoteIn(dir, query string) (*models.Note, error) {
+	if query == "" {
+		return nil, fmt.Errorf("note not found: %s", query)
+	}
+
 	// Try exact filename first
 	if strings.HasSuffix(query, ".md") {
 		note, err := storage.LoadNoteFrom(dir, query)

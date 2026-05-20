@@ -224,6 +224,45 @@ func TestCaptureInboxSnapshotNilCompletedAt(t *testing.T) {
 	}
 }
 
+func TestInboxSnapshotCapturesAndRestoresStage(t *testing.T) {
+	task := &models.Task{
+		ID:        "t1",
+		Status:    models.StatusTodo,
+		Section:   models.SectionInbox,
+		Priority:  3,
+		Stage:     "discovery",
+		Tags:      []string{},
+		DependsOn: []string{},
+	}
+
+	snap := captureInboxSnapshot(task)
+	if snap.stage != "discovery" {
+		t.Fatalf("snapshot stage: got %q, want %q", snap.stage, "discovery")
+	}
+
+	// Simulate setStage mutation.
+	task.Stage = "validation"
+
+	restoreInboxSnapshot(task, snap)
+	if task.Stage != "discovery" {
+		t.Errorf("stage after restore: got %q, want %q", task.Stage, "discovery")
+	}
+
+	// Restoring an empty-stage snapshot must also clear a later-set stage.
+	emptyTask := &models.Task{
+		ID:        "t2",
+		Status:    models.StatusTodo,
+		Tags:      []string{},
+		DependsOn: []string{},
+	}
+	emptySnap := captureInboxSnapshot(emptyTask)
+	emptyTask.Stage = "set-after-snapshot"
+	restoreInboxSnapshot(emptyTask, emptySnap)
+	if emptyTask.Stage != "" {
+		t.Errorf("expected stage to be cleared on restore, got %q", emptyTask.Stage)
+	}
+}
+
 func TestRenderInboxCurrentSettingsShowsCustomSection(t *testing.T) {
 	task := &models.Task{
 		ID:        "t1",

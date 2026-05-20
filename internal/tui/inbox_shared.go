@@ -53,6 +53,7 @@ type inboxSnapshot struct {
 	completedAt   *time.Time
 	active        bool
 	snoozedUntil  *time.Time
+	stage         string
 }
 
 // captureInboxSnapshot creates a snapshot of task state for undo.
@@ -87,6 +88,7 @@ func captureInboxSnapshot(task *models.Task) *inboxSnapshot {
 		completedAt:   completedAt,
 		active:        task.Active,
 		snoozedUntil:  snoozedUntil,
+		stage:         task.Stage,
 	}
 }
 
@@ -118,6 +120,7 @@ func restoreInboxSnapshot(task *models.Task, snap *inboxSnapshot) {
 	} else {
 		task.SnoozedUntil = nil
 	}
+	task.Stage = snap.stage
 	task.UpdatedAt = time.Now()
 }
 

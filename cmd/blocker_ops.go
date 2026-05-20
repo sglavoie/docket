@@ -13,6 +13,13 @@ import (
 // The update function receives the full blocker list and the matched blocker, and returns
 // the blocker list to save (allowing deletion by returning a filtered list).
 func WithBlockerUpdate(idPrefix string, updateFn func([]*models.Blocker, *models.Blocker) ([]*models.Blocker, error)) error {
+	// Guard empty prefix: storage.FindBlockerByPrefix uses HasPrefix(id, "") which
+	// always returns true, so an empty arg (e.g. `tt blocker delete ""`) would
+	// silently target the first blocker.
+	if idPrefix == "" {
+		return fmt.Errorf("blocker not found: %s", idPrefix)
+	}
+
 	project, _, _, err := LoadCurrentProject()
 	if err != nil {
 		return err

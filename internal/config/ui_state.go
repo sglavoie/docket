@@ -157,7 +157,12 @@ func (c *Config) GetInfoPanelMode() InfoPanelMode {
 }
 
 // SetInfoPanelMode sets the info panel mode and clears the legacy ShowInfoPanel field.
+// Out-of-range values are clamped to InfoPanelInfoCards (the default for invalid
+// stored values), matching GetInfoPanelMode.
 func (c *Config) SetInfoPanelMode(mode InfoPanelMode) {
+	if mode < 0 || mode >= infoPanelModeCount {
+		mode = InfoPanelInfoCards
+	}
 	m := int(mode)
 	c.InfoPanelMode = &m
 	c.ShowInfoPanel = nil
@@ -213,7 +218,12 @@ func (c *Config) GetDashboardBottomLayout() DashboardBottomLayout {
 }
 
 // SetDashboardBottomLayout stores the dashboard bottom-section layout.
+// Out-of-range values are clamped to DashboardLayoutHorizontal (the default),
+// matching the read-side clamp in GetDashboardBottomLayout.
 func (c *Config) SetDashboardBottomLayout(v DashboardBottomLayout) {
+	if v < 0 || v >= dashboardLayoutCount {
+		v = DashboardLayoutHorizontal
+	}
 	i := int(v)
 	c.DashboardBottomLayout = &i
 }

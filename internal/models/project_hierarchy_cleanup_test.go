@@ -225,3 +225,34 @@ func TestBuildTaskTree_PreservesCrossProjectRelatedTo(t *testing.T) {
 		t.Errorf("expected cross-project ref preserved, got %q", taskA.RelatedTo[0])
 	}
 }
+
+// TestBuildTaskTree_PrunesMalformedCrossProjectRefs verifies that a malformed
+// cross-project reference (e.g. "other-project:" with an empty task id) is
+// pruned by BuildTaskTree. Previously IsCrossProject reported true for such
+// values, which caused pruneOrphanedRefs to preserve them indefinitely even
+// though no lookup could ever resolve them.
+func TestBuildTaskTree_PrunesMalformedCrossProjectRefs(t *testing.T) {
+	project, err := NewProject("test", "Test", "/tmp/test")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	taskA, err := NewTask("aaa", 1, TaskTypeTask, "Task A")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Malformed cross-project refs have a project id but no task id.
+	taskA.DependsOn = []string{"other-project:"}
+	taskA.RelatedTo = []string{"other-project:"}
+
+	project.Tasks = []*Task{taskA}
+	project.BuildTaskTree()
+
+	if len(taskA.DependsOn) != 0 {
+		t.Errorf("expected malformed cross-project DependsOn to be pruned, got %v", taskA.DependsOn)
+	}
+	if len(taskA.RelatedTo) != 0 {
+		t.Errorf("expected malformed cross-project RelatedTo to be pruned, got %v", taskA.RelatedTo)
+	}
+}

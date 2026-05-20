@@ -32,8 +32,13 @@ func (r TaskRef) String() string {
 }
 
 // IsCrossProject returns true if this reference points to a different project.
+// A reference is only considered cross-project when it has both a non-empty
+// ProjectID and a non-empty TaskID — a malformed value like "proj:" (project
+// id followed by an empty task id) is not a usable cross-project reference,
+// and treating it as one would cause orphan-ref pruning to preserve it
+// indefinitely while no lookup could ever resolve it.
 func (r TaskRef) IsCrossProject() bool {
-	return r.ProjectID != ""
+	return r.ProjectID != "" && r.TaskID != ""
 }
 
 // IsEmpty returns true if this reference has no task ID.

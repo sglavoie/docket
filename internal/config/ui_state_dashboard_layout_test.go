@@ -56,6 +56,23 @@ func TestSetDashboardBottomLayout(t *testing.T) {
 	}
 }
 
+// TestSetDashboardBottomLayout_ClampsInvalid verifies that out-of-range values
+// passed to the setter (e.g. from a stale cursor cast) are clamped on write —
+// matching the read-side clamp so disk never contains invalid enum values.
+func TestSetDashboardBottomLayout_ClampsInvalid(t *testing.T) {
+	cases := []DashboardBottomLayout{-1, 3, 99, DashboardBottomLayout(-50)}
+	for _, in := range cases {
+		cfg := NewConfig()
+		cfg.SetDashboardBottomLayout(in)
+		if cfg.DashboardBottomLayout == nil {
+			t.Fatalf("in=%d: pointer should not be nil after Set", in)
+		}
+		if *cfg.DashboardBottomLayout != int(DashboardLayoutHorizontal) {
+			t.Errorf("in=%d: expected clamped stored value 0, got %d", in, *cfg.DashboardBottomLayout)
+		}
+	}
+}
+
 func TestGetDashboardHorizontalSplitPct_Default(t *testing.T) {
 	cfg := NewConfig()
 	if got := cfg.GetDashboardHorizontalSplitPct(); got != DefaultDashboardHorizontalSplitPct {

@@ -100,6 +100,23 @@ func TestSetInfoPanelMode_ClearsLegacy(t *testing.T) {
 	}
 }
 
+// TestSetInfoPanelMode_ClampsInvalid verifies out-of-range values are clamped
+// on write so disk never holds an invalid enum.
+func TestSetInfoPanelMode_ClampsInvalid(t *testing.T) {
+	cases := []InfoPanelMode{-1, 3, 99}
+	for _, in := range cases {
+		cfg := NewConfig()
+		cfg.SetInfoPanelMode(in)
+		if cfg.InfoPanelMode == nil {
+			t.Fatalf("in=%d: pointer should not be nil after Set", in)
+		}
+		if *cfg.InfoPanelMode != int(InfoPanelInfoCards) {
+			t.Errorf("in=%d: expected clamped stored value %d, got %d",
+				in, int(InfoPanelInfoCards), *cfg.InfoPanelMode)
+		}
+	}
+}
+
 func TestGetShowInfoPanel_DelegatesToMode(t *testing.T) {
 	cfg := NewConfig()
 	cfg.SetInfoPanelMode(InfoPanelOff)

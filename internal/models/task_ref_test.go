@@ -45,6 +45,17 @@ func TestParseTaskRef(t *testing.T) {
 			wantTask:  "",
 			wantCross: false,
 		},
+		{
+			// A trailing colon yields a non-empty ProjectID but an empty TaskID.
+			// Such a value is not a usable cross-project reference; treating it
+			// as one would cause pruneOrphanedRefs to preserve it forever even
+			// though no lookup could ever resolve it.
+			name:      "malformed cross-project ref with empty task ID",
+			input:     "my-project:",
+			wantProj:  "my-project",
+			wantTask:  "",
+			wantCross: false,
+		},
 	}
 
 	for _, tt := range tests {

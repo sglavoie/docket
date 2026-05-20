@@ -60,6 +60,12 @@ func detectEditorPattern(editor string) editorPattern {
 
 // OpenCodeReference opens a file at a specific line in the configured editor.
 func OpenCodeReference(editor, path string, line int) error {
+	if editor == "" {
+		return fmt.Errorf("no editor configured: set code_editor in ~/.tt.json")
+	}
+	if _, err := exec.LookPath(editor); err != nil {
+		return fmt.Errorf("editor %q not found in PATH", editor)
+	}
 	pattern := detectEditorPattern(editor)
 
 	var cmd *exec.Cmd

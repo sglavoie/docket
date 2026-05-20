@@ -36,8 +36,10 @@ func (c *Config) AddProject(project *models.Project) {
 // (scoring profiles, view states, focus queue, recent visits, cycle lists, etc.).
 func (c *Config) RemoveProject(id string) bool {
 	found := false
+	var removedSlug string
 	for i, p := range c.Projects {
 		if p.ID == id {
+			removedSlug = p.Slug
 			c.Projects = append(c.Projects[:i], c.Projects[i+1:]...)
 			found = true
 			break
@@ -47,7 +49,9 @@ func (c *Config) RemoveProject(id string) bool {
 		return false
 	}
 
-	if c.CurrentProject == id {
+	// Clear current-project pointer whether it stored the ID or the slug
+	// (legacy configs may have used the slug).
+	if c.CurrentProject == id || (removedSlug != "" && c.CurrentProject == removedSlug) {
 		c.CurrentProject = ""
 	}
 
