@@ -19,7 +19,7 @@ func (m *AppModel) handleInboxMessages(msg tea.Msg) (bool, tea.Cmd) {
 		return true, nil
 
 	case CloseInboxProcessorMsg:
-		m.popView()
+		popCmd := m.popView()
 		m.views.Remove(ViewInboxProcessor)
 		// Reload from disk to ensure we have the latest state
 		// (handles race condition if save Cmd is still in flight)
@@ -30,13 +30,13 @@ func (m *AppModel) handleInboxMessages(msg tea.Msg) (bool, tea.Cmd) {
 		if msg.ProcessedCount > 0 {
 			m.setSuccessStatus(fmt.Sprintf("Inbox clear! %d triaged. Next: plan your day (;w)",
 				msg.ProcessedCount))
-			return true, defaultStatusTimeout()
+			return true, tea.Batch(popCmd, defaultStatusTimeout())
 		} else if msg.SkippedCount > 0 {
 			m.setSuccessStatus(fmt.Sprintf("Inbox processing complete: %d skipped",
 				msg.SkippedCount))
-			return true, defaultStatusTimeout()
+			return true, tea.Batch(popCmd, defaultStatusTimeout())
 		}
-		return true, nil
+		return true, popCmd
 
 	case ShowGlobalInboxProcessorMsg:
 		processor := NewGlobalInboxProcessorModel(m.config, m.configManager)

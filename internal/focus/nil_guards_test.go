@@ -142,3 +142,29 @@ func TestAllChildrenCompleteNilTask(t *testing.T) {
 		t.Error("expected true for nil task")
 	}
 }
+
+// TestGetSuggestionReasonRecentActivityWithFutureUpdate regression-guards an
+// inconsistency between computeCrossProjectScore (which boosts tasks with
+// non-positive daysSinceUpdated as "recent") and getSuggestionReason (which
+// only checked == 0 and so omitted the "recent activity" reason for
+// future-dated UpdatedAt timestamps from clock skew or imported data).
+func TestGetSuggestionReasonRecentActivityWithFutureUpdate(t *testing.T) {
+	now := time.Now()
+	project, err := models.NewProject(uuid.New().String(), "P", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	task, err := models.NewTask(uuid.New().String(), 1, models.TaskTypeTask, "Future")
+	if err != nil {
+		t.Fatal(err)
+	}
+	task.Priority = 3
+	task.UpdatedAt = now.Add(48 * time.Hour) // future
+	task.CreatedAt = now
+	task.Status = models.StatusTodo
+
+	reason := getSuggestionReason(task, project, nil, now)
+	if !containsSubstring(reason, "ecent activity") {
+		t.Errorf("expected 'recent activity' for future UpdatedAt, got %q", reason)
+	}
+}

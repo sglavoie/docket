@@ -186,13 +186,17 @@ func TestApplyHierarchicalAction_CascadeTag(t *testing.T) {
 	}
 
 	action := RuleAction{ActionType: ActionCascadeTag, Value: "urgent"}
-	modified := applyHierarchicalAction(parent, action, evalCtx)
+	result := &EvaluationResult{}
+	modified := applyHierarchicalAction(parent, action, evalCtx, result)
 
 	if !modified {
 		t.Error("expected cascade_tag to modify at least one child")
 	}
 	if !child1.HasTag("urgent") {
 		t.Error("expected child1 to have 'urgent' tag after cascade")
+	}
+	if !containsTask(result.ModifiedTasks, child1) {
+		t.Error("expected cascaded child1 to be recorded as modified")
 	}
 }
 
@@ -206,7 +210,8 @@ func TestApplyHierarchicalAction_InheritTag(t *testing.T) {
 	}
 
 	action := RuleAction{ActionType: ActionInheritTag, Value: "urgent"}
-	modified := applyHierarchicalAction(child, action, evalCtx)
+	result := &EvaluationResult{}
+	modified := applyHierarchicalAction(child, action, evalCtx, result)
 
 	if !modified {
 		t.Error("expected inherit_tag to modify child")
@@ -226,7 +231,8 @@ func TestApplyHierarchicalAction_NotifyParent(t *testing.T) {
 	}
 
 	action := RuleAction{ActionType: ActionNotifyParent, Value: "Child completed"}
-	modified := applyHierarchicalAction(child, action, evalCtx)
+	result := &EvaluationResult{}
+	modified := applyHierarchicalAction(child, action, evalCtx, result)
 
 	if !modified {
 		t.Error("expected notify_parent to modify parent")
@@ -236,6 +242,9 @@ func TestApplyHierarchicalAction_NotifyParent(t *testing.T) {
 	}
 	if parent.Comments[0].Text != "[Workflow] Child completed" {
 		t.Errorf("unexpected comment text: %s", parent.Comments[0].Text)
+	}
+	if !containsTask(result.ModifiedTasks, parent) {
+		t.Error("expected parent (notified) to be recorded as modified")
 	}
 }
 

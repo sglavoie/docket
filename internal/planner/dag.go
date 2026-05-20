@@ -288,8 +288,17 @@ func ForwardSchedule(tasks []*models.Task, startDate time.Time, velocity float64
 	return result
 }
 
-// daysToduration converts a float64 day count to a time.Duration.
+// daysToduration converts a float64 day count to a time.Duration. Values that
+// would overflow time.Duration (~106k days) are clamped to the int64 limit so
+// scheduling math never returns garbage negative durations.
 func daysToduration(days float64) time.Duration {
+	const maxDays = float64(1<<62) / (24 * float64(time.Hour))
+	if days > maxDays {
+		return time.Duration(1 << 62)
+	}
+	if days < -maxDays {
+		return time.Duration(-(1 << 62))
+	}
 	return time.Duration(days * 24 * float64(time.Hour))
 }
 

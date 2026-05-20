@@ -410,7 +410,7 @@ func ParseMetadata(task *models.Task, metaStr string) []ParseWarning { //nolint:
 			}
 			task.EnsureEpicAttrs().Scope = scope
 		case "epic.milestone":
-			task.EnsureEpicAttrs().Milestone = value
+			task.EnsureEpicAttrs().Milestone = unescapeNewlines(value)
 		case "epic.metrics":
 			task.EnsureEpicAttrs().SuccessMetrics = unescapeNewlines(value)
 		case "epic.initial_children":

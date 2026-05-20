@@ -102,18 +102,21 @@ func runAttachmentRemove(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to remove attachment '%s' from task #%d", filename, task.ShortID)
 	}
 
-	// Delete file from disk if not a URL and not keeping file
-	if !isURL && !keepFile {
-		if err := storage.RemoveAttachmentFile(project, task, removed.Filename); err != nil {
-			fmt.Fprintf(os.Stderr, "warning: failed to delete file: %v\n", err)
-		}
-	}
-
+	// Persist the metadata change BEFORE deleting the file. If we deleted the
+	// file first and the save failed, the on-disk task would still reference a
+	// file that no longer exists.
 	if err := SaveProject(project, &SaveOptions{
 		Config: cfg, ConfigManager: configManager,
 		UndoAction: "Remove Attachment", UndoContext: filename,
 	}); err != nil {
 		return err
+	}
+
+	// Delete file from disk if not a URL and not keeping file
+	if !isURL && !keepFile {
+		if err := storage.RemoveAttachmentFile(project, task, removed.Filename); err != nil {
+			fmt.Fprintf(os.Stderr, "warning: failed to delete file: %v\n", err)
+		}
 	}
 
 	if out.Quiet {

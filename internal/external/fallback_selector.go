@@ -99,12 +99,19 @@ func FallbackMultiSelectTasks(tasks []*models.Task, prompt string) ([]*models.Ta
 		return nil, tterrors.ErrCanceled
 	}
 	var selected []*models.Task
+	// Deduplicate selections: entering "1,1,2" should select task #1 once
+	// (not twice) so that bulk operations don't double-apply.
+	seen := make(map[int]struct{})
 	for part := range strings.FieldsSeq(normalized) {
 		part = strings.TrimSpace(part)
 		n, convErr := strconv.Atoi(part)
 		if convErr != nil || n < 1 || n > len(tasks) {
 			return nil, fmt.Errorf("invalid selection: %s (enter a number between 1 and %d)", part, len(tasks))
 		}
+		if _, ok := seen[n]; ok {
+			continue
+		}
+		seen[n] = struct{}{}
 		selected = append(selected, tasks[n-1])
 	}
 

@@ -12,7 +12,7 @@ import (
 // applyActionWithContext applies an action with full context for hierarchical and deferred actions.
 func applyActionWithContext(task *models.Task, action RuleAction, evalCtx *EvaluationContext, result *EvaluationResult) bool {
 	if IsHierarchicalAction(action.ActionType) {
-		return applyHierarchicalAction(task, action, evalCtx)
+		return applyHierarchicalAction(task, action, evalCtx, result)
 	}
 
 	switch action.ActionType {
@@ -27,17 +27,22 @@ func applyActionWithContext(task *models.Task, action RuleAction, evalCtx *Evalu
 }
 
 // applyHierarchicalAction applies actions that operate on parent/children.
-func applyHierarchicalAction(task *models.Task, action RuleAction, evalCtx *EvaluationContext) bool {
+// When the action mutates a related task (parent or child), the related task
+// is appended to result.ModifiedTasks so the caller persists it alongside the
+// current task. Without this, parent/child mutations would be silently lost.
+func applyHierarchicalAction(task *models.Task, action RuleAction, evalCtx *EvaluationContext, result *EvaluationResult) bool {
 	switch action.ActionType {
 	case ActionCompleteParent:
 		if task.Parent != nil && !task.Parent.IsComplete() {
 			task.Parent.Complete()
+			recordModified(result, task.Parent)
 			return true
 		}
 
 	case ActionBlockParent:
 		if task.Parent != nil && task.Parent.Status != models.StatusBlocked {
 			task.Parent.Block()
+			recordModified(result, task.Parent)
 			return true
 		}
 
@@ -46,6 +51,7 @@ func applyHierarchicalAction(task *models.Task, action RuleAction, evalCtx *Eval
 		for _, child := range task.Children {
 			if !child.HasTag(action.Value) {
 				child.AddTag(action.Value)
+				recordModified(result, child)
 				modified = true
 			}
 		}
@@ -60,6 +66,7 @@ func applyHierarchicalAction(task *models.Task, action RuleAction, evalCtx *Eval
 	case ActionNotifyParent:
 		if task.Parent != nil {
 			task.Parent.AddComment("[Workflow] " + action.Value)
+			recordModified(result, task.Parent)
 			return true
 		}
 	default:
@@ -67,6 +74,19 @@ func applyHierarchicalAction(task *models.Task, action RuleAction, evalCtx *Eval
 
 	_ = evalCtx
 	return false
+}
+
+// recordModified appends t to result.ModifiedTasks if not already present
+// (pointer equality), so hierarchical mutations of parent/child tasks are
+// surfaced to the caller for persistence.
+func recordModified(result *EvaluationResult, t *models.Task) {
+	if result == nil || t == nil {
+		return
+	}
+	if containsTask(result.ModifiedTasks, t) {
+		return
+	}
+	result.ModifiedTasks = append(result.ModifiedTasks, t)
 }
 
 // applyCreateFollowup creates a new follow-up task linked to the original.

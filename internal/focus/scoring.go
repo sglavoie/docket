@@ -174,7 +174,7 @@ func getSuggestionReason(task *models.Task, project *models.Project, cfg *config
 	}
 
 	daysSinceUpdated := util.DaysBetween(task.UpdatedAt, now)
-	if daysSinceUpdated == 0 && task.Status != models.StatusInProgress {
+	if daysSinceUpdated <= 0 && task.Status != models.StatusInProgress {
 		reasons = append(reasons, "recent activity")
 	}
 

@@ -75,6 +75,18 @@ func childEffortDays(t *models.Task) (days float64, hasEffortData bool) {
 			return effortDaysUnknown, true
 		}
 	}
+	if t.IdeaAttrs != nil && t.IdeaAttrs.Effort != "" {
+		switch t.IdeaAttrs.Effort {
+		case models.EffortSmall:
+			return effortDaysSmall, true
+		case models.EffortMedium:
+			return effortDaysMedium, true
+		case models.EffortLarge:
+			return effortDaysLarge, true
+		case models.EffortUnknown:
+			return effortDaysUnknown, true
+		}
+	}
 	if t.StoryAttrs != nil && t.StoryAttrs.StoryPoints > 0 {
 		return float64(t.StoryAttrs.StoryPoints) * 0.5, true
 	}

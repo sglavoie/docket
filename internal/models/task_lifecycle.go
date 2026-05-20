@@ -409,10 +409,14 @@ func (t *Task) SkipRecurrence() {
 
 // DeferRecurrence pushes the due date forward by the given number of days.
 // Unlike SkipRecurrence, deferring does not affect the streak or skipped count.
-// No-op if the task is not recurring.
+// No-op if the task is not recurring or if days <= 0 (deferral must move the
+// due date forward; a negative or zero value would silently rewind it).
 // When the task carries a time-of-day (HasTime), the clock component is preserved.
 func (t *Task) DeferRecurrence(days int) {
 	if t.Recurrence == nil {
+		return
+	}
+	if days <= 0 {
 		return
 	}
 

@@ -29,8 +29,9 @@ func (m *AppModel) refreshAllViews() {
 //
 // Returns a tea.Cmd for status timeout if statusMsg is provided, nil otherwise.
 func (m *AppModel) handleWithRefresh(popView, reload bool, statusMsg string) tea.Cmd {
+	var popCmd tea.Cmd
 	if popView {
-		m.popView()
+		popCmd = m.popView()
 	}
 	if reload && m.currentProject != nil {
 		_ = m.persister.Load(m.currentProject)
@@ -39,9 +40,9 @@ func (m *AppModel) handleWithRefresh(popView, reload bool, statusMsg string) tea
 	m.refreshAllViews()
 	if statusMsg != "" {
 		m.setSuccessStatus(statusMsg)
-		return defaultStatusTimeout()
+		return tea.Batch(popCmd, defaultStatusTimeout())
 	}
-	return nil
+	return popCmd
 }
 
 // setSuccessStatus sets a status message with success styling (green checkmark).

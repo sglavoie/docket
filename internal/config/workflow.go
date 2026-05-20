@@ -208,10 +208,14 @@ func (c *Config) ResetChangedDefaultRules(enableRules bool) (updated, readded, u
 
 		// Compare rule content (semantic only, ignore metadata)
 		if rulesAreDifferent(existingRule, &shippedRule) {
-			// Reset to shipped values, preserve Enabled state unless enableRules is true
+			// Reset to shipped values. When enableRules is true the caller
+			// wants the rule turned on regardless of its previous state;
+			// otherwise preserve the user's prior enabled state.
 			preservedEnabled := existingRule.Enabled
 			*existingRule = shippedRule
-			if !enableRules {
+			if enableRules {
+				existingRule.Enabled = true
+			} else {
 				existingRule.Enabled = preservedEnabled
 			}
 			existingRule.TriggerCount = 0 // Reset trigger count
@@ -227,9 +231,13 @@ func (c *Config) ResetChangedDefaultRules(enableRules bool) (updated, readded, u
 
 	// Phase 2: Re-add deleted default rules
 	for _, rule := range defaultMap {
-		// These are default rules that were deleted by the user
-		if !enableRules {
-			rule.Enabled = false // Respect original disabled state
+		// These are default rules that were deleted by the user. Force the
+		// rule into the caller-requested enabled state so the --enable flag
+		// works consistently for both updates and re-adds.
+		if enableRules {
+			rule.Enabled = true
+		} else {
+			rule.Enabled = false
 		}
 		c.WorkflowRules = append(c.WorkflowRules, rule)
 		readded++

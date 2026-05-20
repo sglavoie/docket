@@ -116,6 +116,9 @@ func (p *Project) RelocateTaskToEndOfSection(taskID string, section string) {
 // SwapTasks swaps the positions of two tasks in the Tasks slice.
 // This is used when moving tasks within a filtered view where the target
 // task is known explicitly rather than being the immediate sibling.
+// Both tasks have UpdatedAt set so the markdown round-trip records the
+// reorder for each side (previously only task1 was touched, which left
+// task2 with a stale modification timestamp despite having moved).
 func (p *Project) SwapTasks(task1, task2 *Task) {
 	idx1 := p.findTaskIndex(task1)
 	idx2 := p.findTaskIndex(task2)
@@ -123,5 +126,7 @@ func (p *Project) SwapTasks(task1, task2 *Task) {
 		return
 	}
 	p.Tasks[idx1], p.Tasks[idx2] = p.Tasks[idx2], p.Tasks[idx1]
-	task1.UpdatedAt = time.Now()
+	now := time.Now()
+	task1.UpdatedAt = now
+	task2.UpdatedAt = now
 }

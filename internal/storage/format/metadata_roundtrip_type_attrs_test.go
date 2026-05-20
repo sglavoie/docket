@@ -171,3 +171,47 @@ func TestTypeAttrs_RoundTrip(t *testing.T) { //nolint:gocyclo
 		})
 	}
 }
+
+// TestEpicMilestone_NewlinesEscaped verifies that a newline in
+// EpicAttrs.Milestone is escaped on write and restored on read, instead of
+// truncating the metadata comment mid-line. Without the fix, a newline
+// terminates the HTML comment payload, corrupting every metadata key that
+// follows milestone (or even silently losing the milestone itself when the
+// re-parser cannot match the now-multi-line comment).
+func TestEpicMilestone_NewlinesEscaped(t *testing.T) {
+	original := &models.Task{
+		ID:       "epic-newline",
+		Type:     models.TaskTypeEpic,
+		Status:   models.StatusTodo,
+		Priority: 2,
+		EpicAttrs: &models.EpicAttrs{
+			Scope:     models.EpicScopeDefined,
+			Milestone: "Line one\nLine two\nLine three",
+		},
+	}
+
+	metaStr := WriteMetadata(original)
+
+	// Sanity: the entire metadata string must remain a single line so the
+	// surrounding parser (which scans line-by-line) does not break apart.
+	for i := 0; i < len(metaStr); i++ {
+		if metaStr[i] == '\n' {
+			t.Fatalf("metadata contains raw newline at byte %d: %q", i, metaStr)
+		}
+	}
+
+	if len(metaStr) < 8 {
+		t.Fatalf("invalid metadata: %q", metaStr)
+	}
+	content := metaStr[5 : len(metaStr)-4]
+
+	parsed := &models.Task{Type: models.TaskTypeEpic}
+	ParseMetadata(parsed, content)
+
+	if parsed.EpicAttrs == nil {
+		t.Fatal("EpicAttrs is nil after roundtrip")
+	}
+	if parsed.EpicAttrs.Milestone != original.EpicAttrs.Milestone {
+		t.Errorf("Milestone = %q, want %q", parsed.EpicAttrs.Milestone, original.EpicAttrs.Milestone)
+	}
+}

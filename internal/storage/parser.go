@@ -397,11 +397,20 @@ func ParseProjectNameFromFile(filePath string) (string, error) {
 	// project name. See the matching strip in ParseTasksMarkdownWithSections.
 	text := strings.TrimPrefix(string(content), "\uFEFF")
 	scanner := bufio.NewScanner(strings.NewReader(text))
+	// Match the buffer growth used by the main parser so files with very long
+	// first lines (e.g. base64 content, long single-line metadata) don't cause
+	// the project-title scan to silently abort. Without this the default 64KB
+	// limit would make ParseProjectNameFromFile report "project name not found"
+	// for any file whose project line is preceded by an oversize line.
+	scanner.Buffer(make([]byte, 0, scannerInitBufSize), scannerMaxBufSize)
 	for scanner.Scan() {
 		line := scanner.Text()
 		if matches := projectRegex.FindStringSubmatch(line); matches != nil {
 			return strings.TrimSpace(matches[1]), nil
 		}
+	}
+	if err := scanner.Err(); err != nil {
+		return "", fmt.Errorf("%w: %w", tterrors.ErrParseError, err)
 	}
 
 	return "", fmt.Errorf("%w: project name not found in file", tterrors.ErrParseError)

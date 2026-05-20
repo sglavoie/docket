@@ -216,3 +216,98 @@ func TestMutateTask_NilFnReturnsFalse(t *testing.T) {
 		t.Error("UpdatedAt should not change when fn is nil")
 	}
 }
+
+// TestDeferRecurrence_RejectsNonPositiveDays verifies that DeferRecurrence is a
+// no-op when called with zero or negative days. The function's contract is to
+// "push the due date forward"; before the fix, a negative argument silently
+// rewound the due date (and a zero argument touched UpdatedAt without changing
+// the date), both of which could corrupt a user's schedule via a single
+// off-by-sign bug in a caller.
+func TestDeferRecurrence_RejectsNonPositiveDays(t *testing.T) {
+	makeRecurringTask := func() *Task {
+		task, err := NewTask("id", 1, TaskTypeTask, "T")
+		if err != nil {
+			t.Fatal(err)
+		}
+		due := time.Date(2026, 6, 10, 0, 0, 0, 0, time.Local)
+		task.DueDate = &due
+		if err := task.SetRecurrence(&RecurrencePattern{Unit: RecurrenceDaily, Interval: 1}); err != nil {
+			t.Fatal(err)
+		}
+		return task
+	}
+
+	t.Run("negative days is a no-op", func(t *testing.T) {
+		task := makeRecurringTask()
+		originalDue := *task.DueDate
+		originalUpdatedAt := task.UpdatedAt
+
+		task.DeferRecurrence(-5)
+
+		if !task.DueDate.Equal(originalDue) {
+			t.Errorf("expected DueDate unchanged, got %v (was %v)", *task.DueDate, originalDue)
+		}
+		if !task.UpdatedAt.Equal(originalUpdatedAt) {
+			t.Error("expected UpdatedAt unchanged for non-positive defer")
+		}
+	})
+
+	t.Run("zero days is a no-op", func(t *testing.T) {
+		task := makeRecurringTask()
+		originalDue := *task.DueDate
+		originalUpdatedAt := task.UpdatedAt
+
+		task.DeferRecurrence(0)
+
+		if !task.DueDate.Equal(originalDue) {
+			t.Errorf("expected DueDate unchanged, got %v (was %v)", *task.DueDate, originalDue)
+		}
+		if !task.UpdatedAt.Equal(originalUpdatedAt) {
+			t.Error("expected UpdatedAt unchanged for non-positive defer")
+		}
+	})
+
+	t.Run("positive days still works", func(t *testing.T) {
+		task := makeRecurringTask()
+		task.DeferRecurrence(3)
+		expected := time.Date(2026, 6, 13, 0, 0, 0, 0, time.Local)
+		if !task.DueDate.Equal(expected) {
+			t.Errorf("expected %v, got %v", expected, *task.DueDate)
+		}
+	})
+}
+
+// TestSwapTasks_UpdatesBothTimestamps verifies that SwapTasks updates the
+// UpdatedAt of BOTH swapped tasks, not just task1. Before the fix only
+// task1.UpdatedAt was set, which left task2 with a stale modification
+// timestamp despite the fact that its position in the Tasks slice changed.
+// The markdown round-trip orders tasks by slice position, so a stale
+// UpdatedAt on task2 obscures when its location last changed.
+func TestSwapTasks_UpdatesBothTimestamps(t *testing.T) {
+	p, err := NewProject("p", "P", "/")
+	if err != nil {
+		t.Fatal(err)
+	}
+	task1, err := NewTask("a", 1, TaskTypeTask, "A")
+	if err != nil {
+		t.Fatal(err)
+	}
+	task2, err := NewTask("b", 2, TaskTypeTask, "B")
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Backdate both tasks so we can detect a fresh UpdatedAt.
+	stale := time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC)
+	task1.UpdatedAt = stale
+	task2.UpdatedAt = stale
+	p.Tasks = []*Task{task1, task2}
+
+	p.SwapTasks(task1, task2)
+
+	if task1.UpdatedAt.Equal(stale) {
+		t.Error("task1.UpdatedAt should be refreshed after swap")
+	}
+	if task2.UpdatedAt.Equal(stale) {
+		t.Error("task2.UpdatedAt should be refreshed after swap (regression: only task1 was touched)")
+	}
+}

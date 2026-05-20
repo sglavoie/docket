@@ -75,9 +75,11 @@ func MatchTerms(text, query string) bool {
 
 // ScoreWithPositions returns both a match score and the indices in text where matches occurred.
 // Returns 0 score and nil positions if there is no match.
-// Positions are 0-indexed rune positions in the original text (before lowercasing);
-// callers that need to slice the original string by these positions must index
-// via []rune(text), not by byte offset.
+// Positions are 0-indexed rune positions in the lowercased text. For almost all
+// inputs the lowercased rune sequence has the same length as the original text,
+// so callers can safely use these indices on []rune(text). Note that a handful
+// of unicode codepoints (e.g. Turkish "İ") lowercase to multiple runes; for
+// those callers should not assume strict 1:1 alignment with the original text.
 func ScoreWithPositions(text, pattern string) (int, []int) {
 	if pattern == "" {
 		return 1, nil

@@ -288,19 +288,24 @@ func runTaskAdd(cmd *cobra.Command, args []string) error { //nolint:gocyclo
 			}
 		}
 
-		// Increment template use count (template was used regardless of checklist)
-		cfg.IncrementTemplateUseCount(tmpl.ID)
-		if err := saveConfig(configManager, cfg); err != nil {
-			return err
-		}
 	}
 
-	// Save with workflow rules evaluation (state-based rules will fire for new tasks)
+	// Save with workflow rules evaluation (state-based rules will fire for new tasks).
+	// Persist the project FIRST so a failed save doesn't leave the template
+	// counter bumped without a corresponding task on disk.
 	if err := SaveProject(project, &SaveOptions{
 		EvaluateRules: true, Config: cfg, ConfigManager: configManager,
 		UndoAction: "Add Task", UndoContext: fmt.Sprintf("#%d %s", shortID, title),
 	}); err != nil {
 		return tterrors.NewSaveProjectError(project.Name, err)
+	}
+
+	// Increment template use count only after the task is durably saved.
+	if tmpl != nil {
+		cfg.IncrementTemplateUseCount(tmpl.ID)
+		if err := saveConfig(configManager, cfg); err != nil {
+			return err
+		}
 	}
 
 	if err := out.OutputTask(project.Name, "Created", task); err != nil {

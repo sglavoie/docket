@@ -157,19 +157,28 @@ func ParseRelativeDateWithConfig(input, weekEndDay string) (time.Time, error) {
 
 	// Relative: +Nd (days)
 	if match := relativeDaysRe.FindStringSubmatch(input); len(match) == 2 {
-		days, _ := strconv.Atoi(match[1])
+		days, err := strconv.Atoi(match[1])
+		if err != nil {
+			return time.Time{}, fmt.Errorf("invalid number of days in %q", input)
+		}
 		return today.AddDate(0, 0, days), nil
 	}
 
 	// Relative: +Nw (weeks)
 	if match := relativeWeeksRe.FindStringSubmatch(input); len(match) == 2 {
-		weeks, _ := strconv.Atoi(match[1])
+		weeks, err := strconv.Atoi(match[1])
+		if err != nil {
+			return time.Time{}, fmt.Errorf("invalid number of weeks in %q", input)
+		}
 		return today.AddDate(0, 0, weeks*7), nil
 	}
 
 	// Relative: +Nm (months)
 	if match := relativeMonthsRe.FindStringSubmatch(input); len(match) == 2 {
-		months, _ := strconv.Atoi(match[1])
+		months, err := strconv.Atoi(match[1])
+		if err != nil {
+			return time.Time{}, fmt.Errorf("invalid number of months in %q", input)
+		}
 		return today.AddDate(0, months, 0), nil
 	}
 
@@ -219,7 +228,10 @@ func ParseRelativeDateWithConfig(input, weekEndDay string) (time.Time, error) {
 
 	// "in N days/weeks/months/years"
 	if match := inDurationRe.FindStringSubmatch(input); len(match) == 3 {
-		n, _ := strconv.Atoi(match[1])
+		n, err := strconv.Atoi(match[1])
+		if err != nil {
+			return time.Time{}, fmt.Errorf("invalid duration in %q", input)
+		}
 		switch match[2] {
 		case "day", "days":
 			return today.AddDate(0, 0, n), nil
@@ -279,7 +291,10 @@ func ParseFlexibleDateWithConfig(input, weekEndDay string) (time.Time, error) {
 		return t, nil
 	}
 	if match := flexShorthandRe.FindStringSubmatch(strings.ToLower(strings.TrimSpace(input))); len(match) == 3 {
-		n, _ := strconv.Atoi(match[1])
+		n, atoiErr := strconv.Atoi(match[1])
+		if atoiErr != nil {
+			return time.Time{}, fmt.Errorf("invalid number in %q", input)
+		}
 		today := StartOfDay(time.Now())
 		switch match[2] {
 		case "d":

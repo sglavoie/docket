@@ -76,7 +76,7 @@ func (m *AppModel) handleTaskCreated(msg TaskCreatedMsg) (bool, tea.Cmd) {
 	if m.currentProject != nil {
 		preCaptureCount = len(m.currentProject.Tasks)
 	}
-	m.handleWithRefresh(!fromOverlay, true, "")
+	refreshCmd := m.handleWithRefresh(!fromOverlay, true, "")
 
 	// Navigate cursor to the newly created task
 	if msg.Task != nil && m.currentProject != nil {
@@ -124,24 +124,24 @@ func (m *AppModel) handleTaskCreated(msg TaskCreatedMsg) (bool, tea.Cmd) {
 				} else {
 					openMsg = EditTaskContentMsg{Task: freshTask, Project: project}
 				}
-				return true, tea.Batch(cmd, statusTimeout(2*time.Second), func() tea.Msg {
+				return true, tea.Batch(refreshCmd, cmd, statusTimeout(2*time.Second), func() tea.Msg {
 					return openMsg
 				})
 			}
 		}
 	}
 
-	return true, tea.Batch(cmd, statusTimeout(2*time.Second))
+	return true, tea.Batch(refreshCmd, cmd, statusTimeout(2*time.Second))
 }
 
 // handleTaskUpdated handles the TaskUpdatedMsg.
 func (m *AppModel) handleTaskUpdated(msg TaskUpdatedMsg) (bool, tea.Cmd) {
 	// Common pattern: pop view, reload, refresh
-	m.handleWithRefresh(true, true, "")
+	refreshCmd := m.handleWithRefresh(true, true, "")
 	// Delegate to current view (e.g., inbox processor) so it can reload its state
 	cmd := m.views.Update(m.currentView(), msg)
 	m.syncInboxProcessor()
-	return true, cmd
+	return true, tea.Batch(refreshCmd, cmd)
 }
 
 // handleTaskDeleted handles the TaskDeletedMsg.

@@ -390,3 +390,91 @@ func TestHasRuleWithID(t *testing.T) {
 		t.Error("HasRuleWithID should return false for nonexistent rule")
 	}
 }
+
+// TestResetChangedDefaultRules_EnableRulesTrueAppliesToAll verifies that the
+// enableRules flag forces every affected rule into the enabled state, both
+// for updated rules whose content drifted and for re-added rules that the
+// user had deleted. Previously, enableRules=true only suppressed the
+// "preserve" path for updates and left re-added rules with their shipped
+// (mostly disabled) state, so `--enable` silently failed to enable them.
+func TestResetChangedDefaultRules_EnableRulesTrueAppliesToAll(t *testing.T) {
+	cfg := NewConfig()
+
+	// Seed with the first two default rules to exercise both phases:
+	// rule 0 has its content drifted (will be updated),
+	// rule 1 is omitted entirely (will be re-added in phase 2).
+	defaults := []workflow.WorkflowRule{}
+	for _, r := range workflowDefaultsCopy() {
+		defaults = append(defaults, r)
+		if len(defaults) == 1 {
+			break
+		}
+	}
+	if len(defaults) == 0 {
+		t.Fatal("no default rules available")
+	}
+	drifted := defaults[0]
+	drifted.Name = "modified-by-user"
+	drifted.Enabled = false
+	cfg.WorkflowRules = []workflow.WorkflowRule{drifted}
+
+	updated, readded, _, _ := cfg.ResetChangedDefaultRules(true)
+	if updated < 1 {
+		t.Errorf("expected at least 1 updated rule, got %d", updated)
+	}
+	if readded < 1 {
+		t.Errorf("expected at least 1 re-added rule, got %d", readded)
+	}
+	for _, r := range cfg.WorkflowRules {
+		if r.Source != "default" {
+			continue
+		}
+		if !r.Enabled {
+			t.Errorf("rule %q expected enabled after enableRules=true, got disabled", r.ID)
+		}
+	}
+}
+
+// TestResetChangedDefaultRules_EnableRulesFalsePreservesUserState verifies
+// that enableRules=false keeps the user's enabled state for drifted rules
+// and disables newly re-added rules (matching the original semantics).
+func TestResetChangedDefaultRules_EnableRulesFalsePreservesUserState(t *testing.T) {
+	cfg := NewConfig()
+
+	// Pick the first default rule, mark it user-enabled but with drifted content.
+	defs := workflowDefaultsCopy()
+	if len(defs) == 0 {
+		t.Fatal("no default rules available")
+	}
+	drifted := defs[0]
+	drifted.Name = "user-renamed"
+	drifted.Enabled = true
+	cfg.WorkflowRules = []workflow.WorkflowRule{drifted}
+
+	cfg.ResetChangedDefaultRules(false)
+
+	var found bool
+	for _, r := range cfg.WorkflowRules {
+		if r.ID == drifted.ID {
+			found = true
+			if !r.Enabled {
+				t.Error("drifted rule should preserve user-enabled state when enableRules=false")
+			}
+		} else if r.Source == "default" && r.Enabled {
+			// Re-added defaults should be disabled.
+			t.Errorf("re-added rule %q should be disabled when enableRules=false", r.ID)
+		}
+	}
+	if !found {
+		t.Error("drifted rule missing from result")
+	}
+}
+
+// workflowDefaultsCopy returns a fresh copy of the shipped default rules so
+// tests can mutate them without affecting the global default set.
+func workflowDefaultsCopy() []workflow.WorkflowRule {
+	src := workflow.GetDefaultRules()
+	out := make([]workflow.WorkflowRule, len(src))
+	copy(out, src)
+	return out
+}

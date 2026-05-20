@@ -204,7 +204,11 @@ func WriteMetadata(task *models.Task) string { //nolint:gocyclo
 			parts = append(parts, fmt.Sprintf("epic.scope: %s", task.EpicAttrs.Scope))
 		}
 		if task.EpicAttrs.Milestone != "" {
-			parts = append(parts, fmt.Sprintf("epic.milestone: %s", task.EpicAttrs.Milestone))
+			// Escape newlines: milestone is single-line metadata, but the
+			// text-editor UI lets users paste multi-line input. Without
+			// escaping, a newline would terminate the metadata comment
+			// mid-line and corrupt every subsequent metadata field.
+			parts = append(parts, fmt.Sprintf("epic.milestone: %s", escapeNewlines(task.EpicAttrs.Milestone)))
 		}
 		if task.EpicAttrs.SuccessMetrics != "" {
 			parts = append(parts, fmt.Sprintf("epic.metrics: %s", escapeNewlines(task.EpicAttrs.SuccessMetrics)))

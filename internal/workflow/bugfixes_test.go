@@ -7,6 +7,67 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 )
 
+// TestApplyHierarchicalAction_RecordsParentInModifiedTasks ensures that a
+// rule mutating a parent via ActionCompleteParent surfaces the parent in
+// result.ModifiedTasks. Without this, the caller would silently lose the
+// parent's status change at persist time.
+func TestApplyHierarchicalAction_RecordsParentInModifiedTasks(t *testing.T) {
+	parent := &models.Task{ID: "p", Status: models.StatusTodo}
+	child := &models.Task{ID: "c", Status: models.StatusDone, Parent: parent}
+	parent.Children = []*models.Task{child}
+
+	evalCtx := &EvaluationContext{
+		Changes: []TaskChangeContext{
+			{Task: child, Previous: &models.Task{ID: "c", Status: models.StatusInProgress}},
+		},
+		AllTasks: []*models.Task{parent, child},
+		TaskMap:  map[string]*models.Task{"p": parent, "c": child},
+	}
+
+	rules := []WorkflowRule{
+		{
+			ID:      "r1",
+			Name:    "Complete parent when child completes",
+			Enabled: true,
+			Trigger: RuleTrigger{Field: FieldCompleted, Operation: OpEquals, Value: "true"},
+			Actions: []RuleAction{{ActionType: ActionCompleteParent}},
+		},
+	}
+
+	result := EvaluateRulesWithContext(evalCtx, rules)
+	if !parent.IsComplete() {
+		t.Fatalf("expected parent to be completed, got status %q", parent.Status)
+	}
+	if !containsTask(result.ModifiedTasks, parent) {
+		t.Errorf("expected parent in ModifiedTasks, got %d entries", len(result.ModifiedTasks))
+	}
+}
+
+// TestApplyHierarchicalAction_BlockParentRecorded verifies the parent is
+// surfaced as modified when ActionBlockParent fires.
+func TestApplyHierarchicalAction_BlockParentRecorded(t *testing.T) {
+	parent := &models.Task{ID: "p", Status: models.StatusTodo}
+	child := &models.Task{ID: "c", Status: models.StatusBlocked, Parent: parent}
+	parent.Children = []*models.Task{child}
+
+	evalCtx := &EvaluationContext{
+		AllTasks: []*models.Task{parent, child},
+		TaskMap:  map[string]*models.Task{"p": parent, "c": child},
+	}
+
+	result := &EvaluationResult{}
+	modified := applyHierarchicalAction(child, RuleAction{ActionType: ActionBlockParent}, evalCtx, result)
+	if !modified {
+		t.Fatal("expected modified")
+	}
+	if parent.Status != models.StatusBlocked {
+		t.Fatalf("expected parent blocked, got %q", parent.Status)
+	}
+	if !containsTask(result.ModifiedTasks, parent) {
+		t.Error("expected blocked parent in ModifiedTasks")
+	}
+}
+
 // TestApplyAction_SetRecurrenceUnchangedNoOp verifies that setting the same
 // recurrence pattern that is already on the task does not report the task as
 // modified. Reporting spurious modifications causes recursive re-evaluation

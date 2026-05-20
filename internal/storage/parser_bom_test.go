@@ -3,6 +3,7 @@ package storage
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -56,5 +57,32 @@ func TestParseProjectNameFromFile_StripsLeadingBOM(t *testing.T) {
 	}
 	if name != "With BOM" {
 		t.Errorf("expected 'With BOM', got %q", name)
+	}
+}
+
+// TestParseProjectNameFromFile_HandlesLongLines verifies that
+// ParseProjectNameFromFile uses the same large scanner buffer as the main
+// parser. Regression for a bug where files containing any line above the
+// default 64KB bufio limit before the project heading caused the scan to
+// abort silently and the function to report "project name not found",
+// effectively losing the project's name on load.
+func TestParseProjectNameFromFile_HandlesLongLines(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "tasks.md")
+	// A 200KB single-line HTML comment preceding the project heading would
+	// blow the default 64KB scanner buffer. The buffer increase added to
+	// ParseProjectNameFromFile must accept this gracefully.
+	longComment := "<!-- " + strings.Repeat("x", 200*1024) + " -->\n"
+	content := longComment + "# Project: Long Lines\n"
+	if err := os.WriteFile(path, []byte(content), 0o600); err != nil {
+		t.Fatalf("write temp file: %v", err)
+	}
+
+	name, err := ParseProjectNameFromFile(path)
+	if err != nil {
+		t.Fatalf("unexpected error parsing long-line file: %v", err)
+	}
+	if name != "Long Lines" {
+		t.Errorf("expected 'Long Lines', got %q", name)
 	}
 }
