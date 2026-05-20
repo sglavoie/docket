@@ -11,8 +11,14 @@ func (p *Project) GetRootTasks() []*Task {
 	return roots
 }
 
-// GetTaskByID finds a task by its UUID.
+// GetTaskByID finds a task by its UUID. An empty id always returns nil so
+// that a caller passing an unset identifier cannot accidentally match a task
+// whose own ID became empty after a malformed parse (mirrors the guard in
+// FindActionTaskByID).
 func (p *Project) GetTaskByID(id string) *Task {
+	if id == "" {
+		return nil
+	}
 	for _, task := range p.Tasks {
 		if task.ID == id {
 			return task

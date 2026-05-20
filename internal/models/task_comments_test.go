@@ -98,3 +98,36 @@ func TestUnresolvedCommentCount(t *testing.T) {
 		}
 	})
 }
+
+func TestAddComment_RejectsEmptyAndWhitespace(t *testing.T) {
+	cases := []struct {
+		name string
+		text string
+	}{
+		{"empty", ""},
+		{"spaces", "   "},
+		{"tabs", "\t\t"},
+		{"newlines", "\n\n"},
+		{"mixed whitespace", " \t\n  "},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			task := &Task{}
+			task.AddComment(tc.text)
+			if len(task.Comments) != 0 {
+				t.Fatalf("expected 0 comments after AddComment(%q), got %d", tc.text, len(task.Comments))
+			}
+		})
+	}
+}
+
+func TestAddComment_KeepsNonEmptyTextWithSurroundingSpace(t *testing.T) {
+	task := &Task{}
+	task.AddComment("  meaningful note  ")
+	if len(task.Comments) != 1 {
+		t.Fatalf("expected 1 comment, got %d", len(task.Comments))
+	}
+	if task.Comments[0].Text != "  meaningful note  " {
+		t.Errorf("expected text to be preserved verbatim, got %q", task.Comments[0].Text)
+	}
+}

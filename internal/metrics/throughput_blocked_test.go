@@ -154,4 +154,38 @@ func TestBlocked(t *testing.T) {
 			t.Errorf("expected longest-blocked first, got %s", result.Entries[0].Task.ID)
 		}
 	})
+
+	t.Run("equal blocked durations are ordered by ID for stability", func(t *testing.T) {
+		// Two tasks blocked for exactly the same duration must produce a
+		// deterministic ordering across repeated invocations so the UI list
+		// does not shuffle rows on each refresh.
+		mkBlocked := func(id string) *models.Task {
+			tsk := makeTask(models.StatusDone, timePtr(now), []*models.ActivityEntry{
+				{Timestamp: now.AddDate(0, 0, -4), Field: "status", OldValue: "in_progress", NewValue: "blocked"},
+				{Timestamp: now.AddDate(0, 0, -2), Field: "status", OldValue: "blocked", NewValue: "in_progress"},
+			})
+			tsk.ID = id
+			return tsk
+		}
+
+		// Repeat several times to defeat any incidental input-order coincidence.
+		inputs := [][]*models.Task{
+			{mkBlocked("c"), mkBlocked("a"), mkBlocked("b")},
+			{mkBlocked("a"), mkBlocked("b"), mkBlocked("c")},
+			{mkBlocked("b"), mkBlocked("c"), mkBlocked("a")},
+		}
+		for _, in := range inputs {
+			result := computeBlocked(in, now, nil)
+			if len(result.Entries) != 3 {
+				t.Fatalf("expected 3 entries, got %d", len(result.Entries))
+			}
+			gotIDs := []string{result.Entries[0].Task.ID, result.Entries[1].Task.ID, result.Entries[2].Task.ID}
+			wantIDs := []string{"a", "b", "c"}
+			for i, w := range wantIDs {
+				if gotIDs[i] != w {
+					t.Fatalf("expected ID-sorted order %v, got %v", wantIDs, gotIDs)
+				}
+			}
+		}
+	})
 }

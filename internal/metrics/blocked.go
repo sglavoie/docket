@@ -21,9 +21,14 @@ func computeBlocked(tasks []*models.Task, now time.Time, taskProject map[*models
 		}
 	}
 
-	// Sort by total blocked time descending
+	// Sort by total blocked time descending, breaking ties on Task.ID so that
+	// repeated invocations on the same data produce a deterministic ordering
+	// (the entries are presented in a UI list where rows must not shuffle).
 	sort.Slice(entries, func(i, j int) bool {
-		return entries[i].TotalBlocked > entries[j].TotalBlocked
+		if entries[i].TotalBlocked != entries[j].TotalBlocked {
+			return entries[i].TotalBlocked > entries[j].TotalBlocked
+		}
+		return entries[i].Task.ID < entries[j].Task.ID
 	})
 
 	result := BlockedResult{

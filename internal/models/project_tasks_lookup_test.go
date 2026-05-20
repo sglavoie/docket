@@ -70,6 +70,29 @@ func TestProjectGetTaskByID(t *testing.T) {
 	}
 }
 
+func TestProjectGetTaskByID_EmptyIDReturnsNil(t *testing.T) {
+	// Even if a malformed parse left a task with an empty ID in the project,
+	// a caller passing an unset identifier must not silently match it.
+	project, err := NewProject("test", "Test", "/tmp/test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	good, err := NewTask("good", 1, TaskTypeTask, "Good")
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Simulate a corrupted on-disk task whose ID failed to parse.
+	corrupted := &Task{ID: "", ShortID: 99, Title: "Corrupted", Type: TaskTypeTask}
+	project.Tasks = []*Task{good, corrupted}
+
+	if got := project.GetTaskByID(""); got != nil {
+		t.Errorf("GetTaskByID(\"\") returned %+v, want nil", got)
+	}
+	if got := project.GetTaskByID("good"); got != good {
+		t.Errorf("GetTaskByID(\"good\") = %+v, want good task", got)
+	}
+}
+
 func TestProjectGetTaskByShortID(t *testing.T) {
 	project, err := NewProject("test", "Test", "/tmp/test")
 	if err != nil {

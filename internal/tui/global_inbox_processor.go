@@ -53,7 +53,11 @@ func (m *GlobalInboxProcessorModel) loadAllInboxTasks() {
 	}
 
 	sort.Slice(m.inboxTasks, func(i, j int) bool {
-		return m.inboxTasks[i].Task.CreatedAt.Before(m.inboxTasks[j].Task.CreatedAt)
+		ci, cj := m.inboxTasks[i].Task.CreatedAt, m.inboxTasks[j].Task.CreatedAt
+		if !ci.Equal(cj) {
+			return ci.Before(cj)
+		}
+		return m.inboxTasks[i].Task.ID < m.inboxTasks[j].Task.ID
 	})
 }
 

@@ -45,9 +45,16 @@ func (m *RecentActivityModel) loadTasks() {
 		}
 	}
 
-	// Sort by UpdatedAt descending
+	// Sort by UpdatedAt descending, breaking ties on Task.ID to keep ordering
+	// deterministic before the cap-at-limit truncation below. Without the
+	// tiebreak, tasks updated in the same millisecond (common during bulk
+	// imports) could be partially retained in arbitrary order.
 	sort.Slice(m.tasks, func(i, j int) bool {
-		return m.tasks[i].Task.UpdatedAt.After(m.tasks[j].Task.UpdatedAt)
+		ti, tj := m.tasks[i].Task.UpdatedAt, m.tasks[j].Task.UpdatedAt
+		if !ti.Equal(tj) {
+			return ti.After(tj)
+		}
+		return m.tasks[i].Task.ID < m.tasks[j].Task.ID
 	})
 
 	// Cap at limit
