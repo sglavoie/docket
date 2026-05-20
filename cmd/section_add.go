@@ -39,6 +39,14 @@ func runSectionAdd(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	// Reject names that collide with built-in GTD sections (Inbox, Next, Waiting,
+	// Someday, Review, Standby, Completed). Without this check the section is
+	// silently appended to project.Sections, creating a duplicate that conflicts
+	// with the built-in section in views and filters.
+	if models.IsGTDSection(sectionName) {
+		return fmt.Errorf("cannot add section '%s': name is reserved for the built-in section", sectionName)
+	}
+
 	project, cfg, configManager, err := LoadCurrentProject()
 	if err != nil {
 		return err

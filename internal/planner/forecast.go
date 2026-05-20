@@ -66,6 +66,8 @@ func childEffortDays(t *models.Task) (days float64, hasEffortData bool) {
 			return effortDaysMedium, true
 		case models.EffortLarge:
 			return effortDaysLarge, true
+		case models.EffortUnknown:
+			return effortDaysUnknown, true
 		}
 	}
 	if t.StoryAttrs != nil && t.StoryAttrs.StoryPoints > 0 {

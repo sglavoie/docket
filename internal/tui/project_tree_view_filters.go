@@ -226,7 +226,8 @@ func (m *ProjectTreeModel) activeFilterParts() []string {
 		parts = append(parts, "completed")
 	}
 
-	// Add common filter parts
+	// Add common filter parts. commonFilterParts already emits "ready" for
+	// Actionable; do not re-append it as a view-specific part below.
 	parts = append(parts, commonFilterParts(&m.filter.CommonFilterState)...)
 
 	// Add view-specific filter parts
@@ -236,9 +237,6 @@ func (m *ProjectTreeModel) activeFilterParts() []string {
 			secNames = append(secNames, "@"+sec)
 		}
 		parts = append(parts, strings.Join(secNames, " "))
-	}
-	if m.filter.Actionable {
-		parts = append(parts, "ready")
 	}
 
 	return parts

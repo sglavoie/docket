@@ -104,6 +104,51 @@ func TestSectionRename(t *testing.T) {
 	})
 }
 
+// TestSectionRenameRejectsGTDTarget is a regression test for a bug where
+// `tt section rename Foo Inbox` succeeded, renaming a custom section to a
+// built-in GTD name and creating a duplicate that conflicts with the
+// built-in section in filters and views.
+func TestSectionRenameRejectsGTDTarget(t *testing.T) {
+	builtIns := []string{
+		models.SectionNext,
+		models.SectionInbox,
+		models.SectionWaiting,
+		models.SectionSomeday,
+		models.SectionReview,
+		models.SectionStandby,
+		models.SectionCompleted,
+	}
+	for _, name := range builtIns {
+		t.Run("rejects target "+name, func(t *testing.T) {
+			deps, project := setupSectionCommandTest(t)
+			project.EnsureSection("Custom")
+			deps.Repository.Projects[project.ID] = project
+
+			err := runSectionRename(nil, []string{"Custom", name})
+			if err == nil {
+				t.Fatalf("runSectionRename to %q should error: built-in GTD name must be rejected as target", name)
+			}
+			saved := deps.Repository.Projects[project.ID]
+			if saved == nil {
+				return
+			}
+			// "Custom" should still exist after the failed rename. We don't assert
+			// that the GTD name is absent from p.Sections because models.NewProject
+			// pre-seeds p.Sections with SectionNext.
+			foundCustom := false
+			for _, s := range saved.Sections {
+				if s == "Custom" {
+					foundCustom = true
+					break
+				}
+			}
+			if !foundCustom {
+				t.Fatalf("original section %q was lost on failed rename to %q", "Custom", name)
+			}
+		})
+	}
+}
+
 func TestSectionRenameBuiltInSections(t *testing.T) {
 	builtInSections := []string{
 		models.SectionNext,

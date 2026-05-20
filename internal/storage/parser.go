@@ -57,6 +57,11 @@ func ParseTasksMarkdown(content string) (string, []*models.Task, error) {
 // ParseTasksMarkdownWithSections parses a tasks.md file content into tasks and sections.
 // Returns a ParseResult containing the project name, tasks, and sections.
 func ParseTasksMarkdownWithSections(content string) (*ParseResult, error) {
+	// Strip a leading UTF-8 BOM (0xEF 0xBB 0xBF) if present. Editors on
+	// Windows occasionally save tasks.md with a BOM, which would otherwise
+	// be glued onto the first line and prevent the project-title regex from
+	// matching — silently losing the project name on load.
+	content = strings.TrimPrefix(content, "\uFEFF")
 	scanner := bufio.NewScanner(strings.NewReader(content))
 	// Increase buffer to 1MB to handle files with long lines (e.g., base64
 	// content in descriptions, very long metadata comments). The default 64KB
@@ -388,7 +393,10 @@ func ParseProjectNameFromFile(filePath string) (string, error) {
 		return "", err
 	}
 
-	scanner := bufio.NewScanner(strings.NewReader(string(content)))
+	// Strip a leading UTF-8 BOM so files saved with one still expose their
+	// project name. See the matching strip in ParseTasksMarkdownWithSections.
+	text := strings.TrimPrefix(string(content), "\uFEFF")
+	scanner := bufio.NewScanner(strings.NewReader(text))
 	for scanner.Scan() {
 		line := scanner.Text()
 		if matches := projectRegex.FindStringSubmatch(line); matches != nil {

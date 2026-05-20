@@ -205,10 +205,15 @@ func cloneTime(t *time.Time) *time.Time {
 }
 
 // cloneRecurrence returns a deep copy of a *models.RecurrencePattern, or nil.
+// The Weekdays slice is also copied so mutations on the clone do not alias
+// the original task's slice (and vice versa).
 func cloneRecurrence(value *models.RecurrencePattern) *models.RecurrencePattern {
 	if value == nil {
 		return nil
 	}
 	cp := *value
+	if len(value.Weekdays) > 0 {
+		cp.Weekdays = append([]int(nil), value.Weekdays...)
+	}
 	return &cp
 }

@@ -103,9 +103,18 @@ func breakParentCycles(tasks []*Task, taskMap map[string]*Task) {
 			current := *task.ParentID
 			for current != "" {
 				if visited[current] {
-					logging.Warn("task %q (#%d) is part of a circular parent chain, clearing parent reference", task.Title, task.ShortID)
-					task.ParentID = nil
-					foundCycle = true
+					// Only clear this task's ParentID when the cycle includes
+					// the task itself (current walked back to task.ID). When a
+					// cycle exists downstream of the task (e.g. task A points
+					// to a B<->C cycle), task A is not part of the cycle and
+					// clearing its parent would needlessly detach a valid
+					// link. The downstream cycle will be broken when the
+					// iteration reaches one of its participants.
+					if current == task.ID {
+						logging.Warn("task %q (#%d) is part of a circular parent chain, clearing parent reference", task.Title, task.ShortID)
+						task.ParentID = nil
+						foundCycle = true
+					}
 					break
 				}
 				visited[current] = true

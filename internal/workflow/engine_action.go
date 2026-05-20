@@ -131,7 +131,10 @@ func applyAction(task *models.Task, action RuleAction) bool { //nolint:gocyclo
 	case ActionAddTag:
 		if !task.HasTag(action.Value) {
 			task.AddTag(action.Value)
-			return true
+			// task.AddTag silently rejects invalid tags (empty, too long,
+			// or containing forbidden characters). Re-check presence so we
+			// don't report a modification that never happened.
+			return task.HasTag(action.Value)
 		}
 	case ActionRemoveTag:
 		if task.HasTag(action.Value) {

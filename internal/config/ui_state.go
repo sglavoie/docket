@@ -438,6 +438,9 @@ func (c *Config) GetCustomContextNames() []string {
 
 // GetCustomContext returns the project IDs for a custom context.
 // Returns nil if the custom context doesn't exist.
+// Note: this returns nil for missing contexts AND nil-valued contexts; callers
+// that need to distinguish "exists with no projects" from "does not exist"
+// should use CustomContextExists.
 func (c *Config) GetCustomContext(name string) []string {
 	if c.CustomContexts == nil {
 		return nil
@@ -490,8 +493,21 @@ func (c *Config) DeleteCustomContext(name string) bool {
 }
 
 // CustomContextExists checks if a custom context exists (case-insensitive).
+// A context with an empty or nil project list still counts as existing — only
+// the presence of the map key matters. Previously this relied on
+// GetCustomContext != nil, which falsely reported empty/nil-valued contexts
+// as missing.
 func (c *Config) CustomContextExists(name string) bool {
-	return c.GetCustomContext(name) != nil
+	if c.CustomContexts == nil {
+		return false
+	}
+	nameLower := strings.ToLower(name)
+	for k := range c.CustomContexts {
+		if strings.ToLower(k) == nameLower {
+			return true
+		}
+	}
+	return false
 }
 
 // GetCustomContextProjectCount returns the count of active projects in a custom context.
