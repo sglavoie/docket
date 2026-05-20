@@ -172,8 +172,11 @@ func getSuggestionReason(task *models.Task, project *models.Project, cfg *config
 		if i > 0 {
 			result.WriteString(" + ")
 		}
-		if i == 0 {
-			result.WriteString(strings.ToUpper(r[:1]) + r[1:])
+		if i == 0 && r != "" {
+			// Guard against empty reason to avoid r[:1] panic. Use rune-aware
+			// slicing so a leading multi-byte rune is not split.
+			runes := []rune(r)
+			result.WriteString(strings.ToUpper(string(runes[:1])) + string(runes[1:]))
 		} else {
 			result.WriteString(r)
 		}

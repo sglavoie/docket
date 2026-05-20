@@ -37,6 +37,9 @@ func effortDays(e models.EffortEstimate) float64 {
 //  3. StoryAttrs.StoryPoints * storyPointToDays when StoryPoints > 0
 //  4. defaultDays (1.0) as the final fallback
 func EstimateDuration(task *models.Task) float64 {
+	if task == nil {
+		return defaultDays
+	}
 	if task.EstimatedDays > 0 {
 		return task.EstimatedDays
 	}
@@ -54,9 +57,16 @@ func EstimateDuration(task *models.Task) float64 {
 
 // TotalRemainingDays returns the sum of EstimateDuration for all incomplete
 // direct children of parent. It does not recurse into grandchildren.
+// Returns 0 when parent is nil or has no children.
 func TotalRemainingDays(parent *models.Task) float64 {
+	if parent == nil {
+		return 0
+	}
 	var total float64
 	for _, child := range parent.Children {
+		if child == nil {
+			continue
+		}
 		if !child.IsComplete() {
 			total += EstimateDuration(child)
 		}

@@ -119,3 +119,42 @@ func TestTotalRemainingDays_NoChildren(t *testing.T) {
 		t.Errorf("got %v, want 0", got)
 	}
 }
+
+// TestTotalRemainingDays_NilParent guards against nil-deref when called with
+// nil. Previously the helper panicked accessing parent.Children.
+func TestTotalRemainingDays_NilParent(t *testing.T) {
+	defer func() {
+		if r := recover(); r != nil {
+			t.Fatalf("unexpected panic on nil parent: %v", r)
+		}
+	}()
+	if got := TotalRemainingDays(nil); got != 0 {
+		t.Errorf("got %v, want 0", got)
+	}
+}
+
+// TestTotalRemainingDays_NilChild skips nil children rather than panicking.
+func TestTotalRemainingDays_NilChild(t *testing.T) {
+	defer func() {
+		if r := recover(); r != nil {
+			t.Fatalf("unexpected panic on nil child: %v", r)
+		}
+	}()
+	child := newTaskWithDuration("c", 2)
+	parent := &models.Task{Children: []*models.Task{nil, child, nil}}
+	if got := TotalRemainingDays(parent); got != 2 {
+		t.Errorf("got %v, want 2", got)
+	}
+}
+
+// TestEstimateDuration_NilTask returns the default duration rather than panicking.
+func TestEstimateDuration_NilTask(t *testing.T) {
+	defer func() {
+		if r := recover(); r != nil {
+			t.Fatalf("unexpected panic on nil task: %v", r)
+		}
+	}()
+	if got := EstimateDuration(nil); got != 1.0 {
+		t.Errorf("got %v, want 1.0", got)
+	}
+}

@@ -40,12 +40,17 @@ type ScheduledTask struct {
 // satisfied predecessors (a dependency on a complete task does not block the
 // dependent).  Cross-project dependency refs (format "projectID:taskID") whose
 // project-side task is not present in the input slice are treated as satisfied.
+// Nil entries and tasks with empty IDs are silently skipped so callers can pass
+// loosely-assembled cross-project slices without manually filtering them.
 //
 // Returns an error if a dependency cycle exists among the incomplete tasks.
 func TopologicalSort(tasks []*models.Task) ([]*models.Task, error) {
 	// Build map of incomplete tasks only.
 	taskMap := make(map[string]*models.Task, len(tasks))
 	for _, t := range tasks {
+		if t == nil || t.ID == "" {
+			continue
+		}
 		if !t.IsComplete() {
 			taskMap[t.ID] = t
 		}
@@ -409,6 +414,9 @@ func SerialSchedule(tasks []*models.Task, startDate time.Time, velocity float64)
 func topologicalSortByPriority(tasks []*models.Task) ([]*models.Task, error) {
 	taskMap := make(map[string]*models.Task, len(tasks))
 	for _, t := range tasks {
+		if t == nil || t.ID == "" {
+			continue
+		}
 		if !t.IsComplete() {
 			taskMap[t.ID] = t
 		}

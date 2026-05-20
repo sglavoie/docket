@@ -481,3 +481,28 @@ func containsSubstring(s, substr string) bool {
 	}
 	return false
 }
+
+// Regression: capitalization of the first reason must not panic on a leading
+// multi-byte rune. Previously getSuggestionReason used r[:1] which can split
+// a UTF-8 rune; reviewed dependencies could feed unicode strings into the
+// reason list once profile descriptions become user-defined.
+func TestGetSuggestionReasonUnicodeFirstChar(t *testing.T) {
+	defer func() {
+		if r := recover(); r != nil {
+			t.Fatalf("unexpected panic capitalizing unicode reason: %v", r)
+		}
+	}()
+	project, err := models.NewProject(uuid.New().String(), "Unicode", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	task, err := models.NewTask(uuid.New().String(), 1, models.TaskTypeTask, "T")
+	if err != nil {
+		t.Fatal(err)
+	}
+	task.Priority = 1 // ensures at least one reason
+	reason := getSuggestionReason(task, project, nil, time.Now())
+	if reason == "" {
+		t.Fatal("expected non-empty reason")
+	}
+}

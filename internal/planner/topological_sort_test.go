@@ -153,3 +153,24 @@ func TestTopologicalCrossProjectChainResolved(t *testing.T) {
 		t.Errorf("task-a must come before task-b")
 	}
 }
+
+// TestTopologicalSortSkipsNilAndEmptyID guards against nil entries or tasks
+// with empty IDs (e.g., loosely-assembled cross-project slices) — previously
+// these caused a nil-deref or polluted taskMap with the empty key.
+func TestTopologicalSortSkipsNilAndEmptyID(t *testing.T) {
+	a := newTask("a")
+	b := withDep(newTask("b"), "a")
+	noID := newTask("")
+	noID.ID = "" // explicit; newTask sets it but defensive
+	order, err := TopologicalSort([]*models.Task{nil, a, noID, b, nil})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(order) != 2 {
+		t.Fatalf("expected 2 valid tasks, got %d", len(order))
+	}
+	pos := taskPositions(order)
+	if pos["a"] >= pos["b"] {
+		t.Errorf("expected a before b")
+	}
+}
