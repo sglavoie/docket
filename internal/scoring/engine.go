@@ -34,7 +34,11 @@ type DimensionResult struct {
 
 // ComputeScore calculates the composite score for a task using the given profile.
 // Returns the score as a float64. The displayed score is typically truncated to int.
+// Returns 0 when profile is nil.
 func ComputeScore(task *models.Task, profile *ScoringProfile) float64 {
+	if profile == nil {
+		return 0
+	}
 	results := resolveAllDimensions(task, profile)
 	return applyFormula(results, profile.Formula)
 }
@@ -45,7 +49,11 @@ func ApplyFormula(results []DimensionResult, formula Formula) float64 {
 }
 
 // ScoreBreakdown returns per-dimension detail for display purposes.
+// Returns an empty slice when profile is nil.
 func ScoreBreakdown(task *models.Task, profile *ScoringProfile) []DimensionResult {
+	if profile == nil {
+		return nil
+	}
 	return resolveAllDimensions(task, profile)
 }
 
@@ -69,18 +77,22 @@ func resolveAllDimensions(task *models.Task, profile *ScoringProfile) []Dimensio
 
 // resolveDimension resolves a single dimension value for a task.
 // Priority: manual override in ScoreDimensions -> derived mapping -> default.
+// A nil task falls straight through to the dimension default so callers can
+// inspect a profile's default behavior without constructing a fake Task.
 func resolveDimension(task *models.Task, dim *ScoringDimension) (int, string) {
-	// Check for manual override
-	if task.ScoreDimensions != nil {
-		if val, ok := task.ScoreDimensions[dim.ID]; ok {
-			return clamp(val, dim.Min, dim.Max), "manual"
+	if task != nil {
+		// Check for manual override
+		if task.ScoreDimensions != nil {
+			if val, ok := task.ScoreDimensions[dim.ID]; ok {
+				return clamp(val, dim.Min, dim.Max), "manual"
+			}
 		}
-	}
 
-	// Try derived mapping
-	if dim.Source == SourceDerived && dim.DerivedMapping != nil {
-		if val, ok := resolveField(task, dim.DerivedMapping); ok {
-			return clamp(val, dim.Min, dim.Max), "derived"
+		// Try derived mapping
+		if dim.Source == SourceDerived && dim.DerivedMapping != nil {
+			if val, ok := resolveField(task, dim.DerivedMapping); ok {
+				return clamp(val, dim.Min, dim.Max), "derived"
+			}
 		}
 	}
 
@@ -288,7 +300,11 @@ func scoreWithStrategy(profile *ScoringProfile, selectValue func(dim ScoringDime
 
 // MaxScore returns the theoretical maximum score for a profile.
 // For each dimension, it uses Max for numerators and Min for denominators.
+// Returns 0 when profile is nil.
 func MaxScore(profile *ScoringProfile) float64 {
+	if profile == nil {
+		return 0
+	}
 	return scoreWithStrategy(profile, func(dim ScoringDimension) int {
 		if dim.Role == RoleDenominator {
 			if dim.Min == 0 {
@@ -302,7 +318,11 @@ func MaxScore(profile *ScoringProfile) float64 {
 
 // MinScore returns the theoretical minimum score for a profile.
 // For each dimension, it uses Min for numerators and Max for denominators.
+// Returns 0 when profile is nil.
 func MinScore(profile *ScoringProfile) float64 {
+	if profile == nil {
+		return 0
+	}
 	return scoreWithStrategy(profile, func(dim ScoringDimension) int {
 		val := dim.Min
 		if val == 0 && isMultiplicativeFormula(profile.Formula) {
@@ -316,7 +336,11 @@ func MinScore(profile *ScoringProfile) float64 {
 }
 
 // DefaultScore returns the score when all dimensions use their default values.
+// Returns 0 when profile is nil.
 func DefaultScore(profile *ScoringProfile) float64 {
+	if profile == nil {
+		return 0
+	}
 	return scoreWithStrategy(profile, func(dim ScoringDimension) int {
 		return dim.Default
 	})
@@ -332,7 +356,11 @@ func isMultiplicativeFormula(f Formula) bool {
 // piecewise mapping centered on the default score (which maps to midpoint).
 // Below default uses linear interpolation; above default uses logarithmic
 // scaling for multiplicative formulas and linear for additive ones.
+// Returns 0 when profile is nil.
 func ScorePercent(score float64, profile *ScoringProfile) float64 {
+	if profile == nil {
+		return 0
+	}
 	minS := MinScore(profile)
 	maxS := MaxScore(profile)
 	defS := DefaultScore(profile)
@@ -384,7 +412,11 @@ func ScorePercent(score float64, profile *ScoringProfile) float64 {
 
 // NormalizedScore computes the normalized 0-300 score for a task.
 // Convenience wrapper around ComputeScore + ScorePercent.
+// Returns 0 when profile is nil.
 func NormalizedScore(task *models.Task, profile *ScoringProfile) float64 {
+	if profile == nil {
+		return 0
+	}
 	return ScorePercent(ComputeScore(task, profile), profile)
 }
 

@@ -219,12 +219,25 @@ func applyAction(task *models.Task, action RuleAction) bool { //nolint:gocyclo
 			return false
 		}
 		snoozeUntil := time.Now().AddDate(0, 0, days)
+		// Treat a re-snooze to essentially the same target as a no-op so
+		// recursive rule evaluation isn't triggered for an idle change.
+		if task.SnoozedUntil != nil {
+			diff := snoozeUntil.Sub(*task.SnoozedUntil)
+			if diff < time.Minute && diff > -time.Minute {
+				return false
+			}
+		}
 		task.SnoozedUntil = &snoozeUntil
 		task.UpdatedAt = time.Now()
 		return true
 	case ActionSetRecurrence:
 		pattern := models.ParseRecurrence(action.Value)
 		if pattern == nil {
+			return false
+		}
+		// Skip the update when the task already has an equivalent pattern so
+		// we don't churn UpdatedAt or spuriously re-trigger downstream rules.
+		if recurrencePatternsEqual(task.Recurrence, pattern) {
 			return false
 		}
 		// Use SetRecurrence to populate OriginalDay for monthly patterns
@@ -235,4 +248,26 @@ func applyAction(task *models.Task, action RuleAction) bool { //nolint:gocyclo
 	default:
 	}
 	return false
+}
+
+// recurrencePatternsEqual reports whether two recurrence patterns are
+// semantically equivalent for the fields a workflow rule would set
+// (interval, unit, weekdays, mode). Counters such as Streak/Skipped are
+// ignored so a rule that re-asserts the same pattern is a no-op.
+func recurrencePatternsEqual(a, b *models.RecurrencePattern) bool {
+	if a == nil || b == nil {
+		return a == nil && b == nil
+	}
+	if a.Interval != b.Interval || a.Unit != b.Unit || a.Mode != b.Mode {
+		return false
+	}
+	if len(a.Weekdays) != len(b.Weekdays) {
+		return false
+	}
+	for i := range a.Weekdays {
+		if a.Weekdays[i] != b.Weekdays[i] {
+			return false
+		}
+	}
+	return true
 }

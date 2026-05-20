@@ -73,9 +73,13 @@ func (t *Task) CanAddChild(childType TaskType) bool {
 }
 
 // AddChild adds a task as a child, setting the parent reference.
-// Returns an error if the child type is not allowed, the nesting depth would
-// be exceeded, or a cycle would be created.
+// Returns an error if the child is nil, the child type is not allowed, the
+// nesting depth would be exceeded, or a cycle would be created. The nil
+// guard prevents a panic in CanAddChild reading child.Type.
 func (t *Task) AddChild(child *Task) error {
+	if child == nil {
+		return fmt.Errorf("cannot add nil child")
+	}
 	if !t.CanAddChild(child.Type) {
 		return fmt.Errorf("cannot add %s as child of %s", child.Type, t.Type)
 	}

@@ -11,10 +11,20 @@ func (t *Task) SetSection(name string) {
 	if IsGTDSection(name) || name == "" {
 		t.Section = name
 		t.CustomSection = ""
-	} else {
-		t.CustomSection = name
-		t.Section = ""
+		return
 	}
+	// Reject custom section names that fail ValidateSectionName (whitespace,
+	// semicolons, colons, over-length). Without this guard, malformed names
+	// land in CustomSection and corrupt the markdown round-trip because ";"
+	// and ":" delimit section-color metadata and whitespace separates the
+	// /Section sigil from quick-capture text. No-op behavior mirrors
+	// EnsureSection; callers needing a validation error should call
+	// ValidateSectionName explicitly first.
+	if err := ValidateSectionName(name); err != nil {
+		return
+	}
+	t.CustomSection = name
+	t.Section = ""
 }
 
 // InSection reports whether the task belongs to the given section.

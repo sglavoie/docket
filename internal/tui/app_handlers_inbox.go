@@ -30,9 +30,11 @@ func (m *AppModel) handleInboxMessages(msg tea.Msg) (bool, tea.Cmd) {
 		if msg.ProcessedCount > 0 {
 			m.setSuccessStatus(fmt.Sprintf("Inbox clear! %d triaged. Next: plan your day (;w)",
 				msg.ProcessedCount))
+			return true, defaultStatusTimeout()
 		} else if msg.SkippedCount > 0 {
 			m.setSuccessStatus(fmt.Sprintf("Inbox processing complete: %d skipped",
 				msg.SkippedCount))
+			return true, defaultStatusTimeout()
 		}
 		return true, nil
 
@@ -55,6 +57,7 @@ func (m *AppModel) handleInboxMessages(msg tea.Msg) (bool, tea.Cmd) {
 		if msg.ProcessedCount > 0 || msg.SkippedCount > 0 {
 			m.setSuccessStatus(fmt.Sprintf("Global inbox processing complete: %d processed, %d skipped",
 				msg.ProcessedCount, msg.SkippedCount))
+			return true, tea.Batch(popCmd, defaultStatusTimeout())
 		}
 		return true, popCmd
 

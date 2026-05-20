@@ -308,6 +308,12 @@ func checkProjectHealth(cfg AlertConfig, projects []ProjectData, now time.Time) 
 			}
 		}
 
+		// If no task has a real UpdatedAt (all zero), skip rather than
+		// emit a spurious "N days ago" alert with a ~10^5-day count.
+		if latestUpdate.IsZero() {
+			continue
+		}
+
 		if latestUpdate.Before(staleThreshold) {
 			alerts = append(alerts, Alert{
 				Category:  CategoryProjectHealth,

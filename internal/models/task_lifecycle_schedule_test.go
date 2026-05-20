@@ -3,6 +3,8 @@ package models
 import (
 	"testing"
 	"time"
+
+	"github.com/sglavoie/tt/internal/util"
 )
 
 func TestIsSnoozed(t *testing.T) {
@@ -395,19 +397,18 @@ func TestSkipRecurrence(t *testing.T) {
 			Interval: 1,
 		}
 
-		before := time.Now()
+		task.HasTime = false
 		task.SkipRecurrence()
-		after := time.Now()
 
 		if task.DueDate == nil {
 			t.Fatal("expected DueDate to be set after skip")
 		}
-		// Next date should be tomorrow (base=today + 1 day).
-		// Allow a 1-second window around the call to handle clock ticks.
-		minExpected := before.AddDate(0, 0, 1).Add(-time.Second)
-		maxExpected := after.AddDate(0, 0, 1).Add(time.Second)
-		if task.DueDate.Before(minExpected) || task.DueDate.After(maxExpected) {
-			t.Errorf("expected due date ~tomorrow, got %v", task.DueDate)
+		// Next date should be tomorrow at midnight when HasTime=false: skipping
+		// without a wall-clock context normalizes to start-of-day so a later
+		// HasTime toggle does not surface stale minutes.
+		expected := util.StartOfDay(time.Now()).AddDate(0, 0, 1)
+		if !task.DueDate.Equal(expected) {
+			t.Errorf("expected midnight-aligned tomorrow (%v), got %v", expected, task.DueDate)
 		}
 	})
 }

@@ -126,7 +126,7 @@ func (p *Project) Unpin() {
 // task whose own ID became empty after a malformed parse (mirrors the guard
 // in GetTaskByID).
 func (p *Project) MutateTask(taskID string, fn func(*Task)) bool {
-	if taskID == "" {
+	if taskID == "" || fn == nil {
 		return false
 	}
 	for _, t := range p.Tasks {

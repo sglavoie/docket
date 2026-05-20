@@ -17,11 +17,19 @@ type FocusTask struct {
 
 // CollectActionableTasks filters actionable tasks from already-loaded projects.
 // Tasks are considered actionable if they are not completed, not snoozed,
-// and not blocked by incomplete dependencies.
+// and not blocked by incomplete dependencies. Nil projects and nil tasks in
+// the input are skipped so callers can pass loosely-assembled slices without
+// pre-filtering them.
 func CollectActionableTasks(projects []*models.Project) []FocusTask {
 	var tasks []FocusTask
 	for _, project := range projects {
+		if project == nil {
+			continue
+		}
 		for _, task := range project.Tasks {
+			if task == nil {
+				continue
+			}
 			if task.Status.IsComplete() || task.IsSnoozed() || project.HasIncompleteDependencies(task) {
 				continue
 			}

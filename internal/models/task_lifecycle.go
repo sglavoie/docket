@@ -392,9 +392,13 @@ func (t *Task) SkipRecurrence() {
 		return
 	}
 
-	base := time.Now()
+	var base time.Time
 	if t.DueDate != nil {
 		base = *t.DueDate
+	} else if t.HasTime {
+		base = time.Now()
+	} else {
+		base = util.StartOfDay(time.Now())
 	}
 	next := calculateNextDate(base, t.Recurrence)
 	t.DueDate = &next

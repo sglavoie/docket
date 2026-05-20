@@ -96,7 +96,14 @@ func RemoveAttachmentFile(project *models.Project, task *models.Task, filename s
 
 // CleanupTaskAttachments removes all attachments for a task and the task's attachment directory.
 // This is called when a task is deleted.
+//
+// Guards against an empty task ID: without this check the joined path would
+// collapse to the project's parent .attachments directory and os.RemoveAll
+// would wipe attachments for every other task in the project.
 func CleanupTaskAttachments(project *models.Project, task *models.Task) error {
+	if task == nil || task.ID == "" {
+		return nil
+	}
 	dir := GetTaskAttachmentsDir(project, task)
 	if err := os.RemoveAll(dir); err != nil && !os.IsNotExist(err) {
 		return fmt.Errorf("failed to remove attachments directory: %w", err)

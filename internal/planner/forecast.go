@@ -56,8 +56,13 @@ const (
 // Priority: TaskAttrs.Effort > StoryAttrs.StoryPoints > Task.EstimatedDays > 1.0.
 // Returns (days, true) when explicit effort data is present; (days, false) when
 // falling back to EstimatedDays or the default — the boolean signals whether
-// the task contributed effort data for velocity weighting purposes.
+// the task contributed effort data for velocity weighting purposes. Returns
+// (effortDaysUnknown, false) when t is nil so callers can pass loose slices
+// without pre-filtering.
 func childEffortDays(t *models.Task) (days float64, hasEffortData bool) {
+	if t == nil {
+		return effortDaysUnknown, false
+	}
 	if t.TaskAttrs != nil && t.TaskAttrs.Effort != "" {
 		switch t.TaskAttrs.Effort {
 		case models.EffortSmall:
@@ -154,6 +159,7 @@ func ForecastCompletion(parent *models.Task, velocity float64, now time.Time) *F
 //     throughput has zero tasks.
 //
 // Returns 0 if throughput.AvgPerDay is 0 and no effort data is available.
+// Nil entries in tasks are skipped.
 func WeightedVelocity(throughput metrics.ThroughputResult, tasks []*models.Task) float64 {
 	if throughput.AvgPerDay <= 0 {
 		return 0
@@ -165,7 +171,7 @@ func WeightedVelocity(throughput metrics.ThroughputResult, tasks []*models.Task)
 	var sumEffortDays float64
 	var effortTaskCount int
 	for _, t := range tasks {
-		if !t.IsComplete() {
+		if t == nil || !t.IsComplete() {
 			continue
 		}
 		days, hasEffort := childEffortDays(t)

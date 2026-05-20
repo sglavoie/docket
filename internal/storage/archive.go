@@ -103,10 +103,15 @@ func ArchiveTasks(project *models.Project) (int, error) {
 		return 0, fmt.Errorf("failed to rotate archive: %w", err)
 	}
 
-	// Record archive size before appending so we can rollback on failure
+	// Record archive size before appending so we can rollback on failure.
+	// archiveExistedBefore tracks whether the file pre-existed so that, on
+	// rollback, we remove a freshly created archive rather than truncating
+	// it to zero bytes (which would leave a stray empty completed.md).
 	var archiveSizeBefore int64
+	var archiveExistedBefore bool
 	if info, err := os.Stat(archivePath); err == nil {
 		archiveSizeBefore = info.Size()
+		archiveExistedBefore = true
 	}
 
 	// Generate markdown content for archived tasks
@@ -127,9 +132,18 @@ func ArchiveTasks(project *models.Project) (int, error) {
 
 	// Save the modified project; rollback archive append on failure
 	if err := SaveProject(project); err != nil {
-		// Truncate archive back to pre-append size
-		if truncErr := os.Truncate(archivePath, archiveSizeBefore); truncErr != nil {
-			logging.Warn("failed to rollback archive after save failure: %v", truncErr)
+		// Rollback the archive append. If the file did not exist before this
+		// call, remove it entirely; otherwise truncate it back to the original
+		// size. Truncating a previously absent file would leave a stray empty
+		// completed.md behind even though no tasks were ever archived.
+		if archiveExistedBefore {
+			if truncErr := os.Truncate(archivePath, archiveSizeBefore); truncErr != nil {
+				logging.Warn("failed to rollback archive after save failure: %v", truncErr)
+			}
+		} else {
+			if rmErr := os.Remove(archivePath); rmErr != nil && !os.IsNotExist(rmErr) {
+				logging.Warn("failed to remove rolled-back archive after save failure: %v", rmErr)
+			}
 		}
 		// Reload project from disk to avoid in-memory/on-disk divergence
 		if loadErr := LoadProject(project); loadErr != nil {

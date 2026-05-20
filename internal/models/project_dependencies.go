@@ -1,7 +1,12 @@
 package models
 
 // GetBlockingTasks returns the tasks that the given task depends on.
+// A nil task returns nil so a caller passing an unset argument cannot
+// trigger a nil-pointer dereference on the DependsOn slice.
 func (p *Project) GetBlockingTasks(task *Task) []*Task {
+	if task == nil {
+		return nil
+	}
 	var blockers []*Task
 	for _, depID := range task.DependsOn {
 		if blocker := p.GetTaskByID(depID); blocker != nil {
@@ -12,7 +17,12 @@ func (p *Project) GetBlockingTasks(task *Task) []*Task {
 }
 
 // GetBlockedByTasks returns the tasks that depend on the given task.
+// A nil task returns nil so a caller passing an unset argument cannot
+// trigger a nil-pointer dereference when reading task.ID inside the loop.
 func (p *Project) GetBlockedByTasks(task *Task) []*Task {
+	if task == nil {
+		return nil
+	}
 	var blocked []*Task
 	for _, t := range p.Tasks {
 		if t.HasDependency(task.ID) {
@@ -90,7 +100,11 @@ func (p *Project) CheckAndAutoUnblock() {
 // that are not yet complete (done or canceled).
 // Cross-project qualified references (format "projectID:taskID") that cannot
 // be resolved locally are conservatively treated as incomplete.
+// A nil task returns false so an unset argument cannot panic on task.DependsOn.
 func (p *Project) HasIncompleteDependencies(task *Task) bool {
+	if task == nil {
+		return false
+	}
 	if len(task.DependsOn) == 0 {
 		return false
 	}
@@ -110,7 +124,11 @@ func (p *Project) HasIncompleteDependencies(task *Task) bool {
 
 // GetIncompleteDependencies returns the list of dependencies that are not
 // yet complete. Useful for error messages when blocking task completion.
+// A nil task returns nil so an unset argument cannot panic on task.DependsOn.
 func (p *Project) GetIncompleteDependencies(task *Task) []*Task {
+	if task == nil {
+		return nil
+	}
 	var incomplete []*Task
 	for _, depID := range task.DependsOn {
 		dep := p.GetTaskByID(depID)

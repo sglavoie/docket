@@ -80,7 +80,9 @@ type MessageLogViewModel struct {
 // NewMessageLogViewModel creates the overlay populated with current log entries.
 func NewMessageLogViewModel(entries []MessageLogEntry) *MessageLogViewModel {
 	m := &MessageLogViewModel{entries: entries}
-	// Start scrolled to the bottom so the most recent entry is visible.
+	// Start scrolled so the most recent entry is at the bottom of the visible
+	// window. The actual viewport height is finalized in SetSize, where the
+	// scroll is recomputed; until then default to a sensible value.
 	m.scroll = max(0, len(entries)-1)
 	return m
 }
@@ -162,6 +164,14 @@ func (m *MessageLogViewModel) View() tea.View {
 func (m *MessageLogViewModel) SetSize(w, h int) {
 	m.width = w
 	m.height = h
+	// Snap scroll so the most recent entry is visible at the bottom of the
+	// viewport. Without this, opening the log with the default scroll places
+	// only the very last entry on screen, hiding all preceding history.
+	if visible := m.visibleLines(); len(m.entries) > visible {
+		m.scroll = len(m.entries) - visible
+	} else {
+		m.scroll = 0
+	}
 }
 
 func (m *MessageLogViewModel) ShouldCaptureEsc() bool { return false }

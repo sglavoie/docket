@@ -21,7 +21,12 @@ type ScoredFocusTask struct {
 
 // computeCrossProjectScore calculates the suggestion score for a task.
 // Higher scores = more recommended as the next task to work on.
+// Returns 0 when task is nil; nil project is tolerated and skips
+// project-scoped scoring contributions.
 func computeCrossProjectScore(task *models.Task, project *models.Project, cfg *config.Config, now time.Time) int {
+	if task == nil {
+		return 0
+	}
 	score := 0
 
 	// Priority weight: priority 1 = 5000, priority 5 = 1000
@@ -64,21 +69,33 @@ func computeCrossProjectScore(task *models.Task, project *models.Project, cfg *c
 	}
 
 	// Task age: older tasks get a small boost to avoid stagnation
-	// 30 points per completed week, capped at 10 weeks (max 300 points)
+	// 30 points per completed week, capped at 10 weeks (max 300 points).
+	// Negative daysSinceCreated (clock skew / future-dated import) clamps to
+	// 0 so the age path never deducts from the score.
 	daysSinceCreated := util.DaysBetween(task.CreatedAt, now)
+	if daysSinceCreated < 0 {
+		daysSinceCreated = 0
+	}
 	ageBonus := min(daysSinceCreated/7, 10)
 	score += ageBonus * 30
 
-	// Recent momentum: boost tasks with recent activity
+	// Recent momentum: boost tasks with recent activity. A negative value
+	// means the task was updated in the future (clock skew); treat as today.
 	daysSinceUpdated := util.DaysBetween(task.UpdatedAt, now)
-	if daysSinceUpdated == 0 {
+	switch {
+	case daysSinceUpdated <= 0:
 		score += 400
-	} else if daysSinceUpdated <= 3 {
+	case daysSinceUpdated <= 3:
 		score += 200
 	}
 
-	// Unblocking bonus: prefer tasks that unblock others
-	blockedByThisCount := len(project.GetBlockedByTasks(task))
+	// Unblocking bonus: prefer tasks that unblock others. Guard nil project
+	// since callers may compute scores for cross-project FocusTasks where the
+	// project pointer was not resolved.
+	var blockedByThisCount int
+	if project != nil {
+		blockedByThisCount = len(project.GetBlockedByTasks(task))
+	}
 	unblockingBonus := min(blockedByThisCount, 3)
 	score += unblockingBonus * 150
 
@@ -97,7 +114,7 @@ func computeCrossProjectScore(task *models.Task, project *models.Project, cfg *c
 	}
 
 	// Composite scoring profile integration
-	if cfg != nil {
+	if cfg != nil && project != nil {
 		if profile := cfg.GetProjectScoringProfile(project.ID); profile != nil {
 			pct := scoring.NormalizedScore(task, profile)
 			score += int(pct)
@@ -108,7 +125,12 @@ func computeCrossProjectScore(task *models.Task, project *models.Project, cfg *c
 }
 
 // getSuggestionReason generates a human-readable explanation for why a task is suggested.
+// Returns an empty string when task is nil. Nil project is tolerated and disables
+// dependency- and profile-based reasons.
 func getSuggestionReason(task *models.Task, project *models.Project, cfg *config.Config, now time.Time) string {
+	if task == nil {
+		return ""
+	}
 	var reasons []string
 	today := util.StartOfDay(now)
 
@@ -139,7 +161,10 @@ func getSuggestionReason(task *models.Task, project *models.Project, cfg *config
 		reasons = append(reasons, "flagged active")
 	}
 
-	blockedByThisCount := len(project.GetBlockedByTasks(task))
+	var blockedByThisCount int
+	if project != nil {
+		blockedByThisCount = len(project.GetBlockedByTasks(task))
+	}
 	if blockedByThisCount > 0 {
 		if blockedByThisCount == 1 {
 			reasons = append(reasons, "unblocks 1 task")
@@ -153,7 +178,7 @@ func getSuggestionReason(task *models.Task, project *models.Project, cfg *config
 		reasons = append(reasons, "recent activity")
 	}
 
-	if cfg != nil {
+	if cfg != nil && project != nil {
 		if profile := cfg.GetProjectScoringProfile(project.ID); profile != nil {
 			pct := scoring.NormalizedScore(task, profile)
 			maxScore := scoring.MaxNormalizedScore(profile)
@@ -185,11 +210,15 @@ func getSuggestionReason(task *models.Task, project *models.Project, cfg *config
 }
 
 // RankCrossProjectTasks scores all tasks, applies cross-project balance penalty,
-// sorts descending, and excludes dismissed tasks.
+// sorts descending, and excludes dismissed tasks. FocusTasks with a nil Task
+// or nil Project are skipped so callers can pass loosely-built slices.
 func RankCrossProjectTasks(tasks []FocusTask, dismissedIDs map[string]bool, cfg *config.Config) []ScoredFocusTask {
 	now := time.Now()
 	var scored []ScoredFocusTask
 	for _, ft := range tasks {
+		if ft.Task == nil || ft.Project == nil {
+			continue
+		}
 		if dismissedIDs[ft.Task.ID] {
 			continue
 		}
@@ -225,8 +254,16 @@ func RankCrossProjectTasks(tasks []FocusTask, dismissedIDs map[string]bool, cfg 
 }
 
 // allChildrenComplete returns true if all children of the task are complete.
+// Nil tasks and nil children are treated as complete (they cannot represent
+// open work).
 func allChildrenComplete(task *models.Task) bool {
+	if task == nil {
+		return true
+	}
 	for _, child := range task.Children {
+		if child == nil {
+			continue
+		}
 		if !child.Status.IsComplete() {
 			return false
 		}

@@ -183,13 +183,24 @@ func evaluateRulesWithContextRecursive(evalCtx *EvaluationContext, rules []Workf
 		modified := false
 		for _, mr := range matched {
 			rule := mr.rule
-			ctx.markApplied(task.ID, rule.ID)
 
 			ruleApplied := false
+			// Track whether every action was deferred purely because its
+			// Condition did not match. Actions skipped for any other reason
+			// (field-setter conflict, no-op) count as a permanent decision
+			// for this pass and the rule is marked applied. Rules whose
+			// only blocker is an unmet Condition must remain eligible for
+			// a recursive pass that may make the condition true.
+			onlyConditionSkips := true
+			anyActionConsidered := false
 			for _, action := range rule.Actions {
+				anyActionConsidered = true
 				if action.Condition != nil && !matchesTriggerWithContext(task, prev, *action.Condition, evalCtx) {
 					continue
 				}
+				// The action's condition (if any) matched, so any further
+				// skip/no-op below counts as a final decision.
+				onlyConditionSkips = false
 				field := getFieldFromAction(action.ActionType)
 				if field != "" {
 					if skipSet, ok := skippedFieldRules[field]; ok && skipSet[rule.ID] {
@@ -200,6 +211,9 @@ func evaluateRulesWithContextRecursive(evalCtx *EvaluationContext, rules []Workf
 					modified = true
 					ruleApplied = true
 				}
+			}
+			if ruleApplied || !onlyConditionSkips || !anyActionConsidered {
+				ctx.markApplied(task.ID, rule.ID)
 			}
 			if ruleApplied {
 				result.AppliedRules[task.ID] = append(result.AppliedRules[task.ID], rule.Name)
