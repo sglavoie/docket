@@ -1,10 +1,9 @@
 package tui
 
 import (
+	"errors"
 	"fmt"
 	"os"
-	"os/exec"
-	"runtime"
 	"strings"
 
 	"charm.land/bubbles/v2/textarea"
@@ -32,34 +31,25 @@ func (m *TaskDecisionsModel) saveDecision() tea.Cmd {
 	m.err = nil
 	m.cursor = len(m.task.Decisions) - 1
 
-	project := m.project
-	return func() tea.Msg {
-		if err := saveProjectNoReload(project); err != nil {
-			return ErrorMsg{Err: fmt.Errorf("failed to save project: %w", err)}
-		}
-		return DecisionAddedMsg{Task: task}
-	}
+	return persistTaskItemMutation(m.project, DecisionAddedMsg{Task: task})
 }
 
 func (m *TaskDecisionsModel) executeDelete() tea.Cmd {
-	if t := resolveTaskInProject(m.project, m.task.ID); t != nil {
-		m.task = t
-	}
-	if !m.task.RemoveDecision(m.cursor) {
-		return func() tea.Msg { return ErrorMsg{Err: fmt.Errorf("failed to remove decision")} }
-	}
-	if m.cursor >= len(m.task.Decisions) && m.cursor > 0 {
-		m.cursor--
-	}
-
-	task := m.task
-	project := m.project
-	return func() tea.Msg {
-		if err := saveProjectNoReload(project); err != nil {
-			return ErrorMsg{Err: fmt.Errorf("failed to save project: %w", err)}
-		}
-		return DecisionDeletedMsg{Task: task}
-	}
+	return executeTaskItemDeleteMutation(taskItemDeleteMutation{
+		project: m.project,
+		task:    &m.task,
+		cursor:  &m.cursor,
+		remove: func(task *models.Task, index int) bool {
+			return task.RemoveDecision(index)
+		},
+		count: func(task *models.Task) int {
+			return len(task.Decisions)
+		},
+		errorMessage: "failed to remove decision",
+		success: func(task *models.Task) tea.Msg {
+			return DecisionDeletedMsg{Task: task}
+		},
+	})
 }
 
 func (m *TaskDecisionsModel) startEditDecision() tea.Cmd {
@@ -82,9 +72,7 @@ func (m *TaskDecisionsModel) saveEditedDecision() tea.Cmd {
 		return nil
 	}
 
-	if t := resolveTaskInProject(m.project, m.task.ID); t != nil {
-		m.task = t
-	}
+	refreshTaskReference(m.project, &m.task)
 	if m.editIndex >= len(m.task.Decisions) {
 		m.cancelEditMode()
 		return func() tea.Msg { return ErrorMsg{Err: fmt.Errorf("decision was deleted externally")} }
@@ -96,14 +84,7 @@ func (m *TaskDecisionsModel) saveEditedDecision() tea.Cmd {
 	m.cancelEditMode()
 	m.err = nil
 
-	task := m.task
-	project := m.project
-	return func() tea.Msg {
-		if err := saveProjectNoReload(project); err != nil {
-			return ErrorMsg{Err: fmt.Errorf("failed to save project: %w", err)}
-		}
-		return DecisionEditedMsg{Task: task}
-	}
+	return persistTaskItemMutation(m.project, DecisionEditedMsg{Task: m.task})
 }
 
 func (m *TaskDecisionsModel) editInExternalEditor() tea.Cmd {
@@ -162,21 +143,18 @@ func (m *TaskDecisionsModel) addDecisionInExternalEditor() tea.Cmd {
 }
 
 func (m *TaskDecisionsModel) toggleResolved() tea.Cmd {
-	if t := resolveTaskInProject(m.project, m.task.ID); t != nil {
-		m.task = t
-	}
-	if !m.task.ToggleDecisionResolved(m.cursor) {
-		return func() tea.Msg { return ErrorMsg{Err: fmt.Errorf("failed to toggle decision resolved state")} }
-	}
-
-	task := m.task
-	project := m.project
-	return func() tea.Msg {
-		if err := saveProjectNoReload(project); err != nil {
-			return ErrorMsg{Err: fmt.Errorf("failed to save project: %w", err)}
-		}
-		return DecisionResolvedMsg{Task: task}
-	}
+	return executeTaskItemToggleMutation(taskItemToggleMutation{
+		project: m.project,
+		task:    &m.task,
+		cursor:  m.cursor,
+		toggle: func(task *models.Task, index int) bool {
+			return task.ToggleDecisionResolved(index)
+		},
+		errorMessage: "failed to toggle decision resolved state",
+		success: func(task *models.Task) tea.Msg {
+			return DecisionResolvedMsg{Task: task}
+		},
+	})
 }
 
 func (m *TaskDecisionsModel) editDecisionInExternalEditorFromEditMode() tea.Cmd {
@@ -220,21 +198,11 @@ func (m *TaskDecisionsModel) editDecisionInExternalEditorFromEditMode() tea.Cmd 
 func (m *TaskDecisionsModel) copyDecisionText() tea.Cmd {
 	decision := m.task.Decisions[m.cursor]
 
-	var clipCmd *exec.Cmd
-	switch runtime.GOOS {
-	case "darwin":
-		clipCmd = exec.Command("pbcopy")
-	case "linux":
-		clipCmd = exec.Command("xclip", "-selection", "clipboard")
-	case "windows":
-		clipCmd = exec.Command("clip")
-	default:
-		m.setStatus("Clipboard not supported on this OS")
-		return nil
-	}
-
-	clipCmd.Stdin = strings.NewReader(decision.Text)
-	if err := clipCmd.Run(); err != nil {
+	if err := copyTextToClipboard(decision.Text); err != nil {
+		if errors.Is(err, errClipboardUnsupported) {
+			m.setStatus(err.Error())
+			return nil
+		}
 		m.err = fmt.Errorf("failed to copy to clipboard: %w", err)
 		return nil
 	}

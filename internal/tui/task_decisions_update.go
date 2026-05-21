@@ -1,7 +1,6 @@
 package tui
 
 import (
-	"fmt"
 	"strings"
 
 	"charm.land/bubbles/v2/textarea"
@@ -11,59 +10,29 @@ import (
 )
 
 func (m *TaskDecisionsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) { //nolint:gocyclo
-	if m.expandedView {
-		return m.updateExpandedView(msg)
-	}
-	if m.confirm.IsActive() {
-		return m.updateConfirmMode(msg)
-	}
-	if m.editMode {
-		return m.updateEditMode(msg)
-	}
-	if m.addMode {
-		return m.updateAddMode(msg)
-	}
-
-	return m.updateNormalMode(msg)
+	return updateTaskItemPanel(msg, taskItemPanelModeHandlers{
+		expanded:       m.expandedView,
+		confirmActive:  m.confirm.IsActive(),
+		editMode:       m.editMode,
+		addMode:        m.addMode,
+		updateExpanded: m.updateExpandedView,
+		updateConfirm:  m.updateConfirmMode,
+		updateEdit:     m.updateEditMode,
+		updateAdd:      m.updateAddMode,
+		updateNormal:   m.updateNormalMode,
+	})
 }
 
 func (m *TaskDecisionsModel) updateExpandedView(msg tea.Msg) (tea.Model, tea.Cmd) {
-	switch msg := msg.(type) {
-	case tea.KeyPressMsg:
-		switch msg.String() {
-		case "esc", "enter":
-			m.expandedView = false
-		case "j", "down", "k", "up":
-			return m, nil
-		}
-	}
-
-	return m, nil
+	return updateTaskItemPanelExpandedView(m, msg, &m.expandedView)
 }
 
 func (m *TaskDecisionsModel) updateConfirmMode(msg tea.Msg) (tea.Model, tea.Cmd) {
-	switch msg := msg.(type) {
-	case tea.KeyPressMsg:
-		action := m.confirm.Action()
-		if confirmed, handled := m.HandleConfirmKey(msg.String()); handled {
-			if confirmed {
-				switch action {
-				case "delete":
-					return m, m.executeDelete()
-				case "discard-add":
-					m.cancelAddMode()
-					return m, nil
-				case "discard-edit":
-					m.cancelEditMode()
-					return m, nil
-				}
-			}
-			m.ClearError()
-			return m, nil
-		}
-	}
-
-	return m, nil
+	return updateTaskItemPanelConfirmMode(m, msg, &m.BaseView, &m.InteractiveViewState, taskItemPanelConfirmActions{
+		executeDelete: m.executeDelete,
+		cancelAdd:     m.cancelAddMode,
+		cancelEdit:    m.cancelEditMode,
+	})
 }
 
 func (m *TaskDecisionsModel) updateEditMode(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -151,72 +120,11 @@ func (m *TaskDecisionsModel) updateAddMode(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m *TaskDecisionsModel) updateNormalMode(msg tea.Msg) (tea.Model, tea.Cmd) {
-	var cmd tea.Cmd
-
-	switch msg := msg.(type) {
-	case CursorFlashClearMsg:
-		m.cursorFlash = false
-		return m, nil
-	case tea.WindowSizeMsg:
-		m.BaseView.SetSize(msg.Width, msg.Height)
-		return m, nil
-	case tea.KeyPressMsg:
-		if m.SkipModifierInPrefix(msg) {
-			return m, nil
-		}
-		if m.pendingPrefix == "g" {
-			m.pendingPrefix = ""
-			_, cmd = handleGotoTopPrefix(msg.String(), &m.cursor, &m.cursorFlash)
-			return m, cmd
-		}
-
-		return m, m.handleNormalKey(msg.String())
-	}
-
-	return m, nil
+	return updateTaskItemPanelNormalMode(m, msg, &m.BaseView, &m.InteractiveViewState, m.handleNormalKey)
 }
 
 func (m *TaskDecisionsModel) handleNormalKey(key string) tea.Cmd {
-	switch key {
-	case "esc":
-		return func() tea.Msg { return CloseTaskDecisionsMsg{} }
-	case "j", "down":
-		m.moveCursorDown()
-	case "k", "up":
-		m.moveCursorUp()
-	case "g":
-		m.pendingPrefix = "g"
-	case "G":
-		m.moveCursorBottom()
-	case "a", "n":
-		return m.beginAddMode()
-	case "e":
-		if m.hasSelection() {
-			return m.startEditDecision()
-		}
-	case "E":
-		if m.hasSelection() {
-			return m.editInExternalEditor()
-		}
-	case "d", "x":
-		if m.hasSelection() {
-			m.confirm.Show("delete", fmt.Sprintf("Delete decision [%d]?", m.cursor))
-		}
-	case "r":
-		if m.hasSelection() {
-			return m.toggleResolved()
-		}
-	case "y":
-		if m.hasSelection() {
-			return m.copyDecisionText()
-		}
-	case "enter":
-		if m.hasSelection() {
-			m.expandedView = true
-		}
-	}
-
-	return nil
+	return m.panelActions().handleNormalKey(&m.InteractiveViewState, key)
 }
 
 func (m *TaskDecisionsModel) HandledKeys() []string {

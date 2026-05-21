@@ -6,7 +6,6 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
-	"github.com/sglavoie/tt/internal/fuzzy"
 	"github.com/sglavoie/tt/internal/models"
 )
 
@@ -22,7 +21,7 @@ type ProjectPickerDoneMsg struct {
 // ProjectPickerModel provides fuzzy-find selection of projects for quick switching.
 type ProjectPickerModel struct {
 	*BasePicker[ProjectPickerItem]
-	allItems []ProjectPickerItem
+	alwaysSearch *alwaysSearchSinglePicker[ProjectPickerItem]
 }
 
 // NewProjectPickerModel creates a new project picker for switching projects.
@@ -49,11 +48,25 @@ func NewProjectPickerModel(projects []*models.Project) *ProjectPickerModel {
 
 	m := &ProjectPickerModel{
 		BasePicker: picker,
-		allItems:   items,
 	}
 
-	m.SetSearchActive(true)
-	m.searchInput.Focus()
+	m.alwaysSearch = newAlwaysSearchSinglePicker(m.BasePicker, alwaysSearchSinglePickerConfig[ProjectPickerItem]{
+		AllItems: items,
+		UpKeys:   []string{"up", "ctrl+k", "ctrl+p"},
+		DownKeys: []string{"down", "ctrl+j", "ctrl+n"},
+		CancelMsg: func() tea.Msg {
+			return ProjectPickerDoneMsg{Canceled: true}
+		},
+		SelectMsg: func(cursor int, filtered []ProjectPickerItem) tea.Msg {
+			if cursor >= len(filtered) || len(filtered) == 0 {
+				return ProjectPickerDoneMsg{Canceled: true}
+			}
+
+			selected := filtered[cursor]
+			return ProjectPickerDoneMsg{Project: selected.Project}
+		},
+	})
+	m.PrimeAlwaysSearch()
 
 	return m
 }
@@ -74,121 +87,14 @@ func (m *ProjectPickerModel) ShouldCaptureEsc() bool {
 }
 
 func (m *ProjectPickerModel) Init() tea.Cmd {
-	return m.ActivateSearch()
+	return m.alwaysSearch.Init()
 }
 
 func (m *ProjectPickerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	switch msg := msg.(type) {
-	case tea.WindowSizeMsg:
-		m.SetSize(msg.Width, msg.Height)
-		return m, nil
-
-	case tea.KeyPressMsg:
-		switch msg.String() {
-		case "esc":
-			if m.IsSearchMode() && m.SearchQuery() != "" {
-				m.ClearSearch()
-				m.fuzzyFilter("")
-				return m, nil
-			}
-			return m, func() tea.Msg {
-				return ProjectPickerDoneMsg{Canceled: true}
-			}
-
-		case "enter":
-			return m, m.selectCurrent()
-
-		case "up", "ctrl+k", "ctrl+p":
-			m.moveCursor(-1)
-			return m, nil
-
-		case "down", "ctrl+j", "ctrl+n":
-			m.moveCursor(1)
-			return m, nil
-
-		case "ctrl+u":
-			m.moveCursor(-10)
-			return m, nil
-
-		case "ctrl+d":
-			m.moveCursor(10)
-			return m, nil
-
-		default:
-			handled, cmd, valueChanged := m.HandleSearchInput(msg)
-			if valueChanged {
-				m.fuzzyFilter(m.SearchQuery())
-			}
-			if handled {
-				return m, cmd
-			}
-		}
+	if handled, cmd := m.alwaysSearch.Update(msg); handled {
+		return m, cmd
 	}
-
 	return m, nil
-}
-
-func (m *ProjectPickerModel) moveCursor(delta int) {
-	maxCursor := max(len(m.Filtered)-1, 0)
-
-	m.Cursor += delta
-	if m.Cursor < 0 {
-		m.Cursor = 0
-	}
-	if m.Cursor > maxCursor {
-		m.Cursor = maxCursor
-	}
-}
-
-func (m *ProjectPickerModel) fuzzyFilter(query string) {
-	query = strings.TrimSpace(query)
-
-	if query == "" {
-		m.Filtered = m.allItems
-		m.Cursor = 0
-		return
-	}
-
-	type scoredItem struct {
-		item  ProjectPickerItem
-		score int
-	}
-	var scored []scoredItem
-
-	for _, item := range m.allItems {
-		score := fuzzy.ScoreTerms(item.FilterText(), query)
-		if score > 0 {
-			scored = append(scored, scoredItem{item: item, score: score})
-		}
-	}
-
-	sort.Slice(scored, func(i, j int) bool {
-		return scored[i].score > scored[j].score
-	})
-
-	m.Filtered = make([]ProjectPickerItem, len(scored))
-	for i, s := range scored {
-		m.Filtered[i] = s.item
-	}
-
-	maxCursor := max(len(m.Filtered)-1, 0)
-	if m.Cursor > maxCursor {
-		m.Cursor = maxCursor
-	}
-}
-
-func (m *ProjectPickerModel) selectCurrent() tea.Cmd {
-	return func() tea.Msg {
-		if m.Cursor >= len(m.Filtered) || len(m.Filtered) == 0 {
-			return ProjectPickerDoneMsg{Canceled: true}
-		}
-
-		selected := m.Filtered[m.Cursor]
-		return ProjectPickerDoneMsg{
-			Project:  selected.Project,
-			Canceled: false,
-		}
-	}
 }
 
 func (m *ProjectPickerModel) StatusBarLabel() string { return "Switch Project" }

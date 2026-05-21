@@ -2,13 +2,11 @@ package tui
 
 import (
 	"fmt"
-	"sort"
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 
-	"github.com/sglavoie/tt/internal/fuzzy"
 	"github.com/sglavoie/tt/internal/models"
 )
 
@@ -40,9 +38,9 @@ func (p ProjectPickerItem) ItemID() string {
 // ProjectSelectorModel provides fuzzy-find selection of projects for task move.
 type ProjectSelectorModel struct {
 	*BasePicker[ProjectPickerItem]
-	allItems      []ProjectPickerItem // All valid project candidates
-	task          *models.Task        // Task being moved
-	sourceProject *models.Project     // Project task is moving from
+	task          *models.Task
+	sourceProject *models.Project
+	alwaysSearch  *alwaysSearchSinglePicker[ProjectPickerItem]
 }
 
 // NewProjectSelectorModel creates a new project selector for moving a task.
@@ -70,14 +68,30 @@ func NewProjectSelectorModel(projects []*models.Project, task *models.Task, sour
 
 	m := &ProjectSelectorModel{
 		BasePicker:    picker,
-		allItems:      items,
 		task:          task,
 		sourceProject: sourceProject,
 	}
+	m.alwaysSearch = newAlwaysSearchSinglePicker(m.BasePicker, alwaysSearchSinglePickerConfig[ProjectPickerItem]{
+		AllItems: items,
+		CancelMsg: func() tea.Msg {
+			return CloseProjectSelectorMsg{}
+		},
+		SelectMsg: func(cursor int, filtered []ProjectPickerItem) tea.Msg {
+			if cursor >= len(filtered) || len(filtered) == 0 {
+				return CloseProjectSelectorMsg{}
+			}
+
+			selected := filtered[cursor]
+			return MoveTaskToProjectMsg{
+				Task:          m.task,
+				SourceProject: m.sourceProject,
+				DestProjectID: selected.Project.ID,
+			}
+		},
+	})
 
 	// Activate search immediately so typing works without Init() being called
-	m.SetSearchActive(true)
-	m.searchInput.Focus()
+	m.PrimeAlwaysSearch()
 
 	return m
 }
@@ -92,131 +106,20 @@ func (m *ProjectSelectorModel) HasTextInput() bool {
 	return true
 }
 
+// ShouldCaptureEsc lets the selector clear an active query before closing.
+func (m *ProjectSelectorModel) ShouldCaptureEsc() bool {
+	return true
+}
+
 func (m *ProjectSelectorModel) Init() tea.Cmd {
-	return m.ActivateSearch()
+	return m.alwaysSearch.Init()
 }
 
 func (m *ProjectSelectorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	switch msg := msg.(type) {
-	case tea.WindowSizeMsg:
-		m.SetSize(msg.Width, msg.Height)
-		return m, nil
-
-	case tea.KeyPressMsg:
-		switch msg.String() {
-		case "esc":
-			if m.IsSearchMode() && m.SearchQuery() != "" {
-				m.ClearSearch()
-				m.fuzzyFilter("")
-				return m, nil
-			}
-			return m, func() tea.Msg {
-				return CloseProjectSelectorMsg{}
-			}
-
-		case "enter":
-			return m, m.selectCurrent()
-
-		case "up", "ctrl+k":
-			m.moveCursor(-1)
-			return m, nil
-
-		case "down", "ctrl+j":
-			m.moveCursor(1)
-			return m, nil
-
-		case "ctrl+u":
-			m.moveCursor(-10)
-			return m, nil
-
-		case "ctrl+d":
-			m.moveCursor(10)
-			return m, nil
-
-		default:
-			// Handle search input
-			handled, cmd, valueChanged := m.HandleSearchInput(msg)
-			if valueChanged {
-				m.fuzzyFilter(m.SearchQuery())
-			}
-			if handled {
-				return m, cmd
-			}
-		}
+	if handled, cmd := m.alwaysSearch.Update(msg); handled {
+		return m, cmd
 	}
-
 	return m, nil
-}
-
-// moveCursor moves the cursor by delta.
-func (m *ProjectSelectorModel) moveCursor(delta int) {
-	maxCursor := max(len(m.Filtered)-1, 0)
-
-	m.Cursor += delta
-	if m.Cursor < 0 {
-		m.Cursor = 0
-	}
-	if m.Cursor > maxCursor {
-		m.Cursor = maxCursor
-	}
-}
-
-// fuzzyFilter filters projects using fuzzy scoring.
-func (m *ProjectSelectorModel) fuzzyFilter(query string) {
-	query = strings.TrimSpace(query)
-
-	if query == "" {
-		m.Filtered = m.allItems
-		m.Cursor = 0
-		return
-	}
-
-	// Score each project and collect matches
-	type scoredItem struct {
-		item  ProjectPickerItem
-		score int
-	}
-	var scored []scoredItem
-
-	for _, item := range m.allItems {
-		score := fuzzy.ScoreTerms(item.FilterText(), query)
-		if score > 0 {
-			scored = append(scored, scoredItem{item: item, score: score})
-		}
-	}
-
-	// Sort by score descending (best matches first)
-	sort.Slice(scored, func(i, j int) bool {
-		return scored[i].score > scored[j].score
-	})
-
-	// Extract sorted results
-	m.Filtered = make([]ProjectPickerItem, len(scored))
-	for i, s := range scored {
-		m.Filtered[i] = s.item
-	}
-
-	// Reset cursor if out of bounds
-	maxCursor := max(len(m.Filtered)-1, 0)
-	if m.Cursor > maxCursor {
-		m.Cursor = maxCursor
-	}
-}
-
-// selectCurrent returns a command with the selected project.
-func (m *ProjectSelectorModel) selectCurrent() tea.Cmd {
-	return func() tea.Msg {
-		if m.Cursor >= len(m.Filtered) || len(m.Filtered) == 0 {
-			return CloseProjectSelectorMsg{}
-		}
-
-		selected := m.Filtered[m.Cursor]
-		return MoveTaskToProjectMsg{
-			Task:          m.task,
-			SourceProject: m.sourceProject,
-			DestProjectID: selected.Project.ID,
-		}
-	}
 }
 
 func (m *ProjectSelectorModel) View() tea.View {

@@ -5,6 +5,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/testutil"
 )
 
@@ -116,6 +117,95 @@ func TestHandleEscKey_DismissesPeekOverlay(t *testing.T) {
 	}
 	if app.peekTask != nil {
 		t.Error("peekTask should be nil after Esc")
+	}
+}
+
+func TestProjectSelectorEscClearsQueryBeforeClosing(t *testing.T) {
+	sourceProject, err := models.NewProject("source", "Source", t.TempDir())
+	if err != nil {
+		t.Fatalf("NewProject source: %v", err)
+	}
+	destProject, err := models.NewProject("dest", "Destination", t.TempDir())
+	if err != nil {
+		t.Fatalf("NewProject dest: %v", err)
+	}
+	task, err := models.NewTask("task-1", 7, models.TaskTypeTask, "Move me")
+	if err != nil {
+		t.Fatalf("NewTask: %v", err)
+	}
+
+	app := newTestAppModel()
+	selector := NewProjectSelectorModel([]*models.Project{sourceProject, destProject}, task, sourceProject)
+	app.showView(ViewProjectSelector, selector)
+
+	app.Update(syntheticKey('d'))
+	if selector.SearchQuery() != "d" {
+		t.Fatalf("expected search query %q, got %q", "d", selector.SearchQuery())
+	}
+
+	_, cmd := app.Update(syntheticSpecialKey(tea.KeyEsc))
+	if cmd != nil {
+		t.Fatal("first esc with a query should clear search, not close the selector")
+	}
+	if app.currentView() != ViewProjectSelector {
+		t.Fatalf("expected selector to remain open after first esc, got %v", app.currentView())
+	}
+	if selector.SearchQuery() != "" {
+		t.Fatalf("expected cleared search query, got %q", selector.SearchQuery())
+	}
+	if len(selector.Filtered) != 1 {
+		t.Fatalf("expected full project list to be restored, got %d item(s)", len(selector.Filtered))
+	}
+
+	_, cmd = app.Update(syntheticSpecialKey(tea.KeyEsc))
+	if cmd != nil {
+		app.Update(cmd())
+	}
+	if app.currentView() != ViewDashboard {
+		t.Fatalf("expected selector to close on second esc, got %v", app.currentView())
+	}
+}
+
+func TestParentSelectorEscClearsQueryBeforeClosing(t *testing.T) {
+	parentA, err := models.NewTask("parent-a", 1, models.TaskTypeStory, "Alpha parent")
+	if err != nil {
+		t.Fatalf("NewTask A: %v", err)
+	}
+	parentB, err := models.NewTask("parent-b", 2, models.TaskTypeStory, "Beta parent")
+	if err != nil {
+		t.Fatalf("NewTask B: %v", err)
+	}
+
+	app := newTestAppModel()
+	selector := NewParentSelectorModel([]*models.Task{parentA, parentB}, nil, false, ViewProjectTree)
+	app.showView(ViewParentSelector, selector)
+	selector.Init()
+
+	app.Update(syntheticKey('b'))
+	if selector.SearchQuery() != "b" {
+		t.Fatalf("expected search query %q, got %q", "b", selector.SearchQuery())
+	}
+
+	_, cmd := app.Update(syntheticSpecialKey(tea.KeyEsc))
+	if cmd != nil {
+		t.Fatal("first esc with a query should clear search, not close the selector")
+	}
+	if app.currentView() != ViewParentSelector {
+		t.Fatalf("expected selector to remain open after first esc, got %v", app.currentView())
+	}
+	if selector.SearchQuery() != "" {
+		t.Fatalf("expected cleared search query, got %q", selector.SearchQuery())
+	}
+	if len(selector.Filtered) != 2 {
+		t.Fatalf("expected full parent list to be restored, got %d item(s)", len(selector.Filtered))
+	}
+
+	_, cmd = app.Update(syntheticSpecialKey(tea.KeyEsc))
+	if cmd != nil {
+		app.Update(cmd())
+	}
+	if app.currentView() != ViewDashboard {
+		t.Fatalf("expected selector to close on second esc, got %v", app.currentView())
 	}
 }
 

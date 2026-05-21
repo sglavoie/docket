@@ -5,7 +5,6 @@ import (
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
-	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/models"
 )
@@ -84,20 +83,11 @@ func (m *TaskCommentsModel) renderAddMode(b *strings.Builder) tea.View {
 }
 
 func (m *TaskCommentsModel) renderCommentsSummary(b *strings.Builder) {
-	resolvedCount := len(m.task.Comments) - m.task.UnresolvedCommentCount()
-	countStr := fmt.Sprintf("%d comment(s)", len(m.task.Comments))
-	if resolvedCount > 0 {
-		countStr += fmt.Sprintf(" (%d resolved)", resolvedCount)
-	}
-	b.WriteString(MutedStyle.Render(countStr))
-	b.WriteString("\n\n")
+	renderTaskItemSummary(b, "comment", len(m.task.Comments), m.task.UnresolvedCommentCount())
 }
 
 func (m *TaskCommentsModel) renderMessages(b *strings.Builder) {
-	if m.err != nil {
-		b.WriteString(ValidationErrorStyle.Render(m.err.Error()))
-		b.WriteString("\n\n")
-	}
+	renderTaskItemMessages(b, m.err)
 }
 
 func (m *TaskCommentsModel) renderCommentsList(b *strings.Builder) {
@@ -128,10 +118,7 @@ func (m *TaskCommentsModel) renderCommentsList(b *strings.Builder) {
 }
 
 func (m *TaskCommentsModel) renderStatusMessage(b *strings.Builder) {
-	if m.statusMessage != "" {
-		b.WriteString(MutedStyle.Render(m.statusMessage))
-		b.WriteString("\n")
-	}
+	renderTaskItemStatusMessage(b, m.statusMessage)
 }
 
 func (m *TaskCommentsModel) renderCommentEntry(index int, comment *models.Comment, maxLen int) string {
@@ -152,23 +139,7 @@ func (m *TaskCommentsModel) renderCommentEntry(index int, comment *models.Commen
 	}
 	entry.WriteString("\n")
 
-	rendered := renderMarkdown(comment.Text, maxLen)
-	renderedLines := strings.Split(rendered, "\n")
-	for j, line := range renderedLines {
-		if j > 1 {
-			fmt.Fprintf(&entry, "      ... (%d more lines, press Enter to expand)\n", len(renderedLines)-2)
-			break
-		}
-
-		entry.WriteString("      ")
-		line = ansi.Truncate(line, maxLen, "")
-		if comment.Resolved {
-			entry.WriteString(MutedStyle.Render(line))
-		} else {
-			entry.WriteString(line)
-		}
-		entry.WriteString("\n")
-	}
+	renderTaskItemPreview(&entry, comment.Text, maxLen, comment.Resolved)
 
 	return entry.String()
 }

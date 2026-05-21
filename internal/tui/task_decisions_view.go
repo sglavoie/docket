@@ -5,7 +5,6 @@ import (
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
-	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/models"
 )
@@ -152,20 +151,11 @@ func (m *TaskDecisionsModel) renderCategorySelector(selected int) string {
 }
 
 func (m *TaskDecisionsModel) renderDecisionsSummary(b *strings.Builder) {
-	resolvedCount := len(m.task.Decisions) - m.task.UnresolvedDecisionCount()
-	countStr := fmt.Sprintf("%d decision(s)", len(m.task.Decisions))
-	if resolvedCount > 0 {
-		countStr += fmt.Sprintf(" (%d resolved)", resolvedCount)
-	}
-	b.WriteString(MutedStyle.Render(countStr))
-	b.WriteString("\n\n")
+	renderTaskItemSummary(b, "decision", len(m.task.Decisions), m.task.UnresolvedDecisionCount())
 }
 
 func (m *TaskDecisionsModel) renderMessages(b *strings.Builder) {
-	if m.err != nil {
-		b.WriteString(ValidationErrorStyle.Render(m.err.Error()))
-		b.WriteString("\n\n")
-	}
+	renderTaskItemMessages(b, m.err)
 }
 
 func (m *TaskDecisionsModel) renderDecisionsList(b *strings.Builder) {
@@ -195,10 +185,7 @@ func (m *TaskDecisionsModel) renderDecisionsList(b *strings.Builder) {
 }
 
 func (m *TaskDecisionsModel) renderStatusMessage(b *strings.Builder) {
-	if m.statusMessage != "" {
-		b.WriteString(MutedStyle.Render(m.statusMessage))
-		b.WriteString("\n")
-	}
+	renderTaskItemStatusMessage(b, m.statusMessage)
 }
 
 func (m *TaskDecisionsModel) renderDecisionEntry(index int, decision *models.Decision, maxLen int) string {
@@ -225,23 +212,7 @@ func (m *TaskDecisionsModel) renderDecisionEntry(index int, decision *models.Dec
 	}
 	entry.WriteString("\n")
 
-	rendered := renderMarkdown(decision.Text, maxLen)
-	renderedLines := strings.Split(rendered, "\n")
-	for j, line := range renderedLines {
-		if j > 1 {
-			fmt.Fprintf(&entry, "      ... (%d more lines, press Enter to expand)\n", len(renderedLines)-2)
-			break
-		}
-
-		entry.WriteString("      ")
-		line = ansi.Truncate(line, maxLen, "")
-		if decision.Resolved {
-			entry.WriteString(MutedStyle.Render(line))
-		} else {
-			entry.WriteString(line)
-		}
-		entry.WriteString("\n")
-	}
+	renderTaskItemPreview(&entry, decision.Text, maxLen, decision.Resolved)
 
 	return entry.String()
 }

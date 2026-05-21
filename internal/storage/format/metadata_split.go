@@ -30,24 +30,7 @@ func splitMetadataPairs(metaStr string) []string {
 			seenKeys[currentKey] = true
 		}
 
-		splitIdx := -1
-		for _, key := range metadataKeys {
-			if seenKeys[key] {
-				continue
-			}
-			pattern := ", " + key + ":"
-			idx := strings.Index(remaining, pattern)
-			if idx != -1 && (splitIdx == -1 || idx < splitIdx) {
-				splitIdx = idx
-			}
-		}
-
-		if idx := findScoreKeyIndex(remaining); idx != -1 && (splitIdx == -1 || idx < splitIdx) {
-			scoreKey := extractScoreKey(remaining[idx+2:])
-			if !seenKeys[scoreKey] {
-				splitIdx = idx
-			}
-		}
+		splitIdx := metadataFieldRegistry.nextSplitIndex(remaining, seenKeys)
 
 		if splitIdx == -1 {
 			pairs = append(pairs, strings.TrimSpace(remaining))

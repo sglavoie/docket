@@ -1,16 +1,16 @@
 package tui
 
 import (
+	"errors"
 	"fmt"
 	"os"
-	"os/exec"
-	"runtime"
 	"strings"
 
 	"charm.land/bubbles/v2/textarea"
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/external"
+	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/util"
 )
 
@@ -27,35 +27,25 @@ func (m *TaskCommentsModel) saveComment() tea.Cmd {
 	m.err = nil
 	m.cursor = len(m.task.Comments) - 1
 
-	project := m.project
-	return func() tea.Msg {
-		if err := saveProjectNoReload(project); err != nil {
-			return ErrorMsg{Err: fmt.Errorf("failed to save project: %w", err)}
-		}
-		return CommentAddedMsg{Task: task}
-	}
+	return persistTaskItemMutation(m.project, CommentAddedMsg{Task: task})
 }
 
 func (m *TaskCommentsModel) executeDelete() tea.Cmd {
-	// Mutate model state synchronously in Update() to avoid data races with View().
-	if t := resolveTaskInProject(m.project, m.task.ID); t != nil {
-		m.task = t
-	}
-	if !m.task.RemoveComment(m.cursor) {
-		return func() tea.Msg { return ErrorMsg{Err: fmt.Errorf("failed to remove comment")} }
-	}
-	if m.cursor >= len(m.task.Comments) && m.cursor > 0 {
-		m.cursor--
-	}
-
-	task := m.task
-	project := m.project
-	return func() tea.Msg {
-		if err := saveProjectNoReload(project); err != nil {
-			return ErrorMsg{Err: fmt.Errorf("failed to save project: %w", err)}
-		}
-		return CommentDeletedMsg{Task: task}
-	}
+	return executeTaskItemDeleteMutation(taskItemDeleteMutation{
+		project: m.project,
+		task:    &m.task,
+		cursor:  &m.cursor,
+		remove: func(task *models.Task, index int) bool {
+			return task.RemoveComment(index)
+		},
+		count: func(task *models.Task) int {
+			return len(task.Comments)
+		},
+		errorMessage: "failed to remove comment",
+		success: func(task *models.Task) tea.Msg {
+			return CommentDeletedMsg{Task: task}
+		},
+	})
 }
 
 func (m *TaskCommentsModel) startEditComment() tea.Cmd {
@@ -75,9 +65,7 @@ func (m *TaskCommentsModel) saveEditedComment() tea.Cmd {
 		return nil
 	}
 
-	if t := resolveTaskInProject(m.project, m.task.ID); t != nil {
-		m.task = t
-	}
+	refreshTaskReference(m.project, &m.task)
 	if m.editIndex >= len(m.task.Comments) {
 		m.cancelEditMode()
 		return func() tea.Msg { return ErrorMsg{Err: fmt.Errorf("comment was deleted externally")} }
@@ -87,14 +75,7 @@ func (m *TaskCommentsModel) saveEditedComment() tea.Cmd {
 	m.cancelEditMode()
 	m.err = nil
 
-	task := m.task
-	project := m.project
-	return func() tea.Msg {
-		if err := saveProjectNoReload(project); err != nil {
-			return ErrorMsg{Err: fmt.Errorf("failed to save project: %w", err)}
-		}
-		return CommentEditedMsg{Task: task}
-	}
+	return persistTaskItemMutation(m.project, CommentEditedMsg{Task: m.task})
 }
 
 func (m *TaskCommentsModel) editInExternalEditor() tea.Cmd {
@@ -150,22 +131,18 @@ func (m *TaskCommentsModel) addCommentInExternalEditor() tea.Cmd {
 }
 
 func (m *TaskCommentsModel) toggleResolved() tea.Cmd {
-	// Mutate model state synchronously in Update() to avoid data races with View().
-	if t := resolveTaskInProject(m.project, m.task.ID); t != nil {
-		m.task = t
-	}
-	if !m.task.ToggleCommentResolved(m.cursor) {
-		return func() tea.Msg { return ErrorMsg{Err: fmt.Errorf("failed to toggle comment resolved state")} }
-	}
-
-	task := m.task
-	project := m.project
-	return func() tea.Msg {
-		if err := saveProjectNoReload(project); err != nil {
-			return ErrorMsg{Err: fmt.Errorf("failed to save project: %w", err)}
-		}
-		return CommentResolvedMsg{Task: task}
-	}
+	return executeTaskItemToggleMutation(taskItemToggleMutation{
+		project: m.project,
+		task:    &m.task,
+		cursor:  m.cursor,
+		toggle: func(task *models.Task, index int) bool {
+			return task.ToggleCommentResolved(index)
+		},
+		errorMessage: "failed to toggle comment resolved state",
+		success: func(task *models.Task) tea.Msg {
+			return CommentResolvedMsg{Task: task}
+		},
+	})
 }
 
 func (m *TaskCommentsModel) editCommentInExternalEditorFromEditMode() tea.Cmd {
@@ -206,21 +183,11 @@ func (m *TaskCommentsModel) editCommentInExternalEditorFromEditMode() tea.Cmd {
 func (m *TaskCommentsModel) copyCommentText() tea.Cmd {
 	comment := m.task.Comments[m.cursor]
 
-	var clipCmd *exec.Cmd
-	switch runtime.GOOS {
-	case "darwin":
-		clipCmd = exec.Command("pbcopy")
-	case "linux":
-		clipCmd = exec.Command("xclip", "-selection", "clipboard")
-	case "windows":
-		clipCmd = exec.Command("clip")
-	default:
-		m.setStatus("Clipboard not supported on this OS")
-		return nil
-	}
-
-	clipCmd.Stdin = strings.NewReader(comment.Text)
-	if err := clipCmd.Run(); err != nil {
+	if err := copyTextToClipboard(comment.Text); err != nil {
+		if errors.Is(err, errClipboardUnsupported) {
+			m.setStatus(err.Error())
+			return nil
+		}
 		m.err = fmt.Errorf("failed to copy to clipboard: %w", err)
 		return nil
 	}

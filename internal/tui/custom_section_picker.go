@@ -8,7 +8,6 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 
-	"github.com/sglavoie/tt/internal/fuzzy"
 	"github.com/sglavoie/tt/internal/models"
 )
 
@@ -30,9 +29,9 @@ type CustomSectionPickerDoneMsg struct {
 // CustomSectionPickerModel allows selecting a custom section to assign to a task.
 type CustomSectionPickerModel struct {
 	*BasePicker[SectionInfo]
-	allItems []SectionInfo
-	task     *models.Task
-	project  *models.Project
+	task         *models.Task
+	project      *models.Project
+	alwaysSearch *alwaysSearchSinglePicker[SectionInfo]
 }
 
 // NewCustomSectionPickerModel creates a picker showing only custom sections
@@ -50,14 +49,38 @@ func NewCustomSectionPickerModel(task *models.Task, project *models.Project, pro
 
 	m := &CustomSectionPickerModel{
 		BasePicker: picker,
-		allItems:   items,
 		task:       task,
 		project:    project,
 	}
+	m.alwaysSearch = newAlwaysSearchSinglePicker(m.BasePicker, alwaysSearchSinglePickerConfig[SectionInfo]{
+		AllItems: items,
+		CancelMsg: func() tea.Msg {
+			return CustomSectionPickerDoneMsg{
+				Task:     m.task,
+				Project:  m.project,
+				Canceled: true,
+			}
+		},
+		SelectMsg: func(cursor int, filtered []SectionInfo) tea.Msg {
+			if cursor >= len(filtered) || len(filtered) == 0 {
+				return CustomSectionPickerDoneMsg{
+					Task:     m.task,
+					Project:  m.project,
+					Canceled: true,
+				}
+			}
+
+			selected := filtered[cursor]
+			return CustomSectionPickerDoneMsg{
+				Task:    m.task,
+				Project: m.project,
+				Section: selected.Name,
+			}
+		},
+	})
 
 	// Activate search immediately
-	m.SetSearchActive(true)
-	m.searchInput.Focus()
+	m.PrimeAlwaysSearch()
 
 	// Pre-select current custom section
 	if task.CustomSection != "" {
@@ -132,132 +155,14 @@ func (m *CustomSectionPickerModel) HasTextInput() bool {
 }
 
 func (m *CustomSectionPickerModel) Init() tea.Cmd {
-	return m.ActivateSearch()
+	return m.alwaysSearch.Init()
 }
 
 func (m *CustomSectionPickerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	switch msg := msg.(type) {
-	case tea.WindowSizeMsg:
-		m.SetSize(msg.Width, msg.Height)
-		return m, nil
-
-	case tea.KeyPressMsg:
-		switch msg.String() {
-		case "esc":
-			if m.IsSearchMode() && m.SearchQuery() != "" {
-				m.ClearSearch()
-				m.fuzzyFilter("")
-				return m, nil
-			}
-			return m, func() tea.Msg {
-				return CustomSectionPickerDoneMsg{
-					Task:     m.task,
-					Project:  m.project,
-					Canceled: true,
-				}
-			}
-
-		case "enter":
-			return m, m.selectCurrent()
-
-		case "up", "ctrl+k":
-			m.moveCursor(-1)
-			return m, nil
-
-		case "down", "ctrl+j":
-			m.moveCursor(1)
-			return m, nil
-
-		case "ctrl+u":
-			m.moveCursor(-10)
-			return m, nil
-
-		case "ctrl+d":
-			m.moveCursor(10)
-			return m, nil
-
-		default:
-			handled, cmd, valueChanged := m.HandleSearchInput(msg)
-			if valueChanged {
-				m.fuzzyFilter(m.SearchQuery())
-			}
-			if handled {
-				return m, cmd
-			}
-		}
+	if handled, cmd := m.alwaysSearch.Update(msg); handled {
+		return m, cmd
 	}
-
 	return m, nil
-}
-
-// moveCursor moves the cursor by delta.
-func (m *CustomSectionPickerModel) moveCursor(delta int) {
-	maxCursor := max(len(m.Filtered)-1, 0)
-	m.Cursor += delta
-	if m.Cursor < 0 {
-		m.Cursor = 0
-	}
-	if m.Cursor > maxCursor {
-		m.Cursor = maxCursor
-	}
-}
-
-// fuzzyFilter filters sections using fuzzy scoring.
-func (m *CustomSectionPickerModel) fuzzyFilter(query string) {
-	query = strings.TrimSpace(query)
-
-	if query == "" {
-		m.Filtered = m.allItems
-		m.Cursor = 0
-		return
-	}
-
-	type scoredItem struct {
-		item  SectionInfo
-		score int
-	}
-	var scored []scoredItem
-
-	for _, item := range m.allItems {
-		score := fuzzy.ScoreTerms(item.FilterText(), query)
-		if score > 0 {
-			scored = append(scored, scoredItem{item: item, score: score})
-		}
-	}
-
-	sort.Slice(scored, func(i, j int) bool {
-		return scored[i].score > scored[j].score
-	})
-
-	m.Filtered = make([]SectionInfo, len(scored))
-	for i, s := range scored {
-		m.Filtered[i] = s.item
-	}
-
-	maxCursor := max(len(m.Filtered)-1, 0)
-	if m.Cursor > maxCursor {
-		m.Cursor = maxCursor
-	}
-}
-
-// selectCurrent returns a command with the selected section.
-func (m *CustomSectionPickerModel) selectCurrent() tea.Cmd {
-	return func() tea.Msg {
-		if m.Cursor >= len(m.Filtered) || len(m.Filtered) == 0 {
-			return CustomSectionPickerDoneMsg{
-				Task:     m.task,
-				Project:  m.project,
-				Canceled: true,
-			}
-		}
-
-		selected := m.Filtered[m.Cursor]
-		return CustomSectionPickerDoneMsg{
-			Task:    m.task,
-			Project: m.project,
-			Section: selected.Name,
-		}
-	}
 }
 
 func (m *CustomSectionPickerModel) View() tea.View {

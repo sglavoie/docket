@@ -2,13 +2,11 @@ package tui
 
 import (
 	"fmt"
-	"sort"
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 
-	"github.com/sglavoie/tt/internal/fuzzy"
 	"github.com/sglavoie/tt/internal/models"
 )
 
@@ -21,7 +19,7 @@ type GlobalNoteMoveDoneMsg struct {
 // for moving a global note into a project.
 type GlobalNoteMoveProjectSelectorModel struct {
 	*BasePicker[ProjectPickerItem]
-	allItems []ProjectPickerItem
+	alwaysSearch *alwaysSearchSinglePicker[ProjectPickerItem]
 }
 
 // NewGlobalNoteMoveProjectSelectorModel creates a project selector for moving a global note.
@@ -48,10 +46,20 @@ func NewGlobalNoteMoveProjectSelectorModel(projects []*models.Project) *GlobalNo
 
 	m := &GlobalNoteMoveProjectSelectorModel{
 		BasePicker: picker,
-		allItems:   items,
 	}
-	m.SetSearchActive(true)
-	m.searchInput.Focus()
+	m.alwaysSearch = newAlwaysSearchSinglePicker(m.BasePicker, alwaysSearchSinglePickerConfig[ProjectPickerItem]{
+		AllItems: items,
+		CancelMsg: func() tea.Msg {
+			return GlobalNoteMoveDoneMsg{}
+		},
+		SelectMsg: func(cursor int, filtered []ProjectPickerItem) tea.Msg {
+			if cursor >= len(filtered) || len(filtered) == 0 {
+				return GlobalNoteMoveDoneMsg{}
+			}
+			return GlobalNoteMoveDoneMsg{Project: filtered[cursor].Project}
+		},
+	})
+	m.PrimeAlwaysSearch()
 	return m
 }
 
@@ -60,101 +68,14 @@ func (m *GlobalNoteMoveProjectSelectorModel) HasTextInput() bool     { return tr
 func (m *GlobalNoteMoveProjectSelectorModel) ShouldCaptureEsc() bool { return true }
 
 func (m *GlobalNoteMoveProjectSelectorModel) Init() tea.Cmd {
-	return m.ActivateSearch()
+	return m.alwaysSearch.Init()
 }
 
 func (m *GlobalNoteMoveProjectSelectorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	switch msg := msg.(type) {
-	case tea.WindowSizeMsg:
-		m.SetSize(msg.Width, msg.Height)
-		return m, nil
-
-	case tea.KeyPressMsg:
-		switch msg.String() {
-		case "esc":
-			if m.IsSearchMode() && m.SearchQuery() != "" {
-				m.ClearSearch()
-				m.fuzzyFilter("")
-				return m, nil
-			}
-			return m, func() tea.Msg { return GlobalNoteMoveDoneMsg{} }
-		case "enter":
-			return m, m.selectCurrent()
-		case "up", "ctrl+k":
-			m.moveCursor(-1)
-			return m, nil
-		case "down", "ctrl+j":
-			m.moveCursor(1)
-			return m, nil
-		case "ctrl+u":
-			m.moveCursor(-10)
-			return m, nil
-		case "ctrl+d":
-			m.moveCursor(10)
-			return m, nil
-		default:
-			handled, cmd, valueChanged := m.HandleSearchInput(msg)
-			if valueChanged {
-				m.fuzzyFilter(m.SearchQuery())
-			}
-			if handled {
-				return m, cmd
-			}
-		}
+	if handled, cmd := m.alwaysSearch.Update(msg); handled {
+		return m, cmd
 	}
 	return m, nil
-}
-
-func (m *GlobalNoteMoveProjectSelectorModel) moveCursor(delta int) {
-	maxCursor := max(len(m.Filtered)-1, 0)
-	m.Cursor += delta
-	if m.Cursor < 0 {
-		m.Cursor = 0
-	}
-	if m.Cursor > maxCursor {
-		m.Cursor = maxCursor
-	}
-}
-
-func (m *GlobalNoteMoveProjectSelectorModel) fuzzyFilter(query string) {
-	query = strings.TrimSpace(query)
-	if query == "" {
-		m.Filtered = m.allItems
-		m.Cursor = 0
-		return
-	}
-
-	type scoredItem struct {
-		item  ProjectPickerItem
-		score int
-	}
-	var scored []scoredItem
-	for _, item := range m.allItems {
-		score := fuzzy.ScoreTerms(item.FilterText(), query)
-		if score > 0 {
-			scored = append(scored, scoredItem{item: item, score: score})
-		}
-	}
-	sort.Slice(scored, func(i, j int) bool {
-		return scored[i].score > scored[j].score
-	})
-	m.Filtered = make([]ProjectPickerItem, len(scored))
-	for i, s := range scored {
-		m.Filtered[i] = s.item
-	}
-	maxCursor := max(len(m.Filtered)-1, 0)
-	if m.Cursor > maxCursor {
-		m.Cursor = maxCursor
-	}
-}
-
-func (m *GlobalNoteMoveProjectSelectorModel) selectCurrent() tea.Cmd {
-	return func() tea.Msg {
-		if m.Cursor >= len(m.Filtered) || len(m.Filtered) == 0 {
-			return GlobalNoteMoveDoneMsg{}
-		}
-		return GlobalNoteMoveDoneMsg{Project: m.Filtered[m.Cursor].Project}
-	}
 }
 
 func (m *GlobalNoteMoveProjectSelectorModel) View() tea.View {

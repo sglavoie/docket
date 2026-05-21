@@ -2,13 +2,11 @@ package tui
 
 import (
 	"fmt"
-	"sort"
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 
-	"github.com/sglavoie/tt/internal/fuzzy"
 	"github.com/sglavoie/tt/internal/models"
 )
 
@@ -45,6 +43,7 @@ type ParentSelectorModel struct {
 	currentID      *string            // Currently selected parent ID (for pre-selection)
 	source         ViewType           // Which view opened this selector
 	reparentTaskID string             // When non-empty, forwarded back in ParentSelectedMsg
+	alwaysSearch   *alwaysSearchSinglePicker[ParentPickerItem]
 }
 
 // NewParentSelectorModel creates a new parent selector.
@@ -84,6 +83,38 @@ func NewParentSelectorModel(validParents []*models.Task, currentID *string, allo
 		}
 	}
 
+	m.alwaysSearch = newAlwaysSearchSinglePicker(m.BasePicker, alwaysSearchSinglePickerConfig[ParentPickerItem]{
+		AllItems: items,
+		MaxCursor: func(filtered []ParentPickerItem) int {
+			if m.allowNone {
+				return len(filtered)
+			}
+			return max(len(filtered)-1, 0)
+		},
+		CancelMsg: func() tea.Msg {
+			return CloseParentSelectorMsg{}
+		},
+		SelectMsg: func(cursor int, filtered []ParentPickerItem) tea.Msg {
+			var parentID *string
+
+			if m.allowNone {
+				if cursor == 0 {
+					parentID = nil
+				} else if cursor-1 < len(filtered) {
+					parentID = &filtered[cursor-1].Task.ID
+				}
+			} else if cursor < len(filtered) {
+				parentID = &filtered[cursor].Task.ID
+			}
+
+			return ParentSelectedMsg{
+				ParentID:       parentID,
+				Source:         m.source,
+				ReparentTaskID: m.reparentTaskID,
+			}
+		},
+	})
+
 	return m
 }
 
@@ -97,155 +128,20 @@ func (m *ParentSelectorModel) HasTextInput() bool {
 	return true
 }
 
+// ShouldCaptureEsc lets the selector clear an active query before closing.
+func (m *ParentSelectorModel) ShouldCaptureEsc() bool {
+	return true
+}
+
 func (m *ParentSelectorModel) Init() tea.Cmd {
-	return m.ActivateSearch()
+	return m.alwaysSearch.Init()
 }
 
 func (m *ParentSelectorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	switch msg := msg.(type) {
-	case tea.WindowSizeMsg:
-		m.SetSize(msg.Width, msg.Height)
-		return m, nil
-
-	case tea.KeyPressMsg:
-		switch msg.String() {
-		case "esc":
-			if m.IsSearchMode() && m.SearchQuery() != "" {
-				m.ClearSearch()
-				m.fuzzyFilter("")
-				return m, nil
-			}
-			return m, func() tea.Msg {
-				return CloseParentSelectorMsg{}
-			}
-
-		case "enter":
-			return m, m.selectCurrent()
-
-		case "up", "ctrl+k":
-			m.moveCursor(-1)
-			return m, nil
-
-		case "down", "ctrl+j":
-			m.moveCursor(1)
-			return m, nil
-
-		case "ctrl+u":
-			m.moveCursor(-10)
-			return m, nil
-
-		case "ctrl+d":
-			m.moveCursor(10)
-			return m, nil
-
-		default:
-			// Handle search input
-			handled, cmd, valueChanged := m.HandleSearchInput(msg)
-			if valueChanged {
-				m.fuzzyFilter(m.SearchQuery())
-			}
-			if handled {
-				return m, cmd
-			}
-		}
+	if handled, cmd := m.alwaysSearch.Update(msg); handled {
+		return m, cmd
 	}
-
 	return m, nil
-}
-
-// moveCursor moves the cursor by delta, accounting for the "None" option.
-func (m *ParentSelectorModel) moveCursor(delta int) {
-	maxCursor := len(m.Filtered)
-	if !m.allowNone {
-		maxCursor--
-	}
-	if maxCursor < 0 {
-		maxCursor = 0
-	}
-
-	m.Cursor += delta
-	if m.Cursor < 0 {
-		m.Cursor = 0
-	}
-	if m.Cursor > maxCursor {
-		m.Cursor = maxCursor
-	}
-}
-
-// fuzzyFilter filters parents using fuzzy scoring instead of substring matching.
-func (m *ParentSelectorModel) fuzzyFilter(query string) {
-	query = strings.TrimSpace(query)
-
-	if query == "" {
-		m.Filtered = m.allItems
-		m.Cursor = 0
-		return
-	}
-
-	// Score each parent and collect matches
-	type scoredItem struct {
-		item  ParentPickerItem
-		score int
-	}
-	var scored []scoredItem
-
-	for _, item := range m.allItems {
-		score := fuzzy.ScoreTerms(item.FilterText(), query)
-		if score > 0 {
-			scored = append(scored, scoredItem{item: item, score: score})
-		}
-	}
-
-	// Sort by score descending (best matches first)
-	sort.Slice(scored, func(i, j int) bool {
-		return scored[i].score > scored[j].score
-	})
-
-	// Extract sorted results
-	m.Filtered = make([]ParentPickerItem, len(scored))
-	for i, s := range scored {
-		m.Filtered[i] = s.item
-	}
-
-	// Reset cursor if out of bounds
-	maxCursor := len(m.Filtered)
-	if m.allowNone {
-		// cursor 0 is "None", so max is len(filtered)
-	} else if maxCursor > 0 {
-		maxCursor--
-	}
-	if m.Cursor > maxCursor {
-		m.Cursor = maxCursor
-	}
-	if m.Cursor < 0 {
-		m.Cursor = 0
-	}
-}
-
-// selectCurrent returns a command with the selected parent.
-func (m *ParentSelectorModel) selectCurrent() tea.Cmd {
-	return func() tea.Msg {
-		var parentID *string
-
-		if m.allowNone {
-			if m.Cursor == 0 {
-				// "None" selected
-				parentID = nil
-			} else if m.Cursor-1 < len(m.Filtered) {
-				parentID = &m.Filtered[m.Cursor-1].Task.ID
-			}
-		} else {
-			if m.Cursor < len(m.Filtered) {
-				parentID = &m.Filtered[m.Cursor].Task.ID
-			}
-		}
-
-		return ParentSelectedMsg{
-			ParentID:       parentID,
-			Source:         m.source,
-			ReparentTaskID: m.reparentTaskID,
-		}
-	}
 }
 
 func (m *ParentSelectorModel) View() tea.View {

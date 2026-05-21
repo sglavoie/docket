@@ -2,9 +2,6 @@ package format
 
 import (
 	"regexp"
-	"strings"
-
-	"github.com/sglavoie/tt/internal/models"
 )
 
 // pinnedAtFormat uses second-level precision so reordering swaps are never lost
@@ -23,19 +20,7 @@ func MetadataRegex() *regexp.Regexp {
 // metadata key. This lets the parser distinguish task metadata from arbitrary
 // HTML comments that appear at the start of a description.
 func LooksLikeMetadata(metaStr string) bool {
-	key := extractMetadataKey(metaStr)
-	if key == "" {
-		return false
-	}
-	if strings.HasPrefix(key, "score.") {
-		return isValidDimensionID(strings.TrimPrefix(key, "score."))
-	}
-	for _, known := range metadataKeys {
-		if key == known {
-			return true
-		}
-	}
-	return false
+	return metadataFieldRegistry.recognizesKey(extractMetadataKey(metaStr))
 }
 
 // WarningType categorizes the kind of warning for appropriate handling.
@@ -63,37 +48,5 @@ type ParseWarning struct {
 	Message string      // Human-readable description of the issue
 }
 
-// metadataKeys lists all known metadata keys for smart splitting.
-var metadataKeys = []string{
-	"id", "status", "priority", "parent", "tags", "created", "updated",
-	"completed", "due", "depends", "related", "section", "custom_section", "pinned", "pinned_at", "active", "dimmed", "recur",
-	"recur.skipped", "recur.streak", "recur.max_streak", "recur.original_day",
-	"attachments", "snoozed", "checklist", "stage", "source", "url",
-	"bug.reproducible", "bug.severity", "bug.workaround",
-	"idea.category", "idea.effort", "idea.value", "idea.validated",
-	"task.effort", "task.worktype",
-	"story.points", "story.persona",
-	"epic.scope", "epic.milestone", "epic.metrics", "epic.initial_children", "epic.scope_baselined",
-	"start", "estimated_days",
-}
-
 // MaxDimensionIDLength is the maximum allowed length for a score dimension ID.
 const MaxDimensionIDLength = 32
-
-// typeForAttrPrefix returns the expected TaskType for a given attribute prefix.
-func typeForAttrPrefix(key string) (models.TaskType, bool) {
-	switch {
-	case strings.HasPrefix(key, "bug."):
-		return models.TaskTypeBug, true
-	case strings.HasPrefix(key, "idea."):
-		return models.TaskTypeIdea, true
-	case strings.HasPrefix(key, "task."):
-		return models.TaskTypeTask, true
-	case strings.HasPrefix(key, "story."):
-		return models.TaskTypeStory, true
-	case strings.HasPrefix(key, "epic."):
-		return models.TaskTypeEpic, true
-	default:
-		return "", false
-	}
-}
