@@ -186,13 +186,14 @@ func (m *DueDateOverviewModel) renderGroup(tasks []CrossProjectTask, currentInde
 func (m *DueDateOverviewModel) renderTaskLine(dt CrossProjectTask, isSelected bool, maxTitleLen int, layout *ColumnLayout, rowIndex int) string {
 	dateStr := m.formatDueDate(dt.Task)
 	return RenderCrossProjectTaskLine(dt.Task, dt.Project, m.config, isSelected, m.Width(), maxTitleLen, CrossProjectTaskLineOpts{
-		Queued:        m.queueIDs[dt.Task.ID],
-		DailyPlanned:  m.dailyPlanIDs[dt.Task.ID],
-		MaxProjectLen: 15,
-		Prefix:        m.Checkbox(dt.Task.ID) + dateStr + " ",
-		Flash:         m.cursorFlash,
-		Layout:        layout,
-		RowIndex:      rowIndex,
+		Queued:          m.queueIDs[dt.Task.ID],
+		DailyPlanned:    m.dailyPlanIDs[dt.Task.ID],
+		ShowDescription: m.config.IsDescriptionColumnVisible(),
+		MaxProjectLen:   15,
+		Prefix:          m.Checkbox(dt.Task.ID) + dateStr + " ",
+		Flash:           m.cursorFlash,
+		Layout:          layout,
+		RowIndex:        rowIndex,
 	})
 }
 

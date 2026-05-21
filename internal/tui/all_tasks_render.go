@@ -216,16 +216,17 @@ func (m *AllTasksViewModel) renderTaskLine(item CrossProjectTask, isSelected boo
 	}
 
 	line := RenderCrossProjectTaskLine(task, item.Project, m.config, isSelected, lineWidth, maxTitleLen, CrossProjectTaskLineOpts{
-		Queued:        m.queueIDs[task.ID],
-		DailyPlanned:  m.dailyPlanIDs[task.ID],
-		ShowTags:      true,
-		ShowScore:     true,
-		MaxProjectLen: 15,
-		Prefix:        checkbox,
-		DueStr:        dueStr,
-		Flash:         m.cursorFlash,
-		RowIndex:      rowIndex,
-		Layout:        layout,
+		Queued:          m.queueIDs[task.ID],
+		DailyPlanned:    m.dailyPlanIDs[task.ID],
+		ShowTags:        true,
+		ShowScore:       true,
+		ShowDescription: m.config.IsDescriptionColumnVisible(),
+		MaxProjectLen:   15,
+		Prefix:          checkbox,
+		DueStr:          dueStr,
+		Flash:           m.cursorFlash,
+		RowIndex:        rowIndex,
+		Layout:          layout,
 	})
 	if isSelected && m.mutationFlash {
 		return MutationFlashLine(line, lineWidth, m.mutationFlashBg)

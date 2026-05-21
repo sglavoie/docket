@@ -6,8 +6,9 @@ import (
 
 // ColumnInfo represents a single column in the column picker.
 type ColumnInfo struct {
-	ID    string // Column constant (e.g., ColPriority)
-	Label string // Human-readable label
+	ID           string // Column constant (e.g., ColPriority)
+	Label        string // Human-readable label
+	OutlinerOnly bool   // If true, excluded from Project Tree column picker
 }
 
 func (c ColumnInfo) FilterText() string  { return c.Label }
@@ -25,6 +26,7 @@ var AllColumns = []ColumnInfo{
 	{ID: ColCustomSection, Label: "Custom Section"},
 	{ID: ColDependencies, Label: "Dependencies"},
 	{ID: ColComments, Label: "Comments"},
+	{ID: ColDescription, Label: "Description", OutlinerOnly: true},
 	{ID: ColAttachments, Label: "Attachments"},
 	{ID: ColChecklist, Label: "Checklist"},
 	{ID: ColDecisions, Label: "Decisions"},
@@ -54,7 +56,18 @@ type ColumnPickerModel struct {
 
 // NewColumnPickerModel creates a column picker pre-selecting currently visible columns.
 func NewColumnPickerModel(msg ShowColumnPickerMsg) *ColumnPickerModel {
-	picker := NewBasePicker(AllColumns, PickerConfig{
+	cols := AllColumns
+	if msg.Source == ViewProjectTree {
+		cols = make([]ColumnInfo, 0, len(AllColumns))
+		for _, col := range AllColumns {
+			if col.OutlinerOnly {
+				continue
+			}
+			cols = append(cols, col)
+		}
+	}
+
+	picker := NewBasePicker(cols, PickerConfig{
 		Title:          "Display Columns",
 		EmptyMessage:   "No columns available.",
 		NoMatchMessage: "No matching columns.",
@@ -62,7 +75,7 @@ func NewColumnPickerModel(msg ShowColumnPickerMsg) *ColumnPickerModel {
 	})
 
 	// Pre-select columns that are currently visible
-	for _, col := range AllColumns {
+	for _, col := range cols {
 		if msg.ColumnConfig.IsVisible(col.ID) {
 			picker.PreSelectByID(col.ID)
 		}

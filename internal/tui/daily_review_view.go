@@ -291,6 +291,7 @@ func (m *DailyReviewModel) renderTaskLine(dt CrossProjectTask, section DailyRevi
 		HideLowPriority: true,
 		DueStr:          m.sectionContextStr(dt, section),
 		ShowRecurrence:  true,
+		ShowDescription: m.config.IsDescriptionColumnVisible(),
 		Prefix:          m.Checkbox(task.ID),
 		Flash:           m.cursorFlash,
 		Layout:          layout,

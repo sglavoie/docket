@@ -123,12 +123,17 @@ func buildSettingsFieldRegistry() []settingsFieldMeta {
 
 	// Tab 5: Project Tree (14 column fields)
 	base = tabFieldStart[tabProjectTree]
-	for i, col := range AllColumns {
+	treeIdx := 0
+	for _, col := range AllColumns {
+		if col.OutlinerOnly {
+			continue
+		}
 		label := col.Label
 		if col.ID == ColPriority {
 			label += " Mode"
 		}
-		add(base+i, tabProjectTree, 0, "Views > Project Tree", label, "project tree column visible hidden", "Visible")
+		add(base+treeIdx, tabProjectTree, 0, "Views > Project Tree", label, "project tree column visible hidden", "Visible")
+		treeIdx++
 	}
 
 	// Tab 6: Outliner (23 fields across 3 sub-tabs)

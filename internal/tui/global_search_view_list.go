@@ -107,7 +107,11 @@ func (m *GlobalSearchModel) renderTaskSearchRow(index int, filteredResult filter
 	projectName := MutedStyle.Render(fmt.Sprintf("[%s]", projectSlug))
 	shortID := MutedStyle.Render(fmt.Sprintf("#%-4d", task.ShortID))
 	prefix := fmt.Sprintf("%s%s %s%s %s %s ", cursor, typeIcon, stageSegment, statusIcon, shortID, projectName)
-	prefixWidth := lipgloss.Width(prefix)
+	descSuffix := ""
+	if m.config.IsDescriptionColumnVisible() && len(task.Description) > 0 {
+		descSuffix = " " + MutedStyle.Render(IconDescription())
+	}
+	prefixWidth := lipgloss.Width(prefix) + lipgloss.Width(descSuffix)
 	maxTitleLen := max(m.listWidth-prefixWidth-2, 1)
 	title := truncateToVisualWidth(task.Title, maxTitleLen)
 	titleRendered := GetTitlePriorityStyle(task.Priority).Render(highlightTruncated(title, filteredResult.titlePositions))
@@ -116,14 +120,14 @@ func (m *GlobalSearchModel) renderTaskSearchRow(index int, filteredResult filter
 		titleRendered += MutedStyle.Render(" [c]")
 	}
 
-	line := prefix + titleRendered
+	line := prefix + titleRendered + descSuffix
 	lineWidth := lipgloss.Width(line)
 	if lineWidth > m.listWidth {
 		excess := lineWidth - m.listWidth + 3
 		if lipgloss.Width(title) > excess {
 			title = truncateToVisualWidth(task.Title, maxTitleLen-excess)
 			titleRendered = GetTitlePriorityStyle(task.Priority).Render(highlightTruncated(title, filteredResult.titlePositions))
-			line = prefix + titleRendered
+			line = prefix + titleRendered + descSuffix
 		}
 	}
 

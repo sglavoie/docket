@@ -54,6 +54,7 @@ func (m *WeeklyReviewModel) renderTaskLine(dt WeeklyReviewTask, section WeeklyRe
 		HideLowPriority: true,
 		DueStr:          contextStr,
 		ShowRecurrence:  section == WeeklySectionRecurringOverview,
+		ShowDescription: m.config.IsDescriptionColumnVisible(),
 		Prefix:          m.Checkbox(task.ID),
 		Flash:           m.cursorFlash,
 		Layout:          layout,

@@ -147,8 +147,8 @@ func (m *SettingsModel) saveSettings() tea.Cmd {
 	m.config.AttachmentEditor = strings.TrimSpace(m.attachmentEditorInput.Value())
 	m.config.CodeEditor = strings.TrimSpace(m.codeEditorInput.Value())
 	m.config.NotesEditor = strings.TrimSpace(m.notesEditorInput.Value())
-	m.config.TreeDefaultColumns = columnDefaultsToMap(m.treeColumnDefaults)
-	m.config.OutlinerDefaultColumns = columnDefaultsToMap(m.outlinerColumnDefaults)
+	m.config.TreeDefaultColumns = treeColumnDefaultsToMap(m.treeColumnDefaults)
+	m.config.OutlinerDefaultColumns = outlinerColumnDefaultsToMap(m.outlinerColumnDefaults)
 
 	m.config.TreePriorityMode = priorityModeValues[m.treePriorityMode]
 	m.config.OutlinerPriorityMode = priorityModeValues[m.outlinerPriorityMode]
@@ -264,10 +264,33 @@ func priorityModeToCursor(mode string) int {
 	}
 }
 
-// initColumnDefaults converts a config map to a [13]bool array using AllColumns order.
+// initTreeColumnDefaults converts a config map to a [14]bool array indexed by
+// the Project Tree column slice (AllColumns filtered to exclude OutlinerOnly).
 // nil map or missing keys default to true (visible).
-func initColumnDefaults(cfgMap map[string]bool) [14]bool {
+func initTreeColumnDefaults(cfgMap map[string]bool) [14]bool {
 	var result [14]bool
+	idx := 0
+	for _, col := range AllColumns {
+		if col.OutlinerOnly {
+			continue
+		}
+		if cfgMap != nil {
+			if v, ok := cfgMap[col.ID]; ok {
+				result[idx] = v
+				idx++
+				continue
+			}
+		}
+		result[idx] = true
+		idx++
+	}
+	return result
+}
+
+// initOutlinerColumnDefaults converts a config map to a [15]bool array indexed
+// by the full AllColumns slice. nil map or missing keys default to true.
+func initOutlinerColumnDefaults(cfgMap map[string]bool) [15]bool {
+	var result [15]bool
 	for i, col := range AllColumns {
 		if cfgMap != nil {
 			if v, ok := cfgMap[col.ID]; ok {
@@ -280,9 +303,9 @@ func initColumnDefaults(cfgMap map[string]bool) [14]bool {
 	return result
 }
 
-// columnDefaultsToMap converts a [13]bool array back to a config map.
-// Returns nil if all columns are visible (to keep config clean).
-func columnDefaultsToMap(defaults [14]bool) map[string]bool {
+// treeColumnDefaultsToMap converts a [14]bool array (filtered AllColumns) back
+// to a config map. Returns nil when every column is visible.
+func treeColumnDefaultsToMap(defaults [14]bool) map[string]bool {
 	allTrue := true
 	for _, v := range defaults {
 		if !v {
@@ -294,6 +317,31 @@ func columnDefaultsToMap(defaults [14]bool) map[string]bool {
 		return nil
 	}
 	m := make(map[string]bool, 14)
+	idx := 0
+	for _, col := range AllColumns {
+		if col.OutlinerOnly {
+			continue
+		}
+		m[col.ID] = defaults[idx]
+		idx++
+	}
+	return m
+}
+
+// outlinerColumnDefaultsToMap converts a [15]bool array (full AllColumns) back
+// to a config map. Returns nil when every column is visible.
+func outlinerColumnDefaultsToMap(defaults [15]bool) map[string]bool {
+	allTrue := true
+	for _, v := range defaults {
+		if !v {
+			allTrue = false
+			break
+		}
+	}
+	if allTrue {
+		return nil
+	}
+	m := make(map[string]bool, 15)
 	for i, col := range AllColumns {
 		m[col.ID] = defaults[i]
 	}

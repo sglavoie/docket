@@ -203,7 +203,7 @@ func (m *SettingsModel) renderProjectTreeTab() string {
 	const labelWidth = 18
 	b.WriteString(SubtitleStyle.Render("Default Column Visibility"))
 	b.WriteString("\n\n")
-	m.renderColumnToggles(&b, m.treeColumnDefaults, tabFieldStart[tabProjectTree], labelWidth, m.treePriorityMode)
+	m.renderTreeColumnToggles(&b, m.treeColumnDefaults, tabFieldStart[tabProjectTree], labelWidth, m.treePriorityMode)
 	return b.String()
 }
 
@@ -260,7 +260,7 @@ func (m *SettingsModel) renderOutlinerColumnVisibilitySection() string {
 	var b strings.Builder
 	const labelWidth = 22
 
-	m.renderColumnToggles(&b, m.outlinerColumnDefaults, subTabFieldStart(tabOutliner, 2), labelWidth, m.outlinerPriorityMode)
+	m.renderOutlinerColumnToggles(&b, m.outlinerColumnDefaults, subTabFieldStart(tabOutliner, 2), labelWidth, m.outlinerPriorityMode)
 
 	return b.String()
 }

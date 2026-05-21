@@ -17,9 +17,32 @@ func renderDefaultHint(current, def string) string {
 	return "  " + MutedStyle.Render("(default: "+def+")")
 }
 
-// renderColumnToggles renders 13 column visibility toggles.
-// The Priority column (index 1) is rendered as a 3-way enum selector instead of a toggle.
-func (m *SettingsModel) renderColumnToggles(b *strings.Builder, toggles [14]bool, startIdx, labelWidth int, priorityCursor int) {
+// renderTreeColumnToggles renders the Project Tree column visibility toggles.
+// Iterates AllColumns filtered to exclude OutlinerOnly entries — the toggles
+// array indices must align with that filtered slice.
+// The Priority column is rendered as a 3-way enum selector instead of a toggle.
+func (m *SettingsModel) renderTreeColumnToggles(b *strings.Builder, toggles [14]bool, startIdx, labelWidth int, priorityCursor int) {
+	idx := 0
+	for _, col := range AllColumns {
+		if col.OutlinerOnly {
+			continue
+		}
+		focusIdx := startIdx + idx
+		b.WriteString(renderFormLabelWithWidth(col.Label+": ", labelWidth, m.focusIndex == focusIdx))
+		if col.ID == ColPriority {
+			b.WriteString(renderEnumSelector(priorityModeOptions, priorityCursor, m.focusIndex == focusIdx, m.width-(labelWidth+2)))
+		} else {
+			b.WriteString(renderFormToggle("Visible", "Hidden", toggles[idx], m.focusIndex == focusIdx))
+		}
+		b.WriteString("\n")
+		idx++
+	}
+}
+
+// renderOutlinerColumnToggles renders the Outliner column visibility toggles
+// across the full AllColumns list (no filtering).
+// The Priority column is rendered as a 3-way enum selector instead of a toggle.
+func (m *SettingsModel) renderOutlinerColumnToggles(b *strings.Builder, toggles [15]bool, startIdx, labelWidth int, priorityCursor int) {
 	for i, col := range AllColumns {
 		focusIdx := startIdx + i
 		b.WriteString(renderFormLabelWithWidth(col.Label+": ", labelWidth, m.focusIndex == focusIdx))

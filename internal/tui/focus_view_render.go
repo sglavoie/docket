@@ -311,13 +311,14 @@ func (m *FocusViewModel) renderTaskLineWithPrefix(ft FocusTask, isSelected bool,
 	}
 
 	return RenderCrossProjectTaskLine(task, ft.Project, m.config, isSelected, m.width, maxTitleLen, CrossProjectTaskLineOpts{
-		Queued:       queued,
-		DailyPlanned: dailyPlanned,
-		ShowTags:     true,
-		Prefix:       prefix,
-		DueStr:       dueStr,
-		Flash:        m.cursorFlash,
-		Layout:       layout,
-		RowIndex:     rowIndex,
+		Queued:          queued,
+		DailyPlanned:    dailyPlanned,
+		ShowTags:        true,
+		ShowDescription: m.config.IsDescriptionColumnVisible(),
+		Prefix:          prefix,
+		DueStr:          dueStr,
+		Flash:           m.cursorFlash,
+		Layout:          layout,
+		RowIndex:        rowIndex,
 	})
 }

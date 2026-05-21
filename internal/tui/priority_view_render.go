@@ -76,6 +76,13 @@ func (m *PriorityViewModel) renderSuggestionSection() string {
 	// Star indicator
 	star := SuggestionStarStyle.Render(icons.Get("star"))
 
+	postTitle := ""
+	if m.config != nil && m.config.IsDescriptionColumnVisible() {
+		if descBadge := renderDescriptionIndicator(task); descBadge != "" {
+			postTitle = " " + descBadge
+		}
+	}
+
 	// Build the task line
 	taskLine := TaskLine{
 		Task:       task,
@@ -85,6 +92,7 @@ func (m *PriorityViewModel) renderSuggestionSection() string {
 		MaxTitle:   titleWidth,
 		Prefix:     star,
 		StageBadge: GetStageBadge(task.Stage),
+		PostTitle:  postTitle,
 		DueStr:     dueStr,
 		ViewWidth:  boxWidth,
 		Flash:      m.cursorFlash,
@@ -229,6 +237,11 @@ func (m *PriorityViewModel) renderScoreRanking(currentIndex *int, cursorLineIdx 
 
 		// Progress fraction for parent tasks
 		postTitle := renderProgressFraction(pt.Task)
+		if m.config != nil && m.config.IsDescriptionColumnVisible() {
+			if descBadge := renderDescriptionIndicator(pt.Task); descBadge != "" {
+				postTitle = JoinGroupParts(descBadge, postTitle)
+			}
+		}
 		if postTitle != "" {
 			postTitle = " " + postTitle
 		}
@@ -336,7 +349,11 @@ func (m *PriorityViewModel) renderTaskLine(pt *PriorityTask, isOverdue bool, isS
 	// Build indicator groups
 	structureGroup := JoinGroupParts(scoreBadge, renderProgressFraction(task))
 	orgGroup := strings.TrimSpace(csStr)
-	contentGroup := renderTruncatedTags(task.Tags, 2, 8)
+	descBadge := ""
+	if m.config != nil && m.config.IsDescriptionColumnVisible() {
+		descBadge = renderDescriptionIndicator(task)
+	}
+	contentGroup := JoinGroupParts(descBadge, renderTruncatedTags(task.Tags, 2, 8))
 	postTitle := JoinIndicatorGroups(structureGroup, orgGroup, contentGroup)
 	if postTitle != "" {
 		postTitle = " " + postTitle

@@ -119,6 +119,18 @@ func (c *Config) GetUseEmoji() bool {
 	return c.UseEmoji != nil && *c.UseEmoji
 }
 
+// IsDescriptionColumnVisible reports whether the description-indicator column
+// is enabled in OutlinerDefaultColumns. Key mirrors tui.ColDescription.
+func (c *Config) IsDescriptionColumnVisible() bool {
+	if c == nil {
+		return true
+	}
+	if v, ok := c.OutlinerDefaultColumns["description"]; ok {
+		return v
+	}
+	return true
+}
+
 // GetNotesEditor returns the configured editor for opening notes with Ctrl+O.
 // Defaults to "code" (VS Code) if not set.
 func (c *Config) GetNotesEditor() string {

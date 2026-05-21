@@ -92,6 +92,8 @@ func (m *SettingsModel) handleSpaceKey() {
 			m.treeColumnDefaults[local] = !m.treeColumnDefaults[local]
 		}
 	case tabOutliner:
+		columnsBase := subTabFieldStart(tabOutliner, 2) - tabFieldStart[tabOutliner]
+		columnsEnd := columnsBase + len(AllColumns) - 1
 		switch {
 		case local == 0:
 			m.crossOutlinerSidebar = !m.crossOutlinerSidebar
@@ -99,10 +101,10 @@ func (m *SettingsModel) handleSpaceKey() {
 			m.crossOutlinerCycleOnly = !m.crossOutlinerCycleOnly
 		case local >= 2 && local <= 8:
 			m.outlinerCollapsed[local-2] = !m.outlinerCollapsed[local-2]
-		case local == 10:
+		case local == columnsBase+1:
 			m.outlinerPriorityMode = (m.outlinerPriorityMode + 1) % 3
-		case local >= 9 && local <= 21:
-			m.outlinerColumnDefaults[local-9] = !m.outlinerColumnDefaults[local-9]
+		case local >= columnsBase && local <= columnsEnd:
+			m.outlinerColumnDefaults[local-columnsBase] = !m.outlinerColumnDefaults[local-columnsBase]
 		}
 	case tabKanban:
 		switch {

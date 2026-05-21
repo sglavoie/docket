@@ -135,6 +135,13 @@ func renderTruncatedTags(tags []string, maxTags, maxTagLen int) string {
 	return result
 }
 
+func renderDescriptionIndicator(task *models.Task) string {
+	if len(task.Description) == 0 {
+		return ""
+	}
+	return MutedStyle.Render(IconDescription())
+}
+
 // renderCommentIndicator renders a compact comment count indicator.
 // Shows unresolved/total when some are resolved, otherwise just total.
 func renderCommentIndicator(task *models.Task) string {
@@ -299,6 +306,7 @@ type CrossProjectTaskLineOpts struct {
 	ShowScore       bool          // show composite score badge (requires cfg != nil)
 	ShowTags        bool          // show inline tag string
 	ShowRecurrence  bool          // show ↻ indicator with streak count for recurring tasks
+	ShowDescription bool          // show description-indicator icon when task has a non-empty description
 	MaxProjectLen   int           // project name truncation; 0 defaults to 12
 	Queued          bool          // show "Q " queue indicator in accent color (else "  "); superseded by DailyPlanned
 	DailyPlanned    bool          // show "w " daily-plan indicator in accent color; takes precedence over Queued
@@ -381,7 +389,11 @@ func RenderCrossProjectTaskLine(
 			}
 		}
 	}
-	contentGroup := JoinGroupParts(tagsStr, scoreBadge, staleBadge)
+	descStr := ""
+	if opts.ShowDescription && len(task.Description) > 0 {
+		descStr = MutedStyle.Render(IconDescription())
+	}
+	contentGroup := JoinGroupParts(descStr, tagsStr, scoreBadge, staleBadge)
 
 	postTitle := JoinIndicatorGroups(structureGroup, lifecycleGroup, contentGroup)
 	if postTitle != "" {

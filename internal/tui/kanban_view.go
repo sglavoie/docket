@@ -327,15 +327,24 @@ func kanbanRender(m *KanbanModel) string {
 				}
 			}
 
-			// Format: "[sel]typeBadge statusBadge title [checklist]"
+			descInd := ""
+			descWidth := 0
+			if colWidth >= minCardWidthForChecklist &&
+				m.config.IsDescriptionColumnVisible() && len(card.Task.Description) > 0 {
+				descInd = " " + IconDescription()
+				descWidth = lipgloss.Width(descInd)
+			}
+
+			// Format: "[sel]typeBadge statusBadge title [checklist][desc]"
 			prefixWidth := selWidth + typeBadgeWidth + badgeWidth + 1
-			maxTitleWidth := colWidth - prefixWidth - checklistWidth
+			maxTitleWidth := colWidth - prefixWidth - checklistWidth - descWidth
 			if maxTitleWidth < 0 {
 				maxTitleWidth = 0
 				checklistInd = "" // not enough room; drop indicator
+				descInd = ""
 			}
 			title := truncateToVisualWidth(card.Task.Title, maxTitleWidth)
-			line := selIndicator + typeBadge + statusBadge + " " + title + checklistInd
+			line := selIndicator + typeBadge + statusBadge + " " + title + checklistInd + descInd
 
 			isFocused := i == m.activeCol && dr.taskIdx == col.Cursor
 			isFlash := m.flashCardID != "" && card.Task.ID == m.flashCardID

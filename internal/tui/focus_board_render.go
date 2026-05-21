@@ -440,7 +440,11 @@ func (m *FocusBoardModel) renderRow(row boardRow, isSelected bool, maxTitleLen i
 	checklistInd := renderChecklistBar(task, m.width)
 	structureGroup := checklistInd
 	lifecycleGroup := dueStr
-	contentGroup := JoinGroupParts(renderTruncatedTags(task.Tags, 2, 8), staleBadge)
+	descBadge := ""
+	if m.config.IsDescriptionColumnVisible() && len(task.Description) > 0 {
+		descBadge = MutedStyle.Render(IconDescription())
+	}
+	contentGroup := JoinGroupParts(descBadge, renderTruncatedTags(task.Tags, 2, 8), staleBadge)
 	trailing := JoinIndicatorGroups(structureGroup, lifecycleGroup, contentGroup, estimateStr)
 	if trailing != "" {
 		content += " " + trailing

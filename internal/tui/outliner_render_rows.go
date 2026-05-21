@@ -334,6 +334,11 @@ func (m *OutlinerModel) renderTaskContentGroup(task *models.Task) string {
 			contentParts = append(contentParts, comments)
 		}
 	}
+	if m.columnConfig.IsVisible(ColDescription) {
+		if d := renderDescriptionIndicator(task); d != "" {
+			contentParts = append(contentParts, d)
+		}
+	}
 	if m.columnConfig.IsVisible(ColAttachments) {
 		if attachments := renderAttachmentIndicator(task); attachments != "" {
 			contentParts = append(contentParts, attachments)

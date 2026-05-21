@@ -25,6 +25,7 @@ const (
 	ColSnooze        = "snooze"
 	ColDecisions     = "decisions"
 	ColShortID       = "short_id"
+	ColDescription   = "description"
 )
 
 // DefaultTreeColumns defines which columns are visible by default in the tree view.
@@ -61,6 +62,7 @@ var DefaultOutlinerColumns = map[string]bool{
 	ColSnooze:        true,
 	ColDecisions:     true,
 	ColShortID:       true,
+	ColDescription:   true,
 }
 
 // ColumnConfig controls which indicator columns are visible in a view.
