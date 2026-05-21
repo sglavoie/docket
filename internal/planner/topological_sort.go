@@ -1,0 +1,170 @@
+package planner
+
+import (
+	"fmt"
+	"sort"
+
+	"github.com/sglavoie/tt/internal/models"
+)
+
+// TopologicalSort returns incomplete tasks from the input slice in topological
+// order using Kahn's algorithm on DependsOn edges.
+//
+// Complete tasks in the input are excluded from the result but are considered
+// satisfied predecessors (a dependency on a complete task does not block the
+// dependent).  Cross-project dependency refs (format "projectID:taskID") whose
+// project-side task is not present in the input slice are treated as satisfied.
+// Nil entries and tasks with empty IDs are silently skipped so callers can pass
+// loosely-assembled cross-project slices without manually filtering them.
+//
+// Returns an error if a dependency cycle exists among the incomplete tasks.
+func TopologicalSort(tasks []*models.Task) ([]*models.Task, error) {
+	// Build map of incomplete tasks only.
+	taskMap := make(map[string]*models.Task, len(tasks))
+	for _, t := range tasks {
+		if t == nil || t.ID == "" {
+			continue
+		}
+		if !t.IsComplete() {
+			taskMap[t.ID] = t
+		}
+	}
+
+	// Build in-degree count and reverse-adjacency list (pred -> successors).
+	// Only edges where the predecessor is also in taskMap (incomplete) count
+	// toward in-degree; completed predecessors are treated as already satisfied.
+	inDegree := make(map[string]int, len(taskMap))
+	// adj maps predecessor task ID -> list of dependent task IDs.
+	adj := make(map[string][]string, len(taskMap))
+	for id := range taskMap {
+		inDegree[id] = 0
+	}
+	for _, t := range taskMap {
+		for _, depRef := range t.DependsOn {
+			ref := models.ParseTaskRef(depRef)
+			predID := ref.TaskID
+			if _, ok := taskMap[predID]; ok {
+				inDegree[t.ID]++
+				adj[predID] = append(adj[predID], t.ID)
+			}
+		}
+	}
+
+	// Seed queue with zero in-degree nodes; sort for deterministic output.
+	queue := make([]*models.Task, 0, len(taskMap))
+	for id, t := range taskMap {
+		if inDegree[id] == 0 {
+			queue = append(queue, t)
+		}
+	}
+	sortByID(queue)
+
+	result := make([]*models.Task, 0, len(taskMap))
+	for len(queue) > 0 {
+		t := queue[0]
+		queue = queue[1:]
+		result = append(result, t)
+
+		successors := adj[t.ID]
+		sort.Strings(successors) // deterministic successor processing
+		added := queue[:0:0]
+		for _, succID := range successors {
+			inDegree[succID]--
+			if inDegree[succID] == 0 {
+				added = append(added, taskMap[succID])
+			}
+		}
+		if len(added) > 0 {
+			sortByID(added)
+			queue = append(queue, added...)
+		}
+	}
+
+	if len(result) != len(taskMap) {
+		return nil, fmt.Errorf("cycle detected in task dependencies")
+	}
+	return result, nil
+}
+
+// topologicalSortByPriority is like TopologicalSort but breaks ties among
+// zero-in-degree nodes by priority (ascending = higher priority) then ID.
+func topologicalSortByPriority(tasks []*models.Task) ([]*models.Task, error) {
+	taskMap := make(map[string]*models.Task, len(tasks))
+	for _, t := range tasks {
+		if t == nil || t.ID == "" {
+			continue
+		}
+		if !t.IsComplete() {
+			taskMap[t.ID] = t
+		}
+	}
+
+	inDegree := make(map[string]int, len(taskMap))
+	adj := make(map[string][]string, len(taskMap))
+	for id := range taskMap {
+		inDegree[id] = 0
+	}
+	for _, t := range taskMap {
+		for _, depRef := range t.DependsOn {
+			ref := models.ParseTaskRef(depRef)
+			predID := ref.TaskID
+			if _, ok := taskMap[predID]; ok {
+				inDegree[t.ID]++
+				adj[predID] = append(adj[predID], t.ID)
+			}
+		}
+	}
+
+	queue := make([]*models.Task, 0, len(taskMap))
+	for id, t := range taskMap {
+		if inDegree[id] == 0 {
+			queue = append(queue, t)
+		}
+	}
+	sortByPriorityThenID(queue)
+
+	result := make([]*models.Task, 0, len(taskMap))
+	for len(queue) > 0 {
+		t := queue[0]
+		queue = queue[1:]
+		result = append(result, t)
+
+		successors := adj[t.ID]
+		sort.Strings(successors)
+		var added []*models.Task
+		for _, succID := range successors {
+			inDegree[succID]--
+			if inDegree[succID] == 0 {
+				added = append(added, taskMap[succID])
+			}
+		}
+		if len(added) > 0 {
+			sortByPriorityThenID(added)
+			queue = append(queue, added...)
+			sortByPriorityThenID(queue)
+		}
+	}
+
+	if len(result) != len(taskMap) {
+		return nil, fmt.Errorf("cycle detected in task dependencies")
+	}
+	return result, nil
+}
+
+// sortByPriorityThenID sorts tasks by priority ascending (lower = higher
+// priority), then by ID ascending for determinism.
+func sortByPriorityThenID(tasks []*models.Task) {
+	sort.Slice(tasks, func(i, j int) bool {
+		if tasks[i].Priority != tasks[j].Priority {
+			return tasks[i].Priority < tasks[j].Priority
+		}
+		return tasks[i].ID < tasks[j].ID
+	})
+}
+
+// sortByID sorts a slice of tasks by ID for deterministic ordering.
+func sortByID(tasks []*models.Task) {
+	sort.Slice(tasks, func(i, j int) bool {
+		return tasks[i].ID < tasks[j].ID
+	})
+}

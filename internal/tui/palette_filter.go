@@ -1,22 +1,12 @@
 package tui
 
 import (
-	"regexp"
 	"sort"
 	"strconv"
 	"strings"
 
 	"github.com/sglavoie/tt/internal/logging"
 )
-
-// taskIDPattern matches queries like "#123" for direct task ID jump.
-var taskIDPattern = regexp.MustCompile(`^#(\d+)$`)
-
-// inlineTaskPattern matches queries starting with "+" for inline task creation.
-var inlineTaskPattern = regexp.MustCompile(`^\+(.+)$`)
-
-// quotedPhrasePattern matches quoted phrases: "exact phrase" or 'exact phrase'
-var quotedPhrasePattern = regexp.MustCompile(`"([^"]+)"|'([^']+)'`)
 
 // filterItems filters items based on the current search query using category-weighted fuzzy scoring.
 // Supports category prefix filtering (e.g., ":cmd help" filters to commands matching "help").
@@ -269,142 +259,6 @@ func (m *CommandPaletteModel) filterByTaskID(taskID int) {
 	m.scrollOffset = 0
 }
 
-// sortItemsByCategory sorts items by the predefined category order for display without search.
-// Pinned commands are placed at the very top before all other categories.
-func (m *CommandPaletteModel) sortItemsByCategory(items []PaletteItem) []PaletteItem {
-	// Create a map for category order lookup
-	orderMap := make(map[ItemCategory]int)
-	for i, cat := range categoryOrder {
-		orderMap[cat] = i
-	}
-
-	sorted := make([]PaletteItem, len(items))
-	copy(sorted, items)
-
-	sort.SliceStable(sorted, func(i, j int) bool {
-		// Pinned commands come first
-		iPinned := m.isItemPinned(sorted[i])
-		jPinned := m.isItemPinned(sorted[j])
-		if iPinned != jPinned {
-			return iPinned // Pinned items come before non-pinned
-		}
-		// Then sort by category
-		return orderMap[sorted[i].Category] < orderMap[sorted[j].Category]
-	})
-
-	return sorted
-}
-
-// isItemPinned returns true if the item is a pinned command.
-func (m *CommandPaletteModel) isItemPinned(item PaletteItem) bool {
-	if item.Category != ItemCategoryCommands || item.Command == nil {
-		return false
-	}
-	return m.pinnedCommands[item.Command.Name]
-}
-
-// injectFrequentItems prepends a "Recent" section to filteredItems using the top items
-// from recentPaletteSelections in recency order (most recently used first), max 5.
-// The recent items are marked with IsFrequent=true; they are duplicates of regular items.
-func (m *CommandPaletteModel) injectFrequentItems() {
-	if len(recentPaletteSelections) == 0 {
-		return
-	}
-
-	// recentPaletteSelections is already ordered most-recent-first; use recency order directly.
-	const maxRecent = 5
-	var recentItems []filteredPaletteItem
-	for _, rs := range recentPaletteSelections {
-		if len(recentItems) >= maxRecent {
-			break
-		}
-		for _, fi := range m.filteredItems {
-			id := m.getItemID(fi.Item)
-			if fi.Item.Category == rs.Category && id == rs.ID {
-				recentItems = append(recentItems, filteredPaletteItem{
-					Item:       fi.Item,
-					IsFrequent: true,
-				})
-				break
-			}
-		}
-	}
-
-	if len(recentItems) == 0 {
-		return
-	}
-
-	m.filteredItems = append(recentItems, m.filteredItems...)
-}
-
-// injectSuggestedItems appends a "Suggested" section after the Recent section.
-// Suggested items are commands applicable to the current view that have never been used
-// (not in recentPaletteSelections). Limited to 3 items, preferring action/filter categories.
-func (m *CommandPaletteModel) injectSuggestedItems() {
-	// Build set of already-used command IDs.
-	usedIDs := make(map[string]bool, len(recentPaletteSelections))
-	for _, rs := range recentPaletteSelections {
-		if rs.Category == ItemCategoryCommands {
-			usedIDs[rs.ID] = true
-		}
-	}
-
-	// Priority order for suggested categories.
-	priorityCategories := []CommandCategory{
-		CategoryFilters,
-		CategoryActions,
-		CategorySort,
-		CategoryStatus,
-		CategoryViews,
-	}
-
-	// Collect candidates by priority category.
-	byCategory := make(map[CommandCategory][]PaletteItem)
-	for _, fi := range m.filteredItems {
-		if fi.Item.Category != ItemCategoryCommands || fi.Item.Command == nil {
-			continue
-		}
-		id := m.getItemID(fi.Item)
-		if usedIDs[id] {
-			continue
-		}
-		cat := fi.Item.Command.Category
-		byCategory[cat] = append(byCategory[cat], fi.Item)
-	}
-
-	const maxSuggested = 3
-	var suggested []filteredPaletteItem
-	for _, cat := range priorityCategories {
-		for _, item := range byCategory[cat] {
-			if len(suggested) >= maxSuggested {
-				break
-			}
-			suggested = append(suggested, filteredPaletteItem{
-				Item:        item,
-				IsSuggested: true,
-			})
-		}
-		if len(suggested) >= maxSuggested {
-			break
-		}
-	}
-
-	if len(suggested) == 0 {
-		return
-	}
-
-	// Insert suggested items after the recent (IsFrequent) block and before regular items.
-	splitIdx := 0
-	for splitIdx < len(m.filteredItems) && m.filteredItems[splitIdx].IsFrequent {
-		splitIdx++
-	}
-	result := make([]filteredPaletteItem, 0, len(m.filteredItems)+len(suggested))
-	result = append(result, m.filteredItems[:splitIdx]...)
-	result = append(result, suggested...)
-	result = append(result, m.filteredItems[splitIdx:]...)
-	m.filteredItems = result
-}
-
 // persistCategoryFilter saves the category filter to config when a category prefix is used.
 // Only persists complete prefixes (e.g., ":task " not ":ta").
 func (m *CommandPaletteModel) persistCategoryFilter(query string, categoryFilter ItemCategory) {
@@ -517,47 +371,6 @@ func (m *CommandPaletteModel) restoreCursorPosition() {
 	// Item not found - reset
 	m.cursor = 0
 	m.scrollOffset = 0
-}
-
-// buildHelpItems returns a list of filteredPaletteItems that serve as a syntax reference.
-func (m *CommandPaletteModel) buildHelpItems() []filteredPaletteItem {
-	helpEntries := []struct {
-		name string
-		desc string
-	}{
-		{"+Buy milk !2 #errand @tomorrow", "Inline task creation with priority, tag, due date"},
-		{":cmd, :task, :prj, :tag, :sec, :note, :view", "Category prefix filters"},
-		{":recent", "Show recently executed commands"},
-		{"#123", "Jump directly to task by short ID"},
-		{"\"exact phrase\"", "Quoted exact substring match"},
-		{"-exclude", "Exclude items matching a term"},
-		{"bug|fix", "OR search: match either term"},
-		{"priority:1 or priority:1-3", "Filter tasks by priority value or range"},
-		{"status:todo or status:todo|progress", "Filter tasks by status"},
-		{"tag:name or tag:bug|feature", "Filter tasks by tag"},
-		{"section:backlog", "Filter tasks by section"},
-		{"@overdue @today @tomorrow @this-week", "Filter tasks by due date"},
-		{"Ctrl+H", "Toggle completed/canceled tasks"},
-		{"Ctrl+O", "Cycle sort: score → priority → due date"},
-		{"Ctrl+P", "Toggle compact mode (hide preview)"},
-		{"Ctrl+N", "Jump to next category section"},
-		{"Ctrl+B", "Save current search as bookmark"},
-		{"Ctrl+F", "Pin/unpin a command"},
-		{"Tab", "Show actions for selected item"},
-		{"Space", "Multi-select tasks for bulk actions"},
-	}
-
-	items := make([]filteredPaletteItem, len(helpEntries))
-	for i, entry := range helpEntries {
-		items[i] = filteredPaletteItem{
-			Item: PaletteItem{
-				Name:        entry.name,
-				Description: entry.desc,
-				Category:    ItemCategoryCommands, // Use commands category for badge styling
-			},
-		}
-	}
-	return items
 }
 
 // isDirectActionEnabled returns true if single-key actions (e, g, x, s, r) should work directly.

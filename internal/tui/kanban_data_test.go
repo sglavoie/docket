@@ -144,14 +144,6 @@ func TestColumnForTask_ScoreBuckets_WithProfile(t *testing.T) {
 
 // ── rebuildColumns ────────────────────────────────────────────────────────────
 
-func makeTestCard(section string, status models.TaskStatus) KanbanCard {
-	task := testutil.NewTestTask("task", models.TaskTypeTask)
-	task.Section = section
-	task.Status = status
-	proj := testutil.NewTestProject("p")
-	return KanbanCard{Task: task, Project: proj}
-}
-
 func TestRebuildColumns_SectionMode_Distribution(t *testing.T) {
 	cards := []KanbanCard{
 		makeTestCard(models.SectionInbox, models.StatusTodo),
@@ -494,90 +486,6 @@ func TestKanbanBuildTagCmd_CrossProjectSource(t *testing.T) {
 // restoreKanbanState clamps a cached ScrollOffset that no longer fits within
 // a column's task list. Without clamping, deleting tasks while away from the
 // kanban view would leave the column scrolled past its last task on return.
-func TestRestoreKanbanState_ClampsOutOfBoundsScrollOffset(t *testing.T) {
-	proj := testutil.NewTestProject("p")
-	task := testutil.NewTestTask("t", models.TaskTypeTask)
-	task.Section = models.SectionInbox
-	proj.Tasks = []*models.Task{task}
-
-	cfg := &config.Config{}
-	app := &AppModel{
-		config:          cfg,
-		kanbanViewCache: make(map[string]*KanbanViewCache),
-	}
-
-	kb := &KanbanModel{
-		config:      cfg,
-		project:     proj,
-		mode:        KanbanModeSection,
-		allCards:    []KanbanCard{{Task: task, Project: proj}},
-		FilterMixin: FilterMixin{filter: newFilterState()},
-	}
-
-	// Cache a wildly out-of-bounds scroll offset and a stale cursor.
-	app.kanbanViewCache[proj.ID] = &KanbanViewCache{
-		ActiveColID:      "inbox",
-		ColCursors:       map[string]int{"inbox": 99},
-		ColScrollOffsets: map[string]int{"inbox": 99},
-		Mode:             KanbanModeSection,
-	}
-
-	app.restoreKanbanState(kb)
-
-	for _, col := range kb.columns {
-		if col.ID != "inbox" {
-			continue
-		}
-		if col.ScrollOffset >= len(col.Tasks) {
-			t.Errorf("ScrollOffset not clamped: got %d for %d tasks", col.ScrollOffset, len(col.Tasks))
-		}
-		if col.Cursor >= len(col.Tasks) {
-			t.Errorf("Cursor not clamped: got %d for %d tasks", col.Cursor, len(col.Tasks))
-		}
-	}
-}
-
-// TestRestoreKanbanState_ClampsNegativeScrollOffset verifies that a corrupted
-// negative ScrollOffset in the cache is clamped to 0 on restore.
-func TestRestoreKanbanState_ClampsNegativeScrollOffset(t *testing.T) {
-	proj := testutil.NewTestProject("p")
-	task := testutil.NewTestTask("t", models.TaskTypeTask)
-	task.Section = models.SectionInbox
-	proj.Tasks = []*models.Task{task}
-
-	cfg := &config.Config{}
-	app := &AppModel{
-		config:          cfg,
-		kanbanViewCache: make(map[string]*KanbanViewCache),
-	}
-
-	kb := &KanbanModel{
-		config:      cfg,
-		project:     proj,
-		mode:        KanbanModeSection,
-		allCards:    []KanbanCard{{Task: task, Project: proj}},
-		FilterMixin: FilterMixin{filter: newFilterState()},
-	}
-
-	app.kanbanViewCache[proj.ID] = &KanbanViewCache{
-		ActiveColID:      "inbox",
-		ColCursors:       map[string]int{"inbox": 0},
-		ColScrollOffsets: map[string]int{"inbox": -5},
-		Mode:             KanbanModeSection,
-	}
-
-	app.restoreKanbanState(kb)
-
-	for _, col := range kb.columns {
-		if col.ID != "inbox" {
-			continue
-		}
-		if col.ScrollOffset != 0 {
-			t.Errorf("negative ScrollOffset not clamped: got %d", col.ScrollOffset)
-		}
-	}
-}
-
 func TestCollectStages_Deduplication(t *testing.T) {
 	proj := testutil.NewTestProject("p")
 	task := testutil.NewTestTask("t", models.TaskTypeTask)
