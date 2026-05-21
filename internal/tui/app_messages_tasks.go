@@ -27,6 +27,12 @@ type TaskCreatedMsg struct {
 }
 
 // TaskUpdatedMsg signals a task was modified.
+//
+// Contract: Task points at the post-reload pointer in Project.Tasks at emit
+// time; consumers may use it directly without re-resolving via GetTaskByID.
+// May be nil only if the task was concurrently deleted (rare); handlers must
+// nil-check before dereferencing. Empty TaskUpdatedMsg{} (Task=nil) is used
+// in tests to exercise the no-op path.
 type TaskUpdatedMsg struct{ Task *models.Task }
 
 // TaskDeletedMsg signals a task was deleted. Project carries the project

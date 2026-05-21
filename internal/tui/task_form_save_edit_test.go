@@ -31,6 +31,35 @@ func TestTaskForm_Save_EditHappyPath_EmitsTaskUpdatedMsg(t *testing.T) {
 	}
 }
 
+func TestTaskForm_Save_EditEmitsLivePointerInProject(t *testing.T) {
+	m, cleanup := newSaveableEditForm(t)
+	defer cleanup()
+
+	taskID := m.task.ID
+	m.draft.title = "Pointer Identity"
+	m.titleInput.SetValue("Pointer Identity")
+
+	cmd := m.handleSave()
+	if cmd == nil {
+		t.Fatalf("expected non-nil Cmd; err=%v", m.err)
+	}
+	msg := cmd()
+	updated, ok := msg.(TaskUpdatedMsg)
+	if !ok {
+		t.Fatalf("expected TaskUpdatedMsg, got %T", msg)
+	}
+	if updated.Task == nil {
+		t.Fatal("TaskUpdatedMsg.Task should be non-nil")
+	}
+	live := m.project.GetTaskByID(taskID)
+	if live == nil {
+		t.Fatal("task missing from project after save")
+	}
+	if updated.Task != live {
+		t.Errorf("TaskUpdatedMsg.Task is not the live in-memory pointer: msg=%p live=%p", updated.Task, live)
+	}
+}
+
 func TestTaskForm_Save_EditHappyPath_MutatesTaskInProject(t *testing.T) {
 	m, cleanup := newSaveableEditForm(t)
 	defer cleanup()

@@ -37,10 +37,32 @@ func (m *AppModel) handleWithRefresh(popView, reload bool, statusMsg string) tea
 		_ = m.persister.Load(m.currentProject)
 		m.invalidateFilterCaches()
 	}
+	// Cross-project outliner has its own loadedProjects cache that bypasses
+	// m.currentProject. Trigger a disk-backed reload so mutations to any
+	// loaded project become visible without leaving the view. The cursor is
+	// saved before reload and restored after refreshAllViews (which would
+	// otherwise clamp it to 0 while loadedProjects is briefly nil); the
+	// final clamp to the rebuilt row count happens later in
+	// handleCrossProjectsLoaded via crossProjectRebuildRows. Full reload is
+	// sub-100ms for typical project counts (~30); revisit per-project
+	// targeted reload if profiling shows pain.
+	var crossReloadCmd tea.Cmd
+	var crossSavedCursor int
+	crossReload := reload && m.outliner != nil && m.outliner.project == nil
+	if crossReload {
+		crossSavedCursor = m.outliner.cursor
+		crossReloadCmd = m.outliner.reloadCrossProjects()
+	}
 	m.refreshAllViews()
+	if crossReload {
+		m.outliner.cursor = crossSavedCursor
+	}
 	if statusMsg != "" {
 		m.setSuccessStatus(statusMsg)
-		return tea.Batch(popCmd, defaultStatusTimeout())
+		return tea.Batch(popCmd, crossReloadCmd, defaultStatusTimeout())
+	}
+	if crossReloadCmd != nil {
+		return tea.Batch(popCmd, crossReloadCmd)
 	}
 	return popCmd
 }

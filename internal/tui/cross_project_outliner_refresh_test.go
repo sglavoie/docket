@@ -1,0 +1,97 @@
+package tui
+
+import (
+	"testing"
+
+	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/testutil"
+)
+
+// TestHandleWithRefreshTriggersCrossProjectReload verifies the S2 contract:
+// when handleWithRefresh runs with reload=true and the outliner is in
+// cross-project mode (project==nil), reloadCrossProjects() is invoked so
+// the disk-backed loadedProjects cache is refreshed. The saved cursor is
+// preserved across the synchronous portion of the reload.
+func TestHandleWithRefreshTriggersCrossProjectReload(t *testing.T) {
+	app, _, _ := newTestAppModelWithMockPersisterAndProject(t)
+
+	loaded := []*models.Project{
+		{ID: "alpha", Name: "Alpha"},
+		{ID: "beta", Name: "Beta"},
+	}
+	app.outliner = &OutlinerModel{
+		PrimaryViewBundle: PrimaryViewBundle{
+			ViewBundle:     ViewBundle{config: testutil.NewTestConfig()},
+			projectService: NewProjectService(),
+		},
+		InteractiveViewState: InteractiveViewState{cursor: 7},
+		project:              nil, // cross-project mode
+		loadedProjects:       loaded,
+	}
+
+	cmd := app.handleWithRefresh(false, true, "")
+
+	if cmd == nil {
+		t.Fatal("expected non-nil cmd containing cross-project reload")
+	}
+	if app.outliner.loadedProjects != nil {
+		t.Error("expected loadedProjects to be cleared by reloadCrossProjects")
+	}
+	if !app.outliner.crossLoading {
+		t.Error("expected crossLoading=true after startCrossProjectLoad")
+	}
+	if app.outliner.cursor != 7 {
+		t.Errorf("expected cursor preserved at 7, got %d", app.outliner.cursor)
+	}
+}
+
+// TestHandleWithRefreshNoReloadSkipsCrossProjectReload verifies that with
+// reload=false the cross-project cache is left intact.
+func TestHandleWithRefreshNoReloadSkipsCrossProjectReload(t *testing.T) {
+	app, _, _ := newTestAppModelWithMockPersisterAndProject(t)
+
+	loaded := []*models.Project{{ID: "alpha", Name: "Alpha"}}
+	app.outliner = &OutlinerModel{
+		PrimaryViewBundle: PrimaryViewBundle{
+			ViewBundle:     ViewBundle{config: testutil.NewTestConfig()},
+			projectService: NewProjectService(),
+		},
+		project:        nil,
+		loadedProjects: loaded,
+	}
+
+	_ = app.handleWithRefresh(false, false, "")
+
+	if app.outliner.loadedProjects == nil {
+		t.Error("expected loadedProjects untouched when reload=false")
+	}
+	if app.outliner.crossLoading {
+		t.Error("expected crossLoading=false when reload=false")
+	}
+}
+
+// TestHandleWithRefreshSingleProjectOutlinerSkipsCrossReload verifies that
+// when the outliner is in single-project mode (project!=nil), the new
+// cross-project reload branch is a no-op.
+func TestHandleWithRefreshSingleProjectOutlinerSkipsCrossReload(t *testing.T) {
+	app, _, project := newTestAppModelWithMockPersisterAndProject(t)
+
+	loaded := []*models.Project{{ID: "alpha", Name: "Alpha"}}
+	app.outliner = &OutlinerModel{
+		PrimaryViewBundle: PrimaryViewBundle{
+			ViewBundle:     ViewBundle{config: testutil.NewTestConfig()},
+			projectService: NewProjectService(),
+		},
+		project:        project,
+		loadedProjects: loaded,
+	}
+
+	_ = app.handleWithRefresh(false, true, "")
+
+	if app.outliner.loadedProjects == nil {
+		t.Error("expected loadedProjects untouched in single-project mode")
+	}
+	if app.outliner.crossLoading {
+		t.Error("expected crossLoading=false in single-project mode")
+	}
+}

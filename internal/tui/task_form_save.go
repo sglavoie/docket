@@ -413,7 +413,16 @@ func (m *TaskFormModel) saveEdit() tea.Cmd {
 		return nil
 	}
 
-	return func() tea.Msg { return TaskUpdatedMsg{Task: task} }
+	// saveProjectSync reloads project.Tasks from disk, which replaces every
+	// task pointer. Re-resolve via GetTaskByID so consumers receive the live
+	// pointer that is actually in project.Tasks.
+	fresh := m.project.GetTaskByID(task.ID)
+	if fresh == nil {
+		logging.Warn("saveEdit: task %s missing from project after reload; emitting pre-reload pointer", task.ID)
+		fresh = task
+	}
+
+	return func() tea.Msg { return TaskUpdatedMsg{Task: fresh} }
 }
 
 // insertBeforeDimmedInSection inserts newTask before the first dimmed root
