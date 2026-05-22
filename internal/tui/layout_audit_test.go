@@ -55,22 +55,24 @@ func TestNotificationCenterViewRespectsVisualWidth(t *testing.T) {
 			Category: alerts.CategoryOverdue,
 			Label:    "Overdue (1)",
 			Alerts: []alerts.Alert{{
-				Category: alerts.CategoryOverdue,
-				Title:    "修复界面布局",
-				Details:  "详情说明内容很长需要截断",
-				Severity: alerts.SeverityWarning,
+				Category:    alerts.CategoryOverdue,
+				Title:       "修复界面布局",
+				Details:     "详情说明内容很长需要截断",
+				ProjectID:   "proj-1",
+				ProjectName: "超长项目名称用于截断",
+				Severity:    alerts.SeverityWarning,
 			}},
 		}},
 		TotalCount: 1,
 	}
 
 	m := NewNotificationCenterModel(snapshot, snapshot, map[string]bool{})
-	m.SetSize(24, 10)
+	m.SetSize(18, 10)
 	rendered := m.View().Content
 
 	for line := range strings.SplitSeq(rendered, "\n") {
-		if lipgloss.Width(line) > 24 {
-			t.Fatalf("notification center line exceeds width 24: %q (width=%d)\n\n%s", ansi.Strip(line), lipgloss.Width(line), ansi.Strip(rendered))
+		if lipgloss.Width(line) > 18 {
+			t.Fatalf("notification center line exceeds width 18: %q (width=%d)\n\n%s", ansi.Strip(line), lipgloss.Width(line), ansi.Strip(rendered))
 		}
 	}
 }

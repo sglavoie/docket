@@ -29,13 +29,14 @@ const (
 
 // Alert represents a single proactive alert.
 type Alert struct {
-	Category  AlertCategory
-	Title     string
-	Details   string
-	TaskID    string
-	ProjectID string
-	Count     int
-	Severity  int // 0=info, 1=warning, 2=urgent
+	Category    AlertCategory
+	Title       string
+	Details     string
+	TaskID      string
+	ProjectID   string
+	ProjectName string // Display label for project-scoped alerts; empty means global.
+	Count       int
+	Severity    int // 0=info, 1=warning, 2=urgent
 }
 
 // AlertGroup groups alerts of the same category for display.
@@ -64,6 +65,24 @@ func (a Alert) DismissalKey() string {
 		return string(a.Category) + ":" + a.ProjectID
 	}
 	return string(a.Category)
+}
+
+const GlobalProjectDisplayName = "Global"
+
+// IsGlobal reports whether the alert is not tied to a specific project.
+func (a Alert) IsGlobal() bool {
+	return a.ProjectID == "" && a.ProjectName == ""
+}
+
+// ProjectDisplayName returns the display label for project/group headers.
+func (a Alert) ProjectDisplayName() string {
+	if a.ProjectName != "" {
+		return a.ProjectName
+	}
+	if a.ProjectID != "" {
+		return a.ProjectID
+	}
+	return GlobalProjectDisplayName
 }
 
 // ProjectData is a lightweight struct holding project metadata and parsed tasks,

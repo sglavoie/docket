@@ -8,15 +8,14 @@ import (
 
 // alertCenterItem is a flattened item for cursor-based navigation.
 type alertCenterItem struct {
-	isHeader  bool   // true for group headers (not selectable)
-	group     int    // index into the active snapshot's Groups
-	alert     int    // index into group.Alerts (-1 for headers)
-	label     string // pre-rendered display text (title only for alerts)
-	details   string // reasoning/context appended after title
-	dismissed bool   // true if this alert is in the dismissed set (only when showDismissed)
+	isHeader  bool         // true for section headers (not selectable)
+	label     string       // pre-rendered display text (title only for alerts)
+	details   string       // reasoning/context appended after title
+	dismissed bool         // true if this alert is in the dismissed set (only when showDismissed)
+	alert     alerts.Alert // concrete alert for rows; zero value for headers
 }
 
-// NotificationCenterModel shows proactive alerts grouped by category.
+// NotificationCenterModel shows proactive alerts grouped by project/global section.
 type NotificationCenterModel struct {
 	BaseView
 	InteractiveViewState

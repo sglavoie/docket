@@ -156,12 +156,13 @@ func checkOverdueTasks(cfg AlertConfig, projects []ProjectData, now time.Time) [
 					severity = SeverityUrgent
 				}
 				alerts = append(alerts, Alert{
-					Category:  CategoryOverdue,
-					Title:     task.Title,
-					Details:   fmt.Sprintf("Due %s in %s", dueDay.Format("Jan 2"), pd.Project.Name),
-					TaskID:    task.ID,
-					ProjectID: pd.Project.ID,
-					Severity:  severity,
+					Category:    CategoryOverdue,
+					Title:       task.Title,
+					Details:     fmt.Sprintf("Due %s", dueDay.Format("Jan 2")),
+					TaskID:      task.ID,
+					ProjectID:   pd.Project.ID,
+					ProjectName: pd.Project.Name,
+					Severity:    severity,
 				})
 			}
 		}
@@ -184,12 +185,13 @@ func checkDueSoonTasks(cfg AlertConfig, projects []ProjectData, now time.Time) [
 			// Due today or in the future but within the horizon (not overdue)
 			if !dueDay.Before(today) && !dueDay.After(horizon) {
 				alerts = append(alerts, Alert{
-					Category:  CategoryDueSoon,
-					Title:     task.Title,
-					Details:   fmt.Sprintf("Due %s in %s", dueDay.Format("Jan 2"), pd.Project.Name),
-					TaskID:    task.ID,
-					ProjectID: pd.Project.ID,
-					Severity:  SeverityInfo,
+					Category:    CategoryDueSoon,
+					Title:       task.Title,
+					Details:     fmt.Sprintf("Due %s", dueDay.Format("Jan 2")),
+					TaskID:      task.ID,
+					ProjectID:   pd.Project.ID,
+					ProjectName: pd.Project.Name,
+					Severity:    SeverityInfo,
 				})
 			}
 		}
@@ -209,12 +211,13 @@ func checkStaleTasks(cfg AlertConfig, projects []ProjectData, now time.Time) []A
 			}
 			if task.UpdatedAt.Before(staleThreshold) {
 				alerts = append(alerts, Alert{
-					Category:  CategoryStale,
-					Title:     task.Title,
-					Details:   fmt.Sprintf("No updates for %d days in %s", util.DaysBetween(task.UpdatedAt, now), pd.Project.Name),
-					TaskID:    task.ID,
-					ProjectID: pd.Project.ID,
-					Severity:  SeverityInfo,
+					Category:    CategoryStale,
+					Title:       task.Title,
+					Details:     fmt.Sprintf("No updates for %d days", util.DaysBetween(task.UpdatedAt, now)),
+					TaskID:      task.ID,
+					ProjectID:   pd.Project.ID,
+					ProjectName: pd.Project.Name,
+					Severity:    SeverityInfo,
 				})
 			}
 		}
@@ -235,12 +238,13 @@ func checkInboxBacklog(cfg AlertConfig, projects []ProjectData, now time.Time) [
 		}
 		if inboxCount >= cfg.InboxThreshold {
 			alerts = append(alerts, Alert{
-				Category:  CategoryInbox,
-				Title:     fmt.Sprintf("%s: %d inbox tasks", pd.Project.Name, inboxCount),
-				Details:   "Consider triaging inbox items",
-				Count:     inboxCount,
-				ProjectID: pd.Project.ID,
-				Severity:  SeverityInfo,
+				Category:    CategoryInbox,
+				Title:       fmt.Sprintf("%d inbox tasks", inboxCount),
+				Details:     "Consider triaging inbox items",
+				Count:       inboxCount,
+				ProjectID:   pd.Project.ID,
+				ProjectName: pd.Project.Name,
+				Severity:    SeverityInfo,
 			})
 		}
 	}
@@ -262,12 +266,13 @@ func checkBlockedTasks(cfg AlertConfig, projects []ProjectData, now time.Time) [
 			daysSinceBlocked := util.DaysBetween(blockedSince, now)
 			if daysSinceBlocked >= cfg.BlockedDays {
 				alerts = append(alerts, Alert{
-					Category:  CategoryBlocked,
-					Title:     task.Title,
-					Details:   fmt.Sprintf("Blocked for %d days in %s", daysSinceBlocked, pd.Project.Name),
-					TaskID:    task.ID,
-					ProjectID: pd.Project.ID,
-					Severity:  SeverityWarning,
+					Category:    CategoryBlocked,
+					Title:       task.Title,
+					Details:     fmt.Sprintf("Blocked for %d days", daysSinceBlocked),
+					TaskID:      task.ID,
+					ProjectID:   pd.Project.ID,
+					ProjectName: pd.Project.Name,
+					Severity:    SeverityWarning,
 				})
 			}
 		}
@@ -316,11 +321,12 @@ func checkProjectHealth(cfg AlertConfig, projects []ProjectData, now time.Time) 
 
 		if latestUpdate.Before(staleThreshold) {
 			alerts = append(alerts, Alert{
-				Category:  CategoryProjectHealth,
-				Title:     fmt.Sprintf("%s: no activity", pd.Project.Name),
-				Details:   fmt.Sprintf("Last update %d days ago", util.DaysBetween(latestUpdate, now)),
-				ProjectID: pd.Project.ID,
-				Severity:  SeverityInfo,
+				Category:    CategoryProjectHealth,
+				Title:       "No activity",
+				Details:     fmt.Sprintf("Last update %d days ago", util.DaysBetween(latestUpdate, now)),
+				ProjectID:   pd.Project.ID,
+				ProjectName: pd.Project.Name,
+				Severity:    SeverityInfo,
 			})
 		}
 	}

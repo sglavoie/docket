@@ -1,46 +1,45 @@
 package tui
 
 import (
+	"fmt"
 	"sort"
+	"strings"
 
 	"github.com/sglavoie/tt/internal/alerts"
 )
 
-// buildItems flattens alert groups into navigable items, ordered by severity (urgent first).
+type alertCenterSection struct {
+	label       string
+	alerts      []alerts.Alert
+	maxSeverity int
+	isGlobal    bool
+}
+
+const globalAlertSectionKey = "global"
+
+// buildItems flattens alerts into project/global sections, ordered by severity.
 func (m *NotificationCenterModel) buildItems() {
 	m.items = nil
 	m.sectionStarts = nil
-	snap := m.activeSnapshot()
-	if snap == nil || len(snap.Groups) == 0 {
+	sections := m.projectSections()
+	if len(sections) == 0 {
 		return
 	}
 
-	// Sort groups by max severity descending
-	groups := make([]alerts.AlertGroup, len(snap.Groups))
-	copy(groups, snap.Groups)
-	sort.SliceStable(groups, func(i, j int) bool {
-		return maxSeverity(groups[i].Alerts) > maxSeverity(groups[j].Alerts)
-	})
-
-	for gi, group := range groups {
-		// Group header
+	for _, section := range sections {
 		m.items = append(m.items, alertCenterItem{
 			isHeader: true,
-			group:    gi,
-			alert:    -1,
-			label:    group.Label,
+			label:    sectionHeaderLabel(section.label, len(section.alerts)),
 		})
-		// Record the first selectable item index for this section
 		m.sectionStarts = append(m.sectionStarts, len(m.items))
-		// Individual alerts
-		for ai, a := range group.Alerts {
+		for _, a := range section.alerts {
+			label, details := notificationCenterText(a)
 			m.items = append(m.items, alertCenterItem{
 				isHeader:  false,
-				group:     gi,
-				alert:     ai,
-				label:     a.Title,
-				details:   a.Details,
+				label:     label,
+				details:   details,
 				dismissed: m.showDismissed && m.dismissedSet[a.DismissalKey()],
+				alert:     a,
 			})
 		}
 	}
@@ -52,27 +51,118 @@ func (m *NotificationCenterModel) rebuildForShowDismissed() {
 	m.clampCursor()
 }
 
-// maxSeverity returns the maximum severity value in a slice of alerts.
-func maxSeverity(as []alerts.Alert) int {
-	max := 0
-	for _, a := range as {
-		if a.Severity > max {
-			max = a.Severity
-		}
-	}
-	return max
-}
-
-// sortedGroups returns a copy of the active snapshot's groups sorted by severity.
-func (m *NotificationCenterModel) sortedGroups() []alerts.AlertGroup {
+func (m *NotificationCenterModel) projectSections() []alertCenterSection {
 	snap := m.activeSnapshot()
-	if snap == nil {
+	if snap == nil || len(snap.Groups) == 0 {
 		return nil
 	}
-	groups := make([]alerts.AlertGroup, len(snap.Groups))
-	copy(groups, snap.Groups)
-	sort.SliceStable(groups, func(i, j int) bool {
-		return maxSeverity(groups[i].Alerts) > maxSeverity(groups[j].Alerts)
+
+	sectionsByKey := make(map[string]*alertCenterSection)
+	order := make([]string, 0, len(snap.Groups))
+	for _, group := range snap.Groups {
+		for _, a := range group.Alerts {
+			key := alertSectionKey(a)
+			section, ok := sectionsByKey[key]
+			if !ok {
+				section = &alertCenterSection{
+					label:    a.ProjectDisplayName(),
+					isGlobal: a.IsGlobal(),
+				}
+				sectionsByKey[key] = section
+				order = append(order, key)
+			}
+			section.alerts = append(section.alerts, a)
+			if a.Severity > section.maxSeverity {
+				section.maxSeverity = a.Severity
+			}
+		}
+	}
+
+	sections := make([]alertCenterSection, 0, len(order))
+	for _, key := range order {
+		section := sectionsByKey[key]
+		sortAlertSection(section.alerts)
+		sections = append(sections, *section)
+	}
+
+	sort.SliceStable(sections, func(i, j int) bool {
+		if sections[i].maxSeverity != sections[j].maxSeverity {
+			return sections[i].maxSeverity > sections[j].maxSeverity
+		}
+		if sections[i].isGlobal != sections[j].isGlobal {
+			return sections[i].isGlobal
+		}
+		return strings.ToLower(sections[i].label) < strings.ToLower(sections[j].label)
 	})
-	return groups
+
+	return sections
+}
+
+func sortAlertSection(items []alerts.Alert) {
+	sort.SliceStable(items, func(i, j int) bool {
+		if items[i].Severity != items[j].Severity {
+			return items[i].Severity > items[j].Severity
+		}
+		if alertCategoryRank(items[i].Category) != alertCategoryRank(items[j].Category) {
+			return alertCategoryRank(items[i].Category) < alertCategoryRank(items[j].Category)
+		}
+		if !strings.EqualFold(items[i].Title, items[j].Title) {
+			return strings.ToLower(items[i].Title) < strings.ToLower(items[j].Title)
+		}
+		return strings.ToLower(items[i].Details) < strings.ToLower(items[j].Details)
+	})
+}
+
+func alertCategoryRank(category alerts.AlertCategory) int {
+	switch category {
+	case alerts.CategoryDailyReview:
+		return 0
+	case alerts.CategoryWeeklyReview:
+		return 1
+	case alerts.CategoryOverdue:
+		return 2
+	case alerts.CategoryDueSoon:
+		return 3
+	case alerts.CategoryStale:
+		return 4
+	case alerts.CategoryInbox:
+		return 5
+	case alerts.CategoryBlocked:
+		return 6
+	case alerts.CategoryProjectHealth:
+		return 7
+	default:
+		return 100
+	}
+}
+
+func alertSectionKey(a alerts.Alert) string {
+	if a.IsGlobal() {
+		return globalAlertSectionKey
+	}
+	if a.ProjectID != "" {
+		return "project:" + a.ProjectID
+	}
+	return "project-name:" + a.ProjectDisplayName()
+}
+
+func sectionHeaderLabel(label string, count int) string {
+	if count <= 1 {
+		return label
+	}
+	return fmt.Sprintf("%s (%d)", label, count)
+}
+
+func notificationCenterText(a alerts.Alert) (string, string) {
+	label := a.Title
+	if label == "" {
+		label = alerts.CategoryDisplayName(a.Category)
+	}
+	if a.IsGlobal() {
+		return label, a.Details
+	}
+	if a.Details == "" {
+		return label, alerts.CategoryDisplayName(a.Category)
+	}
+	return label, alerts.CategoryDisplayName(a.Category) + " · " + a.Details
 }

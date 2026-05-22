@@ -1,6 +1,7 @@
 package alerts
 
 import (
+	"strings"
 	"testing"
 	"time"
 
@@ -31,6 +32,25 @@ func TestCheckOverdueTasks_OverdueTask(t *testing.T) {
 	}
 	if alerts[0].TaskID != task.ID {
 		t.Errorf("expected task ID %s, got %s", task.ID, alerts[0].TaskID)
+	}
+}
+
+func TestCheckOverdueTasks_ProjectContextStoredSeparately(t *testing.T) {
+	now := time.Date(2026, 2, 28, 10, 0, 0, 0, time.UTC)
+	dueDate := time.Date(2026, 2, 25, 0, 0, 0, 0, time.UTC)
+	task := testTask("overdue task", models.StatusTodo, now)
+	task.DueDate = &dueDate
+
+	projects := []ProjectData{testProject("proj1", task)}
+	alerts := checkOverdueTasks(DefaultAlertConfig(), projects, now)
+	if len(alerts) != 1 {
+		t.Fatalf("expected 1 alert, got %d", len(alerts))
+	}
+	if alerts[0].ProjectName != "proj1" {
+		t.Fatalf("expected project name proj1, got %q", alerts[0].ProjectName)
+	}
+	if strings.Contains(alerts[0].Details, "proj1") {
+		t.Fatalf("expected details to omit project name, got %q", alerts[0].Details)
 	}
 }
 
@@ -258,6 +278,34 @@ func TestCheckInboxBacklog_AboveThreshold(t *testing.T) {
 	}
 	if alerts[0].Count != 6 {
 		t.Errorf("expected count 6, got %d", alerts[0].Count)
+	}
+}
+
+func TestCheckInboxBacklog_ProjectContextStoredSeparately(t *testing.T) {
+	now := time.Date(2026, 2, 28, 10, 0, 0, 0, time.UTC)
+	var tasks []*models.Task
+	for i := range 6 {
+		task := testTask("inbox", models.StatusTodo, now)
+		task.ID = "inbox-" + string(rune('a'+i))
+		task.Section = models.SectionInbox
+		tasks = append(tasks, task)
+	}
+
+	projects := []ProjectData{testProject("proj1", tasks...)}
+	cfg := DefaultAlertConfig()
+	cfg.InboxThreshold = 5
+	alerts := checkInboxBacklog(cfg, projects, now)
+	if len(alerts) != 1 {
+		t.Fatalf("expected 1 alert, got %d", len(alerts))
+	}
+	if alerts[0].ProjectName != "proj1" {
+		t.Fatalf("expected project name proj1, got %q", alerts[0].ProjectName)
+	}
+	if alerts[0].Title != "6 inbox tasks" {
+		t.Fatalf("expected project-free title, got %q", alerts[0].Title)
+	}
+	if strings.Contains(alerts[0].Title, "proj1") || strings.Contains(alerts[0].Details, "proj1") {
+		t.Fatalf("expected row copy to omit project name, got title=%q details=%q", alerts[0].Title, alerts[0].Details)
 	}
 }
 

@@ -1,6 +1,7 @@
 package alerts
 
 import (
+	"strings"
 	"testing"
 	"time"
 
@@ -104,6 +105,15 @@ func TestCheckProjectHealth_StaleProject(t *testing.T) {
 	alerts := checkProjectHealth(DefaultAlertConfig(), projects, now)
 	if len(alerts) != 1 {
 		t.Fatalf("expected 1 alert, got %d", len(alerts))
+	}
+	if alerts[0].ProjectName != "stale-proj" {
+		t.Fatalf("expected project name stale-proj, got %q", alerts[0].ProjectName)
+	}
+	if alerts[0].Title != "No activity" {
+		t.Fatalf("expected project-free title, got %q", alerts[0].Title)
+	}
+	if strings.Contains(alerts[0].Title, "stale-proj") || strings.Contains(alerts[0].Details, "stale-proj") {
+		t.Fatalf("expected row copy to omit project name, got title=%q details=%q", alerts[0].Title, alerts[0].Details)
 	}
 }
 

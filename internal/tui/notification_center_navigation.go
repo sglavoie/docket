@@ -68,23 +68,11 @@ func (m *NotificationCenterModel) clampCursor() {
 
 // selectedAlert returns the currently selected alert, or nil if on a header.
 func (m *NotificationCenterModel) selectedAlert() *alerts.Alert {
-	if m.cursor < 0 || m.cursor >= len(m.items) {
+	item := m.selectedItem()
+	if item == nil || item.isHeader {
 		return nil
 	}
-	item := m.items[m.cursor]
-	if item.isHeader {
-		return nil
-	}
-	groups := m.sortedGroups()
-	if item.group >= len(groups) {
-		return nil
-	}
-	g := groups[item.group]
-	if item.alert >= len(g.Alerts) {
-		return nil
-	}
-	a := g.Alerts[item.alert]
-	return &a
+	return &item.alert
 }
 
 // navigateToAlert returns a command that dispatches navigation to the alert's task/project.

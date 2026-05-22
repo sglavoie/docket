@@ -42,7 +42,7 @@ func (m *NotificationCenterModel) View() tea.View {
 
 	// Prefix overhead: cursor/space (2) + severity dot (2) = 4 visible chars
 	const prefixWidth = 4
-	maxLabelWidth := max(m.width-prefixWidth, 20)
+	maxLabelWidth := max(m.width-prefixWidth, 1)
 
 	lines := m.buildAlertLines(prefixWidth, maxLabelWidth)
 
@@ -117,7 +117,13 @@ func (m *NotificationCenterModel) buildAlertLines(prefixWidth, maxLabelWidth int
 	for i, item := range m.items {
 		if item.isHeader {
 			lines = append(lines, "")
-			header := SubtitleStyle.Render("  " + item.label)
+			headerIndent := "  "
+			headerWidth := m.width - len(headerIndent)
+			if headerWidth <= 0 {
+				headerIndent = ""
+				headerWidth = max(m.width, 1)
+			}
+			header := SubtitleStyle.Render(headerIndent + truncateToVisualWidth(item.label, headerWidth))
 			lines = append(lines, header)
 			continue
 		}
@@ -170,12 +176,7 @@ func (m *NotificationCenterModel) buildAlertLines(prefixWidth, maxLabelWidth int
 
 // severityPrefix returns a colored severity indicator for an alert item.
 func (m *NotificationCenterModel) severityPrefix(item alertCenterItem) string {
-	groups := m.sortedGroups()
-	if item.group >= len(groups) || item.alert >= len(groups[item.group].Alerts) {
-		return ""
-	}
-	a := groups[item.group].Alerts[item.alert]
-	switch a.Severity {
+	switch item.alert.Severity {
 	case alerts.SeverityUrgent:
 		return alertUrgentDot
 	case alerts.SeverityWarning:
