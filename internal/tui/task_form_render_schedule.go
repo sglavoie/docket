@@ -105,7 +105,7 @@ func (m *TaskFormModel) renderScheduleTabExpanded() string {
 		if m.draft.estimatedDays == 0 {
 			b.WriteString(MutedStyle.Render("(none)"))
 		} else {
-			b.WriteString(fmt.Sprintf("%g", m.draft.estimatedDays))
+			_, _ = fmt.Fprintf(&b, "%g", m.draft.estimatedDays)
 		}
 	}
 	b.WriteString("\n")

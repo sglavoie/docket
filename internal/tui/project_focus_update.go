@@ -41,12 +41,6 @@ func (m *ProjectFocusViewModel) handleKeyMsg(msg tea.KeyPressMsg) (tea.Model, te
 	return m, nil
 }
 
-// prefixDispatchView implementation for ProjectFocusViewModel.
-
-func (m *ProjectFocusViewModel) selectMsg(_ *models.Task, _ *models.Project) tea.Msg {
-	return CloseProjectFocusViewMsg{}
-}
-
 func (m *ProjectFocusViewModel) handleFilterPrefix(_ string) (tea.Model, tea.Cmd) {
 	return m, nil
 }

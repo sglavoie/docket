@@ -276,7 +276,7 @@ func (b *outlinerKeymapBuilder) blockerEntries() []keymap.Entry {
 func (b *outlinerKeymapBuilder) filterEntries() []keymap.Entry {
 	m := b.model
 
-	return keymap.FilterGroup(keymap.FilterDeps{
+	entries := keymap.FilterGroup(keymap.FilterDeps{
 		FilterByTags: func() (tea.Model, tea.Cmd) {
 			return m.handleFilterPrefix("#")
 		},
@@ -333,6 +333,10 @@ func (b *outlinerKeymapBuilder) filterEntries() []keymap.Entry {
 		},
 		StageFilterNames: b.stages,
 	})
+	if len(entries) > 0 && entries[0].PrefixNode != nil {
+		entries[0].PrefixNode.Children = append(entries[0].PrefixNode.Children, savedFilterPrefixEntry(m))
+	}
+	return entries
 }
 
 func (b *outlinerKeymapBuilder) sortEntries() []keymap.Entry {

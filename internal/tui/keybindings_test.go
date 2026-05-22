@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"slices"
 	"testing"
 )
 
@@ -73,13 +74,7 @@ func TestGetForView_InboxProcessorPriority(t *testing.T) {
 		t.Fatal("No keys returned from InboxProcessorModel.buildKeyMap()")
 	}
 	// Priority keys 1-5 should be handled.
-	found1 := false
-	for _, k := range keys {
-		if k == "1" {
-			found1 = true
-			break
-		}
-	}
+	found1 := slices.Contains(keys, "1")
 	if !found1 {
 		t.Error("Expected priority key '1' in InboxProcessor keymap")
 	}
@@ -93,13 +88,7 @@ func TestGetForView_InboxProcessor(t *testing.T) {
 		t.Fatal("No keys returned from InboxProcessorModel.buildKeyMap()")
 	}
 	// 'n' is the skip/next key in the inbox processor.
-	foundN := false
-	for _, k := range keys {
-		if k == "n" {
-			foundN = true
-			break
-		}
-	}
+	foundN := slices.Contains(keys, "n")
 	if !foundN {
 		t.Error("Expected 'n' key in InboxProcessor keymap")
 	}
@@ -261,14 +250,14 @@ func TestKeybindingCategories(t *testing.T) {
 	hasStatus := false
 	hasFilter := false
 	for _, k := range keys {
-		switch {
-		case k == "j" || k == "k" || k == "G":
+		switch k {
+		case "j", "k", "G":
 			hasNav = true
-		case k == "fa" || k == "fo":
+		case "fa", "fo":
 			hasFold = true
-		case k == ",s" || k == ",d":
+		case ",s", ",d":
 			hasStatus = true
-		case k == "F" || k == "Fp" || k == "Fx":
+		case "F", "Fp", "Fx":
 			hasFilter = true
 		}
 	}

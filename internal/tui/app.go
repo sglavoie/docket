@@ -212,10 +212,14 @@ type AppModel struct {
 	// openLoops caches the cross-project counts surfaced in the title row
 	// (Zeigarnik). Recomputed via RefreshOpenLoopsMsg after every mutation,
 	// so paint paths can read it without an extra full-tree walk.
-	openLoops               OpenLoops
-	dailyPlanCarried        int                    // count of items carried over from a previous day
-	dailyPlanCarriedIDs     map[string]bool        // task IDs that were carried over (for visual indicator)
-	dailyPlanCarriedShown   bool                   // true once the carry-over status message has been shown
+	openLoops             OpenLoops
+	dailyPlanCarried      int             // count of items carried over from a previous day
+	dailyPlanCarriedIDs   map[string]bool // task IDs that were carried over (for visual indicator)
+	dailyPlanCarriedShown bool            // true once the carry-over status message has been shown
+
+	lastToggleUndoKind toggleUndoKind
+	lastToggleRedoKind toggleUndoKind
+
 	lastDailyPlanToggle     *dailyPlanToggleAction // last w-key action for undo
 	lastQueueToggle         *queueToggleAction     // last q-key action for undo
 	lastDailyPlanToggleRedo *dailyPlanToggleAction // last undone w-key action for redo

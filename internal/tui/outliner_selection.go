@@ -64,6 +64,25 @@ func (m *OutlinerModel) deselectAllVisible() {
 	}
 }
 
+// pruneInvisibleSelections removes selected tasks that are no longer visible.
+func (m *OutlinerModel) pruneInvisibleSelections() {
+	if !m.multiSelectMode {
+		return
+	}
+	visibleIDs := make(map[string]bool, len(m.rows))
+	for _, row := range m.rows {
+		if row.IsSectionHeader || row.IsSeparator || row.task == nil {
+			continue
+		}
+		visibleIDs[row.task.ID] = true
+	}
+	for id := range m.selectedTasks {
+		if !visibleIDs[id] {
+			delete(m.selectedTasks, id)
+		}
+	}
+}
+
 // getSelectedTasks returns a slice of selected tasks.
 // In cross-project mode (m.project == nil), tasks are collected from m.rows
 // to avoid a nil dereference on m.project.

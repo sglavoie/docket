@@ -228,19 +228,6 @@ func (m *AllTasksViewModel) findNavigableIndex(taskID string) int {
 func (m *AllTasksViewModel) setErr(err error)     { m.err = err }
 func (m *AllTasksViewModel) setStatus(msg string) { m.statusMessage = msg }
 
-// prefixDispatchView implementation.
-func (m *AllTasksViewModel) selectMsg(task *models.Task, project *models.Project) tea.Msg {
-	return AllTasksSelectMsg{Task: task, Project: project}
-}
-
-func (m *AllTasksViewModel) handleFilterPrefix(key string) (tea.Model, tea.Cmd) {
-	return m.handleAllTasksFilterPrefix(key)
-}
-
-func (m *AllTasksViewModel) handleFilterSubPrefix(prefix, key string) (tea.Model, tea.Cmd) {
-	return m.handleAllTasksFilterSubPrefix(prefix, key)
-}
-
 // clampCursor ensures cursor is within valid range.
 func (m *AllTasksViewModel) clampCursor() {
 	m.ClampCursorTo(m.totalNavigableItems())

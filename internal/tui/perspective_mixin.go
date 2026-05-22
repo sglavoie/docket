@@ -35,7 +35,7 @@ func BuildPerspectivePrefixEntry(deps PerspectivePrefixDeps) keymap.Entry {
 	cat := "Perspectives"
 	presets := PerspectivePresets()
 	children := make([]keymap.Entry, 0, 12)
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		idx := i
 		children = append(children, keymap.Bind(
 			strconv.Itoa(i),

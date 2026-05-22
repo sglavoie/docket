@@ -6,6 +6,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/util"
@@ -13,6 +14,35 @@ import (
 
 // loadTasks aggregates tasks from all active projects into sections.
 func (m *DailyReviewModel) loadTasks() {
+	m.resetDailyReviewSections()
+
+	thresholds := newDailyReviewThresholds(m.config, time.Now())
+	for _, project := range m.config.GetActiveProjects() {
+		if err := storage.LoadProject(project); err != nil {
+			continue
+		}
+		m.loadDailyReviewProject(project, thresholds)
+	}
+
+	m.sortSections()
+	m.calculateNavigation()
+}
+
+type dailyReviewThresholds struct {
+	today              time.Time
+	dueSoonDays        int
+	futureDays         int
+	oldDays            int
+	completedHours     int
+	escalationDays     int
+	dueSoonEnd         time.Time
+	escalationEnd      time.Time
+	futureStart        time.Time
+	oldThreshold       time.Time
+	completedThreshold time.Time
+}
+
+func (m *DailyReviewModel) resetDailyReviewSections() {
 	m.overdue = nil
 	m.dueToday = nil
 	m.dueSoon = nil
@@ -24,139 +54,140 @@ func (m *DailyReviewModel) loadTasks() {
 	m.inStandby = nil
 	m.old = nil
 	m.completed = nil
+}
 
-	now := time.Now()
+func newDailyReviewThresholds(cfg *config.Config, now time.Time) dailyReviewThresholds {
 	today := util.StartOfDay(now)
+	dueSoonDays := cfg.GetReviewDueSoonDays()
+	futureDays := cfg.GetReviewFutureDays()
+	oldDays := cfg.GetReviewOldDays()
+	completedHours := cfg.GetReviewCompletedHours()
+	escalationDays := cfg.GetPriorityEscalationDays()
 
-	// Get configurable thresholds
-	dueSoonDays := m.config.GetReviewDueSoonDays()
-	futureDays := m.config.GetReviewFutureDays()
-	oldDays := m.config.GetReviewOldDays()
-	completedHours := m.config.GetReviewCompletedHours()
-	escalationDays := m.config.GetPriorityEscalationDays()
+	return dailyReviewThresholds{
+		today:              today,
+		dueSoonDays:        dueSoonDays,
+		futureDays:         futureDays,
+		oldDays:            oldDays,
+		completedHours:     completedHours,
+		escalationDays:     escalationDays,
+		dueSoonEnd:         today.AddDate(0, 0, dueSoonDays+1),
+		escalationEnd:      today.AddDate(0, 0, escalationDays+1),
+		futureStart:        today.AddDate(0, 0, futureDays),
+		oldThreshold:       now.AddDate(0, 0, -oldDays),
+		completedThreshold: now.Add(-time.Duration(completedHours) * time.Hour),
+	}
+}
 
-	// Calculate threshold dates
-	// Due Soon: tomorrow through dueSoonDays (e.g., days 1-7)
-	dueSoonEnd := today.AddDate(0, 0, dueSoonDays+1)
-	// Escalation: tasks due within this window (exclusive end; includes overdue)
-	escalationEnd := today.AddDate(0, 0, escalationDays+1)
-	// Future: tasks due in >= futureDays (e.g., 300+ days)
-	futureStart := today.AddDate(0, 0, futureDays)
-	// Due Later: between Due Soon and Future (e.g., days 8-299)
-	oldThreshold := now.AddDate(0, 0, -oldDays)
-	completedThreshold := now.Add(-time.Duration(completedHours) * time.Hour)
-
-	projects := m.config.GetActiveProjects()
-	for _, project := range projects {
-		if err := storage.LoadProject(project); err != nil {
+func (m *DailyReviewModel) loadDailyReviewProject(project *models.Project, thresholds dailyReviewThresholds) {
+	for _, task := range project.Tasks {
+		if m.shouldSkipDailyReviewTask(task, project) {
 			continue
 		}
+		m.appendDailyReviewTask(CrossProjectTask{Task: task, Project: project}, project, thresholds)
+	}
+}
 
-		for _, task := range project.Tasks {
-			if task == nil {
-				continue
-			}
-			// Apply common filters (no DueDate or Status — sections group by these)
-			if hasActiveCommonFilters(&m.filter) && !passesCommonFilters(task, &m.filter, project.ID, m.config) {
-				continue
-			}
+func (m *DailyReviewModel) shouldSkipDailyReviewTask(task *models.Task, project *models.Project) bool {
+	if task == nil {
+		return true
+	}
+	if !hasActiveCommonFilters(&m.filter) {
+		return false
+	}
+	return !passesCommonFilters(task, &m.filter, project.ID, m.config)
+}
 
-			dt := CrossProjectTask{Task: task, Project: project}
+func (m *DailyReviewModel) appendDailyReviewTask(dt CrossProjectTask, project *models.Project, thresholds dailyReviewThresholds) {
+	if m.appendCompletedDailyReviewTask(dt, thresholds) {
+		return
+	}
+	if dt.Task.Status.IsComplete() || dt.Task.IsSnoozed() {
+		return
+	}
+	if m.appendStandbyOrReviewTask(dt) {
+		return
+	}
+	if m.appendDatedDailyReviewTask(dt, thresholds) {
+		return
+	}
+	if m.appendBlockedOrProgressTask(dt, project) {
+		return
+	}
+	m.appendOldDailyReviewTask(dt, thresholds)
+}
 
-			// 1. Completed: CompletedAt within completedHours
-			if task.Status.IsComplete() && task.CompletedAt != nil {
-				if completedHours > 0 && task.CompletedAt.After(completedThreshold) {
-					m.completed = append(m.completed, dt)
-				}
-				continue
-			}
+func (m *DailyReviewModel) appendCompletedDailyReviewTask(dt CrossProjectTask, thresholds dailyReviewThresholds) bool {
+	task := dt.Task
+	if !task.Status.IsComplete() || task.CompletedAt == nil {
+		return false
+	}
+	if thresholds.completedHours > 0 && task.CompletedAt.After(thresholds.completedThreshold) {
+		m.completed = append(m.completed, dt)
+	}
+	return true
+}
 
-			// 2. Skip other completed tasks
-			if task.Status.IsComplete() {
-				continue
-			}
+func (m *DailyReviewModel) appendStandbyOrReviewTask(dt CrossProjectTask) bool {
+	task := dt.Task
+	if task.Section == models.SectionStandby || task.Status == models.StatusStandby {
+		m.inStandby = append(m.inStandby, dt)
+		return true
+	}
+	if task.Section == models.SectionReview || task.Status == models.StatusReview {
+		m.inReview = append(m.inReview, dt)
+		return true
+	}
+	return false
+}
 
-			// Skip snoozed tasks
-			if task.IsSnoozed() {
-				continue
-			}
-
-			// 3. On Standby: tasks in the Standby section or with standby status
-			if task.Section == models.SectionStandby || task.Status == models.StatusStandby {
-				m.inStandby = append(m.inStandby, dt)
-				continue
-			}
-
-			// 4. In Review: tasks in the Review section or with review status
-			if task.Section == models.SectionReview || task.Status == models.StatusReview {
-				m.inReview = append(m.inReview, dt)
-				continue
-			}
-
-			// 4. Overdue: DueDate < today
-			if task.DueDate != nil {
-				dueDay := util.StartOfDay(*task.DueDate)
-
-				// Flag P3+ tasks due within escalation window for priority upgrade hint
-				if escalationDays > 0 && task.Priority >= 3 && dueDay.Before(escalationEnd) {
-					dt.SuggestEscalation = true
-				}
-
-				if dueDay.Before(today) {
-					m.overdue = append(m.overdue, dt)
-					continue
-				}
-
-				// 4. Today: DueDate == today
-				if dueDay.Equal(today) {
-					m.dueToday = append(m.dueToday, dt)
-					continue
-				}
-
-				// 5. Due Soon: DueDate between tomorrow and dueSoonDays (e.g., 1-7 days)
-				if dueSoonDays > 0 && dueDay.Before(dueSoonEnd) {
-					m.dueSoon = append(m.dueSoon, dt)
-					continue
-				}
-
-				// 6. Future: DueDate >= futureDays (e.g., 300+ days)
-				if futureDays > 0 && !dueDay.Before(futureStart) {
-					m.future = append(m.future, dt)
-					continue
-				}
-
-				// 7. Due Later: DueDate between dueSoonDays+1 and futureDays-1 (e.g., 8-299 days)
-				// This catches everything between Due Soon and Future
-				m.dueLater = append(m.dueLater, dt)
-				continue
-			}
-
-			// 8. Blocked: status == blocked or has incomplete deps
-			if task.Status == models.StatusBlocked || project.HasIncompleteDependencies(task) {
-				m.blocked = append(m.blocked, dt)
-				continue
-			}
-
-			// 9. In Progress: status == in_progress
-			if task.Status == models.StatusInProgress {
-				m.inProgress = append(m.inProgress, dt)
-				continue
-			}
-
-			// 10. Old: UpdatedAt older than oldDays (fall back to CreatedAt when UpdatedAt is zero)
-			effectiveUpdate := task.UpdatedAt
-			if effectiveUpdate.IsZero() {
-				effectiveUpdate = task.CreatedAt
-			}
-			if oldDays > 0 && effectiveUpdate.Before(oldThreshold) {
-				m.old = append(m.old, dt)
-			}
-		}
+func (m *DailyReviewModel) appendDatedDailyReviewTask(dt CrossProjectTask, thresholds dailyReviewThresholds) bool {
+	task := dt.Task
+	if task.DueDate == nil {
+		return false
 	}
 
-	// Sort sections
-	m.sortSections()
-	m.calculateNavigation()
+	dueDay := util.StartOfDay(*task.DueDate)
+	if thresholds.escalationDays > 0 && task.Priority >= 3 && dueDay.Before(thresholds.escalationEnd) {
+		dt.SuggestEscalation = true
+	}
+
+	switch {
+	case dueDay.Before(thresholds.today):
+		m.overdue = append(m.overdue, dt)
+	case dueDay.Equal(thresholds.today):
+		m.dueToday = append(m.dueToday, dt)
+	case thresholds.dueSoonDays > 0 && dueDay.Before(thresholds.dueSoonEnd):
+		m.dueSoon = append(m.dueSoon, dt)
+	case thresholds.futureDays > 0 && !dueDay.Before(thresholds.futureStart):
+		m.future = append(m.future, dt)
+	default:
+		m.dueLater = append(m.dueLater, dt)
+	}
+	return true
+}
+
+func (m *DailyReviewModel) appendBlockedOrProgressTask(dt CrossProjectTask, project *models.Project) bool {
+	task := dt.Task
+	if task.Status == models.StatusBlocked || project.HasIncompleteDependencies(task) {
+		m.blocked = append(m.blocked, dt)
+		return true
+	}
+	if task.Status == models.StatusInProgress {
+		m.inProgress = append(m.inProgress, dt)
+		return true
+	}
+	return false
+}
+
+func (m *DailyReviewModel) appendOldDailyReviewTask(dt CrossProjectTask, thresholds dailyReviewThresholds) {
+	effectiveUpdate := dt.Task.UpdatedAt
+	if effectiveUpdate.IsZero() {
+		effectiveUpdate = dt.Task.CreatedAt
+	}
+	if thresholds.oldDays > 0 && effectiveUpdate.Before(thresholds.oldThreshold) {
+		m.old = append(m.old, dt)
+	}
 }
 
 // crossTaskLess comparators for recurring sort patterns on CrossProjectTask slices.

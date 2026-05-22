@@ -56,14 +56,3 @@ func (m *OutlinerModel) handleStatusPrefix(key string, cursorTask *models.Task) 
 
 	return m, nil
 }
-
-// handleDeferRecurrencePrefix handles the ,D prefix for deferring a recurring task.
-func (m *OutlinerModel) handleDeferRecurrencePrefix(key string) (tea.Model, tea.Cmd) {
-	if m.project == nil {
-		return m, nil
-	}
-	if cmd, ok := handleDeferRecurrence(key, m); ok {
-		return m, cmd
-	}
-	return m, nil
-}

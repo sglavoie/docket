@@ -156,69 +156,21 @@ func (m *SettingsModel) handleLeftKey() {
 
 	switch tab {
 	case tabGeneral:
-		switch local {
-		case 2:
-			if len(m.contexts) > 0 {
-				if m.contextCursor > 0 {
-					m.contextCursor--
-					m.contextInput.SetValue(m.contexts[m.contextCursor])
-				} else if m.contextCursor == -1 {
-					m.contextCursor = len(m.contexts) - 1
-					m.contextInput.SetValue(m.contexts[m.contextCursor])
-				}
-			}
-		case 4:
-			if m.defaultViewCursor > 0 {
-				m.defaultViewCursor--
-			}
-		}
+		m.handleLeftGeneralKey(local)
 	case tabPalette:
-		if local == 0 {
-			m.togglePaletteTheme()
-		}
+		m.handleLeftPaletteKey(local)
 	case tabBehavior:
-		switch {
-		case local == 13 && m.startViewCursor > 0:
-			m.startViewCursor--
-		case local == 15 && m.focusBoardModeCursor > 0:
-			m.focusBoardModeCursor--
-		case local == 16 && m.dashboardLayoutCursor > 0:
-			m.dashboardLayoutCursor--
-		}
+		m.handleLeftBehaviorKey(local)
 	case tabProjectTree:
-		if local == 1 && m.treePriorityMode > 0 {
-			m.treePriorityMode--
-		}
+		m.handleLeftProjectTreeKey(local)
 	case tabOutliner:
-		if local == 10 && m.outlinerPriorityMode > 0 {
-			m.outlinerPriorityMode--
-		}
+		m.handleLeftOutlinerKey(local)
 	case tabKanban:
-		switch local {
-		case 0:
-			if m.kanbanDefaultModeCursor > 0 {
-				m.kanbanDefaultModeCursor--
-			}
-		case 4:
-			if m.kanbanDetailHeightCursor > 0 {
-				m.kanbanDetailHeightCursor--
-			}
-		}
+		m.handleLeftKanbanKey(local)
 	case tabNotifications:
-		if local == 3 && m.alertWeeklyReviewDay > 0 {
-			m.alertWeeklyReviewDay--
-		}
+		m.handleLeftNotificationsKey(local)
 	case tabAppearance:
-		switch local {
-		case 1:
-			if m.weekEndDayCursor > 0 {
-				m.weekEndDayCursor--
-			}
-		case 2:
-			if m.timeFormatCursor > 0 {
-				m.timeFormatCursor--
-			}
-		}
+		m.handleLeftAppearanceKey(local)
 	}
 }
 
@@ -228,64 +180,177 @@ func (m *SettingsModel) handleRightKey() {
 
 	switch tab {
 	case tabGeneral:
-		switch local {
-		case 2:
-			if len(m.contexts) > 0 && m.contextCursor >= 0 && m.contextCursor < len(m.contexts)-1 {
-				m.contextCursor++
-				m.contextInput.SetValue(m.contexts[m.contextCursor])
-			}
-		case 4:
-			if m.defaultViewCursor < len(defaultProjectViewOptions)-1 {
-				m.defaultViewCursor++
-			}
-		}
+		m.handleRightGeneralKey(local)
 	case tabPalette:
-		if local == 0 {
-			m.togglePaletteTheme()
-		}
+		m.handleRightPaletteKey(local)
 	case tabBehavior:
-		switch {
-		case local == 13 && m.startViewCursor < len(startViewOptions)-1:
-			m.startViewCursor++
-		case local == 15 && m.focusBoardModeCursor < len(focusBoardModeOptions)-1:
-			m.focusBoardModeCursor++
-		case local == 16 && m.dashboardLayoutCursor < len(dashboardLayoutOptions)-1:
-			m.dashboardLayoutCursor++
-		}
+		m.handleRightBehaviorKey(local)
 	case tabProjectTree:
-		if local == 1 && m.treePriorityMode < 2 {
-			m.treePriorityMode++
-		}
+		m.handleRightProjectTreeKey(local)
 	case tabOutliner:
-		if local == 10 && m.outlinerPriorityMode < 2 {
-			m.outlinerPriorityMode++
-		}
+		m.handleRightOutlinerKey(local)
 	case tabKanban:
-		switch local {
-		case 0:
-			if m.kanbanDefaultModeCursor < len(kanbanModeOptions)-1 {
-				m.kanbanDefaultModeCursor++
-			}
-		case 4:
-			if m.kanbanDetailHeightCursor < len(kanbanDetailHeightOptions)-1 {
-				m.kanbanDetailHeightCursor++
-			}
-		}
+		m.handleRightKanbanKey(local)
 	case tabNotifications:
-		if local == 3 && m.alertWeeklyReviewDay < 6 {
-			m.alertWeeklyReviewDay++
-		}
+		m.handleRightNotificationsKey(local)
 	case tabAppearance:
-		switch local {
-		case 1:
-			if m.weekEndDayCursor < len(weekEndDayOptions)-1 {
-				m.weekEndDayCursor++
-			}
-		case 2:
-			if m.timeFormatCursor < len(timeFormatOptions)-1 {
-				m.timeFormatCursor++
-			}
-		}
+		m.handleRightAppearanceKey(local)
+	}
+}
+
+func (m *SettingsModel) handleLeftGeneralKey(local int) {
+	switch local {
+	case 2:
+		m.stepContextCursorLeft()
+	case 4:
+		stepBoundedCursor(&m.defaultViewCursor, -1, len(defaultProjectViewOptions)-1)
+	}
+}
+
+func (m *SettingsModel) handleLeftPaletteKey(local int) {
+	if local == 0 {
+		m.togglePaletteTheme()
+	}
+}
+
+func (m *SettingsModel) handleLeftBehaviorKey(local int) {
+	switch local {
+	case 13:
+		stepBoundedCursor(&m.startViewCursor, -1, len(startViewOptions)-1)
+	case 15:
+		stepBoundedCursor(&m.focusBoardModeCursor, -1, len(focusBoardModeOptions)-1)
+	case 16:
+		stepBoundedCursor(&m.dashboardLayoutCursor, -1, len(dashboardLayoutOptions)-1)
+	}
+}
+
+func (m *SettingsModel) handleLeftProjectTreeKey(local int) {
+	if local == 1 {
+		stepBoundedCursor(&m.treePriorityMode, -1, 2)
+	}
+}
+
+func (m *SettingsModel) handleLeftOutlinerKey(local int) {
+	if local == 10 {
+		stepBoundedCursor(&m.outlinerPriorityMode, -1, 2)
+	}
+}
+
+func (m *SettingsModel) handleLeftKanbanKey(local int) {
+	switch local {
+	case 0:
+		stepBoundedCursor(&m.kanbanDefaultModeCursor, -1, len(kanbanModeOptions)-1)
+	case 4:
+		stepBoundedCursor(&m.kanbanDetailHeightCursor, -1, len(kanbanDetailHeightOptions)-1)
+	}
+}
+
+func (m *SettingsModel) handleLeftNotificationsKey(local int) {
+	if local == 3 {
+		stepBoundedCursor(&m.alertWeeklyReviewDay, -1, 6)
+	}
+}
+
+func (m *SettingsModel) handleLeftAppearanceKey(local int) {
+	switch local {
+	case 1:
+		stepBoundedCursor(&m.weekEndDayCursor, -1, len(weekEndDayOptions)-1)
+	case 2:
+		stepBoundedCursor(&m.timeFormatCursor, -1, len(timeFormatOptions)-1)
+	}
+}
+
+func (m *SettingsModel) handleRightGeneralKey(local int) {
+	switch local {
+	case 2:
+		m.stepContextCursorRight()
+	case 4:
+		stepBoundedCursor(&m.defaultViewCursor, 1, len(defaultProjectViewOptions)-1)
+	}
+}
+
+func (m *SettingsModel) handleRightPaletteKey(local int) {
+	if local == 0 {
+		m.togglePaletteTheme()
+	}
+}
+
+func (m *SettingsModel) handleRightBehaviorKey(local int) {
+	switch local {
+	case 13:
+		stepBoundedCursor(&m.startViewCursor, 1, len(startViewOptions)-1)
+	case 15:
+		stepBoundedCursor(&m.focusBoardModeCursor, 1, len(focusBoardModeOptions)-1)
+	case 16:
+		stepBoundedCursor(&m.dashboardLayoutCursor, 1, len(dashboardLayoutOptions)-1)
+	}
+}
+
+func (m *SettingsModel) handleRightProjectTreeKey(local int) {
+	if local == 1 {
+		stepBoundedCursor(&m.treePriorityMode, 1, 2)
+	}
+}
+
+func (m *SettingsModel) handleRightOutlinerKey(local int) {
+	if local == 10 {
+		stepBoundedCursor(&m.outlinerPriorityMode, 1, 2)
+	}
+}
+
+func (m *SettingsModel) handleRightKanbanKey(local int) {
+	switch local {
+	case 0:
+		stepBoundedCursor(&m.kanbanDefaultModeCursor, 1, len(kanbanModeOptions)-1)
+	case 4:
+		stepBoundedCursor(&m.kanbanDetailHeightCursor, 1, len(kanbanDetailHeightOptions)-1)
+	}
+}
+
+func (m *SettingsModel) handleRightNotificationsKey(local int) {
+	if local == 3 {
+		stepBoundedCursor(&m.alertWeeklyReviewDay, 1, 6)
+	}
+}
+
+func (m *SettingsModel) handleRightAppearanceKey(local int) {
+	switch local {
+	case 1:
+		stepBoundedCursor(&m.weekEndDayCursor, 1, len(weekEndDayOptions)-1)
+	case 2:
+		stepBoundedCursor(&m.timeFormatCursor, 1, len(timeFormatOptions)-1)
+	}
+}
+
+func (m *SettingsModel) stepContextCursorLeft() {
+	if len(m.contexts) == 0 {
+		return
+	}
+	switch {
+	case m.contextCursor > 0:
+		m.contextCursor--
+	case m.contextCursor == -1:
+		m.contextCursor = len(m.contexts) - 1
+	default:
+		return
+	}
+	m.contextInput.SetValue(m.contexts[m.contextCursor])
+}
+
+func (m *SettingsModel) stepContextCursorRight() {
+	if len(m.contexts) == 0 || m.contextCursor < 0 || m.contextCursor >= len(m.contexts)-1 {
+		return
+	}
+	m.contextCursor++
+	m.contextInput.SetValue(m.contexts[m.contextCursor])
+}
+
+func stepBoundedCursor(cursor *int, delta, maxValue int) {
+	switch {
+	case delta < 0 && *cursor > 0:
+		*cursor--
+	case delta > 0 && *cursor < maxValue:
+		*cursor++
 	}
 }
 

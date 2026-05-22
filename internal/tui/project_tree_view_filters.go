@@ -59,134 +59,28 @@ func sectionLimitWarning(over, limit int) string {
 
 // renderViewModeIndicator returns a styled indicator for the current view mode with counts.
 func (m *ProjectTreeModel) renderViewModeIndicator() string {
-	// Count by section: active, next, inbox, waiting, someday, completed
-	var activeCount, nextCount, inboxCount, waitingCount, somedayCount, reviewCount, standbyCount, completedCount, snoozedCount int
-	for _, task := range m.project.Tasks {
-		if task.IsSnoozed() {
-			snoozedCount++
-			continue
-		}
-		if task.IsComplete() {
-			completedCount++
-			continue
-		}
-		switch task.Section {
-		case models.SectionNext:
-			nextCount++
-		case models.SectionInbox:
-			inboxCount++
-		case models.SectionWaiting:
-			waitingCount++
-		case models.SectionSomeday:
-			somedayCount++
-		case models.SectionReview:
-			reviewCount++
-		case models.SectionStandby:
-			standbyCount++
-		default:
-			// Empty section = Active; custom-section tasks are not "Active"
-			if task.CustomSection == "" {
-				activeCount++
-			}
+	counts := m.viewModeCounts()
+	parts := []string{
+		renderViewModeCount(ViewModeActive, "Active", counts.active, m.viewMode == ViewModeActive),
+		renderViewModeCount(ViewModeNext, "Next", counts.next, m.viewMode == ViewModeNext),
+		renderViewModeCount(ViewModeInbox, "Inbox", counts.inbox, m.viewMode == ViewModeInbox || counts.inbox > 0),
+		renderViewModeCount(ViewModeWaiting, "Waiting", counts.waiting, m.viewMode == ViewModeWaiting),
+		renderViewModeCount(ViewModeSomeday, "Someday", counts.someday, m.viewMode == ViewModeSomeday),
+	}
+
+	if m.Width() < 100 {
+		parts = append(parts, m.renderCollapsedViewModes(counts))
+	} else {
+		parts = append(parts,
+			renderViewModeCount(ViewModeReview, "Review", counts.review, m.viewMode == ViewModeReview || counts.review > 0),
+			renderViewModeCount(ViewModeStandby, "Standby", counts.standby, m.viewMode == ViewModeStandby),
+		)
+		if counts.snoozed > 0 {
+			parts = append(parts, renderViewModeCount(ViewModeSnoozed, "Snoozed", counts.snoozed, m.viewMode == ViewModeSnoozed))
 		}
 	}
 
-	// Build indicator for each view with counts
-	var parts []string
-
-	// Active view
-	activeLabel := fmt.Sprintf("Active[%d]", activeCount)
-	if m.viewMode == ViewModeActive {
-		parts = append(parts, ViewModeActiveStyle.Render(activeLabel))
-	} else {
-		parts = append(parts, MutedStyle.Render(activeLabel))
-	}
-
-	// Next view
-	nextLabel := fmt.Sprintf("Next[%d]", nextCount)
-	if m.viewMode == ViewModeNext {
-		parts = append(parts, ViewModeNextStyle.Render(nextLabel))
-	} else {
-		parts = append(parts, MutedStyle.Render(nextLabel))
-	}
-
-	// Inbox view
-	inboxLabel := fmt.Sprintf("Inbox[%d]", inboxCount)
-	if m.viewMode == ViewModeInbox {
-		parts = append(parts, ViewModeInboxStyle.Render(inboxLabel))
-	} else if inboxCount > 0 {
-		parts = append(parts, ViewModeInboxStyle.Render(inboxLabel))
-	} else {
-		parts = append(parts, MutedStyle.Render(inboxLabel))
-	}
-
-	// Waiting view
-	waitingLabel := fmt.Sprintf("Waiting[%d]", waitingCount)
-	if m.viewMode == ViewModeWaiting {
-		parts = append(parts, ViewModeWaitingStyle.Render(waitingLabel))
-	} else {
-		parts = append(parts, MutedStyle.Render(waitingLabel))
-	}
-
-	// Someday view
-	somedayLabel := fmt.Sprintf("Someday[%d]", somedayCount)
-	if m.viewMode == ViewModeSomeday {
-		parts = append(parts, ViewModeSomedayStyle.Render(somedayLabel))
-	} else {
-		parts = append(parts, MutedStyle.Render(somedayLabel))
-	}
-
-	// Review, Standby, Snoozed: collapse into More[N] on narrow terminals.
-	narrowMode := m.Width() < 100
-	isCollapsedActive := m.viewMode == ViewModeReview || m.viewMode == ViewModeStandby || m.viewMode == ViewModeSnoozed
-	if narrowMode {
-		if isCollapsedActive {
-			// Show only the active collapsed tab so user can see their current location.
-			switch m.viewMode {
-			case ViewModeReview:
-				parts = append(parts, ViewModeReviewStyle.Render(fmt.Sprintf("Review[%d]", reviewCount)))
-			case ViewModeStandby:
-				parts = append(parts, ViewModeStandbyStyle.Render(fmt.Sprintf("Standby[%d]", standbyCount)))
-			case ViewModeSnoozed:
-				parts = append(parts, ViewModeSnoozedStyle.Render(fmt.Sprintf("Snoozed[%d]", snoozedCount)))
-			}
-		} else {
-			moreCount := reviewCount + standbyCount + snoozedCount
-			parts = append(parts, MutedStyle.Render(fmt.Sprintf("More[%d]", moreCount)))
-		}
-	} else {
-		reviewLabel := fmt.Sprintf("Review[%d]", reviewCount)
-		if m.viewMode == ViewModeReview || reviewCount > 0 {
-			parts = append(parts, ViewModeReviewStyle.Render(reviewLabel))
-		} else {
-			parts = append(parts, MutedStyle.Render(reviewLabel))
-		}
-
-		standbyLabel := fmt.Sprintf("Standby[%d]", standbyCount)
-		if m.viewMode == ViewModeStandby {
-			parts = append(parts, ViewModeStandbyStyle.Render(standbyLabel))
-		} else {
-			parts = append(parts, MutedStyle.Render(standbyLabel))
-		}
-
-		if snoozedCount > 0 {
-			snoozedLabel := fmt.Sprintf("Snoozed[%d]", snoozedCount)
-			if m.viewMode == ViewModeSnoozed {
-				parts = append(parts, ViewModeSnoozedStyle.Render(snoozedLabel))
-			} else {
-				parts = append(parts, MutedStyle.Render(snoozedLabel))
-			}
-		}
-	}
-
-	// All view indicator
-	allCount := activeCount + nextCount + inboxCount + waitingCount + somedayCount + reviewCount + standbyCount
-	allLabel := fmt.Sprintf("All[%d]", allCount)
-	if m.viewMode == ViewModeAll {
-		parts = append(parts, ViewModeAllStyle.Render(allLabel))
-	} else {
-		parts = append(parts, MutedStyle.Render(allLabel))
-	}
+	parts = append(parts, renderViewModeCount(ViewModeAll, "All", counts.all(), m.viewMode == ViewModeAll))
 
 	// Blockers indicator (only show if there are active blockers)
 	blockerCount := storage.GetActiveBlockerCount(m.project)
@@ -196,6 +90,108 @@ func (m *ProjectTreeModel) renderViewModeIndicator() string {
 	}
 
 	return strings.Join(parts, " ")
+}
+
+type projectTreeViewModeCounts struct {
+	active    int
+	next      int
+	inbox     int
+	waiting   int
+	someday   int
+	review    int
+	standby   int
+	completed int
+	snoozed   int
+}
+
+func (m *ProjectTreeModel) viewModeCounts() projectTreeViewModeCounts {
+	var counts projectTreeViewModeCounts
+	for _, task := range m.project.Tasks {
+		switch {
+		case task.IsSnoozed():
+			counts.snoozed++
+		case task.IsComplete():
+			counts.completed++
+		default:
+			m.incrementSectionCount(&counts, task)
+		}
+	}
+	return counts
+}
+
+func (m *ProjectTreeModel) incrementSectionCount(counts *projectTreeViewModeCounts, task *models.Task) {
+	switch task.Section {
+	case models.SectionNext:
+		counts.next++
+	case models.SectionInbox:
+		counts.inbox++
+	case models.SectionWaiting:
+		counts.waiting++
+	case models.SectionSomeday:
+		counts.someday++
+	case models.SectionReview:
+		counts.review++
+	case models.SectionStandby:
+		counts.standby++
+	default:
+		if task.CustomSection == "" {
+			counts.active++
+		}
+	}
+}
+
+func (m *ProjectTreeModel) renderCollapsedViewModes(counts projectTreeViewModeCounts) string {
+	switch m.viewMode {
+	case ViewModeReview:
+		return renderViewModeCount(ViewModeReview, "Review", counts.review, true)
+	case ViewModeStandby:
+		return renderViewModeCount(ViewModeStandby, "Standby", counts.standby, true)
+	case ViewModeSnoozed:
+		return renderViewModeCount(ViewModeSnoozed, "Snoozed", counts.snoozed, true)
+	case ViewModeActive, ViewModeNext, ViewModeInbox, ViewModeWaiting, ViewModeSomeday, ViewModeCompleted, ViewModeAll:
+		fallthrough
+	default:
+		return MutedStyle.Render(fmt.Sprintf("More[%d]", counts.review+counts.standby+counts.snoozed))
+	}
+}
+
+func renderViewModeCount(mode ViewMode, label string, count int, active bool) string {
+	text := fmt.Sprintf("%s[%d]", label, count)
+	if !active {
+		return MutedStyle.Render(text)
+	}
+	return renderViewModeText(mode, text)
+}
+
+func renderViewModeText(mode ViewMode, text string) string {
+	switch mode {
+	case ViewModeActive:
+		return ViewModeActiveStyle.Render(text)
+	case ViewModeNext:
+		return ViewModeNextStyle.Render(text)
+	case ViewModeInbox:
+		return ViewModeInboxStyle.Render(text)
+	case ViewModeWaiting:
+		return ViewModeWaitingStyle.Render(text)
+	case ViewModeSomeday:
+		return ViewModeSomedayStyle.Render(text)
+	case ViewModeCompleted:
+		return ViewModeCompletedStyle.Render(text)
+	case ViewModeReview:
+		return ViewModeReviewStyle.Render(text)
+	case ViewModeStandby:
+		return ViewModeStandbyStyle.Render(text)
+	case ViewModeSnoozed:
+		return ViewModeSnoozedStyle.Render(text)
+	case ViewModeAll:
+		return ViewModeAllStyle.Render(text)
+	default:
+		return MutedStyle.Render(text)
+	}
+}
+
+func (c projectTreeViewModeCounts) all() int {
+	return c.active + c.next + c.inbox + c.waiting + c.someday + c.review + c.standby
 }
 
 func (m *ProjectTreeModel) renderFilterBar() string {

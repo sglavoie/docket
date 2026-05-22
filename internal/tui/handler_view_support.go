@@ -1,6 +1,6 @@
 package tui
 
-import "charm.land/bubbletea/v2"
+import tea "charm.land/bubbletea/v2"
 
 // handleViewSupportMessages handles blockers and attachment views.
 func (m *AppModel) handleViewSupportMessages(msg tea.Msg) (bool, tea.Cmd) {

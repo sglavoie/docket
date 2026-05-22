@@ -44,7 +44,7 @@ func TestCrossProjectUndoOrchestration(t *testing.T) {
 		betaStandaloneID = "beta-task-004"
 	)
 
-	betaParent, _ := models.NewTask(betaParentID, 1, models.TaskTypeTask, "Setup CI pipeline")
+	betaParent, _ := models.NewTask(betaParentID, 1, models.TaskTypeEpic, "Setup CI pipeline")
 	betaChild1, _ := models.NewTask(betaChild1ID, 2, models.TaskTypeTask, "Configure lint")
 	betaChild1.ParentID = strPtr(betaParentID)
 	betaChild2, _ := models.NewTask(betaChild2ID, 3, models.TaskTypeTask, "Configure tests")

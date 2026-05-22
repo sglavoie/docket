@@ -140,84 +140,14 @@ func (m *CommandPaletteModel) renderItemList() string {
 	contentWidth := max(m.listWidth-4, 1)
 	scrollOffset := m.calculateScrollOffset(maxVisible, showHeaders)
 
-	var currentCategory ItemCategory
-	var inFrequentSection bool
-	var inSuggestedSection bool
-	if scrollOffset > 0 {
-		prev := m.filteredItems[scrollOffset-1]
-		inFrequentSection = prev.IsFrequent
-		inSuggestedSection = prev.IsSuggested
-		if !inFrequentSection && !inSuggestedSection {
-			currentCategory = prev.Item.Category
-		}
-	}
+	state := m.itemListRenderState(scrollOffset)
 
 	linesRendered := 0
 	for i := scrollOffset; i < len(m.filteredItems) && linesRendered < maxVisible; i++ {
 		filtered := m.filteredItems[i]
-		item := filtered.Item
 
-		if showHeaders {
-			if filtered.IsFrequent && !inFrequentSection {
-				// Start of recent section
-				b.WriteString(m.renderFrequentHeader())
-				b.WriteString("\n")
-				linesRendered++
-				inFrequentSection = true
-				if linesRendered >= maxVisible {
-					break
-				}
-			} else if filtered.IsSuggested && !inSuggestedSection {
-				// Start of suggested section
-				b.WriteString("\n")
-				linesRendered++
-				if linesRendered >= maxVisible {
-					break
-				}
-				b.WriteString(m.renderSuggestedHeader())
-				b.WriteString("\n")
-				linesRendered++
-				inSuggestedSection = true
-				inFrequentSection = false
-				if linesRendered >= maxVisible {
-					break
-				}
-			} else if !filtered.IsFrequent && !filtered.IsSuggested {
-				if inFrequentSection || inSuggestedSection {
-					// Transition from special section to regular categories
-					inFrequentSection = false
-					inSuggestedSection = false
-					b.WriteString("\n")
-					linesRendered++
-					if linesRendered >= maxVisible {
-						break
-					}
-					header := m.renderCategoryHeader(item.Category)
-					b.WriteString(header)
-					b.WriteString("\n")
-					linesRendered++
-					currentCategory = item.Category
-					if linesRendered >= maxVisible {
-						break
-					}
-				} else if item.Category != currentCategory {
-					if currentCategory != "" {
-						b.WriteString("\n")
-						linesRendered++
-						if linesRendered >= maxVisible {
-							break
-						}
-					}
-					header := m.renderCategoryHeader(item.Category)
-					b.WriteString(header)
-					b.WriteString("\n")
-					linesRendered++
-					currentCategory = item.Category
-					if linesRendered >= maxVisible {
-						break
-					}
-				}
-			}
+		if showHeaders && m.renderItemListHeaders(&b, filtered, &state, &linesRendered, maxVisible) {
+			break
 		}
 
 		numberHint := -1
@@ -226,9 +156,9 @@ func (m *CommandPaletteModel) renderItemList() string {
 		}
 
 		line := m.renderPaletteItemWithHighlight(filtered, i == m.cursor, contentWidth, numberHint)
-		b.WriteString(line)
-		b.WriteString("\n")
-		linesRendered++
+		if appendPaletteLines(&b, &linesRendered, maxVisible, line) {
+			break
+		}
 	}
 
 	if len(m.filteredItems) > maxVisible {
@@ -236,6 +166,83 @@ func (m *CommandPaletteModel) renderItemList() string {
 	}
 
 	return b.String()
+}
+
+type paletteItemListState struct {
+	currentCategory    ItemCategory
+	inFrequentSection  bool
+	inSuggestedSection bool
+}
+
+func (m *CommandPaletteModel) itemListRenderState(scrollOffset int) paletteItemListState {
+	state := paletteItemListState{}
+	if scrollOffset == 0 {
+		return state
+	}
+
+	prev := m.filteredItems[scrollOffset-1]
+	state.inFrequentSection = prev.IsFrequent
+	state.inSuggestedSection = prev.IsSuggested
+	if !state.inFrequentSection && !state.inSuggestedSection {
+		state.currentCategory = prev.Item.Category
+	}
+	return state
+}
+
+func (m *CommandPaletteModel) renderItemListHeaders(
+	b *strings.Builder,
+	filtered filteredPaletteItem,
+	state *paletteItemListState,
+	linesRendered *int,
+	maxVisible int,
+) bool {
+	switch {
+	case filtered.IsFrequent && !state.inFrequentSection:
+		state.inFrequentSection = true
+		state.inSuggestedSection = false
+		return appendPaletteLines(b, linesRendered, maxVisible, m.renderFrequentHeader())
+	case filtered.IsSuggested && !state.inSuggestedSection:
+		state.inSuggestedSection = true
+		state.inFrequentSection = false
+		return appendPaletteLines(b, linesRendered, maxVisible, "", m.renderSuggestedHeader())
+	case filtered.IsFrequent || filtered.IsSuggested:
+		return false
+	}
+
+	headers := m.categoryHeaderLines(filtered.Item.Category, state)
+	return appendPaletteLines(b, linesRendered, maxVisible, headers...)
+}
+
+func (m *CommandPaletteModel) categoryHeaderLines(cat ItemCategory, state *paletteItemListState) []string {
+	switch {
+	case state.inFrequentSection || state.inSuggestedSection:
+		state.inFrequentSection = false
+		state.inSuggestedSection = false
+		state.currentCategory = cat
+		return []string{"", m.renderCategoryHeader(cat)}
+	case cat == state.currentCategory:
+		return nil
+	case state.currentCategory == "":
+		state.currentCategory = cat
+		return []string{m.renderCategoryHeader(cat)}
+	default:
+		state.currentCategory = cat
+		return []string{"", m.renderCategoryHeader(cat)}
+	}
+}
+
+func appendPaletteLines(b *strings.Builder, linesRendered *int, maxVisible int, lines ...string) bool {
+	for _, line := range lines {
+		if *linesRendered >= maxVisible {
+			return true
+		}
+		if line != "" {
+			b.WriteString(line)
+		}
+		b.WriteString("\n")
+		*linesRendered++
+	}
+	return *linesRendered >= maxVisible
 }
 
 // renderScrollIndicator renders a visual progress bar showing scroll position.

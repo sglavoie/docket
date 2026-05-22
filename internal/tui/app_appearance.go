@@ -18,7 +18,7 @@ func (m *AppModel) handleAppearanceResult(msg systemAppearanceResultMsg) tea.Cmd
 		return nil
 	}
 
-	// Don't switch while the user is editing palette colours in Settings.
+	// Don't switch while the user is editing palette colors in Settings.
 	if m.currentView() == ViewSettings {
 		return nil
 	}

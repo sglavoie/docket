@@ -69,7 +69,9 @@ func runRoadmap(cmd *cobra.Command, args []string) error {
 	} else {
 		for _, p := range cfg.GetActiveProjects() {
 			if err := storage.LoadProject(p); err != nil {
-				fmt.Fprintf(cmd.ErrOrStderr(), "warning: skipping project %s: %v\n", p.Name, err)
+				if _, writeErr := fmt.Fprintf(cmd.ErrOrStderr(), "warning: skipping project %s: %v\n", p.Name, err); writeErr != nil {
+					return fmt.Errorf("failed to write warning: %w", writeErr)
+				}
 				continue
 			}
 			projects = append(projects, p)
@@ -265,10 +267,7 @@ func printMermaidTask(t *models.Task, schedMap map[string]planner.ScheduledTask,
 		tags = "active, "
 	}
 
-	durationDays := int(math.Ceil(s.EarliestEnd.Sub(s.EarliestStart).Hours() / 24))
-	if durationDays < 1 {
-		durationDays = 1
-	}
+	durationDays := max(int(math.Ceil(s.EarliestEnd.Sub(s.EarliestStart).Hours()/24)), 1)
 
 	fmt.Printf("    %s    :%s%s, %sd\n",
 		mermaidSafe(t.Title),

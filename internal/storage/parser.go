@@ -81,126 +81,15 @@ func ParseTasksMarkdownWithSections(content string) (*ParseResult, error) {
 	for scanner.Scan() {
 		line := scanner.Text()
 
-		// Check for project title. Only honored before the first task heading:
-		// once we're inside a task body, a `# Project: ...` line is part of the
-		// description (it may appear in old-format files that predate the
-		// description-line escape logic, or in manually pasted content). Without
-		// this guard the project name silently gets overwritten and the line is
-		// dropped from the description, causing data loss on round-trip.
-		if !foundFirstTask {
-			if matches := projectRegex.FindStringSubmatch(line); matches != nil {
-				projectName = strings.TrimSpace(matches[1])
-				if len(projectName) > models.MaxProjectNameLength {
-					metadataWarnings = append(metadataWarnings, ParseWarning{
-						Type:    format.WarningValidation,
-						Field:   "project_name",
-						Message: fmt.Sprintf("project name exceeds %d chars", models.MaxProjectNameLength),
-					})
-				}
-				continue
-			}
+		if parseProjectTitleLine(line, foundFirstTask, &projectName, &metadataWarnings) {
+			continue
 		}
 
-		// Check for sections metadata (only before first task)
-		// Format: "<!-- sections: Backlog;Active:green;Done:blue -->"
-		if !foundFirstTask {
-			if matches := sectionsRegex.FindStringSubmatch(line); matches != nil {
-				sectionList := strings.SplitSeq(matches[1], ";")
-				for s := range sectionList {
-					s = strings.TrimSpace(s)
-					if s == "" {
-						continue
-					}
-					// Parse "SectionName:color" or just "SectionName"
-					parts := strings.SplitN(s, ":", 2)
-					name := strings.TrimSpace(parts[0])
-					if name != "" {
-						sections = append(sections, name)
-						if len(parts) == 2 {
-							color := strings.TrimSpace(parts[1])
-							if color != "" {
-								if models.IsValidSectionColor(color) {
-									sectionColors[name] = color
-								} else {
-									metadataWarnings = append(metadataWarnings, ParseWarning{
-										Type:    format.WarningValidation,
-										Field:   "sections",
-										Message: fmt.Sprintf("section %q has invalid color %q (valid: gray, red, orange, yellow, green, cyan, blue, purple, magenta, white), using default", name, color),
-									})
-								}
-							}
-						}
-					}
-				}
-				continue
-			}
+		if parseSectionsMetadataLine(line, foundFirstTask, &sections, sectionColors, &metadataWarnings) {
+			continue
 		}
 
-		// Check for task heading
-		if matches := headingRegex.FindStringSubmatch(line); matches != nil {
-			foundFirstTask = true
-			// Save previous task's description
-			if currentTask != nil {
-				currentTask.Task.Description = strings.TrimSpace(descBuilder.String())
-				parsedTasks = append(parsedTasks, currentTask)
-			}
-
-			level := len(matches[1]) // Number of # characters
-			typeStr := strings.ToLower(matches[2])
-			title := strings.TrimSpace(matches[3])
-
-			taskType, ok := models.ParseTaskType(typeStr)
-			if !ok {
-				taskType = models.TaskTypeTask
-				if typeStr == "action" || typeStr == "note" {
-					metadataWarnings = append(metadataWarnings, ParseWarning{
-						Type:    format.WarningDeprecation,
-						Field:   "type",
-						Message: fmt.Sprintf("task #%d has deprecated type '%s', migrated to 'task'", nextShortID, typeStr),
-					})
-				} else {
-					metadataWarnings = append(metadataWarnings, ParseWarning{
-						Type:    format.WarningValidation,
-						Field:   "type",
-						Message: fmt.Sprintf("task #%d has unrecognized type '%s', treated as 'task'", nextShortID, typeStr),
-					})
-				}
-			}
-
-			var task *models.Task
-			if len(title) > models.MaxTaskTitleLength {
-				// Bypass NewTask validation for overlong titles to avoid a double
-				// warning (one here, one from NewTask). The task already exists in
-				// the file; we preserve it as-is rather than rejecting it.
-				metadataWarnings = append(metadataWarnings, ParseWarning{
-					Type:    format.WarningValidation,
-					Field:   "title",
-					Message: fmt.Sprintf("task #%d title is overlong (%d chars, max %d)", nextShortID, len(title), models.MaxTaskTitleLength),
-				})
-				task = newFallbackTask(nextShortID, taskType, title)
-			} else if newTask, taskErr := models.NewTask("", nextShortID, taskType, title); taskErr != nil {
-				// Preserve tasks with invalid titles (e.g. empty) to avoid data loss
-				metadataWarnings = append(metadataWarnings, ParseWarning{
-					Type:    format.WarningDataCorrection,
-					Field:   "title",
-					Message: fmt.Sprintf("task #%d has invalid title: %v", nextShortID, taskErr),
-				})
-				task = newFallbackTask(nextShortID, taskType, title)
-			} else {
-				task = newTask
-			}
-			// Zero out timestamps so they come from metadata parsing.
-			// NewTask sets these to time.Now(), which is wrong for tasks
-			// loaded from disk — their real timestamps are in the metadata.
-			task.CreatedAt = time.Time{}
-			task.UpdatedAt = time.Time{}
-			currentTask = &format.ParsedTask{
-				Task:  task,
-				Level: level,
-			}
-			nextShortID++
-			descBuilder.Reset()
-			metadataParsed = false
+		if parseTaskHeadingLine(line, &currentTask, &parsedTasks, &descBuilder, &nextShortID, &foundFirstTask, &metadataParsed, &metadataWarnings) {
 			continue
 		}
 
@@ -209,20 +98,8 @@ func ParseTasksMarkdownWithSections(content string) (*ParseResult, error) {
 		// metadata comment might omit the id field, leaving ID empty. Once the
 		// description starts, stop attempting metadata parsing so later HTML
 		// comments in the description are preserved verbatim.
-		if currentTask != nil && !metadataParsed {
-			if trimmed := strings.TrimSpace(line); trimmed != "" {
-				if matches := format.MetadataRegex().FindStringSubmatch(line); matches != nil && format.LooksLikeMetadata(matches[1]) {
-					metadataParsed = true
-					warnings := format.ParseMetadata(currentTask.Task, matches[1])
-					// Add task ID to warnings now that we have it
-					for i := range warnings {
-						warnings[i].TaskID = currentTask.Task.ID
-					}
-					metadataWarnings = append(metadataWarnings, warnings...)
-					continue
-				}
-				metadataParsed = true
-			}
+		if parseTaskMetadataLine(line, currentTask, &metadataParsed, &metadataWarnings) {
+			continue
 		}
 
 		// Accumulate description content (unescape heading-like lines that
@@ -287,6 +164,190 @@ func ParseTasksMarkdownWithSections(content string) (*ParseResult, error) {
 		SectionColors: sectionColors,
 		Warnings:      metadataWarnings,
 	}, nil
+}
+
+func parseProjectTitleLine(line string, foundFirstTask bool, projectName *string, warnings *[]ParseWarning) bool {
+	if foundFirstTask {
+		return false
+	}
+
+	matches := projectRegex.FindStringSubmatch(line)
+	if matches == nil {
+		return false
+	}
+
+	*projectName = strings.TrimSpace(matches[1])
+	if len(*projectName) > models.MaxProjectNameLength {
+		*warnings = append(*warnings, ParseWarning{
+			Type:    format.WarningValidation,
+			Field:   "project_name",
+			Message: fmt.Sprintf("project name exceeds %d chars", models.MaxProjectNameLength),
+		})
+	}
+
+	return true
+}
+
+func parseSectionsMetadataLine(line string, foundFirstTask bool, sections *[]string, sectionColors map[string]string, warnings *[]ParseWarning) bool {
+	if foundFirstTask {
+		return false
+	}
+
+	matches := sectionsRegex.FindStringSubmatch(line)
+	if matches == nil {
+		return false
+	}
+
+	for sectionSpec := range strings.SplitSeq(matches[1], ";") {
+		sectionSpec = strings.TrimSpace(sectionSpec)
+		if sectionSpec == "" {
+			continue
+		}
+
+		parts := strings.SplitN(sectionSpec, ":", 2)
+		name := strings.TrimSpace(parts[0])
+		if name == "" {
+			continue
+		}
+
+		*sections = append(*sections, name)
+		if len(parts) == 2 {
+			color := strings.TrimSpace(parts[1])
+			if color == "" {
+				continue
+			}
+			if models.IsValidSectionColor(color) {
+				sectionColors[name] = color
+				continue
+			}
+			*warnings = append(*warnings, ParseWarning{
+				Type:    format.WarningValidation,
+				Field:   "sections",
+				Message: fmt.Sprintf("section %q has invalid color %q (valid: gray, red, orange, yellow, green, cyan, blue, purple, magenta, white), using default", name, color),
+			})
+		}
+	}
+
+	return true
+}
+
+func parseTaskHeadingLine(line string, currentTask **format.ParsedTask, parsedTasks *[]*format.ParsedTask, descBuilder *strings.Builder, nextShortID *int, foundFirstTask *bool, metadataParsed *bool, warnings *[]ParseWarning) bool {
+	matches := headingRegex.FindStringSubmatch(line)
+	if matches == nil {
+		return false
+	}
+
+	*foundFirstTask = true
+	if *currentTask != nil {
+		finalizeParsedTask(*currentTask, parsedTasks, descBuilder)
+	}
+
+	shortID := *nextShortID
+	taskType := parseTaskTypeForHeading(strings.ToLower(matches[2]), shortID, warnings)
+	task := newTaskForHeading(shortID, taskType, strings.TrimSpace(matches[3]), warnings)
+	*currentTask = &format.ParsedTask{
+		Task:  task,
+		Level: len(matches[1]),
+	}
+	*nextShortID = shortID + 1
+	descBuilder.Reset()
+	*metadataParsed = false
+
+	return true
+}
+
+func parseTaskTypeForHeading(typeStr string, shortID int, warnings *[]ParseWarning) models.TaskType {
+	taskType, ok := models.ParseTaskType(typeStr)
+	if ok {
+		return taskType
+	}
+
+	if typeStr == "action" || typeStr == "note" {
+		*warnings = append(*warnings, ParseWarning{
+			Type:    format.WarningDeprecation,
+			Field:   "type",
+			Message: fmt.Sprintf("task #%d has deprecated type '%s', migrated to 'task'", shortID, typeStr),
+		})
+		return models.TaskTypeTask
+	}
+
+	*warnings = append(*warnings, ParseWarning{
+		Type:    format.WarningValidation,
+		Field:   "type",
+		Message: fmt.Sprintf("task #%d has unrecognized type '%s', treated as 'task'", shortID, typeStr),
+	})
+
+	return models.TaskTypeTask
+}
+
+func newTaskForHeading(shortID int, taskType models.TaskType, title string, warnings *[]ParseWarning) *models.Task {
+	if len(title) > models.MaxTaskTitleLength {
+		// Bypass NewTask validation for overlong titles to avoid a double
+		// warning (one here, one from NewTask). The task already exists in
+		// the file; we preserve it as-is rather than rejecting it.
+		*warnings = append(*warnings, ParseWarning{
+			Type:    format.WarningValidation,
+			Field:   "title",
+			Message: fmt.Sprintf("task #%d title is overlong (%d chars, max %d)", shortID, len(title), models.MaxTaskTitleLength),
+		})
+		return newTaskForLoad(shortID, taskType, title)
+	}
+
+	task, err := models.NewTask("", shortID, taskType, title)
+	if err != nil {
+		// Preserve tasks with invalid titles (e.g. empty) to avoid data loss.
+		*warnings = append(*warnings, ParseWarning{
+			Type:    format.WarningDataCorrection,
+			Field:   "title",
+			Message: fmt.Sprintf("task #%d has invalid title: %v", shortID, err),
+		})
+		return newTaskForLoad(shortID, taskType, title)
+	}
+
+	return resetParsedTaskTimestamps(task)
+}
+
+func parseTaskMetadataLine(line string, currentTask *format.ParsedTask, metadataParsed *bool, warnings *[]ParseWarning) bool {
+	if currentTask == nil || *metadataParsed {
+		return false
+	}
+
+	trimmed := strings.TrimSpace(line)
+	if trimmed == "" {
+		return false
+	}
+
+	*metadataParsed = true
+	matches := format.MetadataRegex().FindStringSubmatch(line)
+	if matches == nil || !format.LooksLikeMetadata(matches[1]) {
+		return false
+	}
+
+	parsedWarnings := format.ParseMetadata(currentTask.Task, matches[1])
+	for i := range parsedWarnings {
+		parsedWarnings[i].TaskID = currentTask.Task.ID
+	}
+	*warnings = append(*warnings, parsedWarnings...)
+
+	return true
+}
+
+func finalizeParsedTask(currentTask *format.ParsedTask, parsedTasks *[]*format.ParsedTask, descBuilder *strings.Builder) {
+	currentTask.Task.Description = strings.TrimSpace(descBuilder.String())
+	*parsedTasks = append(*parsedTasks, currentTask)
+}
+
+func newTaskForLoad(shortID int, taskType models.TaskType, title string) *models.Task {
+	return resetParsedTaskTimestamps(newFallbackTask(shortID, taskType, title))
+}
+
+func resetParsedTaskTimestamps(task *models.Task) *models.Task {
+	// Zero out timestamps so they come from metadata parsing.
+	// NewTask sets these to time.Now(), which is wrong for tasks
+	// loaded from disk — their real timestamps are in the metadata.
+	task.CreatedAt = time.Time{}
+	task.UpdatedAt = time.Time{}
+	return task
 }
 
 // newFallbackTask creates a Task with safe defaults, bypassing NewTask

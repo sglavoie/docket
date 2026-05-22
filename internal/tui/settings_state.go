@@ -214,18 +214,6 @@ func tabForField(focusIndex int) int {
 	return 0
 }
 
-// subTabNamesForTab returns the section names for tab, or nil if it has no sub-tabs.
-func subTabNamesForTab(tab int) []string {
-	if tab < 0 || tab >= len(settingsTabSections) || settingsTabSections[tab] == nil {
-		return nil
-	}
-	names := make([]string, len(settingsTabSections[tab]))
-	for i, s := range settingsTabSections[tab] {
-		names[i] = s.Name
-	}
-	return names
-}
-
 // subTabFieldStart returns the absolute focusIndex for the first field of subTab within tab.
 func subTabFieldStart(tab, subTab int) int {
 	start := tabFieldStart[tab]

@@ -56,7 +56,7 @@ func CriticalPath(tasks []*models.Task) *CriticalPathResult {
 
 	// Forward pass: ES[t] = max(EF[pred]) over all predecessors.
 	// ES = earliest start (days from t=0), EF = ES + duration.
-	es := make(map[string]float64, len(topoOrder)) // all initialised to 0
+	es := make(map[string]float64, len(topoOrder)) // all initialized to 0
 	for _, t := range topoOrder {
 		for _, depRef := range t.DependsOn {
 			ref := models.ParseTaskRef(depRef)

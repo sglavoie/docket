@@ -125,10 +125,7 @@ func (m *KanbanModel) clampScrollToVisible(colIdx int) {
 	totalDispRows := m.countDisplayRows(colIdx)
 
 	// Reserve one row for the potential overflow indicator.
-	visibleCards := bodyRows - 1
-	if visibleCards < 1 {
-		visibleCards = 1
-	}
+	visibleCards := max(bodyRows-1, 1)
 
 	// Get the display row of the cursor task.
 	cursorDispRow := m.displayRowForTask(colIdx, col.Cursor)
@@ -148,10 +145,7 @@ func (m *KanbanModel) clampScrollToVisible(colIdx int) {
 	}
 
 	// Don't scroll past end.
-	maxOff := totalDispRows - bodyRows
-	if maxOff < 0 {
-		maxOff = 0
-	}
+	maxOff := max(totalDispRows-bodyRows, 0)
 	if col.ScrollOffset > maxOff {
 		col.ScrollOffset = maxOff
 	}
@@ -166,10 +160,7 @@ func (m *KanbanModel) adjustHorizontalScroll() {
 	}
 
 	const minColWidth = 25
-	maxVisible := (m.width + 1) / (minColWidth + 1)
-	if maxVisible < 1 {
-		maxVisible = 1
-	}
+	maxVisible := max((m.width+1)/(minColWidth+1), 1)
 	numVisible := min(numCols, maxVisible)
 
 	// Active column scrolled past right edge.
@@ -185,10 +176,7 @@ func (m *KanbanModel) adjustHorizontalScroll() {
 	if m.colScrollOff < 0 {
 		m.colScrollOff = 0
 	}
-	maxOff := numCols - numVisible
-	if maxOff < 0 {
-		maxOff = 0
-	}
+	maxOff := max(numCols-numVisible, 0)
 	if m.colScrollOff > maxOff {
 		m.colScrollOff = maxOff
 	}
@@ -246,10 +234,7 @@ func (m *KanbanModel) pageDown() {
 	if len(col.Tasks) == 0 {
 		return
 	}
-	half := m.visibleBodyRows() / 2
-	if half < 1 {
-		half = 1
-	}
+	half := max(m.visibleBodyRows()/2, 1)
 	col.Cursor += half
 	if col.Cursor >= len(col.Tasks) {
 		col.Cursor = len(col.Tasks) - 1
@@ -266,10 +251,7 @@ func (m *KanbanModel) pageUp() {
 	if len(col.Tasks) == 0 {
 		return
 	}
-	half := m.visibleBodyRows() / 2
-	if half < 1 {
-		half = 1
-	}
+	half := max(m.visibleBodyRows()/2, 1)
 	col.Cursor -= half
 	if col.Cursor < 0 {
 		col.Cursor = 0

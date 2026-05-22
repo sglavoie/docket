@@ -12,6 +12,22 @@ import (
 )
 
 func (m *AppModel) handleGlobalMessage(msg tea.Msg) (bool, tea.Cmd) {
+	if handled, cmd := m.handleGlobalInputMessage(msg); handled {
+		return true, cmd
+	}
+	if handled, cmd := m.handleGlobalLifecycleMessage(msg); handled {
+		return true, cmd
+	}
+	if handled, cmd := m.handleGlobalSaveMessage(msg); handled {
+		return true, cmd
+	}
+	if handled, cmd := m.handleGlobalRefreshMessage(msg); handled {
+		return true, cmd
+	}
+	return false, nil
+}
+
+func (m *AppModel) handleGlobalInputMessage(msg tea.Msg) (bool, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.PasteMsg:
 		if m.quickNoteOverlay != nil {
@@ -40,6 +56,13 @@ func (m *AppModel) handleGlobalMessage(msg tea.Msg) (bool, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.handleWindowSize(msg)
 		return true, nil
+	default:
+		return false, nil
+	}
+}
+
+func (m *AppModel) handleGlobalLifecycleMessage(msg tea.Msg) (bool, tea.Cmd) {
+	switch msg := msg.(type) {
 	case QuitMsg:
 		m.saveProjectTreeState()
 		m.saveOutlinerFilterState()
@@ -64,6 +87,13 @@ func (m *AppModel) handleGlobalMessage(msg tea.Msg) (bool, tea.Cmd) {
 	case RecordRepeatableActionMsg:
 		m.lastRepeatableAction = msg.Action
 		return true, nil
+	default:
+		return false, nil
+	}
+}
+
+func (m *AppModel) handleGlobalSaveMessage(msg tea.Msg) (bool, tea.Cmd) {
+	switch msg := msg.(type) {
 	case periodicSaveMsg:
 		m.saveProjectTreeState()
 		m.saveOutlinerFilterState()
@@ -90,6 +120,13 @@ func (m *AppModel) handleGlobalMessage(msg tea.Msg) (bool, tea.Cmd) {
 		m.loadingMessage = ""
 		m.err = msg.Err
 		return true, statusTimeout(5 * time.Second)
+	default:
+		return false, nil
+	}
+}
+
+func (m *AppModel) handleGlobalRefreshMessage(msg tea.Msg) (bool, tea.Cmd) {
+	switch msg := msg.(type) {
 	case RefreshOpenLoopsMsg:
 		m.openLoops = ComputeOpenLoops(m.config, m.dailyPlanIDs)
 		return true, nil
@@ -119,9 +156,9 @@ func (m *AppModel) handleGlobalMessage(msg tea.Msg) (bool, tea.Cmd) {
 			}))
 		}
 		return true, cmd
+	default:
+		return false, nil
 	}
-
-	return false, nil
 }
 
 func (m *AppModel) persistOutlinerFilterState() {

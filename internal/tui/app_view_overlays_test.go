@@ -176,7 +176,7 @@ func TestRepeatedSpacePress_KeepsPeekActive(t *testing.T) {
 	app.peekActive = true
 
 	msg := tea.KeyPressMsg{Code: tea.KeySpace}
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		result, _ := app.Update(msg)
 		app = result.(*AppModel)
 		if !app.peekActive {

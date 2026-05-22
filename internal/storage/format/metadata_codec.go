@@ -179,8 +179,8 @@ func parseChecklistMetadata(task *models.Task, value string) {
 		if strings.HasSuffix(item, "[x]") {
 			done = true
 			text = strings.TrimSuffix(item, "[x]")
-		} else if strings.HasSuffix(item, "[ ]") {
-			text = strings.TrimSuffix(item, "[ ]")
+		} else if before, ok := strings.CutSuffix(item, "[ ]"); ok {
+			text = before
 		}
 		text = unescapeChecklistText(strings.TrimSpace(text))
 		if text != "" {

@@ -23,137 +23,7 @@ func (m *TaskDetailModel) View() tea.View {
 
 	// Determine content width (capped, centered if wider)
 	contentWidth := min(m.width, maxContentWidth)
-
-	// Build sections grouped into three clusters: Overview, Planning, History.
-	// Labeled dividers are inserted between non-empty clusters.
-	var overviewSections, planningSections, historySections []string
-
-	overviewSections = append(overviewSections, m.renderHeaderSection(contentWidth))
-	if m.task.DueDate != nil {
-		overviewSections = append(overviewSections, m.renderDueSection(contentWidth))
-	}
-	if m.task.IsRecurring() {
-		overviewSections = append(overviewSections, m.renderRecurrenceSection(contentWidth))
-	}
-	if m.task.Description != "" {
-		overviewSections = append(overviewSections, m.renderDescriptionSection(contentWidth))
-	}
-	if metaCard := m.renderMetadataSection(contentWidth); metaCard != "" {
-		overviewSections = append(overviewSections, metaCard)
-	}
-
-	// Score + Activity grouped under a single "Planning" frame (Law of Proximity).
-	// Falls back to a bare Activity card when no scoring profile is configured.
-	var planningHasFrame bool
-	var scoreProfile *scoring.ScoringProfile
-	if m.config != nil {
-		scoreProfile = m.config.GetProjectScoringProfile(m.project.ID)
-	}
-	if scoreProfile != nil {
-		innerW := max(contentWidth-CardBorderOverhead, 4)
-		leftCol := innerW / 2
-		rightCol := innerW - leftCol
-		scoreCol := renderClusterColumn("Score", renderScoreCardContent(m.task, scoreProfile, leftCol-2), leftCol)
-		activityCol := renderClusterColumn("Activity", buildActivityContent(m.task), rightCol)
-		planningSections = append(planningSections, renderClusterFrame("Planning", []string{scoreCol, activityCol}, contentWidth))
-		planningHasFrame = true
-	} else {
-		planningSections = append(planningSections, m.renderActivitySection(contentWidth))
-	}
-	if len(m.task.Checklist) > 0 {
-		planningSections = append(planningSections, m.renderChecklistSection(contentWidth))
-	}
-	hasDeps := len(m.task.DependsOn) > 0 || len(m.project.GetBlockedByTasks(m.task)) > 0
-	if hasDeps || len(m.task.RelatedTo) > 0 {
-		planningSections = append(planningSections, m.renderDependenciesSection(contentWidth))
-	}
-
-	// History cluster: Comments + Decisions + Attachments.
-	// Progressive disclosure: collapsed by default (header-only summary),
-	// expanded when m.historyExpanded is true. Empty history → not rendered.
-	hasComments := len(m.task.Comments) > 0
-	hasDecisions := len(m.task.Decisions) > 0
-	hasAttachments := m.task.HasAttachments()
-	hasHistory := hasComments || hasDecisions || hasAttachments
-
-	// When both Comments and Decisions are present and the cluster is expanded,
-	// group them under a single "History" frame (Law of Proximity). With only
-	// one of the pair, keep the existing single-card render.
-	historyHasFrame := false
-	if hasHistory && m.historyExpanded {
-		if hasComments && hasDecisions {
-			innerW := max(contentWidth-CardBorderOverhead, 4)
-			leftCol := innerW / 2
-			rightCol := innerW - leftCol
-			commentsCol := renderClusterColumn("Comments", buildCommentsContent(m.task, leftCol-2), leftCol)
-			decisionsCol := renderClusterColumn("Decisions", buildDecisionsContent(m.task, rightCol-2), rightCol)
-			frameLabel := "History"
-			if summary := historyCountsSummary(len(m.task.Comments), len(m.task.Decisions), 0); summary != "" {
-				frameLabel = "History (" + summary + ")"
-			}
-			historySections = append(historySections, renderClusterFrame(frameLabel, []string{commentsCol, decisionsCol}, contentWidth))
-			historyHasFrame = true
-		} else if hasComments {
-			historySections = append(historySections, m.renderCommentsSection(contentWidth))
-		} else if hasDecisions {
-			historySections = append(historySections, m.renderDecisionsSection(contentWidth))
-		}
-		if hasAttachments {
-			historySections = append(historySections, m.renderAttachmentsSection(contentWidth))
-		}
-	}
-
-	// Assemble final section list with labeled cluster dividers.
-	// When an outer cluster frame already supplies the label, skip the divider
-	// so the cluster doesn't get a duplicate title.
-	var sections []string
-	sections = append(sections, overviewSections...)
-	if len(planningSections) > 0 {
-		if !planningHasFrame {
-			sections = append(sections, renderDetailSectionDivider("Planning", contentWidth))
-		}
-		sections = append(sections, planningSections...)
-	}
-	if hasHistory {
-		if !historyHasFrame {
-			commentsN := len(m.task.Comments)
-			decisionsN := len(m.task.Decisions)
-			attachmentsN := len(m.task.Attachments)
-			sections = append(sections, renderHistoryClusterDivider(commentsN, decisionsN, attachmentsN, m.historyExpanded, contentWidth))
-		}
-		sections = append(sections, historySections...)
-	}
-
-	// Join sections
-	body := strings.Join(sections, "\n")
-
-	// Split into lines for scrolling
-	allLines := strings.Split(body, "\n")
-	m.totalLines = len(allLines)
-	m.clampScroll()
-
-	vh := m.viewHeight()
-	end := min(m.scrollOffset+vh, len(allLines))
-	visibleLines := allLines[m.scrollOffset:end]
-
-	// Pad to fill viewport
-	for len(visibleLines) < vh {
-		visibleLines = append(visibleLines, "")
-	}
-
-	// Center content if terminal is wider than maxContentWidth
-	content := strings.Join(visibleLines, "\n")
-	if m.width > maxContentWidth {
-		padLeft := (m.width - maxContentWidth) / 2
-		if padLeft > 0 {
-			padStr := strings.Repeat(" ", padLeft)
-			var centered []string
-			for _, line := range visibleLines {
-				centered = append(centered, padStr+line)
-			}
-			content = strings.Join(centered, "\n")
-		}
-	}
+	content := m.renderDetailContent(contentWidth)
 
 	// Title bar
 	titleBar := m.renderTitleBar()
@@ -162,6 +32,167 @@ func (m *TaskDetailModel) View() tea.View {
 	footer := m.renderFooter()
 
 	return tea.NewView(titleBar + "\n" + content + "\n" + footer)
+}
+
+func (m *TaskDetailModel) renderDetailContent(contentWidth int) string {
+	body := strings.Join(m.detailSections(contentWidth), "\n")
+	allLines := strings.Split(body, "\n")
+	m.totalLines = len(allLines)
+	m.clampScroll()
+
+	visibleLines := m.visibleDetailLines(allLines)
+	return m.centerDetailLines(visibleLines)
+}
+
+func (m *TaskDetailModel) detailSections(contentWidth int) []string {
+	sections := append([]string{}, m.overviewSections(contentWidth)...)
+	planningSections, planningHasFrame := m.planningSections(contentWidth)
+	if len(planningSections) > 0 {
+		if !planningHasFrame {
+			sections = append(sections, renderDetailSectionDivider("Planning", contentWidth))
+		}
+		sections = append(sections, planningSections...)
+	}
+
+	history := m.historySections(contentWidth)
+	if history.hasHistory {
+		if !history.hasFrame {
+			sections = append(sections, renderHistoryClusterDivider(history.commentsN, history.decisionsN, history.attachmentsN, m.historyExpanded, contentWidth))
+		}
+		sections = append(sections, history.sections...)
+	}
+	return sections
+}
+
+func (m *TaskDetailModel) overviewSections(contentWidth int) []string {
+	sections := []string{m.renderHeaderSection(contentWidth)}
+	if m.task.DueDate != nil {
+		sections = append(sections, m.renderDueSection(contentWidth))
+	}
+	if m.task.IsRecurring() {
+		sections = append(sections, m.renderRecurrenceSection(contentWidth))
+	}
+	if m.task.Description != "" {
+		sections = append(sections, m.renderDescriptionSection(contentWidth))
+	}
+	if metaCard := m.renderMetadataSection(contentWidth); metaCard != "" {
+		sections = append(sections, metaCard)
+	}
+	return sections
+}
+
+func (m *TaskDetailModel) planningSections(contentWidth int) ([]string, bool) {
+	var sections []string
+	planningHasFrame := false
+	if scoreProfile := m.taskDetailScoreProfile(); scoreProfile != nil {
+		sections = append(sections, m.renderPlanningCluster(scoreProfile, contentWidth))
+		planningHasFrame = true
+	} else {
+		sections = append(sections, m.renderActivitySection(contentWidth))
+	}
+	if len(m.task.Checklist) > 0 {
+		sections = append(sections, m.renderChecklistSection(contentWidth))
+	}
+	if m.hasDetailDependencies() || len(m.task.RelatedTo) > 0 {
+		sections = append(sections, m.renderDependenciesSection(contentWidth))
+	}
+	return sections, planningHasFrame
+}
+
+func (m *TaskDetailModel) taskDetailScoreProfile() *scoring.ScoringProfile {
+	if m.config == nil {
+		return nil
+	}
+	return m.config.GetProjectScoringProfile(m.project.ID)
+}
+
+func (m *TaskDetailModel) renderPlanningCluster(scoreProfile *scoring.ScoringProfile, contentWidth int) string {
+	innerW := max(contentWidth-CardBorderOverhead, 4)
+	leftCol := innerW / 2
+	rightCol := innerW - leftCol
+	scoreCol := renderClusterColumn("Score", renderScoreCardContent(m.task, scoreProfile, leftCol-2), leftCol)
+	activityCol := renderClusterColumn("Activity", buildActivityContent(m.task), rightCol)
+	return renderClusterFrame("Planning", []string{scoreCol, activityCol}, contentWidth)
+}
+
+func (m *TaskDetailModel) hasDetailDependencies() bool {
+	return len(m.task.DependsOn) > 0 || len(m.project.GetBlockedByTasks(m.task)) > 0
+}
+
+type taskDetailHistorySections struct {
+	sections     []string
+	hasHistory   bool
+	hasFrame     bool
+	commentsN    int
+	decisionsN   int
+	attachmentsN int
+}
+
+func (m *TaskDetailModel) historySections(contentWidth int) taskDetailHistorySections {
+	history := taskDetailHistorySections{
+		hasHistory:   len(m.task.Comments) > 0 || len(m.task.Decisions) > 0 || m.task.HasAttachments(),
+		commentsN:    len(m.task.Comments),
+		decisionsN:   len(m.task.Decisions),
+		attachmentsN: len(m.task.Attachments),
+	}
+	if !history.hasHistory || !m.historyExpanded {
+		return history
+	}
+
+	switch {
+	case history.commentsN > 0 && history.decisionsN > 0:
+		history.sections = append(history.sections, m.renderHistoryClusterFrame(contentWidth))
+		history.hasFrame = true
+	case history.commentsN > 0:
+		history.sections = append(history.sections, m.renderCommentsSection(contentWidth))
+	case history.decisionsN > 0:
+		history.sections = append(history.sections, m.renderDecisionsSection(contentWidth))
+	}
+	if history.attachmentsN > 0 {
+		history.sections = append(history.sections, m.renderAttachmentsSection(contentWidth))
+	}
+	return history
+}
+
+func (m *TaskDetailModel) renderHistoryClusterFrame(contentWidth int) string {
+	innerW := max(contentWidth-CardBorderOverhead, 4)
+	leftCol := innerW / 2
+	rightCol := innerW - leftCol
+	commentsCol := renderClusterColumn("Comments", buildCommentsContent(m.task, leftCol-2), leftCol)
+	decisionsCol := renderClusterColumn("Decisions", buildDecisionsContent(m.task, rightCol-2), rightCol)
+	frameLabel := "History"
+	if summary := historyCountsSummary(len(m.task.Comments), len(m.task.Decisions), 0); summary != "" {
+		frameLabel = "History (" + summary + ")"
+	}
+	return renderClusterFrame(frameLabel, []string{commentsCol, decisionsCol}, contentWidth)
+}
+
+func (m *TaskDetailModel) visibleDetailLines(allLines []string) []string {
+	vh := m.viewHeight()
+	end := min(m.scrollOffset+vh, len(allLines))
+	visibleLines := allLines[m.scrollOffset:end]
+	for len(visibleLines) < vh {
+		visibleLines = append(visibleLines, "")
+	}
+	return visibleLines
+}
+
+func (m *TaskDetailModel) centerDetailLines(visibleLines []string) string {
+	if m.width <= maxContentWidth {
+		return strings.Join(visibleLines, "\n")
+	}
+
+	padLeft := (m.width - maxContentWidth) / 2
+	if padLeft <= 0 {
+		return strings.Join(visibleLines, "\n")
+	}
+
+	padStr := strings.Repeat(" ", padLeft)
+	centered := make([]string, 0, len(visibleLines))
+	for _, line := range visibleLines {
+		centered = append(centered, padStr+line)
+	}
+	return strings.Join(centered, "\n")
 }
 
 // renderDetailSectionDivider renders a labeled cluster divider line.
@@ -297,12 +328,6 @@ func (m *TaskDetailModel) renderMetadataSection(width int) string {
 	}
 	cfg := DefaultCardConfig()
 	return renderCard("Info", content, width, cfg)
-}
-
-// renderScoreSection renders the score breakdown card.
-func (m *TaskDetailModel) renderScoreSection(width int, profile *scoring.ScoringProfile) string {
-	content := renderScoreCardContent(m.task, profile, width-6)
-	return renderCard("Score", content, width, DefaultCardConfig())
 }
 
 // renderChecklistSection renders all checklist items.

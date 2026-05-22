@@ -132,7 +132,7 @@ func (m *RoadmapModel) renderAxisHeader(chartWidth, colWidth, visibleCols int) s
 	sampleEvery := max(1, minLabelWidth/max(colWidth, 1))
 
 	var chartBuf strings.Builder
-	for visCol := 0; visCol < visibleCols; visCol++ {
+	for visCol := range visibleCols {
 		axisCol := m.hScrollOff + visCol
 		if axisCol >= m.axis.TotalCols {
 			chartBuf.WriteString(strings.Repeat(" ", colWidth))
@@ -153,112 +153,142 @@ func (m *RoadmapModel) renderAxisHeader(chartWidth, colWidth, visibleCols int) s
 // renderGanttRow renders one timeline row: label pane + separator + bar area.
 func (m *RoadmapModel) renderGanttRow(row TimelineRow, colWidth, visibleCols int, isCursor bool) string {
 	accentSt := lipgloss.NewStyle().Foreground(m.AccentColor()).Bold(true)
-
-	// --- Label ---
-	indent := strings.Repeat("  ", row.Indent)
-	typePrefix := "· "
-	if row.Task != nil {
-		switch row.Task.Type {
-		case models.TaskTypeEpic:
-			typePrefix = "◈ "
-		case models.TaskTypeStory:
-			typePrefix = "○ "
-		}
+	labelCell := truncateAndPad(m.ganttLabelText(row), m.labelWidth)
+	sep := MutedStyle.Render(ganttSepRaw)
+	fullLine := labelCell + sep + m.renderGanttBars(row, colWidth, visibleCols, accentSt) + m.renderGanttAnnotation(row)
+	if isCursor {
+		return SelectedLine(fullLine, 0)
 	}
+	return fullLine
+}
 
-	labelText := indent + typePrefix
+func (m *RoadmapModel) ganttLabelText(row TimelineRow) string {
+	labelText := strings.Repeat("  ", row.Indent) + roadmapTypePrefix(row.Task)
 	if row.Task != nil {
 		labelText += row.Task.Title
+		labelText += m.renderScopeDeltaBadge(row.Task)
+		labelText += m.renderGanttCollapseIndicator(row)
 	}
+	return labelText
+}
 
-	// Scope delta badge for epics.
-	if row.Task != nil && row.Task.Type == models.TaskTypeEpic && row.Task.EpicAttrs != nil {
-		if row.Task.EpicAttrs.ScopeBaselinedAt != nil {
-			current := len(row.Task.Children)
-			initial := row.Task.EpicAttrs.InitialChildCount
-			delta := current - initial
-			pct := 0
-			if initial > 0 {
-				pct = delta * 100 / initial
-			}
-			sign := ""
-			if delta >= 0 {
-				sign = "+"
-			}
-			labelText += MutedStyle.Render(fmt.Sprintf(" (%d→%d %s%d%%)", initial, current, sign, pct))
-		} else if nc := len(row.Task.Children); nc > 0 {
-			labelText += MutedStyle.Render(fmt.Sprintf(" (%d)", nc))
+func roadmapTypePrefix(task *models.Task) string {
+	if task == nil {
+		return "· "
+	}
+	switch task.Type {
+	case models.TaskTypeEpic:
+		return "◈ "
+	case models.TaskTypeStory:
+		return "○ "
+	case models.TaskTypeTask, models.TaskTypeBug, models.TaskTypeIdea:
+		return "· "
+	default:
+		return "· "
+	}
+}
+
+func (m *RoadmapModel) renderScopeDeltaBadge(task *models.Task) string {
+	if task == nil || task.Type != models.TaskTypeEpic || task.EpicAttrs == nil {
+		return ""
+	}
+	if task.EpicAttrs.ScopeBaselinedAt == nil {
+		if childCount := len(task.Children); childCount > 0 {
+			return MutedStyle.Render(fmt.Sprintf(" (%d)", childCount))
 		}
+		return ""
 	}
 
-	// Collapse indicator.
-	if row.Task != nil && len(row.Task.Children) > 0 {
-		if row.Collapsed {
-			labelText += MutedStyle.Render(" " + IconCollapsed)
-		} else {
-			labelText += MutedStyle.Render(" " + IconExpanded)
-		}
+	current := len(task.Children)
+	initial := task.EpicAttrs.InitialChildCount
+	delta := current - initial
+	pct := 0
+	if initial > 0 {
+		pct = delta * 100 / initial
 	}
-
-	labelCell := truncateAndPad(labelText, m.labelWidth)
-	sep := MutedStyle.Render(ganttSepRaw)
-
-	// Milestone column: epic with Milestone set and DueDate.
-	milestoneCol := -1
-	if row.Task != nil && row.Task.Type == models.TaskTypeEpic &&
-		row.Task.EpicAttrs != nil && row.Task.EpicAttrs.Milestone != "" &&
-		row.Task.DueDate != nil {
-		milestoneCol = m.dateToCol(*row.Task.DueDate)
+	sign := ""
+	if delta >= 0 {
+		sign = "+"
 	}
+	return MutedStyle.Render(fmt.Sprintf(" (%d→%d %s%d%%)", initial, current, sign, pct))
+}
 
-	// --- Bar area ---
+func (m *RoadmapModel) renderGanttCollapseIndicator(row TimelineRow) string {
+	if row.Task == nil || len(row.Task.Children) == 0 {
+		return ""
+	}
+	if row.Collapsed {
+		return MutedStyle.Render(" " + IconCollapsed)
+	}
+	return MutedStyle.Render(" " + IconExpanded)
+}
+
+func (m *RoadmapModel) renderGanttBars(row TimelineRow, colWidth, visibleCols int, accentSt lipgloss.Style) string {
+	milestoneCol := m.ganttMilestoneColumn(row)
 	var barBuf strings.Builder
-	for visCol := 0; visCol < visibleCols; visCol++ {
+	for visCol := range visibleCols {
 		axisCol := m.hScrollOff + visCol
-
-		if axisCol == milestoneCol {
-			barBuf.WriteString(accentSt.Render(strings.Repeat(milestoneChar, colWidth)))
-			continue
-		}
-
-		inBar := row.BarStart < row.BarEnd && axisCol >= row.BarStart && axisCol < row.BarEnd
-		charStr := " "
-		if inBar {
-			if row.IsBlocked {
-				charStr = barCharBlocked
-			} else if row.Task != nil && row.Task.IsComplete() {
-				charStr = barCharDone
-			} else if axisCol < m.axis.TodayCol {
-				charStr = barCharDone
-			} else if axisCol == m.axis.TodayCol {
-				charStr = barCharActive
-			} else {
-				charStr = barCharPlanned
-			}
-		}
-
-		cell := strings.Repeat(charStr, colWidth)
-		if inBar {
-			switch {
-			case m.showCriticalPath && row.IsCritical:
-				cell = accentSt.Render(cell)
-			case m.showCriticalPath && !row.IsCritical:
-				cell = MutedStyle.Render(cell)
-			case row.IsBlocked:
-				cell = OverdueStyle.Render(cell)
-			default:
-				cell = NormalStyle.Render(cell)
-			}
-		}
-		barBuf.WriteString(cell)
+		barBuf.WriteString(m.renderGanttCell(row, axisCol, colWidth, milestoneCol, accentSt))
 	}
+	return barBuf.String()
+}
 
-	// Progress and forecast annotation.
+func (m *RoadmapModel) ganttMilestoneColumn(row TimelineRow) int {
+	if row.Task == nil || row.Task.Type != models.TaskTypeEpic || row.Task.EpicAttrs == nil || row.Task.EpicAttrs.Milestone == "" || row.Task.DueDate == nil {
+		return -1
+	}
+	return m.dateToCol(*row.Task.DueDate)
+}
+
+func (m *RoadmapModel) renderGanttCell(row TimelineRow, axisCol, colWidth, milestoneCol int, accentSt lipgloss.Style) string {
+	if axisCol == milestoneCol {
+		return accentSt.Render(strings.Repeat(milestoneChar, colWidth))
+	}
+	inBar := row.BarStart < row.BarEnd && axisCol >= row.BarStart && axisCol < row.BarEnd
+	cell := strings.Repeat(m.ganttBarChar(row, axisCol, inBar), colWidth)
+	if !inBar {
+		return cell
+	}
+	return m.styleGanttCell(row, cell, accentSt)
+}
+
+func (m *RoadmapModel) ganttBarChar(row TimelineRow, axisCol int, inBar bool) string {
+	if !inBar {
+		return " "
+	}
+	switch {
+	case row.IsBlocked:
+		return barCharBlocked
+	case row.Task != nil && row.Task.IsComplete():
+		return barCharDone
+	case axisCol < m.axis.TodayCol:
+		return barCharDone
+	case axisCol == m.axis.TodayCol:
+		return barCharActive
+	default:
+		return barCharPlanned
+	}
+}
+
+func (m *RoadmapModel) styleGanttCell(row TimelineRow, cell string, accentSt lipgloss.Style) string {
+	switch {
+	case m.showCriticalPath && row.IsCritical:
+		return accentSt.Render(cell)
+	case m.showCriticalPath && !row.IsCritical:
+		return MutedStyle.Render(cell)
+	case row.IsBlocked:
+		return OverdueStyle.Render(cell)
+	default:
+		return NormalStyle.Render(cell)
+	}
+}
+
+func (m *RoadmapModel) renderGanttAnnotation(row TimelineRow) string {
 	var annot strings.Builder
 	if row.Task != nil && len(row.Task.Children) > 0 {
 		done := 0
-		for _, c := range row.Task.Children {
-			if c.IsComplete() {
+		for _, child := range row.Task.Children {
+			if child.IsComplete() {
 				done++
 			}
 		}
@@ -267,12 +297,7 @@ func (m *RoadmapModel) renderGanttRow(row TimelineRow, colWidth, visibleCols int
 	if !row.ForecastDate.IsZero() {
 		annot.WriteString(MutedStyle.Render("  " + row.ForecastDate.Format("Jan 2")))
 	}
-
-	fullLine := labelCell + sep + barBuf.String() + annot.String()
-	if isCursor {
-		return SelectedLine(fullLine, 0)
-	}
-	return fullLine
+	return annot.String()
 }
 
 // renderCriticalPathTab renders the critical path task list with slack.

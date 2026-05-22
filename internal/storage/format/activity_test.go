@@ -420,3 +420,50 @@ func TestEscapeUnescapeActivityValue(t *testing.T) {
 		}
 	}
 }
+
+func TestActivityRoundtripWithFixedPointPayloads(t *testing.T) {
+	task := &models.Task{
+		Activity: []*models.ActivityEntry{
+			{
+				Timestamp: time.Date(2025, 6, 15, 10, 30, 0, 0, time.Local),
+				Field:     "title",
+				OldValue:  "Old > title, status: todo",
+				NewValue:  "New > title, key: value, ## Task: pseudo <!-- keep -->",
+			},
+			{
+				Timestamp: time.Date(2025, 6, 15, 11, 0, 0, 0, time.Local),
+				Field:     "source",
+				OldValue:  "github",
+				NewValue:  "cli, id: task-fixed",
+			},
+		},
+	}
+
+	output := WriteActivity(task)
+	parsedTask := &models.Task{Description: output}
+	ExtractActivityFromDescription(parsedTask)
+
+	if len(parsedTask.Activity) != len(task.Activity) {
+		t.Fatalf("expected %d activity entries, got %d", len(task.Activity), len(parsedTask.Activity))
+	}
+
+	for i, want := range task.Activity {
+		got := parsedTask.Activity[i]
+		if got.Field != want.Field {
+			t.Errorf("activity[%d].Field = %q, want %q", i, got.Field, want.Field)
+		}
+		if !got.Timestamp.Equal(want.Timestamp) {
+			t.Errorf("activity[%d].Timestamp = %v, want %v", i, got.Timestamp, want.Timestamp)
+		}
+		if got.OldValue != want.OldValue {
+			t.Errorf("activity[%d].OldValue = %q, want %q", i, got.OldValue, want.OldValue)
+		}
+		if got.NewValue != want.NewValue {
+			t.Errorf("activity[%d].NewValue = %q, want %q", i, got.NewValue, want.NewValue)
+		}
+	}
+
+	if rewritten := WriteActivity(parsedTask); rewritten != output {
+		t.Fatalf("activity block did not reach fixed point:\n--- output ---\n%s\n--- rewritten ---\n%s", output, rewritten)
+	}
+}

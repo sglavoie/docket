@@ -247,6 +247,7 @@ func (m *AppModel) breadcrumbLabel(vt ViewType, maxProjectLen int) string {
 			label = "Daily Review"
 		case ViewWeeklyReview:
 			label = "Weekly Review"
+		default:
 		}
 	}
 

@@ -120,17 +120,6 @@ func recordRecentSelection(item PaletteItem, itemID string) {
 	}
 }
 
-// getItemFrequencyCount returns how many times an item has been selected.
-func (m *CommandPaletteModel) getItemFrequencyCount(item PaletteItem) int {
-	itemID := m.getItemID(item)
-	for _, recent := range recentPaletteSelections {
-		if recent.Category == item.Category && recent.ID == itemID {
-			return recent.Count
-		}
-	}
-	return 0
-}
-
 // persistRecentSelections saves the current recent selections to config.
 func (m *CommandPaletteModel) persistRecentSelections() {
 	if m.configManager == nil {

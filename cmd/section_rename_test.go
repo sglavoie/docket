@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"slices"
 	"testing"
 
 	"github.com/sglavoie/tt/internal/models"
@@ -135,13 +136,7 @@ func TestSectionRenameRejectsGTDTarget(t *testing.T) {
 			// "Custom" should still exist after the failed rename. We don't assert
 			// that the GTD name is absent from p.Sections because models.NewProject
 			// pre-seeds p.Sections with SectionNext.
-			foundCustom := false
-			for _, s := range saved.Sections {
-				if s == "Custom" {
-					foundCustom = true
-					break
-				}
-			}
+			foundCustom := slices.Contains(saved.Sections, "Custom")
 			if !foundCustom {
 				t.Fatalf("original section %q was lost on failed rename to %q", "Custom", name)
 			}

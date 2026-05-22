@@ -1,6 +1,6 @@
 package tui
 
-import "charm.land/bubbletea/v2"
+import tea "charm.land/bubbletea/v2"
 
 // routeGlobalProjectPickerResult dispatches the result of the global project picker
 // to the appropriate action based on the picker's purpose.

@@ -291,20 +291,6 @@ func (m *DueDateOverviewModel) handleKeyMsg(msg tea.KeyPressMsg) (tea.Model, tea
 	return m, nil
 }
 
-// prefixDispatchView implementation for DueDateOverviewModel.
-
-func (m *DueDateOverviewModel) selectMsg(task *models.Task, project *models.Project) tea.Msg {
-	return GlobalSearchSelectMsg{Task: task, Project: project}
-}
-
-func (m *DueDateOverviewModel) handleFilterPrefix(key string) (tea.Model, tea.Cmd) {
-	return m.handleDueDateFilterPrefix(key)
-}
-
-func (m *DueDateOverviewModel) handleFilterSubPrefix(prefix, key string) (tea.Model, tea.Cmd) {
-	return m.handleDueDateFilterSubPrefix(prefix, key)
-}
-
 // commonActionView implementation for DueDateOverviewModel.
 
 func (m *DueDateOverviewModel) viewID() ViewType { return ViewDueDateOverview }

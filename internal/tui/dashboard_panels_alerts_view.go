@@ -21,14 +21,8 @@ func (m *DashboardModel) renderGlobalAlerts(_ int, selectedProject *models.Proje
 	return strings.Join(lines, "\n")
 }
 
-// globalAlertCount returns the number of distinct alert lines that would render.
-// Zero means the alert card is inert.
-func (m *DashboardModel) globalAlertCount(selectedProject *models.Project) int {
-	return len(m.computeGlobalAlertLines(selectedProject))
-}
-
 // computeGlobalAlertLines walks all active projects and produces the rendered
-// alert lines. Both renderGlobalAlerts and globalAlertCount consume this.
+// alert lines. Both renderGlobalAlerts and compact dashboard info cards consume this.
 func (m *DashboardModel) computeGlobalAlertLines(selectedProject *models.Project) []string {
 	var totalOverdue, totalDueToday, totalBlocked, totalBlockers, totalCompletedThisWeek, todayPlannedCount int
 	var inboxProjects []string

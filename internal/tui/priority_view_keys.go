@@ -2,8 +2,6 @@ package tui
 
 import (
 	tea "charm.land/bubbletea/v2"
-
-	"github.com/sglavoie/tt/internal/models"
 )
 
 func (m *PriorityViewModel) handleKeypress(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
@@ -20,11 +18,6 @@ func (m *PriorityViewModel) handleKeypress(msg tea.KeyPressMsg) (tea.Model, tea.
 		return model, cmd
 	}
 	return m, nil
-}
-
-// selectMsg implements prefixDispatchView (still used by other dispatch paths).
-func (m *PriorityViewModel) selectMsg(task *models.Task, project *models.Project) tea.Msg {
-	return PriorityViewSelectMsg{Task: task}
 }
 
 // getSelectedBulkItems returns selected tasks as bulkTaskItem slice.

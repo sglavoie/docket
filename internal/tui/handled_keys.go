@@ -13,21 +13,6 @@ type KeySyncView interface {
 	HandledKeys() []string
 }
 
-// globalAppKeys returns keys handled at the AppModel level for all views.
-// These are excluded from per-view invisible-binding checks.
-func globalAppKeys() []string {
-	return []string{
-		"q", "ctrl+c", "alt+o", "alt+i", "|", "#", "esc",
-		"ctrl+x", "ctrl+z", ":", ";", "ctrl+,", "ctrl+i", "ctrl+/", `ctrl+\`,
-		"space", "?", "alt+l",
-		"y", "Y", "ctrl+y",
-		// . is the repeat-last-action key (global).
-		".",
-		// Semicolon prefix dispatches
-		";;", ";n", ";d", ";r", ";N", ";q", ";w", ";l", ";B", ";D", ";m", ";a", ";W", ";o", ";k", ";i", ";I", ";{", ";,", ";c", ";tN", ";R",
-	}
-}
-
 // keysExcludedFromSync contains registry display keys that should be skipped
 // in bidirectional sync checks. These are informational display entries or
 // keys handled entirely at the AppModel level (not by the view's Update),

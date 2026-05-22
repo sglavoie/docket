@@ -210,103 +210,135 @@ func parseBoardPriority(s string) (int, bool) {
 func parseBoardAddInput(input string) boardAddResult {
 	var result boardAddResult
 
-	// Extract -#tag (remove tag) before #tag so the dash isn't left as a stray token.
-	removeTagMatches := qeRemoveTagRe.FindAllStringSubmatch(input, -1)
-	for _, match := range removeTagMatches {
+	input = extractBoardRemoveTags(input, &result)
+	input = extractBoardDueDate(input, &result)
+	input = extractBoardSection(input, &result)
+	input = extractBoardStatus(input, &result)
+	result.title = parseBoardAddTokens(input, &result)
+	return result
+}
+
+func extractBoardRemoveTags(input string, result *boardAddResult) string {
+	for _, match := range qeRemoveTagRe.FindAllStringSubmatch(input, -1) {
 		if len(match) > 1 {
 			result.tagsToRemove = append(result.tagsToRemove, match[1])
 		}
 	}
-	input = qeRemoveTagRe.ReplaceAllString(input, " ")
+	return qeRemoveTagRe.ReplaceAllString(input, " ")
+}
 
-	// Extract @date / @0 (clear).
-	if match := qeDueDateRe.FindStringSubmatch(input); len(match) > 1 {
-		if match[1] == "0" {
-			result.dueDateClear = true
-		} else if date, err := ParseDate(match[1]); err == nil {
-			result.dueDate = &date
-		}
-		input = qeDueDateRe.ReplaceAllString(input, " ")
+func extractBoardDueDate(input string, result *boardAddResult) string {
+	match := qeDueDateRe.FindStringSubmatch(input)
+	if len(match) <= 1 {
+		return input
 	}
-
-	// Extract /section.
-	if match := qeSectionRe.FindStringSubmatch(input); len(match) > 1 {
-		if match[1] != "0" {
-			result.section = match[1]
-		}
-		input = qeSectionRe.ReplaceAllString(input, " ")
+	if match[1] == "0" {
+		result.dueDateClear = true
+	} else if date, err := ParseDate(match[1]); err == nil {
+		result.dueDate = &date
 	}
+	return qeDueDateRe.ReplaceAllString(input, " ")
+}
 
-	// Extract $status.
-	if match := qeStatusRe.FindStringSubmatch(input); len(match) > 1 {
-		statusStr := strings.ToLower(match[1])
-		switch statusStr {
-		case "start", "started", "progress":
-			result.status = models.StatusInProgress
-			result.statusSet = true
-		case "blocked", "block":
-			result.status = models.StatusBlocked
-			result.statusSet = true
-		case "done", "complete", "completed":
-			result.status = models.StatusDone
-			result.statusSet = true
-		case "canceled", "cancel":
-			result.status = models.StatusCanceled
-			result.statusSet = true
-		case "todo", "open", "reopen":
-			result.status = models.StatusTodo
-			result.statusSet = true
-		case "review":
-			result.status = models.StatusReview
-			result.statusSet = true
-		case "standby", "hold":
-			result.status = models.StatusStandby
-			result.statusSet = true
-		case "maybe":
-			result.status = models.StatusMaybe
-			result.statusSet = true
-		}
-		input = qeStatusRe.ReplaceAllString(input, " ")
+func extractBoardSection(input string, result *boardAddResult) string {
+	match := qeSectionRe.FindStringSubmatch(input)
+	if len(match) <= 1 {
+		return input
 	}
+	if match[1] != "0" {
+		result.section = match[1]
+	}
+	return qeSectionRe.ReplaceAllString(input, " ")
+}
 
-	// Process remaining tokens for %project, !N, #tag, --source, --url, --priority.
+func extractBoardStatus(input string, result *boardAddResult) string {
+	match := qeStatusRe.FindStringSubmatch(input)
+	if len(match) <= 1 {
+		return input
+	}
+	if status, ok := boardAddStatus(strings.ToLower(match[1])); ok {
+		result.status = status
+		result.statusSet = true
+	}
+	return qeStatusRe.ReplaceAllString(input, " ")
+}
+
+func boardAddStatus(status string) (models.TaskStatus, bool) {
+	switch status {
+	case "start", "started", "progress":
+		return models.StatusInProgress, true
+	case "blocked", "block":
+		return models.StatusBlocked, true
+	case "done", "complete", "completed":
+		return models.StatusDone, true
+	case "canceled", "cancel":
+		return models.StatusCanceled, true
+	case "todo", "open", "reopen":
+		return models.StatusTodo, true
+	case "review":
+		return models.StatusReview, true
+	case "standby", "hold":
+		return models.StatusStandby, true
+	case "maybe":
+		return models.StatusMaybe, true
+	default:
+		return "", false
+	}
+}
+
+func parseBoardAddTokens(input string, result *boardAddResult) string {
 	parts := strings.Fields(input)
 	var titleParts []string
 
 	for i := 0; i < len(parts); i++ {
-		switch {
-		case parts[i] == "--source" || parts[i] == "-s":
-			if i+1 < len(parts) {
-				result.source = parts[i+1]
-				i++
-			}
-		case parts[i] == "--url" || parts[i] == "-u":
-			if i+1 < len(parts) {
-				result.url = parts[i+1]
-				i++
-			}
-		case parts[i] == "--priority" || parts[i] == "-p":
-			if i+1 < len(parts) {
-				if p, ok := parseBoardPriority(parts[i+1]); ok {
-					result.priority = p
-				}
-				i++
-			}
-		case strings.HasPrefix(parts[i], "%") && len(parts[i]) > 1:
-			result.projectSlug = parts[i][1:]
-		case strings.HasPrefix(parts[i], "!") && len(parts[i]) > 1:
-			if p, ok := parseBoardPriority(parts[i][1:]); ok {
-				result.priority = p
-			}
-		case strings.HasPrefix(parts[i], "#") && len(parts[i]) > 1:
-			result.tags = append(result.tags, parts[i][1:])
-		default:
-			titleParts = append(titleParts, parts[i])
+		if parseBoardFlag(parts, &i, result) {
+			continue
 		}
+		if parseBoardInlineToken(parts[i], result) {
+			continue
+		}
+		titleParts = append(titleParts, parts[i])
 	}
 
-	result.title = strings.Join(titleParts, " ")
-	return result
+	return strings.Join(titleParts, " ")
+}
+
+func parseBoardFlag(parts []string, idx *int, result *boardAddResult) bool {
+	if *idx+1 >= len(parts) {
+		return false
+	}
+
+	switch parts[*idx] {
+	case "--source", "-s":
+		result.source = parts[*idx+1]
+	case "--url", "-u":
+		result.url = parts[*idx+1]
+	case "--priority", "-p":
+		if p, ok := parseBoardPriority(parts[*idx+1]); ok {
+			result.priority = p
+		}
+	default:
+		return false
+	}
+
+	*idx = *idx + 1
+	return true
+}
+
+func parseBoardInlineToken(part string, result *boardAddResult) bool {
+	switch {
+	case strings.HasPrefix(part, "%") && len(part) > 1:
+		result.projectSlug = part[1:]
+	case strings.HasPrefix(part, "!") && len(part) > 1:
+		if p, ok := parseBoardPriority(part[1:]); ok {
+			result.priority = p
+		}
+	case strings.HasPrefix(part, "#") && len(part) > 1:
+		result.tags = append(result.tags, part[1:])
+	default:
+		return false
+	}
+	return true
 }
 
 // isAutocompleteActive returns whether the autocomplete dropdown is showing.

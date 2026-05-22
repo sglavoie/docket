@@ -109,7 +109,7 @@ func (m *AppModel) saveOutlinerFilterState() {
 // saveOutlinerFilterStateFrom persists the given outliner's filter state to config.
 // Used for both the primary and temporary outliners.
 func (m *AppModel) saveOutlinerFilterStateFrom(o *OutlinerModel) {
-	if o == nil || o.project == nil {
+	if o == nil || o.project == nil || m.config == nil {
 		return
 	}
 
@@ -122,7 +122,7 @@ func (m *AppModel) saveOutlinerFilterStateFrom(o *OutlinerModel) {
 		filterSections = append(filterSections, section)
 	}
 
-	state := m.config.ProjectViewStates[o.project.ID]
+	state, _ := m.config.GetProjectViewState(o.project.ID)
 	state.OutlinerFilterType = string(o.filter.Type)
 	state.OutlinerFilterStatus = string(o.filter.Status)
 	state.OutlinerFilterPriority = o.filter.Priority
@@ -166,7 +166,7 @@ func (m *AppModel) saveOutlinerFilterStateFrom(o *OutlinerModel) {
 	state.OutlinerActivePerspective = o.activePerspective
 	state.OutlinerFilterBarEnabled = o.filterBar.IsEnabled()
 
-	m.config.ProjectViewStates[o.project.ID] = state
+	m.config.SetProjectViewState(o.project.ID, state)
 	if err := m.configManager.Save(m.config); err != nil {
 		logging.Warn("failed to save config: %v", err)
 	}

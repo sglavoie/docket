@@ -25,14 +25,22 @@ func TestProjectDeleteCleansCrossProjectRefs(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	localDepTask, err := models.NewTask("same-project-task-id", projectB.GetNextShortID(), models.TaskTypeTask, "Local dependency")
+	if err != nil {
+		t.Fatal(err)
+	}
+	localRelatedTask, err := models.NewTask("local-task-id", projectB.GetNextShortID(), models.TaskTypeTask, "Local relation")
+	if err != nil {
+		t.Fatal(err)
+	}
 	task1.DependsOn = []string{
 		projectA.Slug + ":task-a1", // cross-project ref to A (should be removed)
-		"same-project-task-id",     // same-project ref (should be preserved)
+		localDepTask.ID,            // same-project ref (should be preserved)
 		"other-project:task-x1",    // cross-project ref to different project (should be preserved)
 	}
 	task1.RelatedTo = []string{
 		projectA.Slug + ":task-a2", // cross-project ref to A (should be removed)
-		"local-task-id",            // same-project ref (should be preserved)
+		localRelatedTask.ID,        // same-project ref (should be preserved)
 	}
 
 	task2, err := models.NewTask("task-b2", projectB.GetNextShortID(), models.TaskTypeTask, "Task B2")
@@ -43,7 +51,7 @@ func TestProjectDeleteCleansCrossProjectRefs(t *testing.T) {
 		projectA.Slug + ":task-a3", // cross-project ref to A (should be removed)
 	}
 
-	projectB.Tasks = []*models.Task{task1, task2}
+	projectB.Tasks = []*models.Task{task1, localDepTask, localRelatedTask, task2}
 
 	// Register a separate project object in mock to avoid aliasing
 	// (mock Load overwrites project.Tasks which would clobber stored.Tasks
@@ -51,7 +59,7 @@ func TestProjectDeleteCleansCrossProjectRefs(t *testing.T) {
 	mockProjectB := testutil.NewTestProject("Project B")
 	mockProjectB.ID = projectB.ID
 	mockProjectB.Slug = projectB.Slug
-	mockProjectB.Tasks = []*models.Task{task1, task2}
+	mockProjectB.Tasks = []*models.Task{task1, localDepTask, localRelatedTask, task2}
 	mockRepo.Projects[projectB.ID] = mockProjectB
 
 	// Run cleanup: only project B remains (A is being deleted)
@@ -110,16 +118,24 @@ func TestProjectDeleteCleansCrossProjectRefsNoRefsUnchanged(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	task1.DependsOn = []string{"local-dep"}
-	task1.RelatedTo = []string{"local-rel"}
+	localDepTask, err := models.NewTask("local-dep", projectB.GetNextShortID(), models.TaskTypeTask, "Local dependency")
+	if err != nil {
+		t.Fatal(err)
+	}
+	localRelatedTask, err := models.NewTask("local-rel", projectB.GetNextShortID(), models.TaskTypeTask, "Local relation")
+	if err != nil {
+		t.Fatal(err)
+	}
+	task1.DependsOn = []string{localDepTask.ID}
+	task1.RelatedTo = []string{localRelatedTask.ID}
 
-	projectB.Tasks = []*models.Task{task1}
+	projectB.Tasks = []*models.Task{task1, localDepTask, localRelatedTask}
 
 	// Store a separate copy to avoid aliasing in mock Load
 	mockProjectB := testutil.NewTestProject("Project B")
 	mockProjectB.ID = projectB.ID
 	mockProjectB.Slug = projectB.Slug
-	mockProjectB.Tasks = []*models.Task{task1}
+	mockProjectB.Tasks = []*models.Task{task1, localDepTask, localRelatedTask}
 	mockRepo.Projects[projectB.ID] = mockProjectB
 
 	totalCleaned, err := cleanCrossProjectRefs([]*models.Project{projectB}, projectA.Slug)

@@ -103,26 +103,12 @@ func (m *FocusBoardModel) showDeleteConfirm(shortID int) {
 	}
 }
 
-// prefixDispatchView implementation.
-
-func (m *FocusBoardModel) selectMsg(task *models.Task, project *models.Project) tea.Msg {
-	return FocusBoardSelectMsg{Task: task, Project: project}
-}
-
 func (m *FocusBoardModel) ResetCursor() { m.cursor = 0 }
 
 func (m *FocusBoardModel) JumpToTop() tea.Cmd {
 	old := m.cursor
 	m.cursor = 0
 	return flashIfJumped(old, m.cursor, &m.cursorFlash)
-}
-
-func (m *FocusBoardModel) handleFilterPrefix(key string) (tea.Model, tea.Cmd) {
-	return m.handleFocusBoardFilterPrefix(key)
-}
-
-func (m *FocusBoardModel) handleFilterSubPrefix(prefix, key string) (tea.Model, tea.Cmd) {
-	return m.handleFocusBoardFilterSubPrefix(prefix, key)
 }
 
 // handleDailyPlanReorder swaps the cursor item with an adjacent item in the Today tab.

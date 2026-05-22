@@ -108,10 +108,9 @@ func renderEnumSelector(options []string, cursor int, focused bool, maxWidth int
 		return strings.Join(rendered, "")
 	}
 
-	budget := maxWidth - 4 // reserve 2 chars each for "< " and " >"
-	if budget < 1 {
-		budget = 1
-	}
+	budget := max(
+		// reserve 2 chars each for "< " and " >"
+		maxWidth-4, 1)
 
 	lo, hi := cursor, cursor+1
 	used := lipgloss.Width(rendered[cursor])

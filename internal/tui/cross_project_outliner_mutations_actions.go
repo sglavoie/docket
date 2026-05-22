@@ -75,28 +75,6 @@ func (m *OutlinerModel) crossSendTaskToSection(section string) (tea.Model, tea.C
 	return m, nil
 }
 
-// crossHandleSectionMove handles the m prefix in cross-project mode.
-// Section keys (ma/mn/mi/mw/ms/mr/mS) move the cursor task to a section.
-// mK/mJ delegate to moveTaskToPosition which already handles cross-project.
-func (m *OutlinerModel) crossHandleSectionMove(key string, cursorTask *models.Task) (tea.Model, tea.Cmd) {
-	if section, ok := sectionForMoveKey(key); ok {
-		return m.crossSendTaskToSection(section)
-	}
-	switch key {
-	case "K":
-		if cursorTask == nil {
-			return m, nil
-		}
-		return m.moveTaskToPosition(cursorTask, true)
-	case "J":
-		if cursorTask == nil {
-			return m, nil
-		}
-		return m.moveTaskToPosition(cursorTask, false)
-	}
-	return m, nil
-}
-
 // crossToggleActive toggles the active flag for a task in cross-project mode.
 // Multi-select is not supported (tasks span projects); shows a status message instead.
 func (m *OutlinerModel) crossToggleActive() (tea.Cmd, bool) {

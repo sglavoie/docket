@@ -70,10 +70,7 @@ func kanbanRender(m *KanbanModel) string {
 	// When terminal is too narrow for more than one column, show a position
 	// indicator instead of the mode-cycling hint so the user can orient themselves.
 	// minColWidth=20 matches the constant defined in the column layout section below.
-	maxVisForHint := (m.width + 1) / 21
-	if maxVisForHint < 1 {
-		maxVisForHint = 1
-	}
+	maxVisForHint := max((m.width+1)/21, 1)
 	var hint string
 	if maxVisForHint == 1 && len(m.columns) > 1 {
 		hint = MutedStyle.Render(fmt.Sprintf("col %d/%d  h/l: prev/next", m.activeCol+1, len(m.columns)))
@@ -102,10 +99,7 @@ func kanbanRender(m *KanbanModel) string {
 
 	// Max columns that fit at minimum width: each col needs minColWidth + 1 (separator),
 	// except the last which needs no trailing separator.
-	maxVisible := (m.width + 1) / (minColWidth + 1)
-	if maxVisible < 1 {
-		maxVisible = 1
-	}
+	maxVisible := max((m.width+1)/(minColWidth+1), 1)
 	numVisible := min(numCols, maxVisible)
 
 	// Clamp horizontal scroll offset.
@@ -119,10 +113,7 @@ func kanbanRender(m *KanbanModel) string {
 	endCol := startCol + numVisible
 
 	// Column width: divide remaining space equally after separators.
-	colWidth := (m.width - (numVisible - 1)) / numVisible
-	if colWidth < minColWidth {
-		colWidth = minColWidth
-	}
+	colWidth := max((m.width-(numVisible-1))/numVisible, minColWidth)
 
 	// === Height budget ===
 	// title(1) + blank(1) + header(1) + divider(1) + footer(2) = 6 fixed lines
@@ -167,10 +158,7 @@ func kanbanRender(m *KanbanModel) string {
 			}
 			countStr := fmt.Sprintf(" (%d)", len(col.Tasks))
 			countWidth := lipgloss.Width(MutedStyle.Render(countStr))
-			maxBadgeWidth := colWidth - countWidth
-			if maxBadgeWidth < 0 {
-				maxBadgeWidth = 0
-			}
+			maxBadgeWidth := max(colWidth-countWidth, 0)
 			iconLabel := fmt.Sprintf(" %s %s", col.Icon, col.Label)
 			iconLabel = truncateToVisualWidth(iconLabel, maxBadgeWidth)
 			badge := sectionStyle.Render(iconLabel)
@@ -181,10 +169,7 @@ func kanbanRender(m *KanbanModel) string {
 			count := countStyle.Render(countStr)
 			combined := badge + count
 			w := lipgloss.Width(combined)
-			padding := colWidth - w
-			if padding < 0 {
-				padding = 0
-			}
+			padding := max(colWidth-w, 0)
 			headerParts = append(headerParts, combined+strings.Repeat(" ", padding))
 		} else {
 			label := fmt.Sprintf(" %s %s (%d)", col.Icon, col.Label, len(col.Tasks))

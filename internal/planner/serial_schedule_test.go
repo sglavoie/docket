@@ -53,7 +53,7 @@ func TestSerialScheduleWithDeps(t *testing.T) {
 	}
 
 	// No two tasks overlap.
-	for i := 0; i < len(sched); i++ {
+	for i := range sched {
 		for j := i + 1; j < len(sched); j++ {
 			si, sj := sched[i], sched[j]
 			if si.EarliestStart.Before(sj.EarliestEnd) && sj.EarliestStart.Before(si.EarliestEnd) {

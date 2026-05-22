@@ -36,10 +36,15 @@ func (m *AppModel) handlePinnedPopupToggle() tea.Cmd {
 func (m *AppModel) handleUndoToggle() tea.Cmd {
 	switch m.currentView() { //nolint:exhaustive
 	case ViewFocusView, ViewFocusBoard:
-		if cmd := m.undoDailyPlanToggle(); cmd != nil {
-			return m.batchWithFocusRefresh(cmd)
+		var cmd tea.Cmd
+		switch m.lastToggleUndoKind {
+		case toggleUndoNone:
+		case toggleUndoDailyPlan:
+			cmd = m.undoDailyPlanToggle()
+		case toggleUndoQueue:
+			cmd = m.undoQueueToggle()
 		}
-		if cmd := m.undoQueueToggle(); cmd != nil {
+		if cmd != nil {
 			return m.batchWithFocusRefresh(cmd)
 		}
 	}
@@ -49,10 +54,15 @@ func (m *AppModel) handleUndoToggle() tea.Cmd {
 func (m *AppModel) handleRedoToggle() tea.Cmd {
 	switch m.currentView() { //nolint:exhaustive
 	case ViewFocusView, ViewFocusBoard:
-		if cmd := m.redoDailyPlanToggle(); cmd != nil {
-			return m.batchWithFocusRefresh(cmd)
+		var cmd tea.Cmd
+		switch m.lastToggleRedoKind {
+		case toggleUndoNone:
+		case toggleUndoDailyPlan:
+			cmd = m.redoDailyPlanToggle()
+		case toggleUndoQueue:
+			cmd = m.redoQueueToggle()
 		}
-		if cmd := m.redoQueueToggle(); cmd != nil {
+		if cmd != nil {
 			return m.batchWithFocusRefresh(cmd)
 		}
 	}

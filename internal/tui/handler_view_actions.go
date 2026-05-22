@@ -1,6 +1,6 @@
 package tui
 
-import "charm.land/bubbletea/v2"
+import tea "charm.land/bubbletea/v2"
 
 // handleViewActionMessages handles task action views such as priority, capture, blockers, and attachments.
 func (m *AppModel) handleViewActionMessages(msg tea.Msg) (bool, tea.Cmd) {

@@ -55,8 +55,8 @@ func ExtractDecisionsFromDescription(task *models.Task) {
 			return
 		}
 		task.Decisions = append(task.Decisions, &models.Decision{
-			Text:      unescapeCommentText(text),
-			Rationale: unescapeCommentText(strings.TrimSpace(current.rationale.String())),
+			Text:      unescapeBlockText(text),
+			Rationale: unescapeBlockText(strings.TrimSpace(current.rationale.String())),
 			Category:  current.category,
 			CreatedAt: current.createdAt,
 			Resolved:  current.resolved,
@@ -142,10 +142,10 @@ func WriteDecisions(task *models.Task) string {
 			string(d.Category),
 			resolvedSuffix,
 		)
-		b.WriteString(escapeCommentText(d.Text))
+		b.WriteString(escapeBlockText(d.Text))
 		b.WriteString("\n")
 		b.WriteString("<!-- rationale -->\n")
-		b.WriteString(escapeCommentText(d.Rationale))
+		b.WriteString(escapeBlockText(d.Rationale))
 		b.WriteString("\n")
 	}
 

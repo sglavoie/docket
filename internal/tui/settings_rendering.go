@@ -63,10 +63,7 @@ func (m *SettingsModel) settingsContentHeight() int {
 	// Subtract rows the visual sub-tab bar consumes (may wrap to >1 row when
 	// labels overflow available width).
 	if names := visualSubTabNamesForVTab(m.visualTab); names != nil {
-		rows := wrappingTabBarRows(names, m.width-2)
-		if rows < 1 {
-			rows = 1
-		}
+		rows := max(wrappingTabBarRows(names, m.width-2), 1)
 		h -= rows
 	}
 	if h < 3 {
@@ -269,18 +266,12 @@ func (m *SettingsModel) renderSearchOverlay(visibleHeight int) string {
 		return b.String()
 	}
 
-	maxVisible := visibleHeight - 3
-	if maxVisible < 1 {
-		maxVisible = 1
-	}
+	maxVisible := max(visibleHeight-3, 1)
 	start := 0
 	if m.searchCursor >= maxVisible {
 		start = m.searchCursor - maxVisible + 1
 	}
-	end := start + maxVisible
-	if end > len(m.searchResults) {
-		end = len(m.searchResults)
-	}
+	end := min(start+maxVisible, len(m.searchResults))
 
 	for i := start; i < end; i++ {
 		result := m.searchResults[i]

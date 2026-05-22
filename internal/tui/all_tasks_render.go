@@ -12,12 +12,7 @@ import (
 func (m *AllTasksViewModel) View() tea.View {
 	var b strings.Builder
 
-	// Title
-	subtitle := fmt.Sprintf("%d tasks across %d projects", len(m.allTasks), m.projectCount())
-	if m.totalVisibleTaskCount() != len(m.allTasks) {
-		subtitle = fmt.Sprintf("%d/%d tasks across %d projects", m.totalVisibleTaskCount(), len(m.allTasks), m.projectCount())
-	}
-	b.WriteString(renderFullscreenTitle("All Tasks", subtitle, m.AccentColor()))
+	b.WriteString(renderFullscreenTitle("All Tasks", m.allTasksSubtitle(), m.AccentColor()))
 	b.WriteString("\n")
 
 	if len(m.allTasks) == 0 {
@@ -26,27 +21,8 @@ func (m *AllTasksViewModel) View() tea.View {
 		return tea.NewView(b.String())
 	}
 
-	// Tab bar + filter badge: use ColorAccent for saved-filter tabs
-	tabAccent := m.AccentColor()
-	if entry := m.activeTabEntry(); entry != nil && !entry.IsBuiltIn && !entry.IsOverflow {
-		tabAccent = ColorAccent
-	}
-	chrome, chromeLines := renderFullscreenChrome(
-		m.tabs.RenderBar(m.Width(), tabAccent),
-		m.renderActiveFilterIndicator(),
-		false,
-	)
+	chrome, chromeLines := m.renderAllTasksChrome()
 	b.WriteString(chrome)
-
-	// Grouping indicator
-	if m.groupBy != ATGroupByProject {
-		b.WriteString(MutedStyle.Render(fmt.Sprintf("  Grouped by: %s", m.groupBy)))
-		b.WriteString("\n")
-		chromeLines++
-	}
-
-	b.WriteString("\n")
-	chromeLines++ // trailing blank
 
 	// Overflow picker overlay: render instead of task list when open.
 	if m.overflowPickerOpen {
@@ -54,50 +30,100 @@ func (m *AllTasksViewModel) View() tea.View {
 		return tea.NewView(b.String())
 	}
 
-	// Calculate available height for task list
 	contentHeight := fullscreenContentHeight(m.Height(), chromeLines)
-
 	if m.totalNavigableItems() == 0 {
-		if m.HasActiveFilters() {
-			b.WriteString(renderEmptyState(EmptyStateFiltered, "shift+←/→ tabs · Fx clear filters · Esc close"))
-		} else if m.Dispatcher == nil || !m.Dispatcher.HasPendingPrefix() {
-			b.WriteString(renderContextualEmptyState(EmptyStateNoTasks,
-				[]string{"i add", "F filters", ": commands", "? help"}))
-		} else {
-			b.WriteString(renderEmptyState(EmptyStateNoTasks, "shift+←/→ tabs · Esc close"))
-		}
+		b.WriteString(m.renderAllTasksEmptyState())
 		return tea.NewView(b.String())
 	}
 
-	// Reserve one column for the scrollbar when content overflows.
+	lineWidth := m.allTasksLineWidth(contentHeight)
+	colLayout := m.allTasksColumnLayout(lineWidth)
+	lines, cursorLineIdx := m.buildAllTasksLines(lineWidth, colLayout)
+	lines, contentHeight = m.addAllTasksPreview(lines, cursorLineIdx, contentHeight, lineWidth)
+	b.WriteString(m.renderAllTasksScrollableContent(lines, cursorLineIdx, contentHeight))
+	b.WriteString(m.renderAllTasksFooter())
+
+	return tea.NewView(b.String())
+}
+
+func (m *AllTasksViewModel) allTasksSubtitle() string {
+	if m.totalVisibleTaskCount() != len(m.allTasks) {
+		return fmt.Sprintf("%d/%d tasks across %d projects", m.totalVisibleTaskCount(), len(m.allTasks), m.projectCount())
+	}
+	return fmt.Sprintf("%d tasks across %d projects", len(m.allTasks), m.projectCount())
+}
+
+func (m *AllTasksViewModel) renderAllTasksChrome() (string, int) {
+	tabAccent := m.AccentColor()
+	if entry := m.activeTabEntry(); entry != nil && !entry.IsBuiltIn && !entry.IsOverflow {
+		tabAccent = ColorAccent
+	}
+
+	chrome, chromeLines := renderFullscreenChrome(
+		m.tabs.RenderBar(m.Width(), tabAccent),
+		m.renderActiveFilterIndicator(),
+		false,
+	)
+
+	var b strings.Builder
+	b.WriteString(chrome)
+	if m.groupBy != ATGroupByProject {
+		b.WriteString(MutedStyle.Render(fmt.Sprintf("  Grouped by: %s", m.groupBy)))
+		b.WriteString("\n")
+		chromeLines++
+	}
+	b.WriteString("\n")
+	chromeLines++
+
+	return b.String(), chromeLines
+}
+
+func (m *AllTasksViewModel) renderAllTasksEmptyState() string {
+	if m.HasActiveFilters() {
+		return renderEmptyState(EmptyStateFiltered, "shift+←/→ tabs · Fx clear filters · Esc close")
+	}
+	if m.Dispatcher == nil || !m.Dispatcher.HasPendingPrefix() {
+		return renderContextualEmptyState(EmptyStateNoTasks,
+			[]string{"i add", "F filters", ": commands", "? help"})
+	}
+	return renderEmptyState(EmptyStateNoTasks, "shift+←/→ tabs · Esc close")
+}
+
+func (m *AllTasksViewModel) allTasksLineWidth(contentHeight int) int {
 	lineWidth := m.Width()
 	if m.totalNavigableItems() > contentHeight {
 		lineWidth--
 	}
+	return lineWidth
+}
 
-	// Compute column layout from visible tasks for badge alignment.
-	var colLayout *ColumnLayout
-	if lineWidth >= MinColumnAlignWidth {
-		var visibleTasks []*models.Task
-		var visibleItems []CrossProjectTask
-		for _, group := range m.groups {
-			if !m.collapsedGroups[group.Name] {
-				for _, item := range group.Tasks {
-					visibleTasks = append(visibleTasks, item.Task)
-					visibleItems = append(visibleItems, item)
-				}
-			}
-		}
-		colLayout = ComputeBadgeWidths(visibleTasks, BadgeWidthOpts{
-			IncludeStatus:  true,
-			IncludeType:    true,
-			IncludeStage:   true,
-			ProjectNameFor: crossProjectNameLookup(visibleItems),
-			MaxProjectLen:  15,
-		})
+func (m *AllTasksViewModel) allTasksColumnLayout(lineWidth int) *ColumnLayout {
+	if lineWidth < MinColumnAlignWidth {
+		return nil
 	}
 
-	// Render groups with task lines
+	var visibleTasks []*models.Task
+	var visibleItems []CrossProjectTask
+	for _, group := range m.groups {
+		if m.collapsedGroups[group.Name] {
+			continue
+		}
+		for _, item := range group.Tasks {
+			visibleTasks = append(visibleTasks, item.Task)
+			visibleItems = append(visibleItems, item)
+		}
+	}
+
+	return ComputeBadgeWidths(visibleTasks, BadgeWidthOpts{
+		IncludeStatus:  true,
+		IncludeType:    true,
+		IncludeStage:   true,
+		ProjectNameFor: crossProjectNameLookup(visibleItems),
+		MaxProjectLen:  15,
+	})
+}
+
+func (m *AllTasksViewModel) buildAllTasksLines(lineWidth int, colLayout *ColumnLayout) ([]string, int) {
 	var lines []string
 	maxTitleLen := lineWidth - 50
 	currentIndex := 0
@@ -117,56 +143,69 @@ func (m *AllTasksViewModel) View() tea.View {
 		lines = append(lines, m.renderGroupHeader(group.Name, len(group.Tasks), collapsed, headerSelected, lineWidth))
 		currentIndex++
 
-		if !collapsed {
-			for _, item := range group.Tasks {
-				isSelected := currentIndex == m.cursor
-				if isSelected {
-					cursorLineIdx = len(lines)
-				}
-				isChecked := m.selectedTasks[item.Task.ID]
-				line := m.renderTaskLine(item, isSelected, isChecked, maxTitleLen, currentIndex, lineWidth, colLayout)
-				lines = append(lines, line)
-				currentIndex++
+		if collapsed {
+			continue
+		}
+		for _, item := range group.Tasks {
+			isSelected := currentIndex == m.cursor
+			if isSelected {
+				cursorLineIdx = len(lines)
 			}
+			isChecked := m.selectedTasks[item.Task.ID]
+			line := m.renderTaskLine(item, isSelected, isChecked, maxTitleLen, currentIndex, lineWidth, colLayout)
+			lines = append(lines, line)
+			currentIndex++
 		}
 	}
 
-	// Insert inline preview lines after cursor task
-	if m.previewMode && cursorLineIdx >= 0 && cursorLineIdx < len(lines) {
-		task, _ := m.getTaskRef()
-		if task != nil {
-			indent := "        " // align with cross-project task line content
-			pLines := inlinePreviewLines(task, indent, lineWidth)
-			if len(pLines) > 0 {
-				insertAt := cursorLineIdx + 1
-				if insertAt <= len(lines) {
-					tail := append([]string{}, lines[insertAt:]...)
-					lines = append(lines[:insertAt], pLines...)
-					lines = append(lines, tail...)
-					contentHeight -= len(pLines)
-					if contentHeight < 1 {
-						contentHeight = 1
-					}
-				}
-			}
-		}
+	return lines, cursorLineIdx
+}
+
+func (m *AllTasksViewModel) addAllTasksPreview(lines []string, cursorLineIdx, contentHeight, lineWidth int) ([]string, int) {
+	if !m.previewMode || cursorLineIdx < 0 || cursorLineIdx >= len(lines) {
+		return lines, contentHeight
 	}
 
+	task, _ := m.getTaskRef()
+	if task == nil {
+		return lines, contentHeight
+	}
+
+	pLines := inlinePreviewLines(task, "        ", lineWidth)
+	if len(pLines) == 0 {
+		return lines, contentHeight
+	}
+
+	insertAt := cursorLineIdx + 1
+	if insertAt > len(lines) {
+		return lines, contentHeight
+	}
+
+	tail := append([]string{}, lines[insertAt:]...)
+	lines = append(lines[:insertAt], pLines...)
+	lines = append(lines, tail...)
+	contentHeight -= len(pLines)
+	if contentHeight < 1 {
+		contentHeight = 1
+	}
+	return lines, contentHeight
+}
+
+func (m *AllTasksViewModel) renderAllTasksScrollableContent(lines []string, cursorLineIdx, contentHeight int) string {
 	scrolledLines := applyPersistentScroll(lines, cursorLineIdx, contentHeight, &m.scrollOffset)
 	scrollbar := RenderScrollbar(len(lines), contentHeight, m.scrollOffset)
 	tintedContent := TabContentBgStyle.Width(m.Width()).Render(strings.Join(scrolledLines, "\n"))
-	b.WriteString(AttachScrollbar(tintedContent, scrollbar))
+	return AttachScrollbar(tintedContent, scrollbar)
+}
 
-	// Footer
+func (m *AllTasksViewModel) renderAllTasksFooter() string {
 	footerLeft := "j/k nav · shift+←/→ tabs · Ctrl+G group · ,s/d/b/x status · 1-5 sort · v multi"
 	if m.multiSelectMode {
 		footerLeft = "MULTI-SELECT: space toggle · a select all · A deselect · ,s/d/b status · D delete · v exit"
 	}
 	left := HelpStyle.Render(footerLeft)
 	right := MutedStyle.Render(fmt.Sprintf("%d tasks", m.totalVisibleTaskCount()))
-	b.WriteString(renderFullscreenFooterBlock(m.statusMessage, m.err, left, right, m.Width(), m.AccentColor()))
-
-	return tea.NewView(b.String())
+	return renderFullscreenFooterBlock(m.statusMessage, m.err, left, right, m.Width(), m.AccentColor())
 }
 
 // GetPrefixPopupInfo returns prefix popup data for overlay rendering.

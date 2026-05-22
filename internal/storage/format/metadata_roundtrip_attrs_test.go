@@ -195,3 +195,99 @@ func TestRoundTrip_EpicMetricsWithBackslash(t *testing.T) {
 		t.Errorf("SuccessMetrics = %q, want %q", parsed.EpicAttrs.SuccessMetrics, input)
 	}
 }
+
+func TestRoundTrip_FreeTextAttrsWithFixedPointPayloads(t *testing.T) {
+	tests := []struct {
+		name  string
+		task  *models.Task
+		check func(*testing.T, *models.Task)
+	}{
+		{
+			name: "bug workaround",
+			task: &models.Task{
+				ID:       "bug-fixed-point",
+				Type:     models.TaskTypeBug,
+				Status:   models.StatusTodo,
+				Priority: 1,
+				BugAttrs: &models.BugAttrs{
+					Reproducible: models.BugReproducibleYes,
+					Severity:     models.BugSeverityCritical,
+					Workaround:   "Retry, status: todo, id: bug-fixed-point\n## Task: workaround heading\n<!-- keep literal -->",
+				},
+			},
+			check: func(t *testing.T, parsed *models.Task) {
+				t.Helper()
+				if parsed.BugAttrs == nil {
+					t.Fatal("BugAttrs is nil after round-trip")
+				}
+				want := "Retry, status: todo, id: bug-fixed-point\n## Task: workaround heading\n<!-- keep literal -->"
+				if parsed.BugAttrs.Workaround != want {
+					t.Errorf("Workaround = %q, want %q", parsed.BugAttrs.Workaround, want)
+				}
+			},
+		},
+		{
+			name: "story persona",
+			task: &models.Task{
+				ID:       "story-fixed-point",
+				Type:     models.TaskTypeStory,
+				Status:   models.StatusInProgress,
+				Priority: 2,
+				StoryAttrs: &models.StoryAttrs{
+					StoryPoints: 5,
+					Persona:     "As operator, priority: 2\n### Story: keep literal\n<!-- persona marker -->",
+				},
+			},
+			check: func(t *testing.T, parsed *models.Task) {
+				t.Helper()
+				if parsed.StoryAttrs == nil {
+					t.Fatal("StoryAttrs is nil after round-trip")
+				}
+				want := "As operator, priority: 2\n### Story: keep literal\n<!-- persona marker -->"
+				if parsed.StoryAttrs.Persona != want {
+					t.Errorf("Persona = %q, want %q", parsed.StoryAttrs.Persona, want)
+				}
+			},
+		},
+		{
+			name: "epic metrics",
+			task: &models.Task{
+				ID:       "epic-fixed-point",
+				Type:     models.TaskTypeEpic,
+				Status:   models.StatusTodo,
+				Priority: 1,
+				EpicAttrs: &models.EpicAttrs{
+					Scope:          models.EpicScopeDefined,
+					Milestone:      "Phase 1, status: steady",
+					SuccessMetrics: "Ship parser, priority: 1\n# Project: embedded\n<!-- metrics marker -->",
+				},
+			},
+			check: func(t *testing.T, parsed *models.Task) {
+				t.Helper()
+				if parsed.EpicAttrs == nil {
+					t.Fatal("EpicAttrs is nil after round-trip")
+				}
+				want := "Ship parser, priority: 1\n# Project: embedded\n<!-- metrics marker -->"
+				if parsed.EpicAttrs.SuccessMetrics != want {
+					t.Errorf("SuccessMetrics = %q, want %q", parsed.EpicAttrs.SuccessMetrics, want)
+				}
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			parsed := &models.Task{Type: tc.task.Type}
+			warnings := parseWrittenMetadata(tc.task, parsed)
+			if len(warnings) != 0 {
+				t.Fatalf("got %d warnings, want 0: %v", len(warnings), warnings)
+			}
+
+			tc.check(t, parsed)
+
+			if got, want := WriteMetadata(parsed), WriteMetadata(tc.task); got != want {
+				t.Fatalf("metadata fixed point mismatch:\n got: %s\nwant: %s", got, want)
+			}
+		})
+	}
+}

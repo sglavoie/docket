@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"slices"
 	"sort"
 	"strings"
 
@@ -122,10 +123,7 @@ func (p *alwaysSearchSinglePicker[T]) handleKey(msg tea.KeyPressMsg) tea.Cmd {
 }
 
 func (p *alwaysSearchSinglePicker[T]) moveCursor(delta int) {
-	maxCursor := p.maxCursor(p.picker.Filtered)
-	if maxCursor < 0 {
-		maxCursor = 0
-	}
+	maxCursor := max(p.maxCursor(p.picker.Filtered), 0)
 
 	p.picker.Cursor += delta
 	if p.picker.Cursor < 0 {
@@ -189,10 +187,5 @@ func (p *alwaysSearchSinglePicker[T]) cancel() tea.Cmd {
 }
 
 func keyMatches(key string, keys []string) bool {
-	for _, candidate := range keys {
-		if key == candidate {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(keys, key)
 }

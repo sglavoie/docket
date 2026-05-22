@@ -16,6 +16,7 @@ func pipelineStage(vt ViewType) string {
 		return "Review"
 	case ViewGlobalBlockers, ViewGlobalNotes, ViewWorkflowRules, ViewNotificationCenter:
 		return "Support"
+	default:
 	}
 	return ""
 }
@@ -58,6 +59,7 @@ func pipelineNextHint(vt ViewType) string {
 		return "ctrl+f daily | Next: ;i capture | ;q backlog"
 	case ViewMetricsDashboard, ViewRecentActivity:
 		return "Next: ;i capture | ;q backlog"
+	default:
 	}
 	return ""
 }

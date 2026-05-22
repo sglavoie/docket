@@ -138,10 +138,7 @@ func (m *DashboardModel) renderProjectSummaryContent(project *models.Project) st
 		if count := statusCounts[s.status]; count > 0 {
 			icon := s.status.Icon()
 			iconW := lipgloss.Width(icon)
-			labelCol := 14 - iconW
-			if labelCol < 1 {
-				labelCol = 1
-			}
+			labelCol := max(14-iconW, 1)
 			lines = append(lines, NormalStyle.Render(fmt.Sprintf("  %s %-*s%d", icon, labelCol, s.label, count)))
 		}
 	}

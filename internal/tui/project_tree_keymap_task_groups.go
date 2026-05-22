@@ -366,7 +366,7 @@ func (b *projectTreeKeymapBuilder) blockerEntries() []keymap.Entry {
 func (b *projectTreeKeymapBuilder) filterEntries() []keymap.Entry {
 	m := b.model
 
-	return keymap.FilterGroup(keymap.FilterDeps{
+	entries := keymap.FilterGroup(keymap.FilterDeps{
 		FilterByTags:     func() (tea.Model, tea.Cmd) { return m.handleFilterPrefix("#") },
 		TogglePriority:   func() (tea.Model, tea.Cmd) { return m.handleFilterPrefix("p") },
 		ToggleHideDimmed: func() (tea.Model, tea.Cmd) { return m.handleFilterPrefix("h") },
@@ -397,4 +397,8 @@ func (b *projectTreeKeymapBuilder) filterEntries() []keymap.Entry {
 		},
 		StageFilterNames: b.stages,
 	})
+	if len(entries) > 0 && entries[0].PrefixNode != nil {
+		entries[0].PrefixNode.Children = append(entries[0].PrefixNode.Children, savedFilterPrefixEntry(m))
+	}
+	return entries
 }

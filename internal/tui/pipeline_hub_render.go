@@ -121,10 +121,7 @@ func (m *PipelineHubModel) formatEntry(e pipelineEntry, colWidth, keyWidth int) 
 	if e.count > 0 {
 		label = fmt.Sprintf("%s (%d)", label, e.count)
 	}
-	keyPad := keyWidth - ansi.StringWidth(e.key)
-	if keyPad < 0 {
-		keyPad = 0
-	}
+	keyPad := max(keyWidth-ansi.StringWidth(e.key), 0)
 	plain := e.key + strings.Repeat(" ", keyPad) + "  " + label
 	return padRight(plain, colWidth)
 }

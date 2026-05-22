@@ -102,7 +102,6 @@ func wrappingTabBarRows(tabs []string, availableWidth int) int {
 		if currentWidth+tabWidth > availableWidth && haveCurrent {
 			rows++
 			currentWidth = 0
-			haveCurrent = false
 		}
 		currentWidth += tabWidth
 		haveCurrent = true

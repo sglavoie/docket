@@ -126,20 +126,6 @@ func (m *FocusViewModel) reloadData()                       { m.loadTasks() }
 func (m *FocusViewModel) setErr(err error)                  { m.err = err }
 func (m *FocusViewModel) setStatus(msg string)              { m.statusMessage = msg }
 
-// prefixDispatchView implementation.
-
-func (m *FocusViewModel) selectMsg(task *models.Task, project *models.Project) tea.Msg {
-	return FocusViewSelectMsg{Task: task, Project: project}
-}
-
-func (m *FocusViewModel) handleFilterPrefix(key string) (tea.Model, tea.Cmd) {
-	return m.handleFocusFilterPrefix(key)
-}
-
-func (m *FocusViewModel) handleFilterSubPrefix(prefix, key string) (tea.Model, tea.Cmd) {
-	return m.handleFocusFilterSubPrefix(prefix, key)
-}
-
 // clampCursor ensures cursor is within valid range.
 func (m *FocusViewModel) clampCursor() {
 	m.ClampCursorTo(len(m.filtered))

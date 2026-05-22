@@ -92,7 +92,7 @@ func TestQuickSwitchFilter(t *testing.T) {
 		app.quickSwitchFilter = "fix"
 
 		var firstOrder []string
-		for run := 0; run < 5; run++ {
+		for run := range 5 {
 			app.rebuildQuickSwitchFilter()
 			order := make([]string, 0, len(app.quickSwitchFiltered))
 			for _, idx := range app.quickSwitchFiltered {

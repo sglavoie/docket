@@ -14,10 +14,6 @@ import (
 
 // LoadProject loads tasks from a project's tasks.md file.
 func LoadProject(project *models.Project) error {
-	if _, ok := DefaultRepository.(*FileSystemRepository); !ok {
-		return DefaultRepository.Load(project)
-	}
-
 	_, err := LoadProjectWithWarnings(project)
 	return err
 }
@@ -28,6 +24,9 @@ func LoadProjectWithWarnings(project *models.Project) (*ProjectLoadResult, error
 		if err := DefaultRepository.Load(project); err != nil {
 			return nil, err
 		}
+		if err := auditLoadedProject(project); err != nil {
+			return nil, err
+		}
 		return &ProjectLoadResult{}, nil
 	}
 
@@ -36,6 +35,9 @@ func LoadProjectWithWarnings(project *models.Project) (*ProjectLoadResult, error
 		project.Tasks = []*models.Task{}
 		project.NextShortID = 1
 		project.Sections = []string{models.SectionNext}
+		if auditErr := auditLoadedProject(project); auditErr != nil {
+			return nil, auditErr
+		}
 		return &ProjectLoadResult{}, nil
 	}
 	if err != nil {
@@ -65,6 +67,9 @@ func LoadProjectWithWarnings(project *models.Project) (*ProjectLoadResult, error
 	validateCrossProjectRefs(project, result)
 	reassignUnknownSections(project, result)
 	populateProjectWarnings(project, result.Warnings)
+	if err := auditLoadedProject(project); err != nil {
+		return nil, err
+	}
 
 	return &ProjectLoadResult{Warnings: result.Warnings}, nil
 }
@@ -150,6 +155,26 @@ func populateProjectWarnings(project *models.Project, warnings []ParseWarning) {
 	project.Warnings = repairWarnings
 }
 
+func auditLoadedProject(project *models.Project) error {
+	if err := models.AuditProject(project); err != nil {
+		return fmt.Errorf("%w: project audit failed after load normalization: %w", tterrors.ErrParseError, err)
+	}
+
+	return nil
+}
+
+func auditProjectBeforeSave(project *models.Project) error {
+	if err := models.AuditProject(project); err != nil {
+		projectName := "<unknown>"
+		if project != nil && project.Name != "" {
+			projectName = project.Name
+		}
+		return tterrors.NewSaveProjectError(projectName, fmt.Errorf("project audit failed before save: %w", err))
+	}
+
+	return nil
+}
+
 // SaveProject saves a project's tasks to its tasks.md file.
 //
 // Note: There is a TOCTOU (time-of-check-time-of-use) race between the
@@ -160,6 +185,9 @@ func populateProjectWarnings(project *models.Project, warnings []ParseWarning) {
 // the same project are not an expected use case. If multi-process access
 // is ever needed, advisory file locking (e.g., flock) should be added.
 func SaveProject(project *models.Project) error {
+	if err := auditProjectBeforeSave(project); err != nil {
+		return err
+	}
 	if _, ok := DefaultRepository.(*FileSystemRepository); !ok {
 		return DefaultRepository.Save(project)
 	}
@@ -189,7 +217,7 @@ func SaveProject(project *models.Project) error {
 // hold their own lock.
 func SaveProjectLocked(project *models.Project) error {
 	if _, ok := DefaultRepository.(*FileSystemRepository); !ok {
-		return DefaultRepository.Save(project)
+		return SaveProject(project)
 	}
 	if err := os.MkdirAll(project.Path, DirPermissions); err != nil {
 		return fmt.Errorf("failed to create project directory: %w", err)

@@ -7,16 +7,8 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/keymap"
 )
-
-// isPrefixKeySkippedOnHeader returns true if the key is a recognized prefix
-// key that was skipped because the cursor is on a section header.
-func isPrefixKeySkippedOnHeader(key string, cursorOnTask bool) bool {
-	if cursorOnTask {
-		return false
-	}
-	return taskSpecificPrefixKeys[key]
-}
 
 // handleSortKey handles shared sort key presses (1-5, 0). It calls
 // SortFieldForKey and updates the provided SortState. Returns true if the
@@ -88,6 +80,27 @@ func handleSavedFilterPrefixKey(key string) (tea.Cmd, bool) {
 		return func() tea.Msg { return ShowFilterBuilderMsg{} }, true
 	}
 	return nil, false
+}
+
+func savedFilterPrefixEntry(model tea.Model) keymap.Entry {
+	return keymap.Prefix("v", "Saved filters", "Filters", []keymap.Entry{
+		keymap.Bind("s", "Save current filters", "Filters", func() (tea.Model, tea.Cmd) {
+			cmd, _ := handleSavedFilterPrefixKey("s")
+			return model, cmd
+		}),
+		keymap.Bind("l", "Load saved filters", "Filters", func() (tea.Model, tea.Cmd) {
+			cmd, _ := handleSavedFilterPrefixKey("l")
+			return model, cmd
+		}),
+		keymap.Bind("d", "Delete saved filters", "Filters", func() (tea.Model, tea.Cmd) {
+			cmd, _ := handleSavedFilterPrefixKey("d")
+			return model, cmd
+		}),
+		keymap.Bind("c", "Create criteria filter", "Filters", func() (tea.Model, tea.Cmd) {
+			cmd, _ := handleSavedFilterPrefixKey("c")
+			return model, cmd
+		}),
+	})
 }
 
 // handleQuickEditKey handles key input while in quick edit mode. This is shared

@@ -2,34 +2,6 @@ package tui
 
 import "github.com/sglavoie/tt/internal/models"
 
-// viewModeForKey maps a `g` prefix second key to a ProjectTree ViewMode.
-// Returns the view mode and true if valid, or zero value and false if not.
-func viewModeForKey(key string) (ViewMode, bool) {
-	switch key {
-	case "a":
-		return ViewModeActive, true
-	case "n":
-		return ViewModeNext, true
-	case "i":
-		return ViewModeInbox, true
-	case "w":
-		return ViewModeWaiting, true
-	case "s":
-		return ViewModeSomeday, true
-	case "z":
-		return ViewModeSnoozed, true
-	case "*":
-		return ViewModeAll, true
-	case "r":
-		return ViewModeReview, true
-	case "S":
-		return ViewModeStandby, true
-	case "c":
-		return ViewModeCompleted, true
-	}
-	return 0, false
-}
-
 // sectionForMoveKey maps a move prefix second key to a GTD section name.
 // Returns the section name and true if valid, or empty string and false if not.
 func sectionForMoveKey(key string) (string, bool) {

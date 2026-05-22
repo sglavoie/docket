@@ -18,6 +18,18 @@ type focusBoardTodayStats struct {
 	plannedTotal   int
 }
 
+type focusBoardRowSegments struct {
+	queueIndicator  string
+	indent          string
+	prefix          string
+	statusIcon      string
+	prioritySegment string
+	projectBadge    string
+	typeIcon        string
+	title           string
+	dueStr          string
+}
+
 func (m *FocusBoardModel) todayStats() focusBoardTodayStats {
 	stats := focusBoardTodayStats{}
 	for _, row := range m.todayRows {
@@ -34,112 +46,63 @@ func (m *FocusBoardModel) todayStats() focusBoardTodayStats {
 
 // renderRow renders a single board row line.
 func (m *FocusBoardModel) renderRow(row boardRow, isSelected bool, maxTitleLen int, rowNum string, isFirstPlanItem bool, colLayout *ColumnLayout) string {
-	var b strings.Builder
+	segments := m.buildBoardRowSegments(row, isSelected, maxTitleLen, rowNum, isFirstPlanItem, colLayout)
+	content := m.renderBoardRowContent(row, segments)
+	line := m.renderBoardSelectableLine(row, content, isSelected, isFirstPlanItem)
+	if hint := m.renderBoardEscalationHint(row.Task); hint != "" {
+		return line + "\n" + hint
+	}
+	return line
+}
 
+func (m *FocusBoardModel) buildBoardRowSegments(row boardRow, isSelected bool, maxTitleLen int, rowNum string, isFirstPlanItem bool, colLayout *ColumnLayout) focusBoardRowSegments {
 	task := row.Task
-	projectName := truncateToVisualWidth(row.Project.Name, 10)
-
-	priorityBadge := renderPriorityBadge(task.Priority)
-	if task.Priority > 2 {
-		priorityBadge = ""
-	}
-	isClosed := task.Status.IsComplete()
-
-	// Tree prefix for auto-expanded children
-	indent := MutedStyle.Render(row.TreePrefix)
-	maxTitleLen -= len(row.TreePrefix)
-
-	// Queue / daily-plan indicator: always 2 chars wide (first column).
-	queueIndicator := "  "
-	if m.dailyPlanIDs[task.ID] {
-		queueIndicator = ActiveStyle.Render("w") + " "
-	} else if m.queueIDs[task.ID] {
-		queueIndicator = ActiveStyle.Render("q") + " "
+	segments := focusBoardRowSegments{
+		queueIndicator:  m.renderBoardQueueIndicator(task.ID),
+		indent:          MutedStyle.Render(row.TreePrefix),
+		prefix:          renderBoardRowPrefix(rowNum, isFirstPlanItem),
+		statusIcon:      renderBoardStatusIcon(task, colLayout),
+		prioritySegment: renderBoardPrioritySegment(task, colLayout),
+		projectBadge:    MutedStyle.Render(fmt.Sprintf("[%s]", truncateToVisualWidth(row.Project.Name, 10))),
+		typeIcon:        renderBoardTypeIcon(task, colLayout),
+		dueStr:          renderBoardDueString(task),
 	}
 
-	// Row number prefix for Today tab, or plain indent.
-	prefix := ""
-	if rowNum != "" {
-		if isFirstPlanItem {
-			// ▶ in accent color + rowNum left-padded to match normal 4-char width
-			prefix = ActiveStyle.Render(IconScrollRight) + fmt.Sprintf("%-2s ", rowNum)
-		} else {
-			prefix = fmt.Sprintf("%3s ", rowNum)
-		}
-	}
+	titleLen := maxTitleLen - len(row.TreePrefix)
+	segments.title = m.renderBoardTitle(task, isSelected, titleLen)
+	m.applyBoardHeroDemotion(task, row.Project, &segments)
+	return segments
+}
 
-	projectBadge := MutedStyle.Render(fmt.Sprintf("[%s]", projectName))
-	typeIcon := " " + GetTypeStyle(string(task.Type)).Render(task.Type.Icon())
+func (m *FocusBoardModel) renderBoardRowContent(row boardRow, segments focusBoardRowSegments) string {
+	content := fmt.Sprintf("%s%s%s%s %s%s%s %s",
+		segments.queueIndicator,
+		segments.indent,
+		segments.prefix,
+		segments.statusIcon,
+		segments.prioritySegment,
+		segments.projectBadge,
+		segments.typeIcon,
+		segments.title,
+	)
 
-	dueStr := ""
-	if task.DueDate != nil {
-		dueStr = FormatRelativeDue(task.DueDate, true)
-	}
-
-	truncatedTitle := truncateToVisualWidth(task.Title, maxTitleLen)
-	title := m.highlightTitle(truncatedTitle, task.Title)
-	if isSelected && !task.Dimmed {
-		title = SelectedTaskTitleStyle.Render(title)
-	} else {
-		title = GetTitlePriorityStyle(task.Priority).Render(title)
-	}
-	statusIcon := GetStatusBadge(string(task.Status), task.Status.Icon())
-	if colLayout != nil && colLayout.HasStatus {
-		statusIcon = PadBadge(statusIcon, colLayout.StatusWidth)
-	}
-	if colLayout != nil && colLayout.HasType {
-		typeIcon = " " + PadBadge(GetTypeStyle(string(task.Type)).Render(task.Type.Icon()), colLayout.TypeWidth)
-	}
-	var prioritySegment string
-	if colLayout != nil && colLayout.HasPriority {
-		prioritySegment = PadBadge(priorityBadge, colLayout.PriorityWidth) + " "
-	} else if priorityBadge != "" {
-		prioritySegment = priorityBadge + " "
-	}
-
-	// Von Restorff: demote non-hero badges so the most urgent attribute stands out.
-	hero := pickHeroAttribute(task, row.Project)
-	if hero != HeroNone && !task.Dimmed {
-		if !statusIsHero(hero) {
-			statusIcon = demoteBadge(statusIcon)
-		}
-		typeIcon = " " + demoteBadge(strings.TrimPrefix(typeIcon, " "))
-		if !priorityIsHero(hero) && prioritySegment != "" {
-			if trimmed := strings.TrimRight(prioritySegment, " "); trimmed != "" {
-				prioritySegment = demoteBadge(trimmed) + " "
-			}
-		}
-		if dueStr != "" && !dueIsHero(hero) {
-			dueStr = demoteBadge(dueStr)
-		}
-	}
-
-	content := fmt.Sprintf("%s%s%s%s %s%s%s %s", queueIndicator, indent, prefix, statusIcon, prioritySegment, projectBadge, typeIcon, title)
-
-	estimateStr := ""
-	if task.EstimatedDays > 0 {
-		estimateStr = MutedStyle.Render("(" + formatEstimateDays(task.EstimatedDays) + ")")
-	}
-	staleBadge := renderStaleIndicator(m.config, task)
-	checklistInd := renderChecklistBar(task, m.width)
-	structureGroup := checklistInd
-	lifecycleGroup := dueStr
-	descBadge := ""
-	if m.config.IsDescriptionColumnVisible() {
-		descBadge = renderDescriptionIndicator(task)
-	}
-	contentGroup := JoinGroupParts(descBadge, renderTruncatedTags(task.Tags, 2, 8), staleBadge)
-	trailing := JoinIndicatorGroups(structureGroup, lifecycleGroup, contentGroup, estimateStr)
+	trailing := m.renderBoardTrailing(row, segments.dueStr)
 	if trailing != "" {
 		content += " " + trailing
 	}
-	if m.tabs.Active == boardTabToday && m.carriedOverIDs[task.ID] {
+	if m.tabs.Active == boardTabToday && m.carriedOverIDs[row.Task.ID] {
 		content += " " + MutedStyle.Render("(carried)")
 	}
+	return content
+}
 
+func (m *FocusBoardModel) renderBoardSelectableLine(row boardRow, content string, isSelected bool, isFirstPlanItem bool) string {
+	task := row.Task
+	isClosed := task.Status.IsComplete()
 	dimmed := task.Dimmed || (isClosed && m.tabs.Active == boardTabToday) || (m.focusMode == focusModeTunnel && !isSelected)
 	isOverdue := task.IsOverdue()
 	isBlocked := task.Status == models.StatusBlocked || row.Project.HasIncompleteDependencies(task)
+
 	line := RenderSelectableRow(isSelected, task.Active, task.Pinned, m.cursorFlash, isOverdue, isBlocked, content, m.width-2, dimmed)
 	if isSelected && m.mutationFlash {
 		line = MutationFlashLine(line, m.width-2, m.mutationFlashBg)
@@ -147,19 +110,123 @@ func (m *FocusBoardModel) renderRow(row boardRow, isSelected bool, maxTitleLen i
 	if isFirstPlanItem && !isSelected && !dimmed && !isBlocked && !isOverdue {
 		line = FirstPlanItemStyle.Width(m.width - 2).Render(strings.TrimRight(line, " "))
 	}
-	b.WriteString(line)
+	return line
+}
 
-	// Escalation hint: P3+ tasks due within the escalation window on the Today tab
-	if m.tabs.Active == boardTabToday && task.Priority >= 3 && task.DueDate != nil {
-		if escalationDays := m.config.GetPriorityEscalationDays(); escalationDays > 0 {
-			if task.DueDate.Before(time.Now().AddDate(0, 0, escalationDays+1)) {
-				b.WriteString("\n")
-				b.WriteString("      " + InfoStatusStyle.Render("↑ Due soon — consider P2"))
-			}
+func (m *FocusBoardModel) renderBoardQueueIndicator(taskID string) string {
+	switch {
+	case m.dailyPlanIDs[taskID]:
+		return ActiveStyle.Render("w") + " "
+	case m.queueIDs[taskID]:
+		return ActiveStyle.Render("q") + " "
+	default:
+		return "  "
+	}
+}
+
+func renderBoardRowPrefix(rowNum string, isFirstPlanItem bool) string {
+	if rowNum == "" {
+		return ""
+	}
+	if isFirstPlanItem {
+		return ActiveStyle.Render(IconScrollRight) + fmt.Sprintf("%-2s ", rowNum)
+	}
+	return fmt.Sprintf("%3s ", rowNum)
+}
+
+func renderBoardStatusIcon(task *models.Task, colLayout *ColumnLayout) string {
+	statusIcon := GetStatusBadge(string(task.Status), task.Status.Icon())
+	if colLayout != nil && colLayout.HasStatus {
+		return PadBadge(statusIcon, colLayout.StatusWidth)
+	}
+	return statusIcon
+}
+
+func renderBoardTypeIcon(task *models.Task, colLayout *ColumnLayout) string {
+	typeIcon := GetTypeStyle(string(task.Type)).Render(task.Type.Icon())
+	if colLayout != nil && colLayout.HasType {
+		typeIcon = PadBadge(typeIcon, colLayout.TypeWidth)
+	}
+	return " " + typeIcon
+}
+
+func renderBoardPrioritySegment(task *models.Task, colLayout *ColumnLayout) string {
+	priorityBadge := renderPriorityBadge(task.Priority)
+	if task.Priority > 2 {
+		priorityBadge = ""
+	}
+	if colLayout != nil && colLayout.HasPriority {
+		return PadBadge(priorityBadge, colLayout.PriorityWidth) + " "
+	}
+	if priorityBadge != "" {
+		return priorityBadge + " "
+	}
+	return ""
+}
+
+func renderBoardDueString(task *models.Task) string {
+	if task.DueDate == nil {
+		return ""
+	}
+	return FormatRelativeDue(task.DueDate, true)
+}
+
+func (m *FocusBoardModel) renderBoardTitle(task *models.Task, isSelected bool, maxTitleLen int) string {
+	truncatedTitle := truncateToVisualWidth(task.Title, maxTitleLen)
+	title := m.highlightTitle(truncatedTitle, task.Title)
+	if isSelected && !task.Dimmed {
+		return SelectedTaskTitleStyle.Render(title)
+	}
+	return GetTitlePriorityStyle(task.Priority).Render(title)
+}
+
+func (m *FocusBoardModel) applyBoardHeroDemotion(task *models.Task, project *models.Project, segments *focusBoardRowSegments) {
+	hero := pickHeroAttribute(task, project)
+	if hero == HeroNone || task.Dimmed {
+		return
+	}
+	if !statusIsHero(hero) {
+		segments.statusIcon = demoteBadge(segments.statusIcon)
+	}
+	segments.typeIcon = " " + demoteBadge(strings.TrimPrefix(segments.typeIcon, " "))
+	if !priorityIsHero(hero) && segments.prioritySegment != "" {
+		if trimmed := strings.TrimRight(segments.prioritySegment, " "); trimmed != "" {
+			segments.prioritySegment = demoteBadge(trimmed) + " "
 		}
 	}
+	if segments.dueStr != "" && !dueIsHero(hero) {
+		segments.dueStr = demoteBadge(segments.dueStr)
+	}
+}
 
-	return b.String()
+func (m *FocusBoardModel) renderBoardTrailing(row boardRow, dueStr string) string {
+	task := row.Task
+	estimateStr := ""
+	if task.EstimatedDays > 0 {
+		estimateStr = MutedStyle.Render("(" + formatEstimateDays(task.EstimatedDays) + ")")
+	}
+	descBadge := ""
+	if m.config.IsDescriptionColumnVisible() {
+		descBadge = renderDescriptionIndicator(task)
+	}
+	contentGroup := JoinGroupParts(descBadge, renderTruncatedTags(task.Tags, 2, 8), renderStaleIndicator(m.config, task))
+	return JoinIndicatorGroups(
+		renderChecklistBar(task, m.width),
+		dueStr,
+		contentGroup,
+		estimateStr,
+	)
+}
+
+func (m *FocusBoardModel) renderBoardEscalationHint(task *models.Task) string {
+	if m.tabs.Active != boardTabToday || task.Priority < 3 || task.DueDate == nil {
+		return ""
+	}
+	escalationDays := m.config.GetPriorityEscalationDays()
+	if escalationDays <= 0 || !task.DueDate.Before(time.Now().AddDate(0, 0, escalationDays+1)) {
+		return ""
+	}
+	return "      " + InfoStatusStyle.Render("↑ Due soon — consider P2")
 }
 
 // formatEstimateDays formats an estimated-days value as a human-readable duration.
@@ -242,7 +309,7 @@ func (m *FocusBoardModel) renderZenMode() tea.View {
 
 	if task.Description != "" {
 		body.WriteString("\n")
-		for _, line := range strings.Split(strings.TrimSpace(task.Description), "\n") {
+		for line := range strings.SplitSeq(strings.TrimSpace(task.Description), "\n") {
 			body.WriteString(MutedStyle.Render(strings.TrimSpace(line)))
 			body.WriteString("\n")
 		}
@@ -260,10 +327,7 @@ func (m *FocusBoardModel) renderZenMode() tea.View {
 		}
 	}
 
-	cardWidth := min(m.width-8, 80)
-	if cardWidth < 20 {
-		cardWidth = 20
-	}
+	cardWidth := max(min(m.width-8, 80), 20)
 	cardCfg := CardConfig{
 		Style:       SidebarCardStyle,
 		TitleStyle:  TitleStyle,
@@ -274,22 +338,16 @@ func (m *FocusBoardModel) renderZenMode() tea.View {
 	// Center vertically
 	cardLines := strings.Count(card, "\n") + 1
 	availHeight := fullscreenContentHeight(m.height, 2) // 2: header + footer hint
-	topPad := (availHeight - cardLines) / 2
-	if topPad < 1 {
-		topPad = 1
-	}
+	topPad := max((availHeight-cardLines)/2, 1)
 
 	// Center horizontally
-	leftPad := (m.width - cardWidth) / 2
-	if leftPad < 0 {
-		leftPad = 0
-	}
+	leftPad := max((m.width-cardWidth)/2, 0)
 	leftStr := strings.Repeat(" ", leftPad)
 
 	for i := 0; i < topPad; i++ {
 		b.WriteString("\n")
 	}
-	for _, line := range strings.Split(card, "\n") {
+	for line := range strings.SplitSeq(card, "\n") {
 		b.WriteString(leftStr + line + "\n")
 	}
 

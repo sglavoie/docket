@@ -164,6 +164,7 @@ func (m *OutlinerModel) rebuildRows() {
 		m.flattenTaskTreeWithFolds(tasks, nil, &m.rows)
 		m.insertDepth0Separators()
 	}
+	m.pruneInvisibleSelections()
 	m.clampCursor()
 
 	if m.OpenAtTask != nil && len(m.rows) > 0 {

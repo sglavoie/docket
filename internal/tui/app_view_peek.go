@@ -33,14 +33,8 @@ func (m *AppModel) renderPeekOverlay() string {
 	title := titleStyle.Render("Peek") + " " + MutedStyle.Render(focusMarker)
 	footerText := HelpStyle.Render("↑/↓ scroll · tab switch pane · esc/space close")
 
-	outerWidth := max(m.width*92/100, 40)
-	if outerWidth > m.width-2 {
-		outerWidth = m.width - 2
-	}
-	outerHeight := max(m.height*88/100, 10)
-	if outerHeight > m.height-2 {
-		outerHeight = m.height - 2
-	}
+	outerWidth := min(max(m.width*92/100, 40), m.width-2)
+	outerHeight := min(max(m.height*88/100, 10), m.height-2)
 
 	innerWidth := max(outerWidth-2, 20)
 	contentWidth := max(innerWidth-2, 10)
@@ -102,10 +96,7 @@ func clampPeekOffset(offset, total, visible int) int {
 	if offset < 0 {
 		return 0
 	}
-	maxOffset := total - visible
-	if maxOffset < 0 {
-		maxOffset = 0
-	}
+	maxOffset := max(total-visible, 0)
 	if offset > maxOffset {
 		return maxOffset
 	}
@@ -116,7 +107,7 @@ func clampPeekOffset(offset, total, visible int) int {
 // (and the bottom of the pane) to width/height so JoinHorizontal aligns cleanly.
 func buildPeekPane(lines []string, offset, width, height int) string {
 	out := make([]string, 0, height)
-	for i := 0; i < height; i++ {
+	for i := range height {
 		idx := offset + i
 		var line string
 		if idx < len(lines) {
@@ -148,7 +139,7 @@ func renderPeekDescription(task *models.Task, width int) []string {
 		return []string{MutedStyle.Render("No description")}
 	}
 	var out []string
-	for _, raw := range strings.Split(strings.TrimRight(task.Description, "\n"), "\n") {
+	for raw := range strings.SplitSeq(strings.TrimRight(task.Description, "\n"), "\n") {
 		if raw == "" {
 			out = append(out, "")
 			continue

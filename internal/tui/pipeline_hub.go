@@ -194,6 +194,7 @@ func (m *PipelineHubModel) executeEntryCmd(vt ViewType) tea.Cmd {
 		return func() tea.Msg { return ShowOutlinerMsg{Project: p} }
 	case ViewKanban:
 		return func() tea.Msg { return ShowKanbanMsg{Project: p} }
+	default:
 	}
 	return nil
 }
@@ -229,6 +230,7 @@ func pipelineEntryCmd(vt ViewType) tea.Cmd {
 		return func() tea.Msg { return PipelineHubCaptureMsg{Purpose: PickerPurposeQuickCapture} }
 	case ViewBulkCapture:
 		return func() tea.Msg { return PipelineHubCaptureMsg{Purpose: PickerPurposeBulkCapture} }
+	default:
 	}
 	return nil
 }

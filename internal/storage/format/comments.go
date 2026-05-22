@@ -19,6 +19,9 @@ var commentsEndRegex = regexp.MustCompile(`^<!--\s*/COMMENTS\s*-->$`)
 // Matches individual comment header like "<!-- comment: 2025-12-27 10:30 -->"
 var commentHeaderRegex = regexp.MustCompile(`^<!--\s*comment:\s*(.+?)\s*-->$`)
 
+var blockHeadingRegex = regexp.MustCompile(`^(#{2,6})\s+(Epic|Story|Task|Bug|Idea|Note|Action):\s*(.+)$`)
+var blockProjectRegex = regexp.MustCompile(`^#\s+Project:\s*(.+)$`)
+
 // ExtractCommentsFromDescription parses the COMMENTS block from task description.
 // It extracts comments and returns the cleaned description (without the comments block).
 func ExtractCommentsFromDescription(task *models.Task) {
@@ -42,7 +45,7 @@ func ExtractCommentsFromDescription(task *models.Task) {
 		text := strings.TrimSpace(currentCommentText.String())
 		if text != "" {
 			task.Comments = append(task.Comments, &models.Comment{
-				Text:      unescapeCommentText(text),
+				Text:      unescapeBlockText(text),
 				CreatedAt: currentCommentTime,
 				Resolved:  currentCommentResolved,
 			})
@@ -96,8 +99,8 @@ func WriteComments(task *models.Task) string {
 			resolvedSuffix = ", resolved"
 		}
 		fmt.Fprintf(&b, "<!-- comment: %s%s -->\n", comment.CreatedAt.Format(util.DateTimeFormat), resolvedSuffix)
-		// Escape HTML comment markers to prevent parser corruption
-		escapedText := escapeCommentText(comment.Text)
+		// Escape HTML comment markers and heading-like lines to prevent parser corruption
+		escapedText := escapeBlockText(comment.Text)
 		b.WriteString(escapedText)
 		b.WriteString("\n")
 	}
@@ -125,4 +128,37 @@ func unescapeCommentText(text string) string {
 	text = strings.ReplaceAll(text, "--&gt;", "-->")
 	text = strings.ReplaceAll(text, "&amp;", "&")
 	return text
+}
+
+func escapeBlockText(text string) string {
+	lines := strings.Split(text, "\n")
+	for i, line := range lines {
+		line = escapeCommentText(line)
+		if needsBlockTextEscaping(line) {
+			line = `\` + line
+		}
+		lines[i] = line
+	}
+	return strings.Join(lines, "\n")
+}
+
+func unescapeBlockText(text string) string {
+	lines := strings.Split(text, "\n")
+	for i, line := range lines {
+		if len(line) >= 2 && line[0] == '\\' && needsBlockTextEscaping(line[1:]) {
+			line = line[1:]
+		}
+		lines[i] = unescapeCommentText(line)
+	}
+	return strings.Join(lines, "\n")
+}
+
+func needsBlockTextEscaping(line string) bool {
+	if blockHeadingRegex.MatchString(line) || blockProjectRegex.MatchString(line) {
+		return true
+	}
+	if len(line) >= 2 && line[0] == '\\' {
+		return needsBlockTextEscaping(line[1:])
+	}
+	return false
 }

@@ -119,17 +119,3 @@ func reviewSectionMove(m *DailyReviewModel, section string) (tea.Model, tea.Cmd)
 	})
 	return m, cmd
 }
-
-// prefixDispatchView implementation.
-
-func (m *DailyReviewModel) selectMsg(task *models.Task, project *models.Project) tea.Msg {
-	return DailyReviewSelectMsg{Task: task, Project: project}
-}
-
-func (m *DailyReviewModel) handleFilterPrefix(key string) (tea.Model, tea.Cmd) {
-	return m.handleDailyReviewFilterPrefix(key)
-}
-
-func (m *DailyReviewModel) handleFilterSubPrefix(prefix, key string) (tea.Model, tea.Cmd) {
-	return m.handleDailyReviewFilterSubPrefix(prefix, key)
-}

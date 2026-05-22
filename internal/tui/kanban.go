@@ -184,7 +184,7 @@ func (m *KanbanModel) getCursorCard() *KanbanCard {
 }
 
 // filteredCards returns m.allCards filtered by the active CommonFilterState.
-// Cancelled tasks are excluded in all modes except Status. In cross-project
+// Canceled tasks are excluded in all modes except Status. In cross-project
 // mode an active perspective lens further narrows the result.
 func (m *KanbanModel) filteredCards() []KanbanCard {
 	hideCanceled := m.mode != KanbanModeStatus

@@ -25,7 +25,7 @@ func ExtractDescriptionBlock(task *models.Task) []ParseWarning {
 
 	// Backward compatibility: if no start marker present, leave description as-is.
 	hasMarker := false
-	for _, line := range strings.Split(task.Description, "\n") {
+	for line := range strings.SplitSeq(task.Description, "\n") {
 		if descriptionStartRegex.MatchString(strings.TrimSpace(line)) {
 			hasMarker = true
 			break

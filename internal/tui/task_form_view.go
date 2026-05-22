@@ -54,10 +54,7 @@ func (m *TaskFormModel) View() tea.View {
 
 		if m.width >= helpPaneMinWidth {
 			// Two-column: form content left, help pane right.
-			helpWidth := min(m.width*35/100, 30)
-			if helpWidth < 20 {
-				helpWidth = 20
-			}
+			helpWidth := max(min(m.width*35/100, 30), 20)
 			helpPane := m.renderFormHelpPane(helpWidth)
 			b.WriteString(lipgloss.JoinHorizontal(lipgloss.Top, tabContent, "  ", helpPane))
 		} else {

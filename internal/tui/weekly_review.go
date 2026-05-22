@@ -308,7 +308,7 @@ func (m *WeeklyReviewModel) getSelectedBulkItems() []bulkTaskItem {
 	} {
 		for _, t := range tasks {
 			if m.selectedTasks[t.Task.ID] {
-				items = append(items, bulkTaskItem{Task: t.Task, Project: t.Project})
+				items = append(items, bulkTaskItem(t))
 			}
 		}
 	}

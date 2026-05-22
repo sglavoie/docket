@@ -353,35 +353,35 @@ func (m *AppModel) handleActiveKeyOverlay(msg tea.KeyPressMsg) (bool, tea.Cmd) {
 
 func (m *AppModel) handlePendingPrefixes(msg tea.KeyPressMsg) (bool, tea.Cmd) {
 	if m.pendingSemicolonTPrefix {
-		if isModifierOnly(msg) {
-			return true, nil
-		}
-		m.pendingSemicolonTPrefix = false
-		switch msg.String() {
-		case "m":
-			return true, func() tea.Msg {
-				return ShowGlobalProjectPickerMsg{Purpose: PickerPurposeTaskMoveSource}
-			}
-		case "N":
-			return true, func() tea.Msg {
-				return ShowGlobalProjectPickerMsg{Purpose: PickerPurposeTemplatePick}
-			}
-		case "d":
-			return true, func() tea.Msg {
-				return ShowGlobalProjectPickerMsg{Purpose: PickerPurposeDueDate}
-			}
-		case "s":
-			return true, func() tea.Msg {
-				return ShowGlobalProjectPickerMsg{Purpose: PickerPurposeSectionChange}
-			}
-		}
+		return m.handlePendingSemicolonTPrefix(msg)
+	}
+
+	if m.pendingSemicolonPrefix {
+		return m.handlePendingSemicolonPrefix(msg)
+	}
+	return false, nil
+}
+
+func (m *AppModel) handlePendingSemicolonTPrefix(msg tea.KeyPressMsg) (bool, tea.Cmd) {
+	if isModifierOnly(msg) {
 		return true, nil
 	}
-
-	if !m.pendingSemicolonPrefix {
-		return false, nil
+	m.pendingSemicolonTPrefix = false
+	switch msg.String() {
+	case "m":
+		return true, showGlobalProjectPickerCmd(PickerPurposeTaskMoveSource)
+	case "N":
+		return true, showGlobalProjectPickerCmd(PickerPurposeTemplatePick)
+	case "d":
+		return true, showGlobalProjectPickerCmd(PickerPurposeDueDate)
+	case "s":
+		return true, showGlobalProjectPickerCmd(PickerPurposeSectionChange)
+	default:
+		return true, nil
 	}
+}
 
+func (m *AppModel) handlePendingSemicolonPrefix(msg tea.KeyPressMsg) (bool, tea.Cmd) {
 	if isModifierOnly(msg) {
 		return true, nil
 	}
@@ -422,29 +422,25 @@ func (m *AppModel) handlePendingPrefixes(msg tea.KeyPressMsg) (bool, tea.Cmd) {
 	case "i":
 		return true, m.resolveQuickCaptureCmd()
 	case "I":
-		return true, func() tea.Msg {
-			return ShowGlobalProjectPickerMsg{Purpose: PickerPurposeBulkCapture}
-		}
+		return true, showGlobalProjectPickerCmd(PickerPurposeBulkCapture)
 	case "{":
-		return true, func() tea.Msg {
-			return ShowGlobalProjectPickerMsg{Purpose: PickerPurposeNoteCreate}
-		}
+		return true, showGlobalProjectPickerCmd(PickerPurposeNoteCreate)
 	case ",":
-		return true, func() tea.Msg {
-			return ShowGlobalProjectPickerMsg{Purpose: PickerPurposeStatusUpdate}
-		}
+		return true, showGlobalProjectPickerCmd(PickerPurposeStatusUpdate)
 	case "c":
-		return true, func() tea.Msg {
-			return ShowGlobalProjectPickerMsg{Purpose: PickerPurposeLinkedTask}
-		}
+		return true, showGlobalProjectPickerCmd(PickerPurposeLinkedTask)
 	case "t":
 		m.pendingSemicolonTPrefix = true
 		return true, nil
 	case "!":
-		return true, func() tea.Msg {
-			return ShowGlobalProjectPickerMsg{Purpose: PickerPurposePriorityUpdate}
-		}
+		return true, showGlobalProjectPickerCmd(PickerPurposePriorityUpdate)
+	default:
+		return true, nil
 	}
+}
 
-	return true, nil
+func showGlobalProjectPickerCmd(purpose PickerPurpose) tea.Cmd {
+	return func() tea.Msg {
+		return ShowGlobalProjectPickerMsg{Purpose: purpose}
+	}
 }

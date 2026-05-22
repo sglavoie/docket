@@ -72,7 +72,8 @@ func (m *AppModel) toggleQueue() tea.Cmd {
 		}
 		m.setInfoStatus(fmt.Sprintf("Added to queue: %s", task.Title))
 	}
-	m.lastQueueToggleRedo = nil
+	m.lastToggleUndoKind = toggleUndoQueue
+	m.clearToggleRedoHistory()
 	m.persistFocusQueue()
 	return defaultStatusTimeout()
 }
@@ -85,6 +86,8 @@ func (m *AppModel) undoQueueToggle() tea.Cmd {
 	}
 	m.lastQueueToggleRedo = action
 	m.lastQueueToggle = nil
+	m.lastToggleRedoKind = toggleUndoQueue
+	m.lastToggleUndoKind = m.nextUndoKind(toggleUndoQueue)
 
 	if action.WasAdd {
 		// Reverse add: remove from queue.
@@ -122,6 +125,7 @@ func (m *AppModel) redoQueueToggle() tea.Cmd {
 		return nil
 	}
 	m.lastQueueToggleRedo = nil
+	m.lastToggleRedoKind = m.nextRedoKind(toggleUndoQueue)
 
 	if action.WasAdd {
 		// Redo add: re-add to queue.
@@ -155,6 +159,7 @@ func (m *AppModel) redoQueueToggle() tea.Cmd {
 		m.setInfoStatus(fmt.Sprintf("Redone: %s", action.Task.Title))
 	}
 	m.lastQueueToggle = action
+	m.lastToggleUndoKind = toggleUndoQueue
 	return defaultStatusTimeout()
 }
 

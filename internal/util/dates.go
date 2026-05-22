@@ -103,153 +103,198 @@ func ParseRelativeDate(input string) (time.Time, error) {
 	return ParseRelativeDateWithConfig(input, "sun")
 }
 
+func parseExactDate(input string) (time.Time, bool) {
+	for _, layout := range []string{DateFormat, "01/02/2006", "02.01.2006"} {
+		if date, err := time.ParseInLocation(layout, input, time.Local); err == nil {
+			return date, true
+		}
+	}
+	return time.Time{}, false
+}
+
+func daysUntilWeekday(today time.Time, targetDay time.Weekday, includeToday bool) int {
+	daysUntil := int(targetDay) - int(today.Weekday())
+	if includeToday {
+		if daysUntil < 0 {
+			daysUntil += 7
+		}
+		return daysUntil
+	}
+	if daysUntil <= 0 {
+		daysUntil += 7
+	}
+	return daysUntil
+}
+
+func weekEndTargetDay(weekEndDay string) time.Weekday {
+	switch weekEndDay {
+	case "fri":
+		return time.Friday
+	case "sat":
+		return time.Saturday
+	default:
+		return time.Sunday
+	}
+}
+
+func parseKeywordDate(input, weekEndDay string, today time.Time) (time.Time, bool) {
+	switch input {
+	case "today", "eod":
+		return today, true
+	case "tomorrow", "tmrw", "tom":
+		return today.AddDate(0, 0, 1), true
+	case "yesterday", "ytd":
+		return today.AddDate(0, 0, -1), true
+	case "eow":
+		targetDay := weekEndTargetDay(weekEndDay)
+		return today.AddDate(0, 0, daysUntilWeekday(today, targetDay, true)), true
+	case "eom":
+		return time.Date(today.Year(), today.Month()+1, 0, 0, 0, 0, 0, today.Location()), true
+	case "eoy":
+		return time.Date(today.Year(), 12, 31, 0, 0, 0, 0, today.Location()), true
+	}
+	return time.Time{}, false
+}
+
+func parseMatchedOffset(match []string, input, unit string, apply func(int) time.Time) (time.Time, bool, error) {
+	if len(match) != 2 {
+		return time.Time{}, false, nil
+	}
+	value, err := strconv.Atoi(match[1])
+	if err != nil {
+		return time.Time{}, true, fmt.Errorf("invalid number of %s in %q", unit, input)
+	}
+	return apply(value), true, nil
+}
+
+func parseRelativeOffset(input string, today time.Time) (time.Time, bool, error) {
+	if date, ok, err := parseMatchedOffset(relativeDaysRe.FindStringSubmatch(input), input, "days", func(n int) time.Time {
+		return today.AddDate(0, 0, n)
+	}); ok || err != nil {
+		return date, ok, err
+	}
+	if date, ok, err := parseMatchedOffset(relativeWeeksRe.FindStringSubmatch(input), input, "weeks", func(n int) time.Time {
+		return today.AddDate(0, 0, n*7)
+	}); ok || err != nil {
+		return date, ok, err
+	}
+	return parseMatchedOffset(relativeMonthsRe.FindStringSubmatch(input), input, "months", func(n int) time.Time {
+		return today.AddDate(0, n, 0)
+	})
+}
+
+func parseThisWeekday(input string, today time.Time) (time.Time, bool, error) {
+	match := thisWeekdayRe.FindStringSubmatch(input)
+	if len(match) != 2 {
+		return time.Time{}, false, nil
+	}
+	targetDay := weekdays[match[1]]
+	daysOffset := isoWeekdayNum(targetDay) - isoWeekdayNum(today.Weekday())
+	if daysOffset < 0 {
+		dayName := match[1]
+		return time.Time{}, true, fmt.Errorf("'this %s' is in the past; did you mean 'next %s'?", dayName, dayName)
+	}
+	return today.AddDate(0, 0, daysOffset), true, nil
+}
+
+func parseNamedWeekday(input string, today time.Time) (time.Time, bool) {
+	targetDay, ok := weekdays[input]
+	if !ok {
+		return time.Time{}, false
+	}
+	return today.AddDate(0, 0, daysUntilWeekday(today, targetDay, false)), true
+}
+
+func parseNextDate(input string, today time.Time) (time.Time, bool) {
+	switch {
+	case input == "next week":
+		return today.AddDate(0, 0, 7), true
+	case input == "next month":
+		return today.AddDate(0, 1, 0), true
+	case nextYearRe.MatchString(input):
+		return today.AddDate(1, 0, 0), true
+	}
+	return time.Time{}, false
+}
+
+func parseNextWeekday(input string, today time.Time) (time.Time, bool) {
+	match := nextWeekdayRe.FindStringSubmatch(input)
+	if len(match) != 2 {
+		return time.Time{}, false
+	}
+	targetDay := weekdays[match[1]]
+	daysUntil := daysUntilWeekday(today, targetDay, false) + 7
+	return today.AddDate(0, 0, daysUntil), true
+}
+
+func parseDurationOffset(input string, today time.Time) (time.Time, bool, error) {
+	match := inDurationRe.FindStringSubmatch(input)
+	if len(match) != 3 {
+		return time.Time{}, false, nil
+	}
+	n, err := strconv.Atoi(match[1])
+	if err != nil {
+		return time.Time{}, true, fmt.Errorf("invalid duration in %q", input)
+	}
+	switch match[2] {
+	case "day", "days":
+		return today.AddDate(0, 0, n), true, nil
+	case "week", "weeks":
+		return today.AddDate(0, 0, n*7), true, nil
+	case "month", "months":
+		return today.AddDate(0, n, 0), true, nil
+	case "year", "years":
+		return today.AddDate(n, 0, 0), true, nil
+	default:
+		return time.Time{}, true, fmt.Errorf("invalid duration in %q", input)
+	}
+}
+
+func parseNaturalMonthDay(input string, today time.Time) (time.Time, bool, error) {
+	if match := monthDayRe.FindStringSubmatch(input); len(match) == 3 {
+		date, err := parseMonthDay(match[1], match[2], today)
+		return date, true, err
+	}
+	if match := dayMonthRe.FindStringSubmatch(input); len(match) == 3 {
+		date, err := parseMonthDay(match[2], match[1], today)
+		return date, true, err
+	}
+	return time.Time{}, false, nil
+}
+
 // ParseRelativeDateWithConfig parses a natural language date string like
 // ParseRelativeDate, but respects the weekEndDay setting for the eow token.
 // weekEndDay must be "fri", "sat", or "sun" (invalid values default to "sun").
 func ParseRelativeDateWithConfig(input, weekEndDay string) (time.Time, error) {
 	input = strings.ToLower(strings.TrimSpace(input))
-	now := time.Now()
-	today := StartOfDay(now)
+	today := StartOfDay(time.Now())
 
-	// Exact date: YYYY-MM-DD
-	if date, err := time.ParseInLocation(DateFormat, input, time.Local); err == nil {
+	if date, ok := parseExactDate(input); ok {
 		return date, nil
 	}
-
-	// Exact date: MM/DD/YYYY
-	if date, err := time.ParseInLocation("01/02/2006", input, time.Local); err == nil {
+	if date, ok := parseKeywordDate(input, weekEndDay, today); ok {
 		return date, nil
 	}
-
-	// Exact date: DD.MM.YYYY (European format)
-	if date, err := time.ParseInLocation("02.01.2006", input, time.Local); err == nil {
+	if date, ok, err := parseRelativeOffset(input, today); ok || err != nil {
+		return date, err
+	}
+	if date, ok, err := parseThisWeekday(input, today); ok || err != nil {
+		return date, err
+	}
+	if date, ok := parseNamedWeekday(input, today); ok {
 		return date, nil
 	}
-
-	// Keywords
-	switch input {
-	case "today", "eod":
-		return today, nil
-	case "tomorrow", "tmrw", "tom":
-		return today.AddDate(0, 0, 1), nil
-	case "yesterday", "ytd":
-		return today.AddDate(0, 0, -1), nil
-	case "eow":
-		var targetDay time.Weekday
-		switch weekEndDay {
-		case "fri":
-			targetDay = time.Friday
-		case "sat":
-			targetDay = time.Saturday
-		default:
-			targetDay = time.Sunday
-		}
-		daysUntil := int(targetDay) - int(today.Weekday())
-		if daysUntil < 0 {
-			daysUntil += 7
-		}
-		return today.AddDate(0, 0, daysUntil), nil
-	case "eom":
-		return time.Date(today.Year(), today.Month()+1, 0, 0, 0, 0, 0, today.Location()), nil
-	case "eoy":
-		return time.Date(today.Year(), 12, 31, 0, 0, 0, 0, today.Location()), nil
+	if date, ok := parseNextDate(input, today); ok {
+		return date, nil
 	}
-
-	// Relative: +Nd (days)
-	if match := relativeDaysRe.FindStringSubmatch(input); len(match) == 2 {
-		days, err := strconv.Atoi(match[1])
-		if err != nil {
-			return time.Time{}, fmt.Errorf("invalid number of days in %q", input)
-		}
-		return today.AddDate(0, 0, days), nil
+	if date, ok := parseNextWeekday(input, today); ok {
+		return date, nil
 	}
-
-	// Relative: +Nw (weeks)
-	if match := relativeWeeksRe.FindStringSubmatch(input); len(match) == 2 {
-		weeks, err := strconv.Atoi(match[1])
-		if err != nil {
-			return time.Time{}, fmt.Errorf("invalid number of weeks in %q", input)
-		}
-		return today.AddDate(0, 0, weeks*7), nil
+	if date, ok, err := parseDurationOffset(input, today); ok || err != nil {
+		return date, err
 	}
-
-	// Relative: +Nm (months)
-	if match := relativeMonthsRe.FindStringSubmatch(input); len(match) == 2 {
-		months, err := strconv.Atoi(match[1])
-		if err != nil {
-			return time.Time{}, fmt.Errorf("invalid number of months in %q", input)
-		}
-		return today.AddDate(0, months, 0), nil
-	}
-
-	// "this <weekday>" - this ISO-week occurrence; error if already past.
-	// Uses ISO week (Monday=1 … Sunday=7) so "this sun" on a Monday points
-	// forward to the end of the week, and "this mon" on a Sunday is past.
-	if match := thisWeekdayRe.FindStringSubmatch(input); len(match) == 2 {
-		targetDay := weekdays[match[1]]
-		daysOffset := isoWeekdayNum(targetDay) - isoWeekdayNum(today.Weekday())
-		if daysOffset < 0 {
-			dayName := match[1]
-			return time.Time{}, fmt.Errorf("'this %s' is in the past; did you mean 'next %s'?", dayName, dayName)
-		}
-		return today.AddDate(0, 0, daysOffset), nil
-	}
-
-	// Weekday names (e.g., "mon", "friday") - next occurrence within 1-7 days
-	if targetDay, ok := weekdays[input]; ok {
-		daysUntil := int(targetDay) - int(today.Weekday())
-		if daysUntil <= 0 {
-			daysUntil += 7
-		}
-		return today.AddDate(0, 0, daysUntil), nil
-	}
-
-	// "next week" / "next month" / "next year"
-	if input == "next week" {
-		return today.AddDate(0, 0, 7), nil
-	}
-	if input == "next month" {
-		return today.AddDate(0, 1, 0), nil
-	}
-	if nextYearRe.MatchString(input) {
-		return today.AddDate(1, 0, 0), nil
-	}
-
-	// "next <weekday>" - always at least 7 days away (skips this week)
-	if match := nextWeekdayRe.FindStringSubmatch(input); len(match) == 2 {
-		targetDay := weekdays[match[1]]
-		daysUntil := int(targetDay) - int(today.Weekday())
-		if daysUntil <= 0 {
-			daysUntil += 7
-		}
-		daysUntil += 7 // "next" means skip this week
-		return today.AddDate(0, 0, daysUntil), nil
-	}
-
-	// "in N days/weeks/months/years"
-	if match := inDurationRe.FindStringSubmatch(input); len(match) == 3 {
-		n, err := strconv.Atoi(match[1])
-		if err != nil {
-			return time.Time{}, fmt.Errorf("invalid duration in %q", input)
-		}
-		switch match[2] {
-		case "day", "days":
-			return today.AddDate(0, 0, n), nil
-		case "week", "weeks":
-			return today.AddDate(0, 0, n*7), nil
-		case "month", "months":
-			return today.AddDate(0, n, 0), nil
-		case "year", "years":
-			return today.AddDate(n, 0, 0), nil
-		}
-	}
-
-	// "dec 15" or "15 dec" — month name + day number
-	if match := monthDayRe.FindStringSubmatch(input); len(match) == 3 {
-		return parseMonthDay(match[1], match[2], today)
-	}
-	if match := dayMonthRe.FindStringSubmatch(input); len(match) == 3 {
-		return parseMonthDay(match[2], match[1], today)
+	if date, ok, err := parseNaturalMonthDay(input, today); ok || err != nil {
+		return date, err
 	}
 
 	return time.Time{}, fmt.Errorf("unrecognized date format: %s", input)

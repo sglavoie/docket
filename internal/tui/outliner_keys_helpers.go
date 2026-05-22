@@ -256,25 +256,6 @@ func (m *OutlinerModel) jumpToNextSection(direction int) tea.Cmd {
 	return flashIfJumped(old, m.cursor, &m.cursorFlash)
 }
 
-// getSiblings returns the sibling list for a task at the current zoom level.
-// proj must be non-nil; callers in cross-project mode resolve it from the row.
-func (m *OutlinerModel) getSiblings(task *models.Task, proj *models.Project) []*models.Task {
-	if proj == nil {
-		return nil
-	}
-	if task.Parent != nil {
-		return task.Parent.Children
-	}
-	// Root level or zoomed level
-	if len(m.zoomStack) > 0 {
-		topID := m.zoomStack[len(m.zoomStack)-1].TaskID
-		if t := proj.GetTaskByID(topID); t != nil {
-			return t.Children
-		}
-	}
-	return proj.GetRootTasks()
-}
-
 // parentIDOf returns the parent task ID for t, or "" if t is a root.
 func parentIDOf(t *models.Task) string {
 	if t == nil || t.ParentID == nil {

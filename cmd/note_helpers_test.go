@@ -23,8 +23,8 @@ func TestFindNoteInExactMatchPreferred(t *testing.T) {
 		if err != nil {
 			t.Fatalf("render: %v", err)
 		}
-		if err := os.WriteFile(filepath.Join(dir, n.Filename), []byte(content), 0644); err != nil {
-			t.Fatalf("write: %v", err)
+		if writeErr := os.WriteFile(filepath.Join(dir, n.Filename), []byte(content), 0644); writeErr != nil {
+			t.Fatalf("write: %v", writeErr)
 		}
 		return n
 	}
@@ -55,8 +55,8 @@ func TestFindNoteInRejectsEmptyQuery(t *testing.T) {
 	if err != nil {
 		t.Fatalf("render: %v", err)
 	}
-	if err := os.WriteFile(filepath.Join(dir, note.Filename), []byte(content), 0644); err != nil {
-		t.Fatalf("write: %v", err)
+	if writeErr := os.WriteFile(filepath.Join(dir, note.Filename), []byte(content), 0644); writeErr != nil {
+		t.Fatalf("write: %v", writeErr)
 	}
 
 	got, err := findNoteIn(dir, "")

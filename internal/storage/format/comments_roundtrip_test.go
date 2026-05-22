@@ -154,3 +154,34 @@ func TestWriteComments_ResolvedRoundTrip(t *testing.T) {
 		}
 	}
 }
+
+func TestWriteComments_HeadingLikeLinesRoundTrip(t *testing.T) {
+	comments := []*models.Comment{
+		{
+			Text:      "Comment, status: todo\n## Task: pseudo heading\n# Project: embedded project line",
+			CreatedAt: time.Date(2025, 3, 4, 9, 0, 0, 0, time.Local),
+		},
+		{
+			Text:      "Literal escaped heading\n\\## Task: not a heading",
+			CreatedAt: time.Date(2025, 3, 4, 10, 0, 0, 0, time.Local),
+		},
+	}
+
+	task := &models.Task{Comments: comments}
+	block := WriteComments(task)
+
+	task2 := &models.Task{Description: block}
+	ExtractCommentsFromDescription(task2)
+
+	if len(task2.Comments) != len(comments) {
+		t.Fatalf("got %d comments, want %d", len(task2.Comments), len(comments))
+	}
+	for i, want := range comments {
+		if got := task2.Comments[i].Text; got != want.Text {
+			t.Errorf("Comment[%d].Text = %q, want %q", i, got, want.Text)
+		}
+	}
+	if rewritten := WriteComments(task2); rewritten != block {
+		t.Fatalf("comments block did not reach fixed point:\n--- block ---\n%s\n--- rewritten ---\n%s", block, rewritten)
+	}
+}

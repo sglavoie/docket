@@ -31,8 +31,8 @@ func TestFallbackMultiSelectTasks_Deduplicates(t *testing.T) {
 	os.Stdin = r
 	defer func() { os.Stdin = origStdin }()
 
-	if _, err := w.WriteString("1,1,2\n"); err != nil {
-		t.Fatalf("write stdin: %v", err)
+	if _, writeErr := w.WriteString("1,1,2\n"); writeErr != nil {
+		t.Fatalf("write stdin: %v", writeErr)
 	}
 	_ = w.Close()
 

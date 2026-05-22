@@ -108,12 +108,6 @@ func (m *OutlinerModel) handleFilterPrefix(key string) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-// handleSavedFilterPrefix handles the third key after pressing Fv (saved filters sub-prefix).
-func (m *OutlinerModel) handleSavedFilterPrefix(key string) (tea.Model, tea.Cmd) {
-	cmd, _ := handleSavedFilterPrefixKey(key)
-	return m, cmd
-}
-
 // cycleDueDateFilter cycles through due date filter modes.
 func (m *OutlinerModel) cycleDueDateFilter() {
 	switch m.filter.DueDate {

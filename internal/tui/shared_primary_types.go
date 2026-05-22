@@ -44,8 +44,3 @@ type deleteConfirmView interface {
 	showDeleteConfirm(task *models.Task)
 	showBulkDeleteConfirm()
 }
-
-// taskSpecificPrefixKeys lists prefix keys that require the cursor to be on a task.
-var taskSpecificPrefixKeys = map[string]bool{
-	",": true, "!": true, "d": true, "z": true, "t": true, "b": true, "m": true, "s": true, "c": true,
-}

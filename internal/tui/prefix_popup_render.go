@@ -233,39 +233,21 @@ func RenderPrefixPopupWithCategory(prefix, category string, hints PrefixHints, w
 }
 
 func renderAlignedPrefixHintLines(keyHints []PrefixHint) ([]string, int) {
-	maxKeyWidth := 0
-	maxDescWidth := 0
-	maxIconWidth := 0
-	hasDetail := false
-	hasIcon := false
-
-	for _, hint := range keyHints {
-		if len(hint.Key) > maxKeyWidth {
-			maxKeyWidth = len(hint.Key)
-		}
-		if len(hint.Description) > maxDescWidth {
-			maxDescWidth = len(hint.Description)
-		}
-		if hint.Detail != "" {
-			hasDetail = true
-		}
-		if hint.RenderedIcon != "" {
-			hasIcon = true
-			if width := ansi.StringWidth(hint.RenderedIcon); width > maxIconWidth {
-				maxIconWidth = width
-			}
-		}
-	}
-
-	iconColWidth := 0
-	if hasIcon {
-		iconColWidth = maxIconWidth + 1
-	}
+	layout := measurePrefixHintLineLayout(keyHints)
 
 	contentWidth := 0
 	contentLines := make([]string, 0, len(keyHints))
 	for _, hint := range keyHints {
-		rendered, lineWidth := renderAlignedPrefixHintLine(hint, maxKeyWidth, maxDescWidth, maxIconWidth, iconColWidth, hasDetail, hasIcon, "")
+		rendered, lineWidth := renderAlignedPrefixHintLine(
+			hint,
+			layout.maxKeyWidth,
+			layout.maxDescWidth,
+			layout.maxIconWidth,
+			layout.iconColWidth,
+			layout.hasDetail,
+			layout.hasIcon,
+			"",
+		)
 		contentLines = append(contentLines, rendered)
 		if lineWidth > contentWidth {
 			contentWidth = lineWidth
@@ -278,120 +260,137 @@ func renderAlignedPrefixHintLines(keyHints []PrefixHint) ([]string, int) {
 // renderGroupedPrefixHintLines renders hints sorted into pipeline groups with
 // group names displayed as left-side labels on the first item of each group.
 func renderGroupedPrefixHintLines(hints []PrefixHint) ([]string, int) {
-	maxKeyWidth := 0
-	maxDescWidth := 0
-	maxIconWidth := 0
-	maxDetailWidth := 0
-	hasDetail := false
-	hasIcon := false
-
-	for _, hint := range hints {
-		if len(hint.Key) > maxKeyWidth {
-			maxKeyWidth = len(hint.Key)
-		}
-		if len(hint.Description) > maxDescWidth {
-			maxDescWidth = len(hint.Description)
-		}
-		if hint.Detail != "" {
-			hasDetail = true
-			if len(hint.Detail) > maxDetailWidth {
-				maxDetailWidth = len(hint.Detail)
-			}
-		}
-		if hint.RenderedIcon != "" {
-			hasIcon = true
-			if w := ansi.StringWidth(hint.RenderedIcon); w > maxIconWidth {
-				maxIconWidth = w
-			}
-		}
-	}
-
-	iconColWidth := 0
-	if hasIcon {
-		iconColWidth = maxIconWidth + 1
-	}
-
-	// Compute max group name width for left-label column.
-	maxGroupWidth := 0
-	for _, g := range groupOrder {
-		if len(g) > maxGroupWidth {
-			maxGroupWidth = len(g)
-		}
-	}
+	layout := measurePrefixHintLineLayout(hints)
+	maxGroupWidth := maxPipelineGroupWidth()
 	groupColWidth := maxGroupWidth + 2 // name + "  " gap
-
-	// Compute content line width from column widths.
-	contentWidth := groupColWidth + maxKeyWidth + 2 + iconColWidth + maxDescWidth
-	if hasDetail {
-		contentWidth += 2 + maxDetailWidth
-	}
-
-	// Stable-sort by group rank, then lowercase-first within group.
-	// Empty-group entries sort before all named groups.
-	sorted := make([]PrefixHint, len(hints))
-	copy(sorted, hints)
-	sort.SliceStable(sorted, func(i, j int) bool {
-		ri, rj := -1, -1
-		if sorted[i].Group != "" {
-			ri = groupRank[sorted[i].Group]
-		}
-		if sorted[j].Group != "" {
-			rj = groupRank[sorted[j].Group]
-		}
-		if ri != rj {
-			return ri < rj
-		}
-		a, b := sorted[i].Key, sorted[j].Key
-		aLower := len(a) > 0 && a[0] >= 'a' && a[0] <= 'z'
-		bLower := len(b) > 0 && b[0] >= 'a' && b[0] <= 'z'
-		aUpper := len(a) > 0 && a[0] >= 'A' && a[0] <= 'Z'
-		bUpper := len(b) > 0 && b[0] >= 'A' && b[0] <= 'Z'
-		aRank := 1
-		if aLower {
-			aRank = 0
-		} else if aUpper {
-			aRank = 2
-		}
-		bRank := 1
-		if bLower {
-			bRank = 0
-		} else if bUpper {
-			bRank = 2
-		}
-		if aRank != bRank {
-			return aRank < bRank
-		}
-		return a < b
-	})
+	contentWidth := groupedPrefixHintContentWidth(layout, groupColWidth)
+	sorted := sortGroupedPrefixHints(hints)
 
 	var contentLines []string
 	currentGroup := "\x00" // sentinel: no group yet
 	blankGroupCol := strings.Repeat(" ", groupColWidth)
 
 	for _, hint := range sorted {
-		rendered, _ := renderAlignedPrefixHintLine(hint, maxKeyWidth, maxDescWidth, maxIconWidth, iconColWidth, hasDetail, hasIcon, hint.Group)
+		rendered, _ := renderAlignedPrefixHintLine(
+			hint,
+			layout.maxKeyWidth,
+			layout.maxDescWidth,
+			layout.maxIconWidth,
+			layout.iconColWidth,
+			layout.hasDetail,
+			layout.hasIcon,
+			hint.Group,
+		)
 
 		if hint.Group != currentGroup {
 			currentGroup = hint.Group
-			if currentGroup != "" {
-				fgStyle := lipgloss.NewStyle()
-				if accent, ok := groupAccentColor[currentGroup]; ok {
-					fgStyle = fgStyle.Foreground(accent)
-				}
-				if bg, ok := groupBgColor[currentGroup]; ok {
-					fgStyle = fgStyle.Background(bg)
-				}
-				label := fgStyle.Render(fmt.Sprintf(" %-*s ", maxGroupWidth, currentGroup))
-				contentLines = append(contentLines, label+rendered)
-			} else {
-				contentLines = append(contentLines, blankGroupCol+rendered)
-			}
-		} else {
-			contentLines = append(contentLines, blankGroupCol+rendered)
+			contentLines = append(contentLines, renderGroupedPrefixHintLine(currentGroup, maxGroupWidth, blankGroupCol, rendered))
+			continue
 		}
+		contentLines = append(contentLines, blankGroupCol+rendered)
 	}
 
 	return contentLines, contentWidth
+}
+
+type prefixHintLineLayout struct {
+	maxKeyWidth    int
+	maxDescWidth   int
+	maxIconWidth   int
+	maxDetailWidth int
+	iconColWidth   int
+	hasDetail      bool
+	hasIcon        bool
+}
+
+func measurePrefixHintLineLayout(hints []PrefixHint) prefixHintLineLayout {
+	layout := prefixHintLineLayout{}
+	for _, hint := range hints {
+		layout.maxKeyWidth = max(layout.maxKeyWidth, len(hint.Key))
+		layout.maxDescWidth = max(layout.maxDescWidth, len(hint.Description))
+		if hint.Detail != "" {
+			layout.hasDetail = true
+			layout.maxDetailWidth = max(layout.maxDetailWidth, len(hint.Detail))
+		}
+		if hint.RenderedIcon != "" {
+			layout.hasIcon = true
+			layout.maxIconWidth = max(layout.maxIconWidth, ansi.StringWidth(hint.RenderedIcon))
+		}
+	}
+	if layout.hasIcon {
+		layout.iconColWidth = layout.maxIconWidth + 1
+	}
+	return layout
+}
+
+func maxPipelineGroupWidth() int {
+	maxGroupWidth := 0
+	for _, group := range groupOrder {
+		maxGroupWidth = max(maxGroupWidth, len(group))
+	}
+	return maxGroupWidth
+}
+
+func groupedPrefixHintContentWidth(layout prefixHintLineLayout, groupColWidth int) int {
+	contentWidth := groupColWidth + layout.maxKeyWidth + 2 + layout.iconColWidth + layout.maxDescWidth
+	if layout.hasDetail {
+		contentWidth += 2 + layout.maxDetailWidth
+	}
+	return contentWidth
+}
+
+func sortGroupedPrefixHints(hints []PrefixHint) []PrefixHint {
+	sorted := make([]PrefixHint, len(hints))
+	copy(sorted, hints)
+	sort.SliceStable(sorted, func(i, j int) bool {
+		ri, rj := prefixHintGroupRank(sorted[i].Group), prefixHintGroupRank(sorted[j].Group)
+		if ri != rj {
+			return ri < rj
+		}
+		ai, aj := prefixHintKeyRank(sorted[i].Key), prefixHintKeyRank(sorted[j].Key)
+		if ai != aj {
+			return ai < aj
+		}
+		return sorted[i].Key < sorted[j].Key
+	})
+	return sorted
+}
+
+func prefixHintGroupRank(group string) int {
+	if group == "" {
+		return -1
+	}
+	return groupRank[group]
+}
+
+func prefixHintKeyRank(key string) int {
+	if len(key) == 0 {
+		return 1
+	}
+	switch {
+	case key[0] >= 'a' && key[0] <= 'z':
+		return 0
+	case key[0] >= 'A' && key[0] <= 'Z':
+		return 2
+	default:
+		return 1
+	}
+}
+
+func renderGroupedPrefixHintLine(group string, maxGroupWidth int, blankGroupCol, rendered string) string {
+	if group == "" {
+		return blankGroupCol + rendered
+	}
+
+	labelStyle := lipgloss.NewStyle()
+	if accent, ok := groupAccentColor[group]; ok {
+		labelStyle = labelStyle.Foreground(accent)
+	}
+	if bg, ok := groupBgColor[group]; ok {
+		labelStyle = labelStyle.Background(bg)
+	}
+	label := labelStyle.Render(fmt.Sprintf(" %-*s ", maxGroupWidth, group))
+	return label + rendered
 }
 
 func renderAlignedPrefixHintLine(hint PrefixHint, maxKeyWidth, maxDescWidth, maxIconWidth, iconColWidth int, hasDetail, hasIcon bool, group string) (string, int) {

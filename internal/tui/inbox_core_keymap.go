@@ -200,11 +200,7 @@ func (c *inboxCore) buildKeyMap() *keymap.KeyMap {
 		DueInAMonth:  func() (tea.Model, tea.Cmd) { return c.model, c.setQuickDueDate(30) },
 		ClearDueDate: func() (tea.Model, tea.Cmd) { return c.model, c.clearDueDate() },
 		OpenDatePicker: func() (tea.Model, tea.Cmd) {
-			task, project := c.currentTaskRef()
-			if task == nil {
-				return c.model, nil
-			}
-			return c.model, func() tea.Msg { return SetDueDateMsg{Task: task, Project: project} }
+			return c.model, inboxOpenDueDateInput(c)
 		},
 	})
 	entries = append(entries, dueDateEntries...)
@@ -269,11 +265,7 @@ func (c *inboxCore) buildKeyMap() *keymap.KeyMap {
 			return c.model, func() tea.Msg { return CreateTaskMsg{ParentTask: task, SkipTemplatePicker: true} }
 		},
 		NewTaskWithTemplate: func() (tea.Model, tea.Cmd) {
-			task, _ := c.currentTaskRef()
-			if task == nil {
-				return c.model, nil
-			}
-			return c.model, func() tea.Msg { return CreateTaskMsg{ParentTask: task, SkipTemplatePicker: false} }
+			return c.model, inboxOpenSubtaskCreator(c)
 		},
 		RenameTask: func() (tea.Model, tea.Cmd) {
 			task, project := c.currentTaskRef()
@@ -350,7 +342,10 @@ func (c *inboxCore) buildKeyMap() *keymap.KeyMap {
 			}
 			return c.model, func() tea.Msg { return ShowTaskDecisionsMsg{Task: task, Project: project} }
 		},
-		DeleteTask: func() (tea.Model, tea.Cmd) { return c.model, nil },
+		DeleteTask: func() (tea.Model, tea.Cmd) {
+			inboxDeletePrompt(c, &c.confirm)
+			return c.model, nil
+		},
 	})
 	entries = append(entries, taskPrefixEntries...)
 
@@ -364,11 +359,7 @@ func (c *inboxCore) buildKeyMap() *keymap.KeyMap {
 			return c.model, func() tea.Msg { return ShowDependencyViewerMsg{Task: task, Project: project} }
 		},
 		ManageDependencies: func() (tea.Model, tea.Cmd) {
-			task, project := c.currentTaskRef()
-			if task == nil {
-				return c.model, nil
-			}
-			return c.model, func() tea.Msg { return ManageDependenciesMsg{Task: task, Project: project} }
+			return c.model, inboxOpenDependencySelector(c)
 		},
 	})
 	entries = append(entries, blockerEntries...)

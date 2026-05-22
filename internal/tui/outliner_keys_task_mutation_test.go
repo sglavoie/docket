@@ -47,18 +47,6 @@ func projectTaskIDs(p *models.Project) []string {
 	return ids
 }
 
-// rowTaskIDs returns the ID sequence of task rows in m.rows.
-func rowTaskIDs(rows []outlinerRow) []string {
-	var ids []string
-	for _, r := range rows {
-		if r.IsSectionHeader || r.IsSeparator || r.task == nil {
-			continue
-		}
-		ids = append(ids, r.task.ID)
-	}
-	return ids
-}
-
 func assertIDsEqual(t *testing.T, label string, got, want []string) {
 	t.Helper()
 	if len(got) != len(want) {

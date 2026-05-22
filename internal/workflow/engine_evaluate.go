@@ -2,6 +2,7 @@ package workflow
 
 import (
 	"fmt"
+	"slices"
 	"sort"
 	"strings"
 
@@ -241,12 +242,7 @@ func evaluateRulesWithContextRecursive(evalCtx *EvaluationContext, rules []Workf
 // containsTask reports whether tasks already contains t (pointer equality).
 // Used to deduplicate ModifiedTasks during recursive rule evaluation.
 func containsTask(tasks []*models.Task, t *models.Task) bool {
-	for _, existing := range tasks {
-		if existing == t {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(tasks, t)
 }
 
 func getFieldFromAction(actionType ActionType) string {

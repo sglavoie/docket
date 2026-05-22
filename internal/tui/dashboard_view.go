@@ -73,6 +73,7 @@ func (m *DashboardModel) renderDashboardHorizontal(visible []*models.Project, ch
 
 	var infoContent string
 	switch panelMode {
+	case config.InfoPanelOff:
 	case config.InfoPanelInfoCards:
 		infoContent = m.renderInfoSection(cardWidth, paneHeight, selected)
 	case config.InfoPanelProjectSummary:
@@ -106,10 +107,7 @@ func (m *DashboardModel) renderDashboardVertical(visible []*models.Project, chro
 	totalWidth := max(m.width-2, MinCardWidth)
 	pct := m.config.GetDashboardVerticalSplitPct()
 
-	listWidth := max(totalWidth*pct/100, TreeMinWidth)
-	if listWidth > totalWidth-MinCardWidth {
-		listWidth = totalWidth - MinCardWidth
-	}
+	listWidth := min(max(totalWidth*pct/100, TreeMinWidth), totalWidth-MinCardWidth)
 	if listWidth < TreeMinWidth {
 		listWidth = TreeMinWidth
 	}
@@ -124,6 +122,7 @@ func (m *DashboardModel) renderDashboardVertical(visible []*models.Project, chro
 
 	var infoContent string
 	switch panelMode {
+	case config.InfoPanelOff:
 	case config.InfoPanelInfoCards:
 		infoContent = m.renderInfoSection(infoWidth, paneHeight, selected)
 	case config.InfoPanelProjectSummary:

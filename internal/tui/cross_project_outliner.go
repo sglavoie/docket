@@ -176,6 +176,7 @@ func (m *OutlinerModel) crossProjectRebuildRows() {
 
 	m.rows = m.rows[:0]
 	if len(m.loadedProjects) == 0 {
+		m.pruneInvisibleSelections()
 		m.clampCursor()
 		return
 	}
@@ -269,6 +270,7 @@ func (m *OutlinerModel) crossProjectRebuildRows() {
 	} else {
 		m.buildProjectGroupedRows(groups)
 	}
+	m.pruneInvisibleSelections()
 	m.clampCursor()
 }
 

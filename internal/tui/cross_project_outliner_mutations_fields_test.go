@@ -25,8 +25,8 @@ func crossFieldFixture(t *testing.T) (m *OutlinerModel, beta *models.Project, be
 	alpha.Tasks = []*models.Task{alphaTask}
 	alpha.NextShortID = 2
 	alpha.BuildTaskTree()
-	if err := storage.SaveProject(alpha); err != nil {
-		t.Fatalf("save alpha: %v", err)
+	if saveErr := storage.SaveProject(alpha); saveErr != nil {
+		t.Fatalf("save alpha: %v", saveErr)
 	}
 
 	betaTask, err := models.NewTask("beta-task-1", 1, models.TaskTypeTask, "Beta task")
@@ -37,15 +37,15 @@ func crossFieldFixture(t *testing.T) (m *OutlinerModel, beta *models.Project, be
 	beta.Tasks = []*models.Task{betaTask}
 	beta.NextShortID = 2
 	beta.BuildTaskTree()
-	if err := storage.SaveProject(beta); err != nil {
-		t.Fatalf("save beta: %v", err)
+	if saveErr := storage.SaveProject(beta); saveErr != nil {
+		t.Fatalf("save beta: %v", saveErr)
 	}
 
-	if err := storage.LoadProject(alpha); err != nil {
-		t.Fatalf("load alpha: %v", err)
+	if loadErr := storage.LoadProject(alpha); loadErr != nil {
+		t.Fatalf("load alpha: %v", loadErr)
 	}
-	if err := storage.LoadProject(beta); err != nil {
-		t.Fatalf("load beta: %v", err)
+	if loadErr := storage.LoadProject(beta); loadErr != nil {
+		t.Fatalf("load beta: %v", loadErr)
 	}
 
 	loaded := beta.GetTaskByID("beta-task-1")
@@ -87,11 +87,11 @@ func crossRecurringFixture(t *testing.T) (m *OutlinerModel, beta *models.Project
 		Unit:     models.RecurrenceWeekly,
 		Interval: 1,
 	}
-	if err := storage.SaveProject(beta); err != nil {
-		t.Fatalf("save recurring beta: %v", err)
+	if saveErr := storage.SaveProject(beta); saveErr != nil {
+		t.Fatalf("save recurring beta: %v", saveErr)
 	}
-	if err := storage.LoadProject(beta); err != nil {
-		t.Fatalf("load recurring beta: %v", err)
+	if loadErr := storage.LoadProject(beta); loadErr != nil {
+		t.Fatalf("load recurring beta: %v", loadErr)
 	}
 
 	loaded := beta.GetTaskByID(betaTaskID)

@@ -1,8 +1,6 @@
 package tui
 
 import (
-	tea "charm.land/bubbletea/v2"
-
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 )
@@ -28,17 +26,3 @@ func (m *WeeklyReviewModel) getConfigManager() *config.Manager { return m.config
 func (m *WeeklyReviewModel) reloadData()                       { m.loadData() }
 func (m *WeeklyReviewModel) setErr(err error)                  { m.err = err }
 func (m *WeeklyReviewModel) setStatus(msg string)              { m.InteractiveViewState.setStatus(msg) }
-
-// prefixDispatchView implementation.
-
-func (m *WeeklyReviewModel) selectMsg(task *models.Task, project *models.Project) tea.Msg {
-	return WeeklyReviewSelectTaskMsg{Task: task, Project: project}
-}
-
-func (m *WeeklyReviewModel) handleFilterPrefix(key string) (tea.Model, tea.Cmd) {
-	return m, nil // WeeklyReview has no filter prefix
-}
-
-func (m *WeeklyReviewModel) handleFilterSubPrefix(prefix, key string) (tea.Model, tea.Cmd) {
-	return m, nil // WeeklyReview has no filter sub-prefix
-}

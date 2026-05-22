@@ -72,10 +72,7 @@ func computeCrossProjectScore(task *models.Task, project *models.Project, cfg *c
 	// 30 points per completed week, capped at 10 weeks (max 300 points).
 	// Negative daysSinceCreated (clock skew / future-dated import) clamps to
 	// 0 so the age path never deducts from the score.
-	daysSinceCreated := util.DaysBetween(task.CreatedAt, now)
-	if daysSinceCreated < 0 {
-		daysSinceCreated = 0
-	}
+	daysSinceCreated := max(util.DaysBetween(task.CreatedAt, now), 0)
 	ageBonus := min(daysSinceCreated/7, 10)
 	score += ageBonus * 30
 

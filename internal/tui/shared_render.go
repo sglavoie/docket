@@ -199,131 +199,218 @@ func MutationFlashLine(line string, width int, bg color.Color) string {
 
 // Render assembles the task line string from the configured fields.
 func (tl TaskLine) Render() string {
-	// Standard 5-char prefix: [dim(1)][active(1)][pin(1)] + [T/Q(2)]
 	cursorPrefix := RenderCursorPrefix(tl.IsSelected, tl.Active, tl.Pinned, tl.Task.Dimmed)
+	segments := tl.buildTaskLineSegments()
+	segments = tl.applyHeroDemotion(segments)
 
-	queueIndicator := "  "
-	if tl.DailyPlanned {
-		queueIndicator = ActiveStyle.Render("w") + " "
-	} else if tl.Queued {
-		queueIndicator = ActiveStyle.Render("q") + " "
+	line := tl.composeTaskLine(cursorPrefix, tl.queueIndicator(), segments)
+	line = tl.appendDueString(line, segments.dueStr)
+	if tl.ViewWidth > 0 {
+		line = truncateToVisualWidth(line, tl.ViewWidth)
 	}
+	return tl.applyRowStyles(line)
+}
 
-	statusIcon := tl.StatusBadge
-	if statusIcon == "" {
-		statusIcon = GetStatusBadge(string(tl.Task.Status), tl.Task.Status.Icon())
+type taskLineSegments struct {
+	statusIcon      string
+	typeIcon        string
+	prioritySegment string
+	stageBadge      string
+	stageSegment    string
+	title           string
+	dueStr          string
+}
+
+func (tl TaskLine) queueIndicator() string {
+	switch {
+	case tl.DailyPlanned:
+		return ActiveStyle.Render("w") + " "
+	case tl.Queued:
+		return ActiveStyle.Render("q") + " "
+	default:
+		return "  "
 	}
-	typeIcon := GetTypeBadge(string(tl.Task.Type), tl.Task.Type.Icon())
+}
+
+func (tl TaskLine) buildTaskLineSegments() taskLineSegments {
 	priorityBadge := renderPriorityBadge(tl.Task.Priority)
 	if tl.HideLowPriority && tl.Task.Priority > 2 {
 		priorityBadge = ""
 	}
 
-	// Cursor prefix (3 chars) + queue indicator (2 chars) reduce title space.
+	segments := taskLineSegments{
+		statusIcon: tl.statusBadge(),
+		typeIcon:   tl.typeBadge(),
+		stageBadge: tl.StageBadge,
+		title:      tl.renderTitle(),
+		dueStr:     tl.DueStr,
+	}
+	segments.statusIcon = tl.padStatusBadge(segments.statusIcon)
+	segments.typeIcon = tl.padTypeBadge(segments.typeIcon)
+	segments.prioritySegment = tl.prioritySegment(priorityBadge)
+	segments.stageSegment = tl.stageSegment(segments.stageBadge)
+	return segments
+}
+
+func (tl TaskLine) statusBadge() string {
+	if tl.StatusBadge != "" {
+		return tl.StatusBadge
+	}
+	return GetStatusBadge(string(tl.Task.Status), tl.Task.Status.Icon())
+}
+
+func (tl TaskLine) typeBadge() string {
+	return GetTypeBadge(string(tl.Task.Type), tl.Task.Type.Icon())
+}
+
+func (tl TaskLine) renderTitle() string {
 	maxTitleLen := max(tl.MaxTitle-3, 10)
 	title := truncateToVisualWidth(tl.Task.Title, maxTitleLen)
 	if tl.SearchQuery != "" {
 		title = HighlightSubstring(title, tl.SearchQuery, GetTitlePriorityStyle(tl.Task.Priority))
 	}
 	if tl.IsSelected && !tl.Task.Dimmed {
-		title = SelectedTaskTitleStyle.Render(title)
-	} else {
-		title = GetTitlePriorityStyle(tl.Task.Priority).Render(title)
+		return SelectedTaskTitleStyle.Render(title)
 	}
+	return GetTitlePriorityStyle(tl.Task.Priority).Render(title)
+}
 
-	// Fixed-width badge columns when Layout is set, variable otherwise.
+func (tl TaskLine) padStatusBadge(statusIcon string) string {
 	if tl.Layout != nil && tl.Layout.HasStatus {
-		statusIcon = PadBadge(statusIcon, tl.Layout.StatusWidth)
+		return PadBadge(statusIcon, tl.Layout.StatusWidth)
 	}
+	return statusIcon
+}
+
+func (tl TaskLine) padTypeBadge(typeIcon string) string {
 	if tl.Layout != nil && tl.Layout.HasType {
-		typeIcon = PadBadge(typeIcon, tl.Layout.TypeWidth)
+		return PadBadge(typeIcon, tl.Layout.TypeWidth)
 	}
+	return typeIcon
+}
 
-	var prioritySegment string
+func (tl TaskLine) prioritySegment(priorityBadge string) string {
 	if tl.Layout != nil && tl.Layout.HasPriority {
-		prioritySegment = PadBadge(priorityBadge, tl.Layout.PriorityWidth) + " "
-	} else if priorityBadge != "" {
-		prioritySegment = priorityBadge + " "
+		return PadBadge(priorityBadge, tl.Layout.PriorityWidth) + " "
 	}
+	if priorityBadge != "" {
+		return priorityBadge + " "
+	}
+	return ""
+}
 
-	// Build stage segment. When Layout reserves a stage column, pad the
-	// rendered badge (or an empty placeholder) so the title column stays
-	// aligned across rows.
-	stageBadge := tl.StageBadge
-	var stageSegment string
+func (tl TaskLine) stageSegment(stageBadge string) string {
 	if tl.Layout != nil && tl.Layout.HasStage {
 		if stageBadge != "" {
-			stageSegment = PadBadge(stageBadge, tl.Layout.StageWidth) + " "
-		} else {
-			stageSegment = EmptyBadge(tl.Layout.StageWidth) + " "
+			return PadBadge(stageBadge, tl.Layout.StageWidth) + " "
 		}
-	} else if stageBadge != "" {
-		stageSegment = stageBadge + " "
+		return EmptyBadge(tl.Layout.StageWidth) + " "
 	}
+	if stageBadge != "" {
+		return stageBadge + " "
+	}
+	return ""
+}
 
-	// Von Restorff: when a hero attribute applies, demote the non-hero badges
-	// so the single most urgent attribute reads at full saturation.
+func (tl TaskLine) applyHeroDemotion(segments taskLineSegments) taskLineSegments {
 	hero := pickHeroAttribute(tl.Task, tl.Project)
-	if hero != HeroNone && !tl.Task.Dimmed {
-		if !statusIsHero(hero) {
-			statusIcon = demoteBadge(statusIcon)
-		}
-		typeIcon = demoteBadge(typeIcon)
-		if !priorityIsHero(hero) && prioritySegment != "" {
-			if trimmed := strings.TrimRight(prioritySegment, " "); trimmed != "" {
-				prioritySegment = demoteBadge(trimmed) + " "
-			}
-		}
-		if stageSegment != "" && stageBadge != "" {
-			stageSegment = demoteBadge(strings.TrimRight(stageSegment, " ")) + " "
-		}
+	if hero == HeroNone || tl.Task.Dimmed {
+		return segments
 	}
 
-	dueStr := tl.DueStr
-	if hero != HeroNone && !tl.Task.Dimmed && dueStr != "" && !dueIsHero(hero) {
-		dueStr = demoteBadge(dueStr)
+	if !statusIsHero(hero) {
+		segments.statusIcon = demoteBadge(segments.statusIcon)
 	}
-	line := fmt.Sprintf("%s%s%s%s%s %s %s%s%s%s", cursorPrefix, queueIndicator, tl.Prefix, tl.PreBadges, statusIcon, typeIcon, prioritySegment, stageSegment, title, tl.PostTitle)
-	if dueStr != "" {
-		if tl.ViewWidth > 0 {
-			leftWidth := max(tl.ViewWidth-lipgloss.Width(dueStr)-1, 1)
-			line = truncateToVisualWidth(line, leftWidth)
-			line += strings.Repeat(" ", max(leftWidth-lipgloss.Width(line), 0)) + " " + dueStr
-		} else {
-			line += " " + dueStr
-		}
+	segments.typeIcon = demoteBadge(segments.typeIcon)
+	if !priorityIsHero(hero) {
+		segments.prioritySegment = demotedTaskLineSegment(segments.prioritySegment)
+	}
+	if segments.stageBadge != "" {
+		segments.stageSegment = demotedTaskLineSegment(segments.stageSegment)
+	}
+	if segments.dueStr != "" && !dueIsHero(hero) {
+		segments.dueStr = demoteBadge(segments.dueStr)
+	}
+	return segments
+}
+
+func demotedTaskLineSegment(segment string) string {
+	trimmed := strings.TrimRight(segment, " ")
+	if trimmed == "" {
+		return ""
+	}
+	return demoteBadge(trimmed) + " "
+}
+
+func (tl TaskLine) composeTaskLine(cursorPrefix, queueIndicator string, segments taskLineSegments) string {
+	return fmt.Sprintf(
+		"%s%s%s%s%s %s %s%s%s%s",
+		cursorPrefix,
+		queueIndicator,
+		tl.Prefix,
+		tl.PreBadges,
+		segments.statusIcon,
+		segments.typeIcon,
+		segments.prioritySegment,
+		segments.stageSegment,
+		segments.title,
+		tl.PostTitle,
+	)
+}
+
+func (tl TaskLine) appendDueString(line, dueStr string) string {
+	if dueStr == "" {
+		return line
+	}
+	if tl.ViewWidth <= 0 {
+		return line + " " + dueStr
 	}
 
-	// Truncate to prevent terminal wrapping.
+	leftWidth := max(tl.ViewWidth-lipgloss.Width(dueStr)-1, 1)
+	line = truncateToVisualWidth(line, leftWidth)
+	padding := strings.Repeat(" ", max(leftWidth-lipgloss.Width(line), 0))
+	return line + padding + " " + dueStr
+}
+
+func (tl TaskLine) applyRowStyles(line string) string {
+	line = tl.applyDimmedStyle(line)
+	if tl.IsSelected && !tl.Task.Dimmed {
+		return tl.applySelectedStyle(line)
+	}
+	if tl.Task.Dimmed || tl.IsSelected || tl.Flash {
+		return line
+	}
+	return tl.applyUnselectedStyle(line)
+}
+
+func (tl TaskLine) applyDimmedStyle(line string) string {
+	switch {
+	case tl.Task.Dimmed && tl.IsSelected:
+		return DimSelectedLine(line, tl.ViewWidth)
+	case tl.Task.Dimmed:
+		return DimLine(line)
+	default:
+		return line
+	}
+}
+
+func (tl TaskLine) applySelectedStyle(line string) string {
+	if tl.ViewWidth > 0 && tl.Flash {
+		return SelectedFlashLine(line, tl.ViewWidth)
+	}
 	if tl.ViewWidth > 0 {
-		line = truncateToVisualWidth(line, tl.ViewWidth)
+		return SelectedLine(line, tl.ViewWidth)
 	}
+	return SelectedLine(line, 0)
+}
 
-	if tl.Task.Dimmed && !tl.IsSelected {
-		line = DimLine(line)
-	} else if tl.Task.Dimmed && tl.IsSelected {
-		line = DimSelectedLine(line, tl.ViewWidth)
+func (tl TaskLine) applyUnselectedStyle(line string) string {
+	switch {
+	case tl.Task.Status == models.StatusBlocked:
+		return BlockedRowStyle.Width(tl.ViewWidth).Render(line)
+	case tl.Task.IsOverdue():
+		return OverdueRowStyle.Width(tl.ViewWidth).Render(line)
+	default:
+		return ZebraLine(line, tl.ViewWidth, tl.RowIndex)
 	}
-
-	if tl.IsSelected && (tl.Task == nil || !tl.Task.Dimmed) {
-		if tl.ViewWidth > 0 {
-			if tl.Flash {
-				line = SelectedFlashLine(line, tl.ViewWidth)
-			} else {
-				line = SelectedLine(line, tl.ViewWidth)
-			}
-		} else {
-			line = SelectedLine(line, 0)
-		}
-	} else if !tl.Task.Dimmed && !tl.IsSelected && !tl.Flash {
-		if tl.Task.Status == models.StatusBlocked {
-			line = BlockedRowStyle.Width(tl.ViewWidth).Render(line)
-		} else if tl.Task.IsOverdue() {
-			line = OverdueRowStyle.Width(tl.ViewWidth).Render(line)
-		} else {
-			line = ZebraLine(line, tl.ViewWidth, tl.RowIndex)
-		}
-	}
-
-	return line
 }

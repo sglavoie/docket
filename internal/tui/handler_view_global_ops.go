@@ -1,6 +1,6 @@
 package tui
 
-import "charm.land/bubbletea/v2"
+import tea "charm.land/bubbletea/v2"
 
 // finalizeGlobalOp converts a TaskOpResult into the (bool, tea.Cmd) pair
 // used by handleGlobal*Applied methods: show success status, forward any

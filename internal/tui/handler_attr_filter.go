@@ -59,6 +59,15 @@ func (m *AppModel) applyAttrFilterToView(source ViewType, prefix, key string) {
 				m.projectTree.clampCursor()
 			})
 		}
+	case ViewProjectFocusView:
+		if v := m.views.Get(ViewProjectFocusView); v != nil {
+			if pv, ok := v.(*ProjectFocusViewModel); ok {
+				applyAttr(&pv.filter, func() {
+					pv.loadTasks()
+					pv.clampCursor()
+				})
+			}
+		}
 	case ViewOutliner:
 		target := m.outliner
 		if target == nil {
@@ -81,5 +90,6 @@ func (m *AppModel) applyAttrFilterToView(source ViewType, prefix, key string) {
 				m.crossOutliner.clampCursor()
 			})
 		}
+	default:
 	}
 }

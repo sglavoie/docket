@@ -1,6 +1,6 @@
 package tui
 
-import "charm.land/bubbletea/v2"
+import tea "charm.land/bubbletea/v2"
 
 // handleGlobalPickerMessages handles global picker, status, priority, due date, section, and linked task messages.
 func (m *AppModel) handleGlobalPickerMessages(msg tea.Msg) (bool, tea.Cmd) {

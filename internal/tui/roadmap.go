@@ -257,109 +257,147 @@ func (m *RoadmapModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case tea.KeyPressMsg:
-		switch msg.String() {
-		case "esc":
-			return m, func() tea.Msg { return CloseRoadmapMsg{} }
-
-		case "tab", "shift+right":
-			tab := int(m.activeTab)
-			CycleTab(&tab, len(roadmapTabNames), 1)
-			m.activeTab = RoadmapTab(tab)
-			m.cursor = 0
-
-		case "shift+tab", "shift+left":
-			tab := int(m.activeTab)
-			CycleTab(&tab, len(roadmapTabNames), -1)
-			m.activeTab = RoadmapTab(tab)
-			m.cursor = 0
-
-		case "H":
-			if m.hScrollOff > 0 {
-				m.hScrollOff--
-			}
-
-		case "L":
-			chartWidth := max(m.width-m.labelWidth-lipgloss.Width(ganttSepRaw), 10)
-			totalCols := max(m.axis.TotalCols, 1)
-			colWidth := max(6, chartWidth/totalCols)
-			visibleCols := chartWidth / colWidth
-			maxOff := max(0, totalCols-visibleCols)
-			if m.hScrollOff < maxOff {
-				m.hScrollOff++
-			}
-
-		case "j", "down":
-			if count := m.activeRowCount(); m.cursor < count-1 {
-				m.cursor++
-			}
-
-		case "k", "up":
-			if m.cursor > 0 {
-				m.cursor--
-			}
-
-		case "g":
-			m.cursor = 0
-
-		case "G":
-			if count := m.activeRowCount(); count > 0 {
-				m.cursor = count - 1
-			}
-
-		case "ctrl+d":
-			half := m.visibleRows() / 2
-			m.cursor = min(m.cursor+half, m.activeRowCount()-1)
-
-		case "ctrl+u":
-			half := m.visibleRows() / 2
-			m.cursor = max(m.cursor-half, 0)
-
-		case "space":
-			if m.activeTab == RoadmapTabTimeline && m.cursor < len(m.rows) {
-				row := m.rows[m.cursor]
-				if row.Task != nil {
-					m.collapsed[row.Task.ID] = !m.collapsed[row.Task.ID]
-					m.computeData()
-				}
-			}
-
-		case "enter":
-			if task, project := m.selectedRow(); task != nil {
-				return m, func() tea.Msg {
-					return RoadmapSelectMsg{Task: task, Project: project}
-				}
-			}
-
-		case "o":
-			if task, project := m.selectedRow(); task != nil {
-				return m, func() tea.Msg {
-					return ShowTaskDetailMsg{Task: task, Project: project}
-				}
-			}
-
-		case "t":
-			m.zoom = ZoomLevel((int(m.zoom) + 1) % 3)
-			m.computeData()
-
-		case "T":
-			m.zoom = ZoomLevel((int(m.zoom) + 2) % 3)
-			m.computeData()
-
-		case "c":
-			if !m.hasDeps {
-				break
-			}
-			m.showCriticalPath = !m.showCriticalPath
-
-		case "r":
-			m.computeData()
-
-		case "?":
-			return m, helpCmd(ViewRoadmap, "Roadmap", GetKeybindingRegistry().GetForView(ViewRoadmap))
+		if model, cmd, handled := m.handleRoadmapNavigationKey(msg.String()); handled {
+			return model, cmd
+		}
+		if model, cmd, handled := m.handleRoadmapActionKey(msg.String()); handled {
+			return model, cmd
 		}
 	}
 
 	return m, nil
+}
+
+func (m *RoadmapModel) handleRoadmapNavigationKey(key string) (tea.Model, tea.Cmd, bool) {
+	switch key {
+	case "esc":
+		return m, func() tea.Msg { return CloseRoadmapMsg{} }, true
+	case "tab", "shift+right":
+		m.cycleRoadmapTab(1)
+	case "shift+tab", "shift+left":
+		m.cycleRoadmapTab(-1)
+	case "H":
+		m.scrollRoadmapHoriz(-1)
+	case "L":
+		m.scrollRoadmapHoriz(1)
+	case "j", "down":
+		m.moveRoadmapCursor(1)
+	case "k", "up":
+		m.moveRoadmapCursor(-1)
+	case "g":
+		m.cursor = 0
+	case "G":
+		m.jumpRoadmapCursorToBottom()
+	case "ctrl+d":
+		m.pageRoadmapCursor(1)
+	case "ctrl+u":
+		m.pageRoadmapCursor(-1)
+	default:
+		return m, nil, false
+	}
+	return m, nil, true
+}
+
+func (m *RoadmapModel) handleRoadmapActionKey(key string) (tea.Model, tea.Cmd, bool) {
+	switch key {
+	case "space":
+		m.toggleTimelineRowCollapsed()
+	case "enter":
+		return m.selectedRoadmapMsg(func(task *models.Task, project *models.Project) tea.Msg {
+			return RoadmapSelectMsg{Task: task, Project: project}
+		})
+	case "o":
+		return m.selectedRoadmapMsg(func(task *models.Task, project *models.Project) tea.Msg {
+			return ShowTaskDetailMsg{Task: task, Project: project}
+		})
+	case "t":
+		m.cycleRoadmapZoom(1)
+	case "T":
+		m.cycleRoadmapZoom(2)
+	case "c":
+		if m.hasDeps {
+			m.showCriticalPath = !m.showCriticalPath
+		}
+	case "r":
+		m.computeData()
+	case "?":
+		return m, helpCmd(ViewRoadmap, "Roadmap", GetKeybindingRegistry().GetForView(ViewRoadmap)), true
+	default:
+		return m, nil, false
+	}
+	return m, nil, true
+}
+
+func (m *RoadmapModel) cycleRoadmapTab(step int) {
+	tab := int(m.activeTab)
+	CycleTab(&tab, len(roadmapTabNames), step)
+	m.activeTab = RoadmapTab(tab)
+	m.cursor = 0
+}
+
+func (m *RoadmapModel) scrollRoadmapHoriz(delta int) {
+	if delta < 0 {
+		if m.hScrollOff > 0 {
+			m.hScrollOff--
+		}
+		return
+	}
+	if m.hScrollOff < m.maxRoadmapHScrollOffset() {
+		m.hScrollOff++
+	}
+}
+
+func (m *RoadmapModel) maxRoadmapHScrollOffset() int {
+	chartWidth := max(m.width-m.labelWidth-lipgloss.Width(ganttSepRaw), 10)
+	totalCols := max(m.axis.TotalCols, 1)
+	colWidth := max(6, chartWidth/totalCols)
+	visibleCols := chartWidth / colWidth
+	return max(0, totalCols-visibleCols)
+}
+
+func (m *RoadmapModel) moveRoadmapCursor(delta int) {
+	count := m.activeRowCount()
+	if count == 0 {
+		m.cursor = 0
+		return
+	}
+	m.cursor = min(max(m.cursor+delta, 0), count-1)
+}
+
+func (m *RoadmapModel) jumpRoadmapCursorToBottom() {
+	if count := m.activeRowCount(); count > 0 {
+		m.cursor = count - 1
+	}
+}
+
+func (m *RoadmapModel) pageRoadmapCursor(direction int) {
+	half := m.visibleRows() / 2
+	m.moveRoadmapCursor(direction * half)
+}
+
+func (m *RoadmapModel) toggleTimelineRowCollapsed() {
+	if m.activeTab != RoadmapTabTimeline || m.cursor >= len(m.rows) {
+		return
+	}
+	row := m.rows[m.cursor]
+	if row.Task == nil {
+		return
+	}
+	m.collapsed[row.Task.ID] = !m.collapsed[row.Task.ID]
+	m.computeData()
+}
+
+func (m *RoadmapModel) selectedRoadmapMsg(msg func(task *models.Task, project *models.Project) tea.Msg) (tea.Model, tea.Cmd, bool) {
+	task, project := m.selectedRow()
+	if task == nil {
+		return m, nil, true
+	}
+	return m, func() tea.Msg { return msg(task, project) }, true
+}
+
+func (m *RoadmapModel) cycleRoadmapZoom(step int) {
+	m.zoom = ZoomLevel((int(m.zoom) + step) % 3)
+	m.computeData()
 }
 
 // visibleRows returns the number of content rows visible in the current tab.
