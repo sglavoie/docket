@@ -231,17 +231,24 @@ func TestNonGTDSectionClearedWhenCustomSectionPresent(t *testing.T) {
 	}
 }
 
-func TestGTDSectionPreservedWithCustomSection(t *testing.T) {
-	// When section is a valid GTD section and custom_section is also set,
-	// both should be preserved (though this is an unusual state).
+func TestGTDSectionClearedWhenCustomSectionPresent(t *testing.T) {
 	task := &models.Task{}
-	ParseMetadata(task, "id: m4, status: todo, priority: 2, section: Next, custom_section: Frontend")
+	warnings := ParseMetadata(task, "id: m4, status: todo, priority: 2, section: Next, custom_section: Frontend")
 
-	if task.Section != "Next" {
-		t.Errorf("Section = %q, want %q (GTD section should be preserved)", task.Section, "Next")
+	if task.Section != "" {
+		t.Errorf("Section = %q, want empty (legacy GTD section should be cleared)", task.Section)
 	}
 	if task.CustomSection != "Frontend" {
 		t.Errorf("CustomSection = %q, want %q", task.CustomSection, "Frontend")
+	}
+	if len(warnings) != 1 {
+		t.Fatalf("got %d warnings, want 1", len(warnings))
+	}
+	if warnings[0].Type != WarningDataCorrection {
+		t.Fatalf("warning type = %v, want %v", warnings[0].Type, WarningDataCorrection)
+	}
+	if warnings[0].Field != "section" {
+		t.Fatalf("warning field = %q, want %q", warnings[0].Field, "section")
 	}
 }
 

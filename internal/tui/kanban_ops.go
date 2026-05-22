@@ -230,7 +230,7 @@ func (m *KanbanModel) bulkMoveSelectedTasks(delta int) (tea.Model, tea.Cmd) {
 			if section == "unset" {
 				section = ""
 			}
-			result = pf(ref.project, ref.task.ID, func(t *models.Task) { t.CustomSection = section })
+			result = applyCustomSectionChange(pf, ref.project, ref.task.ID, section)
 		default:
 			continue
 		}
@@ -375,26 +375,22 @@ func (m *KanbanModel) applyKanbanPriorityChange(project *models.Project, task *m
 	return m, result.Cmd
 }
 
-// applyKanbanCustomSectionChange sets the CustomSection field on a task.
+// applyKanbanCustomSectionChange routes the change through the shared custom-section helper.
 func (m *KanbanModel) applyKanbanCustomSectionChange(project *models.Project, task *models.Task, section string) (tea.Model, tea.Cmd) {
 	pf := workflowPersist(func() WorkflowSaveOptions {
 		return BuildWorkflowOpts(m.getPersister(), project, m.config, m.configManager, nil, "", "", nil)
 	})
-	result := pf(project, task.ID, func(t *models.Task) {
-		t.CustomSection = section
-	})
+	result := applyCustomSectionChange(pf, project, task.ID, section)
 	if result.Err != nil {
 		m.setErr(result.Err)
 		return m, nil
 	}
-	label := section
-	if label == "" {
-		label = "none"
+	if result.StatusMessage != "" {
+		m.setStatus(result.StatusMessage)
 	}
-	m.setStatus(fmt.Sprintf("Custom section → %s", label))
 	m.reloadData()
 	m.clampCursor()
-	return m, nil
+	return m, result.Cmd
 }
 
 // ─── J/K in-column reorder ────────────────────────────────────────────────────

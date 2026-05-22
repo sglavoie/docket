@@ -1,6 +1,8 @@
 package tui
 
 import (
+	"fmt"
+
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 )
@@ -28,18 +30,38 @@ type CrossScopeOpts struct {
 	ContextKey string
 }
 
+type projectLoadFailure struct {
+	Project string
+	Detail  string
+}
+
+func newProjectLoadFailure(project *models.Project, err error) projectLoadFailure {
+	name := "<unknown>"
+	if project != nil && project.Name != "" {
+		name = project.Name
+	}
+	detail := "unknown error"
+	if err != nil {
+		detail = err.Error()
+	}
+	return projectLoadFailure{
+		Project: name,
+		Detail:  fmt.Sprintf("failed to load project %s: %s", name, detail),
+	}
+}
+
 // LoadCrossScopeTasks selects projects per opts, loads each via svc, and
 // returns the flat task union, the successfully loaded projects, and the
-// names of any projects that failed to load. Individual load failures are
-// non-fatal: the offending project is skipped and its name is appended to
-// failed for the caller to surface as a status warning.
-func LoadCrossScopeTasks(cfg *config.Config, svc *ProjectService, opts CrossScopeOpts) (tasks []*models.Task, projects []*models.Project, failed []string) {
+// details of any projects that failed to load. Individual load failures are
+// non-fatal: the offending project is skipped and its load error is returned
+// for the caller to surface in logs or the UI.
+func LoadCrossScopeTasks(cfg *config.Config, svc *ProjectService, opts CrossScopeOpts) (tasks []*models.Task, projects []*models.Project, failed []projectLoadFailure) {
 	for _, p := range selectCrossScopeProjects(cfg, opts) {
 		if !opts.IncludeSandbox && p.Sandbox {
 			continue
 		}
 		if err := svc.Load(p); err != nil {
-			failed = append(failed, p.Name)
+			failed = append(failed, newProjectLoadFailure(p, err))
 			continue
 		}
 		projects = append(projects, p)

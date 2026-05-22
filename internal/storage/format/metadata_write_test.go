@@ -174,7 +174,7 @@ func TestCustomSectionRoundTrip(t *testing.T) {
 		Type:          models.TaskTypeTask,
 		Status:        models.StatusTodo,
 		Priority:      2,
-		Section:       "Next",
+		Section:       "",
 		CustomSection: "Backend",
 	}
 
@@ -183,8 +183,8 @@ func TestCustomSectionRoundTrip(t *testing.T) {
 	content := metaStr[5 : len(metaStr)-4]
 	ParseMetadata(parsed, content)
 
-	if parsed.Section != "Next" {
-		t.Errorf("Section = %q, want %q", parsed.Section, "Next")
+	if parsed.Section != "" {
+		t.Errorf("Section = %q, want empty", parsed.Section)
 	}
 	if parsed.CustomSection != "Backend" {
 		t.Errorf("CustomSection = %q, want %q", parsed.CustomSection, "Backend")

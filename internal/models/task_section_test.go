@@ -72,6 +72,41 @@ func TestSetSection_CustomClearsGTD(t *testing.T) {
 	}
 }
 
+func TestSetCustomSection_ClearsGTD(t *testing.T) {
+	task, err := NewTask("test-id", 1, TaskTypeTask, "Test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	task.Section = SectionNext
+
+	task.SetCustomSection("Sprint-1")
+
+	if task.Section != "" {
+		t.Errorf("expected Section cleared, got %q", task.Section)
+	}
+	if task.CustomSection != "Sprint-1" {
+		t.Errorf("expected CustomSection=%q, got %q", "Sprint-1", task.CustomSection)
+	}
+}
+
+func TestSetCustomSection_EmptyPreservesGTD(t *testing.T) {
+	task, err := NewTask("test-id", 1, TaskTypeTask, "Test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	task.Section = SectionNext
+	task.CustomSection = "Sprint-1"
+
+	task.SetCustomSection("")
+
+	if task.Section != SectionNext {
+		t.Errorf("expected Section preserved as %q, got %q", SectionNext, task.Section)
+	}
+	if task.CustomSection != "" {
+		t.Errorf("expected CustomSection cleared, got %q", task.CustomSection)
+	}
+}
+
 func TestNewTaskHasEmptySection(t *testing.T) {
 	task, err := NewTask("test-id", 1, TaskTypeTask, "Test Task")
 	if err != nil {

@@ -27,6 +27,25 @@ func (t *Task) SetSection(name string) {
 	t.Section = ""
 }
 
+// SetCustomSection assigns or clears a custom section.
+//
+// Non-empty values clear the GTD Section field to keep section membership
+// exclusive. Empty string only clears CustomSection, preserving any GTD section.
+func (t *Task) SetCustomSection(name string) {
+	if name == "" {
+		t.CustomSection = ""
+		return
+	}
+	if IsGTDSection(name) {
+		return
+	}
+	if err := ValidateSectionName(name); err != nil {
+		return
+	}
+	t.CustomSection = name
+	t.Section = ""
+}
+
 // InSection reports whether the task belongs to the given section.
 // It checks both the GTD Section field and the CustomSection field,
 // so callers do not need to know which field stores the section name.

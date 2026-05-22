@@ -32,6 +32,7 @@ type doctorIssue struct {
 }
 
 type doctorResults struct {
+	loadFailures       []doctorIssue
 	orphanedCrossRefs  []doctorIssue
 	duplicateIDs       []doctorIssue
 	duplicateShortIDs  []doctorIssue
@@ -44,7 +45,7 @@ type doctorResults struct {
 }
 
 func (r *doctorResults) totalIssues() int {
-	return len(r.orphanedCrossRefs) + len(r.duplicateIDs) + len(r.duplicateShortIDs) +
+	return len(r.loadFailures) + len(r.orphanedCrossRefs) + len(r.duplicateIDs) + len(r.duplicateShortIDs) +
 		len(r.deadDependencies) + len(r.missingTaskFiles) + len(r.brokenParentRefs) +
 		len(r.missingDescMarkers) + len(r.autoRepaired)
 }
@@ -67,7 +68,10 @@ func runDoctor(cmd *cobra.Command, _ []string) error {
 	for _, project := range allProjects {
 		loadResult, loadErr := storage.LoadProjectWithWarnings(project)
 		if loadErr != nil {
-			fmt.Fprintf(os.Stderr, "warning: skipping project %s: %v\n", project.Name, loadErr)
+			results.loadFailures = append(results.loadFailures, doctorIssue{
+				project: project.Name,
+				detail:  loadErr.Error(),
+			})
 			continue
 		}
 		project.BuildTaskTree()
@@ -461,6 +465,7 @@ func buildTaskIDSet(project *models.Project) map[string]bool {
 }
 
 func printResults(results *doctorResults) {
+	printSection("Project load failures", results.loadFailures)
 	printSection("Auto-repaired on load", results.autoRepaired)
 	printSection("Missing task files", results.missingTaskFiles)
 	printSection("Duplicate task IDs", results.duplicateIDs)

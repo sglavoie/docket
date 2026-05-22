@@ -1,12 +1,19 @@
 package cmd
 
 import (
+	"bytes"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
+	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
+
+	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/testutil"
 )
 
@@ -463,4 +470,164 @@ func TestReportBatchErrors(t *testing.T) {
 			t.Error("expected error for total failure, got nil")
 		}
 	})
+}
+
+func captureDoctorOutput(t *testing.T, fn func() error) (stdout string, stderr string, runErr error) {
+	t.Helper()
+
+	oldStdout := os.Stdout
+	oldStderr := os.Stderr
+	stdoutR, stdoutW, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("stdout pipe: %v", err)
+	}
+	stderrR, stderrW, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("stderr pipe: %v", err)
+	}
+
+	os.Stdout = stdoutW
+	os.Stderr = stderrW
+	runErr = fn()
+	_ = stdoutW.Close()
+	_ = stderrW.Close()
+	os.Stdout = oldStdout
+	os.Stderr = oldStderr
+
+	var stdoutBuf bytes.Buffer
+	var stderrBuf bytes.Buffer
+	_, _ = io.Copy(&stdoutBuf, stdoutR)
+	_, _ = io.Copy(&stderrBuf, stderrR)
+
+	return stdoutBuf.String(), stderrBuf.String(), runErr
+}
+
+func TestRunDoctor_ReportsProjectLoadFailures(t *testing.T) {
+	dir := t.TempDir()
+	configPath := filepath.Join(dir, "config.json")
+	viper.Set("config", configPath)
+	t.Cleanup(func() { viper.Set("config", "") })
+
+	oldRepo := storage.DefaultRepository
+	storage.DefaultRepository = storage.NewFileSystemRepository()
+	t.Cleanup(func() { storage.DefaultRepository = oldRepo })
+
+	project := testutil.NewTestProject("Broken Project")
+	project.Path = filepath.Join(dir, "projects", project.Slug)
+	if err := os.MkdirAll(project.Path, 0o755); err != nil {
+		t.Fatalf("MkdirAll(%q): %v", project.Path, err)
+	}
+
+	parent, err := models.NewTask("parent-task", 1, models.TaskTypeTask, "Leaf parent")
+	if err != nil {
+		t.Fatal(err)
+	}
+	child, err := models.NewTask("child-story", 2, models.TaskTypeStory, "Story child")
+	if err != nil {
+		t.Fatal(err)
+	}
+	child.ParentID = &parent.ID
+	content := storage.WriteTasksMarkdownWithSections(project.Name, []*models.Task{parent, child}, []string{models.SectionNext}, nil)
+	if err := os.WriteFile(filepath.Join(project.Path, "tasks.md"), []byte(content), 0o644); err != nil {
+		t.Fatalf("WriteFile(tasks.md): %v", err)
+	}
+
+	cfg := testutil.NewTestConfig()
+	cfg.DataDir = dir
+	cfg.Projects = []*models.Project{project}
+	cfg.CurrentProject = project.ID
+	if err := config.NewManager(configPath).Save(cfg); err != nil {
+		t.Fatalf("Save(config): %v", err)
+	}
+
+	cmd := &cobra.Command{}
+	cmd.Flags().Bool("fix", false, "")
+	stdout, stderr, err := captureDoctorOutput(t, func() error {
+		return runDoctor(cmd, nil)
+	})
+	if err == nil {
+		t.Fatal("runDoctor() error = nil, want load failure")
+	}
+	if !strings.Contains(stdout, "Project load failures: 1") {
+		t.Fatalf("stdout = %q, want project load failures section", stdout)
+	}
+	if !strings.Contains(stdout, "cannot be child") {
+		t.Fatalf("stdout = %q, want actionable load error detail", stdout)
+	}
+	if strings.Contains(stdout, "All checks passed") {
+		t.Fatalf("stdout = %q, should not report success", stdout)
+	}
+	if stderr != "" {
+		t.Fatalf("stderr = %q, want empty", stderr)
+	}
+}
+
+func TestRunDoctorFix_PersistsAutoRepairedDualSections(t *testing.T) {
+	dir := t.TempDir()
+	configPath := filepath.Join(dir, "config.json")
+	viper.Set("config", configPath)
+	t.Cleanup(func() { viper.Set("config", "") })
+
+	oldRepo := storage.DefaultRepository
+	storage.DefaultRepository = storage.NewFileSystemRepository()
+	t.Cleanup(func() { storage.DefaultRepository = oldRepo })
+
+	project := testutil.NewTestProject("Legacy Project")
+	project.Path = filepath.Join(dir, "projects", project.Slug)
+	if err := os.MkdirAll(project.Path, 0o755); err != nil {
+		t.Fatalf("MkdirAll(%q): %v", project.Path, err)
+	}
+
+	content := `# Project: Legacy Project
+<!-- sections: Next;Sprint-1 -->
+
+## Task: Legacy dual section
+<!-- id: task-1, status: todo, priority: 1, section: Next, custom_section: Sprint-1 -->
+`
+	if err := os.WriteFile(filepath.Join(project.Path, "tasks.md"), []byte(content), 0o644); err != nil {
+		t.Fatalf("WriteFile(tasks.md): %v", err)
+	}
+
+	cfg := testutil.NewTestConfig()
+	cfg.DataDir = dir
+	cfg.Projects = []*models.Project{project}
+	cfg.CurrentProject = project.ID
+	if err := config.NewManager(configPath).Save(cfg); err != nil {
+		t.Fatalf("Save(config): %v", err)
+	}
+
+	cmd := &cobra.Command{}
+	cmd.Flags().Bool("fix", true, "")
+	stdout, _, err := captureDoctorOutput(t, func() error {
+		return runDoctor(cmd, nil)
+	})
+	if err == nil {
+		t.Fatal("runDoctor() error = nil, want issue count after fix")
+	}
+	if !strings.Contains(stdout, "Auto-repaired on load: 1") {
+		t.Fatalf("stdout = %q, want auto-repair section", stdout)
+	}
+	if !strings.Contains(stdout, "persisted auto-repaired data") {
+		t.Fatalf("stdout = %q, want persisted repair confirmation", stdout)
+	}
+
+	reloaded := testutil.NewTestProject("Legacy Project")
+	reloaded.Path = project.Path
+	result, loadErr := storage.LoadProjectWithWarnings(reloaded)
+	if loadErr != nil {
+		t.Fatalf("LoadProjectWithWarnings() after doctor --fix failed: %v", loadErr)
+	}
+	if len(result.Warnings) != 0 {
+		t.Fatalf("warnings after doctor --fix = %v, want none", result.Warnings)
+	}
+	if len(reloaded.Tasks) != 1 {
+		t.Fatalf("loaded %d tasks, want 1", len(reloaded.Tasks))
+	}
+	task := reloaded.Tasks[0]
+	if task.Section != "" {
+		t.Fatalf("task.Section = %q, want empty after persisted repair", task.Section)
+	}
+	if task.CustomSection != "Sprint-1" {
+		t.Fatalf("task.CustomSection = %q, want %q", task.CustomSection, "Sprint-1")
+	}
 }

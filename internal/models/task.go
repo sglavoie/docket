@@ -40,7 +40,7 @@ type Task struct {
 	ParentID      *string            `json:"parent_id,omitempty"`
 	Tags          []string           `json:"tags,omitempty"`
 	Section       string             `json:"section,omitempty"`        // GTD section (e.g., "Next", "Inbox", "Waiting", "Someday")
-	CustomSection string             `json:"custom_section,omitempty"` // User-defined section orthogonal to GTD sections
+	CustomSection string             `json:"custom_section,omitempty"` // User-defined section bucket; mutually exclusive with Section
 	CreatedAt     time.Time          `json:"created_at"`
 	UpdatedAt     time.Time          `json:"updated_at"`
 	CompletedAt   *time.Time         `json:"completed_at,omitempty"`

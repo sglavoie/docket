@@ -14,7 +14,7 @@ import (
 // crossProjectsLoadedMsg carries the result of an async cross-project load.
 type crossProjectsLoadedMsg struct {
 	projects    []*models.Project
-	failedNames []string
+	failedLoads []projectLoadFailure
 	generation  int
 }
 
@@ -54,9 +54,9 @@ func (m *OutlinerModel) startCrossProjectLoad() tea.Cmd {
 }
 
 // loadCrossProjectsCmd returns a Cmd that loads all active (context-filtered)
-// projects from disk. Failed projects are skipped; their names are collected
-// for a non-blocking status bar warning, matching the AllTasks continue-on-error
-// pattern.
+// projects from disk. Failed projects are skipped; their load errors are
+// collected for a non-blocking status bar warning plus message-log details,
+// matching the AllTasks continue-on-error pattern.
 func (m *OutlinerModel) loadCrossProjectsCmd() tea.Cmd {
 	gen := m.crossLoadGen
 	cfg := m.config
@@ -77,7 +77,7 @@ func (m *OutlinerModel) loadCrossProjectsCmd() tea.Cmd {
 		})
 		return crossProjectsLoadedMsg{
 			projects:    loaded,
-			failedNames: failed,
+			failedLoads: failed,
 			generation:  gen,
 		}
 	}
@@ -112,20 +112,20 @@ func (m *OutlinerModel) handleCrossProjectsLoaded(msg crossProjectsLoadedMsg) te
 	m.crossForceRebuild = true
 	m.crossProjectRebuildRows()
 
-	if len(msg.failedNames) == 0 {
+	if len(msg.failedLoads) == 0 {
 		return nil
 	}
 	var cmds []tea.Cmd
-	for _, name := range msg.failedNames {
-		n := name // capture for closure
+	for _, failure := range msg.failedLoads {
+		f := failure // capture for closure
 		cmds = append(cmds, func() tea.Msg {
 			return AppendToMessageLogMsg{
-				Message: "Cross-project outliner: failed to load project: " + n,
+				Message: "Cross-project outliner: " + f.Detail,
 				Level:   MessageLogLevelError,
 			}
 		})
 	}
-	count := len(msg.failedNames)
+	count := len(msg.failedLoads)
 	noun := "project"
 	if count > 1 {
 		noun = "projects"

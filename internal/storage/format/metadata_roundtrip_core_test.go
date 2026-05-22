@@ -22,7 +22,7 @@ func TestRoundTrip_KitchenSink(t *testing.T) { //nolint:gocyclo
 		Status:        models.StatusDone,
 		Priority:      1,
 		Tags:          []string{"backend", "urgent", "p0"},
-		Section:       "Next",
+		Section:       "",
 		CustomSection: "Infrastructure",
 		CreatedAt:     created,
 		UpdatedAt:     updated,

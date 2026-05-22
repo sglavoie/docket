@@ -210,6 +210,20 @@ func finalizeParsedMetadata(task *models.Task, state *metadataParseState, warnin
 		// in Section would confuse downstream code that reads Section directly.
 		task.Section = ""
 	}
+
+	if task.Section != "" && task.CustomSection != "" {
+		*warnings = append(*warnings, ParseWarning{
+			Type:  WarningDataCorrection,
+			Field: "section",
+			Message: fmt.Sprintf(
+				"task #%d had both section %q and custom_section %q; keeping custom_section and clearing section",
+				task.ShortID,
+				task.Section,
+				task.CustomSection,
+			),
+		})
+		task.Section = ""
+	}
 }
 
 // ParseMetadata parses the metadata string and sets task fields.

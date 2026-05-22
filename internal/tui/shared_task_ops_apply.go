@@ -354,6 +354,49 @@ func applySectionChange(pf persistFn, project *models.Project, taskID string, se
 	return result
 }
 
+// applyCustomSectionChange sets or clears a custom section on a task.
+func applyCustomSectionChange(pf persistFn, project *models.Project, taskID string, section string) TaskOpResult {
+	if project == nil {
+		return TaskOpResult{Err: errNilProject}
+	}
+	task := project.GetTaskByID(taskID)
+	if task == nil {
+		return TaskOpResult{StatusMessage: "Task no longer exists in project"}
+	}
+	if section != "" {
+		if models.IsGTDSection(section) {
+			return TaskOpResult{Err: fmt.Errorf("built-in GTD section %q is not a custom section", section)}
+		}
+		if err := models.ValidateSectionName(section); err != nil {
+			return TaskOpResult{Err: err}
+		}
+	}
+	if section == "" && task.CustomSection == "" {
+		return TaskOpResult{}
+	}
+	if section == task.CustomSection && task.Section == "" {
+		return TaskOpResult{}
+	}
+
+	result := pf(project, taskID, func(t *models.Task) {
+		t.SetCustomSection(section)
+		if section != "" {
+			project.EnsureSection(section)
+		}
+	})
+	if result.Err != nil || result.StatusMessage != "" {
+		return result
+	}
+
+	if section == "" {
+		result.StatusMessage = "Custom section cleared (u to undo)"
+	} else {
+		result.StatusMessage = fmt.Sprintf("Custom section → %s (u to undo)", section)
+	}
+	result.Cmd = func() tea.Msg { return TaskPropertyChangedMsg{Task: task} }
+	return result
+}
+
 // applyDeleteTask removes a task and its descendants from a project.
 // It handles attachment cleanup, descendant collection, and dangling parent references.
 // The persister is used to save the project directly when all tasks are deleted

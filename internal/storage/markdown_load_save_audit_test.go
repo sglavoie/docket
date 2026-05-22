@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/storage/format"
 	"github.com/sglavoie/tt/internal/testutil"
 	"github.com/sglavoie/tt/internal/tterrors"
 )
@@ -96,6 +97,61 @@ func TestLoadProjectWithWarnings_FailsAuditAfterNormalization(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "cannot be child") {
 		t.Fatalf("LoadProjectWithWarnings() error = %q, want actionable hierarchy detail", err)
+	}
+}
+
+func TestLoadProjectWithWarnings_NormalizesLegacyDualSectionMetadata(t *testing.T) {
+	dir, cleanup := testutil.TempProjectDir(t)
+	defer cleanup()
+
+	projectPath := filepath.Join(dir, "projects", "legacy-dual-section")
+	if err := os.MkdirAll(projectPath, DirPermissions); err != nil {
+		t.Fatalf("MkdirAll(%q): %v", projectPath, err)
+	}
+
+	content := `# Project: Legacy Dual Section
+<!-- sections: Next;Sprint-1 -->
+
+## Task: Legacy dual section
+<!-- id: task-1, status: todo, priority: 1, section: Next, custom_section: Sprint-1 -->
+`
+	if err := os.WriteFile(tasksFilePath(projectPath), []byte(content), FilePermissions); err != nil {
+		t.Fatalf("WriteFile(tasks.md): %v", err)
+	}
+
+	loaded := testutil.NewTestProject("Legacy Dual Section")
+	loaded.Path = projectPath
+
+	result, err := LoadProjectWithWarnings(loaded)
+	if err != nil {
+		t.Fatalf("LoadProjectWithWarnings() error = %v, want nil", err)
+	}
+	if len(loaded.Tasks) != 1 {
+		t.Fatalf("loaded %d tasks, want 1", len(loaded.Tasks))
+	}
+	task := loaded.Tasks[0]
+	if task.Section != "" {
+		t.Fatalf("task.Section = %q, want empty after normalization", task.Section)
+	}
+	if task.CustomSection != "Sprint-1" {
+		t.Fatalf("task.CustomSection = %q, want %q", task.CustomSection, "Sprint-1")
+	}
+
+	if len(result.Warnings) != 1 {
+		t.Fatalf("warnings = %v, want 1 warning", result.Warnings)
+	}
+	warning := result.Warnings[0]
+	if warning.Type != format.WarningDataCorrection {
+		t.Fatalf("warning type = %v, want %v", warning.Type, format.WarningDataCorrection)
+	}
+	if warning.Field != "section" {
+		t.Fatalf("warning field = %q, want %q", warning.Field, "section")
+	}
+	if warning.TaskID != "task-1" {
+		t.Fatalf("warning task ID = %q, want %q", warning.TaskID, "task-1")
+	}
+	if len(loaded.Warnings) != 1 || !strings.Contains(loaded.Warnings[0], "keeping custom_section and clearing section") {
+		t.Fatalf("project warnings = %v, want data-correction summary", loaded.Warnings)
 	}
 }
 

@@ -81,11 +81,7 @@ func (m *AppModel) handleSectionMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 			oldSection := msg.Task.CustomSection
 
 			if !msg.Project.MutateTask(msg.Task.ID, func(t *models.Task) {
-				if msg.Section == "" {
-					t.CustomSection = ""
-				} else {
-					t.SetSection(msg.Section)
-				}
+				t.SetCustomSection(msg.Section)
 			}) {
 				return true, errorCmd("task no longer exists in project")
 			}
@@ -322,11 +318,11 @@ func (m *AppModel) handleSectionMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 	return false, nil
 }
 
-// assignSection sets the section on a task. GTD sections and custom sections
-// are independent — assigning one does not clear the other.
+// assignSection routes GTD and custom-section mutations through the task's
+// invariant-safe helpers.
 func assignSection(task *models.Task, section string) {
 	if section == removeCustomSectionSentinel {
-		task.CustomSection = ""
+		task.SetCustomSection("")
 	} else {
 		task.SetSection(section)
 	}
