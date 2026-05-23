@@ -53,7 +53,10 @@ func FormatRelativeTime(t time.Time) string {
 		return fmt.Sprintf("%d hours ago", hours)
 	}
 
-	days := int(diff.Hours() / 24)
+	// Use calendar-day comparison so that "47h ago" is "2 days ago" rather
+	// than "yesterday". DaysBetween normalizes both ends to noon UTC, making
+	// it DST-safe and immune to the wall-clock truncation issue.
+	days := util.DaysBetween(t, time.Now())
 	if days == 1 {
 		return "yesterday"
 	}
