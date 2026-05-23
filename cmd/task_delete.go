@@ -150,7 +150,13 @@ func cleanDeletedTaskCrossProjectRefs(projects []*models.Project, deletedProject
 		for _, t := range p.Tasks {
 			orig := len(t.DependsOn)
 			t.DependsOn = filterDeletedTaskRefs(t.DependsOn, deletedProjectSlug, deletedTaskIDs)
-			cleaned += orig - len(t.DependsOn)
+			depsRemoved := orig - len(t.DependsOn)
+			cleaned += depsRemoved
+			// If a Blocked task's entire DependsOn list was just removed
+			// (all blockers were deleted), reopen it to prevent it being stuck.
+			if t.Status == models.StatusBlocked && depsRemoved > 0 && len(t.DependsOn) == 0 {
+				t.Reopen()
+			}
 
 			orig = len(t.RelatedTo)
 			t.RelatedTo = filterDeletedTaskRefs(t.RelatedTo, deletedProjectSlug, deletedTaskIDs)

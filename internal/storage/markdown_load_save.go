@@ -77,9 +77,16 @@ func LoadProjectWithWarnings(project *models.Project) (*ProjectLoadResult, error
 func validateCrossProjectRefs(project *models.Project, result *ParseResult) {
 	dataDir := filepath.Dir(filepath.Dir(project.Path))
 	for _, task := range project.Tasks {
+		origDeps := len(task.DependsOn)
 		task.DependsOn = filterProjectRefs(task.DependsOn, dataDir, "depends", task.ID, func(projectID string) string {
 			return fmt.Sprintf("task %s has dependency on non-existent project %q, removing", task.ID, projectID)
 		}, &result.Warnings)
+		// A Blocked task whose only remaining deps were cross-project refs to
+		// now-deleted projects has no resolvable reason to stay blocked. Reopen
+		// it so it is not silently stuck on load.
+		if task.Status == models.StatusBlocked && origDeps > 0 && len(task.DependsOn) == 0 {
+			task.Reopen()
+		}
 
 		task.RelatedTo = filterProjectRefs(task.RelatedTo, dataDir, "related", task.ID, func(projectID string) string {
 			return fmt.Sprintf("task %s has related ref to non-existent project %q, removing", task.ID, projectID)

@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/testutil"
 )
 
@@ -147,5 +148,62 @@ func TestFilterDeletedTasks_KeepsBlockedWhenOtherBlockersRemain(t *testing.T) {
 	}
 	if len(dep.DependsOn) != 1 || dep.DependsOn[0] != b2.ID {
 		t.Errorf("expected DependsOn to contain only b2, got %v", dep.DependsOn)
+	}
+}
+
+func TestCleanDeletedTaskCrossProjectRefs_UnblocksWhenLastBlockerDeleted(t *testing.T) {
+	// Set up a project on disk that has a task blocked by a cross-project dep.
+	dir := t.TempDir()
+	otherProject := &models.Project{
+		ID:   "other-proj-id",
+		Name: "Other Project",
+		Slug: "other-proj",
+		Path: dir,
+	}
+	dependent, err := models.NewTask("dep-id", 1, models.TaskTypeTask, "Dependent")
+	if err != nil {
+		t.Fatal(err)
+	}
+	dependent.DependsOn = []string{"other-proj:remote-task-id"}
+	dependent.Status = models.StatusBlocked
+	otherProject.Tasks = []*models.Task{dependent}
+
+	if saveErr := storage.SaveProjectLocked(otherProject); saveErr != nil {
+		t.Fatalf("failed to save project: %v", saveErr)
+	}
+
+	deletedProjectID := "source-proj-id"
+	deletedProjectSlug := "other-proj"
+	deletedTaskIDs := map[string]bool{"remote-task-id": true}
+
+	if cleanErr := cleanDeletedTaskCrossProjectRefs(
+		[]*models.Project{otherProject},
+		deletedProjectID,
+		deletedProjectSlug,
+		deletedTaskIDs,
+	); cleanErr != nil {
+		t.Fatalf("cleanDeletedTaskCrossProjectRefs error: %v", cleanErr)
+	}
+
+	// Reload to confirm the saved state
+	loaded := &models.Project{
+		ID:   otherProject.ID,
+		Name: otherProject.Name,
+		Slug: otherProject.Slug,
+		Path: otherProject.Path,
+	}
+	if loadErr := storage.LoadProject(loaded); loadErr != nil {
+		t.Fatalf("failed to reload project: %v", loadErr)
+	}
+
+	if len(loaded.Tasks) != 1 {
+		t.Fatalf("expected 1 task, got %d", len(loaded.Tasks))
+	}
+	dep := loaded.Tasks[0]
+	if dep.Status == models.StatusBlocked {
+		t.Errorf("expected task to be unblocked after last cross-project blocker deleted, still %s", dep.Status)
+	}
+	if len(dep.DependsOn) != 0 {
+		t.Errorf("expected DependsOn to be empty, got %v", dep.DependsOn)
 	}
 }
