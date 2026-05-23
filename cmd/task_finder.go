@@ -13,7 +13,11 @@ import (
 
 // FindTaskByIdentifier finds a task by short ID, UUID, or title prefix.
 // Returns an error if no match is found or if a title prefix matches multiple tasks.
+// The identifier is trimmed of surrounding whitespace before matching; UUID
+// comparison is case-insensitive so that uppercase paste from external tools
+// resolves correctly.
 func FindTaskByIdentifier(project *models.Project, identifier string) (*models.Task, error) {
+	identifier = strings.TrimSpace(identifier)
 	// Guard empty identifier: HasPrefix("anything", "") below is always true,
 	// so without this check an empty arg silently matches the first task.
 	if identifier == "" {
@@ -27,13 +31,16 @@ func FindTaskByIdentifier(project *models.Project, identifier string) (*models.T
 		}
 	}
 
-	// Try as UUID
-	if task := project.GetTaskByID(identifier); task != nil {
-		return task, nil
+	// Try as UUID (case-insensitive: UUIDs are stored lowercase but users
+	// may paste uppercase from external issue trackers or clipboard).
+	lowerID := strings.ToLower(identifier)
+	for _, task := range project.Tasks {
+		if strings.ToLower(task.ID) == lowerID {
+			return task, nil
+		}
 	}
 
 	// Try as title prefix (case-insensitive)
-	lowerID := strings.ToLower(identifier)
 	var matches []*models.Task
 	var exactMatches []*models.Task
 	for _, task := range project.Tasks {

@@ -214,6 +214,56 @@ func TestFindTaskByIdentifierTitleMatchAmbiguous(t *testing.T) {
 	}
 }
 
+// Regression: UUIDs are stored lowercase but users may paste uppercase
+// (e.g., from external issue trackers). FindTaskByIdentifier must resolve
+// case-insensitively when the query looks like a full UUID.
+func TestFindTaskByIdentifierUUIDCaseInsensitive(t *testing.T) {
+	project := testutil.NewTestProject("Test Project")
+
+	task, err := models.NewTask("abc123-def456", 1, models.TaskTypeTask, "Some Task")
+	if err != nil {
+		t.Fatal(err)
+	}
+	project.Tasks = []*models.Task{task}
+
+	got, findErr := FindTaskByIdentifier(project, "ABC123-DEF456")
+	if findErr != nil {
+		t.Fatalf("FindTaskByIdentifier should match uppercase UUID: %v", findErr)
+	}
+	if got != task {
+		t.Fatalf("expected task, got %v", got)
+	}
+}
+
+// Regression: shell quoting or paste may include surrounding whitespace.
+// FindTaskByIdentifier should trim before matching.
+func TestFindTaskByIdentifierWhitespaceTrimmed(t *testing.T) {
+	project := testutil.NewTestProject("Test Project")
+
+	task, err := models.NewTask("uuid-trim", 5, models.TaskTypeTask, "Trim Task")
+	if err != nil {
+		t.Fatal(err)
+	}
+	project.Tasks = []*models.Task{task}
+
+	got, findErr := FindTaskByIdentifier(project, "  uuid-trim  ")
+	if findErr != nil {
+		t.Fatalf("FindTaskByIdentifier should match after trimming whitespace: %v", findErr)
+	}
+	if got != task {
+		t.Fatalf("expected task, got %v", got)
+	}
+
+	// Whitespace-only input is effectively empty and must error.
+	_, findErr = FindTaskByIdentifier(project, "   ")
+	if findErr == nil {
+		t.Fatal("whitespace-only identifier should return error")
+	}
+	if !errors.Is(findErr, tterrors.ErrTaskNotFound) {
+		t.Fatalf("expected ErrTaskNotFound, got: %v", findErr)
+	}
+}
+
 func TestFindActionTaskByID(t *testing.T) {
 	project := testutil.NewTestProject("Test Project")
 
