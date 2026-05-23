@@ -70,7 +70,7 @@ var registry = map[string]iconPair{
 	// Alert/Misc
 	"warning": {"⚠️", "⚠"},
 	"star":    {"⭐", "★"},
-	"streak":  {"⚡", "⚡"},
+	"streak":  {"⚡", "↯"},
 	"success": {"✅", "✓"},
 	"error":   {"❌", "✕"},
 	"close":   {"❌", "✕"},

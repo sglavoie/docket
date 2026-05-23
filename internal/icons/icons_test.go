@@ -2,6 +2,17 @@ package icons
 
 import "testing"
 
+func TestStreakUnicodeFallbackDistinct(t *testing.T) {
+	SetUseEmoji(false)
+	unicode := Get("streak")
+	SetUseEmoji(true)
+	defer SetUseEmoji(false)
+	emoji := Get("streak")
+	if unicode == emoji {
+		t.Errorf("streak unicode fallback %q must differ from emoji %q", unicode, emoji)
+	}
+}
+
 func TestGetUnknownKey(t *testing.T) {
 	if got := Get("nonexistent_key"); got != "" {
 		t.Errorf("Get(unknown) = %q, want %q", got, "")
@@ -56,7 +67,7 @@ func TestGetUnicodeDefault(t *testing.T) {
 		{"checkbox.unchecked", "☐"},
 		{"warning", "⚠"},
 		{"star", "★"},
-		{"streak", "⚡"},
+		{"streak", "↯"},
 		{"success", "✓"},
 		{"error", "✕"},
 		{"close", "✕"},
