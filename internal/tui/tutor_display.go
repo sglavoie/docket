@@ -28,19 +28,12 @@ func (m *TutorModel) renderTopicList() string {
 			if lastCat != "" {
 				lines = append(lines, "")
 			}
-			header := t.Category
-			if lipgloss.Width(header) > listW {
-				header = header[:listW-1] + "\u2026"
-			}
+			header := truncateToVisualWidth(t.Category, listW)
 			lines = append(lines, mutedCat.Render(header))
 			lastCat = t.Category
 		}
 
-		title := t.Title
-		maxTitleW := listW - 3
-		if lipgloss.Width(title) > maxTitleW {
-			title = title[:maxTitleW-1] + "\u2026"
-		}
+		title := truncateToVisualWidth(t.Title, listW-3)
 
 		if idx == m.selectedIndex {
 			if m.activePane == 0 {
