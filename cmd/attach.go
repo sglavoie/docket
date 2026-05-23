@@ -176,17 +176,24 @@ func runAttach(cmd *cobra.Command, args []string) error { //nolint:gocyclo
 		return fmt.Errorf("failed to copy attachment: %w", err)
 	}
 
-	// Add attachment to task metadata
-	err = task.AddAttachment(filename, false, absPath)
-	if err != nil {
+	// Add attachment to task metadata. Remove the just-copied file on failure
+	// (validation or save) so we don't leave orphaned bytes in .attachments/.
+	cleanupCopiedFile := func() {
+		if rmErr := storage.RemoveAttachmentFile(project, task, filename); rmErr != nil {
+			fmt.Fprintf(os.Stderr, "warning: failed to clean up copied attachment: %v\n", rmErr)
+		}
+	}
+
+	if err = task.AddAttachment(filename, false, absPath); err != nil {
+		cleanupCopiedFile()
 		return err
 	}
 
-	err = SaveProject(project, &SaveOptions{
+	if err = SaveProject(project, &SaveOptions{
 		Config: cfg, ConfigManager: configManager,
 		UndoAction: "Attach File", UndoContext: filename,
-	})
-	if err != nil {
+	}); err != nil {
+		cleanupCopiedFile()
 		return err
 	}
 
