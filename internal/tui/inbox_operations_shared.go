@@ -33,12 +33,12 @@ func inboxOpenSectionPicker(v inboxOpsView) tea.Cmd {
 }
 
 func inboxOpenTaskEditor(v inboxOpsView) tea.Cmd {
-	task, _ := v.getInboxTaskRef()
+	task, project := v.getInboxTaskRef()
 	if task == nil {
 		return nil
 	}
 	return func() tea.Msg {
-		return EditTaskMsg{Task: task}
+		return EditTaskMsg{Task: task, Project: project}
 	}
 }
 
