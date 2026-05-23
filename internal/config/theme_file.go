@@ -8,6 +8,8 @@ import (
 	"regexp"
 	"strings"
 	"time"
+
+	"github.com/sglavoie/tt/internal/util"
 )
 
 const themeFileSchema = "tt.theme/v1"
@@ -142,7 +144,7 @@ func (m *Manager) WriteTheme(tf ThemeFile) error {
 	if err != nil {
 		return fmt.Errorf("marshal theme: %w", err)
 	}
-	return os.WriteFile(path, append(data, '\n'), 0600)
+	return util.AtomicWriteFile(path, append(data, '\n'), 0600)
 }
 
 // DeleteTheme removes the named theme file from ThemesDir.

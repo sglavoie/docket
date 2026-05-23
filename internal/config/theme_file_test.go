@@ -4,7 +4,10 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"testing"
+	"time"
 )
 
 func newTestManager(t *testing.T) *Manager {
@@ -62,6 +65,69 @@ func TestDeleteTheme_MissingFile(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "nonexistent") {
 		t.Errorf("error %q should mention the theme name", err.Error())
+	}
+}
+
+// TestWriteTheme_AtomicReplacement verifies that WriteTheme replaces an
+// existing theme file atomically: a concurrent reader must never observe an
+// empty/truncated/partial file. A non-atomic implementation that uses
+// os.WriteFile (which opens O_TRUNC|O_WRONLY) exposes a window where the
+// file is zero bytes or partially written.
+func TestWriteTheme_AtomicReplacement(t *testing.T) {
+	mgr := newTestManager(t)
+	tf := testThemeFile("atomic-theme")
+	if err := mgr.WriteTheme(tf); err != nil {
+		t.Fatalf("seed WriteTheme: %v", err)
+	}
+	path, _ := mgr.ThemePath("atomic-theme")
+
+	var stop atomic.Bool
+	var wg sync.WaitGroup
+	var observedEmpty atomic.Bool
+
+	// Reader goroutine: continuously stats and reads the theme file.
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		for !stop.Load() {
+			info, err := os.Stat(path)
+			if err != nil {
+				continue
+			}
+			if info.Size() == 0 {
+				observedEmpty.Store(true)
+				return
+			}
+			data, err := os.ReadFile(path)
+			if err != nil {
+				continue
+			}
+			if len(data) == 0 {
+				observedEmpty.Store(true)
+				return
+			}
+			if _, err := UnmarshalThemeFile(data); err != nil {
+				// Partial JSON parses as invalid — treat as corruption.
+				observedEmpty.Store(true)
+				return
+			}
+		}
+	}()
+
+	// Writer: repeatedly overwrite with a fresh theme.
+	deadline := time.Now().Add(200 * time.Millisecond)
+	for time.Now().Before(deadline) {
+		if err := mgr.WriteTheme(tf); err != nil {
+			stop.Store(true)
+			wg.Wait()
+			t.Fatalf("WriteTheme: %v", err)
+		}
+	}
+	stop.Store(true)
+	wg.Wait()
+
+	if observedEmpty.Load() {
+		t.Fatal("reader observed empty/partial theme file during concurrent WriteTheme — file replacement is not atomic")
 	}
 }
 
