@@ -184,8 +184,8 @@ func (m *AppModel) buildBreadcrumb() string {
 	crumb := strings.Join(parts, sep)
 	// Truncate total breadcrumb if it would crowd out the help text.
 	maxLen := max(m.width/2, 20)
-	if len(crumb) > maxLen {
-		crumb = crumb[:maxLen-1] + "…"
+	if lipgloss.Width(crumb) > maxLen {
+		crumb = truncateToVisualWidth(crumb, maxLen)
 	}
 
 	// Esc-preview: show what pressing Esc will return to.
@@ -222,8 +222,8 @@ func (m *AppModel) breadcrumbLabel(vt ViewType, maxProjectLen int) string {
 			if idx := strings.Index(label, " ["); idx > 0 {
 				label = label[:idx]
 			}
-			if len(label) > maxProjectLen {
-				label = label[:maxProjectLen-1] + "…"
+			if lipgloss.Width(label) > maxProjectLen {
+				label = truncateToVisualWidth(label, maxProjectLen)
 			}
 		}
 	}
@@ -234,8 +234,8 @@ func (m *AppModel) breadcrumbLabel(vt ViewType, maxProjectLen int) string {
 		case ViewProjectTree:
 			if m.currentProject != nil {
 				name := m.currentProject.Name
-				if len(name) > maxProjectLen {
-					name = name[:maxProjectLen-1] + "…"
+				if lipgloss.Width(name) > maxProjectLen {
+					name = truncateToVisualWidth(name, maxProjectLen)
 				}
 				label = name
 			} else {
