@@ -3,6 +3,7 @@ package tui
 import (
 	"fmt"
 	"strconv"
+	"strings"
 
 	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
@@ -47,7 +48,7 @@ func (s *ScoreFilterInput) Enter(customValue *float64) {
 func (s *ScoreFilterInput) HandleKey(msg tea.KeyPressMsg) (value *float64, done bool, cmd tea.Cmd) {
 	switch msg.String() {
 	case "enter":
-		val, err := strconv.ParseFloat(s.Input.Value(), 64)
+		val, err := strconv.ParseFloat(strings.TrimSpace(s.Input.Value()), 64)
 		if err == nil && val > 0 {
 			s.active = false
 			return &val, true, nil
