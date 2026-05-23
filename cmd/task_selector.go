@@ -80,7 +80,10 @@ func SelectTask(project *models.Project, args []string, filter TaskFilter, promp
 // Returns the task, its project, and an error.
 func SelectActionTask(cfg *config.Config, args []string, prompt, emptyMsg string) (*models.Task, *models.Project, error) {
 	if len(args) > 0 {
-		task, project := FindActionTaskByID(cfg, args[0])
+		task, project, err := FindActionTaskByID(cfg, args[0])
+		if err != nil {
+			return nil, nil, err
+		}
 		if task == nil {
 			return nil, nil, fmt.Errorf("action not found: %s. Use 'tt board list' to see available actions", args[0])
 		}

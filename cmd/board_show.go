@@ -44,7 +44,10 @@ func runBoardShow(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	task, project := FindActionTaskByID(cfg, args[0])
+	task, project, err := FindActionTaskByID(cfg, args[0])
+	if err != nil {
+		return err
+	}
 	if task == nil {
 		return fmt.Errorf("action not found: %s", args[0])
 	}

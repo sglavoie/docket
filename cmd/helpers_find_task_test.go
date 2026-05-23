@@ -242,7 +242,10 @@ func TestFindActionTaskByID(t *testing.T) {
 	}
 
 	t.Run("mixed numeric prefix matches UUID prefix", func(t *testing.T) {
-		gotTask, gotProject := FindActionTaskByID(cfg, "123abc")
+		gotTask, gotProject, err := FindActionTaskByID(cfg, "123abc")
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
 		if gotTask == nil {
 			t.Fatal("expected task match for UUID prefix")
 		}
@@ -255,7 +258,10 @@ func TestFindActionTaskByID(t *testing.T) {
 	})
 
 	t.Run("pure numeric query still matches short ID", func(t *testing.T) {
-		gotTask, gotProject := FindActionTaskByID(cfg, "123")
+		gotTask, gotProject, err := FindActionTaskByID(cfg, "123")
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
 		if gotTask == nil {
 			t.Fatal("expected task match for short ID")
 		}
@@ -271,9 +277,73 @@ func TestFindActionTaskByID(t *testing.T) {
 	// first loadable project because HasPrefix("", "") is true. Guard against
 	// returning arbitrary tasks for what is effectively a missing argument.
 	t.Run("empty query returns no match", func(t *testing.T) {
-		gotTask, gotProject := FindActionTaskByID(cfg, "")
+		gotTask, gotProject, err := FindActionTaskByID(cfg, "")
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
 		if gotTask != nil || gotProject != nil {
 			t.Fatalf("FindActionTaskByID(\"\") should return (nil, nil); got %v / %v", gotTask, gotProject)
+		}
+	})
+
+	// Regression: a UUID prefix that matches more than one task across loaded
+	// projects must return ErrAmbiguousIdentifier rather than silently picking
+	// the first match (potentially acting on the wrong task).
+	t.Run("ambiguous UUID prefix returns ambiguity error", func(t *testing.T) {
+		ambigProject := testutil.NewTestProject("Ambig Project")
+		taskA, terr := models.NewTask("abc11111-0000-0000-0000-000000000000", 1, models.TaskTypeTask, "Alpha")
+		if terr != nil {
+			t.Fatal(terr)
+		}
+		taskB, terr := models.NewTask("abc22222-0000-0000-0000-000000000000", 2, models.TaskTypeTask, "Beta")
+		if terr != nil {
+			t.Fatal(terr)
+		}
+		ambigProject.Tasks = []*models.Task{taskA, taskB}
+		ambigProject.NextShortID = 3
+
+		ambigRepo := testutil.NewMockRepository()
+		if err := ambigRepo.Save(ambigProject); err != nil {
+			t.Fatal(err)
+		}
+		swap := storage.DefaultRepository
+		storage.DefaultRepository = ambigRepo
+		defer func() { storage.DefaultRepository = swap }()
+
+		ambigCfg := &config.Config{Projects: []*models.Project{ambigProject}}
+		gotTask, gotProject, err := FindActionTaskByID(ambigCfg, "abc")
+		if err == nil {
+			t.Fatalf("expected ambiguity error, got task=%v project=%v", gotTask, gotProject)
+		}
+		if !errors.Is(err, tterrors.ErrAmbiguousIdentifier) {
+			t.Fatalf("expected ErrAmbiguousIdentifier, got: %v", err)
+		}
+		if gotTask != nil || gotProject != nil {
+			t.Fatalf("ambiguous lookup should not return a task; got %v / %v", gotTask, gotProject)
+		}
+	})
+
+	// Regression: UUIDs are stored lowercase but users may paste uppercase
+	// from external tools. Resolution must be case-insensitive.
+	t.Run("uppercase UUID prefix matches lowercase stored ID", func(t *testing.T) {
+		gotTask, _, err := FindActionTaskByID(cfg, "123ABC")
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if gotTask == nil || gotTask.ID != prefixTask.ID {
+			t.Fatalf("expected case-insensitive UUID prefix match, got %v", gotTask)
+		}
+	})
+
+	// Regression: shell paste / quoting often leaves whitespace around the
+	// argument. Trim before resolving rather than failing to match.
+	t.Run("whitespace around query is trimmed", func(t *testing.T) {
+		gotTask, _, err := FindActionTaskByID(cfg, "  123abc  ")
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if gotTask == nil || gotTask.ID != prefixTask.ID {
+			t.Fatalf("expected trimmed query to match, got %v", gotTask)
 		}
 	})
 }

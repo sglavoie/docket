@@ -202,12 +202,28 @@ func LoadCurrentProject() (*models.Project, *config.Config, *config.Manager, err
 // Returns the task and its project, or nil, nil if not found.
 // An empty query never matches; HasPrefix("", "") would otherwise match the
 // first task in the first loadable project.
-func FindActionTaskByID(cfg *config.Config, query string) (*models.Task, *models.Project) {
+//
+// For UUID-prefix queries, all loadable projects are scanned and an
+// AmbiguousIdentifierError is returned when the prefix matches more than one
+// task. Without this check the first match would silently win, so the user
+// could be acting on the wrong task. Short-ID queries are scoped per-project
+// (short IDs are not globally unique), so the first hit is returned.
+// Prefix matching is case-insensitive — UUIDs are stored lowercase but users
+// may paste uppercase from copy/paste.
+func FindActionTaskByID(cfg *config.Config, query string) (*models.Task, *models.Project, error) {
+	query = strings.TrimSpace(query)
 	if query == "" {
-		return nil, nil
+		return nil, nil, nil
 	}
 	shortID, err := strconv.Atoi(query)
 	isShortID := err == nil
+
+	lowerQuery := strings.ToLower(query)
+	type match struct {
+		task    *models.Task
+		project *models.Project
+	}
+	var prefixMatches []match
 
 	for _, project := range cfg.GetAllLoadableProjects() {
 		if err := storage.LoadProject(project); err != nil {
@@ -216,14 +232,31 @@ func FindActionTaskByID(cfg *config.Config, query string) (*models.Task, *models
 		}
 		for _, task := range project.Tasks {
 			if isShortID && task.ShortID == shortID {
-				return task, project
+				return task, project, nil
 			}
-			if !isShortID && strings.HasPrefix(task.ID, query) {
-				return task, project
+			if !isShortID && strings.HasPrefix(strings.ToLower(task.ID), lowerQuery) {
+				prefixMatches = append(prefixMatches, match{task: task, project: project})
 			}
 		}
 	}
-	return nil, nil
+
+	switch len(prefixMatches) {
+	case 0:
+		return nil, nil, nil
+	case 1:
+		return prefixMatches[0].task, prefixMatches[0].project, nil
+	default:
+		limit := min(len(prefixMatches), 5)
+		parts := make([]string, limit)
+		for i := range limit {
+			parts[i] = fmt.Sprintf("#%d %s (%s)", prefixMatches[i].task.ShortID, prefixMatches[i].task.Title, prefixMatches[i].task.ID[:8])
+		}
+		candidates := strings.Join(parts, ", ")
+		if len(prefixMatches) > 5 {
+			candidates += fmt.Sprintf(", ... (%d more)", len(prefixMatches)-5)
+		}
+		return nil, nil, tterrors.NewAmbiguousIdentifierError(query, candidates)
+	}
 }
 
 // LoadConfigAndProject loads the config and looks up a project by slug or ID.
