@@ -3,9 +3,13 @@ package tui
 import (
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/testutil"
+	"github.com/sglavoie/tt/internal/util"
 )
 
 func newTestWeeklyReviewModel(cfg *config.Config) *WeeklyReviewModel {
@@ -97,6 +101,71 @@ func TestWeeklyReview_TabCounts(t *testing.T) {
 	}
 	if taskCount != 0 {
 		t.Errorf("expected 0 task items, got %d", taskCount)
+	}
+}
+
+// TestWeeklyReview_UpcomingWeekWindowIsSevenDays verifies that the "Upcoming Week"
+// section spans exactly 7 days (today through today+6). A task due today+7 must
+// not be included; otherwise the window is 8 days, contradicting the section name
+// and the in-code comment.
+func TestWeeklyReview_UpcomingWeekWindowIsSevenDays(t *testing.T) {
+	mockRepo := testutil.NewMockRepository()
+	oldRepo := storage.DefaultRepository
+	storage.DefaultRepository = mockRepo
+	defer func() { storage.DefaultRepository = oldRepo }()
+
+	today := util.StartOfDay(time.Now())
+
+	// Build stored project with two tasks.
+	storedProject, err := models.NewProject("p1", "Proj", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	dueIn6 := today.AddDate(0, 0, 6).Add(12 * time.Hour)
+	task6, err := models.NewTask("t6", 1, models.TaskTypeTask, "In window")
+	if err != nil {
+		t.Fatal(err)
+	}
+	task6.DueDate = &dueIn6
+	task6.Status = models.StatusTodo
+
+	dueIn7 := today.AddDate(0, 0, 7).Add(12 * time.Hour)
+	task7, err := models.NewTask("t7", 2, models.TaskTypeTask, "Out of window")
+	if err != nil {
+		t.Fatal(err)
+	}
+	task7.DueDate = &dueIn7
+	task7.Status = models.StatusTodo
+	storedProject.Tasks = []*models.Task{task6, task7}
+	mockRepo.Projects[storedProject.ID] = storedProject
+
+	// Use a separate project pointer in config so MockRepository.Load can
+	// deep-copy without aliasing the source.
+	configProject := &models.Project{ID: storedProject.ID, Name: storedProject.Name}
+	cfg := &config.Config{Projects: []*models.Project{configProject}}
+	m := newTestWeeklyReviewModel(cfg)
+	m.loadData()
+
+	var titles []string
+	for _, wt := range m.upcomingWeek {
+		titles = append(titles, wt.Task.Title)
+	}
+
+	foundIn := false
+	foundOut := false
+	for _, title := range titles {
+		if title == "In window" {
+			foundIn = true
+		}
+		if title == "Out of window" {
+			foundOut = true
+		}
+	}
+	if !foundIn {
+		t.Errorf("expected task due in 6 days to appear in upcoming week, got titles=%v", titles)
+	}
+	if foundOut {
+		t.Errorf("task due 7 days from today must not appear in 'Upcoming Week' (window should be 7 days, not 8); got titles=%v", titles)
 	}
 }
 

@@ -37,7 +37,7 @@ func (m *WeeklyReviewModel) loadData() { //nolint:gocyclo
 
 	staleProjectThreshold := now.AddDate(0, 0, -staleProjectDays)
 	staleTaskThreshold := now.AddDate(0, 0, -staleTaskDays)
-	weekFromNow := today.AddDate(0, 0, 8) // Next 7 days (exclusive end)
+	weekFromNow := today.AddDate(0, 0, 7) // Next 7 days (today..today+6), exclusive end
 
 	var totalActive, highPriCount int
 
