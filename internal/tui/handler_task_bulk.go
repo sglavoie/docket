@@ -38,20 +38,20 @@ func (m *AppModel) handleCommandPaletteBulkAction(msg CommandPaletteBulkActionMs
 		return true, nil
 	}
 
-	// Apply action to all tasks
+	// Apply action to all tasks. Gate the transition check outside MutateTask
+	// so skipped tasks neither inflate the count nor have their UpdatedAt bumped.
 	count := 0
 	var projects []*models.Project
 	for _, items := range projectTasks {
 		for _, item := range items {
-			mutated := item.Project.MutateTask(item.Task.ID, func(t *models.Task) {
-				if t.CanTransitionTo(targetStatus) != "" {
-					return
-				}
+			task := item.Project.GetTaskByID(item.Task.ID)
+			if task == nil || task.CanTransitionTo(targetStatus) != "" {
+				continue
+			}
+			item.Project.MutateTask(item.Task.ID, func(t *models.Task) {
 				t.ApplyTransition(targetStatus)
 			})
-			if mutated {
-				count++
-			}
+			count++
 		}
 		if len(items) > 0 {
 			projects = append(projects, items[0].Project)
