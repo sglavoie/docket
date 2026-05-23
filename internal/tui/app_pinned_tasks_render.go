@@ -41,12 +41,9 @@ func (m *AppModel) renderPinnedTasksBar(width int) string {
 		prefixWidth := 1 + 1
 		titleWidth := max(perEntryWidth-prefixWidth, 3)
 
-		title := p.Title
-		titleRunes := []rune(title)
-		if len(titleRunes) > titleWidth {
-			title = string(titleRunes[:titleWidth-1]) + "…"
-		} else if len(titleRunes) < titleWidth {
-			title += strings.Repeat(" ", titleWidth-len(titleRunes))
+		title := truncateToVisualWidth(p.Title, titleWidth)
+		if w := lipgloss.Width(title); w < titleWidth {
+			title += strings.Repeat(" ", titleWidth-w)
 		}
 
 		entries = append(entries, typeBadge+" "+title)
