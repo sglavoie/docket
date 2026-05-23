@@ -376,8 +376,9 @@ func ScorePercent(score float64, profile *ScoringProfile) float64 {
 	if score <= defS {
 		// Below or at default: linear [minS, defS] -> [0, mid]
 		if defS <= minS {
-			// No below-default range
-			pct = 0
+			// No below-default range: the only representable score in this
+			// segment is defS itself, which must still map to mid (not 0).
+			pct = mid
 		} else {
 			pct = (score - minS) / (defS - minS) * mid
 		}

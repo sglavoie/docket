@@ -189,6 +189,25 @@ func TestScorePercentEdgeCases(t *testing.T) {
 		}
 	})
 
+	t.Run("score at default maps to mid even when defS==minS", func(t *testing.T) {
+		// Profile where Min == Default but Max > Default for the dimension.
+		// MinScore == DefaultScore but MaxScore is larger, so the "below
+		// default" branch has zero range. Score equal to defS should still
+		// map to mid (150), not 0.
+		profile := ScoringProfile{
+			ID: "no-below", Name: "NoBelow", Formula: FormulaWeightedSum,
+			Dimensions: []ScoringDimension{
+				{ID: "a", Name: "A", Min: 3, Max: 10, Default: 3, Weight: 1, Source: SourceManual},
+			},
+		}
+		defS := DefaultScore(&profile)
+		pct := ScorePercent(defS, &profile)
+		mid := float64(MaxNormalizedScoreValue) / 2
+		if math.Abs(pct-mid) > 0.01 {
+			t.Errorf("score at default should map to mid (%f), got %f", mid, pct)
+		}
+	})
+
 	t.Run("zero score with multiplicative formula", func(t *testing.T) {
 		profile := ScoringProfile{
 			ID: "mult-zero", Name: "MultZero", Formula: FormulaMultiply,
