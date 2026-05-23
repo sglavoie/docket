@@ -49,18 +49,25 @@ func applyHierarchicalAction(task *models.Task, action RuleAction, evalCtx *Eval
 	case ActionCascadeTag:
 		modified := false
 		for _, child := range task.Children {
-			if !child.HasTag(action.Value) {
-				child.AddTag(action.Value)
-				recordModified(result, child)
-				modified = true
+			if child.HasTag(action.Value) {
+				continue
 			}
+			child.AddTag(action.Value)
+			// task.AddTag silently rejects invalid tags (empty, too long, or
+			// containing forbidden characters). Re-check presence so we don't
+			// record children as modified when nothing actually changed.
+			if !child.HasTag(action.Value) {
+				continue
+			}
+			recordModified(result, child)
+			modified = true
 		}
 		return modified
 
 	case ActionInheritTag:
 		if task.Parent != nil && task.Parent.HasTag(action.Value) && !task.HasTag(action.Value) {
 			task.AddTag(action.Value)
-			return true
+			return task.HasTag(action.Value)
 		}
 
 	case ActionNotifyParent:

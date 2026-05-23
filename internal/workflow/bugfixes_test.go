@@ -157,3 +157,34 @@ func TestEvaluation_ConditionalRuleReFiresAfterRecursiveRound(t *testing.T) {
 		t.Errorf("expected status=done after rule A's condition became true via recursive re-eval, got %s", task.Status)
 	}
 }
+
+// TestApplyHierarchicalAction_CascadeTagSilentValidationFailure verifies that
+// ActionCascadeTag does not report children as modified when task.AddTag
+// silently rejects the value due to validation (empty, too long, forbidden
+// characters). Without re-checking presence, an invalid cascade tag would mark
+// every child as modified, churning their UpdatedAt at the caller and forcing
+// unnecessary persistence work.
+func TestApplyHierarchicalAction_CascadeTagSilentValidationFailure(t *testing.T) {
+	parent := &models.Task{ID: "p", Status: models.StatusTodo}
+	childA := &models.Task{ID: "a", Status: models.StatusTodo, Parent: parent}
+	childB := &models.Task{ID: "b", Status: models.StatusTodo, Parent: parent}
+	parent.Children = []*models.Task{childA, childB}
+
+	evalCtx := &EvaluationContext{
+		AllTasks: []*models.Task{parent, childA, childB},
+		TaskMap:  map[string]*models.Task{"p": parent, "a": childA, "b": childB},
+	}
+
+	result := &EvaluationResult{}
+	// Empty string is silently rejected by task.AddTag.
+	modified := applyHierarchicalAction(parent, RuleAction{ActionType: ActionCascadeTag, Value: ""}, evalCtx, result)
+	if modified {
+		t.Error("expected modified=false when cascade tag is invalid and no child actually changed")
+	}
+	if len(result.ModifiedTasks) != 0 {
+		t.Errorf("expected no ModifiedTasks for invalid cascade tag, got %d", len(result.ModifiedTasks))
+	}
+	if len(childA.Tags) != 0 || len(childB.Tags) != 0 {
+		t.Errorf("expected no tags on children for invalid value, got A=%v B=%v", childA.Tags, childB.Tags)
+	}
+}
