@@ -30,6 +30,11 @@ func TestSentinelErrors(t *testing.T) {
 		{"ErrRequiredField", ErrRequiredField, "required field missing"},
 		{"ErrInvalidValue", ErrInvalidValue, "invalid value"},
 		{"ErrNoChanges", ErrNoChanges, "no changes specified"},
+		{"ErrSelfDependency", ErrSelfDependency, "a task cannot depend on itself"},
+		{"ErrDuplicateDep", ErrDuplicateDep, "duplicate dependency"},
+		{"ErrAmbiguousIdentifier", ErrAmbiguousIdentifier, "ambiguous identifier"},
+		{"ErrCanceled", ErrCanceled, "canceled"},
+		{"ErrEmptyTitle", ErrEmptyTitle, "blocker title cannot be empty"},
 	}
 
 	for _, tc := range testCases {
@@ -263,6 +268,32 @@ func TestNewSaveProjectError(t *testing.T) {
 	}
 	if !errors.Is(err, innerErr) {
 		t.Error("NewSaveProjectError should wrap the inner error")
+	}
+}
+
+func TestNewSaveConfigError(t *testing.T) {
+	innerErr := errors.New("permission denied")
+	err := NewSaveConfigError(innerErr)
+
+	if !errors.Is(err, ErrConfigSaveFailed) {
+		t.Error("NewSaveConfigError should wrap ErrConfigSaveFailed")
+	}
+	if !errors.Is(err, innerErr) {
+		t.Error("NewSaveConfigError should wrap the inner error")
+	}
+}
+
+func TestNewAmbiguousIdentifierError(t *testing.T) {
+	err := NewAmbiguousIdentifierError("login", "#1 Login, #3 Login Flow")
+
+	if !errors.Is(err, ErrAmbiguousIdentifier) {
+		t.Error("NewAmbiguousIdentifierError should wrap ErrAmbiguousIdentifier")
+	}
+	if !strings.Contains(err.Error(), "login") {
+		t.Errorf("error message should contain identifier, got %q", err.Error())
+	}
+	if !strings.Contains(err.Error(), "#1 Login, #3 Login Flow") {
+		t.Errorf("error message should contain candidates, got %q", err.Error())
 	}
 }
 
