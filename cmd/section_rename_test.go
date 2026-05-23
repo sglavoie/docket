@@ -70,6 +70,18 @@ func TestSectionRename(t *testing.T) {
 		}
 	})
 
+	t.Run("rejects identical old and new name", func(t *testing.T) {
+		deps, project := setupSectionCommandTest(t)
+
+		project.EnsureSection("SameName")
+		deps.Repository.Projects[project.ID] = project
+
+		err := runSectionRename(nil, []string{"SameName", "SameName"})
+		if err == nil {
+			t.Error("runSectionRename() should error when old and new names are identical")
+		}
+	})
+
 	t.Run("rejects new name with spaces", func(t *testing.T) {
 		deps, project := setupSectionCommandTest(t)
 
