@@ -28,6 +28,34 @@ func StartOfDay(t time.Time) time.Time {
 	return time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, t.Location())
 }
 
+// AddMonthsClamped adds months to t, clamping the day to the target month's
+// last day when t.Day() exceeds it. This avoids Go's default AddDate
+// overflow (Jan 31 + 1 month → Mar 3) which is surprising for date-picker
+// and snooze UX where users expect "+1m" to land in the next calendar month.
+// Negative months are supported. Time-of-day, sub-second precision, and
+// location are preserved.
+func AddMonthsClamped(t time.Time, months int) time.Time {
+	year, month, day := t.Date()
+	targetMonth := int(month) + months
+	targetYear := year + (targetMonth-1)/12
+	targetMonth = ((targetMonth - 1) % 12) + 1
+	if targetMonth <= 0 {
+		targetMonth += 12
+		targetYear--
+	}
+	lastDay := daysInMonth(targetYear, time.Month(targetMonth))
+	if day > lastDay {
+		day = lastDay
+	}
+	hour, minute, sec := t.Clock()
+	return time.Date(targetYear, time.Month(targetMonth), day, hour, minute, sec, t.Nanosecond(), t.Location())
+}
+
+// daysInMonth returns the number of days in the given month.
+func daysInMonth(year int, month time.Month) int {
+	return time.Date(year, month+1, 0, 0, 0, 0, 0, time.UTC).Day()
+}
+
 // DaysBetween returns the number of calendar days from a to b (b - a).
 // This is DST-safe unlike computing hours/24, which can be off by one
 // around daylight saving transitions.
@@ -179,7 +207,7 @@ func parseRelativeOffset(input string, today time.Time) (time.Time, bool, error)
 		return date, ok, err
 	}
 	return parseMatchedOffset(relativeMonthsRe.FindStringSubmatch(input), input, "months", func(n int) time.Time {
-		return today.AddDate(0, n, 0)
+		return AddMonthsClamped(today, n)
 	})
 }
 
@@ -210,9 +238,9 @@ func parseNextDate(input string, today time.Time) (time.Time, bool) {
 	case input == "next week":
 		return today.AddDate(0, 0, 7), true
 	case input == "next month":
-		return today.AddDate(0, 1, 0), true
+		return AddMonthsClamped(today, 1), true
 	case nextYearRe.MatchString(input):
-		return today.AddDate(1, 0, 0), true
+		return AddMonthsClamped(today, 12), true
 	}
 	return time.Time{}, false
 }
@@ -242,9 +270,9 @@ func parseDurationOffset(input string, today time.Time) (time.Time, bool, error)
 	case "week", "weeks":
 		return today.AddDate(0, 0, n*7), true, nil
 	case "month", "months":
-		return today.AddDate(0, n, 0), true, nil
+		return AddMonthsClamped(today, n), true, nil
 	case "year", "years":
-		return today.AddDate(n, 0, 0), true, nil
+		return AddMonthsClamped(today, n*12), true, nil
 	default:
 		return time.Time{}, true, fmt.Errorf("invalid duration in %q", input)
 	}
@@ -347,7 +375,7 @@ func ParseFlexibleDateWithConfig(input, weekEndDay string) (time.Time, error) {
 		case "w":
 			return today.AddDate(0, 0, n*7), nil
 		case "m":
-			return today.AddDate(0, n, 0), nil
+			return AddMonthsClamped(today, n), nil
 		}
 	}
 	return time.Time{}, err

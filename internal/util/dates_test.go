@@ -19,13 +19,13 @@ func TestParseRelativeDate(t *testing.T) {
 		{"tomorrow", "tomorrow", today.AddDate(0, 0, 1), false},
 		{"yesterday", "yesterday", today.AddDate(0, 0, -1), false},
 		{"next week is today+7", "next week", today.AddDate(0, 0, 7), false},
-		{"next month is same day next month", "next month", today.AddDate(0, 1, 0), false},
+		{"next month is same day next month", "next month", AddMonthsClamped(today, 1), false},
 		{"relative +3d", "+3d", today.AddDate(0, 0, 3), false},
 		{"relative +2w", "+2w", today.AddDate(0, 0, 14), false},
-		{"relative +1m", "+1m", today.AddDate(0, 1, 0), false},
+		{"relative +1m", "+1m", AddMonthsClamped(today, 1), false},
 		{"in 5 days", "in 5 days", today.AddDate(0, 0, 5), false},
 		{"in 2 weeks", "in 2 weeks", today.AddDate(0, 0, 14), false},
-		{"in 3 months", "in 3 months", today.AddDate(0, 3, 0), false},
+		{"in 3 months", "in 3 months", AddMonthsClamped(today, 3), false},
 		{"exact date", "2025-06-15", time.Date(2025, 6, 15, 0, 0, 0, 0, time.Local), false},
 		{"invalid", "gibberish", time.Time{}, true},
 		// eod
@@ -231,9 +231,9 @@ func TestParseNaturalLanguageDates(t *testing.T) {
 		{"sep 1", "sep 1", nextOccurrence(time.September, 1), false},
 		{"feb 30 is invalid", "feb 30", time.Time{}, true},
 		{"feb 0 is invalid", "feb 0", time.Time{}, true},
-		{"next year", "next year", today.AddDate(1, 0, 0), false},
-		{"in 1 year", "in 1 year", today.AddDate(1, 0, 0), false},
-		{"in 3 years", "in 3 years", today.AddDate(3, 0, 0), false},
+		{"next year", "next year", AddMonthsClamped(today, 12), false},
+		{"in 1 year", "in 1 year", AddMonthsClamped(today, 12), false},
+		{"in 3 years", "in 3 years", AddMonthsClamped(today, 36), false},
 	}
 
 	for _, tt := range tests {
@@ -245,6 +245,35 @@ func TestParseNaturalLanguageDates(t *testing.T) {
 			}
 			if !tt.wantErr && !got.Equal(tt.want) {
 				t.Errorf("ParseRelativeDate(%q) = %v, want %v", tt.input, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestAddMonthsClampsEndOfMonth(t *testing.T) {
+	// Standard Go AddDate(0, 1, 0) on Jan 31 silently overflows to Mar 3
+	// (Feb has only 28 days). When parsing a user-supplied "+Nm" or
+	// "in N months" offset, the expected behavior is that the result lands
+	// in the next month rather than skipping ahead, so we clamp to the
+	// target month's last day.
+	tests := []struct {
+		name   string
+		base   time.Time
+		months int
+		want   time.Time
+	}{
+		{"jan 31 + 1m clamps to feb 28 in 2025", time.Date(2025, 1, 31, 0, 0, 0, 0, time.UTC), 1, time.Date(2025, 2, 28, 0, 0, 0, 0, time.UTC)},
+		{"jan 31 + 1m clamps to feb 29 in leap year 2024", time.Date(2024, 1, 31, 0, 0, 0, 0, time.UTC), 1, time.Date(2024, 2, 29, 0, 0, 0, 0, time.UTC)},
+		{"may 31 + 1m clamps to jun 30", time.Date(2025, 5, 31, 0, 0, 0, 0, time.UTC), 1, time.Date(2025, 6, 30, 0, 0, 0, 0, time.UTC)},
+		{"jan 30 + 1m clamps to feb 28 in 2025", time.Date(2025, 1, 30, 0, 0, 0, 0, time.UTC), 1, time.Date(2025, 2, 28, 0, 0, 0, 0, time.UTC)},
+		{"jan 15 + 1m stays jan 15->feb 15", time.Date(2025, 1, 15, 0, 0, 0, 0, time.UTC), 1, time.Date(2025, 2, 15, 0, 0, 0, 0, time.UTC)},
+		{"dec 31 + 1m crosses year to jan 31", time.Date(2024, 12, 31, 0, 0, 0, 0, time.UTC), 1, time.Date(2025, 1, 31, 0, 0, 0, 0, time.UTC)},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got := AddMonthsClamped(tc.base, tc.months)
+			if !got.Equal(tc.want) {
+				t.Errorf("AddMonthsClamped(%v, %d) = %v, want %v", tc.base, tc.months, got, tc.want)
 			}
 		})
 	}
@@ -277,7 +306,7 @@ func TestParseFlexibleDate(t *testing.T) {
 		{"3d = 3 days", "3d", today.AddDate(0, 0, 3), false},
 		{"7d = 7 days", "7d", today.AddDate(0, 0, 7), false},
 		{"2w = 2 weeks", "2w", today.AddDate(0, 0, 14), false},
-		{"1m = 1 month", "1m", today.AddDate(0, 1, 0), false},
+		{"1m = 1 month", "1m", AddMonthsClamped(today, 1), false},
 		// Standard inputs still work
 		{"tomorrow", "tomorrow", today.AddDate(0, 0, 1), false},
 		{"today", "today", today, false},
