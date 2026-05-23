@@ -6,12 +6,12 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/sglavoie/tt/internal/scoring"
-	"github.com/sglavoie/tt/internal/tterrors"
 )
 
 var scoreShowCmd = &cobra.Command{
 	Use:   "show <task-ref>",
 	Short: "Show score breakdown for a task",
+	Args:  cobra.ExactArgs(1),
 	RunE:  runScoreShow,
 }
 
@@ -21,7 +21,7 @@ func init() {
 
 func runScoreShow(cmd *cobra.Command, args []string) error {
 	if len(args) < 1 {
-		return tterrors.NewRequiredFieldError("task ID")
+		return fmt.Errorf("requires exactly 1 arg: task-ref")
 	}
 
 	project, cfg, _, err := LoadCurrentProject()

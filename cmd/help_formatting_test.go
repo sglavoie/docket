@@ -31,6 +31,49 @@ func visit(c *cobra.Command, fn func(*cobra.Command)) {
 	}
 }
 
+// TestScoreSubcmdsHaveArgsConstraint verifies that score sub-commands whose
+// Use string declares required positional arguments (<>) also declare a Cobra
+// Args constraint. Without the constraint, Cobra accepts zero arguments and
+// the command fails with a hand-rolled error instead of the standard usage
+// message.
+func TestScoreSubcmdsHaveArgsConstraint(t *testing.T) {
+	root := RootCmd()
+	cases := []struct {
+		path string
+	}{
+		{"tt score show"},
+		{"tt score set"},
+	}
+	for _, tc := range cases {
+		tc := tc
+		t.Run(tc.path, func(t *testing.T) {
+			var found *cobra.Command
+			visit(root, func(c *cobra.Command) {
+				if c.CommandPath() == tc.path {
+					found = c
+				}
+			})
+			if found == nil {
+				t.Fatalf("command %q not found", tc.path)
+			}
+			// A command has a non-nil Args validator only if it was explicitly set.
+			// Calling found.Args directly fails because it requires os.Args — instead
+			// we check the exported ValidArgs or use the unexported sentinel via
+			// string comparison of the UseLine, but the reliable path is to verify
+			// that RunE refuses a zero-arg call gracefully (Cobra enforces Args
+			// before RunE, so a nil Args means Cobra passes through).
+			//
+			// We test this indirectly: execute the command with no args and confirm
+			// Cobra returns an error (due to Args enforcement) before RunE runs.
+			// Because RunE would try to load config (I/O), we can't run it in tests.
+			// Instead, check that Args field is non-nil by running ValidateArgs.
+			if err := found.ValidateArgs([]string{}); err == nil {
+				t.Errorf("command %q accepts 0 args with no error; expected Args constraint to reject empty call", tc.path)
+			}
+		})
+	}
+}
+
 // TestTaskMoveToUseLine verifies that "task move-to" advertises optional args
 // in its Use string, matching its RangeArgs(0, 2) declaration. The Use string
 // must use bracket notation ([task-id] [dest-project]) so that generated help

@@ -9,12 +9,12 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/sglavoie/tt/internal/scoring"
-	"github.com/sglavoie/tt/internal/tterrors"
 )
 
 var scoreSetCmd = &cobra.Command{
 	Use:   "set <task-ref> <dim=value>...",
 	Short: "Set manual scoring dimensions on a task",
+	Args:  cobra.MinimumNArgs(2),
 	Long: `Set one or more scoring dimension values on a task.
 
 Each dimension is specified as key=value where value is an integer.
@@ -33,7 +33,7 @@ func init() {
 
 func runScoreSet(cmd *cobra.Command, args []string) error {
 	if len(args) < 2 {
-		return tterrors.NewRequiredFieldError("task ID and score")
+		return fmt.Errorf("requires at least 2 args: task-ref and at least one dim=value")
 	}
 
 	out, err := getOutputOpts(cmd)
