@@ -210,6 +210,33 @@ func TestTUIStateMachine_LatestUndoToastWins(t *testing.T) {
 	}
 }
 
+// TestTUIStateMachine_NonUndoableStatusInvalidatesUndoCallback ensures that
+// a plain success/info status replacing an undoable toast also invalidates
+// the stored undo callback. Otherwise pressing `u` while a non-undoable
+// message is on screen would silently fire the previous destructive
+// action's undo.
+func TestTUIStateMachine_NonUndoableStatusInvalidatesUndoCallback(t *testing.T) {
+	app := newTestAppModel()
+	called := false
+
+	_ = app.setUndoableStatus("destructive · u to undo", func() tea.Cmd {
+		called = true
+		return nil
+	})
+
+	// A non-undoable status arrives (e.g. tab switch, refresh).
+	app.setSuccessStatus("saved")
+
+	app = sendAppKey(app, syntheticKey('u'))
+
+	if called {
+		t.Fatal("pressing u after a non-undoable status replaced the toast should not invoke the previous undo callback")
+	}
+	if app.statusUndoCb != nil {
+		t.Fatal("non-undoable status should clear statusUndoCb")
+	}
+}
+
 func TestTUIStateMachine_OutlinerSelectionStaysScopedToVisibleTasks(t *testing.T) {
 	project := &models.Project{
 		ID:   "selection-project",

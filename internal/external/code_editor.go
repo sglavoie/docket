@@ -33,7 +33,8 @@ func detectEditorPattern(editor string) editorPattern {
 	base := strings.ToLower(filepath.Base(editor))
 
 	// VS Code and Cursor use --goto file:line
-	if base == "code" || base == "cursor" || strings.HasPrefix(base, "code-") {
+	if base == "code" || base == "cursor" ||
+		strings.HasPrefix(base, "code-") || strings.HasPrefix(base, "cursor-") {
 		return patternGoto
 	}
 

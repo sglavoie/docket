@@ -68,17 +68,27 @@ func (m *AppModel) handleWithRefresh(popView, reload bool, statusMsg string) tea
 }
 
 // setSuccessStatus sets a status message with success styling (green checkmark).
+// A non-undoable status replaces any pending undo toast: leaving statusUndoCb
+// armed would let a later `u` keypress silently invoke the previous
+// destructive action's undo while a different (non-undoable) message is on
+// screen.
 func (m *AppModel) setSuccessStatus(msg string) {
 	m.statusMessage = msg
 	m.statusIsInfo = false
+	m.statusUndoCb = nil
+	m.statusExpiresAt = time.Time{}
 	m.messageLog.Append(msg, MessageLogLevelSuccess)
 	m.openLoops = ComputeOpenLoops(m.config, m.dailyPlanIDs)
 }
 
 // setInfoStatus sets a status message with informational styling (neutral color, no checkmark).
+// Callers that want the message to be undoable must go through
+// setUndoableStatus, which re-installs the callback after this clears it.
 func (m *AppModel) setInfoStatus(msg string) {
 	m.statusMessage = msg
 	m.statusIsInfo = true
+	m.statusUndoCb = nil
+	m.statusExpiresAt = time.Time{}
 	m.messageLog.Append(msg, MessageLogLevelInfo)
 }
 
