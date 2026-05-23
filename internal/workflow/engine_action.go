@@ -281,6 +281,8 @@ func applyAction(task *models.Task, action RuleAction) bool { //nolint:gocyclo
 // semantically equivalent for the fields a workflow rule would set
 // (interval, unit, weekdays, mode). Counters such as Streak/Skipped are
 // ignored so a rule that re-asserts the same pattern is a no-op.
+// Weekdays are compared as sets (order-independent) because ParseRecurrence
+// preserves input order while stored patterns may be sorted differently.
 func recurrencePatternsEqual(a, b *models.RecurrencePattern) bool {
 	if a == nil || b == nil {
 		return a == nil && b == nil
@@ -291,8 +293,14 @@ func recurrencePatternsEqual(a, b *models.RecurrencePattern) bool {
 	if len(a.Weekdays) != len(b.Weekdays) {
 		return false
 	}
-	for i := range a.Weekdays {
-		if a.Weekdays[i] != b.Weekdays[i] {
+	// Compare as sets: build a count map from a and subtract using b.
+	seen := make(map[int]int, len(a.Weekdays))
+	for _, d := range a.Weekdays {
+		seen[d]++
+	}
+	for _, d := range b.Weekdays {
+		seen[d]--
+		if seen[d] < 0 {
 			return false
 		}
 	}

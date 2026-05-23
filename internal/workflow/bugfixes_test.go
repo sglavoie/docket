@@ -188,3 +188,33 @@ func TestApplyHierarchicalAction_CascadeTagSilentValidationFailure(t *testing.T)
 		t.Errorf("expected no tags on children for invalid value, got A=%v B=%v", childA.Tags, childB.Tags)
 	}
 }
+
+// TestRecurrencePatternsEqual_WeekdayOrderIndependent verifies that
+// recurrencePatternsEqual treats weekday slices as sets, not ordered lists.
+// A task stored with weekdays [1, 5] (Mon, Fri) and a rule re-asserting
+// "weekly:fri,mon" (parsed as [5, 1]) represent the same schedule but differ
+// only in element order. Without this fix, ActionSetRecurrence returns true
+// (modified) for every evaluation, spuriously churning UpdatedAt and triggering
+// recursive rule passes.
+func TestRecurrencePatternsEqual_WeekdayOrderIndependent(t *testing.T) {
+	a := &models.RecurrencePattern{Interval: 1, Unit: models.RecurrenceWeekly, Weekdays: []int{1, 5}}
+	b := &models.RecurrencePattern{Interval: 1, Unit: models.RecurrenceWeekly, Weekdays: []int{5, 1}}
+	if !recurrencePatternsEqual(a, b) {
+		t.Error("expected recurrencePatternsEqual to return true for same weekdays in different order")
+	}
+}
+
+// TestApplyAction_SetRecurrenceWeekdayOrderNoOp verifies that ActionSetRecurrence
+// is a no-op when the task already has an equivalent weekly pattern with the same
+// weekdays in a different order.
+func TestApplyAction_SetRecurrenceWeekdayOrderNoOp(t *testing.T) {
+	// Task stored as weekly Mon+Fri in sorted order
+	existing := &models.RecurrencePattern{Interval: 1, Unit: models.RecurrenceWeekly, Weekdays: []int{1, 5}}
+	task := &models.Task{ID: "1", Recurrence: existing}
+
+	// Rule value lists the same days in reverse order
+	modified := applyAction(task, RuleAction{ActionType: ActionSetRecurrence, Value: "weekly:fri,mon"})
+	if modified {
+		t.Error("expected applyAction to return false when recurrence weekdays are the same set in different order")
+	}
+}
