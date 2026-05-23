@@ -22,7 +22,7 @@ func (m *AppModel) handleQuickSwitchToggle() tea.Cmd {
 func (m *AppModel) handlePinnedPopupToggle() tea.Cmd {
 	m.pinnedPopupItems = m.collectPinnedTasks()
 	if len(m.pinnedPopupItems) == 0 {
-		m.setInfoStatus("No pinned tasks — press p on a task to pin it")
+		m.setInfoStatus("No pinned tasks — press tp on a task to pin it")
 		return defaultStatusTimeout()
 	}
 	m.showPinnedPopup = !m.showPinnedPopup
