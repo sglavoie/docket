@@ -24,7 +24,7 @@ Notes are project-level markdown documents stored in the notes/ directory.
 Examples:
   tt note add "Meeting notes"
   tt note add "Design ideas" --tag design --tag architecture
-	tt note add "Quick thought" --tag inbox`,
+  tt note add "Quick thought" --tag inbox`,
 	RunE: runNoteAdd,
 }
 

@@ -20,7 +20,7 @@ opens an interactive selector.
 
 Examples:
   tt select              # Open interactive selector
-	tt select my-project   # Select by slug or ID directly`,
+  tt select my-project   # Select by slug or ID directly`,
 	Args: cobra.MaximumNArgs(1),
 	RunE: runSelect,
 }
