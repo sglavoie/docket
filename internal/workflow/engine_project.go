@@ -56,7 +56,6 @@ func EvaluateProjectRules(ctx *ProjectEvaluationContext, rules []WorkflowRule) *
 			for _, action := range rule.Actions {
 				if action.ActionType == ActionSetProjectStatus {
 					matches = append(matches, matchInfo{rule: rule, statusTo: action.Value})
-					result.TriggeredRuleIDs = append(result.TriggeredRuleIDs, rule.ID)
 					break
 				}
 			}
@@ -82,9 +81,19 @@ func EvaluateProjectRules(ctx *ProjectEvaluationContext, rules []WorkflowRule) *
 	}
 
 	if len(winners) == 1 {
+		// Single winner: only record the applied rule so callers that
+		// increment trigger counts do not inflate counts for lower-priority
+		// rules that matched but were overridden.
 		result.NewStatusIcon = winners[0].statusTo
 		result.AppliedRuleName = winners[0].rule.Name
 		result.AppliedRuleID = winners[0].rule.ID
+		result.TriggeredRuleIDs = []string{winners[0].rule.ID}
+	} else {
+		// Same-priority conflict: surface all tied IDs so callers can report
+		// which rules collided. NewStatusIcon remains empty (neither applied).
+		for _, w := range winners {
+			result.TriggeredRuleIDs = append(result.TriggeredRuleIDs, w.rule.ID)
+		}
 	}
 	// len(winners) > 1: same-priority conflict, neither applied
 

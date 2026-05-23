@@ -218,3 +218,49 @@ func TestApplyAction_SetRecurrenceWeekdayOrderNoOp(t *testing.T) {
 		t.Error("expected applyAction to return false when recurrence weekdays are the same set in different order")
 	}
 }
+
+// TestEvaluateProjectRules_TriggeredIDsOnlyWinner verifies that when priority
+// resolution selects a single winner, TriggeredRuleIDs contains only that
+// winner's ID. Previously all matched rule IDs were included regardless of
+// priority, causing callers to inflate trigger counts for overridden rules.
+func TestEvaluateProjectRules_TriggeredIDsOnlyWinner(t *testing.T) {
+	proj := &models.Project{ID: "proj-1", Name: "Test"}
+	tasks := []*models.Task{
+		{ID: "t1", Status: models.StatusTodo, Type: models.TaskTypeBug, UpdatedAt: time.Now()},
+		{ID: "t2", Status: models.StatusTodo, Type: models.TaskTypeBug, UpdatedAt: time.Now()},
+		{ID: "t3", Status: models.StatusTodo, Type: models.TaskTypeTask, UpdatedAt: time.Now()},
+	}
+	ctx := &ProjectEvaluationContext{Project: proj, Tasks: tasks}
+
+	// r-bugfix (priority 30) should win; r-planning (priority 60) also matches
+	// but loses. Only r-bugfix should appear in TriggeredRuleIDs.
+	rules := []WorkflowRule{
+		{
+			ID: "r-bugfix", Name: "Bugfix Mode", Level: RuleLevelProject, Enabled: true, Priority: 30,
+			Triggers:     []RuleTrigger{{Field: FieldMajorityTaskType, Operation: OpEquals, Value: "bug"}},
+			TriggerLogic: LogicAnd,
+			Actions:      []RuleAction{{ActionType: ActionSetProjectStatus, Value: "bugfix"}},
+		},
+		{
+			ID: "r-planning", Name: "Planning", Level: RuleLevelProject, Enabled: true, Priority: 60,
+			Triggers: []RuleTrigger{
+				{Field: FieldActiveTaskCount, Operation: OpGreaterThan, Value: "0"},
+				{Field: FieldHasInProgressTasks, Operation: OpEquals, Value: "false"},
+			},
+			TriggerLogic: LogicAnd,
+			Actions:      []RuleAction{{ActionType: ActionSetProjectStatus, Value: "planning"}},
+		},
+	}
+
+	result := EvaluateProjectRules(ctx, rules)
+	if result.NewStatusIcon != "bugfix" {
+		t.Fatalf("expected bugfix to win, got %q", result.NewStatusIcon)
+	}
+	if len(result.TriggeredRuleIDs) != 1 {
+		t.Errorf("expected TriggeredRuleIDs to contain only the winner (1), got %d: %v",
+			len(result.TriggeredRuleIDs), result.TriggeredRuleIDs)
+	}
+	if len(result.TriggeredRuleIDs) == 1 && result.TriggeredRuleIDs[0] != "r-bugfix" {
+		t.Errorf("expected TriggeredRuleIDs[0] = r-bugfix, got %q", result.TriggeredRuleIDs[0])
+	}
+}
