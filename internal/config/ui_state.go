@@ -401,8 +401,11 @@ func (c *Config) GetCommandHistory() []string {
 
 // AddCommandToHistory adds a command to the execution history.
 // Most recent commands are at the front. Duplicates are moved to front.
-// Capped at 10 entries.
+// Capped at 10 entries. Empty names are ignored.
 func (c *Config) AddCommandToHistory(name string) {
+	if name == "" {
+		return
+	}
 	const maxHistory = 10
 
 	// Remove existing entry if present

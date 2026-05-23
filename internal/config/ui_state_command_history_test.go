@@ -85,6 +85,24 @@ func TestAddCommandToHistory_Deduplication(t *testing.T) {
 	}
 }
 
+func TestAddCommandToHistory_IgnoresEmpty(t *testing.T) {
+	cfg := NewConfig()
+
+	cfg.AddCommandToHistory("task-add")
+	cfg.AddCommandToHistory("")
+	cfg.AddCommandToHistory("task-list")
+
+	history := cfg.GetCommandHistory()
+	if len(history) != 2 {
+		t.Errorf("expected 2 items (empty name ignored), got %d: %v", len(history), history)
+	}
+	for _, h := range history {
+		if h == "" {
+			t.Error("empty string should not be stored in command history")
+		}
+	}
+}
+
 func TestAddCommandToHistory_MaxWithDuplicates(t *testing.T) {
 	cfg := NewConfig()
 
