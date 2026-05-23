@@ -116,6 +116,36 @@ func TestThemeImport(t *testing.T) {
 		}
 	})
 
+	t.Run("records preset name on slot", func(t *testing.T) {
+		deps, manager := setupThemeImportTest(t)
+		defer deps.Cleanup()
+
+		// Export a custom dark theme under a known name.
+		deps.Config.ThemeDark = config.Theme{BackgroundColor: "#abcdef"}
+		deps.Config.ThemeDarkRev = config.DarkThemeDefaultsRev
+		testutil.AssertNoError(t, manager.Save(deps.Config))
+
+		themeExportSlot = "dark"
+		testutil.AssertNoError(t, runThemeExport(themeExportCmd, []string{"named-preset"}))
+		themeExportSlot = ""
+
+		// Import it back; expect ThemeDarkName to reflect the imported preset.
+		testutil.AssertNoError(t, runThemeImport(themeImportCmd, []string{"named-preset"}))
+
+		reloaded, err := manager.Load()
+		testutil.AssertNoError(t, err)
+		testutil.AssertEqual(t, reloaded.ThemeDarkName, "named-preset")
+
+		// Cross-slot import (--into light) should populate ThemeLightName.
+		themeImportInto = "light"
+		testutil.AssertNoError(t, runThemeImport(themeImportCmd, []string{"named-preset"}))
+		themeImportInto = ""
+
+		reloaded, err = manager.Load()
+		testutil.AssertNoError(t, err)
+		testutil.AssertEqual(t, reloaded.ThemeLightName, "named-preset")
+	})
+
 	t.Run("rejects invalid --into value", func(t *testing.T) {
 		deps, _ := setupThemeImportTest(t)
 		defer deps.Cleanup()
