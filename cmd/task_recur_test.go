@@ -3,6 +3,8 @@ package cmd
 import (
 	"testing"
 
+	"github.com/spf13/cobra"
+
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/testutil"
 )
@@ -444,6 +446,63 @@ func TestRecurDeferConflictDetection(t *testing.T) {
 	// Verify Changed() reports true for explicitly set flags
 	if !cmd.Flags().Changed("defer") {
 		t.Fatal("expected Changed('defer') to be true after Set")
+	}
+}
+
+func TestRecurFromConflictWithActionFlags(t *testing.T) {
+	// --from should be rejected when combined with an action flag (--skip, --clear, --defer)
+	// so that users don't silently lose their --from intent.
+	tests := []struct {
+		name      string
+		setupFunc func(cmd *cobra.Command)
+	}{
+		{
+			name: "--from with --skip",
+			setupFunc: func(cmd *cobra.Command) {
+				_ = cmd.Flags().Set("skip", "true")
+				_ = cmd.Flags().Set("from", "completion")
+			},
+		},
+		{
+			name: "--from with --clear",
+			setupFunc: func(cmd *cobra.Command) {
+				_ = cmd.Flags().Set("clear", "true")
+				_ = cmd.Flags().Set("from", "completion")
+			},
+		},
+		{
+			name: "--from with --defer",
+			setupFunc: func(cmd *cobra.Command) {
+				_ = cmd.Flags().Set("defer", "3")
+				_ = cmd.Flags().Set("from", "completion")
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			cmd := *taskRecurCmd
+			cmd.ResetFlags()
+			cmd.Flags().BoolVar(&taskRecurClear, "clear", false, "")
+			cmd.Flags().BoolVar(&taskRecurSkip, "skip", false, "")
+			cmd.Flags().IntVar(&taskRecurDefer, "defer", 0, "")
+			cmd.Flags().StringVar(&taskRecurFrom, "from", "", "")
+
+			// Reset globals
+			taskRecurClear = false
+			taskRecurSkip = false
+			taskRecurDefer = 0
+			taskRecurFrom = ""
+
+			tc.setupFunc(&cmd)
+
+			// runTaskRecur requires a project; we just want to hit the flag
+			// validation before the project load, so pass a dummy task ID.
+			err := runTaskRecur(&cmd, []string{"1"})
+			if err == nil {
+				t.Errorf("expected error for %s but got nil", tc.name)
+			}
+		})
 	}
 }
 

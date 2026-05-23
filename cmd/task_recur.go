@@ -107,6 +107,12 @@ func runTaskRecur(cmd *cobra.Command, args []string) error { //nolint:gocyclo
 	if actionCount > 0 && len(args) >= 2 {
 		return fmt.Errorf("cannot combine %s with a recurrence pattern argument", actionFlags[0])
 	}
+	// --from only makes sense with a pattern argument or on its own to update an
+	// existing pattern's mode. Silently ignoring it with --skip/--clear/--defer
+	// would be confusing, so reject the combination explicitly.
+	if cmd.Flags().Changed("from") && actionCount > 0 {
+		return fmt.Errorf("cannot combine --from with %s", actionFlags[0])
+	}
 
 	project, cfg, configManager, err := LoadCurrentProject()
 	if err != nil {
