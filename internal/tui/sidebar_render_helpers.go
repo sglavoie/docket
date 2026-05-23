@@ -74,7 +74,9 @@ func formatRelativeTime(t time.Time) string {
 		}
 		return fmt.Sprintf("%d hours ago", hours)
 	case duration < util.Week:
-		days := int(duration.Hours() / 24)
+		// Calendar-day comparison avoids the wall-clock truncation issue
+		// (e.g. 47h ago = 2 calendar days, not "1 day ago").
+		days := util.DaysBetween(t, time.Now())
 		if days == 1 {
 			return "1 day ago"
 		}
