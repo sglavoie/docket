@@ -93,3 +93,59 @@ func TestRunTaskDelete_Validation(t *testing.T) {
 		testutil.AssertEqual(t, taskDeleteForce, false)
 	})
 }
+
+func TestFilterDeletedTasks_UnblocksTaskWhenLastBlockerDeleted(t *testing.T) {
+	blocker, err := models.NewTask("blocker-id", 1, models.TaskTypeTask, "Blocker")
+	if err != nil {
+		t.Fatal(err)
+	}
+	dependent, err := models.NewTask("dep-id", 2, models.TaskTypeTask, "Dependent")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if depErr := dependent.AddDependency(blocker.ID); depErr != nil {
+		t.Fatal(depErr)
+	}
+	dependent.Status = models.StatusBlocked
+
+	idsToDelete := map[string]bool{blocker.ID: true}
+	remaining := filterDeletedTasks([]*models.Task{blocker, dependent}, idsToDelete)
+
+	if len(remaining) != 1 {
+		t.Fatalf("expected 1 surviving task, got %d", len(remaining))
+	}
+	if len(remaining[0].DependsOn) != 0 {
+		t.Errorf("expected DependsOn to be cleared, got %v", remaining[0].DependsOn)
+	}
+	if remaining[0].Status == models.StatusBlocked {
+		t.Errorf("expected dependent to be unblocked after last blocker deleted, still %s", remaining[0].Status)
+	}
+}
+
+func TestFilterDeletedTasks_KeepsBlockedWhenOtherBlockersRemain(t *testing.T) {
+	b1, _ := models.NewTask("b1", 1, models.TaskTypeTask, "B1")
+	b2, _ := models.NewTask("b2", 2, models.TaskTypeTask, "B2")
+	dependent, _ := models.NewTask("dep", 3, models.TaskTypeTask, "Dep")
+	_ = dependent.AddDependency(b1.ID)
+	_ = dependent.AddDependency(b2.ID)
+	dependent.Status = models.StatusBlocked
+
+	idsToDelete := map[string]bool{b1.ID: true}
+	remaining := filterDeletedTasks([]*models.Task{b1, b2, dependent}, idsToDelete)
+
+	var dep *models.Task
+	for _, t := range remaining {
+		if t.ID == dependent.ID {
+			dep = t
+		}
+	}
+	if dep == nil {
+		t.Fatal("dependent task missing from remaining")
+	}
+	if dep.Status != models.StatusBlocked {
+		t.Errorf("expected dependent to remain blocked (other blocker still present), got %s", dep.Status)
+	}
+	if len(dep.DependsOn) != 1 || dep.DependsOn[0] != b2.ID {
+		t.Errorf("expected DependsOn to contain only b2, got %v", dep.DependsOn)
+	}
+}

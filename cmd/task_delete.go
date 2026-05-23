@@ -199,6 +199,12 @@ func filterDeletedTasks(tasks []*models.Task, idsToDelete map[string]bool) []*mo
 					cleaned = append(cleaned, depID)
 				}
 			}
+			// A Blocked task whose entire DependsOn list was just deleted
+			// has no remaining reason to stay blocked. Reopen it so the
+			// user is not left with a task stuck in Blocked with no deps.
+			if t.Status == models.StatusBlocked && len(cleaned) == 0 {
+				t.Reopen()
+			}
 			t.DependsOn = cleaned
 		}
 		if len(t.RelatedTo) > 0 {
