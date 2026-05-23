@@ -16,7 +16,7 @@ import (
 var taskMoveToForce bool
 
 var taskMoveToCmd = &cobra.Command{
-	Use:   "move-to <task-id> <dest-project>",
+	Use:   "move-to [task-id] [dest-project]",
 	Short: "Move a task to another project",
 	Long: `Move a task and all its children to a different project.
 
