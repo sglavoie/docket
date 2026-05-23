@@ -121,6 +121,10 @@ func (m *OutlinerModel) crossExecutePendingBulkStatus() (tea.Model, tea.Cmd) {
 		}
 		projectIDs = append(projectIDs, projID)
 		for _, task := range group.tasks {
+			t := group.proj.GetTaskByID(task.ID)
+			if t == nil || t.CanTransitionTo(status) != "" {
+				continue
+			}
 			group.proj.MutateTask(task.ID, func(t *models.Task) {
 				t.ApplyTransition(status)
 			})
