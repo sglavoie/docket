@@ -445,6 +445,44 @@ func TestHasTaskOnlyFilters(t *testing.T) {
 	}
 }
 
+func TestParseSearchQuery_CaseInsensitiveStatusAndDueDate(t *testing.T) {
+	tests := []struct {
+		name       string
+		input      string
+		wantStatus []models.TaskStatus
+		wantDue    string
+		wantText   string
+	}{
+		{"uppercase status", "$TODO", []models.TaskStatus{models.StatusTodo}, "", ""},
+		{"mixed case status", "$Todo", []models.TaskStatus{models.StatusTodo}, "", ""},
+		{"uppercase in_progress", "$IN_PROGRESS", []models.TaskStatus{models.StatusInProgress}, "", ""},
+		{"mixed case Review", "$Review", []models.TaskStatus{models.StatusReview}, "", ""},
+		{"uppercase due date", "@TODAY", nil, "today", ""},
+		{"mixed case due date", "@Today", nil, "today", ""},
+		{"uppercase overdue", "@OVERDUE", nil, "overdue", ""},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			r := ParseSearchQuery(tt.input)
+			if len(r.Statuses) != len(tt.wantStatus) {
+				t.Fatalf("Statuses = %v, want %v", r.Statuses, tt.wantStatus)
+			}
+			for i, s := range r.Statuses {
+				if s != tt.wantStatus[i] {
+					t.Errorf("Statuses[%d] = %q, want %q", i, s, tt.wantStatus[i])
+				}
+			}
+			if r.DueDateFilter != tt.wantDue {
+				t.Errorf("DueDateFilter = %q, want %q", r.DueDateFilter, tt.wantDue)
+			}
+			if r.TextQuery != tt.wantText {
+				t.Errorf("TextQuery = %q, want %q", r.TextQuery, tt.wantText)
+			}
+		})
+	}
+}
+
 // stringSliceEqual compares two string slices, treating nil and empty as equal.
 func stringSliceEqual(a, b []string) bool {
 	if len(a) == 0 && len(b) == 0 {

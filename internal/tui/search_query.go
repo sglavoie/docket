@@ -107,17 +107,17 @@ func ParseSearchQuery(input string) *ParsedSearchQuery {
 	input = tagRe.ReplaceAllString(input, " ")
 
 	// Extract due date filter: @keyword
-	dueDateRe := regexp.MustCompile(`\s*@(today|tomorrow|week|overdue|none)\s*`)
+	dueDateRe := regexp.MustCompile(`(?i)\s*@(today|tomorrow|week|overdue|none)\s*`)
 	if match := dueDateRe.FindStringSubmatch(input); len(match) == 2 {
 		result.DueDateFilter = strings.ToLower(match[1])
 	}
 	input = dueDateRe.ReplaceAllString(input, " ")
 
 	// Extract status: $status
-	statusRe := regexp.MustCompile(`\s*\$(todo|in_progress|review|standby|maybe|done|blocked|canceled)\s*`)
+	statusRe := regexp.MustCompile(`(?i)\s*\$(todo|in_progress|review|standby|maybe|done|blocked|canceled)\s*`)
 	for _, match := range statusRe.FindAllStringSubmatch(input, -1) {
 		if len(match) == 2 {
-			if status, ok := models.ParseTaskStatus(match[1]); ok {
+			if status, ok := models.ParseTaskStatus(strings.ToLower(match[1])); ok {
 				result.Statuses = append(result.Statuses, status)
 			}
 		}
