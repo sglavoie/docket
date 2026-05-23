@@ -464,17 +464,26 @@ func (t *Task) NextDueDate() *time.Time {
 }
 
 // NextNDueDates returns the next n upcoming due dates based on the recurrence
-// pattern. Each date is calculated by iterating from the previous one. If the
-// task has no due date, calculations start from today. Returns nil if the task
-// is not recurring.
+// pattern. The first date matches NextDueDate (honoring Mode); subsequent
+// dates iterate forward from there. Returns nil if the task is not recurring
+// or n <= 0.
 func (t *Task) NextNDueDates(n int) []time.Time {
 	if t.Recurrence == nil || n <= 0 {
 		return nil
 	}
 
-	baseDate := time.Now()
-	if t.DueDate != nil {
-		baseDate = *t.DueDate
+	var baseDate time.Time
+	if t.Recurrence.Mode == RecurModeFromCompletion {
+		if t.CompletedAt != nil {
+			baseDate = *t.CompletedAt
+		} else {
+			baseDate = time.Now()
+		}
+	} else {
+		baseDate = time.Now()
+		if t.DueDate != nil {
+			baseDate = *t.DueDate
+		}
 	}
 
 	dates := make([]time.Time, 0, n)

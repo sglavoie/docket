@@ -191,4 +191,71 @@ func TestNextNDueDates(t *testing.T) { //nolint:gocyclo
 			}
 		}
 	})
+
+	// NextNDueDates must honor RecurModeFromCompletion the same way
+	// NextDueDate does: when in from-completion mode, the first upcoming
+	// date is anchored on CompletedAt (or now if nil) — not on the stale
+	// DueDate of the prior occurrence. Otherwise the preview ("Upcoming"
+	// in the recur editor / task detail) would show dates in the past for
+	// a task that was already completed late.
+	t.Run("from completion mode with stale due date", func(t *testing.T) {
+		task := newLifecycleTestTask(t, "t1", 1)
+		stale := time.Date(2020, 1, 1, 0, 0, 0, 0, time.Local) // far in the past
+		task.DueDate = &stale
+		if err := task.SetRecurrence(&RecurrencePattern{
+			Unit:     RecurrenceDaily,
+			Interval: 1,
+			Mode:     RecurModeFromCompletion,
+		}); err != nil {
+			t.Fatalf("SetRecurrence failed: %v", err)
+		}
+
+		dates := task.NextNDueDates(3)
+		if len(dates) != 3 {
+			t.Fatalf("expected 3 dates, got %d", len(dates))
+		}
+		// The first upcoming date must be anchored on "now" (within a second
+		// of NextDueDate), not on the stale 2020-era DueDate.
+		nextDue := task.NextDueDate()
+		if nextDue == nil {
+			t.Fatal("NextDueDate() = nil")
+		}
+		delta := dates[0].Sub(*nextDue)
+		if delta < -time.Second || delta > time.Second {
+			t.Errorf("dates[0]=%v must be near NextDueDate=%v (delta=%v)", dates[0], *nextDue, delta)
+		}
+		// And dates must be in the future, not 2020-era.
+		now := time.Now()
+		if dates[0].Before(now.AddDate(-1, 0, 0)) {
+			t.Errorf("dates[0]=%v is far in the past; from-completion mode must anchor on now", dates[0])
+		}
+	})
+
+	t.Run("from completion mode uses CompletedAt when set", func(t *testing.T) {
+		task := newLifecycleTestTask(t, "t1", 1)
+		due := time.Date(2024, 3, 10, 0, 0, 0, 0, time.Local)
+		completed := time.Date(2024, 3, 15, 9, 0, 0, 0, time.Local) // 5 days late
+		task.DueDate = &due
+		task.CompletedAt = &completed
+		if err := task.SetRecurrence(&RecurrencePattern{
+			Unit:     RecurrenceDaily,
+			Interval: 3,
+			Mode:     RecurModeFromCompletion,
+		}); err != nil {
+			t.Fatalf("SetRecurrence failed: %v", err)
+		}
+
+		dates := task.NextNDueDates(2)
+		if len(dates) != 2 {
+			t.Fatalf("expected 2 dates, got %d", len(dates))
+		}
+		want0 := completed.AddDate(0, 0, 3)
+		want1 := completed.AddDate(0, 0, 6)
+		if !dates[0].Equal(want0) {
+			t.Errorf("dates[0]=%v, want %v", dates[0], want0)
+		}
+		if !dates[1].Equal(want1) {
+			t.Errorf("dates[1]=%v, want %v", dates[1], want1)
+		}
+	})
 }
