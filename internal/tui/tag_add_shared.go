@@ -57,7 +57,11 @@ func (a *TagAdder) HandleAddTagKey(msg tea.KeyPressMsg, picker *BasePicker[TagIn
 		return true, nil
 
 	case "enter":
+		// Strip a leading '#' so users who type quick-capture syntax
+		// (#backend) don't end up with tags literally containing a hash;
+		// tag rendering always prepends '#' itself.
 		tagName := strings.TrimSpace(a.AddTagInput.Value())
+		tagName = strings.TrimSpace(strings.TrimPrefix(tagName, "#"))
 		if tagName == "" {
 			a.AddTagError = "Tag name cannot be empty"
 			return true, nil
