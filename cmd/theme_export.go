@@ -7,6 +7,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/tt/internal/util"
 )
 
 var themeExportSlot string
@@ -80,7 +81,7 @@ func runThemeExport(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	if err := os.WriteFile(destPath, data, 0600); err != nil {
+	if err := util.AtomicWriteFile(destPath, data, 0600); err != nil {
 		return fmt.Errorf("write theme file: %w", err)
 	}
 

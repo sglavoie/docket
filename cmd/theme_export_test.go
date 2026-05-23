@@ -1,9 +1,13 @@
 package cmd
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
+	"sync"
+	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/spf13/viper"
 
@@ -112,6 +116,72 @@ func TestThemeExport(t *testing.T) {
 		err := runThemeExport(themeExportCmd, []string{"mytest"})
 		if err == nil {
 			t.Error("expected error for invalid slot")
+		}
+	})
+
+	// TestThemeExport_AtomicReplacement verifies that exporting over an
+	// existing theme file in the managed themes directory is atomic: a
+	// concurrent reader must never see an empty or invalid JSON file during
+	// the write. A non-atomic os.WriteFile truncates before writing, opening
+	// a race window that this test reliably hits.
+	t.Run("atomic replacement of existing theme file", func(t *testing.T) {
+		deps, manager := setupThemeExportTest(t)
+		defer deps.Cleanup()
+
+		// Seed the theme file so subsequent exports overwrite an existing file.
+		if err := runThemeExport(themeExportCmd, []string{"concurrent"}); err != nil {
+			t.Fatalf("seed export: %v", err)
+		}
+		path, err := manager.ThemePath("concurrent")
+		if err != nil {
+			t.Fatalf("ThemePath: %v", err)
+		}
+
+		var stop atomic.Bool
+		var wg sync.WaitGroup
+		var observedEmpty atomic.Bool
+
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for !stop.Load() {
+				info, statErr := os.Stat(path)
+				if statErr != nil {
+					continue
+				}
+				if info.Size() == 0 {
+					observedEmpty.Store(true)
+					return
+				}
+				data, readErr := os.ReadFile(path)
+				if readErr != nil {
+					continue
+				}
+				if len(data) == 0 {
+					observedEmpty.Store(true)
+					return
+				}
+				var v map[string]any
+				if json.Unmarshal(data, &v) != nil {
+					observedEmpty.Store(true)
+					return
+				}
+			}
+		}()
+
+		deadline := time.Now().Add(200 * time.Millisecond)
+		for time.Now().Before(deadline) {
+			if err := runThemeExport(themeExportCmd, []string{"concurrent"}); err != nil {
+				stop.Store(true)
+				wg.Wait()
+				t.Fatalf("runThemeExport: %v", err)
+			}
+		}
+		stop.Store(true)
+		wg.Wait()
+
+		if observedEmpty.Load() {
+			t.Fatal("reader observed empty/partial file during concurrent theme export — write is not atomic")
 		}
 	})
 }
