@@ -151,7 +151,11 @@ func (b *outlinerKeymapBuilder) primaryViewEntries() []keymap.Entry {
 			return m, nil
 		},
 		MoveReparent: func() (tea.Model, tea.Cmd) {
-			cmd, _ := handleResolvedTaskKey("ctrl+m", m, m.project)
+			source := ViewOutliner
+			if m.project == nil {
+				source = ViewCrossProjectOutliner
+			}
+			cmd, _ := handleResolvedTaskKey("ctrl+m", m, m.project, source)
 			return m, cmd
 		},
 	})

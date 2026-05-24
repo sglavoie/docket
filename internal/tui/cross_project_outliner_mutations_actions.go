@@ -133,6 +133,47 @@ func (m *OutlinerModel) crossHandleTypeChange(key string) (tea.Cmd, bool) {
 	return tea.Batch(result.Cmd, mutationFlashTimeout()), true
 }
 
+// handleCrossProjectReparent applies a ParentSelectedMsg in cross-project mode.
+// Resolves the owning project via crossFindProjectForTask, records an undo
+// snapshot, mutates the parent pointer with cycle / type-compat guards, and
+// persists via crossSaveProject.
+func (m *OutlinerModel) handleCrossProjectReparent(msg ParentSelectedMsg) (tea.Model, tea.Cmd) {
+	proj := m.crossFindProjectForTask(msg.ReparentTaskID)
+	if proj == nil {
+		return m, nil
+	}
+	task := proj.GetTaskByID(msg.ReparentTaskID)
+	if task == nil {
+		return m, nil
+	}
+
+	m.crossUndoCtx.Set("Reparent Task", task.Title)
+	m.crossUndoCtx.ProjectIDs = []string{proj.ID}
+	if m.config != nil && m.config.UndoHistoryDepth != nil && *m.config.UndoHistoryDepth > 0 {
+		_ = m.projectService.RecordUndoSnapshot(proj, "Reparent Task", task.Title, *m.config.UndoHistoryDepth, nil)
+	}
+
+	if msg.ParentID == nil {
+		proj.MutateTask(task.ID, func(t *models.Task) {
+			t.ParentID = nil
+		})
+	} else {
+		targetID := *msg.ParentID
+		taskMap := make(map[string]*models.Task, len(proj.Tasks))
+		for _, t := range proj.Tasks {
+			taskMap[t.ID] = t
+		}
+		targetParent := taskMap[targetID]
+		if targetParent != nil && task.Type.CanBeChildOf(targetParent.Type) && !models.WouldCreateCycle(taskMap, task.ID, targetID) {
+			proj.MutateTask(task.ID, func(t *models.Task) {
+				t.ParentID = &targetID
+			})
+		}
+	}
+	proj.BuildTaskTree()
+	return m, m.crossSaveProject(proj)
+}
+
 // crossExecuteDelete performs a delete of m.deleteTarget in cross-project mode.
 // It resolves the owning project via crossFindProjectForTask, calls Backup()
 // and Save() on that project only, and forces a row rebuild via rebuildRows.

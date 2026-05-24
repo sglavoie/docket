@@ -180,7 +180,7 @@ func (m *AppModel) structureCommands() []Command {
 			Description: "Move selected task to a new parent",
 			Shortcut:    "ctrl+m",
 			Category:    CategoryStructure,
-			Views:       []ViewType{ViewProjectTree, ViewOutliner},
+			Views:       []ViewType{ViewProjectTree, ViewOutliner, ViewCrossProjectOutliner},
 			Aliases:     []string{"reparent", "move to parent"},
 			Handler: func() tea.Msg {
 				if m.projectTree != nil {
@@ -203,9 +203,12 @@ func (m *AppModel) structureCommands() []Command {
 					}
 				}
 				if m.outliner != nil {
-					task := m.outliner.getCursorTask()
-					project := m.outliner.getProject()
+					task, project := m.outliner.getTaskRef()
 					if task != nil && project != nil {
+						source := ViewOutliner
+						if m.outliner.project == nil {
+							source = ViewCrossProjectOutliner
+						}
 						validParents := buildReparentValidParents(project, task)
 						var currentParentID *string
 						if task.ParentID != nil {
@@ -216,7 +219,7 @@ func (m *AppModel) structureCommands() []Command {
 							ValidParents:   validParents,
 							CurrentID:      currentParentID,
 							AllowNone:      true,
-							Source:         ViewOutliner,
+							Source:         source,
 							ReparentTaskID: task.ID,
 						}
 					}

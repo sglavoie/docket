@@ -253,8 +253,11 @@ func (m *OutlinerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case ParentSelectedMsg:
-		if msg.ReparentTaskID == "" || m.project == nil {
+		if msg.ReparentTaskID == "" {
 			return m, nil
+		}
+		if m.project == nil {
+			return m.handleCrossProjectReparent(msg)
 		}
 		task := m.project.GetTaskByID(msg.ReparentTaskID)
 		if task == nil {

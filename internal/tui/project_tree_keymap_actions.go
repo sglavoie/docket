@@ -173,7 +173,7 @@ func (b *projectTreeKeymapBuilder) commonTaskActionEntries() []keymap.Entry {
 			return m, cmd
 		},
 		EditScore: func() (tea.Model, tea.Cmd) {
-			cmd, _ := handleResolvedTaskKey("S", m, m.getProject())
+			cmd, _ := handleResolvedTaskKey("S", m, m.getProject(), ViewProjectTree)
 			return m, cmd
 		},
 		OpenURL: func() (tea.Model, tea.Cmd) {
@@ -193,7 +193,7 @@ func (b *projectTreeKeymapBuilder) commonTaskActionEntries() []keymap.Entry {
 			return m, func() tea.Msg { return ShowProjectSelectorForMoveMsg{Task: task, SourceProject: project} }
 		},
 		QuickNote: func() (tea.Model, tea.Cmd) {
-			cmd, _ := handleResolvedTaskKey("ctrl+.", m, m.getProject())
+			cmd, _ := handleResolvedTaskKey("ctrl+.", m, m.getProject(), ViewProjectTree)
 			return m, cmd
 		},
 	})
