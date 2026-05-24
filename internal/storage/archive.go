@@ -293,7 +293,12 @@ func appendToArchiveFile(path, content string) error {
 	if err != nil {
 		return fmt.Errorf("failed to open archive file: %w", err)
 	}
-	defer func() { _ = f.Close() }()
+	closed := false
+	defer func() {
+		if !closed {
+			_ = f.Close()
+		}
+	}()
 
 	if _, err := f.WriteString(content); err != nil {
 		return fmt.Errorf("failed to write to archive file: %w", err)
@@ -305,6 +310,14 @@ func appendToArchiveFile(path, content string) error {
 		return fmt.Errorf("failed to sync archive file: %w", err)
 	}
 
+	// Surface Close errors: on NFS / disk-full, buffered write failures may
+	// only be reported here, and a silent drop would prevent the caller's
+	// rollback path from running, losing the archived tasks.
+	if err := f.Close(); err != nil {
+		closed = true
+		return fmt.Errorf("failed to close archive file: %w", err)
+	}
+	closed = true
 	return nil
 }
 
