@@ -35,7 +35,13 @@ func (m *AskViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.state = askStateResult
 		m.streamReader = nil
 		m.streamCmd = nil
-		m.cancelFn = nil
+		// Release the context's child resources. Without this call the
+		// goroutine context.WithCancel spawns leaks until the parent is
+		// canceled — but the parent is context.Background(), which never is.
+		if m.cancelFn != nil {
+			m.cancelFn()
+			m.cancelFn = nil
+		}
 		if msg.Err != nil {
 			m.response += fmt.Sprintf("\n\nError: %v", msg.Err)
 		}
