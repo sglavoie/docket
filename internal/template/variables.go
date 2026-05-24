@@ -110,9 +110,19 @@ func ApplyVariables(t TaskTemplate, values map[string]string) TaskTemplate {
 func ValidateTokens(t *TaskTemplate) error {
 	validate := func(field, s string) error {
 		for _, token := range invalidVarPattern.FindAllString(s, -1) {
-			if !validVarPattern.MatchString(token) {
-				return fmt.Errorf("invalid variable token %q in %s", token, field)
+			// A token is OK if it is itself a valid token, OR if stripping a
+			// single leading literal "{" yields a valid token. This tolerates
+			// accidental literal braces like "{{{foo}}}" while still rejecting
+			// malformed wrappers like "{{outer {{inner}}" where extra text
+			// sits between the outer "{{" and the inner "{{".
+			if validVarPattern.FindString(token) == token {
+				continue
 			}
+			if len(token) > 0 && token[0] == '{' &&
+				validVarPattern.FindString(token[1:]) == token[1:] {
+				continue
+			}
+			return fmt.Errorf("invalid variable token %q in %s", token, field)
 		}
 		return nil
 	}

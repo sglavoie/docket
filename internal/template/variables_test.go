@@ -423,6 +423,35 @@ func TestExtractVariables_EmptyDefault(t *testing.T) {
 	}
 }
 
+func TestValidateTokens_NestedWrapperRejected(t *testing.T) {
+	// Regression: "{{outer {{inner}}" looks like a valid {{inner}} wrapped in
+	// garbage. The validator must reject the outer wrapper because the user's
+	// intent is ambiguous and ApplyVariables would silently emit
+	// "{{outer INNERVAL}}" — not what they typed.
+	tmpl := &TaskTemplate{
+		Description: "{{outer {{inner}}}}",
+	}
+	err := ValidateTokens(tmpl)
+	if err == nil {
+		t.Fatal("expected error for nested-looking wrapper, got nil")
+	}
+	if !strings.Contains(err.Error(), "invalid variable token") {
+		t.Errorf("error %q should mention invalid variable token", err.Error())
+	}
+}
+
+func TestValidateTokens_InvalidWithEmbeddedValidRejected(t *testing.T) {
+	// Regression: a malformed token that happens to contain a valid token as
+	// a substring must still be rejected.
+	tmpl := &TaskTemplate{
+		Description: "{{bad space {{ok}}",
+	}
+	err := ValidateTokens(tmpl)
+	if err == nil {
+		t.Fatal("expected error for invalid wrapper containing a valid token, got nil")
+	}
+}
+
 func TestApplyVariables_MultipleOccurrences(t *testing.T) {
 	tmpl := TaskTemplate{
 		Description: "{{x}} and {{x}} and {{x}}",
