@@ -228,6 +228,17 @@ func runTaskMoveTo(cmd *cobra.Command, args []string) error { //nolint:gocyclo
 		return fmt.Errorf("move operation returned no result")
 	}
 
+	// Move attachment directories for each moved task. Task UUIDs are
+	// preserved across the move, so destination metadata continues to
+	// reference the same filenames; without this step those files remain
+	// in the source project's .attachments/ tree and the destination
+	// metadata becomes dangling.
+	for _, mt := range result.MovedTasks {
+		if mvErr := storage.MoveTaskAttachments(sourceProject, destProject, mt); mvErr != nil {
+			fmt.Fprintf(os.Stderr, "warning: failed to move attachments for task #%d: %v\n", mt.ShortID, mvErr)
+		}
+	}
+
 	// Update FocusQueue, DailyPlan, and RecentTaskVisits to point to the new project
 	movedTaskIDs := make(map[string]bool, len(result.MovedTasks))
 	for _, t := range result.MovedTasks {

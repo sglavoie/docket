@@ -160,6 +160,61 @@ func TestRemoveAttachmentFile(t *testing.T) {
 	}
 }
 
+// TestMoveTaskAttachments_MovesFiles guards against a cross-project move
+// (`tt task move-to`) leaving attachment files behind in the source project's
+// .attachments/<task-uuid>/ directory. The task UUID is preserved by the move,
+// so the destination project must take ownership of the on-disk attachments.
+func TestMoveTaskAttachments_MovesFiles(t *testing.T) {
+	src := newTestProject(t)
+	dest := &models.Project{ID: "dest-project", Name: "Dest", Path: t.TempDir()}
+	task := newTestTask()
+
+	srcDir := t.TempDir()
+	srcPath := filepath.Join(srcDir, "spec.pdf")
+	if err := os.WriteFile(srcPath, []byte("pdf-bytes"), 0o644); err != nil {
+		t.Fatalf("failed to create source file: %v", err)
+	}
+	if _, err := CopyAttachment(src, task, srcPath); err != nil {
+		t.Fatalf("CopyAttachment failed: %v", err)
+	}
+
+	if err := MoveTaskAttachments(src, dest, task); err != nil {
+		t.Fatalf("MoveTaskAttachments failed: %v", err)
+	}
+
+	if AttachmentExists(src, task, "spec.pdf") {
+		t.Error("attachment should not exist in source after move")
+	}
+	if !AttachmentExists(dest, task, "spec.pdf") {
+		t.Error("attachment should exist in destination after move")
+	}
+
+	srcAttachDir := GetTaskAttachmentsDir(src, task)
+	if _, err := os.Stat(srcAttachDir); !os.IsNotExist(err) {
+		t.Errorf("source task attachments dir should be gone, stat err = %v", err)
+	}
+
+	got, err := os.ReadFile(GetAttachmentPath(dest, task, "spec.pdf"))
+	if err != nil {
+		t.Fatalf("read moved file: %v", err)
+	}
+	if string(got) != "pdf-bytes" {
+		t.Errorf("moved content = %q, want %q", string(got), "pdf-bytes")
+	}
+}
+
+// TestMoveTaskAttachments_NoSourceDir is a no-op when the task has no
+// on-disk attachments (e.g. URL-only or code-ref-only tasks).
+func TestMoveTaskAttachments_NoSourceDir(t *testing.T) {
+	src := newTestProject(t)
+	dest := &models.Project{ID: "dest-project", Name: "Dest", Path: t.TempDir()}
+	task := newTestTask()
+
+	if err := MoveTaskAttachments(src, dest, task); err != nil {
+		t.Errorf("MoveTaskAttachments with no source dir should be no-op, got: %v", err)
+	}
+}
+
 func TestCleanupTaskAttachments(t *testing.T) {
 	project := newTestProject(t)
 	task := newTestTask()

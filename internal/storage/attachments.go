@@ -94,6 +94,36 @@ func RemoveAttachmentFile(project *models.Project, task *models.Task, filename s
 	return nil
 }
 
+// MoveTaskAttachments moves a task's attachment directory from one project to
+// another. Used by `tt task move-to`: the task UUID is preserved across the
+// move, so the destination project must take ownership of the on-disk files
+// that the task's metadata still references. No-op when the source has no
+// attachment directory (URL-only or code-ref-only tasks).
+//
+// Guards against an empty task ID for the same reason as CleanupTaskAttachments.
+func MoveTaskAttachments(src, dest *models.Project, task *models.Task) error {
+	if task == nil || task.ID == "" {
+		return nil
+	}
+	srcDir := GetTaskAttachmentsDir(src, task)
+	if _, err := os.Stat(srcDir); os.IsNotExist(err) {
+		return nil
+	} else if err != nil {
+		return fmt.Errorf("failed to stat source attachments directory: %w", err)
+	}
+	destDir := GetTaskAttachmentsDir(dest, task)
+	if err := os.MkdirAll(filepath.Dir(destDir), DirPermissions); err != nil {
+		return fmt.Errorf("failed to create destination attachments parent: %w", err)
+	}
+	if _, err := os.Stat(destDir); err == nil {
+		return fmt.Errorf("destination task attachments directory already exists: %s", destDir)
+	}
+	if err := os.Rename(srcDir, destDir); err != nil {
+		return fmt.Errorf("failed to move task attachments: %w", err)
+	}
+	return nil
+}
+
 // CleanupTaskAttachments removes all attachments for a task and the task's attachment directory.
 // This is called when a task is deleted.
 //

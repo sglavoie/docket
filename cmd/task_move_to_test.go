@@ -1,12 +1,80 @@
 package cmd
 
 import (
+	"fmt"
+	"os"
+	"path/filepath"
 	"testing"
+
+	"github.com/spf13/viper"
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/testutil"
 )
+
+// TestRunTaskMoveTo_MovesAttachmentFiles guards against `tt task move-to`
+// leaving attachment files behind in the source project. Task UUIDs are
+// preserved across the move, so destination metadata references the same
+// filenames; the on-disk files must follow the task to the new project.
+func TestRunTaskMoveTo_MovesAttachmentFiles(t *testing.T) {
+	deps, sourceProject := testutil.SetupTestDepsWithProject(t, "Source Project")
+	defer deps.Cleanup()
+
+	// Build a destination project rooted at a real path under the test data dir.
+	destProject := testutil.NewTestProject("Dest Project")
+	destProject.Path = deps.Config.GetProjectPath(destProject.Slug)
+	deps.Config.Projects = append(deps.Config.Projects, destProject)
+	deps.Repository.Projects[destProject.ID] = destProject
+
+	viper.Set("config", deps.ConfigPath)
+	t.Cleanup(func() { viper.Set("config", "") })
+
+	manager := config.NewManager(deps.ConfigPath)
+	if err := manager.Save(deps.Config); err != nil {
+		t.Fatalf("save config: %v", err)
+	}
+
+	oldRepo := storage.DefaultRepository
+	storage.DefaultRepository = deps.Repository
+	t.Cleanup(func() { storage.DefaultRepository = oldRepo })
+
+	// Pick a task and seed an attachment file on disk.
+	task := sourceProject.Tasks[0]
+	if err := storage.EnsureTaskAttachmentsDir(sourceProject, task); err != nil {
+		t.Fatalf("ensure attachments dir: %v", err)
+	}
+	srcDir := t.TempDir()
+	srcPath := filepath.Join(srcDir, "report.pdf")
+	if err := os.WriteFile(srcPath, []byte("payload"), 0o600); err != nil {
+		t.Fatalf("seed source file: %v", err)
+	}
+	if _, err := storage.CopyAttachment(sourceProject, task, srcPath); err != nil {
+		t.Fatalf("CopyAttachment: %v", err)
+	}
+	if err := task.AddAttachment("report.pdf", false, srcPath); err != nil {
+		t.Fatalf("AddAttachment: %v", err)
+	}
+	if err := deps.Repository.Save(sourceProject); err != nil {
+		t.Fatalf("save source after attach: %v", err)
+	}
+
+	taskMoveToForce = true
+	defer func() { taskMoveToForce = false }()
+
+	err := runTaskMoveTo(taskMoveToCmd, []string{fmt.Sprintf("%d", task.ShortID), destProject.Slug})
+	if err != nil {
+		t.Fatalf("runTaskMoveTo: %v", err)
+	}
+
+	if storage.AttachmentExists(sourceProject, task, "report.pdf") {
+		t.Error("attachment file should not remain in source project")
+	}
+	if !storage.AttachmentExists(destProject, task, "report.pdf") {
+		t.Error("attachment file should exist in destination project")
+	}
+}
 
 func TestMoveTaskToProject_SourceDestValidation(t *testing.T) {
 	tests := []struct {
