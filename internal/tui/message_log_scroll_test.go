@@ -3,7 +3,20 @@ package tui
 import (
 	"testing"
 	"time"
+
+	tea "charm.land/bubbletea/v2"
 )
+
+// msgLogKey builds a tea.KeyPressMsg whose String() method returns the given
+// keystroke. Supports plain runes (e.g. "j", "G") and the "ctrl+<rune>" form.
+func msgLogKey(s string) tea.KeyPressMsg {
+	if len(s) > 5 && s[:5] == "ctrl+" {
+		r := rune(s[5])
+		return tea.KeyPressMsg{Code: r, Mod: tea.ModCtrl}
+	}
+	r := rune(s[0])
+	return tea.KeyPressMsg{Code: r, Text: s}
+}
 
 // TestMessageLogScrollShowsRecentAtBottomOnOpen verifies that opening the
 // message log scrolls so the most recent entries are visible at the bottom
@@ -49,5 +62,47 @@ func TestMessageLogScrollEmpty(t *testing.T) {
 	m.SetSize(80, 24)
 	if m.scroll != 0 {
 		t.Errorf("empty log should have scroll = 0, got %d", m.scroll)
+	}
+}
+
+// TestMessageLogScrollBottomKeepsViewportFilled verifies that scroll-to-bottom
+// (G), page-down (ctrl+d), and j keep the window-top offset at most
+// len(entries) - visible, so the viewport stays filled with trailing entries
+// instead of scrolling them out of view. Regression: clamping to len-1 left
+// only the final entry visible because that is a cursor-index bound, not a
+// window-top bound.
+func TestMessageLogScrollBottomKeepsViewportFilled(t *testing.T) {
+	entries := make([]MessageLogEntry, 20)
+	for i := range entries {
+		entries[i] = MessageLogEntry{
+			Timestamp: time.Now(),
+			Message:   "entry",
+			Level:     MessageLogLevelInfo,
+		}
+	}
+
+	// visibleLines() = max(15-10, 1) = 5; max valid scroll = 20 - 5 = 15.
+	const wantMax = 15
+
+	cases := []struct {
+		name string
+		key  string
+	}{
+		{"G", "G"},
+		{"ctrl+d", "ctrl+d"},
+		{"j", "j"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			m := NewMessageLogViewModel(entries)
+			m.SetSize(80, 15)
+			// Hammer the key enough times to saturate any per-keypress clamp.
+			for range 30 {
+				m.Update(msgLogKey(tc.key))
+			}
+			if m.scroll > wantMax {
+				t.Errorf("%s: scroll = %d, want <= %d (entries - visible)", tc.name, m.scroll, wantMax)
+			}
+		})
 	}
 }

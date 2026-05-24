@@ -91,9 +91,10 @@ func (m *MessageLogViewModel) Init() tea.Cmd { return nil }
 
 func (m *MessageLogViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if key, ok := msg.(tea.KeyPressMsg); ok {
+		maxScroll := max(0, len(m.entries)-m.visibleLines())
 		switch key.String() {
 		case "j", "down":
-			m.scroll = min(m.scroll+1, max(0, len(m.entries)-1))
+			m.scroll = min(m.scroll+1, maxScroll)
 		case "k", "up":
 			if m.scroll > 0 {
 				m.scroll--
@@ -101,10 +102,10 @@ func (m *MessageLogViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "g":
 			m.scroll = 0
 		case "G":
-			m.scroll = max(0, len(m.entries)-1)
+			m.scroll = maxScroll
 		case "ctrl+d", "pgdown":
 			half := max(m.visibleLines()/2, 1)
-			m.scroll = min(m.scroll+half, max(0, len(m.entries)-1))
+			m.scroll = min(m.scroll+half, maxScroll)
 		case "ctrl+u", "pgup":
 			half := max(m.visibleLines()/2, 1)
 			m.scroll = max(0, m.scroll-half)
