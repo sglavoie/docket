@@ -181,27 +181,40 @@ func (m *WeeklyReviewModel) loadData() { //nolint:gocyclo
 
 // sortSections sorts each section by appropriate criteria.
 func (m *WeeklyReviewModel) sortSections() {
-	// Stale projects: oldest first
+	// Stale projects: oldest first; break ties by project ID for determinism.
 	sort.Slice(m.staleProjects, func(i, j int) bool {
-		return m.staleProjects[i].NoActivityDays > m.staleProjects[j].NoActivityDays
+		if m.staleProjects[i].NoActivityDays != m.staleProjects[j].NoActivityDays {
+			return m.staleProjects[i].NoActivityDays > m.staleProjects[j].NoActivityDays
+		}
+		return m.staleProjects[i].Project.ID < m.staleProjects[j].Project.ID
 	})
 
-	// Inbox backlog: by count desc
+	// Inbox backlog: by count desc, then by project ID for determinism.
 	sort.Slice(m.inboxBacklog, func(i, j int) bool {
-		return m.inboxBacklog[i].InboxCount > m.inboxBacklog[j].InboxCount
+		if m.inboxBacklog[i].InboxCount != m.inboxBacklog[j].InboxCount {
+			return m.inboxBacklog[i].InboxCount > m.inboxBacklog[j].InboxCount
+		}
+		return m.inboxBacklog[i].Project.ID < m.inboxBacklog[j].Project.ID
 	})
 
-	// Blocked work: by count desc
+	// Blocked work: by count desc, then by project ID for determinism.
 	sort.Slice(m.blockedWork, func(i, j int) bool {
-		return m.blockedWork[i].BlockedCount > m.blockedWork[j].BlockedCount
+		if m.blockedWork[i].BlockedCount != m.blockedWork[j].BlockedCount {
+			return m.blockedWork[i].BlockedCount > m.blockedWork[j].BlockedCount
+		}
+		return m.blockedWork[i].Project.ID < m.blockedWork[j].Project.ID
 	})
 
-	// Overcommitted: by count desc
+	// Overcommitted: by count desc, then by project ID for determinism.
 	sort.Slice(m.overcommitted, func(i, j int) bool {
-		return m.overcommitted[i].InProgressCount > m.overcommitted[j].InProgressCount
+		if m.overcommitted[i].InProgressCount != m.overcommitted[j].InProgressCount {
+			return m.overcommitted[i].InProgressCount > m.overcommitted[j].InProgressCount
+		}
+		return m.overcommitted[i].Project.ID < m.overcommitted[j].Project.ID
 	})
 
-	// Stale tasks: oldest first (fall back to CreatedAt when UpdatedAt is zero)
+	// Stale tasks: oldest first (fall back to CreatedAt when UpdatedAt is zero),
+	// then by task ID for deterministic ordering.
 	sort.Slice(m.staleTasks, func(i, j int) bool {
 		ti := m.staleTasks[i].Task.UpdatedAt
 		if ti.IsZero() {
@@ -211,7 +224,10 @@ func (m *WeeklyReviewModel) sortSections() {
 		if tj.IsZero() {
 			tj = m.staleTasks[j].Task.CreatedAt
 		}
-		return ti.Before(tj)
+		if !ti.Equal(tj) {
+			return ti.Before(tj)
+		}
+		return m.staleTasks[i].Task.ID < m.staleTasks[j].Task.ID
 	})
 
 	// Priority mismatch: by priority then due date, then by ID for stable ordering
@@ -234,32 +250,44 @@ func (m *WeeklyReviewModel) sortSections() {
 		return m.priorityMismatch[i].Task.ID < m.priorityMismatch[j].Task.ID
 	})
 
-	// Upcoming week: by due date then priority
+	// Upcoming week: by due date then priority, with task ID tiebreak for
+	// determinism. Tasks with a due date come before those without.
 	sort.Slice(m.upcomingWeek, func(i, j int) bool {
-		if m.upcomingWeek[i].Task.DueDate != nil && m.upcomingWeek[j].Task.DueDate != nil {
-			if !m.upcomingWeek[i].Task.DueDate.Equal(*m.upcomingWeek[j].Task.DueDate) {
-				return m.upcomingWeek[i].Task.DueDate.Before(*m.upcomingWeek[j].Task.DueDate)
-			}
-		}
-		return m.upcomingWeek[i].Task.Priority < m.upcomingWeek[j].Task.Priority
-	})
-
-	// Recurring overview: by next due date ascending (tasks without due date last)
-	sort.Slice(m.recurringOverview, func(i, j int) bool {
-		di := m.recurringOverview[i].Task.DueDate
-		dj := m.recurringOverview[j].Task.DueDate
-		if di != nil && dj != nil {
-			if !di.Equal(*dj) {
-				return di.Before(*dj)
-			}
-		}
+		di := m.upcomingWeek[i].Task.DueDate
+		dj := m.upcomingWeek[j].Task.DueDate
 		if di != nil && dj == nil {
 			return true
 		}
 		if di == nil && dj != nil {
 			return false
 		}
-		return m.recurringOverview[i].Task.Priority < m.recurringOverview[j].Task.Priority
+		if di != nil && dj != nil && !di.Equal(*dj) {
+			return di.Before(*dj)
+		}
+		if m.upcomingWeek[i].Task.Priority != m.upcomingWeek[j].Task.Priority {
+			return m.upcomingWeek[i].Task.Priority < m.upcomingWeek[j].Task.Priority
+		}
+		return m.upcomingWeek[i].Task.ID < m.upcomingWeek[j].Task.ID
+	})
+
+	// Recurring overview: by next due date ascending (tasks without due date last),
+	// then by priority, then by task ID for determinism.
+	sort.Slice(m.recurringOverview, func(i, j int) bool {
+		di := m.recurringOverview[i].Task.DueDate
+		dj := m.recurringOverview[j].Task.DueDate
+		if di != nil && dj == nil {
+			return true
+		}
+		if di == nil && dj != nil {
+			return false
+		}
+		if di != nil && dj != nil && !di.Equal(*dj) {
+			return di.Before(*dj)
+		}
+		if m.recurringOverview[i].Task.Priority != m.recurringOverview[j].Task.Priority {
+			return m.recurringOverview[i].Task.Priority < m.recurringOverview[j].Task.Priority
+		}
+		return m.recurringOverview[i].Task.ID < m.recurringOverview[j].Task.ID
 	})
 }
 
