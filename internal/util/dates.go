@@ -251,7 +251,10 @@ func parseNextWeekday(input string, today time.Time) (time.Time, bool) {
 		return time.Time{}, false
 	}
 	targetDay := weekdays[match[1]]
-	daysUntil := daysUntilWeekday(today, targetDay, false) + 7
+	// Use includeToday=true so the helper returns 0 when today is the
+	// target weekday; we then add a single week. Otherwise the helper
+	// already bumps 0 → 7 and we'd double-count, landing on today+14.
+	daysUntil := daysUntilWeekday(today, targetDay, true) + 7
 	return today.AddDate(0, 0, daysUntil), true
 }
 

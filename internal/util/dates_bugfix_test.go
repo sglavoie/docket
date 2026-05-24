@@ -3,7 +3,34 @@ package util
 import (
 	"strings"
 	"testing"
+	"time"
 )
+
+// TestParseRelativeDate_NextWeekday verifies "next <weekday>" semantics:
+// it should always land on the named weekday in next ISO week, i.e. the
+// occurrence between 7 and 13 days from today (inclusive). The previous
+// implementation added an extra +7 on top of an already future-skipping
+// helper, so on the same weekday "next mon" produced today+14 instead of
+// today+7.
+func TestParseRelativeDate_NextWeekday(t *testing.T) {
+	today := StartOfDay(time.Now())
+	for _, name := range []string{"mon", "tue", "wed", "thu", "fri", "sat", "sun"} {
+		t.Run("next "+name, func(t *testing.T) {
+			got, err := ParseRelativeDate("next " + name)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			diff := int(got.Sub(today).Hours() / 24)
+			if diff < 7 || diff > 13 {
+				t.Errorf("next %s = today+%d days, want 7..13", name, diff)
+			}
+			target := weekdays[name]
+			if got.Weekday() != target {
+				t.Errorf("next %s landed on %s, want %s", name, got.Weekday(), target)
+			}
+		})
+	}
+}
 
 // TestParseRelativeDate_IntegerOverflow verifies that absurdly large numeric
 // inputs produce an error rather than silently producing the wrong date by
