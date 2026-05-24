@@ -21,6 +21,12 @@ func (m *BulkEditModel) handleTagAddInput(msg tea.KeyPressMsg) (tea.Model, tea.C
 
 	case "enter":
 		tag := strings.TrimSpace(m.tagAddInput.Value())
+		// Strip a leading '#' so users who type quick-capture syntax (#backend)
+		// don't see the summary show "+#backend" while the stored tag is "backend"
+		// (AddTag always strips the prefix at the model layer, but the pending
+		// changes summary is built from m.addTags before the model write).
+		tag = strings.TrimPrefix(tag, "#")
+		tag = strings.TrimSpace(tag)
 		if tag != "" {
 			// Check if already in add list
 			found := slices.Contains(m.addTags, tag)
