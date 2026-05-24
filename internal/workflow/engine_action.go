@@ -2,6 +2,7 @@ package workflow
 
 import (
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -19,7 +20,7 @@ func applyActionWithContext(task *models.Task, action RuleAction, evalCtx *Evalu
 	case ActionCreateFollowup:
 		return applyCreateFollowup(task, action, result)
 	case ActionMoveToProject:
-		return applyMoveToProject(task, action, result)
+		return applyMoveToProject(task, action, evalCtx, result)
 	default:
 	}
 
@@ -113,7 +114,19 @@ func applyCreateFollowup(task *models.Task, action RuleAction, result *Evaluatio
 
 // applyMoveToProject records a deferred move for the task.
 // The actual move is handled by the caller that has access to project storage.
-func applyMoveToProject(task *models.Task, action RuleAction, result *EvaluationResult) bool {
+// Skips the move when the destination matches the current project (by name or
+// ID) so a self-targeted rule doesn't inflate trigger counts, kick off
+// recursive re-evaluation, or queue a destructive no-op that callers would
+// execute as a real move (dropping cross-project deps/relations and reassigning
+// ShortIDs).
+func applyMoveToProject(task *models.Task, action RuleAction, evalCtx *EvaluationContext, result *EvaluationResult) bool {
+	if evalCtx != nil {
+		dest := action.Value
+		if (evalCtx.ProjectName != "" && strings.EqualFold(dest, evalCtx.ProjectName)) ||
+			(evalCtx.ProjectID != "" && dest == evalCtx.ProjectID) {
+			return false
+		}
+	}
 	result.DeferredMoves = append(result.DeferredMoves, DeferredMove{
 		TaskID:      task.ID,
 		Destination: action.Value,

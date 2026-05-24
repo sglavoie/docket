@@ -66,7 +66,7 @@ func TestApplyAction_MoveToProject(t *testing.T) {
 	}
 	action := RuleAction{ActionType: ActionMoveToProject, Value: "DestProject"}
 
-	modified := applyMoveToProject(task, action, result)
+	modified := applyMoveToProject(task, action, nil, result)
 
 	if !modified {
 		t.Error("expected applyMoveToProject to return true")

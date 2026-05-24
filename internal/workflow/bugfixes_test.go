@@ -219,6 +219,58 @@ func TestApplyAction_SetRecurrenceWeekdayOrderNoOp(t *testing.T) {
 	}
 }
 
+// TestApplyAction_MoveToProjectSelfMoveNoOp verifies that ActionMoveToProject
+// is a no-op when the destination matches the source project (by name or ID).
+// Without this guard, a rule that moves a task to its own project would inflate
+// trigger counts, mark the task modified, kick off a recursive re-evaluation
+// pass, AND queue a destructive self-move that callers like processDeferredMoves
+// would execute — dropping cross-project deps/relations and reassigning ShortIDs
+// for no real change.
+func TestApplyAction_MoveToProjectSelfMoveNoOp(t *testing.T) {
+	task := &models.Task{ID: "task-1", Title: "Test"}
+	rules := []WorkflowRule{
+		{
+			ID:      "r1",
+			Name:    "Self-move",
+			Enabled: true,
+			Trigger: RuleTrigger{Field: FieldStatus, Operation: OpEquals, Value: "todo"},
+			Actions: []RuleAction{{ActionType: ActionMoveToProject, Value: "ProjectA"}},
+		},
+	}
+	task.Status = models.StatusTodo
+
+	evalCtx := &EvaluationContext{
+		Changes:     []TaskChangeContext{{Task: task, Previous: nil}},
+		AllTasks:    []*models.Task{task},
+		TaskMap:     map[string]*models.Task{"task-1": task},
+		ProjectName: "ProjectA",
+		ProjectID:   "proj-a",
+	}
+
+	result := EvaluateRulesWithContext(evalCtx, rules)
+	if len(result.DeferredMoves) != 0 {
+		t.Errorf("expected no deferred moves for self-move, got %d", len(result.DeferredMoves))
+	}
+	if result.RuleTriggerCounts["r1"] != 0 {
+		t.Errorf("expected trigger count 0 for no-op self-move, got %d", result.RuleTriggerCounts["r1"])
+	}
+
+	// Also verify match-by-ID works the same way.
+	task2 := &models.Task{ID: "task-2", Title: "Test", Status: models.StatusTodo}
+	rules[0].Actions[0].Value = "proj-a"
+	evalCtx2 := &EvaluationContext{
+		Changes:     []TaskChangeContext{{Task: task2, Previous: nil}},
+		AllTasks:    []*models.Task{task2},
+		TaskMap:     map[string]*models.Task{"task-2": task2},
+		ProjectName: "ProjectA",
+		ProjectID:   "proj-a",
+	}
+	result2 := EvaluateRulesWithContext(evalCtx2, rules)
+	if len(result2.DeferredMoves) != 0 {
+		t.Errorf("expected no deferred moves when destination matches ProjectID, got %d", len(result2.DeferredMoves))
+	}
+}
+
 // TestEvaluateProjectRules_TriggeredIDsOnlyWinner verifies that when priority
 // resolution selects a single winner, TriggeredRuleIDs contains only that
 // winner's ID. Previously all matched rule IDs were included regardless of
