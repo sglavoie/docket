@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 
 	"charm.land/bubbles/v2/textinput"
@@ -216,8 +217,13 @@ func describeSnapshotFilters(filterType string, filterStatus string, filterPrior
 		parts = append(parts, "no-dim")
 	}
 	if len(filterAttrs) > 0 {
-		for k, v := range filterAttrs {
-			parts = append(parts, k+"="+v)
+		keys := make([]string, 0, len(filterAttrs))
+		for k := range filterAttrs {
+			keys = append(keys, k)
+		}
+		slices.Sort(keys)
+		for _, k := range keys {
+			parts = append(parts, k+"="+filterAttrs[k])
 		}
 	}
 	if filterScoreMin > 0 {

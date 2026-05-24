@@ -172,9 +172,14 @@ func commonFilterParts(f *CommonFilterState) []string {
 	default:
 	}
 	if len(f.Attrs) > 0 {
-		var attrParts []string
-		for k, v := range f.Attrs {
-			attrParts = append(attrParts, k+"="+v)
+		keys := make([]string, 0, len(f.Attrs))
+		for k := range f.Attrs {
+			keys = append(keys, k)
+		}
+		sort.Strings(keys)
+		attrParts := make([]string, 0, len(keys))
+		for _, k := range keys {
+			attrParts = append(attrParts, k+"="+f.Attrs[k])
 		}
 		parts = append(parts, "attr:"+strings.Join(attrParts, ","))
 	}
