@@ -52,8 +52,12 @@ func (m *NotesSearchModel) filterNotes() {
 		})
 	}
 
+	// Sort by score descending; break ties by filename for stable ordering.
 	sort.Slice(scored, func(i, j int) bool {
-		return scored[i].score > scored[j].score
+		if scored[i].score != scored[j].score {
+			return scored[i].score > scored[j].score
+		}
+		return scored[i].note.Filename < scored[j].note.Filename
 	})
 
 	m.filtered = scored

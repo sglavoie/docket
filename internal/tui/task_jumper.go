@@ -184,9 +184,13 @@ func (m *TaskJumperModel) filterTasks() {
 		}
 	}
 
-	// Sort by score descending (best matches first)
+	// Sort by score descending (best matches first); break ties by task ID
+	// to keep the list stable when scores are equal.
 	sort.Slice(scored, func(i, j int) bool {
-		return scored[i].score > scored[j].score
+		if scored[i].score != scored[j].score {
+			return scored[i].score > scored[j].score
+		}
+		return scored[i].task.ID < scored[j].task.ID
 	})
 
 	// Extract sorted results with positions

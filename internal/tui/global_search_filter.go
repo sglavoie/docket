@@ -173,9 +173,22 @@ func (m *GlobalSearchModel) filterTasks() {
 		}
 	}
 
-	// Sort by score descending (best matches first)
+	// Sort by score descending (best matches first); break ties by a stable
+	// key so equal-score results do not flicker between renders.
 	sort.Slice(scored, func(i, j int) bool {
-		return scored[i].score > scored[j].score
+		if scored[i].score != scored[j].score {
+			return scored[i].score > scored[j].score
+		}
+		// Prefer tasks over notes, then sort by ID/filename.
+		ri, rj := scored[i].result, scored[j].result
+		if ri.Task != nil && rj.Task != nil {
+			return ri.Task.ID < rj.Task.ID
+		}
+		if ri.Note != nil && rj.Note != nil {
+			return ri.Note.Filename < rj.Note.Filename
+		}
+		// Tasks before notes
+		return ri.Task != nil
 	})
 
 	// Extract sorted results with positions
