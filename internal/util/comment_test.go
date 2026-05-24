@@ -89,6 +89,17 @@ func TestParseEditedCommentContent_HashHeaderAfterMarkerKept(t *testing.T) {
 	}
 }
 
+func TestParseEditedCommentContent_WhitespaceOnlyBody(t *testing.T) {
+	// A body that is only whitespace (spaces, tabs) must collapse to ""
+	// so that callers' `newText == ""` empty-checks reject it as invalid
+	// rather than silently saving a blank comment.
+	in := "# Header\n\n<!-- hint -->\n\n   \n\t \n  "
+	got := ParseEditedCommentContent(in)
+	if got != "" {
+		t.Errorf("expected empty for whitespace-only body, got %q", got)
+	}
+}
+
 func TestParseEditedCommentContent_LongBody(t *testing.T) {
 	body := strings.Repeat("line\n", 50)
 	in := "# Header\n\n<!-- hint -->\n\n" + body

@@ -45,5 +45,9 @@ func ParseEditedCommentContent(content string) string {
 		textLines = textLines[:len(textLines)-1]
 	}
 
-	return strings.Join(textLines, "\n")
+	result := strings.Join(textLines, "\n")
+	if strings.TrimSpace(result) == "" {
+		return ""
+	}
+	return result
 }
