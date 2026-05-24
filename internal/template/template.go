@@ -61,12 +61,20 @@ func (t *TaskTemplate) Validate() error {
 		return fmt.Errorf("priority must be 0-%d (0 for default)", models.PriorityMax)
 	}
 
+	if len(t.Children) > 0 && !t.Type.CanHaveChildren() {
+		return fmt.Errorf("task type %s cannot have children", t.Type)
+	}
+
 	for i, child := range t.Children {
 		if strings.TrimSpace(child.Title) == "" {
 			return fmt.Errorf("item %d: title is required", i+1)
 		}
 		if child.Type != "" && !isValidTaskType(child.Type) {
 			return fmt.Errorf("item %d: invalid task type: %s", i+1, child.Type)
+		}
+		childType := child.GetChildType()
+		if !childType.CanBeChildOf(t.Type) {
+			return fmt.Errorf("item %d: %s cannot be a child of %s", i+1, childType, t.Type)
 		}
 	}
 

@@ -238,6 +238,36 @@ func TestValidate_ChildWithValidType(t *testing.T) {
 	}
 }
 
+func TestValidate_ChildTypeIncompatibleWithParent(t *testing.T) {
+	// An Epic-under-Epic violates the type hierarchy. Validate should reject
+	// this so we don't persist a structurally invalid task tree.
+	tmpl := NewTemplate("Test", models.TaskTypeEpic)
+	tmpl.Children = []TemplateChild{
+		{Title: "Nested Epic", Type: models.TaskTypeEpic},
+	}
+	err := tmpl.Validate()
+	if err == nil {
+		t.Fatal("expected error for epic-under-epic child")
+	}
+	if !strings.Contains(err.Error(), "item 1") {
+		t.Errorf("error %q should reference item 1", err.Error())
+	}
+}
+
+func TestValidate_ChildrenOnLeafType(t *testing.T) {
+	// Tasks/Bugs/Ideas cannot have children. Validate should reject a template
+	// of a leaf type that nevertheless declares Children — those children
+	// would be silently dropped at use time.
+	tmpl := NewTemplate("Test", models.TaskTypeTask)
+	tmpl.Children = []TemplateChild{
+		{Title: "Sub", Type: models.TaskTypeTask},
+	}
+	err := tmpl.Validate()
+	if err == nil {
+		t.Fatal("expected error for children on leaf-type template")
+	}
+}
+
 func TestValidate_MultipleErrors_FirstReturned(t *testing.T) {
 	// Template with multiple issues: bad name takes precedence
 	tmpl := &TaskTemplate{
