@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -116,15 +117,28 @@ func runProjectDelete(cmd *cobra.Command, args []string) error {
 // to the deleted project from all remaining projects. It loads each project's tasks,
 // filters out references pointing to deletedProjectSlug, and saves any modified projects.
 // Returns the total number of references cleaned across all projects.
+//
+// LoadProjectWithWarnings runs validateCrossProjectRefs at load time, which
+// already strips refs to projects whose directory no longer exists under
+// projects/ (the case immediately after MoveProjectToTrash). We count those
+// load-time strips via warnings so the file is rewritten without the stale
+// refs even when the in-memory diff would otherwise show zero changes.
 func cleanCrossProjectRefs(projects []*models.Project, deletedProjectSlug string) (int, error) {
 	totalCleaned := 0
 
 	for _, p := range projects {
-		if err := storage.LoadProject(p); err != nil {
+		loadResult, err := storage.LoadProjectWithWarnings(p)
+		if err != nil {
 			return totalCleaned, fmt.Errorf("loading project '%s': %w", p.Name, err)
 		}
 
 		cleaned := 0
+		for _, w := range loadResult.Warnings {
+			if (w.Field == "depends" || w.Field == "related") && strings.Contains(w.Message, fmt.Sprintf("%q", deletedProjectSlug)) {
+				cleaned++
+			}
+		}
+
 		for _, task := range p.Tasks {
 			origDeps := len(task.DependsOn)
 			task.DependsOn = filterRefs(task.DependsOn, deletedProjectSlug)

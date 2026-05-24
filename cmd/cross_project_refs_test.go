@@ -1,12 +1,68 @@
 package cmd
 
 import (
+	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/testutil"
 )
+
+// TestProjectDeleteCleansCrossProjectRefsOnDisk exercises the real
+// FileSystemRepository path. Regression for an interaction with
+// validateCrossProjectRefs: when LoadProject strips refs to the (already
+// trashed) project in-memory before cleanCrossProjectRefs computes its
+// diff, the diff sees zero and never saves the cleaned tasks.md, leaving
+// stale refs on disk that resurface on each load.
+func TestProjectDeleteCleansCrossProjectRefsOnDisk(t *testing.T) {
+	origRepo := storage.DefaultRepository
+	storage.DefaultRepository = storage.NewFileSystemRepository()
+	defer func() { storage.DefaultRepository = origRepo }()
+
+	tempDir := t.TempDir()
+	projectsDir := filepath.Join(tempDir, "projects")
+	if err := os.MkdirAll(projectsDir, 0o755); err != nil {
+		t.Fatalf("mkdir projects: %v", err)
+	}
+
+	projectA := testutil.NewTestProject("Project A")
+	projectA.Path = filepath.Join(projectsDir, projectA.Slug)
+	projectB := testutil.NewTestProject("Project B")
+	projectB.Path = filepath.Join(projectsDir, projectB.Slug)
+
+	task1, err := models.NewTask("task-b1", projectB.GetNextShortID(), models.TaskTypeTask, "Task B1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	task1.DependsOn = []string{projectA.Slug + ":task-a1"}
+	task1.RelatedTo = []string{projectA.Slug + ":task-a2"}
+	projectB.Tasks = []*models.Task{task1}
+
+	if err := storage.CreateProjectDir(projectB); err != nil {
+		t.Fatalf("create project B: %v", err)
+	}
+
+	// Simulate post-trash state: projectA's directory does not exist under
+	// projects/, so validateCrossProjectRefs (run by LoadProject) will strip
+	// the in-memory refs before cleanCrossProjectRefs can diff them.
+	if _, err := cleanCrossProjectRefs([]*models.Project{projectB}, projectA.Slug); err != nil {
+		t.Fatalf("cleanCrossProjectRefs: %v", err)
+	}
+
+	content, err := os.ReadFile(filepath.Join(projectB.Path, "tasks.md"))
+	if err != nil {
+		t.Fatalf("read tasks.md: %v", err)
+	}
+	if strings.Contains(string(content), projectA.Slug+":task-a1") {
+		t.Errorf("tasks.md still contains stale DependsOn ref to deleted project A:\n%s", content)
+	}
+	if strings.Contains(string(content), projectA.Slug+":task-a2") {
+		t.Errorf("tasks.md still contains stale RelatedTo ref to deleted project A:\n%s", content)
+	}
+}
 
 func TestProjectDeleteCleansCrossProjectRefs(t *testing.T) {
 	// Set up mock repository so LoadProject/SaveProject work without filesystem
