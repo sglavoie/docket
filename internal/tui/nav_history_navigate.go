@@ -157,21 +157,21 @@ func (m *AppModel) reconstructGlobalView(entry NavEntry) tea.Cmd {
 		}
 		m.showView(ViewScoreProfileManager, NewScoreProfileManagerModel(m.config, m.configManager, projectID))
 	case ViewMetricsDashboard:
-		if m.metricsDashboard != nil {
-			m.metricsDashboard.computeMetrics()
-			m.showView(ViewMetricsDashboard, m.metricsDashboard)
-		} else {
+		// Recreate when cached model is project-scoped so the global view is
+		// not contaminated by a previous project's metrics.
+		if m.metricsDashboard == nil || !m.metricsDashboard.isGlobal {
 			m.metricsDashboard = NewMetricsDashboardModel(m.config)
-			m.showView(ViewMetricsDashboard, m.metricsDashboard)
-		}
-	case ViewRoadmap:
-		if m.roadmap != nil {
-			m.roadmap.computeData()
-			m.showView(ViewRoadmap, m.roadmap)
 		} else {
-			m.roadmap = NewRoadmapModel(m.config)
-			m.showView(ViewRoadmap, m.roadmap)
+			m.metricsDashboard.computeMetrics()
 		}
+		m.showView(ViewMetricsDashboard, m.metricsDashboard)
+	case ViewRoadmap:
+		if m.roadmap == nil || !m.roadmap.isGlobal {
+			m.roadmap = NewRoadmapModel(m.config)
+		} else {
+			m.roadmap.computeData()
+		}
+		m.showView(ViewRoadmap, m.roadmap)
 	case ViewCrossProjectOutliner:
 		m.crossOutliner = NewOutlinerModel(nil, m.config, m.configManager)
 		m.crossOutliner.queueIDs = m.focusQueueIDs
@@ -245,21 +245,21 @@ func (m *AppModel) reconstructProjectView(entry NavEntry) tea.Cmd {
 	case ViewProjectFocusView:
 		m.showView(ViewProjectFocusView, NewProjectFocusViewModel(project, m.config))
 	case ViewMetricsDashboard:
-		if m.metricsDashboard != nil {
-			m.metricsDashboard.computeMetrics()
-			m.showView(ViewMetricsDashboard, m.metricsDashboard)
-		} else {
+		// Recreate when cached model is for a different project (or global)
+		// to avoid leaking the previous project's metrics into this view.
+		if m.metricsDashboard == nil || m.metricsDashboard.isGlobal || m.metricsDashboard.project != project {
 			m.metricsDashboard = NewMetricsDashboardModelForProject(m.config, project)
-			m.showView(ViewMetricsDashboard, m.metricsDashboard)
-		}
-	case ViewRoadmap:
-		if m.roadmap != nil {
-			m.roadmap.computeData()
-			m.showView(ViewRoadmap, m.roadmap)
 		} else {
-			m.roadmap = NewRoadmapModelForProject(m.config, project)
-			m.showView(ViewRoadmap, m.roadmap)
+			m.metricsDashboard.computeMetrics()
 		}
+		m.showView(ViewMetricsDashboard, m.metricsDashboard)
+	case ViewRoadmap:
+		if m.roadmap == nil || m.roadmap.isGlobal || m.roadmap.project != project {
+			m.roadmap = NewRoadmapModelForProject(m.config, project)
+		} else {
+			m.roadmap.computeData()
+		}
+		m.showView(ViewRoadmap, m.roadmap)
 	case ViewTemporaryOutliner:
 		fresh := NewOutlinerModel(project, m.config, m.configManager)
 		fresh.queueIDs = m.focusQueueIDs
