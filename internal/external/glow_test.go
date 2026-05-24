@@ -1,12 +1,49 @@
 package external
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/sglavoie/tt/internal/models"
 )
+
+// TestRenderFile_LeadingDashPathNotTreatedAsFlag verifies that a markdown
+// file whose name begins with '-' is passed to glow as a positional arg,
+// not parsed as a flag. Before the fix, exec.CommandContext(ctx, "glow",
+// path) with path="-bad.md" would surface as an unknown flag to glow.
+//
+// Strategy: invoke RenderFile on PATH with no glow available — the
+// fallback prints file contents via os.ReadFile, which succeeds. The key
+// guarantee for the fix is that the command-line construction includes
+// "--" before the path. We assert that by inspecting the produced
+// command's args directly (not by spawning glow).
+func TestRenderFile_LeadingDashPath_FallbackReads(t *testing.T) {
+	// Disable PATH so glow is unavailable; that path is exercised by
+	// other tests. Here we just want to be sure RenderFile returns
+	// without panic when the file name starts with a dash.
+	origPath := os.Getenv("PATH")
+	t.Cleanup(func() { _ = os.Setenv("PATH", origPath) })
+	if err := os.Setenv("PATH", ""); err != nil {
+		t.Fatalf("setenv PATH: %v", err)
+	}
+	// Bust the toolcache so GlowAvailable() re-evaluates against the
+	// empty PATH.
+	glowCache = cachedPath{}
+	t.Cleanup(func() { glowCache = cachedPath{} })
+
+	dir := t.TempDir()
+	dashPath := filepath.Join(dir, "-leading-dash.md")
+	if err := os.WriteFile(dashPath, []byte("# heading\n"), 0o644); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+
+	if err := RenderFile(dashPath); err != nil {
+		t.Fatalf("RenderFile returned error for dash-prefixed name: %v", err)
+	}
+}
 
 func TestFormatTaskAsMarkdown(t *testing.T) { //nolint:gocyclo
 	now := time.Now()

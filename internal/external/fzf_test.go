@@ -1,12 +1,68 @@
 package external
 
 import (
+	"context"
+	"errors"
 	"fmt"
+	"os/exec"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tterrors"
 )
+
+func TestClassifyFzfRunError_ContextCanceled(t *testing.T) {
+	// Parent context was cancelled while fzf was running. The exec.Cmd's
+	// reported error is unrelated to fzf's own 130 exit code, but the
+	// caller should still see ErrCanceled rather than a wrapped "fzf
+	// failed" string.
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	// Simulate the kind of error Run() would surface from a context-killed
+	// process — anything non-nil; the classifier should prefer ctx.Err().
+	raw := errors.New("signal: killed")
+	got := classifyFzfRunError(ctx, raw)
+	if !errors.Is(got, tterrors.ErrCanceled) {
+		t.Errorf("expected ErrCanceled when ctx is canceled, got %v", got)
+	}
+}
+
+func TestClassifyFzfRunError_DeadlineExceeded(t *testing.T) {
+	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(-1*time.Hour))
+	defer cancel()
+
+	raw := errors.New("signal: killed")
+	got := classifyFzfRunError(ctx, raw)
+	if got == nil || !strings.Contains(got.Error(), "timed out") {
+		t.Errorf("expected timeout error, got %v", got)
+	}
+	if errors.Is(got, tterrors.ErrCanceled) {
+		t.Errorf("timeout should not be ErrCanceled, got %v", got)
+	}
+}
+
+func TestClassifyFzfRunError_FzfCancelExit130(t *testing.T) {
+	// Real-world fzf cancel: user pressed ESC, fzf exits 130, ctx is
+	// fine. We simulate this with /bin/sh -c 'exit 130'.
+	cmd := exec.Command("/bin/sh", "-c", "exit 130")
+	runErr := cmd.Run()
+	if runErr == nil {
+		t.Fatal("expected non-nil run error from exit 130")
+	}
+	got := classifyFzfRunError(context.Background(), runErr)
+	if !errors.Is(got, tterrors.ErrCanceled) {
+		t.Errorf("expected ErrCanceled for exit 130, got %v", got)
+	}
+}
+
+func TestClassifyFzfRunError_NilPassthrough(t *testing.T) {
+	if got := classifyFzfRunError(context.Background(), nil); got != nil {
+		t.Errorf("expected nil for nil err, got %v", got)
+	}
+}
 
 func TestBuildProjectFzfInput(t *testing.T) {
 	projects := []*models.Project{

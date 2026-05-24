@@ -84,8 +84,19 @@ func runTaskPriority(cmd *cobra.Command, args []string) error {
 		})
 
 		if err != nil {
-			if alreadyAtPriority && len(taskIDs) > 1 {
-				// In batch mode, silently skip tasks already at the target priority
+			if alreadyAtPriority {
+				// Treat "already at target priority" as a no-op success in both
+				// single-task and batch modes; surfacing it as an error caused
+				// non-zero exit codes for what is effectively idempotent input.
+				if !out.Quiet && !out.JSON && len(taskIDs) == 1 {
+					// FindTaskByIdentifier already validated the ID exists, so
+					// re-look up the short ID for a friendlier message.
+					if project, _, _, lookupErr := LoadCurrentProject(); lookupErr == nil {
+						if t, findErr := FindTaskByIdentifier(project, taskID); findErr == nil {
+							fmt.Printf("Task #%d is already at priority %d.\n", t.ShortID, priority)
+						}
+					}
+				}
 				continue
 			}
 			errs = append(errs, fmt.Sprintf("task %s: %s", taskID, err))

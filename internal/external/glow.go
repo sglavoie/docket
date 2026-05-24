@@ -67,7 +67,7 @@ func RenderFile(path string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), glowTimeout)
 	defer cancel()
 
-	cmd := exec.CommandContext(ctx, "glow", path)
+	cmd := exec.CommandContext(ctx, "glow", "--", path)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 

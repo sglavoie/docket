@@ -77,6 +77,13 @@ func ParseTasksMarkdownWithSections(content string) (*ParseResult, error) {
 	var foundFirstTask bool
 	var metadataParsed bool
 	var metadataWarnings []ParseWarning
+	// insideNonDescriptionBlock tracks whether we're currently between
+	// COMMENTS/ACTIVITY/DECISIONS open and close markers. Lines inside such
+	// blocks must NOT receive the per-line heading-unescape pass because the
+	// extractors that consume those blocks run their own unescape via
+	// unescapeBlockText — applying both yields a double-unescape that
+	// silently strips a backslash from user content on every round-trip.
+	var insideNonDescriptionBlock bool
 
 	for scanner.Scan() {
 		line := scanner.Text()
@@ -90,6 +97,7 @@ func ParseTasksMarkdownWithSections(content string) (*ParseResult, error) {
 		}
 
 		if parseTaskHeadingLine(line, &currentTask, &parsedTasks, &descBuilder, &nextShortID, &foundFirstTask, &metadataParsed, &metadataWarnings) {
+			insideNonDescriptionBlock = false
 			continue
 		}
 
@@ -103,10 +111,20 @@ func ParseTasksMarkdownWithSections(content string) (*ParseResult, error) {
 		}
 
 		// Accumulate description content (unescape heading-like lines that
-		// were escaped by the writer to prevent parser mis-interpretation)
+		// were escaped by the writer to prevent parser mis-interpretation).
+		// Skip per-line unescape inside non-DESCRIPTION block markers; the
+		// extractors for those blocks run their own unescape pass.
 		if currentTask != nil {
-			descBuilder.WriteString(unescapeDescriptionLine(line))
+			isNonDescBoundary := matchesNonDescriptionBlockMarker(line)
+			if insideNonDescriptionBlock || isNonDescBoundary {
+				descBuilder.WriteString(line)
+			} else {
+				descBuilder.WriteString(unescapeDescriptionLine(line))
+			}
 			descBuilder.WriteString("\n")
+			if isNonDescBoundary {
+				insideNonDescriptionBlock = !insideNonDescriptionBlock
+			}
 		}
 	}
 

@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
@@ -133,5 +134,33 @@ func TestPriorityNoChangeWhenSame(t *testing.T) {
 		// No change needed - this is the expected behavior
 		testutil.AssertEqual(t, task.Priority, 2)
 		testutil.AssertEqual(t, task.UpdatedAt, originalUpdatedAt)
+	}
+}
+
+// TestTaskPriorityNoErrorOnNoOp confirms that running `tt task priority <id> N`
+// against a task that already has priority N exits with no error (a no-op).
+// Previously, the single-task path appended the "already at priority" sentinel
+// to errs and ReportBatchErrors surfaced it as a non-zero exit.
+func TestTaskPriorityNoErrorOnNoOp(t *testing.T) {
+	deps, project := setupSectionCommandTest(t)
+
+	task := project.Tasks[0]
+	task.Priority = 2
+	deps.Repository.Projects[project.ID] = project
+
+	originalUpdatedAt := task.UpdatedAt
+
+	err := runTaskPriority(nil, []string{fmt.Sprintf("%d", task.ShortID), "2"})
+	if err != nil {
+		t.Fatalf("runTaskPriority should not error when priority is already at target: %v", err)
+	}
+
+	savedProject := deps.Repository.Projects[project.ID]
+	savedTask := savedProject.GetTaskByShortID(task.ShortID)
+	if savedTask.UpdatedAt != originalUpdatedAt {
+		t.Error("UpdatedAt should not change when priority is already at target")
+	}
+	if savedTask.Priority != 2 {
+		t.Errorf("priority = %d, want 2", savedTask.Priority)
 	}
 }

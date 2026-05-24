@@ -18,10 +18,22 @@ func matchesHeadingOrProject(line string) bool {
 // belonging to that block, corrupting the round-trip.
 var blockMarkerRegex = regexp.MustCompile(`^<!--\s*/?(DESCRIPTION|COMMENTS|ACTIVITY|DECISIONS)\s*-->$`)
 
+// nonDescriptionBlockMarkerRegex matches start/end markers for blocks whose
+// own extractors run their own unescape pass (COMMENTS/ACTIVITY/DECISIONS).
+// Used by the parser to suppress per-line heading-unescape inside those
+// blocks so the text isn't unescaped twice.
+var nonDescriptionBlockMarkerRegex = regexp.MustCompile(`^<!--\s*/?(COMMENTS|ACTIVITY|DECISIONS)\s*-->$`)
+
 // matchesBlockMarker returns true if the trimmed line is one of the 8
 // block-marker lines (start or end of DESCRIPTION/COMMENTS/ACTIVITY/DECISIONS).
 func matchesBlockMarker(line string) bool {
 	return blockMarkerRegex.MatchString(strings.TrimSpace(line))
+}
+
+// matchesNonDescriptionBlockMarker returns true if the line is a start or end
+// marker for COMMENTS/ACTIVITY/DECISIONS (but not DESCRIPTION).
+func matchesNonDescriptionBlockMarker(line string) bool {
+	return nonDescriptionBlockMarkerRegex.MatchString(strings.TrimSpace(line))
 }
 
 // escapeDescription escapes lines in a task description that would be

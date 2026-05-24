@@ -13,12 +13,21 @@ const MaxNestingDepth = 6
 // WouldCreateCycle checks whether setting proposedParentID as the parent of
 // taskID would create a cycle. It walks the parent chain from proposedParentID
 // upward; if it reaches taskID, a cycle would be created.
+//
+// A visited set guards against pre-existing cycles in taskMap that do not
+// involve taskID (e.g. A->B->C->A). Without it, walking such a chain when
+// proposedParentID is part of the cycle would loop forever.
 func WouldCreateCycle(taskMap map[string]*Task, taskID, proposedParentID string) bool {
 	if taskID == proposedParentID {
 		return true
 	}
+	visited := make(map[string]bool)
 	current := proposedParentID
 	for current != "" {
+		if visited[current] {
+			return false
+		}
+		visited[current] = true
 		parent, ok := taskMap[current]
 		if !ok || parent.ParentID == nil {
 			return false

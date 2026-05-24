@@ -23,6 +23,13 @@ func (t *Task) SetSection(name string) {
 	if err := ValidateSectionName(name); err != nil {
 		return
 	}
+	// Reject case-variant collisions with GTD section names (e.g. "inbox"
+	// when the canonical "Inbox" already exists). Otherwise CustomSection
+	// would hold a name that looks identical to a GTD section to the user
+	// but stays distinct in storage, scattering the task across two buckets.
+	if IsGTDSectionNameCI(name) {
+		return
+	}
 	t.CustomSection = name
 	t.Section = ""
 }
@@ -36,7 +43,7 @@ func (t *Task) SetCustomSection(name string) {
 		t.CustomSection = ""
 		return
 	}
-	if IsGTDSection(name) {
+	if IsGTDSectionNameCI(name) {
 		return
 	}
 	if err := ValidateSectionName(name); err != nil {

@@ -193,6 +193,7 @@ func deepCopyTaskForDryRun(task *models.Task) *models.Task {
 		HasTime:       task.HasTime,
 		Pinned:        task.Pinned,
 		Active:        task.Active,
+		Dimmed:        task.Dimmed,
 		Level:         task.Level,
 		Source:        task.Source,
 		URL:           task.URL,
@@ -349,6 +350,11 @@ func detectChanges(original, modified *models.Task) []DryRunChange {
 			Field: "active", OldValue: fmt.Sprintf("%t", original.Active), NewValue: fmt.Sprintf("%t", modified.Active),
 		})
 	}
+	if original.Dimmed != modified.Dimmed {
+		changes = append(changes, DryRunChange{
+			Field: "dimmed", OldValue: fmt.Sprintf("%t", original.Dimmed), NewValue: fmt.Sprintf("%t", modified.Dimmed),
+		})
+	}
 	if original.Pinned != modified.Pinned {
 		changes = append(changes, DryRunChange{
 			Field: "pinned", OldValue: fmt.Sprintf("%t", original.Pinned), NewValue: fmt.Sprintf("%t", modified.Pinned),
@@ -411,7 +417,24 @@ func detectChanges(original, modified *models.Task) []DryRunChange {
 		})
 	}
 
+	// Recurrence changes (ActionSetRecurrence mutates this field).
+	origRec := describeRecurrence(original.Recurrence)
+	modRec := describeRecurrence(modified.Recurrence)
+	if origRec != modRec {
+		changes = append(changes, DryRunChange{
+			Field: "recurrence", OldValue: origRec, NewValue: modRec,
+		})
+	}
+
 	return changes
+}
+
+// describeRecurrence renders a recurrence pattern for diff display.
+func describeRecurrence(r *models.RecurrencePattern) string {
+	if r == nil {
+		return "(none)"
+	}
+	return r.String()
 }
 
 // filterResults filters results based on search query.

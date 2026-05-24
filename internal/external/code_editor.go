@@ -92,8 +92,10 @@ func OpenCodeReference(editor, path string, line int) error {
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 
-	// Terminal editors need stdin and must block until exit
-	if pattern == patternPlusLine {
+	// Terminal editors need stdin and must block until exit. Unknown
+	// editors are assumed terminal too — running them async without
+	// stdin causes helix/hx and similar to fail silently.
+	if pattern == patternPlusLine || pattern == patternUnknown {
 		cmd.Stdin = os.Stdin
 		return cmd.Run()
 	}

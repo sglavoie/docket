@@ -35,6 +35,28 @@ func sanitizeFzfField(s string) string {
 	return r.Replace(s)
 }
 
+// classifyFzfRunError maps a non-nil error from fzf's exec.Cmd.Run() to a
+// stable error for callers. Returns ErrCanceled for both fzf's own
+// cancel/Ctrl-C (exit code 130) and parent-context cancellation, a
+// descriptive timeout error for deadline expiry, and a wrapped error
+// otherwise.
+func classifyFzfRunError(ctx context.Context, err error) error {
+	if err == nil {
+		return nil
+	}
+	if errors.Is(ctx.Err(), context.Canceled) {
+		return tterrors.ErrCanceled
+	}
+	if errors.Is(ctx.Err(), context.DeadlineExceeded) {
+		return fmt.Errorf("fzf timed out after %ds — try again or press Ctrl+C to cancel", fzfTimeoutSeconds)
+	}
+	var exitErr *exec.ExitError
+	if errors.As(err, &exitErr) && exitErr.ExitCode() == 130 {
+		return tterrors.ErrCanceled
+	}
+	return fmt.Errorf("fzf failed: %w", err)
+}
+
 // FzfAvailable checks if fzf is installed and available.
 func FzfAvailable() bool {
 	_, err := CachedFzfPath()
@@ -89,16 +111,7 @@ func FzfSelectProject(projects []*models.Project, prompt string) (*models.Projec
 	cmd.Stdout = &stdout
 
 	if err := cmd.Run(); err != nil {
-		var exitErr *exec.ExitError
-		if errors.As(err, &exitErr) {
-			if exitErr.ExitCode() == 130 {
-				return nil, tterrors.ErrCanceled
-			}
-		}
-		if ctx.Err() == context.DeadlineExceeded {
-			return nil, fmt.Errorf("fzf timed out after %ds — try again or press Ctrl+C to cancel", fzfTimeoutSeconds)
-		}
-		return nil, fmt.Errorf("fzf failed: %w", err)
+		return nil, classifyFzfRunError(ctx, err)
 	}
 
 	selected := strings.TrimSpace(stdout.String())
@@ -169,16 +182,7 @@ func FzfSelectTask(tasks []*models.Task, prompt string, previewCmd string) (*mod
 	cmd.Stdout = &stdout
 
 	if err := cmd.Run(); err != nil {
-		var exitErr *exec.ExitError
-		if errors.As(err, &exitErr) {
-			if exitErr.ExitCode() == 130 {
-				return nil, tterrors.ErrCanceled
-			}
-		}
-		if ctx.Err() == context.DeadlineExceeded {
-			return nil, fmt.Errorf("fzf timed out after %ds — try again or press Ctrl+C to cancel", fzfTimeoutSeconds)
-		}
-		return nil, fmt.Errorf("fzf failed: %w", err)
+		return nil, classifyFzfRunError(ctx, err)
 	}
 
 	selected := strings.TrimSpace(stdout.String())
@@ -254,16 +258,7 @@ func FzfMultiSelectProjects(projects []*models.Project, prompt string, preselect
 	cmd.Stdout = &stdout
 
 	if err := cmd.Run(); err != nil {
-		var exitErr *exec.ExitError
-		if errors.As(err, &exitErr) {
-			if exitErr.ExitCode() == 130 {
-				return nil, tterrors.ErrCanceled
-			}
-		}
-		if ctx.Err() == context.DeadlineExceeded {
-			return nil, fmt.Errorf("fzf timed out after %ds — try again or press Ctrl+C to cancel", fzfTimeoutSeconds)
-		}
-		return nil, fmt.Errorf("fzf failed: %w", err)
+		return nil, classifyFzfRunError(ctx, err)
 	}
 
 	output := strings.TrimSpace(stdout.String())
@@ -336,16 +331,7 @@ func FzfMultiSelectTasks(tasks []*models.Task, prompt string) ([]*models.Task, e
 	cmd.Stdout = &stdout
 
 	if err := cmd.Run(); err != nil {
-		var exitErr *exec.ExitError
-		if errors.As(err, &exitErr) {
-			if exitErr.ExitCode() == 130 {
-				return nil, tterrors.ErrCanceled
-			}
-		}
-		if ctx.Err() == context.DeadlineExceeded {
-			return nil, fmt.Errorf("fzf timed out after %ds — try again or press Ctrl+C to cancel", fzfTimeoutSeconds)
-		}
-		return nil, fmt.Errorf("fzf failed: %w", err)
+		return nil, classifyFzfRunError(ctx, err)
 	}
 
 	output := strings.TrimSpace(stdout.String())

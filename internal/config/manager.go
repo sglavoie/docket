@@ -166,6 +166,20 @@ func (m *Manager) Load() (*Config, error) { //nolint:gocyclo
 	clampIntPtrMin(config.ReviewCompletedHours, "ReviewCompletedHours")
 	clampIntPtrMin(config.MaxPinnedBarItems, "MaxPinnedBarItems")
 	clampIntPtrMin(config.MaxRecentTaskVisits, "MaxRecentTaskVisits")
+	clampIntPtrMin(config.RecentActivityLimit, "RecentActivityLimit")
+	clampIntPtrMin(config.MaxActivityEntries, "MaxActivityEntries")
+	clampIntPtrMin(config.WeeklyStaleProjectDays, "WeeklyStaleProjectDays")
+	clampIntPtrMin(config.WeeklyStaleTaskDays, "WeeklyStaleTaskDays")
+	clampIntPtrMin(config.WeeklyInboxThreshold, "WeeklyInboxThreshold")
+	clampIntPtrMin(config.WeeklyBlockedThreshold, "WeeklyBlockedThreshold")
+	clampIntPtrMin(config.WeeklyInProgressThreshold, "WeeklyInProgressThreshold")
+	clampIntPtrMin(config.StaleTaskDays, "StaleTaskDays")
+	clampIntPtrMin(config.PriorityEscalationDays, "PriorityEscalationDays")
+	clampIntPtrMin(config.AlertDueSoonDays, "AlertDueSoonDays")
+	clampIntPtrMin(config.AlertStaleDays, "AlertStaleDays")
+	clampIntPtrMin(config.AlertInboxThreshold, "AlertInboxThreshold")
+	clampIntPtrMin(config.AlertBlockedDays, "AlertBlockedDays")
+	clampIntPtrMin(config.AlertProjectStaleDays, "AlertProjectStaleDays")
 
 	if config.Stages == nil {
 		config.Stages = []string{"Brainstorm", "Design", "Implement", "Test", "Review", "Deploy"}
@@ -180,9 +194,15 @@ func (m *Manager) Load() (*Config, error) { //nolint:gocyclo
 		config.SavedFilters = []SavedFilter{}
 	}
 
-	// Filter out projects with missing required fields
+	// Filter out projects with missing required fields. A JSON `null` entry in
+	// the projects array deserializes to a nil pointer; treat those as invalid
+	// rather than panicking when accessing fields.
 	validProjects := make([]*models.Project, 0, len(config.Projects))
 	for _, p := range config.Projects {
+		if p == nil {
+			fmt.Fprintf(os.Stderr, "warning: dropping nil project entry from config\n")
+			continue
+		}
 		if p.ID == "" || p.Name == "" {
 			fmt.Fprintf(os.Stderr, "warning: dropping project with missing ID/name from config (ID=%q Name=%q)\n", p.ID, p.Name)
 			continue
@@ -193,18 +213,22 @@ func (m *Manager) Load() (*Config, error) { //nolint:gocyclo
 		config.Projects = validProjects
 	}
 
-	// Warn on duplicate project IDs or slugs.
+	// Warn on duplicate project IDs or slugs. Skip empty slugs so projects
+	// missing the field don't produce a spurious "duplicate" warning for every
+	// pair of empty-slug entries.
 	seenIDs := make(map[string]bool)
 	seenSlugs := make(map[string]bool)
 	for _, p := range validProjects {
 		if seenIDs[p.ID] {
 			fmt.Fprintf(os.Stderr, "warning: duplicate project ID %q in config\n", p.ID)
 		}
-		if seenSlugs[p.Slug] {
+		if p.Slug != "" && seenSlugs[p.Slug] {
 			fmt.Fprintf(os.Stderr, "warning: duplicate project slug %q in config\n", p.Slug)
 		}
 		seenIDs[p.ID] = true
-		seenSlugs[p.Slug] = true
+		if p.Slug != "" {
+			seenSlugs[p.Slug] = true
+		}
 	}
 
 	// Backfill new fields on builtin scoring profiles from presets

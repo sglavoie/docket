@@ -63,10 +63,13 @@ func SaveNoteTo(dir string, note *models.Note) error {
 	path := filepath.Join(dir, note.Filename)
 
 	// Check for collision: if file exists but this is a new note (no prior content on disk)
-	// we need to deduplicate the filename.
+	// we need to deduplicate the filename. Treat unreadable existing files
+	// as a collision (refuse to overwrite) rather than silently clobbering
+	// them — losing the existing content would be unrecoverable.
 	if _, err := os.Stat(path); err == nil {
 		existing, loadErr := LoadNoteFrom(dir, note.Filename)
-		if loadErr == nil && !existing.CreatedAt.Equal(note.CreatedAt) {
+		needsDedup := loadErr != nil || !existing.CreatedAt.Equal(note.CreatedAt)
+		if needsDedup {
 			base := strings.TrimSuffix(note.Filename, ".md")
 			const maxDedup = 1000
 			found := false

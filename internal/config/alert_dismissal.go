@@ -45,10 +45,20 @@ func (c *Config) SetAlertDismissals(d []AlertDismissal) {
 	c.AlertDismissals = d
 }
 
-// DismissAlert records a dismissal for the given key if not already present.
+// DismissAlert records a dismissal for the given key. If an expired entry
+// exists with the same key it is refreshed; otherwise a new entry is appended.
+// Expired entries (older than alertDismissalMaxAge) are treated as absent so
+// the user can re-dismiss alerts that previously timed out but haven't yet
+// been pruned by Load().
 func (c *Config) DismissAlert(key, category string) {
-	for _, d := range c.AlertDismissals {
+	cutoff := time.Now().Add(-alertDismissalMaxAge)
+	for i, d := range c.AlertDismissals {
 		if d.Key == key {
+			if d.DismissedAt.After(cutoff) {
+				return
+			}
+			c.AlertDismissals[i].Category = category
+			c.AlertDismissals[i].DismissedAt = time.Now()
 			return
 		}
 	}
@@ -59,10 +69,12 @@ func (c *Config) DismissAlert(key, category string) {
 	})
 }
 
-// IsAlertDismissed returns true if an alert with the given key is currently dismissed.
+// IsAlertDismissed returns true if an alert with the given key is currently
+// dismissed and not yet expired.
 func (c *Config) IsAlertDismissed(key string) bool {
+	cutoff := time.Now().Add(-alertDismissalMaxAge)
 	for _, d := range c.AlertDismissals {
-		if d.Key == key {
+		if d.Key == key && d.DismissedAt.After(cutoff) {
 			return true
 		}
 	}

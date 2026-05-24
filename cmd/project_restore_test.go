@@ -384,3 +384,28 @@ func TestConfigAddProjectOnRestore(t *testing.T) {
 	testutil.AssertEqual(t, len(cfg.Projects), 1)
 	testutil.AssertEqual(t, cfg.Projects[0].Name, "Test Project")
 }
+
+// TestProjectRestoreRejectsEmptySlug guards against the empty-string slug
+// reaching storage.RestoreProjectFromTrash, where filepath.Join(...,"") would
+// resolve to the trash dir itself and attempt to rename the entire trash
+// folder into projects/.
+func TestProjectRestoreRejectsEmptySlug(t *testing.T) {
+	deps, _ := setupProjectTest(t)
+
+	// Seed the trash so TrashEntryExists("") would otherwise return true,
+	// reaching the dangerous RestoreProjectFromTrash("") code path.
+	trashDir := filepath.Join(deps.Config.DataDir, ".tt", "trash")
+	siblingDir := filepath.Join(trashDir, "sibling-project")
+	if err := os.MkdirAll(siblingDir, 0755); err != nil {
+		t.Fatalf("failed to seed trash dir: %v", err)
+	}
+
+	err := runProjectRestore(projectRestoreCmd, []string{""})
+	if err == nil {
+		t.Fatal("expected error for empty slug")
+	}
+
+	if _, statErr := os.Stat(siblingDir); os.IsNotExist(statErr) {
+		t.Fatal("sibling trash entry was destroyed by empty-slug restore")
+	}
+}

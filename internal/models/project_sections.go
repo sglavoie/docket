@@ -71,8 +71,15 @@ const MaxSectionNameLength = 50
 // 26+ callers (including TUI handlers) rely on the no-error signature.
 // Invalid names are a no-op; callers that need validation should call
 // ValidateSectionName explicitly before this method.
+//
+// Case-variant collisions with built-in GTD section names (e.g. "inbox" when
+// the canonical "Inbox" already exists) are rejected to prevent duplicate
+// sections that look identical to the user but are distinct in storage.
 func (p *Project) EnsureSection(name string) {
 	if err := ValidateSectionName(name); err != nil {
+		return
+	}
+	if IsGTDSectionNameCI(name) && !IsGTDSection(name) {
 		return
 	}
 	if !p.HasSection(name) {
@@ -124,6 +131,9 @@ func (p *Project) RenameSection(oldName, newName string) error {
 	}
 	if err := ValidateSectionName(newName); err != nil {
 		return err
+	}
+	if IsGTDSectionNameCI(newName) && !IsGTDSection(newName) {
+		return fmt.Errorf("cannot rename section to %q: collides with built-in GTD section name", newName)
 	}
 	if p.HasSection(newName) {
 		return fmt.Errorf("cannot rename section to %q: %w", newName, ErrSectionAlreadyExists)

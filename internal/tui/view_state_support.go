@@ -14,10 +14,14 @@ type UndoContext struct {
 	// store it. Use crossHandleUndo → RestoreFromBackup for all undo operations.
 }
 
-// Set records the action and context for the next undo snapshot.
+// Set records the action and context for the next undo snapshot. Targeted
+// TaskIDs/ProjectIDs are cleared because each new operation starts fresh;
+// callers that need targeting assign those fields explicitly after Set.
 func (u *UndoContext) Set(action, ctx string) {
 	u.Action = action
 	u.Context = ctx
+	u.ProjectIDs = nil
+	u.TaskIDs = nil
 }
 
 // Clear resets the undo context after it has been consumed.

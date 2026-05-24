@@ -54,6 +54,12 @@ func runProjectPurge(cmd *cobra.Command, args []string) error {
 
 	slug := args[0]
 
+	// Guard against empty slug: TrashEntryExists("") and PurgeFromTrash("")
+	// would target the trash dir itself, wiping every trashed project.
+	if slug == "" {
+		return tterrors.NewRequiredFieldError("project slug")
+	}
+
 	// Check if project exists in trash
 	if !storage.TrashEntryExists(slug, cfg.DataDir) {
 		return tterrors.NewProjectNotFoundInTrashError(slug)

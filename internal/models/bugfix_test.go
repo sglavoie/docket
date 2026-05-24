@@ -311,3 +311,139 @@ func TestSwapTasks_UpdatesBothTimestamps(t *testing.T) {
 		t.Error("task2.UpdatedAt should be refreshed after swap (regression: only task1 was touched)")
 	}
 }
+
+// TestEnsureSection_RejectsCaseVariantGTDCollision verifies EnsureSection does
+// not add a case-variant of a GTD section name (e.g. "inbox" when "Inbox"
+// already exists). Before the fix, lowercase "inbox" passed validation and
+// was appended alongside the canonical "Inbox", producing two sections that
+// look identical to the user but are distinct in storage.
+func TestEnsureSection_RejectsCaseVariantGTDCollision(t *testing.T) {
+	p, err := NewProject("test", "Test", "/tmp/test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	p.EnsureDefaultSections()
+	originalLen := len(p.Sections)
+
+	for _, name := range []string{"inbox", "INBOX", "Waiting ", "someday", "review", "Standby", "COMPLETED", "NeXt"} {
+		// Strip whitespace test inputs that ValidateSectionName itself rejects.
+		// "Waiting " has trailing space, which the existing validator catches
+		// before our case-collision check; skip those so we focus on the new
+		// guard.
+		if name == "Waiting " {
+			continue
+		}
+		p.EnsureSection(name)
+	}
+
+	if len(p.Sections) != originalLen {
+		t.Errorf("EnsureSection added case-variant GTD section names: got %v", p.Sections)
+	}
+
+	// Exact-case GTD names still work (idempotently).
+	p.EnsureSection(SectionInbox)
+	if len(p.Sections) != originalLen {
+		t.Errorf("EnsureSection should be idempotent for canonical Inbox; got %v", p.Sections)
+	}
+
+	// Non-GTD custom sections still work.
+	p.EnsureSection("Backlog")
+	if !p.HasSection("Backlog") {
+		t.Error("EnsureSection should still add non-colliding custom section")
+	}
+}
+
+// TestRenameSection_RejectsCaseVariantGTDCollision verifies RenameSection
+// refuses to rename a custom section to a case-variant of a GTD section name.
+// Before the fix, renaming "MyStuff" to "inbox" would succeed despite the
+// canonical "Inbox" GTD section already existing.
+func TestRenameSection_RejectsCaseVariantGTDCollision(t *testing.T) {
+	p, err := NewProject("test", "Test", "/tmp/test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	p.EnsureDefaultSections()
+	p.EnsureSection("MyStuff")
+
+	err = p.RenameSection("MyStuff", "inbox")
+	if err == nil {
+		t.Fatal("expected error renaming custom section to case-variant of GTD name, got nil")
+	}
+	if !p.HasSection("MyStuff") {
+		t.Error("MyStuff section should remain unchanged after rejected rename")
+	}
+	if p.HasSection("inbox") {
+		t.Error("case-variant 'inbox' should not have been added to Sections")
+	}
+}
+
+// TestSetSection_RejectsCaseVariantGTDName verifies SetSection refuses to land
+// a case-variant of a GTD section name in CustomSection. Before the fix, a
+// task could carry CustomSection="inbox" while the project's GTD "Inbox"
+// section also existed, scattering tasks across two visually identical
+// buckets.
+func TestSetSection_RejectsCaseVariantGTDName(t *testing.T) {
+	task, err := NewTask("id", 1, TaskTypeTask, "T")
+	if err != nil {
+		t.Fatal(err)
+	}
+	task.Section = SectionInbox
+
+	task.SetSection("inbox")
+	if task.CustomSection != "" {
+		t.Errorf("SetSection should not store case-variant GTD name in CustomSection, got %q", task.CustomSection)
+	}
+	// Section must remain unchanged when the call is rejected; otherwise the
+	// task silently drops out of its current bucket on invalid input.
+	if task.Section != SectionInbox {
+		t.Errorf("Section should be preserved when SetSection rejects input, got %q", task.Section)
+	}
+}
+
+// TestSetCustomSection_RejectsCaseVariantGTDName verifies SetCustomSection
+// refuses to store a case-variant of a GTD section name. Before the fix,
+// only the exact-case GTD names were rejected, allowing "inbox" or "next"
+// to bypass the check.
+func TestSetCustomSection_RejectsCaseVariantGTDName(t *testing.T) {
+	task, err := NewTask("id", 1, TaskTypeTask, "T")
+	if err != nil {
+		t.Fatal(err)
+	}
+	task.SetCustomSection("inbox")
+	if task.CustomSection != "" {
+		t.Errorf("SetCustomSection should reject case-variant GTD name, got %q", task.CustomSection)
+	}
+	task.SetCustomSection("NEXT")
+	if task.CustomSection != "" {
+		t.Errorf("SetCustomSection should reject 'NEXT' (case-variant of GTD Next), got %q", task.CustomSection)
+	}
+}
+
+// TestWouldCreateCycle_DownstreamCycleDoesNotHang verifies WouldCreateCycle
+// terminates when proposedParentID lies inside a pre-existing cycle that does
+// not involve taskID (e.g. A->B->C->A). Before the fix, the walk would loop
+// indefinitely through the downstream cycle, hanging the call.
+func TestWouldCreateCycle_DownstreamCycleDoesNotHang(t *testing.T) {
+	bID := "b"
+	cID := "c"
+	aID := "a"
+	taskA := &Task{ID: aID, ParentID: &bID}
+	taskB := &Task{ID: bID, ParentID: &cID}
+	taskC := &Task{ID: cID, ParentID: &aID}
+	taskMap := map[string]*Task{aID: taskA, bID: taskB, cID: taskC}
+
+	done := make(chan bool, 1)
+	go func() {
+		// taskID "outside" is not part of the A-B-C cycle; the walk should
+		// detect the visited-loop and return false rather than spinning.
+		_ = WouldCreateCycle(taskMap, "outside", aID)
+		done <- true
+	}()
+
+	select {
+	case <-done:
+		// Completed in time.
+	case <-time.After(2 * time.Second):
+		t.Fatal("WouldCreateCycle hung on downstream cycle (infinite loop)")
+	}
+}
