@@ -213,7 +213,7 @@ func TestDateInput_PrefillPreservesHasTime(t *testing.T) {
 		HasTime: true,
 	}
 
-	m := NewDateInputModel(task, project)
+	m := NewDateInputModel(task, project, "")
 	got := m.input.Value()
 	want := "2026-06-15T14:30"
 	if got != want {
@@ -233,7 +233,7 @@ func TestDateInput_PrefillDateOnly(t *testing.T) {
 		HasTime: false,
 	}
 
-	m := NewDateInputModel(task, project)
+	m := NewDateInputModel(task, project, "")
 	got := m.input.Value()
 	want := "2026-06-15"
 	if got != want {

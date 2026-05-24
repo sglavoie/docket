@@ -22,11 +22,14 @@ type DateInputModel struct {
 	height       int
 	canceled     bool
 	initialValue string
+	weekEndDay   string
 	discardConfirmState
 }
 
 // NewDateInputModel creates a new date input model.
-func NewDateInputModel(task *models.Task, project *models.Project) *DateInputModel {
+// weekEndDay controls how "eow" is resolved and must be "fri", "sat", or "sun".
+// Pass an empty string to default to "sun".
+func NewDateInputModel(task *models.Task, project *models.Project, weekEndDay string) *DateInputModel {
 	input := textinput.New()
 	input.Placeholder = "e.g., 2024-01-15, dec 15, tomorrow, +3d, fri, none"
 	input.Focus()
@@ -43,11 +46,15 @@ func NewDateInputModel(task *models.Task, project *models.Project) *DateInputMod
 		}
 	}
 
+	if weekEndDay == "" {
+		weekEndDay = "sun"
+	}
 	return &DateInputModel{
 		task:         task,
 		project:      project,
 		input:        input,
 		initialValue: input.Value(),
+		weekEndDay:   weekEndDay,
 	}
 }
 
@@ -104,7 +111,7 @@ func (m *DateInputModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 			// Parse the date (supports optional time-of-day suffix like "5pm")
-			date, hasTime, err := util.ParseRelativeDateWithTime(value, "sun")
+			date, hasTime, err := util.ParseRelativeDateWithTime(value, m.weekEndDay)
 			if err != nil {
 				m.err = err
 				return m, nil

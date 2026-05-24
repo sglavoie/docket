@@ -72,7 +72,11 @@ func (m *AppModel) handleCaptureAndBulkMessages(msg tea.Msg) (bool, tea.Cmd) {
 	case PaletteBulkDueDateMsg:
 		if len(msg.Tasks) > 0 {
 			m.pendingBulkTasks = msg.Tasks
-			m.showView(ViewDateInput, NewDateInputModel(msg.Tasks[0].Task, msg.Tasks[0].Project))
+			weekEndDay := ""
+			if m.config != nil {
+				weekEndDay = m.config.GetWeekEndDay()
+			}
+			m.showView(ViewDateInput, NewDateInputModel(msg.Tasks[0].Task, msg.Tasks[0].Project, weekEndDay))
 		}
 		return true, nil
 	}

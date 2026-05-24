@@ -30,7 +30,11 @@ func (m *AppModel) handleTaskDateMessages(msg tea.Msg) (bool, tea.Cmd) {
 // handleSetDueDate handles the SetDueDateMsg.
 func (m *AppModel) handleSetDueDate(msg SetDueDateMsg) (bool, tea.Cmd) {
 	if msg.Task != nil && msg.Project != nil {
-		m.showView(ViewDateInput, NewDateInputModel(msg.Task, msg.Project))
+		weekEndDay := ""
+		if m.config != nil {
+			weekEndDay = m.config.GetWeekEndDay()
+		}
+		m.showView(ViewDateInput, NewDateInputModel(msg.Task, msg.Project, weekEndDay))
 	}
 	return true, nil
 }
