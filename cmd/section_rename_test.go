@@ -156,6 +156,29 @@ func TestSectionRenameRejectsGTDTarget(t *testing.T) {
 	}
 }
 
+// TestSectionRenameRejectsGTDTargetCaseInsensitive guards against
+// `tt section rename Foo inbox` (or any case variant of a GTD name) succeeding
+// and silently creating a sibling of the built-in section.
+func TestSectionRenameRejectsGTDTargetCaseInsensitive(t *testing.T) {
+	variants := []string{"inbox", "INBOX", "next", "NEXT", "completed", "COMPLETED"}
+	for _, name := range variants {
+		t.Run("rejects target "+name, func(t *testing.T) {
+			deps, project := setupSectionCommandTest(t)
+			project.EnsureSection("Custom")
+			deps.Repository.Projects[project.ID] = project
+
+			err := runSectionRename(nil, []string{"Custom", name})
+			if err == nil {
+				t.Fatalf("runSectionRename to %q should error: case variant of GTD name must be rejected", name)
+			}
+			saved := deps.Repository.Projects[project.ID]
+			if saved != nil && !slices.Contains(saved.Sections, "Custom") {
+				t.Fatalf("original section 'Custom' was lost on failed rename to %q", name)
+			}
+		})
+	}
+}
+
 func TestSectionRenameBuiltInSections(t *testing.T) {
 	builtInSections := []string{
 		models.SectionNext,

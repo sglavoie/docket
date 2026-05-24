@@ -24,7 +24,7 @@ func (m *SectionManagerModel) addSection(name string) tea.Cmd {
 			return ErrorMsg{Err: err}
 		}
 
-		if models.IsGTDSection(name) {
+		if models.IsGTDSectionNameCI(name) {
 			return ErrorMsg{Err: fmt.Errorf("'%s' is a built-in GTD section", name)}
 		}
 
@@ -63,7 +63,7 @@ func (m *SectionManagerModel) renameSection(oldName, newName string) tea.Cmd {
 			return ErrorMsg{Err: fmt.Errorf("cannot rename GTD section '%s'", oldName)}
 		}
 
-		if models.IsGTDSection(newName) {
+		if models.IsGTDSectionNameCI(newName) {
 			return ErrorMsg{Err: fmt.Errorf("'%s' is a built-in GTD section", newName)}
 		}
 

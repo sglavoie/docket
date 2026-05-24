@@ -47,10 +47,11 @@ func runSectionRename(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	// Reject renaming to a built-in GTD section name. Without this guard a custom
-	// section can be renamed to "Inbox", "Next", etc., silently creating a
-	// duplicate that conflicts with the built-in section.
-	if models.IsGTDSection(newName) {
+	// Reject renaming to a built-in GTD section name. The check is
+	// case-insensitive: without it `tt section rename Foo inbox` succeeds and
+	// silently creates a sibling of the built-in "Inbox" that conflicts with
+	// the built-in section in views and filters.
+	if models.IsGTDSectionNameCI(newName) {
 		return fmt.Errorf("cannot rename to '%s': name is reserved for the built-in section", newName)
 	}
 

@@ -66,6 +66,38 @@ func TestSectionAdd(t *testing.T) {
 	})
 }
 
+// TestSectionAddRejectsGTDNamesCaseInsensitive is a regression test for a bug
+// where `tt section add inbox` (lowercase) or any other case-variant of a
+// built-in GTD section name succeeded because IsGTDSection used exact-case
+// matching. The resulting custom "inbox" section then coexisted with the
+// built-in "Inbox", producing two sibling sections that confuse filters,
+// the section sidebar, and the /sigil quick-capture syntax.
+func TestSectionAddRejectsGTDNamesCaseInsensitive(t *testing.T) {
+	variants := []string{
+		"inbox", "INBOX", "iNbOx",
+		"next", "NEXT",
+		"waiting", "WAITING",
+		"someday", "SOMEDAY",
+		"review", "REVIEW",
+		"standby", "STANDBY",
+		"completed", "COMPLETED",
+	}
+	for _, name := range variants {
+		t.Run("rejects case variant "+name, func(t *testing.T) {
+			deps, project := setupSectionCommandTest(t)
+			before := len(project.Sections)
+			err := runSectionAdd(nil, []string{name})
+			if err == nil {
+				t.Fatalf("runSectionAdd(%q) should error: case variant of built-in GTD name must be rejected", name)
+			}
+			saved := deps.Repository.Projects[project.ID]
+			if saved != nil && len(saved.Sections) != before {
+				t.Fatalf("project.Sections count changed from %d to %d after failed add of %q", before, len(saved.Sections), name)
+			}
+		})
+	}
+}
+
 // TestSectionAddRejectsGTDNames is a regression test for a bug where
 // `tt section add Inbox` (or any other GTD built-in name) succeeded and
 // appended the name to project.Sections, creating a duplicate of the
