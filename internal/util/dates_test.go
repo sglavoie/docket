@@ -184,6 +184,10 @@ func TestParseDateWithTime(t *testing.T) {
 		{"25:00 invalid hour", "25:00", false, time.Time{}, true},
 		{"13pm invalid", "13pm", false, time.Time{}, true},
 		{"0am invalid", "0am", false, time.Time{}, true},
+		// Natural "at" preposition between date and time
+		{"tomorrow at 9am", "tomorrow at 9am", true, at(today.AddDate(0, 0, 1), 9, 0), false},
+		{"today at 5pm", "today at 5pm", true, at(today, 17, 0), false},
+		{"today at 14:30", "today at 14:30", true, at(today, 14, 30), false},
 		// Invalid date part with a valid time suffix
 		{"gibberish date with time", "gibberish 5pm", false, time.Time{}, true},
 	}

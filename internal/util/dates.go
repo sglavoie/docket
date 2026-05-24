@@ -460,6 +460,9 @@ func ParseRelativeDateWithTime(input, weekEndDay string) (time.Time, bool, error
 	}
 
 	input = strings.ToLower(trimmed)
+	// Strip the preposition "at" between date and time tokens so natural
+	// phrases like "friday at 3pm" or "tomorrow at 9am" are accepted.
+	input = strings.ReplaceAll(input, " at ", " ")
 
 	datePart, timePart := splitDateTimeInput(input)
 
