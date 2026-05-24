@@ -40,7 +40,10 @@ func getInboxTasksForModel(project *models.Project) []*models.Task {
 		}
 	}
 	sort.Slice(tasks, func(i, j int) bool {
-		return tasks[i].CreatedAt.Before(tasks[j].CreatedAt)
+		if !tasks[i].CreatedAt.Equal(tasks[j].CreatedAt) {
+			return tasks[i].CreatedAt.Before(tasks[j].CreatedAt)
+		}
+		return tasks[i].ID < tasks[j].ID
 	})
 	return tasks
 }
