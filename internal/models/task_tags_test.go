@@ -219,6 +219,61 @@ func TestHasTag(t *testing.T) {
 	}
 }
 
+// TestAddTagStripsLeadingHash verifies that a leading '#' is removed during
+// normalization. Tag rendering always prepends '#' itself; without this strip,
+// CLI input like `--tag "#backend"` would render as "##backend" — diverging
+// from the TUI tag adder (commit 086f1321) which already strips the prefix.
+func TestAddTagStripsLeadingHash(t *testing.T) {
+	task, err := NewTask("t1", 1, TaskTypeTask, "Test")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	task.AddTag("#backend")
+	if !task.HasTag("backend") {
+		t.Error("expected AddTag to strip leading '#' and store 'backend'")
+	}
+	if len(task.Tags) != 1 || task.Tags[0] != "backend" {
+		t.Errorf("expected stored tag 'backend', got %v", task.Tags)
+	}
+
+	// Adding the unprefixed version should be a no-op (dedup).
+	task.AddTag("backend")
+	if len(task.Tags) != 1 {
+		t.Errorf("expected 1 tag after adding unprefixed duplicate, got %d", len(task.Tags))
+	}
+
+	// Whitespace around the '#' should also be normalized.
+	task.AddTag("  #frontend  ")
+	if !task.HasTag("frontend") {
+		t.Error("expected AddTag to normalize whitespace + leading '#'")
+	}
+
+	// HasTag and RemoveTag should accept either form.
+	if !task.HasTag("#backend") {
+		t.Error("expected HasTag to normalize leading '#'")
+	}
+	task.RemoveTag("#backend")
+	if task.HasTag("backend") {
+		t.Error("expected RemoveTag to normalize leading '#' and remove 'backend'")
+	}
+}
+
+// TestAddTagRejectsHashOnly verifies that a tag consisting only of '#' (or
+// whitespace + '#') is rejected, since stripping the prefix leaves an empty
+// string.
+func TestAddTagRejectsHashOnly(t *testing.T) {
+	task, err := NewTask("t1", 1, TaskTypeTask, "Test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	task.AddTag("#")
+	task.AddTag("  #  ")
+	if len(task.Tags) != 0 {
+		t.Errorf("expected no tags, got %v", task.Tags)
+	}
+}
+
 // TestHasTagEmptyReturnsFalse verifies that HasTag rejects empty/whitespace
 // inputs even if a malformed empty tag somehow ended up in Tags (e.g. via
 // direct field assignment bypassing AddTag validation). Without this guard,

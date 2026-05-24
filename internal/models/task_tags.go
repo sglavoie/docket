@@ -12,9 +12,15 @@ import (
 // MaxTagLength is the maximum allowed length for a tag.
 const MaxTagLength = 100
 
-// normalizeTag trims leading/trailing whitespace from a tag.
-// All tag operations should normalize before storing or comparing.
+// normalizeTag trims leading/trailing whitespace and strips a single leading
+// '#' from a tag. Tag rendering always prepends '#', so an input like
+// "#backend" must collapse to "backend" to avoid "##backend" on screen and to
+// stay consistent with the TUI tag adder (commit 086f1321) and quick-capture
+// inline `#tag` syntax. All tag operations should normalize before storing or
+// comparing.
 func normalizeTag(tag string) string {
+	tag = strings.TrimSpace(tag)
+	tag = strings.TrimPrefix(tag, "#")
 	return strings.TrimSpace(tag)
 }
 
