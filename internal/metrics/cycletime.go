@@ -27,13 +27,21 @@ func computeCycleTime(tasks []*models.Task, cutoff, now time.Time, buckets []buc
 
 	var allDurations []time.Duration
 
+	// For TimeRangeAll the explicit cutoff is zero but the bucket range is
+	// capped at the last ~12 months. Use the bucket span as the effective
+	// cutoff so the overall Count/Average/Median match the per-bucket Trend.
+	effectiveCutoff := cutoff
+	if effectiveCutoff.IsZero() && len(buckets) > 0 {
+		effectiveCutoff = buckets[0].Start
+	}
+
 	for _, t := range tasks {
 		if t.CompletedAt == nil || t.Status != models.StatusDone {
 			continue
 		}
 		completedAt := *t.CompletedAt
 
-		if !cutoff.IsZero() && completedAt.Before(cutoff) {
+		if !effectiveCutoff.IsZero() && completedAt.Before(effectiveCutoff) {
 			continue
 		}
 

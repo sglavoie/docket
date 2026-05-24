@@ -146,6 +146,29 @@ func TestParseClipboard(t *testing.T) {
 			url:   "",
 			desc:  "",
 		},
+
+		// CRLF / CR line-ending normalisation (Windows / classic Mac clipboards)
+		{
+			name:  "CRLF line endings normalised",
+			input: "Title line\r\nBody line one\r\nBody line two\r\n",
+			title: "Title line",
+			url:   "",
+			desc:  "Body line one\nBody line two",
+		},
+		{
+			name:  "CR-only line endings normalised",
+			input: "Title\rBody\r",
+			title: "Title",
+			url:   "",
+			desc:  "Body",
+		},
+		{
+			name:  "single line with trailing CRLF",
+			input: "Just title\r\n",
+			title: "Just title",
+			url:   "",
+			desc:  "",
+		},
 	}
 
 	for _, tc := range tests {

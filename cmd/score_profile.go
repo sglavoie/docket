@@ -217,6 +217,10 @@ func runScoreProfileEdit(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("scoring profile %q not found", args[0])
 	}
 
+	if profile.Builtin {
+		return fmt.Errorf("scoring profile %q is a built-in preset and cannot be edited", args[0])
+	}
+
 	if name, _ := cmd.Flags().GetString("name"); name != "" {
 		profile.Name = name
 	}
@@ -260,6 +264,10 @@ func runScoreProfileDelete(cmd *cobra.Command, args []string) error {
 	cfg, configManager, err := LoadConfig()
 	if err != nil {
 		return err
+	}
+
+	if existing := cfg.GetScoringProfile(args[0]); existing != nil && existing.Builtin {
+		return fmt.Errorf("scoring profile %q is a built-in preset and cannot be deleted", args[0])
 	}
 
 	if !cfg.RemoveScoringProfile(args[0]) {

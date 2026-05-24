@@ -165,9 +165,18 @@ func runAttach(cmd *cobra.Command, args []string) error { //nolint:gocyclo
 		return fmt.Errorf("failed to resolve path: %w", err)
 	}
 
-	// Check if file exists
-	if _, statErr := os.Stat(absPath); os.IsNotExist(statErr) {
-		return fmt.Errorf("file not found: %s", absPath)
+	// Check if file exists and is a regular file.
+	info, statErr := os.Stat(absPath)
+	if statErr != nil {
+		if os.IsNotExist(statErr) {
+			return fmt.Errorf("file not found: %s", absPath)
+		}
+		return fmt.Errorf("failed to access %s: %w", absPath, statErr)
+	}
+	// Directories cannot be attached; without this guard CopyAttachment fails
+	// with an opaque "is a directory" io error later in the pipeline.
+	if info.IsDir() {
+		return fmt.Errorf("cannot attach a directory: %s", absPath)
 	}
 
 	// Copy file to attachments directory

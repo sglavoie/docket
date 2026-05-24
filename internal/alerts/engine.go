@@ -263,6 +263,12 @@ func checkBlockedTasks(cfg AlertConfig, projects []ProjectData, now time.Time) [
 			// Use the activity log to find when the task last became blocked,
 			// rather than UpdatedAt which resets on any metadata edit.
 			blockedSince := findLastBlockedTransition(task)
+			// Avoid emitting a spurious "Blocked for ~700000 days" alert when
+			// the activity log is empty and UpdatedAt is zero (e.g. partially
+			// constructed task via JSON missing the field).
+			if blockedSince.IsZero() {
+				continue
+			}
 			daysSinceBlocked := util.DaysBetween(blockedSince, now)
 			if daysSinceBlocked >= cfg.BlockedDays {
 				alerts = append(alerts, Alert{

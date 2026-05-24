@@ -100,6 +100,25 @@ func TestParseInlineMetadata(t *testing.T) {
 			wantTags:     nil,
 		},
 		{
+			// Regression: the priority regex used to be "!([1-5])" which would
+			// match the leading "1" of "!19" and leave the trailing "9" stranded
+			// in the title, while wrongly setting priority=1.
+			name:         "multi-digit priority not partially consumed",
+			input:        "Fix !19 bug",
+			wantTitle:    "Fix bug",
+			wantPriority: 0,
+			wantTags:     nil,
+		},
+		{
+			// Regression: same root cause as "!19" — the regex consumed only the
+			// first digit of "!56" and left "6" in the title.
+			name:         "multi-digit priority starting with 5 not partially consumed",
+			input:        "Plan !56 things",
+			wantTitle:    "Plan things",
+			wantPriority: 0,
+			wantTags:     nil,
+		},
+		{
 			name:         "tag with underscore",
 			input:        "Add feature #code_review",
 			wantTitle:    "Add feature",

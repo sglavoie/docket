@@ -42,6 +42,37 @@ func TestFindNoteInExactMatchPreferred(t *testing.T) {
 	}
 }
 
+// Regression: when multiple note filenames share a prefix and none exactly
+// matches the query, findNoteIn previously returned whichever note happened to
+// appear first in storage's list. That silent behavior is dangerous for
+// destructive commands like `note delete`. The function must instead surface
+// the ambiguity so the user can disambiguate.
+func TestFindNoteInRejectsAmbiguousPrefix(t *testing.T) {
+	dir := t.TempDir()
+
+	makeNote := func(title string) {
+		n := models.NewNote(title)
+		content, err := storage.RenderNoteContent(n)
+		if err != nil {
+			t.Fatalf("render: %v", err)
+		}
+		if writeErr := os.WriteFile(filepath.Join(dir, n.Filename), []byte(content), 0644); writeErr != nil {
+			t.Fatalf("write: %v", writeErr)
+		}
+	}
+
+	makeNote("project-alpha")
+	makeNote("project-beta")
+
+	got, err := findNoteIn(dir, "project")
+	if err == nil {
+		t.Fatalf("expected ambiguous error, got note %+v", got)
+	}
+	if got != nil {
+		t.Errorf("expected nil note on ambiguity, got %+v", got)
+	}
+}
+
 // TestFindNoteInRejectsEmptyQuery ensures findNoteIn does not silently match the
 // first note when called with an empty query string. strings.HasPrefix(x, "")
 // and strings.Contains(x, "") both return true, so without an explicit guard a

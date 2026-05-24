@@ -100,6 +100,24 @@ func runTaskList(cmd *cobra.Command, args []string) error {
 
 	_, _ = cfg, configManager
 
+	// Validate filter flag values up front so a typo (e.g. --type fix) surfaces
+	// as an error instead of silently returning an empty list.
+	if listTaskType != "" {
+		if _, ok := models.ParseTaskType(listTaskType); !ok {
+			return tterrors.NewInvalidTaskTypeError(listTaskType)
+		}
+	}
+	if listTaskStatus != "" {
+		if _, ok := models.ParseTaskStatus(listTaskStatus); !ok {
+			return fmt.Errorf("invalid status %q (valid: %s)", listTaskStatus, strings.Join(statusCompletions, ", "))
+		}
+	}
+	if listPriority != 0 {
+		if err := ValidatePriority(listPriority, false); err != nil {
+			return err
+		}
+	}
+
 	// Apply filters
 	tasks := filterTasks(project.Tasks)
 

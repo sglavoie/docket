@@ -263,24 +263,25 @@ func (m *OutlinerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if task == nil {
 			return m, nil
 		}
-		prevStates := captureTaskStates(m.project.Tasks)
-		if msg.ParentID == nil {
-			m.project.MutateTask(task.ID, func(t *models.Task) {
-				t.ParentID = nil
-			})
-		} else {
+		// Validate first; skip the snapshot + save when the mutation would
+		// be a no-op (invalid target, cycle, type mismatch).
+		var newParent *string
+		if msg.ParentID != nil {
 			targetID := *msg.ParentID
 			taskMap := make(map[string]*models.Task, len(m.project.Tasks))
 			for _, t := range m.project.Tasks {
 				taskMap[t.ID] = t
 			}
 			targetParent := taskMap[targetID]
-			if targetParent != nil && task.Type.CanBeChildOf(targetParent.Type) && !models.WouldCreateCycle(taskMap, task.ID, targetID) {
-				m.project.MutateTask(task.ID, func(t *models.Task) {
-					t.ParentID = &targetID
-				})
+			if targetParent == nil || !task.Type.CanBeChildOf(targetParent.Type) || models.WouldCreateCycle(taskMap, task.ID, targetID) {
+				return m, nil
 			}
+			newParent = &targetID
 		}
+		prevStates := captureTaskStates(m.project.Tasks)
+		m.project.MutateTask(task.ID, func(t *models.Task) {
+			t.ParentID = newParent
+		})
 		m.project.BuildTaskTree()
 		m.setUndoContext("Reparent Task", task.Title)
 		m.undo.TaskIDs = []string{task.ID}

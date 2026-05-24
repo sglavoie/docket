@@ -397,3 +397,69 @@ func TestScoreRankJSON_IncludesIDAndPriority(t *testing.T) {
 		t.Errorf("expected priority=1 in score rank JSON, got %v", v)
 	}
 }
+
+// TestRunScoreSet_RejectsPartialMutationOnInvalidArg verifies that when one
+// of several `dim=value` arguments is invalid, none of the earlier valid
+// assignments leak into the task's ScoreDimensions map.
+func TestRunScoreSet_RejectsPartialMutationOnInvalidArg(t *testing.T) {
+	deps, project := setupScoreTest(t)
+	defer deps.Cleanup()
+
+	firstTask := project.Tasks[0]
+	if firstTask.ScoreDimensions != nil && len(firstTask.ScoreDimensions) > 0 {
+		t.Fatalf("expected first task to start with no score dimensions, got %v", firstTask.ScoreDimensions)
+	}
+
+	// impact=5 valid, then bogus dim should reject the whole call.
+	err := runScoreSet(scoreSetCmd, []string{firstTask.Title, "impact=5", "unknowndim=3"})
+	if err == nil {
+		t.Fatal("expected error for unknown dimension")
+	}
+
+	if firstTask.ScoreDimensions != nil {
+		if _, ok := firstTask.ScoreDimensions["impact"]; ok {
+			t.Errorf("expected no partial mutation; impact should not be set when later argument fails")
+		}
+	}
+}
+
+// TestRunScoreProfileDelete_RejectsBuiltin verifies that built-in scoring
+// profiles cannot be deleted, since deleting them would break any project
+// that was assigned the preset.
+func TestRunScoreProfileDelete_RejectsBuiltin(t *testing.T) {
+	deps, _ := setupScoreConfigOnlyTest(t)
+	defer deps.Cleanup()
+
+	// ICE preset is loaded as a built-in by setupScoreConfigOnlyTest.
+	err := runScoreProfileDelete(scoreProfileDeleteCmd, []string{"ice"})
+	if err == nil {
+		t.Fatal("expected error when deleting built-in preset")
+	}
+
+	// Reload config and verify the profile is still present.
+	manager := config.NewManager(deps.ConfigPath)
+	loaded, err := manager.Load()
+	testutil.AssertNoError(t, err)
+	if loaded.GetScoringProfile("ice") == nil {
+		t.Error("built-in profile 'ice' was removed despite the rejection")
+	}
+}
+
+// TestRunScoreProfileEdit_RejectsBuiltin verifies that built-in scoring
+// profiles cannot be edited.
+func TestRunScoreProfileEdit_RejectsBuiltin(t *testing.T) {
+	deps, _ := setupScoreConfigOnlyTest(t)
+	defer deps.Cleanup()
+
+	cmd := scoreProfileEditCmd
+	// Set the name flag so the edit attempt is non-empty.
+	if err := cmd.Flags().Set("name", "Hacked"); err != nil {
+		t.Fatalf("failed to set name flag: %v", err)
+	}
+	t.Cleanup(func() { _ = cmd.Flags().Set("name", "") })
+
+	err := runScoreProfileEdit(cmd, []string{"ice"})
+	if err == nil {
+		t.Fatal("expected error when editing built-in preset")
+	}
+}

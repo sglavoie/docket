@@ -14,13 +14,23 @@ func computeThroughput(tasks []*models.Task, cutoff, now time.Time, buckets []bu
 		Labels:    bucketLabels(buckets),
 	}
 
+	// For TimeRangeAll the explicit cutoff is zero but the bucket range is
+	// capped at the last ~12 months. Use the bucket span as the effective
+	// cutoff so Total, PerBucket, and AvgPerDay reference the same window
+	// — otherwise AvgPerDay divides an all-time total by ~365 days, vastly
+	// overstating recent throughput.
+	effectiveCutoff := cutoff
+	if effectiveCutoff.IsZero() && len(buckets) > 0 {
+		effectiveCutoff = buckets[0].Start
+	}
+
 	for _, t := range tasks {
 		if t.CompletedAt == nil || t.Status != models.StatusDone {
 			continue
 		}
 		completedAt := *t.CompletedAt
 
-		if !cutoff.IsZero() && completedAt.Before(cutoff) {
+		if !effectiveCutoff.IsZero() && completedAt.Before(effectiveCutoff) {
 			continue
 		}
 

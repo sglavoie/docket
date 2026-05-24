@@ -11,7 +11,13 @@ import "github.com/sglavoie/tt/internal/models"
 func ResolveAllDependencies(projects []*models.Project) map[string]*models.Task {
 	result := make(map[string]*models.Task)
 	for _, p := range projects {
+		if p == nil {
+			continue
+		}
 		for _, t := range p.Tasks {
+			if t == nil || t.ID == "" {
+				continue
+			}
 			// Plain task ID (unqualified, for same-project lookups).
 			result[t.ID] = t
 			// Qualified by project UUID.
@@ -38,7 +44,13 @@ func CollectAllIncompleteTasks(projects []*models.Project) []*models.Task {
 
 	var result []*models.Task
 	for _, p := range projects {
+		if p == nil {
+			continue
+		}
 		for _, t := range p.Tasks {
+			if t == nil {
+				continue
+			}
 			if !t.IsComplete() {
 				result = append(result, t)
 			}

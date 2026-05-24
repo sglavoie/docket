@@ -159,9 +159,16 @@ func savedViewToFilter(sv savedView) SavedFilter {
 }
 
 // smartListToFilter converts a legacy smartList into a SavedFilter with mode "criteria".
+// A missing or empty legacy ID is replaced with a fresh UUID so the migrated
+// filter is uniquely addressable; otherwise multiple legacy entries without
+// IDs would collide and ID lookups would be ambiguous.
 func smartListToFilter(sl smartList) SavedFilter {
+	id := sl.ID
+	if id == "" {
+		id = uuid.New().String()
+	}
 	return SavedFilter{
-		ID:               sl.ID,
+		ID:               id,
 		Name:             sl.Name,
 		Mode:             "criteria",
 		Criteria:         sl.Criteria,

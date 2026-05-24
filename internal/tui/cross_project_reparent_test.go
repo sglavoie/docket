@@ -111,6 +111,60 @@ func TestCrossProjectReparent(t *testing.T) {
 	}
 }
 
+// TestCrossProjectReparent_InvalidTargetNoSnapshot verifies that supplying an
+// invalid parent (e.g. type-incompatible: task -> task) yields a no-op without
+// recording an undo snapshot. Previously the snapshot was recorded before the
+// validity check, polluting undo history with phantom "Reparent Task" entries.
+func TestCrossProjectReparent_InvalidTargetNoSnapshot(t *testing.T) {
+	strPtr := func(s string) *string { return &s }
+
+	dir := t.TempDir()
+	leafA, _ := models.NewTask("leaf-a", 1, models.TaskTypeTask, "Leaf A")
+	leafB, _ := models.NewTask("leaf-b", 2, models.TaskTypeTask, "Leaf B")
+	proj := &models.Project{ID: "p", Name: "P", Path: dir}
+	proj.Tasks = []*models.Task{leafA, leafB}
+	proj.BuildTaskTree()
+	if err := storage.SaveProject(proj); err != nil {
+		t.Fatalf("save: %v", err)
+	}
+	if err := storage.LoadProject(proj); err != nil {
+		t.Fatalf("load: %v", err)
+	}
+
+	depth := 5
+	m := &OutlinerModel{
+		PrimaryViewBundle: PrimaryViewBundle{
+			ViewBundle:     ViewBundle{config: &config.Config{UndoHistoryDepth: &depth}},
+			projectService: NewProjectService(),
+		},
+		loadedProjects: []*models.Project{proj},
+	}
+
+	// leafA cannot be a child of leafB (task type can't parent another task).
+	invalidParent := "leaf-b"
+	_, cmd := m.handleCrossProjectReparent(ParentSelectedMsg{
+		ReparentTaskID: "leaf-a",
+		ParentID:       &invalidParent,
+		Source:         ViewCrossProjectOutliner,
+	})
+	if cmd != nil {
+		if _, ok := cmd().(ErrorMsg); ok {
+			t.Fatalf("expected nil cmd, got ErrorMsg")
+		}
+	}
+
+	// No snapshot should exist because the operation was invalid.
+	if _, err := os.Stat(filepath.Join(dir, ".undo", "0001.md")); err == nil {
+		t.Error("undo snapshot was recorded for an invalid (no-op) reparent")
+	}
+
+	// And the parent should remain unchanged in memory.
+	if leafA.ParentID != nil {
+		t.Errorf("leaf-a ParentID should still be nil, got %q", *leafA.ParentID)
+	}
+	_ = strPtr
+}
+
 // TestCrossProjectReparentToRoot verifies that picking "None" (nil ParentID)
 // detaches the task from its current parent in cross-project mode.
 func TestCrossProjectReparentToRoot(t *testing.T) {

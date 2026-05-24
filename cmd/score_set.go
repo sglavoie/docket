@@ -57,10 +57,11 @@ func runScoreSet(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("no scoring profile assigned to project %q. Assign one with: tt score assign <profile-id>", project.Name)
 	}
 
-	// Parse dimension assignments
-	if task.ScoreDimensions == nil {
-		task.ScoreDimensions = make(map[string]int)
-	}
+	// Parse and validate ALL dimension assignments first; only mutate the task
+	// once we know every assignment is valid. Otherwise an error on the Nth
+	// argument would leave the first N-1 already written into the in-memory
+	// map.
+	pending := make(map[string]int, len(args)-1)
 	for _, arg := range args[1:] {
 		parts := strings.SplitN(arg, "=", 2)
 		if len(parts) != 2 {
@@ -81,7 +82,14 @@ func runScoreSet(cmd *cobra.Command, args []string) error {
 			return err
 		}
 
-		task.ScoreDimensions[dimID] = val
+		pending[dimID] = val
+	}
+
+	if task.ScoreDimensions == nil {
+		task.ScoreDimensions = make(map[string]int)
+	}
+	for k, v := range pending {
+		task.ScoreDimensions[k] = v
 	}
 
 	task.UpdatedAt = time.Now()

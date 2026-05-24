@@ -147,29 +147,32 @@ func (m *OutlinerModel) handleCrossProjectReparent(msg ParentSelectedMsg) (tea.M
 		return m, nil
 	}
 
-	m.crossUndoCtx.Set("Reparent Task", task.Title)
-	m.crossUndoCtx.ProjectIDs = []string{proj.ID}
-	if m.config != nil && m.config.UndoHistoryDepth != nil && *m.config.UndoHistoryDepth > 0 {
-		_ = m.projectService.RecordUndoSnapshot(proj, "Reparent Task", task.Title, *m.config.UndoHistoryDepth, nil)
-	}
-
-	if msg.ParentID == nil {
-		proj.MutateTask(task.ID, func(t *models.Task) {
-			t.ParentID = nil
-		})
-	} else {
+	// Validate first; only record undo + save when the mutation actually applies.
+	// Otherwise an invalid parent (cycle, type mismatch, missing) would pollute
+	// undo history with a no-op snapshot.
+	var newParent *string
+	if msg.ParentID != nil {
 		targetID := *msg.ParentID
 		taskMap := make(map[string]*models.Task, len(proj.Tasks))
 		for _, t := range proj.Tasks {
 			taskMap[t.ID] = t
 		}
 		targetParent := taskMap[targetID]
-		if targetParent != nil && task.Type.CanBeChildOf(targetParent.Type) && !models.WouldCreateCycle(taskMap, task.ID, targetID) {
-			proj.MutateTask(task.ID, func(t *models.Task) {
-				t.ParentID = &targetID
-			})
+		if targetParent == nil || !task.Type.CanBeChildOf(targetParent.Type) || models.WouldCreateCycle(taskMap, task.ID, targetID) {
+			return m, nil
 		}
+		newParent = &targetID
 	}
+
+	m.crossUndoCtx.Set("Reparent Task", task.Title)
+	m.crossUndoCtx.ProjectIDs = []string{proj.ID}
+	if m.config != nil && m.config.UndoHistoryDepth != nil && *m.config.UndoHistoryDepth > 0 {
+		_ = m.projectService.RecordUndoSnapshot(proj, "Reparent Task", task.Title, *m.config.UndoHistoryDepth, nil)
+	}
+
+	proj.MutateTask(task.ID, func(t *models.Task) {
+		t.ParentID = newParent
+	})
 	proj.BuildTaskTree()
 	return m, m.crossSaveProject(proj)
 }

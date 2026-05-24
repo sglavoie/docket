@@ -189,3 +189,33 @@ func TestBlocked(t *testing.T) {
 		}
 	})
 }
+
+// TestThroughputAllTimeAvgPerDayConsistent verifies that for TimeRangeAll
+// (cutoff zero) the AvgPerDay calculation references the same task window
+// as Total. Previously Total counted all tasks ever (including those before
+// the 12-month bucket span) while AvgPerDay divided by ~365 days, producing
+// a vastly inflated average for projects with old data.
+func TestThroughputAllTimeAvgPerDayConsistent(t *testing.T) {
+	now := time.Date(2025, 6, 15, 12, 0, 0, 0, time.UTC)
+	old := now.AddDate(-2, 0, 0)
+	recent := now.AddDate(0, 0, -7)
+	tasks := []*models.Task{
+		makeTask(models.StatusDone, timePtr(old), nil),
+		makeTask(models.StatusDone, timePtr(recent), nil),
+	}
+
+	cutoff := TimeRangeAll.Cutoff(now)
+	buckets := timeBuckets(cutoff, now, bucketGranularity(TimeRangeAll))
+	result := computeThroughput(tasks, cutoff, now, buckets)
+
+	if result.Total != 1 {
+		t.Errorf("Total = %d, want 1 (only the in-bucket task)", result.Total)
+	}
+	var sum float64
+	for _, v := range result.PerBucket {
+		sum += v
+	}
+	if int(sum) != result.Total {
+		t.Errorf("sum(PerBucket) = %v != Total = %d", sum, result.Total)
+	}
+}

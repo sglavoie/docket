@@ -253,6 +253,12 @@ func resolveTemplateVars(vars []template.TemplateVariable, flags []string) (map[
 			continue
 		}
 		if !interactive {
+			// Non-interactive: a variable without a default and not supplied via
+			// --var would silently expand to "" and produce a degenerate task
+			// (e.g. empty title, empty section). Surface this instead.
+			if v.Default == "" {
+				return nil, fmt.Errorf("template variable %q has no default and was not provided via --var (stdin is not a terminal)", v.Name)
+			}
 			values[v.Name] = v.Default
 			continue
 		}

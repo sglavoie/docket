@@ -213,14 +213,19 @@ func (m *Manager) Load() (*Config, error) { //nolint:gocyclo
 		config.Projects = validProjects
 	}
 
-	// Warn on duplicate project IDs or slugs. Skip empty slugs so projects
-	// missing the field don't produce a spurious "duplicate" warning for every
-	// pair of empty-slug entries.
+	// Drop duplicate-ID projects (keeping the first occurrence) and warn on
+	// duplicate slugs. A duplicate ID is a hard invariant violation: it would
+	// make GetProject ambiguous and cause RemoveProject to leave a dangling
+	// twin behind. Skip empty slugs so projects missing the field don't
+	// produce a spurious "duplicate" warning for every pair of empty-slug
+	// entries.
 	seenIDs := make(map[string]bool)
 	seenSlugs := make(map[string]bool)
+	deduped := make([]*models.Project, 0, len(validProjects))
 	for _, p := range validProjects {
 		if seenIDs[p.ID] {
-			fmt.Fprintf(os.Stderr, "warning: duplicate project ID %q in config\n", p.ID)
+			fmt.Fprintf(os.Stderr, "warning: dropping duplicate project ID %q from config\n", p.ID)
+			continue
 		}
 		if p.Slug != "" && seenSlugs[p.Slug] {
 			fmt.Fprintf(os.Stderr, "warning: duplicate project slug %q in config\n", p.Slug)
@@ -228,6 +233,27 @@ func (m *Manager) Load() (*Config, error) { //nolint:gocyclo
 		seenIDs[p.ID] = true
 		if p.Slug != "" {
 			seenSlugs[p.Slug] = true
+		}
+		deduped = append(deduped, p)
+	}
+	if len(deduped) != len(validProjects) {
+		config.Projects = deduped
+	}
+
+	// Clear a dangling CurrentProject pointer (e.g. the referenced project was
+	// dropped above, or the file was hand-edited). Otherwise the stale value
+	// keeps shipping through Save round-trips even though it resolves to nil.
+	if config.CurrentProject != "" {
+		stillExists := false
+		for _, p := range config.Projects {
+			if p.ID == config.CurrentProject || p.Slug == config.CurrentProject {
+				stillExists = true
+				break
+			}
+		}
+		if !stillExists {
+			fmt.Fprintf(os.Stderr, "warning: clearing dangling current_project %q (no matching project)\n", config.CurrentProject)
+			config.CurrentProject = ""
 		}
 	}
 

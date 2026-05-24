@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"os"
 	"testing"
 
 	"github.com/spf13/viper"
@@ -264,4 +265,76 @@ func TestRunTemplateUse(t *testing.T) {
 			t.Error("expected error for parent not found")
 		}
 	})
+}
+
+// TestResolveTemplateVars_NonInteractiveRequiredVar verifies that when stdin
+// is not a terminal and a template variable has no default and was not
+// provided via --var, the call fails loudly instead of silently substituting
+// an empty string (which would produce a degenerate task).
+func TestResolveTemplateVars_NonInteractiveRequiredVar(t *testing.T) {
+	// Replace stdin with a closed pipe so isatty returns false.
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("pipe: %v", err)
+	}
+	w.Close()
+	oldStdin := os.Stdin
+	os.Stdin = r
+	t.Cleanup(func() { os.Stdin = oldStdin; r.Close() })
+
+	vars := []template.TemplateVariable{
+		{Name: "client", Default: ""}, // required, no default
+	}
+
+	_, err = resolveTemplateVars(vars, nil)
+	if err == nil {
+		t.Fatal("expected error when required variable lacks default in non-interactive mode")
+	}
+}
+
+// TestResolveTemplateVars_NonInteractiveUsesDefault verifies that variables
+// with defaults silently substitute when stdin is non-tty, matching prior
+// behavior for the default-providing path.
+func TestResolveTemplateVars_NonInteractiveUsesDefault(t *testing.T) {
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("pipe: %v", err)
+	}
+	w.Close()
+	oldStdin := os.Stdin
+	os.Stdin = r
+	t.Cleanup(func() { os.Stdin = oldStdin; r.Close() })
+
+	vars := []template.TemplateVariable{
+		{Name: "env", Default: "staging"},
+	}
+
+	values, err := resolveTemplateVars(vars, nil)
+	testutil.AssertNoError(t, err)
+	if values["env"] != "staging" {
+		t.Errorf("expected env=staging from default, got %q", values["env"])
+	}
+}
+
+// TestResolveTemplateVars_NonInteractiveFlagOverride verifies that --var
+// supplied values satisfy variables without defaults under non-tty stdin.
+func TestResolveTemplateVars_NonInteractiveFlagOverride(t *testing.T) {
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("pipe: %v", err)
+	}
+	w.Close()
+	oldStdin := os.Stdin
+	os.Stdin = r
+	t.Cleanup(func() { os.Stdin = oldStdin; r.Close() })
+
+	vars := []template.TemplateVariable{
+		{Name: "client", Default: ""},
+	}
+
+	values, err := resolveTemplateVars(vars, []string{"client=Acme"})
+	testutil.AssertNoError(t, err)
+	if values["client"] != "Acme" {
+		t.Errorf("expected client=Acme from --var, got %q", values["client"])
+	}
 }

@@ -80,6 +80,7 @@ var registry = map[string]iconPair{
 	"type.story": {"📖", "◇"},
 	"type.task":  {"📋", "□"},
 	"type.bug":   {"🐛", "⚠"},
+	"type.idea":  {"💡", "∗"},
 
 	// Score/Blocked Indicators
 	"score_bucket": {"💎", "◈"},

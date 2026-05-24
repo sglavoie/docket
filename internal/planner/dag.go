@@ -196,11 +196,13 @@ func ForwardSchedule(tasks []*models.Task, startDate time.Time, velocity float64
 		durDays := EstimateDuration(t) / velocity
 		start := startDate.Add(daysToduration(esDay[t.ID]))
 		end := start.Add(daysToduration(durDays))
+		// Slack from CriticalPath is in unscaled days; convert to calendar days
+		// so it matches the velocity-adjusted start/end timestamps.
 		result = append(result, ScheduledTask{
 			Task:          t,
 			EarliestStart: start,
 			EarliestEnd:   end,
-			Slack:         cp.Slack[t.ID],
+			Slack:         cp.Slack[t.ID] / velocity,
 			IsCritical:    cp.OnPath[t.ID],
 		})
 	}

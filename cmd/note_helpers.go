@@ -42,6 +42,12 @@ func findNote(project *models.Project, query string) (*models.Note, error) {
 // An empty query is rejected: HasPrefix(anything, "") and Contains(anything, "")
 // both return true, so without this guard an empty arg silently matches the first
 // note (e.g. `tt note delete ""` would delete the first note found).
+//
+// When the query is not an exact filename/title match, the function uses
+// prefix matching against both the title and the filename (without .md
+// extension). If multiple notes share the same prefix, an ambiguous error is
+// returned so a destructive command like `note delete` cannot silently target
+// the wrong note.
 func findNoteIn(dir, query string) (*models.Note, error) {
 	if query == "" {
 		return nil, fmt.Errorf("note not found: %s", query)
@@ -61,7 +67,7 @@ func findNoteIn(dir, query string) (*models.Note, error) {
 	}
 
 	// Two-pass search: prefer an exact title match (case-insensitive) over a
-	// prefix or substring match. Without this, querying "meeting" when notes
+	// prefix match. Without this, querying "meeting" when notes
 	// "meeting" and "meeting-followup" both exist silently returned whichever
 	// note happened to be listed first.
 	lowerQuery := strings.ToLower(query)
@@ -74,15 +80,47 @@ func findNoteIn(dir, query string) (*models.Note, error) {
 			return note, nil
 		}
 	}
+	// Use prefix matching (not substring) for filenames so multiple notes
+	// containing the query don't silently collapse to whichever one storage
+	// happened to list first; collect every prefix match so we can report
+	// ambiguity instead of returning the first hit.
+	var matches []*models.Note
+	seen := make(map[string]bool)
 	for _, note := range notes {
 		if strings.HasPrefix(strings.ToLower(note.Title), lowerQuery) {
-			return note, nil
+			if !seen[note.Filename] {
+				matches = append(matches, note)
+				seen[note.Filename] = true
+			}
+			continue
 		}
 		nameWithoutExt := strings.TrimSuffix(note.Filename, ".md")
-		if strings.Contains(strings.ToLower(nameWithoutExt), lowerQuery) {
-			return note, nil
+		if strings.HasPrefix(strings.ToLower(nameWithoutExt), lowerQuery) {
+			if !seen[note.Filename] {
+				matches = append(matches, note)
+				seen[note.Filename] = true
+			}
 		}
 	}
 
-	return nil, fmt.Errorf("note not found: %s", query)
+	switch len(matches) {
+	case 0:
+		return nil, fmt.Errorf("note not found: %s", query)
+	case 1:
+		return matches[0], nil
+	default:
+		limit := len(matches)
+		if limit > 5 {
+			limit = 5
+		}
+		parts := make([]string, limit)
+		for i := 0; i < limit; i++ {
+			parts[i] = matches[i].Filename
+		}
+		extra := ""
+		if len(matches) > 5 {
+			extra = fmt.Sprintf(", ... (%d more)", len(matches)-5)
+		}
+		return nil, fmt.Errorf("ambiguous note query %q: matches %s%s", query, strings.Join(parts, ", "), extra)
+	}
 }

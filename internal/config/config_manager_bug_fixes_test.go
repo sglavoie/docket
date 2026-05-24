@@ -159,6 +159,162 @@ func TestConfigManager_ClampsNegativeWeeklyAndAlertFields(t *testing.T) {
 	}
 }
 
+// TestConfigManager_LoadDropsDuplicateProjectID guarantees that two project
+// entries sharing an ID don't both survive Load. Otherwise GetProject would
+// always resolve to the first while the second drifts as a hidden twin and
+// RemoveProject would leave a stale duplicate behind.
+func TestConfigManager_LoadDropsDuplicateProjectID(t *testing.T) {
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, "test-config.json")
+
+	data := `{
+		"version": 1,
+		"data_dir": "/tmp/tt-test",
+		"projects": [
+			{"id": "p1", "slug": "first", "name": "First", "path": "/tmp/first"},
+			{"id": "p1", "slug": "second", "name": "Second-Duplicate", "path": "/tmp/second"},
+			{"id": "p2", "slug": "third", "name": "Third", "path": "/tmp/third"}
+		]
+	}`
+	if err := os.WriteFile(configPath, []byte(data), 0644); err != nil {
+		t.Fatalf("failed to write test config: %v", err)
+	}
+
+	manager := NewManager(configPath)
+	cfg, err := manager.Load()
+	if err != nil {
+		t.Fatalf("Load failed: %v", err)
+	}
+	if len(cfg.Projects) != 2 {
+		t.Fatalf("expected 2 projects (duplicate dropped), got %d", len(cfg.Projects))
+	}
+	if cfg.Projects[0].Name != "First" {
+		t.Errorf("expected first survivor name 'First', got %q", cfg.Projects[0].Name)
+	}
+	if cfg.Projects[1].ID != "p2" {
+		t.Errorf("expected second survivor ID 'p2', got %q", cfg.Projects[1].ID)
+	}
+}
+
+// TestConfigManager_LoadClearsDanglingCurrentProject guarantees that a stale
+// current_project pointer (e.g., the referenced project was hand-deleted)
+// gets cleared on load so it doesn't persist through Save round-trips.
+func TestConfigManager_LoadClearsDanglingCurrentProject(t *testing.T) {
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, "test-config.json")
+
+	data := `{
+		"version": 1,
+		"data_dir": "/tmp/tt-test",
+		"current_project": "ghost",
+		"projects": [
+			{"id": "p1", "slug": "real", "name": "Real", "path": "/tmp/real"}
+		]
+	}`
+	if err := os.WriteFile(configPath, []byte(data), 0644); err != nil {
+		t.Fatalf("failed to write test config: %v", err)
+	}
+
+	manager := NewManager(configPath)
+	cfg, err := manager.Load()
+	if err != nil {
+		t.Fatalf("Load failed: %v", err)
+	}
+	if cfg.CurrentProject != "" {
+		t.Errorf("expected dangling current_project cleared, got %q", cfg.CurrentProject)
+	}
+}
+
+// TestConfigManager_LoadKeepsValidCurrentProject ensures the dangling-clear
+// logic does not strip a legitimate current_project pointer.
+func TestConfigManager_LoadKeepsValidCurrentProject(t *testing.T) {
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, "test-config.json")
+
+	data := `{
+		"version": 1,
+		"data_dir": "/tmp/tt-test",
+		"current_project": "p1",
+		"projects": [
+			{"id": "p1", "slug": "real", "name": "Real", "path": "/tmp/real"}
+		]
+	}`
+	if err := os.WriteFile(configPath, []byte(data), 0644); err != nil {
+		t.Fatalf("failed to write test config: %v", err)
+	}
+
+	manager := NewManager(configPath)
+	cfg, err := manager.Load()
+	if err != nil {
+		t.Fatalf("Load failed: %v", err)
+	}
+	if cfg.CurrentProject != "p1" {
+		t.Errorf("expected current_project preserved, got %q", cfg.CurrentProject)
+	}
+}
+
+// TestConfigManager_LoadKeepsLegacyCurrentProjectSlug covers the legacy case
+// where CurrentProject stored the slug rather than the ID.
+func TestConfigManager_LoadKeepsLegacyCurrentProjectSlug(t *testing.T) {
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, "test-config.json")
+
+	data := `{
+		"version": 1,
+		"data_dir": "/tmp/tt-test",
+		"current_project": "real",
+		"projects": [
+			{"id": "p1", "slug": "real", "name": "Real", "path": "/tmp/real"}
+		]
+	}`
+	if err := os.WriteFile(configPath, []byte(data), 0644); err != nil {
+		t.Fatalf("failed to write test config: %v", err)
+	}
+
+	manager := NewManager(configPath)
+	cfg, err := manager.Load()
+	if err != nil {
+		t.Fatalf("Load failed: %v", err)
+	}
+	if cfg.CurrentProject != "real" {
+		t.Errorf("expected legacy slug-based current_project preserved, got %q", cfg.CurrentProject)
+	}
+}
+
+// TestMigrateLegacyFilters_AssignsIDForEmptySmartList guarantees that a
+// legacy smart list with a missing/empty ID receives a fresh UUID during
+// migration. Without this, multiple legacy entries without IDs would
+// collapse together on lookups by ID and the SavedFilter store would have
+// non-unique IDs.
+func TestMigrateLegacyFilters_AssignsIDForEmptySmartList(t *testing.T) {
+	cfg := NewConfig()
+	cfg.SmartLists = []smartList{
+		{ID: "", Name: "One"},
+		{ID: "", Name: "Two"},
+		{ID: "explicit", Name: "Three"},
+	}
+	if !cfg.MigrateLegacyFilters() {
+		t.Fatal("expected migration to run")
+	}
+	if len(cfg.SavedFilters) != 3 {
+		t.Fatalf("expected 3 migrated filters, got %d", len(cfg.SavedFilters))
+	}
+	ids := make(map[string]bool)
+	for _, f := range cfg.SavedFilters {
+		if f.ID == "" {
+			t.Errorf("filter %q migrated with empty ID", f.Name)
+		}
+		if ids[f.ID] {
+			t.Errorf("duplicate ID %q in migrated filters", f.ID)
+		}
+		ids[f.ID] = true
+	}
+	// The explicit-ID entry must be preserved as-is.
+	if cfg.GetSavedFilter("explicit") == nil {
+		t.Error("expected explicit ID 'explicit' to be preserved")
+	}
+}
+
 func TestDismissAlert_RefreshesExpiredEntry(t *testing.T) {
 	cfg := NewConfig()
 	// Seed an expired dismissal directly.

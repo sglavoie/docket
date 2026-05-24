@@ -32,6 +32,9 @@ func runWorkflowReset(cmd *cobra.Command, args []string) error {
 	if !workflowResetAll && len(args) == 0 {
 		return fmt.Errorf("provide a rule ID or use --all")
 	}
+	if workflowResetAll && len(args) > 0 {
+		return fmt.Errorf("cannot combine --all with a rule ID")
+	}
 
 	out, err := getOutputOpts(cmd)
 	if err != nil {

@@ -51,11 +51,14 @@ var (
 )
 
 // Pre-compiled regexps for parseInlineMetadata to avoid recompilation on each call.
+//
+// anyPriorityRe captures the full digit run after "!" so multi-digit tokens
+// like "!19" are evaluated as a whole. Using a "!([1-5])" regex would have
+// matched the leading "1" and left "9" stranded in the title.
 var (
-	inlinePriorityRe  = regexp.MustCompile(`\s*!([1-5])\s*`)
-	invalidPriorityRe = regexp.MustCompile(`\s*!([0-9]+)\s*`)
-	inlineTagRe       = regexp.MustCompile(`\s*#([\w][\w.-]*)\s*`)
-	multiSpaceRe      = regexp.MustCompile(`\s+`)
+	anyPriorityRe = regexp.MustCompile(`\s*!([0-9]+)\s*`)
+	inlineTagRe   = regexp.MustCompile(`\s*#([\w][\w.-]*)\s*`)
+	multiSpaceRe  = regexp.MustCompile(`\s+`)
 )
 
 func init() {
@@ -79,25 +82,23 @@ func init() {
 // parseInlineMetadata extracts priority (!N) and tags (#tag) from the title.
 // Returns the cleaned title, extracted priority (0 if not found), and tags.
 func parseInlineMetadata(input string) (title string, priority int, tags []string) {
-	// Match priority pattern: !1 through !5
-	priorityMatch := inlinePriorityRe.FindStringSubmatch(input)
-	if len(priorityMatch) > 1 {
-		// Safe: regex guarantees match[1] is a single digit 1-5.
-		priority, _ = strconv.Atoi(priorityMatch[1])
-		input = inlinePriorityRe.ReplaceAllString(input, " ")
-	}
-	// Always strip remaining out-of-range priority tokens (e.g. !0, !6, !99) so
-	// they don't leak into the title. Without this second pass, an input like
-	// "Fix !1 something !9 else" would leave "!9" in the title (only the first
-	// matching pattern was stripped).
-	if invalidPriorityRe.MatchString(input) {
-		for _, match := range invalidPriorityRe.FindAllStringSubmatch(input, -1) {
-			if len(match) > 1 {
-				fmt.Fprintf(os.Stderr, "warning: !%s ignored (priority must be 1-5)\n", match[1])
-			}
+	// Match every "!<digits>" token in one pass. The first valid 1–5 single-digit
+	// token wins (matching prior behaviour). Multi-digit or out-of-range tokens
+	// are warned about and stripped — never partially consumed.
+	for _, match := range anyPriorityRe.FindAllStringSubmatch(input, -1) {
+		if len(match) < 2 {
+			continue
 		}
-		input = invalidPriorityRe.ReplaceAllString(input, " ")
+		digits := match[1]
+		if len(digits) == 1 && digits[0] >= '1' && digits[0] <= '5' {
+			if priority == 0 {
+				priority, _ = strconv.Atoi(digits)
+			}
+			continue
+		}
+		fmt.Fprintf(os.Stderr, "warning: !%s ignored (priority must be 1-5)\n", digits)
 	}
+	input = anyPriorityRe.ReplaceAllString(input, " ")
 
 	// Match tag pattern: #word
 	tagMatches := inlineTagRe.FindAllStringSubmatch(input, -1)

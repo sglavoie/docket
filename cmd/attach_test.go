@@ -4,10 +4,35 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/sglavoie/tt/internal/storage"
 )
+
+// TestRunAttach_RejectsDirectory guards against passing a directory path as the
+// source. Previously the check only matched os.IsNotExist, so a directory slipped
+// through and CopyAttachment failed downstream with an opaque "is a directory"
+// io error.
+func TestRunAttach_RejectsDirectory(t *testing.T) {
+	deps, project := setupAttachmentTest(t)
+	defer deps.Cleanup()
+
+	srcDir := t.TempDir()
+
+	task := project.Tasks[0]
+	taskID := fmt.Sprintf("%d", task.ShortID)
+
+	attachURL = ""
+
+	err := runAttach(attachCmd, []string{taskID, srcDir})
+	if err == nil {
+		t.Fatal("expected error when attaching a directory")
+	}
+	if !strings.Contains(err.Error(), "directory") {
+		t.Errorf("expected error to mention 'directory', got %v", err)
+	}
+}
 
 // TestRunAttach_FileWithReservedCharLeavesNoOrphan guards against orphaning a
 // copied attachment when the filename fails post-copy validation. The task's

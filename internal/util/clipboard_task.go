@@ -29,7 +29,11 @@ var (
 //
 // Titles are capped at maxTitleLen (700) characters.
 func ParseClipboard(text string) PastedTask {
-	text = strings.TrimRight(text, "\n\r")
+	// Normalise CRLF/CR to LF so multi-line descriptions don't carry
+	// stray \r bytes that corrupt downstream rendering.
+	text = strings.ReplaceAll(text, "\r\n", "\n")
+	text = strings.ReplaceAll(text, "\r", "\n")
+	text = strings.TrimRight(text, "\n")
 	if strings.TrimSpace(text) == "" {
 		return PastedTask{}
 	}

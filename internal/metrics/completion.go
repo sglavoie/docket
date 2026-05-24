@@ -19,14 +19,22 @@ func computeCompletion(tasks []*models.Task, cutoff, now time.Time, buckets []bu
 	bucketDone := make([]int, len(buckets))
 	bucketResolved := make([]int, len(buckets))
 
+	// For TimeRangeAll the explicit cutoff is zero but the bucket range is
+	// capped at the last ~12 months. Use the bucket span as the effective
+	// cutoff so Total/Rate stay consistent with the per-bucket Trend.
+	effectiveCutoff := cutoff
+	if effectiveCutoff.IsZero() && len(buckets) > 0 {
+		effectiveCutoff = buckets[0].Start
+	}
+
 	for _, t := range tasks {
 		if t.CompletedAt == nil {
 			continue
 		}
 		completedAt := *t.CompletedAt
 
-		// Skip tasks completed before the cutoff (unless all-time)
-		if !cutoff.IsZero() && completedAt.Before(cutoff) {
+		// Skip tasks completed before the effective cutoff
+		if !effectiveCutoff.IsZero() && completedAt.Before(effectiveCutoff) {
 			continue
 		}
 

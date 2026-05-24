@@ -141,24 +141,34 @@ func (m *AppModel) structureCommands() []Command {
 			Aliases:     []string{"note", "comment quick"},
 			Handler: func() tea.Msg {
 				getTaskAndProject := func() (*models.Task, *models.Project) {
-					// Primary views
-					if m.projectTree != nil {
-						if task := m.projectTree.getCursorTask(); task != nil {
-							return task, m.projectTree.getProject()
+					// Dispatch by the underlying view (palette is on top of stack).
+					origin := ViewDashboard
+					for i := len(m.viewStack) - 1; i >= 0; i-- {
+						if v := m.viewStack[i]; v != ViewCommandPalette {
+							origin = v
+							break
 						}
 					}
-					if m.outliner != nil {
-						if task := m.outliner.getCursorTask(); task != nil {
-							return task, m.outliner.getProject()
+					switch origin {
+					case ViewProjectTree:
+						if m.projectTree != nil {
+							if task := m.projectTree.getCursorTask(); task != nil {
+								return task, m.projectTree.getProject()
+							}
 						}
-					}
-					if m.crossOutliner != nil {
-						if task := m.crossOutliner.getCursorTask(); task != nil {
-							return task, m.crossOutliner.getProject()
+					case ViewOutliner:
+						if m.outliner != nil {
+							return m.outliner.getTaskRef()
+						}
+					case ViewCrossProjectOutliner:
+						// crossOutliner.getProject() returns nil; use getTaskRef
+						// which resolves the row's project from loadedProjects.
+						if m.crossOutliner != nil {
+							return m.crossOutliner.getTaskRef()
 						}
 					}
 					// Secondary views that implement getTaskRef
-					if v := m.views.Get(m.currentView()); v != nil {
+					if v := m.views.Get(origin); v != nil {
 						type taskRefProvider interface {
 							getTaskRef() (*models.Task, *models.Project)
 						}
@@ -183,45 +193,84 @@ func (m *AppModel) structureCommands() []Command {
 			Views:       []ViewType{ViewProjectTree, ViewOutliner, ViewCrossProjectOutliner},
 			Aliases:     []string{"reparent", "move to parent"},
 			Handler: func() tea.Msg {
-				if m.projectTree != nil {
-					task := m.projectTree.getCursorTask()
-					project := m.projectTree.getProject()
-					if task != nil && project != nil {
-						validParents := buildReparentValidParents(project, task)
-						var currentParentID *string
-						if task.ParentID != nil {
-							id := *task.ParentID
-							currentParentID = &id
-						}
-						return OpenParentSelectorMsg{
-							ValidParents:   validParents,
-							CurrentID:      currentParentID,
-							AllowNone:      true,
-							Source:         ViewProjectTree,
-							ReparentTaskID: task.ID,
-						}
+				// Dispatch based on the underlying project view rather than first-non-nil
+				// model, so ViewCrossProjectOutliner routes through m.crossOutliner even
+				// when m.outliner is also non-nil. The palette is on top of the view stack
+				// when this Handler runs, so walk the stack to find the originating view.
+				origin := ViewDashboard
+				for i := len(m.viewStack) - 1; i >= 0; i-- {
+					switch m.viewStack[i] {
+					case ViewProjectTree, ViewOutliner, ViewCrossProjectOutliner:
+						origin = m.viewStack[i]
+					}
+					if origin != ViewDashboard {
+						break
 					}
 				}
-				if m.outliner != nil {
+				switch origin {
+				case ViewProjectTree:
+					if m.projectTree == nil {
+						return nil
+					}
+					task := m.projectTree.getCursorTask()
+					project := m.projectTree.getProject()
+					if task == nil || project == nil {
+						return nil
+					}
+					validParents := buildReparentValidParents(project, task)
+					var currentParentID *string
+					if task.ParentID != nil {
+						id := *task.ParentID
+						currentParentID = &id
+					}
+					return OpenParentSelectorMsg{
+						ValidParents:   validParents,
+						CurrentID:      currentParentID,
+						AllowNone:      true,
+						Source:         ViewProjectTree,
+						ReparentTaskID: task.ID,
+					}
+				case ViewOutliner:
+					if m.outliner == nil {
+						return nil
+					}
 					task, project := m.outliner.getTaskRef()
-					if task != nil && project != nil {
-						source := ViewOutliner
-						if m.outliner.project == nil {
-							source = ViewCrossProjectOutliner
-						}
-						validParents := buildReparentValidParents(project, task)
-						var currentParentID *string
-						if task.ParentID != nil {
-							id := *task.ParentID
-							currentParentID = &id
-						}
-						return OpenParentSelectorMsg{
-							ValidParents:   validParents,
-							CurrentID:      currentParentID,
-							AllowNone:      true,
-							Source:         source,
-							ReparentTaskID: task.ID,
-						}
+					if task == nil || project == nil {
+						return nil
+					}
+					validParents := buildReparentValidParents(project, task)
+					var currentParentID *string
+					if task.ParentID != nil {
+						id := *task.ParentID
+						currentParentID = &id
+					}
+					return OpenParentSelectorMsg{
+						ValidParents:   validParents,
+						CurrentID:      currentParentID,
+						AllowNone:      true,
+						Source:         ViewOutliner,
+						ReparentTaskID: task.ID,
+					}
+				case ViewCrossProjectOutliner:
+					if m.crossOutliner == nil {
+						return nil
+					}
+					task, project := m.crossOutliner.getTaskRef()
+					if task == nil || project == nil {
+						return nil
+					}
+					validParents := buildReparentValidParents(project, task)
+					var currentParentID *string
+					if task.ParentID != nil {
+						id := *task.ParentID
+						currentParentID = &id
+					}
+					return OpenParentSelectorMsg{
+						ValidParents:   validParents,
+						CurrentID:      currentParentID,
+						AllowNone:      true,
+						Source:         ViewCrossProjectOutliner,
+						ReparentTaskID: task.ID,
 					}
 				}
 				return nil

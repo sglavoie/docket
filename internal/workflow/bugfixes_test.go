@@ -271,6 +271,73 @@ func TestApplyAction_MoveToProjectSelfMoveNoOp(t *testing.T) {
 	}
 }
 
+// TestApplyAction_SetSectionSilentValidationFailure is a regression test for a
+// bug where ActionSetSection returned true (claiming the task was modified) even
+// when task.SetSection silently rejected the value due to validation (whitespace,
+// semicolons/colons in the name, over-length, or case-variant collision with a
+// GTD section name). applyAction must only report success and bump UpdatedAt
+// when the assignment actually took effect.
+func TestApplyAction_SetSectionSilentValidationFailure(t *testing.T) {
+	cases := []struct {
+		name  string
+		value string
+	}{
+		{"space in name", "has space"},
+		{"tab in name", "has\ttab"},
+		{"newline in name", "has\nnewline"},
+		{"semicolon in name", "has;semi"},
+		{"colon in name", "has:colon"},
+		{"whitespace-only", "   "},
+		{"case-variant GTD collision", "inbox"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			stale := time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC)
+			task := &models.Task{ID: "t1", Status: models.StatusTodo, UpdatedAt: stale}
+			action := RuleAction{ActionType: ActionSetSection, Value: tc.value}
+
+			modified := applyAction(task, action)
+
+			if modified {
+				t.Errorf("expected modified=false for invalid section %q (rejected by validation), got true", tc.value)
+			}
+			if task.CustomSection != "" {
+				t.Errorf("expected CustomSection empty for invalid value %q, got %q", tc.value, task.CustomSection)
+			}
+			if !task.UpdatedAt.Equal(stale) {
+				t.Errorf("expected UpdatedAt unchanged for invalid value %q, got %v", tc.value, task.UpdatedAt)
+			}
+		})
+	}
+
+	t.Run("valid custom section still reports modification", func(t *testing.T) {
+		task := &models.Task{ID: "t1", Status: models.StatusTodo}
+		action := RuleAction{ActionType: ActionSetSection, Value: "Sprint-1"}
+
+		if !applyAction(task, action) {
+			t.Fatal("expected modified=true for a valid custom section")
+		}
+		if task.CustomSection != "Sprint-1" {
+			t.Errorf("expected CustomSection=Sprint-1, got %q", task.CustomSection)
+		}
+	})
+
+	t.Run("invalid value does not overwrite prior custom section", func(t *testing.T) {
+		// Precondition: task already has a valid custom section. An invalid
+		// new value must leave CustomSection untouched and report modified=false.
+		task := &models.Task{ID: "t1", CustomSection: "Sprint-1"}
+		action := RuleAction{ActionType: ActionSetSection, Value: "bad name"}
+
+		modified := applyAction(task, action)
+		if modified {
+			t.Error("expected modified=false when invalid value would no-op SetSection")
+		}
+		if task.CustomSection != "Sprint-1" {
+			t.Errorf("expected CustomSection unchanged, got %q", task.CustomSection)
+		}
+	})
+}
+
 // TestEvaluateProjectRules_TriggeredIDsOnlyWinner verifies that when priority
 // resolution selects a single winner, TriggeredRuleIDs contains only that
 // winner's ID. Previously all matched rule IDs were included regardless of

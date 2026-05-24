@@ -76,9 +76,16 @@ func TrashEntryExists(slug, dataDir string) bool {
 
 // RenameProjectDir renames a project's data directory when the slug changes.
 // Updates project.Path to the new location. Returns nil if slugs are the same.
+//
+// Rejects empty slugs on either side: an empty slug would resolve to the
+// projects/ directory itself, and renaming the entire projects/ tree onto
+// (or from) a single project path would scramble every project's data.
 func RenameProjectDir(project *models.Project, oldSlug, newSlug, dataDir string) error {
 	if oldSlug == newSlug {
 		return nil
+	}
+	if oldSlug == "" || newSlug == "" {
+		return fmt.Errorf("project slug cannot be empty (old=%q, new=%q)", oldSlug, newSlug)
 	}
 
 	oldPath := filepath.Join(dataDir, "projects", oldSlug)
@@ -100,7 +107,14 @@ func RenameProjectDir(project *models.Project, oldSlug, newSlug, dataDir string)
 
 // MoveProjectToTrash moves a project directory to the trash folder.
 // Callers should use PurgeFromTrash first if a same-slug entry might exist.
+//
+// Rejects an empty project slug: with slug="" the trash path collapses to
+// the trash directory itself, and a poorly-formed call could rename an
+// arbitrary project.Path on top of the trash root or vice versa.
 func MoveProjectToTrash(project *models.Project, dataDir string) error {
+	if project == nil || project.Slug == "" {
+		return fmt.Errorf("project slug cannot be empty")
+	}
 	trashDir := getTrashDir(dataDir)
 	trashPath := filepath.Join(trashDir, project.Slug)
 	if err := os.MkdirAll(trashDir, DirPermissions); err != nil {
@@ -114,7 +128,15 @@ func MoveProjectToTrash(project *models.Project, dataDir string) error {
 
 // PurgeFromTrash permanently deletes a project from the trash.
 // Returns nil if the project doesn't exist in trash.
+//
+// Rejects an empty slug: filepath.Join(trashDir, "") collapses to trashDir
+// itself, so os.RemoveAll would wipe every trashed project rather than the
+// requested one. Defense-in-depth alongside the cmd-layer guards added in
+// 81a37d10.
 func PurgeFromTrash(slug, dataDir string) error {
+	if slug == "" {
+		return fmt.Errorf("project slug cannot be empty")
+	}
 	if !TrashEntryExists(slug, dataDir) {
 		return nil
 	}
@@ -123,7 +145,14 @@ func PurgeFromTrash(slug, dataDir string) error {
 
 // RestoreProjectFromTrash moves a project directory from trash back to the data directory.
 // Returns an error if the trash entry doesn't exist or if an active project with the same slug exists.
+//
+// Rejects an empty slug: with slug="" both paths collapse to their parent
+// directories (trash root and projects root), so the rename would relocate
+// the entire trash tree into projects/, scrambling every entry.
 func RestoreProjectFromTrash(slug, dataDir string) error {
+	if slug == "" {
+		return fmt.Errorf("project slug cannot be empty")
+	}
 	trashPath := filepath.Join(getTrashDir(dataDir), slug)
 	projectPath := filepath.Join(dataDir, "projects", slug)
 	if !TrashEntryExists(slug, dataDir) {
