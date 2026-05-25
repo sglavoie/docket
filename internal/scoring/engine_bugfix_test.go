@@ -87,3 +87,44 @@ func TestFormulaWSJFZeroOverZeroReturnsZero(t *testing.T) {
 		t.Errorf("0/0 should yield 0, got %f", got)
 	}
 }
+
+// TestFormulaMultiplyEmptyResultsReturnsZero guards against the neutral
+// multiplicative identity (1.0) silently boosting a malformed profile with no
+// dimensions above legitimate zero-scoring tasks. Empty input should match
+// formulaWeightedSum's behavior and return 0.
+func TestFormulaMultiplyEmptyResultsReturnsZero(t *testing.T) {
+	if got := formulaMultiply(nil); got != 0 {
+		t.Errorf("empty multiply should yield 0, got %f", got)
+	}
+	if got := formulaMultiply([]DimensionResult{}); got != 0 {
+		t.Errorf("empty slice multiply should yield 0, got %f", got)
+	}
+}
+
+// TestFormulaRICEEmptyResultsReturnsZero mirrors the multiply fix: 1/1 = 1
+// for an empty profile should not silently rank tasks above zero-scoring ones.
+func TestFormulaRICEEmptyResultsReturnsZero(t *testing.T) {
+	if got := formulaRICE(nil); got != 0 {
+		t.Errorf("empty rice should yield 0, got %f", got)
+	}
+	if got := formulaRICE([]DimensionResult{}); got != 0 {
+		t.Errorf("empty slice rice should yield 0, got %f", got)
+	}
+}
+
+// TestScorePercentNaNAndInf ensures pathological raw scores never leak NaN or
+// unclamped Inf into the normalized space (which would poison ranking and
+// sort comparisons).
+func TestScorePercentNaNAndInf(t *testing.T) {
+	profile := NewICEProfile()
+	if got := ScorePercent(math.NaN(), &profile); got != 0 {
+		t.Errorf("NaN score should normalize to 0, got %f", got)
+	}
+	maxN := float64(MaxNormalizedScoreValue)
+	if got := ScorePercent(math.Inf(1), &profile); got != maxN {
+		t.Errorf("+Inf score should normalize to %f, got %f", maxN, got)
+	}
+	if got := ScorePercent(math.Inf(-1), &profile); got != 0 {
+		t.Errorf("-Inf score should normalize to 0, got %f", got)
+	}
+}

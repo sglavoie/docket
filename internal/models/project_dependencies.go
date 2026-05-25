@@ -69,6 +69,11 @@ func (p *Project) dependsOnTransitive(sourceID, targetID string, visited map[str
 // Cross-project dependencies (format "projectID:taskID") cannot be resolved
 // locally and are conservatively treated as incomplete to prevent premature
 // unblocking.
+// Dangling local references (depID points to a task that no longer exists)
+// are skipped (treated as resolved), mirroring HasIncompleteDependencies.
+// Without this, a blocked task whose blocker was deleted would remain
+// blocked indefinitely even though HasIncompleteDependencies reports it
+// as completable — leaving the two helpers contradicting one another.
 func (p *Project) CheckAndAutoUnblock() {
 	for _, task := range p.Tasks {
 		if task.Status != StatusBlocked || len(task.DependsOn) == 0 {
@@ -84,7 +89,14 @@ func (p *Project) CheckAndAutoUnblock() {
 				break
 			}
 			dep := p.GetTaskByID(depID)
-			if dep == nil || !dep.IsComplete() {
+			if dep == nil {
+				// Dangling local ref: treat as resolved (matches the
+				// HasIncompleteDependencies contract). BuildTaskTree
+				// normally prunes orphans on load, so survivors only
+				// appear via direct slice mutation.
+				continue
+			}
+			if !dep.IsComplete() {
 				allComplete = false
 				break
 			}
@@ -128,6 +140,12 @@ func (p *Project) HasIncompleteDependencies(task *Task) bool {
 // GetIncompleteDependencies returns the list of dependencies that are not
 // yet complete. Useful for error messages when blocking task completion.
 // A nil task returns nil so an unset argument cannot panic on task.DependsOn.
+// Dangling local references (depID points to a task that no longer exists)
+// are silently skipped, matching the HasIncompleteDependencies contract.
+// Cross-project references are also skipped here because they cannot be
+// resolved to a *Task locally; callers needing to flag cross-project
+// blockers should consult HasIncompleteDependencies (which does count
+// them) and report the count separately.
 func (p *Project) GetIncompleteDependencies(task *Task) []*Task {
 	if task == nil {
 		return nil

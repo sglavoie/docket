@@ -550,3 +550,225 @@ func TestWouldCreateCycle_DownstreamCycleDoesNotHang(t *testing.T) {
 		t.Fatal("WouldCreateCycle hung on downstream cycle (infinite loop)")
 	}
 }
+
+// TestHasIncompleteDependencies_DanglingContract documents and enforces the
+// dangling-deps contract: a depID that points to a task that no longer
+// exists (deleted, never existed) must NOT block completion. The function
+// returns false for such refs (treats them as resolved). This contract is
+// the symmetric counterpart to CheckAndAutoUnblock — if either side flips,
+// blocked tasks and "can I complete?" disagree.
+func TestHasIncompleteDependencies_DanglingContract(t *testing.T) {
+	makeProject := func(t *testing.T) *Project {
+		t.Helper()
+		p, err := NewProject("p", "P", "/")
+		if err != nil {
+			t.Fatal(err)
+		}
+		return p
+	}
+	makeTask := func(t *testing.T, id string, shortID int) *Task {
+		t.Helper()
+		task, err := NewTask(id, shortID, TaskTypeTask, "T"+id)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return task
+	}
+
+	t.Run("empty deps returns false", func(t *testing.T) {
+		p := makeProject(t)
+		task := makeTask(t, "t1", 1)
+		p.Tasks = []*Task{task}
+		if p.HasIncompleteDependencies(task) {
+			t.Error("empty deps must not block")
+		}
+	})
+
+	t.Run("all resolved returns false", func(t *testing.T) {
+		p := makeProject(t)
+		b1 := makeTask(t, "b1", 1)
+		b2 := makeTask(t, "b2", 2)
+		task := makeTask(t, "t1", 3)
+		_ = task.AddDependency(b1.ID)
+		_ = task.AddDependency(b2.ID)
+		b1.Complete()
+		b2.Cancel()
+		p.Tasks = []*Task{b1, b2, task}
+		if p.HasIncompleteDependencies(task) {
+			t.Error("all-resolved deps must not block (done and canceled both count as complete)")
+		}
+	})
+
+	t.Run("mix of complete and incomplete returns true", func(t *testing.T) {
+		p := makeProject(t)
+		b1 := makeTask(t, "b1", 1)
+		b2 := makeTask(t, "b2", 2)
+		task := makeTask(t, "t1", 3)
+		_ = task.AddDependency(b1.ID)
+		_ = task.AddDependency(b2.ID)
+		b1.Complete()
+		// b2 still todo
+		p.Tasks = []*Task{b1, b2, task}
+		if !p.HasIncompleteDependencies(task) {
+			t.Error("mix of complete/incomplete must block")
+		}
+	})
+
+	t.Run("single dangling dep returns false", func(t *testing.T) {
+		p := makeProject(t)
+		task := makeTask(t, "t1", 1)
+		task.DependsOn = []string{"nonexistent-id"}
+		p.Tasks = []*Task{task}
+		if p.HasIncompleteDependencies(task) {
+			t.Error("dangling dep must NOT block (contract: dangling = resolved)")
+		}
+	})
+
+	t.Run("all-dangling deps returns false", func(t *testing.T) {
+		p := makeProject(t)
+		task := makeTask(t, "t1", 1)
+		task.DependsOn = []string{"ghost-1", "ghost-2", "ghost-3"}
+		p.Tasks = []*Task{task}
+		if p.HasIncompleteDependencies(task) {
+			t.Error("all-dangling deps must NOT block")
+		}
+	})
+
+	t.Run("dangling + resolved returns false", func(t *testing.T) {
+		p := makeProject(t)
+		b1 := makeTask(t, "b1", 1)
+		task := makeTask(t, "t1", 2)
+		_ = task.AddDependency(b1.ID)
+		task.DependsOn = append(task.DependsOn, "ghost")
+		b1.Complete()
+		p.Tasks = []*Task{b1, task}
+		if p.HasIncompleteDependencies(task) {
+			t.Error("dangling + resolved must NOT block")
+		}
+	})
+
+	t.Run("dangling + incomplete returns true", func(t *testing.T) {
+		p := makeProject(t)
+		b1 := makeTask(t, "b1", 1)
+		task := makeTask(t, "t1", 2)
+		_ = task.AddDependency(b1.ID)
+		task.DependsOn = append(task.DependsOn, "ghost")
+		// b1 still todo
+		p.Tasks = []*Task{b1, task}
+		if !p.HasIncompleteDependencies(task) {
+			t.Error("dangling + incomplete must block (incomplete wins)")
+		}
+	})
+
+	t.Run("self-reference (incomplete) returns true", func(t *testing.T) {
+		// Direct slice mutation can bypass AddDependency's self-ref guard.
+		// If the task depends on itself and is not yet complete, the lookup
+		// finds the task, sees it's incomplete, and reports blocked. This
+		// is consistent self-loop behavior.
+		p := makeProject(t)
+		task := makeTask(t, "t1", 1)
+		task.DependsOn = []string{task.ID}
+		p.Tasks = []*Task{task}
+		if !p.HasIncompleteDependencies(task) {
+			t.Error("incomplete self-reference must block (the task is not complete)")
+		}
+	})
+
+	t.Run("self-reference (after Complete) returns false", func(t *testing.T) {
+		// Once the task is marked complete, the self-reference resolves
+		// (the dep target = the task = complete). No blocking.
+		p := makeProject(t)
+		task := makeTask(t, "t1", 1)
+		task.DependsOn = []string{task.ID}
+		task.Complete()
+		p.Tasks = []*Task{task}
+		if p.HasIncompleteDependencies(task) {
+			t.Error("completed self-reference must NOT block (the task itself counts as complete)")
+		}
+	})
+}
+
+// TestCheckAndAutoUnblock_DanglingDepDoesNotBlock verifies CheckAndAutoUnblock
+// matches the HasIncompleteDependencies contract: a blocked task whose
+// only outstanding dep is a dangling reference must be auto-unblocked.
+// Before the fix, CheckAndAutoUnblock treated `dep == nil` as incomplete and
+// left the task forever blocked, contradicting HasIncompleteDependencies which
+// would happily allow completion.
+func TestCheckAndAutoUnblock_DanglingDepDoesNotBlock(t *testing.T) {
+	p, err := NewProject("p", "P", "/")
+	if err != nil {
+		t.Fatal(err)
+	}
+	task, err := NewTask("t1", 1, TaskTypeTask, "Blocked Task")
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Inject a dangling dep + blocked status directly (bypassing AddDependency
+	// so we test what happens when storage delivers a stale ref).
+	task.DependsOn = []string{"ghost-id"}
+	task.Status = StatusBlocked
+	p.Tasks = []*Task{task}
+
+	p.CheckAndAutoUnblock()
+
+	if task.Status != StatusTodo {
+		t.Errorf("expected dangling-only dep to auto-unblock to todo, got %s", task.Status)
+	}
+}
+
+// TestCheckAndAutoUnblock_DanglingMixedWithIncompleteStaysBlocked ensures
+// the dangling pass-through does not accidentally unblock when a real
+// incomplete blocker is still present alongside the ghost.
+func TestCheckAndAutoUnblock_DanglingMixedWithIncompleteStaysBlocked(t *testing.T) {
+	p, err := NewProject("p", "P", "/")
+	if err != nil {
+		t.Fatal(err)
+	}
+	blocker, err := NewTask("b1", 1, TaskTypeTask, "Real Blocker")
+	if err != nil {
+		t.Fatal(err)
+	}
+	task, err := NewTask("t1", 2, TaskTypeTask, "Blocked Task")
+	if err != nil {
+		t.Fatal(err)
+	}
+	_ = task.AddDependency(blocker.ID)
+	task.DependsOn = append(task.DependsOn, "ghost-id")
+	task.Status = StatusBlocked
+	p.Tasks = []*Task{blocker, task}
+
+	p.CheckAndAutoUnblock()
+
+	if task.Status != StatusBlocked {
+		t.Errorf("expected task to remain blocked while real blocker is incomplete, got %s", task.Status)
+	}
+}
+
+// TestCheckAndAutoUnblock_DanglingPlusResolvedUnblocks verifies that with
+// one dangling ref and one resolved (completed) blocker, the task is
+// unblocked — the dangling ref must not contribute an "incomplete" vote.
+func TestCheckAndAutoUnblock_DanglingPlusResolvedUnblocks(t *testing.T) {
+	p, err := NewProject("p", "P", "/")
+	if err != nil {
+		t.Fatal(err)
+	}
+	blocker, err := NewTask("b1", 1, TaskTypeTask, "Real Blocker")
+	if err != nil {
+		t.Fatal(err)
+	}
+	task, err := NewTask("t1", 2, TaskTypeTask, "Blocked Task")
+	if err != nil {
+		t.Fatal(err)
+	}
+	_ = task.AddDependency(blocker.ID)
+	task.DependsOn = append(task.DependsOn, "ghost-id")
+	task.Status = StatusBlocked
+	p.Tasks = []*Task{blocker, task}
+
+	blocker.Complete()
+	p.CheckAndAutoUnblock()
+
+	if task.Status != StatusTodo {
+		t.Errorf("expected task to be unblocked (resolved blocker + dangling ref), got %s", task.Status)
+	}
+}

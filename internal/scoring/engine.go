@@ -215,7 +215,15 @@ func formulaWeightedSum(results []DimensionResult) float64 {
 // +Inf (from Pow(0, negative)) keeps the legacy MaxScoreSentinel semantic since
 // it represents "zero effort, infinite value" — consistent with the divide-by-
 // zero treatment in formulaRICE.
+//
+// An empty results slice returns 0 (matching formulaWeightedSum) rather than
+// the neutral multiplicative identity 1: a profile with no dimensions has no
+// signal, and returning 1 would silently rank such tasks above legitimate
+// zero-scoring tasks.
 func formulaMultiply(results []DimensionResult) float64 {
+	if len(results) == 0 {
+		return 0
+	}
 	product := 1.0
 	for _, r := range results {
 		if r.Weight == 1 {
@@ -238,7 +246,13 @@ func formulaMultiply(results []DimensionResult) float64 {
 // Division by zero yields a large score (zero effort = do it first), unless
 // the numerator is also zero — 0/0 is mathematically undefined and should
 // not artificially top-rank a task with no value AND no cost.
+//
+// An empty results slice returns 0 rather than the neutral 1/1=1: a profile
+// with no dimensions has no signal, matching formulaWeightedSum's behavior.
 func formulaRICE(results []DimensionResult) float64 {
+	if len(results) == 0 {
+		return 0
+	}
 	num := 1.0
 	den := 1.0
 	for _, r := range results {
@@ -374,9 +388,19 @@ func isMultiplicativeFormula(f Formula) bool {
 // piecewise mapping centered on the default score (which maps to midpoint).
 // Below default uses linear interpolation; above default uses logarithmic
 // scaling for multiplicative formulas and linear for additive ones.
-// Returns 0 when profile is nil.
+// Returns 0 when profile is nil. NaN scores are treated as 0 so a degenerate
+// upstream calculation does not poison ranking; +Inf clamps to maxN, -Inf to 0.
 func ScorePercent(score float64, profile *ScoringProfile) float64 {
 	if profile == nil {
+		return 0
+	}
+	if math.IsNaN(score) {
+		return 0
+	}
+	if math.IsInf(score, 1) {
+		return float64(MaxNormalizedScoreValue)
+	}
+	if math.IsInf(score, -1) {
 		return 0
 	}
 	minS := MinScore(profile)

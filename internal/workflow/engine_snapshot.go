@@ -6,11 +6,24 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 )
 
-// CopyTaskState creates a shallow copy of the fields that event-based
+// CopyTaskState creates a snapshot copy of the fields that event-based
 // triggers inspect (status, priority, section, tags, type, due date,
 // recurrence, dependencies). This is intentionally minimal — only fields
 // checked by matchesEventTrigger, matchesHierarchicalTrigger, and
 // TaskStateChanged are copied.
+//
+// All mutable fields are independent of the source task: Tags, DependsOn,
+// and Recurrence (including its non-empty Weekdays slice) are deep-copied
+// so that in-place mutations to the live task — including via slices.Delete
+// which reuses the underlying array — do not bleed into the snapshot.
+//
+// The Parent pointer and Children slice are deliberately NOT carried into
+// the snapshot. The snapshot represents the task's intrinsic state at a
+// point in time, not its hierarchy. Keeping a live Parent reference would
+// allow a mutation to the parent (or an indexed rewrite of Children on the
+// source) to retroactively change the snapshot, defeating its purpose.
+// Hierarchical triggers always operate on the live task, never on the
+// snapshot.
 func CopyTaskState(task *models.Task) *models.Task {
 	if task == nil {
 		return nil
@@ -45,8 +58,6 @@ func CopyTaskState(task *models.Task) *models.Task {
 		DueDate:       dueCopy,
 		Description:   task.Description,
 		Recurrence:    recCopy,
-		Parent:        task.Parent,
-		Children:      task.Children,
 		Level:         task.Level,
 		DependsOn:     append([]string(nil), task.DependsOn...),
 	}

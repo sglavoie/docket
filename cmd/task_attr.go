@@ -79,15 +79,22 @@ func runTaskAttr(cmd *cobra.Command, args []string) error {
 
 	// Check if any flags were provided
 	v := attrTypeAttrs
-	anyFlagSet := attrClear ||
-		v.BugReproducible != "" || v.BugSeverity != "" || v.BugWorkaround != "" ||
+	otherAttrFlagSet := v.BugReproducible != "" || v.BugSeverity != "" || v.BugWorkaround != "" ||
 		v.IdeaCategory != "" || v.IdeaEffort != "" || v.IdeaValue != "" || cmd.Flags().Changed("idea.validated") ||
 		v.TaskEffort != "" || v.TaskWorkType != "" ||
 		cmd.Flags().Changed("story.points") || v.StoryPersona != "" ||
 		v.EpicScope != "" || v.EpicMilestone != "" || v.EpicMetrics != ""
 
-	if !anyFlagSet {
+	if !attrClear && !otherAttrFlagSet {
 		return tterrors.NewNoChangesError("--help to see available options")
+	}
+
+	// Reject combining --clear with attribute-setting flags. Previously the
+	// other flags were silently ignored, masking user typos like
+	// "tt task attr 5 --clear --bug.severity=major" where the severity
+	// would never be applied.
+	if attrClear && otherAttrFlagSet {
+		return fmt.Errorf("--clear cannot be combined with other attribute flags")
 	}
 
 	var changes []string
