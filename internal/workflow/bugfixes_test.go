@@ -445,6 +445,100 @@ func TestMatchesTagTrigger_ContainsIsSubstringMatch(t *testing.T) {
 	}
 }
 
+// TestCompareBool_OpNotEqualsInversion verifies that boolean-style triggers
+// honor OpNotEquals. Previously compareBool ignored the operation, so a rule
+// configured as "has_due_date != true" was silently treated as "has_due_date
+// == true" - the rule fired on tasks WITH due dates instead of tasks without
+// them. The same bug affected FieldHasTags, FieldDescriptionEmpty,
+// FieldHasChildren, FieldAllChildrenDone, FieldIsBlocked, and
+// FieldHasInProgressTasks.
+func TestCompareBool_OpNotEqualsInversion(t *testing.T) {
+	now := time.Now()
+
+	t.Run("FieldHasDueDate OpNotEquals true matches task without due date", func(t *testing.T) {
+		task := &models.Task{ID: "1", DueDate: nil}
+		trigger := RuleTrigger{Field: FieldHasDueDate, Operation: OpNotEquals, Value: "true"}
+		if !matchesTrigger(task, trigger) {
+			t.Error("expected match: task has no due date, OpNotEquals true should fire")
+		}
+	})
+
+	t.Run("FieldHasDueDate OpNotEquals true skips task with due date", func(t *testing.T) {
+		task := &models.Task{ID: "1", DueDate: &now}
+		trigger := RuleTrigger{Field: FieldHasDueDate, Operation: OpNotEquals, Value: "true"}
+		if matchesTrigger(task, trigger) {
+			t.Error("expected no match: task has due date, OpNotEquals true should not fire")
+		}
+	})
+
+	t.Run("FieldHasTags OpNotEquals true matches task without tags", func(t *testing.T) {
+		task := &models.Task{ID: "1", Tags: []string{}}
+		trigger := RuleTrigger{Field: FieldHasTags, Operation: OpNotEquals, Value: "true"}
+		if !matchesTrigger(task, trigger) {
+			t.Error("expected match: task has no tags, OpNotEquals true should fire")
+		}
+	})
+
+	t.Run("FieldDescriptionEmpty OpNotEquals true matches task with description", func(t *testing.T) {
+		task := &models.Task{ID: "1", Description: "has content"}
+		trigger := RuleTrigger{Field: FieldDescriptionEmpty, Operation: OpNotEquals, Value: "true"}
+		if !matchesTrigger(task, trigger) {
+			t.Error("expected match: task has description, OpNotEquals true (== empty) should fire")
+		}
+	})
+
+	t.Run("FieldHasChildren OpNotEquals false matches task with children", func(t *testing.T) {
+		parent := &models.Task{ID: "p"}
+		child := &models.Task{ID: "c", Parent: parent}
+		parent.Children = []*models.Task{child}
+		trigger := RuleTrigger{Field: FieldHasChildren, Operation: OpNotEquals, Value: "false"}
+		if !matchesHierarchicalTrigger(parent, trigger, nil) {
+			t.Error("expected match: parent has children, OpNotEquals false should fire")
+		}
+	})
+
+	t.Run("FieldIsBlocked OpNotEquals true matches task without blockers", func(t *testing.T) {
+		task := &models.Task{ID: "t1", DependsOn: nil}
+		trigger := RuleTrigger{Field: FieldIsBlocked, Operation: OpNotEquals, Value: "true"}
+		if !matchesHierarchicalTrigger(task, trigger, nil) {
+			t.Error("expected match: task is not blocked, OpNotEquals true should fire")
+		}
+	})
+
+	t.Run("FieldAllChildrenDone OpNotEquals true matches when not all children done", func(t *testing.T) {
+		parent := &models.Task{ID: "p"}
+		c1 := &models.Task{ID: "c1", Status: models.StatusDone, Parent: parent}
+		c2 := &models.Task{ID: "c2", Status: models.StatusTodo, Parent: parent}
+		parent.Children = []*models.Task{c1, c2}
+		trigger := RuleTrigger{Field: FieldAllChildrenDone, Operation: OpNotEquals, Value: "true"}
+		if !matchesHierarchicalTrigger(parent, trigger, nil) {
+			t.Error("expected match: not all children done, OpNotEquals true should fire")
+		}
+	})
+
+	t.Run("FieldHasInProgressTasks OpNotEquals true matches project without in_progress tasks", func(t *testing.T) {
+		proj := &models.Project{ID: "p", Name: "P"}
+		tasks := []*models.Task{
+			{ID: "t1", Status: models.StatusTodo},
+			{ID: "t2", Status: models.StatusDone},
+		}
+		ctx := &ProjectEvaluationContext{Project: proj, Tasks: tasks}
+		trigger := RuleTrigger{Field: FieldHasInProgressTasks, Operation: OpNotEquals, Value: "true"}
+		if !matchProjectTrigger(ctx, trigger) {
+			t.Error("expected match: no in_progress tasks, OpNotEquals true should fire")
+		}
+	})
+
+	t.Run("OpEquals still works unchanged", func(t *testing.T) {
+		// Sanity check: OpEquals semantics did not regress
+		task := &models.Task{ID: "1", DueDate: &now}
+		trigger := RuleTrigger{Field: FieldHasDueDate, Operation: OpEquals, Value: "true"}
+		if !matchesTrigger(task, trigger) {
+			t.Error("expected match: task has due date, OpEquals true should fire")
+		}
+	})
+}
+
 // TestTaskStateChanged_RecurrenceChanges verifies that TaskStateChanged
 // recognizes changes to Recurrence (added, removed, pattern modified, streak
 // reset). Without this, recurring tasks whose ONLY change is recurrence state

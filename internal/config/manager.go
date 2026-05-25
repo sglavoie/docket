@@ -181,6 +181,28 @@ func (m *Manager) Load() (*Config, error) { //nolint:gocyclo
 	clampIntPtrMin(config.AlertBlockedDays, "AlertBlockedDays")
 	clampIntPtrMin(config.AlertProjectStaleDays, "AlertProjectStaleDays")
 
+	// Clamp enum-style stored values back into their valid range so an
+	// out-of-range value (e.g. from a hand-edited config or a downgrade from
+	// a newer build) doesn't keep round-tripping unchanged through Save.
+	// GetDashboardBottomLayout/GetInfoPanelMode already clamp on read, but
+	// without this they'd silently re-persist the bogus value.
+	if config.DashboardBottomLayout != nil {
+		v := *config.DashboardBottomLayout
+		if v < 0 || v >= int(dashboardLayoutCount) {
+			logging.Warn("DashboardBottomLayout %d out of range, clamping to 0", v)
+			zero := int(DashboardLayoutHorizontal)
+			config.DashboardBottomLayout = &zero
+		}
+	}
+	if config.InfoPanelMode != nil {
+		v := *config.InfoPanelMode
+		if v < 0 || v >= int(infoPanelModeCount) {
+			logging.Warn("InfoPanelMode %d out of range, clamping to %d", v, int(InfoPanelInfoCards))
+			def := int(InfoPanelInfoCards)
+			config.InfoPanelMode = &def
+		}
+	}
+
 	if config.Stages == nil {
 		config.Stages = []string{"Brainstorm", "Design", "Implement", "Test", "Review", "Deploy"}
 	}

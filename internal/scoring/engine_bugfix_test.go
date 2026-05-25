@@ -128,3 +128,73 @@ func TestScorePercentNaNAndInf(t *testing.T) {
 		t.Errorf("-Inf score should normalize to 0, got %f", got)
 	}
 }
+
+// TestValidateRejectsRICEDegenerateDenominator guards against a denominator
+// dimension with Max == 0 in a RICE profile. Such a dim multiplies the
+// denominator product to 0, making formulaRICE always return MaxScoreSentinel
+// for MinScore, MaxScore, and DefaultScore — which poisons ScorePercent
+// (degenerate range, defS far above maxS) and silently makes every task
+// score the same. Validation should reject this at profile-add time.
+func TestValidateRejectsRICEDegenerateDenominator(t *testing.T) {
+	profile := ScoringProfile{
+		ID: "rice-bad", Name: "BadRICE", Formula: FormulaRICE,
+		Dimensions: []ScoringDimension{
+			{ID: "n", Name: "N", Min: 1, Max: 10, Default: 5, Weight: 1, Source: SourceManual, Role: RoleNumerator},
+			{ID: "d", Name: "D", Min: 0, Max: 0, Default: 0, Weight: 1, Source: SourceManual, Role: RoleDenominator},
+		},
+	}
+	if err := profile.Validate(); err == nil {
+		t.Error("expected validation error for RICE denominator with Max=0, got nil")
+	}
+}
+
+// TestValidateRejectsRICEAnyZeroMaxDenominator confirms that RICE rejects
+// even a single zero-max denominator when there are multiple denominators,
+// because the product is dominated by zero.
+func TestValidateRejectsRICEAnyZeroMaxDenominator(t *testing.T) {
+	profile := ScoringProfile{
+		ID: "rice-multi", Name: "MultiDenRICE", Formula: FormulaRICE,
+		Dimensions: []ScoringDimension{
+			{ID: "n", Name: "N", Min: 1, Max: 10, Default: 5, Weight: 1, Source: SourceManual, Role: RoleNumerator},
+			{ID: "d1", Name: "D1", Min: 1, Max: 10, Default: 5, Weight: 1, Source: SourceManual, Role: RoleDenominator},
+			{ID: "d2", Name: "D2", Min: 0, Max: 0, Default: 0, Weight: 1, Source: SourceManual, Role: RoleDenominator},
+		},
+	}
+	if err := profile.Validate(); err == nil {
+		t.Error("expected validation error: RICE rejects any zero-max denominator (product * 0 = 0)")
+	}
+}
+
+// TestValidateRejectsWSJFAllZeroMaxDenominators verifies WSJF rejects a
+// profile where every denominator has Max == 0 (sum is always 0, formula
+// returns MaxScoreSentinel). A mix with at least one nonzero-max denominator
+// is allowed since the sum can still be > 0.
+func TestValidateRejectsWSJFAllZeroMaxDenominators(t *testing.T) {
+	allZero := ScoringProfile{
+		ID: "wsjf-bad", Name: "BadWSJF", Formula: FormulaWSJF,
+		Dimensions: []ScoringDimension{
+			{ID: "n", Name: "N", Min: 1, Max: 10, Default: 5, Weight: 1, Source: SourceManual, Role: RoleNumerator},
+			{ID: "d", Name: "D", Min: 0, Max: 0, Default: 0, Weight: 1, Source: SourceManual, Role: RoleDenominator},
+		},
+	}
+	if err := allZero.Validate(); err == nil {
+		t.Error("expected validation error: WSJF with all zero-max denominators")
+	}
+}
+
+// TestValidateAcceptsRICEWithLegitimateZeroMinDenominator confirms the new
+// validation does not over-reach: a denominator with Min=0 but Max>0 is
+// allowed (user can opt to set it to 0 and get the "zero effort = top"
+// semantic by intent, but the profile itself is still well-formed).
+func TestValidateAcceptsRICEWithLegitimateZeroMinDenominator(t *testing.T) {
+	profile := ScoringProfile{
+		ID: "rice-ok", Name: "OKRICE", Formula: FormulaRICE,
+		Dimensions: []ScoringDimension{
+			{ID: "n", Name: "N", Min: 1, Max: 10, Default: 5, Weight: 1, Source: SourceManual, Role: RoleNumerator},
+			{ID: "d", Name: "D", Min: 0, Max: 10, Default: 5, Weight: 1, Source: SourceManual, Role: RoleDenominator},
+		},
+	}
+	if err := profile.Validate(); err != nil {
+		t.Errorf("Min=0/Max>0 denominator should be valid, got: %v", err)
+	}
+}

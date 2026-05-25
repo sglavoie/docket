@@ -53,12 +53,23 @@ func (c *Config) AddScoringProfile(p scoring.ScoringProfile) error {
 	return nil
 }
 
-// RemoveScoringProfile removes a scoring profile by ID.
+// RemoveScoringProfile removes a scoring profile by ID and clears any
+// project assignments that referenced it. Without this cleanup, projects
+// would silently keep a dangling ProjectScoringProfile entry: GetProjectScoringProfile
+// would return nil while the orphaned reference resurfaces if a profile with
+// the same ID is later re-added.
 // Returns false if the profile was not found.
 func (c *Config) RemoveScoringProfile(id string) bool {
 	for i := range c.ScoringProfiles {
 		if c.ScoringProfiles[i].ID == id {
 			c.ScoringProfiles = append(c.ScoringProfiles[:i], c.ScoringProfiles[i+1:]...)
+			if c.ProjectScoringProfile != nil {
+				for projectID, profileID := range c.ProjectScoringProfile {
+					if profileID == id {
+						delete(c.ProjectScoringProfile, projectID)
+					}
+				}
+			}
 			return true
 		}
 	}

@@ -182,17 +182,39 @@ func smartListToFilter(sl smartList) SavedFilter {
 
 // MigrateLegacyFilters converts savedViews and smartLists to SavedFilters.
 // It is idempotent: if both legacy slices are already empty nothing changes.
+// Any migrated smartList whose preserved ID would collide with an existing
+// SavedFilter (or another smartList) receives a fresh UUID so ID-based
+// lookups remain unambiguous.
 // Returns true if a migration was performed.
 func (c *Config) MigrateLegacyFilters() bool {
 	if len(c.SavedViews) == 0 && len(c.SmartLists) == 0 {
 		return false
 	}
 
+	seenIDs := make(map[string]bool, len(c.SavedFilters)+len(c.SavedViews)+len(c.SmartLists))
+	for _, f := range c.SavedFilters {
+		if f.ID != "" {
+			seenIDs[f.ID] = true
+		}
+	}
+
 	for _, sv := range c.SavedViews {
-		c.SavedFilters = append(c.SavedFilters, savedViewToFilter(sv))
+		f := savedViewToFilter(sv)
+		// savedViewToFilter always mints a fresh UUID, but be defensive in
+		// case of an astronomical UUID collision.
+		for seenIDs[f.ID] {
+			f.ID = uuid.New().String()
+		}
+		seenIDs[f.ID] = true
+		c.SavedFilters = append(c.SavedFilters, f)
 	}
 	for _, sl := range c.SmartLists {
-		c.SavedFilters = append(c.SavedFilters, smartListToFilter(sl))
+		f := smartListToFilter(sl)
+		for seenIDs[f.ID] {
+			f.ID = uuid.New().String()
+		}
+		seenIDs[f.ID] = true
+		c.SavedFilters = append(c.SavedFilters, f)
 	}
 
 	c.SavedViews = nil

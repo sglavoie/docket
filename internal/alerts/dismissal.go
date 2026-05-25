@@ -91,9 +91,14 @@ func CategoryDisplayName(c AlertCategory) string {
 func ShouldExpireDismissal(category string, dismissedAt time.Time, now time.Time) bool {
 	switch AlertCategory(category) {
 	case CategoryDailyReview:
+		// Compute the local calendar day of the dismissal in the *user's
+		// current* location. A stored UTC (or fixed-offset) timestamp must
+		// not anchor expiration to UTC midnight when the user is in a
+		// different zone — mirrors the checkDailyReviewReminder convention.
+		local := dismissedAt.In(now.Location())
 		nextMidnight := time.Date(
-			dismissedAt.Year(), dismissedAt.Month(), dismissedAt.Day()+1,
-			0, 0, 0, 0, dismissedAt.Location(),
+			local.Year(), local.Month(), local.Day()+1,
+			0, 0, 0, 0, now.Location(),
 		)
 		return !now.Before(nextMidnight)
 	case CategoryWeeklyReview:

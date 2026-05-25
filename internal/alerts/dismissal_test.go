@@ -196,6 +196,49 @@ func TestShouldExpire_DailyReview_AfterMidnight(t *testing.T) {
 	}
 }
 
+// TestShouldExpire_DailyReview_CrossTimezone is a regression test:
+// computing the "next midnight" boundary in dismissedAt.Location()
+// produced spurious early expirations when the stored timestamp was in
+// UTC (or any zone different from the user's current local zone). The
+// boundary must be anchored to the user's current location to match the
+// alert evaluation logic.
+func TestShouldExpire_DailyReview_CrossTimezone(t *testing.T) {
+	loc, err := time.LoadLocation("America/New_York")
+	if err != nil {
+		t.Skipf("America/New_York not available: %v", err)
+	}
+
+	// User dismissed at 23:30 UTC = 19:30 NY on Feb 28.
+	dismissed := time.Date(2026, 2, 28, 23, 30, 0, 0, time.UTC)
+	// Five hours later: 04:30 UTC Mar 1 = 23:30 NY Feb 28 (same NY day).
+	// Dismissal must NOT have expired yet — it is still the day the user
+	// dismissed in their local zone.
+	now := time.Date(2026, 3, 1, 4, 30, 0, 0, time.UTC).In(loc)
+
+	if ShouldExpireDismissal("daily_review", dismissed, now) {
+		t.Errorf("daily_review dismissal expired before local midnight in user's zone (dismissed=%v now=%v)", dismissed, now)
+	}
+}
+
+// TestShouldExpire_DailyReview_CrossTimezoneAfterLocalMidnight verifies
+// expiration fires when the user's local clock crosses midnight, even if
+// the stored dismissal timestamp was in a different zone.
+func TestShouldExpire_DailyReview_CrossTimezoneAfterLocalMidnight(t *testing.T) {
+	loc, err := time.LoadLocation("America/New_York")
+	if err != nil {
+		t.Skipf("America/New_York not available: %v", err)
+	}
+
+	// Dismissed at 14:00 UTC = 09:00 NY on Feb 28.
+	dismissed := time.Date(2026, 2, 28, 14, 0, 0, 0, time.UTC)
+	// Now is 05:01 UTC Mar 1 = 00:01 NY Mar 1 (just past local midnight).
+	now := time.Date(2026, 3, 1, 5, 1, 0, 0, time.UTC).In(loc)
+
+	if !ShouldExpireDismissal("daily_review", dismissed, now) {
+		t.Errorf("daily_review dismissal should expire just past local midnight (dismissed=%v now=%v)", dismissed, now)
+	}
+}
+
 func TestShouldExpire_WeeklyReview_Before7Days(t *testing.T) {
 	dismissed := time.Date(2026, 2, 20, 10, 0, 0, 0, time.UTC)
 	now := time.Date(2026, 2, 27, 9, 59, 59, 0, time.UTC)

@@ -183,7 +183,7 @@ func matchProjectTrigger(ctx *ProjectEvaluationContext, trigger RuleTrigger) boo
 				break
 			}
 		}
-		return compareBool(has, trigger.Value)
+		return compareBoolOp(has, trigger.Operation, trigger.Value)
 
 	case FieldActiveTaskCount:
 		count := 0

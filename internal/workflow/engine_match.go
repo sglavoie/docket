@@ -259,7 +259,7 @@ func matchesHierarchicalTrigger(task *models.Task, trigger RuleTrigger, evalCtx 
 
 	case FieldHasChildren:
 		hasChildren := len(task.Children) > 0
-		return compareBool(hasChildren, trigger.Value)
+		return compareBoolOp(hasChildren, trigger.Operation, trigger.Value)
 
 	case FieldChildrenProgress:
 		progress := int(task.GetProgress())
@@ -270,11 +270,11 @@ func matchesHierarchicalTrigger(task *models.Task, trigger RuleTrigger, evalCtx 
 			return false
 		}
 		allDone := task.GetProgress() == 100
-		return compareBool(allDone, trigger.Value)
+		return compareBoolOp(allDone, trigger.Operation, trigger.Value)
 
 	case FieldIsBlocked:
 		blocked := hasIncompleteBlockers(task, taskMap)
-		return compareBool(blocked, trigger.Value)
+		return compareBoolOp(blocked, trigger.Operation, trigger.Value)
 
 	case FieldBlockerCount:
 		count := countIncompleteBlockers(task, taskMap)
@@ -290,9 +290,24 @@ func matchesHierarchicalTrigger(task *models.Task, trigger RuleTrigger, evalCtx 
 }
 
 // compareBool compares a boolean value against a trigger value ("true" or "false").
+// Uses OpEquals semantics; callers that need to honor OpNotEquals must use
+// compareBoolOp instead.
 func compareBool(value bool, triggerValue string) bool {
 	expected := strings.EqualFold(triggerValue, "true")
 	return value == expected
+}
+
+// compareBoolOp compares a boolean value against a trigger value, honoring
+// the OpEquals/OpNotEquals operation. Without this, "has_due_date != true"
+// was silently treated as "has_due_date == true" because compareBool ignored
+// the operation. Any operation other than OpNotEquals falls back to OpEquals
+// semantics so misconfigured rules still evaluate.
+func compareBoolOp(value bool, op TriggerOperation, triggerValue string) bool {
+	matches := compareBool(value, triggerValue)
+	if op == OpNotEquals {
+		return !matches
+	}
+	return matches
 }
 
 // hasIncompleteBlockers checks if the task has any incomplete dependencies.
@@ -388,11 +403,11 @@ func matchesTrigger(task *models.Task, trigger RuleTrigger) bool {
 		days := daysSince(task.UpdatedAt)
 		fieldValue = strconv.Itoa(days)
 	case FieldHasDueDate:
-		return compareBool(task.DueDate != nil, trigger.Value)
+		return compareBoolOp(task.DueDate != nil, trigger.Operation, trigger.Value)
 	case FieldHasTags:
-		return compareBool(len(task.Tags) > 0, trigger.Value)
+		return compareBoolOp(len(task.Tags) > 0, trigger.Operation, trigger.Value)
 	case FieldDescriptionEmpty:
-		return compareBool(strings.TrimSpace(task.Description) == "", trigger.Value)
+		return compareBoolOp(strings.TrimSpace(task.Description) == "", trigger.Operation, trigger.Value)
 	default:
 		return false
 	}

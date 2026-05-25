@@ -180,11 +180,18 @@ func rotateArchiveIfNeeded(projectPath string, threshold int64) error {
 		return nil // File is under threshold
 	}
 
-	// Find the next available rotation number
+	// Find the next available rotation number. Break on any non-existence
+	// signal AND on any unexpected stat error (e.g. permission denied), since
+	// the original "only IsNotExist breaks" loop would spin forever if Stat
+	// kept returning a non-IsNotExist error for the same path.
 	maxRotation := 0
 	for i := 1; ; i++ {
 		rotatedPath := filepath.Join(projectPath, fmt.Sprintf("completed.%d.md", i))
-		if _, err := os.Stat(rotatedPath); os.IsNotExist(err) {
+		_, statErr := os.Stat(rotatedPath)
+		if statErr != nil {
+			if !os.IsNotExist(statErr) {
+				return fmt.Errorf("failed to stat rotation candidate %s: %w", rotatedPath, statErr)
+			}
 			break
 		}
 		maxRotation = i

@@ -380,6 +380,24 @@ func (t *Task) ClearRecurrence() {
 	}
 }
 
+// ensureRecurrenceOriginalDay populates Recurrence.OriginalDay for monthly and
+// yearly patterns when it has not been set yet, using the given seed day. This
+// guards against day-of-month drift when SetRecurrence ran before DueDate was
+// assigned (so SetRecurrence could not seed OriginalDay itself): without this,
+// the first short-month clamp would silently overwrite the user's intended day
+// (e.g. Jan 31 → Feb 29 → Mar 29 instead of Mar 31).
+func (t *Task) ensureRecurrenceOriginalDay(seedDay int) {
+	if t.Recurrence == nil || t.Recurrence.OriginalDay != 0 {
+		return
+	}
+	if t.Recurrence.Unit != RecurrenceMonthly && t.Recurrence.Unit != RecurrenceYearly {
+		return
+	}
+	if seedDay >= 1 && seedDay <= 31 {
+		t.Recurrence.OriginalDay = seedDay
+	}
+}
+
 // SkipRecurrence advances the due date to the next occurrence without completing
 // the task. Increments the Skipped counter and resets the Streak to 0 (skipping
 // breaks a streak). No-op if the task is not recurring.
@@ -401,6 +419,7 @@ func (t *Task) SkipRecurrence() {
 	} else {
 		base = util.StartOfDay(time.Now())
 	}
+	t.ensureRecurrenceOriginalDay(base.Day())
 	next := calculateNextDate(base, t.Recurrence)
 	t.DueDate = &next
 	t.Recurrence.Skipped++
@@ -460,6 +479,11 @@ func (t *Task) NextDueDate() *time.Time {
 		}
 	}
 
+	// Seed OriginalDay on the first calculation when SetRecurrence ran before
+	// DueDate was set; otherwise day-of-month drifts on short-month clamps.
+	if t.Recurrence.Mode != RecurModeFromCompletion && t.DueDate != nil {
+		t.ensureRecurrenceOriginalDay(t.DueDate.Day())
+	}
 	next := calculateNextDate(baseDate, t.Recurrence)
 	return &next
 }
@@ -487,6 +511,10 @@ func (t *Task) NextNDueDates(n int) []time.Time {
 		}
 	}
 
+	// Seed OriginalDay so that the iterated series does not drift on short months.
+	if t.Recurrence.Mode != RecurModeFromCompletion && t.DueDate != nil {
+		t.ensureRecurrenceOriginalDay(t.DueDate.Day())
+	}
 	dates := make([]time.Time, 0, n)
 	current := baseDate
 	for range n {

@@ -345,25 +345,37 @@ func renderNote(note *models.Note) (string, error) {
 }
 
 // splitFrontmatter splits "---\n...\n---\n" from the rest of the content.
+// The closing "---" must appear alone on its line so a content line beginning
+// with "----" (or any other "---<suffix>") is not mistaken for the delimiter.
+// Without this check, a frontmatter value or body line starting with "----"
+// would silently truncate the frontmatter and prepend stray characters to the
+// body on every parse.
 func splitFrontmatter(content string) (frontmatter string, body string, err error) {
 	content = strings.TrimSpace(content)
 	if !strings.HasPrefix(content, "---") {
 		return "", content, fmt.Errorf("missing frontmatter delimiter")
 	}
 
-	// Find the closing ---
 	rest := content[3:] // skip opening ---
 	rest = strings.TrimLeft(rest, "\r\n")
-	before, after, ok := strings.Cut(rest, "\n---")
-	if !ok {
-		return "", content, fmt.Errorf("missing closing frontmatter delimiter")
+
+	// Find a "\n---" sequence that is followed by either a newline, CR, or EOF
+	// (a real closing delimiter alone on its line, not the prefix of "----").
+	searchFrom := 0
+	for {
+		idx := strings.Index(rest[searchFrom:], "\n---")
+		if idx == -1 {
+			return "", content, fmt.Errorf("missing closing frontmatter delimiter")
+		}
+		absIdx := searchFrom + idx
+		after := rest[absIdx+4:]
+		if len(after) == 0 || after[0] == '\n' || after[0] == '\r' {
+			fm := rest[:absIdx]
+			body = strings.TrimLeft(after, "\r\n")
+			return fm, body, nil
+		}
+		searchFrom = absIdx + 4
 	}
-
-	fm := before
-	body = strings.TrimPrefix(after, "\n")
-	body = strings.TrimLeft(body, "\r\n")
-
-	return fm, body, nil
 }
 
 // parseTime attempts to parse a time string in the standard format.
