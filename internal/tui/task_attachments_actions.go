@@ -231,12 +231,26 @@ func (m *TaskAttachmentsModel) openAttachmentInEditor() tea.Cmd {
 		return nil
 	}
 
+	// Empty attachment_editor means "use OS default app", not a text editor.
+	if m.config.GetAttachmentEditor() == "" {
+		openCmd, err := buildOpenCommand(target)
+		if err != nil {
+			return errorCmd("%s", err)
+		}
+		return tea.ExecProcess(openCmd, func(err error) tea.Msg {
+			if err != nil {
+				return ErrorMsg{Err: fmt.Errorf("failed to open: %w", err)}
+			}
+			return nil
+		})
+	}
+
 	editor, editorErr := external.ResolveEditor(m.config.GetAttachmentEditor())
 	if editorErr != nil {
 		return errorCmd("%s", editorErr)
 	}
 
-	openCmd := exec.Command(editor, target)
+	openCmd := external.EditorCommand(editor, target)
 	return tea.ExecProcess(openCmd, func(err error) tea.Msg {
 		if err != nil {
 			return ErrorMsg{Err: fmt.Errorf("failed to open in editor: %w", err)}

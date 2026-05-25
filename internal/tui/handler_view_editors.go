@@ -99,7 +99,7 @@ func (m *AppModel) handleEditorMessages(msg tea.Msg) (bool, tea.Cmd) {
 		if editorErr != nil {
 			return true, errorCmd("%s", editorErr)
 		}
-		c := exec.Command(editor, path)
+		c := external.OpenFolderCommand(editor, path)
 		return true, tea.ExecProcess(c, func(err error) tea.Msg {
 			if err != nil {
 				return ErrorMsg{Err: fmt.Errorf("failed to open folder: %w", err)}

@@ -2,6 +2,8 @@ package tui
 
 import (
 	"math"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"charm.land/bubbles/v2/textinput"
@@ -229,6 +231,60 @@ func newTestSettingsModelWithPriorities(p1, p2, p3, p4, p5 string) *SettingsMode
 		priority3TitleInput: makeInput(p3),
 		priority4TitleInput: makeInput(p4),
 		priority5TitleInput: makeInput(p5),
+	}
+}
+
+func TestValidateEditorCommand_FlaggedEditorString(t *testing.T) {
+	// Create a fake editor binary so the PATH lookup succeeds.
+	dir := t.TempDir()
+	fakeEditor := filepath.Join(dir, "myeditor")
+	if err := os.WriteFile(fakeEditor, []byte("#!/bin/sh\nexit 0\n"), 0o755); err != nil {
+		t.Fatalf("write fake editor: %v", err)
+	}
+
+	origPath := os.Getenv("PATH")
+	t.Cleanup(func() { _ = os.Setenv("PATH", origPath) })
+	if err := os.Setenv("PATH", dir+string(os.PathListSeparator)+origPath); err != nil {
+		t.Fatalf("setenv PATH: %v", err)
+	}
+
+	m := &SettingsModel{}
+
+	// "myeditor -u NORC" — executable found, extra flags must be accepted.
+	if err := m.validateEditorCommand("myeditor -u NORC"); err != nil {
+		t.Errorf("validateEditorCommand('myeditor -u NORC') unexpected error: %v", err)
+	}
+
+	// "myeditor" alone — still valid.
+	if err := m.validateEditorCommand("myeditor"); err != nil {
+		t.Errorf("validateEditorCommand('myeditor') unexpected error: %v", err)
+	}
+
+	// Unknown executable with flags — must still fail.
+	if err := m.validateEditorCommand("ghosteditor --some-flag"); err == nil {
+		t.Error("validateEditorCommand('ghosteditor --some-flag') expected error for unknown command")
+	}
+}
+
+func TestValidateEditorCommand_AbsolutePathWithFlags(t *testing.T) {
+	// Create a real executable in a temp dir so the absolute-path branch is exercised.
+	dir := t.TempDir()
+	fakeEditor := filepath.Join(dir, "myeditor")
+	if err := os.WriteFile(fakeEditor, []byte("#!/bin/sh\nexit 0\n"), 0o755); err != nil {
+		t.Fatalf("write fake editor: %v", err)
+	}
+
+	m := &SettingsModel{}
+
+	// "/tmp/.../myeditor -u NORC" — only the exe part is stat'd.
+	editorStr := fakeEditor + " -u NORC"
+	if err := m.validateEditorCommand(editorStr); err != nil {
+		t.Errorf("validateEditorCommand(%q) unexpected error: %v", editorStr, err)
+	}
+
+	// Absolute path alone is also valid.
+	if err := m.validateEditorCommand(fakeEditor); err != nil {
+		t.Errorf("validateEditorCommand(%q) unexpected error: %v", fakeEditor, err)
 	}
 }
 

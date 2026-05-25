@@ -12,8 +12,60 @@ import (
 	"github.com/sglavoie/tt/internal/testutil"
 )
 
+// TestBuildAttachmentEditorCmd verifies that flagged attachment_editor strings
+// are split correctly so the flags are not treated as the binary name.
+func TestBuildAttachmentEditorCmd(t *testing.T) {
+	cases := []struct {
+		editor   string
+		target   string
+		wantExe  string
+		wantArgs []string
+	}{
+		{
+			editor:   "vlc",
+			target:   "/path/to/file.mp4",
+			wantExe:  "vlc",
+			wantArgs: []string{"vlc", "/path/to/file.mp4"},
+		},
+		{
+			editor:   "vlc --fullscreen",
+			target:   "/path/to/file.mp4",
+			wantExe:  "vlc",
+			wantArgs: []string{"vlc", "--fullscreen", "/path/to/file.mp4"},
+		},
+		{
+			editor:   "mpv --loop=inf --mute",
+			target:   "/path/to/audio.mp3",
+			wantExe:  "mpv",
+			wantArgs: []string{"mpv", "--loop=inf", "--mute", "/path/to/audio.mp3"},
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.editor, func(t *testing.T) {
+			cmd := buildAttachmentEditorCmd(tc.editor, tc.target)
+			// cmd.Args[0] is the resolved binary path; compare base name for portability.
+			if len(cmd.Args) != len(tc.wantArgs) {
+				t.Fatalf("buildAttachmentEditorCmd(%q, %q) args = %v, want %v",
+					tc.editor, tc.target, cmd.Args, tc.wantArgs)
+			}
+			// args[1:] should match exactly.
+			for i := 1; i < len(tc.wantArgs); i++ {
+				if cmd.Args[i] != tc.wantArgs[i] {
+					t.Errorf("args[%d] = %q, want %q (full args: %v)",
+						i, cmd.Args[i], tc.wantArgs[i], cmd.Args)
+				}
+			}
+			// Target must always be the last argument.
+			last := cmd.Args[len(cmd.Args)-1]
+			if last != tc.target {
+				t.Errorf("last arg = %q, want target %q (full args: %v)",
+					last, tc.target, cmd.Args)
+			}
+		})
+	}
+}
+
 func setupAttachmentTest(t *testing.T) (*testutil.TestDeps, *models.Project) {
-	t.Helper()
 
 	deps, project := testutil.SetupTestDepsWithProject(t, "Test Project")
 

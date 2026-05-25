@@ -3,6 +3,7 @@ package config
 import (
 	"encoding/json"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"testing"
 )
@@ -372,5 +373,167 @@ func TestConfigManager_NegativeMaxPinnedAndRecentClamped(t *testing.T) {
 	}
 	if *cfg.MaxRecentTaskVisits != 0 {
 		t.Errorf("expected MaxRecentTaskVisits clamped to 0, got %d", *cfg.MaxRecentTaskVisits)
+	}
+}
+
+// TestConfigManager_FreshInstallRespectsEditorEnv verifies that a fresh config
+// (no file on disk) picks up $EDITOR/$VISUAL instead of hardcoding "code".
+func TestConfigManager_FreshInstallRespectsEditorEnv(t *testing.T) {
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, "does-not-exist.json")
+
+	origEditor := os.Getenv("EDITOR")
+	origVisual := os.Getenv("VISUAL")
+	t.Cleanup(func() {
+		_ = os.Setenv("EDITOR", origEditor)
+		_ = os.Setenv("VISUAL", origVisual)
+	})
+
+	// Create a fake "myeditor" binary so LookPath succeeds.
+	fakeDir := t.TempDir()
+	fakeExe := filepath.Join(fakeDir, "myeditor")
+	if err := os.WriteFile(fakeExe, []byte("#!/bin/sh\nexit 0\n"), 0o755); err != nil {
+		t.Fatalf("write fake editor: %v", err)
+	}
+
+	origPath := os.Getenv("PATH")
+	t.Cleanup(func() { _ = os.Setenv("PATH", origPath) })
+	if err := os.Setenv("PATH", fakeDir); err != nil {
+		t.Fatalf("setenv PATH: %v", err)
+	}
+	if err := os.Setenv("EDITOR", "myeditor"); err != nil {
+		t.Fatalf("setenv EDITOR: %v", err)
+	}
+	if err := os.Unsetenv("VISUAL"); err != nil {
+		t.Fatalf("unsetenv VISUAL: %v", err)
+	}
+
+	manager := NewManager(configPath)
+	cfg, err := manager.Load()
+	if err != nil {
+		t.Fatalf("Load failed: %v", err)
+	}
+
+	if cfg.Editor != "myeditor" {
+		t.Errorf("fresh install: expected Editor='myeditor' from $EDITOR, got %q", cfg.Editor)
+	}
+}
+
+// TestConfigManager_FreshInstallFallsBackToAvailableEditor verifies that when
+// no env vars are set, a fresh install picks an editor that exists in PATH
+// rather than defaulting to "code" unconditionally.
+func TestConfigManager_FreshInstallFallsBackToAvailableEditor(t *testing.T) {
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, "does-not-exist.json")
+
+	origEditor := os.Getenv("EDITOR")
+	origVisual := os.Getenv("VISUAL")
+	origPath := os.Getenv("PATH")
+	t.Cleanup(func() {
+		_ = os.Setenv("EDITOR", origEditor)
+		_ = os.Setenv("VISUAL", origVisual)
+		_ = os.Setenv("PATH", origPath)
+	})
+
+	if err := os.Unsetenv("EDITOR"); err != nil {
+		t.Fatalf("unsetenv EDITOR: %v", err)
+	}
+	if err := os.Unsetenv("VISUAL"); err != nil {
+		t.Fatalf("unsetenv VISUAL: %v", err)
+	}
+
+	// Build a PATH that only contains "vi" (not "code") so we can assert
+	// the fallback picks vi over the hardcoded "code" default.
+	fakeDir := t.TempDir()
+	fakeVi := filepath.Join(fakeDir, "vi")
+	if err := os.WriteFile(fakeVi, []byte("#!/bin/sh\nexit 0\n"), 0o755); err != nil {
+		t.Fatalf("write fake vi: %v", err)
+	}
+	if err := os.Setenv("PATH", fakeDir); err != nil {
+		t.Fatalf("setenv PATH: %v", err)
+	}
+
+	// Verify "code" is not on this trimmed PATH.
+	if _, err := exec.LookPath("code"); err == nil {
+		t.Skip("'code' is on PATH even with trimmed PATH — skipping")
+	}
+
+	manager := NewManager(configPath)
+	cfg, err := manager.Load()
+	if err != nil {
+		t.Fatalf("Load failed: %v", err)
+	}
+
+	if cfg.Editor == "code" {
+		t.Errorf("fresh install: expected fallback away from unavailable 'code', but got 'code'")
+	}
+	if cfg.Editor != "vi" {
+		t.Errorf("fresh install: expected Editor='vi' (available in PATH), got %q", cfg.Editor)
+	}
+}
+
+// TestConfigManager_LoadNoWarnOnFlaggedEditor verifies that Load() does NOT
+// emit a spurious "not found" warning when the configured editor string
+// contains flags (e.g. "code --wait") or a quoted path with spaces, as long
+// as the executable portion exists in PATH.
+func TestConfigManager_LoadNoWarnOnFlaggedEditor(t *testing.T) {
+	// Create a fake editor binary so LookPath succeeds.
+	fakeDir := t.TempDir()
+	fakeExe := filepath.Join(fakeDir, "mycode")
+	if err := os.WriteFile(fakeExe, []byte("#!/bin/sh\nexit 0\n"), 0o755); err != nil {
+		t.Fatalf("write fake editor: %v", err)
+	}
+
+	origPath := os.Getenv("PATH")
+	t.Cleanup(func() { _ = os.Setenv("PATH", origPath) })
+	if err := os.Setenv("PATH", fakeDir); err != nil {
+		t.Fatalf("setenv PATH: %v", err)
+	}
+
+	cases := []struct {
+		name   string
+		editor string
+	}{
+		// Regression: "mycode --wait" — exe valid, must not warn.
+		{"flagged editor", "mycode --wait"},
+		// Regression: double-quoted path with spaces + flag — exe valid, must not warn.
+		{"double-quoted path with flag", `"` + fakeExe + `" --wait`},
+		// Regression: single-quoted path with spaces — exe valid, must not warn.
+		{"single-quoted path", `'` + fakeExe + `'`},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			tmpDir := t.TempDir()
+			configPath := filepath.Join(tmpDir, "test-config.json")
+			cfgJSON, _ := json.Marshal(map[string]string{"editor": tc.editor})
+			if err := os.WriteFile(configPath, cfgJSON, 0o644); err != nil {
+				t.Fatalf("write config: %v", err)
+			}
+
+			// Capture stderr to assert no warning is printed.
+			origStderr := os.Stderr
+			r, w, pipeErr := os.Pipe()
+			if pipeErr != nil {
+				t.Fatalf("os.Pipe: %v", pipeErr)
+			}
+			os.Stderr = w
+
+			manager := NewManager(configPath)
+			_, loadErr := manager.Load()
+
+			_ = w.Close()
+			os.Stderr = origStderr
+			var buf [4096]byte
+			n, _ := r.Read(buf[:])
+			captured := string(buf[:n])
+
+			if loadErr != nil {
+				t.Fatalf("Load failed: %v", loadErr)
+			}
+			if captured != "" {
+				t.Errorf("Load() emitted unexpected stderr for editor %q:\n%s", tc.editor, captured)
+			}
+		})
 	}
 }

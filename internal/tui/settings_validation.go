@@ -10,6 +10,8 @@ import (
 	"strings"
 
 	"charm.land/bubbles/v2/textinput"
+
+	"github.com/sglavoie/tt/internal/external"
 )
 
 // validateIntInRange parses a required integer input and checks it is within [min, max].
@@ -395,28 +397,32 @@ func (m *SettingsModel) validateDashboardSplitPcts() error {
 }
 
 func (m *SettingsModel) validateEditorCommand(editor string) error {
+	exe, _ := external.SplitEditorString(editor)
+	if exe == "" {
+		return fmt.Errorf("editor is required")
+	}
 	// Check if it's an absolute path
-	if strings.HasPrefix(editor, "/") {
-		info, err := os.Stat(editor)
+	if strings.HasPrefix(exe, "/") {
+		info, err := os.Stat(exe)
 		if os.IsNotExist(err) {
-			return fmt.Errorf("file does not exist: %s", editor)
+			return fmt.Errorf("file does not exist: %s", exe)
 		}
 		if err != nil {
-			return fmt.Errorf("cannot access file: %s", editor)
+			return fmt.Errorf("cannot access file: %s", exe)
 		}
 		if info.IsDir() {
-			return fmt.Errorf("path is a directory: %s", editor)
+			return fmt.Errorf("path is a directory: %s", exe)
 		}
 		if info.Mode()&0111 == 0 {
-			return fmt.Errorf("file is not executable: %s", editor)
+			return fmt.Errorf("file is not executable: %s", exe)
 		}
 		return nil
 	}
 
 	// Otherwise, check if command exists in PATH
-	_, err := exec.LookPath(editor)
+	_, err := exec.LookPath(exe)
 	if err != nil {
-		return fmt.Errorf("command not found: %s", editor)
+		return fmt.Errorf("command not found: %s", exe)
 	}
 	return nil
 }

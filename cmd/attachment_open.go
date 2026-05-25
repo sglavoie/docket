@@ -31,6 +31,14 @@ func init() {
 	attachmentCmd.AddCommand(attachmentOpenCmd)
 }
 
+// buildAttachmentEditorCmd builds an exec.Cmd to open target with the
+// configured attachment editor. The editor string may contain flags
+// (e.g. "vlc --fullscreen"), so it is split before constructing the command.
+func buildAttachmentEditorCmd(editor, target string) *exec.Cmd {
+	exe, editorArgs := external.SplitEditorString(editor)
+	return exec.Command(exe, append(editorArgs, target)...)
+}
+
 func runAttachmentOpen(cmd *cobra.Command, args []string) error {
 	if len(args) < 2 {
 		return tterrors.NewRequiredFieldError("task ID and attachment name")
@@ -78,7 +86,7 @@ func runAttachmentOpen(cmd *cobra.Command, args []string) error {
 
 	// Check if we should use a configured attachment editor (for non-URL files)
 	if !att.IsURL && cfg.GetAttachmentEditor() != "" {
-		openCmd := exec.Command(cfg.GetAttachmentEditor(), target)
+		openCmd := buildAttachmentEditorCmd(cfg.GetAttachmentEditor(), target)
 		if err := openCmd.Start(); err != nil {
 			return fmt.Errorf("failed to open attachment: %w", err)
 		}

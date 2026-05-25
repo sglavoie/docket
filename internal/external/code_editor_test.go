@@ -77,14 +77,6 @@ func TestOpenCodeReference_MissingEditor(t *testing.T) {
 	}
 }
 
-// TestOpenCodeReference_UnknownEditorBlocks verifies that an unknown editor
-// (classified as patternUnknown — e.g. helix/hx) is invoked with cmd.Run()
-// (blocking) and with stdin attached, so terminal editors aren't spawned
-// async into the void where they fail silently.
-//
-// Strategy: shadow PATH with a temp dir containing a fake "hx" that exits
-// non-zero. OpenCodeReference should return that exit error synchronously —
-// proving it used Run() rather than Start()-and-forget.
 func TestOpenCodeReference_UnknownEditorBlocksAndReturnsExitError(t *testing.T) {
 	// Confirm "hx" is still classified as patternUnknown.
 	if detectEditorPattern("hx") != patternUnknown {
@@ -107,5 +99,79 @@ func TestOpenCodeReference_UnknownEditorBlocksAndReturnsExitError(t *testing.T) 
 	err := OpenCodeReference("hx", "/tmp/file.go", 10)
 	if err == nil {
 		t.Fatal("expected error from blocking unknown editor that exited non-zero; got nil (fire-and-forget regression)")
+	}
+}
+
+// TestDetectEditorPattern_FlaggedString verifies that detectEditorPattern
+// correctly identifies editors even when the editor string includes flags
+// (e.g. "nvim -u NORC" should still be patternPlusLine).
+func TestDetectEditorPattern_FlaggedString(t *testing.T) {
+	cases := []struct {
+		editor string
+		want   editorPattern
+	}{
+		{"nvim -u NORC", patternPlusLine},
+		{"vim --noplugin", patternPlusLine},
+		{"code --wait", patternGoto},
+		{"/usr/bin/nvim -u NORC", patternPlusLine},
+		{"subl --new-window", patternColonLine},
+		{"goland --line 1", patternLineFlag},
+	}
+	for _, tc := range cases {
+		t.Run(tc.editor, func(t *testing.T) {
+			got := detectEditorPattern(tc.editor)
+			if got != tc.want {
+				t.Errorf("detectEditorPattern(%q) = %v, want %v", tc.editor, got, tc.want)
+			}
+		})
+	}
+}
+
+// TestOpenCodeReference_FlaggedEditorPassesArgs verifies that when an editor
+// string like "nvim -u NORC" is given, OpenCodeReference correctly invokes
+// the executable (nvim) with the extra flags (-u NORC) prepended before the
+// line/file arguments.
+func TestOpenCodeReference_FlaggedEditorPassesArgs(t *testing.T) {
+	dir := t.TempDir()
+	// Write a fake "nvim" that records its arguments to a file.
+	argFile := filepath.Join(dir, "args.txt")
+	fakeNvim := filepath.Join(dir, "nvim")
+	script := "#!/bin/sh\nprintf '%s\\n' \"$@\" > " + argFile + "\nexit 0\n"
+	if err := os.WriteFile(fakeNvim, []byte(script), 0o755); err != nil {
+		t.Fatalf("write fake nvim: %v", err)
+	}
+
+	origPath := os.Getenv("PATH")
+	t.Cleanup(func() { _ = os.Setenv("PATH", origPath) })
+	if err := os.Setenv("PATH", dir); err != nil {
+		t.Fatalf("setenv PATH: %v", err)
+	}
+
+	filePath := filepath.Join(dir, "test.go")
+	if err := os.WriteFile(filePath, []byte("package main\n"), 0o644); err != nil {
+		t.Fatalf("write test file: %v", err)
+	}
+
+	if err := OpenCodeReference("nvim -u NORC", filePath, 5); err != nil {
+		t.Fatalf("OpenCodeReference('nvim -u NORC', ...) failed: %v", err)
+	}
+
+	recorded, err := os.ReadFile(argFile)
+	if err != nil {
+		t.Fatalf("read arg file: %v", err)
+	}
+	args := strings.Split(strings.TrimSpace(string(recorded)), "\n")
+	// Expected args for patternPlusLine: -u NORC +5 <file>
+	if len(args) < 3 {
+		t.Fatalf("expected at least 3 args, got %v", args)
+	}
+	if args[0] != "-u" {
+		t.Errorf("expected args[0]='-u', got %q (all: %v)", args[0], args)
+	}
+	if args[1] != "NORC" {
+		t.Errorf("expected args[1]='NORC', got %q (all: %v)", args[1], args)
+	}
+	if args[2] != "+5" {
+		t.Errorf("expected args[2]='+5', got %q (all: %v)", args[2], args)
 	}
 }

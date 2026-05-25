@@ -87,10 +87,32 @@ func (m *Manager) recoverFromBackup(primaryErr error) (Config, error) {
 	return cfg, nil
 }
 
+// resolveEditorDefault picks the best available editor via the env/PATH fallback
+// chain: EDITOR env → VISUAL env → "code" → "vi" → "nano" → "vi" (last resort).
+// It is called for fresh configs (no config file) and when the config Editor
+// field is empty.
+func resolveEditorDefault() string {
+	if ed := os.Getenv("EDITOR"); ed != "" {
+		return ed
+	}
+	if vis := os.Getenv("VISUAL"); vis != "" {
+		return vis
+	}
+	for _, candidate := range []string{"code", "vi", "nano"} {
+		if _, err := exec.LookPath(candidate); err == nil {
+			return candidate
+		}
+	}
+	return "vi" // last resort even if not found
+}
+
 // Load loads the configuration from file.
 func (m *Manager) Load() (*Config, error) { //nolint:gocyclo
 	if _, err := os.Stat(m.configPath); os.IsNotExist(err) {
 		cfg := NewConfig()
+		// Respect $EDITOR/$VISUAL and PATH availability instead of always
+		// defaulting to "code" which may not be installed.
+		cfg.Editor = resolveEditorDefault()
 		cfg.MigratePaletteToThemes()
 		cfg.Version = CurrentConfigVersion
 		return cfg, nil
@@ -119,24 +141,15 @@ func (m *Manager) Load() (*Config, error) { //nolint:gocyclo
 		config.DataDir = filepath.Join(homeDir, ".tt")
 	}
 	if config.Editor == "" {
-		if ed := os.Getenv("EDITOR"); ed != "" {
-			config.Editor = ed
-		} else if vis := os.Getenv("VISUAL"); vis != "" {
-			config.Editor = vis
-		} else {
-			for _, candidate := range []string{"vi", "nano"} {
-				if _, err := exec.LookPath(candidate); err == nil {
-					config.Editor = candidate
-					break
-				}
-			}
-			if config.Editor == "" {
-				config.Editor = "vi" // last resort even if not found
-			}
-		}
+		config.Editor = resolveEditorDefault()
 	}
-	if _, err := exec.LookPath(config.Editor); err != nil {
-		fmt.Fprintf(os.Stderr, "warning: editor '%s' not found in PATH; editing commands may fail\n", config.Editor)
+	// Validate only the executable portion so that editor strings with flags
+	// (e.g. "code --wait") or quoted paths with spaces do not trigger a bogus
+	// "not found" warning.
+	if editorTokens := util.ShellTokenize(config.Editor); len(editorTokens) > 0 {
+		if _, err := exec.LookPath(editorTokens[0]); err != nil {
+			fmt.Fprintf(os.Stderr, "warning: editor '%s' not found in PATH; editing commands may fail\n", editorTokens[0])
+		}
 	}
 	if config.DefaultContext == "" {
 		config.DefaultContext = "personal"

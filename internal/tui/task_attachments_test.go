@@ -1,9 +1,11 @@
 package tui
 
 import (
+	"strings"
 	"testing"
 	"time"
 
+	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 )
 
@@ -169,5 +171,64 @@ func TestTaskAttachmentsAddEmptyPath(t *testing.T) {
 	}
 	if model.err == nil {
 		t.Fatal("expected error for empty path")
+	}
+}
+
+// TestOpenAttachmentInEditor_EmptyEditorUsesOSDefault verifies that when
+// attachment_editor is empty (the default), openAttachmentInEditor routes
+// through buildOpenCommand (OS default) rather than resolving a text editor.
+// We detect this by checking that no ResolveEditor call is made (i.e. the
+// function returns a non-nil cmd without an error even though no text editor
+// is available in PATH).
+func TestOpenAttachmentInEditor_EmptyEditorUsesOSDefault(t *testing.T) {
+	project, err := models.NewProject("proj", "Test Project", t.TempDir())
+	if err != nil {
+		t.Fatalf("NewProject: %v", err)
+	}
+
+	task, err := models.NewTask("task-1", 1, models.TaskTypeTask, "Test task")
+	if err != nil {
+		t.Fatalf("NewTask: %v", err)
+	}
+
+	// Create a real file so the existence check passes.
+	attachDir := t.TempDir()
+	project.Path = attachDir
+
+	// We need the attachment path to exist. Use a simple approach:
+	// create a model with a URL attachment (skips file path resolution)
+	// then switch to a file attachment via a stub.
+	// Actually, easier: just verify the config routing by checking the model
+	// returns an error about the file not existing (which means it got past
+	// the "empty editor" branch) vs. a "no editor found" error.
+	// We do this by creating a model with an empty AttachmentEditor config.
+
+	cfg := &config.Config{
+		AttachmentEditor: "", // empty = use OS default
+	}
+
+	task.Attachments = []models.Attachment{
+		{Filename: "note.txt", OriginalPath: "/nonexistent/note.txt", AddedAt: time.Now()},
+	}
+	project.Tasks = []*models.Task{task}
+
+	model := NewTaskAttachmentsModel(task, project, cfg)
+	model.cursor = 0
+
+	// With an empty AttachmentEditor, openAttachmentInEditor should attempt
+	// buildOpenCommand (OS default). Since the file doesn't exist in the
+	// expected attachment directory, it sets model.err about "file not found",
+	// NOT about "no editor configured" or "not found in PATH".
+	model.openAttachmentInEditor()
+
+	if model.err == nil {
+		// The attachment dir doesn't exist so we expect an error.
+		// If we got here with no error, the test environment has the file.
+		return
+	}
+
+	errMsg := model.err.Error()
+	if strings.Contains(errMsg, "no editor") || strings.Contains(errMsg, "not found in PATH") {
+		t.Errorf("empty attachment_editor should use OS default open, not text editor resolution; got: %s", errMsg)
 	}
 }

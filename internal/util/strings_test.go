@@ -2,6 +2,47 @@ package util
 
 import "testing"
 
+func TestShellTokenize(t *testing.T) {
+	cases := []struct {
+		input string
+		want  []string
+	}{
+		// Basic splitting.
+		{"code", []string{"code"}},
+		{"nvim -u NORC", []string{"nvim", "-u", "NORC"}},
+		{"code --wait", []string{"code", "--wait"}},
+		{"", nil},
+		{"   ", nil},
+		// Single-quoted strings: literal, no escaping.
+		{`'/path/with spaces/editor'`, []string{"/path/with spaces/editor"}},
+		{`nvim -u '/tmp/my vimrc'`, []string{"nvim", "-u", "/tmp/my vimrc"}},
+		// Double-quoted strings: \" and \\ are unescaped.
+		{`"/path/with spaces/editor" --wait`, []string{"/path/with spaces/editor", "--wait"}},
+		{`nvim -u "/tmp/my vimrc"`, []string{"nvim", "-u", "/tmp/my vimrc"}},
+		// Backslash outside quotes.
+		{`/path/with\ spaces/editor`, []string{"/path/with spaces/editor"}},
+		// Mixed quoting styles.
+		{`'/opt/my editor/code' --flag "val ue"`, []string{"/opt/my editor/code", "--flag", "val ue"}},
+		// Double-quote escape sequences.
+		{`"say \"hello\""`, []string{`say "hello"`}},
+		{`"back\\slash"`, []string{`back\slash`}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.input, func(t *testing.T) {
+			got := ShellTokenize(tc.input)
+			if len(got) != len(tc.want) {
+				t.Errorf("ShellTokenize(%q) = %v (len %d), want %v (len %d)", tc.input, got, len(got), tc.want, len(tc.want))
+				return
+			}
+			for i, v := range got {
+				if v != tc.want[i] {
+					t.Errorf("ShellTokenize(%q)[%d] = %q, want %q", tc.input, i, v, tc.want[i])
+				}
+			}
+		})
+	}
+}
+
 func TestTruncate(t *testing.T) {
 	tests := []struct {
 		name     string

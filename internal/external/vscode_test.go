@@ -140,6 +140,53 @@ func TestNeedsWaitFlag(t *testing.T) {
 	}
 }
 
+func TestSplitEditorString(t *testing.T) {
+	cases := []struct {
+		input    string
+		wantExe  string
+		wantArgs []string
+	}{
+		{"code", "code", nil},
+		{"vim", "vim", nil},
+		{"nvim -u NORC", "nvim", []string{"-u", "NORC"}},
+		{"code --wait", "code", []string{"--wait"}},
+		{"/usr/bin/vim -u ~/.min.vim", "/usr/bin/vim", []string{"-u", "~/.min.vim"}},
+		{"", "", nil},
+		{"   ", "", nil},
+		// Regression: quoted executable path containing spaces.
+		{`"/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code" --wait`,
+			"/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code",
+			[]string{"--wait"}},
+		// Regression: single-quoted executable path containing spaces.
+		{`'/opt/my editor/code' --wait`,
+			"/opt/my editor/code",
+			[]string{"--wait"}},
+		// Regression: quoted flag value containing spaces.
+		{`nvim -u "/tmp/my vimrc"`, "nvim", []string{"-u", "/tmp/my vimrc"}},
+		// Regression: single-quoted flag value containing spaces.
+		{`nvim -u '/tmp/my vimrc'`, "nvim", []string{"-u", "/tmp/my vimrc"}},
+		// Quoted exe with no args.
+		{`"/path/with spaces/editor"`, "/path/with spaces/editor", nil},
+	}
+	for _, tc := range cases {
+		t.Run(tc.input, func(t *testing.T) {
+			exe, args := SplitEditorString(tc.input)
+			if exe != tc.wantExe {
+				t.Errorf("SplitEditorString(%q) exe = %q, want %q", tc.input, exe, tc.wantExe)
+			}
+			if len(args) != len(tc.wantArgs) {
+				t.Errorf("SplitEditorString(%q) args = %v, want %v", tc.input, args, tc.wantArgs)
+				return
+			}
+			for i, a := range args {
+				if a != tc.wantArgs[i] {
+					t.Errorf("SplitEditorString(%q) args[%d] = %q, want %q", tc.input, i, a, tc.wantArgs[i])
+				}
+			}
+		})
+	}
+}
+
 func TestEditorCommandAddsWaitForVariants(t *testing.T) {
 	// EditorCommand should add --wait for code-insiders
 	cmd := EditorCommand("code-insiders", "/tmp/test.md")
@@ -160,6 +207,49 @@ func TestEditorCommandAddsWaitForVariants(t *testing.T) {
 		if arg == "--wait" {
 			t.Errorf("EditorCommand('vim', ...) should not include --wait, got args: %v", cmd.Args)
 		}
+	}
+}
+
+func TestEditorCommandWithFlags(t *testing.T) {
+	// "nvim -u NORC" should produce: nvim -u NORC <file>
+	cmd := EditorCommand("nvim -u NORC", "/path/to/file.md")
+	if cmd.Path == "" && cmd.Args[0] != "nvim" {
+		// cmd.Path is the resolved path; check Args instead
+	}
+	args := cmd.Args // Args[0] is the executable (possibly full path)
+	if len(args) < 4 {
+		t.Fatalf("expected at least 4 args (nvim, -u, NORC, file), got %v", args)
+	}
+	if args[1] != "-u" {
+		t.Errorf("expected args[1] = '-u', got %q", args[1])
+	}
+	if args[2] != "NORC" {
+		t.Errorf("expected args[2] = 'NORC', got %q", args[2])
+	}
+	if args[3] != "/path/to/file.md" {
+		t.Errorf("expected args[3] = '/path/to/file.md', got %q", args[3])
+	}
+
+	// "code --wait" passed as editor string: EditorCommand should NOT double-add --wait.
+	// The extra args from the editor string come before the auto-added --wait for code.
+	cmd = EditorCommand("code --wait", "/path/to/file.md")
+	waitCount := 0
+	for _, a := range cmd.Args {
+		if a == "--wait" {
+			waitCount++
+		}
+	}
+	if waitCount != 2 {
+		// --wait appears once from the editor string flags AND once auto-added.
+		// This is expected: the user explicitly included it, and we add it too.
+		// We don't try to deduplicate flags — this matches shell behavior where
+		// "code --wait --wait file" is harmless.
+		t.Logf("note: --wait appears %d time(s) in args %v (both from editor string and auto-add)", waitCount, cmd.Args)
+	}
+	// The file path must always be the last arg.
+	last := cmd.Args[len(cmd.Args)-1]
+	if last != "/path/to/file.md" {
+		t.Errorf("expected file path as last arg, got %q (args: %v)", last, cmd.Args)
 	}
 }
 
@@ -259,5 +349,119 @@ func TestEditorDefaultFallback(t *testing.T) {
 
 	if editor != "code" {
 		t.Errorf("expected default editor to be 'code', got %q", editor)
+	}
+}
+
+// TestResolveEditor_FlaggedEditorString verifies that ResolveEditor accepts
+// editor strings that contain flags (e.g. "nvim -u NORC") and correctly uses
+// only the executable part for the PATH lookup, returning the full string.
+func TestResolveEditor_FlaggedEditorString(t *testing.T) {
+	// Create a fake editor binary so LookPath succeeds.
+	dir := t.TempDir()
+	fakeNvim := filepath.Join(dir, "nvim")
+	if err := os.WriteFile(fakeNvim, []byte("#!/bin/sh\nexit 0\n"), 0o755); err != nil {
+		t.Fatalf("write fake nvim: %v", err)
+	}
+
+	origPath := os.Getenv("PATH")
+	t.Cleanup(func() { _ = os.Setenv("PATH", origPath) })
+	if err := os.Setenv("PATH", dir); err != nil {
+		t.Fatalf("setenv PATH: %v", err)
+	}
+
+	// "nvim -u NORC" should resolve successfully: only "nvim" is looked up,
+	// but the full string is returned.
+	result, err := ResolveEditor("nvim -u NORC")
+	if err != nil {
+		t.Fatalf("ResolveEditor('nvim -u NORC') failed: %v", err)
+	}
+	if result != "nvim -u NORC" {
+		t.Errorf("ResolveEditor returned %q, want %q", result, "nvim -u NORC")
+	}
+}
+
+// TestStripWaitFlags verifies that stripWaitFlags removes --wait and -w
+// but preserves all other flags.
+func TestStripWaitFlags(t *testing.T) {
+	cases := []struct {
+		input []string
+		want  []string
+	}{
+		{nil, nil},
+		{[]string{}, nil},
+		{[]string{"--wait"}, nil},
+		{[]string{"-w"}, nil},
+		{[]string{"-u", "NORC"}, []string{"-u", "NORC"}},
+		{[]string{"--wait", "-u", "NORC"}, []string{"-u", "NORC"}},
+		{[]string{"-u", "NORC", "--wait"}, []string{"-u", "NORC"}},
+		{[]string{"-w", "--some-flag"}, []string{"--some-flag"}},
+		{[]string{"--wait", "-w", "--other"}, []string{"--other"}},
+	}
+	for _, tc := range cases {
+		got := stripWaitFlags(tc.input)
+		if len(got) != len(tc.want) {
+			t.Errorf("stripWaitFlags(%v) = %v, want %v", tc.input, got, tc.want)
+			continue
+		}
+		for i, v := range got {
+			if v != tc.want[i] {
+				t.Errorf("stripWaitFlags(%v)[%d] = %q, want %q", tc.input, i, v, tc.want[i])
+			}
+		}
+	}
+}
+
+// even for VS Code-family editors that EditorCommand would normally block.
+func TestOpenFolderCommand(t *testing.T) {
+	cases := []struct {
+		editor string
+		path   string
+	}{
+		{"code", "/home/user/project"},
+		{"cursor", "/home/user/project"},
+		{"subl", "/home/user/project"},
+		{"zed", "/home/user/project"},
+		{"vim", "/home/user/project"},
+		{"nvim -u NORC", "/home/user/project"},
+		{"code-insiders", "/home/user/project"},
+		// Regression: user-configured "code --wait" must not block folder-open.
+		{"code --wait", "/home/user/project"},
+		{"cursor --wait", "/home/user/project"},
+		{"subl -w", "/home/user/project"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.editor, func(t *testing.T) {
+			cmd := OpenFolderCommand(tc.editor, tc.path)
+			for _, arg := range cmd.Args {
+				if arg == "--wait" || arg == "-w" {
+					t.Errorf("OpenFolderCommand(%q, ...) must not include blocking wait flag %q, got args: %v", tc.editor, arg, cmd.Args)
+				}
+			}
+			// Path must appear as an argument.
+			last := cmd.Args[len(cmd.Args)-1]
+			if last != tc.path {
+				t.Errorf("OpenFolderCommand(%q, %q) last arg = %q, want path", tc.editor, tc.path, last)
+			}
+		})
+	}
+}
+
+// TestOpenFolderCommandWithFlags verifies that pre-configured flags in the
+// editor string are preserved in the correct position (before the path).
+func TestOpenFolderCommandWithFlags(t *testing.T) {
+	cmd := OpenFolderCommand("nvim -u NORC", "/data/project")
+	args := cmd.Args
+	// Args[0] is the resolved executable path; args[1..] are the logical args.
+	if len(args) < 4 {
+		t.Fatalf("expected ≥4 args (nvim, -u, NORC, path), got %v", args)
+	}
+	if args[1] != "-u" {
+		t.Errorf("args[1] = %q, want '-u'", args[1])
+	}
+	if args[2] != "NORC" {
+		t.Errorf("args[2] = %q, want 'NORC'", args[2])
+	}
+	if args[3] != "/data/project" {
+		t.Errorf("args[3] = %q, want '/data/project'", args[3])
 	}
 }

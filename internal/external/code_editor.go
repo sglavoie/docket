@@ -29,8 +29,10 @@ const (
 
 // detectEditorPattern determines how to invoke the editor with a line number.
 func detectEditorPattern(editor string) editorPattern {
+	// Strip any flags (e.g. "nvim -u NORC") before base-name detection.
+	exe, _ := SplitEditorString(editor)
 	// Get base name of editor (handle paths like /usr/bin/vim)
-	base := strings.ToLower(filepath.Base(editor))
+	base := strings.ToLower(filepath.Base(exe))
 
 	// VS Code and Cursor use --goto file:line
 	if base == "code" || base == "cursor" ||
@@ -64,8 +66,9 @@ func OpenCodeReference(editor, path string, line int) error {
 	if editor == "" {
 		return fmt.Errorf("no editor configured: set code_editor in ~/.tt.json")
 	}
-	if _, err := exec.LookPath(editor); err != nil {
-		return fmt.Errorf("editor %q not found in PATH", editor)
+	exe, extraArgs := SplitEditorString(editor)
+	if _, err := exec.LookPath(exe); err != nil {
+		return fmt.Errorf("editor %q not found in PATH", exe)
 	}
 	pattern := detectEditorPattern(editor)
 
@@ -74,19 +77,19 @@ func OpenCodeReference(editor, path string, line int) error {
 	case patternGoto:
 		// code --goto file:line
 		arg := path + ":" + strconv.Itoa(line)
-		cmd = exec.Command(editor, "--goto", arg)
+		cmd = exec.Command(exe, append(extraArgs, "--goto", arg)...)
 	case patternPlusLine:
 		// vim +line file
-		cmd = exec.Command(editor, "+"+strconv.Itoa(line), path)
+		cmd = exec.Command(exe, append(extraArgs, "+"+strconv.Itoa(line), path)...)
 	case patternColonLine:
 		// subl file:line
-		cmd = exec.Command(editor, path+":"+strconv.Itoa(line))
+		cmd = exec.Command(exe, append(extraArgs, path+":"+strconv.Itoa(line))...)
 	case patternLineFlag:
 		// idea --line N file
-		cmd = exec.Command(editor, "--line", strconv.Itoa(line), path)
+		cmd = exec.Command(exe, append(extraArgs, "--line", strconv.Itoa(line), path)...)
 	default:
 		// Unknown editor: just open the file
-		cmd = exec.Command(editor, path)
+		cmd = exec.Command(exe, append(extraArgs, path)...)
 	}
 
 	cmd.Stdout = os.Stdout
