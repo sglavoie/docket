@@ -230,7 +230,7 @@ func RankCrossProjectTasks(tasks []FocusTask, dismissedIDs map[string]bool, cfg 
 
 	// Sort descending by score; ties break on task ID for deterministic order
 	// across iterations (callers feed in slices built from map iteration whose
-	// order is randomised by Go).
+	// order is randomized by Go).
 	sortByScoreThenID := func(s []ScoredFocusTask) {
 		sort.Slice(s, func(i, j int) bool {
 			if s[i].Score != s[j].Score {

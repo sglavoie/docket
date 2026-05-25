@@ -406,7 +406,7 @@ func TestRunScoreSet_RejectsPartialMutationOnInvalidArg(t *testing.T) {
 	defer deps.Cleanup()
 
 	firstTask := project.Tasks[0]
-	if firstTask.ScoreDimensions != nil && len(firstTask.ScoreDimensions) > 0 {
+	if len(firstTask.ScoreDimensions) > 0 {
 		t.Fatalf("expected first task to start with no score dimensions, got %v", firstTask.ScoreDimensions)
 	}
 

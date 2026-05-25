@@ -528,16 +528,16 @@ func TestRunDoctor_ReportsProjectLoadFailures(t *testing.T) {
 	}
 	child.ParentID = &parent.ID
 	content := storage.WriteTasksMarkdownWithSections(project.Name, []*models.Task{parent, child}, []string{models.SectionNext}, nil)
-	if err := os.WriteFile(filepath.Join(project.Path, "tasks.md"), []byte(content), 0o644); err != nil {
-		t.Fatalf("WriteFile(tasks.md): %v", err)
+	if writeErr := os.WriteFile(filepath.Join(project.Path, "tasks.md"), []byte(content), 0o644); writeErr != nil {
+		t.Fatalf("WriteFile(tasks.md): %v", writeErr)
 	}
 
 	cfg := testutil.NewTestConfig()
 	cfg.DataDir = dir
 	cfg.Projects = []*models.Project{project}
 	cfg.CurrentProject = project.ID
-	if err := config.NewManager(configPath).Save(cfg); err != nil {
-		t.Fatalf("Save(config): %v", err)
+	if saveErr := config.NewManager(configPath).Save(cfg); saveErr != nil {
+		t.Fatalf("Save(config): %v", saveErr)
 	}
 
 	cmd := &cobra.Command{}

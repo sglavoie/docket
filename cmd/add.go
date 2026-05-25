@@ -83,7 +83,7 @@ func init() {
 // Returns the cleaned title, extracted priority (0 if not found), and tags.
 func parseInlineMetadata(input string) (title string, priority int, tags []string) {
 	// Match every "!<digits>" token in one pass. The first valid 1–5 single-digit
-	// token wins (matching prior behaviour). Multi-digit or out-of-range tokens
+	// token wins (matching prior behavior). Multi-digit or out-of-range tokens
 	// are warned about and stripped — never partially consumed.
 	for _, match := range anyPriorityRe.FindAllStringSubmatch(input, -1) {
 		if len(match) < 2 {

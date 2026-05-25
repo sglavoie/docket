@@ -120,8 +120,8 @@ func TestConfigManager_FullRoundTrip(t *testing.T) {
 		{ID: "f1", Name: "MyFilter", Mode: "snapshot", FilterStatus: "todo", SortAscending: true},
 	}
 
-	if err := manager.Save(cfg); err != nil {
-		t.Fatalf("first Save failed: %v", err)
+	if saveErr := manager.Save(cfg); saveErr != nil {
+		t.Fatalf("first Save failed: %v", saveErr)
 	}
 
 	loaded, err := manager.Load()
@@ -129,8 +129,8 @@ func TestConfigManager_FullRoundTrip(t *testing.T) {
 		t.Fatalf("first Load failed: %v", err)
 	}
 
-	if err := manager.Save(loaded); err != nil {
-		t.Fatalf("second Save failed: %v", err)
+	if saveErr := manager.Save(loaded); saveErr != nil {
+		t.Fatalf("second Save failed: %v", saveErr)
 	}
 
 	loaded2, err := manager.Load()

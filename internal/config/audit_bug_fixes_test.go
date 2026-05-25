@@ -223,8 +223,8 @@ func TestConfigManager_LoadClampedValueRoundTrips(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Load failed: %v", err)
 	}
-	if err := manager.Save(cfg); err != nil {
-		t.Fatalf("Save failed: %v", err)
+	if saveErr := manager.Save(cfg); saveErr != nil {
+		t.Fatalf("Save failed: %v", saveErr)
 	}
 	reloaded, err := manager.Load()
 	if err != nil {

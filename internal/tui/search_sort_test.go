@@ -13,9 +13,8 @@ import (
 func TestSearchSortDeterminism(t *testing.T) {
 	t.Run("task_jumper", func(t *testing.T) {
 		type scoredTask struct {
-			task           *models.Task
-			score          int
-			titlePositions []int
+			task  *models.Task
+			score int
 		}
 		mkScored := func(id string, score int) scoredTask {
 			return scoredTask{task: &models.Task{ID: id}, score: score}

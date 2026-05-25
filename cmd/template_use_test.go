@@ -277,10 +277,17 @@ func TestResolveTemplateVars_NonInteractiveRequiredVar(t *testing.T) {
 	if err != nil {
 		t.Fatalf("pipe: %v", err)
 	}
-	w.Close()
+	if closeErr := w.Close(); closeErr != nil {
+		t.Fatalf("close writer: %v", closeErr)
+	}
 	oldStdin := os.Stdin
 	os.Stdin = r
-	t.Cleanup(func() { os.Stdin = oldStdin; r.Close() })
+	t.Cleanup(func() {
+		os.Stdin = oldStdin
+		if closeErr := r.Close(); closeErr != nil {
+			t.Errorf("close reader: %v", closeErr)
+		}
+	})
 
 	vars := []template.TemplateVariable{
 		{Name: "client", Default: ""}, // required, no default
@@ -300,10 +307,17 @@ func TestResolveTemplateVars_NonInteractiveUsesDefault(t *testing.T) {
 	if err != nil {
 		t.Fatalf("pipe: %v", err)
 	}
-	w.Close()
+	if closeErr := w.Close(); closeErr != nil {
+		t.Fatalf("close writer: %v", closeErr)
+	}
 	oldStdin := os.Stdin
 	os.Stdin = r
-	t.Cleanup(func() { os.Stdin = oldStdin; r.Close() })
+	t.Cleanup(func() {
+		os.Stdin = oldStdin
+		if closeErr := r.Close(); closeErr != nil {
+			t.Errorf("close reader: %v", closeErr)
+		}
+	})
 
 	vars := []template.TemplateVariable{
 		{Name: "env", Default: "staging"},
@@ -323,10 +337,17 @@ func TestResolveTemplateVars_NonInteractiveFlagOverride(t *testing.T) {
 	if err != nil {
 		t.Fatalf("pipe: %v", err)
 	}
-	w.Close()
+	if closeErr := w.Close(); closeErr != nil {
+		t.Fatalf("close writer: %v", closeErr)
+	}
 	oldStdin := os.Stdin
 	os.Stdin = r
-	t.Cleanup(func() { os.Stdin = oldStdin; r.Close() })
+	t.Cleanup(func() {
+		os.Stdin = oldStdin
+		if closeErr := r.Close(); closeErr != nil {
+			t.Errorf("close reader: %v", closeErr)
+		}
+	})
 
 	vars := []template.TemplateVariable{
 		{Name: "client", Default: ""},

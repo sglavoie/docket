@@ -14,7 +14,7 @@ import (
 )
 
 func TestClassifyFzfRunError_ContextCanceled(t *testing.T) {
-	// Parent context was cancelled while fzf was running. The exec.Cmd's
+	// Parent context was canceled while fzf was running. The exec.Cmd's
 	// reported error is unrelated to fzf's own 130 exit code, but the
 	// caller should still see ErrCanceled rather than a wrapped "fzf
 	// failed" string.

@@ -41,15 +41,15 @@ func TestProjectDeleteCleansCrossProjectRefsOnDisk(t *testing.T) {
 	task1.RelatedTo = []string{projectA.Slug + ":task-a2"}
 	projectB.Tasks = []*models.Task{task1}
 
-	if err := storage.CreateProjectDir(projectB); err != nil {
-		t.Fatalf("create project B: %v", err)
+	if createErr := storage.CreateProjectDir(projectB); createErr != nil {
+		t.Fatalf("create project B: %v", createErr)
 	}
 
 	// Simulate post-trash state: projectA's directory does not exist under
 	// projects/, so validateCrossProjectRefs (run by LoadProject) will strip
 	// the in-memory refs before cleanCrossProjectRefs can diff them.
-	if _, err := cleanCrossProjectRefs([]*models.Project{projectB}, projectA.Slug); err != nil {
-		t.Fatalf("cleanCrossProjectRefs: %v", err)
+	if _, cleanErr := cleanCrossProjectRefs([]*models.Project{projectB}, projectA.Slug); cleanErr != nil {
+		t.Fatalf("cleanCrossProjectRefs: %v", cleanErr)
 	}
 
 	content, err := os.ReadFile(filepath.Join(projectB.Path, "tasks.md"))
