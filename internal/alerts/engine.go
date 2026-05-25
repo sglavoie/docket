@@ -70,8 +70,12 @@ func checkDailyReviewReminder(cfg AlertConfig, _ []ProjectData, now time.Time) [
 	}
 
 	last := *cfg.LastDailyReviewAt
+	// Compare both timestamps in the *user's* current location so a review
+	// stored in UTC (or any other zone) and surfaced after the user changes
+	// zones still matches the local calendar day they completed it on.
+	lastLocal := last.In(now.Location())
 	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
-	lastDay := time.Date(last.Year(), last.Month(), last.Day(), 0, 0, 0, 0, last.Location())
+	lastDay := time.Date(lastLocal.Year(), lastLocal.Month(), lastLocal.Day(), 0, 0, 0, 0, now.Location())
 
 	// Already reviewed today
 	if lastDay.Equal(today) {
@@ -125,7 +129,8 @@ func checkWeeklyReviewReminder(cfg AlertConfig, _ []ProjectData, now time.Time) 
 
 	// Current weekday matches configured day and no review this week
 	if int(now.Weekday()) == cfg.WeeklyReviewDay {
-		lastDay := time.Date(last.Year(), last.Month(), last.Day(), 0, 0, 0, 0, last.Location())
+		lastLocal := last.In(now.Location())
+		lastDay := time.Date(lastLocal.Year(), lastLocal.Month(), lastLocal.Day(), 0, 0, 0, 0, now.Location())
 		today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
 		if lastDay.Before(today) {
 			return []Alert{{

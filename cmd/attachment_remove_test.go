@@ -107,4 +107,40 @@ func TestRunAttachmentRemove(t *testing.T) {
 			t.Fatalf("expected attachment to be removed, found %d", len(saved.Attachments))
 		}
 	})
+
+	t.Run("code reference removal does not attempt file deletion", func(t *testing.T) {
+		resetAttachmentRemoveVars()
+		attachmentRemoveForce = true
+		defer func() { attachmentRemoveForce = false }()
+
+		deps, project := setupAttachmentTest(t)
+		defer deps.Cleanup()
+
+		task := project.Tasks[0]
+		task.Attachments = append(task.Attachments, models.Attachment{
+			Filename:  "src/main.go:42",
+			IsCodeRef: true,
+		})
+
+		taskID := fmt.Sprintf("%d", task.ShortID)
+		err := runAttachmentRemove(attachmentRemoveCmd, []string{taskID, "0"})
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		savedProject := deps.Repository.Projects[project.ID]
+		var saved *models.Task
+		for _, st := range savedProject.Tasks {
+			if st.ID == task.ID {
+				saved = st
+				break
+			}
+		}
+		if saved == nil {
+			t.Fatal("saved task not found")
+		}
+		if len(saved.Attachments) != 0 {
+			t.Fatalf("expected code-ref attachment removed, found %d", len(saved.Attachments))
+		}
+	})
 }

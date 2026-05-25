@@ -251,12 +251,20 @@ func matchProjectTrigger(ctx *ProjectEvaluationContext, trigger RuleTrigger) boo
 		return compareValues(ctx.Project.StatusIcon, trigger.Operation, trigger.Value)
 
 	case FieldHasTasksWithStatus:
+		// Presence check: returns true when any task has the given status.
+		// Honor not_equals as the logical inverse so a rule like
+		// "no task is in_progress" works as a user would expect.
+		has := false
 		for _, t := range ctx.Tasks {
 			if strings.EqualFold(string(t.Status), trigger.Value) {
-				return true
+				has = true
+				break
 			}
 		}
-		return false
+		if trigger.Operation == OpNotEquals {
+			return !has
+		}
+		return has
 
 	default:
 		return false

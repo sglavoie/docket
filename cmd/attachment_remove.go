@@ -87,6 +87,7 @@ func runAttachmentRemove(cmd *cobra.Command, args []string) error {
 	att := task.Attachments[index]
 	filename := att.Filename
 	isURL := att.IsURL
+	isCodeRef := att.IsCodeRef
 
 	prompt := fmt.Sprintf("Remove attachment '%s' from task #%d? [y/N] ", filename, task.ShortID)
 	if !ConfirmYN(prompt, attachmentRemoveForce) {
@@ -112,8 +113,7 @@ func runAttachmentRemove(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	// Delete file from disk if not a URL and not keeping file
-	if !isURL && !keepFile {
+	if !isURL && !isCodeRef && !keepFile {
 		if err := storage.RemoveAttachmentFile(project, task, removed.Filename); err != nil {
 			fmt.Fprintf(os.Stderr, "warning: failed to delete file: %v\n", err)
 		}
@@ -125,11 +125,14 @@ func runAttachmentRemove(cmd *cobra.Command, args []string) error {
 	if out.JSON {
 		return outputSingleTaskJSON(task)
 	}
-	if isURL {
+	switch {
+	case isURL:
 		fmt.Printf("Removed URL from #%d: %s\n", task.ShortID, filename)
-	} else if keepFile {
+	case isCodeRef:
+		fmt.Printf("Removed code reference from #%d: %s\n", task.ShortID, filename)
+	case keepFile:
 		fmt.Printf("Removed reference from #%d: %s (file kept in .attachments/)\n", task.ShortID, filename)
-	} else {
+	default:
 		fmt.Printf("Deleted attachment copy from #%d: %s\n", task.ShortID, filename)
 	}
 

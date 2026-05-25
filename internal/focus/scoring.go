@@ -228,10 +228,18 @@ func RankCrossProjectTasks(tasks []FocusTask, dismissedIDs map[string]bool, cfg 
 		})
 	}
 
-	// Sort descending by score
-	sort.SliceStable(scored, func(i, j int) bool {
-		return scored[i].Score > scored[j].Score
-	})
+	// Sort descending by score; ties break on task ID for deterministic order
+	// across iterations (callers feed in slices built from map iteration whose
+	// order is randomised by Go).
+	sortByScoreThenID := func(s []ScoredFocusTask) {
+		sort.Slice(s, func(i, j int) bool {
+			if s[i].Score != s[j].Score {
+				return s[i].Score > s[j].Score
+			}
+			return s[i].Task.ID < s[j].Task.ID
+		})
+	}
+	sortByScoreThenID(scored)
 
 	// Apply cross-project balance penalty: tasks from over-represented projects
 	// get penalized so the top results interleave projects.
@@ -243,9 +251,7 @@ func RankCrossProjectTasks(tasks []FocusTask, dismissedIDs map[string]bool, cfg 
 	}
 
 	// Re-sort after balance penalty
-	sort.SliceStable(scored, func(i, j int) bool {
-		return scored[i].Score > scored[j].Score
-	})
+	sortByScoreThenID(scored)
 
 	return scored
 }

@@ -61,6 +61,51 @@ func TestTaskDependsClear(t *testing.T) {
 		}
 	})
 
+	t.Run("clearing all deps reopens a Blocked task", func(t *testing.T) {
+		deps, project := testutil.SetupTestDepsWithProject(t, "Test Project")
+		defer deps.Cleanup()
+
+		viper.Set("config", deps.ConfigPath)
+		defer viper.Set("config", "")
+
+		manager := config.NewManager(deps.ConfigPath)
+		err := manager.Save(deps.Config)
+		testutil.AssertNoError(t, err)
+
+		oldStorageRepo := storage.DefaultRepository
+		storage.DefaultRepository = deps.Repository
+		defer func() { storage.DefaultRepository = oldStorageRepo }()
+
+		task1 := project.Tasks[0]
+		task2 := project.Tasks[1]
+		_ = task1.AddDependency(task2.ID)
+		task1.Status = models.StatusBlocked
+		deps.Repository.Projects[project.ID] = project
+
+		dependsOnFlag = ""
+		dependsRemoveFlag = ""
+		dependsClearFlag = true
+		defer func() { dependsClearFlag = false }()
+
+		err = runTaskDepends(nil, []string{fmt.Sprintf("%d", task1.ShortID)})
+		testutil.AssertNoError(t, err)
+
+		savedProject := deps.Repository.Projects[project.ID]
+		var savedTask *models.Task
+		for _, task := range savedProject.Tasks {
+			if task.ID == task1.ID {
+				savedTask = task
+				break
+			}
+		}
+		if savedTask == nil {
+			t.Fatal("task not found")
+		}
+		if savedTask.Status == models.StatusBlocked {
+			t.Errorf("expected task to be reopened after clearing all deps, still blocked")
+		}
+	})
+
 	t.Run("handles task with no dependencies to clear", func(t *testing.T) {
 		deps, project := testutil.SetupTestDepsWithProject(t, "Test Project")
 		defer deps.Cleanup()

@@ -100,6 +100,28 @@ func TestParseEditedCommentContent_WhitespaceOnlyBody(t *testing.T) {
 	}
 }
 
+// TestParseEditedCommentContent_CRLF verifies CRLF line endings (Windows
+// editors, some clipboard sources) are normalized — no stray \r in the body.
+func TestParseEditedCommentContent_CRLF(t *testing.T) {
+	in := "# Comment 1 on #5: Hello\r\n\r\n<!-- Edit the comment text below. -->\r\n\r\nActual text here\r\nsecond line\r\n"
+	got := ParseEditedCommentContent(in)
+	want := "Actual text here\nsecond line"
+	if got != want {
+		t.Errorf("got %q, want %q", got, want)
+	}
+}
+
+// TestParseEditedCommentContent_CROnly verifies bare CR line endings (legacy
+// classic-Mac style; some unusual editors) are also normalized.
+func TestParseEditedCommentContent_CROnly(t *testing.T) {
+	in := "# Header\r\r<!-- hint -->\r\rbody\r"
+	got := ParseEditedCommentContent(in)
+	want := "body"
+	if got != want {
+		t.Errorf("got %q, want %q", got, want)
+	}
+}
+
 func TestParseEditedCommentContent_LongBody(t *testing.T) {
 	body := strings.Repeat("line\n", 50)
 	in := "# Header\n\n<!-- hint -->\n\n" + body

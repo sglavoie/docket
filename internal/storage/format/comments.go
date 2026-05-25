@@ -85,26 +85,39 @@ func ExtractCommentsFromDescription(task *models.Task) {
 }
 
 // WriteComments generates the comments block for a task.
+// Comments whose text is empty (or whitespace-only) are skipped: the parser
+// drops them on load, so emitting them would make write→parse→write lose the
+// comment header on the second save.
 func WriteComments(task *models.Task) string {
 	if len(task.Comments) == 0 {
 		return ""
 	}
 
 	var b strings.Builder
-	b.WriteString("<!-- COMMENTS -->\n")
+	headerWritten := false
 
 	for _, comment := range task.Comments {
+		text := strings.TrimSpace(comment.Text)
+		if text == "" {
+			continue
+		}
+		if !headerWritten {
+			b.WriteString("<!-- COMMENTS -->\n")
+			headerWritten = true
+		}
 		resolvedSuffix := ""
 		if comment.Resolved {
 			resolvedSuffix = ", resolved"
 		}
 		fmt.Fprintf(&b, "<!-- comment: %s%s -->\n", comment.CreatedAt.Format(util.DateTimeFormat), resolvedSuffix)
-		// Escape HTML comment markers and heading-like lines to prevent parser corruption
-		escapedText := escapeBlockText(comment.Text)
-		b.WriteString(escapedText)
+		// Escape HTML comment markers and heading-like lines to prevent parser corruption.
+		b.WriteString(escapeBlockText(text))
 		b.WriteString("\n")
 	}
 
+	if !headerWritten {
+		return ""
+	}
 	b.WriteString("<!-- /COMMENTS -->\n")
 	return b.String()
 }

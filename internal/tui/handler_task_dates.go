@@ -65,10 +65,10 @@ func (m *AppModel) handleDueDateChanged(msg DueDateChangedMsg) (bool, tea.Cmd) {
 		newHasTime := msg.Task.HasTime
 		count := 1 // First task already updated
 		projectMap := make(map[string]*models.Project)
+		dirtyProjects := make(map[string]bool)
 
 		for i, item := range m.pendingBulkTasks {
 			if i == 0 {
-				// Skip the first task (already saved by DateInputModel)
 				projectMap[item.Project.ID] = item.Project
 				continue
 			}
@@ -83,15 +83,15 @@ func (m *AppModel) handleDueDateChanged(msg DueDateChangedMsg) (bool, tea.Cmd) {
 					t.HasTime = newHasTime
 				}) {
 					projectMap[item.Project.ID] = item.Project
+					dirtyProjects[item.Project.ID] = true
 					count++
 				}
 			}
 		}
 
-		// Build list of projects to save (except first which was already saved)
 		var projectsToSave []*models.Project
 		for _, project := range projectMap {
-			if project.ID != m.pendingBulkTasks[0].Project.ID {
+			if dirtyProjects[project.ID] {
 				projectsToSave = append(projectsToSave, project)
 			}
 		}

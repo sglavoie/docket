@@ -209,25 +209,35 @@ func formulaWeightedSum(results []DimensionResult) float64 {
 }
 
 // formulaMultiply: product of all dimension values (weights applied as exponents).
+//
+// NaN results from Pow(negative, fractional) are treated as 0: a mathematically
+// undefined value should not artificially boost a task to the top of the ranking.
+// +Inf (from Pow(0, negative)) keeps the legacy MaxScoreSentinel semantic since
+// it represents "zero effort, infinite value" — consistent with the divide-by-
+// zero treatment in formulaRICE.
 func formulaMultiply(results []DimensionResult) float64 {
 	product := 1.0
 	for _, r := range results {
 		if r.Weight == 1 {
 			product *= float64(r.Value)
-		} else {
-			val := math.Pow(float64(r.Value), r.Weight)
-			// Guard against Inf/NaN from edge cases like Pow(0, negative)
-			if math.IsInf(val, 0) || math.IsNaN(val) {
-				return MaxScoreSentinel
-			}
-			product *= val
+			continue
 		}
+		val := math.Pow(float64(r.Value), r.Weight)
+		if math.IsNaN(val) {
+			return 0
+		}
+		if math.IsInf(val, 0) {
+			return MaxScoreSentinel
+		}
+		product *= val
 	}
 	return product
 }
 
 // formulaRICE: product of numerators / product of denominators.
-// Division by zero yields a large score (zero effort = do it first).
+// Division by zero yields a large score (zero effort = do it first), unless
+// the numerator is also zero — 0/0 is mathematically undefined and should
+// not artificially top-rank a task with no value AND no cost.
 func formulaRICE(results []DimensionResult) float64 {
 	num := 1.0
 	den := 1.0
@@ -242,13 +252,18 @@ func formulaRICE(results []DimensionResult) float64 {
 		}
 	}
 	if den == 0 {
+		if num == 0 {
+			return 0
+		}
 		return MaxScoreSentinel
 	}
 	return num / den
 }
 
 // formulaWSJF: sum of numerators / sum of denominators.
-// Division by zero yields a large score.
+// Division by zero yields a large score (zero job size = do it first), unless
+// the numerator is also zero — 0/0 is undefined and should not artificially
+// top-rank an item with no value AND no cost.
 func formulaWSJF(results []DimensionResult) float64 {
 	var num, den float64
 	for _, r := range results {
@@ -262,6 +277,9 @@ func formulaWSJF(results []DimensionResult) float64 {
 		}
 	}
 	if den == 0 {
+		if num == 0 {
+			return 0
+		}
 		return MaxScoreSentinel
 	}
 	return num / den

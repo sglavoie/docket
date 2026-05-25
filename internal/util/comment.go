@@ -14,6 +14,10 @@ import "strings"
 //
 //	Comment text here...
 func ParseEditedCommentContent(content string) string {
+	// Normalise CRLF to LF so editors that save with Windows line endings
+	// don't leave stray carriage returns in the extracted body.
+	content = strings.ReplaceAll(content, "\r\n", "\n")
+	content = strings.ReplaceAll(content, "\r", "\n")
 	lines := strings.Split(content, "\n")
 	var textLines []string
 	foundComment := false

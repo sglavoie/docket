@@ -124,15 +124,25 @@ func ExtractDecisionsFromDescription(task *models.Task) {
 }
 
 // WriteDecisions generates the decisions block for a task.
+// Decisions with empty (whitespace-only) text are skipped: the parser drops
+// them on flush, so emitting them would silently lose the entry on the next save.
 func WriteDecisions(task *models.Task) string {
 	if len(task.Decisions) == 0 {
 		return ""
 	}
 
 	var b strings.Builder
-	b.WriteString("<!-- DECISIONS -->\n")
+	headerWritten := false
 
 	for _, d := range task.Decisions {
+		text := strings.TrimSpace(d.Text)
+		if text == "" {
+			continue
+		}
+		if !headerWritten {
+			b.WriteString("<!-- DECISIONS -->\n")
+			headerWritten = true
+		}
 		resolvedSuffix := ""
 		if d.Resolved {
 			resolvedSuffix = ", resolved"
@@ -142,13 +152,16 @@ func WriteDecisions(task *models.Task) string {
 			string(d.Category),
 			resolvedSuffix,
 		)
-		b.WriteString(escapeBlockText(d.Text))
+		b.WriteString(escapeBlockText(text))
 		b.WriteString("\n")
 		b.WriteString("<!-- rationale -->\n")
-		b.WriteString(escapeBlockText(d.Rationale))
+		b.WriteString(escapeBlockText(strings.TrimSpace(d.Rationale)))
 		b.WriteString("\n")
 	}
 
+	if !headerWritten {
+		return ""
+	}
 	b.WriteString("<!-- /DECISIONS -->\n")
 	return b.String()
 }

@@ -53,12 +53,12 @@ const (
 
 // childEffortDays returns the effort-weighted day estimate for a task.
 //
-// Priority: TaskAttrs.Effort > StoryAttrs.StoryPoints > Task.EstimatedDays > 1.0.
-// Returns (days, true) when explicit effort data is present; (days, false) when
-// falling back to EstimatedDays or the default — the boolean signals whether
-// the task contributed effort data for velocity weighting purposes. Returns
-// (effortDaysUnknown, false) when t is nil so callers can pass loose slices
-// without pre-filtering.
+// Priority: TaskAttrs.Effort > IdeaAttrs.Effort > StoryAttrs.StoryPoints >
+// Task.EstimatedDays > 1.0. Returns (days, true) when explicit effort data is
+// present; (days, false) when falling back to EstimatedDays or the default —
+// the boolean signals whether the task contributed effort data for velocity
+// weighting purposes. Returns (effortDaysUnknown, false) when t is nil so
+// callers can pass loose slices without pre-filtering.
 func childEffortDays(t *models.Task) (days float64, hasEffortData bool) {
 	if t == nil {
 		return effortDaysUnknown, false

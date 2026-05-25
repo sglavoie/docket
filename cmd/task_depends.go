@@ -101,6 +101,9 @@ func runTaskDepends(cmd *cobra.Command, args []string) error { //nolint:gocyclo
 
 		task, err := WithTaskUpdate(taskID, func(t *models.Task) error {
 			t.ClearDependencies()
+			if t.Status == models.StatusBlocked {
+				t.Reopen()
+			}
 			return nil
 		})
 		if err != nil {
@@ -130,6 +133,9 @@ func runTaskDepends(cmd *cobra.Command, args []string) error { //nolint:gocyclo
 			blockerShortID = blocker.ShortID
 			blockerTitle = blocker.Title
 			t.RemoveDependency(blocker.ID)
+			if t.Status == models.StatusBlocked && len(t.DependsOn) == 0 {
+				t.Reopen()
+			}
 			return nil
 		})
 		if err != nil {

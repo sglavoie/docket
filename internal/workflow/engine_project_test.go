@@ -218,6 +218,27 @@ func TestMatchProjectTrigger_HasTasksWithStatus(t *testing.T) {
 	}
 }
 
+func TestMatchProjectTrigger_HasTasksWithStatus_NotEquals(t *testing.T) {
+	proj := makeProject("")
+	tasks := []*models.Task{
+		makeTask(models.StatusTodo, models.TaskTypeTask),
+		makeTask(models.StatusBlocked, models.TaskTypeTask),
+	}
+	ctx := &ProjectEvaluationContext{Project: proj, Tasks: tasks}
+
+	// not_equals "in_progress": no task has in_progress → should match
+	trigger := RuleTrigger{Field: FieldHasTasksWithStatus, Operation: OpNotEquals, Value: "in_progress"}
+	if !matchProjectTrigger(ctx, trigger) {
+		t.Error("expected has_tasks_with_status not_equals in_progress to match (no task has in_progress)")
+	}
+
+	// not_equals "blocked": a task has blocked → should NOT match
+	trigger.Value = "blocked"
+	if matchProjectTrigger(ctx, trigger) {
+		t.Error("expected has_tasks_with_status not_equals blocked to not match (a task has blocked)")
+	}
+}
+
 func TestEvaluateProjectRules_SingleMatch(t *testing.T) {
 	proj := makeProject("")
 	tasks := []*models.Task{

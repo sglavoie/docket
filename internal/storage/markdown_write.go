@@ -107,30 +107,42 @@ func writeTaskPreservingOrder(builder *strings.Builder, task *models.Task, allTa
 
 	writeLevel := min(level, maxHeadingLevel)
 	hashes := strings.Repeat("#", writeLevel)
-	fmt.Fprintf(builder, "%s %s: %s\n", hashes, task.Type.HeadingPrefix(), task.Title)
+	// Title is trimmed because the parser strips surrounding whitespace
+	// (parser.go parseTaskHeadingLine). Writing the raw title would make
+	// the write→parse round-trip non-idempotent for titles with leading
+	// or trailing spaces.
+	fmt.Fprintf(builder, "%s %s: %s\n", hashes, task.Type.HeadingPrefix(), strings.TrimSpace(task.Title))
 
 	builder.WriteString(format.WriteMetadata(task))
 	builder.WriteString("\n")
 
-	if task.Description != "" {
+	// Description is trimmed because the parser strips surrounding whitespace
+	// in both descBuilder finalization and ExtractDescriptionBlock. Writing
+	// the raw value would leave leading/trailing blank lines that disappear
+	// on the next load, breaking round-trip idempotence.
+	if desc := strings.TrimSpace(task.Description); desc != "" {
 		builder.WriteString("<!-- DESCRIPTION -->\n")
-		builder.WriteString(escapeDescription(task.Description))
+		builder.WriteString(escapeDescription(desc))
 		builder.WriteString("\n<!-- /DESCRIPTION -->\n")
 	}
 
-	if len(task.Activity) > 0 {
+	if activity := format.WriteActivity(task); activity != "" {
 		builder.WriteString("\n")
-		builder.WriteString(format.WriteActivity(task))
+		builder.WriteString(activity)
 	}
 
-	if len(task.Comments) > 0 {
+	// Comments/Decisions may legitimately return "" even when the slices are
+	// non-empty (e.g. every entry has whitespace-only text and would be dropped
+	// by the parser). Gate on the returned string so we don't emit a stray
+	// leading newline before nothing.
+	if comments := format.WriteComments(task); comments != "" {
 		builder.WriteString("\n")
-		builder.WriteString(format.WriteComments(task))
+		builder.WriteString(comments)
 	}
 
-	if len(task.Decisions) > 0 {
+	if decisions := format.WriteDecisions(task); decisions != "" {
 		builder.WriteString("\n")
-		builder.WriteString(format.WriteDecisions(task))
+		builder.WriteString(decisions)
 	}
 
 	for _, child := range getChildrenInOrder(task.ID, allTasks) {
