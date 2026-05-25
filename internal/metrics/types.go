@@ -150,7 +150,17 @@ type AggregateMetrics struct {
 // Optional extraTasks slices (e.g. archived tasks) are appended to the task pool
 // for completion, cycle time, and throughput metrics. They are excluded from
 // blocked metrics since archived tasks without project association aren't actionable.
+//
+// Weekly buckets use DefaultWeekStart (Monday). Use ComputeAllAtWithWeekStart
+// to honor a user-configured week-start day.
 func ComputeAllAt(projects []*models.Project, tr TimeRange, now time.Time, extraTasks ...[]*models.Task) *AggregateMetrics {
+	return ComputeAllAtWithWeekStart(projects, tr, now, DefaultWeekStart, extraTasks...)
+}
+
+// ComputeAllAtWithWeekStart is identical to ComputeAllAt but lets callers
+// pass an explicit week-start weekday (e.g. derived from a user's
+// WeekEndDay setting via WeekStartFromWeekEnd) for weekly bucketing.
+func ComputeAllAtWithWeekStart(projects []*models.Project, tr TimeRange, now time.Time, weekStart time.Weekday, extraTasks ...[]*models.Task) *AggregateMetrics {
 	// projectTasks are the live project tasks (used for blocked metrics).
 	var projectTasks []*models.Task
 	taskProject := make(map[*models.Task]*models.Project)
@@ -171,7 +181,7 @@ func ComputeAllAt(projects []*models.Project, tr TimeRange, now time.Time, extra
 	}
 
 	cutoff := tr.Cutoff(now)
-	buckets := timeBuckets(cutoff, now, bucketGranularity(tr))
+	buckets := timeBucketsWithWeekStart(cutoff, now, bucketGranularity(tr), weekStart)
 
 	return &AggregateMetrics{
 		Completion: computeCompletion(allTasks, cutoff, now, buckets),

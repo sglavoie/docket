@@ -98,15 +98,39 @@ func findFirstInProgress(t *models.Task) time.Time {
 }
 
 // averageDuration returns the mean of a slice of durations.
+//
+// A naive sum-then-divide implementation overflows time.Duration (int64
+// nanoseconds, ~292 years) for large sets of long-running tasks. We use a
+// numerically stable incremental mean (Welford's update) in float64. The
+// result is clamped to the int64 range before being converted back to
+// time.Duration so callers always receive a well-defined value even for
+// pathological inputs.
 func averageDuration(durations []time.Duration) time.Duration {
 	if len(durations) == 0 {
 		return 0
 	}
-	var total time.Duration
-	for _, d := range durations {
-		total += d
+	var mean float64
+	for i, d := range durations {
+		// Incremental mean: m_n = m_{n-1} + (x_n - m_{n-1}) / n
+		mean += (float64(d) - mean) / float64(i+1)
 	}
-	return total / time.Duration(len(durations))
+	return durationFromFloat(mean)
+}
+
+// durationFromFloat converts a nanosecond count expressed as float64 to a
+// time.Duration, clamping to the representable int64 range. This guards
+// against overflow when accumulators legitimately exceed int64 ns (~292y).
+func durationFromFloat(ns float64) time.Duration {
+	const maxNs = float64(1<<63 - 1)
+	const minNs = -maxNs - 1
+	switch {
+	case ns >= maxNs:
+		return time.Duration(1<<63 - 1)
+	case ns <= minNs:
+		return time.Duration(-1 << 63)
+	default:
+		return time.Duration(ns)
+	}
 }
 
 // percentileDuration returns the value at the given percentile (0-1) from a sorted slice.

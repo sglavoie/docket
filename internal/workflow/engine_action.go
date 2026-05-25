@@ -230,9 +230,12 @@ func applyAction(task *models.Task, action RuleAction) bool { //nolint:gocyclo
 		}
 	case ActionAddComment:
 		commentText := "[Workflow] " + action.Value
-		if len(task.Comments) > 0 {
-			last := task.Comments[len(task.Comments)-1]
-			if last != nil && last.Text == commentText {
+		// Dedupe against ALL existing comments, not just the most recent.
+		// A rule may have appended the workflow comment earlier in the
+		// session followed by unrelated user comments; without scanning
+		// the full list the same workflow note would be appended again.
+		for _, c := range task.Comments {
+			if c != nil && c.Text == commentText {
 				return false
 			}
 		}

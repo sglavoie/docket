@@ -265,6 +265,90 @@ func TestIsWordBoundary(t *testing.T) {
 	}
 }
 
+// TestMatchUnicodeCaseFolding verifies that case-insensitive matching works
+// correctly for Unicode characters whose lowercase form may involve special
+// case mappings (e.g., Turkish capital "İ" U+0130, German "ẞ" U+1E9E, Greek "Σ").
+//
+// The fuzzy matcher uses strings.ToLower on whole strings (not rune-by-rune
+// unicode.ToLower), which is the correct approach: it handles the special
+// case-mapping table consistently and produces 1:1 rune mappings for the
+// default (non-locale-specific) case. This test pins that contract.
+func TestMatchUnicodeCaseFolding(t *testing.T) {
+	tests := []struct {
+		name    string
+		text    string
+		pattern string
+		want    bool
+	}{
+		// Turkish dotted capital İ (U+0130) lowercases to "i" (U+0069) in
+		// Go's default (non-Turkish) locale via strings.ToLower.
+		{"Turkish I-dot capital matches lowercase i", "İstanbul", "ist", true},
+		{"lowercase i matches İ at start", "İstanbul", "i", true},
+		{"Turkish I-dot as pattern matches i in text", "istanbul", "İ", true},
+		{"İ matches İ", "İstanbul", "İstanbul", true},
+
+		// Dotless i (U+0131) is a distinct character; it should NOT match
+		// regular "i" because they fold to different lowercase forms in
+		// default Go (U+0131 stays U+0131, U+0069 stays U+0069).
+		{"dotless i does not match regular i", "ı", "i", false},
+
+		// German sharp s (ß / ẞ) — ẞ lowercases to ß in default Go.
+		{"capital sharp S matches lowercase", "Straẞe", "ß", true},
+		{"lowercase ß matches ẞ", "STRAẞE", "ß", true},
+
+		// Greek final/non-final sigma. Σ → σ; ς is the final form. Default
+		// strings.ToLower maps Σ → σ (not ς), so pattern "σ" matches "Σοφία".
+		{"Greek capital sigma matches lowercase sigma", "Σοφία", "σ", true},
+
+		// Accented Latin letters preserve diacritics; the matcher operates on
+		// runes after lowercasing, so it does not strip combining marks.
+		{"accented e in text needs accented e in pattern", "café", "é", true},
+		{"plain e in pattern does not match composed é", "café", "x", false},
+
+		// Mixed-case multi-rune Unicode subsequence.
+		{"Unicode subsequence", "Über die Brücke", "übr", true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := Match(tt.text, tt.pattern)
+			if got != tt.want {
+				t.Errorf("Match(%q, %q) = %v, want %v", tt.text, tt.pattern, got, tt.want)
+			}
+		})
+	}
+}
+
+// TestScoreWithPositionsUnicode verifies that returned positions index into
+// the lowercased rune sequence correctly even when the text contains
+// multi-byte runes. A common bug is treating positions as byte offsets,
+// which would index into the middle of multi-byte UTF-8 sequences.
+func TestScoreWithPositionsUnicode(t *testing.T) {
+	// "İstanbul" has 8 runes; "İ" is 2 bytes in UTF-8.
+	text := "İstanbul"
+	score, positions := ScoreWithPositions(text, "ist")
+	if score == 0 {
+		t.Fatalf("expected non-zero score for %q matching %q", text, "ist")
+	}
+	if len(positions) != 3 {
+		t.Fatalf("expected 3 positions, got %d (%v)", len(positions), positions)
+	}
+	// Positions must be valid rune indices into the lowercased rune slice.
+	// Lowercased "İstanbul" → "istanbul" (8 runes).
+	textRunes := []rune("istanbul")
+	for _, p := range positions {
+		if p < 0 || p >= len(textRunes) {
+			t.Errorf("position %d out of bounds for rune-length %d", p, len(textRunes))
+		}
+	}
+	// Strict subsequence ordering.
+	for i := 1; i < len(positions); i++ {
+		if positions[i] <= positions[i-1] {
+			t.Errorf("positions not strictly increasing: %v", positions)
+		}
+	}
+}
+
 // Benchmark tests
 func BenchmarkMatch(b *testing.B) {
 	text := "This is a relatively long text that we want to search through"

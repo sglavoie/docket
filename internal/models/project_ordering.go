@@ -35,7 +35,13 @@ func (p *Project) MoveTaskUp(task *Task) error {
 
 	// Swap in the Tasks slice
 	p.Tasks[taskIdx], p.Tasks[aboveIdx] = p.Tasks[aboveIdx], p.Tasks[taskIdx]
-	task.UpdatedAt = time.Now()
+	// Touch both tasks' UpdatedAt: both moved, and the markdown round-trip
+	// records modification timestamps per task, so updating only one leaves
+	// the sibling with a stale timestamp despite its position changing
+	// (mirrors the fix applied to SwapTasks).
+	now := time.Now()
+	task.UpdatedAt = now
+	siblingAbove.UpdatedAt = now
 
 	return nil
 }
@@ -73,7 +79,13 @@ func (p *Project) MoveTaskDown(task *Task) error {
 
 	// Swap in the Tasks slice
 	p.Tasks[taskIdx], p.Tasks[belowIdx] = p.Tasks[belowIdx], p.Tasks[taskIdx]
-	task.UpdatedAt = time.Now()
+	// Touch both tasks' UpdatedAt: both moved, and the markdown round-trip
+	// records modification timestamps per task, so updating only one leaves
+	// the sibling with a stale timestamp despite its position changing
+	// (mirrors the fix applied to SwapTasks).
+	now := time.Now()
+	task.UpdatedAt = now
+	siblingBelow.UpdatedAt = now
 
 	return nil
 }

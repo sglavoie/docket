@@ -427,3 +427,171 @@ func TestGetChildType_Set(t *testing.T) {
 		}
 	}
 }
+
+// --- ContentEqual ---
+
+func TestContentEqual_Identical(t *testing.T) {
+	a := &TaskTemplate{
+		Name:        "X",
+		Category:    "feature",
+		Type:        models.TaskTypeStory,
+		Priority:    2,
+		Section:     "Next",
+		Description: "desc",
+		Tags:        []string{"a", "b"},
+		Checklist:   []string{"step1", "step2"},
+		Children:    []TemplateChild{{Title: "c1", Type: models.TaskTypeTask, Optional: false}},
+	}
+	b := &TaskTemplate{
+		Name:        "X",
+		Category:    "feature",
+		Type:        models.TaskTypeStory,
+		Priority:    2,
+		Section:     "Next",
+		Description: "desc",
+		Tags:        []string{"a", "b"},
+		Checklist:   []string{"step1", "step2"},
+		Children:    []TemplateChild{{Title: "c1", Type: models.TaskTypeTask, Optional: false}},
+	}
+	if !a.ContentEqual(b) {
+		t.Error("identical templates should be equal")
+	}
+}
+
+func TestContentEqual_MetadataIgnored(t *testing.T) {
+	// ID, Source, Enabled, UseCount are metadata and must not affect equality.
+	a := &TaskTemplate{
+		ID:       "id-a",
+		Source:   "default",
+		Enabled:  true,
+		UseCount: 100,
+		Name:     "X",
+		Type:     models.TaskTypeTask,
+	}
+	b := &TaskTemplate{
+		ID:       "id-b",
+		Source:   "user",
+		Enabled:  false,
+		UseCount: 0,
+		Name:     "X",
+		Type:     models.TaskTypeTask,
+	}
+	if !a.ContentEqual(b) {
+		t.Error("templates differing only in metadata should be equal")
+	}
+}
+
+func TestContentEqual_TagsReorderedNotEqual(t *testing.T) {
+	// Regression: Tags must be compared as an ORDERED list, not a set.
+	// "#backend #api" renders differently from "#api #backend" in Summary,
+	// so order is user-visible content.
+	a := &TaskTemplate{Name: "X", Type: models.TaskTypeTask, Tags: []string{"backend", "api"}}
+	b := &TaskTemplate{Name: "X", Type: models.TaskTypeTask, Tags: []string{"api", "backend"}}
+	if a.ContentEqual(b) {
+		t.Error("templates with reordered Tags must not be equal (Tags are ordered)")
+	}
+}
+
+func TestContentEqual_TagsDuplicatesSignificant(t *testing.T) {
+	// A set-based comparison would treat ["a","a"] == ["a"]. Ordered comparison
+	// (correct) treats them as distinct.
+	a := &TaskTemplate{Name: "X", Type: models.TaskTypeTask, Tags: []string{"a", "a"}}
+	b := &TaskTemplate{Name: "X", Type: models.TaskTypeTask, Tags: []string{"a"}}
+	if a.ContentEqual(b) {
+		t.Error("duplicate-tag template must not equal single-tag template")
+	}
+}
+
+func TestContentEqual_FieldDifferences(t *testing.T) {
+	base := func() *TaskTemplate {
+		return &TaskTemplate{
+			Name:        "X",
+			Category:    "feature",
+			Type:        models.TaskTypeTask,
+			Priority:    2,
+			Section:     "Next",
+			Description: "d",
+			Tags:        []string{"t"},
+			Checklist:   []string{"c"},
+			Children:    []TemplateChild{{Title: "c1"}},
+		}
+	}
+	mutators := map[string]func(*TaskTemplate){
+		"Name":           func(x *TaskTemplate) { x.Name = "Y" },
+		"Category":       func(x *TaskTemplate) { x.Category = "bug" },
+		"Type":           func(x *TaskTemplate) { x.Type = models.TaskTypeBug },
+		"Priority":       func(x *TaskTemplate) { x.Priority = 3 },
+		"Section":        func(x *TaskTemplate) { x.Section = "Inbox" },
+		"Description":    func(x *TaskTemplate) { x.Description = "d2" },
+		"Tags len":       func(x *TaskTemplate) { x.Tags = []string{"t", "u"} },
+		"Tags content":   func(x *TaskTemplate) { x.Tags = []string{"u"} },
+		"Checklist len":  func(x *TaskTemplate) { x.Checklist = []string{"c", "d"} },
+		"Checklist text": func(x *TaskTemplate) { x.Checklist = []string{"d"} },
+		"Child Title":    func(x *TaskTemplate) { x.Children[0].Title = "c2" },
+		"Child Type":     func(x *TaskTemplate) { x.Children[0].Type = models.TaskTypeStory },
+		"Child Optional": func(x *TaskTemplate) { x.Children[0].Optional = true },
+		"Children len":   func(x *TaskTemplate) { x.Children = append(x.Children, TemplateChild{Title: "c2"}) },
+	}
+	for name, mut := range mutators {
+		a := base()
+		b := base()
+		mut(b)
+		if a.ContentEqual(b) {
+			t.Errorf("%s: mutated template must not equal base", name)
+		}
+	}
+}
+
+func TestContentEqual_ChildrenReorderedNotEqual(t *testing.T) {
+	// Children are created in declared order at use time, so ordering is
+	// content, not a set membership question.
+	a := &TaskTemplate{
+		Name: "X", Type: models.TaskTypeStory,
+		Children: []TemplateChild{{Title: "first"}, {Title: "second"}},
+	}
+	b := &TaskTemplate{
+		Name: "X", Type: models.TaskTypeStory,
+		Children: []TemplateChild{{Title: "second"}, {Title: "first"}},
+	}
+	if a.ContentEqual(b) {
+		t.Error("reordered Children must not be equal")
+	}
+}
+
+func TestContentEqual_ChecklistReorderedNotEqual(t *testing.T) {
+	a := &TaskTemplate{
+		Name: "X", Type: models.TaskTypeTask,
+		Checklist: []string{"A", "B"},
+	}
+	b := &TaskTemplate{
+		Name: "X", Type: models.TaskTypeTask,
+		Checklist: []string{"B", "A"},
+	}
+	if a.ContentEqual(b) {
+		t.Error("reordered Checklist must not be equal")
+	}
+}
+
+func TestContentEqual_NilHandling(t *testing.T) {
+	var nilT *TaskTemplate
+	if !nilT.ContentEqual(nil) {
+		t.Error("two nil templates should be equal")
+	}
+	a := &TaskTemplate{Name: "X", Type: models.TaskTypeTask}
+	if a.ContentEqual(nil) {
+		t.Error("non-nil should not equal nil")
+	}
+	if nilT.ContentEqual(a) {
+		t.Error("nil should not equal non-nil")
+	}
+}
+
+func TestContentEqual_NilVsEmptySlice(t *testing.T) {
+	// Nil and empty slices should be considered equivalent because they are
+	// indistinguishable in user-visible output and in JSON (with omitempty).
+	a := &TaskTemplate{Name: "X", Type: models.TaskTypeTask, Tags: nil}
+	b := &TaskTemplate{Name: "X", Type: models.TaskTypeTask, Tags: []string{}}
+	if !a.ContentEqual(b) {
+		t.Error("nil and empty Tags should be equal (len 0 == len 0)")
+	}
+}

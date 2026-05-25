@@ -217,6 +217,109 @@ func TestMutateTask_NilFnReturnsFalse(t *testing.T) {
 	}
 }
 
+// TestMoveTaskUp_UpdatesBothTimestamps verifies that swapping two tasks via
+// MoveTaskUp touches both tasks' UpdatedAt. Before the fix, only the moved
+// task's timestamp was bumped, leaving the displaced sibling with a stale
+// modification time despite its position changing — the same hazard that
+// previously affected SwapTasks.
+func TestMoveTaskUp_UpdatesBothTimestamps(t *testing.T) {
+	p, err := NewProject("p", "P", "/")
+	if err != nil {
+		t.Fatal(err)
+	}
+	a, err := NewTask("a", 1, TaskTypeTask, "A")
+	if err != nil {
+		t.Fatal(err)
+	}
+	b, err := NewTask("b", 2, TaskTypeTask, "B")
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Backdate UpdatedAt so we can detect a refresh.
+	past := time.Now().Add(-time.Hour)
+	a.UpdatedAt = past
+	b.UpdatedAt = past
+	p.Tasks = []*Task{a, b}
+
+	if err := p.MoveTaskUp(b); err != nil {
+		t.Fatalf("MoveTaskUp: %v", err)
+	}
+	if p.Tasks[0].ID != "b" || p.Tasks[1].ID != "a" {
+		t.Fatalf("expected order [b, a], got [%s, %s]", p.Tasks[0].ID, p.Tasks[1].ID)
+	}
+	if !b.UpdatedAt.After(past) {
+		t.Error("moved task b should have refreshed UpdatedAt")
+	}
+	if !a.UpdatedAt.After(past) {
+		t.Error("displaced sibling a should have refreshed UpdatedAt")
+	}
+}
+
+// TestMoveTaskDown_UpdatesBothTimestamps mirrors TestMoveTaskUp_UpdatesBothTimestamps
+// for MoveTaskDown.
+func TestMoveTaskDown_UpdatesBothTimestamps(t *testing.T) {
+	p, err := NewProject("p", "P", "/")
+	if err != nil {
+		t.Fatal(err)
+	}
+	a, err := NewTask("a", 1, TaskTypeTask, "A")
+	if err != nil {
+		t.Fatal(err)
+	}
+	b, err := NewTask("b", 2, TaskTypeTask, "B")
+	if err != nil {
+		t.Fatal(err)
+	}
+	past := time.Now().Add(-time.Hour)
+	a.UpdatedAt = past
+	b.UpdatedAt = past
+	p.Tasks = []*Task{a, b}
+
+	if err := p.MoveTaskDown(a); err != nil {
+		t.Fatalf("MoveTaskDown: %v", err)
+	}
+	if p.Tasks[0].ID != "b" || p.Tasks[1].ID != "a" {
+		t.Fatalf("expected order [b, a], got [%s, %s]", p.Tasks[0].ID, p.Tasks[1].ID)
+	}
+	if !a.UpdatedAt.After(past) {
+		t.Error("moved task a should have refreshed UpdatedAt")
+	}
+	if !b.UpdatedAt.After(past) {
+		t.Error("displaced sibling b should have refreshed UpdatedAt")
+	}
+}
+
+// TestRecurrenceValidate_RejectsWeekdaysOnNonWeekly verifies that Weekdays
+// may only be set when Unit is RecurrenceWeekly. Before the fix, Validate
+// accepted patterns like {Unit: monthly, Weekdays: [Mon]} even though
+// calculateNextDate silently ignores Weekdays for non-weekly units —
+// meaning the data round-tripped through storage indefinitely while
+// having no runtime effect.
+func TestRecurrenceValidate_RejectsWeekdaysOnNonWeekly(t *testing.T) {
+	units := []RecurrenceUnit{RecurrenceDaily, RecurrenceMonthly, RecurrenceYearly}
+	for _, u := range units {
+		p := &RecurrencePattern{Interval: 1, Unit: u, Weekdays: []int{1}}
+		if err := p.Validate(); err == nil {
+			t.Errorf("expected error for Weekdays on unit %q, got nil", u)
+		}
+	}
+	// Weekly with Weekdays remains valid.
+	p := &RecurrencePattern{Interval: 1, Unit: RecurrenceWeekly, Weekdays: []int{1, 3}}
+	if err := p.Validate(); err != nil {
+		t.Errorf("weekly with weekdays should validate, got %v", err)
+	}
+}
+
+// TestRecurrenceValidate_RejectsDuplicateWeekdays verifies that duplicate
+// entries in Weekdays are rejected. Duplicates would skew findNextWeekday's
+// iteration semantics and produce confusing strings ("on Mon, Mon and Wed").
+func TestRecurrenceValidate_RejectsDuplicateWeekdays(t *testing.T) {
+	p := &RecurrencePattern{Interval: 1, Unit: RecurrenceWeekly, Weekdays: []int{1, 3, 1}}
+	if err := p.Validate(); err == nil {
+		t.Error("expected error for duplicate weekdays, got nil")
+	}
+}
+
 // TestDeferRecurrence_RejectsNonPositiveDays verifies that DeferRecurrence is a
 // no-op when called with zero or negative days. The function's contract is to
 // "push the due date forward"; before the fix, a negative argument silently

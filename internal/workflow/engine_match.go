@@ -402,9 +402,24 @@ func matchesTrigger(task *models.Task, trigger RuleTrigger) bool {
 
 func matchesTagTrigger(tags []string, trigger RuleTrigger) bool {
 	switch trigger.Operation {
-	case OpEquals, OpContains:
+	case OpEquals:
+		// Exact membership: tag set contains a tag equal to the value.
 		for _, tag := range tags {
 			if strings.EqualFold(tag, trigger.Value) {
+				return true
+			}
+		}
+		return false
+	case OpContains:
+		// Substring membership: any tag contains the value as a substring.
+		// This differs from OpEquals (exact match) and allows partial matches
+		// such as "back" matching the tag "backend".
+		needle := strings.ToLower(trigger.Value)
+		if needle == "" {
+			return false
+		}
+		for _, tag := range tags {
+			if strings.Contains(strings.ToLower(tag), needle) {
 				return true
 			}
 		}

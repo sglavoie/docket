@@ -1,0 +1,45 @@
+package metrics
+
+import (
+	"math"
+	"testing"
+	"time"
+
+	"github.com/sglavoie/tt/internal/models"
+)
+
+// TestBlockedAggregatesDoNotOverflow ensures TotalBlocked and AverageBlocked
+// stay finite even when the cumulative blocked time would saturate
+// time.Duration (int64 nanoseconds). Each task is blocked for ~50 years;
+// with 20 tasks the naive int64 sum overflows.
+func TestBlockedAggregatesDoNotOverflow(t *testing.T) {
+	now := time.Date(2025, 6, 15, 12, 0, 0, 0, time.UTC)
+	const blocked = 50 * 365 * 24 * time.Hour
+
+	tasks := make([]*models.Task, 20)
+	for i := range tasks {
+		start := now.Add(-blocked - time.Hour)
+		end := now.Add(-time.Hour)
+		tasks[i] = makeTask(models.StatusDone, timePtr(now), []*models.ActivityEntry{
+			{Timestamp: start, Field: "status", OldValue: "in_progress", NewValue: "blocked"},
+			{Timestamp: end, Field: "status", OldValue: "blocked", NewValue: "in_progress"},
+		})
+		tasks[i].ID = string(rune('a' + i))
+	}
+
+	result := computeBlocked(tasks, now, nil)
+
+	if result.TaskCount != len(tasks) {
+		t.Fatalf("TaskCount = %d, want %d", result.TaskCount, len(tasks))
+	}
+	// TotalBlocked should saturate to MaxInt64 rather than wrap negative.
+	if result.TotalBlocked <= 0 {
+		t.Errorf("TotalBlocked = %v, expected positive saturated value", result.TotalBlocked)
+	}
+	// AverageBlocked should be close to the per-task blocked duration.
+	gotHours := result.AverageBlocked.Hours()
+	wantHours := blocked.Hours()
+	if math.Abs(gotHours-wantHours)/wantHours > 1e-6 {
+		t.Errorf("AverageBlocked = %v hours, want ~%v hours", gotHours, wantHours)
+	}
+}

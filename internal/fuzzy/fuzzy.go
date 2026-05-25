@@ -75,11 +75,14 @@ func MatchTerms(text, query string) bool {
 
 // ScoreWithPositions returns both a match score and the indices in text where matches occurred.
 // Returns 0 score and nil positions if there is no match.
-// Positions are 0-indexed rune positions in the lowercased text. For almost all
-// inputs the lowercased rune sequence has the same length as the original text,
-// so callers can safely use these indices on []rune(text). Note that a handful
-// of unicode codepoints (e.g. Turkish "İ") lowercase to multiple runes; for
-// those callers should not assume strict 1:1 alignment with the original text.
+// Positions are 0-indexed rune positions in the lowercased text. Go's
+// strings.ToLower performs a 1:1 rune mapping (it does not apply locale-specific
+// SpecialCase tables that expand a rune into multiple runes), so the lowercased
+// rune sequence has the same length as []rune(text) for all default inputs.
+// Callers can therefore safely use these indices on []rune(text). If a caller
+// pre-applies a locale-specific case mapping (e.g. Turkish) before calling this
+// function, that 1:1 invariant no longer holds and positions should be
+// interpreted as indices into the (already-lowercased) rune sequence passed in.
 func ScoreWithPositions(text, pattern string) (int, []int) {
 	if pattern == "" {
 		return 1, nil

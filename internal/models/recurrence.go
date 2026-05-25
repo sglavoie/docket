@@ -69,10 +69,24 @@ func (r *RecurrencePattern) Validate() error {
 	if !validRecurrenceUnits[r.Unit] {
 		return fmt.Errorf("invalid recurrence unit %q, must be one of: day, week, month, year", r.Unit)
 	}
+	if len(r.Weekdays) > 0 && r.Unit != RecurrenceWeekly {
+		// Weekdays only have meaning for weekly recurrence; calculateNextDate
+		// silently ignores them on daily/monthly/yearly. Reject the mismatch
+		// at validation time so storage cannot persist meaningless data that
+		// the engine would round-trip indefinitely.
+		return fmt.Errorf("weekdays may only be set when unit is %q, got unit %q", RecurrenceWeekly, r.Unit)
+	}
+	seenWeekdays := make(map[int]bool, len(r.Weekdays))
 	for _, wd := range r.Weekdays {
 		if wd < 0 || wd > 6 {
 			return fmt.Errorf("invalid weekday %d, must be 0-6 (Sun-Sat)", wd)
 		}
+		if seenWeekdays[wd] {
+			// Duplicates would skew findNextWeekday's iteration and confuse
+			// the human-readable String() output ("on Mon, Mon and Wed").
+			return fmt.Errorf("duplicate weekday %d in recurrence pattern", wd)
+		}
+		seenWeekdays[wd] = true
 	}
 	if r.Mode != "" && r.Mode != RecurModeFromDue && r.Mode != RecurModeFromCompletion {
 		return fmt.Errorf("invalid recurrence mode %q, must be %q or %q", r.Mode, RecurModeFromDue, RecurModeFromCompletion)

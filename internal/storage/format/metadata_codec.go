@@ -210,6 +210,13 @@ func writeAttachmentsMetadata(task *models.Task, parts *[]string) {
 			} else {
 				attStr += "||" + att.OriginalPath
 			}
+		} else if att.IsCodeRef && att.LineNumber > 0 {
+			// Preserve the line number even when OriginalPath is empty.
+			// Without this the writer silently drops a non-zero LineNumber
+			// because the line-number suffix lives in the OriginalPath segment.
+			// Emit a sentinel empty path so the parser can still recover the
+			// line number on the next load.
+			attStr += fmt.Sprintf("||:%d", att.LineNumber)
 		}
 		attStrings = append(attStrings, attStr+fmt.Sprintf("@%d", att.AddedAt.Unix()))
 	}

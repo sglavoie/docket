@@ -100,6 +100,101 @@ func TestResetChangedDefaultTemplates_ReaddedEnabled(t *testing.T) {
 	}
 }
 
+// TestResetChangedDefaultTemplates_TagOrderDetected pins the fix for the
+// set-vs-list bug in the prior templatesAreDifferent helper: reordering Tags
+// must now be treated as a content change so ResetChangedDefaultTemplates
+// rewrites the user-edited template back to the shipped order.
+func TestResetChangedDefaultTemplates_TagOrderDetected(t *testing.T) {
+	cfg := NewConfig()
+
+	// Find a shipped default with >1 tags so a reorder is meaningful.
+	defaults := template.GetDefaultTemplates()
+	var shipped *template.TaskTemplate
+	for i := range defaults {
+		if len(defaults[i].Tags) >= 2 {
+			shipped = &defaults[i]
+			break
+		}
+	}
+	if shipped == nil {
+		t.Skip("no default template with multiple tags available")
+	}
+
+	// Clone shipped values exactly, but reverse the tag order.
+	modified := *shipped
+	modified.Tags = append([]string(nil), shipped.Tags...)
+	for i, j := 0, len(modified.Tags)-1; i < j; i, j = i+1, j-1 {
+		modified.Tags[i], modified.Tags[j] = modified.Tags[j], modified.Tags[i]
+	}
+	// Sanity: tags must actually differ in order.
+	if modified.Tags[0] == shipped.Tags[0] {
+		t.Fatalf("test setup failed: tags not reordered (shipped=%v modified=%v)", shipped.Tags, modified.Tags)
+	}
+	modified.Enabled = false
+	cfg.TaskTemplates = []template.TaskTemplate{modified}
+
+	updated, _, unchanged, affectedIDs := cfg.ResetChangedDefaultTemplates(false)
+
+	if updated == 0 {
+		t.Fatalf("expected reordered-tag template to be detected as updated, got updated=%d unchanged=%d", updated, unchanged)
+	}
+	found := false
+	for _, id := range affectedIDs {
+		if id == shipped.ID {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Errorf("expected %s in affectedIDs, got %v", shipped.ID, affectedIDs)
+	}
+
+	got := cfg.GetTaskTemplate(shipped.ID)
+	if got == nil {
+		t.Fatalf("template %s missing after reset", shipped.ID)
+	}
+	for i, tag := range shipped.Tags {
+		if got.Tags[i] != tag {
+			t.Errorf("tag order not restored: got %v, want %v", got.Tags, shipped.Tags)
+			break
+		}
+	}
+}
+
+// TestResetChangedDefaultTemplates_IgnoresMetadata verifies the
+// instance-level fields (Enabled, UseCount) are not treated as content
+// differences by the ContentEqual switch.
+func TestResetChangedDefaultTemplates_IgnoresMetadata(t *testing.T) {
+	cfg := NewConfig()
+
+	defaults := template.GetDefaultTemplates()
+	if len(defaults) == 0 {
+		t.Skip("no default templates available")
+	}
+	shipped := defaults[0]
+
+	// Exact content clone, but flip Enabled and bump UseCount.
+	clone := shipped
+	clone.Enabled = !shipped.Enabled
+	clone.UseCount = 42
+	cfg.TaskTemplates = []template.TaskTemplate{clone}
+
+	updated, _, unchanged, _ := cfg.ResetChangedDefaultTemplates(false)
+	if updated != 0 {
+		t.Errorf("metadata-only differences should not count as updates, got updated=%d", updated)
+	}
+	if unchanged == 0 {
+		t.Errorf("expected at least one unchanged template, got 0")
+	}
+	got := cfg.GetTaskTemplate(shipped.ID)
+	if got == nil {
+		t.Fatalf("template %s missing", shipped.ID)
+	}
+	if got.UseCount != 42 {
+		t.Errorf("UseCount should be preserved across unchanged content, got %d want 42", got.UseCount)
+	}
+}
+
 func TestResetChangedDefaultTemplates_ReaddedDisabled(t *testing.T) {
 	cfg := NewConfig()
 

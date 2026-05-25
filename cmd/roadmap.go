@@ -83,8 +83,10 @@ func runRoadmap(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("no projects found")
 	}
 
-	// Compute effort-weighted velocity.
-	agg := metrics.ComputeAllAt(projects, metrics.TimeRange30d, time.Now(), allArchived)
+	// Compute effort-weighted velocity. Use the user's configured week-start
+	// so weekly throughput buckets align with their dashboard preferences.
+	weekStart := metrics.WeekStartFromWeekEnd(cfg.GetWeekEndDay())
+	agg := metrics.ComputeAllAtWithWeekStart(projects, metrics.TimeRange30d, time.Now(), weekStart, allArchived)
 	var allTasks []*models.Task
 	for _, p := range projects {
 		allTasks = append(allTasks, p.Tasks...)

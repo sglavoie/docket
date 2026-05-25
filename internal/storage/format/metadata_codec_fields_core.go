@@ -338,14 +338,19 @@ func metadataEstimatedDaysFieldCodec() metadataFieldCodec {
 
 func metadataPinnedAtFieldCodec() metadataFieldCodec {
 	return metadataField("pinned_at",
-		func(task *models.Task, value string, _ *metadataParseState, _ *[]ParseWarning) {
+		func(task *models.Task, value string, _ *metadataParseState, warnings *[]ParseWarning) {
 			if parsed, err := time.ParseInLocation(pinnedAtFormat, value, time.Local); err == nil {
 				task.PinnedAt = &parsed
 				return
 			}
 			if parsed, ok := ParseTimeField(value); ok {
 				task.PinnedAt = &parsed
+				return
 			}
+			// Emit a warning so a malformed pinned_at doesn't silently drop the
+			// user's pin timestamp on the next save (the writer skips PinnedAt
+			// when it's nil, so a parse failure here is otherwise invisible).
+			addValidationWarning(warnings, "pinned_at", "invalid pinned_at %q, ignoring", value)
 		},
 		func(task *models.Task, parts *[]string) {
 			if task.Pinned && task.PinnedAt != nil {

@@ -135,7 +135,10 @@ func parseAttachments(value string, warnings *[]ParseWarning) []models.Attachmen
 			})
 		} else if after, ok := strings.CutPrefix(att, "code:"); ok {
 			filename := after
-			if colonIdx := strings.LastIndex(originalPath, ":"); colonIdx > 0 {
+			// Accept colonIdx >= 0 so a sentinel ":N" (emitted when the
+			// writer had no OriginalPath but a non-zero LineNumber) still
+			// recovers the line number.
+			if colonIdx := strings.LastIndex(originalPath, ":"); colonIdx >= 0 {
 				suffix := originalPath[colonIdx+1:]
 				if ln, err := strconv.Atoi(suffix); err != nil {
 					*warnings = append(*warnings, ParseWarning{
@@ -204,6 +207,23 @@ func finalizeParsedMetadata(task *models.Task, state *metadataParseState, warnin
 		if task.CustomSection == "" {
 			// Migrate non-GTD section value to CustomSection.
 			task.CustomSection = task.Section
+		} else {
+			// Both a non-GTD Section and a CustomSection were present. We
+			// must clear Section (downstream code treats non-GTD values
+			// there as bugs) but we have no safe place to keep the
+			// Section value because CustomSection is already taken.
+			// Surface a DataCorrection warning instead of dropping the
+			// discarded value silently.
+			*warnings = append(*warnings, ParseWarning{
+				Type:  WarningDataCorrection,
+				Field: "section",
+				Message: fmt.Sprintf(
+					"task #%d had non-GTD section %q with conflicting custom_section %q; keeping custom_section and discarding section",
+					task.ShortID,
+					task.Section,
+					task.CustomSection,
+				),
+			})
 		}
 		// Clear the non-GTD value from Section regardless. When CustomSection
 		// is already set, it takes precedence; leaving a stale non-GTD value

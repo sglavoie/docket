@@ -92,8 +92,10 @@ func (m *RoadmapModel) computeData() {
 		allArchived = append(allArchived, storage.LoadArchivedTasks(m.project)...)
 	}
 
-	// Compute effort-weighted velocity from throughput data.
-	agg := metrics.ComputeAllAt(projects, metrics.TimeRange30d, time.Now(), allArchived)
+	// Compute effort-weighted velocity from throughput data. Use the user's
+	// configured week-start so weekly buckets match dashboard preferences.
+	weekStart := metrics.WeekStartFromWeekEnd(m.config.GetWeekEndDay())
+	agg := metrics.ComputeAllAtWithWeekStart(projects, metrics.TimeRange30d, time.Now(), weekStart, allArchived)
 	var allTasks []*models.Task
 	for _, p := range projects {
 		allTasks = append(allTasks, p.Tasks...)

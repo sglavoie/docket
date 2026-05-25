@@ -100,6 +100,9 @@ func (p *Project) CheckAndAutoUnblock() {
 // that are not yet complete (done or canceled).
 // Cross-project qualified references (format "projectID:taskID") that cannot
 // be resolved locally are conservatively treated as incomplete.
+// Dangling local references (depID points to a task that no longer exists)
+// are silently skipped: BuildTaskTree prunes orphaned refs on load, so any
+// survivors are tolerated as resolved rather than blocking completion.
 // A nil task returns false so an unset argument cannot panic on task.DependsOn.
 func (p *Project) HasIncompleteDependencies(task *Task) bool {
 	if task == nil {

@@ -142,3 +142,68 @@ func (c *TemplateChild) GetChildType() models.TaskType {
 	}
 	return c.Type
 }
+
+// ContentEqual reports whether two templates have the same user-visible content.
+// All slice fields (Tags, Checklist, Children) are compared as ORDERED lists
+// because users perceive their order in the rendered Summary (e.g.
+// "#backend #api" vs "#api #backend") and in checklist/child task creation
+// order. Treating them as sets would silently hide reorderings.
+//
+// Metadata fields ID, Source, Enabled, and UseCount are excluded — they are
+// instance-level state rather than template content. Description and Section
+// are content and are compared. The receiver-nil case treats two nil templates
+// as equal and any (nil, non-nil) pair as unequal.
+func (t *TaskTemplate) ContentEqual(other *TaskTemplate) bool {
+	if t == nil || other == nil {
+		return t == other
+	}
+	if t.Name != other.Name {
+		return false
+	}
+	if t.Category != other.Category {
+		return false
+	}
+	if t.Type != other.Type {
+		return false
+	}
+	if t.Priority != other.Priority {
+		return false
+	}
+	if t.Section != other.Section {
+		return false
+	}
+	if t.Description != other.Description {
+		return false
+	}
+
+	if len(t.Tags) != len(other.Tags) {
+		return false
+	}
+	for i := range t.Tags {
+		if t.Tags[i] != other.Tags[i] {
+			return false
+		}
+	}
+
+	if len(t.Checklist) != len(other.Checklist) {
+		return false
+	}
+	for i := range t.Checklist {
+		if t.Checklist[i] != other.Checklist[i] {
+			return false
+		}
+	}
+
+	if len(t.Children) != len(other.Children) {
+		return false
+	}
+	for i := range t.Children {
+		if t.Children[i].Title != other.Children[i].Title ||
+			t.Children[i].Type != other.Children[i].Type ||
+			t.Children[i].Optional != other.Children[i].Optional {
+			return false
+		}
+	}
+
+	return true
+}

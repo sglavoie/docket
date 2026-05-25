@@ -37,12 +37,18 @@ func computeBlocked(tasks []*models.Task, now time.Time, taskProject map[*models
 	}
 
 	if len(entries) > 0 {
-		var totalBlocked time.Duration
-		for _, e := range entries {
-			totalBlocked += e.TotalBlocked
+		// Accumulate in float64 to avoid int64 nanosecond overflow on very
+		// long-blocked task histories (time.Duration tops out around 292y).
+		// Also compute the average via an incremental mean so the average
+		// stays well-defined even when the sum saturates.
+		var totalNs float64
+		var meanNs float64
+		for i, e := range entries {
+			totalNs += float64(e.TotalBlocked)
+			meanNs += (float64(e.TotalBlocked) - meanNs) / float64(i+1)
 		}
-		result.TotalBlocked = totalBlocked
-		result.AverageBlocked = totalBlocked / time.Duration(len(entries))
+		result.TotalBlocked = durationFromFloat(totalNs)
+		result.AverageBlocked = durationFromFloat(meanNs)
 	}
 
 	return result

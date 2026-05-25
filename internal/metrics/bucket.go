@@ -16,6 +16,11 @@ const (
 	granularityMonth
 )
 
+// DefaultWeekStart is the week-start weekday used when no explicit
+// preference is supplied. Monday matches the historical default and
+// the ISO-8601 convention.
+const DefaultWeekStart = time.Monday
+
 // bucketGranularity returns the appropriate granularity for a time range.
 func bucketGranularity(tr TimeRange) granularity {
 	switch tr {
@@ -35,19 +40,32 @@ type bucket struct {
 	Label string
 }
 
-// timeBuckets generates time buckets from cutoff to now at the given granularity.
-// For TimeRangeAll (zero cutoff), it uses the earliest reasonable start.
+// timeBuckets generates time buckets from cutoff to now at the given
+// granularity, using DefaultWeekStart for weekly buckets. Prefer
+// timeBucketsWithWeekStart when a configured week-start day is available.
 func timeBuckets(cutoff, now time.Time, g granularity) []bucket {
+	return timeBucketsWithWeekStart(cutoff, now, g, DefaultWeekStart)
+}
+
+// timeBucketsWithWeekStart generates time buckets from cutoff to now at the
+// given granularity, honoring the supplied weekStart for weekly buckets.
+// For TimeRangeAll (zero cutoff), it uses the earliest reasonable start.
+func timeBucketsWithWeekStart(cutoff, now time.Time, g granularity, weekStart time.Weekday) []bucket {
 	if cutoff.IsZero() {
 		// For "all time", start 12 months back as a reasonable default
 		cutoff = now.AddDate(-1, 0, 0)
 	}
 
 	var buckets []bucket
-	current := startOfPeriod(cutoff, g)
+	current := startOfPeriod(cutoff, g, weekStart)
 
+	// Guard against pathological inputs where startOfPeriod returns a value
+	// that would cause an infinite loop (advance must move forward).
 	for current.Before(now) {
 		next := advancePeriod(current, g)
+		if !next.After(current) {
+			break
+		}
 		label := bucketLabel(current, g)
 		buckets = append(buckets, bucket{
 			Start: current,
@@ -99,17 +117,16 @@ func assignToBucket(t time.Time, buckets []bucket) int {
 }
 
 // startOfPeriod truncates a time to the start of its period.
-func startOfPeriod(t time.Time, g granularity) time.Time {
+// For granularityWeek, weekStart selects which weekday begins the week.
+func startOfPeriod(t time.Time, g granularity, weekStart time.Weekday) time.Time {
 	switch g {
 	case granularityDay:
 		return util.StartOfDay(t)
 	case granularityWeek:
-		// Truncate to Monday
-		weekday := int(t.Weekday())
-		if weekday == 0 {
-			weekday = 7
-		}
-		d := t.AddDate(0, 0, -(weekday - 1))
+		// Compute days to subtract so that the resulting weekday equals weekStart.
+		// time.Weekday: Sunday=0..Saturday=6.
+		diff := (int(t.Weekday()) - int(weekStart) + 7) % 7
+		d := t.AddDate(0, 0, -diff)
 		return util.StartOfDay(d)
 	case granularityMonth:
 		return time.Date(t.Year(), t.Month(), 1, 0, 0, 0, 0, t.Location())
@@ -143,5 +160,21 @@ func bucketLabel(t time.Time, g granularity) string {
 		return t.Format("Jan")
 	default:
 		return t.Format("01/02")
+	}
+}
+
+// WeekStartFromWeekEnd maps a week-end day abbreviation ("fri", "sat", "sun")
+// to the time.Weekday that begins the week. Unknown values yield
+// DefaultWeekStart (Monday) so callers are insulated from typos in user config.
+func WeekStartFromWeekEnd(weekEndDay string) time.Weekday {
+	switch weekEndDay {
+	case "fri":
+		return time.Saturday
+	case "sat":
+		return time.Sunday
+	case "sun":
+		return time.Monday
+	default:
+		return DefaultWeekStart
 	}
 }

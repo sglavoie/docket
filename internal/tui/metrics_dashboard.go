@@ -103,7 +103,8 @@ func (m *MetricsDashboardModel) computeMetrics() {
 		allArchived = append(allArchived, storage.LoadArchivedTasks(m.project)...)
 	}
 
-	m.metrics = metrics.ComputeAllAt(projects, m.timeRange, time.Now(), allArchived)
+	weekStart := metrics.WeekStartFromWeekEnd(m.config.GetWeekEndDay())
+	m.metrics = metrics.ComputeAllAtWithWeekStart(projects, m.timeRange, time.Now(), weekStart, allArchived)
 }
 
 // Init implements tea.Model.

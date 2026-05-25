@@ -101,6 +101,47 @@ func TaskStateChanged(current, prev *models.Task) bool {
 			return true
 		}
 	}
+	// Detect recurrence changes (added, cleared, or pattern/streak modified)
+	// so event-based triggers like FieldRecurrenceCompleted and
+	// FieldStreakBroken see the task as changed and re-evaluate.
+	if recurrenceChanged(current.Recurrence, prev.Recurrence) {
+		return true
+	}
+	return false
+}
+
+// recurrenceChanged reports whether two recurrence pointers represent
+// a workflow-relevant change. It compares the full structural pattern
+// (interval/unit/mode/weekdays as a set) plus Streak/Skipped counters
+// that drive FieldStreakBroken. OriginalDay/MaxStreak are ignored
+// because they don't drive any event trigger today.
+func recurrenceChanged(current, prev *models.RecurrencePattern) bool {
+	if current == nil && prev == nil {
+		return false
+	}
+	if current == nil || prev == nil {
+		return true
+	}
+	if current.Interval != prev.Interval ||
+		current.Unit != prev.Unit ||
+		current.Mode != prev.Mode ||
+		current.Streak != prev.Streak ||
+		current.Skipped != prev.Skipped {
+		return true
+	}
+	if len(current.Weekdays) != len(prev.Weekdays) {
+		return true
+	}
+	seen := make(map[int]int, len(current.Weekdays))
+	for _, d := range current.Weekdays {
+		seen[d]++
+	}
+	for _, d := range prev.Weekdays {
+		seen[d]--
+		if seen[d] < 0 {
+			return true
+		}
+	}
 	return false
 }
 

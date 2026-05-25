@@ -191,8 +191,10 @@ func (c *Config) ResetChangedDefaultTemplates(enableTemplates bool) (updated, re
 			continue
 		}
 
-		// Compare template content (semantic only, ignore metadata)
-		if templatesAreDifferent(existing, &shipped) {
+		// Compare template content (semantic only, ignore metadata).
+		// ContentEqual treats Tags/Checklist/Children as ordered lists so
+		// tag-order edits are correctly detected as differences.
+		if !existing.ContentEqual(&shipped) {
 			// Reset to shipped values, preserve Enabled state unless enableTemplates is true
 			preservedEnabled := existing.Enabled
 			preservedUseCount := existing.UseCount
@@ -225,64 +227,4 @@ func (c *Config) ResetChangedDefaultTemplates(enableTemplates bool) (updated, re
 	}
 
 	return updated, readded, unchanged, affectedIDs
-}
-
-// templatesAreDifferent compares template content semantically (ignoring metadata).
-func templatesAreDifferent(a, b *template.TaskTemplate) bool {
-	if a.Name != b.Name {
-		return true
-	}
-	if a.Category != b.Category {
-		return true
-	}
-	if a.Type != b.Type {
-		return true
-	}
-	if a.Priority != b.Priority {
-		return true
-	}
-	if a.Section != b.Section {
-		return true
-	}
-	if a.Description != b.Description {
-		return true
-	}
-
-	// Compare tags
-	if len(a.Tags) != len(b.Tags) {
-		return true
-	}
-	aTags := make(map[string]bool)
-	for _, tag := range a.Tags {
-		aTags[tag] = true
-	}
-	for _, tag := range b.Tags {
-		if !aTags[tag] {
-			return true
-		}
-	}
-
-	// Compare checklist
-	if len(a.Checklist) != len(b.Checklist) {
-		return true
-	}
-	for i := range a.Checklist {
-		if a.Checklist[i] != b.Checklist[i] {
-			return true
-		}
-	}
-
-	// Compare children
-	if len(a.Children) != len(b.Children) {
-		return true
-	}
-	for i := range a.Children {
-		if a.Children[i].Title != b.Children[i].Title ||
-			a.Children[i].Type != b.Children[i].Type ||
-			a.Children[i].Optional != b.Children[i].Optional {
-			return true
-		}
-	}
-
-	return false
 }

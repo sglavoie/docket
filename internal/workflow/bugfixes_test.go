@@ -383,3 +383,106 @@ func TestEvaluateProjectRules_TriggeredIDsOnlyWinner(t *testing.T) {
 		t.Errorf("expected TriggeredRuleIDs[0] = r-bugfix, got %q", result.TriggeredRuleIDs[0])
 	}
 }
+
+// TestApplyAction_AddCommentDedupScansAllComments verifies that
+// ActionAddComment de-duplicates against ALL existing comments, not just the
+// most recent one. Previously the dedup only inspected the last comment, so a
+// matching workflow comment buried under unrelated user comments would be
+// re-appended on every evaluation, inflating the comment list indefinitely.
+func TestApplyAction_AddCommentDedupScansAllComments(t *testing.T) {
+	workflowComment := "[Workflow] Auto-tagged"
+	task := &models.Task{
+		ID: "t1",
+		Comments: []*models.Comment{
+			{Text: workflowComment, CreatedAt: time.Now()},
+			{Text: "User reply 1", CreatedAt: time.Now()},
+			{Text: "User reply 2", CreatedAt: time.Now()},
+		},
+	}
+
+	modified := applyAction(task, RuleAction{ActionType: ActionAddComment, Value: "Auto-tagged"})
+	if modified {
+		t.Errorf("expected modified=false because workflow comment already exists earlier in the list, got true")
+	}
+	if len(task.Comments) != 3 {
+		t.Errorf("expected comments length unchanged (3), got %d", len(task.Comments))
+	}
+}
+
+// TestMatchesTagTrigger_ContainsIsSubstringMatch verifies that the OpContains
+// operator on tags performs substring matching (any tag contains the value),
+// rather than exact membership (which is OpEquals semantics). Previously
+// OpContains fell through to the OpEquals branch and therefore could not match
+// partial tag names.
+func TestMatchesTagTrigger_ContainsIsSubstringMatch(t *testing.T) {
+	cases := []struct {
+		name  string
+		tags  []string
+		value string
+		op    TriggerOperation
+		want  bool
+	}{
+		{"contains finds substring of a tag", []string{"backend-api"}, "backend", OpContains, true},
+		{"contains finds tag as exact substring", []string{"urgent"}, "urgent", OpContains, true},
+		{"contains finds partial substring", []string{"high-priority"}, "prio", OpContains, true},
+		{"contains misses when no tag has substring", []string{"backend", "api"}, "frontend", OpContains, false},
+		{"contains is case-insensitive", []string{"Backend"}, "BACK", OpContains, true},
+		{"empty value never matches contains", []string{"any"}, "", OpContains, false},
+		// OpEquals must remain exact membership: substring is NOT enough.
+		{"equals does not match substring", []string{"backend-api"}, "backend", OpEquals, false},
+		{"equals matches exact tag", []string{"backend"}, "backend", OpEquals, true},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			trigger := RuleTrigger{Field: FieldTags, Operation: tc.op, Value: tc.value}
+			got := matchesTagTrigger(tc.tags, trigger)
+			if got != tc.want {
+				t.Errorf("matchesTagTrigger(tags=%v, value=%q, op=%s) = %v, want %v",
+					tc.tags, tc.value, tc.op, got, tc.want)
+			}
+		})
+	}
+}
+
+// TestTaskStateChanged_RecurrenceChanges verifies that TaskStateChanged
+// recognizes changes to Recurrence (added, removed, pattern modified, streak
+// reset). Without this, recurring tasks whose ONLY change is recurrence state
+// are excluded from EvaluationContext.Changes, so event-based triggers like
+// FieldRecurrenceCompleted and FieldStreakBroken never see them.
+func TestTaskStateChanged_RecurrenceChanges(t *testing.T) {
+	weeklyA := &models.RecurrencePattern{Interval: 1, Unit: models.RecurrenceWeekly, Streak: 5}
+	weeklyB := &models.RecurrencePattern{Interval: 1, Unit: models.RecurrenceWeekly, Streak: 5}
+	weeklyStreakZero := &models.RecurrencePattern{Interval: 1, Unit: models.RecurrenceWeekly, Streak: 0}
+	daily := &models.RecurrencePattern{Interval: 1, Unit: models.RecurrenceDaily}
+	weeklyMon := &models.RecurrencePattern{Interval: 1, Unit: models.RecurrenceWeekly, Weekdays: []int{1}}
+	weeklyMonFri := &models.RecurrencePattern{Interval: 1, Unit: models.RecurrenceWeekly, Weekdays: []int{1, 5}}
+	weeklyMonFriReverse := &models.RecurrencePattern{Interval: 1, Unit: models.RecurrenceWeekly, Weekdays: []int{5, 1}}
+
+	cases := []struct {
+		name     string
+		prev     *models.RecurrencePattern
+		current  *models.RecurrencePattern
+		expected bool
+	}{
+		{"identical pattern reports no change", weeklyA, weeklyB, false},
+		{"recurrence cleared (completed) reports change", weeklyA, nil, true},
+		{"recurrence added reports change", nil, weeklyA, true},
+		{"streak reset reports change", weeklyA, weeklyStreakZero, true},
+		{"unit change reports change", weeklyA, daily, true},
+		{"weekdays added reports change", weeklyMon, weeklyMonFri, true},
+		{"weekday order ignored", weeklyMonFri, weeklyMonFriReverse, false},
+		{"both nil reports no change", nil, nil, false},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			prev := &models.Task{ID: "t", Status: models.StatusTodo, Recurrence: tc.prev}
+			cur := &models.Task{ID: "t", Status: models.StatusTodo, Recurrence: tc.current}
+			got := TaskStateChanged(cur, prev)
+			if got != tc.expected {
+				t.Errorf("TaskStateChanged() = %v, want %v", got, tc.expected)
+			}
+		})
+	}
+}
