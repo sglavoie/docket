@@ -205,3 +205,13 @@ func TestMatchesScope_EmptyFields(t *testing.T) {
 		t.Error("non-empty type filter should reject non-matching types")
 	}
 }
+
+func TestMatchesScope_NilTaskWithProjectScope(t *testing.T) {
+	rule := WorkflowRule{
+		Scope: &RuleScope{Projects: []string{"proj-123"}},
+	}
+
+	if !rule.MatchesScope(nil, "AnyProject", "proj-123") {
+		t.Fatal("project-only scope should match even without a task")
+	}
+}

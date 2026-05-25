@@ -33,7 +33,7 @@ func EvaluateProjectRules(ctx *ProjectEvaluationContext, rules []WorkflowRule) *
 	// Filter to enabled project-level rules
 	var projectRules []WorkflowRule
 	for _, r := range rules {
-		if r.Enabled && r.GetLevel() == RuleLevelProject {
+		if r.Enabled && r.GetLevel() == RuleLevelProject && r.MatchesScope(nil, ctx.Project.Name, ctx.Project.ID) {
 			projectRules = append(projectRules, r)
 		}
 	}

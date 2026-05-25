@@ -373,6 +373,9 @@ func (r *WorkflowRule) MatchesScope(task *models.Task, projectName, projectID st
 	}
 
 	if len(r.Scope.Types) > 0 {
+		if task == nil {
+			return false
+		}
 		matched := false
 		taskType := string(task.Type)
 		for _, ruleType := range r.Scope.Types {
@@ -387,6 +390,9 @@ func (r *WorkflowRule) MatchesScope(task *models.Task, projectName, projectID st
 	}
 
 	if len(r.Scope.Sections) > 0 {
+		if task == nil {
+			return false
+		}
 		matched := false
 		for _, section := range r.Scope.Sections {
 			if strings.EqualFold(section, task.Section) || strings.EqualFold(section, task.CustomSection) {
@@ -439,6 +445,13 @@ func (r *WorkflowRule) validateLevel() error {
 	}
 
 	if level == RuleLevelProject {
+		if invalidScopeFields := r.scopeTaskFields(); len(invalidScopeFields) > 0 {
+			return fmt.Errorf(
+				"project-level rule %q has task-level scope fields %q; only project scope is supported",
+				r.Name,
+				strings.Join(invalidScopeFields, ", "),
+			)
+		}
 		for _, trigger := range triggers {
 			if !IsProjectTrigger(trigger.Field) {
 				return fmt.Errorf("project-level rule %q has task-level trigger field %q", r.Name, trigger.Field)
@@ -463,6 +476,21 @@ func (r *WorkflowRule) validateLevel() error {
 	}
 
 	return nil
+}
+
+func (r *WorkflowRule) scopeTaskFields() []string {
+	if r.Scope == nil {
+		return nil
+	}
+
+	var fields []string
+	if len(r.Scope.Types) > 0 {
+		fields = append(fields, "types")
+	}
+	if len(r.Scope.Sections) > 0 {
+		fields = append(fields, "sections")
+	}
+	return fields
 }
 
 // collectTriggers recursively collects all leaf triggers from a trigger group.

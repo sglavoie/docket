@@ -381,6 +381,45 @@ func TestEvaluateProjectRules_NoMatch(t *testing.T) {
 	}
 }
 
+func TestEvaluateProjectRules_RespectsProjectScope(t *testing.T) {
+	proj := makeProject("")
+	tasks := []*models.Task{makeTask(models.StatusInProgress, models.TaskTypeTask)}
+	ctx := &ProjectEvaluationContext{Project: proj, Tasks: tasks}
+
+	rules := []WorkflowRule{
+		{
+			ID:           "r-other",
+			Name:         "Other Project Only",
+			Level:        RuleLevelProject,
+			Enabled:      true,
+			Priority:     10,
+			Triggers:     []RuleTrigger{{Field: FieldHasInProgressTasks, Operation: OpEquals, Value: "true"}},
+			TriggerLogic: LogicAnd,
+			Actions:      []RuleAction{{ActionType: ActionSetProjectStatus, Value: "active"}},
+			Scope:        &RuleScope{Projects: []string{"proj-other"}},
+		},
+		{
+			ID:           "r-this",
+			Name:         "This Project Only",
+			Level:        RuleLevelProject,
+			Enabled:      true,
+			Priority:     20,
+			Triggers:     []RuleTrigger{{Field: FieldHasInProgressTasks, Operation: OpEquals, Value: "true"}},
+			TriggerLogic: LogicAnd,
+			Actions:      []RuleAction{{ActionType: ActionSetProjectStatus, Value: "review"}},
+			Scope:        &RuleScope{Projects: []string{proj.ID}},
+		},
+	}
+
+	result := EvaluateProjectRules(ctx, rules)
+	if result.NewStatusIcon != "review" {
+		t.Fatalf("expected only the matching scoped rule to apply, got %q", result.NewStatusIcon)
+	}
+	if result.AppliedRuleID != "r-this" {
+		t.Fatalf("expected scoped rule r-this to apply, got %q", result.AppliedRuleID)
+	}
+}
+
 func TestEvaluateProjectRules_CompoundTriggers(t *testing.T) {
 	proj := makeProject("")
 	proj.UpdatedAt = time.Now().AddDate(0, 0, -20)

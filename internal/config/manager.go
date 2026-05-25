@@ -76,10 +76,6 @@ func (m *Manager) recoverFromBackup(primaryErr error) (Config, error) {
 		return Config{}, fmt.Errorf("failed to parse config file and backup is also corrupted: config error: %w; backup path: %s", primaryErr, backupPath)
 	}
 
-	if cfg.DataDir == "" || cfg.Projects == nil {
-		return Config{}, fmt.Errorf("config and backup both corrupted; restore from %s or delete to reset", backupPath)
-	}
-
 	logging.Warn("config file was corrupted, restored from backup %s", backupPath)
 	if writeErr := util.AtomicWriteFile(m.configPath, backupData, FilePermissions); writeErr != nil {
 		return Config{}, fmt.Errorf("recovered config from backup but failed to persist it: %w", writeErr)

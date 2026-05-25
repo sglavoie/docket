@@ -317,6 +317,34 @@ func TestCollectValidationErrors_LevelMismatch(t *testing.T) {
 	}
 }
 
+func TestCollectValidationErrors_ProjectLevelScopeMismatch(t *testing.T) {
+	rule := &workflow.WorkflowRule{
+		ID:    "test-scope",
+		Name:  "Bad Scope Rule",
+		Level: workflow.RuleLevelProject,
+		Triggers: []workflow.RuleTrigger{
+			{Field: workflow.FieldHasInProgressTasks, Operation: workflow.OpEquals, Value: "true"},
+		},
+		Actions: []workflow.RuleAction{
+			{ActionType: workflow.ActionSetProjectStatus, Value: "active"},
+		},
+		Scope: &workflow.RuleScope{Types: []string{"bug"}},
+	}
+
+	errors := collectValidationErrors(rule)
+	if len(errors) == 0 {
+		t.Fatal("expected validation error for project-level rule with task-level scope")
+	}
+
+	for _, err := range errors {
+		if strings.Contains(err, "task-level scope fields") {
+			return
+		}
+	}
+
+	t.Fatalf("expected task-level scope error, got: %v", errors)
+}
+
 // Helper functions
 func equalIntSlices(a, b []int) bool {
 	if len(a) != len(b) {

@@ -62,10 +62,11 @@ PROJECT-LEVEL RULES:
   Project action: set_project_status (value = icon key: planning, active, etc.)
 
 RULE SCOPING:
-  Restrict rules to specific projects, types, or sections:
+  Restrict task-level rules to specific projects, types, or sections:
     --scope-project "MyProject"    Only apply to tasks in this project
     --scope-type task,bug          Only apply to these task types
     --scope-section Active         Only apply to tasks in these sections
+  Project-level rules support --scope-project only.
 
 COMPOUND TRIGGERS:
   Use multiple -f/-o/-V flag groups to create compound triggers.
@@ -141,8 +142,8 @@ func init() {
 	workflowAddCmd.Flags().StringVar(&condValue, "cond-value", "", "condition value")
 	workflowAddCmd.Flags().BoolVar(&ruleDisabled, "disabled", false, "create rule in disabled state")
 	workflowAddCmd.Flags().StringSliceVar(&scopeProjects, "scope-project", nil, "restrict rule to projects (comma-separated names or IDs)")
-	workflowAddCmd.Flags().StringSliceVar(&scopeTypes, "scope-type", nil, "restrict rule to task types (comma-separated)")
-	workflowAddCmd.Flags().StringSliceVar(&scopeSections, "scope-section", nil, "restrict rule to sections (comma-separated)")
+	workflowAddCmd.Flags().StringSliceVar(&scopeTypes, "scope-type", nil, "restrict task-level rules to task types (comma-separated)")
+	workflowAddCmd.Flags().StringSliceVar(&scopeSections, "scope-section", nil, "restrict task-level rules to sections (comma-separated)")
 
 	_ = workflowAddCmd.MarkFlagRequired("name")
 	_ = workflowAddCmd.MarkFlagRequired("field")

@@ -82,6 +82,12 @@ func (d *ScoringDimension) Validate() error {
 	if d.Weight < 0 {
 		return fmt.Errorf("dimension %q: weight must be non-negative, got %g", d.ID, d.Weight)
 	}
+	if d.Source != SourceManual && d.Source != SourceDerived {
+		return fmt.Errorf("dimension %q: unknown source %q", d.ID, d.Source)
+	}
+	if d.Role != RoleNone && d.Role != RoleNumerator && d.Role != RoleDenominator {
+		return fmt.Errorf("dimension %q: unknown role %q", d.ID, d.Role)
+	}
 	if d.Source == SourceDerived && d.DerivedMapping == nil {
 		return fmt.Errorf("dimension %q: derived source requires a derived_mapping", d.ID)
 	}
@@ -257,7 +263,7 @@ func NewICEProfile() ScoringProfile {
 		Name:        "ICE",
 		Description: "Impact * Confidence * Ease",
 		UsageHint:   "Best for quick, lightweight prioritization with simple subjective dimensions.",
-		Formula:     FormulaMultiply,
+		Formula:     FormulaICE,
 		Builtin:     true,
 		Dimensions: []ScoringDimension{
 			{

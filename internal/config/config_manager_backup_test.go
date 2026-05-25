@@ -208,29 +208,34 @@ func TestConfigManager_LoadFailsWhenNoBackup(t *testing.T) {
 
 func TestConfigManager_BackupWithNilProjects(t *testing.T) {
 	tmpDir := t.TempDir()
+	t.Setenv("HOME", tmpDir)
 	configPath := filepath.Join(tmpDir, "tt.json")
 	backupPath := configPath + ".bak"
 
 	if err := os.WriteFile(configPath, []byte("not-json"), 0600); err != nil {
 		t.Fatal(err)
 	}
-	backupJSON := `{"data_dir": "/tmp/tt-data", "projects": null}`
+	backupJSON := `{"projects": null}`
 	if err := os.WriteFile(backupPath, []byte(backupJSON), 0600); err != nil {
 		t.Fatal(err)
 	}
 
 	manager := NewManager(configPath)
-	_, err := manager.Load()
-	if err == nil {
-		t.Fatal("Load should error when backup is missing required fields")
+	cfg, err := manager.Load()
+	if err != nil {
+		t.Fatalf("Load should recover and normalize nil projects backup, got: %v", err)
 	}
-	if !strings.Contains(err.Error(), "both corrupted") {
-		t.Errorf("expected 'both corrupted' in error, got: %v", err)
+	if cfg.Projects == nil {
+		t.Fatal("Load should normalize nil projects to an empty slice")
+	}
+	if cfg.DataDir != filepath.Join(tmpDir, ".tt") {
+		t.Fatalf("Load should normalize empty data_dir, got %q", cfg.DataDir)
 	}
 }
 
 func TestConfigManager_BackupWithEmptyJSON(t *testing.T) {
 	tmpDir := t.TempDir()
+	t.Setenv("HOME", tmpDir)
 	configPath := filepath.Join(tmpDir, "tt.json")
 	backupPath := configPath + ".bak"
 
@@ -242,12 +247,15 @@ func TestConfigManager_BackupWithEmptyJSON(t *testing.T) {
 	}
 
 	manager := NewManager(configPath)
-	_, err := manager.Load()
-	if err == nil {
-		t.Fatal("Load should error when backup is missing required fields")
+	cfg, err := manager.Load()
+	if err != nil {
+		t.Fatalf("Load should recover from minimal backup, got: %v", err)
 	}
-	if !strings.Contains(err.Error(), "both corrupted") {
-		t.Errorf("expected 'both corrupted' in error, got: %v", err)
+	if cfg.Projects == nil {
+		t.Fatal("Load should normalize missing projects to an empty slice")
+	}
+	if cfg.DataDir != filepath.Join(tmpDir, ".tt") {
+		t.Fatalf("Load should normalize missing data_dir, got %q", cfg.DataDir)
 	}
 }
 
@@ -261,7 +269,7 @@ func TestConfigManager_Load_BothCorrupted(t *testing.T) {
 	if err := os.WriteFile(configPath, []byte("not-json"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(backupPath, []byte(`{}`), 0o600); err != nil {
+	if err := os.WriteFile(backupPath, []byte(`{bad`), 0o600); err != nil {
 		t.Fatal(err)
 	}
 
@@ -269,8 +277,8 @@ func TestConfigManager_Load_BothCorrupted(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error when both config and backup are corrupted")
 	}
-	if !strings.Contains(err.Error(), "both corrupted") {
-		t.Errorf("expected 'both corrupted' in error, got: %v", err)
+	if !strings.Contains(err.Error(), "backup is also corrupted") {
+		t.Errorf("expected backup corruption error, got: %v", err)
 	}
 }
 

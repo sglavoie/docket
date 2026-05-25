@@ -84,6 +84,16 @@ func TestDimensionValidate(t *testing.T) {
 			},
 			wantErr: false,
 		},
+		{
+			name:    "unknown source",
+			dim:     ScoringDimension{ID: "impact", Name: "Impact", Min: 1, Max: 5, Default: 3, Source: DimensionSource("mystery")},
+			wantErr: true,
+		},
+		{
+			name:    "unknown role",
+			dim:     ScoringDimension{ID: "impact", Name: "Impact", Min: 1, Max: 5, Default: 3, Source: SourceManual, Role: DimensionRole("judge")},
+			wantErr: true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -256,5 +266,11 @@ func TestFormatProfileSummary(t *testing.T) {
 	s := FormatProfileSummary(&p)
 	if s == "" {
 		t.Error("expected non-empty summary")
+	}
+}
+
+func TestNewICEProfileUsesICEFormula(t *testing.T) {
+	if got := NewICEProfile().Formula; got != FormulaICE {
+		t.Fatalf("NewICEProfile().Formula = %q, want %q", got, FormulaICE)
 	}
 }

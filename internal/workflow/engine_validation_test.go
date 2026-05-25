@@ -1,6 +1,7 @@
 package workflow
 
 import (
+	"strings"
 	"testing"
 )
 
@@ -239,6 +240,58 @@ func TestRuleValidation_Scope(t *testing.T) {
 			err := rule.Validate()
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Validate() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestRuleValidation_ProjectLevelScope(t *testing.T) {
+	tests := []struct {
+		name        string
+		scope       *RuleScope
+		wantErr     bool
+		wantErrText string
+	}{
+		{
+			name:    "project scope allowed",
+			scope:   &RuleScope{Projects: []string{"MyProject"}},
+			wantErr: false,
+		},
+		{
+			name:        "type scope rejected",
+			scope:       &RuleScope{Types: []string{"bug"}},
+			wantErr:     true,
+			wantErrText: "task-level scope fields",
+		},
+		{
+			name:        "section scope rejected",
+			scope:       &RuleScope{Sections: []string{"Backlog"}},
+			wantErr:     true,
+			wantErrText: "task-level scope fields",
+		},
+		{
+			name:        "mixed task scope rejected",
+			scope:       &RuleScope{Projects: []string{"MyProject"}, Types: []string{"bug"}, Sections: []string{"Backlog"}},
+			wantErr:     true,
+			wantErrText: `"types, sections"`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			rule := WorkflowRule{
+				Name:    "Project Rule",
+				Level:   RuleLevelProject,
+				Trigger: RuleTrigger{Field: FieldHasInProgressTasks, Operation: OpEquals, Value: "true"},
+				Actions: []RuleAction{{ActionType: ActionSetProjectStatus, Value: "active"}},
+				Scope:   tt.scope,
+			}
+			err := rule.Validate()
+			if (err != nil) != tt.wantErr {
+				t.Fatalf("Validate() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			if tt.wantErrText != "" && (err == nil || !strings.Contains(err.Error(), tt.wantErrText)) {
+				t.Fatalf("Validate() error = %v, want substring %q", err, tt.wantErrText)
 			}
 		})
 	}

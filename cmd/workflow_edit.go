@@ -117,8 +117,8 @@ func init() {
 
 	// Scope flags
 	workflowEditCmd.Flags().StringSliceVar(&workflowEditScopeProjects, "scope-project", nil, "set rule scope: project names or IDs (comma-separated)")
-	workflowEditCmd.Flags().StringSliceVar(&workflowEditScopeTypes, "scope-type", nil, "set rule scope: task types (comma-separated)")
-	workflowEditCmd.Flags().StringSliceVar(&workflowEditScopeSections, "scope-section", nil, "set rule scope: sections (comma-separated)")
+	workflowEditCmd.Flags().StringSliceVar(&workflowEditScopeTypes, "scope-type", nil, "set rule scope for task-level rules: task types (comma-separated)")
+	workflowEditCmd.Flags().StringSliceVar(&workflowEditScopeSections, "scope-section", nil, "set rule scope for task-level rules: sections (comma-separated)")
 	workflowEditCmd.Flags().BoolVar(&workflowEditClearScope, "clear-scope", false, "remove all scope restrictions")
 
 	// Confirmation flag

@@ -79,6 +79,9 @@ func (d *Dispatcher) Dispatch(msg tea.KeyPressMsg) (tea.Model, tea.Cmd, bool) {
 	// Modal guards take priority over the keymap.
 	for _, g := range d.ModalGuards {
 		if g.Active != nil && g.Active() {
+			if g.Handle == nil {
+				continue
+			}
 			m, c, handled := g.Handle(key)
 			if handled {
 				return m, c, true
@@ -104,6 +107,9 @@ func (d *Dispatcher) dispatchInPrefix(key string) (tea.Model, tea.Cmd, bool) {
 			b := e.Binding
 			d.ClearPrefix()
 			if b.Gate != nil && !b.Gate() {
+				return nil, nil, true
+			}
+			if b.Action == nil {
 				return nil, nil, true
 			}
 			m, c := b.Action()
@@ -142,6 +148,9 @@ func (d *Dispatcher) dispatchTopLevel(key string) (tea.Model, tea.Cmd, bool) {
 			b := e.Binding
 			if b.Gate != nil && !b.Gate() {
 				return nil, nil, false
+			}
+			if b.Action == nil {
+				return nil, nil, true
 			}
 			m, c := b.Action()
 			return m, c, true

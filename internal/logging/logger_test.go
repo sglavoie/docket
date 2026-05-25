@@ -121,10 +121,18 @@ func TestCloseDetachesStdLogger(t *testing.T) {
 	origFile := logFile
 	origPath := logFilePath
 	origOutput := log.Writer()
+	origFlags := log.Flags()
+	origPrevOutput := previousLoggerOutput
+	origPrevFlags := previousLoggerFlags
+	origStateCaptured := loggerStateCaptured
 	defer func() {
 		logFile = origFile
 		logFilePath = origPath
 		log.SetOutput(origOutput)
+		log.SetFlags(origFlags)
+		previousLoggerOutput = origPrevOutput
+		previousLoggerFlags = origPrevFlags
+		loggerStateCaptured = origStateCaptured
 	}()
 
 	tmp := t.TempDir()
@@ -164,6 +172,87 @@ func TestCloseDetachesStdLogger(t *testing.T) {
 		t.Errorf("log file grew after Close (before=%d, after=%d)",
 			infoBefore.Size(), infoAfter.Size())
 	}
+}
+
+func TestInitCloseRestoresStdLoggerState(t *testing.T) {
+	origDir := logDirPath
+	origFile := logFile
+	origPath := logFilePath
+	origOutput := log.Writer()
+	origFlags := log.Flags()
+	origPrevOutput := previousLoggerOutput
+	origPrevFlags := previousLoggerFlags
+	origStateCaptured := loggerStateCaptured
+	defer func() {
+		logDirPath = origDir
+		logFile = origFile
+		logFilePath = origPath
+		log.SetOutput(origOutput)
+		log.SetFlags(origFlags)
+		previousLoggerOutput = origPrevOutput
+		previousLoggerFlags = origPrevFlags
+		loggerStateCaptured = origStateCaptured
+	}()
+
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+
+	var buf bytes.Buffer
+	log.SetOutput(&buf)
+	log.SetFlags(log.Lshortfile)
+
+	Init()
+	Close()
+
+	if log.Writer() != &buf {
+		t.Fatal("Close should restore the previous standard logger output")
+	}
+	if log.Flags() != log.Lshortfile {
+		t.Fatalf("Close should restore previous log flags, got %d", log.Flags())
+	}
+
+	log.Print("restored")
+	if !bytes.Contains(buf.Bytes(), []byte("restored")) {
+		t.Fatal("restored logger output should receive post-Close log entries")
+	}
+}
+
+func TestInitTwiceClosesPreviousLogFile(t *testing.T) {
+	origDir := logDirPath
+	origFile := logFile
+	origPath := logFilePath
+	origOutput := log.Writer()
+	origFlags := log.Flags()
+	origPrevOutput := previousLoggerOutput
+	origPrevFlags := previousLoggerFlags
+	origStateCaptured := loggerStateCaptured
+	defer func() {
+		logDirPath = origDir
+		logFile = origFile
+		logFilePath = origPath
+		log.SetOutput(origOutput)
+		log.SetFlags(origFlags)
+		previousLoggerOutput = origPrevOutput
+		previousLoggerFlags = origPrevFlags
+		loggerStateCaptured = origStateCaptured
+	}()
+
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+
+	Init()
+	firstLogFile := logFile
+	if firstLogFile == nil {
+		t.Fatal("Init should open a log file")
+	}
+
+	Init()
+
+	if _, err := firstLogFile.Write([]byte("x")); err == nil {
+		t.Fatal("second Init should close the previous log file handle")
+	}
+
+	Close()
 }
 
 func TestPruneOldLogs(t *testing.T) {

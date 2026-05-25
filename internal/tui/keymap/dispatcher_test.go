@@ -256,6 +256,58 @@ func TestDispatch_GateBlocksPrefixActivation(t *testing.T) {
 	}
 }
 
+func TestDispatch_NilBindingActionIsSafe(t *testing.T) {
+	km := &KeyMap{Entries: []Entry{
+		Bind("a", "do a", "cat", nil),
+	}}
+	d := NewDispatcher(km)
+
+	_, _, consumed := d.Dispatch(charKey('a'))
+	if !consumed {
+		t.Fatal("expected nil-action binding to remain consumed")
+	}
+}
+
+func TestDispatch_NilPrefixBindingActionIsSafe(t *testing.T) {
+	km := &KeyMap{Entries: []Entry{
+		Prefix(",", "comma", "cat", []Entry{
+			Bind("s", "save", "cat", nil),
+		}),
+	}}
+	d := NewDispatcher(km)
+
+	d.Dispatch(charKey(','))
+	_, _, consumed := d.Dispatch(charKey('s'))
+	if !consumed {
+		t.Fatal("expected nil-action prefix binding to remain consumed")
+	}
+	if d.HasPendingPrefix() {
+		t.Fatal("expected prefix cleared after nil-action binding")
+	}
+}
+
+func TestDispatch_NilModalGuardHandleFallsThrough(t *testing.T) {
+	keymapCalled := false
+	km := &KeyMap{Entries: []Entry{
+		Bind("a", "do a", "cat", noopAction(&keymapCalled)),
+	}}
+	d := NewDispatcher(km)
+	d.ModalGuards = []ModalGuard{
+		{
+			Active: func() bool { return true },
+			Handle: nil,
+		},
+	}
+
+	_, _, consumed := d.Dispatch(charKey('a'))
+	if !consumed {
+		t.Fatal("expected keymap binding to consume after nil guard handler")
+	}
+	if !keymapCalled {
+		t.Fatal("expected keymap action to run when guard handler is nil")
+	}
+}
+
 // TestDispatch_SetPendingPrefixResolvesNode verifies SetPendingPrefix resolves the correct node.
 func TestDispatch_SetPendingPrefixResolvesNode(t *testing.T) {
 	called := false
