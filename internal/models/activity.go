@@ -30,10 +30,44 @@ func (t *Task) RecordCreated() {
 	})
 }
 
-// PruneActivity keeps only the newest maxEntries entries.
+// PruneActivity keeps only the newest maxEntries entries. The "created" entry
+// (if present) is always preserved as the first entry.
 func (t *Task) PruneActivity(maxEntries int) {
 	if maxEntries <= 0 || len(t.Activity) <= maxEntries {
 		return
 	}
-	t.Activity = t.Activity[len(t.Activity)-maxEntries:]
+
+	var createdEntry *ActivityEntry
+	for _, entry := range t.Activity {
+		if entry != nil && entry.Field == "created" {
+			createdEntry = entry
+			break
+		}
+	}
+
+	if createdEntry == nil {
+		t.Activity = t.Activity[len(t.Activity)-maxEntries:]
+		return
+	}
+
+	keep := maxEntries - 1
+	if keep <= 0 {
+		t.Activity = []*ActivityEntry{createdEntry}
+		return
+	}
+
+	tail := make([]*ActivityEntry, 0, keep)
+	for i := len(t.Activity) - 1; i >= 0 && len(tail) < keep; i-- {
+		if t.Activity[i] == createdEntry {
+			continue
+		}
+		tail = append(tail, t.Activity[i])
+	}
+
+	pruned := make([]*ActivityEntry, 0, len(tail)+1)
+	pruned = append(pruned, createdEntry)
+	for i := len(tail) - 1; i >= 0; i-- {
+		pruned = append(pruned, tail[i])
+	}
+	t.Activity = pruned
 }

@@ -335,12 +335,21 @@ func parseTaskMetadataLine(line string, currentTask *format.ParsedTask, metadata
 		return false
 	}
 
-	*metadataParsed = true
 	matches := format.MetadataRegex().FindStringSubmatch(line)
-	if matches == nil || !format.LooksLikeMetadata(matches[1]) {
+	if matches == nil {
+		// Not an HTML comment at all — description has started, stop
+		// attempting metadata parsing for this task.
+		*metadataParsed = true
+		return false
+	}
+	if !format.LooksLikeMetadata(matches[1]) {
+		// HTML comment that isn't a metadata line (e.g. a stray editorial
+		// `<!-- note -->`). Treat it as description content and keep looking
+		// for the real metadata line on a subsequent row.
 		return false
 	}
 
+	*metadataParsed = true
 	parsedWarnings := format.ParseMetadata(currentTask.Task, matches[1])
 	for i := range parsedWarnings {
 		parsedWarnings[i].TaskID = currentTask.Task.ID

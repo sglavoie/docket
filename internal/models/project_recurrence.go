@@ -73,6 +73,12 @@ func (p *Project) GenerateRecurringInstances() int {
 			}
 		}
 
+		var startDateCopy *time.Time
+		if task.StartDate != nil {
+			sd := *task.StartDate
+			startDateCopy = &sd
+		}
+
 		newTask := &Task{
 			ID:              uuid.New().String(),
 			ShortID:         p.GetNextShortID(),
@@ -93,6 +99,8 @@ func (p *Project) GenerateRecurringInstances() int {
 			Recurrence:      newRecurrence,
 			Checklist:       checklist,
 			Stage:           task.Stage,
+			StartDate:       startDateCopy,
+			EstimatedDays:   task.EstimatedDays,
 			Source:          task.Source,
 			URL:             task.URL,
 			CreatedAt:       now,

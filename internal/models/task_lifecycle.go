@@ -99,6 +99,7 @@ func (t *Task) Reopen() {
 	t.Status = StatusTodo
 	t.CompletedAt = nil
 	t.Active = false
+	t.Dimmed = false
 	t.SnoozedUntil = nil
 	t.Section = SectionInbox
 	t.CustomSection = ""

@@ -97,6 +97,14 @@ func parseAttachments(value string, warnings *[]ParseWarning) []models.Attachmen
 
 		if idx := strings.LastIndex(att, "@"); idx > 0 {
 			if epoch, err := strconv.ParseInt(att[idx+1:], 10, 64); err == nil {
+				if epoch < 0 {
+					*warnings = append(*warnings, ParseWarning{
+						Type:    WarningValidation,
+						Field:   "attachments",
+						Message: fmt.Sprintf("attachment %q has negative timestamp %d, clamping to 0", att[:idx], epoch),
+					})
+					epoch = 0
+				}
 				addedAt = time.Unix(epoch, 0)
 				att = att[:idx]
 			}
@@ -166,8 +174,14 @@ func parseAttachments(value string, warnings *[]ParseWarning) []models.Attachmen
 				AddedAt:      addedAt,
 			})
 		} else {
+			filename := att
+			if after, ok := strings.CutPrefix(att, "file:"); ok {
+				// Disambiguation prefix emitted by the writer for plain
+				// attachments whose original filename starts with url:/code:/file:.
+				filename = after
+			}
 			result = append(result, models.Attachment{
-				Filename:     att,
+				Filename:     filename,
 				IsURL:        false,
 				OriginalPath: originalPath,
 				AddedAt:      addedAt,

@@ -201,6 +201,11 @@ func writeAttachmentsMetadata(task *models.Task, parts *[]string) {
 			attStr = "url:" + att.Filename
 		} else if att.IsCodeRef {
 			attStr = "code:" + att.Filename
+		} else if strings.HasPrefix(att.Filename, "url:") || strings.HasPrefix(att.Filename, "code:") || strings.HasPrefix(att.Filename, "file:") {
+			// Disambiguate a plain attachment whose filename collides with a
+			// type-prefix marker so the parser doesn't promote it to URL/code
+			// on the next load.
+			attStr = "file:" + att.Filename
 		} else {
 			attStr = att.Filename
 		}

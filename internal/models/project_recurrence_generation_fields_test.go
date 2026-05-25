@@ -79,6 +79,79 @@ func TestGenerateRecurringInstancesCopiesCorrectFields(t *testing.T) {
 	}
 }
 
+func TestGenerateRecurringInstancesCopiesEstimatedDaysAndStartDate(t *testing.T) {
+	dueDate := time.Date(2024, 1, 15, 10, 0, 0, 0, time.UTC)
+	startDate := time.Date(2024, 1, 10, 9, 0, 0, 0, time.UTC)
+
+	task := &Task{
+		ID:            "task-1",
+		ShortID:       1,
+		Type:          TaskTypeTask,
+		Title:         "Estimated work",
+		Status:        StatusDone,
+		Priority:      2,
+		DueDate:       &dueDate,
+		StartDate:     &startDate,
+		EstimatedDays: 3.5,
+		Recurrence:    &RecurrencePattern{Interval: 1, Unit: RecurrenceWeekly},
+	}
+
+	project := &Project{
+		Name:        "Test Project",
+		Tasks:       []*Task{task},
+		NextShortID: 2,
+	}
+
+	project.GenerateRecurringInstances()
+
+	newTask := project.Tasks[0]
+	if newTask.EstimatedDays != 3.5 {
+		t.Errorf("EstimatedDays should be carried forward, got %v", newTask.EstimatedDays)
+	}
+	if newTask.StartDate == nil {
+		t.Fatal("StartDate should be carried forward, got nil")
+	}
+	if !newTask.StartDate.Equal(startDate) {
+		t.Errorf("StartDate should equal template start date, got %v", newTask.StartDate)
+	}
+	// Ensure deep copy — mutating the new task's StartDate must not affect the template.
+	newStart := newTask.StartDate
+	if newStart == task.StartDate {
+		t.Error("StartDate pointer should be a copy, not shared with template")
+	}
+}
+
+func TestGenerateRecurringInstancesNilStartDateStaysNil(t *testing.T) {
+	dueDate := time.Date(2024, 1, 15, 10, 0, 0, 0, time.UTC)
+
+	task := &Task{
+		ID:         "task-1",
+		ShortID:    1,
+		Type:       TaskTypeTask,
+		Title:      "No start date",
+		Status:     StatusDone,
+		Priority:   2,
+		DueDate:    &dueDate,
+		Recurrence: &RecurrencePattern{Interval: 1, Unit: RecurrenceWeekly},
+	}
+
+	project := &Project{
+		Name:        "Test Project",
+		Tasks:       []*Task{task},
+		NextShortID: 2,
+	}
+
+	project.GenerateRecurringInstances()
+
+	newTask := project.Tasks[0]
+	if newTask.StartDate != nil {
+		t.Errorf("StartDate should remain nil, got %v", newTask.StartDate)
+	}
+	if newTask.EstimatedDays != 0 {
+		t.Errorf("EstimatedDays should remain zero, got %v", newTask.EstimatedDays)
+	}
+}
+
 func TestGenerateRecurringInstancesCopiesHasTime(t *testing.T) {
 	dueDate := time.Date(2024, 1, 15, 14, 30, 0, 0, time.Local)
 

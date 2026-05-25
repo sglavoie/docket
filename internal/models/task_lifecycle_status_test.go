@@ -290,6 +290,17 @@ func TestReopenClearsActive(t *testing.T) {
 	}
 }
 
+func TestReopenClearsDimmed(t *testing.T) {
+	task := newLifecycleTestTask(t, "t1", 1)
+	task.Complete()
+	task.Dimmed = true
+	task.Reopen()
+
+	if task.Dimmed {
+		t.Error("expected Dimmed to be false after Reopen")
+	}
+}
+
 func TestReopenAfterCancelClearsCompletedAt(t *testing.T) {
 	task := newLifecycleTestTask(t, "t1", 1)
 	task.Cancel()
