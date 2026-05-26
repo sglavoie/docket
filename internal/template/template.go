@@ -65,6 +65,7 @@ func (t *TaskTemplate) Validate() error {
 		return fmt.Errorf("task type %s cannot have children", t.Type)
 	}
 
+	seen := make(map[string]int, len(t.Children))
 	for i, child := range t.Children {
 		if strings.TrimSpace(child.Title) == "" {
 			return fmt.Errorf("item %d: title is required", i+1)
@@ -76,6 +77,10 @@ func (t *TaskTemplate) Validate() error {
 		if !childType.CanBeChildOf(t.Type) {
 			return fmt.Errorf("item %d: %s cannot be a child of %s", i+1, childType, t.Type)
 		}
+		if prev, dup := seen[child.Title]; dup {
+			return fmt.Errorf("item %d: duplicate child title %q (first seen at item %d)", i+1, child.Title, prev)
+		}
+		seen[child.Title] = i + 1
 	}
 
 	return nil

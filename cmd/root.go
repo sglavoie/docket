@@ -50,11 +50,10 @@ func RootCmd() *cobra.Command {
 	return rootCmd
 }
 
-func Execute() {
-	if err := executeCommand(rootCmd); err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
+// Execute runs the root command and returns any error. The caller is
+// responsible for printing the error and terminating the process on failure.
+func Execute() error {
+	return executeCommand(rootCmd)
 }
 
 func executeCommand(command *cobra.Command) error {

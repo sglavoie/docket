@@ -7,6 +7,39 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// Execute boundary tests: verify that Execute() returns errors instead of
+// calling os.Exit, so main.go owns all process-lifecycle decisions.
+
+// TestExecuteReturnsNilOnSuccess verifies Execute() returns nil when the
+// command succeeds.  --version requires no config file and no TUI, so it
+// exercises the happy path without side-effects.
+func TestExecuteReturnsNilOnSuccess(t *testing.T) {
+	rootCmd.SetArgs([]string{"--version"})
+	t.Cleanup(func() { rootCmd.SetArgs(nil) })
+
+	if err := Execute(); err != nil {
+		t.Fatalf("Execute() with --version = %v, want nil", err)
+	}
+}
+
+// TestExecuteReturnsErrorNotExit verifies Execute() surfaces cobra errors as
+// return values.  If Execute() still called os.Exit the test process would
+// terminate and the failure would never be recorded.
+func TestExecuteReturnsErrorNotExit(t *testing.T) {
+	// Use a fresh command so we don't disturb global rootCmd state.
+	failing := &cobra.Command{
+		Use: "tt",
+		RunE: func(*cobra.Command, []string) error {
+			return errors.New("injected failure")
+		},
+	}
+
+	err := executeCommand(failing)
+	if err == nil {
+		t.Fatal("Execute boundary: expected error, got nil")
+	}
+}
+
 func TestExecuteCommandReturnsRunErrorAndClosesLogging(t *testing.T) {
 	expected := errors.New("boom")
 	command := &cobra.Command{

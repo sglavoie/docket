@@ -268,6 +268,70 @@ func TestValidate_ChildrenOnLeafType(t *testing.T) {
 	}
 }
 
+func TestValidate_DuplicateChildTitlesRejected(t *testing.T) {
+	tmpl := NewTemplate("Test", models.TaskTypeStory)
+	tmpl.Children = []TemplateChild{
+		{Title: "Do the thing"},
+		{Title: "Do the thing"},
+	}
+	err := tmpl.Validate()
+	if err == nil {
+		t.Fatal("expected error for duplicate child title")
+	}
+	if !strings.Contains(err.Error(), "item 2") {
+		t.Errorf("error %q should reference item 2", err.Error())
+	}
+	if !strings.Contains(err.Error(), "duplicate child title") {
+		t.Errorf("error %q should mention duplicate child title", err.Error())
+	}
+	if !strings.Contains(err.Error(), "item 1") {
+		t.Errorf("error %q should cite the first occurrence (item 1)", err.Error())
+	}
+}
+
+func TestValidate_DuplicateChildTitleThirdItem(t *testing.T) {
+	tmpl := NewTemplate("Test", models.TaskTypeEpic)
+	tmpl.Children = []TemplateChild{
+		{Title: "Alpha", Type: models.TaskTypeStory},
+		{Title: "Beta", Type: models.TaskTypeStory},
+		{Title: "Alpha", Type: models.TaskTypeStory},
+	}
+	err := tmpl.Validate()
+	if err == nil {
+		t.Fatal("expected error for duplicate child title at item 3")
+	}
+	if !strings.Contains(err.Error(), "item 3") {
+		t.Errorf("error %q should reference item 3", err.Error())
+	}
+	if !strings.Contains(err.Error(), `"Alpha"`) {
+		t.Errorf("error %q should quote the duplicate title", err.Error())
+	}
+}
+
+func TestValidate_DuplicateChildTitlesCaseSensitive(t *testing.T) {
+	// "Task" and "task" are different titles — must not be rejected.
+	tmpl := NewTemplate("Test", models.TaskTypeStory)
+	tmpl.Children = []TemplateChild{
+		{Title: "Task"},
+		{Title: "task"},
+	}
+	if err := tmpl.Validate(); err != nil {
+		t.Errorf("case-distinct titles should be valid: %v", err)
+	}
+}
+
+func TestValidate_UniqueChildTitlesPass(t *testing.T) {
+	tmpl := NewTemplate("Test", models.TaskTypeStory)
+	tmpl.Children = []TemplateChild{
+		{Title: "Alpha"},
+		{Title: "Beta"},
+		{Title: "Gamma"},
+	}
+	if err := tmpl.Validate(); err != nil {
+		t.Errorf("unique child titles should be valid: %v", err)
+	}
+}
+
 func TestValidate_MultipleErrors_FirstReturned(t *testing.T) {
 	// Template with multiple issues: bad name takes precedence
 	tmpl := &TaskTemplate{

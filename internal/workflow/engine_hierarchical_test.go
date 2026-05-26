@@ -377,3 +377,141 @@ func TestMatchesRule_TriggerGroupWithHierarchicalTrigger_NilEvalCtx(t *testing.T
 		})
 	}
 }
+
+// TestMatchesRuleWithContext_HierarchicalTrigger_NilEvalCtx checks that
+// matchesRuleWithContext is safe when called with nil evalCtx and a rule that
+// uses flat hierarchical triggers (no TriggerGroup wrapper).
+func TestMatchesRuleWithContext_HierarchicalTrigger_NilEvalCtx(t *testing.T) {
+	task := &models.Task{ID: "task", Status: models.StatusTodo, DependsOn: []string{"blocker1"}}
+
+	tests := []struct {
+		name     string
+		trigger  RuleTrigger
+		expected bool
+	}{
+		{
+			name:    "FieldIsBlocked with nil evalCtx does not panic",
+			trigger: RuleTrigger{Field: FieldIsBlocked, Operation: OpEquals, Value: "true"},
+			// nil evalCtx -> nil taskMap -> no blockers resolved -> blocked=false -> does not match "true"
+			expected: false,
+		},
+		{
+			name:    "FieldBlockerCount with nil evalCtx does not panic",
+			trigger: RuleTrigger{Field: FieldBlockerCount, Operation: OpGreaterThan, Value: "0"},
+			// nil evalCtx -> nil taskMap -> count=0 -> 0 > 0 is false
+			expected: false,
+		},
+		{
+			name:    "FieldIsBlocked == false with nil evalCtx matches correctly",
+			trigger: RuleTrigger{Field: FieldIsBlocked, Operation: OpEquals, Value: "false"},
+			// nil taskMap -> blocked=false -> matches "false"
+			expected: true,
+		},
+		{
+			name:    "FieldDependencyCount with nil evalCtx does not need taskMap",
+			trigger: RuleTrigger{Field: FieldDependencyCount, Operation: OpEquals, Value: "1"},
+			// DependencyCount uses task.DependsOn directly, no taskMap needed.
+			expected: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			rule := WorkflowRule{
+				ID:           "r",
+				Name:         "test",
+				Enabled:      true,
+				Triggers:     []RuleTrigger{tt.trigger},
+				TriggerLogic: LogicAnd,
+				Actions:      []RuleAction{{ActionType: ActionAddTag, Value: "x"}},
+			}
+			// nil evalCtx must not panic.
+			got := matchesRuleWithContext(task, nil, &rule, nil)
+			if got != tt.expected {
+				t.Errorf("matchesRuleWithContext() = %v, want %v", got, tt.expected)
+			}
+		})
+	}
+}
+
+// TestMatchesRuleWithContext_HierarchicalTrigger_NilTaskMap checks that
+// matchesRuleWithContext is safe when evalCtx is non-nil but TaskMap is nil or
+// empty, which can occur when AllTasks is populated but the caller omits the map.
+func TestMatchesRuleWithContext_HierarchicalTrigger_NilTaskMap(t *testing.T) {
+	task := &models.Task{ID: "task", Status: models.StatusTodo, DependsOn: []string{"blocker1"}}
+
+	blockerTask := &models.Task{ID: "blocker1", Status: models.StatusTodo}
+
+	scenarios := []struct {
+		name    string
+		taskMap map[string]*models.Task
+	}{
+		{name: "nil TaskMap", taskMap: nil},
+		{name: "empty TaskMap", taskMap: map[string]*models.Task{}},
+		{name: "TaskMap missing the blocker", taskMap: map[string]*models.Task{"other": blockerTask}},
+	}
+
+	for _, sc := range scenarios {
+		t.Run(sc.name, func(t *testing.T) {
+			evalCtx := &EvaluationContext{
+				Changes:  []TaskChangeContext{{Task: task}},
+				AllTasks: []*models.Task{task},
+				TaskMap:  sc.taskMap,
+			}
+
+			blockedRule := WorkflowRule{
+				ID:           "r-blocked",
+				Name:         "is blocked",
+				Enabled:      true,
+				Triggers:     []RuleTrigger{{Field: FieldIsBlocked, Operation: OpEquals, Value: "true"}},
+				TriggerLogic: LogicAnd,
+				Actions:      []RuleAction{{ActionType: ActionAddTag, Value: "x"}},
+			}
+			// Must not panic; blocker is unresolvable so result must be false.
+			got := matchesRuleWithContext(task, nil, &blockedRule, evalCtx)
+			if got {
+				t.Errorf("%s: expected false (blocker not in taskMap), got true", sc.name)
+			}
+
+			countRule := WorkflowRule{
+				ID:           "r-count",
+				Name:         "blocker count",
+				Enabled:      true,
+				Triggers:     []RuleTrigger{{Field: FieldBlockerCount, Operation: OpGreaterThan, Value: "0"}},
+				TriggerLogic: LogicAnd,
+				Actions:      []RuleAction{{ActionType: ActionAddTag, Value: "x"}},
+			}
+			got = matchesRuleWithContext(task, nil, &countRule, evalCtx)
+			if got {
+				t.Errorf("%s: expected false (blocker count 0 from empty map), got true", sc.name)
+			}
+		})
+	}
+}
+
+// TestMatchesRuleWithContext_HierarchicalTrigger_TriggerGroup_NilEvalCtx checks
+// that the TriggerGroup path in matchesRuleWithContext is also safe with nil evalCtx.
+func TestMatchesRuleWithContext_HierarchicalTrigger_TriggerGroup_NilEvalCtx(t *testing.T) {
+	task := &models.Task{ID: "task", Status: models.StatusTodo, DependsOn: []string{"blocker1"}}
+
+	rule := WorkflowRule{
+		ID:      "r1",
+		Name:    "trigger group hierarchical nil ctx",
+		Enabled: true,
+		TriggerGroup: &TriggerGroup{
+			Logic: LogicAnd,
+			Triggers: []RuleTrigger{
+				{Field: FieldIsBlocked, Operation: OpEquals, Value: "false"},
+				{Field: FieldBlockerCount, Operation: OpEquals, Value: "0"},
+			},
+		},
+		Actions: []RuleAction{{ActionType: ActionAddTag, Value: "x"}},
+	}
+
+	// Must not panic with nil evalCtx.
+	got := matchesRuleWithContext(task, nil, &rule, nil)
+	// nil taskMap -> blocked=false, count=0 -> both true -> AND match -> true
+	if !got {
+		t.Errorf("expected true (nil evalCtx, blocked=false, count=0), got false")
+	}
+}
