@@ -223,36 +223,31 @@ func (m *FocusBoardModel) rebuildTodayChildren() {
 	m.clampCursor()
 }
 
-// toggleFoldAtCursor toggles the collapsed state of the parent task at or containing the cursor.
+// toggleFoldAtCursor toggles the fold state of the parent at or containing the
+// cursor. For a root row with children, the row itself is the parent. For a
+// child row, the immediate parent (Depth-1) is targeted. The toggle stores an
+// explicit override in parentOverrides that wins over childDepthLimit.
 func (m *FocusBoardModel) toggleFoldAtCursor() {
 	row := m.getRowAtCursor()
 	if row == nil || row.Task == nil {
 		return
 	}
 	var parentID string
+	var parentDepth int
 	if row.TreePrefix == "" {
 		if len(row.Task.Children) == 0 {
 			return
 		}
 		parentID = row.Task.ID
+		parentDepth = 0
 	} else {
-		for _, r := range m.filtered {
-			if r.TreePrefix == "" && r.Task != nil {
-				parentID = r.Task.ID
-			}
-			if r.Task != nil && r.Task.ID == row.Task.ID {
-				break
-			}
-		}
+		parentID = row.ParentID
+		parentDepth = row.Depth - 1
 	}
 	if parentID == "" {
 		return
 	}
-	if m.collapsedParents[parentID] {
-		delete(m.collapsedParents, parentID)
-	} else {
-		m.collapsedParents[parentID] = true
-	}
+	m.parentOverrides[parentID] = !m.isParentExpanded(parentID, parentDepth)
 	m.rebuildTodayChildren()
 }
 
@@ -275,10 +270,7 @@ func (m *FocusBoardModel) expandTodayChildren() {
 
 // collectChildren recursively appends child rows depth-first with tree connectors.
 func (m *FocusBoardModel) collectChildren(out *[]boardRow, parent *models.Task, project *models.Project, ancestorIsLast []bool, seen map[string]bool) {
-	if m.childDepthLimit >= 0 && len(ancestorIsLast) >= m.childDepthLimit {
-		return
-	}
-	if m.collapsedParents[parent.ID] {
+	if !m.isParentExpanded(parent.ID, len(ancestorIsLast)) {
 		return
 	}
 	visible := make([]*models.Task, 0, len(parent.Children))
@@ -296,12 +288,28 @@ func (m *FocusBoardModel) collectChildren(out *[]boardRow, parent *models.Task, 
 			Priority:   child.Priority,
 			Source:     project.Name,
 			TreePrefix: buildBoardTreePrefix(ancestorIsLast, isLast),
+			ParentID:   parent.ID,
+			Depth:      len(ancestorIsLast) + 1,
 		})
 		next := make([]bool, len(ancestorIsLast)+1)
 		copy(next, ancestorIsLast)
 		next[len(ancestorIsLast)] = isLast
 		m.collectChildren(out, child, project, next, seen)
 	}
+}
+
+// isParentExpanded reports whether a parent task at the given depth should
+// have its children rendered in the Today tab. Explicit per-parent overrides
+// in parentOverrides take precedence; otherwise the global childDepthLimit is
+// consulted (negative means unlimited).
+func (m *FocusBoardModel) isParentExpanded(id string, depth int) bool {
+	if v, ok := m.parentOverrides[id]; ok {
+		return v
+	}
+	if m.childDepthLimit < 0 {
+		return true
+	}
+	return depth < m.childDepthLimit
 }
 
 // parentRowIndices returns the indices of rows in m.filtered that are parent

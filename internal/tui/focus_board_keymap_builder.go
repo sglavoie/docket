@@ -72,7 +72,7 @@ func buildFocusBoardKeyMap(m *FocusBoardModel) *keymap.KeyMap {
 	setDepth := func(depth int, label string) keymap.Action {
 		return func() (tea.Model, tea.Cmd) {
 			m.childDepthLimit = depth
-			clear(m.collapsedParents)
+			clear(m.parentOverrides)
 			m.rebuildTodayChildren()
 			m.setStatus(label)
 			return m, nil

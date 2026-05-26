@@ -34,6 +34,8 @@ type boardRow struct {
 	Source      string
 	TreePrefix  string // non-empty for auto-expanded children of planned items in Today tab
 	GroupHeader string // non-empty for non-selectable group separator rows (Task will be nil)
+	ParentID    string // immediate parent task ID for child rows in Today tab; empty for roots/non-tree rows
+	Depth       int    // 0 for root tasks; n for n-th level descendant in Today tab
 }
 
 func (r boardRow) isTask() bool {
@@ -55,14 +57,14 @@ type FocusBoardModel struct {
 	dailyPlan    *[]FocusTask // shared with AppModel for reordering
 
 	// Data
-	rows             []boardRow
-	allRows          []boardRow // all non-complete, non-snoozed tasks — used as tag pool for autocomplete and tag filter picker
-	nextRows         []boardRow
-	closedRows       []boardRow
-	todayRows        []boardRow
-	filtered         []boardRow
-	carriedOverIDs   map[string]bool
-	collapsedParents map[string]bool // per-parent collapsed state in Today tab
+	rows            []boardRow
+	allRows         []boardRow // all non-complete, non-snoozed tasks — used as tag pool for autocomplete and tag filter picker
+	nextRows        []boardRow
+	closedRows      []boardRow
+	todayRows       []boardRow
+	filtered        []boardRow
+	carriedOverIDs  map[string]bool
+	parentOverrides map[string]bool // per-parent fold override in Today tab: true=force expand, false=force collapse, absent=follow childDepthLimit
 
 	// Tabs
 	tabs TabState
@@ -140,7 +142,7 @@ func NewFocusBoardModel(cfg *config.Config, manager *config.Manager, dailyPlan *
 		dailyPlan:         dailyPlan,
 		dailyPlanIDs:      dailyPlanIDs,
 		carriedOverIDs:    carriedOverIDs,
-		collapsedParents:  make(map[string]bool),
+		parentOverrides:   make(map[string]bool),
 		addInput:          ti,
 		editInput:         ei,
 		focusMode:         initialFocusMode,
