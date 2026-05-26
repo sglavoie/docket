@@ -34,3 +34,39 @@ func TestRecentTaskVisitHelpers(t *testing.T) {
 		}
 	})
 }
+
+// TestGetMaxRecentTaskVisits_ZeroReturnsDefault verifies that a stored value of
+// 0 (which is below the minimum valid value of 1) returns the default instead.
+func TestGetMaxRecentTaskVisits_ZeroReturnsDefault(t *testing.T) {
+	cfg := NewConfig()
+	zero := 0
+	cfg.MaxRecentTaskVisits = &zero
+
+	got := cfg.GetMaxRecentTaskVisits()
+	if got != DefaultMaxRecentTaskVisits {
+		t.Errorf("expected default %d for MaxRecentTaskVisits=0, got %d", DefaultMaxRecentTaskVisits, got)
+	}
+}
+
+// TestGetMaxRecentTaskVisits_NilReturnsDefault verifies nil returns the default.
+func TestGetMaxRecentTaskVisits_NilReturnsDefault(t *testing.T) {
+	cfg := NewConfig()
+	cfg.MaxRecentTaskVisits = nil
+
+	got := cfg.GetMaxRecentTaskVisits()
+	if got != DefaultMaxRecentTaskVisits {
+		t.Errorf("expected default %d for nil MaxRecentTaskVisits, got %d", DefaultMaxRecentTaskVisits, got)
+	}
+}
+
+// TestGetMaxRecentTaskVisits_ValidValuePassesThrough ensures normal values are not modified.
+func TestGetMaxRecentTaskVisits_ValidValuePassesThrough(t *testing.T) {
+	cfg := NewConfig()
+	v := 25
+	cfg.MaxRecentTaskVisits = &v
+
+	got := cfg.GetMaxRecentTaskVisits()
+	if got != 25 {
+		t.Errorf("expected 25, got %d", got)
+	}
+}

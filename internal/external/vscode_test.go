@@ -213,9 +213,6 @@ func TestEditorCommandAddsWaitForVariants(t *testing.T) {
 func TestEditorCommandWithFlags(t *testing.T) {
 	// "nvim -u NORC" should produce: nvim -u NORC <file>
 	cmd := EditorCommand("nvim -u NORC", "/path/to/file.md")
-	if cmd.Path == "" && cmd.Args[0] != "nvim" {
-		// cmd.Path is the resolved path; check Args instead
-	}
 	args := cmd.Args // Args[0] is the executable (possibly full path)
 	if len(args) < 4 {
 		t.Fatalf("expected at least 4 args (nvim, -u, NORC, file), got %v", args)

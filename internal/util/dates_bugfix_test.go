@@ -78,3 +78,44 @@ func TestParseFlexibleDate_IntegerOverflow(t *testing.T) {
 		})
 	}
 }
+
+// TestParseMonthDay_LeapDayAdvancesToNextLeapYear is a deterministic regression
+// test for the silent-march-1 bug: parsing "feb 29" from a base date of
+// 2024-03-01 (after the leap day has passed) must resolve to 2028-02-29,
+// not 2025-03-01.
+func TestParseMonthDay_LeapDayAdvancesToNextLeapYear(t *testing.T) {
+	// Base date: one day after the 2024 leap day, so 2024 is in the past.
+	base := time.Date(2024, 3, 1, 0, 0, 0, 0, time.UTC)
+	got, err := parseMonthDay("feb", "29", base)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	want := time.Date(2028, 2, 29, 0, 0, 0, 0, time.UTC)
+	if !got.Equal(want) {
+		t.Errorf("parseMonthDay(feb, 29, 2024-03-01) = %s, want %s", got.Format("2006-01-02"), want.Format("2006-01-02"))
+	}
+}
+
+// TestParseMonthDay_LeapDayInCurrentLeapYear verifies that "feb 29" resolves
+// to the current year when the current year is a leap year and the day is
+// still in the future.
+func TestParseMonthDay_LeapDayInCurrentLeapYear(t *testing.T) {
+	// Base date: February 1, 2028 (a leap year), before Feb 29.
+	base := time.Date(2028, 2, 1, 0, 0, 0, 0, time.UTC)
+	got, err := parseMonthDay("feb", "29", base)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	want := time.Date(2028, 2, 29, 0, 0, 0, 0, time.UTC)
+	if !got.Equal(want) {
+		t.Errorf("parseMonthDay(feb, 29, 2028-02-01) = %s, want %s", got.Format("2006-01-02"), want.Format("2006-01-02"))
+	}
+}
+
+// TestParseMonthDay_InvalidLeapDay verifies that "feb 30" remains an error.
+func TestParseMonthDay_InvalidLeapDay(t *testing.T) {
+	base := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+	if _, err := parseMonthDay("feb", "30", base); err == nil {
+		t.Error("expected error for feb 30, got nil")
+	}
+}

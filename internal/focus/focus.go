@@ -30,7 +30,7 @@ func CollectActionableTasks(projects []*models.Project) []FocusTask {
 			if task == nil {
 				continue
 			}
-			if task.Status.IsComplete() || task.IsSnoozed() || project.HasIncompleteDependencies(task) {
+			if task.Status.IsComplete() || task.Status == models.StatusBlocked || task.IsSnoozed() || project.HasIncompleteDependencies(task) {
 				continue
 			}
 			tasks = append(tasks, FocusTask{Task: task, Project: project})

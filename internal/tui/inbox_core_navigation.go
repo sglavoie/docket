@@ -37,6 +37,17 @@ func (c *inboxCore) advanceToNext(autoClose bool) tea.Cmd {
 		}
 	}
 
+	// Also search backward so that processing/skipping the last item does not
+	// close the session while earlier unprocessed items remain.
+	for i := 0; i < c.currentIndex; i++ {
+		task, _ := c.backend.taskRef(i)
+		if !c.processedIDs[task.ID] && !c.skippedIDs[task.ID] {
+			c.currentIndex = i
+			c.statusMessage = ""
+			return nil
+		}
+	}
+
 	if autoClose {
 		if len(c.processedIDs) == 0 && len(c.skippedIDs) == 0 {
 			c.statusMessage = "No tasks were processed"

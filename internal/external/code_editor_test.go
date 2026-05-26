@@ -34,8 +34,8 @@ func TestDetectEditorPattern(t *testing.T) {
 		{"goland", patternLineFlag},
 		{"pycharm", patternLineFlag},
 		{"webstorm", patternLineFlag},
-		{"helix", patternUnknown},
-		{"hx", patternUnknown},
+		{"helix", patternPlusLine},
+		{"hx", patternPlusLine},
 		{"unknown-tool", patternUnknown},
 	}
 	for _, tc := range cases {
@@ -78,9 +78,9 @@ func TestOpenCodeReference_MissingEditor(t *testing.T) {
 }
 
 func TestOpenCodeReference_UnknownEditorBlocksAndReturnsExitError(t *testing.T) {
-	// Confirm "hx" is still classified as patternUnknown.
-	if detectEditorPattern("hx") != patternUnknown {
-		t.Fatalf("expected hx to be patternUnknown")
+	// Confirm "hx" is now classified as patternPlusLine (terminal editor).
+	if detectEditorPattern("hx") != patternPlusLine {
+		t.Fatalf("expected hx to be patternPlusLine")
 	}
 
 	dir := t.TempDir()

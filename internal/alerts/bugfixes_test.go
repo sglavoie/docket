@@ -50,3 +50,75 @@ func TestCheckProjectHealth_AllZeroUpdatedAtSkipped(t *testing.T) {
 		t.Errorf("expected 0 project-health alerts when all task UpdatedAt are zero, got %d (%+v)", len(alerts), alerts)
 	}
 }
+
+// TestCheckOverdueTasks_TimedDueEarlierToday ensures that a task with HasTime=true
+// whose exact due time has already passed today is classified as overdue, not due-soon.
+func TestCheckOverdueTasks_TimedDueEarlierToday(t *testing.T) {
+	// now = 2026-06-10 14:00; task was due at 09:00 the same day.
+	now := time.Date(2026, 6, 10, 14, 0, 0, 0, time.UTC)
+	dueAt := time.Date(2026, 6, 10, 9, 0, 0, 0, time.UTC)
+	task := &models.Task{
+		ID:      "timed-overdue",
+		Title:   "Timed task past due",
+		Status:  models.StatusTodo,
+		DueDate: &dueAt,
+		HasTime: true,
+	}
+	projects := []ProjectData{{
+		Project: &models.Project{ID: "p1", Name: "P1"},
+		Tasks:   []*models.Task{task},
+	}}
+
+	cfg := DefaultAlertConfig()
+	overdueAlerts := checkOverdueTasks(cfg, projects, now)
+	if len(overdueAlerts) != 1 {
+		t.Fatalf("expected 1 overdue alert for timed task due earlier today, got %d (%+v)", len(overdueAlerts), overdueAlerts)
+	}
+
+	// The same task must NOT appear in the due-soon bucket.
+	dueSoonAlerts := checkDueSoonTasks(cfg, projects, now)
+	for _, a := range dueSoonAlerts {
+		if a.TaskID == task.ID {
+			t.Errorf("timed task due earlier today must not appear in due-soon alerts")
+		}
+	}
+}
+
+// TestCheckDueSoonTasks_TimedDueLaterToday ensures that a task with HasTime=true
+// whose exact due time is still in the future today is classified as due-soon.
+func TestCheckDueSoonTasks_TimedDueLaterToday(t *testing.T) {
+	// now = 2026-06-10 08:00; task is due at 17:00 the same day.
+	now := time.Date(2026, 6, 10, 8, 0, 0, 0, time.UTC)
+	dueAt := time.Date(2026, 6, 10, 17, 0, 0, 0, time.UTC)
+	task := &models.Task{
+		ID:      "timed-due-soon",
+		Title:   "Timed task due later",
+		Status:  models.StatusTodo,
+		DueDate: &dueAt,
+		HasTime: true,
+	}
+	projects := []ProjectData{{
+		Project: &models.Project{ID: "p1", Name: "P1"},
+		Tasks:   []*models.Task{task},
+	}}
+
+	cfg := DefaultAlertConfig()
+	dueSoonAlerts := checkDueSoonTasks(cfg, projects, now)
+	found := false
+	for _, a := range dueSoonAlerts {
+		if a.TaskID == task.ID {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("timed task due later today should appear in due-soon alerts")
+	}
+
+	// Must NOT appear in overdue.
+	overdueAlerts := checkOverdueTasks(cfg, projects, now)
+	for _, a := range overdueAlerts {
+		if a.TaskID == task.ID {
+			t.Errorf("timed task due later today must not appear in overdue alerts")
+		}
+	}
+}

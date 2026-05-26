@@ -371,8 +371,8 @@ func TestConfigManager_NegativeMaxPinnedAndRecentClamped(t *testing.T) {
 	if cfg.MaxRecentTaskVisits == nil {
 		t.Fatal("MaxRecentTaskVisits should not be nil")
 	}
-	if *cfg.MaxRecentTaskVisits != 0 {
-		t.Errorf("expected MaxRecentTaskVisits clamped to 0, got %d", *cfg.MaxRecentTaskVisits)
+	if *cfg.MaxRecentTaskVisits != 1 {
+		t.Errorf("expected MaxRecentTaskVisits clamped to 1, got %d", *cfg.MaxRecentTaskVisits)
 	}
 }
 
@@ -533,6 +533,53 @@ func TestConfigManager_LoadNoWarnOnFlaggedEditor(t *testing.T) {
 			}
 			if captured != "" {
 				t.Errorf("Load() emitted unexpected stderr for editor %q:\n%s", tc.editor, captured)
+			}
+		})
+	}
+}
+
+// TestConfigManager_MaxRecentTaskVisitsClampedToRange verifies that values
+// outside [1, 50] are clamped: 0 → 1, >50 → 50.
+func TestConfigManager_MaxRecentTaskVisitsClampedToRange(t *testing.T) {
+	cases := []struct {
+		name      string
+		stored    int
+		wantAfter int
+	}{
+		{"zero clamped to min", 0, 1},
+		{"negative clamped to min", -5, 1},
+		{"above max clamped to 50", 99, 50},
+		{"valid unchanged", 20, 20},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			tmpDir := t.TempDir()
+			configPath := filepath.Join(tmpDir, "cfg.json")
+			data, _ := json.Marshal(map[string]any{
+				"version":                1,
+				"data_dir":               tmpDir,
+				"projects":               []any{},
+				"max_recent_task_visits": tc.stored,
+			})
+			if err := os.WriteFile(configPath, data, 0644); err != nil {
+				t.Fatal(err)
+			}
+
+			cfg, err := NewManager(configPath).Load()
+			if err != nil {
+				t.Fatalf("Load failed: %v", err)
+			}
+			if cfg.MaxRecentTaskVisits == nil {
+				t.Fatal("MaxRecentTaskVisits should not be nil")
+			}
+			if *cfg.MaxRecentTaskVisits != tc.wantAfter {
+				t.Errorf("stored %d: expected clamped to %d, got %d", tc.stored, tc.wantAfter, *cfg.MaxRecentTaskVisits)
+			}
+			// GetMaxRecentTaskVisits must agree.
+			got := cfg.GetMaxRecentTaskVisits()
+			if got != tc.wantAfter {
+				t.Errorf("GetMaxRecentTaskVisits() = %d, want %d", got, tc.wantAfter)
 			}
 		})
 	}

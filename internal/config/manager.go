@@ -174,7 +174,7 @@ func (m *Manager) Load() (*Config, error) { //nolint:gocyclo
 	clampIntPtrMin(config.ReviewFutureDays, "ReviewFutureDays")
 	clampIntPtrMin(config.ReviewCompletedHours, "ReviewCompletedHours")
 	clampIntPtrMin(config.MaxPinnedBarItems, "MaxPinnedBarItems")
-	clampIntPtrMin(config.MaxRecentTaskVisits, "MaxRecentTaskVisits")
+	clampIntPtrRange(config.MaxRecentTaskVisits, "MaxRecentTaskVisits", 1, 50)
 	clampIntPtrMin(config.RecentActivityLimit, "RecentActivityLimit")
 	clampIntPtrMin(config.MaxActivityEntries, "MaxActivityEntries")
 	clampIntPtrMin(config.WeeklyStaleProjectDays, "WeeklyStaleProjectDays")

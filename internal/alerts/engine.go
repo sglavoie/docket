@@ -155,7 +155,13 @@ func checkOverdueTasks(cfg AlertConfig, projects []ProjectData, now time.Time) [
 				continue
 			}
 			dueDay := time.Date(task.DueDate.Year(), task.DueDate.Month(), task.DueDate.Day(), 0, 0, 0, 0, task.DueDate.Location())
-			if dueDay.Before(today) {
+			// When HasTime is set, a task whose exact time has passed is overdue
+			// even if its calendar day is today.
+			overdue := dueDay.Before(today)
+			if task.HasTime {
+				overdue = task.DueDate.Before(now)
+			}
+			if overdue {
 				severity := SeverityWarning
 				if now.Sub(dueDay) > 7*24*time.Hour {
 					severity = SeverityUrgent
@@ -187,6 +193,11 @@ func checkDueSoonTasks(cfg AlertConfig, projects []ProjectData, now time.Time) [
 				continue
 			}
 			dueDay := time.Date(task.DueDate.Year(), task.DueDate.Month(), task.DueDate.Day(), 0, 0, 0, 0, task.DueDate.Location())
+			// When HasTime is set, a task whose exact time has already passed is
+			// overdue — exclude it from the due-soon bucket.
+			if task.HasTime && task.DueDate.Before(now) {
+				continue
+			}
 			// Due today or in the future but within the horizon (not overdue)
 			if !dueDay.Before(today) && !dueDay.After(horizon) {
 				alerts = append(alerts, Alert{

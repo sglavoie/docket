@@ -11,9 +11,9 @@ type RecentTaskVisit struct {
 }
 
 // GetMaxRecentTaskVisits returns the maximum number of tasks shown in the quick-switch overlay.
-// Returns 15 if not set.
+// Returns 15 if not set or set below the minimum valid value of 1.
 func (c *Config) GetMaxRecentTaskVisits() int {
-	if c.MaxRecentTaskVisits == nil {
+	if c.MaxRecentTaskVisits == nil || *c.MaxRecentTaskVisits < 1 {
 		return DefaultMaxRecentTaskVisits
 	}
 	return *c.MaxRecentTaskVisits

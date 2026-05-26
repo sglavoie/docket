@@ -333,6 +333,9 @@ func ParseRelativeDateWithConfig(input, weekEndDay string) (time.Time, error) {
 
 // parseMonthDay builds a date from a 3-letter month abbreviation and a day string.
 // If the resulting date is in the past, the next occurrence (next year) is returned.
+// For month/day combinations that only exist in certain years (e.g. Feb 29),
+// the function advances to the next valid year rather than accepting Go's
+// date normalization (which would silently overflow into the next month).
 // Returns an error if the day is out of range for the given month.
 func parseMonthDay(monthStr, dayStr string, today time.Time) (time.Time, error) {
 	month, ok := months[monthStr]
@@ -348,7 +351,17 @@ func parseMonthDay(monthStr, dayStr string, today time.Time) (time.Time, error) 
 		return time.Time{}, fmt.Errorf("invalid date: %s %d", monthStr, day)
 	}
 	if !candidate.After(today) {
-		candidate = time.Date(year+1, month, day, 0, 0, 0, 0, today.Location())
+		// Advance to a future year that actually contains this month/day.
+		// For most dates year+1 is sufficient; for Feb 29 we must find the
+		// next leap year.
+		nextYear := year + 1
+		for {
+			candidate = time.Date(nextYear, month, day, 0, 0, 0, 0, today.Location())
+			if candidate.Month() == month && candidate.Day() == day {
+				break
+			}
+			nextYear++
+		}
 	}
 	return candidate, nil
 }

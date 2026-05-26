@@ -42,7 +42,7 @@ func detectEditorPattern(editor string) editorPattern {
 
 	// Terminal editors use +line file
 	switch base {
-	case "vim", "nvim", "vi", "nano", "emacs", "emacsclient", "pico":
+	case "vim", "nvim", "vi", "nano", "emacs", "emacsclient", "pico", "hx", "helix":
 		return patternPlusLine
 	}
 
