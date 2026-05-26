@@ -30,7 +30,7 @@ func computeThroughput(tasks []*models.Task, cutoff, now time.Time, buckets []bu
 		}
 		completedAt := *t.CompletedAt
 
-		if !effectiveCutoff.IsZero() && completedAt.Before(effectiveCutoff) {
+		if (!effectiveCutoff.IsZero() && completedAt.Before(effectiveCutoff)) || completedAt.After(now) {
 			continue
 		}
 

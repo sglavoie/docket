@@ -85,4 +85,32 @@ func TestCycleTime(t *testing.T) {
 			t.Errorf("Average = %v hours, want ~%v hours", actualHours, expectedHours)
 		}
 	})
+
+	t.Run("excludes tasks completed after now", func(t *testing.T) {
+		recentStart := now.AddDate(0, 0, -3)
+		recentDone := now.AddDate(0, 0, -1)
+		futureStart := now.AddDate(0, 0, -2)
+		futureDone := now.Add(3 * time.Hour)
+
+		tasks := []*models.Task{
+			makeTask(models.StatusDone, timePtr(recentDone), []*models.ActivityEntry{
+				{Timestamp: recentStart, Field: "status", OldValue: "todo", NewValue: "in_progress"},
+			}),
+			makeTask(models.StatusDone, timePtr(futureDone), []*models.ActivityEntry{
+				{Timestamp: futureStart, Field: "status", OldValue: "todo", NewValue: "in_progress"},
+			}),
+		}
+
+		cutoff := TimeRange7d.Cutoff(now)
+		buckets := timeBuckets(cutoff, now, granularityDay)
+		result := computeCycleTime(tasks, cutoff, now, buckets)
+
+		if result.Count != 1 {
+			t.Errorf("Count = %d, want 1 (future completion excluded)", result.Count)
+		}
+		expectedHours := 48.0
+		if actualHours := result.Average.Hours(); actualHours < expectedHours-1 || actualHours > expectedHours+1 {
+			t.Errorf("Average = %v hours, want ~%v hours", actualHours, expectedHours)
+		}
+	})
 }

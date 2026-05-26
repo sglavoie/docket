@@ -159,8 +159,9 @@ func (d *Dispatcher) dispatchTopLevel(key string) (tea.Model, tea.Cmd, bool) {
 	return nil, nil, false
 }
 
-// findPrefixNode resolves the PrefixNode for a given multi-char prefix string.
-// Each rune in prefix must correspond to a PrefixNode key in the tree.
+// findPrefixNode resolves the active PrefixNode for a given multi-char prefix
+// string. Each rune in prefix must correspond to a PrefixNode key in the tree,
+// and every prefix gate along that path must pass.
 func (d *Dispatcher) findPrefixNode(prefix string, entries []Entry) *PrefixNode {
 	if prefix == "" {
 		return nil
@@ -172,6 +173,9 @@ func (d *Dispatcher) findPrefixNode(prefix string, entries []Entry) *PrefixNode 
 
 	for _, e := range entries {
 		if e.PrefixNode != nil && e.PrefixNode.Key == firstKey {
+			if e.PrefixNode.Gate != nil && !e.PrefixNode.Gate() {
+				return nil
+			}
 			if rest == "" {
 				return e.PrefixNode
 			}

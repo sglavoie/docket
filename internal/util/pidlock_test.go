@@ -65,6 +65,41 @@ func TestAcquirePIDLock_LiveLockRejected(t *testing.T) {
 	}
 }
 
+func TestAcquirePIDLock_NonPositivePIDTreatedAsStale(t *testing.T) {
+	tests := []struct {
+		name string
+		pid  string
+	}{
+		{name: "zero", pid: "0"},
+		{name: "negative", pid: "-1"},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			path := filepath.Join(t.TempDir(), "pid.lock")
+			if err := os.WriteFile(path, []byte(tc.pid), 0o644); err != nil {
+				t.Fatalf("seed lock: %v", err)
+			}
+			if err := AcquirePIDLock(path); err != nil {
+				t.Fatalf("AcquirePIDLock over non-positive PID %s: %v", tc.pid, err)
+			}
+			defer ReleasePIDLock(path)
+
+			data, err := os.ReadFile(path)
+			if err != nil {
+				t.Fatalf("read lock: %v", err)
+			}
+			pid, err := strconv.Atoi(strings.TrimSpace(string(data)))
+			if err != nil {
+				t.Fatalf("parse pid: %v", err)
+			}
+			if pid != os.Getpid() {
+				t.Errorf("lock pid = %d, want %d", pid, os.Getpid())
+			}
+		})
+	}
+}
+
 // TestAcquirePIDLock_StaleByAge verifies a too-old lock is treated as stale
 // even if its PID happens to be alive.
 func TestAcquirePIDLock_StaleByAge(t *testing.T) {
@@ -123,4 +158,13 @@ func TestAcquirePIDLock_ConcurrentRace(t *testing.T) {
 // TestReleasePIDLock_Idempotent ensures release does not error on missing file.
 func TestReleasePIDLock_Idempotent(t *testing.T) {
 	ReleasePIDLock(filepath.Join(t.TempDir(), "never-existed.lock"))
+}
+
+func TestIsProcessAlive_NonPositivePID(t *testing.T) {
+	tests := []int{0, -1, -42}
+	for _, pid := range tests {
+		if isProcessAlive(pid) {
+			t.Fatalf("isProcessAlive(%d) = true, want false", pid)
+		}
+	}
 }

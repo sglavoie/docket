@@ -33,8 +33,8 @@ func computeCompletion(tasks []*models.Task, cutoff, now time.Time, buckets []bu
 		}
 		completedAt := *t.CompletedAt
 
-		// Skip tasks completed before the effective cutoff
-		if !effectiveCutoff.IsZero() && completedAt.Before(effectiveCutoff) {
+		// Skip tasks outside the active metric window.
+		if (!effectiveCutoff.IsZero() && completedAt.Before(effectiveCutoff)) || completedAt.After(now) {
 			continue
 		}
 

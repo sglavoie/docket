@@ -56,6 +56,32 @@ func TestCompletion(t *testing.T) {
 		}
 	})
 
+	t.Run("excludes tasks completed after now", func(t *testing.T) {
+		recent := now.AddDate(0, 0, -1)
+		futureDone := now.Add(2 * time.Hour)
+		futureCanceled := now.Add(4 * time.Hour)
+
+		tasks := []*models.Task{
+			makeTask(models.StatusDone, timePtr(recent), nil),
+			makeTask(models.StatusDone, timePtr(futureDone), nil),
+			makeTask(models.StatusCanceled, timePtr(futureCanceled), nil),
+		}
+
+		cutoff := TimeRange7d.Cutoff(now)
+		buckets := timeBuckets(cutoff, now, granularityDay)
+		result := computeCompletion(tasks, cutoff, now, buckets)
+
+		if result.Total != 1 {
+			t.Errorf("Total = %d, want 1 (future completions excluded)", result.Total)
+		}
+		if result.Completed != 1 {
+			t.Errorf("Completed = %d, want 1 (future completions excluded)", result.Completed)
+		}
+		if result.Rate != 1 {
+			t.Errorf("Rate = %f, want 1", result.Rate)
+		}
+	})
+
 	t.Run("zero tasks", func(t *testing.T) {
 		cutoff := TimeRange7d.Cutoff(now)
 		buckets := timeBuckets(cutoff, now, granularityDay)

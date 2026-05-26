@@ -87,6 +87,62 @@ func TestConfigManager_LoadDoesNotWarnOnEmptySlugDuplicates(t *testing.T) {
 	}
 }
 
+func TestConfigManager_LoadDropsDuplicateNonEmptySlug(t *testing.T) {
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, "test-config.json")
+
+	data := `{
+		"version": 1,
+		"data_dir": "/tmp/tt-test",
+		"projects": [
+			{"id": "p1", "slug": "shared", "name": "First", "path": "/tmp/first"},
+			{"id": "p2", "slug": "shared", "name": "Second-Duplicate", "path": "/tmp/second"},
+			{"id": "p3", "slug": "unique", "name": "Third", "path": "/tmp/third"}
+		]
+	}`
+	if err := os.WriteFile(configPath, []byte(data), 0644); err != nil {
+		t.Fatalf("failed to write test config: %v", err)
+	}
+
+	manager := NewManager(configPath)
+
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("pipe failed: %v", err)
+	}
+	oldStderr := os.Stderr
+	os.Stderr = w
+
+	cfg, loadErr := manager.Load()
+	_ = w.Close()
+	os.Stderr = oldStderr
+	if loadErr != nil {
+		_ = r.Close()
+		t.Fatalf("Load failed: %v", loadErr)
+	}
+
+	buf := make([]byte, 4096)
+	n, _ := r.Read(buf)
+	_ = r.Close()
+	output := string(buf[:n])
+
+	if len(cfg.Projects) != 2 {
+		t.Fatalf("expected 2 projects after slug dedupe, got %d", len(cfg.Projects))
+	}
+	if cfg.Projects[0].ID != "p1" || cfg.Projects[0].Slug != "shared" {
+		t.Fatalf("expected first shared-slug project kept, got %+v", cfg.Projects[0])
+	}
+	if cfg.GetProject("p2") != nil {
+		t.Error("expected later duplicate-slug project to be dropped")
+	}
+	if cfg.GetProject("shared") == nil || cfg.GetProject("shared").ID != "p1" {
+		t.Error("expected slug lookup to resolve unambiguously to first project")
+	}
+	if !contains(output, `dropping duplicate project slug "shared"`) {
+		t.Errorf("expected duplicate slug warning, got:\n%s", output)
+	}
+}
+
 func contains(haystack, needle string) bool {
 	for i := 0; i+len(needle) <= len(haystack); i++ {
 		if haystack[i:i+len(needle)] == needle {

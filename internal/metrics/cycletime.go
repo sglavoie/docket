@@ -41,7 +41,7 @@ func computeCycleTime(tasks []*models.Task, cutoff, now time.Time, buckets []buc
 		}
 		completedAt := *t.CompletedAt
 
-		if !effectiveCutoff.IsZero() && completedAt.Before(effectiveCutoff) {
+		if (!effectiveCutoff.IsZero() && completedAt.Before(effectiveCutoff)) || completedAt.After(now) {
 			continue
 		}
 

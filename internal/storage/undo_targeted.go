@@ -37,29 +37,35 @@ func buildTargetedRestore(currentContent string, snapshotResult *ParseResult, ta
 	}
 	currentResult.Tasks = filtered
 
-	// Build a set of current task IDs for quick lookup
+	// Build a lookup of current tasks by ID for quick targeted updates.
+	currentTasks := make(map[string]*models.Task, len(currentResult.Tasks))
 	currentIDs := make(map[string]bool, len(currentResult.Tasks))
 	for _, t := range currentResult.Tasks {
+		currentTasks[t.ID] = t
 		currentIDs[t.ID] = true
 	}
 
-	// Replace targeted tasks' fields, or re-add tasks that were deleted
+	// Restore targeted tasks that still exist in the current content.
 	for _, taskID := range taskIDs {
 		snapTask, ok := snapshotMap[taskID]
 		if !ok {
 			continue // Task didn't exist in snapshot and was already removed above
 		}
-		if !currentIDs[taskID] {
-			// Task was deleted after snapshot; re-add it from the snapshot
-			currentResult.Tasks = append(currentResult.Tasks, snapTask)
+		if curTask, ok := currentTasks[taskID]; ok {
+			restoreTaskFields(curTask, snapTask)
+		}
+	}
+
+	// Re-add targeted tasks that were deleted after the snapshot, inserting each
+	// one at its original position from the snapshot instead of appending it.
+	for snapshotIndex, snapTask := range snapshotResult.Tasks {
+		if !targetSet[snapTask.ID] || currentIDs[snapTask.ID] {
 			continue
 		}
-		for _, curTask := range currentResult.Tasks {
-			if curTask.ID == taskID {
-				restoreTaskFields(curTask, snapTask)
-				break
-			}
-		}
+
+		insertAt := findSnapshotRestoreIndex(snapshotResult.Tasks, currentResult.Tasks, currentIDs, snapshotIndex)
+		currentResult.Tasks = insertTaskAt(currentResult.Tasks, insertAt, snapTask)
+		currentIDs[snapTask.ID] = true
 	}
 
 	return WriteTasksMarkdownWithSections(
@@ -126,4 +132,45 @@ func copyStringSlice(s []string) []string {
 	c := make([]string, len(s))
 	copy(c, s)
 	return c
+}
+
+func findSnapshotRestoreIndex(snapshotTasks, currentTasks []*models.Task, currentIDs map[string]bool, snapshotIndex int) int {
+	for i := snapshotIndex + 1; i < len(snapshotTasks); i++ {
+		if !currentIDs[snapshotTasks[i].ID] {
+			continue
+		}
+		return indexOfTask(currentTasks, snapshotTasks[i].ID)
+	}
+
+	for i := snapshotIndex - 1; i >= 0; i-- {
+		if !currentIDs[snapshotTasks[i].ID] {
+			continue
+		}
+		return indexOfTask(currentTasks, snapshotTasks[i].ID) + 1
+	}
+
+	return len(currentTasks)
+}
+
+func indexOfTask(tasks []*models.Task, taskID string) int {
+	for i, task := range tasks {
+		if task.ID == taskID {
+			return i
+		}
+	}
+	return len(tasks)
+}
+
+func insertTaskAt(tasks []*models.Task, index int, task *models.Task) []*models.Task {
+	if index < 0 {
+		index = 0
+	}
+	if index > len(tasks) {
+		index = len(tasks)
+	}
+
+	tasks = append(tasks, nil)
+	copy(tasks[index+1:], tasks[index:])
+	tasks[index] = task
+	return tasks
 }

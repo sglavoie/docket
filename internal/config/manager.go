@@ -244,10 +244,11 @@ func (m *Manager) Load() (*Config, error) { //nolint:gocyclo
 		config.Projects = validProjects
 	}
 
-	// Drop duplicate-ID projects (keeping the first occurrence) and warn on
-	// duplicate slugs. A duplicate ID is a hard invariant violation: it would
-	// make GetProject ambiguous and cause RemoveProject to leave a dangling
-	// twin behind. Skip empty slugs so projects missing the field don't
+	// Drop duplicate-ID and duplicate non-empty-slug projects, keeping the
+	// first occurrence. Both are hard invariant violations because GetProject
+	// resolves by first match; leaving later duplicates in place would make the
+	// surviving config ambiguous relative to create/edit paths, which require
+	// slug uniqueness. Skip empty slugs so projects missing the field don't
 	// produce a spurious "duplicate" warning for every pair of empty-slug
 	// entries.
 	seenIDs := make(map[string]bool)
@@ -259,7 +260,8 @@ func (m *Manager) Load() (*Config, error) { //nolint:gocyclo
 			continue
 		}
 		if p.Slug != "" && seenSlugs[p.Slug] {
-			fmt.Fprintf(os.Stderr, "warning: duplicate project slug %q in config\n", p.Slug)
+			fmt.Fprintf(os.Stderr, "warning: dropping duplicate project slug %q from config\n", p.Slug)
+			continue
 		}
 		seenIDs[p.ID] = true
 		if p.Slug != "" {

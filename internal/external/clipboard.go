@@ -67,12 +67,17 @@ func CopyNoteTitles(notes []*models.Note) (string, error) {
 	return text, clipboard.WriteAll(text)
 }
 
-// CopyNoteBody copies a note's body to the clipboard.
-func CopyNoteBody(note *models.Note) (string, error) {
+func noteBodyText(note *models.Note) string {
 	text := note.Body
 	if text == "" {
-		text = note.Title
+		return note.Title
 	}
+	return text
+}
+
+// CopyNoteBody copies a note's body to the clipboard.
+func CopyNoteBody(note *models.Note) (string, error) {
+	text := noteBodyText(note)
 	return text, clipboard.WriteAll(text)
 }
 
@@ -80,7 +85,7 @@ func CopyNoteBody(note *models.Note) (string, error) {
 func CopyNoteBodies(notes []*models.Note) (string, error) {
 	var parts []string
 	for _, note := range notes {
-		parts = append(parts, note.Body)
+		parts = append(parts, noteBodyText(note))
 	}
 	text := strings.Join(parts, "\n---\n\n")
 	return text, clipboard.WriteAll(text)

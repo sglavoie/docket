@@ -47,6 +47,31 @@ func TestThroughput(t *testing.T) {
 			t.Errorf("AvgPerDay = %f, want ~1.0", result.AvgPerDay)
 		}
 	})
+
+	t.Run("excludes tasks completed after now", func(t *testing.T) {
+		recent := now.AddDate(0, 0, -1)
+		future := now.Add(2 * time.Hour)
+
+		tasks := []*models.Task{
+			makeTask(models.StatusDone, timePtr(recent), nil),
+			makeTask(models.StatusDone, timePtr(future), nil),
+		}
+
+		cutoff := TimeRange7d.Cutoff(now)
+		buckets := timeBuckets(cutoff, now, granularityDay)
+		result := computeThroughput(tasks, cutoff, now, buckets)
+
+		if result.Total != 1 {
+			t.Errorf("Total = %d, want 1 (future completion excluded)", result.Total)
+		}
+		var sum float64
+		for _, count := range result.PerBucket {
+			sum += count
+		}
+		if sum != 1 {
+			t.Errorf("sum(PerBucket) = %v, want 1", sum)
+		}
+	})
 }
 
 func TestBlocked(t *testing.T) {

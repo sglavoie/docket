@@ -2,6 +2,7 @@ package storage
 
 import (
 	"os"
+	"reflect"
 	"testing"
 	"time"
 
@@ -174,7 +175,8 @@ func TestPerformTargetedUndoRestoresDeletedTask(t *testing.T) {
 
 	initialContent := "# Project: Test Project\n\n" +
 		"## Task: Task A\n<!-- id: task-a, status: todo, priority: 3 -->\n\n" +
-		"## Task: Task B\n<!-- id: task-b, status: todo, priority: 3 -->\n"
+		"## Task: Task B\n<!-- id: task-b, status: todo, priority: 3 -->\n\n" +
+		"## Task: Task C\n<!-- id: task-c, status: todo, priority: 3 -->\n"
 	writeUndoTasks(t, tasksPath, initialContent)
 
 	if err := RecordUndoSnapshot(project, "Delete Task", "#2 Task B", 10, []string{"task-b"}); err != nil {
@@ -182,7 +184,8 @@ func TestPerformTargetedUndoRestoresDeletedTask(t *testing.T) {
 	}
 
 	mutatedContent := "# Project: Test Project\n\n" +
-		"## Task: Task A\n<!-- id: task-a, status: todo, priority: 3 -->\n"
+		"## Task: Task A\n<!-- id: task-a, status: todo, priority: 3 -->\n\n" +
+		"## Task: Task C\n<!-- id: task-c, status: todo, priority: 3 -->\n"
 	writeUndoTasks(t, tasksPath, mutatedContent)
 
 	if _, err := PerformUndo(project); err != nil {
@@ -198,13 +201,17 @@ func TestPerformTargetedUndoRestoresDeletedTask(t *testing.T) {
 		t.Fatalf("failed to parse restored content: %v", err)
 	}
 
-	foundA, foundB := false, false
+	gotOrder := make([]string, 0, len(result.Tasks))
+	foundA, foundB, foundC := false, false, false
 	for _, task := range result.Tasks {
-		if task.ID == "task-a" {
+		gotOrder = append(gotOrder, task.ID)
+		switch task.ID {
+		case "task-a":
 			foundA = true
-		}
-		if task.ID == "task-b" {
+		case "task-b":
 			foundB = true
+		case "task-c":
+			foundC = true
 		}
 	}
 	if !foundA {
@@ -212,6 +219,13 @@ func TestPerformTargetedUndoRestoresDeletedTask(t *testing.T) {
 	}
 	if !foundB {
 		t.Error("task-b should have been restored by targeted undo")
+	}
+	if !foundC {
+		t.Error("task-c should still exist after undo")
+	}
+	wantOrder := []string{"task-a", "task-b", "task-c"}
+	if !reflect.DeepEqual(gotOrder, wantOrder) {
+		t.Fatalf("task order = %v, want %v", gotOrder, wantOrder)
 	}
 }
 

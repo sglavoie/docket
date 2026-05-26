@@ -114,3 +114,30 @@ func TestBuildEmptyTasksText(t *testing.T) {
 		t.Errorf("expected empty string for empty tasks, got %q", text)
 	}
 }
+
+func TestBuildNoteBodyTextFallsBackToTitle(t *testing.T) {
+	note := &models.Note{Title: "Title Only"}
+	text := noteBodyText(note)
+
+	if text != "Title Only" {
+		t.Errorf("expected title fallback, got %q", text)
+	}
+}
+
+func TestBuildNoteBodiesTextFallsBackToTitleOnlyNotes(t *testing.T) {
+	notes := []*models.Note{
+		{Title: "Title Only"},
+		{Title: "Body Note", Body: "Actual body"},
+	}
+
+	var parts []string
+	for _, note := range notes {
+		parts = append(parts, noteBodyText(note))
+	}
+	text := strings.Join(parts, "\n---\n\n")
+
+	expected := "Title Only\n---\n\nActual body"
+	if text != expected {
+		t.Errorf("expected %q, got %q", expected, text)
+	}
+}

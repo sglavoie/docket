@@ -359,6 +359,44 @@ func TestDispatch_SetPendingPrefixUnknownClears(t *testing.T) {
 	}
 }
 
+func TestDispatch_SetPendingPrefixBlockedByGateClears(t *testing.T) {
+	t.Run("top-level gate", func(t *testing.T) {
+		km := &KeyMap{Entries: []Entry{
+			Prefix(",", "comma", "cat", []Entry{
+				Bind("s", "save", "cat", func() (tea.Model, tea.Cmd) { return nil, nil }),
+			}, WithPrefixGate(func() bool { return false })),
+		}}
+		d := NewDispatcher(km)
+
+		d.SetPendingPrefix(",")
+		if d.HasPendingPrefix() {
+			t.Fatal("expected gated top-level prefix to remain inactive")
+		}
+		if d.prefixNode != nil {
+			t.Fatal("expected gated top-level prefix node to remain nil")
+		}
+	})
+
+	t.Run("nested gate", func(t *testing.T) {
+		km := &KeyMap{Entries: []Entry{
+			Prefix(",", "comma", "cat", []Entry{
+				Prefix("D", "deep", "cat", []Entry{
+					Bind("t", "do t", "cat", func() (tea.Model, tea.Cmd) { return nil, nil }),
+				}, WithPrefixGate(func() bool { return false })),
+			}),
+		}}
+		d := NewDispatcher(km)
+
+		d.SetPendingPrefix(",D")
+		if d.HasPendingPrefix() {
+			t.Fatal("expected gated nested prefix to remain inactive")
+		}
+		if d.prefixNode != nil {
+			t.Fatal("expected gated nested prefix node to remain nil")
+		}
+	})
+}
+
 // TestDispatch_PrefixHintsReturnsChildren verifies PrefixHints returns active node children.
 func TestDispatch_PrefixHintsReturnsChildren(t *testing.T) {
 	km := &KeyMap{Entries: []Entry{
