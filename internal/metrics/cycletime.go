@@ -138,9 +138,28 @@ func percentileDuration(sorted []time.Duration, p float64) time.Duration {
 	if len(sorted) == 0 {
 		return 0
 	}
-	idx := max(int(float64(len(sorted)-1)*p), 0)
-	if idx >= len(sorted) {
-		idx = len(sorted) - 1
+	if len(sorted) == 1 {
+		return sorted[0]
 	}
-	return sorted[idx]
+	if p <= 0 {
+		return sorted[0]
+	}
+	if p >= 1 {
+		return sorted[len(sorted)-1]
+	}
+
+	pos := float64(len(sorted)-1) * p
+	lower := int(pos)
+	upper := lower + 1
+	if upper >= len(sorted) {
+		return sorted[len(sorted)-1]
+	}
+	if lower == upper {
+		return sorted[lower]
+	}
+
+	lowerNs := float64(sorted[lower])
+	upperNs := float64(sorted[upper])
+	frac := pos - float64(lower)
+	return durationFromFloat(lowerNs + (upperNs-lowerNs)*frac)
 }

@@ -160,6 +160,54 @@ func TestReleasePIDLock_Idempotent(t *testing.T) {
 	ReleasePIDLock(filepath.Join(t.TempDir(), "never-existed.lock"))
 }
 
+func TestReleasePIDLock_RemovesOwnedLock(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "pid.lock")
+	if err := os.WriteFile(path, []byte(strconv.Itoa(os.Getpid())), 0o644); err != nil {
+		t.Fatalf("seed owned lock: %v", err)
+	}
+
+	ReleasePIDLock(path)
+
+	if _, err := os.Stat(path); !os.IsNotExist(err) {
+		t.Fatalf("expected owned lock removed, stat err = %v", err)
+	}
+}
+
+func TestReleasePIDLock_PreservesForeignLock(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "pid.lock")
+	foreignPID := os.Getpid() + 1
+	if err := os.WriteFile(path, []byte(strconv.Itoa(foreignPID)), 0o644); err != nil {
+		t.Fatalf("seed foreign lock: %v", err)
+	}
+
+	ReleasePIDLock(path)
+
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("foreign lock should remain readable: %v", err)
+	}
+	if got := strings.TrimSpace(string(data)); got != strconv.Itoa(foreignPID) {
+		t.Fatalf("foreign lock contents = %q, want %d", got, foreignPID)
+	}
+}
+
+func TestReleasePIDLock_PreservesMalformedLock(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "pid.lock")
+	if err := os.WriteFile(path, []byte("not-a-pid"), 0o644); err != nil {
+		t.Fatalf("seed malformed lock: %v", err)
+	}
+
+	ReleasePIDLock(path)
+
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("malformed lock should remain readable: %v", err)
+	}
+	if got := strings.TrimSpace(string(data)); got != "not-a-pid" {
+		t.Fatalf("malformed lock contents = %q, want %q", got, "not-a-pid")
+	}
+}
+
 func TestIsProcessAlive_NonPositivePID(t *testing.T) {
 	tests := []int{0, -1, -42}
 	for _, pid := range tests {

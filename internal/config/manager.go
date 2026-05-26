@@ -362,6 +362,9 @@ func (m *Manager) Load() (*Config, error) { //nolint:gocyclo
 // A backup of the existing config is created before writing, enabling
 // recovery if the new file is corrupted.
 func (m *Manager) Save(config *Config) error {
+	if config == nil {
+		return fmt.Errorf("config is required")
+	}
 	dir := filepath.Dir(m.configPath)
 	if err := os.MkdirAll(dir, DirPermissions); err != nil {
 		return fmt.Errorf("failed to create config directory: %w", err)

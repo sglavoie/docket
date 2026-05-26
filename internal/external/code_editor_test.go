@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestDetectEditorPattern(t *testing.T) {
@@ -173,5 +174,81 @@ func TestOpenCodeReference_FlaggedEditorPassesArgs(t *testing.T) {
 	}
 	if args[2] != "+5" {
 		t.Errorf("expected args[2]='+5', got %q (all: %v)", args[2], args)
+	}
+}
+
+func TestOpenCodeReference_NonPositiveLineOmitsLineArgForTerminalEditor(t *testing.T) {
+	dir := t.TempDir()
+	argFile := filepath.Join(dir, "args.txt")
+	fakeNvim := filepath.Join(dir, "nvim")
+	script := "#!/bin/sh\nprintf '%s\\n' \"$@\" > " + argFile + "\nexit 0\n"
+	if err := os.WriteFile(fakeNvim, []byte(script), 0o755); err != nil {
+		t.Fatalf("write fake nvim: %v", err)
+	}
+
+	origPath := os.Getenv("PATH")
+	t.Cleanup(func() { _ = os.Setenv("PATH", origPath) })
+	if err := os.Setenv("PATH", dir); err != nil {
+		t.Fatalf("setenv PATH: %v", err)
+	}
+
+	filePath := filepath.Join(dir, "test.go")
+	if err := os.WriteFile(filePath, []byte("package main\n"), 0o644); err != nil {
+		t.Fatalf("write test file: %v", err)
+	}
+
+	if err := OpenCodeReference("nvim", filePath, 0); err != nil {
+		t.Fatalf("OpenCodeReference('nvim', ..., 0) failed: %v", err)
+	}
+
+	recorded, err := os.ReadFile(argFile)
+	if err != nil {
+		t.Fatalf("read arg file: %v", err)
+	}
+	args := strings.Split(strings.TrimSpace(string(recorded)), "\n")
+	if len(args) != 1 || args[0] != filePath {
+		t.Fatalf("expected only file path argument, got %v", args)
+	}
+}
+
+func TestOpenCodeReference_NonPositiveLineOmitsLineArgForGotoEditor(t *testing.T) {
+	dir := t.TempDir()
+	argFile := filepath.Join(dir, "args.txt")
+	fakeCode := filepath.Join(dir, "code")
+	script := "#!/bin/sh\nprintf '%s\\n' \"$@\" > " + argFile + "\nexit 0\n"
+	if err := os.WriteFile(fakeCode, []byte(script), 0o755); err != nil {
+		t.Fatalf("write fake code: %v", err)
+	}
+
+	origPath := os.Getenv("PATH")
+	t.Cleanup(func() { _ = os.Setenv("PATH", origPath) })
+	if err := os.Setenv("PATH", dir); err != nil {
+		t.Fatalf("setenv PATH: %v", err)
+	}
+
+	filePath := filepath.Join(dir, "test.go")
+	if err := os.WriteFile(filePath, []byte("package main\n"), 0o644); err != nil {
+		t.Fatalf("write test file: %v", err)
+	}
+
+	if err := OpenCodeReference("code", filePath, -3); err != nil {
+		t.Fatalf("OpenCodeReference('code', ..., -3) failed: %v", err)
+	}
+
+	var recorded []byte
+	var err error
+	for range 20 {
+		recorded, err = os.ReadFile(argFile)
+		if err == nil {
+			break
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	if err != nil {
+		t.Fatalf("read arg file: %v", err)
+	}
+	args := strings.Split(strings.TrimSpace(string(recorded)), "\n")
+	if len(args) != 1 || args[0] != filePath {
+		t.Fatalf("expected only file path argument, got %v", args)
 	}
 }

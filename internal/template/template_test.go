@@ -98,6 +98,31 @@ func TestValidate_WhitespaceName(t *testing.T) {
 	}
 }
 
+func TestValidate_InvalidVariableTokenInName(t *testing.T) {
+	tmpl := NewTemplate("{{ bad }}", models.TaskTypeTask)
+	err := tmpl.Validate()
+	if err == nil {
+		t.Fatal("expected error for invalid variable token")
+	}
+	if !strings.Contains(err.Error(), "invalid variable token") {
+		t.Fatalf("error %q should mention invalid variable token", err)
+	}
+}
+
+func TestValidate_RejectsInvalidTaskTitleName(t *testing.T) {
+	tmpl := NewTemplate("Bad\nName", models.TaskTypeTask)
+	err := tmpl.Validate()
+	if err == nil {
+		t.Fatal("expected error for invalid template name")
+	}
+	if !strings.Contains(err.Error(), "template name:") {
+		t.Fatalf("error %q should identify template name", err)
+	}
+	if !strings.Contains(err.Error(), "task title must not contain newlines") {
+		t.Fatalf("error %q should include task-title validation", err)
+	}
+}
+
 func TestValidate_InvalidTaskType(t *testing.T) {
 	tmpl := NewTemplate("Test", models.TaskType("invalid"))
 	err := tmpl.Validate()
@@ -197,6 +222,23 @@ func TestValidate_ChildWithWhitespaceTitle(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "item 1") {
 		t.Errorf("error %q should reference item 1", err.Error())
+	}
+}
+
+func TestValidate_ChildTitleUsesTaskTitleValidation(t *testing.T) {
+	tmpl := NewTemplate("Test", models.TaskTypeStory)
+	tmpl.Children = []TemplateChild{
+		{Title: "Bad\nChild"},
+	}
+	err := tmpl.Validate()
+	if err == nil {
+		t.Fatal("expected error for invalid child title")
+	}
+	if !strings.Contains(err.Error(), "item 1") {
+		t.Fatalf("error %q should reference item 1", err)
+	}
+	if !strings.Contains(err.Error(), "task title must not contain newlines") {
+		t.Fatalf("error %q should include task-title validation", err)
 	}
 }
 

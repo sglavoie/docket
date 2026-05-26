@@ -114,3 +114,63 @@ func TestCycleTime(t *testing.T) {
 		}
 	})
 }
+
+func TestPercentileDuration(t *testing.T) {
+	tests := []struct {
+		name   string
+		values []time.Duration
+		p      float64
+		want   time.Duration
+	}{
+		{
+			name:   "empty",
+			values: nil,
+			p:      0.5,
+			want:   0,
+		},
+		{
+			name:   "single value",
+			values: []time.Duration{4 * time.Hour},
+			p:      0.9,
+			want:   4 * time.Hour,
+		},
+		{
+			name:   "median interpolates even sample",
+			values: []time.Duration{2 * time.Hour, 6 * time.Hour},
+			p:      0.5,
+			want:   4 * time.Hour,
+		},
+		{
+			name:   "p90 interpolates small sample",
+			values: []time.Duration{time.Hour, 10 * time.Hour},
+			p:      0.9,
+			want:   time.Hour + time.Duration(0.9*float64(9*time.Hour)),
+		},
+		{
+			name:   "p90 interpolates larger sample",
+			values: []time.Duration{time.Hour, 2 * time.Hour, 10 * time.Hour},
+			p:      0.9,
+			want:   8*time.Hour + 24*time.Minute,
+		},
+		{
+			name:   "clamps low percentile",
+			values: []time.Duration{2 * time.Hour, 6 * time.Hour},
+			p:      -1,
+			want:   2 * time.Hour,
+		},
+		{
+			name:   "clamps high percentile",
+			values: []time.Duration{2 * time.Hour, 6 * time.Hour},
+			p:      2,
+			want:   6 * time.Hour,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := percentileDuration(tt.values, tt.p); got != tt.want {
+				t.Fatalf("percentileDuration(%v, %v) = %v, want %v", tt.values, tt.p, got, tt.want)
+			}
+		})
+	}
+}

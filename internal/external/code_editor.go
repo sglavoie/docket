@@ -76,17 +76,38 @@ func OpenCodeReference(editor, path string, line int) error {
 	switch pattern {
 	case patternGoto:
 		// code --goto file:line
-		arg := path + ":" + strconv.Itoa(line)
-		cmd = exec.Command(exe, append(extraArgs, "--goto", arg)...)
+		args := append([]string{}, extraArgs...)
+		if line > 0 {
+			args = append(args, "--goto", path+":"+strconv.Itoa(line))
+		} else {
+			args = append(args, path)
+		}
+		cmd = exec.Command(exe, args...)
 	case patternPlusLine:
 		// vim +line file
-		cmd = exec.Command(exe, append(extraArgs, "+"+strconv.Itoa(line), path)...)
+		args := append([]string{}, extraArgs...)
+		if line > 0 {
+			args = append(args, "+"+strconv.Itoa(line))
+		}
+		args = append(args, path)
+		cmd = exec.Command(exe, args...)
 	case patternColonLine:
 		// subl file:line
-		cmd = exec.Command(exe, append(extraArgs, path+":"+strconv.Itoa(line))...)
+		args := append([]string{}, extraArgs...)
+		if line > 0 {
+			args = append(args, path+":"+strconv.Itoa(line))
+		} else {
+			args = append(args, path)
+		}
+		cmd = exec.Command(exe, args...)
 	case patternLineFlag:
 		// idea --line N file
-		cmd = exec.Command(exe, append(extraArgs, "--line", strconv.Itoa(line), path)...)
+		args := append([]string{}, extraArgs...)
+		if line > 0 {
+			args = append(args, "--line", strconv.Itoa(line))
+		}
+		args = append(args, path)
+		cmd = exec.Command(exe, args...)
 	default:
 		// Unknown editor: just open the file
 		cmd = exec.Command(exe, append(extraArgs, path)...)

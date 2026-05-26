@@ -97,8 +97,17 @@ func tryCreateLock(path string) error {
 	return nil
 }
 
-// ReleasePIDLock removes the lock file.
+// ReleasePIDLock removes the lock file only when it is still owned by the
+// current process.
 func ReleasePIDLock(path string) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return
+	}
+	pid, err := strconv.Atoi(strings.TrimSpace(string(data)))
+	if err != nil || pid != os.Getpid() {
+		return
+	}
 	_ = os.Remove(path)
 }
 

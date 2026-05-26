@@ -392,3 +392,20 @@ func TestDismissAlert_RefreshesExpiredEntry(t *testing.T) {
 		t.Error("expected refreshed entry to be dismissed")
 	}
 }
+
+func TestConfigManager_SaveRejectsNilConfig(t *testing.T) {
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, "test-config.json")
+	manager := NewManager(configPath)
+
+	err := manager.Save(nil)
+	if err == nil {
+		t.Fatal("expected error saving nil config")
+	}
+	if !contains(err.Error(), "config is required") {
+		t.Fatalf("error %q should mention missing config", err)
+	}
+	if _, statErr := os.Stat(configPath); !os.IsNotExist(statErr) {
+		t.Fatalf("expected no config file written, stat err = %v", statErr)
+	}
+}

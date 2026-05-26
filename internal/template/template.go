@@ -52,6 +52,12 @@ func (t *TaskTemplate) Validate() error {
 	if strings.TrimSpace(t.Name) == "" {
 		return fmt.Errorf("template name is required")
 	}
+	if err := ValidateTokens(t); err != nil {
+		return err
+	}
+	if err := models.ValidateTaskTitle(t.Name); err != nil {
+		return fmt.Errorf("template name: %w", err)
+	}
 
 	if !isValidTaskType(t.Type) {
 		return fmt.Errorf("invalid task type: %s", t.Type)
@@ -69,6 +75,9 @@ func (t *TaskTemplate) Validate() error {
 	for i, child := range t.Children {
 		if strings.TrimSpace(child.Title) == "" {
 			return fmt.Errorf("item %d: title is required", i+1)
+		}
+		if err := models.ValidateTaskTitle(child.Title); err != nil {
+			return fmt.Errorf("item %d: %w", i+1, err)
 		}
 		if child.Type != "" && !isValidTaskType(child.Type) {
 			return fmt.Errorf("item %d: invalid task type: %s", i+1, child.Type)
