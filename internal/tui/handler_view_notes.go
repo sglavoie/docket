@@ -167,7 +167,10 @@ func (m *AppModel) handleCreateGlobalNote(notesDir string) (bool, tea.Cmd) {
 	if editorErr != nil {
 		return true, errorCmd("%s", editorErr)
 	}
-	path := storage.NoteFilePathIn(notesDir, note.Filename)
+	path, err := storage.NoteFilePathIn(notesDir, note.Filename)
+	if err != nil {
+		return true, errorCmd("invalid note path: %w", err)
+	}
 	c := external.EditorCommand(editor, path)
 
 	return true, tea.ExecProcess(c, func(err error) tea.Msg {
@@ -192,7 +195,10 @@ func (m *AppModel) handleCreateNote(project *models.Project) (bool, tea.Cmd) {
 	if editorErr != nil {
 		return true, errorCmd("%s", editorErr)
 	}
-	path := storage.NoteFilePath(project, note.Filename)
+	path, err := storage.NoteFilePath(project, note.Filename)
+	if err != nil {
+		return true, errorCmd("invalid note path: %w", err)
+	}
 	c := external.EditorCommand(editor, path)
 
 	return true, tea.ExecProcess(c, func(err error) tea.Msg {

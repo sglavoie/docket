@@ -7,14 +7,18 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 )
 
-// computeBlocked calculates blocked duration metrics for all tasks.
-// It scans activity logs for status transitions to/from "blocked" and
-// computes total blocked time per task.
+// computeBlocked calculates blocked duration metrics for all tasks over all time.
 func computeBlocked(tasks []*models.Task, now time.Time, taskProject map[*models.Task]*models.Project) BlockedResult {
+	return computeBlockedInRange(tasks, time.Time{}, now, taskProject)
+}
+
+// computeBlockedInRange calculates blocked duration metrics for all tasks within
+// the [cutoff, now] window. A zero cutoff keeps the all-time behavior.
+func computeBlockedInRange(tasks []*models.Task, cutoff, now time.Time, taskProject map[*models.Task]*models.Project) BlockedResult {
 	var entries []BlockedEntry
 
 	for _, t := range tasks {
-		entry := computeBlockedEntry(t, now)
+		entry := computeBlockedEntryInRange(t, cutoff, now)
 		if entry.TotalBlocked > 0 {
 			entry.Project = taskProject[t]
 			entries = append(entries, entry)
@@ -54,12 +58,19 @@ func computeBlocked(tasks []*models.Task, now time.Time, taskProject map[*models
 	return result
 }
 
-// computeBlockedEntry scans a single task's activity for blocked periods.
-// A period starts when NewValue="blocked" and ends when OldValue="blocked".
-// If the task is currently blocked with an open period, it extends to now.
-// If a "blocked" start has no end and the task is NOT currently blocked,
-// the end transition was likely pruned — skip that partial period.
+// computeBlockedEntry scans a single task's activity for blocked periods over
+// all time.
 func computeBlockedEntry(t *models.Task, now time.Time) BlockedEntry {
+	return computeBlockedEntryInRange(t, time.Time{}, now)
+}
+
+// computeBlockedEntryInRange scans a single task's activity for blocked periods
+// within the [cutoff, now] window. A period starts when NewValue="blocked" and
+// ends when OldValue="blocked". If the task is currently blocked with an open
+// period, it extends to now. If a "blocked" start has no end and the task is
+// NOT currently blocked, the end transition was likely pruned — skip that
+// partial period.
+func computeBlockedEntryInRange(t *models.Task, cutoff, now time.Time) BlockedEntry {
 	entry := BlockedEntry{Task: t}
 
 	var blockedStart time.Time
@@ -74,7 +85,7 @@ func computeBlockedEntry(t *models.Task, now time.Time) BlockedEntry {
 			blockedStart = a.Timestamp
 			inBlockedPeriod = true
 		} else if a.OldValue == string(models.StatusBlocked) && inBlockedPeriod {
-			duration := a.Timestamp.Sub(blockedStart)
+			duration := blockedDurationInRange(blockedStart, a.Timestamp, cutoff, now)
 			if duration > 0 {
 				entry.TotalBlocked += duration
 				entry.BlockedPeriods++
@@ -85,7 +96,7 @@ func computeBlockedEntry(t *models.Task, now time.Time) BlockedEntry {
 
 	// If still in a blocked period and task is currently blocked, extend to now
 	if inBlockedPeriod && t.Status == models.StatusBlocked {
-		duration := now.Sub(blockedStart)
+		duration := blockedDurationInRange(blockedStart, now, cutoff, now)
 		if duration > 0 {
 			entry.TotalBlocked += duration
 			entry.BlockedPeriods++
@@ -94,4 +105,17 @@ func computeBlockedEntry(t *models.Task, now time.Time) BlockedEntry {
 	// If inBlockedPeriod but task is NOT blocked, the end transition was pruned — skip
 
 	return entry
+}
+
+func blockedDurationInRange(start, end, cutoff, now time.Time) time.Duration {
+	if end.After(now) {
+		end = now
+	}
+	if !cutoff.IsZero() && start.Before(cutoff) {
+		start = cutoff
+	}
+	if !end.After(start) {
+		return 0
+	}
+	return end.Sub(start)
 }

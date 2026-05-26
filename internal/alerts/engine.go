@@ -127,12 +127,11 @@ func checkWeeklyReviewReminder(cfg AlertConfig, _ []ProjectData, now time.Time) 
 		}}
 	}
 
-	// Current weekday matches configured day and no review this week
+	// Current weekday matches configured day and no review in the current
+	// review window anchored to that configured weekday.
 	if int(now.Weekday()) == cfg.WeeklyReviewDay {
 		lastLocal := last.In(now.Location())
-		lastDay := time.Date(lastLocal.Year(), lastLocal.Month(), lastLocal.Day(), 0, 0, 0, 0, now.Location())
-		today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
-		if lastDay.Before(today) {
+		if lastLocal.Before(weeklyReviewWindowStart(now, cfg.WeeklyReviewDay)) {
 			return []Alert{{
 				Category: CategoryWeeklyReview,
 				Title:    "Weekly review day",
@@ -143,6 +142,13 @@ func checkWeeklyReviewReminder(cfg AlertConfig, _ []ProjectData, now time.Time) 
 	}
 
 	return nil
+}
+
+func weeklyReviewWindowStart(now time.Time, reviewDay int) time.Time {
+	nowLocal := now.In(now.Location())
+	startOfDay := time.Date(nowLocal.Year(), nowLocal.Month(), nowLocal.Day(), 0, 0, 0, 0, nowLocal.Location())
+	daysSinceReviewDay := (int(nowLocal.Weekday()) - reviewDay + 7) % 7
+	return startOfDay.AddDate(0, 0, -daysSinceReviewDay)
 }
 
 func checkOverdueTasks(cfg AlertConfig, projects []ProjectData, now time.Time) []Alert {

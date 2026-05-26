@@ -61,6 +61,9 @@ func (m *SettingsModel) themeFromInputs() config.Theme {
 			Priority3Title: normalizeHexColor(m.priority3TitleInput.Value()),
 			Priority4Title: normalizeHexColor(m.priority4TitleInput.Value()),
 			Priority5Title: normalizeHexColor(m.priority5TitleInput.Value()),
+			Dimmed:         normalizeHexColor(m.activeHiddenDimmed[0]),
+			DimmedBg:       normalizeHexColor(m.activeHiddenDimmed[1]),
+			DimmedFg:       normalizeHexColor(m.activeHiddenDimmed[2]),
 		},
 	}
 }

@@ -135,6 +135,33 @@ func TestCheckWeeklyReviewReminder_ReviewedToday(t *testing.T) {
 	}
 }
 
+func TestCheckWeeklyReviewReminder_ReviewedInCurrentWindow_NonMondayReviewDay(t *testing.T) {
+	now := time.Date(2026, 3, 1, 18, 0, 0, 0, time.UTC) // Sunday
+	cfg := DefaultAlertConfig()
+	cfg.WeeklyReviewDay = int(time.Sunday)
+	cfg.LastWeeklyReviewAt = timePtr(time.Date(2026, 3, 1, 9, 0, 0, 0, time.UTC)) // Earlier today, same Sunday-anchored window
+
+	alerts := checkWeeklyReviewReminder(cfg, nil, now)
+	if len(alerts) != 0 {
+		t.Fatalf("expected 0 alerts when reviewed in the current review window, got %d", len(alerts))
+	}
+}
+
+func TestCheckWeeklyReviewReminder_ReviewedBeforeCurrentWindow_NonMondayReviewDay(t *testing.T) {
+	now := time.Date(2026, 3, 1, 10, 0, 0, 0, time.UTC) // Sunday
+	cfg := DefaultAlertConfig()
+	cfg.WeeklyReviewDay = int(time.Sunday)
+	cfg.LastWeeklyReviewAt = timePtr(time.Date(2026, 2, 23, 10, 0, 0, 0, time.UTC)) // Monday, previous Sunday-anchored window
+
+	alerts := checkWeeklyReviewReminder(cfg, nil, now)
+	if len(alerts) != 1 {
+		t.Fatalf("expected 1 alert on configured review day, got %d", len(alerts))
+	}
+	if alerts[0].Title != "Weekly review day" {
+		t.Errorf("unexpected title: %s", alerts[0].Title)
+	}
+}
+
 func TestCheckWeeklyReviewReminder_RecentNotOnDay(t *testing.T) {
 	now := time.Date(2026, 2, 25, 10, 0, 0, 0, time.UTC)
 	cfg := DefaultAlertConfig()

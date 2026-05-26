@@ -32,6 +32,21 @@ func ensureDirPath(dir string) error {
 	return os.MkdirAll(dir, DirPermissions)
 }
 
+func validateNoteFilename(filename string) error {
+	switch {
+	case filename == "":
+		return fmt.Errorf("invalid note filename %q: empty filename", filename)
+	case filepath.IsAbs(filename):
+		return fmt.Errorf("invalid note filename %q: absolute paths are not allowed", filename)
+	case filename == "." || filename == "..":
+		return fmt.Errorf("invalid note filename %q: path traversal is not allowed", filename)
+	case strings.Contains(filename, "/") || strings.Contains(filename, "\\"):
+		return fmt.Errorf("invalid note filename %q: path separators are not allowed", filename)
+	default:
+		return nil
+	}
+}
+
 // LoadNote reads a single note from its file.
 func LoadNote(project *models.Project, filename string) (*models.Note, error) {
 	return LoadNoteFrom(NotesDir(project), filename)
@@ -39,7 +54,10 @@ func LoadNote(project *models.Project, filename string) (*models.Note, error) {
 
 // LoadNoteFrom reads a single note from a directory path.
 func LoadNoteFrom(dir, filename string) (*models.Note, error) {
-	path := filepath.Join(dir, filename)
+	path, err := NoteFilePathIn(dir, filename)
+	if err != nil {
+		return nil, err
+	}
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
@@ -60,7 +78,10 @@ func SaveNoteTo(dir string, note *models.Note) error {
 		return err
 	}
 
-	path := filepath.Join(dir, note.Filename)
+	path, err := NoteFilePathIn(dir, note.Filename)
+	if err != nil {
+		return err
+	}
 
 	// Check for collision: if file exists but this is a new note (no prior content on disk)
 	// we need to deduplicate the filename. Treat unreadable existing files
@@ -151,7 +172,10 @@ func DeleteNote(project *models.Project, filename string) error {
 
 // DeleteNoteFrom removes a note file from a directory path.
 func DeleteNoteFrom(dir, filename string) error {
-	path := filepath.Join(dir, filename)
+	path, err := NoteFilePathIn(dir, filename)
+	if err != nil {
+		return err
+	}
 	return os.Remove(path)
 }
 
@@ -226,13 +250,16 @@ func RenameNoteIn(dir, oldFilename, newTitle string) (*models.Note, error) {
 }
 
 // NoteFilePath returns the full path to a note file.
-func NoteFilePath(project *models.Project, filename string) string {
+func NoteFilePath(project *models.Project, filename string) (string, error) {
 	return NoteFilePathIn(NotesDir(project), filename)
 }
 
 // NoteFilePathIn returns the full path to a note file in a directory.
-func NoteFilePathIn(dir, filename string) string {
-	return filepath.Join(dir, filename)
+func NoteFilePathIn(dir, filename string) (string, error) {
+	if err := validateNoteFilename(filename); err != nil {
+		return "", err
+	}
+	return filepath.Join(dir, filename), nil
 }
 
 // RenderNoteContent serializes a Note to markdown with YAML frontmatter.

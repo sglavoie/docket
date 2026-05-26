@@ -415,6 +415,8 @@ func TestPresetRoundTrip_SaveExportReimport(t *testing.T) {
 	// Save current inputs as "roundtrip" preset.
 	originalBg := m.bgColorInput.Value()
 	originalNormal := m.normalTextInput.Value()
+	originalDimmed := [3]string{"#112233", "#223344", "#334455"}
+	m.activeHiddenDimmed = originalDimmed
 
 	cmd := m.execPresetSave("roundtrip")
 	if saveMsg := cmd(); saveMsg == nil {
@@ -426,6 +428,7 @@ func TestPresetRoundTrip_SaveExportReimport(t *testing.T) {
 	// Modify inputs to verify they get overwritten by load.
 	m.bgColorInput.SetValue("#ffffff")
 	m.normalTextInput.SetValue("#000000")
+	m.activeHiddenDimmed = [3]string{"#abcdef", "#bcdef0", "#cdef01"}
 
 	// Load the preset back.
 	m.openPresetLoad()
@@ -444,5 +447,8 @@ func TestPresetRoundTrip_SaveExportReimport(t *testing.T) {
 	}
 	if got := m.normalTextInput.Value(); got != originalNormal {
 		t.Errorf("normalTextInput after load = %q, want %q", got, originalNormal)
+	}
+	if got := m.activeHiddenDimmed; got != originalDimmed {
+		t.Errorf("activeHiddenDimmed after load = %v, want %v", got, originalDimmed)
 	}
 }

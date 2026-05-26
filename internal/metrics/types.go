@@ -187,7 +187,7 @@ func ComputeAllAtWithWeekStart(projects []*models.Project, tr TimeRange, now tim
 		Completion: computeCompletion(allTasks, cutoff, now, buckets),
 		CycleTime:  computeCycleTime(allTasks, cutoff, now, buckets),
 		Throughput: computeThroughput(allTasks, cutoff, now, buckets),
-		Blocked:    computeBlocked(projectTasks, now, taskProject),
+		Blocked:    computeBlockedInRange(projectTasks, cutoff, now, taskProject),
 		TimeRange:  tr,
 		IsGlobal:   len(projects) > 1,
 	}

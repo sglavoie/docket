@@ -100,6 +100,39 @@ func TestDeleteNote(t *testing.T) {
 	}
 }
 
+func TestNoteHelpersRejectPathTraversal(t *testing.T) {
+	dir := t.TempDir()
+	note := models.NewNote("Safe Note")
+	if err := SaveNoteTo(dir, note); err != nil {
+		t.Fatalf("SaveNoteTo failed: %v", err)
+	}
+
+	path, err := NoteFilePathIn(dir, note.Filename)
+	if err != nil {
+		t.Fatalf("NoteFilePathIn valid filename failed: %v", err)
+	}
+	if want := filepath.Join(dir, note.Filename); path != want {
+		t.Fatalf("NoteFilePathIn = %q, want %q", path, want)
+	}
+	if _, err := LoadNoteFrom(dir, note.Filename); err != nil {
+		t.Fatalf("LoadNoteFrom valid filename failed: %v", err)
+	}
+
+	for _, filename := range []string{"../escape.md", "..\\escape.md", "/tmp/escape.md"} {
+		t.Run(filename, func(t *testing.T) {
+			if _, err := NoteFilePathIn(dir, filename); err == nil {
+				t.Fatal("expected NoteFilePathIn to reject traversal filename")
+			}
+			if _, err := LoadNoteFrom(dir, filename); err == nil {
+				t.Fatal("expected LoadNoteFrom to reject traversal filename")
+			}
+			if err := DeleteNoteFrom(dir, filename); err == nil {
+				t.Fatal("expected DeleteNoteFrom to reject traversal filename")
+			}
+		})
+	}
+}
+
 func TestNoteLinking(t *testing.T) {
 	note := models.NewNote("Linked Note")
 

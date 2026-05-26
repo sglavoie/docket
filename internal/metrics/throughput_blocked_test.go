@@ -244,3 +244,38 @@ func TestThroughputAllTimeAvgPerDayConsistent(t *testing.T) {
 		t.Errorf("sum(PerBucket) = %v != Total = %d", sum, result.Total)
 	}
 }
+
+func TestComputeAllAt_BlockedHonorsTimeRange(t *testing.T) {
+	now := time.Date(2025, 6, 15, 12, 0, 0, 0, time.UTC)
+
+	oldBlocked := makeTask(models.StatusDone, timePtr(now), []*models.ActivityEntry{
+		{Timestamp: now.AddDate(0, 0, -40), Field: "status", OldValue: "in_progress", NewValue: "blocked"},
+		{Timestamp: now.AddDate(0, 0, -35), Field: "status", OldValue: "blocked", NewValue: "in_progress"},
+	})
+	oldBlocked.ID = "old-blocked"
+
+	recentBlocked := makeTask(models.StatusDone, timePtr(now), []*models.ActivityEntry{
+		{Timestamp: now.AddDate(0, 0, -5), Field: "status", OldValue: "in_progress", NewValue: "blocked"},
+		{Timestamp: now.AddDate(0, 0, -2), Field: "status", OldValue: "blocked", NewValue: "in_progress"},
+	})
+	recentBlocked.ID = "recent-blocked"
+
+	project := &models.Project{
+		ID:    "project-1",
+		Name:  "Project 1",
+		Tasks: []*models.Task{oldBlocked, recentBlocked},
+	}
+
+	result7d := ComputeAllAt([]*models.Project{project}, TimeRange7d, now)
+	if result7d.Blocked.TaskCount != 1 {
+		t.Fatalf("7d Blocked.TaskCount = %d, want 1", result7d.Blocked.TaskCount)
+	}
+	if got := result7d.Blocked.Entries[0].Task.ID; got != "recent-blocked" {
+		t.Fatalf("7d blocked task = %q, want recent-blocked", got)
+	}
+
+	resultAll := ComputeAllAt([]*models.Project{project}, TimeRangeAll, now)
+	if resultAll.Blocked.TaskCount != 2 {
+		t.Fatalf("all-time Blocked.TaskCount = %d, want 2", resultAll.Blocked.TaskCount)
+	}
+}

@@ -70,7 +70,10 @@ func (m *NotesViewModel) openInNotesEditor() tea.Cmd {
 	if editorErr != nil {
 		return errorCmd("%s", editorErr)
 	}
-	path := storage.NoteFilePathIn(m.effectiveDir(), note.Filename)
+	path, err := storage.NoteFilePathIn(m.effectiveDir(), note.Filename)
+	if err != nil {
+		return errorCmd("invalid note path: %w", err)
+	}
 	c := external.EditorCommand(editor, path)
 
 	oldFilename := note.Filename
@@ -98,7 +101,10 @@ func (m *NotesViewModel) editCurrentNote() tea.Cmd {
 	if editorErr != nil {
 		return errorCmd("%s", editorErr)
 	}
-	path := storage.NoteFilePathIn(m.effectiveDir(), note.Filename)
+	path, err := storage.NoteFilePathIn(m.effectiveDir(), note.Filename)
+	if err != nil {
+		return errorCmd("invalid note path: %w", err)
+	}
 	c := external.EditorCommand(editor, path)
 
 	oldFilename := note.Filename
