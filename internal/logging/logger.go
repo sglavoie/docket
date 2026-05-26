@@ -100,13 +100,12 @@ func Close() {
 }
 
 func restoreStdLogger() {
-	if loggerStateCaptured {
-		log.SetOutput(previousLoggerOutput)
-		log.SetFlags(previousLoggerFlags)
-		previousLoggerOutput = nil
-		previousLoggerFlags = 0
-		loggerStateCaptured = false
+	if !loggerStateCaptured {
 		return
 	}
-	log.SetOutput(io.Discard)
+	log.SetOutput(previousLoggerOutput)
+	log.SetFlags(previousLoggerFlags)
+	previousLoggerOutput = nil
+	previousLoggerFlags = 0
+	loggerStateCaptured = false
 }

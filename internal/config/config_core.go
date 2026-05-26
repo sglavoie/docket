@@ -108,10 +108,13 @@ func (c *Config) GetPopupTimeoutSeconds() int {
 // GetCodeEditor returns the configured editor for code references.
 // Defaults to "code" (VS Code) if not set.
 func (c *Config) GetCodeEditor() string {
-	if c.CodeEditor == "" {
-		return "code"
+	if c.CodeEditor != "" {
+		return c.CodeEditor
 	}
-	return c.CodeEditor
+	if editor := c.GetEditor(); editor != "" {
+		return editor
+	}
+	return "code"
 }
 
 // GetUseEmoji returns whether emoji icons are enabled. Defaults to false (Unicode symbols).
@@ -134,8 +137,11 @@ func (c *Config) IsDescriptionColumnVisible() bool {
 // GetNotesEditor returns the configured editor for opening notes with Ctrl+O.
 // Defaults to "code" (VS Code) if not set.
 func (c *Config) GetNotesEditor() string {
-	if c.NotesEditor == "" {
-		return "code"
+	if c.NotesEditor != "" {
+		return c.NotesEditor
 	}
-	return c.NotesEditor
+	if editor := c.GetEditor(); editor != "" {
+		return editor
+	}
+	return "code"
 }

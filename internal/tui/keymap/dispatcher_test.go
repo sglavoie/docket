@@ -464,6 +464,33 @@ func TestHelpItems_CompoundKeys(t *testing.T) {
 	}
 }
 
+func TestHelpItems_RespectsBindingAndPrefixGates(t *testing.T) {
+	km := &KeyMap{Entries: []Entry{
+		Bind("a", "direct", "cat", nilAction),
+		Bind("x", "hidden by gate", "cat", nilAction, WithGate(func() bool { return false })),
+		Prefix(",", "comma", "cat", []Entry{
+			Bind("s", "save", "cat", nilAction),
+			Bind("t", "gated child", "cat", nilAction, WithGate(func() bool { return false })),
+		}),
+		Prefix("g", "gated prefix", "cat", []Entry{
+			Bind("x", "unreachable", "cat", nilAction),
+		}, WithPrefixGate(func() bool { return false })),
+	}}
+
+	items := km.HelpItems()
+	keys := make([]string, len(items))
+	for i, item := range items {
+		keys[i] = item.Key
+	}
+
+	if !slices.Contains(keys, "a") || !slices.Contains(keys, ",s") {
+		t.Fatalf("expected visible keys in help items, got %v", keys)
+	}
+	if slices.Contains(keys, "x") || slices.Contains(keys, ",t") || slices.Contains(keys, "gx") {
+		t.Fatalf("expected gated keys excluded from help items, got %v", keys)
+	}
+}
+
 // TestHandledKeys_IncludesPrefixActivatorsAndLeaves verifies HandledKeys output.
 func TestHandledKeys_IncludesPrefixActivatorsAndLeaves(t *testing.T) {
 	km := &KeyMap{Entries: []Entry{

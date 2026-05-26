@@ -25,7 +25,7 @@ func collectHelp(prefix string, entries []Entry, out *[]HelpItem) {
 	for _, e := range entries {
 		switch {
 		case e.Binding != nil:
-			if !e.Binding.Hidden {
+			if !e.Binding.Hidden && (e.Binding.Gate == nil || e.Binding.Gate()) {
 				*out = append(*out, HelpItem{
 					Key:         prefix + e.Binding.Key,
 					Description: e.Binding.Description,
@@ -33,6 +33,9 @@ func collectHelp(prefix string, entries []Entry, out *[]HelpItem) {
 				})
 			}
 		case e.PrefixNode != nil:
+			if e.PrefixNode.Gate != nil && !e.PrefixNode.Gate() {
+				continue
+			}
 			collectHelp(prefix+e.PrefixNode.Key, e.PrefixNode.Children, out)
 		}
 	}

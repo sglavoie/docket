@@ -52,6 +52,40 @@ func TestCloseNilLogFile(t *testing.T) {
 	Close() // should not panic
 }
 
+func TestCloseNilLogFilePreservesStdLoggerWhenNeverInitialized(t *testing.T) {
+	origFile := logFile
+	origOutput := log.Writer()
+	origFlags := log.Flags()
+	origPrevOutput := previousLoggerOutput
+	origPrevFlags := previousLoggerFlags
+	origStateCaptured := loggerStateCaptured
+	defer func() {
+		logFile = origFile
+		log.SetOutput(origOutput)
+		log.SetFlags(origFlags)
+		previousLoggerOutput = origPrevOutput
+		previousLoggerFlags = origPrevFlags
+		loggerStateCaptured = origStateCaptured
+	}()
+
+	var buf bytes.Buffer
+	log.SetOutput(&buf)
+	log.SetFlags(log.Lshortfile)
+	logFile = nil
+	previousLoggerOutput = nil
+	previousLoggerFlags = 0
+	loggerStateCaptured = false
+
+	Close()
+
+	if log.Writer() != &buf {
+		t.Fatal("Close should leave the standard logger output unchanged when Init never ran")
+	}
+	if log.Flags() != log.Lshortfile {
+		t.Fatalf("Close should preserve log flags, got %d", log.Flags())
+	}
+}
+
 func TestCloseOpenFile(t *testing.T) {
 	original := logFile
 	defer func() { logFile = original }()

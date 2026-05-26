@@ -42,3 +42,17 @@ func StageForPrefixKey(key string, stages []string) *string {
 	}
 	return nil
 }
+
+// StageKeyForName maps a configured stage name back to its prefix shortcut key.
+// Returns "0" for clear-stage and "" when the stage is not configured.
+func StageKeyForName(stage string, stages []string) string {
+	if stage == "" {
+		return "0"
+	}
+	for i, candidate := range stages {
+		if candidate == stage {
+			return stageKeyForIndex(i)
+		}
+	}
+	return ""
+}

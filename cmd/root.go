@@ -12,6 +12,7 @@ import (
 )
 
 var noColor bool
+var closeLogging = logging.Close
 
 var (
 	configPath string
@@ -50,16 +51,19 @@ func RootCmd() *cobra.Command {
 }
 
 func Execute() {
-	defer logging.Close()
-	// SilenceUsage is enabled in PersistentPreRunE so usage is still printed
-	// when cobra itself rejects args (wrong count, unknown flags, etc.) but
-	// suppressed for errors that originate inside RunE.
-	rootCmd.SilenceErrors = true
-
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeCommand(rootCmd); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
+}
+
+func executeCommand(command *cobra.Command) error {
+	defer closeLogging()
+	// SilenceUsage is enabled in PersistentPreRunE so usage is still printed
+	// when cobra itself rejects args (wrong count, unknown flags, etc.) but
+	// suppressed for errors that originate inside RunE.
+	command.SilenceErrors = true
+	return command.Execute()
 }
 
 func init() {

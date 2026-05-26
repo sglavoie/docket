@@ -326,6 +326,23 @@ func TestStageForPrefixKey_Extended(t *testing.T) {
 	}
 }
 
+func TestStageKeyForName_Extended(t *testing.T) {
+	stages := make([]string, 12)
+	for i := range stages {
+		stages[i] = strings.Repeat("s", i+1)
+	}
+
+	if got := StageKeyForName(stages[9], stages); got != "a" {
+		t.Errorf("StageKeyForName(10th stage) = %q, want %q", got, "a")
+	}
+	if got := StageKeyForName(stages[11], stages); got != "c" {
+		t.Errorf("StageKeyForName(12th stage) = %q, want %q", got, "c")
+	}
+	if got := StageKeyForName("", stages); got != "0" {
+		t.Errorf("StageKeyForName(clear) = %q, want %q", got, "0")
+	}
+}
+
 func TestBuildStagePrefixHints_Extended(t *testing.T) {
 	stages := make([]string, 11)
 	for i := range stages {

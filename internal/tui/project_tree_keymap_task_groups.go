@@ -327,13 +327,10 @@ func (b *projectTreeKeymapBuilder) stageEntries() []keymap.Entry {
 		Stages: b.stages,
 		ChangeStage: func(stage string) keymap.Action {
 			return func() (tea.Model, tea.Cmd) {
-				for _, key := range []string{"0", "1", "2", "3", "4", "5", "6", "7", "8", "9"} {
-					if mappedStage := StageForPrefixKey(key, b.stages); mappedStage != nil && *mappedStage == stage {
-						cmd, _ := handleStagePrefix(key, m, b.stages)
-						return m, cmd
-					}
+				if key := StageKeyForName(stage, b.stages); key != "" {
+					cmd, _ := handleStagePrefix(key, m, b.stages)
+					return m, cmd
 				}
-
 				return m, nil
 			}
 		},

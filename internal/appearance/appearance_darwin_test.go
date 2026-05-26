@@ -4,12 +4,22 @@ package appearance
 
 import (
 	"errors"
+	"os/exec"
 	"testing"
 )
 
 func TestDarwinDetectorDetect(t *testing.T) {
 	original := readAppleInterfaceStyle
 	defer func() { readAppleInterfaceStyle = original }()
+
+	exitStatusOne := func(t *testing.T) error {
+		t.Helper()
+		err := exec.Command("sh", "-c", "exit 1").Run()
+		if err == nil {
+			t.Fatal("expected exit status 1 error")
+		}
+		return err
+	}
 
 	tests := []struct {
 		name string
@@ -23,10 +33,17 @@ func TestDarwinDetectorDetect(t *testing.T) {
 		{
 			name: "missing key error defaults to light",
 			out:  []byte("The domain/default pair of (kCFPreferencesAnyApplication, AppleInterfaceStyle) does not exist\n"),
-			err:  errors.New("exit status 1"),
+			err:  exitStatusOne(t),
+			want: Light,
+		},
+		{
+			name: "localized missing key error defaults to light",
+			out:  []byte("La paire domaine/valeur par défaut de (kCFPreferencesAnyApplication, AppleInterfaceStyle) n’existe pas\n"),
+			err:  exitStatusOne(t),
 			want: Light,
 		},
 		{name: "command failure returns unknown", err: errors.New("defaults missing"), want: Unknown},
+		{name: "exit error without key name returns unknown", out: []byte("permission denied"), err: exitStatusOne(t), want: Unknown},
 		{name: "unexpected successful output returns unknown", out: []byte("Sepia\n"), want: Unknown},
 	}
 

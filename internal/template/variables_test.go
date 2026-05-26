@@ -59,6 +59,36 @@ func TestExtractVariables_Deduplication(t *testing.T) {
 	}
 }
 
+func TestExtractVariables_LaterDefaultBackfillsFirstOccurrence(t *testing.T) {
+	tmpl := &TaskTemplate{
+		Name:        "{{env}} deployment",
+		Description: "Deploy to {{env:staging}}",
+	}
+
+	vars := ExtractVariables(tmpl)
+	if len(vars) != 1 {
+		t.Fatalf("expected 1 variable, got %d", len(vars))
+	}
+	if vars[0].Default != "staging" {
+		t.Fatalf("Default = %q, want %q", vars[0].Default, "staging")
+	}
+}
+
+func TestExtractVariables_LaterMissingDefaultDoesNotClearExistingDefault(t *testing.T) {
+	tmpl := &TaskTemplate{
+		Name:        "{{env:staging}} deployment",
+		Description: "Deploy to {{env}}",
+	}
+
+	vars := ExtractVariables(tmpl)
+	if len(vars) != 1 {
+		t.Fatalf("expected 1 variable, got %d", len(vars))
+	}
+	if vars[0].Default != "staging" {
+		t.Fatalf("Default = %q, want %q", vars[0].Default, "staging")
+	}
+}
+
 func TestExtractVariables_AllFields(t *testing.T) {
 	tmpl := &TaskTemplate{
 		Name:        "{{f1}}",

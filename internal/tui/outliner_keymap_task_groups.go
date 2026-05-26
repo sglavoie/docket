@@ -249,10 +249,8 @@ func (b *outlinerKeymapBuilder) stageEntries() []keymap.Entry {
 		Stages: b.stages,
 		ChangeStage: func(stage string) keymap.Action {
 			return func() (tea.Model, tea.Cmd) {
-				for _, key := range []string{"0", "1", "2", "3", "4", "5", "6", "7", "8", "9"} {
-					if mappedStage := StageForPrefixKey(key, b.stages); mappedStage != nil && *mappedStage == stage {
-						return m.handleStagePrefixOutliner(key)
-					}
+				if key := StageKeyForName(stage, b.stages); key != "" {
+					return m.handleStagePrefixOutliner(key)
 				}
 				return m, nil
 			}

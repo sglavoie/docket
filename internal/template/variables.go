@@ -21,16 +21,19 @@ var invalidVarPattern = regexp.MustCompile(`\{\{[^}]*\}\}`)
 // ExtractVariables scans all text fields of a TaskTemplate and returns unique
 // variables in order of first appearance.
 func ExtractVariables(t *TaskTemplate) []TemplateVariable {
-	seen := make(map[string]bool)
+	seen := make(map[string]int)
 	var vars []TemplateVariable
 
 	extract := func(s string) {
 		for _, match := range validVarPattern.FindAllStringSubmatch(s, -1) {
 			name := match[1]
-			if seen[name] {
+			if idx, ok := seen[name]; ok {
+				if vars[idx].Default == "" && match[2] != "" {
+					vars[idx].Default = match[2]
+				}
 				continue
 			}
-			seen[name] = true
+			seen[name] = len(vars)
 			vars = append(vars, TemplateVariable{
 				Name:    name,
 				Default: match[2],

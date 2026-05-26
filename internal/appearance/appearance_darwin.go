@@ -3,6 +3,7 @@
 package appearance
 
 import (
+	"errors"
 	"os/exec"
 	"strings"
 )
@@ -20,7 +21,7 @@ var readAppleInterfaceStyle = func() ([]byte, error) {
 func (d darwinDetector) Detect() SystemAppearance {
 	out, err := readAppleInterfaceStyle()
 	if err != nil {
-		if isMissingAppleInterfaceStyle(out) {
+		if isMissingAppleInterfaceStyle(err, out) {
 			return Light
 		}
 		return Unknown
@@ -39,8 +40,11 @@ func parseAppleInterfaceStyle(out []byte) SystemAppearance {
 	}
 }
 
-func isMissingAppleInterfaceStyle(out []byte) bool {
+func isMissingAppleInterfaceStyle(err error, out []byte) bool {
+	var exitErr *exec.ExitError
+	if !errors.As(err, &exitErr) {
+		return false
+	}
 	text := strings.ToLower(string(out))
-	return strings.Contains(text, "appleinterfacestyle") &&
-		strings.Contains(text, "does not exist")
+	return strings.Contains(text, "appleinterfacestyle")
 }

@@ -123,16 +123,31 @@ func TestConfig_GetEditor(t *testing.T) {
 
 func TestConfig_GetCodeEditor(t *testing.T) {
 	cfg := NewConfig()
+	cfg.Editor = "vim"
 
-	// Default code editor
-	if cfg.GetCodeEditor() != "code" {
-		t.Errorf("expected default code editor 'code', got %q", cfg.GetCodeEditor())
+	// Default code editor falls back to the resolved general editor.
+	if cfg.GetCodeEditor() != "vim" {
+		t.Errorf("expected fallback code editor 'vim', got %q", cfg.GetCodeEditor())
 	}
 
 	// Custom code editor
 	cfg.CodeEditor = "nvim"
 	if cfg.GetCodeEditor() != "nvim" {
 		t.Errorf("expected code editor 'nvim', got %q", cfg.GetCodeEditor())
+	}
+}
+
+func TestConfig_GetNotesEditor(t *testing.T) {
+	cfg := NewConfig()
+	cfg.Editor = "vim"
+
+	if cfg.GetNotesEditor() != "vim" {
+		t.Errorf("expected fallback notes editor 'vim', got %q", cfg.GetNotesEditor())
+	}
+
+	cfg.NotesEditor = "zed"
+	if cfg.GetNotesEditor() != "zed" {
+		t.Errorf("expected notes editor 'zed', got %q", cfg.GetNotesEditor())
 	}
 }
 
