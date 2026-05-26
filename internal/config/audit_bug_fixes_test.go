@@ -239,3 +239,71 @@ func TestConfigManager_LoadClampedValueRoundTrips(t *testing.T) {
 			int(InfoPanelInfoCards), reloaded.InfoPanelMode)
 	}
 }
+
+// TestConfigManager_LoadClampsOutOfRangeTimeoutsAndDays guarantees that
+// out-of-range stored values for fzf_timeout, popup_timeout_seconds,
+// alert_daily_review_hour, alert_weekly_review_day, and the dashboard split
+// percentages are clamped at Load so a bogus stored value doesn't keep
+// round-tripping through every Save. Each respective getter clamps on read,
+// but without the Load-time clamp the bogus stored value resurrects on every
+// reload.
+func TestConfigManager_LoadClampsOutOfRangeTimeoutsAndDays(t *testing.T) {
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, "test-config.json")
+
+	data, _ := json.Marshal(map[string]any{
+		"version":                        1,
+		"data_dir":                       "/tmp/tt-test",
+		"projects":                       []any{},
+		"fzf_timeout":                    -5,
+		"popup_timeout_seconds":          -10,
+		"alert_daily_review_hour":        99,
+		"alert_weekly_review_day":        42,
+		"dashboard_horizontal_split_pct": 5,   // below min
+		"dashboard_vertical_split_pct":   200, // above max
+	})
+	if err := os.WriteFile(configPath, data, 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	manager := NewManager(configPath)
+	cfg, err := manager.Load()
+	if err != nil {
+		t.Fatalf("Load failed: %v", err)
+	}
+	if cfg.FzfTimeout == nil || *cfg.FzfTimeout != 1 {
+		t.Errorf("expected FzfTimeout clamped to 1, got %v", cfg.FzfTimeout)
+	}
+	if cfg.PopupTimeoutSeconds == nil || *cfg.PopupTimeoutSeconds != 0 {
+		t.Errorf("expected PopupTimeoutSeconds clamped to 0, got %v", cfg.PopupTimeoutSeconds)
+	}
+	if cfg.AlertDailyReviewHour == nil || *cfg.AlertDailyReviewHour != DefaultAlertDailyReviewHour {
+		t.Errorf("expected AlertDailyReviewHour clamped to %d, got %v", DefaultAlertDailyReviewHour, cfg.AlertDailyReviewHour)
+	}
+	if cfg.AlertWeeklyReviewDay == nil || *cfg.AlertWeeklyReviewDay != DefaultAlertWeeklyReviewDay {
+		t.Errorf("expected AlertWeeklyReviewDay clamped to %d, got %v", DefaultAlertWeeklyReviewDay, cfg.AlertWeeklyReviewDay)
+	}
+	if cfg.DashboardHorizontalSplitPct == nil || *cfg.DashboardHorizontalSplitPct != MinDashboardSplitPct {
+		t.Errorf("expected DashboardHorizontalSplitPct clamped to %d, got %v",
+			MinDashboardSplitPct, cfg.DashboardHorizontalSplitPct)
+	}
+	if cfg.DashboardVerticalSplitPct == nil || *cfg.DashboardVerticalSplitPct != MaxDashboardSplitPct {
+		t.Errorf("expected DashboardVerticalSplitPct clamped to %d, got %v",
+			MaxDashboardSplitPct, cfg.DashboardVerticalSplitPct)
+	}
+
+	// Verify the clamped values persist through Save round-trip.
+	if saveErr := manager.Save(cfg); saveErr != nil {
+		t.Fatalf("Save failed: %v", saveErr)
+	}
+	reloaded, err := manager.Load()
+	if err != nil {
+		t.Fatalf("reload failed: %v", err)
+	}
+	if reloaded.FzfTimeout == nil || *reloaded.FzfTimeout != 1 {
+		t.Errorf("expected FzfTimeout = 1 after round-trip, got %v", reloaded.FzfTimeout)
+	}
+	if reloaded.AlertDailyReviewHour == nil || *reloaded.AlertDailyReviewHour != DefaultAlertDailyReviewHour {
+		t.Errorf("expected AlertDailyReviewHour persisted after round-trip, got %v", reloaded.AlertDailyReviewHour)
+	}
+}

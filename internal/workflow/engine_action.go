@@ -73,7 +73,16 @@ func applyHierarchicalAction(task *models.Task, action RuleAction, evalCtx *Eval
 
 	case ActionNotifyParent:
 		if task.Parent != nil {
-			task.Parent.AddComment("[Workflow] " + action.Value)
+			commentText := "[Workflow] " + action.Value
+			// Dedupe across all existing parent comments so a rule that fires on
+			// every save operation does not inflate the parent's comment list.
+			// Mirrors the dedup applied to ActionAddComment.
+			for _, c := range task.Parent.Comments {
+				if c != nil && c.Text == commentText {
+					return false
+				}
+			}
+			task.Parent.AddComment(commentText)
 			recordModified(result, task.Parent)
 			return true
 		}
@@ -124,6 +133,17 @@ func applyMoveToProject(task *models.Task, action RuleAction, evalCtx *Evaluatio
 		dest := action.Value
 		if (evalCtx.ProjectName != "" && strings.EqualFold(dest, evalCtx.ProjectName)) ||
 			(evalCtx.ProjectID != "" && dest == evalCtx.ProjectID) {
+			return false
+		}
+	}
+	// A second deferred move queued for the same task would force the caller
+	// to choose silently between conflicting destinations (the second move can
+	// never execute after the first one relocates the task). Skip the duplicate
+	// and let the caller observe the first queued destination; conflict
+	// detection at the rule level (see getFieldFromAction → "move_to_project")
+	// surfaces this to the user.
+	for _, existing := range result.DeferredMoves {
+		if existing.TaskID == task.ID {
 			return false
 		}
 	}

@@ -253,6 +253,10 @@ func getFieldFromAction(actionType ActionType) string {
 		return "priority"
 	case ActionSetSection:
 		return "section"
+	case ActionSetType:
+		return "type"
+	case ActionMoveToProject:
+		return "move_to_project"
 	default:
 		return ""
 	}

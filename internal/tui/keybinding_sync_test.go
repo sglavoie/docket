@@ -207,6 +207,8 @@ func TestExpandRegistryKeyCoverage(t *testing.T) {
 		{"h/l", []string{"h", "l"}},
 		{"shift+← / shift+→", []string{"shift+left", "shift+right"}},
 		{"shift+↑ / shift+↓", []string{"shift+up", "shift+down"}},
+		{"shift+←/→", []string{"shift+left", "shift+right"}},
+		{"shift+↑/↓", []string{"shift+up", "shift+down"}},
 		{"Tab / shift+← / shift+→", []string{"tab", "shift+left", "shift+right"}},
 		{"{ / }", []string{"{", "}"}},
 		{"Esc", []string{"esc"}},

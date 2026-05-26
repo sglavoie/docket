@@ -198,3 +198,50 @@ func TestValidateAcceptsRICEWithLegitimateZeroMinDenominator(t *testing.T) {
 		t.Errorf("Min=0/Max>0 denominator should be valid, got: %v", err)
 	}
 }
+
+// TestValidateRejectsNaNWeight guards against non-finite weights leaking into
+// formulas. A NaN weight propagates through formulaWeightedSum to produce
+// a NaN raw score, which then poisons sort comparisons and breakdown display.
+// Validation must reject NaN at the configuration boundary.
+func TestValidateRejectsNaNWeight(t *testing.T) {
+	d := ScoringDimension{ID: "a", Name: "A", Min: 1, Max: 5, Default: 3, Weight: math.NaN(), Source: SourceManual}
+	if err := d.Validate(); err == nil {
+		t.Error("expected dimension validation to reject NaN weight, got nil")
+	}
+	profile := ScoringProfile{
+		ID: "p", Name: "P", Formula: FormulaWeightedSum,
+		Dimensions: []ScoringDimension{d},
+	}
+	if err := profile.Validate(); err == nil {
+		t.Error("expected profile validation to reject NaN weight, got nil")
+	}
+}
+
+// TestValidateRejectsInfWeight: +Inf weight in weighted_sum yields +Inf raw
+// score; -Inf produces -Inf. Both poison ranking/sorting. Inf weights are
+// not a meaningful configuration and must be rejected.
+func TestValidateRejectsInfWeight(t *testing.T) {
+	for _, w := range []float64{math.Inf(1), math.Inf(-1)} {
+		d := ScoringDimension{ID: "a", Name: "A", Min: 1, Max: 5, Default: 3, Weight: w, Source: SourceManual}
+		if err := d.Validate(); err == nil {
+			t.Errorf("expected validation to reject weight=%v, got nil", w)
+		}
+	}
+}
+
+// TestValidateRejectsDerivedMappingEmptyField: a derived dimension with an
+// empty Field silently falls back to the dimension's Default for every task
+// (getTaskFieldValue returns "" for the empty field, resolveField then yields
+// (0, false), and resolveDimension uses the default). That makes the profile
+// look like it derives from task data while in fact it never does — a
+// configuration trap. Reject empty Field at validation.
+func TestValidateRejectsDerivedMappingEmptyField(t *testing.T) {
+	d := ScoringDimension{
+		ID: "a", Name: "A", Min: 1, Max: 5, Default: 3, Weight: 1,
+		Source:         SourceDerived,
+		DerivedMapping: &DerivedMapping{Field: "", ValueMap: map[string]int{"x": 1}},
+	}
+	if err := d.Validate(); err == nil {
+		t.Error("expected validation to reject derived_mapping with empty Field, got nil")
+	}
+}

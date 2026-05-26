@@ -190,6 +190,53 @@ func (m *Manager) Load() (*Config, error) { //nolint:gocyclo
 	clampIntPtrMin(config.AlertBlockedDays, "AlertBlockedDays")
 	clampIntPtrMin(config.AlertProjectStaleDays, "AlertProjectStaleDays")
 
+	// Clamp timeouts and other range-limited *int fields so an out-of-range
+	// stored value doesn't keep round-tripping through Save. Getters already
+	// clamp on read but the bogus stored value would otherwise persist
+	// indefinitely.
+	if config.FzfTimeout != nil && *config.FzfTimeout <= 0 {
+		logging.Warn("FzfTimeout %d is <= 0, clamping to 1", *config.FzfTimeout)
+		one := 1
+		config.FzfTimeout = &one
+	}
+	if config.PopupTimeoutSeconds != nil && *config.PopupTimeoutSeconds < 0 {
+		logging.Warn("PopupTimeoutSeconds %d is negative, clamping to 0", *config.PopupTimeoutSeconds)
+		zero := 0
+		config.PopupTimeoutSeconds = &zero
+	}
+	if config.AlertDailyReviewHour != nil {
+		v := *config.AlertDailyReviewHour
+		if v < 0 || v > 23 {
+			logging.Warn("AlertDailyReviewHour %d out of range, clamping to default %d", v, DefaultAlertDailyReviewHour)
+			def := DefaultAlertDailyReviewHour
+			config.AlertDailyReviewHour = &def
+		}
+	}
+	if config.AlertWeeklyReviewDay != nil {
+		v := *config.AlertWeeklyReviewDay
+		if v < 0 || v > 6 {
+			logging.Warn("AlertWeeklyReviewDay %d out of range, clamping to default %d", v, DefaultAlertWeeklyReviewDay)
+			def := DefaultAlertWeeklyReviewDay
+			config.AlertWeeklyReviewDay = &def
+		}
+	}
+	if config.DashboardHorizontalSplitPct != nil {
+		v := *config.DashboardHorizontalSplitPct
+		if v < MinDashboardSplitPct || v > MaxDashboardSplitPct {
+			logging.Warn("DashboardHorizontalSplitPct %d out of range, clamping", v)
+			c := clampSplitPct(v)
+			config.DashboardHorizontalSplitPct = &c
+		}
+	}
+	if config.DashboardVerticalSplitPct != nil {
+		v := *config.DashboardVerticalSplitPct
+		if v < MinDashboardSplitPct || v > MaxDashboardSplitPct {
+			logging.Warn("DashboardVerticalSplitPct %d out of range, clamping", v)
+			c := clampSplitPct(v)
+			config.DashboardVerticalSplitPct = &c
+		}
+	}
+
 	// Clamp enum-style stored values back into their valid range so an
 	// out-of-range value (e.g. from a hand-edited config or a downgrade from
 	// a newer build) doesn't keep round-tripping unchanged through Save.

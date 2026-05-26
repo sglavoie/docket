@@ -8,8 +8,10 @@ import (
 // to minute-level truncation.
 const pinnedAtFormat = "2006-01-02 15:04:05"
 
-// metadataRegex matches metadata comments like "<!-- id: uuid, status: todo, priority: 1 -->"
-var metadataRegex = regexp.MustCompile(`^<!--\s*(.+?)\s*-->$`)
+// metadataRegex matches metadata comments like "<!-- id: uuid, status: todo, priority: 1 -->".
+// Trailing whitespace (including \r from CRLF files written on Windows) is tolerated
+// after the closing --> so tasks.md saved with CRLF line endings still loads.
+var metadataRegex = regexp.MustCompile(`^<!--\s*(.+?)\s*-->\s*$`)
 
 // MetadataRegex returns the compiled regex for matching metadata comments.
 func MetadataRegex() *regexp.Regexp {

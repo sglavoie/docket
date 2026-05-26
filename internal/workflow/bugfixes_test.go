@@ -409,6 +409,38 @@ func TestApplyAction_AddCommentDedupScansAllComments(t *testing.T) {
 	}
 }
 
+// TestApplyHierarchicalAction_NotifyParentDedupesComments verifies that the
+// ActionNotifyParent action does not re-append an identical "[Workflow] ..."
+// comment to the parent when one already exists. Without dedup, every
+// re-evaluation across save operations appends another identical comment,
+// inflating the parent's comment list indefinitely — the same bug that
+// ActionAddComment was already hardened against.
+func TestApplyHierarchicalAction_NotifyParentDedupesComments(t *testing.T) {
+	parent := &models.Task{
+		ID:     "p",
+		Status: models.StatusTodo,
+		Comments: []*models.Comment{
+			{Text: "[Workflow] Child needs review", CreatedAt: time.Now()},
+		},
+	}
+	child := &models.Task{ID: "c", Status: models.StatusReview, Parent: parent}
+	parent.Children = []*models.Task{child}
+
+	evalCtx := &EvaluationContext{
+		AllTasks: []*models.Task{parent, child},
+		TaskMap:  map[string]*models.Task{"p": parent, "c": child},
+	}
+	result := &EvaluationResult{}
+
+	modified := applyHierarchicalAction(child, RuleAction{ActionType: ActionNotifyParent, Value: "Child needs review"}, evalCtx, result)
+	if modified {
+		t.Errorf("expected modified=false because the workflow comment already exists on parent, got true")
+	}
+	if len(parent.Comments) != 1 {
+		t.Errorf("expected parent comments to remain 1, got %d", len(parent.Comments))
+	}
+}
+
 // TestMatchesTagTrigger_ContainsIsSubstringMatch verifies that the OpContains
 // operator on tags performs substring matching (any tag contains the value),
 // rather than exact membership (which is OpEquals semantics). Previously
@@ -578,5 +610,88 @@ func TestTaskStateChanged_RecurrenceChanges(t *testing.T) {
 				t.Errorf("TaskStateChanged() = %v, want %v", got, tc.expected)
 			}
 		})
+	}
+}
+
+// TestEvaluateRules_DeferredMovesDedupedPerTask verifies that when two rules
+// both queue ActionMoveToProject for the same task with different destinations,
+// the engine treats it as a conflict and produces at most one deferred move per
+// task. Otherwise the caller would execute conflicting moves (impossible) or
+// silently apply the last one without warning.
+func TestEvaluateRules_DeferredMovesDedupedPerTask(t *testing.T) {
+	task := &models.Task{ID: "t1", Status: models.StatusDone, Type: models.TaskTypeTask}
+
+	rules := []WorkflowRule{
+		{
+			ID:      "r1",
+			Name:    "Move to Archive",
+			Enabled: true,
+			Trigger: RuleTrigger{Field: FieldStatus, Operation: OpEquals, Value: "done"},
+			Actions: []RuleAction{{ActionType: ActionMoveToProject, Value: "Archive"}},
+		},
+		{
+			ID:      "r2",
+			Name:    "Move to Done",
+			Enabled: true,
+			Trigger: RuleTrigger{Field: FieldStatus, Operation: OpEquals, Value: "done"},
+			Actions: []RuleAction{{ActionType: ActionMoveToProject, Value: "Done"}},
+		},
+	}
+
+	result := EvaluateRules([]*models.Task{task}, rules)
+	movesForTask := 0
+	for _, m := range result.DeferredMoves {
+		if m.TaskID == "t1" {
+			movesForTask++
+		}
+	}
+	if movesForTask > 1 {
+		t.Errorf("expected at most 1 deferred move per task, got %d: %+v", movesForTask, result.DeferredMoves)
+	}
+}
+
+// TestEvaluateRules_ConflictDetected_SetType verifies that when two rules both
+// try to ActionSetType to different values on the same task, the engine
+// surfaces it as a RuleConflict. Without conflict detection for set_type, the
+// two rules silently both fire (last write wins) and the user gets no warning.
+// Other fully-overwriting actions (set_active, set_pinned, set_recurrence,
+// set_snooze, set_due_relative, clear_due, set_project_status) share the same
+// gap; this test pins down set_type, which is the highest-impact case.
+func TestEvaluateRules_ConflictDetected_SetType(t *testing.T) {
+	task := &models.Task{ID: "t1", Status: models.StatusTodo, Type: models.TaskTypeTask}
+
+	rules := []WorkflowRule{
+		{
+			ID:      "r1",
+			Name:    "Set type to bug",
+			Enabled: true,
+			Trigger: RuleTrigger{Field: FieldStatus, Operation: OpEquals, Value: "todo"},
+			Actions: []RuleAction{{ActionType: ActionSetType, Value: "bug"}},
+		},
+		{
+			ID:      "r2",
+			Name:    "Set type to idea",
+			Enabled: true,
+			Trigger: RuleTrigger{Field: FieldStatus, Operation: OpEquals, Value: "todo"},
+			Actions: []RuleAction{{ActionType: ActionSetType, Value: "idea"}},
+		},
+	}
+
+	result := EvaluateRules([]*models.Task{task}, rules)
+	if len(result.Conflicts) == 0 {
+		t.Fatalf("expected at least one conflict on the type field, got 0; final type=%q applied=%v",
+			task.Type, result.AppliedRules)
+	}
+	foundTypeConflict := false
+	for _, c := range result.Conflicts {
+		if c.Field == "type" && c.TaskID == "t1" {
+			foundTypeConflict = true
+			if len(c.Rules) < 2 {
+				t.Errorf("expected at least 2 conflicting rules, got %d: %v", len(c.Rules), c.Rules)
+			}
+		}
+	}
+	if !foundTypeConflict {
+		t.Errorf("expected a conflict with Field=type, got %+v", result.Conflicts)
 	}
 }

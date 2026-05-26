@@ -391,6 +391,8 @@ func (m *SettingsModel) HandledKeys() []string {
 	return []string{
 		// Field navigation
 		"tab", "shift+tab", "shift+left", "shift+right", "shift+up", "shift+down", "space", "enter",
+		// Cancel / back
+		"esc",
 		// Selector / tab navigation
 		"h", "l", "left", "right",
 		// Search overlay

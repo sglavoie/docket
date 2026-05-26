@@ -6,8 +6,14 @@ func (m *AppModel) renderCyclePreviewBackground() string {
 	if !m.showProjectCycle || len(m.projectCycleItems) == 0 {
 		return ""
 	}
+	if m.projectCycleCursor < 0 || m.projectCycleCursor >= len(m.projectCycleItems) {
+		return ""
+	}
 
 	proj := m.projectCycleItems[m.projectCycleCursor].Project
+	if proj == nil {
+		return ""
+	}
 	if m.projectCyclePreviewID != proj.ID {
 		m.projectCyclePreview = NewProjectTreeModel(proj, m.config, m.configManager)
 		m.projectCyclePreview.SetSize(m.width, m.height-2)

@@ -86,6 +86,8 @@ var registryKeyExpansions = map[string][]string{
 	"d/x":                     {"d", "x"},
 	"shift+← / shift+→":       {"shift+left", "shift+right"},
 	"shift+↑ / shift+↓":       {"shift+up", "shift+down"},
+	"shift+←/→":               {"shift+left", "shift+right"},
+	"shift+↑/↓":               {"shift+up", "shift+down"},
 	"Tab / shift+← / shift+→": {"tab", "shift+left", "shift+right"},
 	"+/-":                     {"+", "-"},
 	"h/l":                     {"h", "l"},
