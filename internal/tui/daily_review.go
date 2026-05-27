@@ -185,10 +185,11 @@ func (m *DailyReviewModel) HandledKeys() []string {
 	return m.buildKeyMap().HandledKeys()
 }
 
-// isToday returns true if t falls on the current calendar day.
+// isToday returns true if t falls on the current calendar day in the local timezone.
 func isToday(t time.Time) bool {
 	now := time.Now()
-	return t.Year() == now.Year() && t.YearDay() == now.YearDay()
+	tl := t.In(now.Location())
+	return tl.Year() == now.Year() && tl.YearDay() == now.YearDay()
 }
 
 func (m *DailyReviewModel) StatusBarLabel() string { return "Daily Review" }

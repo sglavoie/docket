@@ -156,6 +156,24 @@ func TestDailyReview_WithTasks_Render(t *testing.T) {
 	}
 }
 
+func TestIsToday_CrossTimezone(t *testing.T) {
+	now := time.Now()
+	local := now.Location()
+
+	// A time in UTC that represents the same instant as `now` is still "today"
+	// in the local calendar, even when UTC and local fall on different dates.
+	if !isToday(now.UTC()) {
+		t.Errorf("expected isToday(now.UTC()) to be true; got false (now=%v utc=%v)", now, now.UTC())
+	}
+
+	// A time clearly in the past (~36h ago) must not be reported as today,
+	// regardless of timezone shifts.
+	past := now.Add(-36 * time.Hour).In(local)
+	if isToday(past) {
+		t.Errorf("expected isToday(36h ago) to be false; got true (past=%v)", past)
+	}
+}
+
 func TestDailyReview_SortStability(t *testing.T) {
 	cfg := &config.Config{Projects: []*models.Project{}}
 	m := newTestDailyReviewModel(cfg)
