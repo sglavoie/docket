@@ -106,7 +106,18 @@ const UndoToastTimeout = 6 * time.Second
 // undoCb is invoked when `u` is pressed within UndoToastTimeout; once the
 // timeout elapses (or the toast is replaced), the callback is dropped.
 // Returns a tea.Cmd that clears the toast after the timeout.
+//
+// A nil undoCb is treated as a programming error and degrades to a plain
+// info status with the default 2s timeout — otherwise the "u to undo"
+// affordance on screen would be a lie (the `u` key handler short-circuits
+// on a nil callback) and the 6s window would mis-suppress an unrelated
+// StatusClearMsg that arrives in the meantime.
 func (m *AppModel) setUndoableStatus(msg string, undoCb func() tea.Cmd) tea.Cmd {
+	if undoCb == nil {
+		logging.Warn("setUndoableStatus called with nil undoCb; degrading to plain info status: %q", msg)
+		m.setInfoStatus(msg)
+		return defaultStatusTimeout()
+	}
 	m.setInfoStatus(msg)
 	m.statusUndoCb = undoCb
 	m.statusExpiresAt = time.Now().Add(UndoToastTimeout)
