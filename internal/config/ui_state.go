@@ -122,6 +122,12 @@ func (c *Config) SetCycleProjectsForContext(context string, ids []string) {
 		c.CycleProjects = ids
 		return
 	}
+	if len(ids) == 0 {
+		if c.ContextCycleProjects != nil {
+			delete(c.ContextCycleProjects, context)
+		}
+		return
+	}
 	if c.ContextCycleProjects == nil {
 		c.ContextCycleProjects = make(map[string][]string)
 	}

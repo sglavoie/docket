@@ -105,3 +105,47 @@ func TestGetCycleProjectIndex_Empty(t *testing.T) {
 		t.Errorf("expected -1 for empty cycle list, got %d", idx)
 	}
 }
+
+// TestSetCycleProjectsForContext_NilClearsEntry is a regression test ensuring
+// that passing nil/empty ids for a non-global context deletes the map entry
+// rather than leaving a dangling key with a nil slice value. Callers such as
+// the context picker and project cycle manager use SetCycleProjectsForContext
+// with nil to clear a context's cycle; without deletion, the map accumulates
+// stale entries that survive context deletion/rename and bloat persisted JSON.
+func TestSetCycleProjectsForContext_NilClearsEntry(t *testing.T) {
+	cases := []struct {
+		name string
+		ids  []string
+	}{
+		{"nil slice", nil},
+		{"empty slice", []string{}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			cfg := NewConfig()
+			cfg.SetCycleProjectsForContext("+Work", []string{"p1", "p2"})
+			if _, ok := cfg.ContextCycleProjects["+Work"]; !ok {
+				t.Fatal("setup: expected +Work entry to exist")
+			}
+
+			cfg.SetCycleProjectsForContext("+Work", tc.ids)
+
+			if _, ok := cfg.ContextCycleProjects["+Work"]; ok {
+				t.Errorf("expected +Work entry to be removed after clearing with %s, but it remains", tc.name)
+			}
+		})
+	}
+}
+
+// TestSetCycleProjectsForContext_NilOnNilMap ensures clearing a context when
+// the map itself is nil does not panic and does not allocate the map.
+func TestSetCycleProjectsForContext_NilOnNilMap(t *testing.T) {
+	cfg := NewConfig()
+	cfg.ContextCycleProjects = nil
+
+	cfg.SetCycleProjectsForContext("+Work", nil)
+
+	if cfg.ContextCycleProjects != nil {
+		t.Errorf("expected ContextCycleProjects to remain nil, got %v", cfg.ContextCycleProjects)
+	}
+}
