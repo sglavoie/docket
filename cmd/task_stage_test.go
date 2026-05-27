@@ -87,6 +87,42 @@ func TestTaskStage(t *testing.T) {
 	})
 }
 
+func TestTaskStage_TrimsWhitespace(t *testing.T) {
+	t.Run("padded stage value is trimmed before being stored", func(t *testing.T) {
+		deps, project := setupProjectTest(t)
+
+		task := project.Tasks[0]
+		task.Stage = ""
+		deps.Repository.Projects[project.ID] = project
+
+		err := runTaskStage(taskStageCmd, []string{fmt.Sprintf("%d", task.ShortID), "  Design  "})
+		testutil.AssertNoError(t, err)
+
+		savedProject := deps.Repository.Projects[project.ID]
+		savedTask := savedProject.GetTaskByShortID(task.ShortID)
+		if savedTask.Stage != "Design" {
+			t.Errorf("stage should be trimmed to 'Design', got %q", savedTask.Stage)
+		}
+	})
+
+	t.Run("whitespace-only stage value clears the stage", func(t *testing.T) {
+		deps, project := setupProjectTest(t)
+
+		task := project.Tasks[0]
+		task.Stage = "Design"
+		deps.Repository.Projects[project.ID] = project
+
+		err := runTaskStage(taskStageCmd, []string{fmt.Sprintf("%d", task.ShortID), "   "})
+		testutil.AssertNoError(t, err)
+
+		savedProject := deps.Repository.Projects[project.ID]
+		savedTask := savedProject.GetTaskByShortID(task.ShortID)
+		if savedTask.Stage != "" {
+			t.Errorf("whitespace-only stage should clear, got %q", savedTask.Stage)
+		}
+	})
+}
+
 func TestTaskStage_ReadOnlyDoesNotClear(t *testing.T) {
 	// Regression test: before the fix, running 'tt task stage <id>' with no
 	// stage argument would silently clear the stage instead of showing it.
