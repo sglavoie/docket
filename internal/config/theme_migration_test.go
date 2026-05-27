@@ -188,6 +188,52 @@ func TestMigratePaletteToThemes_CurrentRev_NoOp(t *testing.T) {
 	}
 }
 
+func TestMigratePaletteToThemes_ClearsStaleLegacyFields(t *testing.T) {
+	// Legacy palette fields linger alongside a populated ThemeDark (e.g. after
+	// a hand edit or partial migration). The migration must drop the stale
+	// legacy data so it stops round-tripping through Save.
+	existingDark := Theme{BackgroundColor: "#222222", Palette: PaletteColors{Primary: "#abcdef"}}
+	cfg := &Config{
+		ThemeDark:          existingDark,
+		ThemeDarkRev:       DarkThemeDefaultsRev,
+		ThemeLight:         DefaultLightTheme(),
+		ThemeLightRev:      LightThemeDefaultsRev,
+		ActiveTheme:        "dark",
+		TUIBackgroundColor: "#999999",
+		TUICursorColor:     "#888888",
+		TUICursorTextColor: "#777777",
+		Palette:            PaletteColors{Primary: "#101010"},
+	}
+
+	changed := cfg.MigratePaletteToThemes()
+	if !changed {
+		t.Fatal("expected changed=true when stale legacy fields are cleared")
+	}
+
+	if cfg.TUIBackgroundColor != "" {
+		t.Errorf("TUIBackgroundColor not cleared, got %q", cfg.TUIBackgroundColor)
+	}
+	if cfg.TUICursorColor != "" {
+		t.Errorf("TUICursorColor not cleared, got %q", cfg.TUICursorColor)
+	}
+	if cfg.TUICursorTextColor != "" {
+		t.Errorf("TUICursorTextColor not cleared, got %q", cfg.TUICursorTextColor)
+	}
+	if cfg.Palette != (PaletteColors{}) {
+		t.Errorf("Palette not cleared, got %+v", cfg.Palette)
+	}
+
+	// Existing ThemeDark must remain untouched.
+	if cfg.ThemeDark != existingDark {
+		t.Errorf("ThemeDark was modified: got %+v, want %+v", cfg.ThemeDark, existingDark)
+	}
+
+	// Second call must be a no-op (idempotent).
+	if cfg.MigratePaletteToThemes() {
+		t.Error("expected second call to be a no-op")
+	}
+}
+
 func TestConfigVersionBump_V1toV2(t *testing.T) {
 	tmpDir := t.TempDir()
 	configPath := filepath.Join(tmpDir, "v1-config.json")

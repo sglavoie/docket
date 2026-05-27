@@ -76,6 +76,12 @@ func (c *Config) MigratePaletteToThemes() bool {
 		c.TUICursorTextColor = ""
 		c.ThemeDarkRev = DarkThemeDefaultsRev
 		changed = true
+	} else if legacyHasData {
+		c.Palette = PaletteColors{}
+		c.TUIBackgroundColor = ""
+		c.TUICursorColor = ""
+		c.TUICursorTextColor = ""
+		changed = true
 	}
 
 	if isThemeZero(c.ThemeDark) {
