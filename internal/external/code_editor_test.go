@@ -206,8 +206,58 @@ func TestOpenCodeReference_NonPositiveLineOmitsLineArgForTerminalEditor(t *testi
 		t.Fatalf("read arg file: %v", err)
 	}
 	args := strings.Split(strings.TrimSpace(string(recorded)), "\n")
-	if len(args) != 1 || args[0] != filePath {
-		t.Fatalf("expected only file path argument, got %v", args)
+	// patternPlusLine always emits "--" before the file path to guard
+	// against file names beginning with '-'. With line=0 (omit +N), the
+	// expected arg list is exactly ["--", filePath].
+	if len(args) != 2 || args[0] != "--" || args[1] != filePath {
+		t.Fatalf("expected ['--', filePath], got %v", args)
+	}
+}
+
+// TestOpenCodeReference_TerminalEditorGuardsLeadingDashPath verifies that
+// patternPlusLine inserts "--" between the line/flags and the file path, so a
+// file whose name begins with '-' is not parsed as a vim/nvim option.
+func TestOpenCodeReference_TerminalEditorGuardsLeadingDashPath(t *testing.T) {
+	dir := t.TempDir()
+	argFile := filepath.Join(dir, "args.txt")
+	fakeNvim := filepath.Join(dir, "nvim")
+	script := "#!/bin/sh\nprintf '%s\\n' \"$@\" > " + argFile + "\nexit 0\n"
+	if err := os.WriteFile(fakeNvim, []byte(script), 0o755); err != nil {
+		t.Fatalf("write fake nvim: %v", err)
+	}
+
+	origPath := os.Getenv("PATH")
+	t.Cleanup(func() { _ = os.Setenv("PATH", origPath) })
+	if err := os.Setenv("PATH", dir); err != nil {
+		t.Fatalf("setenv PATH: %v", err)
+	}
+
+	dashPath := filepath.Join(dir, "-leading-dash.go")
+	if err := os.WriteFile(dashPath, []byte("package main\n"), 0o644); err != nil {
+		t.Fatalf("write test file: %v", err)
+	}
+
+	if err := OpenCodeReference("nvim", dashPath, 5); err != nil {
+		t.Fatalf("OpenCodeReference('nvim', dashPath, 5) failed: %v", err)
+	}
+
+	recorded, err := os.ReadFile(argFile)
+	if err != nil {
+		t.Fatalf("read arg file: %v", err)
+	}
+	args := strings.Split(strings.TrimSpace(string(recorded)), "\n")
+	// Expected: +5 -- <dashPath>
+	if len(args) != 3 {
+		t.Fatalf("expected 3 args, got %v", args)
+	}
+	if args[0] != "+5" {
+		t.Errorf("args[0] = %q, want '+5'", args[0])
+	}
+	if args[1] != "--" {
+		t.Errorf("args[1] = %q, want '--' (option terminator)", args[1])
+	}
+	if args[2] != dashPath {
+		t.Errorf("args[2] = %q, want %q", args[2], dashPath)
 	}
 }
 

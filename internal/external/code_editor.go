@@ -84,12 +84,14 @@ func OpenCodeReference(editor, path string, line int) error {
 		}
 		cmd = exec.Command(exe, args...)
 	case patternPlusLine:
-		// vim +line file
+		// vim +line -- file
+		// "--" prevents a file path beginning with '-' from being parsed as
+		// an option by vim/nvim/nano/emacs/helix.
 		args := append([]string{}, extraArgs...)
 		if line > 0 {
 			args = append(args, "+"+strconv.Itoa(line))
 		}
-		args = append(args, path)
+		args = append(args, "--", path)
 		cmd = exec.Command(exe, args...)
 	case patternColonLine:
 		// subl file:line

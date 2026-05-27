@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 	"time"
 
@@ -193,10 +194,11 @@ func FzfSelectTask(tasks []*models.Task, prompt string, previewCmd string) (*mod
 	// Parse the selection - get task ID from first field
 	parts := strings.Split(selected, "\t")
 	if len(parts) > 0 {
-		// Extract short ID from "#N" format
+		// Extract short ID from "#N" format. Use strconv.Atoi for strict
+		// parsing — fmt.Sscanf would accept trailing garbage (e.g. "12abc")
+		// and silently match the wrong task.
 		idStr := strings.TrimPrefix(parts[0], "#")
-		var shortID int
-		if _, err := fmt.Sscanf(idStr, "%d", &shortID); err == nil {
+		if shortID, err := strconv.Atoi(idStr); err == nil {
 			if task, ok := taskMap[shortID]; ok {
 				return task, nil
 			}
@@ -351,8 +353,7 @@ func FzfMultiSelectTasks(tasks []*models.Task, prompt string) ([]*models.Task, e
 			if idStr == "" {
 				continue
 			}
-			var shortID int
-			if _, err := fmt.Sscanf(idStr, "%d", &shortID); err == nil {
+			if shortID, err := strconv.Atoi(idStr); err == nil {
 				if task, ok := taskMap[shortID]; ok {
 					selectedTasks = append(selectedTasks, task)
 				}

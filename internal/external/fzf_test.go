@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os/exec"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -362,6 +363,38 @@ func TestProjectFieldsWithNewlinesDoNotBreakFzfInput(t *testing.T) {
 	parts := strings.Split(lines[0], "\t")
 	if len(parts) != 4 {
 		t.Errorf("expected 4 tab-separated parts after sanitization, got %d (line=%q)", len(parts), lines[0])
+	}
+}
+
+// TestParseTaskID_StrictRejectsTrailingGarbage verifies the parsing strategy
+// used by FzfSelectTask / FzfMultiSelectTasks (strconv.Atoi) rejects inputs
+// like "12abc" rather than silently matching task #12. The previous code used
+// fmt.Sscanf which would accept the trailing garbage and resolve to the
+// wrong task.
+func TestParseTaskID_StrictRejectsTrailingGarbage(t *testing.T) {
+	cases := []struct {
+		in      string
+		wantErr bool
+	}{
+		{"12", false},
+		{"0", false},
+		{"-3", false},
+		{"12abc", true},
+		{"abc", true},
+		{"", true},
+		{"12 34", true},
+		{"12.0", true},
+	}
+	for _, tc := range cases {
+		t.Run(tc.in, func(t *testing.T) {
+			_, err := strconv.Atoi(tc.in)
+			if tc.wantErr && err == nil {
+				t.Errorf("strconv.Atoi(%q) = nil err, want error", tc.in)
+			}
+			if !tc.wantErr && err != nil {
+				t.Errorf("strconv.Atoi(%q) = %v, want nil err", tc.in, err)
+			}
+		})
 	}
 }
 
