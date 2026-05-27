@@ -70,3 +70,33 @@ func TestGetMaxRecentTaskVisits_ValidValuePassesThrough(t *testing.T) {
 		t.Errorf("expected 25, got %d", got)
 	}
 }
+
+// TestGetMaxRecentTaskVisits_AboveUpperBoundClamped guarantees that values
+// exceeding the [1, 50] range enforced by the loader and settings validator
+// are clamped on read. Without this clamp, an in-memory Config that bypassed
+// Load() (or a programmatic caller) could yield a runaway slice cap when used
+// by the quick-switch trimming logic in the TUI.
+func TestGetMaxRecentTaskVisits_AboveUpperBoundClamped(t *testing.T) {
+	cfg := NewConfig()
+	v := 9999
+	cfg.MaxRecentTaskVisits = &v
+
+	got := cfg.GetMaxRecentTaskVisits()
+	if got != MaxRecentTaskVisitsUpperBound {
+		t.Errorf("expected %d for out-of-range MaxRecentTaskVisits=%d, got %d",
+			MaxRecentTaskVisitsUpperBound, v, got)
+	}
+}
+
+// TestGetMaxRecentTaskVisits_AtUpperBoundPassesThrough ensures values exactly
+// at the upper bound are not modified.
+func TestGetMaxRecentTaskVisits_AtUpperBoundPassesThrough(t *testing.T) {
+	cfg := NewConfig()
+	v := MaxRecentTaskVisitsUpperBound
+	cfg.MaxRecentTaskVisits = &v
+
+	got := cfg.GetMaxRecentTaskVisits()
+	if got != MaxRecentTaskVisitsUpperBound {
+		t.Errorf("expected %d, got %d", MaxRecentTaskVisitsUpperBound, got)
+	}
+}
