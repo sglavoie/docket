@@ -86,6 +86,55 @@ func TestMoveTaskToProjectEnsuresCustomSectionInDest(t *testing.T) {
 	}
 }
 
+// TestMoveTaskToProjectAddsGTDSectionToDestList verifies that moving a task
+// whose Section is a built-in GTD bucket (e.g. Inbox) also adds that section
+// to the destination project's Sections list. Without the fix, the task kept
+// its Section field but dest.Sections never enumerated the bucket, hiding the
+// task from any rendering pass driven by dest.GetSections() (kanban, section
+// pickers, GTD list views).
+func TestMoveTaskToProjectAddsGTDSectionToDestList(t *testing.T) {
+	sourceProj, err := NewProject("source", "Source", "/tmp/source")
+	if err != nil {
+		t.Fatal(err)
+	}
+	destProj, err := NewProject("dest", "Dest", "/tmp/dest")
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Dest has only the default Next section (no Inbox/Waiting/etc.) -
+	// EnsureDefaultSections was deliberately not called.
+	destProj.Sections = []string{SectionNext}
+
+	inboxTask, err := NewTask("inbox1", 1, TaskTypeTask, "Inbox Task")
+	if err != nil {
+		t.Fatal(err)
+	}
+	inboxTask.Section = SectionInbox
+
+	waitingTask, err := NewTask("waiting1", 2, TaskTypeTask, "Waiting Task")
+	if err != nil {
+		t.Fatal(err)
+	}
+	waitingTask.Section = SectionWaiting
+
+	sourceProj.Tasks = []*Task{inboxTask, waitingTask}
+	sourceProj.BuildTaskTree()
+
+	if _, err := sourceProj.MoveTaskToProject(inboxTask, destProj); err != nil {
+		t.Fatalf("MoveTaskToProject (inbox): %v", err)
+	}
+	if !destProj.HasSection(SectionInbox) {
+		t.Errorf("expected dest.Sections to include %q after move, got %v", SectionInbox, destProj.Sections)
+	}
+
+	if _, err := sourceProj.MoveTaskToProject(waitingTask, destProj); err != nil {
+		t.Fatalf("MoveTaskToProject (waiting): %v", err)
+	}
+	if !destProj.HasSection(SectionWaiting) {
+		t.Errorf("expected dest.Sections to include %q after move, got %v", SectionWaiting, destProj.Sections)
+	}
+}
+
 func TestMoveTaskToProjectPreservesGTDSections(t *testing.T) {
 	sourceProj, err := NewProject("source", "Source Project", "/tmp/source")
 	if err != nil {

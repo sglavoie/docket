@@ -80,11 +80,19 @@ func (p *Project) MoveTaskToProject(task *Task, dest *Project) (*MoveTaskToProje
 		// the existence check.
 		if t.Section != "" && !IsGTDSection(t.Section) && !destSectionSet[t.Section] {
 			t.SetSection(SectionNext)
+		} else if t.Section != "" && IsGTDSection(t.Section) && !destSectionSet[t.Section] {
+			// GTD section is preserved on the task, but dest's Sections list
+			// may not enumerate it (e.g. dest was created without
+			// EnsureDefaultSections). Append so the bucket renders in UI
+			// listings derived from dest.Sections.
+			dest.EnsureSection(t.Section)
+			destSectionSet[t.Section] = true
 		}
 
 		// Ensure custom section exists in destination
 		if t.CustomSection != "" && !dest.HasSection(t.CustomSection) {
 			dest.EnsureSection(t.CustomSection)
+			destSectionSet[t.CustomSection] = true
 		}
 
 		// Update timestamp

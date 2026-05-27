@@ -33,8 +33,14 @@ func (p *Project) GetBlockedByTasks(task *Task) []*Task {
 }
 
 // HasCircularDependency checks if adding a dependency from taskID to blockerID
-// would create a circular dependency.
+// would create a circular dependency. Empty IDs cannot form a real cycle and
+// always return false; without this guard, dependsOnTransitive("", "") returns
+// true because sourceID == targetID, falsely reporting a cycle for an unset
+// caller argument.
 func (p *Project) HasCircularDependency(taskID, blockerID string) bool {
+	if taskID == "" || blockerID == "" {
+		return false
+	}
 	// If blocker depends (directly or transitively) on task, adding this dependency
 	// would create a cycle.
 	visited := make(map[string]bool)

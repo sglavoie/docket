@@ -113,3 +113,24 @@ func TestProjectHasCircularDependencyWithNonExistentTask(t *testing.T) {
 		t.Error("should not detect cycle when target dependency does not exist")
 	}
 }
+
+// TestProjectHasCircularDependencyEmptyIDs verifies that empty ID arguments
+// never report a false cycle. Before the fix, HasCircularDependency("", "")
+// delegated to dependsOnTransitive("", "", ...) which returned true because
+// sourceID == targetID, producing a misleading positive for an unset caller
+// argument (e.g. a CLI flag that defaulted to empty string).
+func TestProjectHasCircularDependencyEmptyIDs(t *testing.T) {
+	project := newDependencyTestProject(t, "test")
+	task1 := newDependencyTestTask(t, "1", 1, "Task 1")
+	project.Tasks = []*Task{task1}
+
+	if project.HasCircularDependency("", "") {
+		t.Error("empty task and blocker IDs must not report a cycle")
+	}
+	if project.HasCircularDependency("", task1.ID) {
+		t.Error("empty task ID must not report a cycle")
+	}
+	if project.HasCircularDependency(task1.ID, "") {
+		t.Error("empty blocker ID must not report a cycle")
+	}
+}
