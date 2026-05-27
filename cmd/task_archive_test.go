@@ -145,6 +145,28 @@ func TestArchiveAll_ErrorMessageFormat(t *testing.T) {
 	}
 }
 
+func TestArchiveJSON_NoCompletedTasksReturnsValidJSON(t *testing.T) {
+	// When archive has no completed tasks, --json must still emit a valid
+	// archived_count=0 object rather than the plain-text "No completed tasks
+	// to archive." line that previously corrupted JSON output.
+	entry := struct {
+		ArchivedCount int    `json:"archived_count"`
+		Project       string `json:"project"`
+	}{ArchivedCount: 0, Project: "Empty Project"}
+
+	data, err := json.Marshal(entry)
+	if err != nil {
+		t.Fatalf("unexpected marshal error: %v", err)
+	}
+	got := string(data)
+	if !strings.Contains(got, `"archived_count":0`) {
+		t.Errorf("expected JSON to contain \"archived_count\":0, got %s", got)
+	}
+	if !strings.Contains(got, `"project":"Empty Project"`) {
+		t.Errorf("expected JSON to contain project name, got %s", got)
+	}
+}
+
 func TestArchiveAllJSON_EmptyProjectsNotNull(t *testing.T) {
 	// Verify that the JSON summary serializes an empty projects list as []
 	// rather than null (the nil-slice default in Go).
