@@ -1,6 +1,12 @@
 package icons
 
-import "testing"
+import (
+	"fmt"
+	"strings"
+	"testing"
+
+	"charm.land/lipgloss/v2"
+)
 
 func TestStreakUnicodeFallbackDistinct(t *testing.T) {
 	SetUseEmoji(false)
@@ -122,7 +128,7 @@ func TestGetEmojiMode(t *testing.T) {
 		{"status.todo", "📋"},
 		{"status.in_progress", "▶️"},
 		{"status.review", "🔎"},
-		{"status.standby", "⏸"},
+		{"status.standby", "🕒"},
 		{"status.maybe", "❓"},
 		{"status.done", "✅"},
 		{"status.blocked", "🚫"},
@@ -173,6 +179,64 @@ func TestGetEmojiMode(t *testing.T) {
 			t.Errorf("Get(%q) emoji = %q, want %q", tt.key, got, tt.want)
 		}
 	}
+}
+
+// TestColumnAlignedGroupsHaveConsistentWidth guards against width drift within
+// icon groups that share a single column slot in TUI list rows. Mixed cell
+// widths inside a group break PadBadge alignment (see CLAUDE.md TUI Column
+// Alignment) because PadBadge sizes the column to max(width) and right-pads
+// shorter badges, leaving content after the column visibly offset on rows
+// whose icon is narrower. Width is measured with lipgloss.Width to match
+// what PadBadge uses in production.
+func TestColumnAlignedGroupsHaveConsistentWidth(t *testing.T) {
+	groups := map[string][]string{
+		"status": {
+			"status.todo", "status.in_progress", "status.review",
+			"status.standby", "status.maybe", "status.done",
+			"status.blocked", "status.canceled",
+		},
+		"kanban": {
+			"kanban.todo", "kanban.review", "kanban.blocked",
+			"kanban.done", "kanban.canceled",
+		},
+		"priority": {
+			"priority.1", "priority.2", "priority.3",
+			"priority.4", "priority.5",
+		},
+		"type": {
+			"type.epic", "type.story", "type.task", "type.bug", "type.idea",
+		},
+		"project": {
+			"project.planning", "project.wip", "project.active",
+			"project.review", "project.testing", "project.stabilizing",
+			"project.maintenance", "project.bugfix", "project.paused",
+			"project.archived",
+		},
+		"checkbox": {"checkbox.checked", "checkbox.unchecked"},
+	}
+	for _, mode := range []bool{false, true} {
+		SetUseEmoji(mode)
+		label := "unicode"
+		if mode {
+			label = "emoji"
+		}
+		for groupName, keys := range groups {
+			widths := make(map[int][]string)
+			for _, k := range keys {
+				w := lipgloss.Width(Get(k))
+				widths[w] = append(widths[w], k)
+			}
+			if len(widths) > 1 {
+				var parts []string
+				for w, ks := range widths {
+					parts = append(parts, fmt.Sprintf("w=%d:%s", w, strings.Join(ks, ",")))
+				}
+				t.Errorf("%s group (%s mode) has inconsistent cell widths: %s",
+					groupName, label, strings.Join(parts, " | "))
+			}
+		}
+	}
+	SetUseEmoji(false)
 }
 
 func TestGetFallsBackWhenPreferredVariantMissing(t *testing.T) {

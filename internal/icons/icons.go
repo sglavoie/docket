@@ -36,7 +36,7 @@ var registry = map[string]iconPair{
 	"status.todo":        {"📋", "□"},
 	"status.in_progress": {"▶️", "▶"},
 	"status.review":      {"🔎", "◑"},
-	"status.standby":     {"⏸", "‖"},
+	"status.standby":     {"🕒", "‖"},
 	"status.maybe":       {"❓", "¿"},
 	"status.done":        {"✅", "✓"},
 	"status.blocked":     {"🚫", "⊘"},
