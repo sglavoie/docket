@@ -421,3 +421,90 @@ func containsSubstringFocus(s, substr string) bool {
 	}
 	return false
 }
+
+// TestCollectActiveFlaggedTasks_SkipsNilTasks guards the legacy --active path:
+// when a project's Tasks slice contains a stray nil entry, the loop must skip
+// it instead of panicking on field access (task.Status / task.Active).
+func TestCollectActiveFlaggedTasks_SkipsNilTasks(t *testing.T) {
+	project := testutil.NewTestProject("Test")
+
+	active := testutil.NewTestTask("Active task", models.TaskTypeTask)
+	active.Active = true
+
+	// Inject a nil between real tasks to simulate corrupted in-memory state.
+	project.Tasks = []*models.Task{active, nil}
+
+	tasks := collectActiveFlaggedTasks([]*models.Project{project, nil})
+
+	if len(tasks) != 1 {
+		t.Fatalf("expected 1 task (nil and nil project skipped), got %d", len(tasks))
+	}
+	if tasks[0].Task.Title != "Active task" {
+		t.Errorf("unexpected task: %q", tasks[0].Task.Title)
+	}
+}
+
+// TestBuildProjectAndTaskMaps_SkipsNilTasks guards `tt focus today` and
+// `tt focus queue`: building lookup maps must not panic when a project's
+// Tasks slice contains nil entries.
+func TestBuildProjectAndTaskMaps_SkipsNilTasks(t *testing.T) {
+	project := testutil.NewTestProject("Test")
+	task := testutil.NewTestTask("Real", models.TaskTypeTask)
+	project.Tasks = []*models.Task{nil, task, nil}
+
+	projectMap, taskMap := buildProjectAndTaskMaps([]*models.Project{nil, project})
+
+	if _, ok := projectMap[project.ID]; !ok {
+		t.Errorf("expected project %q in projectMap", project.ID)
+	}
+	if len(taskMap) != 1 {
+		t.Fatalf("expected 1 task in taskMap, got %d", len(taskMap))
+	}
+	if _, ok := taskMap[task.ID]; !ok {
+		t.Errorf("expected task %q in taskMap", task.ID)
+	}
+}
+
+// TestSortFocusTasks_DeterministicTiebreak ensures that when two tasks share
+// both priority and UpdatedAt, the order is stable across invocations rather
+// than depending on input order. Without an explicit Task.ID tiebreak the row
+// order would flicker between runs.
+func TestSortFocusTasks_DeterministicTiebreak(t *testing.T) {
+	project := testutil.NewTestProject("Test")
+	now := time.Now()
+
+	mk := func(id, title string) focus.FocusTask {
+		task := testutil.NewTestTask(title, models.TaskTypeTask)
+		task.ID = id
+		task.Priority = 3
+		task.UpdatedAt = now
+		return focus.FocusTask{Task: task, Project: project}
+	}
+
+	a := mk("aaa", "A")
+	b := mk("bbb", "B")
+	c := mk("ccc", "C")
+
+	cases := [][]focus.FocusTask{
+		{a, b, c},
+		{c, b, a},
+		{b, a, c},
+		{c, a, b},
+	}
+
+	for i, input := range cases {
+		sortFocusTasks(input)
+		if input[0].Task.ID != "aaa" || input[1].Task.ID != "bbb" || input[2].Task.ID != "ccc" {
+			t.Errorf("case %d: expected aaa, bbb, ccc; got %s, %s, %s",
+				i, input[0].Task.ID, input[1].Task.ID, input[2].Task.ID)
+		}
+	}
+}
+
+// TestSortFocusTasks_EmptySlice ensures the sort helper does not panic on
+// an empty or nil slice (which `tt focus` may legitimately produce when no
+// active projects yield tasks).
+func TestSortFocusTasks_EmptySlice(t *testing.T) {
+	sortFocusTasks(nil)
+	sortFocusTasks([]focus.FocusTask{})
+}

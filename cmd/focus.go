@@ -96,25 +96,12 @@ func runFocus(cmd *cobra.Command, args []string) error {
 	if focusActiveOnly {
 		// Legacy: only active-flagged, non-completed tasks
 		fmt.Fprintf(os.Stderr, "warning: --active is deprecated; run 'tt focus' without flags to see all actionable tasks\n")
-		for _, project := range projects {
-			for _, task := range project.Tasks {
-				if task.Status.IsComplete() || !task.Active {
-					continue
-				}
-				tasks = append(tasks, focus.FocusTask{Task: task, Project: project})
-			}
-		}
+		tasks = collectActiveFlaggedTasks(projects)
 	} else {
 		tasks = focus.CollectActionableTasks(projects)
 	}
 
-	// Sort by priority (ascending, 1=highest), then by UpdatedAt (most recent first)
-	sort.Slice(tasks, func(i, j int) bool {
-		if tasks[i].Task.Priority != tasks[j].Task.Priority {
-			return tasks[i].Task.Priority < tasks[j].Task.Priority
-		}
-		return tasks[i].Task.UpdatedAt.After(tasks[j].Task.UpdatedAt)
-	})
+	sortFocusTasks(tasks)
 
 	if len(tasks) == 0 {
 		if focusActiveOnly {
@@ -157,6 +144,64 @@ func displayFocusTable(tasks []focus.FocusTask) {
 	} else {
 		fmt.Printf("\n%s\n", Pluralize(len(tasks), "actionable task", "actionable tasks"))
 	}
+}
+
+// collectActiveFlaggedTasks returns non-completed, active-flagged tasks across
+// the given projects. Nil projects and nil tasks are skipped so callers can
+// pass loosely-assembled slices without crashing on stray nil entries.
+func collectActiveFlaggedTasks(projects []*models.Project) []focus.FocusTask {
+	var tasks []focus.FocusTask
+	for _, project := range projects {
+		if project == nil {
+			continue
+		}
+		for _, task := range project.Tasks {
+			if task == nil {
+				continue
+			}
+			if task.Status.IsComplete() || !task.Active {
+				continue
+			}
+			tasks = append(tasks, focus.FocusTask{Task: task, Project: project})
+		}
+	}
+	return tasks
+}
+
+// sortFocusTasks sorts tasks by priority ascending (1=highest), then by
+// UpdatedAt descending, and finally by Task.ID as a deterministic tiebreaker
+// so the order does not flicker between invocations when prior keys are equal.
+func sortFocusTasks(tasks []focus.FocusTask) {
+	sort.Slice(tasks, func(i, j int) bool {
+		if tasks[i].Task.Priority != tasks[j].Task.Priority {
+			return tasks[i].Task.Priority < tasks[j].Task.Priority
+		}
+		if !tasks[i].Task.UpdatedAt.Equal(tasks[j].Task.UpdatedAt) {
+			return tasks[i].Task.UpdatedAt.After(tasks[j].Task.UpdatedAt)
+		}
+		return tasks[i].Task.ID < tasks[j].Task.ID
+	})
+}
+
+// buildProjectAndTaskMaps walks the given projects and returns lookup maps
+// keyed by project ID and task ID. Nil projects and nil tasks are skipped so
+// downstream code can safely dereference the map values.
+func buildProjectAndTaskMaps(projects []*models.Project) (map[string]*models.Project, map[string]*models.Task) {
+	projectMap := make(map[string]*models.Project)
+	taskMap := make(map[string]*models.Task)
+	for _, p := range projects {
+		if p == nil {
+			continue
+		}
+		projectMap[p.ID] = p
+		for _, task := range p.Tasks {
+			if task == nil {
+				continue
+			}
+			taskMap[task.ID] = task
+		}
+	}
+	return projectMap, taskMap
 }
 
 // loadActiveProjects loads task data for all active projects, returning
@@ -231,19 +276,7 @@ func runFocusToday(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	// Load projects and build task lookup
-	projectMap := make(map[string]*models.Project)
-	taskMap := make(map[string]*models.Task)
-	for _, p := range cfg.GetActiveProjects() {
-		if err := storage.LoadProject(p); err != nil {
-			fmt.Fprintf(os.Stderr, "warning: failed to load project %q: %v\n", p.Slug, err)
-			continue
-		}
-		projectMap[p.ID] = p
-		for _, task := range p.Tasks {
-			taskMap[task.ID] = task
-		}
-	}
+	projectMap, taskMap := buildProjectAndTaskMaps(loadActiveProjects(cfg))
 
 	t := table.NewWriter()
 	t.SetStyle(table.StyleRounded)
@@ -297,19 +330,7 @@ func runFocusQueue(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	// Load projects and build task lookup
-	projectMap := make(map[string]*models.Project)
-	taskMap := make(map[string]*models.Task)
-	for _, p := range cfg.GetActiveProjects() {
-		if err := storage.LoadProject(p); err != nil {
-			fmt.Fprintf(os.Stderr, "warning: failed to load project %q: %v\n", p.Slug, err)
-			continue
-		}
-		projectMap[p.ID] = p
-		for _, task := range p.Tasks {
-			taskMap[task.ID] = task
-		}
-	}
+	projectMap, taskMap := buildProjectAndTaskMaps(loadActiveProjects(cfg))
 
 	t := table.NewWriter()
 	t.SetStyle(table.StyleRounded)
