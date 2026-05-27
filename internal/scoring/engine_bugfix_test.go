@@ -34,6 +34,51 @@ func TestFormulaMultiplyInfReturnsSentinel(t *testing.T) {
 	}
 }
 
+// TestFormulaMultiplyZeroProductThenInfReturnsZero is a regression test:
+// when the running product is already 0 (from an earlier zero-valued factor
+// with Weight==1) and a later factor produces +Inf (e.g. Pow(0, -1)),
+// the mathematical result is 0 * Inf = NaN, which should map to 0.
+// Previously the Inf branch unconditionally returned MaxScoreSentinel,
+// artificially boosting a zero-product task to the top of the ranking.
+func TestFormulaMultiplyZeroProductThenInfReturnsZero(t *testing.T) {
+	results := []DimensionResult{
+		{Value: 0, Weight: 1},  // product *= 0 -> product = 0
+		{Value: 0, Weight: -1}, // Pow(0, -1) = +Inf
+	}
+	got := formulaMultiply(results)
+	if got != 0 {
+		t.Errorf("zero-product * Inf should yield 0 (NaN-equivalent), got %f", got)
+	}
+}
+
+// TestFormulaMultiplyZeroFromPowThenInfReturnsZero exercises the same
+// undefined 0*Inf case where the zero arises from Pow(0, positive) rather
+// than the Weight==1 shortcut.
+func TestFormulaMultiplyZeroFromPowThenInfReturnsZero(t *testing.T) {
+	results := []DimensionResult{
+		{Value: 0, Weight: 2},  // Pow(0, 2) = 0 -> product = 0
+		{Value: 0, Weight: -1}, // Pow(0, -1) = +Inf
+	}
+	got := formulaMultiply(results)
+	if got != 0 {
+		t.Errorf("zero-product * Inf (via Pow) should yield 0, got %f", got)
+	}
+}
+
+// TestFormulaMultiplyInfThenZeroStillSentinel confirms the ordering matters:
+// when Inf arises before any zero factor, the legacy "zero effort, infinite
+// value" semantic is preserved (returns sentinel immediately).
+func TestFormulaMultiplyInfThenZeroStillSentinel(t *testing.T) {
+	results := []DimensionResult{
+		{Value: 0, Weight: -1}, // Pow(0, -1) = +Inf, product was 1.0 -> sentinel
+		{Value: 0, Weight: 1},  // never reached
+	}
+	got := formulaMultiply(results)
+	if got != MaxScoreSentinel {
+		t.Errorf("leading Inf should still yield sentinel, got %f", got)
+	}
+}
+
 // TestFormulaMultiplyNegativeBaseIntegerExponent verifies that a negative
 // value with an integer weight (legal Pow result) is preserved verbatim.
 func TestFormulaMultiplyNegativeBaseIntegerExponent(t *testing.T) {
