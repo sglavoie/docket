@@ -1,6 +1,8 @@
 package fuzzy
 
 import (
+	"slices"
+	"strings"
 	"testing"
 )
 
@@ -345,6 +347,184 @@ func TestScoreWithPositionsUnicode(t *testing.T) {
 	for i := 1; i < len(positions); i++ {
 		if positions[i] <= positions[i-1] {
 			t.Errorf("positions not strictly increasing: %v", positions)
+		}
+	}
+}
+
+// TestScoreParityWithPositions pins the contract that Score and
+// ScoreWithPositions agree on the scalar score for any input. The two
+// implementations are duplicated; any divergence is a bug.
+func TestScoreParityWithPositions(t *testing.T) {
+	cases := []struct {
+		text, pattern string
+	}{
+		{"", ""},
+		{"", "x"},
+		{"x", ""},
+		{"a", "a"},
+		{"abc", "abc"},
+		{"abcdef", "ace"},
+		{"hello world", "hlo"},
+		{"need a way", "need way"},
+		{"İstanbul", "ist"},
+		{"Über die Brücke", "übr"},
+		{"  abc", "abc"},
+		{"-abc-def", "abdf"},
+		{"aaaaa", "aaa"},
+		{"abXacd", "acd"},
+		{"some huge old random text", "short"},
+		{"\xff\xfe", "x"},
+	}
+	for _, c := range cases {
+		s1 := Score(c.text, c.pattern)
+		s2, _ := ScoreWithPositions(c.text, c.pattern)
+		if s1 != s2 {
+			t.Errorf("Score(%q,%q)=%d but ScoreWithPositions=%d (must agree)",
+				c.text, c.pattern, s1, s2)
+		}
+	}
+}
+
+// TestScoreDeterminism verifies repeated calls return identical results.
+// Non-determinism (e.g. from map iteration leaking into ordering) would
+// silently destabilize UI lists ranked by Score.
+func TestScoreDeterminism(t *testing.T) {
+	cases := []struct {
+		text, pattern string
+	}{
+		{"hello world", "hlo"},
+		{"aabb", "ab"},
+		{"need a way to do this", "need way"},
+		{"foo-bar baz", "fbb"},
+	}
+	for _, c := range cases {
+		first, firstPos := ScoreWithPositions(c.text, c.pattern)
+		for i := 0; i < 20; i++ {
+			s, p := ScoreWithPositions(c.text, c.pattern)
+			if s != first {
+				t.Fatalf("score drift for Score(%q,%q): first=%d run=%d got=%d",
+					c.text, c.pattern, first, i, s)
+			}
+			if !slices.Equal(p, firstPos) {
+				t.Fatalf("position drift for (%q,%q): first=%v run=%d got=%v",
+					c.text, c.pattern, firstPos, i, p)
+			}
+		}
+		termScore, termPos := ScoreTermsWithPositions(c.text, c.pattern)
+		for i := 0; i < 20; i++ {
+			s, p := ScoreTermsWithPositions(c.text, c.pattern)
+			if s != termScore {
+				t.Fatalf("ScoreTerms drift for (%q,%q): first=%d run=%d got=%d",
+					c.text, c.pattern, termScore, i, s)
+			}
+			if !slices.Equal(p, termPos) {
+				t.Fatalf("ScoreTerms position drift for (%q,%q): first=%v run=%d got=%v",
+					c.text, c.pattern, termPos, i, p)
+			}
+		}
+	}
+}
+
+// TestNoPanicOnPathologicalInput pins safety against panics on edge inputs
+// (empty, invalid UTF-8, null bytes, pattern longer than text, etc).
+func TestNoPanicOnPathologicalInput(t *testing.T) {
+	inputs := []struct{ text, pattern string }{
+		{"", ""},
+		{"", "x"},
+		{"x", ""},
+		{"\x00", "\x00"},
+		{"\xff\xfe", "x"},
+		{"x", "\xff\xfe"},
+		{"\xff\xfe", "\xff\xfe"},
+		{string([]byte{0xc3, 0x28}), "x"},
+		{"ab", "abc"},
+		{strings.Repeat("a", 1000), strings.Repeat("a", 500)},
+	}
+	for _, in := range inputs {
+		func() {
+			defer func() {
+				if r := recover(); r != nil {
+					t.Errorf("panic on (%q,%q): %v", in.text, in.pattern, r)
+				}
+			}()
+			_ = Score(in.text, in.pattern)
+			_ = Match(in.text, in.pattern)
+			_, _ = ScoreWithPositions(in.text, in.pattern)
+			_ = ScoreTerms(in.text, in.pattern)
+			_, _ = ScoreTermsWithPositions(in.text, in.pattern)
+			_ = MatchTerms(in.text, in.pattern)
+		}()
+	}
+}
+
+// TestPositionsAreValidRuneIndices guards against returning positions that
+// would index into the middle of a multi-byte rune if a caller used them on
+// []rune(text). The contract: positions are valid indices into
+// []rune(strings.ToLower(text)).
+func TestPositionsAreValidRuneIndices(t *testing.T) {
+	cases := []struct {
+		text, pattern string
+	}{
+		{"İstanbul", "ist"},
+		{"Über die Brücke", "übr"},
+		{"café", "é"},
+		{"Σοφία", "σ"},
+	}
+	for _, c := range cases {
+		score, positions := ScoreWithPositions(c.text, c.pattern)
+		if score == 0 {
+			t.Fatalf("expected match for (%q,%q)", c.text, c.pattern)
+		}
+		lowered := []rune(strings.ToLower(c.text))
+		for _, p := range positions {
+			if p < 0 || p >= len(lowered) {
+				t.Errorf("position %d out of bounds for %q (rune len %d)",
+					p, c.text, len(lowered))
+			}
+		}
+		for i := 1; i < len(positions); i++ {
+			if positions[i] <= positions[i-1] {
+				t.Errorf("positions not strictly increasing for (%q,%q): %v",
+					c.text, c.pattern, positions)
+			}
+		}
+	}
+}
+
+// TestEmptyPatternBehavior locks in the documented contract:
+//   - Score returns 1 for empty pattern (matches everything weakly)
+//   - Positions are nil for empty pattern (no characters to highlight)
+//   - Match returns true (since 1 > 0)
+func TestEmptyPatternBehavior(t *testing.T) {
+	for _, text := range []string{"", "x", "hello world", "İstanbul"} {
+		if s := Score(text, ""); s != 1 {
+			t.Errorf("Score(%q, \"\") = %d, want 1", text, s)
+		}
+		if !Match(text, "") {
+			t.Errorf("Match(%q, \"\") = false, want true", text)
+		}
+		if s, p := ScoreWithPositions(text, ""); s != 1 || p != nil {
+			t.Errorf("ScoreWithPositions(%q, \"\") = (%d, %v), want (1, nil)", text, s, p)
+		}
+	}
+}
+
+// TestPatternLongerThanText verifies the early-return guard. A pattern with
+// more runes than the text can never form a subsequence.
+func TestPatternLongerThanText(t *testing.T) {
+	cases := []struct{ text, pattern string }{
+		{"ab", "abc"},
+		{"a", "ab"},
+		{"", "x"},
+		{"İ", "İs"},
+	}
+	for _, c := range cases {
+		if s := Score(c.text, c.pattern); s != 0 {
+			t.Errorf("Score(%q,%q) = %d, want 0 (pattern longer)", c.text, c.pattern, s)
+		}
+		if s, p := ScoreWithPositions(c.text, c.pattern); s != 0 || p != nil {
+			t.Errorf("ScoreWithPositions(%q,%q) = (%d,%v), want (0,nil)",
+				c.text, c.pattern, s, p)
 		}
 	}
 }
