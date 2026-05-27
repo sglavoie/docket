@@ -83,6 +83,34 @@ func parseDueOrWarn(task *models.Task, value string, warnings *[]ParseWarning) {
 	addValidationWarning(warnings, "due", "invalid due %q, ignoring", value)
 }
 
+// isDecimalDigits reports whether s is non-empty and consists entirely of
+// ASCII decimal digits. Used to decide whether a colon-suffix on a code-ref
+// path is intended as a line number.
+func isDecimalDigits(s string) bool {
+	if s == "" {
+		return false
+	}
+	for i := 0; i < len(s); i++ {
+		if s[i] < '0' || s[i] > '9' {
+			return false
+		}
+	}
+	return true
+}
+
+// looksLikeCodeRefPath reports whether prefix is plausibly the file-path
+// portion of a code reference. The empty string is allowed because the writer
+// emits "||:N" (sentinel empty path) when LineNumber is non-zero but no
+// OriginalPath was provided. Otherwise we require a "/" (any kind of path
+// separator) or "." (extension or hidden segment) to distinguish a real path
+// from a bare hostname-like token (e.g., "localhost:8080").
+func looksLikeCodeRefPath(prefix string) bool {
+	if prefix == "" {
+		return true
+	}
+	return strings.ContainsAny(prefix, "/.")
+}
+
 // parseAttachments parses a semicolon-delimited attachment string into Attachment structs.
 func parseAttachments(value string, warnings *[]ParseWarning) []models.Attachment {
 	var result []models.Attachment
@@ -146,23 +174,30 @@ func parseAttachments(value string, warnings *[]ParseWarning) []models.Attachmen
 			// Accept colonIdx >= 0 so a sentinel ":N" (emitted when the
 			// writer had no OriginalPath but a non-zero LineNumber) still
 			// recovers the line number.
+			//
+			// Only extract a trailing ":N" suffix as a line number when (a)
+			// the suffix is purely decimal digits and (b) the part before the
+			// colon looks like a file path (empty for the sentinel, or
+			// containing "/" or "."). This prevents corrupting paths whose
+			// last segment happens to look like a port (e.g., "localhost:8080")
+			// and avoids spurious warnings for Windows-style paths whose only
+			// colon belongs to a drive letter (e.g., "C:/Users/foo.go").
 			if colonIdx := strings.LastIndex(originalPath, ":"); colonIdx >= 0 {
 				suffix := originalPath[colonIdx+1:]
-				if ln, err := strconv.Atoi(suffix); err != nil {
-					*warnings = append(*warnings, ParseWarning{
-						Type:    WarningValidation,
-						Field:   "attachments",
-						Message: fmt.Sprintf("code attachment %q has invalid line number %q, ignoring", filename, suffix),
-					})
-				} else if ln <= 0 {
-					*warnings = append(*warnings, ParseWarning{
-						Type:    WarningValidation,
-						Field:   "attachments",
-						Message: fmt.Sprintf("code attachment %q has non-positive line number %d, ignoring", filename, ln),
-					})
-				} else {
-					lineNumber = ln
-					originalPath = originalPath[:colonIdx]
+				prefix := originalPath[:colonIdx]
+				suffixIsLineNumber := isDecimalDigits(suffix) && looksLikeCodeRefPath(prefix)
+				if suffixIsLineNumber {
+					ln, _ := strconv.Atoi(suffix)
+					if ln <= 0 {
+						*warnings = append(*warnings, ParseWarning{
+							Type:    WarningValidation,
+							Field:   "attachments",
+							Message: fmt.Sprintf("code attachment %q has non-positive line number %d, ignoring", filename, ln),
+						})
+					} else {
+						lineNumber = ln
+						originalPath = prefix
+					}
 				}
 			}
 			result = append(result, models.Attachment{
