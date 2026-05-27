@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -11,6 +12,25 @@ import (
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/tterrors"
 )
+
+// validateAttachURL ensures the input looks like a real URL reference with an
+// explicit scheme. Without this check, callers can attach arbitrary strings
+// (e.g. "example.com" or "not a url"), which later fail with a confusing
+// "file not found" when the OS opener interprets them as paths.
+func validateAttachURL(raw string) error {
+	parsed, err := url.Parse(raw)
+	if err != nil {
+		return fmt.Errorf("invalid URL: %w", err)
+	}
+	if parsed.Scheme == "" {
+		return fmt.Errorf("URL must include a scheme (e.g. https://): %s", raw)
+	}
+	// Reject obvious garbage: scheme-only with no opaque/host (e.g. "https://").
+	if parsed.Host == "" && parsed.Opaque == "" && parsed.Path == "" {
+		return fmt.Errorf("URL must include a host or path: %s", raw)
+	}
+	return nil
+}
 
 var attachURL string
 
@@ -75,6 +95,9 @@ func runAttach(cmd *cobra.Command, args []string) error { //nolint:gocyclo
 		}
 		if len(url) > 2000 {
 			return fmt.Errorf("URL exceeds maximum length of 2000 characters (%d)", len(url))
+		}
+		if err := validateAttachURL(url); err != nil {
+			return err
 		}
 
 		err = task.AddAttachment(url, true, url)
