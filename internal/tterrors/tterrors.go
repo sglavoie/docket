@@ -85,6 +85,9 @@ func NewInvalidValueError(field string, value any, reason string) error {
 // NewSaveProjectError creates an error for failing to save a project.
 // Use this when project saving fails to provide consistent error messaging.
 func NewSaveProjectError(name string, err error) error {
+	if err == nil {
+		return fmt.Errorf("%w '%s'", ErrSaveFailed, name)
+	}
 	return fmt.Errorf("%w '%s': %w", ErrSaveFailed, name, err)
 }
 
@@ -107,5 +110,8 @@ func NewNoChangesError(flags string) error {
 
 // NewSaveConfigError creates an error for failing to save the config file.
 func NewSaveConfigError(err error) error {
+	if err == nil {
+		return ErrConfigSaveFailed
+	}
 	return fmt.Errorf("%w: %w", ErrConfigSaveFailed, err)
 }

@@ -297,6 +297,35 @@ func TestNewAmbiguousIdentifierError(t *testing.T) {
 	}
 }
 
+func TestNewSaveProjectErrorNilInner(t *testing.T) {
+	err := NewSaveProjectError("work-tasks", nil)
+	if err == nil {
+		t.Fatal("NewSaveProjectError(nil) should still return a non-nil error")
+	}
+	if !errors.Is(err, ErrSaveFailed) {
+		t.Error("NewSaveProjectError(nil) should still wrap ErrSaveFailed")
+	}
+	if strings.Contains(err.Error(), "%!w(<nil>)") {
+		t.Errorf("NewSaveProjectError(nil) leaked fmt verb in message: %q", err.Error())
+	}
+	if !strings.Contains(err.Error(), "work-tasks") {
+		t.Errorf("NewSaveProjectError(nil) should still include project name, got %q", err.Error())
+	}
+}
+
+func TestNewSaveConfigErrorNilInner(t *testing.T) {
+	err := NewSaveConfigError(nil)
+	if err == nil {
+		t.Fatal("NewSaveConfigError(nil) should still return a non-nil error")
+	}
+	if !errors.Is(err, ErrConfigSaveFailed) {
+		t.Error("NewSaveConfigError(nil) should still match ErrConfigSaveFailed")
+	}
+	if strings.Contains(err.Error(), "%!w(<nil>)") {
+		t.Errorf("NewSaveConfigError(nil) leaked fmt verb in message: %q", err.Error())
+	}
+}
+
 func TestNewInvalidTaskTypeError(t *testing.T) {
 	testCases := []struct {
 		name     string
