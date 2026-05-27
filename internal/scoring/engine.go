@@ -235,6 +235,11 @@ func formulaMultiply(results []DimensionResult) float64 {
 			return 0
 		}
 		if math.IsInf(val, 0) {
+			// 0 * Inf is NaN (undefined): an already-zero product must not
+			// be artificially boosted to the sentinel by a later +Inf factor.
+			if product == 0 {
+				return 0
+			}
 			return MaxScoreSentinel
 		}
 		product *= val
