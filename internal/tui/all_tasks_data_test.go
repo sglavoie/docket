@@ -263,3 +263,45 @@ func TestActiveTabIncludesCompletedOutOfBounds(t *testing.T) {
 		t.Error("out-of-bounds tab should return false for IncludeCompleted")
 	}
 }
+
+// TestFindNavigableIndexMissing verifies that findNavigableIndex returns -1
+// for IDs that no longer exist in the visible groups, which is the input
+// condition that reloadData must guard against by clamping the cursor.
+func TestFindNavigableIndexMissing(t *testing.T) {
+	proj := testutil.NewTestProject("kappa")
+	t1 := testutil.NewTestTask("T1", models.TaskTypeTask)
+
+	m := newMinimalAllTasksVM()
+	m.groups = []AllTasksGroup{makeGroup("G", proj, t1)}
+	m.calculateNavigation()
+
+	if got := m.findNavigableIndex("does-not-exist"); got != -1 {
+		t.Errorf("want -1 for missing id, got %d", got)
+	}
+}
+
+// TestClampCursorAfterShrink verifies the fix for the cursor-lingering bug:
+// after reloadData drops the task previously under the cursor (e.g. status
+// transitioned it out of the visible set), the cursor must be clamped back
+// into range rather than left pointing past the end of the navigable list.
+func TestClampCursorAfterShrink(t *testing.T) {
+	proj := testutil.NewTestProject("lambda")
+	t1 := testutil.NewTestTask("T1", models.TaskTypeTask)
+	t2 := testutil.NewTestTask("T2", models.TaskTypeTask)
+
+	m := newMinimalAllTasksVM()
+	m.groups = []AllTasksGroup{makeGroup("G", proj, t1, t2)}
+	m.calculateNavigation()
+	// layout: 0=header, 1=t1, 2=t2 — cursor sits on the last task
+	m.cursor = 2
+
+	// Simulate the list shrinking to a single task (t2 removed).
+	m.groups = []AllTasksGroup{makeGroup("G", proj, t1)}
+	m.calculateNavigation()
+	m.clampCursor()
+
+	// Total navigable items is now 2 (header + t1); cursor must be <= 1.
+	if m.cursor >= m.totalNavigableItems() {
+		t.Errorf("cursor %d not clamped to navigable range %d", m.cursor, m.totalNavigableItems())
+	}
+}

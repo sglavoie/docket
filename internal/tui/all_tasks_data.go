@@ -206,6 +206,7 @@ func (m *AllTasksViewModel) reloadData() {
 			m.cursor = idx
 		}
 	}
+	m.clampCursor()
 }
 
 // findNavigableIndex returns the navigable cursor position (header + task rows)
