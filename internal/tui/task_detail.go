@@ -66,22 +66,24 @@ func (m *TaskDetailModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyPressMsg:
 		return m.handleKeyMsg(msg)
 	case TaskUpdatedMsg:
-		// Re-fetch task pointer in case project was reloaded
-		if msg.Task != nil {
+		// Re-fetch task pointer in case project was reloaded.
+		// Only react to messages targeting the task currently shown — otherwise
+		// a broadcast for an unrelated task would swap m.task out from under us.
+		if msg.Task != nil && m.task != nil && msg.Task.ID == m.task.ID {
 			if fresh := m.project.GetTaskByID(msg.Task.ID); fresh != nil {
 				m.task = fresh
 				m.renderedDesc = ""
-			} else if msg.Task.ID == m.task.ID {
+			} else {
 				return m, func() tea.Msg { return BackMsg{} }
 			}
 		}
 		return m, nil
 	case TaskPropertyChangedMsg:
-		if msg.Task != nil {
+		if msg.Task != nil && m.task != nil && msg.Task.ID == m.task.ID {
 			if fresh := m.project.GetTaskByID(msg.Task.ID); fresh != nil {
 				m.task = fresh
 				m.renderedDesc = ""
-			} else if msg.Task.ID == m.task.ID {
+			} else {
 				return m, func() tea.Msg { return BackMsg{} }
 			}
 		}

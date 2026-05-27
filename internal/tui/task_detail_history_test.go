@@ -3,6 +3,8 @@ package tui
 import (
 	"strings"
 	"testing"
+
+	"github.com/sglavoie/tt/internal/models"
 )
 
 func TestHistoryCountsSummary(t *testing.T) {
@@ -52,5 +54,39 @@ func TestTaskDetailHistoryToggleDefault(t *testing.T) {
 	m := &TaskDetailModel{}
 	if m.historyExpanded {
 		t.Errorf("historyExpanded should default to false")
+	}
+}
+
+// TestTaskDetailUpdate_IgnoresMessagesForOtherTasks verifies that
+// TaskUpdatedMsg / TaskPropertyChangedMsg targeting a different task in the
+// same project do not silently swap the currently-shown task.
+func TestTaskDetailUpdate_IgnoresMessagesForOtherTasks(t *testing.T) {
+	project, err := models.NewProject("proj-1", "Detail", t.TempDir())
+	if err != nil {
+		t.Fatalf("NewProject: %v", err)
+	}
+	shown, err := models.NewTask("task-shown", 1, models.TaskTypeTask, "Shown")
+	if err != nil {
+		t.Fatalf("NewTask shown: %v", err)
+	}
+	other, err := models.NewTask("task-other", 2, models.TaskTypeTask, "Other")
+	if err != nil {
+		t.Fatalf("NewTask other: %v", err)
+	}
+	project.Tasks = []*models.Task{shown, other}
+
+	m := &TaskDetailModel{task: shown, project: project}
+
+	if _, _ = m.Update(TaskUpdatedMsg{Task: other}); m.task != shown {
+		t.Fatalf("TaskUpdatedMsg for other task swapped m.task: got %q, want %q", m.task.ID, shown.ID)
+	}
+	if _, _ = m.Update(TaskPropertyChangedMsg{Task: other}); m.task != shown {
+		t.Fatalf("TaskPropertyChangedMsg for other task swapped m.task: got %q, want %q", m.task.ID, shown.ID)
+	}
+
+	// Sanity: a message for the shown task should still refresh the pointer
+	// (here it remains the same since project storage is unchanged).
+	if _, _ = m.Update(TaskUpdatedMsg{Task: shown}); m.task != shown {
+		t.Fatalf("TaskUpdatedMsg for shown task should keep m.task pointing at shown, got %q", m.task.ID)
 	}
 }
