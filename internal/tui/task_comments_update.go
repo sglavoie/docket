@@ -104,7 +104,7 @@ func (m *TaskCommentsModel) hasSelection() bool {
 }
 
 func (m *TaskCommentsModel) hasUnsavedEditChanges() bool {
-	return m.editIndex < len(m.task.Comments) && strings.TrimSpace(m.editTextInput.Value()) != m.task.Comments[m.editIndex].Text
+	return m.editIndex < len(m.task.Comments) && strings.TrimSpace(m.editTextInput.Value()) != strings.TrimSpace(m.task.Comments[m.editIndex].Text)
 }
 
 func (m *TaskCommentsModel) moveCursorDown() {

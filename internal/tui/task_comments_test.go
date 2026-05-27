@@ -243,6 +243,33 @@ func TestTaskCommentsSaveEditOOBAfterExternalDeletion(t *testing.T) {
 	}
 }
 
+func TestTaskCommentsHasUnsavedEditChangesIgnoresSurroundingWhitespace(t *testing.T) {
+	project, err := models.NewProject("project-1", "Comments Project", t.TempDir())
+	if err != nil {
+		t.Fatalf("NewProject: %v", err)
+	}
+
+	task, err := models.NewTask("task-1", 1, models.TaskTypeTask, "Test task")
+	if err != nil {
+		t.Fatalf("NewTask: %v", err)
+	}
+	// Stored comment text has trailing whitespace (e.g., from prior editor save).
+	task.Comments = []*models.Comment{
+		{Text: "hello world\n", CreatedAt: time.Now()},
+	}
+	project.Tasks = []*models.Task{task}
+
+	model := NewTaskCommentsModel(task, project)
+	model.editMode = true
+	model.editIndex = 0
+	// User opens edit; textarea is populated with the stored value but trims on input.
+	model.editTextInput.SetValue("hello world")
+
+	if model.hasUnsavedEditChanges() {
+		t.Fatal("expected no unsaved changes when input differs from stored text only by surrounding whitespace")
+	}
+}
+
 func TestTaskCommentsToggleResolvedMutatesSynchronously(t *testing.T) {
 	project, err := models.NewProject("project-1", "Comments Project", t.TempDir())
 	if err != nil {
