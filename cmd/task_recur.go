@@ -172,7 +172,12 @@ func runTaskRecur(cmd *cobra.Command, args []string) error { //nolint:gocyclo
 	// Handle --clear flag
 	if taskRecurClear {
 		if task.Recurrence == nil {
-			fmt.Printf("Task #%d has no recurrence pattern\n", task.ShortID)
+			if out.JSON {
+				return outputSingleTaskJSON(task)
+			}
+			if !out.Quiet {
+				fmt.Printf("Task #%d has no recurrence pattern\n", task.ShortID)
+			}
 			return nil
 		}
 		task.ClearRecurrence()
