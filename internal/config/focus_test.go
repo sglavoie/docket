@@ -192,6 +192,23 @@ func TestRemoveTaskRefs(t *testing.T) {
 			t.Errorf("expected empty FocusQueue, got %v", cfg.FocusQueue)
 		}
 	})
+
+	t.Run("removes matching IDs from FocusDismissedIDs", func(t *testing.T) {
+		cfg := NewConfig()
+		cfg.FocusDismissedIDs = []string{"t1", "t2", "t3", "t4"}
+
+		removed := cfg.RemoveTaskRefs(map[string]bool{"t2": true, "t4": true})
+
+		if removed != 2 {
+			t.Fatalf("expected 2 removals, got %d", removed)
+		}
+		if len(cfg.FocusDismissedIDs) != 2 {
+			t.Fatalf("expected 2 IDs remaining, got %d (%v)", len(cfg.FocusDismissedIDs), cfg.FocusDismissedIDs)
+		}
+		if cfg.FocusDismissedIDs[0] != "t1" || cfg.FocusDismissedIDs[1] != "t3" {
+			t.Errorf("expected [t1 t3], got %v", cfg.FocusDismissedIDs)
+		}
+	})
 }
 
 func TestFocusDismissedHelpers(t *testing.T) {

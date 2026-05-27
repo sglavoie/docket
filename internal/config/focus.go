@@ -71,8 +71,9 @@ func (c *Config) ReassignTaskProject(taskIDs map[string]bool, newProjectID strin
 }
 
 // RemoveTaskRefs removes entries for the given task IDs from FocusQueue,
-// DailyPlan, and RecentTaskVisits. This must be called when tasks are
-// deleted or archived so that stale references don't persist in config.
+// DailyPlan, RecentTaskVisits, and FocusDismissedIDs. This must be called
+// when tasks are deleted or archived so that stale references don't persist
+// in config.
 // Returns the number of entries removed.
 func (c *Config) RemoveTaskRefs(taskIDs map[string]bool) int {
 	removed := 0
@@ -108,6 +109,17 @@ func (c *Config) RemoveTaskRefs(taskIDs map[string]bool) int {
 			filtered = append(filtered, visit)
 		}
 		c.RecentTaskVisits = filtered
+	}
+	if len(c.FocusDismissedIDs) > 0 {
+		filtered := c.FocusDismissedIDs[:0]
+		for _, id := range c.FocusDismissedIDs {
+			if taskIDs[id] {
+				removed++
+				continue
+			}
+			filtered = append(filtered, id)
+		}
+		c.FocusDismissedIDs = filtered
 	}
 	return removed
 }
