@@ -18,9 +18,9 @@ func (m *AppModel) handleArchiveCompletedTasks() (bool, tea.Cmd) {
 	if m.config.UndoHistoryDepth != nil {
 		undoDepth = *m.config.UndoHistoryDepth
 	}
-	completedCount := project.CountCompletedTasks()
 
 	cmd := func() tea.Msg {
+		completedCount := project.CountCompletedTasks()
 		if completedCount == 0 {
 			return TasksArchivedMsg{Count: 0}
 		}
