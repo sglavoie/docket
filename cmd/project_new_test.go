@@ -8,6 +8,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/testutil"
 )
 
@@ -286,6 +287,59 @@ func TestProjectGetTaskByID(t *testing.T) {
 	notFound := project.GetTaskByID("nonexistent")
 	if notFound != nil {
 		t.Error("non-existent ID should return nil")
+	}
+}
+
+// TestProjectNewTrimsContext verifies that whitespace around the --context flag
+// value is stripped before the value is persisted on the project. Previously a
+// value like " personal " would be stored verbatim and fail the
+// `isKnownContext` check, producing a bogus warning and an untrimmed
+// project.Context.
+func TestProjectNewTrimsContext(t *testing.T) {
+	deps := testutil.SetupTestDeps(t)
+	t.Cleanup(deps.Cleanup)
+
+	viper.Set("config", deps.ConfigPath)
+	t.Cleanup(func() { viper.Set("config", "") })
+
+	manager := config.NewManager(deps.ConfigPath)
+	testutil.AssertNoError(t, manager.Save(deps.Config))
+
+	oldStorageRepo := storage.DefaultRepository
+	storage.DefaultRepository = deps.Repository
+	t.Cleanup(func() { storage.DefaultRepository = oldStorageRepo })
+
+	oldContext := projectContext
+	oldDescription := projectDescription
+	oldStatusIcon := projectStatusIcon
+	t.Cleanup(func() {
+		projectContext = oldContext
+		projectDescription = oldDescription
+		projectStatusIcon = oldStatusIcon
+	})
+
+	projectContext = "  personal  "
+	projectDescription = ""
+	projectStatusIcon = ""
+
+	err := runProjectNew(nil, []string{"Trim Context Project"})
+	testutil.AssertNoError(t, err)
+
+	cfg, err := manager.Load()
+	testutil.AssertNoError(t, err)
+
+	var created *models.Project
+	for _, p := range cfg.Projects {
+		if p.Slug == "trim-context-project" {
+			created = p
+			break
+		}
+	}
+	if created == nil {
+		t.Fatal("expected project 'trim-context-project' to be created")
+	}
+	if created.Context != "personal" {
+		t.Errorf("Context = %q, want %q", created.Context, "personal")
 	}
 }
 
