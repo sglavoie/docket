@@ -81,7 +81,12 @@ func ApplyVariables(t TaskTemplate, values map[string]string) TaskTemplate {
 			if v, ok := values[name]; ok {
 				return v
 			}
-			if match[2] != "" {
+			// An explicit ":" in the token means the author chose a local default,
+			// even if it is empty ("{{name:}}"). That choice must beat the
+			// cross-field fallback so the rendered output matches what the user
+			// typed; otherwise "{{name:}}" silently inherits another field's
+			// default and renders non-empty.
+			if idx := 2 + len(name); idx < len(token) && token[idx] == ':' {
 				return match[2]
 			}
 			if v, ok := globalDefaults[name]; ok {

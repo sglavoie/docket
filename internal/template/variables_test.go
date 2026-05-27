@@ -665,6 +665,66 @@ func TestApplyVariables_LocalDefaultBeatsCrossFieldDefault(t *testing.T) {
 	}
 }
 
+func TestApplyVariables_ExplicitEmptyDefaultBeatsCrossField(t *testing.T) {
+	// Regression: "{{x:}}" is an explicit empty default. It must render empty,
+	// not silently inherit a non-empty default declared for the same variable
+	// in another field.
+	tmpl := TaskTemplate{
+		Name:        "{{x:}}",
+		Description: "{{x:fallback}}",
+	}
+	result := ApplyVariables(tmpl, nil)
+	if result.Name != "" {
+		t.Errorf("Name: got %q, want empty (explicit empty default must win)", result.Name)
+	}
+	if result.Description != "fallback" {
+		t.Errorf("Description: got %q, want %q", result.Description, "fallback")
+	}
+}
+
+func TestApplyVariables_ExplicitEmptyDefaultAcrossAllFields(t *testing.T) {
+	// Across every field type, "{{x:}}" must render empty even when other
+	// occurrences carry a non-empty default. Bare "{{x}}" still inherits the
+	// cross-field default — only the explicit empty token suppresses fallback.
+	tmpl := TaskTemplate{
+		Name:        "{{x:}}",
+		Description: "bare {{x}}",
+		Section:     "{{x:}}",
+		Tags:        []string{"{{x:}}"},
+		Checklist:   []string{"{{x:fallback}}"},
+		Children:    []TemplateChild{{Title: "{{x:}}"}},
+	}
+	result := ApplyVariables(tmpl, nil)
+	if result.Name != "" {
+		t.Errorf("Name: got %q, want empty", result.Name)
+	}
+	if result.Description != "bare fallback" {
+		t.Errorf("Description: got %q, want %q (bare token falls back)", result.Description, "bare fallback")
+	}
+	if result.Section != "" {
+		t.Errorf("Section: got %q, want empty", result.Section)
+	}
+	if result.Tags[0] != "" {
+		t.Errorf("Tags[0]: got %q, want empty", result.Tags[0])
+	}
+	if result.Checklist[0] != "fallback" {
+		t.Errorf("Checklist[0]: got %q, want %q", result.Checklist[0], "fallback")
+	}
+	if result.Children[0].Title != "" {
+		t.Errorf("Children[0].Title: got %q, want empty", result.Children[0].Title)
+	}
+}
+
+func TestApplyVariables_ExplicitValueBeatsExplicitEmptyDefault(t *testing.T) {
+	// A provided value still wins over the explicit empty default — values
+	// always take precedence.
+	tmpl := TaskTemplate{Name: "{{x:}}"}
+	result := ApplyVariables(tmpl, map[string]string{"x": "from-values"})
+	if result.Name != "from-values" {
+		t.Errorf("Name: got %q, want %q", result.Name, "from-values")
+	}
+}
+
 func TestApplyVariables_MultipleVarsSameField(t *testing.T) {
 	tmpl := TaskTemplate{
 		Checklist: []string{"{{a}} then {{b}} then {{c:fallback}}"},
