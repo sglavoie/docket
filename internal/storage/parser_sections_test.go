@@ -251,3 +251,31 @@ func TestSectionColorsRoundTrip(t *testing.T) {
 		t.Errorf("Backlog color should be gray, got %s", result.SectionColors["Backlog"])
 	}
 }
+
+func TestParseTasksMarkdownWithSections_DeduplicatesSectionNames(t *testing.T) {
+	// A sections metadata line containing duplicate names (whether typed by
+	// hand or merged from multiple lines) must not produce duplicate entries
+	// in the returned Sections slice. Downstream UI assumes unique section
+	// names, and a duplicate would render the same tab twice.
+	content := `# Project: Dedup Test
+<!-- sections: Backlog;Active;Backlog;Done -->
+<!-- sections: Done;Review -->
+
+## Task: T
+<!-- id: t1, status: todo, priority: 2 -->
+`
+	result, err := ParseTasksMarkdownWithSections(content)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	expected := []string{"Backlog", "Active", "Done", "Review"}
+	if len(result.Sections) != len(expected) {
+		t.Fatalf("expected %d unique sections, got %d (%v)", len(expected), len(result.Sections), result.Sections)
+	}
+	for i, want := range expected {
+		if result.Sections[i] != want {
+			t.Errorf("section %d: expected %q, got %q", i, want, result.Sections[i])
+		}
+	}
+}
