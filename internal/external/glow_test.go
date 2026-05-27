@@ -10,6 +10,57 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 )
 
+// TestPageMarkdown_NoDeadlineKillsPager verifies that PageMarkdown does not
+// impose a deadline on the glow pager. Pagers are interactive — the user
+// controls how long to read — so a 30s timeout would terminate the pager
+// mid-read, leaving the user with a confusing "fell back to plain text"
+// dump and the entire content spilled to the terminal.
+//
+// Regression: PageMarkdown previously wrapped its exec in
+// context.WithTimeout(ctx, 30s) which killed long pager sessions. The test
+// shrinks the non-interactive timeout to 1s and uses a fake glow that
+// sleeps 2s; if PageMarkdown were still honoring a deadline, the process
+// would be killed at ~1s and we'd return well before the sleep finishes.
+func TestPageMarkdown_NoDeadlineKillsPager(t *testing.T) {
+	// Shrink the non-interactive deadline so the test would catch a
+	// PageMarkdown regression that started reusing it. Restore on exit.
+	prev := glowTimeoutSeconds
+	glowTimeoutSeconds = 1
+	t.Cleanup(func() { glowTimeoutSeconds = prev })
+
+	dir := t.TempDir()
+	fakeGlow := filepath.Join(dir, "glow")
+	// Sleep 2s — well past the 1s non-interactive deadline.
+	script := "#!/bin/sh\nsleep 2\nexit 0\n"
+	if err := os.WriteFile(fakeGlow, []byte(script), 0o755); err != nil {
+		t.Fatalf("write fake glow: %v", err)
+	}
+
+	origPath := os.Getenv("PATH")
+	t.Cleanup(func() { _ = os.Setenv("PATH", origPath) })
+	// Prepend the fake dir so our glow shadows any real install, but keep
+	// the rest of PATH so the shell script can still invoke `sleep`.
+	if err := os.Setenv("PATH", dir+string(os.PathListSeparator)+origPath); err != nil {
+		t.Fatalf("setenv PATH: %v", err)
+	}
+	// Bust the toolcache so GlowAvailable() re-evaluates against the new PATH.
+	glowCache = cachedPath{}
+	t.Cleanup(func() { glowCache = cachedPath{} })
+
+	start := time.Now()
+	if err := PageMarkdown("# hi\n"); err != nil {
+		t.Fatalf("PageMarkdown returned error: %v", err)
+	}
+	elapsed := time.Since(start)
+	// The fake glow sleeps 2s; the non-interactive deadline is 1s. If
+	// PageMarkdown were honoring that deadline, the process would have
+	// been killed shortly after 1s and we'd return well before the 2s
+	// sleep finished. Allow a small margin for scheduling jitter.
+	if elapsed < 1800*time.Millisecond {
+		t.Errorf("PageMarkdown returned too early (%v) — pager appears to have been killed by a deadline", elapsed)
+	}
+}
+
 // TestRenderFile_LeadingDashPathNotTreatedAsFlag verifies that a markdown
 // file whose name begins with '-' is passed to glow as a positional arg,
 // not parsed as a flag. Before the fix, exec.CommandContext(ctx, "glow",

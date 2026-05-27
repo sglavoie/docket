@@ -13,9 +13,17 @@ import (
 	"github.com/sglavoie/tt/internal/util"
 )
 
-const glowTimeoutSeconds = 30
+const defaultGlowTimeoutSeconds = 30
 
-const glowTimeout = glowTimeoutSeconds * time.Second
+// glowTimeoutSeconds is the timeout for non-interactive glow invocations
+// (RenderMarkdown, RenderFile). Tests may override this; production code
+// should treat it as constant. Interactive flows (PageMarkdown) deliberately
+// ignore this — see PageMarkdown for rationale.
+var glowTimeoutSeconds = defaultGlowTimeoutSeconds
+
+func glowTimeout() time.Duration {
+	return time.Duration(glowTimeoutSeconds) * time.Second
+}
 
 // GlowAvailable checks if glow is installed and available.
 func GlowAvailable() bool {
@@ -32,7 +40,7 @@ func RenderMarkdown(content string) error {
 		return nil
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), glowTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), glowTimeout())
 	defer cancel()
 
 	cmd := exec.CommandContext(ctx, "glow", "-")
@@ -64,7 +72,7 @@ func RenderFile(path string) error {
 		return nil
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), glowTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), glowTimeout())
 	defer cancel()
 
 	cmd := exec.CommandContext(ctx, "glow", "--", path)
@@ -194,6 +202,8 @@ func FormatTaskAsMarkdown(task *models.Task) string {
 
 // PageMarkdown renders markdown content using glow with pager.
 // Falls back to plain text output if glow fails or is unavailable.
+// Unlike RenderMarkdown, this is interactive — the pager waits for user input
+// so we deliberately use no deadline; the user controls how long to read.
 func PageMarkdown(content string) error {
 	if !GlowAvailable() {
 		logging.Warn("glow not available — showing plain text")
@@ -201,20 +211,13 @@ func PageMarkdown(content string) error {
 		return nil
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), glowTimeout)
-	defer cancel()
-
-	cmd := exec.CommandContext(ctx, "glow", "-p", "-")
+	cmd := exec.Command("glow", "-p", "-")
 	cmd.Stdin = strings.NewReader(content)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 
 	if err := cmd.Run(); err != nil {
-		if ctx.Err() == context.DeadlineExceeded {
-			logging.Warn("glow timed out after %ds — falling back to plain text", glowTimeoutSeconds)
-		} else {
-			logging.Warn("glow pager failed, falling back to plain text: %v", err)
-		}
+		logging.Warn("glow pager failed, falling back to plain text: %v", err)
 		fmt.Println(content)
 	}
 	return nil
