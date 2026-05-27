@@ -83,6 +83,25 @@ func TestParseClipboard(t *testing.T) {
 			desc:  "",
 		},
 
+		// Regression: a greedy `(.+)` in the markdown-link regex allowed two
+		// links on one line to mis-parse; the title captured across both
+		// links and the URL was the second one. The fix uses a character
+		// class that excludes `]` inside the title.
+		{
+			name:  "two markdown links on one line treated as plain text",
+			input: "[a](http://x.com) and [b](http://y.com)",
+			title: "[a](http://x.com) and [b](http://y.com)",
+			url:   "",
+			desc:  "",
+		},
+		{
+			name:  "title containing closing bracket not treated as link",
+			input: "[a]b](http://x.com)",
+			title: "[a]b](http://x.com)",
+			url:   "",
+			desc:  "",
+		},
+
 		// Multi-line: plain title + description
 		{
 			name:  "multi-line plain",

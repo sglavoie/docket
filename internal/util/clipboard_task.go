@@ -15,7 +15,7 @@ type PastedTask struct {
 }
 
 var (
-	reMDLink  = regexp.MustCompile(`^\[(.+)\]\((https?://\S+|file://\S+)\)$`)
+	reMDLink  = regexp.MustCompile(`^\[([^\]]+)\]\((https?://\S+|file://\S+)\)$`)
 	reBareURL = regexp.MustCompile(`^(https?://\S+|file://\S+)$`)
 )
 
