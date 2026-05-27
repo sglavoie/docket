@@ -36,6 +36,13 @@ func runBlockerShow(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	// Guard empty prefix: storage.FindBlockerByPrefix uses HasPrefix(id, "")
+	// which always returns true, so without this check `tt blocker show ""`
+	// would silently return the first blocker instead of "not found".
+	if args[0] == "" {
+		return fmt.Errorf("blocker not found: %s", args[0])
+	}
+
 	project, _, _, err := LoadCurrentProject()
 	if err != nil {
 		return err

@@ -38,7 +38,7 @@ Examples:
 		}
 		var completions []string
 		for _, b := range blockers {
-			completions = append(completions, b.ID[:8]+"\t"+b.Title)
+			completions = append(completions, shortBlockerID(b.ID)+"\t"+b.Title)
 		}
 		return completions, cobra.ShellCompDirectiveNoFileComp
 	},

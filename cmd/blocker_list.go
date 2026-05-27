@@ -48,6 +48,13 @@ func runBlockerList(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	// --active and --resolved are mutually exclusive filters: honoring both
+	// silently would either show nothing or pick one arbitrarily, neither of
+	// which matches user intent. Reject the combination explicitly.
+	if showActiveBlockers && showResolvedBlockers {
+		return fmt.Errorf("--active and --resolved are mutually exclusive")
+	}
+
 	project, _, _, err := LoadCurrentProject()
 	if err != nil {
 		return err
@@ -58,18 +65,7 @@ func runBlockerList(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to load blockers: %w", err)
 	}
 
-	// Apply visibility filters to the original blocker list
-	var visibleBlockers []*models.Blocker
-	for _, b := range blockers {
-		isResolved := b.IsResolved()
-		if showResolvedBlockers && !isResolved {
-			continue
-		}
-		if !showAllBlockers && !showResolvedBlockers && isResolved {
-			continue
-		}
-		visibleBlockers = append(visibleBlockers, b)
-	}
+	visibleBlockers := filterBlockersForList(blockers, showAllBlockers, showResolvedBlockers, showActiveBlockers)
 
 	if out.JSON {
 		if visibleBlockers == nil {
@@ -129,10 +125,11 @@ func runBlockerList(cmd *cobra.Command, args []string) error {
 			resolved = storage.FormatRelativeTime(*b.ResolvedAt)
 		}
 
+		shortID := shortBlockerID(b.ID)
 		if showAllBlockers || showResolvedBlockers {
-			t.AppendRow(table.Row{b.ID[:8], title, storage.FormatRelativeTime(b.CreatedAt), resolved, desc})
+			t.AppendRow(table.Row{shortID, title, storage.FormatRelativeTime(b.CreatedAt), resolved, desc})
 		} else {
-			t.AppendRow(table.Row{b.ID[:8], title, storage.FormatRelativeTime(b.CreatedAt), desc})
+			t.AppendRow(table.Row{shortID, title, storage.FormatRelativeTime(b.CreatedAt), desc})
 		}
 
 		// Add a separator between active and resolved in --all mode
@@ -147,4 +144,46 @@ func runBlockerList(cmd *cobra.Command, args []string) error {
 	fmt.Println(t.Render())
 
 	return nil
+}
+
+// filterBlockersForList applies the visibility flags to produce the list shown
+// to the user. The caller is responsible for rejecting mutually-exclusive flag
+// combinations before calling this helper. Filter semantics:
+//   - active: only unresolved blockers (overrides all/resolved)
+//   - resolved: only resolved blockers
+//   - all: both active and resolved
+//   - default (none set): only active blockers
+func filterBlockersForList(blockers []*models.Blocker, all, resolved, active bool) []*models.Blocker {
+	var visible []*models.Blocker
+	for _, b := range blockers {
+		isResolved := b.IsResolved()
+		switch {
+		case active:
+			if isResolved {
+				continue
+			}
+		case resolved:
+			if !isResolved {
+				continue
+			}
+		case all:
+			// no filter
+		default:
+			if isResolved {
+				continue
+			}
+		}
+		visible = append(visible, b)
+	}
+	return visible
+}
+
+// shortBlockerID returns at most the first 8 characters of the blocker ID,
+// safely handling shorter IDs (e.g. from manually-edited blockers.md files)
+// instead of panicking with a slice-bounds error.
+func shortBlockerID(id string) string {
+	if len(id) > 8 {
+		return id[:8]
+	}
+	return id
 }
