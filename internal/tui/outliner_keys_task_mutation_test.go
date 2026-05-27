@@ -351,3 +351,43 @@ func TestOutlinerJ_OnChildUsesParentChildren(t *testing.T) {
 	// SwapTasks swaps positions of c1 (idx 1) and c2 (idx 2) in p.Tasks → [p, c2, c1].
 	assertIDsEqual(t, "p.Tasks after J on child", projectTaskIDs(proj), []string{"p", "c2", "c1"})
 }
+
+// TestOutlinerMoveTaskToPosition_CursorFollowsTask: after moveTaskToPosition
+// swaps siblings and rebuildRows() repopulates rows by section, the cursor
+// must follow the moved task to its new row — not remain at the original
+// index, which would now point at a different task.
+func TestOutlinerMoveTaskToPosition_CursorFollowsTask(t *testing.T) {
+	m, _, tasks := buildJKFixture(t)
+
+	// Locate row index of A in the bucketed layout before the move.
+	cursorBefore := -1
+	for i, r := range m.rows {
+		if r.task != nil && r.task.ID == "a" {
+			cursorBefore = i
+			break
+		}
+	}
+	if cursorBefore < 0 {
+		t.Fatal("could not locate row for A before move")
+	}
+	m.cursor = cursorBefore
+
+	// Move A to the bottom of its visible-sibling run.
+	_, _ = m.moveTaskToPosition(tasks["a"], false /* toBottom */)
+
+	// Re-find row index of A after rebuildRows (real flow) so we don't
+	// depend on the exact bucketing — just on the cursor-tracking invariant.
+	wantCursor := -1
+	for i, r := range m.rows {
+		if r.task != nil && r.task.ID == "a" {
+			wantCursor = i
+			break
+		}
+	}
+	if wantCursor < 0 {
+		t.Fatal("could not locate row for A after move (rebuildRows lost it)")
+	}
+	if m.cursor != wantCursor {
+		t.Errorf("cursor = %d, want %d (cursor must follow the moved task)", m.cursor, wantCursor)
+	}
+}

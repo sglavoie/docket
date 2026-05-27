@@ -153,6 +153,7 @@ func (m *OutlinerModel) moveTaskToPosition(task *models.Task, toTop bool) (tea.M
 	m.setUndoContext(label, task.Title)
 	m.undo.TaskIDs = []string{task.ID}
 	m.rebuildRows()
+	m.moveCursorToTask(task.ID)
 	return m, m.saveWithWorkflow()
 }
 
