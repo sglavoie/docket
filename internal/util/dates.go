@@ -23,6 +23,14 @@ const (
 	Year  = 365 * Day
 )
 
+// maxRelativeOffset bounds user-supplied numeric offsets in relative-date
+// parsing (e.g. "+Nd", "in N years"). It prevents silent int64 overflow when
+// the parsed number is later multiplied (years×12, weeks×7) or fed into
+// time.Time arithmetic, both of which can wrap and yield wildly wrong dates
+// without returning an error. One million is several orders of magnitude
+// beyond any realistic task-manager input.
+const maxRelativeOffset = 1_000_000
+
 // StartOfDay returns t truncated to midnight (00:00:00) in t's location.
 func StartOfDay(t time.Time) time.Time {
 	return time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, t.Location())
@@ -192,6 +200,9 @@ func parseMatchedOffset(match []string, input, unit string, apply func(int) time
 	if err != nil {
 		return time.Time{}, true, fmt.Errorf("invalid number of %s in %q", unit, input)
 	}
+	if value > maxRelativeOffset || value < -maxRelativeOffset {
+		return time.Time{}, true, fmt.Errorf("number of %s in %q out of range", unit, input)
+	}
 	return apply(value), true, nil
 }
 
@@ -266,6 +277,9 @@ func parseDurationOffset(input string, today time.Time) (time.Time, bool, error)
 	n, err := strconv.Atoi(match[1])
 	if err != nil {
 		return time.Time{}, true, fmt.Errorf("invalid duration in %q", input)
+	}
+	if n > maxRelativeOffset || n < -maxRelativeOffset {
+		return time.Time{}, true, fmt.Errorf("duration in %q out of range", input)
 	}
 	switch match[2] {
 	case "day", "days":
@@ -383,6 +397,9 @@ func ParseFlexibleDateWithConfig(input, weekEndDay string) (time.Time, error) {
 		n, atoiErr := strconv.Atoi(match[1])
 		if atoiErr != nil {
 			return time.Time{}, fmt.Errorf("invalid number in %q", input)
+		}
+		if n > maxRelativeOffset || n < -maxRelativeOffset {
+			return time.Time{}, fmt.Errorf("number in %q out of range", input)
 		}
 		today := StartOfDay(time.Now())
 		switch match[2] {

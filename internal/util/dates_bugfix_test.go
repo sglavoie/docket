@@ -119,3 +119,41 @@ func TestParseMonthDay_InvalidLeapDay(t *testing.T) {
 		t.Error("expected error for feb 30, got nil")
 	}
 }
+
+// TestParseRelativeDate_MultiplierOverflow exercises the second-stage overflow
+// that strconv.Atoi cannot catch: values that fit in int64 but blow up when
+// multiplied (weeks×7, years×12). Previously the silent overflow wrapped to
+// negative and produced wildly wrong dates with no error returned.
+func TestParseRelativeDate_MultiplierOverflow(t *testing.T) {
+	// 1e18 fits in int64 (~9.22e18 max) but 1e18 * 12 overflows.
+	multiplierOverflowInputs := []string{
+		"+1000000000000000000w",         // weeks * 7
+		"+1000000000000000000m",         // AddMonthsClamped: int(month)+months
+		"in 1000000000000000000 weeks",  // weeks * 7
+		"in 1000000000000000000 months", // AddMonthsClamped: int(month)+months
+		"in 1000000000000000000 years",  // years * 12 first
+	}
+	for _, in := range multiplierOverflowInputs {
+		t.Run(in, func(t *testing.T) {
+			if _, err := ParseRelativeDate(in); err == nil {
+				t.Errorf("expected error for overflowing input %q, got nil", in)
+			}
+		})
+	}
+}
+
+// TestParseFlexibleDate_MultiplierOverflow covers the bare-shorthand path
+// for values that overflow under multiplication.
+func TestParseFlexibleDate_MultiplierOverflow(t *testing.T) {
+	multiplierOverflowInputs := []string{
+		"1000000000000000000w",
+		"1000000000000000000m",
+	}
+	for _, in := range multiplierOverflowInputs {
+		t.Run(in, func(t *testing.T) {
+			if _, err := ParseFlexibleDate(in); err == nil {
+				t.Errorf("expected error for overflowing input %q, got nil", in)
+			}
+		})
+	}
+}
