@@ -259,9 +259,14 @@ func (m *FocusBoardModel) clampCursor() {
 func (m *FocusBoardModel) skipGroupHeaderForward() {
 	for m.cursor < len(m.filtered) && m.filtered[m.cursor].GroupHeader != "" {
 		m.cursor++
-		if m.cursor >= len(m.filtered) {
-			m.cursor = len(m.filtered) - 1
-			break
+	}
+	if m.cursor >= len(m.filtered) {
+		m.cursor = len(m.filtered) - 1
+		for m.cursor >= 0 && m.filtered[m.cursor].GroupHeader != "" {
+			m.cursor--
+		}
+		if m.cursor < 0 {
+			m.cursor = 0
 		}
 	}
 }

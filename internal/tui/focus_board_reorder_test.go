@@ -172,3 +172,36 @@ func TestHandleDailyPlanReorder_CompletedCrossover(t *testing.T) {
 		t.Errorf("cursor: expected 0 (unchanged), got %d", m.cursor)
 	}
 }
+
+func TestSkipGroupHeaderForward_TrailingHeaderFallsBack(t *testing.T) {
+	project, _ := models.NewProject("proj", "proj", "/tmp/test-proj")
+	taskA := makeBoardTask(t, "id-a", 1, "Alpha")
+
+	rowA := boardRow{Task: taskA, Project: project, Source: project.Name}
+	headerRow := boardRow{GroupHeader: "Section"}
+
+	m := &FocusBoardModel{
+		filtered: []boardRow{rowA, headerRow, headerRow},
+	}
+
+	m.cursor = 1
+	m.skipGroupHeaderForward()
+	if m.cursor != 0 {
+		t.Errorf("cursor on trailing headers should fall back to task row, got %d", m.cursor)
+	}
+	if m.filtered[m.cursor].GroupHeader != "" {
+		t.Errorf("cursor landed on group header at %d", m.cursor)
+	}
+}
+
+func TestSkipGroupHeaderForward_AllHeadersClampsToZero(t *testing.T) {
+	headerRow := boardRow{GroupHeader: "Section"}
+	m := &FocusBoardModel{
+		filtered: []boardRow{headerRow, headerRow},
+	}
+	m.cursor = 0
+	m.skipGroupHeaderForward()
+	if m.cursor < 0 || m.cursor >= len(m.filtered) {
+		t.Errorf("cursor out of range: %d", m.cursor)
+	}
+}
