@@ -1,6 +1,10 @@
 package tui
 
-import tea "charm.land/bubbletea/v2"
+import (
+	tea "charm.land/bubbletea/v2"
+
+	"github.com/sglavoie/tt/internal/models"
+)
 
 // typeChangeOpForKey maps a key to a TypeChangeOp, or returns false if not a type key.
 func typeChangeOpForKey(key string) (TypeChangeOp, string, bool) {
@@ -148,19 +152,24 @@ func (m *ProjectTreeModel) moveTaskToTop(visible []*TreeNode) (tea.Model, tea.Cm
 	prevStates := captureTaskStates(m.project.Tasks)
 
 	// Swap up through each visible sibling, same as repeated K presses
+	var lastTarget *models.Task
 	for i := visibleSiblingIdx - 1; i >= 0; i-- {
 		target := visibleSiblings[i]
 		if task.IsRoot() && task.IsComplete() && !target.IsComplete() {
 			break
 		}
 		m.project.SwapTasks(task, target)
+		lastTarget = target
 	}
 
-	// Position cursor at the first sibling's old location
-	for i, node := range visible {
-		if node.Task.ID == visibleSiblings[0].ID {
-			m.cursor = i
-			break
+	// Position cursor at the last successfully swapped sibling's old location.
+	// If no swap occurred (e.g. blocked by completion ordering), leave cursor put.
+	if lastTarget != nil {
+		for i, node := range visible {
+			if node.Task.ID == lastTarget.ID {
+				m.cursor = i
+				break
+			}
 		}
 	}
 	m.setUndoContext("Move to Top", task.Title)
@@ -189,19 +198,24 @@ func (m *ProjectTreeModel) moveTaskToBottom(visible []*TreeNode) (tea.Model, tea
 	prevStates := captureTaskStates(m.project.Tasks)
 
 	// Swap down through each visible sibling, same as repeated J presses
+	var lastTarget *models.Task
 	for i := visibleSiblingIdx + 1; i < len(visibleSiblings); i++ {
 		target := visibleSiblings[i]
 		if task.IsRoot() && !task.IsComplete() && target.IsComplete() {
 			break
 		}
 		m.project.SwapTasks(task, target)
+		lastTarget = target
 	}
 
-	// Position cursor at the last sibling's old location
-	for i, node := range visible {
-		if node.Task.ID == visibleSiblings[len(visibleSiblings)-1].ID {
-			m.cursor = i
-			break
+	// Position cursor at the last successfully swapped sibling's old location.
+	// If no swap occurred (e.g. blocked by completion ordering), leave cursor put.
+	if lastTarget != nil {
+		for i, node := range visible {
+			if node.Task.ID == lastTarget.ID {
+				m.cursor = i
+				break
+			}
 		}
 	}
 	m.setUndoContext("Move to Bottom", task.Title)
