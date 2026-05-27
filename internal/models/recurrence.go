@@ -91,6 +91,13 @@ func (r *RecurrencePattern) Validate() error {
 	if r.Mode != "" && r.Mode != RecurModeFromDue && r.Mode != RecurModeFromCompletion {
 		return fmt.Errorf("invalid recurrence mode %q, must be %q or %q", r.Mode, RecurModeFromDue, RecurModeFromCompletion)
 	}
+	if r.OriginalDay < 0 || r.OriginalDay > 31 {
+		// OriginalDay seeds addMonths/addYears' day-restoration logic; out-of-range
+		// values (negative, or >31) silently coerce every recurrence to the last
+		// day of the target month/year because the clamp at the bottom of
+		// addMonths kicks in regardless of the calling user's intent.
+		return fmt.Errorf("invalid recurrence original_day %d, must be 0 (unset) or 1-31", r.OriginalDay)
+	}
 	return nil
 }
 
