@@ -84,6 +84,119 @@ func TestCheckOverdueTasks_TimedDueEarlierToday(t *testing.T) {
 	}
 }
 
+// TestCheckers_NilProjectSkipped verifies checkers do not nil-deref when a
+// ProjectData entry has a nil Project. (Defensive: callers should never pass
+// this, but corrupted state shouldn't crash the dashboard.)
+func TestCheckers_NilProjectSkipped(t *testing.T) {
+	now := time.Date(2026, 5, 20, 10, 0, 0, 0, time.UTC)
+	due := now.AddDate(0, 0, -5)
+	taskWithDue := &models.Task{
+		ID:        "t-due",
+		Title:     "due",
+		Status:    models.StatusTodo,
+		DueDate:   &due,
+		UpdatedAt: now,
+		Section:   models.SectionInbox,
+	}
+	projects := []ProjectData{{
+		Project: nil,
+		Tasks:   []*models.Task{taskWithDue},
+	}}
+
+	cfg := DefaultAlertConfig()
+	cfg.InboxThreshold = 1
+
+	if got := checkOverdueTasks(cfg, projects, now); len(got) != 0 {
+		t.Errorf("overdue: expected 0 alerts for nil project, got %d", len(got))
+	}
+	if got := checkDueSoonTasks(cfg, projects, now); len(got) != 0 {
+		t.Errorf("due_soon: expected 0 alerts for nil project, got %d", len(got))
+	}
+	if got := checkStaleTasks(cfg, projects, now); len(got) != 0 {
+		t.Errorf("stale: expected 0 alerts for nil project, got %d", len(got))
+	}
+	if got := checkInboxBacklog(cfg, projects, now); len(got) != 0 {
+		t.Errorf("inbox: expected 0 alerts for nil project, got %d", len(got))
+	}
+	if got := checkBlockedTasks(cfg, projects, now); len(got) != 0 {
+		t.Errorf("blocked: expected 0 alerts for nil project, got %d", len(got))
+	}
+	if got := checkProjectHealth(cfg, projects, now); len(got) != 0 {
+		t.Errorf("project_health: expected 0 alerts for nil project, got %d", len(got))
+	}
+}
+
+// TestCheckers_NilTaskSkipped verifies checkers skip nil entries in pd.Tasks
+// rather than nil-derefing on task field access.
+func TestCheckers_NilTaskSkipped(t *testing.T) {
+	now := time.Date(2026, 5, 20, 10, 0, 0, 0, time.UTC)
+	due := now.AddDate(0, 0, -5)
+	realTask := &models.Task{
+		ID:        "t-real",
+		Title:     "real overdue",
+		Status:    models.StatusTodo,
+		DueDate:   &due,
+		UpdatedAt: now.AddDate(0, 0, -30),
+		Section:   models.SectionInbox,
+	}
+	blockedTask := &models.Task{
+		ID:        "t-blocked",
+		Title:     "blocked",
+		Status:    models.StatusBlocked,
+		UpdatedAt: now.AddDate(0, 0, -30),
+		Activity: []*models.ActivityEntry{
+			{Field: "status", NewValue: string(models.StatusBlocked), Timestamp: now.AddDate(0, 0, -10)},
+		},
+	}
+	projects := []ProjectData{{
+		Project: &models.Project{ID: "p1", Name: "P1"},
+		Tasks:   []*models.Task{nil, realTask, nil, blockedTask, nil},
+	}}
+
+	cfg := DefaultAlertConfig()
+	cfg.InboxThreshold = 1
+	cfg.BlockedDays = 7
+
+	if got := checkOverdueTasks(cfg, projects, now); len(got) != 1 {
+		t.Errorf("overdue: expected 1 alert (nil tasks skipped), got %d", len(got))
+	}
+	if got := checkStaleTasks(cfg, projects, now); len(got) != 2 {
+		t.Errorf("stale: expected 2 alerts (nil tasks skipped), got %d", len(got))
+	}
+	if got := checkInboxBacklog(cfg, projects, now); len(got) != 1 {
+		t.Errorf("inbox: expected 1 alert (nil tasks skipped), got %d", len(got))
+	}
+	if got := checkBlockedTasks(cfg, projects, now); len(got) != 1 {
+		t.Errorf("blocked: expected 1 alert (nil tasks skipped), got %d", len(got))
+	}
+	if got := checkProjectHealth(cfg, projects, now); len(got) != 1 {
+		t.Errorf("project_health: expected 1 alert (nil tasks skipped), got %d", len(got))
+	}
+}
+
+// TestFindLastBlockedTransition_NilEntrySkipped verifies a nil ActivityEntry
+// in the slice does not crash the scan; falls through to the next entry or
+// UpdatedAt.
+func TestFindLastBlockedTransition_NilEntrySkipped(t *testing.T) {
+	now := time.Date(2026, 5, 20, 10, 0, 0, 0, time.UTC)
+	blockedAt := now.AddDate(0, 0, -10)
+	task := &models.Task{
+		ID:        "blk-nil-activity",
+		Title:     "blocked with nil entry",
+		Status:    models.StatusBlocked,
+		UpdatedAt: now.AddDate(0, 0, -1),
+		Activity: []*models.ActivityEntry{
+			nil,
+			{Field: "status", NewValue: string(models.StatusBlocked), Timestamp: blockedAt},
+			nil,
+		},
+	}
+	got := findLastBlockedTransition(task)
+	if !got.Equal(blockedAt) {
+		t.Errorf("expected blockedAt %v, got %v", blockedAt, got)
+	}
+}
+
 // TestCheckDueSoonTasks_TimedDueLaterToday ensures that a task with HasTime=true
 // whose exact due time is still in the future today is classified as due-soon.
 func TestCheckDueSoonTasks_TimedDueLaterToday(t *testing.T) {

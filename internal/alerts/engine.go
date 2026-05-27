@@ -156,7 +156,13 @@ func checkOverdueTasks(cfg AlertConfig, projects []ProjectData, now time.Time) [
 	var alerts []Alert
 
 	for _, pd := range projects {
+		if pd.Project == nil {
+			continue
+		}
 		for _, task := range pd.Tasks {
+			if task == nil {
+				continue
+			}
 			if !task.Status.IsActive() || task.DueDate == nil || task.IsSnoozedAt(now) {
 				continue
 			}
@@ -199,7 +205,13 @@ func checkDueSoonTasks(cfg AlertConfig, projects []ProjectData, now time.Time) [
 	var alerts []Alert
 
 	for _, pd := range projects {
+		if pd.Project == nil {
+			continue
+		}
 		for _, task := range pd.Tasks {
+			if task == nil {
+				continue
+			}
 			if !task.Status.IsActive() || task.DueDate == nil || task.IsSnoozedAt(now) {
 				continue
 			}
@@ -234,7 +246,13 @@ func checkStaleTasks(cfg AlertConfig, projects []ProjectData, now time.Time) []A
 	var alerts []Alert
 
 	for _, pd := range projects {
+		if pd.Project == nil {
+			continue
+		}
 		for _, task := range pd.Tasks {
+			if task == nil {
+				continue
+			}
 			if !task.Status.IsActive() || task.IsSnoozedAt(now) || task.Section == models.SectionSomeday {
 				continue
 			}
@@ -259,8 +277,14 @@ func checkInboxBacklog(cfg AlertConfig, projects []ProjectData, now time.Time) [
 	var alerts []Alert
 
 	for _, pd := range projects {
+		if pd.Project == nil {
+			continue
+		}
 		inboxCount := 0
 		for _, task := range pd.Tasks {
+			if task == nil {
+				continue
+			}
 			if task.Status.IsActive() && task.Section == models.SectionInbox && !task.IsSnoozedAt(now) {
 				inboxCount++
 			}
@@ -285,7 +309,13 @@ func checkBlockedTasks(cfg AlertConfig, projects []ProjectData, now time.Time) [
 	var alerts []Alert
 
 	for _, pd := range projects {
+		if pd.Project == nil {
+			continue
+		}
 		for _, task := range pd.Tasks {
+			if task == nil {
+				continue
+			}
 			if task.Status != models.StatusBlocked || task.IsSnoozedAt(now) {
 				continue
 			}
@@ -323,6 +353,9 @@ func findLastBlockedTransition(task *models.Task) time.Time {
 	// Scan backwards to find the most recent transition *to* blocked
 	for i := len(task.Activity) - 1; i >= 0; i-- {
 		entry := task.Activity[i]
+		if entry == nil {
+			continue
+		}
 		if entry.Field == "status" && entry.NewValue == string(models.StatusBlocked) {
 			return entry.Timestamp
 		}
@@ -336,13 +369,16 @@ func checkProjectHealth(cfg AlertConfig, projects []ProjectData, now time.Time) 
 	var alerts []Alert
 
 	for _, pd := range projects {
-		if len(pd.Tasks) == 0 {
+		if pd.Project == nil || len(pd.Tasks) == 0 {
 			continue
 		}
 
 		// Find most recent task update
 		var latestUpdate time.Time
 		for _, task := range pd.Tasks {
+			if task == nil {
+				continue
+			}
 			if task.UpdatedAt.After(latestUpdate) {
 				latestUpdate = task.UpdatedAt
 			}
