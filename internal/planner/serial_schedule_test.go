@@ -92,3 +92,38 @@ func TestSerialSchedulePriority(t *testing.T) {
 		t.Errorf("expected third task to be 'low', got %q", sched[2].Task.ID)
 	}
 }
+
+// TestSerialScheduleUnsetPriorityTreatedAsDefault guards against a bug where
+// tasks with Priority=0 (the model's "unset" sentinel) sorted ahead of
+// Priority=1 (the most critical bucket) in SerialSchedule. Tasks parsed from
+// markdown can carry Priority=0, and treating them as more critical than
+// genuinely-critical tasks would silently re-order user-prioritized work.
+func TestSerialScheduleUnsetPriorityTreatedAsDefault(t *testing.T) {
+	start := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+
+	unset := newTaskWithDuration("unset", 1) // Priority defaults to 0 via direct struct init
+	unset.Priority = 0
+	critical := newTaskWithDuration("critical", 1)
+	critical.Priority = 1
+	medium := newTaskWithDuration("medium", 1)
+	medium.Priority = 3 // explicit default
+
+	sched := SerialSchedule([]*models.Task{unset, critical, medium}, start, 1.0)
+	if len(sched) != 3 {
+		t.Fatalf("expected 3, got %d", len(sched))
+	}
+
+	// critical (p=1) must come first; unset (p=0 -> default 3) must NOT.
+	if sched[0].Task.ID != "critical" {
+		t.Errorf("expected first task to be 'critical' (p=1), got %q (priority=0 tasks must not jump ahead)",
+			sched[0].Task.ID)
+	}
+	// unset (p=0) should be treated as medium (p=3); tie-broken by ID against medium (p=3).
+	// IDs sort: "medium" < "unset", so medium should come before unset.
+	if sched[1].Task.ID != "medium" {
+		t.Errorf("expected second task to be 'medium', got %q", sched[1].Task.ID)
+	}
+	if sched[2].Task.ID != "unset" {
+		t.Errorf("expected third task to be 'unset' (p=0 treated as default), got %q", sched[2].Task.ID)
+	}
+}
