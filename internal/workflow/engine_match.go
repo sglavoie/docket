@@ -22,6 +22,18 @@ func matchesRuleWithContext(task, prev *models.Task, rule *WorkflowRule, evalCtx
 
 // matchesTriggerGroup recursively evaluates a nested trigger group against a task.
 func matchesTriggerGroup(task, prev *models.Task, group *TriggerGroup, evalCtx *EvaluationContext) bool {
+	return matchesTriggerGroupAtDepth(task, prev, group, evalCtx, 0)
+}
+
+// matchesTriggerGroupAtDepth bounds recursion so that a corrupted or
+// manually-constructed rule whose nested groups exceed maxTriggerGroupDepth
+// cannot blow the stack at evaluation time. Validation rejects deep groups,
+// but the engine should also be defensive when fed unvalidated input.
+func matchesTriggerGroupAtDepth(task, prev *models.Task, group *TriggerGroup, evalCtx *EvaluationContext, depth int) bool {
+	if group == nil || depth >= maxTriggerGroupDepth {
+		return false
+	}
+
 	logic := group.getLogic()
 	hasClauses := len(group.Triggers) > 0 || len(group.Groups) > 0
 	if !hasClauses {
@@ -34,8 +46,8 @@ func matchesTriggerGroup(task, prev *models.Task, group *TriggerGroup, evalCtx *
 				return true
 			}
 		}
-		for _, sub := range group.Groups {
-			if matchesTriggerGroup(task, prev, &sub, evalCtx) {
+		for i := range group.Groups {
+			if matchesTriggerGroupAtDepth(task, prev, &group.Groups[i], evalCtx, depth+1) {
 				return true
 			}
 		}
@@ -47,8 +59,8 @@ func matchesTriggerGroup(task, prev *models.Task, group *TriggerGroup, evalCtx *
 			return false
 		}
 	}
-	for _, sub := range group.Groups {
-		if !matchesTriggerGroup(task, prev, &sub, evalCtx) {
+	for i := range group.Groups {
+		if !matchesTriggerGroupAtDepth(task, prev, &group.Groups[i], evalCtx, depth+1) {
 			return false
 		}
 	}

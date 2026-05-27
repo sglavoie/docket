@@ -27,8 +27,13 @@ type ProjectEvaluationResult struct {
 // EvaluateProjectRules evaluates project-level workflow rules against aggregate task data.
 // Rules are sorted by priority (lower number = higher priority, 0 sorts last).
 // Same-priority conflicts cancel out (neither is applied).
+// Returns an empty result when ctx or ctx.Project is nil so callers don't have
+// to defensively pre-check before invoking the engine.
 func EvaluateProjectRules(ctx *ProjectEvaluationContext, rules []WorkflowRule) *ProjectEvaluationResult {
 	result := &ProjectEvaluationResult{}
+	if ctx == nil || ctx.Project == nil {
+		return result
+	}
 
 	// Filter to enabled project-level rules
 	var projectRules []WorkflowRule
@@ -141,14 +146,25 @@ func matchesProjectRule(ctx *ProjectEvaluationContext, rule *WorkflowRule) bool 
 
 // matchesProjectTriggerGroup recursively evaluates a nested trigger group for project rules.
 func matchesProjectTriggerGroup(ctx *ProjectEvaluationContext, group *TriggerGroup) bool {
+	return matchesProjectTriggerGroupAtDepth(ctx, group, 0)
+}
+
+// matchesProjectTriggerGroupAtDepth bounds recursion to maxTriggerGroupDepth
+// so that a corrupted or hand-crafted rule cannot blow the stack at
+// evaluation time. Mirrors matchesTriggerGroupAtDepth on the task path.
+func matchesProjectTriggerGroupAtDepth(ctx *ProjectEvaluationContext, group *TriggerGroup, depth int) bool {
+	if group == nil || depth >= maxTriggerGroupDepth {
+		return false
+	}
+
 	logic := group.getLogic()
 
 	var results []bool
 	for _, t := range group.Triggers {
 		results = append(results, matchProjectTrigger(ctx, t))
 	}
-	for _, sub := range group.Groups {
-		results = append(results, matchesProjectTriggerGroup(ctx, &sub))
+	for i := range group.Groups {
+		results = append(results, matchesProjectTriggerGroupAtDepth(ctx, &group.Groups[i], depth+1))
 	}
 
 	if len(results) == 0 {

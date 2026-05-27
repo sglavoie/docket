@@ -695,3 +695,201 @@ func TestEvaluateRules_ConflictDetected_SetType(t *testing.T) {
 		t.Errorf("expected a conflict with Field=type, got %+v", result.Conflicts)
 	}
 }
+
+// TestEvaluateRulesWithContext_NilEvalCtxIsSafe verifies that the engine
+// returns an empty result instead of panicking when handed a nil evaluation
+// context. Callers in code paths that lazily build context (e.g. early
+// startup, error-recovery paths) should not have to defensively pre-check.
+func TestEvaluateRulesWithContext_NilEvalCtxIsSafe(t *testing.T) {
+	rules := []WorkflowRule{
+		{
+			ID:      "r1",
+			Name:    "any",
+			Enabled: true,
+			Trigger: RuleTrigger{Field: FieldStatus, Operation: OpEquals, Value: "todo"},
+			Actions: []RuleAction{{ActionType: ActionAddTag, Value: "x"}},
+		},
+	}
+
+	defer func() {
+		if r := recover(); r != nil {
+			t.Fatalf("EvaluateRulesWithContext(nil, rules) panicked: %v", r)
+		}
+	}()
+
+	result := EvaluateRulesWithContext(nil, rules)
+	if result == nil {
+		t.Fatal("expected non-nil empty result, got nil")
+	}
+	if len(result.ModifiedTasks) != 0 || len(result.Conflicts) != 0 {
+		t.Errorf("expected empty result, got %+v", result)
+	}
+}
+
+// TestEvaluateRulesWithContext_NilTaskInChangesIsSkipped verifies that a nil
+// Task pointer inside Changes is skipped rather than triggering a nil-deref
+// when the engine reads task.ID. Malformed change sets can arise from buggy
+// callers; the engine should be resilient.
+func TestEvaluateRulesWithContext_NilTaskInChangesIsSkipped(t *testing.T) {
+	good := &models.Task{ID: "g", Status: models.StatusTodo}
+	evalCtx := &EvaluationContext{
+		Changes: []TaskChangeContext{
+			{Task: nil, Previous: nil},
+			{Task: good, Previous: nil},
+		},
+		AllTasks: []*models.Task{good},
+		TaskMap:  map[string]*models.Task{"g": good},
+	}
+	rules := []WorkflowRule{
+		{
+			ID:      "r1",
+			Name:    "tag-on-todo",
+			Enabled: true,
+			Trigger: RuleTrigger{Field: FieldStatus, Operation: OpEquals, Value: "todo"},
+			Actions: []RuleAction{{ActionType: ActionAddTag, Value: "tagged"}},
+		},
+	}
+
+	defer func() {
+		if r := recover(); r != nil {
+			t.Fatalf("engine panicked on nil Task in Changes: %v", r)
+		}
+	}()
+
+	result := EvaluateRulesWithContext(evalCtx, rules)
+	if !good.HasTag("tagged") {
+		t.Errorf("expected the non-nil task to still be processed, got tags=%v", good.Tags)
+	}
+	if !containsTask(result.ModifiedTasks, good) {
+		t.Error("expected the non-nil task in ModifiedTasks")
+	}
+}
+
+// TestEvaluateProjectRules_NilCtxIsSafe verifies that EvaluateProjectRules
+// returns an empty result without panicking when ctx or ctx.Project is nil.
+// Without the guard, the rule filter dereferences ctx.Project.Name and crashes
+// before any rule is considered.
+func TestEvaluateProjectRules_NilCtxIsSafe(t *testing.T) {
+	rules := []WorkflowRule{
+		{
+			ID: "r1", Name: "active", Level: RuleLevelProject, Enabled: true, Priority: 50,
+			Trigger: RuleTrigger{Field: FieldHasInProgressTasks, Operation: OpEquals, Value: "true"},
+			Actions: []RuleAction{{ActionType: ActionSetProjectStatus, Value: "active"}},
+		},
+	}
+
+	t.Run("nil ctx", func(t *testing.T) {
+		defer func() {
+			if r := recover(); r != nil {
+				t.Fatalf("EvaluateProjectRules(nil, rules) panicked: %v", r)
+			}
+		}()
+		result := EvaluateProjectRules(nil, rules)
+		if result == nil {
+			t.Fatal("expected non-nil empty result")
+		}
+		if result.NewStatusIcon != "" || len(result.TriggeredRuleIDs) != 0 {
+			t.Errorf("expected empty result, got %+v", result)
+		}
+	})
+
+	t.Run("nil project", func(t *testing.T) {
+		ctx := &ProjectEvaluationContext{Project: nil, Tasks: nil}
+		defer func() {
+			if r := recover(); r != nil {
+				t.Fatalf("EvaluateProjectRules with nil Project panicked: %v", r)
+			}
+		}()
+		result := EvaluateProjectRules(ctx, rules)
+		if result == nil {
+			t.Fatal("expected non-nil empty result")
+		}
+		if result.NewStatusIcon != "" {
+			t.Errorf("expected empty NewStatusIcon, got %q", result.NewStatusIcon)
+		}
+	})
+}
+
+// TestMatchesTriggerGroup_DepthBound verifies that nested trigger group
+// evaluation refuses to recurse past maxTriggerGroupDepth. Validation rejects
+// such groups at rule-creation time, but evaluation must also be defensive
+// when handed hand-crafted or corrupted rules so a deep group cannot blow
+// the stack.
+func TestMatchesTriggerGroup_DepthBound(t *testing.T) {
+	leaf := RuleTrigger{Field: FieldStatus, Operation: OpEquals, Value: "todo"}
+	// Build a group nested deeper than the allowed maximum so the leaf only
+	// fires if the engine recurses all the way down. The depth-bound means
+	// the evaluator returns false instead of reaching the leaf.
+	deep := &TriggerGroup{Triggers: []RuleTrigger{leaf}}
+	for i := 0; i < maxTriggerGroupDepth+2; i++ {
+		deep = &TriggerGroup{Groups: []TriggerGroup{*deep}}
+	}
+
+	task := &models.Task{ID: "t", Status: models.StatusTodo}
+
+	defer func() {
+		if r := recover(); r != nil {
+			t.Fatalf("matchesTriggerGroup panicked on deeply nested group: %v", r)
+		}
+	}()
+
+	got := matchesTriggerGroup(task, nil, deep, nil)
+	if got {
+		t.Error("expected matchesTriggerGroup to refuse evaluating past maxTriggerGroupDepth (returned true)")
+	}
+}
+
+// TestMatchesProjectTriggerGroup_DepthBound mirrors the task-level depth
+// guard for project rules.
+func TestMatchesProjectTriggerGroup_DepthBound(t *testing.T) {
+	leaf := RuleTrigger{Field: FieldHasInProgressTasks, Operation: OpEquals, Value: "true"}
+	deep := &TriggerGroup{Triggers: []RuleTrigger{leaf}}
+	for i := 0; i < maxTriggerGroupDepth+2; i++ {
+		deep = &TriggerGroup{Groups: []TriggerGroup{*deep}}
+	}
+
+	ctx := &ProjectEvaluationContext{
+		Project: &models.Project{ID: "p", Name: "P"},
+		Tasks:   []*models.Task{{ID: "t1", Status: models.StatusInProgress}},
+	}
+
+	defer func() {
+		if r := recover(); r != nil {
+			t.Fatalf("matchesProjectTriggerGroup panicked on deeply nested group: %v", r)
+		}
+	}()
+
+	got := matchesProjectTriggerGroup(ctx, deep)
+	if got {
+		t.Error("expected matchesProjectTriggerGroup to refuse evaluating past maxTriggerGroupDepth (returned true)")
+	}
+}
+
+// TestBuildTaskMap_SkipsNilEntries verifies the legacy EvaluateRules path
+// does not panic when the input task slice contains a nil entry — buildTaskMap
+// previously dereferenced task.ID unconditionally.
+func TestBuildTaskMap_SkipsNilEntries(t *testing.T) {
+	good := &models.Task{ID: "g", Status: models.StatusTodo}
+
+	defer func() {
+		if r := recover(); r != nil {
+			t.Fatalf("EvaluateRules panicked on nil task entry: %v", r)
+		}
+	}()
+
+	result := EvaluateRules([]*models.Task{nil, good, nil}, []WorkflowRule{
+		{
+			ID:      "r1",
+			Name:    "tag",
+			Enabled: true,
+			Trigger: RuleTrigger{Field: FieldStatus, Operation: OpEquals, Value: "todo"},
+			Actions: []RuleAction{{ActionType: ActionAddTag, Value: "ok"}},
+		},
+	})
+	if !good.HasTag("ok") {
+		t.Errorf("expected the non-nil task to still be processed, got tags=%v", good.Tags)
+	}
+	if !containsTask(result.ModifiedTasks, good) {
+		t.Error("expected the non-nil task in ModifiedTasks")
+	}
+}

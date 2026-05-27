@@ -50,6 +50,8 @@ func sortRulesByPriority(rules []WorkflowRule) []WorkflowRule {
 
 // EvaluateRulesWithContext evaluates rules with full context for event and hierarchical triggers.
 // This is the preferred function when change detection is needed.
+// A nil evalCtx returns an empty result so callers don't have to defensively
+// pre-check before invoking the engine.
 func EvaluateRulesWithContext(evalCtx *EvaluationContext, rules []WorkflowRule) *EvaluationResult {
 	result := &EvaluationResult{
 		ModifiedTasks:     []*models.Task{},
@@ -58,7 +60,7 @@ func EvaluateRulesWithContext(evalCtx *EvaluationContext, rules []WorkflowRule) 
 		RuleTriggerCounts: make(map[string]int),
 	}
 
-	if len(rules) == 0 {
+	if evalCtx == nil || len(rules) == 0 {
 		return result
 	}
 
@@ -77,6 +79,9 @@ func evaluateRulesWithContextRecursive(evalCtx *EvaluationContext, rules []Workf
 
 	for _, change := range evalCtx.Changes {
 		task := change.Task
+		if task == nil {
+			continue
+		}
 		prev := change.Previous
 
 		fieldSetters := make(map[string][]fieldSetter)

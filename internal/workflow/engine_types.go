@@ -73,9 +73,13 @@ func (ctx *executionContext) wasApplied(taskID, ruleID string) bool {
 }
 
 // buildTaskMap creates a map of taskID -> task for fast lookups.
+// Nil entries in the input are skipped so a malformed slice does not panic.
 func buildTaskMap(tasks []*models.Task) map[string]*models.Task {
 	m := make(map[string]*models.Task, len(tasks))
 	for _, task := range tasks {
+		if task == nil {
+			continue
+		}
 		m[task.ID] = task
 	}
 	return m
