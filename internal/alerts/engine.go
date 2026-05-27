@@ -82,6 +82,19 @@ func checkDailyReviewReminder(cfg AlertConfig, _ []ProjectData, now time.Time) [
 		return nil
 	}
 
+	// More than 26 hours since last review: escalate to a warning regardless of
+	// whether we have crossed the configured reminder hour today. Otherwise a
+	// user who is several days behind would only ever see the info-level
+	// "pending" copy when they open the app after the configured hour.
+	if now.Sub(last) > 26*time.Hour {
+		return []Alert{{
+			Category: CategoryDailyReview,
+			Title:    "Daily review overdue",
+			Details:  fmt.Sprintf("Last completed %s", formatTimeAgo(now, last)),
+			Severity: SeverityWarning,
+		}}
+	}
+
 	// Current hour >= configured hour and no review today
 	if now.Hour() >= cfg.DailyReviewHour {
 		return []Alert{{
@@ -89,16 +102,6 @@ func checkDailyReviewReminder(cfg AlertConfig, _ []ProjectData, now time.Time) [
 			Title:    "Daily review pending",
 			Details:  fmt.Sprintf("Last completed %s", formatTimeAgo(now, last)),
 			Severity: SeverityInfo,
-		}}
-	}
-
-	// Fallback: more than 26 hours since last review
-	if now.Sub(last) > 26*time.Hour {
-		return []Alert{{
-			Category: CategoryDailyReview,
-			Title:    "Daily review overdue",
-			Details:  fmt.Sprintf("Last completed %s", formatTimeAgo(now, last)),
-			Severity: SeverityWarning,
 		}}
 	}
 

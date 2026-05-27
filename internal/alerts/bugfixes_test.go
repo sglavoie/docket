@@ -84,6 +84,28 @@ func TestCheckOverdueTasks_TimedDueEarlierToday(t *testing.T) {
 	}
 }
 
+// TestCheckDailyReviewReminder_OverdueWarningBeatsPastHourInfo is a regression
+// test: when the user is several days behind on the daily review AND it is
+// past the configured reminder hour, the alert must escalate to "Daily review
+// overdue" (warning) rather than stay at the info-level "Daily review pending".
+func TestCheckDailyReviewReminder_OverdueWarningBeatsPastHourInfo(t *testing.T) {
+	now := time.Date(2026, 3, 5, 14, 0, 0, 0, time.UTC) // well past the configured hour
+	cfg := DefaultAlertConfig()
+	cfg.DailyReviewHour = 9
+	cfg.LastDailyReviewAt = timePtr(time.Date(2026, 2, 28, 10, 0, 0, 0, time.UTC)) // ~5 days ago
+
+	alerts := checkDailyReviewReminder(cfg, nil, now)
+	if len(alerts) != 1 {
+		t.Fatalf("expected 1 alert, got %d", len(alerts))
+	}
+	if alerts[0].Title != "Daily review overdue" {
+		t.Errorf("expected 'Daily review overdue' title, got %q", alerts[0].Title)
+	}
+	if alerts[0].Severity != SeverityWarning {
+		t.Errorf("expected warning severity when >26h behind, got %d", alerts[0].Severity)
+	}
+}
+
 // TestCheckDueSoonTasks_TimedDueLaterToday ensures that a task with HasTime=true
 // whose exact due time is still in the future today is classified as due-soon.
 func TestCheckDueSoonTasks_TimedDueLaterToday(t *testing.T) {
