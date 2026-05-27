@@ -203,6 +203,7 @@ func (m *KanbanModel) bulkMoveSelectedTasks(delta int) (tea.Model, tea.Cmd) {
 	}
 
 	var lastCmd tea.Cmd
+	moved := 0
 	for _, ref := range selected {
 		pf := workflowPersist(func() WorkflowSaveOptions {
 			return BuildWorkflowOpts(m.getPersister(), ref.project, m.config, m.configManager, nil, "", "", nil)
@@ -241,10 +242,10 @@ func (m *KanbanModel) bulkMoveSelectedTasks(delta int) (tea.Model, tea.Cmd) {
 		if result.Cmd != nil {
 			lastCmd = result.Cmd
 		}
+		moved++
 	}
 
-	n := len(selected)
-	m.FinishBulk(&m.statusMsg, fmt.Sprintf("Moved %d %s → %s", n, pluralize(n, "task", "tasks"), targetCol.Label))
+	m.FinishBulk(&m.statusMsg, fmt.Sprintf("Moved %d %s → %s", moved, pluralize(moved, "task", "tasks"), targetCol.Label))
 	m.reloadData()
 	m.clampCursor()
 	return m, lastCmd

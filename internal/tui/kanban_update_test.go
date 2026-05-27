@@ -356,3 +356,30 @@ func TestAdjustHorizontalScroll_ZeroWidth_NoOp(t *testing.T) {
 	m.width = 0
 	m.adjustHorizontalScroll() // should not panic
 }
+
+// ── bulkMoveSelectedTasks ─────────────────────────────────────────────────────
+
+func TestBulkMoveSelectedTasks_StatusMessageReflectsActuallyMovedCount(t *testing.T) {
+	proj := testutil.NewTestProject("p")
+	t1 := testutil.NewTestTaskWithStatus("done1", models.StatusDone)
+	t2 := testutil.NewTestTaskWithStatus("done2", models.StatusDone)
+	proj.Tasks = []*models.Task{t1, t2}
+
+	doneCol := KanbanColumn{ID: "done", Label: "Done", Tasks: []KanbanCard{
+		{Task: t1, Project: proj},
+		{Task: t2, Project: proj},
+	}}
+	canceledCol := KanbanColumn{ID: "canceled", Label: "Canceled"}
+
+	m := newTestKanban([]KanbanColumn{doneCol, canceledCol})
+	m.mode = KanbanModeStatus
+	m.multiSelectMode = true
+	m.ToggleSelection(t1.ID)
+	m.ToggleSelection(t2.ID)
+
+	m.bulkMoveSelectedTasks(+1)
+
+	if want := "Moved 0 tasks → Canceled"; m.statusMsg != want {
+		t.Errorf("status msg: want %q, got %q", want, m.statusMsg)
+	}
+}
