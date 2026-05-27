@@ -893,3 +893,111 @@ func TestBuildTaskMap_SkipsNilEntries(t *testing.T) {
 		t.Error("expected the non-nil task in ModifiedTasks")
 	}
 }
+
+// TestApplyHierarchicalAction_NotifyParentDedup verifies that
+// ActionNotifyParent does NOT re-append the same workflow comment to the
+// parent on subsequent applications. Without dedup, every evaluation pass
+// (including cross-session evaluations after the parent was persisted) would
+// keep appending the identical "[Workflow] ..." note, eventually inflating
+// the parent's comment list indefinitely. Mirrors the dedup behavior of
+// ActionAddComment so the two actions behave consistently.
+func TestApplyHierarchicalAction_NotifyParentDedup(t *testing.T) {
+	parent := &models.Task{ID: "p", Status: models.StatusTodo}
+	child := &models.Task{ID: "c", Status: models.StatusTodo, Parent: parent}
+	parent.Children = []*models.Task{child}
+
+	evalCtx := &EvaluationContext{
+		AllTasks: []*models.Task{parent, child},
+		TaskMap:  map[string]*models.Task{"p": parent, "c": child},
+	}
+
+	action := RuleAction{ActionType: ActionNotifyParent, Value: "child needs attention"}
+	want := "[Workflow] child needs attention"
+
+	result := &EvaluationResult{}
+	if !applyHierarchicalAction(child, action, evalCtx, result) {
+		t.Fatal("expected modified=true on first NotifyParent application")
+	}
+	if len(parent.Comments) != 1 || parent.Comments[0].Text != want {
+		t.Fatalf("expected parent to have exactly one workflow comment %q, got %v",
+			want, parent.Comments)
+	}
+	if !containsTask(result.ModifiedTasks, parent) {
+		t.Error("expected parent recorded in ModifiedTasks on first application")
+	}
+
+	// Second application: the dedup guard should fire. No new comment, no
+	// modification reported.
+	result2 := &EvaluationResult{}
+	if applyHierarchicalAction(child, action, evalCtx, result2) {
+		t.Error("expected modified=false on second NotifyParent application (dedup)")
+	}
+	if len(parent.Comments) != 1 {
+		t.Errorf("expected parent comments unchanged (1) on dedup, got %d", len(parent.Comments))
+	}
+	if containsTask(result2.ModifiedTasks, parent) {
+		t.Error("expected parent NOT in ModifiedTasks when no-op")
+	}
+
+	// Dedup must scan the full comment list, not just the most recent entry —
+	// matching the documented behavior of ActionAddComment. Add some unrelated
+	// user comments after the workflow note and re-apply.
+	parent.AddComment("User reply 1")
+	parent.AddComment("User reply 2")
+	result3 := &EvaluationResult{}
+	if applyHierarchicalAction(child, action, evalCtx, result3) {
+		t.Error("expected modified=false when the workflow comment exists earlier in the list")
+	}
+	if len(parent.Comments) != 3 {
+		t.Errorf("expected exactly 3 comments after re-eval with user replies, got %d", len(parent.Comments))
+	}
+}
+
+// TestMatchesHierarchicalTrigger_ChildrenProgressIgnoresLeaves verifies that
+// FieldChildrenProgress only matches tasks that actually have children. For
+// leaf tasks, task.GetProgress() returns 100 (when complete) or 0 (otherwise)
+// based on the leaf's own status — without this guard, a rule like
+// "children_progress > 50" silently fires on every completed leaf task, which
+// is never the user's intent for a trigger documented as deriving from
+// children. Matches the leaf guard already in FieldAllChildrenDone.
+func TestMatchesHierarchicalTrigger_ChildrenProgressIgnoresLeaves(t *testing.T) {
+	t.Run("completed leaf does NOT match children_progress > 50", func(t *testing.T) {
+		leaf := &models.Task{ID: "leaf", Status: models.StatusDone}
+		trigger := RuleTrigger{Field: FieldChildrenProgress, Operation: OpGreaterThan, Value: "50"}
+		if matchesHierarchicalTrigger(leaf, trigger, nil) {
+			t.Error("expected no match: leaf task has no children to aggregate")
+		}
+	})
+
+	t.Run("incomplete leaf does NOT match children_progress = 0", func(t *testing.T) {
+		// Even though GetProgress() returns 0 for an incomplete leaf, the
+		// trigger is about *child* aggregate progress and should bail.
+		leaf := &models.Task{ID: "leaf", Status: models.StatusTodo}
+		trigger := RuleTrigger{Field: FieldChildrenProgress, Operation: OpEquals, Value: "0"}
+		if matchesHierarchicalTrigger(leaf, trigger, nil) {
+			t.Error("expected no match: leaf task has no children to aggregate")
+		}
+	})
+
+	t.Run("parent with 100% complete children still matches", func(t *testing.T) {
+		parent := &models.Task{ID: "p", Status: models.StatusTodo}
+		c1 := &models.Task{ID: "c1", Status: models.StatusDone, Parent: parent}
+		c2 := &models.Task{ID: "c2", Status: models.StatusDone, Parent: parent}
+		parent.Children = []*models.Task{c1, c2}
+		trigger := RuleTrigger{Field: FieldChildrenProgress, Operation: OpEquals, Value: "100"}
+		if !matchesHierarchicalTrigger(parent, trigger, nil) {
+			t.Error("expected match: parent with all children done has 100% progress")
+		}
+	})
+
+	t.Run("parent with partial completion matches > 0", func(t *testing.T) {
+		parent := &models.Task{ID: "p", Status: models.StatusTodo}
+		c1 := &models.Task{ID: "c1", Status: models.StatusDone, Parent: parent}
+		c2 := &models.Task{ID: "c2", Status: models.StatusTodo, Parent: parent}
+		parent.Children = []*models.Task{c1, c2}
+		trigger := RuleTrigger{Field: FieldChildrenProgress, Operation: OpGreaterThan, Value: "0"}
+		if !matchesHierarchicalTrigger(parent, trigger, nil) {
+			t.Error("expected match: parent with 1/2 children done has 50% progress")
+		}
+	})
+}

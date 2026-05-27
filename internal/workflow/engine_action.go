@@ -74,8 +74,9 @@ func applyHierarchicalAction(task *models.Task, action RuleAction, evalCtx *Eval
 	case ActionNotifyParent:
 		if task.Parent != nil {
 			commentText := "[Workflow] " + action.Value
-			// Dedupe across all existing parent comments so a rule that fires on
-			// every save operation does not inflate the parent's comment list.
+			// Dedupe against ALL existing parent comments so a rule that
+			// fires on every save (or re-evaluation pass across sessions)
+			// does not inflate the parent's comment list indefinitely.
 			// Mirrors the dedup applied to ActionAddComment.
 			for _, c := range task.Parent.Comments {
 				if c != nil && c.Text == commentText {

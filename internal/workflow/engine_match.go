@@ -274,6 +274,16 @@ func matchesHierarchicalTrigger(task *models.Task, trigger RuleTrigger, evalCtx 
 		return compareBoolOp(hasChildren, trigger.Operation, trigger.Value)
 
 	case FieldChildrenProgress:
+		// This trigger is hierarchical: it describes progress derived from
+		// child tasks. For a leaf task, models.Task.GetProgress() returns 100
+		// or 0 based on the leaf's own completion state, which would cause
+		// rules like "children_progress > 50" to fire on every completed leaf
+		// task. Bail out for leaves so the trigger only matches tasks that
+		// actually have children to aggregate over (mirroring the guard in
+		// FieldAllChildrenDone).
+		if len(task.Children) == 0 {
+			return false
+		}
 		progress := int(task.GetProgress())
 		return compareValues(strconv.Itoa(progress), trigger.Operation, trigger.Value)
 
