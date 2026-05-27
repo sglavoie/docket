@@ -337,7 +337,10 @@ func (tl TaskLine) applyHeroDemotion(segments taskLineSegments) taskLineSegments
 func demotedTaskLineSegment(segment string) string {
 	trimmed := strings.TrimRight(segment, " ")
 	if trimmed == "" {
-		return ""
+		// Segment is pure alignment padding (e.g. PadBadge of an empty badge
+		// when the column layout reserved width for sibling rows). Preserve
+		// the original width so vertical alignment survives demotion.
+		return segment
 	}
 	return demoteBadge(trimmed) + " "
 }
