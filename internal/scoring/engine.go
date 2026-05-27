@@ -253,6 +253,11 @@ func formulaMultiply(results []DimensionResult) float64 {
 // the numerator is also zero — 0/0 is mathematically undefined and should
 // not artificially top-rank a task with no value AND no cost.
 //
+// A negative denominator product (possible when a dim has Min < 0 and the
+// signed value survives Pow with an odd integer weight) would otherwise
+// produce a negative quotient that breaks descending-score sort order. Treat
+// it as 0 (no signal) rather than letting it leak into ranking.
+//
 // An empty results slice returns 0 rather than the neutral 1/1=1: a profile
 // with no dimensions has no signal, matching formulaWeightedSum's behavior.
 func formulaRICE(results []DimensionResult) float64 {
@@ -281,11 +286,11 @@ func formulaRICE(results []DimensionResult) float64 {
 			num *= factor // no role = numerator
 		}
 	}
-	if den == 0 {
-		if num == 0 {
-			return 0
+	if den <= 0 {
+		if den == 0 && num != 0 {
+			return MaxScoreSentinel
 		}
-		return MaxScoreSentinel
+		return 0
 	}
 	return num / den
 }
@@ -294,6 +299,10 @@ func formulaRICE(results []DimensionResult) float64 {
 // Division by zero yields a large score (zero job size = do it first), unless
 // the numerator is also zero — 0/0 is undefined and should not artificially
 // top-rank an item with no value AND no cost.
+//
+// A negative denominator sum (possible when a dim has Min < 0 and the user
+// records a negative value) would otherwise yield a negative quotient that
+// breaks descending-score sort order; treat it as 0 (no signal).
 func formulaWSJF(results []DimensionResult) float64 {
 	var num, den float64
 	for _, r := range results {
@@ -306,11 +315,11 @@ func formulaWSJF(results []DimensionResult) float64 {
 			num += float64(r.Value) * r.Weight
 		}
 	}
-	if den == 0 {
-		if num == 0 {
-			return 0
+	if den <= 0 {
+		if den == 0 && num != 0 {
+			return MaxScoreSentinel
 		}
-		return MaxScoreSentinel
+		return 0
 	}
 	return num / den
 }
@@ -347,7 +356,10 @@ func scoreWithStrategy(profile *ScoringProfile, selectValue func(dim ScoringDime
 }
 
 // MaxScore returns the theoretical maximum score for a profile.
-// For each dimension, it uses Max for numerators and Min for denominators.
+// For each dimension, it uses Max for numerators and the smallest positive
+// in-range value for denominators (negative or zero denominators would make
+// the quotient flip sign or hit the divide-by-zero sentinel, neither of
+// which represents the natural "maximum" of the configured range).
 // Returns 0 when profile is nil.
 func MaxScore(profile *ScoringProfile) float64 {
 	if profile == nil {
@@ -355,10 +367,13 @@ func MaxScore(profile *ScoringProfile) float64 {
 	}
 	return scoreWithStrategy(profile, func(dim ScoringDimension) int {
 		if dim.Role == RoleDenominator {
-			if dim.Min == 0 {
+			if dim.Min > 0 {
+				return dim.Min
+			}
+			if dim.Max > 0 {
 				return 1
 			}
-			return dim.Min
+			return 1
 		}
 		return dim.Max
 	})

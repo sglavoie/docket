@@ -300,3 +300,73 @@ func TestValidateRejectsDerivedMappingEmptyField(t *testing.T) {
 		t.Error("expected validation to reject derived_mapping with empty Field, got nil")
 	}
 }
+
+// TestFormulaWSJFNegativeDenominatorReturnsZero guards against a negative
+// denominator sum (possible when a denominator dim has Min<0 and the user
+// records a negative value): the previous guard only caught den==0, letting a
+// negative quotient leak into the score. A negative score breaks the
+// descending sort assumption used by every list view, so collapse to 0 (no
+// signal) rather than silently mis-rank a task to the bottom or top.
+func TestFormulaWSJFNegativeDenominatorReturnsZero(t *testing.T) {
+	results := []DimensionResult{
+		{Value: 10, Weight: 1, Role: RoleNumerator},
+		{Value: -3, Weight: 1, Role: RoleDenominator},
+	}
+	got := formulaWSJF(results)
+	if got != 0 {
+		t.Errorf("negative denominator should yield 0, got %f", got)
+	}
+}
+
+// TestFormulaRICENegativeDenominatorReturnsZero mirrors the WSJF fix: a
+// negative denominator product (achievable via Min<0 and a value that
+// survives Pow with an odd integer weight) must not produce a negative
+// quotient. Without this guard, a negative score breaks descending sort.
+func TestFormulaRICENegativeDenominatorReturnsZero(t *testing.T) {
+	results := []DimensionResult{
+		{Value: 10, Weight: 1, Role: RoleNumerator},
+		{Value: -2, Weight: 1, Role: RoleDenominator},
+	}
+	got := formulaRICE(results)
+	if got != 0 {
+		t.Errorf("negative denominator should yield 0, got %f", got)
+	}
+}
+
+// TestFormulaRICEZeroDenominatorWithNonzeroNumeratorPreserved confirms the
+// negative-denominator fix did not regress the existing "zero effort = top"
+// semantic: a non-zero numerator over a zero denominator still returns
+// MaxScoreSentinel.
+func TestFormulaRICEZeroDenominatorWithNonzeroNumeratorPreserved(t *testing.T) {
+	results := []DimensionResult{
+		{Value: 7, Weight: 1, Role: RoleNumerator},
+		{Value: 0, Weight: 1, Role: RoleDenominator},
+	}
+	got := formulaRICE(results)
+	if got != MaxScoreSentinel {
+		t.Errorf("positive/0 should yield MaxScoreSentinel (%f), got %f", MaxScoreSentinel, got)
+	}
+}
+
+// TestMaxScoreDenominatorNegativeMinDoesNotFlipSign guards against MaxScore
+// returning a negative theoretical maximum when a denominator dim has Min<0.
+// Previously MaxScore used dim.Min unconditionally, which produced a negative
+// divisor and made MaxScore < DefaultScore — poisoning ScorePercent's range
+// math (defS > maxS) and the entire normalized scale.
+func TestMaxScoreDenominatorNegativeMinDoesNotFlipSign(t *testing.T) {
+	profile := ScoringProfile{
+		ID: "neg-den", Name: "NegDen", Formula: FormulaRICE,
+		Dimensions: []ScoringDimension{
+			{ID: "n", Name: "N", Min: 1, Max: 10, Default: 5, Weight: 1, Source: SourceManual, Role: RoleNumerator},
+			{ID: "d", Name: "D", Min: -5, Max: 10, Default: 5, Weight: 1, Source: SourceManual, Role: RoleDenominator},
+		},
+	}
+	maxS := MaxScore(&profile)
+	if maxS <= 0 {
+		t.Errorf("MaxScore should be positive even with negative-Min denominator, got %f", maxS)
+	}
+	defS := DefaultScore(&profile)
+	if maxS < defS {
+		t.Errorf("MaxScore (%f) should be >= DefaultScore (%f)", maxS, defS)
+	}
+}
