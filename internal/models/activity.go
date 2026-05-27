@@ -22,8 +22,15 @@ func (t *Task) RecordActivity(field, oldValue, newValue string) {
 	})
 }
 
-// RecordCreated appends a "created" activity entry.
+// RecordCreated appends a "created" activity entry. Idempotent: a second call
+// is a no-op so that re-running migrations / repair passes does not duplicate
+// the marker entry that PruneActivity treats as load-bearing.
 func (t *Task) RecordCreated() {
+	for _, entry := range t.Activity {
+		if entry != nil && entry.Field == "created" {
+			return
+		}
+	}
 	t.Activity = append(t.Activity, &ActivityEntry{
 		Timestamp: t.CreatedAt,
 		Field:     "created",
