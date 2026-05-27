@@ -53,7 +53,16 @@ func runTaskArchive(cmd *cobra.Command, args []string) error {
 
 	completedTasks := project.GetCompletedTasks()
 	if len(completedTasks) == 0 {
-		fmt.Println("No completed tasks to archive.")
+		if out.JSON {
+			entry := struct {
+				ArchivedCount int    `json:"archived_count"`
+				Project       string `json:"project"`
+			}{ArchivedCount: 0, Project: project.Name}
+			return printJSON(entry)
+		}
+		if !out.Quiet {
+			fmt.Println("No completed tasks to archive.")
+		}
 		return nil
 	}
 
