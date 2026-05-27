@@ -357,3 +357,15 @@ func TestPruneOldLogsInvalidDir(t *testing.T) {
 	logDirPath = "/nonexistent/path/that/does/not/exist"
 	pruneOldLogs() // should not panic
 }
+
+func TestLogFileNameUsesNanosecondPrecision(t *testing.T) {
+	base := time.Date(2025, time.January, 2, 3, 4, 5, 123456780, time.UTC)
+	next := base.Add(time.Nanosecond)
+
+	first := logFileName(base)
+	second := logFileName(next)
+
+	if first == second {
+		t.Fatalf("expected distinct filenames for sub-second timestamps, got %q", first)
+	}
+}

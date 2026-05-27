@@ -174,3 +174,27 @@ func TestGetEmojiMode(t *testing.T) {
 		}
 	}
 }
+
+func TestGetFallsBackWhenPreferredVariantMissing(t *testing.T) {
+	original, hadOriginal := registry["test.fallback"]
+	defer func() {
+		if hadOriginal {
+			registry["test.fallback"] = original
+		} else {
+			delete(registry, "test.fallback")
+		}
+		SetUseEmoji(false)
+	}()
+
+	registry["test.fallback"] = iconPair{emoji: "E", unicode: ""}
+	SetUseEmoji(false)
+	if got := Get("test.fallback"); got != "E" {
+		t.Fatalf("Get(unicode mode) fallback = %q, want %q", got, "E")
+	}
+
+	registry["test.fallback"] = iconPair{emoji: "", unicode: "U"}
+	SetUseEmoji(true)
+	if got := Get("test.fallback"); got != "U" {
+		t.Fatalf("Get(emoji mode) fallback = %q, want %q", got, "U")
+	}
+}

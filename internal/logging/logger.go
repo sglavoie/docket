@@ -34,12 +34,13 @@ func Init() {
 	if err = os.MkdirAll(logDirPath, 0o755); err != nil {
 		return
 	}
-	name := fmt.Sprintf("tt-%s.log", time.Now().Format("2006-01-02-150405"))
+	name := logFileName(time.Now())
 	logFilePath = filepath.Join(logDirPath, name)
 	f, err := os.OpenFile(logFilePath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o644)
 	if err != nil {
 		return
 	}
+
 	if !loggerStateCaptured {
 		previousLoggerOutput = log.Writer()
 		previousLoggerFlags = log.Flags()
@@ -74,6 +75,10 @@ func pruneOldLogs() {
 
 // LogDir returns the log directory path.
 func LogDir() string { return logDirPath }
+
+func logFileName(now time.Time) string {
+	return fmt.Sprintf("tt-%s.log", now.Format("2006-01-02-150405.000000000"))
+}
 
 // Warn writes a formatted warning to the log file.
 func Warn(format string, args ...any) {

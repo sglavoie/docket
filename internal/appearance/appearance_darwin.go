@@ -30,10 +30,10 @@ func (d darwinDetector) Detect() SystemAppearance {
 }
 
 func parseAppleInterfaceStyle(out []byte) SystemAppearance {
-	switch strings.TrimSpace(string(out)) {
-	case "", "Light":
+	switch strings.ToLower(strings.TrimSpace(string(out))) {
+	case "", "light":
 		return Light
-	case "Dark":
+	case "dark":
 		return Dark
 	default:
 		return Unknown

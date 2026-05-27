@@ -107,7 +107,13 @@ func Get(key string) string {
 		return ""
 	}
 	if useEmoji.Load() {
-		return p.emoji
+		if p.emoji != "" {
+			return p.emoji
+		}
+		return p.unicode
 	}
-	return p.unicode
+	if p.unicode != "" {
+		return p.unicode
+	}
+	return p.emoji
 }

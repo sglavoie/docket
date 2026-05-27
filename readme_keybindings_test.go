@@ -2,18 +2,47 @@ package main
 
 import (
 	"os"
+	"path/filepath"
 	"regexp"
+	"runtime"
 	"strings"
 	"testing"
 )
 
 func readFileForContractTest(t *testing.T, path string) string {
 	t.Helper()
-	data, err := os.ReadFile(path)
+
+	_, file, _, ok := runtime.Caller(0)
+	if !ok {
+		t.Fatal("failed to resolve caller path")
+	}
+
+	data, err := os.ReadFile(filepath.Join(filepath.Dir(file), path))
 	if err != nil {
 		t.Fatalf("read %s: %v", path, err)
 	}
 	return string(data)
+}
+
+func TestReadFileForContractTestUsesStableBaseDir(t *testing.T) {
+	wd, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("getwd: %v", err)
+	}
+	t.Cleanup(func() {
+		if chdirErr := os.Chdir(wd); chdirErr != nil {
+			t.Fatalf("restore cwd: %v", chdirErr)
+		}
+	})
+
+	if err := os.Chdir("cmd"); err != nil {
+		t.Fatalf("chdir to cmd: %v", err)
+	}
+
+	content := readFileForContractTest(t, "README.md")
+	if !strings.Contains(content, "# tt - Terminal Tasks") {
+		t.Fatal("expected README content to load regardless of cwd")
+	}
 }
 
 func TestREADMECommandPaletteBindingStaysCurrent(t *testing.T) {

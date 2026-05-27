@@ -28,7 +28,9 @@ func TestDarwinDetectorDetect(t *testing.T) {
 		want SystemAppearance
 	}{
 		{name: "dark mode", out: []byte("Dark\n"), want: Dark},
+		{name: "dark mode lowercase", out: []byte("dark\n"), want: Dark},
 		{name: "light output", out: []byte("Light\n"), want: Light},
+		{name: "light output lowercase", out: []byte("light\n"), want: Light},
 		{name: "no output defaults to light", out: nil, want: Light},
 		{
 			name: "missing key error defaults to light",
