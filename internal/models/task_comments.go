@@ -28,7 +28,9 @@ func (t *Task) RemoveComment(index int) bool {
 	if index < 0 || index >= len(t.Comments) {
 		return false
 	}
-	t.Comments = append(t.Comments[:index], t.Comments[index+1:]...)
+	copy(t.Comments[index:], t.Comments[index+1:])
+	t.Comments[len(t.Comments)-1] = nil
+	t.Comments = t.Comments[:len(t.Comments)-1]
 	t.UpdatedAt = time.Now()
 	return true
 }

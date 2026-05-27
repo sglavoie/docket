@@ -121,6 +121,34 @@ func TestAddComment_RejectsEmptyAndWhitespace(t *testing.T) {
 	}
 }
 
+func TestRemoveComment_NilsOutTailToReleasePointer(t *testing.T) {
+	task := &Task{}
+	task.AddComment("first")
+	task.AddComment("second")
+	task.AddComment("third")
+
+	// Capture the underlying backing array via a slice that includes the
+	// tail slot. After RemoveComment shrinks the visible length by one,
+	// the backing array's last slot must be nil — otherwise the removed
+	// *Comment is leaked through the underlying array.
+	full := task.Comments[:3]
+
+	if !task.RemoveComment(0) {
+		t.Fatal("RemoveComment(0) returned false")
+	}
+	if len(task.Comments) != 2 {
+		t.Fatalf("expected 2 comments after removal, got %d", len(task.Comments))
+	}
+	if task.Comments[0].Text != "second" || task.Comments[1].Text != "third" {
+		t.Fatalf("unexpected remaining comments: %q, %q",
+			task.Comments[0].Text, task.Comments[1].Text)
+	}
+	if full[2] != nil {
+		t.Errorf("expected backing-array tail slot to be nil after RemoveComment, "+
+			"but it still references a *Comment with text %q", full[2].Text)
+	}
+}
+
 func TestAddComment_KeepsNonEmptyTextWithSurroundingSpace(t *testing.T) {
 	task := &Task{}
 	task.AddComment("  meaningful note  ")
