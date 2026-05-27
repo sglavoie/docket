@@ -25,6 +25,12 @@ func TestRecurrencePatternValidate(t *testing.T) {
 		{"at max interval", &RecurrencePattern{Interval: MaxRecurrenceInterval, Unit: RecurrenceDaily}, false},
 		{"over max interval", &RecurrencePattern{Interval: MaxRecurrenceInterval + 1, Unit: RecurrenceDaily}, true},
 		{"huge interval", &RecurrencePattern{Interval: 999999, Unit: RecurrenceYearly}, true},
+		{"original_day zero unset", &RecurrencePattern{Interval: 1, Unit: RecurrenceMonthly, OriginalDay: 0}, false},
+		{"original_day 1 lower bound", &RecurrencePattern{Interval: 1, Unit: RecurrenceMonthly, OriginalDay: 1}, false},
+		{"original_day 31 upper bound", &RecurrencePattern{Interval: 1, Unit: RecurrenceMonthly, OriginalDay: 31}, false},
+		{"original_day negative", &RecurrencePattern{Interval: 1, Unit: RecurrenceMonthly, OriginalDay: -1}, true},
+		{"original_day over 31", &RecurrencePattern{Interval: 1, Unit: RecurrenceYearly, OriginalDay: 32}, true},
+		{"original_day absurdly large", &RecurrencePattern{Interval: 1, Unit: RecurrenceMonthly, OriginalDay: 999}, true},
 	}
 
 	for _, tt := range tests {
