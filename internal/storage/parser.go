@@ -216,6 +216,11 @@ func parseSectionsMetadataLine(line string, foundFirstTask bool, sections *[]str
 		return false
 	}
 
+	seenSections := make(map[string]bool, len(*sections))
+	for _, existing := range *sections {
+		seenSections[existing] = true
+	}
+
 	for sectionSpec := range strings.SplitSeq(matches[1], ";") {
 		sectionSpec = strings.TrimSpace(sectionSpec)
 		if sectionSpec == "" {
@@ -228,7 +233,10 @@ func parseSectionsMetadataLine(line string, foundFirstTask bool, sections *[]str
 			continue
 		}
 
-		*sections = append(*sections, name)
+		if !seenSections[name] {
+			*sections = append(*sections, name)
+			seenSections[name] = true
+		}
 		if len(parts) == 2 {
 			color := strings.TrimSpace(parts[1])
 			if color == "" {
