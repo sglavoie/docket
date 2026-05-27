@@ -110,6 +110,43 @@ func TestMoveTaskToBottom_BlockedBySortActive(t *testing.T) {
 	}
 }
 
+// TestMoveTaskToTop_BlockedByCompletionLeavesCursor verifies that when a
+// completed root task cannot be moved above an uncompleted sibling, the cursor
+// stays put instead of jumping to the first sibling's old position.
+func TestMoveTaskToTop_BlockedByCompletionLeavesCursor(t *testing.T) {
+	b := &models.Task{ID: "b", Title: "B", Type: models.TaskTypeTask, Status: models.StatusTodo}
+	c := &models.Task{ID: "c", Title: "C", Type: models.TaskTypeTask, Status: models.StatusTodo}
+	d := &models.Task{ID: "d", Title: "D", Type: models.TaskTypeTask, Status: models.StatusTodo}
+	a := &models.Task{ID: "a", Title: "A", Type: models.TaskTypeTask, Status: models.StatusDone}
+	project := &models.Project{Tasks: []*models.Task{b, c, d, a}}
+
+	m := &ProjectTreeModel{
+		project:  project,
+		viewMode: ViewModeAll,
+		sort:     SortState{Field: SortByDefault, Ascending: true},
+	}
+	visible := []*TreeNode{
+		{Task: b, Visible: true},
+		{Task: c, Visible: true},
+		{Task: d, Visible: true},
+		{Task: a, Visible: true},
+	}
+	m.nodes = visible
+	m.cursor = 3 // on the completed task A
+
+	_, _ = m.moveTaskToTop(visible)
+
+	// Order unchanged: A still last.
+	if project.Tasks[3].ID != "a" {
+		t.Fatalf("expected A to remain at index 3, got order %s,%s,%s,%s",
+			project.Tasks[0].ID, project.Tasks[1].ID, project.Tasks[2].ID, project.Tasks[3].ID)
+	}
+	// Cursor must NOT have jumped to B's position (index 0); it should stay on A.
+	if m.cursor != 3 {
+		t.Errorf("cursor = %d, want 3 (cursor must stay on blocked task, not jump to first sibling)", m.cursor)
+	}
+}
+
 // TestHandleMovementKeys_J_DefaultSortNotBlocked ensures the guard only fires
 // for explicit sorts — SortByDefault must allow J to proceed normally.
 func TestHandleMovementKeys_J_DefaultSortNotBlocked(t *testing.T) {
