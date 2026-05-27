@@ -46,6 +46,12 @@ func TestDarwinDetectorDetect(t *testing.T) {
 		},
 		{name: "command failure returns unknown", err: errors.New("defaults missing"), want: Unknown},
 		{name: "exit error without key name returns unknown", out: []byte("permission denied"), err: exitStatusOne(t), want: Unknown},
+		{
+			name: "exit error mentioning key name without domain marker returns unknown",
+			out:  []byte("Permission denied reading AppleInterfaceStyle\n"),
+			err:  exitStatusOne(t),
+			want: Unknown,
+		},
 		{name: "unexpected successful output returns unknown", out: []byte("Sepia\n"), want: Unknown},
 	}
 
