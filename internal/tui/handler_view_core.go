@@ -60,6 +60,13 @@ func (m *AppModel) handleViewCoreMessages(msg tea.Msg) (bool, tea.Cmd) {
 		return true, nil
 
 	case StatusClearMsg:
+		// A 2s plain-status tick may arrive after a newer setUndoableStatus
+		// has installed a still-live toast (6s window). Don't dismiss a toast
+		// that hasn't reached its own deadline yet — its dedicated
+		// UndoToastTimeoutMsg will clear it on time.
+		if m.statusUndoCb != nil && time.Now().Before(m.statusExpiresAt) {
+			return true, nil
+		}
 		m.clearStatus()
 		return true, nil
 

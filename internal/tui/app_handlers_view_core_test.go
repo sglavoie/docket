@@ -212,6 +212,62 @@ func TestUndoToastTimeoutLeavesReplacedToastAlone(t *testing.T) {
 	}
 }
 
+// TestStatusClearMsgPreservesActiveUndoToast verifies that a stale
+// StatusClearMsg from an earlier 2s plain-status timer does not prematurely
+// dismiss a newer undo toast that is still within its 6s window. Without
+// guarding StatusClearMsg against an active undo toast, the sequence
+// "plain status → undo toast within 2s" loses the toast the moment the
+// plain status's tick fires.
+func TestStatusClearMsgPreservesActiveUndoToast(t *testing.T) {
+	app := newTestAppModel()
+
+	// Plain status arms a 2s StatusClearMsg tick.
+	app.setSuccessStatus("saved")
+	// Before the 2s tick fires, a destructive action installs an undo toast.
+	called := false
+	_ = app.setUndoableStatus("destructive · u to undo", func() tea.Cmd {
+		called = true
+		return nil
+	})
+
+	// The earlier StatusClearMsg now arrives. It must NOT clear the live toast.
+	handled, _ := app.handleViewMessages(StatusClearMsg{})
+	if !handled {
+		t.Error("StatusClearMsg should be handled")
+	}
+	if app.statusMessage == "" {
+		t.Fatal("stale StatusClearMsg cleared a live undo toast")
+	}
+	if app.statusUndoCb == nil {
+		t.Fatal("stale StatusClearMsg dropped the undo callback for a live toast")
+	}
+	if !strings.Contains(app.statusMessage, "destructive") {
+		t.Errorf("expected toast preserved, got %q", app.statusMessage)
+	}
+	// `u` must still invoke the toast callback.
+	app.statusUndoCb()
+	if !called {
+		t.Error("undo callback should still be invokable after stale StatusClearMsg")
+	}
+}
+
+// TestStatusClearMsgClearsExpiredUndoToast verifies that StatusClearMsg still
+// clears the screen when the undo toast has already expired — otherwise an
+// expired toast string could linger indefinitely.
+func TestStatusClearMsgClearsExpiredUndoToast(t *testing.T) {
+	app := newTestAppModel()
+	_ = app.setUndoableStatus("old", func() tea.Cmd { return nil })
+	app.statusExpiresAt = time.Now().Add(-time.Second)
+
+	handled, _ := app.handleViewMessages(StatusClearMsg{})
+	if !handled {
+		t.Error("StatusClearMsg should be handled")
+	}
+	if app.statusMessage != "" {
+		t.Errorf("expired toast should be cleared by StatusClearMsg, got %q", app.statusMessage)
+	}
+}
+
 func TestFormatUndoToastIncludesContext(t *testing.T) {
 	got := formatUndoToast("Delete Task", "#42 Login flow")
 	want := "Delete Task '#42 Login flow' · u to undo · ⌃Z for history"
