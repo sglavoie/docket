@@ -93,11 +93,12 @@ func runProjectNew(cmd *cobra.Command, args []string) error {
 	}
 
 	// Validate context (free-form string; common values: personal, work)
-	if strings.TrimSpace(projectContext) == "" {
+	trimmedContext := strings.TrimSpace(projectContext)
+	if trimmedContext == "" {
 		return tterrors.NewInvalidValueError("context", projectContext, "cannot be empty")
 	}
-	if !isKnownContext(projectContext, cfg) {
-		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "warning: unknown context %q (known: %s)\n", projectContext, knownContextList(cfg))
+	if !isKnownContext(trimmedContext, cfg) {
+		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "warning: unknown context %q (known: %s)\n", trimmedContext, knownContextList(cfg))
 	}
 
 	// Create project
@@ -109,7 +110,7 @@ func runProjectNew(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	project.Description = projectDescription
-	project.Context = projectContext
+	project.Context = trimmedContext
 
 	// Validate and apply status icon
 	if projectStatusIcon != "" {
