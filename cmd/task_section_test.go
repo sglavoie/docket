@@ -104,6 +104,40 @@ func TestTaskSectionSkipsAlreadyAssigned(t *testing.T) {
 		}
 	})
 
+	t.Run("rejects case-variant GTD section name instead of silently no-opping", func(t *testing.T) {
+		// "inbox" (lowercase) is a case-variant of the canonical "Inbox" GTD section.
+		// Without the case-variant guard at the CLI boundary, the command silently
+		// reported success ("Moved task #X from 'Inbox' to 'inbox'") while leaving
+		// task.Section/CustomSection untouched — corrupting the user's mental model
+		// of what just happened.
+		deps, project := setupSectionCommandTest(t)
+
+		task := project.Tasks[0]
+		task.Section = models.SectionInbox
+		task.CustomSection = ""
+		deps.Repository.Projects[project.ID] = project
+
+		err := runTaskSection(nil, []string{"1", "inbox"})
+		if err == nil {
+			t.Fatalf("expected error for case-variant GTD section name %q, got nil", "inbox")
+		}
+
+		savedProject := deps.Repository.Projects[project.ID]
+		savedTask := savedProject.GetTaskByShortID(task.ShortID)
+		if savedTask.Section != models.SectionInbox {
+			t.Errorf("task Section = %q, want %q (must be unchanged)", savedTask.Section, models.SectionInbox)
+		}
+		if savedTask.CustomSection != "" {
+			t.Errorf("task CustomSection = %q, want empty (case-variant must not leak into CustomSection)", savedTask.CustomSection)
+		}
+		// project.Sections must not have gained a phantom "inbox" entry.
+		for _, s := range savedProject.Sections {
+			if s == "inbox" {
+				t.Errorf("project.Sections gained phantom entry %q from case-variant input", s)
+			}
+		}
+	})
+
 	t.Run("clearing section skips when both Section and CustomSection are already empty", func(t *testing.T) {
 		deps, project := setupSectionCommandTest(t)
 

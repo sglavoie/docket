@@ -58,6 +58,14 @@ func runTaskSection(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
+		// Reject case-variant collisions with built-in GTD section names
+		// (e.g. "inbox" vs canonical "Inbox"). Without this, SetSection
+		// silently no-ops on the task while EnsureSection also rejects,
+		// yet the command reports a successful "Moved" message — leaving
+		// the user with the false impression that the section changed.
+		if !models.IsGTDSection(sectionName) && models.IsGTDSectionNameCI(sectionName) {
+			return fmt.Errorf("section %q is a case-variant of a built-in GTD section; use the canonical form", sectionName)
+		}
 	}
 
 	var errs []string
