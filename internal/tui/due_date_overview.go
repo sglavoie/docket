@@ -213,7 +213,7 @@ func (m *DueDateOverviewModel) categorizeTask(task *models.Task) DueDateGroup {
 	if dueDay.Equal(today) {
 		return GroupToday
 	}
-	weekEnd := today.AddDate(0, 0, 7)
+	weekEnd := today.AddDate(0, 0, 8)
 	if dueDay.Before(weekEnd) {
 		return GroupThisWeek
 	}
