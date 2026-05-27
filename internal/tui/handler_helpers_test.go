@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"errors"
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
@@ -64,5 +65,53 @@ func TestHandleWithRefreshNoPopReturnsNilWhenNoStatus(t *testing.T) {
 	cmd := app.handleWithRefresh(false, false, "")
 	if cmd != nil {
 		t.Errorf("expected nil cmd when no pop and no status, got non-nil")
+	}
+}
+
+// TestPruneDeletedTaskRefsAbortsOnLoadFailure verifies that a transient
+// persister Load failure does not cause references to be silently pruned.
+// Before the fix, a load error on an unloaded project caused the loop to
+// `continue` past the id-collection step, leaving the project's tasks
+// missing from the validTasks set and pruning every focusQueue / dailyPlan
+// / recentTaskVisits entry that pointed at it.
+func TestPruneDeletedTaskRefsAbortsOnLoadFailure(t *testing.T) {
+	app, project := newTestAppModelWithProject()
+	if len(project.Tasks) == 0 {
+		t.Fatal("test project must have tasks")
+	}
+	task := project.Tasks[0]
+
+	// Swap in a mock persister whose Load always fails.
+	mockPersister := NewMockPersister()
+	mockPersister.LoadError = errors.New("simulated load failure")
+	app.persister = mockPersister
+
+	// Populate focusQueue, dailyPlan, and recentTaskVisits with a reference
+	// to the project's task.
+	app.focusQueue = []FocusTask{{Task: task, Project: project}}
+	app.focusQueueIDs = map[string]bool{task.ID: true}
+	app.dailyPlan = []FocusTask{{Task: task, Project: project}}
+	app.dailyPlanIDs = map[string]bool{task.ID: true}
+	app.recentTaskVisits = []RecentTaskVisitEntry{{Task: task, Project: project}}
+
+	// Force the project into the "unloaded" state so prune triggers a Load.
+	project.Tasks = nil
+
+	app.pruneDeletedTaskRefs()
+
+	if len(app.focusQueue) != 1 {
+		t.Errorf("focusQueue: expected entries preserved on load failure, got len=%d", len(app.focusQueue))
+	}
+	if !app.focusQueueIDs[task.ID] {
+		t.Errorf("focusQueueIDs: expected task id preserved on load failure")
+	}
+	if len(app.dailyPlan) != 1 {
+		t.Errorf("dailyPlan: expected entries preserved on load failure, got len=%d", len(app.dailyPlan))
+	}
+	if !app.dailyPlanIDs[task.ID] {
+		t.Errorf("dailyPlanIDs: expected task id preserved on load failure")
+	}
+	if len(app.recentTaskVisits) != 1 {
+		t.Errorf("recentTaskVisits: expected entries preserved on load failure, got len=%d", len(app.recentTaskVisits))
 	}
 }
