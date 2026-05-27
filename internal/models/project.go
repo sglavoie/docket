@@ -83,7 +83,13 @@ func NewProject(id, name, path string) (*Project, error) {
 // Slugify converts a name to a URL-safe slug.
 func Slugify(name string) string {
 	slug := strings.ToLower(name)
-	slug = strings.ReplaceAll(slug, " ", "-")
+	slug = strings.Map(func(r rune) rune {
+		switch r {
+		case ' ', '\t', '\n', '\r':
+			return '-'
+		}
+		return r
+	}, slug)
 	slug = slugNonAlnumRe.ReplaceAllString(slug, "")
 	slug = slugMultiDashRe.ReplaceAllString(slug, "-")
 	slug = strings.Trim(slug, "-")
