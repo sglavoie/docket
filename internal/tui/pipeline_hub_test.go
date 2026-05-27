@@ -120,6 +120,22 @@ func TestPipelineHubModel_CountsAppearInView(t *testing.T) {
 	}
 }
 
+func TestCountInbox_RecursesIntoChildren(t *testing.T) {
+	root := &models.Task{Section: models.SectionInbox, Status: models.StatusTodo}
+	child := &models.Task{Section: models.SectionInbox, Status: models.StatusTodo}
+	grandchild := &models.Task{Section: models.SectionInbox, Status: models.StatusTodo}
+	completedChild := &models.Task{Section: models.SectionInbox, Status: models.StatusDone}
+	nonInboxChild := &models.Task{Section: models.SectionNext, Status: models.StatusTodo}
+
+	child.Children = []*models.Task{grandchild}
+	root.Children = []*models.Task{child, completedChild, nonInboxChild}
+
+	got := countInbox(root)
+	if got != 3 {
+		t.Errorf("countInbox = %d, want 3 (root + child + grandchild; completed and non-inbox excluded)", got)
+	}
+}
+
 // simulateKey sends a key press to the model (in-place update).
 func simulateKey(m *PipelineHubModel, key string) {
 	updated, _ := m.Update(syntheticKeyStr(key))
