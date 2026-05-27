@@ -12,7 +12,7 @@ func (m *GlobalSearchModel) View() tea.View {
 	var out strings.Builder
 
 	// Title
-	subtitle := fmt.Sprintf("%d tasks", len(m.allTasks))
+	subtitle := fmt.Sprintf("%d items", len(m.allTasks))
 	if len(m.filtered) != len(m.allTasks) {
 		subtitle = fmt.Sprintf("%d/%d matching", len(m.filtered), len(m.allTasks))
 	}
