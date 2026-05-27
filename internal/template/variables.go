@@ -21,6 +21,9 @@ var invalidVarPattern = regexp.MustCompile(`\{\{[^}]*\}\}`)
 // ExtractVariables scans all text fields of a TaskTemplate and returns unique
 // variables in order of first appearance.
 func ExtractVariables(t *TaskTemplate) []TemplateVariable {
+	if t == nil {
+		return nil
+	}
 	seen := make(map[string]int)
 	var vars []TemplateVariable
 
@@ -58,9 +61,19 @@ func ExtractVariables(t *TaskTemplate) []TemplateVariable {
 }
 
 // ApplyVariables returns a shallow copy of the template with all variable
-// tokens replaced by the provided values. Missing keys are replaced with
-// empty string. Tags, Checklist, and Children slices are deep-copied.
+// tokens replaced by the provided values. Missing keys fall back to the local
+// token default, then to any default declared elsewhere in the template for
+// the same variable, then to empty string. The cross-field fallback keeps
+// occurrences of the same variable consistent even when only one occurrence
+// declares a default (e.g. "{{b:beta}}" in Name and "{{b}}" in Checklist).
+// Tags, Checklist, and Children slices are deep-copied.
 func ApplyVariables(t TaskTemplate, values map[string]string) TaskTemplate {
+	globalDefaults := make(map[string]string)
+	for _, v := range ExtractVariables(&t) {
+		if v.Default != "" {
+			globalDefaults[v.Name] = v.Default
+		}
+	}
 	replace := func(s string) string {
 		return validVarPattern.ReplaceAllStringFunc(s, func(token string) string {
 			match := validVarPattern.FindStringSubmatch(token)
@@ -70,6 +83,9 @@ func ApplyVariables(t TaskTemplate, values map[string]string) TaskTemplate {
 			}
 			if match[2] != "" {
 				return match[2]
+			}
+			if v, ok := globalDefaults[name]; ok {
+				return v
 			}
 			return ""
 		})
@@ -111,6 +127,9 @@ func ApplyVariables(t TaskTemplate, values map[string]string) TaskTemplate {
 // but doesn't match the valid identifier pattern. Returns a descriptive error
 // for the first invalid token found.
 func ValidateTokens(t *TaskTemplate) error {
+	if t == nil {
+		return nil
+	}
 	validate := func(field, s string) error {
 		for _, token := range invalidVarPattern.FindAllString(s, -1) {
 			// A token is OK if it is itself a valid token, OR if stripping a
@@ -168,6 +187,9 @@ func ValidateTokens(t *TaskTemplate) error {
 
 // HasVariables returns true if the template contains any variable placeholders.
 func HasVariables(t *TaskTemplate) bool {
+	if t == nil {
+		return false
+	}
 	check := func(s string) bool {
 		return validVarPattern.MatchString(s)
 	}

@@ -492,3 +492,185 @@ func TestApplyVariables_MultipleOccurrences(t *testing.T) {
 		t.Errorf("got %q", result.Description)
 	}
 }
+
+func TestExtractVariables_NilTemplate(t *testing.T) {
+	if vars := ExtractVariables(nil); vars != nil {
+		t.Errorf("expected nil for nil template, got %v", vars)
+	}
+}
+
+func TestHasVariables_NilTemplate(t *testing.T) {
+	if HasVariables(nil) {
+		t.Error("nil template must not have variables")
+	}
+}
+
+func TestValidateTokens_NilTemplate(t *testing.T) {
+	if err := ValidateTokens(nil); err != nil {
+		t.Errorf("nil template should not error, got %v", err)
+	}
+}
+
+func TestVariableNames_NilTemplate(t *testing.T) {
+	names := VariableNames(nil)
+	if len(names) != 0 {
+		t.Errorf("expected empty names for nil template, got %v", names)
+	}
+}
+
+func TestExtractVariables_ConflictingNonEmptyDefaults_FirstWins(t *testing.T) {
+	// Regression note: when the same variable has two different non-empty
+	// defaults, the first encountered wins and the conflict is silent. This
+	// documents (and pins) current behavior so any future change is deliberate.
+	tmpl := &TaskTemplate{
+		Description: "from {{env:staging}} to {{env:production}}",
+	}
+
+	vars := ExtractVariables(tmpl)
+	if len(vars) != 1 {
+		t.Fatalf("expected 1 variable, got %d", len(vars))
+	}
+	if vars[0].Default != "staging" {
+		t.Errorf("Default = %q, want %q (first non-empty default should win)", vars[0].Default, "staging")
+	}
+}
+
+func TestApplyVariables_ValuesNil(t *testing.T) {
+	// Passing a nil values map must not panic; behaves like an empty map so
+	// each token falls back to its default (or "").
+	tmpl := TaskTemplate{
+		Name:        "{{a:fallback}}",
+		Description: "{{b}}",
+	}
+	result := ApplyVariables(tmpl, nil)
+	if result.Name != "fallback" {
+		t.Errorf("Name: got %q, want %q", result.Name, "fallback")
+	}
+	if result.Description != "" {
+		t.Errorf("Description: got %q, want empty", result.Description)
+	}
+}
+
+func TestApplyVariables_EmptyStringValueBeatsDefault(t *testing.T) {
+	// An explicit empty-string value in the map is still a value: it overrides
+	// the default. Callers that want the default to win for missing input must
+	// omit the key from values entirely.
+	tmpl := TaskTemplate{Description: "{{env:staging}}"}
+	result := ApplyVariables(tmpl, map[string]string{"env": ""})
+	if result.Description != "" {
+		t.Errorf("Description: got %q, want empty (explicit empty wins over default)", result.Description)
+	}
+}
+
+func TestApplyVariables_DefaultWithColon(t *testing.T) {
+	// The default capture is greedy up to "}}", so a colon inside the default
+	// is preserved verbatim (only the first colon delimits name from default).
+	tmpl := TaskTemplate{Description: "{{url:https://example.com:8080/path}}"}
+	result := ApplyVariables(tmpl, nil)
+	if result.Description != "https://example.com:8080/path" {
+		t.Errorf("Description: got %q", result.Description)
+	}
+}
+
+func TestApplyVariables_RoundTripWithExtract(t *testing.T) {
+	tmpl := TaskTemplate{
+		Name:        "{{a}} - {{b:beta}}",
+		Description: "{{a}} also {{c}}",
+		Section:     "{{a}}",
+		Tags:        []string{"{{c}}"},
+		Checklist:   []string{"{{b}} {{a}}"},
+		Children:    []TemplateChild{{Title: "{{c}} for {{a}}"}},
+	}
+	vars := ExtractVariables(&tmpl)
+	if len(vars) != 3 {
+		t.Fatalf("expected 3 unique vars (a,b,c), got %d", len(vars))
+	}
+	values := map[string]string{"a": "ALPHA", "c": "GAMMA"} // omit b so default applies
+	result := ApplyVariables(tmpl, values)
+	if HasVariables(&result) {
+		t.Errorf("result should have no remaining tokens, got %+v", result)
+	}
+	if result.Name != "ALPHA - beta" {
+		t.Errorf("Name: got %q", result.Name)
+	}
+	if result.Checklist[0] != "beta ALPHA" {
+		t.Errorf("Checklist[0]: got %q", result.Checklist[0])
+	}
+	if result.Children[0].Title != "GAMMA for ALPHA" {
+		t.Errorf("Children[0].Title: got %q", result.Children[0].Title)
+	}
+}
+
+func TestApplyVariables_CrossFieldDefaultFallback(t *testing.T) {
+	// Bug: previously, "{{b:beta}}" in Name and "{{b}}" in another field with
+	// no values supplied would resolve to "beta" in Name but "" elsewhere —
+	// the same variable expanding to two different strings within one template.
+	// ExtractVariables already consolidates the default; ApplyVariables must do
+	// the same so the rendering is consistent.
+	tmpl := TaskTemplate{
+		Name:        "{{b:beta}} release",
+		Description: "Notes for {{b}}",
+		Section:     "{{b}}",
+		Tags:        []string{"{{b}}"},
+		Checklist:   []string{"Ship {{b}}"},
+		Children:    []TemplateChild{{Title: "Verify {{b}}"}},
+	}
+	result := ApplyVariables(tmpl, nil)
+	if result.Name != "beta release" {
+		t.Errorf("Name: got %q", result.Name)
+	}
+	if result.Description != "Notes for beta" {
+		t.Errorf("Description: got %q (cross-field default should resolve)", result.Description)
+	}
+	if result.Section != "beta" {
+		t.Errorf("Section: got %q", result.Section)
+	}
+	if result.Tags[0] != "beta" {
+		t.Errorf("Tags[0]: got %q", result.Tags[0])
+	}
+	if result.Checklist[0] != "Ship beta" {
+		t.Errorf("Checklist[0]: got %q", result.Checklist[0])
+	}
+	if result.Children[0].Title != "Verify beta" {
+		t.Errorf("Children[0].Title: got %q", result.Children[0].Title)
+	}
+}
+
+func TestApplyVariables_ExplicitValueBeatsCrossFieldDefault(t *testing.T) {
+	tmpl := TaskTemplate{
+		Name:        "{{b:beta}}",
+		Description: "{{b}}",
+	}
+	result := ApplyVariables(tmpl, map[string]string{"b": "gamma"})
+	if result.Name != "gamma" || result.Description != "gamma" {
+		t.Errorf("explicit value must beat both local and cross-field defaults; got Name=%q Desc=%q", result.Name, result.Description)
+	}
+}
+
+func TestApplyVariables_LocalDefaultBeatsCrossFieldDefault(t *testing.T) {
+	// "first non-empty default wins" applies even when later occurrences have
+	// their own defaults; the local token's own default still takes precedence
+	// over the cross-field lookup (they happen to agree when the global is the
+	// local, so we test by giving the second occurrence a different default).
+	tmpl := TaskTemplate{
+		Name:        "{{b:first}}",
+		Description: "{{b:second}}",
+	}
+	result := ApplyVariables(tmpl, nil)
+	if result.Name != "first" {
+		t.Errorf("Name: got %q, want %q", result.Name, "first")
+	}
+	if result.Description != "second" {
+		t.Errorf("Description: got %q, want %q (local default wins)", result.Description, "second")
+	}
+}
+
+func TestApplyVariables_MultipleVarsSameField(t *testing.T) {
+	tmpl := TaskTemplate{
+		Checklist: []string{"{{a}} then {{b}} then {{c:fallback}}"},
+	}
+	result := ApplyVariables(tmpl, map[string]string{"a": "1", "b": "2"})
+	if result.Checklist[0] != "1 then 2 then fallback" {
+		t.Errorf("Checklist[0]: got %q", result.Checklist[0])
+	}
+}
