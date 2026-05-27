@@ -28,6 +28,12 @@ func ClaudeAsk(ctx context.Context, query, systemPrompt string) (string, error) 
 	cmd := exec.CommandContext(ctx, "claude", args...)
 	out, err := cmd.Output()
 	if err != nil {
+		// Prefer the context error when the parent canceled or the deadline
+		// expired; the exec error would otherwise report a misleading
+		// "signal: killed" / exit code -1 for what is really a cancel/timeout.
+		if ctxErr := ctx.Err(); ctxErr != nil {
+			return "", ctxErr
+		}
 		var exitErr *exec.ExitError
 		if errors.As(err, &exitErr) {
 			return "", fmt.Errorf("claude exited with code %d: %s", exitErr.ExitCode(), string(exitErr.Stderr))
