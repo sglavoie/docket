@@ -350,6 +350,136 @@ func TestPruneOldLogs(t *testing.T) {
 	}
 }
 
+func TestCloseStatsAfterRestoreStdLogger(t *testing.T) {
+	// Regression: Close used to call logFile.Stat() BEFORE restoreStdLogger().
+	// Because the std logger's mutex is held by both log.SetOutput and
+	// log.Printf, a concurrent log.Printf could write bytes to the file
+	// between the stale Stat() and the SetOutput that detaches the writer.
+	// Those bytes were never reflected in info.Size(), so Close would remove
+	// the file even though it had content.
+	//
+	// With the fix (restore-then-stat), once Stat() runs, no further std
+	// logger writes can land in the file. So whenever Close decides to
+	// remove the file (size == 0), the file is genuinely empty on disk.
+	// We exercise the race with concurrent writers and assert the
+	// invariant: after Close, either the file is gone (and there were no
+	// writes that reached it) or the file exists and is non-empty (and
+	// reflects the writes that did land).
+	origFile := logFile
+	origPath := logFilePath
+	origOutput := log.Writer()
+	origFlags := log.Flags()
+	origPrevOutput := previousLoggerOutput
+	origPrevFlags := previousLoggerFlags
+	origStateCaptured := loggerStateCaptured
+	defer func() {
+		logFile = origFile
+		logFilePath = origPath
+		log.SetOutput(origOutput)
+		log.SetFlags(origFlags)
+		previousLoggerOutput = origPrevOutput
+		previousLoggerFlags = origPrevFlags
+		loggerStateCaptured = origStateCaptured
+	}()
+
+	tmp := t.TempDir()
+	path := filepath.Join(tmp, "race.log")
+	f, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o644)
+	if err != nil {
+		t.Fatalf("failed to create temp file: %v", err)
+	}
+
+	previousLoggerOutput = os.Stderr
+	previousLoggerFlags = 0
+	loggerStateCaptured = true
+	log.SetOutput(f)
+	log.SetFlags(0)
+
+	logFile = f
+	logFilePath = path
+
+	// Pre-write some content via the std logger so the file is non-empty
+	// before Close even starts. With the buggy ordering this is sufficient
+	// — Stat would still see the pre-write content. We additionally launch
+	// concurrent writers to widen the race window.
+	log.Printf("pre-write-1")
+	log.Printf("pre-write-2")
+
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		for i := 0; i < 100; i++ {
+			log.Printf("racing-%d", i)
+		}
+	}()
+
+	Close()
+	<-done
+
+	// File must still exist on disk because content was written before
+	// Close started. Pre-fix, this passed trivially; the test still
+	// guards against any regression of the "remove non-empty file" path.
+	info, err := os.Stat(path)
+	if err != nil {
+		t.Fatalf("Close removed a non-empty log file: %v", err)
+	}
+	if info.Size() == 0 {
+		t.Fatal("expected log file to contain pre-Close writes")
+	}
+}
+
+func TestInitClearsLogFilePathOnOpenFailure(t *testing.T) {
+	// Regression: when os.OpenFile fails inside Init, logFilePath used to be
+	// left set to a path that was never opened. Subsequent code reading
+	// logFilePath could mistakenly believe a log file existed.
+	origDir := logDirPath
+	origFile := logFile
+	origPath := logFilePath
+	origOutput := log.Writer()
+	origFlags := log.Flags()
+	origPrevOutput := previousLoggerOutput
+	origPrevFlags := previousLoggerFlags
+	origStateCaptured := loggerStateCaptured
+	defer func() {
+		logDirPath = origDir
+		logFile = origFile
+		logFilePath = origPath
+		log.SetOutput(origOutput)
+		log.SetFlags(origFlags)
+		previousLoggerOutput = origPrevOutput
+		previousLoggerFlags = origPrevFlags
+		loggerStateCaptured = origStateCaptured
+	}()
+
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+
+	// Force OpenFile to fail by making the would-be log dir read-only. The
+	// resulting path inside it is not creatable.
+	logsDir := filepath.Join(home, ".tt", "logs")
+	if err := os.MkdirAll(logsDir, 0o755); err != nil {
+		t.Fatalf("setup mkdir: %v", err)
+	}
+	if err := os.Chmod(logsDir, 0o500); err != nil {
+		t.Fatalf("chmod readonly: %v", err)
+	}
+	defer func() { _ = os.Chmod(logsDir, 0o755) }()
+
+	// Pre-set logFilePath to a sentinel so we can detect whether the failure
+	// path clears it.
+	logFilePath = "sentinel-before-init"
+	logFile = nil
+
+	Init()
+
+	if logFile != nil {
+		t.Fatal("Init should not have set logFile when OpenFile failed")
+	}
+	if logFilePath != "" {
+		t.Errorf("Init should clear logFilePath on OpenFile failure, got %q", logFilePath)
+	}
+}
+
 func TestPruneOldLogsInvalidDir(t *testing.T) {
 	original := logDirPath
 	defer func() { logDirPath = original }()
