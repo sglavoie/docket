@@ -160,7 +160,12 @@ func checkOverdueTasks(cfg AlertConfig, projects []ProjectData, now time.Time) [
 			if !task.Status.IsActive() || task.DueDate == nil || task.IsSnoozedAt(now) {
 				continue
 			}
-			dueDay := time.Date(task.DueDate.Year(), task.DueDate.Month(), task.DueDate.Day(), 0, 0, 0, 0, task.DueDate.Location())
+			// Anchor the due-day comparison to the user's current location so
+			// a DueDate stored in UTC (or any other zone) matches the local
+			// calendar day the user picked. The date components are taken from
+			// the DueDate's own location since that's where the user originally
+			// chose them.
+			dueDay := time.Date(task.DueDate.Year(), task.DueDate.Month(), task.DueDate.Day(), 0, 0, 0, 0, now.Location())
 			// When HasTime is set, a task whose exact time has passed is overdue
 			// even if its calendar day is today.
 			overdue := dueDay.Before(today)
@@ -198,7 +203,9 @@ func checkDueSoonTasks(cfg AlertConfig, projects []ProjectData, now time.Time) [
 			if !task.Status.IsActive() || task.DueDate == nil || task.IsSnoozedAt(now) {
 				continue
 			}
-			dueDay := time.Date(task.DueDate.Year(), task.DueDate.Month(), task.DueDate.Day(), 0, 0, 0, 0, task.DueDate.Location())
+			// Anchor in user's current location for the same reason as
+			// checkOverdueTasks above.
+			dueDay := time.Date(task.DueDate.Year(), task.DueDate.Month(), task.DueDate.Day(), 0, 0, 0, 0, now.Location())
 			// When HasTime is set, a task whose exact time has already passed is
 			// overdue — exclude it from the due-soon bucket.
 			if task.HasTime && task.DueDate.Before(now) {

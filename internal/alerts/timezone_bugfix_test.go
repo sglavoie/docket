@@ -3,6 +3,8 @@ package alerts
 import (
 	"testing"
 	"time"
+
+	"github.com/sglavoie/tt/internal/models"
 )
 
 // TestCheckDailyReviewReminder_CrossTimezone is a regression test: the
@@ -51,5 +53,51 @@ func TestCheckWeeklyReviewReminder_CrossTimezone(t *testing.T) {
 	alerts := checkWeeklyReviewReminder(cfg, nil, now)
 	if len(alerts) != 0 {
 		t.Errorf("expected 0 alerts (review completed earlier on same local day), got %d: %+v", len(alerts), alerts)
+	}
+}
+
+// TestCheckOverdueTasks_CrossTimezoneDueToday is a regression test: a task
+// whose DueDate is stored at midnight UTC on a calendar day equal to the
+// user's local "today" must not be flagged as overdue. The previous
+// implementation built dueDay in task.DueDate.Location() but compared it
+// against `today` in now.Location(); a midnight-UTC due date appeared
+// "before" a NY-local today even though both reference the same calendar
+// day for the user.
+func TestCheckOverdueTasks_CrossTimezoneDueToday(t *testing.T) {
+	loc, err := time.LoadLocation("America/New_York")
+	if err != nil {
+		t.Skipf("America/New_York not available: %v", err)
+	}
+
+	// User picked Feb 28 as the due date; stored at midnight UTC.
+	dueDate := time.Date(2026, 2, 28, 0, 0, 0, 0, time.UTC)
+	// Now is 09:00 NY on Feb 28 = 14:00 UTC Feb 28.
+	now := time.Date(2026, 2, 28, 14, 0, 0, 0, time.UTC).In(loc)
+
+	task := &models.Task{
+		ID:      "due-today",
+		Title:   "Due today",
+		Status:  models.StatusTodo,
+		DueDate: &dueDate,
+	}
+	projects := []ProjectData{{
+		Project: &models.Project{ID: "p1", Name: "P1"},
+		Tasks:   []*models.Task{task},
+	}}
+
+	overdueAlerts := checkOverdueTasks(DefaultAlertConfig(), projects, now)
+	if len(overdueAlerts) != 0 {
+		t.Errorf("task due today in user's local zone must not be overdue, got %d alerts: %+v", len(overdueAlerts), overdueAlerts)
+	}
+
+	dueSoonAlerts := checkDueSoonTasks(DefaultAlertConfig(), projects, now)
+	found := false
+	for _, a := range dueSoonAlerts {
+		if a.TaskID == task.ID {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("task due today in user's local zone should appear in due-soon alerts, got %+v", dueSoonAlerts)
 	}
 }
