@@ -66,8 +66,10 @@ func runProjectArchive(cmd *cobra.Command, args []string) error {
 
 	project.Archive()
 
-	// Clear current project if it was the archived one
-	wasCurrentProject := cfg.CurrentProject == project.ID
+	// Clear current project if it was the archived one. Legacy configs may
+	// have stored the slug instead of the ID, so match either.
+	wasCurrentProject := cfg.CurrentProject == project.ID ||
+		(project.Slug != "" && cfg.CurrentProject == project.Slug)
 	if wasCurrentProject {
 		cfg.CurrentProject = ""
 	}

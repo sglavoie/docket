@@ -48,6 +48,34 @@ func TestProjectArchive(t *testing.T) {
 		}
 	})
 
+	t.Run("clears current project stored as slug (legacy config)", func(t *testing.T) {
+		deps := testutil.SetupTestDeps(t)
+		defer deps.Cleanup()
+
+		viper.Set("config", deps.ConfigPath)
+		defer viper.Set("config", "")
+
+		project := testutil.NewTestProject("Legacy Project")
+		deps.Config.Projects = []*models.Project{project}
+		// Simulate legacy config where CurrentProject stored the slug
+		// instead of the ID.
+		deps.Config.CurrentProject = project.Slug
+
+		manager := config.NewManager(deps.ConfigPath)
+		err := manager.Save(deps.Config)
+		testutil.AssertNoError(t, err)
+
+		err = runProjectArchive(nil, []string{project.ID})
+		testutil.AssertNoError(t, err)
+
+		reloaded, err := manager.Load()
+		testutil.AssertNoError(t, err)
+
+		if reloaded.CurrentProject != "" {
+			t.Errorf("current project should be cleared when archiving legacy-slug-referenced project, got %q", reloaded.CurrentProject)
+		}
+	})
+
 	t.Run("rejects archiving already archived project", func(t *testing.T) {
 		deps := testutil.SetupTestDeps(t)
 		defer deps.Cleanup()
