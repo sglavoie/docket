@@ -29,7 +29,8 @@ func TestDarwinDetectorDetect(t *testing.T) {
 	}{
 		{name: "dark mode", out: []byte("Dark\n"), want: Dark},
 		{name: "light output", out: []byte("Light\n"), want: Light},
-		{name: "no output defaults to light", out: nil, want: Light},
+		{name: "empty successful output returns unknown", out: nil, want: Unknown},
+		{name: "whitespace only successful output returns unknown", out: []byte("   \n\t"), want: Unknown},
 		{
 			name: "missing key error defaults to light",
 			out:  []byte("The domain/default pair of (kCFPreferencesAnyApplication, AppleInterfaceStyle) does not exist\n"),
