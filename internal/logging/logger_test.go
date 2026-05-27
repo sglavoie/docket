@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"sync"
 	"testing"
 	"time"
 )
@@ -356,6 +357,76 @@ func TestPruneOldLogsInvalidDir(t *testing.T) {
 
 	logDirPath = "/nonexistent/path/that/does/not/exist"
 	pruneOldLogs() // should not panic
+}
+
+func TestRestoreStdLoggerNilPreviousOutput(t *testing.T) {
+	origOutput := log.Writer()
+	origFlags := log.Flags()
+	origPrevOutput := previousLoggerOutput
+	origPrevFlags := previousLoggerFlags
+	origStateCaptured := loggerStateCaptured
+	defer func() {
+		log.SetOutput(origOutput)
+		log.SetFlags(origFlags)
+		previousLoggerOutput = origPrevOutput
+		previousLoggerFlags = origPrevFlags
+		loggerStateCaptured = origStateCaptured
+	}()
+
+	previousLoggerOutput = nil
+	previousLoggerFlags = 0
+	loggerStateCaptured = true
+
+	restoreStdLogger()
+
+	// Must not leave log.Writer() == nil, which would panic on next Print.
+	if log.Writer() == nil {
+		t.Fatal("restoreStdLogger must not leave log writer nil")
+	}
+
+	// Sanity-check that a subsequent Print does not panic.
+	defer func() {
+		if r := recover(); r != nil {
+			t.Fatalf("log.Print panicked after restoreStdLogger: %v", r)
+		}
+	}()
+	log.Print("post-restore")
+}
+
+func TestConcurrentInitCloseNoRace(t *testing.T) {
+	origDir := logDirPath
+	origFile := logFile
+	origPath := logFilePath
+	origOutput := log.Writer()
+	origFlags := log.Flags()
+	origPrevOutput := previousLoggerOutput
+	origPrevFlags := previousLoggerFlags
+	origStateCaptured := loggerStateCaptured
+	defer func() {
+		logDirPath = origDir
+		logFile = origFile
+		logFilePath = origPath
+		log.SetOutput(origOutput)
+		log.SetFlags(origFlags)
+		previousLoggerOutput = origPrevOutput
+		previousLoggerFlags = origPrevFlags
+		loggerStateCaptured = origStateCaptured
+	}()
+
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+
+	var wg sync.WaitGroup
+	for i := 0; i < 10; i++ {
+		wg.Add(3)
+		go func() { defer wg.Done(); Init() }()
+		go func() { defer wg.Done(); _ = LogDir() }()
+		go func() { defer wg.Done(); Close() }()
+	}
+	wg.Wait()
+
+	// Final Close to release any open file.
+	Close()
 }
 
 func TestLogFileNameUsesNanosecondPrecision(t *testing.T) {

@@ -6,10 +6,12 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"sync"
 	"time"
 )
 
 var (
+	mu                   sync.Mutex
 	logDirPath           string
 	logFile              *os.File
 	logFilePath          string
@@ -21,8 +23,11 @@ var (
 // Init creates the log directory and opens a timestamped log file.
 // All subsequent log.Printf calls (and Warn) write to that file.
 func Init() {
+	mu.Lock()
+	defer mu.Unlock()
+
 	if logFile != nil {
-		Close()
+		closeLocked()
 	}
 
 	home, err := os.UserHomeDir()
@@ -53,6 +58,7 @@ func Init() {
 }
 
 // pruneOldLogs removes .log files older than 30 days from the log directory.
+// Caller must hold mu.
 func pruneOldLogs() {
 	cutoff := time.Now().AddDate(0, 0, -30)
 	entries, err := os.ReadDir(logDirPath)
@@ -74,7 +80,11 @@ func pruneOldLogs() {
 }
 
 // LogDir returns the log directory path.
-func LogDir() string { return logDirPath }
+func LogDir() string {
+	mu.Lock()
+	defer mu.Unlock()
+	return logDirPath
+}
 
 func logFileName(now time.Time) string {
 	return fmt.Sprintf("tt-%s.log", now.Format("2006-01-02-150405.000000000"))
@@ -89,6 +99,13 @@ func Warn(format string, args ...any) {
 // It also detaches the standard logger from the file so subsequent
 // log.Printf or Warn calls do not write to a closed descriptor.
 func Close() {
+	mu.Lock()
+	defer mu.Unlock()
+	closeLocked()
+}
+
+// closeLocked performs Close logic; caller must hold mu.
+func closeLocked() {
 	if logFile == nil {
 		restoreStdLogger()
 		return
@@ -104,11 +121,17 @@ func Close() {
 	}
 }
 
+// restoreStdLogger restores the standard logger output and flags.
+// Caller must hold mu.
 func restoreStdLogger() {
 	if !loggerStateCaptured {
 		return
 	}
-	log.SetOutput(previousLoggerOutput)
+	out := previousLoggerOutput
+	if out == nil {
+		out = os.Stderr
+	}
+	log.SetOutput(out)
 	log.SetFlags(previousLoggerFlags)
 	previousLoggerOutput = nil
 	previousLoggerFlags = 0
