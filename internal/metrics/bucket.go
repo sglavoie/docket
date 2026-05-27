@@ -157,7 +157,7 @@ func bucketLabel(t time.Time, g granularity) string {
 	case granularityWeek:
 		return fmt.Sprintf("W%02d/%02d", t.Month(), t.Day())
 	case granularityMonth:
-		return t.Format("Jan")
+		return t.Format("Jan'06")
 	default:
 		return t.Format("01/02")
 	}
