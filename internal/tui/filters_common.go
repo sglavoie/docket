@@ -154,9 +154,13 @@ func commonFilterParts(f *CommonFilterState) []string {
 		parts = append(parts, "status:"+string(f.Status))
 	}
 	if len(f.Tags) > 0 {
-		var tagNames []string
+		tagNames := make([]string, 0, len(f.Tags))
 		for tag := range f.Tags {
-			tagNames = append(tagNames, "#"+tag)
+			tagNames = append(tagNames, tag)
+		}
+		sort.Strings(tagNames)
+		for i, tag := range tagNames {
+			tagNames[i] = "#" + tag
 		}
 		parts = append(parts, strings.Join(tagNames, " "))
 	}

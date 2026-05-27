@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/sglavoie/tt/internal/icons"
@@ -228,9 +229,13 @@ func (m *ProjectTreeModel) activeFilterParts() []string {
 
 	// Add view-specific filter parts
 	if len(m.filter.Sections) > 0 {
-		var secNames []string
+		secNames := make([]string, 0, len(m.filter.Sections))
 		for sec := range m.filter.Sections {
-			secNames = append(secNames, "@"+sec)
+			secNames = append(secNames, sec)
+		}
+		sort.Strings(secNames)
+		for i, sec := range secNames {
+			secNames[i] = "@" + sec
 		}
 		parts = append(parts, strings.Join(secNames, " "))
 	}
