@@ -43,6 +43,7 @@ func Init() {
 	logFilePath = filepath.Join(logDirPath, name)
 	f, err := os.OpenFile(logFilePath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o644)
 	if err != nil {
+		logFilePath = ""
 		return
 	}
 
@@ -111,8 +112,8 @@ func closeLocked() {
 		return
 	}
 	path := logFilePath
-	info, statErr := logFile.Stat()
 	restoreStdLogger()
+	info, statErr := logFile.Stat()
 	_ = logFile.Close()
 	logFile = nil
 	logFilePath = ""
