@@ -229,6 +229,61 @@ func TestValidateRejectsInfWeight(t *testing.T) {
 	}
 }
 
+// TestFormulaRICEAppliesWeights is a regression test: previously formulaRICE
+// silently ignored the per-dimension Weight, multiplying raw values directly.
+// That meant a user who tuned `Weight: 2` on a RICE dimension saw no change in
+// the resulting score — a silent configuration trap. Weight must influence the
+// per-dimension contribution to numerator/denominator products. We use Pow
+// (weights as exponents) to match formulaMultiply's geometric semantics, since
+// the RICE numerator and denominator are themselves products.
+func TestFormulaRICEAppliesWeights(t *testing.T) {
+	// Numerator: reach=4 (weight 2) -> 4^2 = 16
+	// Denominator: effort=2 (weight 1) -> 2
+	// Expected: 16 / 2 = 8
+	results := []DimensionResult{
+		{Value: 4, Weight: 2, Role: RoleNumerator},
+		{Value: 2, Weight: 1, Role: RoleDenominator},
+	}
+	got := formulaRICE(results)
+	if math.Abs(got-8) > 1e-9 {
+		t.Errorf("expected weighted RICE = 16/2 = 8, got %f (weight on numerator was likely ignored)", got)
+	}
+}
+
+// TestFormulaRICEWeightOneUnchanged guards against the weight fix regressing
+// the existing "weight=1 means raw value" semantic that every test in
+// engine_compute_test.go depends on. Pow(v, 1) == v, so behavior must be
+// identical to the pre-fix path.
+func TestFormulaRICEWeightOneUnchanged(t *testing.T) {
+	results := []DimensionResult{
+		{Value: 8, Weight: 1, Role: RoleNumerator},
+		{Value: 4, Weight: 1, Role: RoleNumerator},
+		{Value: 3, Weight: 1, Role: RoleNumerator},
+		{Value: 6, Weight: 1, Role: RoleDenominator},
+	}
+	got := formulaRICE(results)
+	expected := (8.0 * 4 * 3) / 6 // = 16
+	if math.Abs(got-expected) > 1e-9 {
+		t.Errorf("weight=1 RICE should match unweighted result %f, got %f", expected, got)
+	}
+}
+
+// TestFormulaRICENaNFromWeightReturnsZero mirrors formulaMultiply's safety net:
+// Pow(negative, fractional) yields NaN, which would poison sort order if it
+// propagated into the score. Treat NaN as 0 (no signal) rather than letting
+// it become MaxScoreSentinel via the +Inf branch or silently sort tasks above
+// well-formed ones.
+func TestFormulaRICENaNFromWeightReturnsZero(t *testing.T) {
+	results := []DimensionResult{
+		{Value: -2, Weight: 0.5, Role: RoleNumerator}, // Pow(-2, 0.5) = NaN
+		{Value: 1, Weight: 1, Role: RoleDenominator},
+	}
+	got := formulaRICE(results)
+	if got != 0 {
+		t.Errorf("NaN numerator factor should yield 0, got %f", got)
+	}
+}
+
 // TestValidateRejectsDerivedMappingEmptyField: a derived dimension with an
 // empty Field silently falls back to the dimension's Default for every task
 // (getTaskFieldValue returns "" for the empty field, resolveField then yields

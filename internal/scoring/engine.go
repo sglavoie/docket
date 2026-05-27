@@ -243,6 +243,12 @@ func formulaMultiply(results []DimensionResult) float64 {
 }
 
 // formulaRICE: product of numerators / product of denominators.
+// Weights are applied as exponents (Pow(value, weight)) so a Weight=1 dim
+// contributes its raw value while a higher weight scales the dim geometrically
+// — matching formulaMultiply's semantics, since RICE's numerator and
+// denominator are themselves products. NaN from Pow(negative, fractional)
+// short-circuits to 0 to keep undefined values from poisoning sort order.
+//
 // Division by zero yields a large score (zero effort = do it first), unless
 // the numerator is also zero — 0/0 is mathematically undefined and should
 // not artificially top-rank a task with no value AND no cost.
@@ -256,13 +262,23 @@ func formulaRICE(results []DimensionResult) float64 {
 	num := 1.0
 	den := 1.0
 	for _, r := range results {
+		factor := float64(r.Value)
+		if r.Weight != 1 {
+			factor = math.Pow(float64(r.Value), r.Weight)
+			if math.IsNaN(factor) {
+				return 0
+			}
+			if math.IsInf(factor, 0) {
+				return MaxScoreSentinel
+			}
+		}
 		switch r.Role {
 		case RoleNumerator:
-			num *= float64(r.Value)
+			num *= factor
 		case RoleDenominator:
-			den *= float64(r.Value)
+			den *= factor
 		default:
-			num *= float64(r.Value) // no role = numerator
+			num *= factor // no role = numerator
 		}
 	}
 	if den == 0 {
