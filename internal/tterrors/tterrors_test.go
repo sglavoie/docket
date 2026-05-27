@@ -326,6 +326,43 @@ func TestNewSaveConfigErrorNilInner(t *testing.T) {
 	}
 }
 
+func TestNewSaveProjectErrorWithNilInner(t *testing.T) {
+	err := NewSaveProjectError("work-tasks", nil)
+
+	if err == nil {
+		t.Fatal("NewSaveProjectError should not return nil even when inner err is nil")
+	}
+	if !errors.Is(err, ErrSaveFailed) {
+		t.Error("NewSaveProjectError should still wrap ErrSaveFailed when inner err is nil")
+	}
+	if strings.Contains(err.Error(), "%!") {
+		t.Errorf("error message must not contain bogus fmt verb when inner err is nil, got %q", err.Error())
+	}
+	if strings.Contains(err.Error(), "<nil>") {
+		t.Errorf("error message must not embed '<nil>' when inner err is nil, got %q", err.Error())
+	}
+	if !strings.Contains(err.Error(), "work-tasks") {
+		t.Errorf("error message should still contain project name, got %q", err.Error())
+	}
+}
+
+func TestNewSaveConfigErrorWithNilInner(t *testing.T) {
+	err := NewSaveConfigError(nil)
+
+	if err == nil {
+		t.Fatal("NewSaveConfigError should not return nil even when inner err is nil")
+	}
+	if !errors.Is(err, ErrConfigSaveFailed) {
+		t.Error("NewSaveConfigError should still wrap ErrConfigSaveFailed when inner err is nil")
+	}
+	if strings.Contains(err.Error(), "%!") {
+		t.Errorf("error message must not contain bogus fmt verb when inner err is nil, got %q", err.Error())
+	}
+	if strings.Contains(err.Error(), "<nil>") {
+		t.Errorf("error message must not embed '<nil>' when inner err is nil, got %q", err.Error())
+	}
+}
+
 func TestNewInvalidTaskTypeError(t *testing.T) {
 	testCases := []struct {
 		name     string
