@@ -3,9 +3,77 @@ package cmd
 import (
 	"testing"
 
+	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
+
+	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/testutil"
 )
+
+func newProjectNewCmd() *cobra.Command {
+	cmd := &cobra.Command{}
+	cmd.Flags().StringVarP(&projectContext, "context", "c", "personal", "")
+	cmd.Flags().StringVarP(&projectDescription, "description", "d", "", "")
+	cmd.Flags().StringVarP(&projectStatusIcon, "status-icon", "i", "", "")
+	addOutputFlags(cmd)
+	return cmd
+}
+
+func resetProjectNewVars() {
+	projectContext = "personal"
+	projectDescription = ""
+	projectStatusIcon = ""
+}
+
+// TestProjectNew_TrimsContextBeforeStoring verifies that a whitespace-padded
+// --context value is trimmed before being assigned to the project. Without
+// trimming, "  work  " is stored verbatim, which makes isKnownContext lookups
+// fail elsewhere and pollutes the JSON config with stray spaces.
+func TestProjectNew_TrimsContextBeforeStoring(t *testing.T) {
+	deps := testutil.SetupTestDeps(t)
+	defer deps.Cleanup()
+	defer resetProjectNewVars()
+
+	viper.Set("config", deps.ConfigPath)
+	defer viper.Set("config", "")
+
+	manager := config.NewManager(deps.ConfigPath)
+	if err := manager.Save(deps.Config); err != nil {
+		t.Fatalf("save config: %v", err)
+	}
+
+	cmd := newProjectNewCmd()
+	if err := cmd.Flags().Set("context", "  work  "); err != nil {
+		t.Fatalf("set context flag: %v", err)
+	}
+	if err := cmd.Flags().Set("quiet", "true"); err != nil {
+		t.Fatalf("set quiet flag: %v", err)
+	}
+
+	if err := runProjectNew(cmd, []string{"Trimmable"}); err != nil {
+		t.Fatalf("runProjectNew: %v", err)
+	}
+
+	reloaded, err := manager.Load()
+	if err != nil {
+		t.Fatalf("reload config: %v", err)
+	}
+
+	var got *models.Project
+	for _, p := range reloaded.Projects {
+		if p.Slug == "trimmable" {
+			got = p
+			break
+		}
+	}
+	if got == nil {
+		t.Fatal("project not found in reloaded config")
+	}
+	if got.Context != "work" {
+		t.Errorf("project.Context = %q, want %q (trimmed)", got.Context, "work")
+	}
+}
 
 func TestSlugify(t *testing.T) {
 	tests := []struct {
