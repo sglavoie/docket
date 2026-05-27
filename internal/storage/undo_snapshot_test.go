@@ -94,6 +94,53 @@ func TestNewMutationClearsRedoStack(t *testing.T) {
 	}
 }
 
+func TestRecordUndoSnapshotPreservesRedoFilesOnMetaSaveFailure(t *testing.T) {
+	project, tasksPath := newUndoTestProject(t)
+
+	content1 := "# Project: Test Project\n\n## Task: First task\n<!-- id: 1, status: todo, priority: 3 -->\n"
+	content2 := "# Project: Test Project\n\n## Task: Modified task\n<!-- id: 1, status: done, priority: 1 -->\n"
+	content3 := "# Project: Test Project\n\n## Task: New task\n<!-- id: 2, status: todo, priority: 2 -->\n"
+
+	writeUndoTasks(t, tasksPath, content1)
+	if err := RecordUndoSnapshot(project, "Action1", "", 10, nil); err != nil {
+		t.Fatalf("RecordUndoSnapshot failed: %v", err)
+	}
+	writeUndoTasks(t, tasksPath, content2)
+
+	if _, err := PerformUndo(project); err != nil {
+		t.Fatalf("PerformUndo failed: %v", err)
+	}
+
+	undoDir := getUndoDir(project)
+	redoFile := filepath.Join(undoDir, "redo_0001.md")
+	if _, statErr := os.Stat(redoFile); statErr != nil {
+		t.Fatalf("expected redo file to exist before failure scenario: %v", statErr)
+	}
+
+	meta, err := loadUndoMeta(project)
+	if err != nil {
+		t.Fatalf("loadUndoMeta failed: %v", err)
+	}
+	if len(meta.RedoEntries) == 0 {
+		t.Fatalf("expected redo entries in meta after PerformUndo, got 0")
+	}
+
+	if err := os.Chmod(undoDir, 0555); err != nil {
+		t.Fatalf("failed to chmod undo dir read-only: %v", err)
+	}
+	defer func() { _ = os.Chmod(undoDir, 0755) }()
+
+	writeUndoTasks(t, tasksPath, content3)
+	err = RecordUndoSnapshot(project, "Action2", "", 10, nil)
+	if err == nil {
+		t.Fatal("expected RecordUndoSnapshot to fail when undo dir is read-only")
+	}
+
+	if _, statErr := os.Stat(redoFile); os.IsNotExist(statErr) {
+		t.Error("redo snapshot file was deleted even though meta save failed; meta still references it on disk, which would corrupt redo")
+	}
+}
+
 func TestUndoHistoryPruning(t *testing.T) {
 	project, tasksPath := newUndoTestProject(t)
 

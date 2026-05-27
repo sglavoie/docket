@@ -69,22 +69,35 @@ func RecordUndoSnapshot(project *models.Project, action, context string, maxDept
 		TaskIDs:   taskIDs,
 	})
 
-	// Prune old entries if over limit
+	redoPathsToDelete := make([]string, 0, len(meta.RedoEntries))
+	for _, entry := range meta.RedoEntries {
+		redoPathsToDelete = append(redoPathsToDelete, getRedoSnapshotPath(project, entry.Num))
+	}
+	meta.RedoEntries = []UndoEntry{}
+
+	var prunedPathsToDelete []string
 	if len(meta.Entries) > maxDepth {
-		if err := pruneOldSnapshots(project, meta, maxDepth); err != nil {
-			// Log error but don't fail the operation
-			logging.Warn("failed to prune old snapshots: %v", err)
+		sort.Slice(meta.Entries, func(i, j int) bool {
+			return meta.Entries[i].Num < meta.Entries[j].Num
+		})
+		toRemove := len(meta.Entries) - maxDepth
+		prunedPathsToDelete = make([]string, 0, toRemove)
+		for i := range toRemove {
+			prunedPathsToDelete = append(prunedPathsToDelete, getSnapshotPath(project, meta.Entries[i].Num))
 		}
+		meta.Entries = meta.Entries[toRemove:]
 	}
 
-	// Clear redo stack — any new mutation invalidates redo history
-	clearRedoStack(project, meta)
-
-	// Save metadata
 	if err := saveUndoMeta(project, meta); err != nil {
-		// Clean up the orphaned snapshot file since metadata save failed
 		_ = os.Remove(snapshotPath)
 		return err
+	}
+
+	for _, p := range redoPathsToDelete {
+		_ = os.Remove(p)
+	}
+	for _, p := range prunedPathsToDelete {
+		_ = os.Remove(p)
 	}
 
 	return nil
