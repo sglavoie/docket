@@ -176,7 +176,13 @@ func (m *AppModel) pruneDeletedTaskRefs() {
 		if wasUnloaded {
 			if err := m.persister.Load(p); err != nil {
 				logging.Warn("pruneDeletedTaskRefs: failed to load project %s: %v", p.Name, err)
-				continue
+				// A transient load failure must not be treated as
+				// "project has zero tasks" — that would prune every
+				// focusQueue / dailyPlan / recentTaskVisits entry
+				// belonging to this project. Abort the prune entirely
+				// so stale-but-recoverable references survive until the
+				// next successful load.
+				return
 			}
 		}
 		for _, t := range p.Tasks {
