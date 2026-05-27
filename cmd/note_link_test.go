@@ -146,4 +146,24 @@ func TestRunNoteLink(t *testing.T) {
 			t.Error("expected error for nonexistent task")
 		}
 	})
+
+	// Regression: --global is a persistent flag on the parent `note` command,
+	// so `tt note link --global foo 5` previously silently fell through to
+	// LoadCurrentProject() and searched the project's notes directory instead
+	// of the global one — producing a confusing "note not found" error while
+	// the global note actually existed. Links require a project-scoped task,
+	// so global notes cannot be linked; the command must reject the flag
+	// explicitly rather than silently doing the wrong lookup.
+	t.Run("rejects --global flag", func(t *testing.T) {
+		deps, _ := setupNoteLinkTest(t)
+		defer deps.Cleanup()
+
+		noteGlobal = true
+		t.Cleanup(func() { noteGlobal = false })
+
+		err := runNoteLink(noteLinkCmd, []string{"anything", "1"})
+		if err == nil {
+			t.Error("expected error when --global is set for link command")
+		}
+	})
 }

@@ -33,6 +33,15 @@ func runNoteLink(cmd *cobra.Command, args []string) error {
 		return tterrors.NewRequiredFieldError("note ID and task ID")
 	}
 
+	// Reject --global explicitly: a link requires a project-scoped task, so
+	// global notes cannot be linked. Without this guard the persistent flag
+	// is silently ignored and the lookup falls through to the project notes
+	// directory, producing a misleading "note not found" error when the
+	// user's global note actually exists.
+	if noteGlobal {
+		return fmt.Errorf("--global cannot be used with 'note link': links require a project task")
+	}
+
 	project, _, _, err := LoadCurrentProject()
 	if err != nil {
 		return err

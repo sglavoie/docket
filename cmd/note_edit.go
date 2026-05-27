@@ -2,10 +2,12 @@ package cmd
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/spf13/cobra"
 
 	"github.com/sglavoie/tt/internal/external"
+	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/tterrors"
 )
@@ -79,13 +81,9 @@ func runNoteEdit(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	updatedNote, err := storage.ParseNoteContent(note.Filename, modified)
+	updatedNote, err := applyNoteEdit(ctx.Dir, note, modified)
 	if err != nil {
-		return fmt.Errorf("failed to parse edited note: %w", err)
-	}
-
-	if err := storage.SaveNoteTo(ctx.Dir, updatedNote); err != nil {
-		return fmt.Errorf("failed to save note: %w", err)
+		return err
 	}
 
 	if out.Quiet {
@@ -99,4 +97,47 @@ func runNoteEdit(cmd *cobra.Command, args []string) error {
 	}
 	fmt.Println("Note updated.")
 	return nil
+}
+
+// applyNoteEdit parses the modified content from an external editor and persists
+// the result. If the modified content has invalid frontmatter or an effectively
+// wiped title, the function returns an error rather than silently saving a
+// sanitized copy.
+//
+// Background: storage.ParseNoteContent never returns a Go error — when the user
+// corrupts or deletes the YAML frontmatter, it returns a Note with ParseError
+// set and Title derived from the filename. Saving that Note silently rewrites
+// the file with filename-derived metadata, throwing away whatever the user
+// actually typed. Treating ParseError as a hard error gives the user a chance
+// to fix their edit before the original file is clobbered.
+//
+// We also reject a title that has been collapsed to the filename when the
+// original title was something else — storage.parseNote silently substitutes
+// the filename when the YAML title is empty, so the only way to detect "user
+// wiped the title" is to compare against the pre-edit title.
+func applyNoteEdit(dir string, original *models.Note, modified string) (*models.Note, error) {
+	updated, err := storage.ParseNoteContent(original.Filename, modified)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse edited note: %w", err)
+	}
+	if updated.ParseError != "" {
+		return nil, fmt.Errorf("edited note has invalid frontmatter: %s (changes not saved)", updated.ParseError)
+	}
+	if strings.TrimSpace(updated.Title) == "" {
+		return nil, fmt.Errorf("edited note has empty title (changes not saved)")
+	}
+	// Detect the filename-substituted title that storage.parseNote produces
+	// when the user wipes the YAML title. The substitution is identifiable
+	// because it equals the raw filename minus ".md" — a value no human
+	// would normally pick as a title.
+	if original.Title != "" && original.Title != strings.TrimSuffix(original.Filename, ".md") {
+		substituted := strings.TrimSuffix(original.Filename, ".md")
+		if updated.Title == substituted {
+			return nil, fmt.Errorf("edited note has empty title (changes not saved)")
+		}
+	}
+	if err := storage.SaveNoteTo(dir, updated); err != nil {
+		return nil, fmt.Errorf("failed to save note: %w", err)
+	}
+	return updated, nil
 }
