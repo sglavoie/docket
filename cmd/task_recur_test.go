@@ -1,11 +1,18 @@
 package cmd
 
 import (
+	"bytes"
+	"io"
+	"os"
+	"strings"
 	"testing"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 
+	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/testutil"
 )
 
@@ -516,5 +523,74 @@ func TestParseRecurrenceIntervalWithDays(t *testing.T) {
 	testutil.AssertEqual(t, pattern.Unit, models.RecurrenceWeekly)
 	if len(pattern.Weekdays) != 2 {
 		t.Errorf("expected 2 weekdays, got %d", len(pattern.Weekdays))
+	}
+}
+
+// TestRecurClearNoOpHonorsQuiet verifies that `tt task recur <id> --clear --quiet`
+// on a task with no recurrence pattern suppresses the informational message,
+// rather than printing "Task #N has no recurrence pattern" regardless of --quiet.
+func TestRecurClearNoOpHonorsQuiet(t *testing.T) {
+	deps, project := testutil.SetupTestDepsWithProject(t, "Test Project")
+	defer deps.Cleanup()
+
+	viper.Set("config", deps.ConfigPath)
+	defer viper.Set("config", "")
+
+	manager := config.NewManager(deps.ConfigPath)
+	if err := manager.Save(deps.Config); err != nil {
+		t.Fatal(err)
+	}
+
+	oldRepo := storage.DefaultRepository
+	storage.DefaultRepository = deps.Repository
+	defer func() { storage.DefaultRepository = oldRepo }()
+
+	task := project.Tasks[0]
+	if task.Recurrence != nil {
+		t.Fatal("test task should not have recurrence")
+	}
+
+	// Build a fresh command with the same flags as taskRecurCmd
+	cmd := &cobra.Command{}
+	cmd.Flags().BoolVar(&taskRecurClear, "clear", false, "")
+	cmd.Flags().BoolVar(&taskRecurSkip, "skip", false, "")
+	cmd.Flags().IntVar(&taskRecurDefer, "defer", 0, "")
+	cmd.Flags().StringVar(&taskRecurFrom, "from", "", "")
+	addOutputFlags(cmd)
+
+	// Reset globals
+	taskRecurClear = false
+	taskRecurSkip = false
+	taskRecurDefer = 0
+	taskRecurFrom = ""
+
+	if err := cmd.Flags().Set("clear", "true"); err != nil {
+		t.Fatal(err)
+	}
+	if err := cmd.Flags().Set("quiet", "true"); err != nil {
+		t.Fatal(err)
+	}
+
+	// Capture stdout
+	oldStdout := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+
+	err := runTaskRecur(cmd, []string{task.ID})
+
+	_ = w.Close()
+	os.Stdout = oldStdout
+	var buf bytes.Buffer
+	_, _ = io.Copy(&buf, r)
+
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	output := buf.String()
+	if strings.Contains(output, "has no recurrence pattern") {
+		t.Errorf("--quiet should suppress 'has no recurrence pattern' message, got: %q", output)
+	}
+	if output != "" {
+		t.Errorf("--quiet should produce no stdout output, got: %q", output)
 	}
 }
