@@ -216,6 +216,31 @@ func TestSlugify_EmptyAndEdgeCases(t *testing.T) {
 	}
 }
 
+func TestSlugify_WhitespaceCharactersAsSeparators(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{"tab", "Hello\tWorld", "hello-world"},
+		{"newline", "Hello\nWorld", "hello-world"},
+		{"carriage return", "Hello\rWorld", "hello-world"},
+		{"mixed whitespace", "One\tTwo Three\nFour", "one-two-three-four"},
+		{"tab collapses with hyphen", "Hello\t-World", "hello-world"},
+		{"leading tab trimmed", "\thello", "hello"},
+		{"trailing newline trimmed", "hello\n", "hello"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := Slugify(tt.input)
+			if result != tt.expected {
+				t.Errorf("Slugify(%q) = %q, want %q", tt.input, result, tt.expected)
+			}
+		})
+	}
+}
+
 func TestSlugify_RealWorldExamples(t *testing.T) {
 	tests := []struct {
 		input    string
