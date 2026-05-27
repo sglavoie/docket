@@ -137,14 +137,15 @@ func runTaskAdd(cmd *cobra.Command, args []string) error { //nolint:gocyclo
 
 	// Load template if specified
 	var tmpl *template.TaskTemplate
-	if taskTemplateFlag != "" {
-		tmpl = cfg.GetTaskTemplate(taskTemplateFlag)
+	templateLookup := strings.TrimSpace(taskTemplateFlag)
+	if templateLookup != "" {
+		tmpl = cfg.GetTaskTemplate(templateLookup)
 		if tmpl == nil {
 			// Try by name
-			tmpl = cfg.GetTaskTemplateByName(taskTemplateFlag)
+			tmpl = cfg.GetTaskTemplateByName(templateLookup)
 		}
 		if tmpl == nil {
-			return fmt.Errorf("template not found: %s", taskTemplateFlag)
+			return fmt.Errorf("template not found: %s", templateLookup)
 		}
 	}
 
@@ -212,9 +213,10 @@ func runTaskAdd(cmd *cobra.Command, args []string) error { //nolint:gocyclo
 		task.SetSection(tmpl.Section)
 	}
 
-	// Handle stage
-	if taskStageFlag != "" {
-		task.Stage = taskStageFlag
+	// Handle stage (trim to reject all-whitespace values that would persist
+	// as a "set" stage but render as empty in the UI)
+	if stage := strings.TrimSpace(taskStageFlag); stage != "" {
+		task.Stage = stage
 	}
 
 	// Add description from template

@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/sglavoie/tt/internal/models"
@@ -206,6 +207,54 @@ func TestRunTaskAdd(t *testing.T) {
 		task := savedProject.Tasks[len(savedProject.Tasks)-1]
 		if task.Recurrence == nil {
 			t.Fatal("task should have recurrence set")
+		}
+	})
+
+	t.Run("whitespace-only stage is not persisted", func(t *testing.T) {
+		deps, project := setupTaskAddTest(t)
+		defer deps.Cleanup()
+
+		taskStageFlag = "   "
+		defer func() { taskStageFlag = "" }()
+
+		err := runTaskAdd(taskAddCmd, []string{"Stage whitespace task"})
+		testutil.AssertNoError(t, err)
+
+		savedProject := deps.Repository.Projects[project.ID]
+		task := savedProject.Tasks[len(savedProject.Tasks)-1]
+		testutil.AssertEqual(t, task.Stage, "")
+	})
+
+	t.Run("stage value is trimmed before persisting", func(t *testing.T) {
+		deps, project := setupTaskAddTest(t)
+		defer deps.Cleanup()
+
+		taskStageFlag = "  Design\t"
+		defer func() { taskStageFlag = "" }()
+
+		err := runTaskAdd(taskAddCmd, []string{"Padded stage task"})
+		testutil.AssertNoError(t, err)
+
+		savedProject := deps.Repository.Projects[project.ID]
+		task := savedProject.Tasks[len(savedProject.Tasks)-1]
+		testutil.AssertEqual(t, task.Stage, "Design")
+	})
+
+	t.Run("template flag is trimmed before lookup", func(t *testing.T) {
+		deps, _ := setupTaskAddTest(t)
+		defer deps.Cleanup()
+
+		// No template is registered, so a padded missing ID must surface the
+		// trimmed identifier in the error rather than the raw whitespace form.
+		taskTemplateFlag = "  unknown-template  "
+		defer func() { taskTemplateFlag = "" }()
+
+		err := runTaskAdd(taskAddCmd, []string{"Templated task"})
+		if err == nil {
+			t.Fatal("expected error for unknown template")
+		}
+		if !strings.Contains(err.Error(), "unknown-template") || strings.Contains(err.Error(), "  unknown-template") {
+			t.Errorf("expected trimmed template id in error, got %q", err.Error())
 		}
 	})
 }

@@ -20,6 +20,7 @@ func resetTaskAddVars() {
 	taskSectionFlag = ""
 	taskStageFlag = ""
 	taskRecurFlag = ""
+	taskAddFromFlag = ""
 	taskTemplateFlag = ""
 	isEpic = false
 	isStory = false

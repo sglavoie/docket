@@ -95,6 +95,9 @@ func runTaskEdit(cmd *cobra.Command, args []string) error {
 	titleChanged := newTitle != task.Title
 	descChanged := newDesc != task.Description
 	if !titleChanged && !descChanged {
+		if out.JSON {
+			return outputSingleTaskJSON(task)
+		}
 		if !out.Quiet {
 			fmt.Println("No changes made.")
 		}
