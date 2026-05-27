@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/scoring"
 )
 
@@ -237,6 +238,156 @@ func TestConfigManager_LoadClampedValueRoundTrips(t *testing.T) {
 	if reloaded.InfoPanelMode == nil || *reloaded.InfoPanelMode != int(InfoPanelInfoCards) {
 		t.Errorf("expected InfoPanelMode = %d after round-trip, got %v",
 			int(InfoPanelInfoCards), reloaded.InfoPanelMode)
+	}
+}
+
+// TestGetProject_NilEntryAndEmptyQueryAreSafe guarantees that GetProject does
+// not panic when called with an empty key or when a stray nil project entry
+// is present in c.Projects (e.g. an in-memory mutation before Load scrubs).
+func TestGetProject_NilEntryAndEmptyQueryAreSafe(t *testing.T) {
+	cfg := NewConfig()
+	cfg.Projects = []*models.Project{nil, {ID: "p1", Slug: "alpha", Name: "Alpha"}}
+
+	if got := cfg.GetProject(""); got != nil {
+		t.Errorf("expected nil for empty query, got %+v", got)
+	}
+	if got := cfg.GetProject("p1"); got == nil || got.Slug != "alpha" {
+		t.Errorf("expected to resolve p1 past nil entry, got %+v", got)
+	}
+	if got := cfg.GetProject("alpha"); got == nil || got.ID != "p1" {
+		t.Errorf("expected slug lookup to resolve past nil entry, got %+v", got)
+	}
+}
+
+// TestPruneOrphanedProjectRefs_DropsStaleKeysAcrossSurfaces guarantees that
+// every persisted project-keyed map/slice has its dangling entries dropped so
+// they don't survive a Save round-trip.
+func TestPruneOrphanedProjectRefs_DropsStaleKeysAcrossSurfaces(t *testing.T) {
+	cfg := NewConfig()
+	cfg.Projects = []*models.Project{{ID: "live", Slug: "live", Name: "Live"}}
+
+	cfg.ProjectScoringProfile = map[string]string{"live": "ice", "ghost": "wsjf"}
+	cfg.ProjectViewStates = map[string]ProjectViewState{"live": {}, "ghost": {}}
+	cfg.WorkflowEvalStates = map[string]WorkflowEvalState{"live": {}, "ghost": {}}
+	cfg.FocusQueue = []FocusQueueItem{{TaskID: "t1", ProjectID: "live"}, {TaskID: "t2", ProjectID: "ghost"}}
+	cfg.DailyPlan = []DailyPlanItem{{TaskID: "t1", ProjectID: "live"}, {TaskID: "t3", ProjectID: "ghost"}}
+	cfg.RecentTaskVisits = []RecentTaskVisit{{TaskID: "t1", ProjectID: "live"}, {TaskID: "t4", ProjectID: "ghost"}}
+	cfg.CycleProjects = []string{"live", "ghost"}
+	cfg.ContextCycleProjects = map[string][]string{"work": {"live", "ghost"}}
+	cfg.CustomContexts = map[string][]string{"team": {"live", "ghost"}}
+	cfg.ActionInboxProjectID = "ghost"
+
+	if !cfg.PruneOrphanedProjectRefs() {
+		t.Fatal("expected PruneOrphanedProjectRefs to report changes")
+	}
+
+	if _, ok := cfg.ProjectScoringProfile["ghost"]; ok {
+		t.Error("expected ghost dropped from ProjectScoringProfile")
+	}
+	if _, ok := cfg.ProjectViewStates["ghost"]; ok {
+		t.Error("expected ghost dropped from ProjectViewStates")
+	}
+	if _, ok := cfg.WorkflowEvalStates["ghost"]; ok {
+		t.Error("expected ghost dropped from WorkflowEvalStates")
+	}
+	for _, item := range cfg.FocusQueue {
+		if item.ProjectID == "ghost" {
+			t.Error("expected ghost dropped from FocusQueue")
+		}
+	}
+	for _, item := range cfg.DailyPlan {
+		if item.ProjectID == "ghost" {
+			t.Error("expected ghost dropped from DailyPlan")
+		}
+	}
+	for _, v := range cfg.RecentTaskVisits {
+		if v.ProjectID == "ghost" {
+			t.Error("expected ghost dropped from RecentTaskVisits")
+		}
+	}
+	for _, pid := range cfg.CycleProjects {
+		if pid == "ghost" {
+			t.Error("expected ghost dropped from CycleProjects")
+		}
+	}
+	for _, pid := range cfg.ContextCycleProjects["work"] {
+		if pid == "ghost" {
+			t.Error("expected ghost dropped from ContextCycleProjects[work]")
+		}
+	}
+	for _, pid := range cfg.CustomContexts["team"] {
+		if pid == "ghost" {
+			t.Error("expected ghost dropped from CustomContexts[team]")
+		}
+	}
+	if cfg.ActionInboxProjectID != "" {
+		t.Errorf("expected ActionInboxProjectID cleared, got %q", cfg.ActionInboxProjectID)
+	}
+	// Live references must be preserved.
+	if cfg.ProjectScoringProfile["live"] != "ice" {
+		t.Error("expected live scoring profile assignment preserved")
+	}
+	if len(cfg.FocusQueue) != 1 || cfg.FocusQueue[0].ProjectID != "live" {
+		t.Errorf("expected single live FocusQueue entry, got %+v", cfg.FocusQueue)
+	}
+}
+
+// TestPruneOrphanedProjectRefs_NoopWhenNothingStale guarantees the helper
+// reports false when every reference is live, so callers don't trigger
+// unnecessary saves.
+func TestPruneOrphanedProjectRefs_NoopWhenNothingStale(t *testing.T) {
+	cfg := NewConfig()
+	cfg.Projects = []*models.Project{{ID: "p1", Slug: "p1", Name: "P1"}}
+	cfg.ProjectScoringProfile = map[string]string{"p1": "ice"}
+	cfg.FocusQueue = []FocusQueueItem{{TaskID: "t", ProjectID: "p1"}}
+	if cfg.PruneOrphanedProjectRefs() {
+		t.Fatal("expected no changes when all refs are live")
+	}
+}
+
+// TestConfigManager_LoadPrunesOrphanedProjectRefs guarantees the Load-time
+// integration drops dangling references rather than letting them resurrect
+// across reloads.
+func TestConfigManager_LoadPrunesOrphanedProjectRefs(t *testing.T) {
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, "test-config.json")
+
+	data, _ := json.Marshal(map[string]any{
+		"version":  1,
+		"data_dir": tmpDir,
+		"projects": []map[string]any{
+			{"id": "p1", "slug": "alpha", "name": "Alpha", "path": "/tmp/alpha"},
+		},
+		"project_scoring_profile": map[string]string{"p1": "ice", "missing": "wsjf"},
+		"focus_queue": []map[string]any{
+			{"task_id": "t1", "project_id": "p1"},
+			{"task_id": "t2", "project_id": "missing"},
+		},
+		"cycle_projects":          []string{"p1", "missing"},
+		"action_inbox_project_id": "missing",
+	})
+	if err := os.WriteFile(configPath, data, 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	manager := NewManager(configPath)
+	cfg, err := manager.Load()
+	if err != nil {
+		t.Fatalf("Load failed: %v", err)
+	}
+	if _, ok := cfg.ProjectScoringProfile["missing"]; ok {
+		t.Error("expected missing scoring profile dropped at Load")
+	}
+	if len(cfg.FocusQueue) != 1 || cfg.FocusQueue[0].ProjectID != "p1" {
+		t.Errorf("expected single live FocusQueue entry, got %+v", cfg.FocusQueue)
+	}
+	for _, pid := range cfg.CycleProjects {
+		if pid == "missing" {
+			t.Error("expected missing dropped from CycleProjects at Load")
+		}
+	}
+	if cfg.ActionInboxProjectID != "" {
+		t.Errorf("expected ActionInboxProjectID cleared at Load, got %q", cfg.ActionInboxProjectID)
 	}
 }
 

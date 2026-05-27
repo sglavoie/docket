@@ -75,6 +75,7 @@ func TestConfigManager_FullRoundTrip(t *testing.T) {
 	cfg.LastWeeklyReviewAt = &now
 
 	cfg.AddProject(&models.Project{ID: "p1", Slug: "test", Name: "Test"})
+	cfg.AddProject(&models.Project{ID: "p2", Slug: "test2", Name: "Test2"})
 
 	cfg.WorkflowRules = []workflow.WorkflowRule{
 		{

@@ -337,6 +337,11 @@ func (m *Manager) Load() (*Config, error) { //nolint:gocyclo
 		}
 	}
 
+	// Drop persisted references to project IDs that no longer exist (e.g. a
+	// project was removed via a hand edit). Without this, stale entries
+	// resurrect on every Save round-trip.
+	config.PruneOrphanedProjectRefs()
+
 	// Backfill new fields on builtin scoring profiles from presets
 	presets := scoring.PresetProfiles()
 	for i := range config.ScoringProfiles {

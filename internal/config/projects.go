@@ -10,8 +10,16 @@ import (
 )
 
 // GetProject returns a project by ID or slug.
+// An empty idOrSlug never matches; nil project entries are skipped defensively
+// so a malformed in-memory slice can't panic before Load() has scrubbed it.
 func (c *Config) GetProject(idOrSlug string) *models.Project {
+	if idOrSlug == "" {
+		return nil
+	}
 	for _, p := range c.Projects {
+		if p == nil {
+			continue
+		}
 		if p.ID == idOrSlug || p.Slug == idOrSlug {
 			return p
 		}
@@ -294,6 +302,122 @@ func (c *Config) SetCurrentProject(id string) bool {
 	}
 	c.CurrentProject = project.ID
 	return true
+}
+
+// PruneOrphanedProjectRefs drops persisted references to project IDs that no
+// longer exist in c.Projects. Without this pass, stale entries from
+// hand-edited configs or out-of-band project removals quietly accumulate and
+// keep round-tripping through every Save. Returns true if any reference was
+// removed.
+func (c *Config) PruneOrphanedProjectRefs() bool {
+	known := make(map[string]bool, len(c.Projects))
+	for _, p := range c.Projects {
+		if p == nil || p.ID == "" {
+			continue
+		}
+		known[p.ID] = true
+	}
+
+	changed := false
+	for pid := range c.ProjectScoringProfile {
+		if !known[pid] {
+			delete(c.ProjectScoringProfile, pid)
+			changed = true
+		}
+	}
+	for pid := range c.ProjectViewStates {
+		if !known[pid] {
+			delete(c.ProjectViewStates, pid)
+			changed = true
+		}
+	}
+	for pid := range c.WorkflowEvalStates {
+		if !known[pid] {
+			delete(c.WorkflowEvalStates, pid)
+			changed = true
+		}
+	}
+
+	if len(c.FocusQueue) > 0 {
+		kept := c.FocusQueue[:0]
+		for _, item := range c.FocusQueue {
+			if known[item.ProjectID] {
+				kept = append(kept, item)
+			} else {
+				changed = true
+			}
+		}
+		c.FocusQueue = kept
+	}
+	if len(c.DailyPlan) > 0 {
+		kept := c.DailyPlan[:0]
+		for _, item := range c.DailyPlan {
+			if known[item.ProjectID] {
+				kept = append(kept, item)
+			} else {
+				changed = true
+			}
+		}
+		c.DailyPlan = kept
+	}
+	if len(c.RecentTaskVisits) > 0 {
+		kept := c.RecentTaskVisits[:0]
+		for _, v := range c.RecentTaskVisits {
+			if known[v.ProjectID] {
+				kept = append(kept, v)
+			} else {
+				changed = true
+			}
+		}
+		c.RecentTaskVisits = kept
+	}
+
+	if len(c.CycleProjects) > 0 {
+		kept := c.CycleProjects[:0]
+		for _, pid := range c.CycleProjects {
+			if known[pid] {
+				kept = append(kept, pid)
+			} else {
+				changed = true
+			}
+		}
+		c.CycleProjects = kept
+	}
+	for ctx, pids := range c.ContextCycleProjects {
+		if len(pids) == 0 {
+			continue
+		}
+		kept := pids[:0]
+		for _, pid := range pids {
+			if known[pid] {
+				kept = append(kept, pid)
+			} else {
+				changed = true
+			}
+		}
+		c.ContextCycleProjects[ctx] = kept
+	}
+	for ctx, pids := range c.CustomContexts {
+		if len(pids) == 0 {
+			continue
+		}
+		kept := pids[:0]
+		for _, pid := range pids {
+			if known[pid] {
+				kept = append(kept, pid)
+			} else {
+				changed = true
+			}
+		}
+		c.CustomContexts[ctx] = kept
+	}
+
+	if c.ActionInboxProjectID != "" && !known[c.ActionInboxProjectID] {
+		c.ActionInboxProjectID = ""
+		changed = true
+	}
+
+	return changed
 }
 
 // GetAllContexts returns a sorted list of unique context values from all projects.
