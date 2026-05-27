@@ -127,3 +127,21 @@ func TestNoteLinkRejectsEmptyTaskID(t *testing.T) {
 		t.Errorf("RemoveLink(\"\") should not modify LinkedTasks; before=%d after=%d", beforeLen, len(n.LinkedTasks))
 	}
 }
+
+// TestNoteTagsStripLeadingHash verifies that Note.AddTag and Note.SetTags strip
+// a leading '#' so callers passing "#backend" do not create a duplicate of the
+// bare "backend" tag (rendering would otherwise produce "##backend").
+func TestNoteTagsStripLeadingHash(t *testing.T) {
+	n := NewNote("hash test")
+
+	n.AddTag("#backend")
+	n.AddTag("backend")
+	if len(n.Tags) != 1 || n.Tags[0] != "backend" {
+		t.Errorf("AddTag should normalize '#backend' and dedupe with 'backend'; got %v", n.Tags)
+	}
+
+	n.SetTags([]string{"#foo", "foo", "  #bar  ", "bar", ""})
+	if len(n.Tags) != 2 || n.Tags[0] != "foo" || n.Tags[1] != "bar" {
+		t.Errorf("SetTags should normalize leading '#' and dedupe; got %v", n.Tags)
+	}
+}

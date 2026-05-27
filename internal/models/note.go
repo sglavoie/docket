@@ -49,7 +49,7 @@ func NewNote(title string) *Note {
 
 // AddTag adds a tag if it is non-empty and not already present.
 func (n *Note) AddTag(tag string) {
-	tag = strings.TrimSpace(tag)
+	tag = normalizeTag(tag)
 	if tag == "" {
 		return
 	}
@@ -65,7 +65,7 @@ func (n *Note) SetTags(tags []string) {
 	seen := make(map[string]bool)
 	var cleaned []string
 	for _, t := range tags {
-		t = strings.TrimSpace(t)
+		t = normalizeTag(t)
 		if t == "" || seen[t] {
 			continue
 		}
