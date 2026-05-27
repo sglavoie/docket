@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -59,7 +60,7 @@ func runTaskStage(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	stageName := args[1]
+	stageName := strings.TrimSpace(args[1])
 
 	// Pre-check: skip the save if the stage is already the requested value
 	project, _, _, err := LoadCurrentProject()
