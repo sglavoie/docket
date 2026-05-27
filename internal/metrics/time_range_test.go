@@ -116,4 +116,25 @@ func TestBuckets(t *testing.T) {
 			t.Errorf("expected -1 for out-of-range timestamp, got %d", idx)
 		}
 	})
+
+	// Guards a regression where a timestamp exactly equal to the last
+	// bucket's End (which equals "now" whenever "now" sits on the period
+	// boundary, e.g. midnight for daily buckets) was being silently
+	// dropped from per-bucket trends while still counted in totals.
+	t.Run("assignToBucket includes timestamp on final boundary", func(t *testing.T) {
+		now := time.Date(2025, 6, 15, 0, 0, 0, 0, time.UTC) // exactly midnight
+		cutoff := now.AddDate(0, 0, -3)
+		buckets := timeBuckets(cutoff, now, granularityDay)
+		if len(buckets) == 0 {
+			t.Fatal("expected at least one bucket")
+		}
+		last := len(buckets) - 1
+		if !buckets[last].End.Equal(now) {
+			t.Fatalf("setup precondition: last bucket End %v should equal now %v", buckets[last].End, now)
+		}
+		got := assignToBucket(now, buckets)
+		if got != last {
+			t.Errorf("assignToBucket(now) = %d, want %d (final bucket)", got, last)
+		}
+	})
 }

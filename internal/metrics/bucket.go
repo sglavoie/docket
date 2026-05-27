@@ -96,13 +96,23 @@ func bucketLabels(buckets []bucket) []string {
 }
 
 // assignToBucket returns the bucket index for the given timestamp, or -1 if out of range.
+// Buckets are half-open [Start, End), except the final bucket is treated as
+// closed [Start, End] so that a timestamp landing exactly on the upstream
+// "now" boundary (which equals the last bucket's End when "now" sits on a
+// period boundary, e.g. midnight for daily buckets) is counted in per-bucket
+// trends rather than only in the overall total.
 func assignToBucket(t time.Time, buckets []bucket) int {
 	if len(buckets) == 0 {
 		return -1
 	}
 
+	last := len(buckets) - 1
+	if t.Equal(buckets[last].End) {
+		return last
+	}
+
 	// Binary search for the bucket containing t
-	lo, hi := 0, len(buckets)-1
+	lo, hi := 0, last
 	for lo <= hi {
 		mid := (lo + hi) / 2
 		if t.Before(buckets[mid].Start) {

@@ -245,6 +245,31 @@ func TestThroughputAllTimeAvgPerDayConsistent(t *testing.T) {
 	}
 }
 
+// TestThroughputBoundaryTaskCountedInBucket guards against tasks completed
+// exactly at "now" being included in Total but excluded from PerBucket, which
+// happens whenever "now" lands on a period boundary (midnight for daily
+// buckets) since the last bucket's End == now.
+func TestThroughputBoundaryTaskCountedInBucket(t *testing.T) {
+	now := time.Date(2025, 6, 15, 0, 0, 0, 0, time.UTC) // exactly midnight
+	tasks := []*models.Task{
+		makeTask(models.StatusDone, timePtr(now), nil),
+	}
+	cutoff := TimeRange7d.Cutoff(now)
+	buckets := timeBuckets(cutoff, now, granularityDay)
+	result := computeThroughput(tasks, cutoff, now, buckets)
+
+	if result.Total != 1 {
+		t.Fatalf("Total = %d, want 1", result.Total)
+	}
+	var sum float64
+	for _, v := range result.PerBucket {
+		sum += v
+	}
+	if int(sum) != result.Total {
+		t.Errorf("sum(PerBucket) = %v, want %d (boundary task must hit final bucket)", sum, result.Total)
+	}
+}
+
 func TestComputeAllAt_BlockedHonorsTimeRange(t *testing.T) {
 	now := time.Date(2025, 6, 15, 12, 0, 0, 0, time.UTC)
 
