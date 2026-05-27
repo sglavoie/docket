@@ -99,6 +99,22 @@ func TestBuckets(t *testing.T) {
 		}
 	})
 
+	t.Run("monthly labels are unique across year boundary", func(t *testing.T) {
+		// All-time spans ~13 months (e.g. Jun 2024 → Jun 2025). With a
+		// month-only label two buckets ended up sharing the "Jun" label,
+		// making the chart ambiguous. The label must distinguish the year.
+		now := time.Date(2025, 6, 15, 12, 0, 0, 0, time.UTC)
+		buckets := timeBuckets(time.Time{}, now, granularityMonth)
+
+		seen := make(map[string]int, len(buckets))
+		for i, b := range buckets {
+			if prev, ok := seen[b.Label]; ok {
+				t.Errorf("duplicate monthly label %q at indices %d and %d", b.Label, prev, i)
+			}
+			seen[b.Label] = i
+		}
+	})
+
 	t.Run("assignToBucket", func(t *testing.T) {
 		now := time.Date(2025, 6, 15, 12, 0, 0, 0, time.UTC)
 		cutoff := now.AddDate(0, 0, -7)
