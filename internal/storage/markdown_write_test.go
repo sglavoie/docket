@@ -424,6 +424,35 @@ func TestSaveProjectLocked_CreatesLockFile(t *testing.T) {
 	}
 }
 
+func TestWriteTasksMarkdown_SkipsNilTasks(t *testing.T) {
+	tk1, err := models.NewTask("task-1", 1, models.TaskTypeTask, "First")
+	if err != nil {
+		t.Fatal(err)
+	}
+	tk2, err := models.NewTask("task-2", 2, models.TaskTypeTask, "Second")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// A nil entry must not crash the writer. Real-world callers reach this
+	// path via undo_targeted and other code paths that bypass the audit and
+	// may carry transient nil entries during reconstruction.
+	tasks := []*models.Task{tk1, nil, tk2}
+
+	out := WriteTasksMarkdown("Nil Test", tasks)
+
+	parsed, err := ParseTasksMarkdownWithSections(out)
+	if err != nil {
+		t.Fatalf("ParseTasksMarkdownWithSections failed: %v", err)
+	}
+	if len(parsed.Tasks) != 2 {
+		t.Fatalf("expected 2 tasks after round-trip, got %d", len(parsed.Tasks))
+	}
+	if parsed.Tasks[0].Title != "First" || parsed.Tasks[1].Title != "Second" {
+		t.Errorf("unexpected titles after round-trip: %q, %q", parsed.Tasks[0].Title, parsed.Tasks[1].Title)
+	}
+}
+
 // Helper to find a task by ID in a slice
 func findTaskByID(tasks []*models.Task, id string) *models.Task {
 	for _, task := range tasks {

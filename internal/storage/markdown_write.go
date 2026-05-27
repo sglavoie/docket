@@ -58,6 +58,9 @@ func writeSectionsMetadata(builder *strings.Builder, sections []string, sectionC
 func collectRootTasks(tasks []*models.Task) []*models.Task {
 	var rootTasks []*models.Task
 	for _, task := range tasks {
+		if task == nil {
+			continue
+		}
 		if task.ParentID == nil {
 			rootTasks = append(rootTasks, task)
 		}
@@ -67,6 +70,9 @@ func collectRootTasks(tasks []*models.Task) []*models.Task {
 
 func appendOrphanedTasks(builder *strings.Builder, tasks []*models.Task, visited map[string]bool) {
 	for _, task := range tasks {
+		if task == nil {
+			continue
+		}
 		if visited[task.ID] {
 			continue
 		}
@@ -82,6 +88,9 @@ func appendOrphanedTasks(builder *strings.Builder, tasks []*models.Task, visited
 func getChildrenInOrder(parentID string, tasks []*models.Task) []*models.Task {
 	var children []*models.Task
 	for _, task := range tasks {
+		if task == nil {
+			continue
+		}
 		if task.ParentID != nil && *task.ParentID == parentID {
 			children = append(children, task)
 		}
