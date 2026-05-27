@@ -88,11 +88,9 @@ func computeCrossProjectScore(task *models.Task, project *models.Project, cfg *c
 
 	// Unblocking bonus: prefer tasks that unblock others. Guard nil project
 	// since callers may compute scores for cross-project FocusTasks where the
-	// project pointer was not resolved.
-	var blockedByThisCount int
-	if project != nil {
-		blockedByThisCount = len(project.GetBlockedByTasks(task))
-	}
+	// project pointer was not resolved. Completed dependents are excluded
+	// because they do not need unblocking — only open dependents count.
+	blockedByThisCount := countIncompleteDependents(task, project)
 	unblockingBonus := min(blockedByThisCount, 3)
 	score += unblockingBonus * 150
 
@@ -158,10 +156,7 @@ func getSuggestionReason(task *models.Task, project *models.Project, cfg *config
 		reasons = append(reasons, "flagged active")
 	}
 
-	var blockedByThisCount int
-	if project != nil {
-		blockedByThisCount = len(project.GetBlockedByTasks(task))
-	}
+	blockedByThisCount := countIncompleteDependents(task, project)
 	if blockedByThisCount > 0 {
 		if blockedByThisCount == 1 {
 			reasons = append(reasons, "unblocks 1 task")
@@ -254,6 +249,27 @@ func RankCrossProjectTasks(tasks []FocusTask, dismissedIDs map[string]bool, cfg 
 	sortByScoreThenID(scored)
 
 	return scored
+}
+
+// countIncompleteDependents returns the number of open (non-complete)
+// tasks that depend on the given task. A completed dependent does not
+// need this task to unblock it, so it must not contribute to the
+// "unblocks N tasks" reasoning or the score bonus.
+func countIncompleteDependents(task *models.Task, project *models.Project) int {
+	if task == nil || project == nil {
+		return 0
+	}
+	count := 0
+	for _, dep := range project.GetBlockedByTasks(task) {
+		if dep == nil {
+			continue
+		}
+		if dep.Status.IsComplete() {
+			continue
+		}
+		count++
+	}
+	return count
 }
 
 // allChildrenComplete returns true if all children of the task are complete.

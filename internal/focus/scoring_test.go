@@ -391,6 +391,84 @@ func TestScoringFactors(t *testing.T) {
 		}
 	})
 
+	t.Run("unblocking bonus excludes completed dependents", func(t *testing.T) {
+		// Regression: GetBlockedByTasks returns all dependents regardless of
+		// status, but a completed dependent does not need unblocking. The
+		// score and reason must only count open dependents.
+		blockerProject, err := models.NewProject(uuid.New().String(), "Blocker", "")
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		blocker := baseTask()
+		// Two dependents: one done, one open.
+		doneDep, err := models.NewTask(uuid.New().String(), 2, models.TaskTypeTask, "Done dep")
+		if err != nil {
+			t.Fatal(err)
+		}
+		doneDep.DependsOn = []string{blocker.ID}
+		doneDep.Status = models.StatusDone
+
+		openDep, err := models.NewTask(uuid.New().String(), 3, models.TaskTypeTask, "Open dep")
+		if err != nil {
+			t.Fatal(err)
+		}
+		openDep.DependsOn = []string{blocker.ID}
+
+		blockerProject.Tasks = []*models.Task{blocker, doneDep, openDep}
+		blockerProject.BuildTaskTree()
+
+		gotScore := computeCrossProjectScore(blocker, blockerProject, nil, now)
+
+		// Compare against the same blocker with only the open dep (no done dep).
+		blockerProject2, err := models.NewProject(uuid.New().String(), "Blocker2", "")
+		if err != nil {
+			t.Fatal(err)
+		}
+		blocker2 := baseTask()
+		openDep2, err := models.NewTask(uuid.New().String(), 3, models.TaskTypeTask, "Open dep 2")
+		if err != nil {
+			t.Fatal(err)
+		}
+		openDep2.DependsOn = []string{blocker2.ID}
+		blockerProject2.Tasks = []*models.Task{blocker2, openDep2}
+		blockerProject2.BuildTaskTree()
+		baselineScore := computeCrossProjectScore(blocker2, blockerProject2, nil, now)
+
+		if gotScore != baselineScore {
+			t.Errorf("score with done+open dep (%d) should equal score with just open dep (%d); completed dependents must not contribute to unblocking bonus", gotScore, baselineScore)
+		}
+
+		reason := getSuggestionReason(blocker, blockerProject, nil, now)
+		if !containsSubstring(reason, "nblocks 1 task") {
+			t.Errorf("expected 'unblocks 1 task' (only the open dep), got %q", reason)
+		}
+		if containsSubstring(reason, "unblocks 2 tasks") || containsSubstring(reason, "Unblocks 2 tasks") {
+			t.Errorf("must not count completed dependent, got %q", reason)
+		}
+
+		// Sanity: blocker with only completed dependents should not list
+		// "unblocks" at all, since no work is being freed.
+		soloProject, err := models.NewProject(uuid.New().String(), "Solo", "")
+		if err != nil {
+			t.Fatal(err)
+		}
+		soloBlocker := baseTask()
+		soloDoneDep, err := models.NewTask(uuid.New().String(), 4, models.TaskTypeTask, "Solo done dep")
+		if err != nil {
+			t.Fatal(err)
+		}
+		soloDoneDep.DependsOn = []string{soloBlocker.ID}
+		soloDoneDep.Status = models.StatusDone
+		soloProject.Tasks = []*models.Task{soloBlocker, soloDoneDep}
+		soloProject.BuildTaskTree()
+
+		soloReason := getSuggestionReason(soloBlocker, soloProject, nil, now)
+		if containsSubstring(soloReason, "unblocks") {
+			t.Errorf("blocker with only completed dependents should not list 'unblocks', got %q", soloReason)
+		}
+	})
+
 	t.Run("composite scoring profile integration", func(t *testing.T) {
 		cfg := config.NewConfig()
 		profile := scoring.ScoringProfile{
