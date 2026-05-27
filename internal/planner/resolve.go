@@ -66,8 +66,13 @@ func LookupTask(ref string, taskIndex map[string]*models.Task) *models.Task {
 	if t, ok := taskIndex[ref]; ok {
 		return t
 	}
-	// Also try parsing as a TaskRef and looking up by task ID alone (fallback
-	// for same-project refs stored without a project prefix).
+	// Only fall back to plain-ID lookup for refs that do NOT carry an explicit
+	// project prefix. A qualified ref like "projB:foo" that failed the first
+	// lookup must not silently resolve to an unrelated task whose plain ID
+	// happens to be "foo" in some other project.
 	parsed := models.ParseTaskRef(ref)
+	if parsed.ProjectID != "" {
+		return nil
+	}
 	return taskIndex[parsed.TaskID]
 }

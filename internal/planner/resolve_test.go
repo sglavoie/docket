@@ -120,3 +120,28 @@ func TestLookupTask_MissingRef(t *testing.T) {
 		t.Error("LookupTask should return nil for missing ref")
 	}
 }
+
+// TestLookupTask_QualifiedRefNoBleedThrough guards against a bug where a
+// qualified cross-project ref like "projX:foo" that did not resolve via its
+// full key would silently fall back to a plain-ID lookup of "foo" and pick up
+// an unrelated task in a different project that happens to share that ID.
+func TestLookupTask_QualifiedRefNoBleedThrough(t *testing.T) {
+	// projA owns task "foo"; projX is referenced by the user but does not
+	// exist in the index.
+	taskFoo := newTask("foo")
+	pA := makeProject("projA", "alpha", taskFoo)
+	idx := ResolveAllDependencies([]*models.Project{pA})
+
+	// "projX:foo" must not resolve to projA's "foo".
+	if got := LookupTask("projX:foo", idx); got != nil {
+		t.Errorf("expected nil for unresolved qualified ref, got task with ID %q", got.ID)
+	}
+	// Sanity: the unqualified "foo" still resolves.
+	if got := LookupTask("foo", idx); got == nil {
+		t.Error("expected unqualified ref to still resolve")
+	}
+	// Sanity: a correctly qualified ref still resolves.
+	if got := LookupTask("projA:foo", idx); got == nil {
+		t.Error("expected correctly qualified ref to resolve")
+	}
+}
