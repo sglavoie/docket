@@ -160,10 +160,12 @@ func ComputeBadgeWidths(tasks []*models.Task, opts BadgeWidthOpts) *ColumnLayout
 		maxProjLen = 12
 	}
 	cl := &ColumnLayout{}
+	hasTasks := false
 	for _, task := range tasks {
 		if task == nil {
 			continue
 		}
+		hasTasks = true
 
 		showPriority := !opts.HideLowPriority || task.Priority <= 2
 		if showPriority {
@@ -219,6 +221,9 @@ func ComputeBadgeWidths(tasks []*models.Task, opts BadgeWidthOpts) *ColumnLayout
 				}
 			}
 		}
+	}
+	if !hasTasks {
+		return nil
 	}
 	return cl
 }

@@ -28,6 +28,16 @@ func TestComputeBadgeWidthsEmpty(t *testing.T) {
 	}
 }
 
+func TestComputeBadgeWidthsAllNil(t *testing.T) {
+	if got := ComputeBadgeWidths([]*models.Task{nil, nil, nil}, BadgeWidthOpts{
+		IncludeStatus: true,
+		IncludeType:   true,
+		IncludeStage:  true,
+	}); got != nil {
+		t.Errorf("all-nil tasks should return nil layout, got %+v", got)
+	}
+}
+
 func TestComputeBadgeWidthsMixed(t *testing.T) {
 	t1 := &models.Task{
 		Title:    "alpha",
