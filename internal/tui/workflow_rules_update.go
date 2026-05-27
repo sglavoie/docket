@@ -13,10 +13,6 @@ func (m *WorkflowRulesModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) { //nolint
 		m.cursorFlash = false
 		return m, nil
 	case tea.KeyPressMsg:
-		if m.expandedView && !m.isWideScreen() {
-			return m, m.handleExpandedViewKey(msg.String())
-		}
-
 		if confirmed, handled := m.HandleConfirmKey(msg.String()); handled {
 			if confirmed {
 				cmd := m.deleteCurrentRule()
@@ -24,6 +20,10 @@ func (m *WorkflowRulesModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) { //nolint
 				return m, cmd
 			}
 			return m, nil
+		}
+
+		if m.expandedView && !m.isWideScreen() {
+			return m, m.handleExpandedViewKey(msg.String())
 		}
 
 		if model, cmd, handled := m.HandleSearchMode(msg, m, m.filterRules); handled {
