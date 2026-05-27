@@ -357,27 +357,37 @@ func parseMonthDay(monthStr, dayStr string, today time.Time) (time.Time, error) 
 		return time.Time{}, fmt.Errorf("unrecognized month: %s", monthStr)
 	}
 	day, _ := strconv.Atoi(dayStr)
-	year := today.Year()
-	candidate := time.Date(year, month, day, 0, 0, 0, 0, today.Location())
-	// Validate: time.Date normalises out-of-range days (e.g. Feb 30 → Mar 2).
-	// If the resulting month/day differs, the input day is invalid for this month.
-	if candidate.Month() != month || candidate.Day() != day {
+	// Validate the day against the maximum possible day in the given month
+	// across any year (29 for Feb, 30/31 otherwise). Using time.Date for
+	// validation incorrectly rejects "feb 29" in non-leap base years because
+	// time.Date silently normalises Feb 29 → Mar 1, hiding the otherwise-valid
+	// input before the leap-year advance loop below ever runs.
+	if day < 1 || day > maxDayInMonth(month) {
 		return time.Time{}, fmt.Errorf("invalid date: %s %d", monthStr, day)
 	}
-	if !candidate.After(today) {
-		// Advance to a future year that actually contains this month/day.
-		// For most dates year+1 is sufficient; for Feb 29 we must find the
-		// next leap year.
-		nextYear := year + 1
-		for {
-			candidate = time.Date(nextYear, month, day, 0, 0, 0, 0, today.Location())
-			if candidate.Month() == month && candidate.Day() == day {
-				break
-			}
-			nextYear++
-		}
+	year := today.Year()
+	candidate := time.Date(year, month, day, 0, 0, 0, 0, today.Location())
+	// Advance the year until time.Date no longer normalises (i.e. the day
+	// actually exists) AND the result is strictly after today.
+	for candidate.Month() != month || candidate.Day() != day || !candidate.After(today) {
+		year++
+		candidate = time.Date(year, month, day, 0, 0, 0, 0, today.Location())
 	}
 	return candidate, nil
+}
+
+// maxDayInMonth returns the largest day number the given month may have in any
+// year (29 for February to account for leap years).
+func maxDayInMonth(m time.Month) int {
+	switch m {
+	case time.January, time.March, time.May, time.July, time.August, time.October, time.December:
+		return 31
+	case time.April, time.June, time.September, time.November:
+		return 30
+	case time.February:
+		return 29
+	}
+	return 31
 }
 
 // ParseFlexibleDate is like ParseRelativeDate but also accepts bare shorthand

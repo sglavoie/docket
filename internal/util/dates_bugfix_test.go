@@ -120,6 +120,40 @@ func TestParseMonthDay_InvalidLeapDay(t *testing.T) {
 	}
 }
 
+// TestParseMonthDay_LeapDayFromNonLeapBase covers the historical bug where the
+// validity check on the current-year candidate rejected "feb 29" outright when
+// the base year was not a leap year (Go silently normalised Feb 29 → Mar 1, so
+// the month-mismatch guard fired before the leap-year advance loop could run).
+// From Jan 1 2025 the next valid Feb 29 is 2028.
+func TestParseMonthDay_LeapDayFromNonLeapBase(t *testing.T) {
+	base := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
+	got, err := parseMonthDay("feb", "29", base)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	want := time.Date(2028, 2, 29, 0, 0, 0, 0, time.UTC)
+	if !got.Equal(want) {
+		t.Errorf("parseMonthDay(feb, 29, 2025-01-01) = %s, want %s", got.Format("2006-01-02"), want.Format("2006-01-02"))
+	}
+}
+
+// TestParseMonthDay_DayOutOfRange covers calendar months whose maximum day is
+// 30 (apr, jun, sep, nov) — "apr 31" must error regardless of base year.
+func TestParseMonthDay_DayOutOfRange(t *testing.T) {
+	base := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
+	for _, m := range []string{"apr", "jun", "sep", "nov"} {
+		if _, err := parseMonthDay(m, "31", base); err == nil {
+			t.Errorf("expected error for %s 31, got nil", m)
+		}
+	}
+	if _, err := parseMonthDay("jan", "0", base); err == nil {
+		t.Error("expected error for jan 0, got nil")
+	}
+	if _, err := parseMonthDay("jan", "32", base); err == nil {
+		t.Error("expected error for jan 32, got nil")
+	}
+}
+
 // TestParseRelativeDate_MultiplierOverflow exercises the second-stage overflow
 // that strconv.Atoi cannot catch: values that fit in int64 but blow up when
 // multiplied (weeks×7, years×12). Previously the silent overflow wrapped to
