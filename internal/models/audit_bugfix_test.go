@@ -101,6 +101,86 @@ func TestSkipRecurrenceSeedsOriginalDay(t *testing.T) {
 	}
 }
 
+// TestAddChildRejectsSubtreeExceedingDepth verifies that AddChild refuses to
+// attach a child whose own descendants would push the deepest node past
+// MaxNestingDepth. Without the subtree-depth guard, a leaf descendant could
+// be silently detached by BuildTaskTree on the next load, hiding tasks that
+// the caller believed they had attached.
+func TestAddChildRejectsSubtreeExceedingDepth(t *testing.T) {
+	// Build a 3-level subtree manually: storyTop -> childStory -> grandTask
+	// so storyTop has subtreeDepth = 2 (grandTask is two levels below storyTop).
+	storyTop, err := NewTask("s1", 1, TaskTypeStory, "story top")
+	if err != nil {
+		t.Fatalf("NewTask story: %v", err)
+	}
+	storyTop.Level = 0
+	childTask, err := NewTask("c1", 2, TaskTypeTask, "child task")
+	if err != nil {
+		t.Fatalf("NewTask child: %v", err)
+	}
+	// Attach child directly so storyTop has a descendant.
+	if err := storyTop.AddChild(childTask); err != nil {
+		t.Fatalf("AddChild child: %v", err)
+	}
+
+	// Now construct a chain that already reaches MaxNestingDepth - 1, so adding
+	// storyTop (with its 1-level subtree) would push the deepest node past
+	// MaxNestingDepth.
+	// MaxNestingDepth = 6. We want target.Level = 5 so that target+storyTop+child
+	// would land at 5+1+1 = 7 > 6.
+	target, err := NewTask("p", 99, TaskTypeEpic, "deep epic")
+	if err != nil {
+		t.Fatalf("NewTask target: %v", err)
+	}
+	target.Level = MaxNestingDepth - 1 // 5
+
+	err = target.AddChild(storyTop)
+	if err == nil {
+		t.Fatal("expected AddChild to reject subtree that exceeds MaxNestingDepth, got nil")
+	}
+}
+
+// TestAddChildAllowsLeafAtMaxDepth verifies that the subtree-depth guard does
+// not over-reject the common case: a fresh leaf child being attached at
+// exactly MaxNestingDepth.
+func TestAddChildAllowsLeafAtMaxDepth(t *testing.T) {
+	parent, err := NewTask("p", 1, TaskTypeStory, "parent")
+	if err != nil {
+		t.Fatalf("NewTask parent: %v", err)
+	}
+	parent.Level = MaxNestingDepth - 1 // 5
+
+	leaf, err := NewTask("l", 2, TaskTypeTask, "leaf")
+	if err != nil {
+		t.Fatalf("NewTask leaf: %v", err)
+	}
+	if err := parent.AddChild(leaf); err != nil {
+		t.Errorf("expected leaf child at depth %d to be allowed, got %v", MaxNestingDepth, err)
+	}
+}
+
+// TestRecordCreatedIsIdempotent verifies that calling RecordCreated twice does
+// not append a duplicate "created" marker. PruneActivity treats the first
+// "created" entry as load-bearing; a second one would survive as a regular
+// tail entry and corrupt the activity log.
+func TestRecordCreatedIsIdempotent(t *testing.T) {
+	task, err := NewTask("t1", 1, TaskTypeTask, "Test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	task.RecordCreated()
+	task.RecordCreated()
+	count := 0
+	for _, e := range task.Activity {
+		if e != nil && e.Field == "created" {
+			count++
+		}
+	}
+	if count != 1 {
+		t.Errorf("expected exactly 1 'created' entry after duplicate calls, got %d (total entries=%d)", count, len(task.Activity))
+	}
+}
+
 // TestNextNDueDatesSeedsOriginalDay verifies that the preview iterator also
 // seeds OriginalDay so the projected series does not drift.
 func TestNextNDueDatesSeedsOriginalDay(t *testing.T) {

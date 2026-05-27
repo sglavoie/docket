@@ -86,6 +86,14 @@ func (t *Task) AddChild(child *Task) error {
 	if t.Level+1 > MaxNestingDepth {
 		return fmt.Errorf("cannot add child: would exceed maximum nesting depth of %d levels", MaxNestingDepth)
 	}
+	// When the child already has descendants, attaching it pushes the whole
+	// subtree down by (t.Level+1 - child.Level) levels. Reject if the deepest
+	// descendant would land past MaxNestingDepth; otherwise BuildTaskTree
+	// would later detach those descendants and silently restructure the tree.
+	subtreeDepth := maxDescendantDepth(child) - child.Level
+	if t.Level+1+subtreeDepth > MaxNestingDepth {
+		return fmt.Errorf("cannot add child: subtree would exceed maximum nesting depth of %d levels", MaxNestingDepth)
+	}
 	// Cycle check: walk t's ancestor chain; if child appears, adding it would
 	// create a circular reference.
 	if t.ID == child.ID {
