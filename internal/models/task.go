@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 	"time"
+	"unicode/utf8"
 )
 
 // MaxTaskTitleLength is the maximum allowed length for a task title.
@@ -87,8 +88,8 @@ func ValidateTaskTitle(title string) error {
 	if strings.TrimSpace(title) == "" {
 		return fmt.Errorf("task title cannot be empty")
 	}
-	if len(title) > MaxTaskTitleLength {
-		return fmt.Errorf("task title too long (%d chars, max %d)", len(title), MaxTaskTitleLength)
+	if n := utf8.RuneCountInString(title); n > MaxTaskTitleLength {
+		return fmt.Errorf("task title too long (%d chars, max %d)", n, MaxTaskTitleLength)
 	}
 	// Newlines in the title would cause data loss: the markdown heading format
 	// is a single line ("## Type: Title"), so anything after the first newline

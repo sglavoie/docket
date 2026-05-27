@@ -92,6 +92,25 @@ func TestValidateTaskTitle(t *testing.T) {
 	}
 }
 
+func TestValidateTaskTitle_MultiByteCountsAsRunes(t *testing.T) {
+	// A title of MaxTaskTitleLength runes using multi-byte characters
+	// must be accepted: each "猫" is 3 bytes in UTF-8, so the byte length
+	// is well above MaxTaskTitleLength, but the rune count equals it.
+	maxRunes := strings.Repeat("猫", MaxTaskTitleLength)
+	if got := len(maxRunes); got <= MaxTaskTitleLength {
+		t.Fatalf("test precondition: byte length %d should exceed MaxTaskTitleLength %d", got, MaxTaskTitleLength)
+	}
+	if err := ValidateTaskTitle(maxRunes); err != nil {
+		t.Errorf("expected %d-rune multi-byte title to be valid, got error: %v", MaxTaskTitleLength, err)
+	}
+
+	// One rune over the limit must be rejected.
+	tooMany := strings.Repeat("猫", MaxTaskTitleLength+1)
+	if err := ValidateTaskTitle(tooMany); err == nil {
+		t.Errorf("expected %d-rune multi-byte title to be rejected", MaxTaskTitleLength+1)
+	}
+}
+
 func TestTaskStatus(t *testing.T) {
 	tests := []struct {
 		status     TaskStatus
