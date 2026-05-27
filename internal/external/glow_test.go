@@ -45,6 +45,105 @@ func TestRenderFile_LeadingDashPath_FallbackReads(t *testing.T) {
 	}
 }
 
+// TestPageMarkdown_UsesTempFileNotStdinPipe verifies that PageMarkdown
+// invokes glow with the content staged in a temp file and `--` before it,
+// rather than feeding content through stdin with `-`. Piping content to
+// stdin while using `glow -p` breaks the pager: the spawned `less` (or
+// equivalent) inherits the same stdin pipe, sees it drained by glow,
+// then hits EOF and cannot accept keypresses.
+func TestPageMarkdown_UsesTempFileNotStdinPipe(t *testing.T) {
+	dir := t.TempDir()
+	argFile := filepath.Join(dir, "args.txt")
+	stdinFile := filepath.Join(dir, "stdin.txt")
+	fakeGlow := filepath.Join(dir, "glow")
+	// Fake glow records its args and reads stdin (which may be empty). It
+	// must exit zero so PageMarkdown does not fall back.
+	script := "#!/bin/sh\n" +
+		"printf '%s\\n' \"$@\" > " + argFile + "\n" +
+		"cat > " + stdinFile + " 2>/dev/null || true\n" +
+		"exit 0\n"
+	if err := os.WriteFile(fakeGlow, []byte(script), 0o755); err != nil {
+		t.Fatalf("write fake glow: %v", err)
+	}
+
+	origPath := os.Getenv("PATH")
+	t.Cleanup(func() { _ = os.Setenv("PATH", origPath) })
+	if err := os.Setenv("PATH", dir); err != nil {
+		t.Fatalf("setenv PATH: %v", err)
+	}
+	// Bust the cache so GlowAvailable picks up the fake.
+	glowCache = cachedPath{}
+	t.Cleanup(func() { glowCache = cachedPath{} })
+
+	// Replace os.Stdin with a closed pipe so the fake `cat` doesn't block
+	// waiting on our terminal. The key assertion is what PageMarkdown
+	// passes to glow as args — not what stdin contains.
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("pipe: %v", err)
+	}
+	_ = w.Close()
+	origStdin := os.Stdin
+	os.Stdin = r
+	t.Cleanup(func() {
+		os.Stdin = origStdin
+		_ = r.Close()
+	})
+
+	const content = "# heading\n\nbody text\n"
+	if err := PageMarkdown(content); err != nil {
+		t.Fatalf("PageMarkdown returned error: %v", err)
+	}
+
+	recorded, err := os.ReadFile(argFile)
+	if err != nil {
+		t.Fatalf("read args: %v", err)
+	}
+	args := strings.Split(strings.TrimSpace(string(recorded)), "\n")
+	if len(args) < 3 {
+		t.Fatalf("expected ≥3 args (-p, --, <tmpPath>), got %v", args)
+	}
+	if args[0] != "-p" {
+		t.Errorf("expected args[0]='-p', got %q (all: %v)", args[0], args)
+	}
+	if args[1] != "--" {
+		t.Errorf("expected args[1]='--', got %q (all: %v)", args[1], args)
+	}
+	// args[2] must be a real path that does NOT equal "-" (the stdin sigil
+	// that caused the broken-pager bug).
+	if args[2] == "-" {
+		t.Fatalf("regression: PageMarkdown passed '-' to glow (content on stdin), expected temp file path; args: %v", args)
+	}
+	if !strings.HasSuffix(args[2], ".md") {
+		t.Errorf("expected last arg to be a .md temp file path, got %q", args[2])
+	}
+
+	// Stdin to glow must NOT carry the rendered content (it would otherwise
+	// be propagated to the pager, breaking it). The closed pipe means cat
+	// reads zero bytes.
+	if data, err := os.ReadFile(stdinFile); err == nil {
+		if strings.Contains(string(data), "heading") || strings.Contains(string(data), "body text") {
+			t.Errorf("regression: stdin to glow contained content %q — pager would be broken", string(data))
+		}
+	}
+}
+
+// TestPageMarkdown_GlowUnavailableFallback verifies the plain-text fallback
+// path when glow isn't on PATH (no panic, no error returned).
+func TestPageMarkdown_GlowUnavailableFallback(t *testing.T) {
+	origPath := os.Getenv("PATH")
+	t.Cleanup(func() { _ = os.Setenv("PATH", origPath) })
+	if err := os.Setenv("PATH", ""); err != nil {
+		t.Fatalf("setenv PATH: %v", err)
+	}
+	glowCache = cachedPath{}
+	t.Cleanup(func() { glowCache = cachedPath{} })
+
+	if err := PageMarkdown("# hello\n"); err != nil {
+		t.Errorf("expected nil error in fallback path, got %v", err)
+	}
+}
+
 func TestFormatTaskAsMarkdown(t *testing.T) { //nolint:gocyclo
 	now := time.Now()
 

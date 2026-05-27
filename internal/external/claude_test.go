@@ -1,11 +1,53 @@
 package external
 
 import (
+	"context"
+	"errors"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/sglavoie/tt/internal/models"
 )
+
+// TestClaudeAsk_CanceledContextReturnsCtxErr verifies that when the caller
+// cancels the context, ClaudeAsk surfaces ctx.Err() (context.Canceled)
+// instead of an opaque "claude exited with code -1: signal: killed" error
+// from cmd.Output(). Callers rely on errors.Is(err, context.Canceled) to
+// distinguish user-driven cancellation from a real claude failure.
+func TestClaudeAsk_CanceledContextReturnsCtxErr(t *testing.T) {
+	// Stage a fake claude that just sleeps so we can kill it via context.
+	dir := t.TempDir()
+	fakeClaude := filepath.Join(dir, "claude")
+	script := "#!/bin/sh\nsleep 5\n"
+	if err := os.WriteFile(fakeClaude, []byte(script), 0o755); err != nil {
+		t.Fatalf("write fake claude: %v", err)
+	}
+
+	origPath := os.Getenv("PATH")
+	t.Cleanup(func() { _ = os.Setenv("PATH", origPath) })
+	if err := os.Setenv("PATH", dir); err != nil {
+		t.Fatalf("setenv PATH: %v", err)
+	}
+	claudeCache = cachedPath{}
+	t.Cleanup(func() { claudeCache = cachedPath{} })
+
+	ctx, cancel := context.WithCancel(context.Background())
+	// Cancel before invocation so the child is killed almost immediately.
+	cancel()
+
+	_, err := ClaudeAsk(ctx, "hi", "")
+	if err == nil {
+		t.Fatal("expected error from canceled context, got nil")
+	}
+	if !errors.Is(err, context.Canceled) {
+		t.Errorf("expected errors.Is(err, context.Canceled), got %v", err)
+	}
+	if strings.Contains(err.Error(), "claude exited with code") {
+		t.Errorf("regression: surfaced misleading exit-code error for cancellation: %v", err)
+	}
+}
 
 func TestExtractTTCommands_FencedBlock(t *testing.T) {
 	response := "Sure, run these:\n\n```\ntt task add \"Hello\"\ntt task start 1\n```\n"

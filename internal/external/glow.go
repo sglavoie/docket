@@ -201,11 +201,23 @@ func PageMarkdown(content string) error {
 		return nil
 	}
 
+	// Write content to a temp file rather than piping via stdin. With `-p`
+	// glow spawns a pager (typically `less`) that needs a real TTY on stdin
+	// to read keypresses; piping content through stdin would feed that pipe
+	// to the pager, leaving it with EOF and no way to scroll/quit.
+	tmpPath, tmpErr := CreateTempFileWithContent(content, "tt-page-", ".md")
+	if tmpErr != nil {
+		logging.Warn("failed to stage glow pager input, falling back to plain text: %v", tmpErr)
+		fmt.Println(content)
+		return nil
+	}
+	defer func() { _ = os.Remove(tmpPath) }()
+
 	ctx, cancel := context.WithTimeout(context.Background(), glowTimeout)
 	defer cancel()
 
-	cmd := exec.CommandContext(ctx, "glow", "-p", "-")
-	cmd.Stdin = strings.NewReader(content)
+	cmd := exec.CommandContext(ctx, "glow", "-p", "--", tmpPath)
+	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 
