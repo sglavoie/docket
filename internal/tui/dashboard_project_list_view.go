@@ -357,7 +357,7 @@ func (m *DashboardModel) projectStatusWidth(p *models.Project, dueSoonDays int) 
 
 	addPart(2, overdue)
 	addPart(2, dueSoon)
-	addPart(1, blocked)
+	addPart(2, blocked)
 	addPart(2, blockerCount)
 	addPart(2, completedCount)
 	return width
