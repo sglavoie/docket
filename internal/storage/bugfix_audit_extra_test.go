@@ -51,3 +51,53 @@ func TestSplitFrontmatter_MissingClosingDelimiterErrors(t *testing.T) {
 		t.Error("expected error for missing closing delimiter, got nil")
 	}
 }
+
+// TestSplitFrontmatter_EmptyFrontmatterParses guards against a regression where
+// a user-edited note with an empty YAML frontmatter (the closing "---" appears
+// on the line immediately after the opening "---", with no keys in between) is
+// rejected with "missing closing frontmatter delimiter". The earlier scan
+// began with strings.TrimLeft(rest, "\r\n") which silently consumed the
+// newline directly preceding the closing "---", causing the lookahead for
+// "\n---" to overshoot and miss the real delimiter. The body must survive
+// intact, including the case where the body itself is empty.
+func TestSplitFrontmatter_EmptyFrontmatterParses(t *testing.T) {
+	cases := []struct {
+		name     string
+		input    string
+		wantFM   string
+		wantBody string
+	}{
+		{
+			name:     "empty fm with body",
+			input:    "---\n---\nreal body\n",
+			wantFM:   "",
+			wantBody: "real body",
+		},
+		{
+			name:     "empty fm without body",
+			input:    "---\n---\n",
+			wantFM:   "",
+			wantBody: "",
+		},
+		{
+			name:     "blank-line-only fm",
+			input:    "---\n\n---\nbody after blank-fm\n",
+			wantFM:   "",
+			wantBody: "body after blank-fm",
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			fm, body, err := splitFrontmatter(tc.input)
+			if err != nil {
+				t.Fatalf("splitFrontmatter: %v", err)
+			}
+			if fm != tc.wantFM {
+				t.Errorf("fm = %q, want %q", fm, tc.wantFM)
+			}
+			if body != tc.wantBody {
+				t.Errorf("body = %q, want %q", body, tc.wantBody)
+			}
+		})
+	}
+}

@@ -383,8 +383,27 @@ func splitFrontmatter(content string) (frontmatter string, body string, err erro
 		return "", content, fmt.Errorf("missing frontmatter delimiter")
 	}
 
-	rest := content[3:] // skip opening ---
-	rest = strings.TrimLeft(rest, "\r\n")
+	// Consume exactly one newline (LF or CRLF) after the opening "---" so the
+	// closing delimiter on the very next line — i.e. an empty frontmatter such
+	// as "---\n---\n…" — is still recognized. Previously this used
+	// strings.TrimLeft(rest, "\r\n") which greedily ate every leading newline,
+	// pulling the closing "---" up to position 0 of rest and causing the
+	// subsequent "\n---" lookahead to miss it and report "missing closing
+	// frontmatter delimiter".
+	rest := content[3:]
+	rest = strings.TrimPrefix(rest, "\r")
+	rest = strings.TrimPrefix(rest, "\n")
+
+	// Special case: empty frontmatter — rest now starts with "---" because the
+	// closing delimiter was on the immediately-following line. Without this
+	// fast path the lookahead below would search for "\n---" and miss it.
+	if strings.HasPrefix(rest, "---") {
+		after := rest[3:]
+		if len(after) == 0 || after[0] == '\n' || after[0] == '\r' {
+			body = strings.TrimLeft(after, "\r\n")
+			return "", body, nil
+		}
+	}
 
 	// Find a "\n---" sequence that is followed by either a newline, CR, or EOF
 	// (a real closing delimiter alone on its line, not the prefix of "----").
