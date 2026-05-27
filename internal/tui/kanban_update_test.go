@@ -344,8 +344,8 @@ func TestAdjustHorizontalScroll_ClipsToActive(t *testing.T) {
 	m.width = 100
 	m.activeCol = 4
 	m.adjustHorizontalScroll()
-	// With width=100 and minColWidth=20: maxVisible = (100+1)/21 = 4
-	// active=4, offset must make col 4 visible (offset ≥ 1)
+	// With width=100 and minColWidth=25: maxVisible = (100+1)/26 = 3
+	// active=4, offset must make col 4 visible (offset ≥ 2)
 	if m.colScrollOff > m.activeCol {
 		t.Errorf("scroll offset %d should not exceed activeCol %d", m.colScrollOff, m.activeCol)
 	}

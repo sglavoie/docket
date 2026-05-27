@@ -43,9 +43,10 @@ func (m *KanbanModel) handleKanbanKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) 
 // ─── Scroll/cursor helpers ────────────────────────────────────────────────────
 
 // visibleBodyRows returns the number of card rows the column body can display.
-// Mirrors the fixedOverhead constant in kanbanRender.
+// Mirrors the fixedOverhead constant in kanbanRender:
+// title(1) + blank(1) + header(1) + divider(1) + footer(2) = 6 lines.
 func (m *KanbanModel) visibleBodyRows() int {
-	const fixedOverhead = 4
+	const fixedOverhead = 6
 	rows := m.height - fixedOverhead
 	if m.detailPaneVisible {
 		rows -= 1 + m.detailPaneHeight()

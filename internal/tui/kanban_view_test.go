@@ -75,8 +75,8 @@ func TestKanbanRender_ContainsTaskTitle(t *testing.T) {
 // ── overflow indicator ────────────────────────────────────────────────────────
 
 func TestKanbanRender_OverflowIndicator(t *testing.T) {
-	// height=10: fixedOverhead=4 → bodyRows=6
-	// 10 tasks in column → first 5 visible, overflow shows ...+5 more
+	// height=10: fixedOverhead=6 → bodyRows=4
+	// 10 tasks in column → first 3 visible, overflow shows ...+N more
 	cols := []KanbanColumn{makeColN("inbox", 10)}
 	m := newRenderKanban(80, 10, cols)
 	got := kanbanRender(m)
@@ -98,7 +98,7 @@ func TestKanbanRender_NoOverflow_WhenAllFit(t *testing.T) {
 // ── horizontal scroll indicators ─────────────────────────────────────────────
 
 func TestKanbanRender_RightScrollHint_WhenColumnsExceedWidth(t *testing.T) {
-	// width=50: maxVisible = (50+1)/21 = 2. With 5 columns, right side hidden.
+	// width=50: maxVisible = (50+1)/26 = 1. With 5 columns, right side hidden.
 	cols := make([]KanbanColumn, 5)
 	for i := range cols {
 		cols[i] = makeColN("col", 1)
@@ -177,7 +177,7 @@ func TestKanbanRender_DetailPane_VisibleWhenEnabled(t *testing.T) {
 // ── minimal height (bodyRows clamped to 1) ──────────────────────────────────
 
 func TestKanbanRender_MinimalHeight_NoPanic(t *testing.T) {
-	// height=5: fixedOverhead=4 → bodyRows=1 (clamped minimum).
+	// height=5: fixedOverhead=6 → bodyRows clamped to 1 (minimum).
 	// Should render without panicking and still show a card row.
 	cols := []KanbanColumn{makeColN("inbox", 3)}
 	m := newRenderKanban(80, 5, cols)
@@ -191,7 +191,7 @@ func TestKanbanRender_MinimalHeight_NoPanic(t *testing.T) {
 }
 
 func TestKanbanRender_TinyHeight_BelowOverhead(t *testing.T) {
-	// height=3: below fixedOverhead(4) → bodyRows clamped to 1.
+	// height=3: below fixedOverhead(6) → bodyRows clamped to 1.
 	// Must not panic.
 	cols := []KanbanColumn{makeColN("inbox", 5)}
 	m := newRenderKanban(80, 3, cols)
@@ -212,5 +212,72 @@ func TestKanbanRender_LongTitleTruncated(t *testing.T) {
 	// The full 200-char title should not appear verbatim
 	if strings.Contains(got, longTitle) {
 		t.Error("long title should be truncated")
+	}
+}
+
+// TestKanbanVisibleBodyRows_MatchesRender_Overhead guards against the
+// fixedOverhead drift between visibleBodyRows() (used by scroll/clamp logic)
+// and kanbanRender() (the actual render budget). When the two diverge the
+// cursor can fall outside the visible card area without scroll adjustment.
+//
+// Render computes: bodyRows = height - 6 (title+blank+header+divider+2 footer).
+// visibleBodyRows() must agree.
+func TestKanbanVisibleBodyRows_MatchesRender_Overhead(t *testing.T) {
+	cols := []KanbanColumn{makeColN("inbox", 1)}
+	m := newRenderKanban(80, 24, cols)
+	// height=24 → expected bodyRows = 24-6 = 18.
+	got := m.visibleBodyRows()
+	want := 18
+	if got != want {
+		t.Errorf("visibleBodyRows() = %d, want %d (must equal render bodyRows = height - fixedOverhead(6))", got, want)
+	}
+}
+
+// TestKanbanClampScrollToVisible_KeepsCursorInRenderedArea verifies that after
+// clampScrollToVisible runs, the cursor actually falls within the rows the
+// renderer will paint (not past the overflow indicator). This was broken when
+// visibleBodyRows() reported 2 more rows than the renderer used.
+func TestKanbanClampScrollToVisible_KeepsCursorInRenderedArea(t *testing.T) {
+	cols := []KanbanColumn{makeColN("inbox", 7)}
+	m := newRenderKanban(80, 10, cols) // bodyRows in render = 10-6 = 4
+	m.columns[0].Cursor = 6            // last task
+	m.clampScrollToVisible(0)
+
+	// In the renderer, bodyRows=4 and the last row is reserved for the
+	// "...+N more" indicator when content overflows. So at most 3 actual
+	// card rows are visible, starting at ScrollOffset.
+	const renderBodyRows = 4
+	scrollOff := m.columns[0].ScrollOffset
+	cursor := m.columns[0].Cursor
+	// Overflow fires when len(tasks)-ScrollOffset > bodyRows, i.e. > 4.
+	hasOverflow := len(m.columns[0].Tasks)-scrollOff > renderBodyRows
+	visibleCards := renderBodyRows
+	if hasOverflow {
+		visibleCards = renderBodyRows - 1 // reserve last row for overflow indicator
+	}
+	if cursor < scrollOff || cursor >= scrollOff+visibleCards {
+		t.Errorf("cursor %d not in rendered range [%d, %d) (visibleCards=%d, overflow=%v)",
+			cursor, scrollOff, scrollOff+visibleCards, visibleCards, hasOverflow)
+	}
+}
+
+// TestKanbanRender_NarrowMultiCol_HintAtTrueBoundary verifies the position
+// indicator vs. cycle-mode hint switches at the width where the *actual*
+// renderer drops to one visible column. The narrow-hint width math previously
+// used minColWidth=20 (21 = 20+1) while the column layout uses minColWidth=25;
+// at width=46 the renderer fits only one column (since (46+1)/26 = 1) but the
+// hint logic believed two columns were visible and showed "cycle mode".
+func TestKanbanRender_NarrowMultiCol_HintAtTrueBoundary(t *testing.T) {
+	// At width=46 the renderer's maxVisible = (46+1)/(25+1) = 1.
+	// With 3 columns total, the user sees only the active column, so the hint
+	// must be the "col X/Y h/l" position indicator, not "cycle mode".
+	cols := []KanbanColumn{makeColN("a", 1), makeColN("b", 1), makeColN("c", 1)}
+	m := newRenderKanban(46, 24, cols)
+	got := kanbanRender(m)
+	if strings.Contains(got, "cycle mode") {
+		t.Errorf("width=46 with 3 cols: expected position indicator (single col visible), got cycle-mode hint:\n%s", got)
+	}
+	if !strings.Contains(got, "col ") {
+		t.Errorf("width=46 with 3 cols: expected 'col N/M' position indicator in output:\n%s", got)
 	}
 }

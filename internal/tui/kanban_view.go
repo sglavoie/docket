@@ -60,7 +60,10 @@ func kanbanRender(m *KanbanModel) string {
 	// instead. Suppress when the terminal is narrow enough that the hint
 	// becomes the column-position indicator — the user's screen is too tight
 	// for a passive counter to earn its space.
-	narrowKanban := (m.width+1)/21 < 1 || ((m.width+1)/21 == 1 && len(m.columns) > 1)
+	// hintColUnit = minColWidth(25) + 1 (separator); kept in sync with the
+	// column layout section below.
+	const hintColUnit = 26
+	narrowKanban := (m.width+1)/hintColUnit < 1 || ((m.width+1)/hintColUnit == 1 && len(m.columns) > 1)
 	if !narrowKanban {
 		if counter := FormatOpenLoops(m.openLoops); counter != "" {
 			subtitle += " · " + counter
@@ -69,8 +72,7 @@ func kanbanRender(m *KanbanModel) string {
 	title := renderFullscreenTitle(modeIcon+" "+modeName, subtitle, m.AccentColor())
 	// When terminal is too narrow for more than one column, show a position
 	// indicator instead of the mode-cycling hint so the user can orient themselves.
-	// minColWidth=20 matches the constant defined in the column layout section below.
-	maxVisForHint := max((m.width+1)/21, 1)
+	maxVisForHint := max((m.width+1)/hintColUnit, 1)
 	var hint string
 	if maxVisForHint == 1 && len(m.columns) > 1 {
 		hint = MutedStyle.Render(fmt.Sprintf("col %d/%d  h/l: prev/next", m.activeCol+1, len(m.columns)))
