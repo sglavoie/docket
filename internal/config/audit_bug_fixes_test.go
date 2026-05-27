@@ -241,6 +241,113 @@ func TestConfigManager_LoadClampedValueRoundTrips(t *testing.T) {
 	}
 }
 
+// TestProjectAccessors_NilEntriesAreSafe guarantees that every public project
+// accessor/mutator on Config tolerates a stray nil project entry without
+// panicking. Load() filters nil entries on disk, but in-memory mutations
+// (tests, future code paths) can still introduce them — surviving callers
+// must treat the nil as "skip" rather than crashing the process.
+func TestProjectAccessors_NilEntriesAreSafe(t *testing.T) {
+	cases := []struct {
+		name string
+		fn   func(c *Config)
+	}{
+		{"RemoveProject existing", func(c *Config) { c.RemoveProject("p1") }},
+		{"RemoveProject empty id", func(c *Config) { c.RemoveProject("") }},
+		{"GetSandboxProject", func(c *Config) { _ = c.GetSandboxProject() }},
+		{"GetActionInboxProject", func(c *Config) { _ = c.GetActionInboxProject() }},
+		{"EnsureSandboxProject", func(c *Config) { _ = c.EnsureSandboxProject() }},
+		{"EnsureActionInboxProject", func(c *Config) { _, _ = c.EnsureActionInboxProject() }},
+		{"GetActiveProjects", func(c *Config) { _ = c.GetActiveProjects() }},
+		{"GetArchivedProjects", func(c *Config) { _ = c.GetArchivedProjects() }},
+		{"GetAllLoadableProjects", func(c *Config) { _ = c.GetAllLoadableProjects() }},
+		{"GetAllContexts", func(c *Config) { _ = c.GetAllContexts() }},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			cfg := NewConfig()
+			cfg.Projects = []*models.Project{
+				nil,
+				{ID: "p1", Slug: "alpha", Name: "Alpha", Context: "work"},
+				nil,
+			}
+			defer func() {
+				if r := recover(); r != nil {
+					t.Fatalf("%s panicked on nil project entry: %v", tc.name, r)
+				}
+			}()
+			tc.fn(cfg)
+		})
+	}
+}
+
+// TestRemoveProject_NilEntriesDoNotBlockRemoval guarantees RemoveProject still
+// finds and removes a real project even when nil placeholders sit before it
+// in the slice.
+func TestRemoveProject_NilEntriesDoNotBlockRemoval(t *testing.T) {
+	cfg := NewConfig()
+	cfg.Projects = []*models.Project{
+		nil,
+		{ID: "p1", Slug: "alpha", Name: "Alpha"},
+	}
+	if !cfg.RemoveProject("p1") {
+		t.Fatal("RemoveProject should return true for p1 past nil entry")
+	}
+	// The nil entry should still be present (RemoveProject only drops the match).
+	if len(cfg.Projects) != 1 || cfg.Projects[0] != nil {
+		t.Errorf("expected single surviving nil entry, got %+v", cfg.Projects)
+	}
+}
+
+// TestEnsureSandboxProject_BackToBackUniqueIDs guarantees that creating,
+// deleting, and recreating a sandbox project within the same wall-clock
+// second yields a distinct project ID. The old timestamp-only format
+// produced colliding IDs.
+func TestEnsureSandboxProject_BackToBackUniqueIDs(t *testing.T) {
+	cfg := NewConfig()
+	if !cfg.EnsureSandboxProject() {
+		t.Fatal("first EnsureSandboxProject should create a sandbox")
+	}
+	first := cfg.GetSandboxProject()
+	if first == nil {
+		t.Fatal("expected sandbox project after first ensure")
+	}
+	id1 := first.ID
+	if !cfg.RemoveProject(id1) {
+		t.Fatalf("RemoveProject(%q) returned false", id1)
+	}
+	if !cfg.EnsureSandboxProject() {
+		t.Fatal("second EnsureSandboxProject should create a fresh sandbox")
+	}
+	second := cfg.GetSandboxProject()
+	if second == nil {
+		t.Fatal("expected sandbox project after second ensure")
+	}
+	if second.ID == id1 {
+		t.Errorf("expected distinct sandbox IDs across back-to-back recreations, got %q twice", id1)
+	}
+}
+
+// TestEnsureActionInboxProject_BackToBackUniqueIDs mirrors the sandbox test
+// for the action-inbox internal project.
+func TestEnsureActionInboxProject_BackToBackUniqueIDs(t *testing.T) {
+	cfg := NewConfig()
+	first, created := cfg.EnsureActionInboxProject()
+	if !created || first == nil {
+		t.Fatal("first EnsureActionInboxProject should create the project")
+	}
+	id1 := first.ID
+	if !cfg.RemoveProject(id1) {
+		t.Fatalf("RemoveProject(%q) returned false", id1)
+	}
+	second, created2 := cfg.EnsureActionInboxProject()
+	if !created2 || second == nil {
+		t.Fatal("second EnsureActionInboxProject should create a fresh project")
+	}
+	if second.ID == id1 {
+		t.Errorf("expected distinct action-inbox IDs across back-to-back recreations, got %q twice", id1)
+	}
+}
+
 // TestGetProject_NilEntryAndEmptyQueryAreSafe guarantees that GetProject does
 // not panic when called with an empty key or when a stray nil project entry
 // is present in c.Projects (e.g. an in-memory mutation before Load scrubs).

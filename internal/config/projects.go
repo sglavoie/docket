@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/sglavoie/tt/internal/models"
 )
 
@@ -43,9 +44,15 @@ func (c *Config) AddProject(project *models.Project) {
 // RemoveProject removes a project by ID and cleans up all config references
 // (scoring profiles, view states, focus queue, recent visits, cycle lists, etc.).
 func (c *Config) RemoveProject(id string) bool {
+	if id == "" {
+		return false
+	}
 	found := false
 	var removedSlug string
 	for i, p := range c.Projects {
+		if p == nil {
+			continue
+		}
 		if p.ID == id {
 			removedSlug = p.Slug
 			c.Projects = append(c.Projects[:i], c.Projects[i+1:]...)
@@ -173,6 +180,9 @@ func sortProjectsWithPinnedFirst(projects []*models.Project) {
 // GetSandboxProject returns the sandbox project, or nil if none exists.
 func (c *Config) GetSandboxProject() *models.Project {
 	for _, p := range c.Projects {
+		if p == nil {
+			continue
+		}
 		if p.Sandbox {
 			return p
 		}
@@ -184,13 +194,18 @@ func (c *Config) GetSandboxProject() *models.Project {
 // Returns true if a new sandbox project was created.
 func (c *Config) EnsureSandboxProject() bool {
 	for _, p := range c.Projects {
+		if p == nil {
+			continue
+		}
 		if p.Sandbox {
 			return false
 		}
 	}
 	now := time.Now()
+	// Append a short uuid suffix so back-to-back create/delete cycles within
+	// the same wall-clock second don't collide on the timestamp-only ID.
 	project := &models.Project{
-		ID:            "sandbox-" + now.Format("20060102150405"),
+		ID:            "sandbox-" + now.Format("20060102150405") + "-" + uuid.New().String()[:8],
 		Slug:          "_sandbox",
 		Name:          "Sandbox",
 		Context:       "personal",
@@ -212,6 +227,9 @@ func (c *Config) EnsureSandboxProject() bool {
 func (c *Config) EnsureActionInboxProject() (*models.Project, bool) {
 	if c.ActionInboxProjectID != "" {
 		for _, p := range c.Projects {
+			if p == nil {
+				continue
+			}
 			if p.ID == c.ActionInboxProjectID {
 				return p, false
 			}
@@ -219,6 +237,9 @@ func (c *Config) EnsureActionInboxProject() (*models.Project, bool) {
 	}
 
 	for _, p := range c.Projects {
+		if p == nil {
+			continue
+		}
 		if p.Internal && p.Slug == "action-inbox" {
 			c.ActionInboxProjectID = p.ID
 			return p, false
@@ -226,8 +247,10 @@ func (c *Config) EnsureActionInboxProject() (*models.Project, bool) {
 	}
 
 	now := time.Now()
+	// Append a short uuid suffix so back-to-back create/delete cycles within
+	// the same wall-clock second don't collide on the timestamp-only ID.
 	project := &models.Project{
-		ID:            "action-inbox-" + now.Format("20060102150405"),
+		ID:            "action-inbox-" + now.Format("20060102150405") + "-" + uuid.New().String()[:8],
 		Slug:          "action-inbox",
 		Name:          "Action Inbox",
 		Context:       "personal",
@@ -251,6 +274,9 @@ func (c *Config) GetActionInboxProject() *models.Project {
 		return nil
 	}
 	for _, p := range c.Projects {
+		if p == nil {
+			continue
+		}
 		if p.ID == c.ActionInboxProjectID {
 			return p
 		}
@@ -262,6 +288,9 @@ func (c *Config) GetActionInboxProject() *models.Project {
 func (c *Config) GetActiveProjects() []*models.Project {
 	var active []*models.Project
 	for _, p := range c.Projects {
+		if p == nil {
+			continue
+		}
 		if !p.Archived && !p.Sandbox && !p.Internal {
 			active = append(active, p)
 		}
@@ -274,6 +303,9 @@ func (c *Config) GetActiveProjects() []*models.Project {
 func (c *Config) GetAllLoadableProjects() []*models.Project {
 	var projects []*models.Project
 	for _, p := range c.Projects {
+		if p == nil {
+			continue
+		}
 		if !p.Archived {
 			projects = append(projects, p)
 		}
@@ -286,6 +318,9 @@ func (c *Config) GetAllLoadableProjects() []*models.Project {
 func (c *Config) GetArchivedProjects() []*models.Project {
 	var archived []*models.Project
 	for _, p := range c.Projects {
+		if p == nil {
+			continue
+		}
 		if p.Archived && !p.Sandbox {
 			archived = append(archived, p)
 		}
@@ -424,6 +459,9 @@ func (c *Config) PruneOrphanedProjectRefs() bool {
 func (c *Config) GetAllContexts() []string {
 	contextSet := make(map[string]bool)
 	for _, p := range c.Projects {
+		if p == nil {
+			continue
+		}
 		if p.Context != "" {
 			contextSet[p.Context] = true
 		}
