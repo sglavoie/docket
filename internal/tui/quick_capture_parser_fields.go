@@ -246,14 +246,15 @@ func (p *quickCaptureParser) parseSection() bool {
 }
 
 func (p *quickCaptureParser) parseSectionWith(re *regexp.Regexp, alias string) bool {
-	match := re.FindStringSubmatch(p.input)
-	if len(match) <= 1 {
+	loc := re.FindStringSubmatchIndex(p.input)
+	if loc == nil {
 		return true
 	}
 
-	section, ok := resolveSection(match[1], p.project)
+	token := p.input[loc[2]:loc[3]]
+	section, ok := resolveSection(token, p.project)
 	if !ok {
-		if p.failf("section not found: '%s' (use section name or /inbox /next /someday)", match[1]) {
+		if p.failf("section not found: '%s' (use section name or /inbox /next /someday)", token) {
 			return false
 		}
 	} else {
@@ -262,7 +263,7 @@ func (p *quickCaptureParser) parseSectionWith(re *regexp.Regexp, alias string) b
 			p.addAliasUsed(alias)
 		}
 	}
-	p.input = re.ReplaceAllString(p.input, " ")
+	p.input = p.input[:loc[0]] + " " + p.input[loc[1]:]
 	return true
 }
 

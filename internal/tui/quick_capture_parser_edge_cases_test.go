@@ -77,5 +77,12 @@ func TestParseQuickCaptureEmbeddedTokenLiterals(t *testing.T) {
 			wantPriority: 3,
 			wantParentID: nil,
 		},
+		{
+			name:         "second section sigil preserved in title not silently dropped",
+			input:        "Fix bug /Active /Backlog",
+			wantTitle:    "Fix bug /Backlog",
+			wantPriority: 3,
+			wantSection:  "Active",
+		},
 	})
 }
