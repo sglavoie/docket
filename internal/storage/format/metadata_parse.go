@@ -112,9 +112,11 @@ func looksLikeCodeRefPath(prefix string) bool {
 }
 
 // parseAttachments parses a semicolon-delimited attachment string into Attachment structs.
+// Uses splitAttachmentEntries so unescaped `;` separates entries while `\;` is
+// treated as a literal semicolon inside a single filename or path.
 func parseAttachments(value string, warnings *[]ParseWarning) []models.Attachment {
 	var result []models.Attachment
-	for att := range strings.SplitSeq(value, ";") {
+	for _, att := range splitAttachmentEntries(value) {
 		att = strings.TrimSpace(att)
 		if att == "" {
 			continue
@@ -159,7 +161,8 @@ func parseAttachments(value string, warnings *[]ParseWarning) []models.Attachmen
 		}
 
 		if after, ok := strings.CutPrefix(att, "url:"); ok {
-			filename := after
+			filename := unescapeAttachmentField(after)
+			originalPath = unescapeAttachmentField(originalPath)
 			if originalPath == "" {
 				originalPath = filename
 			}
@@ -170,7 +173,14 @@ func parseAttachments(value string, warnings *[]ParseWarning) []models.Attachmen
 				AddedAt:      addedAt,
 			})
 		} else if after, ok := strings.CutPrefix(att, "code:"); ok {
-			filename := after
+			filename := unescapeAttachmentField(after)
+			// Extract the trailing ":N" line-number suffix from the still-escaped
+			// originalPath BEFORE unescaping, because the writer appends ":%d"
+			// after the escaped path (so any `\;` in the path cannot collide
+			// with the line-number colon, but the LastIndex must operate on the
+			// pre-unescape string so we don't accidentally see a colon revealed
+			// by unescaping `\:` — though our scheme only escapes `\` and `;`).
+			//
 			// Accept colonIdx >= 0 so a sentinel ":N" (emitted when the
 			// writer had no OriginalPath but a non-zero LineNumber) still
 			// recovers the line number.
@@ -200,6 +210,7 @@ func parseAttachments(value string, warnings *[]ParseWarning) []models.Attachmen
 					}
 				}
 			}
+			originalPath = unescapeAttachmentField(originalPath)
 			result = append(result, models.Attachment{
 				Filename:     filename,
 				IsURL:        false,
@@ -215,6 +226,8 @@ func parseAttachments(value string, warnings *[]ParseWarning) []models.Attachmen
 				// attachments whose original filename starts with url:/code:/file:.
 				filename = after
 			}
+			filename = unescapeAttachmentField(filename)
+			originalPath = unescapeAttachmentField(originalPath)
 			result = append(result, models.Attachment{
 				Filename:     filename,
 				IsURL:        false,

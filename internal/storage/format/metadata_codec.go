@@ -196,24 +196,26 @@ func writeAttachmentsMetadata(task *models.Task, parts *[]string) {
 
 	var attStrings []string
 	for _, att := range task.Attachments {
+		filename := escapeAttachmentField(att.Filename)
 		var attStr string
 		if att.IsURL {
-			attStr = "url:" + att.Filename
+			attStr = "url:" + filename
 		} else if att.IsCodeRef {
-			attStr = "code:" + att.Filename
+			attStr = "code:" + filename
 		} else if strings.HasPrefix(att.Filename, "url:") || strings.HasPrefix(att.Filename, "code:") || strings.HasPrefix(att.Filename, "file:") {
 			// Disambiguate a plain attachment whose filename collides with a
 			// type-prefix marker so the parser doesn't promote it to URL/code
 			// on the next load.
-			attStr = "file:" + att.Filename
+			attStr = "file:" + filename
 		} else {
-			attStr = att.Filename
+			attStr = filename
 		}
 		if att.OriginalPath != "" {
+			origEscaped := escapeAttachmentField(att.OriginalPath)
 			if att.IsCodeRef && att.LineNumber > 0 {
-				attStr += fmt.Sprintf("||%s:%d", att.OriginalPath, att.LineNumber)
+				attStr += fmt.Sprintf("||%s:%d", origEscaped, att.LineNumber)
 			} else {
-				attStr += "||" + att.OriginalPath
+				attStr += "||" + origEscaped
 			}
 		} else if att.IsCodeRef && att.LineNumber > 0 {
 			// Preserve the line number even when OriginalPath is empty.
@@ -227,6 +229,70 @@ func writeAttachmentsMetadata(task *models.Task, parts *[]string) {
 	}
 
 	appendMetadataPart(parts, "attachments", strings.Join(attStrings, ";"))
+}
+
+// escapeAttachmentField escapes backslash and semicolon in attachment fields
+// (filename, OriginalPath, URL) so a literal `;` inside a URL query string or
+// filename does not split the attachment into two on round-trip. Backslash is
+// escaped first so the unescape pass can distinguish a literal `\` from the
+// escape prefix.
+func escapeAttachmentField(s string) string {
+	if !strings.ContainsAny(s, `\;`) {
+		return s
+	}
+	s = strings.ReplaceAll(s, `\`, `\\`)
+	s = strings.ReplaceAll(s, ";", `\;`)
+	return s
+}
+
+// unescapeAttachmentField reverses escapeAttachmentField byte-by-byte to avoid
+// the ambiguity that arises with chained ReplaceAll (`\\;` must become `\;`,
+// not `\` + unescaped `;`).
+func unescapeAttachmentField(s string) string {
+	if !strings.Contains(s, `\`) {
+		return s
+	}
+	var b strings.Builder
+	b.Grow(len(s))
+	for i := 0; i < len(s); i++ {
+		if s[i] == '\\' && i+1 < len(s) {
+			switch s[i+1] {
+			case '\\':
+				b.WriteByte('\\')
+				i++
+				continue
+			case ';':
+				b.WriteByte(';')
+				i++
+				continue
+			}
+		}
+		b.WriteByte(s[i])
+	}
+	return b.String()
+}
+
+// splitAttachmentEntries splits an attachments metadata value on unescaped
+// semicolons. Mirrors splitChecklistItems but yields trimmed, non-empty entries.
+func splitAttachmentEntries(s string) []string {
+	var entries []string
+	var current strings.Builder
+	for i := 0; i < len(s); i++ {
+		if s[i] == '\\' && i+1 < len(s) {
+			current.WriteByte(s[i])
+			i++
+			current.WriteByte(s[i])
+			continue
+		}
+		if s[i] == ';' {
+			entries = append(entries, current.String())
+			current.Reset()
+			continue
+		}
+		current.WriteByte(s[i])
+	}
+	entries = append(entries, current.String())
+	return entries
 }
 
 func writeChecklistMetadata(task *models.Task, parts *[]string) {
