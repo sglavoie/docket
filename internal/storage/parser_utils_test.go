@@ -54,6 +54,34 @@ func TestGetRecentTasks_Empty(t *testing.T) {
 	}
 }
 
+func TestGetRecentTasks_NonPositiveLimit(t *testing.T) {
+	tasks := []*models.Task{{ID: "1", UpdatedAt: time.Now()}}
+
+	for _, limit := range []int{0, -1} {
+		recent := GetRecentTasks(tasks, limit)
+		if recent != nil {
+			t.Errorf("limit %d: expected nil, got %v", limit, recent)
+		}
+	}
+}
+
+func TestGetRecentTasks_IgnoresNilTasks(t *testing.T) {
+	now := time.Now()
+	tasks := []*models.Task{
+		nil,
+		{ID: "1", UpdatedAt: now.Add(-time.Hour)},
+		{ID: "2", UpdatedAt: now},
+	}
+
+	recent := GetRecentTasks(tasks, 3)
+	if len(recent) != 2 {
+		t.Fatalf("expected 2 non-nil tasks, got %d", len(recent))
+	}
+	if recent[0].ID != "2" || recent[1].ID != "1" {
+		t.Fatalf("unexpected order: got IDs %q, %q", recent[0].ID, recent[1].ID)
+	}
+}
+
 func TestFormatRelativeTime(t *testing.T) {
 	now := time.Now()
 

@@ -209,6 +209,9 @@ func renderBlockersMarkdown(blockers []*models.Blocker) string {
 // FindBlockerByPrefix finds a blocker by ID prefix (for CLI convenience).
 func FindBlockerByPrefix(blockers []*models.Blocker, prefix string) *models.Blocker {
 	prefix = strings.ToLower(prefix)
+	if prefix == "" {
+		return nil
+	}
 	for _, b := range blockers {
 		if strings.HasPrefix(strings.ToLower(b.ID), prefix) {
 			return b

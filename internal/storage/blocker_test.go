@@ -233,6 +233,11 @@ func TestFindBlockerByPrefix(t *testing.T) {
 	if found != nil {
 		t.Error("expected nil for non-matching prefix")
 	}
+
+	found = FindBlockerByPrefix(blockers, "")
+	if found != nil {
+		t.Error("expected nil for empty prefix")
+	}
 }
 
 func TestParseBlockersDescriptionWithH2Heading(t *testing.T) {

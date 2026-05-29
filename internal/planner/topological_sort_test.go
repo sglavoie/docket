@@ -136,6 +136,20 @@ func TestTopologicalCrossProjectDependency(t *testing.T) {
 	}
 }
 
+func TestTopologicalQualifiedRefDoesNotBleedToPlainID(t *testing.T) {
+	local := newTask("z")
+	dependent := withDep(newTask("b"), "missing-project:z")
+
+	order, err := TopologicalSort([]*models.Task{local, dependent})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	pos := taskPositions(order)
+	if pos["b"] > pos["z"] {
+		t.Errorf("qualified missing-project:z should not force local z before b, got %v", taskIDs(order))
+	}
+}
+
 // TestTopologicalCrossProjectChainResolved verifies that when cross-project
 // tasks ARE included in the slice (via CollectAllIncompleteTasks), ordering
 // is correct across the unified flat slice.

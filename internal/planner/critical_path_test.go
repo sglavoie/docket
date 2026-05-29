@@ -121,3 +121,17 @@ func TestCriticalPathWithEffort(t *testing.T) {
 		t.Errorf("both tasks should be on the critical path")
 	}
 }
+
+func TestCriticalPathQualifiedRefDoesNotBleedToPlainID(t *testing.T) {
+	local := newTaskWithDuration("z", 10)
+	dependent := withDep(newTaskWithDuration("b", 1), "missing-project:z")
+
+	cp := CriticalPath([]*models.Task{local, dependent})
+
+	if cp.Length != 10 {
+		t.Errorf("qualified missing-project:z should not extend path through local z, got length %f", cp.Length)
+	}
+	if cp.OnPath["b"] {
+		t.Errorf("b should not be on the critical path when its qualified dependency is external")
+	}
+}

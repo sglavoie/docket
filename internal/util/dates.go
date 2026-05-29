@@ -139,6 +139,10 @@ func ParseRelativeDate(input string) (time.Time, error) {
 	return ParseRelativeDateWithConfig(input, "sun")
 }
 
+func normalizeDateInput(input string) string {
+	return strings.Join(strings.Fields(strings.ToLower(strings.TrimSpace(input))), " ")
+}
+
 func parseExactDate(input string) (time.Time, bool) {
 	for _, layout := range []string{DateFormat, "01/02/2006", "02.01.2006"} {
 		if date, err := time.ParseInLocation(layout, input, time.Local); err == nil {
@@ -311,7 +315,7 @@ func parseNaturalMonthDay(input string, today time.Time) (time.Time, bool, error
 // ParseRelativeDate, but respects the weekEndDay setting for the eow token.
 // weekEndDay must be "fri", "sat", or "sun" (invalid values default to "sun").
 func ParseRelativeDateWithConfig(input, weekEndDay string) (time.Time, error) {
-	input = strings.ToLower(strings.TrimSpace(input))
+	input = normalizeDateInput(input)
 	today := StartOfDay(time.Now())
 
 	if date, ok := parseExactDate(input); ok {
@@ -499,7 +503,7 @@ func ParseRelativeDateWithTime(input, weekEndDay string) (time.Time, bool, error
 		return t, true, nil
 	}
 
-	input = strings.ToLower(trimmed)
+	input = normalizeDateInput(trimmed)
 	// Strip the preposition "at" between date and time tokens so natural
 	// phrases like "friday at 3pm" or "tomorrow at 9am" are accepted.
 	input = strings.ReplaceAll(input, " at ", " ")

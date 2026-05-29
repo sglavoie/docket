@@ -147,7 +147,7 @@ func (m *MockEditor) EditContent(content string, extension string) (string, erro
 // MockRepository implements storage.ProjectRepository for testing.
 type MockRepository struct {
 	Projects    map[string]*models.Project
-	LastSaved   *models.Project // Most recently saved project (shallow copy for assertions)
+	LastSaved   *models.Project // Most recently saved project copy for assertions
 	LoadError   error
 	SaveError   error
 	BackupError error
@@ -164,32 +164,13 @@ func (m *MockRepository) Load(project *models.Project) error {
 		return m.LoadError
 	}
 	if stored, ok := m.Projects[project.ID]; ok {
-		// Deep copy to avoid shared references
-		project.NextShortID = stored.NextShortID
-		project.Sections = append([]string{}, stored.Sections...)
-		project.SectionColors = make(map[string]string)
-		maps.Copy(project.SectionColors, stored.SectionColors)
-
-		// Deep copy tasks
-		project.Tasks = make([]*models.Task, len(stored.Tasks))
-		for i, task := range stored.Tasks {
-			taskCopy := *task
-			// Deep copy slices
-			if task.Tags != nil {
-				taskCopy.Tags = append([]string{}, task.Tags...)
-			}
-			if task.DependsOn != nil {
-				taskCopy.DependsOn = append([]string{}, task.DependsOn...)
-			}
-			if task.Comments != nil {
-				taskCopy.Comments = make([]*models.Comment, len(task.Comments))
-				for j, comment := range task.Comments {
-					commentCopy := *comment
-					taskCopy.Comments[j] = &commentCopy
-				}
-			}
-			project.Tasks[i] = &taskCopy
-		}
+		loaded := cloneProject(stored)
+		project.NextShortID = loaded.NextShortID
+		project.Sections = loaded.Sections
+		project.SectionColors = loaded.SectionColors
+		project.Tasks = loaded.Tasks
+		project.Warnings = loaded.Warnings
+		assignProjectPointers(project)
 	}
 	return nil
 }
@@ -198,41 +179,185 @@ func (m *MockRepository) Save(project *models.Project) error {
 	if m.SaveError != nil {
 		return m.SaveError
 	}
-	// Deep copy the project to avoid test interference
-	savedProject := &models.Project{
-		ID:            project.ID,
-		Name:          project.Name,
-		Path:          project.Path,
-		NextShortID:   project.NextShortID,
-		Sections:      append([]string{}, project.Sections...),
-		SectionColors: make(map[string]string),
-		Tasks:         make([]*models.Task, len(project.Tasks)),
-	}
-
-	// Deep copy tasks
-	for i, task := range project.Tasks {
-		taskCopy := *task // Copy the struct
-		// Deep copy slices and maps
-		if task.Tags != nil {
-			taskCopy.Tags = append([]string{}, task.Tags...)
-		}
-		if task.DependsOn != nil {
-			taskCopy.DependsOn = append([]string{}, task.DependsOn...)
-		}
-		if task.Comments != nil {
-			taskCopy.Comments = make([]*models.Comment, len(task.Comments))
-			for j, comment := range task.Comments {
-				commentCopy := *comment
-				taskCopy.Comments[j] = &commentCopy
-			}
-		}
-		savedProject.Tasks[i] = &taskCopy
-	}
-
-	maps.Copy(savedProject.SectionColors, project.SectionColors)
+	savedProject := cloneProject(project)
 	m.Projects[project.ID] = savedProject
 	m.LastSaved = savedProject
 	return nil
+}
+
+func cloneProject(project *models.Project) *models.Project {
+	if project == nil {
+		return nil
+	}
+
+	projectCopy := *project
+	projectCopy.ArchivedAt = clonePointer(project.ArchivedAt)
+	projectCopy.PinnedAt = clonePointer(project.PinnedAt)
+	projectCopy.Sections = append([]string{}, project.Sections...)
+	projectCopy.SectionColors = make(map[string]string)
+	maps.Copy(projectCopy.SectionColors, project.SectionColors)
+	projectCopy.Warnings = append([]string{}, project.Warnings...)
+
+	projectCopy.Tasks = make([]*models.Task, len(project.Tasks))
+	for i, task := range project.Tasks {
+		projectCopy.Tasks[i] = cloneTask(task)
+	}
+	rebuildTaskTreePointers(project.Tasks, projectCopy.Tasks)
+	assignProjectPointers(&projectCopy)
+	return &projectCopy
+}
+
+func assignProjectPointers(project *models.Project) {
+	if project == nil {
+		return
+	}
+	for _, task := range project.Tasks {
+		if task != nil {
+			task.Project = project
+		}
+	}
+}
+
+func rebuildTaskTreePointers(sourceTasks, tasks []*models.Task) {
+	taskMap := make(map[string]*models.Task, len(tasks))
+	for _, task := range tasks {
+		if task == nil {
+			continue
+		}
+		task.Children = []*models.Task{}
+		task.Parent = nil
+		task.Level = 0
+		taskMap[task.ID] = task
+	}
+
+	linked := make(map[string]map[string]bool, len(tasks))
+	linkParentChild := func(parent, child *models.Task) {
+		if parent == nil || child == nil {
+			return
+		}
+		if linked[parent.ID] == nil {
+			linked[parent.ID] = make(map[string]bool)
+		}
+		if linked[parent.ID][child.ID] {
+			return
+		}
+		linked[parent.ID][child.ID] = true
+		child.Parent = parent
+		parent.Children = append(parent.Children, child)
+	}
+
+	for _, task := range tasks {
+		if task == nil || task.ParentID == nil {
+			continue
+		}
+		parent, ok := taskMap[*task.ParentID]
+		if !ok {
+			continue
+		}
+		linkParentChild(parent, task)
+	}
+
+	sourceToClone := make(map[*models.Task]*models.Task, len(tasks))
+	for i, sourceTask := range sourceTasks {
+		if sourceTask == nil || i >= len(tasks) {
+			continue
+		}
+		sourceToClone[sourceTask] = tasks[i]
+	}
+	for _, sourceTask := range sourceTasks {
+		parent := sourceToClone[sourceTask]
+		if parent == nil {
+			continue
+		}
+		for _, sourceChild := range sourceTask.Children {
+			child := sourceToClone[sourceChild]
+			linkParentChild(parent, child)
+		}
+	}
+
+	visited := make(map[string]bool, len(tasks))
+	setLevels := func(task *models.Task, level int) {}
+	setLevels = func(task *models.Task, level int) {
+		if task == nil || visited[task.ID] {
+			return
+		}
+		visited[task.ID] = true
+		task.Level = level
+		for _, child := range task.Children {
+			setLevels(child, level+1)
+		}
+	}
+
+	for _, task := range tasks {
+		if task != nil && task.Parent == nil {
+			setLevels(task, 0)
+		}
+	}
+	for _, task := range tasks {
+		setLevels(task, 0)
+	}
+}
+
+func cloneTask(task *models.Task) *models.Task {
+	if task == nil {
+		return nil
+	}
+
+	taskCopy := *task
+	taskCopy.ParentID = clonePointer(task.ParentID)
+	taskCopy.Tags = append([]string{}, task.Tags...)
+	taskCopy.CompletedAt = clonePointer(task.CompletedAt)
+	taskCopy.DueDate = clonePointer(task.DueDate)
+	taskCopy.DependsOn = append([]string{}, task.DependsOn...)
+	taskCopy.RelatedTo = append([]string{}, task.RelatedTo...)
+	taskCopy.PinnedAt = clonePointer(task.PinnedAt)
+	taskCopy.Comments = clonePointerSlice(task.Comments)
+	taskCopy.Decisions = clonePointerSlice(task.Decisions)
+	taskCopy.Attachments = append([]models.Attachment{}, task.Attachments...)
+	taskCopy.SnoozedUntil = clonePointer(task.SnoozedUntil)
+	taskCopy.Activity = clonePointerSlice(task.Activity)
+	taskCopy.Checklist = append([]models.ChecklistItem{}, task.Checklist...)
+	taskCopy.StartDate = clonePointer(task.StartDate)
+	taskCopy.ScoreDimensions = maps.Clone(task.ScoreDimensions)
+	taskCopy.BugAttrs = clonePointer(task.BugAttrs)
+	taskCopy.IdeaAttrs = clonePointer(task.IdeaAttrs)
+	taskCopy.TaskAttrs = clonePointer(task.TaskAttrs)
+	taskCopy.StoryAttrs = clonePointer(task.StoryAttrs)
+	taskCopy.EpicAttrs = cloneEpicAttrs(task.EpicAttrs)
+
+	taskCopy.Children = nil
+	taskCopy.Parent = nil
+	taskCopy.Project = nil
+	taskCopy.Level = 0
+	return &taskCopy
+}
+
+func cloneEpicAttrs(attrs *models.EpicAttrs) *models.EpicAttrs {
+	if attrs == nil {
+		return nil
+	}
+	attrsCopy := *attrs
+	attrsCopy.ScopeBaselinedAt = clonePointer(attrs.ScopeBaselinedAt)
+	return &attrsCopy
+}
+
+func clonePointer[T any](value *T) *T {
+	if value == nil {
+		return nil
+	}
+	valueCopy := *value
+	return &valueCopy
+}
+
+func clonePointerSlice[T any](values []*T) []*T {
+	if values == nil {
+		return nil
+	}
+	valuesCopy := make([]*T, len(values))
+	for i, value := range values {
+		valuesCopy[i] = clonePointer(value)
+	}
+	return valuesCopy
 }
 
 func (m *MockRepository) Backup(project *models.Project) error {

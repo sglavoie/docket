@@ -120,6 +120,35 @@ func TestFormulaRICEPositiveOverZeroStillSentinel(t *testing.T) {
 	}
 }
 
+// TestFormulaRICEInfiniteDenominatorReturnsZero is a regression test:
+// formulaRICE used to return MaxScoreSentinel for any Inf factor before
+// checking whether the factor belonged to the numerator or denominator. An
+// infinite denominator means the score tends toward zero, not the top of the
+// ranking.
+func TestFormulaRICEInfiniteDenominatorReturnsZero(t *testing.T) {
+	results := []DimensionResult{
+		{Value: 5, Weight: 1, Role: RoleNumerator},
+		{Value: 2, Weight: math.MaxFloat64, Role: RoleDenominator},
+	}
+	got := formulaRICE(results)
+	if got != 0 {
+		t.Errorf("finite numerator / infinite denominator should yield 0, got %f", got)
+	}
+}
+
+// TestFormulaRICEInfiniteNumeratorStillSentinel preserves the intended cap
+// for an overflowing numerator with a finite positive denominator.
+func TestFormulaRICEInfiniteNumeratorStillSentinel(t *testing.T) {
+	results := []DimensionResult{
+		{Value: 2, Weight: math.MaxFloat64, Role: RoleNumerator},
+		{Value: 5, Weight: 1, Role: RoleDenominator},
+	}
+	got := formulaRICE(results)
+	if got != MaxScoreSentinel {
+		t.Errorf("infinite numerator / finite denominator should yield MaxScoreSentinel (%f), got %f", MaxScoreSentinel, got)
+	}
+}
+
 // TestFormulaWSJFZeroOverZeroReturnsZero mirrors the RICE 0/0 fix: an item
 // whose value and cost are both zero is not the top of the queue.
 func TestFormulaWSJFZeroOverZeroReturnsZero(t *testing.T) {

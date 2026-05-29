@@ -21,6 +21,11 @@ func TestWriteDecisions(t *testing.T) {
 			wantEmpty: true,
 		},
 		{
+			name:      "only nil decisions",
+			decisions: []*models.Decision{nil},
+			wantEmpty: true,
+		},
+		{
 			name: "single decision",
 			decisions: []*models.Decision{{
 				Text:      "Use PostgreSQL",

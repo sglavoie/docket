@@ -250,6 +250,37 @@ func TestEditorCommandWithFlags(t *testing.T) {
 	}
 }
 
+func TestOpenFolderCommandStripsWaitFlagsForGUIEditors(t *testing.T) {
+	cmd := OpenFolderCommand("code --wait -w --reuse-window", "/tmp/project")
+
+	for _, arg := range cmd.Args {
+		if arg == "--wait" || arg == "-w" {
+			t.Fatalf("OpenFolderCommand should strip GUI wait flags, got args: %v", cmd.Args)
+		}
+	}
+	if got := cmd.Args[len(cmd.Args)-1]; got != "/tmp/project" {
+		t.Fatalf("expected folder path as last arg, got %q (args: %v)", got, cmd.Args)
+	}
+}
+
+func TestOpenFolderCommandPreservesNonGUIEditorDashWFlag(t *testing.T) {
+	cmd := OpenFolderCommand("nvim -w /tmp/scriptout", "/tmp/project")
+	args := cmd.Args
+
+	if len(args) != 4 {
+		t.Fatalf("expected nvim args to preserve -w flag and value, got %v", args)
+	}
+	if args[1] != "-w" {
+		t.Errorf("expected args[1] = '-w', got %q (args: %v)", args[1], args)
+	}
+	if args[2] != "/tmp/scriptout" {
+		t.Errorf("expected args[2] = '/tmp/scriptout', got %q (args: %v)", args[2], args)
+	}
+	if args[3] != "/tmp/project" {
+		t.Errorf("expected folder path after preserved args, got %q (args: %v)", args[3], args)
+	}
+}
+
 func TestEditorCommandReturnsNilStdio(t *testing.T) {
 	// EditorCommand returns an exec.Cmd with nil Stdin/Stdout/Stderr.
 	// Callers that run terminal editors (vim, nano) must set these to

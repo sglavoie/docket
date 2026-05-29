@@ -1,6 +1,9 @@
 package models
 
-import "testing"
+import (
+	"testing"
+	"time"
+)
 
 func TestSetSection_GTD(t *testing.T) {
 	task, err := NewTask("test-id", 1, TaskTypeTask, "Test")
@@ -104,6 +107,53 @@ func TestSetCustomSection_EmptyPreservesGTD(t *testing.T) {
 	}
 	if task.CustomSection != "" {
 		t.Errorf("expected CustomSection cleared, got %q", task.CustomSection)
+	}
+}
+
+func TestSetSection_RefreshesUpdatedAtOnChange(t *testing.T) {
+	task, err := NewTask("test-id", 1, TaskTypeTask, "Test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	stale := time.Now().Add(-time.Hour)
+	task.UpdatedAt = stale
+
+	task.SetSection("Sprint-1")
+
+	if !task.UpdatedAt.After(stale) {
+		t.Error("SetSection should refresh UpdatedAt when section membership changes")
+	}
+}
+
+func TestSetCustomSection_RefreshesUpdatedAtOnChange(t *testing.T) {
+	task, err := NewTask("test-id", 1, TaskTypeTask, "Test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	task.Section = SectionNext
+	stale := time.Now().Add(-time.Hour)
+	task.UpdatedAt = stale
+
+	task.SetCustomSection("Sprint-1")
+
+	if !task.UpdatedAt.After(stale) {
+		t.Error("SetCustomSection should refresh UpdatedAt when section membership changes")
+	}
+}
+
+func TestSetSection_RejectedNamePreservesUpdatedAt(t *testing.T) {
+	task, err := NewTask("test-id", 1, TaskTypeTask, "Test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	task.SetSection("Sprint-1")
+	stale := time.Now().Add(-time.Hour)
+	task.UpdatedAt = stale
+
+	task.SetSection("bad name")
+
+	if !task.UpdatedAt.Equal(stale) {
+		t.Error("SetSection should not refresh UpdatedAt when rejecting an invalid section")
 	}
 }
 

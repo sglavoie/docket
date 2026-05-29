@@ -83,6 +83,13 @@ func Pluralize(count int, singular, plural string) string {
 	return fmt.Sprintf("%d %s", count, plural)
 }
 
+func shortDisplayID(id string) string {
+	if len(id) > 8 {
+		return id[:8]
+	}
+	return id
+}
+
 // CommandContext bundles the commonly-needed config and project data for commands.
 // This reduces duplicate loading code and makes it easier to pass context around.
 type CommandContext struct {
@@ -249,7 +256,7 @@ func FindActionTaskByID(cfg *config.Config, query string) (*models.Task, *models
 		limit := min(len(prefixMatches), 5)
 		parts := make([]string, limit)
 		for i := range limit {
-			parts[i] = fmt.Sprintf("#%d %s (%s)", prefixMatches[i].task.ShortID, prefixMatches[i].task.Title, prefixMatches[i].task.ID[:8])
+			parts[i] = fmt.Sprintf("#%d %s (%s)", prefixMatches[i].task.ShortID, prefixMatches[i].task.Title, shortDisplayID(prefixMatches[i].task.ID))
 		}
 		candidates := strings.Join(parts, ", ")
 		if len(prefixMatches) > 5 {

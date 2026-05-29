@@ -22,9 +22,10 @@ func MoveGroup(deps MoveDeps) []Entry {
 	}
 
 	sectionBind := func(key, desc, section string) Entry {
-		e := Bind(key, desc, cat, deps.MoveToSection(section))
+		action := deps.MoveToSection(section)
+		e := Bind(key, desc, cat, action)
 		if sectionGate != nil {
-			e = Bind(key, desc, cat, deps.MoveToSection(section), WithGate(sectionGate))
+			e = Bind(key, desc, cat, action, WithGate(sectionGate))
 		}
 		return e
 	}

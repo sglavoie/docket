@@ -135,6 +135,9 @@ func WriteDecisions(task *models.Task) string {
 	headerWritten := false
 
 	for _, d := range task.Decisions {
+		if d == nil {
+			continue
+		}
 		text := strings.TrimSpace(d.Text)
 		if text == "" {
 			continue

@@ -88,3 +88,16 @@ func TestForwardScheduleZeroVelocityFallback(t *testing.T) {
 			schedZero[0].EarliestEnd, schedOne[0].EarliestEnd)
 	}
 }
+
+func TestForwardScheduleQualifiedRefDoesNotBleedToPlainID(t *testing.T) {
+	start := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	local := newTaskWithDuration("z", 10)
+	dependent := withDep(newTaskWithDuration("b", 1), "missing-project:z")
+
+	sched := ForwardSchedule([]*models.Task{local, dependent}, start, 1.0)
+	byID := scheduleByID(sched)
+
+	if !byID["b"].EarliestStart.Equal(start) {
+		t.Errorf("qualified missing-project:z should not delay b behind local z, got %v", byID["b"].EarliestStart)
+	}
+}

@@ -20,6 +20,11 @@ func TestWriteComments(t *testing.T) {
 			wantHas:  nil,
 		},
 		{
+			name:     "only nil comments",
+			comments: []*models.Comment{nil},
+			wantHas:  nil,
+		},
+		{
 			name: "single comment",
 			comments: []*models.Comment{{
 				Text:      "This is a comment",
@@ -75,7 +80,7 @@ func TestWriteComments(t *testing.T) {
 
 			got := WriteComments(task)
 
-			if len(tt.comments) == 0 {
+			if len(tt.wantHas) == 0 {
 				if got != "" {
 					t.Errorf("WriteComments() = %q, want empty string", got)
 				}

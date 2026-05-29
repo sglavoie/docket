@@ -41,9 +41,7 @@ func TopologicalSort(tasks []*models.Task) ([]*models.Task, error) {
 	}
 	for _, t := range taskMap {
 		for _, depRef := range t.DependsOn {
-			ref := models.ParseTaskRef(depRef)
-			predID := ref.TaskID
-			if _, ok := taskMap[predID]; ok {
+			if predID, ok := dependencyTaskID(depRef, taskMap); ok {
 				inDegree[t.ID]++
 				adj[predID] = append(adj[predID], t.ID)
 			}
@@ -106,9 +104,7 @@ func topologicalSortByPriority(tasks []*models.Task) ([]*models.Task, error) {
 	}
 	for _, t := range taskMap {
 		for _, depRef := range t.DependsOn {
-			ref := models.ParseTaskRef(depRef)
-			predID := ref.TaskID
-			if _, ok := taskMap[predID]; ok {
+			if predID, ok := dependencyTaskID(depRef, taskMap); ok {
 				inDegree[t.ID]++
 				adj[predID] = append(adj[predID], t.ID)
 			}
@@ -180,4 +176,22 @@ func sortByID(tasks []*models.Task) {
 	sort.Slice(tasks, func(i, j int) bool {
 		return tasks[i].ID < tasks[j].ID
 	})
+}
+
+// dependencyTaskID resolves a dependency reference against the local task map.
+// Unqualified refs may match by parsed task ID. Qualified refs must match an
+// exact local ID; otherwise they are external/unresolved and are treated as
+// already satisfied by the planner's local graph.
+func dependencyTaskID(depRef string, taskMap map[string]*models.Task) (string, bool) {
+	if _, ok := taskMap[depRef]; ok {
+		return depRef, true
+	}
+	ref := models.ParseTaskRef(depRef)
+	if ref.ProjectID != "" {
+		return "", false
+	}
+	if _, ok := taskMap[ref.TaskID]; ok {
+		return ref.TaskID, true
+	}
+	return "", false
 }

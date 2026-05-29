@@ -89,12 +89,15 @@ func computeCycleTime(tasks []*models.Task, cutoff, now time.Time, buckets []buc
 // findFirstInProgress scans a task's activity log for the earliest
 // transition to "in_progress" status.
 func findFirstInProgress(t *models.Task) time.Time {
+	var earliest time.Time
 	for _, entry := range t.Activity {
 		if entry.Field == "status" && entry.NewValue == string(models.StatusInProgress) {
-			return entry.Timestamp
+			if earliest.IsZero() || entry.Timestamp.Before(earliest) {
+				earliest = entry.Timestamp
+			}
 		}
 	}
-	return time.Time{}
+	return earliest
 }
 
 // averageDuration returns the mean of a slice of durations.

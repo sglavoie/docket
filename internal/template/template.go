@@ -49,6 +49,9 @@ func NewTemplate(name string, taskType models.TaskType) *TaskTemplate {
 
 // Validate checks if the template is properly configured.
 func (t *TaskTemplate) Validate() error {
+	if t == nil {
+		return fmt.Errorf("template is nil")
+	}
 	if strings.TrimSpace(t.Name) == "" {
 		return fmt.Errorf("template name is required")
 	}

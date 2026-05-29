@@ -182,8 +182,5 @@ func filterBlockersForList(blockers []*models.Blocker, all, resolved, active boo
 // safely handling shorter IDs (e.g. from manually-edited blockers.md files)
 // instead of panicking with a slice-bounds error.
 func shortBlockerID(id string) string {
-	if len(id) > 8 {
-		return id[:8]
-	}
-	return id
+	return shortDisplayID(id)
 }

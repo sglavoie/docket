@@ -86,6 +86,33 @@ func TestCycleTime(t *testing.T) {
 		}
 	})
 
+	t.Run("uses earliest in_progress transition when activity is out of order", func(t *testing.T) {
+		first := now.AddDate(0, 0, -10)
+		second := now.AddDate(0, 0, -5)
+		done := now.AddDate(0, 0, -1)
+
+		tasks := []*models.Task{
+			makeTask(models.StatusDone, timePtr(done), []*models.ActivityEntry{
+				{Timestamp: second, Field: "status", OldValue: "blocked", NewValue: "in_progress"},
+				{Timestamp: first, Field: "status", OldValue: "todo", NewValue: "in_progress"},
+			}),
+		}
+
+		cutoff := TimeRange30d.Cutoff(now)
+		buckets := timeBuckets(cutoff, now, granularityDay)
+		result := computeCycleTime(tasks, cutoff, now, buckets)
+
+		if result.Count != 1 {
+			t.Errorf("Count = %d, want 1", result.Count)
+		}
+
+		expectedHours := 9.0 * 24
+		actualHours := result.Average.Hours()
+		if actualHours < expectedHours-1 || actualHours > expectedHours+1 {
+			t.Errorf("Average = %v hours, want ~%v hours", actualHours, expectedHours)
+		}
+	})
+
 	t.Run("excludes tasks completed after now", func(t *testing.T) {
 		recentStart := now.AddDate(0, 0, -3)
 		recentDone := now.AddDate(0, 0, -1)

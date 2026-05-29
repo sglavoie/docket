@@ -3,6 +3,7 @@ package cmd
 import (
 	"io"
 	"os"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -90,6 +91,37 @@ func TestRunBoardShow(t *testing.T) {
 		}
 		if !strings.Contains(out, `"due_date": null`) {
 			t.Error("due_date should be null when no due date is set")
+		}
+	})
+
+	t.Run("text output handles short stored ID", func(t *testing.T) {
+		deps, project := setup(t)
+		defer deps.Cleanup()
+
+		task, _ := models.NewTask("abc", project.GetNextShortID(), models.TaskTypeTask, "Short ID Action")
+		project.Tasks = append(project.Tasks, task)
+		deps.Repository.Projects[project.ID] = project
+
+		boardShowJSON = false
+
+		oldStdout := os.Stdout
+		r, w, _ := os.Pipe()
+		os.Stdout = w
+
+		err := runBoardShow(boardShowCmd, []string{strconv.Itoa(task.ShortID)})
+
+		if closeErr := w.Close(); closeErr != nil {
+			t.Errorf("failed to close pipe: %v", closeErr)
+		}
+
+		os.Stdout = oldStdout
+		outBytes, _ := io.ReadAll(r)
+		out := string(outBytes)
+
+		testutil.AssertNoError(t, err)
+
+		if !strings.Contains(out, "ID:       #"+strconv.Itoa(task.ShortID)+" (abc)") {
+			t.Fatalf("expected short stored ID in output, got: %s", out)
 		}
 	})
 }

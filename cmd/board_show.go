@@ -103,7 +103,7 @@ func runBoardShow(cmd *cobra.Command, args []string) error {
 
 func printActionDetails(task *models.Task, project *models.Project) error {
 	fmt.Printf("Action:   %s\n", task.Title)
-	fmt.Printf("ID:       #%d (%s)\n", task.ShortID, task.ID[:8])
+	fmt.Printf("ID:       #%d (%s)\n", task.ShortID, shortDisplayID(task.ID))
 	fmt.Printf("Status:   %s %s\n", task.Status.Icon(), task.Status)
 	fmt.Printf("Priority: P%d\n", task.Priority)
 

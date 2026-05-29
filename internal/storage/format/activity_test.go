@@ -50,6 +50,31 @@ func TestActivityRoundtripWithSeparatorInValues(t *testing.T) {
 	}
 }
 
+func TestWriteActivity_SkipsNilEntries(t *testing.T) {
+	task := &models.Task{
+		Activity: []*models.ActivityEntry{
+			nil,
+			{
+				Timestamp: time.Date(2025, 6, 15, 10, 30, 0, 0, time.Local),
+				Field:     "status",
+				OldValue:  "todo",
+				NewValue:  "done",
+			},
+		},
+	}
+
+	output := WriteActivity(task)
+	parsedTask := &models.Task{Description: output}
+	ExtractActivityFromDescription(parsedTask)
+
+	if len(parsedTask.Activity) != 1 {
+		t.Fatalf("expected 1 activity entry, got %d", len(parsedTask.Activity))
+	}
+	if parsedTask.Activity[0].Field != "status" {
+		t.Errorf("field = %q, want %q", parsedTask.Activity[0].Field, "status")
+	}
+}
+
 func TestActivityRoundtripWithBackslashInValues(t *testing.T) {
 	// Ensure backslashes in values survive roundtrip
 	task := &models.Task{

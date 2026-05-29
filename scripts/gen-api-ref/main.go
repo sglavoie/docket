@@ -4,6 +4,8 @@ package main
 
 import (
 	"fmt"
+	"io"
+	"os"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -14,16 +16,14 @@ import (
 
 func main() {
 	root := cmd.RootCmd()
-	// Force all init() to run by finding all commands
-	root.InitDefaultHelpCmd()
 
-	fmt.Println("# tt CLI Reference")
-	fmt.Println()
-	printCommand(root, "")
+	fmt.Fprintln(os.Stdout, "# tt CLI Reference")
+	fmt.Fprintln(os.Stdout)
+	printCommand(os.Stdout, root, "")
 }
 
-func printCommand(c *cobra.Command, parentPath string) {
-	if c.Hidden {
+func printCommand(w io.Writer, c *cobra.Command, parentPath string) {
+	if c.Hidden || isDefaultHelpCommand(c) {
 		return
 	}
 
@@ -32,47 +32,51 @@ func printCommand(c *cobra.Command, parentPath string) {
 		fullPath = parentPath + " " + c.Name()
 	}
 
-	fmt.Printf("## %s\n\n", fullPath)
+	fmt.Fprintf(w, "## %s\n\n", fullPath)
 
 	if c.Short != "" {
-		fmt.Println(c.Short)
-		fmt.Println()
+		fmt.Fprintln(w, c.Short)
+		fmt.Fprintln(w)
 	}
 
-	fmt.Printf("Usage: %s\n", c.UseLine())
+	fmt.Fprintf(w, "Usage: %s\n", c.UseLine())
 
 	if len(c.Aliases) > 0 {
-		fmt.Printf("Aliases: %s\n", strings.Join(c.Aliases, ", "))
+		fmt.Fprintf(w, "Aliases: %s\n", strings.Join(c.Aliases, ", "))
 	}
 
 	if c.Long != "" && c.Long != c.Short {
-		fmt.Println()
-		fmt.Println(c.Long)
+		fmt.Fprintln(w)
+		fmt.Fprintln(w, c.Long)
 	}
 
 	localFlags := collectFlags(c.LocalFlags())
 	if len(localFlags) > 0 {
-		fmt.Println()
-		fmt.Println("Flags:")
+		fmt.Fprintln(w)
+		fmt.Fprintln(w, "Flags:")
 		for _, f := range localFlags {
-			fmt.Printf("  %s\n", f)
+			fmt.Fprintf(w, "  %s\n", f)
 		}
 	}
 
 	inheritedFlags := collectFlags(c.InheritedFlags())
 	if len(inheritedFlags) > 0 {
-		fmt.Println()
-		fmt.Println("Inherited flags:")
+		fmt.Fprintln(w)
+		fmt.Fprintln(w, "Inherited flags:")
 		for _, f := range inheritedFlags {
-			fmt.Printf("  %s\n", f)
+			fmt.Fprintf(w, "  %s\n", f)
 		}
 	}
 
-	fmt.Println()
+	fmt.Fprintln(w)
 
 	for _, sub := range c.Commands() {
-		printCommand(sub, fullPath)
+		printCommand(w, sub, fullPath)
 	}
+}
+
+func isDefaultHelpCommand(c *cobra.Command) bool {
+	return c.Name() == "help" && c.Use == "help [command]" && c.Short == "Help about any command"
 }
 
 func collectFlags(fs *pflag.FlagSet) []string {
@@ -86,10 +90,19 @@ func collectFlags(fs *pflag.FlagSet) []string {
 			name += ", -" + f.Shorthand
 		}
 		def := ""
-		if f.DefValue != "" && f.DefValue != "false" && f.DefValue != "0" {
+		if shouldPrintDefault(f.DefValue) {
 			def = fmt.Sprintf(" (default %s)", f.DefValue)
 		}
 		flags = append(flags, fmt.Sprintf("%s %s%s    %s", name, f.Value.Type(), def, f.Usage))
 	})
 	return flags
+}
+
+func shouldPrintDefault(defValue string) bool {
+	switch defValue {
+	case "", "false", "0", "[]":
+		return false
+	default:
+		return true
+	}
 }

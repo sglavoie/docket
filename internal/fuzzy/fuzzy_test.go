@@ -125,6 +125,13 @@ func TestScoreRanking(t *testing.T) {
 			pattern:     "auth",
 			want1Higher: true,
 		},
+		{
+			name:        "punctuation boundary beats middle",
+			text1:       "task:auth",
+			text2:       "taskxauth",
+			pattern:     "auth",
+			want1Higher: true,
+		},
 	}
 
 	for _, tt := range tests {
@@ -252,6 +259,10 @@ func TestIsWordBoundary(t *testing.T) {
 		{'_', true},
 		{'/', true},
 		{'.', true},
+		{':', true},
+		{',', true},
+		{'(', true},
+		{')', true},
 		{'a', false},
 		{'Z', false},
 		{'0', false},

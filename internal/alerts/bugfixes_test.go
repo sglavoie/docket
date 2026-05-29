@@ -51,6 +51,28 @@ func TestCheckProjectHealth_AllZeroUpdatedAtSkipped(t *testing.T) {
 	}
 }
 
+// TestCheckStaleTasks_ZeroUpdatedAtSkipped verifies that an active task with a
+// missing UpdatedAt does not produce a stale alert with an astronomically large
+// day count.
+func TestCheckStaleTasks_ZeroUpdatedAtSkipped(t *testing.T) {
+	now := time.Date(2026, 5, 20, 10, 0, 0, 0, time.UTC)
+	task := &models.Task{
+		ID:     "stale-zero",
+		Title:  "active but zero",
+		Status: models.StatusTodo,
+		// UpdatedAt intentionally zero.
+	}
+	projects := []ProjectData{{
+		Project: &models.Project{ID: "p1", Name: "P1"},
+		Tasks:   []*models.Task{task},
+	}}
+
+	alerts := checkStaleTasks(DefaultAlertConfig(), projects, now)
+	if len(alerts) != 0 {
+		t.Errorf("expected 0 stale alerts when UpdatedAt is zero, got %d (%+v)", len(alerts), alerts)
+	}
+}
+
 // TestCheckOverdueTasks_TimedDueEarlierToday ensures that a task with HasTime=true
 // whose exact due time has already passed today is classified as overdue, not due-soon.
 func TestCheckOverdueTasks_TimedDueEarlierToday(t *testing.T) {

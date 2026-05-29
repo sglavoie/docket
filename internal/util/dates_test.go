@@ -24,6 +24,7 @@ func TestParseRelativeDate(t *testing.T) {
 		{"relative +2w", "+2w", today.AddDate(0, 0, 14), false},
 		{"relative +1m", "+1m", AddMonthsClamped(today, 1), false},
 		{"in 5 days", "in 5 days", today.AddDate(0, 0, 5), false},
+		{"in 5 days with extra spaces", "in   5\t days", today.AddDate(0, 0, 5), false},
 		{"in 2 weeks", "in 2 weeks", today.AddDate(0, 0, 14), false},
 		{"in 3 months", "in 3 months", AddMonthsClamped(today, 3), false},
 		{"exact date", "2025-06-15", time.Date(2025, 6, 15, 0, 0, 0, 0, time.Local), false},
@@ -186,6 +187,7 @@ func TestParseDateWithTime(t *testing.T) {
 		{"0am invalid", "0am", false, time.Time{}, true},
 		// Natural "at" preposition between date and time
 		{"tomorrow at 9am", "tomorrow at 9am", true, at(today.AddDate(0, 0, 1), 9, 0), false},
+		{"tomorrow at 9am with extra whitespace", "tomorrow   at\t9am", true, at(today.AddDate(0, 0, 1), 9, 0), false},
 		{"today at 5pm", "today at 5pm", true, at(today, 17, 0), false},
 		{"today at 14:30", "today at 14:30", true, at(today, 14, 30), false},
 		// Invalid date part with a valid time suffix

@@ -38,6 +38,48 @@ func TestCollectActionableTasksSkipsNilProject(t *testing.T) {
 	}
 }
 
+// TestCollectActionableTasksSkipsNilProjectTasksDuringDependencyChecks guards
+// against nil entries in Project.Tasks while dependency checks are resolving
+// blockers. Focus accepts loosely-assembled project slices and should skip nil
+// task entries instead of panicking inside model lookup helpers.
+func TestCollectActionableTasksSkipsNilProjectTasksDuringDependencyChecks(t *testing.T) {
+	defer func() {
+		if r := recover(); r != nil {
+			t.Fatalf("unexpected panic on nil project task during dependency check: %v", r)
+		}
+	}()
+
+	project, err := models.NewProject(uuid.New().String(), "P", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	blocker, err := models.NewTask(uuid.New().String(), 1, models.TaskTypeTask, "Blocker")
+	if err != nil {
+		t.Fatal(err)
+	}
+	blocked, err := models.NewTask(uuid.New().String(), 2, models.TaskTypeTask, "Blocked")
+	if err != nil {
+		t.Fatal(err)
+	}
+	blocked.DependsOn = []string{blocker.ID}
+	actionable, err := models.NewTask(uuid.New().String(), 3, models.TaskTypeTask, "Actionable")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	project.Tasks = []*models.Task{nil, blocker, blocked, actionable}
+
+	out := CollectActionableTasks([]*models.Project{project})
+	if len(out) != 2 {
+		t.Fatalf("expected blocker and actionable tasks, got %d: %+v", len(out), out)
+	}
+	for _, ft := range out {
+		if ft.Task == blocked {
+			t.Fatal("blocked task with incomplete dependency should not be actionable")
+		}
+	}
+}
+
 // TestRankCrossProjectTasksSkipsNilEntries guards against nil FocusTask
 // members (nil Task or nil Project) — these previously crashed the score
 // computation and the balance-penalty loop.
@@ -69,6 +111,40 @@ func TestRankCrossProjectTasksSkipsNilEntries(t *testing.T) {
 	}
 	if ranked[0].Task != good {
 		t.Errorf("expected the good task")
+	}
+}
+
+// TestRankCrossProjectTasksSkipsNilProjectTasksDuringDependentScoring guards
+// countIncompleteDependents against nil Project.Tasks entries. Project helpers
+// assume task slices are clean, but focus may receive loosely assembled data.
+func TestRankCrossProjectTasksSkipsNilProjectTasksDuringDependentScoring(t *testing.T) {
+	defer func() {
+		if r := recover(); r != nil {
+			t.Fatalf("unexpected panic on nil project task during dependent scoring: %v", r)
+		}
+	}()
+
+	project, err := models.NewProject(uuid.New().String(), "P", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	blocker, err := models.NewTask(uuid.New().String(), 1, models.TaskTypeTask, "Blocker")
+	if err != nil {
+		t.Fatal(err)
+	}
+	dependent, err := models.NewTask(uuid.New().String(), 2, models.TaskTypeTask, "Dependent")
+	if err != nil {
+		t.Fatal(err)
+	}
+	dependent.DependsOn = []string{blocker.ID}
+	project.Tasks = []*models.Task{nil, blocker, dependent}
+
+	ranked := RankCrossProjectTasks([]FocusTask{{Task: blocker, Project: project}}, nil, nil)
+	if len(ranked) != 1 {
+		t.Fatalf("expected one ranked task, got %d", len(ranked))
+	}
+	if !containsSubstring(ranked[0].Reason, "nblocks 1 task") {
+		t.Fatalf("expected dependent to be counted in reason, got %q", ranked[0].Reason)
 	}
 }
 

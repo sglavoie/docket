@@ -59,11 +59,11 @@ func CriticalPath(tasks []*models.Task) *CriticalPathResult {
 	es := make(map[string]float64, len(topoOrder)) // all initialized to 0
 	for _, t := range topoOrder {
 		for _, depRef := range t.DependsOn {
-			ref := models.ParseTaskRef(depRef)
-			pred, ok := taskMap[ref.TaskID]
+			predID, ok := dependencyTaskID(depRef, taskMap)
 			if !ok {
 				continue
 			}
+			pred := taskMap[predID]
 			predEF := es[pred.ID] + EstimateDuration(pred)
 			if predEF > es[t.ID] {
 				es[t.ID] = predEF
@@ -83,9 +83,8 @@ func CriticalPath(tasks []*models.Task) *CriticalPathResult {
 	succs := make(map[string][]string, len(topoOrder))
 	for _, t := range topoOrder {
 		for _, depRef := range t.DependsOn {
-			ref := models.ParseTaskRef(depRef)
-			if _, ok := taskMap[ref.TaskID]; ok {
-				succs[ref.TaskID] = append(succs[ref.TaskID], t.ID)
+			if predID, ok := dependencyTaskID(depRef, taskMap); ok {
+				succs[predID] = append(succs[predID], t.ID)
 			}
 		}
 	}
@@ -179,11 +178,11 @@ func ForwardSchedule(tasks []*models.Task, startDate time.Time, velocity float64
 		}
 		// Dependency constraints: must start after all predecessors finish.
 		for _, depRef := range t.DependsOn {
-			ref := models.ParseTaskRef(depRef)
-			pred, ok := taskMap[ref.TaskID]
+			predID, ok := dependencyTaskID(depRef, taskMap)
 			if !ok {
 				continue
 			}
+			pred := taskMap[predID]
 			predEnd := esDay[pred.ID] + EstimateDuration(pred)/velocity
 			if predEnd > esDay[t.ID] {
 				esDay[t.ID] = predEnd
@@ -263,11 +262,11 @@ func SerialSchedule(tasks []*models.Task, startDate time.Time, velocity float64)
 
 		// Dependency constraints.
 		for _, depRef := range t.DependsOn {
-			ref := models.ParseTaskRef(depRef)
-			pred, ok := taskMap[ref.TaskID]
+			predID, ok := dependencyTaskID(depRef, taskMap)
 			if !ok {
 				continue
 			}
+			pred := taskMap[predID]
 			predEnd := esDay[pred.ID] + EstimateDuration(pred)/velocity
 			if predEnd > earliest {
 				earliest = predEnd
@@ -295,9 +294,8 @@ func SerialSchedule(tasks []*models.Task, startDate time.Time, velocity float64)
 	succs := make(map[string][]string, len(topoOrder))
 	for _, t := range topoOrder {
 		for _, depRef := range t.DependsOn {
-			ref := models.ParseTaskRef(depRef)
-			if _, ok := taskMap[ref.TaskID]; ok {
-				succs[ref.TaskID] = append(succs[ref.TaskID], t.ID)
+			if predID, ok := dependencyTaskID(depRef, taskMap); ok {
+				succs[predID] = append(succs[predID], t.ID)
 			}
 		}
 	}

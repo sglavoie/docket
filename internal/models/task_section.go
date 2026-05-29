@@ -1,5 +1,7 @@
 package models
 
+import "time"
+
 // SetSection assigns a section to the task, routing to the correct field.
 // Built-in GTD sections (Inbox, Next, Waiting, Someday, Review, Standby,
 // Completed) and the empty string (Active view) are stored in Section;
@@ -8,9 +10,14 @@ package models
 // When assigning a GTD section, CustomSection is cleared (and vice versa)
 // to prevent the task from appearing in two sections simultaneously.
 func (t *Task) SetSection(name string) {
+	oldSection := t.Section
+	oldCustomSection := t.CustomSection
 	if IsGTDSection(name) || name == "" {
 		t.Section = name
 		t.CustomSection = ""
+		if t.Section != oldSection || t.CustomSection != oldCustomSection {
+			t.UpdatedAt = time.Now()
+		}
 		return
 	}
 	// Reject custom section names that fail ValidateSectionName (whitespace,
@@ -32,6 +39,9 @@ func (t *Task) SetSection(name string) {
 	}
 	t.CustomSection = name
 	t.Section = ""
+	if t.Section != oldSection || t.CustomSection != oldCustomSection {
+		t.UpdatedAt = time.Now()
+	}
 }
 
 // SetCustomSection assigns or clears a custom section.
@@ -39,8 +49,13 @@ func (t *Task) SetSection(name string) {
 // Non-empty values clear the GTD Section field to keep section membership
 // exclusive. Empty string only clears CustomSection, preserving any GTD section.
 func (t *Task) SetCustomSection(name string) {
+	oldSection := t.Section
+	oldCustomSection := t.CustomSection
 	if name == "" {
 		t.CustomSection = ""
+		if t.CustomSection != oldCustomSection {
+			t.UpdatedAt = time.Now()
+		}
 		return
 	}
 	if IsGTDSectionNameCI(name) {
@@ -51,6 +66,9 @@ func (t *Task) SetCustomSection(name string) {
 	}
 	t.CustomSection = name
 	t.Section = ""
+	if t.Section != oldSection || t.CustomSection != oldCustomSection {
+		t.UpdatedAt = time.Now()
+	}
 }
 
 // InSection reports whether the task belongs to the given section.

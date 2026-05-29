@@ -14,12 +14,20 @@ import (
 
 // GetRecentTasks returns the most recently updated tasks across all provided tasks.
 func GetRecentTasks(tasks []*models.Task, limit int) []*models.Task {
-	if len(tasks) == 0 {
+	if len(tasks) == 0 || limit <= 0 {
 		return nil
 	}
 
-	sorted := make([]*models.Task, len(tasks))
-	copy(sorted, tasks)
+	sorted := make([]*models.Task, 0, len(tasks))
+	for _, task := range tasks {
+		if task != nil {
+			sorted = append(sorted, task)
+		}
+	}
+	if len(sorted) == 0 {
+		return nil
+	}
+
 	sort.Slice(sorted, func(i, j int) bool {
 		return sorted[i].UpdatedAt.After(sorted[j].UpdatedAt)
 	})

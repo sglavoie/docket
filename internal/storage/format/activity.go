@@ -163,6 +163,9 @@ func WriteActivity(task *models.Task) string {
 	// Write entries in reverse chronological order (newest first)
 	for i := len(task.Activity) - 1; i >= 0; i-- {
 		entry := task.Activity[i]
+		if entry == nil {
+			continue
+		}
 		ts := entry.Timestamp.Format(util.DateTimeFormat)
 
 		if entry.Field == "created" {

@@ -230,6 +230,33 @@ func TestMoveGroup(t *testing.T) {
 	}
 }
 
+func TestMoveGroup_WithGateBuildsEachSectionActionOnce(t *testing.T) {
+	var sections []string
+	deps := MoveDeps{
+		MoveToSection: func(section string) Action {
+			sections = append(sections, section)
+			return nilAction
+		},
+		CanMoveSection: func() bool { return true },
+	}
+
+	entries := MoveGroup(deps)
+	if len(entries) != 1 || entries[0].PrefixNode == nil {
+		t.Fatalf("MoveGroup: expected one prefix entry, got %#v", entries)
+	}
+
+	wantSections := []string{"", "Next", "Inbox", "Waiting", "Review", "Someday", "Standby"}
+	if !slices.Equal(sections, wantSections) {
+		t.Fatalf("MoveGroup built section actions for %v, want %v", sections, wantSections)
+	}
+
+	for _, child := range entries[0].PrefixNode.Children[:len(wantSections)] {
+		if child.Binding == nil || child.Binding.Gate == nil {
+			t.Fatalf("MoveGroup: section child %#v is missing gate", child)
+		}
+	}
+}
+
 func TestLinkedTaskGroup_Base(t *testing.T) {
 	deps := LinkedTaskDeps{}
 	entries := LinkedTaskGroup(deps)

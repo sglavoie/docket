@@ -271,6 +271,8 @@ func formulaRICE(results []DimensionResult) float64 {
 	}
 	num := 1.0
 	den := 1.0
+	numInf := false
+	denInf := false
 	for _, r := range results {
 		factor := float64(r.Value)
 		if r.Weight != 1 {
@@ -278,24 +280,39 @@ func formulaRICE(results []DimensionResult) float64 {
 			if math.IsNaN(factor) {
 				return 0
 			}
-			if math.IsInf(factor, 0) {
-				return MaxScoreSentinel
-			}
 		}
 		switch r.Role {
 		case RoleNumerator:
+			if math.IsInf(factor, 0) {
+				numInf = true
+				continue
+			}
 			num *= factor
 		case RoleDenominator:
+			if math.IsInf(factor, 0) {
+				denInf = true
+				continue
+			}
 			den *= factor
 		default:
+			if math.IsInf(factor, 0) {
+				numInf = true
+				continue
+			}
 			num *= factor // no role = numerator
 		}
 	}
+	if denInf {
+		return 0
+	}
 	if den <= 0 {
-		if den == 0 && num != 0 {
+		if den == 0 && (num != 0 || numInf) {
 			return MaxScoreSentinel
 		}
 		return 0
+	}
+	if numInf {
+		return MaxScoreSentinel
 	}
 	return num / den
 }

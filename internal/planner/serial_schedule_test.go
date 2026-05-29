@@ -127,3 +127,28 @@ func TestSerialScheduleUnsetPriorityTreatedAsDefault(t *testing.T) {
 		t.Errorf("expected third task to be 'unset' (p=0 treated as default), got %q", sched[2].Task.ID)
 	}
 }
+
+func TestSerialScheduleQualifiedRefDoesNotBleedToPlainID(t *testing.T) {
+	start := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+
+	local := newTaskWithDuration("z", 1)
+	local.Priority = 3
+	dependent := withDep(newTaskWithDuration("b", 1), "missing-project:z")
+	dependent.Priority = 1
+
+	sched := SerialSchedule([]*models.Task{local, dependent}, start, 1.0)
+	if len(sched) != 2 {
+		t.Fatalf("expected 2 scheduled tasks, got %d", len(sched))
+	}
+	if sched[0].Task.ID != "b" {
+		t.Errorf("qualified missing-project:z should not force local z before high-priority b, got %v", taskIDsFromSchedule(sched))
+	}
+}
+
+func taskIDsFromSchedule(sched []ScheduledTask) []string {
+	ids := make([]string, len(sched))
+	for i, s := range sched {
+		ids[i] = s.Task.ID
+	}
+	return ids
+}

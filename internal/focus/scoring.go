@@ -260,16 +260,47 @@ func countIncompleteDependents(task *models.Task, project *models.Project) int {
 		return 0
 	}
 	count := 0
-	for _, dep := range project.GetBlockedByTasks(task) {
-		if dep == nil {
+	for _, dependent := range project.Tasks {
+		if dependent == nil {
 			continue
 		}
-		if dep.Status.IsComplete() {
+		if !dependent.HasDependency(task.ID) {
+			continue
+		}
+		if dependent.Status.IsComplete() {
 			continue
 		}
 		count++
 	}
 	return count
+}
+
+func hasIncompleteDependencies(task *models.Task, project *models.Project) bool {
+	if task == nil || project == nil {
+		return false
+	}
+	for _, depID := range task.DependsOn {
+		if models.ParseTaskRef(depID).IsCrossProject() {
+			return true
+		}
+		dep := getTaskByID(project, depID)
+		if dep != nil && !dep.IsComplete() {
+			return true
+		}
+	}
+	return false
+}
+
+func getTaskByID(project *models.Project, id string) *models.Task {
+	if project == nil || id == "" {
+		return nil
+	}
+	for _, task := range project.Tasks {
+		if task != nil && task.ID == id {
+			return task
+		}
+	}
+	return nil
 }
 
 // allChildrenComplete returns true if all children of the task are complete.

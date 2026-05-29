@@ -97,6 +97,9 @@ func WriteComments(task *models.Task) string {
 	headerWritten := false
 
 	for _, comment := range task.Comments {
+		if comment == nil {
+			continue
+		}
 		text := strings.TrimSpace(comment.Text)
 		if text == "" {
 			continue

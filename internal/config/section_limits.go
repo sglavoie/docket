@@ -11,46 +11,35 @@ const (
 	DefaultSectionLimitReview  = 5
 )
 
+func sectionLimitValue(limit *int, defaultValue int) int {
+	if limit == nil {
+		return defaultValue
+	}
+	if *limit < 0 {
+		return 0
+	}
+	return *limit
+}
+
 // GetSectionLimit returns the configured limit for the given section name.
 // Returns 0 if disabled. Section names match the outliner section names:
 // "" (Active), "Next", "Inbox", "Standby", "Waiting", "Someday", "Review".
 func (c *Config) GetSectionLimit(section string) int {
 	switch section {
 	case "":
-		if c.SectionLimitActive == nil {
-			return DefaultSectionLimitActive
-		}
-		return *c.SectionLimitActive
+		return sectionLimitValue(c.SectionLimitActive, DefaultSectionLimitActive)
 	case "Next":
-		if c.SectionLimitNext == nil {
-			return DefaultSectionLimitNext
-		}
-		return *c.SectionLimitNext
+		return sectionLimitValue(c.SectionLimitNext, DefaultSectionLimitNext)
 	case "Inbox":
-		if c.SectionLimitInbox == nil {
-			return DefaultSectionLimitInbox
-		}
-		return *c.SectionLimitInbox
+		return sectionLimitValue(c.SectionLimitInbox, DefaultSectionLimitInbox)
 	case "Standby":
-		if c.SectionLimitStandby == nil {
-			return DefaultSectionLimitStandby
-		}
-		return *c.SectionLimitStandby
+		return sectionLimitValue(c.SectionLimitStandby, DefaultSectionLimitStandby)
 	case "Waiting":
-		if c.SectionLimitWaiting == nil {
-			return DefaultSectionLimitWaiting
-		}
-		return *c.SectionLimitWaiting
+		return sectionLimitValue(c.SectionLimitWaiting, DefaultSectionLimitWaiting)
 	case "Someday":
-		if c.SectionLimitSomeday == nil {
-			return DefaultSectionLimitSomeday
-		}
-		return *c.SectionLimitSomeday
+		return sectionLimitValue(c.SectionLimitSomeday, DefaultSectionLimitSomeday)
 	case "Review":
-		if c.SectionLimitReview == nil {
-			return DefaultSectionLimitReview
-		}
-		return *c.SectionLimitReview
+		return sectionLimitValue(c.SectionLimitReview, DefaultSectionLimitReview)
 	default:
 		return 0
 	}

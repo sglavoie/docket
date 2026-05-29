@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"errors"
+	"strings"
 	"testing"
 
 	"github.com/sglavoie/tt/internal/config"
@@ -370,6 +371,40 @@ func TestFindActionTaskByID(t *testing.T) {
 		}
 		if gotTask != nil || gotProject != nil {
 			t.Fatalf("ambiguous lookup should not return a task; got %v / %v", gotTask, gotProject)
+		}
+	})
+
+	t.Run("ambiguous short stored IDs do not panic", func(t *testing.T) {
+		ambigProject := testutil.NewTestProject("Short ID Project")
+		taskA, terr := models.NewTask("abc", 1, models.TaskTypeTask, "Alpha")
+		if terr != nil {
+			t.Fatal(terr)
+		}
+		taskB, terr := models.NewTask("abd", 2, models.TaskTypeTask, "Beta")
+		if terr != nil {
+			t.Fatal(terr)
+		}
+		ambigProject.Tasks = []*models.Task{taskA, taskB}
+		ambigProject.NextShortID = 3
+
+		ambigRepo := testutil.NewMockRepository()
+		if err := ambigRepo.Save(ambigProject); err != nil {
+			t.Fatal(err)
+		}
+		swap := storage.DefaultRepository
+		storage.DefaultRepository = ambigRepo
+		defer func() { storage.DefaultRepository = swap }()
+
+		ambigCfg := &config.Config{Projects: []*models.Project{ambigProject}}
+		gotTask, gotProject, err := FindActionTaskByID(ambigCfg, "ab")
+		if err == nil {
+			t.Fatalf("expected ambiguity error, got task=%v project=%v", gotTask, gotProject)
+		}
+		if !errors.Is(err, tterrors.ErrAmbiguousIdentifier) {
+			t.Fatalf("expected ErrAmbiguousIdentifier, got: %v", err)
+		}
+		if !strings.Contains(err.Error(), "(abc)") || !strings.Contains(err.Error(), "(abd)") {
+			t.Fatalf("expected short IDs in ambiguity error, got: %v", err)
 		}
 	})
 

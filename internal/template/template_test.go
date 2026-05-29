@@ -76,6 +76,17 @@ func TestValidate_ValidTemplate(t *testing.T) {
 	}
 }
 
+func TestValidate_NilTemplate(t *testing.T) {
+	var tmpl *TaskTemplate
+	err := tmpl.Validate()
+	if err == nil {
+		t.Fatal("expected error for nil template")
+	}
+	if !strings.Contains(err.Error(), "template is nil") {
+		t.Errorf("error %q should mention nil template", err.Error())
+	}
+}
+
 func TestValidate_EmptyName(t *testing.T) {
 	tmpl := NewTemplate("", models.TaskTypeTask)
 	err := tmpl.Validate()

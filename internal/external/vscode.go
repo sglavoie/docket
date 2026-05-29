@@ -99,7 +99,11 @@ func stripWaitFlags(args []string) []string {
 // Other pre-configured flags (e.g. "nvim -u NORC") are preserved.
 func OpenFolderCommand(editor, path string) *exec.Cmd {
 	exe, extraArgs := SplitEditorString(editor)
-	args := append(stripWaitFlags(extraArgs), path)
+	args := extraArgs
+	if needsWaitFlag(exe) {
+		args = stripWaitFlags(extraArgs)
+	}
+	args = append(args, path)
 	return exec.Command(exe, args...)
 }
 

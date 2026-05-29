@@ -189,6 +189,13 @@ func (m *Manager) Load() (*Config, error) { //nolint:gocyclo
 	clampIntPtrMin(config.AlertInboxThreshold, "AlertInboxThreshold")
 	clampIntPtrMin(config.AlertBlockedDays, "AlertBlockedDays")
 	clampIntPtrMin(config.AlertProjectStaleDays, "AlertProjectStaleDays")
+	clampIntPtrMin(config.SectionLimitActive, "SectionLimitActive")
+	clampIntPtrMin(config.SectionLimitNext, "SectionLimitNext")
+	clampIntPtrMin(config.SectionLimitInbox, "SectionLimitInbox")
+	clampIntPtrMin(config.SectionLimitStandby, "SectionLimitStandby")
+	clampIntPtrMin(config.SectionLimitWaiting, "SectionLimitWaiting")
+	clampIntPtrMin(config.SectionLimitSomeday, "SectionLimitSomeday")
+	clampIntPtrMin(config.SectionLimitReview, "SectionLimitReview")
 
 	// Clamp timeouts and other range-limited *int fields so an out-of-range
 	// stored value doesn't keep round-tripping through Save. Getters already
