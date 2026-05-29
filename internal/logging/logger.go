@@ -73,12 +73,16 @@ func pruneOldLogs() {
 		if entry.IsDir() || filepath.Ext(entry.Name()) != ".log" {
 			continue
 		}
+		path := filepath.Join(logDirPath, entry.Name())
+		if logFile != nil && path == logFilePath {
+			continue
+		}
 		info, err := entry.Info()
 		if err != nil {
 			continue
 		}
 		if info.ModTime().Before(cutoff) {
-			_ = os.Remove(filepath.Join(logDirPath, entry.Name()))
+			_ = os.Remove(path)
 		}
 	}
 }

@@ -1,6 +1,7 @@
 package planner
 
 import (
+	"math"
 	"testing"
 	"time"
 
@@ -125,6 +126,29 @@ func TestSerialScheduleUnsetPriorityTreatedAsDefault(t *testing.T) {
 	}
 	if sched[2].Task.ID != "unset" {
 		t.Errorf("expected third task to be 'unset' (p=0 treated as default), got %q", sched[2].Task.ID)
+	}
+}
+
+func TestSerialScheduleNaNVelocityFallback(t *testing.T) {
+	start := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	a := newTaskWithDuration("a", 2)
+	b := newTaskWithDuration("b", 1)
+
+	schedNaN := SerialSchedule([]*models.Task{a, b}, start, math.NaN())
+	schedOne := SerialSchedule([]*models.Task{a, b}, start, 1.0)
+
+	if len(schedNaN) != 2 || len(schedOne) != 2 {
+		t.Fatal("expected 2 scheduled tasks")
+	}
+	for i := range schedNaN {
+		if schedNaN[i].Task.ID != schedOne[i].Task.ID ||
+			!schedNaN[i].EarliestStart.Equal(schedOne[i].EarliestStart) ||
+			!schedNaN[i].EarliestEnd.Equal(schedOne[i].EarliestEnd) ||
+			schedNaN[i].Slack != schedOne[i].Slack ||
+			schedNaN[i].IsCritical != schedOne[i].IsCritical {
+			t.Errorf("NaN velocity should behave like velocity=1 at index %d: %+v vs %+v",
+				i, schedNaN[i], schedOne[i])
+		}
 	}
 }
 

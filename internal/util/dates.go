@@ -82,7 +82,7 @@ var (
 	thisWeekdayRe    = regexp.MustCompile(`^this\s+(sun|sunday|mon|monday|tue|tuesday|wed|wednesday|thu|thursday|fri|friday|sat|saturday)$`)
 	inDurationRe     = regexp.MustCompile(`^in\s+(\d+)\s+(day|days|week|weeks|month|months|year|years)$`)
 	time12hRe        = regexp.MustCompile(`^(\d{1,2})(?::(\d{2}))?(am|pm)$`)
-	time24hRe        = regexp.MustCompile(`^(\d{2}):(\d{2})$`)
+	time24hRe        = regexp.MustCompile(`^(\d{1,2}):(\d{2})$`)
 	flexShorthandRe  = regexp.MustCompile(`^(\d+)(d|w|m)$`)
 	monthDayRe       = regexp.MustCompile(`^(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\s+(\d{1,2})$`)
 	dayMonthRe       = regexp.MustCompile(`^(\d{1,2})\s+(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)$`)

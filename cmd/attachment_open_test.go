@@ -1,7 +1,9 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/spf13/viper"
@@ -10,6 +12,7 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/testutil"
+	"github.com/sglavoie/tt/internal/tterrors"
 )
 
 // TestBuildAttachmentEditorCmd verifies that flagged attachment_editor strings
@@ -92,6 +95,12 @@ func TestRunAttachmentOpen(t *testing.T) {
 		if err == nil {
 			t.Error("expected error for missing args")
 		}
+		if !errors.Is(err, tterrors.ErrRequiredField) {
+			t.Errorf("expected ErrRequiredField, got %v", err)
+		}
+		if !strings.Contains(err.Error(), "attachment index") {
+			t.Errorf("expected attachment index in error, got %v", err)
+		}
 	})
 
 	t.Run("rejects single arg", func(t *testing.T) {
@@ -101,6 +110,19 @@ func TestRunAttachmentOpen(t *testing.T) {
 		err := runAttachmentOpen(attachmentOpenCmd, []string{"1"})
 		if err == nil {
 			t.Error("expected error for single arg")
+		}
+	})
+
+	t.Run("rejects extra args", func(t *testing.T) {
+		deps, _ := setupAttachmentTest(t)
+		defer deps.Cleanup()
+
+		err := runAttachmentOpen(attachmentOpenCmd, []string{"1", "0", "extra"})
+		if err == nil {
+			t.Error("expected error for extra args")
+		}
+		if !errors.Is(err, tterrors.ErrRequiredField) {
+			t.Errorf("expected ErrRequiredField, got %v", err)
 		}
 	})
 
@@ -146,4 +168,26 @@ func TestRunAttachmentOpen(t *testing.T) {
 			t.Error("expected error for attachment index out of range")
 		}
 	})
+}
+
+func TestAttachmentOpenCmdValidatesArgs(t *testing.T) {
+	cases := []struct {
+		name    string
+		args    []string
+		wantErr bool
+	}{
+		{name: "missing args", args: nil, wantErr: true},
+		{name: "single arg", args: []string{"1"}, wantErr: true},
+		{name: "exact args", args: []string{"1", "0"}, wantErr: false},
+		{name: "extra args", args: []string{"1", "0", "extra"}, wantErr: true},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := attachmentOpenCmd.ValidateArgs(tc.args)
+			if (err != nil) != tc.wantErr {
+				t.Fatalf("ValidateArgs(%v) error = %v, wantErr %v", tc.args, err, tc.wantErr)
+			}
+		})
+	}
 }

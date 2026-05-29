@@ -109,7 +109,7 @@ func parseBlockersMarkdown(content string) ([]*models.Blocker, error) {
 					break
 				}
 			}
-			if blockerMetadataRegex.MatchString(nextLine) {
+			if isBlockerMetadataLine(nextLine) {
 				// Save previous blocker's description
 				if currentBlocker != nil {
 					currentBlocker.Description = strings.TrimSpace(descBuilder.String())
@@ -147,6 +147,30 @@ func parseBlockersMarkdown(content string) ([]*models.Blocker, error) {
 	}
 
 	return blockers, nil
+}
+
+func isBlockerMetadataLine(line string) bool {
+	matches := blockerMetadataRegex.FindStringSubmatch(line)
+	if matches == nil {
+		return false
+	}
+
+	hasID := false
+	hasCreated := false
+	for pair := range strings.SplitSeq(matches[1], ",") {
+		parts := strings.SplitN(strings.TrimSpace(pair), ":", 2)
+		if len(parts) != 2 {
+			continue
+		}
+		switch strings.TrimSpace(parts[0]) {
+		case "id":
+			hasID = true
+		case "created":
+			hasCreated = true
+		}
+	}
+
+	return hasID && hasCreated
 }
 
 // parseBlockerMetadata parses metadata string and sets blocker fields.

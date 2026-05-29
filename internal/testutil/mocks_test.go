@@ -106,6 +106,11 @@ func TestMockRepositorySaveDeepCopiesMutableTaskFields(t *testing.T) {
 	task.Activity = []*models.ActivityEntry{{Field: "status", NewValue: string(models.StatusTodo)}}
 	task.Checklist = []models.ChecklistItem{{Text: "step"}}
 	task.Attachments = []models.Attachment{{Filename: "notes.md"}}
+	task.Recurrence = &models.RecurrencePattern{
+		Interval: 2,
+		Unit:     models.RecurrenceWeekly,
+		Weekdays: []int{1, 3},
+	}
 	task.ScoreDimensions = map[string]int{"impact": 3}
 	task.EpicAttrs = &models.EpicAttrs{Milestone: "m1", ScopeBaselinedAt: &baseline}
 	project.Tasks = []*models.Task{task}
@@ -122,6 +127,8 @@ func TestMockRepositorySaveDeepCopiesMutableTaskFields(t *testing.T) {
 	task.Activity[0].NewValue = string(models.StatusDone)
 	task.Checklist[0].Text = "mutated"
 	task.Attachments[0].Filename = "mutated.md"
+	task.Recurrence.Interval = 1
+	task.Recurrence.Weekdays[0] = 5
 	task.ScoreDimensions["impact"] = 5
 	task.EpicAttrs.Milestone = "m2"
 	*task.EpicAttrs.ScopeBaselinedAt = baseline.Add(time.Hour)
@@ -135,6 +142,8 @@ func TestMockRepositorySaveDeepCopiesMutableTaskFields(t *testing.T) {
 		saved.Activity[0].NewValue != string(models.StatusTodo) ||
 		saved.Checklist[0].Text != "step" ||
 		saved.Attachments[0].Filename != "notes.md" ||
+		saved.Recurrence.Interval != 2 ||
+		saved.Recurrence.Weekdays[0] != 1 ||
 		saved.ScoreDimensions["impact"] != 3 ||
 		saved.EpicAttrs.Milestone != "m1" ||
 		!saved.EpicAttrs.ScopeBaselinedAt.Equal(wantBaseline) {

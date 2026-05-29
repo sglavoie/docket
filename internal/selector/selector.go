@@ -15,12 +15,20 @@ func NewItem(id string, data any, columns, headers []string) Item {
 	return Item{
 		ID:      id,
 		Data:    data,
-		Columns: append([]string(nil), columns...),
-		Headers: append([]string(nil), headers...),
+		Columns: cloneStrings(columns),
+		Headers: cloneStrings(headers),
 	}
 }
 
 // Clone returns a copy of the item with independent column and header slices.
 func (i Item) Clone() Item {
 	return NewItem(i.ID, i.Data, i.Columns, i.Headers)
+}
+
+func cloneStrings(values []string) []string {
+	if values == nil {
+		return nil
+	}
+
+	return append([]string{}, values...)
 }

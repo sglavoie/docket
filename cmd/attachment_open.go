@@ -24,6 +24,7 @@ For code references, opens in the configured code editor at the specified line.
 Examples:
   tt attachment open 5 0      # Open first attachment on task 5
   tt attachment open abc123 1 # Open second attachment`,
+	Args: cobra.ExactArgs(2),
 	RunE: runAttachmentOpen,
 }
 
@@ -40,8 +41,8 @@ func buildAttachmentEditorCmd(editor, target string) *exec.Cmd {
 }
 
 func runAttachmentOpen(cmd *cobra.Command, args []string) error {
-	if len(args) < 2 {
-		return tterrors.NewRequiredFieldError("task ID and attachment name")
+	if len(args) != 2 {
+		return tterrors.NewRequiredFieldError("task ID and attachment index")
 	}
 
 	project, cfg, _, err := LoadCurrentProject()

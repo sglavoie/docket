@@ -51,6 +51,8 @@ func timeBuckets(cutoff, now time.Time, g granularity) []bucket {
 // given granularity, honoring the supplied weekStart for weekly buckets.
 // For TimeRangeAll (zero cutoff), it uses the earliest reasonable start.
 func timeBucketsWithWeekStart(cutoff, now time.Time, g granularity, weekStart time.Weekday) []bucket {
+	weekStart = normalizeWeekStart(weekStart)
+
 	if cutoff.IsZero() {
 		// For "all time", start 12 months back as a reasonable default
 		cutoff = now.AddDate(-1, 0, 0)
@@ -129,6 +131,8 @@ func assignToBucket(t time.Time, buckets []bucket) int {
 // startOfPeriod truncates a time to the start of its period.
 // For granularityWeek, weekStart selects which weekday begins the week.
 func startOfPeriod(t time.Time, g granularity, weekStart time.Weekday) time.Time {
+	weekStart = normalizeWeekStart(weekStart)
+
 	switch g {
 	case granularityDay:
 		return util.StartOfDay(t)
@@ -143,6 +147,13 @@ func startOfPeriod(t time.Time, g granularity, weekStart time.Weekday) time.Time
 	default:
 		return t
 	}
+}
+
+func normalizeWeekStart(weekStart time.Weekday) time.Weekday {
+	if weekStart < time.Sunday || weekStart > time.Saturday {
+		return DefaultWeekStart
+	}
+	return weekStart
 }
 
 // advancePeriod moves to the next period boundary.

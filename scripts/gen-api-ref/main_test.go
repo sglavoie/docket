@@ -55,6 +55,25 @@ func TestCollectFlagsSuppressesEmptySliceDefaults(t *testing.T) {
 	}
 }
 
+func TestCollectFlagsSkipsDeprecatedFlags(t *testing.T) {
+	flags := pflag.NewFlagSet("test", pflag.ContinueOnError)
+	flags.String("current", "", "current flag")
+	flags.String("old", "", "deprecated flag")
+	flag := flags.Lookup("old")
+	flag.Deprecated = "use --current instead"
+
+	got := collectFlags(flags)
+	if len(got) != 1 {
+		t.Fatalf("collectFlags() returned %d flags, want 1: %#v", len(got), got)
+	}
+	if strings.Contains(got[0], "--old") {
+		t.Fatalf("collectFlags() included deprecated flag: %#v", got)
+	}
+	if want := "--current string    current flag"; got[0] != want {
+		t.Fatalf("collectFlags() = %q, want %q", got[0], want)
+	}
+}
+
 func TestCollectFlagsKeepsMeaningfulDefaults(t *testing.T) {
 	flags := pflag.NewFlagSet("test", pflag.ContinueOnError)
 	flags.String("format", "ascii", "output format")

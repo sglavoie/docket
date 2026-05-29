@@ -176,6 +176,9 @@ func (p *ScoringProfile) Validate() error {
 
 // ValidateScoreDimension checks that val is within the dimension's [Min, Max] range.
 func ValidateScoreDimension(dim *ScoringDimension, val int) error {
+	if dim == nil {
+		return fmt.Errorf("dimension is required")
+	}
 	if val < dim.Min || val > dim.Max {
 		return fmt.Errorf("value %d for %q outside range [%d, %d]", val, dim.ID, dim.Min, dim.Max)
 	}

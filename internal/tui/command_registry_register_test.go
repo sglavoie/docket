@@ -65,6 +65,28 @@ func TestRegisterDuplicateErrorContainsCommandName(t *testing.T) {
 	}
 }
 
+func TestRegisterDuplicateCommandIsCaseInsensitive(t *testing.T) {
+	registry := NewCommandRegistry()
+
+	firstCmd := Command{
+		Name:     "Create Task",
+		Category: CategoryTasks,
+		Handler:  func() tea.Msg { return nil },
+	}
+	if err := registry.Register(firstCmd); err != nil {
+		t.Fatalf("expected first Register to succeed, got error: %v", err)
+	}
+
+	duplicateCmd := Command{
+		Name:     "create task",
+		Category: CategoryTasks,
+		Handler:  func() tea.Msg { return nil },
+	}
+	if err := registry.Register(duplicateCmd); err == nil {
+		t.Fatal("expected case-insensitive duplicate registration to fail")
+	}
+}
+
 func TestRegisterDuplicatePreservesOriginalCommand(t *testing.T) {
 	registry := NewCommandRegistry()
 

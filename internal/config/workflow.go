@@ -362,17 +362,24 @@ func (c *Config) SetWorkflowEvalState(projectID string, state WorkflowEvalState)
 }
 
 // GetWorkflowEvalInterval returns the interval in minutes between automatic evaluations.
-// Returns 60 if not set, 0 means disabled.
+// Returns 60 if not set, 0 means disabled. Negative values are treated as
+// disabled, matching Load's persisted config normalization.
 func (c *Config) GetWorkflowEvalInterval() int {
 	if c.WorkflowEvalInterval == nil {
 		return 60 // Default: 60 minutes
+	}
+	if *c.WorkflowEvalInterval < 0 {
+		return 0
 	}
 	return *c.WorkflowEvalInterval
 }
 
 // SetWorkflowEvalInterval sets the interval in minutes between automatic evaluations.
-// Set to 0 to disable automatic evaluation.
+// Set to 0 to disable automatic evaluation. Negative values are clamped to 0.
 func (c *Config) SetWorkflowEvalInterval(minutes int) {
+	if minutes < 0 {
+		minutes = 0
+	}
 	c.WorkflowEvalInterval = &minutes
 }
 

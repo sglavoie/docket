@@ -157,7 +157,7 @@ func scoreSubsequenceWithPositions(text, pattern []rune) (int, []int) {
 			continue
 		}
 
-		score, positions := tryGreedyFromWithPositions(text, pattern, startIdx)
+		score, positions := scoreFromStart(text, pattern, startIdx, true)
 		if score > bestScore {
 			bestScore = score
 			bestPositions = positions
@@ -165,63 +165,6 @@ func scoreSubsequenceWithPositions(text, pattern []rune) (int, []int) {
 	}
 
 	return bestScore, bestPositions
-}
-
-// tryGreedyFromWithPositions attempts a greedy subsequence match starting from startIdx.
-func tryGreedyFromWithPositions(text, pattern []rune, startIdx int) (int, []int) {
-	patternIdx := 0
-	score := 0
-	prevMatchIdx := -2
-	firstMatchIdx := -1
-	var positions []int
-
-	for textIdx := startIdx; textIdx < len(text) && patternIdx < len(pattern); textIdx++ {
-		if text[textIdx] == pattern[patternIdx] {
-			positions = append(positions, textIdx)
-			matchScore := 1
-
-			if firstMatchIdx == -1 {
-				firstMatchIdx = textIdx
-			}
-
-			if textIdx == prevMatchIdx+1 {
-				matchScore += 3
-			}
-
-			if textIdx == 0 {
-				matchScore += 2
-			} else if isWordBoundary(text[textIdx-1]) {
-				matchScore += 2
-			}
-
-			if patternIdx == 0 && textIdx == 0 {
-				matchScore += 1
-			}
-
-			score += matchScore
-			prevMatchIdx = textIdx
-			patternIdx++
-		}
-	}
-
-	if patternIdx < len(pattern) {
-		return 0, nil
-	}
-
-	// Reject matches that are too scattered (span > 3x pattern length)
-	matchSpan := prevMatchIdx - firstMatchIdx + 1
-	if matchSpan > len(pattern)*3 {
-		return 0, nil
-	}
-
-	lengthDiff := len(text) - len(pattern)
-	if lengthDiff == 0 {
-		score += 10
-	} else if lengthDiff <= 3 {
-		score += 5
-	}
-
-	return score, positions
 }
 
 // scoreSubsequence finds the best subsequence match and returns a score.
@@ -242,7 +185,7 @@ func scoreSubsequence(text, pattern []rune) int {
 			continue
 		}
 
-		score := tryGreedyFrom(text, pattern, startIdx)
+		score, _ := scoreFromStart(text, pattern, startIdx, false)
 		if score > bestScore {
 			bestScore = score
 		}
@@ -251,56 +194,153 @@ func scoreSubsequence(text, pattern []rune) int {
 	return bestScore
 }
 
-// tryGreedyFrom attempts a greedy subsequence match starting from startIdx.
-func tryGreedyFrom(text, pattern []rune, startIdx int) int {
-	patternIdx := 0
+// scoreFromStart finds the best scoring subsequence that starts at startIdx.
+// It only considers matches inside the existing density window
+// (span <= 3x pattern length).
+func scoreFromStart(text, pattern []rune, startIdx int, wantPositions bool) (int, []int) {
+	maxEnd := min(len(text)-1, startIdx+len(pattern)*3-1)
+	if maxEnd-startIdx+1 < len(pattern) {
+		return 0, nil
+	}
+	if score, positions, ok := scoreConsecutiveFrom(text, pattern, startIdx, wantPositions); ok {
+		return score, positions
+	}
+
+	windowLen := maxEnd - startIdx + 1
+	dpPrev := make([]int, windowLen)
+	dpCurr := make([]int, windowLen)
+	dpPrev[0] = matchScore(text, startIdx, 0, -2)
+
+	var predecessors [][]int
+	if wantPositions {
+		predecessors = make([][]int, len(pattern))
+	}
+
+	for patternIdx := 1; patternIdx < len(pattern); patternIdx++ {
+		clear(dpCurr)
+		if wantPositions {
+			predecessors[patternIdx] = make([]int, windowLen)
+			for i := range predecessors[patternIdx] {
+				predecessors[patternIdx][i] = -1
+			}
+		}
+
+		bestPrevScore := 0
+		bestPrevIdx := -1
+		latestIdx := maxEnd - (len(pattern) - 1 - patternIdx)
+
+		for textIdx := startIdx + patternIdx; textIdx <= latestIdx; textIdx++ {
+			relIdx := textIdx - startIdx
+			prevIdx := textIdx - 1
+			prevRelIdx := relIdx - 1
+			if dpPrev[prevRelIdx] > bestPrevScore {
+				bestPrevScore = dpPrev[prevRelIdx]
+				bestPrevIdx = prevIdx
+			}
+			if text[textIdx] != pattern[patternIdx] || bestPrevScore == 0 {
+				continue
+			}
+
+			baseScore := matchScore(text, textIdx, patternIdx, -2)
+			score := bestPrevScore + baseScore
+			predecessor := bestPrevIdx
+
+			if dpPrev[prevRelIdx] > 0 {
+				consecutiveScore := dpPrev[prevRelIdx] + baseScore + 3
+				if consecutiveScore > score {
+					score = consecutiveScore
+					predecessor = prevIdx
+				}
+			}
+
+			dpCurr[relIdx] = score
+			if wantPositions {
+				predecessors[patternIdx][relIdx] = predecessor
+			}
+		}
+
+		dpPrev, dpCurr = dpCurr, dpPrev
+	}
+
+	bestScore := 0
+	bestEndIdx := -1
+	for textIdx := startIdx + len(pattern) - 1; textIdx <= maxEnd; textIdx++ {
+		if dpPrev[textIdx-startIdx] > bestScore {
+			bestScore = dpPrev[textIdx-startIdx]
+			bestEndIdx = textIdx
+		}
+	}
+	if bestScore == 0 {
+		return 0, nil
+	}
+
+	bestScore = addLengthBonus(bestScore, len(text), len(pattern))
+	if !wantPositions {
+		return bestScore, nil
+	}
+
+	positions := make([]int, len(pattern))
+	positions[len(pattern)-1] = bestEndIdx
+	for patternIdx := len(pattern) - 1; patternIdx > 0; patternIdx-- {
+		positions[patternIdx-1] = predecessors[patternIdx][positions[patternIdx]-startIdx]
+	}
+
+	return bestScore, positions
+}
+
+func scoreConsecutiveFrom(text, pattern []rune, startIdx int, wantPositions bool) (int, []int, bool) {
+	if startIdx+len(pattern) > len(text) {
+		return 0, nil, false
+	}
+
 	score := 0
 	prevMatchIdx := -2
-	firstMatchIdx := -1
+	var positions []int
+	if wantPositions {
+		positions = make([]int, len(pattern))
+	}
 
-	for textIdx := startIdx; textIdx < len(text) && patternIdx < len(pattern); textIdx++ {
-		if text[textIdx] == pattern[patternIdx] {
-			matchScore := 1
-
-			if firstMatchIdx == -1 {
-				firstMatchIdx = textIdx
-			}
-
-			if textIdx == prevMatchIdx+1 {
-				matchScore += 3
-			}
-
-			if textIdx == 0 {
-				matchScore += 2
-			} else if isWordBoundary(text[textIdx-1]) {
-				matchScore += 2
-			}
-
-			if patternIdx == 0 && textIdx == 0 {
-				matchScore += 1
-			}
-
-			score += matchScore
-			prevMatchIdx = textIdx
-			patternIdx++
+	for patternIdx := range pattern {
+		textIdx := startIdx + patternIdx
+		if text[textIdx] != pattern[patternIdx] {
+			return 0, nil, false
+		}
+		score += matchScore(text, textIdx, patternIdx, prevMatchIdx)
+		prevMatchIdx = textIdx
+		if wantPositions {
+			positions[patternIdx] = textIdx
 		}
 	}
 
-	if patternIdx < len(pattern) {
-		return 0
-	}
+	return addLengthBonus(score, len(text), len(pattern)), positions, true
+}
 
-	// Reject matches that are too scattered (span > 3x pattern length)
-	matchSpan := prevMatchIdx - firstMatchIdx + 1
-	if matchSpan > len(pattern)*3 {
-		return 0
-	}
-
-	lengthDiff := len(text) - len(pattern)
+func addLengthBonus(score, textLen, patternLen int) int {
+	lengthDiff := textLen - patternLen
 	if lengthDiff == 0 {
 		score += 10
 	} else if lengthDiff <= 3 {
 		score += 5
+	}
+
+	return score
+}
+
+func matchScore(text []rune, textIdx, patternIdx, prevMatchIdx int) int {
+	score := 1
+
+	if textIdx == prevMatchIdx+1 {
+		score += 3
+	}
+
+	if textIdx == 0 {
+		score += 2
+	} else if isWordBoundary(text[textIdx-1]) {
+		score += 2
+	}
+
+	if patternIdx == 0 && textIdx == 0 {
+		score += 1
 	}
 
 	return score

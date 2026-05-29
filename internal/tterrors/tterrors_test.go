@@ -241,6 +241,7 @@ func TestNewNoChangesError(t *testing.T) {
 	}{
 		{"edit flags", "--name, --description"},
 		{"help flag", "--help to see available options"},
+		{"surrounding whitespace", "  --name, --description  "},
 	}
 
 	for _, tc := range testCases {
@@ -249,20 +250,33 @@ func TestNewNoChangesError(t *testing.T) {
 			if !errors.Is(err, ErrNoChanges) {
 				t.Error("NewNoChangesError should wrap ErrNoChanges")
 			}
-			if !strings.Contains(err.Error(), tc.flags) {
-				t.Errorf("error message should contain flags %q, got %q", tc.flags, err.Error())
+			wantFlags := strings.TrimSpace(tc.flags)
+			if !strings.Contains(err.Error(), wantFlags) {
+				t.Errorf("error message should contain flags %q, got %q", wantFlags, err.Error())
 			}
 		})
 	}
 }
 
-func TestNewNoChangesErrorEmptyFlags(t *testing.T) {
-	err := NewNoChangesError("")
-	if !errors.Is(err, ErrNoChanges) {
-		t.Error("NewNoChangesError should still match ErrNoChanges when flags are empty")
+func TestNewNoChangesErrorBlankFlags(t *testing.T) {
+	testCases := []struct {
+		name  string
+		flags string
+	}{
+		{"empty", ""},
+		{"whitespace", " \t\n "},
 	}
-	if err.Error() != ErrNoChanges.Error() {
-		t.Errorf("NewNoChangesError should not include a dangling hint when flags are empty, got %q", err.Error())
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := NewNoChangesError(tc.flags)
+			if !errors.Is(err, ErrNoChanges) {
+				t.Error("NewNoChangesError should still match ErrNoChanges when flags are blank")
+			}
+			if err.Error() != ErrNoChanges.Error() {
+				t.Errorf("NewNoChangesError should not include a dangling hint when flags are blank, got %q", err.Error())
+			}
+		})
 	}
 }
 

@@ -135,20 +135,58 @@ func findUnescapedSeparator(s string) int {
 	}
 }
 
-// escapeActivityValue escapes literal " > " and backslashes in activity values
-// so the " > " delimiter between old and new values is unambiguous.
-// Backslashes are escaped first to preserve existing ones.
+// escapeActivityValue escapes literal " > ", backslashes, and line breaks in
+// activity values so each activity entry remains a single parseable comment.
 func escapeActivityValue(s string) string {
-	s = strings.ReplaceAll(s, `\`, `\\`)
-	s = strings.ReplaceAll(s, " > ", ` \> `)
-	return s
+	var b strings.Builder
+	b.Grow(len(s))
+	for i := 0; i < len(s); i++ {
+		if strings.HasPrefix(s[i:], " > ") {
+			b.WriteString(` \> `)
+			i += len(" > ") - 1
+			continue
+		}
+		switch s[i] {
+		case '\\':
+			b.WriteString(`\\`)
+		case '\n':
+			b.WriteString(`\n`)
+		case '\r':
+			b.WriteString(`\r`)
+		default:
+			b.WriteByte(s[i])
+		}
+	}
+	return b.String()
 }
 
 // unescapeActivityValue reverses escapeActivityValue.
 func unescapeActivityValue(s string) string {
-	s = strings.ReplaceAll(s, ` \> `, " > ")
-	s = strings.ReplaceAll(s, `\\`, `\`)
-	return s
+	var b strings.Builder
+	b.Grow(len(s))
+	for i := 0; i < len(s); i++ {
+		if s[i] == '\\' && i+1 < len(s) {
+			switch s[i+1] {
+			case '\\':
+				b.WriteByte('\\')
+				i++
+			case '>':
+				b.WriteByte('>')
+				i++
+			case 'n':
+				b.WriteByte('\n')
+				i++
+			case 'r':
+				b.WriteByte('\r')
+				i++
+			default:
+				b.WriteByte(s[i])
+			}
+			continue
+		}
+		b.WriteByte(s[i])
+	}
+	return b.String()
 }
 
 // WriteActivity generates the activity block for a task.

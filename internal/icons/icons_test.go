@@ -122,7 +122,7 @@ func TestGetEmojiMode(t *testing.T) {
 		{"folder", "📂"},
 		{"search", "🔍"},
 		{"archive", "📦"},
-		{"edit", "✏"},
+		{"edit", "✏️"},
 		{"recur", "↺"},
 		{"idea", "💡"},
 		{"note_type", "📝"},
@@ -179,6 +179,15 @@ func TestGetEmojiMode(t *testing.T) {
 		if got := Get(tt.key); got != tt.want {
 			t.Errorf("Get(%q) emoji = %q, want %q", tt.key, got, tt.want)
 		}
+	}
+}
+
+func TestEditEmojiUsesEmojiPresentation(t *testing.T) {
+	SetUseEmoji(true)
+	defer SetUseEmoji(false)
+
+	if got := Get("edit"); !strings.Contains(got, "\ufe0f") {
+		t.Fatalf("Get(%q) emoji = %q, want emoji presentation selector", "edit", got)
 	}
 }
 

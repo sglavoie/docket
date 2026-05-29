@@ -37,13 +37,25 @@ func viewsOverlap(views1, views2 []ViewType) bool {
 // Register adds a command to the registry.
 // Returns an error if a command with the same name and overlapping view scope already exists.
 func (r *CommandRegistry) Register(cmd Command) error {
-	existing := r.commands[cmd.Name]
+	if r.commands == nil {
+		r.commands = make(map[string][]Command)
+	}
+
+	key := cmd.Name
+	existing := r.commands[key]
+	for existingName, entries := range r.commands {
+		if strings.EqualFold(existingName, cmd.Name) {
+			key = existingName
+			existing = entries
+			break
+		}
+	}
 	for _, e := range existing {
 		if viewsOverlap(e.Views, cmd.Views) {
 			return fmt.Errorf("command already registered: %s", cmd.Name)
 		}
 	}
-	r.commands[cmd.Name] = append(existing, cmd)
+	r.commands[key] = append(existing, cmd)
 	return nil
 }
 

@@ -25,7 +25,7 @@ var registry = map[string]iconPair{
 	"folder":   {"📂", "⌂"},
 	"search":   {"🔍", "⌕"},
 	"archive":  {"📦", "⊟"},
-	"edit":     {"✏", "✎"},
+	"edit":     {"✏️", "✎"},
 	"recur":    {"↺", "⟳"},
 
 	// Type Hints (autocomplete)

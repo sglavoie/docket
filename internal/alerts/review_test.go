@@ -51,6 +51,24 @@ func TestCheckDailyReviewReminder_PastConfiguredHour(t *testing.T) {
 	}
 }
 
+func TestCheckDailyReviewReminder_ClampsHighConfiguredHour(t *testing.T) {
+	now := time.Date(2026, 2, 28, 23, 0, 0, 0, time.UTC)
+	cfg := DefaultAlertConfig()
+	cfg.DailyReviewHour = 24
+	cfg.LastDailyReviewAt = timePtr(time.Date(2026, 2, 27, 23, 30, 0, 0, time.UTC))
+
+	alerts := checkDailyReviewReminder(cfg, nil, now)
+	if len(alerts) != 1 {
+		t.Fatalf("expected 1 alert with out-of-range daily review hour clamped, got %d", len(alerts))
+	}
+	if alerts[0].Title != "Daily review pending" {
+		t.Errorf("unexpected title: %s", alerts[0].Title)
+	}
+	if alerts[0].Severity != SeverityInfo {
+		t.Errorf("expected info severity, got %d", alerts[0].Severity)
+	}
+}
+
 func TestCheckDailyReviewReminder_BeforeConfiguredHourButWithin26h(t *testing.T) {
 	now := time.Date(2026, 2, 28, 7, 0, 0, 0, time.UTC)
 	cfg := DefaultAlertConfig()

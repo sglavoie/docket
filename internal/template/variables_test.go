@@ -470,6 +470,23 @@ func TestValidateTokens_NestedWrapperRejected(t *testing.T) {
 	}
 }
 
+func TestValidateTokens_NestedTokenInDefaultRejected(t *testing.T) {
+	// Regression: the valid token pattern allows "{" in defaults, so
+	// "{{outer:{{inner}}}}" was accepted as outer's default "{{inner" plus a
+	// trailing "}}". Applying variables could then leave a fresh "{{inner}}"
+	// token in the rendered template.
+	tmpl := &TaskTemplate{
+		Description: "{{outer:{{inner}}}}",
+	}
+	err := ValidateTokens(tmpl)
+	if err == nil {
+		t.Fatal("expected error for nested-looking token in default, got nil")
+	}
+	if !strings.Contains(err.Error(), "invalid variable token") {
+		t.Errorf("error %q should mention invalid variable token", err.Error())
+	}
+}
+
 func TestValidateTokens_InvalidWithEmbeddedValidRejected(t *testing.T) {
 	// Regression: a malformed token that happens to contain a valid token as
 	// a substring must still be rejected.

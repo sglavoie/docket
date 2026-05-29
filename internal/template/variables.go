@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"regexp"
 	"slices"
+	"strings"
 )
 
 // TemplateVariable represents a variable placeholder found in a template.
@@ -143,6 +144,9 @@ func ValidateTokens(t *TaskTemplate) error {
 			// malformed wrappers like "{{outer {{inner}}" where extra text
 			// sits between the outer "{{" and the inner "{{".
 			if validVarPattern.FindString(token) == token {
+				if strings.Contains(token[2:], "{{") {
+					return fmt.Errorf("invalid variable token %q in %s", token, field)
+				}
 				continue
 			}
 			if len(token) > 0 && token[0] == '{' &&

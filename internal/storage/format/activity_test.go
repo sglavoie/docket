@@ -119,6 +119,35 @@ func TestActivityRoundtripWithBackslashInValues(t *testing.T) {
 	}
 }
 
+func TestActivityRoundtripWithLineBreaksInValues(t *testing.T) {
+	task := &models.Task{
+		Activity: []*models.ActivityEntry{
+			{
+				Timestamp: time.Date(2025, 6, 15, 10, 30, 0, 0, time.Local),
+				Field:     "title",
+				OldValue:  "Line 1\nLine 2",
+				NewValue:  "Line A\r\nLine B",
+			},
+		},
+	}
+
+	output := WriteActivity(task)
+	parsedTask := &models.Task{Description: output}
+	ExtractActivityFromDescription(parsedTask)
+
+	if len(parsedTask.Activity) != 1 {
+		t.Fatalf("expected 1 activity entry, got %d; output:\n%s", len(parsedTask.Activity), output)
+	}
+
+	entry := parsedTask.Activity[0]
+	if entry.OldValue != "Line 1\nLine 2" {
+		t.Errorf("OldValue = %q, want %q", entry.OldValue, "Line 1\nLine 2")
+	}
+	if entry.NewValue != "Line A\r\nLine B" {
+		t.Errorf("NewValue = %q, want %q", entry.NewValue, "Line A\r\nLine B")
+	}
+}
+
 func TestActivityRoundtripSingleValue(t *testing.T) {
 	// Single-value entries (no old value) with " > " in the value
 	task := &models.Task{

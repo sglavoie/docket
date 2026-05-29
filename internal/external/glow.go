@@ -100,6 +100,12 @@ func RenderTaskMarkdown(task *models.Task) error {
 	return RenderMarkdown(content)
 }
 
+func markdownTableCell(value any) string {
+	s := fmt.Sprint(value)
+	s = strings.NewReplacer("\n", " ", "\r", " ").Replace(s)
+	return strings.ReplaceAll(s, "|", `\|`)
+}
+
 // FormatTaskAsMarkdown formats a task as markdown.
 func FormatTaskAsMarkdown(task *models.Task) string {
 	var b strings.Builder
@@ -116,7 +122,7 @@ func FormatTaskAsMarkdown(task *models.Task) string {
 	fmt.Fprintf(&b, "| Type | %s |\n", task.Type.HeadingPrefix())
 
 	if len(task.Tags) > 0 {
-		fmt.Fprintf(&b, "| Tags | %s |\n", strings.Join(task.Tags, ", "))
+		fmt.Fprintf(&b, "| Tags | %s |\n", markdownTableCell(strings.Join(task.Tags, ", ")))
 	}
 
 	if !task.CreatedAt.IsZero() {
@@ -244,26 +250,25 @@ func formatTaskAttributesMarkdown(task *models.Task) string {
 	case models.TaskTypeBug:
 		if task.BugAttrs != nil {
 			if task.BugAttrs.Severity != "" {
-				rows = append(rows, fmt.Sprintf("| Severity | %s |", task.BugAttrs.Severity))
+				rows = append(rows, fmt.Sprintf("| Severity | %s |", markdownTableCell(task.BugAttrs.Severity)))
 			}
 			if task.BugAttrs.Reproducible != "" {
-				rows = append(rows, fmt.Sprintf("| Reproducible | %s |", task.BugAttrs.Reproducible))
+				rows = append(rows, fmt.Sprintf("| Reproducible | %s |", markdownTableCell(task.BugAttrs.Reproducible)))
 			}
 			if task.BugAttrs.Workaround != "" {
-				workaround := strings.ReplaceAll(task.BugAttrs.Workaround, "\n", " ")
-				rows = append(rows, fmt.Sprintf("| Workaround | %s |", workaround))
+				rows = append(rows, fmt.Sprintf("| Workaround | %s |", markdownTableCell(task.BugAttrs.Workaround)))
 			}
 		}
 	case models.TaskTypeIdea:
 		if task.IdeaAttrs != nil {
 			if task.IdeaAttrs.Category != "" {
-				rows = append(rows, fmt.Sprintf("| Category | %s |", task.IdeaAttrs.Category))
+				rows = append(rows, fmt.Sprintf("| Category | %s |", markdownTableCell(task.IdeaAttrs.Category)))
 			}
 			if task.IdeaAttrs.Effort != "" {
-				rows = append(rows, fmt.Sprintf("| Effort | %s |", task.IdeaAttrs.Effort))
+				rows = append(rows, fmt.Sprintf("| Effort | %s |", markdownTableCell(task.IdeaAttrs.Effort)))
 			}
 			if task.IdeaAttrs.Value != "" {
-				rows = append(rows, fmt.Sprintf("| Value | %s |", task.IdeaAttrs.Value))
+				rows = append(rows, fmt.Sprintf("| Value | %s |", markdownTableCell(task.IdeaAttrs.Value)))
 			}
 			if task.IdeaAttrs.Validated {
 				rows = append(rows, "| Validated | Yes |")
@@ -272,10 +277,10 @@ func formatTaskAttributesMarkdown(task *models.Task) string {
 	case models.TaskTypeTask:
 		if task.TaskAttrs != nil {
 			if task.TaskAttrs.Effort != "" {
-				rows = append(rows, fmt.Sprintf("| Effort | %s |", task.TaskAttrs.Effort))
+				rows = append(rows, fmt.Sprintf("| Effort | %s |", markdownTableCell(task.TaskAttrs.Effort)))
 			}
 			if task.TaskAttrs.WorkType != "" {
-				rows = append(rows, fmt.Sprintf("| Work Type | %s |", task.TaskAttrs.WorkType))
+				rows = append(rows, fmt.Sprintf("| Work Type | %s |", markdownTableCell(task.TaskAttrs.WorkType)))
 			}
 		}
 	case models.TaskTypeStory:
@@ -284,21 +289,19 @@ func formatTaskAttributesMarkdown(task *models.Task) string {
 				rows = append(rows, fmt.Sprintf("| Story Points | %d |", task.StoryAttrs.StoryPoints))
 			}
 			if task.StoryAttrs.Persona != "" {
-				persona := strings.ReplaceAll(task.StoryAttrs.Persona, "\n", " ")
-				rows = append(rows, fmt.Sprintf("| Persona | %s |", persona))
+				rows = append(rows, fmt.Sprintf("| Persona | %s |", markdownTableCell(task.StoryAttrs.Persona)))
 			}
 		}
 	case models.TaskTypeEpic:
 		if task.EpicAttrs != nil {
 			if task.EpicAttrs.Scope != "" {
-				rows = append(rows, fmt.Sprintf("| Scope | %s |", task.EpicAttrs.Scope))
+				rows = append(rows, fmt.Sprintf("| Scope | %s |", markdownTableCell(task.EpicAttrs.Scope)))
 			}
 			if task.EpicAttrs.Milestone != "" {
-				rows = append(rows, fmt.Sprintf("| Milestone | %s |", task.EpicAttrs.Milestone))
+				rows = append(rows, fmt.Sprintf("| Milestone | %s |", markdownTableCell(task.EpicAttrs.Milestone)))
 			}
 			if task.EpicAttrs.SuccessMetrics != "" {
-				metrics := strings.ReplaceAll(task.EpicAttrs.SuccessMetrics, "\n", " ")
-				rows = append(rows, fmt.Sprintf("| Success Metrics | %s |", metrics))
+				rows = append(rows, fmt.Sprintf("| Success Metrics | %s |", markdownTableCell(task.EpicAttrs.SuccessMetrics)))
 			}
 		}
 	}

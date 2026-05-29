@@ -810,6 +810,89 @@ func TestEvaluateProjectRules_NilCtxIsSafe(t *testing.T) {
 	})
 }
 
+// TestMatchProjectTrigger_NilTasksAreSkipped verifies project-level aggregate
+// triggers tolerate sparse task slices. Task-level evaluation already skips nil
+// entries; project-level evaluation should do the same rather than panicking
+// when one malformed task slot appears in the context.
+func TestMatchProjectTrigger_NilTasksAreSkipped(t *testing.T) {
+	now := time.Now()
+	proj := &models.Project{
+		ID:         "p",
+		Name:       "P",
+		UpdatedAt:  now.AddDate(0, 0, -10),
+		StatusIcon: "active",
+	}
+	ctx := &ProjectEvaluationContext{
+		Project: proj,
+		Tasks: []*models.Task{
+			nil,
+			{ID: "active", Status: models.StatusInProgress, Type: models.TaskTypeBug, UpdatedAt: now.AddDate(0, 0, -5)},
+			{ID: "done", Status: models.StatusDone, Type: models.TaskTypeTask, UpdatedAt: now.AddDate(0, 0, -2)},
+			nil,
+		},
+	}
+
+	cases := []struct {
+		name    string
+		trigger RuleTrigger
+		want    bool
+	}{
+		{
+			name:    "has in-progress",
+			trigger: RuleTrigger{Field: FieldHasInProgressTasks, Operation: OpEquals, Value: "true"},
+			want:    true,
+		},
+		{
+			name:    "active task count",
+			trigger: RuleTrigger{Field: FieldActiveTaskCount, Operation: OpEquals, Value: "1"},
+			want:    true,
+		},
+		{
+			name:    "all non-complete tasks status",
+			trigger: RuleTrigger{Field: FieldAllTasksStatus, Operation: OpEquals, Value: "in_progress"},
+			want:    true,
+		},
+		{
+			name:    "majority active task type",
+			trigger: RuleTrigger{Field: FieldMajorityTaskType, Operation: OpEquals, Value: "bug"},
+			want:    true,
+		},
+		{
+			name:    "majority active task status",
+			trigger: RuleTrigger{Field: FieldMajorityTaskStatus, Operation: OpEquals, Value: "in_progress"},
+			want:    true,
+		},
+		{
+			name:    "completion ratio excludes nil entries",
+			trigger: RuleTrigger{Field: FieldCompletionRatio, Operation: OpEquals, Value: "50"},
+			want:    true,
+		},
+		{
+			name:    "days since update",
+			trigger: RuleTrigger{Field: FieldDaysSinceUpdate, Operation: OpLessThan, Value: "10"},
+			want:    true,
+		},
+		{
+			name:    "has tasks with status",
+			trigger: RuleTrigger{Field: FieldHasTasksWithStatus, Operation: OpEquals, Value: "done"},
+			want:    true,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			defer func() {
+				if r := recover(); r != nil {
+					t.Fatalf("matchProjectTrigger panicked with nil task entry: %v", r)
+				}
+			}()
+			if got := matchProjectTrigger(ctx, tc.trigger); got != tc.want {
+				t.Errorf("matchProjectTrigger() = %v, want %v", got, tc.want)
+			}
+		})
+	}
+}
+
 // TestMatchesTriggerGroup_DepthBound verifies that nested trigger group
 // evaluation refuses to recurse past maxTriggerGroupDepth. Validation rejects
 // such groups at rule-creation time, but evaluation must also be defensive

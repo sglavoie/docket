@@ -314,6 +314,7 @@ func cloneTask(task *models.Task) *models.Task {
 	taskCopy.PinnedAt = clonePointer(task.PinnedAt)
 	taskCopy.Comments = clonePointerSlice(task.Comments)
 	taskCopy.Decisions = clonePointerSlice(task.Decisions)
+	taskCopy.Recurrence = cloneRecurrencePattern(task.Recurrence)
 	taskCopy.Attachments = append([]models.Attachment{}, task.Attachments...)
 	taskCopy.SnoozedUntil = clonePointer(task.SnoozedUntil)
 	taskCopy.Activity = clonePointerSlice(task.Activity)
@@ -340,6 +341,15 @@ func cloneEpicAttrs(attrs *models.EpicAttrs) *models.EpicAttrs {
 	attrsCopy := *attrs
 	attrsCopy.ScopeBaselinedAt = clonePointer(attrs.ScopeBaselinedAt)
 	return &attrsCopy
+}
+
+func cloneRecurrencePattern(pattern *models.RecurrencePattern) *models.RecurrencePattern {
+	if pattern == nil {
+		return nil
+	}
+	patternCopy := *pattern
+	patternCopy.Weekdays = append([]int{}, pattern.Weekdays...)
+	return &patternCopy
 }
 
 func clonePointer[T any](value *T) *T {

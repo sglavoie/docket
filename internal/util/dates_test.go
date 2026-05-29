@@ -171,6 +171,7 @@ func TestParseDateWithTime(t *testing.T) {
 		{"5:30pm", "5:30pm", true, at(today, 17, 30), false},
 		{"17:00", "17:00", true, at(today, 17, 0), false},
 		{"08:30", "08:30", true, at(today, 8, 30), false},
+		{"9:30", "9:30", true, at(today, 9, 30), false},
 		{"12am is midnight", "12am", true, at(today, 0, 0), false},
 		{"12pm is noon", "12pm", true, at(today, 12, 0), false},
 		// Combined date + time
@@ -190,6 +191,7 @@ func TestParseDateWithTime(t *testing.T) {
 		{"tomorrow at 9am with extra whitespace", "tomorrow   at\t9am", true, at(today.AddDate(0, 0, 1), 9, 0), false},
 		{"today at 5pm", "today at 5pm", true, at(today, 17, 0), false},
 		{"today at 14:30", "today at 14:30", true, at(today, 14, 30), false},
+		{"tomorrow at 9:30", "tomorrow at 9:30", true, at(today.AddDate(0, 0, 1), 9, 30), false},
 		// Invalid date part with a valid time suffix
 		{"gibberish date with time", "gibberish 5pm", false, time.Time{}, true},
 	}

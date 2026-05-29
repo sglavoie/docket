@@ -1,6 +1,9 @@
 package models
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 func TestNewProject(t *testing.T) {
 	project, err := NewProject("test-id", "My Project", "/tmp/my-project")
@@ -201,6 +204,21 @@ func TestNewProject_WhitespaceNameReturnsError(t *testing.T) {
 	_, err := NewProject("my-id", "   ", "/path")
 	if err == nil {
 		t.Error("expected error for whitespace-only project name, got nil")
+	}
+}
+
+func TestNewProject_MultiByteNameLengthCountsRunes(t *testing.T) {
+	name := "Project " + strings.Repeat("猫", MaxProjectNameLength-len("Project "))
+	if got := len(name); got <= MaxProjectNameLength {
+		t.Fatalf("test precondition: byte length %d should exceed MaxProjectNameLength %d", got, MaxProjectNameLength)
+	}
+	if _, err := NewProject("my-id", name, "/path"); err != nil {
+		t.Errorf("expected %d-rune multi-byte project name to be valid, got error: %v", MaxProjectNameLength, err)
+	}
+
+	tooMany := name + "x"
+	if _, err := NewProject("my-id", tooMany, "/path"); err == nil {
+		t.Errorf("expected %d-rune project name to be rejected", MaxProjectNameLength+1)
 	}
 }
 

@@ -5,6 +5,7 @@ import (
 	"regexp"
 	"strings"
 	"time"
+	"unicode/utf8"
 )
 
 // Pre-compiled regexps for Slugify to avoid recompilation on each call.
@@ -56,8 +57,8 @@ func NewProject(id, name, path string) (*Project, error) {
 	if strings.TrimSpace(name) == "" {
 		return nil, fmt.Errorf("project name cannot be empty")
 	}
-	if len(name) > MaxProjectNameLength {
-		return nil, fmt.Errorf("project name too long (%d chars, max %d)", len(name), MaxProjectNameLength)
+	if n := utf8.RuneCountInString(name); n > MaxProjectNameLength {
+		return nil, fmt.Errorf("project name too long (%d chars, max %d)", n, MaxProjectNameLength)
 	}
 	slug := Slugify(name)
 	if slug == "" {

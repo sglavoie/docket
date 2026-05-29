@@ -4,6 +4,7 @@
 package planner
 
 import (
+	"math"
 	"time"
 
 	"github.com/sglavoie/tt/internal/models"
@@ -149,9 +150,7 @@ func CriticalPath(tasks []*models.Task) *CriticalPathResult {
 // Tasks that have an explicit StartDate receive max(startDate, predecessorEnd)
 // as their actual start.
 func ForwardSchedule(tasks []*models.Task, startDate time.Time, velocity float64) []ScheduledTask {
-	if velocity <= 0 {
-		velocity = 1.0
-	}
+	velocity = normalizeVelocity(velocity)
 
 	topoOrder, err := TopologicalSort(tasks)
 	if err != nil || len(topoOrder) == 0 {
@@ -253,6 +252,13 @@ func daysToduration(days float64) time.Duration {
 	return time.Duration(days * 24 * float64(time.Hour))
 }
 
+func normalizeVelocity(velocity float64) float64 {
+	if velocity <= 0 || math.IsNaN(velocity) || math.IsInf(velocity, 0) {
+		return 1.0
+	}
+	return velocity
+}
+
 // SerialSchedule assigns calendar dates like ForwardSchedule but adds a
 // single-resource constraint: independent tasks are chained sequentially
 // instead of all starting at t=0.  Tasks are ordered by priority (ascending
@@ -262,9 +268,7 @@ func daysToduration(days float64) time.Duration {
 // latest possible start and the assigned start within the total serial
 // makespan), not from standard CPM which assumes unlimited parallelism.
 func SerialSchedule(tasks []*models.Task, startDate time.Time, velocity float64) []ScheduledTask {
-	if velocity <= 0 {
-		velocity = 1.0
-	}
+	velocity = normalizeVelocity(velocity)
 
 	topoOrder, err := topologicalSortByPriority(tasks)
 	if err != nil || len(topoOrder) == 0 {

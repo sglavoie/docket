@@ -194,6 +194,9 @@ func matchProjectTrigger(ctx *ProjectEvaluationContext, trigger RuleTrigger) boo
 	case FieldHasInProgressTasks:
 		has := false
 		for _, t := range ctx.Tasks {
+			if t == nil {
+				continue
+			}
 			if t.Status == models.StatusInProgress {
 				has = true
 				break
@@ -204,6 +207,9 @@ func matchProjectTrigger(ctx *ProjectEvaluationContext, trigger RuleTrigger) boo
 	case FieldActiveTaskCount:
 		count := 0
 		for _, t := range ctx.Tasks {
+			if t == nil {
+				continue
+			}
 			if t.Status.IsActive() {
 				count++
 			}
@@ -215,6 +221,9 @@ func matchProjectTrigger(ctx *ProjectEvaluationContext, trigger RuleTrigger) boo
 		var status string
 		allSame := true
 		for _, t := range ctx.Tasks {
+			if t == nil {
+				continue
+			}
 			if t.Status.IsComplete() {
 				continue
 			}
@@ -237,12 +246,20 @@ func matchProjectTrigger(ctx *ProjectEvaluationContext, trigger RuleTrigger) boo
 		return matchesMajority(ctx, func(t *models.Task) string { return string(t.Status) }, trigger)
 
 	case FieldCompletionRatio:
-		total := len(ctx.Tasks)
+		total := 0
+		for _, t := range ctx.Tasks {
+			if t != nil {
+				total++
+			}
+		}
 		if total == 0 {
 			return compareValues("0", trigger.Operation, trigger.Value)
 		}
 		done := 0
 		for _, t := range ctx.Tasks {
+			if t == nil {
+				continue
+			}
 			if t.Status.IsComplete() {
 				done++
 			}
@@ -253,6 +270,9 @@ func matchProjectTrigger(ctx *ProjectEvaluationContext, trigger RuleTrigger) boo
 	case FieldDaysSinceUpdate:
 		latest := ctx.Project.UpdatedAt
 		for _, t := range ctx.Tasks {
+			if t == nil {
+				continue
+			}
 			if t.UpdatedAt.After(latest) {
 				latest = t.UpdatedAt
 			}
@@ -272,6 +292,9 @@ func matchProjectTrigger(ctx *ProjectEvaluationContext, trigger RuleTrigger) boo
 		// "no task is in_progress" works as a user would expect.
 		has := false
 		for _, t := range ctx.Tasks {
+			if t == nil {
+				continue
+			}
 			if strings.EqualFold(string(t.Status), trigger.Value) {
 				has = true
 				break
@@ -292,6 +315,9 @@ func matchesMajority(ctx *ProjectEvaluationContext, fieldGetter func(*models.Tas
 	counts := make(map[string]int)
 	total := 0
 	for _, t := range ctx.Tasks {
+		if t == nil {
+			continue
+		}
 		if !t.Status.IsActive() {
 			continue
 		}

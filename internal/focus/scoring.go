@@ -278,13 +278,18 @@ func countIncompleteDependents(task *models.Task, project *models.Project) int {
 	return count
 }
 
-func hasIncompleteDependencies(task *models.Task, project *models.Project) bool {
+func hasIncompleteDependencies(task *models.Task, project *models.Project, projects []*models.Project) bool {
 	if task == nil || project == nil {
 		return false
 	}
 	for _, depID := range task.DependsOn {
-		if models.ParseTaskRef(depID).IsCrossProject() {
-			return true
+		ref := models.ParseTaskRef(depID)
+		if ref.IsCrossProject() {
+			dep := getTaskByRef(projects, ref)
+			if dep == nil || !dep.IsComplete() {
+				return true
+			}
+			continue
 		}
 		dep := getTaskByID(project, depID)
 		if dep != nil && !dep.IsComplete() {
@@ -292,6 +297,19 @@ func hasIncompleteDependencies(task *models.Task, project *models.Project) bool 
 		}
 	}
 	return false
+}
+
+func getTaskByRef(projects []*models.Project, ref models.TaskRef) *models.Task {
+	if ref.IsEmpty() {
+		return nil
+	}
+	for _, project := range projects {
+		if project == nil || project.ID != ref.ProjectID {
+			continue
+		}
+		return getTaskByID(project, ref.TaskID)
+	}
+	return nil
 }
 
 func getTaskByID(project *models.Project, id string) *models.Task {

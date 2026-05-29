@@ -98,6 +98,17 @@ func TestGetWorkflowEvalInterval_ZeroDisabled(t *testing.T) {
 	}
 }
 
+func TestGetWorkflowEvalInterval_NegativeDisabled(t *testing.T) {
+	cfg := NewConfig()
+	val := -5
+	cfg.WorkflowEvalInterval = &val
+
+	interval := cfg.GetWorkflowEvalInterval()
+	if interval != 0 {
+		t.Errorf("expected negative interval to be treated as disabled, got %d", interval)
+	}
+}
+
 func TestSetWorkflowEvalInterval(t *testing.T) {
 	cfg := NewConfig()
 
@@ -108,5 +119,18 @@ func TestSetWorkflowEvalInterval(t *testing.T) {
 	}
 	if *cfg.WorkflowEvalInterval != 120 {
 		t.Errorf("expected interval 120, got %d", *cfg.WorkflowEvalInterval)
+	}
+}
+
+func TestSetWorkflowEvalInterval_NegativeClampsToDisabled(t *testing.T) {
+	cfg := NewConfig()
+
+	cfg.SetWorkflowEvalInterval(-10)
+
+	if cfg.WorkflowEvalInterval == nil {
+		t.Fatal("WorkflowEvalInterval should not be nil")
+	}
+	if *cfg.WorkflowEvalInterval != 0 {
+		t.Errorf("expected negative interval clamped to 0, got %d", *cfg.WorkflowEvalInterval)
 	}
 }

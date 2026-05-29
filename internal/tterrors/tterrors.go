@@ -5,6 +5,7 @@ package tterrors
 import (
 	"errors"
 	"fmt"
+	"strings"
 )
 
 // Project-related errors
@@ -105,6 +106,7 @@ func NewAmbiguousIdentifierError(identifier string, candidates string) error {
 
 // NewNoChangesError creates an error when no modification flags are provided to an edit command.
 func NewNoChangesError(flags string) error {
+	flags = strings.TrimSpace(flags)
 	if flags == "" {
 		return ErrNoChanges
 	}

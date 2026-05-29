@@ -239,6 +239,12 @@ func TestGetDimension(t *testing.T) {
 	}
 }
 
+func TestValidateScoreDimensionNilDimension(t *testing.T) {
+	if err := ValidateScoreDimension(nil, 1); err == nil {
+		t.Error("expected error for nil dimension, got nil")
+	}
+}
+
 func TestProfileValidateRejectsNegativeWeight(t *testing.T) {
 	profile := ScoringProfile{
 		ID: "test", Name: "Test", Formula: FormulaWeightedSum,

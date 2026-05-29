@@ -55,6 +55,19 @@ func TestStartOfPeriodWeeklyHonorsWeekStart(t *testing.T) {
 	}
 }
 
+func TestStartOfPeriodWeeklyDefaultsInvalidWeekStart(t *testing.T) {
+	wed := time.Date(2025, 6, 11, 10, 30, 0, 0, time.UTC)
+	want := startOfPeriod(wed, granularityWeek, DefaultWeekStart)
+
+	invalidStarts := []time.Weekday{time.Weekday(-1), time.Weekday(7), time.Weekday(99)}
+	for _, invalid := range invalidStarts {
+		got := startOfPeriod(wed, granularityWeek, invalid)
+		if !got.Equal(want) {
+			t.Errorf("startOfPeriod(invalid weekStart=%d) = %v, want default %v", invalid, got, want)
+		}
+	}
+}
+
 // TestTimeBucketsWithWeekStartNonMonday pins bucketing behavior for a
 // non-default week start (Sunday). All bucket Start values must fall on
 // the requested weekday.

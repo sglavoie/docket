@@ -95,8 +95,14 @@ func checkDailyReviewReminder(cfg AlertConfig, _ []ProjectData, now time.Time) [
 		}}
 	}
 
-	// Current hour >= configured hour and no review today
-	if now.Hour() >= cfg.DailyReviewHour {
+	// Current hour >= configured hour and no review today.
+	reviewHour := cfg.DailyReviewHour
+	if reviewHour < 0 {
+		reviewHour = 0
+	} else if reviewHour > 23 {
+		reviewHour = 23
+	}
+	if now.Hour() >= reviewHour {
 		return []Alert{{
 			Category: CategoryDailyReview,
 			Title:    "Daily review pending",

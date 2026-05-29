@@ -55,3 +55,62 @@ func TestCollectActionableTasks_BlockedExcluded(t *testing.T) {
 		t.Errorf("expected the actionable todo task, got %+v", out[0].Task)
 	}
 }
+
+func TestCollectActionableTasks_CrossProjectDependencies(t *testing.T) {
+	depProject, err := models.NewProject(uuid.New().String(), "Dependencies", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	targetProject, err := models.NewProject(uuid.New().String(), "Target", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	doneDep, err := models.NewTask(uuid.New().String(), 1, models.TaskTypeTask, "Done dependency")
+	if err != nil {
+		t.Fatal(err)
+	}
+	doneDep.Status = models.StatusDone
+
+	openDep, err := models.NewTask(uuid.New().String(), 2, models.TaskTypeTask, "Open dependency")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	unblocked, err := models.NewTask(uuid.New().String(), 1, models.TaskTypeTask, "Unblocked")
+	if err != nil {
+		t.Fatal(err)
+	}
+	unblocked.DependsOn = []string{depProject.ID + ":" + doneDep.ID}
+
+	blockedByOpen, err := models.NewTask(uuid.New().String(), 2, models.TaskTypeTask, "Blocked by open")
+	if err != nil {
+		t.Fatal(err)
+	}
+	blockedByOpen.DependsOn = []string{depProject.ID + ":" + openDep.ID}
+
+	blockedByMissing, err := models.NewTask(uuid.New().String(), 3, models.TaskTypeTask, "Blocked by missing")
+	if err != nil {
+		t.Fatal(err)
+	}
+	blockedByMissing.DependsOn = []string{depProject.ID + ":missing"}
+
+	depProject.Tasks = []*models.Task{doneDep, openDep}
+	targetProject.Tasks = []*models.Task{unblocked, blockedByOpen, blockedByMissing}
+
+	out := CollectActionableTasks([]*models.Project{depProject, targetProject})
+	got := make(map[string]bool)
+	for _, ft := range out {
+		got[ft.Task.ID] = true
+	}
+
+	if !got[unblocked.ID] {
+		t.Fatal("task with completed cross-project dependency should be actionable")
+	}
+	if got[blockedByOpen.ID] {
+		t.Fatal("task with incomplete cross-project dependency should not be actionable")
+	}
+	if got[blockedByMissing.ID] {
+		t.Fatal("task with unresolved cross-project dependency should not be actionable")
+	}
+}

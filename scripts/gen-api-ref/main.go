@@ -124,7 +124,7 @@ func isDefaultHelpCommand(c *cobra.Command) bool {
 func collectFlags(fs *pflag.FlagSet) []string {
 	var flags []string
 	fs.VisitAll(func(f *pflag.Flag) {
-		if f.Hidden {
+		if f.Hidden || f.Deprecated != "" {
 			return
 		}
 		name := "--" + f.Name

@@ -1,6 +1,7 @@
 package planner
 
 import (
+	"math"
 	"testing"
 	"time"
 
@@ -111,6 +112,24 @@ func TestForwardScheduleZeroVelocityFallback(t *testing.T) {
 	if !schedZero[0].EarliestEnd.Equal(schedOne[0].EarliestEnd) {
 		t.Errorf("zero velocity should behave like velocity=1: %v vs %v",
 			schedZero[0].EarliestEnd, schedOne[0].EarliestEnd)
+	}
+}
+
+func TestForwardScheduleNaNVelocityFallback(t *testing.T) {
+	start := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	a := newTaskWithDuration("a", 2)
+
+	schedNaN := ForwardSchedule([]*models.Task{a}, start, math.NaN())
+	schedOne := ForwardSchedule([]*models.Task{a}, start, 1.0)
+
+	if len(schedNaN) != 1 || len(schedOne) != 1 {
+		t.Fatal("expected 1 scheduled task")
+	}
+	if !schedNaN[0].EarliestStart.Equal(schedOne[0].EarliestStart) ||
+		!schedNaN[0].EarliestEnd.Equal(schedOne[0].EarliestEnd) ||
+		schedNaN[0].Slack != schedOne[0].Slack ||
+		schedNaN[0].IsCritical != schedOne[0].IsCritical {
+		t.Errorf("NaN velocity should behave like velocity=1: %+v vs %+v", schedNaN[0], schedOne[0])
 	}
 }
 

@@ -183,9 +183,11 @@ func (d *Dispatcher) findPrefixNode(prefix string, entries []Entry) *PrefixNode 
 		if e.PrefixNode != nil && e.PrefixNode.Key != "" && strings.HasPrefix(prefix, e.PrefixNode.Key) {
 			node := e.PrefixNode
 			if node.Gate != nil && !node.Gate() {
-				return nil
+				continue
 			}
-			return d.findPrefixNode(strings.TrimPrefix(prefix, node.Key), node.Children)
+			if child := d.findPrefixNode(strings.TrimPrefix(prefix, node.Key), node.Children); child != nil {
+				return child
+			}
 		}
 	}
 	return nil

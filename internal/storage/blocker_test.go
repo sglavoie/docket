@@ -328,6 +328,33 @@ func TestBlockerRoundtripWithMarkdownHeadings(t *testing.T) {
 	}
 }
 
+func TestBlockerRoundtripDescriptionHeadingFollowedByHTMLComment(t *testing.T) {
+	dir := t.TempDir()
+	project := &models.Project{Path: dir}
+
+	blocker := &models.Blocker{
+		ID:          "test-uuid",
+		Title:       "Blocked by review",
+		Description: "Some context.\n\n## Analysis\n<!-- editorial note -->\n\nStill part of the description.",
+		CreatedAt:   time.Date(2026, 1, 15, 10, 0, 0, 0, time.UTC),
+	}
+
+	if err := SaveBlockers(project, []*models.Blocker{blocker}); err != nil {
+		t.Fatalf("save error: %v", err)
+	}
+
+	loaded, err := LoadBlockers(project)
+	if err != nil {
+		t.Fatalf("load error: %v", err)
+	}
+	if len(loaded) != 1 {
+		t.Fatalf("expected 1 blocker after roundtrip, got %d", len(loaded))
+	}
+	if loaded[0].Description != blocker.Description {
+		t.Errorf("description changed on roundtrip:\n  want: %q\n  got:  %q", blocker.Description, loaded[0].Description)
+	}
+}
+
 func TestSaveBlockersCreatesDirectory(t *testing.T) {
 	dir := t.TempDir()
 	nestedPath := filepath.Join(dir, "nested", "path")

@@ -282,6 +282,26 @@ func TestFormatTaskAsMarkdown(t *testing.T) { //nolint:gocyclo
 		}
 	})
 
+	t.Run("escapes pipes in table cells", func(t *testing.T) {
+		task, err := models.NewTask("uuid-1", 1, models.TaskTypeBug, "Bug with table chars")
+		if err != nil {
+			t.Fatal(err)
+		}
+		task.Tags = []string{"api|db"}
+		task.BugAttrs = &models.BugAttrs{
+			Workaround: "run alpha|beta\nthen retry",
+		}
+
+		result := FormatTaskAsMarkdown(task)
+
+		if !strings.Contains(result, "| Tags | api\\|db |") {
+			t.Errorf("expected escaped pipe in tags row, got:\n%s", result)
+		}
+		if !strings.Contains(result, "| Workaround | run alpha\\|beta then retry |") {
+			t.Errorf("expected escaped pipe and normalized newline in workaround row, got:\n%s", result)
+		}
+	})
+
 	t.Run("task with due date", func(t *testing.T) {
 		task, err := models.NewTask("uuid-1", 1, models.TaskTypeTask, "Task with due date")
 		if err != nil {

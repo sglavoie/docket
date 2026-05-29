@@ -351,6 +351,52 @@ func TestPruneOldLogs(t *testing.T) {
 	}
 }
 
+func TestPruneOldLogsKeepsActiveLogFile(t *testing.T) {
+	origDir := logDirPath
+	origFile := logFile
+	origPath := logFilePath
+	defer func() {
+		logDirPath = origDir
+		logFile = origFile
+		logFilePath = origPath
+	}()
+
+	tmp := t.TempDir()
+	logDirPath = tmp
+
+	activeLog := filepath.Join(tmp, "tt-active.log")
+	f, err := os.OpenFile(activeLog, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o644)
+	if err != nil {
+		t.Fatalf("failed to create active log: %v", err)
+	}
+	defer func() { _ = f.Close() }()
+
+	oldTime := time.Now().AddDate(0, 0, -60)
+	if err := os.Chtimes(activeLog, oldTime, oldTime); err != nil {
+		t.Fatalf("failed to set active log mtime: %v", err)
+	}
+
+	staleLog := filepath.Join(tmp, "tt-stale.log")
+	if err := os.WriteFile(staleLog, []byte("stale"), 0o644); err != nil {
+		t.Fatalf("failed to create stale log: %v", err)
+	}
+	if err := os.Chtimes(staleLog, oldTime, oldTime); err != nil {
+		t.Fatalf("failed to set stale log mtime: %v", err)
+	}
+
+	logFile = f
+	logFilePath = activeLog
+
+	pruneOldLogs()
+
+	if _, err := os.Stat(activeLog); err != nil {
+		t.Fatalf("expected active log file to remain: %v", err)
+	}
+	if _, err := os.Stat(staleLog); !os.IsNotExist(err) {
+		t.Fatal("expected inactive stale log file to be removed")
+	}
+}
+
 func TestCloseStatsAfterRestoreStdLogger(t *testing.T) {
 	// Regression: Close used to call logFile.Stat() BEFORE restoreStdLogger().
 	// Because the std logger's mutex is held by both log.SetOutput and

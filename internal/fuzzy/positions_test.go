@@ -1,6 +1,7 @@
 package fuzzy
 
 import (
+	"slices"
 	"testing"
 )
 
@@ -58,6 +59,17 @@ func TestScoreWithPositions_EmptyText(t *testing.T) {
 	}
 	if positions != nil {
 		t.Errorf("empty text: expected nil positions, got %v", positions)
+	}
+}
+
+func TestScoreWithPositionsPrefersLaterWordBoundaryMatch(t *testing.T) {
+	score, positions := ScoreWithPositions("axb-b", "ab")
+	if score == 0 {
+		t.Fatalf("expected non-zero score for matching pattern")
+	}
+	want := []int{0, 4}
+	if !slices.Equal(positions, want) {
+		t.Fatalf("positions = %v, want %v", positions, want)
 	}
 }
 

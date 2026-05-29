@@ -371,6 +371,37 @@ func TestDispatch_SetPendingPrefixSupportsMultiCharacterPrefixKeys(t *testing.T)
 	}
 }
 
+func TestDispatch_SetPendingPrefixBacktracksOverDeadEndPrefixMatch(t *testing.T) {
+	called := false
+	km := &KeyMap{Entries: []Entry{
+		Prefix("a", "short prefix", "cat", []Entry{
+			Bind("x", "dead end", "cat", nil),
+		}),
+		Prefix("ab", "longer prefix", "cat", []Entry{
+			Prefix("c", "nested prefix", "cat", []Entry{
+				Bind("d", "do d", "cat", noopAction(&called)),
+			}),
+		}),
+	}}
+	d := NewDispatcher(km)
+
+	d.SetPendingPrefix("abc")
+	if d.PendingPrefix() != "abc" {
+		t.Fatalf("expected %q, got %q", "abc", d.PendingPrefix())
+	}
+	if d.prefixNode == nil || d.prefixNode.Key != "c" {
+		t.Fatal("expected prefixNode with key 'c'")
+	}
+
+	_, _, consumed := d.Dispatch(charKey('d'))
+	if !consumed {
+		t.Fatal("expected child key to be consumed")
+	}
+	if !called {
+		t.Fatal("expected action called after backtracked SetPendingPrefix")
+	}
+}
+
 // TestDispatch_SetPendingPrefixUnknownClears verifies unknown prefix clears state.
 func TestDispatch_SetPendingPrefixUnknownClears(t *testing.T) {
 	km := &KeyMap{Entries: []Entry{

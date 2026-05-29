@@ -112,6 +112,19 @@ func TestShouldEvaluateWorkflow_FalseWhenDisabled(t *testing.T) {
 	}
 }
 
+func TestShouldEvaluateWorkflow_FalseWhenNegativeInterval(t *testing.T) {
+	cfg := NewConfig()
+	cfg.WorkflowRules = []workflow.WorkflowRule{
+		{ID: "r1", Name: "Rule 1", Enabled: true},
+	}
+	val := -5
+	cfg.WorkflowEvalInterval = &val
+
+	if cfg.ShouldEvaluateWorkflow("project-1") {
+		t.Error("should return false when negative interval is clamped to disabled")
+	}
+}
+
 func TestShouldEvaluateWorkflow_TrueWhenRulesChanged(t *testing.T) {
 	cfg := NewConfig()
 	cfg.WorkflowRules = []workflow.WorkflowRule{
