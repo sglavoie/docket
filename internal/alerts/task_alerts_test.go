@@ -321,6 +321,17 @@ func TestCheckInboxBacklog_BelowThreshold(t *testing.T) {
 	}
 }
 
+func TestCheckInboxBacklog_NonPositiveThresholdDoesNotAlertOnEmptyInbox(t *testing.T) {
+	now := time.Date(2026, 2, 28, 10, 0, 0, 0, time.UTC)
+	cfg := DefaultAlertConfig()
+	cfg.InboxThreshold = 0
+
+	alerts := checkInboxBacklog(cfg, []ProjectData{testProject("empty-inbox")}, now)
+	if len(alerts) != 0 {
+		t.Fatalf("expected 0 alerts for empty inbox with zero threshold, got %d: %+v", len(alerts), alerts)
+	}
+}
+
 func TestCheckInboxBacklog_SnoozedInboxIgnored(t *testing.T) {
 	now := time.Now()
 	snoozeDate := now.AddDate(0, 0, 10) // must be in the future so IsSnoozed() returns true

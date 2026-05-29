@@ -68,6 +68,9 @@ func CopyTaskState(task *models.Task) *models.Task {
 func CaptureTaskStates(tasks []*models.Task) map[string]*models.Task {
 	states := make(map[string]*models.Task, len(tasks))
 	for _, task := range tasks {
+		if task == nil {
+			continue
+		}
 		states[task.ID] = CopyTaskState(task)
 	}
 	return states
@@ -165,6 +168,9 @@ func BuildEvaluationContext(tasks []*models.Task, prevStates map[string]*models.
 	var changes []TaskChangeContext
 
 	for _, task := range tasks {
+		if task == nil {
+			continue
+		}
 		taskMap[task.ID] = task
 		prev := prevStates[task.ID]
 		if prev == nil || TaskStateChanged(task, prev) {

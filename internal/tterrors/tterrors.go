@@ -105,6 +105,9 @@ func NewAmbiguousIdentifierError(identifier string, candidates string) error {
 
 // NewNoChangesError creates an error when no modification flags are provided to an edit command.
 func NewNoChangesError(flags string) error {
+	if flags == "" {
+		return ErrNoChanges
+	}
 	return fmt.Errorf("%w; use %s", ErrNoChanges, flags)
 }
 

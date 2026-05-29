@@ -52,6 +52,9 @@ func CollectAllIncompleteTasks(projects []*models.Project) []*models.Task {
 				continue
 			}
 			if !t.IsComplete() {
+				if t.Project == nil {
+					t.Project = p
+				}
 				result = append(result, t)
 			}
 		}

@@ -29,8 +29,11 @@ func computeCrossProjectScore(task *models.Task, project *models.Project, cfg *c
 	}
 	score := 0
 
-	// Priority weight: priority 1 = 5000, priority 5 = 1000
-	score += (6 - task.Priority) * 1000
+	// Priority weight: priority 1 = 5000, priority 5 = 1000.
+	// Clamp malformed/imported values so priority 0 cannot outrank critical
+	// work and extreme values cannot bury otherwise actionable tasks.
+	priority := min(max(task.Priority, models.PriorityMin), models.PriorityMax)
+	score += (6 - priority) * 1000
 
 	// Bug type bonus
 	if task.Type == models.TaskTypeBug {

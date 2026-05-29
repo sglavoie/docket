@@ -21,7 +21,7 @@ var registry = map[string]iconPair{
 	"pinned":   {"📌", "⌃"},
 	"date":     {"📅", "⊡"},
 	"tag":      {"🏷", "#"},
-	"settings": {"⚙", "⚙"},
+	"settings": {"⚙️", "⚙"},
 	"folder":   {"📂", "⌂"},
 	"search":   {"🔍", "⌕"},
 	"archive":  {"📦", "⊟"},

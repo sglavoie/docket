@@ -481,6 +481,51 @@ func TestInitClearsLogFilePathOnOpenFailure(t *testing.T) {
 	}
 }
 
+func TestInitClearsLogDirPathOnMkdirFailure(t *testing.T) {
+	// Regression: Init used to assign logDirPath before creating the
+	// directory. If MkdirAll failed, LogDir returned a path that did not
+	// exist and was not usable for logging.
+	origDir := logDirPath
+	origFile := logFile
+	origPath := logFilePath
+	origOutput := log.Writer()
+	origFlags := log.Flags()
+	origPrevOutput := previousLoggerOutput
+	origPrevFlags := previousLoggerFlags
+	origStateCaptured := loggerStateCaptured
+	defer func() {
+		logDirPath = origDir
+		logFile = origFile
+		logFilePath = origPath
+		log.SetOutput(origOutput)
+		log.SetFlags(origFlags)
+		previousLoggerOutput = origPrevOutput
+		previousLoggerFlags = origPrevFlags
+		loggerStateCaptured = origStateCaptured
+	}()
+
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+
+	// Make $HOME/.tt a regular file so creating $HOME/.tt/logs fails.
+	if err := os.WriteFile(filepath.Join(home, ".tt"), []byte("not a directory"), 0o644); err != nil {
+		t.Fatalf("setup .tt file: %v", err)
+	}
+
+	logDirPath = "stale-before-init"
+	logFile = nil
+	logFilePath = ""
+
+	Init()
+
+	if logFile != nil {
+		t.Fatal("Init should not have set logFile when MkdirAll failed")
+	}
+	if logDirPath != "" {
+		t.Errorf("Init should clear logDirPath on MkdirAll failure, got %q", logDirPath)
+	}
+}
+
 func TestPruneOldLogsInvalidDir(t *testing.T) {
 	original := logDirPath
 	defer func() { logDirPath = original }()

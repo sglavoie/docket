@@ -256,6 +256,16 @@ func TestNewNoChangesError(t *testing.T) {
 	}
 }
 
+func TestNewNoChangesErrorEmptyFlags(t *testing.T) {
+	err := NewNoChangesError("")
+	if !errors.Is(err, ErrNoChanges) {
+		t.Error("NewNoChangesError should still match ErrNoChanges when flags are empty")
+	}
+	if err.Error() != ErrNoChanges.Error() {
+		t.Errorf("NewNoChangesError should not include a dangling hint when flags are empty, got %q", err.Error())
+	}
+}
+
 func TestNewSaveProjectError(t *testing.T) {
 	innerErr := errors.New("disk full")
 	err := NewSaveProjectError("work-tasks", innerErr)

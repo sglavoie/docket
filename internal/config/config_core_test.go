@@ -33,8 +33,8 @@ func TestNewConfig(t *testing.T) {
 	if cfg.SectionColors == nil {
 		t.Error("NewConfig should initialize SectionColors map")
 	}
-	if cfg.Version != 1 {
-		t.Errorf("expected Version 1, got %d", cfg.Version)
+	if cfg.Version != CurrentConfigVersion {
+		t.Errorf("expected Version %d, got %d", CurrentConfigVersion, cfg.Version)
 	}
 }
 

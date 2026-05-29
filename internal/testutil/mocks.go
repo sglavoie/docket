@@ -102,11 +102,12 @@ func (m *MockRenderer) PageMarkdown(content string) error {
 
 // MockEditor implements external.Editor for testing.
 type MockEditor struct {
-	Available_    bool
-	OpenedFiles   []string
-	EditedContent string
-	ReturnContent string
-	EditError     error
+	Available_       bool
+	OpenedFiles      []string
+	EditedContent    string
+	ReturnContent    string
+	ReturnContentSet bool
+	EditError        error
 }
 
 func (m *MockEditor) Available() bool {
@@ -138,7 +139,7 @@ func (m *MockEditor) EditContent(content string, extension string) (string, erro
 		return "", m.EditError
 	}
 	m.EditedContent = content
-	if m.ReturnContent != "" {
+	if m.ReturnContentSet || m.ReturnContent != "" {
 		return m.ReturnContent, nil
 	}
 	return content, nil

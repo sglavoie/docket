@@ -68,6 +68,48 @@ func TestCollectFlagsKeepsMeaningfulDefaults(t *testing.T) {
 	}
 }
 
+func TestCollectFlagsKeepsStringDefaultsThatLookZeroValued(t *testing.T) {
+	flags := pflag.NewFlagSet("test", pflag.ContinueOnError)
+	flags.String("priority", "0", "default priority label")
+	flags.String("archived", "false", "default archived label")
+
+	got := collectFlags(flags)
+	if len(got) != 2 {
+		t.Fatalf("collectFlags() returned %d flags, want 2: %#v", len(got), got)
+	}
+
+	want := []string{
+		"--archived string (default false)    default archived label",
+		"--priority string (default 0)    default priority label",
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Fatalf("collectFlags()[%d] = %q, want %q", i, got[i], want[i])
+		}
+	}
+}
+
+func TestCollectFlagsSuppressesBoolAndNumericZeroDefaults(t *testing.T) {
+	flags := pflag.NewFlagSet("test", pflag.ContinueOnError)
+	flags.Bool("verbose", false, "show verbose output")
+	flags.Int("limit", 0, "maximum items")
+
+	got := collectFlags(flags)
+	if len(got) != 2 {
+		t.Fatalf("collectFlags() returned %d flags, want 2: %#v", len(got), got)
+	}
+
+	want := []string{
+		"--limit int    maximum items",
+		"--verbose bool    show verbose output",
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Fatalf("collectFlags()[%d] = %q, want %q", i, got[i], want[i])
+		}
+	}
+}
+
 type errorWriter struct {
 	err error
 }

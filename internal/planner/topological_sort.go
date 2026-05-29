@@ -180,14 +180,23 @@ func sortByID(tasks []*models.Task) {
 
 // dependencyTaskID resolves a dependency reference against the local task map.
 // Unqualified refs may match by parsed task ID. Qualified refs must match an
-// exact local ID; otherwise they are external/unresolved and are treated as
-// already satisfied by the planner's local graph.
+// exact local ID or a task whose Project ID/slug matches the ref prefix;
+// otherwise they are external/unresolved and are treated as already satisfied
+// by the planner's local graph.
 func dependencyTaskID(depRef string, taskMap map[string]*models.Task) (string, bool) {
 	if _, ok := taskMap[depRef]; ok {
 		return depRef, true
 	}
 	ref := models.ParseTaskRef(depRef)
 	if ref.ProjectID != "" {
+		for _, t := range taskMap {
+			if t == nil || t.ID != ref.TaskID || t.Project == nil {
+				continue
+			}
+			if t.Project.ID == ref.ProjectID || t.Project.Slug == ref.ProjectID {
+				return t.ID, true
+			}
+		}
 		return "", false
 	}
 	if _, ok := taskMap[ref.TaskID]; ok {

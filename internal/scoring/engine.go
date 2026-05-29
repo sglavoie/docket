@@ -96,7 +96,7 @@ func resolveDimension(task *models.Task, dim *ScoringDimension) (int, string) {
 		}
 	}
 
-	return dim.Default, "default"
+	return clamp(dim.Default, dim.Min, dim.Max), "default"
 }
 
 // resolveField extracts an integer value from a task field using a DerivedMapping.

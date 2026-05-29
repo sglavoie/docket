@@ -70,6 +70,12 @@ func (t *TaskTemplate) Validate() error {
 		return fmt.Errorf("priority must be 0-%d (0 for default)", models.PriorityMax)
 	}
 
+	for i, item := range t.Checklist {
+		if strings.TrimSpace(item) == "" {
+			return fmt.Errorf("checklist item %d: text is required", i+1)
+		}
+	}
+
 	if len(t.Children) > 0 && !t.Type.CanHaveChildren() {
 		return fmt.Errorf("task type %s cannot have children", t.Type)
 	}

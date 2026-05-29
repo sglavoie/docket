@@ -29,6 +29,21 @@ func GetAttachmentPath(project *models.Project, task *models.Task, filename stri
 	return filepath.Join(GetTaskAttachmentsDir(project, task), filename)
 }
 
+func validateAttachmentFilename(filename string) error {
+	switch {
+	case filename == "":
+		return fmt.Errorf("invalid attachment filename %q: empty filename", filename)
+	case filepath.IsAbs(filename):
+		return fmt.Errorf("invalid attachment filename %q: absolute paths are not allowed", filename)
+	case filename == "." || filename == "..":
+		return fmt.Errorf("invalid attachment filename %q: path traversal is not allowed", filename)
+	case strings.Contains(filename, "/") || strings.Contains(filename, "\\"):
+		return fmt.Errorf("invalid attachment filename %q: path separators are not allowed", filename)
+	default:
+		return nil
+	}
+}
+
 // EnsureTaskAttachmentsDir creates the attachments directory for a task if it doesn't exist.
 func EnsureTaskAttachmentsDir(project *models.Project, task *models.Task) error {
 	dir := GetTaskAttachmentsDir(project, task)
@@ -44,6 +59,9 @@ func CopyAttachment(project *models.Project, task *models.Task, sourcePath strin
 
 	// Get the base filename
 	filename = filepath.Base(sourcePath)
+	if err = validateAttachmentFilename(filename); err != nil {
+		return "", err
+	}
 	destPath := GetAttachmentPath(project, task, filename)
 
 	// Check if file already exists
@@ -87,6 +105,9 @@ func CopyAttachment(project *models.Project, task *models.Task, sourcePath strin
 // RemoveAttachmentFile removes an attachment file from disk.
 // This does not modify the task's Attachments slice.
 func RemoveAttachmentFile(project *models.Project, task *models.Task, filename string) error {
+	if err := validateAttachmentFilename(filename); err != nil {
+		return err
+	}
 	attachmentPath := GetAttachmentPath(project, task, filename)
 	if err := os.Remove(attachmentPath); err != nil && !os.IsNotExist(err) {
 		return fmt.Errorf("failed to remove attachment file: %w", err)
@@ -143,6 +164,9 @@ func CleanupTaskAttachments(project *models.Project, task *models.Task) error {
 
 // AttachmentExists checks if an attachment file exists on disk.
 func AttachmentExists(project *models.Project, task *models.Task, filename string) bool {
+	if err := validateAttachmentFilename(filename); err != nil {
+		return false
+	}
 	path := GetAttachmentPath(project, task, filename)
 	_, err := os.Stat(path)
 	return err == nil
@@ -152,6 +176,9 @@ func AttachmentExists(project *models.Project, task *models.Task, filename strin
 // Returns 0 if the file doesn't exist or is a URL.
 func GetAttachmentSize(project *models.Project, task *models.Task, attachment *models.Attachment) int64 {
 	if attachment.IsURL {
+		return 0
+	}
+	if err := validateAttachmentFilename(attachment.Filename); err != nil {
 		return 0
 	}
 	path := GetAttachmentPath(project, task, attachment.Filename)

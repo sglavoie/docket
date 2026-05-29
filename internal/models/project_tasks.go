@@ -77,6 +77,9 @@ func (p *Project) GetTasksByTag(tag string) []*Task {
 // FilterTasks returns tasks that match the given predicate function.
 // This is a generic filtering method that can be used directly or by other filtering methods.
 func (p *Project) FilterTasks(predicate func(*Task) bool) []*Task {
+	if predicate == nil {
+		return nil
+	}
 	var result []*Task
 	for _, task := range p.Tasks {
 		if predicate(task) {

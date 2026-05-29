@@ -118,6 +118,7 @@ func TestGetEmojiMode(t *testing.T) {
 		{"pinned", "📌"},
 		{"date", "📅"},
 		{"tag", "🏷"},
+		{"settings", "⚙️"},
 		{"folder", "📂"},
 		{"search", "🔍"},
 		{"archive", "📦"},

@@ -132,6 +132,13 @@ func TestScoreRanking(t *testing.T) {
 			pattern:     "auth",
 			want1Higher: true,
 		},
+		{
+			name:        "symbol boundary beats middle",
+			text1:       "price$auth",
+			text2:       "pricexauth",
+			pattern:     "auth",
+			want1Higher: true,
+		},
 	}
 
 	for _, tt := range tests {
@@ -263,6 +270,8 @@ func TestIsWordBoundary(t *testing.T) {
 		{',', true},
 		{'(', true},
 		{')', true},
+		{'$', true},
+		{'+', true},
 		{'a', false},
 		{'Z', false},
 		{'0', false},

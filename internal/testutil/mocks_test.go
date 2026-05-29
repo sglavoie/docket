@@ -1,11 +1,54 @@
 package testutil
 
 import (
+	"errors"
 	"testing"
 	"time"
 
 	"github.com/sglavoie/tt/internal/models"
 )
+
+func TestMockEditorEditContentReturnsConfiguredEmptyContent(t *testing.T) {
+	editor := &MockEditor{ReturnContentSet: true}
+
+	got, err := editor.EditContent("original", ".md")
+	if err != nil {
+		t.Fatalf("EditContent() error = %v", err)
+	}
+
+	if got != "" {
+		t.Fatalf("EditContent() = %q, want empty string", got)
+	}
+	if editor.EditedContent != "original" {
+		t.Fatalf("EditedContent = %q, want original", editor.EditedContent)
+	}
+}
+
+func TestMockEditorEditContentDefaultsToOriginalContent(t *testing.T) {
+	editor := &MockEditor{}
+
+	got, err := editor.EditContent("original", ".md")
+	if err != nil {
+		t.Fatalf("EditContent() error = %v", err)
+	}
+
+	if got != "original" {
+		t.Fatalf("EditContent() = %q, want original", got)
+	}
+}
+
+func TestMockEditorEditContentReturnsError(t *testing.T) {
+	wantErr := errors.New("edit failed")
+	editor := &MockEditor{EditError: wantErr}
+
+	got, err := editor.EditContent("original", ".md")
+	if !errors.Is(err, wantErr) {
+		t.Fatalf("EditContent() error = %v, want %v", err, wantErr)
+	}
+	if got != "" {
+		t.Fatalf("EditContent() = %q, want empty string on error", got)
+	}
+}
 
 func TestMockRepositorySaveDeepCopiesMutableTaskFields(t *testing.T) {
 	repo := NewMockRepository()

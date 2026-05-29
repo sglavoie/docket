@@ -75,6 +75,16 @@ func TestWriteActivity_SkipsNilEntries(t *testing.T) {
 	}
 }
 
+func TestWriteActivity_AllNilEntriesWritesNothing(t *testing.T) {
+	task := &models.Task{
+		Activity: []*models.ActivityEntry{nil, nil},
+	}
+
+	if output := WriteActivity(task); output != "" {
+		t.Fatalf("WriteActivity() = %q, want empty string", output)
+	}
+}
+
 func TestActivityRoundtripWithBackslashInValues(t *testing.T) {
 	// Ensure backslashes in values survive roundtrip
 	task := &models.Task{

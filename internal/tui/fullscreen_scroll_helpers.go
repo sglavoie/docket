@@ -113,6 +113,10 @@ func calcScrollOffset(cursorIdx, maxVisible int) int {
 // cursorIdx is the line index (in the lines slice) where the cursor sits;
 // contentHeight is the number of lines that fit on screen.
 func applyScroll(lines []string, cursorIdx, contentHeight int) []string {
+	if contentHeight <= 0 {
+		return nil
+	}
+
 	scrollOffset := calcScrollOffset(cursorIdx, contentHeight)
 
 	visible := lines
@@ -130,17 +134,19 @@ func applyScroll(lines []string, cursorIdx, contentHeight int) []string {
 // is remembered across renders so that small cursor movements don't jump to
 // cursor-anchored scrolling.
 func applyPersistentScroll(lines []string, cursorIdx, contentHeight int, scrollOffset *int) []string {
-	if contentHeight > 0 {
-		if cursorIdx < *scrollOffset {
-			*scrollOffset = cursorIdx
-		}
-		if cursorIdx >= *scrollOffset+contentHeight {
-			*scrollOffset = cursorIdx - contentHeight + 1
-		}
-		maxOffset := max(len(lines)-contentHeight, 0)
-		if *scrollOffset > maxOffset {
-			*scrollOffset = maxOffset
-		}
+	if contentHeight <= 0 {
+		return nil
+	}
+
+	if cursorIdx < *scrollOffset {
+		*scrollOffset = cursorIdx
+	}
+	if cursorIdx >= *scrollOffset+contentHeight {
+		*scrollOffset = cursorIdx - contentHeight + 1
+	}
+	maxOffset := max(len(lines)-contentHeight, 0)
+	if *scrollOffset > maxOffset {
+		*scrollOffset = maxOffset
 	}
 
 	visible := lines

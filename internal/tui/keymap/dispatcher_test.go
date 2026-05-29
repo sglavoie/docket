@@ -403,6 +403,7 @@ func TestDispatch_PrefixHintsReturnsChildren(t *testing.T) {
 		Prefix(",", "comma", "cat", []Entry{
 			Bind("s", "save", "cat", func() (tea.Model, tea.Cmd) { return nil, nil }),
 			Bind("t", "trash", "cat", func() (tea.Model, tea.Cmd) { return nil, nil }),
+			Bind("x", "hidden", "cat", func() (tea.Model, tea.Cmd) { return nil, nil }, AsHidden()),
 			Bind("h", "hidden", "cat", func() (tea.Model, tea.Cmd) { return nil, nil },
 				WithGate(func() bool { return false })),
 		}),
@@ -423,6 +424,9 @@ func TestDispatch_PrefixHintsReturnsChildren(t *testing.T) {
 	keys := []string{hints[0].Key, hints[1].Key}
 	if !slices.Contains(keys, "s") || !slices.Contains(keys, "t") {
 		t.Fatalf("unexpected hint keys: %v", keys)
+	}
+	if slices.Contains(keys, "x") {
+		t.Fatalf("expected hidden binding excluded from prefix hints, got %v", keys)
 	}
 }
 

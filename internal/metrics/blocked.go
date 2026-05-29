@@ -81,7 +81,7 @@ func computeBlockedEntryInRange(t *models.Task, cutoff, now time.Time) BlockedEn
 		} else if a.OldValue == string(models.StatusBlocked) && inBlockedPeriod {
 			duration := blockedDurationInRange(blockedStart, a.Timestamp, cutoff, now)
 			if duration > 0 {
-				entry.TotalBlocked += duration
+				entry.TotalBlocked = addDurationSaturating(entry.TotalBlocked, duration)
 				entry.BlockedPeriods++
 			}
 			inBlockedPeriod = false
@@ -92,7 +92,7 @@ func computeBlockedEntryInRange(t *models.Task, cutoff, now time.Time) BlockedEn
 	if inBlockedPeriod && t.Status == models.StatusBlocked {
 		duration := blockedDurationInRange(blockedStart, now, cutoff, now)
 		if duration > 0 {
-			entry.TotalBlocked += duration
+			entry.TotalBlocked = addDurationSaturating(entry.TotalBlocked, duration)
 			entry.BlockedPeriods++
 		}
 	}
@@ -112,4 +112,12 @@ func blockedDurationInRange(start, end, cutoff, now time.Time) time.Duration {
 		return 0
 	}
 	return end.Sub(start)
+}
+
+func addDurationSaturating(total, next time.Duration) time.Duration {
+	const maxDuration = time.Duration(1<<63 - 1)
+	if next > maxDuration-total {
+		return maxDuration
+	}
+	return total + next
 }

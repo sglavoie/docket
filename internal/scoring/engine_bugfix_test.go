@@ -444,3 +444,21 @@ func TestMaxScoreDenominatorNegativeMinDoesNotFlipSign(t *testing.T) {
 		t.Errorf("MaxScore (%f) should be >= DefaultScore (%f)", maxS, defS)
 	}
 }
+
+// TestResolveDimensionClampsDefaultFallback keeps the fallback path consistent
+// with manual and derived values: scoring should never emit a dimension value
+// outside its configured range, even if an invalid or stale profile default
+// reaches ComputeScore without prior validation.
+func TestResolveDimensionClampsDefaultFallback(t *testing.T) {
+	dim := ScoringDimension{
+		ID: "impact", Name: "Impact", Min: 1, Max: 5, Default: 99,
+		Weight: 1, Source: SourceManual,
+	}
+	got, source := resolveDimension(nil, &dim)
+	if source != "default" {
+		t.Fatalf("expected default source, got %q", source)
+	}
+	if got != 5 {
+		t.Errorf("expected default fallback clamped to 5, got %d", got)
+	}
+}

@@ -53,6 +53,12 @@ func TestDarwinDetectorDetect(t *testing.T) {
 			err:  exitStatusOne(t),
 			want: Unknown,
 		},
+		{
+			name: "permission error with key and domain marker returns unknown",
+			out:  []byte("Permission denied reading (kCFPreferencesAnyApplication, AppleInterfaceStyle)\n"),
+			err:  exitStatusOne(t),
+			want: Unknown,
+		},
 		{name: "unexpected successful output returns unknown", out: []byte("Sepia\n"), want: Unknown},
 	}
 

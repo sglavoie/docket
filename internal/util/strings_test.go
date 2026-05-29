@@ -21,6 +21,7 @@ func TestShellTokenize(t *testing.T) {
 		{`nvim -u "/tmp/my vimrc"`, []string{"nvim", "-u", "/tmp/my vimrc"}},
 		// Backslash outside quotes.
 		{`/path/with\ spaces/editor`, []string{"/path/with spaces/editor"}},
+		{`path\`, []string{`path\`}},
 		// Mixed quoting styles.
 		{`'/opt/my editor/code' --flag "val ue"`, []string{"/opt/my editor/code", "--flag", "val ue"}},
 		// Double-quote escape sequences.

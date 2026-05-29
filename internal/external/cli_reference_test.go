@@ -104,6 +104,21 @@ func TestSelectRelevantSections_ProjectQuery(t *testing.T) {
 	}
 }
 
+func TestSelectRelevantSections_IgnoresSingleLetterQueryTokens(t *testing.T) {
+	sections := ParseCLIReference(testReference)
+	result := SelectRelevantSections(sections, "a")
+
+	if !strings.Contains(result, "# Command Index") {
+		t.Error("expected result to contain command index")
+	}
+	if strings.Contains(result, "## tt add\n\nQuick capture a task") {
+		t.Error("single-letter query token should not match full command sections")
+	}
+	if strings.Contains(result, "## tt task list\n\nList tasks in the current project") {
+		t.Error("single-letter query token should not match unrelated command sections")
+	}
+}
+
 func TestSelectRelevantSections_AlwaysHasIndex(t *testing.T) {
 	sections := ParseCLIReference(testReference)
 	result := SelectRelevantSections(sections, "add tags")

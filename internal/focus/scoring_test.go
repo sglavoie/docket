@@ -37,6 +37,44 @@ func TestComputeCrossProjectScore(t *testing.T) {
 		}
 	})
 
+	t.Run("malformed priority is clamped", func(t *testing.T) {
+		critical, err := models.NewTask(uuid.New().String(), 1, models.TaskTypeTask, "Critical")
+		if err != nil {
+			t.Fatal(err)
+		}
+		critical.Priority = models.PriorityMin
+
+		tooHigh, err := models.NewTask(uuid.New().String(), 2, models.TaskTypeTask, "Too high")
+		if err != nil {
+			t.Fatal(err)
+		}
+		tooHigh.Priority = models.PriorityMin - 1
+
+		low, err := models.NewTask(uuid.New().String(), 3, models.TaskTypeTask, "Low")
+		if err != nil {
+			t.Fatal(err)
+		}
+		low.Priority = models.PriorityMax
+
+		tooLow, err := models.NewTask(uuid.New().String(), 4, models.TaskTypeTask, "Too low")
+		if err != nil {
+			t.Fatal(err)
+		}
+		tooLow.Priority = models.PriorityMax + 1
+
+		criticalScore := computeCrossProjectScore(critical, project, nil, now)
+		tooHighScore := computeCrossProjectScore(tooHigh, project, nil, now)
+		if tooHighScore != criticalScore {
+			t.Errorf("priority below min should score like priority %d: got %d, want %d", models.PriorityMin, tooHighScore, criticalScore)
+		}
+
+		lowScore := computeCrossProjectScore(low, project, nil, now)
+		tooLowScore := computeCrossProjectScore(tooLow, project, nil, now)
+		if tooLowScore != lowScore {
+			t.Errorf("priority above max should score like priority %d: got %d, want %d", models.PriorityMax, tooLowScore, lowScore)
+		}
+	})
+
 	t.Run("in-progress bonus", func(t *testing.T) {
 		todo, err := models.NewTask(uuid.New().String(), 1, models.TaskTypeTask, "Todo")
 		if err != nil {

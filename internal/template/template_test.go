@@ -204,6 +204,33 @@ func TestValidate_PriorityTooHigh(t *testing.T) {
 	}
 }
 
+func TestValidate_ChecklistItemWithEmptyText(t *testing.T) {
+	tmpl := NewTemplate("Test", models.TaskTypeTask)
+	tmpl.Checklist = []string{"Valid item", ""}
+	err := tmpl.Validate()
+	if err == nil {
+		t.Fatal("expected error for checklist item with empty text")
+	}
+	if !strings.Contains(err.Error(), "checklist item 2") {
+		t.Errorf("error %q should reference checklist item 2", err.Error())
+	}
+	if !strings.Contains(err.Error(), "text is required") {
+		t.Errorf("error %q should mention text is required", err.Error())
+	}
+}
+
+func TestValidate_ChecklistItemWithWhitespaceText(t *testing.T) {
+	tmpl := NewTemplate("Test", models.TaskTypeTask)
+	tmpl.Checklist = []string{"  \t  "}
+	err := tmpl.Validate()
+	if err == nil {
+		t.Fatal("expected error for checklist item with whitespace-only text")
+	}
+	if !strings.Contains(err.Error(), "checklist item 1") {
+		t.Errorf("error %q should reference checklist item 1", err.Error())
+	}
+}
+
 func TestValidate_ChildWithEmptyTitle(t *testing.T) {
 	tmpl := NewTemplate("Test", models.TaskTypeStory)
 	tmpl.Children = []TemplateChild{

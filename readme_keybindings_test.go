@@ -118,6 +118,18 @@ func TestREADMECLIContractStaysCurrent(t *testing.T) {
 	}
 }
 
+func TestREADMEUndoCommandDescribesMutation(t *testing.T) {
+	content := readFileForContractTest(t, "README.md")
+
+	if strings.Contains(content, "tt undo                         # Inspect undo history") {
+		t.Fatal("README describes mutating undo command as a read-only history inspection")
+	}
+
+	if !strings.Contains(content, "tt undo                         # Restore previous task state") {
+		t.Fatal("README should describe tt undo as restoring previous task state")
+	}
+}
+
 func TestCLIReferenceContractStaysCurrent(t *testing.T) {
 	content := readFileForContractTest(t, "cmd/cli-reference.md")
 

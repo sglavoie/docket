@@ -25,7 +25,7 @@ func NewConfig() *Config {
 	homeDir, _ := os.UserHomeDir()
 	defaultUndoDepth := DefaultUndoHistoryDepth
 	return &Config{
-		Version:           1,
+		Version:           CurrentConfigVersion,
 		DataDir:           filepath.Join(homeDir, ".tt"),
 		CurrentProject:    "",
 		Editor:            "code",

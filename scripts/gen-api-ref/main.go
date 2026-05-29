@@ -132,7 +132,7 @@ func collectFlags(fs *pflag.FlagSet) []string {
 			name += ", -" + f.Shorthand
 		}
 		def := ""
-		if shouldPrintDefault(f.DefValue) {
+		if shouldPrintDefault(f) {
 			def = fmt.Sprintf(" (default %s)", f.DefValue)
 		}
 		flags = append(flags, fmt.Sprintf("%s %s%s    %s", name, f.Value.Type(), def, f.Usage))
@@ -140,10 +140,18 @@ func collectFlags(fs *pflag.FlagSet) []string {
 	return flags
 }
 
-func shouldPrintDefault(defValue string) bool {
-	switch defValue {
-	case "", "false", "0", "[]":
+func shouldPrintDefault(f *pflag.Flag) bool {
+	switch f.DefValue {
+	case "", "[]":
 		return false
+	case "false":
+		return f.Value.Type() != "bool"
+	case "0":
+		switch f.Value.Type() {
+		case "count", "duration", "float32", "float64", "int", "int16", "int32", "int64", "int8", "uint", "uint16", "uint32", "uint64", "uint8":
+			return false
+		}
+		return true
 	default:
 		return true
 	}

@@ -54,7 +54,7 @@ func (d *Dispatcher) PrefixHints() []PrefixHint {
 	for _, e := range d.prefixNode.Children {
 		switch {
 		case e.Binding != nil:
-			if e.Binding.Gate == nil || e.Binding.Gate() {
+			if !e.Binding.Hidden && (e.Binding.Gate == nil || e.Binding.Gate()) {
 				hints = append(hints, PrefixHint{Key: e.Binding.Key, Description: e.Binding.Description})
 			}
 		case e.PrefixNode != nil:

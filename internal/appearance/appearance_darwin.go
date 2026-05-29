@@ -54,6 +54,9 @@ func isMissingAppleInterfaceStyle(err error, out []byte) bool {
 		return false
 	}
 	text := strings.ToLower(string(out))
+	if strings.Contains(text, "permission denied") || strings.Contains(text, "operation not permitted") {
+		return false
+	}
 	if !strings.Contains(text, "appleinterfacestyle") {
 		return false
 	}

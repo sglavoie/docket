@@ -125,3 +125,27 @@ func TestAttachScrollbar_ZipsLines(t *testing.T) {
 		}
 	}
 }
+
+func TestApplyScrollNonPositiveContentHeight(t *testing.T) {
+	lines := []string{"one", "two"}
+
+	for _, contentHeight := range []int{0, -1} {
+		if got := applyScroll(lines, 1, contentHeight); got != nil {
+			t.Fatalf("contentHeight %d: expected nil visible lines, got %#v", contentHeight, got)
+		}
+	}
+}
+
+func TestApplyPersistentScrollNonPositiveContentHeight(t *testing.T) {
+	lines := []string{"one", "two"}
+
+	for _, contentHeight := range []int{0, -1} {
+		scrollOffset := 1
+		if got := applyPersistentScroll(lines, 1, contentHeight, &scrollOffset); got != nil {
+			t.Fatalf("contentHeight %d: expected nil visible lines, got %#v", contentHeight, got)
+		}
+		if scrollOffset != 1 {
+			t.Fatalf("contentHeight %d: expected scroll offset to remain unchanged, got %d", contentHeight, scrollOffset)
+		}
+	}
+}

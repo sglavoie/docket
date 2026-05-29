@@ -99,6 +99,20 @@ func TestCollectAllIncompleteTasks_MultiProject(t *testing.T) {
 	}
 }
 
+func TestCollectAllIncompleteTasks_AttachesProjectForPlanning(t *testing.T) {
+	task := newTask("t1")
+	p := makeProject("proj1", "alpha", task)
+
+	result := CollectAllIncompleteTasks([]*models.Project{p})
+
+	if len(result) != 1 {
+		t.Fatalf("expected 1 task, got %d", len(result))
+	}
+	if result[0].Project != p {
+		t.Fatal("expected collected task to carry its project pointer")
+	}
+}
+
 func TestLookupTask_PlainRef(t *testing.T) {
 	task := newTask("t1")
 	p := makeProject("proj1", "p", task)

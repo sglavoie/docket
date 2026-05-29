@@ -25,6 +25,7 @@ Use 'tt project restore <slug>' to restore a deleted project.
 Examples:
   tt project delete old-project
   tt p delete my-project`,
+	Args: cobra.ExactArgs(1),
 	RunE: runProjectDelete,
 }
 
@@ -42,6 +43,9 @@ func runProjectDelete(cmd *cobra.Command, args []string) error {
 
 	if len(args) < 1 {
 		return tterrors.NewRequiredFieldError("project slug")
+	}
+	if len(args) > 1 {
+		return fmt.Errorf("expected exactly one project slug, got %d arguments", len(args))
 	}
 
 	project, cfg, configManager, err := LoadConfigAndProject(args[0])

@@ -136,6 +136,42 @@ func TestTopologicalCrossProjectDependency(t *testing.T) {
 	}
 }
 
+func TestTopologicalQualifiedRefResolvesIncludedProjectTask(t *testing.T) {
+	pA := makeProject("proj-a", "alpha")
+	pB := makeProject("proj-b", "beta")
+	a := newTask("a")
+	a.Project = pA
+	b := withDep(newTask("b"), "proj-a:a")
+	b.Project = pB
+
+	order, err := TopologicalSort([]*models.Task{b, a})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	pos := taskPositions(order)
+	if pos["a"] >= pos["b"] {
+		t.Errorf("qualified proj-a:a should force a before b, got %v", taskIDs(order))
+	}
+}
+
+func TestTopologicalQualifiedRefResolvesIncludedProjectTaskBySlug(t *testing.T) {
+	pA := makeProject("proj-a", "alpha")
+	pB := makeProject("proj-b", "beta")
+	a := newTask("a")
+	a.Project = pA
+	b := withDep(newTask("b"), "alpha:a")
+	b.Project = pB
+
+	order, err := TopologicalSort([]*models.Task{b, a})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	pos := taskPositions(order)
+	if pos["a"] >= pos["b"] {
+		t.Errorf("qualified alpha:a should force a before b, got %v", taskIDs(order))
+	}
+}
+
 func TestTopologicalQualifiedRefDoesNotBleedToPlainID(t *testing.T) {
 	local := newTask("z")
 	dependent := withDep(newTask("b"), "missing-project:z")

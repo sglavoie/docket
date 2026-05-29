@@ -285,15 +285,7 @@ func TestOpenCodeReference_NonPositiveLineOmitsLineArgForGotoEditor(t *testing.T
 		t.Fatalf("OpenCodeReference('code', ..., -3) failed: %v", err)
 	}
 
-	var recorded []byte
-	var err error
-	for range 20 {
-		recorded, err = os.ReadFile(argFile)
-		if err == nil {
-			break
-		}
-		time.Sleep(10 * time.Millisecond)
-	}
+	recorded, err := readFileEventually(argFile, 5*time.Second)
 	if err != nil {
 		t.Fatalf("read arg file: %v", err)
 	}
@@ -301,4 +293,21 @@ func TestOpenCodeReference_NonPositiveLineOmitsLineArgForGotoEditor(t *testing.T
 	if len(args) != 1 || args[0] != filePath {
 		t.Fatalf("expected only file path argument, got %v", args)
 	}
+}
+
+func readFileEventually(path string, timeout time.Duration) ([]byte, error) {
+	deadline := time.Now().Add(timeout)
+	var lastErr error
+	for time.Now().Before(deadline) {
+		b, err := os.ReadFile(path)
+		if err == nil {
+			return b, nil
+		}
+		lastErr = err
+		time.Sleep(10 * time.Millisecond)
+	}
+	if lastErr == nil {
+		lastErr = os.ErrNotExist
+	}
+	return nil, lastErr
 }

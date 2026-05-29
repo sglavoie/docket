@@ -158,13 +158,17 @@ func WriteActivity(task *models.Task) string {
 	}
 
 	var b strings.Builder
-	b.WriteString("<!-- ACTIVITY -->\n")
+	headerWritten := false
 
 	// Write entries in reverse chronological order (newest first)
 	for i := len(task.Activity) - 1; i >= 0; i-- {
 		entry := task.Activity[i]
 		if entry == nil {
 			continue
+		}
+		if !headerWritten {
+			b.WriteString("<!-- ACTIVITY -->\n")
+			headerWritten = true
 		}
 		ts := entry.Timestamp.Format(util.DateTimeFormat)
 
@@ -185,6 +189,9 @@ func WriteActivity(task *models.Task) string {
 		}
 	}
 
+	if !headerWritten {
+		return ""
+	}
 	b.WriteString("<!-- /ACTIVITY -->\n")
 	return b.String()
 }

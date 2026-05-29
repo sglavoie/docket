@@ -278,6 +278,10 @@ func checkStaleTasks(cfg AlertConfig, projects []ProjectData, now time.Time) []A
 
 func checkInboxBacklog(cfg AlertConfig, projects []ProjectData, now time.Time) []Alert {
 	var alerts []Alert
+	threshold := cfg.InboxThreshold
+	if threshold < 1 {
+		threshold = 1
+	}
 
 	for _, pd := range projects {
 		if pd.Project == nil {
@@ -292,7 +296,7 @@ func checkInboxBacklog(cfg AlertConfig, projects []ProjectData, now time.Time) [
 				inboxCount++
 			}
 		}
-		if inboxCount >= cfg.InboxThreshold {
+		if inboxCount >= threshold {
 			alerts = append(alerts, Alert{
 				Category:    CategoryInbox,
 				Title:       fmt.Sprintf("%d inbox tasks", inboxCount),

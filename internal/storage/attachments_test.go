@@ -160,6 +160,37 @@ func TestRemoveAttachmentFile(t *testing.T) {
 	}
 }
 
+func TestRemoveAttachmentFileRejectsPathTraversal(t *testing.T) {
+	project := newTestProject(t)
+	task := newTestTask()
+	otherTask := &models.Task{ID: "other-task-uuid", Title: "Other Task"}
+
+	srcDir := t.TempDir()
+	srcPath := filepath.Join(srcDir, "keep.txt")
+	if err := os.WriteFile(srcPath, []byte("keep"), 0o644); err != nil {
+		t.Fatalf("failed to create source file: %v", err)
+	}
+	if _, err := CopyAttachment(project, otherTask, srcPath); err != nil {
+		t.Fatalf("CopyAttachment failed: %v", err)
+	}
+
+	err := RemoveAttachmentFile(project, task, "../"+otherTask.ID+"/keep.txt")
+	if err == nil {
+		t.Fatal("expected traversal filename to be rejected")
+	}
+
+	if !AttachmentExists(project, otherTask, "keep.txt") {
+		t.Fatal("attachment for other task should not be removed")
+	}
+	if AttachmentExists(project, task, "../"+otherTask.ID+"/keep.txt") {
+		t.Fatal("traversal filename should not be reported as an attachment")
+	}
+	traversalAttachment := &models.Attachment{Filename: "../" + otherTask.ID + "/keep.txt"}
+	if size := GetAttachmentSize(project, task, traversalAttachment); size != 0 {
+		t.Fatalf("traversal attachment size = %d, want 0", size)
+	}
+}
+
 // TestMoveTaskAttachments_MovesFiles guards against a cross-project move
 // (`tt task move-to`) leaving attachment files behind in the source project's
 // .attachments/<task-uuid>/ directory. The task UUID is preserved by the move,

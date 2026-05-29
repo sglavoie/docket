@@ -68,7 +68,7 @@ tt task start 12                # Mark task in progress
 tt task complete 12             # Mark task done
 tt note list                    # List notes in the current project
 tt search auth                  # Search across tasks and projects
-tt undo                         # Inspect undo history
+tt undo                         # Restore previous task state
 ```
 
 For deeper discovery, use the tutor, view help, the command palette, and command-specific help rather than a static command catalog here.

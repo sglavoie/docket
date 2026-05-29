@@ -100,6 +100,7 @@ func tokenize(s string) []string {
 // SelectRelevantSections scores sections against query tokens and returns matching ones.
 func SelectRelevantSections(sections []CLISection, query string) string {
 	queryTokens := tokenize(query)
+	queryTokens = discardShortQueryTokens(queryTokens)
 	if len(queryTokens) == 0 {
 		return buildIndex(sections)
 	}
@@ -152,6 +153,17 @@ func SelectRelevantSections(sections []CLISection, query string) string {
 	}
 
 	return b.String()
+}
+
+func discardShortQueryTokens(tokens []string) []string {
+	var out []string
+	for _, token := range tokens {
+		if len(token) <= 1 {
+			continue
+		}
+		out = append(out, token)
+	}
+	return out
 }
 
 // buildIndex creates a compact one-line-per-command index.

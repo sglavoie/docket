@@ -1001,3 +1001,39 @@ func TestMatchesHierarchicalTrigger_ChildrenProgressIgnoresLeaves(t *testing.T) 
 		}
 	})
 }
+
+// TestSnapshotHelpers_SkipNilTasks verifies that snapshot/context builders
+// tolerate nil task entries. The evaluation paths already skip nil changes;
+// these helpers are commonly used before evaluation and should not panic on
+// the same malformed task slice.
+func TestSnapshotHelpers_SkipNilTasks(t *testing.T) {
+	good := &models.Task{ID: "g", Status: models.StatusTodo}
+
+	defer func() {
+		if r := recover(); r != nil {
+			t.Fatalf("snapshot helper panicked on nil task entry: %v", r)
+		}
+	}()
+
+	states := CaptureTaskStates([]*models.Task{nil, good, nil})
+	if len(states) != 1 {
+		t.Fatalf("expected one captured state, got %d", len(states))
+	}
+	if states["g"] == nil {
+		t.Fatal("expected captured state for non-nil task")
+	}
+
+	ctx := BuildEvaluationContext([]*models.Task{nil, good, nil}, states, "Project", "p1")
+	if ctx == nil {
+		t.Fatal("expected non-nil evaluation context")
+	}
+	if len(ctx.TaskMap) != 1 {
+		t.Fatalf("expected one task in TaskMap, got %d", len(ctx.TaskMap))
+	}
+	if ctx.TaskMap["g"] != good {
+		t.Error("expected TaskMap to include the non-nil task")
+	}
+	if len(ctx.Changes) != 0 {
+		t.Errorf("expected no changes for unchanged non-nil task, got %d", len(ctx.Changes))
+	}
+}

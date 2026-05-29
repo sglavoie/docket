@@ -308,5 +308,5 @@ func tryGreedyFrom(text, pattern []rune, startIdx int) int {
 
 // isWordBoundary returns true if the rune is a word boundary character.
 func isWordBoundary(r rune) bool {
-	return unicode.IsSpace(r) || unicode.IsPunct(r)
+	return unicode.IsSpace(r) || unicode.IsPunct(r) || unicode.IsSymbol(r)
 }

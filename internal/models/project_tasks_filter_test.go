@@ -156,3 +156,20 @@ func TestProjectFilterMethods_NilTaskList(t *testing.T) {
 		}
 	})
 }
+
+func TestProjectFilterTasks_NilPredicateReturnsNil(t *testing.T) {
+	project, err := NewProject("test", "Test", "/tmp/test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	task, err := NewTask("task-1", 1, TaskTypeTask, "Task")
+	if err != nil {
+		t.Fatal(err)
+	}
+	project.Tasks = []*Task{task}
+
+	result := project.FilterTasks(nil)
+	if result != nil {
+		t.Errorf("expected nil result for nil predicate, got %v", result)
+	}
+}

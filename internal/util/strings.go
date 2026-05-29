@@ -50,6 +50,10 @@ func ShellTokenize(s string) []string {
 			i++ // skip backslash
 			cur.WriteByte(s[i])
 			i++
+		case c == '\\':
+			inToken = true
+			cur.WriteByte(c)
+			i++
 		case c == ' ' || c == '\t' || c == '\n' || c == '\r':
 			if inToken {
 				tokens = append(tokens, cur.String())

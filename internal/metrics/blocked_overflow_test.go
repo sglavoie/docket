@@ -43,3 +43,31 @@ func TestBlockedAggregatesDoNotOverflow(t *testing.T) {
 		t.Errorf("AverageBlocked = %v hours, want ~%v hours", gotHours, wantHours)
 	}
 }
+
+func TestBlockedEntryTotalDoesNotOverflow(t *testing.T) {
+	now := time.Date(2025, 6, 15, 12, 0, 0, 0, time.UTC)
+	const blocked = 50 * 365 * 24 * time.Hour
+
+	var activity []*models.ActivityEntry
+	for i := 0; i < 8; i++ {
+		start := time.Date(1500+i*60, 1, 1, 0, 0, 0, 0, time.UTC)
+		end := start.Add(blocked)
+		activity = append(activity,
+			&models.ActivityEntry{Timestamp: start, Field: "status", OldValue: "in_progress", NewValue: "blocked"},
+			&models.ActivityEntry{Timestamp: end, Field: "status", OldValue: "blocked", NewValue: "in_progress"},
+		)
+	}
+
+	task := makeTask(models.StatusDone, timePtr(now), activity)
+	result := computeBlocked([]*models.Task{task}, now, nil)
+
+	if result.TaskCount != 1 {
+		t.Fatalf("TaskCount = %d, want 1", result.TaskCount)
+	}
+	if got := result.Entries[0].TotalBlocked; got != time.Duration(1<<63-1) {
+		t.Fatalf("TotalBlocked = %v, want saturated MaxInt64 duration", got)
+	}
+	if got := result.Entries[0].BlockedPeriods; got != 8 {
+		t.Fatalf("BlockedPeriods = %d, want 8", got)
+	}
+}

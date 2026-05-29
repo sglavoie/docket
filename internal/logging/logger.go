@@ -29,16 +29,18 @@ func Init() {
 	if logFile != nil {
 		closeLocked()
 	}
+	logDirPath = ""
 
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return
 	}
-	logDirPath = filepath.Join(home, ".tt", "logs")
+	dir := filepath.Join(home, ".tt", "logs")
 
-	if err = os.MkdirAll(logDirPath, 0o755); err != nil {
+	if err = os.MkdirAll(dir, 0o755); err != nil {
 		return
 	}
+	logDirPath = dir
 	name := logFileName(time.Now())
 	logFilePath = filepath.Join(logDirPath, name)
 	f, err := os.OpenFile(logFilePath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o644)
