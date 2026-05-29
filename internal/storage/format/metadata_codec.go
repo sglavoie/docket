@@ -231,17 +231,18 @@ func writeAttachmentsMetadata(task *models.Task, parts *[]string) {
 	appendMetadataPart(parts, "attachments", strings.Join(attStrings, ";"))
 }
 
-// escapeAttachmentField escapes backslash and semicolon in attachment fields
-// (filename, OriginalPath, URL) so a literal `;` inside a URL query string or
-// filename does not split the attachment into two on round-trip. Backslash is
-// escaped first so the unescape pass can distinguish a literal `\` from the
-// escape prefix.
+// escapeAttachmentField escapes backslash, semicolon, and comma in attachment
+// fields (filename, OriginalPath, URL) so nested attachment delimiters and
+// top-level metadata delimiters do not split a single attachment on round-trip.
+// Backslash is escaped first so the unescape pass can distinguish a literal
+// `\` from the escape prefix.
 func escapeAttachmentField(s string) string {
-	if !strings.ContainsAny(s, `\;`) {
+	if !strings.ContainsAny(s, `\;,`) {
 		return s
 	}
 	s = strings.ReplaceAll(s, `\`, `\\`)
 	s = strings.ReplaceAll(s, ";", `\;`)
+	s = strings.ReplaceAll(s, ",", `\,`)
 	return s
 }
 
@@ -263,6 +264,10 @@ func unescapeAttachmentField(s string) string {
 				continue
 			case ';':
 				b.WriteByte(';')
+				i++
+				continue
+			case ',':
+				b.WriteByte(',')
 				i++
 				continue
 			}

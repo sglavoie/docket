@@ -252,3 +252,21 @@ func TestTopologicalSortKeepsDuplicateIDsAcrossProjects(t *testing.T) {
 		t.Error("expected alpha:shared to remain in the graph")
 	}
 }
+
+func TestTopologicalProjectScopedMissingLocalRefDoesNotUsePlainID(t *testing.T) {
+	pB := makeProject("proj-b", "beta")
+
+	unrelatedPlain := newTask("shared")
+	dependentB := withDep(newTask("dependent"), "shared")
+	dependentB.Project = pB
+
+	order, err := TopologicalSort([]*models.Task{dependentB, unrelatedPlain})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	pos := taskPointerPositions(order)
+	if pos[unrelatedPlain] < pos[dependentB] {
+		t.Errorf("missing beta:shared should not bind to unrelated plain shared, got %v", taskIDs(order))
+	}
+}

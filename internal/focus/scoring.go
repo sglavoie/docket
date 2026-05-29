@@ -154,7 +154,7 @@ func getSuggestionReason(task *models.Task, project *models.Project, cfg *config
 			reasons = append(reasons, "overdue")
 		} else if dueDay.Equal(today) {
 			reasons = append(reasons, "due today")
-		} else if dueDay.Before(today.AddDate(0, 0, 7)) {
+		} else if !dueDay.After(today.AddDate(0, 0, 7)) {
 			reasons = append(reasons, "due this week")
 		}
 	}

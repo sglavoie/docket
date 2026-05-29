@@ -69,20 +69,22 @@ func extractKeywords(s CLISection) []string {
 		}
 	}
 
-	// Flag names from lines like "  --tags stringSlice" or "  --parent, -p string"
+	// Flag names from lines like "  --tags stringSlice", "  --parent, -p string",
+	// or Cobra's common "  -p, --parent string" format.
 	for line := range strings.SplitSeq(s.Body, "\n") {
 		trimmed := strings.TrimSpace(line)
-		if after, ok := strings.CutPrefix(trimmed, "--"); ok {
-			// Extract the flag name
-			name := after
-			// Take up to first space or comma
-			for i, ch := range name {
-				if ch == ' ' || ch == ',' {
-					name = name[:i]
-					break
-				}
+		if !strings.HasPrefix(trimmed, "-") {
+			continue
+		}
+		for _, field := range strings.Fields(trimmed) {
+			if !strings.HasPrefix(field, "-") {
+				break
 			}
-			add(name)
+			name := strings.TrimRight(field, ",")
+			name = strings.TrimLeft(name, "-")
+			if name != "" {
+				add(name)
+			}
 		}
 	}
 

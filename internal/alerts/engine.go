@@ -341,7 +341,7 @@ func checkBlockedTasks(cfg AlertConfig, projects []ProjectData, now time.Time) [
 			if blockedSince.IsZero() {
 				continue
 			}
-			daysSinceBlocked := util.DaysBetween(blockedSince, now)
+			daysSinceBlocked := util.DaysBetween(blockedSince.In(now.Location()), now)
 			if daysSinceBlocked >= cfg.BlockedDays {
 				alerts = append(alerts, Alert{
 					Category:    CategoryBlocked,

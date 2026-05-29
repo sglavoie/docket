@@ -97,6 +97,37 @@ func TestCheckBlockedTasks_CalendarDayNotHours(t *testing.T) {
 	}
 }
 
+func TestCheckBlockedTasks_BlockedSinceConvertedToUserLocalDay(t *testing.T) {
+	loc, err := time.LoadLocation("America/New_York")
+	if err != nil {
+		t.Skipf("America/New_York not available: %v", err)
+	}
+
+	// Stored as Mar 1 UTC, but it was still Feb 28 for the user. The alert
+	// threshold should use the user's local calendar days, not UTC's date.
+	blockedAt := time.Date(2026, 3, 1, 1, 0, 0, 0, time.UTC)
+	now := time.Date(2026, 3, 7, 10, 0, 0, 0, loc)
+	task := testTask("blocked-local-day", models.StatusBlocked, now.AddDate(0, 0, -1))
+	task.Activity = []*models.ActivityEntry{{
+		Timestamp: blockedAt,
+		Field:     "status",
+		OldValue:  string(models.StatusTodo),
+		NewValue:  string(models.StatusBlocked),
+	}}
+
+	cfg := DefaultAlertConfig()
+	cfg.BlockedDays = 7
+
+	projects := []ProjectData{testProject("proj-local-day", task)}
+	alerts := checkBlockedTasks(cfg, projects, now)
+	if len(alerts) != 1 {
+		t.Fatalf("expected 1 alert for 7 local calendar days blocked, got %d", len(alerts))
+	}
+	if alerts[0].Details != "Blocked for 7 days" {
+		t.Fatalf("expected local day count in details, got %q", alerts[0].Details)
+	}
+}
+
 func TestCheckProjectHealth_StaleProject(t *testing.T) {
 	now := time.Date(2026, 2, 28, 10, 0, 0, 0, time.UTC)
 	task := testTask("old", models.StatusTodo, now.AddDate(0, 0, -30))

@@ -167,6 +167,13 @@ func TestRoundTrip_AttachmentSemicolonPreserved(t *testing.T) {
 				AddedAt:  now,
 			},
 		},
+		{
+			name: "plain_filename_with_metadata_key_after_comma",
+			att: models.Attachment{
+				Filename: "report, stage: review.pdf",
+				AddedAt:  now,
+			},
+		},
 	}
 
 	for _, tc := range cases {

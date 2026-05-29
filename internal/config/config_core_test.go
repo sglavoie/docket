@@ -282,6 +282,58 @@ func TestRemoveProject_CleansAllReferences(t *testing.T) {
 	}
 }
 
+func TestRemoveProject_CleansLegacySlugReferences(t *testing.T) {
+	cfg := NewConfig()
+	cfg.AddProject(&models.Project{ID: "p1", Slug: "proj1", Name: "P1"})
+	cfg.CurrentProject = "proj1"
+	cfg.ProjectScoringProfile = map[string]string{"proj1": "default"}
+	cfg.ProjectViewStates = map[string]ProjectViewState{"proj1": {}}
+	cfg.WorkflowEvalStates = map[string]WorkflowEvalState{"proj1": {}}
+	cfg.FocusQueue = []FocusQueueItem{{TaskID: "t1", ProjectID: "proj1"}}
+	cfg.DailyPlan = []DailyPlanItem{{TaskID: "t1", ProjectID: "proj1"}}
+	cfg.RecentTaskVisits = []RecentTaskVisit{{TaskID: "t1", ProjectID: "proj1"}}
+	cfg.CycleProjects = []string{"proj1"}
+	cfg.ContextCycleProjects = map[string][]string{"personal": {"proj1"}}
+	cfg.CustomContexts = map[string][]string{"work": {"proj1"}}
+	cfg.ActionInboxProjectID = "proj1"
+
+	cfg.RemoveProject("p1")
+
+	if cfg.CurrentProject != "" {
+		t.Error("CurrentProject should be cleared")
+	}
+	if _, ok := cfg.ProjectScoringProfile["proj1"]; ok {
+		t.Error("ProjectScoringProfile slug key should be cleaned")
+	}
+	if _, ok := cfg.ProjectViewStates["proj1"]; ok {
+		t.Error("ProjectViewStates slug key should be cleaned")
+	}
+	if _, ok := cfg.WorkflowEvalStates["proj1"]; ok {
+		t.Error("WorkflowEvalStates slug key should be cleaned")
+	}
+	if len(cfg.FocusQueue) != 0 {
+		t.Errorf("FocusQueue should be empty, got %d", len(cfg.FocusQueue))
+	}
+	if len(cfg.DailyPlan) != 0 {
+		t.Errorf("DailyPlan should be empty, got %d", len(cfg.DailyPlan))
+	}
+	if len(cfg.RecentTaskVisits) != 0 {
+		t.Errorf("RecentTaskVisits should be empty, got %d", len(cfg.RecentTaskVisits))
+	}
+	if len(cfg.CycleProjects) != 0 {
+		t.Errorf("CycleProjects should be empty, got %d", len(cfg.CycleProjects))
+	}
+	if len(cfg.ContextCycleProjects["personal"]) != 0 {
+		t.Errorf("ContextCycleProjects should be empty, got %d", len(cfg.ContextCycleProjects["personal"]))
+	}
+	if len(cfg.CustomContexts["work"]) != 0 {
+		t.Errorf("CustomContexts should be empty, got %d", len(cfg.CustomContexts["work"]))
+	}
+	if cfg.ActionInboxProjectID != "" {
+		t.Error("ActionInboxProjectID should be cleared")
+	}
+}
+
 func TestConfig_GetWeekEndDay(t *testing.T) {
 	tests := []struct {
 		stored string

@@ -50,6 +50,12 @@ func TestRoundTrip_ChecklistAdversarial(t *testing.T) {
 			},
 		},
 		{
+			name: "metadata key pattern after comma",
+			items: []models.ChecklistItem{
+				{Text: "verify parser, stage: review", Done: false},
+			},
+		},
+		{
 			name: "mixed special chars",
 			items: []models.ChecklistItem{
 				{Text: `a\;b[x]c[ ]d||e<!-- f -->`, Done: false},
@@ -132,6 +138,7 @@ func TestChecklistEscapeUnescape(t *testing.T) {
 	}{
 		{"simple text"},
 		{"has;semicolon"},
+		{"has, comma"},
 		{"has [x] marker"},
 		{"has [ ] marker"},
 		{`has\backslash`},

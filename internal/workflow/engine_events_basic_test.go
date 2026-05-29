@@ -65,6 +65,29 @@ func TestMatchesEventTrigger_StatusChanged(t *testing.T) {
 	}
 }
 
+func TestMatchesEventTrigger_RequiresPreviousTask(t *testing.T) {
+	now := time.Now()
+	curr := &models.Task{
+		ID:      "1",
+		Status:  models.StatusDone,
+		Tags:    []string{"urgent"},
+		DueDate: &now,
+	}
+
+	triggers := []RuleTrigger{
+		{Field: FieldStatusChanged, Operation: OpEquals, Value: "*->done"},
+		{Field: FieldTagAdded, Operation: OpEquals, Value: "urgent"},
+		{Field: FieldCompleted, Operation: OpEquals, Value: "true"},
+		{Field: FieldDueDateChanged, Operation: OpEquals, Value: "added"},
+	}
+
+	for _, trigger := range triggers {
+		if matchesEventTrigger(curr, nil, trigger) {
+			t.Errorf("expected event trigger %s not to match without previous task", trigger.Field)
+		}
+	}
+}
+
 func TestMatchesEventTrigger_Completed(t *testing.T) {
 	tests := []struct {
 		name       string

@@ -143,3 +143,28 @@ func TestGetSuggestionReasonRecentActivityMatchesScoreWindow(t *testing.T) {
 		t.Errorf("in-progress task should suppress redundant 'recent activity', got %q", reason)
 	}
 }
+
+// TestGetSuggestionReasonDueThisWeekMatchesScoreWindow guards that the
+// explanation window matches computeCrossProjectScore's due-date boost window.
+// Scoring boosts tasks due exactly 7 days from now, so the reason should also
+// report that boundary as "due this week".
+func TestGetSuggestionReasonDueThisWeekMatchesScoreWindow(t *testing.T) {
+	now := time.Now()
+	project, err := models.NewProject(uuid.New().String(), "P", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	task, err := models.NewTask(uuid.New().String(), 1, models.TaskTypeTask, "Due in 7")
+	if err != nil {
+		t.Fatal(err)
+	}
+	task.Priority = 3
+	dueInSeven := now.AddDate(0, 0, 7)
+	task.DueDate = &dueInSeven
+
+	reason := getSuggestionReason(task, project, nil, now)
+	if !strings.Contains(reason, "ue this week") {
+		t.Fatalf("expected 'due this week' for 7-day due-date boundary, got %q", reason)
+	}
+}

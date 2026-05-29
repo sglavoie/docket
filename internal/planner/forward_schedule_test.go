@@ -172,3 +172,20 @@ func TestForwardScheduleKeepsDuplicateIDsAcrossProjects(t *testing.T) {
 		t.Error("dependent incorrectly waited for alpha:shared with the same task ID")
 	}
 }
+
+func TestForwardScheduleProjectScopedMissingLocalRefDoesNotUsePlainID(t *testing.T) {
+	start := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	pB := makeProject("proj-b", "beta")
+
+	unrelatedPlain := newTaskWithDuration("shared", 10)
+	dependentB := withDep(newTaskWithDuration("dependent", 1), "shared")
+	dependentB.Project = pB
+
+	sched := ForwardSchedule([]*models.Task{unrelatedPlain, dependentB}, start, 1.0)
+	byTask := scheduleByTask(sched)
+
+	if !byTask[dependentB].EarliestStart.Equal(start) {
+		t.Errorf("missing beta:shared should not delay dependent behind unrelated plain shared, got %v",
+			byTask[dependentB].EarliestStart)
+	}
+}

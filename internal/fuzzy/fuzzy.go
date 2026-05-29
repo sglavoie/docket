@@ -35,10 +35,11 @@ func Score(text, pattern string) int {
 	textLower := strings.ToLower(text)
 	patternLower := strings.ToLower(pattern)
 
+	textOriginalRunes := []rune(text)
 	textRunes := []rune(textLower)
 	patternRunes := []rune(patternLower)
 
-	return scoreSubsequence(textRunes, patternRunes)
+	return scoreSubsequence(textRunes, textOriginalRunes, patternRunes)
 }
 
 // ScoreTerms splits the query into whitespace-separated terms and returns
@@ -94,10 +95,11 @@ func ScoreWithPositions(text, pattern string) (int, []int) {
 	textLower := strings.ToLower(text)
 	patternLower := strings.ToLower(pattern)
 
+	textOriginalRunes := []rune(text)
 	textRunes := []rune(textLower)
 	patternRunes := []rune(patternLower)
 
-	return scoreSubsequenceWithPositions(textRunes, patternRunes)
+	return scoreSubsequenceWithPositions(textRunes, textOriginalRunes, patternRunes)
 }
 
 // ScoreTermsWithPositions splits the query into whitespace-separated terms and returns
@@ -141,7 +143,7 @@ func ScoreTermsWithPositions(text, query string) (int, []int) {
 // scoreSubsequenceWithPositions finds the best subsequence match and returns a score and positions.
 // Returns 0 and nil if no match is found.
 // Tries starting from each occurrence of pattern[0] to avoid greedy mismatches.
-func scoreSubsequenceWithPositions(text, pattern []rune) (int, []int) {
+func scoreSubsequenceWithPositions(text, originalText, pattern []rune) (int, []int) {
 	if len(pattern) == 0 {
 		return 1, nil
 	}
@@ -157,7 +159,7 @@ func scoreSubsequenceWithPositions(text, pattern []rune) (int, []int) {
 			continue
 		}
 
-		score, positions := scoreFromStart(text, pattern, startIdx, true)
+		score, positions := scoreFromStart(text, originalText, pattern, startIdx, true)
 		if score > bestScore {
 			bestScore = score
 			bestPositions = positions
@@ -170,7 +172,7 @@ func scoreSubsequenceWithPositions(text, pattern []rune) (int, []int) {
 // scoreSubsequence finds the best subsequence match and returns a score.
 // Returns 0 if no match is found.
 // Tries starting from each occurrence of pattern[0] to avoid greedy mismatches.
-func scoreSubsequence(text, pattern []rune) int {
+func scoreSubsequence(text, originalText, pattern []rune) int {
 	if len(pattern) == 0 {
 		return 1
 	}
@@ -185,7 +187,7 @@ func scoreSubsequence(text, pattern []rune) int {
 			continue
 		}
 
-		score, _ := scoreFromStart(text, pattern, startIdx, false)
+		score, _ := scoreFromStart(text, originalText, pattern, startIdx, false)
 		if score > bestScore {
 			bestScore = score
 		}
@@ -197,19 +199,19 @@ func scoreSubsequence(text, pattern []rune) int {
 // scoreFromStart finds the best scoring subsequence that starts at startIdx.
 // It only considers matches inside the existing density window
 // (span <= 3x pattern length).
-func scoreFromStart(text, pattern []rune, startIdx int, wantPositions bool) (int, []int) {
+func scoreFromStart(text, originalText, pattern []rune, startIdx int, wantPositions bool) (int, []int) {
 	maxEnd := min(len(text)-1, startIdx+len(pattern)*3-1)
 	if maxEnd-startIdx+1 < len(pattern) {
 		return 0, nil
 	}
-	if score, positions, ok := scoreConsecutiveFrom(text, pattern, startIdx, wantPositions); ok {
+	if score, positions, ok := scoreConsecutiveFrom(text, originalText, pattern, startIdx, wantPositions); ok {
 		return score, positions
 	}
 
 	windowLen := maxEnd - startIdx + 1
 	dpPrev := make([]int, windowLen)
 	dpCurr := make([]int, windowLen)
-	dpPrev[0] = matchScore(text, startIdx, 0, -2)
+	dpPrev[0] = matchScore(originalText, startIdx, 0, -2)
 
 	var predecessors [][]int
 	if wantPositions {
@@ -241,7 +243,7 @@ func scoreFromStart(text, pattern []rune, startIdx int, wantPositions bool) (int
 				continue
 			}
 
-			baseScore := matchScore(text, textIdx, patternIdx, -2)
+			baseScore := matchScore(originalText, textIdx, patternIdx, -2)
 			score := bestPrevScore + baseScore
 			predecessor := bestPrevIdx
 
@@ -288,7 +290,7 @@ func scoreFromStart(text, pattern []rune, startIdx int, wantPositions bool) (int
 	return bestScore, positions
 }
 
-func scoreConsecutiveFrom(text, pattern []rune, startIdx int, wantPositions bool) (int, []int, bool) {
+func scoreConsecutiveFrom(text, originalText, pattern []rune, startIdx int, wantPositions bool) (int, []int, bool) {
 	if startIdx+len(pattern) > len(text) {
 		return 0, nil, false
 	}
@@ -305,7 +307,7 @@ func scoreConsecutiveFrom(text, pattern []rune, startIdx int, wantPositions bool
 		if text[textIdx] != pattern[patternIdx] {
 			return 0, nil, false
 		}
-		score += matchScore(text, textIdx, patternIdx, prevMatchIdx)
+		score += matchScore(originalText, textIdx, patternIdx, prevMatchIdx)
 		prevMatchIdx = textIdx
 		if wantPositions {
 			positions[patternIdx] = textIdx
@@ -335,7 +337,7 @@ func matchScore(text []rune, textIdx, patternIdx, prevMatchIdx int) int {
 
 	if textIdx == 0 {
 		score += 2
-	} else if isWordBoundary(text[textIdx-1]) {
+	} else if isWordBoundary(text[textIdx-1]) || isCamelBoundary(text[textIdx-1], text[textIdx]) {
 		score += 2
 	}
 
@@ -344,6 +346,10 @@ func matchScore(text []rune, textIdx, patternIdx, prevMatchIdx int) int {
 	}
 
 	return score
+}
+
+func isCamelBoundary(prev, curr rune) bool {
+	return unicode.IsLower(prev) && unicode.IsUpper(curr)
 }
 
 // isWordBoundary returns true if the rune is a word boundary character.

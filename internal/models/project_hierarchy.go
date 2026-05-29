@@ -246,6 +246,9 @@ func clearVisited(task *Task, visited map[string]bool) {
 // GetSiblings returns all tasks with the same parent as the given task,
 // in their slice order. Includes the task itself.
 func (p *Project) GetSiblings(task *Task) []*Task {
+	if task == nil {
+		return nil
+	}
 	var siblings []*Task
 	for _, t := range p.Tasks {
 		if (task.ParentID == nil && t.ParentID == nil) ||
@@ -258,6 +261,9 @@ func (p *Project) GetSiblings(task *Task) []*Task {
 
 // FindSiblingIndex returns the index of task among its siblings, or -1 if not found.
 func (p *Project) FindSiblingIndex(task *Task) int {
+	if task == nil {
+		return -1
+	}
 	siblings := p.GetSiblings(task)
 	for i, s := range siblings {
 		if s.ID == task.ID {
@@ -269,6 +275,9 @@ func (p *Project) FindSiblingIndex(task *Task) int {
 
 // findTaskIndex returns the index of the task in the Tasks slice, or -1 if not found.
 func (p *Project) findTaskIndex(task *Task) int {
+	if task == nil {
+		return -1
+	}
 	for i, t := range p.Tasks {
 		if t.ID == task.ID {
 			return i

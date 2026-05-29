@@ -118,6 +118,20 @@ func TestParseClipboard(t *testing.T) {
 			desc:  "First paragraph\n\nSecond paragraph",
 		},
 		{
+			name:  "multi-line description preserves leading indentation",
+			input: "Task title\n\n    indented code\n  nested detail",
+			title: "Task title",
+			url:   "",
+			desc:  "    indented code\n  nested detail",
+		},
+		{
+			name:  "multi-line description trims only blank edge lines",
+			input: "Task title\n\n\t\n  keep leading spaces\nkeep trailing spaces  \n   \n",
+			title: "Task title",
+			url:   "",
+			desc:  "  keep leading spaces\nkeep trailing spaces  ",
+		},
+		{
 			name:  "leading blank lines before title",
 			input: "\n\nActual Title\nsome details",
 			title: "Actual Title",

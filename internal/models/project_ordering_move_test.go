@@ -228,4 +228,39 @@ func TestSwapTasksNilTask(t *testing.T) {
 	if project.Tasks[0].ID != "1" {
 		t.Error("swap with non-existent task should be a no-op")
 	}
+
+	project.SwapTasks(nil, task1)
+	project.SwapTasks(task1, nil)
+
+	if project.Tasks[0].ID != "1" {
+		t.Error("swap with nil task should be a no-op")
+	}
+}
+
+func TestMoveTaskNilTaskNoOp(t *testing.T) {
+	project, err := NewProject("test", "Test", "/tmp/test")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	task1, err := NewTask("1", 1, TaskTypeTask, "Task 1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	task2, err := NewTask("2", 2, TaskTypeTask, "Task 2")
+	if err != nil {
+		t.Fatal(err)
+	}
+	project.Tasks = []*Task{task1, task2}
+
+	if err := project.MoveTaskUp(nil); err != nil {
+		t.Errorf("MoveTaskUp(nil) returned error: %v", err)
+	}
+	if err := project.MoveTaskDown(nil); err != nil {
+		t.Errorf("MoveTaskDown(nil) returned error: %v", err)
+	}
+
+	if project.Tasks[0].ID != "1" || project.Tasks[1].ID != "2" {
+		t.Errorf("nil move should be a no-op, got [%s, %s]", project.Tasks[0].ID, project.Tasks[1].ID)
+	}
 }

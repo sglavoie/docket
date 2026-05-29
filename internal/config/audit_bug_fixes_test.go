@@ -452,6 +452,63 @@ func TestPruneOrphanedProjectRefs_NoopWhenNothingStale(t *testing.T) {
 	}
 }
 
+// TestPruneOrphanedProjectRefs_NormalizesLegacySlugRefs guarantees that
+// slug-based project references from older or hand-edited configs are not
+// mistaken for orphans. They should be rewritten to canonical IDs so the next
+// Save round-trip does not preserve the legacy slug form.
+func TestPruneOrphanedProjectRefs_NormalizesLegacySlugRefs(t *testing.T) {
+	cfg := NewConfig()
+	cfg.Projects = []*models.Project{{ID: "p1", Slug: "alpha", Name: "Alpha"}}
+	cfg.ProjectScoringProfile = map[string]string{"alpha": "ice"}
+	cfg.ProjectViewStates = map[string]ProjectViewState{"alpha": {}}
+	cfg.WorkflowEvalStates = map[string]WorkflowEvalState{"alpha": {}}
+	cfg.FocusQueue = []FocusQueueItem{{TaskID: "t1", ProjectID: "alpha"}}
+	cfg.DailyPlan = []DailyPlanItem{{TaskID: "t2", ProjectID: "alpha"}}
+	cfg.RecentTaskVisits = []RecentTaskVisit{{TaskID: "t3", ProjectID: "alpha"}}
+	cfg.CycleProjects = []string{"alpha"}
+	cfg.ContextCycleProjects = map[string][]string{"work": {"alpha"}}
+	cfg.CustomContexts = map[string][]string{"team": {"alpha"}}
+	cfg.ActionInboxProjectID = "alpha"
+
+	if !cfg.PruneOrphanedProjectRefs() {
+		t.Fatal("expected slug refs to be normalized")
+	}
+
+	if got := cfg.ProjectScoringProfile["p1"]; got != "ice" {
+		t.Errorf("expected scoring profile moved to p1, got %q", got)
+	}
+	if _, ok := cfg.ProjectScoringProfile["alpha"]; ok {
+		t.Error("expected legacy slug key removed from ProjectScoringProfile")
+	}
+	if _, ok := cfg.ProjectViewStates["p1"]; !ok {
+		t.Error("expected ProjectViewStates key normalized to p1")
+	}
+	if _, ok := cfg.WorkflowEvalStates["p1"]; !ok {
+		t.Error("expected WorkflowEvalStates key normalized to p1")
+	}
+	if cfg.FocusQueue[0].ProjectID != "p1" {
+		t.Errorf("expected FocusQueue project normalized to p1, got %q", cfg.FocusQueue[0].ProjectID)
+	}
+	if cfg.DailyPlan[0].ProjectID != "p1" {
+		t.Errorf("expected DailyPlan project normalized to p1, got %q", cfg.DailyPlan[0].ProjectID)
+	}
+	if cfg.RecentTaskVisits[0].ProjectID != "p1" {
+		t.Errorf("expected RecentTaskVisits project normalized to p1, got %q", cfg.RecentTaskVisits[0].ProjectID)
+	}
+	if len(cfg.CycleProjects) != 1 || cfg.CycleProjects[0] != "p1" {
+		t.Errorf("expected CycleProjects normalized to [p1], got %+v", cfg.CycleProjects)
+	}
+	if got := cfg.ContextCycleProjects["work"]; len(got) != 1 || got[0] != "p1" {
+		t.Errorf("expected ContextCycleProjects normalized to [p1], got %+v", got)
+	}
+	if got := cfg.CustomContexts["team"]; len(got) != 1 || got[0] != "p1" {
+		t.Errorf("expected CustomContexts normalized to [p1], got %+v", got)
+	}
+	if cfg.ActionInboxProjectID != "p1" {
+		t.Errorf("expected ActionInboxProjectID normalized to p1, got %q", cfg.ActionInboxProjectID)
+	}
+}
+
 // TestConfigManager_LoadPrunesOrphanedProjectRefs guarantees the Load-time
 // integration drops dangling references rather than letting them resurrect
 // across reloads.

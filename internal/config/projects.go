@@ -67,44 +67,44 @@ func (c *Config) RemoveProject(id string) bool {
 	if c.CurrentProject == id || (removedSlug != "" && c.CurrentProject == removedSlug) {
 		c.CurrentProject = ""
 	}
-	if c.ActionInboxProjectID == id {
+	if c.ActionInboxProjectID == id || (removedSlug != "" && c.ActionInboxProjectID == removedSlug) {
 		c.ActionInboxProjectID = ""
 	}
 
-	c.removeProjectRefs(id)
+	c.removeProjectRefs(id, removedSlug)
 
 	return true
 }
 
-func (c *Config) removeProjectRefs(id string) {
-	delete(c.ProjectScoringProfile, id)
-	delete(c.ProjectViewStates, id)
-	delete(c.WorkflowEvalStates, id)
+func (c *Config) removeProjectRefs(id, slug string) {
+	deleteProjectKey(c.ProjectScoringProfile, id, slug)
+	deleteProjectKey(c.ProjectViewStates, id, slug)
+	deleteProjectKey(c.WorkflowEvalStates, id, slug)
 
 	c.FocusQueue, _ = filterProjectRefSlice(c.FocusQueue, func(item FocusQueueItem) string {
 		return item.ProjectID
 	}, func(pid string) bool {
-		return pid != id
+		return pid != id && (slug == "" || pid != slug)
 	})
 	c.DailyPlan, _ = filterProjectRefSlice(c.DailyPlan, func(item DailyPlanItem) string {
 		return item.ProjectID
 	}, func(pid string) bool {
-		return pid != id
+		return pid != id && (slug == "" || pid != slug)
 	})
 	c.RecentTaskVisits, _ = filterProjectRefSlice(c.RecentTaskVisits, func(visit RecentTaskVisit) string {
 		return visit.ProjectID
 	}, func(pid string) bool {
-		return pid != id
+		return pid != id && (slug == "" || pid != slug)
 	})
 
 	c.CycleProjects, _ = filterProjectIDs(c.CycleProjects, func(pid string) bool {
-		return pid != id
+		return pid != id && (slug == "" || pid != slug)
 	})
 	filterProjectIDMap(c.ContextCycleProjects, func(pid string) bool {
-		return pid != id
+		return pid != id && (slug == "" || pid != slug)
 	})
 	filterProjectIDMap(c.CustomContexts, func(pid string) bool {
-		return pid != id
+		return pid != id && (slug == "" || pid != slug)
 	})
 }
 
@@ -288,71 +288,134 @@ func (c *Config) SetCurrentProject(id string) bool {
 	return true
 }
 
-// PruneOrphanedProjectRefs drops persisted references to project IDs that no
-// longer exist in c.Projects. Without this pass, stale entries from
-// hand-edited configs or out-of-band project removals quietly accumulate and
-// keep round-tripping through every Save. Returns true if any reference was
-// removed.
+// PruneOrphanedProjectRefs drops persisted references to projects that no
+// longer exist in c.Projects and normalizes legacy slug references to IDs.
+// Without this pass, stale entries from hand-edited configs or out-of-band
+// project removals quietly accumulate and keep round-tripping through every
+// Save. Returns true if any reference was removed or normalized.
 func (c *Config) PruneOrphanedProjectRefs() bool {
-	known := make(map[string]bool, len(c.Projects))
+	knownRefs := make(map[string]string, len(c.Projects)*2)
 	for _, p := range c.Projects {
 		if p == nil || p.ID == "" {
 			continue
 		}
-		known[p.ID] = true
+		knownRefs[p.ID] = p.ID
+		if p.Slug != "" {
+			knownRefs[p.Slug] = p.ID
+		}
 	}
 
 	changed := false
-	changed = deleteUnknownProjectKeys(c.ProjectScoringProfile, known) || changed
-	changed = deleteUnknownProjectKeys(c.ProjectViewStates, known) || changed
-	changed = deleteUnknownProjectKeys(c.WorkflowEvalStates, known) || changed
+	changed = normalizeProjectKeyedMap(c.ProjectScoringProfile, knownRefs) || changed
+	changed = normalizeProjectKeyedMap(c.ProjectViewStates, knownRefs) || changed
+	changed = normalizeProjectKeyedMap(c.WorkflowEvalStates, knownRefs) || changed
 
 	var filtered bool
-	c.FocusQueue, filtered = filterProjectRefSlice(c.FocusQueue, func(item FocusQueueItem) string {
+	c.FocusQueue, filtered = normalizeProjectRefSlice(c.FocusQueue, func(item FocusQueueItem) string {
 		return item.ProjectID
-	}, func(pid string) bool {
-		return known[pid]
-	})
+	}, func(item FocusQueueItem, pid string) FocusQueueItem {
+		item.ProjectID = pid
+		return item
+	}, knownRefs)
 	changed = filtered || changed
-	c.DailyPlan, filtered = filterProjectRefSlice(c.DailyPlan, func(item DailyPlanItem) string {
+	c.DailyPlan, filtered = normalizeProjectRefSlice(c.DailyPlan, func(item DailyPlanItem) string {
 		return item.ProjectID
-	}, func(pid string) bool {
-		return known[pid]
-	})
+	}, func(item DailyPlanItem, pid string) DailyPlanItem {
+		item.ProjectID = pid
+		return item
+	}, knownRefs)
 	changed = filtered || changed
-	c.RecentTaskVisits, filtered = filterProjectRefSlice(c.RecentTaskVisits, func(visit RecentTaskVisit) string {
+	c.RecentTaskVisits, filtered = normalizeProjectRefSlice(c.RecentTaskVisits, func(visit RecentTaskVisit) string {
 		return visit.ProjectID
-	}, func(pid string) bool {
-		return known[pid]
-	})
+	}, func(visit RecentTaskVisit, pid string) RecentTaskVisit {
+		visit.ProjectID = pid
+		return visit
+	}, knownRefs)
 	changed = filtered || changed
 
-	c.CycleProjects, filtered = filterProjectIDs(c.CycleProjects, func(pid string) bool {
-		return known[pid]
-	})
+	c.CycleProjects, filtered = normalizeProjectIDs(c.CycleProjects, knownRefs)
 	changed = filtered || changed
-	changed = filterProjectIDMap(c.ContextCycleProjects, func(pid string) bool {
-		return known[pid]
-	}) || changed
-	changed = filterProjectIDMap(c.CustomContexts, func(pid string) bool {
-		return known[pid]
-	}) || changed
+	changed = normalizeProjectIDMap(c.ContextCycleProjects, knownRefs) || changed
+	changed = normalizeProjectIDMap(c.CustomContexts, knownRefs) || changed
 
-	if c.ActionInboxProjectID != "" && !known[c.ActionInboxProjectID] {
-		c.ActionInboxProjectID = ""
-		changed = true
+	if c.ActionInboxProjectID != "" {
+		if canonical, ok := knownRefs[c.ActionInboxProjectID]; ok {
+			if c.ActionInboxProjectID != canonical {
+				c.ActionInboxProjectID = canonical
+				changed = true
+			}
+		} else {
+			c.ActionInboxProjectID = ""
+			changed = true
+		}
 	}
 
 	return changed
 }
 
-func deleteUnknownProjectKeys[T any](values map[string]T, known map[string]bool) bool {
+func deleteProjectKey[T any](values map[string]T, id, slug string) {
+	delete(values, id)
+	if slug != "" {
+		delete(values, slug)
+	}
+}
+
+func normalizeProjectKeyedMap[T any](values map[string]T, knownRefs map[string]string) bool {
 	changed := false
-	for pid := range values {
-		if !known[pid] {
+	for pid, value := range values {
+		canonical, ok := knownRefs[pid]
+		if !ok {
+			delete(values, pid)
+			changed = true
+			continue
+		}
+		if canonical != pid {
+			if _, exists := values[canonical]; !exists {
+				values[canonical] = value
+			}
 			delete(values, pid)
 			changed = true
 		}
+	}
+	return changed
+}
+
+func normalizeProjectRefSlice[T any](values []T, projectID func(T) string, setProjectID func(T, string) T, knownRefs map[string]string) ([]T, bool) {
+	if len(values) == 0 {
+		return values, false
+	}
+	filtered := values[:0]
+	changed := false
+	for _, value := range values {
+		pid := projectID(value)
+		canonical, ok := knownRefs[pid]
+		if !ok {
+			changed = true
+			continue
+		}
+		if canonical != pid {
+			value = setProjectID(value, canonical)
+			changed = true
+		}
+		filtered = append(filtered, value)
+	}
+	return filtered, changed
+}
+
+func normalizeProjectIDs(ids []string, knownRefs map[string]string) ([]string, bool) {
+	return normalizeProjectRefSlice(ids, func(id string) string {
+		return id
+	}, func(_ string, id string) string {
+		return id
+	}, knownRefs)
+}
+
+func normalizeProjectIDMap(projectIDs map[string][]string, knownRefs map[string]string) bool {
+	changed := false
+	for key, ids := range projectIDs {
+		var filtered bool
+		projectIDs[key], filtered = normalizeProjectIDs(ids, knownRefs)
+		changed = filtered || changed
 	}
 	return changed
 }

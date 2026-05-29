@@ -147,7 +147,7 @@ func (p *ScoringProfile) Validate() error {
 			}
 			if d.Role == RoleDenominator {
 				hasDen = true
-				if d.Max > 0 && (p.Formula != FormulaWSJF || d.Weight > 0) {
+				if d.Max > 0 && d.Weight > 0 {
 					hasNonzeroDen = true
 				}
 				// RICE multiplies denominators: any dim with Max == 0 forces

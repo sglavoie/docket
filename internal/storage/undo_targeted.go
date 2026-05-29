@@ -28,14 +28,19 @@ func buildTargetedRestore(currentContent string, snapshotResult *ParseResult, ta
 
 	// Remove tasks that were newly created (exist in current but not in
 	// snapshot). Undoing a creation means the task should disappear.
+	removedIDs := make(map[string]bool)
 	filtered := make([]*models.Task, 0, len(currentResult.Tasks))
 	for _, t := range currentResult.Tasks {
 		if targetSet[t.ID] && snapshotMap[t.ID] == nil {
+			removedIDs[t.ID] = true
 			continue // Task was created after snapshot; remove it
 		}
 		filtered = append(filtered, t)
 	}
 	currentResult.Tasks = filtered
+	if len(removedIDs) > 0 {
+		clearOrphanedParentRefs(&models.Project{Tasks: currentResult.Tasks}, removedIDs)
+	}
 
 	// Build a lookup of current tasks by ID for quick targeted updates.
 	currentTasks := make(map[string]*models.Task, len(currentResult.Tasks))

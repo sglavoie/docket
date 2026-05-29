@@ -290,6 +290,22 @@ func TestValidateRejectsWSJFZeroWeightDenominator(t *testing.T) {
 	}
 }
 
+// TestValidateRejectsRICEAllZeroWeightDenominators mirrors the WSJF guard:
+// a RICE denominator with Weight=0 contributes Pow(value, 0) == 1, so if all
+// denominators have zero weight, the profile silently ignores cost/effort.
+func TestValidateRejectsRICEAllZeroWeightDenominators(t *testing.T) {
+	profile := ScoringProfile{
+		ID: "rice-zero-weight", Name: "ZeroWeightRICE", Formula: FormulaRICE,
+		Dimensions: []ScoringDimension{
+			{ID: "n", Name: "N", Min: 1, Max: 10, Default: 5, Weight: 1, Source: SourceManual, Role: RoleNumerator},
+			{ID: "d", Name: "D", Min: 1, Max: 10, Default: 5, Weight: 0, Source: SourceManual, Role: RoleDenominator},
+		},
+	}
+	if err := profile.Validate(); err == nil {
+		t.Error("expected validation error: RICE denominator with Weight=0 cannot contribute to denominator product")
+	}
+}
+
 // TestValidateAcceptsRICEWithLegitimateZeroMinDenominator confirms the new
 // validation does not over-reach: a denominator with Min=0 but Max>0 is
 // allowed (user can opt to set it to 0 and get the "zero effort = top"

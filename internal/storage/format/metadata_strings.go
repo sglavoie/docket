@@ -75,11 +75,12 @@ func unescapeNewlines(s string) string {
 	return b.String()
 }
 
-// escapeChecklistText escapes semicolons and done/undone markers in checklist item text
-// so they don't interfere with the storage format delimiters.
+// escapeChecklistText escapes delimiters and done/undone markers in checklist
+// item text so they don't interfere with the storage format delimiters.
 func escapeChecklistText(s string) string {
 	s = strings.ReplaceAll(s, `\`, `\\`)
 	s = strings.ReplaceAll(s, ";", `\;`)
+	s = strings.ReplaceAll(s, ",", `\,`)
 	s = strings.ReplaceAll(s, "[x]", `\[x\]`)
 	s = strings.ReplaceAll(s, "[ ]", `\[ \]`)
 	return s
@@ -88,6 +89,7 @@ func escapeChecklistText(s string) string {
 // unescapeChecklistText reverses the escaping done by escapeChecklistText.
 func unescapeChecklistText(s string) string {
 	s = strings.ReplaceAll(s, `\;`, ";")
+	s = strings.ReplaceAll(s, `\,`, ",")
 	s = strings.ReplaceAll(s, `\[x\]`, "[x]")
 	s = strings.ReplaceAll(s, `\[ \]`, "[ ]")
 	s = strings.ReplaceAll(s, `\\`, `\`)

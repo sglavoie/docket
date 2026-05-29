@@ -83,6 +83,10 @@ func matchesTriggerWithContext(task, prev *models.Task, trigger RuleTrigger, eva
 
 // matchesEventTrigger checks event-based triggers that detect transitions.
 func matchesEventTrigger(task, prev *models.Task, trigger RuleTrigger) bool { //nolint:gocyclo
+	if prev == nil {
+		return false
+	}
+
 	switch trigger.Field {
 	case FieldStatusChanged:
 		return matchesTransition(

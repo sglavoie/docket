@@ -48,6 +48,28 @@ func TestThroughput(t *testing.T) {
 		}
 	})
 
+	t.Run("average per day uses calendar days across DST", func(t *testing.T) {
+		loc, err := time.LoadLocation("America/New_York")
+		if err != nil {
+			t.Fatal(err)
+		}
+		now := time.Date(2025, 3, 10, 12, 0, 0, 0, loc)
+		cutoff := TimeRange7d.Cutoff(now)
+
+		tasks := make([]*models.Task, 7)
+		for i := range tasks {
+			done := now.AddDate(0, 0, -i)
+			tasks[i] = makeTask(models.StatusDone, timePtr(done), nil)
+		}
+
+		buckets := timeBuckets(cutoff, now, granularityDay)
+		result := computeThroughput(tasks, cutoff, now, buckets)
+
+		if result.AvgPerDay != 1 {
+			t.Errorf("AvgPerDay = %f, want 1.0 across a 7-calendar-day DST window", result.AvgPerDay)
+		}
+	})
+
 	t.Run("excludes tasks completed after now", func(t *testing.T) {
 		recent := now.AddDate(0, 0, -1)
 		future := now.Add(2 * time.Hour)

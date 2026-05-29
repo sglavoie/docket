@@ -197,15 +197,16 @@ func taskGraphKey(t *models.Task) string {
 
 // dependencyTaskKey resolves a dependency reference against the local task map.
 // Unqualified refs may match by parsed task ID. Qualified refs must match an
-// exact local ID or a task whose Project ID/slug matches the ref prefix;
-// otherwise they are external/unresolved and are treated as already satisfied
-// by the planner's local graph.
+// exact local ID or a task whose Project ID/slug matches the ref prefix.
+// Unqualified refs from project-scoped tasks only match tasks in that project;
+// otherwise unresolved refs are treated as already satisfied by the planner's
+// local graph.
 func dependencyTaskKey(depRef string, dependent *models.Task, taskMap map[string]*models.Task) (string, bool) {
-	if _, ok := taskMap[depRef]; ok {
-		return depRef, true
-	}
 	ref := models.ParseTaskRef(depRef)
 	if ref.ProjectID != "" {
+		if _, ok := taskMap[depRef]; ok {
+			return depRef, true
+		}
 		for key, t := range taskMap {
 			if t == nil || t.ID != ref.TaskID || t.Project == nil {
 				continue
@@ -217,15 +218,21 @@ func dependencyTaskKey(depRef string, dependent *models.Task, taskMap map[string
 		return "", false
 	}
 	if dependent != nil && dependent.Project != nil {
+		hasProjectScope := false
 		if dependent.Project.ID != "" {
+			hasProjectScope = true
 			if _, ok := taskMap[dependent.Project.ID+":"+ref.TaskID]; ok {
 				return dependent.Project.ID + ":" + ref.TaskID, true
 			}
 		}
 		if dependent.Project.Slug != "" {
+			hasProjectScope = true
 			if _, ok := taskMap[dependent.Project.Slug+":"+ref.TaskID]; ok {
 				return dependent.Project.Slug + ":" + ref.TaskID, true
 			}
+		}
+		if hasProjectScope {
+			return "", false
 		}
 	}
 	if _, ok := taskMap[ref.TaskID]; ok {

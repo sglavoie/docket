@@ -139,6 +139,13 @@ func TestScoreRanking(t *testing.T) {
 			pattern:     "auth",
 			want1Higher: true,
 		},
+		{
+			name:        "camelCase boundary beats middle",
+			text1:       "fooBar",
+			text2:       "fooxbar",
+			pattern:     "fb",
+			want1Higher: true,
+		},
 	}
 
 	for _, tt := range tests {
@@ -282,6 +289,30 @@ func TestIsWordBoundary(t *testing.T) {
 			got := isWordBoundary(tt.r)
 			if got != tt.want {
 				t.Errorf("isWordBoundary(%q) = %v, want %v", tt.r, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestIsCamelBoundary(t *testing.T) {
+	tests := []struct {
+		name string
+		prev rune
+		curr rune
+		want bool
+	}{
+		{"lower to upper", 'o', 'B', true},
+		{"lower to lower", 'o', 'b', false},
+		{"upper to upper", 'O', 'B', false},
+		{"punctuation handled separately", '-', 'B', false},
+		{"digit to upper is not camel", '2', 'B', false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := isCamelBoundary(tt.prev, tt.curr)
+			if got != tt.want {
+				t.Errorf("isCamelBoundary(%q, %q) = %v, want %v", tt.prev, tt.curr, got, tt.want)
 			}
 		})
 	}

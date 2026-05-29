@@ -3,6 +3,7 @@ package storage
 import (
 	"os"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 
@@ -141,6 +142,90 @@ func TestPerformTargetedUndoRemovesNewlyCreatedTask(t *testing.T) {
 	}
 	if !found {
 		t.Error("task-a should still exist after undo")
+	}
+}
+
+func TestPerformTargetedUndoRemovesReferencesToNewlyCreatedTask(t *testing.T) {
+	project, tasksPath := newUndoTestProject(t)
+
+	now := time.Date(2026, 2, 3, 10, 0, 0, 0, time.UTC)
+	initialTasks := []*models.Task{
+		{
+			ID:        "child",
+			ShortID:   1,
+			Type:      models.TaskTypeTask,
+			Title:     "Existing child",
+			Status:    models.StatusTodo,
+			Priority:  3,
+			CreatedAt: now,
+			UpdatedAt: now,
+		},
+	}
+	writeUndoTasks(t, tasksPath, WriteTasksMarkdown("Test Project", initialTasks))
+
+	if err := RecordUndoSnapshot(project, "Add parent", "#2 New parent", 10, []string{"parent-new"}); err != nil {
+		t.Fatalf("RecordUndoSnapshot failed: %v", err)
+	}
+
+	parentID := "parent-new"
+	mutatedTasks := []*models.Task{
+		{
+			ID:        parentID,
+			ShortID:   2,
+			Type:      models.TaskTypeTask,
+			Title:     "New parent",
+			Status:    models.StatusTodo,
+			Priority:  3,
+			CreatedAt: now,
+			UpdatedAt: now,
+		},
+		{
+			ID:        "child",
+			ShortID:   1,
+			Type:      models.TaskTypeTask,
+			Title:     "Existing child",
+			Status:    models.StatusTodo,
+			Priority:  3,
+			ParentID:  &parentID,
+			DependsOn: []string{parentID, "keep-dep"},
+			RelatedTo: []string{parentID, "keep-related"},
+			CreatedAt: now,
+			UpdatedAt: now,
+		},
+	}
+	writeUndoTasks(t, tasksPath, WriteTasksMarkdown("Test Project", mutatedTasks))
+
+	if _, err := PerformUndo(project); err != nil {
+		t.Fatalf("PerformUndo failed: %v", err)
+	}
+
+	content, err := os.ReadFile(tasksPath)
+	if err != nil {
+		t.Fatalf("failed to read tasks file: %v", err)
+	}
+	if strings.Contains(string(content), "parent: parent-new") {
+		t.Fatalf("restored content should not retain parent metadata for removed task:\n%s", string(content))
+	}
+
+	result, err := ParseTasksMarkdownWithSections(string(content))
+	if err != nil {
+		t.Fatalf("failed to parse restored content: %v", err)
+	}
+	if len(result.Tasks) != 1 {
+		t.Fatalf("expected only child task after undo, got %d", len(result.Tasks))
+	}
+	child := result.Tasks[0]
+	if child.ID != "child" {
+		t.Fatalf("remaining task ID = %q, want child", child.ID)
+	}
+	if child.ParentID != nil {
+		t.Fatalf("child ParentID = %v, want nil", *child.ParentID)
+	}
+	if !reflect.DeepEqual(child.DependsOn, []string{"keep-dep"}) {
+		t.Fatalf("child DependsOn = %v, want [keep-dep]", child.DependsOn)
+	}
+	if !reflect.DeepEqual(child.RelatedTo, []string{"keep-related"}) {
+		t.Fatalf("child RelatedTo = %v, want [keep-related]", child.RelatedTo)
 	}
 }
 

@@ -17,7 +17,7 @@ type TemplateVariable struct {
 var validVarPattern = regexp.MustCompile(`\{\{([a-zA-Z_][a-zA-Z0-9_]*)(?::([^}]*))?\}\}`)
 
 // invalidVarPattern matches anything that looks like {{...}} but may not be valid.
-var invalidVarPattern = regexp.MustCompile(`\{\{.*?\}\}`)
+var invalidVarPattern = regexp.MustCompile(`(?s)\{\{.*?\}\}`)
 
 func tokenHasDefault(token, name string) bool {
 	idx := 2 + len(name)

@@ -529,6 +529,21 @@ func TestValidateTokens_StrayClosingBraceInsideTokenRejected(t *testing.T) {
 	}
 }
 
+func TestValidateTokens_MultilineInvalidTokenRejected(t *testing.T) {
+	// Regression: invalidVarPattern used "." without dot-all mode, so malformed
+	// tokens spanning a newline were skipped by validation and left unresolved.
+	tmpl := &TaskTemplate{
+		Description: "{{bad\nname}}",
+	}
+	err := ValidateTokens(tmpl)
+	if err == nil {
+		t.Fatal("expected error for multiline invalid token, got nil")
+	}
+	if !strings.Contains(err.Error(), "invalid variable token") {
+		t.Errorf("error %q should mention invalid variable token", err.Error())
+	}
+}
+
 func TestApplyVariables_MultipleOccurrences(t *testing.T) {
 	tmpl := TaskTemplate{
 		Description: "{{x}} and {{x}} and {{x}}",

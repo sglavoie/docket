@@ -49,6 +49,8 @@ func computeThroughput(tasks []*models.Task, cutoff, now time.Time, buckets []bu
 		if len(buckets) > 0 {
 			days = now.Sub(buckets[0].Start).Hours() / 24
 		}
+	} else if calendarDays, ok := wallClockAlignedCalendarDays(cutoff, now); ok {
+		days = calendarDays
 	} else {
 		days = now.Sub(cutoff).Hours() / 24
 	}
@@ -57,4 +59,20 @@ func computeThroughput(tasks []*models.Task, cutoff, now time.Time, buckets []bu
 	}
 
 	return result
+}
+
+func wallClockAlignedCalendarDays(start, end time.Time) (float64, bool) {
+	end = end.In(start.Location())
+	sh, sm, ss := start.Clock()
+	eh, em, es := end.Clock()
+	if sh != eh || sm != em || ss != es || start.Nanosecond() != end.Nanosecond() {
+		return 0, false
+	}
+
+	sy, sMonth, sd := start.Date()
+	ey, eMonth, ed := end.Date()
+	startDate := time.Date(sy, sMonth, sd, 0, 0, 0, 0, time.UTC)
+	endDate := time.Date(ey, eMonth, ed, 0, 0, 0, 0, time.UTC)
+	days := endDate.Sub(startDate).Hours() / 24
+	return days, days > 0
 }

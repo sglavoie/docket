@@ -95,6 +95,34 @@ func TestSelectRelevantSections_TagQuery(t *testing.T) {
 	}
 }
 
+func TestSelectRelevantSections_CobraShortFlagBeforeLongFlag(t *testing.T) {
+	reference := `# tt CLI Reference
+
+## tt task move
+
+Move a task in the hierarchy
+
+Usage: tt task move <id> [flags]
+
+Flags:
+  -p, --parent int    parent task ID
+
+## tt task close
+
+Close a task
+`
+
+	sections := ParseCLIReference(reference)
+	result := SelectRelevantSections(sections, "set parent")
+
+	if !strings.Contains(result, "## tt task move") {
+		t.Error("expected result to contain 'tt task move' section for --parent flag")
+	}
+	if strings.Contains(result, "## tt task close\n\nClose a task") {
+		t.Error("result should not contain full unrelated 'tt task close' section")
+	}
+}
+
 func TestSelectRelevantSections_ProjectQuery(t *testing.T) {
 	sections := ParseCLIReference(testReference)
 	result := SelectRelevantSections(sections, "how to create a project")
