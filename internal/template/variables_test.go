@@ -453,6 +453,21 @@ func TestExtractVariables_EmptyDefault(t *testing.T) {
 	}
 }
 
+func TestExtractVariables_ExplicitEmptyDefaultPreventsLaterBackfill(t *testing.T) {
+	tmpl := &TaskTemplate{
+		Name:        "{{env:}} deployment",
+		Description: "Deploy to {{env:staging}}",
+	}
+
+	vars := ExtractVariables(tmpl)
+	if len(vars) != 1 {
+		t.Fatalf("expected 1 variable, got %d", len(vars))
+	}
+	if vars[0].Default != "" {
+		t.Fatalf("Default = %q, want empty (first explicit empty default should win)", vars[0].Default)
+	}
+}
+
 func TestValidateTokens_NestedWrapperRejected(t *testing.T) {
 	// Regression: "{{outer {{inner}}" looks like a valid {{inner}} wrapped in
 	// garbage. The validator must reject the outer wrapper because the user's

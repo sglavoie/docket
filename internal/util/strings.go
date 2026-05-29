@@ -36,6 +36,10 @@ func ShellTokenize(s string) []string {
 			inToken = true
 			i++ // consume opening quote
 			for i < len(s) && s[i] != '"' {
+				if s[i] == '\\' && i+1 < len(s) && s[i+1] == '\n' {
+					i += 2 // shell line continuation: remove backslash-newline
+					continue
+				}
 				if s[i] == '\\' && i+1 < len(s) && (s[i+1] == '"' || s[i+1] == '\\') {
 					i++ // skip backslash; s[i] is now the escaped char
 				}
@@ -45,6 +49,8 @@ func ShellTokenize(s string) []string {
 			if i < len(s) {
 				i++ // consume closing quote
 			}
+		case c == '\\' && i+1 < len(s) && s[i+1] == '\n':
+			i += 2 // shell line continuation: remove backslash-newline
 		case c == '\\' && i+1 < len(s):
 			inToken = true
 			i++ // skip backslash

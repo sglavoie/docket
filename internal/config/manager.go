@@ -281,6 +281,7 @@ func (m *Manager) Load() (*Config, error) { //nolint:gocyclo
 	if config.SavedFilters == nil {
 		config.SavedFilters = []SavedFilter{}
 	}
+	normalizeKanbanSettings(&config.KanbanSettings)
 
 	// Filter out projects with missing required fields. A JSON `null` entry in
 	// the projects array deserializes to a nil pointer; treat those as invalid

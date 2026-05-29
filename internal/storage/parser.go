@@ -22,8 +22,12 @@ const (
 )
 
 var (
-	// Matches headings like "## Epic: Title" or "### Story: Title"
-	headingRegex = regexp.MustCompile(`^(#{2,6})\s+(Epic|Story|Task|Bug|Idea|Note|Action):\s*(.+)$`)
+	// Matches headings like "## Epic: Title" or "### Story: Title".
+	// The title capture permits empty values so manually-edited malformed
+	// headings like "## Task:" still become tasks and flow through
+	// newTaskForHeading's data-preserving validation path instead of being
+	// swallowed as description text for the previous task.
+	headingRegex = regexp.MustCompile(`^(#{2,6})\s+(Epic|Story|Task|Bug|Idea|Note|Action):\s*(.*)$`)
 
 	// Matches project title like "# Project: Name"
 	projectRegex = regexp.MustCompile(`^#\s+Project:\s*(.+)$`)

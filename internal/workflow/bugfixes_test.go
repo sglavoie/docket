@@ -387,6 +387,43 @@ func TestApplyAction_SetSectionSilentValidationFailure(t *testing.T) {
 	})
 }
 
+// TestApplyAction_BooleanActionsRejectInvalidValues verifies that boolean
+// actions do not interpret every non-"true" value as false. Rules are normally
+// validated before execution, but the engine should still be defensive when
+// handed unvalidated input: an invalid set_active/set_pinned value must not
+// deactivate or unpin a task.
+func TestApplyAction_BooleanActionsRejectInvalidValues(t *testing.T) {
+	t.Run("set_active invalid value is no-op", func(t *testing.T) {
+		task := &models.Task{ID: "t1", Active: true}
+
+		modified := applyAction(task, RuleAction{ActionType: ActionSetActive, Value: "maybe"})
+
+		if modified {
+			t.Fatal("expected modified=false for invalid set_active value")
+		}
+		if !task.Active {
+			t.Error("expected task to remain active")
+		}
+	})
+
+	t.Run("set_pinned invalid value is no-op", func(t *testing.T) {
+		now := time.Now()
+		task := &models.Task{ID: "t1", Pinned: true, PinnedAt: &now}
+
+		modified := applyAction(task, RuleAction{ActionType: ActionSetPinned, Value: "maybe"})
+
+		if modified {
+			t.Fatal("expected modified=false for invalid set_pinned value")
+		}
+		if !task.Pinned {
+			t.Error("expected task to remain pinned")
+		}
+		if task.PinnedAt == nil || !task.PinnedAt.Equal(now) {
+			t.Errorf("expected PinnedAt unchanged, got %v", task.PinnedAt)
+		}
+	})
+}
+
 // TestEvaluateProjectRules_TriggeredIDsOnlyWinner verifies that when priority
 // resolution selects a single winner, TriggeredRuleIDs contains only that
 // winner's ID. Previously all matched rule IDs were included regardless of

@@ -37,10 +37,10 @@ func sanitizeFzfField(s string) string {
 }
 
 // classifyFzfRunError maps a non-nil error from fzf's exec.Cmd.Run() to a
-// stable error for callers. Returns ErrCanceled for both fzf's own
-// cancel/Ctrl-C (exit code 130) and parent-context cancellation, a
-// descriptive timeout error for deadline expiry, and a wrapped error
-// otherwise.
+// stable error for callers. Returns ErrCanceled for fzf no-match/no-selection
+// (exit code 1), fzf cancel/Ctrl-C (exit code 130), and parent-context
+// cancellation, a descriptive timeout error for deadline expiry, and a wrapped
+// error otherwise.
 func classifyFzfRunError(ctx context.Context, err error) error {
 	if err == nil {
 		return nil
@@ -52,8 +52,11 @@ func classifyFzfRunError(ctx context.Context, err error) error {
 		return fmt.Errorf("fzf timed out after %ds — try again or press Ctrl+C to cancel", fzfTimeoutSeconds)
 	}
 	var exitErr *exec.ExitError
-	if errors.As(err, &exitErr) && exitErr.ExitCode() == 130 {
-		return tterrors.ErrCanceled
+	if errors.As(err, &exitErr) {
+		switch exitErr.ExitCode() {
+		case 1, 130:
+			return tterrors.ErrCanceled
+		}
 	}
 	return fmt.Errorf("fzf failed: %w", err)
 }

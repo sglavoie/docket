@@ -118,6 +118,45 @@ func TestComputeCrossProjectScore(t *testing.T) {
 		}
 	})
 
+	t.Run("upcoming due dates boost score instead of penalizing", func(t *testing.T) {
+		baseTask := func(title string) *models.Task {
+			task, err := models.NewTask(uuid.New().String(), 1, models.TaskTypeTask, title)
+			if err != nil {
+				t.Fatal(err)
+			}
+			task.Priority = 3
+			task.CreatedAt = now
+			task.UpdatedAt = now
+			return task
+		}
+
+		noDue := baseTask("No due")
+		tomorrow := baseTask("Tomorrow")
+		tomorrowDue := now.AddDate(0, 0, 1)
+		tomorrow.DueDate = &tomorrowDue
+		nextWeek := baseTask("Next week")
+		nextWeekDue := now.AddDate(0, 0, 7)
+		nextWeek.DueDate = &nextWeekDue
+		farFuture := baseTask("Far future")
+		farFutureDue := now.AddDate(0, 0, 30)
+		farFuture.DueDate = &farFutureDue
+
+		noDueScore := computeCrossProjectScore(noDue, project, nil, now)
+		tomorrowScore := computeCrossProjectScore(tomorrow, project, nil, now)
+		nextWeekScore := computeCrossProjectScore(nextWeek, project, nil, now)
+		farFutureScore := computeCrossProjectScore(farFuture, project, nil, now)
+
+		if tomorrowScore <= noDueScore {
+			t.Errorf("tomorrow due score (%d) should be > no-due score (%d)", tomorrowScore, noDueScore)
+		}
+		if nextWeekScore <= noDueScore {
+			t.Errorf("next-week due score (%d) should be > no-due score (%d)", nextWeekScore, noDueScore)
+		}
+		if farFutureScore != noDueScore {
+			t.Errorf("far-future due score (%d) should be neutral like no due (%d)", farFutureScore, noDueScore)
+		}
+	})
+
 	t.Run("bug type bonus", func(t *testing.T) {
 		task, err := models.NewTask(uuid.New().String(), 1, models.TaskTypeTask, "Task")
 		if err != nil {

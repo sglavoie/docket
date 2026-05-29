@@ -230,6 +230,9 @@ func applyAction(task *models.Task, action RuleAction) bool { //nolint:gocyclo
 			return true
 		}
 	case ActionSetActive:
+		if action.Value != "true" && action.Value != "false" {
+			return false
+		}
 		active := action.Value == "true"
 		if task.Active != active {
 			if active {
@@ -240,6 +243,9 @@ func applyAction(task *models.Task, action RuleAction) bool { //nolint:gocyclo
 			return true
 		}
 	case ActionSetPinned:
+		if action.Value != "true" && action.Value != "false" {
+			return false
+		}
 		pinned := action.Value == "true"
 		if task.Pinned != pinned {
 			if pinned {

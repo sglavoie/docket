@@ -172,7 +172,7 @@ func checkOverdueTasks(cfg AlertConfig, projects []ProjectData, now time.Time) [
 			if task == nil {
 				continue
 			}
-			if !task.Status.IsActive() || task.DueDate == nil || task.IsSnoozedAt(now) {
+			if !task.Status.IsActive() || task.DueDate == nil || isTaskSnoozedForAlerts(task, now) {
 				continue
 			}
 			// Anchor the due-day comparison to the user's current location so
@@ -221,7 +221,7 @@ func checkDueSoonTasks(cfg AlertConfig, projects []ProjectData, now time.Time) [
 			if task == nil {
 				continue
 			}
-			if !task.Status.IsActive() || task.DueDate == nil || task.IsSnoozedAt(now) {
+			if !task.Status.IsActive() || task.DueDate == nil || isTaskSnoozedForAlerts(task, now) {
 				continue
 			}
 			// Anchor in user's current location for the same reason as
@@ -262,7 +262,7 @@ func checkStaleTasks(cfg AlertConfig, projects []ProjectData, now time.Time) []A
 			if task == nil {
 				continue
 			}
-			if !task.Status.IsActive() || task.IsSnoozedAt(now) || task.Section == models.SectionSomeday || task.UpdatedAt.IsZero() {
+			if !task.Status.IsActive() || isTaskSnoozedForAlerts(task, now) || task.Section == models.SectionSomeday || task.UpdatedAt.IsZero() {
 				continue
 			}
 			if task.UpdatedAt.Before(staleThreshold) {
@@ -298,7 +298,7 @@ func checkInboxBacklog(cfg AlertConfig, projects []ProjectData, now time.Time) [
 			if task == nil {
 				continue
 			}
-			if task.Status.IsActive() && task.Section == models.SectionInbox && !task.IsSnoozedAt(now) {
+			if task.Status.IsActive() && task.Section == models.SectionInbox && !isTaskSnoozedForAlerts(task, now) {
 				inboxCount++
 			}
 		}
@@ -329,7 +329,7 @@ func checkBlockedTasks(cfg AlertConfig, projects []ProjectData, now time.Time) [
 			if task == nil {
 				continue
 			}
-			if task.Status != models.StatusBlocked || task.IsSnoozedAt(now) {
+			if task.Status != models.StatusBlocked || isTaskSnoozedForAlerts(task, now) {
 				continue
 			}
 			// Use the activity log to find when the task last became blocked,
@@ -416,6 +416,16 @@ func checkProjectHealth(cfg AlertConfig, projects []ProjectData, now time.Time) 
 	}
 
 	return alerts
+}
+
+func isTaskSnoozedForAlerts(task *models.Task, now time.Time) bool {
+	if task.SnoozedUntil == nil {
+		return false
+	}
+	snoozeLocal := task.SnoozedUntil.In(now.Location())
+	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+	snoozeDay := time.Date(snoozeLocal.Year(), snoozeLocal.Month(), snoozeLocal.Day(), 0, 0, 0, 0, now.Location())
+	return snoozeDay.After(today)
 }
 
 // formatTimeAgo returns a human-readable relative time string.

@@ -181,3 +181,30 @@ func TestWriteDecisions_HeadingLikeLinesRoundTrip(t *testing.T) {
 		t.Fatalf("decisions block did not reach fixed point:\n--- block ---\n%s\n--- rewritten ---\n%s", block, rewritten)
 	}
 }
+
+func TestWriteDecisions_PreservesOuterWhitespaceRoundTrip(t *testing.T) {
+	decisions := []*models.Decision{
+		{
+			Text:      "    keep leading indentation\ntrailing spaces stay  \n",
+			Rationale: "  rationale starts indented\n\nends after blank line\n",
+			Category:  models.DecisionCategoryDesign,
+			CreatedAt: time.Date(2026, 5, 7, 13, 0, 0, 0, time.Local),
+		},
+	}
+
+	task := &models.Task{Decisions: decisions}
+	block := WriteDecisions(task)
+
+	task2 := &models.Task{Description: block}
+	ExtractDecisionsFromDescription(task2)
+
+	if len(task2.Decisions) != 1 {
+		t.Fatalf("got %d decisions, want 1", len(task2.Decisions))
+	}
+	if got := task2.Decisions[0].Text; got != decisions[0].Text {
+		t.Errorf("Decision.Text = %q, want %q", got, decisions[0].Text)
+	}
+	if got := task2.Decisions[0].Rationale; got != decisions[0].Rationale {
+		t.Errorf("Decision.Rationale = %q, want %q", got, decisions[0].Rationale)
+	}
+}

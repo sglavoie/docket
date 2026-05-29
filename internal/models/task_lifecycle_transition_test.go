@@ -56,6 +56,8 @@ func TestCanTransitionTo(t *testing.T) {
 		{"canceled→blocked", StatusCanceled, StatusBlocked, false},
 		{"canceled→review", StatusCanceled, StatusReview, false},
 		{"canceled→standby", StatusCanceled, StatusStandby, false},
+		{"todo→invalid", StatusTodo, TaskStatus("invalid"), false},
+		{"invalid→todo", TaskStatus("invalid"), StatusTodo, false},
 	}
 
 	for _, tt := range tests {

@@ -574,3 +574,29 @@ func TestHandledKeys_IncludesPrefixActivatorsAndLeaves(t *testing.T) {
 		}
 	}
 }
+
+func TestHandledKeys_IncludesGatedStaticKeys(t *testing.T) {
+	km := &KeyMap{Entries: []Entry{
+		Bind("a", "active", "cat", nilAction),
+		Bind("h", "hidden active", "cat", nilAction, AsHidden()),
+		Bind("x", "gated binding", "cat", nilAction, WithGate(func() bool { return false })),
+		Prefix(",", "active prefix", "cat", []Entry{
+			Bind("s", "active child", "cat", nilAction),
+			Bind("t", "gated child", "cat", nilAction, WithGate(func() bool { return false })),
+			Prefix("D", "gated nested prefix", "cat", []Entry{
+				Bind("z", "unreachable child", "cat", nilAction),
+			}, WithPrefixGate(func() bool { return false })),
+		}),
+		Prefix("g", "gated prefix", "cat", []Entry{
+			Bind("x", "unreachable child", "cat", nilAction),
+		}, WithPrefixGate(func() bool { return false })),
+	}}
+
+	got := km.HandledKeys()
+
+	for _, key := range []string{"a", "h", "x", ",", ",s", ",t", ",D", ",Dz", "g", "gx"} {
+		if !slices.Contains(got, key) {
+			t.Errorf("expected %q in HandledKeys, got %v", key, got)
+		}
+	}
+}

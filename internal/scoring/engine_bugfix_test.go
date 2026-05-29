@@ -149,6 +149,23 @@ func TestFormulaRICEInfiniteNumeratorStillSentinel(t *testing.T) {
 	}
 }
 
+// TestFormulaRICEZeroNumeratorWithInfiniteNumeratorReturnsZero guards against
+// an overflowing numerator factor masking another numerator factor of zero.
+// RICE multiplies numerator dimensions, so a zero numerator contribution
+// should collapse the numerator to zero rather than top-ranking the task via
+// MaxScoreSentinel.
+func TestFormulaRICEZeroNumeratorWithInfiniteNumeratorReturnsZero(t *testing.T) {
+	results := []DimensionResult{
+		{Value: 0, Weight: 1, Role: RoleNumerator},
+		{Value: 2, Weight: math.MaxFloat64, Role: RoleNumerator},
+		{Value: 5, Weight: 1, Role: RoleDenominator},
+	}
+	got := formulaRICE(results)
+	if got != 0 {
+		t.Errorf("zero numerator factor with infinite numerator factor should yield 0, got %f", got)
+	}
+}
+
 // TestFormulaWSJFZeroOverZeroReturnsZero mirrors the RICE 0/0 fix: an item
 // whose value and cost are both zero is not the top of the queue.
 func TestFormulaWSJFZeroOverZeroReturnsZero(t *testing.T) {

@@ -43,6 +43,13 @@ func TestRunContextShow(t *testing.T) {
 		}
 	})
 
+	t.Run("rejects extra args", func(t *testing.T) {
+		err := contextShowCmd.Args(contextShowCmd, []string{"Work", "ignored"})
+		if err == nil {
+			t.Error("expected error for extra args")
+		}
+	})
+
 	t.Run("rejects nonexistent context", func(t *testing.T) {
 		_, cleanup := setup(t)
 		defer cleanup()

@@ -19,6 +19,11 @@ var validVarPattern = regexp.MustCompile(`\{\{([a-zA-Z_][a-zA-Z0-9_]*)(?::([^}]*
 // invalidVarPattern matches anything that looks like {{...}} but may not be valid.
 var invalidVarPattern = regexp.MustCompile(`\{\{.*?\}\}`)
 
+func tokenHasDefault(token, name string) bool {
+	idx := 2 + len(name)
+	return idx < len(token)-2 && token[idx] == ':'
+}
+
 // ExtractVariables scans all text fields of a TaskTemplate and returns unique
 // variables in order of first appearance.
 func ExtractVariables(t *TaskTemplate) []TemplateVariable {
@@ -26,18 +31,22 @@ func ExtractVariables(t *TaskTemplate) []TemplateVariable {
 		return nil
 	}
 	seen := make(map[string]int)
+	seenDefault := make(map[string]bool)
 	var vars []TemplateVariable
 
 	extract := func(s string) {
 		for _, match := range validVarPattern.FindAllStringSubmatch(s, -1) {
 			name := match[1]
+			hasDefault := tokenHasDefault(match[0], name)
 			if idx, ok := seen[name]; ok {
-				if vars[idx].Default == "" && match[2] != "" {
+				if !seenDefault[name] && hasDefault {
 					vars[idx].Default = match[2]
+					seenDefault[name] = true
 				}
 				continue
 			}
 			seen[name] = len(vars)
+			seenDefault[name] = hasDefault
 			vars = append(vars, TemplateVariable{
 				Name:    name,
 				Default: match[2],
@@ -70,11 +79,29 @@ func ExtractVariables(t *TaskTemplate) []TemplateVariable {
 // Tags, Checklist, and Children slices are deep-copied.
 func ApplyVariables(t TaskTemplate, values map[string]string) TaskTemplate {
 	globalDefaults := make(map[string]string)
-	for _, v := range ExtractVariables(&t) {
-		if v.Default != "" {
-			globalDefaults[v.Name] = v.Default
+	extractDefaults := func(s string) {
+		for _, match := range validVarPattern.FindAllStringSubmatch(s, -1) {
+			if match[2] == "" {
+				continue
+			}
+			if _, ok := globalDefaults[match[1]]; !ok {
+				globalDefaults[match[1]] = match[2]
+			}
 		}
 	}
+	extractDefaults(t.Name)
+	extractDefaults(t.Description)
+	extractDefaults(t.Section)
+	for _, tag := range t.Tags {
+		extractDefaults(tag)
+	}
+	for _, item := range t.Checklist {
+		extractDefaults(item)
+	}
+	for _, child := range t.Children {
+		extractDefaults(child.Title)
+	}
+
 	replace := func(s string) string {
 		return validVarPattern.ReplaceAllStringFunc(s, func(token string) string {
 			match := validVarPattern.FindStringSubmatch(token)
@@ -87,7 +114,7 @@ func ApplyVariables(t TaskTemplate, values map[string]string) TaskTemplate {
 			// cross-field fallback so the rendered output matches what the user
 			// typed; otherwise "{{name:}}" silently inherits another field's
 			// default and renders non-empty.
-			if idx := 2 + len(name); idx < len(token) && token[idx] == ':' {
+			if tokenHasDefault(token, name) {
 				return match[2]
 			}
 			if v, ok := globalDefaults[name]; ok {

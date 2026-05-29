@@ -19,6 +19,7 @@ var contextShowCmd = &cobra.Command{
 Examples:
   tt context show Work
   tt ctx show "Side Projects"`,
+	Args: cobra.ExactArgs(1),
 	RunE: runContextShow,
 }
 

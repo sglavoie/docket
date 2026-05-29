@@ -37,8 +37,8 @@ func NewConfig() *Config {
 		SectionColors:     make(map[string]string),
 		ProjectViewStates: make(map[string]ProjectViewState),
 		KanbanSettings: KanbanSettings{
-			DefaultMode:        "section",
-			DefaultStartColumn: "inbox",
+			DefaultMode:        defaultKanbanMode,
+			DefaultStartColumn: defaultKanbanStartColumn,
 		},
 	}
 }

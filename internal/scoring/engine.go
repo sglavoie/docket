@@ -312,6 +312,9 @@ func formulaRICE(results []DimensionResult) float64 {
 		return 0
 	}
 	if numInf {
+		if num == 0 {
+			return 0
+		}
 		return MaxScoreSentinel
 	}
 	return num / den

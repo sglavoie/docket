@@ -113,6 +113,12 @@ func (t *Task) Reopen() {
 // This method covers status-level rules only. Project-level checks (such as
 // incomplete dependencies blocking completion) must be performed by the caller.
 func (t *Task) CanTransitionTo(newStatus TaskStatus) string {
+	if !newStatus.IsValid() {
+		return fmt.Sprintf("invalid target status %q", newStatus)
+	}
+	if !t.Status.IsValid() {
+		return fmt.Sprintf("invalid current status %q", t.Status)
+	}
 	if t.Status.IsComplete() && newStatus != StatusTodo {
 		return fmt.Sprintf("cannot change status of completed task (reopen it first with 'todo'), current status: '%s'", t.Status)
 	}

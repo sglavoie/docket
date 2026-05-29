@@ -42,8 +42,8 @@ func ExtractCommentsFromDescription(task *models.Task) {
 		if !hasCurrentComment {
 			return
 		}
-		text := strings.TrimSpace(currentCommentText.String())
-		if text != "" {
+		text := currentCommentText.String()
+		if strings.TrimSpace(text) != "" {
 			task.Comments = append(task.Comments, &models.Comment{
 				Text:      unescapeBlockText(text),
 				CreatedAt: currentCommentTime,
@@ -100,8 +100,8 @@ func WriteComments(task *models.Task) string {
 		if comment == nil {
 			continue
 		}
-		text := strings.TrimSpace(comment.Text)
-		if text == "" {
+		text := comment.Text
+		if strings.TrimSpace(text) == "" {
 			continue
 		}
 		if !headerWritten {

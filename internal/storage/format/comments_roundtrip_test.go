@@ -185,3 +185,25 @@ func TestWriteComments_HeadingLikeLinesRoundTrip(t *testing.T) {
 		t.Fatalf("comments block did not reach fixed point:\n--- block ---\n%s\n--- rewritten ---\n%s", block, rewritten)
 	}
 }
+
+func TestWriteComments_PreservesOuterWhitespaceRoundTrip(t *testing.T) {
+	comments := []*models.Comment{
+		{
+			Text:      "    indented code\nnext line has trailing spaces  \n",
+			CreatedAt: time.Date(2025, 3, 5, 9, 0, 0, 0, time.Local),
+		},
+	}
+
+	task := &models.Task{Comments: comments}
+	block := WriteComments(task)
+
+	task2 := &models.Task{Description: block}
+	ExtractCommentsFromDescription(task2)
+
+	if len(task2.Comments) != 1 {
+		t.Fatalf("got %d comments, want 1", len(task2.Comments))
+	}
+	if got := task2.Comments[0].Text; got != comments[0].Text {
+		t.Errorf("Comment.Text = %q, want %q", got, comments[0].Text)
+	}
+}

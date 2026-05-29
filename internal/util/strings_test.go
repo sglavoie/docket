@@ -22,11 +22,14 @@ func TestShellTokenize(t *testing.T) {
 		// Backslash outside quotes.
 		{`/path/with\ spaces/editor`, []string{"/path/with spaces/editor"}},
 		{`path\`, []string{`path\`}},
+		{"foo\\\nbar", []string{"foobar"}},
+		{"cmd \\\n--flag", []string{"cmd", "--flag"}},
 		// Mixed quoting styles.
 		{`'/opt/my editor/code' --flag "val ue"`, []string{"/opt/my editor/code", "--flag", "val ue"}},
 		// Double-quote escape sequences.
 		{`"say \"hello\""`, []string{`say "hello"`}},
 		{`"back\\slash"`, []string{`back\slash`}},
+		{"\"foo\\\nbar\"", []string{"foobar"}},
 	}
 	for _, tc := range cases {
 		t.Run(tc.input, func(t *testing.T) {

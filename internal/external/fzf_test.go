@@ -48,16 +48,21 @@ func TestClassifyFzfRunError_DeadlineExceeded(t *testing.T) {
 }
 
 func TestClassifyFzfRunError_FzfCancelExit130(t *testing.T) {
-	// Real-world fzf cancel: user pressed ESC, fzf exits 130, ctx is
-	// fine. We simulate this with /bin/sh -c 'exit 130'.
-	cmd := exec.Command("/bin/sh", "-c", "exit 130")
-	runErr := cmd.Run()
-	if runErr == nil {
-		t.Fatal("expected non-nil run error from exit 130")
-	}
+	// Real-world fzf cancel: user pressed ESC, fzf exits 130, ctx is fine.
+	runErr := fzfExitError(t, 130)
 	got := classifyFzfRunError(context.Background(), runErr)
 	if !errors.Is(got, tterrors.ErrCanceled) {
 		t.Errorf("expected ErrCanceled for exit 130, got %v", got)
+	}
+}
+
+func TestClassifyFzfRunError_FzfNoMatchExit1(t *testing.T) {
+	// fzf exits 1 when filtering produces no match. Selection callers should
+	// treat that as no selection, not as a broken fzf integration.
+	runErr := fzfExitError(t, 1)
+	got := classifyFzfRunError(context.Background(), runErr)
+	if !errors.Is(got, tterrors.ErrCanceled) {
+		t.Errorf("expected ErrCanceled for exit 1 no-match, got %v", got)
 	}
 }
 
@@ -65,6 +70,32 @@ func TestClassifyFzfRunError_NilPassthrough(t *testing.T) {
 	if got := classifyFzfRunError(context.Background(), nil); got != nil {
 		t.Errorf("expected nil for nil err, got %v", got)
 	}
+}
+
+func fzfExitError(t *testing.T, code int) error {
+	t.Helper()
+	cmd := exec.Command(os.Args[0], "-test.run=TestFzfExitHelper", "--", strconv.Itoa(code))
+	cmd.Env = append(os.Environ(), "TT_TEST_FZF_EXIT_HELPER=1")
+	runErr := cmd.Run()
+	if runErr == nil {
+		t.Fatalf("expected non-nil run error from exit %d", code)
+	}
+	return runErr
+}
+
+func TestFzfExitHelper(t *testing.T) {
+	if os.Getenv("TT_TEST_FZF_EXIT_HELPER") != "1" {
+		return
+	}
+	if len(os.Args) == 0 {
+		os.Exit(2)
+	}
+	codeArg := os.Args[len(os.Args)-1]
+	code, err := strconv.Atoi(codeArg)
+	if err != nil {
+		os.Exit(2)
+	}
+	os.Exit(code)
 }
 
 func TestFzfSelectTask_UsesCachedAbsolutePath(t *testing.T) {

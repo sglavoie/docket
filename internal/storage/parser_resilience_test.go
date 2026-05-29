@@ -95,8 +95,10 @@ Normal description.
 
 func TestParseTasksMarkdown_BrokenHeadingFormat(t *testing.T) {
 	tests := []struct {
-		name    string
-		content string
+		name      string
+		content   string
+		wantIDs   []string
+		wantTitle map[string]string
 	}{
 		{
 			name: "missing title after type colon",
@@ -111,6 +113,12 @@ func TestParseTasksMarkdown_BrokenHeadingFormat(t *testing.T) {
 ## Task: Normal After
 <!-- id: t2, status: todo, priority: 3 -->
 `,
+			wantIDs: []string{"t0", "t1", "t2"},
+			wantTitle: map[string]string{
+				"t0": "Normal Before",
+				"t1": "",
+				"t2": "Normal After",
+			},
 		},
 		{
 			name: "colon with missing title prefix",
@@ -122,18 +130,38 @@ func TestParseTasksMarkdown_BrokenHeadingFormat(t *testing.T) {
 ## Task: Valid Task
 <!-- id: t2, status: todo, priority: 3 -->
 `,
+			wantIDs: []string{"t2"},
+			wantTitle: map[string]string{
+				"t2": "Valid Task",
+			},
 		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			_, tasks, err := ParseTasksMarkdown(tc.content)
+			result, err := ParseTasksMarkdownWithSections(tc.content)
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
 
-			if tasks == nil {
+			if result.Tasks == nil {
 				t.Fatal("tasks should not be nil")
+			}
+			if len(result.Tasks) != len(tc.wantIDs) {
+				t.Fatalf("expected %d tasks, got %d", len(tc.wantIDs), len(result.Tasks))
+			}
+			byID := make(map[string]*models.Task, len(result.Tasks))
+			for _, task := range result.Tasks {
+				byID[task.ID] = task
+			}
+			for _, id := range tc.wantIDs {
+				task, ok := byID[id]
+				if !ok {
+					t.Fatalf("expected task ID %q in parsed tasks", id)
+				}
+				if task.Title != tc.wantTitle[id] {
+					t.Errorf("task %s title = %q, want %q", id, task.Title, tc.wantTitle[id])
+				}
 			}
 		})
 	}

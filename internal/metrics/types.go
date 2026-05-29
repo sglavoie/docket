@@ -165,10 +165,16 @@ func ComputeAllAtWithWeekStart(projects []*models.Project, tr TimeRange, now tim
 	var projectTasks []*models.Task
 	taskProject := make(map[*models.Task]*models.Project)
 	for _, p := range projects {
-		for _, t := range p.Tasks {
-			taskProject[t] = p
+		if p == nil {
+			continue
 		}
-		projectTasks = append(projectTasks, p.Tasks...)
+		for _, t := range p.Tasks {
+			if t == nil {
+				continue
+			}
+			taskProject[t] = p
+			projectTasks = append(projectTasks, t)
+		}
 	}
 
 	// allTasks includes extra (e.g. archived) tasks for completion, cycle time,
@@ -177,7 +183,12 @@ func ComputeAllAtWithWeekStart(projects []*models.Project, tr TimeRange, now tim
 	allTasks := make([]*models.Task, 0, len(projectTasks))
 	allTasks = append(allTasks, projectTasks...)
 	for _, extra := range extraTasks {
-		allTasks = append(allTasks, extra...)
+		for _, t := range extra {
+			if t == nil {
+				continue
+			}
+			allTasks = append(allTasks, t)
+		}
 	}
 
 	cutoff := tr.Cutoff(now)

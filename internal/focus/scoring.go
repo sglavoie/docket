@@ -40,10 +40,18 @@ func computeCrossProjectScore(task *models.Task, project *models.Project, cfg *c
 		score += 100
 	}
 
-	// Due date proximity
+	// Due date proximity. Overdue and near-term due dates should increase
+	// focus priority; far-future due dates are neutral rather than penalized.
 	if task.DueDate != nil {
 		daysUntil := util.DaysBetween(now, *task.DueDate)
-		score += (-daysUntil) * 50
+		switch {
+		case daysUntil < 0:
+			score += (-daysUntil)*50 + 300
+		case daysUntil == 0:
+			score += 300
+		case daysUntil <= 7:
+			score += (8 - daysUntil) * 25
+		}
 	}
 
 	// In-progress bonus

@@ -48,15 +48,19 @@ func ExtractDecisionsFromDescription(task *models.Task) {
 		if current == nil {
 			return
 		}
-		text := strings.TrimSpace(current.text.String())
-		if text == "" {
+		text := current.text.String()
+		if strings.TrimSpace(text) == "" {
 			current = nil
 			collectingRationale = false
 			return
 		}
+		rationale := current.rationale.String()
+		if strings.TrimSpace(rationale) == "" {
+			rationale = ""
+		}
 		task.Decisions = append(task.Decisions, &models.Decision{
 			Text:      unescapeBlockText(text),
-			Rationale: unescapeBlockText(strings.TrimSpace(current.rationale.String())),
+			Rationale: unescapeBlockText(rationale),
 			Category:  current.category,
 			CreatedAt: current.createdAt,
 			Resolved:  current.resolved,
@@ -138,9 +142,13 @@ func WriteDecisions(task *models.Task) string {
 		if d == nil {
 			continue
 		}
-		text := strings.TrimSpace(d.Text)
-		if text == "" {
+		text := d.Text
+		if strings.TrimSpace(text) == "" {
 			continue
+		}
+		rationale := d.Rationale
+		if strings.TrimSpace(rationale) == "" {
+			rationale = ""
 		}
 		if !headerWritten {
 			b.WriteString("<!-- DECISIONS -->\n")
@@ -158,7 +166,7 @@ func WriteDecisions(task *models.Task) string {
 		b.WriteString(escapeBlockText(text))
 		b.WriteString("\n")
 		b.WriteString("<!-- rationale -->\n")
-		b.WriteString(escapeBlockText(strings.TrimSpace(d.Rationale)))
+		b.WriteString(escapeBlockText(rationale))
 		b.WriteString("\n")
 	}
 

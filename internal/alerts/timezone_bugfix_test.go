@@ -101,3 +101,37 @@ func TestCheckOverdueTasks_CrossTimezoneDueToday(t *testing.T) {
 		t.Errorf("task due today in user's local zone should appear in due-soon alerts, got %+v", dueSoonAlerts)
 	}
 }
+
+// TestCheckOverdueTasks_SnoozeUntilTodayCrossTimezone is a regression test:
+// alert snooze filtering must compare the snooze date in the user's current
+// local zone. A UTC-midnight snooze target for Mar 1 should not keep hiding
+// alerts after Mar 1 has started locally in time zones east of UTC.
+func TestCheckOverdueTasks_SnoozeUntilTodayCrossTimezone(t *testing.T) {
+	loc, err := time.LoadLocation("Asia/Tokyo")
+	if err != nil {
+		t.Skipf("Asia/Tokyo not available: %v", err)
+	}
+
+	now := time.Date(2026, 3, 1, 8, 0, 0, 0, loc)
+	dueDate := time.Date(2026, 2, 27, 0, 0, 0, 0, time.UTC)
+	snoozedUntil := time.Date(2026, 3, 1, 0, 0, 0, 0, time.UTC)
+	task := &models.Task{
+		ID:           "unsnoozed-today",
+		Title:        "Unsnoozed today",
+		Status:       models.StatusTodo,
+		DueDate:      &dueDate,
+		SnoozedUntil: &snoozedUntil,
+	}
+	projects := []ProjectData{{
+		Project: &models.Project{ID: "p1", Name: "P1"},
+		Tasks:   []*models.Task{task},
+	}}
+
+	alerts := checkOverdueTasks(DefaultAlertConfig(), projects, now)
+	if len(alerts) != 1 {
+		t.Fatalf("expected overdue alert once the user's local snooze date has started, got %d: %+v", len(alerts), alerts)
+	}
+	if alerts[0].TaskID != task.ID {
+		t.Fatalf("expected alert for task %q, got %+v", task.ID, alerts[0])
+	}
+}

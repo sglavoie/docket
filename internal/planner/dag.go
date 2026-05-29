@@ -51,8 +51,10 @@ func CriticalPath(tasks []*models.Task) *CriticalPathResult {
 	}
 
 	taskMap := make(map[string]*models.Task, len(topoOrder))
+	idCounts := make(map[string]int, len(topoOrder))
 	for _, t := range topoOrder {
 		taskMap[taskGraphKey(t)] = t
+		idCounts[t.ID]++
 	}
 
 	// Forward pass: ES[t] = max(EF[pred]) over all predecessors.
@@ -118,18 +120,22 @@ func CriticalPath(tasks []*models.Task) *CriticalPathResult {
 	for _, t := range topoOrder {
 		tKey := taskGraphKey(t)
 		s := ls[tKey] - es[tKey]
-		slack[t.ID] = s
 		slack[tKey] = s
+		if idCounts[t.ID] == 1 {
+			slack[t.ID] = s
+		}
 		if s < eps {
-			onPath[t.ID] = true
 			onPath[tKey] = true
+			if idCounts[t.ID] == 1 {
+				onPath[t.ID] = true
+			}
 		}
 	}
 
 	// Collect critical path in topological order.
 	path := make([]*models.Task, 0)
 	for _, t := range topoOrder {
-		if onPath[t.ID] {
+		if onPath[taskGraphKey(t)] {
 			path = append(path, t)
 		}
 	}

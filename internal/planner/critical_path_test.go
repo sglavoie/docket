@@ -135,3 +135,41 @@ func TestCriticalPathQualifiedRefDoesNotBleedToPlainID(t *testing.T) {
 		t.Errorf("b should not be on the critical path when its qualified dependency is external")
 	}
 }
+
+func TestCriticalPathKeepsDuplicateIDsAcrossProjects(t *testing.T) {
+	pA := makeProject("proj-a", "alpha")
+	pB := makeProject("proj-b", "beta")
+
+	criticalShared := newTaskWithDuration("shared", 10)
+	criticalShared.Project = pA
+	nonCriticalShared := newTaskWithDuration("shared", 1)
+	nonCriticalShared.Project = pB
+	dependentB := withDep(newTaskWithDuration("dependent", 1), "shared")
+	dependentB.Project = pB
+
+	cp := CriticalPath([]*models.Task{dependentB, nonCriticalShared, criticalShared})
+
+	onPathByTask := make(map[*models.Task]bool, len(cp.Path))
+	for _, task := range cp.Path {
+		onPathByTask[task] = true
+	}
+
+	if !onPathByTask[criticalShared] {
+		t.Fatal("expected alpha:shared to be on the critical path")
+	}
+	if onPathByTask[nonCriticalShared] {
+		t.Fatal("beta:shared should not be pulled onto the critical path by the duplicate plain ID")
+	}
+	if !cp.OnPath["proj-a:shared"] {
+		t.Error("expected qualified alpha task key to be marked critical")
+	}
+	if cp.OnPath["proj-b:shared"] {
+		t.Error("did not expect qualified beta task key to be marked critical")
+	}
+	if _, ok := cp.OnPath["shared"]; ok {
+		t.Error("ambiguous plain duplicate task ID should not be exposed in OnPath")
+	}
+	if _, ok := cp.Slack["shared"]; ok {
+		t.Error("ambiguous plain duplicate task ID should not be exposed in Slack")
+	}
+}

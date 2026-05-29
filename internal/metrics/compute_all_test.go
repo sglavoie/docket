@@ -145,3 +145,44 @@ func TestComputeAllExtraTasks(t *testing.T) {
 		}
 	})
 }
+
+func TestComputeAllSkipsNilProjectsAndTasks(t *testing.T) {
+	now := time.Date(2025, 6, 15, 12, 0, 0, 0, time.UTC)
+	done := now.AddDate(0, 0, -1)
+	start := now.AddDate(0, 0, -4)
+	blockedAt := now.AddDate(0, 0, -3)
+	unblockedAt := now.AddDate(0, 0, -2)
+
+	projectTask := makeTask(models.StatusDone, timePtr(done), []*models.ActivityEntry{
+		{Timestamp: start, Field: "status", OldValue: "todo", NewValue: "in_progress"},
+		{Timestamp: blockedAt, Field: "status", OldValue: "in_progress", NewValue: "blocked"},
+		{Timestamp: unblockedAt, Field: "status", OldValue: "blocked", NewValue: "in_progress"},
+	})
+	projectTask.ID = "project-task"
+
+	extraTask := makeTask(models.StatusDone, timePtr(done), nil)
+	extraTask.ID = "extra-task"
+
+	project := &models.Project{
+		ID:    "p1",
+		Tasks: []*models.Task{nil, projectTask},
+	}
+
+	result := ComputeAllAt([]*models.Project{nil, project}, TimeRange7d, now, []*models.Task{nil, extraTask})
+
+	if result.Completion.Total != 2 {
+		t.Errorf("Completion.Total = %d, want 2", result.Completion.Total)
+	}
+	if result.Throughput.Total != 2 {
+		t.Errorf("Throughput.Total = %d, want 2", result.Throughput.Total)
+	}
+	if result.CycleTime.Count != 1 {
+		t.Errorf("CycleTime.Count = %d, want 1", result.CycleTime.Count)
+	}
+	if result.Blocked.TaskCount != 1 {
+		t.Fatalf("Blocked.TaskCount = %d, want 1", result.Blocked.TaskCount)
+	}
+	if got := result.Blocked.Entries[0].Task.ID; got != "project-task" {
+		t.Errorf("Blocked task ID = %q, want project-task", got)
+	}
+}
