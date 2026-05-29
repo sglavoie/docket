@@ -113,12 +113,12 @@ func matchesEventTrigger(task, prev *models.Task, trigger RuleTrigger) bool { //
 		)
 
 	case FieldTagAdded:
-		hadTag := prev != nil && hasTag(prev.Tags, trigger.Value)
+		hadTag := hasTag(prev.Tags, trigger.Value)
 		hasTagNow := hasTag(task.Tags, trigger.Value)
 		return !hadTag && hasTagNow
 
 	case FieldTagRemoved:
-		hadTag := prev != nil && hasTag(prev.Tags, trigger.Value)
+		hadTag := hasTag(prev.Tags, trigger.Value)
 		hasTagNow := hasTag(task.Tags, trigger.Value)
 		return hadTag && !hasTagNow
 
@@ -126,7 +126,7 @@ func matchesEventTrigger(task, prev *models.Task, trigger RuleTrigger) bool { //
 		if trigger.Value != "true" {
 			return false
 		}
-		wasComplete := prev != nil && prev.Status.IsComplete()
+		wasComplete := prev.Status.IsComplete()
 		isComplete := task.Status.IsComplete()
 		return !wasComplete && isComplete
 
@@ -134,12 +134,12 @@ func matchesEventTrigger(task, prev *models.Task, trigger RuleTrigger) bool { //
 		if trigger.Value != "true" {
 			return false
 		}
-		wasComplete := prev != nil && prev.Status.IsComplete()
+		wasComplete := prev.Status.IsComplete()
 		isComplete := task.Status.IsComplete()
 		return wasComplete && !isComplete
 
 	case FieldDueDateChanged:
-		prevDue := prev != nil && prev.DueDate != nil
+		prevDue := prev.DueDate != nil
 		curDue := task.DueDate != nil
 		if !prevDue && !curDue {
 			return false
@@ -168,7 +168,7 @@ func matchesEventTrigger(task, prev *models.Task, trigger RuleTrigger) bool { //
 		if trigger.Value != "true" {
 			return false
 		}
-		hadRecurrence := prev != nil && prev.Recurrence != nil
+		hadRecurrence := prev.Recurrence != nil
 		hasRecurrence := task.Recurrence != nil
 		isComplete := task.Status.IsComplete()
 		return hadRecurrence && !hasRecurrence && isComplete
@@ -177,7 +177,7 @@ func matchesEventTrigger(task, prev *models.Task, trigger RuleTrigger) bool { //
 		if trigger.Value != "true" {
 			return false
 		}
-		hadStreak := prev != nil && prev.Recurrence != nil && prev.Recurrence.Streak > 0
+		hadStreak := prev.Recurrence != nil && prev.Recurrence.Streak > 0
 		hasStreak := task.Recurrence != nil && task.Recurrence.Streak > 0
 		return hadStreak && !hasStreak
 	default:

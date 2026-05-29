@@ -15,7 +15,7 @@ func main() {
 func run(execute func() error, stderr io.Writer) int {
 	if err := execute(); err != nil {
 		if stderr != nil {
-			fmt.Fprintln(stderr, err)
+			_, _ = fmt.Fprintln(stderr, err)
 		}
 		return 1
 	}

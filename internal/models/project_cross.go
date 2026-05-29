@@ -58,58 +58,8 @@ func (p *Project) MoveTaskToProject(task *Task, dest *Project) (*MoveTaskToProje
 	// Process each task being moved
 	for i, t := range movedTasks {
 		oldShortIDs[i] = t.ShortID
-
-		// Clear same-project dependencies pointing to tasks not in moved set.
-		// Preserve cross-project qualified references (format "projectID:taskID").
-		newDeps := make([]string, 0, len(t.DependsOn))
-		for _, depID := range t.DependsOn {
-			if ParseTaskRef(depID).IsCrossProject() || movedIDs[depID] {
-				newDeps = append(newDeps, depID)
-			} else {
-				clearedDeps = append(clearedDeps, depID)
-			}
-		}
-		t.DependsOn = newDeps
-
-		// Clear same-project RelatedTo references pointing to tasks not in moved set.
-		// Preserve cross-project qualified references.
-		newRelated := make([]string, 0, len(t.RelatedTo))
-		for _, relID := range t.RelatedTo {
-			if ParseTaskRef(relID).IsCrossProject() || movedIDs[relID] {
-				newRelated = append(newRelated, relID)
-			}
-		}
-		t.RelatedTo = newRelated
-
-		// Reset section if it doesn't exist in destination.
-		// GTD sections (Inbox, Next, Waiting, etc.) are built-in and always
-		// valid, so only non-GTD sections stored in the Section field need
-		// the existence check.
-		if t.Section != "" && !IsGTDSection(t.Section) && !destSectionSet[t.Section] {
-			t.SetSection(SectionNext)
-		} else if t.Section != "" && IsGTDSection(t.Section) && !destSectionSet[t.Section] {
-			// GTD section is preserved on the task, but dest's Sections list
-			// may not enumerate it (e.g. dest was created without
-			// EnsureDefaultSections). Append so the bucket renders in UI
-			// listings derived from dest.Sections.
-			dest.EnsureSection(t.Section)
-			destSectionSet[t.Section] = true
-		}
-
-		// Ensure custom section exists in destination
-		if t.CustomSection != "" && !dest.HasSection(t.CustomSection) {
-			dest.EnsureSection(t.CustomSection)
-			destSectionSet[t.CustomSection] = true
-		}
-
-		// Update timestamp
-		t.UpdatedAt = now
-
-		// Regenerate short ID in destination
-		t.ShortID = dest.GetNextShortID()
-
-		// Clear project reference (will be set when added to dest)
-		t.Project = nil
+		clearedDeps = append(clearedDeps, rewriteMovedTaskRefs(t, movedIDs)...)
+		reassignTaskToDest(t, dest, destSectionSet, now)
 	}
 
 	// Clear the root task's ParentID since it becomes a root in destination
@@ -166,4 +116,55 @@ func (p *Project) MoveTaskToProject(task *Task, dest *Project) (*MoveTaskToProje
 		ClearedDeps: clearedDeps,
 		OldShortIDs: oldShortIDs,
 	}, nil
+}
+
+// rewriteMovedTaskRefs strips same-project DependsOn/RelatedTo entries that
+// point outside the moved set. Cross-project qualified refs are preserved.
+// Returns the dropped dependency IDs so the caller can report them.
+func rewriteMovedTaskRefs(t *Task, movedIDs map[string]bool) []string {
+	var dropped []string
+	newDeps := make([]string, 0, len(t.DependsOn))
+	for _, depID := range t.DependsOn {
+		if ParseTaskRef(depID).IsCrossProject() || movedIDs[depID] {
+			newDeps = append(newDeps, depID)
+		} else {
+			dropped = append(dropped, depID)
+		}
+	}
+	t.DependsOn = newDeps
+
+	newRelated := make([]string, 0, len(t.RelatedTo))
+	for _, relID := range t.RelatedTo {
+		if ParseTaskRef(relID).IsCrossProject() || movedIDs[relID] {
+			newRelated = append(newRelated, relID)
+		}
+	}
+	t.RelatedTo = newRelated
+	return dropped
+}
+
+// reassignTaskToDest fixes section bookkeeping, refreshes the short ID, and
+// clears the project pointer so the task is ready to live under dest. The
+// destSectionSet map is updated in place when sections are added to dest.
+func reassignTaskToDest(t *Task, dest *Project, destSectionSet map[string]bool, now time.Time) {
+	switch {
+	case t.Section != "" && !IsGTDSection(t.Section) && !destSectionSet[t.Section]:
+		// Non-GTD section missing from dest: reset to Next.
+		t.SetSection(SectionNext)
+	case t.Section != "" && IsGTDSection(t.Section) && !destSectionSet[t.Section]:
+		// GTD section preserved on the task, but dest.Sections may not
+		// enumerate it (e.g. dest was created without EnsureDefaultSections).
+		// Append so the bucket renders in UI listings derived from dest.Sections.
+		dest.EnsureSection(t.Section)
+		destSectionSet[t.Section] = true
+	}
+
+	if t.CustomSection != "" && !dest.HasSection(t.CustomSection) {
+		dest.EnsureSection(t.CustomSection)
+		destSectionSet[t.CustomSection] = true
+	}
+
+	t.UpdatedAt = now
+	t.ShortID = dest.GetNextShortID()
+	t.Project = nil
 }

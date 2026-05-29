@@ -192,52 +192,16 @@ func matchesProjectTriggerGroupAtDepth(ctx *ProjectEvaluationContext, group *Tri
 func matchProjectTrigger(ctx *ProjectEvaluationContext, trigger RuleTrigger) bool {
 	switch trigger.Field {
 	case FieldHasInProgressTasks:
-		has := false
-		for _, t := range ctx.Tasks {
-			if t == nil {
-				continue
-			}
-			if t.Status == models.StatusInProgress {
-				has = true
-				break
-			}
-		}
-		return compareBoolOp(has, trigger.Operation, trigger.Value)
+		return compareBoolOp(anyTaskMatches(ctx.Tasks, func(t *models.Task) bool {
+			return t.Status == models.StatusInProgress
+		}), trigger.Operation, trigger.Value)
 
 	case FieldActiveTaskCount:
-		count := 0
-		for _, t := range ctx.Tasks {
-			if t == nil {
-				continue
-			}
-			if t.Status.IsActive() {
-				count++
-			}
-		}
+		count := countTasks(ctx.Tasks, func(t *models.Task) bool { return t.Status.IsActive() })
 		return compareValues(strconv.Itoa(count), trigger.Operation, trigger.Value)
 
 	case FieldAllTasksStatus:
-		// Check if all non-complete tasks share the same status
-		var status string
-		allSame := true
-		for _, t := range ctx.Tasks {
-			if t == nil {
-				continue
-			}
-			if t.Status.IsComplete() {
-				continue
-			}
-			if status == "" {
-				status = string(t.Status)
-			} else if !strings.EqualFold(status, string(t.Status)) {
-				allSame = false
-				break
-			}
-		}
-		if !allSame || status == "" {
-			return false
-		}
-		return compareValues(status, trigger.Operation, trigger.Value)
+		return matchAllTasksStatus(ctx, trigger)
 
 	case FieldMajorityTaskType:
 		return matchesMajority(ctx, func(t *models.Task) string { return string(t.Type) }, trigger)
@@ -246,42 +210,10 @@ func matchProjectTrigger(ctx *ProjectEvaluationContext, trigger RuleTrigger) boo
 		return matchesMajority(ctx, func(t *models.Task) string { return string(t.Status) }, trigger)
 
 	case FieldCompletionRatio:
-		total := 0
-		for _, t := range ctx.Tasks {
-			if t != nil {
-				total++
-			}
-		}
-		if total == 0 {
-			return compareValues("0", trigger.Operation, trigger.Value)
-		}
-		done := 0
-		for _, t := range ctx.Tasks {
-			if t == nil {
-				continue
-			}
-			if t.Status.IsComplete() {
-				done++
-			}
-		}
-		ratio := done * 100 / total
-		return compareValues(strconv.Itoa(ratio), trigger.Operation, trigger.Value)
+		return matchCompletionRatio(ctx, trigger)
 
 	case FieldDaysSinceUpdate:
-		latest := ctx.Project.UpdatedAt
-		for _, t := range ctx.Tasks {
-			if t == nil {
-				continue
-			}
-			if t.UpdatedAt.After(latest) {
-				latest = t.UpdatedAt
-			}
-		}
-		if latest.IsZero() {
-			return false
-		}
-		days := max(util.DaysBetween(latest, time.Now()), 0)
-		return compareValues(strconv.Itoa(days), trigger.Operation, trigger.Value)
+		return matchDaysSinceUpdate(ctx, trigger)
 
 	case FieldProjectStatus:
 		return compareValues(ctx.Project.StatusIcon, trigger.Operation, trigger.Value)
@@ -290,16 +222,9 @@ func matchProjectTrigger(ctx *ProjectEvaluationContext, trigger RuleTrigger) boo
 		// Presence check: returns true when any task has the given status.
 		// Honor not_equals as the logical inverse so a rule like
 		// "no task is in_progress" works as a user would expect.
-		has := false
-		for _, t := range ctx.Tasks {
-			if t == nil {
-				continue
-			}
-			if strings.EqualFold(string(t.Status), trigger.Value) {
-				has = true
-				break
-			}
-		}
+		has := anyTaskMatches(ctx.Tasks, func(t *models.Task) bool {
+			return strings.EqualFold(string(t.Status), trigger.Value)
+		})
 		if trigger.Operation == OpNotEquals {
 			return !has
 		}
@@ -308,6 +233,84 @@ func matchProjectTrigger(ctx *ProjectEvaluationContext, trigger RuleTrigger) boo
 	default:
 		return false
 	}
+}
+
+// anyTaskMatches reports whether any non-nil task satisfies pred.
+func anyTaskMatches(tasks []*models.Task, pred func(*models.Task) bool) bool {
+	for _, t := range tasks {
+		if t == nil {
+			continue
+		}
+		if pred(t) {
+			return true
+		}
+	}
+	return false
+}
+
+// countTasks counts non-nil tasks satisfying pred.
+func countTasks(tasks []*models.Task, pred func(*models.Task) bool) int {
+	count := 0
+	for _, t := range tasks {
+		if t == nil {
+			continue
+		}
+		if pred(t) {
+			count++
+		}
+	}
+	return count
+}
+
+// matchAllTasksStatus checks if all non-complete tasks share the same status.
+func matchAllTasksStatus(ctx *ProjectEvaluationContext, trigger RuleTrigger) bool {
+	var status string
+	allSame := true
+	for _, t := range ctx.Tasks {
+		if t == nil || t.Status.IsComplete() {
+			continue
+		}
+		if status == "" {
+			status = string(t.Status)
+		} else if !strings.EqualFold(status, string(t.Status)) {
+			allSame = false
+			break
+		}
+	}
+	if !allSame || status == "" {
+		return false
+	}
+	return compareValues(status, trigger.Operation, trigger.Value)
+}
+
+// matchCompletionRatio compares the done/total percentage to the trigger value.
+func matchCompletionRatio(ctx *ProjectEvaluationContext, trigger RuleTrigger) bool {
+	total := countTasks(ctx.Tasks, func(*models.Task) bool { return true })
+	if total == 0 {
+		return compareValues("0", trigger.Operation, trigger.Value)
+	}
+	done := countTasks(ctx.Tasks, func(t *models.Task) bool { return t.Status.IsComplete() })
+	ratio := done * 100 / total
+	return compareValues(strconv.Itoa(ratio), trigger.Operation, trigger.Value)
+}
+
+// matchDaysSinceUpdate compares the calendar days between now and the most
+// recent task or project update against the trigger value.
+func matchDaysSinceUpdate(ctx *ProjectEvaluationContext, trigger RuleTrigger) bool {
+	latest := ctx.Project.UpdatedAt
+	for _, t := range ctx.Tasks {
+		if t == nil {
+			continue
+		}
+		if t.UpdatedAt.After(latest) {
+			latest = t.UpdatedAt
+		}
+	}
+	if latest.IsZero() {
+		return false
+	}
+	days := max(util.DaysBetween(latest, time.Now()), 0)
+	return compareValues(strconv.Itoa(days), trigger.Operation, trigger.Value)
 }
 
 // matchesMajority checks if >50% of active tasks have the given field value.

@@ -347,7 +347,7 @@ func TestConfigLoad_NormalizesInvalidActiveTheme(t *testing.T) {
 	if err != nil {
 		t.Fatalf("marshal config: %v", err)
 	}
-	if err := os.WriteFile(configPath, data, 0o600); err != nil {
+	if err = os.WriteFile(configPath, data, 0o600); err != nil {
 		t.Fatalf("write config: %v", err)
 	}
 

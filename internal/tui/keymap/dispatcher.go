@@ -1,8 +1,10 @@
 package keymap
 
-import "strings"
+import (
+	"strings"
 
-import tea "charm.land/bubbletea/v2"
+	tea "charm.land/bubbletea/v2"
+)
 
 // ModalGuard intercepts key events before keymap dispatch.
 type ModalGuard struct {

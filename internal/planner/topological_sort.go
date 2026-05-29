@@ -240,7 +240,3 @@ func dependencyTaskKey(depRef string, dependent *models.Task, taskMap map[string
 	}
 	return "", false
 }
-
-func dependencyTaskID(depRef string, taskMap map[string]*models.Task) (string, bool) {
-	return dependencyTaskKey(depRef, nil, taskMap)
-}

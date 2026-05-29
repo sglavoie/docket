@@ -53,17 +53,17 @@ func TestThroughput(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		now := time.Date(2025, 3, 10, 12, 0, 0, 0, loc)
-		cutoff := TimeRange7d.Cutoff(now)
+		dstNow := time.Date(2025, 3, 10, 12, 0, 0, 0, loc)
+		cutoff := TimeRange7d.Cutoff(dstNow)
 
 		tasks := make([]*models.Task, 7)
 		for i := range tasks {
-			done := now.AddDate(0, 0, -i)
+			done := dstNow.AddDate(0, 0, -i)
 			tasks[i] = makeTask(models.StatusDone, timePtr(done), nil)
 		}
 
-		buckets := timeBuckets(cutoff, now, granularityDay)
-		result := computeThroughput(tasks, cutoff, now, buckets)
+		buckets := timeBuckets(cutoff, dstNow, granularityDay)
+		result := computeThroughput(tasks, cutoff, dstNow, buckets)
 
 		if result.AvgPerDay != 1 {
 			t.Errorf("AvgPerDay = %f, want 1.0 across a 7-calendar-day DST window", result.AvgPerDay)

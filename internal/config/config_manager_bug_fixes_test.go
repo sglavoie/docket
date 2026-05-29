@@ -354,7 +354,7 @@ func TestConfigManager_LoadRejectsFutureVersionBeforeSaving(t *testing.T) {
 		t.Fatal(err)
 	}
 	data = append(data, '\n')
-	if err := os.WriteFile(configPath, data, 0644); err != nil {
+	if err = os.WriteFile(configPath, data, 0o600); err != nil {
 		t.Fatalf("failed to write test config: %v", err)
 	}
 
