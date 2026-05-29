@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"errors"
 	"strings"
 	"testing"
 
@@ -15,7 +16,9 @@ func TestPrintCommandSkipsDefaultHelpCommand(t *testing.T) {
 	root.InitDefaultHelpCmd()
 
 	var out bytes.Buffer
-	printCommand(&out, root, "")
+	if err := printCommand(&out, root, ""); err != nil {
+		t.Fatalf("printCommand() returned error: %v", err)
+	}
 
 	got := out.String()
 	if strings.Contains(got, "## tt help") {
@@ -23,6 +26,16 @@ func TestPrintCommandSkipsDefaultHelpCommand(t *testing.T) {
 	}
 	if !strings.Contains(got, "## tt add") {
 		t.Fatalf("printCommand() did not include normal subcommand:\n%s", got)
+	}
+}
+
+func TestPrintCommandReturnsWriteError(t *testing.T) {
+	wantErr := errors.New("write failed")
+	cmd := &cobra.Command{Use: "tt"}
+
+	err := printCommand(errorWriter{err: wantErr}, cmd, "")
+	if !errors.Is(err, wantErr) {
+		t.Fatalf("printCommand() error = %v, want %v", err, wantErr)
 	}
 }
 
@@ -53,4 +66,12 @@ func TestCollectFlagsKeepsMeaningfulDefaults(t *testing.T) {
 	if want := "--format string (default ascii)    output format"; got[0] != want {
 		t.Fatalf("collectFlags() = %q, want %q", got[0], want)
 	}
+}
+
+type errorWriter struct {
+	err error
+}
+
+func (w errorWriter) Write(_ []byte) (int, error) {
+	return 0, w.err
 }

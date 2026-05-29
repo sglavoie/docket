@@ -44,11 +44,3 @@ func saveUndoMeta(project *models.Project, meta *UndoMeta) error {
 
 	return nil
 }
-
-// clearRedoStack deletes all redo snapshot files and clears the redo entries in meta.
-func clearRedoStack(project *models.Project, meta *UndoMeta) {
-	for _, entry := range meta.RedoEntries {
-		_ = os.Remove(getRedoSnapshotPath(project, entry.Num))
-	}
-	meta.RedoEntries = []UndoEntry{}
-}

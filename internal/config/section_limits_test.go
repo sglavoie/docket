@@ -36,7 +36,8 @@ func TestConfigManagerLoadClampsNegativeSectionLimits(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(configPath, data, 0644); err != nil {
+	err = os.WriteFile(configPath, data, 0644)
+	if err != nil {
 		t.Fatal(err)
 	}
 

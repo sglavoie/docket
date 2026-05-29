@@ -15,16 +15,27 @@ import (
 )
 
 func main() {
-	root := cmd.RootCmd()
-
-	fmt.Fprintln(os.Stdout, "# tt CLI Reference")
-	fmt.Fprintln(os.Stdout)
-	printCommand(os.Stdout, root, "")
+	if err := run(os.Stdout); err != nil {
+		_, _ = fmt.Fprintf(os.Stderr, "gen-api-ref: %v\n", err)
+		os.Exit(1)
+	}
 }
 
-func printCommand(w io.Writer, c *cobra.Command, parentPath string) {
+func run(w io.Writer) error {
+	root := cmd.RootCmd()
+
+	if _, err := fmt.Fprintln(w, "# tt CLI Reference"); err != nil {
+		return err
+	}
+	if _, err := fmt.Fprintln(w); err != nil {
+		return err
+	}
+	return printCommand(w, root, "")
+}
+
+func printCommand(w io.Writer, c *cobra.Command, parentPath string) error {
 	if c.Hidden || isDefaultHelpCommand(c) {
-		return
+		return nil
 	}
 
 	fullPath := c.Name()
@@ -32,47 +43,78 @@ func printCommand(w io.Writer, c *cobra.Command, parentPath string) {
 		fullPath = parentPath + " " + c.Name()
 	}
 
-	fmt.Fprintf(w, "## %s\n\n", fullPath)
-
-	if c.Short != "" {
-		fmt.Fprintln(w, c.Short)
-		fmt.Fprintln(w)
+	if _, err := fmt.Fprintf(w, "## %s\n\n", fullPath); err != nil {
+		return err
 	}
 
-	fmt.Fprintf(w, "Usage: %s\n", c.UseLine())
+	if c.Short != "" {
+		if _, err := fmt.Fprintln(w, c.Short); err != nil {
+			return err
+		}
+		if _, err := fmt.Fprintln(w); err != nil {
+			return err
+		}
+	}
+
+	if _, err := fmt.Fprintf(w, "Usage: %s\n", c.UseLine()); err != nil {
+		return err
+	}
 
 	if len(c.Aliases) > 0 {
-		fmt.Fprintf(w, "Aliases: %s\n", strings.Join(c.Aliases, ", "))
+		if _, err := fmt.Fprintf(w, "Aliases: %s\n", strings.Join(c.Aliases, ", ")); err != nil {
+			return err
+		}
 	}
 
 	if c.Long != "" && c.Long != c.Short {
-		fmt.Fprintln(w)
-		fmt.Fprintln(w, c.Long)
+		if _, err := fmt.Fprintln(w); err != nil {
+			return err
+		}
+		if _, err := fmt.Fprintln(w, c.Long); err != nil {
+			return err
+		}
 	}
 
 	localFlags := collectFlags(c.LocalFlags())
 	if len(localFlags) > 0 {
-		fmt.Fprintln(w)
-		fmt.Fprintln(w, "Flags:")
+		if _, err := fmt.Fprintln(w); err != nil {
+			return err
+		}
+		if _, err := fmt.Fprintln(w, "Flags:"); err != nil {
+			return err
+		}
 		for _, f := range localFlags {
-			fmt.Fprintf(w, "  %s\n", f)
+			if _, err := fmt.Fprintf(w, "  %s\n", f); err != nil {
+				return err
+			}
 		}
 	}
 
 	inheritedFlags := collectFlags(c.InheritedFlags())
 	if len(inheritedFlags) > 0 {
-		fmt.Fprintln(w)
-		fmt.Fprintln(w, "Inherited flags:")
+		if _, err := fmt.Fprintln(w); err != nil {
+			return err
+		}
+		if _, err := fmt.Fprintln(w, "Inherited flags:"); err != nil {
+			return err
+		}
 		for _, f := range inheritedFlags {
-			fmt.Fprintf(w, "  %s\n", f)
+			if _, err := fmt.Fprintf(w, "  %s\n", f); err != nil {
+				return err
+			}
 		}
 	}
 
-	fmt.Fprintln(w)
+	if _, err := fmt.Fprintln(w); err != nil {
+		return err
+	}
 
 	for _, sub := range c.Commands() {
-		printCommand(w, sub, fullPath)
+		if err := printCommand(w, sub, fullPath); err != nil {
+			return err
+		}
 	}
+	return nil
 }
 
 func isDefaultHelpCommand(c *cobra.Command) bool {

@@ -87,7 +87,7 @@ func SaveNoteTo(dir string, note *models.Note) error {
 	// we need to deduplicate the filename. Treat unreadable existing files
 	// as a collision (refuse to overwrite) rather than silently clobbering
 	// them — losing the existing content would be unrecoverable.
-	if _, err := os.Stat(path); err == nil {
+	if _, statErr := os.Stat(path); statErr == nil {
 		existing, loadErr := LoadNoteFrom(dir, note.Filename)
 		needsDedup := loadErr != nil || !existing.CreatedAt.Equal(note.CreatedAt)
 		if needsDedup {

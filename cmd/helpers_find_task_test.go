@@ -336,7 +336,9 @@ func TestFindActionTaskByID(t *testing.T) {
 			t.Fatalf("FindActionTaskByID(\"\") should return (nil, nil); got %v / %v", gotTask, gotProject)
 		}
 	})
+}
 
+func TestFindActionTaskByIDAmbiguousPrefix(t *testing.T) {
 	// Regression: a UUID prefix that matches more than one task across loaded
 	// projects must return ErrAmbiguousIdentifier rather than silently picking
 	// the first match (potentially acting on the wrong task).
@@ -407,6 +409,30 @@ func TestFindActionTaskByID(t *testing.T) {
 			t.Fatalf("expected short IDs in ambiguity error, got: %v", err)
 		}
 	})
+}
+
+func TestFindActionTaskByIDNormalizesUUIDPrefix(t *testing.T) {
+	project := testutil.NewTestProject("Test Project")
+
+	prefixTask, err := models.NewTask("123abcde-0000-0000-0000-000000000000", 42, models.TaskTypeTask, "Prefix Task")
+	if err != nil {
+		t.Fatal(err)
+	}
+	project.Tasks = []*models.Task{prefixTask}
+	project.NextShortID = 43
+
+	repo := testutil.NewMockRepository()
+	if err := repo.Save(project); err != nil {
+		t.Fatal(err)
+	}
+
+	oldRepo := storage.DefaultRepository
+	storage.DefaultRepository = repo
+	defer func() { storage.DefaultRepository = oldRepo }()
+
+	cfg := &config.Config{
+		Projects: []*models.Project{project},
+	}
 
 	// Regression: UUIDs are stored lowercase but users may paste uppercase
 	// from external tools. Resolution must be case-insensitive.

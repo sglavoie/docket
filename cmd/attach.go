@@ -96,8 +96,8 @@ func runAttach(cmd *cobra.Command, args []string) error { //nolint:gocyclo
 		if len(url) > 2000 {
 			return fmt.Errorf("URL exceeds maximum length of 2000 characters (%d)", len(url))
 		}
-		if err := validateAttachURL(url); err != nil {
-			return err
+		if validationErr := validateAttachURL(url); validationErr != nil {
+			return validationErr
 		}
 
 		err = task.AddAttachment(url, true, url)

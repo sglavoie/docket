@@ -125,8 +125,8 @@ func TestRecordUndoSnapshotPreservesRedoFilesOnMetaSaveFailure(t *testing.T) {
 		t.Fatalf("expected redo entries in meta after PerformUndo, got 0")
 	}
 
-	if err := os.Chmod(undoDir, 0555); err != nil {
-		t.Fatalf("failed to chmod undo dir read-only: %v", err)
+	if chmodErr := os.Chmod(undoDir, 0555); chmodErr != nil {
+		t.Fatalf("failed to chmod undo dir read-only: %v", chmodErr)
 	}
 	defer func() { _ = os.Chmod(undoDir, 0755) }()
 

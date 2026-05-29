@@ -102,9 +102,9 @@ func TestGetSuggestionReasonRecentActivityMatchesScoreWindow(t *testing.T) {
 	}
 
 	for _, daysAgo := range []int{1, 2, 3} {
-		task, err := models.NewTask(uuid.New().String(), 1, models.TaskTypeTask, "T")
-		if err != nil {
-			t.Fatal(err)
+		task, taskErr := models.NewTask(uuid.New().String(), 1, models.TaskTypeTask, "T")
+		if taskErr != nil {
+			t.Fatal(taskErr)
 		}
 		task.Priority = 3
 		task.CreatedAt = now.AddDate(0, 0, -30)

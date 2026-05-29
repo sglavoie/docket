@@ -58,12 +58,6 @@ func computeBlockedInRange(tasks []*models.Task, cutoff, now time.Time, taskProj
 	return result
 }
 
-// computeBlockedEntry scans a single task's activity for blocked periods over
-// all time.
-func computeBlockedEntry(t *models.Task, now time.Time) BlockedEntry {
-	return computeBlockedEntryInRange(t, time.Time{}, now)
-}
-
 // computeBlockedEntryInRange scans a single task's activity for blocked periods
 // within the [cutoff, now] window. A period starts when NewValue="blocked" and
 // ends when OldValue="blocked". If the task is currently blocked with an open

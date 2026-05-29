@@ -64,99 +64,48 @@ func (c *Config) RemoveProject(id string) bool {
 		return false
 	}
 
-	// Clear current-project pointer whether it stored the ID or the slug
-	// (legacy configs may have used the slug).
 	if c.CurrentProject == id || (removedSlug != "" && c.CurrentProject == removedSlug) {
 		c.CurrentProject = ""
 	}
-
-	// Clean up scoring profile assignment
-	if c.ProjectScoringProfile != nil {
-		delete(c.ProjectScoringProfile, id)
-	}
-
-	// Clean up per-project view state
-	if c.ProjectViewStates != nil {
-		delete(c.ProjectViewStates, id)
-	}
-
-	// Clean up workflow evaluation state
-	if c.WorkflowEvalStates != nil {
-		delete(c.WorkflowEvalStates, id)
-	}
-
-	// Clean up focus queue entries referencing this project
-	if len(c.FocusQueue) > 0 {
-		filtered := c.FocusQueue[:0]
-		for _, item := range c.FocusQueue {
-			if item.ProjectID != id {
-				filtered = append(filtered, item)
-			}
-		}
-		c.FocusQueue = filtered
-	}
-
-	// Clean up daily plan entries referencing this project
-	if len(c.DailyPlan) > 0 {
-		filtered := c.DailyPlan[:0]
-		for _, item := range c.DailyPlan {
-			if item.ProjectID != id {
-				filtered = append(filtered, item)
-			}
-		}
-		c.DailyPlan = filtered
-	}
-
-	// Clean up recent task visits referencing this project
-	if len(c.RecentTaskVisits) > 0 {
-		filtered := c.RecentTaskVisits[:0]
-		for _, visit := range c.RecentTaskVisits {
-			if visit.ProjectID != id {
-				filtered = append(filtered, visit)
-			}
-		}
-		c.RecentTaskVisits = filtered
-	}
-
-	// Clean up cycle projects (global)
-	if len(c.CycleProjects) > 0 {
-		filtered := c.CycleProjects[:0]
-		for _, pid := range c.CycleProjects {
-			if pid != id {
-				filtered = append(filtered, pid)
-			}
-		}
-		c.CycleProjects = filtered
-	}
-
-	// Clean up per-context cycle projects
-	for ctx, pids := range c.ContextCycleProjects {
-		filtered := pids[:0]
-		for _, pid := range pids {
-			if pid != id {
-				filtered = append(filtered, pid)
-			}
-		}
-		c.ContextCycleProjects[ctx] = filtered
-	}
-
-	// Clean up custom contexts referencing this project
-	for ctx, pids := range c.CustomContexts {
-		filtered := pids[:0]
-		for _, pid := range pids {
-			if pid != id {
-				filtered = append(filtered, pid)
-			}
-		}
-		c.CustomContexts[ctx] = filtered
-	}
-
-	// Clean up action inbox reference if it points to this project
 	if c.ActionInboxProjectID == id {
 		c.ActionInboxProjectID = ""
 	}
 
+	c.removeProjectRefs(id)
+
 	return true
+}
+
+func (c *Config) removeProjectRefs(id string) {
+	delete(c.ProjectScoringProfile, id)
+	delete(c.ProjectViewStates, id)
+	delete(c.WorkflowEvalStates, id)
+
+	c.FocusQueue, _ = filterProjectRefSlice(c.FocusQueue, func(item FocusQueueItem) string {
+		return item.ProjectID
+	}, func(pid string) bool {
+		return pid != id
+	})
+	c.DailyPlan, _ = filterProjectRefSlice(c.DailyPlan, func(item DailyPlanItem) string {
+		return item.ProjectID
+	}, func(pid string) bool {
+		return pid != id
+	})
+	c.RecentTaskVisits, _ = filterProjectRefSlice(c.RecentTaskVisits, func(visit RecentTaskVisit) string {
+		return visit.ProjectID
+	}, func(pid string) bool {
+		return pid != id
+	})
+
+	c.CycleProjects, _ = filterProjectIDs(c.CycleProjects, func(pid string) bool {
+		return pid != id
+	})
+	filterProjectIDMap(c.ContextCycleProjects, func(pid string) bool {
+		return pid != id
+	})
+	filterProjectIDMap(c.CustomContexts, func(pid string) bool {
+		return pid != id
+	})
 }
 
 // sortProjectsByName sorts projects alphabetically by name (case-insensitive).
@@ -354,104 +303,89 @@ func (c *Config) PruneOrphanedProjectRefs() bool {
 	}
 
 	changed := false
-	for pid := range c.ProjectScoringProfile {
-		if !known[pid] {
-			delete(c.ProjectScoringProfile, pid)
-			changed = true
-		}
-	}
-	for pid := range c.ProjectViewStates {
-		if !known[pid] {
-			delete(c.ProjectViewStates, pid)
-			changed = true
-		}
-	}
-	for pid := range c.WorkflowEvalStates {
-		if !known[pid] {
-			delete(c.WorkflowEvalStates, pid)
-			changed = true
-		}
-	}
+	changed = deleteUnknownProjectKeys(c.ProjectScoringProfile, known) || changed
+	changed = deleteUnknownProjectKeys(c.ProjectViewStates, known) || changed
+	changed = deleteUnknownProjectKeys(c.WorkflowEvalStates, known) || changed
 
-	if len(c.FocusQueue) > 0 {
-		kept := c.FocusQueue[:0]
-		for _, item := range c.FocusQueue {
-			if known[item.ProjectID] {
-				kept = append(kept, item)
-			} else {
-				changed = true
-			}
-		}
-		c.FocusQueue = kept
-	}
-	if len(c.DailyPlan) > 0 {
-		kept := c.DailyPlan[:0]
-		for _, item := range c.DailyPlan {
-			if known[item.ProjectID] {
-				kept = append(kept, item)
-			} else {
-				changed = true
-			}
-		}
-		c.DailyPlan = kept
-	}
-	if len(c.RecentTaskVisits) > 0 {
-		kept := c.RecentTaskVisits[:0]
-		for _, v := range c.RecentTaskVisits {
-			if known[v.ProjectID] {
-				kept = append(kept, v)
-			} else {
-				changed = true
-			}
-		}
-		c.RecentTaskVisits = kept
-	}
+	var filtered bool
+	c.FocusQueue, filtered = filterProjectRefSlice(c.FocusQueue, func(item FocusQueueItem) string {
+		return item.ProjectID
+	}, func(pid string) bool {
+		return known[pid]
+	})
+	changed = filtered || changed
+	c.DailyPlan, filtered = filterProjectRefSlice(c.DailyPlan, func(item DailyPlanItem) string {
+		return item.ProjectID
+	}, func(pid string) bool {
+		return known[pid]
+	})
+	changed = filtered || changed
+	c.RecentTaskVisits, filtered = filterProjectRefSlice(c.RecentTaskVisits, func(visit RecentTaskVisit) string {
+		return visit.ProjectID
+	}, func(pid string) bool {
+		return known[pid]
+	})
+	changed = filtered || changed
 
-	if len(c.CycleProjects) > 0 {
-		kept := c.CycleProjects[:0]
-		for _, pid := range c.CycleProjects {
-			if known[pid] {
-				kept = append(kept, pid)
-			} else {
-				changed = true
-			}
-		}
-		c.CycleProjects = kept
-	}
-	for ctx, pids := range c.ContextCycleProjects {
-		if len(pids) == 0 {
-			continue
-		}
-		kept := pids[:0]
-		for _, pid := range pids {
-			if known[pid] {
-				kept = append(kept, pid)
-			} else {
-				changed = true
-			}
-		}
-		c.ContextCycleProjects[ctx] = kept
-	}
-	for ctx, pids := range c.CustomContexts {
-		if len(pids) == 0 {
-			continue
-		}
-		kept := pids[:0]
-		for _, pid := range pids {
-			if known[pid] {
-				kept = append(kept, pid)
-			} else {
-				changed = true
-			}
-		}
-		c.CustomContexts[ctx] = kept
-	}
+	c.CycleProjects, filtered = filterProjectIDs(c.CycleProjects, func(pid string) bool {
+		return known[pid]
+	})
+	changed = filtered || changed
+	changed = filterProjectIDMap(c.ContextCycleProjects, func(pid string) bool {
+		return known[pid]
+	}) || changed
+	changed = filterProjectIDMap(c.CustomContexts, func(pid string) bool {
+		return known[pid]
+	}) || changed
 
 	if c.ActionInboxProjectID != "" && !known[c.ActionInboxProjectID] {
 		c.ActionInboxProjectID = ""
 		changed = true
 	}
 
+	return changed
+}
+
+func deleteUnknownProjectKeys[T any](values map[string]T, known map[string]bool) bool {
+	changed := false
+	for pid := range values {
+		if !known[pid] {
+			delete(values, pid)
+			changed = true
+		}
+	}
+	return changed
+}
+
+func filterProjectRefSlice[T any](values []T, projectID func(T) string, keep func(string) bool) ([]T, bool) {
+	if len(values) == 0 {
+		return values, false
+	}
+	filtered := values[:0]
+	changed := false
+	for _, value := range values {
+		if keep(projectID(value)) {
+			filtered = append(filtered, value)
+		} else {
+			changed = true
+		}
+	}
+	return filtered, changed
+}
+
+func filterProjectIDs(ids []string, keep func(string) bool) ([]string, bool) {
+	return filterProjectRefSlice(ids, func(id string) string {
+		return id
+	}, keep)
+}
+
+func filterProjectIDMap(projectIDs map[string][]string, keep func(string) bool) bool {
+	changed := false
+	for key, ids := range projectIDs {
+		var filtered bool
+		projectIDs[key], filtered = filterProjectIDs(ids, keep)
+		changed = filtered || changed
+	}
 	return changed
 }
 

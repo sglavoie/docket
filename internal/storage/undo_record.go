@@ -102,27 +102,3 @@ func RecordUndoSnapshot(project *models.Project, action, context string, maxDept
 
 	return nil
 }
-
-// pruneOldSnapshots removes the oldest snapshots to stay within maxDepth.
-func pruneOldSnapshots(project *models.Project, meta *UndoMeta, maxDepth int) error {
-	if len(meta.Entries) <= maxDepth {
-		return nil
-	}
-
-	// Sort by num ascending to find oldest
-	sort.Slice(meta.Entries, func(i, j int) bool {
-		return meta.Entries[i].Num < meta.Entries[j].Num
-	})
-
-	// Remove oldest entries
-	toRemove := len(meta.Entries) - maxDepth
-	for i := range toRemove {
-		snapshotPath := getSnapshotPath(project, meta.Entries[i].Num)
-		_ = os.Remove(snapshotPath) // Ignore errors for missing files
-	}
-
-	// Keep only the newest entries
-	meta.Entries = meta.Entries[toRemove:]
-
-	return nil
-}

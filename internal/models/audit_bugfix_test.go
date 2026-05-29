@@ -119,7 +119,7 @@ func TestAddChildRejectsSubtreeExceedingDepth(t *testing.T) {
 		t.Fatalf("NewTask child: %v", err)
 	}
 	// Attach child directly so storyTop has a descendant.
-	if err := storyTop.AddChild(childTask); err != nil {
+	if err = storyTop.AddChild(childTask); err != nil {
 		t.Fatalf("AddChild child: %v", err)
 	}
 

@@ -129,9 +129,9 @@ func TestPageMarkdown_UsesTempFileNotStdinPipe(t *testing.T) {
 	// Replace os.Stdin with a closed pipe so the fake `cat` doesn't block
 	// waiting on our terminal. The key assertion is what PageMarkdown
 	// passes to glow as args — not what stdin contains.
-	r, w, err := os.Pipe()
-	if err != nil {
-		t.Fatalf("pipe: %v", err)
+	r, w, pipeErr := os.Pipe()
+	if pipeErr != nil {
+		t.Fatalf("pipe: %v", pipeErr)
 	}
 	_ = w.Close()
 	origStdin := os.Stdin
