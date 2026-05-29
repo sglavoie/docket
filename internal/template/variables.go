@@ -16,7 +16,7 @@ type TemplateVariable struct {
 var validVarPattern = regexp.MustCompile(`\{\{([a-zA-Z_][a-zA-Z0-9_]*)(?::([^}]*))?\}\}`)
 
 // invalidVarPattern matches anything that looks like {{...}} but may not be valid.
-var invalidVarPattern = regexp.MustCompile(`\{\{[^}]*\}\}`)
+var invalidVarPattern = regexp.MustCompile(`\{\{.*?\}\}`)
 
 // ExtractVariables scans all text fields of a TaskTemplate and returns unique
 // variables in order of first appearance.

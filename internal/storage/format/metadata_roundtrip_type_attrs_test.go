@@ -215,3 +215,35 @@ func TestEpicMilestone_NewlinesEscaped(t *testing.T) {
 		t.Errorf("Milestone = %q, want %q", parsed.EpicAttrs.Milestone, original.EpicAttrs.Milestone)
 	}
 }
+
+func TestBugWorkaround_CommaKeyPatternRoundTrip(t *testing.T) {
+	original := &models.Task{
+		ID:       "bug-comma-key",
+		Type:     models.TaskTypeBug,
+		Status:   models.StatusTodo,
+		Priority: 2,
+		BugAttrs: &models.BugAttrs{
+			Severity:   models.BugSeverityMajor,
+			Workaround: "Use fallback, story.persona: admin flow, score.impact: 5",
+		},
+	}
+
+	metaStr := WriteMetadata(original)
+	content := metaStr[5 : len(metaStr)-4]
+
+	parsed := &models.Task{Type: models.TaskTypeBug}
+	warnings := ParseMetadata(parsed, content)
+	if len(warnings) != 0 {
+		t.Fatalf("got warnings, want none: %v", warnings)
+	}
+
+	if parsed.BugAttrs == nil {
+		t.Fatal("BugAttrs is nil after roundtrip")
+	}
+	if parsed.BugAttrs.Workaround != original.BugAttrs.Workaround {
+		t.Errorf("Workaround = %q, want %q", parsed.BugAttrs.Workaround, original.BugAttrs.Workaround)
+	}
+	if len(parsed.ScoreDimensions) != 0 {
+		t.Errorf("ScoreDimensions = %v, want none", parsed.ScoreDimensions)
+	}
+}

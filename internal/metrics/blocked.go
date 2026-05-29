@@ -67,14 +67,20 @@ func computeBlockedInRange(tasks []*models.Task, cutoff, now time.Time, taskProj
 func computeBlockedEntryInRange(t *models.Task, cutoff, now time.Time) BlockedEntry {
 	entry := BlockedEntry{Task: t}
 
+	activity := make([]*models.ActivityEntry, 0, len(t.Activity))
+	for _, a := range t.Activity {
+		if a.Field == "status" {
+			activity = append(activity, a)
+		}
+	}
+	sort.SliceStable(activity, func(i, j int) bool {
+		return activity[i].Timestamp.Before(activity[j].Timestamp)
+	})
+
 	var blockedStart time.Time
 	inBlockedPeriod := false
 
-	for _, a := range t.Activity {
-		if a.Field != "status" {
-			continue
-		}
-
+	for _, a := range activity {
 		if a.NewValue == string(models.StatusBlocked) && !inBlockedPeriod {
 			blockedStart = a.Timestamp
 			inBlockedPeriod = true

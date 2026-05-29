@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sync"
 	"testing"
 	"time"
 
@@ -209,7 +210,8 @@ type TestDeps struct {
 
 // SetupTestDeps creates a complete test environment with mock dependencies.
 // It creates a temporary directory for config and project files.
-// Call Cleanup() when done to remove temp files and restore external defaults.
+// Cleanup is registered with t.Cleanup automatically; call Cleanup only when
+// early cleanup is needed.
 // Note: Tests must set storage.DefaultRepository themselves to avoid import cycles.
 func SetupTestDeps(t *testing.T) *TestDeps {
 	t.Helper()
@@ -242,14 +244,18 @@ func SetupTestDeps(t *testing.T) *TestDeps {
 	cfg := NewTestConfig()
 	cfg.DataDir = tempDir
 
+	var cleanupOnce sync.Once
 	cleanup := func() {
-		// Restore original defaults
-		external.DefaultSelector = origSelector
-		external.DefaultRenderer = origRenderer
-		external.DefaultEditor = origEditor
-		// Remove temp directory
-		_ = os.RemoveAll(tempDir)
+		cleanupOnce.Do(func() {
+			// Restore original defaults
+			external.DefaultSelector = origSelector
+			external.DefaultRenderer = origRenderer
+			external.DefaultEditor = origEditor
+			// Remove temp directory
+			_ = os.RemoveAll(tempDir)
+		})
 	}
+	t.Cleanup(cleanup)
 
 	return &TestDeps{
 		Selector:   selector,

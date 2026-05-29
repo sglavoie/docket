@@ -29,21 +29,24 @@ func ParseTimeField(value string) (time.Time, bool) {
 	return time.Time{}, false
 }
 
-// escapeNewlines escapes backslashes, newlines, and carriage returns for
+// escapeNewlines escapes backslashes, commas, newlines, and carriage returns for
 // single-line metadata storage. Backslashes are escaped first so that a literal
 // `\n` in the input becomes `\\n`, distinguishable from an actual newline which
-// becomes `\n`. CRLF in the input round-trips as `\r\n`.
+// becomes `\n`. Commas are escaped so free-text typed fields cannot look like
+// metadata delimiters. CRLF in the input round-trips as `\r\n`.
 func escapeNewlines(s string) string {
 	s = strings.ReplaceAll(s, `\`, `\\`)
+	s = strings.ReplaceAll(s, ",", `\,`)
 	s = strings.ReplaceAll(s, "\n", `\n`)
 	s = strings.ReplaceAll(s, "\r", `\r`)
 	return s
 }
 
 // unescapeNewlines reverses escapeNewlines by scanning byte-by-byte.
-// `\n` -> newline, `\r` -> CR, `\\` -> `\`, and bare `\` before any other char
-// is kept as-is. This sequential approach avoids the ambiguity that arises with
-// chained ReplaceAll (e.g., `\\n` must become `\n` literal, not backslash + newline).
+// `\n` -> newline, `\r` -> CR, `\,` -> comma, `\\` -> `\`, and bare `\`
+// before any other char is kept as-is. This sequential approach avoids the
+// ambiguity that arises with chained ReplaceAll (e.g., `\\n` must become `\n`
+// literal, not backslash + newline).
 func unescapeNewlines(s string) string {
 	var b strings.Builder
 	b.Grow(len(s))
@@ -55,6 +58,9 @@ func unescapeNewlines(s string) string {
 				i++
 			case 'r':
 				b.WriteByte('\r')
+				i++
+			case ',':
+				b.WriteByte(',')
 				i++
 			case '\\':
 				b.WriteByte('\\')

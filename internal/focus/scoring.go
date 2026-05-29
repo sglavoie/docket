@@ -62,7 +62,7 @@ func computeCrossProjectScore(task *models.Task, project *models.Project, cfg *c
 	}
 
 	// Leaf task bonus: prefer actionable leaf tasks over containers
-	if task.IsLeaf() {
+	if isLeafTask(task) {
 		score += 800
 	}
 
@@ -318,6 +318,18 @@ func allChildrenComplete(task *models.Task) bool {
 			continue
 		}
 		if !child.Status.IsComplete() {
+			return false
+		}
+	}
+	return true
+}
+
+func isLeafTask(task *models.Task) bool {
+	if task == nil {
+		return false
+	}
+	for _, child := range task.Children {
+		if child != nil {
 			return false
 		}
 	}

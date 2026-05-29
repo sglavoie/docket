@@ -71,6 +71,31 @@ func TestForwardScheduleExplicitStartDate(t *testing.T) {
 	}
 }
 
+func TestForwardScheduleExplicitStartDateAffectsSlack(t *testing.T) {
+	start := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	later := start.Add(10 * 24 * time.Hour)
+
+	early := newTaskWithDuration("early", 1)
+	gated := newTaskWithDuration("gated", 1)
+	gated.StartDate = &later
+
+	sched := ForwardSchedule([]*models.Task{early, gated}, start, 1.0)
+	byID := scheduleByID(sched)
+
+	if byID["early"].Slack != 10 {
+		t.Errorf("expected early task to have 10 days slack, got %v", byID["early"].Slack)
+	}
+	if byID["early"].IsCritical {
+		t.Error("early task should not be critical when a future-dated independent task controls completion")
+	}
+	if byID["gated"].Slack != 0 {
+		t.Errorf("expected gated task to have zero slack, got %v", byID["gated"].Slack)
+	}
+	if !byID["gated"].IsCritical {
+		t.Error("gated task should be critical because its explicit start controls completion")
+	}
+}
+
 // TestForwardScheduleZeroVelocityFallback verifies that zero/negative velocity
 // is treated as 1.0 (no panic, sensible output).
 func TestForwardScheduleZeroVelocityFallback(t *testing.T) {

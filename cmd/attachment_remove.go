@@ -21,7 +21,7 @@ var attachmentRemoveCmd = &cobra.Command{
 	Long: `Remove an attachment from a task.
 
 If no task ID is provided, an interactive selector is shown (filtered to tasks
-that have attachments). The attachment index can be found via 'tt attachment list'.
+that have attachments). The attachment index can be found via 'tt attachments'.
 
 By default, this also deletes the file from disk for local attachments.
 Use --keep-file to only remove the reference without deleting the file.
@@ -61,7 +61,7 @@ func runAttachmentRemove(cmd *cobra.Command, args []string) error {
 	}
 
 	if len(task.Attachments) == 0 {
-		return fmt.Errorf("task #%d has no attachments; use 'tt attachment list' to check", task.ShortID)
+		return fmt.Errorf("task #%d has no attachments; use 'tt attachments' to check", task.ShortID)
 	}
 
 	// If no attachment index provided, list attachments and give a hint

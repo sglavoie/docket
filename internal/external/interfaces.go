@@ -183,8 +183,11 @@ func (e *VSCodeEditor) OpenFileAtLine(path string, line int) error {
 	if err != nil {
 		return fmt.Errorf("VS Code ('code') not found in PATH")
 	}
-	arg := fmt.Sprintf("%s:%d", path, line)
-	cmd := exec.Command(codePath, "--goto", arg)
+	args := []string{path}
+	if line > 0 {
+		args = []string{"--goto", fmt.Sprintf("%s:%d", path, line)}
+	}
+	cmd := exec.Command(codePath, args...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	if err := cmd.Start(); err != nil {

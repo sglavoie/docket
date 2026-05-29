@@ -123,6 +123,7 @@ func (p *Project) RelocateTaskToEndOfSection(taskID string, section string) {
 	// After removal, lastSectionIdx shifted down by 1
 	insertAt := lastSectionIdx // was lastSectionIdx, but after removal it's the correct position
 	p.Tasks = append(p.Tasks[:insertAt], append([]*Task{task}, p.Tasks[insertAt:]...)...)
+	task.UpdatedAt = time.Now()
 }
 
 // SwapTasks swaps the positions of two tasks in the Tasks slice.

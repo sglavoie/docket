@@ -256,6 +256,23 @@ func TestValidateRejectsWSJFAllZeroMaxDenominators(t *testing.T) {
 	}
 }
 
+// TestValidateRejectsWSJFZeroWeightDenominator verifies WSJF rejects a
+// denominator that can have a positive value but has Weight=0. Such a
+// dimension contributes nothing to the denominator sum, so a positive
+// numerator would always return MaxScoreSentinel.
+func TestValidateRejectsWSJFZeroWeightDenominator(t *testing.T) {
+	profile := ScoringProfile{
+		ID: "wsjf-zero-weight", Name: "ZeroWeightWSJF", Formula: FormulaWSJF,
+		Dimensions: []ScoringDimension{
+			{ID: "n", Name: "N", Min: 1, Max: 10, Default: 5, Weight: 1, Source: SourceManual, Role: RoleNumerator},
+			{ID: "d", Name: "D", Min: 1, Max: 10, Default: 5, Weight: 0, Source: SourceManual, Role: RoleDenominator},
+		},
+	}
+	if err := profile.Validate(); err == nil {
+		t.Error("expected validation error: WSJF denominator with Weight=0 cannot contribute to denominator sum")
+	}
+}
+
 // TestValidateAcceptsRICEWithLegitimateZeroMinDenominator confirms the new
 // validation does not over-reach: a denominator with Min=0 but Max>0 is
 // allowed (user can opt to set it to 0 and get the "zero effort = top"

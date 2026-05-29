@@ -158,8 +158,6 @@ func ForwardSchedule(tasks []*models.Task, startDate time.Time, velocity float64
 		return nil
 	}
 
-	cp := CriticalPath(tasks)
-
 	taskMap := make(map[string]*models.Task, len(topoOrder))
 	for _, t := range topoOrder {
 		taskMap[t.ID] = t
@@ -190,19 +188,52 @@ func ForwardSchedule(tasks []*models.Task, startDate time.Time, velocity float64
 		}
 	}
 
+	var projectDuration float64
+	for _, t := range topoOrder {
+		if end := esDay[t.ID] + EstimateDuration(t)/velocity; end > projectDuration {
+			projectDuration = end
+		}
+	}
+
+	succs := make(map[string][]string, len(topoOrder))
+	for _, t := range topoOrder {
+		for _, depRef := range t.DependsOn {
+			if predID, ok := dependencyTaskID(depRef, taskMap); ok {
+				succs[predID] = append(succs[predID], t.ID)
+			}
+		}
+	}
+
+	lsDay := make(map[string]float64, len(topoOrder))
+	for _, t := range topoOrder {
+		lsDay[t.ID] = projectDuration - EstimateDuration(t)/velocity
+	}
+	for i := len(topoOrder) - 1; i >= 0; i-- {
+		t := topoOrder[i]
+		durDays := EstimateDuration(t) / velocity
+		for _, succID := range succs[t.ID] {
+			if candidate := lsDay[succID] - durDays; candidate < lsDay[t.ID] {
+				lsDay[t.ID] = candidate
+			}
+		}
+	}
+
 	result := make([]ScheduledTask, 0, len(topoOrder))
+	const eps = 1e-9
 	for _, t := range topoOrder {
 		durDays := EstimateDuration(t) / velocity
 		start := startDate.Add(daysToduration(esDay[t.ID]))
 		end := start.Add(daysToduration(durDays))
-		// Slack from CriticalPath is in unscaled days; convert to calendar days
-		// so it matches the velocity-adjusted start/end timestamps.
+		slack := lsDay[t.ID] - esDay[t.ID]
+		if slack < eps {
+			slack = 0
+		}
 		result = append(result, ScheduledTask{
 			Task:          t,
 			EarliestStart: start,
 			EarliestEnd:   end,
-			Slack:         cp.Slack[t.ID] / velocity,
-			IsCritical:    cp.OnPath[t.ID],
+			Slack:         slack,
+			IsCritical:    slack < eps,
 		})
 	}
 	return result

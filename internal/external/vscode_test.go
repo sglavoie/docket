@@ -4,7 +4,9 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
+	"time"
 )
 
 func TestBuildGotoArgument(t *testing.T) {
@@ -491,5 +493,42 @@ func TestOpenFolderCommandWithFlags(t *testing.T) {
 	}
 	if args[3] != "/data/project" {
 		t.Errorf("args[3] = %q, want '/data/project'", args[3])
+	}
+}
+
+func TestVSCodeEditorOpenFileAtLineNonPositiveLineOpensFileOnly(t *testing.T) {
+	dir := t.TempDir()
+	argFile := filepath.Join(dir, "args.txt")
+	fakeCode := filepath.Join(dir, "code")
+	script := "#!/bin/sh\nprintf '%s\\n' \"$@\" > " + argFile + "\nexit 0\n"
+	if err := os.WriteFile(fakeCode, []byte(script), 0o755); err != nil {
+		t.Fatalf("write fake code: %v", err)
+	}
+
+	origPath := os.Getenv("PATH")
+	t.Cleanup(func() { _ = os.Setenv("PATH", origPath) })
+	if err := os.Setenv("PATH", dir); err != nil {
+		t.Fatalf("setenv PATH: %v", err)
+	}
+	codeCache = cachedPath{}
+	t.Cleanup(func() { codeCache = cachedPath{} })
+
+	filePath := filepath.Join(dir, "test.go")
+	if err := os.WriteFile(filePath, []byte("package main\n"), 0o644); err != nil {
+		t.Fatalf("write test file: %v", err)
+	}
+
+	editor := NewVSCodeEditor()
+	if err := editor.OpenFileAtLine(filePath, 0); err != nil {
+		t.Fatalf("OpenFileAtLine(..., 0) failed: %v", err)
+	}
+
+	recorded, err := readFileEventually(argFile, 5*time.Second)
+	if err != nil {
+		t.Fatalf("read arg file: %v", err)
+	}
+	args := strings.Split(strings.TrimSpace(string(recorded)), "\n")
+	if len(args) != 1 || args[0] != filePath {
+		t.Fatalf("expected only file path argument, got %v", args)
 	}
 }

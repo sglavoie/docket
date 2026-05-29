@@ -138,7 +138,7 @@ func (r metadataRegistry) nextSplitIndex(remaining string, seenKeys map[string]b
 			continue
 		}
 		pattern := ", " + key + ":"
-		idx := strings.Index(remaining, pattern)
+		idx := findUnescapedMetadataDelimiter(remaining, pattern)
 		if idx != -1 && (splitIdx == -1 || idx < splitIdx) {
 			splitIdx = idx
 		}

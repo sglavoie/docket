@@ -29,6 +29,13 @@ func GetAttachmentPath(project *models.Project, task *models.Task, filename stri
 	return filepath.Join(GetTaskAttachmentsDir(project, task), filename)
 }
 
+func validateAttachmentTask(task *models.Task) error {
+	if task == nil || task.ID == "" {
+		return fmt.Errorf("task ID cannot be empty for attachments")
+	}
+	return nil
+}
+
 func validateAttachmentFilename(filename string) error {
 	switch {
 	case filename == "":
@@ -46,6 +53,9 @@ func validateAttachmentFilename(filename string) error {
 
 // EnsureTaskAttachmentsDir creates the attachments directory for a task if it doesn't exist.
 func EnsureTaskAttachmentsDir(project *models.Project, task *models.Task) error {
+	if err := validateAttachmentTask(task); err != nil {
+		return err
+	}
 	dir := GetTaskAttachmentsDir(project, task)
 	return os.MkdirAll(dir, DirPermissions)
 }

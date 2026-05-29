@@ -177,3 +177,18 @@ func TestSetShowInfoPanel(t *testing.T) {
 		t.Error("ShowInfoPanel should be true")
 	}
 }
+
+func TestSetShowInfoPanel_OverridesExplicitMode(t *testing.T) {
+	cfg := NewConfig()
+	cfg.SetInfoPanelMode(InfoPanelProjectSummary)
+
+	cfg.SetShowInfoPanel(false)
+	if cfg.GetShowInfoPanel() {
+		t.Error("SetShowInfoPanel(false) should hide panel even when InfoPanelMode was already set")
+	}
+
+	cfg.SetShowInfoPanel(true)
+	if !cfg.GetShowInfoPanel() {
+		t.Error("SetShowInfoPanel(true) should show panel after hiding it")
+	}
+}

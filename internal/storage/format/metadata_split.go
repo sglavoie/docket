@@ -68,6 +68,32 @@ func extractScoreKey(s string) string {
 	return "score." + rest[:colonIdx]
 }
 
+func metadataCommaIsEscaped(s string, commaIdx int) bool {
+	backslashes := 0
+	for i := commaIdx - 1; i >= 0 && s[i] == '\\'; i-- {
+		backslashes++
+	}
+	return backslashes%2 == 1
+}
+
+func findUnescapedMetadataDelimiter(s, pattern string) int {
+	searchFrom := 0
+	for {
+		idx := strings.Index(s[searchFrom:], pattern)
+		if idx == -1 {
+			return -1
+		}
+		idx += searchFrom
+		if !metadataCommaIsEscaped(s, idx) {
+			return idx
+		}
+		searchFrom = idx + 1
+		if searchFrom >= len(s) {
+			return -1
+		}
+	}
+}
+
 // findScoreKeyIndex finds the index of the first ", score.<id>:" pattern in s.
 // Returns -1 if not found. The score dimension ID must be non-empty and contain
 // only alphanumeric characters and underscores.
@@ -79,6 +105,13 @@ func findScoreKeyIndex(s string) int {
 			return -1
 		}
 		idx += searchFrom
+		if metadataCommaIsEscaped(s, idx) {
+			searchFrom = idx + 1
+			if searchFrom >= len(s) {
+				return -1
+			}
+			continue
+		}
 		rest := s[idx+8:]
 		colonIdx := strings.Index(rest, ":")
 		if colonIdx > 0 {

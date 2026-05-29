@@ -40,3 +40,25 @@ func TestCleanupTaskAttachments_EmptyIDDoesNotWipeAttachmentsDir(t *testing.T) {
 		t.Fatalf("attachment for other task was wiped by cleanup with empty ID: %v", err)
 	}
 }
+
+// TestCopyAttachment_EmptyIDDoesNotWriteToAttachmentsRoot guards against
+// storing a task attachment directly in the project's .attachments root when a
+// malformed task has no UUID. That root is reserved for per-task directories.
+func TestCopyAttachment_EmptyIDDoesNotWriteToAttachmentsRoot(t *testing.T) {
+	project := newTestProject(t)
+
+	srcDir := t.TempDir()
+	srcPath := filepath.Join(srcDir, "orphan.txt")
+	if err := os.WriteFile(srcPath, []byte("orphan"), 0o644); err != nil {
+		t.Fatalf("failed to create source file: %v", err)
+	}
+
+	bad := &models.Task{ID: "", Title: "Empty ID"}
+	if _, err := CopyAttachment(project, bad, srcPath); err == nil {
+		t.Fatal("expected CopyAttachment to reject an empty task ID")
+	}
+
+	if _, err := os.Stat(filepath.Join(getAttachmentsDir(project), "orphan.txt")); !os.IsNotExist(err) {
+		t.Fatalf("attachment was written to .attachments root, stat err: %v", err)
+	}
+}

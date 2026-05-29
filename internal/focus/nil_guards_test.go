@@ -219,6 +219,37 @@ func TestAllChildrenCompleteNilTask(t *testing.T) {
 	}
 }
 
+func TestComputeScoreNilChildrenCountAsLeaf(t *testing.T) {
+	now := time.Now()
+	project, err := models.NewProject(uuid.New().String(), "P", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	leaf, err := models.NewTask(uuid.New().String(), 1, models.TaskTypeTask, "Leaf")
+	if err != nil {
+		t.Fatal(err)
+	}
+	leaf.Priority = 3
+	leaf.CreatedAt = now
+	leaf.UpdatedAt = now
+
+	withNilChild, err := models.NewTask(uuid.New().String(), 2, models.TaskTypeTask, "Nil child")
+	if err != nil {
+		t.Fatal(err)
+	}
+	withNilChild.Priority = leaf.Priority
+	withNilChild.CreatedAt = leaf.CreatedAt
+	withNilChild.UpdatedAt = leaf.UpdatedAt
+	withNilChild.Children = []*models.Task{nil}
+
+	leafScore := computeCrossProjectScore(leaf, project, nil, now)
+	nilChildScore := computeCrossProjectScore(withNilChild, project, nil, now)
+	if nilChildScore != leafScore {
+		t.Errorf("task with only nil children should score as a leaf: got %d, want %d", nilChildScore, leafScore)
+	}
+}
+
 // TestGetSuggestionReasonRecentActivityWithFutureUpdate regression-guards an
 // inconsistency between computeCrossProjectScore (which boosts tasks with
 // non-positive daysSinceUpdated as "recent") and getSuggestionReason (which

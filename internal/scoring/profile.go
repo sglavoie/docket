@@ -147,7 +147,7 @@ func (p *ScoringProfile) Validate() error {
 			}
 			if d.Role == RoleDenominator {
 				hasDen = true
-				if d.Max > 0 {
+				if d.Max > 0 && (p.Formula != FormulaWSJF || d.Weight > 0) {
 					hasNonzeroDen = true
 				}
 				// RICE multiplies denominators: any dim with Max == 0 forces
@@ -164,10 +164,10 @@ func (p *ScoringProfile) Validate() error {
 		if !hasDen {
 			return fmt.Errorf("profile %q: %s formula requires at least one denominator dimension", p.ID, p.Formula)
 		}
-		// WSJF sums denominators: at least one must be able to produce > 0,
+		// WSJF sums denominators: at least one must be able to contribute > 0,
 		// otherwise the sum is always 0 and the formula returns MaxScoreSentinel.
 		if !hasNonzeroDen {
-			return fmt.Errorf("profile %q: %s requires at least one denominator dimension with max > 0", p.ID, p.Formula)
+			return fmt.Errorf("profile %q: %s requires at least one denominator dimension that can contribute > 0", p.ID, p.Formula)
 		}
 	}
 

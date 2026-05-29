@@ -345,6 +345,32 @@ func TestDispatch_SetPendingPrefixResolvesNode(t *testing.T) {
 	}
 }
 
+func TestDispatch_SetPendingPrefixSupportsMultiCharacterPrefixKeys(t *testing.T) {
+	called := false
+	km := &KeyMap{Entries: []Entry{
+		Prefix("ctrl+x", "control prefix", "cat", []Entry{
+			Bind("s", "save", "cat", noopAction(&called)),
+		}),
+	}}
+	d := NewDispatcher(km)
+
+	d.SetPendingPrefix("ctrl+x")
+	if d.PendingPrefix() != "ctrl+x" {
+		t.Fatalf("expected %q, got %q", "ctrl+x", d.PendingPrefix())
+	}
+	if d.prefixNode == nil || d.prefixNode.Key != "ctrl+x" {
+		t.Fatal("expected prefixNode with key 'ctrl+x'")
+	}
+
+	_, _, consumed := d.Dispatch(charKey('s'))
+	if !consumed {
+		t.Fatal("expected child key to be consumed")
+	}
+	if !called {
+		t.Fatal("expected action called after multi-character SetPendingPrefix")
+	}
+}
+
 // TestDispatch_SetPendingPrefixUnknownClears verifies unknown prefix clears state.
 func TestDispatch_SetPendingPrefixUnknownClears(t *testing.T) {
 	km := &KeyMap{Entries: []Entry{

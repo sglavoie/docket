@@ -1,6 +1,9 @@
 package models
 
-import "testing"
+import (
+	"testing"
+	"time"
+)
 
 func TestRelocateTaskToEndOfSection(t *testing.T) {
 	project, err := NewProject("test", "Test", "/tmp/test")
@@ -40,6 +43,38 @@ func TestRelocateTaskToEndOfSection(t *testing.T) {
 	}
 	if project.Tasks[2].ID != "3" {
 		t.Errorf("expected task3 at position 2, got %s", project.Tasks[2].ID)
+	}
+}
+
+func TestRelocateTaskToEndOfSectionTouchesMovedTask(t *testing.T) {
+	project, err := NewProject("test", "Test", "/tmp/test")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	task1, err := NewTask("1", 1, TaskTypeTask, "Task 1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	task1.Section = SectionNext
+	oldUpdatedAt := time.Date(2024, 1, 1, 12, 0, 0, 0, time.UTC)
+	task1.UpdatedAt = oldUpdatedAt
+
+	task2, err := NewTask("2", 2, TaskTypeTask, "Task 2")
+	if err != nil {
+		t.Fatal(err)
+	}
+	task2.Section = SectionNext
+
+	project.Tasks = []*Task{task1, task2}
+
+	project.RelocateTaskToEndOfSection("1", SectionNext)
+
+	if project.Tasks[1] != task1 {
+		t.Fatalf("expected task1 to move to end, got order [%s, %s]", project.Tasks[0].ID, project.Tasks[1].ID)
+	}
+	if !task1.UpdatedAt.After(oldUpdatedAt) {
+		t.Fatalf("expected moved task UpdatedAt to advance, got %v", task1.UpdatedAt)
 	}
 }
 

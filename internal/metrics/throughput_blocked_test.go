@@ -143,6 +143,31 @@ func TestBlocked(t *testing.T) {
 		}
 	})
 
+	t.Run("handles blocked activity out of order", func(t *testing.T) {
+		blockedAt := now.AddDate(0, 0, -5)
+		unblockedAt := now.AddDate(0, 0, -3)
+
+		task := makeTask(models.StatusDone, timePtr(now), []*models.ActivityEntry{
+			{Timestamp: unblockedAt, Field: "status", OldValue: "blocked", NewValue: "in_progress"},
+			{Timestamp: blockedAt, Field: "status", OldValue: "in_progress", NewValue: "blocked"},
+		})
+
+		result := computeBlocked([]*models.Task{task}, now, nil)
+
+		if result.TaskCount != 1 {
+			t.Fatalf("TaskCount = %d, want 1", result.TaskCount)
+		}
+		if result.Entries[0].BlockedPeriods != 1 {
+			t.Fatalf("BlockedPeriods = %d, want 1", result.Entries[0].BlockedPeriods)
+		}
+
+		expectedHours := 48.0
+		actualHours := result.Entries[0].TotalBlocked.Hours()
+		if actualHours < expectedHours-1 || actualHours > expectedHours+1 {
+			t.Errorf("TotalBlocked = %v hours, want ~%v hours", actualHours, expectedHours)
+		}
+	})
+
 	t.Run("pruned end transition is skipped", func(t *testing.T) {
 		blockedAt := now.AddDate(0, 0, -5)
 

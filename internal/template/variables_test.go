@@ -482,6 +482,21 @@ func TestValidateTokens_InvalidWithEmbeddedValidRejected(t *testing.T) {
 	}
 }
 
+func TestValidateTokens_StrayClosingBraceInsideTokenRejected(t *testing.T) {
+	// Regression: valid variable defaults cannot contain "}", so a token like
+	// this must fail validation instead of being left unresolved later.
+	tmpl := &TaskTemplate{
+		Description: "{{env:stag}ing}}",
+	}
+	err := ValidateTokens(tmpl)
+	if err == nil {
+		t.Fatal("expected error for token with stray closing brace, got nil")
+	}
+	if !strings.Contains(err.Error(), "invalid variable token") {
+		t.Errorf("error %q should mention invalid variable token", err.Error())
+	}
+}
+
 func TestApplyVariables_MultipleOccurrences(t *testing.T) {
 	tmpl := TaskTemplate{
 		Description: "{{x}} and {{x}} and {{x}}",

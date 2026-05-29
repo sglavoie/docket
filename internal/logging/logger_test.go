@@ -526,6 +526,47 @@ func TestInitClearsLogDirPathOnMkdirFailure(t *testing.T) {
 	}
 }
 
+func TestInitClearsLogFilePathOnUserHomeDirFailure(t *testing.T) {
+	// Regression: if UserHomeDir failed before a file was opened, Init left
+	// logFilePath stale even though no active log file existed.
+	origDir := logDirPath
+	origFile := logFile
+	origPath := logFilePath
+	origOutput := log.Writer()
+	origFlags := log.Flags()
+	origPrevOutput := previousLoggerOutput
+	origPrevFlags := previousLoggerFlags
+	origStateCaptured := loggerStateCaptured
+	defer func() {
+		logDirPath = origDir
+		logFile = origFile
+		logFilePath = origPath
+		log.SetOutput(origOutput)
+		log.SetFlags(origFlags)
+		previousLoggerOutput = origPrevOutput
+		previousLoggerFlags = origPrevFlags
+		loggerStateCaptured = origStateCaptured
+	}()
+
+	t.Setenv("HOME", "")
+
+	logDirPath = "stale-dir-before-init"
+	logFilePath = "stale-file-before-init"
+	logFile = nil
+
+	Init()
+
+	if logFile != nil {
+		t.Fatal("Init should not have set logFile when UserHomeDir failed")
+	}
+	if logDirPath != "" {
+		t.Errorf("Init should clear logDirPath on UserHomeDir failure, got %q", logDirPath)
+	}
+	if logFilePath != "" {
+		t.Errorf("Init should clear logFilePath on UserHomeDir failure, got %q", logFilePath)
+	}
+}
+
 func TestPruneOldLogsInvalidDir(t *testing.T) {
 	original := logDirPath
 	defer func() { logDirPath = original }()

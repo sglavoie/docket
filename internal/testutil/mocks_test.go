@@ -2,9 +2,11 @@ package testutil
 
 import (
 	"errors"
+	"os"
 	"testing"
 	"time"
 
+	"github.com/sglavoie/tt/internal/external"
 	"github.com/sglavoie/tt/internal/models"
 )
 
@@ -47,6 +49,46 @@ func TestMockEditorEditContentReturnsError(t *testing.T) {
 	}
 	if got != "" {
 		t.Fatalf("EditContent() = %q, want empty string on error", got)
+	}
+}
+
+func TestSetupTestDepsRegistersCleanup(t *testing.T) {
+	origSelector := external.DefaultSelector
+	origRenderer := external.DefaultRenderer
+	origEditor := external.DefaultEditor
+	t.Cleanup(func() {
+		external.DefaultSelector = origSelector
+		external.DefaultRenderer = origRenderer
+		external.DefaultEditor = origEditor
+	})
+
+	sentinelSelector := &MockSelector{}
+	sentinelRenderer := &MockRenderer{}
+	sentinelEditor := &MockEditor{}
+	external.DefaultSelector = sentinelSelector
+	external.DefaultRenderer = sentinelRenderer
+	external.DefaultEditor = sentinelEditor
+
+	var tempDir string
+	t.Run("caller does not manually clean up", func(t *testing.T) {
+		deps := SetupTestDeps(t)
+		tempDir = deps.Config.DataDir
+
+		if external.DefaultSelector != deps.Selector {
+			t.Fatal("SetupTestDeps() did not install mock selector")
+		}
+		if _, err := os.Stat(tempDir); err != nil {
+			t.Fatalf("temp dir was not created: %v", err)
+		}
+	})
+
+	if external.DefaultSelector != sentinelSelector ||
+		external.DefaultRenderer != sentinelRenderer ||
+		external.DefaultEditor != sentinelEditor {
+		t.Fatal("SetupTestDeps() did not restore external defaults through t.Cleanup")
+	}
+	if _, err := os.Stat(tempDir); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("temp dir still exists after t.Cleanup; stat error = %v", err)
 	}
 }
 

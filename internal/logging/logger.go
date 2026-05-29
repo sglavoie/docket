@@ -30,6 +30,7 @@ func Init() {
 		closeLocked()
 	}
 	logDirPath = ""
+	logFilePath = ""
 
 	home, err := os.UserHomeDir()
 	if err != nil {

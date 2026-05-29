@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/sglavoie/tt/internal/models"
@@ -46,6 +47,12 @@ func TestRunAttachmentRemove(t *testing.T) {
 		err := runAttachmentRemove(attachmentRemoveCmd, []string{taskID, "0"})
 		if err == nil {
 			t.Error("expected error for task with no attachments")
+		}
+		if !strings.Contains(err.Error(), "tt attachments") {
+			t.Fatalf("expected error to mention valid attachments command, got %q", err.Error())
+		}
+		if strings.Contains(err.Error(), "tt attachment list") {
+			t.Fatalf("expected error not to mention missing attachment list command, got %q", err.Error())
 		}
 	})
 

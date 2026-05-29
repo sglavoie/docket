@@ -189,6 +189,13 @@ func (c *Config) GetShowInfoPanel() bool {
 // SetShowInfoPanel sets whether to show the info panel section on dashboard.
 func (c *Config) SetShowInfoPanel(show bool) {
 	c.ShowInfoPanel = &show
+	if show {
+		mode := int(InfoPanelInfoCards)
+		c.InfoPanelMode = &mode
+		return
+	}
+	mode := int(InfoPanelOff)
+	c.InfoPanelMode = &mode
 }
 
 // DashboardBottomLayout selects how the dashboard splits its project list and
