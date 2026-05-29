@@ -219,6 +219,55 @@ func TestApplyAction_SetRecurrenceWeekdayOrderNoOp(t *testing.T) {
 	}
 }
 
+// TestHierarchicalDependencyTriggersBuildTaskMapFromAllTasks verifies that
+// dependency-based triggers still work when a caller provides AllTasks but does
+// not precompute TaskMap. The context already has enough data to resolve
+// blockers, so treating a nil TaskMap as "no blockers" misses real matches.
+func TestHierarchicalDependencyTriggersBuildTaskMapFromAllTasks(t *testing.T) {
+	blocker := &models.Task{ID: "blocker", Status: models.StatusTodo}
+	blocked := &models.Task{
+		ID:        "blocked",
+		Status:    models.StatusTodo,
+		DependsOn: []string{blocker.ID},
+	}
+
+	evalCtx := &EvaluationContext{
+		Changes:  []TaskChangeContext{{Task: blocked}},
+		AllTasks: []*models.Task{blocker, blocked},
+	}
+	rules := []WorkflowRule{
+		{
+			ID:      "mark-blocked",
+			Name:    "Mark blocked",
+			Enabled: true,
+			Trigger: RuleTrigger{Field: FieldIsBlocked, Operation: OpEquals, Value: "true"},
+			Actions: []RuleAction{{ActionType: ActionSetStatus, Value: string(models.StatusBlocked)}},
+		},
+	}
+
+	EvaluateRulesWithContext(evalCtx, rules)
+
+	if blocked.Status != models.StatusBlocked {
+		t.Fatalf("expected dependency trigger to mark task blocked, got %q", blocked.Status)
+	}
+}
+
+func TestHierarchicalBlockerCountBuildsTaskMapFromAllTasks(t *testing.T) {
+	blocker := &models.Task{ID: "blocker", Status: models.StatusTodo}
+	blocked := &models.Task{ID: "blocked", DependsOn: []string{blocker.ID}}
+	evalCtx := &EvaluationContext{AllTasks: []*models.Task{blocker, blocked}}
+
+	matched := matchesHierarchicalTrigger(
+		blocked,
+		RuleTrigger{Field: FieldBlockerCount, Operation: OpEquals, Value: "1"},
+		evalCtx,
+	)
+
+	if !matched {
+		t.Fatal("expected blocker_count to resolve blockers from AllTasks when TaskMap is nil")
+	}
+}
+
 // TestApplyAction_MoveToProjectSelfMoveNoOp verifies that ActionMoveToProject
 // is a no-op when the destination matches the source project (by name or ID).
 // Without this guard, a rule that moves a task to its own project would inflate

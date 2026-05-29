@@ -594,3 +594,116 @@ func TestRecurClearNoOpHonorsQuiet(t *testing.T) {
 		t.Errorf("--quiet should produce no stdout output, got: %q", output)
 	}
 }
+
+func TestRecurShowHonorsQuiet(t *testing.T) {
+	deps, project := testutil.SetupTestDepsWithProject(t, "Test Project")
+	defer deps.Cleanup()
+
+	viper.Set("config", deps.ConfigPath)
+	defer viper.Set("config", "")
+
+	manager := config.NewManager(deps.ConfigPath)
+	if err := manager.Save(deps.Config); err != nil {
+		t.Fatal(err)
+	}
+
+	oldRepo := storage.DefaultRepository
+	storage.DefaultRepository = deps.Repository
+	defer func() { storage.DefaultRepository = oldRepo }()
+
+	task := project.Tasks[0]
+	if task.Recurrence != nil {
+		t.Fatal("test task should not have recurrence")
+	}
+
+	cmd := &cobra.Command{}
+	cmd.Flags().BoolVar(&taskRecurClear, "clear", false, "")
+	cmd.Flags().BoolVar(&taskRecurSkip, "skip", false, "")
+	cmd.Flags().IntVar(&taskRecurDefer, "defer", 0, "")
+	cmd.Flags().StringVar(&taskRecurFrom, "from", "", "")
+	addOutputFlags(cmd)
+
+	taskRecurClear = false
+	taskRecurSkip = false
+	taskRecurDefer = 0
+	taskRecurFrom = ""
+
+	if err := cmd.Flags().Set("quiet", "true"); err != nil {
+		t.Fatal(err)
+	}
+
+	oldStdout := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+
+	err := runTaskRecur(cmd, []string{task.ID})
+
+	_ = w.Close()
+	os.Stdout = oldStdout
+	var buf bytes.Buffer
+	_, _ = io.Copy(&buf, r)
+
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if output := buf.String(); output != "" {
+		t.Errorf("--quiet should produce no stdout output, got: %q", output)
+	}
+}
+
+func TestRecurShowHonorsJSON(t *testing.T) {
+	deps, project := testutil.SetupTestDepsWithProject(t, "Test Project")
+	defer deps.Cleanup()
+
+	viper.Set("config", deps.ConfigPath)
+	defer viper.Set("config", "")
+
+	manager := config.NewManager(deps.ConfigPath)
+	if err := manager.Save(deps.Config); err != nil {
+		t.Fatal(err)
+	}
+
+	oldRepo := storage.DefaultRepository
+	storage.DefaultRepository = deps.Repository
+	defer func() { storage.DefaultRepository = oldRepo }()
+
+	task := project.Tasks[0]
+
+	cmd := &cobra.Command{}
+	cmd.Flags().BoolVar(&taskRecurClear, "clear", false, "")
+	cmd.Flags().BoolVar(&taskRecurSkip, "skip", false, "")
+	cmd.Flags().IntVar(&taskRecurDefer, "defer", 0, "")
+	cmd.Flags().StringVar(&taskRecurFrom, "from", "", "")
+	addOutputFlags(cmd)
+
+	taskRecurClear = false
+	taskRecurSkip = false
+	taskRecurDefer = 0
+	taskRecurFrom = ""
+
+	if err := cmd.Flags().Set("json", "true"); err != nil {
+		t.Fatal(err)
+	}
+
+	oldStdout := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+
+	err := runTaskRecur(cmd, []string{task.ID})
+
+	_ = w.Close()
+	os.Stdout = oldStdout
+	var buf bytes.Buffer
+	_, _ = io.Copy(&buf, r)
+
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	output := buf.String()
+	if !strings.Contains(output, `"id":`) {
+		t.Errorf("--json should output task JSON, got: %q", output)
+	}
+	if strings.Contains(output, "has no recurrence pattern") {
+		t.Errorf("--json should not output human recurrence text, got: %q", output)
+	}
+}

@@ -112,6 +112,32 @@ func TestParseMonthDay_LeapDayInCurrentLeapYear(t *testing.T) {
 	}
 }
 
+// TestParseMonthDay_TodayStaysInCurrentYear verifies that a natural month/day
+// date equal to today is accepted as today. The documented rule is to advance
+// only when the date is already in the past.
+func TestParseMonthDay_TodayStaysInCurrentYear(t *testing.T) {
+	base := time.Date(2026, 5, 29, 0, 0, 0, 0, time.UTC)
+	got, err := parseMonthDay("may", "29", base)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !got.Equal(base) {
+		t.Errorf("parseMonthDay(may, 29, 2026-05-29) = %s, want %s", got.Format("2006-01-02"), base.Format("2006-01-02"))
+	}
+}
+
+func TestParseMonthDay_TodayWithTimeStaysInCurrentYear(t *testing.T) {
+	base := time.Date(2026, 5, 29, 15, 30, 0, 0, time.UTC)
+	got, err := parseMonthDay("may", "29", base)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	want := time.Date(2026, 5, 29, 0, 0, 0, 0, time.UTC)
+	if !got.Equal(want) {
+		t.Errorf("parseMonthDay(may, 29, 2026-05-29T15:30) = %s, want %s", got.Format("2006-01-02"), want.Format("2006-01-02"))
+	}
+}
+
 // TestParseMonthDay_InvalidLeapDay verifies that "feb 30" remains an error.
 func TestParseMonthDay_InvalidLeapDay(t *testing.T) {
 	base := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)

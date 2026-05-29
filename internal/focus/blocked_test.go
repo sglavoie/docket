@@ -114,3 +114,31 @@ func TestCollectActionableTasks_CrossProjectDependencies(t *testing.T) {
 		t.Fatal("task with unresolved cross-project dependency should not be actionable")
 	}
 }
+
+func TestCollectActionableTasks_MissingLocalDependencyBlocksTask(t *testing.T) {
+	proj, err := models.NewProject(uuid.New().String(), "P", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	blockedByMissing, err := models.NewTask(uuid.New().String(), 1, models.TaskTypeTask, "Blocked by missing")
+	if err != nil {
+		t.Fatal(err)
+	}
+	blockedByMissing.DependsOn = []string{"missing"}
+
+	actionable, err := models.NewTask(uuid.New().String(), 2, models.TaskTypeTask, "Actionable")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	proj.Tasks = []*models.Task{blockedByMissing, actionable}
+
+	out := CollectActionableTasks([]*models.Project{proj})
+	if len(out) != 1 {
+		t.Fatalf("expected 1 actionable task, got %d: %+v", len(out), out)
+	}
+	if out[0].Task.ID != actionable.ID {
+		t.Fatalf("expected task without missing dependency, got %q", out[0].Task.Title)
+	}
+}

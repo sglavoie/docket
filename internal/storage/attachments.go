@@ -115,6 +115,9 @@ func CopyAttachment(project *models.Project, task *models.Task, sourcePath strin
 // RemoveAttachmentFile removes an attachment file from disk.
 // This does not modify the task's Attachments slice.
 func RemoveAttachmentFile(project *models.Project, task *models.Task, filename string) error {
+	if err := validateAttachmentTask(task); err != nil {
+		return err
+	}
 	if err := validateAttachmentFilename(filename); err != nil {
 		return err
 	}
@@ -174,6 +177,9 @@ func CleanupTaskAttachments(project *models.Project, task *models.Task) error {
 
 // AttachmentExists checks if an attachment file exists on disk.
 func AttachmentExists(project *models.Project, task *models.Task, filename string) bool {
+	if err := validateAttachmentTask(task); err != nil {
+		return false
+	}
 	if err := validateAttachmentFilename(filename); err != nil {
 		return false
 	}
@@ -185,6 +191,12 @@ func AttachmentExists(project *models.Project, task *models.Task, filename strin
 // GetAttachmentSize returns the size of an attachment file in bytes.
 // Returns 0 if the file doesn't exist or is a URL.
 func GetAttachmentSize(project *models.Project, task *models.Task, attachment *models.Attachment) int64 {
+	if err := validateAttachmentTask(task); err != nil {
+		return 0
+	}
+	if attachment == nil {
+		return 0
+	}
 	if attachment.IsURL {
 		return 0
 	}

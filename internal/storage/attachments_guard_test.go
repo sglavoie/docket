@@ -62,3 +62,51 @@ func TestCopyAttachment_EmptyIDDoesNotWriteToAttachmentsRoot(t *testing.T) {
 		t.Fatalf("attachment was written to .attachments root, stat err: %v", err)
 	}
 }
+
+func TestAttachmentHelpersRejectEmptyTaskID(t *testing.T) {
+	project := newTestProject(t)
+	good := &models.Task{ID: "real-task-id", Title: "Real"}
+
+	srcDir := t.TempDir()
+	srcPath := filepath.Join(srcDir, "keep.txt")
+	if err := os.WriteFile(srcPath, []byte("keep me"), 0o644); err != nil {
+		t.Fatalf("failed to create source file: %v", err)
+	}
+	if _, err := CopyAttachment(project, good, srcPath); err != nil {
+		t.Fatalf("CopyAttachment failed: %v", err)
+	}
+
+	bad := &models.Task{ID: "", Title: "Empty ID"}
+	if err := RemoveAttachmentFile(project, bad, "keep.txt"); err == nil {
+		t.Fatal("expected RemoveAttachmentFile to reject an empty task ID")
+	}
+	if AttachmentExists(project, bad, "keep.txt") {
+		t.Fatal("AttachmentExists should return false for an empty task ID")
+	}
+	if size := GetAttachmentSize(project, bad, &models.Attachment{Filename: "keep.txt"}); size != 0 {
+		t.Fatalf("GetAttachmentSize with empty task ID = %d, want 0", size)
+	}
+
+	if !AttachmentExists(project, good, "keep.txt") {
+		t.Fatal("attachment for valid task should remain untouched")
+	}
+}
+
+func TestAttachmentHelpersHandleNilInputs(t *testing.T) {
+	project := newTestProject(t)
+
+	if err := RemoveAttachmentFile(project, nil, "keep.txt"); err == nil {
+		t.Fatal("expected RemoveAttachmentFile to reject a nil task")
+	}
+	if AttachmentExists(project, nil, "keep.txt") {
+		t.Fatal("AttachmentExists should return false for a nil task")
+	}
+	if size := GetAttachmentSize(project, nil, &models.Attachment{Filename: "keep.txt"}); size != 0 {
+		t.Fatalf("GetAttachmentSize with nil task = %d, want 0", size)
+	}
+
+	task := &models.Task{ID: "real-task-id", Title: "Real"}
+	if size := GetAttachmentSize(project, task, nil); size != 0 {
+		t.Fatalf("GetAttachmentSize with nil attachment = %d, want 0", size)
+	}
+}

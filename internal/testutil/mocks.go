@@ -148,6 +148,7 @@ func (m *MockEditor) EditContent(content string, extension string) (string, erro
 // MockRepository implements storage.ProjectRepository for testing.
 type MockRepository struct {
 	Projects    map[string]*models.Project
+	Backups     map[string]*models.Project
 	LastSaved   *models.Project // Most recently saved project copy for assertions
 	LoadError   error
 	SaveError   error
@@ -157,6 +158,7 @@ type MockRepository struct {
 func NewMockRepository() *MockRepository {
 	return &MockRepository{
 		Projects: make(map[string]*models.Project),
+		Backups:  make(map[string]*models.Project),
 	}
 }
 
@@ -372,10 +374,47 @@ func clonePointerSlice[T any](values []*T) []*T {
 }
 
 func (m *MockRepository) Backup(project *models.Project) error {
-	return m.BackupError
+	if m.BackupError != nil {
+		return m.BackupError
+	}
+	if project == nil {
+		return nil
+	}
+	if m.Backups == nil {
+		m.Backups = make(map[string]*models.Project)
+	}
+	if stored, ok := m.Projects[project.ID]; ok {
+		m.Backups[project.ID] = cloneProject(stored)
+		return nil
+	}
+	m.Backups[project.ID] = cloneProject(project)
+	return nil
 }
 
 func (m *MockRepository) RestoreFromBackup(project *models.Project) error {
+	if project == nil {
+		return fmt.Errorf("backup not found")
+	}
+	backup, ok := m.Backups[project.ID]
+	if !ok {
+		return fmt.Errorf("backup not found")
+	}
+
+	current := cloneProject(project)
+	if stored, ok := m.Projects[project.ID]; ok {
+		current = cloneProject(stored)
+	}
+
+	restored := cloneProject(backup)
+	m.Projects[project.ID] = cloneProject(restored)
+	m.Backups[project.ID] = current
+
+	project.NextShortID = restored.NextShortID
+	project.Sections = restored.Sections
+	project.SectionColors = restored.SectionColors
+	project.Tasks = restored.Tasks
+	project.Warnings = restored.Warnings
+	assignProjectPointers(project)
 	return nil
 }
 
@@ -403,7 +442,11 @@ func (m *MockRepository) DeleteDir(projectPath string) error {
 }
 
 func (m *MockRepository) BackupExists(project *models.Project) bool {
-	return false
+	if project == nil {
+		return false
+	}
+	_, ok := m.Backups[project.ID]
+	return ok
 }
 
 // Ensure mocks implement their interfaces.

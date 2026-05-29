@@ -127,6 +127,9 @@ func (m *Manager) Load() (*Config, error) { //nolint:gocyclo
 		}
 		config = recovered
 	}
+	if config.Version > CurrentConfigVersion {
+		return nil, fmt.Errorf("config version %d not supported, please upgrade tt", config.Version)
+	}
 
 	// Ensure defaults for missing fields
 	if config.DataDir == "" {
@@ -409,9 +412,6 @@ func (m *Manager) Load() (*Config, error) { //nolint:gocyclo
 		if err := m.Save(&config); err != nil {
 			return nil, fmt.Errorf("failed to save config after v1→v2 version bump: %w", err)
 		}
-	}
-	if config.Version > CurrentConfigVersion {
-		return nil, fmt.Errorf("config version %d not supported, please upgrade tt", config.Version)
 	}
 
 	return &config, nil

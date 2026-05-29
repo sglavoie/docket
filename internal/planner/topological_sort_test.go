@@ -224,3 +224,31 @@ func TestTopologicalSortSkipsNilAndEmptyID(t *testing.T) {
 		t.Errorf("expected a before b")
 	}
 }
+
+func TestTopologicalSortKeepsDuplicateIDsAcrossProjects(t *testing.T) {
+	pA := makeProject("proj-a", "alpha")
+	pB := makeProject("proj-b", "beta")
+
+	sharedA := newTask("shared")
+	sharedA.Project = pA
+	sharedB := newTask("shared")
+	sharedB.Project = pB
+	dependentB := withDep(newTask("dependent"), "shared")
+	dependentB.Project = pB
+
+	order, err := TopologicalSort([]*models.Task{dependentB, sharedA, sharedB})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(order) != 3 {
+		t.Fatalf("expected all 3 tasks to remain distinct, got %d: %v", len(order), taskIDs(order))
+	}
+
+	pos := taskPointerPositions(order)
+	if pos[sharedB] >= pos[dependentB] {
+		t.Errorf("same-project dependency should bind beta:shared before beta:dependent, got %v", taskIDs(order))
+	}
+	if _, ok := pos[sharedA]; !ok {
+		t.Error("expected alpha:shared to remain in the graph")
+	}
+}

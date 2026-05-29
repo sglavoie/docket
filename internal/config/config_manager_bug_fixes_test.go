@@ -337,6 +337,48 @@ func TestConfigManager_LoadKeepsLegacyCurrentProjectSlug(t *testing.T) {
 	}
 }
 
+func TestConfigManager_LoadRejectsFutureVersionBeforeSaving(t *testing.T) {
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, "test-config.json")
+
+	data, err := json.MarshalIndent(map[string]any{
+		"version":     CurrentConfigVersion + 1,
+		"data_dir":    "/tmp/tt-test",
+		"projects":    []any{},
+		"saved_views": []any{map[string]any{"name": "legacy"}},
+		"palette": map[string]any{
+			"primary": "blue",
+		},
+	}, "", "  ")
+	if err != nil {
+		t.Fatal(err)
+	}
+	data = append(data, '\n')
+	if err := os.WriteFile(configPath, data, 0644); err != nil {
+		t.Fatalf("failed to write test config: %v", err)
+	}
+
+	manager := NewManager(configPath)
+	_, err = manager.Load()
+	if err == nil {
+		t.Fatal("expected unsupported future config version error")
+	}
+	if !contains(err.Error(), "not supported") {
+		t.Fatalf("error %q should mention unsupported version", err)
+	}
+
+	after, err := os.ReadFile(configPath)
+	if err != nil {
+		t.Fatalf("failed to reread config: %v", err)
+	}
+	if string(after) != string(data) {
+		t.Fatal("future-version config should not be migrated or rewritten")
+	}
+	if _, err := os.Stat(manager.GetBackupPath()); !os.IsNotExist(err) {
+		t.Fatalf("future-version load should not create a backup, stat err = %v", err)
+	}
+}
+
 // TestMigrateLegacyFilters_AssignsIDForEmptySmartList guarantees that a
 // legacy smart list with a missing/empty ID receives a fresh UUID during
 // migration. Without this, multiple legacy entries without IDs would

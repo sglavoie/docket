@@ -3,6 +3,9 @@ package tui
 import (
 	"testing"
 	"time"
+
+	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/planner"
 )
 
 // TestRoadmapDateToCol verifies bar column position math.
@@ -112,5 +115,57 @@ func TestRoadmapCollapse(t *testing.T) {
 	m.collapsed[taskID] = true
 	if !m.collapsed[taskID] {
 		t.Error("task should be collapsed after setting")
+	}
+}
+
+func TestRoadmapSelectedRowIgnoresNegativeCursor(t *testing.T) {
+	task := &models.Task{ID: "task-1", Title: "Task 1"}
+	project := &models.Project{ID: "project-1", Name: "Project 1"}
+
+	tests := []struct {
+		name string
+		tab  RoadmapTab
+	}{
+		{name: "timeline", tab: RoadmapTabTimeline},
+		{name: "forecasts", tab: RoadmapTabForecasts},
+		{name: "critical path", tab: RoadmapTabCriticalPath},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			m := &RoadmapModel{
+				activeTab: tc.tab,
+				cursor:    -1,
+				rows: []TimelineRow{{
+					Task:    task,
+					Project: project,
+				}},
+				criticalPath: &planner.CriticalPathResult{
+					Path: []*models.Task{task},
+				},
+			}
+
+			gotTask, gotProject := m.selectedRow()
+			if gotTask != nil || gotProject != nil {
+				t.Fatalf("selectedRow() = (%v, %v), want nil row for negative cursor", gotTask, gotProject)
+			}
+		})
+	}
+}
+
+func TestRoadmapToggleTimelineRowCollapsedIgnoresNegativeCursor(t *testing.T) {
+	task := &models.Task{ID: "task-1", Title: "Task 1"}
+	m := &RoadmapModel{
+		activeTab:  RoadmapTabTimeline,
+		cursor:     -1,
+		collapsed:  make(map[string]bool),
+		rows:       []TimelineRow{{Task: task}},
+		labelWidth: 30,
+	}
+
+	m.toggleTimelineRowCollapsed()
+
+	if m.collapsed[task.ID] {
+		t.Fatal("negative cursor should not toggle a row")
 	}
 }

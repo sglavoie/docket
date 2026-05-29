@@ -65,6 +65,22 @@ func scheduleByID(sched []ScheduledTask) map[string]ScheduledTask {
 	return m
 }
 
+func scheduleByTask(sched []ScheduledTask) map[*models.Task]ScheduledTask {
+	m := make(map[*models.Task]ScheduledTask, len(sched))
+	for _, s := range sched {
+		m[s.Task] = s
+	}
+	return m
+}
+
+func taskPointerPositions(order []*models.Task) map[*models.Task]int {
+	pos := make(map[*models.Task]int, len(order))
+	for i, t := range order {
+		pos[t] = i
+	}
+	return pos
+}
+
 // abs returns the absolute value of x.
 func abs(x float64) float64 {
 	if x < 0 {

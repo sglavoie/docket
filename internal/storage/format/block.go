@@ -27,7 +27,7 @@ func ExtractBlock(description string, startRe, endRe *regexp.Regexp) (blockLines
 			continue
 		}
 
-		if endRe.MatchString(trimmed) {
+		if inBlock && endRe.MatchString(trimmed) {
 			inBlock = false
 			continue
 		}

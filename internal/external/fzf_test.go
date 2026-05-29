@@ -4,7 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"os/exec"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"testing"
@@ -62,6 +64,36 @@ func TestClassifyFzfRunError_FzfCancelExit130(t *testing.T) {
 func TestClassifyFzfRunError_NilPassthrough(t *testing.T) {
 	if got := classifyFzfRunError(context.Background(), nil); got != nil {
 		t.Errorf("expected nil for nil err, got %v", got)
+	}
+}
+
+func TestFzfSelectTask_UsesCachedAbsolutePath(t *testing.T) {
+	dir := t.TempDir()
+	fakeFzf := filepath.Join(dir, "fzf")
+	script := "#!/bin/sh\nprintf '#2\\tbug\\tdone\\tSecond task\\n'\n"
+	if err := os.WriteFile(fakeFzf, []byte(script), 0o755); err != nil {
+		t.Fatalf("write fake fzf: %v", err)
+	}
+
+	origPath := os.Getenv("PATH")
+	t.Cleanup(func() { _ = os.Setenv("PATH", origPath) })
+	if err := os.Setenv("PATH", ""); err != nil {
+		t.Fatalf("setenv PATH: %v", err)
+	}
+
+	fzfCache = cachedPath{path: fakeFzf, checkedAt: time.Now()}
+	t.Cleanup(func() { fzfCache = cachedPath{} })
+
+	tasks := []*models.Task{
+		{ShortID: 1, Type: models.TaskTypeTask, Status: models.StatusTodo, Title: "First task"},
+		{ShortID: 2, Type: models.TaskTypeBug, Status: models.StatusDone, Title: "Second task"},
+	}
+	selected, err := FzfSelectTask(tasks, "pick", "")
+	if err != nil {
+		t.Fatalf("FzfSelectTask returned error: %v", err)
+	}
+	if selected != tasks[1] {
+		t.Fatalf("expected second task from fake cached fzf path, got %#v", selected)
 	}
 }
 

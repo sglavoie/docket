@@ -123,6 +123,20 @@ Comment with &lt;!-- and --&gt; markers
 	}
 }
 
+func TestExtractCommentsFromDescription_UnmatchedEndMarkerPreserved(t *testing.T) {
+	description := "Keep this\n<!-- /COMMENTS -->\nStill here"
+	task := &models.Task{Description: description}
+
+	ExtractCommentsFromDescription(task)
+
+	if task.Description != description {
+		t.Errorf("Description = %q, want %q", task.Description, description)
+	}
+	if len(task.Comments) != 0 {
+		t.Errorf("got %d comments, want 0", len(task.Comments))
+	}
+}
+
 func TestExtractCommentsFromDescription_Resolved(t *testing.T) {
 	t.Run("parses resolved comment header", func(t *testing.T) {
 		description := `Task description

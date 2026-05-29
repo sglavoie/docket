@@ -20,12 +20,17 @@ func ClaudeAvailable() bool {
 
 // ClaudeAsk runs a query against the claude CLI and returns the full response.
 func ClaudeAsk(ctx context.Context, query, systemPrompt string) (string, error) {
+	claudePath, pathErr := CachedClaudePath()
+	if pathErr != nil {
+		return "", fmt.Errorf("claude not found in PATH: %w", pathErr)
+	}
+
 	args := []string{"--print", "-p", query}
 	if systemPrompt != "" {
 		args = append(args, "--system-prompt", systemPrompt)
 	}
 
-	cmd := exec.CommandContext(ctx, "claude", args...)
+	cmd := exec.CommandContext(ctx, claudePath, args...)
 	out, err := cmd.Output()
 	if err != nil {
 		// Prefer the context error when the parent canceled or the deadline
@@ -45,12 +50,17 @@ func ClaudeAsk(ctx context.Context, query, systemPrompt string) (string, error) 
 
 // ClaudeAskStreaming starts a claude subprocess and returns its stdout for streaming.
 func ClaudeAskStreaming(ctx context.Context, query, systemPrompt string) (io.ReadCloser, *exec.Cmd, error) {
+	claudePath, pathErr := CachedClaudePath()
+	if pathErr != nil {
+		return nil, nil, fmt.Errorf("claude not found in PATH: %w", pathErr)
+	}
+
 	args := []string{"--print", "-p", query}
 	if systemPrompt != "" {
 		args = append(args, "--system-prompt", systemPrompt)
 	}
 
-	cmd := exec.CommandContext(ctx, "claude", args...)
+	cmd := exec.CommandContext(ctx, claudePath, args...)
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to create stdout pipe: %w", err)

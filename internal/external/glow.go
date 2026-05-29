@@ -34,7 +34,8 @@ func GlowAvailable() bool {
 // RenderMarkdown renders markdown content using glow.
 // Falls back to plain text output if glow fails or is unavailable.
 func RenderMarkdown(content string) error {
-	if !GlowAvailable() {
+	glowPath, err := CachedGlowPath()
+	if err != nil {
 		logging.Warn("glow not available — showing plain text")
 		fmt.Println("(glow not available — showing plain text)\n\n" + content)
 		return nil
@@ -43,7 +44,7 @@ func RenderMarkdown(content string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), glowTimeout())
 	defer cancel()
 
-	cmd := exec.CommandContext(ctx, "glow", "-")
+	cmd := exec.CommandContext(ctx, glowPath, "-")
 	cmd.Stdin = strings.NewReader(content)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
@@ -62,7 +63,8 @@ func RenderMarkdown(content string) error {
 // RenderFile renders a markdown file using glow.
 // Falls back to printing the file content if glow fails or is unavailable.
 func RenderFile(path string) error {
-	if !GlowAvailable() {
+	glowPath, err := CachedGlowPath()
+	if err != nil {
 		content, err := os.ReadFile(path)
 		if err != nil {
 			return err
@@ -75,7 +77,7 @@ func RenderFile(path string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), glowTimeout())
 	defer cancel()
 
-	cmd := exec.CommandContext(ctx, "glow", "--", path)
+	cmd := exec.CommandContext(ctx, glowPath, "--", path)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 
@@ -211,7 +213,8 @@ func FormatTaskAsMarkdown(task *models.Task) string {
 // Unlike RenderMarkdown, this is interactive — the pager waits for user input
 // so we deliberately use no deadline; the user controls how long to read.
 func PageMarkdown(content string) error {
-	if !GlowAvailable() {
+	glowPath, err := CachedGlowPath()
+	if err != nil {
 		logging.Warn("glow not available — showing plain text")
 		fmt.Println("(glow not available — showing plain text)\n\n" + content)
 		return nil
@@ -229,7 +232,7 @@ func PageMarkdown(content string) error {
 	}
 	defer func() { _ = os.Remove(tmpPath) }()
 
-	cmd := exec.Command("glow", "-p", "--", tmpPath)
+	cmd := exec.Command(glowPath, "-p", "--", tmpPath)
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr

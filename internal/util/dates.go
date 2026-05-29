@@ -369,13 +369,14 @@ func parseMonthDay(monthStr, dayStr string, today time.Time) (time.Time, error) 
 	if day < 1 || day > maxDayInMonth(month) {
 		return time.Time{}, fmt.Errorf("invalid date: %s %d", monthStr, day)
 	}
-	year := today.Year()
-	candidate := time.Date(year, month, day, 0, 0, 0, 0, today.Location())
+	todayStart := StartOfDay(today)
+	year := todayStart.Year()
+	candidate := time.Date(year, month, day, 0, 0, 0, 0, todayStart.Location())
 	// Advance the year until time.Date no longer normalises (i.e. the day
-	// actually exists) AND the result is strictly after today.
-	for candidate.Month() != month || candidate.Day() != day || !candidate.After(today) {
+	// actually exists) and the result is not in the past.
+	for candidate.Month() != month || candidate.Day() != day || candidate.Before(todayStart) {
 		year++
-		candidate = time.Date(year, month, day, 0, 0, 0, 0, today.Location())
+		candidate = time.Date(year, month, day, 0, 0, 0, 0, todayStart.Location())
 	}
 	return candidate, nil
 }

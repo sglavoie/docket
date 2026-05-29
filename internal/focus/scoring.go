@@ -292,7 +292,7 @@ func hasIncompleteDependencies(task *models.Task, project *models.Project, proje
 			continue
 		}
 		dep := getTaskByID(project, depID)
-		if dep != nil && !dep.IsComplete() {
+		if dep == nil || !dep.IsComplete() {
 			return true
 		}
 	}

@@ -221,6 +221,12 @@ func runTaskRecur(cmd *cobra.Command, args []string) error { //nolint:gocyclo
 		if cmd.Flags().Changed("from") && task.Recurrence == nil {
 			return fmt.Errorf("task #%d has no recurrence pattern; set one first with: tt task recur %d <pattern>", task.ShortID, task.ShortID)
 		}
+		if out.JSON {
+			return outputSingleTaskJSON(task)
+		}
+		if out.Quiet {
+			return nil
+		}
 		if task.Recurrence != nil {
 			fmt.Printf("Task #%d recurs %s\n", task.ShortID, task.Recurrence.String())
 			if task.Recurrence.Streak > 0 || task.Recurrence.MaxStreak > 0 {

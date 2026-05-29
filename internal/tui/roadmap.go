@@ -378,7 +378,7 @@ func (m *RoadmapModel) pageRoadmapCursor(direction int) {
 }
 
 func (m *RoadmapModel) toggleTimelineRowCollapsed() {
-	if m.activeTab != RoadmapTabTimeline || m.cursor >= len(m.rows) {
+	if m.activeTab != RoadmapTabTimeline || m.cursor < 0 || m.cursor >= len(m.rows) {
 		return
 	}
 	row := m.rows[m.cursor]
@@ -439,7 +439,7 @@ func (m *RoadmapModel) forecastRows() []TimelineRow {
 func (m *RoadmapModel) selectedRow() (*models.Task, *models.Project) {
 	switch m.activeTab {
 	case RoadmapTabCriticalPath:
-		if m.criticalPath != nil && m.cursor < len(m.criticalPath.Path) {
+		if m.criticalPath != nil && m.cursor >= 0 && m.cursor < len(m.criticalPath.Path) {
 			task := m.criticalPath.Path[m.cursor]
 			for _, r := range m.rows {
 				if r.Task != nil && r.Task.ID == task.ID {
@@ -450,11 +450,11 @@ func (m *RoadmapModel) selectedRow() (*models.Task, *models.Project) {
 		}
 	case RoadmapTabForecasts:
 		fRows := m.forecastRows()
-		if m.cursor < len(fRows) {
+		if m.cursor >= 0 && m.cursor < len(fRows) {
 			return fRows[m.cursor].Task, fRows[m.cursor].Project
 		}
 	default:
-		if m.cursor < len(m.rows) {
+		if m.cursor >= 0 && m.cursor < len(m.rows) {
 			return m.rows[m.cursor].Task, m.rows[m.cursor].Project
 		}
 	}

@@ -66,7 +66,8 @@ func FzfAvailable() bool {
 
 // FzfSelectProject uses fzf to select a project from the list.
 func FzfSelectProject(projects []*models.Project, prompt string) (*models.Project, error) {
-	if _, err := CachedFzfPath(); err != nil {
+	fzfPath, err := CachedFzfPath()
+	if err != nil {
 		return nil, fmt.Errorf("fzf not found — install fzf (https://github.com/junegunn/fzf) or use the --id flag to specify items directly")
 	}
 	if len(projects) == 0 {
@@ -96,7 +97,7 @@ func FzfSelectProject(projects []*models.Project, prompt string) (*models.Projec
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(fzfTimeoutSeconds)*time.Second)
 	defer cancel()
 
-	cmd := exec.CommandContext(ctx, "fzf",
+	cmd := exec.CommandContext(ctx, fzfPath,
 		"--prompt", prompt+" ",
 		"--height", "40%",
 		"--reverse",
@@ -133,7 +134,8 @@ func FzfSelectProject(projects []*models.Project, prompt string) (*models.Projec
 
 // FzfSelectTask uses fzf to select a task from the list.
 func FzfSelectTask(tasks []*models.Task, prompt string, previewCmd string) (*models.Task, error) {
-	if _, err := CachedFzfPath(); err != nil {
+	fzfPath, err := CachedFzfPath()
+	if err != nil {
 		return nil, fmt.Errorf("fzf not found — install fzf (https://github.com/junegunn/fzf) or use the --id flag to specify items directly")
 	}
 	if len(tasks) == 0 {
@@ -175,7 +177,7 @@ func FzfSelectTask(tasks []*models.Task, prompt string, previewCmd string) (*mod
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(fzfTimeoutSeconds)*time.Second)
 	defer cancel()
 
-	cmd := exec.CommandContext(ctx, "fzf", args...)
+	cmd := exec.CommandContext(ctx, fzfPath, args...)
 	cmd.Stdin = strings.NewReader(input)
 	cmd.Stderr = os.Stderr
 
@@ -210,7 +212,8 @@ func FzfSelectTask(tasks []*models.Task, prompt string, previewCmd string) (*mod
 
 // FzfMultiSelectProjects uses fzf to select multiple projects from the list.
 func FzfMultiSelectProjects(projects []*models.Project, prompt string, preselectedIDs map[string]bool) ([]*models.Project, error) {
-	if _, err := CachedFzfPath(); err != nil {
+	fzfPath, err := CachedFzfPath()
+	if err != nil {
 		return nil, fmt.Errorf("fzf not found — install fzf (https://github.com/junegunn/fzf) or use the --id flag to specify items directly")
 	}
 	if len(projects) == 0 {
@@ -244,7 +247,7 @@ func FzfMultiSelectProjects(projects []*models.Project, prompt string, preselect
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(fzfTimeoutSeconds)*time.Second)
 	defer cancel()
 
-	cmd := exec.CommandContext(ctx, "fzf",
+	cmd := exec.CommandContext(ctx, fzfPath,
 		"--prompt", prompt+" ",
 		"--height", "50%",
 		"--reverse",
@@ -291,7 +294,8 @@ func FzfMultiSelectProjects(projects []*models.Project, prompt string, preselect
 
 // FzfMultiSelectTasks uses fzf to select multiple tasks from the list.
 func FzfMultiSelectTasks(tasks []*models.Task, prompt string) ([]*models.Task, error) {
-	if _, err := CachedFzfPath(); err != nil {
+	fzfPath, err := CachedFzfPath()
+	if err != nil {
 		return nil, fmt.Errorf("fzf not found — install fzf (https://github.com/junegunn/fzf) or use the --id flag to specify items directly")
 	}
 	if len(tasks) == 0 {
@@ -317,7 +321,7 @@ func FzfMultiSelectTasks(tasks []*models.Task, prompt string) ([]*models.Task, e
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(fzfTimeoutSeconds)*time.Second)
 	defer cancel()
 
-	cmd := exec.CommandContext(ctx, "fzf",
+	cmd := exec.CommandContext(ctx, fzfPath,
 		"--prompt", prompt+" ",
 		"--height", "50%",
 		"--reverse",

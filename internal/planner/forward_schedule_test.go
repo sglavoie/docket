@@ -145,3 +145,30 @@ func TestForwardScheduleQualifiedRefDoesNotBleedToPlainID(t *testing.T) {
 		t.Errorf("qualified missing-project:z should not delay b behind local z, got %v", byID["b"].EarliestStart)
 	}
 }
+
+func TestForwardScheduleKeepsDuplicateIDsAcrossProjects(t *testing.T) {
+	start := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	pA := makeProject("proj-a", "alpha")
+	pB := makeProject("proj-b", "beta")
+
+	sharedA := newTaskWithDuration("shared", 10)
+	sharedA.Project = pA
+	sharedB := newTaskWithDuration("shared", 2)
+	sharedB.Project = pB
+	dependentB := withDep(newTaskWithDuration("dependent", 1), "shared")
+	dependentB.Project = pB
+
+	sched := ForwardSchedule([]*models.Task{dependentB, sharedA, sharedB}, start, 1.0)
+	if len(sched) != 3 {
+		t.Fatalf("expected all 3 tasks to remain distinct, got %d", len(sched))
+	}
+
+	byTask := scheduleByTask(sched)
+	if !byTask[dependentB].EarliestStart.Equal(byTask[sharedB].EarliestEnd) {
+		t.Errorf("dependent should wait for beta:shared, got start %v want %v",
+			byTask[dependentB].EarliestStart, byTask[sharedB].EarliestEnd)
+	}
+	if byTask[dependentB].EarliestStart.Equal(byTask[sharedA].EarliestEnd) {
+		t.Error("dependent incorrectly waited for alpha:shared with the same task ID")
+	}
+}

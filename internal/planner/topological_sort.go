@@ -26,7 +26,7 @@ func TopologicalSort(tasks []*models.Task) ([]*models.Task, error) {
 			continue
 		}
 		if !t.IsComplete() {
-			taskMap[t.ID] = t
+			taskMap[taskGraphKey(t)] = t
 		}
 	}
 
@@ -41,9 +41,10 @@ func TopologicalSort(tasks []*models.Task) ([]*models.Task, error) {
 	}
 	for _, t := range taskMap {
 		for _, depRef := range t.DependsOn {
-			if predID, ok := dependencyTaskID(depRef, taskMap); ok {
-				inDegree[t.ID]++
-				adj[predID] = append(adj[predID], t.ID)
+			if predKey, ok := dependencyTaskKey(depRef, t, taskMap); ok {
+				tKey := taskGraphKey(t)
+				inDegree[tKey]++
+				adj[predKey] = append(adj[predKey], tKey)
 			}
 		}
 	}
@@ -63,7 +64,7 @@ func TopologicalSort(tasks []*models.Task) ([]*models.Task, error) {
 		queue = queue[1:]
 		result = append(result, t)
 
-		successors := adj[t.ID]
+		successors := adj[taskGraphKey(t)]
 		sort.Strings(successors) // deterministic successor processing
 		added := queue[:0:0]
 		for _, succID := range successors {
@@ -93,7 +94,7 @@ func topologicalSortByPriority(tasks []*models.Task) ([]*models.Task, error) {
 			continue
 		}
 		if !t.IsComplete() {
-			taskMap[t.ID] = t
+			taskMap[taskGraphKey(t)] = t
 		}
 	}
 
@@ -104,9 +105,10 @@ func topologicalSortByPriority(tasks []*models.Task) ([]*models.Task, error) {
 	}
 	for _, t := range taskMap {
 		for _, depRef := range t.DependsOn {
-			if predID, ok := dependencyTaskID(depRef, taskMap); ok {
-				inDegree[t.ID]++
-				adj[predID] = append(adj[predID], t.ID)
+			if predKey, ok := dependencyTaskKey(depRef, t, taskMap); ok {
+				tKey := taskGraphKey(t)
+				inDegree[tKey]++
+				adj[predKey] = append(adj[predKey], tKey)
 			}
 		}
 	}
@@ -125,7 +127,7 @@ func topologicalSortByPriority(tasks []*models.Task) ([]*models.Task, error) {
 		queue = queue[1:]
 		result = append(result, t)
 
-		successors := adj[t.ID]
+		successors := adj[taskGraphKey(t)]
 		sort.Strings(successors)
 		var added []*models.Task
 		for _, succID := range successors {
@@ -174,33 +176,64 @@ func sortByPriorityThenID(tasks []*models.Task) {
 // sortByID sorts a slice of tasks by ID for deterministic ordering.
 func sortByID(tasks []*models.Task) {
 	sort.Slice(tasks, func(i, j int) bool {
-		return tasks[i].ID < tasks[j].ID
+		return taskGraphKey(tasks[i]) < taskGraphKey(tasks[j])
 	})
 }
 
-// dependencyTaskID resolves a dependency reference against the local task map.
+func taskGraphKey(t *models.Task) string {
+	if t == nil {
+		return ""
+	}
+	if t.Project != nil {
+		if t.Project.ID != "" {
+			return t.Project.ID + ":" + t.ID
+		}
+		if t.Project.Slug != "" {
+			return t.Project.Slug + ":" + t.ID
+		}
+	}
+	return t.ID
+}
+
+// dependencyTaskKey resolves a dependency reference against the local task map.
 // Unqualified refs may match by parsed task ID. Qualified refs must match an
 // exact local ID or a task whose Project ID/slug matches the ref prefix;
 // otherwise they are external/unresolved and are treated as already satisfied
 // by the planner's local graph.
-func dependencyTaskID(depRef string, taskMap map[string]*models.Task) (string, bool) {
+func dependencyTaskKey(depRef string, dependent *models.Task, taskMap map[string]*models.Task) (string, bool) {
 	if _, ok := taskMap[depRef]; ok {
 		return depRef, true
 	}
 	ref := models.ParseTaskRef(depRef)
 	if ref.ProjectID != "" {
-		for _, t := range taskMap {
+		for key, t := range taskMap {
 			if t == nil || t.ID != ref.TaskID || t.Project == nil {
 				continue
 			}
 			if t.Project.ID == ref.ProjectID || t.Project.Slug == ref.ProjectID {
-				return t.ID, true
+				return key, true
 			}
 		}
 		return "", false
+	}
+	if dependent != nil && dependent.Project != nil {
+		if dependent.Project.ID != "" {
+			if _, ok := taskMap[dependent.Project.ID+":"+ref.TaskID]; ok {
+				return dependent.Project.ID + ":" + ref.TaskID, true
+			}
+		}
+		if dependent.Project.Slug != "" {
+			if _, ok := taskMap[dependent.Project.Slug+":"+ref.TaskID]; ok {
+				return dependent.Project.Slug + ":" + ref.TaskID, true
+			}
+		}
 	}
 	if _, ok := taskMap[ref.TaskID]; ok {
 		return ref.TaskID, true
 	}
 	return "", false
+}
+
+func dependencyTaskID(depRef string, taskMap map[string]*models.Task) (string, bool) {
+	return dependencyTaskKey(depRef, nil, taskMap)
 }

@@ -52,7 +52,7 @@ func CriticalPath(tasks []*models.Task) *CriticalPathResult {
 
 	taskMap := make(map[string]*models.Task, len(topoOrder))
 	for _, t := range topoOrder {
-		taskMap[t.ID] = t
+		taskMap[taskGraphKey(t)] = t
 	}
 
 	// Forward pass: ES[t] = max(EF[pred]) over all predecessors.
@@ -60,14 +60,15 @@ func CriticalPath(tasks []*models.Task) *CriticalPathResult {
 	es := make(map[string]float64, len(topoOrder)) // all initialized to 0
 	for _, t := range topoOrder {
 		for _, depRef := range t.DependsOn {
-			predID, ok := dependencyTaskID(depRef, taskMap)
+			predID, ok := dependencyTaskKey(depRef, t, taskMap)
 			if !ok {
 				continue
 			}
 			pred := taskMap[predID]
-			predEF := es[pred.ID] + EstimateDuration(pred)
-			if predEF > es[t.ID] {
-				es[t.ID] = predEF
+			tKey := taskGraphKey(t)
+			predEF := es[predID] + EstimateDuration(pred)
+			if predEF > es[tKey] {
+				es[tKey] = predEF
 			}
 		}
 	}
@@ -75,7 +76,7 @@ func CriticalPath(tasks []*models.Task) *CriticalPathResult {
 	// Project duration = max(EF[t]) across all tasks.
 	var projectDuration float64
 	for _, t := range topoOrder {
-		if ef := es[t.ID] + EstimateDuration(t); ef > projectDuration {
+		if ef := es[taskGraphKey(t)] + EstimateDuration(t); ef > projectDuration {
 			projectDuration = ef
 		}
 	}
@@ -84,8 +85,8 @@ func CriticalPath(tasks []*models.Task) *CriticalPathResult {
 	succs := make(map[string][]string, len(topoOrder))
 	for _, t := range topoOrder {
 		for _, depRef := range t.DependsOn {
-			if predID, ok := dependencyTaskID(depRef, taskMap); ok {
-				succs[predID] = append(succs[predID], t.ID)
+			if predID, ok := dependencyTaskKey(depRef, t, taskMap); ok {
+				succs[predID] = append(succs[predID], taskGraphKey(t))
 			}
 		}
 	}
@@ -95,16 +96,17 @@ func CriticalPath(tasks []*models.Task) *CriticalPathResult {
 	// LF[t] = min(LS[succ]) over all successors.
 	ls := make(map[string]float64, len(topoOrder))
 	for _, t := range topoOrder {
-		ls[t.ID] = projectDuration - EstimateDuration(t) // default for leaves
+		ls[taskGraphKey(t)] = projectDuration - EstimateDuration(t) // default for leaves
 	}
 	for i := len(topoOrder) - 1; i >= 0; i-- {
 		t := topoOrder[i]
-		for _, succID := range succs[t.ID] {
+		tKey := taskGraphKey(t)
+		for _, succID := range succs[tKey] {
 			// Latest I can finish = latest my successor can start.
 			lf := ls[succID]
 			myLS := lf - EstimateDuration(t)
-			if myLS < ls[t.ID] {
-				ls[t.ID] = myLS
+			if myLS < ls[tKey] {
+				ls[tKey] = myLS
 			}
 		}
 	}
@@ -114,10 +116,13 @@ func CriticalPath(tasks []*models.Task) *CriticalPathResult {
 	slack := make(map[string]float64, len(topoOrder))
 	onPath := make(map[string]bool, len(topoOrder))
 	for _, t := range topoOrder {
-		s := ls[t.ID] - es[t.ID]
+		tKey := taskGraphKey(t)
+		s := ls[tKey] - es[tKey]
 		slack[t.ID] = s
+		slack[tKey] = s
 		if s < eps {
 			onPath[t.ID] = true
+			onPath[tKey] = true
 		}
 	}
 
@@ -159,7 +164,7 @@ func ForwardSchedule(tasks []*models.Task, startDate time.Time, velocity float64
 
 	taskMap := make(map[string]*models.Task, len(topoOrder))
 	for _, t := range topoOrder {
-		taskMap[t.ID] = t
+		taskMap[taskGraphKey(t)] = t
 	}
 
 	// esDay[id] = earliest start offset in days from startDate.
@@ -169,27 +174,28 @@ func ForwardSchedule(tasks []*models.Task, startDate time.Time, velocity float64
 		// Explicit StartDate provides a lower bound on start offset.
 		if t.StartDate != nil && !t.StartDate.IsZero() {
 			offset := t.StartDate.Sub(startDate).Hours() / 24
-			if offset > esDay[t.ID] {
-				esDay[t.ID] = offset
+			if offset > esDay[taskGraphKey(t)] {
+				esDay[taskGraphKey(t)] = offset
 			}
 		}
 		// Dependency constraints: must start after all predecessors finish.
 		for _, depRef := range t.DependsOn {
-			predID, ok := dependencyTaskID(depRef, taskMap)
+			predID, ok := dependencyTaskKey(depRef, t, taskMap)
 			if !ok {
 				continue
 			}
 			pred := taskMap[predID]
-			predEnd := esDay[pred.ID] + EstimateDuration(pred)/velocity
-			if predEnd > esDay[t.ID] {
-				esDay[t.ID] = predEnd
+			tKey := taskGraphKey(t)
+			predEnd := esDay[predID] + EstimateDuration(pred)/velocity
+			if predEnd > esDay[tKey] {
+				esDay[tKey] = predEnd
 			}
 		}
 	}
 
 	var projectDuration float64
 	for _, t := range topoOrder {
-		if end := esDay[t.ID] + EstimateDuration(t)/velocity; end > projectDuration {
+		if end := esDay[taskGraphKey(t)] + EstimateDuration(t)/velocity; end > projectDuration {
 			projectDuration = end
 		}
 	}
@@ -197,22 +203,23 @@ func ForwardSchedule(tasks []*models.Task, startDate time.Time, velocity float64
 	succs := make(map[string][]string, len(topoOrder))
 	for _, t := range topoOrder {
 		for _, depRef := range t.DependsOn {
-			if predID, ok := dependencyTaskID(depRef, taskMap); ok {
-				succs[predID] = append(succs[predID], t.ID)
+			if predID, ok := dependencyTaskKey(depRef, t, taskMap); ok {
+				succs[predID] = append(succs[predID], taskGraphKey(t))
 			}
 		}
 	}
 
 	lsDay := make(map[string]float64, len(topoOrder))
 	for _, t := range topoOrder {
-		lsDay[t.ID] = projectDuration - EstimateDuration(t)/velocity
+		lsDay[taskGraphKey(t)] = projectDuration - EstimateDuration(t)/velocity
 	}
 	for i := len(topoOrder) - 1; i >= 0; i-- {
 		t := topoOrder[i]
+		tKey := taskGraphKey(t)
 		durDays := EstimateDuration(t) / velocity
-		for _, succID := range succs[t.ID] {
-			if candidate := lsDay[succID] - durDays; candidate < lsDay[t.ID] {
-				lsDay[t.ID] = candidate
+		for _, succID := range succs[tKey] {
+			if candidate := lsDay[succID] - durDays; candidate < lsDay[tKey] {
+				lsDay[tKey] = candidate
 			}
 		}
 	}
@@ -220,10 +227,11 @@ func ForwardSchedule(tasks []*models.Task, startDate time.Time, velocity float64
 	result := make([]ScheduledTask, 0, len(topoOrder))
 	const eps = 1e-9
 	for _, t := range topoOrder {
+		tKey := taskGraphKey(t)
 		durDays := EstimateDuration(t) / velocity
-		start := startDate.Add(daysToduration(esDay[t.ID]))
+		start := startDate.Add(daysToduration(esDay[tKey]))
 		end := start.Add(daysToduration(durDays))
-		slack := lsDay[t.ID] - esDay[t.ID]
+		slack := lsDay[tKey] - esDay[tKey]
 		if slack < eps {
 			slack = 0
 		}
@@ -277,7 +285,7 @@ func SerialSchedule(tasks []*models.Task, startDate time.Time, velocity float64)
 
 	taskMap := make(map[string]*models.Task, len(topoOrder))
 	for _, t := range topoOrder {
-		taskMap[t.ID] = t
+		taskMap[taskGraphKey(t)] = t
 	}
 
 	// Forward pass with single-resource constraint.
@@ -286,6 +294,7 @@ func SerialSchedule(tasks []*models.Task, startDate time.Time, velocity float64)
 
 	for _, t := range topoOrder {
 		earliest := resourceAvailable
+		tKey := taskGraphKey(t)
 
 		// Explicit StartDate lower bound.
 		if t.StartDate != nil && !t.StartDate.IsZero() {
@@ -297,18 +306,18 @@ func SerialSchedule(tasks []*models.Task, startDate time.Time, velocity float64)
 
 		// Dependency constraints.
 		for _, depRef := range t.DependsOn {
-			predID, ok := dependencyTaskID(depRef, taskMap)
+			predID, ok := dependencyTaskKey(depRef, t, taskMap)
 			if !ok {
 				continue
 			}
 			pred := taskMap[predID]
-			predEnd := esDay[pred.ID] + EstimateDuration(pred)/velocity
+			predEnd := esDay[predID] + EstimateDuration(pred)/velocity
 			if predEnd > earliest {
 				earliest = predEnd
 			}
 		}
 
-		esDay[t.ID] = earliest
+		esDay[tKey] = earliest
 		resourceAvailable = earliest + EstimateDuration(t)/velocity
 	}
 
@@ -322,31 +331,32 @@ func SerialSchedule(tasks []*models.Task, startDate time.Time, velocity float64)
 	for i := len(topoOrder) - 1; i >= 0; i-- {
 		t := topoOrder[i]
 		dur := EstimateDuration(t) / velocity
-		ls[t.ID] = makespan - dur // default: can slide to the end
+		ls[taskGraphKey(t)] = makespan - dur // default: can slide to the end
 	}
 
 	// Build successor map.
 	succs := make(map[string][]string, len(topoOrder))
 	for _, t := range topoOrder {
 		for _, depRef := range t.DependsOn {
-			if predID, ok := dependencyTaskID(depRef, taskMap); ok {
-				succs[predID] = append(succs[predID], t.ID)
+			if predID, ok := dependencyTaskKey(depRef, t, taskMap); ok {
+				succs[predID] = append(succs[predID], taskGraphKey(t))
 			}
 		}
 	}
 	// Also add serial-order successor edges (each task blocks the next).
 	for i := 0; i < len(topoOrder)-1; i++ {
-		succs[topoOrder[i].ID] = append(succs[topoOrder[i].ID], topoOrder[i+1].ID)
+		succs[taskGraphKey(topoOrder[i])] = append(succs[taskGraphKey(topoOrder[i])], taskGraphKey(topoOrder[i+1]))
 	}
 
 	for i := len(topoOrder) - 1; i >= 0; i-- {
 		t := topoOrder[i]
+		tKey := taskGraphKey(t)
 		dur := EstimateDuration(t) / velocity
-		for _, succID := range succs[t.ID] {
+		for _, succID := range succs[tKey] {
 			lf := ls[succID]
 			myLS := lf - dur
-			if myLS < ls[t.ID] {
-				ls[t.ID] = myLS
+			if myLS < ls[tKey] {
+				ls[tKey] = myLS
 			}
 		}
 	}
@@ -354,10 +364,11 @@ func SerialSchedule(tasks []*models.Task, startDate time.Time, velocity float64)
 	result := make([]ScheduledTask, 0, len(topoOrder))
 	const eps = 1e-9
 	for _, t := range topoOrder {
+		tKey := taskGraphKey(t)
 		dur := EstimateDuration(t) / velocity
-		start := startDate.Add(daysToduration(esDay[t.ID]))
+		start := startDate.Add(daysToduration(esDay[tKey]))
 		end := start.Add(daysToduration(dur))
-		slack := ls[t.ID] - esDay[t.ID]
+		slack := ls[tKey] - esDay[tKey]
 		if slack < eps {
 			slack = 0
 		}

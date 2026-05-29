@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/sglavoie/tt/internal/models"
 )
@@ -46,6 +47,32 @@ func TestClaudeAsk_CanceledContextReturnsCtxErr(t *testing.T) {
 	}
 	if strings.Contains(err.Error(), "claude exited with code") {
 		t.Errorf("regression: surfaced misleading exit-code error for cancellation: %v", err)
+	}
+}
+
+func TestClaudeAsk_UsesCachedAbsolutePath(t *testing.T) {
+	dir := t.TempDir()
+	fakeClaude := filepath.Join(dir, "claude")
+	script := "#!/bin/sh\necho cached claude\n"
+	if err := os.WriteFile(fakeClaude, []byte(script), 0o755); err != nil {
+		t.Fatalf("write fake claude: %v", err)
+	}
+
+	origPath := os.Getenv("PATH")
+	t.Cleanup(func() { _ = os.Setenv("PATH", origPath) })
+	if err := os.Setenv("PATH", ""); err != nil {
+		t.Fatalf("setenv PATH: %v", err)
+	}
+
+	claudeCache = cachedPath{path: fakeClaude, checkedAt: time.Now()}
+	t.Cleanup(func() { claudeCache = cachedPath{} })
+
+	got, err := ClaudeAsk(context.Background(), "hi", "")
+	if err != nil {
+		t.Fatalf("ClaudeAsk returned error: %v", err)
+	}
+	if got != "cached claude\n" {
+		t.Fatalf("expected fake claude output, got %q", got)
 	}
 }
 

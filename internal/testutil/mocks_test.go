@@ -210,3 +210,62 @@ func TestMockRepositoryLoadPreservesInMemoryChildLinks(t *testing.T) {
 		t.Fatal("Load() did not preserve in-memory parent link between cloned tasks")
 	}
 }
+
+func TestMockRepositoryBackupAndRestore(t *testing.T) {
+	repo := NewMockRepository()
+	project := NewTestProject("Backup Project")
+	original := NewTestTask("Original", models.TaskTypeTask)
+	project.Tasks = []*models.Task{original}
+	repo.Projects[project.ID] = project
+
+	if repo.BackupExists(project) {
+		t.Fatal("BackupExists() = true before Backup")
+	}
+	if err := repo.Backup(project); err != nil {
+		t.Fatalf("Backup() error = %v", err)
+	}
+	if !repo.BackupExists(project) {
+		t.Fatal("BackupExists() = false after Backup")
+	}
+
+	mutated := NewTestTask("Mutated", models.TaskTypeTask)
+	project.Tasks = []*models.Task{mutated}
+	repo.Projects[project.ID] = project
+
+	if err := repo.RestoreFromBackup(project); err != nil {
+		t.Fatalf("RestoreFromBackup() error = %v", err)
+	}
+	if len(project.Tasks) != 1 || project.Tasks[0].Title != "Original" {
+		t.Fatalf("RestoreFromBackup() restored tasks = %#v, want original snapshot", project.Tasks)
+	}
+	if repo.Projects[project.ID].Tasks[0].Title != "Original" {
+		t.Fatal("RestoreFromBackup() did not update stored project")
+	}
+	if project.Tasks[0] == original {
+		t.Fatal("RestoreFromBackup() reused original task pointer")
+	}
+}
+
+func TestMockRepositoryRestoreFromBackupIsReversible(t *testing.T) {
+	repo := NewMockRepository()
+	project := NewTestProject("Backup Project")
+	project.Tasks = []*models.Task{NewTestTask("First", models.TaskTypeTask)}
+	repo.Projects[project.ID] = project
+
+	if err := repo.Backup(project); err != nil {
+		t.Fatalf("Backup() error = %v", err)
+	}
+	project.Tasks = []*models.Task{NewTestTask("Second", models.TaskTypeTask)}
+	repo.Projects[project.ID] = project
+
+	if err := repo.RestoreFromBackup(project); err != nil {
+		t.Fatalf("first RestoreFromBackup() error = %v", err)
+	}
+	if err := repo.RestoreFromBackup(project); err != nil {
+		t.Fatalf("second RestoreFromBackup() error = %v", err)
+	}
+
+	if len(project.Tasks) != 1 || project.Tasks[0].Title != "Second" {
+		t.Fatalf("second RestoreFromBackup() restored tasks = %#v, want second snapshot", project.Tasks)
+	}
+}

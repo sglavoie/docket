@@ -95,10 +95,11 @@ func (t *TaskTemplate) Validate() error {
 		if !childType.CanBeChildOf(t.Type) {
 			return fmt.Errorf("item %d: %s cannot be a child of %s", i+1, childType, t.Type)
 		}
-		if prev, dup := seen[child.Title]; dup {
-			return fmt.Errorf("item %d: duplicate child title %q (first seen at item %d)", i+1, child.Title, prev)
+		normalizedTitle := strings.TrimSpace(child.Title)
+		if prev, dup := seen[normalizedTitle]; dup {
+			return fmt.Errorf("item %d: duplicate child title %q (first seen at item %d)", i+1, normalizedTitle, prev)
 		}
-		seen[child.Title] = i + 1
+		seen[normalizedTitle] = i + 1
 	}
 
 	return nil

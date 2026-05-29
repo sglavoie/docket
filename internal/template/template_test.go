@@ -400,6 +400,24 @@ func TestValidate_DuplicateChildTitlesCaseSensitive(t *testing.T) {
 	}
 }
 
+func TestValidate_DuplicateChildTitlesIgnoreSurroundingWhitespace(t *testing.T) {
+	tmpl := NewTemplate("Test", models.TaskTypeStory)
+	tmpl.Children = []TemplateChild{
+		{Title: "Deploy"},
+		{Title: " Deploy \t"},
+	}
+	err := tmpl.Validate()
+	if err == nil {
+		t.Fatal("expected error for duplicate child title after trimming whitespace")
+	}
+	if !strings.Contains(err.Error(), "item 2") {
+		t.Errorf("error %q should reference item 2", err.Error())
+	}
+	if !strings.Contains(err.Error(), `"Deploy"`) {
+		t.Errorf("error %q should quote the normalized duplicate title", err.Error())
+	}
+}
+
 func TestValidate_UniqueChildTitlesPass(t *testing.T) {
 	tmpl := NewTemplate("Test", models.TaskTypeStory)
 	tmpl.Children = []TemplateChild{

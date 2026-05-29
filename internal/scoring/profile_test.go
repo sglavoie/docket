@@ -24,6 +24,17 @@ func TestFormulaIsValid(t *testing.T) {
 	}
 }
 
+func TestFormatProfileSummaryNilProfile(t *testing.T) {
+	defer func() {
+		if r := recover(); r != nil {
+			t.Fatalf("unexpected panic on nil profile: %v", r)
+		}
+	}()
+	if got := FormatProfileSummary(nil); got != "" {
+		t.Errorf("expected empty summary for nil profile, got %q", got)
+	}
+}
+
 func TestDimensionValidate(t *testing.T) {
 	tests := []struct {
 		name    string

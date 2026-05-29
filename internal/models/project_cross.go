@@ -26,6 +26,13 @@ func (p *Project) MoveTaskToProject(task *Task, dest *Project) (*MoveTaskToProje
 	if p.ID == dest.ID {
 		return nil, fmt.Errorf("cannot move task to the same project")
 	}
+	sourceTask := p.GetTaskByID(task.ID)
+	if sourceTask == nil {
+		return nil, fmt.Errorf("task %q is not in source project", task.ID)
+	}
+	if sourceTask != task {
+		return nil, fmt.Errorf("task %q does not match source project task", task.ID)
+	}
 
 	// Build tree to ensure parent-child relationships are set
 	p.BuildTaskTree()

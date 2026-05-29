@@ -326,6 +326,9 @@ func FormulaDescription(f Formula) string {
 
 // FormatProfileSummary returns a single-line summary of a profile.
 func FormatProfileSummary(p *ScoringProfile) string {
+	if p == nil {
+		return ""
+	}
 	dimNames := make([]string, len(p.Dimensions))
 	for i, d := range p.Dimensions {
 		dimNames[i] = d.Name

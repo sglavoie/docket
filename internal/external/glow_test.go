@@ -96,6 +96,36 @@ func TestRenderFile_LeadingDashPath_FallbackReads(t *testing.T) {
 	}
 }
 
+func TestRenderMarkdown_UsesCachedAbsolutePath(t *testing.T) {
+	dir := t.TempDir()
+	markerFile := filepath.Join(dir, "ran.txt")
+	fakeGlow := filepath.Join(dir, "glow")
+	script := "#!/bin/sh\nprintf ran > " + markerFile + "\n"
+	if err := os.WriteFile(fakeGlow, []byte(script), 0o755); err != nil {
+		t.Fatalf("write fake glow: %v", err)
+	}
+
+	origPath := os.Getenv("PATH")
+	t.Cleanup(func() { _ = os.Setenv("PATH", origPath) })
+	if err := os.Setenv("PATH", ""); err != nil {
+		t.Fatalf("setenv PATH: %v", err)
+	}
+
+	glowCache = cachedPath{path: fakeGlow, checkedAt: time.Now()}
+	t.Cleanup(func() { glowCache = cachedPath{} })
+
+	if err := RenderMarkdown("# hi\n"); err != nil {
+		t.Fatalf("RenderMarkdown returned error: %v", err)
+	}
+	got, err := os.ReadFile(markerFile)
+	if err != nil {
+		t.Fatalf("read marker file: %v", err)
+	}
+	if string(got) != "ran" {
+		t.Fatalf("expected fake cached glow to run, got marker %q", got)
+	}
+}
+
 // TestPageMarkdown_UsesTempFileNotStdinPipe verifies that PageMarkdown
 // invokes glow with the content staged in a temp file and `--` before it,
 // rather than feeding content through stdin with `-`. Piping content to

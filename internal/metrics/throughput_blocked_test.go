@@ -182,6 +182,22 @@ func TestBlocked(t *testing.T) {
 		}
 	})
 
+	t.Run("never blocked tasks are excluded", func(t *testing.T) {
+		task := makeTask(models.StatusDone, timePtr(now), []*models.ActivityEntry{
+			{Timestamp: now.AddDate(0, 0, -5), Field: "status", OldValue: "todo", NewValue: "in_progress"},
+			{Timestamp: now.AddDate(0, 0, -1), Field: "status", OldValue: "in_progress", NewValue: "done"},
+		})
+
+		result := computeBlocked([]*models.Task{task}, now, nil)
+
+		if result.TaskCount != 0 {
+			t.Errorf("TaskCount = %d, want 0 (never-blocked task should be excluded)", result.TaskCount)
+		}
+		if len(result.Entries) != 0 {
+			t.Errorf("len(Entries) = %d, want 0", len(result.Entries))
+		}
+	})
+
 	t.Run("sorted by total blocked descending", func(t *testing.T) {
 		task1 := makeTask(models.StatusDone, timePtr(now), []*models.ActivityEntry{
 			{Timestamp: now.AddDate(0, 0, -3), Field: "status", OldValue: "in_progress", NewValue: "blocked"},
