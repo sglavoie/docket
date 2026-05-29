@@ -36,6 +36,9 @@ func computeCycleTime(tasks []*models.Task, cutoff, now time.Time, buckets []buc
 	}
 
 	for _, t := range tasks {
+		if t == nil {
+			continue
+		}
 		if t.CompletedAt == nil || t.Status != models.StatusDone {
 			continue
 		}

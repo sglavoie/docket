@@ -127,10 +127,10 @@ func EditorCommand(editor, path string) *exec.Cmd {
 func needsWaitFlag(editor string) bool {
 	// editor here is already the executable only (not a full command string).
 	base := strings.ToLower(filepath.Base(editor))
-	if base == "code" || base == "cursor" || base == "subl" || base == "sublime" || base == "zed" {
+	if base == "code" || base == "codium" || base == "cursor" || base == "subl" || base == "sublime" || base == "zed" {
 		return true
 	}
-	if strings.HasPrefix(base, "code-") || strings.HasPrefix(base, "cursor-") {
+	if strings.HasPrefix(base, "code-") || strings.HasPrefix(base, "codium-") || strings.HasPrefix(base, "cursor-") {
 		return true
 	}
 	return false

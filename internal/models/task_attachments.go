@@ -52,6 +52,9 @@ func (t *Task) AddCodeReference(path string, lineNumber int) error {
 	if path == "" {
 		return fmt.Errorf("code reference path must not be empty")
 	}
+	if lineNumber < 1 {
+		return fmt.Errorf("code reference line number must be positive")
+	}
 	if err := validateAttachmentPath(path); err != nil {
 		return fmt.Errorf("adding code reference: %w", err)
 	}

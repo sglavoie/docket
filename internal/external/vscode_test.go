@@ -114,8 +114,11 @@ func TestNeedsWaitFlag(t *testing.T) {
 		want   bool
 	}{
 		{"code", true},
+		{"codium", true},
 		{"cursor", true},
+		{"codium-insiders", true},
 		{"cursor-nightly", true},
+		{"/usr/local/bin/codium", true},
 		{"/usr/local/bin/cursor", true},
 		{"subl", true},
 		{"sublime", true},

@@ -140,6 +140,25 @@ func TestCycleTime(t *testing.T) {
 			t.Errorf("Average = %v hours, want ~%v hours", actualHours, expectedHours)
 		}
 	})
+
+	t.Run("skips nil tasks", func(t *testing.T) {
+		start := now.AddDate(0, 0, -3)
+		done := now.AddDate(0, 0, -1)
+		tasks := []*models.Task{
+			nil,
+			makeTask(models.StatusDone, timePtr(done), []*models.ActivityEntry{
+				{Timestamp: start, Field: "status", OldValue: "todo", NewValue: "in_progress"},
+			}),
+		}
+
+		cutoff := TimeRange7d.Cutoff(now)
+		buckets := timeBuckets(cutoff, now, granularityDay)
+		result := computeCycleTime(tasks, cutoff, now, buckets)
+
+		if result.Count != 1 {
+			t.Errorf("Count = %d, want 1", result.Count)
+		}
+	})
 }
 
 func TestPercentileDuration(t *testing.T) {

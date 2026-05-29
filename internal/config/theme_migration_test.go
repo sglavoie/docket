@@ -188,6 +188,24 @@ func TestMigratePaletteToThemes_CurrentRev_NoOp(t *testing.T) {
 	}
 }
 
+func TestMigratePaletteToThemes_InvalidActiveThemeDefaultsDark(t *testing.T) {
+	cfg := &Config{
+		ThemeDark:     DefaultDarkTheme(),
+		ThemeDarkRev:  DarkThemeDefaultsRev,
+		ThemeLight:    DefaultLightTheme(),
+		ThemeLightRev: LightThemeDefaultsRev,
+		ActiveTheme:   "sepia",
+	}
+
+	changed := cfg.MigratePaletteToThemes()
+	if !changed {
+		t.Fatal("expected changed=true when ActiveTheme is invalid")
+	}
+	if cfg.ActiveTheme != "dark" {
+		t.Errorf("ActiveTheme = %q, want dark", cfg.ActiveTheme)
+	}
+}
+
 func TestMigratePaletteToThemes_ClearsStaleLegacyFields(t *testing.T) {
 	// Legacy palette fields linger alongside a populated ThemeDark (e.g. after
 	// a hand edit or partial migration). The migration must drop the stale
@@ -306,5 +324,47 @@ func TestConfigVersionBump_V1toV2(t *testing.T) {
 	}
 	if cfg2.ThemeDark.BackgroundColor != "#abcdef" {
 		t.Errorf("second load ThemeDark.BackgroundColor = %q, want #abcdef", cfg2.ThemeDark.BackgroundColor)
+	}
+}
+
+func TestConfigLoad_NormalizesInvalidActiveTheme(t *testing.T) {
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, "invalid-active-theme.json")
+
+	raw := map[string]any{
+		"version":         CurrentConfigVersion,
+		"data_dir":        tmpDir,
+		"editor":          "vim",
+		"default_context": "personal",
+		"projects":        []any{},
+		"theme_dark":      DefaultDarkTheme(),
+		"theme_dark_rev":  DarkThemeDefaultsRev,
+		"theme_light":     DefaultLightTheme(),
+		"theme_light_rev": LightThemeDefaultsRev,
+		"active_theme":    "sepia",
+	}
+	data, err := json.MarshalIndent(raw, "", "  ")
+	if err != nil {
+		t.Fatalf("marshal config: %v", err)
+	}
+	if err := os.WriteFile(configPath, data, 0o600); err != nil {
+		t.Fatalf("write config: %v", err)
+	}
+
+	manager := NewManager(configPath)
+	cfg, err := manager.Load()
+	if err != nil {
+		t.Fatalf("Load failed: %v", err)
+	}
+	if cfg.ActiveTheme != "dark" {
+		t.Errorf("ActiveTheme = %q, want dark", cfg.ActiveTheme)
+	}
+
+	reloaded, err := manager.Load()
+	if err != nil {
+		t.Fatalf("second Load failed: %v", err)
+	}
+	if reloaded.ActiveTheme != "dark" {
+		t.Errorf("second load ActiveTheme = %q, want dark", reloaded.ActiveTheme)
 	}
 }

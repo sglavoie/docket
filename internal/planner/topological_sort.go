@@ -86,7 +86,7 @@ func TopologicalSort(tasks []*models.Task) ([]*models.Task, error) {
 }
 
 // topologicalSortByPriority is like TopologicalSort but breaks ties among
-// zero-in-degree nodes by priority (ascending = higher priority) then ID.
+// zero-in-degree nodes by priority (ascending = higher priority) then graph key.
 func topologicalSortByPriority(tasks []*models.Task) ([]*models.Task, error) {
 	taskMap := make(map[string]*models.Task, len(tasks))
 	for _, t := range tasks {
@@ -161,7 +161,7 @@ func effectivePriority(p int) int {
 }
 
 // sortByPriorityThenID sorts tasks by priority ascending (lower = higher
-// priority), then by ID ascending for determinism. Priority 0 is treated as
+// priority), then by graph key for determinism. Priority 0 is treated as
 // PriorityDefault so unset tasks do not sort ahead of critical ones.
 func sortByPriorityThenID(tasks []*models.Task) {
 	sort.Slice(tasks, func(i, j int) bool {
@@ -169,7 +169,7 @@ func sortByPriorityThenID(tasks []*models.Task) {
 		if pi != pj {
 			return pi < pj
 		}
-		return tasks[i].ID < tasks[j].ID
+		return taskGraphKey(tasks[i]) < taskGraphKey(tasks[j])
 	})
 }
 

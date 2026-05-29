@@ -34,9 +34,11 @@ func detectEditorPattern(editor string) editorPattern {
 	// Get base name of editor (handle paths like /usr/bin/vim)
 	base := strings.ToLower(filepath.Base(exe))
 
-	// VS Code and Cursor use --goto file:line
-	if base == "code" || base == "cursor" ||
-		strings.HasPrefix(base, "code-") || strings.HasPrefix(base, "cursor-") {
+	// VS Code, VSCodium, and Cursor use --goto file:line
+	if base == "code" || base == "codium" || base == "cursor" ||
+		strings.HasPrefix(base, "code-") ||
+		strings.HasPrefix(base, "codium-") ||
+		strings.HasPrefix(base, "cursor-") {
 		return patternGoto
 	}
 

@@ -24,6 +24,7 @@ otherwise prompts for project slugs.
 Examples:
   tt context edit Work
   tt ctx edit "Side Projects"`,
+	Args: cobra.ExactArgs(1),
 	RunE: runContextEdit,
 }
 

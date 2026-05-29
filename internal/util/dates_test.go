@@ -287,6 +287,28 @@ func TestAddMonthsClampsEndOfMonth(t *testing.T) {
 	}
 }
 
+func TestAddMonthsClampedNegativeOffsets(t *testing.T) {
+	tests := []struct {
+		name   string
+		base   time.Time
+		months int
+		want   time.Time
+	}{
+		{"mar 31 - 1m clamps to feb 28 in 2025", time.Date(2025, 3, 31, 9, 30, 15, 123, time.UTC), -1, time.Date(2025, 2, 28, 9, 30, 15, 123, time.UTC)},
+		{"mar 31 - 1m clamps to feb 29 in leap year 2024", time.Date(2024, 3, 31, 9, 30, 15, 123, time.UTC), -1, time.Date(2024, 2, 29, 9, 30, 15, 123, time.UTC)},
+		{"jan 31 - 1m crosses year to dec 31", time.Date(2025, 1, 31, 9, 30, 15, 123, time.UTC), -1, time.Date(2024, 12, 31, 9, 30, 15, 123, time.UTC)},
+		{"jan 31 - 13m crosses multiple years", time.Date(2025, 1, 31, 9, 30, 15, 123, time.UTC), -13, time.Date(2023, 12, 31, 9, 30, 15, 123, time.UTC)},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got := AddMonthsClamped(tc.base, tc.months)
+			if !got.Equal(tc.want) {
+				t.Errorf("AddMonthsClamped(%v, %d) = %v, want %v", tc.base, tc.months, got, tc.want)
+			}
+		})
+	}
+}
+
 func TestDaysBetween(t *testing.T) {
 	a := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 	b := time.Date(2024, 1, 10, 0, 0, 0, 0, time.UTC)

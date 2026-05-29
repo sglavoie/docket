@@ -94,6 +94,22 @@ func TestThroughput(t *testing.T) {
 			t.Errorf("sum(PerBucket) = %v, want 1", sum)
 		}
 	})
+
+	t.Run("skips nil tasks", func(t *testing.T) {
+		done := now.AddDate(0, 0, -1)
+		tasks := []*models.Task{
+			nil,
+			makeTask(models.StatusDone, timePtr(done), nil),
+		}
+
+		cutoff := TimeRange7d.Cutoff(now)
+		buckets := timeBuckets(cutoff, now, granularityDay)
+		result := computeThroughput(tasks, cutoff, now, buckets)
+
+		if result.Total != 1 {
+			t.Errorf("Total = %d, want 1", result.Total)
+		}
+	})
 }
 
 func TestBlocked(t *testing.T) {

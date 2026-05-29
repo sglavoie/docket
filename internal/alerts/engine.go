@@ -125,6 +125,7 @@ func checkWeeklyReviewReminder(cfg AlertConfig, _ []ProjectData, now time.Time) 
 	}
 
 	last := *cfg.LastWeeklyReviewAt
+	reviewDay := normalizedWeeklyReviewDay(cfg.WeeklyReviewDay)
 
 	// More than 8 days since last review (fallback)
 	if now.Sub(last) > 8*24*time.Hour {
@@ -138,9 +139,9 @@ func checkWeeklyReviewReminder(cfg AlertConfig, _ []ProjectData, now time.Time) 
 
 	// Current weekday matches configured day and no review in the current
 	// review window anchored to that configured weekday.
-	if int(now.Weekday()) == cfg.WeeklyReviewDay {
+	if int(now.Weekday()) == reviewDay {
 		lastLocal := last.In(now.Location())
-		if lastLocal.Before(weeklyReviewWindowStart(now, cfg.WeeklyReviewDay)) {
+		if lastLocal.Before(weeklyReviewWindowStart(now, reviewDay)) {
 			return []Alert{{
 				Category: CategoryWeeklyReview,
 				Title:    "Weekly review day",
@@ -151,6 +152,13 @@ func checkWeeklyReviewReminder(cfg AlertConfig, _ []ProjectData, now time.Time) 
 	}
 
 	return nil
+}
+
+func normalizedWeeklyReviewDay(reviewDay int) int {
+	if reviewDay < int(time.Sunday) || reviewDay > int(time.Saturday) {
+		return DefaultAlertConfig().WeeklyReviewDay
+	}
+	return reviewDay
 }
 
 func weeklyReviewWindowStart(now time.Time, reviewDay int) time.Time {

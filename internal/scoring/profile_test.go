@@ -231,6 +231,18 @@ func TestProfileValidate(t *testing.T) {
 	}
 }
 
+func TestProfileValidateNilProfile(t *testing.T) {
+	var profile *ScoringProfile
+	defer func() {
+		if r := recover(); r != nil {
+			t.Fatalf("unexpected panic on nil profile: %v", r)
+		}
+	}()
+	if err := profile.Validate(); err == nil {
+		t.Error("expected error for nil profile, got nil")
+	}
+}
+
 func TestPresetProfilesValid(t *testing.T) {
 	for name, factory := range PresetProfiles() {
 		p := factory()

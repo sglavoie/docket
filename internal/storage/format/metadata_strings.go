@@ -75,6 +75,43 @@ func unescapeNewlines(s string) string {
 	return b.String()
 }
 
+// escapeMetadataScalar escapes delimiters that would otherwise let a scalar
+// metadata value look like the start of a later top-level metadata field.
+func escapeMetadataScalar(s string) string {
+	if !strings.ContainsAny(s, `\,`) {
+		return s
+	}
+	s = strings.ReplaceAll(s, `\`, `\\`)
+	s = strings.ReplaceAll(s, ",", `\,`)
+	return s
+}
+
+// unescapeMetadataScalar reverses escapeMetadataScalar while preserving unknown
+// escape sequences so older hand-written values are not aggressively rewritten.
+func unescapeMetadataScalar(s string) string {
+	if !strings.Contains(s, `\`) {
+		return s
+	}
+	var b strings.Builder
+	b.Grow(len(s))
+	for i := 0; i < len(s); i++ {
+		if s[i] == '\\' && i+1 < len(s) {
+			switch s[i+1] {
+			case '\\':
+				b.WriteByte('\\')
+				i++
+				continue
+			case ',':
+				b.WriteByte(',')
+				i++
+				continue
+			}
+		}
+		b.WriteByte(s[i])
+	}
+	return b.String()
+}
+
 // escapeChecklistText escapes delimiters and done/undone markers in checklist
 // item text so they don't interfere with the storage format delimiters.
 func escapeChecklistText(s string) string {

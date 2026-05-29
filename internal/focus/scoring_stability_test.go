@@ -67,3 +67,58 @@ func TestRankCrossProjectTasksDeterministicTies(t *testing.T) {
 		}
 	}
 }
+
+// TestRankCrossProjectTasksDeterministicTiesWithDuplicateTaskIDs guards that
+// tied tasks remain stable even when separate projects contain the same task
+// ID. That can happen with imported or hand-authored data, and task ID alone
+// is not a strict ordering across projects.
+func TestRankCrossProjectTasksDeterministicTiesWithDuplicateTaskIDs(t *testing.T) {
+	projectA, err := models.NewProject("project-a", "A", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	projectB, err := models.NewProject("project-b", "B", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	mk := func(project *models.Project) FocusTask {
+		task, taskErr := models.NewTask("same-task-id", 1, models.TaskTypeTask, "T")
+		if taskErr != nil {
+			t.Fatal(taskErr)
+		}
+		task.Priority = 3
+		return FocusTask{Task: task, Project: project}
+	}
+
+	inputs := [][]FocusTask{
+		{mk(projectA), mk(projectB)},
+		{mk(projectB), mk(projectA)},
+	}
+
+	var firstProjectIDs []string
+	for i, in := range inputs {
+		ranked := RankCrossProjectTasks(in, nil, nil)
+		if len(ranked) != 2 {
+			t.Fatalf("input %d: expected 2 ranked tasks, got %d", i, len(ranked))
+		}
+		projectIDs := []string{ranked[0].Project.ID, ranked[1].Project.ID}
+		if i == 0 {
+			firstProjectIDs = projectIDs
+			continue
+		}
+		for j := range projectIDs {
+			if projectIDs[j] != firstProjectIDs[j] {
+				t.Fatalf("input %d: order %v differs from baseline %v", i, projectIDs, firstProjectIDs)
+			}
+		}
+	}
+
+	want := []string{"project-a", "project-b"}
+	for i, id := range firstProjectIDs {
+		if id != want[i] {
+			t.Errorf("expected project ID tiebreak %v, got %v", want, firstProjectIDs)
+			break
+		}
+	}
+}

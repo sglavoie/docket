@@ -106,7 +106,7 @@ func (c *Config) MigratePaletteToThemes() bool {
 		changed = true
 	}
 
-	if c.ActiveTheme == "" {
+	if c.ActiveTheme == "" || (c.ActiveTheme != "dark" && c.ActiveTheme != "light") {
 		c.ActiveTheme = "dark"
 		changed = true
 	}

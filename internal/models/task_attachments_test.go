@@ -100,6 +100,18 @@ func TestAddCodeReference(t *testing.T) {
 	if err := task.AddCodeReference("/bad||path.go", 10); err == nil {
 		t.Error("expected error for path containing delimiter")
 	}
+
+	// Invalid line numbers should not create code references. The CLI parser
+	// only accepts positive line numbers; keep direct model callers consistent.
+	if err := task.AddCodeReference("/home/user/main.go", 0); err == nil {
+		t.Error("expected error for zero line number")
+	}
+	if err := task.AddCodeReference("/home/user/main.go", -1); err == nil {
+		t.Error("expected error for negative line number")
+	}
+	if len(task.Attachments) != 1 {
+		t.Errorf("expected failed code references not to mutate attachments, got %d", len(task.Attachments))
+	}
 }
 
 func TestRemoveAttachment(t *testing.T) {

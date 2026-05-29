@@ -28,6 +28,9 @@ func computeCompletion(tasks []*models.Task, cutoff, now time.Time, buckets []bu
 	}
 
 	for _, t := range tasks {
+		if t == nil {
+			continue
+		}
 		if t.CompletedAt == nil {
 			continue
 		}

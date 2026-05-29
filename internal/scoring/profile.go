@@ -115,6 +115,9 @@ type ScoringProfile struct {
 // Validate checks that a profile is well-formed: all dimensions are valid,
 // the formula is recognized, and role-based formulas have the right structure.
 func (p *ScoringProfile) Validate() error {
+	if p == nil {
+		return fmt.Errorf("profile is required")
+	}
 	if p.ID == "" {
 		return fmt.Errorf("profile ID is required")
 	}

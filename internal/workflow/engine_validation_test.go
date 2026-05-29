@@ -184,6 +184,44 @@ func TestRuleValidation_NewTriggerFields(t *testing.T) {
 	}
 }
 
+func TestRuleTriggerValidation_SectionAllowsEmptyActiveValue(t *testing.T) {
+	tests := []struct {
+		name    string
+		trigger RuleTrigger
+		wantErr bool
+	}{
+		{
+			name:    "section equals empty targets Active view",
+			trigger: RuleTrigger{Field: FieldSection, Operation: OpEquals, Value: ""},
+			wantErr: false,
+		},
+		{
+			name:    "section not equals empty excludes Active view",
+			trigger: RuleTrigger{Field: FieldSection, Operation: OpNotEquals, Value: ""},
+			wantErr: false,
+		},
+		{
+			name:    "section contains empty remains invalid",
+			trigger: RuleTrigger{Field: FieldSection, Operation: OpContains, Value: ""},
+			wantErr: true,
+		},
+		{
+			name:    "other fields still require a value",
+			trigger: RuleTrigger{Field: FieldStatus, Operation: OpEquals, Value: ""},
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := tt.trigger.Validate()
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Validate() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
 func TestRuleValidation_NewActionTypes(t *testing.T) {
 	tests := []struct {
 		name    string

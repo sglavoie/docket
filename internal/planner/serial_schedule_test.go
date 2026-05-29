@@ -169,6 +169,26 @@ func TestSerialScheduleQualifiedRefDoesNotBleedToPlainID(t *testing.T) {
 	}
 }
 
+func TestSerialScheduleDuplicateIDsTieBreakByProjectKey(t *testing.T) {
+	start := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	pA := makeProject("proj-a", "alpha")
+	pB := makeProject("proj-b", "beta")
+
+	sharedB := newTaskWithDuration("shared", 1)
+	sharedB.Project = pB
+	sharedA := newTaskWithDuration("shared", 1)
+	sharedA.Project = pA
+
+	sched := SerialSchedule([]*models.Task{sharedB, sharedA}, start, 1.0)
+	if len(sched) != 2 {
+		t.Fatalf("expected 2 scheduled tasks, got %d", len(sched))
+	}
+	if sched[0].Task != sharedA || sched[1].Task != sharedB {
+		t.Fatalf("expected duplicate IDs to tie-break by project key, got %s then %s",
+			taskGraphKey(sched[0].Task), taskGraphKey(sched[1].Task))
+	}
+}
+
 func taskIDsFromSchedule(sched []ScheduledTask) []string {
 	ids := make([]string, len(sched))
 	for i, s := range sched {

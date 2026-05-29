@@ -107,10 +107,10 @@ func (d *Dispatcher) dispatchInPrefix(key string) (tea.Model, tea.Cmd, bool) {
 		switch {
 		case e.Binding != nil && e.Binding.Key == key:
 			b := e.Binding
-			d.ClearPrefix()
 			if b.Gate != nil && !b.Gate() {
-				return nil, nil, true
+				continue
 			}
+			d.ClearPrefix()
 			if b.Action == nil {
 				return nil, nil, true
 			}
@@ -120,8 +120,7 @@ func (d *Dispatcher) dispatchInPrefix(key string) (tea.Model, tea.Cmd, bool) {
 		case e.PrefixNode != nil && e.PrefixNode.Key == key:
 			p := e.PrefixNode
 			if p.Gate != nil && !p.Gate() {
-				d.ClearPrefix()
-				return nil, nil, true
+				continue
 			}
 			d.pendingPrefix += key
 			d.prefixNode = p
@@ -140,7 +139,7 @@ func (d *Dispatcher) dispatchTopLevel(key string) (tea.Model, tea.Cmd, bool) {
 		case e.PrefixNode != nil && e.PrefixNode.Key == key:
 			p := e.PrefixNode
 			if p.Gate != nil && !p.Gate() {
-				return nil, nil, false
+				continue
 			}
 			d.pendingPrefix = key
 			d.prefixNode = p
@@ -149,7 +148,7 @@ func (d *Dispatcher) dispatchTopLevel(key string) (tea.Model, tea.Cmd, bool) {
 		case e.Binding != nil && e.Binding.Key == key:
 			b := e.Binding
 			if b.Gate != nil && !b.Gate() {
-				return nil, nil, false
+				continue
 			}
 			if b.Action == nil {
 				return nil, nil, true

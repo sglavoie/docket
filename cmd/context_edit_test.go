@@ -43,6 +43,12 @@ func TestRunContextEdit(t *testing.T) {
 		}
 	})
 
+	t.Run("rejects extra args", func(t *testing.T) {
+		if err := contextEditCmd.ValidateArgs([]string{"Work", "extra"}); err == nil {
+			t.Error("expected error for extra args")
+		}
+	})
+
 	t.Run("rejects nonexistent context", func(t *testing.T) {
 		_, cleanup := setup(t)
 		defer cleanup()

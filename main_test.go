@@ -36,3 +36,15 @@ func TestRunReportsErrorAndReturnsFailure(t *testing.T) {
 		t.Fatalf("stderr = %q, want %q", got, want)
 	}
 }
+
+func TestRunReturnsFailureWithNilStderr(t *testing.T) {
+	errBoom := errors.New("boom")
+
+	exitCode := run(func() error {
+		return errBoom
+	}, nil)
+
+	if exitCode != 1 {
+		t.Fatalf("exit code = %d, want 1", exitCode)
+	}
+}

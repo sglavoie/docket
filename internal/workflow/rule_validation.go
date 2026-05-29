@@ -145,11 +145,15 @@ func (t RuleTrigger) Validate() error {
 	if !validOps[t.Operation] {
 		return fmt.Errorf("invalid operation: %s", t.Operation)
 	}
-	if t.Value == "" {
+	if t.Value == "" && !isValidEmptyTriggerValue(t) {
 		return fmt.Errorf("trigger value is required")
 	}
 
 	return nil
+}
+
+func isValidEmptyTriggerValue(t RuleTrigger) bool {
+	return t.Field == FieldSection && (t.Operation == OpEquals || t.Operation == OpNotEquals)
 }
 
 // Validate checks if the action is properly configured.

@@ -25,6 +25,8 @@ func performRestore(project *models.Project, meta *UndoMeta, p restoreParams) (s
 	})
 
 	latest := (*p.sourceEntries)[0]
+	originalSourceEntries := append([]UndoEntry(nil), (*p.sourceEntries)...)
+	originalReverseEntries := append([]UndoEntry(nil), (*p.reverseEntries)...)
 
 	// Read and validate the snapshot
 	snapPath := p.snapshotPath(project, latest.Num)
@@ -76,12 +78,20 @@ func performRestore(project *models.Project, meta *UndoMeta, p restoreParams) (s
 	}
 
 	if err := util.AtomicWriteFile(tasksPath, []byte(restoreContent), FilePermissions); err != nil {
+		*p.reverseEntries = originalReverseEntries
+		_ = os.Remove(revPath)
 		return "", fmt.Errorf("failed to restore from %s snapshot: %w", p.label, err)
 	}
 
 	// Remove consumed entry and save meta BEFORE deleting the snapshot file.
 	*p.sourceEntries = (*p.sourceEntries)[1:]
 	if err := saveUndoMeta(project, meta); err != nil {
+		*p.sourceEntries = originalSourceEntries
+		*p.reverseEntries = originalReverseEntries
+		if rbErr := util.AtomicWriteFile(tasksPath, currentContent, FilePermissions); rbErr != nil {
+			logging.Warn("failed to rollback %s restore after metadata save failure: %v", p.label, rbErr)
+		}
+		_ = os.Remove(revPath)
 		return "", err
 	}
 

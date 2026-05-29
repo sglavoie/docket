@@ -141,6 +141,21 @@ func TestCheckWeeklyReviewReminder_OnConfiguredDay(t *testing.T) {
 	}
 }
 
+func TestCheckWeeklyReviewReminder_InvalidConfiguredDayUsesDefault(t *testing.T) {
+	now := time.Date(2026, 2, 23, 10, 0, 0, 0, time.UTC) // Monday
+	cfg := DefaultAlertConfig()
+	cfg.WeeklyReviewDay = 99
+	cfg.LastWeeklyReviewAt = timePtr(time.Date(2026, 2, 16, 10, 0, 0, 0, time.UTC))
+
+	alerts := checkWeeklyReviewReminder(cfg, nil, now)
+	if len(alerts) != 1 {
+		t.Fatalf("expected 1 alert using default weekly review day, got %d", len(alerts))
+	}
+	if alerts[0].Title != "Weekly review day" {
+		t.Errorf("unexpected title: %s", alerts[0].Title)
+	}
+}
+
 func TestCheckWeeklyReviewReminder_ReviewedToday(t *testing.T) {
 	now := time.Date(2026, 2, 23, 14, 0, 0, 0, time.UTC)
 	cfg := DefaultAlertConfig()

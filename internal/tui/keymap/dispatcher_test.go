@@ -77,6 +77,27 @@ func TestDispatch_DirectKeyGated(t *testing.T) {
 	}
 }
 
+func TestDispatch_GatedDuplicateFallsThroughToActiveBinding(t *testing.T) {
+	blockedCalled := false
+	activeCalled := false
+	km := &KeyMap{Entries: []Entry{
+		Bind("a", "blocked a", "cat", noopAction(&blockedCalled), WithGate(func() bool { return false })),
+		Bind("a", "active a", "cat", noopAction(&activeCalled)),
+	}}
+	d := NewDispatcher(km)
+
+	_, _, consumed := d.Dispatch(charKey('a'))
+	if !consumed {
+		t.Fatal("expected duplicate fallback binding to consume")
+	}
+	if blockedCalled {
+		t.Fatal("expected gated duplicate action not called")
+	}
+	if !activeCalled {
+		t.Fatal("expected active duplicate action called")
+	}
+}
+
 // TestDispatch_SingleLevelPrefix verifies activate → dispatch → clear.
 func TestDispatch_SingleLevelPrefix(t *testing.T) {
 	called := false
@@ -185,6 +206,33 @@ func TestDispatch_InvalidKeyClearsPrefix(t *testing.T) {
 	}
 	if d.HasPendingPrefix() {
 		t.Fatal("expected prefix cleared after no-match key")
+	}
+}
+
+func TestDispatch_GatedDuplicatePrefixChildFallsThroughToActiveBinding(t *testing.T) {
+	blockedCalled := false
+	activeCalled := false
+	km := &KeyMap{Entries: []Entry{
+		Prefix(",", "comma", "cat", []Entry{
+			Bind("s", "blocked save", "cat", noopAction(&blockedCalled), WithGate(func() bool { return false })),
+			Bind("s", "active save", "cat", noopAction(&activeCalled)),
+		}),
+	}}
+	d := NewDispatcher(km)
+
+	d.Dispatch(charKey(','))
+	_, _, consumed := d.Dispatch(charKey('s'))
+	if !consumed {
+		t.Fatal("expected duplicate prefix fallback binding to consume")
+	}
+	if blockedCalled {
+		t.Fatal("expected gated duplicate prefix action not called")
+	}
+	if !activeCalled {
+		t.Fatal("expected active duplicate prefix action called")
+	}
+	if d.HasPendingPrefix() {
+		t.Fatal("expected prefix cleared after fallback binding")
 	}
 }
 

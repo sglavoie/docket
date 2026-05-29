@@ -14,9 +14,12 @@ func TestDetectEditorPattern(t *testing.T) {
 		want   editorPattern
 	}{
 		{"code", patternGoto},
+		{"codium", patternGoto},
 		{"cursor", patternGoto},
 		{"code-insiders", patternGoto},
+		{"codium-insiders", patternGoto},
 		{"cursor-nightly", patternGoto},
+		{"/usr/local/bin/codium", patternGoto},
 		{"/usr/local/bin/cursor", patternGoto},
 		{"/opt/editors/code-insiders", patternGoto},
 		{"/usr/bin/code", patternGoto},
@@ -114,6 +117,7 @@ func TestDetectEditorPattern_FlaggedString(t *testing.T) {
 		{"nvim -u NORC", patternPlusLine},
 		{"vim --noplugin", patternPlusLine},
 		{"code --wait", patternGoto},
+		{"codium --wait", patternGoto},
 		{"/usr/bin/nvim -u NORC", patternPlusLine},
 		{"subl --new-window", patternColonLine},
 		{"goland --line 1", patternLineFlag},
@@ -292,6 +296,40 @@ func TestOpenCodeReference_NonPositiveLineOmitsLineArgForGotoEditor(t *testing.T
 	args := strings.Split(strings.TrimSpace(string(recorded)), "\n")
 	if len(args) != 1 || args[0] != filePath {
 		t.Fatalf("expected only file path argument, got %v", args)
+	}
+}
+
+func TestOpenCodeReference_CodiumUsesGotoPattern(t *testing.T) {
+	dir := t.TempDir()
+	argFile := filepath.Join(dir, "args.txt")
+	fakeCodium := filepath.Join(dir, "codium")
+	script := "#!/bin/sh\nprintf '%s\\n' \"$@\" > " + argFile + "\nexit 0\n"
+	if err := os.WriteFile(fakeCodium, []byte(script), 0o755); err != nil {
+		t.Fatalf("write fake codium: %v", err)
+	}
+
+	origPath := os.Getenv("PATH")
+	t.Cleanup(func() { _ = os.Setenv("PATH", origPath) })
+	if err := os.Setenv("PATH", dir); err != nil {
+		t.Fatalf("setenv PATH: %v", err)
+	}
+
+	filePath := filepath.Join(dir, "test.go")
+	if err := os.WriteFile(filePath, []byte("package main\n"), 0o644); err != nil {
+		t.Fatalf("write test file: %v", err)
+	}
+
+	if err := OpenCodeReference("codium", filePath, 12); err != nil {
+		t.Fatalf("OpenCodeReference('codium', ..., 12) failed: %v", err)
+	}
+
+	recorded, err := readFileEventually(argFile, 5*time.Second)
+	if err != nil {
+		t.Fatalf("read arg file: %v", err)
+	}
+	args := strings.Split(strings.TrimSpace(string(recorded)), "\n")
+	if len(args) != 2 || args[0] != "--goto" || args[1] != filePath+":12" {
+		t.Fatalf("expected ['--goto', filePath:12], got %v", args)
 	}
 }
 

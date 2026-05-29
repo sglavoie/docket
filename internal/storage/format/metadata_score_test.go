@@ -116,6 +116,37 @@ func TestScoreDimensions_RoundTrip(t *testing.T) {
 	}
 }
 
+func TestScoreDimensions_RoundTripWithScorePatternInURL(t *testing.T) {
+	task := &models.Task{
+		ID:       "score-url",
+		Status:   models.StatusTodo,
+		Priority: 2,
+		URL:      "https://example.com/search?q=literal, score.impact: not-metadata",
+		ScoreDimensions: map[string]int{
+			"impact": 4,
+		},
+	}
+
+	meta := WriteMetadata(task)
+	if !containsString(meta, `url: https://example.com/search?q=literal\, score.impact: not-metadata`) {
+		t.Fatalf("WriteMetadata() = %q, want escaped comma in URL", meta)
+	}
+
+	content := meta[5 : len(meta)-4]
+	parsed := &models.Task{}
+	warnings := ParseMetadata(parsed, content)
+
+	if len(warnings) != 0 {
+		t.Fatalf("unexpected warnings: %v", warnings)
+	}
+	if parsed.URL != task.URL {
+		t.Errorf("URL = %q, want %q", parsed.URL, task.URL)
+	}
+	if got := parsed.ScoreDimensions["impact"]; got != 4 {
+		t.Errorf("score impact = %d, want 4 (all scores: %v)", got, parsed.ScoreDimensions)
+	}
+}
+
 func TestWriteMetadata_SkipsInvalidScoreDimensionIDs(t *testing.T) {
 	tests := []struct {
 		name      string

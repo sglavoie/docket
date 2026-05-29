@@ -30,7 +30,7 @@ func metadataCoreFieldCodecs() []metadataFieldCodec {
 			func(task *models.Task, value string) { task.Section = value },
 			func(task *models.Task) string { return task.Section },
 		),
-		coreStringField("custom_section",
+		coreEscapedStringField("custom_section",
 			func(task *models.Task, value string) { task.CustomSection = value },
 			func(task *models.Task) string { return task.CustomSection },
 		),
@@ -128,15 +128,15 @@ func metadataCoreFieldCodecs() []metadataFieldCodec {
 		),
 		metadataAttachmentsFieldCodec(),
 		metadataChecklistFieldCodec(),
-		coreStringField("stage",
+		coreEscapedStringField("stage",
 			func(task *models.Task, value string) { task.Stage = value },
 			func(task *models.Task) string { return task.Stage },
 		),
-		coreStringField("source",
+		coreEscapedStringField("source",
 			func(task *models.Task, value string) { task.Source = value },
 			func(task *models.Task) string { return task.Source },
 		),
-		coreStringField("url",
+		coreEscapedStringField("url",
 			func(task *models.Task, value string) { task.URL = value },
 			func(task *models.Task) string { return task.URL },
 		),
@@ -151,6 +151,19 @@ func coreStringField(key string, set func(*models.Task, string), get func(*model
 		func(task *models.Task, parts *[]string) {
 			if value := get(task); value != "" {
 				appendMetadataPart(parts, key, value)
+			}
+		},
+	)
+}
+
+func coreEscapedStringField(key string, set func(*models.Task, string), get func(*models.Task) string) metadataFieldCodec {
+	return metadataField(key,
+		func(task *models.Task, value string, _ *metadataParseState, _ *[]ParseWarning) {
+			set(task, unescapeMetadataScalar(value))
+		},
+		func(task *models.Task, parts *[]string) {
+			if value := get(task); value != "" {
+				appendMetadataPart(parts, key, escapeMetadataScalar(value))
 			}
 		},
 	)

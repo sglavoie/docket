@@ -157,3 +157,63 @@ func TestRedoRoundTrip(t *testing.T) {
 		t.Error("expected stateB after redo")
 	}
 }
+
+func TestPerformRestoreRollsBackTasksWhenMetaSaveFails(t *testing.T) {
+	project, tasksPath := newUndoTestProject(t)
+
+	undoDir := getUndoDir(project)
+	if err := os.MkdirAll(undoDir, 0755); err != nil {
+		t.Fatalf("failed to create undo dir: %v", err)
+	}
+
+	snapshotContent := "# Project: Test Project\n\n## Task: Snapshot task\n<!-- id: task-1, status: todo, priority: 3 -->\n"
+	currentContent := "# Project: Test Project\n\n## Task: Current task\n<!-- id: task-1, status: done, priority: 1 -->\n"
+	writeUndoTasks(t, tasksPath, currentContent)
+
+	snapshotPath := getSnapshotPath(project, 1)
+	if err := os.WriteFile(snapshotPath, []byte(snapshotContent), 0644); err != nil {
+		t.Fatalf("failed to write snapshot: %v", err)
+	}
+
+	metaPath := getUndoMetaPath(project)
+	if err := os.Mkdir(metaPath, 0755); err != nil {
+		t.Fatalf("failed to create meta path directory: %v", err)
+	}
+
+	meta := &UndoMeta{
+		Entries: []UndoEntry{{
+			Num:    1,
+			Action: "Edit",
+		}},
+		RedoEntries: []UndoEntry{},
+	}
+
+	_, err := performRestore(project, meta, restoreParams{
+		label:          "undo",
+		sourceEntries:  &meta.Entries,
+		reverseEntries: &meta.RedoEntries,
+		snapshotPath:   getSnapshotPath,
+		reversePath:    getRedoSnapshotPath,
+	})
+	if err == nil {
+		t.Fatal("expected performRestore to fail when meta path is a directory")
+	}
+
+	content, readErr := os.ReadFile(tasksPath)
+	if readErr != nil {
+		t.Fatalf("failed to read tasks file: %v", readErr)
+	}
+	if string(content) != currentContent {
+		t.Fatalf("tasks.md was not rolled back after meta save failure:\n%s", string(content))
+	}
+
+	if _, statErr := os.Stat(getRedoSnapshotPath(project, 1)); !os.IsNotExist(statErr) {
+		t.Fatalf("redo snapshot should be removed after meta save failure, stat err: %v", statErr)
+	}
+	if len(meta.Entries) != 1 || meta.Entries[0].Num != 1 {
+		t.Fatalf("source entries were not restored in memory: %+v", meta.Entries)
+	}
+	if len(meta.RedoEntries) != 0 {
+		t.Fatalf("reverse entries were not restored in memory: %+v", meta.RedoEntries)
+	}
+}
