@@ -78,3 +78,130 @@ func TestProjectTreeAllViewRendersMultipleRowsWithManyTopGroups(t *testing.T) {
 		t.Fatalf("expected multiple rendered task rows, saw %d task titles in output", seen)
 	}
 }
+
+func TestBuildProjectTreePrefix(t *testing.T) {
+	tests := []struct {
+		level int
+		want  string
+	}{
+		{level: -1, want: ""},
+		{level: 0, want: ""},
+		{level: 1, want: "  "},
+		{level: 2, want: "    "},
+		{level: 3, want: "      "},
+	}
+
+	for _, tt := range tests {
+		if got := buildProjectTreePrefix(tt.level); got != tt.want {
+			t.Fatalf("buildProjectTreePrefix(%d) = %q, want %q", tt.level, got, tt.want)
+		}
+	}
+}
+
+func TestProjectTreeBuildTreeUsesDepthOnlyPrefixes(t *testing.T) {
+	parent := &models.Task{
+		ID:     "parent",
+		Title:  "Parent",
+		Type:   models.TaskTypeEpic,
+		Status: models.StatusTodo,
+	}
+	child := &models.Task{
+		ID:       "child",
+		Title:    "Child",
+		Type:     models.TaskTypeStory,
+		Status:   models.StatusTodo,
+		ParentID: &parent.ID,
+		Parent:   parent,
+	}
+	grandchild := &models.Task{
+		ID:       "grandchild",
+		Title:    "Grandchild",
+		Type:     models.TaskTypeTask,
+		Status:   models.StatusTodo,
+		ParentID: &child.ID,
+		Parent:   child,
+	}
+	sibling := &models.Task{
+		ID:       "sibling",
+		Title:    "Sibling",
+		Type:     models.TaskTypeTask,
+		Status:   models.StatusTodo,
+		ParentID: &parent.ID,
+		Parent:   parent,
+	}
+
+	child.Children = []*models.Task{grandchild}
+	parent.Children = []*models.Task{child, sibling}
+
+	project := &models.Project{
+		Name:  "Depth Prefix Test",
+		Tasks: []*models.Task{parent, child, grandchild, sibling},
+	}
+
+	model := &ProjectTreeModel{project: project}
+	model.buildTree()
+
+	want := map[string]string{
+		"parent":     "",
+		"child":      "  ",
+		"grandchild": "    ",
+		"sibling":    "  ",
+	}
+
+	if len(model.nodes) != len(want) {
+		t.Fatalf("expected %d nodes, got %d", len(want), len(model.nodes))
+	}
+
+	for _, node := range model.nodes {
+		expectedPrefix, ok := want[node.Task.ID]
+		if !ok {
+			t.Fatalf("unexpected task in tree: %s", node.Task.ID)
+		}
+		if node.TreePrefix != expectedPrefix {
+			t.Fatalf("task %s prefix = %q, want %q", node.Task.ID, node.TreePrefix, expectedPrefix)
+		}
+		if strings.Contains(node.TreePrefix, "├──") || strings.Contains(node.TreePrefix, "└──") || strings.Contains(node.TreePrefix, "│") {
+			t.Fatalf("task %s prefix should be depth-only indent, got %q", node.Task.ID, node.TreePrefix)
+		}
+	}
+}
+
+func TestProjectTreeRenderUsesChevronsWithoutOutlinerConnectors(t *testing.T) {
+	parent := &models.Task{
+		ID:     "parent",
+		Title:  "Parent",
+		Type:   models.TaskTypeEpic,
+		Status: models.StatusTodo,
+	}
+	child := &models.Task{
+		ID:       "child",
+		Title:    "Child",
+		Type:     models.TaskTypeTask,
+		Status:   models.StatusTodo,
+		ParentID: &parent.ID,
+		Parent:   parent,
+	}
+	parent.Children = []*models.Task{child}
+
+	project := &models.Project{
+		Name:  "Render Prefix Test",
+		Tasks: []*models.Task{parent, child},
+	}
+
+	model := NewProjectTreeModel(project, newTestProjectTreeConfig(), nil)
+	model.SetSize(100, 20)
+
+	out := model.View().Content
+	if !strings.Contains(out, IconExpanded+" ") {
+		t.Fatalf("expected parent rows to render expanded chevron, output: %q", out)
+	}
+	if strings.Contains(out, "├── ") || strings.Contains(out, "└── ") || strings.Contains(out, "│   ") {
+		t.Fatalf("expected project tree output without outliner connectors, output: %q", out)
+	}
+}
+
+func TestOutlinerConnectorPrefixUnaffected(t *testing.T) {
+	if got := buildTreePrefix([]bool{false}, true); got != "│   └── " {
+		t.Fatalf("buildTreePrefix([]bool{false}, true) = %q, want %q", got, "│   └── ")
+	}
+}

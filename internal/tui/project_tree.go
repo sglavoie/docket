@@ -135,7 +135,7 @@ type TreeNode struct {
 	IsContextNode       bool   // True if visible only to show hierarchy context (parent in different section)
 	HasFilteredChildren bool   // True if any children pass current filters (used for collapse arrow)
 	MatchPositions      []int  // Match positions within title for search highlighting
-	TreePrefix          string // Pre-computed connector prefix (├── , └── , etc.)
+	TreePrefix          string // Pre-computed depth prefix (Project Tree-specific indentation)
 	TopGroupIndex       int    // Index of the root ancestor (0-based); children inherit from root
 }
 

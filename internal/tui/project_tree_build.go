@@ -26,8 +26,7 @@ func (m *ProjectTreeModel) buildTree() {
 
 	// Build nodes recursively
 	for i, task := range rootTasks {
-		isLast := i == len(rootTasks)-1
-		m.addTaskNode(task, 0, i, expandedState, nil, isLast)
+		m.addTaskNode(task, 0, i, expandedState)
 	}
 
 	m.sortNodes()
@@ -35,7 +34,7 @@ func (m *ProjectTreeModel) buildTree() {
 	m.calculateFilterCounts()
 }
 
-func (m *ProjectTreeModel) addTaskNode(task *models.Task, level int, topGroupIndex int, expandedState map[string]bool, ancestorIsLast []bool, isLast bool) {
+func (m *ProjectTreeModel) addTaskNode(task *models.Task, level int, topGroupIndex int, expandedState map[string]bool) {
 	// Use preserved state if available, otherwise default to expanded
 	// This ensures newly-parented tasks (that just gained children) show their children
 	expanded, hasState := expandedState[task.ID]
@@ -48,19 +47,15 @@ func (m *ProjectTreeModel) addTaskNode(task *models.Task, level int, topGroupInd
 		Level:         level,
 		Expanded:      expanded,
 		Visible:       true,
-		TreePrefix:    buildTreePrefix(ancestorIsLast, isLast),
+		TreePrefix:    buildProjectTreePrefix(level),
 		TopGroupIndex: topGroupIndex,
 	}
 	m.nodes = append(m.nodes, node)
 
-	// Add children, copying the ancestor stack to prevent slice aliasing
+	// Add children recursively, increasing depth-based prefix indentation.
 	if len(task.Children) > 0 {
-		childAncestors := make([]bool, len(ancestorIsLast)+1)
-		copy(childAncestors, ancestorIsLast)
-		childAncestors[len(ancestorIsLast)] = isLast
-		for i, child := range task.Children {
-			isChildLast := i == len(task.Children)-1
-			m.addTaskNode(child, level+1, topGroupIndex, expandedState, childAncestors, isChildLast)
+		for _, child := range task.Children {
+			m.addTaskNode(child, level+1, topGroupIndex, expandedState)
 		}
 	}
 }

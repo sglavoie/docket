@@ -19,10 +19,8 @@ func (m *ProjectTreeModel) renderNodeWithWidth(node *TreeNode, selected bool, in
 		return m.renderQuickEditNode(node, maxWidth)
 	}
 
-	// Build indent using tree connectors (├── , └── , │   ).
-	// For leaf nodes, extend the connector line horizontally through the
-	// expand icon gap so the line reaches the type icon without dead space.
-	var indent string
+	// Build indent using depth-only padding; parent rows still show fold chevrons.
+	indent := MutedStyle.Render(node.TreePrefix)
 	expandIcon := "  "
 	if node.HasFilteredChildren {
 		if node.Expanded {
@@ -30,14 +28,6 @@ func (m *ProjectTreeModel) renderNodeWithWidth(node *TreeNode, selected bool, in
 		} else {
 			expandIcon = IconCollapsed + " "
 		}
-		indent = MutedStyle.Render(node.TreePrefix)
-	} else if node.TreePrefix != "" {
-		runes := []rune(node.TreePrefix)
-		if runes[len(runes)-1] == ' ' {
-			runes[len(runes)-1] = '─'
-		}
-		indent = MutedStyle.Render(string(runes))
-		expandIcon = MutedStyle.Render("─") + " "
 	}
 
 	// Queue / daily-plan indicator: always 2 chars wide. w takes precedence over q.
@@ -343,7 +333,7 @@ func (m *ProjectTreeModel) nodeContentGroup(task *models.Task) string {
 func (m *ProjectTreeModel) renderQuickEditNode(node *TreeNode, maxWidth int) string {
 	task := node.Task
 
-	// Build indent using tree connectors
+	// Build indent using depth-only padding.
 	indent := MutedStyle.Render(node.TreePrefix)
 	indentWidth := lipgloss.Width(node.TreePrefix)
 
