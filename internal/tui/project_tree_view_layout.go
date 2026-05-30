@@ -234,41 +234,20 @@ func (m *ProjectTreeModel) renderTreeContent(width int, focused bool) string { /
 			}
 		}
 
-		// Count blank separator lines between top-level groups
-		numGroupSeps := 0
-		for i := 1; i < len(visible); i++ {
-			if visible[i].TopGroupIndex != visible[i-1].TopGroupIndex {
-				numGroupSeps++
-			}
-		}
-		if numGroupSeps > 0 {
-			availableHeight -= numGroupSeps
-			if availableHeight < 1 {
-				availableHeight = 1
-			}
-		}
-
 		cardContentWidth := width - CardBorderOverhead
 
-		// Reserve 1 char for scrollbar when content overflows
-		needsScrollbar := len(visible) > availableHeight
+		totalRenderableLines := treeRenderLineCount(visible, 0, len(visible))
+		needsScrollbar := totalRenderableLines > availableHeight
 		if needsScrollbar {
+			// Reserve 1 char for scrollbar when content overflows.
 			cardContentWidth--
 		}
 
-		// Determine visible range
+		// Determine visible range, accounting for separator line cost between groups.
 		startIdx := 0
 		endIdx := len(visible)
-
-		if len(visible) > availableHeight {
-			// Center cursor in view
-			halfView := availableHeight / 2
-			startIdx = max(m.cursor-halfView, 0)
-			endIdx = startIdx + availableHeight
-			if endIdx > len(visible) {
-				endIdx = len(visible)
-				startIdx = max(endIdx-availableHeight, 0)
-			}
+		if needsScrollbar {
+			startIdx, endIdx = treeWindowRangeByLines(visible, m.cursor, availableHeight)
 		}
 
 		// Compute column layout for the visible slice (alignment guard: >= MinColumnAlignWidth)
@@ -322,7 +301,8 @@ func (m *ProjectTreeModel) renderTreeContent(width int, focused bool) string { /
 
 		// Attach scrollbar when content overflows
 		if needsScrollbar {
-			scrollbar := RenderScrollbar(len(visible), availableHeight, startIdx)
+			scrollOffset := treeRenderLineCount(visible, 0, startIdx)
+			scrollbar := RenderScrollbar(totalRenderableLines, availableHeight, scrollOffset)
 			content = AttachScrollbar(content, scrollbar)
 		}
 		cardContent.WriteString(content)
@@ -350,4 +330,95 @@ func (m *ProjectTreeModel) renderTreeContent(width int, focused bool) string { /
 	}
 
 	return b.String()
+}
+
+// treeRenderLineCount counts rendered lines for [start,end), including blank
+// separator lines inserted between top-level groups.
+func treeRenderLineCount(visible []*TreeNode, start, end int) int {
+	if len(visible) == 0 {
+		return 0
+	}
+	start = max(start, 0)
+	end = min(end, len(visible))
+	if start >= end {
+		return 0
+	}
+
+	lines := 0
+	prevGroupIdx := -1
+	for i := start; i < end; i++ {
+		groupIdx := visible[i].TopGroupIndex
+		if prevGroupIdx >= 0 && groupIdx != prevGroupIdx {
+			lines++
+		}
+		lines++
+		prevGroupIdx = groupIdx
+	}
+	return lines
+}
+
+// treeWindowRangeByLines returns an inclusive cursor window constrained by a
+// maximum rendered line budget. It accounts for blank separator lines between
+// top-level groups so viewport sizing remains stable in dense "All" views.
+func treeWindowRangeByLines(visible []*TreeNode, cursor, maxLines int) (int, int) {
+	if len(visible) == 0 {
+		return 0, 0
+	}
+	maxLines = max(maxLines, 1)
+	cursor = ClampCursor(cursor, len(visible))
+
+	start, end := cursor, cursor+1
+	usedLines := 1 // one task row at cursor
+
+	for {
+		upCost := 0
+		if start > 0 {
+			upCost = 1
+			if visible[start-1].TopGroupIndex != visible[start].TopGroupIndex {
+				upCost++
+			}
+			if usedLines+upCost > maxLines {
+				upCost = 0
+			}
+		}
+
+		downCost := 0
+		if end < len(visible) {
+			downCost = 1
+			if visible[end-1].TopGroupIndex != visible[end].TopGroupIndex {
+				downCost++
+			}
+			if usedLines+downCost > maxLines {
+				downCost = 0
+			}
+		}
+
+		if upCost == 0 && downCost == 0 {
+			break
+		}
+
+		if upCost > 0 && downCost > 0 {
+			upperRows := cursor - start
+			lowerRows := end - cursor - 1
+			if upperRows <= lowerRows {
+				start--
+				usedLines += upCost
+			} else {
+				end++
+				usedLines += downCost
+			}
+			continue
+		}
+
+		if upCost > 0 {
+			start--
+			usedLines += upCost
+			continue
+		}
+
+		end++
+		usedLines += downCost
+	}
+
+	return start, end
 }
