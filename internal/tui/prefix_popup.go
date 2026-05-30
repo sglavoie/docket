@@ -91,3 +91,9 @@ var prefixCategoryNames = map[string]string{
 	";":   "tt",
 	";t":  "task",
 }
+
+// prefixCategoryMnemonicOverrides defines per-prefix title mnemonics.
+// Defaults use the category's first rune unless overridden here.
+var prefixCategoryMnemonicOverrides = map[string]rune{
+	"z": 'z',
+}

@@ -242,6 +242,41 @@ func TestRenderPrefixPopup_CategoryTitle(t *testing.T) {
 	}
 }
 
+func TestResolvePrefixCategoryHighlightSpan_DefaultUsesFirstRune(t *testing.T) {
+	start, end, ok := resolvePrefixCategoryHighlightSpan("m", "move")
+	if !ok {
+		t.Fatal("expected a highlight span for default mnemonic")
+	}
+	if start != 0 || end != 1 {
+		t.Fatalf("expected first-rune highlight span [0:1], got [%d:%d]", start, end)
+	}
+}
+
+func TestResolvePrefixCategoryHighlightSpan_OverrideUsesMatchingMnemonic(t *testing.T) {
+	category := "snooze"
+	start, end, ok := resolvePrefixCategoryHighlightSpan("z", category)
+	if !ok {
+		t.Fatal("expected a highlight span for override mnemonic")
+	}
+	if got := category[start:end]; got != "z" {
+		t.Fatalf("expected override to highlight %q, got %q", "z", got)
+	}
+}
+
+func TestResolvePrefixCategoryHighlightSpan_OverrideFallsBackToFirstRune(t *testing.T) {
+	category := "snooe"
+	start, end, ok := resolvePrefixCategoryHighlightSpan("z", category)
+	if !ok {
+		t.Fatal("expected fallback highlight span when override mnemonic is missing")
+	}
+	if start != 0 || end != 1 {
+		t.Fatalf("expected fallback first-rune span [0:1], got [%d:%d]", start, end)
+	}
+	if got := category[start:end]; got != "s" {
+		t.Fatalf("expected fallback to highlight %q, got %q", "s", got)
+	}
+}
+
 func TestOverlayPopup_EmptyPopup(t *testing.T) {
 	base := "line1\nline2\nline3"
 	result := OverlayPopup(base, "", 20, 3)

@@ -5,6 +5,8 @@ import (
 	"image/color"
 	"sort"
 	"strings"
+	"unicode"
+	"unicode/utf8"
 
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
@@ -192,12 +194,7 @@ func RenderPrefixPopupWithCategory(prefix, category string, hints PrefixHints, w
 		crumbStr := strings.Join(renderedParts, MutedStyle.Render(" > "))
 		title = titleKeyStyle.Render(prefix) + borderStyle.Render(" → ") + crumbStr
 	} else {
-		var categoryTitle string
-		if strings.EqualFold(prefix, string(category[0])) {
-			categoryTitle = titleCatFirstStyle.Render(string(category[0])) + titleCatRestStyle.Render(category[1:])
-		} else {
-			categoryTitle = titleCatRestStyle.Render(category)
-		}
+		categoryTitle := renderPrefixCategoryTitle(prefix, category, titleCatFirstStyle, titleCatRestStyle)
 		title = titleKeyStyle.Render(prefix) + borderStyle.Render(" → ") + categoryTitle
 	}
 
@@ -230,6 +227,71 @@ func RenderPrefixPopupWithCategory(prefix, category string, hints PrefixHints, w
 	boxInnerWidth := maxWidth
 	contentLines := renderCompactPrefixHintLines(keyHints, boxInnerWidth-4)
 	return renderPrefixBox(title, contentLines, boxInnerWidth, borderStyle)
+}
+
+func renderPrefixCategoryTitle(prefix, category string, highlightedStyle, baseStyle lipgloss.Style) string {
+	start, end, ok := resolvePrefixCategoryHighlightSpan(prefix, category)
+	if !ok {
+		return baseStyle.Render(category)
+	}
+
+	return baseStyle.Render(category[:start]) +
+		highlightedStyle.Render(category[start:end]) +
+		baseStyle.Render(category[end:])
+}
+
+func resolvePrefixCategoryHighlightSpan(prefix, category string) (int, int, bool) {
+	mnemonic, ok, usedOverride := resolvePrefixCategoryMnemonic(prefix, category)
+	if !ok {
+		return 0, 0, false
+	}
+
+	if start, end, found := findCaseInsensitiveRuneSpan(category, mnemonic); found {
+		return start, end, true
+	}
+
+	// If override mnemonic is not present in category, fallback to first rune.
+	if usedOverride {
+		return firstRuneSpan(category)
+	}
+
+	return 0, 0, false
+}
+
+func resolvePrefixCategoryMnemonic(prefix, category string) (rune, bool, bool) {
+	if mnemonic, ok := prefixCategoryMnemonicOverrides[prefix]; ok {
+		return mnemonic, true, true
+	}
+	for _, r := range category {
+		return r, true, false
+	}
+	return 0, false, false
+}
+
+func findCaseInsensitiveRuneSpan(s string, target rune) (int, int, bool) {
+	lowerTarget := unicode.ToLower(target)
+	for start, r := range s {
+		if unicode.ToLower(r) != lowerTarget {
+			continue
+		}
+		_, size := utf8.DecodeRuneInString(s[start:])
+		if size <= 0 {
+			return 0, 0, false
+		}
+		return start, start + size, true
+	}
+	return 0, 0, false
+}
+
+func firstRuneSpan(s string) (int, int, bool) {
+	if s == "" {
+		return 0, 0, false
+	}
+	_, size := utf8.DecodeRuneInString(s)
+	if size <= 0 {
+		return 0, 0, false
+	}
+	return 0, size, true
 }
 
 func renderAlignedPrefixHintLines(keyHints []PrefixHint) ([]string, int) {
