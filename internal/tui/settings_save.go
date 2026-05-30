@@ -264,11 +264,11 @@ func priorityModeToCursor(mode string) int {
 	}
 }
 
-// initTreeColumnDefaults converts a config map to a [14]bool array indexed by
+// initTreeColumnDefaults converts a config map to a [15]bool array indexed by
 // the Project Tree column slice (AllColumns filtered to exclude OutlinerOnly).
 // nil map or missing keys default to true (visible).
-func initTreeColumnDefaults(cfgMap map[string]bool) [14]bool {
-	var result [14]bool
+func initTreeColumnDefaults(cfgMap map[string]bool) [15]bool {
+	var result [15]bool
 	idx := 0
 	for _, col := range AllColumns {
 		if col.OutlinerOnly {
@@ -303,9 +303,9 @@ func initOutlinerColumnDefaults(cfgMap map[string]bool) [15]bool {
 	return result
 }
 
-// treeColumnDefaultsToMap converts a [14]bool array (filtered AllColumns) back
+// treeColumnDefaultsToMap converts a [15]bool array (filtered AllColumns) back
 // to a config map. Returns nil when every column is visible.
-func treeColumnDefaultsToMap(defaults [14]bool) map[string]bool {
+func treeColumnDefaultsToMap(defaults [15]bool) map[string]bool {
 	allTrue := true
 	for _, v := range defaults {
 		if !v {
@@ -316,7 +316,7 @@ func treeColumnDefaultsToMap(defaults [14]bool) map[string]bool {
 	if allTrue {
 		return nil
 	}
-	m := make(map[string]bool, 14)
+	m := make(map[string]bool, 15)
 	idx := 0
 	for _, col := range AllColumns {
 		if col.OutlinerOnly {

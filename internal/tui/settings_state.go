@@ -106,7 +106,7 @@ var (
 	settingsTabNames = []string{"General", "Palette", "Review", "Behavior", "Attachments", "Project Tree", "Outliner", "Kanban", "Notifications", "Stages", "Appearance"}
 
 	// tabFieldCount declares how many focusable fields each tab has.
-	tabFieldCount = []int{5, 18, 5, 19, 2, 14, 24, 11, 15, 1, 5}
+	tabFieldCount = []int{5, 18, 5, 19, 2, 15, 24, 11, 15, 1, 5}
 
 	// tabFieldStart holds the starting focus index for each tab (computed in init).
 	tabFieldStart []int
@@ -285,7 +285,7 @@ type SettingsModel struct {
 	codeEditorInput          textinput.Model
 	defaultViewCursor        int      // Index into defaultProjectViewOptions
 	outlinerCollapsed        [7]bool  // Per-section default collapse state (indexed by outlinerSectionNames)
-	treeColumnDefaults       [14]bool // Global default column visibility for tree view (filtered: excludes OutlinerOnly)
+	treeColumnDefaults       [15]bool // Global default column visibility for tree view
 	outlinerColumnDefaults   [15]bool // Global default column visibility for outliner view (full AllColumns)
 	treePriorityMode         int      // 0=All, 1=Conditional, 2=Hidden
 	outlinerPriorityMode     int      // 0=All, 1=Conditional, 2=Hidden

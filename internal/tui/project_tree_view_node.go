@@ -306,6 +306,11 @@ func (m *ProjectTreeModel) nodeContentGroup(task *models.Task) string {
 			parts = append(parts, s)
 		}
 	}
+	if m.columnConfig.IsVisible(ColDescription) {
+		if s := renderDescriptionIndicator(task); s != "" {
+			parts = append(parts, s)
+		}
+	}
 	if m.columnConfig.IsVisible(ColAttachments) {
 		if s := renderAttachmentIndicator(task); s != "" {
 			parts = append(parts, s)
@@ -319,6 +324,13 @@ func (m *ProjectTreeModel) nodeContentGroup(task *models.Task) string {
 	if m.columnConfig.IsVisible(ColDecisions) {
 		if s := renderDecisionIndicator(task); s != "" {
 			parts = append(parts, s)
+		}
+	}
+	if m.columnConfig.IsVisible(ColScore) && m.config != nil && m.project != nil {
+		if profile := m.config.GetProjectScoringProfile(m.project.ID); profile != nil {
+			if score := RenderScoreBadge(task, profile); score != "" {
+				parts = append(parts, score)
+			}
 		}
 	}
 	if m.columnConfig.IsVisible(ColTags) && len(task.Tags) > 0 && !m.sidebar.IsEnabled() {

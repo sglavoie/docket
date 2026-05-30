@@ -121,7 +121,7 @@ func buildSettingsFieldRegistry() []settingsFieldMeta {
 	add(base+0, tabAttachments, 0, "General > Attachments", "Attachment Editor", "attachment editor file open default", "")
 	add(base+1, tabAttachments, 0, "General > Attachments", "Code Editor", "code editor reference open", "code")
 
-	// Tab 5: Project Tree (14 column fields)
+	// Tab 5: Project Tree (15 column fields)
 	base = tabFieldStart[tabProjectTree]
 	treeIdx := 0
 	for _, col := range AllColumns {

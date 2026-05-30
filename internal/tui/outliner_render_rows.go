@@ -237,7 +237,7 @@ func (m *OutlinerModel) renderTaskIndicators(task *models.Task, proj *models.Pro
 	orgGroup := m.renderTaskOrganizationGroup(task, proj)
 	lifecycleGroup := m.renderTaskLifecycleGroup(task)
 	structureGroup := m.renderTaskStructureGroup(task, proj)
-	contentGroup := m.renderTaskContentGroup(task)
+	contentGroup := m.renderTaskContentGroup(task, proj)
 	indicatorStr := JoinIndicatorGroups(orgGroup, lifecycleGroup, structureGroup, contentGroup)
 	if indicatorStr == "" {
 		return ""
@@ -322,8 +322,15 @@ func (m *OutlinerModel) renderTaskStructureGroup(task *models.Task, proj *models
 	return JoinGroupParts(structureParts...)
 }
 
-func (m *OutlinerModel) renderTaskContentGroup(task *models.Task) string {
+func (m *OutlinerModel) renderTaskContentGroup(task *models.Task, proj *models.Project) string {
 	var contentParts []string
+	if m.columnConfig.IsVisible(ColScore) && m.config != nil && proj != nil {
+		if profile := m.config.GetProjectScoringProfile(proj.ID); profile != nil {
+			if score := RenderScoreBadge(task, profile); score != "" {
+				contentParts = append(contentParts, score)
+			}
+		}
+	}
 	if m.columnConfig.IsVisible(ColTags) {
 		if tags := renderTruncatedTags(task.Tags, 2, 8); tags != "" {
 			contentParts = append(contentParts, tags)

@@ -26,7 +26,7 @@ var AllColumns = []ColumnInfo{
 	{ID: ColCustomSection, Label: "Custom Section"},
 	{ID: ColDependencies, Label: "Dependencies"},
 	{ID: ColComments, Label: "Comments"},
-	{ID: ColDescription, Label: "Description", OutlinerOnly: true},
+	{ID: ColDescription, Label: "Description"},
 	{ID: ColAttachments, Label: "Attachments"},
 	{ID: ColChecklist, Label: "Checklist"},
 	{ID: ColDecisions, Label: "Decisions"},

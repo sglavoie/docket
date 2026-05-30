@@ -21,7 +21,7 @@ func renderDefaultHint(current, def string) string {
 // Iterates AllColumns filtered to exclude OutlinerOnly entries — the toggles
 // array indices must align with that filtered slice.
 // The Priority column is rendered as a 3-way enum selector instead of a toggle.
-func (m *SettingsModel) renderTreeColumnToggles(b *strings.Builder, toggles [14]bool, startIdx, labelWidth int, priorityCursor int) {
+func (m *SettingsModel) renderTreeColumnToggles(b *strings.Builder, toggles [15]bool, startIdx, labelWidth int, priorityCursor int) {
 	idx := 0
 	for _, col := range AllColumns {
 		if col.OutlinerOnly {
