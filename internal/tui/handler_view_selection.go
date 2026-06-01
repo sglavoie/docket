@@ -25,12 +25,21 @@ func (m *AppModel) handleViewSelectionMessages(msg tea.Msg) (bool, tea.Cmd) {
 			m.showView(ViewTaskJumper, m.taskJumper)
 			return true, m.taskJumper.Init()
 		}
+		if msg.CrossProject {
+			m.taskJumper = NewCrossProjectTaskJumperModel(msg.Projects)
+			m.showView(ViewTaskJumper, m.taskJumper)
+			return true, m.taskJumper.Init()
+		}
 		return true, nil
 
 	case TaskJumperSelectMsg:
 		m.popView()
 		if msg.Task != nil {
 			switch m.currentView() {
+			case ViewCrossProjectOutliner:
+				if m.crossOutliner != nil {
+					m.crossOutliner.NavigateToTaskInProject(msg.Task, msg.Project)
+				}
 			case ViewOutliner:
 				if m.outliner != nil {
 					m.outliner.NavigateToSidebarTask(msg.Task)

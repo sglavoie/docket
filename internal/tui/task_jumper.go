@@ -17,15 +17,24 @@ import (
 // filteredTask holds a task with its match positions for highlighting.
 type filteredTask struct {
 	task           *models.Task
+	project        *models.Project
 	titlePositions []int // Match positions within the title for highlighting
+}
+
+type taskJumperItem struct {
+	task    *models.Task
+	project *models.Project
 }
 
 // TaskJumperModel provides fuzzy-find navigation to tasks.
 type TaskJumperModel struct {
-	project  *models.Project
-	tasks    []*models.Task // Flat list of all tasks
-	filtered []filteredTask // Tasks matching current query with highlight positions
-	cursor   int            // Currently selected task index
+	project      *models.Project
+	projects     []*models.Project
+	crossProject bool
+	tasks        []*models.Task   // Flat list of all tasks
+	items        []taskJumperItem // Flat list of tasks with owning project context
+	filtered     []filteredTask   // Tasks matching current query with highlight positions
+	cursor       int              // Currently selected task index
 
 	// Input for filtering
 	searchInput textinput.Model
@@ -39,6 +48,37 @@ type TaskJumperModel struct {
 
 // NewTaskJumperModel creates a new task jumper model.
 func NewTaskJumperModel(project *models.Project) *TaskJumperModel {
+	if project == nil {
+		return NewCrossProjectTaskJumperModel(nil)
+	}
+	items := make([]taskJumperItem, 0, len(project.Tasks))
+	for _, task := range project.Tasks {
+		if task == nil {
+			continue
+		}
+		items = append(items, taskJumperItem{task: task, project: project})
+	}
+	return newTaskJumperModel(project, nil, false, items)
+}
+
+// NewCrossProjectTaskJumperModel creates a task jumper across multiple projects.
+func NewCrossProjectTaskJumperModel(projects []*models.Project) *TaskJumperModel {
+	var items []taskJumperItem
+	for _, project := range projects {
+		if project == nil {
+			continue
+		}
+		for _, task := range project.Tasks {
+			if task == nil {
+				continue
+			}
+			items = append(items, taskJumperItem{task: task, project: project})
+		}
+	}
+	return newTaskJumperModel(nil, projects, true, items)
+}
+
+func newTaskJumperModel(project *models.Project, projects []*models.Project, crossProject bool, items []taskJumperItem) *TaskJumperModel {
 	searchInput := textinput.New()
 	searchInput.Placeholder = "Type to filter tasks..."
 	searchInput.CharLimit = 100
@@ -46,16 +86,26 @@ func NewTaskJumperModel(project *models.Project) *TaskJumperModel {
 	searchInput.Focus()
 	applyThemedTextInput(&searchInput)
 
+	tasks := make([]*models.Task, 0, len(items))
+	for _, item := range items {
+		if item.task != nil {
+			tasks = append(tasks, item.task)
+		}
+	}
+
 	m := &TaskJumperModel{
-		project:     project,
-		tasks:       project.Tasks,
-		searchInput: searchInput,
-		cursor:      0,
+		project:      project,
+		projects:     projects,
+		crossProject: crossProject,
+		tasks:        tasks,
+		items:        items,
+		searchInput:  searchInput,
+		cursor:       0,
 	}
 	// Initialize filtered with all tasks (no highlighting when no query)
-	m.filtered = make([]filteredTask, len(m.tasks))
-	for i, task := range m.tasks {
-		m.filtered[i] = filteredTask{task: task}
+	m.filtered = make([]filteredTask, len(m.items))
+	for i, item := range m.items {
+		m.filtered[i] = filteredTask{task: item.task, project: item.project}
 	}
 	return m
 }
@@ -117,9 +167,9 @@ func (m *TaskJumperModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		case "enter":
 			if len(m.filtered) > 0 && m.cursor < len(m.filtered) {
-				selectedTask := m.filtered[m.cursor].task
+				selected := m.filtered[m.cursor]
 				return m, func() tea.Msg {
-					return TaskJumperSelectMsg{Task: selectedTask}
+					return TaskJumperSelectMsg{Task: selected.task, Project: selected.project}
 				}
 			}
 			return m, nil
@@ -157,9 +207,9 @@ func (m *TaskJumperModel) filterTasks() {
 
 	if query == "" {
 		// Reset to all tasks with no highlighting
-		m.filtered = make([]filteredTask, len(m.tasks))
-		for i, task := range m.tasks {
-			m.filtered[i] = filteredTask{task: task}
+		m.filtered = make([]filteredTask, len(m.items))
+		for i, item := range m.items {
+			m.filtered[i] = filteredTask{task: item.task, project: item.project}
 		}
 		m.cursor = 0
 		return
@@ -167,17 +217,17 @@ func (m *TaskJumperModel) filterTasks() {
 
 	// Score each task and collect matches with title positions
 	type scoredTask struct {
-		task           *models.Task
+		item           taskJumperItem
 		score          int
 		titlePositions []int
 	}
 	var scored []scoredTask
 
-	for _, task := range m.tasks {
-		score, titlePositions := m.scoreTask(task, query)
+	for _, item := range m.items {
+		score, titlePositions := m.scoreTask(item, query)
 		if score > 0 {
 			scored = append(scored, scoredTask{
-				task:           task,
+				item:           item,
 				score:          score,
 				titlePositions: titlePositions,
 			})
@@ -190,14 +240,26 @@ func (m *TaskJumperModel) filterTasks() {
 		if scored[i].score != scored[j].score {
 			return scored[i].score > scored[j].score
 		}
-		return scored[i].task.ID < scored[j].task.ID
+		leftProjectID := ""
+		if scored[i].item.project != nil {
+			leftProjectID = scored[i].item.project.ID
+		}
+		rightProjectID := ""
+		if scored[j].item.project != nil {
+			rightProjectID = scored[j].item.project.ID
+		}
+		if leftProjectID != rightProjectID {
+			return leftProjectID < rightProjectID
+		}
+		return scored[i].item.task.ID < scored[j].item.task.ID
 	})
 
 	// Extract sorted results with positions
 	m.filtered = make([]filteredTask, len(scored))
 	for i, s := range scored {
 		m.filtered[i] = filteredTask{
-			task:           s.task,
+			task:           s.item.task,
+			project:        s.item.project,
 			titlePositions: s.titlePositions,
 		}
 	}
@@ -214,13 +276,26 @@ func (m *TaskJumperModel) filterTasks() {
 // scoreTask returns a fuzzy match score for a task against the query,
 // along with match positions within the title for highlighting.
 // Returns 0 and nil if no match, higher scores indicate better matches.
-func (m *TaskJumperModel) scoreTask(task *models.Task, query string) (int, []int) {
+func (m *TaskJumperModel) scoreTask(item taskJumperItem, query string) (int, []int) {
+	task := item.task
+	if task == nil {
+		return 0, nil
+	}
+	projectName := ""
+	projectSlug := ""
+	if item.project != nil {
+		projectName = item.project.Name
+		projectSlug = item.project.Slug
+	}
+
 	// Build searchable text combining multiple fields
-	searchable := fmt.Sprintf("#%d %s %s %s",
+	searchable := fmt.Sprintf("#%d %s %s %s %s %s",
 		task.ShortID,
 		task.Title,
 		task.Description[:min(len(task.Description), 200)],
 		strings.Join(task.Tags, " "),
+		projectName,
+		projectSlug,
 	)
 
 	score := fuzzy.ScoreTerms(searchable, query)
@@ -250,7 +325,11 @@ func (m *TaskJumperModel) View() tea.View {
 
 	// Handle edge cases
 	if len(m.tasks) == 0 {
-		out.WriteString(MutedStyle.Render("No tasks in this project."))
+		if m.isCrossProject() {
+			out.WriteString(MutedStyle.Render("No tasks in loaded projects."))
+		} else {
+			out.WriteString(MutedStyle.Render("No tasks in this project."))
+		}
 		out.WriteString("\n\n")
 		out.WriteString(HelpStyle.Render("Press Esc to close"))
 		return tea.NewView(out.String())
@@ -289,6 +368,9 @@ func (m *TaskJumperModel) renderTaskList() string {
 	for i := scrollOffset; i < len(m.filtered) && i < scrollOffset+maxVisible; i++ {
 		ft := m.filtered[i]
 		task := ft.task
+		if task == nil {
+			continue
+		}
 
 		// Cursor indicator
 		cursor := "  "
@@ -313,18 +395,23 @@ func (m *TaskJumperModel) renderTaskList() string {
 		shortID := MutedStyle.Render(fmt.Sprintf("#%-4d", task.ShortID))
 
 		prefix := fmt.Sprintf("%s%s %s%s %s ", cursor, typeIcon, stageSegment, statusIcon, shortID)
-		maxTitleLen := max(m.listWidth-lipgloss.Width(prefix), 1)
+		available := max(m.listWidth-lipgloss.Width(prefix), 1)
+		projectSuffix := ""
+		if m.isCrossProject() && ft.project != nil {
+			projectSuffix = taskJumperProjectSuffix(ft.project, available)
+		}
+		maxTitleLen := max(available-lipgloss.Width(projectSuffix), 1)
 		title := truncateToVisualWidth(task.Title, maxTitleLen)
 
 		titleRendered := GetTitlePriorityStyle(task.Priority).Render(highlightTruncated(title, ft.titlePositions))
 
-		line := prefix + titleRendered
+		line := prefix + titleRendered + projectSuffix
 		if lipgloss.Width(line) > m.listWidth {
 			excess := lipgloss.Width(line) - m.listWidth
 			if lipgloss.Width(title) > excess {
 				title = truncateToVisualWidth(task.Title, max(maxTitleLen-excess, 1))
 				titleRendered = GetTitlePriorityStyle(task.Priority).Render(highlightTruncated(title, ft.titlePositions))
-				line = prefix + titleRendered
+				line = prefix + titleRendered + projectSuffix
 			}
 		}
 
@@ -345,7 +432,11 @@ func (m *TaskJumperModel) renderPreview() string {
 		return MutedStyle.Render("No task selected.")
 	}
 
-	task := m.filtered[m.cursor].task
+	selected := m.filtered[m.cursor]
+	task := selected.task
+	if task == nil {
+		return MutedStyle.Render("No task selected.")
+	}
 	var b strings.Builder
 
 	// Header with type and title (truncate to fit preview width)
@@ -360,6 +451,12 @@ func (m *TaskJumperModel) renderPreview() string {
 		GetTitlePriorityStyle(task.Priority).Render(truncateToVisualWidth(task.Title, maxTitleLen)))
 	b.WriteString(TaskJumperPreviewHeaderStyle.Render(header))
 	b.WriteString("\n\n")
+
+	if m.isCrossProject() && selected.project != nil {
+		fmt.Fprintf(&b, "%s %s\n",
+			MutedStyle.Render("Project:"),
+			taskJumperProjectLabel(selected.project))
+	}
 
 	// Status
 	statusStyle := GetStatusStyle(string(task.Status))
@@ -449,12 +546,44 @@ type CloseTaskJumperMsg struct{ PopViewMsg }
 
 // TaskJumperSelectMsg is sent when a task is selected from the jumper.
 type TaskJumperSelectMsg struct {
-	Task *models.Task
+	Task    *models.Task
+	Project *models.Project
 }
 
 // ShowTaskJumperMsg is sent to open the task jumper.
 type ShowTaskJumperMsg struct {
-	Project *models.Project
+	Project      *models.Project
+	Projects     []*models.Project
+	CrossProject bool
 }
 
 func (m *TaskJumperModel) StatusBarLabel() string { return "Jump to Task" }
+
+func (m *TaskJumperModel) isCrossProject() bool {
+	return m.crossProject
+}
+
+func taskJumperProjectLabel(project *models.Project) string {
+	if project == nil {
+		return ""
+	}
+	if project.Slug != "" {
+		return project.Slug
+	}
+	return project.Name
+}
+
+func taskJumperProjectSuffix(project *models.Project, available int) string {
+	if project == nil || available < 2 {
+		return ""
+	}
+	suffixBudget := min(max(available/3, 4), available-1)
+	if suffixBudget < 4 {
+		return ""
+	}
+	label := truncateToVisualWidth(taskJumperProjectLabel(project), suffixBudget-3)
+	if label == "" {
+		return ""
+	}
+	return MutedStyle.Render(" [" + label + "]")
+}

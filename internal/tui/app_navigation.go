@@ -85,14 +85,14 @@ func (m *AppModel) currentView() ViewType {
 }
 
 // baseProjectView walks the view stack from the top to find the underlying
-// project-level view (ProjectTree or Outliner), skipping overlays
+// project-level view (ProjectTree, Outliner, or CrossProjectOutliner), skipping overlays
 // like the command palette. This is needed by command handlers that run inside
 // the palette's Cmd — at that point currentView() returns ViewCommandPalette,
 // but the handler needs to know which project view it was invoked from.
 func (m *AppModel) baseProjectView() ViewType {
 	for i := len(m.viewStack) - 1; i >= 0; i-- {
 		switch m.viewStack[i] {
-		case ViewProjectTree, ViewOutliner:
+		case ViewProjectTree, ViewOutliner, ViewCrossProjectOutliner:
 			return m.viewStack[i]
 		default:
 		}

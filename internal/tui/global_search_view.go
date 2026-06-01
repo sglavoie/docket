@@ -25,6 +25,11 @@ func (m *GlobalSearchModel) View() tea.View {
 
 	// Search input
 	out.WriteString(m.searchInput.View())
+	if m.searchHistoryIndex >= 0 && len(m.searchHistory) > 0 {
+		historyHint := fmt.Sprintf(" %s",
+			MutedStyle.Render(fmt.Sprintf("(history %d/%d)", m.searchHistoryIndex+1, len(m.searchHistory))))
+		out.WriteString(historyHint)
+	}
 	out.WriteString("\n")
 
 	// Show autocomplete suggestions if active
@@ -123,5 +128,5 @@ func (m *GlobalSearchModel) renderHelpText() string {
 	if m.ac.IsActive() {
 		return HelpStyle.Render("Tab: accept · ↑↓: navigate · Esc: dismiss")
 	}
-	return HelpStyle.Render(fmt.Sprintf("shift+←/→ tabs · ↑↓ nav · Enter · Ctrl+O completed · ?: help · Esc · %d results", len(m.filtered)))
+	return HelpStyle.Render(fmt.Sprintf("shift+←/→ tabs · ↑↓ nav · Alt+↑↓ history · Enter · Ctrl+O completed · ?: help · Esc · %d results", len(m.filtered)))
 }

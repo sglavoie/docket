@@ -58,6 +58,30 @@ func TestTaskJumperViewRespectsVisualWidth(t *testing.T) {
 	}
 }
 
+func TestCrossProjectTaskJumperViewRespectsVisualWidth(t *testing.T) {
+	project, err := models.NewProject("proj-1", "task-jumper-proj", t.TempDir())
+	if err != nil {
+		t.Fatalf("NewProject: %v", err)
+	}
+	project.Slug = "漢字wide-project-slug-that-truncates"
+	task, err := models.NewTask("task-1", 17, models.TaskTypeTask, "修复跨项目任务跳转器在窄宽度下的宽字符截断问题")
+	if err != nil {
+		t.Fatalf("NewTask: %v", err)
+	}
+	task.Status = models.StatusInProgress
+	project.Tasks = []*models.Task{task}
+
+	m := NewCrossProjectTaskJumperModel([]*models.Project{project})
+	m.SetSize(32, 14)
+	rendered := m.View().Content
+
+	for line := range strings.SplitSeq(rendered, "\n") {
+		if lipgloss.Width(ansi.Strip(line)) > 32 {
+			t.Fatalf("cross-project task jumper line exceeds width 32: %q (width=%d)\n\n%s", ansi.Strip(line), lipgloss.Width(ansi.Strip(line)), ansi.Strip(rendered))
+		}
+	}
+}
+
 func TestNotesSearchViewRespectsVisualWidth(t *testing.T) {
 	project, err := models.NewProject("proj-1", "notes-proj", t.TempDir())
 	if err != nil {

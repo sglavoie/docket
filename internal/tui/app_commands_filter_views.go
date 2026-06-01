@@ -113,8 +113,11 @@ func (m *AppModel) filterCommands() []Command {
 			Description: "Jump to task by ID or name",
 			Shortcut:    "\\",
 			Category:    CategorySearch,
-			Views:       projectTreeAndOutlinerViews(),
+			Views:       []ViewType{ViewProjectTree, ViewOutliner, ViewCrossProjectOutliner},
 			Handler: func() tea.Msg {
+				if m.baseProjectView() == ViewCrossProjectOutliner && m.crossOutliner != nil {
+					return ShowTaskJumperMsg{Projects: m.crossOutliner.loadedProjects, CrossProject: true}
+				}
 				if m.currentProject != nil {
 					return ShowTaskJumperMsg{Project: m.currentProject}
 				}

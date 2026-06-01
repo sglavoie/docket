@@ -332,6 +332,19 @@ func (c *Config) SetPaletteSearchHistory(history []string) {
 	c.PaletteSearchHistory = history
 }
 
+// GetGlobalSearchHistory returns the list of recent search queries in global search.
+func (c *Config) GetGlobalSearchHistory() []string {
+	if c.GlobalSearchHistory == nil {
+		return []string{}
+	}
+	return c.GlobalSearchHistory
+}
+
+// SetGlobalSearchHistory sets the list of recent search queries in global search.
+func (c *Config) SetGlobalSearchHistory(history []string) {
+	c.GlobalSearchHistory = history
+}
+
 // GetPinnedCommands returns the list of pinned command names.
 func (c *Config) GetPinnedCommands() []string {
 	if c.PinnedCommands == nil {

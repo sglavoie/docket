@@ -1,10 +1,13 @@
 package tui
 
 import (
+	"strings"
+
 	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/tt/internal/logging"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 )
@@ -20,11 +23,12 @@ const (
 type GlobalSearchModel struct {
 	BaseView
 
-	config   *config.Config
-	projects []*models.Project
-	allTasks []models.SearchResult  // flattened list of all tasks with project refs
-	filtered []filteredSearchResult // tasks matching current query with highlight positions
-	cursor   int
+	config        *config.Config
+	configManager *config.Manager
+	projects      []*models.Project
+	allTasks      []models.SearchResult  // flattened list of all tasks with project refs
+	filtered      []filteredSearchResult // tasks matching current query with highlight positions
+	cursor        int
 
 	// Input for filtering
 	searchInput textinput.Model
@@ -51,12 +55,16 @@ type GlobalSearchModel struct {
 
 	// Toggle to show help panel
 	showHelp bool
+
+	// Search history navigation
+	searchHistory      []string
+	searchHistoryIndex int // -1 = not browsing history, 0+ = index in history
 }
 
 // NewGlobalSearchModel creates a new global search model.
-func NewGlobalSearchModel(cfg *config.Config) *GlobalSearchModel {
+func NewGlobalSearchModel(cfg *config.Config, manager *config.Manager) *GlobalSearchModel {
 	searchInput := textinput.New()
-	searchInput.Placeholder = "Search tasks… ($status #tag @due ^type)"
+	searchInput.Placeholder = "Search tasks… ($status #tag @due ^type) · Alt+↑↓ history"
 	searchInput.CharLimit = 100
 	searchInput.SetWidth(40)
 	searchInput.Focus()
@@ -89,13 +97,16 @@ func NewGlobalSearchModel(cfg *config.Config) *GlobalSearchModel {
 	}
 
 	m := &GlobalSearchModel{
-		config:        cfg,
-		projects:      projects,
-		allTasks:      allTasks,
-		searchInput:   searchInput,
-		cursor:        0,
-		tabs:          TabState{Names: globalSearchTabNames},
-		hideCompleted: true,
+		config:             cfg,
+		configManager:      manager,
+		projects:           projects,
+		allTasks:           allTasks,
+		searchInput:        searchInput,
+		cursor:             0,
+		tabs:               TabState{Names: globalSearchTabNames},
+		hideCompleted:      true,
+		searchHistory:      cfg.GetGlobalSearchHistory(),
+		searchHistoryIndex: -1,
 	}
 
 	// Build caches for autocomplete
@@ -235,6 +246,7 @@ func (m *GlobalSearchModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// Only select if not in autocomplete mode
 			if !m.ac.IsActive() && len(m.filtered) > 0 && m.cursor < len(m.filtered) {
 				result := m.filtered[m.cursor].result
+				m.recordGlobalSearchHistory()
 				if result.IsNote() {
 					// Open notes view for the project containing the note
 					return m, func() tea.Msg {
@@ -247,6 +259,27 @@ func (m *GlobalSearchModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						Project: result.Project,
 					}
 				}
+			}
+			return m, nil
+		case "alt+up":
+			if len(m.searchHistory) > 0 {
+				if m.searchHistoryIndex < 0 {
+					m.searchHistoryIndex = 0
+				} else if m.searchHistoryIndex < len(m.searchHistory)-1 {
+					m.searchHistoryIndex++
+				}
+				if m.searchHistoryIndex < len(m.searchHistory) {
+					m.setGlobalSearchQuery(m.searchHistory[m.searchHistoryIndex])
+				}
+			}
+			return m, nil
+		case "alt+down":
+			if m.searchHistoryIndex > 0 {
+				m.searchHistoryIndex--
+				m.setGlobalSearchQuery(m.searchHistory[m.searchHistoryIndex])
+			} else if m.searchHistoryIndex == 0 {
+				m.searchHistoryIndex = -1
+				m.setGlobalSearchQuery("")
 			}
 			return m, nil
 		case "up", "ctrl+k":
@@ -290,6 +323,45 @@ func (m *GlobalSearchModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	return m, nil
+}
+
+func (m *GlobalSearchModel) setGlobalSearchQuery(query string) {
+	m.searchInput.SetValue(query)
+	m.searchInput.SetCursor(len(query))
+	m.ac.Clear()
+	m.filterTasks()
+}
+
+func (m *GlobalSearchModel) recordGlobalSearchHistory() {
+	if m.config == nil {
+		return
+	}
+
+	query := strings.TrimSpace(m.searchInput.Value())
+	if query == "" {
+		return
+	}
+
+	newHistory := []string{query}
+	for _, h := range m.searchHistory {
+		if h != query {
+			newHistory = append(newHistory, h)
+		}
+	}
+
+	const maxHistorySize = 10
+	if len(newHistory) > maxHistorySize {
+		newHistory = newHistory[:maxHistorySize]
+	}
+
+	m.searchHistory = newHistory
+	m.searchHistoryIndex = -1
+	m.config.SetGlobalSearchHistory(newHistory)
+	if m.configManager != nil {
+		if err := m.configManager.Save(m.config); err != nil {
+			logging.Warn("failed to save config: %v", err)
+		}
+	}
 }
 
 // CloseGlobalSearchMsg is sent when the global search should close.

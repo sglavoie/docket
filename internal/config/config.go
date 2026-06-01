@@ -56,6 +56,7 @@ type Config struct {
 	RecentPaletteItems             []RecentPaletteItem          `json:"recent_palette_items,omitempty"`
 	LastPaletteCategory            string                       `json:"last_palette_category,omitempty"`
 	PaletteSearchHistory           []string                     `json:"palette_search_history,omitempty"`
+	GlobalSearchHistory            []string                     `json:"global_search_history,omitempty"`
 	PinnedCommands                 []string                     `json:"pinned_commands,omitempty"`
 	SavedSearches                  map[string]string            `json:"saved_searches,omitempty"`
 	CommandHistory                 []string                     `json:"command_history,omitempty"`

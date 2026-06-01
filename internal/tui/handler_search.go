@@ -7,7 +7,7 @@ import tea "charm.land/bubbletea/v2"
 func (m *AppModel) handleSearchMessages(msg tea.Msg) (bool, tea.Cmd) {
 	switch msg := msg.(type) {
 	case ShowGlobalSearchMsg:
-		m.globalSearch = NewGlobalSearchModel(m.config)
+		m.globalSearch = NewGlobalSearchModel(m.config, m.configManager)
 		m.showView(ViewGlobalSearch, m.globalSearch)
 		return true, m.globalSearch.Init()
 

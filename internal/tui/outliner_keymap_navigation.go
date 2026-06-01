@@ -106,6 +106,11 @@ func (b *outlinerKeymapBuilder) primaryViewEntries() []keymap.Entry {
 			return m, func() tea.Msg { return ShowBulkCaptureMsg{Project: m.project} }
 		},
 		JumpToTask: func() (tea.Model, tea.Cmd) {
+			if m.project == nil {
+				return m, func() tea.Msg {
+					return ShowTaskJumperMsg{Projects: m.loadedProjects, CrossProject: true}
+				}
+			}
 			return m, func() tea.Msg { return ShowTaskJumperMsg{Project: m.project} }
 		},
 		OpenNotesView: func() (tea.Model, tea.Cmd) {

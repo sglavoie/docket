@@ -128,7 +128,7 @@ func (m *AppModel) reconstructGlobalView(entry NavEntry) tea.Cmd {
 		ra.dailyPlanIDs = m.dailyPlanIDs
 		m.showView(ViewRecentActivity, ra)
 	case ViewGlobalSearch:
-		m.globalSearch = NewGlobalSearchModel(m.config)
+		m.globalSearch = NewGlobalSearchModel(m.config, m.configManager)
 		m.showView(ViewGlobalSearch, m.globalSearch)
 		return m.globalSearch.Init()
 	case ViewGlobalBlockers:

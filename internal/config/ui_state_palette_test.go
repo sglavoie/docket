@@ -82,3 +82,31 @@ func TestSetPaletteSearchHistory(t *testing.T) {
 		t.Errorf("expected 'task add', got '%s'", result[0])
 	}
 }
+
+func TestGetGlobalSearchHistory_Empty(t *testing.T) {
+	cfg := NewConfig()
+
+	history := cfg.GetGlobalSearchHistory()
+
+	if history == nil {
+		t.Error("GetGlobalSearchHistory should return empty slice, not nil")
+	}
+	if len(history) != 0 {
+		t.Errorf("expected 0 items, got %d", len(history))
+	}
+}
+
+func TestSetGlobalSearchHistory(t *testing.T) {
+	cfg := NewConfig()
+
+	history := []string{"status:todo", "#feature", "p:work"}
+	cfg.SetGlobalSearchHistory(history)
+
+	result := cfg.GetGlobalSearchHistory()
+	if len(result) != 3 {
+		t.Errorf("expected 3 items, got %d", len(result))
+	}
+	if result[0] != "status:todo" {
+		t.Errorf("expected 'status:todo', got '%s'", result[0])
+	}
+}

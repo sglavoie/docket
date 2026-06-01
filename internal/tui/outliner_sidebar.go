@@ -86,6 +86,63 @@ func (m *OutlinerModel) NavigateToSidebarTask(task *models.Task) {
 	}
 }
 
+// NavigateToTaskInProject navigates to a task in the cross-project outliner.
+// Project identity is part of the match so duplicate task IDs in different
+// projects cannot move the cursor to the wrong row.
+func (m *OutlinerModel) NavigateToTaskInProject(task *models.Task, project *models.Project) {
+	if task == nil {
+		return
+	}
+	if m.project != nil {
+		m.NavigateToSidebarTask(task)
+		return
+	}
+
+	projectID := ""
+	if project != nil {
+		projectID = project.ID
+	}
+	if projectID == "" {
+		for _, p := range m.loadedProjects {
+			if p != nil && p.GetTaskByID(task.ID) == task {
+				projectID = p.ID
+				break
+			}
+		}
+	}
+	if projectID == "" {
+		m.setStatus("Task project not found")
+		return
+	}
+
+	if m.moveCursorToProjectTask(task.ID, projectID) {
+		return
+	}
+
+	section := effectiveDisplaySection(task)
+	delete(m.collapsedSections, "_xp:"+section)
+	m.crossZoomStack = nil
+	m.ensureExpandedNodes()
+	for ancestor := task.Parent; ancestor != nil; ancestor = ancestor.Parent {
+		m.expandedNodes[ancestor.ID] = true
+	}
+	m.rebuildRows()
+
+	if !m.moveCursorToProjectTask(task.ID, projectID) {
+		m.setStatus("Task is hidden by current filters")
+	}
+}
+
+func (m *OutlinerModel) moveCursorToProjectTask(taskID, projectID string) bool {
+	for i, row := range m.rows {
+		if row.task != nil && row.ProjectID == projectID && row.task.ID == taskID {
+			m.cursor = i
+			return true
+		}
+	}
+	return false
+}
+
 // UnlinkSelectedSidebarTask removes the currently selected link from the sidebar.
 func (m *OutlinerModel) UnlinkSelectedSidebarTask(sourceTask *models.Task) tea.Cmd {
 	section := m.sidebar.GetDependencySection()
