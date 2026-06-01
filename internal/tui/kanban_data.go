@@ -149,6 +149,9 @@ func scoreColumnDefs() []KanbanColumn {
 func columnForTask(task *models.Task, mode KanbanMode, cfg *config.Config, projectID string) string {
 	switch mode {
 	case KanbanModeSection:
+		if task.Status.IsComplete() {
+			return sectionColumnID(models.SectionCompleted)
+		}
 		s := task.Section
 		if s == "" {
 			return "next" // empty section defaults to Next
@@ -292,7 +295,12 @@ func rebuildColumns(
 				}
 			}
 			if newIdx < 0 {
-				cols = append(cols, KanbanColumn{ID: colID, Label: colID, Icon: "·"})
+				col := KanbanColumn{ID: colID, Label: colID, Icon: "·"}
+				if mode == KanbanModeSection && colID == sectionColumnID(models.SectionCompleted) {
+					col.Label = models.SectionCompleted
+					col.Icon = sectionColumnIcon(models.SectionCompleted)
+				}
+				cols = append(cols, col)
 				idx[colID] = len(cols) - 1
 				newIdx = len(cols) - 1
 			}

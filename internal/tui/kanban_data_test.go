@@ -35,6 +35,27 @@ func TestColumnForTask_Section(t *testing.T) {
 	}
 }
 
+func TestColumnForTask_Section_CompletedStatusWins(t *testing.T) {
+	tests := []struct {
+		name    string
+		section string
+		status  models.TaskStatus
+	}{
+		{"done in inbox", models.SectionInbox, models.StatusDone},
+		{"canceled in next", models.SectionNext, models.StatusCanceled},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			task := testutil.NewTestTaskWithStatus("t", tc.status)
+			task.Section = tc.section
+			got := columnForTask(task, KanbanModeSection, nil, "")
+			if got != "completed" {
+				t.Errorf("completed status in section %q: want completed, got %q", tc.section, got)
+			}
+		})
+	}
+}
+
 func TestColumnForTask_Status(t *testing.T) {
 	tests := []struct {
 		status models.TaskStatus
@@ -162,6 +183,54 @@ func TestRebuildColumns_SectionMode_Distribution(t *testing.T) {
 	}
 	if n := len(cols[idx["next"]].Tasks); n != 1 {
 		t.Errorf("next: want 1 task, got %d", n)
+	}
+}
+
+func TestRebuildColumns_SectionMode_CompletedStatusOnlyInCompletedColumn(t *testing.T) {
+	cards := []KanbanCard{
+		makeTestCard(models.SectionInbox, models.StatusTodo),
+		makeTestCard(models.SectionInbox, models.StatusDone),
+		makeTestCard(models.SectionNext, models.StatusCanceled),
+		makeTestCard(models.SectionNext, models.StatusTodo),
+	}
+	cols := rebuildColumns(
+		cards,
+		KanbanModeSection,
+		nil,
+		[]string{models.SectionInbox, models.SectionNext},
+		nil,
+		nil,
+		nil,
+		nil,
+	)
+
+	idx := map[string]int{}
+	for i, c := range cols {
+		idx[c.ID] = i
+	}
+	completedIdx, ok := idx["completed"]
+	if !ok {
+		t.Fatal("completed column not found")
+	}
+	completedCol := cols[completedIdx]
+	if completedCol.Label != models.SectionCompleted {
+		t.Errorf("completed label: want %q, got %q", models.SectionCompleted, completedCol.Label)
+	}
+	if n := len(cols[idx["inbox"]].Tasks); n != 1 {
+		t.Errorf("inbox: want 1 non-completed task, got %d", n)
+	}
+	if n := len(cols[idx["next"]].Tasks); n != 1 {
+		t.Errorf("next: want 1 non-completed task, got %d", n)
+	}
+	if n := len(completedCol.Tasks); n != 2 {
+		t.Errorf("completed: want 2 tasks, got %d", n)
+	}
+	for _, id := range []string{"inbox", "next"} {
+		for _, card := range cols[idx[id]].Tasks {
+			if card.Task.Status.IsComplete() {
+				t.Errorf("%s column contains completed task with status %q", id, card.Task.Status)
+			}
+		}
 	}
 }
 
