@@ -42,19 +42,27 @@ func (m *KanbanModel) renderKanbanDetailPane() string {
 	task := card.Task
 	project := card.Project
 
-	// ── Line 1: title │ priority │ due │ project │ recency ────────────────
 	sep := MutedStyle.Render(" │ ")
 
-	var parts []string
-	if m.crossProject && project != nil {
-		parts = append(parts, MutedStyle.Render(project.Name))
+	// ── Line 1: title ─────────────────────────────────────────────────────
+	titlePart := TitleStyle.Render(truncateToVisualWidth(task.Title, max(w-1, 0)))
+	sb.WriteString(truncateToVisualWidth(" "+titlePart, w) + "\n")
+
+	if paneH < 2 {
+		return sb.String()
+	}
+
+	// ── Line 2: project │ priority │ due │ score │ recency ────────────────
+	var metadataParts []string
+	if project != nil {
+		metadataParts = append(metadataParts, MutedStyle.Render(project.Name))
 	}
 	if task.Priority > 0 {
-		parts = append(parts, renderPriorityBadge(task.Priority))
+		metadataParts = append(metadataParts, renderPriorityBadge(task.Priority))
 	}
 	if task.DueDate != nil {
 		dueStr := FormatRelativeDueTask(task, true, "Jan 2")
-		parts = append(parts, "Due: "+dueStr)
+		metadataParts = append(metadataParts, "Due: "+dueStr)
 	}
 	if project != nil {
 		if profile := m.config.GetProjectScoringProfile(project.ID); profile != nil {
@@ -63,29 +71,30 @@ func (m *KanbanModel) renderKanbanDetailPane() string {
 				if profile.Name != "" {
 					scoreStr += " " + MutedStyle.Render("("+profile.Name+")")
 				}
-				parts = append(parts, scoreStr)
+				metadataParts = append(metadataParts, scoreStr)
 			}
 		}
 	}
 	if !task.UpdatedAt.IsZero() {
-		parts = append(parts, MutedStyle.Render(formatRelativeTime(task.UpdatedAt)))
+		metadataParts = append(metadataParts, MutedStyle.Render(formatRelativeTime(task.UpdatedAt)))
 	}
 
-	titlePart := TitleStyle.Render(truncateToVisualWidth(task.Title, 28))
-	var line1 string
-	if len(parts) > 0 {
-		line1 = " " + titlePart + sep + strings.Join(parts, sep)
-	} else {
-		line1 = " " + titlePart
+	var line2 string
+	if len(metadataParts) > 0 {
+		line2 = " " + strings.Join(metadataParts, sep)
 	}
-	sb.WriteString(truncateToVisualWidth(line1, w) + "\n")
+	sb.WriteString(truncateToVisualWidth(line2, w) + "\n")
 
-	if paneH < 2 {
+	if paneH < 3 {
 		return sb.String()
 	}
 
-	// ── Line 2: blockers │ tags ───────────────────────────────────────────
-	var parts2 []string
+	// ── Line 3: tags │ blockers ───────────────────────────────────────────
+	var detailParts []string
+
+	if len(task.Tags) > 0 {
+		detailParts = append(detailParts, "Tags: "+renderTruncatedTags(task.Tags, 4, 12))
+	}
 
 	if len(task.DependsOn) > 0 {
 		titles := m.lookupTaskTitles(task.DependsOn, 2)
@@ -94,24 +103,21 @@ func (m *KanbanModel) renderKanbanDetailPane() string {
 			if len(task.DependsOn) > 2 {
 				blocker += fmt.Sprintf(" +%d", len(task.DependsOn)-2)
 			}
-			parts2 = append(parts2, blocker)
+			detailParts = append(detailParts, blocker)
 		} else {
-			parts2 = append(parts2, fmt.Sprintf("Blocked by %d %s", len(task.DependsOn),
+			detailParts = append(detailParts, fmt.Sprintf("Blocked by %d %s", len(task.DependsOn),
 				pluralize(len(task.DependsOn), "task", "tasks")))
 		}
 	}
-	if len(task.Tags) > 0 {
-		parts2 = append(parts2, "Tags: "+renderTruncatedTags(task.Tags, 4, 12))
-	}
 
-	var line2 string
-	if len(parts2) > 0 {
-		line2 = " " + strings.Join(parts2, sep)
+	var line3 string
+	if len(detailParts) > 0 {
+		line3 = " " + strings.Join(detailParts, sep)
 	}
-	sb.WriteString(truncateToVisualWidth(line2, w) + "\n")
+	sb.WriteString(truncateToVisualWidth(line3, w) + "\n")
 
 	// Remaining lines
-	for i := 2; i < paneH; i++ {
+	for i := 3; i < paneH; i++ {
 		sb.WriteString("\n")
 	}
 

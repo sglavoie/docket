@@ -3,8 +3,13 @@ package tui
 import (
 	"strings"
 	"testing"
+	"time"
+
+	"charm.land/lipgloss/v2"
+	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/scoring"
 	"github.com/sglavoie/tt/internal/testutil"
 )
 
@@ -171,6 +176,120 @@ func TestKanbanRender_DetailPane_VisibleWhenEnabled(t *testing.T) {
 	// Detail pane separator should be present
 	if !strings.Contains(got, "─") {
 		t.Errorf("detail pane: expected separator line")
+	}
+}
+
+func TestKanbanRender_DetailPane_ThreeLineLayout(t *testing.T) {
+	project := testutil.NewTestProject("Data pipelines")
+	task := testutil.NewTestTask("focus on shipping new pipeline with same set of permissions so I won't be blocked", models.TaskTypeTask)
+	task.Priority = 2
+	task.Tags = []string{"stale", "wip-old"}
+	task.UpdatedAt = time.Now().Add(-2 * time.Hour)
+	due := time.Now().Add(24 * time.Hour)
+	task.DueDate = &due
+
+	profile := scoring.NewWSJFProfile()
+	cfg := testutil.NewTestConfig()
+	cfg.ScoringProfiles = []scoring.ScoringProfile{profile}
+	cfg.SetProjectScoringProfile(project.ID, profile.ID)
+
+	m := newRenderKanban(96, 24, []KanbanColumn{{
+		ID:    "inbox",
+		Label: "inbox",
+		Icon:  "·",
+		Tasks: []KanbanCard{{Task: task, Project: project}},
+	}})
+	m.config = cfg
+	m.detailPaneVisible = true
+
+	lines := strippedDetailPaneLines(t, m)
+	if len(lines) < 4 {
+		t.Fatalf("expected separator plus three detail lines, got %d lines: %#v", len(lines), lines)
+	}
+
+	titleLine := lines[1]
+	metadataLine := lines[2]
+	tagsLine := lines[3]
+
+	if !strings.Contains(titleLine, "focus on shipping new pipeline with same set of permissions") {
+		t.Fatalf("title line should use the full pane width, got %q", titleLine)
+	}
+	if strings.Contains(titleLine, "│") || strings.Contains(titleLine, "Data pipelines") || strings.Contains(titleLine, "Tags:") {
+		t.Fatalf("title line should not include metadata or tags, got %q", titleLine)
+	}
+
+	wantMetadata := []string{"Data pipelines", "●", "Due:", "[S:", "(WSJF)", "hours ago"}
+	for _, want := range wantMetadata {
+		if !strings.Contains(metadataLine, want) {
+			t.Fatalf("metadata line missing %q: %q", want, metadataLine)
+		}
+	}
+	assertInOrder(t, metadataLine, "Data pipelines", "●", "Due:", "[S:", "(WSJF)", "hours ago")
+
+	if !strings.Contains(tagsLine, "Tags: #stale #wip-old") {
+		t.Fatalf("third line should render tags, got %q", tagsLine)
+	}
+}
+
+func TestKanbanRender_DetailPane_TagsBeforeBlockersAndWidthBounded(t *testing.T) {
+	project := testutil.NewTestProject("p")
+	blocker := testutil.NewTestTask("blocked by a dependency with a long title", models.TaskTypeTask)
+	task := testutil.NewTestTask("this detail pane title is intentionally long enough to require truncation", models.TaskTypeTask)
+	task.Tags = []string{"stale", "wip-old"}
+	task.DependsOn = []string{blocker.ID}
+
+	col := KanbanColumn{
+		ID:    "inbox",
+		Label: "inbox",
+		Icon:  "·",
+		Tasks: []KanbanCard{{Task: task, Project: project}},
+	}
+	m := newRenderKanban(54, 24, []KanbanColumn{col})
+	m.detailPaneVisible = true
+	m.allCards = []KanbanCard{
+		{Task: task, Project: project},
+		{Task: blocker, Project: project},
+	}
+
+	lines := strippedDetailPaneLines(t, m)
+	if len(lines) < 4 {
+		t.Fatalf("expected separator plus three detail lines, got %d lines: %#v", len(lines), lines)
+	}
+	thirdLine := lines[3]
+	if !strings.Contains(lines[1], "…") {
+		t.Fatalf("long detail title should truncate at pane width, got %q", lines[1])
+	}
+	assertInOrder(t, thirdLine, "Tags:", "Blocked by:")
+
+	for i, line := range lines[:4] {
+		if width := lipgloss.Width(line); width > m.width {
+			t.Fatalf("detail pane line %d exceeds width %d: %q (width=%d)", i, m.width, line, width)
+		}
+	}
+}
+
+func strippedDetailPaneLines(t *testing.T, m *KanbanModel) []string {
+	t.Helper()
+
+	pane := m.renderKanbanDetailPane()
+	rawLines := strings.Split(strings.TrimRight(pane, "\n"), "\n")
+	lines := make([]string, len(rawLines))
+	for i, line := range rawLines {
+		lines[i] = ansi.Strip(line)
+	}
+	return lines
+}
+
+func assertInOrder(t *testing.T, text string, parts ...string) {
+	t.Helper()
+
+	pos := -1
+	for _, part := range parts {
+		next := strings.Index(text[pos+1:], part)
+		if next < 0 {
+			t.Fatalf("%q not found after index %d in %q", part, pos, text)
+		}
+		pos += 1 + next
 	}
 }
 
