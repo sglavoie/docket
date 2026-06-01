@@ -12,6 +12,15 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 )
 
+func assertPeekLinesWithinWidth(t *testing.T, lines []string, width int) {
+	t.Helper()
+	for i, line := range lines {
+		if w := lipgloss.Width(line); w > width {
+			t.Fatalf("line %d exceeds width %d: width=%d, content=%q (stripped=%q)", i, width, w, line, ansi.Strip(line))
+		}
+	}
+}
+
 func TestRenderPeekRightPane_EmptyTaskShowsPlaceholder(t *testing.T) {
 	task := &models.Task{}
 	got := renderPeekRightPane(task, 40)
@@ -143,11 +152,123 @@ func TestPeekChecklist_StyledItemDoesNotOverflowWidth(t *testing.T) {
 	if len(lines) == 0 {
 		t.Fatal("expected lines, got none")
 	}
-	for i, l := range lines {
-		// Continuation lines are prefixed with two spaces by the caller; the
-		// builder itself returns raw wrapped lines so each must fit in width.
-		if w := lipgloss.Width(l); w > width {
-			t.Fatalf("line %d exceeds width %d: width=%d, content=%q (stripped=%q)", i, width, w, l, ansi.Strip(l))
+	assertPeekLinesWithinWidth(t, lines, width)
+}
+
+func TestPeekComments_LongTextDoesNotOverflowWidth(t *testing.T) {
+	task := &models.Task{
+		Comments: []*models.Comment{
+			{
+				Text:      "Some strings can't be translated, they are defined server-side (e.g., tooltips for things like regions)\nand this explicit second line should stay inside the metadata pane too",
+				CreatedAt: time.Date(2026, 5, 8, 0, 0, 0, 0, time.UTC),
+			},
+		},
+	}
+	const width = 30
+	lines := peekCommentsBlock(task, width)
+	if len(lines) == 0 {
+		t.Fatal("expected lines, got none")
+	}
+	assertPeekLinesWithinWidth(t, lines, width)
+}
+
+func TestPeekDecisions_LongTextAndRationaleDoNotOverflowWidth(t *testing.T) {
+	task := &models.Task{
+		Decisions: []*models.Decision{
+			{
+				Text:      "Use server-owned metadata for dynamic regional tooltip copy until the API exposes stable translation keys",
+				Rationale: "Client-side translation would guess at values that are not available during initial render.\nKeep the rationale wrapped in the same pane.",
+				Category:  models.DecisionCategoryArchitecture,
+			},
+		},
+	}
+	const width = 32
+	lines := peekDecisionsBlock(task, width)
+	if len(lines) == 0 {
+		t.Fatal("expected lines, got none")
+	}
+	assertPeekLinesWithinWidth(t, lines, width)
+}
+
+func TestPeekAttachments_LongTextDoesNotOverflowWidth(t *testing.T) {
+	task := &models.Task{
+		Attachments: []models.Attachment{
+			{
+				Filename:     "translation-region-tooltip-behavior-investigation-notes.md",
+				IsURL:        true,
+				OriginalPath: "https://example.com/product/regions/tooltip/translation/server-owned-copy",
+			},
+		},
+	}
+	const width = 28
+	lines := peekAttachmentsBlock(task, width)
+	if len(lines) == 0 {
+		t.Fatal("expected lines, got none")
+	}
+	assertPeekLinesWithinWidth(t, lines, width)
+}
+
+func TestRenderPeekRightPane_LongMetadataDoesNotOverflowWidth(t *testing.T) {
+	task := &models.Task{
+		Checklist: []models.ChecklistItem{
+			{Text: "Confirm comments, decisions, checklist rows, and attachments all obey the same pane width"},
+			{Text: "Completed checklist rows should remain muted while wrapping inside the pane", Done: true},
+		},
+		Decisions: []*models.Decision{
+			{
+				Text:      "Document that server-side metadata can provide strings the client cannot translate",
+				Rationale: "The peek pane must preserve explicit newlines\nwithout letting continuation rows spill into the description pane.",
+				Category:  models.DecisionCategoryDesign,
+			},
+		},
+		Comments: []*models.Comment{
+			{
+				Text:      "Some strings can't be translated, they are defined server-side (e.g., tooltips for things like regions)",
+				CreatedAt: time.Date(2026, 5, 8, 0, 0, 0, 0, time.UTC),
+			},
+		},
+		Attachments: []models.Attachment{
+			{Filename: "internal/tui/app_view_peek.go", IsCodeRef: true, LineNumber: 268},
+		},
+	}
+	const width = 34
+	lines := renderPeekRightPane(task, width)
+	assertPeekLinesWithinWidth(t, lines, width)
+}
+
+func TestRenderPeekOverlay_NarrowMetadataDoesNotRewrapContent(t *testing.T) {
+	app, project := newTestAppModelWithProject()
+	task := project.Tasks[0]
+	task.Description = strings.Repeat("Description text that should wrap only inside the left pane. ", 4)
+	task.Checklist = []models.ChecklistItem{
+		{Text: "Verify narrow overlay metadata wrapping for checklist rows"},
+	}
+	task.Decisions = []*models.Decision{
+		{
+			Text:      "Keep styled metadata rows inside the right pane",
+			Rationale: "Outer box wrapping should not add extra physical rows.",
+			Category:  models.DecisionCategoryUX,
+		},
+	}
+	task.Comments = []*models.Comment{
+		{
+			Text:      "Some strings can't be translated, they are defined server-side (e.g., tooltips for things like regions)",
+			CreatedAt: time.Date(2026, 5, 8, 0, 0, 0, 0, time.UTC),
+		},
+	}
+
+	app.width = 60
+	app.height = 18
+	app.activatePeek(task, project)
+	rendered := app.renderPeekOverlay()
+	lines := strings.Split(rendered, "\n")
+
+	if want := app.peekPaneHeight + 2; len(lines) != want {
+		t.Fatalf("peek overlay rendered %d lines, want %d; content was rewrapped:\n%s", len(lines), want, ansi.Strip(rendered))
+	}
+	for i, line := range lines {
+		if w := lipgloss.Width(line); w > app.width {
+			t.Fatalf("overlay line %d exceeds app width %d: width=%d, content=%q", i, app.width, w, ansi.Strip(line))
 		}
 	}
 }

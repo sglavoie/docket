@@ -37,7 +37,9 @@ func (m *AppModel) renderPeekOverlay() string {
 	outerHeight := min(max(m.height*88/100, 10), m.height-2)
 
 	innerWidth := max(outerWidth-2, 20)
-	contentWidth := max(innerWidth-2, 10)
+	// renderTitledBox uses one-cell borders plus one-cell horizontal padding,
+	// so the content itself must be four cells narrower than the styled width.
+	contentWidth := max(innerWidth-4, 10)
 
 	sepWidth := 1
 	leftWidth := max((contentWidth-sepWidth)/2, 8)
@@ -132,6 +134,53 @@ func padPeekLine(line string, width int) string {
 	return line + strings.Repeat(" ", width-w)
 }
 
+func appendPeekWrappedItem(lines []string, firstPrefix, nextPrefix, body string, width int) []string {
+	if width <= 0 {
+		return lines
+	}
+
+	body = strings.ReplaceAll(body, "\r\n", "\n")
+	body = strings.ReplaceAll(body, "\r", "\n")
+	parts := strings.Split(body, "\n")
+	if len(parts) == 0 {
+		parts = []string{""}
+	}
+
+	for partIndex, part := range parts {
+		prefix := firstPrefix
+		if partIndex > 0 {
+			prefix = nextPrefix
+		}
+		wrapped := wrapStyled(part, peekBodyWrapWidth(width, prefix, nextPrefix))
+		if len(wrapped) == 0 {
+			wrapped = []string{""}
+		}
+		for lineIndex, line := range wrapped {
+			linePrefix := prefix
+			if lineIndex > 0 {
+				linePrefix = nextPrefix
+			}
+			lines = append(lines, truncatePeekLine(linePrefix+line, width))
+		}
+	}
+	return lines
+}
+
+func peekBodyWrapWidth(width int, prefixes ...string) int {
+	bodyWidth := width
+	for _, prefix := range prefixes {
+		bodyWidth = min(bodyWidth, width-lipgloss.Width(prefix))
+	}
+	return max(bodyWidth, 1)
+}
+
+func truncatePeekLine(line string, width int) string {
+	if lipgloss.Width(line) <= width {
+		return line
+	}
+	return ansi.Truncate(line, width, "")
+}
+
 // renderPeekDescription wraps the task description to width and returns its
 // lines. Returns a single-line "No description" placeholder when empty.
 func renderPeekDescription(task *models.Task, width int) []string {
@@ -196,7 +245,6 @@ func peekChecklistBlock(task *models.Task, width int) []string {
 		lines = append(lines, bar)
 	}
 
-	bodyWidth := max(width-4, 4)
 	for _, item := range task.Checklist {
 		text := strings.ReplaceAll(item.Text, "\n", " ")
 		var prefix, body string
@@ -207,13 +255,7 @@ func peekChecklistBlock(task *models.Task, width int) []string {
 			prefix = MutedStyle.Render("[ ]") + " "
 			body = text
 		}
-		for i, w := range wrapStyled(body, bodyWidth) {
-			if i == 0 {
-				lines = append(lines, prefix+w)
-			} else {
-				lines = append(lines, "    "+w)
-			}
-		}
+		lines = appendPeekWrappedItem(lines, prefix, "    ", body, width)
 	}
 	return lines
 }
@@ -229,23 +271,14 @@ func peekDecisionsBlock(task *models.Task, width int) []string {
 		return nil
 	}
 	lines := []string{BoldStyle.Render(fmt.Sprintf("Decisions (%d)", len(active)))}
-	bodyWidth := max(width-2, 4)
 	for _, d := range active {
 		body := d.Text
 		if d.Category != "" {
 			body = MutedStyle.Render(fmt.Sprintf("[%s]", d.Category)) + " " + d.Text
 		}
-		for i, w := range wrapStyled(body, bodyWidth) {
-			if i == 0 {
-				lines = append(lines, "• "+w)
-			} else {
-				lines = append(lines, "  "+w)
-			}
-		}
+		lines = appendPeekWrappedItem(lines, "• ", "  ", body, width)
 		if strings.TrimSpace(d.Rationale) != "" {
-			for _, w := range wrapStyled(d.Rationale, bodyWidth) {
-				lines = append(lines, "  "+MutedStyle.Render(w))
-			}
+			lines = appendPeekWrappedItem(lines, "  ", "  ", MutedStyle.Render(d.Rationale), width)
 		}
 	}
 	return lines
@@ -262,17 +295,10 @@ func peekCommentsBlock(task *models.Task, width int) []string {
 		return nil
 	}
 	lines := []string{BoldStyle.Render(fmt.Sprintf("Comments (%d)", len(active)))}
-	bodyWidth := max(width-2, 4)
 	for _, c := range active {
 		date := c.CreatedAt.Format("2006-01-02")
 		body := MutedStyle.Render(date+":") + " " + c.Text
-		for i, w := range wrapStyled(body, bodyWidth) {
-			if i == 0 {
-				lines = append(lines, "• "+w)
-			} else {
-				lines = append(lines, "  "+w)
-			}
-		}
+		lines = appendPeekWrappedItem(lines, "• ", "  ", body, width)
 	}
 	return lines
 }
@@ -282,7 +308,6 @@ func peekAttachmentsBlock(task *models.Task, width int) []string {
 		return nil
 	}
 	lines := []string{BoldStyle.Render(fmt.Sprintf("Attachments (%d)", len(task.Attachments)))}
-	bodyWidth := max(width-2, 4)
 	for _, a := range task.Attachments {
 		body := a.Filename
 		if a.IsCodeRef && a.LineNumber > 0 {
@@ -290,13 +315,7 @@ func peekAttachmentsBlock(task *models.Task, width int) []string {
 		} else if a.IsURL && a.OriginalPath != "" && a.OriginalPath != a.Filename {
 			body = a.Filename + " " + MutedStyle.Render("("+a.OriginalPath+")")
 		}
-		for i, w := range wrapStyled(body, bodyWidth) {
-			if i == 0 {
-				lines = append(lines, "• "+w)
-			} else {
-				lines = append(lines, "  "+w)
-			}
-		}
+		lines = appendPeekWrappedItem(lines, "• ", "  ", body, width)
 	}
 	return lines
 }
