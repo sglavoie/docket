@@ -9,8 +9,8 @@ import (
 // SectionOrder is the canonical GTD display order used by the All perspective
 // in the cross-project outliner.
 var SectionOrder = []string{
-	"",
 	models.SectionInbox,
+	"",
 	models.SectionNext,
 	models.SectionWaiting,
 	models.SectionReview,

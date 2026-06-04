@@ -62,9 +62,9 @@ func sectionLimitWarning(over, limit int) string {
 func (m *ProjectTreeModel) renderViewModeIndicator() string {
 	counts := m.viewModeCounts()
 	parts := []string{
+		renderViewModeCount(ViewModeInbox, "Inbox", counts.inbox, m.viewMode == ViewModeInbox || counts.inbox > 0),
 		renderViewModeCount(ViewModeActive, "Active", counts.active, m.viewMode == ViewModeActive),
 		renderViewModeCount(ViewModeNext, "Next", counts.next, m.viewMode == ViewModeNext),
-		renderViewModeCount(ViewModeInbox, "Inbox", counts.inbox, m.viewMode == ViewModeInbox || counts.inbox > 0),
 		renderViewModeCount(ViewModeWaiting, "Waiting", counts.waiting, m.viewMode == ViewModeWaiting),
 		renderViewModeCount(ViewModeSomeday, "Someday", counts.someday, m.viewMode == ViewModeSomeday),
 	}

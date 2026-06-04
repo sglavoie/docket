@@ -5,7 +5,7 @@ import "github.com/sglavoie/tt/internal/models"
 // cyclableViewModes returns the view modes that h/l should cycle through.
 // Snoozed is included only when the project has snoozed tasks.
 func (m *ProjectTreeModel) cyclableViewModes() []ViewMode {
-	modes := []ViewMode{ViewModeActive, ViewModeNext, ViewModeInbox, ViewModeWaiting, ViewModeSomeday}
+	modes := []ViewMode{ViewModeInbox, ViewModeActive, ViewModeNext, ViewModeWaiting, ViewModeSomeday}
 	if m.project == nil {
 		return modes
 	}

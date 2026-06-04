@@ -33,7 +33,7 @@ func TestBuildCrossProjectRowsSectionOrdering(t *testing.T) {
 		}
 	}
 
-	want := []string{"Active", models.SectionInbox, models.SectionSomeday}
+	want := []string{models.SectionInbox, "Active", models.SectionSomeday}
 	if len(headerOrder) != len(want) {
 		t.Fatalf("expected %d section headers, got %d: %v", len(want), len(headerOrder), headerOrder)
 	}

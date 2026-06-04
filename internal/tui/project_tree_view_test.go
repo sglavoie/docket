@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/charmbracelet/x/ansi"
 	"github.com/google/uuid"
 
 	"github.com/sglavoie/tt/internal/config"
@@ -101,6 +102,45 @@ func TestViewModeCycleIncludesAll(t *testing.T) {
 	mode = (mode + 1) % (ViewModeAll + 1)
 	if mode != ViewModeActive {
 		t.Errorf("expected wrap to ViewModeActive (0), got %d", mode)
+	}
+}
+
+func TestProjectTreeCyclableViewModesInboxFirst(t *testing.T) {
+	project := newTestProjectTreeProject(t, "Test", nil)
+	m := NewProjectTreeModel(project, newTestProjectTreeConfig(), nil)
+
+	got := m.cyclableViewModes()
+	want := []ViewMode{ViewModeInbox, ViewModeActive, ViewModeNext, ViewModeWaiting, ViewModeSomeday}
+	if len(got) != len(want) {
+		t.Fatalf("expected modes %v, got %v", want, got)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Fatalf("mode[%d]: want %v, got %v", i, want[i], got[i])
+		}
+	}
+}
+
+func TestProjectTreeViewModeIndicatorRendersInboxFirst(t *testing.T) {
+	active := newTestProjectTreeTask(t, "Active task")
+	inbox := newTestProjectTreeTask(t, "Inbox task")
+	inbox.Section = models.SectionInbox
+	next := newTestProjectTreeTask(t, "Next task")
+	next.Section = models.SectionNext
+
+	project := newTestProjectTreeProject(t, "Test", []*models.Task{active, inbox, next})
+	m := NewProjectTreeModel(project, newTestProjectTreeConfig(), nil)
+	m.SetSize(120, 24)
+
+	got := ansi.Strip(m.renderViewModeIndicator())
+	inboxIndex := strings.Index(got, "Inbox[1]")
+	activeIndex := strings.Index(got, "Active[1]")
+	nextIndex := strings.Index(got, "Next[1]")
+	if inboxIndex < 0 || activeIndex < 0 || nextIndex < 0 {
+		t.Fatalf("expected Inbox, Active, and Next counts in %q", got)
+	}
+	if !(inboxIndex < activeIndex && activeIndex < nextIndex) {
+		t.Fatalf("expected Inbox before Active before Next, got %q", got)
 	}
 }
 

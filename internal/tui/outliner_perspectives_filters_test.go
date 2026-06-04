@@ -316,6 +316,9 @@ func TestBuildSectionOrderNoCustomSections(t *testing.T) {
 	if len(order) != len(SectionOrder) {
 		t.Errorf("expected %d entries (same as SectionOrder), got %d", len(SectionOrder), len(order))
 	}
+	if order[0] != models.SectionInbox || order[1] != "" {
+		t.Errorf("expected Inbox then Active first, got %v", order[:2])
+	}
 }
 
 func TestBuildSectionOrderAppendsCustomAlphabetically(t *testing.T) {
