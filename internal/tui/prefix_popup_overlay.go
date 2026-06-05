@@ -36,12 +36,6 @@ func OverlayPopupDimmed(base, popup string, baseWidth, baseHeight int) string {
 	return overlayPopup(DimContent(base), popup, baseWidth, baseHeight, max((baseWidth-popupWidth(popup))/2, 0), true)
 }
 
-// OverlayPopupBottomLeftDimmed dims the base content before placing the popup at bottom-left.
-// A 1-char drop shadow is added on the right and bottom edges of the popup.
-func OverlayPopupBottomLeftDimmed(base, popup string, baseWidth, baseHeight int) string {
-	return overlayPopup(DimContent(base), popup, baseWidth, baseHeight, 1, true)
-}
-
 // OverlayPopupFlushLeftDimmed dims the base content before placing the popup at
 // column 0. Use this when the popup width is already calculated to match a
 // left-hand layout pane and must not shift into the adjacent pane.

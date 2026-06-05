@@ -139,7 +139,7 @@ func TestProjectTreeViewModeIndicatorRendersInboxFirst(t *testing.T) {
 	if inboxIndex < 0 || activeIndex < 0 || nextIndex < 0 {
 		t.Fatalf("expected Inbox, Active, and Next counts in %q", got)
 	}
-	if !(inboxIndex < activeIndex && activeIndex < nextIndex) {
+	if inboxIndex >= activeIndex || activeIndex >= nextIndex {
 		t.Fatalf("expected Inbox before Active before Next, got %q", got)
 	}
 }

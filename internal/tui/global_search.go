@@ -227,102 +227,136 @@ func (m *GlobalSearchModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case tea.KeyPressMsg:
-		key := msg.String()
-
-		// Handle autocomplete navigation when active
-		if m.ac.HandleKey(key, func() {
-			m.acceptAutocompleteSuggestion()
-			m.filterTasks()
-		}) {
-			return m, nil
-		}
-
-		switch key {
-		case "esc":
-			return m, func() tea.Msg {
-				return CloseGlobalSearchMsg{}
-			}
-		case "enter":
-			// Only select if not in autocomplete mode
-			if !m.ac.IsActive() && len(m.filtered) > 0 && m.cursor < len(m.filtered) {
-				result := m.filtered[m.cursor].result
-				m.recordGlobalSearchHistory()
-				if result.IsNote() {
-					// Open notes view for the project containing the note
-					return m, func() tea.Msg {
-						return ShowNotesMsg{Project: result.Project}
-					}
-				}
-				return m, func() tea.Msg {
-					return GlobalSearchSelectMsg{
-						Task:    result.Task,
-						Project: result.Project,
-					}
-				}
-			}
-			return m, nil
-		case "alt+up":
-			if len(m.searchHistory) > 0 {
-				if m.searchHistoryIndex < 0 {
-					m.searchHistoryIndex = 0
-				} else if m.searchHistoryIndex < len(m.searchHistory)-1 {
-					m.searchHistoryIndex++
-				}
-				if m.searchHistoryIndex < len(m.searchHistory) {
-					m.setGlobalSearchQuery(m.searchHistory[m.searchHistoryIndex])
-				}
-			}
-			return m, nil
-		case "alt+down":
-			if m.searchHistoryIndex > 0 {
-				m.searchHistoryIndex--
-				m.setGlobalSearchQuery(m.searchHistory[m.searchHistoryIndex])
-			} else if m.searchHistoryIndex == 0 {
-				m.searchHistoryIndex = -1
-				m.setGlobalSearchQuery("")
-			}
-			return m, nil
-		case "up", "ctrl+k":
-			if !m.ac.IsActive() && m.cursor > 0 {
-				m.cursor--
-			}
-			return m, nil
-		case "down", "ctrl+j":
-			if !m.ac.IsActive() && m.cursor < len(m.filtered)-1 {
-				m.cursor++
-			}
-			return m, nil
-		case "shift+left", "shift+right":
-			if handleTabCycleKey(key, &m.tabs, m.filterTasks) {
-				return m, nil
-			}
-		case "ctrl+o":
-			m.hideCompleted = !m.hideCompleted
-			m.filterTasks()
-			return m, nil
-		case "ctrl+u":
-			jumpCursor(&m.cursor, len(m.filtered), -10)
-			return m, nil
-		case "ctrl+d":
-			jumpCursor(&m.cursor, len(m.filtered), 10)
-			return m, nil
-		case "?":
-			if !m.ac.IsActive() {
-				m.showHelp = !m.showHelp
-				return m, nil
-			}
-			fallthrough
-		default:
-			// Update search input
-			var cmd tea.Cmd
-			m.searchInput, cmd = m.searchInput.Update(msg)
-			m.filterTasks()
-			m.detectAutocomplete()
-			return m, cmd
-		}
+		return m.updateKeyPress(msg)
 	}
 
 	return m, nil
+}
+
+func (m *GlobalSearchModel) updateKeyPress(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
+	key := msg.String()
+	if m.handleAutocompleteKey(key) {
+		return m, nil
+	}
+	if cmd, handled := m.handleShortcutKey(key); handled {
+		return m, cmd
+	}
+
+	return m.updateSearchInput(msg)
+}
+
+func (m *GlobalSearchModel) handleAutocompleteKey(key string) bool {
+	return m.ac.HandleKey(key, func() {
+		m.acceptAutocompleteSuggestion()
+		m.filterTasks()
+	})
+}
+
+func (m *GlobalSearchModel) handleShortcutKey(key string) (tea.Cmd, bool) {
+	switch key {
+	case "esc":
+		return func() tea.Msg {
+			return CloseGlobalSearchMsg{}
+		}, true
+	case "enter":
+		return m.selectCurrentResult(), true
+	case "alt+up":
+		m.moveSearchHistoryUp()
+		return nil, true
+	case "alt+down":
+		m.moveSearchHistoryDown()
+		return nil, true
+	case "up", "ctrl+k":
+		m.moveCursorUp()
+		return nil, true
+	case "down", "ctrl+j":
+		m.moveCursorDown()
+		return nil, true
+	case "shift+left", "shift+right":
+		handleTabCycleKey(key, &m.tabs, m.filterTasks)
+		return nil, true
+	case "ctrl+o":
+		m.hideCompleted = !m.hideCompleted
+		m.filterTasks()
+		return nil, true
+	case "ctrl+u":
+		jumpCursor(&m.cursor, len(m.filtered), -10)
+		return nil, true
+	case "ctrl+d":
+		jumpCursor(&m.cursor, len(m.filtered), 10)
+		return nil, true
+	case "?":
+		if !m.ac.IsActive() {
+			m.showHelp = !m.showHelp
+			return nil, true
+		}
+	}
+	return nil, false
+}
+
+func (m *GlobalSearchModel) selectCurrentResult() tea.Cmd {
+	if m.ac.IsActive() || len(m.filtered) == 0 || m.cursor >= len(m.filtered) {
+		return nil
+	}
+
+	result := m.filtered[m.cursor].result
+	m.recordGlobalSearchHistory()
+	if result.IsNote() {
+		return func() tea.Msg {
+			return ShowNotesMsg{Project: result.Project}
+		}
+	}
+
+	return func() tea.Msg {
+		return GlobalSearchSelectMsg{
+			Task:    result.Task,
+			Project: result.Project,
+		}
+	}
+}
+
+func (m *GlobalSearchModel) moveSearchHistoryUp() {
+	if len(m.searchHistory) == 0 {
+		return
+	}
+	if m.searchHistoryIndex < 0 {
+		m.searchHistoryIndex = 0
+	} else if m.searchHistoryIndex < len(m.searchHistory)-1 {
+		m.searchHistoryIndex++
+	}
+	if m.searchHistoryIndex < len(m.searchHistory) {
+		m.setGlobalSearchQuery(m.searchHistory[m.searchHistoryIndex])
+	}
+}
+
+func (m *GlobalSearchModel) moveSearchHistoryDown() {
+	if m.searchHistoryIndex > 0 {
+		m.searchHistoryIndex--
+		m.setGlobalSearchQuery(m.searchHistory[m.searchHistoryIndex])
+	} else if m.searchHistoryIndex == 0 {
+		m.searchHistoryIndex = -1
+		m.setGlobalSearchQuery("")
+	}
+}
+
+func (m *GlobalSearchModel) moveCursorUp() {
+	if !m.ac.IsActive() && m.cursor > 0 {
+		m.cursor--
+	}
+}
+
+func (m *GlobalSearchModel) moveCursorDown() {
+	if !m.ac.IsActive() && m.cursor < len(m.filtered)-1 {
+		m.cursor++
+	}
+}
+
+func (m *GlobalSearchModel) updateSearchInput(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
+	var cmd tea.Cmd
+	m.searchInput, cmd = m.searchInput.Update(msg)
+	m.filterTasks()
+	m.detectAutocomplete()
+	return m, cmd
 }
 
 func (m *GlobalSearchModel) setGlobalSearchQuery(query string) {
