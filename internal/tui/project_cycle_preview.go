@@ -2,7 +2,7 @@ package tui
 
 // renderCyclePreviewBackground renders a dimmed task tree of the highlighted
 // project as background content behind the cycle overlay popup.
-func (m *AppModel) renderCyclePreviewBackground() string {
+func (m *AppModel) renderCyclePreviewBackground(visibleRows ...int) string {
 	if !m.showProjectCycle || len(m.projectCycleItems) == 0 {
 		return ""
 	}
@@ -14,11 +14,18 @@ func (m *AppModel) renderCyclePreviewBackground() string {
 	if proj == nil {
 		return ""
 	}
-	if m.projectCyclePreviewID != proj.ID {
+
+	previewRows := m.height - 2
+	if len(visibleRows) > 0 {
+		previewRows = visibleRows[0]
+	}
+	previewRows = max(previewRows, 1)
+
+	if m.projectCyclePreviewID != proj.ID || m.projectCyclePreview == nil {
 		m.projectCyclePreview = NewProjectTreeModel(proj, m.config, m.configManager)
-		m.projectCyclePreview.SetSize(m.width, m.height-2)
 		m.projectCyclePreviewID = proj.ID
 	}
+	m.projectCyclePreview.SetSize(m.width, previewRows)
 
 	content := m.projectCyclePreview.View().Content
 

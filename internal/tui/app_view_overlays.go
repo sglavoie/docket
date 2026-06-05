@@ -40,9 +40,13 @@ func (m *AppModel) applyOverlays(content string, h int) string {
 		}
 	}
 
-	// Overlay project cycle popup if active (bottom-left to avoid covering sidebar)
+	// Overlay project cycle popup if active, flush with the tree split.
 	if popup := m.renderProjectCyclePopup(); popup != "" {
-		content = OverlayPopupBottomLeftDimmed(content, popup, m.width, h)
+		visibleRows := bottomPopupTopRow(h, lipgloss.Height(popup))
+		if preview := m.renderCyclePreviewBackground(visibleRows); preview != "" {
+			content = preview
+		}
+		content = OverlayPopupFlushLeftDimmed(content, popup, m.width, h)
 	}
 
 	// Overlay project cycle picker popup if active

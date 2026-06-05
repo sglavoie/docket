@@ -15,9 +15,13 @@ func (m *AppModel) handleProjectCycleMessages(msg tea.Msg) (bool, tea.Cmd) {
 	case ShowProjectCycleManagerMsg:
 		m.showProjectCycle = !m.showProjectCycle
 		m.projectCycleCursor = 0
+		m.projectCycleScroll = 0
 		if m.showProjectCycle {
+			m.resetProjectCycleSearch()
 			m.refreshProjectCycleItems()
-			m.sortCycleItemsSelectedFirst()
+		} else {
+			m.resetProjectCycleSearch()
+			m.invalidateCyclePreview()
 		}
 		return true, nil
 

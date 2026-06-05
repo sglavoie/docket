@@ -41,9 +41,11 @@ func (m *AppModel) handleContextMessages(msg tea.Msg) (bool, tea.Cmd) {
 
 			if msg.FromCycle {
 				// Reopen the popup with refreshed items
+				m.resetProjectCycleSearch()
 				m.refreshProjectCycleItems()
 				m.showProjectCycle = true
 				m.projectCycleCursor = 0
+				m.projectCycleScroll = 0
 			} else if m.dashboard != nil {
 				// Update dashboard filter
 				if msg.IsCustomContext {

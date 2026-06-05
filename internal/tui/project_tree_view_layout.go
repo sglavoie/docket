@@ -72,17 +72,19 @@ func (m *ProjectTreeModel) renderWithSidebar() string {
 	// Get currently selected task
 	selectedTask := m.SidebarSelectedTask()
 
+	paneHeight := max(m.height-CardVerticalBorderOverhead, 1)
+
 	// Render sidebar
 	// Note: SidebarStyle has border (2 chars) + padding (2 chars) = 4 chars overhead
 	// lipgloss .Width() sets CONTENT width, so subtract overhead to get desired total width
 	// Add 1 to account for rounding to ensure we use full width
-	sidebarContent := renderSidebarContent(m, selectedTask, sidebarWidth-SidebarContentOverhead, m.height-CardVerticalBorderOverhead)
+	sidebarContent := renderSidebarContent(m, selectedTask, sidebarWidth-SidebarContentOverhead, paneHeight)
 
 	// Apply width constraint to tree to ensure it fills its allocated space
 	treeContentStyled := lipgloss.NewStyle().Width(treeWidth).Render(treeContent)
 
 	// Render vertical divider
-	divider := renderVerticalDivider(m.height-2, m.sidebar.IsFocused())
+	divider := renderVerticalDivider(paneHeight, m.sidebar.IsFocused())
 
 	// Dim the unfocused pane to reinforce which pane has focus
 	if m.sidebar.IsFocused() {

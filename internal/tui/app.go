@@ -328,7 +328,9 @@ type AppModel struct {
 	showProjectCycle       bool
 	projectCycleCursor     int
 	projectCycleScroll     int // scroll offset for cycle popup viewport
+	projectCycleAllItems   []ProjectInfo
 	projectCycleItems      []ProjectInfo
+	projectCycleSearch     BaseSearchableView
 	projectCyclePreview    *ProjectTreeModel // cached preview tree for highlighted project
 	projectCyclePreviewID  string            // project ID the preview was built for
 

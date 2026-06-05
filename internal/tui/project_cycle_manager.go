@@ -10,6 +10,7 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/tt/internal/fuzzy"
 	"github.com/sglavoie/tt/internal/logging"
 	"github.com/sglavoie/tt/internal/storage"
 )
@@ -63,32 +64,109 @@ func buildProjectInfoListFiltered(cfg *config.Config, filterContext, filterCusto
 
 // refreshProjectCycleItems rebuilds the projectCycleItems list from current config.
 func (m *AppModel) refreshProjectCycleItems() {
-	m.projectCycleItems = buildProjectInfoListFiltered(m.config, m.config.FilterContext, m.config.FilterCustomContext)
+	m.projectCycleAllItems = buildProjectInfoListFiltered(m.config, m.config.FilterContext, m.config.FilterCustomContext)
+	m.sortCycleItemsSelectedFirst()
 }
 
 // sortCycleItemsSelectedFirst sorts projectCycleItems so that projects
 // in the cycle appear first, preserving existing order within each group.
 func (m *AppModel) sortCycleItemsSelectedFirst() {
+	if len(m.projectCycleAllItems) == 0 && len(m.projectCycleItems) > 0 {
+		m.projectCycleAllItems = m.projectCycleItems
+	}
 	contextKey := getContextKey(m.config.FilterContext, m.config.FilterCustomContext)
 	cycleIDs := m.config.GetCycleProjectIDsForContext(contextKey)
 	cycleIDSet := make(map[string]bool, len(cycleIDs))
 	for _, id := range cycleIDs {
 		cycleIDSet[id] = true
 	}
-	sort.SliceStable(m.projectCycleItems, func(i, j int) bool {
-		iSel := cycleIDSet[m.projectCycleItems[i].Project.ID]
-		jSel := cycleIDSet[m.projectCycleItems[j].Project.ID]
+	sort.SliceStable(m.projectCycleAllItems, func(i, j int) bool {
+		iSel := projectCycleItemSelected(m.projectCycleAllItems[i], cycleIDSet)
+		jSel := projectCycleItemSelected(m.projectCycleAllItems[j], cycleIDSet)
 		if iSel != jSel {
 			return iSel
 		}
 		return false
 	})
+	m.applyProjectCycleFilter(false)
+}
+
+func projectCycleItemSelected(item ProjectInfo, cycleIDSet map[string]bool) bool {
+	return item.Project != nil && cycleIDSet[item.Project.ID]
+}
+
+func (m *AppModel) ensureProjectCycleSearchInput() {
+	if m.projectCycleSearch.searchInput.Placeholder == "" {
+		m.projectCycleSearch.InitSearchInput("Filter projects...", 100, SearchInputWidth(m.width))
+	}
+	m.projectCycleSearch.searchInput.SetWidth(SearchInputWidth(m.width))
+}
+
+func (m *AppModel) resetProjectCycleSearch() {
+	m.ensureProjectCycleSearchInput()
+	m.projectCycleSearch.ClearSearch()
+}
+
+func (m *AppModel) projectCycleSearchQuery() string {
+	return strings.TrimSpace(m.projectCycleSearch.SearchQuery())
+}
+
+func (m *AppModel) applyProjectCycleFilter(resetCursor bool) {
+	query := m.projectCycleSearchQuery()
+	if query == "" {
+		m.projectCycleItems = m.projectCycleAllItems
+	} else {
+		filtered := make([]ProjectInfo, 0, len(m.projectCycleAllItems))
+		for _, item := range m.projectCycleAllItems {
+			if item.Project != nil && fuzzy.MatchTerms(item.FilterText(), query) {
+				filtered = append(filtered, item)
+			}
+		}
+		m.projectCycleItems = filtered
+	}
+	if resetCursor {
+		m.projectCycleCursor = 0
+		m.projectCycleScroll = 0
+		m.invalidateCyclePreview()
+		return
+	}
+	m.clampProjectCycleCursor()
+}
+
+func (m *AppModel) clampProjectCycleCursor() {
+	if len(m.projectCycleItems) == 0 {
+		m.projectCycleCursor = 0
+		m.projectCycleScroll = 0
+		m.invalidateCyclePreview()
+		return
+	}
+	if m.projectCycleCursor < 0 {
+		m.projectCycleCursor = 0
+	}
+	if m.projectCycleCursor >= len(m.projectCycleItems) {
+		m.projectCycleCursor = len(m.projectCycleItems) - 1
+	}
+	m.adjustCycleScroll()
+}
+
+func (m *AppModel) restoreProjectCycleCursor(projectID string) {
+	for i, item := range m.projectCycleItems {
+		if item.Project != nil && item.Project.ID == projectID {
+			m.projectCycleCursor = i
+			m.adjustCycleScroll()
+			return
+		}
+	}
+	m.clampProjectCycleCursor()
 }
 
 // closeProjectCyclePopup closes the popup and does cleanup.
 func (m *AppModel) closeProjectCyclePopup() tea.Cmd {
 	m.showProjectCycle = false
 	m.projectCycleScroll = 0
+	m.resetProjectCycleSearch()
+	m.projectCycleAllItems = nil
+	m.projectCycleItems = nil
 	m.invalidateCyclePreview()
 	if m.projectTree != nil {
 		m.projectTree.buildTree()
@@ -103,6 +181,9 @@ func (m *AppModel) closeProjectCyclePopup() tea.Cmd {
 	if dash != nil {
 		dash.Refresh(m.config)
 	}
+	if m.crossOutliner == nil {
+		return nil
+	}
 	return m.crossOutliner.reloadCrossProjects()
 }
 
@@ -111,12 +192,18 @@ func (m *AppModel) handleProjectCycleKey(msg tea.KeyPressMsg) (*AppModel, tea.Cm
 	if isModifierOnly(msg) {
 		return m, nil
 	}
+	if _, cmd, handled := m.projectCycleSearch.HandleSearchMode(msg, m, func() {
+		m.applyProjectCycleFilter(true)
+	}); handled {
+		return m, cmd
+	}
 	switch msg.String() {
 	case "1", "2", "3", "4", "5", "6", "7", "8", "9":
 		idx := int(msg.String()[0]-'0') - 1
-		if idx < len(m.projectCycleItems) {
+		if idx < len(m.projectCycleItems) && m.projectCycleItems[idx].Project != nil {
+			project := m.projectCycleItems[idx].Project
 			reloadCmd := m.closeProjectCyclePopup()
-			_, cmd := m.switchToCycleProject(m.projectCycleItems[idx].Project)
+			_, cmd := m.switchToCycleProject(project)
 			return m, tea.Batch(reloadCmd, cmd)
 		}
 		return m, nil
@@ -137,7 +224,7 @@ func (m *AppModel) handleProjectCycleKey(msg tea.KeyPressMsg) (*AppModel, tea.Cm
 
 	case "space":
 		// Toggle cycle membership for highlighted project
-		if m.projectCycleCursor < len(m.projectCycleItems) {
+		if m.projectCycleCursor < len(m.projectCycleItems) && m.projectCycleItems[m.projectCycleCursor].Project != nil {
 			item := m.projectCycleItems[m.projectCycleCursor]
 			contextKey := getContextKey(m.config.FilterContext, m.config.FilterCustomContext)
 			cycleIDs := m.config.GetCycleProjectIDsForContext(contextKey)
@@ -163,7 +250,7 @@ func (m *AppModel) handleProjectCycleKey(msg tea.KeyPressMsg) (*AppModel, tea.Cm
 
 	case "enter", "g":
 		// Navigate to highlighted project
-		if m.projectCycleCursor < len(m.projectCycleItems) {
+		if m.projectCycleCursor < len(m.projectCycleItems) && m.projectCycleItems[m.projectCycleCursor].Project != nil {
 			project := m.projectCycleItems[m.projectCycleCursor].Project
 			reloadCmd := m.closeProjectCyclePopup()
 			return m, tea.Batch(reloadCmd, func() tea.Msg {
@@ -174,7 +261,7 @@ func (m *AppModel) handleProjectCycleKey(msg tea.KeyPressMsg) (*AppModel, tea.Cm
 
 	case "p":
 		// Toggle pin on highlighted project
-		if m.projectCycleCursor < len(m.projectCycleItems) {
+		if m.projectCycleCursor < len(m.projectCycleItems) && m.projectCycleItems[m.projectCycleCursor].Project != nil {
 			item := m.projectCycleItems[m.projectCycleCursor]
 			item.Project.TogglePinned()
 			if err := m.configManager.Save(m.config); err != nil {
@@ -182,13 +269,7 @@ func (m *AppModel) handleProjectCycleKey(msg tea.KeyPressMsg) (*AppModel, tea.Cm
 			}
 			currentID := item.Project.ID
 			m.refreshProjectCycleItems()
-			// Restore cursor to same project
-			for i, pi := range m.projectCycleItems {
-				if pi.Project.ID == currentID {
-					m.projectCycleCursor = i
-					break
-				}
-			}
+			m.restoreProjectCycleCursor(currentID)
 		}
 		return m, nil
 
@@ -207,8 +288,10 @@ func (m *AppModel) handleProjectCycleKey(msg tea.KeyPressMsg) (*AppModel, tea.Cm
 			if err := m.configManager.Save(m.config); err != nil {
 				logging.Warn("failed to save config: %v", err)
 			}
+			m.resetProjectCycleSearch()
 			m.refreshProjectCycleItems()
 			m.projectCycleCursor = 0
+			m.projectCycleScroll = 0
 		}
 		return m, nil
 
@@ -252,7 +335,16 @@ func (m *AppModel) handleProjectCycleKey(msg tea.KeyPressMsg) (*AppModel, tea.Cm
 		}
 		return m, nil
 
+	case "/":
+		m.ensureProjectCycleSearchInput()
+		return m, m.projectCycleSearch.ActivateSearch()
+
 	case "esc", "@":
+		if m.projectCycleSearchQuery() != "" {
+			m.projectCycleSearch.ClearSearch()
+			m.applyProjectCycleFilter(true)
+			return m, nil
+		}
 		reloadCmd := m.closeProjectCyclePopup()
 		return m, reloadCmd
 
@@ -268,7 +360,7 @@ func (m *AppModel) handleProjectCycleKey(msg tea.KeyPressMsg) (*AppModel, tea.Cm
 func (m *AppModel) cycleMaxVisibleItems() int {
 	maxFromHeight := m.height - OverlayListChrome
 	maxFromPercent := (m.height * 50) / 100
-	return max(min(maxFromHeight, maxFromPercent), 3)
+	return max(min(maxFromHeight, maxFromPercent)-3, 3)
 }
 
 // adjustCycleScroll ensures projectCycleScroll keeps the cursor visible.
@@ -288,10 +380,14 @@ func (m *AppModel) adjustCycleScroll() {
 
 // renderProjectCyclePopup renders the project cycle overlay popup.
 func (m *AppModel) renderProjectCyclePopup() string {
-	if !m.showProjectCycle || len(m.projectCycleItems) == 0 {
+	if !m.showProjectCycle {
+		return ""
+	}
+	if len(m.projectCycleItems) == 0 && len(m.projectCycleAllItems) == 0 {
 		return ""
 	}
 
+	m.ensureProjectCycleSearchInput()
 	borderStyle := InfoStatusStyle
 	titleStyle := TitleStyle
 	title := titleStyle.Render("Project Cycle")
@@ -333,32 +429,22 @@ func (m *AppModel) renderProjectCyclePopup() string {
 		}
 	}
 
-	// Calculate ideal width from content
-	maxNameLen := 0
-	for _, item := range m.projectCycleItems {
-		if width := lipgloss.Width(item.Project.Name); width > maxNameLen {
-			maxNameLen = width
-		}
-	}
-	// badge(1) + space(1) + checkbox(3) + space(1) + name + gap(2) + count + border/padding(4)
-	idealWidth := 1 + 1 + 3 + 1 + maxNameLen + 2 + maxCountWidth + 4
-	// Footer text must fit within the border: "╰─ " + footer + " ─╯" = 5 + footerLen
-	footerText := "1-9 jump · space toggle · p pin · enter go · esc close"
-	minWidth := lipgloss.Width(footerText) + 6
-	popupWidth := min(max(idealWidth, minWidth), 60)
-	// Constrain to tree area width so popup doesn't cover the sidebar
-	treeWidth := (m.width * 55) / 100
-	if maxTreePopup := treeWidth - 2; popupWidth > maxTreePopup && maxTreePopup > minWidth {
-		popupWidth = maxTreePopup
-	}
-	if popupWidth > m.width-4 {
-		popupWidth = max(m.width-4, minWidth)
-	}
+	popupWidth := projectCycleSplitWidth(m.width)
+	footerText := m.projectCycleFooterText(popupWidth)
 
 	innerWidth := max(popupWidth-4, 1)
 
 	var contentLines []string
 	contentLines = append(contentLines, subtitle)
+	headerLineCount := 2
+	searchQuery := m.projectCycleSearchQuery()
+	if m.projectCycleSearch.IsSearchMode() {
+		contentLines = append(contentLines, HelpStyle.Render("Search: ")+m.projectCycleSearch.SearchInputView())
+		headerLineCount++
+	} else if searchQuery != "" {
+		contentLines = append(contentLines, MutedStyle.Render(fmt.Sprintf("Search: %q ", searchQuery))+HelpStyle.Render("(Esc clear)"))
+		headerLineCount++
+	}
 	contentLines = append(contentLines, "")
 
 	// Compute min/max task counts for dynamic color scaling
@@ -376,58 +462,64 @@ func (m *AppModel) renderProjectCyclePopup() string {
 		}
 	}
 
-	for i, item := range m.projectCycleItems {
-		// Badge
-		var badge string
-		if i < 9 {
-			badge = badgeStyle.Render(fmt.Sprintf("%d", i+1))
-		} else {
-			badge = dimBadgeStyle.Render("·")
-		}
-
-		// Checkbox
-		var checkbox string
-		if cycleIDSet[item.Project.ID] {
-			checkbox = SelectionCheckStyle.Render("[x]")
-		} else {
-			checkbox = MutedStyle.Render("[ ]")
-		}
-
-		// Task count (right-aligned) — colored on a red→green gradient
-		countText := fmt.Sprintf("%*d", maxCountWidth, item.TaskCount)
-		color := TaskCountColor(item.TaskCount, minCount, maxCount)
-		countStr := lipgloss.NewStyle().Foreground(color).Render(countText)
-
-		// Layout: badge(1) + space(1) + checkbox(3) + space(1) + name + gap(2) + count
-		fixedWidth := 1 + 1 + 3 + 1 + 2 + maxCountWidth
-		nameWidth := max(innerWidth-fixedWidth, 10)
-
-		plainName := truncateAndPad(item.Project.Name, nameWidth)
-		displayName := plainName
-		if item.Project.Pinned {
-			displayName = PinnedProjectStyle.Render(plainName)
-		}
-
-		line := badge + " " + checkbox + " " + displayName + "  " + countStr
-
-		if i == m.projectCycleCursor {
-			lineWidth := lipgloss.Width(line)
-			if lineWidth < innerWidth {
-				line += strings.Repeat(" ", innerWidth-lineWidth)
+	if len(m.projectCycleItems) == 0 {
+		contentLines = append(contentLines, MutedStyle.Render("No matching projects"))
+	} else {
+		for i, item := range m.projectCycleItems {
+			if item.Project == nil {
+				continue
 			}
-			line = SelectedLine(ansi.Truncate(line, innerWidth, ""), innerWidth)
-		}
+			// Badge
+			var badge string
+			if i < 9 {
+				badge = badgeStyle.Render(fmt.Sprintf("%d", i+1))
+			} else {
+				badge = dimBadgeStyle.Render("·")
+			}
 
-		contentLines = append(contentLines, line)
+			// Checkbox
+			var checkbox string
+			if cycleIDSet[item.Project.ID] {
+				checkbox = SelectionCheckStyle.Render("[x]")
+			} else {
+				checkbox = MutedStyle.Render("[ ]")
+			}
+
+			// Task count (right-aligned) — colored on a red→green gradient
+			countText := fmt.Sprintf("%*d", maxCountWidth, item.TaskCount)
+			color := TaskCountColor(item.TaskCount, minCount, maxCount)
+			countStr := lipgloss.NewStyle().Foreground(color).Render(countText)
+
+			// Layout: badge(1) + space(1) + checkbox(3) + space(1) + name + gap(2) + count
+			fixedWidth := 1 + 1 + 3 + 1 + 2 + maxCountWidth
+			nameWidth := max(innerWidth-fixedWidth, 10)
+
+			plainName := truncateAndPad(item.Project.Name, nameWidth)
+			displayName := plainName
+			if item.Project.Pinned {
+				displayName = PinnedProjectStyle.Render(plainName)
+			}
+
+			line := badge + " " + checkbox + " " + displayName + "  " + countStr
+
+			if i == m.projectCycleCursor {
+				lineWidth := lipgloss.Width(line)
+				if lineWidth < innerWidth {
+					line += strings.Repeat(" ", innerWidth-lineWidth)
+				}
+				line = SelectedLine(ansi.Truncate(line, innerWidth, ""), innerWidth)
+			}
+
+			contentLines = append(contentLines, line)
+		}
 	}
 
 	// Apply viewport scrolling if there are more items than fit
 	maxVisible := m.cycleMaxVisibleItems()
 	itemCount := len(m.projectCycleItems)
 	if itemCount > maxVisible {
-		// contentLines has 2 header lines (subtitle + blank), then item lines
-		headerLines := contentLines[:2]
-		itemLines := contentLines[2:]
+		headerLines := contentLines[:headerLineCount]
+		itemLines := contentLines[headerLineCount:]
 		end := min(m.projectCycleScroll+maxVisible, len(itemLines))
 		visibleItems := itemLines[m.projectCycleScroll:end]
 		contentLines = append(headerLines, visibleItems...)
@@ -443,6 +535,51 @@ func (m *AppModel) renderProjectCyclePopup() string {
 
 	content := strings.Join(contentLines, "\n")
 
-	footer := MutedStyle.Render("1-9 jump · space toggle · p pin · enter go · esc close")
+	footer := MutedStyle.Render(footerText)
 	return renderTitledBox(content, popupWidth, title, footer, borderStyle)
+}
+
+func projectCycleSplitWidth(totalWidth int) int {
+	treeWidth := max((totalWidth*55)/100, TreeMinWidth)
+	const dividerWidth = 1
+	sidebarWidth := totalWidth - treeWidth - dividerWidth
+	if sidebarWidth < SidebarMinWidth {
+		treeWidth = totalWidth - SidebarMinWidth - dividerWidth
+	}
+	return max(min(treeWidth, totalWidth), 1)
+}
+
+func (m *AppModel) projectCycleFooterText(popupWidth int) string {
+	footerLimit := max(popupWidth-6, 1)
+	if m.projectCycleSearch.IsSearchMode() {
+		return projectCycleFooterVariant(footerLimit,
+			"enter validate · esc clear",
+			"enter · esc clear",
+			"enter · esc",
+		)
+	}
+	if m.projectCycleSearchQuery() != "" {
+		return projectCycleFooterVariant(footerLimit,
+			"j/k nav · / edit · enter go · esc clear",
+			"j/k · / edit · enter · esc",
+			"/ edit · enter · esc",
+		)
+	}
+	return projectCycleFooterVariant(footerLimit,
+		"1-9 jump · / filter · space · p pin · enter · esc",
+		"1-9 · / filter · space · enter · esc",
+		"1-9 · / filter · space · esc",
+	)
+}
+
+func projectCycleFooterVariant(limit int, variants ...string) string {
+	if len(variants) == 0 {
+		return ""
+	}
+	for _, variant := range variants {
+		if lipgloss.Width(variant) <= limit {
+			return variant
+		}
+	}
+	return variants[len(variants)-1]
 }

@@ -42,6 +42,13 @@ func OverlayPopupBottomLeftDimmed(base, popup string, baseWidth, baseHeight int)
 	return overlayPopup(DimContent(base), popup, baseWidth, baseHeight, 1, true)
 }
 
+// OverlayPopupFlushLeftDimmed dims the base content before placing the popup at
+// column 0. Use this when the popup width is already calculated to match a
+// left-hand layout pane and must not shift into the adjacent pane.
+func OverlayPopupFlushLeftDimmed(base, popup string, baseWidth, baseHeight int) string {
+	return overlayPopup(DimContent(base), popup, baseWidth, baseHeight, 0, true)
+}
+
 func overlayPopup(base, popup string, baseWidth, baseHeight, startCol int, withShadow bool) string {
 	if popup == "" {
 		return base
@@ -60,7 +67,7 @@ func overlayPopup(base, popup string, baseWidth, baseHeight, startCol int, withS
 		baseLines = append(baseLines, pad)
 	}
 
-	startRow := max(baseHeight-popupHeight-1, 0)
+	startRow := bottomPopupTopRow(baseHeight, popupHeight)
 	for i, popupLine := range popupLines {
 		row := startRow + i
 		if row >= len(baseLines) {
@@ -102,6 +109,12 @@ func overlayPopup(base, popup string, baseWidth, baseHeight, startCol int, withS
 	}
 
 	return strings.Join(baseLines, "\n")
+}
+
+// bottomPopupTopRow returns the first rendered row for a bottom-aligned popup,
+// leaving one row below it for the bottom shadow when the terminal has space.
+func bottomPopupTopRow(baseHeight, popupHeight int) int {
+	return max(baseHeight-popupHeight-1, 0)
 }
 
 func popupWidth(popup string) int {

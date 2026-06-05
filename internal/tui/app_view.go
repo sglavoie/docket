@@ -50,13 +50,6 @@ func (m *AppModel) View() (result tea.View) { //nolint:gocyclo
 		content = "Unknown view"
 	}
 
-	// Replace base content with task preview when cycle overlay is active
-	if m.showProjectCycle && len(m.projectCycleItems) > 0 {
-		if preview := m.renderCyclePreviewBackground(); preview != "" {
-			content = preview
-		}
-	}
-
 	// Overlay alert indicator on the first row of main views
 	if m.shouldShowAlertIndicator() {
 		indicator := renderAlertIndicator(m.alertCount())

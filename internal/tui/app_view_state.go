@@ -32,6 +32,9 @@ func (m *AppModel) handleWindowSize(msg tea.WindowSizeMsg) {
 	if m.projectCyclePreview != nil {
 		m.projectCyclePreview.SetSize(msg.Width, msg.Height-2)
 	}
+	if m.projectCycleSearch.searchInput.Placeholder != "" {
+		m.projectCycleSearch.searchInput.SetWidth(SearchInputWidth(msg.Width))
+	}
 	if m.pinnedPreview != nil {
 		m.pinnedPreview.SetSize(msg.Width, msg.Height-2)
 	}
