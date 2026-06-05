@@ -168,6 +168,55 @@ func TestProjectCyclePreviewCursorRendersSelectedTaskAbovePopup(t *testing.T) {
 	}
 }
 
+func TestProjectCyclePreviewCardConsumesRowsAbovePopup(t *testing.T) {
+	const (
+		width     = 100
+		height    = 18
+		taskCount = 6
+	)
+	app, _ := newProjectCyclePreviewTestApp(t, width, height, taskCount)
+	limit := 2
+	app.config.SectionLimitNext = &limit
+	project := app.projectCycleItems[0].Project
+	for _, task := range project.Tasks {
+		task.Section = models.SectionNext
+	}
+	project.BuildTaskTree()
+
+	app.projectCyclePreview = NewProjectTreeModel(project, app.config, app.configManager)
+	app.projectCyclePreviewID = project.ID
+	app.projectCyclePreview.viewMode = ViewModeNext
+	app.projectCyclePreview.updateVisibility()
+
+	popup := app.renderProjectCyclePopup()
+	popupTopRow := bottomPopupTopRow(app.height, lipgloss.Height(popup))
+	if popupTopRow <= 0 {
+		t.Fatalf("expected preview rows above popup, got top row %d", popupTopRow)
+	}
+
+	rendered := ansi.Strip(app.applyOverlays(projectCycleBlankBase(width, height), height))
+	lines := strings.Split(rendered, "\n")
+	if popupTopRow >= len(lines) {
+		t.Fatalf("popup top row %d exceeds rendered line count %d\n\n%s", popupTopRow, len(lines), rendered)
+	}
+	if !strings.Contains(lines[popupTopRow], "Project Cycle") {
+		t.Fatalf("expected Project Cycle popup to start on row %d\n\n%s", popupTopRow, rendered)
+	}
+	rowAbovePopup := lines[popupTopRow-1]
+	if strings.TrimSpace(rowAbovePopup) == "" {
+		t.Fatalf("expected preview card to consume row above Project Cycle popup\n\n%s", rendered)
+	}
+	if !strings.Contains(rowAbovePopup, "╯") {
+		t.Fatalf("expected preview card bottom border directly above Project Cycle popup, got %q\n\n%s", rowAbovePopup, rendered)
+	}
+	if !strings.Contains(rendered, "Preview task 02") {
+		t.Fatalf("expected preview to use additional rows for task content\n\n%s", rendered)
+	}
+	if !strings.Contains(rendered, "section limit") {
+		t.Fatalf("expected section-limit warning to remain visible\n\n%s", rendered)
+	}
+}
+
 func newProjectCycleSearchTestApp() *AppModel {
 	app := newTestAppModel()
 	app.showProjectCycle = true

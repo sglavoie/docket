@@ -87,3 +87,43 @@ func TestRenderTitledBorder_OverflowSafety(t *testing.T) {
 		t.Errorf("bottom border overflowed: width = %d, want <= 20", got)
 	}
 }
+
+func TestRenderCardFixedHeightPadsShortContent(t *testing.T) {
+	config := DefaultCardConfig()
+	config.Height = 6
+
+	rendered := ansi.Strip(renderCard("Fixed", "one", 24, config))
+	lines := strings.Split(rendered, "\n")
+	if got, want := len(lines), config.Height; got != want {
+		t.Fatalf("fixed-height card rendered %d lines, want %d:\n%s", got, want, rendered)
+	}
+	if !strings.Contains(lines[1], "one") {
+		t.Fatalf("expected original content to remain in first body row:\n%s", rendered)
+	}
+	for i := 2; i < len(lines)-1; i++ {
+		if !strings.HasPrefix(lines[i], "│") || !strings.HasSuffix(lines[i], "│") {
+			t.Fatalf("expected padded body line %d to preserve side borders, got %q\n%s", i, lines[i], rendered)
+		}
+	}
+	if !strings.HasSuffix(lines[len(lines)-1], "╯") {
+		t.Fatalf("expected fixed-height card to preserve bottom border:\n%s", rendered)
+	}
+}
+
+func TestRenderCardFixedHeightTruncatesAndPreservesBottomBorder(t *testing.T) {
+	config := DefaultCardConfig()
+	config.Height = 4
+	content := strings.Join([]string{"one", "two", "three", "four"}, "\n")
+
+	rendered := ansi.Strip(renderCard("Fixed", content, 24, config))
+	lines := strings.Split(rendered, "\n")
+	if got, want := len(lines), config.Height; got != want {
+		t.Fatalf("fixed-height card rendered %d lines, want %d:\n%s", got, want, rendered)
+	}
+	if strings.Contains(rendered, "four") {
+		t.Fatalf("expected overflowing content to be truncated:\n%s", rendered)
+	}
+	if !strings.HasSuffix(lines[len(lines)-1], "╯") {
+		t.Fatalf("expected truncated fixed-height card to preserve bottom border:\n%s", rendered)
+	}
+}

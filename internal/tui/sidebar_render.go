@@ -10,9 +10,14 @@ import (
 // Uses the shared renderCard utility with sidebar-specific configuration.
 // accentColor is optional - pass empty string for default styling.
 func renderSidebarCard(title, content string, width int, focused bool, accentColor string) string {
+	return renderSidebarCardWithHeight(title, content, width, focused, accentColor, 0)
+}
+
+func renderSidebarCardWithHeight(title, content string, width int, focused bool, accentColor string, height int) string {
 	config := DefaultCardConfig()
 	config.Focused = focused
 	config.AccentColor = GetSectionColorValue(accentColor)
+	config.Height = height
 	return renderCard(title, content, width, config)
 }
 

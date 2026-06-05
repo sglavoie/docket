@@ -26,6 +26,7 @@ func (m *AppModel) renderCyclePreviewBackground(visibleRows ...int) string {
 		m.projectCyclePreviewID = proj.ID
 	}
 	m.projectCyclePreview.SetSize(m.width, previewRows)
+	m.projectCyclePreview.fillTreeCardToViewHeight = true
 
 	content := m.projectCyclePreview.View().Content
 

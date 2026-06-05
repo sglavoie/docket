@@ -181,30 +181,48 @@ func (m *ProjectTreeModel) renderTreeContent(width int, focused bool) string { /
 	b.WriteString("\n")
 
 	visible := m.visibleNodes()
+	sectionWarning := ""
+	if sn := viewModeToSection(m.viewMode); sn != "" {
+		count := sectionTaskCount(m.project.Tasks, sn)
+		limit := m.config.GetSectionLimit(sn)
+		if limit > 0 && count > limit {
+			sectionWarning = sectionLimitWarning(count-limit, limit)
+		}
+	}
 
 	// Build card content (task list + scrollbar)
 	var cardContent strings.Builder
 
 	// Calculate search help height (needed even when no tasks match)
 	sbHeaderOffset := TreeHeaderOffset
-	if m.customSectionTabs() != nil {
-		sbHeaderOffset++
-	}
-	// Account for autocomplete dropdown in header
-	if m.ac.IsActive() {
-		acLines := min(len(m.ac.Items), acVisibleCount)
-		if m.ac.ViewportTop > 0 {
-			acLines++
+	if m.fillTreeCardToViewHeight {
+		sbHeaderOffset = renderedLineCount(strings.TrimSuffix(b.String(), "\n"))
+	} else {
+		if m.customSectionTabs() != nil {
+			sbHeaderOffset++
 		}
-		if m.ac.ViewportTop+acVisibleCount < len(m.ac.Items) {
-			acLines++
+		// Account for autocomplete dropdown in header
+		if m.ac.IsActive() {
+			acLines := min(len(m.ac.Items), acVisibleCount)
+			if m.ac.ViewportTop > 0 {
+				acLines++
+			}
+			if m.ac.ViewportTop+acVisibleCount < len(m.ac.Items) {
+				acLines++
+			}
+			sbHeaderOffset += acLines
 		}
-		sbHeaderOffset += acLines
 	}
 	var sidebarSearchHelpHeight int
 	if m.IsSearchHelpVisible() {
 		totalAvail := m.height - sbHeaderOffset - CardVerticalBorderOverhead
 		sidebarSearchHelpHeight = max(totalAvail/2, 1)
+	}
+	cardHeight := 0
+	if m.fillTreeCardToViewHeight {
+		// Leave one compositor row so the card bottom border stays visible
+		// directly above the Project Cycle popup.
+		cardHeight = max(m.height-sbHeaderOffset-1, CardVerticalBorderOverhead)
 	}
 
 	if len(visible) == 0 {
@@ -217,6 +235,12 @@ func (m *ProjectTreeModel) renderTreeContent(width int, focused bool) string { /
 		// Calculate available height for task list
 		// Card border consumes 2 lines (top + bottom)
 		availableHeight := m.height - sbHeaderOffset - CardVerticalBorderOverhead
+		if m.fillTreeCardToViewHeight {
+			availableHeight = cardHeight - CardVerticalBorderOverhead
+		}
+		if m.fillTreeCardToViewHeight && sectionWarning != "" {
+			availableHeight--
+		}
 
 		// Reserve space for search help pane (takes half the content area)
 		if sidebarSearchHelpHeight > 0 {
@@ -310,20 +334,18 @@ func (m *ProjectTreeModel) renderTreeContent(width int, focused bool) string { /
 		cardContent.WriteString(content)
 	}
 
-	if sn := viewModeToSection(m.viewMode); sn != "" {
-		count := sectionTaskCount(m.project.Tasks, sn)
-		limit := m.config.GetSectionLimit(sn)
-		if limit > 0 && count > limit {
-			cardContent.WriteString("\n")
-			cardContent.WriteString(PreviewWarningStyle.Render(sectionLimitWarning(count-limit, limit)))
-		}
+	if sectionWarning != "" {
+		cardContent.WriteString("\n")
+		cardContent.WriteString(PreviewWarningStyle.Render(sectionWarning))
 	}
 
 	// Render the card with view mode as title
 	// Use section color accent if exactly one section is filtered
 	sectionAccent := m.getSingleFilteredSectionColor()
-	b.WriteString(renderSidebarCard(m.getViewModeTitle(), cardContent.String(), width, focused, sectionAccent))
-	b.WriteString("\n")
+	b.WriteString(renderSidebarCardWithHeight(m.getViewModeTitle(), cardContent.String(), width, focused, sectionAccent, cardHeight))
+	if !m.fillTreeCardToViewHeight {
+		b.WriteString("\n")
+	}
 
 	// Render search help pane below the card
 	if m.IsSearchHelpVisible() {
@@ -332,6 +354,13 @@ func (m *ProjectTreeModel) renderTreeContent(width int, focused bool) string { /
 	}
 
 	return b.String()
+}
+
+func renderedLineCount(content string) int {
+	if content == "" {
+		return 0
+	}
+	return strings.Count(content, "\n") + 1
 }
 
 // treeRenderLineCount counts rendered lines for [start,end), including blank

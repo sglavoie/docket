@@ -223,9 +223,8 @@ func renderCard(title, content string, width int, config CardConfig) string {
 	style := config.Style.BorderForeground(borderColor)
 
 	// Render the content in a box with proper width handling
-	rendered := style.
-		Width(max(width, 1)).
-		Render(content)
+	renderStyle := style.Width(max(width, 1))
+	rendered := renderStyle.Render(content)
 
 	// Split rendered into lines to replace top border with titled version
 	lines := strings.Split(rendered, "\n")
@@ -233,12 +232,22 @@ func renderCard(title, content string, width int, config CardConfig) string {
 		return rendered
 	}
 
-	// Enforce fixed height by truncating lines, preserving the bottom border
-	if config.Height > 0 && len(lines) > config.Height {
-		truncated := make([]string, 0, config.Height)
-		truncated = append(truncated, lines[:config.Height-1]...)
-		truncated = append(truncated, lines[len(lines)-1])
-		lines = truncated
+	// Enforce fixed height by padding or truncating lines, preserving the bottom border.
+	if config.Height > 0 {
+		targetHeight := max(config.Height, CardVerticalBorderOverhead)
+		if len(lines) < targetHeight {
+			bottom := lines[len(lines)-1]
+			padLine := renderCardBlankLine(renderStyle)
+			for len(lines) < targetHeight {
+				lines = append(lines[:len(lines)-1], padLine, bottom)
+			}
+		}
+		if len(lines) > targetHeight {
+			truncated := make([]string, 0, targetHeight)
+			truncated = append(truncated, lines[:targetHeight-1]...)
+			truncated = append(truncated, lines[len(lines)-1])
+			lines = truncated
+		}
 	}
 
 	// Replace the top border line with titled version
@@ -248,4 +257,15 @@ func renderCard(title, content string, width int, config CardConfig) string {
 	lines[0] = renderTitledTopBorder(titleText, actualWidth, borderStyle)
 
 	return strings.Join(lines, "\n")
+}
+
+func renderCardBlankLine(style lipgloss.Style) string {
+	lines := strings.Split(style.Render(""), "\n")
+	if len(lines) >= 3 {
+		return lines[1]
+	}
+	if len(lines) > 0 {
+		return lines[0]
+	}
+	return ""
 }

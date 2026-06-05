@@ -202,6 +202,10 @@ type ProjectTreeModel struct {
 
 	// openLoops mirrors AppModel.openLoops for the title-row Zeigarnik counter.
 	openLoops OpenLoops
+
+	// fillTreeCardToViewHeight is used by background previews that need the task
+	// card to consume the model's current height exactly.
+	fillTreeCardToViewHeight bool
 }
 
 // setOpenLoops injects the latest cross-project open-loop counts into the view.
