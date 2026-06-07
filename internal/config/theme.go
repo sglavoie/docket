@@ -89,8 +89,10 @@ func (c *Config) MigratePaletteToThemes() bool {
 		c.ThemeDarkRev = DarkThemeDefaultsRev
 		changed = true
 	} else if c.ThemeDarkRev < DarkThemeDefaultsRev {
-		c.ThemeDark = DefaultDarkTheme()
-		c.ThemeDarkName = ""
+		if c.ThemeDark == defaultDarkThemeRev1() {
+			c.ThemeDark = DefaultDarkTheme()
+			c.ThemeDarkName = ""
+		}
 		c.ThemeDarkRev = DarkThemeDefaultsRev
 		changed = true
 	}

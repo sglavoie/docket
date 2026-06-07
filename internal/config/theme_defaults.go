@@ -7,8 +7,9 @@ const LightThemeDefaultsRev = 3
 
 // DarkThemeDefaultsRev is the revision of the curated DefaultDarkTheme values.
 // Increment this when dark palette defaults change so MigratePaletteToThemes
-// can force-refresh stale configs. Rev 1 = Tokyo Night controlled-saturation palette.
-const DarkThemeDefaultsRev = 1
+// can force-refresh stale configs. Rev 1 = Tokyo Night controlled-saturation
+// palette; Rev 2 = dark contrast refresh.
+const DarkThemeDefaultsRev = 2
 
 // DefaultLightTheme returns a Theme with curated light-mode color values for
 // all 17 palette-tab fields (9 palette colors, 3 bg/cursor, 5 priorities).
@@ -42,8 +43,35 @@ func DefaultLightTheme() Theme {
 
 // DefaultDarkTheme returns a Theme with curated dark-mode hex values for all
 // 17 palette-tab fields. Inspired by Tokyo Night with controlled saturation
-// (≤65%) and luminance in L* 55-75 band. All pairs meet WCAG AA against #1a1b26.
+// (≤65%) and a contrast lift for primary readable text against #1a1b26.
 func DefaultDarkTheme() Theme {
+	return Theme{
+		BackgroundColor: "#1a1b26",
+		CursorColor:     "#33467c",
+		CursorTextColor: "#c0caf5",
+		Palette: PaletteColors{
+			NormalText:     "#c0caf5",
+			Muted:          "#8f98c7",
+			Dimmed:         "#565f89",
+			DimmedBg:       "#24283b",
+			DimmedFg:       "#9aa5ce",
+			Primary:        "#7aa2f7",
+			Secondary:      "#7dcfff",
+			Accent:         "#e0af68",
+			Success:        "#9ece6a",
+			Warning:        "#e0af68",
+			Error:          "#f7768e",
+			Border:         "#565f89",
+			Priority1Title: "#f7768e",
+			Priority2Title: "#e0af68",
+			Priority3Title: "#7aa2f7",
+			Priority4Title: "#9aa5ce",
+			Priority5Title: "#7a82ad",
+		},
+	}
+}
+
+func defaultDarkThemeRev1() Theme {
 	return Theme{
 		BackgroundColor: "#1a1b26",
 		CursorColor:     "#33467c",

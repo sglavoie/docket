@@ -134,7 +134,7 @@ func rebuildLayoutStyles() {
 	ProgressFullStyle = lipgloss.NewStyle().Foreground(ColorSuccess)
 	ProgressEmptyStyle = lipgloss.NewStyle().Foreground(ColorProgressEmpty)
 	ScrollbarThumbStyle = lipgloss.NewStyle().Foreground(ColorPrimary)
-	ScrollbarTrackStyle = lipgloss.NewStyle().Foreground(ColorMuted)
+	ScrollbarTrackStyle = lipgloss.NewStyle().Foreground(ColorBorder)
 	PrefixPopupStyle = lipgloss.NewStyle().Background(ColorBackground).Foreground(ColorLightGray).Padding(0, 1)
 	PrefixKeyStyle = lipgloss.NewStyle().Foreground(ColorPrimary).Bold(true)
 	PrefixDescStyle = lipgloss.NewStyle().Foreground(ColorMuted)

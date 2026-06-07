@@ -1,6 +1,9 @@
 package config
 
 import (
+	"math"
+	"strconv"
+	"strings"
 	"testing"
 )
 
@@ -37,18 +40,18 @@ func TestDefaultDarkTheme_KeyFields(t *testing.T) {
 		{"Success", d.Palette.Success, "#9ece6a"},
 		{"Warning", d.Palette.Warning, "#e0af68"},
 		{"Error", d.Palette.Error, "#f7768e"},
-		{"Muted", d.Palette.Muted, "#565f89"},
-		{"Dimmed", d.Palette.Dimmed, "#3b3f5c"},
+		{"Muted", d.Palette.Muted, "#8f98c7"},
+		{"Dimmed", d.Palette.Dimmed, "#565f89"},
 		{"DimmedBg", d.Palette.DimmedBg, "#24283b"},
 		{"DimmedFg", d.Palette.DimmedFg, "#9aa5ce"},
-		{"Border", d.Palette.Border, "#3b3f5c"},
+		{"Border", d.Palette.Border, "#565f89"},
 		{"Accent", d.Palette.Accent, "#e0af68"},
 		{"NormalText", d.Palette.NormalText, "#c0caf5"},
 		{"Priority1Title", d.Palette.Priority1Title, "#f7768e"},
 		{"Priority2Title", d.Palette.Priority2Title, "#e0af68"},
 		{"Priority3Title", d.Palette.Priority3Title, "#7aa2f7"},
 		{"Priority4Title", d.Palette.Priority4Title, "#9aa5ce"},
-		{"Priority5Title", d.Palette.Priority5Title, "#565f89"},
+		{"Priority5Title", d.Palette.Priority5Title, "#7a82ad"},
 		{"CursorColor", d.CursorColor, "#33467c"},
 		{"CursorTextColor", d.CursorTextColor, "#c0caf5"},
 		{"BackgroundColor", d.BackgroundColor, "#1a1b26"},
@@ -56,6 +59,58 @@ func TestDefaultDarkTheme_KeyFields(t *testing.T) {
 	for _, c := range cases {
 		if c.got != c.want {
 			t.Errorf("DefaultDarkTheme().%s = %q, want %q", c.field, c.got, c.want)
+		}
+	}
+}
+
+func TestDefaultDarkTheme_ContrastContract(t *testing.T) {
+	d := DefaultDarkTheme()
+
+	// Dark foreground contract: readable text gets WCAG AA contrast against the
+	// shipped dark background without resorting to pure white.
+	checks := []struct {
+		name       string
+		foreground string
+		background string
+		min        float64
+	}{
+		{"Muted", d.Palette.Muted, d.BackgroundColor, 4.5},
+		{"NormalText", d.Palette.NormalText, d.BackgroundColor, 4.5},
+		{"CursorTextColor", d.CursorTextColor, d.CursorColor, 4.5},
+	}
+	for _, c := range checks {
+		if got := wcagContrastRatio(t, c.foreground, c.background); got < c.min {
+			t.Errorf("%s contrast = %.2f:1, want at least %.1f:1 for %s on %s",
+				c.name, got, c.min, c.foreground, c.background)
+		}
+	}
+}
+
+func TestDefaultDarkTheme_ForegroundTokensAvoidPureWhite(t *testing.T) {
+	d := DefaultDarkTheme()
+
+	foregrounds := map[string]string{
+		"NormalText":      d.Palette.NormalText,
+		"Muted":           d.Palette.Muted,
+		"Dimmed":          d.Palette.Dimmed,
+		"DimmedFg":        d.Palette.DimmedFg,
+		"Primary":         d.Palette.Primary,
+		"Secondary":       d.Palette.Secondary,
+		"Accent":          d.Palette.Accent,
+		"Success":         d.Palette.Success,
+		"Warning":         d.Palette.Warning,
+		"Error":           d.Palette.Error,
+		"Border":          d.Palette.Border,
+		"Priority1Title":  d.Palette.Priority1Title,
+		"Priority2Title":  d.Palette.Priority2Title,
+		"Priority3Title":  d.Palette.Priority3Title,
+		"Priority4Title":  d.Palette.Priority4Title,
+		"Priority5Title":  d.Palette.Priority5Title,
+		"CursorTextColor": d.CursorTextColor,
+	}
+	for name, value := range foregrounds {
+		if strings.EqualFold(value, "#ffffff") {
+			t.Errorf("%s = %q, dark foreground defaults must avoid pure white", name, value)
 		}
 	}
 }
@@ -105,4 +160,44 @@ func TestDefaultLightTheme_AllFieldsPopulated(t *testing.T) {
 	if l.CursorTextColor != "#1f1b35" {
 		t.Errorf("CursorTextColor = %q, want #1f1b35", l.CursorTextColor)
 	}
+}
+
+func wcagContrastRatio(t *testing.T, a, b string) float64 {
+	t.Helper()
+
+	l1 := relativeLuminance(t, a)
+	l2 := relativeLuminance(t, b)
+	if l1 < l2 {
+		l1, l2 = l2, l1
+	}
+	return (l1 + 0.05) / (l2 + 0.05)
+}
+
+func relativeLuminance(t *testing.T, hex string) float64 {
+	t.Helper()
+
+	value := strings.TrimPrefix(hex, "#")
+	if len(value) != 6 {
+		t.Fatalf("invalid hex color %q: want #rrggbb", hex)
+	}
+
+	r := linearizedColorChannel(t, value[0:2])
+	g := linearizedColorChannel(t, value[2:4])
+	b := linearizedColorChannel(t, value[4:6])
+	return 0.2126*r + 0.7152*g + 0.0722*b
+}
+
+func linearizedColorChannel(t *testing.T, hex string) float64 {
+	t.Helper()
+
+	n, err := strconv.ParseUint(hex, 16, 8)
+	if err != nil {
+		t.Fatalf("invalid hex channel %q: %v", hex, err)
+	}
+
+	c := float64(n) / 255
+	if c <= 0.03928 {
+		return c / 12.92
+	}
+	return math.Pow((c+0.055)/1.055, 2.4)
 }

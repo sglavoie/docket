@@ -23,10 +23,28 @@ func TestColorProgressEmptyDarkTheme(t *testing.T) {
 	ApplyTheme(ThemeConfig{Name: ""})
 	t.Cleanup(func() { ApplyTheme(ThemeConfig{}) })
 
-	// Empty palette → dark muted fallback "#565f89".
+	// Empty progress stays on the lower-contrast structural token.
 	want := lipgloss.Color("#565f89")
 	if ColorProgressEmpty != want {
 		t.Errorf("dark theme: ColorProgressEmpty = %v, want %v", ColorProgressEmpty, want)
+	}
+}
+
+func TestDarkThemeMutedAndStructuralStyleMappings(t *testing.T) {
+	ApplyTheme(ThemeConfig{Name: ""})
+	t.Cleanup(func() { ApplyTheme(ThemeConfig{}) })
+
+	readableMuted := lipgloss.Color("#8f98c7")
+	structural := lipgloss.Color("#565f89")
+
+	if MutedStyle.GetForeground() != readableMuted {
+		t.Errorf("MutedStyle foreground = %v, want %v", MutedStyle.GetForeground(), readableMuted)
+	}
+	if ProgressEmptyStyle.GetForeground() != structural {
+		t.Errorf("ProgressEmptyStyle foreground = %v, want %v", ProgressEmptyStyle.GetForeground(), structural)
+	}
+	if ScrollbarTrackStyle.GetForeground() != structural {
+		t.Errorf("ScrollbarTrackStyle foreground = %v, want %v", ScrollbarTrackStyle.GetForeground(), structural)
 	}
 }
 
@@ -86,8 +104,8 @@ func TestRebuildPaletteDarkEmptyUsesDefaults(t *testing.T) {
 	if ColorPrimary != lipgloss.Color("#7aa2f7") {
 		t.Errorf("dark empty palette: ColorPrimary = %v, want #7aa2f7", ColorPrimary)
 	}
-	if ColorMuted != lipgloss.Color("#565f89") {
-		t.Errorf("dark empty palette: ColorMuted = %v, want #565f89", ColorMuted)
+	if ColorMuted != lipgloss.Color("#8f98c7") {
+		t.Errorf("dark empty palette: ColorMuted = %v, want #8f98c7", ColorMuted)
 	}
 	if colorNormalText != "#c0caf5" {
 		t.Errorf("dark empty palette: colorNormalText = %q, want #c0caf5", colorNormalText)
@@ -158,18 +176,19 @@ func TestAllPaletteColorVarsSetAfterDarkTheme(t *testing.T) {
 		{"ColorSuccess", ColorSuccess, "#9ece6a"},
 		{"ColorWarning", ColorWarning, "#e0af68"},
 		{"ColorError", ColorError, "#f7768e"},
-		{"ColorMuted", ColorMuted, "#565f89"},
-		{"ColorBorder", ColorBorder, "#3b3f5c"},
+		{"ColorMuted", ColorMuted, "#8f98c7"},
+		{"ColorDimmed", ColorDimmed, "#565f89"},
+		{"ColorBorder", ColorBorder, "#565f89"},
 		{"ColorAccent", ColorAccent, "#e0af68"},
 		{"ColorProgressEmpty", ColorProgressEmpty, "#565f89"},
-		{"ColorBadgeText", ColorBadgeText, "#565f89"},
-		{"ColorLightGray", ColorLightGray, "#565f89"},
-		{"ColorDiffContext", ColorDiffContext, "#565f89"},
+		{"ColorBadgeText", ColorBadgeText, "#8f98c7"},
+		{"ColorLightGray", ColorLightGray, "#8f98c7"},
+		{"ColorDiffContext", ColorDiffContext, "#8f98c7"},
 		{"ColorPriority1Title", ColorPriority1Title, "#f7768e"},
 		{"ColorPriority2Title", ColorPriority2Title, "#e0af68"},
 		{"ColorPriority3Title", ColorPriority3Title, "#7aa2f7"},
 		{"ColorPriority4Title", ColorPriority4Title, "#9aa5ce"},
-		{"ColorPriority5Title", ColorPriority5Title, "#565f89"},
+		{"ColorPriority5Title", ColorPriority5Title, "#7a82ad"},
 	}
 	for _, c := range checks {
 		if c.got != lipgloss.Color(c.want) {

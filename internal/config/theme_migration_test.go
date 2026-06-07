@@ -165,6 +165,64 @@ func TestMigratePaletteToThemes_StaleRev_ForceRefresh(t *testing.T) {
 	}
 }
 
+func TestMigratePaletteToThemes_StaleRev1DarkDefaults_Refreshes(t *testing.T) {
+	cfg := &Config{
+		ThemeDark:     defaultDarkThemeRev1(),
+		ThemeDarkName: "tokyo-night",
+		ThemeDarkRev:  1,
+		ThemeLight:    DefaultLightTheme(),
+		ThemeLightRev: LightThemeDefaultsRev,
+		ActiveTheme:   "dark",
+	}
+
+	changed := cfg.MigratePaletteToThemes()
+	if !changed {
+		t.Fatal("expected changed=true when stale dark defaults match shipped rev 1")
+	}
+
+	dark := DefaultDarkTheme()
+	if cfg.ThemeDark != dark {
+		t.Errorf("ThemeDark = %+v, want refreshed defaults %+v", cfg.ThemeDark, dark)
+	}
+	if cfg.ThemeDarkRev != DarkThemeDefaultsRev {
+		t.Errorf("ThemeDarkRev = %d, want %d", cfg.ThemeDarkRev, DarkThemeDefaultsRev)
+	}
+	if cfg.ThemeDarkName != "" {
+		t.Errorf("ThemeDarkName = %q, want empty after refreshing shipped defaults", cfg.ThemeDarkName)
+	}
+}
+
+func TestMigratePaletteToThemes_StaleCustomDarkTheme_PreservesAndMarksCurrent(t *testing.T) {
+	customTheme := defaultDarkThemeRev1()
+	customTheme.Palette.Muted = "#99aabb"
+	cfg := &Config{
+		ThemeDark:     customTheme,
+		ThemeDarkName: "custom-dark",
+		ThemeDarkRev:  1,
+		ThemeLight:    DefaultLightTheme(),
+		ThemeLightRev: LightThemeDefaultsRev,
+		ActiveTheme:   "dark",
+	}
+
+	changed := cfg.MigratePaletteToThemes()
+	if !changed {
+		t.Fatal("expected changed=true so the stale custom dark revision is saved as current")
+	}
+
+	if cfg.ThemeDark != customTheme {
+		t.Errorf("ThemeDark was modified: got %+v, want %+v", cfg.ThemeDark, customTheme)
+	}
+	if cfg.ThemeDarkRev != DarkThemeDefaultsRev {
+		t.Errorf("ThemeDarkRev = %d, want %d", cfg.ThemeDarkRev, DarkThemeDefaultsRev)
+	}
+	if cfg.ThemeDarkName != "custom-dark" {
+		t.Errorf("ThemeDarkName = %q, want custom-dark", cfg.ThemeDarkName)
+	}
+	if cfg.MigratePaletteToThemes() {
+		t.Error("expected second call to be a no-op")
+	}
+}
+
 func TestMigratePaletteToThemes_CurrentRev_NoOp(t *testing.T) {
 	light := DefaultLightTheme()
 	cfg := &Config{

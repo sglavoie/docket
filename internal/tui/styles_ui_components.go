@@ -32,7 +32,7 @@ var (
 				Foreground(ColorPrimary)
 
 	ScrollbarTrackStyle = lipgloss.NewStyle().
-				Foreground(ColorMuted)
+				Foreground(ColorBorder)
 
 	ArchivedBadgeStyle = lipgloss.NewStyle().
 				Background(ColorWarning).

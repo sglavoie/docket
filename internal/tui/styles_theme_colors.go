@@ -16,7 +16,7 @@ const (
 	defaultColorPriority2Title = "#e0af68"
 	defaultColorPriority3Title = "#7aa2f7"
 	defaultColorPriority4Title = "#9aa5ce"
-	defaultColorPriority5Title = "#565f89"
+	defaultColorPriority5Title = "#7a82ad"
 )
 
 // Priority title foreground colors, user-overridable via PaletteColors.
@@ -137,6 +137,6 @@ func rebuildPalette(p config.PaletteColors) {
 	if activeThemeName == "light" {
 		ColorProgressEmpty = lipgloss.Color(d.Dimmed)
 	} else {
-		ColorProgressEmpty = ColorMuted
+		ColorProgressEmpty = ColorBorder
 	}
 }
