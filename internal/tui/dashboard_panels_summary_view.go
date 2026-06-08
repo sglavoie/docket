@@ -16,7 +16,6 @@ import (
 // of available horizontal room; otherwise they render side-by-side when wide.
 func (m *DashboardModel) renderProjectSummarySection(width, paneHeight int, selected *models.Project, stack bool) string {
 	cfg := DashboardCardConfig()
-	cfg.Height = paneHeight
 
 	numCards := 1
 	hasSummary := selected != nil
@@ -48,7 +47,40 @@ func (m *DashboardModel) renderProjectSummarySection(width, paneHeight int, sele
 	alertsContent := m.renderGlobalAlerts(alertsContentW, selected)
 	cards = append(cards, dashboardPanelCard{title: "Alerts", content: alertsContent, width: alertsCardW})
 
+	if stack && hasSummary && len(cards) == 2 {
+		return renderStackedSummaryAndAlerts(width, paneHeight, cards[0], cards[1])
+	}
+
+	cfg.Height = paneHeight
 	return renderDashboardCards(width, wide, cfg, cards)
+}
+
+func renderStackedSummaryAndAlerts(width, paneHeight int, summaryCard, alertsCard dashboardPanelCard) string {
+	const gapHeight = 1
+
+	minCardHeight := CardVerticalBorderOverhead + 1
+	totalHeight := max(paneHeight, minCardHeight*2+gapHeight)
+
+	maxAlertsHeight := max(totalHeight-gapHeight-minCardHeight, minCardHeight)
+	alertsHeight := min(max(dashboardNaturalCardHeight(alertsCard.content), minCardHeight), maxAlertsHeight)
+	summaryHeight := totalHeight - gapHeight - alertsHeight
+
+	summaryCfg := DashboardCardConfig()
+	summaryCfg.Height = summaryHeight
+	alertsCfg := DashboardCardConfig()
+	alertsCfg.Height = alertsHeight
+
+	return renderCard(summaryCard.title, summaryCard.content, width, summaryCfg) +
+		"\n" +
+		renderCard(alertsCard.title, alertsCard.content, width, alertsCfg)
+}
+
+func dashboardNaturalCardHeight(content string) int {
+	contentHeight := lipgloss.Height(content)
+	if contentHeight < 1 {
+		contentHeight = 1
+	}
+	return contentHeight + CardVerticalBorderOverhead
 }
 
 // renderProjectSummaryContent renders the section and status breakdown for a project.
