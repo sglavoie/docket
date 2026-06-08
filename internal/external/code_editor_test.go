@@ -338,10 +338,12 @@ func readFileEventually(path string, timeout time.Duration) ([]byte, error) {
 	var lastErr error
 	for time.Now().Before(deadline) {
 		b, err := os.ReadFile(path)
-		if err == nil {
+		if err == nil && len(strings.TrimSpace(string(b))) > 0 {
 			return b, nil
 		}
-		lastErr = err
+		if err != nil {
+			lastErr = err
+		}
 		time.Sleep(10 * time.Millisecond)
 	}
 	if lastErr == nil {

@@ -54,8 +54,8 @@ func BenchmarkCrossProjectLoadAndRebuild(b *testing.B) {
 	var betaTasks []*models.Task
 	seq = 1
 	for parentIdx := range 2 {
-		parentID := fmt.Sprintf("beta-task-%03d", seq)
-		parent, _ := models.NewTask(parentID, seq, models.TaskTypeTask, fmt.Sprintf("Setup pipeline %d", parentIdx+1))
+		parentID := fmt.Sprintf("beta-story-%03d", seq)
+		parent, _ := models.NewTask(parentID, seq, models.TaskTypeStory, fmt.Sprintf("Setup pipeline %d", parentIdx+1))
 		seq++
 		betaTasks = append(betaTasks, parent)
 

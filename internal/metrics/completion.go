@@ -10,6 +10,10 @@ import (
 // "Resolved" includes both done and canceled tasks (both represent resolved work).
 // Rate = done / (done + canceled), measuring how much resolved work was actually completed.
 func computeCompletion(tasks []*models.Task, cutoff, now time.Time, buckets []bucket) CompletionResult {
+	return computeCompletionSummaries(TaskSummariesFromTasks(tasks), cutoff, now, buckets)
+}
+
+func computeCompletionSummaries(tasks []TaskSummary, cutoff, now time.Time, buckets []bucket) CompletionResult {
 	result := CompletionResult{
 		Trend:  make([]float64, len(buckets)),
 		Labels: bucketLabels(buckets),
@@ -28,9 +32,6 @@ func computeCompletion(tasks []*models.Task, cutoff, now time.Time, buckets []bu
 	}
 
 	for _, t := range tasks {
-		if t == nil {
-			continue
-		}
 		if t.CompletedAt == nil {
 			continue
 		}

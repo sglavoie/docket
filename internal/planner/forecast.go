@@ -97,6 +97,28 @@ func childEffortDays(t *models.Task) (days float64, hasEffortData bool) {
 	return effortDaysUnknown, false
 }
 
+func summaryEffortDays(summary metrics.TaskSummary) (days float64, hasEffortData bool) {
+	if summary.Effort != "" {
+		switch summary.Effort {
+		case models.EffortSmall:
+			return effortDaysSmall, true
+		case models.EffortMedium:
+			return effortDaysMedium, true
+		case models.EffortLarge:
+			return effortDaysLarge, true
+		case models.EffortUnknown:
+			return effortDaysUnknown, true
+		}
+	}
+	if summary.StoryPoints > 0 {
+		return float64(summary.StoryPoints) * 0.5, true
+	}
+	if summary.EstimatedDays > 0 {
+		return summary.EstimatedDays, false
+	}
+	return effortDaysUnknown, false
+}
+
 // confidenceForCount maps a completed-child count to a Confidence level.
 func confidenceForCount(completed int) Confidence {
 	switch {
@@ -173,6 +195,14 @@ func ForecastCompletion(parent *models.Task, velocity float64, now time.Time) *F
 // Returns 0 if throughput.AvgPerDay is 0 and no effort data is available.
 // Nil entries in tasks are skipped.
 func WeightedVelocity(throughput metrics.ThroughputResult, tasks []*models.Task) float64 {
+	return WeightedVelocityWithSummaries(throughput, metrics.TaskSummariesFromTasks(tasks))
+}
+
+// WeightedVelocityWithSummaries computes an effort-weighted velocity from
+// historical throughput data and compact task summaries. It lets archive-aware
+// callers include derived archive index summaries without constructing full
+// archived task bodies.
+func WeightedVelocityWithSummaries(throughput metrics.ThroughputResult, summaryGroups ...[]metrics.TaskSummary) float64 {
 	if throughput.AvgPerDay <= 0 {
 		return 0
 	}
@@ -182,16 +212,18 @@ func WeightedVelocity(throughput metrics.ThroughputResult, tasks []*models.Task)
 
 	var sumEffortDays float64
 	var effortTaskCount int
-	for _, t := range tasks {
-		if t == nil || !t.IsComplete() {
-			continue
+	for _, summaries := range summaryGroups {
+		for _, summary := range summaries {
+			if !summary.Status.IsComplete() {
+				continue
+			}
+			days, hasEffort := summaryEffortDays(summary)
+			if !hasEffort {
+				continue
+			}
+			sumEffortDays += days
+			effortTaskCount++
 		}
-		days, hasEffort := childEffortDays(t)
-		if !hasEffort {
-			continue
-		}
-		sumEffortDays += days
-		effortTaskCount++
 	}
 
 	if effortTaskCount == 0 || totalDays <= 0 {

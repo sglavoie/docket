@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -446,6 +447,59 @@ func TestDoctor_Fix_MigratesDescriptionMarkers(t *testing.T) {
 	}
 	if !strings.Contains(string(raw), "<!-- DESCRIPTION -->") {
 		t.Error("expected DESCRIPTION markers in tasks.md after fix")
+	}
+}
+
+func TestCheckArchiveIndexIssuesAndFix(t *testing.T) {
+	dir := t.TempDir()
+	project := testutil.NewTestProject("Archive Repair")
+	project.Path = dir
+
+	task := archiveAccessTestTask(t, "arch-doctor-repair-0001", 31, models.TaskTypeTask, "Doctor repair target", time.Date(2026, 6, 8, 10, 0, 0, 0, time.Local))
+	writeArchiveAccessArchive(t, project, "completed.md", []*models.Task{task})
+
+	results := &doctorResults{}
+	checkArchiveIndexIssues([]*models.Project{project}, results)
+	if len(results.archiveIndexIssues) != 1 {
+		t.Fatalf("expected 1 archive index issue, got %d", len(results.archiveIndexIssues))
+	}
+	if !strings.Contains(results.archiveIndexIssues[0].detail, "missing") || !strings.Contains(results.archiveIndexIssues[0].detail, "rebuild-index") {
+		t.Fatalf("archive index issue detail is not actionable: %q", results.archiveIndexIssues[0].detail)
+	}
+
+	stdout, _, _ := captureDoctorOutput(t, func() error {
+		fixArchiveIndexIssues(results.archiveIndexIssues, []*models.Project{project})
+		return nil
+	})
+	if !strings.Contains(stdout, "rebuilt archive index") {
+		t.Fatalf("fixArchiveIndexIssues output missing repair confirmation:\n%s", stdout)
+	}
+
+	after := &doctorResults{}
+	checkArchiveIndexIssues([]*models.Project{project}, after)
+	if len(after.archiveIndexIssues) != 0 {
+		t.Fatalf("expected archive index issues to be fixed, got %+v", after.archiveIndexIssues)
+	}
+}
+
+func TestCheckArchiveIndexIssuesReportsCorruptIndex(t *testing.T) {
+	dir := t.TempDir()
+	project := testutil.NewTestProject("Corrupt Archive Index")
+	project.Path = dir
+
+	task := archiveAccessTestTask(t, "arch-doctor-corrupt-0001", 32, models.TaskTypeBug, "Doctor corrupt target", time.Date(2026, 6, 8, 10, 0, 0, 0, time.Local))
+	writeArchiveAccessArchive(t, project, "completed.md", []*models.Task{task})
+	if err := os.WriteFile(filepath.Join(project.Path, ".completed.index.json"), []byte("{not-json"), storage.FilePermissions); err != nil {
+		t.Fatalf("write corrupt index: %v", err)
+	}
+
+	results := &doctorResults{}
+	checkArchiveIndexIssues([]*models.Project{project}, results)
+	if len(results.archiveIndexIssues) != 1 {
+		t.Fatalf("expected 1 archive index issue, got %d", len(results.archiveIndexIssues))
+	}
+	if !strings.Contains(results.archiveIndexIssues[0].detail, "corrupt") || !strings.Contains(results.archiveIndexIssues[0].detail, "doctor --fix") {
+		t.Fatalf("archive index issue detail is not actionable: %q", results.archiveIndexIssues[0].detail)
 	}
 }
 

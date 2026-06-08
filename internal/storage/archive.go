@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"sort"
-	"strconv"
 	"strings"
 	"time"
 
@@ -28,42 +26,16 @@ func getArchiveFilePath(project *models.Project) string {
 func LoadArchivedTasks(project *models.Project) []*models.Task {
 	var allTasks []*models.Task
 
-	// Collect archive file paths: completed.md, completed.1.md, completed.2.md, ...
-	var paths []string
-	mainPath := filepath.Join(project.Path, archiveFileName)
-	if _, err := os.Stat(mainPath); err == nil {
-		paths = append(paths, mainPath)
-	}
-	matches, err := filepath.Glob(filepath.Join(project.Path, "completed.*.md"))
-	if err == nil {
-		type numberedPath struct {
-			num  int
-			path string
-		}
-		var numbered []numberedPath
-		for _, m := range matches {
-			base := filepath.Base(m)
-			// Extract the number between "completed." and ".md"
-			numStr := strings.TrimPrefix(base, "completed.")
-			numStr = strings.TrimSuffix(numStr, ".md")
-			n, err := strconv.Atoi(numStr)
-			if err != nil {
-				continue // skip non-numeric matches
-			}
-			numbered = append(numbered, numberedPath{num: n, path: m})
-		}
-		sort.Slice(numbered, func(i, j int) bool {
-			return numbered[i].num < numbered[j].num
-		})
-		for _, np := range numbered {
-			paths = append(paths, np.path)
-		}
+	archiveFiles, err := listArchiveFiles(project.Path)
+	if err != nil {
+		logging.Warn("failed to list archive files for %s: %v", project.Path, err)
+		return allTasks
 	}
 
-	for _, p := range paths {
-		tasks, err := parseArchiveFile(p)
+	for _, archiveFile := range archiveFiles {
+		tasks, err := parseArchiveFile(archiveFile.path)
 		if err != nil {
-			logging.Warn("skipping corrupt archive %s: %v", p, err)
+			logging.Warn("skipping corrupt archive %s: %v", archiveFile.path, err)
 			continue
 		}
 		allTasks = append(allTasks, tasks...)
@@ -74,17 +46,35 @@ func LoadArchivedTasks(project *models.Project) []*models.Task {
 
 // parseArchiveFile reads a single archive file and returns the tasks found in it.
 func parseArchiveFile(path string) ([]*models.Task, error) {
+	tasks, _, err := parseArchiveFileWithHeadingLines(path)
+	return tasks, err
+}
+
+// parseArchiveFileWithHeadingLines reads a single archive file and returns the
+// parsed tasks plus the 1-based source line for each task heading.
+func parseArchiveFileWithHeadingLines(path string) ([]*models.Task, []int, error) {
 	content, err := os.ReadFile(path)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read archive file: %w", err)
+		return nil, nil, fmt.Errorf("failed to read archive file: %w", err)
 	}
 
 	result, err := ParseTasksMarkdownWithSections(string(content))
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse archive: %w", err)
+		return nil, nil, fmt.Errorf("failed to parse archive: %w", err)
 	}
 
-	return result.Tasks, nil
+	return result.Tasks, archiveTaskHeadingLines(string(content)), nil
+}
+
+func archiveTaskHeadingLines(content string) []int {
+	lines := strings.Split(content, "\n")
+	headingLines := make([]int, 0)
+	for i, line := range lines {
+		if headingRegex.MatchString(line) {
+			headingLines = append(headingLines, i+1)
+		}
+	}
+	return headingLines
 }
 
 // ArchiveTasks moves completed tasks from the project to the archive file.
@@ -151,6 +141,10 @@ func ArchiveTasks(project *models.Project) (int, error) {
 			project.Tasks = append(project.Tasks, completedTasks...)
 		}
 		return 0, fmt.Errorf("failed to save project after archiving: %w", err)
+	}
+
+	if err := RebuildArchiveIndex(project); err != nil {
+		logging.Warn("archive index is stale after archiving %d tasks in %s; rebuild required: %v", len(completedTasks), project.Name, err)
 	}
 
 	// Clean up attachment files only after both archive and save succeeded

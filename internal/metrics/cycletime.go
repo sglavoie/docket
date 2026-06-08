@@ -14,6 +14,10 @@ import (
 // Note: activity is pruned to 50 entries (oldest removed), so very old
 // transitions may be lost for tasks with extensive histories.
 func computeCycleTime(tasks []*models.Task, cutoff, now time.Time, buckets []bucket) CycleTimeResult {
+	return computeCycleTimeSummaries(TaskSummariesFromTasks(tasks), cutoff, now, buckets)
+}
+
+func computeCycleTimeSummaries(tasks []TaskSummary, cutoff, now time.Time, buckets []bucket) CycleTimeResult {
 	result := CycleTimeResult{
 		Trend:  make([]float64, len(buckets)),
 		Labels: bucketLabels(buckets),
@@ -36,9 +40,6 @@ func computeCycleTime(tasks []*models.Task, cutoff, now time.Time, buckets []buc
 	}
 
 	for _, t := range tasks {
-		if t == nil {
-			continue
-		}
 		if t.CompletedAt == nil || t.Status != models.StatusDone {
 			continue
 		}
@@ -48,12 +49,11 @@ func computeCycleTime(tasks []*models.Task, cutoff, now time.Time, buckets []buc
 			continue
 		}
 
-		startTime := findFirstInProgress(t)
-		if startTime.IsZero() {
+		if t.FirstStartedAt == nil || t.FirstStartedAt.IsZero() {
 			continue
 		}
 
-		cycleTime := completedAt.Sub(startTime)
+		cycleTime := completedAt.Sub(*t.FirstStartedAt)
 		if cycleTime < 0 {
 			continue
 		}

@@ -197,6 +197,40 @@ func TestWeightedVelocityMixedEffort(t *testing.T) {
 	}
 }
 
+func TestWeightedVelocityWithSummariesIncludesArchivedEffort(t *testing.T) {
+	throughput := metrics.ThroughputResult{Total: 2, AvgPerDay: 1.0}
+	live := metrics.TaskSummary{
+		ID:     "live",
+		Status: models.StatusDone,
+		Effort: models.EffortSmall,
+	}
+	archived := metrics.TaskSummary{
+		ID:     "archived",
+		Status: models.StatusDone,
+		Effort: models.EffortLarge,
+	}
+
+	got := WeightedVelocityWithSummaries(throughput, []metrics.TaskSummary{live}, []metrics.TaskSummary{archived})
+
+	const want = 1.75
+	if abs(got-want) > 1e-9 {
+		t.Errorf("expected weighted velocity %f, got %f", want, got)
+	}
+}
+
+func TestWeightedVelocityPreservesIdeaEffortFallback(t *testing.T) {
+	throughput := metrics.ThroughputResult{Total: 1, AvgPerDay: 1.0}
+	task := withStatus(newTask("idea-velocity"), models.StatusDone)
+	task.TaskAttrs = &models.TaskAttrs{}
+	task.EnsureIdeaAttrs().Effort = models.EffortLarge
+
+	got := WeightedVelocity(throughput, []*models.Task{task})
+
+	if got != effortDaysLarge {
+		t.Errorf("expected idea effort velocity %f, got %f", effortDaysLarge, got)
+	}
+}
+
 // TestForecastNilParent verifies the function handles a nil parent without panicking.
 func TestForecastNilParent(t *testing.T) {
 	result := ForecastCompletion(nil, 1.0, refNow)

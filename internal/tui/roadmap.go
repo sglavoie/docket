@@ -74,7 +74,7 @@ func NewRoadmapModelForProject(cfg *config.Config, project *models.Project) *Roa
 
 func (m *RoadmapModel) computeData() {
 	var projects []*models.Project
-	var allArchived []*models.Task
+	var allArchived []metrics.TaskSummary
 
 	if m.isGlobal {
 		for _, p := range m.config.GetActiveProjects() {
@@ -82,26 +82,36 @@ func (m *RoadmapModel) computeData() {
 				logging.Warn("failed to load project %s: %v", p.Name, err)
 			}
 			projects = append(projects, p)
-			allArchived = append(allArchived, storage.LoadArchivedTasks(p)...)
+			summaries, err := storage.LoadArchivedTaskSummaries(p)
+			if err != nil {
+				logging.Warn("failed to load archive summaries for %s: %v", p.Name, err)
+				continue
+			}
+			allArchived = append(allArchived, archiveSummariesForMetrics(summaries)...)
 		}
 	} else if m.project != nil {
 		if err := storage.LoadProject(m.project); err != nil {
 			logging.Warn("failed to load project %s: %v", m.project.Name, err)
 		}
 		projects = []*models.Project{m.project}
-		allArchived = append(allArchived, storage.LoadArchivedTasks(m.project)...)
+		summaries, err := storage.LoadArchivedTaskSummaries(m.project)
+		if err != nil {
+			logging.Warn("failed to load archive summaries for %s: %v", m.project.Name, err)
+		} else {
+			allArchived = append(allArchived, archiveSummariesForMetrics(summaries)...)
+		}
 	}
 
 	// Compute effort-weighted velocity from throughput data. Use the user's
 	// configured week-start so weekly buckets match dashboard preferences.
 	weekStart := metrics.WeekStartFromWeekEnd(m.config.GetWeekEndDay())
-	agg := metrics.ComputeAllAtWithWeekStart(projects, metrics.TimeRange30d, time.Now(), weekStart, allArchived)
+	agg := metrics.ComputeAllAtWithWeekStartAndSummaries(projects, metrics.TimeRange30d, time.Now(), weekStart, allArchived)
 	var allTasks []*models.Task
 	for _, p := range projects {
 		allTasks = append(allTasks, p.Tasks...)
 	}
 	if agg != nil {
-		m.velocity = planner.WeightedVelocity(agg.Throughput, allTasks)
+		m.velocity = planner.WeightedVelocityWithSummaries(agg.Throughput, metrics.TaskSummariesFromTasks(allTasks), allArchived)
 	}
 
 	// Compute critical path and forward schedule across all incomplete tasks.

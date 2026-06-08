@@ -147,9 +147,9 @@ type AggregateMetrics struct {
 }
 
 // ComputeAllAt computes all metrics using the given reference time (for testing).
-// Optional extraTasks slices (e.g. archived tasks) are appended to the task pool
-// for completion, cycle time, and throughput metrics. They are excluded from
-// blocked metrics since archived tasks without project association aren't actionable.
+// Optional extraTasks slices are kept for compatibility with callers that still
+// have full task values. Summary-aware callers should use ComputeAllAtWithSummaries
+// to avoid constructing full tasks for archived work.
 //
 // Weekly buckets use DefaultWeekStart (Monday). Use ComputeAllAtWithWeekStart
 // to honor a user-configured week-start day.
@@ -157,10 +157,26 @@ func ComputeAllAt(projects []*models.Project, tr TimeRange, now time.Time, extra
 	return ComputeAllAtWithWeekStart(projects, tr, now, DefaultWeekStart, extraTasks...)
 }
 
+// ComputeAllAtWithSummaries computes metrics from live project tasks plus
+// compact summaries for archived/resolved work.
+func ComputeAllAtWithSummaries(projects []*models.Project, tr TimeRange, now time.Time, extraSummaries ...[]TaskSummary) *AggregateMetrics {
+	return ComputeAllAtWithWeekStartAndSummaries(projects, tr, now, DefaultWeekStart, extraSummaries...)
+}
+
 // ComputeAllAtWithWeekStart is identical to ComputeAllAt but lets callers
 // pass an explicit week-start weekday (e.g. derived from a user's
 // WeekEndDay setting via WeekStartFromWeekEnd) for weekly bucketing.
 func ComputeAllAtWithWeekStart(projects []*models.Project, tr TimeRange, now time.Time, weekStart time.Weekday, extraTasks ...[]*models.Task) *AggregateMetrics {
+	extraSummaries := make([][]TaskSummary, 0, len(extraTasks))
+	for _, tasks := range extraTasks {
+		extraSummaries = append(extraSummaries, TaskSummariesFromTasks(tasks))
+	}
+	return ComputeAllAtWithWeekStartAndSummaries(projects, tr, now, weekStart, extraSummaries...)
+}
+
+// ComputeAllAtWithWeekStartAndSummaries is identical to ComputeAllAtWithSummaries
+// but lets callers pass an explicit week-start weekday for weekly bucketing.
+func ComputeAllAtWithWeekStartAndSummaries(projects []*models.Project, tr TimeRange, now time.Time, weekStart time.Weekday, extraSummaries ...[]TaskSummary) *AggregateMetrics {
 	// projectTasks are the live project tasks (used for blocked metrics).
 	var projectTasks []*models.Task
 	taskProject := make(map[*models.Task]*models.Project)
@@ -177,27 +193,21 @@ func ComputeAllAtWithWeekStart(projects []*models.Project, tr TimeRange, now tim
 		}
 	}
 
-	// allTasks includes extra (e.g. archived) tasks for completion, cycle time,
-	// and throughput metrics. Extra tasks are excluded from blocked metrics since
-	// archived tasks without project association aren't actionable.
-	allTasks := make([]*models.Task, 0, len(projectTasks))
-	allTasks = append(allTasks, projectTasks...)
-	for _, extra := range extraTasks {
-		for _, t := range extra {
-			if t == nil {
-				continue
-			}
-			allTasks = append(allTasks, t)
-		}
+	// allSummaries includes live project tasks plus archived/resolved summaries
+	// for completion, cycle time, and throughput metrics. Archived summaries are
+	// excluded from blocked metrics since they are not actionable live tasks.
+	allSummaries := TaskSummariesFromTasks(projectTasks)
+	for _, extra := range extraSummaries {
+		allSummaries = append(allSummaries, extra...)
 	}
 
 	cutoff := tr.Cutoff(now)
 	buckets := timeBucketsWithWeekStart(cutoff, now, bucketGranularity(tr), weekStart)
 
 	return &AggregateMetrics{
-		Completion: computeCompletion(allTasks, cutoff, now, buckets),
-		CycleTime:  computeCycleTime(allTasks, cutoff, now, buckets),
-		Throughput: computeThroughput(allTasks, cutoff, now, buckets),
+		Completion: computeCompletionSummaries(allSummaries, cutoff, now, buckets),
+		CycleTime:  computeCycleTimeSummaries(allSummaries, cutoff, now, buckets),
+		Throughput: computeThroughputSummaries(allSummaries, cutoff, now, buckets),
 		Blocked:    computeBlockedInRange(projectTasks, cutoff, now, taskProject),
 		TimeRange:  tr,
 		IsGlobal:   len(projects) > 1,

@@ -1,11 +1,15 @@
 package tui
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
+	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/planner"
+	"github.com/sglavoie/tt/internal/storage"
 )
 
 // TestRoadmapDateToCol verifies bar column position math.
@@ -167,5 +171,50 @@ func TestRoadmapToggleTimelineRowCollapsedIgnoresNegativeCursor(t *testing.T) {
 
 	if m.collapsed[task.ID] {
 		t.Fatal("negative cursor should not toggle a row")
+	}
+}
+
+func TestRoadmapLoadsArchivedSummariesForVelocity(t *testing.T) {
+	projectPath := filepath.Join(t.TempDir(), "roadmap-summary")
+	project, err := models.NewProject("roadmap-summary", "Roadmap Summary", projectPath)
+	if err != nil {
+		t.Fatalf("new project: %v", err)
+	}
+	if err := storage.SaveProject(project); err != nil {
+		t.Fatalf("save project: %v", err)
+	}
+
+	completedAt := time.Now().Add(-24 * time.Hour)
+	archived, err := models.NewTask("archived-roadmap-task", 1, models.TaskTypeTask, "Archived roadmap task")
+	if err != nil {
+		t.Fatalf("new archived task: %v", err)
+	}
+	archived.Status = models.StatusDone
+	archived.CompletedAt = &completedAt
+	archived.EnsureTaskAttrs().Effort = models.EffortLarge
+
+	archivePath := filepath.Join(project.Path, "completed.md")
+	if err := os.WriteFile(archivePath, []byte(storage.WriteArchivedTasks(project.Name, []*models.Task{archived})), storage.FilePermissions); err != nil {
+		t.Fatalf("write archive: %v", err)
+	}
+	if err := storage.RebuildArchiveIndex(project); err != nil {
+		t.Fatalf("rebuild archive index: %v", err)
+	}
+	if err := os.Chmod(archivePath, 0); err != nil {
+		t.Fatalf("make archive unreadable: %v", err)
+	}
+	defer func() {
+		_ = os.Chmod(archivePath, storage.FilePermissions)
+	}()
+
+	cfg := config.NewConfig()
+	cfg.Projects = []*models.Project{project}
+	model := NewRoadmapModel(cfg)
+
+	if model.velocity < 0.09 || model.velocity > 0.11 {
+		t.Fatalf("velocity = %v, want about 0.1 from archived large-effort summary", model.velocity)
+	}
+	if len(model.scheduled) != 0 {
+		t.Fatalf("scheduled %d archived tasks, want archived tasks excluded from roadmap scheduling", len(model.scheduled))
 	}
 }

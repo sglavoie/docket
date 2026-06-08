@@ -146,6 +146,60 @@ func TestComputeAllExtraTasks(t *testing.T) {
 	})
 }
 
+func TestComputeAllWithSummaries(t *testing.T) {
+	now := time.Date(2025, 6, 15, 12, 0, 0, 0, time.UTC)
+	liveStart := now.AddDate(0, 0, -4)
+	liveDone := now.AddDate(0, 0, -2)
+	archivedStart := now.AddDate(0, 0, -5)
+	archivedDone := now.AddDate(0, 0, -1)
+	archivedCanceled := now.AddDate(0, 0, -3)
+	blockedAt := now.AddDate(0, 0, -2)
+
+	project := &models.Project{
+		ID: "p1",
+		Tasks: []*models.Task{
+			makeTask(models.StatusDone, timePtr(liveDone), []*models.ActivityEntry{
+				{Timestamp: liveStart, Field: "status", OldValue: "todo", NewValue: "in_progress"},
+			}),
+			makeTask(models.StatusBlocked, nil, []*models.ActivityEntry{
+				{Timestamp: blockedAt, Field: "status", OldValue: "todo", NewValue: "blocked"},
+			}),
+		},
+	}
+
+	archivedSummaries := []TaskSummary{
+		{
+			ID:             "archived-done",
+			Status:         models.StatusDone,
+			CompletedAt:    &archivedDone,
+			FirstStartedAt: &archivedStart,
+		},
+		{
+			ID:          "archived-canceled",
+			Status:      models.StatusCanceled,
+			CompletedAt: &archivedCanceled,
+		},
+	}
+
+	result := ComputeAllAtWithSummaries([]*models.Project{project}, TimeRange7d, now, archivedSummaries)
+
+	if result.Completion.Total != 3 {
+		t.Errorf("Completion.Total = %d, want 3", result.Completion.Total)
+	}
+	if result.Completion.Completed != 2 {
+		t.Errorf("Completion.Completed = %d, want 2", result.Completion.Completed)
+	}
+	if result.Throughput.Total != 2 {
+		t.Errorf("Throughput.Total = %d, want 2", result.Throughput.Total)
+	}
+	if result.CycleTime.Count != 2 {
+		t.Errorf("CycleTime.Count = %d, want 2", result.CycleTime.Count)
+	}
+	if result.Blocked.TaskCount != 1 {
+		t.Errorf("Blocked.TaskCount = %d, want 1", result.Blocked.TaskCount)
+	}
+}
+
 func TestComputeAllSkipsNilProjectsAndTasks(t *testing.T) {
 	now := time.Date(2025, 6, 15, 12, 0, 0, 0, time.UTC)
 	done := now.AddDate(0, 0, -1)

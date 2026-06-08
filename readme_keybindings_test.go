@@ -109,6 +109,9 @@ func TestREADMECLIContractStaysCurrent(t *testing.T) {
 		"~/.tt/",
 		"tt task add",
 		"tt project",
+		"tt task archive list",
+		"completed.md",
+		".completed.index.json",
 	}
 
 	for _, needle := range required {
@@ -156,6 +159,10 @@ func TestCLIReferenceContractStaysCurrent(t *testing.T) {
 	required := []string{
 		"config file path (default: ~/.tt/.tt.json)",
 		"'editor' field in ~/.tt/.tt.json",
+		"## tt task archive list",
+		"Usage: tt task archive show <id-or-prefix> [flags]",
+		"## tt task archive rebuild-index",
+		"completed.md and completed.N.md",
 		"Usage: tt project archive <slug-or-id> [flags]",
 		"Usage: tt project delete <slug-or-id> [flags]",
 		"Usage: tt project open [slug-or-id] [flags]",

@@ -66,6 +66,8 @@ tt task list --tree             # Show hierarchical tasks
 tt task show 12                 # Inspect a task
 tt task start 12                # Mark task in progress
 tt task complete 12             # Mark task done
+tt task archive list            # List archived completed tasks
+tt task archive show abc12345   # Inspect an archived task
 tt note list                    # List notes in the current project
 tt search auth                  # Search across tasks and projects
 tt undo                         # Restore previous task state
@@ -86,6 +88,27 @@ tt stores its data in `~/.tt/`.
 ```
 
 Projects use markdown files for tasks plus project-local notes and attachments.
+
+## Completed Task Archive
+
+Active work lives in each project's `tasks.md`. Running `tt task archive`
+moves completed tasks into canonical archive markdown files named
+`completed.md` and `completed.N.md`, then removes them from active task views.
+Normal task lists, search, focus, and mutation commands stay scoped to
+`tasks.md`.
+
+Archive-aware metrics and roadmap velocity read the derived
+`.completed.index.json` summary index instead of reparsing full archive bodies.
+The index is project-local, rebuildable, and safe to delete.
+
+Use explicit archive commands when you need archived completed work:
+
+```bash
+tt task archive list
+tt task archive show <id-or-prefix>
+tt task archive rebuild-index
+tt doctor --fix
+```
 
 ## External Tools
 

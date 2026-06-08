@@ -54,7 +54,7 @@ func runRoadmap(cmd *cobra.Command, args []string) error {
 	}
 
 	var projects []*models.Project
-	var allArchived []*models.Task
+	var allArchived []metrics.TaskSummary
 
 	if len(args) > 0 {
 		p := cfg.GetProject(args[0])
@@ -65,7 +65,14 @@ func runRoadmap(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("failed to load project: %w", err)
 		}
 		projects = []*models.Project{p}
-		allArchived = storage.LoadArchivedTasks(p)
+		summaries, err := roadmapArchiveSummariesForMetrics(p)
+		if err != nil {
+			if _, writeErr := fmt.Fprintf(cmd.ErrOrStderr(), "warning: skipping archive summaries for %s: %v\n", p.Name, err); writeErr != nil {
+				return fmt.Errorf("failed to write warning: %w", writeErr)
+			}
+		} else {
+			allArchived = append(allArchived, summaries...)
+		}
 	} else {
 		for _, p := range cfg.GetActiveProjects() {
 			if err := storage.LoadProject(p); err != nil {
@@ -75,7 +82,14 @@ func runRoadmap(cmd *cobra.Command, args []string) error {
 				continue
 			}
 			projects = append(projects, p)
-			allArchived = append(allArchived, storage.LoadArchivedTasks(p)...)
+			summaries, err := roadmapArchiveSummariesForMetrics(p)
+			if err != nil {
+				if _, writeErr := fmt.Fprintf(cmd.ErrOrStderr(), "warning: skipping archive summaries for %s: %v\n", p.Name, err); writeErr != nil {
+					return fmt.Errorf("failed to write warning: %w", writeErr)
+				}
+				continue
+			}
+			allArchived = append(allArchived, summaries...)
 		}
 	}
 
@@ -86,14 +100,14 @@ func runRoadmap(cmd *cobra.Command, args []string) error {
 	// Compute effort-weighted velocity. Use the user's configured week-start
 	// so weekly throughput buckets align with their dashboard preferences.
 	weekStart := metrics.WeekStartFromWeekEnd(cfg.GetWeekEndDay())
-	agg := metrics.ComputeAllAtWithWeekStart(projects, metrics.TimeRange30d, time.Now(), weekStart, allArchived)
+	agg := metrics.ComputeAllAtWithWeekStartAndSummaries(projects, metrics.TimeRange30d, time.Now(), weekStart, allArchived)
 	var allTasks []*models.Task
 	for _, p := range projects {
 		allTasks = append(allTasks, p.Tasks...)
 	}
 	var velocity float64
 	if agg != nil {
-		velocity = planner.WeightedVelocity(agg.Throughput, allTasks)
+		velocity = planner.WeightedVelocityWithSummaries(agg.Throughput, metrics.TaskSummariesFromTasks(allTasks), allArchived)
 	}
 
 	// Compute critical path and schedule.
@@ -119,6 +133,30 @@ func runRoadmap(cmd *cobra.Command, args []string) error {
 	default:
 		return renderASCII(scheduled, criticalPath, projects, roadmapZoom, velocity)
 	}
+}
+
+func roadmapArchiveSummariesForMetrics(project *models.Project) ([]metrics.TaskSummary, error) {
+	summaries, err := storage.LoadArchivedTaskSummaries(project)
+	if err != nil {
+		return nil, err
+	}
+	return roadmapStorageSummariesForMetrics(summaries), nil
+}
+
+func roadmapStorageSummariesForMetrics(summaries []storage.ArchiveTaskSummary) []metrics.TaskSummary {
+	metricSummaries := make([]metrics.TaskSummary, 0, len(summaries))
+	for _, summary := range summaries {
+		metricSummaries = append(metricSummaries, metrics.TaskSummary{
+			ID:             summary.ID,
+			Status:         summary.Status,
+			CompletedAt:    summary.CompletedAt,
+			FirstStartedAt: summary.FirstStartedAt,
+			EstimatedDays:  summary.EstimatedDays,
+			Effort:         summary.Effort,
+			StoryPoints:    summary.StoryPoints,
+		})
+	}
+	return metricSummaries
 }
 
 // zoomUnitDays returns the number of days per column for the given zoom label.

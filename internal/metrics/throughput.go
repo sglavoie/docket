@@ -9,6 +9,10 @@ import (
 // computeThroughput calculates throughput metrics (done tasks only).
 // Canceled tasks are excluded since they don't represent delivered work.
 func computeThroughput(tasks []*models.Task, cutoff, now time.Time, buckets []bucket) ThroughputResult {
+	return computeThroughputSummaries(TaskSummariesFromTasks(tasks), cutoff, now, buckets)
+}
+
+func computeThroughputSummaries(tasks []TaskSummary, cutoff, now time.Time, buckets []bucket) ThroughputResult {
 	result := ThroughputResult{
 		PerBucket: make([]float64, len(buckets)),
 		Labels:    bucketLabels(buckets),
@@ -25,9 +29,6 @@ func computeThroughput(tasks []*models.Task, cutoff, now time.Time, buckets []bu
 	}
 
 	for _, t := range tasks {
-		if t == nil {
-			continue
-		}
 		if t.CompletedAt == nil || t.Status != models.StatusDone {
 			continue
 		}

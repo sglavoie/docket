@@ -25,7 +25,9 @@ Use --force to skip the confirmation prompt.
 Examples:
   tt task archive          # Archive with confirmation
   tt task archive --force  # Archive without confirmation
-  tt task archive --all    # Archive completed tasks across all projects`,
+  tt task archive --all    # Archive completed tasks across all projects
+  tt task archive list     # List archived task summaries
+  tt task archive show ID  # Show an archived task`,
 	RunE: runTaskArchive,
 }
 

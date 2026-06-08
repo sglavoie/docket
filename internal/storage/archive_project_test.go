@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -247,6 +248,160 @@ func TestArchiveTasks(t *testing.T) {
 			t.Error("new archive should contain newly archived task")
 		}
 	})
+}
+
+func TestArchiveTasksRefreshesArchiveIndexAfterSuccess(t *testing.T) {
+	tmpDir := t.TempDir()
+	projectPath := filepath.Join(tmpDir, "test-project")
+	if err := os.MkdirAll(projectPath, DirPermissions); err != nil {
+		t.Fatalf("failed to create project dir: %v", err)
+	}
+
+	now := time.Date(2026, 6, 8, 12, 0, 0, 0, time.UTC)
+	project := &models.Project{
+		ID:   uuid.New().String(),
+		Name: "Test Project",
+		Slug: "test-project",
+		Path: projectPath,
+		Tasks: []*models.Task{
+			{ID: "active-1", ShortID: 1, Title: "Todo task", Type: models.TaskTypeTask, Status: models.StatusTodo, Priority: 3},
+			{ID: "done-1", ShortID: 2, Title: "Done task", Type: models.TaskTypeTask, Status: models.StatusDone, Priority: 3, CompletedAt: &now},
+			{ID: "done-2", ShortID: 3, Title: "Done bug", Type: models.TaskTypeBug, Status: models.StatusDone, Priority: 2, CompletedAt: &now},
+		},
+		NextShortID: 4,
+	}
+
+	count, err := ArchiveTasks(project)
+	if err != nil {
+		t.Fatalf("ArchiveTasks failed: %v", err)
+	}
+	if count != 2 {
+		t.Fatalf("archived count = %d, want 2", count)
+	}
+
+	index := readArchiveIndexTestFile(t, project)
+	if len(index.Sources) != 1 {
+		t.Fatalf("source count = %d, want 1", len(index.Sources))
+	}
+	if index.Sources[0].FileName != archiveFileName || index.Sources[0].TaskCount != 2 {
+		t.Fatalf("source metadata mismatch: %+v", index.Sources[0])
+	}
+	gotIDs := archiveIndexSummaryIDs(index.Tasks)
+	wantIDs := []string{"done-1", "done-2"}
+	if strings.Join(gotIDs, ",") != strings.Join(wantIDs, ",") {
+		t.Fatalf("index task IDs = %v, want %v", gotIDs, wantIDs)
+	}
+
+	savedTasks, err := os.ReadFile(tasksFilePath(projectPath))
+	if err != nil {
+		t.Fatalf("read tasks.md: %v", err)
+	}
+	if strings.Contains(string(savedTasks), "Done task") || strings.Contains(string(savedTasks), "Done bug") {
+		t.Fatalf("tasks.md should not contain archived tasks:\n%s", savedTasks)
+	}
+}
+
+func TestArchiveTasksRefreshesIndexAfterRotation(t *testing.T) {
+	tmpDir := t.TempDir()
+	projectPath := filepath.Join(tmpDir, "test-project")
+	if err := os.MkdirAll(projectPath, DirPermissions); err != nil {
+		t.Fatalf("failed to create project dir: %v", err)
+	}
+
+	now := time.Date(2026, 6, 8, 12, 0, 0, 0, time.UTC)
+	oldTask := archiveIndexTestTask("old-archived", 1, models.TaskTypeTask, "Previously archived", now.Add(-time.Hour))
+	oldTask.Description = strings.Repeat("archived description line\n", int(archiveRotationThreshold/25)+1)
+	if err := os.WriteFile(filepath.Join(projectPath, archiveFileName), []byte(WriteArchivedTasks("Test Project", []*models.Task{oldTask})), FilePermissions); err != nil {
+		t.Fatalf("write large archive: %v", err)
+	}
+
+	project := &models.Project{
+		ID:   uuid.New().String(),
+		Name: "Test Project",
+		Slug: "test-project",
+		Path: projectPath,
+		Tasks: []*models.Task{
+			{ID: "new-archived", ShortID: 2, Title: "New archived task", Type: models.TaskTypeBug, Status: models.StatusDone, Priority: 2, CompletedAt: &now},
+		},
+		NextShortID: 3,
+	}
+
+	count, err := ArchiveTasks(project)
+	if err != nil {
+		t.Fatalf("ArchiveTasks failed: %v", err)
+	}
+	if count != 1 {
+		t.Fatalf("archived count = %d, want 1", count)
+	}
+
+	index := readArchiveIndexTestFile(t, project)
+	if len(index.Sources) != 2 {
+		t.Fatalf("source count = %d, want 2: %+v", len(index.Sources), index.Sources)
+	}
+	gotSources := []string{index.Sources[0].FileName, index.Sources[1].FileName}
+	wantSources := []string{archiveFileName, "completed.1.md"}
+	if strings.Join(gotSources, ",") != strings.Join(wantSources, ",") {
+		t.Fatalf("source order = %v, want %v", gotSources, wantSources)
+	}
+	if index.Sources[0].TaskCount != 1 || index.Sources[1].TaskCount != 1 {
+		t.Fatalf("source task counts mismatch: %+v", index.Sources)
+	}
+	gotIDs := archiveIndexSummaryIDs(index.Tasks)
+	wantIDs := []string{"new-archived", "old-archived"}
+	if strings.Join(gotIDs, ",") != strings.Join(wantIDs, ",") {
+		t.Fatalf("index task IDs = %v, want %v", gotIDs, wantIDs)
+	}
+}
+
+func TestArchiveTasksKeepsSuccessIndependentFromIndexWriteFailure(t *testing.T) {
+	tmpDir := t.TempDir()
+	projectPath := filepath.Join(tmpDir, "test-project")
+	if err := os.MkdirAll(projectPath, DirPermissions); err != nil {
+		t.Fatalf("failed to create project dir: %v", err)
+	}
+
+	now := time.Date(2026, 6, 8, 12, 0, 0, 0, time.UTC)
+	project := &models.Project{
+		ID:   uuid.New().String(),
+		Name: "Test Project",
+		Slug: "test-project",
+		Path: projectPath,
+		Tasks: []*models.Task{
+			{ID: "done-1", ShortID: 1, Title: "Done task", Type: models.TaskTypeTask, Status: models.StatusDone, Priority: 3, CompletedAt: &now},
+		},
+		NextShortID: 2,
+	}
+
+	indexPath := archiveIndexPath(project)
+	origWrite := writeFileAtomic
+	writeFileAtomic = func(path string, data []byte, perm os.FileMode) error {
+		if path == indexPath {
+			return errors.New("simulated index write failure")
+		}
+		return origWrite(path, data, perm)
+	}
+	defer func() { writeFileAtomic = origWrite }()
+
+	count, err := ArchiveTasks(project)
+	if err != nil {
+		t.Fatalf("ArchiveTasks should not fail when only index refresh fails: %v", err)
+	}
+	if count != 1 {
+		t.Fatalf("archived count = %d, want 1", count)
+	}
+	if len(project.Tasks) != 0 {
+		t.Fatalf("project still has %d tasks, want 0", len(project.Tasks))
+	}
+	archiveContent, err := os.ReadFile(filepath.Join(projectPath, archiveFileName))
+	if err != nil {
+		t.Fatalf("read archive: %v", err)
+	}
+	if !strings.Contains(string(archiveContent), "Done task") {
+		t.Fatalf("archive should contain completed task:\n%s", archiveContent)
+	}
+	if _, err := os.Stat(indexPath); !os.IsNotExist(err) {
+		t.Fatalf("index write failure should leave index absent, stat err=%v", err)
+	}
 }
 
 func TestClearOrphanedParentRefs(t *testing.T) {

@@ -85,7 +85,7 @@ func NewMetricsDashboardModelForProject(cfg *config.Config, project *models.Proj
 
 func (m *MetricsDashboardModel) computeMetrics() {
 	var projects []*models.Project
-	var allArchived []*models.Task
+	var allArchived []metrics.TaskSummary
 
 	if m.isGlobal {
 		for _, p := range m.config.GetActiveProjects() {
@@ -93,18 +93,44 @@ func (m *MetricsDashboardModel) computeMetrics() {
 				logging.Warn("failed to load project %s: %v", p.Name, err)
 			}
 			projects = append(projects, p)
-			allArchived = append(allArchived, storage.LoadArchivedTasks(p)...)
+			summaries, err := storage.LoadArchivedTaskSummaries(p)
+			if err != nil {
+				logging.Warn("failed to load archive summaries for %s: %v", p.Name, err)
+				continue
+			}
+			allArchived = append(allArchived, archiveSummariesForMetrics(summaries)...)
 		}
 	} else if m.project != nil {
 		if err := storage.LoadProject(m.project); err != nil {
 			logging.Warn("failed to load project %s: %v", m.project.Name, err)
 		}
 		projects = []*models.Project{m.project}
-		allArchived = append(allArchived, storage.LoadArchivedTasks(m.project)...)
+		summaries, err := storage.LoadArchivedTaskSummaries(m.project)
+		if err != nil {
+			logging.Warn("failed to load archive summaries for %s: %v", m.project.Name, err)
+		} else {
+			allArchived = append(allArchived, archiveSummariesForMetrics(summaries)...)
+		}
 	}
 
 	weekStart := metrics.WeekStartFromWeekEnd(m.config.GetWeekEndDay())
-	m.metrics = metrics.ComputeAllAtWithWeekStart(projects, m.timeRange, time.Now(), weekStart, allArchived)
+	m.metrics = metrics.ComputeAllAtWithWeekStartAndSummaries(projects, m.timeRange, time.Now(), weekStart, allArchived)
+}
+
+func archiveSummariesForMetrics(summaries []storage.ArchiveTaskSummary) []metrics.TaskSummary {
+	metricSummaries := make([]metrics.TaskSummary, 0, len(summaries))
+	for _, summary := range summaries {
+		metricSummaries = append(metricSummaries, metrics.TaskSummary{
+			ID:             summary.ID,
+			Status:         summary.Status,
+			CompletedAt:    summary.CompletedAt,
+			FirstStartedAt: summary.FirstStartedAt,
+			EstimatedDays:  summary.EstimatedDays,
+			Effort:         summary.Effort,
+			StoryPoints:    summary.StoryPoints,
+		})
+	}
+	return metricSummaries
 }
 
 // Init implements tea.Model.

@@ -41,13 +41,14 @@ type doctorResults struct {
 	brokenParentRefs   []doctorIssue
 	emptyProjects      []doctorIssue
 	missingDescMarkers []doctorIssue
+	archiveIndexIssues []doctorIssue
 	autoRepaired       []doctorIssue
 }
 
 func (r *doctorResults) totalIssues() int {
 	return len(r.loadFailures) + len(r.orphanedCrossRefs) + len(r.duplicateIDs) + len(r.duplicateShortIDs) +
 		len(r.deadDependencies) + len(r.missingTaskFiles) + len(r.brokenParentRefs) +
-		len(r.missingDescMarkers) + len(r.autoRepaired)
+		len(r.missingDescMarkers) + len(r.archiveIndexIssues) + len(r.autoRepaired)
 }
 
 func runDoctor(cmd *cobra.Command, _ []string) error {
@@ -97,11 +98,13 @@ func runDoctor(cmd *cobra.Command, _ []string) error {
 	checkDeadDependencies(loadedProjects, results)
 	checkOrphanedCrossRefs(loadedProjects, cfg, results)
 	checkMissingDescriptionMarkers(loadedProjects, results)
+	checkArchiveIndexIssues(allProjects, results)
 
 	if fix {
 		fixAutoRepaired(results.autoRepaired, loadedProjects)
 		fixIssues(loadedProjects, cfg)
 		fixMissingDescriptionMarkers(results.missingDescMarkers, loadedProjects)
+		fixArchiveIndexIssues(results.archiveIndexIssues, allProjects)
 	}
 
 	printResults(results)
@@ -448,6 +451,70 @@ func fixMissingDescriptionMarkers(issues []doctorIssue, projects []*models.Proje
 	}
 }
 
+func checkArchiveIndexIssues(projects []*models.Project, results *doctorResults) {
+	for _, project := range projects {
+		if project == nil {
+			continue
+		}
+		status, err := storage.InspectArchiveIndex(project)
+		if err != nil {
+			results.archiveIndexIssues = append(results.archiveIndexIssues, doctorIssue{
+				project: project.Name,
+				detail:  fmt.Sprintf("unable to inspect archive index: %v", err),
+			})
+			continue
+		}
+		if !status.NeedsRebuild {
+			continue
+		}
+		results.archiveIndexIssues = append(results.archiveIndexIssues, doctorIssue{
+			project: project.Name,
+			detail:  formatArchiveIndexIssue(project, status),
+		})
+	}
+}
+
+func formatArchiveIndexIssue(project *models.Project, status storage.ArchiveIndexStatus) string {
+	rebuildCmd := "tt task archive rebuild-index"
+	if project != nil && project.Slug != "" {
+		rebuildCmd += " --project " + project.Slug
+	}
+	switch status.Issue {
+	case storage.ArchiveIndexIssueMissing:
+		return fmt.Sprintf(".completed.index.json is missing for %s; run 'tt doctor --fix' or '%s'",
+			Pluralize(status.ArchiveFileCount, "archive file", "archive files"), rebuildCmd)
+	case storage.ArchiveIndexIssueStale:
+		return fmt.Sprintf(".completed.index.json is stale for %s; run 'tt doctor --fix' or '%s'",
+			Pluralize(status.ArchiveFileCount, "archive file", "archive files"), rebuildCmd)
+	case storage.ArchiveIndexIssueCorrupt:
+		return fmt.Sprintf(".completed.index.json is corrupt or unreadable (%s); run 'tt doctor --fix' or '%s'",
+			status.Detail, rebuildCmd)
+	default:
+		return fmt.Sprintf(".completed.index.json needs rebuilding (%s); run 'tt doctor --fix' or '%s'",
+			status.Detail, rebuildCmd)
+	}
+}
+
+func fixArchiveIndexIssues(issues []doctorIssue, projects []*models.Project) {
+	if len(issues) == 0 {
+		return
+	}
+	flagged := make(map[string]bool, len(issues))
+	for _, issue := range issues {
+		flagged[issue.project] = true
+	}
+	for _, project := range projects {
+		if project == nil || !flagged[project.Name] {
+			continue
+		}
+		if err := storage.RebuildArchiveIndex(project); err != nil {
+			fmt.Fprintf(os.Stderr, "error: failed to rebuild archive index for project %s: %v\n", project.Name, err)
+			continue
+		}
+		fmt.Printf("  Fixed: rebuilt archive index for project %s\n", project.Name)
+	}
+}
+
 func buildTaskMap(project *models.Project) map[string]*models.Task {
 	m := make(map[string]*models.Task, len(project.Tasks))
 	for _, task := range project.Tasks {
@@ -474,6 +541,7 @@ func printResults(results *doctorResults) {
 	printSection("Dead dependency links", results.deadDependencies)
 	printSection("Orphaned cross-project refs", results.orphanedCrossRefs)
 	printSection("Missing description markers", results.missingDescMarkers)
+	printSection("Archive index issues", results.archiveIndexIssues)
 	printInfoSection("Empty projects", results.emptyProjects)
 }
 

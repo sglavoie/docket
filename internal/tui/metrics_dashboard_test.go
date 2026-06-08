@@ -1,11 +1,15 @@
 package tui
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/metrics"
+	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/storage"
 )
 
 // TestMetricsDashboardWeekStartPropagation verifies that the user's
@@ -55,5 +59,57 @@ func TestMetricsDashboardWeekStartPropagation(t *testing.T) {
 		if allEqual {
 			t.Error("dashboard labels match the Monday default — week-start was not propagated")
 		}
+	}
+}
+
+func TestMetricsDashboardLoadsArchivedSummaries(t *testing.T) {
+	projectPath := filepath.Join(t.TempDir(), "archive-summary")
+	project, err := models.NewProject("archive-summary", "Archive Summary", projectPath)
+	if err != nil {
+		t.Fatalf("new project: %v", err)
+	}
+	if err := storage.SaveProject(project); err != nil {
+		t.Fatalf("save project: %v", err)
+	}
+
+	now := time.Now()
+	startedAt := now.Add(-72 * time.Hour)
+	completedAt := now.Add(-24 * time.Hour)
+	archived, err := models.NewTask("archived-summary-task", 1, models.TaskTypeTask, "Archived summary task")
+	if err != nil {
+		t.Fatalf("new archived task: %v", err)
+	}
+	archived.Status = models.StatusDone
+	archived.CompletedAt = &completedAt
+	archived.Activity = []*models.ActivityEntry{
+		{Timestamp: startedAt, Field: "status", OldValue: string(models.StatusTodo), NewValue: string(models.StatusInProgress)},
+	}
+
+	archivePath := filepath.Join(project.Path, "completed.md")
+	if err := os.WriteFile(archivePath, []byte(storage.WriteArchivedTasks(project.Name, []*models.Task{archived})), storage.FilePermissions); err != nil {
+		t.Fatalf("write archive: %v", err)
+	}
+	if err := storage.RebuildArchiveIndex(project); err != nil {
+		t.Fatalf("rebuild archive index: %v", err)
+	}
+	if err := os.Chmod(archivePath, 0); err != nil {
+		t.Fatalf("make archive unreadable: %v", err)
+	}
+	defer func() {
+		_ = os.Chmod(archivePath, storage.FilePermissions)
+	}()
+
+	cfg := config.NewConfig()
+	cfg.Projects = []*models.Project{project}
+	model := NewMetricsDashboardModel(cfg)
+
+	if model.metrics == nil {
+		t.Fatal("expected metrics to be computed")
+	}
+	if model.metrics.Throughput.Total != 1 {
+		t.Fatalf("Throughput.Total = %d, want 1 archived task from summary index", model.metrics.Throughput.Total)
+	}
+	if model.metrics.CycleTime.Count != 1 {
+		t.Fatalf("CycleTime.Count = %d, want 1 archived task from summary index", model.metrics.CycleTime.Count)
 	}
 }
