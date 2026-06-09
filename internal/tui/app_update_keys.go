@@ -236,9 +236,10 @@ func (m *AppModel) handleGlobalKeyPress(msg tea.KeyPressMsg) (bool, tea.Cmd) { /
 			return false, nil
 		}
 		task, project := m.getCurrentCursorTaskAndProject()
-		if task != nil {
-			m.activatePeek(task, project)
+		if task == nil {
+			return false, nil
 		}
+		m.activatePeek(task, project)
 		return true, nil
 	case ".":
 		if !m.hasActiveTextInput() && m.lastRepeatableAction != nil {

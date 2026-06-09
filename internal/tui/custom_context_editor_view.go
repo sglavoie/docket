@@ -86,29 +86,31 @@ func (m *CustomContextEditorModel) View() tea.View {
 		var rowBuilder strings.Builder
 		for i := m.scrollOffset; i < end; i++ {
 			p := m.filteredProjects[i]
+			isCursor := m.projectListMode && i == m.cursor
+			isSelected := m.selectedIDs[p.ID]
 
 			// Cursor
 			cursor := "  "
-			if m.projectListMode && i == m.cursor {
-				cursor = "  "
+			if isCursor {
+				cursor = IconCursorRight + " "
 			}
 
 			// Checkbox
 			checkbox := "[ ]"
-			if m.selectedIDs[p.ID] {
+			if isSelected {
 				checkbox = "[x]"
 			}
 
 			// Project info
 			info := fmt.Sprintf("%s (%s) - %d tasks", p.Name, p.Context, p.CountTasks())
 
-			// Style based on selection
-			if m.projectListMode && i == m.cursor {
-				rowBuilder.WriteString(TagManagerItemSelectedStyle.Render(fmt.Sprintf("%s%s %s", cursor, checkbox, info)))
-			} else if m.selectedIDs[p.ID] {
-				rowBuilder.WriteString(TagManagerItemSelectedStyle.Render(fmt.Sprintf("%s%s %s", cursor, checkbox, info)))
+			line := fmt.Sprintf("%s%s %s", cursor, checkbox, info)
+			if isCursor {
+				rowBuilder.WriteString(SelectedStyle.Render(line))
+			} else if isSelected {
+				rowBuilder.WriteString(fmt.Sprintf("%s%s %s", cursor, SelectionCheckStyle.Render(checkbox), info))
 			} else {
-				fmt.Fprintf(&rowBuilder, "%s%s %s", cursor, checkbox, MutedStyle.Render(info))
+				rowBuilder.WriteString(fmt.Sprintf("%s%s %s", cursor, MutedStyle.Render(checkbox), MutedStyle.Render(info)))
 			}
 			rowBuilder.WriteString("\n")
 		}
