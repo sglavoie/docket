@@ -117,7 +117,8 @@ tt can integrate with external tools when they are available:
 - Claude CLI for AI-assisted queries
 - glow for markdown rendering
 - fzf for enhanced selection flows
-- VS Code or another editor for editing tasks and notes
+- Configured editor (`editor`) for blocking task and note edits
+- External editor (`external_editor`, default `code`) for Ctrl+O GUI reference previews
 
 ## Development
 

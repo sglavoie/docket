@@ -146,7 +146,7 @@ func (m *SettingsModel) saveSettings() tea.Cmd {
 	m.config.SectionLimitReview = &sectionLimitReview
 	m.config.AttachmentEditor = strings.TrimSpace(m.attachmentEditorInput.Value())
 	m.config.CodeEditor = strings.TrimSpace(m.codeEditorInput.Value())
-	m.config.NotesEditor = strings.TrimSpace(m.notesEditorInput.Value())
+	m.config.ExternalEditor = strings.TrimSpace(m.externalEditorInput.Value())
 	m.config.TreeDefaultColumns = treeColumnDefaultsToMap(m.treeColumnDefaults)
 	m.config.OutlinerDefaultColumns = outlinerColumnDefaultsToMap(m.outlinerColumnDefaults)
 

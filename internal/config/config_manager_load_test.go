@@ -138,16 +138,16 @@ func TestConfigManager_MigratesVersionZero(t *testing.T) {
 		t.Fatalf("Load failed: %v", err)
 	}
 
-	if cfg.Version != 2 {
-		t.Errorf("expected Version 2 after migration, got %d", cfg.Version)
+	if cfg.Version != CurrentConfigVersion {
+		t.Errorf("expected Version %d after migration, got %d", CurrentConfigVersion, cfg.Version)
 	}
 
 	cfg2, err := manager.Load()
 	if err != nil {
 		t.Fatalf("second Load failed: %v", err)
 	}
-	if cfg2.Version != 2 {
-		t.Errorf("expected Version 2 on reload, got %d", cfg2.Version)
+	if cfg2.Version != CurrentConfigVersion {
+		t.Errorf("expected Version %d on reload, got %d", CurrentConfigVersion, cfg2.Version)
 	}
 }
 
@@ -155,7 +155,7 @@ func TestConfigManager_PreservesExistingVersion(t *testing.T) {
 	tmpDir := t.TempDir()
 	configPath := filepath.Join(tmpDir, "test-config.json")
 
-	// v1 config gets migrated to v2 on load (v1→v2 migration).
+	// v1 config gets migrated to the current schema on load.
 	data := []byte(`{"version": 1, "data_dir": "/tmp/test", "editor": "vim"}`)
 	if err := os.WriteFile(configPath, data, 0644); err != nil {
 		t.Fatalf("failed to write test config: %v", err)
@@ -167,8 +167,104 @@ func TestConfigManager_PreservesExistingVersion(t *testing.T) {
 		t.Fatalf("Load failed: %v", err)
 	}
 
-	if cfg.Version != 2 {
-		t.Errorf("expected Version 2 (migrated from v1), got %d", cfg.Version)
+	if cfg.Version != CurrentConfigVersion {
+		t.Errorf("expected Version %d (migrated from v1), got %d", CurrentConfigVersion, cfg.Version)
+	}
+}
+
+func TestConfigManager_MigratesNotesEditorToExternalEditor(t *testing.T) {
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, "test-config.json")
+
+	data := []byte(`{"version": 2, "data_dir": "/tmp/test", "editor": "vim", "notes_editor": "zed"}`)
+	if err := os.WriteFile(configPath, data, 0644); err != nil {
+		t.Fatalf("failed to write test config: %v", err)
+	}
+
+	manager := NewManager(configPath)
+	cfg, err := manager.Load()
+	if err != nil {
+		t.Fatalf("Load failed: %v", err)
+	}
+	if cfg.Version != CurrentConfigVersion {
+		t.Errorf("expected Version %d after migration, got %d", CurrentConfigVersion, cfg.Version)
+	}
+	if cfg.ExternalEditor != "zed" {
+		t.Errorf("expected ExternalEditor 'zed', got %q", cfg.ExternalEditor)
+	}
+
+	savedData, err := os.ReadFile(configPath)
+	if err != nil {
+		t.Fatalf("failed to read saved config: %v", err)
+	}
+	var saved map[string]json.RawMessage
+	if err := json.Unmarshal(savedData, &saved); err != nil {
+		t.Fatalf("failed to parse saved config: %v", err)
+	}
+	if _, ok := saved["notes_editor"]; ok {
+		t.Fatal("saved config should not contain notes_editor")
+	}
+	var savedExternalEditor string
+	if err := json.Unmarshal(saved["external_editor"], &savedExternalEditor); err != nil {
+		t.Fatalf("failed to parse saved external_editor: %v", err)
+	}
+	if savedExternalEditor != "zed" {
+		t.Errorf("expected saved external_editor 'zed', got %q", savedExternalEditor)
+	}
+
+	reloaded, err := manager.Load()
+	if err != nil {
+		t.Fatalf("second Load failed: %v", err)
+	}
+	if reloaded.ExternalEditor != "zed" {
+		t.Errorf("expected stable ExternalEditor 'zed' on reload, got %q", reloaded.ExternalEditor)
+	}
+	if reloaded.Version != CurrentConfigVersion {
+		t.Errorf("expected Version %d on reload, got %d", CurrentConfigVersion, reloaded.Version)
+	}
+}
+
+func TestConfigManager_ExternalEditorWinsOverLegacyNotesEditor(t *testing.T) {
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, "test-config.json")
+
+	data := []byte(`{
+		"version": 2,
+		"data_dir": "/tmp/test",
+		"editor": "vim",
+		"notes_editor": "legacy",
+		"external_editor": "zed"
+	}`)
+	if err := os.WriteFile(configPath, data, 0644); err != nil {
+		t.Fatalf("failed to write test config: %v", err)
+	}
+
+	manager := NewManager(configPath)
+	cfg, err := manager.Load()
+	if err != nil {
+		t.Fatalf("Load failed: %v", err)
+	}
+	if cfg.ExternalEditor != "zed" {
+		t.Errorf("expected ExternalEditor 'zed', got %q", cfg.ExternalEditor)
+	}
+
+	savedData, err := os.ReadFile(configPath)
+	if err != nil {
+		t.Fatalf("failed to read saved config: %v", err)
+	}
+	var saved map[string]json.RawMessage
+	if err := json.Unmarshal(savedData, &saved); err != nil {
+		t.Fatalf("failed to parse saved config: %v", err)
+	}
+	if _, ok := saved["notes_editor"]; ok {
+		t.Fatal("saved config should not contain notes_editor")
+	}
+	var savedExternalEditor string
+	if err := json.Unmarshal(saved["external_editor"], &savedExternalEditor); err != nil {
+		t.Fatalf("failed to parse saved external_editor: %v", err)
+	}
+	if savedExternalEditor != "zed" {
+		t.Errorf("expected saved external_editor 'zed', got %q", savedExternalEditor)
 	}
 }
 

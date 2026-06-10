@@ -374,7 +374,7 @@ func (m *SettingsModel) handleResetToDefault() {
 			m.editorInput.SetValue("code")
 			resetDone = true
 		case 1:
-			m.notesEditorInput.SetValue("")
+			m.externalEditorInput.SetValue("")
 			resetDone = true
 		case 2:
 			m.contextInput.SetValue("personal")

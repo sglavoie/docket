@@ -108,6 +108,39 @@ func TestCommonPrimaryViewGroup_AllOptional(t *testing.T) {
 	}
 }
 
+func TestCommonPrimaryViewGroup_ProjectNotesShortcut(t *testing.T) {
+	entries := CommonPrimaryViewGroup(CommonPrimaryViewDeps{})
+	keys := directBindingKeys(entries)
+
+	if slices.Contains(keys, "ctrl+o") {
+		t.Fatal("CommonPrimaryViewGroup should not bind ctrl+o to Outliner")
+	}
+	for _, k := range []string{"ctrl+n", "{", "}"} {
+		if !slices.Contains(keys, k) {
+			t.Fatalf("CommonPrimaryViewGroup missing key %q", k)
+		}
+	}
+
+	for _, e := range entries {
+		if e.Binding == nil {
+			continue
+		}
+		switch e.Binding.Key {
+		case "ctrl+n":
+			if e.Binding.Description != "Open project Notes" {
+				t.Fatalf("ctrl+n description = %q", e.Binding.Description)
+			}
+			if e.Binding.Hidden {
+				t.Fatal("ctrl+n should be visible in help")
+			}
+		case "{":
+			if !e.Binding.Hidden {
+				t.Fatal("{ should remain handled as a hidden compatibility alias")
+			}
+		}
+	}
+}
+
 // TestIntegration_MergedHandledKeys builds a keymap from multiple groups and
 // verifies that HandledKeys() contains the expected compound sequences.
 func TestIntegration_MergedHandledKeys(t *testing.T) {

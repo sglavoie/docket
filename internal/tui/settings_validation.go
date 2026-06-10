@@ -57,7 +57,7 @@ func validateIntOptionalInRange(input, fieldName string, min, max int) (int, boo
 func (m *SettingsModel) validateAll() error {
 	validators := []func() error{
 		m.validateEditor,
-		m.validateNotesEditor,
+		m.validateExternalEditor,
 		m.validateContext,
 		m.validateUndoDepth,
 		m.validateBackgroundColor,
@@ -178,8 +178,8 @@ func (m *SettingsModel) validateCodeEditor() error {
 	return m.validateEditorCommand(editor)
 }
 
-func (m *SettingsModel) validateNotesEditor() error {
-	editor := strings.TrimSpace(m.notesEditorInput.Value())
+func (m *SettingsModel) validateExternalEditor() error {
+	editor := strings.TrimSpace(m.externalEditorInput.Value())
 	if editor == "" {
 		return nil // Empty is valid (defaults to "code")
 	}

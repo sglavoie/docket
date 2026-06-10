@@ -41,7 +41,7 @@ func buildSettingsFieldRegistry() []settingsFieldMeta {
 	// Tab 0: General (5 fields)
 	base := tabFieldStart[tabGeneral]
 	add(base+0, tabGeneral, 0, "General", "Editor", "editor command open tasks", "code")
-	add(base+1, tabGeneral, 0, "General", "Notes Editor", "notes editor open glow", "")
+	add(base+1, tabGeneral, 0, "General", "External editor", "external editor ctrl o reference preview gui", "code")
 	add(base+2, tabGeneral, 0, "General", "Default Context", "context project personal", "personal")
 	add(base+3, tabGeneral, 0, "General", "Undo History Depth", "undo history depth", strconv.Itoa(config.DefaultUndoHistoryDepth))
 	add(base+4, tabGeneral, 0, "General", "Default View", "default view project outliner tree", "Outliner")

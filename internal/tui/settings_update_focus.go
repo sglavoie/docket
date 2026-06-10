@@ -14,7 +14,7 @@ func (m *SettingsModel) focusedInput() *textinput.Model { //nolint:gocyclo
 		case 0:
 			return &m.editorInput
 		case 1:
-			return &m.notesEditorInput
+			return &m.externalEditorInput
 		case 2:
 			return &m.contextInput
 		case 3:

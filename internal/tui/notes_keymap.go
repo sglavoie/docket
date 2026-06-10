@@ -40,8 +40,8 @@ func (m *NotesViewModel) buildKeyMap() *keymap.KeyMap {
 		keymap.Bind("e", "Edit note", "Actions", func() (tea.Model, tea.Cmd) {
 			return m, m.editCurrentNote()
 		}),
-		keymap.Bind("ctrl+o", "Open in notes editor", "Actions", func() (tea.Model, tea.Cmd) {
-			return m, m.openInNotesEditor()
+		keymap.Bind("ctrl+o", "Open note reference copy", "Actions", func() (tea.Model, tea.Cmd) {
+			return m, m.openCurrentNoteReference()
 		}),
 		keymap.Bind("n", "Create new note", "Actions", func() (tea.Model, tea.Cmd) {
 			return m, m.createNote()

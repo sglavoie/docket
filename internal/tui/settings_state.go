@@ -250,7 +250,7 @@ type SettingsModel struct {
 	configManager *config.Manager
 
 	editorInput              textinput.Model
-	notesEditorInput         textinput.Model
+	externalEditorInput      textinput.Model
 	contextInput             textinput.Model
 	undoDepthInput           textinput.Model
 	bgColorInput             textinput.Model

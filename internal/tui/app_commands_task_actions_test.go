@@ -250,6 +250,37 @@ func TestTaskActionCommands_SetDueDate(t *testing.T) {
 	}
 }
 
+func TestTaskActionCommands_MoveToSectionShortcutAndHandler(t *testing.T) {
+	app, project := newTestAppModelWithProject()
+	app.projectTree = NewProjectTreeModel(project, app.config, nil)
+
+	visible := app.projectTree.visibleNodes()
+	if len(visible) == 0 {
+		t.Fatal("expected visible nodes")
+	}
+
+	cmds := app.taskActionCommands()
+	cmd := findCommand(cmds, "move to section")
+	if cmd == nil {
+		t.Fatal("expected to find 'move to section' command")
+	}
+	if cmd.Shortcut != "ts" {
+		t.Fatalf("move to section shortcut = %q, want ts", cmd.Shortcut)
+	}
+
+	result := cmd.Handler()
+	msg, ok := result.(ShowSectionPickerMsg)
+	if !ok {
+		t.Fatalf("expected ShowSectionPickerMsg, got %T", result)
+	}
+	if msg.Project != project {
+		t.Fatal("ShowSectionPickerMsg should target the current project")
+	}
+	if msg.Task != visible[0].Task {
+		t.Fatal("ShowSectionPickerMsg should target the selected task")
+	}
+}
+
 func TestTaskActionCommands_FilterOverlay(t *testing.T) {
 	app, project := newTestAppModelWithProject()
 	app.projectTree = NewProjectTreeModel(project, app.config, nil)

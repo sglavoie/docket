@@ -201,7 +201,7 @@ func (m *AppModel) taskActionCommands() []Command { //nolint:gocyclo
 		{
 			Name:        "move to section",
 			Description: "Pick section for task",
-			Shortcut:    "ctrl+n",
+			Shortcut:    "ts",
 			Category:    CategoryTasks,
 			Views:       []ViewType{ViewProjectTree},
 			Aliases:     []string{"change section", "assign section"},

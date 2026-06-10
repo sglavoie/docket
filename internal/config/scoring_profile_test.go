@@ -137,17 +137,17 @@ func TestConfig_GetCodeEditor(t *testing.T) {
 	}
 }
 
-func TestConfig_GetNotesEditor(t *testing.T) {
+func TestConfig_GetExternalEditor(t *testing.T) {
 	cfg := NewConfig()
 	cfg.Editor = "vim"
 
-	if cfg.GetNotesEditor() != "vim" {
-		t.Errorf("expected fallback notes editor 'vim', got %q", cfg.GetNotesEditor())
+	if cfg.GetExternalEditor() != "code" {
+		t.Errorf("expected default external editor 'code', got %q", cfg.GetExternalEditor())
 	}
 
-	cfg.NotesEditor = "zed"
-	if cfg.GetNotesEditor() != "zed" {
-		t.Errorf("expected notes editor 'zed', got %q", cfg.GetNotesEditor())
+	cfg.ExternalEditor = "zed"
+	if cfg.GetExternalEditor() != "zed" {
+		t.Errorf("expected external editor 'zed', got %q", cfg.GetExternalEditor())
 	}
 }
 

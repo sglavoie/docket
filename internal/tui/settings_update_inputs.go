@@ -40,7 +40,7 @@ func (m *SettingsModel) validateFocusedField() { //nolint:gocyclo
 			m.validationErr = err.Error()
 		}
 	case 1:
-		if err := m.validateNotesEditor(); err != nil {
+		if err := m.validateExternalEditor(); err != nil {
 			m.validationErr = err.Error()
 		}
 	case 2:

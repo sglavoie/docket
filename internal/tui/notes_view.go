@@ -42,7 +42,7 @@ type NotesViewModel struct {
 	isGlobal bool   // true when operating on global notes
 	config   interface {
 		GetEditor() string
-		GetNotesEditor() string
+		GetExternalEditor() string
 	}
 
 	notes       []*models.Note
@@ -179,7 +179,7 @@ type noteLinkUndoEntry struct {
 // notesConfig is a minimal interface for config access.
 type notesConfig interface {
 	GetEditor() string
-	GetNotesEditor() string
+	GetExternalEditor() string
 }
 
 // NewNotesViewModel creates a new notes view.

@@ -5,7 +5,7 @@ import (
 )
 
 // sharedViewState carries filter/sort/sidebar/filterBar state between
-// ProjectTree and Outliner when switching views with Ctrl+P / Ctrl+O.
+// ProjectTree and Outliner when switching through project navigation.
 type sharedViewState struct {
 	Filter           FilterState
 	Sort             SortState

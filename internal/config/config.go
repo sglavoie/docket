@@ -82,7 +82,7 @@ type Config struct {
 	TutorDismissed                 *bool                        `json:"tutor_dismissed,omitempty"`
 	AttachmentEditor               string                       `json:"attachment_editor,omitempty"`
 	CodeEditor                     string                       `json:"code_editor,omitempty"`
-	NotesEditor                    string                       `json:"notes_editor,omitempty"`
+	ExternalEditor                 string                       `json:"external_editor,omitempty"`
 	TaskTemplates                  []template.TaskTemplate      `json:"task_templates,omitempty"`
 	DefaultTemplatesInit           bool                         `json:"default_templates_init,omitempty"`
 	ScoringProfiles                []scoring.ScoringProfile     `json:"scoring_profiles,omitempty"`

@@ -5,7 +5,9 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/sglavoie/tt/internal/external"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/storage"
 )
 
 // currentViewAsModel returns the current view as a tea.Model for interface assertions.
@@ -39,6 +41,91 @@ func (m *AppModel) handleGlobalClipboard(key string) (bool, tea.Cmd) {
 	}
 
 	return false, nil
+}
+
+type taskReferenceProvider interface {
+	getTaskRef() (*models.Task, *models.Project)
+}
+
+var (
+	createReferenceSnapshotFile = external.CreateReferenceSnapshotFile
+	openReferenceFile           = external.OpenReferenceFile
+)
+
+func (m *AppModel) handleGlobalReferenceOpen() (bool, tea.Cmd) {
+	if _, ok := m.currentViewAsModel().(taskReferenceProvider); !ok {
+		return false, nil
+	}
+
+	task, project := m.getCurrentCursorTaskAndProject()
+	if task == nil {
+		m.setInfoStatus("No task selected for reference open")
+		return true, defaultStatusTimeout()
+	}
+
+	return true, m.openTaskReferenceSnapshot(task, project)
+}
+
+func (m *AppModel) handleGlobalNotesOpen() (bool, tea.Cmd) {
+	if _, ok := m.currentViewAsModel().(taskReferenceProvider); !ok {
+		return false, nil
+	}
+
+	task, project := m.getCurrentCursorTaskAndProject()
+	if task == nil || project == nil {
+		m.setInfoStatus("No task selected for Notes")
+		return true, defaultStatusTimeout()
+	}
+
+	return true, func() tea.Msg { return ShowNotesMsg{Project: project} }
+}
+
+func (m *AppModel) openTaskReferenceSnapshot(task *models.Task, project *models.Project) tea.Cmd {
+	linkedNotes, err := linkedNotesForReferenceTask(task, project)
+	if err != nil {
+		return errorCmd("failed to load linked notes: %w", err)
+	}
+
+	content := external.FormatTaskReferenceMarkdownWithNotes(task, linkedNotes)
+	path, err := createReferenceSnapshotFile(content, "tt-task-reference-", ".md")
+	if err != nil {
+		return errorCmd("failed to create reference snapshot: %w", err)
+	}
+
+	externalEditor := ""
+	if m.config != nil {
+		externalEditor = m.config.GetExternalEditor()
+	}
+	result, err := openReferenceFile(externalEditor, path)
+	if err != nil {
+		if result.Status == external.ReferenceOpenStatusUnsupportedEditor {
+			m.setInfoStatus(err.Error())
+			return defaultStatusTimeout()
+		}
+		return errorCmd("%s", err)
+	}
+
+	m.setSuccessStatus("Opened task reference copy")
+	return defaultStatusTimeout()
+}
+
+func linkedNotesForReferenceTask(task *models.Task, project *models.Project) ([]*models.Note, error) {
+	if task == nil || project == nil {
+		return nil, nil
+	}
+
+	notes, err := storage.ListNotes(project)
+	if err != nil {
+		return nil, err
+	}
+
+	linked := make([]*models.Note, 0)
+	for _, note := range notes {
+		if note != nil && note.HasLink(task.ID) {
+			linked = append(linked, note)
+		}
+	}
+	return linked, nil
 }
 
 func (m *AppModel) handleGlobalKeyPress(msg tea.KeyPressMsg) (bool, tea.Cmd) { //nolint:gocyclo
@@ -209,6 +296,20 @@ func (m *AppModel) handleGlobalKeyPress(msg tea.KeyPressMsg) (bool, tea.Cmd) { /
 	case "ctrl+/":
 		if !m.hasActiveTextInput() {
 			return true, func() tea.Msg { return ShowGlobalSearchMsg{} }
+		}
+	case "ctrl+o":
+		if m.hasActiveTextInput() || m.hasActivePendingPrefix() || m.hasActiveConfirmDialog() || m.hasActiveMultiSelect() {
+			break
+		}
+		if handled, cmd := m.handleGlobalReferenceOpen(); handled {
+			return true, cmd
+		}
+	case "ctrl+n":
+		if m.hasActiveTextInput() || m.hasActivePendingPrefix() || m.hasActiveConfirmDialog() || m.hasActiveMultiSelect() {
+			break
+		}
+		if handled, cmd := m.handleGlobalNotesOpen(); handled {
+			return true, cmd
 		}
 	case `ctrl+\`:
 		if !m.hasActiveTextInput() {

@@ -18,7 +18,7 @@ const (
 const DefaultUndoHistoryDepth = 50
 
 // CurrentConfigVersion is the latest config schema version supported by this build.
-const CurrentConfigVersion = 2
+const CurrentConfigVersion = 3
 
 // NewConfig creates a new configuration with default values.
 func NewConfig() *Config {
@@ -134,14 +134,12 @@ func (c *Config) IsDescriptionColumnVisible() bool {
 	return true
 }
 
-// GetNotesEditor returns the configured editor for opening notes with Ctrl+O.
-// Defaults to "code" (VS Code) if not set.
-func (c *Config) GetNotesEditor() string {
-	if c.NotesEditor != "" {
-		return c.NotesEditor
-	}
-	if editor := c.GetEditor(); editor != "" {
-		return editor
+// GetExternalEditor returns the configured editor for task/note reference snapshots.
+// Async reference opens expect a GUI editor; terminal editors are rejected by
+// the reference opener. Defaults to "code" (VS Code) if not set.
+func (c *Config) GetExternalEditor() string {
+	if c.ExternalEditor != "" {
+		return c.ExternalEditor
 	}
 	return "code"
 }

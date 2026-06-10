@@ -3,8 +3,6 @@ package keymap
 // CommonPrimaryViewDeps holds action closures shared across primary views
 // (ProjectTree, Outliner, etc.).
 type CommonPrimaryViewDeps struct {
-	// OpenOutliner opens or toggles the outliner view.
-	OpenOutliner Action
 	// OpenProjectTree opens or toggles the project tree view.
 	OpenProjectTree Action
 	// OpenProjectCyclePicker opens the numbered project cycle picker.
@@ -48,7 +46,6 @@ func CommonPrimaryViewGroup(deps CommonPrimaryViewDeps) []Entry {
 	cat := "Views"
 	entries := []Entry{
 		Bind("ctrl+p", "Open project tree view", cat, deps.OpenProjectTree),
-		Bind("ctrl+o", "Open outliner view", cat, deps.OpenOutliner),
 		Bind("`", "Open project picker", "Project Cycling", deps.OpenProjectCyclePicker),
 		Bind("~", "Previous project in cycle", "Project Cycling", deps.PrevProject),
 		Bind("@", "Open cycle manager", "Project Cycling", deps.OpenCycleManager),
@@ -59,7 +56,8 @@ func CommonPrimaryViewGroup(deps CommonPrimaryViewDeps) []Entry {
 		Bind("i", "Quick capture", "Task Operations", deps.QuickCapture),
 		Bind("I", "Bulk capture", "Task Operations", deps.BulkCapture),
 		Bind(`\`, "Jump to task", "Navigation", deps.JumpToTask),
-		Bind("{", "Open notes view", "Notes", deps.OpenNotesView),
+		Bind("ctrl+n", "Open project Notes", "Notes", deps.OpenNotesView),
+		Bind("{", "Open project Notes", "Notes", deps.OpenNotesView, AsHidden()),
 		Bind("}", "Create new note", "Notes", deps.CreateNote),
 		Bind("R", "Reload from disk", "Other", deps.ReloadFromDisk),
 		Bind("ctrl+r", "Redo", "Other", deps.Redo),

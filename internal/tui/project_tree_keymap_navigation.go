@@ -14,9 +14,6 @@ func (b *projectTreeKeymapBuilder) primaryViewEntries() []keymap.Entry {
 		OpenProjectTree: func() (tea.Model, tea.Cmd) {
 			return m, func() tea.Msg { return ShowProjectTreeMsg{Project: m.getProject()} }
 		},
-		OpenOutliner: func() (tea.Model, tea.Cmd) {
-			return m, func() tea.Msg { return ShowOutlinerMsg{Project: m.getProject()} }
-		},
 		OpenProjectCyclePicker: func() (tea.Model, tea.Cmd) {
 			return m, func() tea.Msg { return ShowProjectCyclePickerMsg{} }
 		},

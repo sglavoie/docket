@@ -56,35 +56,107 @@ func (m *NotesViewModel) viewCurrentNote() tea.Cmd {
 	})
 }
 
-func (m *NotesViewModel) openInNotesEditor() tea.Cmd {
+func (m *NotesViewModel) openCurrentNoteReference() tea.Cmd {
 	if len(m.notes) == 0 || m.cursor >= len(m.notes) {
 		return nil
 	}
 	note := m.notes[m.cursor]
 
-	configEditor := ""
-	if m.config != nil {
-		configEditor = m.config.GetNotesEditor()
-	}
-	editor, editorErr := external.ResolveEditor(configEditor)
-	if editorErr != nil {
-		return errorCmd("%s", editorErr)
-	}
 	path, err := storage.NoteFilePathIn(m.effectiveDir(), note.Filename)
 	if err != nil {
 		return errorCmd("invalid note path: %w", err)
 	}
-	c := external.EditorCommand(editor, path)
 
-	oldFilename := note.Filename
-	dir := m.effectiveDir()
-	return tea.ExecProcess(c, func(err error) tea.Msg {
-		reloaded, loadErr := storage.LoadNoteFrom(dir, oldFilename)
-		if loadErr == nil && reloaded.Title != note.Title {
-			_, _ = storage.RenameNoteIn(dir, oldFilename, reloaded.Title)
+	content, err := m.formatNoteReferenceMarkdown(note, path)
+	if err != nil {
+		return errorCmd("failed to prepare note reference: %w", err)
+	}
+
+	snapshotPath, err := createReferenceSnapshotFile(content, "tt-note-reference-", ".md")
+	if err != nil {
+		return errorCmd("failed to create note reference: %w", err)
+	}
+
+	externalEditor := ""
+	if m.config != nil {
+		externalEditor = m.config.GetExternalEditor()
+	}
+	result, err := openReferenceFile(externalEditor, snapshotPath)
+	if err != nil {
+		if result.Status == external.ReferenceOpenStatusUnsupportedEditor {
+			m.setStatus(err.Error())
+			return defaultStatusTimeout()
 		}
-		return NotesRefreshMsg{}
-	})
+		return errorCmd("%s", err)
+	}
+
+	m.setStatus("Opened note reference copy")
+	return defaultStatusTimeout()
+}
+
+func (m *NotesViewModel) formatNoteReferenceMarkdown(note *models.Note, path string) (string, error) {
+	if note.ParseError != "" {
+		raw, err := os.ReadFile(path)
+		if err != nil {
+			return "", err
+		}
+		return formatRawNoteReferenceMarkdown(note, string(raw)), nil
+	}
+
+	return external.FormatNoteReferenceMarkdownWithTasks(note, m.linkedTasksForReferenceNote(note)), nil
+}
+
+func (m *NotesViewModel) linkedTasksForReferenceNote(note *models.Note) []*models.Task {
+	if note == nil || len(note.LinkedTasks) == 0 {
+		return nil
+	}
+
+	tasks := m.cachedTasks
+	if len(tasks) == 0 && m.project != nil {
+		tasks = m.project.Tasks
+	}
+
+	taskByID := make(map[string]*models.Task, len(tasks))
+	for _, task := range tasks {
+		if task != nil && task.ID != "" {
+			taskByID[task.ID] = task
+		}
+	}
+
+	linked := make([]*models.Task, 0, len(note.LinkedTasks))
+	seen := make(map[string]bool, len(note.LinkedTasks))
+	for _, id := range note.LinkedTasks {
+		id = strings.TrimSpace(id)
+		if id == "" || seen[id] {
+			continue
+		}
+		seen[id] = true
+		if task := taskByID[id]; task != nil {
+			linked = append(linked, task)
+		}
+	}
+	return linked
+}
+
+func formatRawNoteReferenceMarkdown(note *models.Note, raw string) string {
+	title := note.Title
+	if title == "" {
+		title = models.TitleFromFilename(note.Filename)
+	}
+
+	var b strings.Builder
+	fmt.Fprintf(&b, "# Note: %s\n\n", title)
+	fmt.Fprintf(&b, "> **%s**\n\n", external.ReferenceSnapshotWarning)
+	b.WriteString("This note could not be parsed. Raw file content is shown below for reference.\n\n")
+	b.WriteString("## Parse Error\n\n")
+	b.WriteString(note.ParseError)
+	b.WriteString("\n\n")
+	b.WriteString("## Raw File Content\n\n")
+	b.WriteString(raw)
+	if !strings.HasSuffix(raw, "\n") {
+		b.WriteString("\n")
+	}
+	return b.String()
 }
 
 func (m *NotesViewModel) editCurrentNote() tea.Cmd {

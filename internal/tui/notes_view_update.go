@@ -162,7 +162,7 @@ func (m *NotesViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) { //nolint:goc
 		case "e":
 			return m, m.editCurrentNote()
 		case "ctrl+o":
-			return m, m.openInNotesEditor()
+			return m, m.openCurrentNoteReference()
 		case "n":
 			return m, m.createNote()
 		case "d":
@@ -267,7 +267,7 @@ func (m *NotesViewModel) handleDetailsPaneKey(key string) (tea.Model, tea.Cmd) {
 	case "e":
 		return m, m.editCurrentNote()
 	case "ctrl+o":
-		return m, m.openInNotesEditor()
+		return m, m.openCurrentNoteReference()
 	case "enter":
 		return m, m.viewCurrentNote()
 	}

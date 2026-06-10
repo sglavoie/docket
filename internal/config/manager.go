@@ -70,6 +70,7 @@ func (m *Manager) recoverFromBackup(primaryErr error) (Config, error) {
 	if err != nil {
 		return Config{}, fmt.Errorf("failed to parse config file (no backup available): %w", primaryErr)
 	}
+	backupData = migrateLegacyConfigKeys(backupData)
 
 	var cfg Config
 	if json.Unmarshal(backupData, &cfg) != nil {
@@ -81,6 +82,28 @@ func (m *Manager) recoverFromBackup(primaryErr error) (Config, error) {
 		return Config{}, fmt.Errorf("recovered config from backup but failed to persist it: %w", writeErr)
 	}
 	return cfg, nil
+}
+
+func migrateLegacyConfigKeys(data []byte) []byte {
+	var raw map[string]json.RawMessage
+	if err := json.Unmarshal(data, &raw); err != nil || raw == nil {
+		return data
+	}
+
+	notesEditor, hasNotesEditor := raw["notes_editor"]
+	if !hasNotesEditor {
+		return data
+	}
+	if _, hasExternalEditor := raw["external_editor"]; !hasExternalEditor {
+		raw["external_editor"] = notesEditor
+	}
+	delete(raw, "notes_editor")
+
+	migrated, err := json.Marshal(raw)
+	if err != nil {
+		return data
+	}
+	return migrated
 }
 
 // resolveEditorDefault picks the best available editor via the env/PATH fallback
@@ -118,6 +141,7 @@ func (m *Manager) Load() (*Config, error) { //nolint:gocyclo
 	if err != nil {
 		return nil, fmt.Errorf("failed to read config file: %w", err)
 	}
+	data = migrateLegacyConfigKeys(data)
 
 	var config Config
 	if err := json.Unmarshal(data, &config); err != nil {
@@ -399,7 +423,7 @@ func (m *Manager) Load() (*Config, error) { //nolint:gocyclo
 	// Each version bump gets a dedicated migration block below.
 	// When adding version 2, add a `if config.Version == 1 { ... }` block
 	// that transforms the data, then set config.Version = 2 and save.
-	// Bump CurrentConfigVersion in config.go to match.
+	// Bump CurrentConfigVersion in config_core.go to match.
 	if config.Version == 0 {
 		config.Version = 1
 		if err := m.Save(&config); err != nil {
@@ -412,6 +436,14 @@ func (m *Manager) Load() (*Config, error) { //nolint:gocyclo
 		config.Version = 2
 		if err := m.Save(&config); err != nil {
 			return nil, fmt.Errorf("failed to save config after v1→v2 version bump: %w", err)
+		}
+	}
+	if config.Version == 2 {
+		// v2 -> v3: notes_editor was renamed to external_editor by the raw
+		// key migration before unmarshalling.
+		config.Version = 3
+		if err := m.Save(&config); err != nil {
+			return nil, fmt.Errorf("failed to save config after v2->v3 version bump: %w", err)
 		}
 	}
 

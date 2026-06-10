@@ -340,9 +340,9 @@ func TestConfigVersionBump_V1toV2(t *testing.T) {
 		t.Fatalf("Load failed: %v", err)
 	}
 
-	// Version must be bumped to 2.
-	if cfg.Version != 2 {
-		t.Errorf("Version = %d, want 2", cfg.Version)
+	// Version must be bumped to the current schema.
+	if cfg.Version != CurrentConfigVersion {
+		t.Errorf("Version = %d, want %d", cfg.Version, CurrentConfigVersion)
 	}
 
 	// Legacy fields must be gone.
@@ -377,8 +377,8 @@ func TestConfigVersionBump_V1toV2(t *testing.T) {
 	if err != nil {
 		t.Fatalf("second Load failed: %v", err)
 	}
-	if cfg2.Version != 2 {
-		t.Errorf("second load Version = %d, want 2", cfg2.Version)
+	if cfg2.Version != CurrentConfigVersion {
+		t.Errorf("second load Version = %d, want %d", cfg2.Version, CurrentConfigVersion)
 	}
 	if cfg2.ThemeDark.BackgroundColor != "#abcdef" {
 		t.Errorf("second load ThemeDark.BackgroundColor = %q, want #abcdef", cfg2.ThemeDark.BackgroundColor)

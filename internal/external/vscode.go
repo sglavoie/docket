@@ -13,7 +13,10 @@ import (
 // CreateTempFileWithContent creates a temporary file with the given content.
 // Useful for editing task descriptions in external editors.
 func CreateTempFileWithContent(content string, prefix string, suffix string) (string, error) {
-	dir := os.TempDir()
+	return createTempFileWithContentInDir(os.TempDir(), content, prefix, suffix)
+}
+
+func createTempFileWithContentInDir(dir string, content string, prefix string, suffix string) (string, error) {
 	pattern := prefix + "*" + suffix
 	f, err := os.CreateTemp(dir, pattern)
 	if err != nil {

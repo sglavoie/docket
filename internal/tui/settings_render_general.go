@@ -21,15 +21,15 @@ func (m *SettingsModel) renderGeneralTab() string {
 
 	b.WriteString("\n")
 
-	b.WriteString(renderFormLabelWithWidth("Notes Editor: ", labelWidth, m.focusIndex == base+1))
-	b.WriteString(m.notesEditorInput.View())
+	b.WriteString(renderFormLabelWithWidth("External editor: ", labelWidth, m.focusIndex == base+1))
+	b.WriteString(m.externalEditorInput.View())
 	b.WriteString("\n")
 	if m.focusIndex == base+1 && m.validationErr != "" {
 		b.WriteString(strings.Repeat(" ", indent))
 		b.WriteString(ValidationErrorStyle.Render(m.validationErr))
 		b.WriteString("\n")
 	}
-	b.WriteString(renderFormFieldDesc("Editor for opening notes with Ctrl+O (empty = code)", indent, m.focusIndex == base+1))
+	b.WriteString(renderFormFieldDesc("GUI editor for Ctrl+O external reference previews; empty defaults to code", indent, m.focusIndex == base+1))
 
 	b.WriteString("\n")
 

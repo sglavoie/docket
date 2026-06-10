@@ -347,7 +347,7 @@ func (m *NotesViewModel) GetHelpItems() []HelpItem {
 		{Key: "Tab", Description: "Switch pane (list/details)"},
 		{Key: "Enter", Description: "View note (glow)"},
 		{Key: "e", Description: "Edit note"},
-		{Key: "Ctrl+O", Description: "Open in notes editor"},
+		{Key: "Ctrl+O", Description: "Open note reference copy"},
 		{Key: "n", Description: "Create new note"},
 		{Key: "d", Description: "Delete note (confirm)"},
 		{Key: "u", Description: "Undo last delete"},

@@ -6,6 +6,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/logging"
+	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 )
 
@@ -66,14 +67,14 @@ func (m *AppModel) notesCommands() []Command {
 	return []Command{
 		{
 			Name:        "show notes",
-			Description: "Open notes view",
-			Shortcut:    "[",
+			Description: "Open project Notes",
+			Shortcut:    "ctrl+n",
 			Category:    CategoryNotes,
-			Views:       projectTreeAndOutlinerViews(),
+			Views:       projectNotesViews(),
 			Aliases:     []string{"notes", "view notes", "open notes"},
 			Handler: func() tea.Msg {
-				if m.currentProject != nil {
-					return ShowNotesMsg{Project: m.currentProject}
+				if project := m.notesTargetProject(); project != nil {
+					return ShowNotesMsg{Project: project}
 				}
 				return nil
 			},
@@ -81,7 +82,7 @@ func (m *AppModel) notesCommands() []Command {
 		{
 			Name:        "create note",
 			Description: "Create a new note",
-			Shortcut:    "]",
+			Shortcut:    "}",
 			Category:    CategoryNotes,
 			Views:       projectTreeAndOutlinerViews(),
 			Aliases:     []string{"new note", "add note"},
@@ -93,6 +94,70 @@ func (m *AppModel) notesCommands() []Command {
 			},
 		},
 	}
+}
+
+func projectNotesViews() []ViewType {
+	return []ViewType{
+		ViewProjectTree,
+		ViewOutliner,
+		ViewTemporaryOutliner,
+		ViewCrossProjectOutliner,
+		ViewFocusBoard,
+		ViewAllTasks,
+		ViewDailyReview,
+		ViewWeeklyReview,
+		ViewFocusView,
+		ViewProjectFocusView,
+		ViewPriorityView,
+		ViewDueDateOverview,
+		ViewKanban,
+		ViewCrossProjectKanban,
+		ViewRecentActivity,
+		ViewInboxProcessor,
+		ViewGlobalInboxProcessor,
+		ViewTaskDetail,
+	}
+}
+
+func (m *AppModel) notesTargetProject() *models.Project {
+	if project := m.selectedTaskProjectFromOrigin(); project != nil {
+		return project
+	}
+	return m.currentProject
+}
+
+func (m *AppModel) selectedTaskProjectFromOrigin() *models.Project {
+	origin := m.nonPaletteOrigin()
+
+	switch origin {
+	case ViewProjectTree:
+		if m.projectTree != nil {
+			if task, project := m.projectTree.getTaskRef(); task != nil && project != nil {
+				return project
+			}
+		}
+	case ViewOutliner:
+		if m.outliner != nil {
+			if task, project := m.outliner.getTaskRef(); task != nil && project != nil {
+				return project
+			}
+		}
+	case ViewCrossProjectOutliner:
+		if m.crossOutliner != nil {
+			if task, project := m.crossOutliner.getTaskRef(); task != nil && project != nil {
+				return project
+			}
+		}
+	}
+
+	if v := m.views.Get(origin); v != nil {
+		if trp, ok := v.(taskReferenceProvider); ok {
+			if task, project := trp.getTaskRef(); task != nil && project != nil {
+				return project
+			}
+		}
+	}
+	return nil
 }
 
 func (m *AppModel) otherCommands() []Command {

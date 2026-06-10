@@ -66,6 +66,29 @@ func TestGetForView_ProjectTree(t *testing.T) {
 	}
 }
 
+func TestGetForView_ProjectTreeAndOutlinerUseCtrlNForProjectNotes(t *testing.T) {
+	r := NewKeybindingRegistry()
+
+	for _, view := range []ViewType{ViewProjectTree, ViewOutliner} {
+		items := r.GetForView(view)
+		foundCtrlN := false
+		for _, item := range items {
+			if item.Key == "ctrl+n" && item.Description == "Open project Notes" {
+				foundCtrlN = true
+			}
+			if item.Key == "ctrl+o" && item.Description == "Open outliner view" {
+				t.Fatalf("%s should not advertise ctrl+o as Outliner", view)
+			}
+			if item.Key == "{" && item.Description == "Open project Notes" {
+				t.Fatalf("%s should not advertise hidden Notes alias {", view)
+			}
+		}
+		if !foundCtrlN {
+			t.Fatalf("%s missing ctrl+n Open project Notes binding", view)
+		}
+	}
+}
+
 func TestGetForView_InboxProcessorPriority(t *testing.T) {
 	// InboxProcessor is migrated to declarative keymap; verify via buildKeyMap().
 	m := &InboxProcessorModel{}
