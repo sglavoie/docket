@@ -24,7 +24,7 @@ func weeklyReviewViewSpecificEntries(m *WeeklyReviewModel) []keymap.Entry {
 		}),
 		keymap.Bind("ctrl+n", "Next unreviewed section", "Review", func() (tea.Model, tea.Cmd) {
 			return m.goToNextUnreviewed()
-		}),
+		}, keymap.AsHidden()),
 		weeklyReviewTabCycleEntry(m, "shift+right", "Next tab"),
 		weeklyReviewTabCycleEntry(m, "shift+left", "Previous tab"),
 		keymap.Bind("R", "Mark section reviewed / reset", "Review", func() (tea.Model, tea.Cmd) {

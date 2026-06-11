@@ -89,6 +89,35 @@ func TestGetForView_ProjectTreeAndOutlinerUseCtrlNForProjectNotes(t *testing.T) 
 	}
 }
 
+func TestGetForView_ProjectNotesScopeDoesNotAdvertiseStaleCtrlN(t *testing.T) {
+	r := NewKeybindingRegistry()
+
+	for _, view := range projectNotesViews() {
+		items := r.GetForView(view)
+		for _, item := range items {
+			if item.Key == "ctrl+n" && item.Description != "Open project Notes" {
+				t.Fatalf("%s advertises ctrl+n as %q", view, item.Description)
+			}
+		}
+	}
+}
+
+func TestGetForView_WeeklyReviewDoesNotAdvertiseSupersededCtrlN(t *testing.T) {
+	r := NewKeybindingRegistry()
+	items := r.GetForView(ViewWeeklyReview)
+
+	for _, item := range items {
+		if item.Key == "ctrl+n" {
+			t.Fatalf("Weekly Review should not advertise local ctrl+n binding %q", item.Description)
+		}
+	}
+
+	keys := (&WeeklyReviewModel{}).buildKeyMap().HandledKeys()
+	if !slices.Contains(keys, "ctrl+n") {
+		t.Fatal("Weekly Review should keep local ctrl+n handled as a hidden fallback")
+	}
+}
+
 func TestGetForView_InboxProcessorPriority(t *testing.T) {
 	// InboxProcessor is migrated to declarative keymap; verify via buildKeyMap().
 	m := &InboxProcessorModel{}
