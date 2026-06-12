@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"strings"
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
@@ -142,6 +143,66 @@ func TestParentSelectorUpdate_AllowNoneSelection(t *testing.T) {
 	}
 	if msg.ParentID != nil {
 		t.Fatalf("expected nil parent when None is selected, got %#v", msg.ParentID)
+	}
+}
+
+func TestParentSelectorView_AllowNoneLabelsNoParent(t *testing.T) {
+	parent, err := models.NewTask("parent-1", 11, models.TaskTypeStory, "Parent task")
+	if err != nil {
+		t.Fatalf("NewTask: %v", err)
+	}
+
+	m := NewParentSelectorModel([]*models.Task{parent}, nil, true, ViewProjectTree)
+	m.SetSize(80, 24)
+
+	view := m.View().Content
+	if !strings.Contains(view, parentSelectorNoParentLabel) {
+		t.Fatalf("expected no-parent label %q in view, got:\n%s", parentSelectorNoParentLabel, view)
+	}
+	if !strings.Contains(view, "Ctrl+X no parent") {
+		t.Fatalf("expected Ctrl+X no-parent hint in view, got:\n%s", view)
+	}
+}
+
+func TestParentSelectorUpdate_CtrlXClearsParent(t *testing.T) {
+	parent, err := models.NewTask("parent-1", 11, models.TaskTypeStory, "Parent task")
+	if err != nil {
+		t.Fatalf("NewTask: %v", err)
+	}
+
+	m := NewParentSelectorModel([]*models.Task{parent}, &parent.ID, true, ViewCrossProjectOutliner)
+	m.reparentTaskID = "task-1"
+
+	_, cmd := m.Update(syntheticCtrlKey('x'))
+	if cmd == nil {
+		t.Fatal("ctrl+x should emit a parent selection message")
+	}
+	msg, ok := cmd().(ParentSelectedMsg)
+	if !ok {
+		t.Fatalf("expected ParentSelectedMsg, got %T", cmd())
+	}
+	if msg.ParentID != nil {
+		t.Fatalf("expected nil parent from ctrl+x, got %#v", msg.ParentID)
+	}
+	if msg.Source != ViewCrossProjectOutliner {
+		t.Fatalf("expected source %v, got %v", ViewCrossProjectOutliner, msg.Source)
+	}
+	if msg.ReparentTaskID != "task-1" {
+		t.Fatalf("expected reparent task ID %q, got %q", "task-1", msg.ReparentTaskID)
+	}
+}
+
+func TestParentSelectorUpdate_CtrlXIgnoredWhenNoneDisallowed(t *testing.T) {
+	parent, err := models.NewTask("parent-1", 11, models.TaskTypeStory, "Parent task")
+	if err != nil {
+		t.Fatalf("NewTask: %v", err)
+	}
+
+	m := NewParentSelectorModel([]*models.Task{parent}, nil, false, ViewProjectTree)
+
+	_, cmd := m.Update(syntheticCtrlKey('x'))
+	if cmd != nil {
+		t.Fatal("ctrl+x should not emit a selection when no-parent is disallowed")
 	}
 }
 

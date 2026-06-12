@@ -167,11 +167,11 @@ func (m *AppModel) quickNoteCommand() Command {
 func (m *AppModel) moveReparentCommand() Command {
 	return Command{
 		Name:        "move/reparent task",
-		Description: "Move selected task to a new parent",
+		Description: "Move selected task to a new parent or clear its parent",
 		Shortcut:    "ctrl+m",
 		Category:    CategoryStructure,
 		Views:       []ViewType{ViewProjectTree, ViewOutliner, ViewCrossProjectOutliner},
-		Aliases:     []string{"reparent", "move to parent"},
+		Aliases:     []string{"reparent", "move to parent", "clear parent", "remove parent"},
 		Handler: func() tea.Msg {
 			task, project, source := m.reparentTarget()
 			if task == nil || project == nil {

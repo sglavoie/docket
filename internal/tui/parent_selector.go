@@ -10,6 +10,8 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 )
 
+const parentSelectorNoParentLabel = "No parent (top-level)"
+
 // ParentPickerItem wraps a Task for parent selection with fuzzy scoring.
 type ParentPickerItem struct {
 	Task *models.Task
@@ -138,10 +140,23 @@ func (m *ParentSelectorModel) Init() tea.Cmd {
 }
 
 func (m *ParentSelectorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	if key, ok := msg.(tea.KeyPressMsg); ok && m.allowNone && key.String() == "ctrl+x" {
+		return m, m.selectNoParent()
+	}
 	if handled, cmd := m.alwaysSearch.Update(msg); handled {
 		return m, cmd
 	}
 	return m, nil
+}
+
+func (m *ParentSelectorModel) selectNoParent() tea.Cmd {
+	return func() tea.Msg {
+		return ParentSelectedMsg{
+			ParentID:       nil,
+			Source:         m.source,
+			ReparentTaskID: m.reparentTaskID,
+		}
+	}
 }
 
 func (m *ParentSelectorModel) View() tea.View {
@@ -162,7 +177,11 @@ func (m *ParentSelectorModel) View() tea.View {
 	b.WriteString(m.renderList())
 
 	// Footer
-	left := HelpStyle.Render("↑/↓ navigate · Enter select · Esc cancel")
+	footer := "↑/↓ navigate · Enter select · Esc cancel"
+	if m.allowNone {
+		footer = "↑/↓ navigate · Enter select · Ctrl+X no parent · Esc cancel"
+	}
+	left := HelpStyle.Render(footer)
 	right := MutedStyle.Render(fmt.Sprintf("%d items", len(m.Filtered)))
 	b.WriteString(renderStatusBarFooter(left, right, m.Width()))
 
@@ -198,7 +217,7 @@ func (m *ParentSelectorModel) renderList() string {
 			if m.Cursor == 0 {
 				cursor = "  "
 			}
-			line := fmt.Sprintf("%s%s", cursor, "(None)")
+			line := fmt.Sprintf("%s%s", cursor, parentSelectorNoParentLabel)
 			if m.Cursor == 0 {
 				line = SelectedLine(line, m.Width())
 			} else {

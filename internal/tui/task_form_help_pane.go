@@ -110,7 +110,7 @@ func (m *TaskFormModel) basicsHelpEntries() []helpEntry {
 		}
 	case 4: // Parent
 		return []helpEntry{
-			{key: "Enter", desc: "select parent"},
+			{key: "Enter", desc: "select or clear parent"},
 		}
 	case 5: // Section
 		return []helpEntry{

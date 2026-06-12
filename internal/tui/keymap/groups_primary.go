@@ -67,7 +67,7 @@ func CommonPrimaryViewGroup(deps CommonPrimaryViewDeps) []Entry {
 		entries = append(entries, Bind("ctrl+l", "Edit last modified task", "Task Operations", deps.EditLastModified))
 	}
 	if deps.MoveReparent != nil {
-		entries = append(entries, Bind("ctrl+m", "Move/reparent task", "Task Operations", deps.MoveReparent))
+		entries = append(entries, Bind("ctrl+m", "Move/reparent/clear parent", "Task Operations", deps.MoveReparent))
 	}
 	return entries
 }
