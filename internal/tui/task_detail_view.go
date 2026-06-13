@@ -378,8 +378,9 @@ func (m *TaskDetailModel) renderDependenciesSection(width int) string {
 		lines = append(lines, MutedStyle.Render("Blocking:"))
 		for _, blocked := range blockedBy {
 			depStatus := GetStatusStyle(string(blocked.Status))
+			title := TaskTitleStyleFor(blocked, TaskTitleStyleOptions{}).Render(blocked.Title)
 			line := fmt.Sprintf("  #%-3d %s %s",
-				blocked.ShortID, depStatus.Render(blocked.Status.Icon()), blocked.Title)
+				blocked.ShortID, depStatus.Render(blocked.Status.Icon()), title)
 			lines = append(lines, line)
 		}
 	}
@@ -406,8 +407,9 @@ func (m *TaskDetailModel) formatLinkedTask(ref string, _ int) string {
 		task := m.project.GetTaskByID(taskRef.TaskID)
 		if task != nil {
 			depStatus := GetStatusStyle(string(task.Status))
+			title := TaskTitleStyleFor(task, TaskTitleStyleOptions{}).Render(task.Title)
 			return fmt.Sprintf("  #%-3d %s %s",
-				task.ShortID, depStatus.Render(task.Status.Icon()), task.Title)
+				task.ShortID, depStatus.Render(task.Status.Icon()), title)
 		}
 		return "  " + ValidationErrorStyle.Render("(missing)")
 	}
@@ -431,8 +433,9 @@ func (m *TaskDetailModel) formatLinkedTask(ref string, _ int) string {
 	}
 	depStatus := GetStatusStyle(string(task.Status))
 	projectLabel := MutedStyle.Render(fmt.Sprintf("[%s] ", targetProject.Name))
+	title := TaskTitleStyleFor(task, TaskTitleStyleOptions{}).Render(task.Title)
 	return fmt.Sprintf("  %s#%-3d %s %s",
-		projectLabel, task.ShortID, depStatus.Render(task.Status.Icon()), task.Title)
+		projectLabel, task.ShortID, depStatus.Render(task.Status.Icon()), title)
 }
 
 // renderMarkdownDescription renders the task description as styled markdown.

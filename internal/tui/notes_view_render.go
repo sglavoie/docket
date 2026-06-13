@@ -307,12 +307,13 @@ func (m *NotesViewModel) renderDetailsPane(note *models.Note, width, height int)
 		if len(note.LinkedTasks) > 0 && !m.isGlobal {
 			for _, taskID := range note.LinkedTasks {
 				taskTitle := "[deleted]"
+				taskLine := MutedStyle.Render(fmt.Sprintf("  → %s", taskTitle))
 				if m.project != nil {
 					if task := m.project.GetTaskByID(taskID); task != nil {
-						taskTitle = task.Title
+						taskLine = MutedStyle.Render("  → ") + TaskTitleStyleFor(task, TaskTitleStyleOptions{}).Render(task.Title)
 					}
 				}
-				lines = append(lines, MutedStyle.Render(fmt.Sprintf("  → %s", taskTitle)))
+				lines = append(lines, taskLine)
 			}
 		}
 

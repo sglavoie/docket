@@ -225,21 +225,25 @@ func (m *MetricsDashboardModel) renderBlockedTab(height int) string {
 		title := truncateToVisualWidth(entry.Task.Title, 38)
 
 		prefix := "  "
-		style := NormalStyle
+		titleCell := truncateAndPad(TaskTitleStyleFor(entry.Task, TaskTitleStyleOptions{}).Render(title), 38)
+		selected := i == m.blockedCursor
 		if i == m.blockedCursor {
 			prefix = "> "
-			style = TitleStyle
+			titleCell = truncateAndPad(title, 38)
 		}
 
 		statusIcon := entry.Task.Status.Icon()
-		line := fmt.Sprintf("%s%-3d %s %-38s %10s %8d",
+		line := fmt.Sprintf("%s%-3d %s %s %10s %8d",
 			prefix,
 			entry.Task.ShortID,
 			statusIcon,
-			title,
+			titleCell,
 			formatDuration(entry.TotalBlocked),
 			entry.BlockedPeriods)
-		lines = append(lines, style.Render(line))
+		if selected {
+			line = TitleStyle.Render(line)
+		}
+		lines = append(lines, line)
 	}
 
 	// Scroll indicator

@@ -119,10 +119,12 @@ func (m *NotesSearchModel) renderPreview() string {
 		b.WriteString("\n")
 		for _, taskID := range note.LinkedTasks {
 			taskTitle := "[deleted]"
+			taskLine := MutedStyle.Render(fmt.Sprintf("  → %s", taskTitle))
 			if task := m.project.GetTaskByID(taskID); task != nil {
-				taskTitle = task.Title
+				taskLine = MutedStyle.Render("  → ") + TaskTitleStyleFor(task, TaskTitleStyleOptions{}).Render(task.Title)
 			}
-			fmt.Fprintf(&b, "  → %s\n", taskTitle)
+			b.WriteString(taskLine)
+			b.WriteString("\n")
 		}
 	}
 	if note.Pinned {

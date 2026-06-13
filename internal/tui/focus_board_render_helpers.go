@@ -173,11 +173,10 @@ func renderBoardDueString(task *models.Task) string {
 
 func (m *FocusBoardModel) renderBoardTitle(task *models.Task, isSelected bool, maxTitleLen int) string {
 	truncatedTitle := truncateToVisualWidth(task.Title, maxTitleLen)
-	title := m.highlightTitle(truncatedTitle, task.Title)
-	if isSelected && !task.Dimmed {
-		return SelectedTaskTitleStyle.Render(title)
-	}
-	return GetTitlePriorityStyle(task.Priority).Render(title)
+	titleStyle := TaskTitleStyleFor(task, TaskTitleStyleOptions{
+		CursorSelected: isSelected,
+	})
+	return m.highlightTitle(truncatedTitle, task.Title, titleStyle)
 }
 
 func (m *FocusBoardModel) applyBoardHeroDemotion(task *models.Task, project *models.Project, segments *focusBoardRowSegments) {
@@ -258,14 +257,14 @@ func sumEstimatesForRows(rows []boardRow) float64 {
 
 // highlightTitle returns the truncated title with search match positions highlighted.
 // If there's no active search query, returns the plain title.
-func (m *FocusBoardModel) highlightTitle(truncatedTitle, fullTitle string) string {
+func (m *FocusBoardModel) highlightTitle(truncatedTitle, fullTitle string, baseStyle lipgloss.Style) string {
 	if m.searchQuery == "" {
-		return truncatedTitle
+		return baseStyle.Render(truncatedTitle)
 	}
 	query := strings.TrimSpace(m.searchQuery)
 	_, positions := fuzzy.ScoreTermsWithPositions(fullTitle, query)
 	if len(positions) == 0 {
-		return truncatedTitle
+		return baseStyle.Render(truncatedTitle)
 	}
 	titleRunes := []rune(truncatedTitle)
 	var validPositions []int
@@ -274,7 +273,7 @@ func (m *FocusBoardModel) highlightTitle(truncatedTitle, fullTitle string) strin
 			validPositions = append(validPositions, pos)
 		}
 	}
-	return HighlightText(truncatedTitle, validPositions, NormalStyle)
+	return HighlightText(truncatedTitle, validPositions, baseStyle)
 }
 
 // renderZenMode renders the deepest focus mode: a single centered card with title,
@@ -283,11 +282,13 @@ func (m *FocusBoardModel) renderZenMode() tea.View {
 	var b strings.Builder
 
 	// Header (no tab bar)
-	headerTitle := "Zen Focus"
+	headerTitle := renderFullscreenTitle("Zen Focus", "", m.AccentColor())
 	if row := m.getRowAtCursor(); row != nil && row.Task != nil {
-		headerTitle = "Currently: " + row.Task.Title
+		titleContent := fullscreenTitleStyle(m.AccentColor()).Render("Currently: ") +
+			TaskTitleStyleFor(row.Task, TaskTitleStyleOptions{}).Render(row.Task.Title)
+		headerTitle = renderFullscreenTitleContent(titleContent, "")
 	}
-	b.WriteString(renderFullscreenTitle(headerTitle, "", m.AccentColor()))
+	b.WriteString(headerTitle)
 	b.WriteString("\n")
 
 	row := m.getRowAtCursor()
@@ -330,7 +331,7 @@ func (m *FocusBoardModel) renderZenMode() tea.View {
 	cardWidth := max(min(m.width-8, 80), 20)
 	cardCfg := CardConfig{
 		Style:       SidebarCardStyle,
-		TitleStyle:  TitleStyle,
+		TitleStyle:  TaskTitleStyleFor(task, TaskTitleStyleOptions{}),
 		AccentColor: m.AccentColor(),
 	}
 	card := renderCard(task.Title, strings.TrimRight(body.String(), "\n"), cardWidth, cardCfg)

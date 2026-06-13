@@ -5,6 +5,8 @@ import (
 	"testing"
 
 	"charm.land/lipgloss/v2"
+
+	"github.com/sglavoie/tt/internal/models"
 )
 
 func TestGetTitlePriorityStyle(t *testing.T) {
@@ -52,5 +54,92 @@ func TestGetTitlePriorityStyleOutOfRange(t *testing.T) {
 			s.GetFaint() != p3.GetFaint() || s.GetForeground() != p3.GetForeground() {
 			t.Errorf("priority %d: expected P3 style, got different style", priority)
 		}
+	}
+}
+
+func TestTaskTitleStyleFor(t *testing.T) {
+	ApplyTheme(ThemeConfig{})
+
+	taskWith := func(priority int) *models.Task {
+		return &models.Task{
+			Title:    "Task",
+			Status:   models.StatusTodo,
+			Priority: priority,
+		}
+	}
+
+	tests := []struct {
+		name string
+		task *models.Task
+		opts TaskTitleStyleOptions
+		want lipgloss.Style
+	}{
+		{"priority 1", taskWith(1), TaskTitleStyleOptions{}, GetTitlePriorityStyle(1)},
+		{"priority 2", taskWith(2), TaskTitleStyleOptions{}, GetTitlePriorityStyle(2)},
+		{"priority 3", taskWith(3), TaskTitleStyleOptions{}, GetTitlePriorityStyle(3)},
+		{"priority 4", taskWith(4), TaskTitleStyleOptions{}, GetTitlePriorityStyle(4)},
+		{"priority 5", taskWith(5), TaskTitleStyleOptions{}, GetTitlePriorityStyle(5)},
+		{"active keeps priority title style", func() *models.Task {
+			task := taskWith(1)
+			task.Active = true
+			return task
+		}(), TaskTitleStyleOptions{}, GetTitlePriorityStyle(1)},
+		{"pinned keeps priority title style", func() *models.Task {
+			task := taskWith(2)
+			task.Pinned = true
+			return task
+		}(), TaskTitleStyleOptions{}, GetTitlePriorityStyle(2)},
+		{"bulk selected keeps priority title style", taskWith(1), TaskTitleStyleOptions{BulkSelected: true}, GetTitlePriorityStyle(1)},
+		{"cursor selected uses selected title style", taskWith(4), TaskTitleStyleOptions{CursorSelected: true}, SelectedTaskTitleStyle},
+		{"canceled uses canceled style", func() *models.Task {
+			task := taskWith(1)
+			task.Status = models.StatusCanceled
+			return task
+		}(), TaskTitleStyleOptions{}, CanceledStyle},
+		{"canceled suppresses selected title style", func() *models.Task {
+			task := taskWith(1)
+			task.Status = models.StatusCanceled
+			return task
+		}(), TaskTitleStyleOptions{CursorSelected: true}, CanceledStyle},
+		{"dimmed uses muted title style", func() *models.Task {
+			task := taskWith(1)
+			task.Dimmed = true
+			return task
+		}(), TaskTitleStyleOptions{}, MutedStyle},
+		{"dimmed suppresses selected title style", func() *models.Task {
+			task := taskWith(1)
+			task.Dimmed = true
+			return task
+		}(), TaskTitleStyleOptions{CursorSelected: true}, MutedStyle},
+		{"context muted suppresses selected title style", taskWith(2), TaskTitleStyleOptions{CursorSelected: true, Muted: true}, MutedStyle},
+		{"disabled suppresses selected title style", taskWith(3), TaskTitleStyleOptions{CursorSelected: true, Disabled: true}, MutedStyle},
+		{"nil task fallback", nil, TaskTitleStyleOptions{}, NormalStyle},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got := TaskTitleStyleFor(tc.task, tc.opts)
+			assertStylesEqual(t, got, tc.want)
+		})
+	}
+}
+
+func assertStylesEqual(t *testing.T, got, want lipgloss.Style) {
+	t.Helper()
+
+	if got.GetBold() != want.GetBold() {
+		t.Errorf("Bold = %v, want %v", got.GetBold(), want.GetBold())
+	}
+	if got.GetItalic() != want.GetItalic() {
+		t.Errorf("Italic = %v, want %v", got.GetItalic(), want.GetItalic())
+	}
+	if got.GetFaint() != want.GetFaint() {
+		t.Errorf("Faint = %v, want %v", got.GetFaint(), want.GetFaint())
+	}
+	if got.GetStrikethrough() != want.GetStrikethrough() {
+		t.Errorf("Strikethrough = %v, want %v", got.GetStrikethrough(), want.GetStrikethrough())
+	}
+	if got.GetForeground() != want.GetForeground() {
+		t.Errorf("Foreground = %v, want %v", got.GetForeground(), want.GetForeground())
 	}
 }

@@ -10,12 +10,15 @@ import (
 
 func (m *CrossProjectLinkerModel) View() tea.View {
 	title := m.getStepTitle()
-	subtitle := fmt.Sprintf("#%d %s", m.sourceTask.ShortID, m.sourceTask.Title)
-	availableSubtitleWidth := max(m.Width()-lipgloss.Width(title)-2, 1)
-	subtitle = truncateToVisualWidth(subtitle, availableSubtitleWidth)
+	subtitlePrefix := fmt.Sprintf("#%d ", m.sourceTask.ShortID)
+	availableTitleWidth := max(m.Width()-lipgloss.Width(title)-lipgloss.Width(subtitlePrefix)-4, 1)
+	sourceTitle := truncateToVisualWidth(m.sourceTask.Title, availableTitleWidth)
+	titleContent := fullscreenTitleStyle(m.AccentColor()).Render(title) + "  " +
+		MutedStyle.Render(subtitlePrefix) +
+		TaskTitleStyleFor(m.sourceTask, TaskTitleStyleOptions{}).Render(sourceTitle)
 
 	var out strings.Builder
-	out.WriteString(renderFullscreenTitle(title, subtitle, m.AccentColor()))
+	out.WriteString(renderFullscreenTitleContent(titleContent, ""))
 	out.WriteString("\n\n")
 
 	switch m.step {
@@ -147,11 +150,17 @@ func (m *CrossProjectLinkerModel) viewTaskSelection() string {
 		prefix := fmt.Sprintf("  %s %s %s#%d ", statusIcon, typeIcon, stageSegment, t.ShortID)
 		maxTitleLen := max(m.Width()-lipgloss.Width(prefix), 1)
 		title := truncateToVisualWidth(t.Title, maxTitleLen)
-		line := prefix + title
+		titleRendered := TaskTitleStyleFor(t, TaskTitleStyleOptions{
+			CursorSelected: i == m.taskCursor,
+		}).Render(title)
+		line := prefix + titleRendered
 		if lipgloss.Width(line) > m.Width() {
 			excess := lipgloss.Width(line) - m.Width()
 			title = truncateToVisualWidth(t.Title, max(maxTitleLen-excess, 1))
-			line = prefix + title
+			titleRendered = TaskTitleStyleFor(t, TaskTitleStyleOptions{
+				CursorSelected: i == m.taskCursor,
+			}).Render(title)
+			line = prefix + titleRendered
 		}
 		if i == m.taskCursor {
 			line = BoldStyle.Render(line)
@@ -178,7 +187,10 @@ func (m *CrossProjectLinkerModel) viewLinkTypeSelection() string {
 
 	b.WriteString(SubtitleStyle.Render(fmt.Sprintf("Project: %s", m.targetProject.Name)))
 	b.WriteString("\n")
-	b.WriteString(MutedStyle.Render(fmt.Sprintf("Task: #%d %s", m.targetTask.ShortID, truncateToVisualWidth(m.targetTask.Title, max(m.Width()-12, 1)))))
+	targetPrefix := fmt.Sprintf("Task: #%d ", m.targetTask.ShortID)
+	targetTitle := truncateToVisualWidth(m.targetTask.Title, max(m.Width()-lipgloss.Width(targetPrefix), 1))
+	b.WriteString(MutedStyle.Render(targetPrefix))
+	b.WriteString(TaskTitleStyleFor(m.targetTask, TaskTitleStyleOptions{}).Render(targetTitle))
 	b.WriteString("\n\n")
 
 	linkTypes := []struct {

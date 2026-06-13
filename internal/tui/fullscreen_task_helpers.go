@@ -15,17 +15,26 @@ import (
 // renderFullscreenTitle renders a title line for fullscreen views with optional subtitle.
 // Pass an optional accent color to override the title foreground color.
 func renderFullscreenTitle(title, subtitle string, accent ...color.Color) string {
-	var titleStyle lipgloss.Style
+	return renderFullscreenTitleContent(fullscreenTitleStyle(accent...).Render(title), subtitle)
+}
+
+func fullscreenTitleStyle(accent ...color.Color) lipgloss.Style {
 	if len(accent) > 0 && accent[0] != nil {
-		titleStyle = lipgloss.NewStyle().Bold(true).Foreground(accent[0])
-	} else {
-		titleStyle = TitleStyle
+		return lipgloss.NewStyle().Bold(true).Foreground(accent[0])
 	}
-	t := titleStyle.Render(title)
+	return TitleStyle
+}
+
+func renderFullscreenTitleContent(titleContent, subtitle string) string {
+	t := titleContent
 	if subtitle != "" {
 		t += "  " + MutedStyle.Render(subtitle)
 	}
 	return t
+}
+
+func renderFullscreenTitleContentWithCounter(titleContent, subtitle, counter string, width int) string {
+	return appendFullscreenTitleCounter(renderFullscreenTitleContent(titleContent, subtitle), counter, width)
 }
 
 // titleCounterAlertReserve mirrors the alert-indicator reserve used by
@@ -39,7 +48,10 @@ const titleCounterAlertReserve = 10
 // subtitle + alert reserve to render it cleanly (the subtitle wins because it
 // is view-state-specific).
 func renderFullscreenTitleWithCounter(title, subtitle, counter string, width int, accent ...color.Color) string {
-	base := renderFullscreenTitle(title, subtitle, accent...)
+	return appendFullscreenTitleCounter(renderFullscreenTitle(title, subtitle, accent...), counter, width)
+}
+
+func appendFullscreenTitleCounter(base, counter string, width int) string {
 	if counter == "" || width <= 0 {
 		return base
 	}
@@ -66,7 +78,7 @@ func renderTaskHeaderContent(task *models.Task, hasIncompleteDeps bool, showSnoo
 		statusStyle = BlockedByDepsStyle
 	}
 
-	title := SidebarHeaderStyle.Render(task.Title)
+	title := TaskTitleStyleFor(task, TaskTitleStyleOptions{}).Render(task.Title)
 	typeLine := GetTypeBadge(string(task.Type), task.Type.Icon()) + " " + typeStyle.Render(task.Type.HeadingPrefix())
 	statusLine := statusStyle.Render(task.Status.Icon() + " " + string(task.Status))
 	priorityBadge := renderPriorityBadge(task.Priority)

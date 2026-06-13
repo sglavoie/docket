@@ -181,3 +181,20 @@ func highlightTruncated(title string, positions []int) string {
 	}
 	return HighlightText(title, valid, NormalStyle)
 }
+
+func highlightTruncatedWithBase(title string, positions []int, baseStyle lipgloss.Style) string {
+	if len(positions) == 0 {
+		return baseStyle.Render(title)
+	}
+	titleRunes := []rune(title)
+	var valid []int
+	for _, p := range positions {
+		if p < len(titleRunes) {
+			valid = append(valid, p)
+		}
+	}
+	if len(valid) == 0 {
+		return baseStyle.Render(title)
+	}
+	return HighlightText(title, valid, baseStyle)
+}

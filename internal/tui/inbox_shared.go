@@ -150,14 +150,15 @@ func renderInboxTaskDisplay(task *models.Task, width int, willLeave bool, projec
 	}
 	titleLines := make([]string, 2)
 	copy(titleLines, rawLines)
-	firstLine := prefix + titleLines[0]
+	titleStyle := TaskTitleStyleFor(task, TaskTitleStyleOptions{})
+	firstLine := BoldStyle.Render(prefix) + titleStyle.Render(titleLines[0])
 	if willLeave {
 		firstLine += "  " + TriagedBadgeStyle.Render("↗ Triaged")
 	}
-	b.WriteString(BoldStyle.Render(firstLine))
+	b.WriteString(firstLine)
 	indent := strings.Repeat(" ", len(prefix))
 	b.WriteString("\n")
-	b.WriteString(BoldStyle.Render(indent + titleLines[1]))
+	b.WriteString(indent + titleStyle.Render(titleLines[1]))
 	b.WriteString("\n")
 
 	// Project context (global inbox only)

@@ -107,7 +107,7 @@ func (t TaskPickerItem) FilterText() string {
 
 // DisplayText returns the task title for display.
 func (t TaskPickerItem) DisplayText() string {
-	return t.Task.Title
+	return TaskTitleStyleFor(t.Task, TaskTitleStyleOptions{}).Render(t.Task.Title)
 }
 
 // CountValue returns 0 as tasks don't have a count.

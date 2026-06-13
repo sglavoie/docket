@@ -22,11 +22,12 @@ func (m *FocusBoardModel) View() tea.View { //nolint:gocyclo
 
 	if m.focusMode == focusModeTunnel {
 		// Tunnel mode: show current task as header, hide tab bar
-		title := "Focus Mode"
+		titleContent := fullscreenTitleStyle(m.AccentColor()).Render("Focus Mode")
 		if row := m.getRowAtCursor(); row != nil && row.Task != nil {
-			title = "Currently: " + row.Task.Title
+			titleContent = fullscreenTitleStyle(m.AccentColor()).Render("Currently: ") +
+				TaskTitleStyleFor(row.Task, TaskTitleStyleOptions{}).Render(row.Task.Title)
 		}
-		b.WriteString(renderFullscreenTitleWithCounter(title, "", FormatOpenLoops(m.openLoops), m.width, m.AccentColor()))
+		b.WriteString(renderFullscreenTitleContentWithCounter(titleContent, "", FormatOpenLoops(m.openLoops), m.width))
 		b.WriteString("\n")
 	} else {
 		// Normal mode: show title + tab bar

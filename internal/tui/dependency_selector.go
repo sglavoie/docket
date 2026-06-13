@@ -31,7 +31,9 @@ func NewDependencySelectorModel(task *models.Task, project *models.Project) *Dep
 	candidates := buildDependencyCandidates(task, project)
 
 	picker := NewBasePicker(candidates, PickerConfig{
-		Title:          fmt.Sprintf("Dependencies for #%d: %s", task.ShortID, task.Title),
+		Title: fmt.Sprintf("Dependencies for #%d: %s",
+			task.ShortID,
+			TaskTitleStyleFor(task, TaskTitleStyleOptions{}).Render(task.Title)),
 		EmptyMessage:   "No tasks available as dependencies.",
 		NoMatchMessage: "No matching tasks.",
 		MultiSelect:    true,
@@ -156,10 +158,13 @@ func (m *DependencySelectorModel) View() tea.View {
 	var b strings.Builder
 
 	title := "Dependencies"
-	subtitle := fmt.Sprintf("Task #%d: %s", m.task.ShortID, m.task.Title)
-	availableSubtitleWidth := max(m.Width()-lipgloss.Width(title)-2, 1)
-	subtitle = truncateToVisualWidth(subtitle, availableSubtitleWidth)
-	b.WriteString(renderFullscreenTitle(title, subtitle))
+	subtitlePrefix := fmt.Sprintf("Task #%d: ", m.task.ShortID)
+	availableTitleWidth := max(m.Width()-lipgloss.Width(title)-lipgloss.Width(subtitlePrefix)-4, 1)
+	taskTitle := truncateToVisualWidth(m.task.Title, availableTitleWidth)
+	titleContent := fullscreenTitleStyle().Render(title) + "  " +
+		MutedStyle.Render(subtitlePrefix) +
+		TaskTitleStyleFor(m.task, TaskTitleStyleOptions{}).Render(taskTitle)
+	b.WriteString(renderFullscreenTitleContent(titleContent, ""))
 	b.WriteString("\n\n")
 
 	// Search bar
@@ -242,8 +247,11 @@ func (m *DependencySelectorModel) renderTaskList() string {
 		idStr := MutedStyle.Render(fmt.Sprintf("#%d", t.ShortID))
 		prefix := fmt.Sprintf("%s%s %s %s%s %s ", cursor, checkbox, typeIcon, stageSegment, statusIcon, idStr)
 		title := truncateToVisualWidth(t.Title, max(m.Width()-lipgloss.Width(prefix), 1))
+		titleRendered := TaskTitleStyleFor(t, TaskTitleStyleOptions{
+			CursorSelected: i == m.Cursor,
+		}).Render(title)
 
-		line := prefix + title
+		line := prefix + titleRendered
 		if i == m.Cursor {
 			line = BoldStyle.Render(line)
 		}

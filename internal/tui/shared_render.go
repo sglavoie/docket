@@ -266,13 +266,13 @@ func (tl TaskLine) typeBadge() string {
 func (tl TaskLine) renderTitle() string {
 	maxTitleLen := max(tl.MaxTitle-3, 10)
 	title := truncateToVisualWidth(tl.Task.Title, maxTitleLen)
+	titleStyle := TaskTitleStyleFor(tl.Task, TaskTitleStyleOptions{
+		CursorSelected: tl.IsSelected,
+	})
 	if tl.SearchQuery != "" {
-		title = HighlightSubstring(title, tl.SearchQuery, GetTitlePriorityStyle(tl.Task.Priority))
+		return HighlightSubstring(title, tl.SearchQuery, titleStyle)
 	}
-	if tl.IsSelected && !tl.Task.Dimmed {
-		return SelectedTaskTitleStyle.Render(title)
-	}
-	return GetTitlePriorityStyle(tl.Task.Priority).Render(title)
+	return titleStyle.Render(title)
 }
 
 func (tl TaskLine) padStatusBadge(statusIcon string) string {

@@ -403,14 +403,17 @@ func (m *TaskJumperModel) renderTaskList() string {
 		maxTitleLen := max(available-lipgloss.Width(projectSuffix), 1)
 		title := truncateToVisualWidth(task.Title, maxTitleLen)
 
-		titleRendered := GetTitlePriorityStyle(task.Priority).Render(highlightTruncated(title, ft.titlePositions))
+		titleStyle := TaskTitleStyleFor(task, TaskTitleStyleOptions{
+			CursorSelected: i == m.cursor,
+		})
+		titleRendered := highlightTruncatedWithBase(title, ft.titlePositions, titleStyle)
 
 		line := prefix + titleRendered + projectSuffix
 		if lipgloss.Width(line) > m.listWidth {
 			excess := lipgloss.Width(line) - m.listWidth
 			if lipgloss.Width(title) > excess {
 				title = truncateToVisualWidth(task.Title, max(maxTitleLen-excess, 1))
-				titleRendered = GetTitlePriorityStyle(task.Priority).Render(highlightTruncated(title, ft.titlePositions))
+				titleRendered = highlightTruncatedWithBase(title, ft.titlePositions, titleStyle)
 				line = prefix + titleRendered + projectSuffix
 			}
 		}
@@ -448,7 +451,7 @@ func (m *TaskJumperModel) renderPreview() string {
 	header := fmt.Sprintf("%s #%d: %s",
 		typeStyle.Render(task.Type.HeadingPrefix()),
 		task.ShortID,
-		GetTitlePriorityStyle(task.Priority).Render(truncateToVisualWidth(task.Title, maxTitleLen)))
+		TaskTitleStyleFor(task, TaskTitleStyleOptions{}).Render(truncateToVisualWidth(task.Title, maxTitleLen)))
 	b.WriteString(TaskJumperPreviewHeaderStyle.Render(header))
 	b.WriteString("\n\n")
 

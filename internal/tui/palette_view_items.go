@@ -199,7 +199,11 @@ func (m *CommandPaletteModel) renderItemContentWithHighlight(item PaletteItem, n
 		truncatedPositions = validPositions
 	}
 
-	content.WriteString(HighlightText(name, truncatedPositions, BoldStyle))
+	nameStyle := BoldStyle
+	if item.Category == ItemCategoryTasks && item.Task != nil {
+		nameStyle = TaskTitleStyleFor(item.Task, TaskTitleStyleOptions{})
+	}
+	content.WriteString(HighlightText(name, truncatedPositions, nameStyle))
 	totalLen += lipgloss.Width(name)
 
 	if item.Description != "" {

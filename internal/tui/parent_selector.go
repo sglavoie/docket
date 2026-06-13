@@ -251,7 +251,10 @@ func (m *ParentSelectorModel) renderList() string {
 			prefix := fmt.Sprintf("%s%s %s ", cursor, typeIcon, shortID)
 			maxTitleLen := max(m.Width()-lipgloss.Width(prefix), 1)
 			title := truncateToVisualWidth(item.Task.Title, maxTitleLen)
-			line := prefix + title
+			titleRendered := TaskTitleStyleFor(item.Task, TaskTitleStyleOptions{
+				CursorSelected: m.Cursor == cursorIdx,
+			}).Render(title)
+			line := prefix + titleRendered
 
 			if m.Cursor == cursorIdx {
 				line = SelectedLine(line, m.Width())

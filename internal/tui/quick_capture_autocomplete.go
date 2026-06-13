@@ -236,8 +236,9 @@ func (q *quickCaptureInput) getParentSuggestions(partial string) []ACSuggestion 
 		// Truncate title if too long (width-aware: ~15 chars overhead for icon+id+spaces)
 		titleLimit := max(q.width-15, 10)
 		title := truncateToVisualWidth(task.Title, titleLimit)
+		titleRendered := TaskTitleStyleFor(task, TaskTitleStyleOptions{}).Render(title)
 		suggestions = append(suggestions, ACSuggestion{
-			Display: fmt.Sprintf("%s #%d %s", task.Type.Icon(), task.ShortID, title),
+			Display: fmt.Sprintf("%s #%d %s", task.Type.Icon(), task.ShortID, titleRendered),
 			Value:   strconv.Itoa(task.ShortID),
 		})
 	}

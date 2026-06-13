@@ -396,8 +396,11 @@ func (m *PriorityViewModel) renderWaitingOnTask(pt *PriorityTask) string {
 	suffix := " " + MutedStyle.Render(blockingReason)
 	titleWidth := max(m.Width()-lipgloss.Width(prefix)-lipgloss.Width(suffix), 1)
 	title := truncateToVisualWidth(task.Title, titleWidth)
+	titleStyle := TaskTitleStyleFor(task, TaskTitleStyleOptions{})
 	if m.searchQuery != "" {
-		title = HighlightSubstring(title, m.searchQuery, NormalStyle)
+		title = HighlightSubstring(title, m.searchQuery, titleStyle)
+	} else {
+		title = titleStyle.Render(title)
 	}
 
 	line := prefix + title + suffix

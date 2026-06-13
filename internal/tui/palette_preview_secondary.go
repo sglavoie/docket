@@ -71,10 +71,11 @@ func (m *CommandPaletteModel) writeTaskListPreview(b *strings.Builder, items []P
 	wrapStyle := lipgloss.NewStyle().Width(max(m.previewWidth-2, 1))
 	for i := range maxShow {
 		task := items[i].Task
+		title := TaskTitleStyleFor(task, TaskTitleStyleOptions{}).Render(task.Title)
 		line := fmt.Sprintf("  %s #%d: %s",
 			GetTypeBadge(string(task.Type), task.Type.Icon()),
 			task.ShortID,
-			task.Title)
+			title)
 		b.WriteString(wrapStyle.Render(line))
 		b.WriteString("\n")
 	}

@@ -114,7 +114,10 @@ func (m *GlobalSearchModel) renderTaskSearchRow(index int, filteredResult filter
 	prefixWidth := lipgloss.Width(prefix) + lipgloss.Width(descSuffix)
 	maxTitleLen := max(m.listWidth-prefixWidth-2, 1)
 	title := truncateToVisualWidth(task.Title, maxTitleLen)
-	titleRendered := GetTitlePriorityStyle(task.Priority).Render(highlightTruncated(title, filteredResult.titlePositions))
+	titleStyle := TaskTitleStyleFor(task, TaskTitleStyleOptions{
+		CursorSelected: index == m.cursor,
+	})
+	titleRendered := highlightTruncatedWithBase(title, filteredResult.titlePositions, titleStyle)
 
 	if filteredResult.matchSource == "comment" {
 		titleRendered += MutedStyle.Render(" [c]")
@@ -126,7 +129,7 @@ func (m *GlobalSearchModel) renderTaskSearchRow(index int, filteredResult filter
 		excess := lineWidth - m.listWidth + 3
 		if lipgloss.Width(title) > excess {
 			title = truncateToVisualWidth(task.Title, maxTitleLen-excess)
-			titleRendered = GetTitlePriorityStyle(task.Priority).Render(highlightTruncated(title, filteredResult.titlePositions))
+			titleRendered = highlightTruncatedWithBase(title, filteredResult.titlePositions, titleStyle)
 			line = prefix + titleRendered + descSuffix
 		}
 	}

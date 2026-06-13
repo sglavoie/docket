@@ -18,7 +18,9 @@ func (m *TaskAttachmentsModel) View() tea.View { //nolint:gocyclo
 
 	var b strings.Builder
 	b.WriteString(renderFullscreenTitle(
-		fmt.Sprintf("Attachments for #%d: %s", m.task.ShortID, m.task.Title),
+		fmt.Sprintf("Attachments for #%d: %s",
+			m.task.ShortID,
+			TaskTitleStyleFor(m.task, TaskTitleStyleOptions{}).Render(m.task.Title)),
 		fmt.Sprintf("%d attachment(s)", len(m.task.Attachments)),
 		m.AccentColor()))
 	b.WriteString("\n\n")

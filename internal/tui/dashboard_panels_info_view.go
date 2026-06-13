@@ -349,10 +349,10 @@ func bestScoredTask(project *models.Project, profile *scoring.ScoringProfile) *m
 // renderSuggestedTask formats a single suggested-task alert line.
 func renderSuggestedTask(t *models.Task) string {
 	typeIcon := GetTypeBadge(string(t.Type), t.Type.Icon())
-	title := truncateToVisualWidth(t.Title, 40)
+	title := TaskTitleStyleFor(t, TaskTitleStyleOptions{}).
+		Render(truncateToVisualWidth(t.Title, 40))
 	prefix := DueSoonStyle.Render("▸ Suggested:")
-	rest := MutedStyle.Render(fmt.Sprintf(" %s %s", typeIcon, title))
-	return prefix + rest
+	return fmt.Sprintf("%s %s %s", prefix, typeIcon, title)
 }
 
 // renderTopScoredContent returns the highest-scored incomplete task with a score bar.
@@ -365,7 +365,8 @@ func (m *DashboardModel) renderTopScoredContent(project *models.Project, profile
 	bar := RenderScoreBar(bestTask, profile)
 	badge := RenderScoreBadge(bestTask, profile)
 	titleWidth := max(contentWidth-15, 10)
-	title := truncateToVisualWidth(bestTask.Title, titleWidth)
+	title := TaskTitleStyleFor(bestTask, TaskTitleStyleOptions{}).
+		Render(truncateToVisualWidth(bestTask.Title, titleWidth))
 	typeIcon := GetTypeBadge(string(bestTask.Type), bestTask.Type.Icon())
 	stageBadge := GetStageBadge(bestTask.Stage)
 	stageSegment := ""
@@ -418,13 +419,14 @@ func (m *DashboardModel) renderRecentTasksContentWithWidth(project *models.Proje
 			statusBadge = PadBadge(statusBadge, layout.StatusWidth)
 		}
 
+		titleStyle := TaskTitleStyleFor(task, TaskTitleStyleOptions{})
 		if lipgloss.Width(task.Title)+2+lipgloss.Width(timeStr) <= titleWidth {
 			gap := max(titleWidth-lipgloss.Width(task.Title)-lipgloss.Width(timeStr), 2)
 			line := fmt.Sprintf("%s %s%s %s%s%s",
 				typeBadge,
 				stageSegment,
 				statusBadge,
-				task.Title,
+				titleStyle.Render(task.Title),
 				strings.Repeat(" ", gap),
 				MutedStyle.Render(timeStr))
 			lines = append(lines, line, "")
@@ -435,7 +437,7 @@ func (m *DashboardModel) renderRecentTasksContentWithWidth(project *models.Proje
 			typeBadge,
 			stageSegment,
 			statusBadge,
-			truncateAndPad(task.Title, titleWidth))
+			titleStyle.Render(truncateAndPad(task.Title, titleWidth)))
 		padding := max(contentWidth-lipgloss.Width(timeStr), 0)
 		line2 := MutedStyle.Render(strings.Repeat(" ", padding) + timeStr)
 		lines = append(lines, line1, line2)

@@ -39,7 +39,9 @@ func (m *TaskChecklistModel) renderChecklistHeader() string {
 	}
 	total := len(m.task.Checklist)
 
-	checklistTitle := fmt.Sprintf("Checklist for: #%d: %s", m.task.ShortID, m.task.Title)
+	checklistTitle := fmt.Sprintf("Checklist for: #%d: %s",
+		m.task.ShortID,
+		TaskTitleStyleFor(m.task, TaskTitleStyleOptions{}).Render(m.task.Title))
 	progressStr := ""
 	if total > 0 {
 		progressStr = fmt.Sprintf("%d/%d completed", completed, total)

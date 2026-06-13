@@ -107,7 +107,7 @@ func (m *RecentActivityPreviewModel) renderContent() string {
 	header := fmt.Sprintf("%s #%d: %s",
 		typeStyle.Render(task.Type.HeadingPrefix()),
 		task.ShortID,
-		task.Title)
+		TaskTitleStyleFor(task, TaskTitleStyleOptions{}).Render(task.Title))
 	styledHeader := TaskJumperPreviewHeaderStyle.Render(header)
 	b.WriteString(lipgloss.NewStyle().Width(max(m.width-2, 1)).Render(styledHeader))
 	b.WriteString("\n\n")
@@ -244,7 +244,9 @@ func (m *RecentActivityPreviewModel) View() tea.View {
 	var b strings.Builder
 
 	// Title
-	title := fmt.Sprintf("Task: #%d %s", task.ShortID, task.Title)
+	title := fmt.Sprintf("Task: #%d %s",
+		task.ShortID,
+		TaskTitleStyleFor(task, TaskTitleStyleOptions{}).Render(task.Title))
 	b.WriteString(lipgloss.NewStyle().Width(m.width).Render(HelpViewTitleStyle.Render(title)))
 	b.WriteString("\n\n")
 

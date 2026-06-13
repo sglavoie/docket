@@ -40,6 +40,41 @@ func TestRenderPinnedPopupKeepsProjectNameOnSameLine(t *testing.T) {
 	assertPopupDoesNotContainStandaloneLine(t, rendered, "Beta Project")
 }
 
+func TestRenderPinnedPopupNonSelectedTitleUsesPriorityStyle(t *testing.T) {
+	ApplyTheme(ThemeConfig{Name: ""})
+	t.Cleanup(func() { ApplyTheme(ThemeConfig{}) })
+
+	app := newTestAppModel()
+	app.width = 56
+	app.height = 20
+	app.showPinnedPopup = true
+	app.pinnedPopupCursor = 1
+
+	project := &models.Project{ID: "ps", Name: "Styled Project"}
+	taskA, err := models.NewTask("sta", 1, models.TaskTypeTask, "Pinned priority")
+	if err != nil {
+		t.Fatalf("NewTask priority: %v", err)
+	}
+	taskA.Priority = 1
+	taskB, err := models.NewTask("stb", 2, models.TaskTypeTask, "Selected row")
+	if err != nil {
+		t.Fatalf("NewTask selected: %v", err)
+	}
+	taskB.Priority = 2
+
+	app.pinnedPopupItems = []pinnedTaskInfo{
+		{Title: taskA.Title, ProjectName: project.Name, Task: taskA, Project: project},
+		{Title: taskB.Title, ProjectName: project.Name, Task: taskB, Project: project},
+	}
+	app.pinnedPopupFiltered = []int{0, 1}
+
+	rendered := app.renderPinnedPopup()
+	want := GetTitlePriorityStyle(1).Render("Pinned priority")
+	if !strings.Contains(rendered, want) {
+		t.Fatalf("expected priority-styled pinned popup title in:\n%s", ansi.Strip(rendered))
+	}
+}
+
 func TestRenderQuickSwitchPopupKeepsProjectNameOnSameLine(t *testing.T) {
 	app := newTestAppModel()
 	app.width = 44

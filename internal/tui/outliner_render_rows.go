@@ -218,19 +218,9 @@ func (m *OutlinerModel) renderTaskStageSegment(task *models.Task, colLayout *Col
 }
 
 func (m *OutlinerModel) renderTaskTitleStyle(task *models.Task, selected bool) lipgloss.Style {
-	titleStyle := GetTitlePriorityStyle(task.Priority)
-	switch {
-	case task.Status == models.StatusCanceled:
-		titleStyle = CanceledStyle
-	case task.Active:
-		titleStyle = ActiveStyle
-	case task.Pinned:
-		titleStyle = SuccessStyle
-	}
-	if selected && !task.Dimmed {
-		titleStyle = SelectedTaskTitleStyle
-	}
-	return titleStyle
+	return TaskTitleStyleFor(task, TaskTitleStyleOptions{
+		CursorSelected: selected,
+	})
 }
 
 func (m *OutlinerModel) renderTaskIndicators(task *models.Task, proj *models.Project) string {

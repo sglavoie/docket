@@ -187,7 +187,11 @@ func formatSidebarLinkedTask(linked sidebarLinkedTask, innerWidth int, cursor, i
 		titleWidth = max(innerWidth-lipgloss.Width(prefix), 1)
 	}
 
-	line := prefix + truncateToVisualWidth(linked.Task.Title, titleWidth)
+	title := truncateToVisualWidth(linked.Task.Title, titleWidth)
+	title = TaskTitleStyleFor(linked.Task, TaskTitleStyleOptions{
+		CursorSelected: cursor && isFocused,
+	}).Render(title)
+	line := prefix + title
 	if cursor && isFocused {
 		line = BoldStyle.Render(line)
 	}

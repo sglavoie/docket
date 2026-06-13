@@ -17,7 +17,7 @@ type noteTaskItem struct {
 
 func (i noteTaskItem) FilterText() string { return i.task.Title }
 func (i noteTaskItem) DisplayText() string {
-	return fmt.Sprintf("#%d %s", i.task.ShortID, i.task.Title)
+	return fmt.Sprintf("#%d %s", i.task.ShortID, TaskTitleStyleFor(i.task, TaskTitleStyleOptions{}).Render(i.task.Title))
 }
 func (i noteTaskItem) CountValue() int { return 0 }
 func (i noteTaskItem) ItemID() string  { return i.task.ID }

@@ -45,7 +45,8 @@ func (m *KanbanModel) renderKanbanDetailPane() string {
 	sep := MutedStyle.Render(" │ ")
 
 	// ── Line 1: title ─────────────────────────────────────────────────────
-	titlePart := TitleStyle.Render(truncateToVisualWidth(task.Title, max(w-1, 0)))
+	titlePart := TaskTitleStyleFor(task, TaskTitleStyleOptions{}).
+		Render(truncateToVisualWidth(task.Title, max(w-1, 0)))
 	sb.WriteString(truncateToVisualWidth(" "+titlePart, w) + "\n")
 
 	if paneH < 2 {

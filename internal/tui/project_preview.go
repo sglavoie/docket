@@ -258,11 +258,13 @@ func (m *ProjectPreviewModel) renderContent() string {
 					GetStatusBadge(string(task.Status), task.Status.Icon()))
 				availableTitleWidth := max(m.width-lipgloss.Width(prefix)-lipgloss.Width(suffix)-2, 1)
 				title := truncateToVisualWidth(task.Title, availableTitleWidth)
-				line := prefix + title + "  " + suffix
+				titleRendered := TaskTitleStyleFor(task, TaskTitleStyleOptions{}).Render(title)
+				line := prefix + titleRendered + "  " + suffix
 				if lipgloss.Width(line) > m.width {
 					excess := lipgloss.Width(line) - m.width
 					title = truncateToVisualWidth(task.Title, max(availableTitleWidth-excess, 1))
-					line = prefix + title + "  " + suffix
+					titleRendered = TaskTitleStyleFor(task, TaskTitleStyleOptions{}).Render(title)
+					line = prefix + titleRendered + "  " + suffix
 				}
 
 				b.WriteString(line)

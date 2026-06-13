@@ -156,7 +156,11 @@ func (m *WorkflowDryRunModel) renderTaskList(paneHeight int) string {
 			rowBuilder.WriteString(projectTag)
 			rowBuilder.WriteString("\n")
 		} else {
-			fmt.Fprintf(&rowBuilder, "  %s %s\n", title, changeCount)
+			rowBuilder.WriteString("  ")
+			rowBuilder.WriteString(TaskTitleStyleFor(result.Task, TaskTitleStyleOptions{}).Render(title))
+			rowBuilder.WriteString(" ")
+			rowBuilder.WriteString(changeCount)
+			rowBuilder.WriteString("\n")
 		}
 	}
 
@@ -179,7 +183,7 @@ func (m *WorkflowDryRunModel) renderDetailPane() string {
 	operatorStyle := RuleOperatorStyle
 
 	// Task info
-	b.WriteString(BoldPrimaryStyle.Render(result.Task.Title))
+	b.WriteString(TaskTitleStyleFor(result.Task, TaskTitleStyleOptions{}).Render(result.Task.Title))
 	b.WriteString("\n")
 	b.WriteString(MutedStyle.Render(fmt.Sprintf("Project: %s  Status: %s  Priority: %d",
 		result.ProjectName, string(result.Task.Status), result.Task.Priority)))
@@ -263,7 +267,8 @@ func (m *WorkflowDryRunModel) renderTaskListWithDetails(paneHeight int) string {
 				b.WriteString("\n")
 			}
 		} else {
-			fmt.Fprintf(&b, "  %s", title)
+			b.WriteString("  ")
+			b.WriteString(TaskTitleStyleFor(result.Task, TaskTitleStyleOptions{}).Render(title))
 			b.WriteString("\n")
 		}
 	}

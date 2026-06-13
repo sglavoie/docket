@@ -109,9 +109,10 @@ func (m *AppModel) renderQuickSwitchPopup() string {
 			pinVisualWidth := lipgloss.Width(pinIndicator)
 			adjustedTitleWidth := max(titleWidth-metaVisualWidth-pinVisualWidth, 10)
 
-			taskTitle := entry.Task.Title
+			titleStyle := TaskTitleStyleFor(entry.Task, TaskTitleStyleOptions{})
+			taskTitle := titleStyle.Render(entry.Task.Title)
 			if i < len(m.quickSwitchTitlePositions) && len(m.quickSwitchTitlePositions[i]) > 0 {
-				taskTitle = truncateAndPad(HighlightText(taskTitle, m.quickSwitchTitlePositions[i], NormalStyle), adjustedTitleWidth)
+				taskTitle = truncateAndPad(HighlightText(entry.Task.Title, m.quickSwitchTitlePositions[i], titleStyle), adjustedTitleWidth)
 			} else {
 				taskTitle = truncateAndPad(taskTitle, adjustedTitleWidth)
 			}

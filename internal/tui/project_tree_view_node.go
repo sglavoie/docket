@@ -117,30 +117,11 @@ func (m *ProjectTreeModel) renderNodeWithWidth(node *TreeNode, selected bool, in
 		}
 	}
 
-	// Title
-	titleStyle := NormalStyle
-	if node.IsContextNode {
-		// Context nodes are always dimmed
-		titleStyle = MutedStyle
-	} else if selected {
-		if task.Active {
-			titleStyle = ActiveStyle.Bold(true)
-		} else if task.Pinned {
-			titleStyle = SuccessBoldStyle
-		} else {
-			titleStyle = SelectedItemTextStyle
-		}
-	} else if task.Active {
-		titleStyle = ActiveStyle
-	} else if task.Pinned {
-		titleStyle = SuccessStyle
-	}
-	if inSelection && !selected && !node.IsContextNode {
-		titleStyle = SelectionStyle
-	}
-	if task.Status == models.StatusCanceled && !node.IsContextNode {
-		titleStyle = CanceledStyle
-	}
+	titleStyle := TaskTitleStyleFor(task, TaskTitleStyleOptions{
+		CursorSelected: selected,
+		Muted:          node.IsContextNode,
+		BulkSelected:   inSelection,
+	})
 	// Progress for parent tasks
 	progress := ""
 	if m.columnConfig.IsVisible(ColProgress) {

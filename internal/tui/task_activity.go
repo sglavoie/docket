@@ -137,7 +137,9 @@ func (m *TaskActivityModel) View() tea.View {
 		sortDir = "oldest first"
 	}
 	subtitle := fmt.Sprintf("%d entries (%s)", len(entries), sortDir)
-	b.WriteString(renderFullscreenTitle(fmt.Sprintf("Activity Log for #%d: %s", m.task.ShortID, m.task.Title), subtitle, m.AccentColor()))
+	titleContent := fullscreenTitleStyle(m.AccentColor()).Render(fmt.Sprintf("Activity Log for #%d: ", m.task.ShortID)) +
+		TaskTitleStyleFor(m.task, TaskTitleStyleOptions{}).Render(m.task.Title)
+	b.WriteString(renderFullscreenTitleContent(titleContent, subtitle))
 	b.WriteString("\n")
 
 	b.WriteString(m.renderTabBar())

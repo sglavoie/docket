@@ -152,7 +152,10 @@ func (m *DependencyViewerModel) View() tea.View {
 	var b strings.Builder
 
 	// Title
-	b.WriteString(renderFullscreenTitle(fmt.Sprintf("Dependencies for #%d: %s", m.task.ShortID, m.task.Title), ""))
+	titlePrefix := fmt.Sprintf("Dependencies for #%d: ", m.task.ShortID)
+	titleContent := fullscreenTitleStyle().Render(titlePrefix) +
+		TaskTitleStyleFor(m.task, TaskTitleStyleOptions{}).Render(m.task.Title)
+	b.WriteString(renderFullscreenTitleContent(titleContent, ""))
 	b.WriteString("\n\n")
 
 	// Calculate available height for each section
@@ -235,9 +238,13 @@ func (m *DependencyViewerModel) renderSection(sectionIdx int, title, arrow strin
 		// Title (truncated)
 		maxTitleLen := max(m.width-20, 1)
 		title := truncateToVisualWidth(task.Title, maxTitleLen)
+		titleStyle := TaskTitleStyleFor(task, TaskTitleStyleOptions{
+			CursorSelected: m.section == sectionIdx && i == m.cursor,
+		})
+		titleRendered := titleStyle.Render(title)
 
 		// Build line
-		line := fmt.Sprintf("%s%s %s%s %s %s", cursor, typeIcon, stageSegment, statusIcon, idStr, title)
+		line := fmt.Sprintf("%s%s %s%s %s %s", cursor, typeIcon, stageSegment, statusIcon, idStr, titleRendered)
 
 		// Highlight selected item
 		if m.section == sectionIdx && i == m.cursor {

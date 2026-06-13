@@ -77,6 +77,23 @@ func TestKanbanRender_ContainsTaskTitle(t *testing.T) {
 	}
 }
 
+func TestKanbanRender_NonFocusedCardUsesPriorityTitleStyle(t *testing.T) {
+	ApplyTheme(ThemeConfig{Name: ""})
+	t.Cleanup(func() { ApplyTheme(ThemeConfig{}) })
+
+	col := makeColN("inbox", 2)
+	col.Tasks[0].Task.Title = "Priority card"
+	col.Tasks[0].Task.Priority = 1
+	col.Cursor = 1
+
+	m := newRenderKanban(80, 24, []KanbanColumn{col})
+	got := kanbanRender(m)
+	want := GetTitlePriorityStyle(1).Render("Priority card")
+	if !strings.Contains(got, want) {
+		t.Fatalf("expected priority-styled card title in:\n%s", ansi.Strip(got))
+	}
+}
+
 // ── overflow indicator ────────────────────────────────────────────────────────
 
 func TestKanbanRender_OverflowIndicator(t *testing.T) {

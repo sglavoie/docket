@@ -62,7 +62,7 @@ func (m *GlobalSearchModel) renderTaskPreview(filteredResult filteredSearchResul
 	header := fmt.Sprintf("%s #%d: %s",
 		typeStyle.Render(task.Type.HeadingPrefix()),
 		task.ShortID,
-		GetTitlePriorityStyle(task.Priority).Render(truncateToVisualWidth(task.Title, maxTitleLen)))
+		TaskTitleStyleFor(task, TaskTitleStyleOptions{}).Render(truncateToVisualWidth(task.Title, maxTitleLen)))
 	b.WriteString(TaskJumperPreviewHeaderStyle.Render(header))
 	b.WriteString("\n\n")
 

@@ -70,6 +70,39 @@ func GetTitlePriorityStyle(priority int) lipgloss.Style {
 	}
 }
 
+// TaskTitleStyleOptions carries row/context state that can affect task title styling.
+type TaskTitleStyleOptions struct {
+	// CursorSelected uses the selected title style unless the task is disabled,
+	// muted/dimmed, or canceled.
+	CursorSelected bool
+	// Muted covers context rows and explicitly muted title renderers.
+	Muted bool
+	// Disabled suppresses selected-title styling and falls back to muted text.
+	Disabled bool
+	// BulkSelected is tracked for callers but intentionally does not change title color.
+	BulkSelected bool
+}
+
+// TaskTitleStyleFor returns the canonical style for a rendered task title.
+func TaskTitleStyleFor(task *models.Task, opts TaskTitleStyleOptions) lipgloss.Style {
+	if task == nil {
+		return NormalStyle
+	}
+
+	isMuted := opts.Muted || opts.Disabled || task.Dimmed
+	isCanceled := task.Status == models.StatusCanceled
+	if opts.CursorSelected && !isMuted && !isCanceled {
+		return SelectedTaskTitleStyle
+	}
+	if isMuted {
+		return MutedStyle
+	}
+	if isCanceled {
+		return CanceledStyle
+	}
+	return GetTitlePriorityStyle(task.Priority)
+}
+
 // GetTypeStyle returns the appropriate style for a task type.
 func GetTypeStyle(taskType string) lipgloss.Style {
 	switch taskType {

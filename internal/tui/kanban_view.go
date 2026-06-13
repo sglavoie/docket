@@ -330,7 +330,8 @@ func kanbanRender(m *KanbanModel) string {
 				checklistInd = "" // not enough room; drop indicator
 				descInd = ""
 			}
-			title := truncateToVisualWidth(card.Task.Title, maxTitleWidth)
+			title := TaskTitleStyleFor(card.Task, TaskTitleStyleOptions{}).
+				Render(truncateToVisualWidth(card.Task.Title, maxTitleWidth))
 			line := selIndicator + typeBadge + statusBadge + " " + title + checklistInd + descInd
 
 			isFocused := i == m.activeCol && dr.taskIdx == col.Cursor

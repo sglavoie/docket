@@ -165,7 +165,7 @@ func (m *RoadmapModel) renderGanttRow(row TimelineRow, colWidth, visibleCols int
 func (m *RoadmapModel) ganttLabelText(row TimelineRow) string {
 	labelText := strings.Repeat("  ", row.Indent) + roadmapTypePrefix(row.Task)
 	if row.Task != nil {
-		labelText += row.Task.Title
+		labelText += TaskTitleStyleFor(row.Task, TaskTitleStyleOptions{}).Render(row.Task.Title)
 		labelText += m.renderScopeDeltaBadge(row.Task)
 		labelText += m.renderGanttCollapseIndicator(row)
 	}
@@ -346,12 +346,13 @@ func (m *RoadmapModel) renderCriticalPathTab(height int) string {
 		task := m.criticalPath.Path[i]
 		slack := m.criticalPath.Slack[task.ID]
 		title := truncateToVisualWidth(task.Title, 40)
+		titleCell := truncateAndPad(TaskTitleStyleFor(task, TaskTitleStyleOptions{}).Render(title), 42)
 		slackStr := fmt.Sprintf("%8s", fmt.Sprintf("%.1fd", slack))
 		if slack == 0 {
 			slackStr = accentSt.Render(slackStr)
 		}
 		statusStr := string(task.Status)
-		line := fmt.Sprintf("%-4d %-42s %s %12s", i+1, title, slackStr, statusStr)
+		line := fmt.Sprintf("%-4d %s %s %12s", i+1, titleCell, slackStr, statusStr)
 		if i == m.cursor {
 			lines = append(lines, SelectedLine(line, 0))
 		} else {
@@ -409,6 +410,7 @@ func (m *RoadmapModel) renderForecastsTab(height int) string {
 			}
 		}
 		title := truncateToVisualWidth(row.Task.Title, 33)
+		titleCell := truncateAndPad(TaskTitleStyleFor(row.Task, TaskTitleStyleOptions{}).Render(title), 35)
 		daysStr := "—"
 		forecastStr := "—"
 		if !row.ForecastDate.IsZero() {
@@ -430,7 +432,7 @@ func (m *RoadmapModel) renderForecastsTab(height int) string {
 			scopeStr = MutedStyle.Render(fmt.Sprintf(" scope:%s%d", sign, delta))
 		}
 
-		line := fmt.Sprintf("%-35s %5d %10s %12s %10s", title, remaining, daysStr, forecastStr, confStr)
+		line := fmt.Sprintf("%s %5d %10s %12s %10s", titleCell, remaining, daysStr, forecastStr, confStr)
 		line += scopeStr
 		if i == m.cursor {
 			lines = append(lines, SelectedLine(line, 0))

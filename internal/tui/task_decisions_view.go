@@ -15,7 +15,12 @@ func (m *TaskDecisionsModel) View() tea.View {
 	}
 
 	var b strings.Builder
-	b.WriteString(renderFullscreenTitle(fmt.Sprintf("Decisions · #%d: %s", m.task.ShortID, m.task.Title), "", m.AccentColor()))
+	b.WriteString(renderFullscreenTitle(
+		fmt.Sprintf("Decisions · #%d: %s",
+			m.task.ShortID,
+			TaskTitleStyleFor(m.task, TaskTitleStyleOptions{}).Render(m.task.Title)),
+		"",
+		m.AccentColor()))
 	b.WriteString("\n\n")
 
 	if m.expandedView && m.hasSelection() {

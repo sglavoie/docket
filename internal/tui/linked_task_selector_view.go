@@ -11,11 +11,9 @@ import (
 )
 
 func (m *LinkedTaskSelectorModel) View() tea.View { //nolint:gocyclo
-	taskSubtitle := fmt.Sprintf("#%d %s", m.sourceTask.ShortID, truncateToVisualWidth(m.sourceTask.Title, 30))
-
 	var b strings.Builder
 	if len(m.relations) == 0 {
-		b.WriteString(renderFullscreenTitle("Linked Tasks", taskSubtitle, m.AccentColor()))
+		b.WriteString(m.renderLinkedTaskSelectorTitle("Linked Tasks"))
 		b.WriteString("\n\n")
 		b.WriteString(MutedStyle.Render("No linked tasks."))
 		b.WriteString("\n")
@@ -35,7 +33,7 @@ func (m *LinkedTaskSelectorModel) View() tea.View { //nolint:gocyclo
 	visibleStart := m.scrollOffset
 	visibleEnd := min(m.scrollOffset+maxVisibleItems, len(m.filtered))
 
-	b.WriteString(renderFullscreenTitle("Navigate Linked Tasks", taskSubtitle, m.AccentColor()))
+	b.WriteString(m.renderLinkedTaskSelectorTitle("Navigate Linked Tasks"))
 	b.WriteString("\n\n")
 	b.WriteString(m.renderSearchState())
 
@@ -59,6 +57,16 @@ func (m *LinkedTaskSelectorModel) View() tea.View { //nolint:gocyclo
 	b.WriteString(renderStatusBarFooter(footerLeft, right, m.width, m.AccentColor()))
 
 	return tea.NewView(b.String())
+}
+
+func (m *LinkedTaskSelectorModel) renderLinkedTaskSelectorTitle(title string) string {
+	subtitlePrefix := fmt.Sprintf("#%d ", m.sourceTask.ShortID)
+	availableTitleWidth := max(m.width-lipgloss.Width(title)-lipgloss.Width(subtitlePrefix)-4, 1)
+	taskTitle := truncateToVisualWidth(m.sourceTask.Title, min(availableTitleWidth, 30))
+	titleContent := fullscreenTitleStyle(m.AccentColor()).Render(title) + "  " +
+		MutedStyle.Render(subtitlePrefix) +
+		TaskTitleStyleFor(m.sourceTask, TaskTitleStyleOptions{}).Render(taskTitle)
+	return renderFullscreenTitleContent(titleContent, "")
 }
 
 func (m *LinkedTaskSelectorModel) renderSearchState() string {
@@ -166,11 +174,17 @@ func (m *LinkedTaskSelectorModel) renderRelationLine(rel LinkedTaskRelation, isS
 	prefix := fmt.Sprintf("%s %s %s%s#%d ", statusIcon, typeIcon, stageSegment, projectLabel, rel.Task.ShortID)
 	maxTitleLen := max(availableWidth-lipgloss.Width(prefix), 1)
 	title := truncateToVisualWidth(rel.Task.Title, maxTitleLen)
-	line := prefix + title
+	titleRendered := TaskTitleStyleFor(rel.Task, TaskTitleStyleOptions{
+		CursorSelected: isSelected,
+	}).Render(title)
+	line := prefix + titleRendered
 	if lipgloss.Width(line) > availableWidth {
 		excess := lipgloss.Width(line) - availableWidth
 		title = truncateToVisualWidth(rel.Task.Title, max(maxTitleLen-excess, 1))
-		line = prefix + title
+		titleRendered = TaskTitleStyleFor(rel.Task, TaskTitleStyleOptions{
+			CursorSelected: isSelected,
+		}).Render(title)
+		line = prefix + titleRendered
 	}
 	if isSelected {
 		line = SelectedStyle.Render(line)

@@ -41,7 +41,8 @@ func (m *AppModel) renderPinnedTasksBar(width int) string {
 		prefixWidth := 1 + 1
 		titleWidth := max(perEntryWidth-prefixWidth, 3)
 
-		title := truncateToVisualWidth(p.Title, titleWidth)
+		title := TaskTitleStyleFor(p.Task, TaskTitleStyleOptions{}).
+			Render(truncateToVisualWidth(p.Title, titleWidth))
 		if w := lipgloss.Width(title); w < titleWidth {
 			title += strings.Repeat(" ", titleWidth-w)
 		}
@@ -120,9 +121,10 @@ func (m *AppModel) renderPinnedPopup() string {
 			priorityBadge := renderPriorityBadge(entry.Task.Priority)
 			projectName := entry.ProjectName
 
-			taskTitle := entry.Title
+			titleStyle := TaskTitleStyleFor(entry.Task, TaskTitleStyleOptions{})
+			taskTitle := titleStyle.Render(entry.Title)
 			if i < len(m.pinnedPopupTitlePos) && len(m.pinnedPopupTitlePos[i]) > 0 {
-				taskTitle = truncateAndPad(HighlightText(taskTitle, m.pinnedPopupTitlePos[i], NormalStyle), titleWidth)
+				taskTitle = truncateAndPad(HighlightText(entry.Title, m.pinnedPopupTitlePos[i], titleStyle), titleWidth)
 			} else {
 				taskTitle = truncateAndPad(taskTitle, titleWidth)
 			}
