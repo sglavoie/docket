@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/keymap"
 )
 
 func newSortedProjectTreeModel(t *testing.T) (*ProjectTreeModel, []*TreeNode) {
@@ -170,4 +171,48 @@ func TestHandleMovementKeys_J_DefaultSortNotBlocked(t *testing.T) {
 			}
 		}
 	}
+}
+
+func TestProjectTreeArrowNavigationMatchesJK(t *testing.T) {
+	tests := []struct {
+		name     string
+		arrowKey string
+		vimKey   string
+		start    int
+		want     int
+	}{
+		{name: "down", arrowKey: "down", vimKey: "j", start: 0, want: 1},
+		{name: "up", arrowKey: "up", vimKey: "k", start: 1, want: 0},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := projectTreeCursorAfterNavigationKey(t, tc.arrowKey, tc.start); got != tc.want {
+				t.Fatalf("after %q: cursor = %d, want %d", tc.arrowKey, got, tc.want)
+			}
+			if got := projectTreeCursorAfterNavigationKey(t, tc.vimKey, tc.start); got != tc.want {
+				t.Fatalf("after %q: cursor = %d, want %d", tc.vimKey, got, tc.want)
+			}
+		})
+	}
+}
+
+func projectTreeCursorAfterNavigationKey(t *testing.T, key string, start int) int {
+	t.Helper()
+
+	m, _ := newSortedProjectTreeModel(t)
+	m.PrimaryViewBundle = NewPrimaryViewBundle(nil, nil)
+	m.sidebar = NewSidebarComponent()
+	m.cursor = start
+	m.Dispatcher = keymap.NewDispatcher(m.buildKeyMap())
+
+	updated, cmd := m.Update(syntheticKeyStr(key))
+	if cmd != nil {
+		t.Fatalf("%q returned unexpected command", key)
+	}
+	tree, ok := updated.(*ProjectTreeModel)
+	if !ok {
+		t.Fatalf("%q returned %T, want *ProjectTreeModel", key, updated)
+	}
+	return tree.cursor
 }

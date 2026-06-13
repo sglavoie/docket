@@ -138,7 +138,22 @@ func (b *projectTreeKeymapBuilder) navigationEntries() []keymap.Entry {
 
 			return m, nil
 		}, keymap.AsHidden()),
+		keymap.Bind("down", "Move cursor down", "Navigation", func() (tea.Model, tea.Cmd) {
+			visible := b.visible()
+			if m.cursor < len(visible)-1 {
+				m.cursor++
+			}
+
+			return m, nil
+		}, keymap.AsHidden()),
 		keymap.Bind("k", "Move cursor up", "Navigation", func() (tea.Model, tea.Cmd) {
+			if m.cursor > 0 {
+				m.cursor--
+			}
+
+			return m, nil
+		}, keymap.AsHidden()),
+		keymap.Bind("up", "Move cursor up", "Navigation", func() (tea.Model, tea.Cmd) {
 			if m.cursor > 0 {
 				m.cursor--
 			}

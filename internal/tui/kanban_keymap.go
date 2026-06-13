@@ -28,7 +28,15 @@ func (m *KanbanModel) buildKeyMap() *keymap.KeyMap {
 			m.moveCursorDown()
 			return m, nil
 		}, keymap.AsHidden()),
+		keymap.Bind("down", "Move cursor down within column", "Navigation", func() (tea.Model, tea.Cmd) {
+			m.moveCursorDown()
+			return m, nil
+		}, keymap.AsHidden()),
 		keymap.Bind("k", "Move cursor up within column", "Navigation", func() (tea.Model, tea.Cmd) {
+			m.moveCursorUp()
+			return m, nil
+		}, keymap.AsHidden()),
+		keymap.Bind("up", "Move cursor up within column", "Navigation", func() (tea.Model, tea.Cmd) {
 			m.moveCursorUp()
 			return m, nil
 		}, keymap.AsHidden()),

@@ -5,6 +5,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/testutil"
+	"github.com/sglavoie/tt/internal/tui/keymap"
 )
 
 // newTestKanban returns a KanbanModel pre-loaded with the given columns for
@@ -66,6 +67,58 @@ func TestMoveCursorUp_AtTop_NoChange(t *testing.T) {
 	if m.columns[0].Cursor != 0 {
 		t.Errorf("want cursor stay at 0, got %d", m.columns[0].Cursor)
 	}
+}
+
+func TestKanbanArrowNavigationMatchesJKInActiveColumn(t *testing.T) {
+	tests := []struct {
+		name     string
+		arrowKey string
+		vimKey   string
+		start    int
+		want     int
+	}{
+		{name: "down", arrowKey: "down", vimKey: "j", start: 0, want: 1},
+		{name: "up", arrowKey: "up", vimKey: "k", start: 2, want: 1},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			arrow := kanbanAfterNavigationKey(t, tc.arrowKey, tc.start)
+			vim := kanbanAfterNavigationKey(t, tc.vimKey, tc.start)
+
+			if arrow.columns[1].Cursor != tc.want {
+				t.Fatalf("after %q active column cursor = %d, want %d", tc.arrowKey, arrow.columns[1].Cursor, tc.want)
+			}
+			if vim.columns[1].Cursor != tc.want {
+				t.Fatalf("after %q active column cursor = %d, want %d", tc.vimKey, vim.columns[1].Cursor, tc.want)
+			}
+			if arrow.columns[1].Cursor != vim.columns[1].Cursor {
+				t.Fatalf("%q cursor = %d, %q cursor = %d", tc.arrowKey, arrow.columns[1].Cursor, tc.vimKey, vim.columns[1].Cursor)
+			}
+			if arrow.columns[0].Cursor != 0 {
+				t.Fatalf("%q moved inactive column cursor to %d", tc.arrowKey, arrow.columns[0].Cursor)
+			}
+		})
+	}
+}
+
+func kanbanAfterNavigationKey(t *testing.T, key string, start int) *KanbanModel {
+	t.Helper()
+
+	m := newTestKanban([]KanbanColumn{makeCol("inbox", 3), makeCol("next", 3)})
+	m.activeCol = 1
+	m.columns[1].Cursor = start
+	m.Dispatcher = keymap.NewDispatcher(m.buildKeyMap())
+
+	updated, cmd := m.Update(syntheticKeyStr(key))
+	if cmd != nil {
+		t.Fatalf("%q returned unexpected command", key)
+	}
+	kanban, ok := updated.(*KanbanModel)
+	if !ok {
+		t.Fatalf("%q returned %T, want *KanbanModel", key, updated)
+	}
+	return kanban
 }
 
 func TestMoveCursorDown_EmptyColumn_NoOp(t *testing.T) {

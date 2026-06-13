@@ -28,7 +28,20 @@ func (m *PipelineHubModel) buildKeyMap() *keymap.KeyMap {
 			}
 			return m, nil
 		}, keymap.AsHidden()),
+		keymap.Bind("down", "Move cursor down within column", "Navigation", func() (tea.Model, tea.Cmd) {
+			col := m.columns[m.activeCol]
+			if m.activeRow < len(col.entries)-1 {
+				m.activeRow++
+			}
+			return m, nil
+		}, keymap.AsHidden()),
 		keymap.Bind("k", "Move cursor up within column", "Navigation", func() (tea.Model, tea.Cmd) {
+			if m.activeRow > 0 {
+				m.activeRow--
+			}
+			return m, nil
+		}, keymap.AsHidden()),
+		keymap.Bind("up", "Move cursor up within column", "Navigation", func() (tea.Model, tea.Cmd) {
 			if m.activeRow > 0 {
 				m.activeRow--
 			}

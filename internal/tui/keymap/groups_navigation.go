@@ -14,12 +14,14 @@ type ListNavigationDeps struct {
 	PageDown Action
 }
 
-// ListNavigationGroup returns top-level navigation bindings: j, k, G, ctrl+u, ctrl+d.
+// ListNavigationGroup returns top-level navigation bindings: j, k, down, up, G, ctrl+u, ctrl+d.
 func ListNavigationGroup(deps ListNavigationDeps) []Entry {
 	cat := "Navigation"
 	return []Entry{
 		Bind("j", "Cursor down", cat, deps.CursorDown),
+		Bind("down", "Cursor down", cat, deps.CursorDown, AsHidden()),
 		Bind("k", "Cursor up", cat, deps.CursorUp),
+		Bind("up", "Cursor up", cat, deps.CursorUp, AsHidden()),
 		Bind("G", "Jump to bottom", cat, deps.JumpToBottom),
 		Bind("ctrl+u", "Page up", cat, deps.PageUp),
 		Bind("ctrl+d", "Page down", cat, deps.PageDown),

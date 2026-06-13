@@ -118,6 +118,28 @@ func TestGetForView_WeeklyReviewDoesNotAdvertiseSupersededCtrlN(t *testing.T) {
 	}
 }
 
+func TestListNavigationGroupConsumersExposeArrowKeys(t *testing.T) {
+	tests := []struct {
+		name string
+		keys []string
+	}{
+		{name: "All Tasks", keys: (&AllTasksViewModel{}).HandledKeys()},
+		{name: "Focus", keys: (&FocusViewModel{}).HandledKeys()},
+		{name: "Priority", keys: (&PriorityViewModel{}).HandledKeys()},
+		{name: "Recent Activity", keys: (&RecentActivityModel{}).HandledKeys()},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			for _, key := range []string{"j", "down", "k", "up"} {
+				if !slices.Contains(tc.keys, key) {
+					t.Errorf("HandledKeys missing %q", key)
+				}
+			}
+		})
+	}
+}
+
 func TestGetForView_InboxProcessorPriority(t *testing.T) {
 	// InboxProcessor is migrated to declarative keymap; verify via buildKeyMap().
 	m := &InboxProcessorModel{}

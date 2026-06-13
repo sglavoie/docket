@@ -9,11 +9,11 @@ import (
 func TestListNavigationGroup(t *testing.T) {
 	deps := ListNavigationDeps{}
 	entries := ListNavigationGroup(deps)
-	if len(entries) != 5 {
-		t.Fatalf("ListNavigationGroup: want 5 entries, got %d", len(entries))
+	if len(entries) != 7 {
+		t.Fatalf("ListNavigationGroup: want 7 entries, got %d", len(entries))
 	}
 	keys := directBindingKeys(entries)
-	for _, k := range []string{"j", "k", "G", "ctrl+u", "ctrl+d"} {
+	for _, k := range []string{"j", "down", "k", "up", "G", "ctrl+u", "ctrl+d"} {
 		if !slices.Contains(keys, k) {
 			t.Errorf("ListNavigationGroup: missing key %q", k)
 		}
@@ -179,7 +179,7 @@ func TestIntegration_MergedHandledKeys(t *testing.T) {
 		}
 	}
 	// Top-level nav keys
-	for _, k := range []string{"j", "k", "G", "ctrl+u", "ctrl+d"} {
+	for _, k := range []string{"j", "down", "k", "up", "G", "ctrl+u", "ctrl+d"} {
 		if !handledSet[k] {
 			t.Errorf("HandledKeys missing nav key %q", k)
 		}

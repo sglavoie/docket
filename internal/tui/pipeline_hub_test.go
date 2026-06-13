@@ -2,6 +2,7 @@ package tui
 
 import (
 	"regexp"
+	"slices"
 	"strings"
 	"testing"
 
@@ -41,6 +42,18 @@ func TestPipelineHubModel_StatusBarLabel(t *testing.T) {
 	m := NewPipelineHubModel(cfg, nil, nil, nil, nil)
 	if got := m.StatusBarLabel(); got != "Pipeline" {
 		t.Errorf("StatusBarLabel() = %q, want %q", got, "Pipeline")
+	}
+}
+
+func TestPipelineHubModel_HandledKeysIncludesArrowNavigation(t *testing.T) {
+	cfg := &config.Config{Projects: []*models.Project{}}
+	m := NewPipelineHubModel(cfg, nil, nil, nil, nil)
+	keys := m.HandledKeys()
+
+	for _, key := range []string{"j", "down", "k", "up"} {
+		if !slices.Contains(keys, key) {
+			t.Errorf("HandledKeys missing %q", key)
+		}
 	}
 }
 
