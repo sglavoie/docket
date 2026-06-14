@@ -119,7 +119,7 @@ func (m *SettingsModel) renderBehaviorRecentTasksSection() string {
 		b.WriteString(ValidationErrorStyle.Render(m.validationErr))
 		b.WriteString("\n")
 	}
-	b.WriteString(renderFormFieldDesc("Maximum tasks shown in quick-switch overlay (Ctrl+R)", indent, m.focusIndex == base+0))
+	b.WriteString(renderFormFieldDesc("Maximum tasks shown in Recent Tasks overlay", indent, m.focusIndex == base+0))
 
 	return b.String()
 }
