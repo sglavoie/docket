@@ -125,6 +125,7 @@ func (m *ProjectFocusViewModel) buildKeyMap() *keymap.KeyMap {
 		keymap.Bind("tab", "Next sub-tab", "Navigation", func() (tea.Model, tea.Cmd) {
 			if len(m.subTabNames) > 1 {
 				CycleTab(&m.subTab, len(m.subTabNames)+1, 1)
+				m.resetViewScrollOffset()
 				m.clampCursor()
 			}
 			return m, nil
@@ -132,6 +133,7 @@ func (m *ProjectFocusViewModel) buildKeyMap() *keymap.KeyMap {
 		keymap.Bind("shift+right", "Next sub-tab", "Navigation", func() (tea.Model, tea.Cmd) {
 			if len(m.subTabNames) > 1 {
 				CycleTab(&m.subTab, len(m.subTabNames)+1, 1)
+				m.resetViewScrollOffset()
 				m.clampCursor()
 			}
 			return m, nil
@@ -139,6 +141,7 @@ func (m *ProjectFocusViewModel) buildKeyMap() *keymap.KeyMap {
 		keymap.Bind("shift+tab", "Previous sub-tab", "Navigation", func() (tea.Model, tea.Cmd) {
 			if len(m.subTabNames) > 1 {
 				CycleTab(&m.subTab, len(m.subTabNames)+1, -1)
+				m.resetViewScrollOffset()
 				m.clampCursor()
 			}
 			return m, nil
@@ -146,6 +149,7 @@ func (m *ProjectFocusViewModel) buildKeyMap() *keymap.KeyMap {
 		keymap.Bind("shift+left", "Previous sub-tab", "Navigation", func() (tea.Model, tea.Cmd) {
 			if len(m.subTabNames) > 1 {
 				CycleTab(&m.subTab, len(m.subTabNames)+1, -1)
+				m.resetViewScrollOffset()
 				m.clampCursor()
 			}
 			return m, nil

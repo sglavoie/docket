@@ -123,7 +123,8 @@ func (m *FocusViewModel) View() tea.View { //nolint:gocyclo
 		}
 	}
 
-	b.WriteString(strings.Join(applyScroll(lines, scrollCursor, contentHeight), "\n"))
+	visibleLines, _, _ := persistentLineWindow(lines, scrollCursor, contentHeight, &m.viewScrollOffset)
+	b.WriteString(strings.Join(visibleLines, "\n"))
 
 	b.WriteString("\n\n")
 	b.WriteString(statusBlock)

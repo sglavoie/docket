@@ -170,6 +170,7 @@ func (m *OutlinerModel) handleUtilityKey(key string) (tea.Model, tea.Cmd, bool) 
 			tab := m.customSectionTabIndex()
 			cycleCustomSectionTab(key, &tab, len(tabs), func() {
 				m.setCustomSectionTabIndex(tab)
+				m.resetViewScrollOffset()
 				m.rebuildRows()
 			})
 		}
@@ -212,8 +213,14 @@ func (m *OutlinerModel) handleUtilityKey(key string) (tea.Model, tea.Cmd, bool) 
 	case "1", "2", "3", "4", "5", "0":
 		m.clearActiveSavedFilter()
 		handleSortKey(key, &m.sort,
-			func() { m.rebuildRows() },
-			func(SortField) { m.rebuildRows() },
+			func() {
+				m.resetViewScrollOffset()
+				m.rebuildRows()
+			},
+			func(SortField) {
+				m.resetViewScrollOffset()
+				m.rebuildRows()
+			},
 		)
 		return m, nil, true
 	}

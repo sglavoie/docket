@@ -57,6 +57,7 @@ func (m *OutlinerModel) crossHandlePerspectiveCycle(key string) (tea.Model, tea.
 	case "l":
 		m.activePerspective = (m.activePerspective + 1) % perspCount
 	}
+	m.resetViewScrollOffset()
 	m.rebuildRows()
 	return m.crossSkipSeparators(prevCursor, nil)
 }
@@ -67,6 +68,7 @@ func (m *OutlinerModel) crossHandlePerspectiveCycle(key string) (tea.Model, tea.
 func (m *OutlinerModel) crossHandlePerspectiveJump(perspKey int) (tea.Model, tea.Cmd) {
 	prevCursor := m.cursor
 	m.activePerspective = perspKey
+	m.resetViewScrollOffset()
 	m.rebuildRows()
 	return m.crossSkipSeparators(prevCursor, nil)
 }
@@ -171,6 +173,7 @@ func (m *OutlinerModel) crossHandleEnterKey() (tea.Model, tea.Cmd, bool) {
 	if row.IsSectionHeader {
 		key := row.effectiveCollapseKey()
 		m.collapsedSections[key] = !m.collapsedSections[key]
+		m.resetViewScrollOffset()
 		m.rebuildRows()
 		return m, nil, true
 	}
@@ -183,6 +186,7 @@ func (m *OutlinerModel) crossHandleEnterKey() (tea.Model, tea.Cmd, bool) {
 			CursorIndex: m.cursor,
 		})
 		m.cursor = 0
+		m.resetViewScrollOffset()
 		return m, nil, true
 	}
 	// Leaf tasks: open detail view.

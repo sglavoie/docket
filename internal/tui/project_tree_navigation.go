@@ -40,6 +40,7 @@ func (m *ProjectTreeModel) cycleViewMode(delta int) {
 	} else {
 		m.viewMode = modes[len(modes)-1]
 	}
+	m.resetViewScrollOffset()
 	m.updateVisibility()
 	m.clampCursor()
 }

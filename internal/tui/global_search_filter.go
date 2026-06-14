@@ -77,6 +77,7 @@ func (m *GlobalSearchModel) filterTasks() {
 	if query == "" && !m.hideCompleted && m.tabs.Active != globalSearchTabNotes {
 		m.filtered = nil
 		m.cursor = 0
+		m.clampScrollOffsetToResults()
 		return
 	}
 
@@ -203,6 +204,7 @@ func (m *GlobalSearchModel) filterTasks() {
 	}
 
 	m.cursor = ClampCursor(m.cursor, len(m.filtered))
+	m.clampScrollOffsetToResults()
 }
 
 // scoreNote returns a fuzzy match score for a note against the query.

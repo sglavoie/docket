@@ -17,7 +17,7 @@ func (m *GlobalSearchModel) renderTaskList(paneHeight int) string {
 
 	var b strings.Builder
 	maxVisible := paneHeight
-	scrollOffset := calcScrollOffset(m.cursor, maxVisible)
+	startIdx, endIdx := persistentIndexWindow(m.cursor, len(m.filtered), maxVisible, &m.scrollOffset)
 
 	// Compute badge widths once per render pass for column alignment.
 	var colLayout *ColumnLayout
@@ -35,7 +35,7 @@ func (m *GlobalSearchModel) renderTaskList(paneHeight int) string {
 		})
 	}
 
-	for i := scrollOffset; i < len(m.filtered) && i < scrollOffset+maxVisible; i++ {
+	for i := startIdx; i < endIdx; i++ {
 		line := m.renderTaskListRow(i, m.filtered[i], colLayout)
 		b.WriteString(line)
 		b.WriteString("\n")

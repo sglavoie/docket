@@ -16,6 +16,7 @@ func isNonActiveGTDSection(section string) bool {
 // applyFilterChange refreshes visibility, prunes stale selections, and clamps the cursor.
 // Call this after any filter/view mutation to keep the UI consistent.
 func (m *ProjectTreeModel) applyFilterChange() {
+	m.resetViewScrollOffset()
 	m.updateVisibility()
 	m.pruneInvisibleSelections()
 	m.clampCursor()

@@ -20,6 +20,7 @@ func (m *OutlinerModel) handleNavigationKey(key string) (tea.Model, tea.Cmd, boo
 		if row.IsSectionHeader {
 			keyCollapse := row.effectiveCollapseKey()
 			m.collapsedSections[keyCollapse] = !m.collapsedSections[keyCollapse]
+			m.resetViewScrollOffset()
 			m.rebuildRows()
 			return m, nil, true
 		}
@@ -31,6 +32,7 @@ func (m *OutlinerModel) handleNavigationKey(key string) (tea.Model, tea.Cmd, boo
 				CursorIndex: m.cursor,
 			})
 			m.cursor = 0
+			m.resetViewScrollOffset()
 			return m, nil, true
 		}
 		return m, func() tea.Msg {
@@ -42,12 +44,14 @@ func (m *OutlinerModel) handleNavigationKey(key string) (tea.Model, tea.Cmd, boo
 			top := m.crossZoomStack[len(m.crossZoomStack)-1]
 			m.crossZoomStack = m.crossZoomStack[:len(m.crossZoomStack)-1]
 			m.cursor = top.CursorIndex
+			m.resetViewScrollOffset()
 			return m, nil, true
 		}
 		if len(m.zoomStack) > 0 {
 			top := m.zoomStack[len(m.zoomStack)-1]
 			m.zoomStack = m.zoomStack[:len(m.zoomStack)-1]
 			m.cursor = top.CursorIndex
+			m.resetViewScrollOffset()
 		}
 		return m, nil, true
 	}
@@ -93,17 +97,20 @@ func (m *OutlinerModel) escSteps() []EscStep {
 		}},
 		{Active: func() bool { return m.SearchQuery() != "" }, Clear: func() {
 			m.ClearSearch()
+			m.resetViewScrollOffset()
 			m.rebuildRows()
 		}},
 		{Active: func() bool { return len(m.zoomStack) > 0 }, Clear: func() {
 			top := m.zoomStack[len(m.zoomStack)-1]
 			m.zoomStack = m.zoomStack[:len(m.zoomStack)-1]
 			m.cursor = top.CursorIndex
+			m.resetViewScrollOffset()
 		}},
 		{Active: func() bool { return len(m.crossZoomStack) > 0 }, Clear: func() {
 			top := m.crossZoomStack[len(m.crossZoomStack)-1]
 			m.crossZoomStack = m.crossZoomStack[:len(m.crossZoomStack)-1]
 			m.cursor = top.CursorIndex
+			m.resetViewScrollOffset()
 		}},
 	}
 }

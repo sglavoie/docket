@@ -110,6 +110,7 @@ func (m *OutlinerModel) handleCrossProjectsLoaded(msg crossProjectsLoadedMsg) te
 	m.crossSpinnerVisible = false
 	m.loadedProjects = msg.projects
 	m.crossForceRebuild = true
+	m.resetViewScrollOffset()
 	m.crossProjectRebuildRows()
 
 	if len(msg.failedLoads) == 0 {
@@ -341,6 +342,7 @@ func (m *OutlinerModel) renderCrossProjectContent() string {
 func (m *OutlinerModel) reloadCrossProjects() tea.Cmd {
 	m.loadedProjects = nil
 	m.rows = m.rows[:0]
+	m.resetViewScrollOffset()
 	return m.startCrossProjectLoad()
 }
 

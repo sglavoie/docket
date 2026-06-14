@@ -63,6 +63,7 @@ func (m *AppModel) handleContextMessages(msg tea.Msg) (bool, tea.Cmd) {
 						m.dashboard.cursor = 0
 					}
 				}
+				m.dashboard.resetViewScrollOffset()
 			}
 
 			// When the cross-project outliner is in the view stack, trigger a

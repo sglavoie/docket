@@ -74,3 +74,14 @@ func NewProjectRecentActivityModel(cfg *config.Config, mgr *config.Manager, proj
 	m.loadTasks()
 	return m
 }
+
+func (m *RecentActivityModel) resetViewScrollOffset() {
+	m.viewScrollOffset = 0
+}
+
+// SetSize updates the view dimensions and resets the persisted scroll window
+// because the visible row budget may have changed.
+func (m *RecentActivityModel) SetSize(width, height int) {
+	m.BaseSearchableView.SetSize(width, height)
+	m.resetViewScrollOffset()
+}

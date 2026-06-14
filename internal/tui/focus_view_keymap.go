@@ -81,6 +81,7 @@ func (m *FocusViewModel) focusNavigationEntries() []keymap.Entry {
 	entries = append(entries, keymap.Prefix("f", "Preview", "View", []keymap.Entry{
 		keymap.Bind("p", "Toggle inline preview", "View", func() (tea.Model, tea.Cmd) {
 			m.previewMode = !m.previewMode
+			m.resetViewScrollOffset()
 			return m, nil
 		}),
 	}))

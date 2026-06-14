@@ -109,6 +109,17 @@ type OutlinerModel struct {
 // setOpenLoops injects the latest cross-project open-loop counts into the view.
 func (m *OutlinerModel) setOpenLoops(o OpenLoops) { m.openLoops = o }
 
+func (m *OutlinerModel) resetViewScrollOffset() {
+	m.viewScrollOffset = 0
+}
+
+// SetSize updates the view dimensions and resets the persisted scroll window
+// because the visible row budget may have changed.
+func (m *OutlinerModel) SetSize(width, height int) {
+	m.BaseSearchableView.SetSize(width, height)
+	m.resetViewScrollOffset()
+}
+
 // primaryProjectView interface implementation for shared key dispatch.
 func (m *OutlinerModel) getProject() *models.Project       { return m.project }
 func (m *OutlinerModel) getConfig() *config.Config         { return m.config }
@@ -123,6 +134,7 @@ func (m *OutlinerModel) getCursorTask() *models.Task {
 	return nil
 }
 func (m *OutlinerModel) reloadFromDisk() tea.Cmd {
+	m.resetViewScrollOffset()
 	if m.project == nil {
 		return m.reloadCrossProjects()
 	}

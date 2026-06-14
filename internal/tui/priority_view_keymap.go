@@ -125,6 +125,7 @@ func (m *PriorityViewModel) priorityPreviewEntries() []keymap.Entry {
 
 func (m *PriorityViewModel) priorityTogglePreviewAction() (tea.Model, tea.Cmd) {
 	m.previewMode = !m.previewMode
+	m.resetViewScrollOffset()
 	return m, nil
 }
 
@@ -413,6 +414,7 @@ func (m *PriorityViewModel) priorityOpenTaskDetailAction() (tea.Model, tea.Cmd) 
 
 func (m *PriorityViewModel) priorityToggleWaitingAction() (tea.Model, tea.Cmd) {
 	m.waitingOnCollapsed = !m.waitingOnCollapsed
+	m.resetViewScrollOffset()
 	return m, nil
 }
 
@@ -447,6 +449,7 @@ func (m *PriorityViewModel) priorityStartSuggestedAction() (tea.Model, tea.Cmd) 
 
 func (m *PriorityViewModel) priorityDismissSuggestionAction() (tea.Model, tea.Cmd) {
 	m.dismissSuggestion()
+	m.resetViewScrollOffset()
 	return m, nil
 }
 

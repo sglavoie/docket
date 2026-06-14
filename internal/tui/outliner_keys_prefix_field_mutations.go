@@ -11,6 +11,7 @@ func (m *OutlinerModel) handlePerspectivePrefix(key string) (tea.Model, tea.Cmd)
 			return m.crossHandlePerspectiveJump(perspKey)
 		}
 		m.activePerspective = perspKey
+		m.resetViewScrollOffset()
 		m.rebuildRows()
 		return m, nil
 	}

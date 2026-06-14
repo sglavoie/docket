@@ -157,6 +157,7 @@ func (m *DueDateOverviewModel) applyTabFilter() {
 
 // recalcTotalTasks updates totalTasks and groupStarts based on the active tab.
 func (m *DueDateOverviewModel) recalcTotalTasks() {
+	m.resetViewScrollOffset()
 	switch m.tabs.Active {
 	case dueDateTabOverdue:
 		m.totalTasks = len(m.overdue)
@@ -254,6 +255,17 @@ func (m *DueDateOverviewModel) HasActiveSearch() bool {
 
 func (m *DueDateOverviewModel) Init() tea.Cmd {
 	return nil
+}
+
+func (m *DueDateOverviewModel) resetViewScrollOffset() {
+	m.viewScrollOffset = 0
+}
+
+// SetSize updates the view dimensions and resets the persisted scroll window
+// because the visible row budget may have changed.
+func (m *DueDateOverviewModel) SetSize(width, height int) {
+	m.BaseView.SetSize(width, height)
+	m.resetViewScrollOffset()
 }
 
 func (m *DueDateOverviewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {

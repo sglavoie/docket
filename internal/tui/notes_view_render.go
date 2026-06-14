@@ -133,11 +133,7 @@ func (m *NotesViewModel) renderListPane() string {
 		// -1 for footer in list pane
 		listHeight-1, 1)
 
-	startIdx := 0
-	if m.cursor >= noteListHeight {
-		startIdx = m.cursor - noteListHeight + 1
-	}
-	endIdx := min(startIdx+noteListHeight, len(m.notes))
+	startIdx, endIdx := persistentIndexWindow(m.cursor, len(m.notes), noteListHeight, &m.scrollOffset)
 
 	selectedStyle := TaskJumperSelectedStyle
 	if m.detailsPane.Focused {

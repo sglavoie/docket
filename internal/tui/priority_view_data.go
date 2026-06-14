@@ -246,6 +246,7 @@ func (m *PriorityViewModel) filteredGroupsWithSubTab() (overdue, today, thisWeek
 
 // recalculateNavigation updates totalTasks and groupStarts based on the active tab.
 func (m *PriorityViewModel) recalculateNavigation() {
+	m.resetViewScrollOffset()
 	m.computeSubTabs()
 
 	// By Score tab uses visibleScoredTasks (search-filtered)

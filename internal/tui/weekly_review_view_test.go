@@ -62,6 +62,42 @@ func TestWeeklyReview_WithStaleProjects(t *testing.T) {
 	}
 }
 
+func TestWeeklyReviewPersistentScrollPreservesWindowUntilCursorLeaves(t *testing.T) {
+	cfg := &config.Config{Projects: []*models.Project{}}
+	m := newTestWeeklyReviewModel(cfg)
+	m.SetSize(80, 12)
+
+	project, err := models.NewProject("p1", "Test Project", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for range 24 {
+		task := testutil.NewTestTask("Weekly review task", models.TaskTypeTask)
+		m.staleTasks = append(m.staleTasks, WeeklyReviewTask{Task: task, Project: project})
+	}
+
+	m.tabs.Active = 1
+	m.calculateNavigation()
+	m.cursor = m.totalItems - 1
+	_ = m.View()
+	bottomOffset := m.scrollOffset
+	if bottomOffset == 0 {
+		t.Fatal("expected bottom render to establish a non-zero scroll offset")
+	}
+
+	m.cursor--
+	_ = m.View()
+	if m.scrollOffset != bottomOffset {
+		t.Fatalf("scroll offset changed while cursor stayed visible: got %d, want %d", m.scrollOffset, bottomOffset)
+	}
+
+	m.cursor = 0
+	_ = m.View()
+	if m.scrollOffset != 0 {
+		t.Fatalf("scroll offset should clamp when cursor jumps above viewport: got %d", m.scrollOffset)
+	}
+}
+
 func TestWeeklyReview_ReviewCompletion(t *testing.T) {
 	cfg := &config.Config{Projects: []*models.Project{}}
 	m := newTestWeeklyReviewModel(cfg)

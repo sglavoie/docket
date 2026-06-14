@@ -25,24 +25,6 @@ func TestTreeRenderLineCountIncludesGroupSeparators(t *testing.T) {
 	}
 }
 
-func TestTreeWindowRangeByLinesAvoidsSingleRowCollapse(t *testing.T) {
-	visible := make([]*TreeNode, 0, 21)
-	for i := range 21 {
-		visible = append(visible, &TreeNode{TopGroupIndex: i})
-	}
-
-	start, end := treeWindowRangeByLines(visible, 10, 10)
-	if start > 10 || end <= 10 {
-		t.Fatalf("window [%d,%d) does not include cursor 10", start, end)
-	}
-	if got := treeRenderLineCount(visible, start, end); got > 10 {
-		t.Fatalf("window line count = %d, exceeds max 10", got)
-	}
-	if rows := end - start; rows <= 1 {
-		t.Fatalf("window rows = %d, expected multiple rows", rows)
-	}
-}
-
 func TestProjectTreeAllViewRendersMultipleRowsWithManyTopGroups(t *testing.T) {
 	tasks := make([]*models.Task, 0, 25)
 	sections := []string{
@@ -76,6 +58,55 @@ func TestProjectTreeAllViewRendersMultipleRowsWithManyTopGroups(t *testing.T) {
 	}
 	if seen < 2 {
 		t.Fatalf("expected multiple rendered task rows, saw %d task titles in output", seen)
+	}
+}
+
+func TestProjectTreePersistentScrollKeepsFirstRowMovingUpWithinViewport(t *testing.T) {
+	root := &models.Task{
+		ID:       "root",
+		ShortID:  1,
+		Type:     models.TaskTypeEpic,
+		Title:    "Root",
+		Status:   models.StatusTodo,
+		Children: []*models.Task{},
+	}
+	tasks := []*models.Task{root}
+	for i := 1; i <= 8; i++ {
+		child := &models.Task{
+			ID:       fmt.Sprintf("child-%02d", i),
+			ShortID:  i + 1,
+			Type:     models.TaskTypeTask,
+			Title:    fmt.Sprintf("Child %02d", i),
+			Status:   models.StatusTodo,
+			ParentID: &root.ID,
+			Parent:   root,
+		}
+		root.Children = append(root.Children, child)
+		tasks = append(tasks, child)
+	}
+
+	project := newTestProjectTreeProject(t, "Persistent Scroll", tasks)
+	m := NewProjectTreeModel(project, newTestProjectTreeConfig(), nil)
+	m.viewMode = ViewModeAll
+	m.updateVisibility()
+	m.SetSize(120, 13) // TreeHeaderOffset + card border leaves four task rows.
+
+	m.cursor = 5
+	_ = m.renderTreeContent(120, true)
+	start := m.viewScrollOffset
+	visible := m.visibleNodes()
+	if start == 0 {
+		t.Fatalf("expected initial render to scroll down, offset stayed at 0")
+	}
+	firstTitle := visible[start].Task.Title
+
+	m.cursor = 4
+	_ = m.renderTreeContent(120, true)
+	if m.viewScrollOffset != start {
+		t.Fatalf("moving up inside viewport changed first rendered row: offset=%d want %d", m.viewScrollOffset, start)
+	}
+	if got := visible[m.viewScrollOffset].Task.Title; got != firstTitle {
+		t.Fatalf("first rendered row = %q, want %q", got, firstTitle)
 	}
 }
 

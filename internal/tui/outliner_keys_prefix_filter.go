@@ -47,6 +47,7 @@ func (m *OutlinerModel) handleFilterPrefix(key string) (tea.Model, tea.Cmd) {
 		} else {
 			m.activePerspective = PerspectiveCompleted
 		}
+		m.resetViewScrollOffset()
 		m.rebuildRows()
 		return m, nil
 	case "@":
@@ -55,6 +56,7 @@ func (m *OutlinerModel) handleFilterPrefix(key string) (tea.Model, tea.Cmd) {
 		}
 	case "r":
 		m.filter.Actionable = !m.filter.Actionable
+		m.resetViewScrollOffset()
 		m.rebuildRows()
 		return m, nil
 	case "D":
@@ -71,6 +73,7 @@ func (m *OutlinerModel) handleFilterPrefix(key string) (tea.Model, tea.Cmd) {
 		m.filter.Sections = make(map[string]bool)
 		m.filterProjects = make(map[string]bool)
 		m.ClearSearch()
+		m.resetViewScrollOffset()
 		m.rebuildRows()
 		return m, func() tea.Msg { return outlinerFilterStateChangedMsg{} }
 	}
@@ -99,7 +102,10 @@ func (m *OutlinerModel) handleFilterPrefix(key string) (tea.Model, tea.Cmd) {
 			m.pendingPrefix = p
 		}
 	}
-	if cmd := applyCommonFilterResult(result, setPfx, func() { m.rebuildRows() }); cmd != nil {
+	if cmd := applyCommonFilterResult(result, setPfx, func() {
+		m.resetViewScrollOffset()
+		m.rebuildRows()
+	}); cmd != nil {
 		return m, cmd
 	}
 	if result.Changed {

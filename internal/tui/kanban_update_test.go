@@ -212,6 +212,55 @@ func TestPageUp(t *testing.T) {
 	}
 }
 
+func TestKanbanPersistentScrollPreservesWindowUntilCursorLeaves(t *testing.T) {
+	m := newTestKanban([]KanbanColumn{makeCol("inbox", 12)})
+	m.width = 80
+	m.height = 10
+
+	m.columns[0].Cursor = len(m.columns[0].Tasks) - 1
+	m.clampScrollToVisible(0)
+	bottomOffset := m.columns[0].ScrollOffset
+	if bottomOffset == 0 {
+		t.Fatal("expected bottom clamp to establish a non-zero scroll offset")
+	}
+
+	m.columns[0].Cursor--
+	m.clampScrollToVisible(0)
+	if m.columns[0].ScrollOffset != bottomOffset {
+		t.Fatalf("scroll offset changed while cursor stayed visible: got %d, want %d", m.columns[0].ScrollOffset, bottomOffset)
+	}
+
+	m.columns[0].Cursor = 0
+	m.clampScrollToVisible(0)
+	if m.columns[0].ScrollOffset != 0 {
+		t.Fatalf("scroll offset should clamp when cursor jumps above viewport: got %d", m.columns[0].ScrollOffset)
+	}
+}
+
+func TestKanbanPersistentScrollOffsetsArePerColumn(t *testing.T) {
+	m := newTestKanban([]KanbanColumn{makeCol("todo", 12), makeCol("done", 12)})
+	m.width = 80
+	m.height = 10
+
+	m.columns[0].Cursor = len(m.columns[0].Tasks) - 1
+	m.clampScrollToVisible(0)
+	firstOffset := m.columns[0].ScrollOffset
+	if firstOffset == 0 {
+		t.Fatal("expected first column to establish a non-zero scroll offset")
+	}
+
+	m.activeCol = 1
+	m.columns[1].Cursor = 1
+	m.clampScrollToVisible(1)
+
+	if m.columns[0].ScrollOffset != firstOffset {
+		t.Fatalf("inactive column offset changed: got %d, want %d", m.columns[0].ScrollOffset, firstOffset)
+	}
+	if m.columns[1].ScrollOffset != 0 {
+		t.Fatalf("second column should maintain its own offset: got %d", m.columns[1].ScrollOffset)
+	}
+}
+
 // ── J/K in-column reorder ─────────────────────────────────────────────────────
 
 func TestReorderCardDown(t *testing.T) {

@@ -267,7 +267,8 @@ func (m *FocusBoardModel) View() tea.View { //nolint:gocyclo
 		}
 	}
 
-	contentStr := strings.Join(applyScroll(lines, m.cursor, contentHeight), "\n")
+	visibleLines, _, _ := persistentLineWindow(lines, m.cursor, contentHeight, &m.viewScrollOffset)
+	contentStr := strings.Join(visibleLines, "\n")
 	if m.focusMode == focusModeList {
 		contentStr = TabContentBgStyle.Width(m.width).Render(contentStr)
 	}

@@ -67,6 +67,17 @@ func (m *DashboardModel) Refresh(cfg *config.Config) {
 	m.loadProjects()
 }
 
+func (m *DashboardModel) resetViewScrollOffset() {
+	m.viewScrollOffset = 0
+}
+
+// SetSize updates the view dimensions and resets the persisted scroll window
+// because the visible project-list row budget may have changed.
+func (m *DashboardModel) SetSize(width, height int) {
+	m.BaseSearchableView.SetSize(width, height)
+	m.resetViewScrollOffset()
+}
+
 func (m *DashboardModel) Init() tea.Cmd {
 	return nil
 }

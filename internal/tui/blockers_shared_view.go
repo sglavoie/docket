@@ -129,9 +129,9 @@ func blockerListView(s *blockerViewState, ds blockerDataSource, visible []blocke
 	headerLines := 7
 	availableHeight := s.height - headerLines
 	maxVisible := max(availableHeight/3, 3)
-	scrollOffset := calcScrollOffset(s.cursor, maxVisible)
+	startIdx, endIdx := persistentIndexWindow(s.cursor, len(visible), maxVisible, &s.scrollOffset)
 
-	for i := scrollOffset; i < len(visible) && i < scrollOffset+maxVisible; i++ {
+	for i := startIdx; i < endIdx; i++ {
 		b.WriteString(blockerListItemView(s, ds, visible[i], i == s.cursor))
 	}
 
@@ -139,7 +139,7 @@ func blockerListView(s *blockerViewState, ds blockerDataSource, visible []blocke
 		return
 	}
 
-	remaining := len(visible) - scrollOffset - maxVisible
+	remaining := len(visible) - endIdx
 	if remaining > 0 {
 		b.WriteString(MutedStyle.Render(fmt.Sprintf("  ... and %d more (use j/k to scroll)", remaining)))
 		b.WriteString("\n")

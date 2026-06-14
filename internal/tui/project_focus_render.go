@@ -74,7 +74,8 @@ func (m *ProjectFocusViewModel) View() tea.View {
 		b.WriteString(MutedStyle.Render(EmptyStateFiltered))
 		b.WriteString("\n\n")
 	} else {
-		b.WriteString(strings.Join(applyScroll(lines, m.cursor, contentHeight), "\n"))
+		visibleLines, _, _ := persistentLineWindow(lines, m.cursor, contentHeight, &m.viewScrollOffset)
+		b.WriteString(strings.Join(visibleLines, "\n"))
 		b.WriteString("\n\n")
 	}
 

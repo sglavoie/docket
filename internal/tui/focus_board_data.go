@@ -15,6 +15,7 @@ import (
 // is about to be rebuilt, which would make the stale editIdx point at the
 // wrong row or go out of bounds.
 func (m *FocusBoardModel) loadItems() {
+	m.resetViewScrollOffset()
 	if m.editMode {
 		m.editMode = false
 		m.editInput.Blur()
@@ -126,6 +127,7 @@ func (m *FocusBoardModel) completedTodayCount() int {
 
 // applyFilter filters rows based on the active tab.
 func (m *FocusBoardModel) applyFilter() {
+	m.resetViewScrollOffset()
 	switch m.tabs.Active {
 	case boardTabToday:
 		m.filtered = make([]boardRow, len(m.todayRows))

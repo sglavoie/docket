@@ -18,6 +18,7 @@ func (m *OutlinerModel) handleFoldPrefix(key string, cursorTask *models.Task) (t
 			} else {
 				m.expandedNodes[cursorTask.ID] = true
 			}
+			m.resetViewScrollOffset()
 			m.rebuildRows()
 		}
 		return m, nil
@@ -35,17 +36,20 @@ func (m *OutlinerModel) handleFoldPrefix(key string, cursorTask *models.Task) (t
 					CursorIndex: m.cursor,
 				})
 				m.cursor = 0
+				m.resetViewScrollOffset()
 			} else {
 				m.zoomStack = append(m.zoomStack, ZoomEntry{
 					TaskID:      cursorTask.ID,
 					CursorIndex: m.cursor,
 				})
 				m.cursor = 0
+				m.resetViewScrollOffset()
 			}
 		}
 		return m, nil
 	case "p":
 		m.previewMode = !m.previewMode
+		m.resetViewScrollOffset()
 		return m, nil
 	}
 

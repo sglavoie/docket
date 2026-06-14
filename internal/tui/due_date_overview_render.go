@@ -73,7 +73,8 @@ func (m *DueDateOverviewModel) View() tea.View {
 		}
 	}
 
-	b.WriteString(strings.Join(applyScroll(lines, cursorLineIdx, contentHeight), "\n"))
+	visibleLines, _, _ := persistentLineWindow(lines, cursorLineIdx, contentHeight, &m.viewScrollOffset)
+	b.WriteString(strings.Join(visibleLines, "\n"))
 
 	// Footer
 	left := HelpStyle.Render("Tab tabs · ↑/↓ navigate · ,s/d/b/x/o status · 1-5 priority · dt/dm/dw due · e edit · ? help")

@@ -24,6 +24,7 @@ func NewProjectFocusViewModel(project *models.Project, cfg *config.Config) *Proj
 
 // loadTasks collects active-flagged tasks from the project.
 func (m *ProjectFocusViewModel) loadTasks() {
+	m.resetViewScrollOffset()
 	m.tasks = nil
 
 	for _, task := range m.project.Tasks {

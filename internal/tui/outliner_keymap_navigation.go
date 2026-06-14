@@ -187,11 +187,13 @@ func (b *outlinerKeymapBuilder) gotoEntries() []keymap.Entry {
 		}),
 		keymap.Bind("d", "Cycle due date filter", "Filters", func() (tea.Model, tea.Cmd) {
 			m.cycleDueDateFilter()
+			m.resetViewScrollOffset()
 			m.rebuildRows()
 			return m, nil
 		}),
 		keymap.Bind("z", "Jump to Snoozed perspective", "Navigation", func() (tea.Model, tea.Cmd) {
 			m.activePerspective = PerspectiveSnoozed
+			m.resetViewScrollOffset()
 			m.rebuildRows()
 			return m, nil
 		}),

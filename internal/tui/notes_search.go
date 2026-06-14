@@ -37,8 +37,9 @@ type NotesSearchModel struct {
 	tasksLoaded bool
 	notes       []*models.Note
 
-	filtered []notesSearchResult
-	cursor   int
+	filtered     []notesSearchResult
+	cursor       int
+	scrollOffset int
 
 	searchInput textinput.Model
 
@@ -98,6 +99,7 @@ func (m *NotesSearchModel) HasTextInput() bool {
 func (m *NotesSearchModel) SetSize(width, height int) {
 	m.width = width
 	m.height = height
+	m.resetScrollOffset()
 
 	innerWidth := max(width-10, 1)
 
@@ -105,6 +107,10 @@ func (m *NotesSearchModel) SetSize(width, height int) {
 	m.previewWidth = max(innerWidth-m.listWidth-1, 1)
 
 	m.searchInput.SetWidth(max(innerWidth-4, 1))
+}
+
+func (m *NotesSearchModel) resetScrollOffset() {
+	m.scrollOffset = 0
 }
 
 // Init initializes the model.

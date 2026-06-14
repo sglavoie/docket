@@ -36,6 +36,7 @@ func blockerSaveNew(s *blockerViewState, ds blockerDataSource) tea.Cmd {
 		s.textInput.Reset()
 		s.err = nil
 		s.cursor = max(ds.activeCount()-1, 0)
+		s.resetScrollOffset()
 
 		return BlockerAddedMsg{Project: project}
 	}
@@ -63,6 +64,7 @@ func blockerExecuteDelete(s *blockerViewState, ds blockerDataSource) tea.Cmd {
 		if s.cursor >= len(visible) && s.cursor > 0 {
 			s.cursor--
 		}
+		s.resetScrollOffset()
 
 		return BlockerDeletedMsg{Project: project}
 	}
@@ -130,6 +132,7 @@ func blockerToggleResolve(s *blockerViewState, ds blockerDataSource, item blocke
 				s.cursor--
 			}
 		}
+		s.resetScrollOffset()
 
 		return BlockerEditedMsg{Project: project}
 	}

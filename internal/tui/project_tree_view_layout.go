@@ -273,7 +273,7 @@ func (m *ProjectTreeModel) renderTreeContent(width int, focused bool) string { /
 		startIdx := 0
 		endIdx := len(visible)
 		if needsScrollbar {
-			startIdx, endIdx = treeWindowRangeByLines(visible, m.cursor, availableHeight)
+			startIdx, endIdx = persistentProjectTreeWindowByLines(visible, m.cursor, availableHeight, &m.viewScrollOffset)
 		}
 
 		// Compute column layout for the visible slice (alignment guard: >= MinColumnAlignWidth)
@@ -386,70 +386,4 @@ func treeRenderLineCount(visible []*TreeNode, start, end int) int {
 		prevGroupIdx = groupIdx
 	}
 	return lines
-}
-
-// treeWindowRangeByLines returns an inclusive cursor window constrained by a
-// maximum rendered line budget. It accounts for blank separator lines between
-// top-level groups so viewport sizing remains stable in dense "All" views.
-func treeWindowRangeByLines(visible []*TreeNode, cursor, maxLines int) (int, int) {
-	if len(visible) == 0 {
-		return 0, 0
-	}
-	maxLines = max(maxLines, 1)
-	cursor = ClampCursor(cursor, len(visible))
-
-	start, end := cursor, cursor+1
-	usedLines := 1 // one task row at cursor
-
-	for {
-		upCost := 0
-		if start > 0 {
-			upCost = 1
-			if visible[start-1].TopGroupIndex != visible[start].TopGroupIndex {
-				upCost++
-			}
-			if usedLines+upCost > maxLines {
-				upCost = 0
-			}
-		}
-
-		downCost := 0
-		if end < len(visible) {
-			downCost = 1
-			if visible[end-1].TopGroupIndex != visible[end].TopGroupIndex {
-				downCost++
-			}
-			if usedLines+downCost > maxLines {
-				downCost = 0
-			}
-		}
-
-		if upCost == 0 && downCost == 0 {
-			break
-		}
-
-		if upCost > 0 && downCost > 0 {
-			upperRows := cursor - start
-			lowerRows := end - cursor - 1
-			if upperRows <= lowerRows {
-				start--
-				usedLines += upCost
-			} else {
-				end++
-				usedLines += downCost
-			}
-			continue
-		}
-
-		if upCost > 0 {
-			start--
-			usedLines += upCost
-			continue
-		}
-
-		end++
-		usedLines += downCost
-	}
-
-	return start, end
 }

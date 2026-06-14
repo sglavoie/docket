@@ -199,6 +199,7 @@ func (b *projectTreeKeymapBuilder) gotoEntries() []keymap.Entry {
 	setViewMode := func(mode ViewMode) keymap.Action {
 		return func() (tea.Model, tea.Cmd) {
 			m.viewMode = mode
+			m.resetViewScrollOffset()
 			m.updateVisibility()
 			m.pruneInvisibleSelections()
 			m.clampCursor()
@@ -212,6 +213,7 @@ func (b *projectTreeKeymapBuilder) gotoEntries() []keymap.Entry {
 		Extra: []keymap.Entry{
 			keymap.Bind("v", "Cycle view mode", "Views", func() (tea.Model, tea.Cmd) {
 				m.viewMode = (m.viewMode + 1) % (ViewModeAll + 1)
+				m.resetViewScrollOffset()
 				m.updateVisibility()
 				m.pruneInvisibleSelections()
 				m.clampCursor()
@@ -233,11 +235,13 @@ func (b *projectTreeKeymapBuilder) gotoEntries() []keymap.Entry {
 
 				task := node.Task
 				m.selectViewForTask(task)
+				m.resetViewScrollOffset()
 				m.buildTree()
 				return m, m.NavigateToTask(task)
 			}),
 			keymap.Bind("d", "Cycle due date filter", "Filters", func() (tea.Model, tea.Cmd) {
 				m.filter.DueDate = (m.filter.DueDate + 1) % 5
+				m.resetViewScrollOffset()
 				m.updateVisibility()
 				m.pruneInvisibleSelections()
 				m.clampCursor()
@@ -290,6 +294,7 @@ func (b *projectTreeKeymapBuilder) foldEntries() []keymap.Entry {
 			if task != nil && task.Type.CanHaveChildren() {
 				m.focusedTask = task
 				m.cursor = 0
+				m.resetViewScrollOffset()
 				m.buildTree()
 			}
 
@@ -297,6 +302,7 @@ func (b *projectTreeKeymapBuilder) foldEntries() []keymap.Entry {
 		},
 		ToggleInlinePreview: func() (tea.Model, tea.Cmd) {
 			m.previewMode = !m.previewMode
+			m.resetViewScrollOffset()
 			return m, nil
 		},
 		CollapseToDepth1: func() (tea.Model, tea.Cmd) {

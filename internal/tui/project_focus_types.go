@@ -33,6 +33,11 @@ var ProjectFocusNavigationPrefixHints = []PrefixHint{
 // SetSize satisfies the View interface.
 func (m *ProjectFocusViewModel) SetSize(width, height int) {
 	m.BaseView.SetSize(width, height)
+	m.resetViewScrollOffset()
+}
+
+func (m *ProjectFocusViewModel) resetViewScrollOffset() {
+	m.viewScrollOffset = 0
 }
 
 // SetAccentColor satisfies the AccentColorSetter interface.

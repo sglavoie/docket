@@ -80,6 +80,7 @@ func (m *ProjectTreeModel) handleFilterSubPrefix(prefix, key string) (tea.Model,
 func (m *ProjectTreeModel) toggleSort(field SortField) {
 	m.clearActiveSavedFilter()
 	m.sort.Toggle(field)
+	m.resetViewScrollOffset()
 	m.sortNodes()
 	m.updateVisibility()
 }

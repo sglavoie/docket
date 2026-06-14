@@ -129,6 +129,8 @@ func (m *RoadmapModel) computeData() {
 	// Build axis and rows.
 	m.buildAxis()
 	m.buildRows(projects)
+	m.clampRoadmapCursor()
+	m.resetRoadmapScrollOffset()
 }
 
 func (m *RoadmapModel) buildAxis() {
@@ -261,6 +263,13 @@ func (m *RoadmapModel) Init() tea.Cmd {
 	return nil
 }
 
+// SetSize updates the viewport dimensions and resets the stored vertical
+// window because the visible row budget may have changed.
+func (m *RoadmapModel) SetSize(width, height int) {
+	m.BaseView.SetSize(width, height)
+	m.resetRoadmapScrollOffset()
+}
+
 // Update implements tea.Model.
 func (m *RoadmapModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
@@ -298,6 +307,7 @@ func (m *RoadmapModel) handleRoadmapNavigationKey(key string) (tea.Model, tea.Cm
 		m.moveRoadmapCursor(-1)
 	case "g":
 		m.cursor = 0
+		m.resetRoadmapScrollOffset()
 	case "G":
 		m.jumpRoadmapCursorToBottom()
 	case "ctrl+d":
@@ -345,6 +355,7 @@ func (m *RoadmapModel) cycleRoadmapTab(step int) {
 	CycleTab(&tab, len(roadmapTabNames), step)
 	m.activeTab = RoadmapTab(tab)
 	m.cursor = 0
+	m.resetRoadmapScrollOffset()
 }
 
 func (m *RoadmapModel) scrollRoadmapHoriz(delta int) {
@@ -374,6 +385,14 @@ func (m *RoadmapModel) moveRoadmapCursor(delta int) {
 		return
 	}
 	m.cursor = min(max(m.cursor+delta, 0), count-1)
+}
+
+func (m *RoadmapModel) clampRoadmapCursor() {
+	m.cursor = ClampCursor(m.cursor, m.activeRowCount())
+}
+
+func (m *RoadmapModel) resetRoadmapScrollOffset() {
+	m.scrollOff = 0
 }
 
 func (m *RoadmapModel) jumpRoadmapCursorToBottom() {

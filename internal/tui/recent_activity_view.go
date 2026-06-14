@@ -86,7 +86,8 @@ func (m *RecentActivityModel) View() tea.View {
 		lines = append(lines, MutedStyle.Render(EmptyStateFiltered))
 	}
 
-	b.WriteString(strings.Join(applyScroll(lines, m.cursor, contentHeight), "\n"))
+	visibleLines, _, _ := persistentLineWindow(lines, m.cursor, contentHeight, &m.viewScrollOffset)
+	b.WriteString(strings.Join(visibleLines, "\n"))
 	b.WriteString("\n\n")
 
 	left := HelpStyle.Render("j/k nav · Tab tabs · Enter open · p preview · , status · / filter · r refresh · ? help")

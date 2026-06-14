@@ -122,14 +122,17 @@ func blockerUpdateShared(s *blockerViewState, ds blockerDataSource, msg tea.Msg)
 		case "tab":
 			s.tabs.Cycle(1)
 			blockerClampCursor(s, ds)
+			s.resetScrollOffset()
 			return nil, nil, true
 		case "shift+tab":
 			s.tabs.Cycle(-1)
 			blockerClampCursor(s, ds)
+			s.resetScrollOffset()
 			return nil, nil, true
 		case "shift+left", "shift+right":
 			if handleTabCycleKey(keyMsg.String(), &s.tabs, func() {
 				blockerClampCursor(s, ds)
+				s.resetScrollOffset()
 			}) {
 				return nil, nil, true
 			}
@@ -142,8 +145,7 @@ func blockerUpdateShared(s *blockerViewState, ds blockerDataSource, msg tea.Msg)
 	}
 
 	if sizeMsg, ok := msg.(tea.WindowSizeMsg); ok {
-		s.width = sizeMsg.Width
-		s.height = sizeMsg.Height
+		s.setSize(sizeMsg.Width, sizeMsg.Height)
 		return nil, nil, true
 	}
 

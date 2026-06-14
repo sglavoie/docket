@@ -45,9 +45,10 @@ type NotesViewModel struct {
 		GetExternalEditor() string
 	}
 
-	notes       []*models.Note
-	cursor      int
-	cursorFlash bool
+	notes        []*models.Note
+	cursor       int
+	scrollOffset int
+	cursorFlash  bool
 
 	// Filter state
 	filterTags map[string]bool
@@ -110,6 +111,10 @@ func (m *NotesViewModel) setErrorStatus(msg string) {
 func (m *NotesViewModel) clearStatus() {
 	m.statusMessage = ""
 	m.statusIsError = false
+}
+
+func (m *NotesViewModel) resetScrollOffset() {
+	m.scrollOffset = 0
 }
 
 // IsMultiSelectActive reports whether multi-select mode is on. NotesViewModel
@@ -231,6 +236,7 @@ func (m *NotesViewModel) loadNotes() {
 	}
 	if err != nil {
 		m.notes = nil
+		m.resetScrollOffset()
 		return
 	}
 	// Load project tasks once for displaying linked task titles
@@ -283,6 +289,7 @@ func (m *NotesViewModel) loadNotes() {
 	m.sortNotes(notes)
 	m.notes = notes
 	m.cursor = ClampCursor(m.cursor, len(m.notes))
+	m.resetScrollOffset()
 }
 
 func (m *NotesViewModel) sortNotes(notes []*models.Note) {
@@ -309,6 +316,7 @@ func (m *NotesViewModel) Init() tea.Cmd {
 
 func (m *NotesViewModel) SetSize(width, height int) {
 	m.BaseView.SetSize(width, height)
+	m.resetScrollOffset()
 	// Reserve 4 for header (title + tab bar + count + blank line), 1 for status bar
 	usable := max(height-4, 4)
 	m.listHeight = usable / 2

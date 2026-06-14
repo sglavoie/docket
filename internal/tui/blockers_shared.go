@@ -23,8 +23,9 @@ type blockerItem struct {
 
 // blockerViewState holds all the shared UI state for blocker views.
 type blockerViewState struct {
-	cursor int
-	tabs   TabState
+	cursor       int
+	scrollOffset int
+	tabs         TabState
 
 	// Add mode
 	addMode   bool
@@ -80,8 +81,13 @@ func (s *blockerViewState) GetConfirmDialog() *ConfirmDialog { return &s.confirm
 func (s *blockerViewState) setSize(width, height int) {
 	s.width = width
 	s.height = height
+	s.resetScrollOffset()
 	s.textInput.SetWidth(max(width-4, 1))
 	s.editTextInput.SetWidth(max(width-4, 1))
+}
+
+func (s *blockerViewState) resetScrollOffset() {
+	s.scrollOffset = 0
 }
 
 func (s *blockerViewState) hasTextInput() bool {

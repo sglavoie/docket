@@ -44,24 +44,23 @@ func (m *DashboardModel) renderProjectList(visible []*models.Project, chromeHeig
 		maxNameWidth, maxContextWidth = clampProjectListColumnWidths(rowWidth, iconColWidth, maxNameWidth, maxContextWidth, maxStatusWidth, showContext)
 	}
 
-	scrollOffset := max(min(calcScrollOffset(m.cursor, maxVisible), len(visible)-maxVisible), 0)
+	startIdx, endIdx := persistentIndexWindow(m.cursor, len(visible), maxVisible, &m.viewScrollOffset)
 	if !narrowMode {
 		cardContent.WriteString(m.renderProjectListHeader(rowWidth, iconColWidth, maxNameWidth, maxContextWidth, showContext))
 		cardContent.WriteString("\n")
 	}
 
-	end := min(scrollOffset+maxVisible, len(visible))
-	pinnedNum := countPinnedProjects(visible[:scrollOffset])
+	pinnedNum := countPinnedProjects(visible[:startIdx])
 
 	var rowBuilder strings.Builder
-	for i := scrollOffset; i < end; i++ {
+	for i := startIdx; i < endIdx; i++ {
 		rowBuilder.WriteString(m.renderProjectRow(visible[i], i == m.cursor, narrowMode, rowWidth, maxNameWidth, maxContextWidth, showContext, iconColWidth, dueSoonDays, &pinnedNum))
-		if i < end-1 {
+		if i < endIdx-1 {
 			rowBuilder.WriteString("\n")
 		}
 	}
 
-	scrollbar := RenderScrollbar(len(visible), maxVisible, scrollOffset)
+	scrollbar := RenderScrollbar(len(visible), maxVisible, startIdx)
 	cardContent.WriteString(AttachScrollbar(rowBuilder.String(), scrollbar))
 
 	return cardContent.String()

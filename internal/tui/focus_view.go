@@ -112,6 +112,18 @@ func (m *FocusViewModel) getTaskAtCursor() *FocusTask {
 func (m *FocusViewModel) Init() tea.Cmd {
 	return nil
 }
+
+func (m *FocusViewModel) resetViewScrollOffset() {
+	m.viewScrollOffset = 0
+}
+
+// SetSize updates the view dimensions and resets the persisted scroll window
+// because the visible row budget may have changed.
+func (m *FocusViewModel) SetSize(width, height int) {
+	m.BaseView.SetSize(width, height)
+	m.resetViewScrollOffset()
+}
+
 func (m *FocusViewModel) getTaskRef() (*models.Task, *models.Project) {
 	ft := m.getTaskAtCursor()
 	if ft == nil {

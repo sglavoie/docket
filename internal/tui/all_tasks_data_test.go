@@ -305,3 +305,44 @@ func TestClampCursorAfterShrink(t *testing.T) {
 		t.Errorf("cursor %d not clamped to navigable range %d", m.cursor, m.totalNavigableItems())
 	}
 }
+
+func TestAllTasksPersistentScrollPreservesWindowUntilCursorLeaves(t *testing.T) {
+	proj := testutil.NewTestProject("scroll")
+	tasks := make([]*models.Task, 24)
+	items := make([]CrossProjectTask, 0, len(tasks))
+	for i := range tasks {
+		tasks[i] = testutil.NewTestTask("Task", models.TaskTypeTask)
+		items = append(items, CrossProjectTask{Task: tasks[i], Project: proj})
+	}
+
+	m := newMinimalAllTasksVM()
+	m.ViewBundle = ViewBundle{config: testutil.NewTestConfig()}
+	m.FilterMixin = FilterMixin{filter: newFilterState()}
+	m.projectFilter = make(map[string]bool)
+	m.tabs = TabState{Names: []string{"All"}}
+	m.tabEntries = []TabEntry{{Name: "All", IsBuiltIn: true}}
+	m.allTabEntries = m.tabEntries
+	m.allTasks = items
+	m.groups = []AllTasksGroup{{Name: "Open", Tasks: items}}
+	m.SetSize(80, 12)
+	m.calculateNavigation()
+
+	m.cursor = m.totalNavigableItems() - 1
+	_ = m.View()
+	bottomOffset := m.scrollOffset
+	if bottomOffset == 0 {
+		t.Fatal("expected bottom render to establish a non-zero scroll offset")
+	}
+
+	m.cursor--
+	_ = m.View()
+	if m.scrollOffset != bottomOffset {
+		t.Fatalf("scroll offset changed while cursor stayed visible: got %d, want %d", m.scrollOffset, bottomOffset)
+	}
+
+	m.cursor = 0
+	_ = m.View()
+	if m.scrollOffset != 0 {
+		t.Fatalf("scroll offset should clamp when cursor jumps above viewport: got %d", m.scrollOffset)
+	}
+}

@@ -149,6 +149,7 @@ func (m *DashboardModel) loadProjects() {
 	}
 
 	m.contexts = m.getAllContexts()
+	m.resetViewScrollOffset()
 }
 
 // GetHelpItems returns the help items for the dashboard view.

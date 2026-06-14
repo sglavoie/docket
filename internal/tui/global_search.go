@@ -29,6 +29,7 @@ type GlobalSearchModel struct {
 	allTasks      []models.SearchResult  // flattened list of all tasks with project refs
 	filtered      []filteredSearchResult // tasks matching current query with highlight positions
 	cursor        int
+	scrollOffset  int
 
 	// Input for filtering
 	searchInput textinput.Model
@@ -200,6 +201,7 @@ func (m *GlobalSearchModel) SupportsHelpShortcut() bool { return false }
 // SetSize sets the view dimensions and recalculates pane widths.
 func (m *GlobalSearchModel) SetSize(width, height int) {
 	m.BaseView.SetSize(width, height)
+	m.resetScrollOffset()
 
 	// Calculate inner content width for split-pane overlay:
 	// cardWidth = viewWidth - 4 (margin)
@@ -214,6 +216,18 @@ func (m *GlobalSearchModel) SetSize(width, height int) {
 		innerWidth-m.listWidth-1, 1)
 
 	m.searchInput.SetWidth(max(innerWidth-4, 1))
+}
+
+func (m *GlobalSearchModel) resetScrollOffset() {
+	m.scrollOffset = 0
+}
+
+func (m *GlobalSearchModel) clampScrollOffsetToResults() {
+	if len(m.filtered) == 0 {
+		m.scrollOffset = 0
+		return
+	}
+	m.scrollOffset = min(max(m.scrollOffset, 0), len(m.filtered)-1)
 }
 
 func (m *GlobalSearchModel) Init() tea.Cmd {

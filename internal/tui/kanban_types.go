@@ -95,5 +95,5 @@ type KanbanColumn struct {
 	Icon         string       // Short icon shown next to label
 	Tasks        []KanbanCard // All cards in this column (unfiltered)
 	Cursor       int          // Focused card index within this column
-	ScrollOffset int          // First visible card index (for vertical scrolling)
+	ScrollOffset int          // First visible display row for vertical scrolling
 }

@@ -78,6 +78,7 @@ func (m *FocusViewModel) recomputeSuggested() {
 
 // applyFilter filters and sorts tasks based on the active tab, then applies sub-tab narrowing.
 func (m *FocusViewModel) applyFilter() {
+	m.resetViewScrollOffset()
 	now := time.Now()
 	today := util.StartOfDay(now)
 

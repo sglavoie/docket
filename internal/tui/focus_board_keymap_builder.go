@@ -85,6 +85,7 @@ func buildFocusBoardKeyMap(m *FocusBoardModel) *keymap.KeyMap {
 		}, keymap.WithGate(isTodayTab)),
 		keymap.Bind("p", "Toggle inline preview", "View", func() (tea.Model, tea.Cmd) {
 			m.previewMode = !m.previewMode
+			m.resetViewScrollOffset()
 			return m, nil
 		}),
 		keymap.Bind("1", "Collapse to root only", "Folds", setDepth(0, "Fold: root items only"), keymap.WithGate(isTodayTab)),
@@ -292,6 +293,7 @@ func buildFocusBoardKeyMap(m *FocusBoardModel) *keymap.KeyMap {
 	entries = append(entries,
 		keymap.Bind("ctrl+f", "Cycle focus mode (List/Tunnel/Zen)", "View", func() (tea.Model, tea.Cmd) {
 			m.focusMode = (m.focusMode + 1) % 3
+			m.resetViewScrollOffset()
 			return m, nil
 		}),
 	)

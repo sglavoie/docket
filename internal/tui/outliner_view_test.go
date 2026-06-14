@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/sglavoie/tt/internal/models"
@@ -107,6 +108,53 @@ func TestFlattenTaskTree(t *testing.T) {
 		if rows[i].prefix != exp.prefix {
 			t.Errorf("row %d (%s): expected prefix %q, got %q", i, exp.title, exp.prefix, rows[i].prefix)
 		}
+	}
+}
+
+func TestOutlinerPersistentScrollKeepsFirstRowMovingUpWithinViewport(t *testing.T) {
+	for _, tt := range []struct {
+		name    string
+		project *models.Project
+	}{
+		{name: "single project", project: &models.Project{Name: "Single"}},
+		{name: "cross project", project: nil},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			rows := make([]outlinerRow, 10)
+			for i := range rows {
+				rows[i] = outlinerRow{
+					task: &models.Task{
+						ID:      fmt.Sprintf("task-%02d", i),
+						ShortID: i + 1,
+						Title:   fmt.Sprintf("Task %02d", i),
+					},
+				}
+			}
+			m := &OutlinerModel{
+				project:           tt.project,
+				rows:              rows,
+				customSectionTab:  make(map[string]int),
+				collapsedSections: make(map[string]bool),
+			}
+			m.SetSize(100, 6) // One header line leaves five row slots.
+
+			m.cursor = 5
+			viewport := m.computeOutlinerViewport(100, 0)
+			start := viewport.startIdx
+			if start == 0 {
+				t.Fatalf("expected initial viewport to scroll down, start stayed at 0")
+			}
+			firstTitle := m.rows[start].task.Title
+
+			m.cursor = 4
+			viewport = m.computeOutlinerViewport(100, 0)
+			if viewport.startIdx != start {
+				t.Fatalf("moving up inside viewport changed first rendered row: start=%d want %d", viewport.startIdx, start)
+			}
+			if got := m.rows[viewport.startIdx].task.Title; got != firstTitle {
+				t.Fatalf("first rendered row = %q, want %q", got, firstTitle)
+			}
+		})
 	}
 }
 

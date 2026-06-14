@@ -143,6 +143,17 @@ func (m *PriorityViewModel) Init() tea.Cmd {
 	return nil
 }
 
+func (m *PriorityViewModel) resetViewScrollOffset() {
+	m.viewScrollOffset = 0
+}
+
+// SetSize updates the view dimensions and resets the persisted scroll window
+// because the visible row budget may have changed.
+func (m *PriorityViewModel) SetSize(width, height int) {
+	m.BaseSearchableView.SetSize(width, height)
+	m.resetViewScrollOffset()
+}
+
 func (m *PriorityViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if handled, cmd := handleCommonUpdateMsg(
 		msg,
@@ -282,19 +293,7 @@ func (m *PriorityViewModel) View() tea.View {
 		}
 	}
 
-	// Apply centered scrolling (keep cursor in middle of viewport)
-	startIdx := 0
-	endIdx := len(lines)
-
-	if len(lines) > contentHeight {
-		halfView := contentHeight / 2
-		startIdx = max(cursorLineIdx-halfView, 0)
-		endIdx = startIdx + contentHeight
-		if endIdx > len(lines) {
-			endIdx = len(lines)
-			startIdx = max(endIdx-contentHeight, 0)
-		}
-	}
+	visibleLines, startIdx, endIdx := persistentLineWindow(lines, cursorLineIdx, contentHeight, &m.viewScrollOffset)
 
 	// Tab bar
 	b.WriteString(m.renderPriorityTabBar())
@@ -320,7 +319,6 @@ func (m *PriorityViewModel) View() tea.View {
 	}
 
 	// Visible task lines
-	visibleLines := lines[startIdx:endIdx]
 	visibleContent := strings.Join(visibleLines, "\n")
 	scrollbar := RenderScrollbar(len(lines), endIdx-startIdx, startIdx)
 	b.WriteString(AttachScrollbar(visibleContent, scrollbar))

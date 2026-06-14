@@ -66,6 +66,8 @@ func (m *RecentActivityModel) loadTasks() {
 }
 
 func (m *RecentActivityModel) applyFilter() {
+	m.resetViewScrollOffset()
+
 	// First filter by tab and common filters
 	var tabFiltered []CrossProjectTask
 	hasFilters := hasActiveCommonFilters(&m.filter)

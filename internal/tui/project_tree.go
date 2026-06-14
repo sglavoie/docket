@@ -211,6 +211,17 @@ type ProjectTreeModel struct {
 // setOpenLoops injects the latest cross-project open-loop counts into the view.
 func (m *ProjectTreeModel) setOpenLoops(o OpenLoops) { m.openLoops = o }
 
+func (m *ProjectTreeModel) resetViewScrollOffset() {
+	m.viewScrollOffset = 0
+}
+
+// SetSize updates the view dimensions and resets the persisted scroll window
+// because the visible row budget may have changed.
+func (m *ProjectTreeModel) SetSize(width, height int) {
+	m.BaseSearchableView.SetSize(width, height)
+	m.resetViewScrollOffset()
+}
+
 // primaryProjectView interface implementation for shared key dispatch.
 func (m *ProjectTreeModel) getProject() *models.Project { return m.project }
 func (m *ProjectTreeModel) getConfig() *config.Config   { return m.config }
@@ -223,6 +234,7 @@ func (m *ProjectTreeModel) getCursorTask() *models.Task {
 }
 func (m *ProjectTreeModel) reloadFromDisk() tea.Cmd {
 	m.clearSelection()
+	m.resetViewScrollOffset()
 	if err := storage.LoadProject(m.project); err != nil {
 		logging.Warn("failed to load project %s: %v", m.project.Name, err)
 		m.buildTree()
@@ -311,11 +323,13 @@ func (m *ProjectTreeModel) escSteps() []EscStep {
 		}},
 		{Active: m.IsFocusMode, Clear: func() {
 			m.focusedTask = nil
+			m.resetViewScrollOffset()
 			m.buildTree()
 			m.clampCursor()
 		}},
 		{Active: func() bool { return m.SearchQuery() != "" }, Clear: func() {
 			m.ClearSearch()
+			m.resetViewScrollOffset()
 			m.updateVisibility()
 		}},
 	}

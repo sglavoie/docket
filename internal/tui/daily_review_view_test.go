@@ -156,6 +156,43 @@ func TestDailyReview_WithTasks_Render(t *testing.T) {
 	}
 }
 
+func TestDailyReviewPersistentScrollPreservesWindowUntilCursorLeaves(t *testing.T) {
+	cfg := &config.Config{Projects: []*models.Project{}}
+	m := newTestDailyReviewModel(cfg)
+	m.SetSize(80, 12)
+
+	project, err := models.NewProject("p1", "Test Project", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for range 24 {
+		task := newTestDailyReviewTask(t, "Review task")
+		task.Status = models.StatusInProgress
+		m.inProgress = append(m.inProgress, CrossProjectTask{Task: task, Project: project})
+	}
+
+	m.tabs.Active = 2
+	m.calculateNavigation()
+	m.cursor = m.totalTasks - 1
+	_ = m.View()
+	bottomOffset := m.scrollOffset
+	if bottomOffset == 0 {
+		t.Fatal("expected bottom render to establish a non-zero scroll offset")
+	}
+
+	m.cursor--
+	_ = m.View()
+	if m.scrollOffset != bottomOffset {
+		t.Fatalf("scroll offset changed while cursor stayed visible: got %d, want %d", m.scrollOffset, bottomOffset)
+	}
+
+	m.cursor = 0
+	_ = m.View()
+	if m.scrollOffset != 0 {
+		t.Fatalf("scroll offset should clamp when cursor jumps above viewport: got %d", m.scrollOffset)
+	}
+}
+
 func TestIsToday_CrossTimezone(t *testing.T) {
 	now := time.Now()
 	local := now.Location()

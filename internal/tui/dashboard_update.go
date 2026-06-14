@@ -34,6 +34,7 @@ func (m *DashboardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if model, cmd, handled := m.HandleSearchMode(msg, m, func() {
 			visible = m.visibleProjects()
 			m.cursor = ClampCursor(m.cursor, len(visible))
+			m.resetViewScrollOffset()
 		}); handled {
 			return model, cmd
 		}
@@ -50,6 +51,7 @@ func (m *DashboardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.filterContext = ""
 				m.filterCustomContext = ""
 				m.ClearSearch()
+				m.resetViewScrollOffset()
 				return m, nil
 			}
 		case "?":

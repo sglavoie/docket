@@ -112,6 +112,17 @@ type FocusBoardModel struct {
 // in sync with mutations across daily-driver views.
 func (m *FocusBoardModel) setOpenLoops(o OpenLoops) { m.openLoops = o }
 
+func (m *FocusBoardModel) resetViewScrollOffset() {
+	m.viewScrollOffset = 0
+}
+
+// SetSize updates the view dimensions and resets the persisted scroll window
+// because the visible row budget may have changed.
+func (m *FocusBoardModel) SetSize(width, height int) {
+	m.BaseSearchableView.SetSize(width, height)
+	m.resetViewScrollOffset()
+}
+
 // NewFocusBoardModel creates a new focus board model.
 func NewFocusBoardModel(cfg *config.Config, manager *config.Manager, dailyPlan *[]FocusTask, queueIDs, dailyPlanIDs, carriedOverIDs map[string]bool) *FocusBoardModel {
 	ti := textinput.New()
@@ -344,6 +355,7 @@ func (m *FocusBoardModel) HasTextInput() bool {
 func (m *FocusBoardModel) OnExit() {
 	m.addMode = false
 	m.editMode = false
+	m.resetViewScrollOffset()
 	m.addInput.Blur()
 	m.editInput.Blur()
 	m.ac.Clear()

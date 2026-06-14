@@ -79,7 +79,10 @@ func (m *NotesViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) { //nolint:goc
 				m.deselectAllNotes()
 				return m, nil
 			}
-			_, cmd := handleGotoTopPrefix(key, &m.cursor, &m.cursorFlash, func() { m.detailsPane.ResetScroll() })
+			_, cmd := handleGotoTopPrefix(key, &m.cursor, &m.cursorFlash, func() {
+				m.detailsPane.ResetScroll()
+				m.resetScrollOffset()
+			})
 			return m, cmd
 		}
 
@@ -95,12 +98,14 @@ func (m *NotesViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) { //nolint:goc
 		// Z toggles fullscreen (no-op during rename/delete/multiselect)
 		if key == "Z" && !m.renaming && !m.confirm.IsActive() && !m.multiSelectMode {
 			m.fullscreenPane = !m.fullscreenPane
+			m.resetScrollOffset()
 			return m, nil
 		}
 
 		// Esc exits fullscreen before anything else
 		if key == "esc" && m.fullscreenPane {
 			m.fullscreenPane = false
+			m.resetScrollOffset()
 			return m, nil
 		}
 

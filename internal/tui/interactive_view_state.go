@@ -27,6 +27,7 @@ const (
 // field declarations and HasPendingPrefix() methods.
 type InteractiveViewState struct {
 	cursor            int
+	viewScrollOffset  int
 	cursorFlash       bool
 	mutationFlash     bool
 	mutationFlashBg   color.Color

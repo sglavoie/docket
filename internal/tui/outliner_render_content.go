@@ -272,8 +272,7 @@ func (m *OutlinerModel) computeOutlinerViewport(width int, extraFooterLines int)
 		visibleRows = max(visibleRows-inlinePreviewLineCount(m.rows[m.cursor].task), 1)
 	}
 
-	startIdx := calcScrollOffset(m.cursor, visibleRows)
-	endIdx := min(startIdx+visibleRows, len(m.rows))
+	startIdx, endIdx := persistentIndexWindow(m.cursor, len(m.rows), visibleRows, &m.viewScrollOffset)
 	rowWidth := width
 	if len(m.rows) > visibleRows {
 		rowWidth = width - 1

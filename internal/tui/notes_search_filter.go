@@ -16,6 +16,7 @@ func (m *NotesSearchModel) filterNotes() {
 			m.filtered[index] = notesSearchResult{note: note, score: 1}
 		}
 		m.cursor = ClampCursor(m.cursor, len(m.filtered))
+		m.resetScrollOffset()
 		return
 	}
 
@@ -62,6 +63,7 @@ func (m *NotesSearchModel) filterNotes() {
 
 	m.filtered = scored
 	m.cursor = ClampCursor(m.cursor, len(m.filtered))
+	m.resetScrollOffset()
 }
 
 func bestTagScore(tags []string, query string) int {

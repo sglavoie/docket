@@ -99,17 +99,8 @@ func (m *RoadmapModel) renderTimelineTab(height, chartWidth int) string {
 		return strings.Join(lines, "\n")
 	}
 
-	// Derive scroll offset: keep cursor visible without mutating state.
-	scrollOff := m.scrollOff
-	if m.cursor < scrollOff {
-		scrollOff = m.cursor
-	} else if m.cursor >= scrollOff+contentRows {
-		scrollOff = m.cursor - contentRows + 1
-	}
-	scrollOff = max(0, min(scrollOff, max(0, len(m.rows)-contentRows)))
-
-	end := min(scrollOff+contentRows, len(m.rows))
-	for i := scrollOff; i < end; i++ {
+	start, end := persistentIndexWindow(m.cursor, len(m.rows), contentRows, &m.scrollOff)
+	for i := start; i < end; i++ {
 		lines = append(lines, m.renderGanttRow(m.rows[i], colWidth, visibleCols, i == m.cursor))
 	}
 
@@ -330,19 +321,11 @@ func (m *RoadmapModel) renderCriticalPathTab(height int) string {
 	overhead := 3 // header + colHeader + blank line
 	contentRows := max(height-overhead, 1)
 
-	scrollOff := m.scrollOff
-	if m.cursor < scrollOff {
-		scrollOff = m.cursor
-	} else if m.cursor >= scrollOff+contentRows {
-		scrollOff = m.cursor - contentRows + 1
-	}
-	scrollOff = max(0, min(scrollOff, max(0, len(m.criticalPath.Path)-contentRows)))
-
 	var lines []string
 	lines = append(lines, header, "", colHeader)
 
-	end := min(scrollOff+contentRows, len(m.criticalPath.Path))
-	for i := scrollOff; i < end; i++ {
+	start, end := persistentIndexWindow(m.cursor, len(m.criticalPath.Path), contentRows, &m.scrollOff)
+	for i := start; i < end; i++ {
 		task := m.criticalPath.Path[i]
 		slack := m.criticalPath.Slack[task.ID]
 		title := truncateToVisualWidth(task.Title, 40)
@@ -388,20 +371,12 @@ func (m *RoadmapModel) renderForecastsTab(height int) string {
 	overhead := 3
 	contentRows := max(height-overhead, 1)
 
-	scrollOff := m.scrollOff
-	if m.cursor < scrollOff {
-		scrollOff = m.cursor
-	} else if m.cursor >= scrollOff+contentRows {
-		scrollOff = m.cursor - contentRows + 1
-	}
-	scrollOff = max(0, min(scrollOff, max(0, len(forecastRows)-contentRows)))
-
 	var lines []string
 	lines = append(lines, header, "", colHeader)
 
 	now := time.Now()
-	end := min(scrollOff+contentRows, len(forecastRows))
-	for i := scrollOff; i < end; i++ {
+	start, end := persistentIndexWindow(m.cursor, len(forecastRows), contentRows, &m.scrollOff)
+	for i := start; i < end; i++ {
 		row := forecastRows[i]
 		remaining := 0
 		for _, c := range row.Task.Children {

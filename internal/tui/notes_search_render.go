@@ -62,8 +62,8 @@ func (m *NotesSearchModel) renderNoteList(paneHeight int) string {
 	}
 
 	var b strings.Builder
-	scrollOffset := calcScrollOffset(m.cursor, paneHeight)
-	for index := scrollOffset; index < len(m.filtered) && index < scrollOffset+paneHeight; index++ {
+	startIdx, endIdx := persistentIndexWindow(m.cursor, len(m.filtered), paneHeight, &m.scrollOffset)
+	for index := startIdx; index < endIdx; index++ {
 		line := m.renderNoteListRow(index)
 		if index == m.cursor {
 			line = TaskJumperSelectedStyle.Render(line)
