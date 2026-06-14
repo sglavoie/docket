@@ -171,10 +171,7 @@ func (m *OutlinerModel) crossHandleEnterKey() (tea.Model, tea.Cmd, bool) {
 		return m, nil, true
 	}
 	if row.IsSectionHeader {
-		key := row.effectiveCollapseKey()
-		m.collapsedSections[key] = !m.collapsedSections[key]
-		m.resetViewScrollOffset()
-		m.rebuildRows()
+		m.toggleSectionFoldAtCursor()
 		return m, nil, true
 	}
 	task := row.task

@@ -64,6 +64,37 @@ func TestGetForView_ProjectTree(t *testing.T) {
 	if !foundStatus {
 		t.Error("Expected status change key ',s' in ProjectTree keymap")
 	}
+	if slices.Contains(keys, "fs") {
+		t.Error("ProjectTree keymap should not expose section fold key fs")
+	}
+
+	r := NewKeybindingRegistry()
+	for _, item := range r.GetForView(ViewProjectTree) {
+		if item.Key == "fs" {
+			t.Fatalf("ProjectTree registry should not advertise section fold key fs: %+v", item)
+		}
+	}
+}
+
+func TestGetForView_OutlinerSectionFold(t *testing.T) {
+	keys := (&OutlinerModel{}).HandledKeys()
+	if !slices.Contains(keys, "fs") {
+		t.Fatal("Expected OutlinerModel.HandledKeys to include section fold key fs")
+	}
+
+	r := NewKeybindingRegistry()
+	for _, view := range []ViewType{ViewOutliner, ViewCrossProjectOutliner} {
+		found := false
+		for _, item := range r.GetForView(view) {
+			if item.Key == "fs" && item.Description == "Toggle section fold" {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Fatalf("%s registry help missing fs Toggle section fold", view)
+		}
+	}
 }
 
 func TestGetForView_ProjectTreeAndOutlinerUseCtrlNForProjectNotes(t *testing.T) {
@@ -346,5 +377,8 @@ func TestKeybindingCategories(t *testing.T) {
 	}
 	if !hasFilter {
 		t.Error("Expected filter keys in ProjectTree keymap")
+	}
+	if slices.Contains(keys, "fs") {
+		t.Error("ProjectTree keymap should not categorize unsupported section fold key fs")
 	}
 }

@@ -18,10 +18,7 @@ func (m *OutlinerModel) handleNavigationKey(key string) (tea.Model, tea.Cmd, boo
 		}
 		row := m.rows[m.cursor]
 		if row.IsSectionHeader {
-			keyCollapse := row.effectiveCollapseKey()
-			m.collapsedSections[keyCollapse] = !m.collapsedSections[keyCollapse]
-			m.resetViewScrollOffset()
-			m.rebuildRows()
+			m.toggleSectionFoldAtCursor()
 			return m, nil, true
 		}
 

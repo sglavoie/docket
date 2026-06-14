@@ -6,7 +6,7 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 )
 
-// handleFoldPrefix handles the z prefix key for fold/zoom operations.
+// handleFoldPrefix handles the f prefix key for fold/zoom operations.
 func (m *OutlinerModel) handleFoldPrefix(key string, cursorTask *models.Task) (tea.Model, tea.Cmd) {
 	switch key {
 	case "a":
@@ -54,4 +54,47 @@ func (m *OutlinerModel) handleFoldPrefix(key string, cursorTask *models.Task) (t
 	}
 
 	return m, nil
+}
+
+func (m *OutlinerModel) toggleSectionFoldAtCursor() bool {
+	if len(m.rows) == 0 || m.cursor < 0 || m.cursor >= len(m.rows) {
+		return false
+	}
+
+	headerIndex := -1
+	row := m.rows[m.cursor]
+	switch {
+	case row.IsSectionHeader:
+		headerIndex = m.cursor
+	case row.IsSeparator:
+		return false
+	case row.task != nil:
+		for i := m.cursor - 1; i >= 0; i-- {
+			candidate := m.rows[i]
+			if candidate.IsSeparator {
+				return false
+			}
+			if candidate.IsSectionHeader {
+				headerIndex = i
+				break
+			}
+		}
+	default:
+		return false
+	}
+
+	if headerIndex < 0 {
+		return false
+	}
+
+	if m.collapsedSections == nil {
+		m.collapsedSections = make(map[string]bool)
+	}
+	headerRow := m.rows[headerIndex]
+	key := headerRow.effectiveCollapseKey()
+	m.collapsedSections[key] = !m.collapsedSections[key]
+	m.cursor = headerIndex
+	m.resetViewScrollOffset()
+	m.rebuildRows()
+	return true
 }

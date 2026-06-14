@@ -4,6 +4,8 @@ package keymap
 type FoldDeps struct {
 	// ToggleFold toggles the fold state of the current node.
 	ToggleFold Action
+	// ToggleSectionFold toggles the fold state of the current section.
+	ToggleSectionFold Action
 	// FocusSubtree enters a subtree-focused view.
 	FocusSubtree Action
 	// ToggleInlinePreview toggles the inline task preview.
@@ -26,6 +28,9 @@ func FoldGroup(deps FoldDeps) []Entry {
 		Bind("1", "Collapse to depth 1", cat, deps.CollapseToDepth1),
 		Bind("2", "Collapse to depth 2", cat, deps.CollapseToDepth2),
 		Bind("3", "Collapse to depth 3", cat, deps.CollapseToDepth3),
+	}
+	if deps.ToggleSectionFold != nil {
+		children = append(children, Bind("s", "Toggle section fold", cat, deps.ToggleSectionFold))
 	}
 	return []Entry{Prefix("f", "Folds", cat, children)}
 }
