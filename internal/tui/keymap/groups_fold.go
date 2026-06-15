@@ -6,6 +6,8 @@ type FoldDeps struct {
 	ToggleFold Action
 	// ToggleSectionFold toggles the fold state of the current section.
 	ToggleSectionFold Action
+	// ToggleAllSectionFolds toggles the fold state of all visible sections.
+	ToggleAllSectionFolds Action
 	// FocusSubtree enters a subtree-focused view.
 	FocusSubtree Action
 	// ToggleInlinePreview toggles the inline task preview.
@@ -31,6 +33,9 @@ func FoldGroup(deps FoldDeps) []Entry {
 	}
 	if deps.ToggleSectionFold != nil {
 		children = append(children, Bind("s", "Toggle section fold", cat, deps.ToggleSectionFold))
+	}
+	if deps.ToggleAllSectionFolds != nil {
+		children = append(children, Bind("S", "Toggle all section folds", cat, deps.ToggleAllSectionFolds))
 	}
 	return []Entry{Prefix("f", "Folds", cat, children)}
 }

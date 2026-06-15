@@ -269,6 +269,9 @@ func (b *outlinerKeymapBuilder) foldEntries() []keymap.Entry {
 			m.toggleSectionFoldAtCursor()
 			return m, nil
 		},
+		ToggleAllSectionFolds: func() (tea.Model, tea.Cmd) {
+			return m.handleFoldPrefix("S", b.cursorTask())
+		},
 		FocusSubtree: func() (tea.Model, tea.Cmd) {
 			return m.handleFoldPrefix("v", b.cursorTask())
 		},

@@ -329,6 +329,9 @@ func TestFoldGroup(t *testing.T) {
 	if slices.Contains(keys, "s") {
 		t.Error("FoldGroup without ToggleSectionFold should not include key s")
 	}
+	if slices.Contains(keys, "S") {
+		t.Error("FoldGroup without ToggleAllSectionFolds should not include key S")
+	}
 }
 
 func TestFoldGroup_WithToggleSectionFold(t *testing.T) {
@@ -349,6 +352,33 @@ func TestFoldGroup_WithToggleSectionFold(t *testing.T) {
 		if !slices.Contains(keys, k) {
 			t.Errorf("FoldGroup (with section): missing key %q", k)
 		}
+	}
+	if slices.Contains(keys, "S") {
+		t.Error("FoldGroup without ToggleAllSectionFolds should not include key S")
+	}
+}
+
+func TestFoldGroup_WithToggleAllSectionFolds(t *testing.T) {
+	deps := FoldDeps{ToggleAllSectionFolds: actFn()}
+	entries := FoldGroup(deps)
+	if len(entries) != 1 {
+		t.Fatalf("FoldGroup: want 1 top-level entry")
+	}
+	pn := entries[0].PrefixNode
+	if pn.Key != "f" {
+		t.Errorf("FoldGroup: want key 'f', got %q", pn.Key)
+	}
+	if len(pn.Children) != 7 {
+		t.Errorf("FoldGroup (with all sections): want 7 children, got %d", len(pn.Children))
+	}
+	keys := childBindingKeys(pn.Children)
+	for _, k := range []string{"a", "S", "v", "p", "1", "2", "3"} {
+		if !slices.Contains(keys, k) {
+			t.Errorf("FoldGroup (with all sections): missing key %q", k)
+		}
+	}
+	if slices.Contains(keys, "s") {
+		t.Error("FoldGroup without ToggleSectionFold should not include key s")
 	}
 }
 

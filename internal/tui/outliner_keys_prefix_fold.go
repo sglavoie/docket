@@ -51,9 +51,47 @@ func (m *OutlinerModel) handleFoldPrefix(key string, cursorTask *models.Task) (t
 		m.previewMode = !m.previewMode
 		m.resetViewScrollOffset()
 		return m, nil
+	case "S":
+		m.toggleAllSectionFolds()
+		return m, nil
 	}
 
 	return m, nil
+}
+
+func (m *OutlinerModel) toggleAllSectionFolds() bool {
+	keys := make([]string, 0)
+	seen := make(map[string]bool)
+	anyExpanded := false
+
+	for _, row := range m.rows {
+		if !row.IsSectionHeader {
+			continue
+		}
+		key := row.effectiveCollapseKey()
+		if !seen[key] {
+			keys = append(keys, key)
+			seen[key] = true
+		}
+		if m.collapsedSections == nil || !m.collapsedSections[key] {
+			anyExpanded = true
+		}
+	}
+
+	if len(keys) == 0 {
+		return false
+	}
+
+	if m.collapsedSections == nil {
+		m.collapsedSections = make(map[string]bool)
+	}
+	targetCollapsed := anyExpanded
+	for _, key := range keys {
+		m.collapsedSections[key] = targetCollapsed
+	}
+	m.resetViewScrollOffset()
+	m.rebuildRows()
+	return true
 }
 
 func (m *OutlinerModel) toggleSectionFoldAtCursor() bool {

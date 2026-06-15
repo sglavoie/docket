@@ -117,6 +117,7 @@ var (
 	OutlinerFoldPrefixHints = []PrefixHint{
 		{Key: "a", Description: "toggle", Detail: "Toggle fold on current node"},
 		{Key: "s", Description: "section", Detail: "Toggle fold on current section"},
+		{Key: "S", Description: "sections", Detail: "Toggle fold on all visible sections"},
 		{Key: "v", Description: "focus", Detail: "Focus on current subtree"},
 		{Key: "p", Description: "preview", Detail: "Toggle inline preview for cursor task"},
 		{Key: "1", Description: "depth-1", Detail: "Collapse to top level only"},

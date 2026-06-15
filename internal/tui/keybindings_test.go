@@ -64,35 +64,46 @@ func TestGetForView_ProjectTree(t *testing.T) {
 	if !foundStatus {
 		t.Error("Expected status change key ',s' in ProjectTree keymap")
 	}
-	if slices.Contains(keys, "fs") {
-		t.Error("ProjectTree keymap should not expose section fold key fs")
+	for _, key := range []string{"fs", "fS"} {
+		if slices.Contains(keys, key) {
+			t.Errorf("ProjectTree keymap should not expose section fold key %s", key)
+		}
 	}
 
 	r := NewKeybindingRegistry()
 	for _, item := range r.GetForView(ViewProjectTree) {
-		if item.Key == "fs" {
-			t.Fatalf("ProjectTree registry should not advertise section fold key fs: %+v", item)
+		if item.Key == "fs" || item.Key == "fS" {
+			t.Fatalf("ProjectTree registry should not advertise section fold key %s: %+v", item.Key, item)
 		}
 	}
 }
 
 func TestGetForView_OutlinerSectionFold(t *testing.T) {
 	keys := (&OutlinerModel{}).HandledKeys()
-	if !slices.Contains(keys, "fs") {
-		t.Fatal("Expected OutlinerModel.HandledKeys to include section fold key fs")
+	for _, key := range []string{"fs", "fS"} {
+		if !slices.Contains(keys, key) {
+			t.Fatalf("Expected OutlinerModel.HandledKeys to include section fold key %s", key)
+		}
 	}
 
 	r := NewKeybindingRegistry()
 	for _, view := range []ViewType{ViewOutliner, ViewCrossProjectOutliner} {
-		found := false
+		found := map[string]bool{
+			"fs": false,
+			"fS": false,
+		}
 		for _, item := range r.GetForView(view) {
 			if item.Key == "fs" && item.Description == "Toggle section fold" {
-				found = true
-				break
+				found["fs"] = true
+			}
+			if item.Key == "fS" && item.Description == "Toggle all section folds" {
+				found["fS"] = true
 			}
 		}
-		if !found {
-			t.Fatalf("%s registry help missing fs Toggle section fold", view)
+		for key, ok := range found {
+			if !ok {
+				t.Fatalf("%s registry help missing %s section fold binding", view, key)
+			}
 		}
 	}
 }
@@ -378,7 +389,9 @@ func TestKeybindingCategories(t *testing.T) {
 	if !hasFilter {
 		t.Error("Expected filter keys in ProjectTree keymap")
 	}
-	if slices.Contains(keys, "fs") {
-		t.Error("ProjectTree keymap should not categorize unsupported section fold key fs")
+	for _, key := range []string{"fs", "fS"} {
+		if slices.Contains(keys, key) {
+			t.Errorf("ProjectTree keymap should not categorize unsupported section fold key %s", key)
+		}
 	}
 }
