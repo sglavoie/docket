@@ -58,10 +58,7 @@ func (m *ProjectTreeModel) handleFilterPrefix(key string) (tea.Model, tea.Cmd) {
 
 	// Common filter prefix keys
 	result := handleCommonFilterPrefix(key, &m.filter.CommonFilterState, func() tea.Cmd {
-		tags := BuildTagList(m.project.Tasks, false)
-		return func() tea.Msg {
-			return ShowTagFilterMsg{Tags: tags, Selected: m.filter.Tags, Source: ViewProjectTree, Title: "Filter by Tags"}
-		}
+		return buildTagCmdFromProject(m.project, m.filter.Tags, ViewProjectTree, "Filter by Tags", false)
 	})
 	if cmd := applyCommonFilterResult(result, func(p string) { m.pendingPrefix = p }, m.applyFilterChange); cmd != nil {
 		return m, cmd

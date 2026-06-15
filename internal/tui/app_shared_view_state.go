@@ -137,7 +137,7 @@ func (m *AppModel) applySharedStateToOutliner(s *sharedViewState) {
 
 	// Validate tags/sections against what exists in this view
 	m.outliner.filter.Tags = validateSavedStringSet(
-		mapKeys(s.Filter.Tags), CollectProjectTagNames(m.outliner.project.Tasks),
+		mapKeys(s.Filter.Tags), CollectTagNamesForProject(m.outliner.project),
 	)
 	m.outliner.filter.Sections = validateSavedStringSet(
 		mapKeys(s.Filter.Sections), m.outliner.project.GetSections(),

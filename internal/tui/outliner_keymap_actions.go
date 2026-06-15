@@ -120,6 +120,12 @@ func (b *outlinerKeymapBuilder) movementEntries() []keymap.Entry {
 
 func (b *outlinerKeymapBuilder) commonTaskActionEntries() []keymap.Entry {
 	m := b.model
+	helpView := ViewOutliner
+	helpTitle := "Outliner"
+	if m.project == nil {
+		helpView = ViewCrossProjectOutliner
+		helpTitle = "Cross-Project Outliner"
+	}
 
 	return keymap.CommonTaskActionGroup(keymap.CommonTaskActionDeps{
 		ViewTask: func() (tea.Model, tea.Cmd) {
@@ -141,7 +147,7 @@ func (b *outlinerKeymapBuilder) commonTaskActionEntries() []keymap.Entry {
 			return model, cmd
 		},
 		ToggleHelp: func() (tea.Model, tea.Cmd) {
-			return m, helpCmd(ViewOutliner, "Outliner", GetKeybindingRegistry().GetForView(ViewOutliner))
+			return m, helpCmd(helpView, helpTitle, GetKeybindingRegistry().GetForView(helpView))
 		},
 		ToggleActive: func() (tea.Model, tea.Cmd) {
 			model, cmd, _ := m.handleUtilityKey("*")
@@ -193,6 +199,10 @@ func (b *outlinerKeymapBuilder) taskViewEntries() []keymap.Entry {
 
 func (b *outlinerKeymapBuilder) utilityEntries() []keymap.Entry {
 	m := b.model
+	tagManagerDesc := "Tag manager"
+	if m.project == nil {
+		tagManagerDesc = "Global tag manager"
+	}
 
 	return []keymap.Entry{
 		keymap.Bind("v", "Toggle multi-select mode", "Multi-select", func() (tea.Model, tea.Cmd) {
@@ -246,7 +256,7 @@ func (b *outlinerKeymapBuilder) utilityEntries() []keymap.Entry {
 			model, cmd, _ := m.handleUtilityKey("ctrl+a")
 			return model, cmd
 		}),
-		keymap.Bind("ctrl+t", "Tag manager", "Filters", func() (tea.Model, tea.Cmd) {
+		keymap.Bind("ctrl+t", tagManagerDesc, "Filters", func() (tea.Model, tea.Cmd) {
 			model, cmd, _ := m.handleUtilityKey("ctrl+t")
 			return model, cmd
 		}),

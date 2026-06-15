@@ -355,10 +355,7 @@ func handleTagKey(v prefixableView, source ViewType, includeCompleted bool, sele
 		}, true
 	}
 
-	tags := BuildTagList(project.Tasks, includeCompleted)
-	return func() tea.Msg {
-		return ShowTagFilterMsg{Tags: tags, Selected: selectedTags, Source: source, Title: "Filter by Tags"}
-	}, true
+	return buildTagCmdFromProject(project, selectedTags, source, "Filter by Tags", includeCompleted), true
 }
 
 // handleDeleteConfirmKey handles the tD prefix key for showing delete

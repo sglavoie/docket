@@ -2,9 +2,9 @@ package tui
 
 import "github.com/sglavoie/tt/internal/models"
 
-// getAllTags returns all unique tags from the project's tasks.
+// getAllTags returns all tags known to the project catalog or tasks.
 func (m *ProjectTreeModel) getAllTags() []string {
-	return CollectProjectTagNames(m.project.Tasks)
+	return CollectTagNamesForProject(m.project)
 }
 
 // calculateFilterCounts calculates task counts for each filter category.

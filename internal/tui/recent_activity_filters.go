@@ -10,11 +10,24 @@ import (
 func (m *RecentActivityModel) refreshAndClamp() { m.applyFilter(); m.clampCursor() }
 
 func (m *RecentActivityModel) buildTagCmd() tea.Cmd {
-	tasks := make([]*models.Task, len(m.tasks))
-	for i := range m.tasks {
-		tasks[i] = m.tasks[i].Task
+	if m.projectScope != nil {
+		return buildTagCmdFromProjectTasks(
+			[]*models.Project{m.projectScope},
+			tasksFromCrossProjectTasks(m.tasks),
+			m.filter.Tags,
+			ViewRecentActivity,
+			"Filter by Tags",
+			false,
+		)
 	}
-	return buildTagCmdFromTasks(tasks, m.filter.Tags, ViewRecentActivity, "Filter by Tags")
+	return buildTagCmdFromProjectTasks(
+		projectsFromCrossProjectTasks(m.tasks),
+		tasksFromCrossProjectTasks(m.tasks),
+		m.filter.Tags,
+		ViewRecentActivity,
+		"Filter by Tags",
+		false,
+	)
 }
 
 // handleRecentActivityFilterPrefix handles the second key after pressing F (filter prefix) in recent activity.

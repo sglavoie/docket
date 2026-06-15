@@ -1,23 +1,24 @@
 package tui
 
-import (
-	tea "charm.land/bubbletea/v2"
-
-	"github.com/sglavoie/tt/internal/models"
-)
+import tea "charm.land/bubbletea/v2"
 
 // refreshAndClamp reloads data and clamps cursor after filter changes.
 func (m *DueDateOverviewModel) refreshAndClamp() { m.loadTasksWithDueDates(); m.clampCursor() }
 
 func (m *DueDateOverviewModel) buildTagCmd() tea.Cmd {
 	groups := [][]CrossProjectTask{m.overdue, m.today, m.thisWeek, m.later}
-	var tasks []*models.Task
+	var items []CrossProjectTask
 	for _, group := range groups {
-		for i := range group {
-			tasks = append(tasks, group[i].Task)
-		}
+		items = append(items, group...)
 	}
-	return buildTagCmdFromTasks(tasks, m.filter.Tags, ViewDueDateOverview, "Filter by Tags")
+	return buildTagCmdFromProjectTasks(
+		projectsFromCrossProjectTasks(items),
+		tasksFromCrossProjectTasks(items),
+		m.filter.Tags,
+		ViewDueDateOverview,
+		"Filter by Tags",
+		false,
+	)
 }
 
 // handleDueDateFilterPrefix handles the second key after pressing F (filter prefix) in due date overview.

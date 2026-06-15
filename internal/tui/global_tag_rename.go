@@ -2,7 +2,6 @@ package tui
 
 import (
 	"fmt"
-	"strings"
 
 	tea "charm.land/bubbletea/v2"
 
@@ -13,7 +12,8 @@ import (
 // renameGlobalTag renames a tag across all projects that use it.
 func (m *GlobalTagManagerModel) renameGlobalTag(oldName, newName string) tea.Cmd {
 	// Capture tag info synchronously to avoid data races with View()
-	newName = strings.TrimSpace(newName)
+	oldName = models.NormalizeTag(oldName)
+	newName = models.NormalizeTag(newName)
 	if newName == "" || newName == oldName {
 		return nil
 	}
@@ -43,16 +43,10 @@ func (m *GlobalTagManagerModel) renameGlobalTag(oldName, newName string) tea.Cmd
 				continue
 			}
 
-			// Track if we made any changes
-			modified := false
-			for _, task := range project.Tasks {
-				for i, tag := range task.Tags {
-					if tag == oldName {
-						task.Tags[i] = newName
-						modified = true
-						taskCount++
-					}
-				}
+			renamedTaskCount := countProjectTaskTagUsage(project, oldName)
+			modified, err := project.RenameTag(oldName, newName)
+			if err != nil {
+				return ErrorMsg{Err: fmt.Errorf("failed to rename tag in %s: %w", project.Name, err)}
 			}
 
 			if modified {
@@ -63,6 +57,7 @@ func (m *GlobalTagManagerModel) renameGlobalTag(oldName, newName string) tea.Cmd
 					return ErrorMsg{Err: fmt.Errorf("failed to save %s: %w", project.Name, err)}
 				}
 				projectCount++
+				taskCount += renamedTaskCount
 			}
 		}
 
@@ -73,4 +68,14 @@ func (m *GlobalTagManagerModel) renameGlobalTag(oldName, newName string) tea.Cmd
 			TaskCount:    taskCount,
 		}
 	}
+}
+
+func countProjectTaskTagUsage(project *models.Project, tag string) int {
+	count := 0
+	for _, task := range project.Tasks {
+		if task.HasTag(tag) {
+			count++
+		}
+	}
+	return count
 }

@@ -35,6 +35,7 @@ func LoadProjectWithWarnings(project *models.Project) (*ProjectLoadResult, error
 		project.Tasks = []*models.Task{}
 		project.NextShortID = 1
 		project.Sections = []string{models.SectionNext}
+		project.Tags = []string{}
 		if auditErr := auditLoadedProject(project); auditErr != nil {
 			return nil, auditErr
 		}
@@ -51,6 +52,7 @@ func LoadProjectWithWarnings(project *models.Project) (*ProjectLoadResult, error
 
 	project.Tasks = result.Tasks
 	project.Sections = result.Sections
+	project.Tags = result.Tags
 	project.SectionColors = result.SectionColors
 
 	maxShortID := 0
@@ -211,7 +213,7 @@ func SaveProject(project *models.Project) error {
 		}
 	}
 
-	content := WriteTasksMarkdownWithSections(project.Name, project.Tasks, project.GetSections(), project.SectionColors)
+	content := WriteTasksMarkdownWithProjectMetadata(project.Name, project.Tasks, project.GetSections(), project.SectionColors, project.Tags)
 	if err := writeFileAtomic(tasksPath, []byte(content), FilePermissions); err != nil {
 		return fmt.Errorf("failed to write tasks file: %w", err)
 	}

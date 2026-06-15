@@ -73,11 +73,12 @@ func buildTargetedRestore(currentContent string, snapshotResult *ParseResult, ta
 		currentIDs[snapTask.ID] = true
 	}
 
-	return WriteTasksMarkdownWithSections(
+	return WriteTasksMarkdownWithProjectMetadata(
 		currentResult.ProjectName,
 		currentResult.Tasks,
 		currentResult.Sections,
 		currentResult.SectionColors,
+		currentResult.Tags,
 	), nil
 }
 

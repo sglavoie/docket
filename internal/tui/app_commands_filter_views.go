@@ -11,14 +11,18 @@ func (m *AppModel) filterCommands() []Command {
 			Category:    CategoryFilters,
 			Views:       projectTreeAndOutlinerViews(),
 			Handler: func() tea.Msg {
+				if m.baseProjectView() == ViewCrossProjectOutliner && m.crossOutliner != nil {
+					tags := BuildProjectsTagList(m.crossOutliner.loadedProjects, false)
+					return ShowTagFilterMsg{Tags: tags, Selected: m.crossOutliner.filter.Tags, Source: ViewCrossProjectOutliner, Title: "Filter by Tags"}
+				}
 				if m.baseProjectView() == ViewOutliner && m.outliner != nil {
-					tags := BuildTagList(m.outliner.project.Tasks, false)
+					tags := BuildProjectTagList(m.outliner.project, false)
 					return ShowTagFilterMsg{Tags: tags, Selected: m.outliner.filter.Tags, Source: ViewOutliner, Title: "Filter by Tags"}
 				}
 				if m.projectTree == nil {
 					return nil
 				}
-				tags := BuildTagList(m.projectTree.project.Tasks, false)
+				tags := BuildProjectTagList(m.projectTree.project, false)
 				return ShowTagFilterMsg{Tags: tags, Selected: m.projectTree.filter.Tags, Source: ViewProjectTree, Title: "Filter by Tags"}
 			},
 		},
@@ -142,7 +146,7 @@ func (m *AppModel) filterCommands() []Command {
 			Description: "Manage tags across all projects",
 			Shortcut:    "ctrl+t",
 			Category:    CategoryActions,
-			Views:       []ViewType{ViewDashboard},
+			Views:       []ViewType{ViewDashboard, ViewCrossProjectOutliner},
 			Handler: func() tea.Msg {
 				return ShowGlobalTagManagerMsg{}
 			},

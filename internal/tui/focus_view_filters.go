@@ -1,20 +1,19 @@
 package tui
 
-import (
-	tea "charm.land/bubbletea/v2"
-
-	"github.com/sglavoie/tt/internal/models"
-)
+import tea "charm.land/bubbletea/v2"
 
 // refreshAndClamp reloads data and clamps cursor after filter changes.
 func (m *FocusViewModel) refreshAndClamp() { m.applyFilter(); m.clampCursor() }
 
 func (m *FocusViewModel) buildTagCmd() tea.Cmd {
-	tasks := make([]*models.Task, len(m.tasks))
-	for i := range m.tasks {
-		tasks[i] = m.tasks[i].Task
-	}
-	return buildTagCmdFromTasks(tasks, m.filter.Tags, ViewFocusView, "Filter by Tags")
+	return buildTagCmdFromProjectTasks(
+		projectsFromFocusTasks(m.tasks),
+		tasksFromFocusTasks(m.tasks),
+		m.filter.Tags,
+		ViewFocusView,
+		"Filter by Tags",
+		false,
+	)
 }
 
 // handleFocusFilterPrefix handles the second key after pressing F (filter prefix) in focus view.

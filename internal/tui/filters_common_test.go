@@ -1,12 +1,14 @@
 package tui
 
 import (
+	"reflect"
+	"strconv"
 	"testing"
 
 	"github.com/sglavoie/tt/internal/models"
 )
 
-func TestCollectProjectTagNames(t *testing.T) {
+func TestCollectTaskTagNames(t *testing.T) {
 	tests := []struct {
 		name     string
 		tasks    []*models.Task
@@ -45,7 +47,7 @@ func TestCollectProjectTagNames(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			result := CollectProjectTagNames(tc.tasks)
+			result := CollectTaskTagNames(tc.tasks)
 			if len(result) != len(tc.expected) {
 				t.Fatalf("got %d tags, want %d: %v", len(result), len(tc.expected), result)
 			}
@@ -55,6 +57,67 @@ func TestCollectProjectTagNames(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestBuildProjectTagListIncludesCatalogTagsWithTaskCounts(t *testing.T) {
+	project := &models.Project{
+		Tags: []string{"unused", "frontend"},
+		Tasks: []*models.Task{
+			{Tags: []string{"backend", "frontend"}},
+			{Tags: []string{"backend", "api", "api"}},
+			{Status: models.StatusDone, Tags: []string{"done-only"}},
+		},
+	}
+
+	got := summarizeTagInfos(BuildProjectTagList(project, false))
+	want := []string{"api:1", "backend:2", "done-only:1", "frontend:1", "unused:0"}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("BuildProjectTagList() = %v, want %v", got, want)
+	}
+
+	got = summarizeTagInfos(BuildProjectTagList(project, true))
+	want = []string{"api:1", "backend:2", "frontend:1", "unused:0"}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("BuildProjectTagList(excludeCompleted) = %v, want %v", got, want)
+	}
+}
+
+func TestBuildProjectsTagListMergesCatalogTagsAndTaskCounts(t *testing.T) {
+	alpha := &models.Project{
+		ID:   "alpha",
+		Tags: []string{"catalog-only", "shared"},
+		Tasks: []*models.Task{
+			{Tags: []string{"shared", "alpha-task"}},
+		},
+	}
+	beta := &models.Project{
+		ID:   "beta",
+		Tags: []string{"beta-catalog"},
+		Tasks: []*models.Task{
+			{Tags: []string{"shared"}},
+		},
+	}
+
+	got := summarizeTagInfos(BuildProjectsTagList([]*models.Project{alpha, beta, alpha}, false))
+	want := []string{"alpha-task:1", "beta-catalog:0", "catalog-only:0", "shared:2"}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("BuildProjectsTagList() = %v, want %v", got, want)
+	}
+}
+
+func TestCollectTagNamesForProjectIncludesCatalogTags(t *testing.T) {
+	project := &models.Project{
+		Tags: []string{"catalog-only"},
+		Tasks: []*models.Task{
+			{Tags: []string{"task-used"}},
+		},
+	}
+
+	got := CollectTagNamesForProject(project)
+	want := []string{"catalog-only", "task-used"}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("CollectTagNamesForProject() = %v, want %v", got, want)
 	}
 }
 
@@ -116,4 +179,12 @@ func TestValidateSavedStringSet(t *testing.T) {
 			}
 		})
 	}
+}
+
+func summarizeTagInfos(tags []TagInfo) []string {
+	result := make([]string, len(tags))
+	for i, tag := range tags {
+		result[i] = tag.Name + ":" + strconv.Itoa(tag.TaskCount)
+	}
+	return result
 }

@@ -1,162 +1,216 @@
 package tui
 
 import (
+	"slices"
 	"testing"
 
+	tea "charm.land/bubbletea/v2"
+
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/storage"
 )
 
-// TestRenameTagDeduplication verifies that renaming a tag does not create
-// duplicate entries when a task already has the destination tag.
-func TestRenameTagDeduplication(t *testing.T) {
-	project, err := models.NewProject("test", "Test", "/tmp/test")
-	if err != nil {
-		t.Fatal(err)
-	}
+func TestTagManagerBuildListIncludesCatalogOnlyTags(t *testing.T) {
+	project := newTagManagerTestProject(t)
+	project.Tags = []string{"backend"}
+	project.Tasks = []*models.Task{newTagManagerTestTask(t, "1", 1, "frontend")}
 
-	task1, err := models.NewTask("1", 1, models.TaskTypeTask, "Task 1")
-	if err != nil {
-		t.Fatal(err)
-	}
-	task1.Tags = []string{"frontend", "backend"}
-
-	task2, err := models.NewTask("2", 2, models.TaskTypeTask, "Task 2")
-	if err != nil {
-		t.Fatal(err)
-	}
-	task2.Tags = []string{"frontend"}
-
-	task3, err := models.NewTask("3", 3, models.TaskTypeTask, "Task 3")
-	if err != nil {
-		t.Fatal(err)
-	}
-	task3.Tags = []string{"backend"}
-
-	project.Tasks = []*models.Task{task1, task2, task3}
-
-	// Create tag manager and simulate rename of "frontend" -> "backend"
 	m := NewTagManagerModelForProject(project)
-	// Execute the rename logic by calling the command function directly.
-	// We can't call the full renameTag() because it calls saveProjectSync,
-	// so we replicate the core rename logic that was fixed.
-	oldName := "frontend"
-	newName := "backend"
 
-	// Apply the same logic as renameTag()
-	for _, task := range m.project.Tasks {
-		hasOld := false
-		hasNew := false
-		oldIdx := -1
-		for i, tag := range task.Tags {
-			if tag == oldName {
-				hasOld = true
-				oldIdx = i
-			}
-			if tag == newName {
-				hasNew = true
-			}
-		}
-		if !hasOld {
-			continue
-		}
-		if hasNew {
-			task.Tags = append(task.Tags[:oldIdx], task.Tags[oldIdx+1:]...)
-		} else {
-			task.Tags[oldIdx] = newName
-		}
-	}
-
-	// task1 had both "frontend" and "backend": should now have just "backend" (no duplicate)
-	if len(task1.Tags) != 1 {
-		t.Errorf("task1: expected 1 tag, got %d: %v", len(task1.Tags), task1.Tags)
-	}
-	if task1.Tags[0] != "backend" {
-		t.Errorf("task1: expected tag 'backend', got %q", task1.Tags[0])
-	}
-
-	// task2 had only "frontend": should now have "backend"
-	if len(task2.Tags) != 1 {
-		t.Errorf("task2: expected 1 tag, got %d: %v", len(task2.Tags), task2.Tags)
-	}
-	if task2.Tags[0] != "backend" {
-		t.Errorf("task2: expected tag 'backend', got %q", task2.Tags[0])
-	}
-
-	// task3 had only "backend" (no "frontend"): should be unchanged
-	if len(task3.Tags) != 1 {
-		t.Errorf("task3: expected 1 tag, got %d: %v", len(task3.Tags), task3.Tags)
-	}
-	if task3.Tags[0] != "backend" {
-		t.Errorf("task3: expected tag 'backend', got %q", task3.Tags[0])
+	got := summarizeTagInfos(m.tags)
+	want := []string{"backend:0", "frontend:1"}
+	if !slices.Equal(got, want) {
+		t.Fatalf("tags = %v, want %v", got, want)
 	}
 }
 
-// TestRenameTagBasic verifies simple rename with no duplicate scenario.
-func TestRenameTagBasic(t *testing.T) {
-	project, err := models.NewProject("test", "Test", "/tmp/test")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	task1, err := models.NewTask("1", 1, models.TaskTypeTask, "Task 1")
-	if err != nil {
-		t.Fatal(err)
-	}
-	task1.Tags = []string{"alpha", "beta"}
-
-	task2, err := models.NewTask("2", 2, models.TaskTypeTask, "Task 2")
-	if err != nil {
-		t.Fatal(err)
-	}
-	task2.Tags = []string{"alpha"}
-
-	project.Tasks = []*models.Task{task1, task2}
-
+func TestTagManagerAddCatalogTagPersists(t *testing.T) {
+	project := newTagManagerTestProject(t)
 	m := NewTagManagerModelForProject(project)
 
-	oldName := "alpha"
-	newName := "gamma"
+	msg := m.addProjectTag("  #backend  ")()
+	if _, ok := msg.(TagAddedMsg); !ok {
+		t.Fatalf("addProjectTag() message = %T, want TagAddedMsg (%v)", msg, msg)
+	}
+	updated, _ := m.Update(msg)
+	m = updated.(*TagManagerModel)
 
-	// Apply the rename logic
-	for _, task := range m.project.Tasks {
-		hasOld := false
-		hasNew := false
-		oldIdx := -1
-		for i, tag := range task.Tags {
-			if tag == oldName {
-				hasOld = true
-				oldIdx = i
-			}
-			if tag == newName {
-				hasNew = true
-			}
-		}
-		if !hasOld {
-			continue
-		}
-		if hasNew {
-			task.Tags = append(task.Tags[:oldIdx], task.Tags[oldIdx+1:]...)
-		} else {
-			task.Tags[oldIdx] = newName
-		}
+	if got, want := project.Tags, []string{"backend"}; !slices.Equal(got, want) {
+		t.Fatalf("project.Tags = %v, want %v", got, want)
 	}
+	assertReloadedTagCatalog(t, project, []string{"backend"})
 
-	// task1: "alpha" -> "gamma", "beta" stays
-	if len(task1.Tags) != 2 {
-		t.Errorf("task1: expected 2 tags, got %d: %v", len(task1.Tags), task1.Tags)
+	got := summarizeTagInfos(m.tags)
+	want := []string{"backend:0"}
+	if !slices.Equal(got, want) {
+		t.Fatalf("manager tags = %v, want %v", got, want)
 	}
-	if task1.Tags[0] != "gamma" {
-		t.Errorf("task1: expected first tag 'gamma', got %q", task1.Tags[0])
-	}
-	if task1.Tags[1] != "beta" {
-		t.Errorf("task1: expected second tag 'beta', got %q", task1.Tags[1])
-	}
+}
 
-	// task2: "alpha" -> "gamma"
-	if len(task2.Tags) != 1 {
-		t.Errorf("task2: expected 1 tag, got %d: %v", len(task2.Tags), task2.Tags)
+func TestTagManagerRemoveZeroUseCatalogTagPersists(t *testing.T) {
+	project := newTagManagerTestProject(t)
+	project.Tags = []string{"backend"}
+	saveAndReloadTagManagerProject(t, project)
+	m := NewTagManagerModelForProject(project)
+
+	msg := m.removeProjectTag("backend")()
+	if _, ok := msg.(TagRemovedMsg); !ok {
+		t.Fatalf("removeProjectTag() message = %T, want TagRemovedMsg (%v)", msg, msg)
 	}
-	if task2.Tags[0] != "gamma" {
-		t.Errorf("task2: expected tag 'gamma', got %q", task2.Tags[0])
+	updated, _ := m.Update(msg)
+	m = updated.(*TagManagerModel)
+
+	if len(project.Tags) != 0 {
+		t.Fatalf("project.Tags = %v, want empty", project.Tags)
 	}
+	assertReloadedTagCatalog(t, project, nil)
+	if len(m.tags) != 0 {
+		t.Fatalf("manager tags = %v, want empty", m.tags)
+	}
+}
+
+func TestTagManagerDeleteProtectsTaskUsedTag(t *testing.T) {
+	project := newTagManagerTestProject(t)
+	project.Tags = []string{"backend"}
+	project.Tasks = []*models.Task{newTagManagerTestTask(t, "1", 1, "backend")}
+	m := NewTagManagerModelForProject(project)
+
+	updated, cmd := m.Update(tea.KeyPressMsg{Code: 'd', Text: "d"})
+	m = updated.(*TagManagerModel)
+
+	if cmd != nil {
+		t.Fatal("delete task-used tag returned a command, want inline validation error")
+	}
+	if m.errorMsg != "cannot delete: tag has 1 task(s)" {
+		t.Fatalf("errorMsg = %q, want task-use protection", m.errorMsg)
+	}
+	if got, want := project.Tags, []string{"backend"}; !slices.Equal(got, want) {
+		t.Fatalf("project.Tags = %v, want %v", got, want)
+	}
+}
+
+func TestTagManagerRenameCatalogOnlyTagPersists(t *testing.T) {
+	project := newTagManagerTestProject(t)
+	project.Tags = []string{"backend"}
+	saveAndReloadTagManagerProject(t, project)
+	m := NewTagManagerModelForProject(project)
+
+	msg := m.renameTag("backend", "frontend")()
+	renamed, ok := msg.(TagRenamedMsg)
+	if !ok {
+		t.Fatalf("renameTag() message = %T, want TagRenamedMsg (%v)", msg, msg)
+	}
+	if renamed.OldName != "backend" || renamed.NewName != "frontend" {
+		t.Fatalf("rename message = %#v, want backend -> frontend", renamed)
+	}
+	updated, _ := m.Update(msg)
+	m = updated.(*TagManagerModel)
+
+	if got, want := project.Tags, []string{"frontend"}; !slices.Equal(got, want) {
+		t.Fatalf("project.Tags = %v, want %v", got, want)
+	}
+	assertReloadedTagCatalog(t, project, []string{"frontend"})
+
+	got := summarizeTagInfos(m.tags)
+	want := []string{"frontend:0"}
+	if !slices.Equal(got, want) {
+		t.Fatalf("manager tags = %v, want %v", got, want)
+	}
+}
+
+func TestTagManagerRenameTaskUsedTagPersistsAndDedupes(t *testing.T) {
+	project := newTagManagerTestProject(t)
+	task1 := newTagManagerTestTask(t, "1", 1, "frontend", "backend")
+	task2 := newTagManagerTestTask(t, "2", 2, "frontend")
+	task3 := newTagManagerTestTask(t, "3", 3, "backend")
+	project.Tasks = []*models.Task{task1, task2, task3}
+	saveAndReloadTagManagerProject(t, project)
+	m := NewTagManagerModelForProject(project)
+
+	msg := m.renameTag("frontend", "backend")()
+	if _, ok := msg.(TagRenamedMsg); !ok {
+		t.Fatalf("renameTag() message = %T, want TagRenamedMsg (%v)", msg, msg)
+	}
+	updated, _ := m.Update(msg)
+	m = updated.(*TagManagerModel)
+
+	if got, want := project.Tasks[0].Tags, []string{"backend"}; !slices.Equal(got, want) {
+		t.Fatalf("task1 tags = %v, want %v", got, want)
+	}
+	if got, want := project.Tasks[1].Tags, []string{"backend"}; !slices.Equal(got, want) {
+		t.Fatalf("task2 tags = %v, want %v", got, want)
+	}
+	if got, want := project.Tasks[2].Tags, []string{"backend"}; !slices.Equal(got, want) {
+		t.Fatalf("task3 tags = %v, want %v", got, want)
+	}
+	assertReloadedTaskTags(t, project, map[int][]string{
+		1: {"backend"},
+		2: {"backend"},
+		3: {"backend"},
+	})
+
+	got := summarizeTagInfos(m.tags)
+	want := []string{"backend:3"}
+	if !slices.Equal(got, want) {
+		t.Fatalf("manager tags = %v, want %v", got, want)
+	}
+}
+
+func newTagManagerTestProject(t *testing.T) *models.Project {
+	t.Helper()
+	project, err := models.NewProject("test", "Test", t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	return project
+}
+
+func newTagManagerTestTask(t *testing.T, id string, shortID int, tags ...string) *models.Task {
+	t.Helper()
+	task, err := models.NewTask(id, shortID, models.TaskTypeTask, "Task "+id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	task.Tags = tags
+	return task
+}
+
+func saveAndReloadTagManagerProject(t *testing.T, project *models.Project) {
+	t.Helper()
+	if err := storage.SaveProject(project); err != nil {
+		t.Fatalf("SaveProject() error = %v", err)
+	}
+	if err := storage.LoadProject(project); err != nil {
+		t.Fatalf("LoadProject() error = %v", err)
+	}
+}
+
+func assertReloadedTagCatalog(t *testing.T, project *models.Project, want []string) {
+	t.Helper()
+	reloaded := reloadTagManagerProject(t, project)
+	if !slices.Equal(reloaded.Tags, want) {
+		t.Fatalf("reloaded tags = %v, want %v", reloaded.Tags, want)
+	}
+}
+
+func assertReloadedTaskTags(t *testing.T, project *models.Project, want map[int][]string) {
+	t.Helper()
+	reloaded := reloadTagManagerProject(t, project)
+	for _, task := range reloaded.Tasks {
+		if expected, ok := want[task.ShortID]; ok && !slices.Equal(task.Tags, expected) {
+			t.Fatalf("reloaded task #%d tags = %v, want %v", task.ShortID, task.Tags, expected)
+		}
+	}
+}
+
+func reloadTagManagerProject(t *testing.T, project *models.Project) *models.Project {
+	t.Helper()
+	reloaded, err := models.NewProject(project.ID, project.Name, project.Path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := storage.LoadProject(reloaded); err != nil {
+		t.Fatalf("LoadProject(reloaded) error = %v", err)
+	}
+	return reloaded
 }

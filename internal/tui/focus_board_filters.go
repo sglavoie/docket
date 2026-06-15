@@ -6,7 +6,6 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/fuzzy"
-	"github.com/sglavoie/tt/internal/models"
 )
 
 // refreshAndClamp reloads data and clamps cursor after filter changes.
@@ -15,11 +14,14 @@ func (m *FocusBoardModel) refreshAndClamp() { m.applyFilter(); m.clampCursor() }
 func (m *FocusBoardModel) buildTagCmd() tea.Cmd {
 	// Use allRows (all non-complete, non-snoozed) so the tag picker includes
 	// tags from tasks visible on any tab, not just active/due-soon ones.
-	tasks := make([]*models.Task, len(m.allRows))
-	for i := range m.allRows {
-		tasks[i] = m.allRows[i].Task
-	}
-	return buildTagCmdFromTasks(tasks, m.filter.Tags, ViewFocusBoard, "Filter by Tags")
+	return buildTagCmdFromProjectTasks(
+		projectsFromBoardRows(m.allRows),
+		tasksFromBoardRows(m.allRows),
+		m.filter.Tags,
+		ViewFocusBoard,
+		"Filter by Tags",
+		false,
+	)
 }
 
 // handleFocusBoardFilterPrefix handles the second key after pressing F (filter prefix).

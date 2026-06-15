@@ -18,10 +18,21 @@ func WriteTasksMarkdown(projectName string, tasks []*models.Task) string {
 // WriteTasksMarkdownWithSections generates markdown content from tasks and sections.
 // Tasks are written in their slice order, preserving user-defined ordering.
 func WriteTasksMarkdownWithSections(projectName string, tasks []*models.Task, sections []string, sectionColors map[string]string) string {
+	return writeTasksMarkdownWithProjectMetadata(projectName, tasks, sections, sectionColors, nil)
+}
+
+// WriteTasksMarkdownWithProjectMetadata generates markdown content from tasks,
+// sections, and project-level task-file metadata.
+func WriteTasksMarkdownWithProjectMetadata(projectName string, tasks []*models.Task, sections []string, sectionColors map[string]string, tags []string) string {
+	return writeTasksMarkdownWithProjectMetadata(projectName, tasks, sections, sectionColors, tags)
+}
+
+func writeTasksMarkdownWithProjectMetadata(projectName string, tasks []*models.Task, sections []string, sectionColors map[string]string, tags []string) string {
 	var builder strings.Builder
 
 	fmt.Fprintf(&builder, "# Project: %s\n", projectName)
 	writeSectionsMetadata(&builder, sections, sectionColors)
+	writeTagsMetadata(&builder, tags)
 	builder.WriteString("\n")
 
 	rootTasks := collectRootTasks(tasks)
@@ -53,6 +64,15 @@ func writeSectionsMetadata(builder *strings.Builder, sections []string, sectionC
 	}
 
 	fmt.Fprintf(builder, "<!-- sections: %s -->\n", strings.Join(sectionParts, ";"))
+}
+
+func writeTagsMetadata(builder *strings.Builder, tags []string) {
+	tags = models.DedupeTags(tags)
+	if len(tags) == 0 {
+		return
+	}
+
+	fmt.Fprintf(builder, "<!-- tags: %s -->\n", strings.Join(tags, ";"))
 }
 
 func collectRootTasks(tasks []*models.Task) []*models.Task {

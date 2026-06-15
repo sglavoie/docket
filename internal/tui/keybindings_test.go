@@ -108,6 +108,26 @@ func TestGetForView_OutlinerSectionFold(t *testing.T) {
 	}
 }
 
+func TestGetForView_OutlinerTagManagerScope(t *testing.T) {
+	r := NewKeybindingRegistry()
+
+	assertHelpItem := func(view ViewType, key, desc string) {
+		t.Helper()
+		for _, item := range r.GetForView(view) {
+			if item.Key == key && item.Description == desc {
+				return
+			}
+			if item.Key == key && (item.Description == "Tag manager" || item.Description == "Global tag manager") {
+				t.Fatalf("%s ctrl+t description = %q, want %q", view, item.Description, desc)
+			}
+		}
+		t.Fatalf("%s help missing %s %q binding", view, key, desc)
+	}
+
+	assertHelpItem(ViewOutliner, "ctrl+t", "Tag manager")
+	assertHelpItem(ViewCrossProjectOutliner, "ctrl+t", "Global tag manager")
+}
+
 func TestGetForView_ProjectTreeAndOutlinerUseCtrlNForProjectNotes(t *testing.T) {
 	r := NewKeybindingRegistry()
 

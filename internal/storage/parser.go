@@ -34,6 +34,9 @@ var (
 
 	// Matches sections metadata like "<!-- sections: Backlog;Active;Done -->"
 	sectionsRegex = regexp.MustCompile(`^<!--\s*sections:\s*(.+?)\s*-->$`)
+
+	// Matches project tag metadata like "<!-- tags: backend;frontend;urgent -->"
+	tagsRegex = regexp.MustCompile(`^<!--\s*tags:\s*(.*?)\s*-->$`)
 )
 
 // ParseWarning represents a non-fatal issue found during parsing.
@@ -44,6 +47,7 @@ type ParseResult struct {
 	ProjectName   string
 	Tasks         []*models.Task
 	Sections      []string
+	Tags          []string
 	SectionColors map[string]string
 	Warnings      []ParseWarning // Non-fatal issues found during parsing
 }
@@ -73,6 +77,7 @@ func ParseTasksMarkdownWithSections(content string) (*ParseResult, error) {
 	scanner.Buffer(make([]byte, 0, scannerInitBufSize), scannerMaxBufSize)
 	var projectName string
 	var sections []string
+	var tags []string
 	sectionColors := make(map[string]string)
 	var parsedTasks []*format.ParsedTask
 	var currentTask *format.ParsedTask
@@ -97,6 +102,10 @@ func ParseTasksMarkdownWithSections(content string) (*ParseResult, error) {
 		}
 
 		if parseSectionsMetadataLine(line, foundFirstTask, &sections, sectionColors, &metadataWarnings) {
+			continue
+		}
+
+		if parseTagsMetadataLine(line, foundFirstTask, &tags, &metadataWarnings) {
 			continue
 		}
 
@@ -183,6 +192,7 @@ func ParseTasksMarkdownWithSections(content string) (*ParseResult, error) {
 		ProjectName:   projectName,
 		Tasks:         tasks,
 		Sections:      sections,
+		Tags:          tags,
 		SectionColors: sectionColors,
 		Warnings:      metadataWarnings,
 	}, nil
@@ -255,6 +265,46 @@ func parseSectionsMetadataLine(line string, foundFirstTask bool, sections *[]str
 				Field:   "sections",
 				Message: fmt.Sprintf("section %q has invalid color %q (valid: gray, red, orange, yellow, green, cyan, blue, purple, magenta, white), using default", name, color),
 			})
+		}
+	}
+
+	return true
+}
+
+func parseTagsMetadataLine(line string, foundFirstTask bool, tags *[]string, warnings *[]ParseWarning) bool {
+	if foundFirstTask {
+		return false
+	}
+
+	matches := tagsRegex.FindStringSubmatch(line)
+	if matches == nil {
+		return false
+	}
+
+	seenTags := make(map[string]bool, len(*tags))
+	for _, existing := range *tags {
+		seenTags[existing] = true
+	}
+
+	for tagSpec := range strings.SplitSeq(matches[1], ";") {
+		rawTag := strings.TrimSpace(tagSpec)
+		if rawTag == "" {
+			continue
+		}
+
+		tag := models.NormalizeTag(rawTag)
+		if err := models.ValidateTag(tag); err != nil {
+			*warnings = append(*warnings, ParseWarning{
+				Type:    format.WarningValidation,
+				Field:   "tags",
+				Message: fmt.Sprintf("project tag %q is invalid: %v, skipping", rawTag, err),
+			})
+			continue
+		}
+
+		if !seenTags[tag] {
+			*tags = append(*tags, tag)
+			seenTags[tag] = true
 		}
 	}
 

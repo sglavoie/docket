@@ -209,52 +209,130 @@ func renderCommonFilterIndicator(f *CommonFilterState) string {
 	return renderFilterBadge(commonFilterParts(f))
 }
 
-// buildTagCmdFromTasks builds a tea.Cmd that emits ShowTagFilterMsg for the given
-// task slice. Views call this from their buildTagCmd() method, passing their
-// collected tasks, current tag selection, source view, and title.
-func buildTagCmdFromTasks(tasks []*models.Task, selected map[string]bool, source ViewType, title string) tea.Cmd {
-	tags := buildTagListFromTasks(tasks)
+func buildTagCmdFromProject(project *models.Project, selected map[string]bool, source ViewType, title string, excludeCompleted bool) tea.Cmd {
+	tags := BuildProjectTagList(project, excludeCompleted)
 	return func() tea.Msg {
 		return ShowTagFilterMsg{Tags: tags, Selected: selected, Source: source, Title: title}
 	}
 }
 
-// buildTagListFromTasks scans tasks and builds a sorted list of tags with counts.
-func buildTagListFromTasks(tasks []*models.Task) []TagInfo {
-	tagCounts := make(map[string]int)
-	for _, task := range tasks {
-		for _, tag := range task.Tags {
-			tagCounts[tag]++
-		}
+func buildTagCmdFromProjects(projects []*models.Project, selected map[string]bool, source ViewType, title string, excludeCompleted bool) tea.Cmd {
+	tags := BuildProjectsTagList(projects, excludeCompleted)
+	return func() tea.Msg {
+		return ShowTagFilterMsg{Tags: tags, Selected: selected, Source: source, Title: title}
 	}
+}
 
-	tags := make([]TagInfo, 0, len(tagCounts))
-	for name, count := range tagCounts {
-		tags = append(tags, TagInfo{Name: name, TaskCount: count})
+func buildTagCmdFromProjectTasks(projects []*models.Project, tasks []*models.Task, selected map[string]bool, source ViewType, title string, excludeCompleted bool) tea.Cmd {
+	tags := BuildCatalogTagList(projects, tasks, excludeCompleted)
+	return func() tea.Msg {
+		return ShowTagFilterMsg{Tags: tags, Selected: selected, Source: source, Title: title}
 	}
+}
 
-	sort.Slice(tags, func(i, j int) bool {
-		return tags[i].Name < tags[j].Name
-	})
+// CollectTaskTagNames returns sorted unique tag names from task usage only.
+func CollectTaskTagNames(tasks []*models.Task) []string {
+	return tagNamesFromInfos(BuildTagList(tasks, false))
+}
 
+// CollectTagNamesForProject returns sorted unique tag names from the project's
+// catalog and task usage.
+func CollectTagNamesForProject(project *models.Project) []string {
+	return tagNamesFromInfos(BuildProjectTagList(project, false))
+}
+
+// CollectTagNamesForProjects returns sorted unique tag names from all project
+// catalogs and task usages.
+func CollectTagNamesForProjects(projects []*models.Project) []string {
+	return tagNamesFromInfos(BuildProjectsTagList(projects, false))
+}
+
+func tagNamesFromInfos(infos []TagInfo) []string {
+	tags := make([]string, len(infos))
+	for i, info := range infos {
+		tags[i] = info.Name
+	}
 	return tags
 }
 
-// CollectProjectTagNames returns sorted unique tag names from tasks.
-func CollectProjectTagNames(tasks []*models.Task) []string {
-	tagSet := make(map[string]bool)
-	for _, task := range tasks {
-		for _, tag := range task.Tags {
-			tagSet[tag] = true
-		}
+func projectsFromCrossProjectTasks(items []CrossProjectTask) []*models.Project {
+	projects := make([]*models.Project, 0, len(items))
+	for _, item := range items {
+		projects = append(projects, item.Project)
 	}
+	return uniqueProjects(projects)
+}
 
-	tags := make([]string, 0, len(tagSet))
-	for tag := range tagSet {
-		tags = append(tags, tag)
+func tasksFromCrossProjectTasks(items []CrossProjectTask) []*models.Task {
+	tasks := make([]*models.Task, 0, len(items))
+	for _, item := range items {
+		tasks = append(tasks, item.Task)
 	}
-	sort.Strings(tags)
-	return tags
+	return tasks
+}
+
+func projectsFromFocusTasks(items []FocusTask) []*models.Project {
+	projects := make([]*models.Project, 0, len(items))
+	for _, item := range items {
+		projects = append(projects, item.Project)
+	}
+	return uniqueProjects(projects)
+}
+
+func tasksFromFocusTasks(items []FocusTask) []*models.Task {
+	tasks := make([]*models.Task, 0, len(items))
+	for _, item := range items {
+		tasks = append(tasks, item.Task)
+	}
+	return tasks
+}
+
+func projectsFromBoardRows(rows []boardRow) []*models.Project {
+	projects := make([]*models.Project, 0, len(rows))
+	for _, row := range rows {
+		projects = append(projects, row.Project)
+	}
+	return uniqueProjects(projects)
+}
+
+func tasksFromBoardRows(rows []boardRow) []*models.Task {
+	tasks := make([]*models.Task, 0, len(rows))
+	for _, row := range rows {
+		tasks = append(tasks, row.Task)
+	}
+	return tasks
+}
+
+func projectsFromWeeklyReviewTasks(items []WeeklyReviewTask) []*models.Project {
+	projects := make([]*models.Project, 0, len(items))
+	for _, item := range items {
+		projects = append(projects, item.Project)
+	}
+	return uniqueProjects(projects)
+}
+
+func tasksFromWeeklyReviewTasks(items []WeeklyReviewTask) []*models.Task {
+	tasks := make([]*models.Task, 0, len(items))
+	for _, item := range items {
+		tasks = append(tasks, item.Task)
+	}
+	return tasks
+}
+
+func projectsFromProjectCache(projectCache map[string]*models.Project) []*models.Project {
+	projects := make([]*models.Project, 0, len(projectCache))
+	for _, project := range projectCache {
+		projects = append(projects, project)
+	}
+	return uniqueProjects(projects)
+}
+
+func tasksFromCrossProjectCards(cards []KanbanCard) []*models.Task {
+	tasks := make([]*models.Task, 0, len(cards))
+	for _, card := range cards {
+		tasks = append(tasks, card.Task)
+	}
+	return tasks
 }
 
 // validateSavedStringSet returns the subset of saved that exist in valid.

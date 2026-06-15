@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"slices"
 	"testing"
 	"time"
 
@@ -30,6 +31,44 @@ func TestHandleTagMessagesCloseTagManager(t *testing.T) {
 
 	if app.currentView() != ViewDashboard {
 		t.Errorf("currentView should be Dashboard after closing tag manager, got %v", app.currentView())
+	}
+}
+
+func TestHandleTagMessagesTagRenameKeepsActiveManagerOpen(t *testing.T) {
+	app, project := newTestAppModelWithProject()
+	project.Tags = []string{"backend"}
+	project.Tasks = nil
+	app.projectTree = NewProjectTreeModel(project, app.config, nil)
+
+	handled, _ := app.handleTagMessages(ShowTagManagerMsg{ProjectTree: app.projectTree})
+	if !handled {
+		t.Fatal("ShowTagManagerMsg should be handled")
+	}
+
+	project.Tags = []string{"frontend"}
+	app.projectTree.filter.Tags = map[string]bool{"backend": true}
+	handled, cmd := app.handleTagMessages(TagRenamedMsg{OldName: "backend", NewName: "frontend"})
+	if !handled {
+		t.Fatal("TagRenamedMsg should be handled")
+	}
+	if cmd != nil {
+		t.Fatal("TagRenamedMsg returned a command, want in-place manager refresh")
+	}
+	if app.currentView() != ViewTagManager {
+		t.Fatalf("currentView = %v, want ViewTagManager", app.currentView())
+	}
+	if app.projectTree.filter.Tags["backend"] || !app.projectTree.filter.Tags["frontend"] {
+		t.Fatalf("project tree tag filter = %v, want frontend only", app.projectTree.filter.Tags)
+	}
+
+	manager, ok := app.views.Get(ViewTagManager).(*TagManagerModel)
+	if !ok {
+		t.Fatalf("tag manager view = %T, want *TagManagerModel", app.views.Get(ViewTagManager))
+	}
+	got := summarizeTagInfos(manager.tags)
+	want := []string{"frontend:0"}
+	if !slices.Equal(got, want) {
+		t.Fatalf("manager tags = %v, want %v", got, want)
 	}
 }
 

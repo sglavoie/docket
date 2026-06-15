@@ -26,7 +26,9 @@ func (m *AppModel) handleSavedFilterMessages(msg tea.Msg) (bool, tea.Cmd) {
 		// Pop the input dialog
 		m.popView()
 		// Set active saved filter indicator on the appropriate view
-		if m.baseProjectView() == ViewOutliner && m.outliner != nil {
+		if m.baseProjectView() == ViewCrossProjectOutliner && m.crossOutliner != nil {
+			m.crossOutliner.activeSavedFilter = msg.Name
+		} else if m.baseProjectView() == ViewOutliner && m.outliner != nil {
 			m.outliner.activeSavedFilter = msg.Name
 		} else if m.projectTree != nil {
 			m.projectTree.activeSavedFilter = msg.Name
@@ -41,7 +43,9 @@ func (m *AppModel) handleSavedFilterMessages(msg tea.Msg) (bool, tea.Cmd) {
 		return true, nil
 
 	case LoadSavedFilterMsg:
-		if m.baseProjectView() == ViewOutliner && m.outliner != nil {
+		if m.baseProjectView() == ViewCrossProjectOutliner && m.crossOutliner != nil {
+			m.applySavedFilterToCrossOutliner(msg.Filter)
+		} else if m.baseProjectView() == ViewOutliner && m.outliner != nil {
 			m.applySavedFilterToOutliner(msg.Filter)
 		} else if m.projectTree != nil {
 			m.applySavedFilterToTree(msg.Filter)
@@ -76,7 +80,10 @@ func (m *AppModel) handleSavedFilterMessages(msg tea.Msg) (bool, tea.Cmd) {
 			return true, errorCmd("failed to delete saved filter: %w", err)
 		}
 		// Clear active indicator (filter already deleted, so just clear any indicator)
-		if m.baseProjectView() == ViewOutliner && m.outliner != nil {
+		if m.baseProjectView() == ViewCrossProjectOutliner && m.crossOutliner != nil {
+			m.crossOutliner.activeSavedFilter = ""
+			m.crossOutliner.activeCriteriaFilter = nil
+		} else if m.baseProjectView() == ViewOutliner && m.outliner != nil {
 			m.outliner.activeSavedFilter = ""
 			m.outliner.activeCriteriaFilter = nil
 		} else if m.projectTree != nil {
@@ -110,8 +117,15 @@ func (m *AppModel) captureCurrentFilter(name string) config.SavedFilter {
 		id = existing.ID
 	}
 
-	if m.baseProjectView() == ViewOutliner && m.outliner != nil {
-		return m.captureOutlinerFilter(name, id)
+	switch m.baseProjectView() {
+	case ViewCrossProjectOutliner:
+		if m.crossOutliner != nil {
+			return m.captureOutlinerFilterFrom(name, id, m.crossOutliner)
+		}
+	case ViewOutliner:
+		if m.outliner != nil {
+			return m.captureOutlinerFilter(name, id)
+		}
 	}
 	return m.captureProjectTreeFilter(name, id)
 }
@@ -164,16 +178,19 @@ func (m *AppModel) captureProjectTreeFilter(name, id string) config.SavedFilter 
 
 // captureOutlinerFilter creates a SavedFilter from the outliner state.
 func (m *AppModel) captureOutlinerFilter(name, id string) config.SavedFilter {
+	return m.captureOutlinerFilterFrom(name, id, m.outliner)
+}
+
+func (m *AppModel) captureOutlinerFilterFrom(name, id string, ol *OutlinerModel) config.SavedFilter {
 	sf := config.SavedFilter{
 		ID:   id,
 		Name: name,
 		Mode: "snapshot",
 	}
-	if m.outliner == nil {
+	if ol == nil {
 		return sf
 	}
 
-	ol := m.outliner
 	sf.ViewMode = ol.activePerspective
 	sf.FilterType = string(ol.filter.Type)
 	sf.FilterStatus = string(ol.filter.Status)
@@ -279,7 +296,14 @@ func (m *AppModel) applySavedFilterToTree(sf config.SavedFilter) {
 
 // applySavedFilterToOutliner applies a saved filter's state to the outliner.
 func (m *AppModel) applySavedFilterToOutliner(sf config.SavedFilter) {
-	ol := m.outliner
+	m.applySavedFilterToOutlinerModel(m.outliner, sf)
+}
+
+func (m *AppModel) applySavedFilterToCrossOutliner(sf config.SavedFilter) {
+	m.applySavedFilterToOutlinerModel(m.crossOutliner, sf)
+}
+
+func (m *AppModel) applySavedFilterToOutlinerModel(ol *OutlinerModel, sf config.SavedFilter) {
 	if ol == nil {
 		return
 	}
@@ -301,8 +325,12 @@ func (m *AppModel) applySavedFilterToOutliner(sf config.SavedFilter) {
 		ol.sort.Field = SortField(sf.SortField)
 		ol.sort.Ascending = sf.SortAscending
 
-		// Restore tags — validate against current project
-		ol.filter.Tags = validateSavedStringSet(sf.FilterTags, CollectProjectTagNames(ol.project.Tasks))
+		// Restore tags — validate against the active outliner scope.
+		validTags := CollectTagNamesForProject(ol.project)
+		if ol.project == nil {
+			validTags = CollectTagNamesForProjects(ol.loadedProjects)
+		}
+		ol.filter.Tags = validateSavedStringSet(sf.FilterTags, validTags)
 
 		// Restore sections — validate against current project
 		ol.filter.Sections = make(map[string]bool)

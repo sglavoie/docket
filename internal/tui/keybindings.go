@@ -4,6 +4,7 @@ import (
 	"slices"
 	"sync"
 
+	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/keymap"
 )
 
@@ -68,7 +69,7 @@ func migratedViewKeymaps() map[ViewType]*keymap.KeyMap {
 	return map[ViewType]*keymap.KeyMap{
 		ViewDashboard:             (&DashboardModel{}).buildKeyMap(),
 		ViewProjectTree:           (&ProjectTreeModel{}).buildKeyMap(),
-		ViewOutliner:              (&OutlinerModel{}).buildKeyMap(),
+		ViewOutliner:              (&OutlinerModel{project: &models.Project{}}).buildKeyMap(),
 		ViewCrossProjectOutliner:  (&OutlinerModel{}).buildKeyMap(),
 		ViewAllTasks:              (&AllTasksViewModel{}).buildKeyMap(),
 		ViewFocusBoard:            (&FocusBoardModel{}).buildKeyMap(),

@@ -56,19 +56,71 @@ func NewTagFilterSelectorModel(msg ShowTagFilterMsg) *TagFilterSelectorModel {
 	}
 }
 
-// BuildTagList scans tasks and builds a sorted list of tags with counts.
-// If excludeCompleted is true, completed tasks are skipped.
+// BuildTagList scans tasks and builds a sorted list of task-used tags with
+// counts. If excludeCompleted is true, completed tasks are skipped.
 func BuildTagList(tasks []*models.Task, excludeCompleted bool) []TagInfo {
 	tagCounts := make(map[string]int)
+	addTaskTagCounts(tagCounts, tasks, excludeCompleted)
+
+	return tagInfosFromCounts(tagCounts)
+}
+
+// BuildProjectTagList builds a sorted catalog-aware tag list for a project.
+// Catalog-only tags are included with a zero task count.
+func BuildProjectTagList(project *models.Project, excludeCompleted bool) []TagInfo {
+	if project == nil {
+		return []TagInfo{}
+	}
+	return BuildCatalogTagList([]*models.Project{project}, project.Tasks, excludeCompleted)
+}
+
+// BuildProjectsTagList builds a sorted catalog-aware tag list across projects.
+// Counts still reflect task usages only; catalog definitions add missing tags
+// with a zero count.
+func BuildProjectsTagList(projects []*models.Project, excludeCompleted bool) []TagInfo {
+	var tasks []*models.Task
+	for _, project := range uniqueProjects(projects) {
+		tasks = append(tasks, project.Tasks...)
+	}
+	return BuildCatalogTagList(projects, tasks, excludeCompleted)
+}
+
+// BuildCatalogTagList builds a sorted tag list from project catalogs plus the
+// supplied task pool. Catalog definitions contribute missing tags with a zero
+// count; task counts come only from the supplied tasks.
+func BuildCatalogTagList(projects []*models.Project, tasks []*models.Task, excludeCompleted bool) []TagInfo {
+	tagCounts := make(map[string]int)
+	for _, project := range uniqueProjects(projects) {
+		addCatalogTags(tagCounts, project.Tags)
+	}
+	addTaskTagCounts(tagCounts, tasks, excludeCompleted)
+
+	return tagInfosFromCounts(tagCounts)
+}
+
+func addCatalogTags(tagCounts map[string]int, tags []string) {
+	for _, tag := range models.DedupeTags(tags) {
+		if _, exists := tagCounts[tag]; !exists {
+			tagCounts[tag] = 0
+		}
+	}
+}
+
+func addTaskTagCounts(tagCounts map[string]int, tasks []*models.Task, excludeCompleted bool) {
 	for _, task := range tasks {
+		if task == nil {
+			continue
+		}
 		if excludeCompleted && task.Status.IsComplete() {
 			continue
 		}
-		for _, tag := range task.Tags {
+		for _, tag := range models.DedupeTags(task.Tags) {
 			tagCounts[tag]++
 		}
 	}
+}
 
+func tagInfosFromCounts(tagCounts map[string]int) []TagInfo {
 	tags := make([]TagInfo, 0, len(tagCounts))
 	for name, count := range tagCounts {
 		tags = append(tags, TagInfo{Name: name, TaskCount: count})
@@ -79,6 +131,30 @@ func BuildTagList(tasks []*models.Task, excludeCompleted bool) []TagInfo {
 	})
 
 	return tags
+}
+
+func uniqueProjects(projects []*models.Project) []*models.Project {
+	seenIDs := make(map[string]bool, len(projects))
+	seenPtrs := make(map[*models.Project]bool, len(projects))
+	result := make([]*models.Project, 0, len(projects))
+	for _, project := range projects {
+		if project == nil {
+			continue
+		}
+		if project.ID != "" {
+			if seenIDs[project.ID] {
+				continue
+			}
+			seenIDs[project.ID] = true
+		} else {
+			if seenPtrs[project] {
+				continue
+			}
+			seenPtrs[project] = true
+		}
+		result = append(result, project)
+	}
+	return result
 }
 
 // SetSize sets the view dimensions.

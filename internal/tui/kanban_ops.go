@@ -133,15 +133,11 @@ func (m *KanbanModel) refreshAndClamp() {
 
 // buildTagCmd opens the fzf tag picker for the visible cards' tag set.
 func (m *KanbanModel) buildTagCmd() tea.Cmd {
-	tasks := make([]*models.Task, 0, len(m.allCards))
-	for _, card := range m.allCards {
-		tasks = append(tasks, card.Task)
-	}
 	source := ViewKanban
 	if m.crossProject {
 		source = ViewCrossProjectKanban
 	}
-	return buildTagCmdFromTasks(tasks, m.filter.Tags, source, "Filter by Tags")
+	return buildTagCmdFromProjectTasks(m.loadedProjects, tasksFromCrossProjectCards(m.allCards), m.filter.Tags, source, "Filter by Tags", false)
 }
 
 // handleFilterPrefix handles the second key after pressing F (filter prefix).

@@ -16,13 +16,7 @@ func (m *GlobalTagManagerModel) buildGlobalTagList() {
 			continue
 		}
 
-		// Count tags in this project
-		projectTagCounts := make(map[string]int)
-		for _, task := range project.Tasks {
-			for _, tag := range task.Tags {
-				projectTagCounts[tag]++
-			}
-		}
+		projectTagCounts := project.TagCounts()
 
 		// Merge into global map
 		for tag, count := range projectTagCounts {

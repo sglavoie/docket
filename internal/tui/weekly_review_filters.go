@@ -1,10 +1,6 @@
 package tui
 
-import (
-	tea "charm.land/bubbletea/v2"
-
-	"github.com/sglavoie/tt/internal/models"
-)
+import tea "charm.land/bubbletea/v2"
 
 // refreshAndClamp reloads data and clamps cursor after filter changes.
 func (m *WeeklyReviewModel) refreshAndClamp() { m.loadData(); m.clampCursor() }
@@ -13,13 +9,18 @@ func (m *WeeklyReviewModel) buildTagCmd() tea.Cmd {
 	taskSections := [][]WeeklyReviewTask{
 		m.staleTasks, m.priorityMismatch, m.upcomingWeek, m.recurringOverview,
 	}
-	var tasks []*models.Task
+	var items []WeeklyReviewTask
 	for _, section := range taskSections {
-		for i := range section {
-			tasks = append(tasks, section[i].Task)
-		}
+		items = append(items, section...)
 	}
-	return buildTagCmdFromTasks(tasks, m.filter.Tags, ViewWeeklyReview, "Filter by Tags")
+	return buildTagCmdFromProjectTasks(
+		projectsFromWeeklyReviewTasks(items),
+		tasksFromWeeklyReviewTasks(items),
+		m.filter.Tags,
+		ViewWeeklyReview,
+		"Filter by Tags",
+		false,
+	)
 }
 
 // handleWeeklyReviewFilterPrefix handles the second key after pressing F (filter prefix) in weekly review.

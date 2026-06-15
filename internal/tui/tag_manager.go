@@ -2,7 +2,6 @@ package tui
 
 import (
 	"fmt"
-	"sort"
 	"strings"
 
 	"charm.land/bubbles/v2/textinput"
@@ -50,6 +49,21 @@ type TagRenamedMsg struct {
 	NewName string
 }
 
+// TagAddedMsg is sent after a project catalog tag has been added.
+type TagAddedMsg struct {
+	Name string
+}
+
+// TagRemovedMsg is sent after a project catalog tag has been removed.
+type TagRemovedMsg struct {
+	Name string
+}
+
+// TagManagerErrorMsg reports an error that should stay visible in the manager.
+type TagManagerErrorMsg struct {
+	Err error
+}
+
 // NewTagManagerModel creates a new tag manager model.
 func NewTagManagerModel(pt *ProjectTreeModel) *TagManagerModel {
 	return newTagManagerModel(pt, nil)
@@ -93,23 +107,9 @@ func (m *TagManagerModel) SetSize(width, height int) {
 	m.height = height
 }
 
-// buildTagList scans all tasks and builds a sorted list of tags with counts.
+// buildTagList builds a catalog-aware sorted list of tags with task-use counts.
 func (m *TagManagerModel) buildTagList() {
-	tagCounts := make(map[string]int)
-	for _, task := range m.project.Tasks {
-		for _, tag := range task.Tags {
-			tagCounts[tag]++
-		}
-	}
-
-	m.tags = make([]TagInfo, 0, len(tagCounts))
-	for name, count := range tagCounts {
-		m.tags = append(m.tags, TagInfo{Name: name, TaskCount: count})
-	}
-
-	sort.Slice(m.tags, func(i, j int) bool {
-		return m.tags[i].Name < m.tags[j].Name
-	})
+	m.tags = BuildProjectTagList(m.project, false)
 
 	// Clamp cursor
 	if m.cursor >= len(m.tags) {
@@ -120,37 +120,33 @@ func (m *TagManagerModel) buildTagList() {
 	}
 }
 
-// renameTag renames a tag across all tasks.
+func (m *TagManagerModel) selectTag(name string) {
+	for i, tag := range m.tags {
+		if tag.Name == name {
+			m.cursor = i
+			return
+		}
+	}
+}
+
+// renameTag renames a tag in the project catalog and task usages.
 func (m *TagManagerModel) renameTag(oldName, newName string) tea.Cmd {
 	project := m.project
 	return func() tea.Msg {
-		newName = strings.TrimSpace(newName)
+		if project == nil {
+			return TagManagerErrorMsg{Err: fmt.Errorf("project is unavailable")}
+		}
+		newName = models.NormalizeTag(newName)
 		if newName == "" || newName == oldName {
 			return nil
 		}
 
-		for _, task := range project.Tasks {
-			hasOld := false
-			hasNew := false
-			oldIdx := -1
-			for i, tag := range task.Tags {
-				if tag == oldName {
-					hasOld = true
-					oldIdx = i
-				}
-				if tag == newName {
-					hasNew = true
-				}
-			}
-			if !hasOld {
-				continue
-			}
-			if hasNew {
-				// Task already has the destination tag; remove the old one to avoid duplicates
-				task.Tags = append(task.Tags[:oldIdx], task.Tags[oldIdx+1:]...)
-			} else {
-				task.Tags[oldIdx] = newName
-			}
+		changed, err := project.RenameTag(oldName, newName)
+		if err != nil {
+			return TagManagerErrorMsg{Err: err}
+		}
+		if !changed {
+			return nil
 		}
 
 		if err := saveProjectSync(project); err != nil {
@@ -158,6 +154,48 @@ func (m *TagManagerModel) renameTag(oldName, newName string) tea.Cmd {
 		}
 
 		return TagRenamedMsg{OldName: oldName, NewName: newName}
+	}
+}
+
+func (m *TagManagerModel) addProjectTag(tagName string) tea.Cmd {
+	project := m.project
+	return func() tea.Msg {
+		if project == nil {
+			return TagManagerErrorMsg{Err: fmt.Errorf("project is unavailable")}
+		}
+		tagName = models.NormalizeTag(tagName)
+		added, err := project.AddTag(tagName)
+		if err != nil {
+			return TagManagerErrorMsg{Err: err}
+		}
+		if !added {
+			return TagManagerErrorMsg{Err: fmt.Errorf("tag '%s' already exists", tagName)}
+		}
+
+		if err := saveProjectSync(project); err != nil {
+			return ErrorMsg{Err: fmt.Errorf("failed to save project: %w", err)}
+		}
+
+		return TagAddedMsg{Name: tagName}
+	}
+}
+
+func (m *TagManagerModel) removeProjectTag(tagName string) tea.Cmd {
+	project := m.project
+	return func() tea.Msg {
+		if project == nil {
+			return TagManagerErrorMsg{Err: fmt.Errorf("project is unavailable")}
+		}
+		tagName = models.NormalizeTag(tagName)
+		if !project.RemoveTag(tagName) {
+			return TagManagerErrorMsg{Err: fmt.Errorf("tag '%s' does not exist", tagName)}
+		}
+
+		if err := saveProjectSync(project); err != nil {
+			return ErrorMsg{Err: fmt.Errorf("failed to save project: %w", err)}
+		}
+
+		return TagRemovedMsg{Name: tagName}
 	}
 }
 
@@ -190,10 +228,27 @@ func (m *TagManagerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.renameMode = false
 		m.renameTarget = ""
 		m.renameInput.SetValue("")
-		// Close the tag manager after successful rename
-		return m, func() tea.Msg {
-			return CloseTagManagerMsg{}
+		m.buildTagList()
+		m.selectTag(msg.NewName)
+		return m, nil
+
+	case TagAddedMsg:
+		m.addTagMode = false
+		m.addTagInput.SetValue("")
+		m.addTagInput.Blur()
+		m.buildTagList()
+		m.selectTag(msg.Name)
+		return m, nil
+
+	case TagRemovedMsg:
+		m.buildTagList()
+		return m, nil
+
+	case TagManagerErrorMsg:
+		if msg.Err != nil {
+			m.errorMsg = msg.Err.Error()
 		}
+		return m, nil
 
 	case tea.KeyPressMsg:
 		// Handle discard confirmation
@@ -278,8 +333,7 @@ func (m *TagManagerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if tag.TaskCount > 0 {
 					m.errorMsg = fmt.Sprintf("cannot delete: tag has %d task(s)", tag.TaskCount)
 				} else {
-					// Tag has 0 tasks, just rebuild to remove it
-					m.buildTagList()
+					return m, m.removeProjectTag(tag.Name)
 				}
 			}
 			return m, nil
@@ -311,7 +365,7 @@ func (m *TagManagerModel) handleRenameMode(msg tea.KeyPressMsg) (tea.Model, tea.
 		return m, nil
 
 	case "enter":
-		newName := strings.TrimSpace(m.renameInput.Value())
+		newName := models.NormalizeTag(m.renameInput.Value())
 		if newName != "" && newName != m.renameTarget {
 			return m, m.renameTag(m.renameTarget, newName)
 		}
@@ -342,41 +396,22 @@ func (m *TagManagerModel) handleAddTagMode(msg tea.KeyPressMsg) (tea.Model, tea.
 		return m, nil
 
 	case "enter":
-		tagName := strings.TrimSpace(m.addTagInput.Value())
+		tagName := models.NormalizeTag(m.addTagInput.Value())
 		if tagName == "" {
 			m.errorMsg = "Tag name cannot be empty"
 			return m, nil
 		}
-
-		// Check for duplicate (case-sensitive)
-		for _, tag := range m.tags {
-			if tag.Name == tagName {
-				m.errorMsg = fmt.Sprintf("Tag '%s' already exists", tagName)
-				return m, nil
-			}
+		if err := models.ValidateTag(tagName); err != nil {
+			m.errorMsg = err.Error()
+			return m, nil
 		}
 
-		// Add the new tag to the list
-		m.tags = append(m.tags, TagInfo{Name: tagName, TaskCount: 0})
-
-		// Re-sort tags
-		sort.Slice(m.tags, func(i, j int) bool {
-			return m.tags[i].Name < m.tags[j].Name
-		})
-
-		// Find and select the newly added tag
-		for i, tag := range m.tags {
-			if tag.Name == tagName {
-				m.cursor = i
-				break
-			}
+		if m.project != nil && m.project.HasTag(tagName) {
+			m.errorMsg = fmt.Sprintf("Tag '%s' already exists", tagName)
+			return m, nil
 		}
 
-		// Exit add mode
-		m.addTagMode = false
-		m.addTagInput.SetValue("")
-		m.addTagInput.Blur()
-		return m, nil
+		return m, m.addProjectTag(tagName)
 
 	default:
 		var cmd tea.Cmd

@@ -208,7 +208,7 @@ func (m *AppModel) restoreOutlinerFilterStateTo(o *OutlinerModel) {
 	}
 
 	// Restore tags - validate they still exist in the project
-	o.filter.Tags = validateSavedStringSet(state.OutlinerFilterTags, CollectProjectTagNames(o.project.Tasks))
+	o.filter.Tags = validateSavedStringSet(state.OutlinerFilterTags, CollectTagNamesForProject(o.project))
 
 	// Restore sections - validate they still exist
 	o.filter.Sections = validateSavedStringSet(state.OutlinerFilterSections, o.project.GetSections())

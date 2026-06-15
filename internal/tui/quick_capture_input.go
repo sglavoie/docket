@@ -2,7 +2,6 @@ package tui
 
 import (
 	"fmt"
-	"sort"
 	"strings"
 	"time"
 
@@ -125,17 +124,7 @@ func newQuickCaptureInput(project *models.Project, allProjects []*models.Project
 // initCaches builds tag, parent, section, and project caches for autocomplete.
 func (q *quickCaptureInput) initCaches() {
 	// Cache all tags from the project
-	tagSet := make(map[string]bool)
-	for _, task := range q.project.Tasks {
-		for _, tag := range task.Tags {
-			tagSet[tag] = true
-		}
-	}
-	q.tagCache = make([]string, 0, len(tagSet))
-	for tag := range tagSet {
-		q.tagCache = append(q.tagCache, tag)
-	}
-	sort.Strings(q.tagCache)
+	q.tagCache = CollectTagNamesForProject(q.project)
 
 	// Cache potential parent tasks (non-completed, can have children)
 	q.parentCache = make([]*models.Task, 0)

@@ -60,13 +60,7 @@ func (m *PriorityViewModel) renderActiveFilterIndicator() string {
 func (m *PriorityViewModel) refreshAndClamp() { m.loadActionableTasks(); m.clampCursor() }
 
 func (m *PriorityViewModel) buildTagCmd() tea.Cmd {
-	var tasks []*models.Task
-	for _, task := range m.project.Tasks {
-		if !task.Status.IsComplete() {
-			tasks = append(tasks, task)
-		}
-	}
-	return buildTagCmdFromTasks(tasks, m.filter.Tags, ViewPriorityView, "Filter by Tags")
+	return buildTagCmdFromProject(m.project, m.filter.Tags, ViewPriorityView, "Filter by Tags", true)
 }
 
 // handlePriorityFilterPrefix handles the second key after pressing F (filter prefix).

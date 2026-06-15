@@ -58,7 +58,7 @@ type BulkTagSelectorModel struct {
 
 // NewBulkTagSelectorModel creates a new bulk tag selector.
 func NewBulkTagSelectorModel(tasks []*models.Task, project *models.Project) *BulkTagSelectorModel {
-	tags := BuildTagList(project.Tasks, false)
+	tags := BuildProjectTagList(project, false)
 	commonTags := findCommonTags(tasks)
 
 	title := fmt.Sprintf("Tags for %d tasks", len(tasks))
@@ -182,7 +182,7 @@ func (m *BulkTagSelectorModel) View() tea.View {
 
 // NewTagSelectorModel creates a new tag selector.
 func NewTagSelectorModel(task *models.Task, project *models.Project, currentTags []string) *TagSelectorModel {
-	tags := BuildTagList(project.Tasks, false)
+	tags := BuildProjectTagList(project, false)
 
 	title := "Tags for New Task"
 	if task != nil {

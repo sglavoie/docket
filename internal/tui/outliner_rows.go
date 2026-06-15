@@ -311,13 +311,9 @@ func (m *OutlinerModel) activeCustomSectionFilter() string {
 // searchTagCache returns all unique tags across the outliner's project(s).
 func (m *OutlinerModel) searchTagCache() []string {
 	if m.project != nil {
-		return CollectProjectTagNames(m.project.Tasks)
+		return CollectTagNamesForProject(m.project)
 	}
-	var allTasks []*models.Task
-	for _, p := range m.loadedProjects {
-		allTasks = append(allTasks, p.Tasks...)
-	}
-	return CollectProjectTagNames(allTasks)
+	return CollectTagNamesForProjects(m.loadedProjects)
 }
 
 // searchSectionCache returns all unique sections across the outliner's project(s).

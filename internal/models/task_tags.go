@@ -12,24 +12,25 @@ import (
 // MaxTagLength is the maximum allowed length for a tag.
 const MaxTagLength = 100
 
-// normalizeTag trims leading/trailing whitespace and strips a single leading
+// NormalizeTag trims leading/trailing whitespace and strips a single leading
 // '#' from a tag. Tag rendering always prepends '#', so an input like
 // "#backend" must collapse to "backend" to avoid "##backend" on screen and to
 // stay consistent with the TUI tag adder (commit 086f1321) and quick-capture
 // inline `#tag` syntax. All tag operations should normalize before storing or
 // comparing.
-func normalizeTag(tag string) string {
+func NormalizeTag(tag string) string {
 	tag = strings.TrimSpace(tag)
 	tag = strings.TrimPrefix(tag, "#")
 	return strings.TrimSpace(tag)
 }
 
-// validateTag checks that a tag is non-empty, not too long, and contains no invalid characters.
-func validateTag(tag string) error {
+// ValidateTag checks that a normalized tag is non-empty, not too long, and
+// contains no invalid characters.
+func ValidateTag(tag string) error {
 	if strings.TrimSpace(tag) == "" {
 		return fmt.Errorf("tag cannot be empty")
 	}
-	if tag != normalizeTag(tag) {
+	if tag != NormalizeTag(tag) {
 		return fmt.Errorf("tag %q has leading or trailing whitespace", tag)
 	}
 	if len(tag) > MaxTagLength {
@@ -41,11 +42,19 @@ func validateTag(tag string) error {
 	return nil
 }
 
+func normalizeTag(tag string) string {
+	return NormalizeTag(tag)
+}
+
+func validateTag(tag string) error {
+	return ValidateTag(tag)
+}
+
 // AddTag adds a tag if not already present. The tag is normalized (trimmed)
 // before storing. Invalid tags are silently ignored.
 func (t *Task) AddTag(tag string) {
-	tag = normalizeTag(tag)
-	if validateTag(tag) != nil {
+	tag = NormalizeTag(tag)
+	if ValidateTag(tag) != nil {
 		return
 	}
 	var added bool
@@ -58,7 +67,7 @@ func (t *Task) AddTag(tag string) {
 // RemoveTag removes a tag if present. The tag is normalized (trimmed)
 // before comparison.
 func (t *Task) RemoveTag(tag string) {
-	tag = normalizeTag(tag)
+	tag = NormalizeTag(tag)
 	var removed bool
 	t.Tags, removed = util.SliceRemove(t.Tags, tag)
 	if removed {
@@ -71,7 +80,7 @@ func (t *Task) RemoveTag(tag string) {
 // false so a missing or unset filter argument cannot accidentally match a
 // malformed empty tag that bypassed validation.
 func (t *Task) HasTag(tag string) bool {
-	normalized := normalizeTag(tag)
+	normalized := NormalizeTag(tag)
 	if normalized == "" {
 		return false
 	}

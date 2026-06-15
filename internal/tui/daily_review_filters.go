@@ -1,10 +1,6 @@
 package tui
 
-import (
-	tea "charm.land/bubbletea/v2"
-
-	"github.com/sglavoie/tt/internal/models"
-)
+import tea "charm.land/bubbletea/v2"
 
 // refreshAndClamp reloads data and clamps cursor after filter changes.
 func (m *DailyReviewModel) refreshAndClamp() { m.loadTasks(); m.clampCursor() }
@@ -14,13 +10,18 @@ func (m *DailyReviewModel) buildTagCmd() tea.Cmd {
 		m.overdue, m.dueToday, m.dueSoon, m.dueLater,
 		m.future, m.inProgress, m.blocked, m.inReview, m.inStandby, m.old, m.completed,
 	}
-	var tasks []*models.Task
+	var items []CrossProjectTask
 	for _, section := range sections {
-		for i := range section {
-			tasks = append(tasks, section[i].Task)
-		}
+		items = append(items, section...)
 	}
-	return buildTagCmdFromTasks(tasks, m.filter.Tags, ViewDailyReview, "Filter by Tags")
+	return buildTagCmdFromProjectTasks(
+		projectsFromCrossProjectTasks(items),
+		tasksFromCrossProjectTasks(items),
+		m.filter.Tags,
+		ViewDailyReview,
+		"Filter by Tags",
+		false,
+	)
 }
 
 // handleDailyReviewFilterPrefix handles the second key after pressing F (filter prefix) in daily review.

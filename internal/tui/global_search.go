@@ -124,11 +124,9 @@ func (m *GlobalSearchModel) buildCaches() {
 	sectionSet := make(map[string]bool)
 
 	for _, project := range m.projects {
-		// Collect tags from all tasks
-		for _, task := range project.Tasks {
-			for _, tag := range task.Tags {
-				tagSet[tag] = true
-			}
+		// Collect project catalog and task-used tags
+		for _, tag := range CollectTagNamesForProject(project) {
+			tagSet[tag] = true
 		}
 		// Collect tags from notes
 		notes, err := storage.ListNotes(project)

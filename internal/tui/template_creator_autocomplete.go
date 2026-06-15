@@ -17,10 +17,8 @@ func (m *TaskTemplateCreatorModel) buildCaches() {
 			for _, section := range proj.Sections {
 				sectionSet[section] = struct{}{}
 			}
-			for _, task := range proj.Tasks {
-				for _, tag := range task.Tags {
-					tagSet[tag] = struct{}{}
-				}
+			for _, tag := range CollectTagNamesForProject(proj) {
+				tagSet[tag] = struct{}{}
 			}
 		}
 	}

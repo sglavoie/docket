@@ -6,6 +6,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/logging"
+	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 )
 
@@ -73,8 +74,40 @@ func (m *AppModel) handleTagMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint:goc
 		return true, nil
 
 	case TagRenamedMsg:
+		if m.currentView() == ViewTagManager {
+			cmd := m.views.Update(ViewTagManager, msg)
+			m.refreshAfterProjectTagChange(msg.OldName, msg.NewName)
+			return true, cmd
+		}
 		m.popView()
 		m.reloadAndRefreshProjectTree()
+		return true, nil
+
+	case TagAddedMsg:
+		if m.currentView() == ViewTagManager {
+			cmd := m.views.Update(ViewTagManager, msg)
+			m.refreshAfterProjectTagChange("", "")
+			return true, cmd
+		}
+		m.reloadAndRefreshProjectTree()
+		return true, nil
+
+	case TagRemovedMsg:
+		if m.currentView() == ViewTagManager {
+			cmd := m.views.Update(ViewTagManager, msg)
+			m.refreshAfterProjectTagChange(msg.Name, "")
+			return true, cmd
+		}
+		m.reloadAndRefreshProjectTree()
+		return true, nil
+
+	case TagManagerErrorMsg:
+		if m.currentView() == ViewTagManager {
+			return true, m.views.Update(ViewTagManager, msg)
+		}
+		if msg.Err != nil {
+			return true, errorCmd("%v", msg.Err)
+		}
 		return true, nil
 
 	case ShowGlobalTagManagerMsg:
@@ -196,10 +229,7 @@ func (m *AppModel) handleTagMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint:goc
 
 	case GlobalTagNavigateMsg:
 		m.popView()
-		m.switchToProject(msg.Project, false) // Don't restore state - apply specific tag filter
-		m.projectTree.filter.Tags = map[string]bool{msg.Tag: true}
-		m.projectTree.updateVisibility()
-		m.showView(ViewProjectTree, m.projectTree)
+		m.showProjectWithTagFilter(msg.Project, msg.Tag)
 		return true, nil
 
 	case ShowColumnPickerMsg:
@@ -215,6 +245,58 @@ func (m *AppModel) handleTagMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint:goc
 		return true, nil
 	}
 	return false, nil
+}
+
+func (m *AppModel) showProjectWithTagFilter(project *models.Project, tag string) {
+	if project == nil || tag == "" {
+		return
+	}
+
+	m.switchToProject(project, false) // Don't restore state - apply specific tag filter.
+	tags := map[string]bool{tag: true}
+
+	switch defaultProjectViewType(m.config) {
+	case ViewProjectTree:
+		m.projectTree.filter.Tags = tags
+		m.projectTree.updateVisibility()
+		m.showView(ViewProjectTree, m.projectTree)
+	default:
+		m.saveOutlinerToggleState()
+		m.outliner = NewOutlinerModel(project, m.config, m.configManager)
+		m.outliner.queueIDs = m.focusQueueIDs
+		m.outliner.dailyPlanIDs = m.dailyPlanIDs
+		m.restoreOutlinerToggleState()
+		m.outliner.filter.Tags = tags
+		m.outliner.rebuildRows()
+		m.showView(ViewOutliner, m.outliner)
+	}
+}
+
+func (m *AppModel) refreshAfterProjectTagChange(oldName, newName string) {
+	if m.projectTree != nil {
+		updateTagFilterAfterCatalogChange(m.projectTree.filter.Tags, oldName, newName)
+		m.projectTree.buildTree()
+		m.projectTree.updateVisibility()
+		m.projectTree.clampCursor()
+	}
+	if m.outliner != nil {
+		updateTagFilterAfterCatalogChange(m.outliner.filter.Tags, oldName, newName)
+		m.outliner.rebuildRows()
+	}
+	if m.crossOutliner != nil {
+		updateTagFilterAfterCatalogChange(m.crossOutliner.filter.Tags, oldName, newName)
+		m.crossOutliner.rebuildRows()
+	}
+}
+
+func updateTagFilterAfterCatalogChange(tags map[string]bool, oldName, newName string) {
+	if tags == nil || oldName == "" || !tags[oldName] {
+		return
+	}
+	delete(tags, oldName)
+	if newName != "" {
+		tags[newName] = true
+	}
 }
 
 // applyTagFilterToView dispatches a tag filter selection to the originating view.

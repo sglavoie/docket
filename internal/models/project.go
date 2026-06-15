@@ -38,6 +38,7 @@ type Project struct {
 	NextShortID   int               `json:"-"`
 	Sections      []string          `json:"-"` // Project-level section definitions
 	SectionColors map[string]string `json:"-"` // Section name -> color name mapping
+	Tags          []string          `json:"-"` // Project-level tag definitions
 	Warnings      []string          `json:"-"` // Data repair warnings from last load
 }
 
@@ -78,6 +79,7 @@ func NewProject(id, name, path string) (*Project, error) {
 		NextShortID:   1,
 		Sections:      []string{SectionNext},
 		SectionColors: make(map[string]string),
+		Tags:          []string{},
 	}, nil
 }
 

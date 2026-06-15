@@ -1,10 +1,6 @@
 package tui
 
-import (
-	"github.com/sglavoie/tt/internal/models"
-
-	tea "charm.land/bubbletea/v2"
-)
+import tea "charm.land/bubbletea/v2"
 
 // handleFilterPrefix handles the second key after pressing F (filter prefix).
 func (m *OutlinerModel) handleFilterPrefix(key string) (tea.Model, tea.Cmd) {
@@ -84,16 +80,17 @@ func (m *OutlinerModel) handleFilterPrefix(key string) (tea.Model, tea.Cmd) {
 		tagSource = ViewCrossProjectOutliner
 	}
 	result := handleCommonFilterPrefix(key, &m.filter.CommonFilterState, func() tea.Cmd {
-		var taskSlice []*models.Task
 		if m.project != nil {
-			taskSlice = m.project.Tasks
-		} else {
-			taskSlice = m.crossMergedTaskSlice()
+			return buildTagCmdFromProject(m.project, m.filter.Tags, tagSource, "Filter by Tags", false)
 		}
-		tags := BuildTagList(taskSlice, false)
-		return func() tea.Msg {
-			return ShowTagFilterMsg{Tags: tags, Selected: m.filter.Tags, Source: tagSource, Title: "Filter by Tags"}
-		}
+		return buildTagCmdFromProjectTasks(
+			m.loadedProjects,
+			m.crossMergedTaskSlice(),
+			m.filter.Tags,
+			tagSource,
+			"Filter by Tags",
+			false,
+		)
 	})
 	setPfx := func(p string) {
 		if m.Dispatcher != nil {
