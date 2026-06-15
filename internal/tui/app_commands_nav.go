@@ -7,10 +7,10 @@ func (m *AppModel) navCommands() []Command {
 		{
 			Name:        "dashboard",
 			Description: "Go to dashboard",
+			Shortcut:    "ctrl+esc",
 			Category:    CategoryNavigation,
-			Views:       []ViewType{ViewProjectTree, ViewProjectList, ViewOutliner},
 			Handler: func() tea.Msg {
-				return BackMsg{}
+				return JumpDashboardMsg{}
 			},
 		},
 		{

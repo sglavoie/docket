@@ -224,6 +224,96 @@ func (m *AppModel) handleEscKey() (bool, tea.Cmd) {
 	return false, nil
 }
 
+// jumpToDashboard collapses the navigation stack to the dashboard root.
+// It intentionally bypasses view-local Esc ownership so Ctrl+Esc remains a
+// reliable global escape hatch from modal inputs and transient overlays.
+func (m *AppModel) jumpToDashboard() tea.Cmd {
+	for i := len(m.viewStack) - 1; i >= 0; i-- {
+		viewType := m.viewStack[i]
+		if viewType == ViewDashboard {
+			continue
+		}
+		if view := m.views.Get(viewType); view != nil {
+			if resetter, ok := view.(ViewExitResetter); ok {
+				resetter.OnExit()
+			}
+		}
+		m.saveStateForClosingView(viewType)
+	}
+
+	m.clearTransientNavigationState()
+	m.viewStack = []ViewType{ViewDashboard}
+	m.projectStack = nil
+	if m.config != nil {
+		m.reevaluateAlerts()
+	}
+	if view := m.views.Get(ViewDashboard); view != nil {
+		m.setAccentOnView(view)
+	}
+	return nil
+}
+
+func (m *AppModel) saveStateForClosingView(viewType ViewType) {
+	switch viewType {
+	case ViewProjectTree:
+		m.saveProjectTreeState()
+	case ViewOutliner:
+		m.saveOutlinerToggleState()
+		m.saveOutlinerFilterState()
+	case ViewTemporaryOutliner:
+		if tempOutliner, ok := m.views.Get(ViewTemporaryOutliner).(*OutlinerModel); ok {
+			m.saveOutlinerFilterStateFrom(tempOutliner)
+		}
+	case ViewKanban, ViewCrossProjectKanban:
+		m.saveKanbanStateForView(viewType)
+	}
+}
+
+func (m *AppModel) clearTransientNavigationState() {
+	m.dismissPeek()
+	m.pendingSemicolonPrefix = false
+	m.pendingSemicolonTPrefix = false
+	m.pendingSandboxReset = false
+	m.pendingSandboxTaskCount = 0
+
+	m.showQuickSwitch = false
+	m.quickSwitchFiltering = false
+	m.quickSwitchPendingPrefix = ""
+	m.showPinnedPopup = false
+	m.pinnedPopupFiltering = false
+	m.pinnedPendingPrefix = ""
+	m.showProjectCyclePicker = false
+	m.showProjectCycle = false
+
+	m.quickNoteOverlay = nil
+	m.quickCaptureOverlay = nil
+	m.globalProjectPicker = nil
+	m.globalTaskPicker = nil
+	m.statusQuickPicker = nil
+	m.sectionQuickPicker = nil
+	m.sectionChangeQuickPicker = nil
+	m.linkTypeQuickPicker = nil
+	m.linkModeQuickPicker = nil
+	m.priorityQuickPicker = nil
+	m.dueDateQuickPicker = nil
+
+	m.pendingBulkTasks = nil
+	m.pendingBulkSectionTasks = nil
+	m.pendingBulkSectionProject = nil
+	m.pendingBulkNotes = nil
+	m.pendingGlobalNoteMove = nil
+	m.pendingCreateTaskParent = nil
+	m.pendingVarFillerTemplate = nil
+	m.pendingDescEdit = nil
+
+	m.globalMoveState.sourceProject = nil
+	m.globalMoveState.sourceTask = nil
+	m.globalMoveState.destProject = nil
+	m.globalLinkedTaskState.sourceTask = nil
+	m.globalLinkedTaskState.sourceProject = nil
+	m.globalLinkedTaskState.linkType = 0
+}
+
 // isGlobalOverlayView returns true for views launched via the global ";" overlay prefix.
 // These views can be opened from any context and should return to an anchor view when closed.
 func isGlobalOverlayView(v ViewType) bool {

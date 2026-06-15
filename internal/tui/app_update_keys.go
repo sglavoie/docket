@@ -129,6 +129,10 @@ func linkedNotesForReferenceTask(task *models.Task, project *models.Project) ([]
 }
 
 func (m *AppModel) handleGlobalKeyPress(msg tea.KeyPressMsg) (bool, tea.Cmd) { //nolint:gocyclo
+	if isCtrlEscKey(msg) {
+		return true, m.jumpToDashboard()
+	}
+
 	// Handle pending sandbox reset confirmation before clearing status
 	if m.pendingSandboxReset {
 		switch msg.String() {

@@ -45,6 +45,9 @@ func (PopToAnchorMsg) closePopStyle() popStyle { return popToAnchor }
 // BackMsg requests navigation back to the previous view.
 type BackMsg struct{}
 
+// JumpDashboardMsg requests returning directly to the dashboard root.
+type JumpDashboardMsg struct{}
+
 // ShowAskMsg requests opening the AI assistant view.
 type ShowAskMsg struct{}
 

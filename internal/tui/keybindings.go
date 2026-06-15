@@ -260,6 +260,7 @@ func (r *KeybindingRegistry) registerGlobalBindings() {
 		Keybinding{Key: "alt+o", Description: "History back", Category: "Navigation"},
 		Keybinding{Key: "alt+i", Description: "History forward", Category: "Navigation"},
 		Keybinding{Key: "ctrl+6", Description: "Toggle last view", Category: "Navigation"},
+		Keybinding{Key: "ctrl+esc", Description: "Go to Dashboard", Category: "Navigation"},
 		Keybinding{Key: "q", Description: "Toggle queue", Category: "Navigation"},
 		Keybinding{Key: "ctrl+c", Description: "Quit", Category: "Navigation"},
 		Keybinding{Key: "esc", Description: "Back / close", Category: "Navigation"},

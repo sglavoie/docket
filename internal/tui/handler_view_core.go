@@ -13,6 +13,9 @@ func (m *AppModel) handleViewCoreMessages(msg tea.Msg) (bool, tea.Cmd) {
 		m.popView()
 		return true, nil
 
+	case JumpDashboardMsg:
+		return true, m.jumpToDashboard()
+
 	case RefreshMsg:
 		if m.dashboard != nil {
 			m.dashboard.Refresh(m.config)

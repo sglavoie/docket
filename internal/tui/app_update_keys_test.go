@@ -115,6 +115,55 @@ func ctrlNKeyPress() tea.KeyPressMsg {
 	return tea.KeyPressMsg{Code: 'n', Mod: tea.ModCtrl}
 }
 
+func ctrlEscKeyPress() tea.KeyPressMsg {
+	return tea.KeyPressMsg{Code: tea.KeyEscape, Mod: tea.ModCtrl}
+}
+
+func TestHandleGlobalKeyPress_CtrlEscJumpsToDashboard(t *testing.T) {
+	app := newTestAppModel()
+	app.viewStack = []ViewType{ViewDashboard, ViewProjectTree, ViewTaskForm}
+	app.pendingSemicolonPrefix = true
+	app.pendingSandboxReset = true
+	app.showQuickSwitch = true
+	app.peekActive = true
+
+	handled, cmd := app.handleGlobalKeyPress(ctrlEscKeyPress())
+	if !handled {
+		t.Fatal("expected ctrl+esc to be handled")
+	}
+	if cmd != nil {
+		t.Fatal("dashboard jump should not need a command")
+	}
+	if app.currentView() != ViewDashboard {
+		t.Fatalf("currentView = %v, want Dashboard", app.currentView())
+	}
+	if len(app.viewStack) != 1 {
+		t.Fatalf("stack len = %d, want 1", len(app.viewStack))
+	}
+	if app.pendingSemicolonPrefix || app.pendingSandboxReset || app.showQuickSwitch || app.peekActive {
+		t.Fatal("ctrl+esc should clear transient navigation state")
+	}
+}
+
+func TestAppUpdate_CtrlEscBypassesTextInputAndLocalView(t *testing.T) {
+	app, project := newTestAppModelWithProject()
+	view := &ctrlNRecorderTaskRefView{
+		task:         project.Tasks[0],
+		project:      project,
+		hasTextInput: true,
+	}
+	app.views.Register(ViewTaskForm, view)
+	app.viewStack = []ViewType{ViewDashboard, ViewTaskForm}
+
+	app.Update(ctrlEscKeyPress())
+	if app.currentView() != ViewDashboard {
+		t.Fatalf("currentView = %v, want Dashboard", app.currentView())
+	}
+	if view.received {
+		t.Fatal("ctrl+esc should not fall through to the local text-input view")
+	}
+}
+
 func TestHandleGlobalKeyPress_QIgnoredDuringConfirmDialog(t *testing.T) {
 	app, project := newTestAppModelWithProject()
 	app.focusQueueIDs = map[string]bool{}

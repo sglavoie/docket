@@ -282,14 +282,20 @@ func TestGetGlobalBindings(t *testing.T) {
 	}
 
 	foundCommandPalette := false
+	foundDashboard := false
 	for _, item := range items {
 		if item.Key == ":" && item.Description == "Command palette" {
 			foundCommandPalette = true
-			break
+		}
+		if item.Key == "ctrl+esc" && item.Description == "Go to Dashboard" {
+			foundDashboard = true
 		}
 	}
 	if !foundCommandPalette {
 		t.Error("Expected command palette in global bindings")
+	}
+	if !foundDashboard {
+		t.Error("Expected Ctrl+Esc dashboard jump in global bindings")
 	}
 
 	for _, item := range items {

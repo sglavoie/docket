@@ -23,10 +23,17 @@ func kanbanCacheKey(kb *KanbanModel) string {
 
 // saveKanbanState snapshots the current kanban view state into the session cache.
 func (m *AppModel) saveKanbanState() {
-	v := m.views.Get(m.currentView())
+	m.saveKanbanStateForView(m.currentView())
+}
+
+func (m *AppModel) saveKanbanStateForView(viewType ViewType) {
+	v := m.views.Get(viewType)
 	kb, ok := v.(*KanbanModel)
 	if !ok {
 		return
+	}
+	if m.kanbanViewCache == nil {
+		m.kanbanViewCache = make(map[string]*KanbanViewCache)
 	}
 	key := kanbanCacheKey(kb)
 

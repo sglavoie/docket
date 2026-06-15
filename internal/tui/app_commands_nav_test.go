@@ -9,9 +9,12 @@ func TestNavCommands_Dashboard(t *testing.T) {
 	if cmd == nil {
 		t.Fatal("expected 'dashboard' command")
 	}
+	if cmd.Shortcut != "ctrl+esc" {
+		t.Fatalf("dashboard shortcut = %q, want ctrl+esc", cmd.Shortcut)
+	}
 	msg := cmd.Handler()
-	if _, ok := msg.(BackMsg); !ok {
-		t.Errorf("expected BackMsg, got %T", msg)
+	if _, ok := msg.(JumpDashboardMsg); !ok {
+		t.Errorf("expected JumpDashboardMsg, got %T", msg)
 	}
 }
 

@@ -102,6 +102,16 @@ func isModifierOnly(msg tea.KeyPressMsg) bool {
 	return false
 }
 
+// isCtrlEscKey reports whether the key event is Ctrl+Esc. The string check
+// covers Bubble Tea's normalized representation; the code/modifier check keeps
+// this stable for tests and terminal protocols that preserve the modifier.
+func isCtrlEscKey(msg tea.KeyPressMsg) bool {
+	if msg.String() == "ctrl+esc" {
+		return true
+	}
+	return (msg.Code == tea.KeyEsc || msg.Code == tea.KeyEscape) && msg.Mod.Contains(tea.ModCtrl)
+}
+
 // upgradeKittyKeyboard adds the KittyReportAllKeysAsEscapeCodes flag to the
 // terminal's Kitty keyboard protocol. Bubble Tea v2 only requests mode 1
 // (disambiguate escape codes) which doesn't report shift modifiers for
