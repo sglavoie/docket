@@ -70,20 +70,11 @@ func (m *DashboardModel) projectListColumnWidths(visible []*models.Project, show
 	maxNameWidth := 0
 	maxContextWidth := 0
 	maxStatusWidth := 0
-	hasAnyIcon := false
-	for _, p := range visible {
-		if p.StatusIconEmoji() != "" {
-			hasAnyIcon = true
-			break
-		}
-	}
-
 	iconColWidth := 0
-	if hasAnyIcon {
-		iconColWidth = 3
-	}
-
 	for _, p := range visible {
+		if icon := p.StatusIconEmoji(); icon != "" {
+			iconColWidth = max(iconColWidth, lipgloss.Width(icon)+1)
+		}
 		if width := lipgloss.Width(p.Name); width > maxNameWidth {
 			maxNameWidth = width
 		}
@@ -221,7 +212,7 @@ func (m *DashboardModel) renderProjectRowName(p *models.Project, style lipgloss.
 	iconRendered := ""
 	if iconColWidth > 0 {
 		if emoji := p.StatusIconEmoji(); emoji != "" {
-			iconRendered = emoji + " "
+			iconRendered = PadBadge(emoji+" ", iconColWidth)
 		} else {
 			iconRendered = strings.Repeat(" ", iconColWidth)
 		}
