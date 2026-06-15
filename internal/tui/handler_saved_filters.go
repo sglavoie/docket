@@ -12,7 +12,7 @@ import (
 
 // handleSavedFilterMessages handles saved filter messages.
 // Returns true if the message was handled.
-func (m *AppModel) handleSavedFilterMessages(msg tea.Msg) (bool, tea.Cmd) {
+func (m *AppModel) handleSavedFilterMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint:gocyclo
 	switch msg := msg.(type) {
 	case ShowSaveFilterDialogMsg:
 		return m.showViewInit(ViewSaveFilterInput, NewSaveFilterInputModel(m.buildCurrentViewSummary()))
@@ -117,7 +117,7 @@ func (m *AppModel) captureCurrentFilter(name string) config.SavedFilter {
 		id = existing.ID
 	}
 
-	switch m.baseProjectView() {
+	switch m.baseProjectView() { //nolint:exhaustive // saved filters are captured from project tree and outliner base views.
 	case ViewCrossProjectOutliner:
 		if m.crossOutliner != nil {
 			return m.captureOutlinerFilterFrom(name, id, m.crossOutliner)

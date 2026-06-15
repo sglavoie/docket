@@ -90,6 +90,13 @@ func (b *projectTreeKeymapBuilder) dueDateEntries() []keymap.Entry {
 			return m, cmd
 		},
 		OpenDatePicker: func() (tea.Model, tea.Cmd) {
+			if tasks := m.getMultiSelectedTasks(); len(tasks) > 0 {
+				refs := taskProjectRefsFromTasks(tasks, m.project)
+				return m, func() tea.Msg {
+					return SetDueDateMsg{TaskRefs: refs}
+				}
+			}
+
 			cmd, _ := handleDueDatePrefix("d", m)
 			return m, cmd
 		},
@@ -112,6 +119,13 @@ func (b *projectTreeKeymapBuilder) snoozeEntries() []keymap.Entry {
 		SnoozeNextMonday: snoozeDateAction("n"),
 		ClearSnooze:      snoozeDateAction("0"),
 		OpenDatePicker: func() (tea.Model, tea.Cmd) {
+			if tasks := m.getMultiSelectedTasks(); len(tasks) > 0 {
+				refs := taskProjectRefsFromTasks(tasks, m.project)
+				return m, func() tea.Msg {
+					return SetSnoozeDateMsg{TaskRefs: refs}
+				}
+			}
+
 			cmd, _ := handleSnoozePrefix("d", m)
 			return m, cmd
 		},
@@ -231,6 +245,12 @@ func (b *projectTreeKeymapBuilder) taskPrefixEntries() []keymap.Entry {
 			return m, func() tea.Msg { return EditTaskMsg{Task: task, Project: project} }
 		},
 		ChangeSection: func() (tea.Model, tea.Cmd) {
+			if tasks := m.getMultiSelectedTasks(); len(tasks) > 0 {
+				return m, func() tea.Msg {
+					return ShowBulkSectionPickerMsg{Tasks: tasks, Project: m.project}
+				}
+			}
+
 			task, project := m.getTaskRef()
 			if task == nil {
 				return m, nil
@@ -255,6 +275,13 @@ func (b *projectTreeKeymapBuilder) taskPrefixEntries() []keymap.Entry {
 			return m, cmd
 		},
 		ManageTags: func() (tea.Model, tea.Cmd) {
+			if tasks := m.getMultiSelectedTasks(); len(tasks) > 0 {
+				refs := taskProjectRefsFromTasks(tasks, m.project)
+				return m, func() tea.Msg {
+					return ShowBulkTagSelectorMsg{TaskRefs: refs}
+				}
+			}
+
 			task, project := m.getTaskRef()
 			if task == nil {
 				return m, nil

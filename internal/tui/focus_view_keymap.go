@@ -95,26 +95,34 @@ func (m *FocusViewModel) focusTaskActionEntries(stages []string) []keymap.Entry 
 
 func (m *FocusViewModel) focusTaskActionDeps(stages []string) TaskKeymapDeps {
 	return TaskKeymapDeps{
-		View:           m,
-		HasItem:        m.focusHasItem,
-		Stages:         stages,
-		ToggleHelp:     m.focusToggleHelp,
-		DeleteTask:     m.focusDeleteTask,
-		StatusChange:   m.focusStatusChangeAction,
-		PriorityChange: m.focusPriorityChangeAction,
-		DueDateSet:     m.focusDueDateSetAction,
-		DueDateClear:   m.focusClearDueDate,
-		SnoozeDate:     m.focusSnoozeDateAction,
-		SectionMove:    m.focusSectionMoveAction,
-		StageChange:    m.focusStageChangeAction,
-		MarkDone:       m.focusMarkDone,
-		OpenURL:        m.focusOpenURL,
-		MoveToProject:  m.focusMoveToProject,
-		QuickNote:      m.focusQuickNote,
+		View:             m,
+		HasItem:          m.focusHasItem,
+		Stages:           stages,
+		ToggleHelp:       m.focusToggleHelp,
+		SelectedTaskRefs: m.focusSelectedTaskRefs,
+		DeleteTask:       m.focusDeleteTask,
+		StatusChange:     m.focusStatusChangeAction,
+		PriorityChange:   m.focusPriorityChangeAction,
+		DueDateSet:       m.focusDueDateSetAction,
+		DueDateClear:     m.focusClearDueDate,
+		SnoozeDate:       m.focusSnoozeDateAction,
+		SectionMove:      m.focusSectionMoveAction,
+		StageChange:      m.focusStageChangeAction,
+		MarkDone:         m.focusMarkDone,
+		OpenURL:          m.focusOpenURL,
+		MoveToProject:    m.focusMoveToProject,
+		QuickNote:        m.focusQuickNote,
 	}
 }
 
 func (m *FocusViewModel) focusHasItem() bool { return m.getTaskAtCursor() != nil }
+
+func (m *FocusViewModel) focusSelectedTaskRefs() []TaskProjectRef {
+	if !m.multiSelectMode || m.SelectedCount() == 0 {
+		return nil
+	}
+	return m.getSelectedBulkItems()
+}
 
 func (m *FocusViewModel) focusToggleHelp() (tea.Model, tea.Cmd) {
 	return m, helpCmd(m.viewID(), m.viewName(), m.GetHelpItems())

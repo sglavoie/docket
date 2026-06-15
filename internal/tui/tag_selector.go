@@ -35,14 +35,12 @@ type TagSelectorDoneMsg struct {
 
 // ShowBulkTagSelectorMsg is sent to open the tag selector for multiple tasks.
 type ShowBulkTagSelectorMsg struct {
-	Tasks   []*models.Task
-	Project *models.Project
+	TaskRefs []TaskProjectRef
 }
 
 // BulkTagSelectorDoneMsg is sent when the bulk tag selector is done.
 type BulkTagSelectorDoneMsg struct {
-	Tasks        []*models.Task
-	Project      *models.Project
+	TaskRefs     []TaskProjectRef
 	SelectedTags []string
 	Canceled     bool
 }
@@ -51,17 +49,17 @@ type BulkTagSelectorDoneMsg struct {
 type BulkTagSelectorModel struct {
 	*BasePicker[TagInfo]
 	TagAdder
-	tasks        []*models.Task
-	project      *models.Project
+	taskRefs     []TaskProjectRef
 	originalTags map[string][]string // taskID -> original tags
 }
 
 // NewBulkTagSelectorModel creates a new bulk tag selector.
-func NewBulkTagSelectorModel(tasks []*models.Task, project *models.Project) *BulkTagSelectorModel {
-	tags := BuildProjectTagList(project, false)
-	commonTags := findCommonTags(tasks)
+func NewBulkTagSelectorModel(taskRefs []TaskProjectRef) *BulkTagSelectorModel {
+	taskRefs = validTaskProjectRefs(taskRefs)
+	tags := BuildProjectsTagList(affectedProjectsFromTaskRefs(taskRefs), false)
+	commonTags := findCommonTagsFromRefs(taskRefs)
 
-	title := fmt.Sprintf("Tags for %d tasks", len(tasks))
+	title := fmt.Sprintf("Tags for %d tasks", len(taskRefs))
 	picker := NewBasePicker(tags, PickerConfig{
 		Title:          title,
 		EmptyMessage:   "No tags in project (press 'a' to add).",
@@ -78,35 +76,37 @@ func NewBulkTagSelectorModel(tasks []*models.Task, project *models.Project) *Bul
 	}
 
 	originalTags := make(map[string][]string)
-	for _, task := range tasks {
-		originalTags[task.ID] = append([]string{}, task.Tags...)
+	for _, ref := range taskRefs {
+		originalTags[ref.Task.ID] = append([]string{}, ref.Task.Tags...)
 	}
 
 	return &BulkTagSelectorModel{
 		BasePicker:   picker,
 		TagAdder:     NewTagAdder(),
-		tasks:        tasks,
-		project:      project,
+		taskRefs:     taskRefs,
 		originalTags: originalTags,
 	}
 }
 
-// findCommonTags returns tags that are present on all tasks.
-func findCommonTags(tasks []*models.Task) []string {
-	if len(tasks) == 0 {
+// findCommonTagsFromRefs returns tags that are present on all task refs.
+func findCommonTagsFromRefs(taskRefs []TaskProjectRef) []string {
+	if len(taskRefs) == 0 {
 		return nil
 	}
 
 	tagCount := make(map[string]int)
-	for _, task := range tasks {
-		for _, tag := range task.Tags {
+	for _, ref := range taskRefs {
+		if ref.Task == nil {
+			continue
+		}
+		for _, tag := range models.DedupeTags(ref.Task.Tags) {
 			tagCount[tag]++
 		}
 	}
 
 	var common []string
 	for tag, count := range tagCount {
-		if count == len(tasks) {
+		if count == len(taskRefs) {
 			common = append(common, tag)
 		}
 	}
@@ -143,8 +143,7 @@ func (m *BulkTagSelectorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "esc":
 			return m, func() tea.Msg {
 				return BulkTagSelectorDoneMsg{
-					Tasks:    m.tasks,
-					Project:  m.project,
+					TaskRefs: m.taskRefs,
 					Canceled: true,
 				}
 			}
@@ -154,8 +153,7 @@ func (m *BulkTagSelectorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			sort.Strings(selectedTags)
 			return m, func() tea.Msg {
 				return BulkTagSelectorDoneMsg{
-					Tasks:        m.tasks,
-					Project:      m.project,
+					TaskRefs:     m.taskRefs,
 					SelectedTags: selectedTags,
 					Canceled:     false,
 				}

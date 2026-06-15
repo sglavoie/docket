@@ -13,22 +13,30 @@ import (
 
 func (m *FocusBoardModel) buildTaskKeymapDeps(hasItem func() bool, stages []string) TaskKeymapDeps {
 	return TaskKeymapDeps{
-		View:           m,
-		HasItem:        hasItem,
-		Stages:         stages,
-		ToggleHelp:     m.toggleHelpAction,
-		DeleteTask:     m.deleteTaskAction,
-		StatusChange:   m.statusChangeAction,
-		PriorityChange: m.priorityChangeAction,
-		DueDateSet:     m.bulkSetDueDateAction,
-		DueDateClear:   m.bulkClearDueDateAction,
-		SnoozeDate:     m.snoozeDateAction,
-		SectionMove:    m.sectionMoveAction,
-		StageChange:    m.stageChangeAction,
-		OpenURL:        m.openURLAction,
-		MoveToProject:  m.moveToProjectAction,
-		QuickNote:      m.quickNoteAction,
+		View:             m,
+		HasItem:          hasItem,
+		Stages:           stages,
+		ToggleHelp:       m.toggleHelpAction,
+		SelectedTaskRefs: m.selectedTaskRefs,
+		DeleteTask:       m.deleteTaskAction,
+		StatusChange:     m.statusChangeAction,
+		PriorityChange:   m.priorityChangeAction,
+		DueDateSet:       m.bulkSetDueDateAction,
+		DueDateClear:     m.bulkClearDueDateAction,
+		SnoozeDate:       m.snoozeDateAction,
+		SectionMove:      m.sectionMoveAction,
+		StageChange:      m.stageChangeAction,
+		OpenURL:          m.openURLAction,
+		MoveToProject:    m.moveToProjectAction,
+		QuickNote:        m.quickNoteAction,
 	}
+}
+
+func (m *FocusBoardModel) selectedTaskRefs() []TaskProjectRef {
+	if !m.multiSelectMode || m.SelectedCount() == 0 {
+		return nil
+	}
+	return m.getSelectedBulkItems()
 }
 
 func (m *FocusBoardModel) toggleHelpAction() (tea.Model, tea.Cmd) {

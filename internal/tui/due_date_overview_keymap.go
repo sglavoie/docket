@@ -95,25 +95,33 @@ func (m *DueDateOverviewModel) dueDateTaskActionEntries(stages []string) []keyma
 
 func (m *DueDateOverviewModel) dueDateTaskActionDeps(stages []string) TaskKeymapDeps {
 	return TaskKeymapDeps{
-		View:           m,
-		HasItem:        m.dueDateHasItem,
-		Stages:         stages,
-		ToggleHelp:     m.dueDateToggleHelp,
-		DeleteTask:     m.dueDateDeleteTask,
-		OpenURL:        m.dueDateOpenURL,
-		MoveToProject:  m.dueDateMoveToProject,
-		QuickNote:      m.dueDateQuickNote,
-		StatusChange:   m.dueDateStatusChangeAction,
-		PriorityChange: m.dueDatePriorityChangeAction,
-		DueDateSet:     m.dueDateSetAction,
-		DueDateClear:   m.dueDateClearDueDate,
-		SnoozeDate:     m.dueDateSnoozeDateAction,
-		SectionMove:    m.dueDateSectionMoveAction,
-		StageChange:    m.dueDateStageChangeAction,
+		View:             m,
+		HasItem:          m.dueDateHasItem,
+		Stages:           stages,
+		ToggleHelp:       m.dueDateToggleHelp,
+		SelectedTaskRefs: m.dueDateSelectedTaskRefs,
+		DeleteTask:       m.dueDateDeleteTask,
+		OpenURL:          m.dueDateOpenURL,
+		MoveToProject:    m.dueDateMoveToProject,
+		QuickNote:        m.dueDateQuickNote,
+		StatusChange:     m.dueDateStatusChangeAction,
+		PriorityChange:   m.dueDatePriorityChangeAction,
+		DueDateSet:       m.dueDateSetAction,
+		DueDateClear:     m.dueDateClearDueDate,
+		SnoozeDate:       m.dueDateSnoozeDateAction,
+		SectionMove:      m.dueDateSectionMoveAction,
+		StageChange:      m.dueDateStageChangeAction,
 	}
 }
 
 func (m *DueDateOverviewModel) dueDateHasItem() bool { return m.getTaskAtCursor() != nil }
+
+func (m *DueDateOverviewModel) dueDateSelectedTaskRefs() []TaskProjectRef {
+	if !m.multiSelectMode || m.SelectedCount() == 0 {
+		return nil
+	}
+	return m.getSelectedBulkItems()
+}
 
 func (m *DueDateOverviewModel) dueDateToggleHelp() (tea.Model, tea.Cmd) {
 	return m, helpCmd(m.viewID(), m.viewName(), m.GetHelpItems())

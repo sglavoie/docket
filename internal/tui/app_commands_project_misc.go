@@ -129,7 +129,7 @@ func (m *AppModel) notesTargetProject() *models.Project {
 func (m *AppModel) selectedTaskProjectFromOrigin() *models.Project {
 	origin := m.nonPaletteOrigin()
 
-	switch origin {
+	switch origin { //nolint:exhaustive // only task-origin views need special handling before the generic provider fallback.
 	case ViewProjectTree:
 		if m.projectTree != nil {
 			if task, project := m.projectTree.getTaskRef(); task != nil && project != nil {

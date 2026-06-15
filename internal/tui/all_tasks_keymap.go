@@ -70,20 +70,21 @@ func (m *AllTasksViewModel) allTasksViewEntries() []keymap.Entry {
 
 func (m *AllTasksViewModel) allTasksTaskKeymapDeps(stages []string) TaskKeymapDeps {
 	return TaskKeymapDeps{
-		View:           m,
-		HasItem:        m.allTasksHasItem,
-		Stages:         stages,
-		ToggleHelp:     m.allTasksToggleHelp,
-		DeleteTask:     m.allTasksDeleteTask,
-		OpenURL:        m.allTasksOpenURL,
-		MoveToProject:  m.allTasksMoveToProject,
-		QuickNote:      m.allTasksQuickNote,
-		StatusChange:   m.allTasksStatusChangeAction,
-		PriorityChange: m.allTasksPriorityChangeAction,
-		DueDateSet:     m.allTasksDueDateSetAction,
-		DueDateClear:   m.allTasksClearDueDate,
-		SectionMove:    m.allTasksSectionMoveAction,
-		MarkDone:       m.allTasksMarkDone,
+		View:             m,
+		HasItem:          m.allTasksHasItem,
+		Stages:           stages,
+		ToggleHelp:       m.allTasksToggleHelp,
+		SelectedTaskRefs: m.allTasksSelectedTaskRefs,
+		DeleteTask:       m.allTasksDeleteTask,
+		OpenURL:          m.allTasksOpenURL,
+		MoveToProject:    m.allTasksMoveToProject,
+		QuickNote:        m.allTasksQuickNote,
+		StatusChange:     m.allTasksStatusChangeAction,
+		PriorityChange:   m.allTasksPriorityChangeAction,
+		DueDateSet:       m.allTasksDueDateSetAction,
+		DueDateClear:     m.allTasksClearDueDate,
+		SectionMove:      m.allTasksSectionMoveAction,
+		MarkDone:         m.allTasksMarkDone,
 	}
 }
 
@@ -157,6 +158,13 @@ func (m *AllTasksViewModel) allTasksExportEntries() []keymap.Entry {
 }
 
 func (m *AllTasksViewModel) allTasksHasItem() bool { return m.getTaskAtCursor() != nil }
+
+func (m *AllTasksViewModel) allTasksSelectedTaskRefs() []TaskProjectRef {
+	if !m.multiSelectMode || m.SelectedCount() == 0 {
+		return nil
+	}
+	return m.getSelectedBulkItems()
+}
 
 func (m *AllTasksViewModel) allTasksCursorDown() (tea.Model, tea.Cmd) {
 	if m.cursor < m.totalNavigableItems()-1 {

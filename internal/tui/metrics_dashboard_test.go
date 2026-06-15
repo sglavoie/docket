@@ -68,8 +68,8 @@ func TestMetricsDashboardLoadsArchivedSummaries(t *testing.T) {
 	if err != nil {
 		t.Fatalf("new project: %v", err)
 	}
-	if err := storage.SaveProject(project); err != nil {
-		t.Fatalf("save project: %v", err)
+	if saveErr := storage.SaveProject(project); saveErr != nil {
+		t.Fatalf("save project: %v", saveErr)
 	}
 
 	now := time.Now()

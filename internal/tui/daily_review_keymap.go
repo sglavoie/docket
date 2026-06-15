@@ -113,25 +113,33 @@ func (m *DailyReviewModel) dailyReviewTaskActionEntries(stages []string) []keyma
 
 func (m *DailyReviewModel) dailyReviewTaskActionDeps(stages []string) TaskKeymapDeps {
 	return TaskKeymapDeps{
-		View:           m,
-		HasItem:        m.dailyReviewHasItem,
-		Stages:         stages,
-		ToggleHelp:     m.dailyReviewToggleHelp,
-		DeleteTask:     m.dailyReviewDeleteTask,
-		StatusChange:   m.dailyReviewStatusChangeAction,
-		PriorityChange: m.dailyReviewPriorityChangeAction,
-		DueDateSet:     m.dailyReviewDueDateSetAction,
-		DueDateClear:   m.dailyReviewClearDueDate,
-		SnoozeDate:     m.dailyReviewSnoozeDateAction,
-		SectionMove:    m.dailyReviewSectionMoveAction,
-		StageChange:    m.dailyReviewStageChangeAction,
-		OpenURL:        m.dailyReviewOpenURL,
-		MoveToProject:  m.dailyReviewMoveToProject,
-		QuickNote:      m.dailyReviewQuickNote,
+		View:             m,
+		HasItem:          m.dailyReviewHasItem,
+		Stages:           stages,
+		ToggleHelp:       m.dailyReviewToggleHelp,
+		SelectedTaskRefs: m.dailyReviewSelectedTaskRefs,
+		DeleteTask:       m.dailyReviewDeleteTask,
+		StatusChange:     m.dailyReviewStatusChangeAction,
+		PriorityChange:   m.dailyReviewPriorityChangeAction,
+		DueDateSet:       m.dailyReviewDueDateSetAction,
+		DueDateClear:     m.dailyReviewClearDueDate,
+		SnoozeDate:       m.dailyReviewSnoozeDateAction,
+		SectionMove:      m.dailyReviewSectionMoveAction,
+		StageChange:      m.dailyReviewStageChangeAction,
+		OpenURL:          m.dailyReviewOpenURL,
+		MoveToProject:    m.dailyReviewMoveToProject,
+		QuickNote:        m.dailyReviewQuickNote,
 	}
 }
 
 func (m *DailyReviewModel) dailyReviewHasItem() bool { return m.getTaskAtCursor() != nil }
+
+func (m *DailyReviewModel) dailyReviewSelectedTaskRefs() []TaskProjectRef {
+	if !m.multiSelectMode || m.SelectedCount() == 0 {
+		return nil
+	}
+	return m.getSelectedBulkItems()
+}
 
 func (m *DailyReviewModel) dailyReviewToggleHelp() (tea.Model, tea.Cmd) {
 	return m, helpCmd(m.viewID(), m.viewName(), m.GetHelpItems())

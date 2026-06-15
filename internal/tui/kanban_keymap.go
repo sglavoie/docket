@@ -2,13 +2,11 @@ package tui
 
 import (
 	"fmt"
-	"time"
 
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/keymap"
-	"github.com/sglavoie/tt/internal/util"
 )
 
 // buildKeyMap constructs the declarative KeyMap for KanbanModel.
@@ -175,6 +173,9 @@ func (m *KanbanModel) buildKeyMap() *keymap.KeyMap {
 		View:    m,
 		HasItem: hasCard,
 		Stages:  stages,
+		SelectedTaskRefs: func() []TaskProjectRef {
+			return m.selectedTaskProjectRefs()
+		},
 		ToggleHelp: func() (tea.Model, tea.Cmd) {
 			return m, helpCmd(m.viewID(), m.viewName(), m.GetHelpItems())
 		},
@@ -199,36 +200,54 @@ func (m *KanbanModel) buildKeyMap() *keymap.KeyMap {
 			}
 			return m, func() tea.Msg { return OpenQuickNoteMsg{Task: task, Project: project} }
 		},
+		DeleteTask: func() (tea.Model, tea.Cmd) {
+			return m.applySelectedBulkDelete()
+		},
+		StatusChange: func(status string) keymap.Action {
+			s := models.TaskStatus(status)
+			return func() (tea.Model, tea.Cmd) {
+				return m.applySelectedBulkStatus(s)
+			}
+		},
+		PriorityChange: func(key string) keymap.Action {
+			return func() (tea.Model, tea.Cmd) {
+				return m.applySelectedBulkPriority(key)
+			}
+		},
 		DueDateSet: func(days int) keymap.Action {
 			return func() (tea.Model, tea.Cmd) {
-				if m.multiSelectMode && m.SelectedCount() > 0 {
-					dueDate := util.StartOfDay(time.Now().AddDate(0, 0, days))
-					var count int
-					for _, col := range m.columns {
-						for i := range col.Tasks {
-							card := &col.Tasks[i]
-							if !m.IsSelected(card.Task.ID) {
-								continue
-							}
-							pf := workflowPersist(func() WorkflowSaveOptions {
-								return BuildWorkflowOpts(m.getPersister(), card.Project, m.config, m.configManager, nil, "", "", nil)
-							})
-							d := dueDate
-							pf(card.Project, card.Task.ID, func(t *models.Task) {
-								t.DueDate = &d
-								t.HasTime = false
-							})
-							count++
-						}
-					}
-					m.ExitMultiSelect()
-					m.setStatus(fmt.Sprintf("Due date set on %d tasks", count))
-					m.reloadData()
-					m.clampCursor()
-					return m, nil
-				}
-				return taskOpsSetQuickDueDate(m, days)
+				return m.applySelectedBulkDueDate(days, false)
 			}
+		},
+		DueDateClear: func() (tea.Model, tea.Cmd) {
+			return m.applySelectedBulkDueDate(0, true)
+		},
+		SnoozeDate: func(key string) keymap.Action {
+			return func() (tea.Model, tea.Cmd) {
+				return m.applySelectedBulkSnooze(key)
+			}
+		},
+		SectionMove: func(section string) keymap.Action {
+			return func() (tea.Model, tea.Cmd) {
+				return m.applySelectedBulkSectionMove(section)
+			}
+		},
+		StageChange: func(stage string) keymap.Action {
+			return func() (tea.Model, tea.Cmd) {
+				return m.applySelectedBulkStage(stage)
+			}
+		},
+		MarkDone: func() (tea.Model, tea.Cmd) {
+			return m.applySelectedBulkStatus(models.StatusDone)
+		},
+		ToggleActive: func() (tea.Model, tea.Cmd) {
+			return m.applySelectedBulkToggleActive()
+		},
+		TogglePin: func() (tea.Model, tea.Cmd) {
+			return m.applySelectedBulkTogglePin()
+		},
+		ToggleDim: func() (tea.Model, tea.Cmd) {
+			return m.applySelectedBulkToggleDim()
 		},
 	})...)
 

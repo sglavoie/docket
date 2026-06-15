@@ -92,6 +92,9 @@ func TestArchiveIndexContractDescribesDerivedState(t *testing.T) {
 	if index.Version != archiveIndexVersion {
 		t.Fatalf("Version = %d, want %d", index.Version, archiveIndexVersion)
 	}
+	if !index.GeneratedAt.Equal(generatedAt) {
+		t.Fatalf("GeneratedAt = %v, want %v", index.GeneratedAt, generatedAt)
+	}
 	if len(index.Sources) != 1 || index.Sources[0].FileName != archiveFileName {
 		t.Fatalf("index must record source archive files: %+v", index.Sources)
 	}

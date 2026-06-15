@@ -103,6 +103,124 @@ func crossRecurringFixture(t *testing.T) (m *OutlinerModel, beta *models.Project
 	return m, beta, betaTaskID, baseDate
 }
 
+func crossMultiFieldFixture(t *testing.T) (m *OutlinerModel, alpha *models.Project, beta *models.Project, alphaTaskID string, betaTaskID string) {
+	t.Helper()
+
+	alphaDir := t.TempDir()
+	betaDir := t.TempDir()
+
+	alphaTask, err := models.NewTask("alpha-task-1", 1, models.TaskTypeTask, "Alpha task")
+	if err != nil {
+		t.Fatalf("NewTask alpha: %v", err)
+	}
+	alpha = &models.Project{ID: "alpha-proj", Name: "Alpha", Path: alphaDir}
+	alpha.Tasks = []*models.Task{alphaTask}
+	alpha.NextShortID = 2
+	alpha.BuildTaskTree()
+	if saveErr := storage.SaveProject(alpha); saveErr != nil {
+		t.Fatalf("save alpha: %v", saveErr)
+	}
+
+	betaTask, err := models.NewTask("beta-task-1", 1, models.TaskTypeTask, "Beta task")
+	if err != nil {
+		t.Fatalf("NewTask beta: %v", err)
+	}
+	beta = &models.Project{ID: "beta-proj", Name: "Beta", Path: betaDir}
+	beta.Tasks = []*models.Task{betaTask}
+	beta.NextShortID = 2
+	beta.BuildTaskTree()
+	if saveErr := storage.SaveProject(beta); saveErr != nil {
+		t.Fatalf("save beta: %v", saveErr)
+	}
+
+	if loadErr := storage.LoadProject(alpha); loadErr != nil {
+		t.Fatalf("load alpha: %v", loadErr)
+	}
+	if loadErr := storage.LoadProject(beta); loadErr != nil {
+		t.Fatalf("load beta: %v", loadErr)
+	}
+
+	alphaLoaded := alpha.GetTaskByID("alpha-task-1")
+	betaLoaded := beta.GetTaskByID("beta-task-1")
+	if alphaLoaded == nil || betaLoaded == nil {
+		t.Fatal("tasks not found after reload")
+	}
+
+	m = &OutlinerModel{
+		PrimaryViewBundle: PrimaryViewBundle{
+			projectService: NewProjectService(),
+			bulkOp:         NewBulkOperationComponent(),
+			quickEdit:      NewQuickEditComponent(),
+		},
+		collapsedSections: make(map[string]bool),
+		expandedNodes:     make(map[string]bool),
+		MultiSelectState: MultiSelectState{
+			multiSelectMode: true,
+			selectedTasks: map[string]bool{
+				alphaLoaded.ID: true,
+				betaLoaded.ID:  true,
+			},
+		},
+		activePerspective: 1,
+		loadedProjects:    []*models.Project{alpha, beta},
+		rows: []outlinerRow{
+			{IsSectionHeader: true, SectionName: "Selected"},
+			{task: alphaLoaded, ProjectID: alpha.ID},
+			{task: betaLoaded, ProjectID: beta.ID},
+		},
+	}
+
+	return m, alpha, beta, "alpha-task-1", "beta-task-1"
+}
+
+func TestCrossProjectOutlinerBulkTagMessageUsesSelectedProjectRefs(t *testing.T) {
+	m, alpha, beta, alphaTaskID, betaTaskID := crossMultiFieldFixture(t)
+
+	_, cmd := m.handleTaskPrefix("t", nil)
+	if cmd == nil {
+		t.Fatal("expected bulk tag command")
+	}
+	rawMsg := cmd()
+	msg, ok := rawMsg.(ShowBulkTagSelectorMsg)
+	if !ok {
+		t.Fatalf("expected ShowBulkTagSelectorMsg, got %T", rawMsg)
+	}
+
+	assertTaskProjectRefs(t, msg.TaskRefs, []TaskProjectRef{
+		{Task: alpha.GetTaskByID(alphaTaskID), Project: alpha},
+		{Task: beta.GetTaskByID(betaTaskID), Project: beta},
+	})
+}
+
+func TestCrossProjectOutlinerBulkDueDateUpdatesMultipleProjects(t *testing.T) {
+	m, alpha, beta, alphaTaskID, betaTaskID := crossMultiFieldFixture(t)
+
+	model, cmd := m.handleDueDatePrefixOutliner("t")
+	if cmd != nil {
+		t.Fatalf("expected inline bulk due-date mutation, got command %T", cmd())
+	}
+	m = model.(*OutlinerModel)
+
+	today := util.StartOfDay(time.Now())
+	for name, task := range map[string]*models.Task{
+		"alpha": alpha.GetTaskByID(alphaTaskID),
+		"beta":  beta.GetTaskByID(betaTaskID),
+	} {
+		if task == nil {
+			t.Fatalf("%s task not found", name)
+		}
+		if task.DueDate == nil {
+			t.Fatalf("%s due date was not set", name)
+		}
+		if !task.DueDate.Equal(today) {
+			t.Fatalf("%s due date = %v, want %v", name, *task.DueDate, today)
+		}
+	}
+	if m.multiSelectMode || len(m.selectedTasks) != 0 {
+		t.Fatal("expected cross-project bulk due date to clear outliner selection")
+	}
+}
+
 func TestCrossHandlePriorityMutation_UpdatesBetaTask(t *testing.T) {
 	m, beta, taskID := crossFieldFixture(t)
 

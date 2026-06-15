@@ -245,10 +245,10 @@ func (p *GlobalTaskPicker) render(width int) string {
 			prefix := fmt.Sprintf(" %s ", statusIcon)
 			priorityRendered := MutedStyle.Render(priorityStr)
 			maxTitleLen := max(innerWidth-2-lipgloss.Width(prefix)-lipgloss.Width(priorityRendered), 1)
-			title := truncateToVisualWidth(t.Title, maxTitleLen)
+			taskTitle := truncateToVisualWidth(t.Title, maxTitleLen)
 			titleRendered := TaskTitleStyleFor(t, TaskTitleStyleOptions{
 				CursorSelected: i == p.cursor,
-			}).Render(title)
+			}).Render(taskTitle)
 			line := prefix + titleRendered + priorityRendered
 
 			lineWidth := lipgloss.Width(line)

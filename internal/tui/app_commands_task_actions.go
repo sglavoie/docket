@@ -100,6 +100,9 @@ func (m *AppModel) taskActionCommands() []Command { //nolint:gocyclo
 			Views:       []ViewType{ViewProjectTree},
 			Aliases:     []string{"yank title", "clipboard title"},
 			Handler: func() tea.Msg {
+				if m.projectTreeHasBulkSelection() {
+					return m.projectTreeClipboardMsg("y")
+				}
 				if task := m.selectedTreeTask(); task != nil {
 					return CopyTaskTitleMsg{Task: task}
 				}
@@ -114,6 +117,9 @@ func (m *AppModel) taskActionCommands() []Command { //nolint:gocyclo
 			Views:       []ViewType{ViewProjectTree},
 			Aliases:     []string{"yank details", "clipboard details"},
 			Handler: func() tea.Msg {
+				if m.projectTreeHasBulkSelection() {
+					return m.projectTreeClipboardMsg("Y")
+				}
 				if task := m.selectedTreeTask(); task != nil {
 					return CopyTaskDetailsMsg{Task: task}
 				}
@@ -128,6 +134,9 @@ func (m *AppModel) taskActionCommands() []Command { //nolint:gocyclo
 			Views:       []ViewType{ViewProjectTree},
 			Aliases:     []string{"yank description", "clipboard description"},
 			Handler: func() tea.Msg {
+				if m.projectTreeHasBulkSelection() {
+					return m.projectTreeClipboardMsg("ctrl+y")
+				}
 				if task := m.selectedTreeTask(); task != nil {
 					return CopyTaskTitleAndDescMsg{Task: task}
 				}
@@ -159,6 +168,10 @@ func (m *AppModel) taskActionCommands() []Command { //nolint:gocyclo
 			Views:       []ViewType{ViewProjectTree},
 			Aliases:     []string{"star task", "flag task", "active flag"},
 			Handler: func() tea.Msg {
+				if m.projectTreeHasBulkSelection() && m.projectTree != nil {
+					cmd, _ := handleToggleActiveKey(m.projectTree)
+					return m.runProjectTreeCmd(cmd)
+				}
 				if task := m.selectedTreeTask(); task != nil {
 					task.ToggleActive()
 					return TaskPropertyChangedMsg{Task: task, NeedsSave: true}
@@ -189,6 +202,9 @@ func (m *AppModel) taskActionCommands() []Command { //nolint:gocyclo
 			Views:       []ViewType{ViewProjectTree},
 			Aliases:     []string{"deadline", "due date picker"},
 			Handler: func() tea.Msg {
+				if refs := m.projectTreeBulkTaskRefs(); len(refs) > 0 {
+					return SetDueDateMsg{TaskRefs: refs}
+				}
 				if task := m.selectedTreeTask(); task != nil && m.currentProject != nil {
 					return SetDueDateMsg{
 						Task:    task,
@@ -206,6 +222,12 @@ func (m *AppModel) taskActionCommands() []Command { //nolint:gocyclo
 			Views:       []ViewType{ViewProjectTree},
 			Aliases:     []string{"change section", "assign section"},
 			Handler: func() tea.Msg {
+				if tasks := m.projectTreeBulkSelectedTasks(); len(tasks) > 0 {
+					return ShowBulkSectionPickerMsg{
+						Tasks:   tasks,
+						Project: m.projectTreeProject(),
+					}
+				}
 				if task := m.selectedTreeTask(); task != nil && m.currentProject != nil {
 					return ShowSectionPickerMsg{
 						Task:    task,
@@ -223,6 +245,9 @@ func (m *AppModel) taskActionCommands() []Command { //nolint:gocyclo
 			Views:       []ViewType{ViewProjectTree},
 			Aliases:     []string{"tag task", "edit tags"},
 			Handler: func() tea.Msg {
+				if refs := m.projectTreeBulkTaskRefs(); len(refs) > 0 {
+					return ShowBulkTagSelectorMsg{TaskRefs: refs}
+				}
 				if task := m.selectedTreeTask(); task != nil && m.currentProject != nil {
 					return ShowTagSelectorMsg{
 						Task:        task,

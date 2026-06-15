@@ -87,6 +87,272 @@ func (m *KanbanModel) clampCursor() {
 func (m *KanbanModel) setErr(err error)     { m.statusMsg = err.Error() }
 func (m *KanbanModel) setStatus(msg string) { m.statusMsg = msg }
 
+func (m *KanbanModel) selectedTaskProjectRefs() []TaskProjectRef {
+	if !m.multiSelectMode || m.SelectedCount() == 0 {
+		return nil
+	}
+
+	refs := make([]TaskProjectRef, 0, m.SelectedCount())
+	for _, col := range m.columns {
+		for i := range col.Tasks {
+			card := &col.Tasks[i]
+			if card.Task == nil || card.Project == nil || !m.IsSelected(card.Task.ID) {
+				continue
+			}
+			refs = append(refs, TaskProjectRef{Task: card.Task, Project: card.Project})
+		}
+	}
+	return refs
+}
+
+func (m *KanbanModel) applySelectedBulkDueDate(days int, isClear bool) (tea.Model, tea.Cmd) {
+	refs := m.selectedTaskProjectRefs()
+	if len(refs) == 0 {
+		if isClear {
+			return taskOpsClearDueDate(m)
+		}
+		return taskOpsSetQuickDueDate(m, days)
+	}
+
+	dueDate, desc := dueDateFromDays(days, isClear)
+	count, err := taskOpsApplyBulk(m, refs, "Set Due Date", func(project *models.Project, taskID string) bool {
+		return project.MutateTask(taskID, func(t *models.Task) {
+			if dueDate != nil {
+				d := *dueDate
+				t.DueDate = &d
+			} else {
+				t.DueDate = nil
+			}
+			t.HasTime = false
+		})
+	})
+	if err != nil {
+		m.setErr(err)
+		return m, nil
+	}
+
+	msg := fmt.Sprintf("Due date set to %s on %d tasks", desc, count)
+	if isClear {
+		msg = fmt.Sprintf("Cleared due date on %d tasks", count)
+	}
+	m.FinishBulk(&m.statusMsg, msg)
+	return m, nil
+}
+
+func (m *KanbanModel) applySelectedBulkSnooze(key string) (tea.Model, tea.Cmd) {
+	snoozeDate, desc, ok := resolveQuickSnoozeDate(key)
+	if !ok {
+		return m, nil
+	}
+
+	refs := m.selectedTaskProjectRefs()
+	if len(refs) == 0 {
+		return taskOpsQuickSnooze(m, snoozeDate)
+	}
+
+	count, err := taskOpsApplyBulk(m, refs, "Snooze", func(project *models.Project, taskID string) bool {
+		return project.MutateTask(taskID, func(t *models.Task) {
+			if snoozeDate != nil {
+				d := *snoozeDate
+				t.SnoozedUntil = &d
+			} else {
+				t.SnoozedUntil = nil
+			}
+		})
+	})
+	if err != nil {
+		m.setErr(err)
+		return m, nil
+	}
+
+	msg := fmt.Sprintf("Snoozed %d tasks %s", count, desc)
+	if snoozeDate == nil {
+		msg = fmt.Sprintf("Cleared snooze on %d tasks", count)
+	}
+	m.FinishBulk(&m.statusMsg, msg)
+	return m, nil
+}
+
+func (m *KanbanModel) runSelectedBulkAction(
+	refs []TaskProjectRef,
+	undoAction string,
+	successMsg func(int) string,
+	mutate func(project *models.Project, taskID string) bool,
+) (tea.Model, tea.Cmd) {
+	count, err := taskOpsApplyBulk(m, refs, undoAction, mutate)
+	if err != nil {
+		m.setErr(err)
+		return m, nil
+	}
+	m.FinishBulk(&m.statusMsg, successMsg(count))
+	return m, nil
+}
+
+func (m *KanbanModel) applySelectedBulkStatus(status models.TaskStatus) (tea.Model, tea.Cmd) {
+	refs := m.selectedTaskProjectRefs()
+	if len(refs) == 0 {
+		return taskOpsChangeStatus(m, status)
+	}
+
+	return m.runSelectedBulkAction(refs, StatusVerb(status)+" Task", func(count int) string {
+		return fmt.Sprintf("Changed %d tasks to %s", count, status)
+	}, func(project *models.Project, taskID string) bool {
+		task := project.GetTaskByID(taskID)
+		if task == nil || task.CanTransitionTo(status) != "" {
+			return false
+		}
+		if status == models.StatusDone && project.HasIncompleteDependencies(task) {
+			return false
+		}
+		if status == models.StatusDone {
+			for _, child := range task.Children {
+				if child.Status != models.StatusDone && child.Status != models.StatusCanceled {
+					return false
+				}
+			}
+		}
+		project.MutateTask(taskID, func(t *models.Task) {
+			t.ApplyTransition(status)
+		})
+		return true
+	})
+}
+
+func (m *KanbanModel) applySelectedBulkPriority(key string) (tea.Model, tea.Cmd) {
+	priority, ok := PriorityForPrefixKey(key)
+	if !ok {
+		return m, nil
+	}
+
+	refs := m.selectedTaskProjectRefs()
+	if len(refs) == 0 {
+		return taskOpsChangePriority(m, key)
+	}
+
+	return m.runSelectedBulkAction(refs, "Set Priority", func(count int) string {
+		return fmt.Sprintf("Set priority %d on %d tasks", priority, count)
+	}, func(project *models.Project, taskID string) bool {
+		task := project.GetTaskByID(taskID)
+		if task == nil || task.Priority == priority {
+			return false
+		}
+		project.MutateTask(taskID, func(t *models.Task) {
+			t.Priority = priority
+		})
+		return true
+	})
+}
+
+func (m *KanbanModel) applySelectedBulkStage(stage string) (tea.Model, tea.Cmd) {
+	refs := m.selectedTaskProjectRefs()
+	if len(refs) == 0 {
+		return taskOpsChangeStage(m, stage)
+	}
+
+	return m.runSelectedBulkAction(refs, "Set Stage", func(count int) string {
+		if stage == "" {
+			return fmt.Sprintf("Cleared stage on %d tasks", count)
+		}
+		return fmt.Sprintf("Set stage on %d tasks", count)
+	}, func(project *models.Project, taskID string) bool {
+		task := project.GetTaskByID(taskID)
+		if task == nil || task.Stage == stage {
+			return false
+		}
+		project.MutateTask(taskID, func(t *models.Task) {
+			t.Stage = stage
+		})
+		return true
+	})
+}
+
+func (m *KanbanModel) applySelectedBulkSectionMove(section string) (tea.Model, tea.Cmd) {
+	refs := m.selectedTaskProjectRefs()
+	if len(refs) == 0 {
+		return taskOpsSectionMove(m, section)
+	}
+	if _, _, ok := sameProjectTaskRefs(refs); !ok {
+		m.setStatus("bulk section move not supported across projects")
+		return m, nil
+	}
+
+	return m.runSelectedBulkAction(refs, "Move to Section", func(count int) string {
+		return fmt.Sprintf("Moved %d tasks to %s", count, kanbanSectionStatusLabel(section))
+	}, func(project *models.Project, taskID string) bool {
+		task := project.GetTaskByID(taskID)
+		if task == nil || task.InSection(section) {
+			return false
+		}
+		project.MutateTask(taskID, func(t *models.Task) {
+			assignSection(t, section)
+		})
+		if section != "" && section != removeCustomSectionSentinel {
+			project.EnsureSection(section)
+		}
+		return true
+	})
+}
+
+func (m *KanbanModel) applySelectedBulkToggleActive() (tea.Model, tea.Cmd) {
+	refs := m.selectedTaskProjectRefs()
+	if len(refs) == 0 {
+		return taskOpsToggleActive(m)
+	}
+
+	return m.runSelectedBulkAction(refs, "Toggle Active", func(count int) string {
+		return fmt.Sprintf("Toggled active on %d tasks", count)
+	}, func(project *models.Project, taskID string) bool {
+		return project.MutateTask(taskID, func(t *models.Task) {
+			t.ToggleActive()
+		})
+	})
+}
+
+func (m *KanbanModel) applySelectedBulkTogglePin() (tea.Model, tea.Cmd) {
+	refs := m.selectedTaskProjectRefs()
+	if len(refs) == 0 {
+		return taskOpsTogglePinned(m)
+	}
+
+	return m.runSelectedBulkAction(refs, "Toggle Pin", func(count int) string {
+		return fmt.Sprintf("Toggled pin on %d tasks", count)
+	}, func(project *models.Project, taskID string) bool {
+		return project.MutateTask(taskID, func(t *models.Task) {
+			t.TogglePinned()
+		})
+	})
+}
+
+func (m *KanbanModel) applySelectedBulkToggleDim() (tea.Model, tea.Cmd) {
+	refs := m.selectedTaskProjectRefs()
+	if len(refs) == 0 {
+		return taskOpsToggleDimmed(m)
+	}
+
+	return m.runSelectedBulkAction(refs, "Toggle Dim", func(count int) string {
+		return fmt.Sprintf("Toggled dim on %d tasks", count)
+	}, func(project *models.Project, taskID string) bool {
+		return project.MutateTask(taskID, func(t *models.Task) {
+			t.ToggleDimmed()
+		})
+	})
+}
+
+func (m *KanbanModel) applySelectedBulkDelete() (tea.Model, tea.Cmd) {
+	if len(m.selectedTaskProjectRefs()) == 0 {
+		return taskOpsDeleteTask(m)
+	}
+	m.setStatus("bulk delete not supported in Kanban")
+	return m, nil
+}
+
+func kanbanSectionStatusLabel(section string) string {
+	if section == "" {
+		return "Active"
+	}
+	return section
+}
+
 // ─── commonActionView interface ───────────────────────────────────────────────
 
 func (m *KanbanModel) viewID() ViewType {

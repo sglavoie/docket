@@ -28,8 +28,10 @@ func (m *AppModel) handleTagMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint:goc
 		return true, nil
 
 	case ShowBulkTagSelectorMsg:
-		selector := NewBulkTagSelectorModel(msg.Tasks, msg.Project)
-		m.showView(ViewBulkTagSelector, selector)
+		if refs := validTaskProjectRefs(msg.TaskRefs); len(refs) > 0 {
+			selector := NewBulkTagSelectorModel(refs)
+			m.showView(ViewBulkTagSelector, selector)
+		}
 		return true, nil
 
 	case TagSelectorDoneMsg:
@@ -53,7 +55,7 @@ func (m *AppModel) handleTagMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint:goc
 		if msg.Canceled {
 			return true, nil
 		}
-		return true, m.applyTagsToTasks(msg.Tasks, msg.Project, msg.SelectedTags)
+		return true, m.applyTagsToTaskRefs(msg.TaskRefs, msg.SelectedTags)
 
 	// Unified tag filter selector: single Show handler for all views
 	case ShowTagFilterMsg:

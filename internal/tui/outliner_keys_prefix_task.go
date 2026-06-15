@@ -17,6 +17,15 @@ func (m *OutlinerModel) handleTaskPrefix(key string, cursorTask *models.Task) (t
 			m.setStatus("use go to open project outliner for task creation")
 			return m, nil
 		}
+		if refs := m.getSelectedTaskProjectRefs(); len(refs) > 0 {
+			switch key {
+			case "s":
+				m.setStatus("bulk section move not supported in cross-project mode")
+				return m, nil
+			case "t":
+				return m, func() tea.Msg { return ShowBulkTagSelectorMsg{TaskRefs: refs} }
+			}
+		}
 		row, proj, valid := m.crossGetMutationTarget()
 		if !valid {
 			return m, nil
@@ -27,9 +36,7 @@ func (m *OutlinerModel) handleTaskPrefix(key string, cursorTask *models.Task) (t
 			return m, cmd
 		}
 		// ts, tt → action handlers (no focusedTask in cross-project)
-		if handled, cmd := handleTaskActionPrefixKey(key, task, proj, nil, func() []*models.Task {
-			return m.getMultiSelectedTasks()
-		}); handled {
+		if handled, cmd := handleTaskActionPrefixKey(key, task, proj, nil, nil); handled {
 			return m, cmd
 		}
 		// tr → rename via quickEdit

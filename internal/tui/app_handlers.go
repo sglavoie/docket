@@ -287,36 +287,49 @@ func (m *AppModel) applyTagsToTask(task *models.Task, project *models.Project, s
 	return nil
 }
 
-// applyTagsToTasks applies selected tags to multiple tasks and saves the project.
-func (m *AppModel) applyTagsToTasks(tasks []*models.Task, project *models.Project, selectedTags []string) tea.Cmd {
-	// Update all tasks with the selected tags
-	for _, task := range tasks {
-		project.MutateTask(task.ID, func(t *models.Task) {
-			t.Tags = selectedTags
-		})
+// applyTagsToTaskRefs applies selected tags to multiple task refs and saves each affected project.
+func (m *AppModel) applyTagsToTaskRefs(refs []TaskProjectRef, selectedTags []string) tea.Cmd {
+	refs = validTaskProjectRefs(refs)
+	groups := groupTaskProjectRefsByProject(refs)
+	if len(groups) == 0 {
+		return nil
 	}
 
-	// Create backup and save
-	if err := saveProjectSync(project); err != nil {
+	count, groups, err := m.applyBulkTaskRefsWithWorkflow(refs, "Set Tags", func(project *models.Project, taskID string) bool {
+		return project.MutateTask(taskID, func(t *models.Task) {
+			t.Tags = append([]string{}, selectedTags...)
+		})
+	})
+	if err != nil {
 		return errorCmd("save failed: %w", err)
 	}
 
-	// Refresh tree/outliner, clear selection, and set undo context
-	bulkIDs := taskIDsFromSlice(tasks)
+	// Refresh tree/outliner and clear stale selections. Undo snapshots were
+	// recorded by applyBulkTaskRefsWithWorkflow before saving each project.
 	if m.projectTree != nil {
-		m.projectTree.clearSelection()
-		m.projectTree.setUndoContext("Set Tags", fmt.Sprintf("%d tasks", len(tasks)))
-		m.projectTree.undo.TaskIDs = bulkIDs
 		m.projectTree.buildTree()
 	}
 	if m.outliner != nil {
-		m.outliner.clearMultiSelect()
-		m.outliner.setUndoContext("Set Tags", fmt.Sprintf("%d tasks", len(tasks)))
-		m.outliner.undo.TaskIDs = bulkIDs
 		m.outliner.rebuildRows()
 	}
+	if m.crossOutliner != nil {
+		bulkIDs := taskIDsFromTaskRefs(refs)
+		projectIDs := make([]string, 0, len(groups))
+		for _, group := range groups {
+			projectIDs = append(projectIDs, group.Project.ID)
+		}
+		m.crossOutliner.crossUndoCtx.Set("Set Tags", fmt.Sprintf("%d tasks", count))
+		m.crossOutliner.crossUndoCtx.ProjectIDs = projectIDs
+		m.crossOutliner.crossUndoCtx.TaskIDs = bulkIDs
+		m.crossOutliner.rebuildRows()
+	}
+	m.clearBulkTaskSelectionsForRefs(refs)
+	cmds := m.refreshTaskViewsAfterSave()
 
-	m.setUndoableInfoStatus(fmt.Sprintf("Tagged %d tasks", len(tasks)))
+	m.setUndoableInfoStatus(fmt.Sprintf("Tagged %d tasks", count))
+	if len(cmds) > 0 {
+		return tea.Batch(cmds...)
+	}
 	return nil
 }
 

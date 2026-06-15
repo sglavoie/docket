@@ -2,10 +2,13 @@ package tui
 
 import (
 	"testing"
+	"time"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/testutil"
 	"github.com/sglavoie/tt/internal/tui/keymap"
+	"github.com/sglavoie/tt/internal/util"
 )
 
 // newTestKanban returns a KanbanModel pre-loaded with the given columns for
@@ -483,5 +486,553 @@ func TestBulkMoveSelectedTasks_StatusMessageReflectsActuallyMovedCount(t *testin
 
 	if want := "Moved 0 tasks → Canceled"; m.statusMsg != want {
 		t.Errorf("status msg: want %q, got %q", want, m.statusMsg)
+	}
+}
+
+func TestKanbanBulkPickerMessagesUseSelectedRefs(t *testing.T) {
+	projectA, tasksA := newSharedBulkProject("Alpha", "cursor", "selected-alpha")
+	projectB, tasksB := newSharedBulkProject("Beta", "selected-beta")
+
+	m := newTestKanban([]KanbanColumn{
+		{ID: "todo", Label: "Todo", Tasks: []KanbanCard{
+			{Task: tasksA[0], Project: projectA},
+			{Task: tasksA[1], Project: projectA},
+		}},
+		{ID: "next", Label: "Next", Tasks: []KanbanCard{
+			{Task: tasksB[0], Project: projectB},
+		}},
+	})
+	m.MultiSelectState = MultiSelectState{
+		multiSelectMode: true,
+		selectedTasks: map[string]bool{
+			tasksA[1].ID: true,
+			tasksB[0].ID: true,
+		},
+	}
+
+	km := m.buildKeyMap()
+	want := []TaskProjectRef{
+		{Task: tasksA[1], Project: projectA},
+		{Task: tasksB[0], Project: projectB},
+	}
+
+	tagAction := findSharedTaskKeymapAction(t, km, "t", "t")
+	tagMsg, ok := runSharedTaskKeymapAction(t, tagAction).(ShowBulkTagSelectorMsg)
+	if !ok {
+		t.Fatalf("tt: expected ShowBulkTagSelectorMsg, got %T", tagMsg)
+	}
+	assertTaskProjectRefs(t, tagMsg.TaskRefs, want)
+
+	dueAction := findSharedTaskKeymapAction(t, km, "d", "d")
+	dueMsg, ok := runSharedTaskKeymapAction(t, dueAction).(SetDueDateMsg)
+	if !ok {
+		t.Fatalf("dd: expected SetDueDateMsg, got %T", dueMsg)
+	}
+	assertTaskProjectRefs(t, dueMsg.TaskRefs, want)
+
+	snoozeAction := findSharedTaskKeymapAction(t, km, "z", "d")
+	snoozeMsg, ok := runSharedTaskKeymapAction(t, snoozeAction).(SetSnoozeDateMsg)
+	if !ok {
+		t.Fatalf("zd: expected SetSnoozeDateMsg, got %T", snoozeMsg)
+	}
+	assertTaskProjectRefs(t, snoozeMsg.TaskRefs, want)
+}
+
+func TestKanbanBulkQuickDateAndSnoozeApplySelectedCards(t *testing.T) {
+	alpha, alphaTask := newDiskKanbanProject(t, "alpha-proj", "Alpha", "alpha-task")
+	beta, betaTask := newDiskKanbanProject(t, "beta-proj", "Beta", "beta-task")
+
+	m := newTestKanban([]KanbanColumn{
+		{ID: "todo", Label: "Todo", Tasks: []KanbanCard{{Task: alphaTask, Project: alpha}}},
+		{ID: "next", Label: "Next", Tasks: []KanbanCard{{Task: betaTask, Project: beta}}},
+	})
+	m.svc = NewProjectService()
+	m.loadedProjects = []*models.Project{alpha, beta}
+	m.MultiSelectState = MultiSelectState{
+		multiSelectMode: true,
+		selectedTasks: map[string]bool{
+			alphaTask.ID: true,
+			betaTask.ID:  true,
+		},
+	}
+
+	model, cmd := m.applySelectedBulkDueDate(0, false)
+	if cmd != nil {
+		t.Fatalf("expected inline bulk due-date mutation, got command %T", cmd())
+	}
+	m = model.(*KanbanModel)
+
+	today := util.StartOfDay(time.Now())
+	for name, task := range map[string]*models.Task{
+		"alpha": alpha.GetTaskByID(alphaTask.ID),
+		"beta":  beta.GetTaskByID(betaTask.ID),
+	} {
+		if task == nil {
+			t.Fatalf("%s task not found", name)
+		}
+		if task.DueDate == nil || !task.DueDate.Equal(today) {
+			t.Fatalf("%s due date = %v, want %v", name, task.DueDate, today)
+		}
+	}
+
+	m.multiSelectMode = true
+	m.selectedTasks = map[string]bool{alphaTask.ID: true, betaTask.ID: true}
+	model, cmd = m.applySelectedBulkSnooze("w")
+	if cmd != nil {
+		t.Fatalf("expected inline bulk snooze mutation, got command %T", cmd())
+	}
+	m = model.(*KanbanModel)
+
+	nextWeek := util.StartOfDay(time.Now()).AddDate(0, 0, 7)
+	for name, task := range map[string]*models.Task{
+		"alpha": alpha.GetTaskByID(alphaTask.ID),
+		"beta":  beta.GetTaskByID(betaTask.ID),
+	} {
+		if task == nil {
+			t.Fatalf("%s task not found", name)
+		}
+		if task.SnoozedUntil == nil || !task.SnoozedUntil.Equal(nextWeek) {
+			t.Fatalf("%s snooze = %v, want %v", name, task.SnoozedUntil, nextWeek)
+		}
+	}
+	if m.multiSelectMode || len(m.selectedTasks) != 0 {
+		t.Fatal("expected Kanban bulk field mutations to clear selection")
+	}
+}
+
+func TestKanbanBulkKeymapActionsMutateSelectedCardsOnly(t *testing.T) {
+	tests := []struct {
+		name       string
+		keys       []string
+		setup      func(*kanbanBulkActionFixture)
+		assert     func(*testing.T, *kanbanBulkActionFixture)
+		wantStatus string
+	}{
+		{
+			name: "status prefix mark done",
+			keys: []string{",", "d"},
+			assert: func(t *testing.T, f *kanbanBulkActionFixture) {
+				t.Helper()
+				assertKanbanBulkTask(t, f.projectA, f.cursor.ID, func(task *models.Task) {
+					if task.Status != models.StatusTodo {
+						t.Fatalf("cursor status = %s, want %s", task.Status, models.StatusTodo)
+					}
+				})
+				for _, ref := range f.selectedRefs {
+					assertKanbanBulkTask(t, ref.Project, ref.Task.ID, func(task *models.Task) {
+						if task.Status != models.StatusDone {
+							t.Fatalf("selected status = %s, want %s", task.Status, models.StatusDone)
+						}
+					})
+				}
+			},
+			wantStatus: "Changed 2 tasks to done",
+		},
+		{
+			name: "top-level mark done",
+			keys: []string{"D"},
+			assert: func(t *testing.T, f *kanbanBulkActionFixture) {
+				t.Helper()
+				assertKanbanBulkTask(t, f.projectA, f.cursor.ID, func(task *models.Task) {
+					if task.Status != models.StatusTodo {
+						t.Fatalf("cursor status = %s, want %s", task.Status, models.StatusTodo)
+					}
+				})
+				for _, ref := range f.selectedRefs {
+					assertKanbanBulkTask(t, ref.Project, ref.Task.ID, func(task *models.Task) {
+						if task.Status != models.StatusDone {
+							t.Fatalf("selected status = %s, want %s", task.Status, models.StatusDone)
+						}
+					})
+				}
+			},
+			wantStatus: "Changed 2 tasks to done",
+		},
+		{
+			name: "priority",
+			keys: []string{"!", "3"},
+			assert: func(t *testing.T, f *kanbanBulkActionFixture) {
+				t.Helper()
+				assertKanbanBulkTask(t, f.projectA, f.cursor.ID, func(task *models.Task) {
+					if task.Priority != 1 {
+						t.Fatalf("cursor priority = %d, want 1", task.Priority)
+					}
+				})
+				for _, ref := range f.selectedRefs {
+					assertKanbanBulkTask(t, ref.Project, ref.Task.ID, func(task *models.Task) {
+						if task.Priority != 3 {
+							t.Fatalf("selected priority = %d, want 3", task.Priority)
+						}
+					})
+				}
+			},
+			wantStatus: "Set priority 3 on 2 tasks",
+		},
+		{
+			name: "set stage",
+			keys: []string{"s", "1"},
+			assert: func(t *testing.T, f *kanbanBulkActionFixture) {
+				t.Helper()
+				assertKanbanBulkTask(t, f.projectA, f.cursor.ID, func(task *models.Task) {
+					if task.Stage != "Cursor" {
+						t.Fatalf("cursor stage = %q, want %q", task.Stage, "Cursor")
+					}
+				})
+				for _, ref := range f.selectedRefs {
+					assertKanbanBulkTask(t, ref.Project, ref.Task.ID, func(task *models.Task) {
+						if task.Stage != "Design" {
+							t.Fatalf("selected stage = %q, want %q", task.Stage, "Design")
+						}
+					})
+				}
+			},
+			wantStatus: "Set stage on 2 tasks",
+		},
+		{
+			name: "clear stage",
+			keys: []string{"s", "0"},
+			setup: func(f *kanbanBulkActionFixture) {
+				for _, ref := range f.selectedRefs {
+					ref.Task.Stage = "Build"
+				}
+				f.cursor.Stage = "Cursor"
+			},
+			assert: func(t *testing.T, f *kanbanBulkActionFixture) {
+				t.Helper()
+				assertKanbanBulkTask(t, f.projectA, f.cursor.ID, func(task *models.Task) {
+					if task.Stage != "Cursor" {
+						t.Fatalf("cursor stage = %q, want %q", task.Stage, "Cursor")
+					}
+				})
+				for _, ref := range f.selectedRefs {
+					assertKanbanBulkTask(t, ref.Project, ref.Task.ID, func(task *models.Task) {
+						if task.Stage != "" {
+							t.Fatalf("selected stage = %q, want empty", task.Stage)
+						}
+					})
+				}
+			},
+			wantStatus: "Cleared stage on 2 tasks",
+		},
+		{
+			name: "toggle active",
+			keys: []string{"*"},
+			assert: func(t *testing.T, f *kanbanBulkActionFixture) {
+				t.Helper()
+				assertKanbanBulkTask(t, f.projectA, f.cursor.ID, func(task *models.Task) {
+					if task.Active {
+						t.Fatal("cursor active = true, want false")
+					}
+				})
+				for _, ref := range f.selectedRefs {
+					assertKanbanBulkTask(t, ref.Project, ref.Task.ID, func(task *models.Task) {
+						if !task.Active {
+							t.Fatal("selected active = false, want true")
+						}
+					})
+				}
+			},
+			wantStatus: "Toggled active on 2 tasks",
+		},
+		{
+			name: "toggle pin",
+			keys: []string{"t", "p"},
+			assert: func(t *testing.T, f *kanbanBulkActionFixture) {
+				t.Helper()
+				assertKanbanBulkTask(t, f.projectA, f.cursor.ID, func(task *models.Task) {
+					if task.Pinned {
+						t.Fatal("cursor pinned = true, want false")
+					}
+				})
+				for _, ref := range f.selectedRefs {
+					assertKanbanBulkTask(t, ref.Project, ref.Task.ID, func(task *models.Task) {
+						if !task.Pinned {
+							t.Fatal("selected pinned = false, want true")
+						}
+					})
+				}
+			},
+			wantStatus: "Toggled pin on 2 tasks",
+		},
+		{
+			name: "toggle dim",
+			keys: []string{"t", "h"},
+			assert: func(t *testing.T, f *kanbanBulkActionFixture) {
+				t.Helper()
+				assertKanbanBulkTask(t, f.projectA, f.cursor.ID, func(task *models.Task) {
+					if task.Dimmed {
+						t.Fatal("cursor dimmed = true, want false")
+					}
+				})
+				for _, ref := range f.selectedRefs {
+					assertKanbanBulkTask(t, ref.Project, ref.Task.ID, func(task *models.Task) {
+						if !task.Dimmed {
+							t.Fatal("selected dimmed = false, want true")
+						}
+					})
+				}
+			},
+			wantStatus: "Toggled dim on 2 tasks",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			fixture := newKanbanBulkActionFixture(t)
+			if tt.setup != nil {
+				tt.setup(fixture)
+				saveAndReloadKanbanBulkFixture(t, fixture)
+			}
+
+			fixture.model = runKanbanKeymapAction(t, fixture.model, tt.keys...)
+			if fixture.model.statusMsg != tt.wantStatus {
+				t.Fatalf("status = %q, want %q", fixture.model.statusMsg, tt.wantStatus)
+			}
+			assertKanbanSelectionCleared(t, fixture.model)
+			tt.assert(t, fixture)
+		})
+	}
+}
+
+func TestKanbanBulkSectionMoveSelectedCardsOnlyForSameProject(t *testing.T) {
+	project, tasks := newDiskKanbanProjectWithTasks(t, "alpha-proj", "Alpha", "cursor", "selected-one", "selected-two")
+	m := newTestKanban([]KanbanColumn{
+		{ID: "todo", Label: "Todo", Tasks: []KanbanCard{
+			{Task: tasks[0], Project: project},
+			{Task: tasks[1], Project: project},
+			{Task: tasks[2], Project: project},
+		}},
+	})
+	m.svc = NewProjectService()
+	m.loadedProjects = []*models.Project{project}
+	m.MultiSelectState = MultiSelectState{
+		multiSelectMode: true,
+		selectedTasks: map[string]bool{
+			tasks[1].ID: true,
+			tasks[2].ID: true,
+		},
+	}
+
+	m = runKanbanKeymapAction(t, m, "m", "n")
+	if m.statusMsg != "Moved 2 tasks to Next" {
+		t.Fatalf("status = %q, want %q", m.statusMsg, "Moved 2 tasks to Next")
+	}
+	assertKanbanSelectionCleared(t, m)
+	assertKanbanBulkTask(t, project, tasks[0].ID, func(task *models.Task) {
+		if task.Section != "" {
+			t.Fatalf("cursor section = %q, want empty", task.Section)
+		}
+	})
+	for _, task := range tasks[1:] {
+		assertKanbanBulkTask(t, project, task.ID, func(task *models.Task) {
+			if task.Section != models.SectionNext {
+				t.Fatalf("selected section = %q, want %q", task.Section, models.SectionNext)
+			}
+		})
+	}
+}
+
+func TestKanbanBulkSectionMoveRejectsCrossProjectSelection(t *testing.T) {
+	fixture := newKanbanBulkActionFixture(t)
+
+	fixture.model = runKanbanKeymapAction(t, fixture.model, "m", "n")
+	if fixture.model.statusMsg != "bulk section move not supported across projects" {
+		t.Fatalf("status = %q, want %q", fixture.model.statusMsg, "bulk section move not supported across projects")
+	}
+	assertKanbanSelectionPreserved(t, fixture.model, fixture.selectedRefs...)
+	assertKanbanBulkTask(t, fixture.projectA, fixture.cursor.ID, func(task *models.Task) {
+		if task.Section != "" {
+			t.Fatalf("cursor section = %q, want empty", task.Section)
+		}
+	})
+	for _, ref := range fixture.selectedRefs {
+		assertKanbanBulkTask(t, ref.Project, ref.Task.ID, func(task *models.Task) {
+			if task.Section != "" {
+				t.Fatalf("selected section = %q, want empty", task.Section)
+			}
+		})
+	}
+}
+
+func TestKanbanBulkDeleteRejectsSelectedCards(t *testing.T) {
+	fixture := newKanbanBulkActionFixture(t)
+
+	fixture.model = runKanbanKeymapAction(t, fixture.model, "t", "D")
+	if fixture.model.statusMsg != "bulk delete not supported in Kanban" {
+		t.Fatalf("status = %q, want %q", fixture.model.statusMsg, "bulk delete not supported in Kanban")
+	}
+	assertKanbanSelectionPreserved(t, fixture.model, fixture.selectedRefs...)
+	for _, ref := range append([]TaskProjectRef{{Task: fixture.cursor, Project: fixture.projectA}}, fixture.selectedRefs...) {
+		assertKanbanBulkTask(t, ref.Project, ref.Task.ID, func(task *models.Task) {
+			if task == nil {
+				t.Fatalf("task %q was deleted", ref.Task.ID)
+			}
+		})
+	}
+}
+
+func newDiskKanbanProject(t *testing.T, id, name, taskID string) (*models.Project, *models.Task) {
+	t.Helper()
+
+	project, tasks := newDiskKanbanProjectWithTasks(t, id, name, taskID)
+	return project, tasks[0]
+}
+
+func newDiskKanbanProjectWithTasks(t *testing.T, id, name string, taskIDs ...string) (*models.Project, []*models.Task) {
+	t.Helper()
+
+	project := &models.Project{ID: id, Name: name, Path: t.TempDir()}
+	tasks := make([]*models.Task, 0, len(taskIDs))
+	for i, taskID := range taskIDs {
+		task, err := models.NewTask(taskID, i+1, models.TaskTypeTask, name+" "+taskID)
+		if err != nil {
+			t.Fatalf("NewTask: %v", err)
+		}
+		task.Project = project
+		project.Tasks = append(project.Tasks, task)
+		tasks = append(tasks, task)
+	}
+	project.NextShortID = len(project.Tasks) + 1
+	project.BuildTaskTree()
+	if err := storage.SaveProject(project); err != nil {
+		t.Fatalf("save project: %v", err)
+	}
+	if err := storage.LoadProject(project); err != nil {
+		t.Fatalf("load project: %v", err)
+	}
+	for i, taskID := range taskIDs {
+		loaded := project.GetTaskByID(taskID)
+		if loaded == nil {
+			t.Fatalf("task %q not found after load", taskID)
+		}
+		tasks[i] = loaded
+	}
+	return project, tasks
+}
+
+type kanbanBulkActionFixture struct {
+	model        *KanbanModel
+	projectA     *models.Project
+	projectB     *models.Project
+	cursor       *models.Task
+	selectedRefs []TaskProjectRef
+}
+
+func newKanbanBulkActionFixture(t *testing.T) *kanbanBulkActionFixture {
+	t.Helper()
+
+	projectA, tasksA := newDiskKanbanProjectWithTasks(t, "alpha-proj", "Alpha", "cursor", "selected-alpha")
+	projectB, tasksB := newDiskKanbanProjectWithTasks(t, "beta-proj", "Beta", "selected-beta")
+
+	tasksA[0].Priority = 1
+	tasksA[0].Stage = "Cursor"
+	tasksA[1].Priority = 1
+	tasksB[0].Priority = 1
+	saveAndReloadKanbanBulkProject(t, projectA)
+	saveAndReloadKanbanBulkProject(t, projectB)
+	tasksA[0] = projectA.GetTaskByID(tasksA[0].ID)
+	tasksA[1] = projectA.GetTaskByID(tasksA[1].ID)
+	tasksB[0] = projectB.GetTaskByID(tasksB[0].ID)
+
+	m := newTestKanban([]KanbanColumn{
+		{ID: "todo", Label: "Todo", Tasks: []KanbanCard{
+			{Task: tasksA[0], Project: projectA},
+			{Task: tasksA[1], Project: projectA},
+		}},
+		{ID: "next", Label: "Next", Tasks: []KanbanCard{
+			{Task: tasksB[0], Project: projectB},
+		}},
+	})
+	m.svc = NewProjectService()
+	m.loadedProjects = []*models.Project{projectA, projectB}
+	m.config.Stages = []string{"Design", "Build"}
+	m.MultiSelectState = MultiSelectState{
+		multiSelectMode: true,
+		selectedTasks: map[string]bool{
+			tasksA[1].ID: true,
+			tasksB[0].ID: true,
+		},
+	}
+
+	return &kanbanBulkActionFixture{
+		model:    m,
+		projectA: projectA,
+		projectB: projectB,
+		cursor:   tasksA[0],
+		selectedRefs: []TaskProjectRef{
+			{Task: tasksA[1], Project: projectA},
+			{Task: tasksB[0], Project: projectB},
+		},
+	}
+}
+
+func runKanbanKeymapAction(t *testing.T, m *KanbanModel, keys ...string) *KanbanModel {
+	t.Helper()
+
+	action := findSharedTaskKeymapAction(t, m.buildKeyMap(), keys...)
+	model, cmd := action()
+	if cmd != nil {
+		t.Fatalf("binding %v returned unexpected command %T", keys, cmd)
+	}
+	kanban, ok := model.(*KanbanModel)
+	if !ok {
+		t.Fatalf("binding %v returned %T, want *KanbanModel", keys, model)
+	}
+	return kanban
+}
+
+func saveAndReloadKanbanBulkFixture(t *testing.T, f *kanbanBulkActionFixture) {
+	t.Helper()
+
+	saveAndReloadKanbanBulkProject(t, f.projectA)
+	saveAndReloadKanbanBulkProject(t, f.projectB)
+	f.cursor = f.projectA.GetTaskByID(f.cursor.ID)
+	for i := range f.selectedRefs {
+		f.selectedRefs[i].Task = f.selectedRefs[i].Project.GetTaskByID(f.selectedRefs[i].Task.ID)
+	}
+}
+
+func saveAndReloadKanbanBulkProject(t *testing.T, project *models.Project) {
+	t.Helper()
+
+	if err := storage.SaveProject(project); err != nil {
+		t.Fatalf("save project: %v", err)
+	}
+	if err := storage.LoadProject(project); err != nil {
+		t.Fatalf("load project: %v", err)
+	}
+}
+
+func assertKanbanBulkTask(t *testing.T, project *models.Project, taskID string, assert func(*models.Task)) {
+	t.Helper()
+
+	task := project.GetTaskByID(taskID)
+	if task == nil {
+		t.Fatalf("task %q not found", taskID)
+	}
+	assert(task)
+}
+
+func assertKanbanSelectionCleared(t *testing.T, m *KanbanModel) {
+	t.Helper()
+
+	if m.multiSelectMode || m.SelectedCount() != 0 {
+		t.Fatalf("selection = mode %v count %d, want cleared", m.multiSelectMode, m.SelectedCount())
+	}
+}
+
+func assertKanbanSelectionPreserved(t *testing.T, m *KanbanModel, refs ...TaskProjectRef) {
+	t.Helper()
+
+	if !m.multiSelectMode {
+		t.Fatal("multi-select mode = false, want preserved")
+	}
+	if m.SelectedCount() != len(refs) {
+		t.Fatalf("selection count = %d, want %d", m.SelectedCount(), len(refs))
+	}
+	for _, ref := range refs {
+		if !m.IsSelected(ref.Task.ID) {
+			t.Fatalf("task %q selection was not preserved", ref.Task.ID)
+		}
 	}
 }

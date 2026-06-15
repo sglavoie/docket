@@ -130,8 +130,8 @@ func CreateReferenceSnapshotFile(content string, prefix string, suffix string) (
 }
 
 func defaultReferenceSnapshotCacheDir() (string, error) {
-	cacheDir, err := os.UserCacheDir()
-	if err != nil {
+	cacheDir, _ := os.UserCacheDir()
+	if cacheDir == "" {
 		return filepath.Join(os.TempDir(), "tt", "reference-snapshots"), nil
 	}
 	return filepath.Join(cacheDir, "tt", "reference-snapshots"), nil

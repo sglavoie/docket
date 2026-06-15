@@ -138,31 +138,23 @@ func (m *AppModel) handleSectionMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 
 		// Check if this is a bulk operation from palette
 		if len(m.pendingBulkTasks) > 0 {
-			count := 0
-			projectMap := make(map[string]*models.Project)
-
-			for _, item := range m.pendingBulkTasks {
-				if item.Task != nil && item.Project != nil {
-					if item.Project.MutateTask(item.Task.ID, func(t *models.Task) {
-						t.Priority = msg.Priority
-					}) {
-						projectMap[item.Project.ID] = item.Project
-						count++
-					}
-				}
-			}
-
-			var projects []*models.Project
-			for _, project := range projectMap {
-				projects = append(projects, project)
-			}
+			refs := validTaskProjectRefs(m.pendingBulkTasks)
+			count, _, err := m.applyBulkTaskRefsWithWorkflow(refs, "Set Priority", func(project *models.Project, taskID string) bool {
+				return project.MutateTask(taskID, func(t *models.Task) {
+					t.Priority = msg.Priority
+				})
+			})
 
 			m.pendingBulkTasks = nil
+			if err != nil {
+				return true, errorCmd("save failed: %w", err)
+			}
+			m.clearBulkTaskSelectionsForRefs(refs)
 			successMsg := fmt.Sprintf("Set priority %d for %d tasks", msg.Priority, count)
-			return true, tea.Batch(
-				startLoading("Saving..."),
-				SaveMultipleProjectsAsync(projects, successMsg),
-			)
+			m.setSuccessStatus(successMsg)
+			cmds := m.refreshTaskViewsAfterSave()
+			cmds = append(cmds, defaultStatusTimeout())
+			return true, tea.Batch(cmds...)
 		}
 
 		// Single task operation
@@ -193,12 +185,14 @@ func (m *AppModel) handleSectionMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 		if len(m.pendingBulkSectionTasks) > 0 && m.pendingBulkSectionProject != nil {
 			project := m.pendingBulkSectionProject
 			count := 0
+			var changedIDs []string
 			for _, task := range m.pendingBulkSectionTasks {
 				if task != nil {
 					if project.MutateTask(task.ID, func(t *models.Task) {
 						assignSection(t, msg.Section)
 					}) {
 						count++
+						changedIDs = append(changedIDs, task.ID)
 					}
 				}
 			}
@@ -211,6 +205,7 @@ func (m *AppModel) handleSectionMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 			}
 			m.config.ApplyGlobalColorsToProject(project)
 
+			refs := taskProjectRefsFromTasks(m.pendingBulkSectionTasks, project)
 			m.pendingBulkSectionTasks = nil
 			m.pendingBulkSectionProject = nil
 
@@ -223,10 +218,24 @@ func (m *AppModel) handleSectionMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 			default:
 				successMsg = fmt.Sprintf("Moved %d tasks to %s", count, msg.Section)
 			}
-			return true, tea.Batch(
-				startLoading("Saving..."),
-				SaveProjectAsync(project, successMsg),
+			opts := BuildWorkflowOpts(
+				m.appPersister(),
+				project,
+				m.config,
+				m.configManager,
+				nil,
+				"Move to Section",
+				fmt.Sprintf("%d tasks", count),
+				changedIDs,
 			)
+			if err := persistWithWorkflow(opts); err != nil {
+				return true, errorCmd("save failed: %w", err)
+			}
+			m.clearBulkTaskSelectionsForRefs(refs)
+			m.setSuccessStatus(successMsg)
+			cmds := m.refreshTaskViewsAfterSave()
+			cmds = append(cmds, defaultStatusTimeout())
+			return true, tea.Batch(cmds...)
 		}
 
 		// Form-based section pick (no task yet, e.g. TaskFormModel in create mode)

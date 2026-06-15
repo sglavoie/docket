@@ -4,8 +4,6 @@ import (
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
-
-	"github.com/sglavoie/tt/internal/models"
 )
 
 // handleCaptureAndBulkMessages handles quick capture, bulk capture, bulk edit, and palette bulk messages.
@@ -56,27 +54,16 @@ func (m *AppModel) handleCaptureAndBulkMessages(msg tea.Msg) (bool, tea.Cmd) {
 
 	case PaletteBulkTagMsg:
 		if len(msg.Tasks) > 0 {
-			firstProject := msg.Tasks[0].Project
-			var tasks []*models.Task
-			for _, item := range msg.Tasks {
-				if item.Project.ID == firstProject.ID {
-					tasks = append(tasks, item.Task)
-				}
-			}
-			if len(tasks) > 0 {
-				m.showView(ViewBulkTagSelector, NewBulkTagSelectorModel(tasks, firstProject))
+			refs := validTaskProjectRefs(msg.Tasks)
+			if len(refs) > 0 {
+				m.showView(ViewBulkTagSelector, NewBulkTagSelectorModel(refs))
 			}
 		}
 		return true, nil
 
 	case PaletteBulkDueDateMsg:
 		if len(msg.Tasks) > 0 {
-			m.pendingBulkTasks = msg.Tasks
-			weekEndDay := ""
-			if m.config != nil {
-				weekEndDay = m.config.GetWeekEndDay()
-			}
-			m.showView(ViewDateInput, NewDateInputModel(msg.Tasks[0].Task, msg.Tasks[0].Project, weekEndDay))
+			return m.handleSetDueDate(SetDueDateMsg{TaskRefs: msg.Tasks})
 		}
 		return true, nil
 	}

@@ -165,17 +165,11 @@ func (m *CommandPaletteModel) getBulkActionsForSelectedTasks() []PaletteAction {
 		return nil
 	}
 
-	var selectedItems []struct {
-		Task    *models.Task
-		Project *models.Project
-	}
+	var selectedItems []TaskProjectRef
 	for _, filtered := range m.filteredItems {
 		item := filtered.Item
 		if item.Category == ItemCategoryTasks && item.Task != nil && item.Project != nil && m.selectedTasks[item.Task.ID] {
-			selectedItems = append(selectedItems, struct {
-				Task    *models.Task
-				Project *models.Project
-			}{Task: item.Task, Project: item.Project})
+			selectedItems = append(selectedItems, TaskProjectRef{Task: item.Task, Project: item.Project})
 		}
 	}
 
@@ -220,10 +214,7 @@ func (m *CommandPaletteModel) getBulkActionsForSelectedTasks() []PaletteAction {
 		})
 	}
 
-	bulkItems := make([]PaletteBulkTaskItem, len(selectedItems))
-	for i, item := range selectedItems {
-		bulkItems[i] = PaletteBulkTaskItem{Task: item.Task, Project: item.Project}
-	}
+	bulkItems := selectedItems
 
 	actions = append(actions,
 		PaletteAction{

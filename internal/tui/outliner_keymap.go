@@ -85,6 +85,10 @@ func (b *outlinerKeymapBuilder) hasTask() bool {
 	return b.cursorTask() != nil
 }
 
+func (b *outlinerKeymapBuilder) hasTaskActionTarget() bool {
+	return b.hasTask() || len(b.model.getSelectedTaskProjectRefs()) > 0
+}
+
 func (b *outlinerKeymapBuilder) onHeader() bool {
 	row := b.currentRow()
 	return row != nil && (row.IsSectionHeader || row.IsSeparator)
@@ -92,7 +96,7 @@ func (b *outlinerKeymapBuilder) onHeader() bool {
 
 func (b *outlinerKeymapBuilder) gateOnTask(entries []keymap.Entry) []keymap.Entry {
 	if len(entries) > 0 && entries[0].PrefixNode != nil {
-		entries[0].PrefixNode.Gate = b.hasTask
+		entries[0].PrefixNode.Gate = b.hasTaskActionTarget
 	}
 
 	return entries

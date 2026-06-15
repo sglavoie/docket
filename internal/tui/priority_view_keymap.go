@@ -131,26 +131,34 @@ func (m *PriorityViewModel) priorityTogglePreviewAction() (tea.Model, tea.Cmd) {
 
 func (m *PriorityViewModel) priorityTaskActionDeps(stages []string) TaskKeymapDeps {
 	return TaskKeymapDeps{
-		View:           m,
-		HasItem:        m.priorityHasItem,
-		Stages:         stages,
-		ToggleHelp:     m.priorityToggleHelpAction,
-		DeleteTask:     m.priorityDeleteTaskAction,
-		OpenURL:        m.priorityOpenURLAction,
-		MoveToProject:  m.priorityMoveToProjectAction,
-		QuickNote:      m.priorityQuickNoteAction,
-		StatusChange:   m.priorityStatusChangeAction,
-		PriorityChange: m.priorityPriorityChangeAction,
-		DueDateSet:     m.priorityDueDateSetAction,
-		DueDateClear:   m.priorityDueDateClearAction,
-		SnoozeDate:     m.prioritySnoozeDateAction,
-		SectionMove:    m.prioritySectionMoveAction,
-		StageChange:    m.priorityStageChangeAction,
+		View:             m,
+		HasItem:          m.priorityHasItem,
+		Stages:           stages,
+		ToggleHelp:       m.priorityToggleHelpAction,
+		SelectedTaskRefs: m.prioritySelectedTaskRefs,
+		DeleteTask:       m.priorityDeleteTaskAction,
+		OpenURL:          m.priorityOpenURLAction,
+		MoveToProject:    m.priorityMoveToProjectAction,
+		QuickNote:        m.priorityQuickNoteAction,
+		StatusChange:     m.priorityStatusChangeAction,
+		PriorityChange:   m.priorityPriorityChangeAction,
+		DueDateSet:       m.priorityDueDateSetAction,
+		DueDateClear:     m.priorityDueDateClearAction,
+		SnoozeDate:       m.prioritySnoozeDateAction,
+		SectionMove:      m.prioritySectionMoveAction,
+		StageChange:      m.priorityStageChangeAction,
 	}
 }
 
 func (m *PriorityViewModel) priorityHasItem() bool {
 	return m.getTaskAtCursor() != nil
+}
+
+func (m *PriorityViewModel) prioritySelectedTaskRefs() []TaskProjectRef {
+	if !m.hasBulkSelection() {
+		return nil
+	}
+	return m.getSelectedBulkItems()
 }
 
 func (m *PriorityViewModel) priorityToggleHelpAction() (tea.Model, tea.Cmd) {

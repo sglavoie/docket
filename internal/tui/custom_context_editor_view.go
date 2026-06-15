@@ -116,9 +116,9 @@ func (m *CustomContextEditorModel) View() tea.View {
 			if isCursor {
 				rowBuilder.WriteString(SelectedStyle.Render(line))
 			} else if isSelected {
-				rowBuilder.WriteString(fmt.Sprintf("%s%s %s", cursor, SelectionCheckStyle.Render(checkbox), info))
+				fmt.Fprintf(&rowBuilder, "%s%s %s", cursor, SelectionCheckStyle.Render(checkbox), info)
 			} else {
-				rowBuilder.WriteString(fmt.Sprintf("%s%s %s", cursor, MutedStyle.Render(checkbox), MutedStyle.Render(info)))
+				fmt.Fprintf(&rowBuilder, "%s%s %s", cursor, MutedStyle.Render(checkbox), MutedStyle.Render(info))
 			}
 			rowBuilder.WriteString("\n")
 		}

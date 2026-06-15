@@ -123,8 +123,8 @@ func TestSaveProject_WithProjectTags(t *testing.T) {
 	task.Tags = []string{"backend"}
 	project.Tasks = []*models.Task{task}
 
-	if err := SaveProject(project); err != nil {
-		t.Fatalf("SaveProject failed: %v", err)
+	if saveErr := SaveProject(project); saveErr != nil {
+		t.Fatalf("SaveProject failed: %v", saveErr)
 	}
 
 	tasksPath := filepath.Join(project.Path, "tasks.md")

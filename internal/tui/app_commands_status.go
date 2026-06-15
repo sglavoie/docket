@@ -17,8 +17,7 @@ func (m *AppModel) statusCommands() []Command {
 			Aliases:     []string{"begin task", "in progress"},
 			Handler: func() tea.Msg {
 				if m.projectTree != nil {
-					visible := m.projectTree.visibleNodes()
-					m.projectTree.handleStatusTransition(models.StatusInProgress, visible)
+					return m.runProjectTreeBulkStatusTransition(models.StatusInProgress)
 				}
 				return nil
 			},
@@ -32,8 +31,7 @@ func (m *AppModel) statusCommands() []Command {
 			Aliases:     []string{"done task", "finish task", "mark done"},
 			Handler: func() tea.Msg {
 				if m.projectTree != nil {
-					visible := m.projectTree.visibleNodes()
-					m.projectTree.handleStatusTransition(models.StatusDone, visible)
+					return m.runProjectTreeBulkStatusTransition(models.StatusDone)
 				}
 				return nil
 			},
@@ -47,8 +45,7 @@ func (m *AppModel) statusCommands() []Command {
 			Aliases:     []string{"blocked task", "mark blocked"},
 			Handler: func() tea.Msg {
 				if m.projectTree != nil {
-					visible := m.projectTree.visibleNodes()
-					m.projectTree.handleStatusTransition(models.StatusBlocked, visible)
+					return m.runProjectTreeBulkStatusTransition(models.StatusBlocked)
 				}
 				return nil
 			},
@@ -62,8 +59,7 @@ func (m *AppModel) statusCommands() []Command {
 			Aliases:     []string{"standby", "pause task"},
 			Handler: func() tea.Msg {
 				if m.projectTree != nil {
-					visible := m.projectTree.visibleNodes()
-					m.projectTree.handleStatusTransition(models.StatusStandby, visible)
+					return m.runProjectTreeBulkStatusTransition(models.StatusStandby)
 				}
 				return nil
 			},
@@ -77,8 +73,7 @@ func (m *AppModel) statusCommands() []Command {
 			Aliases:     []string{"canceled task", "mark canceled"},
 			Handler: func() tea.Msg {
 				if m.projectTree != nil {
-					visible := m.projectTree.visibleNodes()
-					m.projectTree.handleStatusTransition(models.StatusCanceled, visible)
+					return m.runProjectTreeBulkStatusTransition(models.StatusCanceled)
 				}
 				return nil
 			},
@@ -92,8 +87,7 @@ func (m *AppModel) statusCommands() []Command {
 			Aliases:     []string{"reopen", "undo complete", "mark todo"},
 			Handler: func() tea.Msg {
 				if m.projectTree != nil {
-					visible := m.projectTree.visibleNodes()
-					m.projectTree.handleStatusTransition(models.StatusTodo, visible)
+					return m.runProjectTreeBulkStatusTransition(models.StatusTodo)
 				}
 				return nil
 			},
@@ -107,8 +101,7 @@ func (m *AppModel) statusCommands() []Command {
 			Aliases:     []string{"mark review", "in review"},
 			Handler: func() tea.Msg {
 				if m.projectTree != nil {
-					visible := m.projectTree.visibleNodes()
-					m.projectTree.handleStatusTransition(models.StatusReview, visible)
+					return m.runProjectTreeBulkStatusTransition(models.StatusReview)
 				}
 				return nil
 			},
@@ -122,8 +115,7 @@ func (m *AppModel) statusCommands() []Command {
 			Aliases:     []string{"maybe", "someday task"},
 			Handler: func() tea.Msg {
 				if m.projectTree != nil {
-					visible := m.projectTree.visibleNodes()
-					m.projectTree.handleStatusTransition(models.StatusMaybe, visible)
+					return m.runProjectTreeBulkStatusTransition(models.StatusMaybe)
 				}
 				return nil
 			},

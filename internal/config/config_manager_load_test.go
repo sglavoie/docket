@@ -198,15 +198,15 @@ func TestConfigManager_MigratesNotesEditorToExternalEditor(t *testing.T) {
 		t.Fatalf("failed to read saved config: %v", err)
 	}
 	var saved map[string]json.RawMessage
-	if err := json.Unmarshal(savedData, &saved); err != nil {
-		t.Fatalf("failed to parse saved config: %v", err)
+	if unmarshalErr := json.Unmarshal(savedData, &saved); unmarshalErr != nil {
+		t.Fatalf("failed to parse saved config: %v", unmarshalErr)
 	}
 	if _, ok := saved["notes_editor"]; ok {
 		t.Fatal("saved config should not contain notes_editor")
 	}
 	var savedExternalEditor string
-	if err := json.Unmarshal(saved["external_editor"], &savedExternalEditor); err != nil {
-		t.Fatalf("failed to parse saved external_editor: %v", err)
+	if unmarshalErr := json.Unmarshal(saved["external_editor"], &savedExternalEditor); unmarshalErr != nil {
+		t.Fatalf("failed to parse saved external_editor: %v", unmarshalErr)
 	}
 	if savedExternalEditor != "zed" {
 		t.Errorf("expected saved external_editor 'zed', got %q", savedExternalEditor)

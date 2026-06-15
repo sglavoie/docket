@@ -133,11 +133,14 @@ func (b *outlinerKeymapBuilder) commonTaskActionEntries() []keymap.Entry {
 			return model, cmd
 		},
 		SnoozeDatePicker: func() (tea.Model, tea.Cmd) {
-			task := b.cursorTask()
+			if refs := m.getSelectedTaskProjectRefs(); len(refs) > 0 {
+				return m, func() tea.Msg { return SetSnoozeDateMsg{TaskRefs: refs} }
+			}
+			task, project := m.getTaskRef()
 			if task == nil {
 				return m, nil
 			}
-			return m, func() tea.Msg { return SetSnoozeDateMsg{Task: task, Project: m.project} }
+			return m, func() tea.Msg { return SetSnoozeDateMsg{Task: task, Project: project} }
 		},
 		MarkDone: func() (tea.Model, tea.Cmd) {
 			return m.handleStatusPrefix("d", b.cursorTask())

@@ -3,35 +3,107 @@ package tui
 import (
 	"fmt"
 
+	tea "charm.land/bubbletea/v2"
+
 	"github.com/sglavoie/tt/internal/models"
 )
 
-// bulkTaskItem represents a task+project pair for bulk operations.
-type bulkTaskItem struct {
+// TaskProjectRef represents a task and its owning project for bulk operations.
+type TaskProjectRef struct {
 	Task    *models.Task
 	Project *models.Project
 }
 
-// bulkProjectGroup groups bulk items belonging to a single project.
-type bulkProjectGroup struct {
+// TaskProjectGroup groups task refs belonging to a single project.
+type TaskProjectGroup struct {
 	Project *models.Project
-	Items   []bulkTaskItem
+	Items   []TaskProjectRef
+}
+
+// bulkTaskItem is kept as a compatibility alias for existing view helpers.
+type bulkTaskItem = TaskProjectRef
+
+// bulkProjectGroup is kept as a compatibility alias for existing view helpers.
+type bulkProjectGroup = TaskProjectGroup
+
+// groupTaskProjectRefsByProject groups task refs by project, preserving the
+// first-seen project order and filtering refs that cannot be applied.
+func groupTaskProjectRefsByProject(refs []TaskProjectRef) []TaskProjectGroup {
+	seen := make(map[string]int) // projectID -> index in result
+	var result []TaskProjectGroup
+	for _, ref := range refs {
+		if ref.Task == nil || ref.Project == nil {
+			continue
+		}
+		idx, ok := seen[ref.Project.ID]
+		if !ok {
+			idx = len(result)
+			seen[ref.Project.ID] = idx
+			result = append(result, TaskProjectGroup{Project: ref.Project})
+		}
+		result[idx].Items = append(result[idx].Items, ref)
+	}
+	return result
 }
 
 // groupBulkItemsByProject groups items by project, preserving insertion order.
 func groupBulkItemsByProject(items []bulkTaskItem) []bulkProjectGroup {
-	seen := make(map[string]int) // projectID → index in result
-	var result []bulkProjectGroup
-	for _, item := range items {
-		idx, ok := seen[item.Project.ID]
-		if !ok {
-			idx = len(result)
-			seen[item.Project.ID] = idx
-			result = append(result, bulkProjectGroup{Project: item.Project})
+	return groupTaskProjectRefsByProject(items)
+}
+
+// taskIDsFromTaskRefs extracts task IDs in input order, skipping invalid refs.
+func taskIDsFromTaskRefs(refs []TaskProjectRef) []string {
+	ids := make([]string, 0, len(refs))
+	for _, ref := range refs {
+		if ref.Task == nil || ref.Project == nil || ref.Task.ID == "" {
+			continue
 		}
-		result[idx].Items = append(result[idx].Items, item)
+		ids = append(ids, ref.Task.ID)
 	}
-	return result
+	return ids
+}
+
+// taskIDsByProjectFromTaskRefs groups selected task IDs by owning project.
+// Project order is available from groupTaskProjectRefsByProject; map values
+// preserve first-seen task order within each project.
+func taskIDsByProjectFromTaskRefs(refs []TaskProjectRef) map[string][]string {
+	groups := groupTaskProjectRefsByProject(refs)
+	idsByProject := make(map[string][]string, len(groups))
+	for _, group := range groups {
+		idsByProject[group.Project.ID] = taskIDsFromTaskRefs(group.Items)
+	}
+	return idsByProject
+}
+
+// affectedProjectsFromTaskRefs returns each affected project once in first-seen order.
+func affectedProjectsFromTaskRefs(refs []TaskProjectRef) []*models.Project {
+	groups := groupTaskProjectRefsByProject(refs)
+	projects := make([]*models.Project, 0, len(groups))
+	for _, group := range groups {
+		projects = append(projects, group.Project)
+	}
+	return projects
+}
+
+// saveAffectedProjectsAsync saves all projects touched by refs with the common
+// loading UI used by bulk AppModel handlers.
+func saveAffectedProjectsAsync(refs []TaskProjectRef, successMsg string) tea.Cmd {
+	projects := affectedProjectsFromTaskRefs(refs)
+	if len(projects) == 0 {
+		return nil
+	}
+	return tea.Batch(
+		startLoading("Saving..."),
+		SaveMultipleProjectsAsync(projects, successMsg),
+	)
+}
+
+// finishTaskBulkSelection clears task multi-select state after a successful bulk action.
+func finishTaskBulkSelection(state *MultiSelectState, statusMsg *string, msg string) {
+	if state == nil || statusMsg == nil {
+		return
+	}
+	state.FinishBulk(statusMsg, msg)
 }
 
 // taskOpsApplyBulk runs a bulk operation with per-project workflow pipeline.
@@ -48,10 +120,7 @@ func taskOpsApplyBulk(
 
 	for _, group := range byProject {
 		project := group.Project
-		taskIDs := make([]string, 0, len(group.Items))
-		for _, item := range group.Items {
-			taskIDs = append(taskIDs, item.Task.ID)
-		}
+		taskIDs := taskIDsFromTaskRefs(group.Items)
 
 		for _, item := range group.Items {
 			if mutate(project, item.Task.ID) {

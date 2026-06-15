@@ -14,16 +14,7 @@ func (m *AppModel) handleCommandPaletteBulkAction(msg CommandPaletteBulkActionMs
 		return true, nil
 	}
 
-	// Group tasks by project for efficient saving
-	projectTasks := make(map[string][]struct {
-		Task    *models.Task
-		Project *models.Project
-	})
-	for _, item := range msg.Tasks {
-		if item.Task != nil && item.Project != nil {
-			projectTasks[item.Project.ID] = append(projectTasks[item.Project.ID], item)
-		}
-	}
+	projectGroups := groupTaskProjectRefsByProject(msg.Tasks)
 
 	// Map action name to target status
 	var targetStatus models.TaskStatus
@@ -42,19 +33,19 @@ func (m *AppModel) handleCommandPaletteBulkAction(msg CommandPaletteBulkActionMs
 	// so skipped tasks neither inflate the count nor have their UpdatedAt bumped.
 	count := 0
 	var projects []*models.Project
-	for _, items := range projectTasks {
-		for _, item := range items {
-			task := item.Project.GetTaskByID(item.Task.ID)
+	for _, group := range projectGroups {
+		for _, item := range group.Items {
+			task := group.Project.GetTaskByID(item.Task.ID)
 			if task == nil || task.CanTransitionTo(targetStatus) != "" {
 				continue
 			}
-			item.Project.MutateTask(item.Task.ID, func(t *models.Task) {
+			group.Project.MutateTask(item.Task.ID, func(t *models.Task) {
 				t.ApplyTransition(targetStatus)
 			})
 			count++
 		}
-		if len(items) > 0 {
-			projects = append(projects, items[0].Project)
+		if len(group.Items) > 0 {
+			projects = append(projects, group.Project)
 		}
 	}
 

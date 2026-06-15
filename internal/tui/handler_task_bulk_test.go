@@ -41,10 +41,7 @@ func TestCommandPaletteBulkActionSkipsInvalidTransitions(t *testing.T) {
 
 	msg := CommandPaletteBulkActionMsg{
 		Action: "complete",
-		Tasks: []struct {
-			Task    *models.Task
-			Project *models.Project
-		}{
+		Tasks: []TaskProjectRef{
 			{Task: todoTask, Project: project},
 			{Task: doneTask, Project: project},
 		},

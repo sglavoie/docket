@@ -216,13 +216,6 @@ func buildTagCmdFromProject(project *models.Project, selected map[string]bool, s
 	}
 }
 
-func buildTagCmdFromProjects(projects []*models.Project, selected map[string]bool, source ViewType, title string, excludeCompleted bool) tea.Cmd {
-	tags := BuildProjectsTagList(projects, excludeCompleted)
-	return func() tea.Msg {
-		return ShowTagFilterMsg{Tags: tags, Selected: selected, Source: source, Title: title}
-	}
-}
-
 func buildTagCmdFromProjectTasks(projects []*models.Project, tasks []*models.Task, selected map[string]bool, source ViewType, title string, excludeCompleted bool) tea.Cmd {
 	tags := BuildCatalogTagList(projects, tasks, excludeCompleted)
 	return func() tea.Msg {

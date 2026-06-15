@@ -49,6 +49,14 @@ func (m *OutlinerModel) handlePriorityPrefixOutliner(key string) (tea.Model, tea
 
 // handleDueDatePrefixOutliner handles the d prefix key for setting due dates.
 func (m *OutlinerModel) handleDueDatePrefixOutliner(key string) (tea.Model, tea.Cmd) {
+	if refs := m.getSelectedTaskProjectRefs(); len(refs) > 0 {
+		if key == "d" {
+			return m, func() tea.Msg { return SetDueDateMsg{TaskRefs: refs} }
+		}
+		if days, isClear, ok := DueDateDaysForPrefixKey(key); ok && m.project == nil {
+			return m.crossApplyBulkDueDate(refs, days, isClear)
+		}
+	}
 	if m.project == nil {
 		if cmd, ok := m.crossHandleDueDateMutation(key); ok {
 			return m, cmd
@@ -63,6 +71,14 @@ func (m *OutlinerModel) handleDueDatePrefixOutliner(key string) (tea.Model, tea.
 
 // handleSnoozePrefixOutliner handles the s prefix key for snoozing tasks.
 func (m *OutlinerModel) handleSnoozePrefixOutliner(key string) (tea.Model, tea.Cmd) {
+	if refs := m.getSelectedTaskProjectRefs(); len(refs) > 0 {
+		if key == "d" {
+			return m, func() tea.Msg { return SetSnoozeDateMsg{TaskRefs: refs} }
+		}
+		if snoozeDate, desc, ok := resolveQuickSnoozeDate(key); ok && m.project == nil {
+			return m.crossApplyBulkSnooze(refs, snoozeDate, desc)
+		}
+	}
 	if m.project == nil {
 		if cmd, ok := m.crossHandleSnoozeMutation(key); ok {
 			return m, cmd

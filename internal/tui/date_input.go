@@ -23,6 +23,7 @@ type DateInputModel struct {
 	canceled     bool
 	initialValue string
 	weekEndDay   string
+	deferApply   bool
 	discardConfirmState
 }
 
@@ -100,6 +101,9 @@ func (m *DateInputModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			// Handle "none" or empty to clear due date
 			if value == "" || strings.ToLower(value) == "none" || strings.ToLower(value) == "clear" {
+				if m.deferApply {
+					return m, dueDateChangedCmd(m.task, m.project, nil, false, true)
+				}
 				if !m.project.MutateTask(m.task.ID, func(t *models.Task) {
 					t.DueDate = nil
 					t.HasTime = false
@@ -117,6 +121,9 @@ func (m *DateInputModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 			}
 
+			if m.deferApply {
+				return m, dueDateChangedCmd(m.task, m.project, &date, hasTime, true)
+			}
 			if !m.project.MutateTask(m.task.ID, func(t *models.Task) {
 				t.DueDate = &date
 				t.HasTime = hasTime
@@ -136,12 +143,32 @@ func (m *DateInputModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m *DateInputModel) saveAndReturn() tea.Cmd {
 	project := m.project
 	task := m.task
+	dueDate := task.DueDate
+	hasTime := task.HasTime
+	explicit := true
 	return func() tea.Msg {
 		// Save project with backup for undo support
 		if err := saveProjectSync(project); err != nil {
 			return ErrorMsg{Err: fmt.Errorf("failed to save project: %w", err)}
 		}
-		return DueDateChangedMsg{Task: task}
+		return DueDateChangedMsg{Task: task, Project: project, DueDate: dueDate, HasTime: hasTime, HasExplicitValue: explicit}
+	}
+}
+
+func dueDateChangedCmd(task *models.Task, project *models.Project, dueDate *time.Time, hasTime, explicit bool) tea.Cmd {
+	var dueDateCopy *time.Time
+	if dueDate != nil {
+		d := *dueDate
+		dueDateCopy = &d
+	}
+	return func() tea.Msg {
+		return DueDateChangedMsg{
+			Task:             task,
+			Project:          project,
+			DueDate:          dueDateCopy,
+			HasTime:          hasTime,
+			HasExplicitValue: explicit,
+		}
 	}
 }
 
@@ -207,7 +234,11 @@ func (m *DateInputModel) IsFullHeight() bool { return false }
 
 // DueDateChangedMsg is sent when a due date is changed.
 type DueDateChangedMsg struct {
-	Task *models.Task
+	Task             *models.Task
+	Project          *models.Project
+	DueDate          *time.Time
+	HasTime          bool
+	HasExplicitValue bool
 }
 
 // ParseDate parses a natural language date string into a time.Time.

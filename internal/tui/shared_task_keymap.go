@@ -24,6 +24,9 @@ type TaskKeymapDeps struct {
 	Stages []string
 	// ToggleHelp opens the help panel; view-specific (needs viewID/viewName).
 	ToggleHelp keymap.Action
+	// SelectedTaskRefs returns the active multi-selection as task/project refs.
+	// nil = this view does not expose task multi-select to shared actions.
+	SelectedTaskRefs func() []TaskProjectRef
 
 	// DeleteTask shows a confirmation dialog before deletion.
 	// nil = call taskOpsDeleteTask directly (no dialog).
@@ -53,14 +56,17 @@ type TaskKeymapDeps struct {
 	StageChange    func(stage string) keymap.Action
 	MarkDone       keymap.Action
 	ToggleActive   keymap.Action
+	TogglePin      keymap.Action
+	ToggleDim      keymap.Action
 }
 
 // buildStandardTaskActionEntries returns the standard task-action keymap entries
 // for the groups: Status, Priority, DueDate, Snooze, Move, LinkedTask, TaskPrefix,
 // Stage, Blocker, and CommonTaskAction — wired through taskOps* helpers.
 //
-// Each prefix group is gated on deps.HasItem. The caller appends the returned
-// entries alongside view-specific navigation, filter, and sort groups.
+// Each prefix group is gated on deps.HasItem or an active selected-task target.
+// The caller appends the returned entries alongside view-specific navigation,
+// filter, and sort groups.
 func buildStandardTaskActionEntries(deps TaskKeymapDeps) []keymap.Entry {
 	builders := []func(TaskKeymapDeps) []keymap.Entry{
 		buildStandardStatusEntries,
@@ -88,17 +94,16 @@ func buildStandardStatusEntries(deps TaskKeymapDeps) []keymap.Entry {
 		HasRecurrence:  deps.HasRecurrence,
 		SkipRecurrence: deps.SkipRecurrence,
 		DeferChildren:  deps.DeferChildren,
-	}), deps.HasItem)
+	}), taskActionTargetGate(deps))
 }
 
 func buildStandardPriorityEntries(deps TaskKeymapDeps) []keymap.Entry {
 	return gatePrefixEntries(keymap.PriorityGroup(keymap.PriorityDeps{
 		ChangePriority: buildPriorityChangeAction(deps),
-	}), deps.HasItem)
+	}), taskActionTargetGate(deps))
 }
 
 func buildStandardDueDateEntries(deps TaskKeymapDeps) []keymap.Entry {
-	v := deps.View
 	setDueDate := buildDueDateSetAction(deps)
 	return gatePrefixEntries(keymap.DueDateGroup(keymap.DueDateDeps{
 		DueToday:     setDueDate(0),
@@ -106,14 +111,15 @@ func buildStandardDueDateEntries(deps TaskKeymapDeps) []keymap.Entry {
 		DueInAWeek:   setDueDate(7),
 		DueInAMonth:  setDueDate(30),
 		ClearDueDate: buildDueDateClearAction(deps),
-		OpenDatePicker: taskRefMsgAction(v, false, func(task *models.Task, project *models.Project) tea.Msg {
+		OpenDatePicker: taskRefsOrRefMsgAction(deps, func(refs []TaskProjectRef) tea.Msg {
+			return SetDueDateMsg{TaskRefs: refs}
+		}, false, func(task *models.Task, project *models.Project) tea.Msg {
 			return SetDueDateMsg{Task: task, Project: project}
 		}),
-	}), deps.HasItem)
+	}), taskActionTargetGate(deps))
 }
 
 func buildStandardSnoozeEntries(deps TaskKeymapDeps) []keymap.Entry {
-	v := deps.View
 	snoozeDate := buildSnoozeDateAction(deps)
 	return gatePrefixEntries(keymap.SnoozeGroup(keymap.SnoozeDeps{
 		SnoozeTomorrow:   snoozeDate("t"),
@@ -121,10 +127,12 @@ func buildStandardSnoozeEntries(deps TaskKeymapDeps) []keymap.Entry {
 		SnoozeOneMonth:   snoozeDate("m"),
 		SnoozeNextMonday: snoozeDate("n"),
 		ClearSnooze:      snoozeDate("0"),
-		OpenDatePicker: taskRefMsgAction(v, false, func(task *models.Task, project *models.Project) tea.Msg {
+		OpenDatePicker: taskRefsOrRefMsgAction(deps, func(refs []TaskProjectRef) tea.Msg {
+			return SetSnoozeDateMsg{TaskRefs: refs}
+		}, false, func(task *models.Task, project *models.Project) tea.Msg {
 			return SetSnoozeDateMsg{Task: task, Project: project}
 		}),
-	}), deps.HasItem)
+	}), taskActionTargetGate(deps))
 }
 
 func buildStandardMoveEntries(deps TaskKeymapDeps) []keymap.Entry {
@@ -133,7 +141,7 @@ func buildStandardMoveEntries(deps TaskKeymapDeps) []keymap.Entry {
 		MoveToSection: buildSectionMoveAction(deps),
 		MoveToTop:     func() (tea.Model, tea.Cmd) { return v, nil },
 		MoveToBottom:  func() (tea.Model, tea.Cmd) { return v, nil },
-	}), deps.HasItem)
+	}), taskActionTargetGate(deps))
 }
 
 func buildStandardLinkedEntries(deps TaskKeymapDeps) []keymap.Entry {
@@ -156,7 +164,7 @@ func buildStandardLinkedEntries(deps TaskKeymapDeps) []keymap.Entry {
 		}),
 		CrossProjectLink: deps.LinkedCrossProject,
 		UnlinkTask:       deps.LinkedUnlink,
-	}), deps.HasItem)
+	}), taskActionTargetGate(deps))
 }
 
 func buildStandardTaskPrefixEntries(deps TaskKeymapDeps) []keymap.Entry {
@@ -171,15 +179,13 @@ func buildStandardTaskPrefixEntries(deps TaskKeymapDeps) []keymap.Entry {
 		RenameTask: taskRefMsgAction(v, false, func(task *models.Task, project *models.Project) tea.Msg {
 			return EditTaskMsg{Task: task, Project: project}
 		}),
-		ChangeSection: taskRefMsgAction(v, false, func(task *models.Task, project *models.Project) tea.Msg {
-			return ShowSectionPickerMsg{Task: task, Project: project}
-		}),
+		ChangeSection: buildSectionPickerAction(deps),
 		OpenEditor: taskRefMsgAction(v, false, func(task *models.Task, project *models.Project) tea.Msg {
 			return EditTaskContentMsg{Task: task, Project: project}
 		}),
-		TogglePin:  func() (tea.Model, tea.Cmd) { return taskOpsTogglePinned(v) },
-		ToggleDim:  func() (tea.Model, tea.Cmd) { return taskOpsToggleDimmed(v) },
-		ManageTags: buildManageTagsAction(v),
+		TogglePin:  buildTogglePinAction(deps),
+		ToggleDim:  buildToggleDimAction(deps),
+		ManageTags: buildManageTagsAction(deps),
 		ViewComments: taskRefMsgAction(v, false, func(task *models.Task, project *models.Project) tea.Msg {
 			return ShowTaskCommentsMsg{Task: task, Project: project}
 		}),
@@ -199,14 +205,14 @@ func buildStandardTaskPrefixEntries(deps TaskKeymapDeps) []keymap.Entry {
 			return ShowTaskDecisionsMsg{Task: task, Project: project}
 		}),
 		DeleteTask: buildDeleteTaskAction(deps),
-	}), deps.HasItem)
+	}), taskActionTargetGate(deps))
 }
 
 func buildStandardStageEntries(deps TaskKeymapDeps) []keymap.Entry {
 	return gatePrefixEntries(keymap.StageGroup(keymap.StageDeps{
 		Stages:      deps.Stages,
 		ChangeStage: buildStageChangeAction(deps),
-	}), deps.HasItem)
+	}), taskActionTargetGate(deps))
 }
 
 func buildStandardBlockerEntries(deps TaskKeymapDeps) []keymap.Entry {
@@ -218,7 +224,7 @@ func buildStandardBlockerEntries(deps TaskKeymapDeps) []keymap.Entry {
 		ManageDependencies: taskRefMsgAction(v, false, func(task *models.Task, project *models.Project) tea.Msg {
 			return ManageDependenciesMsg{Task: task, Project: project}
 		}),
-	}), deps.HasItem)
+	}), taskActionTargetGate(deps))
 }
 
 func buildStandardCommonActionEntries(deps TaskKeymapDeps) []keymap.Entry {
@@ -227,7 +233,9 @@ func buildStandardCommonActionEntries(deps TaskKeymapDeps) []keymap.Entry {
 		ViewTask: taskRefMsgAction(v, true, func(task *models.Task, project *models.Project) tea.Msg {
 			return ShowTaskDetailMsg{Task: task, Project: project}
 		}),
-		SnoozeDatePicker: taskRefMsgAction(v, false, func(task *models.Task, project *models.Project) tea.Msg {
+		SnoozeDatePicker: taskRefsOrRefMsgAction(deps, func(refs []TaskProjectRef) tea.Msg {
+			return SetSnoozeDateMsg{TaskRefs: refs}
+		}, false, func(task *models.Task, project *models.Project) tea.Msg {
 			return SetSnoozeDateMsg{Task: task, Project: project}
 		}),
 		MarkDone: buildMarkDoneAction(deps),
@@ -243,6 +251,15 @@ func buildStandardCommonActionEntries(deps TaskKeymapDeps) []keymap.Entry {
 		MoveToProject: deps.MoveToProject,
 		QuickNote:     deps.QuickNote,
 	})
+}
+
+func taskActionTargetGate(deps TaskKeymapDeps) func() bool {
+	return func() bool {
+		if deps.HasItem != nil && deps.HasItem() {
+			return true
+		}
+		return len(selectedTaskRefs(deps)) > 0
+	}
 }
 
 func gatePrefixEntries(entries []keymap.Entry, gate func() bool) []keymap.Entry {
@@ -341,6 +358,20 @@ func buildToggleActiveAction(deps TaskKeymapDeps) keymap.Action {
 	return func() (tea.Model, tea.Cmd) { return taskOpsToggleActive(deps.View) }
 }
 
+func buildTogglePinAction(deps TaskKeymapDeps) keymap.Action {
+	if deps.TogglePin != nil {
+		return deps.TogglePin
+	}
+	return func() (tea.Model, tea.Cmd) { return taskOpsTogglePinned(deps.View) }
+}
+
+func buildToggleDimAction(deps TaskKeymapDeps) keymap.Action {
+	if deps.ToggleDim != nil {
+		return deps.ToggleDim
+	}
+	return func() (tea.Model, tea.Cmd) { return taskOpsToggleDimmed(deps.View) }
+}
+
 func taskRefAction(
 	v taskOpsView,
 	requireProject bool,
@@ -361,11 +392,73 @@ func taskRefMsgAction(v taskOpsView, requireProject bool, msg func(task *models.
 	})
 }
 
-func buildManageTagsAction(v taskOpsView) keymap.Action {
-	return taskRefAction(v, false, func(task *models.Task, project *models.Project) (tea.Model, tea.Cmd) {
-		tags := append([]string{}, task.Tags...)
-		return v, func() tea.Msg {
-			return ShowTagSelectorMsg{Task: task, Project: project, CurrentTags: tags}
+func taskRefsOrRefMsgAction(
+	deps TaskKeymapDeps,
+	bulkMsg func(refs []TaskProjectRef) tea.Msg,
+	requireProject bool,
+	singleMsg func(task *models.Task, project *models.Project) tea.Msg,
+) keymap.Action {
+	return func() (tea.Model, tea.Cmd) {
+		if refs := selectedTaskRefs(deps); len(refs) > 0 {
+			return deps.View, func() tea.Msg { return bulkMsg(refs) }
 		}
-	})
+		return taskRefMsgAction(deps.View, requireProject, singleMsg)()
+	}
+}
+
+func selectedTaskRefs(deps TaskKeymapDeps) []TaskProjectRef {
+	if deps.SelectedTaskRefs == nil {
+		return nil
+	}
+	return validTaskProjectRefs(deps.SelectedTaskRefs())
+}
+
+func buildSectionPickerAction(deps TaskKeymapDeps) keymap.Action {
+	v := deps.View
+	return func() (tea.Model, tea.Cmd) {
+		if refs := selectedTaskRefs(deps); len(refs) > 0 {
+			project, tasks, ok := sameProjectTaskRefs(refs)
+			if !ok {
+				v.setStatus("bulk section move not supported across projects")
+				return v, nil
+			}
+			return v, func() tea.Msg {
+				return ShowBulkSectionPickerMsg{Tasks: tasks, Project: project}
+			}
+		}
+		return taskRefMsgAction(v, false, func(task *models.Task, project *models.Project) tea.Msg {
+			return ShowSectionPickerMsg{Task: task, Project: project}
+		})()
+	}
+}
+
+func sameProjectTaskRefs(refs []TaskProjectRef) (*models.Project, []*models.Task, bool) {
+	refs = validTaskProjectRefs(refs)
+	if len(refs) == 0 {
+		return nil, nil, false
+	}
+	project := refs[0].Project
+	tasks := make([]*models.Task, 0, len(refs))
+	for _, ref := range refs {
+		if ref.Project == nil || project == nil || ref.Project.ID != project.ID {
+			return nil, nil, false
+		}
+		tasks = append(tasks, ref.Task)
+	}
+	return project, tasks, true
+}
+
+func buildManageTagsAction(deps TaskKeymapDeps) keymap.Action {
+	v := deps.View
+	return func() (tea.Model, tea.Cmd) {
+		if refs := selectedTaskRefs(deps); len(refs) > 0 {
+			return v, func() tea.Msg { return ShowBulkTagSelectorMsg{TaskRefs: refs} }
+		}
+		return taskRefAction(v, false, func(task *models.Task, project *models.Project) (tea.Model, tea.Cmd) {
+			tags := append([]string{}, task.Tags...)
+			return v, func() tea.Msg {
+				return ShowTagSelectorMsg{Task: task, Project: project, CurrentTags: tags}
+			}
+		})()
+	}
 }

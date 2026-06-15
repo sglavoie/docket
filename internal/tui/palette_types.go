@@ -324,10 +324,7 @@ type CommandPaletteTaskActionMsg struct {
 // CommandPaletteBulkActionMsg is sent when a bulk action is performed on multiple selected tasks.
 type CommandPaletteBulkActionMsg struct {
 	Action string // "complete", "start"
-	Tasks  []struct {
-		Task    *models.Task
-		Project *models.Project
-	}
+	Tasks  []TaskProjectRef
 }
 
 // CommandPaletteClearSelectionMsg is sent to clear the multi-select state.
@@ -355,10 +352,7 @@ type ExecuteSavedSearchMsg struct {
 }
 
 // PaletteBulkTaskItem represents a task and its project for bulk operations from the palette.
-type PaletteBulkTaskItem struct {
-	Task    *models.Task
-	Project *models.Project
-}
+type PaletteBulkTaskItem = TaskProjectRef
 
 // PaletteBulkPriorityMsg is sent to set priority for multiple tasks from the palette.
 type PaletteBulkPriorityMsg struct {

@@ -139,7 +139,7 @@ func handleTaskActionPrefixKey(key string, task *models.Task, project *models.Pr
 	case "t":
 		if tasks := multiTasks(); len(tasks) > 0 {
 			return true, func() tea.Msg {
-				return ShowBulkTagSelectorMsg{Tasks: tasks, Project: project}
+				return ShowBulkTagSelectorMsg{TaskRefs: taskProjectRefsFromTasks(tasks, project)}
 			}
 		}
 		if task != nil {

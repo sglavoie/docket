@@ -31,7 +31,7 @@ func listArchiveFiles(projectPath string) ([]archiveFileRef, error) {
 	mainPath := filepath.Join(projectPath, archiveFileName)
 	if _, err := os.Stat(mainPath); err == nil {
 		files = append(files, archiveFileRef{fileName: archiveFileName, path: mainPath, order: -1})
-	} else if err != nil && !os.IsNotExist(err) {
+	} else if !os.IsNotExist(err) {
 		return nil, fmt.Errorf("failed to stat archive file: %w", err)
 	}
 
@@ -86,7 +86,7 @@ func LoadArchivedTaskSummaries(project *models.Project) ([]ArchiveTaskSummary, e
 	index, rebuildErr := rebuildArchiveIndex(project)
 	if rebuildErr != nil {
 		if err != nil {
-			return nil, fmt.Errorf("failed to load archive index: %v; rebuild failed: %w", err, rebuildErr)
+			return nil, fmt.Errorf("failed to load archive index: %w; rebuild failed: %w", err, rebuildErr)
 		}
 		return nil, rebuildErr
 	}
@@ -171,17 +171,17 @@ func rebuildArchiveIndex(project *models.Project) (*ArchiveIndex, error) {
 	}
 
 	for _, archiveFile := range archiveFiles {
-		source, err := archiveIndexSource(archiveFile)
-		if err != nil {
-			if os.IsNotExist(err) {
+		source, sourceErr := archiveIndexSource(archiveFile)
+		if sourceErr != nil {
+			if os.IsNotExist(sourceErr) {
 				continue
 			}
-			return nil, err
+			return nil, sourceErr
 		}
 
-		tasks, headingLines, err := parseArchiveFileWithHeadingLines(archiveFile.path)
-		if err != nil {
-			logging.Warn("skipping corrupt archive %s while rebuilding index: %v", archiveFile.path, err)
+		tasks, headingLines, parseErr := parseArchiveFileWithHeadingLines(archiveFile.path)
+		if parseErr != nil {
+			logging.Warn("skipping corrupt archive %s while rebuilding index: %v", archiveFile.path, parseErr)
 			index.Sources = append(index.Sources, source)
 			continue
 		}
@@ -197,8 +197,8 @@ func rebuildArchiveIndex(project *models.Project) (*ArchiveIndex, error) {
 		}
 	}
 
-	if err := os.MkdirAll(project.Path, DirPermissions); err != nil {
-		return nil, fmt.Errorf("failed to create project directory: %w", err)
+	if mkdirErr := os.MkdirAll(project.Path, DirPermissions); mkdirErr != nil {
+		return nil, fmt.Errorf("failed to create project directory: %w", mkdirErr)
 	}
 
 	payload, err := json.MarshalIndent(index, "", "  ")
@@ -367,7 +367,7 @@ func FindArchivedTask(project *models.Project, idOrPrefix string) (*models.Task,
 	// The stat-based index can race with external archive edits. Rebuild once
 	// and retry before surfacing the lookup miss.
 	if rebuildErr := RebuildArchiveIndex(project); rebuildErr != nil {
-		return nil, fmt.Errorf("archived task source lookup failed: %w; rebuild failed: %v", err, rebuildErr)
+		return nil, fmt.Errorf("archived task source lookup failed: %w; rebuild failed: %w", err, rebuildErr)
 	}
 	summaries, err = LoadArchivedTaskSummaries(project)
 	if err != nil {

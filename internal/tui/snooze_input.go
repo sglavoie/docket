@@ -3,6 +3,7 @@ package tui
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
@@ -20,6 +21,7 @@ type SnoozeInputModel struct {
 	width        int
 	height       int
 	initialValue string
+	deferApply   bool
 	discardConfirmState
 }
 
@@ -86,6 +88,9 @@ func (m *SnoozeInputModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			// Handle "none" or empty to clear snooze
 			if value == "" || strings.ToLower(value) == "none" || strings.ToLower(value) == "clear" {
+				if m.deferApply {
+					return m, snoozeDateChangedCmd(m.task, m.project, nil, true)
+				}
 				if !m.project.MutateTask(m.task.ID, func(t *models.Task) {
 					t.SnoozedUntil = nil
 				}) {
@@ -102,6 +107,9 @@ func (m *SnoozeInputModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 			}
 
+			if m.deferApply {
+				return m, snoozeDateChangedCmd(m.task, m.project, &date, true)
+			}
 			if !m.project.MutateTask(m.task.ID, func(t *models.Task) {
 				t.SnoozedUntil = &date
 			}) {
@@ -120,11 +128,28 @@ func (m *SnoozeInputModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m *SnoozeInputModel) saveAndReturn() tea.Cmd {
 	project := m.project
 	task := m.task
+	snoozedUntil := task.SnoozedUntil
 	return func() tea.Msg {
 		if err := saveProjectSync(project); err != nil {
 			return ErrorMsg{Err: fmt.Errorf("failed to save project: %w", err)}
 		}
-		return SnoozeDateChangedMsg{Task: task}
+		return SnoozeDateChangedMsg{Task: task, Project: project, SnoozedUntil: snoozedUntil, HasExplicitValue: true}
+	}
+}
+
+func snoozeDateChangedCmd(task *models.Task, project *models.Project, snoozedUntil *time.Time, explicit bool) tea.Cmd {
+	var snoozeCopy *time.Time
+	if snoozedUntil != nil {
+		d := *snoozedUntil
+		snoozeCopy = &d
+	}
+	return func() tea.Msg {
+		return SnoozeDateChangedMsg{
+			Task:             task,
+			Project:          project,
+			SnoozedUntil:     snoozeCopy,
+			HasExplicitValue: explicit,
+		}
 	}
 }
 
@@ -184,7 +209,10 @@ func (m *SnoozeInputModel) IsFullHeight() bool { return false }
 
 // SnoozeDateChangedMsg is sent when a snooze date is changed.
 type SnoozeDateChangedMsg struct {
-	Task *models.Task
+	Task             *models.Task
+	Project          *models.Project
+	SnoozedUntil     *time.Time
+	HasExplicitValue bool
 }
 
 func (m *SnoozeInputModel) StatusBarLabel() string { return "Snooze" }

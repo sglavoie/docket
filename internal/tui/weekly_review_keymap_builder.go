@@ -133,28 +133,36 @@ func (m *WeeklyReviewModel) weeklyReviewTogglePreviewAction() (tea.Model, tea.Cm
 
 func weeklyReviewTaskActionDeps(m *WeeklyReviewModel, stages []string) TaskKeymapDeps {
 	return TaskKeymapDeps{
-		View:           m,
-		HasItem:        m.weeklyReviewHasItem,
-		Stages:         stages,
-		ToggleHelp:     m.weeklyReviewToggleHelpAction,
-		DeleteTask:     m.weeklyReviewDeleteTaskAction,
-		OpenURL:        m.weeklyReviewOpenURLAction,
-		MoveToProject:  m.weeklyReviewMoveToProjectAction,
-		QuickNote:      m.weeklyReviewQuickNoteAction,
-		StatusChange:   m.weeklyReviewStatusChangeAction,
-		PriorityChange: m.weeklyReviewPriorityChangeAction,
-		DueDateSet:     m.weeklyReviewDueDateSetAction,
-		DueDateClear:   m.weeklyReviewDueDateClearAction,
-		SnoozeDate:     m.weeklyReviewSnoozeDateAction,
-		SectionMove:    m.weeklyReviewSectionMoveAction,
-		StageChange:    m.weeklyReviewStageChangeAction,
-		MarkDone:       m.weeklyReviewMarkDoneAction,
-		ToggleActive:   m.weeklyReviewToggleActiveAction,
+		View:             m,
+		HasItem:          m.weeklyReviewHasItem,
+		Stages:           stages,
+		ToggleHelp:       m.weeklyReviewToggleHelpAction,
+		SelectedTaskRefs: m.weeklyReviewSelectedTaskRefs,
+		DeleteTask:       m.weeklyReviewDeleteTaskAction,
+		OpenURL:          m.weeklyReviewOpenURLAction,
+		MoveToProject:    m.weeklyReviewMoveToProjectAction,
+		QuickNote:        m.weeklyReviewQuickNoteAction,
+		StatusChange:     m.weeklyReviewStatusChangeAction,
+		PriorityChange:   m.weeklyReviewPriorityChangeAction,
+		DueDateSet:       m.weeklyReviewDueDateSetAction,
+		DueDateClear:     m.weeklyReviewDueDateClearAction,
+		SnoozeDate:       m.weeklyReviewSnoozeDateAction,
+		SectionMove:      m.weeklyReviewSectionMoveAction,
+		StageChange:      m.weeklyReviewStageChangeAction,
+		MarkDone:         m.weeklyReviewMarkDoneAction,
+		ToggleActive:     m.weeklyReviewToggleActiveAction,
 	}
 }
 
 func (m *WeeklyReviewModel) weeklyReviewHasItem() bool {
 	return m.getTaskAtCursor() != nil
+}
+
+func (m *WeeklyReviewModel) weeklyReviewSelectedTaskRefs() []TaskProjectRef {
+	if !m.hasBulkSelection() {
+		return nil
+	}
+	return m.getSelectedBulkItems()
 }
 
 func (m *WeeklyReviewModel) weeklyReviewToggleHelpAction() (tea.Model, tea.Cmd) {

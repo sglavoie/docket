@@ -109,6 +109,34 @@ func (m *OutlinerModel) getSelectedTasks() []*models.Task {
 	return tasks
 }
 
+// getSelectedTaskProjectRefs returns selected task refs with their owning
+// projects. Same-project views use the loaded project; cross-project views
+// resolve each visible selected row to its row project.
+func (m *OutlinerModel) getSelectedTaskProjectRefs() []TaskProjectRef {
+	if !m.multiSelectMode || len(m.selectedTasks) == 0 {
+		return nil
+	}
+	if m.project != nil {
+		return taskProjectRefsFromTasks(m.getSelectedTasks(), m.project)
+	}
+
+	refs := make([]TaskProjectRef, 0, len(m.selectedTasks))
+	for _, row := range m.rows {
+		if row.IsSectionHeader || row.IsSeparator || row.task == nil {
+			continue
+		}
+		if !m.selectedTasks[row.task.ID] {
+			continue
+		}
+		project := m.crossResolveProject(row.ProjectID)
+		if project == nil {
+			continue
+		}
+		refs = append(refs, TaskProjectRef{Task: row.task, Project: project})
+	}
+	return refs
+}
+
 // clearMultiSelect exits multi-select mode and clears all selections.
 func (m *OutlinerModel) clearMultiSelect() {
 	m.ExitMultiSelect()

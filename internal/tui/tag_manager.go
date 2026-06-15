@@ -218,7 +218,7 @@ func (m *TagManagerModel) Init() tea.Cmd {
 }
 
 // Update handles messages.
-func (m *TagManagerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m *TagManagerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) { //nolint:gocyclo
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.SetSize(msg.Width, msg.Height)

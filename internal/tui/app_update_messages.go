@@ -191,56 +191,94 @@ func (m *AppModel) handleSaveComplete(msg SaveCompleteMsg) tea.Cmd {
 	m.isLoading = false
 	m.loadingMessage = ""
 	m.setSuccessStatus(msg.SuccessMessage)
+	saveCmds := m.refreshTaskViewsAfterSave()
+	saveCmds = append(saveCmds, defaultStatusTimeout())
+	return tea.Batch(saveCmds...)
+}
+
+func (m *AppModel) refreshTaskViewsAfterSave() []tea.Cmd {
 	m.invalidateFilterCaches()
 	m.openLoops = ComputeOpenLoops(m.config, m.dailyPlanIDs)
+	m.refreshNotesSearchState()
 	m.refreshProjectTree()
 	if m.allTasksView != nil {
 		m.allTasksView.loadAllTasks()
+		m.allTasksView.clampCursor()
 	}
-	if m.outliner != nil {
+	if m.outliner != nil && m.outliner.project != nil {
 		if err := storage.LoadProject(m.outliner.project); err != nil {
 			logging.Warn("failed to load project %s: %v", m.outliner.project.Name, err)
 		}
 		m.outliner.rebuildRows()
+		m.outliner.clampCursor()
 	}
 	var saveCmds []tea.Cmd
-	saveCmds = append(saveCmds, defaultStatusTimeout())
 	if m.crossOutliner != nil {
 		saveCmds = append(saveCmds, m.crossOutliner.reloadCrossProjects())
 	}
-	if v := m.views.Get(ViewFocusView); v != nil {
-		if fv, ok := v.(*FocusViewModel); ok {
-			fv.loadTasks()
+	if m.views != nil {
+		if v := m.views.Get(ViewPriorityView); v != nil {
+			if pv, ok := v.(*PriorityViewModel); ok {
+				pv.reloadData()
+				pv.clampCursor()
+			}
 		}
-	}
-	if v := m.views.Get(ViewFocusBoard); v != nil {
-		if fb, ok := v.(*FocusBoardModel); ok {
-			fb.loadItems()
-			fb.clampCursor()
+		if v := m.views.Get(ViewDueDateOverview); v != nil {
+			if dv, ok := v.(*DueDateOverviewModel); ok {
+				dv.reloadData()
+				dv.clampCursor()
+			}
 		}
-	}
-	if v := m.views.Get(ViewRecentActivity); v != nil {
-		if ra, ok := v.(*RecentActivityModel); ok {
-			ra.loadTasks()
+		if v := m.views.Get(ViewDailyReview); v != nil {
+			if dr, ok := v.(*DailyReviewModel); ok {
+				dr.reloadData()
+				dr.clampCursor()
+			}
+		}
+		if v := m.views.Get(ViewWeeklyReview); v != nil {
+			if wr, ok := v.(*WeeklyReviewModel); ok {
+				wr.reloadData()
+				wr.clampCursor()
+			}
+		}
+		if v := m.views.Get(ViewFocusView); v != nil {
+			if fv, ok := v.(*FocusViewModel); ok {
+				fv.loadTasks()
+				fv.clampCursor()
+			}
+		}
+		if v := m.views.Get(ViewFocusBoard); v != nil {
+			if fb, ok := v.(*FocusBoardModel); ok {
+				fb.loadItems()
+				fb.clampCursor()
+			}
+		}
+		if v := m.views.Get(ViewRecentActivity); v != nil {
+			if ra, ok := v.(*RecentActivityModel); ok {
+				ra.loadTasks()
+			}
+		}
+		for _, vt := range []ViewType{ViewKanban, ViewCrossProjectKanban} {
+			if v := m.views.Get(vt); v != nil {
+				if kb, ok := v.(*KanbanModel); ok {
+					kb.reloadData()
+					kb.clampCursor()
+				}
+			}
 		}
 	}
 	if m.globalInboxProcessor != nil {
 		m.globalInboxProcessor.loadAllInboxTasks()
 	}
-	for _, vt := range []ViewType{ViewKanban, ViewCrossProjectKanban} {
-		if v := m.views.Get(vt); v != nil {
-			if kb, ok := v.(*KanbanModel); ok {
-				kb.reloadData()
-				kb.clampCursor()
-			}
-		}
-	}
-	return tea.Batch(saveCmds...)
+	return saveCmds
 }
 
 func (m *AppModel) refreshNotesSearchState() {
 	if m.globalSearch != nil {
 		m.globalSearch.Rebuild()
+	}
+	if m.views == nil {
+		return
 	}
 	if v := m.views.Get(ViewNotesSearch); v != nil {
 		if ns, ok := v.(*NotesSearchModel); ok {

@@ -8,26 +8,48 @@ func tutorTUITopics() []TutorTopic {
 			Category: "TUI",
 			Content: `# Multi-Select Mode
 
-Press v to toggle multi-select mode. Once active, press Space
-on individual tasks to select or deselect them. Press a to select
-all visible tasks.
+Press v to toggle multi-select mode (V in Kanban). Once active,
+press Space on individual tasks to select or deselect them. Press
+a where available to select all visible tasks.
 
 # Bulk Actions
 
-With tasks selected, use the comma-prefix status bindings to
-apply changes to all selected tasks at once:
+With tasks selected, supported task-field bindings apply to the
+selected tasks instead of only the cursor task:
 
   ,s  Start all selected
   ,d  Complete all selected
   ,b  Block all selected
   ,x  Cancel all selected
+  !1-!5  Set priority
+  dt/dm/dw/dn/d0 or dd  Set, clear, or pick due dates
+  zt/zw/zm/zn/z0 or zd  Set, clear, or pick snooze dates
+  s1-s9/s0  Set or clear stage
+  ts  Move to section
+  tt  Replace tags
 
-Press Esc to exit multi-select mode and clear selections.
+Bulk tags replace each selected task's tag set. Status, priority,
+due date, snooze, stage, and tag updates can span projects in
+cross-project views. Section moves require a single target project;
+cross-project section moves are not supported.
+
+Kanban multi-select applies supported task-field mutations to the
+selected cards. Bulk delete is not supported in Kanban; selected
+cards stay selected when delete is requested.
+
+# Cursor-Only Actions
+
+Detail, edit, create, linked-task, checklist, comment, attachment,
+score, and project-move workflows continue to use the cursor task
+unless a bulk picker or bulk action is explicitly opened.
 
 # Where It Works
 
-Multi-select is available in the outliner, project tree, and
-all-tasks views.`,
+Task multi-select field actions are available in project tree,
+outliner, cross-project outliner, all tasks, focus views, focus
+board, priority, due date, daily/weekly review, and Kanban views.
+
+Press Esc to exit multi-select mode and clear selections.`,
 		},
 		{
 			Title:    "Command Palette",

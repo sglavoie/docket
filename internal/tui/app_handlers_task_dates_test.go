@@ -115,6 +115,82 @@ func TestHandleDueDateChangedBulkSameProjectPersistsAllTasks(t *testing.T) {
 	}
 }
 
+func TestHandleDueDateChangedBulkCrossProjectPersistsAllTasks(t *testing.T) {
+	app := newTestAppModel()
+
+	taskA := newBulkPickerTestTask(t, 1, "alpha due")
+	taskB := newBulkPickerTestTask(t, 1, "beta due")
+	projectA := newBulkPickerTestProject(t, "Alpha Due", taskA)
+	projectB := newBulkPickerTestProject(t, "Beta Due", taskB)
+
+	dueDate := time.Date(2026, 6, 15, 14, 30, 0, 0, time.UTC)
+	taskA.DueDate = &dueDate
+	taskA.HasTime = true
+
+	app.pendingBulkTasks = []PaletteBulkTaskItem{
+		{Task: taskA, Project: projectA},
+		{Task: taskB, Project: projectB},
+	}
+	app.pushView(ViewDateInput)
+
+	handled, cmd := app.handleDueDateChanged(DueDateChangedMsg{Task: taskA, Project: projectA})
+	if !handled {
+		t.Fatal("DueDateChangedMsg should be handled")
+	}
+
+	requireBulkPickerSaveComplete(t, runBulkPickerBatchCmd(t, cmd))
+
+	reloadedA := loadBulkPickerTestProject(t, projectA)
+	reloadedB := loadBulkPickerTestProject(t, projectB)
+	assertTaskDueDate(t, reloadedA.GetTaskByID(taskA.ID), dueDate, true)
+	assertTaskDueDate(t, reloadedB.GetTaskByID(taskB.ID), dueDate, true)
+}
+
+func TestHandleDueDateChangedBulkExplicitValueUsesWorkflowAndClearsSelection(t *testing.T) {
+	app := newTestAppModel()
+	undoDepth := 10
+	app.config.UndoHistoryDepth = &undoDepth
+
+	taskA := newBulkPickerTestTask(t, 1, "alpha explicit due")
+	taskB := newBulkPickerTestTask(t, 1, "beta explicit due")
+	projectA := newBulkPickerTestProject(t, "Alpha Explicit Due", taskA)
+	projectB := newBulkPickerTestProject(t, "Beta Explicit Due", taskB)
+	app.config.Projects = []*models.Project{projectA, projectB}
+
+	app.allTasksView = NewAllTasksViewModel(app.config, app.configManager)
+	app.allTasksView.multiSelectMode = true
+	app.allTasksView.selectedTasks[taskA.ID] = true
+	app.allTasksView.selectedTasks[taskB.ID] = true
+	app.pendingBulkTasks = []PaletteBulkTaskItem{
+		{Task: taskA, Project: projectA},
+		{Task: taskB, Project: projectB},
+	}
+	app.pushView(ViewDateInput)
+
+	dueDate := time.Date(2026, 7, 1, 16, 45, 0, 0, time.UTC)
+	handled, cmd := app.handleDueDateChanged(DueDateChangedMsg{
+		DueDate:          &dueDate,
+		HasTime:          true,
+		HasExplicitValue: true,
+	})
+	if !handled {
+		t.Fatal("DueDateChangedMsg should be handled")
+	}
+	if cmd == nil {
+		t.Fatal("expected status timeout command")
+	}
+
+	reloadedA := loadBulkPickerTestProject(t, projectA)
+	reloadedB := loadBulkPickerTestProject(t, projectB)
+	assertTaskDueDate(t, reloadedA.GetTaskByID(taskA.ID), dueDate, true)
+	assertTaskDueDate(t, reloadedB.GetTaskByID(taskB.ID), dueDate, true)
+	if app.allTasksView.multiSelectMode || app.allTasksView.SelectedCount() != 0 {
+		t.Fatal("bulk due-date completion should clear cached All Tasks multi-select")
+	}
+	assertBulkPickerUndoTaskIDs(t, projectA, []string{taskA.ID})
+	assertBulkPickerUndoTaskIDs(t, projectB, []string{taskB.ID})
+}
+
 func TestHandleTaskMessagesSnoozeDateChanged(t *testing.T) {
 	app := newTestAppModel()
 	app.pushView(ViewSnoozeInput)
@@ -127,5 +203,64 @@ func TestHandleTaskMessagesSnoozeDateChanged(t *testing.T) {
 	}
 	if app.currentView() != ViewDashboard {
 		t.Errorf("currentView should be Dashboard after snooze date changed, got %v", app.currentView())
+	}
+}
+
+func TestHandleSnoozeDateChangedBulkCrossProjectPersistsAllTasks(t *testing.T) {
+	app := newTestAppModel()
+
+	taskA := newBulkPickerTestTask(t, 1, "alpha snooze")
+	taskB := newBulkPickerTestTask(t, 1, "beta snooze")
+	projectA := newBulkPickerTestProject(t, "Alpha Snooze", taskA)
+	projectB := newBulkPickerTestProject(t, "Beta Snooze", taskB)
+
+	snoozeDate := time.Date(2026, 6, 20, 0, 0, 0, 0, time.UTC)
+	taskA.SnoozedUntil = &snoozeDate
+
+	app.pendingBulkTasks = []PaletteBulkTaskItem{
+		{Task: taskA, Project: projectA},
+		{Task: taskB, Project: projectB},
+	}
+	app.pushView(ViewSnoozeInput)
+
+	handled, cmd := app.handleSnoozeDateChanged(SnoozeDateChangedMsg{Task: taskA, Project: projectA})
+	if !handled {
+		t.Fatal("SnoozeDateChangedMsg should be handled")
+	}
+
+	requireBulkPickerSaveComplete(t, runBulkPickerBatchCmd(t, cmd))
+
+	reloadedA := loadBulkPickerTestProject(t, projectA)
+	reloadedB := loadBulkPickerTestProject(t, projectB)
+	assertTaskSnoozedUntil(t, reloadedA.GetTaskByID(taskA.ID), snoozeDate)
+	assertTaskSnoozedUntil(t, reloadedB.GetTaskByID(taskB.ID), snoozeDate)
+}
+
+func assertTaskDueDate(t *testing.T, task *models.Task, want time.Time, wantHasTime bool) {
+	t.Helper()
+	if task == nil {
+		t.Fatal("task not found")
+	}
+	if task.DueDate == nil {
+		t.Fatal("DueDate is nil")
+	}
+	if got, expected := task.DueDate.Format("2006-01-02 15:04"), want.Format("2006-01-02 15:04"); got != expected {
+		t.Fatalf("DueDate = %s, want %s", got, expected)
+	}
+	if task.HasTime != wantHasTime {
+		t.Fatalf("HasTime = %v, want %v", task.HasTime, wantHasTime)
+	}
+}
+
+func assertTaskSnoozedUntil(t *testing.T, task *models.Task, want time.Time) {
+	t.Helper()
+	if task == nil {
+		t.Fatal("task not found")
+	}
+	if task.SnoozedUntil == nil {
+		t.Fatal("SnoozedUntil is nil")
+	}
+	if got, expected := task.SnoozedUntil.Format("2006-01-02"), want.Format("2006-01-02"); got != expected {
+		t.Fatalf("SnoozedUntil = %s, want %s", got, expected)
 	}
 }

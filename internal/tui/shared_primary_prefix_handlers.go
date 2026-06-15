@@ -351,7 +351,7 @@ func handleTagKey(v prefixableView, source ViewType, includeCompleted bool, sele
 
 	if tasks := v.getMultiSelectedTasks(); tasks != nil {
 		return func() tea.Msg {
-			return ShowBulkTagSelectorMsg{Tasks: tasks, Project: project}
+			return ShowBulkTagSelectorMsg{TaskRefs: taskProjectRefsFromTasks(tasks, project)}
 		}, true
 	}
 
