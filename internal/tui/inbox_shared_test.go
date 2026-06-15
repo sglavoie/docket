@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/charmbracelet/x/ansi"
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 )
@@ -279,5 +280,16 @@ func TestRenderInboxCurrentSettingsShowsCustomSection(t *testing.T) {
 	}
 	if strings.Contains(rendered, "(no section)") {
 		t.Fatalf("expected custom section instead of no section placeholder, got %q", rendered)
+	}
+}
+
+func TestRenderInboxOperationsPanelShowsSnoozeZPrefix(t *testing.T) {
+	rendered := ansi.Strip(renderInboxOperationsPanel())
+
+	if !strings.Contains(rendered, "z*: Snooze") {
+		t.Fatalf("expected z* snooze hint in operations panel, got:\n%s", rendered)
+	}
+	if strings.Contains(rendered, "s*: Snooze") {
+		t.Fatalf("expected stale s* snooze hint to be absent, got:\n%s", rendered)
 	}
 }

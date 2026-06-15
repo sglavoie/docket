@@ -122,7 +122,7 @@ func (c *inboxCore) buildKeyMap() *keymap.KeyMap {
 	})
 	entries = append(entries, priorityEntries...)
 
-	// --- Snooze group: "s" prefix ---
+	// --- Snooze group: "z" prefix ---
 	snoozeEntries := keymap.SnoozeGroup(keymap.SnoozeDeps{
 		SnoozeTomorrow: func() (tea.Model, tea.Cmd) {
 			snoozeDate, _, ok := resolveQuickSnoozeDate("t")

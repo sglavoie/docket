@@ -250,7 +250,7 @@ func renderInboxOperationsPanel() string {
 	ops := []struct{ key, desc string }{
 		{"ctrl+s", "Section"}, {"1-5", "Priority"}, {"ctrl+t", "Tags"},
 		{"e", "Edit"}, {"ctrl+w", "Waiting"}, {"D", "Delete"},
-		{"s*", "Snooze"}, {"m*", "Move"}, {"u", "Undo"},
+		{"z*", "Snooze"}, {"m*", "Move"}, {"u", "Undo"},
 	}
 
 	var lines []string
