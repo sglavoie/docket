@@ -4,9 +4,12 @@ import (
 	"math"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"charm.land/bubbles/v2/textinput"
+
+	"github.com/sglavoie/tt/internal/config"
 )
 
 func TestValidateIntInRange(t *testing.T) {
@@ -78,6 +81,79 @@ func TestValidateIntOptionalInRange(t *testing.T) {
 			}
 			if got != tt.wantVal {
 				t.Errorf("value = %d, want %d", got, tt.wantVal)
+			}
+		})
+	}
+}
+
+func TestValidateFocusedField_SectionLimitReview(t *testing.T) {
+	m := NewSettingsModel(config.NewConfig(), nil)
+	m.focusIndex = subTabFieldStart(tabBehavior, 5) + 6
+	m.sectionLimitReviewInput.SetValue("6a")
+
+	m.validateFocusedField()
+
+	if got, want := m.validationErr, "Review limit must be a number"; got != want {
+		t.Fatalf("validationErr = %q, want %q", got, want)
+	}
+
+	rendered := m.renderBehaviorSectionLimitsSection()
+	if !strings.Contains(rendered, "Review limit must be a number") {
+		t.Fatalf("rendered section limits missing Review validation error:\n%s", rendered)
+	}
+}
+
+func TestValidateFocusedField_UsesCurrentSettingsFieldLayout(t *testing.T) {
+	tests := []struct {
+		name       string
+		focusIndex int
+		mutate     func(*SettingsModel)
+		wantErr    string
+	}{
+		{
+			name:       "stale badge days",
+			focusIndex: tabFieldStart[tabReview] + 4,
+			mutate: func(m *SettingsModel) {
+				m.staleTaskDaysInput.SetValue("bad")
+			},
+			wantErr: "stale badge days must be a number",
+		},
+		{
+			name:       "popup timeout",
+			focusIndex: subTabFieldStart(tabBehavior, 4),
+			mutate: func(m *SettingsModel) {
+				m.popupTimeoutInput.SetValue("31")
+			},
+			wantErr: "popup timeout must be 0-30",
+		},
+		{
+			name:       "dashboard vertical split",
+			focusIndex: subTabFieldStart(tabBehavior, 9) + 2,
+			mutate: func(m *SettingsModel) {
+				m.dashboardVertSplitInput.SetValue("9")
+			},
+			wantErr: "vertical split % must be 10-90",
+		},
+		{
+			name:       "project stale days alert",
+			focusIndex: subTabFieldStart(tabNotifications, 2) + 1,
+			mutate: func(m *SettingsModel) {
+				m.alertProjectStaleDaysInput.SetValue("nope")
+			},
+			wantErr: "project stale days must be a number",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			m := NewSettingsModel(config.NewConfig(), nil)
+			m.focusIndex = tt.focusIndex
+			tt.mutate(m)
+
+			m.validateFocusedField()
+
+			if got := m.validationErr; got != tt.wantErr {
+				t.Fatalf("validationErr = %q, want %q", got, tt.wantErr)
 			}
 		})
 	}

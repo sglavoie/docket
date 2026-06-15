@@ -33,79 +33,70 @@ func (m *SettingsModel) updateFocusedInput(msg tea.Msg) tea.Cmd {
 
 func (m *SettingsModel) validateFocusedField() { //nolint:gocyclo
 	m.validationErr = ""
+	setErr := func(err error) {
+		if err != nil {
+			m.validationErr = err.Error()
+		}
+	}
 
-	switch m.focusIndex {
-	case 0:
-		if err := m.validateEditor(); err != nil {
-			m.validationErr = err.Error()
+	tab := tabForField(m.focusIndex)
+	local := m.focusIndex - tabFieldStart[tab]
+
+	switch tab {
+	case tabGeneral:
+		switch local {
+		case 0:
+			setErr(m.validateEditor())
+		case 1:
+			setErr(m.validateExternalEditor())
+		case 2:
+			setErr(m.validateContext())
+		case 3:
+			setErr(m.validateUndoDepth())
 		}
-	case 1:
-		if err := m.validateExternalEditor(); err != nil {
-			m.validationErr = err.Error()
+	case tabPalette:
+		switch {
+		case local >= 1 && local <= 9:
+			setErr(m.validatePaletteColors())
+		case local == 10:
+			setErr(m.validateBackgroundColor())
+		case local == 11:
+			setErr(m.validateCursorColor())
+		case local == 12:
+			setErr(m.validateCursorTextColor())
+		case local >= 13 && local <= 17:
+			setErr(m.validatePriorityTitleColors())
 		}
-	case 2:
-		if err := m.validateContext(); err != nil {
-			m.validationErr = err.Error()
+	case tabReview:
+		if local >= 0 && local <= 4 {
+			setErr(m.validateReviewSettings())
 		}
-	case 3:
-		if err := m.validateUndoDepth(); err != nil {
-			m.validationErr = err.Error()
+	case tabBehavior:
+		switch local {
+		case 0:
+			setErr(m.validateRecentActivityLimit())
+		case 3:
+			setErr(m.validateMaxPinnedBarItems())
+		case 4:
+			setErr(m.validateMaxRecentTaskVisits())
+		case 5:
+			setErr(m.validatePopupTimeout())
+		case 6, 7, 8, 9, 10, 11, 12:
+			setErr(m.validateSectionLimits())
+		case 17, 18:
+			setErr(m.validateDashboardSplitPcts())
 		}
-	case 6, 7, 8, 9, 10, 11, 12, 13, 14:
-		if err := m.validatePaletteColors(); err != nil {
-			m.validationErr = err.Error()
+	case tabAttachments:
+		switch local {
+		case 0:
+			setErr(m.validateAttachmentEditor())
+		case 1:
+			setErr(m.validateCodeEditor())
 		}
-	case 15:
-		if err := m.validateBackgroundColor(); err != nil {
-			m.validationErr = err.Error()
-		}
-	case 16:
-		if err := m.validateCursorColor(); err != nil {
-			m.validationErr = err.Error()
-		}
-	case 17:
-		if err := m.validateCursorTextColor(); err != nil {
-			m.validationErr = err.Error()
-		}
-	case 18, 19, 20, 21, 22:
-		if err := m.validatePriorityTitleColors(); err != nil {
-			m.validationErr = err.Error()
-		}
-	case 23, 24, 25, 26:
-		if err := m.validateReviewSettings(); err != nil {
-			m.validationErr = err.Error()
-		}
-	case 27:
-		if err := m.validateRecentActivityLimit(); err != nil {
-			m.validationErr = err.Error()
-		}
-	case 30:
-		if err := m.validateMaxPinnedBarItems(); err != nil {
-			m.validationErr = err.Error()
-		}
-	case 31:
-		if err := m.validateMaxRecentTaskVisits(); err != nil {
-			m.validationErr = err.Error()
-		}
-	case 32:
-		if err := m.validatePopupTimeout(); err != nil {
-			m.validationErr = err.Error()
-		}
-	case 33, 34, 35, 36, 37, 38, 39:
-		if err := m.validateSectionLimits(); err != nil {
-			m.validationErr = err.Error()
-		}
-	case 40:
-		if err := m.validateAttachmentEditor(); err != nil {
-			m.validationErr = err.Error()
-		}
-	case 41:
-		if err := m.validateCodeEditor(); err != nil {
-			m.validationErr = err.Error()
-		}
-	case 77, 82, 84, 86, 88, 90:
-		if err := m.validateAlertSettings(); err != nil {
-			m.validationErr = err.Error()
+	case tabNotifications:
+		switch local {
+		case 1, 6, 8, 10, 12, 14:
+			setErr(m.validateAlertSettings())
 		}
 	}
 }
