@@ -96,7 +96,12 @@ func (m *WorkflowRulesModel) renderRulesList(paneHeight int) string {
 	}
 	endIdx := min(startIdx+maxVisible, len(m.filteredRules))
 
-	maxNameLen := m.listNameWidth()
+	scrollbar := RenderScrollbar(len(m.filteredRules), maxVisible, startIdx)
+	listWidth := m.listContentWidth()
+	if scrollbar != "" {
+		listWidth = max(listWidth-1, 1)
+	}
+	maxNameLen := m.listNameWidth(listWidth)
 
 	var rowBuilder strings.Builder
 	for i := startIdx; i < endIdx; i++ {
@@ -132,24 +137,29 @@ func (m *WorkflowRulesModel) renderRulesList(paneHeight int) string {
 		fmt.Fprintf(&rowBuilder, "  %s %s%s\n", status, defaultMarker, nameHighlighted)
 	}
 
-	scrollbar := RenderScrollbar(len(m.filteredRules), maxVisible, startIdx)
-	b.WriteString(AttachScrollbar(rowBuilder.String(), scrollbar))
+	b.WriteString(attachScrollbarAtWidth(rowBuilder.String(), scrollbar, listWidth))
 
 	return b.String()
 }
 
-func (m *WorkflowRulesModel) listNameWidth() int {
+func (m *WorkflowRulesModel) listContentWidth() int {
 	if m.isWideScreen() {
-		listWidth := m.Width() * 45 / 100
-		if listWidth-7 < 15 {
+		return m.Width() * 45 / 100
+	}
+	return m.Width()
+}
+
+func (m *WorkflowRulesModel) listNameWidth(contentWidth int) int {
+	if m.isWideScreen() {
+		if contentWidth-7 < 15 {
 			return 15
 		}
-		return listWidth - 7
+		return contentWidth - 7
 	}
-	if m.Width()-9 < 15 {
+	if contentWidth-9 < 15 {
 		return 15
 	}
-	return m.Width() - 9
+	return contentWidth - 9
 }
 
 func (m *WorkflowRulesModel) renderSelectedRuleRow(b *strings.Builder, status, defaultMarker, name string, rule workflow.WorkflowRule) {

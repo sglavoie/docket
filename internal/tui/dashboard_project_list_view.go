@@ -61,7 +61,7 @@ func (m *DashboardModel) renderProjectList(visible []*models.Project, chromeHeig
 	}
 
 	scrollbar := RenderScrollbar(len(visible), maxVisible, startIdx)
-	cardContent.WriteString(AttachScrollbar(rowBuilder.String(), scrollbar))
+	cardContent.WriteString(attachScrollbarAtWidth(rowBuilder.String(), scrollbar, rowWidth))
 
 	return cardContent.String()
 }

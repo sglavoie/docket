@@ -55,7 +55,7 @@ func (m *OutlinerModel) renderOutlinerRows(viewport outlinerViewport, width int)
 		case row.IsSectionHeader:
 			rowBuilder.WriteString(m.renderOutlinerSectionHeaderRow(row, selected, viewport.rowWidth, i))
 		default:
-			rowBuilder.WriteString(m.renderOutlinerTaskRow(row, selected, viewport.rowWidth, width, i, colLayout))
+			rowBuilder.WriteString(m.renderOutlinerTaskRow(row, selected, viewport.rowWidth, viewport.rowWidth, i, colLayout))
 		}
 
 		if i < viewport.endIdx-1 {
@@ -64,7 +64,7 @@ func (m *OutlinerModel) renderOutlinerRows(viewport outlinerViewport, width int)
 	}
 
 	scrollbar := RenderScrollbar(len(m.rows), viewport.visibleRows, viewport.startIdx)
-	return AttachScrollbar(rowBuilder.String(), scrollbar)
+	return attachScrollbarAtWidth(rowBuilder.String(), scrollbar, viewport.rowWidth)
 }
 
 func (m *OutlinerModel) renderOutlinerSectionHeaderRow(row outlinerRow, selected bool, rowWidth, rowIndex int) string {

@@ -1,12 +1,14 @@
 package tui
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
 
+	"github.com/sglavoie/tt/internal/icons"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/scoring"
 	"github.com/sglavoie/tt/internal/template"
@@ -183,6 +185,25 @@ func TestWorkflowRulesListRespectsVisualWidth(t *testing.T) {
 	}
 }
 
+func TestWorkflowRulesListScrollbarRespectsVisualWidth(t *testing.T) {
+	rules := make([]workflow.WorkflowRule, 0, 6)
+	for i := range 6 {
+		rules = append(rules, workflow.WorkflowRule{
+			ID:      fmt.Sprintf("rule-%d", i),
+			Name:    fmt.Sprintf("修复工作流规则列表滚动条宽字符截断问题 %d", i),
+			Enabled: i%2 == 0,
+			Trigger: workflow.RuleTrigger{Field: workflow.FieldStatus, Operation: workflow.OpEquals, Value: "todo"},
+			Actions: []workflow.RuleAction{{ActionType: workflow.ActionSetPriority, Value: "1"}},
+		})
+	}
+	m := &WorkflowRulesModel{filteredRules: rules}
+	m.cursor = 5
+	m.SetSize(24, 10)
+
+	rendered := m.renderRulesList(3)
+	assertRenderedLinesWithinVisualWidth(t, "workflow rules scrollbar", rendered, 24)
+}
+
 func TestTemplateListRespectsVisualWidth(t *testing.T) {
 	m := &TaskTemplatesModel{
 		filteredTemplates: []template.TaskTemplate{{
@@ -203,6 +224,43 @@ func TestTemplateListRespectsVisualWidth(t *testing.T) {
 	}
 }
 
+func TestTemplateListScrollbarRespectsVisualWidth(t *testing.T) {
+	templates := make([]template.TaskTemplate, 0, 6)
+	for i := range 6 {
+		templates = append(templates, template.TaskTemplate{
+			ID:        fmt.Sprintf("tmpl-%d", i),
+			Name:      fmt.Sprintf("修复模板列表滚动条宽字符截断问题 %d", i),
+			Enabled:   i%2 == 0,
+			Type:      models.TaskTypeTask,
+			Checklist: []string{"one", "two"},
+		})
+	}
+	m := &TaskTemplatesModel{filteredTemplates: templates}
+	m.cursor = 5
+	m.SetSize(24, 10)
+
+	rendered := m.renderTemplatesList(3)
+	assertRenderedLinesWithinVisualWidth(t, "template list scrollbar", rendered, 24)
+}
+
+func TestDashboardProjectListScrollbarRespectsVisualWidthWithEmoji(t *testing.T) {
+	icons.SetUseEmoji(true)
+	t.Cleanup(func() { icons.SetUseEmoji(false) })
+
+	projects := make([]*models.Project, 0, 10)
+	for i := range 10 {
+		project := testutil.NewTestProject(fmt.Sprintf("界面修复冲刺计划项目 %d", i))
+		project.Context = "work"
+		project.StatusIcon = "active"
+		projects = append(projects, project)
+	}
+
+	m := &DashboardModel{config: testutil.NewTestConfig(), projects: projects}
+	m.SetSize(28, 10)
+	rendered := m.renderProjectList(projects, 0, 28, 0)
+	assertRenderedLinesWithinVisualWidth(t, "dashboard project list scrollbar", rendered, 24)
+}
+
 func TestTaskChecklistViewRespectsVisualWidth(t *testing.T) {
 	task, err := models.NewTask("task-1", 17, models.TaskTypeTask, "Checklist")
 	if err != nil {
@@ -217,6 +275,15 @@ func TestTaskChecklistViewRespectsVisualWidth(t *testing.T) {
 	for line := range strings.SplitSeq(rendered, "\n") {
 		if lipgloss.Width(ansi.Strip(line)) > 24 {
 			t.Fatalf("task checklist line exceeds width 24: %q (width=%d)\n\n%s", ansi.Strip(line), lipgloss.Width(ansi.Strip(line)), ansi.Strip(rendered))
+		}
+	}
+}
+
+func assertRenderedLinesWithinVisualWidth(t *testing.T, label, rendered string, width int) {
+	t.Helper()
+	for line := range strings.SplitSeq(strings.TrimRight(rendered, "\n"), "\n") {
+		if lipgloss.Width(ansi.Strip(line)) > width {
+			t.Fatalf("%s line exceeds width %d: %q (width=%d)\n\n%s", label, width, ansi.Strip(line), lipgloss.Width(ansi.Strip(line)), ansi.Strip(rendered))
 		}
 	}
 }

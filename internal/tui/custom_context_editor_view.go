@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 )
 
 func (m *CustomContextEditorModel) maxVisibleProjects() int {
@@ -82,6 +83,11 @@ func (m *CustomContextEditorModel) View() tea.View {
 	} else {
 		maxVisible := m.maxVisibleProjects()
 		end := min(m.scrollOffset+maxVisible, len(m.filteredProjects))
+		scrollbar := RenderScrollbar(len(m.filteredProjects), maxVisible, m.scrollOffset)
+		listWidth := m.width
+		if scrollbar != "" {
+			listWidth = max(listWidth-1, 1)
+		}
 
 		var rowBuilder strings.Builder
 		for i := m.scrollOffset; i < end; i++ {
@@ -103,6 +109,8 @@ func (m *CustomContextEditorModel) View() tea.View {
 
 			// Project info
 			info := fmt.Sprintf("%s (%s) - %d tasks", p.Name, p.Context, p.CountTasks())
+			infoWidth := max(listWidth-lipgloss.Width(cursor)-lipgloss.Width(checkbox)-1, 1)
+			info = truncateToVisualWidth(info, infoWidth)
 
 			line := fmt.Sprintf("%s%s %s", cursor, checkbox, info)
 			if isCursor {
@@ -115,8 +123,7 @@ func (m *CustomContextEditorModel) View() tea.View {
 			rowBuilder.WriteString("\n")
 		}
 
-		scrollbar := RenderScrollbar(len(m.filteredProjects), maxVisible, m.scrollOffset)
-		b.WriteString(AttachScrollbar(rowBuilder.String(), scrollbar))
+		b.WriteString(attachScrollbarAtWidth(rowBuilder.String(), scrollbar, listWidth))
 	}
 	b.WriteString("\n")
 

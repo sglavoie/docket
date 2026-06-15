@@ -45,9 +45,13 @@ func (m *LinkedTaskSelectorModel) View() tea.View { //nolint:gocyclo
 		return tea.NewView(b.String())
 	}
 
-	sectionContent := m.renderVisibleSections(visibleStart, visibleEnd)
 	scrollbar := RenderScrollbar(len(m.filtered), visibleEnd-visibleStart, visibleStart)
-	b.WriteString(AttachScrollbar(sectionContent, scrollbar))
+	contentWidth := m.width
+	if scrollbar != "" {
+		contentWidth = max(contentWidth-1, 1)
+	}
+	sectionContent := m.renderVisibleSections(visibleStart, visibleEnd, contentWidth)
+	b.WriteString(attachScrollbarAtWidth(sectionContent, scrollbar, contentWidth))
 
 	footerLeft := HelpStyle.Render("/ search · j/k navigate · Enter select · x unlink · Esc cancel")
 	if m.IsSearchMode() {
@@ -79,7 +83,7 @@ func (m *LinkedTaskSelectorModel) renderSearchState() string {
 	return ""
 }
 
-func (m *LinkedTaskSelectorModel) renderVisibleSections(visibleStart, visibleEnd int) string {
+func (m *LinkedTaskSelectorModel) renderVisibleSections(visibleStart, visibleEnd, contentWidth int) string {
 	var b strings.Builder
 	itemIndex := 0
 	needSpacer := false
@@ -102,7 +106,7 @@ func (m *LinkedTaskSelectorModel) renderVisibleSections(visibleStart, visibleEnd
 			for itemOffset, rel := range section.items {
 				idx := sectionStart + itemOffset
 				if idx >= visibleStart && idx < visibleEnd {
-					b.WriteString("  " + m.renderRelationLine(rel, false) + "\n")
+					b.WriteString("  " + m.renderRelationLineAtWidth(rel, false, contentWidth) + "\n")
 				}
 			}
 		}
@@ -142,6 +146,10 @@ func (m *LinkedTaskSelectorModel) groupedRelationSections() []linkedTaskRelation
 }
 
 func (m *LinkedTaskSelectorModel) renderRelationLine(rel LinkedTaskRelation, isSelected bool) string {
+	return m.renderRelationLineAtWidth(rel, isSelected, m.width)
+}
+
+func (m *LinkedTaskSelectorModel) renderRelationLineAtWidth(rel LinkedTaskRelation, isSelected bool, width int) string {
 	if rel.IsMissing {
 		ref := models.ParseTaskRef(rel.TaskRef)
 		label := "(missing)"
@@ -164,7 +172,7 @@ func (m *LinkedTaskSelectorModel) renderRelationLine(rel LinkedTaskRelation, isS
 		stageSegment = stageBadge + " "
 	}
 
-	availableWidth := max(m.width-4, 20)
+	availableWidth := max(width-4, 20)
 	projectLabel := ""
 	if rel.Project != nil {
 		projectName := truncateToVisualWidth(rel.Project.Name, 12)

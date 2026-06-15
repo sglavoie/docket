@@ -73,6 +73,11 @@ func (m *CrossProjectLinkerModel) viewProjectSelection() string {
 
 	maxVisible := 8
 	scrollOffset := calcScrollOffset(m.projectCursor, maxVisible)
+	scrollbar := RenderScrollbar(len(m.filteredProjects), maxVisible, scrollOffset)
+	contentWidth := m.Width()
+	if scrollbar != "" {
+		contentWidth = max(contentWidth-1, 1)
+	}
 
 	var rowBuilder strings.Builder
 	for i, p := range m.filteredProjects {
@@ -80,7 +85,7 @@ func (m *CrossProjectLinkerModel) viewProjectSelection() string {
 			continue
 		}
 		contextBadge := MutedStyle.Render(fmt.Sprintf("[%s]", p.Context))
-		availableNameWidth := max(m.Width()-lipgloss.Width(contextBadge)-3, 1)
+		availableNameWidth := max(contentWidth-lipgloss.Width(contextBadge)-3, 1)
 		name := truncateToVisualWidth(p.Name, availableNameWidth)
 		line := fmt.Sprintf("  %s %s", name, contextBadge)
 		if i == m.projectCursor {
@@ -90,8 +95,7 @@ func (m *CrossProjectLinkerModel) viewProjectSelection() string {
 		rowBuilder.WriteString("\n")
 	}
 
-	scrollbar := RenderScrollbar(len(m.filteredProjects), maxVisible, scrollOffset)
-	b.WriteString(AttachScrollbar(rowBuilder.String(), scrollbar))
+	b.WriteString(attachScrollbarAtWidth(rowBuilder.String(), scrollbar, contentWidth))
 
 	b.WriteString("\n")
 	if m.IsSearchMode() {
@@ -134,6 +138,11 @@ func (m *CrossProjectLinkerModel) viewTaskSelection() string {
 
 	maxVisible := 8
 	scrollOffset := calcScrollOffset(m.taskCursor, maxVisible)
+	scrollbar := RenderScrollbar(len(m.filteredTasks), maxVisible, scrollOffset)
+	contentWidth := m.Width()
+	if scrollbar != "" {
+		contentWidth = max(contentWidth-1, 1)
+	}
 
 	var rowBuilder strings.Builder
 	for i, t := range m.filteredTasks {
@@ -148,14 +157,14 @@ func (m *CrossProjectLinkerModel) viewTaskSelection() string {
 			stageSegment = stageBadge + " "
 		}
 		prefix := fmt.Sprintf("  %s %s %s#%d ", statusIcon, typeIcon, stageSegment, t.ShortID)
-		maxTitleLen := max(m.Width()-lipgloss.Width(prefix), 1)
+		maxTitleLen := max(contentWidth-lipgloss.Width(prefix), 1)
 		title := truncateToVisualWidth(t.Title, maxTitleLen)
 		titleRendered := TaskTitleStyleFor(t, TaskTitleStyleOptions{
 			CursorSelected: i == m.taskCursor,
 		}).Render(title)
 		line := prefix + titleRendered
-		if lipgloss.Width(line) > m.Width() {
-			excess := lipgloss.Width(line) - m.Width()
+		if lipgloss.Width(line) > contentWidth {
+			excess := lipgloss.Width(line) - contentWidth
 			title = truncateToVisualWidth(t.Title, max(maxTitleLen-excess, 1))
 			titleRendered = TaskTitleStyleFor(t, TaskTitleStyleOptions{
 				CursorSelected: i == m.taskCursor,
@@ -169,8 +178,7 @@ func (m *CrossProjectLinkerModel) viewTaskSelection() string {
 		rowBuilder.WriteString("\n")
 	}
 
-	scrollbar := RenderScrollbar(len(m.filteredTasks), maxVisible, scrollOffset)
-	b.WriteString(AttachScrollbar(rowBuilder.String(), scrollbar))
+	b.WriteString(attachScrollbarAtWidth(rowBuilder.String(), scrollbar, contentWidth))
 
 	b.WriteString("\n")
 	if m.IsSearchMode() {

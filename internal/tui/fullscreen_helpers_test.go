@@ -3,6 +3,8 @@ package tui
 import (
 	"strings"
 	"testing"
+
+	"charm.land/lipgloss/v2"
 )
 
 func TestRenderScrollbar_ContentFits(t *testing.T) {
@@ -123,6 +125,96 @@ func TestAttachScrollbar_ZipsLines(t *testing.T) {
 		if lines[i] != exp {
 			t.Errorf("line %d: expected %q, got %q", i, exp, lines[i])
 		}
+	}
+}
+
+func TestAttachScrollbarAtWidth_NonPositiveWidthUsesDerivedWidth(t *testing.T) {
+	content := "a\nabc"
+	scrollbar := "X\nY"
+	result := attachScrollbarAtWidth(content, scrollbar, 0)
+
+	expected := "a  X\nabcY"
+	if result != expected {
+		t.Fatalf("expected derived-width attachment %q, got %q", expected, result)
+	}
+}
+
+func TestAttachScrollbarAtWidth_StyledAndWideContent(t *testing.T) {
+	styled := "\x1b[31mgo\x1b[0m"
+	content := styled + "\n🚀\n界"
+	scrollbar := "X\nY\nZ"
+	result := attachScrollbarAtWidth(content, scrollbar, 4)
+	lines := strings.Split(result, "\n")
+
+	expected := []string{
+		styled + "  X",
+		"🚀  Y",
+		"界  Z",
+	}
+	if len(lines) != len(expected) {
+		t.Fatalf("expected %d lines, got %d", len(expected), len(lines))
+	}
+	for i, exp := range expected {
+		if lines[i] != exp {
+			t.Fatalf("line %d: expected %q, got %q", i, exp, lines[i])
+		}
+		if width := lipgloss.Width(lines[i]); width != 5 {
+			t.Fatalf("line %d: expected visual width 5, got %d for %q", i, width, lines[i])
+		}
+	}
+}
+
+func TestAttachScrollbarAtWidth_TruncatesOverlongContent(t *testing.T) {
+	result := attachScrollbarAtWidth("abcdef", "X", 4)
+
+	expected := "abcdX"
+	if result != expected {
+		t.Fatalf("expected truncated attachment %q, got %q", expected, result)
+	}
+	if width := lipgloss.Width(result); width != 5 {
+		t.Fatalf("expected visual width 5, got %d for %q", width, result)
+	}
+}
+
+func TestAttachScrollbarAtWidth_PadsShorterLines(t *testing.T) {
+	content := "a\nabcd"
+	scrollbar := "X\nY"
+	result := attachScrollbarAtWidth(content, scrollbar, 4)
+
+	expected := "a   X\nabcdY"
+	if result != expected {
+		t.Fatalf("expected padded attachment %q, got %q", expected, result)
+	}
+}
+
+func TestAttachScrollbarAtWidth_LineCountMismatch(t *testing.T) {
+	tests := []struct {
+		name      string
+		content   string
+		scrollbar string
+		want      string
+	}{
+		{
+			name:      "extra content lines",
+			content:   "a\nb\nc",
+			scrollbar: "X",
+			want:      "a X\nb \nc ",
+		},
+		{
+			name:      "extra scrollbar lines",
+			content:   "a",
+			scrollbar: "X\nY\nZ",
+			want:      "a X\n  Y\n  Z",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := attachScrollbarAtWidth(tt.content, tt.scrollbar, 2)
+			if result != tt.want {
+				t.Fatalf("expected mismatch attachment %q, got %q", tt.want, result)
+			}
+		})
 	}
 }
 

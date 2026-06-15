@@ -136,14 +136,19 @@ func (m *WorkflowDryRunModel) renderTaskList(paneHeight int) string {
 	endIdx := min(startIdx+maxVisible, len(m.filtered))
 
 	listWidth := max(m.Width()*45/100-4, 20)
+	scrollbar := RenderScrollbar(len(m.filtered), maxVisible, startIdx)
+	contentWidth := listWidth
+	if scrollbar != "" {
+		contentWidth = max(contentWidth-1, 1)
+	}
 
 	var rowBuilder strings.Builder
 	for i := startIdx; i < endIdx; i++ {
 		result := m.filtered[i]
-		projectName := truncateToVisualWidth(result.ProjectName, max(listWidth-6, 1))
+		projectName := truncateToVisualWidth(result.ProjectName, max(contentWidth-6, 1))
 		projectTag := MutedStyle.Render("[" + projectName + "]")
 		changeCount := MutedStyle.Render(fmt.Sprintf("(%d)", len(result.Changes)))
-		titleWidth := max(listWidth-lipgloss.Width(changeCount)-4, 1)
+		titleWidth := max(contentWidth-lipgloss.Width(changeCount)-4, 1)
 		title := truncateToVisualWidth(result.Task.Title, titleWidth)
 
 		if i == m.cursor {
@@ -164,8 +169,7 @@ func (m *WorkflowDryRunModel) renderTaskList(paneHeight int) string {
 		}
 	}
 
-	scrollbar := RenderScrollbar(len(m.filtered), maxVisible, startIdx)
-	b.WriteString(AttachScrollbar(rowBuilder.String(), scrollbar))
+	b.WriteString(attachScrollbarAtWidth(rowBuilder.String(), scrollbar, contentWidth))
 
 	return b.String()
 }

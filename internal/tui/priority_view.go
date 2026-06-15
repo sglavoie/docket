@@ -321,7 +321,11 @@ func (m *PriorityViewModel) View() tea.View {
 	// Visible task lines
 	visibleContent := strings.Join(visibleLines, "\n")
 	scrollbar := RenderScrollbar(len(lines), endIdx-startIdx, startIdx)
-	b.WriteString(AttachScrollbar(visibleContent, scrollbar))
+	contentWidth := m.Width()
+	if scrollbar != "" {
+		contentWidth = max(contentWidth-1, 1)
+	}
+	b.WriteString(attachScrollbarAtWidth(visibleContent, scrollbar, contentWidth))
 	b.WriteString("\n")
 
 	// Search bar (shown above footer when active)

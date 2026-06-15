@@ -329,7 +329,7 @@ func (m *ProjectTreeModel) renderTreeContent(width int, focused bool) string { /
 		if needsScrollbar {
 			scrollOffset := treeRenderLineCount(visible, 0, startIdx)
 			scrollbar := RenderScrollbar(totalRenderableLines, availableHeight, scrollOffset)
-			content = AttachScrollbar(content, scrollbar)
+			content = attachScrollbarAtWidth(content, scrollbar, cardContentWidth)
 		}
 		cardContent.WriteString(content)
 	}

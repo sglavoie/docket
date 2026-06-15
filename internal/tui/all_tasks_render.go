@@ -36,11 +36,18 @@ func (m *AllTasksViewModel) View() tea.View {
 		return tea.NewView(b.String())
 	}
 
-	lineWidth := m.allTasksLineWidth(contentHeight)
+	availableContentHeight := contentHeight
+	lineWidth := m.allTasksLineWidth(availableContentHeight)
 	colLayout := m.allTasksColumnLayout(lineWidth)
 	lines, cursorLineIdx := m.buildAllTasksLines(lineWidth, colLayout)
-	lines, contentHeight = m.addAllTasksPreview(lines, cursorLineIdx, contentHeight, lineWidth)
-	b.WriteString(m.renderAllTasksScrollableContent(lines, cursorLineIdx, contentHeight))
+	lines, contentHeight = m.addAllTasksPreview(lines, cursorLineIdx, availableContentHeight, lineWidth)
+	if len(lines) > contentHeight && lineWidth == m.Width() {
+		lineWidth = max(m.Width()-1, 1)
+		colLayout = m.allTasksColumnLayout(lineWidth)
+		lines, cursorLineIdx = m.buildAllTasksLines(lineWidth, colLayout)
+		lines, contentHeight = m.addAllTasksPreview(lines, cursorLineIdx, availableContentHeight, lineWidth)
+	}
+	b.WriteString(m.renderAllTasksScrollableContent(lines, cursorLineIdx, contentHeight, lineWidth))
 	b.WriteString(m.renderAllTasksFooter())
 
 	return tea.NewView(b.String())
@@ -191,11 +198,11 @@ func (m *AllTasksViewModel) addAllTasksPreview(lines []string, cursorLineIdx, co
 	return lines, contentHeight
 }
 
-func (m *AllTasksViewModel) renderAllTasksScrollableContent(lines []string, cursorLineIdx, contentHeight int) string {
+func (m *AllTasksViewModel) renderAllTasksScrollableContent(lines []string, cursorLineIdx, contentHeight, lineWidth int) string {
 	scrolledLines := applyPersistentScroll(lines, cursorLineIdx, contentHeight, &m.scrollOffset)
 	scrollbar := RenderScrollbar(len(lines), contentHeight, m.scrollOffset)
-	tintedContent := TabContentBgStyle.Width(m.Width()).Render(strings.Join(scrolledLines, "\n"))
-	return AttachScrollbar(tintedContent, scrollbar)
+	tintedContent := TabContentBgStyle.Width(lineWidth).Render(strings.Join(scrolledLines, "\n"))
+	return attachScrollbarAtWidth(tintedContent, scrollbar, lineWidth)
 }
 
 func (m *AllTasksViewModel) renderAllTasksFooter() string {

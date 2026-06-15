@@ -14,7 +14,7 @@ import (
 // padSidebarToHeight ensures the sidebar content fills the exact height.
 // When a sidebar component is provided, applies and clamps its scroll offset.
 // Attaches a scrollbar when content overflows.
-func padSidebarToHeight(content string, sidebar *SidebarComponent, _, height int) string {
+func padSidebarToHeight(content string, sidebar *SidebarComponent, width, height int) string {
 	lines := strings.Split(content, "\n")
 	totalLines := len(lines)
 
@@ -36,7 +36,11 @@ func padSidebarToHeight(content string, sidebar *SidebarComponent, _, height int
 
 	scrollbar := RenderScrollbar(totalLines, height, scrollOffset)
 	if scrollbar != "" {
-		result := AttachScrollbar(strings.Join(lines, "\n"), scrollbar)
+		contentWidth := 0
+		if width > 0 {
+			contentWidth = max(width-1, 1)
+		}
+		result := attachScrollbarAtWidth(strings.Join(lines, "\n"), scrollbar, contentWidth)
 		lines = strings.Split(result, "\n")
 	}
 

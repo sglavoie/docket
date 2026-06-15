@@ -8,6 +8,7 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/tt/internal/icons"
 	"github.com/sglavoie/tt/internal/models"
 )
 
@@ -89,6 +90,50 @@ func TestCrossProjectOutlinerRenderTreePrefixesFoldIndicatorsAndTruncation(t *te
 	}
 	if childLine == childPlain {
 		t.Fatalf("selected child row has no ANSI styling applied: %q", childLine)
+	}
+}
+
+func TestCrossProjectOutlinerRenderEmojiPreviewScrollbarStaysWithinWidth(t *testing.T) {
+	ApplyTheme(ThemeConfig{Name: ""})
+	t.Cleanup(func() { ApplyTheme(ThemeConfig{}) })
+	icons.SetUseEmoji(true)
+	t.Cleanup(func() { icons.SetUseEmoji(false) })
+
+	const width = 80
+	m, selectedTask := crossProjectRenderFixture(t, width, 8)
+	selectedTask.Description = "Preview details carry emoji-safe width pressure with enough text to fill the reserved content area before the scrollbar column."
+	m.rows[m.cursor].task.Description = selectedTask.Description
+	m.previewMode = true
+
+	rendered := m.renderOutlinerTreeContent(width)
+	lines := strings.Split(strings.TrimRight(rendered, "\n"), "\n")
+	scrollbarLines := 0
+	previewLines := 0
+	for i, line := range lines {
+		got := lipgloss.Width(line)
+		if got > width {
+			t.Fatalf("rendered line %d exceeds width %d: width=%d stripped=%q", i, width, got, ansi.Strip(line))
+		}
+
+		plain := ansi.Strip(line)
+		if hasScrollbarGlyph(plain) {
+			scrollbarLines++
+			if got != width {
+				t.Fatalf("scrollbar line %d width = %d, want %d, stripped=%q", i, got, width, plain)
+			}
+		}
+		if strings.Contains(plain, "Preview details") {
+			previewLines++
+			if got != width-1 {
+				t.Fatalf("preview line %d width = %d, want reserved row width %d, stripped=%q", i, got, width-1, plain)
+			}
+		}
+	}
+	if scrollbarLines == 0 {
+		t.Fatalf("expected forced overflow to render scrollbar, got:\n%s", ansi.Strip(rendered))
+	}
+	if previewLines == 0 {
+		t.Fatalf("expected selected row preview lines, got:\n%s", ansi.Strip(rendered))
 	}
 }
 
@@ -183,6 +228,10 @@ func findRenderedLineContaining(t *testing.T, rendered, needle string) string {
 	}
 	t.Fatalf("rendered line containing %q not found in:\n%s", needle, ansi.Strip(rendered))
 	return ""
+}
+
+func hasScrollbarGlyph(line string) bool {
+	return strings.Contains(line, "█") || strings.Contains(line, "░")
 }
 
 func assertContains(t *testing.T, got, want, label string) {

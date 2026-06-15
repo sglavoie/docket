@@ -93,7 +93,12 @@ func (m *TaskTemplatesModel) renderTemplatesList(paneHeight int) string {
 		startIdx = m.cursor - maxVisible + 1
 	}
 	endIdx := min(startIdx+maxVisible, len(m.filteredTemplates))
-	maxNameLen := m.listNameWidth()
+	scrollbar := RenderScrollbar(len(m.filteredTemplates), maxVisible, startIdx)
+	listWidth := m.listContentWidth()
+	if scrollbar != "" {
+		listWidth = max(listWidth-1, 1)
+	}
+	maxNameLen := m.listNameWidth(listWidth)
 
 	var rowBuilder strings.Builder
 	for i := startIdx; i < endIdx; i++ {
@@ -121,24 +126,29 @@ func (m *TaskTemplatesModel) renderTemplatesList(paneHeight int) string {
 		fmt.Fprintf(&rowBuilder, "  %s %s%s\n", status, defaultMarker, name)
 	}
 
-	scrollbar := RenderScrollbar(len(m.filteredTemplates), maxVisible, startIdx)
-	b.WriteString(AttachScrollbar(rowBuilder.String(), scrollbar))
+	b.WriteString(attachScrollbarAtWidth(rowBuilder.String(), scrollbar, listWidth))
 
 	return b.String()
 }
 
-func (m *TaskTemplatesModel) listNameWidth() int {
+func (m *TaskTemplatesModel) listContentWidth() int {
 	if m.isWideScreen() {
-		listWidth := m.Width() * 45 / 100
-		if listWidth-7 < 15 {
+		return m.Width() * 45 / 100
+	}
+	return m.Width()
+}
+
+func (m *TaskTemplatesModel) listNameWidth(contentWidth int) int {
+	if m.isWideScreen() {
+		if contentWidth-7 < 15 {
 			return 15
 		}
-		return listWidth - 7
+		return contentWidth - 7
 	}
-	if m.Width()-9 < 15 {
+	if contentWidth-9 < 15 {
 		return 15
 	}
-	return m.Width() - 9
+	return contentWidth - 9
 }
 
 func (m *TaskTemplatesModel) renderSelectedTemplateRow(b *strings.Builder, status, defaultMarker, name string, t template.TaskTemplate) {

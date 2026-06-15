@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"charm.land/lipgloss/v2"
+	"github.com/charmbracelet/x/ansi"
 )
 
 // ScrollUpIndicator returns a muted "↑ N more" string for scroll overflow above.
@@ -55,10 +56,17 @@ func RenderScrollbar(totalItems, viewportHeight, scrollOffset int) string {
 }
 
 // AttachScrollbar takes a content block and a scrollbar string (both newline-
-// delimited), pads each content line to contentWidth, and zips them together.
-// If scrollbar is empty, returns content unchanged. Content lines are padded
-// using lipgloss width to handle ANSI escape sequences correctly.
+// delimited), pads each content line to the derived content width, and zips
+// them together.
 func AttachScrollbar(content, scrollbar string) string {
+	return attachScrollbarAtWidth(content, scrollbar, 0)
+}
+
+// attachScrollbarAtWidth attaches a newline-delimited scrollbar after fitting
+// each content line to contentWidth visual cells before the scrollbar. Callers
+// should pass the width already reserved for content inside their layout; non-
+// positive widths preserve AttachScrollbar's historical derived-width behavior.
+func attachScrollbarAtWidth(content, scrollbar string, contentWidth int) string {
 	if scrollbar == "" {
 		return content
 	}
@@ -66,11 +74,11 @@ func AttachScrollbar(content, scrollbar string) string {
 	contentLines := strings.Split(content, "\n")
 	scrollLines := strings.Split(scrollbar, "\n")
 
-	// Measure max visual width across all content lines so we can pad uniformly.
-	maxWidth := 0
-	for _, cl := range contentLines {
-		if w := lipgloss.Width(cl); w > maxWidth {
-			maxWidth = w
+	if contentWidth <= 0 {
+		for _, cl := range contentLines {
+			if w := lipgloss.Width(cl); w > contentWidth {
+				contentWidth = w
+			}
 		}
 	}
 
@@ -86,7 +94,10 @@ func AttachScrollbar(content, scrollbar string) string {
 			cl = contentLines[i]
 		}
 		// Pad content line to uniform width so scrollbar aligns vertically.
-		if pad := maxWidth - lipgloss.Width(cl); pad > 0 {
+		if lipgloss.Width(cl) > contentWidth {
+			cl = ansi.Truncate(cl, contentWidth, "")
+		}
+		if pad := contentWidth - lipgloss.Width(cl); pad > 0 {
 			cl += strings.Repeat(" ", pad)
 		}
 		sl := ""
