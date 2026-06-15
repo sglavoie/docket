@@ -247,6 +247,93 @@ func TestFilterCommands_SectionManager(t *testing.T) {
 	}
 }
 
+func TestFilterCommands_SectionManagerAvailableInCrossProjectOutliner(t *testing.T) {
+	app := newTestAppModel()
+
+	cmds := app.filterCommands()
+	cmd := findCommand(cmds, "custom section manager")
+	if cmd == nil {
+		t.Fatal("expected 'custom section manager' command")
+	}
+	if !containsView(cmd.Views, ViewCrossProjectOutliner) {
+		t.Fatalf("custom section manager views = %v, want %s", cmd.Views, ViewCrossProjectOutliner)
+	}
+
+	registry := NewCommandRegistry()
+	if err := registry.RegisterBatch(cmds); err != nil {
+		t.Fatalf("RegisterBatch: %v", err)
+	}
+	if cmd := findCommand(registry.GetForView(ViewCrossProjectOutliner), "custom section manager"); cmd == nil {
+		t.Fatal("expected command registry to expose custom section manager for cross-project outliner")
+	}
+}
+
+func TestFilterCommands_SectionManagerTargetsSelectedCrossProjectTaskProject(t *testing.T) {
+	app, singleProject := newTestAppModelWithProject()
+	app.outliner = NewOutlinerModel(singleProject, app.config, app.configManager)
+	app.outliner.rebuildRows()
+	advanceCursorToTask(app.outliner)
+	app.views.Register(ViewOutliner, app.outliner)
+
+	crossProject := &models.Project{ID: "cross-project", Name: "Cross Project", Path: t.TempDir()}
+	crossTask, err := models.NewTask("cross-task", 1, models.TaskTypeTask, "Cross Task")
+	if err != nil {
+		t.Fatalf("NewTask: %v", err)
+	}
+	crossProject.Tasks = []*models.Task{crossTask}
+	crossProject.BuildTaskTree()
+
+	app.crossOutliner = NewOutlinerModel(nil, app.config, app.configManager)
+	app.crossOutliner.loadedProjects = []*models.Project{crossProject}
+	app.crossOutliner.rows = []outlinerRow{{task: crossTask, ProjectID: crossProject.ID}}
+	app.crossOutliner.cursor = 0
+	app.views.Register(ViewCrossProjectOutliner, app.crossOutliner)
+	app.viewStack = []ViewType{ViewDashboard, ViewOutliner, ViewCrossProjectOutliner, ViewCommandPalette}
+
+	cmd := findCommand(app.filterCommands(), "custom section manager")
+	if cmd == nil {
+		t.Fatal("expected 'custom section manager' command")
+	}
+
+	result := cmd.Handler()
+	msg, ok := result.(ShowSectionManagerMsg)
+	if !ok {
+		t.Fatalf("expected ShowSectionManagerMsg, got %T", result)
+	}
+	if msg.Project != crossProject {
+		t.Fatalf("section manager project = %v, want %v", msg.Project, crossProject)
+	}
+	if msg.ProjectTree != nil {
+		t.Fatalf("section manager ProjectTree = %v, want nil", msg.ProjectTree)
+	}
+}
+
+func TestFilterCommands_SectionManagerCrossProjectNoTaskSelected(t *testing.T) {
+	app := newTestAppModel()
+	project := &models.Project{ID: "cross-project", Name: "Cross Project"}
+
+	app.crossOutliner = NewOutlinerModel(nil, app.config, app.configManager)
+	app.crossOutliner.loadedProjects = []*models.Project{project}
+	app.crossOutliner.rows = []outlinerRow{{IsSectionHeader: true, SectionName: models.SectionInbox, ProjectID: project.ID}}
+	app.crossOutliner.cursor = 0
+	app.views.Register(ViewCrossProjectOutliner, app.crossOutliner)
+	app.viewStack = []ViewType{ViewDashboard, ViewCrossProjectOutliner, ViewCommandPalette}
+
+	cmd := findCommand(app.filterCommands(), "custom section manager")
+	if cmd == nil {
+		t.Fatal("expected 'custom section manager' command")
+	}
+
+	result := cmd.Handler()
+	msg, ok := result.(StatusMsg)
+	if !ok {
+		t.Fatalf("expected StatusMsg, got %T", result)
+	}
+	if string(msg) != "No task selected for section manager" {
+		t.Fatalf("status = %q, want no-task section manager status", msg)
+	}
+}
+
 func TestFilterCommands_OpenDataFolder(t *testing.T) {
 	app := newTestAppModel()
 

@@ -286,9 +286,9 @@ func (m *AppModel) handleSectionMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 		return true, nil
 
 	case CloseSectionManagerMsg:
-		m.popView()
+		popCmd := m.popView()
 		m.reloadAndRefreshProjectTree()
-		return true, nil
+		return true, popCmd
 
 	case GoToSectionMsg:
 		m.popView()

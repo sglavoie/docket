@@ -128,6 +128,25 @@ func TestGetForView_OutlinerTagManagerScope(t *testing.T) {
 	assertHelpItem(ViewCrossProjectOutliner, "ctrl+t", "Global tag manager")
 }
 
+func TestGetForView_OutlinerSectionManagerScope(t *testing.T) {
+	r := NewKeybindingRegistry()
+
+	for _, view := range []ViewType{ViewOutliner, ViewCrossProjectOutliner} {
+		found := false
+		for _, item := range r.GetForView(view) {
+			if item.Key == "ctrl+s" && item.Description == "Section manager" {
+				found = true
+			}
+			if item.Key == "ctrl+s" && item.Description != "Section manager" {
+				t.Fatalf("%s ctrl+s description = %q, want Section manager", view, item.Description)
+			}
+		}
+		if !found {
+			t.Fatalf("%s help missing ctrl+s Section manager binding", view)
+		}
+	}
+}
+
 func TestGetForView_ProjectTreeAndOutlinerUseCtrlNForProjectNotes(t *testing.T) {
 	r := NewKeybindingRegistry()
 

@@ -156,8 +156,18 @@ func (m *AppModel) filterCommands() []Command {
 			Description: "Manage custom project sections",
 			Shortcut:    "ctrl+s",
 			Category:    CategoryActions,
-			Views:       projectTreeAndOutlinerViews(),
+			Views:       []ViewType{ViewProjectTree, ViewOutliner, ViewCrossProjectOutliner},
 			Handler: func() tea.Msg {
+				if m.baseProjectView() == ViewCrossProjectOutliner {
+					if m.crossOutliner == nil {
+						return StatusMsg("No task selected for section manager")
+					}
+					task, project := m.crossOutliner.getTaskRef()
+					if task == nil || project == nil {
+						return StatusMsg("No task selected for section manager")
+					}
+					return ShowSectionManagerMsg{Project: project}
+				}
 				if m.baseProjectView() == ViewOutliner && m.outliner != nil {
 					return ShowSectionManagerMsg{Project: m.outliner.project}
 				}

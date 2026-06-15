@@ -87,6 +87,58 @@ func TestHandleSectionMessagesShowSectionPicker(t *testing.T) {
 	}
 }
 
+func TestHandleSectionMessagesCloseSectionManagerReturnsCrossOutlinerAppearCmd(t *testing.T) {
+	app := newTestAppModel()
+	app.pushView(ViewCrossProjectOutliner)
+	app.pushView(ViewSectionManager)
+
+	handled, cmd := app.handleSectionMessages(CloseSectionManagerMsg{})
+	if !handled {
+		t.Fatal("CloseSectionManagerMsg should be handled")
+	}
+	if app.currentView() != ViewCrossProjectOutliner {
+		t.Fatalf("currentView = %v, want ViewCrossProjectOutliner", app.currentView())
+	}
+	assertViewDidAppearCmd(t, cmd)
+}
+
+func TestHandleSectionMessagesCloseSectionManagerRefreshesProjectContexts(t *testing.T) {
+	tests := []struct {
+		name     string
+		baseView ViewType
+	}{
+		{name: "project tree", baseView: ViewProjectTree},
+		{name: "single project outliner", baseView: ViewOutliner},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			app, mockPersister, project := newTestAppModelWithMockPersisterAndProject(t)
+			app.projectTree = NewProjectTreeModel(project, app.config, app.configManager)
+			app.views.Register(ViewProjectTree, app.projectTree)
+			app.pushView(tt.baseView)
+			app.pushView(ViewSectionManager)
+
+			handled, cmd := app.handleSectionMessages(CloseSectionManagerMsg{})
+			if !handled {
+				t.Fatal("CloseSectionManagerMsg should be handled")
+			}
+			if cmd != nil {
+				t.Fatalf("expected nil cmd outside cross-project outliner, got %T", cmd)
+			}
+			if app.currentView() != tt.baseView {
+				t.Fatalf("currentView = %v, want %v", app.currentView(), tt.baseView)
+			}
+			if got := len(mockPersister.LoadCalls); got != 1 {
+				t.Fatalf("persister Load calls = %d, want 1", got)
+			}
+			if mockPersister.LoadCalls[0] != project {
+				t.Fatal("persister should reload the current project")
+			}
+		})
+	}
+}
+
 func TestHandleClipboardMessagesTaskCopied(t *testing.T) {
 	app := newTestAppModel()
 
@@ -288,6 +340,28 @@ func TestCloseViewMsgPropagatesPopCmd(t *testing.T) {
 			t.Errorf("expected ViewDidAppearMsg, got %T", msg)
 		}
 	})
+}
+
+func assertViewDidAppearCmd(t *testing.T, cmd tea.Cmd) {
+	t.Helper()
+	if cmd == nil {
+		t.Fatal("expected ViewDidAppearMsg cmd, got nil")
+	}
+	msg := cmd()
+	if batch, ok := msg.(tea.BatchMsg); ok {
+		for _, c := range batch {
+			if c == nil {
+				continue
+			}
+			if _, ok := c().(ViewDidAppearMsg); ok {
+				return
+			}
+		}
+		t.Fatalf("expected ViewDidAppearMsg in batch, got %v", batch)
+	}
+	if _, ok := msg.(ViewDidAppearMsg); !ok {
+		t.Fatalf("expected ViewDidAppearMsg, got %T", msg)
+	}
 }
 
 func TestStatusTimeout(t *testing.T) {

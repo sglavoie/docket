@@ -199,7 +199,14 @@ func (m *OutlinerModel) handleUtilityKey(key string) (tea.Model, tea.Cmd, bool) 
 
 	case "ctrl+s":
 		if m.project == nil {
-			return m, nil, true
+			task, project := m.getTaskRef()
+			if task == nil || project == nil {
+				m.setStatus("No task selected for section manager")
+				return m, nil, true
+			}
+			return m, func() tea.Msg {
+				return ShowSectionManagerMsg{ProjectTree: nil, Project: project}
+			}, true
 		}
 		return m, func() tea.Msg {
 			return ShowSectionManagerMsg{ProjectTree: nil, Project: m.project}
