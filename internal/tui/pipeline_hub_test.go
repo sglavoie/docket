@@ -5,6 +5,7 @@ import (
 	"slices"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
@@ -133,19 +134,53 @@ func TestPipelineHubModel_CountsAppearInView(t *testing.T) {
 	}
 }
 
-func TestCountInbox_RecursesIntoChildren(t *testing.T) {
-	root := &models.Task{Section: models.SectionInbox, Status: models.StatusTodo}
-	child := &models.Task{Section: models.SectionInbox, Status: models.StatusTodo}
-	grandchild := &models.Task{Section: models.SectionInbox, Status: models.StatusTodo}
-	completedChild := &models.Task{Section: models.SectionInbox, Status: models.StatusDone}
-	nonInboxChild := &models.Task{Section: models.SectionNext, Status: models.StatusTodo}
+func TestCountInbox_CountsProcessableRootTasksOnly(t *testing.T) {
+	future := time.Now().AddDate(0, 0, 1)
+	parentID := "root"
 
-	child.Children = []*models.Task{grandchild}
-	root.Children = []*models.Task{child, completedChild, nonInboxChild}
+	tests := []struct {
+		name string
+		task *models.Task
+		want int
+	}{
+		{
+			name: "root inbox todo",
+			task: &models.Task{Section: models.SectionInbox, Status: models.StatusTodo},
+			want: 1,
+		},
+		{
+			name: "completed root inbox",
+			task: &models.Task{Section: models.SectionInbox, Status: models.StatusDone},
+			want: 0,
+		},
+		{
+			name: "snoozed root inbox",
+			task: &models.Task{Section: models.SectionInbox, Status: models.StatusTodo, SnoozedUntil: &future},
+			want: 0,
+		},
+		{
+			name: "child inbox task",
+			task: &models.Task{ParentID: &parentID, Section: models.SectionInbox, Status: models.StatusTodo},
+			want: 0,
+		},
+		{
+			name: "root with inbox child",
+			task: &models.Task{
+				ID:       "root",
+				Section:  models.SectionInbox,
+				Status:   models.StatusTodo,
+				Children: []*models.Task{{ParentID: &parentID, Section: models.SectionInbox, Status: models.StatusTodo}},
+			},
+			want: 1,
+		},
+	}
 
-	got := countInbox(root)
-	if got != 3 {
-		t.Errorf("countInbox = %d, want 3 (root + child + grandchild; completed and non-inbox excluded)", got)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := countInbox(tt.task); got != tt.want {
+				t.Errorf("countInbox = %d, want %d", got, tt.want)
+			}
+		})
 	}
 }
 

@@ -124,6 +124,13 @@ func restoreInboxSnapshot(task *models.Task, snap *inboxSnapshot) {
 	task.UpdatedAt = time.Now()
 }
 
+func isProcessableInboxTask(task *models.Task) bool {
+	return task.Section == models.SectionInbox &&
+		task.IsRoot() &&
+		!task.IsComplete() &&
+		!task.IsSnoozed()
+}
+
 // willLeaveInbox returns true if the task will no longer appear in inbox after save.
 func willLeaveInbox(task *models.Task) bool {
 	return task.Section != models.SectionInbox || task.IsComplete()

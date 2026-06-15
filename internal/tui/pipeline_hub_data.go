@@ -11,7 +11,7 @@ import (
 
 // pipelineCounts holds aggregated task counts shown in the Pipeline Hub.
 type pipelineCounts struct {
-	inboxCount          int // tasks in inbox sections across all projects
+	inboxCount          int // processable root inbox tasks across all projects
 	queueLen            int // number of IDs in the focus queue
 	dailyPlanLen        int // number of IDs in the daily plan
 	overdueCount        int // overdue non-complete tasks
@@ -49,14 +49,10 @@ func loadPipelineCounts(cfg *config.Config, queueIDs, dailyPlanIDs map[string]bo
 }
 
 func countInbox(task *models.Task) int {
-	n := 0
-	if task.Section == models.SectionInbox && !task.IsComplete() && !task.IsSnoozed() {
-		n++
+	if isProcessableInboxTask(task) {
+		return 1
 	}
-	for _, child := range task.Children {
-		n += countInbox(child)
-	}
-	return n
+	return 0
 }
 
 func countOverdue(task *models.Task) int {

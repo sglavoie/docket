@@ -43,7 +43,7 @@ func (m *GlobalInboxProcessorModel) loadAllInboxTasks() {
 		}
 		m.projectCache[project.ID] = project
 		for _, task := range project.Tasks {
-			if task.Section == models.SectionInbox && task.IsRoot() && !task.IsComplete() && !task.IsSnoozed() {
+			if isProcessableInboxTask(task) {
 				m.inboxTasks = append(m.inboxTasks, GlobalInboxTask{
 					Task:    task,
 					Project: project,
