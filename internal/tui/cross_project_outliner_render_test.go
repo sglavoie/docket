@@ -137,14 +137,14 @@ func TestCrossProjectOutlinerRenderEmojiPreviewScrollbarStaysWithinWidth(t *test
 	}
 }
 
-func TestCrossProjectOutlinerRenderAggregateCustomTabs(t *testing.T) {
+func TestCrossProjectOutlinerRenderIgnoresAggregateCustomTabs(t *testing.T) {
 	const width = 80
 	cfg := config.NewConfig()
 	m := NewOutlinerModel(nil, cfg, nil)
 	m.SetSize(width, 12)
 
 	task := renderFixtureTask(t, "sprint-task", 11, models.TaskTypeTask, "Sprint task", models.StatusTodo, 3, "")
-	task.CustomSection = "Sprint-1"
+	task.Section = "Sprint-1"
 	project := renderFixtureProject(t, "proj-alpha", "alpha", "Alpha Project", []*models.Task{task})
 	project.Sections = []string{"Sprint-1"}
 
@@ -152,10 +152,10 @@ func TestCrossProjectOutlinerRenderAggregateCustomTabs(t *testing.T) {
 	m.crossProjectRebuildRows()
 
 	plain := ansi.Strip(m.renderOutlinerTreeContent(width))
-	assertContains(t, plain, "Sprint-1", "aggregate custom tab")
+	assertNotContains(t, plain, "Sprint-1", "aggregate custom tab")
 }
 
-func TestCrossProjectOutlinerRenderAggregateCustomTabColors(t *testing.T) {
+func TestCrossProjectOutlinerRenderIgnoresAggregateCustomTabColors(t *testing.T) {
 	ApplyTheme(ThemeConfig{Name: ""})
 	t.Cleanup(func() { ApplyTheme(ThemeConfig{}) })
 
@@ -165,7 +165,7 @@ func TestCrossProjectOutlinerRenderAggregateCustomTabColors(t *testing.T) {
 	m.SetSize(width, 12)
 
 	task := renderFixtureTask(t, "sprint-task", 11, models.TaskTypeTask, "Sprint task", models.StatusTodo, 3, "")
-	task.CustomSection = "Sprint-1"
+	task.Section = "Sprint-1"
 	project := renderFixtureProject(t, "proj-alpha", "alpha", "Alpha Project", []*models.Task{task})
 	project.Sections = []string{models.SectionNext, "Sprint-1"}
 	project.SectionColors = map[string]string{"Sprint-1": "green"}
@@ -174,17 +174,10 @@ func TestCrossProjectOutlinerRenderAggregateCustomTabColors(t *testing.T) {
 	m.crossProjectRebuildRows()
 
 	rendered := m.renderOutlinerTreeContent(width)
-	expectedTabBar := RenderColoredTabBar(
-		[]string{"All", "Sprint-1"},
-		0,
-		width,
-		1,
-		map[string]string{"Sprint-1": "green"},
-	)
-	assertContains(t, rendered, expectedTabBar, "colored aggregate custom tab bar")
+	assertNotContains(t, ansi.Strip(rendered), "Sprint-1", "colored aggregate custom tab bar")
 }
 
-func TestCrossProjectOutlinerRenderAggregateCustomTabsInEmptyState(t *testing.T) {
+func TestCrossProjectOutlinerRenderIgnoresAggregateCustomTabsInEmptyState(t *testing.T) {
 	const width = 80
 	cfg := config.NewConfig()
 	m := NewOutlinerModel(nil, cfg, nil)
@@ -195,7 +188,7 @@ func TestCrossProjectOutlinerRenderAggregateCustomTabsInEmptyState(t *testing.T)
 	m.loadedProjects = []*models.Project{project}
 
 	plain := ansi.Strip(m.renderOutlinerTreeContent(width))
-	assertContains(t, plain, "Sprint-1", "empty-state aggregate custom tab")
+	assertNotContains(t, plain, "Sprint-1", "empty-state aggregate custom tab")
 	assertContains(t, plain, "No tasks found.", "empty-state message")
 }
 
@@ -301,5 +294,13 @@ func assertContains(t *testing.T, got, want, label string) {
 
 	if !strings.Contains(got, want) {
 		t.Fatalf("%s: expected %q to contain %q", label, got, want)
+	}
+}
+
+func assertNotContains(t *testing.T, got, want, label string) {
+	t.Helper()
+
+	if strings.Contains(got, want) {
+		t.Fatalf("%s: expected %q not to contain %q", label, got, want)
 	}
 }

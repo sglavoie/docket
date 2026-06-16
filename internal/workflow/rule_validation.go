@@ -148,12 +148,43 @@ func (t RuleTrigger) Validate() error {
 	if t.Value == "" && !isValidEmptyTriggerValue(t) {
 		return fmt.Errorf("trigger value is required")
 	}
+	if err := validateSectionTriggerValue(t); err != nil {
+		return err
+	}
 
 	return nil
 }
 
 func isValidEmptyTriggerValue(t RuleTrigger) bool {
 	return t.Field == FieldSection && (t.Operation == OpEquals || t.Operation == OpNotEquals)
+}
+
+func validateSectionTriggerValue(t RuleTrigger) error {
+	switch t.Field {
+	case FieldSection:
+		if t.Value != "" && !models.IsGTDSection(t.Value) {
+			return fmt.Errorf("section trigger value must be a built-in section: %s", t.Value)
+		}
+	case FieldSectionChanged:
+		parts := strings.Split(t.Value, "->")
+		if len(parts) != 2 {
+			return nil
+		}
+		for _, part := range parts {
+			if err := validateSectionTransitionPattern(strings.TrimSpace(part)); err != nil {
+				return err
+			}
+		}
+	default:
+	}
+	return nil
+}
+
+func validateSectionTransitionPattern(pattern string) error {
+	if pattern == "*" || pattern == "" || models.IsGTDSection(pattern) {
+		return nil
+	}
+	return fmt.Errorf("section_changed value must target built-in sections: %s", pattern)
 }
 
 // Validate checks if the action is properly configured.
@@ -215,6 +246,10 @@ func (a RuleAction) Validate() error {
 	case ActionSetProjectStatus:
 		if models.ProjectStatusIconByKey(a.Value) == nil {
 			return fmt.Errorf("invalid project status icon key: %s", a.Value)
+		}
+	case ActionSetSection:
+		if a.Value != "" && !models.IsGTDSection(a.Value) {
+			return fmt.Errorf("set_section value must be a built-in section: %s", a.Value)
 		}
 	}
 
@@ -399,7 +434,7 @@ func (r *WorkflowRule) MatchesScope(task *models.Task, projectName, projectID st
 		}
 		matched := false
 		for _, section := range r.Scope.Sections {
-			if strings.EqualFold(section, task.Section) || strings.EqualFold(section, task.CustomSection) {
+			if strings.EqualFold(section, task.Section) {
 				matched = true
 				break
 			}
@@ -429,8 +464,11 @@ func (r *WorkflowRule) validateScope() error {
 		}
 	}
 	for _, section := range r.Scope.Sections {
-		if strings.TrimSpace(section) == "" {
+		if section != "" && strings.TrimSpace(section) == "" {
 			return fmt.Errorf("empty section name in scope")
+		}
+		if section != "" && !models.IsGTDSection(section) {
+			return fmt.Errorf("invalid section in scope: %s", section)
 		}
 	}
 

@@ -96,9 +96,6 @@ func matchesEventTrigger(task, prev *models.Task, trigger RuleTrigger) bool { //
 		)
 
 	case FieldSectionChanged:
-		// Use the effective section (CustomSection if set, otherwise Section)
-		// so that internal field clearing (e.g. Section="" when CustomSection
-		// is set) is not mistaken for a transition to the Active view.
 		return matchesTransition(
 			getPrevValue(prev, effectiveSection),
 			effectiveSection(task),
@@ -211,13 +208,8 @@ func matchesPattern(value, pattern string) bool {
 	return strings.EqualFold(value, pattern)
 }
 
-// effectiveSection returns the logical section for a task: CustomSection if
-// set, otherwise Section. This avoids confusing the internal empty-Section
-// representation (used when CustomSection is active) with the Active view.
+// effectiveSection returns the logical GTD section for a task.
 func effectiveSection(t *models.Task) string {
-	if t.CustomSection != "" {
-		return t.CustomSection
-	}
 	return t.Section
 }
 
@@ -405,9 +397,7 @@ func matchesTrigger(task *models.Task, trigger RuleTrigger) bool {
 	case FieldPriority:
 		fieldValue = strconv.Itoa(task.Priority)
 	case FieldSection:
-		// Use the effective section (CustomSection if set, otherwise Section)
-		// so that all operations (equals, not_equals, contains, etc.) compare
-		// against the logical section the task belongs to.
+		// Compare against the built-in GTD section stored on the task.
 		fieldValue = effectiveSection(task)
 	case FieldTags:
 		return matchesTagTrigger(task.Tags, trigger)

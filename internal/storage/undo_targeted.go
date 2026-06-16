@@ -73,12 +73,13 @@ func buildTargetedRestore(currentContent string, snapshotResult *ParseResult, ta
 		currentIDs[snapTask.ID] = true
 	}
 
-	return WriteTasksMarkdownWithProjectMetadata(
+	return WriteTasksMarkdownWithFullProjectMetadata(
 		currentResult.ProjectName,
 		currentResult.Tasks,
 		currentResult.Sections,
 		currentResult.SectionColors,
 		currentResult.Tags,
+		currentResult.PinnedTags,
 	), nil
 }
 
@@ -94,7 +95,6 @@ func restoreTaskFields(dst, src *models.Task) {
 	dst.Priority = src.Priority
 	dst.ParentID = src.ParentID
 	dst.Section = src.Section
-	dst.CustomSection = src.CustomSection
 	dst.CreatedAt = src.CreatedAt
 	dst.UpdatedAt = src.UpdatedAt
 	dst.CompletedAt = src.CompletedAt

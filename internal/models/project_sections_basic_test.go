@@ -18,7 +18,7 @@ func TestProjectGetSections(t *testing.T) {
 	}
 
 	// Add more sections
-	project.Sections = []string{"Active", "Done", SectionNext}
+	project.Sections = []string{SectionInbox, SectionCompleted, SectionNext}
 	sections = project.GetSections()
 
 	// Next should always be first
@@ -37,7 +37,7 @@ func TestProjectGetSections(t *testing.T) {
 	}
 
 	// Test with sections missing Next - should prepend it
-	project.Sections = []string{"Active", "Done"}
+	project.Sections = []string{SectionInbox, SectionWaiting}
 	sections = project.GetSections()
 	if sections[0] != SectionNext {
 		t.Errorf("expected Next first even when missing, got %s", sections[0])
@@ -52,13 +52,16 @@ func TestProjectHasSection(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	project.Sections = []string{SectionNext, "Active", "Done"}
+	project.Sections = []string{SectionNext, SectionInbox, "Legacy"}
 
 	if !project.HasSection(SectionNext) {
 		t.Error("expected HasSection to return true for Next")
 	}
-	if !project.HasSection("Active") {
-		t.Error("expected HasSection to return true for Active")
+	if !project.HasSection(SectionInbox) {
+		t.Error("expected HasSection to return true for Inbox")
+	}
+	if project.HasSection("Legacy") {
+		t.Error("expected HasSection to return false for non-GTD Legacy")
 	}
 	if project.HasSection("Nonexistent") {
 		t.Error("expected HasSection to return false for Nonexistent")
@@ -78,10 +81,10 @@ func TestProjectEnsureSection(t *testing.T) {
 		t.Error("EnsureSection should not add duplicate Next")
 	}
 
-	// Adding new section should add it
+	// Adding non-GTD section should do nothing.
 	project.EnsureSection("Active")
-	if !project.HasSection("Active") {
-		t.Error("EnsureSection should add new section")
+	if project.HasSection("Active") {
+		t.Error("EnsureSection should not add non-GTD section")
 	}
 
 	// Adding empty string should do nothing

@@ -253,16 +253,16 @@ func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 		taskCount := len(sandbox.Tasks)
 		notes, _ := storage.ListNotes(sandbox)
 		noteCount := len(notes)
-		customSections := sandbox.GetCustomSections()
-		sectionCount := len(customSections)
+		tagCount := len(sandbox.AllTags())
+		pinnedTagCount := len(sandbox.PinnedTagList())
 
-		if taskCount == 0 && noteCount == 0 && sectionCount == 0 {
+		if taskCount == 0 && noteCount == 0 && tagCount == 0 && pinnedTagCount == 0 {
 			m.setInfoStatus("Sandbox is already empty")
 			return true, defaultStatusTimeout()
 		}
 
 		// Build item count for confirmation
-		totalItems := taskCount + noteCount + sectionCount
+		totalItems := taskCount + noteCount + tagCount + pinnedTagCount
 		m.pendingSandboxReset = true
 		m.pendingSandboxTaskCount = totalItems
 		m.setInfoStatus(fmt.Sprintf("Reset sandbox? Delete %d item(s)?", totalItems))
@@ -375,9 +375,9 @@ func (m *AppModel) executeSandboxReset() tea.Cmd {
 		taskCount := len(sandbox.Tasks)
 		notes, _ := storage.ListNotes(sandbox)
 		noteCount := len(notes)
-		customSections := sandbox.GetCustomSections()
-		sectionCount := len(customSections)
-		totalItems := taskCount + noteCount + sectionCount
+		tagCount := len(sandbox.AllTags())
+		pinnedTagCount := len(sandbox.PinnedTagList())
+		totalItems := taskCount + noteCount + tagCount + pinnedTagCount
 
 		if totalItems == 0 {
 			return SandboxResetDoneMsg{TaskCount: 0}
@@ -395,6 +395,8 @@ func (m *AppModel) executeSandboxReset() tea.Cmd {
 		// Reset sections to default
 		sandbox.Sections = []string{models.SectionNext}
 		sandbox.SectionColors = make(map[string]string)
+		sandbox.Tags = []string{}
+		sandbox.PinnedTags = []string{}
 
 		if err := storage.SaveProjectLocked(sandbox); err != nil {
 			return ErrorMsg{Err: fmt.Errorf("failed to save sandbox: %w", err)}

@@ -12,12 +12,13 @@ import (
 var taskSectionCmd = &cobra.Command{
 	Use:   "section <task-id>... <section>",
 	Short: "Assign task(s) to a section",
-	Long: `Assign one or more tasks to a section for organization.
+	Long: `Assign one or more tasks to a built-in GTD section.
 
-The last argument is the section name. Use an empty string "" to clear.
+The last argument is the built-in section name. Use an empty string "" to
+clear to Active. Flexible grouping now uses tags and pinned tag tabs.
 
 Examples:
-  tt task section 5 "In Progress"
+  tt task section 5 Next
   tt task section 1 2 3 Review
   tt task section 3 ""`,
 	RunE: runTaskSection,
@@ -28,13 +29,21 @@ func init() {
 	addOutputFlags(taskSectionCmd)
 	taskSectionCmd.ValidArgsFunction = func(_ *cobra.Command, args []string, _ string) ([]string, cobra.ShellCompDirective) {
 		if len(args) >= 1 {
-			project, _, _, err := LoadCurrentProject()
-			if err != nil {
-				return nil, cobra.ShellCompDirectiveNoFileComp
-			}
-			return project.GetSections(), cobra.ShellCompDirectiveNoFileComp
+			return builtInSectionNames(), cobra.ShellCompDirectiveNoFileComp
 		}
 		return nil, cobra.ShellCompDirectiveNoFileComp
+	}
+}
+
+func builtInSectionNames() []string {
+	return []string{
+		models.SectionNext,
+		models.SectionInbox,
+		models.SectionWaiting,
+		models.SectionSomeday,
+		models.SectionReview,
+		models.SectionStandby,
+		models.SectionCompleted,
 	}
 }
 
@@ -58,13 +67,11 @@ func runTaskSection(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
-		// Reject case-variant collisions with built-in GTD section names
-		// (e.g. "inbox" vs canonical "Inbox"). Without this, SetSection
-		// silently no-ops on the task while EnsureSection also rejects,
-		// yet the command reports a successful "Moved" message — leaving
-		// the user with the false impression that the section changed.
-		if !models.IsGTDSection(sectionName) && models.IsGTDSectionNameCI(sectionName) {
-			return fmt.Errorf("section %q is a case-variant of a built-in GTD section; use the canonical form", sectionName)
+		if !models.IsGTDSection(sectionName) {
+			if models.IsGTDSectionNameCI(sectionName) {
+				return fmt.Errorf("section %q is a case-variant of a built-in GTD section; use the canonical form", sectionName)
+			}
+			return fmt.Errorf("section %q is not a built-in GTD section; use tags for flexible grouping with 'tt tag pin %s'", sectionName, sectionName)
 		}
 	}
 
@@ -78,31 +85,12 @@ func runTaskSection(cmd *cobra.Command, args []string) error {
 
 		task, err := WithTaskUpdateInProject(taskID, func(project *models.Project, task *models.Task) error {
 			// Check with fresh data whether the section already matches.
-			// GTD sections live in task.Section; custom sections in task.CustomSection.
-			isGTD := models.IsGTDSection(sectionName) || sectionName == ""
-			if isGTD {
-				if task.Section == sectionName && task.CustomSection == "" {
-					alreadyInSection = true
-					skippedShortID = task.ShortID
-					return fmt.Errorf("no change needed")
-				}
-				if task.CustomSection != "" {
-					oldSection = task.CustomSection
-				} else {
-					oldSection = task.Section
-				}
-			} else {
-				if task.CustomSection == sectionName {
-					alreadyInSection = true
-					skippedShortID = task.ShortID
-					return fmt.Errorf("no change needed")
-				}
-				if task.CustomSection != "" {
-					oldSection = task.CustomSection
-				} else {
-					oldSection = task.Section
-				}
+			if task.Section == sectionName {
+				alreadyInSection = true
+				skippedShortID = task.ShortID
+				return fmt.Errorf("no change needed")
 			}
+			oldSection = task.Section
 
 			if sectionName != "" {
 				project.EnsureSection(sectionName)

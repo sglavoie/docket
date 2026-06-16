@@ -113,27 +113,14 @@ func parseWriteRoundTrip(src, dst *models.Task) ([]ParseWarning, error) {
 	return warnings, nil
 }
 
-// TestParse_NonGTDSectionWithCustomSectionEmitsWarning asserts that when a
-// task carries BOTH a non-GTD Section value AND a non-empty CustomSection,
-// the finalizer surfaces a DataCorrection warning before discarding the
-// Section value.
-//
-// Before the fix the migration block silently cleared the conflicting
-// Section field whenever CustomSection was already set, because the only
-// warning was emitted by the *second* check that requires Section to still
-// be non-empty after the migration ran. The non-GTD case fell into the
-// silent-drop hole.
-func TestParse_NonGTDSectionWithCustomSectionEmitsWarning(t *testing.T) {
-	metaStr := "id: dup-section, status: todo, priority: 3, section: legacy_value, custom_section: kept"
+func TestParse_NonGTDSectionWithLegacySectionFieldEmitsWarning(t *testing.T) {
+	metaStr := "id: dup-section, status: todo, priority: 3, section: legacy_value, " + legacyTaskSectionField + ": kept"
 
 	task := &models.Task{ShortID: 7}
 	warnings := ParseMetadata(task, metaStr)
 
 	if task.Section != "" {
-		t.Errorf("Section = %q, want empty after migration", task.Section)
-	}
-	if task.CustomSection != "kept" {
-		t.Errorf("CustomSection = %q, want %q", task.CustomSection, "kept")
+		t.Errorf("Section = %q, want empty after correction", task.Section)
 	}
 
 	found := false

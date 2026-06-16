@@ -42,18 +42,17 @@ func renderSettingLine(label, value string) string {
 
 // inboxSnapshot stores task state for undo in inbox processors.
 type inboxSnapshot struct {
-	section       string
-	customSection string
-	priority      int
-	tags          []string
-	dueDate       *time.Time
-	hasTime       bool
-	dependsOn     []string
-	status        models.TaskStatus
-	completedAt   *time.Time
-	active        bool
-	snoozedUntil  *time.Time
-	stage         string
+	section      string
+	priority     int
+	tags         []string
+	dueDate      *time.Time
+	hasTime      bool
+	dependsOn    []string
+	status       models.TaskStatus
+	completedAt  *time.Time
+	active       bool
+	snoozedUntil *time.Time
+	stage        string
 }
 
 // captureInboxSnapshot creates a snapshot of task state for undo.
@@ -77,25 +76,23 @@ func captureInboxSnapshot(task *models.Task) *inboxSnapshot {
 	}
 
 	return &inboxSnapshot{
-		section:       task.Section,
-		customSection: task.CustomSection,
-		priority:      task.Priority,
-		tags:          append([]string{}, task.Tags...),
-		dueDate:       dueDate,
-		hasTime:       task.HasTime,
-		dependsOn:     append([]string{}, task.DependsOn...),
-		status:        task.Status,
-		completedAt:   completedAt,
-		active:        task.Active,
-		snoozedUntil:  snoozedUntil,
-		stage:         task.Stage,
+		section:      task.Section,
+		priority:     task.Priority,
+		tags:         append([]string{}, task.Tags...),
+		dueDate:      dueDate,
+		hasTime:      task.HasTime,
+		dependsOn:    append([]string{}, task.DependsOn...),
+		status:       task.Status,
+		completedAt:  completedAt,
+		active:       task.Active,
+		snoozedUntil: snoozedUntil,
+		stage:        task.Stage,
 	}
 }
 
 // restoreInboxSnapshot restores a task from a snapshot.
 func restoreInboxSnapshot(task *models.Task, snap *inboxSnapshot) {
 	task.Section = snap.section
-	task.CustomSection = snap.customSection
 	task.Priority = snap.priority
 	task.Tags = append([]string{}, snap.tags...)
 	task.DependsOn = append([]string{}, snap.dependsOn...)
@@ -222,10 +219,7 @@ func renderInboxTaskDisplay(task *models.Task, width int, willLeave bool, projec
 func renderInboxCurrentSettings(task *models.Task, cfg *config.Config) string {
 	var lines []string
 
-	section := task.CustomSection
-	if section == "" {
-		section = task.Section
-	}
+	section := task.Section
 	if section == "" {
 		section = "(no section)"
 	}

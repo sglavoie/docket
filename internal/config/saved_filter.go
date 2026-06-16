@@ -30,7 +30,7 @@ type SavedFilter struct {
 	FilterScoreMin   float64           `json:"filter_score_min,omitempty"`
 	SortField        int               `json:"sort_field,omitempty"`
 	SortAscending    bool              `json:"sort_ascending"`
-	CustomSectionTab string            `json:"custom_section_tab,omitempty"`
+	PinnedTagTab     string            `json:"pinned_tag_tab,omitempty"`
 
 	// --- Criteria mode (from smartList) ---
 	Criteria         []SmartListCriterion `json:"criteria,omitempty"`
@@ -154,7 +154,7 @@ func savedViewToFilter(sv savedView) SavedFilter {
 		FilterScoreMin:   sv.FilterScoreMin,
 		SortField:        sv.SortField,
 		SortAscending:    sv.SortAscending,
-		CustomSectionTab: sv.CustomSectionTab,
+		PinnedTagTab:     sv.PinnedTagTab,
 	}
 }
 

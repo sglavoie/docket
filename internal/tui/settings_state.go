@@ -106,7 +106,7 @@ var (
 	settingsTabNames = []string{"General", "Palette", "Review", "Behavior", "Attachments", "Project Tree", "Outliner", "Kanban", "Notifications", "Stages", "Appearance"}
 
 	// tabFieldCount declares how many focusable fields each tab has.
-	tabFieldCount = []int{5, 18, 5, 19, 2, 15, 24, 11, 15, 1, 5}
+	tabFieldCount = []int{5, 18, 5, 19, 2, 15, 24, 10, 15, 1, 5}
 
 	// tabFieldStart holds the starting focus index for each tab (computed in init).
 	tabFieldStart []int
@@ -165,13 +165,13 @@ var (
 	timeFormatValues = []string{"12h", "24h"}
 
 	// kanbanModeOptions lists the display labels for the kanban mode selector.
-	kanbanModeOptions = []string{"Section (GTD)", "Status", "Priority", "Stages", "Custom Sections", "Score Buckets"}
+	kanbanModeOptions = []string{"Section (GTD)", "Status", "Priority", "Stages", "Score Buckets"}
 
 	// kanbanModeValues maps cursor index to the KanbanMode ID string.
-	kanbanModeValues = []string{"section", "status", "priority", "stages", "custom_sections", "score_buckets"}
+	kanbanModeValues = []string{"section", "status", "priority", "stages", "score_buckets"}
 
 	// kanbanModeLabels are short labels shown in the enabled-modes checkbox list.
-	kanbanModeLabels = []string{"Section (GTD)", "Status", "Priority", "Stages", "Custom Sections", "Score Buckets"}
+	kanbanModeLabels = []string{"Section (GTD)", "Status", "Priority", "Stages", "Score Buckets"}
 
 	// kanbanDetailHeightOptions lists the allowed detail pane heights.
 	kanbanDetailHeightOptions = []string{"1", "2", "3", "4", "5"}
@@ -314,7 +314,7 @@ type SettingsModel struct {
 	kanbanShowEmptyColumns   bool            // Show columns even when empty
 	kanbanDetailPaneVisible  bool            // Bottom detail pane shown by default
 	kanbanDetailHeightCursor int             // Index into kanbanDetailHeightOptions (0=1 line .. 4=5 lines)
-	kanbanEnabledModes       [6]bool         // Enabled mode toggles (indexed by AllKanbanModes order)
+	kanbanEnabledModes       [5]bool         // Enabled mode toggles (indexed by AllKanbanModes order)
 
 	// Stages settings (Stages tab, index 76)
 	savedStages        []string // snapshot at load time, for dirty detection

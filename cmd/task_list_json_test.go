@@ -14,7 +14,6 @@ func TestTaskJSONEntry_IncludesFlagFields(t *testing.T) {
 	task.Pinned = true
 	task.Active = true
 	task.Dimmed = true
-	task.CustomSection = "sprint-1"
 	parentID := "parent-uuid"
 	task.ParentID = &parentID
 
@@ -23,22 +22,21 @@ func TestTaskJSONEntry_IncludesFlagFields(t *testing.T) {
 		tags = []string{}
 	}
 	entry := taskJSONEntry{
-		ID:            task.ID,
-		ShortID:       task.ShortID,
-		Type:          task.Type.String(),
-		Title:         task.Title,
-		Status:        task.Status.String(),
-		Priority:      task.Priority,
-		ParentID:      task.ParentID,
-		Tags:          tags,
-		Section:       task.Section,
-		CustomSection: task.CustomSection,
-		Pinned:        task.Pinned,
-		Active:        task.Active,
-		Dimmed:        task.Dimmed,
-		CreatedAt:     task.CreatedAt,
-		UpdatedAt:     task.UpdatedAt,
-		DueDate:       task.DueDate,
+		ID:        task.ID,
+		ShortID:   task.ShortID,
+		Type:      task.Type.String(),
+		Title:     task.Title,
+		Status:    task.Status.String(),
+		Priority:  task.Priority,
+		ParentID:  task.ParentID,
+		Tags:      tags,
+		Section:   task.Section,
+		Pinned:    task.Pinned,
+		Active:    task.Active,
+		Dimmed:    task.Dimmed,
+		CreatedAt: task.CreatedAt,
+		UpdatedAt: task.UpdatedAt,
+		DueDate:   task.DueDate,
 	}
 
 	data, err := json.Marshal(entry)
@@ -60,8 +58,9 @@ func TestTaskJSONEntry_IncludesFlagFields(t *testing.T) {
 	if v, ok := parsed["dimmed"]; !ok || v != true {
 		t.Errorf("expected dimmed=true in JSON, got %v", v)
 	}
-	if v, ok := parsed["custom_section"]; !ok || v != "sprint-1" {
-		t.Errorf("expected custom_section=sprint-1 in JSON, got %v", v)
+	legacyTaskSectionField := "custom" + "_section"
+	if _, ok := parsed[legacyTaskSectionField]; ok {
+		t.Error("did not expect legacy section field in JSON")
 	}
 	if v, ok := parsed["parent_id"]; !ok || v != "parent-uuid" {
 		t.Errorf("expected parent_id=parent-uuid in JSON, got %v", v)

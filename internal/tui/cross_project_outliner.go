@@ -107,17 +107,17 @@ func (m *OutlinerModel) handleCrossProjectsLoaded(msg crossProjectsLoadedMsg) te
 	if msg.generation != m.crossLoadGen {
 		return nil // Stale result from a superseded load; discard.
 	}
-	customSectionTabName, hasCustomSectionTab := m.consumeCrossOutlinerReloadCustomSectionTab()
-	if !hasCustomSectionTab {
-		customSectionTabName, hasCustomSectionTab = m.crossProjectCustomSectionTabBeforeLoad()
+	pinnedTagTabName, hasPinnedTagTab := m.consumeCrossOutlinerReloadPinnedTagTab()
+	if !hasPinnedTagTab {
+		pinnedTagTabName, hasPinnedTagTab = m.crossProjectPinnedTagTabBeforeLoad()
 	}
 	m.crossLoading = false
 	m.crossSpinnerVisible = false
 	m.loadedProjects = msg.projects
-	if !hasCustomSectionTab && m.config != nil {
-		customSectionTabName = m.config.CrossOutlinerCustomSectionTab
+	if !hasPinnedTagTab && m.config != nil {
+		pinnedTagTabName = m.config.CrossOutlinerPinnedTagTab
 	}
-	m.restoreCrossOutlinerCustomSectionTab(customSectionTabName)
+	m.restoreCrossOutlinerPinnedTagTab(pinnedTagTabName)
 	m.crossForceRebuild = true
 	m.resetViewScrollOffset()
 	m.crossProjectRebuildRows()
@@ -224,9 +224,9 @@ func (m *OutlinerModel) crossProjectRebuildRows() {
 		}
 		tasks := filterTaskTree(roots, filter)
 
-		if section := m.activeCustomSectionFilter(); section != "" {
+		if tag := m.activePinnedTagFilter(); tag != "" {
 			tasks = filterTaskTree(tasks, func(t *models.Task) bool {
-				return t.InSection(section)
+				return t.HasTag(tag)
 			})
 		}
 
@@ -250,7 +250,7 @@ func (m *OutlinerModel) crossProjectRebuildRows() {
 
 		if len(m.filter.Sections) > 0 {
 			tasks = filterTaskTree(tasks, func(t *models.Task) bool {
-				return m.filter.Sections[t.Section] || m.filter.Sections[t.CustomSection]
+				return m.filter.Sections[t.Section]
 			})
 		}
 
@@ -291,12 +291,12 @@ func (m *OutlinerModel) crossProjectRebuildRows() {
 }
 
 func (m *OutlinerModel) crossProjectRowsFingerprint() string {
-	tabs := m.customSectionTabs()
+	tabs := m.pinnedTagTabs()
 	commonParts := commonFilterParts(&m.filter.CommonFilterState)
 
 	var b strings.Builder
 	fmt.Fprintf(&b, "search=%q|", m.SearchQuery())
-	fmt.Fprintf(&b, "tab=%d:%q|", m.customSectionTabIndex(), m.activeCustomSectionFilter())
+	fmt.Fprintf(&b, "tab=%d:%q|", m.pinnedTagTabIndex(), m.activePinnedTagFilter())
 	fmt.Fprintf(&b, "tabs=%q|", strings.Join(tabs, "\x1f"))
 	fmt.Fprintf(&b, "sort=%d:%t|", m.sort.Field, m.sort.Ascending)
 	fmt.Fprintf(&b, "common=%q|", strings.Join(commonParts, "\x1f"))
@@ -420,7 +420,7 @@ func (m *OutlinerModel) renderCrossProjectContent() string {
 // reloadCrossProjects triggers a new load, incrementing the generation counter
 // so any in-flight stale result is discarded on arrival.
 func (m *OutlinerModel) reloadCrossProjects() tea.Cmd {
-	m.preserveCrossOutlinerCustomSectionTabForReload()
+	m.preserveCrossOutlinerPinnedTagTabForReload()
 	m.loadedProjects = nil
 	m.rows = m.rows[:0]
 	m.resetViewScrollOffset()
@@ -472,7 +472,7 @@ func crossProjectSectionFilter(p Perspective) func(t *models.Task) bool {
 		return nil
 	case "Active":
 		return func(t *models.Task) bool {
-			return t.InSection("") && !t.Status.IsComplete() && !t.IsSnoozed()
+			return (t.InSection("") || !models.IsGTDSection(t.Section)) && !t.Status.IsComplete() && !t.IsSnoozed()
 		}
 	default:
 		section := p.Name

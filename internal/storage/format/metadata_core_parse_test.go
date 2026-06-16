@@ -25,16 +25,15 @@ func TestParseMetadata(t *testing.T) {
 			warnings: 0,
 		},
 		{
-			name:    "complete task metadata with custom section migration",
+			name:    "non-GTD section is cleared",
 			metaStr: "id: task-456, status: done, priority: 1, tags: work;urgent, section: Backend",
 			want: &models.Task{
-				ID:            "task-456",
-				Status:        models.StatusDone,
-				Priority:      1,
-				Tags:          []string{"work", "urgent"},
-				CustomSection: "Backend",
+				ID:       "task-456",
+				Status:   models.StatusDone,
+				Priority: 1,
+				Tags:     []string{"work", "urgent"},
 			},
-			warnings: 0,
+			warnings: 1,
 		},
 		{
 			name:    "task with dates",
@@ -192,15 +191,15 @@ func TestParseMetadata(t *testing.T) {
 	}
 }
 
-func TestCustomSectionMigrationFromOldFormat(t *testing.T) {
+func TestNonGTDSectionClearedFromOldFormat(t *testing.T) {
 	task := &models.Task{}
-	ParseMetadata(task, "id: m1, status: todo, priority: 2, section: Backend")
+	warnings := ParseMetadata(task, "id: m1, status: todo, priority: 2, section: Backend")
 
 	if task.Section != "" {
-		t.Errorf("Section = %q, want empty (migrated away)", task.Section)
+		t.Errorf("Section = %q, want empty", task.Section)
 	}
-	if task.CustomSection != "Backend" {
-		t.Errorf("CustomSection = %q, want %q", task.CustomSection, "Backend")
+	if len(warnings) != 1 || warnings[0].Type != WarningDataCorrection {
+		t.Fatalf("warnings = %#v, want one data-correction warning", warnings)
 	}
 }
 
@@ -211,41 +210,29 @@ func TestGTDSectionNotMigrated(t *testing.T) {
 	if task.Section != "Next" {
 		t.Errorf("Section = %q, want %q", task.Section, "Next")
 	}
-	if task.CustomSection != "" {
-		t.Errorf("CustomSection = %q, want empty", task.CustomSection)
-	}
 }
 
-func TestNonGTDSectionClearedWhenCustomSectionPresent(t *testing.T) {
-	// When both section and custom_section are set and section is non-GTD,
-	// the section field should be cleared to prevent a non-GTD value lingering
-	// in the GTD field. CustomSection takes precedence.
+func TestNonGTDSectionClearedWhenLegacySectionFieldPresent(t *testing.T) {
 	task := &models.Task{}
-	ParseMetadata(task, "id: m3, status: todo, priority: 2, section: Backend, custom_section: Frontend")
+	warnings := ParseMetadata(task, "id: m3, status: todo, priority: 2, section: Backend, "+legacyTaskSectionField+": Frontend")
 
 	if task.Section != "" {
 		t.Errorf("Section = %q, want empty (non-GTD value should be cleared)", task.Section)
 	}
-	if task.CustomSection != "Frontend" {
-		t.Errorf("CustomSection = %q, want %q (explicit custom_section takes precedence)", task.CustomSection, "Frontend")
+	if len(warnings) != 1 || warnings[0].Type != WarningDataCorrection {
+		t.Fatalf("warnings = %#v, want one data-correction warning", warnings)
 	}
 }
 
-func TestGTDSectionClearedWhenCustomSectionPresent(t *testing.T) {
+func TestLegacySectionMetadataIsUnsupported(t *testing.T) {
 	task := &models.Task{}
-	warnings := ParseMetadata(task, "id: m4, status: todo, priority: 2, section: Next, custom_section: Frontend")
+	warnings := ParseMetadata(task, "id: m4, status: todo, priority: 2, section: Next, "+legacyTaskSectionField+": Frontend")
 
 	if task.Section != "" {
-		t.Errorf("Section = %q, want empty (legacy GTD section should be cleared)", task.Section)
+		t.Errorf("Section = %q, want empty after unsupported legacy metadata correction", task.Section)
 	}
-	if task.CustomSection != "Frontend" {
-		t.Errorf("CustomSection = %q, want %q", task.CustomSection, "Frontend")
-	}
-	if len(warnings) != 1 {
-		t.Fatalf("got %d warnings, want 1", len(warnings))
-	}
-	if warnings[0].Type != WarningDataCorrection {
-		t.Fatalf("warning type = %v, want %v", warnings[0].Type, WarningDataCorrection)
+	if len(warnings) != 1 || warnings[0].Type != WarningDataCorrection {
+		t.Fatalf("warnings = %#v, want one data-correction warning", warnings)
 	}
 	if warnings[0].Field != "section" {
 		t.Fatalf("warning field = %q, want %q", warnings[0].Field, "section")

@@ -148,18 +148,6 @@ func (m *KanbanModel) buildKeyMap() *keymap.KeyMap {
 				}
 			}
 		}),
-		keymap.Bind("M", "Move to custom section (picker)", "Actions", func() (tea.Model, tea.Cmd) {
-			if m.mode == KanbanModeCustomSections {
-				card := m.getCursorCard()
-				if card != nil {
-					projects := m.loadedProjects
-					return m, func() tea.Msg {
-						return ShowCustomSectionPickerMsg{Task: card.Task, Project: card.Project, Projects: projects}
-					}
-				}
-			}
-			return m, nil
-		}),
 		keymap.Bind("r", "Refresh", "Actions", func() (tea.Model, tea.Cmd) {
 			m.reloadData()
 			m.clampCursor()

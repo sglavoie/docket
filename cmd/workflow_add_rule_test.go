@@ -14,7 +14,7 @@ func TestWorkflowAdd_NewRuleCreation(t *testing.T) {
 		Value:     "done",
 	}
 	actions := []workflow.RuleAction{
-		{ActionType: workflow.ActionSetSection, Value: "Archive"},
+		{ActionType: workflow.ActionSetSection, Value: "Completed"},
 	}
 
 	rule := workflow.NewRule("Test Rule", trigger, actions)
@@ -33,7 +33,7 @@ func TestWorkflowAdd_NewCompoundRuleCreation(t *testing.T) {
 		{Field: workflow.FieldTags, Operation: workflow.OpContains, Value: "archive"},
 	}
 	actions := []workflow.RuleAction{
-		{ActionType: workflow.ActionSetSection, Value: "Archive"},
+		{ActionType: workflow.ActionSetSection, Value: "Completed"},
 	}
 
 	rule := workflow.NewCompoundRule("Compound Rule", triggers, workflow.LogicAnd, actions)
@@ -62,7 +62,7 @@ func TestWorkflowAdd_RuleValidation(t *testing.T) {
 				{Field: workflow.FieldStatus, Operation: workflow.OpEquals, Value: "done"},
 			},
 			actions: []workflow.RuleAction{
-				{ActionType: workflow.ActionSetSection, Value: "Archive"},
+				{ActionType: workflow.ActionSetSection, Value: "Completed"},
 			},
 			expectErr: false,
 		},
@@ -117,10 +117,10 @@ func TestWorkflowAdd_RuleSummary(t *testing.T) {
 		Value:     "done",
 	}
 	actions := []workflow.RuleAction{
-		{ActionType: workflow.ActionSetSection, Value: "Archive"},
+		{ActionType: workflow.ActionSetSection, Value: "Completed"},
 	}
 
-	rule := workflow.NewRule("Archive Done", trigger, actions)
+	rule := workflow.NewRule("Complete Done", trigger, actions)
 	summary := rule.Summary()
 
 	if summary == "" {
@@ -162,7 +162,7 @@ func TestWorkflowAdd_ActionString(t *testing.T) {
 	}{
 		{workflow.RuleAction{ActionType: workflow.ActionSetStatus, Value: "done"}, "status"},
 		{workflow.RuleAction{ActionType: workflow.ActionAddTag, Value: "urgent"}, "tag"},
-		{workflow.RuleAction{ActionType: workflow.ActionSetSection, Value: "Archive"}, "Archive"},
+		{workflow.RuleAction{ActionType: workflow.ActionSetSection, Value: "Completed"}, "Completed"},
 		{workflow.RuleAction{ActionType: workflow.ActionClearDue}, "clear"},
 	}
 

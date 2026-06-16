@@ -76,7 +76,7 @@ func TestEvaluateRules_PriorityConflictResolution(t *testing.T) {
 	// Two rules setting the same field (section) with different priorities
 	// Highest priority (lowest number) should win
 	tasks := []*models.Task{
-		{ID: "1", Title: "Test Task", Priority: 1, Section: "Backlog"},
+		{ID: "1", Title: "Test Task", Priority: 1, Section: models.SectionNext},
 	}
 
 	rules := []WorkflowRule{
@@ -116,7 +116,7 @@ func TestEvaluateRules_PriorityConflictResolution(t *testing.T) {
 func TestEvaluateRules_SamePriorityConflict(t *testing.T) {
 	// Two rules with the same priority setting the same field should still conflict
 	tasks := []*models.Task{
-		{ID: "1", Title: "Test Task", Priority: 1, Section: "Backlog"},
+		{ID: "1", Title: "Test Task", Priority: 1, Section: models.SectionNext},
 	}
 
 	rules := []WorkflowRule{
@@ -141,7 +141,7 @@ func TestEvaluateRules_SamePriorityConflict(t *testing.T) {
 	result := EvaluateRules(tasks, rules)
 
 	// Same-priority conflict: section should be unchanged
-	if tasks[0].Section != "Backlog" {
+	if tasks[0].Section != models.SectionNext {
 		t.Errorf("expected section unchanged due to same-priority conflict, got %q", tasks[0].Section)
 	}
 	if len(result.Conflicts) != 1 {
@@ -152,7 +152,7 @@ func TestEvaluateRules_SamePriorityConflict(t *testing.T) {
 func TestEvaluateRules_ZeroPriorityConflict(t *testing.T) {
 	// Two rules with zero priority (unset) should conflict just like the old behavior
 	tasks := []*models.Task{
-		{ID: "1", Title: "Test Task", Priority: 1, Section: "Backlog"},
+		{ID: "1", Title: "Test Task", Priority: 1, Section: models.SectionNext},
 	}
 
 	rules := []WorkflowRule{
@@ -175,7 +175,7 @@ func TestEvaluateRules_ZeroPriorityConflict(t *testing.T) {
 	result := EvaluateRules(tasks, rules)
 
 	// Zero-priority conflict (backward compat): section unchanged
-	if tasks[0].Section != "Backlog" {
+	if tasks[0].Section != models.SectionNext {
 		t.Errorf("expected section unchanged due to conflict, got %q", tasks[0].Section)
 	}
 	if len(result.Conflicts) != 1 {
@@ -187,7 +187,7 @@ func TestEvaluateRules_PriorityNonConflictingActions(t *testing.T) {
 	// A lower-priority rule should still apply its non-conflicting actions
 	// even when a higher-priority rule wins for a specific field
 	tasks := []*models.Task{
-		{ID: "1", Title: "Test Task", Priority: 1, Section: "Backlog", Tags: []string{}},
+		{ID: "1", Title: "Test Task", Priority: 1, Section: models.SectionNext, Tags: []string{}},
 	}
 
 	rules := []WorkflowRule{
@@ -230,8 +230,8 @@ func TestEvaluateRules_PriorityNonConflictingActions(t *testing.T) {
 func TestEvaluateRules_BackwardCompatNoPriority(t *testing.T) {
 	// Rules without Priority field should work exactly as before
 	tasks := []*models.Task{
-		{ID: "1", Title: "High priority task", Priority: 1, Section: "Backlog", Status: models.StatusTodo},
-		{ID: "2", Title: "Normal task", Priority: 3, Section: "Backlog", Status: models.StatusTodo},
+		{ID: "1", Title: "High priority task", Priority: 1, Section: models.SectionNext, Status: models.StatusTodo},
+		{ID: "2", Title: "Normal task", Priority: 3, Section: models.SectionNext, Status: models.StatusTodo},
 	}
 
 	rules := []WorkflowRule{
@@ -258,7 +258,7 @@ func TestEvaluateRules_BackwardCompatNoPriority(t *testing.T) {
 func TestEvaluateRules_PriorityWithMixedZeroAndNonZero(t *testing.T) {
 	// Non-zero priority rule should win over zero-priority rule for same field
 	tasks := []*models.Task{
-		{ID: "1", Title: "Test Task", Priority: 1, Section: "Backlog"},
+		{ID: "1", Title: "Test Task", Priority: 1, Section: models.SectionNext},
 	}
 
 	rules := []WorkflowRule{

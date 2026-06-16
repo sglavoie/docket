@@ -110,7 +110,7 @@ func (m *ProjectTreeModel) passesFilters(node *TreeNode) bool { //nolint:gocyclo
 		}
 		// Apply section filter for sub-filtering by original section
 		if len(m.filter.Sections) > 0 {
-			if !m.filter.Sections[node.Task.Section] && !m.filter.Sections[node.Task.CustomSection] {
+			if !m.filter.Sections[node.Task.Section] {
 				return false
 			}
 		}
@@ -153,9 +153,9 @@ func (m *ProjectTreeModel) passesFilters(node *TreeNode) bool { //nolint:gocyclo
 		}
 	}
 
-	// Apply custom section tab filter (must belong to the selected custom section)
-	if csFilter := m.activeCustomSectionFilter(); csFilter != "" {
-		if node.Task.CustomSection != csFilter {
+	// Apply pinned tag tab filter.
+	if tagFilter := m.activePinnedTagFilter(); tagFilter != "" {
+		if !node.Task.HasTag(tagFilter) {
 			return false
 		}
 	}
@@ -164,7 +164,7 @@ func (m *ProjectTreeModel) passesFilters(node *TreeNode) bool { //nolint:gocyclo
 	// In Completed view, section filter is already applied above for sub-filtering
 	// In other views, view mode already controls section visibility
 	if m.viewMode != ViewModeCompleted && len(m.filter.Sections) > 0 {
-		if !m.filter.Sections[node.Task.Section] && !m.filter.Sections[node.Task.CustomSection] {
+		if !m.filter.Sections[node.Task.Section] {
 			return false
 		}
 	}

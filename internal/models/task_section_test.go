@@ -14,9 +14,6 @@ func TestSetSection_GTD(t *testing.T) {
 	if task.Section != SectionNext {
 		t.Errorf("expected Section=%q, got %q", SectionNext, task.Section)
 	}
-	if task.CustomSection != "" {
-		t.Errorf("expected CustomSection empty, got %q", task.CustomSection)
-	}
 }
 
 func TestSetSection_Empty(t *testing.T) {
@@ -31,82 +28,14 @@ func TestSetSection_Empty(t *testing.T) {
 	}
 }
 
-func TestSetSection_Custom(t *testing.T) {
+func TestSetSection_NonGTDIgnored(t *testing.T) {
 	task, err := NewTask("test-id", 1, TaskTypeTask, "Test")
 	if err != nil {
 		t.Fatal(err)
 	}
 	task.SetSection("Sprint-1")
-	if task.CustomSection != "Sprint-1" {
-		t.Errorf("expected CustomSection=%q, got %q", "Sprint-1", task.CustomSection)
-	}
 	if task.Section != "" {
 		t.Errorf("expected Section unchanged (empty), got %q", task.Section)
-	}
-}
-
-func TestSetSection_GTDClearsCustom(t *testing.T) {
-	task, err := NewTask("test-id", 1, TaskTypeTask, "Test")
-	if err != nil {
-		t.Fatal(err)
-	}
-	task.CustomSection = "Sprint-1"
-	task.SetSection(SectionInbox)
-	if task.Section != SectionInbox {
-		t.Errorf("expected Section=%q, got %q", SectionInbox, task.Section)
-	}
-	if task.CustomSection != "" {
-		t.Errorf("expected CustomSection cleared, got %q", task.CustomSection)
-	}
-}
-
-func TestSetSection_CustomClearsGTD(t *testing.T) {
-	task, err := NewTask("test-id", 1, TaskTypeTask, "Test")
-	if err != nil {
-		t.Fatal(err)
-	}
-	task.Section = SectionNext
-	task.SetSection("Sprint-1")
-	if task.CustomSection != "Sprint-1" {
-		t.Errorf("expected CustomSection=%q, got %q", "Sprint-1", task.CustomSection)
-	}
-	if task.Section != "" {
-		t.Errorf("expected Section cleared, got %q", task.Section)
-	}
-}
-
-func TestSetCustomSection_ClearsGTD(t *testing.T) {
-	task, err := NewTask("test-id", 1, TaskTypeTask, "Test")
-	if err != nil {
-		t.Fatal(err)
-	}
-	task.Section = SectionNext
-
-	task.SetCustomSection("Sprint-1")
-
-	if task.Section != "" {
-		t.Errorf("expected Section cleared, got %q", task.Section)
-	}
-	if task.CustomSection != "Sprint-1" {
-		t.Errorf("expected CustomSection=%q, got %q", "Sprint-1", task.CustomSection)
-	}
-}
-
-func TestSetCustomSection_EmptyPreservesGTD(t *testing.T) {
-	task, err := NewTask("test-id", 1, TaskTypeTask, "Test")
-	if err != nil {
-		t.Fatal(err)
-	}
-	task.Section = SectionNext
-	task.CustomSection = "Sprint-1"
-
-	task.SetCustomSection("")
-
-	if task.Section != SectionNext {
-		t.Errorf("expected Section preserved as %q, got %q", SectionNext, task.Section)
-	}
-	if task.CustomSection != "" {
-		t.Errorf("expected CustomSection cleared, got %q", task.CustomSection)
 	}
 }
 
@@ -118,26 +47,10 @@ func TestSetSection_RefreshesUpdatedAtOnChange(t *testing.T) {
 	stale := time.Now().Add(-time.Hour)
 	task.UpdatedAt = stale
 
-	task.SetSection("Sprint-1")
+	task.SetSection(SectionNext)
 
 	if !task.UpdatedAt.After(stale) {
 		t.Error("SetSection should refresh UpdatedAt when section membership changes")
-	}
-}
-
-func TestSetCustomSection_RefreshesUpdatedAtOnChange(t *testing.T) {
-	task, err := NewTask("test-id", 1, TaskTypeTask, "Test")
-	if err != nil {
-		t.Fatal(err)
-	}
-	task.Section = SectionNext
-	stale := time.Now().Add(-time.Hour)
-	task.UpdatedAt = stale
-
-	task.SetCustomSection("Sprint-1")
-
-	if !task.UpdatedAt.After(stale) {
-		t.Error("SetCustomSection should refresh UpdatedAt when section membership changes")
 	}
 }
 
@@ -260,12 +173,12 @@ func TestTaskCancelMovesToCompletedFromNext(t *testing.T) {
 	}
 }
 
-func TestTaskCancelMovesToCompletedFromCustomSection(t *testing.T) {
+func TestTaskCancelMovesToCompletedFromNonGTDSection(t *testing.T) {
 	task, err := NewTask("test-id", 1, TaskTypeTask, "Test Task")
 	if err != nil {
 		t.Fatal(err)
 	}
-	task.Section = "CustomSection"
+	task.Section = "LegacyBoard"
 
 	task.Cancel()
 
@@ -384,129 +297,6 @@ func TestTaskStartAutoTriageFromSomeday(t *testing.T) {
 	}
 }
 
-// Tests that lifecycle methods clear CustomSection to prevent dual-section state.
-
-func TestCompleteClearsCustomSection(t *testing.T) {
-	task, err := NewTask("test-id", 1, TaskTypeTask, "Test Task")
-	if err != nil {
-		t.Fatal(err)
-	}
-	task.CustomSection = "Sprint-1"
-
-	task.Complete()
-
-	if task.Section != SectionCompleted {
-		t.Errorf("expected Section=%q, got %q", SectionCompleted, task.Section)
-	}
-	if task.CustomSection != "" {
-		t.Errorf("expected CustomSection cleared, got %q", task.CustomSection)
-	}
-}
-
-func TestCancelClearsCustomSection(t *testing.T) {
-	task, err := NewTask("test-id", 1, TaskTypeTask, "Test Task")
-	if err != nil {
-		t.Fatal(err)
-	}
-	task.CustomSection = "Sprint-1"
-
-	task.Cancel()
-
-	if task.Section != SectionCompleted {
-		t.Errorf("expected Section=%q, got %q", SectionCompleted, task.Section)
-	}
-	if task.CustomSection != "" {
-		t.Errorf("expected CustomSection cleared, got %q", task.CustomSection)
-	}
-}
-
-func TestBlockClearsCustomSection(t *testing.T) {
-	task, err := NewTask("test-id", 1, TaskTypeTask, "Test Task")
-	if err != nil {
-		t.Fatal(err)
-	}
-	task.CustomSection = "Sprint-1"
-
-	task.Block()
-
-	if task.Section != SectionWaiting {
-		t.Errorf("expected Section=%q, got %q", SectionWaiting, task.Section)
-	}
-	if task.CustomSection != "" {
-		t.Errorf("expected CustomSection cleared, got %q", task.CustomSection)
-	}
-}
-
-func TestReviewClearsCustomSection(t *testing.T) {
-	task, err := NewTask("test-id", 1, TaskTypeTask, "Test Task")
-	if err != nil {
-		t.Fatal(err)
-	}
-	task.CustomSection = "Sprint-1"
-
-	task.Review()
-
-	if task.Section != SectionReview {
-		t.Errorf("expected Section=%q, got %q", SectionReview, task.Section)
-	}
-	if task.CustomSection != "" {
-		t.Errorf("expected CustomSection cleared, got %q", task.CustomSection)
-	}
-}
-
-func TestStandbyClearsCustomSection(t *testing.T) {
-	task, err := NewTask("test-id", 1, TaskTypeTask, "Test Task")
-	if err != nil {
-		t.Fatal(err)
-	}
-	task.CustomSection = "Sprint-1"
-
-	task.Standby()
-
-	if task.Section != SectionStandby {
-		t.Errorf("expected Section=%q, got %q", SectionStandby, task.Section)
-	}
-	if task.CustomSection != "" {
-		t.Errorf("expected CustomSection cleared, got %q", task.CustomSection)
-	}
-}
-
-func TestReopenClearsCustomSection(t *testing.T) {
-	task, err := NewTask("test-id", 1, TaskTypeTask, "Test Task")
-	if err != nil {
-		t.Fatal(err)
-	}
-	task.CustomSection = "Sprint-1"
-	task.Status = StatusDone
-
-	task.Reopen()
-
-	if task.Section != SectionInbox {
-		t.Errorf("expected Section=%q, got %q", SectionInbox, task.Section)
-	}
-	if task.CustomSection != "" {
-		t.Errorf("expected CustomSection cleared, got %q", task.CustomSection)
-	}
-}
-
-func TestStartFromNextClearsCustomSection(t *testing.T) {
-	task, err := NewTask("test-id", 1, TaskTypeTask, "Test Task")
-	if err != nil {
-		t.Fatal(err)
-	}
-	task.Section = SectionNext
-	task.CustomSection = "Sprint-1"
-
-	task.Start()
-
-	if task.Section != "" {
-		t.Errorf("expected Section cleared, got %q", task.Section)
-	}
-	if task.CustomSection != "" {
-		t.Errorf("expected CustomSection cleared, got %q", task.CustomSection)
-	}
-}
-
 func TestInSection_GTDSection(t *testing.T) {
 	task, _ := NewTask("id", 1, TaskTypeTask, "T")
 	task.SetSection(SectionNext)
@@ -522,21 +312,18 @@ func TestInSection_GTDSection(t *testing.T) {
 	}
 }
 
-func TestInSection_CustomSection(t *testing.T) {
+func TestInSection_NonGTDSectionIgnored(t *testing.T) {
 	task, _ := NewTask("id", 1, TaskTypeTask, "T")
 	task.SetSection("Sprint-1")
 
-	if !task.InSection("Sprint-1") {
-		t.Error("expected InSection(Sprint-1) = true for custom section")
+	if task.InSection("Sprint-1") {
+		t.Error("expected InSection(Sprint-1) = false for non-GTD section")
 	}
 	if task.InSection(SectionNext) {
-		t.Error("expected InSection(Next) = false for custom section task")
+		t.Error("expected InSection(Next) = false")
 	}
-	// task.Section is "" for custom sections; InSection("") should match
-	// only when CustomSection is also empty (i.e. Active view), not when
-	// the task is in a custom section.
-	if task.InSection("") {
-		t.Error("expected InSection('') = false when task is in a custom section")
+	if !task.InSection("") {
+		t.Error("expected InSection('') = true when non-GTD section is ignored")
 	}
 }
 

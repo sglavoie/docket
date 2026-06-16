@@ -87,17 +87,17 @@ func TestParseQuickEdit_Status(t *testing.T) {
 func TestParseQuickEdit_Section(t *testing.T) {
 	project := &models.Project{
 		Name:     "test",
-		Sections: []string{"Inbox", "Backlog"},
+		Sections: []string{"Inbox", "Waiting"},
 	}
 	task := &models.Task{Title: "Original"}
 
-	result, err := parseQuickEdit("Task /backlog", task, project)
+	result, err := parseQuickEdit("Task /inbox", task, project)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	if !result.sectionSet || result.section != "Backlog" {
-		t.Errorf("expected section 'Backlog', got '%s' (set=%v)", result.section, result.sectionSet)
+	if !result.sectionSet || result.section != "Inbox" {
+		t.Errorf("expected section 'Inbox', got '%s' (set=%v)", result.section, result.sectionSet)
 	}
 }
 
@@ -306,11 +306,7 @@ func TestApplyQuickEdit_InvalidStatusDoesNotMutate(t *testing.T) {
 }
 
 func TestRenderQuickEditPreview(t *testing.T) {
-	original := &quickEditResult{
-		title:    "Original",
-		priority: 3,
-		section:  "Backlog",
-	}
+	original := &quickEditResult{title: "Original", priority: 3, section: "Inbox"}
 
 	// Priority change
 	result := &quickEditResult{
@@ -347,28 +343,26 @@ func TestRenderQuickEditPreview(t *testing.T) {
 	}
 }
 
-func TestQuickEditComponent_CustomSection_PreservedInOriginal(t *testing.T) {
+func TestQuickEditComponent_NonGTDSectionIgnoredInOriginal(t *testing.T) {
 	task := &models.Task{
 		ID:       "test-id",
 		Title:    "Test Task",
 		Priority: 3,
 		Status:   models.StatusTodo,
 	}
-	// Place task in a custom section
 	task.SetSection("Sprint-1")
-	if task.Section != "" || task.CustomSection != "Sprint-1" {
-		t.Fatalf("precondition: expected Section=\"\", CustomSection=\"Sprint-1\"")
+	if task.Section != "" {
+		t.Fatalf("precondition: expected Section=\"\", got %q", task.Section)
 	}
 
 	comp := NewQuickEditComponent()
 	comp.Enter(task, false)
 
-	// The original and preview should carry the custom section, not ""
-	if comp.GetOriginal().section != "Sprint-1" {
-		t.Errorf("expected original.section=%q, got %q", "Sprint-1", comp.GetOriginal().section)
+	if comp.GetOriginal().section != "" {
+		t.Errorf("expected original.section empty, got %q", comp.GetOriginal().section)
 	}
-	if comp.GetPreview().section != "Sprint-1" {
-		t.Errorf("expected preview.section=%q, got %q", "Sprint-1", comp.GetPreview().section)
+	if comp.GetPreview().section != "" {
+		t.Errorf("expected preview.section empty, got %q", comp.GetPreview().section)
 	}
 }
 

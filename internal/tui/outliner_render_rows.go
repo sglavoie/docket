@@ -240,20 +240,12 @@ func (m *OutlinerModel) renderTaskOrganizationGroup(task *models.Task, proj *mod
 	if m.columnConfig.IsVisible(ColShortID) {
 		orgParts = append(orgParts, MutedStyle.Render(fmt.Sprintf("#%d", task.ShortID)))
 	}
-	if m.columnConfig.IsVisible(ColCustomSection) && task.CustomSection != "" && proj != nil {
-		orgParts = append(orgParts, GetSectionColorStyle(proj.GetSectionColor(task.CustomSection)).Render("@ "+task.CustomSection))
-	}
 	if perspective := m.currentPerspective(); perspective.Name != "All" && m.project != nil {
 		sectionName := task.Section
-		if sectionName == "" && task.CustomSection != "" {
-			sectionName = task.CustomSection
-		} else if sectionName == "" {
+		if sectionName == "" {
 			sectionName = "Active"
 		}
 		effectiveSection := task.Section
-		if effectiveSection == "" && task.CustomSection != "" {
-			effectiveSection = task.CustomSection
-		}
 		orgParts = append(orgParts, GetViewModeStyleForSection(effectiveSection).Render("@ "+sectionName))
 	}
 	return JoinGroupParts(orgParts...)

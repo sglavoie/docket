@@ -69,17 +69,17 @@ func TestSaveProject_WithSections(t *testing.T) {
 
 	project := testutil.NewTestProject("Sections Test")
 	project.Path = filepath.Join(dir, "sections-test")
-	project.Sections = []string{"Next", "Active", "Done"}
+	project.Sections = []string{models.SectionNext, models.SectionInbox, models.SectionWaiting}
 	project.SectionColors = map[string]string{
-		"Active": "green",
-		"Done":   "blue",
+		models.SectionInbox:   "green",
+		models.SectionWaiting: "blue",
 	}
 
 	task, err := models.NewTask("task-1", 1, models.TaskTypeTask, "Test Task")
 	if err != nil {
 		t.Fatal(err)
 	}
-	task.CustomSection = "Active"
+	task.Section = models.SectionInbox
 	project.Tasks = []*models.Task{task}
 
 	if err := SaveProject(project); err != nil {
@@ -99,16 +99,16 @@ func TestSaveProject_WithSections(t *testing.T) {
 		t.Errorf("expected at least 3 sections, got %d", len(loadedProject.Sections))
 	}
 
-	if loadedProject.SectionColors["Active"] != "green" {
-		t.Errorf("expected Active section color green, got %s", loadedProject.SectionColors["Active"])
+	if loadedProject.SectionColors[models.SectionInbox] != "green" {
+		t.Errorf("expected Inbox section color green, got %s", loadedProject.SectionColors[models.SectionInbox])
 	}
 
 	if len(loadedProject.Tasks) != 1 {
 		t.Fatalf("expected 1 task, got %d", len(loadedProject.Tasks))
 	}
 
-	if loadedProject.Tasks[0].CustomSection != "Active" {
-		t.Errorf("expected task custom section Active, got %s", loadedProject.Tasks[0].CustomSection)
+	if loadedProject.Tasks[0].Section != models.SectionInbox {
+		t.Errorf("expected task section Inbox, got %s", loadedProject.Tasks[0].Section)
 	}
 }
 

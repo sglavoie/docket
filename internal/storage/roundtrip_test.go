@@ -2,6 +2,7 @@ package storage
 
 import (
 	"path/filepath"
+	"slices"
 	"testing"
 	"time"
 
@@ -25,6 +26,8 @@ func TestRoundTrip_AllFields(t *testing.T) { //nolint:gocyclo
 	project.Path = filepath.Join(dir, "roundtrip")
 	project.Sections = []string{"Next", "Inbox", "Waiting"}
 	project.SectionColors = map[string]string{"Inbox": "blue", "Waiting": "orange"}
+	project.Tags = []string{"backend", "release", "urgent"}
+	project.PinnedTags = []string{"backend", "urgent"}
 
 	// Epic with description and tags
 	epic, err := models.NewTask(uuid.New().String(), 1, models.TaskTypeEpic, "Main Epic")
@@ -200,6 +203,9 @@ func TestRoundTrip_AllFields(t *testing.T) { //nolint:gocyclo
 	}
 	if len(gotEpic.Tags) != 2 || gotEpic.Tags[0] != "backend" || gotEpic.Tags[1] != "release" {
 		t.Errorf("epic tags: got %v, want [backend release]", gotEpic.Tags)
+	}
+	if !slices.Equal(loaded.PinnedTags, project.PinnedTags) {
+		t.Errorf("project pinned tags: got %v, want %v", loaded.PinnedTags, project.PinnedTags)
 	}
 
 	// Section preserved

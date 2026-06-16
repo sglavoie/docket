@@ -28,7 +28,7 @@ BOOLEAN STATE TRIGGER FIELDS (presence/absence checks):
 
 EVENT TRIGGER FIELDS (detect transitions):
   status_changed        - Value: "old->new" (e.g., "blocked->*", "*->done")
-  section_changed       - Value: "old->new" (e.g., "Backlog->Active")
+  section_changed       - Value: "old->new" (e.g., "Next->Waiting")
   priority_changed      - Value: "old->new" (e.g., "*->1")
   tag_added             - Value: tag name that was added
   tag_removed           - Value: tag name that was removed
@@ -65,7 +65,7 @@ RULE SCOPING:
   Restrict task-level rules to specific projects, types, or sections:
     --scope-project "MyProject"    Only apply to tasks in this project
     --scope-type task,bug          Only apply to these task types
-    --scope-section Active         Only apply to tasks in these sections
+    --scope-section Waiting        Only apply to tasks in these sections
   Project-level rules support --scope-project only.
 
 COMPOUND TRIGGERS:
@@ -76,8 +76,8 @@ Examples:
   # When unblocked, add ready tag (event trigger)
   tt workflow add -n "Unblock Ready" -f status_changed -o equals -V "blocked->*" -a add_tag --action-value ready
 
-  # When completed, move to Archive
-  tt workflow add -n "Archive Done" -f completed -o equals -V true -a set_section --action-value Archive
+  # When completed, move to Completed
+  tt workflow add -n "Route Completed" -f completed -o equals -V true -a set_section --action-value Completed
 
   # Auto-complete epic when all children done (hierarchical)
   tt workflow add -n "Epic Auto-Complete" -f type -o equals -V epic -f all_children_done -o equals -V true --logic and -a set_status --action-value done
@@ -99,9 +99,9 @@ CONDITIONAL ACTIONS:
     --cond-value 2          Condition value
 
 Examples:
-  # Set section based on priority (conditional branching)
+  # Move high-priority todo tasks to Next (conditional branching)
   tt workflow add -n "Priority Route" -f status -o equals -V todo \
-    -a set_section --action-value Active \
+    -a set_section --action-value Next \
     --cond-field priority --cond-op less_than --cond-value 3`,
 	RunE: runWorkflowAdd,
 }

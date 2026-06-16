@@ -153,25 +153,24 @@ func runTaskList(cmd *cobra.Command, args []string) error {
 // taskJSONEntry is a slim representation of a task for JSON output,
 // avoiding circular references from Children/Parent/Project.
 type taskJSONEntry struct {
-	ID            string     `json:"id"`
-	ShortID       int        `json:"short_id"`
-	Type          string     `json:"type"`
-	Title         string     `json:"title"`
-	Status        string     `json:"status"`
-	Priority      int        `json:"priority"`
-	ParentID      *string    `json:"parent_id"`
-	Tags          []string   `json:"tags"`
-	Section       string     `json:"section"`
-	CustomSection string     `json:"custom_section,omitempty"`
-	Pinned        bool       `json:"pinned"`
-	Active        bool       `json:"active"`
-	Dimmed        bool       `json:"dimmed"`
-	Stage         string     `json:"stage,omitempty"`
-	SnoozedUntil  *time.Time `json:"snoozed_until,omitempty"`
-	CreatedAt     time.Time  `json:"created_at"`
-	UpdatedAt     time.Time  `json:"updated_at"`
-	DueDate       *time.Time `json:"due_date"`
-	HasTime       bool       `json:"has_time"`
+	ID           string     `json:"id"`
+	ShortID      int        `json:"short_id"`
+	Type         string     `json:"type"`
+	Title        string     `json:"title"`
+	Status       string     `json:"status"`
+	Priority     int        `json:"priority"`
+	ParentID     *string    `json:"parent_id"`
+	Tags         []string   `json:"tags"`
+	Section      string     `json:"section"`
+	Pinned       bool       `json:"pinned"`
+	Active       bool       `json:"active"`
+	Dimmed       bool       `json:"dimmed"`
+	Stage        string     `json:"stage,omitempty"`
+	SnoozedUntil *time.Time `json:"snoozed_until,omitempty"`
+	CreatedAt    time.Time  `json:"created_at"`
+	UpdatedAt    time.Time  `json:"updated_at"`
+	DueDate      *time.Time `json:"due_date"`
+	HasTime      bool       `json:"has_time"`
 }
 
 func displayTaskJSON(tasks []*models.Task) error {
@@ -182,25 +181,24 @@ func displayTaskJSON(tasks []*models.Task) error {
 			tags = []string{}
 		}
 		entries[i] = taskJSONEntry{
-			ID:            t.ID,
-			ShortID:       t.ShortID,
-			Type:          t.Type.String(),
-			Title:         t.Title,
-			Status:        t.Status.String(),
-			Priority:      t.Priority,
-			ParentID:      t.ParentID,
-			Tags:          tags,
-			Section:       t.Section,
-			CustomSection: t.CustomSection,
-			Pinned:        t.Pinned,
-			Active:        t.Active,
-			Dimmed:        t.Dimmed,
-			Stage:         t.Stage,
-			SnoozedUntil:  t.SnoozedUntil,
-			CreatedAt:     t.CreatedAt,
-			UpdatedAt:     t.UpdatedAt,
-			DueDate:       t.DueDate,
-			HasTime:       t.HasTime,
+			ID:           t.ID,
+			ShortID:      t.ShortID,
+			Type:         t.Type.String(),
+			Title:        t.Title,
+			Status:       t.Status.String(),
+			Priority:     t.Priority,
+			ParentID:     t.ParentID,
+			Tags:         tags,
+			Section:      t.Section,
+			Pinned:       t.Pinned,
+			Active:       t.Active,
+			Dimmed:       t.Dimmed,
+			Stage:        t.Stage,
+			SnoozedUntil: t.SnoozedUntil,
+			CreatedAt:    t.CreatedAt,
+			UpdatedAt:    t.UpdatedAt,
+			DueDate:      t.DueDate,
+			HasTime:      t.HasTime,
 		}
 	}
 	return printJSON(entries)

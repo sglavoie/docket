@@ -115,7 +115,6 @@ func diffTask(old, new *models.Task) {
 	}
 
 	// String fields with empty -> "none" normalization
-	recordIfDiff("custom_section", orDefault(old.CustomSection, "none"), orDefault(new.CustomSection, "none"))
 	recordIfDiff("url", orDefault(old.URL, "none"), orDefault(new.URL, "none"))
 	recordIfDiff("source", orDefault(old.Source, "none"), orDefault(new.Source, "none"))
 }

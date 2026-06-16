@@ -116,7 +116,7 @@ func (m *SettingsModel) handleSpaceKey() {
 			m.kanbanDetailPaneVisible = !m.kanbanDetailPaneVisible
 		case local == 4:
 			m.kanbanDetailHeightCursor = (m.kanbanDetailHeightCursor + 1) % len(kanbanDetailHeightOptions)
-		case local >= 5 && local <= 10:
+		case local >= 5 && local < 5+len(kanbanModeLabels):
 			m.kanbanEnabledModes[local-5] = !m.kanbanEnabledModes[local-5]
 		}
 	case tabNotifications:

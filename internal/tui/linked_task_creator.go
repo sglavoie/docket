@@ -214,7 +214,6 @@ func (m *LinkedTaskCreatorModel) createTask(openContent, openDetail bool) tea.Cm
 		Status:          models.StatusTodo,
 		Priority:        result.priority,
 		Section:         m.sourceTask.Section, // Inherit section from source by default
-		CustomSection:   m.sourceTask.CustomSection,
 		DueDate:         result.dueDate,
 		Recurrence:      result.recurrence,
 		CreatedAt:       time.Now(),

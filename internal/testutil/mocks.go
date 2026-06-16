@@ -171,6 +171,8 @@ func (m *MockRepository) Load(project *models.Project) error {
 		project.NextShortID = loaded.NextShortID
 		project.Sections = loaded.Sections
 		project.SectionColors = loaded.SectionColors
+		project.Tags = loaded.Tags
+		project.PinnedTags = loaded.PinnedTags
 		project.Tasks = loaded.Tasks
 		project.Warnings = loaded.Warnings
 		assignProjectPointers(project)
@@ -199,6 +201,8 @@ func cloneProject(project *models.Project) *models.Project {
 	projectCopy.Sections = append([]string{}, project.Sections...)
 	projectCopy.SectionColors = make(map[string]string)
 	maps.Copy(projectCopy.SectionColors, project.SectionColors)
+	projectCopy.Tags = append([]string{}, project.Tags...)
+	projectCopy.PinnedTags = append([]string{}, project.PinnedTags...)
 	projectCopy.Warnings = append([]string{}, project.Warnings...)
 
 	projectCopy.Tasks = make([]*models.Task, len(project.Tasks))

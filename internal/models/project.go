@@ -39,6 +39,7 @@ type Project struct {
 	Sections      []string          `json:"-"` // Project-level section definitions
 	SectionColors map[string]string `json:"-"` // Section name -> color name mapping
 	Tags          []string          `json:"-"` // Project-level tag definitions
+	PinnedTags    []string          `json:"-"` // Project-level pinned tag tabs
 	Warnings      []string          `json:"-"` // Data repair warnings from last load
 }
 
@@ -80,6 +81,7 @@ func NewProject(id, name, path string) (*Project, error) {
 		Sections:      []string{SectionNext},
 		SectionColors: make(map[string]string),
 		Tags:          []string{},
+		PinnedTags:    []string{},
 	}, nil
 }
 

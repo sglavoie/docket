@@ -164,7 +164,7 @@ func (m *OutlinerModel) writeOutlinerHeader(b *strings.Builder, width int, persp
 		b.WriteString(m.ac.RenderDropdown("    "))
 	}
 
-	if tabBar := m.renderCustomSectionTabBar(width); tabBar != "" {
+	if tabBar := m.renderPinnedTagTabBar(width); tabBar != "" {
 		b.WriteString(tabBar)
 		b.WriteString("\n")
 	}
@@ -188,7 +188,7 @@ func (m *OutlinerModel) renderOutlinerEmptyState(width int, perspective Perspect
 		b.WriteString(m.ac.RenderDropdown("    "))
 	}
 
-	if tabBar := m.renderCustomSectionTabBar(width); tabBar != "" {
+	if tabBar := m.renderPinnedTagTabBar(width); tabBar != "" {
 		b.WriteString(tabBar)
 		b.WriteString("\n")
 	}
@@ -218,22 +218,13 @@ func (m *OutlinerModel) renderOutlinerEmptyState(width int, perspective Perspect
 	return b.String()
 }
 
-func (m *OutlinerModel) renderCustomSectionTabBar(width int) string {
-	tabs := m.customSectionTabs()
+func (m *OutlinerModel) renderPinnedTagTabBar(width int) string {
+	tabs := m.pinnedTagTabs()
 	if tabs == nil {
 		return ""
 	}
-	var tabColors map[string]string
-	if m.project != nil {
-		tabColors = m.project.SectionColors
-	} else {
-		var globalColors map[string]string
-		if m.config != nil {
-			globalColors = m.config.SectionColors
-		}
-		tabColors = CustomSectionTabColorsForProjects(m.loadedProjects, globalColors)
-	}
-	return RenderColoredTabBar(tabs, m.customSectionTabIndex(), width, 1, tabColors)
+	m.activePinnedTagFilter()
+	return RenderTabBar(tabs, m.pinnedTagTabIndex(), width, 1)
 }
 
 func (m *OutlinerModel) outlinerEmptyMessage(perspective Perspective) string {

@@ -279,20 +279,20 @@ func (b *projectTreeKeymapBuilder) actionEntries() []keymap.Entry {
 		keymap.Bind("ctrl+v", "Create task from clipboard", "Task Operations", func() (tea.Model, tea.Cmd) {
 			return m, m.pasteFromClipboard()
 		}),
-		keymap.Bind("shift+left", "Previous custom section tab", "Navigation", func() (tea.Model, tea.Cmd) {
-			tabs := m.customSectionTabs()
+		keymap.Bind("shift+left", "Previous pinned tag tab", "Navigation", func() (tea.Model, tea.Cmd) {
+			tabs := m.pinnedTagTabs()
 			if tabs != nil {
-				cycleCustomSectionTab("shift+left", &m.customSectionTab, len(tabs), func() {
+				cyclePinnedTagTab("shift+left", &m.pinnedTagTab, len(tabs), func() {
 					m.updateVisibility()
 					m.clampCursor()
 				})
 			}
 			return m, nil
 		}),
-		keymap.Bind("shift+right", "Next custom section tab", "Navigation", func() (tea.Model, tea.Cmd) {
-			tabs := m.customSectionTabs()
+		keymap.Bind("shift+right", "Next pinned tag tab", "Navigation", func() (tea.Model, tea.Cmd) {
+			tabs := m.pinnedTagTabs()
 			if tabs != nil {
-				cycleCustomSectionTab("shift+right", &m.customSectionTab, len(tabs), func() {
+				cyclePinnedTagTab("shift+right", &m.pinnedTagTab, len(tabs), func() {
 					m.updateVisibility()
 					m.clampCursor()
 				})

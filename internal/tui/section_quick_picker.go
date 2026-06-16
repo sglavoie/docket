@@ -91,11 +91,7 @@ func newSectionChangeQuickPicker(project *models.Project, task *models.Task, bac
 		entries = append(entries, sectionPickerEntry{displayName: s, section: s})
 	}
 
-	// Pre-select the task's current section (custom section takes precedence).
-	currentSection := task.CustomSection
-	if currentSection == "" {
-		currentSection = task.Section
-	}
+	currentSection := task.Section
 	cursor := 0
 	for i, e := range entries {
 		if e.section == currentSection {

@@ -51,7 +51,7 @@ func TestApplyAction(t *testing.T) {
 			name:   "set section",
 			action: RuleAction{ActionType: ActionSetSection, Value: ""},
 			setupTask: func() *models.Task {
-				return &models.Task{ID: "1", Section: "Backlog"}
+				return &models.Task{ID: "1", Section: models.SectionNext}
 			},
 			expectedChange: func(t *models.Task) bool {
 				return t.Section == ""

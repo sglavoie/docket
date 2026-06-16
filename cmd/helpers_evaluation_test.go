@@ -93,23 +93,6 @@ func TestCaptureTaskStates(t *testing.T) {
 		}
 	})
 
-	t.Run("captures CustomSection field", func(t *testing.T) {
-		task := testutil.NewTestTaskWithStatus("Task", models.StatusTodo)
-		task.CustomSection = "Sprint-1"
-
-		states := workflow.CaptureTaskStates([]*models.Task{task})
-		state := states[task.ID]
-
-		if state.CustomSection != "Sprint-1" {
-			t.Errorf("captured state CustomSection = %q, want %q", state.CustomSection, "Sprint-1")
-		}
-
-		task.CustomSection = "Sprint-2"
-		if state.CustomSection != "Sprint-1" {
-			t.Errorf("captured state CustomSection should not change after original mutation")
-		}
-	})
-
 	t.Run("deep copies DueDate pointer", func(t *testing.T) {
 		task := testutil.NewTestTaskWithStatus("Task", models.StatusTodo)
 		due := time.Date(2025, 6, 15, 0, 0, 0, 0, time.Local)

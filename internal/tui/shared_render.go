@@ -38,7 +38,7 @@ type TaskLine struct {
 	Pinned          bool          // show · pinned marker in cursor prefix
 	Prefix          string        // after queue indicator (e.g., star indicator "★ ")
 	PreBadges       string        // after cursor, before status badge (e.g., project name, checkbox, rank)
-	PostTitle       string        // after title (e.g., tags, score badge, custom section)
+	PostTitle       string        // after title (e.g., tags, score badge, section)
 	DueStr          string        // right-aligned due date string (pre-styled by caller)
 	ViewWidth       int           // total view width for due date right-alignment
 	StatusBadge     string        // override computed status badge (pre-styled by caller)

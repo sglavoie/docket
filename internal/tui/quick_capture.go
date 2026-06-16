@@ -304,15 +304,14 @@ func (m *QuickCaptureModel) createTask(openContent, openDetail bool) tea.Cmd {
 		}
 	}
 
-	// Determine target section and custom section
+	// Determine target section. Quick capture only routes to built-in GTD
+	// sections; custom grouping is represented with tags.
 	targetSection := result.section
-	var customSection string
 	if targetSection == "" {
 		targetSection = models.SectionInbox
 	} else if !models.IsGTDSection(targetSection) {
-		// Custom section: route to Inbox, store as CustomSection
-		customSection = targetSection
-		targetSection = models.SectionInbox
+		m.err = fmt.Errorf("section not found: %q", targetSection)
+		return nil
 	}
 
 	// Ensure Inbox exists (gets red color)
@@ -324,11 +323,6 @@ func (m *QuickCaptureModel) createTask(openContent, openDetail bool) tea.Cmd {
 	if targetSection != models.SectionInbox && !targetProject.HasSection(targetSection) {
 		targetProject.EnsureSection(targetSection)
 	}
-	// Ensure custom section exists
-	if customSection != "" && !targetProject.HasSection(customSection) {
-		targetProject.EnsureSection(customSection)
-	}
-
 	// Create task
 	task := &models.Task{
 		ID:              uuid.New().String(),
@@ -347,13 +341,7 @@ func (m *QuickCaptureModel) createTask(openContent, openDetail bool) tea.Cmd {
 		CreatedAt:       time.Now(),
 		UpdatedAt:       time.Now(),
 	}
-	// Use SetSection to maintain the invariant: GTD sections stored in Section,
-	// custom sections stored in CustomSection (never both non-empty).
-	if customSection != "" {
-		task.SetSection(customSection)
-	} else {
-		task.SetSection(targetSection)
-	}
+	task.SetSection(targetSection)
 
 	for _, tag := range result.tags {
 		task.AddTag(tag)

@@ -2,9 +2,11 @@ package tui
 
 import (
 	"slices"
+	"strings"
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
@@ -21,6 +23,33 @@ func TestTagManagerBuildListIncludesCatalogOnlyTags(t *testing.T) {
 	want := []string{"backend:0", "frontend:1"}
 	if !slices.Equal(got, want) {
 		t.Fatalf("tags = %v, want %v", got, want)
+	}
+}
+
+func TestTagManagerBuildListMarksPinnedTags(t *testing.T) {
+	project := newTagManagerTestProject(t)
+	project.Tags = []string{"backend", "frontend"}
+	project.PinnedTags = []string{"frontend"}
+
+	m := NewTagManagerModelForProject(project)
+
+	if m.tags[0].Name != "backend" || m.tags[0].Pinned {
+		t.Fatalf("first tag = %#v, want unpinned backend", m.tags[0])
+	}
+	if m.tags[1].Name != "frontend" || !m.tags[1].Pinned {
+		t.Fatalf("second tag = %#v, want pinned frontend", m.tags[1])
+	}
+}
+
+func TestTagManagerViewShowsPinnedMarker(t *testing.T) {
+	project := newTagManagerTestProject(t)
+	project.Tags = []string{"backend"}
+	project.PinnedTags = []string{"backend"}
+	m := NewTagManagerModelForProject(project)
+
+	plain := ansi.Strip(m.View().Content)
+	if !strings.Contains(plain, "* backend") {
+		t.Fatalf("tag manager view missing pinned marker:\n%s", plain)
 	}
 }
 
@@ -47,9 +76,55 @@ func TestTagManagerAddCatalogTagPersists(t *testing.T) {
 	}
 }
 
+func TestTagManagerTogglePinnedTagPersists(t *testing.T) {
+	project := newTagManagerTestProject(t)
+	project.Tags = []string{"backend"}
+	saveAndReloadTagManagerProject(t, project)
+	m := NewTagManagerModelForProject(project)
+
+	updated, cmd := m.Update(tea.KeyPressMsg{Code: 'p', Text: "p"})
+	m = updated.(*TagManagerModel)
+	if cmd == nil {
+		t.Fatal("p key returned nil command, want pin toggle")
+	}
+	msg := cmd()
+	pinned, ok := msg.(TagPinnedMsg)
+	if !ok {
+		t.Fatalf("p key message = %T, want TagPinnedMsg (%v)", msg, msg)
+	}
+	if pinned.Name != "backend" || !pinned.Pinned {
+		t.Fatalf("TagPinnedMsg = %#v, want backend pinned", pinned)
+	}
+	updated, _ = m.Update(msg)
+	m = updated.(*TagManagerModel)
+
+	if !project.IsTagPinned("backend") {
+		t.Fatal("backend should be pinned")
+	}
+	if len(m.tags) != 1 || !m.tags[0].Pinned {
+		t.Fatalf("manager tags = %#v, want backend pinned", m.tags)
+	}
+	if got, want := reloadTagManagerProject(t, project).PinnedTagList(), []string{"backend"}; !slices.Equal(got, want) {
+		t.Fatalf("reloaded pinned tags = %v, want %v", got, want)
+	}
+
+	msg = m.togglePinnedTag("backend")()
+	pinned, ok = msg.(TagPinnedMsg)
+	if !ok {
+		t.Fatalf("second toggle message = %T, want TagPinnedMsg (%v)", msg, msg)
+	}
+	if pinned.Pinned {
+		t.Fatalf("second toggle = %#v, want unpinned", pinned)
+	}
+	if project.IsTagPinned("backend") {
+		t.Fatal("backend should be unpinned")
+	}
+}
+
 func TestTagManagerRemoveZeroUseCatalogTagPersists(t *testing.T) {
 	project := newTagManagerTestProject(t)
 	project.Tags = []string{"backend"}
+	project.PinnedTags = []string{"backend"}
 	saveAndReloadTagManagerProject(t, project)
 	m := NewTagManagerModelForProject(project)
 
@@ -63,7 +138,11 @@ func TestTagManagerRemoveZeroUseCatalogTagPersists(t *testing.T) {
 	if len(project.Tags) != 0 {
 		t.Fatalf("project.Tags = %v, want empty", project.Tags)
 	}
+	if len(project.PinnedTags) != 0 {
+		t.Fatalf("project.PinnedTags = %v, want empty", project.PinnedTags)
+	}
 	assertReloadedTagCatalog(t, project, nil)
+	assertReloadedPinnedTags(t, project, nil)
 	if len(m.tags) != 0 {
 		t.Fatalf("manager tags = %v, want empty", m.tags)
 	}
@@ -92,6 +171,7 @@ func TestTagManagerDeleteProtectsTaskUsedTag(t *testing.T) {
 func TestTagManagerRenameCatalogOnlyTagPersists(t *testing.T) {
 	project := newTagManagerTestProject(t)
 	project.Tags = []string{"backend"}
+	project.PinnedTags = []string{"backend"}
 	saveAndReloadTagManagerProject(t, project)
 	m := NewTagManagerModelForProject(project)
 
@@ -109,7 +189,11 @@ func TestTagManagerRenameCatalogOnlyTagPersists(t *testing.T) {
 	if got, want := project.Tags, []string{"frontend"}; !slices.Equal(got, want) {
 		t.Fatalf("project.Tags = %v, want %v", got, want)
 	}
+	if got, want := project.PinnedTags, []string{"frontend"}; !slices.Equal(got, want) {
+		t.Fatalf("project.PinnedTags = %v, want %v", got, want)
+	}
 	assertReloadedTagCatalog(t, project, []string{"frontend"})
+	assertReloadedPinnedTags(t, project, []string{"frontend"})
 
 	got := summarizeTagInfos(m.tags)
 	want := []string{"frontend:0"}
@@ -190,6 +274,14 @@ func assertReloadedTagCatalog(t *testing.T, project *models.Project, want []stri
 	reloaded := reloadTagManagerProject(t, project)
 	if !slices.Equal(reloaded.Tags, want) {
 		t.Fatalf("reloaded tags = %v, want %v", reloaded.Tags, want)
+	}
+}
+
+func assertReloadedPinnedTags(t *testing.T, project *models.Project, want []string) {
+	t.Helper()
+	reloaded := reloadTagManagerProject(t, project)
+	if !slices.Equal(reloaded.PinnedTagList(), want) {
+		t.Fatalf("reloaded pinned tags = %v, want %v", reloaded.PinnedTagList(), want)
 	}
 }
 

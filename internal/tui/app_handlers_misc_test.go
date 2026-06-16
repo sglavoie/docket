@@ -72,6 +72,41 @@ func TestHandleTagMessagesTagRenameKeepsActiveManagerOpen(t *testing.T) {
 	}
 }
 
+func TestHandleTagMessagesTagPinnedKeepsManagerOpenAndRefreshesTree(t *testing.T) {
+	app, project := newTestAppModelWithProject()
+	project.Tags = []string{"backend"}
+	project.Tasks = nil
+	app.projectTree = NewProjectTreeModel(project, app.config, nil)
+
+	handled, _ := app.handleTagMessages(ShowTagManagerMsg{ProjectTree: app.projectTree})
+	if !handled {
+		t.Fatal("ShowTagManagerMsg should be handled")
+	}
+
+	project.PinnedTags = []string{"backend"}
+	handled, cmd := app.handleTagMessages(TagPinnedMsg{Name: "backend", Pinned: true})
+	if !handled {
+		t.Fatal("TagPinnedMsg should be handled")
+	}
+	if cmd != nil {
+		t.Fatal("TagPinnedMsg returned a command, want in-place manager refresh")
+	}
+	if app.currentView() != ViewTagManager {
+		t.Fatalf("currentView = %v, want ViewTagManager", app.currentView())
+	}
+	if got := app.projectTree.pinnedTagTabs(); !slices.Equal(got, []string{"All", "#backend"}) {
+		t.Fatalf("project tree tabs = %v, want [All #backend]", got)
+	}
+
+	manager, ok := app.views.Get(ViewTagManager).(*TagManagerModel)
+	if !ok {
+		t.Fatalf("tag manager view = %T, want *TagManagerModel", app.views.Get(ViewTagManager))
+	}
+	if len(manager.tags) != 1 || !manager.tags[0].Pinned {
+		t.Fatalf("manager tags = %#v, want backend pinned", manager.tags)
+	}
+}
+
 func TestHandleSectionMessagesShowSectionPicker(t *testing.T) {
 	app, project := newTestAppModelWithProject()
 	task := project.Tasks[0]

@@ -206,6 +206,26 @@ func TestRuleTriggerValidation_SectionAllowsEmptyActiveValue(t *testing.T) {
 			wantErr: true,
 		},
 		{
+			name:    "section equals built-in remains valid",
+			trigger: RuleTrigger{Field: FieldSection, Operation: OpEquals, Value: "Inbox"},
+			wantErr: false,
+		},
+		{
+			name:    "section equals custom label is invalid",
+			trigger: RuleTrigger{Field: FieldSection, Operation: OpEquals, Value: "Sprint"},
+			wantErr: true,
+		},
+		{
+			name:    "section changed built-in transition is valid",
+			trigger: RuleTrigger{Field: FieldSectionChanged, Operation: OpEquals, Value: "Next->Inbox"},
+			wantErr: false,
+		},
+		{
+			name:    "section changed custom transition is invalid",
+			trigger: RuleTrigger{Field: FieldSectionChanged, Operation: OpEquals, Value: "Sprint->Inbox"},
+			wantErr: true,
+		},
+		{
 			name:    "other fields still require a value",
 			trigger: RuleTrigger{Field: FieldStatus, Operation: OpEquals, Value: ""},
 			wantErr: true,
@@ -236,6 +256,9 @@ func TestRuleValidation_NewActionTypes(t *testing.T) {
 		{"empty move_to_project", RuleAction{ActionType: ActionMoveToProject, Value: ""}, true},
 		{"valid set_recurrence", RuleAction{ActionType: ActionSetRecurrence, Value: "daily"}, false},
 		{"invalid set_recurrence", RuleAction{ActionType: ActionSetRecurrence, Value: "badpattern"}, true},
+		{"valid set_section built-in", RuleAction{ActionType: ActionSetSection, Value: "Inbox"}, false},
+		{"valid set_section active", RuleAction{ActionType: ActionSetSection, Value: ""}, false},
+		{"invalid set_section custom", RuleAction{ActionType: ActionSetSection, Value: "Sprint"}, true},
 	}
 
 	for _, tt := range tests {
@@ -262,9 +285,12 @@ func TestRuleValidation_Scope(t *testing.T) {
 		{"nil scope is valid", nil, false},
 		{"valid scope with project", &RuleScope{Projects: []string{"MyProject"}}, false},
 		{"valid scope with type", &RuleScope{Types: []string{"bug"}}, false},
+		{"valid scope with built-in section", &RuleScope{Sections: []string{"Inbox"}}, false},
+		{"valid scope with active section", &RuleScope{Sections: []string{""}}, false},
 		{"invalid task type in scope", &RuleScope{Types: []string{"invalidtype"}}, true},
 		{"empty project name in scope", &RuleScope{Projects: []string{""}}, true},
 		{"empty section name in scope", &RuleScope{Sections: []string{"  "}}, true},
+		{"non-GTD section name in scope", &RuleScope{Sections: []string{"Sprint"}}, true},
 	}
 
 	for _, tt := range tests {
@@ -303,13 +329,13 @@ func TestRuleValidation_ProjectLevelScope(t *testing.T) {
 		},
 		{
 			name:        "section scope rejected",
-			scope:       &RuleScope{Sections: []string{"Backlog"}},
+			scope:       &RuleScope{Sections: []string{"Inbox"}},
 			wantErr:     true,
 			wantErrText: "task-level scope fields",
 		},
 		{
 			name:        "mixed task scope rejected",
-			scope:       &RuleScope{Projects: []string{"MyProject"}, Types: []string{"bug"}, Sections: []string{"Backlog"}},
+			scope:       &RuleScope{Projects: []string{"MyProject"}, Types: []string{"bug"}, Sections: []string{"Inbox"}},
 			wantErr:     true,
 			wantErrText: `"types, sections"`,
 		},

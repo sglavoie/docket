@@ -90,7 +90,7 @@ func parseCommandCategoryPrefix(query string) CommandCategory {
 //   - priority:N or priority:N-M (e.g., priority:1, priority:1-2)
 //   - status:val or status:val|val2 (e.g., status:todo, status:todo|progress)
 //   - tag:name or tag:name|name2 (e.g., tag:bug, tag:bug|feature)
-//   - section:name or section:name|name2 (e.g., section:backlog, section:sprint-1|sprint-2)
+//   - section:name or section:name|name2 (e.g., section:inbox, section:next|waiting)
 //   - @overdue, @today, @tomorrow, @this-week
 func parseFieldFilters(query string) (remaining string, filters []fieldFilter) {
 	terms := strings.Fields(query)

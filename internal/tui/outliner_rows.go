@@ -107,9 +107,9 @@ func (m *OutlinerModel) rebuildRows() {
 
 	tasks := filterTaskTree(roots, m.currentPerspective().Filter)
 
-	if section := m.activeCustomSectionFilter(); section != "" {
+	if tag := m.activePinnedTagFilter(); tag != "" {
 		tasks = filterTaskTree(tasks, func(task *models.Task) bool {
-			return task.InSection(section)
+			return task.HasTag(tag)
 		})
 	}
 
@@ -127,7 +127,7 @@ func (m *OutlinerModel) rebuildRows() {
 
 	if len(m.filter.Sections) > 0 {
 		tasks = filterTaskTree(tasks, func(task *models.Task) bool {
-			return m.filter.Sections[task.Section] || m.filter.Sections[task.CustomSection]
+			return m.filter.Sections[task.Section]
 		})
 	}
 
@@ -202,9 +202,6 @@ func (m *OutlinerModel) buildRowsWithSectionHeaders(tasks []*models.Task) {
 // effectiveDisplaySection returns the task's display section for non-header
 // contexts such as sidebar matching and task-form dimming.
 func effectiveDisplaySection(t *models.Task) string {
-	if t.CustomSection != "" {
-		return t.CustomSection
-	}
 	return t.Section
 }
 
@@ -304,57 +301,60 @@ func (m *OutlinerModel) clampCursor() {
 	m.ClampCursorTo(len(m.rows))
 }
 
-const crossProjectCustomSectionTabKey = "_cross_project_custom_section_tab"
+const crossProjectPinnedTagTabKey = "_cross_project_pinned_tag_tab"
 
-// customSectionTabs returns ["All"] + sorted custom sections, or nil if no custom sections exist.
-func (m *OutlinerModel) customSectionTabs() []string {
+// pinnedTagTabs returns ["All"] + pinned tag labels, or nil if no tags are pinned.
+func (m *OutlinerModel) pinnedTagTabs() []string {
 	if m.project == nil {
-		return CustomSectionTabsForProjects(m.loadedProjects)
+		return GlobalPinnedTagTabsForProjects(m.config, m.loadedProjects)
 	}
-	return CustomSectionTabs(m.project)
+	return PinnedTagTabs(m.project)
 }
 
-// customSectionTabIndex returns the active tab index for the current outliner scope.
-func (m *OutlinerModel) customSectionTabIndex() int {
-	if m.customSectionTab == nil {
+// pinnedTagTabIndex returns the active tab index for the current outliner scope.
+func (m *OutlinerModel) pinnedTagTabIndex() int {
+	if m.pinnedTagTab == nil {
 		return 0
 	}
-	return m.customSectionTab[m.customSectionTabStorageKey()]
+	return m.pinnedTagTab[m.pinnedTagTabStorageKey()]
 }
 
-// setCustomSectionTabIndex sets the active tab index for the current outliner scope.
-func (m *OutlinerModel) setCustomSectionTabIndex(i int) {
-	if m.customSectionTab == nil {
-		m.customSectionTab = make(map[string]int)
+// setPinnedTagTabIndex sets the active tab index for the current outliner scope.
+func (m *OutlinerModel) setPinnedTagTabIndex(i int) {
+	if m.pinnedTagTab == nil {
+		m.pinnedTagTab = make(map[string]int)
 	}
-	m.customSectionTab[m.customSectionTabStorageKey()] = i
+	m.pinnedTagTab[m.pinnedTagTabStorageKey()] = i
 }
 
-// activeCustomSectionFilter returns the custom section name being filtered, or "" for "All".
-func (m *OutlinerModel) activeCustomSectionFilter() string {
-	tabs := m.customSectionTabs()
-	tabIndex := m.customSectionTabIndex()
+// activePinnedTagFilter returns the selected pinned tag, or "" for "All".
+func (m *OutlinerModel) activePinnedTagFilter() string {
+	tabs := m.pinnedTagTabs()
+	tabIndex := m.pinnedTagTabIndex()
 	if tabs == nil || tabIndex <= 0 || tabIndex >= len(tabs) {
+		if tabIndex != 0 {
+			m.setPinnedTagTabIndex(0)
+		}
 		return ""
 	}
-	return tabs[tabIndex]
+	return pinnedTagFromTab(tabs[tabIndex])
 }
 
-func (m *OutlinerModel) crossProjectCustomSectionTabBeforeLoad() (string, bool) {
-	if m.project != nil || m.customSectionTab == nil {
+func (m *OutlinerModel) crossProjectPinnedTagTabBeforeLoad() (string, bool) {
+	if m.project != nil || m.pinnedTagTab == nil {
 		return "", false
 	}
-	if _, ok := m.customSectionTab[crossProjectCustomSectionTabKey]; !ok {
+	if _, ok := m.pinnedTagTab[crossProjectPinnedTagTabKey]; !ok {
 		return "", false
 	}
-	return m.activeCustomSectionFilter(), true
+	return m.activePinnedTagFilter(), true
 }
 
-func (m *OutlinerModel) preserveCrossOutlinerCustomSectionTabForReload() {
+func (m *OutlinerModel) preserveCrossOutlinerPinnedTagTabForReload() {
 	if m.project != nil || m.crossReloadTabSet {
 		return
 	}
-	tabName, ok := m.crossProjectCustomSectionTabBeforeLoad()
+	tabName, ok := m.crossProjectPinnedTagTabBeforeLoad()
 	if !ok {
 		return
 	}
@@ -362,7 +362,7 @@ func (m *OutlinerModel) preserveCrossOutlinerCustomSectionTabForReload() {
 	m.crossReloadTabSet = true
 }
 
-func (m *OutlinerModel) consumeCrossOutlinerReloadCustomSectionTab() (string, bool) {
+func (m *OutlinerModel) consumeCrossOutlinerReloadPinnedTagTab() (string, bool) {
 	if !m.crossReloadTabSet {
 		return "", false
 	}
@@ -372,26 +372,31 @@ func (m *OutlinerModel) consumeCrossOutlinerReloadCustomSectionTab() (string, bo
 	return tabName, true
 }
 
-func (m *OutlinerModel) restoreCrossOutlinerCustomSectionTab(tabName string) {
+func (m *OutlinerModel) restoreCrossOutlinerPinnedTagTab(tabName string) {
 	if m.project != nil {
 		return
 	}
+	m.selectPinnedTagTab(tabName)
+}
+
+func (m *OutlinerModel) selectPinnedTagTab(tabName string) {
+	tag := models.NormalizeTag(tabName)
 	if tabName == "" {
-		m.setCustomSectionTabIndex(0)
+		m.setPinnedTagTabIndex(0)
 		return
 	}
-	for i, tab := range m.customSectionTabs() {
-		if tab == tabName {
-			m.setCustomSectionTabIndex(i)
+	for i, tab := range m.pinnedTagTabs() {
+		if pinnedTagFromTab(tab) == tag {
+			m.setPinnedTagTabIndex(i)
 			return
 		}
 	}
-	m.setCustomSectionTabIndex(0)
+	m.setPinnedTagTabIndex(0)
 }
 
-func (m *OutlinerModel) customSectionTabStorageKey() string {
+func (m *OutlinerModel) pinnedTagTabStorageKey() string {
 	if m.project == nil {
-		return crossProjectCustomSectionTabKey
+		return crossProjectPinnedTagTabKey
 	}
 	return m.project.ID
 }
@@ -407,12 +412,12 @@ func (m *OutlinerModel) searchTagCache() []string {
 // searchSectionCache returns all unique sections across the outliner's project(s).
 func (m *OutlinerModel) searchSectionCache() []string {
 	if m.project != nil {
-		return m.project.GetSections()
+		return gtdSections(m.project.GetSections())
 	}
 	seen := make(map[string]bool)
 	var result []string
 	for _, p := range m.loadedProjects {
-		for _, s := range p.GetSections() {
+		for _, s := range gtdSections(p.GetSections()) {
 			if !seen[s] {
 				seen[s] = true
 				result = append(result, s)
@@ -426,7 +431,7 @@ func (m *OutlinerModel) searchSectionCache() []string {
 // accounting for the title header, optional tab bar, and optional breadcrumb line.
 func (m *OutlinerModel) contentHeight() int {
 	headerLines := 1
-	if m.customSectionTabs() != nil {
+	if m.pinnedTagTabs() != nil {
 		headerLines += 2
 	}
 	if (m.project != nil && len(m.zoomStack) > 0) || (m.project == nil && len(m.crossZoomStack) > 0) {

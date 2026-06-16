@@ -168,10 +168,7 @@ func (m *AppModel) captureProjectTreeFilter(name, id string) config.SavedFilter 
 		maps.Copy(sf.FilterAttrs, pt.filter.Attrs)
 	}
 
-	// Capture custom section tab name
-	if tabs := pt.customSectionTabs(); tabs != nil && pt.customSectionTab < len(tabs) {
-		sf.CustomSectionTab = tabs[pt.customSectionTab]
-	}
+	sf.PinnedTagTab = pt.activePinnedTagFilter()
 
 	return sf
 }
@@ -217,10 +214,7 @@ func (m *AppModel) captureOutlinerFilterFrom(name, id string, ol *OutlinerModel)
 		maps.Copy(sf.FilterAttrs, ol.filter.Attrs)
 	}
 
-	// Capture custom section tab name
-	if tabs := ol.customSectionTabs(); tabs != nil && ol.customSectionTabIndex() < len(tabs) {
-		sf.CustomSectionTab = tabs[ol.customSectionTabIndex()]
-	}
+	sf.PinnedTagTab = ol.activePinnedTagFilter()
 
 	return sf
 }
@@ -255,7 +249,7 @@ func (m *AppModel) applySavedFilterToTree(sf config.SavedFilter) {
 		// Restore sections — validate against current project
 		pt.filter.Sections = make(map[string]bool)
 		if pt.project != nil {
-			existingSections := pt.project.GetSections()
+			existingSections := gtdSections(pt.project.GetSections())
 			sectionSet := make(map[string]bool)
 			for _, s := range existingSections {
 				sectionSet[s] = true
@@ -271,17 +265,7 @@ func (m *AppModel) applySavedFilterToTree(sf config.SavedFilter) {
 		pt.filter.Attrs = make(map[string]string)
 		maps.Copy(pt.filter.Attrs, sf.FilterAttrs)
 
-		// Restore custom section tab
-		if sf.CustomSectionTab != "" {
-			if tabs := pt.customSectionTabs(); tabs != nil {
-				for i, tab := range tabs {
-					if tab == sf.CustomSectionTab {
-						pt.customSectionTab = i
-						break
-					}
-				}
-			}
-		}
+		pt.selectPinnedTagTab(sf.PinnedTagTab)
 	}
 
 	// Set active indicator
@@ -339,17 +323,7 @@ func (m *AppModel) applySavedFilterToOutlinerModel(ol *OutlinerModel, sf config.
 		ol.filter.Attrs = make(map[string]string)
 		maps.Copy(ol.filter.Attrs, sf.FilterAttrs)
 
-		// Restore custom section tab
-		if sf.CustomSectionTab != "" {
-			if tabs := ol.customSectionTabs(); tabs != nil {
-				for i, tab := range tabs {
-					if tab == sf.CustomSectionTab {
-						ol.setCustomSectionTabIndex(i)
-						break
-					}
-				}
-			}
-		}
+		ol.selectPinnedTagTab(sf.PinnedTagTab)
 	}
 
 	// Set active indicator

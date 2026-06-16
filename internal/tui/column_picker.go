@@ -23,7 +23,6 @@ var AllColumns = []ColumnInfo{
 	{ID: ColDueDate, Label: "Due Date"},
 	{ID: ColTags, Label: "Tags"},
 	{ID: ColScore, Label: "Score"},
-	{ID: ColCustomSection, Label: "Custom Section"},
 	{ID: ColDependencies, Label: "Dependencies"},
 	{ID: ColComments, Label: "Comments"},
 	{ID: ColDescription, Label: "Description"},

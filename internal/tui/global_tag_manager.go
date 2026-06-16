@@ -9,11 +9,12 @@ import (
 
 // GlobalTagManagerModel is the model for the global tag management view.
 type GlobalTagManagerModel struct {
-	config *config.Config
-	tags   []GlobalTagInfo
-	cursor int
-	width  int
-	height int
+	config        *config.Config
+	configManager *config.Manager
+	tags          []GlobalTagInfo
+	cursor        int
+	width         int
+	height        int
 
 	// Rename state
 	renameMode   bool
@@ -30,17 +31,23 @@ type GlobalTagManagerModel struct {
 }
 
 // NewGlobalTagManagerModel creates a new global tag manager model.
-func NewGlobalTagManagerModel(cfg *config.Config) *GlobalTagManagerModel {
+func NewGlobalTagManagerModel(cfg *config.Config, managers ...*config.Manager) *GlobalTagManagerModel {
 	renameInput := textinput.New()
 	renameInput.Placeholder = "new tag name"
 	renameInput.CharLimit = 50
 	renameInput.SetWidth(30)
 	applyThemedTextInput(&renameInput)
 
+	var manager *config.Manager
+	if len(managers) > 0 {
+		manager = managers[0]
+	}
+
 	m := &GlobalTagManagerModel{
-		config:      cfg,
-		cursor:      0,
-		renameInput: renameInput,
+		config:        cfg,
+		configManager: manager,
+		cursor:        0,
+		renameInput:   renameInput,
 	}
 	m.buildGlobalTagList()
 	return m
@@ -71,6 +78,17 @@ func (m *GlobalTagManagerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, func() tea.Msg {
 			return CloseGlobalTagManagerMsg{}
 		}
+
+	case GlobalTagPinnedMsg:
+		m.buildGlobalTagList()
+		m.selectTag(msg.Name)
+		return m, nil
+
+	case GlobalTagManagerErrorMsg:
+		if msg.Err != nil {
+			m.errorMsg = msg.Err.Error()
+		}
+		return m, nil
 
 	case tea.PasteMsg:
 		if m.renameMode {

@@ -136,12 +136,8 @@ func (m *RecentActivityPreviewModel) renderContent() string {
 			strings.Join(tags, ", "))
 	}
 
-	// Section (prefer CustomSection over GTD Section for display)
-	if displaySection := task.CustomSection; displaySection != "" {
-		fmt.Fprintf(&b, "%s %s\n",
-			MutedStyle.Render("Section:"),
-			displaySection)
-	} else if task.Section != "" {
+	// Section
+	if task.Section != "" {
 		fmt.Fprintf(&b, "%s %s\n",
 			MutedStyle.Render("Section:"),
 			task.Section)

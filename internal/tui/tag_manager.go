@@ -10,10 +10,11 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 )
 
-// TagInfo holds a tag name and its usage count.
+// TagInfo holds a tag name, its usage count, and project-manager pin state.
 type TagInfo struct {
 	Name      string
 	TaskCount int
+	Pinned    bool
 }
 
 // TagManagerModel is the model for the tag management view.
@@ -57,6 +58,12 @@ type TagAddedMsg struct {
 // TagRemovedMsg is sent after a project catalog tag has been removed.
 type TagRemovedMsg struct {
 	Name string
+}
+
+// TagPinnedMsg is sent after a project tag has been pinned or unpinned.
+type TagPinnedMsg struct {
+	Name   string
+	Pinned bool
 }
 
 // TagManagerErrorMsg reports an error that should stay visible in the manager.
@@ -110,6 +117,11 @@ func (m *TagManagerModel) SetSize(width, height int) {
 // buildTagList builds a catalog-aware sorted list of tags with task-use counts.
 func (m *TagManagerModel) buildTagList() {
 	m.tags = BuildProjectTagList(m.project, false)
+	if m.project != nil {
+		for i := range m.tags {
+			m.tags[i].Pinned = m.project.IsTagPinned(m.tags[i].Name)
+		}
+	}
 
 	// Clamp cursor
 	if m.cursor >= len(m.tags) {
@@ -199,6 +211,26 @@ func (m *TagManagerModel) removeProjectTag(tagName string) tea.Cmd {
 	}
 }
 
+func (m *TagManagerModel) togglePinnedTag(tagName string) tea.Cmd {
+	project := m.project
+	return func() tea.Msg {
+		if project == nil {
+			return TagManagerErrorMsg{Err: fmt.Errorf("project is unavailable")}
+		}
+		tagName = models.NormalizeTag(tagName)
+		pinned, err := project.TogglePinnedTag(tagName)
+		if err != nil {
+			return TagManagerErrorMsg{Err: err}
+		}
+
+		if err := saveProjectSync(project); err != nil {
+			return ErrorMsg{Err: fmt.Errorf("failed to save project: %w", err)}
+		}
+
+		return TagPinnedMsg{Name: tagName, Pinned: pinned}
+	}
+}
+
 // filterByTag sets the project tree filter and closes the tag manager.
 // When projectTree is nil (outliner), it just closes without applying filters.
 func (m *TagManagerModel) filterByTag(tagName string) tea.Cmd {
@@ -242,6 +274,11 @@ func (m *TagManagerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) { //nolint:go
 
 	case TagRemovedMsg:
 		m.buildTagList()
+		return m, nil
+
+	case TagPinnedMsg:
+		m.buildTagList()
+		m.selectTag(msg.Name)
 		return m, nil
 
 	case TagManagerErrorMsg:
@@ -335,6 +372,12 @@ func (m *TagManagerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) { //nolint:go
 				} else {
 					return m, m.removeProjectTag(tag.Name)
 				}
+			}
+			return m, nil
+
+		case "p":
+			if len(m.tags) > 0 && m.cursor < len(m.tags) {
+				return m, m.togglePinnedTag(m.tags[m.cursor].Name)
 			}
 			return m, nil
 
@@ -452,7 +495,11 @@ func (m *TagManagerModel) View() tea.View {
 				content.WriteString(m.renameInput.View())
 				content.WriteString("\n")
 			} else {
-				line := fmt.Sprintf("%s%s ", cursor, tag.Name)
+				pinMarker := "  "
+				if tag.Pinned {
+					pinMarker = "* "
+				}
+				line := fmt.Sprintf("%s%s%s ", cursor, pinMarker, tag.Name)
 				content.WriteString(style.Render(line))
 				countStr := fmt.Sprintf("(%d)", tag.TaskCount)
 				content.WriteString(TagManagerCountStyle.Render(countStr))
@@ -481,7 +528,7 @@ func (m *TagManagerModel) View() tea.View {
 	} else if m.renameMode {
 		helpText = "enter confirm · esc cancel"
 	} else if len(m.tags) > 0 {
-		helpText = "j/k nav · enter filter · a add · r rename · d del · Esc close"
+		helpText = "j/k nav · enter filter · p pin · a add · r rename · d del · Esc close"
 	} else {
 		helpText = "a add tag · Esc close"
 	}

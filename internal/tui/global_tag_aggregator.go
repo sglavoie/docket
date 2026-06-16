@@ -3,6 +3,7 @@ package tui
 import (
 	"sort"
 
+	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 )
 
@@ -42,6 +43,9 @@ func (m *GlobalTagManagerModel) buildGlobalTagList() {
 	// Convert map to sorted slice
 	m.tags = make([]GlobalTagInfo, 0, len(tagMap))
 	for _, info := range tagMap {
+		if m.config != nil {
+			info.Pinned = m.config.IsGlobalTagPinned(info.Name)
+		}
 		m.tags = append(m.tags, *info)
 	}
 
@@ -49,5 +53,16 @@ func (m *GlobalTagManagerModel) buildGlobalTagList() {
 		return m.tags[i].Name < m.tags[j].Name
 	})
 
+	m.cursor = ClampCursor(m.cursor, len(m.tags))
+}
+
+func (m *GlobalTagManagerModel) selectTag(name string) {
+	name = models.NormalizeTag(name)
+	for i, tag := range m.tags {
+		if tag.Name == name {
+			m.cursor = i
+			return
+		}
+	}
 	m.cursor = ClampCursor(m.cursor, len(m.tags))
 }

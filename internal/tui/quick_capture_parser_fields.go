@@ -334,7 +334,7 @@ func parseCaptureStatus(token string) (models.TaskStatus, bool, bool) {
 
 func resolveSection(sectionName string, project *models.Project) (string, bool) {
 	for _, section := range project.GetSections() {
-		if strings.EqualFold(section, sectionName) {
+		if models.IsGTDSection(section) && strings.EqualFold(section, sectionName) {
 			return section, true
 		}
 	}

@@ -9,43 +9,39 @@ import (
 type KanbanMode int
 
 const (
-	KanbanModeSection        KanbanMode = iota // GTD sections: Inbox, Next, Active, Waiting, Someday, Review, Standby, Completed
-	KanbanModeStatus                           // Status: Todo, InProgress, Review, Blocked, Standby, Done, Canceled
-	KanbanModePriority                         // Priority: P1–P5, Unset
-	KanbanModeStages                           // Project workflow stages
-	KanbanModeCustomSections                   // User-defined custom sections per project
-	KanbanModeScoreBuckets                     // Score ranges: 0–25%, 26–50%, 51–75%, 76–100%
+	KanbanModeSection      KanbanMode = iota // GTD sections: Inbox, Next, Active, Waiting, Someday, Review, Standby, Completed
+	KanbanModeStatus                         // Status: Todo, InProgress, Review, Blocked, Standby, Done, Canceled
+	KanbanModePriority                       // Priority: P1–P5, Unset
+	KanbanModeStages                         // Project workflow stages
+	KanbanModeScoreBuckets                   // Score ranges: 0–25%, 26–50%, 51–75%, 76–100%
 )
 
 // KanbanModeNames maps each mode to a human-readable label.
 var KanbanModeNames = map[KanbanMode]string{
-	KanbanModeSection:        "Section",
-	KanbanModeStatus:         "Status",
-	KanbanModePriority:       "Priority",
-	KanbanModeStages:         "Stages",
-	KanbanModeCustomSections: "Custom Sections",
-	KanbanModeScoreBuckets:   "Score Buckets",
+	KanbanModeSection:      "Section",
+	KanbanModeStatus:       "Status",
+	KanbanModePriority:     "Priority",
+	KanbanModeStages:       "Stages",
+	KanbanModeScoreBuckets: "Score Buckets",
 }
 
 // KanbanModeIcons maps each mode to a short icon/glyph used in the header.
 var KanbanModeIcons = map[KanbanMode]string{
-	KanbanModeSection:        "§",
-	KanbanModeStatus:         "◎",
-	KanbanModePriority:       "!",
-	KanbanModeStages:         IconInProgress,
-	KanbanModeCustomSections: "⊞",
-	KanbanModeScoreBuckets:   icons.Get("score_bucket"),
+	KanbanModeSection:      "§",
+	KanbanModeStatus:       "◎",
+	KanbanModePriority:     "!",
+	KanbanModeStages:       IconInProgress,
+	KanbanModeScoreBuckets: icons.Get("score_bucket"),
 }
 
 // KanbanModeID returns the stable string ID used for persistence.
 func (m KanbanMode) ID() string {
 	ids := map[KanbanMode]string{
-		KanbanModeSection:        "section",
-		KanbanModeStatus:         "status",
-		KanbanModePriority:       "priority",
-		KanbanModeStages:         "stages",
-		KanbanModeCustomSections: "custom_sections",
-		KanbanModeScoreBuckets:   "score_buckets",
+		KanbanModeSection:      "section",
+		KanbanModeStatus:       "status",
+		KanbanModePriority:     "priority",
+		KanbanModeStages:       "stages",
+		KanbanModeScoreBuckets: "score_buckets",
 	}
 	if id, ok := ids[m]; ok {
 		return id
@@ -56,12 +52,11 @@ func (m KanbanMode) ID() string {
 // KanbanModeFromID returns the KanbanMode for the given persistence ID.
 func KanbanModeFromID(id string) KanbanMode {
 	for m, mid := range map[KanbanMode]string{
-		KanbanModeSection:        "section",
-		KanbanModeStatus:         "status",
-		KanbanModePriority:       "priority",
-		KanbanModeStages:         "stages",
-		KanbanModeCustomSections: "custom_sections",
-		KanbanModeScoreBuckets:   "score_buckets",
+		KanbanModeSection:      "section",
+		KanbanModeStatus:       "status",
+		KanbanModePriority:     "priority",
+		KanbanModeStages:       "stages",
+		KanbanModeScoreBuckets: "score_buckets",
 	} {
 		if mid == id {
 			return m
@@ -77,7 +72,6 @@ func AllKanbanModes() []KanbanMode {
 		KanbanModeStatus,
 		KanbanModePriority,
 		KanbanModeStages,
-		KanbanModeCustomSections,
 		KanbanModeScoreBuckets,
 	}
 }

@@ -253,23 +253,22 @@ func TestArchivePreservesAllMetadataFields(t *testing.T) { //nolint:gocyclo
 	snoozed := time.Date(2025, 7, 1, 0, 0, 0, 0, time.Local)
 
 	task := &models.Task{
-		ID:            "full-task-1",
-		Title:         "Task with all fields",
-		Type:          models.TaskTypeBug,
-		Status:        models.StatusDone,
-		Priority:      1,
-		Tags:          []string{"backend", "critical"},
-		Section:       "Next",
-		CustomSection: "Sprint-1",
-		CreatedAt:     now.Add(-48 * time.Hour),
-		UpdatedAt:     now.Add(-1 * time.Hour),
-		CompletedAt:   &now,
-		DependsOn:     []string{"dep-1", "dep-2"},
-		RelatedTo:     []string{"rel-1"},
-		SnoozedUntil:  &snoozed,
-		Stage:         "Review",
-		Source:        "github",
-		URL:           "https://github.com/example/issue/42",
+		ID:           "full-task-1",
+		Title:        "Task with all fields",
+		Type:         models.TaskTypeBug,
+		Status:       models.StatusDone,
+		Priority:     1,
+		Tags:         []string{"backend", "critical"},
+		Section:      "Next",
+		CreatedAt:    now.Add(-48 * time.Hour),
+		UpdatedAt:    now.Add(-1 * time.Hour),
+		CompletedAt:  &now,
+		DependsOn:    []string{"dep-1", "dep-2"},
+		RelatedTo:    []string{"rel-1"},
+		SnoozedUntil: &snoozed,
+		Stage:        "Review",
+		Source:       "github",
+		URL:          "https://github.com/example/issue/42",
 		Checklist: []models.ChecklistItem{
 			{Text: "Step one", Done: true},
 			{Text: "Step two", Done: false},
@@ -317,8 +316,8 @@ func TestArchivePreservesAllMetadataFields(t *testing.T) { //nolint:gocyclo
 	}
 	loaded := tasks[0]
 
-	if loaded.CustomSection != "Sprint-1" {
-		t.Errorf("custom_section: got %q, want %q", loaded.CustomSection, "Sprint-1")
+	if loaded.Section != "Next" {
+		t.Errorf("section: got %q, want %q", loaded.Section, "Next")
 	}
 	if len(loaded.DependsOn) != 2 || loaded.DependsOn[0] != "dep-1" || loaded.DependsOn[1] != "dep-2" {
 		t.Errorf("depends_on: got %v, want [dep-1 dep-2]", loaded.DependsOn)

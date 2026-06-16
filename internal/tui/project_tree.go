@@ -171,8 +171,8 @@ type ProjectTreeModel struct {
 	filterBar *FilterBarComponent
 	sidebar   *SidebarComponent
 
-	// Custom section tab (0 = "All", 1+ = custom section index)
-	customSectionTab int
+	// Pinned tag tab (0 = "All", 1+ = pinned tag index)
+	pinnedTagTab int
 
 	// Focus mode state
 	focusedTask *models.Task // When non-nil, only show this task and descendants
@@ -283,14 +283,21 @@ func NewProjectTreeModel(project *models.Project, cfg *config.Config, manager *c
 	return m
 }
 
-// customSectionTabs returns ["All"] + sorted custom sections, or nil if no custom sections exist.
-func (m *ProjectTreeModel) customSectionTabs() []string {
-	return CustomSectionTabs(m.project)
+// pinnedTagTabs returns ["All"] + pinned tag labels, or nil if no tags are pinned.
+func (m *ProjectTreeModel) pinnedTagTabs() []string {
+	return PinnedTagTabs(m.project)
 }
 
-// activeCustomSectionFilter returns the custom section name being filtered, or "" for "All".
-func (m *ProjectTreeModel) activeCustomSectionFilter() string {
-	return ActiveCustomSectionFilter(m.project, m.customSectionTab)
+// activePinnedTagFilter returns the selected pinned tag, or "" for "All".
+func (m *ProjectTreeModel) activePinnedTagFilter() string {
+	tabs := m.pinnedTagTabs()
+	if tabs == nil || m.pinnedTagTab <= 0 || m.pinnedTagTab >= len(tabs) {
+		if m.pinnedTagTab != 0 {
+			m.pinnedTagTab = 0
+		}
+		return ""
+	}
+	return pinnedTagFromTab(tabs[m.pinnedTagTab])
 }
 
 // HasActiveSearch returns true if search mode is active or a search filter is applied.

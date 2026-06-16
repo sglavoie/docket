@@ -17,23 +17,22 @@ func TestRoundTrip_KitchenSink(t *testing.T) { //nolint:gocyclo
 	pinnedAt := time.Date(2026, 1, 12, 14, 30, 45, 0, time.Local)
 
 	task := &models.Task{
-		ID:            "kitchen-sink-1",
-		Type:          models.TaskTypeBug,
-		Status:        models.StatusDone,
-		Priority:      1,
-		Tags:          []string{"backend", "urgent", "p0"},
-		Section:       "",
-		CustomSection: "Infrastructure",
-		CreatedAt:     created,
-		UpdatedAt:     updated,
-		CompletedAt:   &completed,
-		DueDate:       &due,
-		DependsOn:     []string{"dep-1", "dep-2", "dep-3"},
-		RelatedTo:     []string{"rel-1", "rel-2"},
-		Pinned:        true,
-		PinnedAt:      &pinnedAt,
-		Active:        true,
-		SnoozedUntil:  &snoozed,
+		ID:           "kitchen-sink-1",
+		Type:         models.TaskTypeBug,
+		Status:       models.StatusDone,
+		Priority:     1,
+		Tags:         []string{"backend", "urgent", "p0"},
+		Section:      "",
+		CreatedAt:    created,
+		UpdatedAt:    updated,
+		CompletedAt:  &completed,
+		DueDate:      &due,
+		DependsOn:    []string{"dep-1", "dep-2", "dep-3"},
+		RelatedTo:    []string{"rel-1", "rel-2"},
+		Pinned:       true,
+		PinnedAt:     &pinnedAt,
+		Active:       true,
+		SnoozedUntil: &snoozed,
 		Recurrence: &models.RecurrencePattern{
 			Interval:  2,
 			Unit:      models.RecurrenceWeekly,
@@ -94,9 +93,6 @@ func TestRoundTrip_KitchenSink(t *testing.T) { //nolint:gocyclo
 	}
 	if parsed.Section != task.Section {
 		t.Errorf("Section = %q, want %q", parsed.Section, task.Section)
-	}
-	if parsed.CustomSection != task.CustomSection {
-		t.Errorf("CustomSection = %q, want %q", parsed.CustomSection, task.CustomSection)
 	}
 	if parsed.CreatedAt.Format("2006-01-02 15:04") != created.Format("2006-01-02 15:04") {
 		t.Errorf("CreatedAt = %v, want %v", parsed.CreatedAt, created)

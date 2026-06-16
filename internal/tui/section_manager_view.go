@@ -12,14 +12,8 @@ import (
 func (m *SectionManagerModel) View() tea.View {
 	var b strings.Builder
 
-	b.WriteString(renderFullscreenTitle("Custom Section Manager", ""))
+	b.WriteString(renderFullscreenTitle("Section Manager", ""))
 	b.WriteString("\n\n")
-
-	if m.addMode {
-		b.WriteString("New section: ")
-		b.WriteString(m.addInput.View())
-		b.WriteString("\n\n")
-	}
 
 	b.WriteString(m.renderSectionList())
 
@@ -52,19 +46,15 @@ func (m *SectionManagerModel) renderSectionList() string {
 			style = TagManagerItemSelectedStyle
 		}
 
-		if m.renameMode && i == m.cursor {
-			b.WriteString(cursor)
-			b.WriteString("Rename to: ")
-			b.WriteString(m.renameInput.View())
-			b.WriteString("\n")
-			continue
-		}
-
 		sectionColor := m.getProject().GetSectionColor(section.Name)
 		colorStyle := GetSectionColorStyle(sectionColor)
 		colorSwatch := colorStyle.Render("█") + " "
 
-		line := fmt.Sprintf("%s%s%s ", cursor, colorSwatch, section.Name)
+		label := section.Name
+		if label == "" {
+			label = "Active"
+		}
+		line := fmt.Sprintf("%s%s%s ", cursor, colorSwatch, label)
 		b.WriteString(style.Render(line))
 		b.WriteString(TagManagerCountStyle.Render(fmt.Sprintf("(%d)", section.TaskCount)))
 		b.WriteString("\n")
@@ -99,24 +89,18 @@ func (m *SectionManagerModel) footerHelp() string {
 	if m.colorPickMode {
 		return "h/l nav · c cycle · x clear · enter confirm · esc cancel"
 	}
-	if m.renameMode {
-		return "enter confirm · esc cancel"
-	}
-	if m.addMode {
-		return "enter add · esc cancel"
-	}
 	if len(m.sections) > 0 {
-		return "j/k nav · enter filter · g go to · a add · r rename · c color · d del · esc close"
+		return "j/k nav · enter filter · c color · esc close"
 	}
-	return "a add · esc close"
+	return "esc close"
 }
 
-func (m *SectionManagerModel) HasTextInput() bool { return m.renameMode || m.addMode }
+func (m *SectionManagerModel) HasTextInput() bool { return false }
 
 func (m *SectionManagerModel) ShouldCaptureEsc() bool {
-	return m.renameMode || m.addMode || m.confirmDiscard
+	return m.colorPickMode
 }
 
 func (m *SectionManagerModel) IsFullHeight() bool { return false }
 
-func (m *SectionManagerModel) StatusBarLabel() string { return "Custom Section Manager" }
+func (m *SectionManagerModel) StatusBarLabel() string { return "Section Manager" }

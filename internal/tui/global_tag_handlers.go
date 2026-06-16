@@ -1,10 +1,13 @@
 package tui
 
 import (
+	"fmt"
 	"strings"
 
 	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
+
+	"github.com/sglavoie/tt/internal/models"
 )
 
 // handleNormalMode handles keyboard input in normal mode.
@@ -61,9 +64,38 @@ func (m *GlobalTagManagerModel) handleNormalMode(msg tea.KeyPressMsg) (tea.Model
 			return m, textinput.Blink
 		}
 		return m, nil
+
+	case "p":
+		if len(m.tags) > 0 && m.cursor < len(m.tags) {
+			return m, m.togglePinnedTag(m.tags[m.cursor].Name)
+		}
+		return m, nil
 	}
 
 	return m, nil
+}
+
+func (m *GlobalTagManagerModel) togglePinnedTag(tagName string) tea.Cmd {
+	cfg := m.config
+	manager := m.configManager
+	return func() tea.Msg {
+		if cfg == nil {
+			return GlobalTagManagerErrorMsg{Err: fmt.Errorf("config is unavailable")}
+		}
+		tagName = models.NormalizeTag(tagName)
+		pinned, err := cfg.ToggleGlobalPinnedTag(tagName)
+		if err != nil {
+			return GlobalTagManagerErrorMsg{Err: err}
+		}
+
+		if manager != nil {
+			if err := manager.Save(cfg); err != nil {
+				return ErrorMsg{Err: fmt.Errorf("failed to save config: %w", err)}
+			}
+		}
+
+		return GlobalTagPinnedMsg{Name: tagName, Pinned: pinned}
+	}
 }
 
 // handleRenameMode handles keyboard input while in rename mode.

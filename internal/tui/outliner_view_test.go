@@ -133,7 +133,7 @@ func TestOutlinerPersistentScrollKeepsFirstRowMovingUpWithinViewport(t *testing.
 			m := &OutlinerModel{
 				project:           tt.project,
 				rows:              rows,
-				customSectionTab:  make(map[string]int),
+				pinnedTagTab:  make(map[string]int),
 				collapsedSections: make(map[string]bool),
 			}
 			m.SetSize(100, 6) // One header line leaves five row slots.

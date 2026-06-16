@@ -7,21 +7,19 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 )
 
-func TestEvaluateCriterion_SectionMatchesCustomSection(t *testing.T) {
+func TestEvaluateCriterion_SectionMatchesGTDOnly(t *testing.T) {
 	project := &models.Project{Name: "test"}
 
 	gtdTask := &models.Task{
 		Title:   "GTD task",
 		Section: "Next",
 	}
-	customTask := &models.Task{
-		Title:         "Custom task",
-		CustomSection: "Design",
+	activeTask := &models.Task{
+		Title: "Active task",
 	}
 	bothTask := &models.Task{
-		Title:         "Both task",
-		Section:       "Next",
-		CustomSection: "Design",
+		Title:   "Both task",
+		Section: "Next",
 	}
 
 	tests := []struct {
@@ -32,14 +30,14 @@ func TestEvaluateCriterion_SectionMatchesCustomSection(t *testing.T) {
 		want bool
 	}{
 		{"GTD equals matches GTD task", gtdTask, "equals", "Next", true},
-		{"GTD equals does not match custom task", customTask, "equals", "Next", false},
-		{"custom equals matches custom task", customTask, "equals", "Design", true},
-		{"custom equals does not match GTD task", gtdTask, "equals", "Design", false},
-		{"custom equals matches task with both", bothTask, "equals", "Design", true},
+		{"GTD equals does not match empty task", activeTask, "equals", "Next", false},
+		{"non-GTD equals does not match empty task", activeTask, "equals", "Design", false},
+		{"non-GTD equals does not match GTD task", gtdTask, "equals", "Design", false},
+		{"non-GTD equals does not match task with GTD section", bothTask, "equals", "Design", false},
 		{"GTD equals matches task with both", bothTask, "equals", "Next", true},
-		{"not_equals GTD on custom task", customTask, "not_equals", "Next", true},
-		{"not_equals Design on custom task", customTask, "not_equals", "Design", false},
-		{"contains partial custom section", customTask, "contains", "esig", true},
+		{"not_equals GTD on empty task", activeTask, "not_equals", "Next", true},
+		{"not_equals Design on empty task", activeTask, "not_equals", "Design", true},
+		{"contains partial non-GTD section does not match", activeTask, "contains", "esig", false},
 	}
 
 	for _, tt := range tests {

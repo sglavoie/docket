@@ -49,7 +49,7 @@ func GetDefaultRules() []WorkflowRule {
 		},
 		{
 			ID:      "def-archive",
-			Name:    "Archive Completed",
+			Name:    "Route Completed Tasks",
 			Enabled: false,
 			Source:  "default",
 			Trigger: RuleTrigger{
@@ -58,7 +58,7 @@ func GetDefaultRules() []WorkflowRule {
 				Value:     "true",
 			},
 			Actions: []RuleAction{
-				{ActionType: ActionSetSection, Value: "Archive"},
+				{ActionType: ActionSetSection, Value: "Completed"},
 			},
 		},
 		// Activate on Active Section: sync active flag with Active section

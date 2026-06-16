@@ -65,6 +65,7 @@ func TestConfigManager_FullRoundTrip(t *testing.T) {
 	cfg.CycleProjects = []string{"p1", "p2"}
 	cfg.ContextCycleProjects = map[string][]string{"work": {"p1"}}
 	cfg.PinnedCommands = []string{"task-add", "task-list"}
+	cfg.GlobalPinnedTags = []string{"backend", "urgent"}
 	cfg.CommandHistory = []string{"a", "b", "c"}
 	cfg.SavedSearches = map[string]string{"q1": "tag:urgent"}
 	cfg.PaletteSearchHistory = []string{"first", "second"}
@@ -76,6 +77,8 @@ func TestConfigManager_FullRoundTrip(t *testing.T) {
 
 	cfg.AddProject(&models.Project{ID: "p1", Slug: "test", Name: "Test"})
 	cfg.AddProject(&models.Project{ID: "p2", Slug: "test2", Name: "Test2"})
+	cfg.ProjectViewStates["p1"] = ProjectViewState{PinnedTagTab: "backend"}
+	cfg.CrossOutlinerPinnedTagTab = "urgent"
 
 	cfg.WorkflowRules = []workflow.WorkflowRule{
 		{
@@ -118,7 +121,7 @@ func TestConfigManager_FullRoundTrip(t *testing.T) {
 	}
 
 	cfg.SavedFilters = []SavedFilter{
-		{ID: "f1", Name: "MyFilter", Mode: "snapshot", FilterStatus: "todo", SortAscending: true},
+		{ID: "f1", Name: "MyFilter", Mode: "snapshot", FilterStatus: "todo", SortAscending: true, PinnedTagTab: "backend"},
 	}
 
 	if saveErr := manager.Save(cfg); saveErr != nil {
@@ -185,11 +188,16 @@ func TestConfigManager_FullRoundTrip(t *testing.T) {
 		{"CycleProjectsLen", len(loaded2.CycleProjects), 2},
 		{"ContextCycleProjects", loaded2.ContextCycleProjects["work"][0], "p1"},
 		{"PinnedCommandsLen", len(loaded2.PinnedCommands), 2},
+		{"GlobalPinnedTagsLen", len(loaded2.GlobalPinnedTags), 2},
+		{"GlobalPinnedTagsFirst", loaded2.GlobalPinnedTags[0], "backend"},
 		{"CommandHistoryLen", len(loaded2.CommandHistory), 3},
 		{"SavedSearches", loaded2.SavedSearches["q1"], "tag:urgent"},
 		{"PaletteSearchHistoryLen", len(loaded2.PaletteSearchHistory), 2},
 		{"RecentPaletteItemsLen", len(loaded2.RecentPaletteItems), 1},
 		{"AllTasksTabOrderLen", len(loaded2.AllTasksTabOrder), 2},
+		{"ProjectViewStatePinnedTagTab", loaded2.ProjectViewStates["p1"].PinnedTagTab, "backend"},
+		{"CrossOutlinerPinnedTagTab", loaded2.CrossOutlinerPinnedTagTab, "urgent"},
+		{"SavedFilterPinnedTagTab", loaded2.SavedFilters[0].PinnedTagTab, "backend"},
 		{"WorkflowEvalStates", loaded2.WorkflowEvalStates["p1"].RulesHash, "abc"},
 	}
 	for _, c := range checks {

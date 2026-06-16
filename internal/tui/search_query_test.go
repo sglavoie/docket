@@ -203,19 +203,17 @@ func TestParseSearchQuery_AllStatuses(t *testing.T) {
 	}
 }
 
-func TestTaskMatchesFilters_SectionMatchesCustomSection(t *testing.T) {
+func TestTaskMatchesFilters_SectionMatchesGTDOnly(t *testing.T) {
 	gtdTask := &models.Task{
 		Title:   "GTD task",
 		Section: "Next",
 	}
-	customTask := &models.Task{
-		Title:         "Custom task",
-		CustomSection: "Design",
+	activeTask := &models.Task{
+		Title: "Active task",
 	}
 	bothTask := &models.Task{
-		Title:         "Both task",
-		Section:       "Next",
-		CustomSection: "Design",
+		Title:   "Both task",
+		Section: "Next",
 	}
 
 	tests := []struct {
@@ -225,12 +223,12 @@ func TestTaskMatchesFilters_SectionMatchesCustomSection(t *testing.T) {
 		want    bool
 	}{
 		{"GTD section matches GTD task", gtdTask, "Next", true},
-		{"GTD section does not match custom task", customTask, "Next", false},
-		{"custom section matches custom task", customTask, "Design", true},
-		{"custom section does not match GTD task", gtdTask, "Design", false},
-		{"custom section matches task with both", bothTask, "Design", true},
+		{"GTD section does not match empty task", activeTask, "Next", false},
+		{"non-GTD section does not match empty task", activeTask, "Design", false},
+		{"non-GTD section does not match GTD task", gtdTask, "Design", false},
+		{"non-GTD section does not match task with GTD section", bothTask, "Design", false},
 		{"GTD section matches task with both", bothTask, "Next", true},
-		{"case insensitive custom section", customTask, "design", true},
+		{"case insensitive non-GTD section does not match", activeTask, "design", false},
 		{"no section filter matches all", gtdTask, "", true},
 	}
 
@@ -247,17 +245,16 @@ func TestTaskMatchesFilters_SectionMatchesCustomSection(t *testing.T) {
 
 func TestTaskMatchesFilters_SectionViaSearchQuery(t *testing.T) {
 	task := &models.Task{
-		Title:         "My task",
-		CustomSection: "Design",
-		Status:        models.StatusTodo,
+		Title:  "My task",
+		Status: models.StatusTodo,
 	}
 
 	filters := ParseSearchQuery("/Design")
 	if filters.Section != "Design" {
 		t.Fatalf("ParseSearchQuery(/Design).Section = %q, want %q", filters.Section, "Design")
 	}
-	if !TaskMatchesFilters(task, filters) {
-		t.Error("TaskMatchesFilters should match custom section via /Design search query")
+	if TaskMatchesFilters(task, filters) {
+		t.Error("TaskMatchesFilters should not match non-GTD section via /Design search query")
 	}
 }
 

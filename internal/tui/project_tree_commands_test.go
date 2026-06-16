@@ -12,15 +12,14 @@ import (
 func TestCopyTaskStatePreservesAllFields(t *testing.T) {
 	dueDate := time.Date(2024, 6, 15, 0, 0, 0, 0, time.UTC)
 	task := &models.Task{
-		ID:            "test-id",
-		Status:        models.StatusInProgress,
-		Priority:      2,
-		Section:       "Next",
-		CustomSection: "Sprint 1",
-		Tags:          []string{"backend", "urgent"},
-		Type:          models.TaskTypeBug,
-		DueDate:       &dueDate,
-		Description:   "Fix the login bug",
+		ID:          "test-id",
+		Status:      models.StatusInProgress,
+		Priority:    2,
+		Section:     "Next",
+		Tags:        []string{"backend", "urgent"},
+		Type:        models.TaskTypeBug,
+		DueDate:     &dueDate,
+		Description: "Fix the login bug",
 		Recurrence: &models.RecurrencePattern{
 			Interval:    2,
 			Unit:        models.RecurrenceWeekly,
@@ -45,9 +44,6 @@ func TestCopyTaskStatePreservesAllFields(t *testing.T) {
 	}
 	if copied.Section != task.Section {
 		t.Errorf("Section: got %q, want %q", copied.Section, task.Section)
-	}
-	if copied.CustomSection != task.CustomSection {
-		t.Errorf("CustomSection: got %q, want %q", copied.CustomSection, task.CustomSection)
 	}
 	if copied.Type != task.Type {
 		t.Errorf("Type: got %q, want %q", copied.Type, task.Type)
@@ -127,28 +123,26 @@ func TestCopyTaskStateNilTask(t *testing.T) {
 	}
 }
 
-func TestTaskStateChangedDetectsCustomSection(t *testing.T) {
+func TestTaskStateChangedDetectsSection(t *testing.T) {
 	current := &models.Task{
-		ID:            "t1",
-		Status:        models.StatusTodo,
-		Priority:      3,
-		Section:       "",
-		CustomSection: "Sprint 2",
-		Tags:          []string{"backend"},
-		Type:          models.TaskTypeTask,
+		ID:       "t1",
+		Status:   models.StatusTodo,
+		Priority: 3,
+		Section:  models.SectionNext,
+		Tags:     []string{"backend"},
+		Type:     models.TaskTypeTask,
 	}
 	prev := &models.Task{
-		ID:            "t1",
-		Status:        models.StatusTodo,
-		Priority:      3,
-		Section:       "",
-		CustomSection: "Sprint 1",
-		Tags:          []string{"backend"},
-		Type:          models.TaskTypeTask,
+		ID:       "t1",
+		Status:   models.StatusTodo,
+		Priority: 3,
+		Section:  models.SectionInbox,
+		Tags:     []string{"backend"},
+		Type:     models.TaskTypeTask,
 	}
 
 	if !workflow.TaskStateChanged(current, prev) {
-		t.Error("taskStateChanged should detect CustomSection change from 'Sprint 1' to 'Sprint 2'")
+		t.Error("taskStateChanged should detect Section change from Inbox to Next")
 	}
 }
 

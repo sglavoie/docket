@@ -351,60 +351,6 @@ func passthroughPersist(project *models.Project) persistFn {
 	}
 }
 
-func TestApplyCustomSectionChange_ClearsGTDSection(t *testing.T) {
-	project, err := models.NewProject("proj-1", "TestProject", t.TempDir())
-	if err != nil {
-		t.Fatal(err)
-	}
-	task, err := models.NewTask("task-1", 1, models.TaskTypeTask, "Task one")
-	if err != nil {
-		t.Fatal(err)
-	}
-	task.Section = models.SectionNext
-	project.Tasks = []*models.Task{task}
-	project.BuildTaskTree()
-
-	result := applyCustomSectionChange(passthroughPersist(project), project, task.ID, "Sprint-1")
-	if result.Err != nil {
-		t.Fatalf("unexpected error: %v", result.Err)
-	}
-	if task.Section != "" {
-		t.Fatalf("task.Section = %q, want empty", task.Section)
-	}
-	if task.CustomSection != "Sprint-1" {
-		t.Fatalf("task.CustomSection = %q, want %q", task.CustomSection, "Sprint-1")
-	}
-	if !project.HasSection("Sprint-1") {
-		t.Fatal("expected custom section to be added to project")
-	}
-}
-
-func TestApplyCustomSectionChange_ClearPreservesGTDSection(t *testing.T) {
-	project, err := models.NewProject("proj-1", "TestProject", t.TempDir())
-	if err != nil {
-		t.Fatal(err)
-	}
-	task, err := models.NewTask("task-1", 1, models.TaskTypeTask, "Task one")
-	if err != nil {
-		t.Fatal(err)
-	}
-	task.Section = models.SectionNext
-	task.CustomSection = "Sprint-1"
-	project.Tasks = []*models.Task{task}
-	project.BuildTaskTree()
-
-	result := applyCustomSectionChange(passthroughPersist(project), project, task.ID, "")
-	if result.Err != nil {
-		t.Fatalf("unexpected error: %v", result.Err)
-	}
-	if task.Section != models.SectionNext {
-		t.Fatalf("task.Section = %q, want %q", task.Section, models.SectionNext)
-	}
-	if task.CustomSection != "" {
-		t.Fatalf("task.CustomSection = %q, want empty", task.CustomSection)
-	}
-}
-
 func nilPF(t *testing.T) persistFn {
 	t.Helper()
 	return func(proj *models.Project, taskID string, mutate func(*models.Task)) TaskOpResult {
@@ -471,13 +417,6 @@ func TestApplyRemoveFromFocus_NilProject(t *testing.T) {
 
 func TestApplySectionChange_NilProject(t *testing.T) {
 	result := applySectionChange(nilPF(t), nil, "task-1", "someSection")
-	if !errors.Is(result.Err, errNilProject) {
-		t.Errorf("expected errNilProject, got %v", result.Err)
-	}
-}
-
-func TestApplyCustomSectionChange_NilProject(t *testing.T) {
-	result := applyCustomSectionChange(nilPF(t), nil, "task-1", "someSection")
 	if !errors.Is(result.Err, errNilProject) {
 		t.Errorf("expected errNilProject, got %v", result.Err)
 	}

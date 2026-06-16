@@ -15,6 +15,7 @@ type GlobalTagInfo struct {
 	Name      string
 	TaskCount int // Total across all projects
 	Projects  []TagProjectUsage
+	Pinned    bool
 }
 
 // ShowGlobalTagManagerMsg is sent to open the global tag manager view.
@@ -29,6 +30,18 @@ type GlobalTagRenamedMsg struct {
 	NewName      string
 	ProjectCount int
 	TaskCount    int
+}
+
+// GlobalTagPinnedMsg is sent after a global pinned tag is toggled.
+type GlobalTagPinnedMsg struct {
+	Name   string
+	Pinned bool
+}
+
+// GlobalTagManagerErrorMsg reports validation or persistence errors in the
+// global tag manager.
+type GlobalTagManagerErrorMsg struct {
+	Err error
 }
 
 // GlobalTagNavigateMsg is sent when navigating to a project with a tag filter.

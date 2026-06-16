@@ -208,16 +208,16 @@ func TestParseFieldFilters_Section(t *testing.T) {
 		wantAlt       []string
 	}{
 		{
-			query:         "section:backlog task",
+			query:         "section:inbox task",
 			wantRemaining: "task",
 			wantOp:        "eq",
-			wantValue:     "backlog",
+			wantValue:     "inbox",
 		},
 		{
-			query:         "section:sprint-1|sprint-2",
+			query:         "section:next|waiting",
 			wantRemaining: "",
 			wantOp:        "in",
-			wantAlt:       []string{"sprint-1", "sprint-2"},
+			wantAlt:       []string{"next", "waiting"},
 		},
 	}
 

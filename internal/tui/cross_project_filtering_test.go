@@ -4,6 +4,7 @@ import (
 	"slices"
 	"testing"
 
+	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 )
 
@@ -120,67 +121,29 @@ func TestCrossProjectRebuildRowsSectionFilter(t *testing.T) {
 	}
 }
 
-func TestCrossProjectCustomSectionTabsAggregateProjects(t *testing.T) {
+func TestCrossProjectPinnedTagTabsIgnoreLegacyProjectSections(t *testing.T) {
 	m := minimalOutliner()
 	m.loadedProjects = []*models.Project{
 		{ID: "p1", Sections: []string{models.SectionNext, "Sprint-1"}},
 		{ID: "p2", Sections: []string{"Design", "Sprint-1"}},
 	}
 
-	want := []string{"All", "Design", "Sprint-1"}
-	if got := m.customSectionTabs(); !slices.Equal(got, want) {
-		t.Fatalf("customSectionTabs() = %v, want %v", got, want)
+	if got := m.pinnedTagTabs(); got != nil {
+		t.Fatalf("pinnedTagTabs() = %v, want nil", got)
 	}
-
-	m.setCustomSectionTabIndex(2)
-	if got := m.customSectionTabIndex(); got != 2 {
-		t.Fatalf("customSectionTabIndex() = %d, want 2", got)
+	m.setPinnedTagTabIndex(1)
+	if got := m.activePinnedTagFilter(); got != "" {
+		t.Fatalf("activePinnedTagFilter() = %q, want empty", got)
 	}
-	if got := m.activeCustomSectionFilter(); got != "Sprint-1" {
-		t.Fatalf("activeCustomSectionFilter() = %q, want Sprint-1", got)
+	if got := m.pinnedTagTabIndex(); got != 0 {
+		t.Fatalf("pinnedTagTabIndex() = %d, want stale index reset to All", got)
 	}
 }
 
-func TestCrossProjectEmptyCustomSectionTabFiltersToEmptyRows(t *testing.T) {
-	otherTask := makeTask("other", "Other task", models.SectionNext)
-	proj := &models.Project{
-		ID:       "proj-empty-custom-tab",
-		Name:     "EmptyCustomTab",
-		Sections: []string{"Beta", "Alpha", models.SectionNext},
-		Tasks:    []*models.Task{otherTask},
-	}
-	proj.BuildTaskTree()
-
-	m := &OutlinerModel{
-		collapsedSections: make(map[string]bool),
-		expandedNodes:     make(map[string]bool),
-		activePerspective: PerspectiveAll,
-		loadedProjects:    []*models.Project{proj},
-		filter:            NewFilterState(),
-		customSectionTab:  make(map[string]int),
-		sort:              NewSortState(),
-	}
-
-	wantTabs := []string{"All", "Alpha", "Beta"}
-	if got := m.customSectionTabs(); !slices.Equal(got, wantTabs) {
-		t.Fatalf("customSectionTabs() = %v, want %v", got, wantTabs)
-	}
-
-	m.setCustomSectionTabIndex(1)
-	if got := m.activeCustomSectionFilter(); got != "Alpha" {
-		t.Fatalf("activeCustomSectionFilter() = %q, want Alpha", got)
-	}
-
-	m.crossProjectRebuildRows()
-	if len(m.rows) != 0 {
-		t.Fatalf("empty custom tab rendered rows %v, want none", rowTitles(m.rows))
-	}
-}
-
-func TestCrossProjectRebuildRowsCustomSectionTabFiltersWithoutForce(t *testing.T) {
-	sprintTask := &models.Task{ID: "sprint", Title: "Sprint custom task", CustomSection: "Sprint-1", Status: models.StatusTodo}
+func TestCrossProjectRebuildRowsIgnoresStalePinnedTagTabWithoutForce(t *testing.T) {
+	sprintTask := &models.Task{ID: "sprint", Title: "Sprint tagged task", Status: models.StatusTodo}
 	legacySprintTask := &models.Task{ID: "legacy", Title: "Legacy sprint task", Section: "Sprint-1", Status: models.StatusTodo}
-	designTask := &models.Task{ID: "design", Title: "Design task", CustomSection: "Design", Status: models.StatusTodo}
+	designTask := &models.Task{ID: "design", Title: "Design task", Status: models.StatusTodo}
 	activeTask := makeTask("active", "Active task", "")
 	activeTask.Status = models.StatusTodo
 
@@ -198,33 +161,93 @@ func TestCrossProjectRebuildRowsCustomSectionTabFiltersWithoutForce(t *testing.T
 		activePerspective: PerspectiveAll,
 		loadedProjects:    []*models.Project{proj},
 		filter:            NewFilterState(),
-		customSectionTab:  make(map[string]int),
+		pinnedTagTab:      make(map[string]int),
 		sort:              NewSortState(),
 	}
 
 	m.crossProjectRebuildRows()
 	assertRowTitles(t, m.rows, []string{
 		"[Active]",
-		"Sprint custom task",
+		"Sprint tagged task",
 		"Legacy sprint task",
 		"Design task",
 		"Active task",
 	})
 
-	tabs := m.customSectionTabs()
-	idx := slices.Index(tabs, "Sprint-1")
-	if idx < 0 {
-		t.Fatalf("Sprint-1 tab missing from %v", tabs)
-	}
-	m.setCustomSectionTabIndex(idx)
-
+	m.setPinnedTagTabIndex(1)
 	m.crossProjectRebuildRows()
-
 	assertRowTitles(t, m.rows, []string{
 		"[Active]",
-		"Sprint custom task",
+		"Sprint tagged task",
 		"Legacy sprint task",
+		"Design task",
+		"Active task",
 	})
+}
+
+func TestCrossProjectRebuildRowsPinnedTagTabFiltersByGlobalPinnedTag(t *testing.T) {
+	backendTask := makeTask("backend", "Backend task", "")
+	backendTask.Status = models.StatusTodo
+	backendTask.Tags = []string{"backend"}
+	frontendTask := makeTask("frontend", "Frontend task", "")
+	frontendTask.Status = models.StatusTodo
+	frontendTask.Tags = []string{"frontend"}
+	proj := &models.Project{
+		ID:    "proj-pinned-tabs",
+		Name:  "PinnedTabs",
+		Tasks: []*models.Task{backendTask, frontendTask},
+	}
+	proj.BuildTaskTree()
+
+	cfg := config.NewConfig()
+	cfg.GlobalPinnedTags = []string{"backend"}
+	m := &OutlinerModel{
+		PrimaryViewBundle: NewPrimaryViewBundle(cfg, nil),
+		collapsedSections: make(map[string]bool),
+		expandedNodes:     make(map[string]bool),
+		activePerspective: PerspectiveAll,
+		loadedProjects:    []*models.Project{proj},
+		filter:            NewFilterState(),
+		pinnedTagTab:      make(map[string]int),
+		sort:              NewSortState(),
+	}
+	m.setPinnedTagTabIndex(1)
+
+	m.crossForceRebuild = true
+	m.crossProjectRebuildRows()
+
+	assertRowTitles(t, m.rows, []string{"[Active]", "Backend task"})
+	if got := m.activePinnedTagFilter(); got != "backend" {
+		t.Fatalf("activePinnedTagFilter() = %q, want backend", got)
+	}
+}
+
+func TestCrossProjectPinnedTagTabsHideStaleGlobalPins(t *testing.T) {
+	backendTask := makeTask("backend", "Backend task", "")
+	backendTask.Tags = []string{"backend"}
+	project := &models.Project{
+		ID:    "proj-pinned-tabs",
+		Name:  "PinnedTabs",
+		Tasks: []*models.Task{backendTask},
+	}
+	project.BuildTaskTree()
+
+	cfg := config.NewConfig()
+	cfg.GlobalPinnedTags = []string{"backend", "stale"}
+	m := &OutlinerModel{
+		PrimaryViewBundle: NewPrimaryViewBundle(cfg, nil),
+		loadedProjects:    []*models.Project{project},
+		pinnedTagTab:      make(map[string]int),
+	}
+
+	got := m.pinnedTagTabs()
+	want := []string{"All", "#backend"}
+	if !slices.Equal(got, want) {
+		t.Fatalf("pinnedTagTabs() = %v, want %v", got, want)
+	}
+	if !slices.Equal(cfg.GlobalPinnedTagList(), []string{"backend", "stale"}) {
+		t.Fatalf("GlobalPinnedTagList() = %v, want stale pin retained", cfg.GlobalPinnedTagList())
+	}
 }
 
 func collectCrossProjectTaskTitles(m *OutlinerModel) map[string]bool {

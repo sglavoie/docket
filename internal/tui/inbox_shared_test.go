@@ -15,17 +15,16 @@ func TestCaptureInboxSnapshotIncludesStatusFields(t *testing.T) {
 	dueDate := time.Date(2025, 4, 1, 0, 0, 0, 0, time.UTC)
 
 	task := &models.Task{
-		ID:            "t1",
-		Status:        models.StatusDone,
-		CompletedAt:   &completedAt,
-		Active:        false,
-		Section:       models.SectionCompleted,
-		CustomSection: "",
-		Priority:      2,
-		Tags:          []string{"backend"},
-		DueDate:       &dueDate,
-		HasTime:       true,
-		DependsOn:     []string{"dep-1"},
+		ID:          "t1",
+		Status:      models.StatusDone,
+		CompletedAt: &completedAt,
+		Active:      false,
+		Section:     models.SectionCompleted,
+		Priority:    2,
+		Tags:        []string{"backend"},
+		DueDate:     &dueDate,
+		HasTime:     true,
+		DependsOn:   []string{"dep-1"},
 	}
 
 	snap := captureInboxSnapshot(task)
@@ -264,7 +263,7 @@ func TestInboxSnapshotCapturesAndRestoresStage(t *testing.T) {
 	}
 }
 
-func TestRenderInboxCurrentSettingsShowsCustomSection(t *testing.T) {
+func TestRenderInboxCurrentSettingsIgnoresNonGTDSection(t *testing.T) {
 	task := &models.Task{
 		ID:        "t1",
 		Priority:  3,
@@ -275,11 +274,11 @@ func TestRenderInboxCurrentSettingsShowsCustomSection(t *testing.T) {
 
 	rendered := renderInboxCurrentSettings(task, &config.Config{SectionColors: map[string]string{}})
 
-	if !strings.Contains(rendered, "Sprint-1") {
-		t.Fatalf("expected custom section name in current settings, got %q", rendered)
+	if strings.Contains(rendered, "Sprint-1") {
+		t.Fatalf("did not expect non-GTD section name in current settings, got %q", rendered)
 	}
-	if strings.Contains(rendered, "(no section)") {
-		t.Fatalf("expected custom section instead of no section placeholder, got %q", rendered)
+	if !strings.Contains(rendered, "(no section)") {
+		t.Fatalf("expected no section placeholder, got %q", rendered)
 	}
 }
 

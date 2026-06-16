@@ -265,6 +265,33 @@ func TestRunTemplateUse(t *testing.T) {
 			t.Error("expected error for parent not found")
 		}
 	})
+
+	t.Run("rejects non-GTD template section", func(t *testing.T) {
+		deps, project := setupTemplateUseTest(t)
+		defer deps.Cleanup()
+
+		tmpl := template.TaskTemplate{
+			ID:      "bad-section-tmpl",
+			Name:    "Bad Section Template",
+			Enabled: true,
+			Type:    models.TaskTypeTask,
+			Section: "Backlog",
+		}
+		deps.Config.TaskTemplates = append(deps.Config.TaskTemplates, tmpl)
+		manager := config.NewManager(deps.ConfigPath)
+		testutil.AssertNoError(t, manager.Save(deps.Config))
+
+		initialCount := len(project.Tasks)
+		err := runTemplateUse(templateUseCmd, []string{"bad-section-tmpl", "Bad Section Task"})
+		if err == nil {
+			t.Fatal("expected error for non-GTD template section")
+		}
+
+		savedProject := deps.Repository.Projects[project.ID]
+		if len(savedProject.Tasks) != initialCount {
+			t.Fatalf("expected %d tasks, got %d", initialCount, len(savedProject.Tasks))
+		}
+	})
 }
 
 // TestResolveTemplateVars_NonInteractiveRequiredVar verifies that when stdin

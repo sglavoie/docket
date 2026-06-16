@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/spf13/cobra"
 
@@ -15,16 +14,14 @@ var sectionRemoveForce bool
 var sectionRemoveCmd = &cobra.Command{
 	Use:     "remove <name>",
 	Aliases: []string{"rm", "delete"},
-	Short:   "Remove a section from the current project",
-	Long: `Remove a section from the project.
+	Short:   "Section removal is no longer supported",
+	Long: `Sections are fixed to the built-in GTD set.
 
-Tasks in the removed section will have their section cleared.
-The Next section cannot be removed.
+Flexible grouping now uses tags and pinned tag tabs.
 
 Examples:
-  tt section remove "In Progress"
-  tt section rm Review
-  tt sec delete Done`,
+  tt tag unpin backend
+  tt tag list --pinned`,
 	RunE: runSectionRemove,
 }
 
@@ -41,62 +38,8 @@ func runSectionRemove(cmd *cobra.Command, args []string) error {
 
 	sectionName := args[0]
 
-	if models.IsGTDSection(sectionName) {
-		return fmt.Errorf("cannot remove built-in section '%s'", sectionName)
+	if models.IsGTDSectionNameCI(sectionName) {
+		return fmt.Errorf("cannot remove section '%s': built-in GTD sections cannot be removed", sectionName)
 	}
-
-	project, cfg, configManager, err := LoadCurrentProject()
-	if err != nil {
-		return err
-	}
-
-	out, err := getOutputOpts(cmd)
-	if err != nil {
-		return err
-	}
-
-	if !project.HasSection(sectionName) {
-		return fmt.Errorf("section '%s' does not exist", sectionName)
-	}
-
-	taskCount := len(project.GetTasksBySection(sectionName))
-
-	prompt := fmt.Sprintf("Remove section '%s'?", sectionName)
-	if taskCount > 0 {
-		prompt = fmt.Sprintf("Remove section '%s'? %d tasks will become unsectioned.", sectionName, taskCount)
-	}
-	if !ConfirmYN(prompt+" [y/N]: ", sectionRemoveForce) {
-		if !out.Quiet {
-			fmt.Fprintf(os.Stderr, "Canceled\n")
-		}
-		return nil
-	}
-
-	if !project.RemoveSection(sectionName) {
-		return fmt.Errorf("failed to remove section '%s'", sectionName)
-	}
-
-	if err := SaveProject(project, &SaveOptions{
-		Config: cfg, ConfigManager: configManager,
-		UndoAction: "Remove Section", UndoContext: sectionName,
-	}); err != nil {
-		return tterrors.NewSaveProjectError(project.Name, err)
-	}
-
-	if out.Quiet {
-		return nil
-	}
-	if out.JSON {
-		return printJSON(struct {
-			Section    string `json:"section"`
-			Project    string `json:"project"`
-			TasksMoved int    `json:"tasks_moved"`
-		}{Section: sectionName, Project: project.Name, TasksMoved: taskCount})
-	}
-	if taskCount > 0 {
-		fmt.Printf("Removed section '%s' (%d tasks moved to unsectioned)\n", sectionName, taskCount)
-	} else {
-		fmt.Printf("Removed section: %s\n", sectionName)
-	}
-	return nil
+	return fmt.Errorf("cannot remove section '%s': flexible grouping now uses tags; use 'tt tag unpin %s' to unpin a tag tab", sectionName, sectionName)
 }

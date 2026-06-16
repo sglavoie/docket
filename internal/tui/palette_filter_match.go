@@ -141,15 +141,13 @@ func (m *CommandPaletteModel) taskMatchesFieldFilters(item PaletteItem, filters 
 
 		case "section":
 			if f.op == "eq" {
-				// Task must be in the specified section (case-insensitive, check both GTD and custom)
-				if !strings.EqualFold(task.Section, f.value) && !strings.EqualFold(task.CustomSection, f.value) {
+				if !strings.EqualFold(task.Section, f.value) {
 					return false
 				}
 			} else if f.op == "in" {
-				// Task must be in one of the specified sections (check both GTD and custom)
 				found := false
 				for _, alt := range f.alt {
-					if strings.EqualFold(task.Section, alt) || strings.EqualFold(task.CustomSection, alt) {
+					if strings.EqualFold(task.Section, alt) {
 						found = true
 						break
 					}

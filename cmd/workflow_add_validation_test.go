@@ -9,7 +9,15 @@ import (
 
 func TestWorkflowAdd_TriggerFieldValidation(t *testing.T) {
 	for _, field := range workflow.ValidTriggerFields() {
-		trigger := workflow.RuleTrigger{Field: field, Operation: workflow.OpEquals, Value: "test"}
+		value := "test"
+		switch field {
+		case workflow.FieldSection:
+			value = "Inbox"
+		case workflow.FieldSectionChanged:
+			value = "Next->Inbox"
+		default:
+		}
+		trigger := workflow.RuleTrigger{Field: field, Operation: workflow.OpEquals, Value: value}
 		if err := trigger.Validate(); err != nil {
 			t.Errorf("expected field %s to be valid, got: %v", field, err)
 		}
@@ -50,6 +58,7 @@ func TestWorkflowAdd_ActionTypeValidation(t *testing.T) {
 		workflow.ActionSetSnooze:        "+1d",
 		workflow.ActionSetRecurrence:    "daily",
 		workflow.ActionSetProjectStatus: "active",
+		workflow.ActionSetSection:       "Inbox",
 	}
 
 	for _, action := range workflow.ValidActionTypes() {

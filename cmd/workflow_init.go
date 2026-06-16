@@ -27,8 +27,8 @@ DEFAULT RULES
   Auto-complete Epic
     When type = epic AND all_children_done = true: set status done
 
-  Archive Completed
-    When completed = true: move to Archive section
+  Route Completed Tasks
+    When completed = true: move to Completed section
 
 FLAGS
 

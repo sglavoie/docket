@@ -8,6 +8,8 @@ import (
 	"github.com/sglavoie/tt/internal/util"
 )
 
+const legacyTaskSectionField = "custom" + "_section"
+
 func timePtr(t time.Time) *time.Time {
 	return &t
 }
@@ -102,9 +104,6 @@ func assertTaskFields(t *testing.T, task, want *models.Task) {
 	}
 	if task.Section != want.Section {
 		t.Errorf("Section = %q, want %q", task.Section, want.Section)
-	}
-	if task.CustomSection != want.CustomSection {
-		t.Errorf("CustomSection = %q, want %q", task.CustomSection, want.CustomSection)
 	}
 	if task.Pinned != want.Pinned {
 		t.Errorf("Pinned = %v, want %v", task.Pinned, want.Pinned)

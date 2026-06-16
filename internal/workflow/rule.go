@@ -23,7 +23,7 @@ const (
 	FieldUpdatedDays TriggerField = "updated_days" // Days since last update
 	// Event-based trigger fields (detect transitions)
 	FieldStatusChanged       TriggerField = "status_changed"       // Value: "old->new", "*->done", "blocked->*"
-	FieldSectionChanged      TriggerField = "section_changed"      // Value: "Backlog->Active", "*->Archive"
+	FieldSectionChanged      TriggerField = "section_changed"      // Value: "Next->Inbox", "*->Completed"
 	FieldPriorityChanged     TriggerField = "priority_changed"     // Value: "*->1", "3->1"
 	FieldTagAdded            TriggerField = "tag_added"            // Value: tag name that was added
 	FieldTagRemoved          TriggerField = "tag_removed"          // Value: tag name that was removed

@@ -308,7 +308,7 @@ func TestReviewPerspective(t *testing.T) {
 	}
 }
 
-func TestBuildSectionOrderNoCustomSections(t *testing.T) {
+func TestBuildSectionOrderWithGTDSectionsOnly(t *testing.T) {
 	tasks := []*models.Task{
 		{Section: ""},
 		{Section: models.SectionNext},
@@ -319,23 +319,20 @@ func TestBuildSectionOrderNoCustomSections(t *testing.T) {
 	}
 }
 
-func TestBuildSectionOrderKeepsGTDOnlyWithCustomSections(t *testing.T) {
+func TestBuildSectionOrderKeepsGTDOnlyWithNonGTDSections(t *testing.T) {
 	tasks := []*models.Task{
-		{Section: "", CustomSection: "Zulu"},
-		{Section: "", CustomSection: "Alpha"},
+		{Section: ""},
+		{Section: ""},
 		{Section: models.SectionNext},
 	}
 	order := BuildSectionOrder(tasks)
 	if !slices.Equal(order, SectionOrder) {
-		t.Errorf("custom sections should not become section headers, got %v", order)
+		t.Errorf("non-GTD sections should not become section headers, got %v", order)
 	}
 }
 
 func TestBuildSectionOrderReturnsIndependentCopy(t *testing.T) {
-	tasks := []*models.Task{
-		{CustomSection: "Sprint"},
-		{CustomSection: "Sprint"},
-	}
+	tasks := []*models.Task{{Section: "Sprint"}}
 	order := BuildSectionOrder(tasks)
 	order[0] = "changed"
 	if SectionOrder[0] != models.SectionInbox {
@@ -345,55 +342,23 @@ func TestBuildSectionOrderReturnsIndependentCopy(t *testing.T) {
 
 func TestBuildCrossProjectSectionOrderKeepsGTDOnly(t *testing.T) {
 	groups := []projectTasksGroup{
-		{projectID: "p1", tasks: []*models.Task{{CustomSection: "Beta"}}},
-		{projectID: "p2", tasks: []*models.Task{{CustomSection: "Alpha"}}},
+		{projectID: "p1", tasks: []*models.Task{{Section: "Beta"}}},
+		{projectID: "p2", tasks: []*models.Task{{Section: "Alpha"}}},
 	}
 	order := BuildCrossProjectSectionOrder(groups)
 	if !slices.Equal(order, SectionOrder) {
-		t.Errorf("custom sections should not become cross-project section headers, got %v", order)
+		t.Errorf("non-GTD sections should not become cross-project section headers, got %v", order)
 	}
 }
 
-func TestHeaderSectionForTaskMapsCustomSectionToActive(t *testing.T) {
+func TestHeaderSectionForTaskIgnoresNonGTDSection(t *testing.T) {
 	if got := headerSectionForTask(&models.Task{Section: models.SectionNext}); got != models.SectionNext {
 		t.Errorf("GTD task header section = %q, want %q", got, models.SectionNext)
 	}
-	if got := headerSectionForTask(&models.Task{CustomSection: "Sprint-1"}); got != "" {
-		t.Errorf("custom-section task header section = %q, want Active empty section", got)
+	if got := headerSectionForTask(&models.Task{Section: "Sprint-1"}); got != "" {
+		t.Errorf("non-GTD task header section = %q, want Active empty section", got)
 	}
 	if got := headerSectionForTask(nil); got != "" {
 		t.Errorf("nil task header section = %q, want Active empty section", got)
-	}
-}
-
-func TestCustomSectionTabsForProjectKeepsCustomSections(t *testing.T) {
-	project := &models.Project{
-		Sections: []string{models.SectionNext, "Zulu", models.SectionInbox, "Alpha"},
-	}
-	want := []string{"All", "Alpha", "Zulu"}
-	if got := CustomSectionTabs(project); !slices.Equal(got, want) {
-		t.Errorf("CustomSectionTabs() = %v, want %v", got, want)
-	}
-}
-
-func TestCustomSectionTabsForProjectsAggregatesSortedUniqueSections(t *testing.T) {
-	projects := []*models.Project{
-		nil,
-		{Sections: []string{models.SectionNext, "Beta", "Alpha"}},
-		{Sections: []string{models.SectionInbox, "Alpha", "Gamma"}},
-	}
-	want := []string{"All", "Alpha", "Beta", "Gamma"}
-	if got := CustomSectionTabsForProjects(projects); !slices.Equal(got, want) {
-		t.Errorf("CustomSectionTabsForProjects() = %v, want %v", got, want)
-	}
-}
-
-func TestCustomSectionTabsForProjectsWithoutCustomSections(t *testing.T) {
-	projects := []*models.Project{
-		{Sections: []string{models.SectionNext, models.SectionInbox}},
-		nil,
-	}
-	if got := CustomSectionTabsForProjects(projects); got != nil {
-		t.Errorf("CustomSectionTabsForProjects() = %v, want nil", got)
 	}
 }

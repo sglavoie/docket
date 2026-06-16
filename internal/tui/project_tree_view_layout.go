@@ -112,9 +112,10 @@ func (m *ProjectTreeModel) renderTreeContent(width int, focused bool) string { /
 	b.WriteString(renderProjectTitle(m.project, m.config, titleParams))
 	b.WriteString("\n")
 
-	// Custom section tab bar
-	if tabs := m.customSectionTabs(); tabs != nil {
-		b.WriteString(RenderColoredTabBar(tabs, m.customSectionTab, width, 1, m.project.SectionColors))
+	// Pinned tag tab bar
+	if tabs := m.pinnedTagTabs(); tabs != nil {
+		m.activePinnedTagFilter()
+		b.WriteString(RenderTabBar(tabs, m.pinnedTagTab, width, 1))
 		b.WriteString("\n")
 	}
 
@@ -198,7 +199,7 @@ func (m *ProjectTreeModel) renderTreeContent(width int, focused bool) string { /
 	if m.fillTreeCardToViewHeight {
 		sbHeaderOffset = renderedLineCount(strings.TrimSuffix(b.String(), "\n"))
 	} else {
-		if m.customSectionTabs() != nil {
+		if m.pinnedTagTabs() != nil {
 			sbHeaderOffset++
 		}
 		// Account for autocomplete dropdown in header

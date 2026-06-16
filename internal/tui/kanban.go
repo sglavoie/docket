@@ -222,7 +222,6 @@ func (m *KanbanModel) filteredCards() []KanbanCard {
 func (m *KanbanModel) rebuildCols() {
 	ks := m.config.KanbanSettings
 	stages := collectStages(m.config.Stages, m.loadedProjects)
-	customSections := collectCustomSections(m.allCards)
 
 	m.columns = rebuildColumns(
 		m.filteredCards(),
@@ -231,7 +230,6 @@ func (m *KanbanModel) rebuildCols() {
 		ks.SectionColumnOrder,
 		ks.StatusColumnOrder,
 		stages,
-		customSections,
 		m.config,
 	)
 

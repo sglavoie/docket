@@ -7,12 +7,12 @@ import (
 )
 
 func TestRunTaskAdd_SectionValidation(t *testing.T) {
-	t.Run("rejects nonexistent section without --create-section", func(t *testing.T) {
+	t.Run("rejects non-GTD section", func(t *testing.T) {
 		deps, _ := setupTaskAddTest(t)
 		defer deps.Cleanup()
 
-		taskSectionFlag = "Nonexistent"
-		_ = taskAddCmd.Flags().Set("section", "Nonexistent")
+		taskSectionFlag = "Backlog"
+		_ = taskAddCmd.Flags().Set("section", "Backlog")
 		defer func() {
 			taskAddCmd.Flags().Lookup("section").Changed = false
 			taskSectionFlag = ""
@@ -20,40 +20,37 @@ func TestRunTaskAdd_SectionValidation(t *testing.T) {
 
 		err := runTaskAdd(taskAddCmd, []string{"My task"})
 		if err == nil {
-			t.Error("expected error for nonexistent section without --create-section")
+			t.Error("expected error for non-GTD section")
 		}
 	})
 
-	t.Run("accepts nonexistent section with --create-section", func(t *testing.T) {
+	t.Run("does not create non-GTD section", func(t *testing.T) {
 		deps, project := setupTaskAddTest(t)
 		defer deps.Cleanup()
 
 		initialCount := len(project.Tasks)
 		taskSectionFlag = "NewSection"
-		taskCreateSectionFlag = true
 		_ = taskAddCmd.Flags().Set("section", "NewSection")
 		defer func() {
 			taskAddCmd.Flags().Lookup("section").Changed = false
 			taskSectionFlag = ""
-			taskCreateSectionFlag = false
 		}()
 
 		err := runTaskAdd(taskAddCmd, []string{"My task"})
-		testutil.AssertNoError(t, err)
+		if err == nil {
+			t.Fatal("expected error for non-GTD section")
+		}
 
 		savedProject := deps.Repository.Projects[project.ID]
-		if len(savedProject.Tasks) != initialCount+1 {
-			t.Fatalf("expected %d tasks, got %d", initialCount+1, len(savedProject.Tasks))
+		if len(savedProject.Tasks) != initialCount {
+			t.Fatalf("expected %d tasks, got %d", initialCount, len(savedProject.Tasks))
 		}
-		if !savedProject.HasSection("NewSection") {
-			t.Error("expected NewSection to be created")
+		if savedProject.HasSection("NewSection") {
+			t.Error("expected NewSection not to be created")
 		}
-		task := savedProject.Tasks[len(savedProject.Tasks)-1]
-		testutil.AssertEqual(t, task.CustomSection, "NewSection")
-		testutil.AssertEqual(t, task.Section, "")
 	})
 
-	t.Run("accepts existing GTD section without --create-section", func(t *testing.T) {
+	t.Run("accepts existing GTD section", func(t *testing.T) {
 		deps, project := setupTaskAddTest(t)
 		defer deps.Cleanup()
 
@@ -74,6 +71,28 @@ func TestRunTaskAdd_SectionValidation(t *testing.T) {
 		}
 		task := savedProject.Tasks[len(savedProject.Tasks)-1]
 		testutil.AssertEqual(t, task.Section, "Next")
-		testutil.AssertEqual(t, task.CustomSection, "")
+	})
+
+	t.Run("accepts explicit empty section as active view", func(t *testing.T) {
+		deps, project := setupTaskAddTest(t)
+		defer deps.Cleanup()
+
+		initialCount := len(project.Tasks)
+		taskSectionFlag = ""
+		_ = taskAddCmd.Flags().Set("section", "")
+		defer func() {
+			taskAddCmd.Flags().Lookup("section").Changed = false
+			taskSectionFlag = ""
+		}()
+
+		err := runTaskAdd(taskAddCmd, []string{"My active task"})
+		testutil.AssertNoError(t, err)
+
+		savedProject := deps.Repository.Projects[project.ID]
+		if len(savedProject.Tasks) != initialCount+1 {
+			t.Fatalf("expected %d tasks, got %d", initialCount+1, len(savedProject.Tasks))
+		}
+		task := savedProject.Tasks[len(savedProject.Tasks)-1]
+		testutil.AssertEqual(t, task.Section, "")
 	})
 }

@@ -46,16 +46,17 @@ func (m *ProjectTreeModel) HandledKeys() []string {
 	return m.buildKeyMap().HandledKeys()
 }
 
-func (m *ProjectTreeModel) selectCustomSectionTab(section string) {
-	m.customSectionTab = 0
-	if section == "" {
+func (m *ProjectTreeModel) selectPinnedTagTab(section string) {
+	m.pinnedTagTab = 0
+	tag := models.NormalizeTag(section)
+	if tag == "" {
 		return
 	}
 
-	if tabs := m.customSectionTabs(); tabs != nil {
+	if tabs := m.pinnedTagTabs(); tabs != nil {
 		for i, tab := range tabs {
-			if tab == section {
-				m.customSectionTab = i
+			if pinnedTagFromTab(tab) == tag {
+				m.pinnedTagTab = i
 				return
 			}
 		}
@@ -63,7 +64,7 @@ func (m *ProjectTreeModel) selectCustomSectionTab(section string) {
 }
 
 func (m *ProjectTreeModel) selectViewForTask(task *models.Task) {
-	m.customSectionTab = 0
+	m.pinnedTagTab = 0
 	if task == nil {
 		return
 	}
@@ -75,12 +76,6 @@ func (m *ProjectTreeModel) selectViewForTask(task *models.Task) {
 		m.viewMode = ViewModeCompleted
 		return
 	}
-	if task.CustomSection != "" {
-		m.viewMode = ViewModeAll
-		m.selectCustomSectionTab(task.CustomSection)
-		return
-	}
-
 	switch task.Section {
 	case models.SectionNext:
 		m.viewMode = ViewModeNext
@@ -125,9 +120,10 @@ func (m *ProjectTreeModel) NavigateToTask(task *models.Task) tea.Cmd {
 
 	// Task not in current tree - need to adjust view to show it
 	// Check if any filters are active before clearing
-	hadFilters := m.filter.Type != "" || m.filter.Status != "" || m.filter.Priority != 0 ||
+	hadFilters := m.viewMode != ViewModeActive ||
+		m.filter.Type != "" || m.filter.Status != "" || m.filter.Priority != 0 ||
 		len(m.filter.Tags) > 0 || len(m.filter.Sections) > 0 || m.filter.DueDate != DueDateAll ||
-		m.SearchQuery() != "" || m.focusedTask != nil || m.customSectionTab != 0
+		m.SearchQuery() != "" || m.focusedTask != nil || m.activePinnedTagFilter() != ""
 
 	// Clear focus mode first
 	if m.focusedTask != nil {

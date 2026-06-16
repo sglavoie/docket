@@ -159,7 +159,7 @@ func TestEffectiveLogic(t *testing.T) {
 func TestMigrateLegacyFilters_savedViews(t *testing.T) {
 	c := NewConfig()
 	c.SavedViews = []savedView{
-		{Name: "Bugs", FilterType: "bug", SortField: 1},
+		{Name: "Bugs", FilterType: "bug", SortField: 1, PinnedTagTab: "backend"},
 		{Name: "High Pri", FilterPriority: 1, FilterActionable: true},
 	}
 
@@ -183,6 +183,9 @@ func TestMigrateLegacyFilters_savedViews(t *testing.T) {
 	// Check field mapping
 	if c.SavedFilters[0].FilterType != "bug" {
 		t.Errorf("expected filter_type 'bug', got %q", c.SavedFilters[0].FilterType)
+	}
+	if c.SavedFilters[0].PinnedTagTab != "backend" {
+		t.Errorf("expected pinned_tag_tab to migrate, got %q", c.SavedFilters[0].PinnedTagTab)
 	}
 }
 
@@ -271,17 +274,17 @@ func TestMigrateLegacyFilters_Idempotent(t *testing.T) {
 
 func TestSavedFilter_JSONRoundTrip(t *testing.T) {
 	original := SavedFilter{
-		ID:               "test-id",
-		Name:             "Complex",
-		Mode:             "snapshot",
-		ViewMode:         2,
-		FilterType:       "bug",
-		FilterTags:       []string{"a", "b"},
-		FilterAttrs:      map[string]string{"x": "y"},
-		FilterScoreMin:   42.5,
-		SortField:        3,
-		SortAscending:    true,
-		CustomSectionTab: "Sprint",
+		ID:             "test-id",
+		Name:           "Complex",
+		Mode:           "snapshot",
+		ViewMode:       2,
+		FilterType:     "bug",
+		FilterTags:     []string{"a", "b"},
+		FilterAttrs:    map[string]string{"x": "y"},
+		FilterScoreMin: 42.5,
+		SortField:      3,
+		SortAscending:  true,
+		PinnedTagTab:   "backend",
 	}
 
 	data, err := json.Marshal(original)
@@ -302,6 +305,9 @@ func TestSavedFilter_JSONRoundTrip(t *testing.T) {
 	}
 	if len(decoded.FilterTags) != 2 {
 		t.Errorf("tags: got %d, want 2", len(decoded.FilterTags))
+	}
+	if decoded.PinnedTagTab != original.PinnedTagTab {
+		t.Errorf("pinned tag tab: got %q, want %q", decoded.PinnedTagTab, original.PinnedTagTab)
 	}
 }
 

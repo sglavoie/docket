@@ -138,7 +138,7 @@ func (m *GlobalSearchModel) buildCaches() {
 			}
 		}
 		// Collect sections
-		for _, section := range project.GetSections() {
+		for _, section := range gtdSections(project.GetSections()) {
 			sectionSet[section] = true
 		}
 	}

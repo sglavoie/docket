@@ -17,7 +17,7 @@ type ProjectViewState struct {
 	SidebarEnabled            bool              `json:"sidebar_enabled"`
 	FilterBarEnabled          bool              `json:"filter_bar_enabled"`
 	ViewMode                  int               `json:"view_mode,omitempty"`
-	CustomSectionTab          string            `json:"custom_section_tab,omitempty"`
+	PinnedTagTab              string            `json:"pinned_tag_tab,omitempty"`
 	OutlinerFilterType        string            `json:"outliner_filter_type,omitempty"`
 	OutlinerFilterStatus      string            `json:"outliner_filter_status,omitempty"`
 	OutlinerFilterPriority    int               `json:"outliner_filter_priority,omitempty"`

@@ -5,25 +5,21 @@ import (
 	"time"
 )
 
-// TestSetSection_RejectsInvalidCustomName verifies SetSection silently drops
-// custom section names that fail ValidateSectionName. Before the fix,
-// SetSection accepted any non-GTD string, allowing names containing spaces,
-// semicolons, or colons to land in CustomSection — which then corrupt the
-// markdown round-trip (";" and ":" delimit section-color metadata).
-func TestSetSection_RejectsInvalidCustomName(t *testing.T) {
+// TestSetSection_RejectsNonGTDName verifies SetSection silently drops custom
+// grouping names. Custom grouping now lives in tags, not section state.
+func TestSetSection_RejectsNonGTDName(t *testing.T) {
 	tests := []struct {
-		name      string
-		input     string
-		wantClear bool // when true, CustomSection must remain empty
+		name  string
+		input string
 	}{
-		{"space", "has space", true},
-		{"tab", "has\ttab", true},
-		{"newline", "has\nnewline", true},
-		{"semicolon", "has;semi", true},
-		{"colon", "has:colon", true},
-		{"whitespace-only", "   ", true},
-		{"valid hyphen", "Sprint-1", false},
-		{"valid camel", "BackLog", false},
+		{"space", "has space"},
+		{"tab", "has\ttab"},
+		{"newline", "has\nnewline"},
+		{"semicolon", "has;semi"},
+		{"colon", "has:colon"},
+		{"whitespace-only", "   "},
+		{"valid hyphen", "Sprint-1"},
+		{"valid camel", "BackLog"},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
@@ -32,37 +28,28 @@ func TestSetSection_RejectsInvalidCustomName(t *testing.T) {
 				t.Fatal(err)
 			}
 			task.SetSection(tc.input)
-			if tc.wantClear {
-				if task.CustomSection != "" {
-					t.Errorf("expected CustomSection empty for invalid name %q, got %q", tc.input, task.CustomSection)
-				}
-				if task.Section != "" {
-					t.Errorf("expected Section empty for invalid name %q, got %q", tc.input, task.Section)
-				}
-			} else {
-				if task.CustomSection != tc.input {
-					t.Errorf("expected CustomSection=%q, got %q", tc.input, task.CustomSection)
-				}
+			if task.Section != "" {
+				t.Errorf("expected Section empty for non-GTD name %q, got %q", tc.input, task.Section)
 			}
 		})
 	}
 }
 
 // TestSetSection_InvalidNamePreservesPriorState ensures a rejected SetSection
-// call does not wipe a previously valid Section/CustomSection assignment.
+// call does not wipe a previously valid section assignment.
 func TestSetSection_InvalidNamePreservesPriorState(t *testing.T) {
 	task, err := NewTask("id", 1, TaskTypeTask, "T")
 	if err != nil {
 		t.Fatal(err)
 	}
-	task.SetSection("Sprint-1")
-	if task.CustomSection != "Sprint-1" {
-		t.Fatalf("precondition: expected Sprint-1, got %q", task.CustomSection)
+	task.SetSection(SectionInbox)
+	if task.Section != SectionInbox {
+		t.Fatalf("precondition: expected Inbox, got %q", task.Section)
 	}
 	// Attempt to set an invalid name; should be a no-op leaving prior state.
 	task.SetSection("bad name")
-	if task.CustomSection != "Sprint-1" {
-		t.Errorf("expected CustomSection unchanged after invalid SetSection, got %q", task.CustomSection)
+	if task.Section != SectionInbox {
+		t.Errorf("expected Section unchanged after invalid SetSection, got %q", task.Section)
 	}
 }
 
@@ -449,42 +436,15 @@ func TestEnsureSection_RejectsCaseVariantGTDCollision(t *testing.T) {
 		t.Errorf("EnsureSection should be idempotent for canonical Inbox; got %v", p.Sections)
 	}
 
-	// Non-GTD custom sections still work.
+	// Non-GTD section names are ignored; flexible grouping lives in tags.
 	p.EnsureSection("Backlog")
-	if !p.HasSection("Backlog") {
-		t.Error("EnsureSection should still add non-colliding custom section")
+	if p.HasSection("Backlog") {
+		t.Error("EnsureSection should not add non-GTD sections")
 	}
 }
 
-// TestRenameSection_RejectsCaseVariantGTDCollision verifies RenameSection
-// refuses to rename a custom section to a case-variant of a GTD section name.
-// Before the fix, renaming "MyStuff" to "inbox" would succeed despite the
-// canonical "Inbox" GTD section already existing.
-func TestRenameSection_RejectsCaseVariantGTDCollision(t *testing.T) {
-	p, err := NewProject("test", "Test", "/tmp/test")
-	if err != nil {
-		t.Fatal(err)
-	}
-	p.EnsureDefaultSections()
-	p.EnsureSection("MyStuff")
-
-	err = p.RenameSection("MyStuff", "inbox")
-	if err == nil {
-		t.Fatal("expected error renaming custom section to case-variant of GTD name, got nil")
-	}
-	if !p.HasSection("MyStuff") {
-		t.Error("MyStuff section should remain unchanged after rejected rename")
-	}
-	if p.HasSection("inbox") {
-		t.Error("case-variant 'inbox' should not have been added to Sections")
-	}
-}
-
-// TestSetSection_RejectsCaseVariantGTDName verifies SetSection refuses to land
-// a case-variant of a GTD section name in CustomSection. Before the fix, a
-// task could carry CustomSection="inbox" while the project's GTD "Inbox"
-// section also existed, scattering tasks across two visually identical
-// buckets.
+// TestSetSection_RejectsCaseVariantGTDName verifies SetSection refuses a
+// case-variant of a GTD section name.
 func TestSetSection_RejectsCaseVariantGTDName(t *testing.T) {
 	task, err := NewTask("id", 1, TaskTypeTask, "T")
 	if err != nil {
@@ -493,32 +453,10 @@ func TestSetSection_RejectsCaseVariantGTDName(t *testing.T) {
 	task.Section = SectionInbox
 
 	task.SetSection("inbox")
-	if task.CustomSection != "" {
-		t.Errorf("SetSection should not store case-variant GTD name in CustomSection, got %q", task.CustomSection)
-	}
 	// Section must remain unchanged when the call is rejected; otherwise the
 	// task silently drops out of its current bucket on invalid input.
 	if task.Section != SectionInbox {
 		t.Errorf("Section should be preserved when SetSection rejects input, got %q", task.Section)
-	}
-}
-
-// TestSetCustomSection_RejectsCaseVariantGTDName verifies SetCustomSection
-// refuses to store a case-variant of a GTD section name. Before the fix,
-// only the exact-case GTD names were rejected, allowing "inbox" or "next"
-// to bypass the check.
-func TestSetCustomSection_RejectsCaseVariantGTDName(t *testing.T) {
-	task, err := NewTask("id", 1, TaskTypeTask, "T")
-	if err != nil {
-		t.Fatal(err)
-	}
-	task.SetCustomSection("inbox")
-	if task.CustomSection != "" {
-		t.Errorf("SetCustomSection should reject case-variant GTD name, got %q", task.CustomSection)
-	}
-	task.SetCustomSection("NEXT")
-	if task.CustomSection != "" {
-		t.Errorf("SetCustomSection should reject 'NEXT' (case-variant of GTD Next), got %q", task.CustomSection)
 	}
 }
 

@@ -4,28 +4,9 @@ import (
 	"testing"
 
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/testutil"
 )
 
 func TestSectionRemove(t *testing.T) {
-	t.Run("removes section successfully", func(t *testing.T) {
-		deps, project := setupSectionCommandTest(t)
-
-		project.EnsureSection("ToRemove")
-		deps.Repository.Projects[project.ID] = project
-
-		sectionRemoveForce = true
-		defer func() { sectionRemoveForce = false }()
-
-		err := runSectionRemove(nil, []string{"ToRemove"})
-		testutil.AssertNoError(t, err)
-
-		savedProject := deps.Repository.Projects[project.ID]
-		if savedProject.HasSection("ToRemove") {
-			t.Error("section 'To Remove' was not removed")
-		}
-	})
-
 	t.Run("rejects removing Next section", func(t *testing.T) {
 		setupSectionCommandTest(t)
 
@@ -44,28 +25,6 @@ func TestSectionRemove(t *testing.T) {
 		}
 	})
 
-	t.Run("clears section from tasks when removed", func(t *testing.T) {
-		deps, project := setupSectionCommandTest(t)
-
-		project.EnsureSection("ToRemove")
-		task := testutil.NewTestTask("Task in section", models.TaskTypeTask)
-		task.Section = "ToRemove"
-		project.Tasks = append(project.Tasks, task)
-		deps.Repository.Projects[project.ID] = project
-
-		sectionRemoveForce = true
-		defer func() { sectionRemoveForce = false }()
-
-		err := runSectionRemove(nil, []string{"ToRemove"})
-		testutil.AssertNoError(t, err)
-
-		savedProject := deps.Repository.Projects[project.ID]
-		for _, savedTask := range savedProject.Tasks {
-			if savedTask.ID == task.ID && savedTask.Section != "" {
-				t.Errorf("task section should be cleared, got %s", savedTask.Section)
-			}
-		}
-	})
 }
 
 func TestSectionRemoveBuiltInSections(t *testing.T) {

@@ -127,24 +127,9 @@ func auditTaskRelatedRefs(task *Task, taskMap map[string]*Task) error {
 
 func auditTaskSectionState(task *Task) error {
 	switch {
-	case task.Section != "" && task.CustomSection != "":
-		return fmt.Errorf("%s belongs to multiple section buckets (section=%q, custom_section=%q)",
-			auditTaskLabel(task), task.Section, task.CustomSection)
-	case task.CustomSection != "":
-		if err := ValidateSectionName(task.CustomSection); err != nil {
-			return fmt.Errorf("%s has invalid custom section %q: %w", auditTaskLabel(task), task.CustomSection, err)
-		}
-		if !task.InSection(task.CustomSection) {
-			return fmt.Errorf("%s does not resolve to custom section bucket %q", auditTaskLabel(task), task.CustomSection)
-		}
-		if task.InSection("") {
-			return fmt.Errorf("%s custom section %q also resolves to the active bucket", auditTaskLabel(task), task.CustomSection)
-		}
 	case task.Section != "":
 		if !IsGTDSection(task.Section) {
-			if err := ValidateSectionName(task.Section); err != nil {
-				return fmt.Errorf("%s has invalid section %q: %w", auditTaskLabel(task), task.Section, err)
-			}
+			return fmt.Errorf("%s has non-GTD section %q; custom grouping must use tags", auditTaskLabel(task), task.Section)
 		}
 		if !task.InSection(task.Section) {
 			return fmt.Errorf("%s does not resolve to section bucket %q", auditTaskLabel(task), task.Section)

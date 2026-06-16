@@ -79,15 +79,15 @@ func buildSectionList(project *models.Project) []SectionInfo {
 	sectionCounts := make(map[string]int)
 
 	for _, task := range project.Tasks {
-		if task.Section != "" {
+		if task.Section != "" && models.IsGTDSection(task.Section) {
 			sectionCounts[task.Section]++
-		}
-		if task.CustomSection != "" {
-			sectionCounts[task.CustomSection]++
 		}
 	}
 
 	for _, section := range project.GetSections() {
+		if !models.IsGTDSection(section) {
+			continue
+		}
 		if _, exists := sectionCounts[section]; !exists {
 			if section == models.SectionNext {
 				continue

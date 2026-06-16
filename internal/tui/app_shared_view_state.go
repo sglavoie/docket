@@ -11,6 +11,7 @@ type sharedViewState struct {
 	Sort             SortState
 	SidebarEnabled   bool
 	FilterBarEnabled bool
+	PinnedTagTab     string
 }
 
 // extractSharedStateFromTree reads transferable state from the project tree.
@@ -34,6 +35,7 @@ func (m *AppModel) extractSharedStateFromTree() *sharedViewState {
 		Sort:             m.projectTree.sort,
 		SidebarEnabled:   m.projectTree.sidebar.IsEnabled(),
 		FilterBarEnabled: m.projectTree.filterBar.IsEnabled(),
+		PinnedTagTab:     m.projectTree.activePinnedTagFilter(),
 	}
 	// Deep-copy maps
 	if len(m.projectTree.filter.Tags) > 0 {
@@ -72,6 +74,7 @@ func (m *AppModel) extractSharedStateFromOutliner() *sharedViewState {
 		Sort:             m.outliner.sort,
 		SidebarEnabled:   m.outliner.sidebar.IsEnabled(),
 		FilterBarEnabled: m.outliner.filterBar.IsEnabled(),
+		PinnedTagTab:     m.outliner.activePinnedTagFilter(),
 	}
 	if len(m.outliner.filter.Tags) > 0 {
 		s.Filter.Tags = make(map[string]bool, len(m.outliner.filter.Tags))
@@ -105,13 +108,14 @@ func (m *AppModel) applySharedStateToTree(s *sharedViewState) {
 	m.projectTree.sort = s.Sort
 	m.projectTree.sidebar.SetEnabled(s.SidebarEnabled)
 	m.projectTree.filterBar.SetEnabled(s.FilterBarEnabled)
+	m.projectTree.selectPinnedTagTab(s.PinnedTagTab)
 
 	// Validate tags/sections against what exists in this view
 	m.projectTree.filter.Tags = validateSavedStringSet(
 		mapKeys(s.Filter.Tags), m.projectTree.getAllTags(),
 	)
 	m.projectTree.filter.Sections = validateSavedStringSet(
-		mapKeys(s.Filter.Sections), m.currentProject.GetSections(),
+		mapKeys(s.Filter.Sections), gtdSections(m.currentProject.GetSections()),
 	)
 
 	m.projectTree.buildTree()
@@ -134,13 +138,14 @@ func (m *AppModel) applySharedStateToOutliner(s *sharedViewState) {
 	m.outliner.sort = s.Sort
 	m.outliner.sidebar.SetEnabled(s.SidebarEnabled)
 	m.outliner.filterBar.SetEnabled(s.FilterBarEnabled)
+	m.outliner.selectPinnedTagTab(s.PinnedTagTab)
 
 	// Validate tags/sections against what exists in this view
 	m.outliner.filter.Tags = validateSavedStringSet(
 		mapKeys(s.Filter.Tags), CollectTagNamesForProject(m.outliner.project),
 	)
 	m.outliner.filter.Sections = validateSavedStringSet(
-		mapKeys(s.Filter.Sections), m.outliner.project.GetSections(),
+		mapKeys(s.Filter.Sections), gtdSections(m.outliner.project.GetSections()),
 	)
 
 	m.outliner.rebuildRows()

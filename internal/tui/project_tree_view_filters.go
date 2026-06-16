@@ -135,9 +135,7 @@ func (m *ProjectTreeModel) incrementSectionCount(counts *projectTreeViewModeCoun
 	case models.SectionStandby:
 		counts.standby++
 	default:
-		if task.CustomSection == "" {
-			counts.active++
-		}
+		counts.active++
 	}
 }
 

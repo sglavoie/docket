@@ -35,7 +35,7 @@ func TestTaskForm_EditMode_LoadsBugAttrs(t *testing.T) {
 	}
 }
 
-func TestTaskFormEdit_CustomSection_PreservedInDraft(t *testing.T) {
+func TestTaskFormEdit_NonGTDSectionIgnoredInDraft(t *testing.T) {
 	project := testutil.NewTestProjectWithTasks("Test Project")
 	cfg := testutil.NewTestConfig()
 	if len(project.Tasks) == 0 {
@@ -43,14 +43,13 @@ func TestTaskFormEdit_CustomSection_PreservedInDraft(t *testing.T) {
 	}
 	task := project.Tasks[0]
 	task.SetSection("Sprint-1")
-	if task.Section != "" || task.CustomSection != "Sprint-1" {
-		t.Fatalf("precondition: expected Section=\"\", CustomSection=\"Sprint-1\", got Section=%q, CustomSection=%q",
-			task.Section, task.CustomSection)
+	if task.Section != "" {
+		t.Fatalf("precondition: expected Section=\"\", got %q", task.Section)
 	}
 
 	m := NewTaskFormModelEdit(project, task, cfg, nil)
-	if m.draft.section != "Sprint-1" {
-		t.Errorf("expected draft.section=%q, got %q", "Sprint-1", m.draft.section)
+	if m.draft.section != "" {
+		t.Errorf("expected draft.section empty, got %q", m.draft.section)
 	}
 }
 
@@ -84,7 +83,7 @@ func TestTaskFormEdit_ActiveSection_PreservedInDraft(t *testing.T) {
 	}
 }
 
-func TestTaskFormEdit_CustomSection_RoundTrip(t *testing.T) {
+func TestTaskFormEdit_NonGTDSectionIgnoredRoundTrip(t *testing.T) {
 	project := testutil.NewTestProjectWithTasks("Test Project")
 	project.EnsureSection("Sprint-1")
 	cfg := testutil.NewTestConfig()
@@ -110,11 +109,8 @@ func TestTaskFormEdit_CustomSection_RoundTrip(t *testing.T) {
 		t.Fatal("expected non-nil cmd from handleSave")
 	}
 
-	if task.CustomSection != "Sprint-1" {
-		t.Errorf("expected task.CustomSection=%q after save, got %q", "Sprint-1", task.CustomSection)
-	}
 	if task.Section != "" {
-		t.Errorf("expected task.Section=\"\" after save (custom section), got %q", task.Section)
+		t.Errorf("expected task.Section empty after save, got %q", task.Section)
 	}
 }
 

@@ -36,6 +36,7 @@ func NewConfig() *Config {
 		Projects:          []*models.Project{},
 		SectionColors:     make(map[string]string),
 		ProjectViewStates: make(map[string]ProjectViewState),
+		GlobalPinnedTags:  []string{},
 		KanbanSettings: KanbanSettings{
 			DefaultMode:        defaultKanbanMode,
 			DefaultStartColumn: defaultKanbanStartColumn,

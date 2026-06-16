@@ -1,108 +1,89 @@
 package tui
 
 import (
-	"sort"
-
+	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 )
 
-// CustomSectionTabs returns ["All"] + sorted custom sections, or nil if no custom sections exist.
-func CustomSectionTabs(project *models.Project) []string {
+// PinnedTagTabs returns ["All"] + project pinned tag labels, or nil if no tags are pinned.
+func PinnedTagTabs(project *models.Project) []string {
 	if project == nil {
 		return nil
 	}
-	return customSectionTabs(project.GetCustomSections())
+	return pinnedTagTabs(project.PinnedTagList())
 }
 
-// CustomSectionTabsForProjects returns ["All"] + sorted unique custom sections
-// across projects, or nil if no custom sections exist.
-func CustomSectionTabsForProjects(projects []*models.Project) []string {
-	customSet := make(map[string]bool)
+// GlobalPinnedTagTabs returns ["All"] + global pinned tag labels, or nil if no tags are pinned.
+func GlobalPinnedTagTabs(cfg *config.Config) []string {
+	if cfg == nil {
+		return nil
+	}
+	return pinnedTagTabs(cfg.GlobalPinnedTagList())
+}
+
+// GlobalPinnedTagTabsForProjects returns ["All"] + global pinned tag labels
+// that are currently present in the loaded project set. Stale config pins stay
+// persisted but are hidden until a loaded project exposes the tag again.
+func GlobalPinnedTagTabsForProjects(cfg *config.Config, projects []*models.Project) []string {
+	if cfg == nil {
+		return nil
+	}
+	visibleTags := make(map[string]bool)
 	for _, project := range projects {
 		if project == nil {
 			continue
 		}
-		for _, section := range project.GetCustomSections() {
-			customSet[section] = true
+		for tag := range project.TagCounts() {
+			visibleTags[tag] = true
 		}
 	}
-	if len(customSet) == 0 {
+	if len(visibleTags) == 0 {
 		return nil
 	}
-	custom := make([]string, 0, len(customSet))
-	for section := range customSet {
-		custom = append(custom, section)
+	tags := make([]string, 0, len(cfg.GlobalPinnedTags))
+	for _, tag := range cfg.GlobalPinnedTagList() {
+		if visibleTags[tag] {
+			tags = append(tags, tag)
+		}
 	}
-	sort.Strings(custom)
-	return customSectionTabs(custom)
+	return pinnedTagTabs(tags)
 }
 
-// CustomSectionTabColorsForProjects returns renderable section colors for the
-// aggregate cross-project custom section tabs. Global colors take precedence
-// when present; project colors fill in sections that have no global entry.
-func CustomSectionTabColorsForProjects(projects []*models.Project, globalColors map[string]string) map[string]string {
-	tabs := CustomSectionTabsForProjects(projects)
-	if tabs == nil {
-		return nil
-	}
-
-	colors := make(map[string]string)
-	globalSections := make(map[string]bool)
-	if globalColors != nil {
-		for _, tab := range tabs[1:] {
-			color, ok := globalColors[tab]
-			if !ok || color == "" {
-				continue
-			}
-			globalSections[tab] = true
-			if isRenderableSectionTabColor(color) {
-				colors[tab] = color
-			}
-		}
-	}
-
-	for _, project := range projects {
-		if project == nil || len(project.SectionColors) == 0 {
-			continue
-		}
-		for _, section := range project.GetCustomSections() {
-			if globalSections[section] {
-				continue
-			}
-			if _, exists := colors[section]; exists {
-				continue
-			}
-			if color := project.SectionColors[section]; isRenderableSectionTabColor(color) {
-				colors[section] = color
-			}
-		}
-	}
-
-	if len(colors) == 0 {
-		return nil
-	}
-	return colors
+// ActivePinnedTagFilter returns the raw pinned tag selected by tabIndex, or "" for "All".
+func ActivePinnedTagFilter(project *models.Project, tabIndex int) string {
+	return activePinnedTagFilter(PinnedTagTabs(project), tabIndex)
 }
 
-// ActiveCustomSectionFilter returns the custom section name being filtered, or "" for "All".
-func ActiveCustomSectionFilter(project *models.Project, tabIndex int) string {
-	tabs := CustomSectionTabs(project)
+func activePinnedTagFilter(tabs []string, tabIndex int) string {
 	if tabs == nil || tabIndex <= 0 || tabIndex >= len(tabs) {
 		return ""
 	}
-	return tabs[tabIndex]
+	return pinnedTagFromTab(tabs[tabIndex])
 }
 
-func customSectionTabs(custom []string) []string {
-	if len(custom) == 0 {
+func pinnedTagTabs(tags []string) []string {
+	tags = models.DedupeTags(tags)
+	if len(tags) == 0 {
 		return nil
 	}
-	tabs := make([]string, 0, len(custom)+1)
+	tabs := make([]string, 0, len(tags)+1)
 	tabs = append(tabs, "All")
-	tabs = append(tabs, custom...)
+	for _, tag := range tags {
+		tabs = append(tabs, "#"+tag)
+	}
 	return tabs
 }
 
-func isRenderableSectionTabColor(color string) bool {
-	return color != "" && color != "gray" && models.IsValidSectionColor(color)
+func pinnedTagFromTab(tab string) string {
+	return models.NormalizeTag(tab)
+}
+
+func gtdSections(sections []string) []string {
+	filtered := make([]string, 0, len(sections))
+	for _, section := range sections {
+		if models.IsGTDSection(section) {
+			filtered = append(filtered, section)
+		}
+	}
+	return filtered
 }

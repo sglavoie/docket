@@ -88,7 +88,7 @@ func TestLoadSavedFilterAppliesCrossProjectSections(t *testing.T) {
 		Filter: config.SavedFilter{
 			Name:           "Cross Sections",
 			Mode:           "snapshot",
-			FilterSections: []string{"Sprint-1", "missing"},
+			FilterSections: []string{models.SectionNext, "Sprint-1", "missing"},
 		},
 	})
 	if !handled {
@@ -97,28 +97,31 @@ func TestLoadSavedFilterAppliesCrossProjectSections(t *testing.T) {
 	if cmd != nil {
 		t.Fatalf("LoadSavedFilterMsg command = %v, want nil", cmd)
 	}
-	if !app.crossOutliner.filter.Sections["Sprint-1"] {
-		t.Fatalf("cross-project sections = %v, want Sprint-1 restored", app.crossOutliner.filter.Sections)
+	if !app.crossOutliner.filter.Sections[models.SectionNext] {
+		t.Fatalf("cross-project sections = %v, want Next restored", app.crossOutliner.filter.Sections)
+	}
+	if app.crossOutliner.filter.Sections["Sprint-1"] {
+		t.Fatalf("cross-project sections = %v, want Sprint-1 rejected", app.crossOutliner.filter.Sections)
 	}
 	if app.crossOutliner.filter.Sections["missing"] {
 		t.Fatalf("cross-project sections = %v, want missing section rejected", app.crossOutliner.filter.Sections)
 	}
 }
 
-func TestCaptureAndLoadSavedFilterRestoresSingleProjectCustomSectionTab(t *testing.T) {
+func TestCaptureAndLoadSavedFilterRestoresSingleProjectPinnedTagTab(t *testing.T) {
 	app, project := newTestAppModelWithProject()
-	project.Sections = append(project.Sections, "Sprint-1")
+	project.PinnedTags = []string{"backend"}
 	app.outliner = NewOutlinerModel(project, app.config, app.configManager)
 	app.pushView(ViewOutliner)
-	setOutlinerCustomSectionTabByName(t, app.outliner, "Sprint-1")
+	app.outliner.setPinnedTagTabIndex(1)
 
-	filter := app.captureCurrentFilter("Single Sprint")
+	filter := app.captureCurrentFilter("Single Backend")
 
-	if filter.CustomSectionTab != "Sprint-1" {
-		t.Fatalf("CustomSectionTab = %q, want Sprint-1", filter.CustomSectionTab)
+	if filter.PinnedTagTab != "backend" {
+		t.Fatalf("PinnedTagTab = %q, want backend", filter.PinnedTagTab)
 	}
 
-	app.outliner.setCustomSectionTabIndex(0)
+	app.outliner.setPinnedTagTabIndex(0)
 	handled, cmd := app.handleSavedFilterMessages(LoadSavedFilterMsg{Filter: filter})
 	if !handled {
 		t.Fatal("LoadSavedFilterMsg should be handled")
@@ -126,30 +129,33 @@ func TestCaptureAndLoadSavedFilterRestoresSingleProjectCustomSectionTab(t *testi
 	if cmd != nil {
 		t.Fatalf("LoadSavedFilterMsg command = %v, want nil", cmd)
 	}
-	if got := app.outliner.activeCustomSectionFilter(); got != "Sprint-1" {
-		t.Fatalf("activeCustomSectionFilter() = %q, want Sprint-1", got)
+	if got := app.outliner.activePinnedTagFilter(); got != "backend" {
+		t.Fatalf("activePinnedTagFilter() = %q, want backend", got)
 	}
 }
 
-func TestCaptureAndLoadSavedFilterRestoresCrossProjectCustomSectionTab(t *testing.T) {
+func TestCaptureAndLoadSavedFilterRestoresCrossProjectPinnedTagTab(t *testing.T) {
 	app := newTestAppModel()
+	app.config.GlobalPinnedTags = []string{"backend"}
+	task := &models.Task{ID: "task", Title: "Backend", Status: models.StatusTodo, Tags: []string{"backend"}}
 	project := &models.Project{
-		ID:       "alpha",
-		Name:     "Alpha",
-		Sections: []string{models.SectionNext, "Sprint-1"},
+		ID:    "alpha",
+		Name:  "Alpha",
+		Tasks: []*models.Task{task},
 	}
+	project.BuildTaskTree()
 	app.crossOutliner = NewOutlinerModel(nil, app.config, app.configManager)
 	app.crossOutliner.loadedProjects = []*models.Project{project}
 	app.pushView(ViewCrossProjectOutliner)
-	setOutlinerCustomSectionTabByName(t, app.crossOutliner, "Sprint-1")
+	app.crossOutliner.setPinnedTagTabIndex(1)
 
-	filter := app.captureCurrentFilter("Cross Sprint")
+	filter := app.captureCurrentFilter("Cross Backend")
 
-	if filter.CustomSectionTab != "Sprint-1" {
-		t.Fatalf("CustomSectionTab = %q, want Sprint-1", filter.CustomSectionTab)
+	if filter.PinnedTagTab != "backend" {
+		t.Fatalf("PinnedTagTab = %q, want backend", filter.PinnedTagTab)
 	}
 
-	app.crossOutliner.setCustomSectionTabIndex(0)
+	app.crossOutliner.setPinnedTagTabIndex(0)
 	handled, cmd := app.handleSavedFilterMessages(LoadSavedFilterMsg{Filter: filter})
 	if !handled {
 		t.Fatal("LoadSavedFilterMsg should be handled")
@@ -157,7 +163,7 @@ func TestCaptureAndLoadSavedFilterRestoresCrossProjectCustomSectionTab(t *testin
 	if cmd != nil {
 		t.Fatalf("LoadSavedFilterMsg command = %v, want nil", cmd)
 	}
-	if got := app.crossOutliner.activeCustomSectionFilter(); got != "Sprint-1" {
-		t.Fatalf("activeCustomSectionFilter() = %q, want Sprint-1", got)
+	if got := app.crossOutliner.activePinnedTagFilter(); got != "backend" {
+		t.Fatalf("activePinnedTagFilter() = %q, want backend", got)
 	}
 }

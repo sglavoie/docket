@@ -18,21 +18,28 @@ func WriteTasksMarkdown(projectName string, tasks []*models.Task) string {
 // WriteTasksMarkdownWithSections generates markdown content from tasks and sections.
 // Tasks are written in their slice order, preserving user-defined ordering.
 func WriteTasksMarkdownWithSections(projectName string, tasks []*models.Task, sections []string, sectionColors map[string]string) string {
-	return writeTasksMarkdownWithProjectMetadata(projectName, tasks, sections, sectionColors, nil)
+	return writeTasksMarkdownWithProjectMetadata(projectName, tasks, sections, sectionColors, nil, nil)
 }
 
 // WriteTasksMarkdownWithProjectMetadata generates markdown content from tasks,
 // sections, and project-level task-file metadata.
 func WriteTasksMarkdownWithProjectMetadata(projectName string, tasks []*models.Task, sections []string, sectionColors map[string]string, tags []string) string {
-	return writeTasksMarkdownWithProjectMetadata(projectName, tasks, sections, sectionColors, tags)
+	return WriteTasksMarkdownWithFullProjectMetadata(projectName, tasks, sections, sectionColors, tags, nil)
 }
 
-func writeTasksMarkdownWithProjectMetadata(projectName string, tasks []*models.Task, sections []string, sectionColors map[string]string, tags []string) string {
+// WriteTasksMarkdownWithFullProjectMetadata generates markdown content from
+// tasks and all project-level task-file metadata.
+func WriteTasksMarkdownWithFullProjectMetadata(projectName string, tasks []*models.Task, sections []string, sectionColors map[string]string, tags []string, pinnedTags []string) string {
+	return writeTasksMarkdownWithProjectMetadata(projectName, tasks, sections, sectionColors, tags, pinnedTags)
+}
+
+func writeTasksMarkdownWithProjectMetadata(projectName string, tasks []*models.Task, sections []string, sectionColors map[string]string, tags []string, pinnedTags []string) string {
 	var builder strings.Builder
 
 	fmt.Fprintf(&builder, "# Project: %s\n", projectName)
 	writeSectionsMetadata(&builder, sections, sectionColors)
 	writeTagsMetadata(&builder, tags)
+	writePinnedTagsMetadata(&builder, pinnedTags)
 	builder.WriteString("\n")
 
 	rootTasks := collectRootTasks(tasks)
@@ -50,6 +57,7 @@ func writeTasksMarkdownWithProjectMetadata(projectName string, tasks []*models.T
 }
 
 func writeSectionsMetadata(builder *strings.Builder, sections []string, sectionColors map[string]string) {
+	sections = models.FilterGTDSections(sections)
 	if len(sections) == 0 {
 		return
 	}
@@ -73,6 +81,15 @@ func writeTagsMetadata(builder *strings.Builder, tags []string) {
 	}
 
 	fmt.Fprintf(builder, "<!-- tags: %s -->\n", strings.Join(tags, ";"))
+}
+
+func writePinnedTagsMetadata(builder *strings.Builder, pinnedTags []string) {
+	pinnedTags = models.DedupeTags(pinnedTags)
+	if len(pinnedTags) == 0 {
+		return
+	}
+
+	fmt.Fprintf(builder, "<!-- pinned_tags: %s -->\n", strings.Join(pinnedTags, ";"))
 }
 
 func collectRootTasks(tasks []*models.Task) []*models.Task {

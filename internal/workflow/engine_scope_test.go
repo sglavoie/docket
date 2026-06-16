@@ -8,7 +8,7 @@ import (
 
 func TestMatchesScope_NilScope(t *testing.T) {
 	rule := WorkflowRule{Scope: nil}
-	task := &models.Task{ID: "1", Type: models.TaskTypeTask, Section: "Backlog"}
+	task := &models.Task{ID: "1", Type: models.TaskTypeTask, Section: models.SectionNext}
 
 	if !rule.MatchesScope(task, "MyProject", "proj-123") {
 		t.Error("nil scope should match everything")
@@ -92,9 +92,9 @@ func TestMatchesScope_TypeMatch(t *testing.T) {
 	}
 }
 
-func TestMatchesScope_SectionMatch(t *testing.T) {
+func TestMatchesScope_SectionListMatch(t *testing.T) {
 	rule := WorkflowRule{
-		Scope: &RuleScope{Sections: []string{"Backlog", "Archive"}},
+		Scope: &RuleScope{Sections: []string{models.SectionNext, models.SectionCompleted}},
 	}
 
 	tests := []struct {
@@ -102,9 +102,9 @@ func TestMatchesScope_SectionMatch(t *testing.T) {
 		section  string
 		expected bool
 	}{
-		{"Backlog matches", "Backlog", true},
-		{"Archive matches", "Archive", true},
-		{"case-insensitive match", "backlog", true},
+		{"Next matches", models.SectionNext, true},
+		{"Completed matches", models.SectionCompleted, true},
+		{"case-insensitive match", "next", true},
 		{"Active does not match", "", false},
 		{"Inbox does not match", "Inbox", false},
 	}
@@ -124,7 +124,7 @@ func TestMatchesScope_CombinedScope(t *testing.T) {
 		Scope: &RuleScope{
 			Projects: []string{"MyProject"},
 			Types:    []string{"bug"},
-			Sections: []string{"Backlog"},
+			Sections: []string{models.SectionNext},
 		},
 	}
 
@@ -135,9 +135,9 @@ func TestMatchesScope_CombinedScope(t *testing.T) {
 		section     string
 		expected    bool
 	}{
-		{"all match", "MyProject", models.TaskTypeBug, "Backlog", true},
-		{"project mismatch", "Other", models.TaskTypeBug, "Backlog", false},
-		{"type mismatch", "MyProject", models.TaskTypeTask, "Backlog", false},
+		{"all match", "MyProject", models.TaskTypeBug, models.SectionNext, true},
+		{"project mismatch", "Other", models.TaskTypeBug, models.SectionNext, false},
+		{"type mismatch", "MyProject", models.TaskTypeTask, models.SectionNext, false},
 		{"section mismatch", "MyProject", models.TaskTypeBug, "Inbox", false},
 	}
 
@@ -151,32 +151,27 @@ func TestMatchesScope_CombinedScope(t *testing.T) {
 	}
 }
 
-func TestMatchesScope_CustomSectionMatch(t *testing.T) {
+func TestMatchesScope_SectionMatch(t *testing.T) {
 	rule := WorkflowRule{
-		Scope: &RuleScope{Sections: []string{"Sprint-1", "Backlog"}},
+		Scope: &RuleScope{Sections: []string{models.SectionInbox, models.SectionNext}},
 	}
 
 	tests := []struct {
-		name          string
-		section       string
-		customSection string
-		expected      bool
+		name     string
+		section  string
+		expected bool
 	}{
-		{"section matches in scope list", "Backlog", "", true}, // "Backlog" is in the scope list and matches task.Section
-		{"custom section matches", "", "Sprint-1", true},
-		{"custom section case-insensitive", "", "sprint-1", true},
-		{"neither matches", "Inbox", "Sprint-2", false},
-		{"GTD section in scope", "Backlog", "Sprint-2", true}, // Backlog is in scope
-		{"custom section in scope with GTD section set", "Inbox", "Sprint-1", true},
+		{"section matches in scope list", models.SectionInbox, true},
+		{"section case-insensitive", "inbox", true},
+		{"neither matches", models.SectionWaiting, false},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			task := &models.Task{
-				ID:            "1",
-				Type:          models.TaskTypeTask,
-				Section:       tt.section,
-				CustomSection: tt.customSection,
+				ID:      "1",
+				Type:    models.TaskTypeTask,
+				Section: tt.section,
 			}
 			if got := rule.MatchesScope(task, "Proj", "p1"); got != tt.expected {
 				t.Errorf("MatchesScope() = %v, want %v", got, tt.expected)

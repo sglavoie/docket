@@ -130,7 +130,7 @@ func (m *AppModel) filterCommands() []Command {
 		},
 		{
 			Name:        "tag manager",
-			Description: "Manage project tags",
+			Description: "Manage project tags and pinned tag tabs",
 			Shortcut:    "ctrl+t",
 			Category:    CategoryActions,
 			Views:       projectTreeAndOutlinerViews(),
@@ -143,7 +143,7 @@ func (m *AppModel) filterCommands() []Command {
 		},
 		{
 			Name:        "global tag manager",
-			Description: "Manage tags across all projects",
+			Description: "Manage global pinned tag tabs",
 			Shortcut:    "ctrl+t",
 			Category:    CategoryActions,
 			Views:       []ViewType{ViewDashboard, ViewCrossProjectOutliner},
@@ -152,8 +152,8 @@ func (m *AppModel) filterCommands() []Command {
 			},
 		},
 		{
-			Name:        "custom section manager",
-			Description: "Manage custom project sections",
+			Name:        "section manager",
+			Description: "Browse built-in GTD sections",
 			Shortcut:    "ctrl+s",
 			Category:    CategoryActions,
 			Views:       []ViewType{ViewProjectTree, ViewOutliner, ViewCrossProjectOutliner},
@@ -172,19 +172,6 @@ func (m *AppModel) filterCommands() []Command {
 					return ShowSectionManagerMsg{Project: m.outliner.project}
 				}
 				return ShowSectionManagerMsg{ProjectTree: m.projectTree}
-			},
-		},
-		{
-			Name:        "add section",
-			Description: "Add a new section to project",
-			Category:    CategoryActions,
-			Views:       projectTreeAndOutlinerViews(),
-			Aliases:     []string{"create section", "new section"},
-			Handler: func() tea.Msg {
-				if m.baseProjectView() == ViewOutliner && m.outliner != nil {
-					return ShowSectionManagerMsg{Project: m.outliner.project, StartAddMode: true}
-				}
-				return ShowSectionManagerMsg{ProjectTree: m.projectTree, StartAddMode: true}
 			},
 		},
 		{

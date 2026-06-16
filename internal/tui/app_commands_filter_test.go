@@ -237,9 +237,9 @@ func TestFilterCommands_SectionManager(t *testing.T) {
 	app.pushView(ViewProjectTree)
 
 	cmds := app.filterCommands()
-	cmd := findCommand(cmds, "custom section manager")
+	cmd := findCommand(cmds, "section manager")
 	if cmd == nil {
-		t.Fatal("expected 'custom section manager' command")
+		t.Fatal("expected 'section manager' command")
 	}
 	msg := cmd.Handler()
 	if _, ok := msg.(ShowSectionManagerMsg); !ok {
@@ -251,20 +251,20 @@ func TestFilterCommands_SectionManagerAvailableInCrossProjectOutliner(t *testing
 	app := newTestAppModel()
 
 	cmds := app.filterCommands()
-	cmd := findCommand(cmds, "custom section manager")
+	cmd := findCommand(cmds, "section manager")
 	if cmd == nil {
-		t.Fatal("expected 'custom section manager' command")
+		t.Fatal("expected 'section manager' command")
 	}
 	if !containsView(cmd.Views, ViewCrossProjectOutliner) {
-		t.Fatalf("custom section manager views = %v, want %s", cmd.Views, ViewCrossProjectOutliner)
+		t.Fatalf("section manager views = %v, want %s", cmd.Views, ViewCrossProjectOutliner)
 	}
 
 	registry := NewCommandRegistry()
 	if err := registry.RegisterBatch(cmds); err != nil {
 		t.Fatalf("RegisterBatch: %v", err)
 	}
-	if cmd := findCommand(registry.GetForView(ViewCrossProjectOutliner), "custom section manager"); cmd == nil {
-		t.Fatal("expected command registry to expose custom section manager for cross-project outliner")
+	if cmd := findCommand(registry.GetForView(ViewCrossProjectOutliner), "section manager"); cmd == nil {
+		t.Fatal("expected command registry to expose section manager for cross-project outliner")
 	}
 }
 
@@ -290,9 +290,9 @@ func TestFilterCommands_SectionManagerTargetsSelectedCrossProjectTaskProject(t *
 	app.views.Register(ViewCrossProjectOutliner, app.crossOutliner)
 	app.viewStack = []ViewType{ViewDashboard, ViewOutliner, ViewCrossProjectOutliner, ViewCommandPalette}
 
-	cmd := findCommand(app.filterCommands(), "custom section manager")
+	cmd := findCommand(app.filterCommands(), "section manager")
 	if cmd == nil {
-		t.Fatal("expected 'custom section manager' command")
+		t.Fatal("expected 'section manager' command")
 	}
 
 	result := cmd.Handler()
@@ -319,9 +319,9 @@ func TestFilterCommands_SectionManagerCrossProjectNoTaskSelected(t *testing.T) {
 	app.views.Register(ViewCrossProjectOutliner, app.crossOutliner)
 	app.viewStack = []ViewType{ViewDashboard, ViewCrossProjectOutliner, ViewCommandPalette}
 
-	cmd := findCommand(app.filterCommands(), "custom section manager")
+	cmd := findCommand(app.filterCommands(), "section manager")
 	if cmd == nil {
-		t.Fatal("expected 'custom section manager' command")
+		t.Fatal("expected 'section manager' command")
 	}
 
 	result := cmd.Handler()

@@ -34,9 +34,6 @@ func renderSidebarContent(host SidebarHost, task *models.Task, width, height int
 
 	// Get section color for accent on Task and Info cards
 	sectionColor := project.GetSectionColor(task.Section)
-	if task.CustomSection != "" {
-		sectionColor = project.GetSectionColor(task.CustomSection)
-	}
 
 	// Calculate inner width for card content (width minus card borders and padding)
 	cardInnerWidth := width - 6 // 2 border + 2 padding + 2 margin

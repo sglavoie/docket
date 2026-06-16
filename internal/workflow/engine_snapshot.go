@@ -48,18 +48,17 @@ func CopyTaskState(task *models.Task) *models.Task {
 	}
 
 	return &models.Task{
-		ID:            task.ID,
-		Status:        task.Status,
-		Priority:      task.Priority,
-		Section:       task.Section,
-		CustomSection: task.CustomSection,
-		Tags:          tagsCopy,
-		Type:          task.Type,
-		DueDate:       dueCopy,
-		Description:   task.Description,
-		Recurrence:    recCopy,
-		Level:         task.Level,
-		DependsOn:     append([]string(nil), task.DependsOn...),
+		ID:          task.ID,
+		Status:      task.Status,
+		Priority:    task.Priority,
+		Section:     task.Section,
+		Tags:        tagsCopy,
+		Type:        task.Type,
+		DueDate:     dueCopy,
+		Description: task.Description,
+		Recurrence:  recCopy,
+		Level:       task.Level,
+		DependsOn:   append([]string(nil), task.DependsOn...),
 	}
 }
 
@@ -84,7 +83,6 @@ func TaskStateChanged(current, prev *models.Task) bool {
 	if current.Status != prev.Status ||
 		current.Priority != prev.Priority ||
 		current.Section != prev.Section ||
-		current.CustomSection != prev.CustomSection ||
 		current.Type != prev.Type {
 		return true
 	}

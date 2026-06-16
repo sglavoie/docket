@@ -51,7 +51,9 @@ tt ask "create a bug for the login issue" --apply
 
 - Work is organized by project.
 - Tasks are hierarchical and support epics, stories, tasks, bugs, and ideas.
-- Sections support GTD-style flow such as Active, Next, Inbox, Waiting, and Someday.
+- Sections are built-in GTD buckets: Active, Next, Inbox, Waiting, Review, Standby, Someday, and Completed.
+- Tags are flexible labels for grouping work across sections.
+- Pinned tags appear as top-bar tag filters in project and cross-project views, and are managed from Ctrl+T in the TUI or `tt tag`.
 - The CLI and TUI operate on the same underlying task model and storage.
 
 ## Common Commands
@@ -68,6 +70,8 @@ tt task start 12                # Mark task in progress
 tt task complete 12             # Mark task done
 tt task archive list            # List archived completed tasks
 tt task archive show abc12345   # Inspect an archived task
+tt tag pin backend              # Pin a project tag as a top-bar filter
+tt tag pin --global urgent      # Pin a cross-project tag filter
 tt note list                    # List notes in the current project
 tt search auth                  # Search across tasks and projects
 tt undo                         # Restore previous task state

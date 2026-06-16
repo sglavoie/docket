@@ -286,7 +286,7 @@ func (m *KanbanModel) applySelectedBulkSectionMove(section string) (tea.Model, t
 		project.MutateTask(taskID, func(t *models.Task) {
 			assignSection(t, section)
 		})
-		if section != "" && section != removeCustomSectionSentinel {
+		if section != "" {
 			project.EnsureSection(section)
 		}
 		return true
@@ -488,12 +488,6 @@ func (m *KanbanModel) bulkMoveSelectedTasks(delta int) (tea.Model, tea.Cmd) {
 				stage = ""
 			}
 			result = applyStageChange(pf, ref.project, ref.task.ID, stage)
-		case KanbanModeCustomSections:
-			section := targetCol.ID
-			if section == "unset" {
-				section = ""
-			}
-			result = applyCustomSectionChange(pf, ref.project, ref.task.ID, section)
 		default:
 			continue
 		}
@@ -555,13 +549,6 @@ func (m *KanbanModel) moveTaskToAdjacentCol(delta int) (tea.Model, tea.Cmd) {
 			stage = ""
 		}
 		model, cmd = taskOpsChangeStage(m, stage)
-
-	case KanbanModeCustomSections:
-		section := targetCol.ID
-		if section == "unset" {
-			section = ""
-		}
-		model, cmd = m.applyKanbanCustomSectionChange(project, task, section)
 
 	case KanbanModeScoreBuckets:
 		// Score is derived, not directly settable; open the score editor instead.
@@ -631,24 +618,6 @@ func (m *KanbanModel) applyKanbanPriorityChange(project *models.Project, task *m
 	if result.Err != nil {
 		m.setErr(result.Err)
 	} else if result.StatusMessage != "" {
-		m.setStatus(result.StatusMessage)
-	}
-	m.reloadData()
-	m.clampCursor()
-	return m, result.Cmd
-}
-
-// applyKanbanCustomSectionChange routes the change through the shared custom-section helper.
-func (m *KanbanModel) applyKanbanCustomSectionChange(project *models.Project, task *models.Task, section string) (tea.Model, tea.Cmd) {
-	pf := workflowPersist(func() WorkflowSaveOptions {
-		return BuildWorkflowOpts(m.getPersister(), project, m.config, m.configManager, nil, "", "", nil)
-	})
-	result := applyCustomSectionChange(pf, project, task.ID, section)
-	if result.Err != nil {
-		m.setErr(result.Err)
-		return m, nil
-	}
-	if result.StatusMessage != "" {
 		m.setStatus(result.StatusMessage)
 	}
 	m.reloadData()

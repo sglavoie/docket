@@ -119,9 +119,6 @@ func (m *AppModel) sectionSendCommands() []Command {
 				node := m.projectTree.getSelectedNode()
 				if node != nil {
 					section := node.Task.Section
-					if node.Task.CustomSection != "" {
-						section = node.Task.CustomSection
-					}
 					if section == "" {
 						section = models.SectionInbox
 					}

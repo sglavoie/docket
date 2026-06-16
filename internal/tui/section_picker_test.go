@@ -6,7 +6,7 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 )
 
-func TestBuildSectionPickerList_CustomSectionNotDoubleCounted(t *testing.T) {
+func TestBuildSectionPickerList_NonGTDSectionsCountAsActive(t *testing.T) {
 	project := &models.Project{
 		ID:            "test",
 		Name:          "Test",
@@ -16,9 +16,9 @@ func TestBuildSectionPickerList_CustomSectionNotDoubleCounted(t *testing.T) {
 		Tasks: []*models.Task{
 			{ID: "1", Section: "Next"},
 			{ID: "2", Section: "Next"},
-			{ID: "3", Section: "", CustomSection: "Sprint-1"}, // custom section
-			{ID: "4", Section: "", CustomSection: "Sprint-1"}, // custom section
-			{ID: "5", Section: ""},                            // Active (no section)
+			{ID: "3", Section: "Sprint-1"}, // legacy non-GTD section
+			{ID: "4", Section: "Sprint-1"}, // legacy non-GTD section
+			{ID: "5", Section: ""},         // Active (no section)
 		},
 	}
 
@@ -34,14 +34,12 @@ func TestBuildSectionPickerList_CustomSectionNotDoubleCounted(t *testing.T) {
 		t.Errorf("expected Next count=2, got %d", counts["Next"])
 	}
 
-	// "Sprint-1" should have 2 tasks
-	if counts["Sprint-1"] != 2 {
-		t.Errorf("expected Sprint-1 count=2, got %d", counts["Sprint-1"])
+	if counts["Sprint-1"] != 0 {
+		t.Errorf("expected Sprint-1 count=0, got %d", counts["Sprint-1"])
 	}
 
-	// "" (Active) should have 1 task, NOT 3 (which would include the 2 custom-section tasks)
-	if counts[""] != 1 {
-		t.Errorf("expected Active (empty) count=1, got %d", counts[""])
+	if counts[""] != 3 {
+		t.Errorf("expected Active (empty) count=3, got %d", counts[""])
 	}
 }
 

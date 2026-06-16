@@ -204,22 +204,18 @@ func (m *BulkCaptureModel) createTasks() tea.Cmd {
 		// Create all valid tasks
 		var newTasks []*models.Task
 		for _, result := range validResults {
-			// Determine target section and custom section
+			// Determine target section. Non-GTD section input is now preserved as a tag.
 			targetSection := result.section
-			var customSection string
 			if targetSection == "" {
 				targetSection = models.SectionInbox
 			} else if !models.IsGTDSection(targetSection) {
-				customSection = targetSection
+				result.tags = append(result.tags, targetSection)
 				targetSection = models.SectionInbox
 			}
 
 			// Ensure target section exists
 			if targetSection != models.SectionInbox && !m.project.HasSection(targetSection) {
 				m.project.EnsureSection(targetSection)
-			}
-			if customSection != "" && !m.project.HasSection(customSection) {
-				m.project.EnsureSection(customSection)
 			}
 
 			task := &models.Task{
@@ -230,7 +226,6 @@ func (m *BulkCaptureModel) createTasks() tea.Cmd {
 				Status:          models.StatusTodo,
 				Priority:        result.priority,
 				Section:         targetSection,
-				CustomSection:   customSection,
 				ParentID:        result.parentID,
 				DueDate:         result.dueDate,
 				Recurrence:      result.recurrence,

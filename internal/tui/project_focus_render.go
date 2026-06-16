@@ -133,11 +133,6 @@ func (m *ProjectFocusViewModel) GetPrefixPopupInfo() *PrefixPopupInfo {
 // renderTaskLine renders a single task line.
 func (m *ProjectFocusViewModel) renderTaskLine(task *models.Task, isSelected bool, maxTitleLen int, layout *ColumnLayout, rowIndex int) string {
 	csStr := ""
-	if task.CustomSection != "" {
-		csColor := m.project.GetSectionColor(task.CustomSection)
-		csStyle := GetSectionColorStyle(csColor)
-		csStr = csStyle.Render("@ " + task.CustomSection)
-	}
 
 	dueStr := ""
 	if task.DueDate != nil {

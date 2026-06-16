@@ -324,47 +324,6 @@ func TestGenerateRecurringInstances_NewInstanceProperties(t *testing.T) {
 	}
 }
 
-func TestGenerateRecurringInstances_CustomSectionClearedForInbox(t *testing.T) {
-	dueDate := time.Date(2025, 3, 10, 0, 0, 0, 0, time.UTC)
-	completedAt := time.Date(2025, 3, 10, 12, 0, 0, 0, time.UTC)
-	task := &Task{
-		ID:            "custom-section",
-		ShortID:       1,
-		Type:          TaskTypeTask,
-		Title:         "Task with custom section",
-		Status:        StatusDone,
-		Priority:      2,
-		Section:       SectionNext,
-		CustomSection: "Sprint-3",
-		DueDate:       &dueDate,
-		CompletedAt:   &completedAt,
-		Recurrence: &RecurrencePattern{
-			Interval: 1,
-			Unit:     RecurrenceWeekly,
-		},
-	}
-
-	project := &Project{
-		Name:        "CustomSection Test",
-		Tasks:       []*Task{task},
-		NextShortID: 2,
-		Sections:    []string{SectionInbox, SectionNext},
-	}
-
-	count := project.GenerateRecurringInstances()
-	if count != 1 {
-		t.Fatalf("expected 1 instance generated, got %d", count)
-	}
-
-	newTask := project.Tasks[0]
-	if newTask.CustomSection != "" {
-		t.Errorf("CustomSection = %q, want empty (would cause dual-section with Inbox)", newTask.CustomSection)
-	}
-	if newTask.Section != SectionInbox {
-		t.Errorf("Section = %q, want %q", newTask.Section, SectionInbox)
-	}
-}
-
 func TestGenerateRecurringInstances_OriginalDayCarriedForward(t *testing.T) {
 	dueDate := time.Date(2025, 1, 31, 0, 0, 0, 0, time.UTC)
 	completedAt := time.Date(2025, 1, 31, 10, 0, 0, 0, time.UTC)

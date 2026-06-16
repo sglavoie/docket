@@ -142,7 +142,7 @@ func TestEvaluateRules_NoConditionBackwardCompat(t *testing.T) {
 
 func TestEvaluateRules_ConditionExcludedFromConflict(t *testing.T) {
 	// An action with an unmet condition should not contribute to conflict detection.
-	// Rule A sets section to Active (unconditional), Rule B sets section to Backlog
+	// Rule A sets section to Active (unconditional), Rule B sets section to Next
 	// (conditional on priority=1). For a priority=3 task, Rule B's action is unmet
 	// so there should be no conflict.
 	tasks := []*models.Task{
@@ -161,13 +161,13 @@ func TestEvaluateRules_ConditionExcludedFromConflict(t *testing.T) {
 		},
 		{
 			ID:      "rule-b",
-			Name:    "Move Backlog If High Pri",
+			Name:    "Move Next If High Pri",
 			Enabled: true,
 			Trigger: RuleTrigger{Field: FieldStatus, Operation: OpEquals, Value: "todo"},
 			Actions: []RuleAction{
 				{
 					ActionType: ActionSetSection,
-					Value:      "Backlog",
+					Value:      models.SectionNext,
 					Condition:  &RuleTrigger{Field: FieldPriority, Operation: OpEquals, Value: "1"},
 				},
 			},

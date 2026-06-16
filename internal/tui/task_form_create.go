@@ -117,13 +117,7 @@ func NewTaskFormModelEdit(
 	cfg *config.Config,
 	mgr *config.Manager,
 ) *TaskFormModel {
-	// Resolve the effective section: custom sections are stored in
-	// CustomSection (with Section=""), so we must pick the right one
-	// to avoid losing the custom section on save via SetSection("").
 	effectiveSection := task.Section
-	if effectiveSection == "" && task.CustomSection != "" {
-		effectiveSection = task.CustomSection
-	}
 
 	draft := taskFormDraft{
 		taskType:           task.Type,

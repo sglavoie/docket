@@ -2,26 +2,19 @@ package tui
 
 import (
 	"fmt"
-	"sort"
 	"strings"
 
-	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 
 	"github.com/sglavoie/tt/internal/models"
 )
 
-const newSectionSentinel = "+ New Section"
-const removeCustomSectionSentinel = "(remove custom section)"
-
 // SectionPickerModel allows selecting a single section to assign to a task.
 type SectionPickerModel struct {
 	*BasePicker[SectionInfo]
-	task     *models.Task
-	project  *models.Project
-	addMode  bool
-	addInput textinput.Model
+	task    *models.Task
+	project *models.Project
 }
 
 // ShowSectionPickerMsg is sent to open the section picker for assignment.
@@ -57,13 +50,9 @@ func NewSectionPickerModel(task *models.Task, project *models.Project) *SectionP
 		BoxWidth:       50,
 	})
 
-	// Pre-select current section (check CustomSection for non-GTD sections)
 	var currentSection string
 	if task != nil {
 		currentSection = task.Section
-		if currentSection == "" && task.CustomSection != "" {
-			currentSection = task.CustomSection
-		}
 	}
 	picker.SetCursorToID(currentSection)
 
@@ -74,75 +63,54 @@ func NewSectionPickerModel(task *models.Task, project *models.Project) *SectionP
 	}
 }
 
-// buildSectionPickerList builds a sorted list of sections with counts for assignment.
-// When task is nil (form context), the "remove custom section" sentinel is omitted.
-func buildSectionPickerList(project *models.Project, task *models.Task) []SectionInfo {
+// buildSectionPickerList builds the canonical GTD section list with counts.
+func buildSectionPickerList(project *models.Project, _ *models.Task) []SectionInfo {
+	if project == nil {
+		return nil
+	}
 	sectionCounts := make(map[string]int)
 
-	// Count tasks per section: custom sections use CustomSection field,
-	// all others use Section field. This avoids double-counting tasks with
-	// CustomSection set (whose Section field is "").
 	for _, task := range project.Tasks {
-		if task.CustomSection != "" {
-			sectionCounts[task.CustomSection]++
-		} else {
-			sectionCounts[task.Section]++
+		section := task.Section
+		if section != "" && !models.IsGTDSection(section) {
+			section = ""
 		}
+		sectionCounts[section]++
 	}
 
-	// Include all project-defined sections, even if empty
+	order := []string{
+		"",
+		models.SectionNext,
+		models.SectionInbox,
+		models.SectionWaiting,
+		models.SectionReview,
+		models.SectionStandby,
+		models.SectionSomeday,
+		models.SectionCompleted,
+	}
+	seen := make(map[string]bool, len(order)+len(project.Sections))
+	sections := make([]SectionInfo, 0, len(order)+len(project.Sections))
+	addSection := func(name string) {
+		if seen[name] {
+			return
+		}
+		if name != "" && !models.IsGTDSection(name) {
+			return
+		}
+		seen[name] = true
+		sections = append(sections, SectionInfo{
+			Name:      name,
+			TaskCount: sectionCounts[name],
+			ColorName: project.GetSectionColor(name),
+		})
+	}
+
+	for _, section := range order {
+		addSection(section)
+	}
 	for _, section := range project.GetSections() {
-		if _, exists := sectionCounts[section]; !exists {
-			sectionCounts[section] = 0
-		}
+		addSection(section)
 	}
-
-	sections := make([]SectionInfo, 0, len(sectionCounts))
-	for name, count := range sectionCounts {
-		colorName := project.GetSectionColor(name)
-		isCustom := name != "" && !models.IsGTDSection(name)
-		sections = append(sections, SectionInfo{Name: name, TaskCount: count, ColorName: colorName, IsCustom: isCustom})
-	}
-
-	// Sort: built-in first (Next at top), then custom, empty last
-	sort.Slice(sections, func(i, j int) bool {
-		if sections[i].Name == "" {
-			return false
-		}
-		if sections[j].Name == "" {
-			return true
-		}
-		if !sections[i].IsCustom && sections[j].IsCustom {
-			return true
-		}
-		if sections[i].IsCustom && !sections[j].IsCustom {
-			return false
-		}
-		if sections[i].Name == models.SectionNext {
-			return true
-		}
-		if sections[j].Name == models.SectionNext {
-			return false
-		}
-		return sections[i].Name < sections[j].Name
-	})
-
-	// Append sentinel for removing custom section (only for direct task edit, not form)
-	if task != nil {
-		hasCustom := false
-		for _, t := range project.Tasks {
-			if t.CustomSection != "" {
-				hasCustom = true
-				break
-			}
-		}
-		if hasCustom {
-			sections = append(sections, SectionInfo{Name: removeCustomSectionSentinel})
-		}
-	}
-
-	// Append sentinel for creating a new section
-	sections = append(sections, SectionInfo{Name: newSectionSentinel})
 
 	return sections
 }
@@ -160,43 +128,6 @@ func (m *SectionPickerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case tea.KeyPressMsg:
-		// Handle add mode (text input for new section name)
-		if m.addMode {
-			switch msg.String() {
-			case "esc":
-				m.addMode = false
-				return m, nil
-			case "enter":
-				name := strings.TrimSpace(m.addInput.Value())
-				if name == "" {
-					return m, nil
-				}
-				// Block section names with spaces
-				if err := models.ValidateSectionName(name); err != nil {
-					return m, nil
-				}
-				// Check for duplicates against existing sections
-				for _, item := range m.Items {
-					if item.Name == name {
-						return m, nil
-					}
-				}
-				m.addMode = false
-				return m, func() tea.Msg {
-					return SectionPickerDoneMsg{
-						Task:     m.task,
-						Project:  m.project,
-						Section:  name,
-						Canceled: false,
-					}
-				}
-			default:
-				var cmd tea.Cmd
-				m.addInput, cmd = m.addInput.Update(msg)
-				return m, cmd
-			}
-		}
-
 		switch msg.String() {
 		case "esc":
 			return m, func() tea.Msg {
@@ -210,28 +141,6 @@ func (m *SectionPickerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "enter":
 			if len(m.Filtered) > 0 && m.Cursor < len(m.Filtered) {
 				selected := m.Filtered[m.Cursor]
-				// If remove-custom sentinel selected, emit it directly
-				if selected.Name == removeCustomSectionSentinel {
-					return m, func() tea.Msg {
-						return SectionPickerDoneMsg{
-							Task:     m.task,
-							Project:  m.project,
-							Section:  removeCustomSectionSentinel,
-							Canceled: false,
-						}
-					}
-				}
-				// If sentinel selected, switch to add mode
-				if selected.Name == newSectionSentinel {
-					m.addMode = true
-					m.addInput = textinput.New()
-					m.addInput.Prompt = ""
-					m.addInput.Placeholder = ""
-					m.addInput.Focus()
-					m.addInput.CharLimit = 50
-					applyThemedTextInput(&m.addInput)
-					return m, textinput.Blink
-				}
 				section := selected.Name
 				return m, func() tea.Msg {
 					return SectionPickerDoneMsg{
@@ -278,17 +187,14 @@ func (m *SectionPickerModel) View() tea.View {
 	// Search bar
 	b.WriteString(m.RenderSearchBar())
 
-	// Current section — show both GTD and custom when both are set
+	// Current section
 	var currentParts []string
 	if m.task != nil && m.task.Section != "" {
 		currentParts = append(currentParts, m.task.Section)
 	}
-	if m.task != nil && m.task.CustomSection != "" {
-		currentParts = append(currentParts, "@"+m.task.CustomSection)
-	}
 	currentDisplay := "(no section)"
 	if len(currentParts) > 0 {
-		currentDisplay = strings.Join(currentParts, " + ")
+		currentDisplay = currentParts[0]
 	}
 	b.WriteString(MutedStyle.Render(fmt.Sprintf("Current: %s", currentDisplay)))
 	b.WriteString("\n\n")
@@ -304,28 +210,15 @@ func (m *SectionPickerModel) View() tea.View {
 	rowWidth := max(m.Width()-4, 30)
 	b.WriteString(m.renderSectionList(maxVisible, rowWidth))
 
-	// Add mode input
-	if m.addMode {
-		b.WriteString("\n")
-		b.WriteString("New section: ")
-		b.WriteString(m.addInput.View())
-		b.WriteString("\n")
-	}
-
 	// Footer
-	var footerLeft string
-	if m.addMode {
-		footerLeft = HelpStyle.Render("enter save · esc cancel")
-	} else {
-		footerLeft = HelpStyle.Render(m.RenderFooter())
-	}
+	footerLeft := HelpStyle.Render(m.RenderFooter())
 	right := MutedStyle.Render(fmt.Sprintf("%d items", len(m.Filtered)))
 	b.WriteString(renderStatusBarFooter(footerLeft, right, m.Width()))
 
 	return tea.NewView(b.String())
 }
 
-// renderSectionList renders the section list with gutter symbols for custom sections.
+// renderSectionList renders the built-in section list.
 func (m *SectionPickerModel) renderSectionList(maxVisible, boxWidth int) string {
 	var b strings.Builder
 
@@ -351,33 +244,16 @@ func (m *SectionPickerModel) renderSectionList(maxVisible, boxWidth int) string 
 		item := m.Filtered[i]
 		selected := i == m.Cursor
 
-		// Determine gutter symbol: @ for custom, + for sentinel, - for remove, space for GTD
-		var gutter string
-		if item.Name == newSectionSentinel {
-			gutter = "+"
-		} else if item.Name == removeCustomSectionSentinel {
-			gutter = "-"
-		} else if item.IsCustom {
-			gutter = "@"
-		} else {
-			gutter = " "
-		}
+		gutter := " "
 
 		prefix := "  " + gutter + " "
 
-		// Display text (without @ prefix, that's in the gutter)
 		var displayText string
 		switch item.Name {
-		case newSectionSentinel:
-			displayText = "New Section"
-		case removeCustomSectionSentinel:
-			displayText = "Remove Custom Section"
+		case "":
+			displayText = item.DisplayText()
 		default:
-			if !item.IsCustom && item.Name != "" {
-				displayText = GetViewModeStyleForSection(item.Name).Render(item.Name)
-			} else {
-				displayText = item.DisplayText()
-			}
+			displayText = GetViewModeStyleForSection(item.Name).Render(item.Name)
 		}
 		countStr := TagManagerCountStyle.Render(fmt.Sprintf(" (%d)", item.CountValue()))
 
@@ -401,14 +277,12 @@ func (m *SectionPickerModel) renderSectionList(maxVisible, boxWidth int) string 
 	return b.String()
 }
 
-// ShouldCaptureEsc returns true when in add mode so esc is handled by the view.
 func (m *SectionPickerModel) ShouldCaptureEsc() bool {
-	return m.addMode
+	return false
 }
 
-// HasTextInput returns true when in add mode.
 func (m *SectionPickerModel) HasTextInput() bool {
-	return m.addMode
+	return false
 }
 
 func (m *SectionPickerModel) StatusBarLabel() string { return "Assign Section" }

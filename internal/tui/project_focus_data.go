@@ -53,22 +53,9 @@ func (m *ProjectFocusViewModel) loadTasks() {
 	m.computeSubTabs()
 }
 
-// computeSubTabs builds dynamic sub-tab names from unique CustomSection values.
+// computeSubTabs builds dynamic sub-tab names.
 func (m *ProjectFocusViewModel) computeSubTabs() {
-	seen := map[string]bool{}
-	var names []string
-	for _, task := range m.tasks {
-		section := task.CustomSection
-		if section == "" {
-			section = "(none)"
-		}
-		if !seen[section] {
-			seen[section] = true
-			names = append(names, section)
-		}
-	}
-	sort.Strings(names)
-	m.subTabNames = names
+	m.subTabNames = nil
 
 	if m.subTab > len(m.subTabNames) {
 		m.subTab = 0
@@ -89,17 +76,7 @@ func (m *ProjectFocusViewModel) filteredTasks() []*models.Task {
 	if filter == "" {
 		return m.tasks
 	}
-	var result []*models.Task
-	for _, task := range m.tasks {
-		section := task.CustomSection
-		if section == "" {
-			section = "(none)"
-		}
-		if section == filter {
-			result = append(result, task)
-		}
-	}
-	return result
+	return m.tasks
 }
 
 // getTaskAtCursor returns the task at the current cursor position.

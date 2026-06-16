@@ -34,11 +34,11 @@ func handleSortKey(key string, s *SortState, onReset func(), onToggle func(SortF
 	return true
 }
 
-// cycleCustomSectionTab handles shift+left and shift+right keys for cycling
-// through custom section tabs with wraparound. Returns true if the key was
+// cyclePinnedTagTab handles shift+left and shift+right keys for cycling
+// through pinned tag tabs with wraparound. Returns true if the key was
 // handled. The afterCycle callback is called after the tab index changes so
 // the caller can refresh its data.
-func cycleCustomSectionTab(key string, tab *int, tabCount int, afterCycle func()) bool {
+func cyclePinnedTagTab(key string, tab *int, tabCount int, afterCycle func()) bool {
 	if tabCount <= 1 {
 		return false
 	}

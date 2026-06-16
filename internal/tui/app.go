@@ -35,7 +35,6 @@ const (
 	ViewTagFilterSelector
 	ViewSectionFilterSelector
 	ViewSectionPicker
-	ViewCustomSectionPicker
 	ViewSectionManager
 	ViewPriorityPicker
 	ViewContextPicker

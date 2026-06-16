@@ -27,7 +27,6 @@ func resetTaskAddVars() {
 	isBug = false
 	isIdea = false
 	addTypeAttrs = TypeAttrValues{}
-	taskCreateSectionFlag = false
 }
 
 // setupTaskAddTest creates common test dependencies and returns them.

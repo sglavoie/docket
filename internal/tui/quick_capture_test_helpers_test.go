@@ -31,9 +31,16 @@ func strPtr(s string) *string {
 
 func quickCaptureTestProject() *models.Project {
 	return &models.Project{
-		ID:       "test-project",
-		Name:     "Test Project",
-		Sections: []string{"Active", "Backlog", "Pending"},
+		ID:   "test-project",
+		Name: "Test Project",
+		Sections: []string{
+			models.SectionNext,
+			models.SectionInbox,
+			models.SectionWaiting,
+			models.SectionReview,
+			models.SectionStandby,
+			models.SectionSomeday,
+		},
 		Tasks: []*models.Task{
 			{ID: "epic-1", ShortID: 1, Type: models.TaskTypeEpic, Title: "User Authentication"},
 			{ID: "story-2", ShortID: 2, Type: models.TaskTypeStory, Title: "Login Flow"},

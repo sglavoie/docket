@@ -79,7 +79,7 @@ func init() {
 	templateEditCmd.Flags().StringVar(&templateEditType, "type", "", "task type: epic, story, task, bug, idea")
 	templateEditCmd.Flags().IntVar(&templateEditPriority, "priority", 0, "priority 1-5 (0 for default)")
 	templateEditCmd.Flags().StringVar(&templateEditTags, "tags", "", "comma-separated tags (replaces existing)")
-	templateEditCmd.Flags().StringVar(&templateEditSection, "section", "", "section name")
+	templateEditCmd.Flags().StringVar(&templateEditSection, "section", "", "built-in GTD section (empty = Active)")
 	templateEditCmd.Flags().StringVar(&templateEditDescription, "description", "", "task description template")
 	templateEditCmd.Flags().StringVar(&templateEditCategory, "category", "", "category: bug, feature, process")
 	templateEditCmd.Flags().StringArrayVar(&templateEditAddChildren, "add-item", nil, "add checklist item (can specify multiple)")
@@ -171,7 +171,11 @@ func runTemplateEdit(cmd *cobra.Command, args []string) error { //nolint:gocyclo
 	}
 
 	if cmd.Flags().Changed("section") {
-		t.Section = templateEditSection
+		section, sectionErr := normalizeTemplateSectionInput(templateEditSection)
+		if sectionErr != nil {
+			return sectionErr
+		}
+		t.Section = section
 		hasChanges = true
 	}
 

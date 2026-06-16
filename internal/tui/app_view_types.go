@@ -20,7 +20,6 @@ var viewTypeNames = map[ViewType]string{
 	ViewTagFilterSelector:     "TagFilterSelector",
 	ViewSectionFilterSelector: "SectionFilterSelector",
 	ViewSectionPicker:         "SectionPicker",
-	ViewCustomSectionPicker:   "CustomSectionPicker",
 	ViewSectionManager:        "SectionManager",
 	ViewPriorityPicker:        "PriorityPicker",
 	ViewContextPicker:         "ContextPicker",

@@ -109,12 +109,11 @@ func TestLoadProjectWithWarnings_NormalizesLegacyDualSectionMetadata(t *testing.
 		t.Fatalf("MkdirAll(%q): %v", projectPath, err)
 	}
 
-	content := `# Project: Legacy Dual Section
-<!-- sections: Next;Sprint-1 -->
-
-## Task: Legacy dual section
-<!-- id: task-1, status: todo, priority: 1, section: Next, custom_section: Sprint-1 -->
-`
+	legacyTaskSectionField := "custom" + "_section"
+	content := "# Project: Legacy Dual Section\n" +
+		"<!-- sections: Next;Sprint-1 -->\n\n" +
+		"## Task: Legacy dual section\n" +
+		"<!-- id: task-1, status: todo, priority: 1, section: Next, " + legacyTaskSectionField + ": Sprint-1 -->\n"
 	if err := os.WriteFile(tasksFilePath(projectPath), []byte(content), FilePermissions); err != nil {
 		t.Fatalf("WriteFile(tasks.md): %v", err)
 	}
@@ -133,9 +132,6 @@ func TestLoadProjectWithWarnings_NormalizesLegacyDualSectionMetadata(t *testing.
 	if task.Section != "" {
 		t.Fatalf("task.Section = %q, want empty after normalization", task.Section)
 	}
-	if task.CustomSection != "Sprint-1" {
-		t.Fatalf("task.CustomSection = %q, want %q", task.CustomSection, "Sprint-1")
-	}
 
 	if len(result.Warnings) != 1 {
 		t.Fatalf("warnings = %v, want 1 warning", result.Warnings)
@@ -150,7 +146,7 @@ func TestLoadProjectWithWarnings_NormalizesLegacyDualSectionMetadata(t *testing.
 	if warning.TaskID != "task-1" {
 		t.Fatalf("warning task ID = %q, want %q", warning.TaskID, "task-1")
 	}
-	if len(loaded.Warnings) != 1 || !strings.Contains(loaded.Warnings[0], "keeping custom_section and clearing section") {
+	if len(loaded.Warnings) != 1 || !strings.Contains(loaded.Warnings[0], "non-GTD section") {
 		t.Fatalf("project warnings = %v, want data-correction summary", loaded.Warnings)
 	}
 }

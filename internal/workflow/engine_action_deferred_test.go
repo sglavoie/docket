@@ -59,7 +59,7 @@ func TestApplyAction_CreateFollowup(t *testing.T) {
 }
 
 func TestApplyAction_MoveToProject(t *testing.T) {
-	task := &models.Task{ID: "task-1", Title: "Test task", Section: "Backlog"}
+	task := &models.Task{ID: "task-1", Title: "Test task", Section: models.SectionNext}
 	result := &EvaluationResult{
 		AppliedRules:      make(map[string][]string),
 		RuleTriggerCounts: make(map[string]int),
@@ -81,7 +81,7 @@ func TestApplyAction_MoveToProject(t *testing.T) {
 	if move.Destination != "DestProject" {
 		t.Errorf("expected Destination %q, got %q", "DestProject", move.Destination)
 	}
-	if task.Section != "Backlog" {
+	if task.Section != models.SectionNext {
 		t.Error("expected task section to remain unchanged")
 	}
 }

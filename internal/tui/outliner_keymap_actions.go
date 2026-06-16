@@ -247,11 +247,11 @@ func (b *outlinerKeymapBuilder) utilityEntries() []keymap.Entry {
 			model, cmd, _ := m.handleUtilityKey("f")
 			return model, cmd
 		}),
-		keymap.Bind("shift+left", "Previous custom section tab", "Navigation", func() (tea.Model, tea.Cmd) {
+		keymap.Bind("shift+left", "Previous pinned tag tab", "Navigation", func() (tea.Model, tea.Cmd) {
 			model, cmd, _ := m.handleUtilityKey("shift+left")
 			return model, cmd
 		}, keymap.AsHidden()),
-		keymap.Bind("shift+right", "Next custom section tab", "Navigation", func() (tea.Model, tea.Cmd) {
+		keymap.Bind("shift+right", "Next pinned tag tab", "Navigation", func() (tea.Model, tea.Cmd) {
 			model, cmd, _ := m.handleUtilityKey("shift+right")
 			return model, cmd
 		}, keymap.AsHidden()),

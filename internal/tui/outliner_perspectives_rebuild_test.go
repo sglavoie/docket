@@ -15,12 +15,12 @@ func TestRebuildRows_AllPerspective(t *testing.T) {
 	})
 }
 
-func TestRebuildRows_AllPerspectiveGroupsCustomSectionsUnderActive(t *testing.T) {
-	customTask := &models.Task{
-		ID:            "custom",
-		Title:         "Sprint task",
-		Status:        models.StatusTodo,
-		CustomSection: "Sprint",
+func TestRebuildRows_AllPerspectiveGroupsNonGTDSectionsUnderActive(t *testing.T) {
+	legacyTask := &models.Task{
+		ID:      "custom",
+		Title:   "Sprint task",
+		Status:  models.StatusTodo,
+		Section: "Sprint",
 	}
 	nextTask := &models.Task{
 		ID:      "next",
@@ -32,7 +32,7 @@ func TestRebuildRows_AllPerspectiveGroupsCustomSectionsUnderActive(t *testing.T)
 		ID:       "project",
 		Name:     "Test",
 		Sections: []string{models.SectionNext, "Sprint"},
-		Tasks:    []*models.Task{customTask, nextTask},
+		Tasks:    []*models.Task{legacyTask, nextTask},
 	}
 
 	m := &OutlinerModel{project: proj, activePerspective: 1, collapsedSections: make(map[string]bool)}
@@ -41,7 +41,7 @@ func TestRebuildRows_AllPerspectiveGroupsCustomSectionsUnderActive(t *testing.T)
 	assertRowTitles(t, m.rows, []string{"[Active]", "Sprint task", "[Next]", "Next task"})
 }
 
-func TestRebuildRows_CustomSectionTabMatchesLegacySectionValue(t *testing.T) {
+func TestRebuildRows_LegacySectionTabIgnored(t *testing.T) {
 	legacyTask := &models.Task{
 		ID:      "legacy",
 		Title:   "Legacy task",
@@ -49,10 +49,9 @@ func TestRebuildRows_CustomSectionTabMatchesLegacySectionValue(t *testing.T) {
 		Section: "Legacy",
 	}
 	otherTask := &models.Task{
-		ID:            "other",
-		Title:         "Other task",
-		Status:        models.StatusTodo,
-		CustomSection: "Sprint",
+		ID:     "other",
+		Title:  "Other task",
+		Status: models.StatusTodo,
 	}
 	proj := &models.Project{
 		ID:       "project",
@@ -65,11 +64,45 @@ func TestRebuildRows_CustomSectionTabMatchesLegacySectionValue(t *testing.T) {
 		project:           proj,
 		activePerspective: 1,
 		collapsedSections: make(map[string]bool),
-		customSectionTab:  map[string]int{proj.ID: 1},
+		pinnedTagTab:      map[string]int{proj.ID: 1},
 	}
 	m.rebuildRows()
 
-	assertRowTitles(t, m.rows, []string{"[Active]", "Legacy task"})
+	assertRowTitles(t, m.rows, []string{"[Active]", "Legacy task", "Other task"})
+}
+
+func TestRebuildRows_PinnedTagTabFiltersByTag(t *testing.T) {
+	backendTask := &models.Task{
+		ID:     "backend",
+		Title:  "Backend task",
+		Status: models.StatusTodo,
+		Tags:   []string{"backend"},
+	}
+	frontendTask := &models.Task{
+		ID:     "frontend",
+		Title:  "Frontend task",
+		Status: models.StatusTodo,
+		Tags:   []string{"frontend"},
+	}
+	proj := &models.Project{
+		ID:         "project",
+		Name:       "Test",
+		PinnedTags: []string{"backend"},
+		Tasks:      []*models.Task{backendTask, frontendTask},
+	}
+
+	m := &OutlinerModel{
+		project:           proj,
+		activePerspective: 1,
+		collapsedSections: make(map[string]bool),
+		pinnedTagTab:      map[string]int{proj.ID: 1},
+	}
+	m.rebuildRows()
+
+	assertRowTitles(t, m.rows, []string{"[Active]", "Backend task"})
+	if got := m.activePinnedTagFilter(); got != "backend" {
+		t.Fatalf("activePinnedTagFilter() = %q, want backend", got)
+	}
 }
 
 func TestRebuildRows_ActivePerspective(t *testing.T) {

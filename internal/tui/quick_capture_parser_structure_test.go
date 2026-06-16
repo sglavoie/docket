@@ -68,12 +68,12 @@ func TestParseQuickCaptureStructureAndState(t *testing.T) {
 		},
 		{
 			name:         "task type with other metadata",
-			input:        "^bug Fix crash !1 #urgent /Active",
+			input:        "^bug Fix crash !1 #urgent /Next",
 			wantTitle:    "Fix crash",
 			wantPriority: 1,
 			wantTags:     []string{"urgent"},
 			wantTaskType: models.TaskTypeBug,
-			wantSection:  "Active",
+			wantSection:  "Next",
 		},
 		{
 			name:         "status start",
@@ -137,14 +137,14 @@ func TestParseQuickCaptureStructureAndState(t *testing.T) {
 		},
 		{
 			name:           "all features combined",
-			input:          "^bug Critical fix !1 #urgent #production @tomorrow ~weekly /Active >1",
+			input:          "^bug Critical fix !1 #urgent #production @tomorrow ~weekly /Next >1",
 			wantTitle:      "Critical fix",
 			wantPriority:   1,
 			wantTags:       []string{"urgent", "production"},
 			wantHasDueDate: true,
 			wantParentID:   strPtr("epic-1"),
 			wantTaskType:   models.TaskTypeBug,
-			wantSection:    "Active",
+			wantSection:    "Next",
 			wantHasRecur:   true,
 		},
 	})

@@ -87,6 +87,13 @@ func (p *Project) RemoveTag(tag string) bool {
 	changed := p.normalizeCatalogTags()
 	var removed bool
 	p.Tags, removed = util.SliceRemove(p.Tags, normalized)
+
+	if removed && !p.hasTaskTag(normalized) {
+		var unpinned bool
+		p.PinnedTags, unpinned = util.SliceRemove(DedupeTags(p.PinnedTags), normalized)
+		changed = changed || unpinned
+	}
+
 	if removed || changed {
 		p.UpdatedAt = time.Now()
 	}
@@ -107,6 +114,9 @@ func (p *Project) RenameTag(oldName, newName string) (bool, error) {
 	}
 
 	changed := p.normalizeCatalogTags()
+	if p.normalizePinnedTags() {
+		changed = true
+	}
 	if oldName == newName {
 		if changed {
 			p.UpdatedAt = time.Now()
@@ -119,6 +129,12 @@ func (p *Project) RenameTag(oldName, newName string) (bool, error) {
 		if !p.hasCatalogTag(newName) && !p.hasTaskTag(newName) {
 			p.Tags = append(p.Tags, newName)
 		}
+		changed = true
+	}
+
+	renamedPins := renameTagInSlice(p.PinnedTags, oldName, newName)
+	if !slices.Equal(p.PinnedTags, renamedPins) {
+		p.PinnedTags = renamedPins
 		changed = true
 	}
 
@@ -139,6 +155,73 @@ func (p *Project) RenameTag(oldName, newName string) (bool, error) {
 		p.UpdatedAt = now
 	}
 	return changed, nil
+}
+
+// PinTag adds a normalized tag to the project's pinned tag list.
+func (p *Project) PinTag(tag string) (bool, error) {
+	normalized := NormalizeTag(tag)
+	if err := ValidateTag(normalized); err != nil {
+		return false, err
+	}
+
+	pinnedChanged := p.normalizePinnedTags()
+	if slices.Contains(p.PinnedTags, normalized) {
+		if pinnedChanged {
+			p.UpdatedAt = time.Now()
+		}
+		return false, nil
+	}
+
+	p.PinnedTags = append(p.PinnedTags, normalized)
+	p.UpdatedAt = time.Now()
+	return true, nil
+}
+
+// UnpinTag removes a normalized tag from the project's pinned tag list.
+func (p *Project) UnpinTag(tag string) bool {
+	normalized := NormalizeTag(tag)
+	if normalized == "" {
+		return false
+	}
+
+	changed := p.normalizePinnedTags()
+	var removed bool
+	p.PinnedTags, removed = util.SliceRemove(p.PinnedTags, normalized)
+	if removed || changed {
+		p.UpdatedAt = time.Now()
+	}
+	return removed
+}
+
+// TogglePinnedTag flips the pinned state for a normalized tag and returns the
+// resulting pinned state.
+func (p *Project) TogglePinnedTag(tag string) (bool, error) {
+	normalized := NormalizeTag(tag)
+	if err := ValidateTag(normalized); err != nil {
+		return false, err
+	}
+	if p.IsTagPinned(normalized) {
+		p.UnpinTag(normalized)
+		return false, nil
+	}
+	if _, err := p.PinTag(normalized); err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
+// IsTagPinned reports whether a normalized tag is pinned for this project.
+func (p *Project) IsTagPinned(tag string) bool {
+	normalized := NormalizeTag(tag)
+	if normalized == "" {
+		return false
+	}
+	return slices.Contains(DedupeTags(p.PinnedTags), normalized)
+}
+
+// PinnedTagList returns the normalized, deduplicated pinned tags in stored order.
+func (p *Project) PinnedTagList() []string {
+	return DedupeTags(p.PinnedTags)
 }
 
 // TagCounts returns all known project tags mapped to task usage count. Tags
@@ -174,6 +257,15 @@ func (p *Project) normalizeCatalogTags() bool {
 		return false
 	}
 	p.Tags = deduped
+	return true
+}
+
+func (p *Project) normalizePinnedTags() bool {
+	deduped := DedupeTags(p.PinnedTags)
+	if slices.Equal(p.PinnedTags, deduped) {
+		return false
+	}
+	p.PinnedTags = deduped
 	return true
 }
 

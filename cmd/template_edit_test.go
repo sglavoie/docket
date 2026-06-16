@@ -164,3 +164,33 @@ func TestTemplateEditRemoveItemUsesOneBased(t *testing.T) {
 		testutil.AssertEqual(t, updated.Checklist[1], "Step C")
 	})
 }
+
+func TestTemplateEditSectionValidation(t *testing.T) {
+	t.Run("rejects non-GTD section", func(t *testing.T) {
+		deps := setupTemplateEditTest(t)
+		defer deps.Cleanup()
+
+		tmpl := template.TaskTemplate{
+			ID:      "edit-section",
+			Name:    "Edit Section",
+			Enabled: true,
+			Type:    models.TaskTypeTask,
+		}
+		deps.Config.TaskTemplates = append(deps.Config.TaskTemplates, tmpl)
+		manager := config.NewManager(deps.ConfigPath)
+		testutil.AssertNoError(t, manager.Save(deps.Config))
+
+		templateEditSection = "Backlog"
+		cmd := templateEditCmd
+		_ = cmd.Flags().Set("section", "Backlog")
+		defer func() {
+			cmd.Flags().Lookup("section").Changed = false
+			templateEditSection = ""
+		}()
+
+		err := runTemplateEdit(cmd, []string{"edit-section"})
+		if err == nil {
+			t.Fatal("expected error for non-GTD template section")
+		}
+	})
+}

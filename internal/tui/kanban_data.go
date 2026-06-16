@@ -1,8 +1,6 @@
 package tui
 
 import (
-	"slices"
-
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/icons"
 	"github.com/sglavoie/tt/internal/models"
@@ -123,16 +121,6 @@ func stageColumnDefs(stages []string) []KanbanColumn {
 	return cols
 }
 
-// customSectionColumnDefs returns ordered KanbanColumn definitions for CustomSections mode.
-func customSectionColumnDefs(sections []string) []KanbanColumn {
-	cols := make([]KanbanColumn, 0, len(sections)+1)
-	cols = append(cols, KanbanColumn{ID: "unset", Label: "Unset", Icon: "·"})
-	for _, s := range sections {
-		cols = append(cols, KanbanColumn{ID: s, Label: s, Icon: "⊞"})
-	}
-	return cols
-}
-
 // scoreColumnDefs returns ordered KanbanColumn definitions for ScoreBuckets mode.
 func scoreColumnDefs() []KanbanColumn {
 	return []KanbanColumn{
@@ -183,12 +171,6 @@ func columnForTask(task *models.Task, mode KanbanMode, cfg *config.Config, proje
 		}
 		return task.Stage
 
-	case KanbanModeCustomSections:
-		if task.CustomSection == "" {
-			return "unset"
-		}
-		return task.CustomSection
-
 	case KanbanModeScoreBuckets:
 		profile := cfg.GetProjectScoringProfile(projectID)
 		if profile == nil {
@@ -237,7 +219,7 @@ func rebuildColumns(
 	cards []KanbanCard,
 	mode KanbanMode,
 	prev []KanbanColumn,
-	sectionOrder, statusOrder, stages, customSections []string,
+	sectionOrder, statusOrder, stages []string,
 	cfg *config.Config,
 ) []KanbanColumn {
 	// Build base column set.
@@ -251,8 +233,6 @@ func rebuildColumns(
 		cols = priorityColumnDefs()
 	case KanbanModeStages:
 		cols = stageColumnDefs(stages)
-	case KanbanModeCustomSections:
-		cols = customSectionColumnDefs(customSections)
 	case KanbanModeScoreBuckets:
 		cols = scoreColumnDefs()
 	default:
@@ -285,7 +265,7 @@ func rebuildColumns(
 		if ci, ok := idx[colID]; ok {
 			cols[ci].Tasks = append(cols[ci].Tasks, card)
 		} else {
-			// Dynamic column (e.g. unknown stage/custom-section) — create on the fly
+			// Dynamic column (e.g. unknown stage or section) - create on the fly
 			// and append at the end with a check for duplicates.
 			newIdx := -1
 			for i, c := range cols {
@@ -351,19 +331,5 @@ func collectStages(globalStages []string, projects []*models.Project) []string {
 			}
 		}
 	}
-	return result
-}
-
-// collectCustomSections gathers unique CustomSection values from the given task list.
-func collectCustomSections(cards []KanbanCard) []string {
-	seen := make(map[string]bool)
-	var result []string
-	for _, card := range cards {
-		if s := card.Task.CustomSection; s != "" && !seen[s] {
-			seen[s] = true
-			result = append(result, s)
-		}
-	}
-	slices.Sort(result)
 	return result
 }

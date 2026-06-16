@@ -66,57 +66,6 @@ func (m *AppModel) handleSectionMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 		}
 		return true, nil
 
-	case ShowCustomSectionPickerMsg:
-		if msg.Task != nil && msg.Project != nil {
-			m.showView(ViewCustomSectionPicker, NewCustomSectionPickerModel(msg.Task, msg.Project, msg.Projects))
-		}
-		return true, nil
-
-	case CustomSectionPickerDoneMsg:
-		m.popView()
-		if msg.Canceled {
-			return true, nil
-		}
-		if msg.Task != nil && msg.Project != nil {
-			oldSection := msg.Task.CustomSection
-
-			if !msg.Project.MutateTask(msg.Task.ID, func(t *models.Task) {
-				t.SetCustomSection(msg.Section)
-			}) {
-				return true, errorCmd("task no longer exists in project")
-			}
-
-			if msg.Section != "" {
-				msg.Project.EnsureSection(msg.Section)
-			}
-
-			// Remove old custom section if no tasks remain in it
-			if oldSection != "" && oldSection != msg.Section {
-				hasTasksInOld := false
-				for _, t := range msg.Project.Tasks {
-					if t.CustomSection == oldSection {
-						hasTasksInOld = true
-						break
-					}
-				}
-				if !hasTasksInOld {
-					msg.Project.RemoveSection(oldSection)
-				}
-			}
-
-			var successMsg string
-			if msg.Section == "" {
-				successMsg = "Removed custom section"
-			} else {
-				successMsg = fmt.Sprintf("Moved to %s", msg.Section)
-			}
-			return true, tea.Batch(
-				startLoading("Saving..."),
-				SaveProjectAsync(msg.Project, successMsg),
-			)
-		}
-		return true, nil
-
 	case ShowSectionPickerMsg:
 		if msg.Project != nil {
 			m.showView(ViewSectionPicker, NewSectionPickerModel(msg.Task, msg.Project))
@@ -197,7 +146,7 @@ func (m *AppModel) handleSectionMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 				}
 			}
 
-			if msg.Section != "" && msg.Section != removeCustomSectionSentinel {
+			if msg.Section != "" {
 				project.EnsureSection(msg.Section)
 				if globalColor := m.config.GetGlobalSectionColor(msg.Section); globalColor != "gray" {
 					project.SetSectionColor(msg.Section, globalColor)
@@ -213,8 +162,6 @@ func (m *AppModel) handleSectionMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 			switch msg.Section {
 			case "":
 				successMsg = fmt.Sprintf("Removed %d tasks from GTD section", count)
-			case removeCustomSectionSentinel:
-				successMsg = fmt.Sprintf("Removed custom section from %d tasks", count)
 			default:
 				successMsg = fmt.Sprintf("Moved %d tasks to %s", count, msg.Section)
 			}
@@ -252,7 +199,7 @@ func (m *AppModel) handleSectionMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 				return true, errorCmd("task no longer exists in project")
 			}
 
-			if msg.Section != "" && msg.Section != removeCustomSectionSentinel {
+			if msg.Section != "" {
 				msg.Project.EnsureSection(msg.Section)
 				if globalColor := m.config.GetGlobalSectionColor(msg.Section); globalColor != "gray" {
 					msg.Project.SetSectionColor(msg.Section, globalColor)
@@ -265,8 +212,6 @@ func (m *AppModel) handleSectionMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 			switch msg.Section {
 			case "":
 				successMsg = "Removed from GTD section"
-			case removeCustomSectionSentinel:
-				successMsg = "Removed custom section"
 			default:
 				successMsg = fmt.Sprintf("Moved to %s", msg.Section)
 			}
@@ -293,15 +238,10 @@ func (m *AppModel) handleSectionMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 	case GoToSectionMsg:
 		m.popView()
 		if m.projectTree != nil {
-			tabs := m.projectTree.customSectionTabs()
-			for i, tab := range tabs {
-				if tab == msg.SectionName {
-					m.projectTree.customSectionTab = i
-					m.projectTree.updateVisibility()
-					m.projectTree.clampCursor()
-					break
-				}
-			}
+			m.projectTree.pinnedTagTab = 0
+			m.projectTree.filter.Sections = map[string]bool{msg.SectionName: true}
+			m.projectTree.updateVisibility()
+			m.projectTree.clampCursor()
 		}
 		return true, nil
 
@@ -327,12 +267,7 @@ func (m *AppModel) handleSectionMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 	return false, nil
 }
 
-// assignSection routes GTD and custom-section mutations through the task's
-// invariant-safe helpers.
+// assignSection routes section mutations through the task's invariant-safe helper.
 func assignSection(task *models.Task, section string) {
-	if section == removeCustomSectionSentinel {
-		task.SetCustomSection("")
-	} else {
-		task.SetSection(section)
-	}
+	task.SetSection(section)
 }

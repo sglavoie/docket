@@ -318,13 +318,7 @@ func (m *PriorityViewModel) renderTaskLine(pt *PriorityTask, isOverdue bool, isS
 		adjustedMaxTitleLen -= 2
 	}
 
-	// Custom section badge
 	csStr := ""
-	if task.CustomSection != "" {
-		csColor := m.project.GetSectionColor(task.CustomSection)
-		csStyle := GetSectionColorStyle(csColor)
-		csStr = " " + csStyle.Render("@ "+task.CustomSection)
-	}
 
 	// Due date
 	dueStr := ""

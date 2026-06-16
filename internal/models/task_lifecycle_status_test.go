@@ -47,19 +47,6 @@ func TestCompleteMovesToCompletedFromSomeday(t *testing.T) {
 	}
 }
 
-func TestCompleteClearsCustomSectionToPreventDualSection(t *testing.T) {
-	task := newLifecycleTestTask(t, "t1", 1)
-	task.CustomSection = "CustomSection"
-	task.Complete()
-
-	if task.CustomSection != "" {
-		t.Errorf("expected CustomSection cleared to prevent dual-section state, got %q", task.CustomSection)
-	}
-	if task.Section != SectionCompleted {
-		t.Errorf("expected Section=%q, got %q", SectionCompleted, task.Section)
-	}
-}
-
 func TestStart(t *testing.T) {
 	task := newLifecycleTestTask(t, "t1", 1)
 	task.Start()
@@ -112,14 +99,10 @@ func TestStartAutoTriagesFromStandby(t *testing.T) {
 func TestStartAutoTriagesFromCompleted(t *testing.T) {
 	task := newLifecycleTestTask(t, "t1", 1)
 	task.Section = SectionCompleted
-	task.CustomSection = "Done"
 	task.Start()
 
 	if task.Section != "" {
 		t.Errorf("expected section cleared from Completed, got %q", task.Section)
-	}
-	if task.CustomSection != "" {
-		t.Errorf("expected custom section cleared from Completed, got %q", task.CustomSection)
 	}
 }
 
@@ -237,19 +220,6 @@ func TestMaybeFromTodo(t *testing.T) {
 	}
 	if task.Section != SectionSomeday {
 		t.Errorf("expected Section Someday, got %q", task.Section)
-	}
-}
-
-func TestMaybeClearsCustomSectionToPreventDualSection(t *testing.T) {
-	task := newLifecycleTestTask(t, "t1", 1)
-	task.CustomSection = "CustomSection"
-	task.Maybe()
-
-	if task.CustomSection != "" {
-		t.Errorf("expected CustomSection cleared to prevent dual-section state, got %q", task.CustomSection)
-	}
-	if task.Section != SectionSomeday {
-		t.Errorf("expected Section=%q, got %q", SectionSomeday, task.Section)
 	}
 }
 

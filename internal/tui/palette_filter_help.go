@@ -16,7 +16,7 @@ func (m *CommandPaletteModel) buildHelpItems() []filteredPaletteItem {
 		{"priority:1 or priority:1-3", "Filter tasks by priority value or range"},
 		{"status:todo or status:todo|progress", "Filter tasks by status"},
 		{"tag:name or tag:bug|feature", "Filter tasks by tag"},
-		{"section:backlog", "Filter tasks by section"},
+		{"section:inbox", "Filter tasks by section"},
 		{"@overdue @today @tomorrow @this-week", "Filter tasks by due date"},
 		{"Ctrl+H", "Toggle completed/canceled tasks"},
 		{"Ctrl+O", "Cycle sort: score → priority → due date"},

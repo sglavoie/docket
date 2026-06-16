@@ -20,7 +20,7 @@ Press Enter to save. The task lands in your Inbox.
 
 Captured tasks go to the Inbox section of their project.
 From the Organize stage (;a), you can triage
-them: move to Backlog, schedule for Today, or promote to
+them: move to Next, schedule for Today, or promote to
 a parent epic or story.
 
 # First Workflow

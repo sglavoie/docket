@@ -179,24 +179,23 @@ func deepCopyTaskForDryRun(task *models.Task) *models.Task {
 	}
 
 	copy := &models.Task{
-		ID:            task.ID,
-		ShortID:       task.ShortID,
-		Type:          task.Type,
-		Title:         task.Title,
-		Description:   task.Description,
-		Status:        task.Status,
-		Priority:      task.Priority,
-		Section:       task.Section,
-		CustomSection: task.CustomSection,
-		CreatedAt:     task.CreatedAt,
-		UpdatedAt:     task.UpdatedAt,
-		HasTime:       task.HasTime,
-		Pinned:        task.Pinned,
-		Active:        task.Active,
-		Dimmed:        task.Dimmed,
-		Level:         task.Level,
-		Source:        task.Source,
-		URL:           task.URL,
+		ID:          task.ID,
+		ShortID:     task.ShortID,
+		Type:        task.Type,
+		Title:       task.Title,
+		Description: task.Description,
+		Status:      task.Status,
+		Priority:    task.Priority,
+		Section:     task.Section,
+		CreatedAt:   task.CreatedAt,
+		UpdatedAt:   task.UpdatedAt,
+		HasTime:     task.HasTime,
+		Pinned:      task.Pinned,
+		Active:      task.Active,
+		Dimmed:      task.Dimmed,
+		Level:       task.Level,
+		Source:      task.Source,
+		URL:         task.URL,
 	}
 
 	// Copy pointer fields
@@ -333,11 +332,6 @@ func detectChanges(original, modified *models.Task) []DryRunChange {
 	if original.Section != modified.Section {
 		changes = append(changes, DryRunChange{
 			Field: "section", OldValue: original.Section, NewValue: modified.Section,
-		})
-	}
-	if original.CustomSection != modified.CustomSection {
-		changes = append(changes, DryRunChange{
-			Field: "custom_section", OldValue: original.CustomSection, NewValue: modified.CustomSection,
 		})
 	}
 	if original.Type != modified.Type {

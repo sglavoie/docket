@@ -40,7 +40,7 @@ Delete. The filter is removed from the config file.
 Saved filters are stored in the JSON config file (~/.tt.json) and
 are available across all projects. Snapshot filters capture view mode,
 type/status/priority/tag/section/due-date/attribute/score filters,
-sort field and direction, and the active custom section tab. Criteria
+sort field and direction, and the active pinned tag tab. Criteria
 filters store compound rules with AND/OR logic.`,
 		},
 		{
@@ -49,8 +49,8 @@ filters store compound rules with AND/OR logic.`,
 			Content: `# Section Overview
 
 Sections follow the Getting Things Done methodology to organize
-your workflow. Each task belongs to one section that indicates
-its current stage.
+your workflow. Each task belongs to one built-in section that
+indicates where it sits in your process.
 
 # Available Sections
 
@@ -65,12 +65,16 @@ code review, QA, or approval.
 Tasks in Someday are excluded from stale notifications — they
 will not appear in the notification center for being inactive.
 
-# Custom Sections
+# Tags And Pinned Tags
 
-Beyond the built-in sections, you can create your own to match
-your workflow. Custom sections behave like built-in ones and
-can receive tasks, be renamed, or be removed. Assigning a task
-to a section that does not exist yet creates it automatically.`,
+Use tags for flexible grouping across sections: team, area,
+initiative, customer, or any other label you need. Tags do not
+move a task through the workflow.
+
+Pinned tags turn important tags into top-bar filters. In project
+views, Ctrl+T opens the project tag manager so you can pin or unpin
+project tags. In cross-project views, Ctrl+T opens the global tag
+manager for cross-project pinned tag tabs.`,
 		},
 		{
 			Title:    "Stages",

@@ -58,7 +58,7 @@ type OutlinerModel struct {
 	filter           FilterState      // Unified filter state (common + sections + actionable)
 	scoreFilterInput ScoreFilterInput // Inline score filter threshold input
 
-	customSectionTab  map[string]int  // Active custom section tab index per projectID (0 = All)
+	pinnedTagTab  map[string]int  // Active pinned tag tab index per projectID (0 = All)
 	expandedNodes     map[string]bool // Fold state: true=expanded (default all expanded)
 	collapsedSections map[string]bool // Section collapse state for All perspective
 
@@ -94,7 +94,7 @@ type OutlinerModel struct {
 	crossUndoCtx          UndoContext       // Undo context scoped to cross-project operations
 	crossSpinner          SpinnerModel      // View-local spinner, independent of global save spinner
 	crossQuickEditProject *models.Project   // Resolved project for quick edit in cross-project mode
-	crossReloadTabName    string            // Custom-section tab name preserved while async reload clears loadedProjects
+	crossReloadTabName    string            // Pinned tag tab name preserved while async reload clears loadedProjects
 	crossReloadTabSet     bool              // True when crossReloadTabName is an intentional live selection, including All
 
 	// Memoization guard for crossProjectRebuildRows
@@ -174,7 +174,7 @@ func NewOutlinerModel(project *models.Project, cfg *config.Config, cfgManager *c
 		filterBar:         NewFilterBarComponent(),
 		expandedNodes:     make(map[string]bool),
 		collapsedSections: make(map[string]bool),
-		customSectionTab:  make(map[string]int),
+		pinnedTagTab:  make(map[string]int),
 		filterProjects:    make(map[string]bool),
 		filter:            NewFilterState(),
 		sort:              NewSortState(),

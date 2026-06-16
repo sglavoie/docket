@@ -116,15 +116,11 @@ func (m *DashboardModel) renderProjectSummaryContent(project *models.Project) st
 		if task == nil || task.Status.IsComplete() {
 			continue
 		}
-		if task.CustomSection != "" {
-			sectionCounts[task.CustomSection]++
-		} else {
-			section := task.Section
-			if section == "" {
-				section = "Active"
-			}
-			sectionCounts[section]++
+		section := task.Section
+		if section == "" {
+			section = "Active"
 		}
+		sectionCounts[section]++
 		statusCounts[task.Status]++
 		if task.UpdatedAt.After(latestUpdate) {
 			latestUpdate = task.UpdatedAt

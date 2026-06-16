@@ -164,21 +164,7 @@ func (m *PriorityViewModel) computeSubTabs() {
 	tasks = append(tasks, backlog...)
 	tasks = append(tasks, waitingOn...)
 
-	// Extract unique custom sections from these tasks
-	seen := map[string]bool{}
-	var names []string
-	for _, pt := range tasks {
-		section := pt.Task.CustomSection
-		if section == "" {
-			section = "(none)"
-		}
-		if !seen[section] {
-			seen[section] = true
-			names = append(names, section)
-		}
-	}
-	sort.Strings(names)
-	m.subTabNames = names
+	m.subTabNames = nil
 
 	if m.subTab > len(m.subTabNames) {
 		m.subTab = 0
@@ -193,23 +179,9 @@ func (m *PriorityViewModel) activeSubTabFilter() string {
 	return m.subTabNames[m.subTab-1]
 }
 
-// filterBySubTab narrows a task slice by the active sub-tab custom section filter.
+// filterBySubTab narrows a task slice by the active sub-tab filter.
 func (m *PriorityViewModel) filterBySubTab(tasks []*PriorityTask) []*PriorityTask {
-	filter := m.activeSubTabFilter()
-	if filter == "" {
-		return tasks
-	}
-	var result []*PriorityTask
-	for _, pt := range tasks {
-		section := pt.Task.CustomSection
-		if section == "" {
-			section = "(none)"
-		}
-		if section == filter {
-			result = append(result, pt)
-		}
-	}
-	return result
+	return tasks
 }
 
 // applySearchFilter returns tasks whose title or description contains the search query (case-insensitive).

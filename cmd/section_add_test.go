@@ -4,25 +4,26 @@ import (
 	"testing"
 
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/testutil"
 )
 
 func TestSectionAdd(t *testing.T) {
-	t.Run("adds new section successfully", func(t *testing.T) {
+	t.Run("rejects non-GTD section", func(t *testing.T) {
 		deps, project := setupSectionCommandTest(t)
 
 		initialSections := len(project.Sections)
 
 		err := runSectionAdd(nil, []string{"InProgress"})
-		testutil.AssertNoError(t, err)
-
-		savedProject := deps.Repository.Projects[project.ID]
-		if len(savedProject.Sections) != initialSections+1 {
-			t.Errorf("expected %d sections, got %d", initialSections+1, len(savedProject.Sections))
+		if err == nil {
+			t.Fatal("runSectionAdd() should error for non-GTD section")
 		}
 
-		if !savedProject.HasSection("InProgress") {
-			t.Error("section 'InProgress' was not added")
+		savedProject := deps.Repository.Projects[project.ID]
+		if len(savedProject.Sections) != initialSections {
+			t.Errorf("expected %d sections, got %d", initialSections, len(savedProject.Sections))
+		}
+
+		if savedProject.HasSection("InProgress") {
+			t.Error("section 'InProgress' should not be added")
 		}
 	})
 

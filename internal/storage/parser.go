@@ -37,6 +37,9 @@ var (
 
 	// Matches project tag metadata like "<!-- tags: backend;frontend;urgent -->"
 	tagsRegex = regexp.MustCompile(`^<!--\s*tags:\s*(.*?)\s*-->$`)
+
+	// Matches project pinned tag metadata like "<!-- pinned_tags: backend;urgent -->"
+	pinnedTagsRegex = regexp.MustCompile(`^<!--\s*pinned_tags:\s*(.*?)\s*-->$`)
 )
 
 // ParseWarning represents a non-fatal issue found during parsing.
@@ -48,6 +51,7 @@ type ParseResult struct {
 	Tasks         []*models.Task
 	Sections      []string
 	Tags          []string
+	PinnedTags    []string
 	SectionColors map[string]string
 	Warnings      []ParseWarning // Non-fatal issues found during parsing
 }
@@ -78,6 +82,7 @@ func ParseTasksMarkdownWithSections(content string) (*ParseResult, error) {
 	var projectName string
 	var sections []string
 	var tags []string
+	var pinnedTags []string
 	sectionColors := make(map[string]string)
 	var parsedTasks []*format.ParsedTask
 	var currentTask *format.ParsedTask
@@ -106,6 +111,10 @@ func ParseTasksMarkdownWithSections(content string) (*ParseResult, error) {
 		}
 
 		if parseTagsMetadataLine(line, foundFirstTask, &tags, &metadataWarnings) {
+			continue
+		}
+
+		if parsePinnedTagsMetadataLine(line, foundFirstTask, &pinnedTags, &metadataWarnings) {
 			continue
 		}
 
@@ -193,6 +202,7 @@ func ParseTasksMarkdownWithSections(content string) (*ParseResult, error) {
 		Tasks:         tasks,
 		Sections:      sections,
 		Tags:          tags,
+		PinnedTags:    pinnedTags,
 		SectionColors: sectionColors,
 		Warnings:      metadataWarnings,
 	}, nil
@@ -243,7 +253,7 @@ func parseSectionsMetadataLine(line string, foundFirstTask bool, sections *[]str
 
 		parts := strings.SplitN(sectionSpec, ":", 2)
 		name := strings.TrimSpace(parts[0])
-		if name == "" {
+		if name == "" || !models.IsGTDSection(name) {
 			continue
 		}
 
@@ -304,6 +314,46 @@ func parseTagsMetadataLine(line string, foundFirstTask bool, tags *[]string, war
 
 		if !seenTags[tag] {
 			*tags = append(*tags, tag)
+			seenTags[tag] = true
+		}
+	}
+
+	return true
+}
+
+func parsePinnedTagsMetadataLine(line string, foundFirstTask bool, pinnedTags *[]string, warnings *[]ParseWarning) bool {
+	if foundFirstTask {
+		return false
+	}
+
+	matches := pinnedTagsRegex.FindStringSubmatch(line)
+	if matches == nil {
+		return false
+	}
+
+	seenTags := make(map[string]bool, len(*pinnedTags))
+	for _, existing := range *pinnedTags {
+		seenTags[existing] = true
+	}
+
+	for tagSpec := range strings.SplitSeq(matches[1], ";") {
+		rawTag := strings.TrimSpace(tagSpec)
+		if rawTag == "" {
+			continue
+		}
+
+		tag := models.NormalizeTag(rawTag)
+		if err := models.ValidateTag(tag); err != nil {
+			*warnings = append(*warnings, ParseWarning{
+				Type:    format.WarningValidation,
+				Field:   "pinned_tags",
+				Message: fmt.Sprintf("project pinned tag %q is invalid: %v, skipping", rawTag, err),
+			})
+			continue
+		}
+
+		if !seenTags[tag] {
+			*pinnedTags = append(*pinnedTags, tag)
 			seenTags[tag] = true
 		}
 	}

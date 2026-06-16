@@ -337,7 +337,7 @@ func applySectionChange(pf persistFn, project *models.Project, taskID string, se
 
 	result := pf(project, taskID, func(t *models.Task) {
 		assignSection(t, section)
-		if section != "" && section != removeCustomSectionSentinel {
+		if section != "" {
 			project.EnsureSection(section)
 		}
 	})
@@ -350,49 +350,6 @@ func applySectionChange(pf persistFn, project *models.Project, taskID string, se
 		sectionName = "Active"
 	}
 	result.StatusMessage = fmt.Sprintf("Moved to %s (u to undo)", sectionName)
-	result.Cmd = func() tea.Msg { return TaskPropertyChangedMsg{Task: task} }
-	return result
-}
-
-// applyCustomSectionChange sets or clears a custom section on a task.
-func applyCustomSectionChange(pf persistFn, project *models.Project, taskID string, section string) TaskOpResult {
-	if project == nil {
-		return TaskOpResult{Err: errNilProject}
-	}
-	task := project.GetTaskByID(taskID)
-	if task == nil {
-		return TaskOpResult{StatusMessage: "Task no longer exists in project"}
-	}
-	if section != "" {
-		if models.IsGTDSection(section) {
-			return TaskOpResult{Err: fmt.Errorf("built-in GTD section %q is not a custom section", section)}
-		}
-		if err := models.ValidateSectionName(section); err != nil {
-			return TaskOpResult{Err: err}
-		}
-	}
-	if section == "" && task.CustomSection == "" {
-		return TaskOpResult{}
-	}
-	if section == task.CustomSection && task.Section == "" {
-		return TaskOpResult{}
-	}
-
-	result := pf(project, taskID, func(t *models.Task) {
-		t.SetCustomSection(section)
-		if section != "" {
-			project.EnsureSection(section)
-		}
-	})
-	if result.Err != nil || result.StatusMessage != "" {
-		return result
-	}
-
-	if section == "" {
-		result.StatusMessage = "Custom section cleared (u to undo)"
-	} else {
-		result.StatusMessage = fmt.Sprintf("Custom section → %s (u to undo)", section)
-	}
 	result.Cmd = func() tea.Msg { return TaskPropertyChangedMsg{Task: task} }
 	return result
 }

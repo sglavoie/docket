@@ -92,11 +92,7 @@ func (m *AppModel) handleTaskCreated(msg TaskCreatedMsg) (bool, tea.Cmd) {
 
 	// Set status message showing section
 	if msg.Task != nil && msg.Task.Section != "" {
-		if msg.Task.CustomSection != "" {
-			m.setSuccessStatus(fmt.Sprintf("Created in %s (%s)", msg.Task.Section, msg.Task.CustomSection))
-		} else {
-			m.setSuccessStatus(fmt.Sprintf("Created in %s", msg.Task.Section))
-		}
+		m.setSuccessStatus(fmt.Sprintf("Created in %s", msg.Task.Section))
 	}
 
 	// Override with onboarding next-step hint when this was the first task captured

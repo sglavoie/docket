@@ -34,12 +34,9 @@ func (m *ProjectTreeModel) calculateFilterCounts() {
 		if task.IsDueThisWeek() {
 			counts["thisWeek"]++
 		}
-		// Count by section (check both GTD and custom section fields)
+		// Count by section
 		if task.Section != "" {
 			counts["section:"+task.Section]++
-		}
-		if task.CustomSection != "" {
-			counts["section:"+task.CustomSection]++
 		}
 		// Count by tag
 		for _, tag := range task.Tags {
@@ -79,11 +76,8 @@ func (m *ProjectTreeModel) calculateFilterCounts() {
 func (m *ProjectTreeModel) countChildrenBySection(task *models.Task) map[string]int {
 	counts := make(map[string]int)
 	for _, child := range task.Children {
-		section := child.CustomSection
-		if section == "" {
-			section = child.Section
-		}
-		if section == "" {
+		section := child.Section
+		if section == "" || !models.IsGTDSection(section) {
 			section = "Active"
 		}
 		counts[section]++

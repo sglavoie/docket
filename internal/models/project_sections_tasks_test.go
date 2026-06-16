@@ -9,24 +9,24 @@ func TestProjectRemoveSection(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	project.Sections = []string{SectionNext, "Active", "Done"}
+	project.Sections = []string{SectionNext, "Legacy", "Other"}
 
-	// Create tasks in Active section
+	// Create tasks in a stale legacy section
 	task1, err := NewTask("1", 1, TaskTypeTask, "Task 1")
 	if err != nil {
 		t.Fatal(err)
 	}
-	task1.Section = "Active"
+	task1.Section = "Legacy"
 	task2, err := NewTask("2", 2, TaskTypeTask, "Task 2")
 	if err != nil {
 		t.Fatal(err)
 	}
-	task2.Section = "Active"
+	task2.Section = "Legacy"
 	task3, err := NewTask("3", 3, TaskTypeTask, "Task 3")
 	if err != nil {
 		t.Fatal(err)
 	}
-	task3.Section = "Done"
+	task3.Section = "Other"
 	project.Tasks = []*Task{task1, task2, task3}
 
 	// Cannot remove Next
@@ -34,12 +34,12 @@ func TestProjectRemoveSection(t *testing.T) {
 		t.Error("should not be able to remove Next")
 	}
 
-	// Remove Active - should clear section from tasks
-	if !project.RemoveSection("Active") {
-		t.Error("should be able to remove Active")
+	// Remove Legacy - should clear section from tasks
+	if !project.RemoveSection("Legacy") {
+		t.Error("should be able to remove Legacy")
 	}
-	if project.HasSection("Active") {
-		t.Error("Active should be removed")
+	if project.HasSection("Legacy") {
+		t.Error("Legacy should be removed")
 	}
 	if task1.Section != "" {
 		t.Errorf("task1 section should be cleared, got %s", task1.Section)
@@ -47,8 +47,8 @@ func TestProjectRemoveSection(t *testing.T) {
 	if task2.Section != "" {
 		t.Errorf("task2 section should be cleared, got %s", task2.Section)
 	}
-	if task3.Section != "Done" {
-		t.Errorf("task3 section should still be Done, got %s", task3.Section)
+	if task3.Section != "Other" {
+		t.Errorf("task3 section should still be Other, got %s", task3.Section)
 	}
 
 	// Removing non-existent section returns false
@@ -62,19 +62,19 @@ func TestProjectRenameSection(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	project.Sections = []string{SectionNext, "Active", "Done"}
+	project.Sections = []string{SectionNext, "Legacy", SectionWaiting}
 
-	// Create tasks in Active section
+	// Create tasks in a stale legacy section
 	task1, err := NewTask("1", 1, TaskTypeTask, "Task 1")
 	if err != nil {
 		t.Fatal(err)
 	}
-	task1.Section = "Active"
+	task1.Section = "Legacy"
 	task2, err := NewTask("2", 2, TaskTypeTask, "Task 2")
 	if err != nil {
 		t.Fatal(err)
 	}
-	task2.Section = "Done"
+	task2.Section = SectionWaiting
 	project.Tasks = []*Task{task1, task2}
 
 	// Cannot rename Next
@@ -83,25 +83,19 @@ func TestProjectRenameSection(t *testing.T) {
 	}
 
 	// Cannot rename to empty string
-	if err := project.RenameSection("Active", ""); err == nil {
+	if err := project.RenameSection("Legacy", ""); err == nil {
 		t.Error("should not be able to rename to empty string")
 	}
 
-	// Rename Active to InProgress
-	if err := project.RenameSection("Active", "InProgress"); err != nil {
-		t.Errorf("should be able to rename Active to InProgress: %v", err)
+	// Cannot rename to a non-GTD section.
+	if err := project.RenameSection("Legacy", "InProgress"); err == nil {
+		t.Error("should not be able to rename to non-GTD section")
 	}
-	if project.HasSection("Active") {
-		t.Error("Active should no longer exist")
+	if task1.Section != "Legacy" {
+		t.Errorf("task1 section should remain Legacy, got %s", task1.Section)
 	}
-	if !project.HasSection("InProgress") {
-		t.Error("InProgress should exist")
-	}
-	if task1.Section != "InProgress" {
-		t.Errorf("task1 section should be InProgress, got %s", task1.Section)
-	}
-	if task2.Section != "Done" {
-		t.Errorf("task2 section should still be Done, got %s", task2.Section)
+	if task2.Section != SectionWaiting {
+		t.Errorf("task2 section should still be Waiting, got %s", task2.Section)
 	}
 
 	// Renaming non-existent section returns error

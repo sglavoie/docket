@@ -124,11 +124,10 @@ func newStorageFixedPointProject(t *testing.T, projectPath, peerSlug string) *mo
 		models.SectionReview,
 		models.SectionStandby,
 		models.SectionCompleted,
-		"Focus Queue",
 	}
 	project.SectionColors = map[string]string{
-		models.SectionInbox: "blue",
-		"Focus Queue":       "orange",
+		models.SectionInbox:   "blue",
+		models.SectionWaiting: "orange",
 	}
 
 	epic, err := models.NewTask("epic-fixed", 1, models.TaskTypeEpic, "Storage invariants")
@@ -174,7 +173,7 @@ func newStorageFixedPointProject(t *testing.T, projectPath, peerSlug string) *mo
 	task.Priority = 2
 	task.CreatedAt = base.Add(5 * time.Hour)
 	task.UpdatedAt = base.Add(10 * time.Hour)
-	task.SetSection("Focus Queue")
+	task.Section = models.SectionWaiting
 	task.DueDate = &dueAt
 	task.HasTime = true
 	task.StartDate = &startDate
@@ -337,7 +336,6 @@ func assertTaskCoreFields(t *testing.T, got, want *models.Task) {
 	assertTaskStringPtrField(t, want.ID, "ParentID", got.ParentID, want.ParentID)
 	assertTaskDeepEqualField(t, want.ID, "Tags", got.Tags, want.Tags)
 	assertTaskComparableField(t, want.ID, "Section", got.Section, want.Section)
-	assertTaskComparableField(t, want.ID, "CustomSection", got.CustomSection, want.CustomSection)
 }
 
 func assertTaskScheduleFields(t *testing.T, got, want *models.Task) {

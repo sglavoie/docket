@@ -2,7 +2,7 @@ package models
 
 import "testing"
 
-func TestMoveTaskToProjectPreservesSectionsIfExist(t *testing.T) {
+func TestMoveTaskToProjectPreservesGTDSectionsAndResetsNonGTDSections(t *testing.T) {
 	sourceProj, err := NewProject("source", "Source Project", "/tmp/source")
 	if err != nil {
 		t.Fatal(err)
@@ -12,20 +12,20 @@ func TestMoveTaskToProjectPreservesSectionsIfExist(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	sourceProj.Sections = []string{SectionNext, "InProgress", "CustomSection"}
-	destProj.Sections = []string{SectionNext, "InProgress"}
+	sourceProj.Sections = []string{SectionNext, SectionInbox}
+	destProj.Sections = []string{SectionNext, SectionInbox}
 
 	task1, err := NewTask("task1", 1, TaskTypeTask, "Task 1")
 	if err != nil {
 		t.Fatal(err)
 	}
-	task1.Section = "InProgress"
+	task1.Section = SectionInbox
 
 	task2, err := NewTask("task2", 2, TaskTypeTask, "Task 2")
 	if err != nil {
 		t.Fatal(err)
 	}
-	task2.Section = "CustomSection"
+	task2.Section = "LegacyBoard"
 
 	sourceProj.Tasks = []*Task{task1, task2}
 	sourceProj.BuildTaskTree()
@@ -34,8 +34,8 @@ func TestMoveTaskToProjectPreservesSectionsIfExist(t *testing.T) {
 	if err != nil {
 		t.Fatalf("MoveTaskToProject failed: %v", err)
 	}
-	if task1.Section != "InProgress" {
-		t.Errorf("expected task1 to keep 'InProgress' section, got %s", task1.Section)
+	if task1.Section != SectionInbox {
+		t.Errorf("expected task1 to keep Inbox section, got %s", task1.Section)
 	}
 
 	result2, err := sourceProj.MoveTaskToProject(task2, destProj)
@@ -48,41 +48,6 @@ func TestMoveTaskToProjectPreservesSectionsIfExist(t *testing.T) {
 
 	if len(result1.MovedTasks) != 1 || len(result2.MovedTasks) != 1 {
 		t.Error("expected each move to report 1 moved task")
-	}
-}
-
-func TestMoveTaskToProjectEnsuresCustomSectionInDest(t *testing.T) {
-	sourceProj, err := NewProject("source", "Source Project", "/tmp/source")
-	if err != nil {
-		t.Fatal(err)
-	}
-	destProj, err := NewProject("dest", "Dest Project", "/tmp/dest")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	sourceProj.Sections = []string{SectionNext, "Sprint-1"}
-	destProj.Sections = []string{SectionNext}
-
-	task, err := NewTask("task1", 1, TaskTypeTask, "Task with custom section")
-	if err != nil {
-		t.Fatal(err)
-	}
-	task.CustomSection = "Sprint-1"
-
-	sourceProj.Tasks = []*Task{task}
-	sourceProj.BuildTaskTree()
-
-	_, err = sourceProj.MoveTaskToProject(task, destProj)
-	if err != nil {
-		t.Fatalf("MoveTaskToProject failed: %v", err)
-	}
-
-	if task.CustomSection != "Sprint-1" {
-		t.Errorf("expected custom section preserved, got %q", task.CustomSection)
-	}
-	if !destProj.HasSection("Sprint-1") {
-		t.Error("expected destination project to have 'Sprint-1' section after move")
 	}
 }
 

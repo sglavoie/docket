@@ -57,6 +57,28 @@ func TestProjectTreeView_BasicRender(t *testing.T) {
 	}
 }
 
+func TestProjectTreePinnedTagTabFiltersByTag(t *testing.T) {
+	backendTask := newTestProjectTreeTask(t, "Backend task")
+	backendTask.Tags = []string{"backend"}
+	frontendTask := newTestProjectTreeTask(t, "Frontend task")
+	frontendTask.Tags = []string{"frontend"}
+	project := newTestProjectTreeProject(t, "Test Project", []*models.Task{backendTask, frontendTask})
+	project.PinnedTags = []string{"backend"}
+	project.BuildTaskTree()
+
+	m := NewProjectTreeModel(project, newTestProjectTreeConfig(), nil)
+	m.pinnedTagTab = 1
+	m.updateVisibility()
+
+	visible := m.visibleNodes()
+	if len(visible) != 1 || visible[0].Task.ID != backendTask.ID {
+		t.Fatalf("visible nodes = %#v, want only backend task", visible)
+	}
+	if got := m.activePinnedTagFilter(); got != "backend" {
+		t.Fatalf("activePinnedTagFilter() = %q, want backend", got)
+	}
+}
+
 func TestProjectTreeView_EmptyProject(t *testing.T) {
 	project := newTestProjectTreeProject(t, "Empty Project", nil)
 	cfg := newTestProjectTreeConfig()
@@ -161,7 +183,7 @@ func TestProjectTreeView_FilterState(t *testing.T) {
 	}
 }
 
-func TestNavigateToTaskClearsStaleCustomSectionTab(t *testing.T) {
+func TestNavigateToTaskResetsStalePinnedTagTab(t *testing.T) {
 	activeTask := newTestProjectTreeTask(t, "Active task")
 	customTask := newTestProjectTreeTask(t, "Custom task")
 	customTask.SetSection("Sprint-1")
@@ -171,13 +193,13 @@ func TestNavigateToTaskClearsStaleCustomSectionTab(t *testing.T) {
 	project.BuildTaskTree()
 
 	m := NewProjectTreeModel(project, newTestProjectTreeConfig(), nil)
-	m.customSectionTab = 1
+	m.pinnedTagTab = 1
 	m.updateVisibility()
 
 	cmd := m.NavigateToTask(activeTask)
 
-	if m.customSectionTab != 0 {
-		t.Fatalf("expected custom section tab reset to All, got %d", m.customSectionTab)
+	if m.pinnedTagTab != 0 {
+		t.Fatalf("expected stale pinned tag tab to reset to All, got %d", m.pinnedTagTab)
 	}
 	if m.viewMode != ViewModeActive {
 		t.Fatalf("expected Active view, got %v", m.viewMode)
@@ -186,19 +208,12 @@ func TestNavigateToTaskClearsStaleCustomSectionTab(t *testing.T) {
 	if len(visible) == 0 || visible[m.cursor].Task.ID != activeTask.ID {
 		t.Fatalf("expected cursor on active task, got %#v", visible)
 	}
-	if cmd == nil {
-		t.Fatal("expected status command when clearing a stale custom section tab")
-	}
-	if msg := cmd(); msg != nil {
-		if _, ok := msg.(InfoStatusMsg); !ok {
-			t.Fatalf("expected InfoStatusMsg, got %T", msg)
-		}
-	} else {
-		t.Fatal("expected InfoStatusMsg, got nil")
+	if cmd != nil {
+		t.Fatalf("expected no status command when stale tab is ignored, got %T", cmd())
 	}
 }
 
-func TestNavigateToTaskCustomSectionUsesAllViewAndMatchingTab(t *testing.T) {
+func TestNavigateToTaskNonGTDSectionUsesActiveView(t *testing.T) {
 	activeTask := newTestProjectTreeTask(t, "Active task")
 	sprintOneTask := newTestProjectTreeTask(t, "Sprint one")
 	sprintOneTask.SetSection("Sprint-1")
@@ -212,26 +227,23 @@ func TestNavigateToTaskCustomSectionUsesAllViewAndMatchingTab(t *testing.T) {
 
 	m := NewProjectTreeModel(project, newTestProjectTreeConfig(), nil)
 	m.viewMode = ViewModeInbox
-	m.customSectionTab = 2
+	m.pinnedTagTab = 2
 	m.updateVisibility()
 
 	cmd := m.NavigateToTask(sprintOneTask)
 
-	if m.viewMode != ViewModeAll {
-		t.Fatalf("expected All view for custom-section navigation, got %v", m.viewMode)
+	if m.viewMode != ViewModeActive {
+		t.Fatalf("expected Active view for non-GTD section navigation, got %v", m.viewMode)
 	}
-	if m.customSectionTab != 1 {
-		t.Fatalf("expected Sprint-1 tab index 1, got %d", m.customSectionTab)
+	if m.pinnedTagTab != 0 {
+		t.Fatalf("expected custom tab reset to All, got %d", m.pinnedTagTab)
 	}
 	visible := m.visibleNodes()
-	if len(visible) != 1 || visible[0].Task.ID != sprintOneTask.ID {
-		t.Fatalf("expected only Sprint-1 task visible, got %#v", visible)
-	}
-	if m.cursor != 0 {
-		t.Fatalf("expected cursor at first visible row, got %d", m.cursor)
+	if len(visible) != 3 || visible[m.cursor].Task.ID != sprintOneTask.ID {
+		t.Fatalf("expected all active tasks visible with cursor on Sprint one, got cursor=%d nodes=%#v", m.cursor, visible)
 	}
 	if cmd == nil {
-		t.Fatal("expected status command when changing custom section filters")
+		t.Fatal("expected status command when changing filters")
 	}
 	if msg := cmd(); msg != nil {
 		if _, ok := msg.(InfoStatusMsg); !ok {

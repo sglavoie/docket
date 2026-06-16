@@ -64,9 +64,7 @@ func (m *FocusBoardModel) loadItems() {
 			m.allRows = append(m.allRows, row)
 
 			// Collect Next-section tasks (empty section defaults to Next).
-			// Exclude tasks with a custom section — they belong to that
-			// custom section, not "Next", even though task.Section is "".
-			if task.CustomSection == "" && (task.Section == "" || task.Section == models.SectionNext) {
+			if task.Section == "" || task.Section == models.SectionNext {
 				m.nextRows = append(m.nextRows, row)
 			}
 

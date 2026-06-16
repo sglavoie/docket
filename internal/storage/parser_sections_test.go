@@ -7,7 +7,7 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 )
 
-func TestParseTasksMarkdownWithSections_DefaultBacklog(t *testing.T) {
+func TestParseTasksMarkdownWithSections_DefaultNext(t *testing.T) {
 	content := `# Project: Test Project
 
 ## Task: My Task
@@ -29,7 +29,7 @@ func TestParseTasksMarkdownWithSections_DefaultBacklog(t *testing.T) {
 
 func TestParseTasksMarkdownWithSections_ExplicitSections(t *testing.T) {
 	content := `# Project: Test Project
-<!-- sections: Backlog;Active;Review;Done -->
+<!-- sections: Next;Inbox;Review;Completed -->
 
 ## Task: My Task
 <!-- id: task1, status: todo, priority: 3 -->
@@ -39,7 +39,7 @@ func TestParseTasksMarkdownWithSections_ExplicitSections(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	expectedSections := []string{"Backlog", "Active", "Review", "Done"}
+	expectedSections := []string{models.SectionNext, models.SectionInbox, models.SectionReview, models.SectionCompleted}
 	if len(result.Sections) != len(expectedSections) {
 		t.Errorf("expected %d sections, got %d", len(expectedSections), len(result.Sections))
 	}
@@ -57,7 +57,7 @@ func TestParseTasksMarkdownWithSections_SectionsAfterTaskIgnored(t *testing.T) {
 ## Task: My Task
 <!-- id: task1, status: todo, priority: 3 -->
 
-<!-- sections: Backlog;Active;Done -->
+<!-- sections: Next;Inbox;Completed -->
 `
 	result, err := ParseTasksMarkdownWithSections(content)
 	if err != nil {
@@ -75,10 +75,10 @@ func TestParseTasksMarkdownWithSections_SectionsAfterTaskIgnored(t *testing.T) {
 
 func TestParseTasksMarkdownWithSections_TaskWithSection(t *testing.T) {
 	content := `# Project: Test Project
-<!-- sections: Backlog;Active;Done -->
+<!-- sections: Next;Inbox;Completed -->
 
 ## Task: My Task
-<!-- id: task1, status: todo, priority: 3, section: Active -->
+<!-- id: task1, status: todo, priority: 3, section: Next -->
 
 Description here.
 `
@@ -91,8 +91,8 @@ Description here.
 		t.Fatalf("expected 1 task, got %d", len(result.Tasks))
 	}
 
-	if result.Tasks[0].CustomSection != "Active" {
-		t.Errorf("expected task custom section 'Active', got '%s'", result.Tasks[0].CustomSection)
+	if result.Tasks[0].Section != models.SectionNext {
+		t.Errorf("expected task section Next, got '%s'", result.Tasks[0].Section)
 	}
 }
 
@@ -101,9 +101,9 @@ func TestWriteTasksMarkdownWithSections(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	task.CustomSection = "Active"
+	task.Section = models.SectionNext
 	tasks := []*models.Task{task}
-	sections := []string{"Backlog", "Active", "Done"}
+	sections := []string{models.SectionNext, models.SectionInbox, models.SectionWaiting}
 
 	content := WriteTasksMarkdownWithSections("Test Project", tasks, sections, nil)
 
@@ -113,13 +113,12 @@ func TestWriteTasksMarkdownWithSections(t *testing.T) {
 	}
 
 	// Check sections metadata
-	if !strings.Contains(content, "<!-- sections: Backlog;Active;Done -->") {
+	if !strings.Contains(content, "<!-- sections: Next;Inbox;Waiting -->") {
 		t.Error("content should contain sections metadata")
 	}
 
-	// Check task custom section
-	if !strings.Contains(content, "custom_section: Active") {
-		t.Error("content should contain task custom_section")
+	if !strings.Contains(content, "section: Next") {
+		t.Error("content should contain task section")
 	}
 }
 
@@ -146,24 +145,24 @@ func TestWriteTasksMarkdownWithSections_EmptySections(t *testing.T) {
 }
 
 func TestSectionsRoundTrip(t *testing.T) {
-	task1, err := models.NewTask("task1", 1, models.TaskTypeTask, "Task in Active")
+	task1, err := models.NewTask("task1", 1, models.TaskTypeTask, "Task in Next")
 	if err != nil {
 		t.Fatal(err)
 	}
-	task1.CustomSection = "Active"
-	task2, err := models.NewTask("task2", 2, models.TaskTypeTask, "Task in Backlog")
+	task1.Section = models.SectionNext
+	task2, err := models.NewTask("task2", 2, models.TaskTypeTask, "Task in Inbox")
 	if err != nil {
 		t.Fatal(err)
 	}
-	task2.CustomSection = "Backlog"
-	task3, err := models.NewTask("task3", 3, models.TaskTypeTask, "Task in Done")
+	task2.Section = models.SectionInbox
+	task3, err := models.NewTask("task3", 3, models.TaskTypeTask, "Task in Waiting")
 	if err != nil {
 		t.Fatal(err)
 	}
-	task3.CustomSection = "Done"
+	task3.Section = models.SectionWaiting
 
 	tasks := []*models.Task{task1, task2, task3}
-	sections := []string{"Backlog", "Active", "Review", "Done"}
+	sections := []string{models.SectionNext, models.SectionInbox, models.SectionReview, models.SectionWaiting}
 
 	// Write to markdown
 	content := WriteTasksMarkdownWithSections("Round Trip Test", tasks, sections, nil)
@@ -194,14 +193,14 @@ func TestSectionsRoundTrip(t *testing.T) {
 		t.Fatalf("expected 3 tasks, got %d", len(result.Tasks))
 	}
 
-	if result.Tasks[0].CustomSection != "Active" {
-		t.Errorf("task1 custom section should be Active, got %s", result.Tasks[0].CustomSection)
+	if result.Tasks[0].Section != models.SectionNext {
+		t.Errorf("task1 section should be Next, got %s", result.Tasks[0].Section)
 	}
-	if result.Tasks[1].CustomSection != "Backlog" {
-		t.Errorf("task2 custom section should be Backlog, got %s", result.Tasks[1].CustomSection)
+	if result.Tasks[1].Section != models.SectionInbox {
+		t.Errorf("task2 section should be Inbox, got %s", result.Tasks[1].Section)
 	}
-	if result.Tasks[2].CustomSection != "Done" {
-		t.Errorf("task3 custom section should be Done, got %s", result.Tasks[2].CustomSection)
+	if result.Tasks[2].Section != models.SectionWaiting {
+		t.Errorf("task3 section should be Waiting, got %s", result.Tasks[2].Section)
 	}
 }
 
@@ -210,28 +209,27 @@ func TestSectionColorsRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	task.CustomSection = "Active"
+	task.Section = models.SectionInbox
 	tasks := []*models.Task{task}
-	sections := []string{"Backlog", "Active", "Done"}
+	sections := []string{models.SectionNext, models.SectionInbox, models.SectionReview, "Legacy"}
 	colors := map[string]string{
-		"Active":  "green",
-		"Done":    "blue",
-		"Backlog": "gray",
+		models.SectionInbox:  "green",
+		models.SectionReview: "blue",
+		"Legacy":             "gray",
 	}
 
 	// Write to markdown with colors
 	content := WriteTasksMarkdownWithSections("Color Test", tasks, sections, colors)
 
 	// Check that colors are in the output
-	if !strings.Contains(content, "Active:green") {
-		t.Error("content should contain Active:green")
+	if !strings.Contains(content, "Inbox:green") {
+		t.Error("content should contain Inbox:green")
 	}
-	if !strings.Contains(content, "Done:blue") {
-		t.Error("content should contain Done:blue")
+	if !strings.Contains(content, "Review:blue") {
+		t.Error("content should contain Review:blue")
 	}
-	// Gray should now be preserved in the output
-	if !strings.Contains(content, "Backlog:gray") {
-		t.Error("content should contain Backlog:gray (gray color should be preserved)")
+	if strings.Contains(content, "Legacy:gray") {
+		t.Error("content should not contain non-GTD Legacy section color")
 	}
 
 	// Parse back
@@ -241,14 +239,14 @@ func TestSectionColorsRoundTrip(t *testing.T) {
 	}
 
 	// Check section colors
-	if result.SectionColors["Active"] != "green" {
-		t.Errorf("Active color should be green, got %s", result.SectionColors["Active"])
+	if result.SectionColors[models.SectionInbox] != "green" {
+		t.Errorf("Inbox color should be green, got %s", result.SectionColors[models.SectionInbox])
 	}
-	if result.SectionColors["Done"] != "blue" {
-		t.Errorf("Done color should be blue, got %s", result.SectionColors["Done"])
+	if result.SectionColors[models.SectionReview] != "blue" {
+		t.Errorf("Review color should be blue, got %s", result.SectionColors[models.SectionReview])
 	}
-	if result.SectionColors["Backlog"] != "gray" {
-		t.Errorf("Backlog color should be gray, got %s", result.SectionColors["Backlog"])
+	if _, ok := result.SectionColors["Legacy"]; ok {
+		t.Errorf("Legacy color should be filtered, got %s", result.SectionColors["Legacy"])
 	}
 }
 
@@ -258,8 +256,8 @@ func TestParseTasksMarkdownWithSections_DeduplicatesSectionNames(t *testing.T) {
 	// in the returned Sections slice. Downstream UI assumes unique section
 	// names, and a duplicate would render the same tab twice.
 	content := `# Project: Dedup Test
-<!-- sections: Backlog;Active;Backlog;Done -->
-<!-- sections: Done;Review -->
+<!-- sections: Next;Inbox;Next;Completed -->
+<!-- sections: Completed;Review -->
 
 ## Task: T
 <!-- id: t1, status: todo, priority: 2 -->
@@ -269,9 +267,32 @@ func TestParseTasksMarkdownWithSections_DeduplicatesSectionNames(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	expected := []string{"Backlog", "Active", "Done", "Review"}
+	expected := []string{models.SectionNext, models.SectionInbox, models.SectionCompleted, models.SectionReview}
 	if len(result.Sections) != len(expected) {
 		t.Fatalf("expected %d unique sections, got %d (%v)", len(expected), len(result.Sections), result.Sections)
+	}
+	for i, want := range expected {
+		if result.Sections[i] != want {
+			t.Errorf("section %d: expected %q, got %q", i, want, result.Sections[i])
+		}
+	}
+}
+
+func TestParseTasksMarkdownWithSections_FiltersNonGTDSections(t *testing.T) {
+	content := `# Project: GTD Filter Test
+<!-- sections: Backlog;Next;Active;Inbox;Done;Completed -->
+
+## Task: T
+<!-- id: t1, status: todo, priority: 2 -->
+`
+	result, err := ParseTasksMarkdownWithSections(content)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	expected := []string{models.SectionNext, models.SectionInbox, models.SectionCompleted}
+	if len(result.Sections) != len(expected) {
+		t.Fatalf("expected %d sections, got %d (%v)", len(expected), len(result.Sections), result.Sections)
 	}
 	for i, want := range expected {
 		if result.Sections[i] != want {

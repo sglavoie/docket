@@ -20,13 +20,13 @@ func TestWrapPreviewText(t *testing.T) {
 		},
 		{
 			name:     "long text wraps at separator",
-			input:    "Very long task title that should wrap · !1 · #important · #urgent · @Feb 15 · /Active",
+			input:    "Very long task title that should wrap · !1 · #important · #urgent · @Feb 15 · /Next",
 			width:    40,
 			wantWrap: true,
 		},
 		{
 			name:     "very long text multiple wraps",
-			input:    "Super duper extra long task title with many tags and metadata · !1 · #tag1 · #tag2 · #tag3 · @Feb 15 · ~weekly · /Active",
+			input:    "Super duper extra long task title with many tags and metadata · !1 · #tag1 · #tag2 · #tag3 · @Feb 15 · ~weekly · /Next",
 			width:    30,
 			wantWrap: true,
 		},

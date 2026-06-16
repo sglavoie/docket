@@ -266,42 +266,13 @@ func finalizeParsedMetadata(task *models.Task, state *metadataParseState, warnin
 	}
 
 	if task.Section != "" && !models.IsGTDSection(task.Section) {
-		if task.CustomSection == "" {
-			// Migrate non-GTD section value to CustomSection.
-			task.CustomSection = task.Section
-		} else {
-			// Both a non-GTD Section and a CustomSection were present. We
-			// must clear Section (downstream code treats non-GTD values
-			// there as bugs) but we have no safe place to keep the
-			// Section value because CustomSection is already taken.
-			// Surface a DataCorrection warning instead of dropping the
-			// discarded value silently.
-			*warnings = append(*warnings, ParseWarning{
-				Type:  WarningDataCorrection,
-				Field: "section",
-				Message: fmt.Sprintf(
-					"task #%d had non-GTD section %q with conflicting custom_section %q; keeping custom_section and discarding section",
-					task.ShortID,
-					task.Section,
-					task.CustomSection,
-				),
-			})
-		}
-		// Clear the non-GTD value from Section regardless. When CustomSection
-		// is already set, it takes precedence; leaving a stale non-GTD value
-		// in Section would confuse downstream code that reads Section directly.
-		task.Section = ""
-	}
-
-	if task.Section != "" && task.CustomSection != "" {
 		*warnings = append(*warnings, ParseWarning{
 			Type:  WarningDataCorrection,
 			Field: "section",
 			Message: fmt.Sprintf(
-				"task #%d had both section %q and custom_section %q; keeping custom_section and clearing section",
+				"task #%d had non-GTD section %q; clearing section because custom grouping now uses tags",
 				task.ShortID,
 				task.Section,
-				task.CustomSection,
 			),
 		})
 		task.Section = ""

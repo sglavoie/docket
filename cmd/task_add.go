@@ -16,20 +16,19 @@ import (
 )
 
 var (
-	taskTypeFlag          string
-	taskParentFlag        string
-	taskPriority          int
-	taskTags              []string
-	taskSectionFlag       string
-	taskStageFlag         string
-	taskRecurFlag         string
-	taskAddFromFlag       string
-	taskTemplateFlag      string
-	isEpic                bool
-	isStory               bool
-	isBug                 bool
-	isIdea                bool
-	taskCreateSectionFlag bool
+	taskTypeFlag     string
+	taskParentFlag   string
+	taskPriority     int
+	taskTags         []string
+	taskSectionFlag  string
+	taskStageFlag    string
+	taskRecurFlag    string
+	taskAddFromFlag  string
+	taskTemplateFlag string
+	isEpic           bool
+	isStory          bool
+	isBug            bool
+	isIdea           bool
 
 	// Type-specific attribute flags (shared registration)
 	addTypeAttrs TypeAttrValues
@@ -82,7 +81,6 @@ func init() {
 	// Type-specific attribute flags
 	registerTypeAttrFlags(taskAddCmd, &addTypeAttrs)
 
-	taskAddCmd.Flags().BoolVar(&taskCreateSectionFlag, "create-section", false, "create the section if it does not exist")
 	addOutputFlags(taskAddCmd)
 
 	_ = taskAddCmd.RegisterFlagCompletionFunc("type", completeEnum(taskTypeCompletions))
@@ -194,21 +192,19 @@ func runTaskAdd(cmd *cobra.Command, args []string) error { //nolint:gocyclo
 	}
 
 	// Handle section (explicit flag overrides template, using Changed() for consistency).
-	// GTD sections (Next, Inbox, Waiting, etc.) go into task.Section; custom sections
-	// go into task.CustomSection. Without this distinction, workflow rules that match
-	// on section would see the wrong field until the next save/reload cycle.
+	// Sections are limited to built-in GTD buckets; flexible grouping lives in tags.
 	if cmd.Flags().Changed("section") {
-		if !project.HasSection(taskSectionFlag) {
-			if !taskCreateSectionFlag {
-				return fmt.Errorf("section %q not found; available: %v (use --create-section to create)", taskSectionFlag, project.GetSections())
-			}
-			if err := models.ValidateSectionName(taskSectionFlag); err != nil {
-				return err
-			}
+		if taskSectionFlag != "" && !models.IsGTDSection(taskSectionFlag) {
+			return fmt.Errorf("section %q is not a built-in GTD section; use tags for flexible grouping", taskSectionFlag)
+		}
+		if taskSectionFlag != "" {
 			project.EnsureSection(taskSectionFlag)
 		}
 		task.SetSection(taskSectionFlag)
 	} else if tmpl != nil && tmpl.Section != "" {
+		if !models.IsGTDSection(tmpl.Section) {
+			return fmt.Errorf("template section %q is not a built-in GTD section; use tags for flexible grouping", tmpl.Section)
+		}
 		project.EnsureSection(tmpl.Section)
 		task.SetSection(tmpl.Section)
 	}

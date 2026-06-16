@@ -130,9 +130,8 @@ func TestOutlinerSectionFoldPrefixAllMixedStateCollapsesAll(t *testing.T) {
 func TestOutlinerCollapsedBuiltInSectionKeepsCustomTasksUnderActive(t *testing.T) {
 	inboxTask := makeTask("inbox-1", "Inbox task", models.SectionInbox)
 	customTask := &models.Task{
-		ID:            "custom-1",
-		Title:         "Custom task",
-		CustomSection: "Sprint-1",
+		ID:    "custom-1",
+		Title: "Custom task",
 	}
 	project := &models.Project{
 		ID:       "project",
@@ -147,7 +146,7 @@ func TestOutlinerCollapsedBuiltInSectionKeepsCustomTasksUnderActive(t *testing.T
 
 	assertRowTitles(t, m.rows, []string{"[Inbox]", "[Active]", "Custom task"})
 	if m.collapsedSections["Sprint-1"] {
-		t.Fatalf("custom section should not have a collapsible header entry: %v", m.collapsedSections)
+		t.Fatalf("non-GTD section should not have a collapsible header entry: %v", m.collapsedSections)
 	}
 }
 

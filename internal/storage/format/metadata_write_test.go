@@ -46,17 +46,6 @@ func TestWriteMetadata(t *testing.T) {
 			want: "<!-- id: task-789, status: todo, priority: 2, section: Next -->",
 		},
 		{
-			name: "task with custom section",
-			task: &models.Task{
-				ID:            "task-790",
-				Type:          models.TaskTypeTask,
-				Status:        models.StatusTodo,
-				Priority:      2,
-				CustomSection: "Backend",
-			},
-			want: "<!-- id: task-790, status: todo, priority: 2, custom_section: Backend -->",
-		},
-		{
 			name: "task with dates",
 			task: &models.Task{
 				ID:        "task-1",
@@ -165,28 +154,5 @@ func TestWriteMetadata(t *testing.T) {
 				t.Errorf("WriteMetadata() = %q, want %q", got, tt.want)
 			}
 		})
-	}
-}
-
-func TestCustomSectionRoundTrip(t *testing.T) {
-	task := &models.Task{
-		ID:            "cs-1",
-		Type:          models.TaskTypeTask,
-		Status:        models.StatusTodo,
-		Priority:      2,
-		Section:       "",
-		CustomSection: "Backend",
-	}
-
-	metaStr := WriteMetadata(task)
-	parsed := &models.Task{}
-	content := metaStr[5 : len(metaStr)-4]
-	ParseMetadata(parsed, content)
-
-	if parsed.Section != "" {
-		t.Errorf("Section = %q, want empty", parsed.Section)
-	}
-	if parsed.CustomSection != "Backend" {
-		t.Errorf("CustomSection = %q, want %q", parsed.CustomSection, "Backend")
 	}
 }

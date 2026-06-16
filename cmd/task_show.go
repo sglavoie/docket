@@ -187,7 +187,6 @@ type taskShowJSONEntry struct {
 	ParentID        *string                   `json:"parent_id"`
 	Tags            []string                  `json:"tags"`
 	Section         string                    `json:"section"`
-	CustomSection   string                    `json:"custom_section,omitempty"`
 	CreatedAt       time.Time                 `json:"created_at"`
 	UpdatedAt       time.Time                 `json:"updated_at"`
 	CompletedAt     *time.Time                `json:"completed_at"`
@@ -270,7 +269,6 @@ func displayTaskShowJSON(task *models.Task) error {
 		ParentID:        task.ParentID,
 		Tags:            tags,
 		Section:         task.Section,
-		CustomSection:   task.CustomSection,
 		CreatedAt:       task.CreatedAt,
 		UpdatedAt:       task.UpdatedAt,
 		CompletedAt:     task.CompletedAt,

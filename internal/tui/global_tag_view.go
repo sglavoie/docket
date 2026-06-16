@@ -36,7 +36,11 @@ func (m *GlobalTagManagerModel) View() tea.View {
 				b.WriteString(m.renameInput.View())
 				b.WriteString("\n")
 			} else {
-				line := fmt.Sprintf("%s%s ", cursor, tag.Name)
+				pinMarker := "  "
+				if tag.Pinned {
+					pinMarker = "* "
+				}
+				line := fmt.Sprintf("%s%s%s ", cursor, pinMarker, tag.Name)
 				b.WriteString(style.Render(line))
 				countStr := fmt.Sprintf("(%d)", tag.TaskCount)
 				b.WriteString(TagManagerCountStyle.Render(countStr))
@@ -61,7 +65,7 @@ func (m *GlobalTagManagerModel) View() tea.View {
 	if m.renameMode {
 		footerHelp = "enter confirm · esc cancel"
 	} else if len(m.tags) > 0 {
-		footerHelp = "j/k nav · enter filter · r rename · Esc close"
+		footerHelp = "j/k nav · enter filter · p pin · r rename · Esc close"
 	} else {
 		footerHelp = "Esc close"
 	}

@@ -140,15 +140,15 @@ func TestBuildCrossProjectRowsAllGroupsEmpty(t *testing.T) {
 	}
 }
 
-func TestBuildCrossProjectRowsCustomSectionsUseActiveHeader(t *testing.T) {
+func TestBuildCrossProjectRowsNonGTDSectionsUseActiveHeader(t *testing.T) {
 	m := minimalOutliner()
 
-	customTask := &models.Task{ID: "ct1", Title: "Custom task", CustomSection: "Sprint-1"}
+	legacyTask := &models.Task{ID: "ct1", Title: "Legacy task", Section: "Sprint-1"}
 	activeTask := makeTask("at1", "Active task", "")
 
 	groups := []projectTasksGroup{{
 		projectID: "proj-1",
-		tasks:     []*models.Task{customTask, activeTask},
+		tasks:     []*models.Task{legacyTask, activeTask},
 	}}
 
 	m.buildCrossProjectRowsWithSectionHeaders(groups)
@@ -175,15 +175,15 @@ func TestBuildCrossProjectRowsCustomSectionsUseActiveHeader(t *testing.T) {
 	}
 }
 
-func TestBuildCrossProjectRowsCustomSectionPlacementUnderActive(t *testing.T) {
+func TestBuildCrossProjectRowsNonGTDSectionPlacementUnderActive(t *testing.T) {
 	m := minimalOutliner()
 
-	customTask := &models.Task{ID: "ct1", Title: "Custom task", CustomSection: "Sprint-1"}
+	legacyTask := &models.Task{ID: "ct1", Title: "Legacy task", Section: "Sprint-1"}
 	activeTask := makeTask("at1", "Active task", "")
 
 	groups := []projectTasksGroup{{
 		projectID: "proj-1",
-		tasks:     []*models.Task{customTask, activeTask},
+		tasks:     []*models.Task{legacyTask, activeTask},
 	}}
 
 	m.buildCrossProjectRowsWithSectionHeaders(groups)
@@ -198,29 +198,29 @@ func TestBuildCrossProjectRowsCustomSectionPlacementUnderActive(t *testing.T) {
 		}
 	}
 
-	if got := taskSections["Custom task"]; got != "" {
-		t.Errorf("Custom task should be under Active (empty), got %q", got)
+	if got := taskSections["Legacy task"]; got != "" {
+		t.Errorf("Legacy task should be under Active (empty), got %q", got)
 	}
 	if got := taskSections["Active task"]; got != "" {
 		t.Errorf("Active task should be under Active (empty), got %q", got)
 	}
 }
 
-func TestBuildCrossProjectRowsMultipleCustomSectionsDoNotAddHeaders(t *testing.T) {
+func TestBuildCrossProjectRowsMultipleNonGTDSectionsDoNotAddHeaders(t *testing.T) {
 	m := minimalOutliner()
 
 	groups := []projectTasksGroup{
 		{
 			projectID: "p1",
 			tasks: []*models.Task{
-				{ID: "t1", Title: "T1", CustomSection: "Zulu"},
+				{ID: "t1", Title: "T1"},
 				{ID: "t3", Title: "T3", Section: models.SectionInbox},
 			},
 		},
 		{
 			projectID: "p2",
 			tasks: []*models.Task{
-				{ID: "t2", Title: "T2", CustomSection: "Alpha"},
+				{ID: "t2", Title: "T2"},
 			},
 		},
 	}
@@ -245,17 +245,17 @@ func TestBuildCrossProjectRowsMultipleCustomSectionsDoNotAddHeaders(t *testing.T
 	}
 }
 
-func TestBuildCrossProjectRowsLegacyCustomSectionValueStaysVisible(t *testing.T) {
+func TestBuildCrossProjectRowsLegacyNonGTDSectionValueStaysVisible(t *testing.T) {
 	m := minimalOutliner()
 
 	groups := []projectTasksGroup{{
 		projectID: "proj-1",
 		tasks: []*models.Task{
-			{ID: "legacy", Title: "Legacy custom task", Section: "Sprint-1"},
+			{ID: "legacy", Title: "Legacy task", Section: "Sprint-1"},
 		},
 	}}
 
 	m.buildCrossProjectRowsWithSectionHeaders(groups)
 
-	assertRowTitles(t, m.rows, []string{"[Active]", "Legacy custom task"})
+	assertRowTitles(t, m.rows, []string{"[Active]", "Legacy task"})
 }

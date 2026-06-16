@@ -305,6 +305,7 @@ func (m *Manager) Load() (*Config, error) { //nolint:gocyclo
 	if config.SavedFilters == nil {
 		config.SavedFilters = []SavedFilter{}
 	}
+	config.normalizeGlobalPinnedTags()
 	normalizeKanbanSettings(&config.KanbanSettings)
 
 	// Filter out projects with missing required fields. A JSON `null` entry in

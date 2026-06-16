@@ -148,20 +148,14 @@ func rewriteMovedTaskRefs(t *Task, movedIDs map[string]bool) []string {
 // destSectionSet map is updated in place when sections are added to dest.
 func reassignTaskToDest(t *Task, dest *Project, destSectionSet map[string]bool, now time.Time) {
 	switch {
-	case t.Section != "" && !IsGTDSection(t.Section) && !destSectionSet[t.Section]:
-		// Non-GTD section missing from dest: reset to Next.
+	case t.Section != "" && !IsGTDSection(t.Section):
 		t.SetSection(SectionNext)
-	case t.Section != "" && IsGTDSection(t.Section) && !destSectionSet[t.Section]:
+	case t.Section != "" && !destSectionSet[t.Section]:
 		// GTD section preserved on the task, but dest.Sections may not
 		// enumerate it (e.g. dest was created without EnsureDefaultSections).
 		// Append so the bucket renders in UI listings derived from dest.Sections.
 		dest.EnsureSection(t.Section)
 		destSectionSet[t.Section] = true
-	}
-
-	if t.CustomSection != "" && !dest.HasSection(t.CustomSection) {
-		dest.EnsureSection(t.CustomSection)
-		destSectionSet[t.CustomSection] = true
 	}
 
 	t.UpdatedAt = now

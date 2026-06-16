@@ -14,24 +14,28 @@ var SectionOrder = []string{
 	models.SectionSomeday,
 }
 
-// BuildSectionOrder returns the canonical GTD section-header order. Custom
-// sections are surfaced as tabs, not as collapsible section headers.
+// BuildSectionOrder returns the canonical GTD section-header order. Pinned
+// tags are surfaced as tabs, not as collapsible section headers.
 func BuildSectionOrder(tasks []*models.Task) []string {
 	return sectionOrderCopy()
 }
 
 // BuildCrossProjectSectionOrder returns the canonical GTD section-header order
-// for aggregate rows. Cross-project custom sections are surfaced as tabs, not
+// for aggregate rows. Cross-project pinned tags are surfaced as tabs, not
 // as collapsible section headers.
 func BuildCrossProjectSectionOrder(groups []projectTasksGroup) []string {
 	return sectionOrderCopy()
 }
 
-// headerSectionForTask returns the GTD section used for collapsible section
-// headers. Custom-section tasks are grouped under Active (the empty section);
-// custom membership remains available through Task.InSection and tab filters.
+// headerSectionForTask returns the GTD section used for collapsible section headers.
 func headerSectionForTask(t *models.Task) string {
-	if t == nil || t.CustomSection != "" {
+	if t == nil {
+		return ""
+	}
+	if t.Section == "" {
+		return ""
+	}
+	if !models.IsGTDSection(t.Section) {
 		return ""
 	}
 	return t.Section

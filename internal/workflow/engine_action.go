@@ -176,26 +176,10 @@ func applyAction(task *models.Task, action RuleAction) bool { //nolint:gocyclo
 			return true
 		}
 	case ActionSetSection:
-		if models.IsGTDSection(action.Value) || action.Value == "" {
-			if task.Section != action.Value || task.CustomSection != "" {
-				task.SetSection(action.Value)
-				task.UpdatedAt = time.Now()
-				return true
-			}
-		} else {
-			if task.CustomSection != action.Value || task.Section != "" {
-				task.SetSection(action.Value)
-				// task.SetSection silently rejects invalid custom section
-				// names (whitespace, semicolons, colons, over-length, or
-				// case-variant GTD collisions). Re-check that the assignment
-				// actually took effect so we don't churn UpdatedAt or report
-				// a modification that never happened.
-				if task.CustomSection != action.Value {
-					return false
-				}
-				task.UpdatedAt = time.Now()
-				return true
-			}
+		if (models.IsGTDSection(action.Value) || action.Value == "") && task.Section != action.Value {
+			task.SetSection(action.Value)
+			task.UpdatedAt = time.Now()
+			return true
 		}
 	case ActionAddTag:
 		if !task.HasTag(action.Value) {

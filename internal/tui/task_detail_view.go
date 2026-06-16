@@ -265,9 +265,6 @@ func (m *TaskDetailModel) renderHeaderSection(width int) string {
 	content := renderTaskHeaderContent(m.task, m.project.HasIncompleteDependencies(m.task), true)
 
 	effectiveSection := m.task.Section
-	if effectiveSection == "" && m.task.CustomSection != "" {
-		effectiveSection = m.task.CustomSection
-	}
 	sectionColor := m.project.GetSectionColor(effectiveSection)
 
 	// Append section badge to the type/status/ID line (line index 1)

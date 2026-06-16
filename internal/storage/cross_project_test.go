@@ -175,14 +175,9 @@ func TestLoadProject_CrossProjectExistingDepPreserved(t *testing.T) {
 	}
 }
 
-// TestLoadProject_InvalidSectionReassignedToInbox verifies that a task whose
-// Section field contains a value not present in the project's section list is
-// reassigned to Inbox and a DataCorrection warning is emitted.
-//
-// When only section: has a non-GTD value (no custom_section:), ParseMetadata
-// migrates it to CustomSection. reassignUnknownSections then catches it if
-// the section name doesn't exist in the project.
-func TestLoadProject_InvalidSectionReassignedToInbox(t *testing.T) {
+// TestLoadProject_InvalidSectionCleared verifies that non-GTD section metadata
+// is cleared and a DataCorrection warning is emitted.
+func TestLoadProject_InvalidSectionCleared(t *testing.T) {
 	dir, cleanup := testutil.TempProjectDir(t)
 	defer cleanup()
 
@@ -192,11 +187,8 @@ func TestLoadProject_InvalidSectionReassignedToInbox(t *testing.T) {
 	}
 
 	taskID := uuid.New().String()
-	// Use section: with a non-GTD value and no custom_section:, so the
-	// migration moves it to CustomSection, then reassignUnknownSections
-	// detects the unknown custom section and reassigns to Inbox.
 	content := "# Project: Test Project\n" +
-		"<!-- sections: Next;Active -->\n\n" +
+		"<!-- sections: Next;Inbox -->\n\n" +
 		"## Task: Task With Gone Section\n" +
 		"<!-- id: " + taskID + ", status: todo, priority: 1, section: GoneSection -->\n"
 
@@ -221,28 +213,24 @@ func TestLoadProject_InvalidSectionReassignedToInbox(t *testing.T) {
 		t.Fatal("task not found in loaded project")
 	}
 
-	// Task section should have been reassigned to Inbox (custom_section cleared)
-	if task.Section != models.SectionInbox {
-		t.Errorf("expected task.Section to be reassigned to %q, got %q", models.SectionInbox, task.Section)
+	if task.Section != "" {
+		t.Errorf("expected task.Section to be cleared, got %q", task.Section)
 	}
 
-	// A DataCorrection warning about the invalid custom section should have been emitted
+	// A DataCorrection warning about the invalid section should have been emitted.
 	found := false
 	for _, w := range result.Warnings {
-		if w.Field == "custom_section" && w.TaskID == taskID {
+		if w.Field == "section" && w.TaskID == taskID {
 			found = true
 			break
 		}
 	}
 	if !found {
-		t.Error("expected a DataCorrection warning for invalid custom section, got none")
+		t.Error("expected a DataCorrection warning for invalid section, got none")
 	}
 }
 
-// TestLoadProject_NonGTDSectionClearedWhenCustomSectionPresent verifies that
-// when both section: (non-GTD) and custom_section: are set in metadata, the
-// non-GTD section: value is cleared and the explicit custom_section is honored.
-func TestLoadProject_NonGTDSectionClearedWhenCustomSectionPresent(t *testing.T) {
+func TestLoadProject_LegacySectionMetadataUnsupported(t *testing.T) {
 	dir, cleanup := testutil.TempProjectDir(t)
 	defer cleanup()
 
@@ -252,10 +240,11 @@ func TestLoadProject_NonGTDSectionClearedWhenCustomSectionPresent(t *testing.T) 
 	}
 
 	taskID := uuid.New().String()
+	legacyTaskSectionField := "custom" + "_section"
 	content := "# Project: Test Project\n" +
-		"<!-- sections: Next;Active -->\n\n" +
+		"<!-- sections: Next;Inbox -->\n\n" +
 		"## Task: Task With Both Sections\n" +
-		"<!-- id: " + taskID + ", status: todo, priority: 1, section: GoneSection, custom_section: Active -->\n"
+		"<!-- id: " + taskID + ", status: todo, priority: 1, section: GoneSection, " + legacyTaskSectionField + ": Active -->\n"
 
 	if err := os.WriteFile(filepath.Join(projectPath, "tasks.md"), []byte(content), 0644); err != nil {
 		t.Fatal(err)
@@ -278,13 +267,7 @@ func TestLoadProject_NonGTDSectionClearedWhenCustomSectionPresent(t *testing.T) 
 		t.Fatal("task not found in loaded project")
 	}
 
-	// The non-GTD section: value should have been cleared by ParseMetadata.
 	if task.Section != "" {
-		t.Errorf("expected task.Section to be empty (non-GTD value cleared), got %q", task.Section)
-	}
-
-	// The explicit custom_section: "Active" should be preserved (it exists in project sections).
-	if task.CustomSection != "Active" {
-		t.Errorf("expected task.CustomSection to be %q, got %q", "Active", task.CustomSection)
+		t.Errorf("expected task.Section to be empty after unsupported legacy metadata correction, got %q", task.Section)
 	}
 }

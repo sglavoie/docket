@@ -25,15 +25,15 @@ func makeTask(id, title, section string) *models.Task {
 	}
 }
 
-func setOutlinerCustomSectionTabByName(t *testing.T, m *OutlinerModel, name string) {
+func setOutlinerPinnedTagTabByName(t *testing.T, m *OutlinerModel, name string) {
 	t.Helper()
-	for i, tab := range m.customSectionTabs() {
+	for i, tab := range m.pinnedTagTabs() {
 		if tab == name {
-			m.setCustomSectionTabIndex(i)
+			m.setPinnedTagTabIndex(i)
 			return
 		}
 	}
-	t.Fatalf("custom section tab %q not found in %v", name, m.customSectionTabs())
+	t.Fatalf("pinned tag tab %q not found in %v", name, m.pinnedTagTabs())
 }
 
 // readCrossTestFile reads a file's contents for integration test assertions.

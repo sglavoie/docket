@@ -123,32 +123,26 @@ func TestRunTaskAdd(t *testing.T) {
 		}
 	})
 
-	t.Run("creates task with custom section in CustomSection field", func(t *testing.T) {
+	t.Run("rejects non-GTD section", func(t *testing.T) {
 		deps, project := setupTaskAddTest(t)
 		defer deps.Cleanup()
 
 		initialCount := len(project.Tasks)
 		taskSectionFlag = "Backlog"
-		taskCreateSectionFlag = true
 		_ = taskAddCmd.Flags().Set("section", "Backlog")
 		defer func() {
 			taskAddCmd.Flags().Lookup("section").Changed = false
 			taskSectionFlag = ""
-			taskCreateSectionFlag = false
 		}()
 
 		err := runTaskAdd(taskAddCmd, []string{"Backlog task"})
-		testutil.AssertNoError(t, err)
+		if err == nil {
+			t.Fatal("expected error for non-GTD section")
+		}
 
 		savedProject := deps.Repository.Projects[project.ID]
-		if len(savedProject.Tasks) != initialCount+1 {
-			t.Fatalf("expected %d tasks, got %d", initialCount+1, len(savedProject.Tasks))
-		}
-		task := savedProject.Tasks[len(savedProject.Tasks)-1]
-		testutil.AssertEqual(t, task.CustomSection, "Backlog")
-		testutil.AssertEqual(t, task.Section, "")
-		if !savedProject.HasSection("Backlog") {
-			t.Error("project should have 'Backlog' section after task creation")
+		if len(savedProject.Tasks) != initialCount {
+			t.Fatalf("expected %d tasks, got %d", initialCount, len(savedProject.Tasks))
 		}
 	})
 
@@ -175,7 +169,6 @@ func TestRunTaskAdd(t *testing.T) {
 		}
 		task := savedProject.Tasks[len(savedProject.Tasks)-1]
 		testutil.AssertEqual(t, task.Section, "Inbox")
-		testutil.AssertEqual(t, task.CustomSection, "")
 	})
 
 	t.Run("rejects invalid recurrence", func(t *testing.T) {

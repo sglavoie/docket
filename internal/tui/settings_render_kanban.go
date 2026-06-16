@@ -3,7 +3,7 @@ package tui
 import "strings"
 
 // renderKanbanTab renders the Kanban settings tab content.
-// Focus indices 94–104:
+// Focus indices 94-103:
 //
 //	94  Default Mode
 //	95  Default Start Column
@@ -14,8 +14,7 @@ import "strings"
 //	100 Enabled: Status
 //	101 Enabled: Priority
 //	102 Enabled: Stages
-//	103 Enabled: Custom Sections
-//	104 Enabled: Score Buckets
+//	103 Enabled: Score Buckets
 func (m *SettingsModel) renderKanbanTab() string {
 	var b strings.Builder
 	const labelWidth = 22

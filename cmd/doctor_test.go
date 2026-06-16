@@ -632,12 +632,11 @@ func TestRunDoctorFix_PersistsAutoRepairedDualSections(t *testing.T) {
 		t.Fatalf("MkdirAll(%q): %v", project.Path, err)
 	}
 
-	content := `# Project: Legacy Project
-<!-- sections: Next;Sprint-1 -->
-
-## Task: Legacy dual section
-<!-- id: task-1, status: todo, priority: 1, section: Next, custom_section: Sprint-1 -->
-`
+	legacyTaskSectionField := "custom" + "_section"
+	content := "# Project: Legacy Project\n" +
+		"<!-- sections: Next;Sprint-1 -->\n\n" +
+		"## Task: Legacy dual section\n" +
+		"<!-- id: task-1, status: todo, priority: 1, section: Next, " + legacyTaskSectionField + ": Sprint-1 -->\n"
 	if err := os.WriteFile(filepath.Join(project.Path, "tasks.md"), []byte(content), 0o644); err != nil {
 		t.Fatalf("WriteFile(tasks.md): %v", err)
 	}
@@ -680,8 +679,5 @@ func TestRunDoctorFix_PersistsAutoRepairedDualSections(t *testing.T) {
 	task := reloaded.Tasks[0]
 	if task.Section != "" {
 		t.Fatalf("task.Section = %q, want empty after persisted repair", task.Section)
-	}
-	if task.CustomSection != "Sprint-1" {
-		t.Fatalf("task.CustomSection = %q, want %q", task.CustomSection, "Sprint-1")
 	}
 }

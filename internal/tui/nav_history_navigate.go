@@ -141,7 +141,7 @@ func (m *AppModel) reconstructGlobalView(entry NavEntry) tea.Cmd {
 		m.globalInboxProcessor = processor
 		m.showView(ViewGlobalInboxProcessor, processor)
 	case ViewGlobalTagManager:
-		m.showView(ViewGlobalTagManager, NewGlobalTagManagerModel(m.config))
+		m.showView(ViewGlobalTagManager, NewGlobalTagManagerModel(m.config, m.configManager))
 	case ViewSettings:
 		m.showView(ViewSettings, NewSettingsModel(m.config, m.configManager))
 	case ViewWorkflowRules:

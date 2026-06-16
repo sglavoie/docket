@@ -92,7 +92,7 @@ func (m *AppModel) saveCrossOutlinerState() {
 	} else {
 		m.config.CrossOutlinerFilterAttrs = nil
 	}
-	m.config.CrossOutlinerCustomSectionTab = m.crossOutliner.activeCustomSectionFilter()
+	m.config.CrossOutlinerPinnedTagTab = m.crossOutliner.activePinnedTagFilter()
 
 	if err := m.configManager.Save(m.config); err != nil {
 		logging.Warn("failed to save cross-outliner state: %v", err)
@@ -166,6 +166,7 @@ func (m *AppModel) saveOutlinerFilterStateFrom(o *OutlinerModel) {
 	state.OutlinerSortAscending = o.sort.Ascending
 	state.OutlinerActivePerspective = o.activePerspective
 	state.OutlinerFilterBarEnabled = o.filterBar.IsEnabled()
+	state.PinnedTagTab = o.activePinnedTagFilter()
 
 	m.config.SetProjectViewState(o.project.ID, state)
 	if err := m.configManager.Save(m.config); err != nil {
@@ -212,7 +213,7 @@ func (m *AppModel) restoreOutlinerFilterStateTo(o *OutlinerModel) {
 	o.filter.Tags = validateSavedStringSet(state.OutlinerFilterTags, CollectTagNamesForProject(o.project))
 
 	// Restore sections - validate they still exist
-	o.filter.Sections = validateSavedStringSet(state.OutlinerFilterSections, o.project.GetSections())
+	o.filter.Sections = validateSavedStringSet(state.OutlinerFilterSections, gtdSections(o.project.GetSections()))
 
 	// Restore sort state
 	o.sort.Field = SortField(state.OutlinerSortField)
@@ -227,6 +228,8 @@ func (m *AppModel) restoreOutlinerFilterStateTo(o *OutlinerModel) {
 	if state.OutlinerActivePerspective != 0 || state.OutlinerSortField != 0 {
 		o.activePerspective = state.OutlinerActivePerspective
 	}
+
+	o.selectPinnedTagTab(state.PinnedTagTab)
 
 	// Restore section collapse state from disk if no in-memory cache exists
 	if _, hasCached := m.outlinerToggleStates[o.project.ID]; !hasCached && len(state.OutlinerCollapsedSections) > 0 {

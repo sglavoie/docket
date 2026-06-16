@@ -252,10 +252,10 @@ func initKanbanDetailHeight(h *int) int {
 	return v
 }
 
-// initKanbanEnabledModes converts a slice of mode ID strings to a [6]bool toggle array.
+// initKanbanEnabledModes converts a slice of mode ID strings to a [5]bool toggle array.
 // nil or empty slice means all modes are enabled.
-func initKanbanEnabledModes(ids []string) [6]bool {
-	var result [6]bool
+func initKanbanEnabledModes(ids []string) [5]bool {
+	var result [5]bool
 	if len(ids) == 0 {
 		// All enabled by default.
 		for i := range result {

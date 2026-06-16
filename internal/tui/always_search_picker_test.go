@@ -206,37 +206,6 @@ func TestParentSelectorUpdate_CtrlXIgnoredWhenNoneDisallowed(t *testing.T) {
 	}
 }
 
-func TestCustomSectionPickerUpdate_SelectsUnsetSection(t *testing.T) {
-	project, err := models.NewProject("proj-1", "Sections", t.TempDir())
-	if err != nil {
-		t.Fatalf("NewProject: %v", err)
-	}
-	task, err := models.NewTask("task-1", 5, models.TaskTypeTask, "Sectioned task")
-	if err != nil {
-		t.Fatalf("NewTask: %v", err)
-	}
-	task.CustomSection = "Focus"
-	project.Tasks = []*models.Task{task}
-
-	m := NewCustomSectionPickerModel(task, project, []*models.Project{project})
-	m.Cursor = 0
-
-	_, cmd := m.Update(syntheticSpecialKey(tea.KeyEnter))
-	if cmd == nil {
-		t.Fatal("enter should emit a custom section result")
-	}
-	msg, ok := cmd().(CustomSectionPickerDoneMsg)
-	if !ok {
-		t.Fatalf("expected CustomSectionPickerDoneMsg, got %T", cmd())
-	}
-	if msg.Canceled {
-		t.Fatalf("expected selecting unset to succeed, got %#v", msg)
-	}
-	if msg.Section != "" {
-		t.Fatalf("expected empty section for unset, got %q", msg.Section)
-	}
-}
-
 func TestGlobalNoteMoveProjectSelectorUpdate_SelectsProject(t *testing.T) {
 	projectA, err := models.NewProject("proj-a", "Alpha", t.TempDir())
 	if err != nil {

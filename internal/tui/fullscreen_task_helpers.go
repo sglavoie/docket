@@ -128,14 +128,14 @@ func renderDueDateContentOpts(task *models.Task, hideRecurrence bool, timeFormat
 	return dueLine
 }
 
-// renderMetadataContent builds the tags, section, custom section, and type-specific
-// attributes content shared by sidebar and task detail.
+// renderMetadataContent builds the tags, section, and type-specific attributes
+// content shared by sidebar and task detail.
 func renderMetadataContent(task *models.Task, project *models.Project, innerWidth int, showAttrs ...bool) string {
 	return renderMetadataContentOpts(task, project, innerWidth, false, showAttrs...)
 }
 
 // renderMetadataContentOpts is like renderMetadataContent but can optionally hide
-// the section/custom-section lines (when they are shown elsewhere, e.g. in the header).
+// the section lines (when they are shown elsewhere, e.g. in the header).
 func renderMetadataContentOpts(task *models.Task, project *models.Project, innerWidth int, hideSection bool, showAttrs ...bool) string {
 	var lines []string
 
@@ -149,15 +149,10 @@ func renderMetadataContentOpts(task *models.Task, project *models.Project, inner
 
 	if !hideSection {
 		sectionName := task.Section
-		if sectionName == "" && task.CustomSection != "" {
-			sectionName = task.CustomSection
-		} else if sectionName == "" {
+		if sectionName == "" {
 			sectionName = "Active"
 		}
 		effectiveSection := task.Section
-		if effectiveSection == "" && task.CustomSection != "" {
-			effectiveSection = task.CustomSection
-		}
 		sectionColor := project.GetSectionColor(effectiveSection)
 		sectionStyle := GetSectionColorStyle(sectionColor)
 		sectionLine := MutedStyle.Render("Section: ") + sectionStyle.Render(sectionName)

@@ -166,10 +166,10 @@ func (m *OutlinerModel) handleUtilityKey(key string) (tea.Model, tea.Cmd, bool) 
 		return m, cmd, true
 
 	case "shift+left", "shift+right":
-		if tabs := m.customSectionTabs(); tabs != nil {
-			tab := m.customSectionTabIndex()
-			cycleCustomSectionTab(key, &tab, len(tabs), func() {
-				m.setCustomSectionTabIndex(tab)
+		if tabs := m.pinnedTagTabs(); tabs != nil {
+			tab := m.pinnedTagTabIndex()
+			cyclePinnedTagTab(key, &tab, len(tabs), func() {
+				m.setPinnedTagTabIndex(tab)
 				m.resetViewScrollOffset()
 				m.rebuildRows()
 			})

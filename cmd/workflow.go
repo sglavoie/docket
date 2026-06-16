@@ -18,8 +18,8 @@ EXAMPLES
   When task unblocked, add ready tag (event trigger):
     tt workflow add -n "Unblock Ready" -f status_changed -o equals -V "blocked->*" -a add_tag --action-value ready
 
-  When completed, move to Archive (event trigger):
-    tt workflow add -n "Archive Done" -f completed -o equals -V true -a set_section --action-value Archive
+  When completed, move to Completed (event trigger):
+    tt workflow add -n "Route Completed" -f completed -o equals -V true -a set_section --action-value Completed
 
   Auto-complete epic when all children done (hierarchical):
     tt workflow add -n "Epic Complete" -f type -o equals -V epic -f all_children_done -o equals -V true --logic and -a set_status --action-value done
@@ -47,7 +47,7 @@ BOOLEAN STATE TRIGGER FIELDS (presence/absence checks)
 
 EVENT TRIGGER FIELDS (detect transitions)
   status_changed        - Value: "old->new" (e.g., "blocked->*", "*->done")
-  section_changed       - Value: "old->new" (e.g., "Backlog->Active")
+  section_changed       - Value: "old->new" (e.g., "Next->Waiting")
   priority_changed      - Value: "old->new" (e.g., "*->1")
   tag_added             - Value: tag name that was added
   tag_removed           - Value: tag name that was removed
@@ -72,7 +72,7 @@ ACTION TYPES
 RULE SCOPING
   Rules can be restricted to specific projects, task types, or sections:
     tt workflow add ... --scope-project "MyProject"
-    tt workflow add ... --scope-type task,bug --scope-section Active
+    tt workflow add ... --scope-type task,bug --scope-section Waiting
 
 COMPOUND TRIGGERS
   Multiple triggers can be combined with --logic:

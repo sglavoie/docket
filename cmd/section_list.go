@@ -12,8 +12,8 @@ import (
 var sectionListCmd = &cobra.Command{
 	Use:     "list",
 	Aliases: []string{"ls", "l"},
-	Short:   "List all sections in the current project",
-	Long: `List all sections with their task counts.
+	Short:   "List built-in sections in the current project",
+	Long: `List built-in GTD sections with their task counts.
 
 The Next section is hidden when it contains no tasks.
 
@@ -47,6 +47,9 @@ func runSectionList(cmd *cobra.Command, args []string) error {
 	// Filter out empty Next section
 	var visibleSections []string
 	for _, s := range sections {
+		if !models.IsGTDSection(s) {
+			continue
+		}
 		if s == models.SectionNext && counts[s] == 0 {
 			continue
 		}
@@ -70,7 +73,7 @@ func runSectionList(cmd *cobra.Command, args []string) error {
 	}
 
 	if len(visibleSections) == 0 {
-		fmt.Println(NoItemsMsg("sections", "tt section add <name>"))
+		fmt.Println(NoItemsMsg("sectioned tasks", ""))
 		return nil
 	}
 

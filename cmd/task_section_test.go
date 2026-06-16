@@ -27,26 +27,6 @@ func TestTaskSectionSkipsAlreadyAssigned(t *testing.T) {
 		}
 	})
 
-	t.Run("does not save when custom section already matches", func(t *testing.T) {
-		deps, project := setupSectionCommandTest(t)
-
-		task := project.Tasks[0]
-		project.EnsureSection("Active")
-		task.CustomSection = "Active"
-		deps.Repository.Projects[project.ID] = project
-
-		originalUpdatedAt := task.UpdatedAt
-
-		err := runTaskSection(nil, []string{"1", "Active"})
-		testutil.AssertNoError(t, err)
-
-		savedProject := deps.Repository.Projects[project.ID]
-		savedTask := savedProject.GetTaskByShortID(task.ShortID)
-		if savedTask.UpdatedAt != originalUpdatedAt {
-			t.Error("UpdatedAt should not change when custom section already matches")
-		}
-	})
-
 	t.Run("assigns GTD section to task in different section", func(t *testing.T) {
 		deps, project := setupSectionCommandTest(t)
 
@@ -64,31 +44,29 @@ func TestTaskSectionSkipsAlreadyAssigned(t *testing.T) {
 		}
 	})
 
-	t.Run("assigns custom section to CustomSection field", func(t *testing.T) {
+	t.Run("rejects non-GTD section", func(t *testing.T) {
 		deps, project := setupSectionCommandTest(t)
 
 		task := project.Tasks[0]
-		project.EnsureSection("MyCustom")
 		deps.Repository.Projects[project.ID] = project
 
 		err := runTaskSection(nil, []string{"1", "MyCustom"})
-		testutil.AssertNoError(t, err)
+		if err == nil {
+			t.Fatal("expected error for non-GTD section")
+		}
 
 		savedProject := deps.Repository.Projects[project.ID]
 		savedTask := savedProject.GetTaskByShortID(task.ShortID)
-		if savedTask.CustomSection != "MyCustom" {
-			t.Errorf("task CustomSection = %q, want %q", savedTask.CustomSection, "MyCustom")
+		if savedTask.Section != task.Section {
+			t.Errorf("task Section = %q, want unchanged %q", savedTask.Section, task.Section)
 		}
 	})
 
-	t.Run("clearing section clears CustomSection when Section is already empty", func(t *testing.T) {
+	t.Run("clearing section works when Section is already empty", func(t *testing.T) {
 		deps, project := setupSectionCommandTest(t)
 
-		// Task has a custom section but Section field is empty
 		task := project.Tasks[0]
 		task.Section = ""
-		task.CustomSection = "Sprint-1"
-		project.EnsureSection("Sprint-1")
 		deps.Repository.Projects[project.ID] = project
 
 		err := runTaskSection(nil, []string{"1", ""})
@@ -96,9 +74,6 @@ func TestTaskSectionSkipsAlreadyAssigned(t *testing.T) {
 
 		savedProject := deps.Repository.Projects[project.ID]
 		savedTask := savedProject.GetTaskByShortID(task.ShortID)
-		if savedTask.CustomSection != "" {
-			t.Errorf("task CustomSection = %q, want empty after clearing", savedTask.CustomSection)
-		}
 		if savedTask.Section != "" {
 			t.Errorf("task Section = %q, want empty after clearing", savedTask.Section)
 		}
@@ -108,13 +83,12 @@ func TestTaskSectionSkipsAlreadyAssigned(t *testing.T) {
 		// "inbox" (lowercase) is a case-variant of the canonical "Inbox" GTD section.
 		// Without the case-variant guard at the CLI boundary, the command silently
 		// reported success ("Moved task #X from 'Inbox' to 'inbox'") while leaving
-		// task.Section/CustomSection untouched — corrupting the user's mental model
-		// of what just happened.
+		// task.Section untouched and corrupting the user's mental model of what
+		// just happened.
 		deps, project := setupSectionCommandTest(t)
 
 		task := project.Tasks[0]
 		task.Section = models.SectionInbox
-		task.CustomSection = ""
 		deps.Repository.Projects[project.ID] = project
 
 		err := runTaskSection(nil, []string{"1", "inbox"})
@@ -127,9 +101,6 @@ func TestTaskSectionSkipsAlreadyAssigned(t *testing.T) {
 		if savedTask.Section != models.SectionInbox {
 			t.Errorf("task Section = %q, want %q (must be unchanged)", savedTask.Section, models.SectionInbox)
 		}
-		if savedTask.CustomSection != "" {
-			t.Errorf("task CustomSection = %q, want empty (case-variant must not leak into CustomSection)", savedTask.CustomSection)
-		}
 		// project.Sections must not have gained a phantom "inbox" entry.
 		for _, s := range savedProject.Sections {
 			if s == "inbox" {
@@ -138,12 +109,11 @@ func TestTaskSectionSkipsAlreadyAssigned(t *testing.T) {
 		}
 	})
 
-	t.Run("clearing section skips when both Section and CustomSection are already empty", func(t *testing.T) {
+	t.Run("clearing section skips when Section is already empty", func(t *testing.T) {
 		deps, project := setupSectionCommandTest(t)
 
 		task := project.Tasks[0]
 		task.Section = ""
-		task.CustomSection = ""
 		deps.Repository.Projects[project.ID] = project
 
 		originalUpdatedAt := task.UpdatedAt

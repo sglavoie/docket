@@ -36,6 +36,7 @@ func LoadProjectWithWarnings(project *models.Project) (*ProjectLoadResult, error
 		project.NextShortID = 1
 		project.Sections = []string{models.SectionNext}
 		project.Tags = []string{}
+		project.PinnedTags = []string{}
 		if auditErr := auditLoadedProject(project); auditErr != nil {
 			return nil, auditErr
 		}
@@ -53,6 +54,7 @@ func LoadProjectWithWarnings(project *models.Project) (*ProjectLoadResult, error
 	project.Tasks = result.Tasks
 	project.Sections = result.Sections
 	project.Tags = result.Tags
+	project.PinnedTags = result.PinnedTags
 	project.SectionColors = result.SectionColors
 
 	maxShortID := 0
@@ -127,7 +129,6 @@ func reassignUnknownSections(project *models.Project, result *ParseResult) {
 	}
 
 	for _, task := range project.Tasks {
-		// Check GTD section field
 		if task.Section != "" && !sectionSet[task.Section] {
 			oldSection := task.Section
 			task.SetSection(models.SectionInbox)
@@ -136,19 +137,6 @@ func reassignUnknownSections(project *models.Project, result *ParseResult) {
 				TaskID:  task.ID,
 				Field:   "section",
 				Message: fmt.Sprintf("task #%d section %q not in project sections, reassigned to %q", task.ShortID, oldSection, models.SectionInbox),
-			})
-			continue
-		}
-
-		// Check custom section field
-		if task.CustomSection != "" && !sectionSet[task.CustomSection] {
-			oldSection := task.CustomSection
-			task.SetSection(models.SectionInbox)
-			result.Warnings = append(result.Warnings, ParseWarning{
-				Type:    format.WarningDataCorrection,
-				TaskID:  task.ID,
-				Field:   "custom_section",
-				Message: fmt.Sprintf("task #%d custom section %q not in project sections, reassigned to %q", task.ShortID, oldSection, models.SectionInbox),
 			})
 		}
 	}
@@ -213,7 +201,7 @@ func SaveProject(project *models.Project) error {
 		}
 	}
 
-	content := WriteTasksMarkdownWithProjectMetadata(project.Name, project.Tasks, project.GetSections(), project.SectionColors, project.Tags)
+	content := WriteTasksMarkdownWithFullProjectMetadata(project.Name, project.Tasks, project.GetSections(), project.SectionColors, project.Tags, project.PinnedTags)
 	if err := writeFileAtomic(tasksPath, []byte(content), FilePermissions); err != nil {
 		return fmt.Errorf("failed to write tasks file: %w", err)
 	}

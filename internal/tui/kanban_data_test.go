@@ -107,17 +107,6 @@ func TestColumnForTask_Stages(t *testing.T) {
 	}
 }
 
-func TestColumnForTask_CustomSections(t *testing.T) {
-	task := testutil.NewTestTask("t", models.TaskTypeTask)
-	if got := columnForTask(task, KanbanModeCustomSections, nil, ""); got != "unset" {
-		t.Errorf("empty custom section: want unset, got %q", got)
-	}
-	task.CustomSection = "sprint-1"
-	if got := columnForTask(task, KanbanModeCustomSections, nil, ""); got != "sprint-1" {
-		t.Errorf("CustomSection=sprint-1: want sprint-1, got %q", got)
-	}
-}
-
 func TestColumnForTask_ScoreBuckets_NilProfile(t *testing.T) {
 	task := testutil.NewTestTask("t", models.TaskTypeTask)
 	cfg := &config.Config{}
@@ -171,7 +160,7 @@ func TestRebuildColumns_SectionMode_Distribution(t *testing.T) {
 		makeTestCard(models.SectionInbox, models.StatusTodo),
 		makeTestCard(models.SectionNext, models.StatusTodo),
 	}
-	cols := rebuildColumns(cards, KanbanModeSection, nil, nil, nil, nil, nil, nil)
+	cols := rebuildColumns(cards, KanbanModeSection, nil, nil, nil, nil, nil)
 
 	idx := map[string]int{}
 	for i, c := range cols {
@@ -198,7 +187,6 @@ func TestRebuildColumns_SectionMode_CompletedStatusOnlyInCompletedColumn(t *test
 		KanbanModeSection,
 		nil,
 		[]string{models.SectionInbox, models.SectionNext},
-		nil,
 		nil,
 		nil,
 		nil,
@@ -235,7 +223,7 @@ func TestRebuildColumns_SectionMode_CompletedStatusOnlyInCompletedColumn(t *test
 }
 
 func TestRebuildColumns_Empty(t *testing.T) {
-	cols := rebuildColumns(nil, KanbanModeSection, nil, nil, nil, nil, nil, nil)
+	cols := rebuildColumns(nil, KanbanModeSection, nil, nil, nil, nil, nil)
 	if len(cols) == 0 {
 		t.Fatal("expected non-empty column list even with no cards")
 	}
@@ -251,7 +239,7 @@ func TestRebuildColumns_AllSameColumn(t *testing.T) {
 	for i := range cards {
 		cards[i] = makeTestCard(models.SectionInbox, models.StatusTodo)
 	}
-	cols := rebuildColumns(cards, KanbanModeSection, nil, nil, nil, nil, nil, nil)
+	cols := rebuildColumns(cards, KanbanModeSection, nil, nil, nil, nil, nil)
 	total := 0
 	for _, c := range cols {
 		total += len(c.Tasks)
@@ -267,7 +255,7 @@ func TestRebuildColumns_PreservesCursorFromPrev(t *testing.T) {
 		makeTestCard(models.SectionInbox, models.StatusTodo),
 	}
 	prev := []KanbanColumn{{ID: "inbox", Cursor: 1, ScrollOffset: 0}}
-	cols := rebuildColumns(cards, KanbanModeSection, prev, nil, nil, nil, nil, nil)
+	cols := rebuildColumns(cards, KanbanModeSection, prev, nil, nil, nil, nil)
 	for _, c := range cols {
 		if c.ID == "inbox" {
 			if c.Cursor != 1 {
@@ -283,7 +271,7 @@ func TestRebuildColumns_ClampsOutOfBoundsCursor(t *testing.T) {
 	// Previous state had cursor=3, but now only 1 task remains.
 	cards := []KanbanCard{makeTestCard(models.SectionInbox, models.StatusTodo)}
 	prev := []KanbanColumn{{ID: "inbox", Cursor: 3}}
-	cols := rebuildColumns(cards, KanbanModeSection, prev, nil, nil, nil, nil, nil)
+	cols := rebuildColumns(cards, KanbanModeSection, prev, nil, nil, nil, nil)
 	for _, c := range cols {
 		if c.ID == "inbox" {
 			if c.Cursor != 0 {
@@ -298,7 +286,7 @@ func TestRebuildColumns_ClampsOutOfBoundsCursor(t *testing.T) {
 func TestRebuildColumns_ClampsOutOfBoundsScrollOffset(t *testing.T) {
 	cards := []KanbanCard{makeTestCard(models.SectionInbox, models.StatusTodo)}
 	prev := []KanbanColumn{{ID: "inbox", Cursor: 0, ScrollOffset: 50}}
-	cols := rebuildColumns(cards, KanbanModeSection, prev, nil, nil, nil, nil, nil)
+	cols := rebuildColumns(cards, KanbanModeSection, prev, nil, nil, nil, nil)
 	for _, c := range cols {
 		if c.ID == "inbox" {
 			if c.ScrollOffset >= len(c.Tasks) {
@@ -313,7 +301,7 @@ func TestRebuildColumns_ClampsOutOfBoundsScrollOffset(t *testing.T) {
 func TestRebuildColumns_ClampsNegativeCursor(t *testing.T) {
 	cards := []KanbanCard{makeTestCard(models.SectionInbox, models.StatusTodo)}
 	prev := []KanbanColumn{{ID: "inbox", Cursor: -5, ScrollOffset: -3}}
-	cols := rebuildColumns(cards, KanbanModeSection, prev, nil, nil, nil, nil, nil)
+	cols := rebuildColumns(cards, KanbanModeSection, prev, nil, nil, nil, nil)
 	for _, c := range cols {
 		if c.ID == "inbox" {
 			if c.Cursor != 0 {
@@ -336,7 +324,7 @@ func TestRebuildColumns_StatusMode(t *testing.T) {
 		{Task: todo, Project: proj},
 		{Task: done, Project: proj},
 	}
-	cols := rebuildColumns(cards, KanbanModeStatus, nil, nil, nil, nil, nil, nil)
+	cols := rebuildColumns(cards, KanbanModeStatus, nil, nil, nil, nil, nil)
 	idx := map[string]int{}
 	for i, c := range cols {
 		idx[c.ID] = i
@@ -354,7 +342,7 @@ func TestRebuildColumns_PriorityMode(t *testing.T) {
 	t1 := testutil.NewTestTaskWithPriority("high", 1)
 	t2 := testutil.NewTestTaskWithPriority("unset", 0)
 	cards := []KanbanCard{{Task: t1, Project: proj}, {Task: t2, Project: proj}}
-	cols := rebuildColumns(cards, KanbanModePriority, nil, nil, nil, nil, nil, nil)
+	cols := rebuildColumns(cards, KanbanModePriority, nil, nil, nil, nil, nil)
 	idx := map[string]int{}
 	for i, c := range cols {
 		idx[c.ID] = i
@@ -373,7 +361,7 @@ func TestRebuildColumns_StagesMode_DynamicColumn(t *testing.T) {
 	task.Stage = "alpha"
 	cards := []KanbanCard{{Task: task, Project: proj}}
 	// stages list doesn't include "alpha" → dynamic column created
-	cols := rebuildColumns(cards, KanbanModeStages, nil, nil, nil, []string{"beta"}, nil, nil)
+	cols := rebuildColumns(cards, KanbanModeStages, nil, nil, nil, []string{"beta"}, nil)
 	found := false
 	for _, c := range cols {
 		if c.ID == "alpha" {
@@ -385,31 +373,6 @@ func TestRebuildColumns_StagesMode_DynamicColumn(t *testing.T) {
 	}
 	if !found {
 		t.Error("dynamic 'alpha' column not created")
-	}
-}
-
-// ── collectCustomSections ─────────────────────────────────────────────────────
-
-func TestCollectCustomSections(t *testing.T) {
-	proj := testutil.NewTestProject("p")
-	t1 := testutil.NewTestTask("a", models.TaskTypeTask)
-	t1.CustomSection = "alpha"
-	t2 := testutil.NewTestTask("b", models.TaskTypeTask)
-	t2.CustomSection = "beta"
-	t3 := testutil.NewTestTask("c", models.TaskTypeTask)
-	t3.CustomSection = "alpha" // duplicate
-
-	cards := []KanbanCard{{Task: t1, Project: proj}, {Task: t2, Project: proj}, {Task: t3, Project: proj}}
-	got := collectCustomSections(cards)
-	if len(got) != 2 {
-		t.Errorf("want 2 unique sections, got %d: %v", len(got), got)
-	}
-}
-
-func TestCollectCustomSections_Empty(t *testing.T) {
-	got := collectCustomSections(nil)
-	if len(got) != 0 {
-		t.Errorf("want empty, got %v", got)
 	}
 }
 

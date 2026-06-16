@@ -25,7 +25,7 @@ type savedView struct {
 	FilterScoreMin   float64           `json:"filter_score_min,omitempty"`
 	SortField        int               `json:"sort_field,omitempty"`
 	SortAscending    bool              `json:"sort_ascending"`
-	CustomSectionTab string            `json:"custom_section_tab,omitempty"`
+	PinnedTagTab     string            `json:"pinned_tag_tab,omitempty"`
 }
 
 // Config holds the application configuration.
@@ -58,6 +58,7 @@ type Config struct {
 	PaletteSearchHistory           []string                     `json:"palette_search_history,omitempty"`
 	GlobalSearchHistory            []string                     `json:"global_search_history,omitempty"`
 	PinnedCommands                 []string                     `json:"pinned_commands,omitempty"`
+	GlobalPinnedTags               []string                     `json:"global_pinned_tags,omitempty"`
 	SavedSearches                  map[string]string            `json:"saved_searches,omitempty"`
 	CommandHistory                 []string                     `json:"command_history,omitempty"`
 	WorkflowRules                  []workflow.WorkflowRule      `json:"workflow_rules,omitempty"`
@@ -131,7 +132,7 @@ type Config struct {
 	CrossOutlinerFilterTags        []string                     `json:"cross_outliner_filter_tags,omitempty"`
 	CrossOutlinerFilterSections    []string                     `json:"cross_outliner_filter_sections,omitempty"`
 	CrossOutlinerFilterAttrs       map[string]string            `json:"cross_outliner_filter_attrs,omitempty"`
-	CrossOutlinerCustomSectionTab  string                       `json:"cross_outliner_custom_section_tab,omitempty"`
+	CrossOutlinerPinnedTagTab      string                       `json:"cross_outliner_pinned_tag_tab,omitempty"`
 	CrossOutlinerSortField         int                          `json:"cross_outliner_sort_field,omitempty"`
 	CrossOutlinerSortAscending     bool                         `json:"cross_outliner_sort_ascending"`
 	CrossOutlinerFilterBarEnabled  bool                         `json:"cross_outliner_filter_bar_enabled"`

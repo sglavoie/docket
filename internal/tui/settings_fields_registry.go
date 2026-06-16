@@ -156,7 +156,7 @@ func buildSettingsFieldRegistry() []settingsFieldMeta {
 		add(base+i, tabOutliner, 2, "Views > Column Visibility", label, "outliner column visible hidden", "Visible")
 	}
 
-	// Tab 7: Kanban (11 fields)
+	// Tab 7: Kanban (10 fields)
 	base = tabFieldStart[tabKanban]
 	add(base+0, tabKanban, 0, "Views > Kanban", "Default Mode", "kanban mode section status priority stages", "Section (GTD)")
 	add(base+1, tabKanban, 0, "Views > Kanban", "Default Start Column", "kanban start column inbox", "inbox")

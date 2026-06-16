@@ -176,9 +176,9 @@ func TestTaskMatchesFieldFilters_Section(t *testing.T) {
 	}
 }
 
-func TestTaskMatchesFieldFilters_SectionCustom(t *testing.T) {
+func TestTaskMatchesFieldFilters_SectionGTDOnly(t *testing.T) {
 	m := &CommandPaletteModel{}
-	task := &models.Task{Section: models.SectionInbox, CustomSection: "Sprint1"}
+	task := &models.Task{Section: models.SectionInbox}
 	item := PaletteItem{Category: ItemCategoryTasks, Task: task}
 
 	tests := []struct {
@@ -187,9 +187,9 @@ func TestTaskMatchesFieldFilters_SectionCustom(t *testing.T) {
 		want    bool
 	}{
 		{
-			name:    "match by CustomSection eq",
+			name:    "no match by non-GTD section eq",
 			filters: []fieldFilter{{field: "section", op: "eq", value: "Sprint1"}},
-			want:    true,
+			want:    false,
 		},
 		{
 			name:    "match by GTD Section eq",
@@ -202,8 +202,8 @@ func TestTaskMatchesFieldFilters_SectionCustom(t *testing.T) {
 			want:    false,
 		},
 		{
-			name:    "in match via CustomSection",
-			filters: []fieldFilter{{field: "section", op: "in", alt: []string{"Sprint1", "Sprint2"}}},
+			name:    "in match via GTD Section",
+			filters: []fieldFilter{{field: "section", op: "in", alt: []string{"Sprint1", models.SectionInbox}}},
 			want:    true,
 		},
 		{
@@ -223,7 +223,7 @@ func TestTaskMatchesFieldFilters_SectionCustom(t *testing.T) {
 	}
 }
 
-func TestBuildSectionListIncludesCustomSections(t *testing.T) {
+func TestBuildSectionListIgnoresNonGTDSections(t *testing.T) {
 	project, err := models.NewProject("test", "Test", "/tmp/test")
 	if err != nil {
 		t.Fatal(err)
@@ -232,26 +232,30 @@ func TestBuildSectionListIncludesCustomSections(t *testing.T) {
 
 	task1, _ := models.NewTask("1", 1, models.TaskTypeTask, "Task 1")
 	task1.Section = models.SectionInbox
-	task1.CustomSection = "Sprint1"
+	task1.Section = "Sprint1"
 
 	task2, _ := models.NewTask("2", 2, models.TaskTypeTask, "Task 2")
-	task2.CustomSection = "Sprint1"
+	task2.Section = "Sprint1"
 
 	project.Tasks = []*models.Task{task1, task2}
 
 	sections := buildSectionList(project)
 
-	found := false
+	foundNonGTD := false
+	foundInbox := false
 	for _, s := range sections {
 		if s.Name == "Sprint1" {
-			found = true
-			if s.TaskCount != 2 {
-				t.Errorf("expected 2 tasks in Sprint1, got %d", s.TaskCount)
-			}
+			foundNonGTD = true
+		}
+		if s.Name == models.SectionInbox {
+			foundInbox = true
 		}
 	}
-	if !found {
-		t.Error("Sprint1 section not found in buildSectionList output")
+	if foundNonGTD {
+		t.Error("Sprint1 section should not appear in buildSectionList output")
+	}
+	if !foundInbox {
+		t.Error("Inbox section not found in buildSectionList output")
 	}
 }
 

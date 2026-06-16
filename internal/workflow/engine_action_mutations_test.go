@@ -215,14 +215,6 @@ func TestApplyAction_UpdatesTimestamp(t *testing.T) {
 				return &models.Task{ID: "1", Section: "", UpdatedAt: stale}
 			},
 		},
-		{
-			name:   "set custom section updates UpdatedAt",
-			action: RuleAction{ActionType: ActionSetSection, Value: "Sprint-1"},
-			setup: func() *models.Task {
-				stale := time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC)
-				return &models.Task{ID: "1", UpdatedAt: stale}
-			},
-		},
 	}
 
 	for _, tt := range tests {

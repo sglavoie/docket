@@ -277,28 +277,6 @@ func TestDiffTaskDimmedUnchanged(t *testing.T) {
 	}
 }
 
-func TestDiffTaskCustomSection(t *testing.T) {
-	old, err := models.NewTask("1", 1, models.TaskTypeTask, "Test")
-	if err != nil {
-		t.Fatal(err)
-	}
-	newTask, err := models.NewTask("1", 1, models.TaskTypeTask, "Test")
-	if err != nil {
-		t.Fatal(err)
-	}
-	newTask.CustomSection = "sprint-1"
-
-	diffTask(old, newTask)
-
-	found := findActivity(newTask, "custom_section")
-	if found == nil {
-		t.Fatal("expected custom_section activity entry")
-	}
-	if found.OldValue != "none" || found.NewValue != "sprint-1" {
-		t.Errorf("expected none→sprint-1, got %s→%s", found.OldValue, found.NewValue)
-	}
-}
-
 func TestDiffTaskURL(t *testing.T) {
 	old, err := models.NewTask("1", 1, models.TaskTypeTask, "Test")
 	if err != nil {

@@ -1,8 +1,6 @@
 package tui
 
 import (
-	"charm.land/bubbles/v2/textinput"
-
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 )
@@ -17,22 +15,16 @@ type SectionManagerModel struct {
 	cursor        int
 	width         int
 	height        int
-	renameMode    bool
-	renameInput   textinput.Model
-	addMode       bool
-	addInput      textinput.Model
 	errorMsg      string
 	colorPickMode bool
 	colorCursor   int // Index in SectionColorPalette
-	confirmAction string
-	discardConfirmState
 }
 
 // ShowSectionManagerMsg is sent to open the section manager view.
 type ShowSectionManagerMsg struct {
 	ProjectTree  *ProjectTreeModel
 	Project      *models.Project // Used when ProjectTree is nil (e.g., from outliner view)
-	StartAddMode bool            // If true, open directly in add mode
+	StartAddMode bool            // Deprecated: section creation is no longer supported.
 }
 
 // CloseSectionManagerMsg is sent when the section manager should close.
@@ -54,7 +46,7 @@ type SectionRemovedMsg struct {
 	Name string
 }
 
-// GoToSectionMsg is sent to navigate to a section tab in the project tree.
+// GoToSectionMsg is sent to apply a section filter in the project tree.
 type GoToSectionMsg struct {
 	SectionName string
 }
@@ -67,31 +59,13 @@ type SectionColorChangedMsg struct {
 
 // NewSectionManagerModel creates a new section manager model.
 // Either pt or proj must be provided. If pt is provided, proj is ignored.
-func NewSectionManagerModel(pt *ProjectTreeModel, proj *models.Project, cfg *config.Config, mgr *config.Manager, startAddMode bool) *SectionManagerModel {
-	renameInput := textinput.New()
-	renameInput.Placeholder = "new section name"
-	renameInput.CharLimit = 50
-	renameInput.SetWidth(30)
-	applyThemedTextInput(&renameInput)
-
-	addInput := textinput.New()
-	addInput.Placeholder = "section name"
-	addInput.CharLimit = 50
-	addInput.SetWidth(30)
-	applyThemedTextInput(&addInput)
-
+func NewSectionManagerModel(pt *ProjectTreeModel, proj *models.Project, cfg *config.Config, mgr *config.Manager, _ bool) *SectionManagerModel {
 	m := &SectionManagerModel{
 		projectTree:   pt,
 		project:       proj,
 		config:        cfg,
 		configManager: mgr,
 		cursor:        0,
-		renameInput:   renameInput,
-		addInput:      addInput,
-		addMode:       startAddMode,
-	}
-	if startAddMode {
-		m.addInput.Focus()
 	}
 	m.buildSectionList()
 	return m
@@ -111,23 +85,39 @@ func (m *SectionManagerModel) SetSize(width, height int) {
 	m.height = height
 }
 
-// buildSectionList builds a sorted list of custom sections with counts.
-// GTD sections (Next, Inbox, Waiting, Someday) are excluded as they are
-// managed via view modes, not the section manager.
+// buildSectionList builds the canonical GTD section list with task counts.
 func (m *SectionManagerModel) buildSectionList() {
 	proj := m.getProject()
-	sectionCounts := proj.CountTasksBySection()
-
-	// Get sections in project order, excluding GTD sections
-	projectSections := proj.GetSections()
-
-	m.sections = make([]SectionInfo, 0, len(projectSections))
-	for _, name := range projectSections {
-		if models.IsGTDSection(name) {
-			continue // Skip GTD sections
+	if proj == nil {
+		m.sections = nil
+		return
+	}
+	sectionCounts := make(map[string]int)
+	for _, task := range proj.Tasks {
+		section := task.Section
+		if section != "" && !models.IsGTDSection(section) {
+			section = ""
 		}
-		count := sectionCounts[name]
-		m.sections = append(m.sections, SectionInfo{Name: name, TaskCount: count})
+		sectionCounts[section]++
+	}
+
+	order := []string{
+		"",
+		models.SectionNext,
+		models.SectionInbox,
+		models.SectionWaiting,
+		models.SectionReview,
+		models.SectionStandby,
+		models.SectionSomeday,
+		models.SectionCompleted,
+	}
+	m.sections = make([]SectionInfo, 0, len(order))
+	for _, name := range order {
+		m.sections = append(m.sections, SectionInfo{
+			Name:      name,
+			TaskCount: sectionCounts[name],
+			ColorName: proj.GetSectionColor(name),
+		})
 	}
 
 	// Clamp cursor

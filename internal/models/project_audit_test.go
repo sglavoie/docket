@@ -62,19 +62,6 @@ func TestAuditProjectValidProject(t *testing.T) {
 	}
 }
 
-func TestAuditProjectAllowsLegacyCustomSectionInSectionField(t *testing.T) {
-	project := newAuditTestProject(t)
-	project.EnsureSection("Backlog")
-
-	task := newAuditTestTask(t, "task-1", 1, TaskTypeTask, "Legacy Section")
-	task.Section = "Backlog"
-	project.Tasks = []*Task{task}
-
-	if err := AuditProject(project); err != nil {
-		t.Fatalf("AuditProject() error = %v, want nil", err)
-	}
-}
-
 func TestAuditProjectRejectsEmptyTaskID(t *testing.T) {
 	project := newAuditTestProject(t)
 	task := newAuditTestTask(t, "", 1, TaskTypeTask, "Missing ID")
@@ -162,12 +149,11 @@ func TestAuditProjectRejectsDanglingLocalRelatedRef(t *testing.T) {
 	requireAuditErrorContains(t, project, "related to missing local task")
 }
 
-func TestAuditProjectRejectsDualSectionMembership(t *testing.T) {
+func TestAuditProjectRejectsNonGTDSection(t *testing.T) {
 	project := newAuditTestProject(t)
-	task := newAuditTestTask(t, "task-1", 1, TaskTypeTask, "Dual Section")
-	task.Section = SectionNext
-	task.CustomSection = "Sprint-1"
+	task := newAuditTestTask(t, "task-1", 1, TaskTypeTask, "Non-GTD Section")
+	task.Section = "Sprint-1"
 	project.Tasks = []*Task{task}
 
-	requireAuditErrorContains(t, project, "multiple section buckets")
+	requireAuditErrorContains(t, project, "non-GTD section")
 }

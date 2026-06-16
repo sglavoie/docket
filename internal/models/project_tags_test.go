@@ -156,6 +156,7 @@ func TestProjectRenameTagDedupeWhenTaskAlreadyHasDestination(t *testing.T) {
 func TestProjectRenameZeroUseCatalogTag(t *testing.T) {
 	project := newProjectTagsTestProject(t)
 	project.Tags = []string{"old"}
+	project.PinnedTags = []string{"old"}
 
 	changed, err := project.RenameTag("old", "#new")
 	if err != nil {
@@ -167,17 +168,102 @@ func TestProjectRenameZeroUseCatalogTag(t *testing.T) {
 	if !slices.Equal(project.Tags, []string{"new"}) {
 		t.Fatalf("project.Tags = %v, want [new]", project.Tags)
 	}
+	if !slices.Equal(project.PinnedTags, []string{"new"}) {
+		t.Fatalf("project.PinnedTags = %v, want [new]", project.PinnedTags)
+	}
+}
+
+func TestProjectRemoveZeroUseCatalogTagUnpinsOnlyWhenNoTasksUseTag(t *testing.T) {
+	project := newProjectTagsTestProject(t)
+	project.Tags = []string{"unused", "used"}
+	project.PinnedTags = []string{"unused", "used"}
+	task := newProjectTagsTestTask(t, "t1", 1)
+	task.Tags = []string{"used"}
+	project.Tasks = []*Task{task}
+
+	if !project.RemoveTag("unused") {
+		t.Fatal("RemoveTag(unused) = false, want true")
+	}
+	if project.IsTagPinned("unused") {
+		t.Fatal("unused should be unpinned after deleting zero-use catalog tag")
+	}
+
+	if !project.RemoveTag("used") {
+		t.Fatal("RemoveTag(used) = false, want true")
+	}
+	if !project.IsTagPinned("used") {
+		t.Fatal("used should remain pinned while tasks still use it")
+	}
+}
+
+func TestProjectPinnedTagHelpersNormalizeValidateAndToggle(t *testing.T) {
+	project := newProjectTagsTestProject(t)
+	project.PinnedTags = []string{" backend ", "bad,tag", "backend"}
+
+	if !project.IsTagPinned("#backend") {
+		t.Fatal("IsTagPinned(#backend) = false, want true")
+	}
+	if got, want := project.PinnedTagList(), []string{"backend"}; !slices.Equal(got, want) {
+		t.Fatalf("PinnedTagList() = %v, want %v", got, want)
+	}
+
+	added, err := project.PinTag(" #urgent ")
+	if err != nil {
+		t.Fatalf("PinTag() error = %v", err)
+	}
+	if !added {
+		t.Fatal("PinTag() added = false, want true")
+	}
+	if got, want := project.PinnedTags, []string{"backend", "urgent"}; !slices.Equal(got, want) {
+		t.Fatalf("project.PinnedTags = %v, want %v", got, want)
+	}
+
+	added, err = project.PinTag("urgent")
+	if err != nil {
+		t.Fatalf("duplicate PinTag() error = %v", err)
+	}
+	if added {
+		t.Fatal("duplicate PinTag() added = true, want false")
+	}
+
+	pinned, err := project.TogglePinnedTag("urgent")
+	if err != nil {
+		t.Fatalf("TogglePinnedTag(unpin) error = %v", err)
+	}
+	if pinned || project.IsTagPinned("urgent") {
+		t.Fatal("TogglePinnedTag(urgent) should unpin urgent")
+	}
+
+	pinned, err = project.TogglePinnedTag("#frontend")
+	if err != nil {
+		t.Fatalf("TogglePinnedTag(pin) error = %v", err)
+	}
+	if !pinned || !project.IsTagPinned("frontend") {
+		t.Fatal("TogglePinnedTag(frontend) should pin frontend")
+	}
+
+	if !project.UnpinTag("#backend") {
+		t.Fatal("UnpinTag(#backend) = false, want true")
+	}
+	if project.IsTagPinned("backend") {
+		t.Fatal("backend should not remain pinned")
+	}
+
+	if _, err := project.PinTag("bad,tag"); err == nil {
+		t.Fatal("PinTag(bad,tag) error = nil, want error")
+	}
 }
 
 func TestProjectTagsAreNotConfigJSON(t *testing.T) {
 	project := newProjectTagsTestProject(t)
 	project.Tags = []string{"backend"}
+	project.PinnedTags = []string{"urgent"}
 
 	data, err := json.Marshal(project)
 	if err != nil {
 		t.Fatalf("json.Marshal(Project) error = %v", err)
 	}
-	if strings.Contains(string(data), "backend") || strings.Contains(string(data), "tags") {
+	if strings.Contains(string(data), "backend") || strings.Contains(string(data), "urgent") || strings.Contains(string(data), "tags") {
 		t.Fatalf("project tags should not be marshaled in config JSON: %s", data)
 	}
 }

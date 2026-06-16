@@ -11,14 +11,14 @@ import (
 
 var sectionRenameCmd = &cobra.Command{
 	Use:   "rename <old-name> <new-name>",
-	Short: "Rename a section in the current project",
-	Long: `Rename a section and update all tasks with that section.
+	Short: "Section rename is no longer supported",
+	Long: `Sections are fixed to the built-in GTD set.
 
-The Next section cannot be renamed. New names must not contain spaces.
+Flexible grouping now uses tags and pinned tag tabs.
 
 Examples:
-  tt section rename InProgress Working
-  tt section rename Review Done`,
+  tt tag pin backend
+  tt tag unpin backend`,
 	RunE: runSectionRename,
 }
 
@@ -35,8 +35,8 @@ func runSectionRename(cmd *cobra.Command, args []string) error {
 	oldName := args[0]
 	newName := args[1]
 
-	if models.IsGTDSection(oldName) {
-		return fmt.Errorf("cannot rename built-in section '%s'", oldName)
+	if models.IsGTDSectionNameCI(oldName) {
+		return fmt.Errorf("cannot rename section '%s': built-in GTD sections cannot be renamed", oldName)
 	}
 
 	if oldName == newName {
@@ -47,45 +47,8 @@ func runSectionRename(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	// Reject renaming to a built-in GTD section name. The check is
-	// case-insensitive: without it `tt section rename Foo inbox` succeeds and
-	// silently creates a sibling of the built-in "Inbox" that conflicts with
-	// the built-in section in views and filters.
 	if models.IsGTDSectionNameCI(newName) {
-		return fmt.Errorf("cannot rename to '%s': name is reserved for the built-in section", newName)
+		return fmt.Errorf("cannot rename to '%s': built-in GTD section names are reserved", newName)
 	}
-
-	project, cfg, configManager, err := LoadCurrentProject()
-	if err != nil {
-		return err
-	}
-
-	out, err := getOutputOpts(cmd)
-	if err != nil {
-		return err
-	}
-
-	if err := project.RenameSection(oldName, newName); err != nil {
-		return err
-	}
-
-	if err := SaveProject(project, &SaveOptions{
-		Config: cfg, ConfigManager: configManager,
-		UndoAction: "Rename Section", UndoContext: fmt.Sprintf("%s → %s", oldName, newName),
-	}); err != nil {
-		return tterrors.NewSaveProjectError(project.Name, err)
-	}
-
-	if out.Quiet {
-		return nil
-	}
-	if out.JSON {
-		return printJSON(struct {
-			OldName string `json:"old_name"`
-			NewName string `json:"new_name"`
-			Project string `json:"project"`
-		}{OldName: oldName, NewName: newName, Project: project.Name})
-	}
-	fmt.Printf("Renamed section '%s' to '%s'\n", oldName, newName)
-	return nil
+	return fmt.Errorf("cannot rename section '%s': flexible grouping now uses tags", oldName)
 }

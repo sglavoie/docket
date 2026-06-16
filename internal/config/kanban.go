@@ -49,7 +49,7 @@ func normalizeKanbanSettings(settings *KanbanSettings) {
 
 func isValidKanbanMode(mode string) bool {
 	switch mode {
-	case "section", "status", "priority", "stages", "custom_sections", "score_buckets":
+	case "section", "status", "priority", "stages", "score_buckets":
 		return true
 	default:
 		return false

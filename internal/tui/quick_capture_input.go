@@ -134,8 +134,8 @@ func (q *quickCaptureInput) initCaches() {
 		}
 	}
 
-	// Cache sections
-	q.sectionCache = q.project.GetSections()
+	// Cache only built-in GTD sections.
+	q.sectionCache = gtdSections(q.project.GetSections())
 
 	// Cache non-archived projects for cross-project capture
 	q.projectCache = make([]*models.Project, 0)

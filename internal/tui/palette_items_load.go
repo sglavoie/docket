@@ -80,9 +80,6 @@ func (m *CommandPaletteModel) loadAllItems() []PaletteItem {
 			if task.Section != "" {
 				sectionCounts[task.Section]++
 			}
-			if task.CustomSection != "" {
-				sectionCounts[task.CustomSection]++
-			}
 		}
 	}
 

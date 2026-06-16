@@ -136,14 +136,14 @@ func TestTaskSectionAssignment(t *testing.T) {
 	// Default section should be empty (Active view)
 	testutil.AssertEqual(t, task.Section, "")
 
-	// Assign to custom section
-	task.Section = "Active"
-	testutil.AssertEqual(t, task.Section, "Active")
+	// Assign to GTD section
+	task.Section = models.SectionInbox
+	testutil.AssertEqual(t, task.Section, models.SectionInbox)
 
-	// Ensure section exists in project
+	// Ensure non-GTD section is ignored
 	project.EnsureSection("Active")
-	if !project.HasSection("Active") {
-		t.Error("project should have 'Active' section after EnsureSection")
+	if project.HasSection("Active") {
+		t.Error("project should not have 'Active' section after EnsureSection")
 	}
 }
 

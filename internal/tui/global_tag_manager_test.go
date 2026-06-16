@@ -1,10 +1,15 @@
 package tui
 
 import (
+	"path/filepath"
+	"slices"
+	"strings"
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/charmbracelet/x/ansi"
 
+	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/testutil"
@@ -56,6 +61,88 @@ func TestGlobalTagManagerIncludesCatalogOnlyTags(t *testing.T) {
 	taskOnly := findGlobalTagInfo(t, manager.tags, "task-only")
 	if taskOnly.TaskCount != 1 {
 		t.Fatalf("task-only TaskCount = %d, want 1", taskOnly.TaskCount)
+	}
+}
+
+func TestGlobalTagManagerBuildListMarksPinnedTags(t *testing.T) {
+	project := newGlobalTagTestProject(t, "alpha", "Alpha")
+	project.Tags = []string{"backend", "frontend"}
+	saveGlobalTagTestProject(t, project)
+
+	cfg := testutil.NewTestConfig()
+	cfg.Projects = []*models.Project{project}
+	cfg.GlobalPinnedTags = []string{"frontend"}
+
+	manager := NewGlobalTagManagerModel(cfg)
+
+	backend := findGlobalTagInfo(t, manager.tags, "backend")
+	if backend.Pinned {
+		t.Fatalf("backend Pinned = true, want false")
+	}
+	frontend := findGlobalTagInfo(t, manager.tags, "frontend")
+	if !frontend.Pinned {
+		t.Fatalf("frontend Pinned = false, want true")
+	}
+}
+
+func TestGlobalTagManagerViewShowsPinnedMarker(t *testing.T) {
+	project := newGlobalTagTestProject(t, "alpha", "Alpha")
+	project.Tags = []string{"backend"}
+	saveGlobalTagTestProject(t, project)
+
+	cfg := testutil.NewTestConfig()
+	cfg.Projects = []*models.Project{project}
+	cfg.GlobalPinnedTags = []string{"backend"}
+	manager := NewGlobalTagManagerModel(cfg)
+
+	plain := ansi.Strip(manager.View().Content)
+	if !strings.Contains(plain, "* backend") {
+		t.Fatalf("global tag manager view missing pinned marker:\n%s", plain)
+	}
+	if !strings.Contains(plain, "p pin") {
+		t.Fatalf("global tag manager footer missing pin key:\n%s", plain)
+	}
+}
+
+func TestGlobalTagManagerTogglePinnedTagPersists(t *testing.T) {
+	project := newGlobalTagTestProject(t, "alpha", "Alpha")
+	project.Tags = []string{"backend"}
+	saveGlobalTagTestProject(t, project)
+
+	cfg := testutil.NewTestConfig()
+	cfg.Projects = []*models.Project{project}
+	manager := config.NewManager(filepath.Join(t.TempDir(), "config.json"))
+	model := NewGlobalTagManagerModel(cfg, manager)
+	model.cursor = globalTagIndex(t, model.tags, "backend")
+
+	updated, cmd := model.Update(tea.KeyPressMsg{Code: 'p', Text: "p"})
+	model = updated.(*GlobalTagManagerModel)
+	if cmd == nil {
+		t.Fatal("p key returned nil command, want pin toggle")
+	}
+	msg := cmd()
+	pinned, ok := msg.(GlobalTagPinnedMsg)
+	if !ok {
+		t.Fatalf("p key message = %T, want GlobalTagPinnedMsg (%v)", msg, msg)
+	}
+	if pinned.Name != "backend" || !pinned.Pinned {
+		t.Fatalf("GlobalTagPinnedMsg = %#v, want backend pinned", pinned)
+	}
+	updated, _ = model.Update(msg)
+	model = updated.(*GlobalTagManagerModel)
+
+	if !cfg.IsGlobalTagPinned("backend") {
+		t.Fatal("backend should be globally pinned")
+	}
+	if got := findGlobalTagInfo(t, model.tags, "backend"); !got.Pinned {
+		t.Fatalf("manager tag = %#v, want pinned backend", got)
+	}
+	loaded, err := manager.Load()
+	if err != nil {
+		t.Fatalf("Load config: %v", err)
+	}
+	if got, want := loaded.GlobalPinnedTagList(), []string{"backend"}; !slices.Equal(got, want) {
+		t.Fatalf("persisted global pinned tags = %v, want %v", got, want)
 	}
 }
 

@@ -209,15 +209,10 @@ func (m *ProjectTreeModel) nodeOrgGroup(task *models.Task, node *TreeNode) strin
 	var parts []string
 	if node.IsContextNode || m.viewMode == ViewModeCompleted || m.viewMode == ViewModeAll {
 		sectionName := task.Section
-		if sectionName == "" && task.CustomSection != "" {
-			sectionName = task.CustomSection
-		} else if sectionName == "" {
+		if sectionName == "" {
 			sectionName = "Active"
 		}
 		effectiveSection := task.Section
-		if effectiveSection == "" && task.CustomSection != "" {
-			effectiveSection = task.CustomSection
-		}
 		if m.viewMode == ViewModeAll {
 			parts = append(parts, GetViewModeStyleForSection(effectiveSection).Render("@ "+sectionName))
 		} else {
@@ -228,10 +223,6 @@ func (m *ProjectTreeModel) nodeOrgGroup(task *models.Task, node *TreeNode) strin
 		if childBadge := m.renderChildrenInOtherSectionsBadge(task); childBadge != "" {
 			parts = append(parts, childBadge)
 		}
-	}
-	if m.columnConfig.IsVisible(ColCustomSection) && task.CustomSection != "" && !m.sidebar.IsEnabled() {
-		csColor := m.project.GetSectionColor(task.CustomSection)
-		parts = append(parts, GetSectionColorStyle(csColor).Render("@ "+task.CustomSection))
 	}
 	return JoinGroupParts(parts...)
 }

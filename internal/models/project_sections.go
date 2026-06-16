@@ -4,63 +4,83 @@ import (
 	"errors"
 	"fmt"
 	"slices"
-	"sort"
 	"time"
 )
 
 // ErrSectionAlreadyExists is returned when a section rename targets an existing name.
 var ErrSectionAlreadyExists = errors.New("section already exists")
 
+var defaultGTDSections = []string{SectionNext, SectionInbox, SectionWaiting, SectionSomeday, SectionReview, SectionStandby, SectionCompleted}
+
+// DefaultGTDSections returns the canonical built-in section order.
+func DefaultGTDSections() []string {
+	return append([]string(nil), defaultGTDSections...)
+}
+
+// FilterGTDSections removes stale non-GTD section names and deduplicates the
+// remaining built-in sections while preserving their first-seen order.
+func FilterGTDSections(sections []string) []string {
+	seen := make(map[string]bool, len(sections))
+	filtered := make([]string, 0, len(sections))
+	for _, section := range sections {
+		if !IsGTDSection(section) || seen[section] {
+			continue
+		}
+		seen[section] = true
+		filtered = append(filtered, section)
+	}
+	return filtered
+}
+
 // EnsureDefaultSections guarantees that all built-in sections used by lifecycle
 // methods (Complete, Block, Reopen, etc.) exist in the project's section list.
 // Call this during project load so that status transitions never assign a task
 // to a section the project doesn't know about.
 func (p *Project) EnsureDefaultSections() {
-	defaults := []string{SectionNext, SectionInbox, SectionWaiting, SectionSomeday, SectionReview, SectionStandby, SectionCompleted}
-	for _, s := range defaults {
+	p.Sections = FilterGTDSections(p.Sections)
+	for _, s := range defaultGTDSections {
 		if !slices.Contains(p.Sections, s) {
 			p.Sections = append(p.Sections, s)
 		}
 	}
-	// Deduplicate while preserving order (keep first occurrence).
-	seen := make(map[string]bool, len(p.Sections))
-	deduped := p.Sections[:0]
-	for _, s := range p.Sections {
-		if !seen[s] {
-			seen[s] = true
-			deduped = append(deduped, s)
+
+	if p.SectionColors != nil {
+		for section := range p.SectionColors {
+			if !IsGTDSection(section) {
+				delete(p.SectionColors, section)
+			}
 		}
 	}
-	p.Sections = deduped
 }
 
 // GetSections returns the project's sections, ensuring Next is always first.
 func (p *Project) GetSections() []string {
-	if len(p.Sections) == 0 {
+	sections := FilterGTDSections(p.Sections)
+	if len(sections) == 0 {
 		return []string{SectionNext}
 	}
 	// Ensure Next is first
-	hasNext := slices.Contains(p.Sections, SectionNext)
+	hasNext := slices.Contains(sections, SectionNext)
 	if !hasNext {
-		return append([]string{SectionNext}, p.Sections...)
+		return append([]string{SectionNext}, sections...)
 	}
 	// If Next exists but isn't first, reorder
-	if p.Sections[0] != SectionNext {
-		sections := make([]string, 0, len(p.Sections))
-		sections = append(sections, SectionNext)
-		for _, s := range p.Sections {
+	if sections[0] != SectionNext {
+		ordered := make([]string, 0, len(sections))
+		ordered = append(ordered, SectionNext)
+		for _, s := range sections {
 			if s != SectionNext {
-				sections = append(sections, s)
+				ordered = append(ordered, s)
 			}
 		}
-		return sections
+		return ordered
 	}
-	return p.Sections
+	return sections
 }
 
 // HasSection returns true if the section exists in the project.
 func (p *Project) HasSection(name string) bool {
-	return slices.Contains(p.Sections, name)
+	return IsGTDSection(name) && slices.Contains(p.GetSections(), name)
 }
 
 // MaxSectionNameLength is the maximum allowed length for a section name.
@@ -76,10 +96,7 @@ const MaxSectionNameLength = 50
 // the canonical "Inbox" already exists) are rejected to prevent duplicate
 // sections that look identical to the user but are distinct in storage.
 func (p *Project) EnsureSection(name string) {
-	if err := ValidateSectionName(name); err != nil {
-		return
-	}
-	if IsGTDSectionNameCI(name) && !IsGTDSection(name) {
+	if !IsGTDSection(name) {
 		return
 	}
 	if !p.HasSection(name) {
@@ -102,10 +119,6 @@ func (p *Project) RemoveSection(name string) bool {
 			for _, task := range p.Tasks {
 				if task.Section == name {
 					task.Section = ""
-					task.UpdatedAt = time.Now()
-				}
-				if task.CustomSection == name {
-					task.CustomSection = ""
 					task.UpdatedAt = time.Now()
 				}
 			}
@@ -135,20 +148,19 @@ func (p *Project) RenameSection(oldName, newName string) error {
 	if IsGTDSectionNameCI(newName) && !IsGTDSection(newName) {
 		return fmt.Errorf("cannot rename section to %q: collides with built-in GTD section name", newName)
 	}
+	if !IsGTDSection(newName) {
+		return fmt.Errorf("cannot rename section to %q: flexible grouping now uses tags", newName)
+	}
 	if p.HasSection(newName) {
 		return fmt.Errorf("cannot rename section to %q: %w", newName, ErrSectionAlreadyExists)
 	}
 	for i, s := range p.Sections {
 		if s == oldName {
 			p.Sections[i] = newName
-			// Update tasks with this section (both GTD and custom section references)
+			// Update tasks with this section.
 			for _, task := range p.Tasks {
 				if task.Section == oldName {
 					task.Section = newName
-					task.UpdatedAt = time.Now()
-				}
-				if task.CustomSection == oldName {
-					task.CustomSection = newName
 					task.UpdatedAt = time.Now()
 				}
 			}
@@ -167,10 +179,6 @@ func (p *Project) RenameSection(oldName, newName string) error {
 }
 
 // GetTasksBySection returns tasks filtered by section.
-// Uses InSection() to correctly handle both GTD sections and custom sections.
-// When section is "" (Active view), only tasks with both Section="" AND
-// CustomSection="" are returned — tasks with a CustomSection belong to that
-// custom section, not the Active view.
 func (p *Project) GetTasksBySection(section string) []*Task {
 	var result []*Task
 	for _, task := range p.Tasks {
@@ -182,40 +190,12 @@ func (p *Project) GetTasksBySection(section string) []*Task {
 }
 
 // CountTasksBySection returns the number of tasks in each section.
-// Tasks with empty section AND empty custom section are counted under ""
-// (representing Active view). Tasks with a CustomSection are counted only
-// under the custom section name, not under the empty key.
 func (p *Project) CountTasksBySection() map[string]int {
 	counts := make(map[string]int)
 	for _, task := range p.Tasks {
-		if task.CustomSection != "" {
-			counts[task.CustomSection]++
-		} else {
-			counts[task.Section]++
-		}
+		counts[task.Section]++
 	}
 	return counts
-}
-
-// GetCustomSections returns sections that are not built-in (Inbox, Next, Waiting, Someday, Completed), sorted alphabetically.
-func (p *Project) GetCustomSections() []string {
-	builtIn := map[string]bool{
-		SectionInbox:     true,
-		SectionNext:      true,
-		SectionWaiting:   true,
-		SectionSomeday:   true,
-		SectionReview:    true,
-		SectionStandby:   true,
-		SectionCompleted: true,
-	}
-	var custom []string
-	for _, s := range p.Sections {
-		if !builtIn[s] {
-			custom = append(custom, s)
-		}
-	}
-	sort.Strings(custom)
-	return custom
 }
 
 // GetSectionColor returns the color for a section, defaulting to "gray".

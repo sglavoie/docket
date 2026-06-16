@@ -5,24 +5,21 @@ import (
 	"testing"
 )
 
-// TestRoundTrip_SectionColorsWithColonInName verifies that section names
-// containing colons don't get confused with the color separator.
-func TestRoundTrip_SectionColorsWithColonInName(t *testing.T) {
-	content := "# Project: Test\n<!-- sections: Normal;With:colon:name -->\n\n## Task: T1\n<!-- id: t1, status: todo, priority: 3 -->\n"
+// TestParse_SectionMetadataFiltersNonGTDSpecs verifies that stale custom
+// section names, including names with the legacy color separator, are ignored.
+func TestParse_SectionMetadataFiltersNonGTDSpecs(t *testing.T) {
+	content := "# Project: Test\n<!-- sections: Next;With:colon:name;Inbox -->\n\n## Task: T1\n<!-- id: t1, status: todo, priority: 3 -->\n"
 
 	result, err := ParseTasksMarkdownWithSections(content)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	found := false
-	for _, s := range result.Sections {
-		if s == "With" {
-			found = true
-		}
+	if len(result.Sections) != 2 {
+		t.Fatalf("expected 2 GTD sections, got %d: %v", len(result.Sections), result.Sections)
 	}
-	if !found {
-		t.Errorf("expected section 'With' (colon truncates name), got sections: %v", result.Sections)
+	if result.Sections[0] != "Next" || result.Sections[1] != "Inbox" {
+		t.Errorf("sections = %v, want [Next, Inbox]", result.Sections)
 	}
 }
 
@@ -30,7 +27,7 @@ func TestRoundTrip_SectionColorsWithColonInName(t *testing.T) {
 // comment appearing after the first task heading is ignored (treated as
 // regular description content).
 func TestParse_SectionsAfterFirstTaskIgnored(t *testing.T) {
-	content := "# Project: Test\n<!-- sections: Active;Done -->\n\n## Task: First\n<!-- id: t1, status: todo, priority: 3 -->\n\n<!-- sections: Fake;Sections -->\n\n## Task: Second\n<!-- id: t2, status: todo, priority: 3 -->\n"
+	content := "# Project: Test\n<!-- sections: Next;Inbox -->\n\n## Task: First\n<!-- id: t1, status: todo, priority: 3 -->\n\n<!-- sections: Fake;Sections -->\n\n## Task: Second\n<!-- id: t2, status: todo, priority: 3 -->\n"
 
 	result, err := ParseTasksMarkdownWithSections(content)
 	if err != nil {
@@ -40,8 +37,8 @@ func TestParse_SectionsAfterFirstTaskIgnored(t *testing.T) {
 	if len(result.Sections) != 2 {
 		t.Errorf("expected 2 sections, got %d: %v", len(result.Sections), result.Sections)
 	}
-	if result.Sections[0] != "Active" || result.Sections[1] != "Done" {
-		t.Errorf("sections = %v, want [Active, Done]", result.Sections)
+	if result.Sections[0] != "Next" || result.Sections[1] != "Inbox" {
+		t.Errorf("sections = %v, want [Next, Inbox]", result.Sections)
 	}
 
 	if !strings.Contains(result.Tasks[0].Description, "<!-- sections: Fake;Sections -->") {

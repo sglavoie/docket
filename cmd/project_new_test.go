@@ -206,22 +206,22 @@ func TestProjectSections(t *testing.T) {
 		t.Error("project should have default Next section")
 	}
 
-	// Ensure a new section
-	project.EnsureSection("Active")
-	if !project.HasSection("Active") {
-		t.Error("project should have 'Active' section")
+	// Ensure a built-in section
+	project.EnsureSection(models.SectionInbox)
+	if !project.HasSection(models.SectionInbox) {
+		t.Error("project should have Inbox section")
 	}
 
 	// Ensure same section again - should not duplicate
-	project.EnsureSection("Active")
-	activeCount := 0
+	project.EnsureSection(models.SectionInbox)
+	inboxCount := 0
 	for _, s := range project.Sections {
-		if s == "Active" {
-			activeCount++
+		if s == models.SectionInbox {
+			inboxCount++
 		}
 	}
-	if activeCount != 1 {
-		t.Errorf("expected 1 'Active' section, got %d", activeCount)
+	if inboxCount != 1 {
+		t.Errorf("expected 1 Inbox section, got %d", inboxCount)
 	}
 }
 

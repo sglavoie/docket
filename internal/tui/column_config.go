@@ -11,58 +11,55 @@ const (
 
 // Column name constants for configurable column visibility.
 const (
-	ColPriority      = "priority"
-	ColDueDate       = "due_date"
-	ColTags          = "tags"
-	ColScore         = "score"
-	ColCustomSection = "custom_section"
-	ColDependencies  = "dependencies"
-	ColComments      = "comments"
-	ColAttachments   = "attachments"
-	ColChecklist     = "checklist"
-	ColProgress      = "progress"
-	ColRecurrence    = "recurrence"
-	ColSnooze        = "snooze"
-	ColDecisions     = "decisions"
-	ColShortID       = "short_id"
-	ColDescription   = "description"
+	ColPriority     = "priority"
+	ColDueDate      = "due_date"
+	ColTags         = "tags"
+	ColScore        = "score"
+	ColDependencies = "dependencies"
+	ColComments     = "comments"
+	ColAttachments  = "attachments"
+	ColChecklist    = "checklist"
+	ColProgress     = "progress"
+	ColRecurrence   = "recurrence"
+	ColSnooze       = "snooze"
+	ColDecisions    = "decisions"
+	ColShortID      = "short_id"
+	ColDescription  = "description"
 )
 
 // DefaultTreeColumns defines which columns are visible by default in the tree view.
 var DefaultTreeColumns = map[string]bool{
-	ColPriority:      true,
-	ColDueDate:       true,
-	ColTags:          true,
-	ColScore:         true,
-	ColCustomSection: true,
-	ColDependencies:  true,
-	ColComments:      true,
-	ColAttachments:   true,
-	ColChecklist:     true,
-	ColProgress:      true,
-	ColRecurrence:    true,
-	ColSnooze:        true,
-	ColDecisions:     true,
-	ColShortID:       true,
+	ColPriority:     true,
+	ColDueDate:      true,
+	ColTags:         true,
+	ColScore:        true,
+	ColDependencies: true,
+	ColComments:     true,
+	ColAttachments:  true,
+	ColChecklist:    true,
+	ColProgress:     true,
+	ColRecurrence:   true,
+	ColSnooze:       true,
+	ColDecisions:    true,
+	ColShortID:      true,
 }
 
 // DefaultOutlinerColumns defines which columns are visible by default in the outliner view.
 var DefaultOutlinerColumns = map[string]bool{
-	ColPriority:      true,
-	ColDueDate:       true,
-	ColTags:          true,
-	ColScore:         true,
-	ColCustomSection: true,
-	ColDependencies:  true,
-	ColComments:      true,
-	ColAttachments:   true,
-	ColChecklist:     true,
-	ColProgress:      true,
-	ColRecurrence:    true,
-	ColSnooze:        true,
-	ColDecisions:     true,
-	ColShortID:       true,
-	ColDescription:   true,
+	ColPriority:     true,
+	ColDueDate:      true,
+	ColTags:         true,
+	ColScore:        true,
+	ColDependencies: true,
+	ColComments:     true,
+	ColAttachments:  true,
+	ColChecklist:    true,
+	ColProgress:     true,
+	ColRecurrence:   true,
+	ColSnooze:       true,
+	ColDecisions:    true,
+	ColShortID:      true,
+	ColDescription:  true,
 }
 
 // ColumnConfig controls which indicator columns are visible in a view.

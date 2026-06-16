@@ -114,6 +114,11 @@ func runTemplateUse(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return fmt.Errorf("template %q: %w", t.Name, err)
 	}
+	if section, sectionErr := normalizeTemplateSectionInput(t.Section); sectionErr != nil {
+		return sectionErr
+	} else {
+		t.Section = section
+	}
 
 	// Load current project
 	project, _, projectConfigManager, err := LoadCurrentProject()
@@ -181,7 +186,6 @@ func runTemplateUse(cmd *cobra.Command, args []string) error {
 			childTask.ParentID = &task.ID
 			childTask.Priority = task.Priority
 			childTask.Section = task.Section
-			childTask.CustomSection = task.CustomSection
 			for _, tag := range task.Tags {
 				childTask.AddTag(tag)
 			}

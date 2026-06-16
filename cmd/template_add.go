@@ -25,7 +25,7 @@ FLAGS
   --type            Task type: epic, story, task, bug, idea (default: task)
   --priority        Priority 1-5 (0 for default)
   --tags            Comma-separated tags
-  --section         Section name (e.g., Next, Backlog)
+  --section         Built-in GTD section (e.g., Next, Inbox; empty = Active)
   --description     Task description template
   --category        Category: bug, feature, process
   --item              Checklist item (can specify multiple)
@@ -77,7 +77,7 @@ func init() {
 	templateAddCmd.Flags().StringVar(&templateAddType, "type", "task", "task type: epic, story, task, bug, idea")
 	templateAddCmd.Flags().IntVar(&templateAddPriority, "priority", 0, "priority 1-5 (0 for default)")
 	templateAddCmd.Flags().StringVar(&templateAddTags, "tags", "", "comma-separated tags")
-	templateAddCmd.Flags().StringVar(&templateAddSection, "section", "", "section name")
+	templateAddCmd.Flags().StringVar(&templateAddSection, "section", "", "built-in GTD section (empty = Active)")
 	templateAddCmd.Flags().StringVar(&templateAddDescription, "description", "", "task description template")
 	templateAddCmd.Flags().StringVar(&templateAddCategory, "category", "", "category: bug, feature, process")
 	templateAddCmd.Flags().StringArrayVar(&templateAddChildren, "item", nil, "checklist item (can specify multiple)")
@@ -134,6 +134,11 @@ func runTemplateAdd(cmd *cobra.Command, args []string) error {
 		}
 	}
 
+	section, err := normalizeTemplateSectionInput(templateAddSection)
+	if err != nil {
+		return err
+	}
+
 	// Parse tags
 	var tags []string
 	if templateAddTags != "" {
@@ -171,7 +176,7 @@ func runTemplateAdd(cmd *cobra.Command, args []string) error {
 	t.Enabled = !templateAddDisabled
 	t.Priority = templateAddPriority
 	t.Tags = tags
-	t.Section = templateAddSection
+	t.Section = section
 	t.Description = templateAddDescription
 	t.Category = templateAddCategory
 	t.Children = children

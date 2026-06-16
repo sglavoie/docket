@@ -97,7 +97,7 @@ func (m *AppModel) saveProjectTreeState() {
 	state.SidebarEnabled = m.projectTree.sidebar.IsEnabled()
 	state.FilterBarEnabled = m.projectTree.filterBar.IsEnabled()
 	state.ViewMode = int(m.projectTree.viewMode)
-	state.CustomSectionTab = m.projectTree.activeCustomSectionFilter()
+	state.PinnedTagTab = m.projectTree.activePinnedTagFilter()
 	state.TreeColumnToggles = m.projectTree.columnConfig.Toggles()
 	state.TreeFoldState = foldState
 
@@ -155,19 +155,10 @@ func (m *AppModel) restoreProjectTreeState() {
 	m.projectTree.filter.Tags = validateSavedStringSet(state.FilterTags, m.projectTree.getAllTags())
 
 	// Restore sections - validate they still exist
-	m.projectTree.filter.Sections = validateSavedStringSet(state.FilterSections, m.currentProject.GetSections())
+	m.projectTree.filter.Sections = validateSavedStringSet(state.FilterSections, gtdSections(m.currentProject.GetSections()))
 
-	// Restore custom section tab - validate it still exists
-	if state.CustomSectionTab != "" {
-		if tabs := m.projectTree.customSectionTabs(); tabs != nil {
-			for i, tab := range tabs {
-				if tab == state.CustomSectionTab {
-					m.projectTree.customSectionTab = i
-					break
-				}
-			}
-		}
-	}
+	// Restore pinned tag tab - validate it still exists
+	m.projectTree.selectPinnedTagTab(state.PinnedTagTab)
 
 	// Restore fold state: prefer session cache, fall back to disk
 	var foldState map[string]bool

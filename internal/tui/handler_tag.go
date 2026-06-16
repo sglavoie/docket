@@ -103,6 +103,15 @@ func (m *AppModel) handleTagMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint:goc
 		m.reloadAndRefreshProjectTree()
 		return true, nil
 
+	case TagPinnedMsg:
+		if m.currentView() == ViewTagManager {
+			cmd := m.views.Update(ViewTagManager, msg)
+			m.refreshAfterProjectTagChange("", "")
+			return true, cmd
+		}
+		m.reloadAndRefreshProjectTree()
+		return true, nil
+
 	case TagManagerErrorMsg:
 		if m.currentView() == ViewTagManager {
 			return true, m.views.Update(ViewTagManager, msg)
@@ -113,13 +122,31 @@ func (m *AppModel) handleTagMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint:goc
 		return true, nil
 
 	case ShowGlobalTagManagerMsg:
-		m.showView(ViewGlobalTagManager, NewGlobalTagManagerModel(m.config))
+		m.showView(ViewGlobalTagManager, NewGlobalTagManagerModel(m.config, m.configManager))
 		return true, nil
 
 	case GlobalTagRenamedMsg:
 		m.popView()
 		if m.dashboard != nil {
 			m.dashboard.Refresh(m.config)
+		}
+		return true, nil
+
+	case GlobalTagPinnedMsg:
+		if m.currentView() == ViewGlobalTagManager {
+			cmd := m.views.Update(ViewGlobalTagManager, msg)
+			m.refreshAfterGlobalTagPinnedChange()
+			return true, cmd
+		}
+		m.refreshAfterGlobalTagPinnedChange()
+		return true, nil
+
+	case GlobalTagManagerErrorMsg:
+		if m.currentView() == ViewGlobalTagManager {
+			return true, m.views.Update(ViewGlobalTagManager, msg)
+		}
+		if msg.Err != nil {
+			return true, errorCmd("%v", msg.Err)
 		}
 		return true, nil
 
@@ -287,6 +314,13 @@ func (m *AppModel) refreshAfterProjectTagChange(oldName, newName string) {
 	}
 	if m.crossOutliner != nil {
 		updateTagFilterAfterCatalogChange(m.crossOutliner.filter.Tags, oldName, newName)
+		m.crossOutliner.rebuildRows()
+	}
+}
+
+func (m *AppModel) refreshAfterGlobalTagPinnedChange() {
+	if m.crossOutliner != nil {
+		m.crossOutliner.crossForceRebuild = true
 		m.crossOutliner.rebuildRows()
 	}
 }
