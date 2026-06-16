@@ -75,12 +75,14 @@ tt requires a Kitty-protocol-compatible terminal (Kitty, Ghostty, WezTerm, etc.)
 
 ### TUI Keybinding Sync Convention
 
-Every view that has a `KeybindingRegistry` entry must implement `HandledKeys() []string` (the `KeySyncView` interface in `handled_keys.go`). `HandledKeys()` must return exactly the set of keys the view's `Update()` can process — matching the expanded registry keys for that view. The bidirectional sync is enforced by `TestKeybindingSyncAllViews` in `keybinding_sync_test.go`:
+Every view-local `KeybindingRegistry` entry must implement `HandledKeys() []string` (the `KeySyncView` interface in `handled_keys.go`). `HandledKeys()` must return exactly the set of keys the view's `Update()` can process — matching the expanded registry keys for that view. The bidirectional sync is enforced by `TestKeybindingSyncAllViews` in `keybinding_sync_test.go`:
 
 - **Ghost binding**: key in registry but not in `HandledKeys()` → user sees a key that does nothing.
 - **Invisible binding**: key in `HandledKeys()` but not in registry → key works but is undocumented.
 
-When adding a new keybinding: update both the registry (`keybindings_views.go` or similar) AND `HandledKeys()`. Use the shared helpers in `handled_keys.go` (e.g. `statusPrefixKeys()`, `filterSubKeys()`, `listNavigationKeys()`). Add the view to the appropriate session function in `keybinding_sync_test.go`.
+When adding a new view-local keybinding: update both the registry (`keybindings_views.go` or similar) AND `HandledKeys()`. Use the shared helpers in `handled_keys.go` (e.g. `statusPrefixKeys()`, `filterSubKeys()`, `listNavigationKeys()`). Add the view to the appropriate session function in `keybinding_sync_test.go`.
+
+App-level shortcuts handled by `AppModel.handleGlobalKeyPress` are the exception: register unconditional globals with no `Views`, and register conditional app-level shortcuts with `scopedAppBinding(...)`/`AppLevel: true` so help appears only in views where the app dispatcher actually handles the key. Do not add those app-level keys to individual view `HandledKeys()`; the ghost-binding invariant skips `AppLevel` entries because they are not processed by view-local `Update()` methods.
 
 Navigation aliases (`up`/`down`) are usually handled internally but not registered; don't include them in `HandledKeys()` unless the registry explicitly documents `↑/↓` or `↑/k`. Similarly, `ctrl+u`/`ctrl+d` for page navigation must appear in the registry (as `ctrl+u/d` or `ctrl+U/D`) before being added to `HandledKeys()`.
 

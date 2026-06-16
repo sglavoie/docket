@@ -51,7 +51,7 @@ func CommonPrimaryViewGroup(deps CommonPrimaryViewDeps) []Entry {
 		Bind("@", "Open cycle manager", "Project Cycling", deps.OpenCycleManager),
 		Bind("B", "Project blockers", cat, deps.ProjectBlockers),
 		Bind("p", "Priority view", cat, deps.PriorityView),
-		Bind("w", "Add to today's plan", cat, deps.AddToPlan),
+		Bind("w", "Open today's plan fallback", cat, deps.AddToPlan, AsHidden()),
 		Bind("W", "Inbox processor", cat, deps.InboxProcessor),
 		Bind("i", "Quick capture", "Task Operations", deps.QuickCapture),
 		Bind("I", "Bulk capture", "Task Operations", deps.BulkCapture),

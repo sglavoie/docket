@@ -370,13 +370,10 @@ func (m *KanbanModel) viewName() string {
 }
 
 func (m *KanbanModel) GetHelpItems() []HelpItem {
-	km := m.buildKeyMap()
-	out := km.HelpItems()
-	result := make([]HelpItem, len(out))
-	for i, h := range out {
-		result[i] = HelpItem{Key: h.Key, Description: h.Description, Category: h.Category}
-	}
-	return result
+	return mergeHelpItems(
+		GetKeybindingRegistry().GetAppLevelForView(m.viewID()),
+		helpItemsFromKeyMap(m.buildKeyMap()),
+	)
 }
 
 // JumpToTop moves the cursor to the top of the active column (gg).

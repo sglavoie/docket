@@ -6,8 +6,8 @@ import (
 
 // TestNoGhostBindings walks each registered view and verifies that every
 // view-scoped registry entry has a corresponding entry in HandledKeys().
-// Globals (Views=[]) are skipped because they are handled by handleGlobalKeyPress,
-// not by individual views.
+// Global and scoped app-level bindings are skipped because they are handled by
+// handleGlobalKeyPress, not by individual views.
 //
 // A "ghost binding" is a key that appears in the help/registry but does nothing
 // when pressed — a real UX defect. This test caught two such cases:
@@ -34,7 +34,7 @@ func TestNoGhostBindings(t *testing.T) {
 
 			registered := make(map[string]bool)
 			for _, b := range reg.bindings {
-				if len(b.Views) == 0 {
+				if len(b.Views) == 0 || b.AppLevel {
 					continue
 				}
 				inView := false
@@ -47,7 +47,12 @@ func TestNoGhostBindings(t *testing.T) {
 				if !inView {
 					continue
 				}
-				for _, k := range expandRegistryKey(b.Key) {
+				expanded := expandRegistryKey(b.Key)
+				if len(expanded) == 0 && !keysExcludedFromSync[b.Key] {
+					t.Errorf("registry key %q in view %s did not expand; add a narrow exclusion if it is informational", b.Key, tc.view)
+					continue
+				}
+				for _, k := range expanded {
 					registered[k] = true
 				}
 			}

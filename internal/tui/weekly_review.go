@@ -252,13 +252,10 @@ func (m *WeeklyReviewModel) viewName() string { return "Weekly Review" }
 
 // GetHelpItems returns help items for this view.
 func (m *WeeklyReviewModel) GetHelpItems() []HelpItem {
-	km := m.buildKeyMap()
-	out := km.HelpItems()
-	result := make([]HelpItem, len(out))
-	for i, h := range out {
-		result[i] = HelpItem{Key: h.Key, Description: h.Description, Category: h.Category}
-	}
-	return result
+	return mergeHelpItems(
+		GetKeybindingRegistry().GetAppLevelForView(m.viewID()),
+		helpItemsFromKeyMap(m.buildKeyMap()),
+	)
 }
 
 func (m *WeeklyReviewModel) HandledKeys() []string {

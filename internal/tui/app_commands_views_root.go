@@ -91,7 +91,7 @@ func (m *AppModel) viewCommands() []Command {
 		{
 			Name:        "inbox processor",
 			Description: "Process inbox items one by one",
-			Shortcut:    "w",
+			Shortcut:    "W",
 			Category:    CategoryViews,
 			Views:       projectTreeAndOutlinerViews(),
 			Handler: func() tea.Msg {

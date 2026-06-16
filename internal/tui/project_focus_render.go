@@ -11,13 +11,10 @@ import (
 
 // GetHelpItems returns help items for this view.
 func (m *ProjectFocusViewModel) GetHelpItems() []HelpItem {
-	km := m.buildKeyMap()
-	out := km.HelpItems()
-	result := make([]HelpItem, len(out))
-	for i, h := range out {
-		result[i] = HelpItem{Key: h.Key, Description: h.Description, Category: h.Category}
-	}
-	return result
+	return mergeHelpItems(
+		GetKeybindingRegistry().GetAppLevelForView(ViewProjectFocusView),
+		helpItemsFromKeyMap(m.buildKeyMap()),
+	)
 }
 
 func (m *ProjectFocusViewModel) HandledKeys() []string {

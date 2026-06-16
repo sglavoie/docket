@@ -238,7 +238,8 @@ func (m *TaskDetailModel) HandledKeys() []string {
 
 // GetHelpItems returns the help items for the task detail view.
 func (m *TaskDetailModel) GetHelpItems() []HelpItem {
-	return []HelpItem{
+	items := GetKeybindingRegistry().GetAppLevelForView(ViewTaskDetail)
+	return append(items, []HelpItem{
 		{Key: "j/k", Description: "Scroll down/up", Category: "Navigation"},
 		{Key: "Ctrl+D/U", Description: "Half page down/up", Category: "Navigation"},
 		{Key: "g/G", Description: "Top/bottom (g also opens glow at top)", Category: "Navigation"},
@@ -256,5 +257,5 @@ func (m *TaskDetailModel) GetHelpItems() []HelpItem {
 		{Key: "p", Description: "Dependencies", Category: "Sub-views"},
 		{Key: "S", Description: "Score editor", Category: "Sub-views"},
 		{Key: "D", Description: "Decisions", Category: "Sub-views"},
-	}
+	}...)
 }

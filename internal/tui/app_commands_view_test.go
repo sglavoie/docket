@@ -2,6 +2,32 @@ package tui
 
 import "testing"
 
+func registerCommandGroupsForTest(t *testing.T, groups ...[]Command) *CommandRegistry {
+	t.Helper()
+	registry := NewCommandRegistry()
+	for _, commands := range groups {
+		if err := registry.RegisterBatch(commands); err != nil {
+			t.Fatalf("RegisterBatch failed: %v", err)
+		}
+	}
+	return registry
+}
+
+func assertPickerCommandPurpose(t *testing.T, cmd *Command, want PickerPurpose) {
+	t.Helper()
+	if cmd == nil {
+		t.Fatal("command is nil")
+	}
+	msg := cmd.Handler()
+	pickerMsg, ok := msg.(ShowGlobalProjectPickerMsg)
+	if !ok {
+		t.Fatalf("expected ShowGlobalProjectPickerMsg, got %T", msg)
+	}
+	if pickerMsg.Purpose != want {
+		t.Fatalf("picker purpose = %v, want %v", pickerMsg.Purpose, want)
+	}
+}
+
 func TestViewCommands_AllTasks(t *testing.T) {
 	app := newTestAppModel()
 	cmds := app.viewCommands()
@@ -93,6 +119,37 @@ func TestViewCommands_FocusBoard(t *testing.T) {
 	}
 }
 
+func TestCommandRegistry_AppLevelShortcutScopes(t *testing.T) {
+	app := newTestAppModel()
+	registry := registerCommandGroupsForTest(t, app.navCommands(), app.notesCommands(), app.taskCommands())
+
+	if cmd := findCommand(registry.GetForView(ViewDashboard), "peek task detail"); cmd != nil {
+		t.Fatalf("dashboard should not expose task peek command: %+v", cmd)
+	}
+	if cmd := findCommand(registry.GetForView(ViewTaskDetail), "peek task detail"); cmd != nil {
+		t.Fatalf("task detail should not expose task peek command: %+v", cmd)
+	}
+	peekCmd := findCommand(registry.GetForView(ViewOutliner), "peek task detail")
+	if peekCmd == nil {
+		t.Fatal("outliner should expose task peek command")
+	}
+	if peekCmd.Shortcut != "space" {
+		t.Fatalf("peek shortcut = %q, want space", peekCmd.Shortcut)
+	}
+
+	notesCmd := findCommand(registry.GetForView(ViewProjectRecentActivity), "show notes")
+	if notesCmd == nil {
+		t.Fatal("project recent activity should expose show notes command")
+	}
+	if notesCmd.Shortcut != "ctrl+n" {
+		t.Fatalf("show notes shortcut = %q, want ctrl+n", notesCmd.Shortcut)
+	}
+
+	assertPickerCommandPurpose(t, findCommand(registry.GetForView(ViewDashboard), "global priority update"), PickerPurposePriorityUpdate)
+	assertPickerCommandPurpose(t, findCommand(registry.GetForView(ViewDashboard), "global due date update"), PickerPurposeDueDate)
+	assertPickerCommandPurpose(t, findCommand(registry.GetForView(ViewDashboard), "global section change"), PickerPurposeSectionChange)
+}
+
 func TestViewCommands_PriorityView(t *testing.T) {
 	app, _ := newTestAppModelWithProject()
 
@@ -128,6 +185,9 @@ func TestViewCommands_InboxProcessor(t *testing.T) {
 	cmd := findCommand(cmds, "inbox processor")
 	if cmd == nil {
 		t.Fatal("expected 'inbox processor' command")
+	}
+	if cmd.Shortcut != "W" {
+		t.Fatalf("inbox processor shortcut = %q, want W", cmd.Shortcut)
 	}
 	msg := cmd.Handler()
 	if _, ok := msg.(ShowInboxProcessorMsg); !ok {

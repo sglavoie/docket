@@ -22,23 +22,20 @@ func (m *ProjectTreeModel) View() tea.View {
 
 // GetHelpItems returns the help items for the project tree view.
 func (m *ProjectTreeModel) GetHelpItems() []HelpItem {
-	if m.Dispatcher != nil {
-		km := m.buildKeyMap()
-		raw := km.HelpItems()
-		out := make([]HelpItem, len(raw))
-		for i, h := range raw {
-			out[i] = HelpItem{Key: h.Key, Description: h.Description, Category: h.Category}
-		}
-		return out
-	}
 	archiveDesc := "Archive project"
 	if m.project != nil && m.project.Archived {
 		archiveDesc = "Unarchive project"
 	}
-	overrides := map[string]string{
-		"ctrl+A": archiveDesc,
+	items := mergeHelpItems(
+		GetKeybindingRegistry().GetAppLevelForView(ViewProjectTree),
+		helpItemsFromKeyMap(m.buildKeyMap()),
+	)
+	for i, item := range items {
+		if item.Key == "ctrl+a" || item.Key == "ctrl+A" {
+			items[i].Description = archiveDesc
+		}
 	}
-	return GetKeybindingRegistry().GetForViewWithOverrides(ViewProjectTree, overrides)
+	return dedupHelpItems(items)
 }
 
 // HandledKeys returns all keys ProjectTreeModel can handle, for sync testing.

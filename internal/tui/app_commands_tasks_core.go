@@ -147,6 +147,26 @@ func (m *AppModel) taskCommands() []Command {
 			},
 		},
 		{
+			Name:        "global priority update",
+			Description: "Update task priority from any view",
+			Shortcut:    ";!",
+			Category:    CategoryPriority,
+			Aliases:     []string{"set priority", "change priority", "update priority"},
+			Handler: func() tea.Msg {
+				return ShowGlobalProjectPickerMsg{Purpose: PickerPurposePriorityUpdate}
+			},
+		},
+		{
+			Name:        "global due date update",
+			Description: "Update task due date from any view",
+			Shortcut:    ";td",
+			Category:    CategoryDueDate,
+			Aliases:     []string{"set due date", "change due date", "update due date"},
+			Handler: func() tea.Msg {
+				return ShowGlobalProjectPickerMsg{Purpose: PickerPurposeDueDate}
+			},
+		},
+		{
 			Name:        "global task move",
 			Description: "Move a task to another project from any view",
 			Shortcut:    ";tm",
@@ -154,6 +174,16 @@ func (m *AppModel) taskCommands() []Command {
 			Aliases:     []string{"move task", "cross-project move", "transfer task"},
 			Handler: func() tea.Msg {
 				return ShowGlobalProjectPickerMsg{Purpose: PickerPurposeTaskMoveSource}
+			},
+		},
+		{
+			Name:        "global section change",
+			Description: "Change task section from any view",
+			Shortcut:    ";ts",
+			Category:    CategoryTasks,
+			Aliases:     []string{"set section", "change section", "update section"},
+			Handler: func() tea.Msg {
+				return ShowGlobalProjectPickerMsg{Purpose: PickerPurposeSectionChange}
 			},
 		},
 		{

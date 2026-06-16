@@ -70,7 +70,7 @@ func (m *AppModel) notesCommands() []Command {
 			Description: "Open project Notes",
 			Shortcut:    "ctrl+n",
 			Category:    CategoryNotes,
-			Views:       projectNotesViews(),
+			Views:       projectNotesHelpViews(),
 			Aliases:     []string{"notes", "view notes", "open notes"},
 			Handler: func() tea.Msg {
 				if project := m.notesTargetProject(); project != nil {
@@ -97,26 +97,7 @@ func (m *AppModel) notesCommands() []Command {
 }
 
 func projectNotesViews() []ViewType {
-	return []ViewType{
-		ViewProjectTree,
-		ViewOutliner,
-		ViewTemporaryOutliner,
-		ViewCrossProjectOutliner,
-		ViewFocusBoard,
-		ViewAllTasks,
-		ViewDailyReview,
-		ViewWeeklyReview,
-		ViewFocusView,
-		ViewProjectFocusView,
-		ViewPriorityView,
-		ViewDueDateOverview,
-		ViewKanban,
-		ViewCrossProjectKanban,
-		ViewRecentActivity,
-		ViewInboxProcessor,
-		ViewGlobalInboxProcessor,
-		ViewTaskDetail,
-	}
+	return projectNotesHelpViews()
 }
 
 func (m *AppModel) notesTargetProject() *models.Project {

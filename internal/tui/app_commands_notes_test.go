@@ -34,6 +34,7 @@ func TestNotesCommands_CtrlNShowNotes(t *testing.T) {
 		ViewKanban,
 		ViewCrossProjectKanban,
 		ViewRecentActivity,
+		ViewProjectRecentActivity,
 		ViewInboxProcessor,
 		ViewGlobalInboxProcessor,
 		ViewTaskDetail,

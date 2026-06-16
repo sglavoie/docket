@@ -15,6 +15,39 @@ func TestNewKeybindingRegistry(t *testing.T) {
 	}
 }
 
+func hasHelpItem(items []HelpItem, key, description string) bool {
+	for _, item := range items {
+		if item.Key == key && item.Description == description {
+			return true
+		}
+	}
+	return false
+}
+
+func countHelpItem(items []HelpItem, key, description string) int {
+	count := 0
+	for _, item := range items {
+		if item.Key == key && item.Description == description {
+			count++
+		}
+	}
+	return count
+}
+
+func assertHasHelpItem(t *testing.T, items []HelpItem, view ViewType, key, description string) {
+	t.Helper()
+	if !hasHelpItem(items, key, description) {
+		t.Fatalf("%s help missing %s %q binding", view, key, description)
+	}
+}
+
+func assertLacksHelpItem(t *testing.T, items []HelpItem, view ViewType, key, description string) {
+	t.Helper()
+	if hasHelpItem(items, key, description) {
+		t.Fatalf("%s help should not advertise %s %q binding", view, key, description)
+	}
+}
+
 func TestGetForView_Dashboard(t *testing.T) {
 	// Dashboard is migrated to declarative keymap; verify via buildKeyMap().
 	m := &DashboardModel{}
@@ -37,6 +70,117 @@ func TestGetForView_Dashboard(t *testing.T) {
 	}
 	if !foundEnter {
 		t.Error("Expected enter key in Dashboard keymap")
+	}
+}
+
+func TestGetForView_KeybindingExplorerMetadata(t *testing.T) {
+	r := NewKeybindingRegistry()
+	items := r.GetForView(ViewKeybindingExplorer)
+
+	assertHasHelpItem(t, items, ViewKeybindingExplorer, "p", "Toggle by prefix/category")
+	for _, key := range []string{"n", "N"} {
+		for _, item := range items {
+			if item.Key == key {
+				t.Fatalf("Keybinding Explorer should not advertise stale %s binding: %+v", key, item)
+			}
+		}
+	}
+}
+
+func TestGetForView_ScopedTaskGlobalsStayOutOfDashboardHelp(t *testing.T) {
+	r := NewKeybindingRegistry()
+	items := r.GetForView(ViewDashboard)
+
+	taskOnlyBindings := []HelpItem{
+		{Key: "space", Description: "Hold to peek task detail (toggles selection in multi-select)"},
+		{Key: "q", Description: "Toggle queue"},
+		{Key: "w", Description: "Toggle today's plan"},
+		{Key: "ctrl+o", Description: "Open task reference copy"},
+		{Key: "ctrl+n", Description: "Open project Notes"},
+		{Key: ".", Description: "Repeat last action"},
+		{Key: "y", Description: "Copy title"},
+		{Key: "Y", Description: "Copy description"},
+		{Key: "ctrl+Y", Description: "Copy title and description"},
+	}
+	for _, binding := range taskOnlyBindings {
+		assertLacksHelpItem(t, items, ViewDashboard, binding.Key, binding.Description)
+	}
+
+	globalBindings := []HelpItem{
+		{Key: "ctrl+c", Description: "Quit"},
+		{Key: "?", Description: "Toggle help"},
+		{Key: `ctrl+\`, Description: "Keybinding Explorer"},
+		{Key: ":", Description: "Command palette"},
+		{Key: "ctrl+,", Description: "Open Settings"},
+	}
+	for _, binding := range globalBindings {
+		assertHasHelpItem(t, items, ViewDashboard, binding.Key, binding.Description)
+	}
+}
+
+func TestGetForView_TaskCapableViewsIncludeScopedTaskGlobals(t *testing.T) {
+	r := NewKeybindingRegistry()
+	items := r.GetForView(ViewOutliner)
+
+	scopedBindings := []HelpItem{
+		{Key: "space", Description: "Hold to peek task detail (toggles selection in multi-select)"},
+		{Key: "q", Description: "Toggle queue"},
+		{Key: "w", Description: "Toggle today's plan"},
+		{Key: "ctrl+o", Description: "Open task reference copy"},
+		{Key: "ctrl+n", Description: "Open project Notes"},
+		{Key: ".", Description: "Repeat last action"},
+		{Key: "y", Description: "Copy title"},
+		{Key: "Y", Description: "Copy description"},
+		{Key: "ctrl+Y", Description: "Copy title and description"},
+	}
+	for _, binding := range scopedBindings {
+		assertHasHelpItem(t, items, ViewOutliner, binding.Key, binding.Description)
+	}
+	assertLacksHelpItem(t, items, ViewOutliner, "w", "Add to today's plan")
+}
+
+func TestActualTaskViewHelpIncludesScopedAppBindings(t *testing.T) {
+	app, project := newTestAppModelWithProject()
+
+	tree := NewProjectTreeModel(project, app.config, app.configManager)
+	treeItems := tree.GetHelpItems()
+	assertHasHelpItem(t, treeItems, ViewProjectTree, "w", "Toggle today's plan")
+	assertHasHelpItem(t, treeItems, ViewProjectTree, "ctrl+o", "Open task reference copy")
+	assertHasHelpItem(t, treeItems, ViewProjectTree, "ctrl+n", "Open project Notes")
+	assertLacksHelpItem(t, treeItems, ViewProjectTree, "w", "Add to today's plan")
+	if count := countHelpItem(treeItems, "ctrl+n", "Open project Notes"); count != 1 {
+		t.Fatalf("ProjectTree help has %d ctrl+n Open project Notes rows, want 1", count)
+	}
+
+	allTasksItems := (&AllTasksViewModel{}).GetHelpItems()
+	assertHasHelpItem(t, allTasksItems, ViewAllTasks, "space", "Hold to peek task detail (toggles selection in multi-select)")
+	assertHasHelpItem(t, allTasksItems, ViewAllTasks, "w", "Toggle today's plan")
+	assertHasHelpItem(t, allTasksItems, ViewAllTasks, "y", "Copy title")
+
+	detail := NewTaskDetailModel(project.Tasks[0], project, app.config, app.configManager)
+	detailItems := detail.GetHelpItems()
+	assertHasHelpItem(t, detailItems, ViewTaskDetail, "j/k", "Scroll down/up")
+	assertHasHelpItem(t, detailItems, ViewTaskDetail, "q", "Toggle queue")
+	assertHasHelpItem(t, detailItems, ViewTaskDetail, "w", "Toggle today's plan")
+	assertHasHelpItem(t, detailItems, ViewTaskDetail, "ctrl+o", "Open task reference copy")
+	assertHasHelpItem(t, detailItems, ViewTaskDetail, "ctrl+n", "Open project Notes")
+	assertHasHelpItem(t, detailItems, ViewTaskDetail, "y", "Copy title")
+	assertLacksHelpItem(t, detailItems, ViewTaskDetail, "space", "Hold to peek task detail (toggles selection in multi-select)")
+}
+
+func TestGetGlobalBindings_IncludesHandledSemicolonShortcuts(t *testing.T) {
+	r := NewKeybindingRegistry()
+	items := r.GetGlobalBindings()
+
+	globalSemicolonBindings := []HelpItem{
+		{Key: ";!", Description: "Global Priority Update"},
+		{Key: ";td", Description: "Global Due Date Update"},
+		{Key: ";tm", Description: "Global Task Move"},
+		{Key: ";ts", Description: "Global Section Change"},
+		{Key: ";tN", Description: "Global Template Task Create"},
+	}
+	for _, binding := range globalSemicolonBindings {
+		assertHasHelpItem(t, items, ViewDashboard, binding.Key, binding.Description)
 	}
 }
 
@@ -183,14 +327,26 @@ func TestGetForView_ProjectNotesScopeDoesNotAdvertiseStaleCtrlN(t *testing.T) {
 	}
 }
 
-func TestGetForView_WeeklyReviewDoesNotAdvertiseSupersededCtrlN(t *testing.T) {
+func TestGetForView_WeeklyReviewAdvertisesScopedProjectNotesCtrlN(t *testing.T) {
 	r := NewKeybindingRegistry()
 	items := r.GetForView(ViewWeeklyReview)
 
+	foundProjectNotes := false
 	for _, item := range items {
-		if item.Key == "ctrl+n" {
-			t.Fatalf("Weekly Review should not advertise local ctrl+n binding %q", item.Description)
+		if item.Key != "ctrl+n" {
+			continue
 		}
+		if item.Description == "Open project Notes" {
+			foundProjectNotes = true
+			continue
+		}
+		if item.Description == "Next unreviewed section" {
+			t.Fatalf("Weekly Review should not advertise hidden local ctrl+n binding %q", item.Description)
+		}
+		t.Fatalf("Weekly Review advertises unexpected ctrl+n binding %q", item.Description)
+	}
+	if !foundProjectNotes {
+		t.Fatal("Weekly Review should advertise scoped ctrl+n Open project Notes binding")
 	}
 
 	keys := (&WeeklyReviewModel{}).buildKeyMap().HandledKeys()

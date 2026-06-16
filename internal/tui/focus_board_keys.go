@@ -14,13 +14,10 @@ func (m *FocusBoardModel) handleKeyMsg(msg tea.KeyPressMsg) (tea.Model, tea.Cmd)
 
 // GetHelpItems returns help items for this view.
 func (m *FocusBoardModel) GetHelpItems() []HelpItem {
-	km := m.buildKeyMap()
-	out := km.HelpItems()
-	result := make([]HelpItem, len(out))
-	for i, h := range out {
-		result[i] = HelpItem{Key: h.Key, Description: h.Description, Category: h.Category}
-	}
-	return result
+	return mergeHelpItems(
+		GetKeybindingRegistry().GetAppLevelForView(m.viewID()),
+		helpItemsFromKeyMap(m.buildKeyMap()),
+	)
 }
 
 // Multi-select helpers.

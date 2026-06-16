@@ -14,6 +14,7 @@ type Keybinding struct {
 	Description string     // Human-readable description
 	Category    string     // Grouping for help display
 	Views       []ViewType // Views where this binding is active (empty = global)
+	AppLevel    bool       // Handled by AppModel global dispatch, not view-local Update
 }
 
 // KeybindingRegistry holds all keybindings for the application.
@@ -128,7 +129,7 @@ func (r *KeybindingRegistry) GetForView(view ViewType) []HelpItem {
 			})
 		}
 	}
-	return items
+	return dedupHelpItems(items)
 }
 
 // GetForViewWithOverrides returns help items with custom overrides applied.
@@ -143,7 +144,23 @@ func (r *KeybindingRegistry) GetForViewWithOverrides(view ViewType, overrides ma
 			items[i].Description = desc
 		}
 	}
-	return items
+	return dedupHelpItems(items)
+}
+
+// GetAppLevelForView returns broad globals and scoped AppModel-level bindings
+// for a view, excluding view-local keymap entries.
+func (r *KeybindingRegistry) GetAppLevelForView(view ViewType) []HelpItem {
+	var items []HelpItem
+	for _, kb := range r.bindings {
+		if len(kb.Views) == 0 || (kb.AppLevel && containsView(kb.Views, view)) {
+			items = append(items, HelpItem{
+				Key:         kb.Key,
+				Description: kb.Description,
+				Category:    kb.Category,
+			})
+		}
+	}
+	return dedupHelpItems(items)
 }
 
 // GetGlobalBindings returns bindings that apply to all views.
@@ -212,15 +229,105 @@ func appendUniqueViews(existing, newViews []ViewType) []ViewType {
 	return existing
 }
 
+func dedupHelpItems(items []HelpItem) []HelpItem {
+	type dedupKey struct{ key, desc string }
+	seen := make(map[dedupKey]bool, len(items))
+	result := items[:0]
+	for _, item := range items {
+		key := dedupKey{item.Key, item.Description}
+		if seen[key] {
+			continue
+		}
+		seen[key] = true
+		result = append(result, item)
+	}
+	return result
+}
+
+func helpItemsFromKeyMap(km *keymap.KeyMap) []HelpItem {
+	raw := km.HelpItems()
+	items := make([]HelpItem, len(raw))
+	for i, item := range raw {
+		items[i] = HelpItem{
+			Key:         item.Key,
+			Description: item.Description,
+			Category:    item.Category,
+		}
+	}
+	return items
+}
+
+func mergeHelpItems(groups ...[]HelpItem) []HelpItem {
+	var items []HelpItem
+	for _, group := range groups {
+		items = append(items, group...)
+	}
+	return dedupHelpItems(items)
+}
+
 func (r *KeybindingRegistry) add(bindings ...Keybinding) {
 	r.bindings = append(r.bindings, bindings...)
 }
 
-func clipboardBindings() []Keybinding {
+func scopedAppBinding(key, description, category string, views []ViewType) Keybinding {
+	return Keybinding{
+		Key:         key,
+		Description: description,
+		Category:    category,
+		Views:       append([]ViewType(nil), views...),
+		AppLevel:    true,
+	}
+}
+
+func taskReferenceViews() []ViewType {
+	return []ViewType{
+		ViewProjectTree,
+		ViewOutliner,
+		ViewTemporaryOutliner,
+		ViewCrossProjectOutliner,
+		ViewAllTasks,
+		ViewFocusView,
+		ViewProjectFocusView,
+		ViewFocusBoard,
+		ViewKanban,
+		ViewCrossProjectKanban,
+		ViewDailyReview,
+		ViewWeeklyReview,
+		ViewDueDateOverview,
+		ViewPriorityView,
+		ViewRecentActivity,
+		ViewProjectRecentActivity,
+		ViewInboxProcessor,
+		ViewGlobalInboxProcessor,
+		ViewTaskDetail,
+	}
+}
+
+func taskPeekViews() []ViewType {
+	views := taskReferenceViews()
+	return slices.DeleteFunc(views, func(view ViewType) bool {
+		return view == ViewTaskDetail
+	})
+}
+
+func projectNotesHelpViews() []ViewType {
+	return taskReferenceViews()
+}
+
+func repeatableActionViews() []ViewType {
+	return []ViewType{
+		ViewProjectTree,
+		ViewOutliner,
+		ViewTemporaryOutliner,
+		ViewCrossProjectOutliner,
+	}
+}
+
+func clipboardBindings(views []ViewType) []Keybinding {
 	return []Keybinding{
-		{Key: "y", Description: "Copy title", Category: "Clipboard"},
-		{Key: "Y", Description: "Copy description", Category: "Clipboard"},
-		{Key: "ctrl+Y", Description: "Copy title and description", Category: "Clipboard"},
+		scopedAppBinding("y", "Copy title", "Clipboard", views),
+		scopedAppBinding("Y", "Copy description", "Clipboard", views),
+		scopedAppBinding("ctrl+Y", "Copy title and description", "Clipboard", views),
 	}
 }
 
@@ -235,7 +342,6 @@ func (r *KeybindingRegistry) registerGlobalBindings() {
 		Keybinding{Key: ";d", Description: "Open Daily Review", Category: "Navigation"},
 		Keybinding{Key: ";r", Description: "Open Weekly Review", Category: "Navigation"},
 		Keybinding{Key: "ctrl+i", Description: "Open Global Inbox Processor", Category: "Navigation"},
-		Keybinding{Key: "space", Description: "Hold to peek task detail (toggles selection in multi-select)", Category: "Navigation"},
 		Keybinding{Key: ";N", Description: "Open Global Notes", Category: "Navigation"},
 		Keybinding{Key: ";q", Description: "Open Backlog", Category: "Navigation"},
 		Keybinding{Key: ";w", Description: "Open Today", Category: "Navigation"},
@@ -254,19 +360,30 @@ func (r *KeybindingRegistry) registerGlobalBindings() {
 		Keybinding{Key: ";{", Description: "Global Note Create", Category: "Navigation"},
 		Keybinding{Key: ";,", Description: "Global Status Update", Category: "Navigation"},
 		Keybinding{Key: ";c", Description: "Global Linked Task (create or link)", Category: "Navigation"},
+		Keybinding{Key: ";!", Description: "Global Priority Update", Category: "Navigation"},
+		Keybinding{Key: ";td", Description: "Global Due Date Update", Category: "Navigation"},
+		Keybinding{Key: ";tm", Description: "Global Task Move", Category: "Navigation"},
+		Keybinding{Key: ";ts", Description: "Global Section Change", Category: "Navigation"},
 		Keybinding{Key: ";tN", Description: "Global Template Task Create", Category: "Navigation"},
 		Keybinding{Key: "ctrl+X", Description: "Switch project", Category: "Navigation"},
 		Keybinding{Key: "ctrl+Z", Description: "Undo/redo stack", Category: "Navigation"},
 		Keybinding{Key: "alt+o", Description: "History back", Category: "Navigation"},
 		Keybinding{Key: "alt+i", Description: "History forward", Category: "Navigation"},
+		Keybinding{Key: "alt+l", Description: "Open Message Log", Category: "Navigation"},
 		Keybinding{Key: "ctrl+6", Description: "Toggle last view", Category: "Navigation"},
 		Keybinding{Key: "ctrl+esc", Description: "Go to Dashboard", Category: "Navigation"},
-		Keybinding{Key: "q", Description: "Toggle queue", Category: "Navigation"},
 		Keybinding{Key: "ctrl+c", Description: "Quit", Category: "Navigation"},
 		Keybinding{Key: "esc", Description: "Back / close", Category: "Navigation"},
 		Keybinding{Key: "?", Description: "Toggle help", Category: "Navigation"},
 		Keybinding{Key: `ctrl+\`, Description: "Keybinding Explorer", Category: "Navigation"},
-		Keybinding{Key: ".", Description: "Repeat last action", Category: "Operations"},
 	)
-	r.add(clipboardBindings()...)
+	r.add(
+		scopedAppBinding("space", "Hold to peek task detail (toggles selection in multi-select)", "Navigation", taskPeekViews()),
+		scopedAppBinding("q", "Toggle queue", "Navigation", taskReferenceViews()),
+		scopedAppBinding("w", "Toggle today's plan", "Navigation", taskReferenceViews()),
+		scopedAppBinding("ctrl+o", "Open task reference copy", "Task Operations", taskReferenceViews()),
+		scopedAppBinding("ctrl+n", "Open project Notes", "Notes", projectNotesHelpViews()),
+		scopedAppBinding(".", "Repeat last action", "Operations", repeatableActionViews()),
+	)
+	r.add(clipboardBindings(taskReferenceViews())...)
 }
