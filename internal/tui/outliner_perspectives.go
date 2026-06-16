@@ -1,10 +1,6 @@
 package tui
 
-import (
-	"sort"
-
-	"github.com/sglavoie/tt/internal/models"
-)
+import "github.com/sglavoie/tt/internal/models"
 
 // SectionOrder is the canonical GTD display order used by the All perspective
 // in the cross-project outliner.
@@ -18,52 +14,33 @@ var SectionOrder = []string{
 	models.SectionSomeday,
 }
 
-// BuildSectionOrder extends SectionOrder with custom sections found in the
-// given tasks. Custom sections are appended after canonical GTD sections in
-// alphabetical order.
+// BuildSectionOrder returns the canonical GTD section-header order. Custom
+// sections are surfaced as tabs, not as collapsible section headers.
 func BuildSectionOrder(tasks []*models.Task) []string {
-	customSet := make(map[string]bool)
-	for _, t := range tasks {
-		if t.CustomSection != "" {
-			customSet[t.CustomSection] = true
-		}
-	}
-	if len(customSet) == 0 {
-		return SectionOrder
-	}
-	customs := make([]string, 0, len(customSet))
-	for name := range customSet {
-		customs = append(customs, name)
-	}
-	sort.Strings(customs)
-	result := make([]string, len(SectionOrder), len(SectionOrder)+len(customs))
-	copy(result, SectionOrder)
-	return append(result, customs...)
+	return sectionOrderCopy()
 }
 
-// BuildCrossProjectSectionOrder extends SectionOrder with custom sections
-// found across all project groups. Custom sections are appended after
-// canonical GTD sections in alphabetical order.
+// BuildCrossProjectSectionOrder returns the canonical GTD section-header order
+// for aggregate rows. Cross-project custom sections are surfaced as tabs, not
+// as collapsible section headers.
 func BuildCrossProjectSectionOrder(groups []projectTasksGroup) []string {
-	customSet := make(map[string]bool)
-	for _, g := range groups {
-		for _, t := range g.tasks {
-			if t.CustomSection != "" {
-				customSet[t.CustomSection] = true
-			}
-		}
+	return sectionOrderCopy()
+}
+
+// headerSectionForTask returns the GTD section used for collapsible section
+// headers. Custom-section tasks are grouped under Active (the empty section);
+// custom membership remains available through Task.InSection and tab filters.
+func headerSectionForTask(t *models.Task) string {
+	if t == nil || t.CustomSection != "" {
+		return ""
 	}
-	if len(customSet) == 0 {
-		return SectionOrder
-	}
-	customs := make([]string, 0, len(customSet))
-	for name := range customSet {
-		customs = append(customs, name)
-	}
-	sort.Strings(customs)
-	result := make([]string, len(SectionOrder), len(SectionOrder)+len(customs))
+	return t.Section
+}
+
+func sectionOrderCopy() []string {
+	result := make([]string, len(SectionOrder))
 	copy(result, SectionOrder)
-	return append(result, customs...)
+	return result
 }
 
 // Perspective defines a named filter+sort preset for the outliner view.

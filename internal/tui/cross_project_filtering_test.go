@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"slices"
 	"testing"
 
 	"github.com/sglavoie/tt/internal/models"
@@ -117,6 +118,113 @@ func TestCrossProjectRebuildRowsSectionFilter(t *testing.T) {
 	if titles["Active task"] {
 		t.Error("section filter should hide Active task (empty section)")
 	}
+}
+
+func TestCrossProjectCustomSectionTabsAggregateProjects(t *testing.T) {
+	m := minimalOutliner()
+	m.loadedProjects = []*models.Project{
+		{ID: "p1", Sections: []string{models.SectionNext, "Sprint-1"}},
+		{ID: "p2", Sections: []string{"Design", "Sprint-1"}},
+	}
+
+	want := []string{"All", "Design", "Sprint-1"}
+	if got := m.customSectionTabs(); !slices.Equal(got, want) {
+		t.Fatalf("customSectionTabs() = %v, want %v", got, want)
+	}
+
+	m.setCustomSectionTabIndex(2)
+	if got := m.customSectionTabIndex(); got != 2 {
+		t.Fatalf("customSectionTabIndex() = %d, want 2", got)
+	}
+	if got := m.activeCustomSectionFilter(); got != "Sprint-1" {
+		t.Fatalf("activeCustomSectionFilter() = %q, want Sprint-1", got)
+	}
+}
+
+func TestCrossProjectEmptyCustomSectionTabFiltersToEmptyRows(t *testing.T) {
+	otherTask := makeTask("other", "Other task", models.SectionNext)
+	proj := &models.Project{
+		ID:       "proj-empty-custom-tab",
+		Name:     "EmptyCustomTab",
+		Sections: []string{"Beta", "Alpha", models.SectionNext},
+		Tasks:    []*models.Task{otherTask},
+	}
+	proj.BuildTaskTree()
+
+	m := &OutlinerModel{
+		collapsedSections: make(map[string]bool),
+		expandedNodes:     make(map[string]bool),
+		activePerspective: PerspectiveAll,
+		loadedProjects:    []*models.Project{proj},
+		filter:            NewFilterState(),
+		customSectionTab:  make(map[string]int),
+		sort:              NewSortState(),
+	}
+
+	wantTabs := []string{"All", "Alpha", "Beta"}
+	if got := m.customSectionTabs(); !slices.Equal(got, wantTabs) {
+		t.Fatalf("customSectionTabs() = %v, want %v", got, wantTabs)
+	}
+
+	m.setCustomSectionTabIndex(1)
+	if got := m.activeCustomSectionFilter(); got != "Alpha" {
+		t.Fatalf("activeCustomSectionFilter() = %q, want Alpha", got)
+	}
+
+	m.crossProjectRebuildRows()
+	if len(m.rows) != 0 {
+		t.Fatalf("empty custom tab rendered rows %v, want none", rowTitles(m.rows))
+	}
+}
+
+func TestCrossProjectRebuildRowsCustomSectionTabFiltersWithoutForce(t *testing.T) {
+	sprintTask := &models.Task{ID: "sprint", Title: "Sprint custom task", CustomSection: "Sprint-1", Status: models.StatusTodo}
+	legacySprintTask := &models.Task{ID: "legacy", Title: "Legacy sprint task", Section: "Sprint-1", Status: models.StatusTodo}
+	designTask := &models.Task{ID: "design", Title: "Design task", CustomSection: "Design", Status: models.StatusTodo}
+	activeTask := makeTask("active", "Active task", "")
+	activeTask.Status = models.StatusTodo
+
+	proj := &models.Project{
+		ID:       "proj-custom-tabs",
+		Name:     "CustomTabs",
+		Sections: []string{"Sprint-1", "Design"},
+		Tasks:    []*models.Task{sprintTask, legacySprintTask, designTask, activeTask},
+	}
+	proj.BuildTaskTree()
+
+	m := &OutlinerModel{
+		collapsedSections: make(map[string]bool),
+		expandedNodes:     make(map[string]bool),
+		activePerspective: PerspectiveAll,
+		loadedProjects:    []*models.Project{proj},
+		filter:            NewFilterState(),
+		customSectionTab:  make(map[string]int),
+		sort:              NewSortState(),
+	}
+
+	m.crossProjectRebuildRows()
+	assertRowTitles(t, m.rows, []string{
+		"[Active]",
+		"Sprint custom task",
+		"Legacy sprint task",
+		"Design task",
+		"Active task",
+	})
+
+	tabs := m.customSectionTabs()
+	idx := slices.Index(tabs, "Sprint-1")
+	if idx < 0 {
+		t.Fatalf("Sprint-1 tab missing from %v", tabs)
+	}
+	m.setCustomSectionTabIndex(idx)
+
+	m.crossProjectRebuildRows()
+
+	assertRowTitles(t, m.rows, []string{
+		"[Active]",
+		"Sprint custom task",
+		"Legacy sprint task",
+	})
 }
 
 func collectCrossProjectTaskTitles(m *OutlinerModel) map[string]bool {

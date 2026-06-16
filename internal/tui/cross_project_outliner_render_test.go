@@ -137,6 +137,68 @@ func TestCrossProjectOutlinerRenderEmojiPreviewScrollbarStaysWithinWidth(t *test
 	}
 }
 
+func TestCrossProjectOutlinerRenderAggregateCustomTabs(t *testing.T) {
+	const width = 80
+	cfg := config.NewConfig()
+	m := NewOutlinerModel(nil, cfg, nil)
+	m.SetSize(width, 12)
+
+	task := renderFixtureTask(t, "sprint-task", 11, models.TaskTypeTask, "Sprint task", models.StatusTodo, 3, "")
+	task.CustomSection = "Sprint-1"
+	project := renderFixtureProject(t, "proj-alpha", "alpha", "Alpha Project", []*models.Task{task})
+	project.Sections = []string{"Sprint-1"}
+
+	m.loadedProjects = []*models.Project{project}
+	m.crossProjectRebuildRows()
+
+	plain := ansi.Strip(m.renderOutlinerTreeContent(width))
+	assertContains(t, plain, "Sprint-1", "aggregate custom tab")
+}
+
+func TestCrossProjectOutlinerRenderAggregateCustomTabColors(t *testing.T) {
+	ApplyTheme(ThemeConfig{Name: ""})
+	t.Cleanup(func() { ApplyTheme(ThemeConfig{}) })
+
+	const width = 80
+	cfg := config.NewConfig()
+	m := NewOutlinerModel(nil, cfg, nil)
+	m.SetSize(width, 12)
+
+	task := renderFixtureTask(t, "sprint-task", 11, models.TaskTypeTask, "Sprint task", models.StatusTodo, 3, "")
+	task.CustomSection = "Sprint-1"
+	project := renderFixtureProject(t, "proj-alpha", "alpha", "Alpha Project", []*models.Task{task})
+	project.Sections = []string{models.SectionNext, "Sprint-1"}
+	project.SectionColors = map[string]string{"Sprint-1": "green"}
+
+	m.loadedProjects = []*models.Project{project}
+	m.crossProjectRebuildRows()
+
+	rendered := m.renderOutlinerTreeContent(width)
+	expectedTabBar := RenderColoredTabBar(
+		[]string{"All", "Sprint-1"},
+		0,
+		width,
+		1,
+		map[string]string{"Sprint-1": "green"},
+	)
+	assertContains(t, rendered, expectedTabBar, "colored aggregate custom tab bar")
+}
+
+func TestCrossProjectOutlinerRenderAggregateCustomTabsInEmptyState(t *testing.T) {
+	const width = 80
+	cfg := config.NewConfig()
+	m := NewOutlinerModel(nil, cfg, nil)
+	m.SetSize(width, 12)
+
+	project := renderFixtureProject(t, "proj-alpha", "alpha", "Alpha Project", nil)
+	project.Sections = []string{"Sprint-1"}
+	m.loadedProjects = []*models.Project{project}
+
+	plain := ansi.Strip(m.renderOutlinerTreeContent(width))
+	assertContains(t, plain, "Sprint-1", "empty-state aggregate custom tab")
+	assertContains(t, plain, "No tasks found.", "empty-state message")
+}
+
 func crossProjectRenderFixture(t *testing.T, width, height int) (*OutlinerModel, *models.Task) {
 	t.Helper()
 

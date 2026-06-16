@@ -131,6 +131,7 @@ type Config struct {
 	CrossOutlinerFilterTags        []string                     `json:"cross_outliner_filter_tags,omitempty"`
 	CrossOutlinerFilterSections    []string                     `json:"cross_outliner_filter_sections,omitempty"`
 	CrossOutlinerFilterAttrs       map[string]string            `json:"cross_outliner_filter_attrs,omitempty"`
+	CrossOutlinerCustomSectionTab  string                       `json:"cross_outliner_custom_section_tab,omitempty"`
 	CrossOutlinerSortField         int                          `json:"cross_outliner_sort_field,omitempty"`
 	CrossOutlinerSortAscending     bool                         `json:"cross_outliner_sort_ascending"`
 	CrossOutlinerFilterBarEnabled  bool                         `json:"cross_outliner_filter_bar_enabled"`

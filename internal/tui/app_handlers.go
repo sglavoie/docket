@@ -92,6 +92,7 @@ func (m *AppModel) saveCrossOutlinerState() {
 	} else {
 		m.config.CrossOutlinerFilterAttrs = nil
 	}
+	m.config.CrossOutlinerCustomSectionTab = m.crossOutliner.activeCustomSectionFilter()
 
 	if err := m.configManager.Save(m.config); err != nil {
 		logging.Warn("failed to save cross-outliner state: %v", err)

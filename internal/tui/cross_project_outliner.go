@@ -3,6 +3,7 @@ package tui
 import (
 	"fmt"
 	"sort"
+	"strings"
 	"time"
 
 	tea "charm.land/bubbletea/v2"
@@ -106,9 +107,17 @@ func (m *OutlinerModel) handleCrossProjectsLoaded(msg crossProjectsLoadedMsg) te
 	if msg.generation != m.crossLoadGen {
 		return nil // Stale result from a superseded load; discard.
 	}
+	customSectionTabName, hasCustomSectionTab := m.consumeCrossOutlinerReloadCustomSectionTab()
+	if !hasCustomSectionTab {
+		customSectionTabName, hasCustomSectionTab = m.crossProjectCustomSectionTabBeforeLoad()
+	}
 	m.crossLoading = false
 	m.crossSpinnerVisible = false
 	m.loadedProjects = msg.projects
+	if !hasCustomSectionTab && m.config != nil {
+		customSectionTabName = m.config.CrossOutlinerCustomSectionTab
+	}
+	m.restoreCrossOutlinerCustomSectionTab(customSectionTabName)
 	m.crossForceRebuild = true
 	m.resetViewScrollOffset()
 	m.crossProjectRebuildRows()
@@ -154,7 +163,7 @@ func (m *OutlinerModel) crossProjectRebuildRows() {
 		taskCount += len(proj.Tasks)
 	}
 	currentPerspective := m.activePerspective
-	currentFilter := m.SearchQuery()
+	currentFingerprint := m.crossProjectRowsFingerprint()
 	currentZoomDepth := len(m.crossZoomStack)
 
 	// Short-circuit when all guard inputs match the previous call and no force
@@ -162,7 +171,7 @@ func (m *OutlinerModel) crossProjectRebuildRows() {
 	// events like window resize or view reactivation.
 	if !m.crossForceRebuild &&
 		currentPerspective == m.crossLastPerspective &&
-		currentFilter == m.crossLastFilterStr &&
+		currentFingerprint == m.crossLastRowsFingerprint &&
 		currentZoomDepth == m.crossLastZoomDepth &&
 		taskCount == m.crossLastTaskCount {
 		return
@@ -170,7 +179,7 @@ func (m *OutlinerModel) crossProjectRebuildRows() {
 
 	// Update guard state and consume the force flag.
 	m.crossLastPerspective = currentPerspective
-	m.crossLastFilterStr = currentFilter
+	m.crossLastRowsFingerprint = currentFingerprint
 	m.crossLastZoomDepth = currentZoomDepth
 	m.crossLastTaskCount = taskCount
 	m.crossForceRebuild = false
@@ -214,6 +223,12 @@ func (m *OutlinerModel) crossProjectRebuildRows() {
 			filter = sf
 		}
 		tasks := filterTaskTree(roots, filter)
+
+		if section := m.activeCustomSectionFilter(); section != "" {
+			tasks = filterTaskTree(tasks, func(t *models.Task) bool {
+				return t.InSection(section)
+			})
+		}
 
 		if q := m.SearchQuery(); q != "" {
 			tasks = filterTaskTree(tasks, func(t *models.Task) bool {
@@ -273,6 +288,71 @@ func (m *OutlinerModel) crossProjectRebuildRows() {
 	}
 	m.pruneInvisibleSelections()
 	m.clampCursor()
+}
+
+func (m *OutlinerModel) crossProjectRowsFingerprint() string {
+	tabs := m.customSectionTabs()
+	commonParts := commonFilterParts(&m.filter.CommonFilterState)
+
+	var b strings.Builder
+	fmt.Fprintf(&b, "search=%q|", m.SearchQuery())
+	fmt.Fprintf(&b, "tab=%d:%q|", m.customSectionTabIndex(), m.activeCustomSectionFilter())
+	fmt.Fprintf(&b, "tabs=%q|", strings.Join(tabs, "\x1f"))
+	fmt.Fprintf(&b, "sort=%d:%t|", m.sort.Field, m.sort.Ascending)
+	fmt.Fprintf(&b, "common=%q|", strings.Join(commonParts, "\x1f"))
+	fmt.Fprintf(&b, "sections=%s|", boolMapFingerprint(m.filter.Sections))
+	fmt.Fprintf(&b, "projects=%s|", boolMapFingerprint(m.filterProjects))
+	fmt.Fprintf(&b, "loaded=%s|", loadedProjectIDsFingerprint(m.loadedProjects))
+	fmt.Fprintf(&b, "criteria=%s", m.activeCriteriaFilterFingerprint())
+	return b.String()
+}
+
+func boolMapFingerprint(values map[string]bool) string {
+	if len(values) == 0 {
+		return ""
+	}
+	keys := make([]string, 0, len(values))
+	for key := range values {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+
+	var b strings.Builder
+	for i, key := range keys {
+		if i > 0 {
+			b.WriteByte(',')
+		}
+		fmt.Fprintf(&b, "%q=%t", key, values[key])
+	}
+	return b.String()
+}
+
+func loadedProjectIDsFingerprint(projects []*models.Project) string {
+	if len(projects) == 0 {
+		return ""
+	}
+	ids := make([]string, 0, len(projects))
+	for _, project := range projects {
+		if project == nil {
+			ids = append(ids, "<nil>")
+			continue
+		}
+		ids = append(ids, project.ID)
+	}
+	return strings.Join(ids, "\x1f")
+}
+
+func (m *OutlinerModel) activeCriteriaFilterFingerprint() string {
+	if m.activeCriteriaFilter == nil {
+		return ""
+	}
+	filter := m.activeCriteriaFilter
+	var b strings.Builder
+	fmt.Fprintf(&b, "%q:%q:%q:%q:%t", filter.ID, filter.Name, filter.Mode, filter.EffectiveLogic(), filter.IncludeCompleted)
+	for _, criterion := range filter.Criteria {
+		fmt.Fprintf(&b, "|%q:%q:%q", criterion.Field, criterion.Operation, criterion.Value)
+	}
+	return b.String()
 }
 
 // sortCrossProjectGroups sorts each project group's tasks in place using the
@@ -340,6 +420,7 @@ func (m *OutlinerModel) renderCrossProjectContent() string {
 // reloadCrossProjects triggers a new load, incrementing the generation counter
 // so any in-flight stale result is discarded on arrival.
 func (m *OutlinerModel) reloadCrossProjects() tea.Cmd {
+	m.preserveCrossOutlinerCustomSectionTabForReload()
 	m.loadedProjects = nil
 	m.rows = m.rows[:0]
 	m.resetViewScrollOffset()

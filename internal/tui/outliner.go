@@ -94,13 +94,15 @@ type OutlinerModel struct {
 	crossUndoCtx          UndoContext       // Undo context scoped to cross-project operations
 	crossSpinner          SpinnerModel      // View-local spinner, independent of global save spinner
 	crossQuickEditProject *models.Project   // Resolved project for quick edit in cross-project mode
+	crossReloadTabName    string            // Custom-section tab name preserved while async reload clears loadedProjects
+	crossReloadTabSet     bool              // True when crossReloadTabName is an intentional live selection, including All
 
 	// Memoization guard for crossProjectRebuildRows
-	crossLastPerspective int
-	crossLastFilterStr   string
-	crossLastZoomDepth   int
-	crossLastTaskCount   int
-	crossForceRebuild    bool // When true, bypasses the memoization guard on next rebuild
+	crossLastPerspective     int
+	crossLastRowsFingerprint string
+	crossLastZoomDepth       int
+	crossLastTaskCount       int
+	crossForceRebuild        bool // When true, bypasses the memoization guard on next rebuild
 
 	// openLoops mirrors AppModel.openLoops for the title-row Zeigarnik counter.
 	openLoops OpenLoops

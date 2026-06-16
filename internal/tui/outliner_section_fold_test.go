@@ -127,6 +127,30 @@ func TestOutlinerSectionFoldPrefixAllMixedStateCollapsesAll(t *testing.T) {
 	}
 }
 
+func TestOutlinerCollapsedBuiltInSectionKeepsCustomTasksUnderActive(t *testing.T) {
+	inboxTask := makeTask("inbox-1", "Inbox task", models.SectionInbox)
+	customTask := &models.Task{
+		ID:            "custom-1",
+		Title:         "Custom task",
+		CustomSection: "Sprint-1",
+	}
+	project := &models.Project{
+		ID:       "project",
+		Sections: []string{models.SectionInbox, "Sprint-1"},
+		Tasks:    []*models.Task{inboxTask, customTask},
+	}
+	project.BuildTaskTree()
+
+	m := newSectionFoldTestOutliner(project)
+	m.collapsedSections[models.SectionInbox] = true
+	m.rebuildRows()
+
+	assertRowTitles(t, m.rows, []string{"[Inbox]", "[Active]", "Custom task"})
+	if m.collapsedSections["Sprint-1"] {
+		t.Fatalf("custom section should not have a collapsible header entry: %v", m.collapsedSections)
+	}
+}
+
 func TestOutlinerSectionFoldPrefixAllCrossProjectUsesSharedSectionKeys(t *testing.T) {
 	alphaTask := makeTask("alpha-1", "Alpha inbox", models.SectionInbox)
 	betaTask := makeTask("beta-1", "Beta next", models.SectionNext)

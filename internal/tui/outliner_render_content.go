@@ -164,11 +164,9 @@ func (m *OutlinerModel) writeOutlinerHeader(b *strings.Builder, width int, persp
 		b.WriteString(m.ac.RenderDropdown("    "))
 	}
 
-	if m.project != nil {
-		if tabs := m.customSectionTabs(); tabs != nil {
-			b.WriteString(RenderColoredTabBar(tabs, m.customSectionTabIndex(), width, 1, m.project.SectionColors))
-			b.WriteString("\n")
-		}
+	if tabBar := m.renderCustomSectionTabBar(width); tabBar != "" {
+		b.WriteString(tabBar)
+		b.WriteString("\n")
 	}
 
 	if breadcrumb := m.renderOutlinerBreadcrumb(width); breadcrumb != "" {
@@ -190,11 +188,9 @@ func (m *OutlinerModel) renderOutlinerEmptyState(width int, perspective Perspect
 		b.WriteString(m.ac.RenderDropdown("    "))
 	}
 
-	if m.project != nil {
-		if tabs := m.customSectionTabs(); tabs != nil {
-			b.WriteString(RenderColoredTabBar(tabs, m.customSectionTabIndex(), width, 1, m.project.SectionColors))
-			b.WriteString("\n")
-		}
+	if tabBar := m.renderCustomSectionTabBar(width); tabBar != "" {
+		b.WriteString(tabBar)
+		b.WriteString("\n")
 	}
 
 	if breadcrumb != "" {
@@ -220,6 +216,24 @@ func (m *OutlinerModel) renderOutlinerEmptyState(width int, perspective Perspect
 	}
 
 	return b.String()
+}
+
+func (m *OutlinerModel) renderCustomSectionTabBar(width int) string {
+	tabs := m.customSectionTabs()
+	if tabs == nil {
+		return ""
+	}
+	var tabColors map[string]string
+	if m.project != nil {
+		tabColors = m.project.SectionColors
+	} else {
+		var globalColors map[string]string
+		if m.config != nil {
+			globalColors = m.config.SectionColors
+		}
+		tabColors = CustomSectionTabColorsForProjects(m.loadedProjects, globalColors)
+	}
+	return RenderColoredTabBar(tabs, m.customSectionTabIndex(), width, 1, tabColors)
 }
 
 func (m *OutlinerModel) outlinerEmptyMessage(perspective Perspective) string {

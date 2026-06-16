@@ -25,6 +25,17 @@ func makeTask(id, title, section string) *models.Task {
 	}
 }
 
+func setOutlinerCustomSectionTabByName(t *testing.T, m *OutlinerModel, name string) {
+	t.Helper()
+	for i, tab := range m.customSectionTabs() {
+		if tab == name {
+			m.setCustomSectionTabIndex(i)
+			return
+		}
+	}
+	t.Fatalf("custom section tab %q not found in %v", name, m.customSectionTabs())
+}
+
 // readCrossTestFile reads a file's contents for integration test assertions.
 func readCrossTestFile(t *testing.T, path string) string {
 	t.Helper()

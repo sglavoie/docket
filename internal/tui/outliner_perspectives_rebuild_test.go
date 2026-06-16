@@ -15,6 +15,63 @@ func TestRebuildRows_AllPerspective(t *testing.T) {
 	})
 }
 
+func TestRebuildRows_AllPerspectiveGroupsCustomSectionsUnderActive(t *testing.T) {
+	customTask := &models.Task{
+		ID:            "custom",
+		Title:         "Sprint task",
+		Status:        models.StatusTodo,
+		CustomSection: "Sprint",
+	}
+	nextTask := &models.Task{
+		ID:      "next",
+		Title:   "Next task",
+		Status:  models.StatusTodo,
+		Section: models.SectionNext,
+	}
+	proj := &models.Project{
+		ID:       "project",
+		Name:     "Test",
+		Sections: []string{models.SectionNext, "Sprint"},
+		Tasks:    []*models.Task{customTask, nextTask},
+	}
+
+	m := &OutlinerModel{project: proj, activePerspective: 1, collapsedSections: make(map[string]bool)}
+	m.rebuildRows()
+
+	assertRowTitles(t, m.rows, []string{"[Active]", "Sprint task", "[Next]", "Next task"})
+}
+
+func TestRebuildRows_CustomSectionTabMatchesLegacySectionValue(t *testing.T) {
+	legacyTask := &models.Task{
+		ID:      "legacy",
+		Title:   "Legacy task",
+		Status:  models.StatusTodo,
+		Section: "Legacy",
+	}
+	otherTask := &models.Task{
+		ID:            "other",
+		Title:         "Other task",
+		Status:        models.StatusTodo,
+		CustomSection: "Sprint",
+	}
+	proj := &models.Project{
+		ID:       "project",
+		Name:     "Test",
+		Sections: []string{"Legacy", "Sprint"},
+		Tasks:    []*models.Task{legacyTask, otherTask},
+	}
+
+	m := &OutlinerModel{
+		project:           proj,
+		activePerspective: 1,
+		collapsedSections: make(map[string]bool),
+		customSectionTab:  map[string]int{proj.ID: 1},
+	}
+	m.rebuildRows()
+
+	assertRowTitles(t, m.rows, []string{"[Active]", "Legacy task"})
+}
+
 func TestRebuildRows_ActivePerspective(t *testing.T) {
 	m := &OutlinerModel{project: buildTestProject(), activePerspective: 2}
 	m.rebuildRows()

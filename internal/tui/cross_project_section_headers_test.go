@@ -140,7 +140,7 @@ func TestBuildCrossProjectRowsAllGroupsEmpty(t *testing.T) {
 	}
 }
 
-func TestBuildCrossProjectRowsCustomSectionHeaders(t *testing.T) {
+func TestBuildCrossProjectRowsCustomSectionsUseActiveHeader(t *testing.T) {
 	m := minimalOutliner()
 
 	customTask := &models.Task{ID: "ct1", Title: "Custom task", CustomSection: "Sprint-1"}
@@ -164,7 +164,7 @@ func TestBuildCrossProjectRowsCustomSectionHeaders(t *testing.T) {
 		}
 	}
 
-	want := []string{"Active", "Sprint-1"}
+	want := []string{"Active"}
 	if len(headers) != len(want) {
 		t.Fatalf("expected headers %v, got %v", want, headers)
 	}
@@ -175,7 +175,7 @@ func TestBuildCrossProjectRowsCustomSectionHeaders(t *testing.T) {
 	}
 }
 
-func TestBuildCrossProjectRowsCustomSectionPlacement(t *testing.T) {
+func TestBuildCrossProjectRowsCustomSectionPlacementUnderActive(t *testing.T) {
 	m := minimalOutliner()
 
 	customTask := &models.Task{ID: "ct1", Title: "Custom task", CustomSection: "Sprint-1"}
@@ -198,15 +198,15 @@ func TestBuildCrossProjectRowsCustomSectionPlacement(t *testing.T) {
 		}
 	}
 
-	if got := taskSections["Custom task"]; got != "Sprint-1" {
-		t.Errorf("Custom task should be under Sprint-1, got %q", got)
+	if got := taskSections["Custom task"]; got != "" {
+		t.Errorf("Custom task should be under Active (empty), got %q", got)
 	}
 	if got := taskSections["Active task"]; got != "" {
 		t.Errorf("Active task should be under Active (empty), got %q", got)
 	}
 }
 
-func TestBuildCrossProjectRowsMultipleCustomSectionsOrdered(t *testing.T) {
+func TestBuildCrossProjectRowsMultipleCustomSectionsDoNotAddHeaders(t *testing.T) {
 	m := minimalOutliner()
 
 	groups := []projectTasksGroup{
@@ -234,7 +234,7 @@ func TestBuildCrossProjectRowsMultipleCustomSectionsOrdered(t *testing.T) {
 		}
 	}
 
-	want := []string{models.SectionInbox, "Alpha", "Zulu"}
+	want := []string{models.SectionInbox, ""}
 	if len(headers) != len(want) {
 		t.Fatalf("expected headers %v, got %v", want, headers)
 	}
@@ -243,4 +243,19 @@ func TestBuildCrossProjectRowsMultipleCustomSectionsOrdered(t *testing.T) {
 			t.Errorf("header[%d]: want %q, got %q", i, w, headers[i])
 		}
 	}
+}
+
+func TestBuildCrossProjectRowsLegacyCustomSectionValueStaysVisible(t *testing.T) {
+	m := minimalOutliner()
+
+	groups := []projectTasksGroup{{
+		projectID: "proj-1",
+		tasks: []*models.Task{
+			{ID: "legacy", Title: "Legacy custom task", Section: "Sprint-1"},
+		},
+	}}
+
+	m.buildCrossProjectRowsWithSectionHeaders(groups)
+
+	assertRowTitles(t, m.rows, []string{"[Active]", "Legacy custom task"})
 }

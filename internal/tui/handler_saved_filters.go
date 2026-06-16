@@ -332,20 +332,8 @@ func (m *AppModel) applySavedFilterToOutlinerModel(ol *OutlinerModel, sf config.
 		}
 		ol.filter.Tags = validateSavedStringSet(sf.FilterTags, validTags)
 
-		// Restore sections — validate against current project
-		ol.filter.Sections = make(map[string]bool)
-		if ol.project != nil {
-			existingSections := ol.project.GetSections()
-			sectionSet := make(map[string]bool)
-			for _, s := range existingSections {
-				sectionSet[s] = true
-			}
-			for _, section := range sf.FilterSections {
-				if sectionSet[section] {
-					ol.filter.Sections[section] = true
-				}
-			}
-		}
+		// Restore sections — validate against the active outliner scope.
+		ol.filter.Sections = validateSavedStringSet(sf.FilterSections, ol.searchSectionCache())
 
 		// Restore attributes
 		ol.filter.Attrs = make(map[string]string)

@@ -137,6 +137,31 @@ func TestSaveCrossOutlinerStateClearsFoldStateWhenAllExpanded(t *testing.T) {
 	}
 }
 
+func TestSaveCrossOutlinerStatePersistsCustomSectionTab(t *testing.T) {
+	app := newTestAppModel()
+	project := &models.Project{
+		ID:       "alpha",
+		Name:     "Alpha",
+		Sections: []string{models.SectionNext, "Sprint-1"},
+	}
+	app.crossOutliner = NewOutlinerModel(nil, app.config, app.configManager)
+	app.crossOutliner.loadedProjects = []*models.Project{project}
+	setOutlinerCustomSectionTabByName(t, app.crossOutliner, "Sprint-1")
+
+	app.saveCrossOutlinerState()
+
+	if got := app.config.CrossOutlinerCustomSectionTab; got != "Sprint-1" {
+		t.Fatalf("CrossOutlinerCustomSectionTab = %q, want Sprint-1", got)
+	}
+
+	app.crossOutliner.setCustomSectionTabIndex(0)
+	app.saveCrossOutlinerState()
+
+	if got := app.config.CrossOutlinerCustomSectionTab; got != "" {
+		t.Fatalf("CrossOutlinerCustomSectionTab = %q, want empty for All tab", got)
+	}
+}
+
 func TestNewOutlinerModelRestoresCrossFoldState(t *testing.T) {
 	app := newTestAppModel()
 	app.config.CrossOutlinerFoldState = map[string]bool{
@@ -154,6 +179,136 @@ func TestNewOutlinerModelRestoresCrossFoldState(t *testing.T) {
 	}
 	if m.isExpanded("task-a") {
 		t.Errorf("isExpanded(task-a) should be false after restore")
+	}
+}
+
+func TestHandleCrossProjectsLoadedRestoresPersistedCustomSectionTab(t *testing.T) {
+	app := newTestAppModel()
+	app.config.CrossOutlinerCustomSectionTab = "Sprint-2"
+	customTask := makeTask("sprint-task", "Sprint task", "")
+	customTask.CustomSection = "Sprint-2"
+	project := &models.Project{
+		ID:       "alpha",
+		Name:     "Alpha",
+		Sections: []string{models.SectionNext, "Sprint-1", "Sprint-2"},
+		Tasks:    []*models.Task{customTask},
+	}
+	project.BuildTaskTree()
+	m := NewOutlinerModel(nil, app.config, app.configManager)
+
+	m.handleCrossProjectsLoaded(crossProjectsLoadedMsg{
+		projects:   []*models.Project{project},
+		generation: 0,
+	})
+
+	if got := m.activeCustomSectionFilter(); got != "Sprint-2" {
+		t.Fatalf("activeCustomSectionFilter() = %q, want Sprint-2", got)
+	}
+}
+
+func TestHandleCrossProjectsLoadedResetsMissingPersistedCustomSectionTab(t *testing.T) {
+	app := newTestAppModel()
+	app.config.CrossOutlinerCustomSectionTab = "Missing"
+	project := &models.Project{
+		ID:       "alpha",
+		Name:     "Alpha",
+		Sections: []string{models.SectionNext, "Sprint-1"},
+	}
+	m := NewOutlinerModel(nil, app.config, app.configManager)
+
+	m.handleCrossProjectsLoaded(crossProjectsLoadedMsg{
+		projects:   []*models.Project{project},
+		generation: 0,
+	})
+
+	if got := m.activeCustomSectionFilter(); got != "" {
+		t.Fatalf("activeCustomSectionFilter() = %q, want empty for missing persisted tab", got)
+	}
+}
+
+func TestHandleCrossProjectsLoadedPreservesInMemoryCustomSectionTab(t *testing.T) {
+	app := newTestAppModel()
+	app.config.CrossOutlinerCustomSectionTab = "Missing"
+	project := &models.Project{
+		ID:       "alpha",
+		Name:     "Alpha",
+		Sections: []string{models.SectionNext, "Sprint-1"},
+	}
+	m := NewOutlinerModel(nil, app.config, app.configManager)
+	m.loadedProjects = []*models.Project{project}
+	setOutlinerCustomSectionTabByName(t, m, "Sprint-1")
+
+	m.handleCrossProjectsLoaded(crossProjectsLoadedMsg{
+		projects:   []*models.Project{project},
+		generation: 0,
+	})
+
+	if got := m.activeCustomSectionFilter(); got != "Sprint-1" {
+		t.Fatalf("activeCustomSectionFilter() = %q, want Sprint-1", got)
+	}
+}
+
+func TestReloadCrossProjectsPreservesInMemoryCustomSectionTab(t *testing.T) {
+	app := newTestAppModel()
+	app.config.CrossOutlinerCustomSectionTab = "Missing"
+	project := &models.Project{
+		ID:       "alpha",
+		Name:     "Alpha",
+		Sections: []string{models.SectionNext, "Sprint-1"},
+	}
+	m := NewOutlinerModel(nil, app.config, app.configManager)
+	m.loadedProjects = []*models.Project{project}
+	setOutlinerCustomSectionTabByName(t, m, "Sprint-1")
+
+	_ = m.reloadCrossProjects()
+	if m.loadedProjects != nil {
+		t.Fatalf("reloadCrossProjects should clear loadedProjects before async load, got %v", m.loadedProjects)
+	}
+
+	reloadedProject := &models.Project{
+		ID:       "alpha",
+		Name:     "Alpha",
+		Sections: []string{models.SectionNext, "Sprint-1"},
+	}
+	m.handleCrossProjectsLoaded(crossProjectsLoadedMsg{
+		projects:   []*models.Project{reloadedProject},
+		generation: m.crossLoadGen,
+	})
+
+	if got := m.activeCustomSectionFilter(); got != "Sprint-1" {
+		t.Fatalf("activeCustomSectionFilter() = %q, want Sprint-1 after reload", got)
+	}
+}
+
+func TestReloadCrossProjectsResetsMissingInMemoryCustomSectionTab(t *testing.T) {
+	app := newTestAppModel()
+	app.config.CrossOutlinerCustomSectionTab = "Sprint-1"
+	project := &models.Project{
+		ID:       "alpha",
+		Name:     "Alpha",
+		Sections: []string{models.SectionNext, "Sprint-1"},
+	}
+	m := NewOutlinerModel(nil, app.config, app.configManager)
+	m.loadedProjects = []*models.Project{project}
+	setOutlinerCustomSectionTabByName(t, m, "Sprint-1")
+
+	_ = m.reloadCrossProjects()
+
+	reloadedProject := &models.Project{
+		ID:       "alpha",
+		Name:     "Alpha",
+		Sections: []string{models.SectionNext, "Design"},
+	}
+	m.handleCrossProjectsLoaded(crossProjectsLoadedMsg{
+		projects:   []*models.Project{reloadedProject},
+		generation: m.crossLoadGen,
+	})
+
+	if got := m.activeCustomSectionFilter(); got != "" {
+		t.Fatalf("activeCustomSectionFilter() = %q, want empty after selected tab disappeared", got)
+	}
+	if got := m.customSectionTabIndex(); got != 0 {
+		t.Fatalf("customSectionTabIndex() = %d, want All tab index 0", got)
 	}
 }
 

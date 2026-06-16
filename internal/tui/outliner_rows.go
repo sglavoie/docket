@@ -109,7 +109,7 @@ func (m *OutlinerModel) rebuildRows() {
 
 	if section := m.activeCustomSectionFilter(); section != "" {
 		tasks = filterTaskTree(tasks, func(task *models.Task) bool {
-			return task.CustomSection == section
+			return task.InSection(section)
 		})
 	}
 
@@ -173,8 +173,8 @@ func (m *OutlinerModel) rebuildRows() {
 	}
 }
 
-// buildRowsWithSectionHeaders groups tasks by section (GTD + custom) and
-// inserts collapsible section headers for the All perspective.
+// buildRowsWithSectionHeaders groups tasks by GTD section and inserts
+// collapsible section headers for the All perspective.
 func (m *OutlinerModel) buildRowsWithSectionHeaders(tasks []*models.Task) {
 	tasksBySection := m.groupTasksBySection(tasks)
 
@@ -199,9 +199,8 @@ func (m *OutlinerModel) buildRowsWithSectionHeaders(tasks []*models.Task) {
 	}
 }
 
-// effectiveDisplaySection returns the section name used for grouping tasks
-// under section headers. Tasks with a CustomSection are bucketed under that
-// name rather than the empty-string Active bucket.
+// effectiveDisplaySection returns the task's display section for non-header
+// contexts such as sidebar matching and task-form dimming.
 func effectiveDisplaySection(t *models.Task) string {
 	if t.CustomSection != "" {
 		return t.CustomSection
@@ -209,13 +208,31 @@ func effectiveDisplaySection(t *models.Task) string {
 	return t.Section
 }
 
-// groupTasksBySection groups tasks by their effective display section, preserving hierarchy.
+// groupTasksBySection groups tasks by their GTD header section, preserving hierarchy.
 func (m *OutlinerModel) groupTasksBySection(tasks []*models.Task) map[string][]*models.Task {
 	groups := make(map[string][]*models.Task)
 	for _, task := range tasks {
-		groups[effectiveDisplaySection(task)] = append(groups[effectiveDisplaySection(task)], task)
+		section := renderedHeaderSectionForTask(task)
+		groups[section] = append(groups[section], task)
 	}
 	return groups
+}
+
+func renderedHeaderSectionForTask(task *models.Task) string {
+	section := headerSectionForTask(task)
+	if section == "" || isRenderedOutlinerHeaderSection(section) {
+		return section
+	}
+	return ""
+}
+
+func isRenderedOutlinerHeaderSection(section string) bool {
+	for _, candidate := range SectionOrder {
+		if candidate == section {
+			return true
+		}
+	}
+	return false
 }
 
 // countTasksRecursive counts all tasks in a tree, including descendants.
@@ -287,25 +304,96 @@ func (m *OutlinerModel) clampCursor() {
 	m.ClampCursorTo(len(m.rows))
 }
 
+const crossProjectCustomSectionTabKey = "_cross_project_custom_section_tab"
+
 // customSectionTabs returns ["All"] + sorted custom sections, or nil if no custom sections exist.
 func (m *OutlinerModel) customSectionTabs() []string {
+	if m.project == nil {
+		return CustomSectionTabsForProjects(m.loadedProjects)
+	}
 	return CustomSectionTabs(m.project)
 }
 
-// customSectionTabIndex returns the active tab index for m.project.
-// Must only be called when m.project != nil (i.e. customSectionTabs() != nil).
+// customSectionTabIndex returns the active tab index for the current outliner scope.
 func (m *OutlinerModel) customSectionTabIndex() int {
-	return m.customSectionTab[m.project.ID]
+	if m.customSectionTab == nil {
+		return 0
+	}
+	return m.customSectionTab[m.customSectionTabStorageKey()]
 }
 
-// setCustomSectionTabIndex sets the active tab index for m.project.
+// setCustomSectionTabIndex sets the active tab index for the current outliner scope.
 func (m *OutlinerModel) setCustomSectionTabIndex(i int) {
-	m.customSectionTab[m.project.ID] = i
+	if m.customSectionTab == nil {
+		m.customSectionTab = make(map[string]int)
+	}
+	m.customSectionTab[m.customSectionTabStorageKey()] = i
 }
 
 // activeCustomSectionFilter returns the custom section name being filtered, or "" for "All".
 func (m *OutlinerModel) activeCustomSectionFilter() string {
-	return ActiveCustomSectionFilter(m.project, m.customSectionTabIndex())
+	tabs := m.customSectionTabs()
+	tabIndex := m.customSectionTabIndex()
+	if tabs == nil || tabIndex <= 0 || tabIndex >= len(tabs) {
+		return ""
+	}
+	return tabs[tabIndex]
+}
+
+func (m *OutlinerModel) crossProjectCustomSectionTabBeforeLoad() (string, bool) {
+	if m.project != nil || m.customSectionTab == nil {
+		return "", false
+	}
+	if _, ok := m.customSectionTab[crossProjectCustomSectionTabKey]; !ok {
+		return "", false
+	}
+	return m.activeCustomSectionFilter(), true
+}
+
+func (m *OutlinerModel) preserveCrossOutlinerCustomSectionTabForReload() {
+	if m.project != nil || m.crossReloadTabSet {
+		return
+	}
+	tabName, ok := m.crossProjectCustomSectionTabBeforeLoad()
+	if !ok {
+		return
+	}
+	m.crossReloadTabName = tabName
+	m.crossReloadTabSet = true
+}
+
+func (m *OutlinerModel) consumeCrossOutlinerReloadCustomSectionTab() (string, bool) {
+	if !m.crossReloadTabSet {
+		return "", false
+	}
+	tabName := m.crossReloadTabName
+	m.crossReloadTabName = ""
+	m.crossReloadTabSet = false
+	return tabName, true
+}
+
+func (m *OutlinerModel) restoreCrossOutlinerCustomSectionTab(tabName string) {
+	if m.project != nil {
+		return
+	}
+	if tabName == "" {
+		m.setCustomSectionTabIndex(0)
+		return
+	}
+	for i, tab := range m.customSectionTabs() {
+		if tab == tabName {
+			m.setCustomSectionTabIndex(i)
+			return
+		}
+	}
+	m.setCustomSectionTabIndex(0)
+}
+
+func (m *OutlinerModel) customSectionTabStorageKey() string {
+	if m.project == nil {
+		return crossProjectCustomSectionTabKey
+	}
+	return m.project.ID
 }
 
 // searchTagCache returns all unique tags across the outliner's project(s).

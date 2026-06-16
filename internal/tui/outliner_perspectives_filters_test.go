@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"slices"
 	"testing"
 	"time"
 
@@ -313,56 +314,86 @@ func TestBuildSectionOrderNoCustomSections(t *testing.T) {
 		{Section: models.SectionNext},
 	}
 	order := BuildSectionOrder(tasks)
-	if len(order) != len(SectionOrder) {
-		t.Errorf("expected %d entries (same as SectionOrder), got %d", len(SectionOrder), len(order))
-	}
-	if order[0] != models.SectionInbox || order[1] != "" {
-		t.Errorf("expected Inbox then Active first, got %v", order[:2])
+	if !slices.Equal(order, SectionOrder) {
+		t.Errorf("expected canonical SectionOrder, got %v", order)
 	}
 }
 
-func TestBuildSectionOrderAppendsCustomAlphabetically(t *testing.T) {
+func TestBuildSectionOrderKeepsGTDOnlyWithCustomSections(t *testing.T) {
 	tasks := []*models.Task{
 		{Section: "", CustomSection: "Zulu"},
 		{Section: "", CustomSection: "Alpha"},
 		{Section: models.SectionNext},
 	}
 	order := BuildSectionOrder(tasks)
-	wantLen := len(SectionOrder) + 2
-	if len(order) != wantLen {
-		t.Fatalf("expected %d entries, got %d: %v", wantLen, len(order), order)
-	}
-	if order[len(SectionOrder)] != "Alpha" {
-		t.Errorf("first custom section should be Alpha, got %q", order[len(SectionOrder)])
-	}
-	if order[len(SectionOrder)+1] != "Zulu" {
-		t.Errorf("second custom section should be Zulu, got %q", order[len(SectionOrder)+1])
+	if !slices.Equal(order, SectionOrder) {
+		t.Errorf("custom sections should not become section headers, got %v", order)
 	}
 }
 
-func TestBuildSectionOrderDeduplicates(t *testing.T) {
+func TestBuildSectionOrderReturnsIndependentCopy(t *testing.T) {
 	tasks := []*models.Task{
 		{CustomSection: "Sprint"},
 		{CustomSection: "Sprint"},
 	}
 	order := BuildSectionOrder(tasks)
-	customCount := len(order) - len(SectionOrder)
-	if customCount != 1 {
-		t.Errorf("expected 1 custom section, got %d", customCount)
+	order[0] = "changed"
+	if SectionOrder[0] != models.SectionInbox {
+		t.Errorf("mutating returned order should not mutate SectionOrder, got %q", SectionOrder[0])
 	}
 }
 
-func TestBuildCrossProjectSectionOrderMergesProjects(t *testing.T) {
+func TestBuildCrossProjectSectionOrderKeepsGTDOnly(t *testing.T) {
 	groups := []projectTasksGroup{
 		{projectID: "p1", tasks: []*models.Task{{CustomSection: "Beta"}}},
 		{projectID: "p2", tasks: []*models.Task{{CustomSection: "Alpha"}}},
 	}
 	order := BuildCrossProjectSectionOrder(groups)
-	wantLen := len(SectionOrder) + 2
-	if len(order) != wantLen {
-		t.Fatalf("expected %d entries, got %d: %v", wantLen, len(order), order)
+	if !slices.Equal(order, SectionOrder) {
+		t.Errorf("custom sections should not become cross-project section headers, got %v", order)
 	}
-	if order[len(SectionOrder)] != "Alpha" || order[len(SectionOrder)+1] != "Beta" {
-		t.Errorf("custom sections should be [Alpha, Beta], got %v", order[len(SectionOrder):])
+}
+
+func TestHeaderSectionForTaskMapsCustomSectionToActive(t *testing.T) {
+	if got := headerSectionForTask(&models.Task{Section: models.SectionNext}); got != models.SectionNext {
+		t.Errorf("GTD task header section = %q, want %q", got, models.SectionNext)
+	}
+	if got := headerSectionForTask(&models.Task{CustomSection: "Sprint-1"}); got != "" {
+		t.Errorf("custom-section task header section = %q, want Active empty section", got)
+	}
+	if got := headerSectionForTask(nil); got != "" {
+		t.Errorf("nil task header section = %q, want Active empty section", got)
+	}
+}
+
+func TestCustomSectionTabsForProjectKeepsCustomSections(t *testing.T) {
+	project := &models.Project{
+		Sections: []string{models.SectionNext, "Zulu", models.SectionInbox, "Alpha"},
+	}
+	want := []string{"All", "Alpha", "Zulu"}
+	if got := CustomSectionTabs(project); !slices.Equal(got, want) {
+		t.Errorf("CustomSectionTabs() = %v, want %v", got, want)
+	}
+}
+
+func TestCustomSectionTabsForProjectsAggregatesSortedUniqueSections(t *testing.T) {
+	projects := []*models.Project{
+		nil,
+		{Sections: []string{models.SectionNext, "Beta", "Alpha"}},
+		{Sections: []string{models.SectionInbox, "Alpha", "Gamma"}},
+	}
+	want := []string{"All", "Alpha", "Beta", "Gamma"}
+	if got := CustomSectionTabsForProjects(projects); !slices.Equal(got, want) {
+		t.Errorf("CustomSectionTabsForProjects() = %v, want %v", got, want)
+	}
+}
+
+func TestCustomSectionTabsForProjectsWithoutCustomSections(t *testing.T) {
+	projects := []*models.Project{
+		{Sections: []string{models.SectionNext, models.SectionInbox}},
+		nil,
+	}
+	if got := CustomSectionTabsForProjects(projects); got != nil {
+		t.Errorf("CustomSectionTabsForProjects() = %v, want nil", got)
 	}
 }
