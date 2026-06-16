@@ -62,7 +62,7 @@ func (m *ProjectPickerModel) renderList(width int) string {
 	// Calculate max name length from filtered items for aligned columns
 	maxNameLen := 0
 	for _, item := range m.Filtered {
-		if nameWidth := lipgloss.Width(item.Project.Name); nameWidth > maxNameLen {
+		if nameWidth := lipgloss.Width(item.DisplayText()); nameWidth > maxNameLen {
 			maxNameLen = nameWidth
 		}
 	}
@@ -90,7 +90,7 @@ func (m *ProjectPickerModel) renderList(width int) string {
 
 		taskCount := fmt.Sprintf("%d tasks", item.Project.CountTasks())
 
-		name := truncateToVisualWidth(item.Project.Name, maxNameLen-2)
+		name := projectPickerListName(item.Project, maxNameLen-2)
 		line := fmt.Sprintf("%s%s %s %s", cursor, truncateAndPad(name, maxNameLen), contextBadge, MutedStyle.Render(taskCount))
 
 		if m.Cursor == i {
@@ -125,6 +125,12 @@ func (m *ProjectPickerModel) renderProjectDetail(width, height int) string {
 	b.WriteString(BoldStyle.Render(p.Name))
 	b.WriteString("\n")
 	lines++
+
+	if p.Archived {
+		b.WriteString(MutedStyle.Render("Status: ") + archivedProjectMarker)
+		b.WriteString("\n")
+		lines++
+	}
 
 	// Context
 	b.WriteString(MutedStyle.Render("Context: ") + p.Context)

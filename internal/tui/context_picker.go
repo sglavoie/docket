@@ -12,9 +12,10 @@ import (
 
 // ContextInfo holds a context name and its project count.
 type ContextInfo struct {
-	Name         string
-	ProjectCount int
-	IsCustom     bool // True if this is a custom context (project grouping)
+	Name                 string
+	ProjectCount         int
+	ArchivedProjectCount int
+	IsCustom             bool // True if this is a custom context (project grouping)
 }
 
 // ContextPickerModel allows selecting a single context to filter by.
@@ -150,9 +151,10 @@ func buildContextListWithCustom(projects []*models.Project, cfg *config.Config) 
 	customNames := cfg.GetCustomContextNames()
 	for _, name := range customNames {
 		contexts = append(contexts, ContextInfo{
-			Name:         name,
-			ProjectCount: cfg.GetCustomContextProjectCount(name),
-			IsCustom:     true,
+			Name:                 name,
+			ProjectCount:         cfg.GetCustomContextProjectCount(name),
+			ArchivedProjectCount: cfg.GetCustomContextArchivedProjectCount(name),
+			IsCustom:             true,
 		})
 	}
 

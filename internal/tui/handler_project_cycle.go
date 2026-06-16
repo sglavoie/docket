@@ -36,20 +36,11 @@ func (m *AppModel) handleProjectCycleMessages(msg tea.Msg) (bool, tea.Cmd) {
 
 // handleShowProjectCyclePicker opens the numbered project picker popup.
 func (m *AppModel) handleShowProjectCyclePicker() (bool, tea.Cmd) {
-	contextKey := m.config.FilterContext
-	if m.config.FilterCustomContext != "" {
-		contextKey = "+" + m.config.FilterCustomContext
-	}
+	contextKey := m.cycleContextKey()
 	cycleProjects := m.config.GetCycleProjectsForContext(contextKey)
 
 	if len(cycleProjects) == 0 {
-		if m.config.FilterCustomContext != "" {
-			m.setInfoStatus(fmt.Sprintf("No projects in cycle for +%s. Press @ to configure.", m.config.FilterCustomContext))
-		} else if m.config.FilterContext != "" {
-			m.setInfoStatus(fmt.Sprintf("No projects in cycle for context: %s. Press @ to configure.", m.config.FilterContext))
-		} else {
-			m.setInfoStatus("No projects in cycle. Press @ to configure.")
-		}
+		m.setInfoStatus(m.noCycleProjectsStatus(contextKey))
 		return true, defaultStatusTimeout()
 	}
 
@@ -94,10 +85,7 @@ func (m *AppModel) handleProjectCyclePickerKey(msg tea.KeyPressMsg) (*AppModel, 
 
 // buildProjectCyclePickerHints builds the hints for the project cycle picker popup.
 func (m *AppModel) buildProjectCyclePickerHints() PrefixHints {
-	contextKey := m.config.FilterContext
-	if m.config.FilterCustomContext != "" {
-		contextKey = "+" + m.config.FilterCustomContext
-	}
+	contextKey := m.cycleContextKey()
 	cycleProjects := m.config.GetCycleProjectsForContext(contextKey)
 
 	var hints []PrefixHint
@@ -119,20 +107,11 @@ func (m *AppModel) buildProjectCyclePickerHints() PrefixHints {
 func (m *AppModel) handleCycleProject(forward bool) (bool, tea.Cmd) {
 	// Use context-specific cycle list when a context filter is active
 	// Custom context takes precedence over regular context
-	contextKey := m.config.FilterContext
-	if m.config.FilterCustomContext != "" {
-		contextKey = "+" + m.config.FilterCustomContext
-	}
+	contextKey := m.cycleContextKey()
 	cycleProjects := m.config.GetCycleProjectsForContext(contextKey)
 
 	if len(cycleProjects) == 0 {
-		if m.config.FilterCustomContext != "" {
-			m.setInfoStatus(fmt.Sprintf("No projects in cycle for +%s. Press @ to configure.", m.config.FilterCustomContext))
-		} else if m.config.FilterContext != "" {
-			m.setInfoStatus(fmt.Sprintf("No projects in cycle for context: %s. Press @ to configure.", m.config.FilterContext))
-		} else {
-			m.setInfoStatus("No projects in cycle. Press @ to configure.")
-		}
+		m.setInfoStatus(m.noCycleProjectsStatus(contextKey))
 		return true, defaultStatusTimeout()
 	}
 
@@ -168,6 +147,37 @@ func (m *AppModel) handleCycleProject(forward bool) (bool, tea.Cmd) {
 	}
 
 	return m.switchToCycleProject(cycleProjects[nextIdx])
+}
+
+func (m *AppModel) cycleContextKey() string {
+	return getContextKey(m.config.FilterContext, m.config.FilterCustomContext)
+}
+
+func (m *AppModel) noCycleProjectsStatus(contextKey string) string {
+	hiddenCount := m.config.GetArchivedCycleProjectCountForContext(contextKey)
+	return cycleNoProjectsStatus(m.config.FilterContext, m.config.FilterCustomContext, hiddenCount)
+}
+
+func cycleNoProjectsStatus(filterContext, filterCustomContext string, hiddenCount int) string {
+	scope := "in cycle"
+	if filterCustomContext != "" {
+		scope = fmt.Sprintf("in cycle for +%s", filterCustomContext)
+	} else if filterContext != "" {
+		scope = fmt.Sprintf("in cycle for context: %s", filterContext)
+	}
+
+	if hiddenCount > 0 {
+		return fmt.Sprintf(
+			"No active projects %s; %s. Unarchive from Dashboard archived mode or press @ to configure.",
+			scope,
+			cycleArchivedHiddenText(hiddenCount),
+		)
+	}
+	return fmt.Sprintf("No projects %s. Press @ to configure.", scope)
+}
+
+func cycleArchivedHiddenText(hiddenCount int) string {
+	return fmt.Sprintf("%d archived %s hidden", hiddenCount, pluralize(hiddenCount, "project", "projects"))
 }
 
 // switchToCycleProject switches to a project from the cycle list.

@@ -149,6 +149,10 @@ func (m *AppModel) handleGlobalKeyPress(msg tea.KeyPressMsg) (bool, tea.Cmd) { /
 		}
 	}
 
+	if handled, cmd := m.handleProjectArchiveConfirmKey(msg.String()); handled {
+		return true, cmd
+	}
+
 	if handled, cmd := m.handleActiveKeyOverlay(msg); handled {
 		return true, cmd
 	}
@@ -357,6 +361,25 @@ func (m *AppModel) handleGlobalKeyPress(msg tea.KeyPressMsg) (bool, tea.Cmd) { /
 	}
 
 	return false, nil
+}
+
+func (m *AppModel) handleProjectArchiveConfirmKey(key string) (bool, tea.Cmd) {
+	if !m.projectArchiveConfirm.IsActive() {
+		return false, nil
+	}
+
+	confirmed, handled := m.projectArchiveConfirm.HandleKey(key)
+	if !handled {
+		return false, nil
+	}
+	if confirmed {
+		return true, func() tea.Msg { return projectArchiveConfirmedMsg{} }
+	}
+	switch key {
+	case "n", "N", "esc":
+		m.clearPendingProjectArchive()
+	}
+	return true, nil
 }
 
 func (m *AppModel) handleActiveKeyOverlay(msg tea.KeyPressMsg) (bool, tea.Cmd) {

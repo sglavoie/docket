@@ -196,9 +196,13 @@ func (m *AppModel) buildSemicolonHints() []PrefixHint {
 	return hints
 }
 
-// renderConfirmDialogOverlay checks if the current view has an active confirm
-// dialog and renders it as a floating overlay box.
+// renderConfirmDialogOverlay checks if an active confirm dialog should render
+// as a floating overlay box.
 func (m *AppModel) renderConfirmDialogOverlay() string {
+	if m.projectArchiveConfirm.IsActive() {
+		return m.projectArchiveConfirm.RenderOverlay(m.width)
+	}
+
 	view := m.views.Get(m.currentView())
 	if view == nil {
 		return ""

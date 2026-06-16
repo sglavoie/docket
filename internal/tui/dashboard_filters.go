@@ -149,6 +149,7 @@ func (m *DashboardModel) loadProjects() {
 	}
 
 	m.contexts = m.getAllContexts()
+	m.cursor = ClampCursor(m.cursor, len(m.visibleProjects()))
 	m.resetViewScrollOffset()
 }
 
@@ -158,8 +159,19 @@ func (m *DashboardModel) GetHelpItems() []HelpItem {
 	if m.showArchived {
 		toggleArchiveDesc = "Show active"
 	}
-	overrides := map[string]string{
-		"a": toggleArchiveDesc,
+
+	items := append([]HelpItem{}, GetKeybindingRegistry().GetGlobalBindings()...)
+	for _, item := range m.buildKeyMap().HelpItems() {
+		items = append(items, HelpItem{
+			Key:         item.Key,
+			Description: item.Description,
+			Category:    item.Category,
+		})
 	}
-	return GetKeybindingRegistry().GetForViewWithOverrides(ViewDashboard, overrides)
+	for i, item := range items {
+		if item.Key == "a" {
+			items[i].Description = toggleArchiveDesc
+		}
+	}
+	return items
 }

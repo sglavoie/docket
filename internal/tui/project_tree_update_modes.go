@@ -41,10 +41,8 @@ func (m *ProjectTreeModel) handleConfirmation(msg tea.KeyPressMsg) (tea.Model, t
 	if confirmed, handled := m.HandleConfirmKey(key); handled {
 		if confirmed {
 			switch action {
-			case "archive":
-				return m, m.archiveProject()
-			case "unarchive":
-				return m, m.unarchiveProject()
+			case projectArchiveConfirmAction:
+				return m, func() tea.Msg { return projectArchiveConfirmedMsg{} }
 			case "delete":
 				return m, m.deleteTask()
 			case "bulk-delete":

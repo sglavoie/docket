@@ -165,24 +165,10 @@ func (m *OutlinerModel) pasteFromClipboard() tea.Cmd {
 	return m.saveWithWorkflow()
 }
 
-// archiveProject archives or unarchives the project and saves config.
+// archiveProject requests a confirmed archive or unarchive for the project.
 func (m *OutlinerModel) archiveProject() tea.Cmd {
-	if m.project.Archived {
-		m.project.Unarchive()
-	} else {
-		m.project.Archive()
-		if m.config.CurrentProject == m.project.ID {
-			m.config.CurrentProject = ""
-		}
+	if m.project == nil {
+		return nil
 	}
-
-	mgr := m.configManager
-	cfg := m.config
-	project := m.project
-	return func() tea.Msg {
-		if err := mgr.Save(cfg); err != nil {
-			return ErrorMsg{Err: fmt.Errorf("failed to save: %w", err)}
-		}
-		return ProjectArchivedMsg{Project: project}
-	}
+	return projectArchiveRequestCmd(m.project, !m.project.Archived)
 }

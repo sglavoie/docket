@@ -255,13 +255,7 @@ func (b *projectTreeKeymapBuilder) actionEntries() []keymap.Entry {
 				}
 			}
 
-			if m.project.Archived {
-				m.confirm.Show("unarchive", "Are you sure you want to unarchive this project?")
-			} else {
-				m.confirm.Show("archive", "Are you sure you want to archive this project?")
-			}
-
-			return m, nil
+			return m, projectArchiveRequestCmd(m.project, !m.project.Archived)
 		}),
 		keymap.Bind("ctrl+e", "Export project to Markdown", "Project", func() (tea.Model, tea.Cmd) {
 			project := m.getProject()

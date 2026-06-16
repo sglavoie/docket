@@ -63,6 +63,8 @@ tt                              # Open the TUI
 tt dash                         # Show a dashboard in the CLI
 tt project list                 # List projects
 tt project show                 # Show current project details
+tt project archive old-project  # Hide a project from active workflows
+tt project unarchive old-project # Restore an archived project
 tt task add "Write docs"        # Add a task to the current project
 tt task list --tree             # Show hierarchical tasks
 tt task show 12                 # Inspect a task
@@ -78,6 +80,25 @@ tt undo                         # Restore previous task state
 ```
 
 For deeper discovery, use the tutor, view help, the command palette, and command-specific help rather than a static command catalog here.
+
+## Project Archive And Recovery
+
+`tt project archive <slug-or-id>` hides a project from active dashboards, task
+lists, focus views, move targets, quick capture targets, and normal
+cross-project task workflows. It does not delete the project or its files.
+
+Archived projects remain discoverable in project-level search surfaces with an
+`ARCHIVED` marker. In the TUI Dashboard, press `a` to show archived projects,
+select one, and press `u` to unarchive it after confirmation. The command
+palette and project picker can also find archived projects by name, while their
+task rows stay excluded until the project is restored.
+
+Use explicit project commands when you need CLI recovery:
+
+```bash
+tt project archive <slug-or-id>
+tt project unarchive <slug-or-id>
+```
 
 ## Data Directory
 

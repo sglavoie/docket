@@ -65,6 +65,24 @@ func TestCustomContextExists_AfterRemoveProjectEmptiesContext(t *testing.T) {
 	}
 }
 
+func TestCustomContextArchivedProjectCount(t *testing.T) {
+	cfg := NewConfig()
+	cfg.AddProject(&models.Project{ID: "p1", Slug: "active", Name: "Active"})
+	cfg.AddProject(&models.Project{ID: "p2", Slug: "archived-1", Name: "Archived 1", Archived: true})
+	cfg.AddProject(&models.Project{ID: "p3", Slug: "archived-2", Name: "Archived 2", Archived: true})
+	cfg.SetCustomContext("Work", []string{"p1", "p2", "p3", "missing"})
+
+	if got := cfg.GetCustomContextProjectCount("Work"); got != 1 {
+		t.Fatalf("active custom context count = %d, want 1", got)
+	}
+	if got := cfg.GetCustomContextArchivedProjectCount("Work"); got != 2 {
+		t.Fatalf("archived custom context count = %d, want 2", got)
+	}
+	if got := cfg.GetCustomContextArchivedProjectCount("Missing"); got != 0 {
+		t.Fatalf("missing custom context archived count = %d, want 0", got)
+	}
+}
+
 // TestCustomContextExists_TrueAbsence verifies the negative path still works
 // (no regression in the "missing" case after fixing the empty/nil case).
 func TestCustomContextExists_TrueAbsence(t *testing.T) {

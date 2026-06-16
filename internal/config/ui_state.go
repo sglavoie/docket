@@ -115,6 +115,12 @@ func (c *Config) GetCycleProjectIDsForContext(context string) []string {
 	return c.ContextCycleProjects[context]
 }
 
+// GetArchivedCycleProjectCountForContext returns how many stored cycle project
+// IDs are hidden because the referenced projects are archived.
+func (c *Config) GetArchivedCycleProjectCountForContext(context string) int {
+	return c.archivedProjectCountForIDs(c.GetCycleProjectIDsForContext(context))
+}
+
 // SetCycleProjectsForContext sets the cycle project IDs for a specific context.
 // If context is empty, sets the global cycle projects.
 func (c *Config) SetCycleProjectsForContext(context string, ids []string) {

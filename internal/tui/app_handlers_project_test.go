@@ -71,6 +71,363 @@ func TestHandleProjectMessagesProjectArchived(t *testing.T) {
 	}
 }
 
+func TestHandleProjectMessagesProjectArchiveRequestShowsConfirmWithoutMutation(t *testing.T) {
+	app, project := newTestAppModelWithProject()
+	app.dashboard = NewDashboardModel(app.config, app.configManager)
+	app.views.Register(ViewDashboard, app.dashboard)
+
+	handled, cmd := app.handleProjectMessages(ProjectArchiveRequestMsg{Project: project, Archive: true})
+
+	if !handled {
+		t.Fatal("ProjectArchiveRequestMsg should be handled")
+	}
+	if cmd != nil {
+		t.Fatalf("ProjectArchiveRequestMsg should only open confirmation, got cmd %T", cmd)
+	}
+	if project.Archived {
+		t.Fatal("project should not be archived before confirmation")
+	}
+	if app.pendingProjectArchive != project {
+		t.Fatal("pendingProjectArchive should store the requested project")
+	}
+	if !app.pendingProjectArchiveArchive {
+		t.Fatal("pendingProjectArchiveArchive should store requested archive state")
+	}
+	confirm := &app.projectArchiveConfirm
+	if !confirm.IsActive() {
+		t.Fatal("app project archive confirmation should be active")
+	}
+	if confirm.Action() != projectArchiveConfirmAction {
+		t.Fatalf("confirm action = %q, want %q", confirm.Action(), projectArchiveConfirmAction)
+	}
+	if app.dashboard.GetConfirmDialog().IsActive() {
+		t.Fatal("dashboard confirmation should not host project archive confirmation")
+	}
+}
+
+func TestHandleProjectMessagesProjectArchiveRequestShowsConfirmFromNonProviderView(t *testing.T) {
+	app, project := newTestAppModelWithProject()
+	app.views.Register(ViewHelp, NewHelpViewModel(nil, ViewDashboard, "Help"))
+	app.viewStack = []ViewType{ViewDashboard, ViewHelp}
+
+	handled, cmd := app.handleProjectMessages(ProjectArchiveRequestMsg{Project: project, Archive: true})
+
+	if !handled {
+		t.Fatal("ProjectArchiveRequestMsg should be handled")
+	}
+	if cmd != nil {
+		t.Fatalf("ProjectArchiveRequestMsg should only open confirmation, got cmd %T", cmd)
+	}
+	if project.Archived {
+		t.Fatal("project should not be archived before confirmation")
+	}
+	if app.pendingProjectArchive != project {
+		t.Fatal("pendingProjectArchive should store the requested project")
+	}
+	if !app.projectArchiveConfirm.IsActive() {
+		t.Fatal("app project archive confirmation should be active from non-provider views")
+	}
+}
+
+func TestHandleProjectMessagesProjectArchiveConfirmedArchivesAndSetsStatus(t *testing.T) {
+	app, project := newTestAppModelWithProject()
+	app.pendingProjectArchive = project
+	app.pendingProjectArchiveArchive = true
+
+	handled, cmd := app.handleProjectMessages(projectArchiveConfirmedMsg{})
+
+	if !handled {
+		t.Fatal("projectArchiveConfirmedMsg should be handled")
+	}
+	if !project.Archived {
+		t.Fatal("project should be archived after confirmation")
+	}
+	if cmd == nil {
+		t.Fatal("projectArchiveConfirmedMsg should return a result command")
+	}
+	result := cmd()
+	msg, ok := result.(ProjectArchivedMsg)
+	if !ok {
+		t.Fatalf("confirmation cmd returned %T, want ProjectArchivedMsg", result)
+	}
+	handled, _ = app.handleProjectMessages(msg)
+	if !handled {
+		t.Fatal("ProjectArchivedMsg should be handled")
+	}
+	if app.config.CurrentProject != "" {
+		t.Fatalf("CurrentProject = %q, want cleared after archiving current project", app.config.CurrentProject)
+	}
+	if app.currentProject != nil {
+		t.Fatal("currentProject should be nil after archiving current project")
+	}
+	if app.currentView() != ViewDashboard {
+		t.Fatalf("currentView = %v, want Dashboard after archiving current project", app.currentView())
+	}
+	if app.statusMessage != "Archived Test Project" {
+		t.Fatalf("statusMessage = %q, want %q", app.statusMessage, "Archived Test Project")
+	}
+}
+
+func TestCommandPaletteProjectArchiveClosesPaletteAndShowsAppConfirm(t *testing.T) {
+	app, project := newTestAppModelWithProject()
+	app.views.Register(ViewHelp, NewHelpViewModel(nil, ViewDashboard, "Help"))
+	app.viewStack = []ViewType{ViewDashboard, ViewHelp, ViewCommandPalette}
+
+	_, cmd := app.Update(CommandPaletteExecuteMsg{
+		ResultMsg: ProjectArchiveRequestMsg{Project: project, Archive: true},
+	})
+
+	if cmd != nil {
+		t.Fatalf("palette archive request should only open confirmation, got cmd %T", cmd)
+	}
+	if app.currentView() != ViewHelp {
+		t.Fatalf("currentView = %v, want underlying Help view after palette closes", app.currentView())
+	}
+	if project.Archived {
+		t.Fatal("project should not be archived before confirmation")
+	}
+	if app.pendingProjectArchive != project {
+		t.Fatal("pendingProjectArchive should store the palette-selected project")
+	}
+	if !app.pendingProjectArchiveArchive {
+		t.Fatal("pendingProjectArchiveArchive should request archive")
+	}
+	if !app.projectArchiveConfirm.IsActive() {
+		t.Fatal("app project archive confirmation should be active after palette archive")
+	}
+}
+
+func TestCommandPaletteProjectRestoreFromHelpConfirmsAtAppLevel(t *testing.T) {
+	app, project := newTestAppModelWithProject()
+	project.Archive()
+	app.views.Register(ViewHelp, NewHelpViewModel(nil, ViewDashboard, "Help"))
+	app.viewStack = []ViewType{ViewDashboard, ViewHelp, ViewCommandPalette}
+
+	_, cmd := app.Update(CommandPaletteExecuteMsg{
+		ResultMsg: ProjectArchiveRequestMsg{Project: project, Archive: false},
+	})
+
+	if cmd != nil {
+		t.Fatalf("palette restore request should only open confirmation, got cmd %T", cmd)
+	}
+	if app.currentView() != ViewHelp {
+		t.Fatalf("currentView = %v, want underlying Help view after palette closes", app.currentView())
+	}
+	if !project.Archived {
+		t.Fatal("project should remain archived before confirmation")
+	}
+	if app.pendingProjectArchive != project {
+		t.Fatal("pendingProjectArchive should store the palette-selected project")
+	}
+	if app.pendingProjectArchiveArchive {
+		t.Fatal("pendingProjectArchiveArchive should request restore")
+	}
+	if !app.projectArchiveConfirm.IsActive() {
+		t.Fatal("app project archive confirmation should be active after palette restore")
+	}
+
+	_, confirmCmd := app.Update(syntheticKey('y'))
+	if confirmCmd == nil {
+		t.Fatal("confirming palette restore through app should return a confirmation command")
+	}
+	confirmResult := confirmCmd()
+	confirmed, ok := confirmResult.(projectArchiveConfirmedMsg)
+	if !ok {
+		t.Fatalf("confirm command returned %T, want projectArchiveConfirmedMsg", confirmResult)
+	}
+
+	handled, restoreCmd := app.handleProjectMessages(confirmed)
+	if !handled {
+		t.Fatal("projectArchiveConfirmedMsg should be handled")
+	}
+	if restoreCmd == nil {
+		t.Fatal("projectArchiveConfirmedMsg should return a restore command")
+	}
+	restoreResult := restoreCmd()
+	restored, ok := restoreResult.(ProjectRestoredMsg)
+	if !ok {
+		t.Fatalf("restore command returned %T, want ProjectRestoredMsg", restoreResult)
+	}
+
+	handled, _ = app.handleProjectMessages(restored)
+	if !handled {
+		t.Fatal("ProjectRestoredMsg should be handled")
+	}
+	if project.Archived {
+		t.Fatal("project should be restored after confirmation")
+	}
+	if app.currentView() != ViewHelp {
+		t.Fatalf("currentView = %v, want Help after restoring from palette", app.currentView())
+	}
+	if app.statusMessage != "Unarchived Test Project" {
+		t.Fatalf("statusMessage = %q, want Unarchived Test Project", app.statusMessage)
+	}
+}
+
+func TestHandleProjectMessagesProjectArchiveConfirmedUnarchivesAndSetsStatus(t *testing.T) {
+	app, project := newTestAppModelWithProject()
+	project.Archive()
+	app.pendingProjectArchive = project
+	app.pendingProjectArchiveArchive = false
+
+	handled, cmd := app.handleProjectMessages(projectArchiveConfirmedMsg{})
+
+	if !handled {
+		t.Fatal("projectArchiveConfirmedMsg should be handled")
+	}
+	if project.Archived {
+		t.Fatal("project should be unarchived after confirmation")
+	}
+	if cmd == nil {
+		t.Fatal("projectArchiveConfirmedMsg should return a result command")
+	}
+	result := cmd()
+	msg, ok := result.(ProjectRestoredMsg)
+	if !ok {
+		t.Fatalf("confirmation cmd returned %T, want ProjectRestoredMsg", result)
+	}
+	handled, _ = app.handleProjectMessages(msg)
+	if !handled {
+		t.Fatal("ProjectRestoredMsg should be handled")
+	}
+	if app.statusMessage != "Unarchived Test Project" {
+		t.Fatalf("statusMessage = %q, want %q", app.statusMessage, "Unarchived Test Project")
+	}
+}
+
+func TestProjectArchiveCommandsReturnRequestsWithoutMutation(t *testing.T) {
+	app, project := newTestAppModelWithProject()
+	tree := NewProjectTreeModel(project, app.config, app.configManager)
+
+	result := tree.archiveProject()()
+	msg, ok := result.(ProjectArchiveRequestMsg)
+	if !ok {
+		t.Fatalf("archiveProject returned %T, want ProjectArchiveRequestMsg", result)
+	}
+	if !msg.Archive {
+		t.Fatal("archiveProject request should ask to archive")
+	}
+	if project.Archived {
+		t.Fatal("archiveProject should not mutate before confirmation")
+	}
+
+	project.Archive()
+	result = tree.unarchiveProject()()
+	msg, ok = result.(ProjectArchiveRequestMsg)
+	if !ok {
+		t.Fatalf("unarchiveProject returned %T, want ProjectArchiveRequestMsg", result)
+	}
+	if msg.Archive {
+		t.Fatal("unarchiveProject request should ask to unarchive")
+	}
+	if !project.Archived {
+		t.Fatal("unarchiveProject should not mutate before confirmation")
+	}
+
+	outliner := NewOutlinerModel(project, app.config, app.configManager)
+	result = outliner.archiveProject()()
+	msg, ok = result.(ProjectArchiveRequestMsg)
+	if !ok {
+		t.Fatalf("outliner archiveProject returned %T, want ProjectArchiveRequestMsg", result)
+	}
+	if msg.Archive {
+		t.Fatal("outliner archiveProject should request unarchive for archived project")
+	}
+	if !project.Archived {
+		t.Fatal("outliner archiveProject should not mutate before confirmation")
+	}
+}
+
+func TestOutlinerCtrlARequestsProjectArchiveConfirmation(t *testing.T) {
+	app, project := newTestAppModelWithProject()
+	outliner := NewOutlinerModel(project, app.config, app.configManager)
+
+	_, cmd, handled := outliner.Dispatcher.Dispatch(syntheticCtrlKey('a'))
+	if !handled {
+		t.Fatal("outliner ctrl+a should be handled")
+	}
+	if cmd == nil {
+		t.Fatal("outliner ctrl+a should return a project archive request command")
+	}
+	result := cmd()
+	msg, ok := result.(ProjectArchiveRequestMsg)
+	if !ok {
+		t.Fatalf("outliner ctrl+a returned %T, want ProjectArchiveRequestMsg", result)
+	}
+	if msg.Project != project {
+		t.Fatal("outliner ctrl+a should target the current project")
+	}
+	if !msg.Archive {
+		t.Fatal("outliner ctrl+a should request archive for an active project")
+	}
+	if project.Archived {
+		t.Fatal("outliner ctrl+a should not archive before confirmation")
+	}
+
+	project.Archive()
+	_, cmd, handled = outliner.Dispatcher.Dispatch(syntheticCtrlKey('a'))
+	if !handled {
+		t.Fatal("outliner ctrl+a should be handled for archived projects")
+	}
+	if cmd == nil {
+		t.Fatal("outliner ctrl+a should return a project unarchive request command")
+	}
+	result = cmd()
+	msg, ok = result.(ProjectArchiveRequestMsg)
+	if !ok {
+		t.Fatalf("outliner ctrl+a returned %T for archived project, want ProjectArchiveRequestMsg", result)
+	}
+	if msg.Archive {
+		t.Fatal("outliner ctrl+a should request unarchive for an archived project")
+	}
+	if !project.Archived {
+		t.Fatal("outliner ctrl+a should not unarchive before confirmation")
+	}
+}
+
+func TestPaletteProjectArchiveActionsRequestConfirmWithoutMutation(t *testing.T) {
+	project := testutil.NewTestProjectWithTasks("Palette Project")
+	palette := &CommandPaletteModel{}
+
+	archiveAction := findPaletteAction(t, palette.getProjectActions(PaletteItem{Project: project}), "Archive")
+	result := archiveAction.Handler()
+	msg, ok := result.(ProjectArchiveRequestMsg)
+	if !ok {
+		t.Fatalf("Archive action returned %T, want ProjectArchiveRequestMsg", result)
+	}
+	if !msg.Archive {
+		t.Fatal("Archive action should request archive")
+	}
+	if project.Archived {
+		t.Fatal("Archive action should not mutate before confirmation")
+	}
+
+	project.Archive()
+	restoreAction := findPaletteAction(t, palette.getProjectActions(PaletteItem{Project: project}), "Restore")
+	result = restoreAction.Handler()
+	msg, ok = result.(ProjectArchiveRequestMsg)
+	if !ok {
+		t.Fatalf("Restore action returned %T, want ProjectArchiveRequestMsg", result)
+	}
+	if msg.Archive {
+		t.Fatal("Restore action should request unarchive")
+	}
+	if !project.Archived {
+		t.Fatal("Restore action should not mutate before confirmation")
+	}
+}
+
+func findPaletteAction(t *testing.T, actions []PaletteAction, name string) PaletteAction {
+	t.Helper()
+	for _, action := range actions {
+		if action.Name == name {
+			return action
+		}
+	}
+	t.Fatalf("action %q not found", name)
+	return PaletteAction{}
+}
+
 func TestHandleProjectMessagesProjectPinnedToggled(t *testing.T) {
 	app, project := newTestAppModelWithProject()
 

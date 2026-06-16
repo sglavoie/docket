@@ -48,6 +48,27 @@ func TestGetCycleProjects_FiltersNonExistent(t *testing.T) {
 	}
 }
 
+func TestGetArchivedCycleProjectCountForContext(t *testing.T) {
+	cfg := NewConfig()
+
+	cfg.AddProject(&models.Project{ID: "p1", Name: "Active", Archived: false})
+	cfg.AddProject(&models.Project{ID: "p2", Name: "Archived 1", Archived: true})
+	cfg.AddProject(&models.Project{ID: "p3", Name: "Archived 2", Archived: true})
+
+	cfg.SetCycleProjects([]string{"p1", "p2", "missing"})
+	cfg.SetCycleProjectsForContext("work", []string{"p2", "p3", "missing"})
+
+	if got := cfg.GetArchivedCycleProjectCountForContext(""); got != 1 {
+		t.Fatalf("global archived cycle count = %d, want 1", got)
+	}
+	if got := cfg.GetArchivedCycleProjectCountForContext("work"); got != 2 {
+		t.Fatalf("context archived cycle count = %d, want 2", got)
+	}
+	if got := cfg.GetArchivedCycleProjectCountForContext("missing-context"); got != 0 {
+		t.Fatalf("missing context archived cycle count = %d, want 0", got)
+	}
+}
+
 func TestGetCycleProjects_Empty(t *testing.T) {
 	cfg := NewConfig()
 

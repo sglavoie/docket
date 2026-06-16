@@ -165,6 +165,15 @@ func (m *DashboardModel) buildKeyMap() *keymap.KeyMap {
 			m.loadProjects()
 			return m, nil
 		}),
+		keymap.Bind("u", "Unarchive project", "Actions", func() (tea.Model, tea.Cmd) {
+			project := m.SelectedProject()
+			if project == nil {
+				return m, nil
+			}
+			return m, func() tea.Msg {
+				return ProjectArchiveRequestMsg{Project: project, Archive: false}
+			}
+		}, keymap.WithGate(func() bool { return m.showArchived })),
 		keymap.Bind("T", "View trash", "Actions", func() (tea.Model, tea.Cmd) {
 			return m, func() tea.Msg { return ShowTrashedProjectsMsg{} }
 		}),

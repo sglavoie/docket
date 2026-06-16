@@ -383,7 +383,9 @@ func (m *AppModel) renderProjectCyclePopup() string {
 	if !m.showProjectCycle {
 		return ""
 	}
-	if len(m.projectCycleItems) == 0 && len(m.projectCycleAllItems) == 0 {
+	contextKey := getContextKey(m.config.FilterContext, m.config.FilterCustomContext)
+	hiddenCount := m.config.GetArchivedCycleProjectCountForContext(contextKey)
+	if len(m.projectCycleItems) == 0 && len(m.projectCycleAllItems) == 0 && hiddenCount == 0 {
 		return ""
 	}
 
@@ -396,7 +398,6 @@ func (m *AppModel) renderProjectCyclePopup() string {
 	dimBadgeStyle := MutedStyle
 
 	// Build subtitle: context indicator + selection count
-	contextKey := getContextKey(m.config.FilterContext, m.config.FilterCustomContext)
 	cycleIDs := m.config.GetCycleProjectIDsForContext(contextKey)
 	cycleIDSet := make(map[string]bool, len(cycleIDs))
 	for _, id := range cycleIDs {
@@ -417,6 +418,9 @@ func (m *AppModel) renderProjectCyclePopup() string {
 		subtitleParts = append(subtitleParts, "No projects selected")
 	} else {
 		subtitleParts = append(subtitleParts, fmt.Sprintf("%d %s selected", selectedCount, pluralize(selectedCount, "project", "projects")))
+	}
+	if hiddenCount > 0 {
+		subtitleParts = append(subtitleParts, cycleArchivedHiddenText(hiddenCount))
 	}
 	subtitle := MutedStyle.Render(strings.Join(subtitleParts, " · "))
 
@@ -463,7 +467,12 @@ func (m *AppModel) renderProjectCyclePopup() string {
 	}
 
 	if len(m.projectCycleItems) == 0 {
-		contentLines = append(contentLines, MutedStyle.Render("No matching projects"))
+		if hiddenCount > 0 && searchQuery == "" {
+			contentLines = append(contentLines, MutedStyle.Render("No active projects in this cycle"))
+			contentLines = append(contentLines, MutedStyle.Render("Unarchive from Dashboard archived mode or update cycle selections."))
+		} else {
+			contentLines = append(contentLines, MutedStyle.Render("No matching projects"))
+		}
 	} else {
 		for i, item := range m.projectCycleItems {
 			if item.Project == nil {

@@ -30,6 +30,9 @@ func NewProjectPickerModel(projects []*models.Project) *ProjectPickerModel {
 	sorted := make([]*models.Project, len(projects))
 	copy(sorted, projects)
 	sort.Slice(sorted, func(i, j int) bool {
+		if sorted[i].Archived != sorted[j].Archived {
+			return !sorted[i].Archived
+		}
 		return strings.ToLower(sorted[i].Name) < strings.ToLower(sorted[j].Name)
 	})
 

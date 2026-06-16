@@ -102,7 +102,7 @@ func (m *ContextPickerModel) visibleWindow() (int, int, int) {
 func (m *ContextPickerModel) renderContextRow(index int) string {
 	ctx := m.Filtered[index]
 	line := fmt.Sprintf("  %s ", m.displayName(ctx))
-	count := TagManagerCountStyle.Render(fmt.Sprintf("(%d)", ctx.ProjectCount))
+	count := TagManagerCountStyle.Render(contextProjectCountText(ctx))
 
 	switch {
 	case index == m.Cursor:
@@ -112,6 +112,17 @@ func (m *ContextPickerModel) renderContextRow(index int) string {
 	default:
 		return TagManagerItemStyle.Render(line) + count
 	}
+}
+
+func contextProjectCountText(ctx ContextInfo) string {
+	if ctx.IsCustom && ctx.ArchivedProjectCount > 0 {
+		return fmt.Sprintf(
+			"(%d active, %s)",
+			ctx.ProjectCount,
+			cycleArchivedHiddenText(ctx.ArchivedProjectCount),
+		)
+	}
+	return fmt.Sprintf("(%d)", ctx.ProjectCount)
 }
 
 func (m *ContextPickerModel) displayName(ctx ContextInfo) string {

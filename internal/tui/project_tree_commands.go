@@ -12,40 +12,19 @@ import (
 )
 
 func (m *ProjectTreeModel) archiveProject() tea.Cmd {
-	// Mutate state synchronously to avoid data races with View()
-	m.project.Archive()
-
-	// Clear current project if it was the archived one
-	if m.config.CurrentProject == m.project.ID {
-		m.config.CurrentProject = ""
-	}
-
-	// Capture references for the goroutine (only I/O inside)
-	cfg := m.config
-	mgr := m.configManager
-	proj := m.project
-	return func() tea.Msg {
-		if err := mgr.Save(cfg); err != nil {
-			return ErrorMsg{Err: fmt.Errorf("failed to save: %w", err)}
-		}
-
-		return ProjectArchivedMsg{Project: proj}
-	}
+	return projectArchiveRequestCmd(m.project, true)
 }
 
 func (m *ProjectTreeModel) unarchiveProject() tea.Cmd {
-	// Mutate state synchronously to avoid data races with View()
-	m.project.Unarchive()
+	return projectArchiveRequestCmd(m.project, false)
+}
 
-	cfg := m.config
-	mgr := m.configManager
-	proj := m.project
+func projectArchiveRequestCmd(project *models.Project, archive bool) tea.Cmd {
+	if project == nil {
+		return nil
+	}
 	return func() tea.Msg {
-		if err := mgr.Save(cfg); err != nil {
-			return ErrorMsg{Err: fmt.Errorf("failed to save: %w", err)}
-		}
-
-		return ProjectArchivedMsg{Project: proj}
+		return ProjectArchiveRequestMsg{Project: project, Archive: archive}
 	}
 }
 

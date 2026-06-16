@@ -27,6 +27,16 @@ type ProjectArchivedMsg struct{ Project *models.Project }
 // ProjectRestoredMsg signals an archived project was restored.
 type ProjectRestoredMsg struct{ Project *models.Project }
 
+// ProjectArchiveRequestMsg requests a confirmed archive/unarchive action.
+type ProjectArchiveRequestMsg struct {
+	Project *models.Project
+	Archive bool
+}
+
+const projectArchiveConfirmAction = "project-archive"
+
+type projectArchiveConfirmedMsg struct{}
+
 // ProjectDeletedMsg signals a project was permanently deleted.
 type ProjectDeletedMsg struct{ Project *models.Project }
 

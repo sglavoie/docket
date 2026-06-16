@@ -53,11 +53,20 @@ func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 		}
 		return true, nil
 
+	case ProjectArchiveRequestMsg:
+		return true, m.showProjectArchiveConfirm(msg.Project, msg.Archive)
+
+	case projectArchiveConfirmedMsg:
+		return true, m.confirmProjectArchive()
+
 	case ProjectArchivedMsg:
-		m.popView()
+		popCmd := m.popView()
 		// Clear current project if archived
 		if msg.Project != nil && m.config != nil && msg.Project.Archived && m.config.CurrentProject == msg.Project.ID {
 			m.config.CurrentProject = ""
+		}
+		if msg.Project != nil && msg.Project.Archived && m.currentProject != nil && m.currentProject.ID == msg.Project.ID {
+			m.currentProject = nil
 		}
 		// Clean up config references for tasks in the archived project
 		if msg.Project != nil {
@@ -77,7 +86,11 @@ func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 		if m.dashboard != nil {
 			m.dashboard.Refresh(m.config)
 		}
-		return true, nil
+		if msg.Project != nil {
+			m.setSuccessStatus(fmt.Sprintf("Archived %s", msg.Project.Name))
+			return true, tea.Batch(popCmd, defaultStatusTimeout())
+		}
+		return true, popCmd
 
 	case ProjectPinnedToggledMsg:
 		if err := m.configManager.Save(m.config); err != nil {
@@ -120,6 +133,10 @@ func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 		}
 		if m.dashboard != nil {
 			m.dashboard.Refresh(m.config)
+		}
+		if msg.Project != nil {
+			m.setSuccessStatus(fmt.Sprintf("Unarchived %s", msg.Project.Name))
+			return true, defaultStatusTimeout()
 		}
 		return true, nil
 
@@ -205,7 +222,7 @@ func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 		return true, defaultStatusTimeout()
 
 	case ShowProjectPickerMsg:
-		projects := m.config.GetActiveProjects()
+		projects := projectDiscoveryProjects(m.config)
 		for _, p := range projects {
 			if err := storage.LoadProject(p); err != nil {
 				logging.Warn("failed to load project %s: %v", p.Name, err)
@@ -282,6 +299,58 @@ func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 		return true, defaultStatusTimeout()
 	}
 	return false, nil
+}
+
+func (m *AppModel) showProjectArchiveConfirm(project *models.Project, archive bool) tea.Cmd {
+	if project == nil {
+		m.clearPendingProjectArchive()
+		return nil
+	}
+	if project.Sandbox {
+		m.clearPendingProjectArchive()
+		return errorCmd("cannot archive the sandbox project")
+	}
+
+	m.pendingProjectArchive = project
+	m.pendingProjectArchiveArchive = archive
+
+	verb := "archive"
+	if !archive {
+		verb = "unarchive"
+	}
+	m.projectArchiveConfirm.Show(projectArchiveConfirmAction, fmt.Sprintf("Are you sure you want to %s this project?", verb))
+	return nil
+}
+
+func (m *AppModel) clearPendingProjectArchive() {
+	m.pendingProjectArchive = nil
+	m.pendingProjectArchiveArchive = false
+	m.projectArchiveConfirm.Cancel()
+}
+
+func (m *AppModel) confirmProjectArchive() tea.Cmd {
+	project := m.pendingProjectArchive
+	archive := m.pendingProjectArchiveArchive
+	m.clearPendingProjectArchive()
+
+	if project == nil {
+		return nil
+	}
+	if project.Sandbox {
+		return errorCmd("cannot archive the sandbox project")
+	}
+
+	if archive {
+		project.Archive()
+		return func() tea.Msg {
+			return ProjectArchivedMsg{Project: project}
+		}
+	}
+
+	project.Unarchive()
+	return func() tea.Msg {
+		return ProjectRestoredMsg{Project: project}
+	}
 }
 
 // restoreProjectFromTrash restores a project from the trash directory.

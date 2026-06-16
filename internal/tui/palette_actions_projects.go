@@ -39,8 +39,7 @@ func (m *CommandPaletteModel) getProjectActions(item PaletteItem) []PaletteActio
 				Icon:    icons.Get("recur"),
 				KeyHint: "r",
 				Handler: func() tea.Msg {
-					project.Unarchive()
-					return ProjectRestoredMsg{Project: project}
+					return ProjectArchiveRequestMsg{Project: project, Archive: false}
 				},
 			})
 		} else {
@@ -49,8 +48,7 @@ func (m *CommandPaletteModel) getProjectActions(item PaletteItem) []PaletteActio
 				Icon:    "📦",
 				KeyHint: "x",
 				Handler: func() tea.Msg {
-					project.Archive()
-					return ProjectArchivedMsg{Project: project}
+					return ProjectArchiveRequestMsg{Project: project, Archive: true}
 				},
 			})
 		}

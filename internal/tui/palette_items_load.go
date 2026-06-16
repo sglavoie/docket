@@ -30,7 +30,18 @@ func (m *CommandPaletteModel) loadAllItems() []PaletteItem {
 	tagCounts := make(map[string]int)
 	sectionCounts := make(map[string]int)
 
-	// Load tasks, projects, tags, and sections from active projects
+	// Load project discovery rows from active projects plus archived projects.
+	// Operational task/tag/section/note rows below stay active-only.
+	for _, project := range projectDiscoveryProjects(m.config) {
+		items = append(items, PaletteItem{
+			Name:        project.Name,
+			Description: projectDiscoveryDescription(project),
+			Category:    ItemCategoryProjects,
+			Project:     project,
+		})
+	}
+
+	// Load tasks, tags, sections, and notes from active projects.
 	// When currentProject is set, only load tasks from that project
 	projects := m.config.GetActiveProjects()
 	// Include sandbox if it's the current project (GetActiveProjects excludes it)
@@ -38,13 +49,6 @@ func (m *CommandPaletteModel) loadAllItems() []PaletteItem {
 		projects = append(projects, m.currentProject)
 	}
 	for _, project := range projects {
-		items = append(items, PaletteItem{
-			Name:        project.Name,
-			Description: fmt.Sprintf("Project: %s", project.Slug),
-			Category:    ItemCategoryProjects,
-			Project:     project,
-		})
-
 		if m.currentProject != nil && project.ID != m.currentProject.ID {
 			continue
 		}

@@ -63,6 +63,8 @@ func (m *OutlinerModel) handleConfirmDialog(key string) (tea.Model, tea.Cmd) {
 	if confirmed, handled := m.HandleConfirmKey(key); handled {
 		if confirmed {
 			switch action {
+			case projectArchiveConfirmAction:
+				return m, func() tea.Msg { return projectArchiveConfirmedMsg{} }
 			case "delete":
 				if m.project == nil {
 					return m.crossExecuteDelete()

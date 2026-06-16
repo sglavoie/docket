@@ -248,18 +248,7 @@ func (m *AppModel) otherCommands() []Command {
 				if m.currentProject.Sandbox {
 					return ErrorMsg{Err: fmt.Errorf("cannot archive the sandbox project")}
 				}
-				if m.baseProjectView() == ViewOutliner && m.outliner != nil {
-					return m.outliner.archiveProject()()
-				}
-				if m.projectTree == nil {
-					return nil
-				}
-				if m.currentProject.Archived {
-					m.projectTree.confirm.Show("unarchive", "Are you sure you want to unarchive this project?")
-				} else {
-					m.projectTree.confirm.Show("archive", "Are you sure you want to archive this project?")
-				}
-				return nil
+				return ProjectArchiveRequestMsg{Project: m.currentProject, Archive: !m.currentProject.Archived}
 			},
 		},
 	}

@@ -97,6 +97,8 @@ Destructive but reversible mutations (delete, archive, bulk status/priority chan
 
 Non-destructive success messages use the plain (2s) status path. Do not bind `u` as a global keybinding; it works only while the model-level guard is true.
 
+Dashboard archived mode is the view-local recovery exception for `u`: it appears only after toggling archived projects with `a`, and it must dispatch `ProjectArchiveRequestMsg{Archive: false}` so confirmation handles the restore. Keep archived projects discoverable with `ARCHIVED` markers in project-level search, while active task workflows remain active-only.
+
 ### TUI Column Alignment
 
 List-row renderers (Focus Board, Kanban, Outliner, All-Tasks, Daily/Weekly review, Due Date, Priority, Global Search, etc.) share badge column widths through `ColumnLayout` in `column_layout.go`. The struct tracks `PriorityWidth`, `StatusWidth`, `TypeWidth`, `StageWidth`, and `ProjectWidth`; call `ComputeBadgeWidths(...)` once per render pass and pass the result down to the row renderer in `shared_render.go`. Use `PadBadge` for consistent left-padding of empty slots — never hand-pad strings.

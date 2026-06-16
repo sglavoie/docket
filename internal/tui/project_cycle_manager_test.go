@@ -54,6 +54,97 @@ func TestRenderProjectCyclePopupKeepsCountsOnSameLine(t *testing.T) {
 	}
 }
 
+func TestHandleCycleProjectReportsArchivedOnlyCycle(t *testing.T) {
+	app := newTestAppModel()
+	app.config.AddProject(&models.Project{ID: "p1", Name: "Archived Project", Archived: true})
+	app.config.SetCycleProjects([]string{"p1"})
+
+	handled, _ := app.handleCycleProject(true)
+
+	if !handled {
+		t.Fatal("expected cycle project message to be handled")
+	}
+	for _, want := range []string{
+		"No active projects in cycle",
+		"1 archived project hidden",
+		"Unarchive from Dashboard archived mode",
+	} {
+		if !strings.Contains(app.statusMessage, want) {
+			t.Fatalf("statusMessage = %q, want substring %q", app.statusMessage, want)
+		}
+	}
+}
+
+func TestHandleCycleProjectReportsArchivedOnlyCustomContextCycle(t *testing.T) {
+	app := newTestAppModel()
+	app.config.FilterCustomContext = "Work"
+	app.config.AddProject(&models.Project{ID: "p1", Name: "Archived One", Archived: true})
+	app.config.AddProject(&models.Project{ID: "p2", Name: "Archived Two", Archived: true})
+	app.config.SetCycleProjectsForContext("+Work", []string{"p1", "p2"})
+
+	handled, _ := app.handleCycleProject(true)
+
+	if !handled {
+		t.Fatal("expected cycle project message to be handled")
+	}
+	for _, want := range []string{
+		"No active projects in cycle for +Work",
+		"2 archived projects hidden",
+		"Unarchive from Dashboard archived mode",
+	} {
+		if !strings.Contains(app.statusMessage, want) {
+			t.Fatalf("statusMessage = %q, want substring %q", app.statusMessage, want)
+		}
+	}
+}
+
+func TestRenderProjectCyclePopupShowsArchivedHiddenCount(t *testing.T) {
+	app := newTestAppModel()
+	app.width = 100
+	app.height = 24
+	app.showProjectCycle = true
+	active := &models.Project{ID: "p1", Name: "Active Project"}
+	archived := &models.Project{ID: "p2", Name: "Archived Project", Archived: true}
+	app.config.Projects = []*models.Project{active, archived}
+	app.config.SetCycleProjects([]string{"p1", "p2"})
+	app.projectCycleAllItems = []ProjectInfo{{Project: active, TaskCount: 3}}
+	app.projectCycleItems = app.projectCycleAllItems
+
+	rendered := ansi.Strip(app.renderProjectCyclePopup())
+	normalized := strings.Join(strings.Fields(rendered), " ")
+	for _, want := range []string{
+		"2 projects selected",
+		"1 archived",
+		"project hidden",
+	} {
+		if !strings.Contains(normalized, want) {
+			t.Fatalf("rendered popup missing %q\n\n%s", want, rendered)
+		}
+	}
+}
+
+func TestRenderProjectCyclePopupExplainsAllArchivedCycle(t *testing.T) {
+	app := newTestAppModel()
+	app.width = 100
+	app.height = 24
+	app.showProjectCycle = true
+	app.config.AddProject(&models.Project{ID: "p1", Name: "Archived Project", Archived: true})
+	app.config.SetCycleProjects([]string{"p1"})
+
+	rendered := ansi.Strip(app.renderProjectCyclePopup())
+	normalized := strings.Join(strings.Fields(rendered), " ")
+	for _, want := range []string{
+		"No active projects in this cycle",
+		"1 archived",
+		"project hidden",
+		"Unarchive from Dashboard archived mode",
+	} {
+		if !strings.Contains(normalized, want) {
+			t.Fatalf("rendered popup missing %q\n\n%s", want, rendered)
+		}
+	}
+}
+
 func TestRenderProjectCyclePopupMatchesSplitOnWideTerminal(t *testing.T) {
 	app := newTestAppModel()
 	app.width = 160

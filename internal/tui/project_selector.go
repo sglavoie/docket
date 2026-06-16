@@ -17,21 +17,33 @@ type ProjectPickerItem struct {
 
 // FilterText returns searchable text for project filtering.
 func (p ProjectPickerItem) FilterText() string {
+	if p.Project == nil {
+		return ""
+	}
+	if p.Project.Archived {
+		return fmt.Sprintf("%s %s %s", p.Project.Name, p.Project.Context, archivedProjectMarker)
+	}
 	return fmt.Sprintf("%s %s", p.Project.Name, p.Project.Context)
 }
 
 // DisplayText returns the project name for display.
 func (p ProjectPickerItem) DisplayText() string {
-	return p.Project.Name
+	return projectPickerDisplayText(p.Project)
 }
 
 // CountValue returns the task count.
 func (p ProjectPickerItem) CountValue() int {
+	if p.Project == nil {
+		return 0
+	}
 	return p.Project.CountTasks()
 }
 
 // ItemID returns the project ID as its unique identifier.
 func (p ProjectPickerItem) ItemID() string {
+	if p.Project == nil {
+		return ""
+	}
 	return p.Project.ID
 }
 

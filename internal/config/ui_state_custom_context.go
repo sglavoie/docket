@@ -75,6 +75,12 @@ func (c *Config) GetCustomContextProjectCount(name string) int {
 	return len(c.GetCustomContextProjects(name))
 }
 
+// GetCustomContextArchivedProjectCount returns how many stored custom-context
+// project IDs are hidden because the referenced projects are archived.
+func (c *Config) GetCustomContextArchivedProjectCount(name string) int {
+	return c.archivedProjectCountForIDs(c.GetCustomContext(name))
+}
+
 // GetCustomContextProjects returns the active projects in a custom context.
 func (c *Config) GetCustomContextProjects(name string) []*models.Project {
 	return c.activeProjectsForIDs(c.GetCustomContext(name))
@@ -97,6 +103,20 @@ func (c *Config) activeProjectsForIDs(ids []string) []*models.Project {
 		}
 	}
 	return projects
+}
+
+func (c *Config) archivedProjectCountForIDs(ids []string) int {
+	if ids == nil {
+		return 0
+	}
+
+	count := 0
+	for _, id := range ids {
+		if p := c.GetProject(id); p != nil && p.Archived {
+			count++
+		}
+	}
+	return count
 }
 
 func (c *Config) findCustomContextKey(name string) (string, bool) {

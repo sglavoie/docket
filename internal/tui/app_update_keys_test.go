@@ -189,6 +189,79 @@ func TestHandleGlobalKeyPress_QIgnoredDuringConfirmDialog(t *testing.T) {
 	}
 }
 
+func TestHandleGlobalKeyPress_ProjectArchiveConfirmHandlesYesAtAppLevel(t *testing.T) {
+	app, project := newTestAppModelWithProject()
+
+	handled, cmd := app.handleProjectMessages(ProjectArchiveRequestMsg{Project: project, Archive: true})
+	if !handled {
+		t.Fatal("ProjectArchiveRequestMsg should be handled")
+	}
+	if cmd != nil {
+		t.Fatalf("ProjectArchiveRequestMsg should only open confirmation, got cmd %T", cmd)
+	}
+
+	handled, cmd = app.handleGlobalKeyPress(syntheticKey('y'))
+	if !handled {
+		t.Fatal("expected y to be handled by app-owned project archive confirmation")
+	}
+	if cmd == nil {
+		t.Fatal("expected y to return project archive confirmation command")
+	}
+	if project.Archived {
+		t.Fatal("project should not archive until projectArchiveConfirmedMsg is handled")
+	}
+	if app.projectArchiveConfirm.IsActive() {
+		t.Fatal("confirm dialog should close after y")
+	}
+	if app.pendingProjectArchive != project {
+		t.Fatal("pending project should remain until confirmProjectArchive consumes it")
+	}
+
+	result := cmd()
+	if _, ok := result.(projectArchiveConfirmedMsg); !ok {
+		t.Fatalf("confirmation command returned %T, want projectArchiveConfirmedMsg", result)
+	}
+}
+
+func TestHandleGlobalKeyPress_ProjectArchiveConfirmCancelClearsPendingState(t *testing.T) {
+	tests := []struct {
+		name string
+		key  tea.KeyPressMsg
+	}{
+		{name: "n", key: syntheticKey('n')},
+		{name: "N", key: syntheticKey('N')},
+		{name: "esc", key: syntheticSpecialKey(tea.KeyEsc)},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			app, project := newTestAppModelWithProject()
+
+			app.handleProjectMessages(ProjectArchiveRequestMsg{Project: project, Archive: true})
+			handled, cmd := app.handleGlobalKeyPress(tt.key)
+
+			if !handled {
+				t.Fatal("expected cancel key to be handled by app-owned project archive confirmation")
+			}
+			if cmd != nil {
+				t.Fatalf("cancel key should not return command, got %T", cmd)
+			}
+			if project.Archived {
+				t.Fatal("project should not archive on cancel")
+			}
+			if app.pendingProjectArchive != nil {
+				t.Fatal("pendingProjectArchive should be cleared on cancel")
+			}
+			if app.pendingProjectArchiveArchive {
+				t.Fatal("pendingProjectArchiveArchive should be cleared on cancel")
+			}
+			if app.projectArchiveConfirm.IsActive() {
+				t.Fatal("confirm dialog should close on cancel")
+			}
+		})
+	}
+}
+
 func TestHandleGlobalKeyPress_SpaceFallsThroughWithoutCursorTask(t *testing.T) {
 	app := newTestAppModel()
 

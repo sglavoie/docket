@@ -19,11 +19,19 @@ func (m *DashboardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyPressMsg:
 		// Handle confirmation mode
 		if m.confirm.IsActive() {
+			action := m.confirm.Action()
 			project := m.deleteTarget
 			if confirmed, handled := m.HandleConfirmKey(msg.String()); handled {
-				if confirmed && project != nil {
-					m.deleteTarget = nil
-					return m, m.deleteProject(project)
+				if confirmed {
+					switch action {
+					case "delete":
+						if project != nil {
+							m.deleteTarget = nil
+							return m, m.deleteProject(project)
+						}
+					case projectArchiveConfirmAction:
+						return m, func() tea.Msg { return projectArchiveConfirmedMsg{} }
+					}
 				}
 				m.deleteTarget = nil
 				return m, nil

@@ -289,6 +289,11 @@ type AppModel struct {
 	pendingSandboxReset     bool
 	pendingSandboxTaskCount int
 
+	// Pending project archive/unarchive confirmation
+	pendingProjectArchive        *models.Project
+	pendingProjectArchiveArchive bool
+	projectArchiveConfirm        ConfirmDialog
+
 	// CLI reference for AI assistant context
 	cliReference string
 
