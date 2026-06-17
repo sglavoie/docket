@@ -136,6 +136,9 @@ func TestCommandRegistry_AppLevelShortcutScopes(t *testing.T) {
 	if peekCmd.Shortcut != "space" {
 		t.Fatalf("peek shortcut = %q, want space", peekCmd.Shortcut)
 	}
+	if peekCmd.Description != "Toggle peek for the selected task's details" {
+		t.Fatalf("peek description = %q", peekCmd.Description)
+	}
 
 	notesCmd := findCommand(registry.GetForView(ViewProjectRecentActivity), "show notes")
 	if notesCmd == nil {

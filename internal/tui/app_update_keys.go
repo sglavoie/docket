@@ -165,7 +165,7 @@ func (m *AppModel) handleGlobalKeyPress(msg tea.KeyPressMsg) (bool, tea.Cmd) { /
 	// and dismiss; block everything else so the underlying view is frozen.
 	if m.peekActive {
 		switch msg.String() {
-		case "esc":
+		case "esc", "space":
 			m.dismissPeek()
 		case "tab", "shift+tab":
 			m.peekFocusRight = !m.peekFocusRight

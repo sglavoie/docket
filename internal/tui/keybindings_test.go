@@ -92,7 +92,7 @@ func TestGetForView_ScopedTaskGlobalsStayOutOfDashboardHelp(t *testing.T) {
 	items := r.GetForView(ViewDashboard)
 
 	taskOnlyBindings := []HelpItem{
-		{Key: "space", Description: "Hold to peek task detail (toggles selection in multi-select)"},
+		{Key: "space", Description: "Toggle task detail peek (toggles selection in multi-select)"},
 		{Key: "q", Description: "Toggle queue"},
 		{Key: "w", Description: "Toggle today's plan"},
 		{Key: "ctrl+o", Description: "Open task reference copy"},
@@ -123,7 +123,7 @@ func TestGetForView_TaskCapableViewsIncludeScopedTaskGlobals(t *testing.T) {
 	items := r.GetForView(ViewOutliner)
 
 	scopedBindings := []HelpItem{
-		{Key: "space", Description: "Hold to peek task detail (toggles selection in multi-select)"},
+		{Key: "space", Description: "Toggle task detail peek (toggles selection in multi-select)"},
 		{Key: "q", Description: "Toggle queue"},
 		{Key: "w", Description: "Toggle today's plan"},
 		{Key: "ctrl+o", Description: "Open task reference copy"},
@@ -153,7 +153,7 @@ func TestActualTaskViewHelpIncludesScopedAppBindings(t *testing.T) {
 	}
 
 	allTasksItems := (&AllTasksViewModel{}).GetHelpItems()
-	assertHasHelpItem(t, allTasksItems, ViewAllTasks, "space", "Hold to peek task detail (toggles selection in multi-select)")
+	assertHasHelpItem(t, allTasksItems, ViewAllTasks, "space", "Toggle task detail peek (toggles selection in multi-select)")
 	assertHasHelpItem(t, allTasksItems, ViewAllTasks, "w", "Toggle today's plan")
 	assertHasHelpItem(t, allTasksItems, ViewAllTasks, "y", "Copy title")
 
@@ -165,7 +165,7 @@ func TestActualTaskViewHelpIncludesScopedAppBindings(t *testing.T) {
 	assertHasHelpItem(t, detailItems, ViewTaskDetail, "ctrl+o", "Open task reference copy")
 	assertHasHelpItem(t, detailItems, ViewTaskDetail, "ctrl+n", "Open project Notes")
 	assertHasHelpItem(t, detailItems, ViewTaskDetail, "y", "Copy title")
-	assertLacksHelpItem(t, detailItems, ViewTaskDetail, "space", "Hold to peek task detail (toggles selection in multi-select)")
+	assertLacksHelpItem(t, detailItems, ViewTaskDetail, "space", "Toggle task detail peek (toggles selection in multi-select)")
 }
 
 func TestGetGlobalBindings_IncludesHandledSemicolonShortcuts(t *testing.T) {

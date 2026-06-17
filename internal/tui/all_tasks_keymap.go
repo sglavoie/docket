@@ -136,7 +136,7 @@ func (m *AllTasksViewModel) allTasksTabEntries() []keymap.Entry {
 func (m *AllTasksViewModel) allTasksMultiSelectEntries() []keymap.Entry {
 	return []keymap.Entry{
 		keymap.Bind("v", "Toggle multi-select", "Multi-select", m.allTasksToggleMultiSelect),
-		keymap.Bind("space", "Toggle selection (multi-select) / hold to peek", "Multi-select", m.allTasksToggleSelection, keymap.AsHidden()),
+		keymap.Bind("space", "Toggle selection (multi-select) / toggle peek", "Multi-select", m.allTasksToggleSelection, keymap.AsHidden()),
 		keymap.Bind("a", "Select all visible", "Multi-select", m.allTasksSelectAllVisible, keymap.AsHidden()),
 		keymap.Bind("A", "Deselect all", "Multi-select", m.allTasksDeselectAll, keymap.AsHidden()),
 	}

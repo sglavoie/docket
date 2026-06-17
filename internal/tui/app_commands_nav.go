@@ -76,7 +76,7 @@ func (m *AppModel) navCommands() []Command {
 		},
 		{
 			Name:        "peek task detail",
-			Description: "Hold space to peek at the selected task's details",
+			Description: "Toggle peek for the selected task's details",
 			Shortcut:    "space",
 			Category:    CategoryNavigation,
 			Views:       taskPeekViews(),

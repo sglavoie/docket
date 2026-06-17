@@ -123,7 +123,7 @@ func (m *KanbanModel) buildKeyMap() *keymap.KeyMap {
 			m.ToggleMode(&m.statusMsg, "Multi-select mode — space: select, H/L: bulk move, esc: exit")
 			return m, nil
 		}),
-		keymap.Bind("space", "Toggle multi-select on card / hold to peek", "Multi-select", func() (tea.Model, tea.Cmd) {
+		keymap.Bind("space", "Toggle card selection (multi-select) / toggle peek", "Multi-select", func() (tea.Model, tea.Cmd) {
 			if card := m.getCursorCard(); card != nil {
 				m.ToggleAndUpdateStatus(card.Task.ID, &m.statusMsg,
 					"Multi-select: navigate and press space to select",

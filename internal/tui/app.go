@@ -408,7 +408,7 @@ type AppModel struct {
 		linkType      LinkType
 	}
 
-	// Peek task overlay (space to hold-peek task detail)
+	// Peek task overlay (space toggles task detail peek)
 	peekTask        *models.Task
 	peekProject     *models.Project
 	peekActive      bool

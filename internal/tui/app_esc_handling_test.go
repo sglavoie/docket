@@ -225,20 +225,20 @@ func TestSpaceActivatesPeek(t *testing.T) {
 	_ = app.peekTask
 }
 
-// TestKeyReleaseMsg_ClearsPeek verifies that space release clears peek state.
-func TestKeyReleaseMsg_ClearsPeek(t *testing.T) {
+// TestSpaceKeyUpKeepsActivePeek verifies that key-up does not close active peek.
+func TestSpaceKeyUpKeepsActivePeek(t *testing.T) {
 	app, project := newTestAppModelWithProject()
 	app.peekTask = project.Tasks[0]
 	app.peekActive = true
 
-	msg := tea.KeyReleaseMsg{Code: tea.KeySpace}
-	result, _ := app.Update(msg)
+	keyUp := tea.KeyReleaseMsg{Code: tea.KeySpace}
+	result, _ := app.Update(keyUp)
 	appResult := result.(*AppModel)
 
-	if appResult.peekActive {
-		t.Error("peekActive should be false after space release")
+	if !appResult.peekActive {
+		t.Error("peekActive should remain true after key-up")
 	}
-	if appResult.peekTask != nil {
-		t.Error("peekTask should be nil after space release")
+	if appResult.peekTask != project.Tasks[0] {
+		t.Error("peekTask should remain set after key-up")
 	}
 }

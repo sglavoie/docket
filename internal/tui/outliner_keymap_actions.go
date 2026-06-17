@@ -212,7 +212,7 @@ func (b *outlinerKeymapBuilder) utilityEntries() []keymap.Entry {
 			m.toggleMultiSelectMode()
 			return m, nil
 		}),
-		keymap.Bind("space", "Toggle selection (multi-select) / hold to peek", "Multi-select", func() (tea.Model, tea.Cmd) {
+		keymap.Bind("space", "Toggle selection (multi-select) / toggle peek", "Multi-select", func() (tea.Model, tea.Cmd) {
 			if m.multiSelectMode {
 				task := b.cursorTask()
 				if task != nil {

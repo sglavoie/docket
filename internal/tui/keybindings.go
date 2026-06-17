@@ -378,7 +378,7 @@ func (r *KeybindingRegistry) registerGlobalBindings() {
 		Keybinding{Key: `ctrl+\`, Description: "Keybinding Explorer", Category: "Navigation"},
 	)
 	r.add(
-		scopedAppBinding("space", "Hold to peek task detail (toggles selection in multi-select)", "Navigation", taskPeekViews()),
+		scopedAppBinding("space", "Toggle task detail peek (toggles selection in multi-select)", "Navigation", taskPeekViews()),
 		scopedAppBinding("q", "Toggle queue", "Navigation", taskReferenceViews()),
 		scopedAppBinding("w", "Toggle today's plan", "Navigation", taskReferenceViews()),
 		scopedAppBinding("ctrl+o", "Open task reference copy", "Task Operations", taskReferenceViews()),

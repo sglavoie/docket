@@ -49,9 +49,6 @@ func (m *AppModel) handleGlobalInputMessage(msg tea.Msg) (bool, tea.Cmd) {
 		m.keyboardEnhancements = msg
 		return true, upgradeKittyKeyboard()
 	case tea.KeyReleaseMsg:
-		if msg.String() == "space" && m.peekActive {
-			m.dismissPeek()
-		}
 		return true, nil
 	case tea.WindowSizeMsg:
 		m.handleWindowSize(msg)

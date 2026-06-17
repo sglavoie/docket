@@ -36,7 +36,7 @@ func (b *projectTreeKeymapBuilder) selectionEntries() []keymap.Entry {
 	m := b.model
 
 	return []keymap.Entry{
-		keymap.Bind("space", "Toggle selection (multi-select) / hold to peek (use zo for fold)", "Navigation", func() (tea.Model, tea.Cmd) {
+		keymap.Bind("space", "Toggle selection (multi-select) / toggle peek (use zo for fold)", "Navigation", func() (tea.Model, tea.Cmd) {
 			if m.multiSelectMode {
 				task := b.cursorTask()
 				if task != nil {

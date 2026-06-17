@@ -286,23 +286,30 @@ func TestRenderPeekDescription_WrapsAndPreservesParagraphs(t *testing.T) {
 	}
 }
 
-// TestRepeatedSpacePress_KeepsPeekActive verifies that auto-repeat space key
-// presses while peek is already active do not toggle peek off. Holding space
-// produces a stream of KeyPressMsg{Space} events; only the final
-// KeyReleaseMsg{Space} should dismiss peek.
-func TestRepeatedSpacePress_KeepsPeekActive(t *testing.T) {
+// TestRepeatedSpacePress_TogglesPeekClosed verifies that pressing space while
+// peek is already active closes it.
+func TestRepeatedSpacePress_TogglesPeekClosed(t *testing.T) {
 	app, project := newTestAppModelWithProject()
 	app.peekTask = project.Tasks[0]
 	app.peekProject = project
 	app.peekActive = true
 
 	msg := tea.KeyPressMsg{Code: tea.KeySpace}
-	for i := range 5 {
-		result, _ := app.Update(msg)
-		app = result.(*AppModel)
-		if !app.peekActive {
-			t.Fatalf("peekActive became false after press #%d; should remain true while space is held", i+1)
-		}
+	result, _ := app.Update(msg)
+	app = result.(*AppModel)
+	if app.peekActive {
+		t.Fatal("peek should be dismissed after second space press")
+	}
+
+	app.peekTask = project.Tasks[0]
+	app.peekProject = project
+	app.peekActive = true
+
+	result, _ = app.Update(tea.KeyPressMsg{Code: tea.KeyEsc})
+	app = result.(*AppModel)
+
+	if app.peekActive {
+		t.Fatal("peek should be dismissed after esc")
 	}
 }
 
@@ -324,29 +331,21 @@ func (s *peekStubView) getTaskRef() (*models.Task, *models.Project) {
 }
 func (s *peekStubView) IsMultiSelectActive() bool { return s.multiSelect }
 
-// peekEligibleViews lists every ViewType that Session 2 enabled for hold-to-peek.
+// peekEligibleViews returns the production ViewType scope for task peek.
 // The interface dispatch in getCurrentCursorTaskAndProject is identical for all
 // of them, so a single stub registered at each ViewType is sufficient to verify
 // the dispatch contract per view.
-var peekEligibleViews = []ViewType{
-	ViewFocusView,
-	ViewFocusBoard,
-	ViewDailyReview,
-	ViewWeeklyReview,
-	ViewDueDateOverview,
-	ViewPriorityView,
-	ViewRecentActivity,
-	ViewProjectFocusView,
-	ViewKanban,
-	ViewCrossProjectKanban,
+func peekEligibleViews() []ViewType {
+	return taskPeekViews()
 }
 
 // TestSpace_ActivatesPeek_AcrossViews verifies that pressing space in each
-// S2-enabled view activates peek with the cursor task supplied by getTaskRef,
-// and that releasing space dismisses peek. Uses a stub view to isolate the
+// eligible view activates peek with the cursor task supplied by getTaskRef,
+// that releasing space leaves peek active, and that a second press dismisses
+// peek. Uses a stub view to isolate the
 // dispatch path from per-view setup complexity.
 func TestSpace_ActivatesPeek_AcrossViews(t *testing.T) {
-	for _, vt := range peekEligibleViews {
+	for _, vt := range peekEligibleViews() {
 		t.Run(vt.String(), func(t *testing.T) {
 			app, project := newTestAppModelWithProject()
 			stub := &peekStubView{task: project.Tasks[0], project: project}
@@ -371,10 +370,34 @@ func TestSpace_ActivatesPeek_AcrossViews(t *testing.T) {
 			result, _ = app.Update(release)
 			app = result.(*AppModel)
 
+			if !app.peekActive {
+				t.Fatalf("peek dismissed after space release in view %s", vt)
+			}
+
+			result, _ = app.Update(press)
+			app = result.(*AppModel)
+
 			if app.peekActive {
-				t.Fatalf("peek not dismissed after space release in view %s", vt)
+				t.Fatalf("peek not dismissed after second space press in view %s", vt)
 			}
 		})
+	}
+}
+
+func TestSpace_DoesNotPeekInTaskDetail(t *testing.T) {
+	app, project := newTestAppModelWithProject()
+	stub := &peekStubView{task: project.Tasks[0], project: project}
+	app.views.Register(ViewTaskDetail, stub)
+	app.viewStack = []ViewType{ViewTaskDetail}
+
+	result, _ := app.Update(tea.KeyPressMsg{Code: tea.KeySpace})
+	app = result.(*AppModel)
+
+	if app.peekActive {
+		t.Fatal("peek should not activate in task detail view")
+	}
+	if app.peekTask != nil {
+		t.Fatal("peekTask should remain unset in task detail view")
 	}
 }
 
@@ -400,10 +423,10 @@ func TestSpace_DoesNotPeekDuringMultiSelect(t *testing.T) {
 	}
 }
 
-// TestPeek_DismissesEvenWithoutKittyRelease documents the spec: once peek is
-// active, only esc or KeyReleaseMsg{Space} dismisses it. Unrelated messages
-// (e.g. WindowSizeMsg) leave peek active.
-func TestPeek_DismissesEvenWithoutKittyRelease(t *testing.T) {
+// TestPeekDismissalAndUnrelatedMessages documents the spec: once peek is active,
+// esc or another space press dismisses it. KeyReleaseMsg{Space} and unrelated
+// messages leave peek active.
+func TestPeekDismissalAndUnrelatedMessages(t *testing.T) {
 	app, project := newTestAppModelWithProject()
 	app.peekTask = project.Tasks[0]
 	app.peekProject = project
@@ -419,13 +442,20 @@ func TestPeek_DismissesEvenWithoutKittyRelease(t *testing.T) {
 	result, _ = app.Update(tea.KeyReleaseMsg{Code: tea.KeySpace})
 	app = result.(*AppModel)
 
+	if !app.peekActive {
+		t.Fatal("peek should remain active after KeyReleaseMsg{Space}")
+	}
+
+	result, _ = app.Update(tea.KeyPressMsg{Code: tea.KeySpace})
+	app = result.(*AppModel)
+
 	if app.peekActive {
-		t.Fatal("peek should be dismissed after KeyReleaseMsg{Space}")
+		t.Fatal("peek should be dismissed after second space press")
 	}
 }
 
 // TestPeekEligibleViews_SatisfyTaskRefProvider compile-time-asserts that every
-// real view model expected to support hold-to-peek implements the
+// real view model expected to support task peek implements the
 // taskRefProvider interface dispatched in getCurrentCursorTaskAndProject.
 // A missing method here means the view will silently fail to activate peek.
 func TestPeekEligibleViews_SatisfyTaskRefProvider(t *testing.T) {
