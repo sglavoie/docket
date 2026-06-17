@@ -148,23 +148,51 @@ func TestTagManagerRemoveZeroUseCatalogTagPersists(t *testing.T) {
 	}
 }
 
-func TestTagManagerDeleteProtectsTaskUsedTag(t *testing.T) {
+func TestTagManagerDeleteTaskUsedTagPersistsAndRefreshesList(t *testing.T) {
 	project := newTagManagerTestProject(t)
 	project.Tags = []string{"backend"}
+	project.PinnedTags = []string{"backend"}
 	project.Tasks = []*models.Task{newTagManagerTestTask(t, "1", 1, "backend")}
+	saveAndReloadTagManagerProject(t, project)
 	m := NewTagManagerModelForProject(project)
 
 	updated, cmd := m.Update(tea.KeyPressMsg{Code: 'd', Text: "d"})
 	m = updated.(*TagManagerModel)
 
-	if cmd != nil {
-		t.Fatal("delete task-used tag returned a command, want inline validation error")
+	if cmd == nil {
+		t.Fatal("delete task-used tag returned nil command, want delete command")
 	}
-	if m.errorMsg != "cannot delete: tag has 1 task(s)" {
-		t.Fatalf("errorMsg = %q, want task-use protection", m.errorMsg)
+	if m.errorMsg != "" {
+		t.Fatalf("errorMsg = %q, want no inline validation error", m.errorMsg)
 	}
-	if got, want := project.Tags, []string{"backend"}; !slices.Equal(got, want) {
-		t.Fatalf("project.Tags = %v, want %v", got, want)
+
+	msg := cmd()
+	removed, ok := msg.(TagRemovedMsg)
+	if !ok {
+		t.Fatalf("delete command message = %T, want TagRemovedMsg (%v)", msg, msg)
+	}
+	if removed.Name != "backend" {
+		t.Fatalf("TagRemovedMsg.Name = %q, want backend", removed.Name)
+	}
+	updated, _ = m.Update(msg)
+	m = updated.(*TagManagerModel)
+
+	if len(project.Tags) != 0 {
+		t.Fatalf("project.Tags = %v, want empty", project.Tags)
+	}
+	if len(project.PinnedTags) != 0 {
+		t.Fatalf("project.PinnedTags = %v, want empty", project.PinnedTags)
+	}
+	if len(project.Tasks[0].Tags) != 0 {
+		t.Fatalf("task tags = %v, want empty", project.Tasks[0].Tags)
+	}
+	assertReloadedTagCatalog(t, project, nil)
+	assertReloadedPinnedTags(t, project, nil)
+	assertReloadedTaskTags(t, project, map[int][]string{
+		1: {},
+	})
+	if len(m.tags) != 0 {
+		t.Fatalf("manager tags = %v, want empty", m.tags)
 	}
 }
 

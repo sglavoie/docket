@@ -290,6 +290,104 @@ func TestSaveProject_WithProjectPinnedTags(t *testing.T) {
 	}
 }
 
+func TestSaveProject_AfterDeleteTagPersistsUnassignmentAndActivity(t *testing.T) {
+	dir, cleanup := testutil.TempProjectDir(t)
+	defer cleanup()
+
+	project := testutil.NewTestProject("Delete Tag Storage Test")
+	project.Path = filepath.Join(dir, "delete-tag-storage-test")
+	project.Tags = []string{"backend", "frontend", "zero-use"}
+	project.PinnedTags = []string{"backend", "frontend"}
+
+	task1, err := models.NewTask("task-1", 1, models.TaskTypeTask, "Backend and Frontend")
+	if err != nil {
+		t.Fatal(err)
+	}
+	task1.Tags = []string{"backend", "frontend"}
+	task2, err := models.NewTask("task-2", 2, models.TaskTypeTask, "Backend Only")
+	if err != nil {
+		t.Fatal(err)
+	}
+	task2.Tags = []string{"backend"}
+	task3, err := models.NewTask("task-3", 3, models.TaskTypeTask, "Frontend Only")
+	if err != nil {
+		t.Fatal(err)
+	}
+	task3.Tags = []string{"frontend"}
+	project.Tasks = []*models.Task{task1, task2, task3}
+
+	if saveErr := SaveProject(project); saveErr != nil {
+		t.Fatalf("initial SaveProject failed: %v", saveErr)
+	}
+
+	result, err := project.DeleteTag("#backend")
+	if err != nil {
+		t.Fatalf("DeleteTag failed: %v", err)
+	}
+	if result.Name != "backend" || !result.CatalogChanged || !result.PinnedChanged || result.TasksUnassigned != 2 {
+		t.Fatalf("DeleteTag result = %#v, want catalog/pinned changed and 2 tasks unassigned", result)
+	}
+
+	if saveErr := SaveProject(project); saveErr != nil {
+		t.Fatalf("SaveProject after DeleteTag failed: %v", saveErr)
+	}
+
+	tasksPath := filepath.Join(project.Path, "tasks.md")
+	content, err := os.ReadFile(tasksPath)
+	if err != nil {
+		t.Fatalf("ReadFile(%s): %v", tasksPath, err)
+	}
+	if !strings.Contains(string(content), "<!-- tags: frontend;zero-use -->") {
+		t.Fatalf("saved content should retain remaining project tags metadata:\n%s", content)
+	}
+	if !strings.Contains(string(content), "<!-- pinned_tags: frontend -->") {
+		t.Fatalf("saved content should retain remaining pinned tag metadata:\n%s", content)
+	}
+
+	loadedProject := testutil.NewTestProject("Delete Tag Storage Test")
+	loadedProject.Path = project.Path
+	if err := LoadProject(loadedProject); err != nil {
+		t.Fatalf("LoadProject failed: %v", err)
+	}
+
+	if !slices.Equal(loadedProject.Tags, []string{"frontend", "zero-use"}) {
+		t.Fatalf("loadedProject.Tags = %v, want [frontend zero-use]", loadedProject.Tags)
+	}
+	if !slices.Equal(loadedProject.PinnedTagList(), []string{"frontend"}) {
+		t.Fatalf("loadedProject.PinnedTagList() = %v, want [frontend]", loadedProject.PinnedTagList())
+	}
+
+	wantTaskTags := map[int][]string{
+		1: {"frontend"},
+		2: {},
+		3: {"frontend"},
+	}
+	for _, task := range loadedProject.Tasks {
+		want, ok := wantTaskTags[task.ShortID]
+		if !ok {
+			continue
+		}
+		if !slices.Equal(task.Tags, want) {
+			t.Fatalf("loaded task #%d tags = %v, want %v", task.ShortID, task.Tags, want)
+		}
+	}
+
+	for _, shortID := range []int{1, 2} {
+		task := findLoadedTaskByShortID(t, loadedProject, shortID)
+		entry := findActivity(task, "tags")
+		if entry == nil {
+			t.Fatalf("loaded task #%d missing tags activity entry", shortID)
+		}
+		if entry.OldValue != "" || entry.NewValue != "-backend" {
+			t.Fatalf("loaded task #%d tags activity = %#v, want NewValue -backend", shortID, entry)
+		}
+	}
+	task := findLoadedTaskByShortID(t, loadedProject, 3)
+	if entry := findActivity(task, "tags"); entry != nil {
+		t.Fatalf("loaded task #3 tags activity = %#v, want none", entry)
+	}
+}
+
 func TestBuildTargetedRestorePreservesProjectTags(t *testing.T) {
 	currentTask, err := models.NewTask("task-1", 1, models.TaskTypeTask, "Current Title")
 	if err != nil {
@@ -335,6 +433,17 @@ func TestBuildTargetedRestorePreservesProjectTags(t *testing.T) {
 	if len(result.Tasks) != 1 || result.Tasks[0].Title != "Snapshot Title" {
 		t.Fatalf("restored task title = %v, want Snapshot Title", result.Tasks)
 	}
+}
+
+func findLoadedTaskByShortID(t *testing.T, project *models.Project, shortID int) *models.Task {
+	t.Helper()
+	for _, task := range project.Tasks {
+		if task.ShortID == shortID {
+			return task
+		}
+	}
+	t.Fatalf("task #%d not found in loaded project", shortID)
+	return nil
 }
 
 func TestBuildTargetedRestorePreservesProjectPinnedTags(t *testing.T) {

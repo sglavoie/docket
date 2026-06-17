@@ -72,6 +72,42 @@ func TestHandleTagMessagesTagRenameKeepsActiveManagerOpen(t *testing.T) {
 	}
 }
 
+func TestHandleTagMessagesTagRemovedKeepsActiveManagerOpenAndClearsFilter(t *testing.T) {
+	app, project := newTestAppModelWithProject()
+	project.Tags = []string{"backend"}
+	project.Tasks = nil
+	app.projectTree = NewProjectTreeModel(project, app.config, nil)
+
+	handled, _ := app.handleTagMessages(ShowTagManagerMsg{ProjectTree: app.projectTree})
+	if !handled {
+		t.Fatal("ShowTagManagerMsg should be handled")
+	}
+
+	project.Tags = nil
+	app.projectTree.filter.Tags = map[string]bool{"backend": true}
+	handled, cmd := app.handleTagMessages(TagRemovedMsg{Name: "backend"})
+	if !handled {
+		t.Fatal("TagRemovedMsg should be handled")
+	}
+	if cmd != nil {
+		t.Fatal("TagRemovedMsg returned a command, want in-place manager refresh")
+	}
+	if app.currentView() != ViewTagManager {
+		t.Fatalf("currentView = %v, want ViewTagManager", app.currentView())
+	}
+	if app.projectTree.filter.Tags["backend"] {
+		t.Fatalf("project tree tag filter = %v, want backend removed", app.projectTree.filter.Tags)
+	}
+
+	manager, ok := app.views.Get(ViewTagManager).(*TagManagerModel)
+	if !ok {
+		t.Fatalf("tag manager view = %T, want *TagManagerModel", app.views.Get(ViewTagManager))
+	}
+	if len(manager.tags) != 0 {
+		t.Fatalf("manager tags = %v, want empty", manager.tags)
+	}
+}
+
 func TestHandleTagMessagesTagPinnedKeepsManagerOpenAndRefreshesTree(t *testing.T) {
 	app, project := newTestAppModelWithProject()
 	project.Tags = []string{"backend"}

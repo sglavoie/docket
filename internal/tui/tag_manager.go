@@ -199,7 +199,11 @@ func (m *TagManagerModel) removeProjectTag(tagName string) tea.Cmd {
 			return TagManagerErrorMsg{Err: fmt.Errorf("project is unavailable")}
 		}
 		tagName = models.NormalizeTag(tagName)
-		if !project.RemoveTag(tagName) {
+		result, err := project.DeleteTag(tagName)
+		if err != nil {
+			return TagManagerErrorMsg{Err: err}
+		}
+		if !result.Changed() {
 			return TagManagerErrorMsg{Err: fmt.Errorf("tag '%s' does not exist", tagName)}
 		}
 
@@ -207,7 +211,7 @@ func (m *TagManagerModel) removeProjectTag(tagName string) tea.Cmd {
 			return ErrorMsg{Err: fmt.Errorf("failed to save project: %w", err)}
 		}
 
-		return TagRemovedMsg{Name: tagName}
+		return TagRemovedMsg{Name: result.Name}
 	}
 }
 
@@ -366,12 +370,7 @@ func (m *TagManagerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) { //nolint:go
 
 		case "d":
 			if len(m.tags) > 0 && m.cursor < len(m.tags) {
-				tag := m.tags[m.cursor]
-				if tag.TaskCount > 0 {
-					m.errorMsg = fmt.Sprintf("cannot delete: tag has %d task(s)", tag.TaskCount)
-				} else {
-					return m, m.removeProjectTag(tag.Name)
-				}
+				return m, m.removeProjectTag(m.tags[m.cursor].Name)
 			}
 			return m, nil
 

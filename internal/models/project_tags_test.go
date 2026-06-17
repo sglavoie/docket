@@ -5,6 +5,7 @@ import (
 	"slices"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestDedupeTagsNormalizesValidatesAndDedupes(t *testing.T) {
@@ -125,6 +126,180 @@ func TestProjectRemoveTagKeepsTaskUsageInAllTags(t *testing.T) {
 	}
 	if got := project.AllTags(); !slices.Equal(got, []string{"backend"}) {
 		t.Fatalf("AllTags() = %v, want [backend]", got)
+	}
+}
+
+func TestProjectDeleteTagRemovesCatalogPinsAndTaskUsage(t *testing.T) {
+	project := newProjectTagsTestProject(t)
+	project.Tags = []string{"backend", "frontend"}
+	project.PinnedTags = []string{"backend", "frontend"}
+	stale := time.Date(2024, 1, 1, 12, 0, 0, 0, time.UTC)
+	project.UpdatedAt = stale
+
+	task1 := newProjectTagsTestTask(t, "t1", 1)
+	task1.Tags = []string{"backend", "api"}
+	task1.UpdatedAt = stale
+	task2 := newProjectTagsTestTask(t, "t2", 2)
+	task2.Tags = []string{"backend"}
+	task2.UpdatedAt = stale
+	project.Tasks = []*Task{task1, task2}
+
+	result, err := project.DeleteTag("#backend")
+	if err != nil {
+		t.Fatalf("DeleteTag() error = %v", err)
+	}
+	if result.Name != "backend" {
+		t.Fatalf("DeleteTag() result.Name = %q, want backend", result.Name)
+	}
+	if !result.CatalogChanged {
+		t.Fatal("DeleteTag() CatalogChanged = false, want true")
+	}
+	if !result.PinnedChanged {
+		t.Fatal("DeleteTag() PinnedChanged = false, want true")
+	}
+	if result.TasksUnassigned != 2 {
+		t.Fatalf("DeleteTag() TasksUnassigned = %d, want 2", result.TasksUnassigned)
+	}
+	if !result.Changed() {
+		t.Fatal("DeleteTag() Changed() = false, want true")
+	}
+	if !slices.Equal(project.Tags, []string{"frontend"}) {
+		t.Fatalf("project.Tags = %v, want [frontend]", project.Tags)
+	}
+	if !slices.Equal(project.PinnedTags, []string{"frontend"}) {
+		t.Fatalf("project.PinnedTags = %v, want [frontend]", project.PinnedTags)
+	}
+	if !slices.Equal(task1.Tags, []string{"api"}) {
+		t.Fatalf("task1.Tags = %v, want [api]", task1.Tags)
+	}
+	if len(task2.Tags) != 0 {
+		t.Fatalf("task2.Tags = %v, want empty", task2.Tags)
+	}
+	if project.HasTag("backend") {
+		t.Fatal("HasTag(backend) = true, want false")
+	}
+	if got := project.AllTags(); !slices.Equal(got, []string{"api", "frontend"}) {
+		t.Fatalf("AllTags() = %v, want [api frontend]", got)
+	}
+	counts := project.TagCounts()
+	if _, ok := counts["backend"]; ok {
+		t.Fatal("TagCounts() still includes backend")
+	}
+	if counts["api"] != 1 || counts["frontend"] != 0 {
+		t.Fatalf("TagCounts() = %v, want api=1 and frontend=0", counts)
+	}
+	if !project.UpdatedAt.After(stale) {
+		t.Fatal("project.UpdatedAt was not refreshed")
+	}
+	if !task1.UpdatedAt.After(stale) || !task2.UpdatedAt.After(stale) {
+		t.Fatal("affected task UpdatedAt values were not refreshed")
+	}
+}
+
+func TestProjectDeleteTaskOnlyTag(t *testing.T) {
+	project := newProjectTagsTestProject(t)
+	task := newProjectTagsTestTask(t, "t1", 1)
+	task.Tags = []string{"backend", "api"}
+	project.Tasks = []*Task{task}
+
+	result, err := project.DeleteTag("backend")
+	if err != nil {
+		t.Fatalf("DeleteTag() error = %v", err)
+	}
+	if result.CatalogChanged {
+		t.Fatal("DeleteTag() CatalogChanged = true, want false")
+	}
+	if result.PinnedChanged {
+		t.Fatal("DeleteTag() PinnedChanged = true, want false")
+	}
+	if result.TasksUnassigned != 1 {
+		t.Fatalf("DeleteTag() TasksUnassigned = %d, want 1", result.TasksUnassigned)
+	}
+	if !slices.Equal(task.Tags, []string{"api"}) {
+		t.Fatalf("task.Tags = %v, want [api]", task.Tags)
+	}
+	if project.HasTag("backend") {
+		t.Fatal("HasTag(backend) = true, want false")
+	}
+}
+
+func TestProjectDeleteTagRemovesDuplicateNormalizedVariants(t *testing.T) {
+	project := newProjectTagsTestProject(t)
+	project.Tags = []string{"#backend", "frontend", " backend ", "backend"}
+	project.PinnedTags = []string{"urgent", "#backend", "backend"}
+	task := newProjectTagsTestTask(t, "t1", 1)
+	task.Tags = []string{"#backend", "api", " backend ", "frontend", "backend"}
+	project.Tasks = []*Task{task}
+
+	result, err := project.DeleteTag(" backend ")
+	if err != nil {
+		t.Fatalf("DeleteTag() error = %v", err)
+	}
+	if result.TasksUnassigned != 1 {
+		t.Fatalf("DeleteTag() TasksUnassigned = %d, want 1", result.TasksUnassigned)
+	}
+	if !slices.Equal(project.Tags, []string{"frontend"}) {
+		t.Fatalf("project.Tags = %v, want [frontend]", project.Tags)
+	}
+	if !slices.Equal(project.PinnedTags, []string{"urgent"}) {
+		t.Fatalf("project.PinnedTags = %v, want [urgent]", project.PinnedTags)
+	}
+	if !slices.Equal(task.Tags, []string{"api", "frontend"}) {
+		t.Fatalf("task.Tags = %v, want [api frontend]", task.Tags)
+	}
+}
+
+func TestProjectDeleteUnknownTagDoesNotChangeTimestamps(t *testing.T) {
+	project := newProjectTagsTestProject(t)
+	project.Tags = []string{"frontend"}
+	project.PinnedTags = []string{"frontend"}
+	stale := time.Date(2024, 1, 1, 12, 0, 0, 0, time.UTC)
+	project.UpdatedAt = stale
+
+	task := newProjectTagsTestTask(t, "t1", 1)
+	task.Tags = []string{"api"}
+	task.UpdatedAt = stale
+	project.Tasks = []*Task{task}
+
+	result, err := project.DeleteTag("backend")
+	if err != nil {
+		t.Fatalf("DeleteTag() error = %v", err)
+	}
+	if result.Name != "backend" {
+		t.Fatalf("DeleteTag() result.Name = %q, want backend", result.Name)
+	}
+	if result.Changed() {
+		t.Fatal("DeleteTag() Changed() = true, want false")
+	}
+	if !project.UpdatedAt.Equal(stale) {
+		t.Fatal("project.UpdatedAt changed for unknown tag")
+	}
+	if !task.UpdatedAt.Equal(stale) {
+		t.Fatal("task.UpdatedAt changed for unknown tag")
+	}
+	if !slices.Equal(project.Tags, []string{"frontend"}) {
+		t.Fatalf("project.Tags = %v, want [frontend]", project.Tags)
+	}
+	if !slices.Equal(project.PinnedTags, []string{"frontend"}) {
+		t.Fatalf("project.PinnedTags = %v, want [frontend]", project.PinnedTags)
+	}
+	if !slices.Equal(task.Tags, []string{"api"}) {
+		t.Fatalf("task.Tags = %v, want [api]", task.Tags)
+	}
+}
+
+func TestProjectDeleteTagRejectsInvalidTags(t *testing.T) {
+	project := newProjectTagsTestProject(t)
+
+	result, err := project.DeleteTag("has,comma")
+	if err == nil {
+		t.Fatal("DeleteTag() error = nil, want error")
+	}
+	if result.Name != "has,comma" {
+		t.Fatalf("DeleteTag() result.Name = %q, want has,comma", result.Name)
+	}
+	if result.Changed() {
+		t.Fatal("DeleteTag() Changed() = true, want false")
 	}
 }
 

@@ -8,6 +8,20 @@ import (
 	"github.com/sglavoie/tt/internal/util"
 )
 
+// TagDeletionResult describes what changed when deleting a tag everywhere in a
+// project.
+type TagDeletionResult struct {
+	Name            string
+	CatalogChanged  bool
+	PinnedChanged   bool
+	TasksUnassigned int
+}
+
+// Changed reports whether the deletion changed any project or task metadata.
+func (r TagDeletionResult) Changed() bool {
+	return r.CatalogChanged || r.PinnedChanged || r.TasksUnassigned > 0
+}
+
 // DedupeTags normalizes, validates, and deduplicates tags while preserving the
 // first valid occurrence order.
 func DedupeTags(tags []string) []string {
@@ -98,6 +112,48 @@ func (p *Project) RemoveTag(tag string) bool {
 		p.UpdatedAt = time.Now()
 	}
 	return removed
+}
+
+// DeleteTag removes a tag from the project catalog, pinned tag metadata, and
+// every task in the project.
+func (p *Project) DeleteTag(tag string) (TagDeletionResult, error) {
+	normalized := NormalizeTag(tag)
+	result := TagDeletionResult{Name: normalized}
+	if err := ValidateTag(normalized); err != nil {
+		return result, err
+	}
+
+	var changed bool
+	var catalogChanged bool
+	p.Tags, catalogChanged = removeNormalizedTagMatches(p.Tags, normalized)
+	if catalogChanged {
+		result.CatalogChanged = true
+		changed = true
+	}
+
+	var pinnedChanged bool
+	p.PinnedTags, pinnedChanged = removeNormalizedTagMatches(p.PinnedTags, normalized)
+	if pinnedChanged {
+		result.PinnedChanged = true
+		changed = true
+	}
+
+	now := time.Now()
+	for _, task := range p.Tasks {
+		var taskChanged bool
+		task.Tags, taskChanged = removeNormalizedTagMatches(task.Tags, normalized)
+		if !taskChanged {
+			continue
+		}
+		task.UpdatedAt = now
+		result.TasksUnassigned++
+		changed = true
+	}
+
+	if changed {
+		p.UpdatedAt = now
+	}
+	return result, nil
 }
 
 // RenameTag renames a tag in the project catalog and all task usages. If a
@@ -280,6 +336,25 @@ func (p *Project) hasTaskTag(normalized string) bool {
 		}
 	}
 	return false
+}
+
+func removeNormalizedTagMatches(tags []string, normalized string) ([]string, bool) {
+	if len(tags) == 0 {
+		return tags, false
+	}
+	filtered := make([]string, 0, len(tags))
+	var removed bool
+	for _, tag := range tags {
+		if NormalizeTag(tag) == normalized {
+			removed = true
+			continue
+		}
+		filtered = append(filtered, tag)
+	}
+	if !removed {
+		return tags, false
+	}
+	return filtered, true
 }
 
 func renameTagInSlice(tags []string, oldName, newName string) []string {
