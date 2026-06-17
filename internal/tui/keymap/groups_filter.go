@@ -3,10 +3,11 @@ package keymap
 // FilterDeps holds action closures for the "F" filter prefix group.
 type FilterDeps struct {
 	// Direct F-prefix actions
-	FilterByTags     Action // F# — open tag selector
-	TogglePriority   Action // Fp — toggle hi-priority filter
-	ToggleHideDimmed Action // Fh — toggle hide-dimmed filter
-	ClearFilters     Action // Fx — clear all filters
+	FilterByTags      Action // F# — open tag selector
+	TogglePriority    Action // Fp — toggle hi-priority filter
+	ToggleHideDimmed  Action // Fh — toggle hide-dimmed filter
+	ToggleGitHubIssue Action // Fi — toggle GitHub issues filter
+	ClearFilters      Action // Fx — clear all filters
 
 	// TypeKey returns an Action for a Ft sub-key (e, s, t, b, i, 0).
 	TypeKey func(key string) Action
@@ -126,8 +127,9 @@ func FilterGroup(deps FilterDeps) []Entry {
 		Bind("#", "Filter by tags", cat, deps.FilterByTags),
 		Bind("p", "Toggle priority filter", cat, deps.TogglePriority),
 		Bind("h", "Toggle hide-dimmed filter", cat, deps.ToggleHideDimmed),
+		Bind("i", "Toggle GitHub issues filter", cat, deps.ToggleGitHubIssue),
 		Bind("x", "Clear all filters", cat, deps.ClearFilters),
 	)
 
-	return []Entry{Prefix("F", "Filter prefix (type/status/tags/attr/score)", cat, fChildren)}
+	return []Entry{Prefix("F", "Filter prefix (type/status/tags/issue/attr/score)", cat, fChildren)}
 }

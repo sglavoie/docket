@@ -322,17 +322,31 @@ func kanbanRender(m *KanbanModel) string {
 				descWidth = lipgloss.Width(descInd)
 			}
 
-			// Format: "[sel]typeBadge statusBadge title [checklist][desc]"
+			githubIssueInd := ""
+			githubIssueWidth := 0
+			if colWidth >= minCardWidthForChecklist {
+				if ind := renderGitHubIssueIndicator(card.Task); ind != "" {
+					githubIssueInd = " " + ind
+					githubIssueWidth = lipgloss.Width(githubIssueInd)
+				}
+			}
+
+			// Format: "[sel]typeBadge statusBadge title [issue][checklist][desc]"
 			prefixWidth := selWidth + typeBadgeWidth + badgeWidth + 1
-			maxTitleWidth := colWidth - prefixWidth - checklistWidth - descWidth
+			maxTitleWidth := colWidth - prefixWidth - githubIssueWidth - checklistWidth - descWidth
 			if maxTitleWidth < 0 {
-				maxTitleWidth = 0
+				githubIssueInd = ""
+				githubIssueWidth = 0
+				maxTitleWidth = colWidth - prefixWidth - checklistWidth - descWidth
+			}
+			if maxTitleWidth < 0 {
 				checklistInd = "" // not enough room; drop indicator
 				descInd = ""
+				maxTitleWidth = max(colWidth-prefixWidth, 0)
 			}
 			title := TaskTitleStyleFor(card.Task, TaskTitleStyleOptions{}).
 				Render(truncateToVisualWidth(card.Task.Title, maxTitleWidth))
-			line := selIndicator + typeBadge + statusBadge + " " + title + checklistInd + descInd
+			line := selIndicator + typeBadge + statusBadge + " " + title + githubIssueInd + checklistInd + descInd
 
 			isFocused := i == m.activeCol && dr.taskIdx == col.Cursor
 			isFlash := m.flashCardID != "" && card.Task.ID == m.flashCardID

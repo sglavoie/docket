@@ -91,6 +91,7 @@ func (m *AppModel) saveProjectTreeState() {
 	state.FilterDueDate = int(m.projectTree.filter.DueDate)
 	state.FilterActionable = m.projectTree.filter.Actionable
 	state.FilterHideDimmed = m.projectTree.filter.HideDimmed
+	state.FilterGitHubIssue = m.projectTree.filter.GitHubIssue
 	state.FilterStage = m.projectTree.filter.Stage
 	state.SortField = int(m.projectTree.sort.Field)
 	state.SortAscending = m.projectTree.sort.Ascending
@@ -144,6 +145,7 @@ func (m *AppModel) restoreProjectTreeState() {
 	m.projectTree.filter.DueDate = DueDateFilter(state.FilterDueDate)
 	m.projectTree.filter.Actionable = state.FilterActionable
 	m.projectTree.filter.HideDimmed = state.FilterHideDimmed
+	m.projectTree.filter.GitHubIssue = state.FilterGitHubIssue
 	m.projectTree.filter.Stage = state.FilterStage
 	m.projectTree.sort.Field = SortField(state.SortField)
 	m.projectTree.sort.Ascending = state.SortAscending

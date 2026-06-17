@@ -17,29 +17,31 @@ import (
 // CommonFilterState contains the filter fields shared across views that support
 // the F-prefix filter system. Views embed this struct directly.
 type CommonFilterState struct {
-	Type       models.TaskType   // filter by type (epic/story/task/bug/idea)
-	Status     models.TaskStatus // filter by status
-	Priority   int               // 0=all, 1=high only (<=2)
-	Tags       map[string]bool   // filter by tag names (AND logic)
-	DueDate    DueDateFilter     // filter by due date
-	Attrs      map[string]string // type.attribute -> value
-	ScoreMin   float64           // minimum score threshold (0 = no filter)
-	Actionable bool              // only show tasks ready to work on (no blockers)
-	HideDimmed bool              // hide dimmed tasks
-	Stage      string            // filter by workflow stage
+	Type        models.TaskType   // filter by type (epic/story/task/bug/idea)
+	Status      models.TaskStatus // filter by status
+	Priority    int               // 0=all, 1=high only (<=2)
+	Tags        map[string]bool   // filter by tag names (AND logic)
+	DueDate     DueDateFilter     // filter by due date
+	Attrs       map[string]string // type.attribute -> value
+	ScoreMin    float64           // minimum score threshold (0 = no filter)
+	Actionable  bool              // only show tasks ready to work on (no blockers)
+	HideDimmed  bool              // hide dimmed tasks
+	GitHubIssue bool              // only show tasks linked to a GitHub issue
+	Stage       string            // filter by workflow stage
 }
 
 // copyCommonFilterState returns a deep copy of a CommonFilterState.
 func copyCommonFilterState(src *CommonFilterState) *CommonFilterState {
 	dst := &CommonFilterState{
-		Type:       src.Type,
-		Status:     src.Status,
-		Priority:   src.Priority,
-		DueDate:    src.DueDate,
-		ScoreMin:   src.ScoreMin,
-		Actionable: src.Actionable,
-		HideDimmed: src.HideDimmed,
-		Stage:      src.Stage,
+		Type:        src.Type,
+		Status:      src.Status,
+		Priority:    src.Priority,
+		DueDate:     src.DueDate,
+		ScoreMin:    src.ScoreMin,
+		Actionable:  src.Actionable,
+		HideDimmed:  src.HideDimmed,
+		GitHubIssue: src.GitHubIssue,
+		Stage:       src.Stage,
 	}
 	if len(src.Tags) > 0 {
 		dst.Tags = make(map[string]bool, len(src.Tags))
@@ -66,6 +68,9 @@ func passesCommonFilters(task *models.Task, f *CommonFilterState, projectID stri
 		return false
 	}
 	if f.Priority == 1 && task.Priority > 2 {
+		return false
+	}
+	if f.GitHubIssue && !task.HasGitHubIssue() {
 		return false
 	}
 	if len(f.Tags) > 0 {
@@ -123,6 +128,7 @@ func hasActiveCommonFilters(f *CommonFilterState) bool {
 		f.ScoreMin > 0 ||
 		f.Actionable ||
 		f.HideDimmed ||
+		f.GitHubIssue ||
 		f.Stage != ""
 }
 
@@ -137,6 +143,7 @@ func clearCommonFilters(f *CommonFilterState) {
 	f.ScoreMin = 0
 	f.Actionable = false
 	f.HideDimmed = false
+	f.GitHubIssue = false
 	f.Stage = ""
 }
 
@@ -195,6 +202,9 @@ func commonFilterParts(f *CommonFilterState) []string {
 	}
 	if f.HideDimmed {
 		parts = append(parts, "no-dim")
+	}
+	if f.GitHubIssue {
+		parts = append(parts, "issue")
 	}
 	if f.Stage != "" {
 		parts = append(parts, "stage:"+f.Stage)

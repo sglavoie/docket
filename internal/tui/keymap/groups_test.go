@@ -484,9 +484,13 @@ func TestFilterGroup_Base(t *testing.T) {
 	if pn.Key != "F" {
 		t.Errorf("FilterGroup: want key 'F', got %q", pn.Key)
 	}
-	// Ft, Fs, Fa, FS + direct: #, p, h, x = 8 children (no Fd, no F.)
-	if len(pn.Children) != 8 {
-		t.Errorf("FilterGroup (base): want 8 children, got %d", len(pn.Children))
+	// Ft, Fs, Fa, FS + direct: #, p, h, i, x = 9 children (no Fd, no F.)
+	if len(pn.Children) != 9 {
+		t.Errorf("FilterGroup (base): want 9 children, got %d", len(pn.Children))
+	}
+	keys := childBindingKeys(pn.Children)
+	if !slices.Contains(keys, "i") {
+		t.Error("FilterGroup (base): missing GitHub issue filter key 'i'")
 	}
 }
 
@@ -504,9 +508,9 @@ func TestFilterGroup_WithDueDateAndStage(t *testing.T) {
 	}
 	entries := FilterGroup(deps)
 	pn := entries[0].PrefixNode
-	// Ft, Fs, Fd, Fa, FS, F. + #, p, h, x = 10
-	if len(pn.Children) != 10 {
-		t.Errorf("FilterGroup (full): want 10 children, got %d", len(pn.Children))
+	// Ft, Fs, Fd, Fa, FS, F. + #, p, h, i, x = 11
+	if len(pn.Children) != 11 {
+		t.Errorf("FilterGroup (full): want 11 children, got %d", len(pn.Children))
 	}
 }
 

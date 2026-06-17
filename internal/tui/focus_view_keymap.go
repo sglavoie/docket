@@ -355,10 +355,11 @@ func (m *FocusViewModel) focusQuickNote() (tea.Model, tea.Cmd) {
 
 func (m *FocusViewModel) focusFilterEntries(stages []string) []keymap.Entry {
 	return keymap.FilterGroup(keymap.FilterDeps{
-		FilterByTags:     func() (tea.Model, tea.Cmd) { return m.handleFocusFilterPrefix("#") },
-		TogglePriority:   func() (tea.Model, tea.Cmd) { return m.handleFocusFilterPrefix("p") },
-		ToggleHideDimmed: func() (tea.Model, tea.Cmd) { return m.handleFocusFilterPrefix("h") },
-		ClearFilters:     func() (tea.Model, tea.Cmd) { return m.handleFocusFilterPrefix("x") },
+		FilterByTags:      func() (tea.Model, tea.Cmd) { return m.handleFocusFilterPrefix("#") },
+		TogglePriority:    func() (tea.Model, tea.Cmd) { return m.handleFocusFilterPrefix("p") },
+		ToggleHideDimmed:  func() (tea.Model, tea.Cmd) { return m.handleFocusFilterPrefix("h") },
+		ToggleGitHubIssue: func() (tea.Model, tea.Cmd) { return m.handleFocusFilterPrefix("i") },
+		ClearFilters:      func() (tea.Model, tea.Cmd) { return m.handleFocusFilterPrefix("x") },
 		TypeKey: func(key string) keymap.Action {
 			return func() (tea.Model, tea.Cmd) {
 				return m.handleFocusFilterSubPrefix("Ft", key)

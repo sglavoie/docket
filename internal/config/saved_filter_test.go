@@ -159,7 +159,7 @@ func TestEffectiveLogic(t *testing.T) {
 func TestMigrateLegacyFilters_savedViews(t *testing.T) {
 	c := NewConfig()
 	c.SavedViews = []savedView{
-		{Name: "Bugs", FilterType: "bug", SortField: 1, PinnedTagTab: "backend"},
+		{Name: "Bugs", FilterType: "bug", FilterGitHubIssue: true, SortField: 1, PinnedTagTab: "backend"},
 		{Name: "High Pri", FilterPriority: 1, FilterActionable: true},
 	}
 
@@ -186,6 +186,9 @@ func TestMigrateLegacyFilters_savedViews(t *testing.T) {
 	}
 	if c.SavedFilters[0].PinnedTagTab != "backend" {
 		t.Errorf("expected pinned_tag_tab to migrate, got %q", c.SavedFilters[0].PinnedTagTab)
+	}
+	if !c.SavedFilters[0].FilterGitHubIssue {
+		t.Error("expected filter_github_issue to migrate")
 	}
 }
 
@@ -274,17 +277,18 @@ func TestMigrateLegacyFilters_Idempotent(t *testing.T) {
 
 func TestSavedFilter_JSONRoundTrip(t *testing.T) {
 	original := SavedFilter{
-		ID:             "test-id",
-		Name:           "Complex",
-		Mode:           "snapshot",
-		ViewMode:       2,
-		FilterType:     "bug",
-		FilterTags:     []string{"a", "b"},
-		FilterAttrs:    map[string]string{"x": "y"},
-		FilterScoreMin: 42.5,
-		SortField:      3,
-		SortAscending:  true,
-		PinnedTagTab:   "backend",
+		ID:                "test-id",
+		Name:              "Complex",
+		Mode:              "snapshot",
+		ViewMode:          2,
+		FilterType:        "bug",
+		FilterTags:        []string{"a", "b"},
+		FilterAttrs:       map[string]string{"x": "y"},
+		FilterGitHubIssue: true,
+		FilterScoreMin:    42.5,
+		SortField:         3,
+		SortAscending:     true,
+		PinnedTagTab:      "backend",
 	}
 
 	data, err := json.Marshal(original)
@@ -303,11 +307,24 @@ func TestSavedFilter_JSONRoundTrip(t *testing.T) {
 	if decoded.FilterScoreMin != original.FilterScoreMin {
 		t.Errorf("score min: got %f, want %f", decoded.FilterScoreMin, original.FilterScoreMin)
 	}
+	if decoded.FilterGitHubIssue != original.FilterGitHubIssue {
+		t.Errorf("filter_github_issue: got %v, want %v", decoded.FilterGitHubIssue, original.FilterGitHubIssue)
+	}
 	if len(decoded.FilterTags) != 2 {
 		t.Errorf("tags: got %d, want 2", len(decoded.FilterTags))
 	}
 	if decoded.PinnedTagTab != original.PinnedTagTab {
 		t.Errorf("pinned tag tab: got %q, want %q", decoded.PinnedTagTab, original.PinnedTagTab)
+	}
+}
+
+func TestSavedFilter_JSONMissingGitHubIssueDefaultsFalse(t *testing.T) {
+	var decoded SavedFilter
+	if err := json.Unmarshal([]byte(`{"id":"test-id","name":"Legacy","mode":"snapshot"}`), &decoded); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if decoded.FilterGitHubIssue {
+		t.Error("missing filter_github_issue should default to false")
 	}
 }
 

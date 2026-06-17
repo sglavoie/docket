@@ -370,14 +370,15 @@ func (m *WeeklyReviewModel) weeklyReviewToggleActiveAction() (tea.Model, tea.Cmd
 
 func weeklyReviewFilterEntries(m *WeeklyReviewModel, stages []string) []keymap.Entry {
 	return keymap.FilterGroup(keymap.FilterDeps{
-		FilterByTags:     m.weeklyReviewFilterPrefixAction("#"),
-		TogglePriority:   m.weeklyReviewFilterPrefixAction("p"),
-		ToggleHideDimmed: m.weeklyReviewFilterPrefixAction("h"),
-		ClearFilters:     m.weeklyReviewFilterPrefixAction("x"),
-		TypeKey:          m.weeklyReviewFilterKeyAction("Ft"),
-		StatusKey:        m.weeklyReviewFilterKeyAction("Fs"),
-		DueDateKey:       m.weeklyReviewFilterKeyAction("Fd"),
-		AttrDirectKey:    m.weeklyReviewFilterKeyAction("Fa"),
+		FilterByTags:      m.weeklyReviewFilterPrefixAction("#"),
+		TogglePriority:    m.weeklyReviewFilterPrefixAction("p"),
+		ToggleHideDimmed:  m.weeklyReviewFilterPrefixAction("h"),
+		ToggleGitHubIssue: m.weeklyReviewFilterPrefixAction("i"),
+		ClearFilters:      m.weeklyReviewFilterPrefixAction("x"),
+		TypeKey:           m.weeklyReviewFilterKeyAction("Ft"),
+		StatusKey:         m.weeklyReviewFilterKeyAction("Fs"),
+		DueDateKey:        m.weeklyReviewFilterKeyAction("Fd"),
+		AttrDirectKey:     m.weeklyReviewFilterKeyAction("Fa"),
 		AttrSubKey: func(prefix, key string) keymap.Action {
 			return func() (tea.Model, tea.Cmd) { return m.handleWeeklyReviewFilterSubPrefix(prefix, key) }
 		},

@@ -90,19 +90,20 @@ func (m *AllTasksViewModel) allTasksTaskKeymapDeps(stages []string) TaskKeymapDe
 
 func (m *AllTasksViewModel) allTasksFilterEntries(stages []string) []keymap.Entry {
 	filterEntries := keymap.FilterGroup(keymap.FilterDeps{
-		FilterByTags:     m.allTasksFilterByTags,
-		TogglePriority:   m.allTasksTogglePriorityFilter,
-		ToggleHideDimmed: m.allTasksToggleHideDimmedFilter,
-		ClearFilters:     m.allTasksClearFilters,
-		TypeKey:          m.allTasksFilterTypeKey,
-		StatusKey:        m.allTasksFilterStatusKey,
-		DueDateKey:       nil,
-		AttrDirectKey:    m.allTasksFilterAttrKey,
-		AttrSubKey:       m.allTasksFilterAttrSubKey,
-		OpenAttrPicker:   m.allTasksOpenAttrPicker,
-		ScoreKey:         m.allTasksFilterScoreKey,
-		StageFilterKey:   m.allTasksFilterStageKey,
-		StageFilterNames: stages,
+		FilterByTags:      m.allTasksFilterByTags,
+		TogglePriority:    m.allTasksTogglePriorityFilter,
+		ToggleHideDimmed:  m.allTasksToggleHideDimmedFilter,
+		ToggleGitHubIssue: m.allTasksToggleGitHubIssueFilter,
+		ClearFilters:      m.allTasksClearFilters,
+		TypeKey:           m.allTasksFilterTypeKey,
+		StatusKey:         m.allTasksFilterStatusKey,
+		DueDateKey:        nil,
+		AttrDirectKey:     m.allTasksFilterAttrKey,
+		AttrSubKey:        m.allTasksFilterAttrSubKey,
+		OpenAttrPicker:    m.allTasksOpenAttrPicker,
+		ScoreKey:          m.allTasksFilterScoreKey,
+		StageFilterKey:    m.allTasksFilterStageKey,
+		StageFilterNames:  stages,
 	})
 	if len(filterEntries) == 0 || filterEntries[0].PrefixNode == nil {
 		return filterEntries
@@ -345,6 +346,10 @@ func (m *AllTasksViewModel) allTasksTogglePriorityFilter() (tea.Model, tea.Cmd) 
 
 func (m *AllTasksViewModel) allTasksToggleHideDimmedFilter() (tea.Model, tea.Cmd) {
 	return m.handleAllTasksFilterPrefix("h")
+}
+
+func (m *AllTasksViewModel) allTasksToggleGitHubIssueFilter() (tea.Model, tea.Cmd) {
+	return m.handleAllTasksFilterPrefix("i")
 }
 
 func (m *AllTasksViewModel) allTasksClearFilters() (tea.Model, tea.Cmd) {

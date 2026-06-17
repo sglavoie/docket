@@ -127,6 +127,9 @@ func (m *TaskAttachmentsModel) renderAttachmentEntry(index int, att models.Attac
 }
 
 func (m *TaskAttachmentsModel) attachmentTypeLabel(att models.Attachment) string {
+	if _, ok := gitHubIssueAttachmentRef(att); ok {
+		return "GITHUB ISSUE"
+	}
 	if att.IsURL {
 		return "URL "
 	}
@@ -137,6 +140,9 @@ func (m *TaskAttachmentsModel) attachmentTypeLabel(att models.Attachment) string
 }
 
 func (m *TaskAttachmentsModel) attachmentDisplayName(att models.Attachment) string {
+	if ref, ok := gitHubIssueAttachmentRef(att); ok {
+		return formatGitHubIssueRef(ref)
+	}
 	if att.IsCodeRef {
 		return fmt.Sprintf("%s:%d", att.OriginalPath, att.LineNumber)
 	}

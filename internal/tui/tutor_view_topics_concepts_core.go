@@ -30,7 +30,9 @@ prevents the log from growing indefinitely on long-lived tasks.`,
 
 Attach files, URLs, or code references to tasks. Files are
 copied into the project's .attachments directory. URLs are
-stored as links without downloading.
+stored as links without downloading. GitHub issue URLs are
+recognized as GitHub issue links in task rows, attachment lists,
+and search filters.
 
 # Code References
 

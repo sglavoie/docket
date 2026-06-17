@@ -12,20 +12,21 @@ import (
 // savedView represents a named filter+sort+view-mode preset that can be recalled instantly.
 // It captures everything defining "what tasks are visible and how they're ordered".
 type savedView struct {
-	Name             string            `json:"name"`
-	ViewMode         int               `json:"view_mode,omitempty"`
-	FilterType       string            `json:"filter_type,omitempty"`
-	FilterStatus     string            `json:"filter_status,omitempty"`
-	FilterPriority   int               `json:"filter_priority,omitempty"`
-	FilterTags       []string          `json:"filter_tags,omitempty"`
-	FilterSections   []string          `json:"filter_sections,omitempty"`
-	FilterDueDate    int               `json:"filter_due_date,omitempty"`
-	FilterActionable bool              `json:"filter_actionable,omitempty"`
-	FilterAttrs      map[string]string `json:"filter_attrs,omitempty"`
-	FilterScoreMin   float64           `json:"filter_score_min,omitempty"`
-	SortField        int               `json:"sort_field,omitempty"`
-	SortAscending    bool              `json:"sort_ascending"`
-	PinnedTagTab     string            `json:"pinned_tag_tab,omitempty"`
+	Name              string            `json:"name"`
+	ViewMode          int               `json:"view_mode,omitempty"`
+	FilterType        string            `json:"filter_type,omitempty"`
+	FilterStatus      string            `json:"filter_status,omitempty"`
+	FilterPriority    int               `json:"filter_priority,omitempty"`
+	FilterTags        []string          `json:"filter_tags,omitempty"`
+	FilterSections    []string          `json:"filter_sections,omitempty"`
+	FilterDueDate     int               `json:"filter_due_date,omitempty"`
+	FilterActionable  bool              `json:"filter_actionable,omitempty"`
+	FilterGitHubIssue bool              `json:"filter_github_issue,omitempty"`
+	FilterAttrs       map[string]string `json:"filter_attrs,omitempty"`
+	FilterScoreMin    float64           `json:"filter_score_min,omitempty"`
+	SortField         int               `json:"sort_field,omitempty"`
+	SortAscending     bool              `json:"sort_ascending"`
+	PinnedTagTab      string            `json:"pinned_tag_tab,omitempty"`
 }
 
 // Config holds the application configuration.
@@ -127,6 +128,7 @@ type Config struct {
 	CrossOutlinerFilterDueDate     int                          `json:"cross_outliner_filter_due_date,omitempty"`
 	CrossOutlinerFilterActionable  bool                         `json:"cross_outliner_filter_actionable,omitempty"`
 	CrossOutlinerFilterHideDimmed  bool                         `json:"cross_outliner_filter_hide_dimmed,omitempty"`
+	CrossOutlinerFilterGitHubIssue bool                         `json:"cross_outliner_filter_github_issue,omitempty"`
 	CrossOutlinerFilterStage       string                       `json:"cross_outliner_filter_stage,omitempty"`
 	CrossOutlinerFilterScoreMin    float64                      `json:"cross_outliner_filter_score_min,omitempty"`
 	CrossOutlinerFilterTags        []string                     `json:"cross_outliner_filter_tags,omitempty"`

@@ -329,6 +329,9 @@ func (m *OutlinerModel) renderTaskContentGroup(task *models.Task, proj *models.P
 		}
 	}
 	if m.columnConfig.IsVisible(ColAttachments) {
+		if issue := renderGitHubIssueIndicator(task); issue != "" {
+			contentParts = append(contentParts, issue)
+		}
 		if attachments := renderAttachmentIndicator(task); attachments != "" {
 			contentParts = append(contentParts, attachments)
 		}

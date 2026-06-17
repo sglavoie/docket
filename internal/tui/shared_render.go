@@ -130,7 +130,8 @@ func RenderCrossProjectTaskLine(
 	if opts.ShowDescription {
 		descStr = renderDescriptionIndicator(task)
 	}
-	contentGroup := JoinGroupParts(descStr, tagsStr, scoreBadge, staleBadge)
+	issueStr := renderGitHubIssueIndicator(task)
+	contentGroup := JoinGroupParts(descStr, issueStr, tagsStr, scoreBadge, staleBadge)
 
 	postTitle := JoinIndicatorGroups(structureGroup, lifecycleGroup, contentGroup)
 	if postTitle != "" {

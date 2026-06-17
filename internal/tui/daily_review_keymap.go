@@ -362,10 +362,11 @@ func (m *DailyReviewModel) dailyReviewQuickNote() (tea.Model, tea.Cmd) {
 
 func (m *DailyReviewModel) dailyReviewFilterEntries(stages []string) []keymap.Entry {
 	return keymap.FilterGroup(keymap.FilterDeps{
-		FilterByTags:     func() (tea.Model, tea.Cmd) { return m.handleDailyReviewFilterPrefix("#") },
-		TogglePriority:   func() (tea.Model, tea.Cmd) { return m.handleDailyReviewFilterPrefix("p") },
-		ToggleHideDimmed: func() (tea.Model, tea.Cmd) { return m.handleDailyReviewFilterPrefix("h") },
-		ClearFilters:     func() (tea.Model, tea.Cmd) { return m.handleDailyReviewFilterPrefix("x") },
+		FilterByTags:      func() (tea.Model, tea.Cmd) { return m.handleDailyReviewFilterPrefix("#") },
+		TogglePriority:    func() (tea.Model, tea.Cmd) { return m.handleDailyReviewFilterPrefix("p") },
+		ToggleHideDimmed:  func() (tea.Model, tea.Cmd) { return m.handleDailyReviewFilterPrefix("h") },
+		ToggleGitHubIssue: func() (tea.Model, tea.Cmd) { return m.handleDailyReviewFilterPrefix("i") },
+		ClearFilters:      func() (tea.Model, tea.Cmd) { return m.handleDailyReviewFilterPrefix("x") },
 		TypeKey: func(key string) keymap.Action {
 			return func() (tea.Model, tea.Cmd) { return m.handleDailyReviewFilterSubPrefix("Ft", key) }
 		},

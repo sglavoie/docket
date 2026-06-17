@@ -342,6 +342,8 @@ func matchesHasFilter(task *models.Task, filter string) bool {
 		return len(task.Checklist) > 0
 	case "attachment":
 		return len(task.Attachments) > 0
+	case "issue":
+		return task.HasGitHubIssue()
 	case "due":
 		return task.DueDate != nil
 	case "dependency":

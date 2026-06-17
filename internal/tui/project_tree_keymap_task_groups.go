@@ -391,10 +391,11 @@ func (b *projectTreeKeymapBuilder) filterEntries() []keymap.Entry {
 	m := b.model
 
 	entries := keymap.FilterGroup(keymap.FilterDeps{
-		FilterByTags:     func() (tea.Model, tea.Cmd) { return m.handleFilterPrefix("#") },
-		TogglePriority:   func() (tea.Model, tea.Cmd) { return m.handleFilterPrefix("p") },
-		ToggleHideDimmed: func() (tea.Model, tea.Cmd) { return m.handleFilterPrefix("h") },
-		ClearFilters:     func() (tea.Model, tea.Cmd) { return m.handleFilterPrefix("x") },
+		FilterByTags:      func() (tea.Model, tea.Cmd) { return m.handleFilterPrefix("#") },
+		TogglePriority:    func() (tea.Model, tea.Cmd) { return m.handleFilterPrefix("p") },
+		ToggleHideDimmed:  func() (tea.Model, tea.Cmd) { return m.handleFilterPrefix("h") },
+		ToggleGitHubIssue: func() (tea.Model, tea.Cmd) { return m.handleFilterPrefix("i") },
+		ClearFilters:      func() (tea.Model, tea.Cmd) { return m.handleFilterPrefix("x") },
 		TypeKey: func(key string) keymap.Action {
 			return func() (tea.Model, tea.Cmd) { return m.handleFilterSubPrefix("Ft", key) }
 		},

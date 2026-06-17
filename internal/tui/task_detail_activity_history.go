@@ -72,7 +72,11 @@ func (m *TaskDetailModel) renderAttachmentsSection(width int) string {
 		if i > 0 {
 			lines = append(lines, "")
 		}
-		if attachment.IsURL {
+		if ref, ok := gitHubIssueAttachmentRef(attachment); ok {
+			label := formatGitHubIssueRef(ref)
+			link := Hyperlink(ref.URL, label)
+			lines = append(lines, MutedStyle.Render(IconGitHubIssue()+" ")+link)
+		} else if attachment.IsURL {
 			link := Hyperlink(attachment.Filename, attachment.Filename)
 			lines = append(lines, MutedStyle.Render("🔗 ")+link)
 		} else {

@@ -284,6 +284,9 @@ func (b *outlinerKeymapBuilder) filterEntries() []keymap.Entry {
 		ToggleHideDimmed: func() (tea.Model, tea.Cmd) {
 			return m.handleFilterPrefix("h")
 		},
+		ToggleGitHubIssue: func() (tea.Model, tea.Cmd) {
+			return m.handleFilterPrefix("i")
+		},
 		ClearFilters: func() (tea.Model, tea.Cmd) {
 			return m.handleFilterPrefix("x")
 		},

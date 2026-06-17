@@ -77,8 +77,13 @@ func TestConfigManager_FullRoundTrip(t *testing.T) {
 
 	cfg.AddProject(&models.Project{ID: "p1", Slug: "test", Name: "Test"})
 	cfg.AddProject(&models.Project{ID: "p2", Slug: "test2", Name: "Test2"})
-	cfg.ProjectViewStates["p1"] = ProjectViewState{PinnedTagTab: "backend"}
+	cfg.ProjectViewStates["p1"] = ProjectViewState{
+		PinnedTagTab:              "backend",
+		FilterGitHubIssue:         true,
+		OutlinerFilterGitHubIssue: true,
+	}
 	cfg.CrossOutlinerPinnedTagTab = "urgent"
+	cfg.CrossOutlinerFilterGitHubIssue = true
 
 	cfg.WorkflowRules = []workflow.WorkflowRule{
 		{
@@ -121,7 +126,7 @@ func TestConfigManager_FullRoundTrip(t *testing.T) {
 	}
 
 	cfg.SavedFilters = []SavedFilter{
-		{ID: "f1", Name: "MyFilter", Mode: "snapshot", FilterStatus: "todo", SortAscending: true, PinnedTagTab: "backend"},
+		{ID: "f1", Name: "MyFilter", Mode: "snapshot", FilterStatus: "todo", FilterGitHubIssue: true, SortAscending: true, PinnedTagTab: "backend"},
 	}
 
 	if saveErr := manager.Save(cfg); saveErr != nil {
@@ -196,8 +201,12 @@ func TestConfigManager_FullRoundTrip(t *testing.T) {
 		{"RecentPaletteItemsLen", len(loaded2.RecentPaletteItems), 1},
 		{"AllTasksTabOrderLen", len(loaded2.AllTasksTabOrder), 2},
 		{"ProjectViewStatePinnedTagTab", loaded2.ProjectViewStates["p1"].PinnedTagTab, "backend"},
+		{"ProjectViewStateFilterGitHubIssue", loaded2.ProjectViewStates["p1"].FilterGitHubIssue, true},
+		{"ProjectViewStateOutlinerFilterGitHubIssue", loaded2.ProjectViewStates["p1"].OutlinerFilterGitHubIssue, true},
 		{"CrossOutlinerPinnedTagTab", loaded2.CrossOutlinerPinnedTagTab, "urgent"},
+		{"CrossOutlinerFilterGitHubIssue", loaded2.CrossOutlinerFilterGitHubIssue, true},
 		{"SavedFilterPinnedTagTab", loaded2.SavedFilters[0].PinnedTagTab, "backend"},
+		{"SavedFilterGitHubIssue", loaded2.SavedFilters[0].FilterGitHubIssue, true},
 		{"WorkflowEvalStates", loaded2.WorkflowEvalStates["p1"].RulesHash, "abc"},
 	}
 	for _, c := range checks {

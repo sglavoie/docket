@@ -108,7 +108,11 @@ dimension by pressing the corresponding key:
   F#  Filter by tag
   F/  Filter by section
   F.  Filter by stage
+  Fi  Filter to tasks linked to a GitHub issue
   FS  Filter by score threshold
+
+Search accepts has:issue and no:issue for finding or excluding
+tasks linked to a GitHub issue.
 
 # Clearing Filters
 

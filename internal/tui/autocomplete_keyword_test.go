@@ -220,6 +220,11 @@ func TestGetHasSuggestions(t *testing.T) {
 			t.Errorf("unexpected suggestion %q for partial 'ch'", s.Value)
 		}
 	}
+
+	issue := m.getHasSuggestions("iss")
+	if len(issue) != 1 || issue[0].Value != "issue" {
+		t.Errorf("expected [issue] for partial 'iss', got %v", issue)
+	}
 	if len(filtered) != 2 {
 		t.Errorf("expected 2 suggestions for 'ch', got %d", len(filtered))
 	}
@@ -262,5 +267,22 @@ func TestGetNoSuggestions(t *testing.T) {
 	filtered := m.getNoSuggestions("du")
 	if len(filtered) != 1 || filtered[0].Value != "due" {
 		t.Errorf("expected [due] for partial 'du', got %v", filtered)
+	}
+
+	issue := m.getNoSuggestions("iss")
+	if len(issue) != 1 || issue[0].Value != "issue" {
+		t.Errorf("expected [issue] for partial 'iss', got %v", issue)
+	}
+}
+
+func TestSearchKeywordSuggestionsIncludeIssue(t *testing.T) {
+	hasIssue := searchHasSuggestions("iss")
+	if len(hasIssue) != 1 || hasIssue[0].Value != "issue" {
+		t.Errorf("searchHasSuggestions(iss) = %v, want issue", hasIssue)
+	}
+
+	noIssue := searchNoSuggestions("iss")
+	if len(noIssue) != 1 || noIssue[0].Value != "issue" {
+		t.Errorf("searchNoSuggestions(iss) = %v, want issue", noIssue)
 	}
 }

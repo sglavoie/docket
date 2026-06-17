@@ -350,14 +350,15 @@ func (m *PriorityViewModel) priorityStageChangeAction(stage string) keymap.Actio
 
 func (m *PriorityViewModel) priorityFilterEntries(stages []string) []keymap.Entry {
 	filterEntries := keymap.FilterGroup(keymap.FilterDeps{
-		FilterByTags:     m.priorityFilterPrefixAction("#"),
-		TogglePriority:   m.priorityFilterPrefixAction("p"),
-		ToggleHideDimmed: m.priorityFilterPrefixAction("h"),
-		ClearFilters:     m.priorityFilterPrefixAction("x"),
-		TypeKey:          m.priorityFilterKeyAction("Ft"),
-		StatusKey:        m.priorityFilterKeyAction("Fs"),
-		DueDateKey:       m.priorityFilterKeyAction("Fd"),
-		AttrDirectKey:    m.priorityFilterKeyAction("Fa"),
+		FilterByTags:      m.priorityFilterPrefixAction("#"),
+		TogglePriority:    m.priorityFilterPrefixAction("p"),
+		ToggleHideDimmed:  m.priorityFilterPrefixAction("h"),
+		ToggleGitHubIssue: m.priorityFilterPrefixAction("i"),
+		ClearFilters:      m.priorityFilterPrefixAction("x"),
+		TypeKey:           m.priorityFilterKeyAction("Ft"),
+		StatusKey:         m.priorityFilterKeyAction("Fs"),
+		DueDateKey:        m.priorityFilterKeyAction("Fd"),
+		AttrDirectKey:     m.priorityFilterKeyAction("Fa"),
 		AttrSubKey: func(prefix, key string) keymap.Action {
 			return func() (tea.Model, tea.Cmd) { return m.handlePriorityFilterSubPrefix(prefix, key) }
 		},

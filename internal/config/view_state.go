@@ -10,6 +10,7 @@ type ProjectViewState struct {
 	FilterDueDate             int               `json:"filter_due_date,omitempty"`
 	FilterActionable          bool              `json:"filter_actionable,omitempty"`
 	FilterHideDimmed          bool              `json:"filter_hide_dimmed,omitempty"`
+	FilterGitHubIssue         bool              `json:"filter_github_issue,omitempty"`
 	FilterStage               string            `json:"filter_stage,omitempty"`
 	SortField                 int               `json:"sort_field,omitempty"`
 	SortAscending             bool              `json:"sort_ascending"`
@@ -26,6 +27,7 @@ type ProjectViewState struct {
 	OutlinerFilterSections    []string          `json:"outliner_filter_sections,omitempty"`
 	OutlinerFilterActionable  bool              `json:"outliner_filter_actionable,omitempty"`
 	OutlinerFilterHideDimmed  bool              `json:"outliner_filter_hide_dimmed,omitempty"`
+	OutlinerFilterGitHubIssue bool              `json:"outliner_filter_github_issue,omitempty"`
 	OutlinerFilterStage       string            `json:"outliner_filter_stage,omitempty"`
 	OutlinerFilterAttrs       map[string]string `json:"outliner_filter_attrs,omitempty"`
 	OutlinerFilterScoreMin    float64           `json:"outliner_filter_score_min,omitempty"`

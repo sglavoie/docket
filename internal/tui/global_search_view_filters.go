@@ -91,7 +91,7 @@ func (m *GlobalSearchModel) renderSearchHelp() string {
 	b.WriteString(muted.Render("  Task has this property"))
 	b.WriteString("\n")
 	hasValues := []string{
-		"description", "comment", "checklist", "attachment",
+		"description", "comment", "checklist", "attachment", "issue",
 		"due", "dependency", "relation", "recurrence",
 		"url", "stage", "parent", "children", "tag",
 	}

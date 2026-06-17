@@ -149,6 +149,7 @@ func (m *AppModel) captureProjectTreeFilter(name, id string) config.SavedFilter 
 	sf.FilterDueDate = int(pt.filter.DueDate)
 	sf.FilterActionable = pt.filter.Actionable
 	sf.FilterHideDimmed = pt.filter.HideDimmed
+	sf.FilterGitHubIssue = pt.filter.GitHubIssue
 	sf.FilterScoreMin = pt.filter.ScoreMin
 	sf.SortField = int(pt.sort.Field)
 	sf.SortAscending = pt.sort.Ascending
@@ -195,6 +196,7 @@ func (m *AppModel) captureOutlinerFilterFrom(name, id string, ol *OutlinerModel)
 	sf.FilterDueDate = int(ol.filter.DueDate)
 	sf.FilterActionable = ol.filter.Actionable
 	sf.FilterHideDimmed = ol.filter.HideDimmed
+	sf.FilterGitHubIssue = ol.filter.GitHubIssue
 	sf.FilterScoreMin = ol.filter.ScoreMin
 	sf.SortField = int(ol.sort.Field)
 	sf.SortAscending = ol.sort.Ascending
@@ -239,6 +241,7 @@ func (m *AppModel) applySavedFilterToTree(sf config.SavedFilter) {
 		pt.filter.DueDate = DueDateFilter(sf.FilterDueDate)
 		pt.filter.Actionable = sf.FilterActionable
 		pt.filter.HideDimmed = sf.FilterHideDimmed
+		pt.filter.GitHubIssue = sf.FilterGitHubIssue
 		pt.filter.ScoreMin = sf.FilterScoreMin
 		pt.sort.Field = SortField(sf.SortField)
 		pt.sort.Ascending = sf.SortAscending
@@ -305,6 +308,7 @@ func (m *AppModel) applySavedFilterToOutlinerModel(ol *OutlinerModel, sf config.
 		ol.filter.DueDate = DueDateFilter(sf.FilterDueDate)
 		ol.filter.Actionable = sf.FilterActionable
 		ol.filter.HideDimmed = sf.FilterHideDimmed
+		ol.filter.GitHubIssue = sf.FilterGitHubIssue
 		ol.filter.ScoreMin = sf.FilterScoreMin
 		ol.sort.Field = SortField(sf.SortField)
 		ol.sort.Ascending = sf.SortAscending
@@ -366,6 +370,7 @@ func (m *AppModel) buildProjectTreeViewSummary() string {
 		int(pt.filter.DueDate),
 		pt.filter.Actionable,
 		pt.filter.HideDimmed,
+		pt.filter.GitHubIssue,
 		pt.filter.Attrs,
 		pt.filter.ScoreMin,
 		int(pt.sort.Field),
@@ -398,6 +403,7 @@ func (m *AppModel) buildOutlinerViewSummary() string {
 		int(ol.filter.DueDate),
 		ol.filter.Actionable,
 		ol.filter.HideDimmed,
+		ol.filter.GitHubIssue,
 		ol.filter.Attrs,
 		ol.filter.ScoreMin,
 		int(ol.sort.Field),

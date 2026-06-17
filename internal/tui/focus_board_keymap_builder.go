@@ -103,10 +103,11 @@ func buildFocusBoardKeyMap(m *FocusBoardModel) *keymap.KeyMap {
 
 	// --- Filter group: "F" prefix, no gate (always active) ---
 	entries = append(entries, keymap.FilterGroup(keymap.FilterDeps{
-		FilterByTags:     func() (tea.Model, tea.Cmd) { return m.handleFocusBoardFilterPrefix("#") },
-		TogglePriority:   func() (tea.Model, tea.Cmd) { return m.handleFocusBoardFilterPrefix("p") },
-		ToggleHideDimmed: func() (tea.Model, tea.Cmd) { return m.handleFocusBoardFilterPrefix("h") },
-		ClearFilters:     func() (tea.Model, tea.Cmd) { return m.handleFocusBoardFilterPrefix("x") },
+		FilterByTags:      func() (tea.Model, tea.Cmd) { return m.handleFocusBoardFilterPrefix("#") },
+		TogglePriority:    func() (tea.Model, tea.Cmd) { return m.handleFocusBoardFilterPrefix("p") },
+		ToggleHideDimmed:  func() (tea.Model, tea.Cmd) { return m.handleFocusBoardFilterPrefix("h") },
+		ToggleGitHubIssue: func() (tea.Model, tea.Cmd) { return m.handleFocusBoardFilterPrefix("i") },
+		ClearFilters:      func() (tea.Model, tea.Cmd) { return m.handleFocusBoardFilterPrefix("x") },
 		TypeKey: func(key string) keymap.Action {
 			return func() (tea.Model, tea.Cmd) {
 				return m.handleFocusBoardFilterSubPrefix("Ft", key)

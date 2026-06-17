@@ -274,6 +274,9 @@ func (m *ProjectTreeModel) nodeContentGroup(task *models.Task) string {
 		}
 	}
 	if m.columnConfig.IsVisible(ColAttachments) {
+		if s := renderGitHubIssueIndicator(task); s != "" {
+			parts = append(parts, s)
+		}
 		if s := renderAttachmentIndicator(task); s != "" {
 			parts = append(parts, s)
 		}

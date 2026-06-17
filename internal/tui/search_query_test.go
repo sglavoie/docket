@@ -274,6 +274,11 @@ func TestParseSearchQuery_HasIsNoPFilters(t *testing.T) {
 			wantHas: []string{"comment"},
 		},
 		{
+			name:    "has:issue",
+			input:   "has:issue",
+			wantHas: []string{"issue"},
+		},
+		{
 			name:   "is:pinned",
 			input:  "is:pinned",
 			wantIs: []string{"pinned"},
@@ -282,6 +287,11 @@ func TestParseSearchQuery_HasIsNoPFilters(t *testing.T) {
 			name:   "no:description",
 			input:  "no:description",
 			wantNo: []string{"description"},
+		},
+		{
+			name:   "no:issue",
+			input:  "no:issue",
+			wantNo: []string{"issue"},
 		},
 		{
 			name:        "p:myproj",
@@ -354,6 +364,8 @@ func TestTaskMatchesFilters_HasPresence(t *testing.T) {
 	noComment := &models.Task{}
 	withDue := &models.Task{DueDate: dueDate} //nolint:govet
 	withAttachment := &models.Task{Attachments: []models.Attachment{{Filename: "f.txt"}}}
+	withIssue := &models.Task{URL: "https://github.com/sglavoie/tt/issues/123"}
+	withoutIssue := &models.Task{URL: "https://example.com/sglavoie/tt/issues/123"}
 	withRecurrence := &models.Task{Recurrence: &models.RecurrencePattern{}}
 	withChecklist := &models.Task{Checklist: []models.ChecklistItem{{Text: "a"}}}
 	snoozed := &models.Task{SnoozedUntil: &tomorrow}
@@ -371,6 +383,10 @@ func TestTaskMatchesFilters_HasPresence(t *testing.T) {
 		{"has:due match", withDue, &ParsedSearchQuery{HasPresence: []string{"due"}}, true},
 		{"no:due match", noComment, &ParsedSearchQuery{NoPresence: []string{"due"}}, true},
 		{"has:attachment match", withAttachment, &ParsedSearchQuery{HasPresence: []string{"attachment"}}, true},
+		{"has:issue match", withIssue, &ParsedSearchQuery{HasPresence: []string{"issue"}}, true},
+		{"has:issue no match", withoutIssue, &ParsedSearchQuery{HasPresence: []string{"issue"}}, false},
+		{"no:issue match", withoutIssue, &ParsedSearchQuery{NoPresence: []string{"issue"}}, true},
+		{"no:issue no match", withIssue, &ParsedSearchQuery{NoPresence: []string{"issue"}}, false},
 		{"has:recurrence match", withRecurrence, &ParsedSearchQuery{HasPresence: []string{"recurrence"}}, true},
 		{"has:checklist match", withChecklist, &ParsedSearchQuery{HasPresence: []string{"checklist"}}, true},
 		{"is:snoozed match", snoozed, &ParsedSearchQuery{IsState: []string{"snoozed"}}, true},

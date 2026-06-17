@@ -344,10 +344,11 @@ func (m *DueDateOverviewModel) dueDateStageChangeAction(stage string) keymap.Act
 
 func (m *DueDateOverviewModel) dueDateFilterEntries(stages []string) []keymap.Entry {
 	return keymap.FilterGroup(keymap.FilterDeps{
-		FilterByTags:     func() (tea.Model, tea.Cmd) { return m.handleDueDateFilterPrefix("#") },
-		TogglePriority:   func() (tea.Model, tea.Cmd) { return m.handleDueDateFilterPrefix("p") },
-		ToggleHideDimmed: func() (tea.Model, tea.Cmd) { return m.handleDueDateFilterPrefix("h") },
-		ClearFilters:     func() (tea.Model, tea.Cmd) { return m.handleDueDateFilterPrefix("x") },
+		FilterByTags:      func() (tea.Model, tea.Cmd) { return m.handleDueDateFilterPrefix("#") },
+		TogglePriority:    func() (tea.Model, tea.Cmd) { return m.handleDueDateFilterPrefix("p") },
+		ToggleHideDimmed:  func() (tea.Model, tea.Cmd) { return m.handleDueDateFilterPrefix("h") },
+		ToggleGitHubIssue: func() (tea.Model, tea.Cmd) { return m.handleDueDateFilterPrefix("i") },
+		ClearFilters:      func() (tea.Model, tea.Cmd) { return m.handleDueDateFilterPrefix("x") },
 		TypeKey: func(key string) keymap.Action {
 			return func() (tea.Model, tea.Cmd) {
 				return m.handleDueDateFilterSubPrefix("Ft", key)

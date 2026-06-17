@@ -38,7 +38,7 @@ func renderSearchHelpPane(width, height int) string {
 	b.WriteString(prefix.Render("has:X") + muted.Render("  Task has property"))
 	b.WriteString("\n")
 	b.WriteString(muted.Render("  " + wrapValues([]string{
-		"description", "comment", "checklist", "attachment",
+		"description", "comment", "checklist", "attachment", "issue",
 		"due", "dependency", "relation", "recurrence",
 		"url", "stage", "parent", "children", "tag",
 	}, wrapWidth)))

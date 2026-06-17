@@ -58,7 +58,7 @@ type OutlinerModel struct {
 	filter           FilterState      // Unified filter state (common + sections + actionable)
 	scoreFilterInput ScoreFilterInput // Inline score filter threshold input
 
-	pinnedTagTab  map[string]int  // Active pinned tag tab index per projectID (0 = All)
+	pinnedTagTab      map[string]int  // Active pinned tag tab index per projectID (0 = All)
 	expandedNodes     map[string]bool // Fold state: true=expanded (default all expanded)
 	collapsedSections map[string]bool // Section collapse state for All perspective
 
@@ -174,7 +174,7 @@ func NewOutlinerModel(project *models.Project, cfg *config.Config, cfgManager *c
 		filterBar:         NewFilterBarComponent(),
 		expandedNodes:     make(map[string]bool),
 		collapsedSections: make(map[string]bool),
-		pinnedTagTab:  make(map[string]int),
+		pinnedTagTab:      make(map[string]int),
 		filterProjects:    make(map[string]bool),
 		filter:            NewFilterState(),
 		sort:              NewSortState(),
@@ -211,6 +211,7 @@ func NewOutlinerModel(project *models.Project, cfg *config.Config, cfgManager *c
 		m.filter.DueDate = DueDateFilter(cfg.CrossOutlinerFilterDueDate)
 		m.filter.Actionable = cfg.CrossOutlinerFilterActionable
 		m.filter.HideDimmed = cfg.CrossOutlinerFilterHideDimmed
+		m.filter.GitHubIssue = cfg.CrossOutlinerFilterGitHubIssue
 		m.filter.Stage = cfg.CrossOutlinerFilterStage
 		m.filter.ScoreMin = cfg.CrossOutlinerFilterScoreMin
 		m.sort.Field = SortField(cfg.CrossOutlinerSortField)

@@ -57,11 +57,12 @@ var registry = map[string]iconPair{
 	"priority.5": {"⬜", "·"},
 
 	// Annotation/Meta Indicators
-	"comment":     {"💬", "▪"},
-	"decision":    {"⚖️", "▫"},
-	"attachment":  {"📎", "⊕"},
-	"checklist":   {"☑️", "☑"},
-	"description": {"📄", "≡"},
+	"comment":      {"💬", "▪"},
+	"decision":     {"⚖️", "▫"},
+	"attachment":   {"📎", "⊕"},
+	"github_issue": {"GH", "GH"},
+	"checklist":    {"☑️", "☑"},
+	"description":  {"📄", "≡"},
 
 	// Checkbox States
 	"checkbox.checked":   {"✅", "☑"},

@@ -17,20 +17,21 @@ type SavedFilter struct {
 	Mode string `json:"mode"`
 
 	// --- Snapshot mode (from savedView) ---
-	ViewMode         int               `json:"view_mode,omitempty"`
-	FilterType       string            `json:"filter_type,omitempty"`
-	FilterStatus     string            `json:"filter_status,omitempty"`
-	FilterPriority   int               `json:"filter_priority,omitempty"`
-	FilterTags       []string          `json:"filter_tags,omitempty"`
-	FilterSections   []string          `json:"filter_sections,omitempty"`
-	FilterDueDate    int               `json:"filter_due_date,omitempty"`
-	FilterActionable bool              `json:"filter_actionable,omitempty"`
-	FilterHideDimmed bool              `json:"filter_hide_dimmed,omitempty"`
-	FilterAttrs      map[string]string `json:"filter_attrs,omitempty"`
-	FilterScoreMin   float64           `json:"filter_score_min,omitempty"`
-	SortField        int               `json:"sort_field,omitempty"`
-	SortAscending    bool              `json:"sort_ascending"`
-	PinnedTagTab     string            `json:"pinned_tag_tab,omitempty"`
+	ViewMode          int               `json:"view_mode,omitempty"`
+	FilterType        string            `json:"filter_type,omitempty"`
+	FilterStatus      string            `json:"filter_status,omitempty"`
+	FilterPriority    int               `json:"filter_priority,omitempty"`
+	FilterTags        []string          `json:"filter_tags,omitempty"`
+	FilterSections    []string          `json:"filter_sections,omitempty"`
+	FilterDueDate     int               `json:"filter_due_date,omitempty"`
+	FilterActionable  bool              `json:"filter_actionable,omitempty"`
+	FilterHideDimmed  bool              `json:"filter_hide_dimmed,omitempty"`
+	FilterGitHubIssue bool              `json:"filter_github_issue,omitempty"`
+	FilterAttrs       map[string]string `json:"filter_attrs,omitempty"`
+	FilterScoreMin    float64           `json:"filter_score_min,omitempty"`
+	SortField         int               `json:"sort_field,omitempty"`
+	SortAscending     bool              `json:"sort_ascending"`
+	PinnedTagTab      string            `json:"pinned_tag_tab,omitempty"`
 
 	// --- Criteria mode (from smartList) ---
 	Criteria         []SmartListCriterion `json:"criteria,omitempty"`
@@ -139,22 +140,23 @@ func (c *Config) GetTabFilters() []SavedFilter {
 // savedViewToFilter converts a legacy savedView into a SavedFilter with mode "snapshot".
 func savedViewToFilter(sv savedView) SavedFilter {
 	return SavedFilter{
-		ID:               uuid.New().String(),
-		Name:             sv.Name,
-		Mode:             "snapshot",
-		ViewMode:         sv.ViewMode,
-		FilterType:       sv.FilterType,
-		FilterStatus:     sv.FilterStatus,
-		FilterPriority:   sv.FilterPriority,
-		FilterTags:       sv.FilterTags,
-		FilterSections:   sv.FilterSections,
-		FilterDueDate:    sv.FilterDueDate,
-		FilterActionable: sv.FilterActionable,
-		FilterAttrs:      sv.FilterAttrs,
-		FilterScoreMin:   sv.FilterScoreMin,
-		SortField:        sv.SortField,
-		SortAscending:    sv.SortAscending,
-		PinnedTagTab:     sv.PinnedTagTab,
+		ID:                uuid.New().String(),
+		Name:              sv.Name,
+		Mode:              "snapshot",
+		ViewMode:          sv.ViewMode,
+		FilterType:        sv.FilterType,
+		FilterStatus:      sv.FilterStatus,
+		FilterPriority:    sv.FilterPriority,
+		FilterTags:        sv.FilterTags,
+		FilterSections:    sv.FilterSections,
+		FilterDueDate:     sv.FilterDueDate,
+		FilterActionable:  sv.FilterActionable,
+		FilterGitHubIssue: sv.FilterGitHubIssue,
+		FilterAttrs:       sv.FilterAttrs,
+		FilterScoreMin:    sv.FilterScoreMin,
+		SortField:         sv.SortField,
+		SortAscending:     sv.SortAscending,
+		PinnedTagTab:      sv.PinnedTagTab,
 	}
 }
 

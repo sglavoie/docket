@@ -310,7 +310,9 @@ func peekAttachmentsBlock(task *models.Task, width int) []string {
 	lines := []string{BoldStyle.Render(fmt.Sprintf("Attachments (%d)", len(task.Attachments)))}
 	for _, a := range task.Attachments {
 		body := a.Filename
-		if a.IsCodeRef && a.LineNumber > 0 {
+		if ref, ok := gitHubIssueAttachmentRef(a); ok {
+			body = "GitHub issue " + formatGitHubIssueRef(ref)
+		} else if a.IsCodeRef && a.LineNumber > 0 {
 			body = fmt.Sprintf("%s:%d", a.Filename, a.LineNumber)
 		} else if a.IsURL && a.OriginalPath != "" && a.OriginalPath != a.Filename {
 			body = a.Filename + " " + MutedStyle.Render("("+a.OriginalPath+")")

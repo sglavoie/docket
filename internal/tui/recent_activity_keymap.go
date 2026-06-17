@@ -108,6 +108,9 @@ func (m *RecentActivityModel) buildKeyMap() *keymap.KeyMap {
 		ToggleHideDimmed: func() (tea.Model, tea.Cmd) {
 			return m.handleRecentActivityFilterPrefix("h")
 		},
+		ToggleGitHubIssue: func() (tea.Model, tea.Cmd) {
+			return m.handleRecentActivityFilterPrefix("i")
+		},
 		ClearFilters: func() (tea.Model, tea.Cmd) {
 			return m.handleRecentActivityFilterPrefix("x")
 		},

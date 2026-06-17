@@ -174,6 +174,42 @@ func renderAttachmentIndicator(task *models.Task) string {
 	return MutedStyle.Render(fmt.Sprintf("%s %d", IconAttachment(), task.AttachmentCount()))
 }
 
+func renderGitHubIssueIndicator(task *models.Task) string {
+	label := formatGitHubIssueRefs(task.GitHubIssueRefs())
+	if label == "" {
+		return ""
+	}
+	return MutedStyle.Render(fmt.Sprintf("%s %s", IconGitHubIssue(), label))
+}
+
+func formatGitHubIssueRefs(refs []models.GitHubIssueRef) string {
+	if len(refs) == 0 {
+		return ""
+	}
+	label := formatGitHubIssueRef(refs[0])
+	if len(refs) > 1 {
+		label += fmt.Sprintf(" +%d", len(refs)-1)
+	}
+	return label
+}
+
+func formatGitHubIssueRef(ref models.GitHubIssueRef) string {
+	return fmt.Sprintf("%s/%s#%d", ref.Owner, ref.Repo, ref.Number)
+}
+
+func gitHubIssueAttachmentRef(att models.Attachment) (models.GitHubIssueRef, bool) {
+	if !att.IsURL {
+		return models.GitHubIssueRef{}, false
+	}
+	if ref, ok := models.ParseGitHubIssueURL(att.Filename); ok {
+		return ref, true
+	}
+	if att.OriginalPath != "" && att.OriginalPath != att.Filename {
+		return models.ParseGitHubIssueURL(att.OriginalPath)
+	}
+	return models.GitHubIssueRef{}, false
+}
+
 // renderChecklistIndicator renders a compact checklist progress indicator.
 func renderChecklistIndicator(task *models.Task) string {
 	if len(task.Checklist) == 0 {

@@ -116,7 +116,11 @@ func renderSidebarAttachmentsCard(task *models.Task, width int) string {
 			lines = append(lines, "")
 		}
 		displayName := truncateToVisualWidth(attachment.Filename, maxLen)
-		if attachment.IsURL {
+		if ref, ok := gitHubIssueAttachmentRef(attachment); ok {
+			displayName = truncateToVisualWidth(formatGitHubIssueRef(ref), maxLen)
+			link := Hyperlink(ref.URL, displayName)
+			lines = append(lines, MutedStyle.Render(IconGitHubIssue()+" ")+link)
+		} else if attachment.IsURL {
 			link := Hyperlink(attachment.Filename, displayName)
 			lines = append(lines, MutedStyle.Render("🔗 ")+link)
 		} else {

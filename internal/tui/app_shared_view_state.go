@@ -22,14 +22,15 @@ func (m *AppModel) extractSharedStateFromTree() *sharedViewState {
 	s := &sharedViewState{
 		Filter: FilterState{
 			CommonFilterState: CommonFilterState{
-				Type:       m.projectTree.filter.Type,
-				Status:     m.projectTree.filter.Status,
-				Priority:   m.projectTree.filter.Priority,
-				DueDate:    m.projectTree.filter.DueDate,
-				ScoreMin:   m.projectTree.filter.ScoreMin,
-				Actionable: m.projectTree.filter.Actionable,
-				HideDimmed: m.projectTree.filter.HideDimmed,
-				Stage:      m.projectTree.filter.Stage,
+				Type:        m.projectTree.filter.Type,
+				Status:      m.projectTree.filter.Status,
+				Priority:    m.projectTree.filter.Priority,
+				DueDate:     m.projectTree.filter.DueDate,
+				ScoreMin:    m.projectTree.filter.ScoreMin,
+				Actionable:  m.projectTree.filter.Actionable,
+				HideDimmed:  m.projectTree.filter.HideDimmed,
+				GitHubIssue: m.projectTree.filter.GitHubIssue,
+				Stage:       m.projectTree.filter.Stage,
 			},
 		},
 		Sort:             m.projectTree.sort,
@@ -61,14 +62,15 @@ func (m *AppModel) extractSharedStateFromOutliner() *sharedViewState {
 	s := &sharedViewState{
 		Filter: FilterState{
 			CommonFilterState: CommonFilterState{
-				Type:       m.outliner.filter.Type,
-				Status:     m.outliner.filter.Status,
-				Priority:   m.outliner.filter.Priority,
-				DueDate:    m.outliner.filter.DueDate,
-				ScoreMin:   m.outliner.filter.ScoreMin,
-				Actionable: m.outliner.filter.Actionable,
-				HideDimmed: m.outliner.filter.HideDimmed,
-				Stage:      m.outliner.filter.Stage,
+				Type:        m.outliner.filter.Type,
+				Status:      m.outliner.filter.Status,
+				Priority:    m.outliner.filter.Priority,
+				DueDate:     m.outliner.filter.DueDate,
+				ScoreMin:    m.outliner.filter.ScoreMin,
+				Actionable:  m.outliner.filter.Actionable,
+				HideDimmed:  m.outliner.filter.HideDimmed,
+				GitHubIssue: m.outliner.filter.GitHubIssue,
+				Stage:       m.outliner.filter.Stage,
 			},
 		},
 		Sort:             m.outliner.sort,
@@ -103,6 +105,7 @@ func (m *AppModel) applySharedStateToTree(s *sharedViewState) {
 	m.projectTree.filter.ScoreMin = s.Filter.ScoreMin
 	m.projectTree.filter.Actionable = s.Filter.Actionable
 	m.projectTree.filter.HideDimmed = s.Filter.HideDimmed
+	m.projectTree.filter.GitHubIssue = s.Filter.GitHubIssue
 	m.projectTree.filter.Stage = s.Filter.Stage
 	m.projectTree.filter.Attrs = s.Filter.Attrs
 	m.projectTree.sort = s.Sort
@@ -133,6 +136,7 @@ func (m *AppModel) applySharedStateToOutliner(s *sharedViewState) {
 	m.outliner.filter.ScoreMin = s.Filter.ScoreMin
 	m.outliner.filter.Actionable = s.Filter.Actionable
 	m.outliner.filter.HideDimmed = s.Filter.HideDimmed
+	m.outliner.filter.GitHubIssue = s.Filter.GitHubIssue
 	m.outliner.filter.Stage = s.Filter.Stage
 	m.outliner.filter.Attrs = s.Filter.Attrs
 	m.outliner.sort = s.Sort
