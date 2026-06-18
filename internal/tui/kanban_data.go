@@ -288,6 +288,10 @@ func rebuildColumns(
 		}
 	}
 
+	for i := range cols {
+		sortKanbanCardsByProjectDisplayOrder(cols[i].Tasks)
+	}
+
 	// Clamp cursors so they stay within bounds after data changes.
 	for i, c := range cols {
 		if len(c.Tasks) == 0 {

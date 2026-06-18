@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"slices"
 	"testing"
 
 	"github.com/sglavoie/tt/internal/models"
@@ -50,5 +51,51 @@ func TestBuildProjectGroupedRowsEmptyGroups(t *testing.T) {
 
 	if len(m.rows) != 0 {
 		t.Errorf("expected no rows for nil groups, got %d", len(m.rows))
+	}
+}
+
+func TestCrossProjectRebuildRowsSortsNonAllGroupsByProjectName(t *testing.T) {
+	alphaTask := makeTask("alpha-task", "Alpha active task", "")
+	alphaTask.Status = models.StatusInProgress
+	alpha := &models.Project{
+		ID:    "proj-alpha",
+		Slug:  "alpha",
+		Name:  "Alpha",
+		Tasks: []*models.Task{alphaTask},
+	}
+	alpha.BuildTaskTree()
+
+	betaTask := makeTask("beta-task", "Beta active task", "")
+	betaTask.Status = models.StatusInProgress
+	beta := &models.Project{
+		ID:    "proj-beta",
+		Slug:  "beta",
+		Name:  "Beta",
+		Tasks: []*models.Task{betaTask},
+	}
+	beta.BuildTaskTree()
+
+	m := &OutlinerModel{
+		collapsedSections: make(map[string]bool),
+		expandedNodes:     make(map[string]bool),
+		MultiSelectState:  MultiSelectState{selectedTasks: make(map[string]bool)},
+		activePerspective: PerspectiveAll + 1,
+		loadedProjects:    []*models.Project{beta, alpha},
+	}
+
+	m.crossProjectRebuildRows()
+
+	var got []string
+	for _, row := range m.rows {
+		if row.IsSeparator {
+			got = append(got, "|")
+			continue
+		}
+		got = append(got, row.ProjectID)
+	}
+
+	want := []string{"proj-alpha", "|", "proj-beta"}
+	if !slices.Equal(got, want) {
+		t.Fatalf("rendered project order: want %v, got %v", want, got)
 	}
 }

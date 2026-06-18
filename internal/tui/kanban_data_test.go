@@ -175,6 +175,54 @@ func TestRebuildColumns_SectionMode_Distribution(t *testing.T) {
 	}
 }
 
+func TestRebuildColumns_SortsColumnTasksByProjectName(t *testing.T) {
+	alpha := testutil.NewTestProject("Alpha")
+	beta := testutil.NewTestProject("Beta")
+
+	card := func(project *models.Project, title string) KanbanCard {
+		task := testutil.NewTestTask(title, models.TaskTypeTask)
+		task.Section = models.SectionInbox
+		task.Status = models.StatusTodo
+		return KanbanCard{Task: task, Project: project}
+	}
+
+	cards := []KanbanCard{
+		card(beta, "beta first"),
+		card(alpha, "alpha first"),
+		card(beta, "beta second"),
+		card(alpha, "alpha second"),
+	}
+
+	cols := rebuildColumns(cards, KanbanModeSection, nil, nil, nil, nil, nil)
+
+	var inbox KanbanColumn
+	found := false
+	for _, col := range cols {
+		if col.ID == "inbox" {
+			inbox = col
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Fatal("inbox column not found")
+	}
+
+	got := make([]string, 0, len(inbox.Tasks))
+	for _, task := range inbox.Tasks {
+		got = append(got, task.Task.Title)
+	}
+	want := []string{"alpha first", "alpha second", "beta first", "beta second"}
+	if len(got) != len(want) {
+		t.Fatalf("task order length: want %d, got %d: %v", len(want), len(got), got)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Fatalf("task order[%d]: want %q, got %q; full order: %v", i, want[i], got[i], got)
+		}
+	}
+}
+
 func TestRebuildColumns_SectionMode_CompletedStatusOnlyInCompletedColumn(t *testing.T) {
 	cards := []KanbanCard{
 		makeTestCard(models.SectionInbox, models.StatusTodo),

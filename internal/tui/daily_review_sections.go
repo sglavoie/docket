@@ -190,7 +190,30 @@ func (m *DailyReviewModel) appendOldDailyReviewTask(dt CrossProjectTask, thresho
 	}
 }
 
+type crossTaskLess func(a, b CrossProjectTask) bool
+
+func byProjectDisplayOrderThen(less crossTaskLess) crossTaskLess {
+	return func(a, b CrossProjectTask) bool {
+		if c := compareProjectsByDisplayOrder(a.Project, b.Project); c != 0 {
+			return c < 0
+		}
+		return less(a, b)
+	}
+}
+
+func sortDailyReviewSection(tasks []CrossProjectTask, less crossTaskLess) {
+	less = byProjectDisplayOrderThen(less)
+	sort.Slice(tasks, func(i, j int) bool { return less(tasks[i], tasks[j]) })
+}
+
 // crossTaskLess comparators for recurring sort patterns on CrossProjectTask slices.
+func byOverdueDueDateThenID(a, b CrossProjectTask) bool {
+	if !a.Task.DueDate.Equal(*b.Task.DueDate) {
+		return a.Task.DueDate.Before(*b.Task.DueDate)
+	}
+	return a.Task.ID < b.Task.ID
+}
+
 func byDueDateThenPriority(a, b CrossProjectTask) bool {
 	if !a.Task.DueDate.Equal(*b.Task.DueDate) {
 		return a.Task.DueDate.Before(*b.Task.DueDate)
@@ -218,54 +241,53 @@ func byPriorityThenUpdatedAt(a, b CrossProjectTask) bool {
 	return a.Task.ID < b.Task.ID
 }
 
+func byEffectiveUpdatedAtThenID(a, b CrossProjectTask) bool {
+	ti := a.Task.UpdatedAt
+	if ti.IsZero() {
+		ti = a.Task.CreatedAt
+	}
+	tj := b.Task.UpdatedAt
+	if tj.IsZero() {
+		tj = b.Task.CreatedAt
+	}
+	if !ti.Equal(tj) {
+		return ti.Before(tj)
+	}
+	return a.Task.ID < b.Task.ID
+}
+
+func byCompletedAtThenID(a, b CrossProjectTask) bool {
+	if a.Task.CompletedAt == nil {
+		return false
+	}
+	if b.Task.CompletedAt == nil {
+		return true
+	}
+	if !a.Task.CompletedAt.Equal(*b.Task.CompletedAt) {
+		return a.Task.CompletedAt.After(*b.Task.CompletedAt)
+	}
+	return a.Task.ID < b.Task.ID
+}
+
 // sortSections sorts each section by appropriate criteria.
 func (m *DailyReviewModel) sortSections() {
 	// Overdue: oldest first (most urgent), then by ID for stability
-	sort.Slice(m.overdue, func(i, j int) bool {
-		if !m.overdue[i].Task.DueDate.Equal(*m.overdue[j].Task.DueDate) {
-			return m.overdue[i].Task.DueDate.Before(*m.overdue[j].Task.DueDate)
-		}
-		return m.overdue[i].Task.ID < m.overdue[j].Task.ID
-	})
+	sortDailyReviewSection(m.overdue, byOverdueDueDateThenID)
 
-	sort.Slice(m.dueToday, func(i, j int) bool { return byPriorityThenID(m.dueToday[i], m.dueToday[j]) })
-	sort.Slice(m.dueSoon, func(i, j int) bool { return byDueDateThenPriority(m.dueSoon[i], m.dueSoon[j]) })
-	sort.Slice(m.dueLater, func(i, j int) bool { return byDueDateThenPriority(m.dueLater[i], m.dueLater[j]) })
-	sort.Slice(m.future, func(i, j int) bool { return byDueDateThenPriority(m.future[i], m.future[j]) })
-	sort.Slice(m.inProgress, func(i, j int) bool { return byPriorityThenUpdatedAt(m.inProgress[i], m.inProgress[j]) })
-	sort.Slice(m.blocked, func(i, j int) bool { return byPriorityThenID(m.blocked[i], m.blocked[j]) })
-	sort.Slice(m.inReview, func(i, j int) bool { return byPriorityThenUpdatedAt(m.inReview[i], m.inReview[j]) })
-	sort.Slice(m.inStandby, func(i, j int) bool { return byPriorityThenUpdatedAt(m.inStandby[i], m.inStandby[j]) })
+	sortDailyReviewSection(m.dueToday, byPriorityThenID)
+	sortDailyReviewSection(m.dueSoon, byDueDateThenPriority)
+	sortDailyReviewSection(m.dueLater, byDueDateThenPriority)
+	sortDailyReviewSection(m.future, byDueDateThenPriority)
+	sortDailyReviewSection(m.inProgress, byPriorityThenUpdatedAt)
+	sortDailyReviewSection(m.blocked, byPriorityThenID)
+	sortDailyReviewSection(m.inReview, byPriorityThenUpdatedAt)
+	sortDailyReviewSection(m.inStandby, byPriorityThenUpdatedAt)
 
 	// Old: by UpdatedAt (oldest first), falling back to CreatedAt when zero
-	sort.Slice(m.old, func(i, j int) bool {
-		ti := m.old[i].Task.UpdatedAt
-		if ti.IsZero() {
-			ti = m.old[i].Task.CreatedAt
-		}
-		tj := m.old[j].Task.UpdatedAt
-		if tj.IsZero() {
-			tj = m.old[j].Task.CreatedAt
-		}
-		if !ti.Equal(tj) {
-			return ti.Before(tj)
-		}
-		return m.old[i].Task.ID < m.old[j].Task.ID
-	})
+	sortDailyReviewSection(m.old, byEffectiveUpdatedAtThenID)
 
 	// Completed: most recent first
-	sort.Slice(m.completed, func(i, j int) bool {
-		if m.completed[i].Task.CompletedAt == nil {
-			return false
-		}
-		if m.completed[j].Task.CompletedAt == nil {
-			return true
-		}
-		if !m.completed[i].Task.CompletedAt.Equal(*m.completed[j].Task.CompletedAt) {
-			return m.completed[i].Task.CompletedAt.After(*m.completed[j].Task.CompletedAt)
-		}
-		return m.completed[i].Task.ID < m.completed[j].Task.ID
-	})
+	sortDailyReviewSection(m.completed, byCompletedAtThenID)
 }
 
 // toggleCurrentSection toggles collapse state for the section containing the cursor.

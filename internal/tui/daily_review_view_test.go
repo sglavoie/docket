@@ -332,3 +332,138 @@ func TestDailyReview_SortStability(t *testing.T) {
 		}
 	})
 }
+
+func TestDailyReview_SortSectionsProjectDisplayOrderPrimary(t *testing.T) {
+	alpha := projectForDisplayOrder("alpha", "alpha", "Alpha", false)
+	beta := projectForDisplayOrder("beta", "beta", "Beta", true)
+	now := time.Date(2026, 6, 18, 9, 0, 0, 0, time.UTC)
+
+	tests := []struct {
+		name    string
+		arrange func(m *DailyReviewModel)
+		section func(m *DailyReviewModel) []CrossProjectTask
+		want    []string
+	}{
+		{
+			name: "overdue uses project before due date",
+			arrange: func(m *DailyReviewModel) {
+				betaOldest := dailyReviewSortTask("beta-oldest", beta)
+				betaOldest.Task.DueDate = timePtr(now.AddDate(0, 0, -10))
+				alphaNewer := dailyReviewSortTask("alpha-newer", alpha)
+				alphaNewer.Task.DueDate = timePtr(now.AddDate(0, 0, -1))
+				alphaOlder := dailyReviewSortTask("alpha-older", alpha)
+				alphaOlder.Task.DueDate = timePtr(now.AddDate(0, 0, -3))
+				m.overdue = []CrossProjectTask{betaOldest, alphaNewer, alphaOlder}
+			},
+			section: func(m *DailyReviewModel) []CrossProjectTask { return m.overdue },
+			want:    []string{"alpha-older", "alpha-newer", "beta-oldest"},
+		},
+		{
+			name: "due-date sections use project before due date and priority",
+			arrange: func(m *DailyReviewModel) {
+				betaSoonest := dailyReviewSortTask("beta-soonest", beta)
+				betaSoonest.Task.DueDate = timePtr(now.AddDate(0, 0, 1))
+				betaSoonest.Task.Priority = 1
+				alphaLater := dailyReviewSortTask("alpha-later", alpha)
+				alphaLater.Task.DueDate = timePtr(now.AddDate(0, 0, 5))
+				alphaLater.Task.Priority = 1
+				alphaSooner := dailyReviewSortTask("alpha-sooner", alpha)
+				alphaSooner.Task.DueDate = timePtr(now.AddDate(0, 0, 2))
+				alphaSooner.Task.Priority = 3
+				m.dueSoon = []CrossProjectTask{betaSoonest, alphaLater, alphaSooner}
+			},
+			section: func(m *DailyReviewModel) []CrossProjectTask { return m.dueSoon },
+			want:    []string{"alpha-sooner", "alpha-later", "beta-soonest"},
+		},
+		{
+			name: "priority sections use project before priority",
+			arrange: func(m *DailyReviewModel) {
+				betaHighPriority := dailyReviewSortTask("beta-high", beta)
+				betaHighPriority.Task.Priority = 0
+				alphaLowPriority := dailyReviewSortTask("alpha-low", alpha)
+				alphaLowPriority.Task.Priority = 3
+				alphaHighPriority := dailyReviewSortTask("alpha-high", alpha)
+				alphaHighPriority.Task.Priority = 1
+				m.dueToday = []CrossProjectTask{betaHighPriority, alphaLowPriority, alphaHighPriority}
+			},
+			section: func(m *DailyReviewModel) []CrossProjectTask { return m.dueToday },
+			want:    []string{"alpha-high", "alpha-low", "beta-high"},
+		},
+		{
+			name: "updated-at sections use project before updated time",
+			arrange: func(m *DailyReviewModel) {
+				betaNewest := dailyReviewSortTask("beta-newest", beta)
+				betaNewest.Task.Priority = 1
+				betaNewest.Task.UpdatedAt = now
+				alphaOlder := dailyReviewSortTask("alpha-older", alpha)
+				alphaOlder.Task.Priority = 1
+				alphaOlder.Task.UpdatedAt = now.Add(-2 * time.Hour)
+				alphaNewer := dailyReviewSortTask("alpha-newer", alpha)
+				alphaNewer.Task.Priority = 1
+				alphaNewer.Task.UpdatedAt = now.Add(-1 * time.Hour)
+				m.inProgress = []CrossProjectTask{betaNewest, alphaOlder, alphaNewer}
+			},
+			section: func(m *DailyReviewModel) []CrossProjectTask { return m.inProgress },
+			want:    []string{"alpha-newer", "alpha-older", "beta-newest"},
+		},
+		{
+			name: "old sections use project before effective update time",
+			arrange: func(m *DailyReviewModel) {
+				betaOldest := dailyReviewSortTask("beta-oldest", beta)
+				betaOldest.Task.UpdatedAt = now.Add(-30 * 24 * time.Hour)
+				alphaNewer := dailyReviewSortTask("alpha-newer", alpha)
+				alphaNewer.Task.UpdatedAt = now.Add(-10 * 24 * time.Hour)
+				alphaOlder := dailyReviewSortTask("alpha-older", alpha)
+				alphaOlder.Task.CreatedAt = now.Add(-20 * 24 * time.Hour)
+				m.old = []CrossProjectTask{betaOldest, alphaNewer, alphaOlder}
+			},
+			section: func(m *DailyReviewModel) []CrossProjectTask { return m.old },
+			want:    []string{"alpha-older", "alpha-newer", "beta-oldest"},
+		},
+		{
+			name: "completed sections use project before completion time",
+			arrange: func(m *DailyReviewModel) {
+				betaNewest := dailyReviewSortTask("beta-newest", beta)
+				betaNewest.Task.CompletedAt = timePtr(now)
+				alphaOlder := dailyReviewSortTask("alpha-older", alpha)
+				alphaOlder.Task.CompletedAt = timePtr(now.Add(-2 * time.Hour))
+				alphaNewer := dailyReviewSortTask("alpha-newer", alpha)
+				alphaNewer.Task.CompletedAt = timePtr(now.Add(-1 * time.Hour))
+				m.completed = []CrossProjectTask{betaNewest, alphaOlder, alphaNewer}
+			},
+			section: func(m *DailyReviewModel) []CrossProjectTask { return m.completed },
+			want:    []string{"alpha-newer", "alpha-older", "beta-newest"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			m := newTestDailyReviewModel(&config.Config{Projects: []*models.Project{}})
+			tt.arrange(m)
+
+			m.sortSections()
+
+			assertDailyReviewSectionIDs(t, tt.section(m), tt.want)
+		})
+	}
+}
+
+func dailyReviewSortTask(id string, project *models.Project) CrossProjectTask {
+	return CrossProjectTask{Task: &models.Task{ID: id}, Project: project}
+}
+
+func timePtr(t time.Time) *time.Time {
+	return &t
+}
+
+func assertDailyReviewSectionIDs(t *testing.T, tasks []CrossProjectTask, want []string) {
+	t.Helper()
+	if len(tasks) != len(want) {
+		t.Fatalf("got %d tasks, want %d", len(tasks), len(want))
+	}
+	for i, task := range tasks {
+		if task.Task.ID != want[i] {
+			t.Fatalf("task[%d] ID: got %q, want %q", i, task.Task.ID, want[i])
+		}
+	}
+}

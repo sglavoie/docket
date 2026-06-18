@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"slices"
 	"testing"
 
 	"github.com/sglavoie/tt/internal/models"
@@ -258,4 +259,60 @@ func TestBuildCrossProjectRowsLegacyNonGTDSectionValueStaysVisible(t *testing.T)
 	m.buildCrossProjectRowsWithSectionHeaders(groups)
 
 	assertRowTitles(t, m.rows, []string{"[Active]", "Legacy task"})
+}
+
+func TestCrossProjectRebuildRowsSortsAllSharedSectionRowsByProjectName(t *testing.T) {
+	alphaTask := makeTask("alpha-next", "Alpha next task", models.SectionNext)
+	alphaTask.Status = models.StatusTodo
+	alpha := &models.Project{
+		ID:    "proj-alpha",
+		Slug:  "alpha",
+		Name:  "Alpha",
+		Tasks: []*models.Task{alphaTask},
+	}
+	alpha.BuildTaskTree()
+
+	betaTask := makeTask("beta-next", "Beta next task", models.SectionNext)
+	betaTask.Status = models.StatusTodo
+	beta := &models.Project{
+		ID:    "proj-beta",
+		Slug:  "beta",
+		Name:  "Beta",
+		Tasks: []*models.Task{betaTask},
+	}
+	beta.BuildTaskTree()
+
+	m := &OutlinerModel{
+		collapsedSections: make(map[string]bool),
+		expandedNodes:     make(map[string]bool),
+		MultiSelectState:  MultiSelectState{selectedTasks: make(map[string]bool)},
+		activePerspective: PerspectiveAll,
+		loadedProjects:    []*models.Project{beta, alpha},
+	}
+
+	m.crossProjectRebuildRows()
+
+	headerCount := 0
+	var got []string
+	for _, row := range m.rows {
+		if row.IsSectionHeader {
+			if row.SectionName == models.SectionNext {
+				headerCount++
+			}
+			continue
+		}
+		if row.IsSeparator {
+			t.Fatalf("All perspective should not emit project separators")
+		}
+		got = append(got, row.ProjectID)
+	}
+
+	if headerCount != 1 {
+		t.Fatalf("expected one shared Next header, got %d", headerCount)
+	}
+
+	want := []string{"proj-alpha", "proj-beta"}
+	if !slices.Equal(got, want) {
+		t.Fatalf("shared section project order: want %v, got %v", want, got)
+	}
 }

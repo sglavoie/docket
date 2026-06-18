@@ -277,6 +277,8 @@ func (m *OutlinerModel) crossProjectRebuildRows() {
 		groups = append(groups, projectTasksGroup{projectID: proj.ID, tasks: tasks})
 	}
 
+	sortProjectTaskGroupsByProjectDisplayOrder(groups, m.loadedProjects)
+
 	if m.sort.Field != SortByDefault {
 		m.sortCrossProjectGroups(groups)
 	}
