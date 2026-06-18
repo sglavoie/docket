@@ -129,16 +129,8 @@ type DependencyViewerViewDepsMsg struct {
 }
 
 // =============================================================================
-// Undo Messages (Show/Close Pattern)
+// Undo Messages
 // =============================================================================
-
-// ShowUndoHistoryMsg opens the undo history view.
-type ShowUndoHistoryMsg struct {
-	Project *models.Project
-}
-
-// CloseUndoHistoryMsg closes the undo history view.
-type CloseUndoHistoryMsg struct{ PopViewMsg }
 
 // UndoPerformedMsg signals an undo operation completed.
 type UndoPerformedMsg struct {
@@ -149,9 +141,6 @@ type UndoPerformedMsg struct {
 type RedoPerformedMsg struct {
 	Action string
 }
-
-// UndoHistoryRefreshMsg tells the undo history viewer to reload its entries.
-type UndoHistoryRefreshMsg struct{}
 
 // =============================================================================
 // Clipboard Messages

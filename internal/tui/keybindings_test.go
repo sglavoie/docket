@@ -453,6 +453,11 @@ func TestGetGlobalBindings(t *testing.T) {
 	if !foundDashboard {
 		t.Error("Expected Ctrl+Esc dashboard jump in global bindings")
 	}
+	removedShortcut := "ctrl+" + "Z"
+	removedDescription := "Undo/redo" + " stack"
+	if hasHelpItem(items, removedShortcut, removedDescription) {
+		t.Error("Global bindings should not advertise removed undo history shortcut")
+	}
 
 	for _, item := range items {
 		if item.Category == "Folds" || item.Category == "Task Operations" {

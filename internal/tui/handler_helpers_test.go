@@ -207,7 +207,7 @@ func TestClearStatusResetsAllFields(t *testing.T) {
 // callers don't drift into emitting "<action> ” · u to undo · …".
 func TestFormatUndoToastOmitsEmptyContext(t *testing.T) {
 	got := formatUndoToast("Deleted", "")
-	want := "Deleted · u to undo · ⌃Z for history"
+	want := "Deleted · u to undo"
 	if got != want {
 		t.Errorf("got %q, want %q", got, want)
 	}
@@ -216,7 +216,7 @@ func TestFormatUndoToastOmitsEmptyContext(t *testing.T) {
 	if !strings.Contains(got, "'#5 thing'") {
 		t.Errorf("expected single-quoted context, got %q", got)
 	}
-	if !strings.Contains(got, "u to undo") || !strings.Contains(got, "⌃Z for history") {
+	if !strings.Contains(got, "u to undo") || strings.Contains(got, "⌃"+"Z") {
 		t.Errorf("missing affordances in %q", got)
 	}
 }

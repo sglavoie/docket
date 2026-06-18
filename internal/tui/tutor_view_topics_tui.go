@@ -437,23 +437,29 @@ tasks by tag across all tasks in the current project.`,
 		{
 			Title:    "Undo",
 			Category: "TUI",
-			Content: `# Undo History
+			Content: `# Undo
 
 Every mutating operation (add, complete, edit, delete, etc.)
 creates an undo snapshot. Multiple levels of undo are supported.
+
+# TUI Undo
+
+Press u immediately after a supported change to restore the
+previous state while the undo toast is visible.
 
 # CLI Undo
 
   tt undo              # Restore previous state
 
-Run tt undo multiple times to step back through history. The
-depth is configurable via the undo_history_depth setting.
+Run tt undo multiple times to step back through snapshots. The
+number of retained steps is configurable via the undo_history_depth
+setting.
 
 # How It Works
 
 Each undo restores the tasks.md file to its state before the
-last change. The command reports what was undone and how many
-more undo steps remain.`,
+last change. Commands report what was undone and how many more
+undo steps remain.`,
 		},
 		{
 			Title:    "Repeat Last Action",

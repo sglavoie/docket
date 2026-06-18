@@ -130,7 +130,6 @@ func isTrackedView(vt ViewType) bool {
 		ViewSettings,
 		ViewWorkflowRules,
 		ViewTaskTemplates,
-		ViewUndoHistory,
 		ViewTutor,
 		ViewScoreProfileManager,
 		ViewTaskComments,

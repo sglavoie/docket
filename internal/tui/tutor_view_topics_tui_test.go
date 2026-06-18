@@ -36,6 +36,37 @@ func TestTutorBulkOperationsTopicDocumentsSelectedTaskFieldActions(t *testing.T)
 	}
 }
 
+func TestTutorUndoTopicDocumentsRetainedUndoWithoutHistoryViewer(t *testing.T) {
+	topic := findTutorTUITopic(t, "Undo")
+
+	required := []string{
+		"# Undo",
+		"Press u immediately after a supported change",
+		"tt undo",
+		"undo_history_depth",
+		"undo steps remain",
+	}
+	for _, want := range required {
+		if !strings.Contains(topic.Content, want) {
+			t.Fatalf("Undo topic missing %q:\n%s", want, topic.Content)
+		}
+	}
+
+	stale := []string{
+		"# Undo " + "History",
+		"Ctrl+" + "Z",
+		"ctrl+" + "z",
+		"⌃" + "Z",
+		"Undo / Redo " + "History",
+		"Undo / Redo " + "Stack",
+	}
+	for _, notWant := range stale {
+		if strings.Contains(topic.Content, notWant) {
+			t.Fatalf("Undo topic contains stale viewer wording %q:\n%s", notWant, topic.Content)
+		}
+	}
+}
+
 func findTutorTUITopic(t *testing.T, title string) TutorTopic {
 	t.Helper()
 

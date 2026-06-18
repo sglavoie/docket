@@ -60,13 +60,6 @@ func (m *AppModel) handleNavigateToView(msg NavigateToViewMsg) (bool, tea.Cmd) {
 		}
 	case ViewSettings:
 		return m.handleViewMessages(SettingsMsg{})
-	case ViewUndoHistory:
-		if project != nil {
-			if err := storage.LoadProject(project); err != nil {
-				logging.Warn("failed to load project %s: %v", project.Name, err)
-			}
-			return m.handleViewMessages(ShowUndoHistoryMsg{Project: project})
-		}
 	case ViewOutliner:
 		if project != nil {
 			if err := storage.LoadProject(project); err != nil {

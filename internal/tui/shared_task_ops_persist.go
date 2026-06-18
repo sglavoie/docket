@@ -348,22 +348,6 @@ func reapplySideEffects(persister Persister, project *models.Project) error {
 	return nil
 }
 
-// reapplyStorageSideEffects is like reapplySideEffects but uses the storage
-// package directly. Used by views that don't hold a Persister (e.g. UndoHistoryModel).
-func reapplyStorageSideEffects(project *models.Project) error {
-	project.CheckAndAutoUnblock()
-	project.GenerateRecurringInstances()
-	project.ReorderRootTasksByCompletion()
-	if err := storage.BackupProject(project); err != nil {
-		return fmt.Errorf("failed to backup after undo/redo: %w", err)
-	}
-	if err := storage.SaveProjectLocked(project); err != nil {
-		return fmt.Errorf("failed to save after undo/redo: %w", err)
-	}
-	_ = storage.LoadProject(project)
-	return nil
-}
-
 // performUndoCmd returns a tea.Cmd that restores the project from the most recent
 // undo snapshot. View-level rebuild (buildTree, rebuildRows) is handled by
 // handleWithRefresh on the main goroutine when UndoPerformedMsg is received.

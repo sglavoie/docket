@@ -250,31 +250,18 @@ func TestViewCommands_MetricsDashboard(t *testing.T) {
 	}
 }
 
-func TestViewCommands_UndoHistory(t *testing.T) {
+func TestViewCommands_UndoHistoryRemoved(t *testing.T) {
 	app, _ := newTestAppModelWithProject()
 
 	cmds := app.viewCommands()
-	cmd := findCommand(cmds, "undo history")
-	if cmd == nil {
-		t.Fatal("expected 'undo history' command")
+	if cmd := findCommand(cmds, "undo history"); cmd != nil {
+		t.Fatalf("undo history command should not be registered: %+v", cmd)
 	}
-	msg := cmd.Handler()
-	if _, ok := msg.(ShowUndoHistoryMsg); !ok {
-		t.Errorf("expected ShowUndoHistoryMsg, got %T", msg)
-	}
-}
-
-func TestViewCommands_UndoHistory_NilProject(t *testing.T) {
-	app := newTestAppModel()
-
-	cmds := app.viewCommands()
-	cmd := findCommand(cmds, "undo history")
-	if cmd == nil {
-		t.Fatal("expected 'undo history' command")
-	}
-	msg := cmd.Handler()
-	if msg != nil {
-		t.Errorf("expected nil, got %T", msg)
+	removedShortcut := "ctrl+" + "z"
+	for _, cmd := range cmds {
+		if cmd.Shortcut == removedShortcut {
+			t.Fatalf("view command %q should not advertise removed undo history shortcut", cmd.Name)
+		}
 	}
 }
 

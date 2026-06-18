@@ -146,7 +146,7 @@ func TestHandleViewMessagesStatusClearResetsInfoFlag(t *testing.T) {
 func TestSetUndoableStatusStoresCallbackAndExpiry(t *testing.T) {
 	app := newTestAppModel()
 	called := false
-	cmd := app.setUndoableStatus("Deleted '#1 thing' · u to undo · ⌃Z for history", func() tea.Cmd {
+	cmd := app.setUndoableStatus("Deleted '#1 thing' · u to undo", func() tea.Cmd {
 		called = true
 		return nil
 	})
@@ -270,11 +270,11 @@ func TestStatusClearMsgClearsExpiredUndoToast(t *testing.T) {
 
 func TestFormatUndoToastIncludesContext(t *testing.T) {
 	got := formatUndoToast("Delete Task", "#42 Login flow")
-	want := "Delete Task '#42 Login flow' · u to undo · ⌃Z for history"
+	want := "Delete Task '#42 Login flow' · u to undo"
 	if got != want {
 		t.Errorf("formatUndoToast = %q, want %q", got, want)
 	}
-	if formatUndoToast("Bulk Edit", "") != "Bulk Edit · u to undo · ⌃Z for history" {
+	if formatUndoToast("Bulk Edit", "") != "Bulk Edit · u to undo" {
 		t.Error("formatUndoToast should omit empty context")
 	}
 }

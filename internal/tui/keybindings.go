@@ -366,7 +366,6 @@ func (r *KeybindingRegistry) registerGlobalBindings() {
 		Keybinding{Key: ";ts", Description: "Global Section Change", Category: "Navigation"},
 		Keybinding{Key: ";tN", Description: "Global Template Task Create", Category: "Navigation"},
 		Keybinding{Key: "ctrl+X", Description: "Switch project", Category: "Navigation"},
-		Keybinding{Key: "ctrl+Z", Description: "Undo/redo stack", Category: "Navigation"},
 		Keybinding{Key: "alt+o", Description: "History back", Category: "Navigation"},
 		Keybinding{Key: "alt+i", Description: "History forward", Category: "Navigation"},
 		Keybinding{Key: "alt+l", Description: "Open Message Log", Category: "Navigation"},

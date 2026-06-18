@@ -183,7 +183,6 @@ func TestAllPaletteColorVarsSetAfterDarkTheme(t *testing.T) {
 		{"ColorProgressEmpty", ColorProgressEmpty, "#565f89"},
 		{"ColorBadgeText", ColorBadgeText, "#8f98c7"},
 		{"ColorLightGray", ColorLightGray, "#8f98c7"},
-		{"ColorDiffContext", ColorDiffContext, "#8f98c7"},
 		{"ColorPriority1Title", ColorPriority1Title, "#f7768e"},
 		{"ColorPriority2Title", ColorPriority2Title, "#e0af68"},
 		{"ColorPriority3Title", ColorPriority3Title, "#7aa2f7"},

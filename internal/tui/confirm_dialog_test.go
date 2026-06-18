@@ -137,6 +137,13 @@ func TestConfirmDialog_RenderOverlay_NoWrapping(t *testing.T) {
 	})
 
 	rendered := c.RenderOverlay(120)
+	removedShortcut := "Ctrl" + "+Z"
+	if strings.Contains(rendered, removedShortcut) {
+		t.Errorf("undo hint should not mention removed shortcut:\n%s", rendered)
+	}
+	if !strings.Contains(rendered, "Undo available (u)") {
+		t.Errorf("undo hint missing u shortcut:\n%s", rendered)
+	}
 
 	// Count lines: top border, prompt, blank, item, undo hint, bottom border = 6
 	lines := strings.Split(rendered, "\n")

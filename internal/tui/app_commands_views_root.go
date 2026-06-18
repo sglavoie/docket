@@ -165,19 +165,6 @@ func (m *AppModel) viewCommands() []Command {
 			},
 		},
 		{
-			Name:        "undo history",
-			Description: "View and restore from undo history",
-			Shortcut:    "ctrl+z",
-			Category:    CategoryViews,
-			Views:       projectTreeAndOutlinerViews(),
-			Handler: func() tea.Msg {
-				if m.currentProject != nil {
-					return ShowUndoHistoryMsg{Project: m.currentProject}
-				}
-				return nil
-			},
-		},
-		{
 			Name:        "filter popup",
 			Description: "Open the filter popup",
 			Shortcut:    "F",

@@ -28,7 +28,6 @@ const (
 	CategoryBlockers      CommandCategory = "Blockers"
 	CategoryComments      CommandCategory = "Comments"
 	CategoryDecisions     CommandCategory = "Decisions"
-	CategoryUndoHistory   CommandCategory = "Undo History"
 	CategoryWorkflowRules CommandCategory = "Workflow Rules"
 )
 

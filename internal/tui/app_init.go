@@ -265,7 +265,6 @@ func (m *AppModel) registerGlobalCommands() {
 	_ = m.commandRegistry.RegisterBatch(m.notesViewCommands())
 	_ = m.commandRegistry.RegisterBatch(m.blockersCommands())
 	_ = m.commandRegistry.RegisterBatch(m.taskCommentsCommands())
-	_ = m.commandRegistry.RegisterBatch(m.undoHistoryCommands())
 	_ = m.commandRegistry.RegisterBatch(m.globalTagManagerCommands())
 	_ = m.commandRegistry.RegisterBatch(m.attachmentCommands())
 	_ = m.commandRegistry.RegisterBatch(m.focusViewCommands())

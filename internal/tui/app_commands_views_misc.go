@@ -6,15 +6,6 @@ import (
 	"github.com/sglavoie/tt/internal/logging"
 )
 
-func (m *AppModel) undoHistoryCommands() []Command {
-	return []Command{
-		{Name: "perform undo", Description: "Undo selected entry or view detail", Shortcut: "enter", Category: CategoryUndoHistory, Views: []ViewType{ViewUndoHistory}, Aliases: []string{"undo entry", "view detail"}, Handler: func() tea.Msg { return syntheticSpecialKey(tea.KeyEnter) }},
-		{Name: "switch pane", Description: "Switch between entry list and diff pane", Shortcut: "tab", Category: CategoryUndoHistory, Views: []ViewType{ViewUndoHistory}, Aliases: []string{"toggle pane"}, Handler: func() tea.Msg { return syntheticSpecialKey(tea.KeyTab) }},
-		{Name: "scroll diff left", Description: "Scroll diff pane left", Shortcut: "h", Category: CategoryUndoHistory, Views: []ViewType{ViewUndoHistory}, Aliases: []string{"diff left"}, Handler: func() tea.Msg { return syntheticKey('h') }},
-		{Name: "scroll diff right", Description: "Scroll diff pane right", Shortcut: "l", Category: CategoryUndoHistory, Views: []ViewType{ViewUndoHistory}, Aliases: []string{"diff right"}, Handler: func() tea.Msg { return syntheticKey('l') }},
-	}
-}
-
 func (m *AppModel) globalTagManagerCommands() []Command {
 	return []Command{
 		{Name: "navigate to tag project", Description: "Navigate to tag's project", Shortcut: "enter", Category: CategoryActions, Views: []ViewType{ViewGlobalTagManager}, Aliases: []string{"open tag project"}, Handler: func() tea.Msg { return syntheticSpecialKey(tea.KeyEnter) }},

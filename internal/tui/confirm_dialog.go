@@ -19,7 +19,7 @@ type ConfirmDetail struct {
 	Items       []string // task names to list (up to 5)
 	TotalCount  int      // total items; if > len(Items), shows "and N more"
 	CascadeNote string   // e.g., "This epic has 3 subtasks that will also be deleted"
-	UndoHint    bool     // show "Undo available (Ctrl+Z)"
+	UndoHint    bool     // show "Undo available (u)"
 }
 
 // ConfirmDialog provides reusable confirmation prompt functionality.
@@ -137,7 +137,7 @@ func (c *ConfirmDialog) RenderOverlay(width int) string {
 			detailLines = append(detailLines, WarningIconStyle.Render(plain))
 		}
 		if d.UndoHint {
-			plain := "  Undo available (Ctrl+Z)"
+			plain := "  Undo available (u)"
 			if w := lipgloss.Width(plain); w > maxPlainWidth {
 				maxPlainWidth = w
 			}

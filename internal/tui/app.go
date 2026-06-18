@@ -47,7 +47,6 @@ const (
 	ViewInboxProcessor
 	ViewTagSelector
 	ViewBulkTagSelector
-	ViewUndoHistory
 	ViewTaskComments
 	ViewCommandPalette
 	ViewBulkEdit

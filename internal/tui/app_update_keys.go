@@ -268,11 +268,6 @@ func (m *AppModel) handleGlobalKeyPress(msg tea.KeyPressMsg) (bool, tea.Cmd) { /
 		if cmd := m.handleRedoToggle(); cmd != nil {
 			return true, cmd
 		}
-	case "ctrl+z":
-		if !m.hasActiveTextInput() && m.currentProject != nil && m.currentView() != ViewUndoHistory {
-			project := m.currentProject
-			return true, func() tea.Msg { return ShowUndoHistoryMsg{Project: project} }
-		}
 	case "ctrl+x":
 		if !m.hasActiveTextInput() {
 			return true, func() tea.Msg { return ShowProjectPickerMsg{} }

@@ -180,7 +180,6 @@ func (m *CommandPaletteModel) loadAllItems() []PaletteItem {
 		{"Global Notes", "Notes not tied to any project", ViewGlobalNotes},
 		{"Workflow Rules", "Manage workflow automation rules", ViewWorkflowRules},
 		{"Settings", "Application preferences and configuration", ViewSettings},
-		{"Undo History", "View and restore previous changes", ViewUndoHistory},
 	}
 	for _, v := range viewItems {
 		items = append(items, PaletteItem{

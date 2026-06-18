@@ -126,13 +126,13 @@ func (m *AppModel) setUndoableStatus(msg string, undoCb func() tea.Cmd) tea.Cmd 
 	})
 }
 
-// formatUndoToast renders the canonical "<action> '<context>' · u to undo · ⌃Z for history"
-// toast string. The context is omitted if empty, producing "<action> · u to undo · ⌃Z for history".
+// formatUndoToast renders the canonical "<action> '<context>' · u to undo"
+// toast string. The context is omitted if empty, producing "<action> · u to undo".
 func formatUndoToast(action, context string) string {
 	if context == "" {
-		return fmt.Sprintf("%s · u to undo · ⌃Z for history", action)
+		return fmt.Sprintf("%s · u to undo", action)
 	}
-	return fmt.Sprintf("%s '%s' · u to undo · ⌃Z for history", action, context)
+	return fmt.Sprintf("%s '%s' · u to undo", action, context)
 }
 
 // formatSuccessWithNext renders "<action> — <nextHint>" for status messages that guide the

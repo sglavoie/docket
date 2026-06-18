@@ -284,8 +284,5 @@ func rebuildMiscStyles() {
 	BoldSecondaryStyle = BoldStyle.Foreground(ColorSecondary)
 	BoldPrimaryUnderlineStyle = BoldStyle.Foreground(ColorPrimary).Underline(true)
 	PurpleStyle = lipgloss.NewStyle().Foreground(ColorPurple)
-	DiffAddStyle = lipgloss.NewStyle().Foreground(ColorSuccess)
-	DiffRemoveStyle = lipgloss.NewStyle().Foreground(ColorError)
-	DiffContextStyle = lipgloss.NewStyle().Foreground(ColorDiffContext)
 	alertIndicatorStyle = lipgloss.NewStyle().Foreground(ColorAccent).Bold(true)
 }

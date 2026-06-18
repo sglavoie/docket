@@ -27,7 +27,6 @@ var (
 	ColorHighlight   = lipgloss.Color("#e0af68")
 	ColorBackground  = lipgloss.Color("#1a1b26")
 	ColorBorder      = lipgloss.Color("#565f89")
-	ColorDiffContext = lipgloss.Color("#8f98c7")
 	ColorBadgeText   = lipgloss.Color("#8f98c7")
 	ColorAccent      = lipgloss.Color("#e0af68")
 	ColorSelectedBg  = lipgloss.Color("#33467c")

@@ -19,10 +19,6 @@ var (
 				BorderForeground(ColorPurple).
 				Padding(1, 2)
 
-	DiffAddStyle     = lipgloss.NewStyle().Foreground(ColorSuccess)
-	DiffRemoveStyle  = lipgloss.NewStyle().Foreground(ColorError)
-	DiffContextStyle = lipgloss.NewStyle().Foreground(ColorDiffContext)
-
 	FocusIndicatorStyle = lipgloss.NewStyle().Foreground(ColorPrimary)
 	FocusIndicator      = FocusIndicatorStyle.Render("▐")
 	PinnedMarker        = lipgloss.NewStyle().Foreground(ColorSuccess).Bold(true).Render("·")

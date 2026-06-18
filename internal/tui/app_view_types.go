@@ -32,7 +32,6 @@ var viewTypeNames = map[ViewType]string{
 	ViewInboxProcessor:        "InboxProcessor",
 	ViewTagSelector:           "TagSelector",
 	ViewBulkTagSelector:       "BulkTagSelector",
-	ViewUndoHistory:           "UndoHistory",
 	ViewTaskComments:          "TaskComments",
 	ViewCommandPalette:        "CommandPalette",
 	ViewBulkEdit:              "BulkEdit",

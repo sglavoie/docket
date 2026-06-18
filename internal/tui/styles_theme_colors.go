@@ -119,7 +119,6 @@ func rebuildPalette(p config.PaletteColors) {
 
 	ColorBadgeText = ColorMuted
 	ColorLightGray = ColorMuted
-	ColorDiffContext = ColorMuted
 	ColorSubtleBorder = ColorBorder
 
 	ColorPriority1Title = fallback(p.Priority1Title, d.Priority1Title)

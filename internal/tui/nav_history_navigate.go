@@ -240,8 +240,6 @@ func (m *AppModel) reconstructProjectView(entry NavEntry) tea.Cmd {
 		m.restoreOutlinerToggleState()
 		m.restoreOutlinerFilterState()
 		m.showView(ViewOutliner, m.outliner)
-	case ViewUndoHistory:
-		m.showView(ViewUndoHistory, NewUndoHistoryModel(project))
 	case ViewProjectFocusView:
 		m.showView(ViewProjectFocusView, NewProjectFocusViewModel(project, m.config))
 	case ViewMetricsDashboard:

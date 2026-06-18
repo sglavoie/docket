@@ -44,35 +44,10 @@ func TestHandleTaskMessagesCloseDependencyViewer(t *testing.T) {
 	}
 }
 
-func TestHandleTaskMessagesShowUndoHistory(t *testing.T) {
-	app, project := newTestAppModelWithProject()
-
-	msg := ShowUndoHistoryMsg{Project: project}
-	handled, _ := app.handleTaskMessages(msg)
-
-	if !handled {
-		t.Error("ShowUndoHistoryMsg should be handled")
-	}
-	if app.currentView() != ViewUndoHistory {
-		t.Errorf("currentView should be UndoHistory, got %v", app.currentView())
-	}
-}
-
-func TestHandleTaskMessagesCloseUndoHistory(t *testing.T) {
-	app := newTestAppModel()
-	app.pushView(ViewUndoHistory)
-
-	app.Update(CloseUndoHistoryMsg{})
-
-	if app.currentView() != ViewDashboard {
-		t.Errorf("currentView should be Dashboard after closing undo history, got %v", app.currentView())
-	}
-}
-
 func TestHandleTaskMessagesUndoPerformed(t *testing.T) {
 	app, project := newTestAppModelWithProject()
 	app.projectTree = NewProjectTreeModel(project, app.config, nil)
-	app.pushView(ViewUndoHistory)
+	app.pushView(ViewProjectTree)
 
 	msg := UndoPerformedMsg{Action: "Task deleted"}
 	handled, _ := app.handleTaskMessages(msg)
@@ -80,12 +55,30 @@ func TestHandleTaskMessagesUndoPerformed(t *testing.T) {
 	if !handled {
 		t.Error("UndoPerformedMsg should be handled")
 	}
-	// Viewer stays open after undo — user can continue undoing/redoing
-	if app.currentView() != ViewUndoHistory {
-		t.Errorf("currentView should remain UndoHistory after undo, got %v", app.currentView())
+	if app.currentView() != ViewProjectTree {
+		t.Errorf("currentView should remain ProjectTree after undo, got %v", app.currentView())
 	}
 	if app.statusMessage != "Undid: Task deleted" {
 		t.Errorf("statusMessage should contain undo action, got %q", app.statusMessage)
+	}
+}
+
+func TestHandleTaskMessagesRedoPerformed(t *testing.T) {
+	app, project := newTestAppModelWithProject()
+	app.projectTree = NewProjectTreeModel(project, app.config, nil)
+	app.pushView(ViewProjectTree)
+
+	msg := RedoPerformedMsg{Action: "Task restored"}
+	handled, _ := app.handleTaskMessages(msg)
+
+	if !handled {
+		t.Error("RedoPerformedMsg should be handled")
+	}
+	if app.currentView() != ViewProjectTree {
+		t.Errorf("currentView should remain ProjectTree after redo, got %v", app.currentView())
+	}
+	if app.statusMessage != "Redo: Task restored" {
+		t.Errorf("statusMessage should contain redo action, got %q", app.statusMessage)
 	}
 }
 
