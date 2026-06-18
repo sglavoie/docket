@@ -2,8 +2,11 @@ package tui
 
 import (
 	"fmt"
+	"sort"
 
 	tea "charm.land/bubbletea/v2"
+
+	"github.com/google/uuid"
 
 	"github.com/sglavoie/tt/internal/models"
 )
@@ -18,6 +21,12 @@ type TaskProjectRef struct {
 type TaskProjectGroup struct {
 	Project *models.Project
 	Items   []TaskProjectRef
+}
+
+type changedTaskProjectGroup struct {
+	group      TaskProjectGroup
+	taskIDs    []string
+	prevStates map[string]*models.Task
 }
 
 // bulkTaskItem is kept as a compatibility alias for existing view helpers.
@@ -98,6 +107,42 @@ func saveAffectedProjectsAsync(refs []TaskProjectRef, successMsg string) tea.Cmd
 	)
 }
 
+func workflowGroupMetadata(groups []TaskProjectGroup) (string, []string) {
+	seen := make(map[string]bool, len(groups))
+	projectIDs := make([]string, 0, len(groups))
+	for _, group := range groups {
+		if group.Project == nil || group.Project.ID == "" || seen[group.Project.ID] {
+			continue
+		}
+		seen[group.Project.ID] = true
+		projectIDs = append(projectIDs, group.Project.ID)
+	}
+	if len(projectIDs) <= 1 {
+		return "", nil
+	}
+	sort.Strings(projectIDs)
+	return uuid.New().String(), projectIDs
+}
+
+func taskProjectGroupsFromChanged(changed []changedTaskProjectGroup) []TaskProjectGroup {
+	groups := make([]TaskProjectGroup, 0, len(changed))
+	for _, item := range changed {
+		groups = append(groups, item.group)
+	}
+	return groups
+}
+
+func sortedTaskIDsFromSet(ids map[string]bool) []string {
+	taskIDs := make([]string, 0, len(ids))
+	for id := range ids {
+		if id != "" {
+			taskIDs = append(taskIDs, id)
+		}
+	}
+	sort.Strings(taskIDs)
+	return taskIDs
+}
+
 // finishTaskBulkSelection clears task multi-select state after a successful bulk action.
 func finishTaskBulkSelection(state *MultiSelectState, statusMsg *string, msg string) {
 	if state == nil || statusMsg == nil {
@@ -117,22 +162,32 @@ func taskOpsApplyBulk(
 ) (int, error) {
 	byProject := groupBulkItemsByProject(items)
 	total := 0
+	var changedGroups []changedTaskProjectGroup
 
 	for _, group := range byProject {
 		project := group.Project
-		taskIDs := taskIDsFromTaskRefs(group.Items)
+		var changedIDs []string
 
 		for _, item := range group.Items {
 			if mutate(project, item.Task.ID) {
 				total++
+				changedIDs = append(changedIDs, item.Task.ID)
 			}
 		}
+		if len(changedIDs) > 0 {
+			changedGroups = append(changedGroups, changedTaskProjectGroup{group: group, taskIDs: changedIDs})
+		}
+	}
 
-		undoCtx := fmt.Sprintf("%d tasks", len(group.Items))
+	groupID, groupProjectIDs := workflowGroupMetadata(taskProjectGroupsFromChanged(changedGroups))
+	for _, changed := range changedGroups {
+		undoCtx := fmt.Sprintf("%d tasks", len(changed.taskIDs))
 		opts := BuildWorkflowOpts(
-			v.getPersister(), project, v.getConfig(), v.getConfigManager(),
-			nil, undoAction, undoCtx, taskIDs,
+			v.getPersister(), changed.group.Project, v.getConfig(), v.getConfigManager(),
+			changed.prevStates, undoAction, undoCtx, changed.taskIDs,
 		)
+		opts.UndoGroupID = groupID
+		opts.UndoGroupProjectIDs = groupProjectIDs
 		if err := persistWithWorkflow(opts); err != nil {
 			return total, err
 		}

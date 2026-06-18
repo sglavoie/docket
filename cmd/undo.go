@@ -32,26 +32,27 @@ func init() {
 }
 
 func runUndo(cmd *cobra.Command, args []string) error {
-	project, _, _, err := LoadCurrentProject()
+	project, cfg, configManager, err := LoadCurrentProject()
 	if err != nil {
 		return err
 	}
 
 	// Try multi-level undo system first
 	if storage.UndoHistoryExists(project) {
-		actionDesc, err := storage.PerformUndo(project)
+		projectsToReload, grouped := restoreProjectsForTopHistoryEntry(project, cfg.Projects, loadUndoHistoryEntries)
+		actionDesc, err := storage.PerformUndoForProjects(project, cfg.Projects)
 		if err != nil {
-			return fmt.Errorf("undo failed: %w", err)
+			return restoreCommandError("undo", grouped, err)
 		}
 
-		// Reload project and re-run side effects (auto-unblock, recurring
+		// Reload restored project(s) and re-run side effects (auto-unblock, recurring
 		// generation, reorder) so the restored state is consistent — matching
 		// the TUI's reapplySideEffects behavior.
-		if err := storage.LoadProject(project); err != nil {
-			return fmt.Errorf("failed to reload project after undo: %w", err)
+		if err := reapplyRestoreSideEffectsAndSave(projectsToReload, "undo"); err != nil {
+			return err
 		}
-		if err := reapplySideEffectsAndSave(project); err != nil {
-			return fmt.Errorf("failed to reapply side effects after undo: %w", err)
+		if err := repairConfigTaskRefsToLoadedProjects(configManager, cfg, projectsToReload); err != nil {
+			return err
 		}
 
 		fmt.Printf("Undone: %s\n", actionDesc)
@@ -65,6 +66,88 @@ func runUndo(cmd *cobra.Command, args []string) error {
 	}
 
 	return fmt.Errorf("no undo history available for project '%s'", project.Name)
+}
+
+type historyLoader func(*models.Project) ([]storage.UndoEntry, error)
+
+func loadUndoHistoryEntries(project *models.Project) ([]storage.UndoEntry, error) {
+	return storage.LoadUndoHistory(project)
+}
+
+func loadRedoHistoryEntries(project *models.Project) ([]storage.UndoEntry, error) {
+	return storage.LoadRedoHistory(project)
+}
+
+func restoreProjectsForTopHistoryEntry(project *models.Project, candidates []*models.Project, load historyLoader) ([]*models.Project, bool) {
+	entries, err := load(project)
+	if err != nil || len(entries) == 0 {
+		return []*models.Project{project}, false
+	}
+
+	latest := entries[0]
+	if latest.GroupID == "" && len(latest.GroupProjectIDs) == 0 {
+		return []*models.Project{project}, false
+	}
+
+	projectsByID := make(map[string]*models.Project, len(candidates)+1)
+	if id := restoreProjectID(project); id != "" {
+		projectsByID[id] = project
+	}
+	for _, candidate := range candidates {
+		if id := restoreProjectID(candidate); id != "" {
+			projectsByID[id] = candidate
+		}
+	}
+
+	projects := make([]*models.Project, 0, len(latest.GroupProjectIDs))
+	seen := make(map[string]bool, len(latest.GroupProjectIDs))
+	for _, id := range latest.GroupProjectIDs {
+		if seen[id] {
+			continue
+		}
+		seen[id] = true
+		if candidate := projectsByID[id]; candidate != nil {
+			projects = append(projects, candidate)
+		}
+	}
+	if len(projects) == 0 {
+		projects = append(projects, project)
+	}
+	return projects, true
+}
+
+func restoreProjectID(project *models.Project) string {
+	if project == nil {
+		return ""
+	}
+	if project.ID != "" {
+		return project.ID
+	}
+	return project.Slug
+}
+
+func restoreCommandError(label string, grouped bool, err error) error {
+	if !grouped {
+		return fmt.Errorf("%s failed: %w", label, err)
+	}
+	return fmt.Errorf(
+		"%s failed: grouped history is incomplete or diverged; grouped restore aborted. "+
+			"Ensure every project from the original grouped change is still configured and has matching history, then try again: %w",
+		label,
+		err,
+	)
+}
+
+func reapplyRestoreSideEffectsAndSave(projects []*models.Project, label string) error {
+	for _, project := range projects {
+		if err := storage.LoadProject(project); err != nil {
+			return fmt.Errorf("failed to reload project after %s: %w", label, err)
+		}
+		if err := reapplySideEffectsAndSave(project); err != nil {
+			return fmt.Errorf("failed to reapply side effects after %s: %w", label, err)
+		}
+	}
+	return nil
 }
 
 // reapplySideEffectsAndSave re-runs state-derived side effects after an

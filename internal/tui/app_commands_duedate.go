@@ -29,7 +29,7 @@ func (m *AppModel) dueDateCommands() []Command {
 						t.DueDate = &today
 						t.HasTime = false
 					})
-					return TaskPropertyChangedMsg{Task: task, NeedsSave: true}
+					return taskPropertyChangedWithUndo(task, "Set Due Date")
 				}
 				return StatusMsg("No task selected")
 			},
@@ -52,7 +52,7 @@ func (m *AppModel) dueDateCommands() []Command {
 						t.DueDate = &tomorrow
 						t.HasTime = false
 					})
-					return TaskPropertyChangedMsg{Task: task, NeedsSave: true}
+					return taskPropertyChangedWithUndo(task, "Set Due Date")
 				}
 				return StatusMsg("No task selected")
 			},
@@ -75,7 +75,7 @@ func (m *AppModel) dueDateCommands() []Command {
 						t.DueDate = &nextWeek
 						t.HasTime = false
 					})
-					return TaskPropertyChangedMsg{Task: task, NeedsSave: true}
+					return taskPropertyChangedWithUndo(task, "Set Due Date")
 				}
 				return StatusMsg("No task selected")
 			},
@@ -98,7 +98,7 @@ func (m *AppModel) dueDateCommands() []Command {
 						t.DueDate = &nextMonth
 						t.HasTime = false
 					})
-					return TaskPropertyChangedMsg{Task: task, NeedsSave: true}
+					return taskPropertyChangedWithUndo(task, "Set Due Date")
 				}
 				return StatusMsg("No task selected")
 			},
@@ -119,7 +119,7 @@ func (m *AppModel) dueDateCommands() []Command {
 						t.DueDate = nil
 						t.HasTime = false
 					})
-					return TaskPropertyChangedMsg{Task: task, NeedsSave: true}
+					return taskPropertyChangedWithUndo(task, "Set Due Date")
 				}
 				return StatusMsg("No task selected")
 			},

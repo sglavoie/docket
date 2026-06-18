@@ -187,6 +187,7 @@ func (m *AppModel) handleSaveTimeout() tea.Cmd {
 func (m *AppModel) handleSaveComplete(msg SaveCompleteMsg) tea.Cmd {
 	m.isLoading = false
 	m.loadingMessage = ""
+	m.clearToggleHistory()
 	m.setSuccessStatus(msg.SuccessMessage)
 	saveCmds := m.refreshTaskViewsAfterSave()
 	saveCmds = append(saveCmds, defaultStatusTimeout())

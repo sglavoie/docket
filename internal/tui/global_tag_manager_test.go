@@ -234,6 +234,8 @@ func TestGlobalTagRenamePersistsCatalogDefinitionsAndTaskUsages(t *testing.T) {
 	saveGlobalTagTestProject(t, taskProject)
 
 	cfg := testutil.NewTestConfig()
+	depth := 10
+	cfg.UndoHistoryDepth = &depth
 	cfg.Projects = []*models.Project{catalogProject, taskProject}
 
 	manager := NewGlobalTagManagerModel(cfg)
@@ -265,6 +267,40 @@ func TestGlobalTagRenamePersistsCatalogDefinitionsAndTaskUsages(t *testing.T) {
 	}
 	if !taskProject.Tasks[0].HasTag("modern") || taskProject.Tasks[0].HasTag("legacy") {
 		t.Fatalf("task tags after rename = %v, want modern only", taskProject.Tasks[0].Tags)
+	}
+
+	assertGroupedTopUndo(t, catalogProject, taskProject)
+
+	if _, err := storage.PerformUndoForProjects(catalogProject, []*models.Project{catalogProject, taskProject}); err != nil {
+		t.Fatalf("PerformUndoForProjects: %v", err)
+	}
+	if err := storage.LoadProject(catalogProject); err != nil {
+		t.Fatalf("LoadProject(catalog after undo): %v", err)
+	}
+	if !catalogProject.HasCatalogTag("legacy") || catalogProject.HasCatalogTag("modern") {
+		t.Fatalf("catalog tags after undo = %v, want legacy only", catalogProject.Tags)
+	}
+	if err := storage.LoadProject(taskProject); err != nil {
+		t.Fatalf("LoadProject(tasks after undo): %v", err)
+	}
+	if !taskProject.Tasks[0].HasTag("legacy") || taskProject.Tasks[0].HasTag("modern") {
+		t.Fatalf("task tags after undo = %v, want legacy only", taskProject.Tasks[0].Tags)
+	}
+
+	if _, err := storage.PerformRedoForProjects(catalogProject, []*models.Project{catalogProject, taskProject}); err != nil {
+		t.Fatalf("PerformRedoForProjects: %v", err)
+	}
+	if err := storage.LoadProject(catalogProject); err != nil {
+		t.Fatalf("LoadProject(catalog after redo): %v", err)
+	}
+	if !catalogProject.HasCatalogTag("modern") || catalogProject.HasCatalogTag("legacy") {
+		t.Fatalf("catalog tags after redo = %v, want modern only", catalogProject.Tags)
+	}
+	if err := storage.LoadProject(taskProject); err != nil {
+		t.Fatalf("LoadProject(tasks after redo): %v", err)
+	}
+	if !taskProject.Tasks[0].HasTag("modern") || taskProject.Tasks[0].HasTag("legacy") {
+		t.Fatalf("task tags after redo = %v, want modern only", taskProject.Tasks[0].Tags)
 	}
 }
 

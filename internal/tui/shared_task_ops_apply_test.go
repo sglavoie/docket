@@ -8,7 +8,7 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 )
 
-func TestApplyDeleteTask_PersistsWhenAllTasksDeleted(t *testing.T) {
+func TestApplyDeleteTask_RecordsUndoWhenAllTasksDeleted(t *testing.T) {
 	// Create a project with a single task
 	project, err := models.NewProject("proj-1", "TestProject", t.TempDir())
 	if err != nil {
@@ -25,12 +25,16 @@ func TestApplyDeleteTask_PersistsWhenAllTasksDeleted(t *testing.T) {
 	// Set up mock persister
 	mock := NewMockPersister()
 
-	// Create a no-op persistFn (simulates workflow persist but does nothing for
-	// the mutation path — the important thing is the direct save path is tested)
-	pf := func(proj *models.Project, taskID string, mutate func(*models.Task)) TaskOpResult {
-		t.Fatal("persistFn should not be called when all tasks are deleted")
-		return TaskOpResult{}
-	}
+	pf := workflowPersist(func() WorkflowSaveOptions {
+		return WorkflowSaveOptions{
+			Persister:   mock,
+			Project:     project,
+			UndoAction:  "Delete Task",
+			UndoContext: "#1 Only task",
+			UndoDepth:   5,
+			UndoTaskIDs: []string{"task-1"},
+		}
+	})
 
 	// Delete the only task
 	result := applyDeleteTask(pf, mock, project, "task-1")
@@ -45,12 +49,30 @@ func TestApplyDeleteTask_PersistsWhenAllTasksDeleted(t *testing.T) {
 		t.Fatalf("expected 0 tasks, got %d", len(project.Tasks))
 	}
 
-	// Verify SaveWithBackupSync was called (the bug was that it wasn't)
-	if len(mock.SaveWithBackupSyncCall) != 1 {
-		t.Fatalf("expected SaveWithBackupSync to be called once, got %d calls", len(mock.SaveWithBackupSyncCall))
+	if len(mock.SaveWithBackupSyncCall) != 0 {
+		t.Fatalf("expected raw SaveWithBackupSync not to be called, got %d calls", len(mock.SaveWithBackupSyncCall))
 	}
-	if mock.SaveWithBackupSyncCall[0].ID != "proj-1" {
-		t.Errorf("expected SaveWithBackupSync to be called with project 'proj-1', got %q", mock.SaveWithBackupSyncCall[0].ID)
+	if len(mock.RecordUndoSnapshotOptionsCalls) != 1 {
+		t.Fatalf("expected one undo snapshot, got %d", len(mock.RecordUndoSnapshotOptionsCalls))
+	}
+	undoOpts := mock.RecordUndoSnapshotOptionsCalls[0]
+	if undoOpts.Action != "Delete Task" {
+		t.Errorf("undo action = %q, want Delete Task", undoOpts.Action)
+	}
+	if undoOpts.Context != "#1 Only task" {
+		t.Errorf("undo context = %q, want #1 Only task", undoOpts.Context)
+	}
+	if undoOpts.MaxDepth != 5 {
+		t.Errorf("undo depth = %d, want 5", undoOpts.MaxDepth)
+	}
+	if len(undoOpts.TaskIDs) != 1 || undoOpts.TaskIDs[0] != "task-1" {
+		t.Errorf("undo task IDs = %v, want [task-1]", undoOpts.TaskIDs)
+	}
+	if len(mock.BackupCalls) != 1 {
+		t.Fatalf("expected one backup call, got %d", len(mock.BackupCalls))
+	}
+	if len(mock.SaveCalls) != 1 {
+		t.Fatalf("expected one save call, got %d", len(mock.SaveCalls))
 	}
 }
 
@@ -79,6 +101,11 @@ func TestApplyDeleteTask_UsesWorkflowPersistWhenTasksRemain(t *testing.T) {
 	pfCalled := false
 	pf := func(proj *models.Project, taskID string, mutate func(*models.Task)) TaskOpResult {
 		pfCalled = true
+		task := proj.GetTaskByID(taskID)
+		if task == nil {
+			return TaskOpResult{StatusMessage: "Task no longer exists in project"}
+		}
+		mutate(task)
 		return TaskOpResult{}
 	}
 
@@ -316,9 +343,7 @@ func TestApplyDeleteTask_ClearsDanglingRefsWhenAllDeleted(t *testing.T) {
 	project.BuildTaskTree()
 
 	mock := NewMockPersister()
-	pf := func(proj *models.Project, taskID string, mutate func(*models.Task)) TaskOpResult {
-		return TaskOpResult{}
-	}
+	pf := passthroughPersist(project)
 
 	// Delete the epic (which should cascade to the child via collectDescendantIDs)
 	result := applyDeleteTask(pf, mock, project, "epic-1")
@@ -331,9 +356,10 @@ func TestApplyDeleteTask_ClearsDanglingRefsWhenAllDeleted(t *testing.T) {
 		t.Fatalf("expected 0 tasks after deleting epic with child, got %d", len(project.Tasks))
 	}
 
-	// SaveWithBackupSync should have been called since no tasks remain
-	if len(mock.SaveWithBackupSyncCall) != 1 {
-		t.Fatalf("expected SaveWithBackupSync to be called once, got %d", len(mock.SaveWithBackupSyncCall))
+	// The delete mutation now runs through the provided persist pipeline even
+	// when no tasks remain, so this helper must not fall back to raw sync save.
+	if len(mock.SaveWithBackupSyncCall) != 0 {
+		t.Fatalf("expected SaveWithBackupSync not to be called, got %d", len(mock.SaveWithBackupSyncCall))
 	}
 }
 

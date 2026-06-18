@@ -19,6 +19,7 @@ func (m *AppModel) handleDependencyMessages(msg tea.Msg) (bool, tea.Cmd) {
 	case DependencySelectorDoneMsg:
 		m.popView()
 		if msg.HasChanges && msg.Task != nil && msg.Project != nil {
+			undoOpts := m.taskMutationSaveOptions(msg.Task, "Edit Dependencies")
 			if !msg.Project.MutateTask(msg.Task.ID, func(t *models.Task) {
 				t.DependsOn = msg.NewDepsOn
 			}) {
@@ -26,7 +27,7 @@ func (m *AppModel) handleDependencyMessages(msg tea.Msg) (bool, tea.Cmd) {
 			}
 			return true, tea.Batch(
 				startLoading("Saving..."),
-				SaveProjectAsync(msg.Project, "Dependencies updated"),
+				m.appPersister().SaveWithBackupOptions(msg.Project, "Dependencies updated", undoOpts),
 			)
 		}
 		return true, nil

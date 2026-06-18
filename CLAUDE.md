@@ -101,6 +101,14 @@ Non-destructive success messages use the plain (2s) status path. Do not bind `u`
 
 Dashboard archived mode is the view-local recovery exception for `u`: it appears only after toggling archived projects with `a`, and it must dispatch `ProjectArchiveRequestMsg{Archive: false}` so confirmation handles the restore. Keep archived projects discoverable with `ARCHIVED` markers in project-level search, while active task workflows remain active-only.
 
+### Persistent Undo/Redo Contract
+
+The persistent undo model is linear, matching Vim-style `u` / `ctrl+r`: every undoable user-visible `tasks.md` mutation records a pre-mutation snapshot, undo moves that entry to redo while restoring the snapshot, redo moves it back, and any new mutation clears redo for that project history. `TaskIDs` means targeted task restore; leave it nil when project-level metadata or whole-file changes must be restored.
+
+Grouped transactions use `UndoSnapshotOptions.GroupID` plus the same sorted `GroupProjectIDs` on every touched project. CLI and TUI restore through `storage.PerformUndoForProjects` / `PerformRedoForProjects`; grouped restores preflight every project and abort on missing, diverged, or unavailable history rather than partially applying files. After task moves/restores, repair config references such as focus queue, daily plan, and recent visits to the project where each task now exists.
+
+New CLI mutations should save through `cmd.SaveProject` with `SaveOptions{UndoAction, UndoContext, ...}` or record `storage.RecordUndoSnapshotWithOptions` / `recordGroupedUndoSnapshots` before custom multi-project saves. New TUI mutations should use `ProjectSaveOptions`, `WorkflowSaveOptions`, `SaveProjectAsyncWithOptions`, `SaveMultipleProjectsAsyncWithOptions`, or `recordTUIUndoSnapshotWithGroup` before any direct save. Do not add raw `storage.SaveProject`, `storage.SaveProjectLocked`, `saveProjectSync`, or persister `Save` calls for user-visible task/project mutations unless the path is maintenance/restore-only and is explicitly justified in `internal/storage/undo_raw_save_audit_test.go`.
+
 ### TUI Column Alignment
 
 List-row renderers (Focus Board, Kanban, Outliner, All-Tasks, Daily/Weekly review, Due Date, Priority, Global Search, etc.) share badge column widths through `ColumnLayout` in `column_layout.go`. The struct tracks `PriorityWidth`, `StatusWidth`, `TypeWidth`, `StageWidth`, and `ProjectWidth`; call `ComputeBadgeWidths(...)` once per render pass and pass the result down to the row renderer in `shared_render.go`. Use `PadBadge` for consistent left-padding of empty slots — never hand-pad strings.

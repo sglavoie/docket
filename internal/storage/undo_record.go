@@ -16,7 +16,17 @@ import (
 // taskIDs identifies the tasks explicitly changed by the user; when non-nil,
 // undo will only restore those tasks instead of replacing the entire file.
 func RecordUndoSnapshot(project *models.Project, action, context string, maxDepth int, taskIDs []string) error {
-	if maxDepth <= 0 {
+	return RecordUndoSnapshotWithOptions(project, UndoSnapshotOptions{
+		Action:   action,
+		Context:  context,
+		MaxDepth: maxDepth,
+		TaskIDs:  taskIDs,
+	})
+}
+
+// RecordUndoSnapshotWithOptions captures the current state before a mutation.
+func RecordUndoSnapshotWithOptions(project *models.Project, opts UndoSnapshotOptions) error {
+	if opts.MaxDepth <= 0 {
 		return nil // Undo disabled
 	}
 
@@ -62,11 +72,13 @@ func RecordUndoSnapshot(project *models.Project, action, context string, maxDept
 
 	// Add new entry
 	meta.Entries = append(meta.Entries, UndoEntry{
-		Num:       nextNum,
-		Action:    action,
-		Context:   context,
-		Timestamp: time.Now(),
-		TaskIDs:   taskIDs,
+		Num:             nextNum,
+		Action:          opts.Action,
+		Context:         opts.Context,
+		Timestamp:       time.Now(),
+		TaskIDs:         cloneUndoStringSlice(opts.TaskIDs),
+		GroupID:         opts.GroupID,
+		GroupProjectIDs: cloneUndoStringSlice(opts.GroupProjectIDs),
 	})
 
 	redoPathsToDelete := make([]string, 0, len(meta.RedoEntries))
@@ -76,11 +88,11 @@ func RecordUndoSnapshot(project *models.Project, action, context string, maxDept
 	meta.RedoEntries = []UndoEntry{}
 
 	var prunedPathsToDelete []string
-	if len(meta.Entries) > maxDepth {
+	if len(meta.Entries) > opts.MaxDepth {
 		sort.Slice(meta.Entries, func(i, j int) bool {
 			return meta.Entries[i].Num < meta.Entries[j].Num
 		})
-		toRemove := len(meta.Entries) - maxDepth
+		toRemove := len(meta.Entries) - opts.MaxDepth
 		prunedPathsToDelete = make([]string, 0, toRemove)
 		for i := range toRemove {
 			prunedPathsToDelete = append(prunedPathsToDelete, getSnapshotPath(project, meta.Entries[i].Num))

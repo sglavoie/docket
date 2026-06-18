@@ -30,12 +30,12 @@ func projectArchiveRequestCmd(project *models.Project, archive bool) tea.Cmd {
 
 // performUndo restores the project from the most recent undo snapshot.
 func (m *ProjectTreeModel) performUndo() tea.Cmd {
-	return performUndoCmd(m.projectService, m.project)
+	return performUndoForProjectsCmd(m.projectService, m.project, activeUndoProjects(m.config), repairConfigTaskRefsAfterRestore(m.configManager, m.config))
 }
 
 // performRedo restores the project from the most recent redo snapshot.
 func (m *ProjectTreeModel) performRedo() tea.Cmd {
-	return performRedoCmd(m.projectService, m.project)
+	return performRedoForProjectsCmd(m.projectService, m.project, activeUndoProjects(m.config), repairConfigTaskRefsAfterRestore(m.configManager, m.config))
 }
 
 // buildWorkflowOpts constructs a WorkflowSaveOptions from the current model

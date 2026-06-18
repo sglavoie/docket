@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/logging"
@@ -38,6 +39,8 @@ type SaveOptions struct {
 // Prints warnings to stderr if there are rule conflicts.
 func SaveProject(project *models.Project, opts *SaveOptions) error {
 	project.CheckAndAutoUnblock()
+
+	workflowGroupedUndoRecorded := false
 
 	// Evaluate workflow rules if requested
 	if opts != nil && opts.EvaluateRules {
@@ -75,9 +78,23 @@ func SaveProject(project *models.Project, opts *SaveOptions) error {
 
 			// Process deferred moves (move tasks to other projects)
 			if len(result.DeferredMoves) > 0 {
-				if err := processDeferredMoves(project, result.DeferredMoves, opts.Config, opts.ConfigManager); err != nil {
+				undoOpts := deferredMoveUndoOptions{}
+				if opts.Config.UndoHistoryDepth != nil {
+					undoAction := opts.UndoAction
+					if undoAction == "" {
+						undoAction = "Workflow Move to Project"
+					}
+					undoOpts = deferredMoveUndoOptions{
+						Action:  undoAction,
+						Context: opts.UndoContext,
+						Depth:   *opts.Config.UndoHistoryDepth,
+					}
+				}
+				recorded, err := processDeferredMovesWithUndo(project, result.DeferredMoves, opts.Config, opts.ConfigManager, undoOpts)
+				if err != nil {
 					return fmt.Errorf("workflow move_to_project failed: %w", err)
 				}
+				workflowGroupedUndoRecorded = workflowGroupedUndoRecorded || recorded
 			}
 
 			// Persist trigger counts if any rules fired
@@ -116,7 +133,7 @@ func SaveProject(project *models.Project, opts *SaveOptions) error {
 	project.ReorderRootTasksByCompletion()
 
 	// Record undo snapshot before backup+save so it captures the pre-mutation state
-	if opts != nil && opts.UndoAction != "" && opts.Config != nil && opts.Config.UndoHistoryDepth != nil && *opts.Config.UndoHistoryDepth > 0 {
+	if opts != nil && opts.UndoAction != "" && !workflowGroupedUndoRecorded && opts.Config != nil && opts.Config.UndoHistoryDepth != nil && *opts.Config.UndoHistoryDepth > 0 {
 		if err := storage.RecordUndoSnapshot(project, opts.UndoAction, opts.UndoContext, *opts.Config.UndoHistoryDepth, nil); err != nil {
 			logging.Warn("failed to record undo snapshot: %v", err)
 		}
@@ -180,20 +197,63 @@ func ProjectsToSelectorItems(projects []*models.Project, includeActive bool) []s
 // Validates all destinations exist and are loadable before making any changes,
 // so that a missing destination doesn't leave the source project partially modified.
 func processDeferredMoves(srcProject *models.Project, moves []workflow.DeferredMove, cfg *config.Config, _ *config.Manager) error {
+	_, err := processDeferredMovesWithUndo(srcProject, moves, cfg, nil, deferredMoveUndoOptions{})
+	return err
+}
+
+type deferredMoveUndoOptions struct {
+	Action  string
+	Context string
+	Depth   int
+}
+
+func processDeferredMovesWithUndo(srcProject *models.Project, moves []workflow.DeferredMove, cfg *config.Config, _ *config.Manager, undoOpts deferredMoveUndoOptions) (bool, error) {
 	// Phase 1: Validate and load all destination projects upfront.
 	destProjects := make(map[string]*models.Project, len(moves))
+	activeDestProjects := make(map[string]*models.Project, len(moves))
 	for _, move := range moves {
-		if _, ok := destProjects[move.Destination]; ok {
-			continue // already validated
+		destProject, ok := destProjects[move.Destination]
+		if !ok {
+			destProject = cfg.GetProject(move.Destination)
+			if destProject == nil {
+				return false, fmt.Errorf("destination project %q not found", move.Destination)
+			}
+			if err := storage.LoadProject(destProject); err != nil {
+				return false, fmt.Errorf("failed to load destination project %q: %w", move.Destination, err)
+			}
+			destProjects[move.Destination] = destProject
 		}
-		destProject := cfg.GetProject(move.Destination)
-		if destProject == nil {
-			return fmt.Errorf("destination project %q not found", move.Destination)
+		if deferredMoveTaskExists(srcProject, move.TaskID) {
+			activeDestProjects[move.Destination] = destProject
 		}
-		if err := storage.LoadProject(destProject); err != nil {
-			return fmt.Errorf("failed to load destination project %q: %w", move.Destination, err)
+	}
+
+	recordedUndo := false
+	if undoOpts.Depth > 0 && len(activeDestProjects) > 0 {
+		destinations := make([]string, 0, len(activeDestProjects))
+		for destination := range activeDestProjects {
+			destinations = append(destinations, destination)
 		}
-		destProjects[move.Destination] = destProject
+		sort.Strings(destinations)
+
+		projectsToSnapshot := make([]*models.Project, 0, len(destinations)+1)
+		projectsToSnapshot = append(projectsToSnapshot, srcProject)
+		for _, destination := range destinations {
+			projectsToSnapshot = append(projectsToSnapshot, activeDestProjects[destination])
+		}
+
+		action := undoOpts.Action
+		if action == "" {
+			action = "Workflow Move to Project"
+		}
+		context := undoOpts.Context
+		if context == "" {
+			context = fmt.Sprintf("%d workflow move(s)", len(moves))
+		}
+		if _, err := recordGroupedUndoSnapshots(projectsToSnapshot, action, context, undoOpts.Depth); err != nil {
+			return false, err
+		}
+		recordedUndo = true
 	}
 
 	// Phase 2: All destinations valid — perform the moves.
@@ -290,10 +350,19 @@ func processDeferredMoves(srcProject *models.Project, moves []workflow.DeferredM
 			}
 			return nil
 		}); err != nil {
-			return err
+			return false, err
 		}
 
 		Debugf("moved task %s to project %s", move.TaskID, move.Destination)
 	}
-	return nil
+	return recordedUndo, nil
+}
+
+func deferredMoveTaskExists(project *models.Project, taskID string) bool {
+	for _, task := range project.Tasks {
+		if task.ID == taskID {
+			return true
+		}
+	}
+	return false
 }

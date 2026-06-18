@@ -2,10 +2,10 @@ package tui
 
 import (
 	"fmt"
-	"strings"
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 )
 
@@ -198,9 +198,7 @@ func (m *OutlinerModel) crossHandleEnterKey() (tea.Model, tea.Cmd, bool) {
 	return m, nil, true
 }
 
-// crossHandleUndo handles the 'u' key in cross-project mode. For single-project
-// operations it uses snapshot-based undo (storage.PerformUndo) which enables
-// redo. For multi-project operations it falls back to backup-based restore.
+// crossHandleUndo handles the 'u' key in cross-project mode.
 //
 // Returns (model, cmd, true) when in cross-project mode (m.project == nil),
 // (nil, nil, false) otherwise.
@@ -215,82 +213,39 @@ func (m *OutlinerModel) crossHandleUndo(key string) (tea.Model, tea.Cmd, bool) {
 	// has undo history. This handles the case where the user presses u
 	// multiple times (crossUndoCtx was already cleared by the first undo).
 	if len(ids) == 0 {
-		// Check all loaded projects for undo history.
 		for _, proj := range m.loadedProjects {
 			if storage.UndoHistoryExists(proj) {
-				actionDesc, err := storage.PerformUndo(proj)
-				if err != nil {
-					m.setStatus(fmt.Sprintf("Undo failed: %s", err))
-				} else {
-					_ = m.projectService.Load(proj)
-					m.setStatus(fmt.Sprintf("Undid: %s", actionDesc))
-				}
-				m.rebuildRows()
-				return m, nil, true
+				return m.crossPerformUndo(proj)
 			}
 		}
 		m.setStatus("Nothing to undo")
 		return m, nil, true
 	}
 
-	// Single-project operation: use snapshot-based undo for redo support.
-	if len(ids) == 1 {
-		proj := m.crossResolveProject(ids[0])
-		if proj == nil {
-			m.setStatus("Undo failed: project not found")
-			m.crossUndoCtx.Clear()
-			m.rebuildRows()
-			return m, nil, true
+	for _, id := range ids {
+		proj := m.crossResolveProject(id)
+		if proj != nil {
+			return m.crossPerformUndo(proj)
 		}
-		actionDesc, err := storage.PerformUndo(proj)
-		if err != nil {
-			// Fallback to backup-based restore.
-			if backupErr := m.projectService.RestoreFromBackup(proj); backupErr != nil {
-				m.setStatus(fmt.Sprintf("Undo failed: %s", backupErr))
-			} else {
-				_ = m.projectService.Load(proj)
-				m.setStatus(fmt.Sprintf("Undo: restored %s", proj.Name))
-			}
-		} else {
-			_ = m.projectService.Load(proj)
-			m.setStatus(fmt.Sprintf("Undid: %s", actionDesc))
-		}
-		m.crossUndoCtx.Clear()
-		m.rebuildRows()
-		return m, nil, true
 	}
 
-	// Multi-project operation: backup-based restore (no redo support).
-	var restored []string
-	var failed []string
-
-	for i := len(ids) - 1; i >= 0; i-- {
-		proj := m.crossResolveProject(ids[i])
-		if proj == nil {
-			failed = append(failed, fmt.Sprintf("%s (project not found)", ids[i]))
-			continue
-		}
-		if err := m.projectService.RestoreFromBackup(proj); err != nil {
-			failed = append(failed, fmt.Sprintf("%s (%s)", proj.Name, err.Error()))
-			continue
-		}
-		_ = m.projectService.Load(proj)
-		restored = append(restored, proj.Name)
-	}
-
+	m.setStatus("Undo failed: project not found")
 	m.crossUndoCtx.Clear()
+	m.rebuildRows()
+	return m, nil, true
+}
 
-	var parts []string
-	if len(restored) > 0 {
-		parts = append(parts, "Undo: restored "+strings.Join(restored, ", "))
+func (m *OutlinerModel) crossPerformUndo(anchor *models.Project) (tea.Model, tea.Cmd, bool) {
+	projectsToReload := restoreProjectsForTopTUIHistoryEntry(anchor, m.loadedProjects, storage.LoadUndoHistory)
+	actionDesc, err := storage.PerformUndoForProjects(anchor, m.loadedProjects)
+	if err != nil {
+		m.setStatus(formatUndoRedoRestoreErrorMessage("undo", err))
+	} else if err := m.reloadAndRepairCrossRestoreProjects(projectsToReload, "undo"); err != nil {
+		m.setStatus(fmt.Sprintf("Undo completed, refresh failed: %s", err))
+	} else {
+		m.setStatus(fmt.Sprintf("Undid: %s", actionDesc))
 	}
-	if len(failed) > 0 {
-		parts = append(parts, "FAILED: "+strings.Join(failed, ", "))
-	}
-	if len(parts) > 0 {
-		m.setStatus(strings.Join(parts, "; "))
-	}
-
+	m.crossUndoCtx.Clear()
 	m.rebuildRows()
 	return m, nil, true
 }
@@ -305,21 +260,34 @@ func (m *OutlinerModel) crossHandleRedo(key string) (tea.Model, tea.Cmd, bool) {
 		return nil, nil, false
 	}
 
-	// Check all loaded projects for redo history.
 	for _, proj := range m.loadedProjects {
 		if storage.RedoHistoryExists(proj) {
-			actionDesc, err := storage.PerformRedo(proj)
-			if err != nil {
-				m.setStatus(fmt.Sprintf("Redo failed: %s", err))
-			} else {
-				_ = m.projectService.Load(proj)
-				m.setStatus(fmt.Sprintf("Redo: %s", actionDesc))
-			}
-			m.rebuildRows()
-			return m, nil, true
+			return m.crossPerformRedo(proj)
 		}
 	}
 
 	m.setStatus("Nothing to redo")
 	return m, nil, true
+}
+
+func (m *OutlinerModel) crossPerformRedo(anchor *models.Project) (tea.Model, tea.Cmd, bool) {
+	projectsToReload := restoreProjectsForTopTUIHistoryEntry(anchor, m.loadedProjects, storage.LoadRedoHistory)
+	actionDesc, err := storage.PerformRedoForProjects(anchor, m.loadedProjects)
+	if err != nil {
+		m.setStatus(formatUndoRedoRestoreErrorMessage("redo", err))
+	} else if err := m.reloadAndRepairCrossRestoreProjects(projectsToReload, "redo"); err != nil {
+		m.setStatus(fmt.Sprintf("Redo completed, refresh failed: %s", err))
+	} else {
+		m.setStatus(fmt.Sprintf("Redo: %s", actionDesc))
+	}
+	m.rebuildRows()
+	return m, nil, true
+}
+
+func (m *OutlinerModel) reloadAndRepairCrossRestoreProjects(projects []*models.Project, label string) error {
+	if err := reloadAndReapplyRestoredProjects(m.projectService, projects, label); err != nil {
+		return err
+	}
+	_, err := repairConfigTaskRefsToLoadedProjects(m.configManager, m.config, projects)
+	return err
 }

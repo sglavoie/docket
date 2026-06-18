@@ -108,6 +108,7 @@ func (m *AppModel) handleSectionMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 
 		// Single task operation
 		if msg.Task != nil && msg.Project != nil {
+			undoOpts := m.taskMutationSaveOptions(msg.Task, "Set Priority")
 			if !msg.Project.MutateTask(msg.Task.ID, func(t *models.Task) {
 				t.Priority = msg.Priority
 			}) {
@@ -117,7 +118,7 @@ func (m *AppModel) handleSectionMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 			successMsg := fmt.Sprintf("Set priority %d for task #%d", msg.Priority, msg.Task.ShortID)
 			return true, tea.Batch(
 				startLoading("Saving..."),
-				SaveProjectAsync(msg.Project, successMsg),
+				m.appPersister().SaveWithBackupOptions(msg.Project, successMsg, undoOpts),
 			)
 		}
 		return true, nil
@@ -193,6 +194,7 @@ func (m *AppModel) handleSectionMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 
 		// Single task operation
 		if msg.Task != nil && msg.Project != nil {
+			undoOpts := m.taskMutationSaveOptions(msg.Task, "Move to Section")
 			if !msg.Project.MutateTask(msg.Task.ID, func(t *models.Task) {
 				assignSection(t, msg.Section)
 			}) {
@@ -217,7 +219,7 @@ func (m *AppModel) handleSectionMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 			}
 			return true, tea.Batch(
 				startLoading("Saving..."),
-				SaveProjectAsync(msg.Project, successMsg),
+				m.appPersister().SaveWithBackupOptions(msg.Project, successMsg, undoOpts),
 			)
 		}
 		return true, nil

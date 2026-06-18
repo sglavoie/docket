@@ -1,6 +1,13 @@
 package tui
 
-import tea "charm.land/bubbletea/v2"
+import (
+	"time"
+
+	tea "charm.land/bubbletea/v2"
+
+	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/storage"
+)
 
 func (m *AppModel) handleQuickSwitchToggle() tea.Cmd {
 	if m.currentView() == ViewDashboard && !m.config.GetTutorDismissed() {
@@ -36,6 +43,9 @@ func (m *AppModel) handlePinnedPopupToggle() tea.Cmd {
 func (m *AppModel) handleUndoToggle() tea.Cmd {
 	switch m.currentView() { //nolint:exhaustive
 	case ViewFocusView, ViewFocusBoard:
+		if !m.localToggleUndoIsNewest() {
+			return nil
+		}
 		var cmd tea.Cmd
 		switch m.lastToggleUndoKind {
 		case toggleUndoNone:
@@ -54,6 +64,9 @@ func (m *AppModel) handleUndoToggle() tea.Cmd {
 func (m *AppModel) handleRedoToggle() tea.Cmd {
 	switch m.currentView() { //nolint:exhaustive
 	case ViewFocusView, ViewFocusBoard:
+		if !m.localToggleRedoIsNewest() {
+			return nil
+		}
 		var cmd tea.Cmd
 		switch m.lastToggleRedoKind {
 		case toggleUndoNone:
@@ -67,4 +80,44 @@ func (m *AppModel) handleRedoToggle() tea.Cmd {
 		}
 	}
 	return nil
+}
+
+func (m *AppModel) localToggleUndoIsNewest() bool {
+	return m.localToggleIsNewest(m.toggleUndoTimestamp(m.lastToggleUndoKind))
+}
+
+func (m *AppModel) localToggleRedoIsNewest() bool {
+	return m.localToggleIsNewest(m.toggleRedoTimestamp(m.lastToggleRedoKind))
+}
+
+func (m *AppModel) localToggleIsNewest(localAt time.Time) bool {
+	if localAt.IsZero() {
+		return true
+	}
+	_, project := m.getCurrentCursorTaskAndProject()
+	if project == nil {
+		return true
+	}
+	persistentAt := latestPersistentTaskHistoryTimestamp(project)
+	return persistentAt.IsZero() || !persistentAt.After(localAt)
+}
+
+func latestPersistentTaskHistoryTimestamp(project *models.Project) time.Time {
+	var latest time.Time
+	if entries, err := storage.LoadUndoHistory(project); err == nil {
+		latest = latestUndoEntryTimestamp(latest, entries)
+	}
+	if entries, err := storage.LoadRedoHistory(project); err == nil {
+		latest = latestUndoEntryTimestamp(latest, entries)
+	}
+	return latest
+}
+
+func latestUndoEntryTimestamp(latest time.Time, entries []storage.UndoEntry) time.Time {
+	for _, entry := range entries {
+		if entry.Timestamp.After(latest) {
+			latest = entry.Timestamp
+		}
+	}
+	return latest
 }

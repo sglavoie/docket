@@ -137,11 +137,28 @@ func (m *AppModel) handleTaskStatusPropertyMessages(msg tea.Msg) (bool, tea.Cmd)
 		cmd := m.views.Update(m.currentView(), msg)
 		m.syncInboxProcessor()
 		if msg.NeedsSave && m.currentProject != nil {
-			cmd = tea.Batch(cmd, SaveProjectAsync(m.currentProject, ""))
+			cmd = tea.Batch(cmd, SaveProjectAsyncWithOptions(m.currentProject, "", m.projectSaveOptionsFromTaskPropertyMsg(msg)))
 		}
 		return true, cmd
 	}
 	return false, nil
+}
+
+func (m *AppModel) projectSaveOptionsFromTaskPropertyMsg(msg TaskPropertyChangedMsg) ProjectSaveOptions {
+	opts := ProjectSaveOptions{
+		UndoAction:          msg.UndoAction,
+		UndoContext:         msg.UndoContext,
+		UndoTaskIDs:         msg.UndoTaskIDs,
+		UndoGroupID:         msg.UndoGroupID,
+		UndoGroupProjectIDs: msg.UndoGroupProjectIDs,
+	}
+	if m.config != nil && m.config.UndoHistoryDepth != nil {
+		opts.UndoDepth = *m.config.UndoHistoryDepth
+	}
+	if len(opts.UndoTaskIDs) == 0 && msg.Task != nil && opts.hasUndoMetadata() {
+		opts.UndoTaskIDs = []string{msg.Task.ID}
+	}
+	return opts
 }
 
 // handleTaskPaletteMessages handles command palette task action messages.

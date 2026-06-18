@@ -27,7 +27,7 @@ func init() {
 }
 
 func runRedo(cmd *cobra.Command, args []string) error {
-	project, _, _, err := LoadCurrentProject()
+	project, cfg, configManager, err := LoadCurrentProject()
 	if err != nil {
 		return err
 	}
@@ -36,19 +36,20 @@ func runRedo(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("no redo history available for project '%s'", project.Name)
 	}
 
-	actionDesc, err := storage.PerformRedo(project)
+	projectsToReload, grouped := restoreProjectsForTopHistoryEntry(project, cfg.Projects, loadRedoHistoryEntries)
+	actionDesc, err := storage.PerformRedoForProjects(project, cfg.Projects)
 	if err != nil {
-		return fmt.Errorf("redo failed: %w", err)
+		return restoreCommandError("redo", grouped, err)
 	}
 
-	// Reload project and re-run side effects (auto-unblock, recurring
+	// Reload restored project(s) and re-run side effects (auto-unblock, recurring
 	// generation, reorder) so the restored state is consistent — matching
 	// the TUI's reapplySideEffects behavior.
-	if err := storage.LoadProject(project); err != nil {
-		return fmt.Errorf("failed to reload project after redo: %w", err)
+	if err := reapplyRestoreSideEffectsAndSave(projectsToReload, "redo"); err != nil {
+		return err
 	}
-	if err := reapplySideEffectsAndSave(project); err != nil {
-		return fmt.Errorf("failed to reapply side effects after redo: %w", err)
+	if err := repairConfigTaskRefsToLoadedProjects(configManager, cfg, projectsToReload); err != nil {
+		return err
 	}
 
 	fmt.Printf("Redo: %s\n", actionDesc)

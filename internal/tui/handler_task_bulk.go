@@ -14,7 +14,7 @@ func (m *AppModel) handleCommandPaletteBulkAction(msg CommandPaletteBulkActionMs
 		return true, nil
 	}
 
-	projectGroups := groupTaskProjectRefsByProject(msg.Tasks)
+	refs := validTaskProjectRefs(msg.Tasks)
 
 	// Map action name to target status
 	var targetStatus models.TaskStatus
@@ -31,25 +31,29 @@ func (m *AppModel) handleCommandPaletteBulkAction(msg CommandPaletteBulkActionMs
 
 	// Apply action to all tasks. Gate the transition check outside MutateTask
 	// so skipped tasks neither inflate the count nor have their UpdatedAt bumped.
-	count := 0
-	var projects []*models.Project
-	for _, group := range projectGroups {
-		for _, item := range group.Items {
-			task := group.Project.GetTaskByID(item.Task.ID)
+	count, _, err := m.applyBulkTaskRefsWithWorkflow(refs, StatusVerb(targetStatus)+" Task",
+		func(project *models.Project, taskID string) bool {
+			task := project.GetTaskByID(taskID)
 			if task == nil || task.CanTransitionTo(targetStatus) != "" {
-				continue
+				return false
 			}
-			group.Project.MutateTask(item.Task.ID, func(t *models.Task) {
+			return project.MutateTask(taskID, func(t *models.Task) {
 				t.ApplyTransition(targetStatus)
 			})
-			count++
-		}
-		if len(group.Items) > 0 {
-			projects = append(projects, group.Project)
-		}
+		})
+	if err != nil {
+		return true, errorCmd("save failed: %w", err)
 	}
 
-	// Build success message
+	if count > 0 {
+		m.clearBulkTaskSelectionsForRefs(refs)
+	}
+
+	if count == 0 {
+		m.setInfoStatus("No tasks were changed")
+		return true, defaultStatusTimeout()
+	}
+
 	actionPast := msg.Action + "d"
 	switch msg.Action {
 	case "complete":
@@ -60,10 +64,8 @@ func (m *AppModel) handleCommandPaletteBulkAction(msg CommandPaletteBulkActionMs
 		actionPast = "sent to review"
 	}
 	successMsg := fmt.Sprintf("%d tasks %s", count, actionPast)
-
-	// Async save with loading indicator
-	return true, tea.Batch(
-		startLoading("Saving..."),
-		SaveMultipleProjectsAsync(projects, successMsg),
-	)
+	m.setSuccessStatus(successMsg)
+	cmds := m.refreshTaskViewsAfterSave()
+	cmds = append(cmds, defaultStatusTimeout())
+	return true, tea.Batch(cmds...)
 }

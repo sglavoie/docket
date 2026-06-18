@@ -202,6 +202,12 @@ func TestTaskActionCommands_ToggleActive(t *testing.T) {
 	if !msg.NeedsSave {
 		t.Error("toggle active command should set NeedsSave=true")
 	}
+	if msg.UndoAction != "Toggle Active" {
+		t.Errorf("UndoAction = %q, want Toggle Active", msg.UndoAction)
+	}
+	if len(msg.UndoTaskIDs) != 1 || msg.UndoTaskIDs[0] != msg.Task.ID {
+		t.Errorf("UndoTaskIDs = %v, want [%q]", msg.UndoTaskIDs, msg.Task.ID)
+	}
 }
 
 func TestTaskActionCommands_TogglePin(t *testing.T) {
@@ -226,6 +232,12 @@ func TestTaskActionCommands_TogglePin(t *testing.T) {
 	}
 	if !msg.NeedsSave {
 		t.Error("toggle pin command should set NeedsSave=true")
+	}
+	if msg.UndoAction != "Toggle Pin" {
+		t.Errorf("UndoAction = %q, want Toggle Pin", msg.UndoAction)
+	}
+	if len(msg.UndoTaskIDs) != 1 || msg.UndoTaskIDs[0] != msg.Task.ID {
+		t.Errorf("UndoTaskIDs = %v, want [%q]", msg.UndoTaskIDs, msg.Task.ID)
 	}
 }
 

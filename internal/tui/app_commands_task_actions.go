@@ -174,7 +174,7 @@ func (m *AppModel) taskActionCommands() []Command { //nolint:gocyclo
 				}
 				if task := m.selectedTreeTask(); task != nil {
 					task.ToggleActive()
-					return TaskPropertyChangedMsg{Task: task, NeedsSave: true}
+					return taskPropertyChangedWithUndo(task, "Toggle Active")
 				}
 				return StatusMsg("No task selected")
 			},
@@ -189,7 +189,7 @@ func (m *AppModel) taskActionCommands() []Command { //nolint:gocyclo
 			Handler: func() tea.Msg {
 				if task := m.selectedTreeTask(); task != nil {
 					task.TogglePinned()
-					return TaskPropertyChangedMsg{Task: task, NeedsSave: true}
+					return taskPropertyChangedWithUndo(task, "Toggle Pin")
 				}
 				return StatusMsg("No task selected")
 			},

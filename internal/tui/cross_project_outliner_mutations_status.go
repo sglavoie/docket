@@ -108,12 +108,20 @@ func (m *OutlinerModel) crossExecutePendingBulkStatus() (tea.Model, tea.Cmd) {
 	if m.config != nil && m.config.UndoHistoryDepth != nil {
 		undoDepth = *m.config.UndoHistoryDepth
 	}
+	projectsToSnapshot := make([]*models.Project, 0, len(projectOrder))
+	for _, projID := range projectOrder {
+		projectsToSnapshot = append(projectsToSnapshot, grouped[projID].proj)
+	}
+	groupID, groupProjectIDs := undoGroupMetadataForProjects(projectsToSnapshot)
 
 	for _, projID := range projectOrder {
 		group := grouped[projID]
 		if undoDepth > 0 {
-			_ = svc.RecordUndoSnapshot(group.proj, "Bulk Status Change",
-				fmt.Sprintf("%d tasks -> %s", len(group.tasks), status), undoDepth, nil)
+			if err := recordTUIUndoSnapshotWithGroup(svc, group.proj, "Bulk Status Change",
+				fmt.Sprintf("%d tasks -> %s", len(group.tasks), status), undoDepth, movedTaskIDs(group.tasks), groupID, groupProjectIDs); err != nil {
+				m.bulkOp.Clear()
+				return m, func() tea.Msg { return ErrorMsg{Err: err} }
+			}
 		}
 		if err := svc.Backup(group.proj); err != nil {
 			m.bulkOp.Clear()
@@ -138,6 +146,7 @@ func (m *OutlinerModel) crossExecutePendingBulkStatus() (tea.Model, tea.Cmd) {
 
 	m.crossUndoCtx.Set("Bulk Status Change", fmt.Sprintf("%d tasks -> %s", len(tasks), status))
 	m.crossUndoCtx.ProjectIDs = projectIDs
+	m.crossUndoCtx.GroupID = groupID
 
 	m.setStatus(fmt.Sprintf("Changed %d tasks to %s", len(tasks), status))
 	m.bulkOp.Clear()

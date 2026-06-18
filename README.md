@@ -77,9 +77,22 @@ tt tag pin --global urgent      # Pin a cross-project tag filter
 tt note list                    # List notes in the current project
 tt search auth                  # Search across tasks and projects
 tt undo                         # Restore previous task state
+tt redo                         # Reapply the most recent undo
 ```
 
 For deeper discovery, use the tutor, view help, the command palette, and command-specific help rather than a static command catalog here.
+
+## Undo And Redo
+
+Task and project mutations record a pre-change `tasks.md` snapshot. `tt undo`
+steps backward through that linear history, and `tt redo` reapplies the latest
+undo until a new mutation clears redo history.
+
+Cross-project changes, such as moving tasks between projects, workflow-driven
+project moves, archive-all, global tag rename, and cross-project TUI edits, are
+restored as grouped transactions. If one project in the group is missing,
+diverged, or has an unavailable snapshot, the restore aborts instead of
+partially changing project files.
 
 ## Project Archive And Recovery
 

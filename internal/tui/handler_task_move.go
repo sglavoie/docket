@@ -76,8 +76,23 @@ func (m *AppModel) handleMoveTaskToProject(msg MoveTaskToProjectMsg) (bool, tea.
 // saveBothProjectsAsync saves both source and destination projects after a cross-project move.
 func (m *AppModel) saveBothProjectsAsync(source, dest *models.Project, result *models.MoveTaskToProjectResult, oldShortID int, fromGlobal bool) tea.Cmd {
 	persister := m.persister
+	undoDepth := 0
+	if m.config != nil && m.config.UndoHistoryDepth != nil {
+		undoDepth = *m.config.UndoHistoryDepth
+	}
+	movedIDs := movedTaskIDs(result.MovedTasks)
+	groupID, groupProjectIDs := undoGroupMetadataForProjects([]*models.Project{source, dest})
+	undoContext := fmt.Sprintf("#%d -> %s", oldShortID, dest.Name)
+	if len(result.MovedTasks) > 0 && result.MovedTasks[0] != nil {
+		undoContext = fmt.Sprintf("#%d %s -> %s", oldShortID, result.MovedTasks[0].Title, dest.Name)
+	}
 	return func() tea.Msg {
-		// Backup and save source project
+		if err := recordTUIUndoSnapshotWithGroup(persister, source, "Move Task to Project", undoContext, undoDepth, movedIDs, groupID, groupProjectIDs); err != nil {
+			return SaveErrorMsg{Err: err}
+		}
+		if err := recordTUIUndoSnapshotWithGroup(persister, dest, "Move Task to Project", undoContext, undoDepth, movedIDs, groupID, groupProjectIDs); err != nil {
+			return SaveErrorMsg{Err: err}
+		}
 		if err := persister.Backup(source); err != nil {
 			return SaveErrorMsg{Err: fmt.Errorf("failed to backup source project: %w", err)}
 		}
@@ -85,7 +100,6 @@ func (m *AppModel) saveBothProjectsAsync(source, dest *models.Project, result *m
 			return SaveErrorMsg{Err: fmt.Errorf("failed to save source project: %w", err)}
 		}
 
-		// Backup and save destination project
 		if err := persister.Backup(dest); err != nil {
 			return SaveErrorMsg{Err: fmt.Errorf("failed to backup destination project: %w", err)}
 		}

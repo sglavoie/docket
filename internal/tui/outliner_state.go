@@ -67,12 +67,12 @@ func (m *OutlinerModel) setUndoTaskIDs(ids []string) {
 
 // performUndo restores the project from the most recent undo snapshot.
 func (m *OutlinerModel) performUndo() tea.Cmd {
-	return performUndoCmd(m.projectService, m.project)
+	return performUndoForProjectsCmd(m.projectService, m.project, activeUndoProjects(m.config), repairConfigTaskRefsAfterRestore(m.configManager, m.config))
 }
 
 // performRedo restores the project from the most recent redo snapshot.
 func (m *OutlinerModel) performRedo() tea.Cmd {
-	return performRedoCmd(m.projectService, m.project)
+	return performRedoForProjectsCmd(m.projectService, m.project, activeUndoProjects(m.config), repairConfigTaskRefsAfterRestore(m.configManager, m.config))
 }
 
 // OutlinerToggleState captures section/fold state so it can survive outliner

@@ -68,6 +68,7 @@ func (m *AppModel) handleTaskContentEdited(msg TaskContentEditedMsg) (bool, tea.
 				}
 			}
 			if msg.Project != nil {
+				undoOpts := m.taskMutationSaveOptions(msg.Task, taskContentUndoAction(titleChanged, descChanged))
 				// Re-lookup task in project to avoid stale pointer after concurrent reload
 				if !msg.Project.MutateTask(msg.Task.ID, func(t *models.Task) {
 					t.Title = msg.NewTitle
@@ -85,7 +86,7 @@ func (m *AppModel) handleTaskContentEdited(msg TaskContentEditedMsg) (bool, tea.
 				}
 				return true, tea.Batch(
 					startLoading("Saving..."),
-					SaveProjectAsync(msg.Project, "Task updated"),
+					m.appPersister().SaveWithBackupOptions(msg.Project, "Task updated", undoOpts),
 				)
 			}
 		}
@@ -117,6 +118,8 @@ func (m *AppModel) handleDescriptionEditorDone(msg DescriptionEditorDoneMsg) (bo
 		return true, nil
 	}
 
+	undoOpts := m.taskMutationSaveOptions(msg.Task, "Edit Description")
+
 	// Update the task description
 	if !msg.Project.MutateTask(msg.Task.ID, func(t *models.Task) {
 		t.Description = msg.NewDescription
@@ -128,6 +131,17 @@ func (m *AppModel) handleDescriptionEditorDone(msg DescriptionEditorDoneMsg) (bo
 	m.refreshAllViews()
 	return true, tea.Batch(
 		startLoading("Saving..."),
-		SaveProjectAsync(msg.Project, "Description updated"),
+		m.appPersister().SaveWithBackupOptions(msg.Project, "Description updated", undoOpts),
 	)
+}
+
+func taskContentUndoAction(titleChanged, descChanged bool) string {
+	switch {
+	case titleChanged && descChanged:
+		return "Edit Task"
+	case titleChanged:
+		return "Rename Task"
+	default:
+		return "Edit Description"
+	}
 }

@@ -3,11 +3,13 @@ package tui
 import (
 	"strings"
 	"testing"
+	"time"
 
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/external"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/storage"
 )
 
 type confirmQueueToggleView struct {
@@ -30,6 +32,31 @@ func (v *confirmQueueToggleView) getTaskRef() (*models.Task, *models.Project) {
 }
 
 func (v *confirmQueueToggleView) IsConfirmActive() bool { return v.confirmActive }
+
+type undoRedoRecorderTaskRefView struct {
+	BaseView
+	task         *models.Task
+	project      *models.Project
+	receivedKeys []string
+}
+
+func (v *undoRedoRecorderTaskRefView) Init() tea.Cmd { return nil }
+
+func (v *undoRedoRecorderTaskRefView) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	if key, ok := msg.(tea.KeyPressMsg); ok {
+		switch key.String() {
+		case "u", "ctrl+r":
+			v.receivedKeys = append(v.receivedKeys, key.String())
+		}
+	}
+	return v, nil
+}
+
+func (v *undoRedoRecorderTaskRefView) View() tea.View { return tea.NewView("") }
+
+func (v *undoRedoRecorderTaskRefView) getTaskRef() (*models.Task, *models.Project) {
+	return v.task, v.project
+}
 
 type ctrlORecorderView struct {
 	BaseView
@@ -596,5 +623,112 @@ func TestAppUpdate_CtrlNFallsThroughWhenTaskViewHasTextInput(t *testing.T) {
 	}
 	if app.statusMessage != "" {
 		t.Fatalf("status = %q, want no global status", app.statusMessage)
+	}
+}
+
+func TestHandleGlobalKeyPress_UndoRedoRoutesForTaskSecondaryView(t *testing.T) {
+	tests := []struct {
+		name string
+		key  tea.KeyPressMsg
+	}{
+		{name: "undo", key: syntheticKey('u')},
+		{name: "redo", key: tea.KeyPressMsg{Code: 'r', Mod: tea.ModCtrl}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			app, project := newTestAppModelWithProject()
+			project.Path = t.TempDir()
+			view := &undoRedoRecorderTaskRefView{
+				task:    project.Tasks[0],
+				project: project,
+			}
+			app.views.Register(ViewPriorityView, view)
+			app.viewStack = []ViewType{ViewDashboard, ViewPriorityView}
+
+			handled, cmd := app.handleGlobalKeyPress(tt.key)
+			if !handled {
+				t.Fatalf("%s should be handled by app-level persistent routing", tt.name)
+			}
+			if cmd == nil {
+				t.Fatalf("%s should return a persistent undo/redo command", tt.name)
+			}
+			if got := cmd(); got == nil {
+				t.Fatalf("%s command returned nil, want no-history ErrorMsg", tt.name)
+			} else if _, ok := got.(ErrorMsg); !ok {
+				t.Fatalf("%s command returned %T, want ErrorMsg", tt.name, got)
+			}
+			if len(view.receivedKeys) != 0 {
+				t.Fatalf("global %s should not fall through to local view, got %v", tt.name, view.receivedKeys)
+			}
+		})
+	}
+}
+
+func TestHandleGlobalKeyPress_UndoRedoPreservesProtectedLocalViews(t *testing.T) {
+	tests := []struct {
+		name     string
+		viewType ViewType
+		key      tea.KeyPressMsg
+	}{
+		{name: "inbox undo", viewType: ViewInboxProcessor, key: syntheticKey('u')},
+		{name: "attachments redo", viewType: ViewTaskAttachments, key: tea.KeyPressMsg{Code: 'r', Mod: tea.ModCtrl}},
+		{name: "primary undo", viewType: ViewProjectTree, key: syntheticKey('u')},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			app, project := newTestAppModelWithProject()
+			view := &undoRedoRecorderTaskRefView{
+				task:    project.Tasks[0],
+				project: project,
+			}
+			app.views.Register(tt.viewType, view)
+			app.viewStack = []ViewType{ViewDashboard, tt.viewType}
+
+			handled, cmd := app.handleGlobalKeyPress(tt.key)
+			if handled || cmd != nil {
+				t.Fatalf("global handler should not intercept %s in %s", tt.key.String(), tt.viewType)
+			}
+		})
+	}
+}
+
+func TestHandleGlobalKeyPress_PersistentUndoWinsOverOlderFocusToggle(t *testing.T) {
+	app, project := newTestAppModelWithProject()
+	project.Path = t.TempDir()
+	if err := storage.SaveProjectLocked(project); err != nil {
+		t.Fatalf("SaveProjectLocked: %v", err)
+	}
+
+	task := project.Tasks[0]
+	app.dailyPlan = []FocusTask{{Task: task, Project: project}}
+	app.dailyPlanIDs = map[string]bool{task.ID: true}
+	app.lastDailyPlanToggle = &dailyPlanToggleAction{Task: task, Project: project, WasAdd: true}
+	app.lastDailyPlanToggleAt = time.Now().Add(-time.Hour)
+	app.lastToggleUndoKind = toggleUndoDailyPlan
+
+	if err := storage.RecordUndoSnapshot(project, "Persistent Edit", task.Title, 10, []string{task.ID}); err != nil {
+		t.Fatalf("RecordUndoSnapshot: %v", err)
+	}
+
+	view := &undoRedoRecorderTaskRefView{task: task, project: project}
+	app.views.Register(ViewFocusView, view)
+	app.viewStack = []ViewType{ViewDashboard, ViewFocusView}
+
+	handled, cmd := app.handleGlobalKeyPress(syntheticKey('u'))
+	if !handled {
+		t.Fatal("expected older local toggle to yield to persistent undo")
+	}
+	if cmd == nil {
+		t.Fatal("expected persistent undo command")
+	}
+	if app.lastDailyPlanToggle == nil {
+		t.Fatal("older local daily-plan toggle should not be consumed")
+	}
+	if got := cmd(); got == nil {
+		t.Fatal("persistent undo command returned nil")
+	} else if _, ok := got.(UndoPerformedMsg); !ok {
+		t.Fatalf("persistent undo command returned %T, want UndoPerformedMsg", got)
 	}
 }

@@ -49,20 +49,6 @@ func (m *AllTasksViewModel) deselectAll() {
 	m.UpdateStatus(&m.statusMessage, allTasksMultiSelectNoSel, allTasksMultiSelectWithSel)
 }
 
-// getSelectedItemsByProject returns all selected items grouped by project ID.
-// Retained for handleBulkDelete which uses the CrossProjectTask type directly.
-func (m *AllTasksViewModel) getSelectedItemsByProject() map[string][]CrossProjectTask {
-	byProject := make(map[string][]CrossProjectTask)
-	for _, group := range m.groups {
-		for _, item := range group.Tasks {
-			if m.selectedTasks[item.Task.ID] {
-				byProject[item.Project.ID] = append(byProject[item.Project.ID], item)
-			}
-		}
-	}
-	return byProject
-}
-
 // getSelectedBulkItems returns all selected tasks as a flat slice of bulkTaskItem.
 func (m *AllTasksViewModel) getSelectedBulkItems() []bulkTaskItem {
 	var items []bulkTaskItem
@@ -203,27 +189,24 @@ func (m *AllTasksViewModel) handleBulkSectionMove(targetSection string) (tea.Mod
 
 // handleBulkDelete deletes all selected tasks.
 func (m *AllTasksViewModel) handleBulkDelete() (tea.Model, tea.Cmd) {
-	byProject := m.getSelectedItemsByProject()
-	if len(byProject) == 0 {
+	groups := groupTaskProjectRefsByProject(m.getSelectedBulkItems())
+	if len(groups) == 0 {
 		return m, nil
 	}
 
 	totalDeleted := 0
 	allDeletedIDs := make(map[string]bool)
-	for projectID, items := range byProject {
-		project := m.projectCache[projectID]
+	var changedGroups []changedTaskProjectGroup
+
+	for _, group := range groups {
+		project := group.Project
 		if project == nil {
 			continue
 		}
 
-		if err := m.projectService.Backup(project); err != nil {
-			m.setStatus(fmt.Sprintf("Failed to backup project %s: %v", project.Name, err))
-			return m, nil
-		}
-
 		// Collect root IDs and expand to include all descendants
-		rootIDs := make(map[string]bool, len(items))
-		for _, item := range items {
+		rootIDs := make(map[string]bool, len(group.Items))
+		for _, item := range group.Items {
 			rootIDs[item.Task.ID] = true
 		}
 		idsToDelete := collectDescendantIDs(project.Tasks, rootIDs)
@@ -231,41 +214,37 @@ func (m *AllTasksViewModel) handleBulkDelete() (tea.Model, tea.Cmd) {
 			allDeletedIDs[id] = true
 		}
 
-		// Filter out deleted tasks and clean up dangling references
-		var remaining []*models.Task
-		for _, t := range project.Tasks {
-			if !idsToDelete[t.ID] {
-				if t.ParentID != nil && idsToDelete[*t.ParentID] {
-					t.ParentID = nil
-				}
-				// Clear dangling DependsOn references to deleted tasks
-				if len(t.DependsOn) > 0 {
-					cleaned := t.DependsOn[:0]
-					for _, depID := range t.DependsOn {
-						if !idsToDelete[depID] {
-							cleaned = append(cleaned, depID)
-						}
-					}
-					t.DependsOn = cleaned
-				}
-				// Clear dangling RelatedTo references to deleted tasks
-				if len(t.RelatedTo) > 0 {
-					cleaned := t.RelatedTo[:0]
-					for _, relID := range t.RelatedTo {
-						if !idsToDelete[relID] {
-							cleaned = append(cleaned, relID)
-						}
-					}
-					t.RelatedTo = cleaned
-				}
-				remaining = append(remaining, t)
-			}
+		prevStates := captureTaskStates(project.Tasks)
+		beforeCount := len(project.Tasks)
+		deleteTasksFromProject(project, idsToDelete)
+		deletedCount := beforeCount - len(project.Tasks)
+		if deletedCount == 0 {
+			continue
 		}
-		totalDeleted += len(project.Tasks) - len(remaining)
-		project.Tasks = remaining
-		project.BuildTaskTree()
-		if err := m.projectService.Save(project); err != nil {
-			m.setStatus(fmt.Sprintf("Failed to save project %s: %v", project.Name, err))
+		totalDeleted += deletedCount
+		changedGroups = append(changedGroups, changedTaskProjectGroup{
+			group:      group,
+			taskIDs:    sortedTaskIDsFromSet(idsToDelete),
+			prevStates: prevStates,
+		})
+	}
+
+	groupID, groupProjectIDs := workflowGroupMetadata(taskProjectGroupsFromChanged(changedGroups))
+	for _, changed := range changedGroups {
+		opts := BuildWorkflowOpts(
+			m.projectService,
+			changed.group.Project,
+			m.config,
+			m.configManager,
+			changed.prevStates,
+			"Delete Tasks",
+			fmt.Sprintf("%d tasks", len(changed.taskIDs)),
+			changed.taskIDs,
+		)
+		opts.UndoGroupID = groupID
+		opts.UndoGroupProjectIDs = groupProjectIDs
+		if err := persistWithWorkflow(opts); err != nil {
+			m.setStatus(fmt.Sprintf("Failed to save project %s: %v", changed.group.Project.Name, err))
 			return m, nil
 		}
 	}

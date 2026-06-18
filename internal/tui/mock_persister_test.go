@@ -4,7 +4,18 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/storage"
 )
+
+type MockProjectSaveOptionsCall struct {
+	Project *models.Project
+	Options ProjectSaveOptions
+}
+
+type MockMultipleProjectSaveOptionsCall struct {
+	Projects []*models.Project
+	Options  ProjectSaveOptions
+}
 
 // MockPersister implements the Persister interface for testing.
 // It allows controlling return values and tracking calls to persistence methods.
@@ -20,11 +31,14 @@ type MockPersister struct {
 	ArchiveTasksErr       error
 
 	// Tracking for method calls
-	LoadCalls              []*models.Project
-	SaveCalls              []*models.Project
-	BackupCalls            []*models.Project
-	SaveWithBackupSyncCall []*models.Project
-	SaveMultipleSyncCalls  [][]*models.Project
+	LoadCalls                      []*models.Project
+	SaveCalls                      []*models.Project
+	BackupCalls                    []*models.Project
+	SaveWithBackupSyncCall         []*models.Project
+	SaveMultipleSyncCalls          [][]*models.Project
+	SaveWithBackupSyncOptionsCalls []*MockProjectSaveOptionsCall
+	SaveMultipleSyncOptionsCalls   []*MockMultipleProjectSaveOptionsCall
+	RecordUndoSnapshotOptionsCalls []storage.UndoSnapshotOptions
 
 	// Configurable return values
 	BackupExistsReturn bool
@@ -37,12 +51,15 @@ type MockPersister struct {
 // NewMockPersister creates a new MockPersister with initialized slices.
 func NewMockPersister() *MockPersister {
 	return &MockPersister{
-		LoadCalls:              make([]*models.Project, 0),
-		SaveCalls:              make([]*models.Project, 0),
-		BackupCalls:            make([]*models.Project, 0),
-		SaveWithBackupSyncCall: make([]*models.Project, 0),
-		SaveMultipleSyncCalls:  make([][]*models.Project, 0),
-		Projects:               make(map[string]*models.Project),
+		LoadCalls:                      make([]*models.Project, 0),
+		SaveCalls:                      make([]*models.Project, 0),
+		BackupCalls:                    make([]*models.Project, 0),
+		SaveWithBackupSyncCall:         make([]*models.Project, 0),
+		SaveMultipleSyncCalls:          make([][]*models.Project, 0),
+		SaveWithBackupSyncOptionsCalls: make([]*MockProjectSaveOptionsCall, 0),
+		SaveMultipleSyncOptionsCalls:   make([]*MockMultipleProjectSaveOptionsCall, 0),
+		RecordUndoSnapshotOptionsCalls: make([]storage.UndoSnapshotOptions, 0),
+		Projects:                       make(map[string]*models.Project),
 	}
 }
 
@@ -73,8 +90,24 @@ func (m *MockPersister) SaveWithBackupSync(project *models.Project) error {
 	return m.SaveWithBackupSyncErr
 }
 
+func (m *MockPersister) SaveWithBackupSyncOptions(project *models.Project, opts ProjectSaveOptions) error {
+	m.SaveWithBackupSyncOptionsCalls = append(m.SaveWithBackupSyncOptionsCalls, &MockProjectSaveOptionsCall{
+		Project: project,
+		Options: opts,
+	})
+	return m.SaveWithBackupSyncErr
+}
+
 func (m *MockPersister) SaveMultipleSync(projects []*models.Project) error {
 	m.SaveMultipleSyncCalls = append(m.SaveMultipleSyncCalls, projects)
+	return m.SaveMultipleSyncErr
+}
+
+func (m *MockPersister) SaveMultipleSyncOptions(projects []*models.Project, opts ProjectSaveOptions) error {
+	m.SaveMultipleSyncOptionsCalls = append(m.SaveMultipleSyncOptionsCalls, &MockMultipleProjectSaveOptionsCall{
+		Projects: projects,
+		Options:  opts,
+	})
 	return m.SaveMultipleSyncErr
 }
 
@@ -87,6 +120,11 @@ func (m *MockPersister) RestoreFromBackup(project *models.Project) error {
 }
 
 func (m *MockPersister) RecordUndoSnapshot(project *models.Project, action, context string, depth int, _ []string) error {
+	return m.RecordUndoSnapshotErr
+}
+
+func (m *MockPersister) RecordUndoSnapshotWithOptions(project *models.Project, opts storage.UndoSnapshotOptions) error {
+	m.RecordUndoSnapshotOptionsCalls = append(m.RecordUndoSnapshotOptionsCalls, opts)
 	return m.RecordUndoSnapshotErr
 }
 
@@ -106,9 +144,49 @@ func (m *MockPersister) SaveWithBackup(project *models.Project, successMsg strin
 	}
 }
 
+func (m *MockPersister) SaveWithBackupOptions(project *models.Project, successMsg string, opts ProjectSaveOptions) tea.Cmd {
+	return func() tea.Msg {
+		m.SaveWithBackupSyncOptionsCalls = append(m.SaveWithBackupSyncOptionsCalls, &MockProjectSaveOptionsCall{
+			Project: project,
+			Options: opts,
+		})
+		if opts.UndoDepth > 0 && opts.hasUndoMetadata() {
+			_ = m.RecordUndoSnapshotWithOptions(project, opts.storageUndoOptions())
+		}
+		if err := m.Backup(project); err != nil {
+			return SaveErrorMsg{Err: err}
+		}
+		if err := m.Save(project); err != nil {
+			return SaveErrorMsg{Err: err}
+		}
+		return SaveCompleteMsg{SuccessMessage: successMsg}
+	}
+}
+
 func (m *MockPersister) SaveMultiple(projects []*models.Project, successMsg string) tea.Cmd {
 	return func() tea.Msg {
 		for _, project := range projects {
+			if err := m.Backup(project); err != nil {
+				return SaveErrorMsg{Err: err}
+			}
+			if err := m.Save(project); err != nil {
+				return SaveErrorMsg{Err: err}
+			}
+		}
+		return SaveCompleteMsg{SuccessMessage: successMsg}
+	}
+}
+
+func (m *MockPersister) SaveMultipleOptions(projects []*models.Project, successMsg string, opts ProjectSaveOptions) tea.Cmd {
+	return func() tea.Msg {
+		m.SaveMultipleSyncOptionsCalls = append(m.SaveMultipleSyncOptionsCalls, &MockMultipleProjectSaveOptionsCall{
+			Projects: projects,
+			Options:  opts,
+		})
+		for _, project := range projects {
+			if opts.UndoDepth > 0 && opts.hasUndoMetadata() {
+				_ = m.RecordUndoSnapshotWithOptions(project, opts.storageUndoOptions())
+			}
 			if err := m.Backup(project); err != nil {
 				return SaveErrorMsg{Err: err}
 			}

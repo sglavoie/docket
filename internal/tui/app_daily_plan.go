@@ -69,6 +69,7 @@ func (m *AppModel) toggleDailyPlan() tea.Cmd {
 		m.setInfoStatus(fmt.Sprintf("Added to today's plan: %s", task.Title))
 	}
 	m.lastToggleUndoKind = toggleUndoDailyPlan
+	m.lastDailyPlanToggleAt = time.Now()
 	m.clearToggleRedoHistory()
 	m.persistDailyPlan()
 	return defaultStatusTimeout()
@@ -82,6 +83,8 @@ func (m *AppModel) undoDailyPlanToggle() tea.Cmd {
 	}
 	m.lastDailyPlanToggleRedo = action
 	m.lastDailyPlanToggle = nil
+	m.lastDailyPlanToggleAt = time.Time{}
+	m.lastDailyPlanRedoAt = time.Now()
 	m.lastToggleRedoKind = toggleUndoDailyPlan
 	m.lastToggleUndoKind = m.nextUndoKind(toggleUndoDailyPlan)
 
@@ -121,6 +124,7 @@ func (m *AppModel) redoDailyPlanToggle() tea.Cmd {
 		return nil
 	}
 	m.lastDailyPlanToggleRedo = nil
+	m.lastDailyPlanRedoAt = time.Time{}
 	m.lastToggleRedoKind = m.nextRedoKind(toggleUndoDailyPlan)
 
 	if action.WasAdd {
@@ -155,6 +159,7 @@ func (m *AppModel) redoDailyPlanToggle() tea.Cmd {
 		m.setInfoStatus(fmt.Sprintf("Redone: %s", action.Task.Title))
 	}
 	m.lastDailyPlanToggle = action
+	m.lastDailyPlanToggleAt = time.Now()
 	m.lastToggleUndoKind = toggleUndoDailyPlan
 	return defaultStatusTimeout()
 }

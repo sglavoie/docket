@@ -356,9 +356,7 @@ func applySectionChange(pf persistFn, project *models.Project, taskID string, se
 
 // applyDeleteTask removes a task and its descendants from a project.
 // It handles attachment cleanup, descendant collection, and dangling parent references.
-// The persister is used to save the project directly when all tasks are deleted
-// (the persistFn requires a task ID, which is unavailable when the list is empty).
-func applyDeleteTask(pf persistFn, persister Persister, project *models.Project, taskID string) TaskOpResult {
+func applyDeleteTask(pf persistFn, _ Persister, project *models.Project, taskID string) TaskOpResult {
 	if project == nil {
 		return TaskOpResult{Err: errNilProject}
 	}
@@ -372,7 +370,23 @@ func applyDeleteTask(pf persistFn, persister Persister, project *models.Project,
 	// Collect the task and all its descendants
 	idsToDelete := collectDescendantIDs(project.Tasks, map[string]bool{taskID: true})
 
-	// Clean up attachments for all tasks being deleted
+	result := pf(project, taskID, func(*models.Task) {
+		deleteTasksFromProject(project, idsToDelete)
+	})
+	if result.Err != nil || result.StatusMessage != "" {
+		return result
+	}
+
+	return TaskOpResult{
+		StatusMessage: fmt.Sprintf("Deleted task #%d (u to undo)", shortID),
+		Cmd: func() tea.Msg {
+			return TaskDeletedMsg{Task: task, Project: project}
+		},
+	}
+}
+
+func deleteTasksFromProject(project *models.Project, idsToDelete map[string]bool) {
+	// Clean up attachments for all tasks being deleted.
 	for _, t := range project.Tasks {
 		if idsToDelete[t.ID] {
 			if err := storage.CleanupTaskAttachments(project, t); err != nil {
@@ -412,27 +426,7 @@ func applyDeleteTask(pf persistFn, persister Persister, project *models.Project,
 		}
 	}
 	project.Tasks = remaining
-
-	// Trigger the persist pipeline via a no-op mutate on any remaining task.
-	// When all tasks have been deleted, save directly via the persister since
-	// persistFn requires a valid task ID.
-	if len(project.Tasks) > 0 {
-		result := pf(project, project.Tasks[0].ID, func(t *models.Task) {})
-		if result.Err != nil {
-			return result
-		}
-	} else {
-		if err := persister.SaveWithBackupSync(project); err != nil {
-			return TaskOpResult{Err: fmt.Errorf("failed to save empty project: %w", err)}
-		}
-	}
-
-	return TaskOpResult{
-		StatusMessage: fmt.Sprintf("Deleted task #%d (u to undo)", shortID),
-		Cmd: func() tea.Msg {
-			return TaskDeletedMsg{Task: task, Project: project}
-		},
-	}
+	project.BuildTaskTree()
 }
 
 // dueDateLabel returns a human-friendly label for a relative due date.

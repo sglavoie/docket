@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"time"
 
 	tea "charm.land/bubbletea/v2"
 
@@ -73,6 +74,7 @@ func (m *AppModel) toggleQueue() tea.Cmd {
 		m.setInfoStatus(fmt.Sprintf("Added to queue: %s", task.Title))
 	}
 	m.lastToggleUndoKind = toggleUndoQueue
+	m.lastQueueToggleAt = time.Now()
 	m.clearToggleRedoHistory()
 	m.persistFocusQueue()
 	return defaultStatusTimeout()
@@ -86,6 +88,8 @@ func (m *AppModel) undoQueueToggle() tea.Cmd {
 	}
 	m.lastQueueToggleRedo = action
 	m.lastQueueToggle = nil
+	m.lastQueueToggleAt = time.Time{}
+	m.lastQueueRedoAt = time.Now()
 	m.lastToggleRedoKind = toggleUndoQueue
 	m.lastToggleUndoKind = m.nextUndoKind(toggleUndoQueue)
 
@@ -125,6 +129,7 @@ func (m *AppModel) redoQueueToggle() tea.Cmd {
 		return nil
 	}
 	m.lastQueueToggleRedo = nil
+	m.lastQueueRedoAt = time.Time{}
 	m.lastToggleRedoKind = m.nextRedoKind(toggleUndoQueue)
 
 	if action.WasAdd {
@@ -159,6 +164,7 @@ func (m *AppModel) redoQueueToggle() tea.Cmd {
 		m.setInfoStatus(fmt.Sprintf("Redone: %s", action.Task.Title))
 	}
 	m.lastQueueToggle = action
+	m.lastQueueToggleAt = time.Now()
 	m.lastToggleUndoKind = toggleUndoQueue
 	return defaultStatusTimeout()
 }

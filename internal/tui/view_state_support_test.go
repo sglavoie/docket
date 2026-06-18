@@ -10,6 +10,7 @@ func TestUndoContextSetClearsStaleTargets(t *testing.T) {
 		Context:    "5 tasks",
 		ProjectIDs: []string{"proj-a", "proj-b"},
 		TaskIDs:    []string{"t1", "t2", "t3", "t4", "t5"},
+		GroupID:    "group-1",
 	}
 
 	u.Set("Set Priority", "P1: lone task")
@@ -26,6 +27,9 @@ func TestUndoContextSetClearsStaleTargets(t *testing.T) {
 	if u.ProjectIDs != nil {
 		t.Errorf("ProjectIDs should be cleared, got %v", u.ProjectIDs)
 	}
+	if u.GroupID != "" {
+		t.Errorf("GroupID should be cleared, got %q", u.GroupID)
+	}
 }
 
 func TestUndoContextClearResetsAllFields(t *testing.T) {
@@ -34,12 +38,13 @@ func TestUndoContextClearResetsAllFields(t *testing.T) {
 		Context:    "#1 foo",
 		ProjectIDs: []string{"p1"},
 		TaskIDs:    []string{"t1"},
+		GroupID:    "group-1",
 	}
 	u.Clear()
 	if u.Action != "" || u.Context != "" {
 		t.Errorf("expected empty strings, got %q / %q", u.Action, u.Context)
 	}
-	if u.ProjectIDs != nil || u.TaskIDs != nil {
-		t.Errorf("expected nil slices, got %v / %v", u.ProjectIDs, u.TaskIDs)
+	if u.ProjectIDs != nil || u.TaskIDs != nil || u.GroupID != "" {
+		t.Errorf("expected nil slices and empty group, got %v / %v / %q", u.ProjectIDs, u.TaskIDs, u.GroupID)
 	}
 }

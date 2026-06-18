@@ -6,6 +6,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 )
 
@@ -131,12 +132,19 @@ func runTaskArchiveAll(out MutateOutput) error {
 		Name     string `json:"name"`
 		Archived int    `json:"archived"`
 	}
+	type archiveCandidate struct {
+		Project        *models.Project
+		CompletedCount int
+		ArchivedIDs    map[string]bool
+	}
 
 	projects := cfg.GetActiveProjects()
 	totalArchived := 0
+	totalToArchive := 0
 	configDirty := false
 	var failures []string
 	var results []projectResult
+	var candidates []archiveCandidate
 
 	for _, project := range projects {
 		if err := storage.LoadProject(project); err != nil {
@@ -156,38 +164,58 @@ func runTaskArchiveAll(out MutateOutput) error {
 			continue
 		}
 
-		// Record undo snapshot before archiving
-		if cfg.UndoHistoryDepth != nil && *cfg.UndoHistoryDepth > 0 {
-			if snapshotErr := storage.RecordUndoSnapshot(project, "Archive Tasks",
-				fmt.Sprintf("%d tasks", len(completedTasks)), *cfg.UndoHistoryDepth, nil); snapshotErr != nil {
-				fmt.Fprintf(os.Stderr, "warning: failed to record undo snapshot for %s: %v\n", project.Name, snapshotErr)
+		archivedIDs := make(map[string]bool, len(completedTasks))
+		for _, t := range completedTasks {
+			archivedIDs[t.ID] = true
+		}
+		candidates = append(candidates, archiveCandidate{
+			Project:        project,
+			CompletedCount: len(completedTasks),
+			ArchivedIDs:    archivedIDs,
+		})
+		totalToArchive += len(completedTasks)
+	}
+
+	if cfg.UndoHistoryDepth != nil && *cfg.UndoHistoryDepth > 0 && len(candidates) > 0 {
+		if len(candidates) == 1 {
+			candidate := candidates[0]
+			if snapshotErr := storage.RecordUndoSnapshot(candidate.Project, "Archive Tasks",
+				fmt.Sprintf("%d tasks", candidate.CompletedCount), *cfg.UndoHistoryDepth, nil); snapshotErr != nil {
+				fmt.Fprintf(os.Stderr, "warning: failed to record undo snapshot for %s: %v\n", candidate.Project.Name, snapshotErr)
+			}
+		} else {
+			projectsToSnapshot := make([]*models.Project, 0, len(candidates))
+			for _, candidate := range candidates {
+				projectsToSnapshot = append(projectsToSnapshot, candidate.Project)
+			}
+			if _, snapshotErr := recordGroupedUndoSnapshots(projectsToSnapshot, "Archive Tasks",
+				fmt.Sprintf("%d tasks across %d projects", totalToArchive, len(candidates)), *cfg.UndoHistoryDepth); snapshotErr != nil {
+				fmt.Fprintf(os.Stderr, "warning: failed to record grouped undo snapshot: %v\n", snapshotErr)
 			}
 		}
+	}
 
-		if backupErr := storage.BackupProject(project); backupErr != nil {
-			failures = append(failures, fmt.Sprintf("[%s] backup failed: %v", project.Name, backupErr))
+	for _, candidate := range candidates {
+		if backupErr := storage.BackupProject(candidate.Project); backupErr != nil {
+			failures = append(failures, fmt.Sprintf("[%s] backup failed: %v", candidate.Project.Name, backupErr))
 			continue
 		}
 
-		count, err := storage.ArchiveTasks(project)
+		count, err := storage.ArchiveTasks(candidate.Project)
 		if err != nil {
-			failures = append(failures, fmt.Sprintf("[%s] archive failed: %v", project.Name, err))
+			failures = append(failures, fmt.Sprintf("[%s] archive failed: %v", candidate.Project.Name, err))
 			continue
 		}
 
 		// Clean up config references for archived tasks AFTER successful
 		// archive, so failures don't strip refs to tasks still in tasks.md.
-		archivedIDs := make(map[string]bool, len(completedTasks))
-		for _, t := range completedTasks {
-			archivedIDs[t.ID] = true
-		}
-		if cfg.RemoveTaskRefs(archivedIDs) > 0 {
+		if cfg.RemoveTaskRefs(candidate.ArchivedIDs) > 0 {
 			configDirty = true
 		}
 
-		results = append(results, projectResult{Name: project.Name, Archived: count})
+		results = append(results, projectResult{Name: candidate.Project.Name, Archived: count})
 		if !out.Quiet && !out.JSON {
-			fmt.Printf("[%s] Archived %s\n", project.Name, Pluralize(count, "task", "tasks"))
+			fmt.Printf("[%s] Archived %s\n", candidate.Project.Name, Pluralize(count, "task", "tasks"))
 		}
 		totalArchived += count
 	}

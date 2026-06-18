@@ -222,6 +222,10 @@ type AppModel struct {
 	lastQueueToggle         *queueToggleAction     // last q-key action for undo
 	lastDailyPlanToggleRedo *dailyPlanToggleAction // last undone w-key action for redo
 	lastQueueToggleRedo     *queueToggleAction     // last undone q-key action for redo
+	lastDailyPlanToggleAt   time.Time
+	lastQueueToggleAt       time.Time
+	lastDailyPlanRedoAt     time.Time
+	lastQueueRedoAt         time.Time
 
 	// Last repeatable prefix-chord action for . (dot) key replay.
 	lastRepeatableAction *repeatableAction

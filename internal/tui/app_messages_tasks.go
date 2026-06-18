@@ -52,8 +52,13 @@ type TaskStatusChangedMsg struct{ Task *models.Task }
 // This is used by command palette handlers that mutate tasks in-memory
 // without going through the persistFn pipeline.
 type TaskPropertyChangedMsg struct {
-	Task      *models.Task
-	NeedsSave bool
+	Task                *models.Task
+	NeedsSave           bool
+	UndoAction          string
+	UndoContext         string
+	UndoTaskIDs         []string
+	UndoGroupID         string
+	UndoGroupProjectIDs []string
 }
 
 // =============================================================================

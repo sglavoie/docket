@@ -442,14 +442,17 @@ tasks by tag across all tasks in the current project.`,
 Every mutating operation (add, complete, edit, delete, etc.)
 creates an undo snapshot. Multiple levels of undo are supported.
 
-# TUI Undo
+# TUI Undo And Redo
 
-Press u immediately after a supported change to restore the
-previous state while the undo toast is visible.
+Press u to restore the previous task state. Press ctrl+r to redo
+the most recent undo. Some views keep local undo behavior for
+temporary UI state, but task/project changes use persistent
+tasks.md snapshots.
 
 # CLI Undo
 
   tt undo              # Restore previous state
+  tt redo              # Reapply the most recent undo
 
 Run tt undo multiple times to step back through snapshots. The
 number of retained steps is configurable via the undo_history_depth
@@ -458,8 +461,9 @@ setting.
 # How It Works
 
 Each undo restores the tasks.md file to its state before the
-last change. Commands report what was undone and how many more
-undo steps remain.`,
+last change. Cross-project changes restore every grouped project
+together; if grouped history diverges or a snapshot is missing,
+the restore is aborted instead of partially applied.`,
 		},
 		{
 			Title:    "Repeat Last Action",

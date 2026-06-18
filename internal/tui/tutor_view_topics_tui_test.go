@@ -41,10 +41,12 @@ func TestTutorUndoTopicDocumentsRetainedUndoWithoutHistoryViewer(t *testing.T) {
 
 	required := []string{
 		"# Undo",
-		"Press u immediately after a supported change",
+		"Press u to restore the previous task state",
+		"Press ctrl+r to redo",
 		"tt undo",
+		"tt redo",
 		"undo_history_depth",
-		"undo steps remain",
+		"restore is aborted instead of partially applied",
 	}
 	for _, want := range required {
 		if !strings.Contains(topic.Content, want) {

@@ -246,7 +246,7 @@ func (m *AppModel) handleGlobalKeyPress(msg tea.KeyPressMsg) (bool, tea.Cmd) { /
 			return true, m.batchWithFocusRefresh(cmd)
 		}
 	case "u":
-		if m.hasActiveTextInput() || m.hasActivePendingPrefix() {
+		if m.hasActiveTextInput() || m.hasActivePendingPrefix() || m.hasActiveConfirmDialog() {
 			break
 		}
 		// Inline undo toast: when an undo-available toast is on screen,
@@ -261,11 +261,17 @@ func (m *AppModel) handleGlobalKeyPress(msg tea.KeyPressMsg) (bool, tea.Cmd) { /
 		if cmd := m.handleUndoToggle(); cmd != nil {
 			return true, cmd
 		}
+		if cmd := m.handleGlobalTaskUndo(); cmd != nil {
+			return true, cmd
+		}
 	case "ctrl+r":
-		if m.hasActiveTextInput() || m.hasActivePendingPrefix() {
+		if m.hasActiveTextInput() || m.hasActivePendingPrefix() || m.hasActiveConfirmDialog() {
 			break
 		}
 		if cmd := m.handleRedoToggle(); cmd != nil {
+			return true, cmd
+		}
+		if cmd := m.handleGlobalTaskRedo(); cmd != nil {
 			return true, cmd
 		}
 	case "ctrl+x":
@@ -356,6 +362,47 @@ func (m *AppModel) handleGlobalKeyPress(msg tea.KeyPressMsg) (bool, tea.Cmd) { /
 	}
 
 	return false, nil
+}
+
+func (m *AppModel) handleGlobalTaskUndo() tea.Cmd {
+	return m.handleGlobalTaskUndoRedo(false)
+}
+
+func (m *AppModel) handleGlobalTaskRedo() tea.Cmd {
+	return m.handleGlobalTaskUndoRedo(true)
+}
+
+func (m *AppModel) handleGlobalTaskUndoRedo(redo bool) tea.Cmd {
+	if !m.currentViewSupportsGlobalTaskUndoRedo() {
+		return nil
+	}
+	_, project := m.getCurrentCursorTaskAndProject()
+	if project == nil {
+		return nil
+	}
+	if redo {
+		return performRedoForProjectsCmd(m.persister, project, activeUndoProjects(m.config), m.repairTaskProjectRefsAfterRestore)
+	}
+	return performUndoForProjectsCmd(m.persister, project, activeUndoProjects(m.config), m.repairTaskProjectRefsAfterRestore)
+}
+
+func (m *AppModel) currentViewSupportsGlobalTaskUndoRedo() bool {
+	switch m.currentView() { //nolint:exhaustive
+	case ViewPriorityView,
+		ViewDueDateOverview,
+		ViewDailyReview,
+		ViewWeeklyReview,
+		ViewFocusView,
+		ViewProjectFocusView,
+		ViewAllTasks,
+		ViewRecentActivity,
+		ViewFocusBoard,
+		ViewKanban,
+		ViewCrossProjectKanban:
+		return true
+	default:
+		return false
+	}
 }
 
 func (m *AppModel) handleProjectArchiveConfirmKey(key string) (bool, tea.Cmd) {

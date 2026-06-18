@@ -20,6 +20,7 @@ func (m *AppModel) applyBulkTaskRefsWithWorkflow(
 ) (int, []TaskProjectGroup, error) {
 	groups := groupTaskProjectRefsByProject(refs)
 	total := 0
+	var changedGroups []changedTaskProjectGroup
 
 	for _, group := range groups {
 		var changedIDs []string
@@ -35,17 +36,23 @@ func (m *AppModel) applyBulkTaskRefsWithWorkflow(
 		if len(changedIDs) == 0 {
 			continue
 		}
+		changedGroups = append(changedGroups, changedTaskProjectGroup{group: group, taskIDs: changedIDs})
+	}
 
+	groupID, groupProjectIDs := workflowGroupMetadata(taskProjectGroupsFromChanged(changedGroups))
+	for _, changed := range changedGroups {
 		opts := BuildWorkflowOpts(
 			m.appPersister(),
-			group.Project,
+			changed.group.Project,
 			m.config,
 			m.configManager,
-			nil,
+			changed.prevStates,
 			undoAction,
-			fmt.Sprintf("%d tasks", len(changedIDs)),
-			changedIDs,
+			fmt.Sprintf("%d tasks", len(changed.taskIDs)),
+			changed.taskIDs,
 		)
+		opts.UndoGroupID = groupID
+		opts.UndoGroupProjectIDs = groupProjectIDs
 		if err := persistWithWorkflow(opts); err != nil {
 			return total, groups, err
 		}

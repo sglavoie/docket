@@ -8,6 +8,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/storage"
 )
 
 // TestFocusBoardEditTitle_UndoContextUsesOldTitle verifies that the undo
@@ -113,27 +114,50 @@ func TestMutateTask_TitlePointerSharing(t *testing.T) {
 // stubPersister is a minimal Persister implementation for unit tests.
 // It records RecordUndoSnapshot calls for assertion and no-ops everything else.
 type stubPersister struct {
-	recordedAction  string
-	recordedContext string
-	recordedDepth   int
-	recordedTaskIDs []string
+	recordedAction          string
+	recordedContext         string
+	recordedDepth           int
+	recordedTaskIDs         []string
+	recordedGroupID         string
+	recordedGroupProjectIDs []string
 }
 
-func (s *stubPersister) Load(_ *models.Project) error                       { return nil }
-func (s *stubPersister) Save(_ *models.Project) error                       { return nil }
-func (s *stubPersister) Backup(_ *models.Project) error                     { return nil }
-func (s *stubPersister) SaveWithBackupSync(_ *models.Project) error         { return nil }
-func (s *stubPersister) SaveMultipleSync(_ []*models.Project) error         { return nil }
+func (s *stubPersister) Load(_ *models.Project) error               { return nil }
+func (s *stubPersister) Save(_ *models.Project) error               { return nil }
+func (s *stubPersister) Backup(_ *models.Project) error             { return nil }
+func (s *stubPersister) SaveWithBackupSync(_ *models.Project) error { return nil }
+func (s *stubPersister) SaveWithBackupSyncOptions(_ *models.Project, _ ProjectSaveOptions) error {
+	return nil
+}
+func (s *stubPersister) SaveMultipleSync(_ []*models.Project) error { return nil }
+func (s *stubPersister) SaveMultipleSyncOptions(_ []*models.Project, _ ProjectSaveOptions) error {
+	return nil
+}
 func (s *stubPersister) BackupExists(_ *models.Project) bool                { return false }
 func (s *stubPersister) RestoreFromBackup(_ *models.Project) error          { return nil }
 func (s *stubPersister) ArchiveTasks(_ *models.Project) (int, error)        { return 0, nil }
 func (s *stubPersister) SaveWithBackup(_ *models.Project, _ string) tea.Cmd { return nil }
+func (s *stubPersister) SaveWithBackupOptions(_ *models.Project, _ string, _ ProjectSaveOptions) tea.Cmd {
+	return nil
+}
 func (s *stubPersister) SaveMultiple(_ []*models.Project, _ string) tea.Cmd { return nil }
+func (s *stubPersister) SaveMultipleOptions(_ []*models.Project, _ string, _ ProjectSaveOptions) tea.Cmd {
+	return nil
+}
 func (s *stubPersister) RecordUndoSnapshot(_ *models.Project, action, ctx string, depth int, taskIDs []string) error {
 	s.recordedAction = action
 	s.recordedContext = ctx
 	s.recordedDepth = depth
 	s.recordedTaskIDs = taskIDs
+	return nil
+}
+func (s *stubPersister) RecordUndoSnapshotWithOptions(_ *models.Project, opts storage.UndoSnapshotOptions) error {
+	s.recordedAction = opts.Action
+	s.recordedContext = opts.Context
+	s.recordedDepth = opts.MaxDepth
+	s.recordedTaskIDs = opts.TaskIDs
+	s.recordedGroupID = opts.GroupID
+	s.recordedGroupProjectIDs = opts.GroupProjectIDs
 	return nil
 }
 
@@ -219,6 +243,43 @@ func TestPersistWithWorkflow_SafetyNet(t *testing.T) {
 
 	if stub.recordedAction != "Task Modified" {
 		t.Errorf("expected safety-net action 'Task Modified', got %q", stub.recordedAction)
+	}
+}
+
+func TestPersistWithWorkflow_RecordsGroupMetadata(t *testing.T) {
+	project, _ := models.NewProject("proj", "proj", t.TempDir())
+	task, err := models.NewTask("task-id", 1, models.TaskTypeTask, "My Task")
+	if err != nil {
+		t.Fatal(err)
+	}
+	project.Tasks = append(project.Tasks, task)
+	project.BuildTaskTree()
+
+	stub := &stubPersister{}
+	opts := WorkflowSaveOptions{
+		Persister:           stub,
+		Project:             project,
+		UndoDepth:           5,
+		UndoAction:          "Move Task",
+		UndoContext:         "cross-project",
+		UndoTaskIDs:         []string{task.ID},
+		UndoGroupID:         "group-1",
+		UndoGroupProjectIDs: []string{project.ID, "other-project"},
+	}
+	if err := persistWithWorkflow(opts); err != nil {
+		t.Fatalf("persistWithWorkflow failed: %v", err)
+	}
+
+	if stub.recordedGroupID != opts.UndoGroupID {
+		t.Errorf("group ID = %q, want %q", stub.recordedGroupID, opts.UndoGroupID)
+	}
+	if len(stub.recordedGroupProjectIDs) != len(opts.UndoGroupProjectIDs) {
+		t.Fatalf("group project IDs = %v, want %v", stub.recordedGroupProjectIDs, opts.UndoGroupProjectIDs)
+	}
+	for i, want := range opts.UndoGroupProjectIDs {
+		if stub.recordedGroupProjectIDs[i] != want {
+			t.Errorf("group project ID %d = %q, want %q", i, stub.recordedGroupProjectIDs[i], want)
+		}
 	}
 }
 

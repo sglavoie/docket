@@ -164,7 +164,7 @@ func (m *AppModel) handleTaskDeleted(msg TaskDeletedMsg) (bool, tea.Cmd) {
 
 	toast := formatUndoToast(latest.Action, latest.Context)
 	undoCb := func() tea.Cmd {
-		return performUndoCmd(m.persister, project)
+		return performUndoForProjectsCmd(m.persister, project, activeUndoProjects(m.config), m.repairTaskProjectRefsAfterRestore)
 	}
 	return true, tea.Batch(refreshCmd, m.setUndoableStatus(toast, undoCb))
 }

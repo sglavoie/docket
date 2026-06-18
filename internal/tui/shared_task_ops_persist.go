@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"sort"
 
 	tea "charm.land/bubbletea/v2"
 
@@ -122,6 +123,10 @@ type WorkflowSaveOptions struct {
 	UndoContext   string
 	UndoDepth     int
 	UndoTaskIDs   []string // Tasks explicitly changed by user (enables targeted undo)
+	UndoGroupID   string
+	// UndoGroupProjectIDs identifies every project in a grouped undo
+	// transaction. Values must be project IDs, not slugs.
+	UndoGroupProjectIDs []string
 }
 
 // BuildWorkflowOpts constructs a WorkflowSaveOptions from the given parameters.
@@ -149,6 +154,7 @@ func persistWithWorkflow(opts WorkflowSaveOptions) error {
 	opts.Project.CheckAndAutoUnblock()
 	opts.Project.GenerateRecurringInstances()
 
+	workflowGroupedUndoRecorded := false
 	if opts.Config != nil {
 		rules := opts.Config.GetEnabledWorkflowRules()
 		if len(rules) > 0 {
@@ -174,9 +180,15 @@ func persistWithWorkflow(opts WorkflowSaveOptions) error {
 
 			// Process deferred moves (move tasks to other projects)
 			if len(result.DeferredMoves) > 0 {
-				if err := processTUIDeferredMoves(opts.Persister, opts.Project, result.DeferredMoves, opts.Config); err != nil {
+				recorded, err := processTUIDeferredMoves(opts.Persister, opts.Project, result.DeferredMoves, opts.Config, opts.ConfigManager, tuiDeferredMoveUndoOptions{
+					Action:  opts.UndoAction,
+					Context: opts.UndoContext,
+					Depth:   opts.UndoDepth,
+				})
+				if err != nil {
 					return fmt.Errorf("workflow move_to_project failed: %w", err)
 				}
+				workflowGroupedUndoRecorded = workflowGroupedUndoRecorded || recorded
 			}
 
 			if len(result.RuleTriggerCounts) > 0 && opts.ConfigManager != nil {
@@ -220,11 +232,18 @@ func persistWithWorkflow(opts WorkflowSaveOptions) error {
 	opts.Project.ReorderRootTasksByCompletion()
 
 	// Record undo snapshot BEFORE backup+save so it captures the pre-mutation state
-	if opts.UndoDepth > 0 {
+	if opts.UndoDepth > 0 && !workflowGroupedUndoRecorded {
 		if opts.UndoAction == "" {
 			opts.UndoAction = "Task Modified"
 		}
-		_ = opts.Persister.RecordUndoSnapshot(opts.Project, opts.UndoAction, opts.UndoContext, opts.UndoDepth, opts.UndoTaskIDs)
+		_ = opts.Persister.RecordUndoSnapshotWithOptions(opts.Project, storage.UndoSnapshotOptions{
+			Action:          opts.UndoAction,
+			Context:         opts.UndoContext,
+			MaxDepth:        opts.UndoDepth,
+			TaskIDs:         opts.UndoTaskIDs,
+			GroupID:         opts.UndoGroupID,
+			GroupProjectIDs: opts.UndoGroupProjectIDs,
+		})
 	}
 
 	if err := opts.Persister.Backup(opts.Project); err != nil {
@@ -238,19 +257,74 @@ func persistWithWorkflow(opts WorkflowSaveOptions) error {
 	return nil
 }
 
+type tuiDeferredMoveUndoOptions struct {
+	Action  string
+	Context string
+	Depth   int
+}
+
 // processTUIDeferredMoves handles move_to_project actions in the TUI context.
 // It transfers tasks (and their descendants) from the source project to destination projects.
-func processTUIDeferredMoves(_ Persister, srcProject *models.Project, moves []workflow.DeferredMove, cfg *config.Config) error {
+func processTUIDeferredMoves(p Persister, srcProject *models.Project, moves []workflow.DeferredMove, cfg *config.Config, cfgManager *config.Manager, undoOpts tuiDeferredMoveUndoOptions) (bool, error) {
+	if p == nil {
+		p = defaultPersister
+	}
+	if cfg == nil {
+		return false, fmt.Errorf("config is required")
+	}
+
+	destProjects := make(map[string]*models.Project, len(moves))
+	activeDestProjects := make(map[string]*models.Project, len(moves))
 	for _, move := range moves {
-		destProject := cfg.GetProject(move.Destination)
-		if destProject == nil {
-			return fmt.Errorf("destination project %q not found", move.Destination)
+		destProject, ok := destProjects[move.Destination]
+		if !ok {
+			destProject = cfg.GetProject(move.Destination)
+			if destProject == nil {
+				return false, fmt.Errorf("destination project %q not found", move.Destination)
+			}
+			if err := p.Load(destProject); err != nil {
+				return false, fmt.Errorf("failed to load destination project %q: %w", move.Destination, err)
+			}
+			destProjects[move.Destination] = destProject
+		}
+		if tuiDeferredMoveTaskExists(srcProject, move.TaskID) {
+			activeDestProjects[move.Destination] = destProject
+		}
+	}
+
+	recordedUndo := false
+	if undoOpts.Depth > 0 && len(activeDestProjects) > 0 {
+		destinations := make([]string, 0, len(activeDestProjects))
+		for destination := range activeDestProjects {
+			destinations = append(destinations, destination)
+		}
+		sort.Strings(destinations)
+
+		projectsToSnapshot := make([]*models.Project, 0, len(destinations)+1)
+		projectsToSnapshot = append(projectsToSnapshot, srcProject)
+		for _, destination := range destinations {
+			projectsToSnapshot = append(projectsToSnapshot, activeDestProjects[destination])
 		}
 
-		if err := storage.LoadProject(destProject); err != nil {
-			return fmt.Errorf("failed to load destination project %q: %w", move.Destination, err)
+		action := undoOpts.Action
+		if action == "" {
+			action = "Workflow Move to Project"
 		}
+		context := undoOpts.Context
+		if context == "" {
+			context = fmt.Sprintf("%d workflow move(s)", len(moves))
+		}
+		groupID, groupProjectIDs := undoGroupMetadataForProjects(projectsToSnapshot)
+		for _, project := range projectsToSnapshot {
+			if err := recordTUIUndoSnapshotWithGroup(p, project, action, context, undoOpts.Depth, nil, groupID, groupProjectIDs); err != nil {
+				return false, err
+			}
+		}
+		recordedUndo = true
+	}
 
+	for _, move := range moves {
+		destProject := destProjects[move.Destination]
 		// Find the root task in source
 		var movedTask *models.Task
 		for _, t := range srcProject.Tasks {
@@ -320,14 +394,35 @@ func processTUIDeferredMoves(_ Persister, srcProject *models.Project, moves []wo
 		destProject.Tasks = append(destProject.Tasks, movedTasks...)
 		destProject.BuildTaskTree()
 
-		if err := storage.BackupProject(destProject); err != nil {
-			return fmt.Errorf("failed to backup destination project %q: %w", move.Destination, err)
+		if cfg != nil {
+			if updated := cfg.ReassignTaskProject(movedIDs, destProject.ID); updated > 0 && cfgManager != nil {
+				if err := cfgManager.Save(cfg); err != nil {
+					return false, fmt.Errorf("failed to save moved task references: %w", err)
+				}
+			}
 		}
-		if err := storage.SaveProjectLocked(destProject); err != nil {
-			return fmt.Errorf("failed to save destination project %q: %w", move.Destination, err)
+
+		if err := p.Backup(destProject); err != nil {
+			return false, fmt.Errorf("failed to backup destination project %q: %w", move.Destination, err)
+		}
+		if err := p.Save(destProject); err != nil {
+			return false, fmt.Errorf("failed to save destination project %q: %w", move.Destination, err)
+		}
+		_ = p.Load(destProject)
+	}
+	return recordedUndo, nil
+}
+
+func tuiDeferredMoveTaskExists(project *models.Project, taskID string) bool {
+	if project == nil {
+		return false
+	}
+	for _, task := range project.Tasks {
+		if task != nil && task.ID == taskID {
+			return true
 		}
 	}
-	return nil
+	return false
 }
 
 // reapplySideEffects re-runs state-derived side effects (auto-unblock,
@@ -352,40 +447,68 @@ func reapplySideEffects(persister Persister, project *models.Project) error {
 // undo snapshot. View-level rebuild (buildTree, rebuildRows) is handled by
 // handleWithRefresh on the main goroutine when UndoPerformedMsg is received.
 func performUndoCmd(persister Persister, project *models.Project) tea.Cmd {
+	return performUndoForProjectsCmd(persister, project, nil, nil)
+}
+
+type postRestoreHook func([]*models.Project) error
+
+func performUndoForProjectsCmd(persister Persister, project *models.Project, projects []*models.Project, afterRestore postRestoreHook) tea.Cmd {
 	if project == nil {
 		return nil
 	}
 	return func() tea.Msg {
-		action, err := storage.PerformUndo(project)
+		projectsToReload := restoreProjectsForTopTUIHistoryEntry(project, projects, storage.LoadUndoHistory)
+		action, err := storage.PerformUndoForProjects(project, projects)
 		if err != nil {
+			return ErrorMsg{Err: formatUndoRedoRestoreError("undo", err)}
+		}
+		if err := reloadAndReapplyRestoredProjects(persister, projectsToReload, "undo"); err != nil {
 			return ErrorMsg{Err: err}
 		}
-		if err := persister.Load(project); err != nil {
-			return ErrorMsg{Err: fmt.Errorf("failed to reload after undo: %w", err)}
-		}
-		if err := reapplySideEffects(persister, project); err != nil {
-			return ErrorMsg{Err: err}
+		if afterRestore != nil {
+			if err := afterRestore(projectsToReload); err != nil {
+				return ErrorMsg{Err: err}
+			}
 		}
 		return UndoPerformedMsg{Action: action}
 	}
 }
 
+func reloadAndReapplyRestoredProjects(persister Persister, projects []*models.Project, label string) error {
+	for _, project := range uniqueTUIUndoProjects(projects) {
+		if err := persister.Load(project); err != nil {
+			return fmt.Errorf("failed to reload after %s: %w", label, err)
+		}
+		if err := reapplySideEffects(persister, project); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // performRedoCmd returns a tea.Cmd that restores the project from the most recent
 // redo snapshot and pushes current state onto the undo stack.
 func performRedoCmd(persister Persister, project *models.Project) tea.Cmd {
+	return performRedoForProjectsCmd(persister, project, nil, nil)
+}
+
+func performRedoForProjectsCmd(persister Persister, project *models.Project, projects []*models.Project, afterRestore postRestoreHook) tea.Cmd {
 	if project == nil {
 		return nil
 	}
 	return func() tea.Msg {
-		action, err := storage.PerformRedo(project)
+		projectsToReload := restoreProjectsForTopTUIHistoryEntry(project, projects, storage.LoadRedoHistory)
+		action, err := storage.PerformRedoForProjects(project, projects)
 		if err != nil {
+			return ErrorMsg{Err: formatUndoRedoRestoreError("redo", err)}
+		}
+		if err := reloadAndReapplyRestoredProjects(persister, projectsToReload, "redo"); err != nil {
 			return ErrorMsg{Err: err}
 		}
-		if err := persister.Load(project); err != nil {
-			return ErrorMsg{Err: fmt.Errorf("failed to reload after redo: %w", err)}
-		}
-		if err := reapplySideEffects(persister, project); err != nil {
-			return ErrorMsg{Err: err}
+		if afterRestore != nil {
+			if err := afterRestore(projectsToReload); err != nil {
+				return ErrorMsg{Err: err}
+			}
 		}
 		return RedoPerformedMsg{Action: action}
 	}
