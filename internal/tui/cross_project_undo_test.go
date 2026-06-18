@@ -11,7 +11,7 @@ import (
 	"github.com/sglavoie/tt/internal/storage"
 )
 
-func TestCrossProjectUndoOrchestration(t *testing.T) {
+func TestCrossProjectUndoOrchestration(t *testing.T) { //nolint:gocyclo // integration-style test pins a full undo/redo orchestration path.
 	strPtr := func(s string) *string { return &s }
 
 	alphaDir := t.TempDir()

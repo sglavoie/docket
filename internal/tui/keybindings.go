@@ -132,21 +132,6 @@ func (r *KeybindingRegistry) GetForView(view ViewType) []HelpItem {
 	return dedupHelpItems(items)
 }
 
-// GetForViewWithOverrides returns help items with custom overrides applied.
-// Overrides is a map of key -> description for dynamic content.
-func (r *KeybindingRegistry) GetForViewWithOverrides(view ViewType, overrides map[string]string) []HelpItem {
-	items := r.GetForView(view)
-	if len(overrides) == 0 {
-		return items
-	}
-	for i, item := range items {
-		if desc, ok := overrides[item.Key]; ok {
-			items[i].Description = desc
-		}
-	}
-	return dedupHelpItems(items)
-}
-
 // GetAppLevelForView returns broad globals and scoped AppModel-level bindings
 // for a view, excluding view-local keymap entries.
 func (r *KeybindingRegistry) GetAppLevelForView(view ViewType) []HelpItem {

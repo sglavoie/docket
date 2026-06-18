@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"maps"
 	"strconv"
 	"strings"
 	"time"
@@ -88,9 +89,7 @@ func runScoreSet(cmd *cobra.Command, args []string) error {
 	if task.ScoreDimensions == nil {
 		task.ScoreDimensions = make(map[string]int)
 	}
-	for k, v := range pending {
-		task.ScoreDimensions[k] = v
-	}
+	maps.Copy(task.ScoreDimensions, pending)
 
 	task.UpdatedAt = time.Now()
 	if err := SaveProject(project, &SaveOptions{

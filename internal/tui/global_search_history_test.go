@@ -133,7 +133,7 @@ func TestGlobalSearchEnterDoesNotRecordWithoutSelectableQuery(t *testing.T) {
 
 func TestGlobalSearchRecordHistoryDedupesAndCaps(t *testing.T) {
 	m := newGlobalSearchHistoryTestModel(nil, nil)
-	for i := 0; i < 11; i++ {
+	for i := range 11 {
 		m.searchHistory = append(m.searchHistory, fmt.Sprintf("q%d", i))
 	}
 	m.searchInput.SetValue("q5")

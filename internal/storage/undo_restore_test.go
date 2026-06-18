@@ -143,7 +143,7 @@ func TestPerformUndoRedoPreservesGroupMetadata(t *testing.T) {
 	}
 	assertUndoEntryMetadata(t, redoEntries[0], opts)
 
-	if _, err := PerformRedo(project); err != nil {
+	if _, err = PerformRedo(project); err != nil {
 		t.Fatalf("PerformRedo failed: %v", err)
 	}
 

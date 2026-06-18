@@ -10,7 +10,7 @@ import (
 
 func makeDashboardScrollProjects(count int) []*models.Project {
 	projects := make([]*models.Project, 0, count)
-	for i := 0; i < count; i++ {
+	for i := range count {
 		projects = append(projects, &models.Project{
 			ID:      fmt.Sprintf("project-%02d", i),
 			Slug:    fmt.Sprintf("project-%02d", i),
@@ -61,7 +61,7 @@ func TestDashboardProjectListFilterShrinkClampsScrollOffset(t *testing.T) {
 func makeGlobalSearchScrollResults(count int) []filteredSearchResult {
 	project := &models.Project{Slug: "project"}
 	results := make([]filteredSearchResult, 0, count)
-	for i := 0; i < count; i++ {
+	for i := range count {
 		task := &models.Task{
 			ID:      fmt.Sprintf("task-%02d", i),
 			ShortID: i + 1,

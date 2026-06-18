@@ -379,7 +379,7 @@ func (m *AppModel) adjustCycleScroll() {
 }
 
 // renderProjectCyclePopup renders the project cycle overlay popup.
-func (m *AppModel) renderProjectCyclePopup() string {
+func (m *AppModel) renderProjectCyclePopup() string { //nolint:gocyclo // renderer combines layout, search, and selected/hidden project states.
 	if !m.showProjectCycle {
 		return ""
 	}

@@ -455,7 +455,7 @@ func TestCloseStatsAfterRestoreStdLogger(t *testing.T) {
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
-		for i := 0; i < 100; i++ {
+		for i := range 100 {
 			log.Printf("racing-%d", i)
 		}
 	}()
@@ -679,7 +679,7 @@ func TestConcurrentInitCloseNoRace(t *testing.T) {
 	t.Setenv("HOME", home)
 
 	var wg sync.WaitGroup
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		wg.Add(3)
 		go func() { defer wg.Done(); Init() }()
 		go func() { defer wg.Done(); _ = LogDir() }()

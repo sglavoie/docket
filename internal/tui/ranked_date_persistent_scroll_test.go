@@ -32,7 +32,7 @@ func TestPriorityViewPersistentScrollUsesRenderedLineIndex(t *testing.T) {
 	m.SetSize(100, 10)
 
 	now := time.Now()
-	for i := 0; i < 4; i++ {
+	for i := range 4 {
 		task := newRankedDateScrollTask(t, fmt.Sprintf("overdue-%d", i), i+1, fmt.Sprintf("Overdue %02d", i))
 		due := now.AddDate(0, 0, -1)
 		task.DueDate = &due
@@ -40,7 +40,7 @@ func TestPriorityViewPersistentScrollUsesRenderedLineIndex(t *testing.T) {
 		m.overdue = append(m.overdue, pt)
 		project.Tasks = append(project.Tasks, task)
 	}
-	for i := 0; i < 4; i++ {
+	for i := range 4 {
 		task := newRankedDateScrollTask(t, fmt.Sprintf("today-%d", i), i+5, fmt.Sprintf("Today %02d", i))
 		due := now
 		task.DueDate = &due
@@ -74,13 +74,13 @@ func TestDueDateOverviewPersistentScrollUsesRenderedLineIndex(t *testing.T) {
 	m.SetSize(100, 11)
 
 	now := time.Now()
-	for i := 0; i < 4; i++ {
+	for i := range 4 {
 		task := newRankedDateScrollTask(t, fmt.Sprintf("due-overdue-%d", i), i+1, fmt.Sprintf("Overdue %02d", i))
 		due := now.AddDate(0, 0, -1)
 		task.DueDate = &due
 		m.overdue = append(m.overdue, CrossProjectTask{Task: task, Project: project})
 	}
-	for i := 0; i < 4; i++ {
+	for i := range 4 {
 		task := newRankedDateScrollTask(t, fmt.Sprintf("due-today-%d", i), i+5, fmt.Sprintf("Today %02d", i))
 		due := now
 		task.DueDate = &due
@@ -113,7 +113,7 @@ func TestRecentActivityPersistentScrollKeepsWindowOnMoveUp(t *testing.T) {
 	m.SetSize(100, 10)
 
 	now := time.Now()
-	for i := 0; i < 8; i++ {
+	for i := range 8 {
 		task := newRankedDateScrollTask(t, fmt.Sprintf("recent-%d", i), i+1, fmt.Sprintf("Recent %02d", i))
 		task.UpdatedAt = now.Add(-time.Duration(i) * time.Minute)
 		item := CrossProjectTask{Task: task, Project: project}

@@ -198,7 +198,7 @@ func TestCopyTaskState_ConcurrentReadersGetIndependentSnapshots(t *testing.T) {
 	const N = 20
 	snaps := make([]*models.Task, N)
 	var wg sync.WaitGroup
-	for i := 0; i < N; i++ {
+	for i := range N {
 		wg.Add(1)
 		go func(idx int) {
 			defer wg.Done()
@@ -211,7 +211,7 @@ func TestCopyTaskState_ConcurrentReadersGetIndependentSnapshots(t *testing.T) {
 	// same backing array for Tags / DependsOn / Weekdays, this would race
 	// or produce inconsistent results.
 	wg = sync.WaitGroup{}
-	for i := 0; i < N; i++ {
+	for i := range N {
 		wg.Add(1)
 		go func(idx int) {
 			defer wg.Done()

@@ -51,8 +51,8 @@ func performRestore(project *models.Project, meta *UndoMeta, p restoreParams) (s
 		}
 	}
 	revPath := p.reversePath(project, nextNum)
-	if err := util.AtomicWriteFile(revPath, currentContent, FilePermissions); err != nil {
-		return "", fmt.Errorf("failed to write %s reverse snapshot: %w", p.label, err)
+	if writeErr := util.AtomicWriteFile(revPath, currentContent, FilePermissions); writeErr != nil {
+		return "", fmt.Errorf("failed to write %s reverse snapshot: %w", p.label, writeErr)
 	}
 	*p.reverseEntries = append(*p.reverseEntries, newReverseUndoEntry(latest, nextNum))
 
@@ -228,8 +228,8 @@ func preflightGroupedRestoreProject(project *models.Project, anchorEntry UndoEnt
 	if !ok {
 		return groupedRestorePlan{}, fmt.Errorf("%s group %q missing %s history for project %q", p.label, anchorEntry.GroupID, p.label, undoProjectLabel(project))
 	}
-	if err := validateSameGroupEntry(anchorEntry, latest); err != nil {
-		return groupedRestorePlan{}, fmt.Errorf("%s group %q diverged for project %q: %w", p.label, anchorEntry.GroupID, undoProjectLabel(project), err)
+	if validateErr := validateSameGroupEntry(anchorEntry, latest); validateErr != nil {
+		return groupedRestorePlan{}, fmt.Errorf("%s group %q diverged for project %q: %w", p.label, anchorEntry.GroupID, undoProjectLabel(project), validateErr)
 	}
 
 	snapPath := p.snapshotPath(project, latest.Num)

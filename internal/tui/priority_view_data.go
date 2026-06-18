@@ -144,7 +144,7 @@ func (m *PriorityViewModel) filteredGroups() (overdue, today, thisWeek, later, b
 	}
 }
 
-// computeSubTabs builds dynamic sub-tab names based on active tab and current groups.
+// computeSubTabs clears dynamic sub-tabs; priority tabs currently stand alone.
 func (m *PriorityViewModel) computeSubTabs() {
 	if m.project == nil || m.tabs.Active == priorityTabAll || m.tabs.Active == priorityTabByScore {
 		m.subTabNames = nil
@@ -154,34 +154,11 @@ func (m *PriorityViewModel) computeSubTabs() {
 		return
 	}
 
-	// Collect tasks visible for the current tab
-	overdue, today, thisWeek, later, backlog, waitingOn := m.filteredGroups()
-	var tasks []*PriorityTask
-	tasks = append(tasks, overdue...)
-	tasks = append(tasks, today...)
-	tasks = append(tasks, thisWeek...)
-	tasks = append(tasks, later...)
-	tasks = append(tasks, backlog...)
-	tasks = append(tasks, waitingOn...)
-
 	m.subTabNames = nil
 
 	if m.subTab > len(m.subTabNames) {
 		m.subTab = 0
 	}
-}
-
-// activeSubTabFilter returns the selected sub-tab value, or "" if no sub-tab filtering.
-func (m *PriorityViewModel) activeSubTabFilter() string {
-	if len(m.subTabNames) <= 1 || m.subTab <= 0 || m.subTab > len(m.subTabNames) {
-		return ""
-	}
-	return m.subTabNames[m.subTab-1]
-}
-
-// filterBySubTab narrows a task slice by the active sub-tab filter.
-func (m *PriorityViewModel) filterBySubTab(tasks []*PriorityTask) []*PriorityTask {
-	return tasks
 }
 
 // applySearchFilter returns tasks whose title or description contains the search query (case-insensitive).
@@ -205,15 +182,15 @@ func (m *PriorityViewModel) visibleScoredTasks() []*PriorityTask {
 	return m.applySearchFilter(m.scoredTasks)
 }
 
-// filteredGroupsWithSubTab returns filtered groups further narrowed by the active sub-tab and search query.
+// filteredGroupsWithSubTab returns tab-filtered groups further narrowed by the search query.
 func (m *PriorityViewModel) filteredGroupsWithSubTab() (overdue, today, thisWeek, later, backlog, waitingOn []*PriorityTask) {
 	o, td, tw, l, bl, wo := m.filteredGroups()
-	return m.applySearchFilter(m.filterBySubTab(o)),
-		m.applySearchFilter(m.filterBySubTab(td)),
-		m.applySearchFilter(m.filterBySubTab(tw)),
-		m.applySearchFilter(m.filterBySubTab(l)),
-		m.applySearchFilter(m.filterBySubTab(bl)),
-		m.applySearchFilter(m.filterBySubTab(wo))
+	return m.applySearchFilter(o),
+		m.applySearchFilter(td),
+		m.applySearchFilter(tw),
+		m.applySearchFilter(l),
+		m.applySearchFilter(bl),
+		m.applySearchFilter(wo)
 }
 
 // recalculateNavigation updates totalTasks and groupStarts based on the active tab.

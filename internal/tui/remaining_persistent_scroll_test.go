@@ -11,7 +11,7 @@ import (
 
 func makeRemainingScrollTasks(count int) []*models.Task {
 	tasks := make([]*models.Task, 0, count)
-	for i := 0; i < count; i++ {
+	for i := range count {
 		tasks = append(tasks, &models.Task{
 			ID:      fmt.Sprintf("task-%02d", i),
 			ShortID: i + 1,
@@ -91,7 +91,7 @@ func TestRoadmapPersistentScrollKeepsWindowOnMoveUp(t *testing.T) {
 
 func TestNotesViewPersistentScrollKeepsWindowOnMoveUp(t *testing.T) {
 	notes := make([]*models.Note, 0, 8)
-	for i := 0; i < 8; i++ {
+	for i := range 8 {
 		notes = append(notes, &models.Note{
 			Title:    fmt.Sprintf("Note %02d", i),
 			Filename: fmt.Sprintf("note-%02d.md", i),
@@ -117,7 +117,7 @@ func TestNotesViewPersistentScrollKeepsWindowOnMoveUp(t *testing.T) {
 
 func TestNotesSearchPersistentScrollKeepsWindowOnMoveUp(t *testing.T) {
 	filtered := make([]notesSearchResult, 0, 8)
-	for i := 0; i < 8; i++ {
+	for i := range 8 {
 		filtered = append(filtered, notesSearchResult{
 			note: &models.Note{
 				Title:    fmt.Sprintf("Note %02d", i),
@@ -152,7 +152,7 @@ func TestBlockersPersistentScrollKeepsWindowOnMoveUp(t *testing.T) {
 		state:   newBlockerViewState(""),
 	}
 	m.state.setSize(100, 16)
-	for i := 0; i < 8; i++ {
+	for i := range 8 {
 		m.blockers = append(m.blockers, models.NewBlocker(fmt.Sprintf("Blocker %02d", i)))
 	}
 

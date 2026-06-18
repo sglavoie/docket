@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/charmbracelet/x/ansi"
+
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 )

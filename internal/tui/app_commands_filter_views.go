@@ -2,7 +2,7 @@ package tui
 
 import tea "charm.land/bubbletea/v2"
 
-func (m *AppModel) filterCommands() []Command {
+func (m *AppModel) filterCommands() []Command { //nolint:gocyclo // command registry closures encode view-specific filter actions.
 	return []Command{
 		{
 			Name:        "filter by tag",

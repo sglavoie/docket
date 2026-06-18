@@ -49,7 +49,6 @@ var rawProjectSaveAllowlist = map[string]string{
 	"internal/tui/app_run.go:RunApp:storage.SaveProjectLocked(current)":                                                                  rawSaveRepair,
 	"internal/tui/app_run.go:evaluateWorkflowAtStartup:storage.SaveProjectLocked(project)":                                               rawSaveRepair,
 	"internal/tui/async_save.go:SaveMultipleProjectsAsync:projectService.SaveMultiple(projects, successMsg)":                             rawSaveTUIHelper,
-	"internal/tui/async_save.go:SaveProjectAsync:projectService.SaveWithBackup(project, successMsg)":                                     rawSaveTUIHelper,
 	"internal/tui/bulk_capture.go:(*BulkCaptureModel).createTasks:saveProjectSync(m.project)":                                            rawSaveTUIMigration,
 	"internal/tui/cross_project_linker_update.go:(*CrossProjectLinkerModel).createLink:storage.SaveProjectLocked(srcProj)":               rawSaveTUIMigration,
 	"internal/tui/cross_project_linker_update.go:(*CrossProjectLinkerModel).createLink:storage.SaveProjectLocked(tgtProj)":               rawSaveTUIMigration,

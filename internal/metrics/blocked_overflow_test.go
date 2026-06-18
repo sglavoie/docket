@@ -49,7 +49,7 @@ func TestBlockedEntryTotalDoesNotOverflow(t *testing.T) {
 	const blocked = 50 * 365 * 24 * time.Hour
 
 	var activity []*models.ActivityEntry
-	for i := 0; i < 8; i++ {
+	for i := range 8 {
 		start := time.Date(1500+i*60, 1, 1, 0, 0, 0, 0, time.UTC)
 		end := start.Add(blocked)
 		activity = append(activity,

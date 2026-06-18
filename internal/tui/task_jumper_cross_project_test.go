@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"slices"
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
@@ -85,13 +86,7 @@ func TestJumpToTaskCommandAvailableForCrossProjectOutliner(t *testing.T) {
 	if cmd == nil {
 		t.Fatal("expected jump to task command")
 	}
-	foundCrossView := false
-	for _, view := range cmd.Views {
-		if view == ViewCrossProjectOutliner {
-			foundCrossView = true
-			break
-		}
-	}
+	foundCrossView := slices.Contains(cmd.Views, ViewCrossProjectOutliner)
 	if !foundCrossView {
 		t.Fatalf("jump to task views = %v, want ViewCrossProjectOutliner", cmd.Views)
 	}

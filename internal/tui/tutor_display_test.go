@@ -42,7 +42,7 @@ func TestTutorTopicListByteSliceTruncation(t *testing.T) {
 
 	// After stripping ANSI, each visual line must fit within listWidth.
 	listW := m.listWidth()
-	for _, line := range strings.Split(stripped, "\n") {
+	for line := range strings.SplitSeq(stripped, "\n") {
 		if w := lipgloss.Width(line); w > listW {
 			t.Fatalf("renderTopicList line exceeds listWidth %d (got %d): %q", listW, w, line)
 		}

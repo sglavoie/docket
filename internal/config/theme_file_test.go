@@ -86,9 +86,7 @@ func TestWriteTheme_AtomicReplacement(t *testing.T) {
 	var observedEmpty atomic.Bool
 
 	// Reader goroutine: continuously stats and reads the theme file.
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		for !stop.Load() {
 			info, err := os.Stat(path)
 			if err != nil {
@@ -112,7 +110,7 @@ func TestWriteTheme_AtomicReplacement(t *testing.T) {
 				return
 			}
 		}
-	}()
+	})
 
 	// Writer: repeatedly overwrite with a fresh theme.
 	deadline := time.Now().Add(200 * time.Millisecond)

@@ -276,7 +276,7 @@ func findOutlinerRowIndex(t *testing.T, rows []outlinerRow, taskID string) int {
 func findRenderedLineContaining(t *testing.T, rendered, needle string) string {
 	t.Helper()
 
-	for _, line := range strings.Split(rendered, "\n") {
+	for line := range strings.SplitSeq(rendered, "\n") {
 		if strings.Contains(ansi.Strip(line), needle) {
 			return line
 		}

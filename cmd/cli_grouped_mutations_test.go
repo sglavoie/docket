@@ -53,14 +53,14 @@ func TestRunTaskMoveToRecordsGroupedUndoAndRepairsConfigOnUndo(t *testing.T) {
 	}
 	assertConfigRefsProject(t, movedCfg, taskID, dest.ID)
 
-	if err := runUndo(nil, nil); err != nil {
+	if err = runUndo(nil, nil); err != nil {
 		t.Fatalf("runUndo failed: %v", err)
 	}
 
-	if err := storage.LoadProject(source); err != nil {
+	if err = storage.LoadProject(source); err != nil {
 		t.Fatalf("LoadProject(source): %v", err)
 	}
-	if err := storage.LoadProject(dest); err != nil {
+	if err = storage.LoadProject(dest); err != nil {
 		t.Fatalf("LoadProject(dest): %v", err)
 	}
 	if source.GetTaskByID(taskID) == nil {
@@ -75,13 +75,13 @@ func TestRunTaskMoveToRecordsGroupedUndoAndRepairsConfigOnUndo(t *testing.T) {
 	}
 	assertConfigRefsProject(t, reloaded, taskID, source.ID)
 
-	if err := runRedo(nil, nil); err != nil {
+	if err = runRedo(nil, nil); err != nil {
 		t.Fatalf("runRedo failed: %v", err)
 	}
-	if err := storage.LoadProject(source); err != nil {
+	if err = storage.LoadProject(source); err != nil {
 		t.Fatalf("LoadProject(source after redo): %v", err)
 	}
-	if err := storage.LoadProject(dest); err != nil {
+	if err = storage.LoadProject(dest); err != nil {
 		t.Fatalf("LoadProject(dest after redo): %v", err)
 	}
 	if source.GetTaskByID(taskID) != nil {

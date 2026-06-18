@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"slices"
 	"testing"
 )
 
@@ -37,13 +38,7 @@ func TestNoGhostBindings(t *testing.T) {
 				if len(b.Views) == 0 || b.AppLevel {
 					continue
 				}
-				inView := false
-				for _, v := range b.Views {
-					if v == tc.view {
-						inView = true
-						break
-					}
-				}
+				inView := slices.Contains(b.Views, tc.view)
 				if !inView {
 					continue
 				}

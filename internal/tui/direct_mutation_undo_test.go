@@ -36,7 +36,7 @@ func requireUndoRedoTask(t *testing.T, project *models.Project, taskID string, a
 	if action == "" {
 		t.Fatal("PerformUndo returned empty action")
 	}
-	if err := storage.LoadProject(project); err != nil {
+	if err = storage.LoadProject(project); err != nil {
 		t.Fatalf("LoadProject after undo: %v", err)
 	}
 	restored := project.GetTaskByID(taskID)
@@ -52,7 +52,7 @@ func requireUndoRedoTask(t *testing.T, project *models.Project, taskID string, a
 	if action == "" {
 		t.Fatal("PerformRedo returned empty action")
 	}
-	if err := storage.LoadProject(project); err != nil {
+	if err = storage.LoadProject(project); err != nil {
 		t.Fatalf("LoadProject after redo: %v", err)
 	}
 	redone := project.GetTaskByID(taskID)

@@ -76,7 +76,7 @@ func extractKeywords(s CLISection) []string {
 		if !strings.HasPrefix(trimmed, "-") {
 			continue
 		}
-		for _, field := range strings.Fields(trimmed) {
+		for field := range strings.FieldsSeq(trimmed) {
 			if !strings.HasPrefix(field, "-") {
 				break
 			}

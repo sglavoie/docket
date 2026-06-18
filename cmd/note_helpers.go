@@ -109,10 +109,7 @@ func findNoteIn(dir, query string) (*models.Note, error) {
 	case 1:
 		return matches[0], nil
 	default:
-		limit := len(matches)
-		if limit > 5 {
-			limit = 5
-		}
+		limit := min(len(matches), 5)
 		parts := make([]string, limit)
 		for i := 0; i < limit; i++ {
 			parts[i] = matches[i].Filename

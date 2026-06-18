@@ -12,11 +12,6 @@ var ErrSectionAlreadyExists = errors.New("section already exists")
 
 var defaultGTDSections = []string{SectionNext, SectionInbox, SectionWaiting, SectionSomeday, SectionReview, SectionStandby, SectionCompleted}
 
-// DefaultGTDSections returns the canonical built-in section order.
-func DefaultGTDSections() []string {
-	return append([]string(nil), defaultGTDSections...)
-}
-
 // FilterGTDSections removes stale non-GTD section names and deduplicates the
 // remaining built-in sections while preserving their first-seen order.
 func FilterGTDSections(sections []string) []string {

@@ -141,9 +141,7 @@ func TestThemeExport(t *testing.T) {
 		var wg sync.WaitGroup
 		var observedEmpty atomic.Bool
 
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			for !stop.Load() {
 				info, statErr := os.Stat(path)
 				if statErr != nil {
@@ -167,7 +165,7 @@ func TestThemeExport(t *testing.T) {
 					return
 				}
 			}
-		}()
+		})
 
 		deadline := time.Now().Add(200 * time.Millisecond)
 		for time.Now().Before(deadline) {

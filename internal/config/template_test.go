@@ -1,6 +1,7 @@
 package config
 
 import (
+	"slices"
 	"testing"
 
 	"github.com/sglavoie/tt/internal/models"
@@ -138,13 +139,7 @@ func TestResetChangedDefaultTemplates_TagOrderDetected(t *testing.T) {
 	if updated == 0 {
 		t.Fatalf("expected reordered-tag template to be detected as updated, got updated=%d unchanged=%d", updated, unchanged)
 	}
-	found := false
-	for _, id := range affectedIDs {
-		if id == shipped.ID {
-			found = true
-			break
-		}
-	}
+	found := slices.Contains(affectedIDs, shipped.ID)
 	if !found {
 		t.Errorf("expected %s in affectedIDs, got %v", shipped.ID, affectedIDs)
 	}

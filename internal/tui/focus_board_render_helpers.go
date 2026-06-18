@@ -345,7 +345,7 @@ func (m *FocusBoardModel) renderZenMode() tea.View {
 	leftPad := max((m.width-cardWidth)/2, 0)
 	leftStr := strings.Repeat(" ", leftPad)
 
-	for i := 0; i < topPad; i++ {
+	for range topPad {
 		b.WriteString("\n")
 	}
 	for line := range strings.SplitSeq(card, "\n") {

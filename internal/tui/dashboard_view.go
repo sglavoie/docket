@@ -107,10 +107,7 @@ func (m *DashboardModel) renderDashboardVertical(visible []*models.Project, chro
 	totalWidth := max(m.width-2, MinCardWidth)
 	pct := m.config.GetDashboardVerticalSplitPct()
 
-	listWidth := min(max(totalWidth*pct/100, TreeMinWidth), totalWidth-MinCardWidth)
-	if listWidth < TreeMinWidth {
-		listWidth = TreeMinWidth
-	}
+	listWidth := max(min(max(totalWidth*pct/100, TreeMinWidth), totalWidth-MinCardWidth), TreeMinWidth)
 	infoWidth := max(totalWidth-listWidth, MinCardWidth)
 
 	paneHeight := max(m.height-chromeHeight-CardVerticalBorderOverhead, DashboardBottomPaneHeight)

@@ -292,10 +292,7 @@ func checkStaleTasks(cfg AlertConfig, projects []ProjectData, now time.Time) []A
 
 func checkInboxBacklog(cfg AlertConfig, projects []ProjectData, now time.Time) []Alert {
 	var alerts []Alert
-	threshold := cfg.InboxThreshold
-	if threshold < 1 {
-		threshold = 1
-	}
+	threshold := max(cfg.InboxThreshold, 1)
 
 	for _, pd := range projects {
 		if pd.Project == nil {

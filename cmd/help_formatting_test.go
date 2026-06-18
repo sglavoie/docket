@@ -45,7 +45,6 @@ func TestScoreSubcmdsHaveArgsConstraint(t *testing.T) {
 		{"tt score set"},
 	}
 	for _, tc := range cases {
-		tc := tc
 		t.Run(tc.path, func(t *testing.T) {
 			var found *cobra.Command
 			visit(root, func(c *cobra.Command) {

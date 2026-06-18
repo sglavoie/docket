@@ -95,13 +95,13 @@ func reloadedProjectAfterDeletingTag(t *testing.T, tag string) *models.Project {
 	task2.Tags = []string{"frontend"}
 	project.Tasks = []*models.Task{task1, task2}
 
-	if err := storage.SaveProject(project); err != nil {
+	if err = storage.SaveProject(project); err != nil {
 		t.Fatalf("initial SaveProject failed: %v", err)
 	}
-	if _, err := project.DeleteTag(tag); err != nil {
+	if _, err = project.DeleteTag(tag); err != nil {
 		t.Fatalf("DeleteTag(%q) failed: %v", tag, err)
 	}
-	if err := storage.SaveProject(project); err != nil {
+	if err = storage.SaveProject(project); err != nil {
 		t.Fatalf("SaveProject after DeleteTag failed: %v", err)
 	}
 

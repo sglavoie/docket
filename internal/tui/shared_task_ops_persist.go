@@ -265,7 +265,7 @@ type tuiDeferredMoveUndoOptions struct {
 
 // processTUIDeferredMoves handles move_to_project actions in the TUI context.
 // It transfers tasks (and their descendants) from the source project to destination projects.
-func processTUIDeferredMoves(p Persister, srcProject *models.Project, moves []workflow.DeferredMove, cfg *config.Config, cfgManager *config.Manager, undoOpts tuiDeferredMoveUndoOptions) (bool, error) {
+func processTUIDeferredMoves(p Persister, srcProject *models.Project, moves []workflow.DeferredMove, cfg *config.Config, cfgManager *config.Manager, undoOpts tuiDeferredMoveUndoOptions) (bool, error) { //nolint:gocyclo // staged TUI cross-project move orchestration is intentionally kept together for atomicity.
 	if p == nil {
 		p = defaultPersister
 	}
@@ -394,11 +394,9 @@ func processTUIDeferredMoves(p Persister, srcProject *models.Project, moves []wo
 		destProject.Tasks = append(destProject.Tasks, movedTasks...)
 		destProject.BuildTaskTree()
 
-		if cfg != nil {
-			if updated := cfg.ReassignTaskProject(movedIDs, destProject.ID); updated > 0 && cfgManager != nil {
-				if err := cfgManager.Save(cfg); err != nil {
-					return false, fmt.Errorf("failed to save moved task references: %w", err)
-				}
+		if updated := cfg.ReassignTaskProject(movedIDs, destProject.ID); updated > 0 && cfgManager != nil {
+			if err := cfgManager.Save(cfg); err != nil {
+				return false, fmt.Errorf("failed to save moved task references: %w", err)
 			}
 		}
 
@@ -443,13 +441,6 @@ func reapplySideEffects(persister Persister, project *models.Project) error {
 	return nil
 }
 
-// performUndoCmd returns a tea.Cmd that restores the project from the most recent
-// undo snapshot. View-level rebuild (buildTree, rebuildRows) is handled by
-// handleWithRefresh on the main goroutine when UndoPerformedMsg is received.
-func performUndoCmd(persister Persister, project *models.Project) tea.Cmd {
-	return performUndoForProjectsCmd(persister, project, nil, nil)
-}
-
 type postRestoreHook func([]*models.Project) error
 
 func performUndoForProjectsCmd(persister Persister, project *models.Project, projects []*models.Project, afterRestore postRestoreHook) tea.Cmd {
@@ -484,12 +475,6 @@ func reloadAndReapplyRestoredProjects(persister Persister, projects []*models.Pr
 		}
 	}
 	return nil
-}
-
-// performRedoCmd returns a tea.Cmd that restores the project from the most recent
-// redo snapshot and pushes current state onto the undo stack.
-func performRedoCmd(persister Persister, project *models.Project) tea.Cmd {
-	return performRedoForProjectsCmd(persister, project, nil, nil)
 }
 
 func performRedoForProjectsCmd(persister Persister, project *models.Project, projects []*models.Project, afterRestore postRestoreHook) tea.Cmd {

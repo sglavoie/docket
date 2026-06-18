@@ -244,10 +244,7 @@ func persistentProjectTreeWindowByLines(visible []*TreeNode, cursor, maxLines in
 
 	endIdx := projectTreeWindowEndByLines(visible, *scrollOffset, maxLines)
 	if cursor >= endIdx {
-		*scrollOffset = projectTreeStartForCursorByLines(visible, cursor, maxLines)
-		if *scrollOffset > maxStart {
-			*scrollOffset = maxStart
-		}
+		*scrollOffset = min(projectTreeStartForCursorByLines(visible, cursor, maxLines), maxStart)
 		endIdx = projectTreeWindowEndByLines(visible, *scrollOffset, maxLines)
 	}
 

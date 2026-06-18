@@ -207,7 +207,7 @@ type deferredMoveUndoOptions struct {
 	Depth   int
 }
 
-func processDeferredMovesWithUndo(srcProject *models.Project, moves []workflow.DeferredMove, cfg *config.Config, _ *config.Manager, undoOpts deferredMoveUndoOptions) (bool, error) {
+func processDeferredMovesWithUndo(srcProject *models.Project, moves []workflow.DeferredMove, cfg *config.Config, _ *config.Manager, undoOpts deferredMoveUndoOptions) (bool, error) { //nolint:gocyclo // staged cross-project move orchestration is intentionally kept together for atomicity.
 	// Phase 1: Validate and load all destination projects upfront.
 	destProjects := make(map[string]*models.Project, len(moves))
 	activeDestProjects := make(map[string]*models.Project, len(moves))

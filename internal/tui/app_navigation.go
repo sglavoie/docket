@@ -266,6 +266,8 @@ func (m *AppModel) saveStateForClosingView(viewType ViewType) {
 		}
 	case ViewKanban, ViewCrossProjectKanban:
 		m.saveKanbanStateForView(viewType)
+	default:
+		// Other views do not keep close-time navigation state.
 	}
 }
 

@@ -23,11 +23,6 @@ var (
 	referenceSnapshotNow      = time.Now
 )
 
-// FormatTaskReferenceMarkdown formats a task as a read-only reference snapshot.
-func FormatTaskReferenceMarkdown(task *models.Task) string {
-	return FormatTaskReferenceMarkdownWithNotes(task, nil)
-}
-
 // FormatTaskReferenceMarkdownWithNotes formats a task as a read-only reference
 // snapshot and includes notes known to link to the task.
 func FormatTaskReferenceMarkdownWithNotes(task *models.Task, linkedNotes []*models.Note) string {
@@ -43,11 +38,6 @@ func FormatTaskReferenceMarkdownWithNotes(task *models.Task, linkedNotes []*mode
 	b.WriteString(insertReferenceWarning(FormatTaskAsMarkdown(task)))
 	writeReferenceTaskDetails(&b, task, linkedNotes)
 	return b.String()
-}
-
-// FormatNoteReferenceMarkdown formats a note as a read-only reference snapshot.
-func FormatNoteReferenceMarkdown(note *models.Note) string {
-	return FormatNoteReferenceMarkdownWithTasks(note, nil)
 }
 
 // FormatNoteReferenceMarkdownWithTasks formats a note as a read-only reference

@@ -20,7 +20,7 @@ func TestProjectServiceSaveWithBackupSyncOptionsRecordsUndoSnapshot(t *testing.T
 	project.Tasks = []*models.Task{task}
 	project.NextShortID = 2
 	project.BuildTaskTree()
-	if err := storage.SaveProject(project); err != nil {
+	if err = storage.SaveProject(project); err != nil {
 		t.Fatalf("seed save failed: %v", err)
 	}
 

@@ -29,7 +29,7 @@ func TestCommonFilterParts_TagsDeterministicOrder(t *testing.T) {
 	}
 
 	// Repeat many times to detect map-iteration nondeterminism.
-	for i := 0; i < 50; i++ {
+	for i := range 50 {
 		got := tagPartFromCommonFilterParts(commonFilterParts(&f))
 		if got != first {
 			t.Fatalf("iteration %d: tag part changed across calls: got %q, want %q", i, got, first)
@@ -68,7 +68,7 @@ func TestProjectTreeActiveFilterParts_SectionsDeterministicOrder(t *testing.T) {
 		t.Errorf("section part not in deterministic sorted order: got %q, want %q", first, wantSecPart)
 	}
 
-	for i := 0; i < 50; i++ {
+	for i := range 50 {
 		got := sectionPartFromParts(pt.activeFilterParts())
 		if got != first {
 			t.Fatalf("iteration %d: section part changed across calls: got %q, want %q", i, got, first)
@@ -97,7 +97,7 @@ func TestOutlinerActiveFilterParts_SectionsDeterministicOrder(t *testing.T) {
 		t.Errorf("section part not in deterministic sorted order: got %q, want %q", first, wantSecPart)
 	}
 
-	for i := 0; i < 50; i++ {
+	for i := range 50 {
 		got := sectionPartFromParts(ol.activeFilterParts())
 		if got != first {
 			t.Fatalf("iteration %d: section part changed across calls: got %q, want %q", i, got, first)

@@ -18,7 +18,7 @@ func TestFocusBoardViewPersistentScrollKeepsWindowOnMoveUp(t *testing.T) {
 	m.SetSize(100, 10)
 	m.tabs.Active = boardTabNext
 
-	for i := 0; i < 8; i++ {
+	for i := range 8 {
 		task := makeBoardTask(t, fmt.Sprintf("id-%02d", i), i+1, fmt.Sprintf("Task %02d", i))
 		row := boardRow{Task: task, Project: project, Source: project.Name}
 		m.rows = append(m.rows, row)
@@ -46,7 +46,7 @@ func TestFocusViewPersistentScrollKeepsWindowOnMoveUp(t *testing.T) {
 	m.SetSize(100, 10)
 	m.tabs.Active = focusTabByProject
 
-	for i := 0; i < 8; i++ {
+	for i := range 8 {
 		task := newTestFocusTask(t, fmt.Sprintf("Task %02d", i), i+1, true)
 		project.Tasks = append(project.Tasks, task)
 		m.tasks = append(m.tasks, FocusTask{Task: task, Project: project})
@@ -70,7 +70,7 @@ func TestFocusViewPersistentScrollKeepsWindowOnMoveUp(t *testing.T) {
 func TestProjectFocusViewPersistentScrollKeepsWindowOnMoveUp(t *testing.T) {
 	cfg := testutil.NewTestConfig()
 	project := testutil.NewTestProject("focus-test")
-	for i := 0; i < 8; i++ {
+	for i := range 8 {
 		task := mustNewTestTask(project, fmt.Sprintf("Task %02d", i))
 		task.Active = true
 		task.Priority = i + 1

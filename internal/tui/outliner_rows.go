@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"slices"
 	"sort"
 
 	"github.com/sglavoie/tt/internal/models"
@@ -224,12 +225,7 @@ func renderedHeaderSectionForTask(task *models.Task) string {
 }
 
 func isRenderedOutlinerHeaderSection(section string) bool {
-	for _, candidate := range SectionOrder {
-		if candidate == section {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(SectionOrder, section)
 }
 
 // countTasksRecursive counts all tasks in a tree, including descendants.

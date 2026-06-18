@@ -76,10 +76,7 @@ func renderStackedSummaryAndAlerts(width, paneHeight int, summaryCard, alertsCar
 }
 
 func dashboardNaturalCardHeight(content string) int {
-	contentHeight := lipgloss.Height(content)
-	if contentHeight < 1 {
-		contentHeight = 1
-	}
+	contentHeight := max(lipgloss.Height(content), 1)
 	return contentHeight + CardVerticalBorderOverhead
 }
 

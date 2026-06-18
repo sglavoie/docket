@@ -450,7 +450,7 @@ func TestScoreDeterminism(t *testing.T) {
 	}
 	for _, c := range cases {
 		first, firstPos := ScoreWithPositions(c.text, c.pattern)
-		for i := 0; i < 20; i++ {
+		for i := range 20 {
 			s, p := ScoreWithPositions(c.text, c.pattern)
 			if s != first {
 				t.Fatalf("score drift for Score(%q,%q): first=%d run=%d got=%d",
@@ -462,7 +462,7 @@ func TestScoreDeterminism(t *testing.T) {
 			}
 		}
 		termScore, termPos := ScoreTermsWithPositions(c.text, c.pattern)
-		for i := 0; i < 20; i++ {
+		for i := range 20 {
 			s, p := ScoreTermsWithPositions(c.text, c.pattern)
 			if s != termScore {
 				t.Fatalf("ScoreTerms drift for (%q,%q): first=%d run=%d got=%d",

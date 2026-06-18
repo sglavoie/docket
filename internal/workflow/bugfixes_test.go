@@ -972,7 +972,7 @@ func TestMatchesTriggerGroup_DepthBound(t *testing.T) {
 	// fires if the engine recurses all the way down. The depth-bound means
 	// the evaluator returns false instead of reaching the leaf.
 	deep := &TriggerGroup{Triggers: []RuleTrigger{leaf}}
-	for i := 0; i < maxTriggerGroupDepth+2; i++ {
+	for range maxTriggerGroupDepth + 2 {
 		deep = &TriggerGroup{Groups: []TriggerGroup{*deep}}
 	}
 
@@ -995,7 +995,7 @@ func TestMatchesTriggerGroup_DepthBound(t *testing.T) {
 func TestMatchesProjectTriggerGroup_DepthBound(t *testing.T) {
 	leaf := RuleTrigger{Field: FieldHasInProgressTasks, Operation: OpEquals, Value: "true"}
 	deep := &TriggerGroup{Triggers: []RuleTrigger{leaf}}
-	for i := 0; i < maxTriggerGroupDepth+2; i++ {
+	for range maxTriggerGroupDepth + 2 {
 		deep = &TriggerGroup{Groups: []TriggerGroup{*deep}}
 	}
 
