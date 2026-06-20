@@ -77,11 +77,16 @@ func (m *AppModel) viewCommands() []Command {
 		},
 		{
 			Name:        "priority view",
-			Description: "View tasks by priority",
+			Description: "View tasks by priority (toggles cross-project Priority mode in the cross-outliner)",
 			Shortcut:    "p",
 			Category:    CategoryViews,
-			Views:       projectTreeAndOutlinerViews(),
+			Views:       []ViewType{ViewProjectTree, ViewOutliner, ViewCrossProjectOutliner},
+			Aliases:     []string{"priority mode", "toggle priority mode", "cross-project priority"},
 			Handler: func() tea.Msg {
+				if m.baseProjectView() == ViewCrossProjectOutliner && m.crossOutliner != nil {
+					m.crossOutliner.toggleCrossPriorityMode()
+					return nil
+				}
 				if m.currentProject != nil {
 					return ShowPriorityViewMsg{Project: m.currentProject}
 				}

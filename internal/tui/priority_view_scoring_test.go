@@ -9,9 +9,6 @@ import (
 )
 
 func TestComputeUrgencyScore(t *testing.T) {
-	project := newTestPriorityProject(t)
-	m := NewPriorityViewModel(project, nil, nil)
-
 	tests := []struct {
 		name    string
 		task    *models.Task
@@ -150,7 +147,7 @@ func TestComputeUrgencyScore(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := m.computeUrgencyScore(tt.task)
+			got := ComputeUrgencyScore(tt.task)
 			if got < tt.wantMin || got > tt.wantMax {
 				t.Errorf("computeUrgencyScore() = %d, want between %d and %d", got, tt.wantMin, tt.wantMax)
 			}
@@ -199,9 +196,6 @@ func TestComputeSuggestionScore_SectionOrdering(t *testing.T) {
 }
 
 func TestCategorizeByDueDate(t *testing.T) {
-	project := newTestPriorityProject(t)
-	m := NewPriorityViewModel(project, nil, nil)
-
 	tests := []struct {
 		name       string
 		daysOffset *int
@@ -228,7 +222,7 @@ func TestCategorizeByDueDate(t *testing.T) {
 				due := time.Now().AddDate(0, 0, *tt.daysOffset)
 				task.DueDate = &due
 			}
-			got := m.categorizeByDueDate(task)
+			got := CategorizeByDueDate(task)
 			if got != tt.want {
 				t.Errorf("categorizeByDueDate() = %v, want %v", got, tt.want)
 			}

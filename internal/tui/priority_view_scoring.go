@@ -12,50 +12,11 @@ import (
 	"github.com/sglavoie/tt/internal/util"
 )
 
-// computeUrgencyScore calculates the urgency score for a task.
-// Higher scores = more urgent.
-func (m *PriorityViewModel) computeUrgencyScore(task *models.Task) int {
-	score := 0
-
-	// Priority weight: priority 1 = 5000, priority 5 = 1000
-	priorityWeight := (6 - task.Priority) * 1000
-	score += priorityWeight
-
-	// Bug type bonus: Bugs at the same priority rank higher
-	if task.Type == models.TaskTypeBug {
-		score += 100
-	}
-
-	// Due date proximity: overdue adds points, future subtracts
-	if task.DueDate != nil {
-		daysUntil := util.DaysBetween(time.Now(), *task.DueDate)
-		score += (-daysUntil) * 50
-	}
-
-	// In-progress bonus
-	if task.Status == models.StatusInProgress {
-		score += 500
-	}
-
-	// Review bonus (less than in-progress)
-	if task.Status == models.StatusReview {
-		score += 250
-	}
-
-	// Active flag bonus
-	if task.Active {
-		score += 200
-	}
-
-	return score
-}
-
 // computeSuggestionScore calculates the suggestion score for a task.
-// Builds on urgencyScore with additional factors for actionability.
-// Higher scores = more recommended as the suggested next task.
+// Builds on the shared urgency score with additional factors for
+// actionability. Higher scores = more recommended as the suggested next task.
 func (m *PriorityViewModel) computeSuggestionScore(task *models.Task) int {
-	// Start with base urgency score
-	score := m.computeUrgencyScore(task)
+	score := ComputeUrgencyScore(task)
 
 	// Leaf task bonus: prefer actionable leaf tasks over containers
 	if task.IsLeaf() {
@@ -281,27 +242,4 @@ func (m *PriorityViewModel) startSuggestedTask() (tea.Model, tea.Cmd) {
 	m.clampCursor()
 
 	return m, result.Cmd
-}
-
-// categorizeByDueDate determines which urgency group a task belongs to.
-func (m *PriorityViewModel) categorizeByDueDate(task *models.Task) PriorityGroup {
-	if task.DueDate == nil {
-		return PriorityGroupBacklog
-	}
-
-	now := time.Now()
-	today := util.StartOfDay(now)
-	dueDay := util.StartOfDay(*task.DueDate)
-
-	if dueDay.Before(today) {
-		return PriorityGroupOverdue
-	}
-	if dueDay.Equal(today) {
-		return PriorityGroupToday
-	}
-	weekEnd := today.AddDate(0, 0, 7)
-	if dueDay.Before(weekEnd) {
-		return PriorityGroupThisWeek
-	}
-	return PriorityGroupLater
 }

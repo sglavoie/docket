@@ -109,6 +109,9 @@ func (m *OutlinerModel) escSteps() []EscStep {
 			m.cursor = top.CursorIndex
 			m.resetViewScrollOffset()
 		}},
+		{Active: func() bool { return m.project == nil && m.crossPriorityMode }, Clear: func() {
+			m.exitCrossPriorityMode()
+		}},
 	}
 }
 

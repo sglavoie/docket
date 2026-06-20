@@ -78,7 +78,7 @@ func (m *OutlinerModel) renderOutlinerSectionHeaderRow(row outlinerRow, selected
 	line := renderSectionHeader(SectionHeaderOpts{
 		Name:        displayName,
 		Count:       row.SectionCount,
-		Collapsed:   m.collapsedSections[row.effectiveCollapseKey()],
+		Collapsed:   m.isSectionRowCollapsed(row),
 		AccentColor: sectionStyle,
 		Prefix:      "@ ",
 	})

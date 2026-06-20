@@ -154,8 +154,6 @@ func (m *OutlinerModel) handleCrossProjectsLoaded(msg crossProjectsLoadedMsg) te
 // filter string, zoom stack depth, and total task count are all unchanged from
 // the previous call. The guard is bypassed when crossForceRebuild is true (set
 // after mutations) or when a fresh load completes.
-//
-//nolint:gocyclo // cross-project row rebuild has inherent branching
 func (m *OutlinerModel) crossProjectRebuildRows() {
 	// Compute current guard inputs.
 	taskCount := 0
@@ -192,6 +190,11 @@ func (m *OutlinerModel) crossProjectRebuildRows() {
 	}
 
 	m.validateCrossZoomStack()
+
+	if m.isActiveCrossPriority() {
+		m.crossPriorityRebuildRows()
+		return
+	}
 
 	p := m.currentPerspective()
 
@@ -292,6 +295,54 @@ func (m *OutlinerModel) crossProjectRebuildRows() {
 	m.clampCursor()
 }
 
+// crossPriorityRebuildRows collects raw per-project root tasks (honoring the
+// project filter and zoom scope) and delegates to buildCrossPriorityRows. It
+// deliberately skips the perspective/sort/filterTaskTree chain that the
+// normal cross-project path uses, because Priority mode treats each task
+// individually: a task-level predicate (see crossPriorityRowPredicate)
+// decides whether it ends up in a bucket. Filtering siblings or non-eligible
+// ancestors must not drag along context-only parents, which is what the
+// context-preserving filterTaskTree path used to do.
+func (m *OutlinerModel) crossPriorityRebuildRows() {
+	var groups []projectTasksGroup
+	for _, proj := range m.loadedProjects {
+		if len(m.filterProjects) > 0 && !m.filterProjects[proj.ID] {
+			continue
+		}
+
+		roots := proj.GetRootTasks()
+		if len(m.crossZoomStack) > 0 {
+			top := m.crossZoomStack[len(m.crossZoomStack)-1]
+			if top.ProjectID == proj.ID {
+				if t := proj.GetTaskByID(top.TaskID); t != nil {
+					roots = t.Children
+				}
+			} else {
+				continue
+			}
+		}
+
+		if len(roots) == 0 {
+			continue
+		}
+		groups = append(groups, projectTasksGroup{projectID: proj.ID, tasks: roots})
+	}
+
+	sortProjectTaskGroupsByProjectDisplayOrder(groups, m.loadedProjects)
+	m.buildCrossPriorityRows(groups)
+	m.pruneInvisibleSelections()
+	m.clampCursor()
+}
+
+// isActiveCrossPriority reports whether the outliner is currently operating
+// in cross-project Priority mode. Render and row code uses this to gate
+// behavior that should fire only when the user is browsing the priority view
+// (not a single-project outliner whose unrelated crossPriorityMode flag may
+// have been flipped by other code paths).
+func (m *OutlinerModel) isActiveCrossPriority() bool {
+	return m.project == nil && m.crossPriorityMode
+}
+
 func (m *OutlinerModel) crossProjectRowsFingerprint() string {
 	tabs := m.pinnedTagTabs()
 	commonParts := commonFilterParts(&m.filter.CommonFilterState)
@@ -305,7 +356,24 @@ func (m *OutlinerModel) crossProjectRowsFingerprint() string {
 	fmt.Fprintf(&b, "sections=%s|", boolMapFingerprint(m.filter.Sections))
 	fmt.Fprintf(&b, "projects=%s|", boolMapFingerprint(m.filterProjects))
 	fmt.Fprintf(&b, "loaded=%s|", loadedProjectIDsFingerprint(m.loadedProjects))
-	fmt.Fprintf(&b, "criteria=%s", m.activeCriteriaFilterFingerprint())
+	fmt.Fprintf(&b, "criteria=%s|", m.activeCriteriaFilterFingerprint())
+	fmt.Fprintf(&b, "priority=%t:%s", m.crossPriorityMode, crossPriorityCollapsedGroupsFingerprint(m.crossPriorityCollapsedGroups))
+	return b.String()
+}
+
+func crossPriorityCollapsedGroupsFingerprint(groups map[PriorityGroup]bool) string {
+	if len(groups) == 0 {
+		return ""
+	}
+	var b strings.Builder
+	for _, g := range CrossPriorityGroupOrder() {
+		if groups[g] {
+			if b.Len() > 0 {
+				b.WriteByte(',')
+			}
+			b.WriteString(priorityGroupSlug(g))
+		}
+	}
 	return b.String()
 }
 
@@ -462,7 +530,39 @@ func (m *OutlinerModel) crossStatusBarLabel() string {
 			taskCount++
 		}
 	}
-	return fmt.Sprintf("Cross-Outliner · %s · %d tasks", ctxName, taskCount)
+	label := "Cross-Outliner"
+	if m.crossPriorityMode {
+		label = "Cross-Outliner: Priority"
+	}
+	return fmt.Sprintf("%s · %s · %d tasks", label, ctxName, taskCount)
+}
+
+// toggleCrossPriorityMode flips the session-only cross-project Priority mode.
+// Only meaningful when m.project == nil; callers gate on that already.
+func (m *OutlinerModel) toggleCrossPriorityMode() {
+	if m.crossPriorityMode {
+		m.exitCrossPriorityMode()
+		return
+	}
+	m.enterCrossPriorityMode()
+}
+
+func (m *OutlinerModel) enterCrossPriorityMode() {
+	m.crossPriorityMode = true
+	m.crossPriorityCollapsedGroups = map[PriorityGroup]bool{
+		PriorityGroupWaitingOn: true,
+	}
+	m.crossForceRebuild = true
+	m.cursor = 0
+	m.resetViewScrollOffset()
+}
+
+func (m *OutlinerModel) exitCrossPriorityMode() {
+	m.crossPriorityMode = false
+	m.crossPriorityCollapsedGroups = nil
+	m.crossForceRebuild = true
+	m.cursor = 0
+	m.resetViewScrollOffset()
 }
 
 // crossProjectSectionFilter returns a Section-based filter for perspectives

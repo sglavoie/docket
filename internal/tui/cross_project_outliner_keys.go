@@ -157,6 +157,9 @@ func (m *OutlinerModel) crossHandleGoDrillDown() (tea.Model, tea.Cmd) {
 // ShowTaskDetailMsg to open the task detail via glow. Section headers and
 // separators are silently ignored.
 //
+// In cross-project Priority mode (m.crossPriorityMode), any task row — leaf
+// or parent — opens detail to match single-project Priority View behavior.
+//
 // Returns (model, cmd, true) when in cross-project mode (m.project == nil),
 // (nil, nil, false) otherwise.
 func (m *OutlinerModel) crossHandleEnterKey() (tea.Model, tea.Cmd, bool) {
@@ -176,7 +179,9 @@ func (m *OutlinerModel) crossHandleEnterKey() (tea.Model, tea.Cmd, bool) {
 	}
 	task := row.task
 	// Parent tasks: zoom in (same as project-specific outliner Enter behavior).
-	if len(task.Children) > 0 {
+	// Priority mode skips the zoom branch so parent rows open detail like the
+	// single-project Priority View.
+	if !m.crossPriorityMode && len(task.Children) > 0 {
 		m.crossZoomStack = append(m.crossZoomStack, CrossProjectZoomEntry{
 			TaskID:      task.ID,
 			ProjectID:   row.ProjectID,
@@ -186,7 +191,7 @@ func (m *OutlinerModel) crossHandleEnterKey() (tea.Model, tea.Cmd, bool) {
 		m.resetViewScrollOffset()
 		return m, nil, true
 	}
-	// Leaf tasks: open detail view.
+	// Leaf tasks (and any task row in Priority mode): open detail view.
 	for _, p := range m.loadedProjects {
 		if p.ID == row.ProjectID {
 			proj := p

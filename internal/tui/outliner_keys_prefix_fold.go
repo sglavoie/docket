@@ -73,7 +73,7 @@ func (m *OutlinerModel) toggleAllSectionFolds() bool {
 			keys = append(keys, key)
 			seen[key] = true
 		}
-		if m.collapsedSections == nil || !m.collapsedSections[key] {
+		if !m.isSectionRowCollapsed(row) {
 			anyExpanded = true
 		}
 	}
@@ -82,11 +82,18 @@ func (m *OutlinerModel) toggleAllSectionFolds() bool {
 		return false
 	}
 
-	if m.collapsedSections == nil {
-		m.collapsedSections = make(map[string]bool)
-	}
 	targetCollapsed := anyExpanded
 	for _, key := range keys {
+		if g, ok := priorityGroupFromCollapseKey(key); ok {
+			if m.crossPriorityCollapsedGroups == nil {
+				m.crossPriorityCollapsedGroups = make(map[PriorityGroup]bool)
+			}
+			m.crossPriorityCollapsedGroups[g] = targetCollapsed
+			continue
+		}
+		if m.collapsedSections == nil {
+			m.collapsedSections = make(map[string]bool)
+		}
 		m.collapsedSections[key] = targetCollapsed
 	}
 	m.resetViewScrollOffset()
@@ -125,12 +132,19 @@ func (m *OutlinerModel) toggleSectionFoldAtCursor() bool {
 		return false
 	}
 
-	if m.collapsedSections == nil {
-		m.collapsedSections = make(map[string]bool)
-	}
 	headerRow := m.rows[headerIndex]
 	key := headerRow.effectiveCollapseKey()
-	m.collapsedSections[key] = !m.collapsedSections[key]
+	if g, ok := priorityGroupFromCollapseKey(key); ok {
+		if m.crossPriorityCollapsedGroups == nil {
+			m.crossPriorityCollapsedGroups = make(map[PriorityGroup]bool)
+		}
+		m.crossPriorityCollapsedGroups[g] = !m.crossPriorityCollapsedGroups[g]
+	} else {
+		if m.collapsedSections == nil {
+			m.collapsedSections = make(map[string]bool)
+		}
+		m.collapsedSections[key] = !m.collapsedSections[key]
+	}
 	m.cursor = headerIndex
 	m.resetViewScrollOffset()
 	m.rebuildRows()

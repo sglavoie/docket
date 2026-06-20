@@ -406,10 +406,15 @@ func (m *PriorityViewModel) priorityViewSpecificEntries() []keymap.Entry {
 		keymap.Bind("A", "All tasks", "View", m.priorityAllTasksAction),
 		keymap.Bind("/", "Search tasks", "Filter", m.prioritySearchAction),
 		keymap.Bind("r", "Refresh (clears dismissed)", "View", m.priorityRefreshAction),
+		keymap.Bind("p", "Close Priority view", "Views", m.priorityCloseViewAction),
 	}
 	entries = append(entries, m.priorityQuickPriorityEntries()...)
 	entries = append(entries, m.priorityMultiSelectEntries()...)
 	return entries
+}
+
+func (m *PriorityViewModel) priorityCloseViewAction() (tea.Model, tea.Cmd) {
+	return m, func() tea.Msg { return ClosePriorityViewMsg{} }
 }
 
 func (m *PriorityViewModel) priorityOpenTaskDetailAction() (tea.Model, tea.Cmd) {

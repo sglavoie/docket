@@ -17,6 +17,7 @@ const (
 // outlinerRow represents a single flattened row for rendering.
 type outlinerRow struct {
 	task            *models.Task
+	priorityTask    *PriorityTask // Cached priority metadata for flat Priority-mode task rows.
 	prefix          string
 	IsSectionHeader bool   // True if this row is a section header (not a task)
 	SectionName     string // Section name for header rows
@@ -34,6 +35,17 @@ func (r outlinerRow) effectiveCollapseKey() string {
 		return r.CollapseKey
 	}
 	return r.SectionName
+}
+
+// isSectionRowCollapsed reports whether a section-header row is currently
+// collapsed. Cross-project Priority mode headers use the session-only
+// crossPriorityCollapsedGroups map; every other header reads from the persisted
+// collapsedSections map.
+func (m *OutlinerModel) isSectionRowCollapsed(row outlinerRow) bool {
+	if g, ok := priorityGroupFromCollapseKey(row.CollapseKey); ok {
+		return m.crossPriorityCollapsedGroups[g]
+	}
+	return m.collapsedSections[row.effectiveCollapseKey()]
 }
 
 // projectNameByID looks up a project name from m.loadedProjects by ID.

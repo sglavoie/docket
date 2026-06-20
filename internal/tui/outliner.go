@@ -104,6 +104,16 @@ type OutlinerModel struct {
 	crossLastTaskCount       int
 	crossForceRebuild        bool // When true, bypasses the memoization guard on next rebuild
 
+	// crossPriorityMode is the session-only Priority mode for the cross-project
+	// outliner. It replaces the perspective/tree row builder with priority-grouped
+	// rows while reusing project badges, filters, and mutation paths. Not persisted.
+	crossPriorityMode bool
+
+	// crossPriorityCollapsedGroups tracks collapsed state per priority group while
+	// crossPriorityMode is active. Session-only; reset on every mode entry so
+	// Blocked/Waiting starts collapsed by default.
+	crossPriorityCollapsedGroups map[PriorityGroup]bool
+
 	// openLoops mirrors AppModel.openLoops for the title-row Zeigarnik counter.
 	openLoops OpenLoops
 }

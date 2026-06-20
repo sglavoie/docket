@@ -181,6 +181,84 @@ func TestViewCommands_PriorityView_NilProject(t *testing.T) {
 	}
 }
 
+// TestViewCommands_PriorityView_CrossOutlinerScope verifies that the
+// `priority view` command is exposed in the cross-project outliner scope so
+// the palette can reach the Priority-mode toggle from there.
+func TestViewCommands_PriorityView_CrossOutlinerScope(t *testing.T) {
+	app := newTestAppModel()
+	registry := registerCommandGroupsForTest(t, app.viewCommands())
+
+	cmd := findCommand(registry.GetForView(ViewCrossProjectOutliner), "priority view")
+	if cmd == nil {
+		t.Fatal("`priority view` command should be reachable from ViewCrossProjectOutliner")
+	}
+	if cmd.Shortcut != "p" {
+		t.Errorf("priority view shortcut = %q, want p", cmd.Shortcut)
+	}
+}
+
+// TestViewCommands_PriorityView_Aliases verifies that the `priority view`
+// command advertises the cross-project alias set so palette search surfaces
+// it under "priority mode" / "toggle priority mode" / "cross-project priority".
+func TestViewCommands_PriorityView_Aliases(t *testing.T) {
+	app := newTestAppModel()
+	cmds := app.viewCommands()
+	cmd := findCommand(cmds, "priority view")
+	if cmd == nil {
+		t.Fatal("expected 'priority view' command")
+	}
+
+	wantAliases := []string{"priority mode", "toggle priority mode", "cross-project priority"}
+	for _, want := range wantAliases {
+		found := false
+		for _, alias := range cmd.Aliases {
+			if alias == want {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Errorf("priority view aliases missing %q, got %v", want, cmd.Aliases)
+		}
+	}
+}
+
+// TestViewCommands_PriorityView_TogglesCrossMode verifies that running the
+// `priority view` command handler when baseProjectView() == ViewCrossProjectOutliner
+// flips m.crossOutliner.crossPriorityMode rather than emitting ShowPriorityViewMsg.
+func TestViewCommands_PriorityView_TogglesCrossMode(t *testing.T) {
+	app := newTestAppModel()
+	app.crossOutliner = NewOutlinerModel(nil, app.config, app.configManager)
+	app.viewStack = []ViewType{ViewDashboard, ViewCrossProjectOutliner}
+
+	cmds := app.viewCommands()
+	cmd := findCommand(cmds, "priority view")
+	if cmd == nil {
+		t.Fatal("expected 'priority view' command")
+	}
+
+	if app.crossOutliner.crossPriorityMode {
+		t.Fatal("crossPriorityMode should default to false")
+	}
+
+	msg := cmd.Handler()
+	if msg != nil {
+		t.Errorf("expected nil message when toggling in-place, got %T", msg)
+	}
+	if !app.crossOutliner.crossPriorityMode {
+		t.Error("priority view command should toggle crossPriorityMode on in cross-outliner scope")
+	}
+
+	// Second invocation toggles off.
+	msg2 := cmd.Handler()
+	if msg2 != nil {
+		t.Errorf("second invocation should still return nil, got %T", msg2)
+	}
+	if app.crossOutliner.crossPriorityMode {
+		t.Error("priority view command should toggle crossPriorityMode off on the second invocation")
+	}
+}
+
 func TestViewCommands_InboxProcessor(t *testing.T) {
 	app, _ := newTestAppModelWithProject()
 

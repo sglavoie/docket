@@ -4,7 +4,6 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/scoring"
 )
 
@@ -18,34 +17,23 @@ func (m *PriorityViewModel) loadActionableTasks() {
 	m.waitingOn = nil
 
 	for _, task := range m.project.Tasks {
-		// Skip completed tasks
-		if task.Status.IsComplete() {
+		if !IsEligibleForPriority(task) {
 			continue
 		}
-
-		// Skip snoozed tasks
-		if task.IsSnoozed() {
-			continue
-		}
-
-		// Check if blocked (status=blocked or has incomplete dependencies)
-		isBlocked := task.Status == models.StatusBlocked || m.project.HasIncompleteDependencies(task)
 
 		pt := &PriorityTask{
 			Task:         task,
-			UrgencyScore: m.computeUrgencyScore(task),
+			UrgencyScore: ComputeUrgencyScore(task),
 			ParentTitle:  m.getParentTitle(task),
 			RelativeDue:  FormatRelativeDue(task.DueDate, false),
 		}
 
-		if isBlocked {
+		if IsPriorityBlocked(m.project, task) {
 			m.waitingOn = append(m.waitingOn, pt)
 			continue
 		}
 
-		// Categorize by due date
-		group := m.categorizeByDueDate(task)
-		switch group {
+		switch CategorizeByDueDate(task) {
 		case PriorityGroupOverdue:
 			m.overdue = append(m.overdue, pt)
 		case PriorityGroupToday:
@@ -60,20 +48,12 @@ func (m *PriorityViewModel) loadActionableTasks() {
 		}
 	}
 
-	// Sort each group by urgency score (higher = more urgent). Use a stable
-	// sort because UrgencyScore is a coarse integer and ties are common; an
-	// unstable sort would flip order between reloads.
-	sortByUrgency := func(tasks []*PriorityTask) {
-		sort.SliceStable(tasks, func(i, j int) bool {
-			return tasks[i].UrgencyScore > tasks[j].UrgencyScore
-		})
-	}
-	sortByUrgency(m.overdue)
-	sortByUrgency(m.today)
-	sortByUrgency(m.thisWeek)
-	sortByUrgency(m.later)
-	sortByUrgency(m.backlog)
-	sortByUrgency(m.waitingOn)
+	SortPriorityTasksByUrgency(m.overdue)
+	SortPriorityTasksByUrgency(m.today)
+	SortPriorityTasksByUrgency(m.thisWeek)
+	SortPriorityTasksByUrgency(m.later)
+	SortPriorityTasksByUrgency(m.backlog)
+	SortPriorityTasksByUrgency(m.waitingOn)
 
 	// Apply sub-filters to each group
 	m.overdue = m.applyFiltersToGroup(m.overdue)

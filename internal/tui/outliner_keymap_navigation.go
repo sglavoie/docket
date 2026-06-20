@@ -57,7 +57,7 @@ func (b *outlinerKeymapBuilder) navigationEntries() []keymap.Entry {
 func (b *outlinerKeymapBuilder) primaryViewEntries() []keymap.Entry {
 	m := b.model
 
-	return keymap.CommonPrimaryViewGroup(keymap.CommonPrimaryViewDeps{
+	entries := keymap.CommonPrimaryViewGroup(keymap.CommonPrimaryViewDeps{
 		OpenProjectTree: func() (tea.Model, tea.Cmd) {
 			return m, func() tea.Msg { return ShowProjectTreeMsg{Project: m.project} }
 		},
@@ -79,6 +79,7 @@ func (b *outlinerKeymapBuilder) primaryViewEntries() []keymap.Entry {
 		},
 		PriorityView: func() (tea.Model, tea.Cmd) {
 			if m.project == nil {
+				m.toggleCrossPriorityMode()
 				return m, nil
 			}
 			project := m.project
@@ -161,6 +162,14 @@ func (b *outlinerKeymapBuilder) primaryViewEntries() []keymap.Entry {
 			return m, cmd
 		},
 	})
+	if m.project == nil {
+		for i := range entries {
+			if entries[i].Binding != nil && entries[i].Binding.Key == "p" {
+				entries[i].Binding.Description = "Toggle Priority mode"
+			}
+		}
+	}
+	return entries
 }
 
 func (b *outlinerKeymapBuilder) gotoEntries() []keymap.Entry {

@@ -22,7 +22,7 @@ func TestCrossProjectOutlinerRenderDarkThemeVisualElements(t *testing.T) {
 	rendered := m.renderOutlinerTreeContent(width)
 	plain := ansi.Strip(rendered)
 
-	assertContains(t, plain, "Cross-project outliner (2 projects)", "title")
+	assertContains(t, plain, "Cross-project Outliner (2 projects)", "title")
 	assertContains(t, plain, "‹ Snoozed", "previous perspective label")
 	assertContains(t, plain, "@ All", "current perspective label")
 	assertContains(t, plain, "Active ›", "next perspective label")

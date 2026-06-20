@@ -22,7 +22,10 @@ func (m *OutlinerModel) renderOutlinerTreeContent(width int) string {
 	m.zoomNotice = ""
 
 	perspective := m.currentPerspective()
-	perspectiveLabel := m.buildPerspectiveLabel(perspective)
+	var perspectiveLabel string
+	if !m.isActiveCrossPriority() {
+		perspectiveLabel = m.buildPerspectiveLabel(perspective)
+	}
 	breadcrumb := m.renderOutlinerBreadcrumb(width)
 	searchIndicator := m.buildOutlinerSearchIndicator()
 
@@ -109,15 +112,25 @@ func (m *OutlinerModel) buildOutlinerSearchIndicator() string {
 func (m *OutlinerModel) renderOutlinerTitle(width int) string {
 	if m.project == nil {
 		projectCount := len(m.loadedProjects)
-		title := fmt.Sprintf("Cross-project outliner (%d project", projectCount)
+		prefix := "Cross-project Outliner"
+		if m.isActiveCrossPriority() {
+			prefix = "Cross-project Priority"
+		}
+		title := fmt.Sprintf("%s (%d project", prefix, projectCount)
 		if projectCount != 1 {
 			title += "s"
 		}
 		title += ")"
+		sortField := m.sort.Field
+		sortAscending := m.sort.Ascending
+		if m.isActiveCrossPriority() {
+			sortField = SortByDefault
+			sortAscending = false
+		}
 		return TitleStyle.Render(title) + buildTitleFilterSuffix(&TitleParams{
 			FilterParts:   m.activeFilterParts(),
-			SortField:     m.sort.Field,
-			SortAscending: m.sort.Ascending,
+			SortField:     sortField,
+			SortAscending: sortAscending,
 			Width:         width,
 		}, len(title))
 	}
