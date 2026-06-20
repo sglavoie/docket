@@ -157,8 +157,12 @@ func (b *outlinerKeymapBuilder) commonTaskActionEntries() []keymap.Entry {
 			return model, cmd
 		},
 		EditScore: func() (tea.Model, tea.Cmd) {
+			task, project := m.getTaskRef()
+			if task == nil || project == nil {
+				return m, nil
+			}
 			return m, func() tea.Msg {
-				return ShowScoreEditorMsg{Task: b.cursorTask(), Project: m.project}
+				return ShowScoreEditorMsg{Task: task, Project: project}
 			}
 		},
 		OpenURL: func() (tea.Model, tea.Cmd) {

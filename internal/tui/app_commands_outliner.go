@@ -284,12 +284,12 @@ func (m *AppModel) outlinerCommands() []Command { //nolint:gocyclo
 			Description: "Open score editor for task",
 			Shortcut:    "S",
 			Category:    CategoryTasks,
-			Views:       []ViewType{ViewOutliner},
+			Views:       []ViewType{ViewOutliner, ViewCrossProjectOutliner},
 			Aliases:     []string{"edit score", "scoring", "set score"},
 			Handler: func() tea.Msg {
-				task := cursorTask()
-				if task != nil && m.outliner != nil {
-					return ShowScoreEditorMsg{Task: task, Project: m.outliner.project}
+				task, project := m.outlinerScoreTarget()
+				if task != nil && project != nil {
+					return ShowScoreEditorMsg{Task: task, Project: project}
 				}
 				return nil
 			},
@@ -462,4 +462,21 @@ func (m *AppModel) outlinerCommands() []Command { //nolint:gocyclo
 	}
 
 	return cmds
+}
+
+func (m *AppModel) outlinerScoreTarget() (*models.Task, *models.Project) {
+	switch m.nonPaletteOrigin() {
+	case ViewCrossProjectOutliner:
+		if m.crossOutliner != nil {
+			return m.crossOutliner.getTaskRef()
+		}
+	case ViewOutliner:
+		if m.outliner != nil {
+			return m.outliner.getTaskRef()
+		}
+	}
+	if m.outliner != nil {
+		return m.outliner.getTaskRef()
+	}
+	return nil, nil
 }

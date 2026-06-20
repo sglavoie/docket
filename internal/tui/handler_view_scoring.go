@@ -77,7 +77,7 @@ func (m *AppModel) handleScoringMessages(msg tea.Msg) (bool, tea.Cmd) {
 		return true, nil
 
 	case ScoreEditorDoneMsg:
-		m.popView()
+		popCmd := m.popView()
 		if msg.Saved {
 			if m.projectTree != nil {
 				m.projectTree.buildTree()
@@ -86,7 +86,15 @@ func (m *AppModel) handleScoringMessages(msg tea.Msg) (bool, tea.Cmd) {
 				m.allTasksView.loadAllTasks()
 			}
 			if m.outliner != nil {
+				if m.outliner.project == nil {
+					m.outliner.crossForceRebuild = true
+				}
 				m.outliner.rebuildRows()
+			}
+			if cross := m.activeCrossProjectOutliner(); cross != nil && cross != m.outliner {
+				cross.crossForceRebuild = true
+				cross.rebuildRows()
+				cross.clampCursor()
 			}
 			for _, vt := range []ViewType{ViewKanban, ViewCrossProjectKanban} {
 				if v := m.views.Get(vt); v != nil {
@@ -96,8 +104,9 @@ func (m *AppModel) handleScoringMessages(msg tea.Msg) (bool, tea.Cmd) {
 				}
 			}
 			m.setSuccessStatus(fmt.Sprintf("Score dimensions updated for task #%d", msg.Task.ShortID))
+			return true, tea.Batch(popCmd, defaultStatusTimeout())
 		}
-		return true, nil
+		return true, popCmd
 	}
 	return false, nil
 }
