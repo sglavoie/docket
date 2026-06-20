@@ -206,6 +206,94 @@ func TestHandleTaskMessagesSnoozeDateChanged(t *testing.T) {
 	}
 }
 
+// Regression: closing the due-date picker from ViewCrossProjectOutliner left
+// stale rows in m.crossOutliner because refreshAllViews() rebuilt m.outliner
+// only. The expected post-fix behavior is that the task disappears from the
+// cross-project rows once a due date is set under a DueDateNone filter.
+func TestHandleDueDateChangedCrossProjectOutlinerRefreshesStaleRow(t *testing.T) {
+	app := newTestAppModel()
+
+	task := newBulkPickerTestTask(t, 1, "cross outliner no due date")
+	project := newBulkPickerTestProject(t, "Cross Outliner Due", task)
+	app.config.Projects = []*models.Project{project}
+
+	crossOutliner := NewOutlinerModel(nil, app.config, app.configManager)
+	crossOutliner.loadedProjects = []*models.Project{project}
+	crossOutliner.activePerspective = PerspectiveAll
+	crossOutliner.filter.DueDate = DueDateNone
+	crossOutliner.crossForceRebuild = true
+	crossOutliner.crossProjectRebuildRows()
+
+	app.crossOutliner = crossOutliner
+	app.views.Register(ViewCrossProjectOutliner, crossOutliner)
+	app.viewStack = []ViewType{ViewDashboard, ViewCrossProjectOutliner}
+
+	before := collectCrossProjectTaskTitles(crossOutliner)
+	if !before[task.Title] {
+		t.Fatalf("setup: task %q should appear under DueDateNone, got rows %v", task.Title, before)
+	}
+
+	// Simulate DateInputModel having saved the new date before sending the
+	// picker-close message.
+	dueDate := time.Date(2026, 7, 1, 0, 0, 0, 0, time.UTC)
+	task.DueDate = &dueDate
+
+	app.pushView(ViewDateInput)
+	handled, _ := app.handleDueDateChanged(DueDateChangedMsg{Task: task, Project: project})
+	if !handled {
+		t.Fatal("DueDateChangedMsg should be handled")
+	}
+
+	after := collectCrossProjectTaskTitles(crossOutliner)
+	if after[task.Title] {
+		t.Errorf("task %q should disappear from m.crossOutliner rows under DueDateNone after the due date is set; got rows %v", task.Title, after)
+	}
+}
+
+// Regression: same shape as the due-date case but exercised through the
+// SnoozeDateChangedMsg path. PerspectiveAll filters out snoozed tasks, so the
+// row must disappear once SnoozedUntil is set in the future and the cross
+// outliner is refreshed.
+func TestHandleSnoozeDateChangedCrossProjectOutlinerRefreshesStaleRow(t *testing.T) {
+	app := newTestAppModel()
+
+	task := newBulkPickerTestTask(t, 1, "cross outliner active task")
+	project := newBulkPickerTestProject(t, "Cross Outliner Snooze", task)
+	app.config.Projects = []*models.Project{project}
+
+	crossOutliner := NewOutlinerModel(nil, app.config, app.configManager)
+	crossOutliner.loadedProjects = []*models.Project{project}
+	crossOutliner.activePerspective = PerspectiveAll
+	crossOutliner.crossForceRebuild = true
+	crossOutliner.crossProjectRebuildRows()
+
+	app.crossOutliner = crossOutliner
+	app.views.Register(ViewCrossProjectOutliner, crossOutliner)
+	app.viewStack = []ViewType{ViewDashboard, ViewCrossProjectOutliner}
+
+	before := collectCrossProjectTaskTitles(crossOutliner)
+	if !before[task.Title] {
+		t.Fatalf("setup: task %q should appear in PerspectiveAll, got rows %v", task.Title, before)
+	}
+
+	// Simulate SnoozeInputModel having saved the snooze before sending the
+	// picker-close message. SnoozedUntil must be at least one day in the future
+	// so models.Task.IsSnoozed() returns true.
+	snoozeUntil := time.Now().AddDate(0, 0, 3)
+	task.SnoozedUntil = &snoozeUntil
+
+	app.pushView(ViewSnoozeInput)
+	handled, _ := app.handleSnoozeDateChanged(SnoozeDateChangedMsg{Task: task, Project: project})
+	if !handled {
+		t.Fatal("SnoozeDateChangedMsg should be handled")
+	}
+
+	after := collectCrossProjectTaskTitles(crossOutliner)
+	if after[task.Title] {
+		t.Errorf("task %q should disappear from m.crossOutliner rows in PerspectiveAll after snooze; got rows %v", task.Title, after)
+	}
+}
+
 func TestHandleSnoozeDateChangedBulkCrossProjectPersistsAllTasks(t *testing.T) {
 	app := newTestAppModel()
 

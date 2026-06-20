@@ -10,12 +10,32 @@ import (
 	"github.com/sglavoie/tt/internal/logging"
 )
 
-// refreshAllViews refreshes the project tree and rebuilds outliner rows.
-// Use this when task data has changed and both views need updating.
+// activeCrossProjectOutliner returns the OutlinerModel currently displaying
+// cross-project rows, preferring m.crossOutliner (the dedicated instance for
+// ViewCrossProjectOutliner) and falling back to m.outliner only when it is
+// itself in cross-project mode (project == nil). Returns nil when no
+// cross-project outliner is active.
+func (m *AppModel) activeCrossProjectOutliner() *OutlinerModel {
+	if m.crossOutliner != nil {
+		return m.crossOutliner
+	}
+	if m.outliner != nil && m.outliner.project == nil {
+		return m.outliner
+	}
+	return nil
+}
+
+// refreshAllViews rebuilds in-memory rows for the project tree and any active
+// outliner (single-project and cross-project). It never reloads from disk;
+// disk-backed reloads belong in refreshTaskViewsAfterSave and handleWithRefresh.
 func (m *AppModel) refreshAllViews() {
 	m.refreshProjectTree()
 	if m.outliner != nil {
 		m.outliner.rebuildRows()
+	}
+	if cross := m.activeCrossProjectOutliner(); cross != nil && cross != m.outliner {
+		cross.rebuildRows()
+		cross.clampCursor()
 	}
 }
 
@@ -38,24 +58,23 @@ func (m *AppModel) handleWithRefresh(popView, reload bool, statusMsg string) tea
 		m.invalidateFilterCaches()
 	}
 	// Cross-project outliner has its own loadedProjects cache that bypasses
-	// m.currentProject. Trigger a disk-backed reload so mutations to any
-	// loaded project become visible without leaving the view. The cursor is
-	// saved before reload and restored after refreshAllViews (which would
-	// otherwise clamp it to 0 while loadedProjects is briefly nil); the
-	// final clamp to the rebuilt row count happens later in
-	// handleCrossProjectsLoaded via crossProjectRebuildRows. Full reload is
-	// sub-100ms for typical project counts (~30); revisit per-project
-	// targeted reload if profiling shows pain.
+	// m.currentProject, so a disk-backed reload is needed for mutations to
+	// any loaded project to become visible without leaving the view. The
+	// cursor is saved before reload and restored after refreshAllViews
+	// (which would otherwise clamp it to 0 while loadedProjects is briefly
+	// nil); the final clamp to the rebuilt row count happens later in
+	// handleCrossProjectsLoaded via crossProjectRebuildRows.
 	var crossReloadCmd tea.Cmd
 	var crossSavedCursor int
-	crossReload := reload && m.outliner != nil && m.outliner.project == nil
+	crossInstance := m.activeCrossProjectOutliner()
+	crossReload := reload && crossInstance != nil
 	if crossReload {
-		crossSavedCursor = m.outliner.cursor
-		crossReloadCmd = m.outliner.reloadCrossProjects()
+		crossSavedCursor = crossInstance.cursor
+		crossReloadCmd = crossInstance.reloadCrossProjects()
 	}
 	m.refreshAllViews()
 	if crossReload {
-		m.outliner.cursor = crossSavedCursor
+		crossInstance.cursor = crossSavedCursor
 	}
 	if statusMsg != "" {
 		m.setSuccessStatus(statusMsg)
