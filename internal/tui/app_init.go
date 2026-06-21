@@ -242,44 +242,55 @@ func (m *AppModel) makePriorityHandler(priority int) func() tea.Msg {
 	}
 }
 
+// commandGroups returns every command batch in the order they are registered.
+// Tests use this to rebuild the registry and assert palette invariants without
+// drifting from the production registration order.
+func (m *AppModel) commandGroups() [][]Command {
+	return [][]Command{
+		m.globalCommands(),
+		m.filterCommands(),
+		m.viewCommands(),
+		m.navCommands(),
+		m.taskCommands(),
+		m.projectCommands(),
+		m.taskActionCommands(),
+		m.viewModeCommands(),
+		m.statusCommands(),
+		m.dueDateCommands(),
+		m.notesCommands(),
+		m.otherCommands(),
+		m.priorityCommands(),
+		m.sortCommands(),
+		m.structureCommands(),
+		m.sectionSendCommands(),
+		m.linkedTaskCommands(),
+		m.multiSelectCommands(),
+		m.foldCommands(),
+		m.filterBarCommands(),
+		m.notesViewCommands(),
+		m.blockersCommands(),
+		m.taskCommentsCommands(),
+		m.globalTagManagerCommands(),
+		m.attachmentCommands(),
+		m.focusViewCommands(),
+		m.dailyReviewCommands(),
+		m.priorityViewCommands(),
+		m.inboxProcessorCommands(),
+		m.dueDateOverviewCommands(),
+		m.workflowRulesCommands(),
+		m.sidebarCommands(),
+		m.scoringCommands(),
+		m.allTasksCommands(),
+		m.outlinerCommands(),
+		m.exportCommands(),
+	}
+}
+
 // registerGlobalCommands registers commands that are available from any view.
 func (m *AppModel) registerGlobalCommands() {
-	_ = m.commandRegistry.RegisterBatch(m.globalCommands())
-	_ = m.commandRegistry.RegisterBatch(m.filterCommands())
-	_ = m.commandRegistry.RegisterBatch(m.viewCommands())
-	_ = m.commandRegistry.RegisterBatch(m.navCommands())
-	_ = m.commandRegistry.RegisterBatch(m.taskCommands())
-	_ = m.commandRegistry.RegisterBatch(m.projectCommands())
-	_ = m.commandRegistry.RegisterBatch(m.taskActionCommands())
-	_ = m.commandRegistry.RegisterBatch(m.viewModeCommands())
-	_ = m.commandRegistry.RegisterBatch(m.statusCommands())
-	_ = m.commandRegistry.RegisterBatch(m.dueDateCommands())
-	_ = m.commandRegistry.RegisterBatch(m.notesCommands())
-	_ = m.commandRegistry.RegisterBatch(m.otherCommands())
-	_ = m.commandRegistry.RegisterBatch(m.priorityCommands())
-	_ = m.commandRegistry.RegisterBatch(m.sortCommands())
-	_ = m.commandRegistry.RegisterBatch(m.structureCommands())
-	_ = m.commandRegistry.RegisterBatch(m.sectionSendCommands())
-	_ = m.commandRegistry.RegisterBatch(m.linkedTaskCommands())
-	_ = m.commandRegistry.RegisterBatch(m.multiSelectCommands())
-	_ = m.commandRegistry.RegisterBatch(m.foldCommands())
-	_ = m.commandRegistry.RegisterBatch(m.filterBarCommands())
-	_ = m.commandRegistry.RegisterBatch(m.notesViewCommands())
-	_ = m.commandRegistry.RegisterBatch(m.blockersCommands())
-	_ = m.commandRegistry.RegisterBatch(m.taskCommentsCommands())
-	_ = m.commandRegistry.RegisterBatch(m.globalTagManagerCommands())
-	_ = m.commandRegistry.RegisterBatch(m.attachmentCommands())
-	_ = m.commandRegistry.RegisterBatch(m.focusViewCommands())
-	_ = m.commandRegistry.RegisterBatch(m.dailyReviewCommands())
-	_ = m.commandRegistry.RegisterBatch(m.priorityViewCommands())
-	_ = m.commandRegistry.RegisterBatch(m.inboxProcessorCommands())
-	_ = m.commandRegistry.RegisterBatch(m.dueDateOverviewCommands())
-	_ = m.commandRegistry.RegisterBatch(m.workflowRulesCommands())
-	_ = m.commandRegistry.RegisterBatch(m.sidebarCommands())
-	_ = m.commandRegistry.RegisterBatch(m.scoringCommands())
-	_ = m.commandRegistry.RegisterBatch(m.allTasksCommands())
-	_ = m.commandRegistry.RegisterBatch(m.outlinerCommands())
-	_ = m.commandRegistry.RegisterBatch(m.exportCommands())
+	for _, group := range m.commandGroups() {
+		_ = m.commandRegistry.RegisterBatch(group)
+	}
 }
 
 // getGlobalHelpItems returns help items that apply across all views.

@@ -140,6 +140,55 @@ func TestTaskForm_Save_CreateHappyPath_AddsChecklistItems(t *testing.T) {
 	}
 }
 
+func TestTaskForm_Save_CreateEmitsProjectOnTaskCreatedMsg(t *testing.T) {
+	m, cleanup := newSaveableTestForm(t)
+	defer cleanup()
+
+	m.draft.title = "Cross-project task"
+	m.titleInput.SetValue("Cross-project task")
+
+	cmd := m.handleSave()
+	if cmd == nil {
+		t.Fatalf("expected non-nil Cmd; err=%v", m.err)
+	}
+	msg, ok := cmd().(TaskCreatedMsg)
+	if !ok {
+		t.Fatalf("expected TaskCreatedMsg, got %T", cmd())
+	}
+	if msg.Project != m.project {
+		t.Errorf("Project = %v, want %v (form's project)", msg.Project, m.project)
+	}
+}
+
+func TestTaskForm_Save_CreateOpenAfterSubtaskEmitsProject(t *testing.T) {
+	m, cleanup := newSaveableTestForm(t)
+	defer cleanup()
+
+	m.draft.taskType = models.TaskTypeEpic
+	m.draft.title = "Parent Epic"
+	m.titleInput.SetValue("Parent Epic")
+	m.draft.subtasks = []formSubtaskDraft{
+		{title: "open-after subtask", taskType: models.TaskTypeTask},
+	}
+	m.subtaskOpenDetail = true
+	m.subtaskOpenIdx = 0
+
+	cmd := m.handleSave()
+	if cmd == nil {
+		t.Fatalf("expected non-nil Cmd; err=%v", m.err)
+	}
+	msg, ok := cmd().(TaskCreatedMsg)
+	if !ok {
+		t.Fatalf("expected TaskCreatedMsg, got %T", cmd())
+	}
+	if msg.Project != m.project {
+		t.Errorf("Project = %v, want %v (form's project)", msg.Project, m.project)
+	}
+	if !msg.OpenDetail {
+		t.Error("OpenDetail should be true on open-after-subtask path")
+	}
+}
+
 func TestTaskForm_Save_CreateHappyPath_AddsSubtasksForEpic(t *testing.T) {
 	m, cleanup := newSaveableTestForm(t)
 	defer cleanup()

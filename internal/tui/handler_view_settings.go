@@ -96,6 +96,7 @@ func (m *AppModel) handleViewSettingsMessages(msg tea.Msg) (bool, tea.Cmd) { //n
 
 		if msg.Canceled {
 			m.pendingCreateTaskParent = nil
+			m.pendingCreateTaskProject = nil
 			return true, nil
 		}
 
@@ -110,8 +111,12 @@ func (m *AppModel) handleViewSettingsMessages(msg tea.Msg) (bool, tea.Cmd) { //n
 		m.popView()
 		if msg.Canceled {
 			m.pendingVarFillerTemplate = nil
-			if m.currentProject != nil {
-				return m.showViewInit(ViewTaskTemplatePicker, NewTemplatePickerModel(m.config, m.currentProject))
+			project := m.pendingCreateTaskProject
+			if project == nil {
+				project = m.currentProject
+			}
+			if project != nil {
+				return m.showViewInit(ViewTaskTemplatePicker, NewTemplatePickerModel(m.config, project))
 			}
 			return true, nil
 		}
@@ -179,9 +184,14 @@ func (m *AppModel) refreshTaskTemplatesView() {
 
 func (m *AppModel) showTaskCreatorForTemplate(taskTemplate *template.TaskTemplate) (bool, tea.Cmd) {
 	parentTask := m.pendingCreateTaskParent
+	project := m.pendingCreateTaskProject
 	m.pendingCreateTaskParent = nil
-	if m.currentProject != nil {
-		return m.showViewInit(ViewTaskForm, NewTaskFormModelCreateFromTemplate(m.currentProject, m.config, m.configManager, parentTask, taskTemplate))
+	m.pendingCreateTaskProject = nil
+	if project == nil {
+		project = m.currentProject
+	}
+	if project != nil {
+		return m.showViewInit(ViewTaskForm, NewTaskFormModelCreateFromTemplate(project, m.config, m.configManager, parentTask, taskTemplate))
 	}
 
 	return true, nil

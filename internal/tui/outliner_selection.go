@@ -27,6 +27,25 @@ func (m *OutlinerModel) getTaskRef() (*models.Task, *models.Project) {
 	return nil, nil
 }
 
+// cursorProject returns the project that owns the row under the cursor.
+// Single-project mode returns m.project; cross-project mode resolves
+// row.ProjectID via m.loadedProjects. Returns nil for empty rows, an
+// out-of-range cursor, section headers, separators, rows without a task,
+// or stale project IDs that no longer match any loaded project.
+func (m *OutlinerModel) cursorProject() *models.Project {
+	if len(m.rows) == 0 || m.cursor < 0 || m.cursor >= len(m.rows) {
+		return nil
+	}
+	row := m.rows[m.cursor]
+	if row.IsSectionHeader || row.IsSeparator || row.task == nil {
+		return nil
+	}
+	if m.project != nil {
+		return m.project
+	}
+	return m.crossResolveProject(row.ProjectID)
+}
+
 func (m *OutlinerModel) getPersister() Persister { return m.projectService }
 func (m *OutlinerModel) reloadData()             { m.rebuildRows() }
 func (m *OutlinerModel) setErr(err error)        { m.err = err }

@@ -65,8 +65,9 @@ type OutlinerModel struct {
 	sidebar   *SidebarComponent   // Sidebar detail panel
 	filterBar *FilterBarComponent // Filter bar component (dedicated line for filter/sort indicators)
 
-	deleteTarget *models.Task // Task to delete when confirmation is accepted
-	err          error        // Last error from an operation
+	deleteTarget         *models.Task    // Task to delete when confirmation is accepted
+	archiveTargetProject *models.Project // Project to archive completed tasks for when "archive-tasks" confirms
+	err                  error           // Last error from an operation
 
 	undo UndoContext // Action label and context for next undo snapshot
 

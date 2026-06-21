@@ -8,6 +8,29 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 )
 
+// Standard status messages for outliner keybindings that need a task
+// or owning project under the cursor. Centralized so cross-project and
+// single-project paths emit identical text.
+const (
+	statusNoTaskSelected       = "No task selected"
+	statusNoProjectUnderCursor = "No project under cursor"
+)
+
+// setNoTaskStatus shows the standard "No task selected" message used by
+// outliner keybindings that require a cursor task (header, separator,
+// or empty row under the cursor).
+func (m *OutlinerModel) setNoTaskStatus() {
+	m.setStatus(statusNoTaskSelected)
+}
+
+// setNoProjectStatus shows the standard "No project under cursor"
+// message used by outliner keybindings that need an owning project but
+// cannot resolve one (cross-project header/separator, or stale project
+// ID).
+func (m *OutlinerModel) setNoProjectStatus() {
+	m.setStatus(statusNoProjectUnderCursor)
+}
+
 // ensureExpandedNodes initializes the expanded nodes map if it's empty,
 // marking all parent tasks as expanded.
 func (m *OutlinerModel) ensureExpandedNodes() {

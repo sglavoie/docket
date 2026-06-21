@@ -59,7 +59,15 @@ func (b *outlinerKeymapBuilder) primaryViewEntries() []keymap.Entry {
 
 	entries := keymap.CommonPrimaryViewGroup(keymap.CommonPrimaryViewDeps{
 		OpenProjectTree: func() (tea.Model, tea.Cmd) {
-			return m, func() tea.Msg { return ShowProjectTreeMsg{Project: m.project} }
+			project := m.project
+			if project == nil {
+				project = m.cursorProject()
+				if project == nil {
+					m.setNoProjectStatus()
+					return m, nil
+				}
+			}
+			return m, func() tea.Msg { return ShowProjectTreeMsg{Project: project} }
 		},
 		OpenProjectCyclePicker: func() (tea.Model, tea.Cmd) {
 			return m, func() tea.Msg { return ShowProjectCyclePickerMsg{} }
@@ -71,10 +79,14 @@ func (b *outlinerKeymapBuilder) primaryViewEntries() []keymap.Entry {
 			return m, func() tea.Msg { return ShowProjectCycleManagerMsg{} }
 		},
 		ProjectBlockers: func() (tea.Model, tea.Cmd) {
-			if m.project == nil {
-				return m, nil
-			}
 			project := m.project
+			if project == nil {
+				project = m.cursorProject()
+				if project == nil {
+					m.setNoProjectStatus()
+					return m, nil
+				}
+			}
 			return m, func() tea.Msg { return ShowBlockersMsg{Project: project} }
 		},
 		PriorityView: func() (tea.Model, tea.Cmd) {
@@ -89,19 +101,39 @@ func (b *outlinerKeymapBuilder) primaryViewEntries() []keymap.Entry {
 			return m, func() tea.Msg { return ShowFocusBoardMsg{} }
 		},
 		InboxProcessor: func() (tea.Model, tea.Cmd) {
-			if m.project == nil {
-				return m, nil
-			}
 			project := m.project
+			if project == nil {
+				project = m.cursorProject()
+				if project == nil {
+					m.setNoProjectStatus()
+					return m, nil
+				}
+			}
 			return m, func() tea.Msg { return ShowInboxProcessorMsg{Project: project} }
 		},
 		QuickCapture: func() (tea.Model, tea.Cmd) {
+			project := m.project
+			if project == nil {
+				project = m.cursorProject()
+				if project == nil {
+					m.setNoProjectStatus()
+					return m, nil
+				}
+			}
 			return m, func() tea.Msg {
-				return ShowQuickCaptureMsg{Project: m.project, AllProjects: m.config.GetActiveProjects()}
+				return ShowQuickCaptureMsg{Project: project, AllProjects: m.config.GetActiveProjects()}
 			}
 		},
 		BulkCapture: func() (tea.Model, tea.Cmd) {
-			return m, func() tea.Msg { return ShowBulkCaptureMsg{Project: m.project} }
+			project := m.project
+			if project == nil {
+				project = m.cursorProject()
+				if project == nil {
+					m.setNoProjectStatus()
+					return m, nil
+				}
+			}
+			return m, func() tea.Msg { return ShowBulkCaptureMsg{Project: project} }
 		},
 		JumpToTask: func() (tea.Model, tea.Cmd) {
 			if m.project == nil {
@@ -119,10 +151,14 @@ func (b *outlinerKeymapBuilder) primaryViewEntries() []keymap.Entry {
 			return m, func() tea.Msg { return ShowNotesMsg{Project: project} }
 		},
 		CreateNote: func() (tea.Model, tea.Cmd) {
-			if m.project == nil {
-				return m, nil
-			}
 			project := m.project
+			if project == nil {
+				project = m.cursorProject()
+				if project == nil {
+					m.setNoProjectStatus()
+					return m, nil
+				}
+			}
 			return m, func() tea.Msg { return ShowNoteCreatorMsg{Project: project} }
 		},
 		ReloadFromDisk: func() (tea.Model, tea.Cmd) {
@@ -143,15 +179,20 @@ func (b *outlinerKeymapBuilder) primaryViewEntries() []keymap.Entry {
 			return m, m.performUndo()
 		},
 		EditLastModified: func() (tea.Model, tea.Cmd) {
-			if m.project == nil {
+			project := m.project
+			if project == nil {
+				project = m.cursorProject()
+				if project == nil {
+					m.setNoProjectStatus()
+					return m, nil
+				}
+			}
+			recent := storage.GetRecentTasks(project.Tasks, 1)
+			if len(recent) == 0 {
 				return m, nil
 			}
-			recent := storage.GetRecentTasks(m.project.Tasks, 1)
-			if len(recent) > 0 {
-				task := recent[0]
-				return m, func() tea.Msg { return EditTaskMsg{Task: task} }
-			}
-			return m, nil
+			task := recent[0]
+			return m, func() tea.Msg { return EditTaskMsg{Task: task, Project: project} }
 		},
 		MoveReparent: func() (tea.Model, tea.Cmd) {
 			source := ViewOutliner
@@ -180,18 +221,22 @@ func (b *outlinerKeymapBuilder) gotoEntries() []keymap.Entry {
 			return m, m.JumpToTop()
 		}),
 		keymap.Bind("h", "View task activity log", "Task Operations", func() (tea.Model, tea.Cmd) {
-			task := b.cursorTask()
-			if m.project == nil || task == nil {
+			task, project := m.getTaskRef()
+			if task == nil || project == nil {
+				m.setNoTaskStatus()
 				return m, nil
 			}
-			project := m.project
 			return m, func() tea.Msg { return OpenTaskActivityMsg{Task: task, Project: project} }
 		}),
 		keymap.Bind("l", "Project recent activity", "Navigation", func() (tea.Model, tea.Cmd) {
-			if m.project == nil {
-				return m, nil
-			}
 			project := m.project
+			if project == nil {
+				project = m.cursorProject()
+				if project == nil {
+					m.setNoProjectStatus()
+					return m, nil
+				}
+			}
 			return m, func() tea.Msg { return ShowProjectRecentActivityMsg{Project: project} }
 		}),
 		keymap.Bind("d", "Cycle due date filter", "Filters", func() (tea.Model, tea.Cmd) {

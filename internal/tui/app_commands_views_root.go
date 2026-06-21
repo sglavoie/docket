@@ -98,12 +98,16 @@ func (m *AppModel) viewCommands() []Command {
 			Description: "Process inbox items one by one",
 			Shortcut:    "W",
 			Category:    CategoryViews,
-			Views:       projectTreeAndOutlinerViews(),
+			Views:       []ViewType{ViewProjectTree, ViewOutliner, ViewCrossProjectOutliner},
 			Handler: func() tea.Msg {
-				if m.currentProject != nil {
-					return ShowInboxProcessorMsg{Project: m.currentProject}
+				project := m.paletteCursorProject()
+				if project == nil {
+					if m.nonPaletteOrigin() == ViewCrossProjectOutliner {
+						return StatusMsg(statusNoProjectUnderCursor)
+					}
+					return nil
 				}
-				return nil
+				return ShowInboxProcessorMsg{Project: project}
 			},
 		},
 		{

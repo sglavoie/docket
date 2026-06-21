@@ -9,51 +9,62 @@ import (
 )
 
 func (m *AppModel) outlinerCommands() []Command { //nolint:gocyclo
-	// Helper to get the task under the outliner cursor.
+	// Origin-aware: returns the cursor task on whichever outliner is the
+	// non-palette origin (single-project or cross-project).
 	cursorTask := func() *models.Task {
-		if m.outliner == nil || len(m.outliner.rows) == 0 || m.outliner.cursor >= len(m.outliner.rows) {
-			return nil
-		}
-		return m.outliner.rows[m.outliner.cursor].task
+		task, _ := m.outlinerTarget()
+		return task
 	}
 
-	// outlinerStatusHandler builds a handler that applies a status change to the cursor task.
+	// outlinerStatusHandler builds a handler that applies a status change to the
+	// cursor task. In cross-project mode it routes through crossPersistFn and
+	// records crossUndoCtx so the snapshot is scoped to the cursor row's project.
 	outlinerStatusHandler := func(status models.TaskStatus) func() tea.Msg {
 		return func() tea.Msg {
-			task := cursorTask()
-			if task == nil || m.outliner == nil {
+			out := m.activeOutliner()
+			task, project := m.outlinerTarget()
+			if out == nil || task == nil || project == nil {
 				return nil
 			}
-			pf := m.outliner.workflowPersistFn()
-			result := applyStatusChange(pf, m.outliner.project, task.ID, status)
+			var pf persistFn
+			if out.project != nil {
+				pf = out.workflowPersistFn()
+			} else {
+				out.crossUndoCtx.Set(StatusVerb(status)+" Task", task.Title)
+				out.crossUndoCtx.ProjectIDs = []string{project.ID}
+				pf = out.crossPersistFn(project)
+			}
+			result := applyStatusChange(pf, project, task.ID, status)
 			if result.Err != nil {
 				return ErrorMsg{Err: result.Err}
 			}
-			m.outliner.statusMessage = result.StatusMessage
-			m.outliner.rebuildRows()
+			out.statusMessage = result.StatusMessage
+			out.rebuildRows()
 			return nil
 		}
 	}
 
+	outlinerViews := []ViewType{ViewOutliner, ViewCrossProjectOutliner}
+
 	cmds := []Command{
-		{Name: "start task", Description: "Set task status to in progress", Shortcut: ",s", Category: CategoryStatus, Views: []ViewType{ViewOutliner}, Aliases: []string{"begin task", "in progress"}, Handler: outlinerStatusHandler(models.StatusInProgress)},
-		{Name: "complete task", Description: "Set task status to done", Shortcut: ",d", Category: CategoryStatus, Views: []ViewType{ViewOutliner}, Aliases: []string{"done task", "finish task", "mark done"}, Handler: outlinerStatusHandler(models.StatusDone)},
-		{Name: "block task", Description: "Set task status to blocked", Shortcut: ",b", Category: CategoryStatus, Views: []ViewType{ViewOutliner}, Aliases: []string{"blocked task", "mark blocked"}, Handler: outlinerStatusHandler(models.StatusBlocked)},
-		{Name: "standby task", Description: "Set task status to standby", Shortcut: ",S", Category: CategoryStatus, Views: []ViewType{ViewOutliner}, Aliases: []string{"standby", "pause task"}, Handler: outlinerStatusHandler(models.StatusStandby)},
-		{Name: "cancel task", Description: "Set task status to canceled", Shortcut: ",x", Category: CategoryStatus, Views: []ViewType{ViewOutliner}, Aliases: []string{"canceled task", "mark canceled"}, Handler: outlinerStatusHandler(models.StatusCanceled)},
-		{Name: "reopen task", Description: "Reopen a completed or canceled task", Shortcut: ",o", Category: CategoryStatus, Views: []ViewType{ViewOutliner}, Aliases: []string{"reopen", "undo complete", "mark todo"}, Handler: outlinerStatusHandler(models.StatusTodo)},
-		{Name: "review task", Description: "Set task status to review", Shortcut: ",r", Category: CategoryStatus, Views: []ViewType{ViewOutliner}, Aliases: []string{"mark review", "in review"}, Handler: outlinerStatusHandler(models.StatusReview)},
-		{Name: "maybe task", Description: "Set task status to maybe", Shortcut: ",m", Category: CategoryStatus, Views: []ViewType{ViewOutliner}, Aliases: []string{"maybe", "someday task"}, Handler: outlinerStatusHandler(models.StatusMaybe)},
+		{Name: "start task", Description: "Set task status to in progress", Shortcut: ",s", Category: CategoryStatus, Views: outlinerViews, Aliases: []string{"begin task", "in progress"}, Handler: outlinerStatusHandler(models.StatusInProgress)},
+		{Name: "complete task", Description: "Set task status to done", Shortcut: ",d", Category: CategoryStatus, Views: outlinerViews, Aliases: []string{"done task", "finish task", "mark done"}, Handler: outlinerStatusHandler(models.StatusDone)},
+		{Name: "block task", Description: "Set task status to blocked", Shortcut: ",b", Category: CategoryStatus, Views: outlinerViews, Aliases: []string{"blocked task", "mark blocked"}, Handler: outlinerStatusHandler(models.StatusBlocked)},
+		{Name: "standby task", Description: "Set task status to standby", Shortcut: ",S", Category: CategoryStatus, Views: outlinerViews, Aliases: []string{"standby", "pause task"}, Handler: outlinerStatusHandler(models.StatusStandby)},
+		{Name: "cancel task", Description: "Set task status to canceled", Shortcut: ",x", Category: CategoryStatus, Views: outlinerViews, Aliases: []string{"canceled task", "mark canceled"}, Handler: outlinerStatusHandler(models.StatusCanceled)},
+		{Name: "reopen task", Description: "Reopen a completed or canceled task", Shortcut: ",o", Category: CategoryStatus, Views: outlinerViews, Aliases: []string{"reopen", "undo complete", "mark todo"}, Handler: outlinerStatusHandler(models.StatusTodo)},
+		{Name: "review task", Description: "Set task status to review", Shortcut: ",r", Category: CategoryStatus, Views: outlinerViews, Aliases: []string{"mark review", "in review"}, Handler: outlinerStatusHandler(models.StatusReview)},
+		{Name: "maybe task", Description: "Set task status to maybe", Shortcut: ",m", Category: CategoryStatus, Views: outlinerViews, Aliases: []string{"maybe", "someday task"}, Handler: outlinerStatusHandler(models.StatusMaybe)},
 		{
 			Name:        "outliner sort by priority",
 			Description: "Sort tasks by priority",
-			Shortcut:    "s1",
+			Shortcut:    "1",
 			Category:    CategorySort,
-			Views:       []ViewType{ViewOutliner},
+			Views:       outlinerViews,
 			Aliases:     []string{"outliner priority sort"},
 			Handler: func() tea.Msg {
-				if m.outliner != nil {
-					m.outliner.toggleSort(SortByPriority)
+				if out := m.activeOutliner(); out != nil {
+					out.toggleSort(SortByPriority)
 				}
 				return nil
 			},
@@ -61,13 +72,13 @@ func (m *AppModel) outlinerCommands() []Command { //nolint:gocyclo
 		{
 			Name:        "outliner sort by status",
 			Description: "Sort tasks by status",
-			Shortcut:    "s2",
+			Shortcut:    "2",
 			Category:    CategorySort,
-			Views:       []ViewType{ViewOutliner},
+			Views:       outlinerViews,
 			Aliases:     []string{"outliner status sort"},
 			Handler: func() tea.Msg {
-				if m.outliner != nil {
-					m.outliner.toggleSort(SortByStatus)
+				if out := m.activeOutliner(); out != nil {
+					out.toggleSort(SortByStatus)
 				}
 				return nil
 			},
@@ -75,13 +86,13 @@ func (m *AppModel) outlinerCommands() []Command { //nolint:gocyclo
 		{
 			Name:        "outliner sort by due date",
 			Description: "Sort tasks by due date",
-			Shortcut:    "s3",
+			Shortcut:    "3",
 			Category:    CategorySort,
-			Views:       []ViewType{ViewOutliner},
+			Views:       outlinerViews,
 			Aliases:     []string{"outliner due date sort", "outliner deadline sort"},
 			Handler: func() tea.Msg {
-				if m.outliner != nil {
-					m.outliner.toggleSort(SortByDueDate)
+				if out := m.activeOutliner(); out != nil {
+					out.toggleSort(SortByDueDate)
 				}
 				return nil
 			},
@@ -89,13 +100,13 @@ func (m *AppModel) outlinerCommands() []Command { //nolint:gocyclo
 		{
 			Name:        "outliner sort by created",
 			Description: "Sort tasks by creation date",
-			Shortcut:    "s4",
+			Shortcut:    "4",
 			Category:    CategorySort,
-			Views:       []ViewType{ViewOutliner},
+			Views:       outlinerViews,
 			Aliases:     []string{"outliner created sort", "outliner creation date sort"},
 			Handler: func() tea.Msg {
-				if m.outliner != nil {
-					m.outliner.toggleSort(SortByCreatedAt)
+				if out := m.activeOutliner(); out != nil {
+					out.toggleSort(SortByCreatedAt)
 				}
 				return nil
 			},
@@ -103,13 +114,13 @@ func (m *AppModel) outlinerCommands() []Command { //nolint:gocyclo
 		{
 			Name:        "outliner sort by score",
 			Description: "Sort tasks by composite score",
-			Shortcut:    "s5",
+			Shortcut:    "5",
 			Category:    CategorySort,
-			Views:       []ViewType{ViewOutliner},
+			Views:       outlinerViews,
 			Aliases:     []string{"outliner score sort", "outliner scoring sort"},
 			Handler: func() tea.Msg {
-				if m.outliner != nil {
-					m.outliner.toggleSort(SortByScore)
+				if out := m.activeOutliner(); out != nil {
+					out.toggleSort(SortByScore)
 				}
 				return nil
 			},
@@ -117,14 +128,14 @@ func (m *AppModel) outlinerCommands() []Command { //nolint:gocyclo
 		{
 			Name:        "outliner reset sort",
 			Description: "Reset sort to default order",
-			Shortcut:    "s0",
+			Shortcut:    "0",
 			Category:    CategorySort,
-			Views:       []ViewType{ViewOutliner},
+			Views:       outlinerViews,
 			Aliases:     []string{"outliner default sort", "outliner clear sort"},
 			Handler: func() tea.Msg {
-				if m.outliner != nil {
-					m.outliner.sort.Reset()
-					m.outliner.rebuildRows()
+				if out := m.activeOutliner(); out != nil {
+					out.sort.Reset()
+					out.rebuildRows()
 				}
 				return nil
 			},
@@ -134,14 +145,14 @@ func (m *AppModel) outlinerCommands() []Command { //nolint:gocyclo
 			Description: "Open task detail view",
 			Shortcut:    "o",
 			Category:    CategoryTasks,
-			Views:       []ViewType{ViewOutliner},
+			Views:       outlinerViews,
 			Aliases:     []string{"open task", "show details"},
 			Handler: func() tea.Msg {
-				task := cursorTask()
-				if task != nil && m.outliner != nil {
-					return ShowTaskDetailMsg{Task: task, Project: m.outliner.project}
+				task, project := m.outlinerTarget()
+				if task == nil || project == nil {
+					return nil
 				}
-				return nil
+				return ShowTaskDetailMsg{Task: task, Project: project}
 			},
 		},
 		{
@@ -149,14 +160,14 @@ func (m *AppModel) outlinerCommands() []Command { //nolint:gocyclo
 			Description: "Edit selected task in external editor",
 			Shortcut:    "e",
 			Category:    CategoryTasks,
-			Views:       []ViewType{ViewOutliner},
+			Views:       outlinerViews,
 			Aliases:     []string{"open editor", "modify task"},
 			Handler: func() tea.Msg {
-				task := cursorTask()
-				if task != nil {
-					return EditTaskMsg{Task: task}
+				task, project := m.outlinerTarget()
+				if task == nil {
+					return nil
 				}
-				return nil
+				return EditTaskMsg{Task: task, Project: project}
 			},
 		},
 		{
@@ -164,73 +175,80 @@ func (m *AppModel) outlinerCommands() []Command { //nolint:gocyclo
 			Description: "Inline rename task title",
 			Shortcut:    "tr",
 			Category:    CategoryTasks,
-			Views:       []ViewType{ViewOutliner},
+			Views:       outlinerViews,
 			Aliases:     []string{"rename", "change title"},
 			Handler: func() tea.Msg {
-				task := cursorTask()
-				if task != nil && m.outliner != nil {
-					return m.outliner.quickEdit.Enter(task, true)()
+				out := m.activeOutliner()
+				task, project := m.outlinerTarget()
+				if out == nil || task == nil {
+					return nil
 				}
-				return nil
+				if out.project == nil {
+					out.crossQuickEditProject = project
+				}
+				return out.quickEdit.Enter(task, true)()
 			},
 		},
 		{
-			Name:        "create subtask",
-			Description: "Create a new child task under cursor",
+			Name:        "new task (no template)",
+			Description: "Create a new child task under cursor without template picker",
 			Shortcut:    "tn",
 			Category:    CategoryTasks,
-			Views:       []ViewType{ViewOutliner},
-			Aliases:     []string{"new subtask", "add child"},
+			Views:       outlinerViews,
+			Aliases:     []string{"create child task", "new child task", "add child"},
 			Handler: func() tea.Msg {
-				if m.outliner == nil {
+				parentTask, project := m.outlinerCreateParent()
+				if parentTask == nil || project == nil {
 					return nil
 				}
-				task := cursorTask()
-				var focusedTask *models.Task
-				if len(m.outliner.zoomStack) > 0 {
-					topID := m.outliner.zoomStack[len(m.outliner.zoomStack)-1].TaskID
-					focusedTask = m.outliner.project.GetTaskByID(topID)
-				}
-				parentTask := focusedTask
-				if parentTask == nil {
-					parentTask = task
-				}
-				if parentTask != nil {
-					return CreateLinkedTaskMsg{SourceTask: parentTask, Project: m.outliner.project, LinkType: LinkTypeSubtask}
-				}
-				return nil
+				return CreateTaskMsg{ParentTask: parentTask, Project: project, SkipTemplatePicker: true}
 			},
 		},
 		{
-			Name:        "create sibling task",
-			Description: "Create a new sibling task at same level",
+			Name:        "new task (with template picker)",
+			Description: "Create a new child task under cursor with template picker",
 			Shortcut:    "tN",
 			Category:    CategoryTasks,
-			Views:       []ViewType{ViewOutliner},
-			Aliases:     []string{"new sibling", "add sibling"},
+			Views:       outlinerViews,
+			Aliases:     []string{"create child task with template", "new child task with template", "add child with template"},
 			Handler: func() tea.Msg {
-				if m.outliner == nil {
+				parentTask, project := m.outlinerCreateParent()
+				if parentTask == nil || project == nil {
 					return nil
 				}
-				return CreateTaskMsg{}
+				return CreateTaskMsg{ParentTask: parentTask, Project: project, SkipTemplatePicker: false}
+			},
+		},
+		{
+			Name:        "create linked subtask",
+			Description: "Create a new subtask linked task",
+			Shortcut:    "cs",
+			Category:    CategoryLinkedTasks,
+			Views:       outlinerViews,
+			Aliases:     []string{"new linked subtask", "add linked subtask", "linked subtask"},
+			Handler: func() tea.Msg {
+				parentTask, project := m.outlinerCreateParent()
+				if parentTask == nil || project == nil {
+					return nil
+				}
+				return CreateLinkedTaskMsg{SourceTask: parentTask, Project: project, LinkType: LinkTypeSubtask}
 			},
 		},
 		{
 			Name:        "delete task",
 			Description: "Delete selected task",
-			Shortcut:    "D",
+			Shortcut:    "tD",
 			Category:    CategoryTasks,
-			Views:       []ViewType{ViewOutliner},
+			Views:       outlinerViews,
 			Aliases:     []string{"remove task", "trash task"},
 			Handler: func() tea.Msg {
-				if m.outliner == nil {
+				out := m.activeOutliner()
+				task, _ := m.outlinerTarget()
+				if out == nil || task == nil {
 					return nil
 				}
-				task := cursorTask()
-				if task != nil {
-					m.outliner.confirm.Show("delete", fmt.Sprintf("Delete task #%d?", task.ShortID))
-					m.outliner.deleteTarget = task
-				}
+				out.confirm.Show("delete", fmt.Sprintf("Delete task #%d?", task.ShortID))
+				out.deleteTarget = task
 				return nil
 			},
 		},
@@ -239,7 +257,7 @@ func (m *AppModel) outlinerCommands() []Command { //nolint:gocyclo
 			Description: "Copy task title to clipboard",
 			Shortcut:    "y",
 			Category:    CategoryTasks,
-			Views:       []ViewType{ViewOutliner},
+			Views:       outlinerViews,
 			Aliases:     []string{"yank title", "clipboard title"},
 			Handler: func() tea.Msg {
 				task := cursorTask()
@@ -254,7 +272,7 @@ func (m *AppModel) outlinerCommands() []Command { //nolint:gocyclo
 			Description: "Copy task with details to clipboard",
 			Shortcut:    "Y",
 			Category:    CategoryTasks,
-			Views:       []ViewType{ViewOutliner},
+			Views:       outlinerViews,
 			Aliases:     []string{"yank details", "clipboard details"},
 			Handler: func() tea.Msg {
 				task := cursorTask()
@@ -269,7 +287,7 @@ func (m *AppModel) outlinerCommands() []Command { //nolint:gocyclo
 			Description: "Copy task title and description to clipboard",
 			Shortcut:    "ctrl+y",
 			Category:    CategoryTasks,
-			Views:       []ViewType{ViewOutliner},
+			Views:       outlinerViews,
 			Aliases:     []string{"yank description", "clipboard description"},
 			Handler: func() tea.Msg {
 				task := cursorTask()
@@ -284,7 +302,7 @@ func (m *AppModel) outlinerCommands() []Command { //nolint:gocyclo
 			Description: "Open score editor for task",
 			Shortcut:    "S",
 			Category:    CategoryTasks,
-			Views:       []ViewType{ViewOutliner, ViewCrossProjectOutliner},
+			Views:       outlinerViews,
 			Aliases:     []string{"edit score", "scoring", "set score"},
 			Handler: func() tea.Msg {
 				task, project := m.outlinerScoreTarget()
@@ -299,24 +317,21 @@ func (m *AppModel) outlinerCommands() []Command { //nolint:gocyclo
 			Description: "Switch to project tree view",
 			Shortcut:    "ctrl+p",
 			Category:    CategoryViews,
-			Views:       []ViewType{ViewOutliner},
+			Views:       outlinerViews,
 			Aliases:     []string{"tree view", "project tree view"},
 			Handler: func() tea.Msg {
-				if m.outliner != nil {
-					return ShowProjectTreeMsg{Project: m.outliner.project}
+				out := m.activeOutliner()
+				if out == nil {
+					return nil
 				}
-				return nil
-			},
-		},
-		{
-			Name:        "today",
-			Description: "Switch to today view",
-			Shortcut:    "ctrl+f",
-			Category:    CategoryViews,
-			Views:       []ViewType{ViewOutliner},
-			Aliases:     []string{"focus board", "focus view", "focus board view"},
-			Handler: func() tea.Msg {
-				return ShowFocusBoardMsg{}
+				project := out.project
+				if project == nil {
+					project = out.cursorProject()
+				}
+				if project == nil {
+					return nil
+				}
+				return ShowProjectTreeMsg{Project: project}
 			},
 		},
 		{
@@ -324,11 +339,11 @@ func (m *AppModel) outlinerCommands() []Command { //nolint:gocyclo
 			Description: "Toggle multi-select mode",
 			Shortcut:    "v",
 			Category:    CategoryMultiSelect,
-			Views:       []ViewType{ViewOutliner},
+			Views:       outlinerViews,
 			Aliases:     []string{"visual mode", "select multiple"},
 			Handler: func() tea.Msg {
-				if m.outliner != nil {
-					m.outliner.toggleMultiSelectMode()
+				if out := m.activeOutliner(); out != nil {
+					out.toggleMultiSelectMode()
 				}
 				return nil
 			},
@@ -338,12 +353,12 @@ func (m *AppModel) outlinerCommands() []Command { //nolint:gocyclo
 			Description: "Edit task description in external editor",
 			Shortcut:    "to",
 			Category:    CategoryTasks,
-			Views:       []ViewType{ViewOutliner},
+			Views:       outlinerViews,
 			Aliases:     []string{"edit description", "open content editor"},
 			Handler: func() tea.Msg {
-				task := cursorTask()
-				if task != nil && m.outliner != nil {
-					return EditTaskContentMsg{Task: task, Project: m.outliner.project}
+				task, project := m.outlinerTarget()
+				if task != nil && project != nil {
+					return EditTaskContentMsg{Task: task, Project: project}
 				}
 				return nil
 			},
@@ -353,12 +368,12 @@ func (m *AppModel) outlinerCommands() []Command { //nolint:gocyclo
 			Description: "View and add task comments",
 			Shortcut:    "tc",
 			Category:    CategoryComments,
-			Views:       []ViewType{ViewOutliner},
+			Views:       outlinerViews,
 			Aliases:     []string{"comments", "add comment"},
 			Handler: func() tea.Msg {
-				task := cursorTask()
-				if task != nil && m.outliner != nil {
-					return ShowTaskCommentsMsg{Task: task, Project: m.outliner.project}
+				task, project := m.outlinerTarget()
+				if task != nil && project != nil {
+					return ShowTaskCommentsMsg{Task: task, Project: project}
 				}
 				return nil
 			},
@@ -368,12 +383,12 @@ func (m *AppModel) outlinerCommands() []Command { //nolint:gocyclo
 			Description: "View and manage task attachments",
 			Shortcut:    "ta",
 			Category:    CategoryAttachments,
-			Views:       []ViewType{ViewOutliner},
+			Views:       outlinerViews,
 			Aliases:     []string{"attachments", "add attachment"},
 			Handler: func() tea.Msg {
-				task := cursorTask()
-				if task != nil && m.outliner != nil {
-					return ShowTaskAttachmentsMsg{Task: task, Project: m.outliner.project}
+				task, project := m.outlinerTarget()
+				if task != nil && project != nil {
+					return ShowTaskAttachmentsMsg{Task: task, Project: project}
 				}
 				return nil
 			},
@@ -383,12 +398,12 @@ func (m *AppModel) outlinerCommands() []Command { //nolint:gocyclo
 			Description: "Navigate to linked tasks",
 			Shortcut:    "tl",
 			Category:    CategoryLinkedTasks,
-			Views:       []ViewType{ViewOutliner},
+			Views:       outlinerViews,
 			Aliases:     []string{"show linked", "go to linked"},
 			Handler: func() tea.Msg {
-				task := cursorTask()
-				if task != nil && m.outliner != nil {
-					return ShowLinkedTaskSelectorMsg{Task: task, Project: m.outliner.project}
+				task, project := m.outlinerTarget()
+				if task != nil && project != nil {
+					return ShowLinkedTaskSelectorMsg{Task: task, Project: project}
 				}
 				return nil
 			},
@@ -398,12 +413,12 @@ func (m *AppModel) outlinerCommands() []Command { //nolint:gocyclo
 			Description: "Manage task dependencies",
 			Shortcut:    "bm",
 			Category:    CategoryTasks,
-			Views:       []ViewType{ViewOutliner},
+			Views:       outlinerViews,
 			Aliases:     []string{"add dependency", "link dependency"},
 			Handler: func() tea.Msg {
-				task := cursorTask()
-				if task != nil && m.outliner != nil {
-					return ManageDependenciesMsg{Task: task, Project: m.outliner.project}
+				task, project := m.outlinerTarget()
+				if task != nil && project != nil {
+					return ManageDependenciesMsg{Task: task, Project: project}
 				}
 				return nil
 			},
@@ -413,12 +428,12 @@ func (m *AppModel) outlinerCommands() []Command { //nolint:gocyclo
 			Description: "View and manage design/architecture decisions for this task",
 			Shortcut:    "td",
 			Category:    CategoryDecisions,
-			Views:       []ViewType{ViewOutliner},
+			Views:       outlinerViews,
 			Aliases:     []string{"decisions", "design decisions", "architecture decisions"},
 			Handler: func() tea.Msg {
-				task := cursorTask()
-				if task != nil && m.outliner != nil {
-					return ShowTaskDecisionsMsg{Task: task, Project: m.outliner.project}
+				task, project := m.outlinerTarget()
+				if task != nil && project != nil {
+					return ShowTaskDecisionsMsg{Task: task, Project: project}
 				}
 				return nil
 			},
@@ -426,21 +441,29 @@ func (m *AppModel) outlinerCommands() []Command { //nolint:gocyclo
 		{
 			Name:        "dim/undim task",
 			Description: "Toggle dim state of task",
-			Shortcut:    "",
+			Shortcut:    "th",
 			Category:    CategoryTasks,
-			Views:       []ViewType{ViewOutliner},
+			Views:       outlinerViews,
 			Aliases:     []string{"dim task", "undim task", "mute task"},
 			Handler: func() tea.Msg {
-				task := cursorTask()
-				if task == nil || m.outliner == nil {
+				out := m.activeOutliner()
+				task, project := m.outlinerTarget()
+				if out == nil || task == nil || project == nil {
 					return nil
 				}
-				pf := simplePersistWithUndo(NewProjectService(), m.config, "Toggle Dim")
-				result := applyToggleDimmed(pf, m.outliner.project, task.ID)
+				var pf persistFn
+				if out.project != nil {
+					pf = simplePersistWithUndo(out.projectService, m.config, "Toggle Dim")
+				} else {
+					out.crossUndoCtx.Set("Toggle Dim", task.Title)
+					out.crossUndoCtx.ProjectIDs = []string{project.ID}
+					pf = out.crossPersistFn(project)
+				}
+				result := applyToggleDimmed(pf, project, task.ID)
 				if result.Err != nil {
 					return ErrorMsg{Err: result.Err}
 				}
-				m.outliner.rebuildRows()
+				out.rebuildRows()
 				return StatusMsg(result.StatusMessage)
 			},
 		},
@@ -449,12 +472,12 @@ func (m *AppModel) outlinerCommands() []Command { //nolint:gocyclo
 			Description: "Move task to another project",
 			Shortcut:    "tm",
 			Category:    CategoryTasks,
-			Views:       []ViewType{ViewOutliner},
+			Views:       outlinerViews,
 			Aliases:     []string{"transfer task", "relocate task"},
 			Handler: func() tea.Msg {
-				task := cursorTask()
-				if task != nil && m.outliner != nil {
-					return ShowProjectSelectorForMoveMsg{Task: task, SourceProject: m.outliner.project}
+				task, project := m.outlinerTarget()
+				if task != nil && project != nil {
+					return ShowProjectSelectorForMoveMsg{Task: task, SourceProject: project}
 				}
 				return nil
 			},
@@ -462,6 +485,39 @@ func (m *AppModel) outlinerCommands() []Command { //nolint:gocyclo
 	}
 
 	return cmds
+}
+
+// activeOutliner returns the OutlinerModel matching the non-palette origin so
+// command-palette handlers operate on the outliner the user actually launched
+// from. Falls back to whichever outliner is non-nil when the origin does not
+// point at an outliner view (defensive — palette commands scope themselves to
+// outliner views, so this fallback is rarely hit).
+func (m *AppModel) activeOutliner() *OutlinerModel {
+	switch m.nonPaletteOrigin() {
+	case ViewCrossProjectOutliner:
+		if m.crossOutliner != nil {
+			return m.crossOutliner
+		}
+	case ViewOutliner:
+		if m.outliner != nil {
+			return m.outliner
+		}
+	}
+	if m.outliner != nil {
+		return m.outliner
+	}
+	return m.crossOutliner
+}
+
+// outlinerTarget returns the cursor (task, project) on the active outliner,
+// routing through getTaskRef so cross-project rows resolve their owning project
+// via loadedProjects.
+func (m *AppModel) outlinerTarget() (*models.Task, *models.Project) {
+	out := m.activeOutliner()
+	if out == nil {
+		return nil, nil
+	}
+	return out.getTaskRef()
 }
 
 func (m *AppModel) outlinerScoreTarget() (*models.Task, *models.Project) {
@@ -479,4 +535,101 @@ func (m *AppModel) outlinerScoreTarget() (*models.Task, *models.Project) {
 		return m.outliner.getTaskRef()
 	}
 	return nil, nil
+}
+
+// outlinerCreateParent resolves the parent task and target project for palette
+// task creation handlers. For single-project outliners with an active zoom
+// stack it prefers the focused (zoomed) task as the parent so creation matches
+// the in-focus subtree; otherwise it falls back to the cursor task. Cross
+// project outliners always use the cursor row's task and owning project.
+// Returns (nil, nil) when the cursor row has no resolvable task/project.
+func (m *AppModel) outlinerCreateParent() (*models.Task, *models.Project) {
+	out := m.activeOutliner()
+	if out == nil {
+		return nil, nil
+	}
+	task, project := m.outlinerTarget()
+	var focusedTask *models.Task
+	if out.project != nil && len(out.zoomStack) > 0 {
+		topID := out.zoomStack[len(out.zoomStack)-1].TaskID
+		focusedTask = out.project.GetTaskByID(topID)
+	}
+	parentTask := focusedTask
+	if parentTask == nil {
+		parentTask = task
+	}
+	if parentTask == nil || project == nil {
+		return nil, nil
+	}
+	return parentTask, project
+}
+
+// outlinerCursorProject returns the project owning the cursor row on the active
+// outliner. Returns nil when no outliner is active, the cursor is on a header
+// or separator, or a cross-project row points at a stale project ID.
+func (m *AppModel) outlinerCursorProject() *models.Project {
+	out := m.activeOutliner()
+	if out == nil {
+		return nil
+	}
+	return out.cursorProject()
+}
+
+// paletteCursorProject returns the project that project-scoped palette commands
+// should target based on the non-palette origin. Cross-project outliner origin
+// uses the cursor row's project so palette handlers mirror the direct-key
+// routing; every other origin falls back to m.currentProject.
+func (m *AppModel) paletteCursorProject() *models.Project {
+	if m.nonPaletteOrigin() == ViewCrossProjectOutliner && m.crossOutliner != nil {
+		return m.crossOutliner.cursorProject()
+	}
+	return m.currentProject
+}
+
+// paletteTaskTarget returns the (task, project) pair that task-scoped palette
+// commands should operate on, mirroring the direct-key behavior of each
+// origin. Outliner origins use the active outliner's cursor row; project-tree
+// origin uses the selected tree task and current project. Returns (nil, nil)
+// when no task/project pair can be resolved.
+func (m *AppModel) paletteTaskTarget() (*models.Task, *models.Project) {
+	switch m.nonPaletteOrigin() {
+	case ViewCrossProjectOutliner, ViewOutliner:
+		return m.outlinerTarget()
+	case ViewProjectTree:
+		task := m.selectedTreeTask()
+		if task == nil || m.currentProject == nil {
+			return nil, nil
+		}
+		return task, m.currentProject
+	}
+	return nil, nil
+}
+
+// runOutlinerCmd executes an outliner-targeted tea.Cmd and unwraps the result so
+// command-palette handlers can return the resulting message directly. It mirrors
+// runProjectTreeCmd: nil commands return nil, outlinerRefreshMsg is dispatched
+// to the active outliner's Update so rows rebuild in place, and tea.BatchMsg
+// values are walked recursively. All other messages pass through unchanged.
+func (m *AppModel) runOutlinerCmd(cmd tea.Cmd) tea.Msg {
+	if cmd == nil {
+		return nil
+	}
+
+	msg := cmd()
+	switch msg := msg.(type) {
+	case outlinerRefreshMsg:
+		if out := m.activeOutliner(); out != nil {
+			_, _ = out.Update(msg)
+		}
+		return nil
+	case tea.BatchMsg:
+		for _, batchCmd := range msg {
+			if nested := m.runOutlinerCmd(batchCmd); nested != nil {
+				return nested
+			}
+		}
+		return nil
+	default:
+		return msg
+	}
 }

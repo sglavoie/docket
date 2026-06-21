@@ -12,10 +12,17 @@ import (
 func (m *OutlinerModel) handleTaskPrefix(key string, cursorTask *models.Task) (tea.Model, tea.Cmd) {
 	// Cross-project: resolve project from cursor, delegate to shared handlers.
 	if m.project == nil {
-		// Block task creation (same as a/i/I)
+		// Task creation: route into the cursor task's owning project.
 		if key == "n" || key == "N" {
-			m.setStatus("use go to open project outliner for task creation")
-			return m, nil
+			task, project := m.getTaskRef()
+			if task == nil || project == nil {
+				m.setNoTaskStatus()
+				return m, nil
+			}
+			skipPicker := key == "n"
+			return m, func() tea.Msg {
+				return CreateTaskMsg{ParentTask: task, Project: project, SkipTemplatePicker: skipPicker}
+			}
 		}
 		if refs := m.getSelectedTaskProjectRefs(); len(refs) > 0 {
 			switch key {

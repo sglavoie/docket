@@ -9,7 +9,8 @@ import "github.com/sglavoie/tt/internal/models"
 // CreateTaskMsg opens the task creator, optionally with a parent task.
 type CreateTaskMsg struct {
 	ParentTask         *models.Task
-	SkipTemplatePicker bool // If true, skip template picker even if templates exist
+	Project            *models.Project // Optional: when set, creates in this project instead of currentProject
+	SkipTemplatePicker bool            // If true, skip template picker even if templates exist
 }
 
 // EditTaskMsg opens the task editor for the given task.
@@ -402,8 +403,11 @@ type TaskMovedToProjectMsg struct {
 // Archive Messages
 // =============================================================================
 
-// ArchiveCompletedTasksMsg requests archiving all completed tasks in the current project.
-type ArchiveCompletedTasksMsg struct{}
+// ArchiveCompletedTasksMsg requests archiving all completed tasks in a project.
+// When Project is nil the current project is used.
+type ArchiveCompletedTasksMsg struct {
+	Project *models.Project
+}
 
 // ArchiveAllCompletedTasksMsg requests archiving completed tasks across all active projects.
 type ArchiveAllCompletedTasksMsg struct{}

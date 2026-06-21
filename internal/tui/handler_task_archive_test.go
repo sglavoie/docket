@@ -22,7 +22,7 @@ func TestHandleArchiveCompletedTasksUsesLiveCount(t *testing.T) {
 		t.Fatal("test project should start with completed tasks")
 	}
 
-	_, cmd := app.handleArchiveCompletedTasks()
+	_, cmd := app.handleArchiveCompletedTasks(ArchiveCompletedTasksMsg{})
 	if cmd == nil {
 		t.Fatal("expected non-nil cmd")
 	}

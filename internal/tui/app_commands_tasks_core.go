@@ -26,6 +26,13 @@ func (m *AppModel) taskCommands() []Command {
 			Category:    CategoryTasks,
 			Aliases:     []string{"capture", "inbox"},
 			Handler: func() tea.Msg {
+				if m.nonPaletteOrigin() == ViewCrossProjectOutliner && m.crossOutliner != nil {
+					project := m.crossOutliner.cursorProject()
+					if project == nil {
+						return StatusMsg(statusNoProjectUnderCursor)
+					}
+					return ShowQuickCaptureMsg{Project: project, AllProjects: m.config.GetActiveProjects()}
+				}
 				return m.resolveQuickCaptureProject()
 			},
 		},
@@ -34,13 +41,17 @@ func (m *AppModel) taskCommands() []Command {
 			Description: "Bulk capture multiple tasks",
 			Shortcut:    "I",
 			Category:    CategoryTasks,
-			Views:       []ViewType{ViewProjectTree},
+			Views:       []ViewType{ViewProjectTree, ViewOutliner, ViewCrossProjectOutliner},
 			Aliases:     []string{"multi capture", "batch add"},
 			Handler: func() tea.Msg {
-				if m.currentProject != nil {
-					return ShowBulkCaptureMsg{Project: m.currentProject}
+				project := m.paletteCursorProject()
+				if project == nil {
+					if m.nonPaletteOrigin() == ViewCrossProjectOutliner {
+						return StatusMsg(statusNoProjectUnderCursor)
+					}
+					return StatusMsg("No project selected")
 				}
-				return StatusMsg("No project selected")
+				return ShowBulkCaptureMsg{Project: project}
 			},
 		},
 		{
@@ -68,17 +79,21 @@ func (m *AppModel) taskCommands() []Command {
 			Description: "Edit the most recently modified task",
 			Shortcut:    "ctrl+l",
 			Category:    CategoryTasks,
-			Views:       []ViewType{ViewProjectTree},
+			Views:       []ViewType{ViewProjectTree, ViewOutliner, ViewCrossProjectOutliner},
 			Aliases:     []string{"edit recent", "last modified", "recent task"},
 			Handler: func() tea.Msg {
-				if m.currentProject == nil {
+				project := m.paletteCursorProject()
+				if project == nil {
+					if m.nonPaletteOrigin() == ViewCrossProjectOutliner {
+						return StatusMsg(statusNoProjectUnderCursor)
+					}
 					return StatusMsg("No project selected")
 				}
-				recentTasks := storage.GetRecentTasks(m.currentProject.Tasks, 1)
+				recentTasks := storage.GetRecentTasks(project.Tasks, 1)
 				if len(recentTasks) == 0 {
 					return StatusMsg("No recent tasks")
 				}
-				return EditTaskMsg{Task: recentTasks[0]}
+				return EditTaskMsg{Task: recentTasks[0], Project: project}
 			},
 		},
 		{
@@ -121,10 +136,17 @@ func (m *AppModel) taskCommands() []Command {
 			Name:        "archive completed tasks",
 			Description: "Move completed tasks to archive file",
 			Category:    CategoryActions,
-			Views:       []ViewType{ViewProjectTree},
+			Views:       []ViewType{ViewProjectTree, ViewOutliner, ViewCrossProjectOutliner},
 			Aliases:     []string{"archive", "archive done", "archive completed"},
 			Handler: func() tea.Msg {
-				return ArchiveCompletedTasksMsg{}
+				project := m.paletteCursorProject()
+				if project == nil {
+					if m.nonPaletteOrigin() == ViewCrossProjectOutliner {
+						return StatusMsg(statusNoProjectUnderCursor)
+					}
+					return ArchiveCompletedTasksMsg{}
+				}
+				return ArchiveCompletedTasksMsg{Project: project}
 			},
 		},
 		{

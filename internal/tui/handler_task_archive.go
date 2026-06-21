@@ -6,13 +6,16 @@ import (
 	tea "charm.land/bubbletea/v2"
 )
 
-// handleArchiveCompletedTasks archives completed tasks from the current project.
-func (m *AppModel) handleArchiveCompletedTasks() (bool, tea.Cmd) {
-	if m.currentProject == nil {
+// handleArchiveCompletedTasks archives completed tasks from msg.Project if set,
+// otherwise from the current project.
+func (m *AppModel) handleArchiveCompletedTasks(msg ArchiveCompletedTasksMsg) (bool, tea.Cmd) {
+	project := msg.Project
+	if project == nil {
+		project = m.currentProject
+	}
+	if project == nil {
 		return true, nil
 	}
-
-	project := m.currentProject
 	persister := m.persister
 	undoDepth := 0
 	if m.config.UndoHistoryDepth != nil {

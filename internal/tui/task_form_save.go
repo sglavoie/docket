@@ -284,17 +284,18 @@ func (m *TaskFormModel) saveCreate() tea.Cmd {
 		return nil
 	}
 
+	project := m.project
 	if openAfterSubtask != nil {
 		openDetail := m.subtaskOpenDetail
 		openContent := m.subtaskOpenContent
 		m.subtaskOpenDetail = false
 		m.subtaskOpenContent = false
 		return func() tea.Msg {
-			return TaskCreatedMsg{Task: openAfterSubtask, OpenDetail: openDetail, OpenContent: openContent}
+			return TaskCreatedMsg{Task: openAfterSubtask, Project: project, OpenDetail: openDetail, OpenContent: openContent}
 		}
 	}
 
-	return func() tea.Msg { return TaskCreatedMsg{Task: task} }
+	return func() tea.Msg { return TaskCreatedMsg{Task: task, Project: project} }
 }
 
 // newInboxTaskFromClipboard reads the clipboard, parses it, builds a Task in

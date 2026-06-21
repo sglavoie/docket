@@ -98,7 +98,7 @@ func (m *AppModel) handleTaskMessages(msg tea.Msg) (bool, tea.Cmd) {
 func (m *AppModel) handleTaskArchiveMessages(msg tea.Msg) (bool, tea.Cmd) {
 	switch msg := msg.(type) {
 	case ArchiveCompletedTasksMsg:
-		return m.handleArchiveCompletedTasks()
+		return m.handleArchiveCompletedTasks(msg)
 
 	case ArchiveAllCompletedTasksMsg:
 		return m.handleArchiveAllCompletedTasks()

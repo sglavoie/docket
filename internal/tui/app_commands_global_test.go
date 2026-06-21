@@ -145,12 +145,12 @@ func TestGlobalCommands_WorkflowRules(t *testing.T) {
 	}
 }
 
-func TestGlobalCommands_CreateWorkflowRule(t *testing.T) {
+func TestGlobalCommands_NewWorkflowRule(t *testing.T) {
 	app := newTestAppModel()
 	cmds := app.globalCommands()
-	cmd := findCommand(cmds, "create workflow rule")
+	cmd := findCommand(cmds, "new workflow rule")
 	if cmd == nil {
-		t.Fatal("expected 'create workflow rule' command")
+		t.Fatal("expected 'new workflow rule' command")
 	}
 	msg := cmd.Handler()
 	if _, ok := msg.(ShowWorkflowRuleCreatorMsg); !ok {

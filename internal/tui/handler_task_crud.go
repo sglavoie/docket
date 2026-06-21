@@ -33,7 +33,11 @@ func (m *AppModel) handleTaskCRUDMessages(msg tea.Msg) (bool, tea.Cmd) {
 
 // handleCreateTask handles the CreateTaskMsg.
 func (m *AppModel) handleCreateTask(msg CreateTaskMsg) (bool, tea.Cmd) {
-	if m.currentProject == nil {
+	project := msg.Project
+	if project == nil {
+		project = m.currentProject
+	}
+	if project == nil {
 		return true, nil
 	}
 
@@ -43,12 +47,13 @@ func (m *AppModel) handleCreateTask(msg CreateTaskMsg) (bool, tea.Cmd) {
 		if len(enabledTemplates) > 0 {
 			// Store the parent task and show template picker
 			m.pendingCreateTaskParent = msg.ParentTask
-			_, cmd := m.showViewInit(ViewTaskTemplatePicker, NewTemplatePickerModel(m.config, m.currentProject))
+			m.pendingCreateTaskProject = project
+			_, cmd := m.showViewInit(ViewTaskTemplatePicker, NewTemplatePickerModel(m.config, project))
 			return true, cmd
 		}
 	}
 	// No templates or skipped, go directly to task form
-	m.showView(ViewTaskForm, NewTaskFormModelCreate(m.currentProject, m.config, m.configManager, msg.ParentTask))
+	m.showView(ViewTaskForm, NewTaskFormModelCreate(project, m.config, m.configManager, msg.ParentTask))
 	return true, nil
 }
 

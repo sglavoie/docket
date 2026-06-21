@@ -151,7 +151,18 @@ func (m *OutlinerModel) saveWithWorkflow() tea.Cmd {
 // pasteFromClipboard reads the clipboard, creates a task in the project's
 // Inbox, registers an undo snapshot, and saves.
 func (m *OutlinerModel) pasteFromClipboard() tea.Cmd {
-	task, err := newInboxTaskFromClipboard(m.project)
+	return m.pasteFromClipboardInto(m.project)
+}
+
+// pasteFromClipboardInto reads the clipboard, creates a task in proj's Inbox,
+// registers an undo snapshot, and saves. When proj is m.project the single-
+// project workflow pipeline runs; otherwise (cross-project mode) the cursor
+// project's backup/save path runs without touching m.project.
+func (m *OutlinerModel) pasteFromClipboardInto(proj *models.Project) tea.Cmd {
+	if proj == nil {
+		return nil
+	}
+	task, err := newInboxTaskFromClipboard(proj)
 	if err != nil {
 		return func() tea.Msg { return StatusMsg("Clipboard is empty") }
 	}
@@ -159,16 +170,34 @@ func (m *OutlinerModel) pasteFromClipboard() tea.Cmd {
 	if len([]rune(title)) > 40 {
 		title = string([]rune(title)[:37]) + "..."
 	}
-	m.setUndoContext("Paste Task", task.Title)
-	m.undo.TaskIDs = []string{task.ID}
 	m.setStatus(fmt.Sprintf("Created \"%s\" in Inbox", title))
-	return m.saveWithWorkflow()
+
+	if proj == m.project {
+		m.setUndoContext("Paste Task", task.Title)
+		m.undo.TaskIDs = []string{task.ID}
+		return m.saveWithWorkflow()
+	}
+
+	if m.config != nil && m.config.UndoHistoryDepth != nil && *m.config.UndoHistoryDepth > 0 {
+		_ = m.projectService.RecordUndoSnapshot(proj, "Paste Task", task.Title, *m.config.UndoHistoryDepth, nil)
+	}
+	m.crossUndoCtx.Set("Paste Task", task.Title)
+	m.crossUndoCtx.ProjectIDs = []string{proj.ID}
+	m.crossUndoCtx.TaskIDs = []string{task.ID}
+	return m.crossSaveProject(proj)
 }
 
-// archiveProject requests a confirmed archive or unarchive for the project.
+// archiveProject requests a confirmed archive or unarchive for the project
+// under m.project. Use archiveProjectFor when the target may differ from
+// m.project (cross-project mode).
 func (m *OutlinerModel) archiveProject() tea.Cmd {
-	if m.project == nil {
+	return m.archiveProjectFor(m.project)
+}
+
+// archiveProjectFor requests a confirmed archive or unarchive for proj.
+func (m *OutlinerModel) archiveProjectFor(proj *models.Project) tea.Cmd {
+	if proj == nil {
 		return nil
 	}
-	return projectArchiveRequestCmd(m.project, !m.project.Archived)
+	return projectArchiveRequestCmd(proj, !proj.Archived)
 }

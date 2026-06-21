@@ -84,13 +84,17 @@ func (m *AppModel) notesCommands() []Command {
 			Description: "Create a new note",
 			Shortcut:    "}",
 			Category:    CategoryNotes,
-			Views:       projectTreeAndOutlinerViews(),
+			Views:       []ViewType{ViewProjectTree, ViewOutliner, ViewCrossProjectOutliner},
 			Aliases:     []string{"new note", "add note"},
 			Handler: func() tea.Msg {
-				if m.currentProject != nil {
-					return ShowNoteCreatorMsg{Project: m.currentProject}
+				project := m.paletteCursorProject()
+				if project == nil {
+					if m.nonPaletteOrigin() == ViewCrossProjectOutliner {
+						return StatusMsg(statusNoProjectUnderCursor)
+					}
+					return nil
 				}
-				return nil
+				return ShowNoteCreatorMsg{Project: project}
 			},
 		},
 	}
@@ -162,13 +166,17 @@ func (m *AppModel) otherCommands() []Command {
 			Description: "Show blockers and blocked tasks",
 			Shortcut:    "b",
 			Category:    CategoryViews,
-			Views:       projectTreeAndOutlinerViews(),
+			Views:       []ViewType{ViewProjectTree, ViewOutliner, ViewCrossProjectOutliner},
 			Aliases:     []string{"blockers", "blocked tasks"},
 			Handler: func() tea.Msg {
-				if m.currentProject != nil {
-					return ShowBlockersMsg{Project: m.currentProject}
+				project := m.paletteCursorProject()
+				if project == nil {
+					if m.nonPaletteOrigin() == ViewCrossProjectOutliner {
+						return StatusMsg(statusNoProjectUnderCursor)
+					}
+					return nil
 				}
-				return nil
+				return ShowBlockersMsg{Project: project}
 			},
 		},
 		{
@@ -220,16 +228,48 @@ func (m *AppModel) otherCommands() []Command {
 			Description: "Archive or unarchive the current project",
 			Shortcut:    "ctrl+a",
 			Category:    CategoryActions,
-			Views:       projectTreeAndOutlinerViews(),
+			Views:       []ViewType{ViewProjectTree, ViewOutliner, ViewCrossProjectOutliner},
 			Aliases:     []string{"unarchive project"},
 			Handler: func() tea.Msg {
-				if m.currentProject == nil {
+				project := m.paletteCursorProject()
+				if project == nil {
+					if m.nonPaletteOrigin() == ViewCrossProjectOutliner {
+						return StatusMsg(statusNoProjectUnderCursor)
+					}
 					return nil
 				}
-				if m.currentProject.Sandbox {
+				if project.Sandbox {
 					return ErrorMsg{Err: fmt.Errorf("cannot archive the sandbox project")}
 				}
-				return ProjectArchiveRequestMsg{Project: m.currentProject, Archive: !m.currentProject.Archived}
+				return ProjectArchiveRequestMsg{Project: project, Archive: !project.Archived}
+			},
+		},
+		{
+			Name:        "paste clipboard",
+			Description: "Create a task in the project Inbox from clipboard text",
+			Shortcut:    "ctrl+v",
+			Category:    CategoryTasks,
+			Views:       []ViewType{ViewProjectTree, ViewOutliner, ViewCrossProjectOutliner},
+			Aliases:     []string{"paste task", "clipboard paste"},
+			Handler: func() tea.Msg {
+				project := m.paletteCursorProject()
+				if project == nil {
+					if m.nonPaletteOrigin() == ViewCrossProjectOutliner {
+						return StatusMsg(statusNoProjectUnderCursor)
+					}
+					return nil
+				}
+				switch m.nonPaletteOrigin() {
+				case ViewOutliner, ViewCrossProjectOutliner:
+					if out := m.activeOutliner(); out != nil {
+						return m.runOutlinerCmd(out.pasteFromClipboardInto(project))
+					}
+				case ViewProjectTree:
+					if m.projectTree != nil {
+						return m.runProjectTreeCmd(m.projectTree.pasteFromClipboard())
+					}
+				}
+				return nil
 			},
 		},
 	}

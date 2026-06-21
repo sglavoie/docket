@@ -125,12 +125,23 @@ func (m *OutlinerModel) handleUtilityKey(key string) (tea.Model, tea.Cmd, bool) 
 		}, true
 
 	case "A":
-		if m.project == nil {
-			return m, nil, true
+		proj := m.project
+		if proj == nil {
+			proj = m.cursorProject()
+			if proj == nil {
+				if m.activePerspective == PerspectiveCompleted {
+					m.setNoProjectStatus()
+					return m, nil, true
+				}
+				return m, func() tea.Msg {
+					return ShowAllTasksMsg{}
+				}, true
+			}
 		}
 		if m.activePerspective == PerspectiveCompleted {
-			completedCount := m.project.CountCompletedTasks()
+			completedCount := proj.CountCompletedTasks()
 			if completedCount > 0 {
+				m.archiveTargetProject = proj
 				m.confirm.Show("archive-tasks",
 					fmt.Sprintf("Archive %d completed task(s) to completed.md?", completedCount))
 			}
@@ -177,15 +188,20 @@ func (m *OutlinerModel) handleUtilityKey(key string) (tea.Model, tea.Cmd, bool) 
 		return m, nil, true
 
 	case "ctrl+a":
-		if m.project == nil {
-			return m, nil, true
+		proj := m.project
+		if proj == nil {
+			proj = m.cursorProject()
+			if proj == nil {
+				m.setNoProjectStatus()
+				return m, nil, true
+			}
 		}
-		if m.project.Sandbox {
+		if proj.Sandbox {
 			return m, func() tea.Msg {
 				return ErrorMsg{Err: fmt.Errorf("cannot archive the sandbox project")}
 			}, true
 		}
-		return m, m.archiveProject(), true
+		return m, m.archiveProjectFor(proj), true
 
 	case "ctrl+t":
 		if m.project == nil {
@@ -213,11 +229,15 @@ func (m *OutlinerModel) handleUtilityKey(key string) (tea.Model, tea.Cmd, bool) 
 		}, true
 
 	case "ctrl+v":
-		if m.project == nil {
-			m.setStatus("open project outliner first (go)")
-			return m, nil, true
+		proj := m.project
+		if proj == nil {
+			proj = m.cursorProject()
+			if proj == nil {
+				m.setNoProjectStatus()
+				return m, nil, true
+			}
 		}
-		return m, m.pasteFromClipboard(), true
+		return m, m.pasteFromClipboardInto(proj), true
 
 	case "1", "2", "3", "4", "5", "0":
 		m.clearActiveSavedFilter()

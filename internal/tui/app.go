@@ -279,6 +279,10 @@ type AppModel struct {
 	// Pending task creation parent (for template picker flow)
 	pendingCreateTaskParent *models.Task
 
+	// Pending task creation project (for template picker flow when the
+	// caller targets a specific project, e.g. cross-project outliner).
+	pendingCreateTaskProject *models.Project
+
 	// Pending template for variable filler (between picker and task creator)
 	pendingVarFillerTemplate *template.TaskTemplate
 

@@ -305,6 +305,7 @@ func (m *AppModel) clearTransientNavigationState() {
 	m.pendingBulkNotes = nil
 	m.pendingGlobalNoteMove = nil
 	m.pendingCreateTaskParent = nil
+	m.pendingCreateTaskProject = nil
 	m.pendingVarFillerTemplate = nil
 	m.pendingDescEdit = nil
 

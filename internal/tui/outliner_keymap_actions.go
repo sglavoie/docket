@@ -173,18 +173,18 @@ func (b *outlinerKeymapBuilder) commonTaskActionEntries() []keymap.Entry {
 			return m, openBrowserCmd(task.URL)
 		},
 		MoveToProject: func() (tea.Model, tea.Cmd) {
-			task := b.cursorTask()
-			if task == nil || m.project == nil {
+			task, project := m.getTaskRef()
+			if task == nil || project == nil {
 				return m, nil
 			}
-			return m, func() tea.Msg { return ShowProjectSelectorForMoveMsg{Task: task, SourceProject: m.project} }
+			return m, func() tea.Msg { return ShowProjectSelectorForMoveMsg{Task: task, SourceProject: project} }
 		},
 		QuickNote: func() (tea.Model, tea.Cmd) {
-			task := b.cursorTask()
+			task, project := m.getTaskRef()
 			if task == nil {
 				return m, nil
 			}
-			return m, func() tea.Msg { return OpenQuickNoteMsg{Task: task, Project: m.project} }
+			return m, func() tea.Msg { return OpenQuickNoteMsg{Task: task, Project: project} }
 		},
 	})
 }

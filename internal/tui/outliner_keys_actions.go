@@ -82,6 +82,7 @@ func (m *OutlinerModel) handleConfirmDialog(key string) (tea.Model, tea.Cmd) {
 			}
 		}
 		m.deleteTarget = nil
+		m.archiveTargetProject = nil
 		m.bulkOp.Clear()
 		return m, nil
 	}
@@ -318,19 +319,30 @@ func (m *OutlinerModel) executeBulkDelete() (tea.Model, tea.Cmd) {
 }
 
 // archiveCompletedTasks moves all completed tasks to the archive file.
+// The target project is m.archiveTargetProject when set (used by cross-project
+// mode to capture the cursor's owning project at confirmation time); otherwise
+// it falls back to m.project for single-project mode.
 func (m *OutlinerModel) archiveCompletedTasks() (tea.Model, tea.Cmd) {
+	proj := m.archiveTargetProject
+	m.archiveTargetProject = nil
+	if proj == nil {
+		proj = m.project
+	}
+	if proj == nil {
+		return m, nil
+	}
+
 	undoDepth := 0
 	if m.config.UndoHistoryDepth != nil {
 		undoDepth = *m.config.UndoHistoryDepth
 	}
-	completedCount := m.project.CountCompletedTasks()
+	completedCount := proj.CountCompletedTasks()
 
 	if completedCount == 0 {
 		return m, nil
 	}
 
 	svc := m.projectService
-	proj := m.project
 	cmd := func() tea.Msg {
 		if undoDepth > 0 {
 			_ = svc.RecordUndoSnapshot(proj, "Archive Tasks",

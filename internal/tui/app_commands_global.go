@@ -136,10 +136,10 @@ func (m *AppModel) globalCommands() []Command {
 			},
 		},
 		{
-			Name:        "create workflow rule",
+			Name:        "new workflow rule",
 			Description: "Create a new workflow automation rule",
 			Category:    CategoryActions,
-			Aliases:     []string{"new rule", "add rule", "new automation"},
+			Aliases:     []string{"create rule", "add rule", "new automation"},
 			Handler: func() tea.Msg {
 				return ShowWorkflowRuleCreatorMsg{}
 			},
