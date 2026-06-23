@@ -246,17 +246,21 @@ func (m *DashboardModel) projectRowNoteCount(p *models.Project) int {
 }
 
 func (m *DashboardModel) projectRowStatusIndicator(p *models.Project, dueSoonDays int) string {
+	inbox := countProjectInboxTasks(p)
 	overdue := p.CountOverdueTasks()
 	dueSoon := p.CountDueSoonTasks(dueSoonDays)
 	blocked := p.CountBlockedTasks()
 	blockerCount := storage.GetActiveBlockerCount(p)
 	completedCount := p.CountCompletedTasks()
 
-	if overdue == 0 && dueSoon == 0 && blocked == 0 && blockerCount == 0 && completedCount == 0 {
+	if inbox == 0 && overdue == 0 && dueSoon == 0 && blocked == 0 && blockerCount == 0 && completedCount == 0 {
 		return ""
 	}
 
 	var parts []string
+	if inbox > 0 {
+		parts = append(parts, DueSoonStyle.Render(fmt.Sprintf("%s%d", icons.Get("inbox"), inbox)))
+	}
 	if overdue > 0 {
 		parts = append(parts, OverdueStyle.Render(fmt.Sprintf("%s%d", icons.Get("overdue"), overdue)))
 	}
@@ -273,6 +277,18 @@ func (m *DashboardModel) projectRowStatusIndicator(p *models.Project, dueSoonDay
 		parts = append(parts, MutedStyle.Render(fmt.Sprintf("%s%d", IconChecklist(), completedCount)))
 	}
 	return strings.Join(parts, " ")
+}
+
+// countProjectInboxTasks counts processable root inbox tasks for a project.
+// Matches the predicate used by the inbox processor and dashboard alerts.
+func countProjectInboxTasks(p *models.Project) int {
+	count := 0
+	for _, task := range p.Tasks {
+		if isProcessableInboxTask(task) {
+			count++
+		}
+	}
+	return count
 }
 
 func (m *DashboardModel) projectRowScoreCoverageBadge(p *models.Project) string {
@@ -324,13 +340,14 @@ func appendProjectRowBadge(content string, maxWidth, noteCount int, scoreCoverag
 // projectStatusWidth returns the terminal column width of the status indicator
 // for a project (emojis are 2 columns wide, digits are 1, spaces are 1).
 func (m *DashboardModel) projectStatusWidth(p *models.Project, dueSoonDays int) int {
+	inbox := countProjectInboxTasks(p)
 	overdue := p.CountOverdueTasks()
 	dueSoon := p.CountDueSoonTasks(dueSoonDays)
 	blocked := p.CountBlockedTasks()
 	blockerCount := storage.GetActiveBlockerCount(p)
 	completedCount := p.CountCompletedTasks()
 
-	if overdue == 0 && dueSoon == 0 && blocked == 0 && blockerCount == 0 && completedCount == 0 {
+	if inbox == 0 && overdue == 0 && dueSoon == 0 && blocked == 0 && blockerCount == 0 && completedCount == 0 {
 		return 0
 	}
 
@@ -345,6 +362,7 @@ func (m *DashboardModel) projectStatusWidth(p *models.Project, dueSoonDays int) 
 		width += emojiWidth + len(fmt.Sprintf("%d", count))
 	}
 
+	addPart(2, inbox)
 	addPart(2, overdue)
 	addPart(2, dueSoon)
 	addPart(2, blocked)

@@ -3,84 +3,213 @@ package tui
 import (
 	"strings"
 	"testing"
+	"time"
+
+	"charm.land/lipgloss/v2"
+	"github.com/charmbracelet/x/ansi"
+
+	"github.com/sglavoie/tt/internal/models"
 )
 
-func TestWrapPreviewText(t *testing.T) {
-	tests := []struct {
-		name     string
-		input    string
-		width    int
-		wantWrap bool // whether we expect wrapping to occur
-	}{
-		{
-			name:     "short text no wrap",
-			input:    "Task · !1 · #tag",
-			width:    80,
-			wantWrap: false,
-		},
-		{
-			name:     "long text wraps at separator",
-			input:    "Very long task title that should wrap · !1 · #important · #urgent · @Feb 15 · /Next",
-			width:    40,
-			wantWrap: true,
-		},
-		{
-			name:     "very long text multiple wraps",
-			input:    "Super duper extra long task title with many tags and metadata · !1 · #tag1 · #tag2 · #tag3 · @Feb 15 · ~weekly · /Next",
-			width:    30,
-			wantWrap: true,
-		},
-		{
-			name:     "zero width returns original",
-			input:    "Task · !1",
-			width:    0,
-			wantWrap: false,
-		},
-		{
-			name:     "text shorter than width",
-			input:    "Short",
-			width:    100,
-			wantWrap: false,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := wrapPreviewText(tt.input, tt.width)
-			lines := strings.Split(result, "\n")
-
-			hasWrapped := len(lines) > 1
-			if hasWrapped != tt.wantWrap {
-				t.Errorf("wrapPreviewText() wrapping=%v, expected wrapping=%v\nInput: %s\nWidth: %d\nResult:\n%s",
-					hasWrapped, tt.wantWrap, tt.input, tt.width, result)
-			}
-
-			// Verify each line doesn't exceed width significantly (allow margin for separators)
-			if tt.width > 0 {
-				for i, line := range lines {
-					if len(line) > tt.width+10 { // +10 margin to allow for separator edge cases
-						t.Errorf("Line %d exceeds width %d by too much: %q (len=%d)", i, tt.width, line, len(line))
-					}
-				}
-			}
-		})
+// makePreviewInput builds a quickCaptureInput pre-populated with the given
+// preview result so renderPreview can be exercised directly.
+func makePreviewInput(t *testing.T, preview *quickCaptureResult, previewErr string, width int) *quickCaptureInput {
+	t.Helper()
+	return &quickCaptureInput{
+		preview:    preview,
+		previewErr: previewErr,
+		width:      width,
 	}
 }
 
-func TestWrapPreviewTextBreaksAtSeparator(t *testing.T) {
-	// Test that wrapping prefers breaking at " · " separator
-	input := "Task title · !1 · #tag · @date"
-	width := 20
+func TestRenderPreview_EmptyWhenNoPreview(t *testing.T) {
+	q := makePreviewInput(t, nil, "", 0)
+	if got := q.renderPreview(); got != "" {
+		t.Fatalf("expected empty preview, got %q", got)
+	}
 
-	result := wrapPreviewText(input, width)
-	lines := strings.SplitSeq(result, "\n")
+	q = makePreviewInput(t, &quickCaptureResult{title: ""}, "", 0)
+	if got := q.renderPreview(); got != "" {
+		t.Fatalf("expected empty preview when title is empty, got %q", got)
+	}
+}
 
-	// Should break at separators, not in the middle of words
-	for line := range lines {
-		trimmed := strings.TrimSpace(line)
-		// Check that lines don't start or end with incomplete metadata markers
-		if strings.HasPrefix(trimmed, "·") {
-			t.Errorf("Line starts with incomplete separator: %q", trimmed)
+func TestRenderPreview_PreviewErrorShortCircuits(t *testing.T) {
+	q := makePreviewInput(t, &quickCaptureResult{title: "ignored"}, "bad due: junk", 0)
+	got := ansi.Strip(q.renderPreview())
+	if !strings.Contains(got, "bad due") {
+		t.Fatalf("expected error text in preview, got %q", got)
+	}
+	if strings.Contains(got, "Task") {
+		t.Fatalf("error preview should not render group labels, got %q", got)
+	}
+}
+
+func TestRenderPreview_TitleOnlyHidesEmptyGroups(t *testing.T) {
+	q := makePreviewInput(t, &quickCaptureResult{
+		title:    "Fix login bug",
+		taskType: models.TaskTypeTask,
+		priority: 3, // default - hidden
+	}, "", 0)
+
+	plain := ansi.Strip(q.renderPreview())
+	lines := strings.Split(plain, "\n")
+	if len(lines) != 1 {
+		t.Fatalf("expected exactly one line for title-only preview, got %d:\n%s", len(lines), plain)
+	}
+	if !strings.HasPrefix(lines[0], "Task") {
+		t.Fatalf("expected Task group line, got %q", lines[0])
+	}
+	if !strings.Contains(lines[0], "Fix login bug") {
+		t.Fatalf("expected title in Task line, got %q", lines[0])
+	}
+	for _, banned := range []string{"Route", "Schedule", "Metadata", "Aliases"} {
+		if strings.Contains(plain, banned) {
+			t.Errorf("expected %s group to be hidden, got %q", banned, plain)
 		}
+	}
+}
+
+func TestRenderPreview_AllGroupsRendered(t *testing.T) {
+	due := time.Date(2026, 2, 15, 0, 0, 0, 0, time.UTC)
+	q := makePreviewInput(t, &quickCaptureResult{
+		title:             "Ship release",
+		taskType:          models.TaskTypeTask,
+		priority:          1,
+		tags:              []string{"backend", "urgent"},
+		dueDate:           &due,
+		recurrence:        &models.RecurrencePattern{Unit: models.RecurrenceWeekly, Interval: 1},
+		section:           models.SectionNext,
+		status:            models.StatusInProgress,
+		targetProjectName: "Web App",
+		aliasesUsed:       []string{"tag:", "pri:"},
+	}, "", 0)
+
+	plain := ansi.Strip(q.renderPreview())
+	lines := strings.Split(plain, "\n")
+
+	if len(lines) != 5 {
+		t.Fatalf("expected 5 lines (4 groups + aliases), got %d:\n%s", len(lines), plain)
+	}
+
+	expectations := []struct {
+		prefix string
+		substr []string
+	}{
+		{"Task", []string{"Ship release", "$start"}},
+		{"Route", []string{"/" + models.SectionNext, "Web App"}},
+		{"Schedule", []string{"@Feb 15", "~"}},
+		{"Metadata", []string{"!1", "#backend", "#urgent"}},
+		{"Aliases", []string{"tag:", "pri:"}},
+	}
+	for i, exp := range expectations {
+		if !strings.HasPrefix(lines[i], exp.prefix) {
+			t.Errorf("line %d: expected prefix %q, got %q", i, exp.prefix, lines[i])
+		}
+		for _, s := range exp.substr {
+			if !strings.Contains(lines[i], s) {
+				t.Errorf("line %d (%s): expected substring %q, got %q", i, exp.prefix, s, lines[i])
+			}
+		}
+	}
+}
+
+func TestRenderPreview_NonGTDSectionRoutesToInbox(t *testing.T) {
+	q := makePreviewInput(t, &quickCaptureResult{
+		title:    "Triage later",
+		taskType: models.TaskTypeTask,
+		priority: 3,
+		section:  "Backlog",
+	}, "", 0)
+
+	plain := ansi.Strip(q.renderPreview())
+	if !strings.Contains(plain, "Route") {
+		t.Fatalf("expected Route group, got %q", plain)
+	}
+	if !strings.Contains(plain, "/Backlog → Inbox") {
+		t.Fatalf("expected '/Backlog → Inbox' routing hint, got %q", plain)
+	}
+}
+
+func TestRenderPreview_AliasHintLivesOnDedicatedLine(t *testing.T) {
+	q := makePreviewInput(t, &quickCaptureResult{
+		title:       "Just an alias check",
+		taskType:    models.TaskTypeTask,
+		priority:    3,
+		aliasesUsed: []string{"tag:"},
+	}, "", 0)
+
+	plain := ansi.Strip(q.renderPreview())
+	lines := strings.Split(plain, "\n")
+	if len(lines) < 2 {
+		t.Fatalf("expected at least 2 lines (Task + Aliases), got %d:\n%s", len(lines), plain)
+	}
+	last := lines[len(lines)-1]
+	if !strings.HasPrefix(last, "Aliases") {
+		t.Fatalf("expected last line to start with Aliases, got %q", last)
+	}
+	if strings.Contains(lines[0], "via") || strings.Contains(lines[0], "tag:") {
+		t.Errorf("alias hint should not be appended to Task line: %q", lines[0])
+	}
+}
+
+func TestRenderPreview_NarrowSafeVisualWidth(t *testing.T) {
+	due := time.Date(2026, 2, 15, 0, 0, 0, 0, time.UTC)
+	q := makePreviewInput(t, &quickCaptureResult{
+		title:             "Investigate intermittent flaky integration test failure on CI",
+		taskType:          models.TaskTypeBug,
+		priority:          1,
+		tags:              []string{"backend", "urgent", "production", "hotfix"},
+		dueDate:           &due,
+		recurrence:        &models.RecurrencePattern{Unit: models.RecurrenceDaily, Interval: 1},
+		section:           models.SectionNext,
+		targetProjectName: "Reliability And Observability Platform",
+	}, "", 32)
+
+	rendered := q.renderPreview()
+	for _, line := range strings.Split(rendered, "\n") {
+		stripped := ansi.Strip(line)
+		if w := lipgloss.Width(stripped); w > 32 {
+			t.Errorf("preview line exceeds width 32: %q (width=%d)", stripped, w)
+		}
+	}
+}
+
+func TestRenderPreview_NarrowSafeWithWideRunes(t *testing.T) {
+	q := makePreviewInput(t, &quickCaptureResult{
+		title:    "修复收件箱卡片在窄宽度下的宽字符标题截断问题",
+		taskType: models.TaskTypeTask,
+		priority: 3,
+		tags:     []string{"界面修复", "次要标签"},
+		section:  models.SectionNext,
+	}, "", 28)
+
+	rendered := q.renderPreview()
+	for _, line := range strings.Split(rendered, "\n") {
+		stripped := ansi.Strip(line)
+		if w := lipgloss.Width(stripped); w > 28 {
+			t.Errorf("preview line (wide runes) exceeds width 28: %q (width=%d)", stripped, w)
+		}
+	}
+}
+
+func TestRenderPreview_ContinuationLinesAlignToLabelColumn(t *testing.T) {
+	q := makePreviewInput(t, &quickCaptureResult{
+		title:    "Task title used to force a wrap",
+		taskType: models.TaskTypeTask,
+		priority: 3,
+		tags:     []string{"alpha", "beta", "gamma", "delta", "epsilon"},
+	}, "", 28)
+
+	rendered := q.renderPreview()
+	for _, line := range strings.Split(rendered, "\n") {
+		stripped := ansi.Strip(line)
+		if w := lipgloss.Width(stripped); w > 28 {
+			t.Fatalf("preview line exceeds width 28: %q (width=%d)", stripped, w)
+		}
+	}
+	// At least one Metadata continuation should appear when the tag list wraps.
+	if !strings.Contains(ansi.Strip(rendered), "#alpha") {
+		t.Fatalf("expected tags to render, got:\n%s", ansi.Strip(rendered))
 	}
 }

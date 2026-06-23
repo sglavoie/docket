@@ -279,6 +279,16 @@ type CommandPaletteExecuteMsg struct {
 	ResultMsg tea.Msg
 }
 
+// PaletteCommandResultMsg carries a tea.Cmd produced by a palette command
+// handler. The palette execution plumbing unwraps it and returns the carried
+// Cmd to the runtime so the action runs after the palette closes — without
+// this wrapper, the handler would have to bake its work into a tea.Msg, which
+// is awkward for commands that need to dispatch existing tea.Cmd helpers
+// (synthetic key events, batched mutations, async saves, etc.).
+type PaletteCommandResultMsg struct {
+	Cmd tea.Cmd
+}
+
 // CommandPaletteSelectMsg is sent when a command is selected from the palette.
 type CommandPaletteSelectMsg struct {
 	Command Command

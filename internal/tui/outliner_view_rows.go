@@ -37,14 +37,6 @@ func (r outlinerRow) isTaskRow() bool {
 	return !r.IsSectionHeader && !r.IsProjectHeader && !r.IsSeparator
 }
 
-// isHeaderRow reports whether the row is any synthetic header (section header
-// or project sub-header). Header rows have no task payload and are
-// render-only — they are skipped by keyboard navigation and bulk task
-// operations.
-func (r outlinerRow) isHeaderRow() bool {
-	return r.IsSectionHeader || r.IsProjectHeader
-}
-
 // isNavigable reports whether the cursor is allowed to rest on this row.
 // Section headers remain navigable (Enter toggles section fold); task rows
 // are navigable; project sub-headers and separators are skipped by all

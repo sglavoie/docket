@@ -293,3 +293,88 @@ func TestRenderInboxOperationsPanelShowsSnoozeZPrefix(t *testing.T) {
 		t.Fatalf("expected stale s* snooze hint to be absent, got:\n%s", rendered)
 	}
 }
+
+// TestRenderInboxOperationsPanelFramesRoutingQuestion verifies that the panel
+// reframes the inbox loop around "Where should this task go next?" and exposes
+// the routing prefix vocabulary defined in session 2 (m, d, z, ',', !, c).
+func TestRenderInboxOperationsPanelFramesRoutingQuestion(t *testing.T) {
+	rendered := ansi.Strip(renderInboxOperationsPanel())
+
+	if !strings.Contains(rendered, "Where should this task go next?") {
+		t.Fatalf("expected routing question header, got:\n%s", rendered)
+	}
+
+	wantPrefixHints := []string{
+		"m*: Route",
+		"d*: Schedule",
+		"z*: Snooze",
+		"D: Done",
+		",*: Status",
+		"!/1-5: Priority",
+		"e: Edit",
+		"T: Tags",
+		"c*: Linked",
+	}
+	for _, hint := range wantPrefixHints {
+		if !strings.Contains(rendered, hint) {
+			t.Errorf("expected %q in operations panel, got:\n%s", hint, rendered)
+		}
+	}
+
+	if !strings.Contains(rendered, "t* task ops") {
+		t.Errorf("expected t* task ops pointer in More hint, got:\n%s", rendered)
+	}
+	if !strings.Contains(rendered, "? help") {
+		t.Errorf("expected ? help pointer in More hint, got:\n%s", rendered)
+	}
+	if !strings.Contains(rendered, ": palette") {
+		t.Errorf("expected palette pointer in More hint, got:\n%s", rendered)
+	}
+
+	staleHints := []string{
+		"Operations",
+		"ctrl+s: Section",
+		"ctrl+w: Waiting",
+		"m*: Move",
+	}
+	for _, hint := range staleHints {
+		if strings.Contains(rendered, hint) {
+			t.Errorf("expected stale hint %q to be absent, got:\n%s", hint, rendered)
+		}
+	}
+}
+
+// TestRenderInboxFooterShowsPrimaryTriageVocabulary asserts that the footer
+// promotes only the six primary triage actions shared by both processors plus
+// Esc — secondary keys must live in help / palette.
+func TestRenderInboxFooterShowsPrimaryTriageVocabulary(t *testing.T) {
+	rendered := ansi.Strip(renderInboxFooter(120))
+
+	wantPrimary := []string{
+		"n: Skip",
+		"e: Edit",
+		"D: Done",
+		"T: Tags",
+		"u: Undo",
+		"?: Help",
+		"esc: Back",
+	}
+	for _, hint := range wantPrimary {
+		if !strings.Contains(rendered, hint) {
+			t.Errorf("expected %q in inbox footer, got:\n%s", hint, rendered)
+		}
+	}
+
+	demotedHints := []string{
+		"j/k: Navigate",
+		"gg/G: First/last",
+		",s/d/b/x/o",
+		"ctrl+s",
+		"ctrl+w",
+	}
+	for _, hint := range demotedHints {
+		if strings.Contains(rendered, hint) {
+			t.Errorf("expected demoted hint %q to be absent from footer, got:\n%s", hint, rendered)
+		}
+	}
+}

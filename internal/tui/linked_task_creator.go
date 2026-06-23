@@ -15,10 +15,11 @@ import (
 // LinkedTaskCreatorModel handles creation of tasks linked to a source task.
 type LinkedTaskCreatorModel struct {
 	quickCaptureInput
-	sourceTask *models.Task
-	linkType   LinkType
-	width      int
-	height     int
+	sourceTask   *models.Task
+	linkType     LinkType
+	width        int
+	height       int
+	helpExpanded bool
 	discardConfirmState
 }
 
@@ -28,7 +29,7 @@ func NewLinkedTaskCreatorModel(sourceTask *models.Task, project *models.Project,
 		quickCaptureInput: newQuickCaptureInput(
 			project,
 			nil, // no cross-project capture for linked tasks
-			"^type Title !priority #tag @due ~recur /section $status",
+			"Type a task title…",
 			true, // skip %project syntax
 		),
 		sourceTask: sourceTask,
@@ -71,6 +72,12 @@ func (m *LinkedTaskCreatorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		// Handle autocomplete navigation when active
 		if m.handleAutocompleteKey(key) {
+			return m, nil
+		}
+
+		// Toggle syntax help (gated, parallels Quick Capture's ? toggle)
+		if key == "?" && m.ac.Mode == acModeNone {
+			m.helpExpanded = !m.helpExpanded
 			return m, nil
 		}
 
@@ -133,14 +140,16 @@ func (m *LinkedTaskCreatorModel) View() tea.View {
 		b.WriteString("\n\n")
 	}
 
-	// Help text
-	b.WriteString(MutedStyle.Render(renderWrappingHelpLine("^type · !N · #tag · @date · ~recur · /section · $status", m.width)))
-	b.WriteString("\n")
+	// Syntax guide only when toggled via ?; the prompt stays calm otherwise.
+	if m.helpExpanded {
+		b.WriteString(m.renderSyntaxGuide())
+		b.WriteString("\n")
+	}
 	var helpText string
 	if m.isAutocompleteActive() {
 		helpText = "Tab: accept · ↑↓: navigate · Esc: dismiss"
 	} else {
-		helpText = "Enter: create · Ctrl+O: create & open · Ctrl+D: create & edit desc · Esc: cancel"
+		helpText = "Enter: create · Ctrl+O: create & open · Ctrl+D: create & edit desc · ?: syntax · Esc: cancel"
 	}
 
 	title := fmt.Sprintf("New %s", linkName)

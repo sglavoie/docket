@@ -502,6 +502,7 @@ func (m *AppModel) activeOutliner() *OutlinerModel {
 		if m.outliner != nil {
 			return m.outliner
 		}
+	default:
 	}
 	if m.outliner != nil {
 		return m.outliner
@@ -530,6 +531,7 @@ func (m *AppModel) outlinerScoreTarget() (*models.Task, *models.Project) {
 		if m.outliner != nil {
 			return m.outliner.getTaskRef()
 		}
+	default:
 	}
 	if m.outliner != nil {
 		return m.outliner.getTaskRef()
@@ -601,6 +603,7 @@ func (m *AppModel) paletteTaskTarget() (*models.Task, *models.Project) {
 			return nil, nil
 		}
 		return task, m.currentProject
+	default:
 	}
 	return nil, nil
 }

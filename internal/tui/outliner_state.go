@@ -148,12 +148,6 @@ func (m *OutlinerModel) saveWithWorkflow() tea.Cmd {
 	}
 }
 
-// pasteFromClipboard reads the clipboard, creates a task in the project's
-// Inbox, registers an undo snapshot, and saves.
-func (m *OutlinerModel) pasteFromClipboard() tea.Cmd {
-	return m.pasteFromClipboardInto(m.project)
-}
-
 // pasteFromClipboardInto reads the clipboard, creates a task in proj's Inbox,
 // registers an undo snapshot, and saves. When proj is m.project the single-
 // project workflow pipeline runs; otherwise (cross-project mode) the cursor

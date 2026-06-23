@@ -7,26 +7,42 @@ func tutorGettingStartedTopics() []TutorTopic {
 			Category: "Getting Started",
 			Content: `# Capturing Your First Task
 
-Press ctrl+i or type : to open Quick Capture from any view.
+Press ctrl+i or ;i to open Quick Capture from any view. The
+placeholder reads "Type a task title…" — start with the title
+and add inline sigils as you go. Press ? inside Quick Capture
+to toggle the full syntax reference (footer hint: "?: syntax").
 
 Quick Capture accepts natural-language input:
 
-  Buy groceries @personal #errands !2
+  Buy groceries @tomorrow #errands !2
 
-@ sets the project, # adds tags, ! sets priority (1=high).
-Press Enter to save. The task lands in your Inbox.
+# is for tags, ! sets priority (1=high), @ sets the due date,
+~ sets recurrence, / sets the section. The live preview
+organizes your input into labeled rows (Task / Route /
+Schedule / Metadata / Aliases) so you can see exactly which
+sigil populates which field. Press Enter to save — the task
+lands in your Inbox.
 
 # Where Tasks Go
 
-Captured tasks go to the Inbox section of their project.
-From the Organize stage (;a), you can triage
-them: move to Next, schedule for Today, or promote to
-a parent epic or story.
+Captured tasks go to the Inbox section of their project. The
+dashboard shows the inbox backlog in three places: the lead
+"📥 N to triage" alert, the per-row status indicator's inbox
+segment, and the "Triage" stage of the pipeline card.
+
+To process the backlog:
+
+  O        Triage the selected project's inbox (dashboard)
+  ctrl+i   Triage every project's inbox in one flow
+
+The inbox processor walks one task at a time and asks
+"Where should this task go next?".
 
 # First Workflow
 
 1. Capture a task with ctrl+i
-2. Open All Tasks (;a) to see your inbox
+2. From the Dashboard, press O to triage the project's inbox
+   (or ctrl+i to triage every project's inbox)
 3. Press w to schedule it for Today
 4. Open Focus Board (;f) to work on it`,
 		},
@@ -78,9 +94,14 @@ Evening (5 min): review and capture
 
 # Keeping Inbox Clear
 
-Tasks land in Inbox until you triage them.
-The Dashboard shows your Inbox count at a glance.
-Aim for Inbox 0 at the end of each week.
+Tasks land in Inbox until you triage them. The dashboard's
+lead alert "📥 N to triage", the per-row inbox indicator,
+and the pipeline card's "Triage" stage all surface the
+backlog. Aim for Inbox 0 at the end of each week.
+
+Press O on the dashboard with a project selected to triage
+just that project's inbox, or ctrl+i to triage every
+project's inbox in one flow.
 
 # The Zeigarnik Counter
 

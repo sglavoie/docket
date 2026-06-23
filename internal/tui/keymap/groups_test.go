@@ -542,3 +542,45 @@ func TestFilterGroup_AttrPickerBind(t *testing.T) {
 		t.Error("Fa should be a direct bind (picker), not a sub-prefix node")
 	}
 }
+
+func TestTriagePrimaryGroup(t *testing.T) {
+	deps := TriagePrimaryDeps{
+		Skip:       nilAction,
+		Edit:       nilAction,
+		MarkDone:   nilAction,
+		ManageTags: nilAction,
+		Undo:       nilAction,
+		ToggleHelp: nilAction,
+	}
+	entries := TriagePrimaryGroup(deps)
+	if len(entries) != 6 {
+		t.Fatalf("TriagePrimaryGroup: want 6 entries, got %d", len(entries))
+	}
+	keys := make([]string, 0, len(entries))
+	for _, e := range entries {
+		if e.Binding == nil {
+			t.Fatalf("TriagePrimaryGroup: expected direct binding, got prefix node")
+		}
+		keys = append(keys, e.Binding.Key)
+	}
+	wantKeys := []string{"n", "e", "D", "T", "u", "?"}
+	if !slices.Equal(keys, wantKeys) {
+		t.Errorf("TriagePrimaryGroup keys = %v, want %v", keys, wantKeys)
+	}
+	wantDescs := map[string]string{
+		"n": "Skip task (move to next without processing)",
+		"e": "Edit task (title/description)",
+		"D": "Mark done",
+		"T": "Manage tags",
+		"u": "Undo last operation on current task",
+		"?": "Toggle help",
+	}
+	for _, e := range entries {
+		if want, ok := wantDescs[e.Binding.Key]; ok {
+			if e.Binding.Description != want {
+				t.Errorf("TriagePrimaryGroup key %q: want desc %q, got %q",
+					e.Binding.Key, want, e.Binding.Description)
+			}
+		}
+	}
+}

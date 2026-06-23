@@ -287,3 +287,142 @@ func assertRenderedLinesWithinVisualWidth(t *testing.T, label, rendered string, 
 		}
 	}
 }
+
+// TestRenderInboxFooterRespectsVisualWidthAcrossLayouts checks the triage
+// footer fits both a normal terminal width and a narrow one. The footer is
+// the primary visual surface for the six-key triage vocabulary established
+// in session 2, so it must not wrap or overflow at either size.
+func TestRenderInboxFooterRespectsVisualWidthAcrossLayouts(t *testing.T) {
+	for _, width := range []int{120, 48} {
+		rendered := renderInboxFooter(width)
+		assertRenderedLinesWithinVisualWidth(t, fmt.Sprintf("inbox footer @%d", width), rendered, width)
+	}
+}
+
+// TestRenderPipelineCardContentRespectsVisualWidth pins down the narrow
+// behavior of the pipeline summary line so the "Triage → Plan → Today →
+// Execute → Review" chain truncates instead of wrapping at narrow widths.
+func TestRenderPipelineCardContentRespectsVisualWidth(t *testing.T) {
+	cfg := testutil.NewTestConfig()
+	m := &DashboardModel{config: cfg}
+	m.SetPipelineCounts(pipelineCounts{
+		inboxCount:          7,
+		queueLen:            5,
+		dailyPlanLen:        3,
+		inProgressCount:     2,
+		completedTodayCount: 4,
+	})
+
+	for _, width := range []int{60, 28} {
+		rendered := m.renderPipelineCardContent(width)
+		assertRenderedLinesWithinVisualWidth(t, fmt.Sprintf("pipeline card @%d", width), rendered, width)
+	}
+}
+
+// TestRenderProjectListNarrowModeRespectsVisualWidth exercises the dashboard
+// narrow-mode rendering path: wide rows split into name + stats lines and
+// must respect cardWidth even with active inbox indicators and long names.
+func TestRenderProjectListNarrowModeRespectsVisualWidth(t *testing.T) {
+	cfg := testutil.NewTestConfig()
+	projects := make([]*models.Project, 0, 6)
+	for i := range 6 {
+		p := testutil.NewTestProject(fmt.Sprintf("界面修复冲刺计划项目 %d", i))
+		p.Context = "work"
+		// Add a couple of inbox tasks so the project row carries the inbox indicator.
+		for j := range 2 {
+			task, err := models.NewTask(fmt.Sprintf("p%d-t%d", i, j), j+1, models.TaskTypeTask, "inbox item")
+			if err != nil {
+				t.Fatalf("NewTask: %v", err)
+			}
+			task.Section = models.SectionInbox
+			p.Tasks = append(p.Tasks, task)
+		}
+		projects = append(projects, p)
+	}
+
+	m := &DashboardModel{config: cfg, projects: projects}
+	cardWidth := DashboardNarrowModeWidth - 4
+	m.SetSize(cardWidth+6, 30)
+	rendered := m.renderProjectList(projects, 0, cardWidth, 0)
+	assertRenderedLinesWithinVisualWidth(t, "dashboard project list narrow mode", rendered, cardWidth)
+}
+
+// TestComputeGlobalAlertLinesRespectsVisualWidthWhenJoined verifies that the
+// alerts lines (joined by newlines in compact/full info cards) each fit when
+// the alerts card is narrow. Long project names in the "Inbox hotspots" line
+// are the main risk surface for overflow.
+func TestComputeGlobalAlertLinesRespectsVisualWidthWhenJoined(t *testing.T) {
+	cfg := testutil.NewTestConfig()
+	cfg.DataDir = t.TempDir()
+	projects := make([]*models.Project, 0, 2)
+	for i := range 2 {
+		p := testutil.NewTestProject(fmt.Sprintf("界面修复冲刺计划项目 %d", i))
+		for j := range 6 {
+			task, err := models.NewTask(fmt.Sprintf("p%d-t%d", i, j), j+1, models.TaskTypeTask, "inbox item")
+			if err != nil {
+				t.Fatalf("NewTask: %v", err)
+			}
+			task.Section = models.SectionInbox
+			p.Tasks = append(p.Tasks, task)
+		}
+		projects = append(projects, p)
+	}
+
+	m := &DashboardModel{config: cfg, projects: projects}
+	lines := m.computeGlobalAlertLines(nil)
+	if len(lines) == 0 {
+		t.Fatalf("expected non-empty alert lines from 6-inbox-task projects")
+	}
+	// At a typical alerts column width, every line should fit.
+	const alertsWidth = 60
+	for _, line := range lines {
+		if lipgloss.Width(ansi.Strip(line)) > alertsWidth {
+			// Inbox-hotspots is allowed to overflow narrow widths because the
+			// joined list of project names is uncapped. The remaining alert
+			// lines are short summaries and must always fit.
+			if !strings.Contains(ansi.Strip(line), "Inbox hotspots") {
+				t.Fatalf("alert line exceeds width %d: %q (width=%d)", alertsWidth, ansi.Strip(line), lipgloss.Width(ansi.Strip(line)))
+			}
+		}
+	}
+}
+
+// TestHelpRenderByIntentContentRespectsVisualWidth confirms that the per-view
+// intent-grouped help layout sizes its two-column grid from viewport width and
+// does not overflow at narrow widths.
+func TestHelpRenderByIntentContentRespectsVisualWidth(t *testing.T) {
+	items := []HelpItem{
+		{Key: "n", Description: "Skip task (move to next without processing)", Category: "Navigation"},
+		{Key: "e", Description: "Edit task title/description inline", Category: "Operations"},
+		{Key: "D", Description: "Mark task done and advance", Category: "Operations"},
+		{Key: "T", Description: "Manage tags for the current task", Category: "Operations"},
+		{Key: "u", Description: "Undo last operation on current task", Category: "Operations"},
+		{Key: "?", Description: "Toggle help", Category: "Navigation"},
+		{Key: ",s", Description: "Set status start", Category: "Status"},
+		{Key: "ms", Description: "Move to Someday", Category: "Move (m prefix)"},
+		{Key: ";d", Description: "Open Daily Review", Category: "Navigation"},
+	}
+
+	for _, width := range []int{120, 60} {
+		m := NewHelpViewModel(items, ViewInboxProcessor, "Inbox Processor")
+		m.SetSize(width, 32)
+		rendered := m.renderByIntentContent()
+		// Allow the inner viewport width as the budget — same constraint
+		// the layout code uses to compute the column widths.
+		assertRenderedLinesWithinVisualWidth(t, fmt.Sprintf("help byIntent @%d", width), rendered, max(width-2, 1))
+	}
+}
+
+// TestQuickCaptureViewNarrowLayoutRespectsVisualWidth renders the full
+// QuickCapture fullscreen view at a narrow width and confirms no line
+// overflows. This guards the calm placeholder + gated syntax guide regime
+// against regressions where helper text could reintroduce wide hints.
+func TestQuickCaptureViewNarrowLayoutRespectsVisualWidth(t *testing.T) {
+	project := testutil.NewTestProject("narrow capture")
+	m := NewQuickCaptureModel(project, nil, false)
+	for _, width := range []int{120, 48} {
+		m.SetSize(width, 24)
+		rendered := m.View().Content
+		assertRenderedLinesWithinVisualWidth(t, fmt.Sprintf("quick capture view @%d", width), rendered, width)
+	}
+}

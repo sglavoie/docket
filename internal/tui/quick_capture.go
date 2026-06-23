@@ -25,10 +25,7 @@ type QuickCaptureModel struct {
 // NewQuickCaptureModel creates a new quick capture model.
 // initialText pre-populates the input field (e.g., "#tag /section" from active filters).
 func NewQuickCaptureModel(project *models.Project, allProjects []*models.Project, fromGlobalCapture bool, initialText ...string) *QuickCaptureModel {
-	placeholder := "^type Task title !urgent #tag @due/due:fri ~recur >parent /section $status %project"
-	if fromGlobalCapture {
-		placeholder = "^type Task title !urgent #tag @due/due:fri ~recur >parent /section $status"
-	}
+	placeholder := "Type a task title…"
 	m := &QuickCaptureModel{
 		quickCaptureInput: newQuickCaptureInput(
 			project,
@@ -146,22 +143,16 @@ func (m *QuickCaptureModel) View() tea.View {
 		b.WriteString("\n\n")
 	}
 
-	// Help text
+	// Syntax guide only when toggled via ?; the prompt stays calm otherwise.
 	if m.helpExpanded {
 		b.WriteString(m.renderSyntaxGuide())
-	} else {
-		helpLine := "^type · !N/word · #tag · @date/due: · ~recur · >parent · /section · $status · %project"
-		if m.skipProjectSyntax {
-			helpLine = "^type · !N/word · #tag · @date/due: · ~recur · >parent · /section · $status"
-		}
-		b.WriteString(MutedStyle.Render(helpLine))
+		b.WriteString("\n")
 	}
-	b.WriteString("\n")
 	var helpText string
 	if m.isAutocompleteActive() {
 		helpText = "Tab: accept · ↑↓: navigate · Esc: dismiss"
 	} else {
-		helpText = "Enter: create · Ctrl+O: create & open · Ctrl+D: create & edit desc · ?: help · Esc: cancel"
+		helpText = "Enter: create · Ctrl+O: create & open · Ctrl+D: create & edit desc · ?: syntax · Esc: cancel"
 	}
 
 	var out strings.Builder
@@ -198,12 +189,6 @@ func (m *QuickCaptureModel) renderOverlayContent() string {
 
 	if m.helpExpanded {
 		b.WriteString(m.renderSyntaxGuide())
-	} else {
-		helpLine := "^type · !N/word · #tag · @date/due: · ~recur · >parent · /section · $status · %project"
-		if m.skipProjectSyntax {
-			helpLine = "^type · !N/word · #tag · @date/due: · ~recur · >parent · /section · $status"
-		}
-		b.WriteString(MutedStyle.Render(helpLine))
 	}
 
 	if m.confirmDiscard {
@@ -219,7 +204,7 @@ func (m *QuickCaptureModel) overlayHelpText() string {
 	if m.isAutocompleteActive() {
 		return "Tab: accept · ↑↓: navigate · Esc: dismiss"
 	}
-	return "Enter: create · Ctrl+O: open · Ctrl+D: edit desc · ?: help · Esc: cancel"
+	return "Enter: create · Ctrl+O: open · Ctrl+D: edit desc · ?: syntax · Esc: cancel"
 }
 
 // HasTextInput returns true because quick capture uses a textarea input.
@@ -234,37 +219,6 @@ func (m *QuickCaptureModel) ShouldCaptureEsc() bool {
 
 // GetConfirmDialog returns the confirm dialog for overlay rendering.
 func (m *QuickCaptureModel) IsFullHeight() bool { return false }
-
-func (m *QuickCaptureModel) renderSyntaxGuide() string {
-	prefixStyle := MatchHighlightStyle
-	type row struct{ prefix, desc, examples string }
-	rows := []row{
-		{"^type", "Task type", "^epic  ^story  ^task  ^bug  ^idea  · or: type:bug"},
-		{"!N/!word", "Priority (1-5)", "!1  !urgent/!high → !1  !normal → !3  !low → !5  · or: pri:2"},
-		{"#tag", "Add tag", "#backend  #urgent  (multiple allowed)  · or: tag:backend"},
-		{"@date", "Due date", "@tomorrow  @friday  @+3d · or: due:tomorrow  due:fri  due:3d"},
-		{"~recur", "Recurrence", "~daily  ~weekly  ~2w  ~monthly  · or: recur:weekly"},
-		{">parent", "Parent task", ">42  >Login  (short ID or title prefix)  · or: parent:42"},
-		{"/section", "Section", "/next  /inbox  /waiting  /someday  · or: sec:next"},
-		{"$status", "Initial status", "$start  $blocked  $done  $review  · or: status:done"},
-	}
-	if !m.skipProjectSyntax {
-		rows = append(rows, row{"%project", "Target project", "%myproject  (slug or name)  · or: p:myproject"})
-	}
-	var b strings.Builder
-	b.WriteString(MutedStyle.Render("Quick Capture Syntax"))
-	b.WriteString("\n\n")
-	for _, r := range rows {
-		b.WriteString("  ")
-		b.WriteString(prefixStyle.Render(fmt.Sprintf("%-10s", r.prefix)))
-		b.WriteString("  ")
-		b.WriteString(MutedStyle.Render(fmt.Sprintf("%-16s", r.desc)))
-		b.WriteString("  ")
-		b.WriteString(MutedStyle.Render(r.examples))
-		b.WriteString("\n")
-	}
-	return b.String()
-}
 
 func (m *QuickCaptureModel) createTask(openContent, openDetail bool) tea.Cmd {
 	// All mutations run synchronously in the Update() goroutine to avoid

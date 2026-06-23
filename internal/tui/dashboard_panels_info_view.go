@@ -434,7 +434,7 @@ func (m *DashboardModel) renderPipelineCardContent(width int) string {
 		name  string
 		count int
 	}{
-		{"Organize", pc.inboxCount},
+		{"Triage", pc.inboxCount},
 		{"Plan", pc.queueLen},
 		{"Today", pc.dailyPlanLen},
 		{"Execute", pc.inProgressCount},

@@ -6,39 +6,76 @@ func tutorTUIQuickCaptureGrammarTopic() TutorTopic {
 		Category: "TUI",
 		Content: `# Opening Quick Capture
 
-Press ;; from any view to open the Quick Capture overlay.
-Type a task title followed by any sigils. Press ? inside
-Quick Capture to toggle the inline syntax reference.
+Press ctrl+i or ;i from any view to open the Quick Capture
+overlay. The placeholder reads "Type a task title…" — start
+typing the title, then add sigils as needed. Press ? to toggle
+the full syntax reference (the footer hint reads "?: syntax").
 
-# Sigils
+The Linked Task Creator (blockers, dependents, subtasks,
+follow-ups) shares the same calm placeholder, the same ?-gated
+syntax guide, and the same sigils — except %project, which is
+not offered because linked tasks always belong to the parent's
+project.
 
-  ^type       Task type: ^epic ^story ^task ^bug ^idea
-              Alias: type:bug
+# Live Preview Groups
 
-  !N/!word    Priority (1-5): !1 !urgent !high !normal !low
-              Alias: pri:2
+As you type, the preview below the input organizes the parsed
+task into labeled groups so you can see exactly which sigil
+populates which field:
 
-  #tag        Add a tag (multiple allowed): #backend #urgent
-              Alias: tag:backend
+  Task        Task type + title (and any $status override)
+  Route       /section and → ProjectName (global capture)
+  Schedule    @due date and ~recurrence
+  Metadata    !priority and #tags
+  Aliases     Any long-form aliases you used (e.g. due:fri)
 
-  @date       Due date: @tomorrow @friday @+3d
-              Alias: due:fri  due:3d
+The Aliases row is a dedicated line — long-form aliases never
+appear as an inline suffix on the title.
 
-  ~recur      Recurrence: ~daily ~weekly ~2w ~monthly
-              Alias: recur:weekly
+# Sigils By Group
 
-  >parent     Parent task (short ID or title prefix): >42 >Login
-              Alias: parent:42
+  Task group
+    ^type       Task type: ^epic ^story ^task ^bug ^idea
+                Alias: type:bug
+    $status     Initial status: $start $blocked $done $review
+                $standby $hold $maybe $canceled
+                Alias: status:done
 
-  /section    Section: /inbox /next /waiting /someday
-              Alias: sec:next
+  Route group
+    /section    Section: /inbox /next /waiting /someday
+                Alias: sec:next
+    %project    Target project (slug or name): %myproject
+                Alias: p:myproject  (omitted in global capture
+                and in the Linked Task Creator)
 
-  $status     Initial status: $start $blocked $done $review
-              $standby $hold $maybe $canceled
-              Alias: status:done
+  Schedule group
+    @date       Due date: @tomorrow @friday @+3d
+                Alias: due:fri  due:3d
+    ~recur      Recurrence: ~daily ~weekly ~2w ~monthly
+                Alias: recur:weekly
 
-  %project    Target project (slug or name): %myproject
-              Alias: p:myproject  (omitted in global capture)
+  Metadata group
+    !N/!word    Priority (1-5): !1 !urgent !high !normal !low
+                Alias: pri:2
+    #tag        Add a tag (multiple allowed): #backend #urgent
+                Alias: tag:backend
+
+  Hierarchy (no dedicated group; affects parenting)
+    >parent     Parent task (short ID or title prefix): >42 >Login
+                Alias: parent:42
+
+# Worked Examples
+
+  Buy milk @tomorrow !2 #errand
+    Task: Buy milk · Schedule: tomorrow · Metadata: !2 #errand
+
+  ^bug Login spinner !1 #frontend @eod $start
+    Task: bug "Login spinner" (status: in_progress)
+    Schedule: end of day · Metadata: !1 #frontend
+
+  Pair with Alex ~weekly /waiting
+    Task: Pair with Alex · Route: waiting
+    Schedule: weekly recurrence
 
 # Global Search Equivalents
 

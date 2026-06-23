@@ -46,15 +46,24 @@ func (m *AppModel) handleSearchMessages(msg tea.Msg) (bool, tea.Cmd) {
 				keepPalette = true
 			}
 		}
-		// Only close command palette for non-modal actions
+		// Only close command palette for non-modal actions. popView() can return
+		// a cmd (e.g. ViewDidAppearMsg when revealing the cross-project outliner);
+		// preserve it so the revealed view still gets its eager-reload signal.
+		var popCmd tea.Cmd
 		if !keepPalette {
-			m.popView()
+			popCmd = m.popView()
 		}
-		// Process the inner message through handlers
+		var resultCmd tea.Cmd
 		if msg.ResultMsg != nil {
-			return m.processMessage(msg.ResultMsg)
+			if cmdMsg, ok := msg.ResultMsg.(PaletteCommandResultMsg); ok {
+				// Unwrap a command-carrying result so the handler's tea.Cmd runs
+				// after the palette closes instead of being routed as a Msg.
+				resultCmd = cmdMsg.Cmd
+			} else {
+				_, resultCmd = m.processMessage(msg.ResultMsg)
+			}
 		}
-		return true, nil
+		return true, batchPaletteExecuteCmds(popCmd, resultCmd)
 
 	case ShowSaveSearchDialogMsg:
 		// Show a simple text input dialog for the search name
@@ -104,4 +113,20 @@ func (m *AppModel) handleSearchMessages(msg tea.Msg) (bool, tea.Cmd) {
 		return true, nil
 	}
 	return false, nil
+}
+
+// batchPaletteExecuteCmds combines the popView cmd and the palette result cmd,
+// dropping nils so a single non-nil cmd is returned without wrapping it in a
+// degenerate Batch.
+func batchPaletteExecuteCmds(popCmd, resultCmd tea.Cmd) tea.Cmd {
+	switch {
+	case popCmd == nil && resultCmd == nil:
+		return nil
+	case popCmd == nil:
+		return resultCmd
+	case resultCmd == nil:
+		return popCmd
+	default:
+		return tea.Batch(popCmd, resultCmd)
+	}
 }

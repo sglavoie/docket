@@ -24,7 +24,7 @@ func (m *DashboardModel) renderGlobalAlerts(_ int, selectedProject *models.Proje
 // computeGlobalAlertLines walks all active projects and produces the rendered
 // alert lines. Both renderGlobalAlerts and compact dashboard info cards consume this.
 func (m *DashboardModel) computeGlobalAlertLines(selectedProject *models.Project) []string {
-	var totalOverdue, totalDueToday, totalBlocked, totalBlockers, totalCompletedThisWeek, todayPlannedCount int
+	var totalTriage, totalOverdue, totalDueToday, totalBlocked, totalBlockers, totalCompletedThisWeek, todayPlannedCount int
 	var inboxProjects []string
 
 	now := time.Now()
@@ -63,16 +63,20 @@ func (m *DashboardModel) computeGlobalAlertLines(selectedProject *models.Project
 
 		inboxCount := 0
 		for _, task := range p.Tasks {
-			if task != nil && task.Section == models.SectionInbox && task.IsRoot() && !task.Status.IsComplete() {
+			if isProcessableInboxTask(task) {
 				inboxCount++
 			}
 		}
+		totalTriage += inboxCount
 		if inboxCount >= 5 {
 			inboxProjects = append(inboxProjects, fmt.Sprintf("%s(%d)", p.Name, inboxCount))
 		}
 	}
 
 	var lines []string
+	if totalTriage > 0 {
+		lines = append(lines, DueSoonStyle.Render(fmt.Sprintf("%s %d to triage", icons.Get("inbox"), totalTriage)))
+	}
 	if totalOverdue > 0 {
 		lines = append(lines, OverdueStyle.Render(fmt.Sprintf("%s %d overdue", icons.Get("overdue"), totalOverdue)))
 	}
@@ -86,7 +90,7 @@ func (m *DashboardModel) computeGlobalAlertLines(selectedProject *models.Project
 		lines = append(lines, DueSoonStyle.Render(fmt.Sprintf("%s %d active blockers", icons.Get("blockers"), totalBlockers)))
 	}
 	if len(inboxProjects) > 0 {
-		lines = append(lines, DueSoonStyle.Render(fmt.Sprintf("%s Inbox backlog: %s", icons.Get("inbox"), strings.Join(inboxProjects, ", "))))
+		lines = append(lines, MutedStyle.Render(fmt.Sprintf("%s Inbox hotspots: %s", icons.Get("inbox"), strings.Join(inboxProjects, ", "))))
 	}
 	if totalCompletedThisWeek > 0 {
 		lines = append(lines, SuccessStyle.Render(fmt.Sprintf("%s %d completed this week", IconChecklist(), totalCompletedThisWeek)))

@@ -8,8 +8,13 @@ import (
 	"github.com/sglavoie/tt/internal/fuzzy"
 )
 
-// buildCategories extracts ordered unique categories from all items.
+// buildCategories extracts ordered unique tab labels for the current help mode.
+// First-level (per-view) help labels tabs by intent bucket so they match the
+// rendered section headers; the explorer keeps raw Category labels.
 func (m *HelpViewModel) buildCategories() []string {
+	if !m.isExplorer {
+		return m.buildIntentCategories()
+	}
 	seen := make(map[string]bool)
 	var cats []string
 	for _, item := range m.items {
@@ -19,6 +24,22 @@ func (m *HelpViewModel) buildCategories() []string {
 		}
 	}
 	sort.Strings(cats)
+	return cats
+}
+
+// buildIntentCategories returns the intent buckets present in m.items, in the
+// canonical helpIntentOrder. Buckets with no items are skipped.
+func (m *HelpViewModel) buildIntentCategories() []string {
+	present := make(map[string]bool)
+	for _, item := range m.items {
+		present[intentForItem(item, m.sourceView)] = true
+	}
+	cats := make([]string, 0, len(helpIntentOrder))
+	for _, intent := range helpIntentOrder {
+		if present[intent] {
+			cats = append(cats, intent)
+		}
+	}
 	return cats
 }
 
@@ -54,10 +75,16 @@ func (m *HelpViewModel) filterItems() {
 	// Start with all items or tab-filtered items
 	source := m.items
 	if m.activeTab > 0 && m.activeTab <= len(m.categories) {
-		activeCategory := m.categories[m.activeTab-1]
+		activeLabel := m.categories[m.activeTab-1]
 		source = nil
+		matches := func(item HelpItem) bool {
+			if m.isExplorer {
+				return item.Category == activeLabel
+			}
+			return intentForItem(item, m.sourceView) == activeLabel
+		}
 		for _, item := range m.items {
-			if item.Category == activeCategory {
+			if matches(item) {
 				source = append(source, item)
 			}
 		}

@@ -46,11 +46,9 @@ func (c *inboxCore) buildKeyMap() *keymap.KeyMap {
 		GoToProject: nil,
 	})...)
 
-	// --- Navigation actions ---
+	// --- Detail view (enter) — kept separate from the primary triage vocabulary
+	// because enter is a navigation aid, not a triage action. ---
 	entries = append(entries,
-		keymap.Bind("n", "Skip task (move to next without processing)", "Navigation", func() (tea.Model, tea.Cmd) {
-			return c.model, c.skipCurrent()
-		}),
 		keymap.Bind("enter", "View task details", "Navigation", func() (tea.Model, tea.Cmd) {
 			task, project := c.currentTaskRef()
 			if task != nil {
@@ -62,7 +60,8 @@ func (c *inboxCore) buildKeyMap() *keymap.KeyMap {
 		}),
 	)
 
-	// --- Direct priority keys: 1-5 ---
+	// --- Direct priority keys: 1-5 (quick set; PriorityGroup below is the
+	// prefix-vocabulary equivalent). ---
 	for _, k := range []string{"1", "2", "3", "4", "5"} {
 		key := k
 		entries = append(entries,
@@ -72,28 +71,37 @@ func (c *inboxCore) buildKeyMap() *keymap.KeyMap {
 		)
 	}
 
-	// --- Operations ---
-	entries = append(entries,
-		keymap.Bind("e", "Edit task (title/description)", "Operations", func() (tea.Model, tea.Cmd) {
+	// --- Primary triage actions: n, e, D, T, u, ? ---
+	entries = append(entries, keymap.TriagePrimaryGroup(keymap.TriagePrimaryDeps{
+		Skip: func() (tea.Model, tea.Cmd) {
+			return c.model, c.skipCurrent()
+		},
+		Edit: func() (tea.Model, tea.Cmd) {
 			return c.model, inboxOpenTaskEditor(c)
-		}),
-		keymap.Bind("D", "Mark done", "Operations", func() (tea.Model, tea.Cmd) {
+		},
+		MarkDone: func() (tea.Model, tea.Cmd) {
 			return c.model, c.changeTaskStatus(models.StatusDone, StatusVerb(models.StatusDone))
-		}),
+		},
+		ManageTags: func() (tea.Model, tea.Cmd) {
+			return c.model, inboxOpenTagSelector(c)
+		},
+		Undo: func() (tea.Model, tea.Cmd) {
+			return c.model, c.undoLastAction()
+		},
+		ToggleHelp: func() (tea.Model, tea.Cmd) {
+			return c.model, helpCmd(c.backend.viewType(), c.backend.helpViewName(), c.GetHelpItems())
+		},
+	})...)
+
+	// --- Secondary inbox-specific shortcuts (not part of the shared primary
+	// vocabulary; kept as direct keys because the local picker affordances are
+	// useful when the user does not remember the section name). ---
+	entries = append(entries,
 		keymap.Bind("ctrl+w", "Send to Waiting section", "Operations", func() (tea.Model, tea.Cmd) {
 			return c.model, c.sendToWaiting()
 		}),
-		keymap.Bind("ctrl+s", "Assign section", "Operations", func() (tea.Model, tea.Cmd) {
+		keymap.Bind("ctrl+s", "Assign section (picker)", "Operations", func() (tea.Model, tea.Cmd) {
 			return c.model, inboxOpenSectionPicker(c)
-		}),
-		keymap.Bind("ctrl+t", "Manage tags", "Operations", func() (tea.Model, tea.Cmd) {
-			return c.model, inboxOpenTagSelector(c)
-		}),
-		keymap.Bind("u", "Undo last operation on current task", "Operations", func() (tea.Model, tea.Cmd) {
-			return c.model, c.undoLastAction()
-		}),
-		keymap.Bind("?", "Toggle help", "Navigation", func() (tea.Model, tea.Cmd) {
-			return c.model, helpCmd(c.backend.viewType(), c.backend.helpViewName(), c.GetHelpItems())
 		}),
 	)
 

@@ -63,7 +63,71 @@ Type to filter commands and press Enter to execute.
 
 The command palette lists all available actions for the current
 view. It is the fastest way to discover and access features
-without memorizing keybindings.`,
+without memorizing keybindings. The empty-query footer ends
+with "ctrl+\: full reference" so the keybinding explorer is one
+keystroke away when you need the exhaustive cross-view view.
+
+# Triage Escape Hatch
+
+When you are inside an inbox processor, the palette exposes the
+full triage vocabulary by name so you can search instead of
+memorizing chords:
+
+  triage inbox               (dashboard: open per-project
+                             inbox processor, Shortcut O)
+  skip task                  (n)
+  mark task done             (D)
+  edit inbox task            (e)
+  manage inbox task tags     (T)
+  undo last triage action    (u)
+  view task details          (enter)
+  route to section           (ctrl+s)
+  send to waiting            (ctrl+w)
+  set inbox task due date    (dd)
+  create subtask from inbox  (cs)
+  manage inbox dependencies  (bm)
+  delete inbox task          (tD)`,
+		},
+		{
+			Title:    "Dashboard at a glance",
+			Category: "TUI",
+			Content: `# Triage Prominence
+
+The dashboard surfaces "what needs triage" through three
+layered signals so you can answer "what should I look at?"
+without scanning competing badges:
+
+  1. Lead alerts line   "📥 N to triage" appears at the top
+                        of the alerts list whenever any
+                        project has processable inbox tasks.
+  2. Per-row indicator  Each project row's status column
+                        leads with the inbox segment, ahead
+                        of overdue / due soon / blocked /
+                        blockers / completed.
+  3. Pipeline card      The first stage in the pipeline card
+                        is "Triage" — the count of inbox
+                        tasks waiting to be processed.
+
+The supplementary "Inbox hotspots: name(N)" line lists
+projects with five or more inbox tasks. It is intentionally
+muted so the lead "📥 N to triage" prompt owns the prominent
+slot.
+
+# Triage Entry Points
+
+Three keys cover the entire capture-to-triage loop from the
+dashboard:
+
+  i        Quick Capture (per-project capture overlay)
+  O        Open inbox triage for the selected project
+  ctrl+i   Global Inbox Processor (cross-project triage)
+
+Use i to add a task to a project's inbox, then O to triage
+that project's inbox immediately, or ctrl+i to triage every
+project's inbox in one flow.
+
+Note: T on the dashboard still opens View Trash; the triage
+shortcut for a specific project is O.`,
 		},
 		{
 			Title:    "Dimming",
@@ -127,11 +191,41 @@ Filters topic under Concepts for details.`,
 		{
 			Title:    "Help",
 			Category: "TUI",
-			Content: `# Context-Sensitive Help
+			Content: `# Three Discoverability Layers
 
-Press ? in any view to see all keybindings available in that
-screen. The help overlay shows only the actions relevant to
-your current view.
+tt has three escape hatches for discovering what you can do:
+
+  ?         Context-sensitive help for the current view,
+            grouped by what you're trying to do.
+  :         Command palette — search every command available
+            in the current view by name or alias.
+  ctrl+\    Full keybinding reference (the explorer) —
+            exhaustive, grouped by raw category.
+
+The first-level help footer ends with "ctrl+\: full reference"
+so the explorer is one keystroke away when you need more than
+the per-view view.
+
+# Context-Sensitive Help
+
+Press ? in any view to see the keybindings available in that
+screen. First-level help groups items by user intent so the
+most relevant actions show first. The canonical order is:
+
+  Triage          Primary triage actions (n e D T u ?)
+  Route & Schedule
+  Resolve
+  Refine
+  Task & Blockers
+  View Controls
+  Navigate
+  Jump to View    Cross-view jumps (;x, :, ctrl+X, …)
+  Other
+
+In triage-style views (inbox processors) the leading "Triage"
+bucket carries the same six primary keys advertised in the
+footer. The keybinding explorer (ctrl+\) keeps the raw-category
+layout so it remains an exhaustive cross-view reference.
 
 # AI Assistant
 
@@ -143,22 +237,80 @@ claude CLI to be installed.`,
 		{
 			Title:    "Inbox Processing",
 			Category: "TUI",
-			Content: `# GTD Inbox Processing
+			Content: `# The Triage Question
 
-The inbox processor walks through unsorted inbox tasks one at
-a time. For each task, you can set its priority, section, tags,
-and other metadata before moving to the next item.
+Both inbox processors are framed around a single literal
+question rendered at the top of the operations panel:
+
+  Where should this task go next?
+
+You answer it one task at a time with the primary triage
+vocabulary in the footer.
+
+# Primary Triage Actions (Footer)
+
+The footer advertises six single-tap actions plus Esc:
+
+  n   Skip task (advance to the next inbox item)
+  e   Edit task (refine title, description, metadata)
+  D   Done (resolve the task and advance)
+  T   Tags (add or remove tags)
+  u   Undo last triage action
+  ?   Toggle help
+  esc Back
+
+These six keys are the canonical primary triage vocabulary
+shared by the per-project Inbox Processor and the Global
+Inbox Processor.
+
+# Operations Panel (Deeper Grammar)
+
+The operations panel groups the prefix vocabulary into three
+rows that answer the routing question from different angles:
+
+  Route     m* Route · d* Schedule · z* Snooze
+  Resolve   D Done · ,* Status · !/1-5 Priority
+  Refine    e Edit · T Tags · c* Linked
+
+A "More:" line at the bottom points to the deeper escape
+hatches: "t* task ops · ? help · : palette".
 
 # How to Open
 
-Open the command palette with : and type "inbox" or "process
-inbox". The processor shows each inbox task sequentially with
-action options.
+  Per-project    Press O on the Dashboard with a project
+                 selected, or pick "triage inbox" from the
+                 palette.
+  Cross-project  Press ctrl+i from anywhere, or pick
+                 "global inbox processor" from the palette.
 
-# Global Inbox Processing
+# Palette Vocabulary
 
-Global inbox processing works across all active projects,
-surfacing inbox tasks from every project in one flow.`,
+The palette uses these names for triage actions so search
+matches the same verbs as the in-app chrome:
+
+  skip task                  (n)
+  mark task done             (D)
+  edit inbox task            (e)
+  manage inbox task tags     (T)
+  undo last triage action    (u)
+  view task details          (enter)
+  route to section           (ctrl+s)
+  send to waiting            (ctrl+w)
+  set inbox task due date    (dd)
+  create subtask from inbox  (cs)
+  manage inbox dependencies  (bm)
+  delete inbox task          (tD)
+
+The dashboard-only "triage inbox" command (Shortcut O) opens
+the per-project processor for the currently selected project.
+
+# Both Processors Share One Model
+
+The per-project Inbox Processor and the Global Inbox Processor
+embed the same shared core, so every key, the operations panel,
+and the footer are identical between them. The only visible
+difference is the task card's project line, which the global
+processor adds so you know which project each task belongs to.`,
 		},
 		{
 			Title:    "Navigation",
@@ -263,16 +415,41 @@ Use ! followed by a number to set priority on the selected task:
 			Category: "TUI",
 			Content: `# Opening Quick Capture
 
-Press i in project views or ;i from anywhere to open quick
-capture. Type a task title with inline modifiers to set
-metadata as you type.
+Press i in project views or ;i (or ctrl+i) from anywhere to
+open Quick Capture. The placeholder reads "Type a task title…"
+— start with the title, then add sigils as you go. The footer
+hint shows "?: syntax · Esc: cancel"; press ? to toggle the
+full sigil reference on demand instead of crowding the prompt.
 
 # Inline Syntax
 
-  ^bug Task title !1 #backend @tomorrow >3 /active $in_progress
+  ^bug Login spinner !1 #frontend @tomorrow >3 /next $start
 
 Prefixes: ^ type, ! priority, # tag, @ due date, > parent ID,
-/ section, $ status, ~ recurrence, % project.
+/ section, $ status, ~ recurrence, % project. See the "Quick
+Capture Grammar" topic for a worked breakdown of each sigil.
+
+# Live Preview Groups
+
+The preview below the input organizes your task into labeled
+rows so you can match each sigil to its destination field:
+
+  Task        Type + title (and any $status override)
+  Route       /section and → ProjectName (cross-project capture)
+  Schedule    @due and ~recurrence
+  Metadata    !priority and #tags
+  Aliases     Long-form aliases you used (e.g. due:fri)
+
+Aliases get their own labeled row — they are never appended
+inline to the title.
+
+# Linked Task Creator
+
+The blocker/dependent/subtask/follow-up overlay shares the same
+calm placeholder, the same ?: syntax discoverability gate, and
+the same grouped preview. The only difference is the %project
+sigil is omitted, because linked tasks always belong to the
+parent's project.
 
 # Due Date Tokens
 
@@ -286,11 +463,17 @@ Date tokens for @ prefix:
 Time-of-day can be appended with a space:
   @tomorrow 5pm   @eow 17:00   @next mon 9:30am
 
+@tomorrow lands in the Schedule row of the preview; !2 lands
+in Metadata; /waiting lands in Route. Use the preview groups
+as a sanity check that the parser interpreted your input as
+intended.
+
 # Autocomplete
 
 As you type a prefix, suggestions appear. Tab completes the
 current suggestion. Quick capture parses everything in real time
-and shows a live preview of the task that will be created.
+and shows the labeled live preview of the task that will be
+created.
 
 # Clipboard Paste (Ctrl+V)
 

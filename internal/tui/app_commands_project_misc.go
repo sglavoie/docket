@@ -268,6 +268,7 @@ func (m *AppModel) otherCommands() []Command {
 					if m.projectTree != nil {
 						return m.runProjectTreeCmd(m.projectTree.pasteFromClipboard())
 					}
+				default:
 				}
 				return nil
 			},

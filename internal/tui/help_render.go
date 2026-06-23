@@ -30,6 +30,143 @@ var prefixGroupLabels = map[string]string{
 	"Filters":             "F",
 }
 
+// helpIntentOrder defines the display order of intent buckets in first-level
+// (per-view) help. Buckets with no matching items in the current view are
+// skipped during rendering.
+var helpIntentOrder = []string{
+	"Triage",
+	"Route & Schedule",
+	"Resolve",
+	"Refine",
+	"Task & Blockers",
+	"View Controls",
+	"Navigate",
+	"Jump to View",
+	"Other",
+}
+
+// helpCategoryIntent maps raw registry Category names to intent buckets.
+// Categories absent from this map fall through to per-key classification in
+// intentForItem.
+var helpCategoryIntent = map[string]string{
+	"Status":              "Resolve",
+	"Priority":            "Resolve",
+	"Recurrence":          "Resolve",
+	"Move (m prefix)":     "Route & Schedule",
+	"Due Date":            "Route & Schedule",
+	"Snooze":              "Route & Schedule",
+	"Stage (s prefix)":    "Refine",
+	"Linked Tasks":        "Refine",
+	"Folds":               "View Controls",
+	"Filters":             "View Controls",
+	"Task (t prefix)":     "Task & Blockers",
+	"Blockers (b prefix)": "Task & Blockers",
+	"Task Operations":     "Task & Blockers",
+	"Clipboard":           "Other",
+	"Notes":               "Other",
+	"Explorer":            "Navigate",
+}
+
+// helpCrossViewJumpKeys lists key strings that jump from any current view to
+// another top-level view. They are bucketed into "Jump to View" so they do not
+// crowd the primary actions in first-level help.
+var helpCrossViewJumpKeys = map[string]bool{
+	":":        true,
+	"|":        true,
+	"#":        true,
+	"ctrl+,":   true,
+	"ctrl+/":   true,
+	"ctrl+i":   true,
+	"ctrl+X":   true,
+	"alt+o":    true,
+	"alt+i":    true,
+	"alt+l":    true,
+	"ctrl+6":   true,
+	"ctrl+esc": true,
+}
+
+// helpPrimaryTriageKeys lists direct keys promoted into the Triage intent
+// regardless of their raw Category. Mirrors keymap.TriagePrimaryGroup plus the
+// help-toggle key.
+var helpPrimaryTriageKeys = map[string]bool{
+	"n": true,
+	"e": true,
+	"D": true,
+	"T": true,
+	"u": true,
+	"?": true,
+}
+
+// helpNavigateKeys lists direct keys that always belong in the Navigate
+// intent regardless of Category. Covers list movement, viewport paging, and
+// app-shell controls (esc/quit/explorer toggle).
+var helpNavigateKeys = map[string]bool{
+	"j":         true,
+	"k":         true,
+	"down":      true,
+	"up":        true,
+	"g":         true,
+	"G":         true,
+	"gg":        true,
+	"ctrl+u":    true,
+	"ctrl+d":    true,
+	"pgup":      true,
+	"pgdown":    true,
+	"esc":       true,
+	"ctrl+c":    true,
+	`ctrl+\`:    true,
+	"enter":     true,
+	"backspace": true,
+	"space":     true,
+	"q":         true,
+	"w":         true,
+}
+
+// intentForItem classifies a HelpItem into one of helpIntentOrder buckets.
+// Key matches take precedence over Category mapping. Promotion of the primary
+// triage vocabulary is source-view-aware: helpPrimaryTriageKeys are only
+// elevated to "Triage" when the help originates from an inbox processor view,
+// because those keys describe the triage action vocabulary there. On other
+// surfaces (notably the Dashboard) the same keys mean different things and
+// must not be advertised as triage. Dashboard's `O` is the lone exception —
+// it opens inbox triage, so it deserves the Triage label even though its raw
+// Category is generic.
+func intentForItem(item HelpItem, sourceView ViewType) string {
+	if isInboxProcessorSourceView(sourceView) && helpPrimaryTriageKeys[item.Key] {
+		return "Triage"
+	}
+	if sourceView == ViewDashboard && item.Key == "O" {
+		return "Triage"
+	}
+	switch item.Key {
+	case "1", "2", "3", "4", "5":
+		return "Resolve"
+	case "ctrl+w", "ctrl+s":
+		return "Route & Schedule"
+	}
+	if helpNavigateKeys[item.Key] {
+		return "Navigate"
+	}
+	if strings.HasPrefix(item.Key, ";") || helpCrossViewJumpKeys[item.Key] {
+		return "Jump to View"
+	}
+	if intent, ok := helpCategoryIntent[item.Category]; ok {
+		return intent
+	}
+	switch item.Category {
+	case "Navigation":
+		return "Jump to View"
+	}
+	return "Other"
+}
+
+// isInboxProcessorSourceView reports whether the help originates from one of
+// the inbox processor views, which are the only surfaces where the primary
+// triage key vocabulary should be promoted into the "Triage" intent bucket.
+func isInboxProcessorSourceView(v ViewType) bool {
+	return v == ViewInboxProcessor || v == ViewGlobalInboxProcessor
+}
+
 // renderByPrefixContent renders the help items grouped by prefix category.
 func (m *HelpViewModel) renderByPrefixContent() string {
 	if len(m.filteredItems) == 0 {
@@ -137,9 +274,96 @@ func (m *HelpViewModel) renderByPrefixContent() string {
 	return b.String()
 }
 
+// renderByIntentContent renders first-level (per-view) help grouped by user
+// intent. Sections appear in helpIntentOrder; empty buckets are skipped.
+func (m *HelpViewModel) renderByIntentContent() string {
+	if len(m.filteredItems) == 0 {
+		return MutedStyle.Render("No matching help items.")
+	}
+
+	buckets := make(map[string][]filteredHelpItem)
+	for _, item := range m.filteredItems {
+		bucket := intentForItem(item.HelpItem, m.sourceView)
+		buckets[bucket] = append(buckets[bucket], item)
+	}
+
+	contentWidth := max(m.viewport.Width(), 1)
+	keyWidth := 16
+	columnGap := 4
+	columnOverhead := keyWidth + 2
+	descWidth := max((contentWidth-2*columnOverhead-columnGap)/2, 1)
+	columnWidth := keyWidth + 2 + descWidth
+
+	keyStyle := lipgloss.NewStyle().
+		Width(keyWidth).
+		Align(lipgloss.Right).
+		Foreground(ColorSecondary)
+	columnStyle := lipgloss.NewStyle().Width(columnWidth)
+
+	renderItem := func(item filteredHelpItem) string {
+		var renderedKey string
+		if len(item.keyPositions) > 0 {
+			renderedKey = keyStyle.Render(HighlightText(item.Key, item.keyPositions, TagInlineStyle))
+		} else {
+			renderedKey = keyStyle.Render(item.Key)
+		}
+		wrappedDesc := wrapDescriptionWithIndent(item.Description, descWidth, keyWidth+2)
+		descLines := strings.Split(wrappedDesc, "\n")
+		if len(item.descPositions) > 0 {
+			descLines[0] = HighlightText(descLines[0], item.descPositions, NormalStyle)
+		}
+		var result strings.Builder
+		for i, line := range descLines {
+			if i == 0 {
+				result.WriteString(renderedKey)
+				result.WriteString("  ")
+				result.WriteString(line)
+			} else {
+				result.WriteString("\n")
+				result.WriteString(line)
+			}
+		}
+		return result.String()
+	}
+
+	var b strings.Builder
+	first := true
+	for _, intent := range helpIntentOrder {
+		items := buckets[intent]
+		if len(items) == 0 {
+			continue
+		}
+		if !first {
+			b.WriteString("\n")
+		}
+		first = false
+		b.WriteString(HelpCategoryStyle.Render(intent))
+		b.WriteString("\n")
+		for j := 0; j < len(items); j += 2 {
+			col1 := columnStyle.Render(renderItem(items[j]))
+			var col2 string
+			if j+1 < len(items) {
+				col2 = columnStyle.Render(renderItem(items[j+1]))
+			}
+			row := lipgloss.JoinHorizontal(lipgloss.Top, col1, strings.Repeat(" ", columnGap), col2)
+			b.WriteString(row)
+			b.WriteString("\n")
+		}
+	}
+
+	return b.String()
+}
+
 func (m *HelpViewModel) renderContent() string {
 	if m.byPrefixMode {
 		return m.renderByPrefixContent()
+	}
+
+	// First-level help (per-view): group by user intent.
+	// The keybinding explorer keeps the raw-category layout so it remains a
+	// faithful, exhaustive reference.
+	if !m.isExplorer {
+		return m.renderByIntentContent()
 	}
 
 	if len(m.filteredItems) == 0 {
@@ -346,6 +570,10 @@ func (m *HelpViewModel) View() tea.View {
 			prefixLabel = "by category"
 		}
 		explorerHints = fmt.Sprintf(" · p: %s", prefixLabel)
+	} else {
+		// First-level help advertises the keybinding explorer as the deeper
+		// reference for the full per-view binding set.
+		explorerHints = ` · ctrl+\: full reference`
 	}
 	right := HelpStyle.Render(fmt.Sprintf("shift+←/→: tabs · \\ find tab · / filter · bksp clear · j/k scroll · %s%s%s", closeKey, explorerHints, scrollPercent))
 

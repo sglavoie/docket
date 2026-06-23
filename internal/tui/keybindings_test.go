@@ -405,6 +405,34 @@ func TestGetForView_InboxProcessor(t *testing.T) {
 	}
 }
 
+// TestSharedTriagePrimaryVocabulary verifies both the local and global inbox
+// processors expose the canonical primary triage actions through the shared
+// TriagePrimaryGroup keymap helper. The vocabulary must stay identical across
+// both processors so help, palette labels, and tutor content describe one model.
+func TestSharedTriagePrimaryVocabulary(t *testing.T) {
+	primaryKeys := []string{"n", "e", "D", "T", "u", "?"}
+	cases := []struct {
+		name string
+		keys []string
+	}{
+		{"InboxProcessor", (&InboxProcessorModel{}).buildKeyMap().HandledKeys()},
+		{"GlobalInboxProcessor", (&GlobalInboxProcessorModel{}).buildKeyMap().HandledKeys()},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			for _, k := range primaryKeys {
+				if !slices.Contains(tc.keys, k) {
+					t.Errorf("%s: missing primary triage key %q", tc.name, k)
+				}
+			}
+			// ctrl+t (legacy tags chord) must not appear; T is the canonical key.
+			if slices.Contains(tc.keys, "ctrl+t") {
+				t.Errorf("%s: legacy chord 'ctrl+t' must be removed in favor of 'T'", tc.name)
+			}
+		})
+	}
+}
+
 func TestGetForView_IncludesGlobalBindings(t *testing.T) {
 	r := NewKeybindingRegistry()
 

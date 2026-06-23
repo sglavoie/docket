@@ -203,6 +203,14 @@ func (m *DashboardModel) buildKeyMap() *keymap.KeyMap {
 			}
 			return m, nil
 		}),
+		keymap.Bind("O", "Open inbox triage for project", "Actions", func() (tea.Model, tea.Cmd) {
+			visible := m.visibleProjects()
+			if CursorInBounds(m.cursor, len(visible)) {
+				project := visible[m.cursor]
+				return m, func() tea.Msg { return ShowInboxProcessorMsg{Project: project} }
+			}
+			return m, nil
+		}),
 		keymap.Bind("I", "Bulk capture", "Actions", func() (tea.Model, tea.Cmd) {
 			visible := m.visibleProjects()
 			if CursorInBounds(m.cursor, len(visible)) {

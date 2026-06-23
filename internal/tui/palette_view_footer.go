@@ -105,9 +105,9 @@ func (m *CommandPaletteModel) buildFooter() string {
 	query := strings.TrimSpace(m.searchInput.Value())
 	if query == "" {
 		if tip := m.getMostUsedCommandTip(); tip != "" {
-			return fmt.Sprintf("+ create | : filter | # jump | Tip: %s", tip)
+			return fmt.Sprintf("+ create | : filter | # jump | Tip: %s · ctrl+\\: full reference", tip)
 		}
-		return "+ create | : filter | # jump | \"exact\" | -exclude | @due | priority:N"
+		return "+ create | : filter | # jump | \"exact\" | -exclude | @due | priority:N · ctrl+\\: full reference"
 	}
 
 	if m.isDirectActionEnabled() && len(m.filteredItems) > 0 && m.cursor < len(m.filteredItems) {

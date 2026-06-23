@@ -217,7 +217,15 @@ func (q *quickCaptureInput) updatePreview() {
 	q.preview, q.previewErr = parseQuickCaptureForPreview(input, q.project, q.allProjects, q.skipProjectSyntax)
 }
 
-// renderPreview formats the parsed preview for display.
+// previewGroupLabelWidth is the padded width used for the leading group label
+// column ("Task", "Route", "Schedule", "Metadata", "Aliases"). Sized to the
+// longest label plus a trailing space so the body column lines up.
+const previewGroupLabelWidth = 9
+
+// renderPreview formats the parsed preview for display. The output is chunked
+// into labeled groups (Task / Route / Schedule / Metadata) so the user can
+// scan what the parser understood without parsing a separator-soup. Only
+// populated groups are shown; alias hints go on their own line.
 func (q *quickCaptureInput) renderPreview() string {
 	if q.previewErr != "" {
 		return ValidationErrorStyle.Render(q.previewErr)
@@ -226,61 +234,132 @@ func (q *quickCaptureInput) renderPreview() string {
 		return ""
 	}
 
-	var parts []string
+	type previewGroup struct {
+		label  string
+		chunks []string
+	}
+	var groups []previewGroup
 
-	// Type and title
 	typeStyle := GetTypeStyle(string(q.preview.taskType))
-	parts = append(parts, typeStyle.Render(q.preview.taskType.Icon())+" "+q.preview.title)
+	taskChunks := []string{typeStyle.Render(q.preview.taskType.Icon()) + " " + q.preview.title}
+	if q.preview.status != "" && q.preview.status != models.StatusTodo {
+		taskChunks = append(taskChunks, q.preview.status.Icon()+" $"+statusShortcut(q.preview.status))
+	}
+	groups = append(groups, previewGroup{label: "Task", chunks: taskChunks})
 
-	if q.preview.priority != 3 {
-		parts = append(parts, fmt.Sprintf("!%d", q.preview.priority))
+	var routeChunks []string
+	if q.preview.section != "" {
+		if !models.IsGTDSection(q.preview.section) {
+			routeChunks = append(routeChunks, "/"+q.preview.section+" → Inbox")
+		} else {
+			routeChunks = append(routeChunks, "/"+q.preview.section)
+		}
+	}
+	if q.preview.targetProjectName != "" {
+		routeChunks = append(routeChunks, "→ "+q.preview.targetProjectName)
+	}
+	if len(routeChunks) > 0 {
+		groups = append(groups, previewGroup{label: "Route", chunks: routeChunks})
 	}
 
+	var scheduleChunks []string
+	if q.preview.dueDate != nil {
+		scheduleChunks = append(scheduleChunks, "@"+q.preview.dueDate.Format("Jan 2"))
+	}
+	if q.preview.recurrence != nil {
+		scheduleChunks = append(scheduleChunks, "~"+q.preview.recurrence.String())
+	}
+	if len(scheduleChunks) > 0 {
+		groups = append(groups, previewGroup{label: "Schedule", chunks: scheduleChunks})
+	}
+
+	var metaChunks []string
+	if q.preview.priority != 3 {
+		metaChunks = append(metaChunks, fmt.Sprintf("!%d", q.preview.priority))
+	}
 	if len(q.preview.tags) > 0 {
 		tagStrs := make([]string, len(q.preview.tags))
 		for i, t := range q.preview.tags {
 			tagStrs[i] = "#" + t
 		}
-		parts = append(parts, strings.Join(tagStrs, " "))
+		metaChunks = append(metaChunks, strings.Join(tagStrs, " "))
+	}
+	if len(metaChunks) > 0 {
+		groups = append(groups, previewGroup{label: "Metadata", chunks: metaChunks})
 	}
 
-	if q.preview.dueDate != nil {
-		parts = append(parts, "@"+q.preview.dueDate.Format("Jan 2"))
+	var lines []string
+	for _, g := range groups {
+		body := strings.Join(g.chunks, " · ")
+		lines = append(lines, q.renderPreviewLine(g.label, body))
 	}
 
-	if q.preview.recurrence != nil {
-		parts = append(parts, "~"+q.preview.recurrence.String())
+	if len(q.preview.aliasesUsed) > 0 {
+		body := MutedStyle.Render(strings.Join(q.preview.aliasesUsed, ", "))
+		lines = append(lines, q.renderPreviewLine("Aliases", body))
 	}
 
-	if q.preview.section != "" {
-		if !models.IsGTDSection(q.preview.section) {
-			parts = append(parts, "/"+q.preview.section+" → Inbox")
+	return strings.Join(lines, "\n")
+}
+
+// renderPreviewLine emits a single "Label   body" line, wrapping the body
+// when width is set so no rendered line exceeds q.width visual columns.
+// Continuation lines are indented to the label column for readability.
+func (q *quickCaptureInput) renderPreviewLine(label, body string) string {
+	prefix := MutedStyle.Render(fmt.Sprintf("%-*s", previewGroupLabelWidth, label))
+	if q.width <= 0 {
+		return prefix + body
+	}
+	bodyWidth := q.width - previewGroupLabelWidth
+	if bodyWidth <= 0 {
+		// Width is too narrow for any body alongside the label; let the
+		// label sit on its own line and wrap the body on the next.
+		return prefix + "\n" + strings.Join(wrapStyled(body, q.width), "\n")
+	}
+	wrapped := wrapStyled(body, bodyWidth)
+	indent := strings.Repeat(" ", previewGroupLabelWidth)
+	for i, line := range wrapped {
+		if i == 0 {
+			wrapped[i] = prefix + line
 		} else {
-			parts = append(parts, "/"+q.preview.section)
+			wrapped[i] = indent + line
 		}
 	}
+	return strings.Join(wrapped, "\n")
+}
 
-	if q.preview.status != "" && q.preview.status != models.StatusTodo {
-		parts = append(parts, q.preview.status.Icon()+" $"+statusShortcut(q.preview.status))
+// renderSyntaxGuide returns the formatted sigil/alias reference shown when
+// the user toggles the gated syntax help. Shared by Quick Capture and the
+// linked-task creator so both surfaces stay in lockstep.
+func (q *quickCaptureInput) renderSyntaxGuide() string {
+	prefixStyle := MatchHighlightStyle
+	type row struct{ prefix, desc, examples string }
+	rows := []row{
+		{"^type", "Task type", "^epic  ^story  ^task  ^bug  ^idea  · or: type:bug"},
+		{"!N/!word", "Priority (1-5)", "!1  !urgent/!high → !1  !normal → !3  !low → !5  · or: pri:2"},
+		{"#tag", "Add tag", "#backend  #urgent  (multiple allowed)  · or: tag:backend"},
+		{"@date", "Due date", "@tomorrow  @friday  @+3d · or: due:tomorrow  due:fri  due:3d"},
+		{"~recur", "Recurrence", "~daily  ~weekly  ~2w  ~monthly  · or: recur:weekly"},
+		{">parent", "Parent task", ">42  >Login  (short ID or title prefix)  · or: parent:42"},
+		{"/section", "Section", "/next  /inbox  /waiting  /someday  · or: sec:next"},
+		{"$status", "Initial status", "$start  $blocked  $done  $review  · or: status:done"},
 	}
-
-	if q.preview.targetProjectName != "" {
-		parts = append(parts, "→ "+q.preview.targetProjectName)
+	if !q.skipProjectSyntax {
+		rows = append(rows, row{"%project", "Target project", "%myproject  (slug or name)  · or: p:myproject"})
 	}
-
-	previewText := strings.Join(parts, " · ")
-
-	// Append alias hint if any alias forms were used
-	if len(q.preview.aliasesUsed) > 0 {
-		previewText += " " + MutedStyle.Render("(via: "+strings.Join(q.preview.aliasesUsed, ", ")+")")
+	var b strings.Builder
+	b.WriteString(MutedStyle.Render("Quick Capture Syntax"))
+	b.WriteString("\n\n")
+	for _, r := range rows {
+		b.WriteString("  ")
+		b.WriteString(prefixStyle.Render(fmt.Sprintf("%-10s", r.prefix)))
+		b.WriteString("  ")
+		b.WriteString(MutedStyle.Render(fmt.Sprintf("%-16s", r.desc)))
+		b.WriteString("  ")
+		b.WriteString(MutedStyle.Render(r.examples))
+		b.WriteString("\n")
 	}
-
-	// Wrap text if width is set and preview exceeds it
-	if q.width > 0 {
-		previewText = wrapPreviewText(previewText, q.width)
-	}
-
-	return previewText
+	return b.String()
 }
 
 // statusShortcut maps a TaskStatus back to its quick-capture keyword.
@@ -303,43 +382,6 @@ func statusShortcut(s models.TaskStatus) string {
 	default:
 		return string(s)
 	}
-}
-
-// wrapPreviewText wraps preview text to fit within the specified width.
-func wrapPreviewText(text string, width int) string {
-	if width <= 0 || len(text) <= width {
-		return text
-	}
-
-	var lines []string
-	remaining := text
-
-	for len(remaining) > width {
-		// Find a good break point (prefer breaking at " · " separator, then space)
-		breakPoint := width
-
-		// First try to break at a " · " within the width
-		if sepIdx := strings.LastIndex(remaining[:width], " · "); sepIdx > 0 {
-			breakPoint = sepIdx + 3 // Include the " · " separator
-		} else {
-			// Otherwise try to break at last space
-			for i := width; i > 0; i-- {
-				if remaining[i-1] == ' ' {
-					breakPoint = i - 1
-					break
-				}
-			}
-		}
-
-		lines = append(lines, remaining[:breakPoint])
-		remaining = strings.TrimLeft(remaining[breakPoint:], " ")
-	}
-
-	if remaining != "" {
-		lines = append(lines, remaining)
-	}
-
-	return strings.Join(lines, "\n")
 }
 
 // renderAutocomplete renders the autocomplete dropdown.

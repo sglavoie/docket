@@ -241,17 +241,21 @@ func renderInboxCurrentSettings(task *models.Task, cfg *config.Config) string {
 	return strings.Join(lines, "\n")
 }
 
-// renderInboxOperationsPanel renders the available operations.
+// renderInboxOperationsPanel renders the triage panel around the central
+// question "Where should this task go next?". Primary direct-key actions live
+// in the footer; this panel surfaces the routing/resolution/refinement prefix
+// vocabulary that answers the question.
 func renderInboxOperationsPanel() string {
 	var b strings.Builder
 
-	b.WriteString(SubtitleStyle.Render("Operations"))
+	b.WriteString(SubtitleStyle.Render("Where should this task go next?"))
 	b.WriteString("\n")
 
+	// 3x3 grid: row 1 = routing destinations, row 2 = resolutions, row 3 = refinements.
 	ops := []struct{ key, desc string }{
-		{"ctrl+s", "Section"}, {"1-5", "Priority"}, {"ctrl+t", "Tags"},
-		{"e", "Edit"}, {"ctrl+w", "Waiting"}, {"D", "Delete"},
-		{"z*", "Snooze"}, {"m*", "Move"}, {"u", "Undo"},
+		{"m*", "Route"}, {"d*", "Schedule"}, {"z*", "Snooze"},
+		{"D", "Done"}, {",*", "Status"}, {"!/1-5", "Priority"},
+		{"e", "Edit"}, {"T", "Tags"}, {"c*", "Linked"},
 	}
 
 	var lines []string
@@ -262,18 +266,26 @@ func renderInboxOperationsPanel() string {
 		}
 		lines = append(lines, strings.Join(parts, "  "))
 	}
+	lines = append(lines, MutedStyle.Render("More: ")+
+		HelpKeyStyle.Render("t*")+MutedStyle.Render(" task ops · ")+
+		HelpKeyStyle.Render("?")+MutedStyle.Render(" help · ")+
+		HelpKeyStyle.Render(":")+MutedStyle.Render(" palette"))
 
 	content := strings.Join(lines, "\n")
 	return DashboardCardStyle.Render(b.String() + content)
 }
 
-// renderInboxFooter renders the footer with navigation controls.
+// renderInboxFooter renders the footer with the primary triage vocabulary —
+// the six single-tap actions shared by both inbox processors plus Esc.
+// Navigation and prefix subkeys are discoverable via ? (help) and : (palette).
 func renderInboxFooter(width int) string {
 	controls := []struct{ key, desc string }{
 		{"n", "Skip"},
-		{"j/k", "Navigate"},
-		{"gg/G", "First/last"},
-		{",s/d/b/x/o", "Status"},
+		{"e", "Edit"},
+		{"D", "Done"},
+		{"T", "Tags"},
+		{"u", "Undo"},
+		{"?", "Help"},
 		{"esc", "Back"},
 	}
 	var parts []string

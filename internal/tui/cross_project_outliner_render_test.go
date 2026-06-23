@@ -299,12 +299,6 @@ func renderFixtureTask(t *testing.T, id string, shortID int, taskType models.Tas
 	return task
 }
 
-func renderedProjectBadge(projectName, slug string) string {
-	return lipgloss.NewStyle().
-		Foreground(lipgloss.Color(projectBadgeColor(projectName))).
-		Render("[" + slug + "]")
-}
-
 func renderedProjectHeaderBadge(projectName, slug string) string {
 	return lipgloss.NewStyle().
 		Foreground(lipgloss.Color(projectBadgeColor(projectName))).

@@ -27,6 +27,7 @@ func TestSectionCountAccuracy(t *testing.T) {
 	}
 }
 
+//nolint:gocyclo // table-driven invariant exercises many code paths in one test
 func TestProjectIDPopulationInvariant(t *testing.T) {
 	groups := []projectTasksGroup{
 		{

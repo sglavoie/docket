@@ -1,6 +1,10 @@
 package tui
 
-import tea "charm.land/bubbletea/v2"
+import (
+	tea "charm.land/bubbletea/v2"
+
+	"github.com/sglavoie/tt/internal/models"
+)
 
 func (m *AppModel) viewCommands() []Command {
 	return []Command{
@@ -95,10 +99,11 @@ func (m *AppModel) viewCommands() []Command {
 		},
 		{
 			Name:        "inbox processor",
-			Description: "Process inbox items one by one",
+			Description: "Triage inbox items for this project one by one",
 			Shortcut:    "W",
 			Category:    CategoryViews,
 			Views:       []ViewType{ViewProjectTree, ViewOutliner, ViewCrossProjectOutliner},
+			Aliases:     []string{"triage inbox", "triage project inbox", "process inbox", "inbox triage"},
 			Handler: func() tea.Msg {
 				project := m.paletteCursorProject()
 				if project == nil {
@@ -111,11 +116,29 @@ func (m *AppModel) viewCommands() []Command {
 			},
 		},
 		{
+			Name:        "triage inbox",
+			Description: "Triage inbox items for the highlighted project",
+			Shortcut:    "O",
+			Category:    CategoryViews,
+			Views:       []ViewType{ViewDashboard},
+			Aliases:     []string{"inbox triage", "process inbox", "open inbox processor"},
+			Handler: func() tea.Msg {
+				var project *models.Project
+				if m.dashboard != nil {
+					project = m.dashboard.SelectedProject()
+				}
+				if project == nil {
+					return nil
+				}
+				return ShowInboxProcessorMsg{Project: project}
+			},
+		},
+		{
 			Name:        "global inbox processor",
-			Description: "Process inbox items across all projects",
+			Description: "Triage inbox items across all projects",
 			Shortcut:    "ctrl+i",
 			Category:    CategoryViews,
-			Aliases:     []string{"global inbox", "all inbox", "process all inbox"},
+			Aliases:     []string{"global inbox", "all inbox", "process all inbox", "triage all inboxes", "triage global inbox"},
 			Handler: func() tea.Msg {
 				return ShowGlobalInboxProcessorMsg{}
 			},

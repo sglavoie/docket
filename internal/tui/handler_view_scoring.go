@@ -10,6 +10,8 @@ import (
 
 // handleScoringMessages handles scoring-related view messages.
 // Returns true if the message was handled.
+//
+//nolint:gocyclo // routes a flat list of scoring view messages; splitting would obscure the dispatch
 func (m *AppModel) handleScoringMessages(msg tea.Msg) (bool, tea.Cmd) {
 	switch msg := msg.(type) {
 	case ShowScoringProfilePickerMsg:

@@ -154,6 +154,8 @@ func (m *OutlinerModel) handleCrossProjectsLoaded(msg crossProjectsLoadedMsg) te
 // filter string, zoom stack depth, and total task count are all unchanged from
 // the previous call. The guard is bypassed when crossForceRebuild is true (set
 // after mutations) or when a fresh load completes.
+//
+//nolint:gocyclo // perspective-dependent rebuild walks many branches in one pass
 func (m *OutlinerModel) crossProjectRebuildRows() {
 	// Compute current guard inputs.
 	taskCount := 0
