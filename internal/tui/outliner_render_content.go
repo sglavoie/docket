@@ -286,12 +286,12 @@ func (m *OutlinerModel) outlinerEmptyMessage(perspective Perspective) string {
 	if perspective.Name != "All" && len(m.zoomStack) > 0 {
 		topID := m.zoomStack[len(m.zoomStack)-1].TaskID
 		if task := m.project.GetTaskByID(topID); task != nil {
-			return fmt.Sprintf("No tasks match the %s perspective within %q. Try switching perspectives with shift+←/→.", perspective.Name, task.Title)
+			return fmt.Sprintf("No tasks match the %s perspective within %q. Try P to pick a perspective or h/l to cycle.", perspective.Name, task.Title)
 		}
-		return fmt.Sprintf("No tasks match the %s perspective. Try switching perspectives with shift+←/→.", perspective.Name)
+		return fmt.Sprintf("No tasks match the %s perspective. Try P to pick a perspective or h/l to cycle.", perspective.Name)
 	}
 	if perspective.Name != "All" {
-		return fmt.Sprintf("No tasks match the %s perspective. Try switching perspectives with shift+←/→.", perspective.Name)
+		return fmt.Sprintf("No tasks match the %s perspective. Try P to pick a perspective or h/l to cycle.", perspective.Name)
 	}
 	if m.SearchQuery() != "" {
 		return fmt.Sprintf("No tasks match search %q. Press Esc to clear.", m.SearchQuery())
