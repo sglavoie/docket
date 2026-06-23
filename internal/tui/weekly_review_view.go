@@ -78,8 +78,38 @@ func (m *WeeklyReviewModel) View() tea.View {
 		}
 	}
 
+	// Reserve one row for the selected-task metadata strip whenever there is
+	// something navigable; strip renders empty on section headers and project
+	// rows, but the reserved row keeps layout stable as the cursor moves.
+	stripTask := m.getTaskAtCursor()
+	stripReserved := len(m.sectionOrder) > 0
+	if stripReserved {
+		contentHeight = max(contentHeight-1, 1)
+	}
+
 	contentStr := strings.Join(applyPersistentScroll(lines, cursorLineIndex, contentHeight, &m.scrollOffset), "\n")
 	b.WriteString(TabContentBgStyle.Width(m.width).Render(contentStr))
+
+	if stripReserved {
+		stripText := ""
+		if stripTask != nil {
+			section := m.sectionOrder[getCurrentSectionIdx(m.cursor, m.sectionStarts)]
+			stripText = renderTaskMetadataStrip(TaskMetadataStripOpts{
+				Task:    stripTask.Task,
+				Project: stripTask.Project,
+				Config:  m.config,
+				Width:   m.width,
+				AlreadyShown: TaskMetadataAlreadyShown{
+					Project:  true,
+					Priority: stripTask.Task.Priority >= 1 && stripTask.Task.Priority <= 2,
+					Due:      stripTask.Task.DueDate != nil,
+					Stale:    true,
+					Updated:  section == WeeklySectionStaleTasks,
+				},
+			})
+		}
+		b.WriteString("\n" + stripText)
+	}
 
 	// Footer — progressively shorten when terminal is narrow
 	reviewed := m.reviewedCount()
@@ -115,9 +145,26 @@ func (m *WeeklyReviewModel) renderWeeklyProgressBar() string {
 	reviewed := m.reviewedCount()
 	percent := float64(reviewed) / float64(total) * 100
 
-	barWidth := min(m.width-4, 32)
-	if barWidth < 4 {
+	var label string
+	switch {
+	case reviewed == total:
+		label = "All sections reviewed!"
+	case reviewed >= total-1:
+		label = fmt.Sprintf("Almost there — %d/%d reviewed", reviewed, total)
+	default:
+		label = fmt.Sprintf("%d/%d reviewed", reviewed, total)
+	}
+
+	if m.width <= 0 {
 		return ""
+	}
+	if lipgloss.Width(label)+1+4 > m.width {
+		label = fmt.Sprintf("%d/%d", reviewed, total)
+	}
+
+	barWidth := min(m.width-lipgloss.Width(label)-1, 32)
+	if barWidth < 4 {
+		return MutedStyle.Render(truncateToVisualWidth(label, m.width))
 	}
 
 	var bar string
@@ -134,16 +181,6 @@ func (m *WeeklyReviewModel) renderWeeklyProgressBar() string {
 			sb.WriteString(ProgressEmptyStyle.Render("░"))
 		}
 		bar = sb.String()
-	}
-
-	var label string
-	switch {
-	case reviewed == total:
-		label = "All sections reviewed!"
-	case reviewed >= total-1:
-		label = fmt.Sprintf("Almost there — %d/%d reviewed", reviewed, total)
-	default:
-		label = fmt.Sprintf("%d/%d reviewed", reviewed, total)
 	}
 
 	return bar + " " + MutedStyle.Render(label)

@@ -222,13 +222,6 @@ func (m *DependencyViewerModel) renderSection(sectionIdx int, title, arrow strin
 		// Type icon with badge style
 		typeIcon := GetTypeBadge(string(task.Type), task.Type.Icon())
 
-		// Stage badge (after type icon)
-		stageBadge := GetStageBadge(task.Stage)
-		stageSegment := ""
-		if stageBadge != "" {
-			stageSegment = stageBadge + " "
-		}
-
 		// Status icon with badge style
 		statusIcon := GetStatusBadge(string(task.Status), task.Status.Icon())
 
@@ -244,7 +237,7 @@ func (m *DependencyViewerModel) renderSection(sectionIdx int, title, arrow strin
 		titleRendered := titleStyle.Render(title)
 
 		// Build line
-		line := fmt.Sprintf("%s%s %s%s %s %s", cursor, typeIcon, stageSegment, statusIcon, idStr, titleRendered)
+		line := fmt.Sprintf("%s%s %s %s %s", cursor, typeIcon, statusIcon, idStr, titleRendered)
 
 		// Highlight selected item
 		if m.section == sectionIdx && i == m.cursor {

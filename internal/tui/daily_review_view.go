@@ -81,8 +81,38 @@ func (m *DailyReviewModel) View() tea.View {
 		}
 	}
 
+	// Reserve one row for the selected-task metadata strip whenever the cursor
+	// has something to land on; the strip text is empty on section headers,
+	// but the reserved row keeps layout stable as the cursor moves.
+	stripTask := m.getTaskAtCursor()
+	stripReserved := len(m.sectionOrder) > 0
+	if stripReserved {
+		contentHeight = max(contentHeight-1, 1)
+	}
+
 	contentStr := strings.Join(applyPersistentScroll(lines, cursorLineIndex, contentHeight, &m.scrollOffset), "\n")
 	b.WriteString(TabContentBgStyle.Width(m.width).Render(contentStr))
+
+	if stripReserved {
+		stripText := ""
+		if stripTask != nil {
+			section := m.sectionOrder[getCurrentSectionIdx(m.cursor, m.sectionStarts)]
+			stripText = renderTaskMetadataStrip(TaskMetadataStripOpts{
+				Task:    stripTask.Task,
+				Project: stripTask.Project,
+				Config:  m.config,
+				Width:   m.width,
+				AlreadyShown: TaskMetadataAlreadyShown{
+					Project:  true,
+					Priority: stripTask.Task.Priority >= 1 && stripTask.Task.Priority <= 2,
+					Due:      stripTask.Task.DueDate != nil,
+					Stale:    true,
+					Updated:  section == SectionOld,
+				},
+			})
+		}
+		b.WriteString("\n" + stripText)
+	}
 
 	// Footer
 	reviewHint := "R: mark reviewed"
@@ -187,7 +217,6 @@ func (m *DailyReviewModel) renderAllSections() ([]string, int) {
 			HideLowPriority: true,
 			IncludeStatus:   true,
 			IncludeType:     true,
-			IncludeStage:    true,
 			ProjectNameFor:  crossProjectNameLookup(allItems),
 		})
 	}

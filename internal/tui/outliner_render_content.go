@@ -5,6 +5,8 @@ import (
 	"strings"
 
 	"charm.land/lipgloss/v2"
+
+	"github.com/sglavoie/tt/internal/models"
 )
 
 type outlinerViewport struct {
@@ -36,7 +38,22 @@ func (m *OutlinerModel) renderOutlinerTreeContent(width int) string {
 	var b strings.Builder
 	m.writeOutlinerHeader(&b, width, perspectiveLabel, searchIndicator)
 
+	// Reserve one row for the selected-task metadata strip whenever a row is
+	// selectable. The strip stays blank when the cursor sits on a section
+	// header or separator so layout does not jitter as the selection moves.
+	stripReserved := m.cursor >= 0 && m.cursor < len(m.rows)
+	var stripTask *models.Task
+	if stripReserved {
+		row := m.rows[m.cursor]
+		if !row.IsSectionHeader && !row.IsSeparator {
+			stripTask = row.task
+		}
+	}
+
 	extraFooter := 0
+	if stripReserved {
+		extraFooter++
+	}
 	if notice != "" {
 		extraFooter += 2
 	}
@@ -49,6 +66,25 @@ func (m *OutlinerModel) renderOutlinerTreeContent(width int) string {
 
 	viewport := m.computeOutlinerViewport(width, extraFooter)
 	b.WriteString(m.renderOutlinerRows(viewport, width))
+
+	if stripReserved {
+		var strip string
+		if stripTask != nil {
+			alreadyShown := TaskMetadataAlreadyShown{Project: m.project != nil}
+			if m.columnConfig.ShouldShowPriority(stripTask.Priority) {
+				alreadyShown.Priority = true
+			}
+			strip = renderTaskMetadataStrip(TaskMetadataStripOpts{
+				Task:         stripTask,
+				Project:      m.resolveProjectForRow(m.rows[m.cursor]),
+				Config:       m.config,
+				Width:        width,
+				AlreadyShown: alreadyShown,
+			})
+		}
+		b.WriteString("\n")
+		b.WriteString(strip)
+	}
 
 	if viewport.searchHelpHeight > 0 {
 		b.WriteString("\n")

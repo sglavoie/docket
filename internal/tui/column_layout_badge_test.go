@@ -32,7 +32,6 @@ func TestComputeBadgeWidthsAllNil(t *testing.T) {
 	if got := ComputeBadgeWidths([]*models.Task{nil, nil, nil}, BadgeWidthOpts{
 		IncludeStatus: true,
 		IncludeType:   true,
-		IncludeStage:  true,
 	}); got != nil {
 		t.Errorf("all-nil tasks should return nil layout, got %+v", got)
 	}
@@ -62,7 +61,6 @@ func TestComputeBadgeWidthsMixed(t *testing.T) {
 	cl := ComputeBadgeWidths([]*models.Task{t1, t2, nil, t3}, BadgeWidthOpts{
 		IncludeStatus: true,
 		IncludeType:   true,
-		IncludeStage:  true,
 	})
 	if cl == nil {
 		t.Fatal("expected non-nil layout for mixed tasks")
@@ -79,9 +77,6 @@ func TestComputeBadgeWidthsMixed(t *testing.T) {
 	}
 	if !cl.HasType || cl.TypeWidth <= 0 {
 		t.Errorf("type column should be populated, got Has=%v width=%d", cl.HasType, cl.TypeWidth)
-	}
-	if !cl.HasStage || cl.StageWidth <= 0 {
-		t.Errorf("stage column should be populated (t1 has a stage), got Has=%v width=%d", cl.HasStage, cl.StageWidth)
 	}
 	if cl.HasProject {
 		t.Error("HasProject should remain false when ProjectNameFor is nil")
@@ -114,7 +109,7 @@ func TestComputeBadgeWidthsAllOptional(t *testing.T) {
 	if !cl.HasPriority {
 		t.Error("HasPriority should be true regardless of opts when priority is shown")
 	}
-	if cl.HasStatus || cl.HasType || cl.HasStage || cl.HasProject {
+	if cl.HasStatus || cl.HasType || cl.HasProject {
 		t.Errorf("optional columns should remain unset when not requested, got %+v", cl)
 	}
 }

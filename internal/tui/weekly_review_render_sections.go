@@ -51,7 +51,6 @@ func (m *WeeklyReviewModel) renderAllSections() ([]string, int) {
 			HideLowPriority: true,
 			IncludeStatus:   true,
 			IncludeType:     true,
-			IncludeStage:    true,
 			ProjectNameFor:  crossProjectNameLookup(allItems),
 		})
 	}

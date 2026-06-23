@@ -36,6 +36,19 @@ func (m *AllTasksViewModel) View() tea.View {
 		return tea.NewView(b.String())
 	}
 
+	// Reserve one row for the selected-task metadata strip whenever the cursor
+	// is in bounds. Keep layout stable across header/task selection by always
+	// emitting the strip line; the renderer returns "" when the cursor sits on
+	// a group header.
+	stripReserved := false
+	var stripTask *models.Task
+	var stripProject *models.Project
+	if m.cursor >= 0 && m.cursor < m.totalNavigableItems() {
+		stripTask, stripProject = m.getTaskRef()
+		contentHeight = max(contentHeight-1, 1)
+		stripReserved = true
+	}
+
 	availableContentHeight := contentHeight
 	lineWidth := m.allTasksLineWidth(availableContentHeight)
 	colLayout := m.allTasksColumnLayout(lineWidth)
@@ -48,6 +61,25 @@ func (m *AllTasksViewModel) View() tea.View {
 		lines, contentHeight = m.addAllTasksPreview(lines, cursorLineIdx, availableContentHeight, lineWidth)
 	}
 	b.WriteString(m.renderAllTasksScrollableContent(lines, cursorLineIdx, contentHeight, lineWidth))
+	if stripReserved {
+		strip := ""
+		if stripTask != nil {
+			strip = renderTaskMetadataStrip(TaskMetadataStripOpts{
+				Task:    stripTask,
+				Project: stripProject,
+				Config:  m.config,
+				Width:   m.Width(),
+				AlreadyShown: TaskMetadataAlreadyShown{
+					Project:  true,
+					Priority: true,
+					Due:      stripTask.DueDate != nil,
+					Stale:    true,
+				},
+			})
+		}
+		b.WriteString("\n")
+		b.WriteString(strip)
+	}
 	b.WriteString(m.renderAllTasksFooter())
 
 	return tea.NewView(b.String())
@@ -124,7 +156,6 @@ func (m *AllTasksViewModel) allTasksColumnLayout(lineWidth int) *ColumnLayout {
 	return ComputeBadgeWidths(visibleTasks, BadgeWidthOpts{
 		IncludeStatus:  true,
 		IncludeType:    true,
-		IncludeStage:   true,
 		ProjectNameFor: crossProjectNameLookup(visibleItems),
 		MaxProjectLen:  15,
 	})

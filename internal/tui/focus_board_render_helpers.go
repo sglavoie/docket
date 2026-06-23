@@ -200,20 +200,14 @@ func (m *FocusBoardModel) applyBoardHeroDemotion(task *models.Task, project *mod
 
 func (m *FocusBoardModel) renderBoardTrailing(row boardRow, dueStr string) string {
 	task := row.Task
-	estimateStr := ""
-	if task.EstimatedDays > 0 {
-		estimateStr = MutedStyle.Render("(" + formatEstimateDays(task.EstimatedDays) + ")")
-	}
 	descBadge := ""
 	if m.config.IsDescriptionColumnVisible() {
 		descBadge = renderDescriptionIndicator(task)
 	}
-	contentGroup := JoinGroupParts(descBadge, renderTruncatedTags(task.Tags, 2, 8), renderStaleIndicator(m.config, task))
 	return JoinIndicatorGroups(
 		renderChecklistBar(task, m.width),
 		dueStr,
-		contentGroup,
-		estimateStr,
+		descBadge,
 	)
 }
 

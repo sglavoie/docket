@@ -191,6 +191,15 @@ func (m *ProjectTreeModel) renderTreeContent(width int, focused bool) string { /
 		}
 	}
 
+	// Selected task drives the one-line metadata strip rendered at the bottom
+	// of the tree pane. Reserving the row up front lets scroll-height math run
+	// before any tasks are laid out.
+	var selectedTaskForStrip *models.Task
+	if len(visible) > 0 && m.cursor >= 0 && m.cursor < len(visible) {
+		selectedTaskForStrip = visible[m.cursor].Task
+	}
+	stripRowReserved := selectedTaskForStrip != nil
+
 	// Build card content (task list + scrollbar)
 	var cardContent strings.Builder
 
@@ -243,6 +252,13 @@ func (m *ProjectTreeModel) renderTreeContent(width int, focused bool) string { /
 			availableHeight--
 		}
 
+		if stripRowReserved {
+			availableHeight--
+			if availableHeight < 1 {
+				availableHeight = 1
+			}
+		}
+
 		// Reserve space for search help pane (takes half the content area)
 		if sidebarSearchHelpHeight > 0 {
 			availableHeight -= sidebarSearchHelpHeight
@@ -280,7 +296,7 @@ func (m *ProjectTreeModel) renderTreeContent(width int, focused bool) string { /
 		// Compute column layout for the visible slice (alignment guard: >= MinColumnAlignWidth)
 		if cardContentWidth >= MinColumnAlignWidth {
 			m.colLayout = ComputeTreeColumnLayout(visible[startIdx:endIdx], m.columnConfig)
-			// Augment with status/type/stage widths from the same node set.
+			// Augment with status/type widths from the same node set.
 			tasks := make([]*models.Task, 0, endIdx-startIdx)
 			for _, n := range visible[startIdx:endIdx] {
 				if n != nil && n.Task != nil {
@@ -290,7 +306,6 @@ func (m *ProjectTreeModel) renderTreeContent(width int, focused bool) string { /
 			if badge := ComputeBadgeWidths(tasks, BadgeWidthOpts{
 				IncludeStatus: true,
 				IncludeType:   true,
-				IncludeStage:  true,
 			}); badge != nil {
 				if m.colLayout == nil {
 					m.colLayout = badge
@@ -299,8 +314,6 @@ func (m *ProjectTreeModel) renderTreeContent(width int, focused bool) string { /
 					m.colLayout.StatusWidth = badge.StatusWidth
 					m.colLayout.HasType = badge.HasType
 					m.colLayout.TypeWidth = badge.TypeWidth
-					m.colLayout.HasStage = badge.HasStage
-					m.colLayout.StageWidth = badge.StageWidth
 				}
 			}
 		} else {
@@ -338,6 +351,23 @@ func (m *ProjectTreeModel) renderTreeContent(width int, focused bool) string { /
 	if sectionWarning != "" {
 		cardContent.WriteString("\n")
 		cardContent.WriteString(PreviewWarningStyle.Render(sectionWarning))
+	}
+
+	if selectedTaskForStrip != nil {
+		stripInnerWidth := width - CardBorderOverhead
+		alreadyShown := TaskMetadataAlreadyShown{Project: true}
+		if m.columnConfig.ShouldShowPriority(selectedTaskForStrip.Priority) {
+			alreadyShown.Priority = true
+		}
+		strip := renderTaskMetadataStrip(TaskMetadataStripOpts{
+			Task:         selectedTaskForStrip,
+			Project:      m.project,
+			Config:       m.config,
+			Width:        stripInnerWidth,
+			AlreadyShown: alreadyShown,
+		})
+		cardContent.WriteString("\n")
+		cardContent.WriteString(strip)
 	}
 
 	// Render the card with view mode as title

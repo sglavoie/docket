@@ -5,6 +5,8 @@ import (
 	"testing"
 	"time"
 
+	"charm.land/lipgloss/v2"
+
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
@@ -117,6 +119,27 @@ func TestWeeklyReview_ReviewCompletion(t *testing.T) {
 	count := m.reviewedCount()
 	if count != 8 {
 		t.Errorf("expected 8 reviewed sections, got %d", count)
+	}
+}
+
+func TestWeeklyReviewProgressBarRespectsNarrowWidth(t *testing.T) {
+	cfg := &config.Config{Projects: []*models.Project{}}
+	m := newTestWeeklyReviewModel(cfg)
+	m.SetSize(44, 18)
+
+	allSections := []WeeklyReviewSection{
+		WeeklySectionStaleProjects, WeeklySectionInboxBacklog,
+		WeeklySectionBlockedWork, WeeklySectionOvercommitted,
+		WeeklySectionStaleTasks, WeeklySectionPriorityMismatch,
+		WeeklySectionUpcomingWeek, WeeklySectionRecurringOverview,
+	}
+	for _, s := range allSections {
+		m.reviewedSections[s] = true
+	}
+
+	rendered := m.renderWeeklyProgressBar()
+	if got := lipgloss.Width(rendered); got > m.width {
+		t.Fatalf("weekly review progress exceeded width: got %d > %d for %q", got, m.width, rendered)
 	}
 }
 

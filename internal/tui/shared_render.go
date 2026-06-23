@@ -42,7 +42,6 @@ type TaskLine struct {
 	DueStr          string        // right-aligned due date string (pre-styled by caller)
 	ViewWidth       int           // total view width for due date right-alignment
 	StatusBadge     string        // override computed status badge (pre-styled by caller)
-	StageBadge      string        // pre-styled stage badge (from GetStageBadge)
 	HideLowPriority bool          // only show priority badge for priority ≤ 2
 	Flash           bool          // cursor flash highlight active
 	SearchQuery     string        // when set, highlight matching substring in title
@@ -150,7 +149,6 @@ func RenderCrossProjectTaskLine(
 		PreBadges:       preBadges,
 		PostTitle:       postTitle,
 		StatusBadge:     opts.StatusBadge,
-		StageBadge:      GetStageBadge(task.Stage),
 		DueStr:          opts.DueStr,
 		ViewWidth:       width,
 		HideLowPriority: opts.HideLowPriority,
@@ -216,8 +214,6 @@ type taskLineSegments struct {
 	statusIcon      string
 	typeIcon        string
 	prioritySegment string
-	stageBadge      string
-	stageSegment    string
 	title           string
 	dueStr          string
 }
@@ -242,14 +238,12 @@ func (tl TaskLine) buildTaskLineSegments() taskLineSegments {
 	segments := taskLineSegments{
 		statusIcon: tl.statusBadge(),
 		typeIcon:   tl.typeBadge(),
-		stageBadge: tl.StageBadge,
 		title:      tl.renderTitle(),
 		dueStr:     tl.DueStr,
 	}
 	segments.statusIcon = tl.padStatusBadge(segments.statusIcon)
 	segments.typeIcon = tl.padTypeBadge(segments.typeIcon)
 	segments.prioritySegment = tl.prioritySegment(priorityBadge)
-	segments.stageSegment = tl.stageSegment(segments.stageBadge)
 	return segments
 }
 
@@ -300,19 +294,6 @@ func (tl TaskLine) prioritySegment(priorityBadge string) string {
 	return ""
 }
 
-func (tl TaskLine) stageSegment(stageBadge string) string {
-	if tl.Layout != nil && tl.Layout.HasStage {
-		if stageBadge != "" {
-			return PadBadge(stageBadge, tl.Layout.StageWidth) + " "
-		}
-		return EmptyBadge(tl.Layout.StageWidth) + " "
-	}
-	if stageBadge != "" {
-		return stageBadge + " "
-	}
-	return ""
-}
-
 func (tl TaskLine) applyHeroDemotion(segments taskLineSegments) taskLineSegments {
 	hero := pickHeroAttribute(tl.Task, tl.Project)
 	if hero == HeroNone || tl.Task.Dimmed {
@@ -325,9 +306,6 @@ func (tl TaskLine) applyHeroDemotion(segments taskLineSegments) taskLineSegments
 	segments.typeIcon = demoteBadge(segments.typeIcon)
 	if !priorityIsHero(hero) {
 		segments.prioritySegment = demotedTaskLineSegment(segments.prioritySegment)
-	}
-	if segments.stageBadge != "" {
-		segments.stageSegment = demotedTaskLineSegment(segments.stageSegment)
 	}
 	if segments.dueStr != "" && !dueIsHero(hero) {
 		segments.dueStr = demoteBadge(segments.dueStr)
@@ -348,7 +326,7 @@ func demotedTaskLineSegment(segment string) string {
 
 func (tl TaskLine) composeTaskLine(cursorPrefix, queueIndicator string, segments taskLineSegments) string {
 	return fmt.Sprintf(
-		"%s%s%s%s%s %s %s%s%s%s",
+		"%s%s%s%s%s %s %s%s%s",
 		cursorPrefix,
 		queueIndicator,
 		tl.Prefix,
@@ -356,7 +334,6 @@ func (tl TaskLine) composeTaskLine(cursorPrefix, queueIndicator string, segments
 		segments.statusIcon,
 		segments.typeIcon,
 		segments.prioritySegment,
-		segments.stageSegment,
 		segments.title,
 		tl.PostTitle,
 	)

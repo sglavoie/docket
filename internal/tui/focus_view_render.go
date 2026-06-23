@@ -63,6 +63,17 @@ func (m *FocusViewModel) View() tea.View { //nolint:gocyclo
 		contentHeight -= strings.Count(statusBlock, "\n")
 	}
 
+	// Reserve one row for the selected-task metadata strip whenever a task is
+	// selectable. Keeps layout stable as the selection moves.
+	var stripTask *models.Task
+	var stripProject *models.Project
+	if m.cursor >= 0 && m.cursor < len(m.filtered) {
+		ft := m.filtered[m.cursor]
+		stripTask = ft.Task
+		stripProject = ft.Project
+		contentHeight = max(contentHeight-1, 1)
+	}
+
 	// Render task lines based on active tab
 	var lines []string
 
@@ -125,6 +136,23 @@ func (m *FocusViewModel) View() tea.View { //nolint:gocyclo
 
 	visibleLines, _, _ := persistentLineWindow(lines, scrollCursor, contentHeight, &m.viewScrollOffset)
 	b.WriteString(strings.Join(visibleLines, "\n"))
+
+	if stripTask != nil {
+		strip := renderTaskMetadataStrip(TaskMetadataStripOpts{
+			Task:    stripTask,
+			Project: stripProject,
+			Config:  m.config,
+			Width:   m.width,
+			AlreadyShown: TaskMetadataAlreadyShown{
+				Project:  true,
+				Priority: true,
+				Due:      stripTask.DueDate != nil,
+				Stale:    true,
+			},
+		})
+		b.WriteString("\n")
+		b.WriteString(strip)
+	}
 
 	b.WriteString("\n\n")
 	b.WriteString(statusBlock)
@@ -297,7 +325,6 @@ func (m *FocusViewModel) computeColumnLayout() *ColumnLayout {
 	return ComputeBadgeWidths(tasks, BadgeWidthOpts{
 		IncludeStatus:  true,
 		IncludeType:    true,
-		IncludeStage:   true,
 		ProjectNameFor: focusTaskNameLookup(m.filtered),
 	})
 }

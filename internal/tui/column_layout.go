@@ -78,15 +78,17 @@ func ComputeOutlinerColumnLayout(rows []outlinerRow, columnConfig *ColumnConfig)
 // (focus, priority, daily/weekly review, all tasks, etc.).
 // hideLowPriority mirrors the HideLowPriority flag on TaskLine.
 //
-// Equivalent to ComputeBadgeWidths with IncludeStatus/IncludeType/IncludeStage
-// all enabled. Callers that need a Project column should call ComputeBadgeWidths
-// directly with a ProjectNameFor callback.
+// Equivalent to ComputeBadgeWidths with IncludeStatus/IncludeType enabled.
+// Stage is no longer measured anywhere: shared TaskLine rows do not render a
+// stage column inline; views that need stage surface it through the metadata
+// strip (see task_metadata_strip.go) instead. Callers that need a Project
+// column should call ComputeBadgeWidths directly with a ProjectNameFor
+// callback.
 func ComputeTaskLineColumnLayout(tasks []*models.Task, hideLowPriority bool) *ColumnLayout {
 	return ComputeBadgeWidths(tasks, BadgeWidthOpts{
 		HideLowPriority: hideLowPriority,
 		IncludeStatus:   true,
 		IncludeType:     true,
-		IncludeStage:    true,
 	})
 }
 
@@ -136,8 +138,6 @@ type BadgeWidthOpts struct {
 	IncludeStatus bool
 	// IncludeType measures the type badge column width.
 	IncludeType bool
-	// IncludeStage measures the stage badge column width.
-	IncludeStage bool
 
 	// ProjectNameFor, when non-nil, enables the Project column. The function
 	// returns the project display name for a task; an empty return skips
@@ -194,16 +194,6 @@ func ComputeBadgeWidths(tasks []*models.Task, opts BadgeWidthOpts) *ColumnLayout
 				cl.HasType = true
 				if w > cl.TypeWidth {
 					cl.TypeWidth = w
-				}
-			}
-		}
-
-		if opts.IncludeStage {
-			badge := GetStageBadge(task.Stage)
-			if w := lipgloss.Width(badge); w > 0 {
-				cl.HasStage = true
-				if w > cl.StageWidth {
-					cl.StageWidth = w
 				}
 			}
 		}

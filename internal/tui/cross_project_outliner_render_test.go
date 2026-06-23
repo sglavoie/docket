@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
@@ -190,6 +191,52 @@ func TestCrossProjectOutlinerRenderIgnoresAggregateCustomTabsInEmptyState(t *tes
 	plain := ansi.Strip(m.renderOutlinerTreeContent(width))
 	assertNotContains(t, plain, "Sprint-1", "empty-state aggregate custom tab")
 	assertContains(t, plain, "No tasks found.", "empty-state message")
+}
+
+// TestOutlinerLongStageDoesNotShiftSiblingRows guards the plan's primary
+// regression for the outliner: one task carrying the literal long-stage label
+// "Implement initial version" must not change the rendered width of any
+// sibling row in the same outliner. Stage now lives only in the bottom
+// metadata strip; the row format has no stage column, so all task rows of the
+// same width category must render to the same width.
+func TestOutlinerLongStageDoesNotShiftSiblingRows(t *testing.T) {
+	cfg := config.NewConfig()
+	m := NewOutlinerModel(nil, cfg, nil)
+	const width = 100
+	m.SetSize(width, 18)
+
+	tasks := make([]*models.Task, 0, 8)
+	for i := 0; i < 8; i++ {
+		task := renderFixtureTask(t,
+			fmt.Sprintf("sibling-%02d", i),
+			i+1,
+			models.TaskTypeTask,
+			fmt.Sprintf("Sibling task %02d", i),
+			models.StatusTodo,
+			3,
+			models.SectionNext)
+		tasks = append(tasks, task)
+	}
+	tasks[3].Stage = "Implement initial version"
+
+	project := renderFixtureProject(t, "proj-long-stage", "lng", "Long Stage", tasks)
+	m.project = project
+	m.rebuildRows()
+
+	rowWidths := make(map[int]int)
+	for i, row := range m.rows {
+		if row.task == nil {
+			continue
+		}
+		line := m.renderOutlinerTaskRow(row, false, width, width, i, nil)
+		rowWidths[lipgloss.Width(ansi.Strip(line))]++
+	}
+	if len(rowWidths) == 0 {
+		t.Fatalf("expected at least one task row, got none")
+	}
+	if len(rowWidths) != 1 {
+		t.Fatalf("expected uniform outliner row width across long-stage and empty-stage siblings, got %v", rowWidths)
+	}
 }
 
 func crossProjectRenderFixture(t *testing.T, width, height int) (*OutlinerModel, *models.Task) {

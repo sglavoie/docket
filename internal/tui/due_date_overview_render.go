@@ -48,6 +48,16 @@ func (m *DueDateOverviewModel) View() tea.View {
 
 	// Render groups with scroll awareness
 	contentHeight := fullscreenContentHeight(m.Height(), chromeLines)
+
+	// Reserve one row for the selected-task metadata strip whenever the cursor
+	// is in bounds. Keeps layout stable as the selection moves.
+	var stripTask *models.Task
+	var stripProject *models.Project
+	if m.cursor >= 0 && m.cursor < m.totalTasks {
+		stripTask, stripProject = m.getTaskRef()
+		contentHeight = max(contentHeight-1, 1)
+	}
+
 	cursorLineIdx := 0
 	currentIndex := 0
 	lines := m.renderAllGroups(&currentIndex, &cursorLineIdx)
@@ -75,6 +85,23 @@ func (m *DueDateOverviewModel) View() tea.View {
 
 	visibleLines, _, _ := persistentLineWindow(lines, cursorLineIdx, contentHeight, &m.viewScrollOffset)
 	b.WriteString(strings.Join(visibleLines, "\n"))
+
+	if stripTask != nil {
+		strip := renderTaskMetadataStrip(TaskMetadataStripOpts{
+			Task:    stripTask,
+			Project: stripProject,
+			Config:  m.config,
+			Width:   m.Width(),
+			AlreadyShown: TaskMetadataAlreadyShown{
+				Project:  true,
+				Priority: true,
+				Due:      true,
+				Stale:    true,
+			},
+		})
+		b.WriteString("\n")
+		b.WriteString(strip)
+	}
 
 	// Footer
 	left := HelpStyle.Render("Tab tabs · ↑/↓ navigate · ,s/d/b/x/o status · 1-5 priority · dt/dm/dw due · e edit · ? help")
@@ -132,7 +159,6 @@ func (m *DueDateOverviewModel) renderAllGroups(currentIndex *int, cursorLineIdx 
 		colLayout = ComputeBadgeWidths(allTasks, BadgeWidthOpts{
 			IncludeStatus:  true,
 			IncludeType:    true,
-			IncludeStage:   true,
 			ProjectNameFor: crossProjectNameLookup(allItems),
 			MaxProjectLen:  15,
 		})

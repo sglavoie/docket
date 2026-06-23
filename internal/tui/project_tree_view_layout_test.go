@@ -5,6 +5,9 @@ import (
 	"strings"
 	"testing"
 
+	"charm.land/lipgloss/v2"
+	"github.com/charmbracelet/x/ansi"
+
 	"github.com/sglavoie/tt/internal/models"
 )
 
@@ -22,6 +25,47 @@ func TestTreeRenderLineCountIncludesGroupSeparators(t *testing.T) {
 	}
 	if got := treeRenderLineCount(visible, 1, 4); got != 4 {
 		t.Fatalf("treeRenderLineCount(slice) = %d, want 4", got)
+	}
+}
+
+// TestProjectTreeLongStageDoesNotShiftSiblingRows guards the plan's primary
+// regression: one task carrying the literal long-stage label "Implement
+// initial version" must not change the rendered width of any sibling row.
+// Stage is no longer rendered inline in dense rows; it now lives in the
+// metadata strip. Width invariance across siblings proves the column was
+// truly removed from the row format string.
+func TestProjectTreeLongStageDoesNotShiftSiblingRows(t *testing.T) {
+	tasks := make([]*models.Task, 0, 8)
+	for i := 0; i < 8; i++ {
+		tasks = append(tasks, newTestProjectTreeTask(t, fmt.Sprintf("Sibling task %02d", i)))
+	}
+	tasks[3].Stage = "Implement initial version"
+
+	project := newTestProjectTreeProject(t, "Long Stage", tasks)
+	project.BuildTaskTree()
+
+	m := NewProjectTreeModel(project, newTestProjectTreeConfig(), nil)
+	m.viewMode = ViewModeAll
+	m.updateVisibility()
+	m.SetSize(120, 24)
+
+	output := m.View().Content
+	plain := ansi.Strip(output)
+	taskWidths := make(map[int]int)
+	for _, line := range strings.Split(plain, "\n") {
+		for i := 0; i < len(tasks); i++ {
+			needle := fmt.Sprintf("Sibling task %02d", i)
+			if strings.Contains(line, needle) {
+				taskWidths[lipgloss.Width(line)]++
+				break
+			}
+		}
+	}
+	if len(taskWidths) == 0 {
+		t.Fatalf("expected at least one task row, got no matches in:\n%s", plain)
+	}
+	if len(taskWidths) != 1 {
+		t.Fatalf("expected uniform task row width across long-stage and empty-stage siblings, got %v", taskWidths)
 	}
 }
 

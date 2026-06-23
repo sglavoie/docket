@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 )
 
 // View renders the global search view.
@@ -36,7 +37,7 @@ func (m *GlobalSearchModel) View() tea.View {
 	if m.ac.IsActive() {
 		out.WriteString(m.ac.RenderDropdown(""))
 	} else {
-		out.WriteString(MutedStyle.Render("!priority  #tag  @due  $status  ^type  /section  *active  has:  is:  no:  p:  ?: help"))
+		out.WriteString(m.renderSyntaxHint())
 	}
 	out.WriteString("\n")
 
@@ -128,5 +129,40 @@ func (m *GlobalSearchModel) renderHelpText() string {
 	if m.ac.IsActive() {
 		return HelpStyle.Render("Tab: accept · ↑↓: navigate · Esc: dismiss")
 	}
-	return HelpStyle.Render(fmt.Sprintf("shift+←/→ tabs · ↑↓ nav · Alt+↑↓ history · Enter · Ctrl+O completed · ?: help · Esc · %d results", len(m.filtered)))
+	count := fmt.Sprintf("%d results", len(m.filtered))
+	hints := []string{
+		fmt.Sprintf("shift+←/→ tabs · ↑↓ nav · Alt+↑↓ history · Enter · Ctrl+O completed · ?: help · Esc · %s", count),
+		fmt.Sprintf("↑↓ nav · Enter · Ctrl+O completed · ?: help · Esc · %s", count),
+		fmt.Sprintf("↑↓ nav · Enter · ?: help · Esc · %s", count),
+		fmt.Sprintf("?: help · Esc · %s", count),
+	}
+	width := m.Width()
+	if width <= 0 {
+		return HelpStyle.Render(hints[0])
+	}
+	for _, hint := range hints {
+		if lipgloss.Width(hint) <= width {
+			return HelpStyle.Render(hint)
+		}
+	}
+	return HelpStyle.Render(truncateToVisualWidth(hints[len(hints)-1], width))
+}
+
+func (m *GlobalSearchModel) renderSyntaxHint() string {
+	hints := []string{
+		"!priority  #tag  @due  $status  ^type  /section  *active  has:  is:  no:  p:  ?: help",
+		"!priority #tag @due $status ^type /section ?: help",
+		"!priority #tag @due $status ?: help",
+		"Search filters: #tag @due $status",
+	}
+	width := m.Width()
+	if width <= 0 {
+		return MutedStyle.Render(hints[0])
+	}
+	for _, hint := range hints {
+		if lipgloss.Width(hint) <= width {
+			return MutedStyle.Render(hint)
+		}
+	}
+	return MutedStyle.Render(truncateToVisualWidth(hints[len(hints)-1], width))
 }

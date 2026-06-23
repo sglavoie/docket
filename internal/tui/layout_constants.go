@@ -11,13 +11,11 @@ type ColumnLayout struct {
 	ShortIDWidth  int // max rendered "#N" visual width; 0 if column not visible
 	StatusWidth   int // max rendered status badge visual width; 0 when column inactive
 	TypeWidth     int // max rendered type badge visual width; 0 when column inactive
-	StageWidth    int // max rendered stage badge visual width; 0 when no row has a stage
 	ProjectWidth  int // max rendered "[project]" badge visual width (cross-project views); 0 when not in use
 	HasPriority   bool
 	HasShortID    bool
 	HasStatus     bool
 	HasType       bool
-	HasStage      bool
 	HasProject    bool
 }
 

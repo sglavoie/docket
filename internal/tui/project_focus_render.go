@@ -51,6 +51,14 @@ func (m *ProjectFocusViewModel) View() tea.View {
 		contentHeight -= 2
 	}
 
+	// Reserve one row for the selected-task metadata strip whenever a task is
+	// selectable. Keeps layout stable as the selection moves.
+	var stripTask *models.Task
+	if m.cursor >= 0 && m.cursor < len(tasks) {
+		stripTask = tasks[m.cursor]
+		contentHeight = max(contentHeight-1, 1)
+	}
+
 	// Compute column layout for badge alignment.
 	var colLayout *ColumnLayout
 	if m.Width() >= MinColumnAlignWidth {
@@ -73,6 +81,21 @@ func (m *ProjectFocusViewModel) View() tea.View {
 	} else {
 		visibleLines, _, _ := persistentLineWindow(lines, m.cursor, contentHeight, &m.viewScrollOffset)
 		b.WriteString(strings.Join(visibleLines, "\n"))
+		if stripTask != nil {
+			strip := renderTaskMetadataStrip(TaskMetadataStripOpts{
+				Task:    stripTask,
+				Project: m.project,
+				Config:  m.getConfig(),
+				Width:   m.Width(),
+				AlreadyShown: TaskMetadataAlreadyShown{
+					Project:  true,
+					Priority: true,
+					Due:      stripTask.DueDate != nil,
+				},
+			})
+			b.WriteString("\n")
+			b.WriteString(strip)
+		}
 		b.WriteString("\n\n")
 	}
 
@@ -152,7 +175,6 @@ func (m *ProjectFocusViewModel) renderTaskLine(task *models.Task, isSelected boo
 		Active:     task.Active,
 		Pinned:     task.Pinned,
 		MaxTitle:   maxTitleLen,
-		StageBadge: GetStageBadge(task.Stage),
 		PostTitle:  postTitle,
 		DueStr:     dueStr,
 		ViewWidth:  m.Width(),

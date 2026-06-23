@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"charm.land/bubbles/v2/textinput"
+	"charm.land/lipgloss/v2"
 
 	"github.com/sglavoie/tt/internal/models"
 )
@@ -43,5 +44,27 @@ func TestGlobalSearchSubtitleDoesNotMislabelNotesAsTasks(t *testing.T) {
 
 	if strings.Contains(rendered, "2 tasks") {
 		t.Fatalf("subtitle should not label %d notes as tasks; rendered:\n%s", len(allTasks), rendered)
+	}
+}
+
+func TestGlobalSearchSyntaxHintRespectsNarrowWidth(t *testing.T) {
+	m := &GlobalSearchModel{}
+	m.BaseView.SetSize(44, 18)
+
+	rendered := m.renderSyntaxHint()
+	if got := lipgloss.Width(rendered); got > m.Width() {
+		t.Fatalf("global search syntax hint exceeded width: got %d > %d for %q", got, m.Width(), rendered)
+	}
+}
+
+func TestGlobalSearchHelpTextRespectsNarrowWidth(t *testing.T) {
+	m := &GlobalSearchModel{
+		filtered: []filteredSearchResult{{}, {}, {}},
+	}
+	m.BaseView.SetSize(44, 18)
+
+	rendered := m.renderHelpText()
+	if got := lipgloss.Width(rendered); got > m.Width() {
+		t.Fatalf("global search help text exceeded width: got %d > %d for %q", got, m.Width(), rendered)
 	}
 }

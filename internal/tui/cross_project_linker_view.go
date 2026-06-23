@@ -151,12 +151,7 @@ func (m *CrossProjectLinkerModel) viewTaskSelection() string {
 		}
 		statusIcon := GetStatusBadge(string(t.Status), t.Status.Icon())
 		typeIcon := GetTypeBadge(string(t.Type), t.Type.Icon())
-		stageBadge := GetStageBadge(t.Stage)
-		stageSegment := ""
-		if stageBadge != "" {
-			stageSegment = stageBadge + " "
-		}
-		prefix := fmt.Sprintf("  %s %s %s#%d ", statusIcon, typeIcon, stageSegment, t.ShortID)
+		prefix := fmt.Sprintf("  %s %s #%d ", statusIcon, typeIcon, t.ShortID)
 		maxTitleLen := max(contentWidth-lipgloss.Width(prefix), 1)
 		title := truncateToVisualWidth(t.Title, maxTitleLen)
 		titleRendered := TaskTitleStyleFor(t, TaskTitleStyleOptions{

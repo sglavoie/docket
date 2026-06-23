@@ -85,17 +85,16 @@ func (m *PriorityViewModel) renderSuggestionSection() string {
 
 	// Build the task line
 	taskLine := TaskLine{
-		Task:       task,
-		Project:    m.project,
-		Active:     task.Active,
-		Pinned:     task.Pinned,
-		MaxTitle:   titleWidth,
-		Prefix:     star,
-		StageBadge: GetStageBadge(task.Stage),
-		PostTitle:  postTitle,
-		DueStr:     dueStr,
-		ViewWidth:  boxWidth,
-		Flash:      m.cursorFlash,
+		Task:      task,
+		Project:   m.project,
+		Active:    task.Active,
+		Pinned:    task.Pinned,
+		MaxTitle:  titleWidth,
+		Prefix:    star,
+		PostTitle: postTitle,
+		DueStr:    dueStr,
+		ViewWidth: boxWidth,
+		Flash:     m.cursorFlash,
 	}.Render()
 
 	// Reason line (muted, indented)
@@ -123,7 +122,6 @@ func (m *PriorityViewModel) computeColumnLayout() *ColumnLayout {
 	opts := BadgeWidthOpts{
 		IncludeStatus: true,
 		IncludeType:   true,
-		IncludeStage:  true,
 	}
 	if m.tabs.Active == priorityTabByScore {
 		scored := m.visibleScoredTasks()
@@ -256,7 +254,6 @@ func (m *PriorityViewModel) renderScoreRanking(currentIndex *int, cursorLineIdx 
 			Pinned:       pt.Task.Pinned,
 			MaxTitle:     maxTitleLen,
 			PreBadges:    fmt.Sprintf("%d. %s ", rank+1, scoreBadge),
-			StageBadge:   GetStageBadge(pt.Task.Stage),
 			PostTitle:    postTitle,
 			Flash:        m.cursorFlash,
 			SearchQuery:  m.searchQuery,
@@ -363,7 +360,6 @@ func (m *PriorityViewModel) renderTaskLine(pt *PriorityTask, isOverdue bool, isS
 		Pinned:       task.Pinned,
 		MaxTitle:     adjustedMaxTitleLen,
 		Prefix:       starPrefix,
-		StageBadge:   GetStageBadge(task.Stage),
 		PostTitle:    postTitle,
 		DueStr:       dueStr,
 		ViewWidth:    m.Width(),

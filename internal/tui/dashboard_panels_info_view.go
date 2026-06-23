@@ -368,14 +368,9 @@ func (m *DashboardModel) renderTopScoredContent(project *models.Project, profile
 	title := TaskTitleStyleFor(bestTask, TaskTitleStyleOptions{}).
 		Render(truncateToVisualWidth(bestTask.Title, titleWidth))
 	typeIcon := GetTypeBadge(string(bestTask.Type), bestTask.Type.Icon())
-	stageBadge := GetStageBadge(bestTask.Stage)
-	stageSegment := ""
-	if stageBadge != "" {
-		stageSegment = stageBadge + " "
-	}
 	statusIcon := GetStatusBadge(string(bestTask.Status), bestTask.Status.Icon())
 
-	return fmt.Sprintf("%s %s %s %s%s %s", bar, badge, typeIcon, stageSegment, statusIcon, title)
+	return fmt.Sprintf("%s %s %s %s %s", bar, badge, typeIcon, statusIcon, title)
 }
 
 func (m *DashboardModel) renderRecentTasksContentWithWidth(project *models.Project, contentWidth int) string {
@@ -392,7 +387,6 @@ func (m *DashboardModel) renderRecentTasksContentWithWidth(project *models.Proje
 		layout = ComputeBadgeWidths(recentTasks, BadgeWidthOpts{
 			IncludeStatus: true,
 			IncludeType:   true,
-			IncludeStage:  true,
 		})
 	}
 
@@ -401,17 +395,6 @@ func (m *DashboardModel) renderRecentTasksContentWithWidth(project *models.Proje
 		timeStr := storage.FormatRelativeTime(task.UpdatedAt)
 		typeBadge := GetTypeBadge(string(task.Type), task.Type.Icon())
 		statusBadge := GetStatusBadge(string(task.Status), task.Status.Icon())
-		stageBadge := GetStageBadge(task.Stage)
-		stageSegment := ""
-		if layout != nil && layout.HasStage {
-			if stageBadge == "" {
-				stageSegment = EmptyBadge(layout.StageWidth) + " "
-			} else {
-				stageSegment = PadBadge(stageBadge, layout.StageWidth) + " "
-			}
-		} else if stageBadge != "" {
-			stageSegment = stageBadge + " "
-		}
 		if layout != nil && layout.HasType {
 			typeBadge = PadBadge(typeBadge, layout.TypeWidth)
 		}
@@ -422,9 +405,8 @@ func (m *DashboardModel) renderRecentTasksContentWithWidth(project *models.Proje
 		titleStyle := TaskTitleStyleFor(task, TaskTitleStyleOptions{})
 		if lipgloss.Width(task.Title)+2+lipgloss.Width(timeStr) <= titleWidth {
 			gap := max(titleWidth-lipgloss.Width(task.Title)-lipgloss.Width(timeStr), 2)
-			line := fmt.Sprintf("%s %s%s %s%s%s",
+			line := fmt.Sprintf("%s %s %s%s%s",
 				typeBadge,
-				stageSegment,
 				statusBadge,
 				titleStyle.Render(task.Title),
 				strings.Repeat(" ", gap),
@@ -433,9 +415,8 @@ func (m *DashboardModel) renderRecentTasksContentWithWidth(project *models.Proje
 			continue
 		}
 
-		line1 := fmt.Sprintf("%s %s%s %s",
+		line1 := fmt.Sprintf("%s %s %s",
 			typeBadge,
-			stageSegment,
 			statusBadge,
 			titleStyle.Render(truncateAndPad(task.Title, titleWidth)))
 		padding := max(contentWidth-lipgloss.Width(timeStr), 0)

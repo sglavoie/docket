@@ -15,7 +15,8 @@ func (m *OutlinerModel) renderOutlinerRows(viewport outlinerViewport, width int)
 	var colLayout *ColumnLayout
 	if viewport.rowWidth >= MinColumnAlignWidth {
 		colLayout = ComputeOutlinerColumnLayout(m.rows[viewport.startIdx:viewport.endIdx], m.columnConfig)
-		// Augment with status/type/stage widths from the same row set.
+		// Augment with status/type widths from the same row set. Stage moved to
+		// the selected-task metadata strip so it is no longer measured here.
 		var visibleTasks []*models.Task
 		for _, row := range m.rows[viewport.startIdx:viewport.endIdx] {
 			if row.IsSectionHeader || row.IsSeparator || row.task == nil {
@@ -26,7 +27,6 @@ func (m *OutlinerModel) renderOutlinerRows(viewport outlinerViewport, width int)
 		if badge := ComputeBadgeWidths(visibleTasks, BadgeWidthOpts{
 			IncludeStatus: true,
 			IncludeType:   true,
-			IncludeStage:  true,
 		}); badge != nil {
 			if colLayout == nil {
 				colLayout = badge
@@ -35,8 +35,6 @@ func (m *OutlinerModel) renderOutlinerRows(viewport outlinerViewport, width int)
 				colLayout.StatusWidth = badge.StatusWidth
 				colLayout.HasType = badge.HasType
 				colLayout.TypeWidth = badge.TypeWidth
-				colLayout.HasStage = badge.HasStage
-				colLayout.StageWidth = badge.StageWidth
 			}
 		}
 	}
@@ -110,7 +108,6 @@ func (m *OutlinerModel) renderOutlinerTaskRow(row outlinerRow, selected bool, ro
 	proj := m.resolveProjectForRow(row)
 	typeIcon := GetTypeBadge(string(task.Type), task.Type.Icon())
 	statusIcon := m.renderTaskStatusIcon(task, proj)
-	stageSegment := m.renderTaskStageSegment(task, colLayout)
 	if colLayout != nil && colLayout.HasStatus {
 		statusIcon = PadBadge(statusIcon, colLayout.StatusWidth)
 	}
@@ -133,17 +130,14 @@ func (m *OutlinerModel) renderOutlinerTaskRow(row outlinerRow, selected bool, ro
 				prioritySegment = demoteBadge(trimmed) + " "
 			}
 		}
-		if task.Stage != "" && stageSegment != "" {
-			stageSegment = demoteBadge(strings.TrimRight(stageSegment, " ")) + " "
-		}
 	}
 	cursorPrefix := RenderCursorPrefix(selected, task.Active, task.Pinned, task.Dimmed)
 	queueIndicator := m.renderTaskQueueIndicator(task)
 	checkbox := m.renderTaskCheckbox(task)
 	prefixStr, foldIndicator := renderTaskPrefix(row.prefix, foldIndicator)
-	title := m.renderTaskTitle(task, titleStyle, rowWidth, cursorPrefix, checkbox, prefixStr, foldIndicator, projBadge, typeIcon, statusIcon, prioritySegment, stageSegment, indicators)
+	title := m.renderTaskTitle(task, titleStyle, rowWidth, cursorPrefix, checkbox, prefixStr, foldIndicator, projBadge, typeIcon, statusIcon, prioritySegment, indicators)
 
-	line := fmt.Sprintf("%s%s%s%s%s%s%s %s %s%s%s%s",
+	line := fmt.Sprintf("%s%s%s%s%s%s%s %s %s%s%s",
 		cursorPrefix,
 		queueIndicator,
 		checkbox,
@@ -153,7 +147,6 @@ func (m *OutlinerModel) renderOutlinerTaskRow(row outlinerRow, selected bool, ro
 		typeIcon,
 		statusIcon,
 		prioritySegment,
-		stageSegment,
 		title,
 		indicators,
 	)
@@ -201,20 +194,6 @@ func (m *OutlinerModel) renderTaskStatusIcon(task *models.Task, proj *models.Pro
 		return BlockedByDepsStyle.Render(task.Status.Icon())
 	}
 	return statusIcon
-}
-
-func (m *OutlinerModel) renderTaskStageSegment(task *models.Task, colLayout *ColumnLayout) string {
-	badge := GetStageBadge(task.Stage)
-	if colLayout != nil && colLayout.HasStage {
-		if badge == "" {
-			return EmptyBadge(colLayout.StageWidth) + " "
-		}
-		return PadBadge(badge, colLayout.StageWidth) + " "
-	}
-	if badge != "" {
-		return badge + " "
-	}
-	return ""
 }
 
 func (m *OutlinerModel) renderTaskTitleStyle(task *models.Task, selected bool) lipgloss.Style {
@@ -380,11 +359,11 @@ func renderTaskPrefix(prefix, foldIndicator string) (string, string) {
 	return MutedStyle.Render(prefix), foldIndicator
 }
 
-func (m *OutlinerModel) renderTaskTitle(task *models.Task, titleStyle lipgloss.Style, rowWidth int, cursorPrefix, checkbox, prefixStr, foldIndicator, projBadge, typeIcon, statusIcon, prioritySegment, stageSegment, indicators string) string {
+func (m *OutlinerModel) renderTaskTitle(task *models.Task, titleStyle lipgloss.Style, rowWidth int, cursorPrefix, checkbox, prefixStr, foldIndicator, projBadge, typeIcon, statusIcon, prioritySegment, indicators string) string {
 	nonTitleWidth := lipgloss.Width(cursorPrefix) + 2 + lipgloss.Width(checkbox) +
 		lipgloss.Width(prefixStr) + lipgloss.Width(foldIndicator) +
 		lipgloss.Width(projBadge) + lipgloss.Width(typeIcon) + 1 +
-		lipgloss.Width(stageSegment) + lipgloss.Width(statusIcon) + 1 +
+		lipgloss.Width(statusIcon) + 1 +
 		lipgloss.Width(prioritySegment) + lipgloss.Width(indicators)
 	availableWidth := max(rowWidth-nonTitleWidth, 10)
 	truncatedTitle := truncateToVisualWidth(task.Title, availableWidth)

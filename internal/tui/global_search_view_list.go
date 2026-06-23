@@ -31,7 +31,6 @@ func (m *GlobalSearchModel) renderTaskList(paneHeight int) string {
 		colLayout = ComputeBadgeWidths(tasks, BadgeWidthOpts{
 			IncludeStatus: true,
 			IncludeType:   true,
-			IncludeStage:  true,
 		})
 	}
 
@@ -88,17 +87,6 @@ func (m *GlobalSearchModel) renderTaskSearchRow(index int, filteredResult filter
 	if colLayout != nil && colLayout.HasType {
 		typeIcon = PadBadge(typeIcon, colLayout.TypeWidth)
 	}
-	stageBadge := GetStageBadge(task.Stage)
-	stageSegment := ""
-	if colLayout != nil && colLayout.HasStage {
-		if stageBadge == "" {
-			stageSegment = EmptyBadge(colLayout.StageWidth) + " "
-		} else {
-			stageSegment = PadBadge(stageBadge, colLayout.StageWidth) + " "
-		}
-	} else if stageBadge != "" {
-		stageSegment = stageBadge + " "
-	}
 	statusIcon := GetStatusBadge(string(task.Status), task.Status.Icon())
 	if colLayout != nil && colLayout.HasStatus {
 		statusIcon = PadBadge(statusIcon, colLayout.StatusWidth)
@@ -106,7 +94,7 @@ func (m *GlobalSearchModel) renderTaskSearchRow(index int, filteredResult filter
 	projectSlug := truncateToVisualWidth(filteredResult.result.Project.Slug, 8)
 	projectName := MutedStyle.Render(fmt.Sprintf("[%s]", projectSlug))
 	shortID := MutedStyle.Render(fmt.Sprintf("#%-4d", task.ShortID))
-	prefix := fmt.Sprintf("%s%s %s%s %s %s ", cursor, typeIcon, stageSegment, statusIcon, shortID, projectName)
+	prefix := fmt.Sprintf("%s%s %s %s %s ", cursor, typeIcon, statusIcon, shortID, projectName)
 	descSuffix := ""
 	if m.config.IsDescriptionColumnVisible() && len(task.Description) > 0 {
 		descSuffix = " " + MutedStyle.Render(IconDescription())

@@ -189,6 +189,16 @@ func (m *FocusBoardModel) View() tea.View { //nolint:gocyclo
 		return tea.NewView(b.String())
 	}
 
+	// Reserve one row for the selected-task metadata strip when a task is
+	// selected. Keeps layout stable as the selection moves.
+	var stripTask *models.Task
+	var stripProject *models.Project
+	if row := m.getRowAtCursor(); row != nil && row.Task != nil {
+		stripTask = row.Task
+		stripProject = row.Project
+		contentHeight = max(contentHeight-1, 1)
+	}
+
 	// Render rows
 	var lines []string
 	maxTitleLen := max(m.width-FocusBoardTitlePadding, FocusBoardMinTitleWidth)
@@ -206,7 +216,6 @@ func (m *FocusBoardModel) View() tea.View { //nolint:gocyclo
 			HideLowPriority: true,
 			IncludeStatus:   true,
 			IncludeType:     true,
-			IncludeStage:    true,
 		})
 	}
 
@@ -273,6 +282,21 @@ func (m *FocusBoardModel) View() tea.View { //nolint:gocyclo
 		contentStr = TabContentBgStyle.Width(m.width).Render(contentStr)
 	}
 	b.WriteString(contentStr)
+	if stripTask != nil {
+		strip := renderTaskMetadataStrip(TaskMetadataStripOpts{
+			Task:    stripTask,
+			Project: stripProject,
+			Config:  m.config,
+			Width:   m.width,
+			AlreadyShown: TaskMetadataAlreadyShown{
+				Project:  true,
+				Priority: stripTask.Priority >= 1 && stripTask.Priority <= 2,
+				Due:      stripTask.DueDate != nil,
+			},
+		})
+		b.WriteString("\n")
+		b.WriteString(strip)
+	}
 	b.WriteString("\n\n")
 
 	b.WriteString(renderStatusMessages(m.statusMessage, m.err))

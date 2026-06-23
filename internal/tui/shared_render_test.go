@@ -8,6 +8,7 @@ import (
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
 
+	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 )
 
@@ -62,6 +63,288 @@ func TestRenderCrossProjectTaskLineShowDescription(t *testing.T) {
 			t.Errorf("expected no description icon when task has empty description, got %q", got)
 		}
 	})
+}
+
+// TestTaskLineNoLongerRendersStageBadge guards Session 2: shared task rows
+// must not render a stage badge inline. Stage information for selected rows
+// now lives in the metadata strip (see task_metadata_strip.go); leaving it in
+// the row would defeat the compaction.
+func TestTaskLineNoLongerRendersStageBadge(t *testing.T) {
+	task := &models.Task{
+		Title:    "title",
+		Type:     models.TaskTypeTask,
+		Status:   models.StatusTodo,
+		Priority: 3,
+		Stage:    "design",
+	}
+	line := TaskLine{
+		Task:      task,
+		MaxTitle:  40,
+		ViewWidth: 80,
+	}.Render()
+	plain := ansi.Strip(line)
+	if strings.Contains(plain, "design") {
+		t.Fatalf("expected shared task row to omit stage badge, got %q", plain)
+	}
+}
+
+// TestRenderCrossProjectTaskLineNoLongerRendersStageBadge guards the same
+// invariant for the cross-project shared renderer.
+func TestRenderCrossProjectTaskLineNoLongerRendersStageBadge(t *testing.T) {
+	proj := &models.Project{ID: "p1", Name: "Proj"}
+	task := &models.Task{ID: "t1", Title: "title", Stage: "design"}
+	got := RenderCrossProjectTaskLine(task, proj, nil, false, 120, 40, CrossProjectTaskLineOpts{})
+	plain := ansi.Strip(got)
+	if strings.Contains(plain, "design") {
+		t.Fatalf("expected cross-project row to omit stage badge, got %q", plain)
+	}
+}
+
+func TestCrossProjectSelectedStripDoesNotRepeatInlineStaleBadge(t *testing.T) {
+	staleDays := 1
+	cfg := &config.Config{StaleTaskDays: &staleDays}
+	proj := &models.Project{ID: "p1", Name: "Proj"}
+	task := &models.Task{
+		ID:        "t1",
+		Title:     "old cross-project task",
+		Status:    models.StatusTodo,
+		Priority:  2,
+		CreatedAt: time.Now().Add(-30 * 24 * time.Hour),
+		UpdatedAt: time.Now().Add(-30 * 24 * time.Hour),
+	}
+
+	row := RenderCrossProjectTaskLine(task, proj, cfg, true, 120, 40, CrossProjectTaskLineOpts{})
+	strip := renderTaskMetadataStrip(TaskMetadataStripOpts{
+		Task:    task,
+		Project: proj,
+		Config:  cfg,
+		Width:   120,
+		AlreadyShown: TaskMetadataAlreadyShown{
+			Project:  true,
+			Priority: true,
+			Stale:    true,
+		},
+	})
+
+	plain := ansi.Strip(row + "\n" + strip)
+	if got := strings.Count(plain, "stale"); got != 1 {
+		t.Fatalf("expected selected cross-project row and strip to show stale once, got %d in %q", got, plain)
+	}
+}
+
+func TestSelectedCrossProjectViewsDoNotRepeatStaleBadge(t *testing.T) {
+	cfg, proj, task := staleCrossProjectViewFixture(t)
+	due := time.Now().Add(24 * time.Hour)
+	task.DueDate = &due
+
+	tests := []struct {
+		name string
+		view func() string
+	}{
+		{
+			name: "all tasks",
+			view: func() string {
+				m := NewAllTasksViewModel(cfg, nil)
+				m.SetSize(118, 18)
+				item := CrossProjectTask{Task: task, Project: proj}
+				m.allTasks = []CrossProjectTask{item}
+				m.groups = []AllTasksGroup{{Name: proj.Name, Tasks: []CrossProjectTask{item}}}
+				m.projectCache = map[string]*models.Project{proj.ID: proj}
+				m.cursor = 1
+				m.calculateNavigation()
+				return m.View().Content
+			},
+		},
+		{
+			name: "due date overview",
+			view: func() string {
+				m := NewDueDateOverviewModel(cfg, nil)
+				m.SetSize(118, 18)
+				m.today = []CrossProjectTask{{Task: task, Project: proj}}
+				m.recalcTotalTasks()
+				m.cursor = 0
+				return m.View().Content
+			},
+		},
+		{
+			name: "focus view",
+			view: func() string {
+				queue := []FocusTask{}
+				m := NewFocusViewModel(cfg, nil, &queue, map[string]bool{}, map[string]bool{}, map[string]bool{})
+				m.SetSize(118, 18)
+				m.tabs.Active = focusTabByProject
+				ft := FocusTask{Task: task, Project: proj}
+				m.tasks = []FocusTask{ft}
+				m.filtered = []FocusTask{ft}
+				m.computeSubTabs()
+				m.cursor = 0
+				return m.View().Content
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			plain := ansi.Strip(tt.view())
+			if got := strings.Count(plain, "stale"); got != 1 {
+				t.Fatalf("expected exactly one stale badge in %s, got %d:\n%s", tt.name, got, plain)
+			}
+		})
+	}
+}
+
+func staleCrossProjectViewFixture(t *testing.T) (*config.Config, *models.Project, *models.Task) {
+	t.Helper()
+	staleDays := 1
+	cfg := config.NewConfig()
+	cfg.StaleTaskDays = &staleDays
+
+	proj, err := models.NewProject("p-stale-regression", "Alpha", t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	task, err := models.NewTask("t-stale-regression", 42, models.TaskTypeTask, "aged task")
+	if err != nil {
+		t.Fatal(err)
+	}
+	old := time.Now().Add(-30 * 24 * time.Hour)
+	task.Status = models.StatusTodo
+	task.Priority = 2
+	task.Section = models.SectionNext
+	task.UpdatedAt = old
+	task.CreatedAt = old
+	proj.Tasks = []*models.Task{task}
+	return cfg, proj, task
+}
+
+// TestTaskLineLongStageDoesNotAffectWidth guards against the older behavior
+// where pre-title stages widened the row. The stage column is gone from
+// shared rows entirely, so width must be identical with and without a stage.
+func TestTaskLineLongStageDoesNotAffectWidth(t *testing.T) {
+	base := &models.Task{
+		Title:    "title",
+		Type:     models.TaskTypeTask,
+		Status:   models.StatusTodo,
+		Priority: 3,
+	}
+	staged := *base
+	staged.Stage = "a-really-long-stage-label-that-would-have-pushed-the-title"
+
+	baseLine := TaskLine{Task: base, MaxTitle: 40, ViewWidth: 80}.Render()
+	stagedLine := TaskLine{Task: &staged, MaxTitle: 40, ViewWidth: 80}.Render()
+
+	if lipgloss.Width(ansi.Strip(baseLine)) != lipgloss.Width(ansi.Strip(stagedLine)) {
+		t.Fatalf("long stage should not affect shared row width:\nbase=%q (w=%d)\nstaged=%q (w=%d)",
+			ansi.Strip(baseLine), lipgloss.Width(ansi.Strip(baseLine)),
+			ansi.Strip(stagedLine), lipgloss.Width(ansi.Strip(stagedLine)))
+	}
+}
+
+// TestComputeTaskLineColumnLayoutIgnoresStage guards that the shared layout
+// helper stopped measuring stage widths when shared rows lost the column.
+// Sessions 3-7 rely on this so they can read HasStage from a view-specific
+// layout without inheriting it from the shared helper.
+func TestComputeTaskLineColumnLayoutIgnoresStage(t *testing.T) {
+	t1 := &models.Task{
+		Title:    "alpha",
+		Type:     models.TaskTypeTask,
+		Status:   models.StatusInProgress,
+		Priority: 2,
+		Stage:    "design",
+	}
+	cl := ComputeTaskLineColumnLayout([]*models.Task{t1}, false)
+	if cl == nil {
+		t.Fatal("expected non-nil layout")
+	}
+	// The shared TaskLine no longer renders stage and the column has been
+	// removed from BadgeWidthOpts/ColumnLayout entirely; an absent column is
+	// the strongest possible guarantee that long stages cannot push other
+	// columns. Re-introducing stage measurement should require deliberately
+	// re-adding the API and is caught by the compiler.
+	_ = cl
+}
+
+// TestSharedRowLongStageManySiblingsConsistentWidth guards the plan's
+// primary regression: a long stage like "Implement initial version" on one
+// task in a list of many empty-stage siblings must not shift titles or
+// create empty padded row gaps. The shared row dropped stage in session 2;
+// this asserts that contract across a representative row population.
+func TestSharedRowLongStageManySiblingsConsistentWidth(t *testing.T) {
+	tasks := make([]*models.Task, 0, 12)
+	for i := 0; i < 12; i++ {
+		tasks = append(tasks, &models.Task{
+			Title:    "Task " + strings.Repeat("x", 4),
+			Type:     models.TaskTypeTask,
+			Status:   models.StatusTodo,
+			Priority: 3,
+		})
+	}
+	// One sibling carries a long stage label that pre-plan would have
+	// widened the row.
+	tasks[5].Stage = "Implement initial version"
+
+	layout := ComputeTaskLineColumnLayout(tasks, false)
+	if layout == nil {
+		t.Fatal("expected non-nil layout for non-empty task slice")
+	}
+
+	const viewWidth = 80
+	widths := make(map[int]int, len(tasks))
+	for _, task := range tasks {
+		line := TaskLine{
+			Task:      task,
+			MaxTitle:  40,
+			ViewWidth: viewWidth,
+			Layout:    layout,
+		}.Render()
+		w := lipgloss.Width(ansi.Strip(line))
+		widths[w]++
+	}
+	if len(widths) != 1 {
+		t.Fatalf("expected uniform row width across long-stage and empty-stage siblings, got width distribution %v", widths)
+	}
+}
+
+// TestCrossProjectRowLongStageGroupedListConsistentWidth asserts the same
+// invariant for the cross-project shared renderer used by fullscreen grouped
+// lists (Priority, Due Date, All Tasks, Daily/Weekly Review, Recent Activity,
+// Focus View). A long stage on one task in a sibling list must not shift any
+// other row's width because stage is no longer rendered inline.
+func TestCrossProjectRowLongStageGroupedListConsistentWidth(t *testing.T) {
+	proj := &models.Project{ID: "p1", Name: "Proj"}
+	tasks := make([]*models.Task, 0, 8)
+	for i := 0; i < 8; i++ {
+		tasks = append(tasks, &models.Task{
+			ID:       "t" + strings.Repeat("x", i+1),
+			Title:    "Grouped row task " + strings.Repeat("x", 3),
+			Type:     models.TaskTypeTask,
+			Status:   models.StatusTodo,
+			Priority: 3,
+		})
+	}
+	tasks[2].Stage = "Implement initial version"
+
+	layout := ComputeBadgeWidths(tasks, BadgeWidthOpts{
+		IncludeStatus: true,
+		IncludeType:   true,
+	})
+	if layout == nil {
+		t.Fatal("expected non-nil layout for non-empty task slice")
+	}
+
+	const viewWidth = 100
+	widths := make(map[int]int, len(tasks))
+	for i, task := range tasks {
+		line := RenderCrossProjectTaskLine(task, proj, nil, false, viewWidth, 40, CrossProjectTaskLineOpts{
+			RowIndex: i,
+			Layout:   layout,
+		})
+		w := lipgloss.Width(ansi.Strip(line))
+		widths[w]++
+	}
+	if len(widths) != 1 {
+		t.Fatalf("expected uniform cross-project row width across long-stage and empty-stage siblings, got %v", widths)
+	}
 }
 
 // TestTaskLinePrioritySegmentDemotionPreservesAlignment guards against a

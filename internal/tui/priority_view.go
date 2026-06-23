@@ -264,6 +264,16 @@ func (m *PriorityViewModel) View() tea.View {
 		contentHeight -= suggestionLines
 	}
 
+	// Reserve one row for the selected-task metadata strip whenever the cursor
+	// is in bounds. Keeps layout stable as the selection moves.
+	var stripTask *models.Task
+	var stripProject *models.Project
+	if pt := m.getTaskAtCursor(); pt != nil {
+		stripTask = pt.Task
+		stripProject = m.project
+		contentHeight = max(contentHeight-1, 1)
+	}
+
 	// Render groups
 	currentIndex := 0
 	lines, cursorLineIdx := m.renderAllGroups(&currentIndex)
@@ -326,6 +336,22 @@ func (m *PriorityViewModel) View() tea.View {
 		contentWidth = max(contentWidth-1, 1)
 	}
 	b.WriteString(attachScrollbarAtWidth(visibleContent, scrollbar, contentWidth))
+	if stripTask != nil {
+		strip := renderTaskMetadataStrip(TaskMetadataStripOpts{
+			Task:    stripTask,
+			Project: stripProject,
+			Config:  m.config,
+			Width:   m.Width(),
+			AlreadyShown: TaskMetadataAlreadyShown{
+				Project:  true,
+				Priority: true,
+				Score:    true,
+				Due:      stripTask.DueDate != nil,
+			},
+		})
+		b.WriteString("\n")
+		b.WriteString(strip)
+	}
 	b.WriteString("\n")
 
 	// Search bar (shown above footer when active)

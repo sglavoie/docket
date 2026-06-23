@@ -170,18 +170,11 @@ func (m *CommandPaletteModel) renderItemContentWithHighlight(item PaletteItem, n
 			totalLen += dueLen
 		}
 
-		stageBadge := GetStageBadge(item.Task.Stage)
-		stageSegment := ""
-		if stageBadge != "" {
-			stageSegment = stageBadge + " "
-		}
-
-		icons := fmt.Sprintf("%s %s%s ",
+		icons := fmt.Sprintf("%s %s ",
 			GetTypeBadge(string(item.Task.Type), item.Task.Type.Icon()),
-			stageSegment,
 			GetStatusBadge(string(item.Task.Status), item.Task.Status.Icon()))
 		content.WriteString(icons)
-		totalLen += 4 + lipgloss.Width(stageSegment)
+		totalLen += 4
 	}
 
 	maxNameLen := max(maxWidth-totalLen, 10)

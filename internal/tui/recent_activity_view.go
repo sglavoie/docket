@@ -64,6 +64,14 @@ func (m *RecentActivityModel) View() tea.View {
 		contentHeight--
 	}
 
+	// Reserve one row for the selected-task metadata strip when there is a
+	// task to describe.
+	var stripTask *CrossProjectTask
+	if len(m.filtered) > 0 && m.cursor >= 0 && m.cursor < len(m.filtered) {
+		stripTask = &m.filtered[m.cursor]
+		contentHeight = max(contentHeight-1, 1)
+	}
+
 	// Compute column layout for badge alignment.
 	var colLayout *ColumnLayout
 	if m.Width() >= MinColumnAlignWidth {
@@ -88,6 +96,20 @@ func (m *RecentActivityModel) View() tea.View {
 
 	visibleLines, _, _ := persistentLineWindow(lines, m.cursor, contentHeight, &m.viewScrollOffset)
 	b.WriteString(strings.Join(visibleLines, "\n"))
+	if stripTask != nil {
+		strip := renderTaskMetadataStrip(TaskMetadataStripOpts{
+			Task:    stripTask.Task,
+			Project: stripTask.Project,
+			Config:  m.config,
+			Width:   m.Width(),
+			AlreadyShown: TaskMetadataAlreadyShown{
+				Project:  m.projectScope != nil,
+				Priority: true,
+				Updated:  true,
+			},
+		})
+		b.WriteString("\n" + strip)
+	}
 	b.WriteString("\n\n")
 
 	left := HelpStyle.Render("j/k nav · Tab tabs · Enter open · p preview · , status · / filter · r refresh · ? help")
@@ -120,7 +142,6 @@ func (m *RecentActivityModel) renderTaskLine(dt CrossProjectTask, selected bool,
 		Pinned:       task.Pinned,
 		MaxTitle:     maxTitleLen,
 		PreBadges:    preBadges,
-		StageBadge:   GetStageBadge(task.Stage),
 		PostTitle:    relTime,
 		ViewWidth:    m.Width(),
 		Flash:        m.cursorFlash,

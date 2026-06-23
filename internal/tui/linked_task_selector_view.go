@@ -166,11 +166,6 @@ func (m *LinkedTaskSelectorModel) renderRelationLineAtWidth(rel LinkedTaskRelati
 
 	statusIcon := GetStatusBadge(string(rel.Task.Status), rel.Task.Status.Icon())
 	typeIcon := GetTypeBadge(string(rel.Task.Type), rel.Task.Type.Icon())
-	stageBadge := GetStageBadge(rel.Task.Stage)
-	stageSegment := ""
-	if stageBadge != "" {
-		stageSegment = stageBadge + " "
-	}
 
 	availableWidth := max(width-4, 20)
 	projectLabel := ""
@@ -179,7 +174,7 @@ func (m *LinkedTaskSelectorModel) renderRelationLineAtWidth(rel LinkedTaskRelati
 		projectLabel = MutedStyle.Render(fmt.Sprintf("[%s] ", projectName))
 	}
 
-	prefix := fmt.Sprintf("%s %s %s%s#%d ", statusIcon, typeIcon, stageSegment, projectLabel, rel.Task.ShortID)
+	prefix := fmt.Sprintf("%s %s %s#%d ", statusIcon, typeIcon, projectLabel, rel.Task.ShortID)
 	maxTitleLen := max(availableWidth-lipgloss.Width(prefix), 1)
 	title := truncateToVisualWidth(rel.Task.Title, maxTitleLen)
 	titleRendered := TaskTitleStyleFor(rel.Task, TaskTitleStyleOptions{

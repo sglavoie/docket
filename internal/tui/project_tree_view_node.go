@@ -82,19 +82,7 @@ func (m *ProjectTreeModel) renderNodeWithWidth(node *TreeNode, selected bool, in
 		typeIcon = PadBadge(typeIcon, m.colLayout.TypeWidth)
 	}
 
-	stageBadge := GetStageBadge(task.Stage)
-	var stageSegment string
-	if m.colLayout != nil && m.colLayout.HasStage {
-		if stageBadge == "" {
-			stageSegment = EmptyBadge(m.colLayout.StageWidth) + " "
-		} else {
-			stageSegment = PadBadge(stageBadge, m.colLayout.StageWidth) + " "
-		}
-	} else if stageBadge != "" {
-		stageSegment = stageBadge + " "
-	}
-
-	// Priority segment (inline, before stage)
+	// Priority segment (inline, before short ID)
 	var prioritySegment string
 	if m.colLayout != nil && m.colLayout.HasPriority {
 		var priorityBadge string
@@ -149,7 +137,7 @@ func (m *ProjectTreeModel) renderNodeWithWidth(node *TreeNode, selected bool, in
 	if m.colLayout != nil {
 		// Fixed-width path: compute exact overhead from column layout.
 		// format: cursor(3) + checkbox + indent(actual prefix) + expandIcon(2) + typeIcon(1) +
-		//         space(1) + statusIcon(1) + space(1) + prioritySegment + stageSegment + idStr
+		//         space(1) + statusIcon(1) + space(1) + prioritySegment + idStr
 		priorityW := 0
 		if m.colLayout.HasPriority {
 			priorityW = m.colLayout.PriorityWidth + 1
@@ -158,7 +146,7 @@ func (m *ProjectTreeModel) renderNodeWithWidth(node *TreeNode, selected bool, in
 		if m.colLayout.HasShortID {
 			idW = m.colLayout.ShortIDWidth + 1
 		}
-		baseUsed = 3 + 2 + lipgloss.Width(checkbox) + lipgloss.Width(node.TreePrefix) + 2 + 1 + 1 + 1 + 1 + priorityW + lipgloss.Width(stageSegment) + idW + progressWidth
+		baseUsed = 3 + 2 + lipgloss.Width(checkbox) + lipgloss.Width(node.TreePrefix) + 2 + 1 + 1 + 1 + 1 + priorityW + idW + progressWidth
 	} else {
 		// Approximate path (pre-existing logic).
 		baseOverhead := 16
@@ -193,8 +181,8 @@ func (m *ProjectTreeModel) renderNodeWithWidth(node *TreeNode, selected bool, in
 		title = titleStyle.Render(truncatedTitle)
 	}
 
-	content := fmt.Sprintf("%s%s%s%s%s %s %s%s%s%s%s%s",
-		queueIndicator, checkbox, indent, expandIcon, typeIcon, statusIcon, prioritySegment, stageSegment, idStr, title, progress, indicators)
+	content := fmt.Sprintf("%s%s%s%s%s %s %s%s%s%s%s",
+		queueIndicator, checkbox, indent, expandIcon, typeIcon, statusIcon, prioritySegment, idStr, title, progress, indicators)
 	isDimmed := task.Dimmed && !node.IsContextNode
 	isOverdue := task.IsOverdue()
 	isBlocked := task.Status == models.StatusBlocked || m.project.HasIncompleteDependencies(task)
@@ -316,12 +304,6 @@ func (m *ProjectTreeModel) renderQuickEditNode(node *TreeNode, maxWidth int) str
 	typeIcon := GetTypeBadge(string(task.Type), task.Type.Icon())
 	statusIcon := GetStatusBadge(string(task.Status), task.Status.Icon())
 
-	stageBadge := GetStageBadge(task.Stage)
-	stageSegment := ""
-	if stageBadge != "" {
-		stageSegment = stageBadge + " "
-	}
-
 	priorityBadge := renderPriorityBadge(task.Priority)
 	prioritySegment := ""
 	if priorityBadge != "" {
@@ -333,8 +315,7 @@ func (m *ProjectTreeModel) renderQuickEditNode(node *TreeNode, maxWidth int) str
 
 	// Calculate width for the text input
 	priorityW := lipgloss.Width(prioritySegment)
-	stageW := lipgloss.Width(stageSegment)
-	prefixWidth := indentWidth + 2 + 1 + 1 + priorityW + stageW + 5 + 1 // indent + typeIcon + space + statusIcon + space + priority + stage + idStr + space
+	prefixWidth := indentWidth + 2 + 1 + 1 + priorityW + 5 + 1 // indent + typeIcon + space + statusIcon + space + priority + idStr + space
 	inputWidth := max(maxWidth-prefixWidth-4, 20)
 	input := m.quickEdit.GetInput()
 	input.SetWidth(inputWidth)
@@ -344,7 +325,7 @@ func (m *ProjectTreeModel) renderQuickEditNode(node *TreeNode, maxWidth int) str
 	inputView := m.quickEdit.GetInput().View()
 
 	// Build prefix
-	prefix := fmt.Sprintf("%s%s %s %s%s%s ", indent, typeIcon, statusIcon, prioritySegment, stageSegment, idStr)
+	prefix := fmt.Sprintf("%s%s %s %s%s ", indent, typeIcon, statusIcon, prioritySegment, idStr)
 
 	// Build the edit line
 	editLine := prefix + inputView

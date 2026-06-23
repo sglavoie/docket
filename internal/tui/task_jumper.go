@@ -381,20 +381,13 @@ func (m *TaskJumperModel) renderTaskList() string {
 		// Type icon with badge style
 		typeIcon := GetTypeBadge(string(task.Type), task.Type.Icon())
 
-		// Stage badge (after type icon)
-		stageBadge := GetStageBadge(task.Stage)
-		stageSegment := ""
-		if stageBadge != "" {
-			stageSegment = stageBadge + " "
-		}
-
 		// Status icon with badge style
 		statusIcon := GetStatusBadge(string(task.Status), task.Status.Icon())
 
 		// Short ID
 		shortID := MutedStyle.Render(fmt.Sprintf("#%-4d", task.ShortID))
 
-		prefix := fmt.Sprintf("%s%s %s%s %s ", cursor, typeIcon, stageSegment, statusIcon, shortID)
+		prefix := fmt.Sprintf("%s%s %s %s ", cursor, typeIcon, statusIcon, shortID)
 		available := max(m.listWidth-lipgloss.Width(prefix), 1)
 		projectSuffix := ""
 		if m.isCrossProject() && ft.project != nil {
@@ -481,6 +474,13 @@ func (m *TaskJumperModel) renderPreview() string {
 	fmt.Fprintf(&b, "%s %s\n",
 		MutedStyle.Render("Type:"),
 		typeStyle.Render(task.Type.HeadingPrefix()))
+
+	// Stage
+	if stageBadge := GetStageBadge(task.Stage); stageBadge != "" {
+		fmt.Fprintf(&b, "%s %s\n",
+			MutedStyle.Render("Stage:"),
+			stageBadge)
+	}
 
 	// Tags
 	if len(task.Tags) > 0 {

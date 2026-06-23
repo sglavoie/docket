@@ -236,16 +236,9 @@ func (m *DependencySelectorModel) renderTaskList() string {
 		// Type icon with badge style
 		typeIcon := GetTypeBadge(string(t.Type), t.Type.Icon())
 
-		// Stage badge (after type icon)
-		stageBadge := GetStageBadge(t.Stage)
-		stageSegment := ""
-		if stageBadge != "" {
-			stageSegment = stageBadge + " "
-		}
-
 		// Task info
 		idStr := MutedStyle.Render(fmt.Sprintf("#%d", t.ShortID))
-		prefix := fmt.Sprintf("%s%s %s %s%s %s ", cursor, checkbox, typeIcon, stageSegment, statusIcon, idStr)
+		prefix := fmt.Sprintf("%s%s %s %s %s ", cursor, checkbox, typeIcon, statusIcon, idStr)
 		title := truncateToVisualWidth(t.Title, max(m.Width()-lipgloss.Width(prefix), 1))
 		titleRendered := TaskTitleStyleFor(t, TaskTitleStyleOptions{
 			CursorSelected: i == m.Cursor,
