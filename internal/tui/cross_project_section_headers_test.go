@@ -304,6 +304,13 @@ func TestCrossProjectRebuildRowsSortsAllSharedSectionRowsByProjectName(t *testin
 		if row.IsSeparator {
 			t.Fatalf("All perspective should not emit project separators")
 		}
+		if row.IsProjectHeader {
+			// Project sub-headers are synthetic, render-only rows; this
+			// test asserts the order of task rows under the shared section
+			// header, so skip the headers here. Their ordering is implied
+			// by the ordering of the task rows that follow them.
+			continue
+		}
 		got = append(got, row.ProjectID)
 	}
 

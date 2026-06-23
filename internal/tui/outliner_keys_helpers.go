@@ -300,14 +300,14 @@ func (m *OutlinerModel) visibleSiblings(cursorIdx int) []*models.Task {
 		return nil
 	}
 	cursorRow := m.rows[cursorIdx]
-	if cursorRow.IsSectionHeader || cursorRow.IsSeparator || cursorRow.task == nil {
+	if !cursorRow.isTaskRow() || cursorRow.task == nil {
 		return nil
 	}
 	cursorParentID := parentIDOf(cursorRow.task)
 	cursorProjectID := cursorRow.ProjectID
 
 	inRun := func(row outlinerRow) bool {
-		if row.IsSectionHeader || row.IsSeparator || row.task == nil {
+		if !row.isTaskRow() || row.task == nil {
 			return false
 		}
 		if parentIDOf(row.task) != cursorParentID {
@@ -345,7 +345,7 @@ func (m *OutlinerModel) visibleSiblings(cursorIdx int) []*models.Task {
 // Falls back to clamping if the task is not found in the current rows.
 func (m *OutlinerModel) moveCursorToTask(taskID string) {
 	for i, row := range m.rows {
-		if !row.IsSectionHeader && row.task != nil && row.task.ID == taskID {
+		if row.isTaskRow() && row.task != nil && row.task.ID == taskID {
 			m.cursor = i
 			return
 		}

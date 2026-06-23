@@ -140,7 +140,7 @@ func (m *OutlinerModel) getConfigManager() *config.Manager { return m.configMana
 func (m *OutlinerModel) getCursorTask() *models.Task {
 	if len(m.rows) > 0 && m.cursor >= 0 && m.cursor < len(m.rows) {
 		row := m.rows[m.cursor]
-		if !row.IsSectionHeader && !row.IsSeparator {
+		if row.isTaskRow() {
 			return row.task
 		}
 	}

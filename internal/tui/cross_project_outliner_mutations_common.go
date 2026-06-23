@@ -23,7 +23,7 @@ func (m *OutlinerModel) crossResolveProject(projectID string) *models.Project {
 // and ok=true when a valid single-task mutation target exists:
 //   - cross-project mode (m.project == nil)
 //   - cursor within bounds
-//   - row is not a separator or section header
+//   - row is a task row (not a separator, section header, or project sub-header)
 //   - row has a non-nil task
 //   - ProjectID resolves to a loaded project
 func (m *OutlinerModel) crossGetMutationTarget() (row outlinerRow, proj *models.Project, ok bool) {
@@ -31,7 +31,7 @@ func (m *OutlinerModel) crossGetMutationTarget() (row outlinerRow, proj *models.
 		return outlinerRow{}, nil, false
 	}
 	row = m.rows[m.cursor]
-	if row.IsSeparator || row.IsSectionHeader || row.task == nil {
+	if !row.isTaskRow() || row.task == nil {
 		return outlinerRow{}, nil, false
 	}
 	proj = m.crossResolveProject(row.ProjectID)

@@ -292,9 +292,31 @@ func (m *OutlinerModel) toggleSort(field SortField) {
 	m.rebuildRows()
 }
 
-// clampCursor ensures the cursor stays within [0, len(rows)-1].
+// clampCursor ensures the cursor stays within [0, len(rows)-1] and never
+// rests on a non-navigable row (project sub-header or separator). The cursor
+// is allowed to settle on section headers (which act as collapse toggles) and
+// task rows. Project sub-headers are visual-only and must never be selected
+// after a rebuild, filter, collapse, paging, or perspective change.
 func (m *OutlinerModel) clampCursor() {
 	m.ClampCursorTo(len(m.rows))
+	if len(m.rows) == 0 {
+		return
+	}
+	if m.rows[m.cursor].isNavigable() {
+		return
+	}
+	for i := m.cursor + 1; i < len(m.rows); i++ {
+		if m.rows[i].isNavigable() {
+			m.cursor = i
+			return
+		}
+	}
+	for i := m.cursor - 1; i >= 0; i-- {
+		if m.rows[i].isNavigable() {
+			m.cursor = i
+			return
+		}
+	}
 }
 
 const crossProjectPinnedTagTabKey = "_cross_project_pinned_tag_tab"

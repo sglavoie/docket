@@ -526,7 +526,7 @@ func (m *OutlinerModel) crossStatusBarLabel() string {
 	}
 	taskCount := 0
 	for _, row := range m.rows {
-		if !row.IsSeparator && !row.IsSectionHeader {
+		if row.isTaskRow() {
 			taskCount++
 		}
 	}

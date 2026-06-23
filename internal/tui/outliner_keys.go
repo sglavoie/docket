@@ -67,9 +67,10 @@ func (m *OutlinerModel) handleKeyMsg(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		return model, cmd
 	}
 
-	// onHeader is true when the cursor rests on a section header or separator row.
+	// onHeader is true when the cursor rests on any non-task row (section header,
+	// separator, or project sub-header).
 	onHeader := len(m.rows) > 0 && m.cursor >= 0 && m.cursor < len(m.rows) &&
-		(m.rows[m.cursor].IsSectionHeader || m.rows[m.cursor].IsSeparator)
+		!m.rows[m.cursor].isTaskRow()
 
 	if model, cmd, handled := m.handleTaskMutationKey(key, onHeader); handled {
 		return model, cmd

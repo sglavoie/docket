@@ -12,10 +12,14 @@ type projectTasksGroup struct {
 
 // buildCrossProjectRowsWithSectionHeaders groups tasks from multiple projects
 // under canonical GTD section headers. One shared header is emitted per
-// section; tasks from all projects in that section appear underneath it.
+// section; within each non-collapsed section, a synthetic project sub-header
+// is emitted before that project's task rows so that the All perspective
+// visually clusters tasks first by section and then by project.
 // Empty sections are skipped. Task rows carry the ProjectID of their owning
-// project (for color badge rendering); header rows have no ProjectID so that
-// no per-project label is rendered on the shared header.
+// project (for color badge rendering); section header rows have no ProjectID
+// so that no per-project label is rendered on the shared header, while
+// project sub-header rows carry the owning project's ID for later renderer
+// resolution (display name/slug) and navigation skipping.
 func (m *OutlinerModel) buildCrossProjectRowsWithSectionHeaders(groups []projectTasksGroup) {
 	// Bucket tasks by section within each project, preserving project identity.
 	type sectionGroup struct {
@@ -69,6 +73,17 @@ func (m *OutlinerModel) buildCrossProjectRowsWithSectionHeaders(groups []project
 
 		if !m.collapsedSections[collapseKey] {
 			for _, pg := range projGroups {
+				// Emit a synthetic, render-only project sub-header before each
+				// project's task rows. This row carries the project's ID so the
+				// renderer can resolve the display name/slug, but it owns no
+				// task and is skipped by keyboard navigation and bulk
+				// operations (see outlinerRow.isTaskRow). Task hierarchy and
+				// project data are not mutated — sub-headers exist purely for
+				// visual grouping.
+				m.rows = append(m.rows, outlinerRow{
+					IsProjectHeader: true,
+					ProjectID:       pg.projectID,
+				})
 				m.flattenTaskTreeWithFoldsAndProjectID(pg.tasks, nil, pg.projectID, &m.rows)
 			}
 		}

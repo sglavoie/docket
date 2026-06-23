@@ -111,7 +111,7 @@ func (m *OutlinerModel) toggleSectionFoldAtCursor() bool {
 	switch {
 	case row.IsSectionHeader:
 		headerIndex = m.cursor
-	case row.IsSeparator:
+	case row.IsSeparator, row.IsProjectHeader:
 		return false
 	case row.task != nil:
 		for i := m.cursor - 1; i >= 0; i-- {

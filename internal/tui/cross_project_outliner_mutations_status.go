@@ -52,7 +52,7 @@ func (m *OutlinerModel) crossHandleStatusMutation(status models.TaskStatus) (tea
 func (m *OutlinerModel) crossApplyBulkStatusChange(newStatus models.TaskStatus) (tea.Model, tea.Cmd) {
 	var tasks []*models.Task
 	for _, row := range m.rows {
-		if row.IsSeparator || row.IsSectionHeader || row.task == nil {
+		if !row.isTaskRow() || row.task == nil {
 			continue
 		}
 		if m.selectedTasks[row.task.ID] {

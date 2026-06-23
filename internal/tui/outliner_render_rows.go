@@ -19,7 +19,7 @@ func (m *OutlinerModel) renderOutlinerRows(viewport outlinerViewport, width int)
 		// the selected-task metadata strip so it is no longer measured here.
 		var visibleTasks []*models.Task
 		for _, row := range m.rows[viewport.startIdx:viewport.endIdx] {
-			if row.IsSectionHeader || row.IsSeparator || row.task == nil {
+			if !row.isTaskRow() || row.task == nil {
 				continue
 			}
 			visibleTasks = append(visibleTasks, row.task)
@@ -52,6 +52,8 @@ func (m *OutlinerModel) renderOutlinerRows(viewport outlinerViewport, width int)
 			continue
 		case row.IsSectionHeader:
 			rowBuilder.WriteString(m.renderOutlinerSectionHeaderRow(row, selected, viewport.rowWidth, i))
+		case row.IsProjectHeader:
+			rowBuilder.WriteString(m.renderOutlinerProjectHeaderRow(row, selected, viewport.rowWidth, i))
 		default:
 			rowBuilder.WriteString(m.renderOutlinerTaskRow(row, selected, viewport.rowWidth, viewport.rowWidth, i, colLayout))
 		}
@@ -87,6 +89,34 @@ func (m *OutlinerModel) renderOutlinerSectionHeaderRow(row outlinerRow, selected
 	if row.ProjectID != "" {
 		line += "  " + MutedStyle.Render("["+m.projectNameByID(row.ProjectID)+"]")
 	}
+
+	if selected {
+		if m.mutationFlash {
+			return MutationFlashLine(line, rowWidth, m.mutationFlashBg)
+		}
+		if m.cursorFlash {
+			return SelectedFlashLine(line, rowWidth)
+		}
+		return SelectedLine(line, rowWidth)
+	}
+
+	return ZebraLine(line, rowWidth, rowIndex)
+}
+
+// renderOutlinerProjectHeaderRow renders a synthetic project sub-header row
+// that visually clusters tasks of the same project beneath a shared
+// cross-project section header in the All perspective. The header reuses the
+// per-project badge color and slug text so the inline `[slug]` badges on
+// individual task rows can be suppressed. Sub-headers are skipped by keyboard
+// navigation; the selected styling branches are kept defensive only.
+func (m *OutlinerModel) renderOutlinerProjectHeaderRow(row outlinerRow, selected bool, rowWidth, rowIndex int) string {
+	projName := m.projectNameByID(row.ProjectID)
+	projSlug := m.projectSlugByID(row.ProjectID)
+	badge := lipgloss.NewStyle().
+		Foreground(lipgloss.Color(projectBadgeColor(projName))).
+		Bold(true).
+		Render("[" + projSlug + "]")
+	line := "    " + badge
 
 	if selected {
 		if m.mutationFlash {
@@ -179,6 +209,14 @@ func (m *OutlinerModel) renderTaskFoldIndicator(task *models.Task) string {
 
 func (m *OutlinerModel) renderTaskProjectBadge(row outlinerRow) string {
 	if row.ProjectID == "" {
+		return ""
+	}
+	// Suppress the per-task `[slug]` badge in the cross-project All perspective:
+	// each task already appears beneath a project sub-header that carries the
+	// same colored badge, so repeating it on every task adds visual noise.
+	// Other cross-project perspectives (Active, Priority, …) keep the badge
+	// because they do not emit project sub-headers.
+	if m.project == nil && !m.isActiveCrossPriority() && m.currentPerspective().Name == "All" {
 		return ""
 	}
 

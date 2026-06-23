@@ -74,7 +74,7 @@ func (b *outlinerKeymapBuilder) currentRow() *outlinerRow {
 
 func (b *outlinerKeymapBuilder) cursorTask() *models.Task {
 	row := b.currentRow()
-	if row == nil || row.IsSectionHeader || row.IsSeparator {
+	if row == nil || !row.isTaskRow() {
 		return nil
 	}
 
@@ -91,7 +91,7 @@ func (b *outlinerKeymapBuilder) hasTaskActionTarget() bool {
 
 func (b *outlinerKeymapBuilder) onHeader() bool {
 	row := b.currentRow()
-	return row != nil && (row.IsSectionHeader || row.IsSeparator)
+	return row != nil && !row.isTaskRow()
 }
 
 func (b *outlinerKeymapBuilder) gateOnTask(entries []keymap.Entry) []keymap.Entry {

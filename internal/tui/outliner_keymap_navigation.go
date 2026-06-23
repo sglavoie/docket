@@ -15,7 +15,7 @@ func (b *outlinerKeymapBuilder) navigationEntries() []keymap.Entry {
 			prev := m.cursor
 			handled, cmd := handleListNavigation("j", &m.cursor, len(m.rows), m.contentHeight(), &m.cursorFlash)
 			if handled {
-				return m.crossSkipSeparators(prev, cmd)
+				return m.crossSkipNonNavigableRows(prev, cmd)
 			}
 			return m, nil
 		},
@@ -23,7 +23,7 @@ func (b *outlinerKeymapBuilder) navigationEntries() []keymap.Entry {
 			prev := m.cursor
 			handled, cmd := handleListNavigation("k", &m.cursor, len(m.rows), m.contentHeight(), &m.cursorFlash)
 			if handled {
-				return m.crossSkipSeparators(prev, cmd)
+				return m.crossSkipNonNavigableRows(prev, cmd)
 			}
 			return m, nil
 		},
@@ -31,7 +31,7 @@ func (b *outlinerKeymapBuilder) navigationEntries() []keymap.Entry {
 			prev := m.cursor
 			handled, cmd := handleListNavigation("G", &m.cursor, len(m.rows), m.contentHeight(), &m.cursorFlash)
 			if handled {
-				return m.crossSkipSeparators(prev, cmd)
+				return m.crossSkipNonNavigableRows(prev, cmd)
 			}
 			return m, nil
 		},
@@ -39,7 +39,7 @@ func (b *outlinerKeymapBuilder) navigationEntries() []keymap.Entry {
 			prev := m.cursor
 			handled, cmd := handleListNavigation("ctrl+u", &m.cursor, len(m.rows), m.contentHeight(), &m.cursorFlash)
 			if handled {
-				return m.crossSkipSeparators(prev, cmd)
+				return m.crossSkipNonNavigableRows(prev, cmd)
 			}
 			return m, nil
 		},
@@ -47,7 +47,7 @@ func (b *outlinerKeymapBuilder) navigationEntries() []keymap.Entry {
 			prev := m.cursor
 			handled, cmd := handleListNavigation("ctrl+d", &m.cursor, len(m.rows), m.contentHeight(), &m.cursorFlash)
 			if handled {
-				return m.crossSkipSeparators(prev, cmd)
+				return m.crossSkipNonNavigableRows(prev, cmd)
 			}
 			return m, nil
 		},

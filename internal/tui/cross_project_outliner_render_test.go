@@ -39,20 +39,17 @@ func TestCrossProjectOutlinerRenderDarkThemeVisualElements(t *testing.T) {
 	assertContains(t, rendered, GetViewModeStyleForSection(models.SectionNext).Bold(true).Render("@ Next"), "styled Next section")
 	assertContains(t, rendered, MutedStyle.Render("(1)"), "styled Inbox count")
 	assertContains(t, rendered, MutedStyle.Render("(2)"), "styled Next count")
-	assertContains(t, rendered, renderedProjectBadge("Alpha Project", "alpha"), "styled Alpha project badge")
-	assertContains(t, rendered, renderedProjectBadge("Beta Project", "beta"), "styled Beta project badge")
+	assertContains(t, rendered, renderedProjectHeaderBadge("Alpha Project", "alpha"), "styled Alpha project sub-header badge")
+	assertContains(t, rendered, renderedProjectHeaderBadge("Beta Project", "beta"), "styled Beta project sub-header badge")
 
 	selectedLine := findRenderedLineContaining(t, rendered, "#42")
 	selectedPlain := ansi.Strip(selectedLine)
-	assertContains(t, selectedPlain, "[alpha]", "selected project badge text")
+	assertNotContains(t, selectedPlain, "[alpha]", "per-task project badge suppressed in cross-project All perspective")
 	assertContains(t, selectedPlain, "Selected child carries rendered metadata clearly", "selected title")
 	assertContains(t, selectedPlain, "#42", "selected short ID metadata")
 	assertContains(t, selectedPlain, "#ops #today", "selected tag metadata")
 	if selectedLine == selectedPlain {
 		t.Fatalf("selected row has no ANSI styling applied: %q", selectedLine)
-	}
-	if strings.Contains(selectedLine, renderedProjectBadge("Alpha Project", "alpha")) {
-		t.Fatalf("selected row retained nested project badge styling instead of selected-row repainting: %q", selectedLine)
 	}
 
 	for i, line := range strings.Split(strings.TrimRight(rendered, "\n"), "\n") {
@@ -74,12 +71,12 @@ func TestCrossProjectOutlinerRenderTreePrefixesFoldIndicatorsAndTruncation(t *te
 	parentLine := m.renderOutlinerTaskRow(m.rows[parentIdx], false, rowWidth, rowWidth, parentIdx, nil)
 	parentPlain := ansi.Strip(parentLine)
 	assertContains(t, parentPlain, connectorLastItem+IconExpanded, "expanded parent tree prefix")
-	assertContains(t, parentPlain, "[alpha]", "parent project badge")
+	assertNotContains(t, parentPlain, "[alpha]", "per-task project badge suppressed in cross-project All perspective")
 
 	childLine := m.renderOutlinerTaskRow(m.rows[childIdx], true, rowWidth, rowWidth, childIdx, nil)
 	childPlain := ansi.Strip(childLine)
 	assertContains(t, childPlain, connectorSpace+"└────", "leaf tree prefix substitute")
-	assertContains(t, childPlain, "[alpha]", "child project badge")
+	assertNotContains(t, childPlain, "[alpha]", "per-task project badge suppressed in cross-project All perspective")
 	assertContains(t, childPlain, "#42", "child short ID metadata")
 	assertContains(t, childPlain, "#ops #today", "child tag metadata")
 	assertContains(t, childPlain, "Selected child ca", "truncated child title prefix")
@@ -308,6 +305,13 @@ func renderedProjectBadge(projectName, slug string) string {
 		Render("[" + slug + "]")
 }
 
+func renderedProjectHeaderBadge(projectName, slug string) string {
+	return lipgloss.NewStyle().
+		Foreground(lipgloss.Color(projectBadgeColor(projectName))).
+		Bold(true).
+		Render("[" + slug + "]")
+}
+
 func findOutlinerRowIndex(t *testing.T, rows []outlinerRow, taskID string) int {
 	t.Helper()
 
@@ -349,5 +353,133 @@ func assertNotContains(t *testing.T, got, want, label string) {
 
 	if strings.Contains(got, want) {
 		t.Fatalf("%s: expected %q not to contain %q", label, got, want)
+	}
+}
+
+// TestCrossProjectNonAllPerspectiveOmitsProjectSubHeaders verifies the
+// suppression contract for non-All cross-project perspectives: no synthetic
+// project sub-header rows are emitted, and every task row still carries the
+// inline `[slug]` project badge (which is suppressed only in the All
+// perspective where the sub-header carries the project identity).
+func TestCrossProjectNonAllPerspectiveOmitsProjectSubHeaders(t *testing.T) {
+	ApplyTheme(ThemeConfig{Name: ""})
+	t.Cleanup(func() { ApplyTheme(ThemeConfig{}) })
+
+	const width = 100
+	cfg := config.NewConfig()
+	m := NewOutlinerModel(nil, cfg, nil)
+	m.SetSize(width, 18)
+
+	alphaTask := renderFixtureTask(t, "alpha-active", 1, models.TaskTypeTask, "Alpha active item", models.StatusInProgress, 2, "")
+	betaTask := renderFixtureTask(t, "beta-active", 2, models.TaskTypeTask, "Beta active item", models.StatusInProgress, 2, "")
+	alpha := renderFixtureProject(t, "proj-alpha", "alpha", "Alpha Project", []*models.Task{alphaTask})
+	beta := renderFixtureProject(t, "proj-beta", "beta", "Beta Project", []*models.Task{betaTask})
+
+	m.loadedProjects = []*models.Project{alpha, beta}
+	m.activePerspective = 2 // Active
+	m.crossForceRebuild = true
+	m.crossProjectRebuildRows()
+
+	for i, row := range m.rows {
+		if row.IsProjectHeader {
+			t.Fatalf("row[%d] is IsProjectHeader; non-All perspective must not emit project sub-headers", i)
+		}
+		if row.IsSectionHeader {
+			t.Fatalf("row[%d] is IsSectionHeader; non-All perspective must not emit GTD section headers", i)
+		}
+	}
+
+	rendered := m.renderOutlinerTreeContent(width)
+	plain := ansi.Strip(rendered)
+	assertContains(t, plain, "[alpha]", "non-All perspective preserves inline alpha project badge")
+	assertContains(t, plain, "[beta]", "non-All perspective preserves inline beta project badge")
+	assertNotContains(t, rendered, renderedProjectHeaderBadge("Alpha Project", "alpha"), "non-All perspective must not render bold project sub-header badge")
+	assertNotContains(t, rendered, renderedProjectHeaderBadge("Beta Project", "beta"), "non-All perspective must not render bold project sub-header badge")
+}
+
+// TestCrossProjectPriorityModeOmitsProjectSubHeaders verifies that the
+// cross-project Priority mode never emits IsProjectHeader rows and keeps the
+// per-task inline `[slug]` badge visible (Priority mode buckets tasks
+// individually and has no per-project visual grouping).
+func TestCrossProjectPriorityModeOmitsProjectSubHeaders(t *testing.T) {
+	ApplyTheme(ThemeConfig{Name: ""})
+	t.Cleanup(func() { ApplyTheme(ThemeConfig{}) })
+
+	const width = 100
+	cfg := config.NewConfig()
+	m := NewOutlinerModel(nil, cfg, nil)
+	m.SetSize(width, 18)
+
+	alphaTask := makePriorityTask("alpha-prio", "Alpha priority item", intPtr(0))
+	alphaTask.Priority = 1
+	betaTask := makePriorityTask("beta-prio", "Beta priority item", intPtr(0))
+	betaTask.Priority = 1
+	alpha := renderFixtureProject(t, "proj-alpha", "alpha", "Alpha Project", []*models.Task{alphaTask})
+	beta := renderFixtureProject(t, "proj-beta", "beta", "Beta Project", []*models.Task{betaTask})
+
+	m.loadedProjects = []*models.Project{alpha, beta}
+	m.enterCrossPriorityMode()
+	m.crossProjectRebuildRows()
+
+	for i, row := range m.rows {
+		if row.IsProjectHeader {
+			t.Fatalf("row[%d] is IsProjectHeader; Priority mode must not emit project sub-headers", i)
+		}
+	}
+
+	rendered := m.renderOutlinerTreeContent(width)
+	plain := ansi.Strip(rendered)
+	assertContains(t, plain, "[alpha]", "Priority mode preserves inline alpha project badge")
+	assertContains(t, plain, "[beta]", "Priority mode preserves inline beta project badge")
+	assertNotContains(t, rendered, renderedProjectHeaderBadge("Alpha Project", "alpha"), "Priority mode must not render bold project sub-header badge")
+	assertNotContains(t, rendered, renderedProjectHeaderBadge("Beta Project", "beta"), "Priority mode must not render bold project sub-header badge")
+}
+
+// TestCrossProjectAllPerspectiveCollapsedSectionHidesProjectSubHeaders
+// verifies that collapsing a shared GTD section header in the All perspective
+// also hides every project sub-header beneath that section: the section
+// header remains visible (and collapsed), but no IsProjectHeader rows are
+// emitted for the collapsed section.
+func TestCrossProjectAllPerspectiveCollapsedSectionHidesProjectSubHeaders(t *testing.T) {
+	const width = 100
+	cfg := config.NewConfig()
+	m := NewOutlinerModel(nil, cfg, nil)
+	m.SetSize(width, 18)
+
+	alphaTask := renderFixtureTask(t, "alpha-next", 1, models.TaskTypeTask, "Alpha next item", models.StatusTodo, 2, models.SectionNext)
+	betaTask := renderFixtureTask(t, "beta-next", 2, models.TaskTypeTask, "Beta next item", models.StatusTodo, 2, models.SectionNext)
+	alpha := renderFixtureProject(t, "proj-alpha", "alpha", "Alpha Project", []*models.Task{alphaTask})
+	beta := renderFixtureProject(t, "proj-beta", "beta", "Beta Project", []*models.Task{betaTask})
+
+	m.loadedProjects = []*models.Project{alpha, beta}
+	m.activePerspective = PerspectiveAll
+	m.crossForceRebuild = true
+	m.crossProjectRebuildRows()
+
+	projectHeadersWhenExpanded := 0
+	for _, row := range m.rows {
+		if row.IsProjectHeader {
+			projectHeadersWhenExpanded++
+		}
+	}
+	if projectHeadersWhenExpanded != 2 {
+		t.Fatalf("expected 2 project sub-headers under expanded @ Next section, got %d", projectHeadersWhenExpanded)
+	}
+
+	m.collapsedSections["_xp:"+models.SectionNext] = true
+	m.crossForceRebuild = true
+	m.crossProjectRebuildRows()
+
+	sawNextHeader := false
+	for i, row := range m.rows {
+		if row.IsProjectHeader {
+			t.Fatalf("row[%d] is IsProjectHeader; collapsed section must hide all project sub-headers", i)
+		}
+		if row.IsSectionHeader && row.SectionName == models.SectionNext {
+			sawNextHeader = true
+		}
+	}
+	if !sawNextHeader {
+		t.Fatal("collapsed Next section header should still render even when collapsed")
 	}
 }

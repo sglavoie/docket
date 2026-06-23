@@ -45,7 +45,7 @@ func (m *OutlinerModel) renderOutlinerTreeContent(width int) string {
 	var stripTask *models.Task
 	if stripReserved {
 		row := m.rows[m.cursor]
-		if !row.IsSectionHeader && !row.IsSeparator {
+		if row.isTaskRow() {
 			stripTask = row.task
 		}
 	}
@@ -322,7 +322,7 @@ func (m *OutlinerModel) computeOutlinerViewport(width int, extraFooterLines int)
 		visibleRows = max(visibleRows-searchHelpHeight, 1)
 	}
 
-	if m.previewMode && m.cursor >= 0 && m.cursor < len(m.rows) && !m.rows[m.cursor].IsSectionHeader {
+	if m.previewMode && m.cursor >= 0 && m.cursor < len(m.rows) && m.rows[m.cursor].isTaskRow() {
 		visibleRows = max(visibleRows-inlinePreviewLineCount(m.rows[m.cursor].task), 1)
 	}
 

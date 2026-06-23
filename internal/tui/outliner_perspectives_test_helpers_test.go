@@ -109,6 +109,13 @@ func rowTitles(rows []outlinerRow) []string {
 		if r.IsSeparator {
 			continue
 		}
+		if r.IsProjectHeader {
+			// Project sub-headers are synthetic, render-only rows in the
+			// All perspective; treat them as visual-only for title-based
+			// assertions so existing tests stay focused on section
+			// headers and task rows.
+			continue
+		}
 		if r.IsSectionHeader {
 			displayName := r.SectionName
 			if displayName == "" {

@@ -12,7 +12,7 @@ func (m *OutlinerModel) getTaskRef() (*models.Task, *models.Project) {
 	}
 
 	row := m.rows[m.cursor]
-	if row.IsSectionHeader || row.IsSeparator {
+	if !row.isTaskRow() {
 		return nil, nil
 	}
 	if m.project != nil {
@@ -30,14 +30,15 @@ func (m *OutlinerModel) getTaskRef() (*models.Task, *models.Project) {
 // cursorProject returns the project that owns the row under the cursor.
 // Single-project mode returns m.project; cross-project mode resolves
 // row.ProjectID via m.loadedProjects. Returns nil for empty rows, an
-// out-of-range cursor, section headers, separators, rows without a task,
-// or stale project IDs that no longer match any loaded project.
+// out-of-range cursor, section headers, separators, project sub-headers,
+// rows without a task, or stale project IDs that no longer match any loaded
+// project.
 func (m *OutlinerModel) cursorProject() *models.Project {
 	if len(m.rows) == 0 || m.cursor < 0 || m.cursor >= len(m.rows) {
 		return nil
 	}
 	row := m.rows[m.cursor]
-	if row.IsSectionHeader || row.IsSeparator || row.task == nil {
+	if !row.isTaskRow() || row.task == nil {
 		return nil
 	}
 	if m.project != nil {
@@ -66,7 +67,7 @@ func (m *OutlinerModel) toggleMultiSelectMode() {
 // selectAllVisible adds all currently visible rows to the selection.
 func (m *OutlinerModel) selectAllVisible() {
 	for _, row := range m.rows {
-		if row.IsSectionHeader || row.IsSeparator || row.task == nil {
+		if !row.isTaskRow() || row.task == nil {
 			continue
 		}
 		m.selectedTasks[row.task.ID] = true
@@ -76,7 +77,7 @@ func (m *OutlinerModel) selectAllVisible() {
 // deselectAllVisible removes all currently visible rows from the selection.
 func (m *OutlinerModel) deselectAllVisible() {
 	for _, row := range m.rows {
-		if row.IsSectionHeader || row.IsSeparator || row.task == nil {
+		if !row.isTaskRow() || row.task == nil {
 			continue
 		}
 		delete(m.selectedTasks, row.task.ID)
@@ -90,7 +91,7 @@ func (m *OutlinerModel) pruneInvisibleSelections() {
 	}
 	visibleIDs := make(map[string]bool, len(m.rows))
 	for _, row := range m.rows {
-		if row.IsSectionHeader || row.IsSeparator || row.task == nil {
+		if !row.isTaskRow() || row.task == nil {
 			continue
 		}
 		visibleIDs[row.task.ID] = true
@@ -109,7 +110,7 @@ func (m *OutlinerModel) getSelectedTasks() []*models.Task {
 	if m.project == nil {
 		var tasks []*models.Task
 		for _, row := range m.rows {
-			if row.IsSectionHeader || row.IsSeparator || row.task == nil {
+			if !row.isTaskRow() || row.task == nil {
 				continue
 			}
 			if m.selectedTasks[row.task.ID] {
@@ -141,7 +142,7 @@ func (m *OutlinerModel) getSelectedTaskProjectRefs() []TaskProjectRef {
 
 	refs := make([]TaskProjectRef, 0, len(m.selectedTasks))
 	for _, row := range m.rows {
-		if row.IsSectionHeader || row.IsSeparator || row.task == nil {
+		if !row.isTaskRow() || row.task == nil {
 			continue
 		}
 		if !m.selectedTasks[row.task.ID] {

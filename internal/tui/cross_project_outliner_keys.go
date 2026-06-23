@@ -46,8 +46,9 @@ func (m *OutlinerModel) crossInterceptCreationKeys(key string) (tea.Model, tea.C
 
 // crossHandlePerspectiveCycle handles h/l perspective cycling for the
 // cross-project outliner. It changes activePerspective, sets forceRebuild via
-// rebuildRows, rebuilds rows, then skips past any separator the cursor may
-// have landed on after the row list is reconstructed.
+// rebuildRows, rebuilds rows, then skips past any non-navigable row (separator
+// or project sub-header) the cursor may have landed on after the row list is
+// reconstructed.
 func (m *OutlinerModel) crossHandlePerspectiveCycle(key string) (tea.Model, tea.Cmd) {
 	perspCount := len(PerspectivePresets())
 	prevCursor := m.cursor
@@ -59,66 +60,68 @@ func (m *OutlinerModel) crossHandlePerspectiveCycle(key string) (tea.Model, tea.
 	}
 	m.resetViewScrollOffset()
 	m.rebuildRows()
-	return m.crossSkipSeparators(prevCursor, nil)
+	return m.crossSkipNonNavigableRows(prevCursor, nil)
 }
 
 // crossHandlePerspectiveJump handles P0-P9 direct perspective jumps for the
 // cross-project outliner. It sets activePerspective, forces a rebuild via
-// rebuildRows, then skips past any separator the cursor may have landed on.
+// rebuildRows, then skips past any non-navigable row the cursor may have
+// landed on.
 func (m *OutlinerModel) crossHandlePerspectiveJump(perspKey int) (tea.Model, tea.Cmd) {
 	prevCursor := m.cursor
 	m.activePerspective = perspKey
 	m.resetViewScrollOffset()
 	m.rebuildRows()
-	return m.crossSkipSeparators(prevCursor, nil)
+	return m.crossSkipNonNavigableRows(prevCursor, nil)
 }
 
-// crossSkipSeparators advances the cursor past any contiguous IsSeparator rows
-// after a cursor movement, ensuring the cursor never lands on a separator.
+// crossSkipNonNavigableRows advances the cursor past any contiguous
+// non-navigable rows (separators and project sub-headers) after a cursor
+// movement, ensuring the cursor only rests on section headers or task rows.
 //
 // It uses prevCursor to determine the direction of travel:
-//   - Moving up (cursor < prevCursor): walks backward until a non-separator or
-//     index 0 is reached, handling separators at the top.
-//   - Moving down (cursor >= prevCursor): walks forward until a non-separator
+//   - Moving up (cursor < prevCursor): walks backward until a navigable row or
+//     index 0 is reached, handling non-navigable rows at the top.
+//   - Moving down (cursor >= prevCursor): walks forward until a navigable row
 //     is found, then clamps to the last row if the end is overshot, handling
-//     separators at the bottom.
+//     non-navigable rows at the bottom.
 //
-// Multiple consecutive separators are handled because each iteration of the
-// loop advances one row, so the loop continues until a non-separator is found
-// or a boundary is hit.
+// Multiple consecutive non-navigable rows are handled because each iteration
+// of the loop advances one row, so the loop continues until a navigable row
+// is found or a boundary is hit.
 //
 // cmd is the Cmd returned by handleListNavigation and is passed through
 // unchanged so the caller can return it directly.
-func (m *OutlinerModel) crossSkipSeparators(prevCursor int, cmd tea.Cmd) (tea.Model, tea.Cmd) {
+func (m *OutlinerModel) crossSkipNonNavigableRows(prevCursor int, cmd tea.Cmd) (tea.Model, tea.Cmd) {
 	if len(m.rows) == 0 {
 		return m, cmd
 	}
 
 	if m.cursor < prevCursor {
-		// Moving upward: skip backward past any separators.
-		for m.cursor > 0 && m.rows[m.cursor].IsSeparator {
+		// Moving upward: skip backward past any non-navigable rows.
+		for m.cursor > 0 && !m.rows[m.cursor].isNavigable() {
 			m.cursor--
 		}
-		// If we stopped at index 0 and it is still a separator, recover
-		// by moving forward to the first non-separator row.
-		if m.rows[m.cursor].IsSeparator {
-			for m.cursor < len(m.rows)-1 && m.rows[m.cursor].IsSeparator {
+		// If we stopped at index 0 and it is still non-navigable, recover
+		// by moving forward to the first navigable row.
+		if !m.rows[m.cursor].isNavigable() {
+			for m.cursor < len(m.rows)-1 && !m.rows[m.cursor].isNavigable() {
 				m.cursor++
 			}
 		}
 	} else {
-		// Moving downward (or no change): skip forward past any separators.
-		for m.cursor < len(m.rows) && m.rows[m.cursor].IsSeparator {
+		// Moving downward (or no change): skip forward past any non-navigable rows.
+		for m.cursor < len(m.rows) && !m.rows[m.cursor].isNavigable() {
 			m.cursor++
 		}
-		// Clamp to the last row when separators run to the end of the list.
+		// Clamp to the last row when non-navigable rows run to the end of the list.
 		if m.cursor >= len(m.rows) {
 			m.cursor = len(m.rows) - 1
 		}
-		// If the clamped row is itself a separator, walk backward to the
-		// nearest non-separator (mirrors the upward-boundary recovery).
-		if m.rows[m.cursor].IsSeparator {
-			for m.cursor > 0 && m.rows[m.cursor].IsSeparator {
+		// If the clamped row is itself non-navigable, walk backward to the
+		// nearest navigable row (mirrors the upward-boundary recovery).
+		if !m.rows[m.cursor].isNavigable() {
+			for m.cursor > 0 && !m.rows[m.cursor].isNavigable() {
 				m.cursor--
 			}
 		}
@@ -131,13 +134,14 @@ func (m *OutlinerModel) crossSkipSeparators(prevCursor int, cmd tea.Cmd) (tea.Mo
 // mode. When the cursor is on a task row it pushes a fresh temporary OutlinerModel
 // for the row's owning project, initialized with OpenAtTask set to the selected
 // task, via ShowOutlinerMsg{Temporary: true}. This leaves m.outliner untouched.
-// Non-task rows (section headers, separators) are silently ignored.
+// Non-task rows (section headers, project sub-headers, separators) are silently
+// ignored.
 func (m *OutlinerModel) crossHandleGoDrillDown() (tea.Model, tea.Cmd) {
 	if m.project != nil || m.cursor < 0 || m.cursor >= len(m.rows) {
 		return m, nil
 	}
 	row := m.rows[m.cursor]
-	if row.IsSeparator || row.IsSectionHeader {
+	if !row.isTaskRow() {
 		return m, nil
 	}
 	for _, p := range m.loadedProjects {
@@ -154,8 +158,8 @@ func (m *OutlinerModel) crossHandleGoDrillDown() (tea.Model, tea.Cmd) {
 
 // crossHandleEnterKey handles the Enter key in cross-project mode. For leaf
 // task rows it resolves the owning project from row.ProjectID and emits
-// ShowTaskDetailMsg to open the task detail via glow. Section headers and
-// separators are silently ignored.
+// ShowTaskDetailMsg to open the task detail via glow. Section headers toggle
+// section fold; separators and project sub-headers are silently consumed.
 //
 // In cross-project Priority mode (m.crossPriorityMode), any task row — leaf
 // or parent — opens detail to match single-project Priority View behavior.
@@ -170,7 +174,7 @@ func (m *OutlinerModel) crossHandleEnterKey() (tea.Model, tea.Cmd, bool) {
 		return m, nil, true
 	}
 	row := m.rows[m.cursor]
-	if row.IsSeparator {
+	if row.IsSeparator || row.IsProjectHeader {
 		return m, nil, true
 	}
 	if row.IsSectionHeader {

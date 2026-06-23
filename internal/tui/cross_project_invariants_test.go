@@ -59,6 +59,23 @@ func TestProjectIDPopulationInvariant(t *testing.T) {
 				if row.ProjectID != "" {
 					t.Errorf("row[%d] IsSectionHeader but has non-empty ProjectID %q", i, row.ProjectID)
 				}
+			case row.IsProjectHeader:
+				if row.ProjectID == "" {
+					t.Errorf("row[%d] IsProjectHeader but has empty ProjectID", i)
+				}
+				if row.task != nil {
+					t.Errorf("row[%d] IsProjectHeader but carries task payload %q", i, row.task.Title)
+				}
+				var resolvable bool
+				for _, g := range groups {
+					if g.projectID == row.ProjectID {
+						resolvable = true
+						break
+					}
+				}
+				if !resolvable {
+					t.Errorf("row[%d] IsProjectHeader ProjectID %q does not match any input group", i, row.ProjectID)
+				}
 			case row.IsSeparator:
 				if row.ProjectID != "" {
 					t.Errorf("row[%d] IsSeparator but has non-empty ProjectID %q", i, row.ProjectID)
@@ -101,6 +118,23 @@ func TestProjectIDPopulationInvariant(t *testing.T) {
 			case row.IsSectionHeader:
 				if row.ProjectID != "" {
 					t.Errorf("row[%d] IsSectionHeader but has non-empty ProjectID %q", i, row.ProjectID)
+				}
+			case row.IsProjectHeader:
+				if row.ProjectID == "" {
+					t.Errorf("row[%d] IsProjectHeader but has empty ProjectID", i)
+				}
+				if row.task != nil {
+					t.Errorf("row[%d] IsProjectHeader but carries task payload %q", i, row.task.Title)
+				}
+				var resolvable bool
+				for _, g := range groups {
+					if g.projectID == row.ProjectID {
+						resolvable = true
+						break
+					}
+				}
+				if !resolvable {
+					t.Errorf("row[%d] IsProjectHeader ProjectID %q does not match any input group", i, row.ProjectID)
 				}
 			case row.IsSeparator:
 				if row.ProjectID != "" {

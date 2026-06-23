@@ -20,11 +20,37 @@ type outlinerRow struct {
 	priorityTask    *PriorityTask // Cached priority metadata for flat Priority-mode task rows.
 	prefix          string
 	IsSectionHeader bool   // True if this row is a section header (not a task)
+	IsProjectHeader bool   // True if this row is a synthetic, render-only project sub-header (not a task)
 	SectionName     string // Section name for header rows
 	SectionCount    int    // Number of tasks in this section
 	CollapseKey     string // Key for collapsedSections map; "_xp:sectionName" sentinel in All-perspective cross-project mode (shared headers, no per-project prefix needed), empty in single-project mode
-	ProjectID       string // Project that owns this row; set on task rows and cross-project section headers
+	ProjectID       string // Project that owns this row; set on task rows, cross-project section headers, and project sub-headers
 	IsSeparator     bool   // True if this row is a visual separator between projects
+}
+
+// isTaskRow reports whether the row carries a task payload (i.e. it is not a
+// section header, project sub-header, or separator). Use this in place of the
+// historical `!IsSectionHeader && !IsSeparator` pattern so that newly
+// introduced row kinds (e.g. project sub-headers) are consistently excluded
+// from task-only logic.
+func (r outlinerRow) isTaskRow() bool {
+	return !r.IsSectionHeader && !r.IsProjectHeader && !r.IsSeparator
+}
+
+// isHeaderRow reports whether the row is any synthetic header (section header
+// or project sub-header). Header rows have no task payload and are
+// render-only — they are skipped by keyboard navigation and bulk task
+// operations.
+func (r outlinerRow) isHeaderRow() bool {
+	return r.IsSectionHeader || r.IsProjectHeader
+}
+
+// isNavigable reports whether the cursor is allowed to rest on this row.
+// Section headers remain navigable (Enter toggles section fold); task rows
+// are navigable; project sub-headers and separators are skipped by all
+// cursor movement and rebuild/clamp paths.
+func (r outlinerRow) isNavigable() bool {
+	return !r.IsSeparator && !r.IsProjectHeader
 }
 
 // collapseKey returns the effective key for collapsedSections lookups.

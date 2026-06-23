@@ -94,7 +94,8 @@ func (m *AppModel) resolveExportProject(msg ExportProjectMsg) *models.Project {
 }
 
 // crossOutlinerCursorProject returns the project for the cursor row in the
-// cross-project outliner, or nil for separators and section headers.
+// cross-project outliner, or nil for separators, section headers, and project
+// sub-headers.
 func (m *AppModel) crossOutlinerCursorProject() *models.Project {
 	if m.crossOutliner == nil {
 		return nil
@@ -105,7 +106,7 @@ func (m *AppModel) crossOutlinerCursorProject() *models.Project {
 		return nil
 	}
 	row := rows[cursor]
-	if row.IsSectionHeader || row.IsSeparator || row.task == nil {
+	if !row.isTaskRow() || row.task == nil {
 		return nil
 	}
 	for _, p := range m.crossOutliner.loadedProjects {
