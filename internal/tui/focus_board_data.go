@@ -279,6 +279,9 @@ func (m *FocusBoardModel) collectChildren(out *[]boardRow, parent *models.Task, 
 			visible = append(visible, child)
 		}
 	}
+	sort.SliceStable(visible, func(i, j int) bool {
+		return !visible[i].Status.IsComplete() && visible[j].Status.IsComplete()
+	})
 	for i, child := range visible {
 		seen[child.ID] = true
 		isLast := i == len(visible)-1
