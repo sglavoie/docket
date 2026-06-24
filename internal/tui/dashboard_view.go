@@ -19,6 +19,10 @@ func (m *DashboardModel) View() tea.View {
 	filterBar, chromeHeight := m.renderFilterBar()
 	b.WriteString(filterBar)
 
+	strip, stripHeight := m.renderDashboardRecommendationStrip()
+	b.WriteString(strip)
+	chromeHeight += stripHeight
+
 	visible := m.visibleProjects()
 	b.WriteString(m.renderDashboard(visible, chromeHeight))
 

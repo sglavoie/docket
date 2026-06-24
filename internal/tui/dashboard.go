@@ -31,7 +31,17 @@ type DashboardModel struct {
 	// dashboardCompactCards collapses inert info cards (no actionable
 	// content) into one-line summary rows. Default true; toggled by `,c`.
 	dashboardCompactCards bool
+
+	// openLoops mirrors the AppModel-level cross-project counters; injected
+	// before each render via setOpenLoops. Drives the Next Action strip's
+	// inbox-only / first-run / caught-up variant resolution.
+	openLoops OpenLoops
 }
+
+// setOpenLoops injects the latest cross-project open-loop counts into the
+// dashboard so the Next Action strip can pick the right AllDone variant
+// without recomputing the counters per render.
+func (m *DashboardModel) setOpenLoops(o OpenLoops) { m.openLoops = o }
 
 // SetPipelineCounts updates the cached pipeline counts shown in the info section.
 func (m *DashboardModel) SetPipelineCounts(counts pipelineCounts) {

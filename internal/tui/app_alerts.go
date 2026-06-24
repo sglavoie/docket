@@ -35,7 +35,8 @@ func (m *AppModel) reevaluateAlerts() {
 		m.dismissedSet = nil
 		m.proactiveAlerts = rawSnapshot
 		if m.dashboard != nil {
-			m.dashboard.SetPipelineCounts(loadPipelineCounts(m.config, m.focusQueueIDs, m.dailyPlanIDs))
+			counts, _ := loadPipelineCounts(m.config, m.focusQueueIDs, m.dailyPlanIDs)
+			m.dashboard.SetPipelineCounts(counts)
 		}
 		return
 	}
@@ -77,7 +78,8 @@ func (m *AppModel) reevaluateAlerts() {
 	m.dismissedSet = dismissedSet
 	m.proactiveAlerts = alerts.FilterDismissed(rawSnapshot, dismissedSet)
 	if m.dashboard != nil {
-		m.dashboard.SetPipelineCounts(loadPipelineCounts(m.config, m.focusQueueIDs, m.dailyPlanIDs))
+		counts, _ := loadPipelineCounts(m.config, m.focusQueueIDs, m.dailyPlanIDs)
+		m.dashboard.SetPipelineCounts(counts)
 	}
 }
 

@@ -193,9 +193,9 @@ func (m *SettingsModel) renderBehaviorStartupSection() string {
 
 	b.WriteString(renderFormLabelWithWidth("Start view: ", labelWidth, m.focusIndex == base+0))
 	b.WriteString(renderEnumSelector(startViewOptions, m.startViewCursor, m.focusIndex == base+0, m.width-indent))
-	b.WriteString(renderDefaultHint(startViewOptions[m.startViewCursor], "Dashboard"))
+	b.WriteString(renderDefaultHint(startViewOptions[m.startViewCursor], "Focus Board"))
 	b.WriteString("\n")
-	b.WriteString(renderFormFieldDesc("View shown when the application starts", indent, m.focusIndex == base+0))
+	b.WriteString(renderFormFieldDesc("View shown when the application starts (default: Focus Board)", indent, m.focusIndex == base+0))
 
 	return b.String()
 }

@@ -2,6 +2,7 @@ package tui
 
 import (
 	"image/color"
+	"time"
 
 	tea "charm.land/bubbletea/v2"
 
@@ -31,7 +32,14 @@ type pipelineColumn struct {
 	entries []pipelineEntry
 }
 
-// PipelineHubModel displays a 5-column overview of all pipeline stages with live counts.
+// pipelineWorkColumnName identifies the Work column for the
+// project-aware Enter handling that opens the current project rather than a
+// global view. Keyed by name so column reordering does not silently break it.
+const pipelineWorkColumnName = "Work"
+
+// PipelineHubModel displays a six-stage workflow map (Capture, Triage, Plan,
+// Work, Review, Support) with live counts and the current Next Action
+// recommendation pinned above the grid.
 type PipelineHubModel struct {
 	BaseView
 
@@ -42,35 +50,61 @@ type PipelineHubModel struct {
 	manager        *config.Manager
 	counts         pipelineCounts
 	currentProject *models.Project
+	recommendation RecommendedAction
+	openLoops      OpenLoops
 }
 
-// NewPipelineHubModel creates a Pipeline Hub model populated with live counts.
+// NewPipelineHubModel creates a Pipeline Hub model populated with live counts
+// and the engine-derived Next Action recommendation.
 func NewPipelineHubModel(cfg *config.Config, manager *config.Manager, queueIDs, dailyPlanIDs map[string]bool, contextProject *models.Project) *PipelineHubModel {
-	counts := loadPipelineCounts(cfg, queueIDs, dailyPlanIDs)
+	counts, projects := loadPipelineCounts(cfg, queueIDs, dailyPlanIDs)
 	m := &PipelineHubModel{
 		config:         cfg,
 		manager:        manager,
 		counts:         counts,
 		currentProject: contextProject,
 	}
+	m.recommendation = computePipelineRecommendation(cfg, projects)
 	m.buildColumns()
 	return m
 }
 
+// setOpenLoops satisfies the openLoopsAware interface. AppModel.View injects
+// the latest cross-project counters before each render so the recommendation
+// strip can surface inbox-only fallbacks and distinguish first-run state.
+func (m *PipelineHubModel) setOpenLoops(o OpenLoops) {
+	m.openLoops = o
+}
+
+// computePipelineRecommendation runs the shared deterministic recommendation
+// engine against the already-loaded project slice plus the persisted daily
+// plan. Returns the zero RecommendedAction when cfg is nil.
+func computePipelineRecommendation(cfg *config.Config, projects []*models.Project) RecommendedAction {
+	if cfg == nil {
+		return RecommendedAction{}
+	}
+	return Recommend(RecommendationEngineInput{
+		Projects:  projects,
+		DailyPlan: cfg.GetDailyPlan(),
+		Now:       time.Now(),
+	})
+}
+
 func (m *PipelineHubModel) buildColumns() {
-	executeEntries := []pipelineEntry{
-		{key: "Enter", label: "Open project"},
-		{key: "→", label: "Project Tree"},
-		{key: "→", label: "Outliner"},
-		{key: "→", label: "Kanban"},
+	workEntries := []pipelineEntry{
+		{key: ";w", label: "Today", count: m.counts.dailyPlanLen, viewType: ViewFocusBoard},
 	}
 	if m.currentProject != nil {
-		executeEntries = []pipelineEntry{
-			{key: "Enter", label: m.currentProject.Name, viewType: ViewProjectTree},
-			{key: "→", label: "Project Tree", viewType: ViewProjectTree},
-			{key: "→", label: "Outliner", viewType: ViewOutliner},
-			{key: "→", label: "Kanban", viewType: ViewKanban},
-		}
+		workEntries = append(workEntries,
+			pipelineEntry{key: "Enter", label: m.currentProject.Name, viewType: ViewProjectTree},
+			pipelineEntry{key: "→", label: "Project Tree", viewType: ViewProjectTree},
+			pipelineEntry{key: "→", label: "Outliner", viewType: ViewOutliner},
+			pipelineEntry{key: "→", label: "Kanban", viewType: ViewKanban},
+		)
+	} else {
+		workEntries = append(workEntries,
+			pipelineEntry{key: "·", label: "Open a project from Dashboard"},
+		)
 	}
 
 	m.columns = []pipelineColumn{
@@ -83,8 +117,8 @@ func (m *PipelineHubModel) buildColumns() {
 			},
 		},
 		{
-			name:   "Organize",
-			accent: AccentOrganize,
+			name:   "Triage",
+			accent: AccentTriage,
 			entries: []pipelineEntry{
 				{key: "ctrl+i", label: "Inbox", count: m.counts.inboxCount, viewType: ViewGlobalInboxProcessor},
 				{key: ";a", label: "All Tasks", viewType: ViewAllTasks},
@@ -103,16 +137,9 @@ func (m *PipelineHubModel) buildColumns() {
 			},
 		},
 		{
-			name:   "Work",
-			accent: AccentWork,
-			entries: []pipelineEntry{
-				{key: ";w", label: "Today", count: m.counts.dailyPlanLen, viewType: ViewFocusBoard},
-			},
-		},
-		{
-			name:    "Execute",
-			accent:  AccentExecute,
-			entries: executeEntries,
+			name:    pipelineWorkColumnName,
+			accent:  AccentWork,
+			entries: workEntries,
 		},
 		{
 			name:   "Review",
@@ -121,6 +148,16 @@ func (m *PipelineHubModel) buildColumns() {
 				{key: ";r", label: "Weekly", viewType: ViewWeeklyReview},
 				{key: ";m", label: "Metrics", viewType: ViewMetricsDashboard},
 				{key: ";l", label: "Activity", viewType: ViewRecentActivity},
+			},
+		},
+		{
+			name:   "Support",
+			accent: AccentSupport,
+			entries: []pipelineEntry{
+				{key: ";B", label: "Blockers", viewType: ViewGlobalBlockers},
+				{key: ";N", label: "Notes", viewType: ViewGlobalNotes},
+				{key: ";W", label: "Rules", viewType: ViewWorkflowRules},
+				{key: ";n", label: "Alerts", viewType: ViewNotificationCenter},
 			},
 		},
 	}
@@ -164,8 +201,6 @@ func (m *PipelineHubModel) clampRow() {
 	}
 }
 
-const pipelineExecuteColIndex = 4
-
 func (m *PipelineHubModel) openSelectedEntry() tea.Cmd {
 	if m.activeCol >= len(m.columns) {
 		return nil
@@ -175,18 +210,23 @@ func (m *PipelineHubModel) openSelectedEntry() tea.Cmd {
 		return nil
 	}
 	entry := col.entries[m.activeRow]
-	if m.activeCol == pipelineExecuteColIndex && m.currentProject != nil {
-		return m.executeEntryCmd(entry.viewType)
+	if col.name == pipelineWorkColumnName && m.currentProject != nil {
+		if cmd := m.workProjectEntryCmd(entry); cmd != nil {
+			return cmd
+		}
 	}
 	return pipelineEntryCmd(entry.viewType)
 }
 
-// executeEntryCmd returns a tea.Cmd for project-specific Execute column entries.
-func (m *PipelineHubModel) executeEntryCmd(vt ViewType) tea.Cmd {
+// workProjectEntryCmd returns a tea.Cmd for the project-specific entries that
+// live inside the Work column (Open project, Project Tree, Outliner, Kanban).
+// Returns nil when the entry is the shared Today shortcut so the caller falls
+// back to the global pipelineEntryCmd dispatcher.
+func (m *PipelineHubModel) workProjectEntryCmd(entry pipelineEntry) tea.Cmd {
 	p := m.currentProject
-	switch vt {
+	switch entry.viewType {
 	case ViewProjectTree:
-		if m.activeRow == 0 {
+		if entry.key == "Enter" {
 			return func() tea.Msg { return SelectProjectMsg{Project: p} }
 		}
 		return func() tea.Msg { return ShowProjectTreeMsg{Project: p} }
@@ -194,7 +234,6 @@ func (m *PipelineHubModel) executeEntryCmd(vt ViewType) tea.Cmd {
 		return func() tea.Msg { return ShowOutlinerMsg{Project: p} }
 	case ViewKanban:
 		return func() tea.Msg { return ShowKanbanMsg{Project: p} }
-	default:
 	}
 	return nil
 }
@@ -230,6 +269,14 @@ func pipelineEntryCmd(vt ViewType) tea.Cmd {
 		return func() tea.Msg { return PipelineHubCaptureMsg{Purpose: PickerPurposeQuickCapture} }
 	case ViewBulkCapture:
 		return func() tea.Msg { return PipelineHubCaptureMsg{Purpose: PickerPurposeBulkCapture} }
+	case ViewGlobalBlockers:
+		return func() tea.Msg { return ShowGlobalBlockersMsg{} }
+	case ViewGlobalNotes:
+		return func() tea.Msg { return ShowGlobalNotesMsg{} }
+	case ViewWorkflowRules:
+		return func() tea.Msg { return ShowWorkflowRulesMsg{} }
+	case ViewNotificationCenter:
+		return func() tea.Msg { return ShowNotificationCenterMsg{} }
 	default:
 	}
 	return nil

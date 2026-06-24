@@ -7,7 +7,7 @@ func pipelineStage(vt ViewType) string {
 	case ViewQuickCapture, ViewBulkCapture:
 		return "Capture"
 	case ViewAllTasks, ViewGlobalInboxProcessor, ViewCrossProjectOutliner, ViewCrossProjectKanban:
-		return "Organize"
+		return "Triage"
 	case ViewFocusView, ViewDueDateOverview, ViewDailyReview, ViewRoadmap:
 		return "Plan"
 	case ViewFocusBoard:

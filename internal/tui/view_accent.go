@@ -17,12 +17,12 @@ func buildViewAccentMap() {
 		ViewQuickCapture: AccentCapture,
 		ViewBulkCapture:  AccentCapture,
 
-		// Organize stage (sky blue)
-		ViewAllTasks:             AccentOrganize,
-		ViewGlobalInboxProcessor: AccentOrganize,
-		ViewInboxProcessor:       AccentOrganize,
-		ViewCrossProjectOutliner: AccentOrganize,
-		ViewCrossProjectKanban:   AccentOrganize,
+		// Triage stage (sky blue)
+		ViewAllTasks:             AccentTriage,
+		ViewGlobalInboxProcessor: AccentTriage,
+		ViewInboxProcessor:       AccentTriage,
+		ViewCrossProjectOutliner: AccentTriage,
+		ViewCrossProjectKanban:   AccentTriage,
 
 		// Plan stage (green)
 		ViewFocusView:        AccentPlan,

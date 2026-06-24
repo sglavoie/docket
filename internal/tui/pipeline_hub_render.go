@@ -26,6 +26,13 @@ func (m *PipelineHubModel) View() tea.View {
 	b.WriteString(renderFullscreenTitle("Pipeline Overview", "", m.AccentColor()))
 	b.WriteString("\n\n")
 
+	// Next Action recommendation strip — pinned above the grid so the user
+	// sees "what should I do next" without scanning every column.
+	if strip := m.renderRecommendationStrip(); strip != "" {
+		b.WriteString(strip)
+		b.WriteString("\n\n")
+	}
+
 	// Column layout
 	colCount := len(m.columns)
 	sepWidth := ansi.StringWidth(pipelineHubColSep) * (colCount - 1)
@@ -96,11 +103,35 @@ func (m *PipelineHubModel) View() tea.View {
 		b.WriteString("\n")
 	}
 
-	// Footer
-	helpText := HelpStyle.Render("Enter open · h/l column · j/k row · Esc close")
-	b.WriteString(renderStatusBarFooter("", helpText, m.width, m.AccentColor()))
+	// Footer — session 11 caps contextual hints at three and pins the
+	// standard escape-hatch cluster so navigation/help discovery matches
+	// Today and Dashboard. Esc is dropped from the contextual cluster
+	// because it is a universal escape and would otherwise spend the
+	// fourth slot on a recoverable key.
+	helpText := composeFullHeightFooterLeft("Enter open · h/l columns · j/k rows")
+	b.WriteString(renderStatusBarFooter(helpText, "", m.width, m.AccentColor()))
 
 	return tea.NewView(b.String())
+}
+
+// renderRecommendationStrip returns the styled Next Action strip for the hub,
+// or empty when the renderer suppresses it (e.g., width below the strip's
+// minimum). The strip uses the same engine + renderer the Today cockpit and
+// Dashboard use so all three surfaces speak the same vocabulary.
+func (m *PipelineHubModel) renderRecommendationStrip() string {
+	return renderNextActionStrip(NextActionStripOpts{
+		Action:      m.recommendation,
+		Width:       m.width,
+		HasProjects: m.hasActiveProjects(),
+		OpenLoops:   m.openLoops,
+	})
+}
+
+func (m *PipelineHubModel) hasActiveProjects() bool {
+	if m.config == nil {
+		return false
+	}
+	return len(m.config.GetActiveProjects()) > 0
 }
 
 // renderSeparatorRow builds a separator line matching the column layout.

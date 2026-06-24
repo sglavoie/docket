@@ -157,28 +157,36 @@ func (m *FocusViewModel) View() tea.View { //nolint:gocyclo
 	b.WriteString("\n\n")
 	b.WriteString(statusBlock)
 
-	// Footer
+	// Footer — session 11 caps the contextual cluster at three view-specific
+	// shortcuts and pins ? / : / ;; as the stable escape hatches via
+	// composeFullHeightFooterLeft. Universal navigation keys (j/k, Tab) are
+	// owned by ? help and dropped from the always-visible cluster so the row
+	// reads as the highest-signal triage actions.
 	var helpParts []string
 	switch m.tabs.Active {
 	case focusTabQueue:
-		helpParts = []string{"j/k nav", "n/N parents", "x remove", "J/K reorder", "r refresh", "Tab tabs"}
+		helpParts = []string{"x remove", "J/K reorder", "r refresh"}
 	case focusTabSuggested:
 		if m.showDismissed {
 			xLabel := "x dismiss"
 			if ft := m.getTaskAtCursor(); ft != nil && m.dismissedIDs[ft.Task.ID] {
 				xLabel = "x restore"
 			}
-			helpParts = []string{"j/k nav", "q add to queue", xLabel, "D hide dismissed", "Tab tabs"}
+			helpParts = []string{"q add to queue", xLabel, "D hide dismissed"}
 		} else {
-			helpParts = []string{"j/k nav", "q add to queue", "x dismiss", "D show dismissed", "Tab tabs"}
+			helpParts = []string{"q add to queue", "x dismiss", "D show dismissed"}
 		}
 	default:
-		helpParts = []string{"j/k nav", "n/N parents", "Tab tabs", "shift+↑/↓ row focus", ",s/d/b/x status", "1-5 priority"}
+		helpParts = []string{",s/d/b/x status", "1-5 priority", "n/N parents"}
 	}
+	var left string
 	if m.multiSelectMode {
-		helpParts = []string{"space toggle", "a all", "A deselect", ",/! status/priority", "v exit"}
+		// Multi-select is a transient mode; keep the dedicated guidance footer
+		// without the escape-hatch cluster (Esc is the universal exit).
+		left = HelpStyle.Render("space toggle · a all · A deselect · ,/! status/priority · v exit")
+	} else {
+		left = composeFullHeightFooterLeft(strings.Join(helpParts, " · "))
 	}
-	left := HelpStyle.Render(strings.Join(helpParts, " · "))
 	right := MutedStyle.Render(fmt.Sprintf("%d tasks", len(m.filtered)))
 	b.WriteString(renderStatusBarFooter(left, right, m.width, m.AccentColor()))
 

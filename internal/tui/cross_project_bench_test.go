@@ -3,9 +3,12 @@ package tui
 import (
 	"fmt"
 	"testing"
+	"time"
 
+	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/util"
 )
 
 func BenchmarkCrossProjectLoadAndRebuild(b *testing.B) {
@@ -171,4 +174,88 @@ func BenchmarkCrossProjectRowBuilding(b *testing.B) {
 			}
 		}
 	})
+}
+
+// BenchmarkRecommend exercises the cockpit's recommendation engine on a
+// realistic cross-project payload. Today, Dashboard, and Pipeline Hub all
+// invoke Recommend on every render, so this is the guard for cross-project
+// loading cost called out in session 14. The benchmark seeds enough variety
+// (inbox, planned-today, overdue, blocked, stale, recent) that no shortcut
+// path dominates the run.
+func BenchmarkRecommend(b *testing.B) {
+	now := time.Date(2026, 6, 24, 12, 0, 0, 0, time.UTC)
+	today := util.StartOfDay(now)
+	todayKey := today.Format(util.DateFormat)
+	yesterdayKey := today.Add(-24 * time.Hour).Format(util.DateFormat)
+
+	const numProjects = 10
+	const tasksPerProject = 100
+
+	sections := []string{
+		"", models.SectionInbox, models.SectionNext,
+		models.SectionWaiting, models.SectionReview,
+	}
+
+	projects := make([]*models.Project, numProjects)
+	var plan []config.DailyPlanItem
+
+	for p := range numProjects {
+		projID := fmt.Sprintf("bench-rec-%02d", p)
+		project := &models.Project{ID: projID, Name: fmt.Sprintf("Project %d", p)}
+		tasks := make([]*models.Task, 0, tasksPerProject)
+
+		for i := range tasksPerProject {
+			id := fmt.Sprintf("%s-task-%04d", projID, i)
+			task := makeTask(id, fmt.Sprintf("Task %d-%d", p, i), sections[i%len(sections)])
+			task.Status = models.StatusInProgress
+			task.UpdatedAt = now.Add(-time.Duration(i%30) * 24 * time.Hour)
+			task.CreatedAt = task.UpdatedAt
+
+			switch i % 7 {
+			case 0:
+				due := today.Add(-48 * time.Hour)
+				task.DueDate = &due
+			case 1:
+				due := today
+				task.DueDate = &due
+			case 2:
+				task.Priority = 1
+			case 3:
+				task.Status = models.StatusBlocked
+			case 4:
+				plan = append(plan, config.DailyPlanItem{
+					ProjectID:   projID,
+					TaskID:      id,
+					PlannedDate: todayKey,
+				})
+			case 5:
+				plan = append(plan, config.DailyPlanItem{
+					ProjectID:   projID,
+					TaskID:      id,
+					PlannedDate: yesterdayKey,
+				})
+			}
+
+			tasks = append(tasks, task)
+		}
+
+		project.Tasks = tasks
+		project.BuildTaskTree()
+		projects[p] = project
+	}
+
+	input := RecommendationEngineInput{
+		Projects:  projects,
+		DailyPlan: plan,
+		Now:       now,
+	}
+
+	b.ResetTimer()
+
+	for b.Loop() {
+		got := Recommend(input)
+		if got.Kind == RecommendationKindNone {
+			b.Fatal("Recommend returned RecommendationKindNone for non-empty input")
+		}
+	}
 }

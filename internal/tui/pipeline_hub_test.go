@@ -30,10 +30,16 @@ func TestPipelineHubModel_NoProjects(t *testing.T) {
 	if !strings.Contains(plain, "Pipeline Overview") {
 		t.Errorf("expected output to contain 'Pipeline Overview', got:\n%s", plain)
 	}
-	// All 5 stage names should appear.
-	for _, stage := range []string{"CAPTURE", "ORGANIZE", "PLAN", "WORK", "EXECUTE", "REVIEW"} {
+	// All six pipeline stage names should appear in the new cockpit vocabulary.
+	for _, stage := range []string{"CAPTURE", "TRIAGE", "PLAN", "WORK", "REVIEW", "SUPPORT"} {
 		if !strings.Contains(plain, stage) {
 			t.Errorf("expected output to contain %q, got:\n%s", stage, plain)
+		}
+	}
+	// Legacy vocabulary must not leak back into the hub header.
+	for _, legacy := range []string{"ORGANIZE", "EXECUTE"} {
+		if strings.Contains(plain, legacy) {
+			t.Errorf("expected legacy stage %q to be removed from hub, got:\n%s", legacy, plain)
 		}
 	}
 }

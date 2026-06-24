@@ -447,7 +447,7 @@ func (m *SettingsModel) handleResetToDefault() {
 			m.sectionLimitReviewInput.SetValue("5")
 			resetDone = true
 		case 13:
-			m.startViewCursor = 0
+			m.startViewCursor = defaultStartViewCursor
 			resetDone = true
 		case 14:
 			m.taskFormCollapsed = false

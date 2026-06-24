@@ -26,9 +26,10 @@ lands in your Inbox.
 # Where Tasks Go
 
 Captured tasks go to the Inbox section of their project. The
-dashboard shows the inbox backlog in three places: the lead
-"📥 N to triage" alert, the per-row status indicator's inbox
-segment, and the "Triage" stage of the pipeline card.
+dashboard shows the inbox backlog in two places: the lead
+"📥 N to triage" alert and the per-row status indicator's
+inbox segment. The "Triage" stage of the dashboard pipeline
+card mirrors the same count.
 
 To process the backlog:
 
@@ -40,20 +41,25 @@ The inbox processor walks one task at a time and asks
 
 # First Workflow
 
+tt opens on the Today cockpit by default. The Next Action
+strip at the top tells you what to do next: capture, triage,
+or work the planned list.
+
 1. Capture a task with ctrl+i
-2. From the Dashboard, press O to triage the project's inbox
-   (or ctrl+i to triage every project's inbox)
+2. Press ;; to open the Pipeline Hub, or O on the Dashboard,
+   to triage the project's inbox (or ctrl+i to triage every
+   project's inbox)
 3. Press w to schedule it for Today
-4. Open Focus Board (;f) to work on it`,
+4. Open Today (;w) to work on it`,
 		},
 		{
 			Title:    "The pipeline",
 			Category: "Getting Started",
 			Content: `# The tt Pipeline
 
-tt structures work as a five-stage flow:
+tt structures work as a six-stage flow:
 
-  Capture → Organize → Plan → Work → Review
+  Capture → Triage → Plan → Work → Review → Support
 
 You move tasks through these stages deliberately.
 No task sneaks from Capture straight to Done.
@@ -61,19 +67,22 @@ No task sneaks from Capture straight to Done.
 # Stage Shortcuts
 
   ctrl+i  Capture   — Quick Capture overlay
-  ;a      Organize  — All Tasks inbox triage
-  ;w      Plan      — Today's focus list
-  ;f      Work      — Focus Board (kanban)
+  ;a      Triage    — All Tasks inbox triage
+  ;q      Plan      — Backlog (ranked focus queue)
+  ;w      Work      — Today (daily execution board)
   ;r      Review    — Weekly Review
+  ;B      Support   — Global blockers
 
 Press ;; to open the Pipeline Hub, which shows the
-count at each stage and lets you jump directly.
+count at each stage, the current Next Action, and
+lets you jump directly. Use ;; when you feel lost.
 
 # Why a Pipeline
 
 A pipeline separates the act of capturing ideas from
-the act of doing them. Capture freely, organize later,
-plan deliberately, work focused, review honestly.`,
+the act of doing them. Capture freely, triage later,
+plan deliberately, work focused, review honestly,
+and lean on Support for blockers, notes, and rules.`,
 		},
 		{
 			Title:    "Daily rhythm",
@@ -81,27 +90,39 @@ plan deliberately, work focused, review honestly.`,
 			Content: `# A Suggested Daily Rhythm
 
 Morning (5 min): plan your day
-  Open ;w (Today view) and pick 1-3 tasks to focus on.
-  Press w on any task to add it to today's list.
+  tt opens on Today by default. The Next Action strip
+  tells you what to do next. Press w on any task to add
+  it to today's list, or ;q to scan the ranked backlog
+  and queue 1-3 tasks.
 
-During the day: stay in Focus Board
-  ;f opens the kanban for your daily tasks.
-  Move tasks right (status →) as you progress.
+During the day: stay in Today
+  ;w returns to Today from anywhere. The Next Action
+  strip suggests what to work on; the body shows your
+  planned tasks. Move tasks through status as you go.
 
 Evening (5 min): review and capture
   ;r opens the Weekly Review summary.
   ctrl+i captures any new ideas before you close.
 
+# When You Feel Lost
+
+Press ;; to open the Pipeline Hub. It shows every stage
+(Capture / Triage / Plan / Work / Review / Support) with
+live counts and the current Next Action recommendation —
+one keystroke gets you back on track.
+
 # Keeping Inbox Clear
 
 Tasks land in Inbox until you triage them. The dashboard's
-lead alert "📥 N to triage", the per-row inbox indicator,
-and the pipeline card's "Triage" stage all surface the
-backlog. Aim for Inbox 0 at the end of each week.
+lead alert "📥 N to triage" and the per-row inbox indicator
+surface the backlog. The Next Action strip on Today and
+Pipeline Hub flips to "Triage inbox" when items are
+waiting. Aim for Inbox 0 at the end of each week.
 
-Press O on the dashboard with a project selected to triage
-just that project's inbox, or ctrl+i to triage every
-project's inbox in one flow.
+Press ;; to open the Pipeline Hub and pick Triage, or O on
+the dashboard with a project selected to triage just that
+project's inbox, or ctrl+i to triage every project's inbox
+in one flow.
 
 # The Zeigarnik Counter
 

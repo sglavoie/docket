@@ -102,7 +102,22 @@ first.`,
 		{
 			Title:    "Dashboard at a glance",
 			Category: "TUI",
-			Content: `# Triage Prominence
+			Content: `# Where Dashboard Fits
+
+tt opens on the Today cockpit by default. The Dashboard is
+the project command center — press Esc from Today to back
+out to it, or open it from the Pipeline Hub (;;). Use the
+Dashboard when you need cross-project counts, project
+switching, or to triage a specific project's inbox.
+
+# Next Action Strip
+
+The dashboard renders the same Next Action strip used by
+Today and the Pipeline Hub. It surfaces the recommended
+next task or step (work, triage, plan) so you do not have
+to scan the project list to decide where to start.
+
+# Triage Prominence
 
 The dashboard surfaces "what needs triage" through three
 layered signals so you can answer "what should I look at?"
@@ -119,10 +134,10 @@ without scanning competing badges:
                         is "Triage" — the count of inbox
                         tasks waiting to be processed.
 
-The supplementary "Inbox hotspots: name(N)" line lists
-projects with five or more inbox tasks. It is intentionally
-muted so the lead "📥 N to triage" prompt owns the prominent
-slot.
+Per-project inbox counts already live on every project row,
+so the alerts panel no longer carries a separate "Inbox
+hotspots" line — the lead "📥 N to triage" prompt owns the
+prominent slot.
 
 # Triage Entry Points
 
@@ -389,44 +404,44 @@ modes and filters as the project tree.`,
 			Content: `# The Semicolon Shortcut
 
 Press ; from anywhere to open the stage shortcut popup. Hints
-are grouped by pipeline stage (Capture, Organize, Plan, Review,
-Support) so you can quickly find the view you need.
+are grouped by pipeline stage (Capture, Triage, Plan, Work,
+Review, Support) so you can quickly find the view you need.
 
 # Pipeline Hub
 
-Press ;; to open the Pipeline Hub: a five-column overview of
-all pipeline stages with live task counts and one-keystroke
-navigation to any stage view.
+Press ;; to open the Pipeline Hub: a six-column overview of
+all pipeline stages with live task counts, the current Next
+Action recommendation, and one-keystroke navigation to any
+stage view. When you feel lost, ;; is the anchor.
 
 Navigate the Hub with h/l to move between columns and j/k to
 move within a column. Press Enter to open the highlighted view.
-Direct shortcut keys (q, f, d, w, etc.) also work from inside
-the Hub.
+Direct shortcut keys (q, w, etc.) also work from inside the
+Hub.
 
 # Stage Breadcrumb
 
 When a global overlay view is open, the breadcrumb prepends
 the pipeline stage name: "Plan: Backlog", "Review: Weekly",
-"Organize: All Tasks". This keeps you oriented as you switch
+"Triage: All Tasks". This keeps you oriented as you switch
 between stage views.
 
-# Next-Step Footer Hints
+# Next Action Strip
 
-The status bar footer shows a contextual "next step" hint when
-you are inside a pipeline stage view:
-
-  Capture   Next: ctrl+i inbox | ;q backlog
-  Organize  Next: ;q backlog | ;w today
-  Plan      Next: Enter project | ;r review
-  Review    Next: ;i capture | ;q backlog
+Today, Dashboard, and Pipeline Hub share the same Next Action
+strip at the top: one recommendation-unique message per render.
+The strip is the message; the footer beneath it carries the
+top contextual keys plus the escape-hatch cluster ";; hub ·
+: cmd · ? help".
 
 # Shortcut Reference
 
   Capture:  ;i quick capture, ;I bulk capture
-  Organize: ctrl+i inbox, ;a all tasks, ;o outliner, ;k kanban
-  Plan:     ;q backlog, ;w today, ;D due dates, ;d daily review
-  Execute:  Enter from Dashboard to open a project
-  Review:   ;r weekly review, ;m metrics, ;l activity log`,
+  Triage:   ctrl+i inbox, ;a all tasks, ;o outliner, ;k kanban
+  Plan:     ;q backlog, ;D due dates, ;d daily review, ;R roadmap
+  Work:     ;w today, Enter a project from Dashboard or Hub
+  Review:   ;r weekly review, ;m metrics, ;l activity log
+  Support:  ;B blockers, ;N notes, ;W workflow rules, ;n notifications`,
 		},
 		{
 			Title:    "Priority",

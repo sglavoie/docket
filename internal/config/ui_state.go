@@ -25,15 +25,21 @@ func (c *Config) GetDefaultProjectView() string {
 	}
 }
 
+// DefaultStartView is the start view used when StartView is unset or invalid.
+// It points at the Today cockpit (focus board) so a fresh install opens onto
+// the explainable next-action surface instead of the dashboard.
+const DefaultStartView = "focus-board"
+
 // GetStartView returns the configured start view string.
-// Returns "dashboard" for invalid or missing values.
+// Returns DefaultStartView for invalid or missing values; explicit
+// "dashboard" (and the other recognised view ids) is still honoured.
 func (c *Config) GetStartView() string {
 	switch c.StartView {
-	case "focus-board", "cross-project-outliner", "all-tasks",
+	case "dashboard", "focus-board", "cross-project-outliner", "all-tasks",
 		"daily-review", "backlog", "priority", "due-dates":
 		return c.StartView
 	default:
-		return "dashboard"
+		return DefaultStartView
 	}
 }
 

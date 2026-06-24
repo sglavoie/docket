@@ -63,6 +63,26 @@ func (m *FocusBoardModel) View() tea.View { //nolint:gocyclo
 		}
 	}
 
+	// Next Action strip — Today tab only, normal and list modes only. The
+	// strip is recomputed every render because the engine is deterministic
+	// (session-3 contract). stripHeight is deducted from contentHeight below
+	// so list rows do not spill into the footer.
+	stripHeight := 0
+	if m.tabs.Active == boardTabToday && m.focusMode != focusModeTunnel {
+		rec := m.computeNextActionRecommendation()
+		strip := renderNextActionStrip(NextActionStripOpts{
+			Action:      rec,
+			Width:       m.width,
+			HasProjects: m.hasAnyProjectsForRecommendation(),
+			OpenLoops:   m.openLoops,
+		})
+		if strip != "" {
+			b.WriteString(strip)
+			b.WriteString("\n\n")
+			stripHeight = 2
+		}
+	}
+
 	// Search input
 	inputBlockHeight := 0
 	if m.searchActive {
@@ -151,6 +171,7 @@ func (m *FocusBoardModel) View() tea.View { //nolint:gocyclo
 		contentHeight -= addBlockHeight
 	}
 	contentHeight -= inputBlockHeight
+	contentHeight -= stripHeight
 
 	// Empty state
 	if len(m.filtered) == 0 {
@@ -158,16 +179,8 @@ func (m *FocusBoardModel) View() tea.View { //nolint:gocyclo
 		var emptyContent string
 		if m.HasActiveFilters() {
 			emptyContent = renderEmptyState("  "+EmptyStateFiltered, "  Press Fx to clear filters, or Esc to dismiss.")
-		} else if m.tabs.Active == boardTabToday && m.completedTodayCount() > 0 {
-			n := m.completedTodayCount()
-			suffix := "task"
-			if n != 1 {
-				suffix = "tasks"
-			}
-			emptyContent = SuccessStyle.Render(fmt.Sprintf("  All done for today! %d %s completed.", n, suffix)) +
-				"\n\n" + HelpStyle.Render("  Press w to plan more, or Esc to close.")
 		} else if m.tabs.Active == boardTabToday {
-			emptyContent = renderEmptyState("  No tasks planned for today", "  Press w on any task to plan it for today.")
+			emptyContent = m.renderTodayEmptyStateBody()
 		} else if m.tabs.Active == boardTabClosed {
 			emptyContent = MutedStyle.Render("  " + EmptyStateClosed)
 		} else if len(m.rows) == 0 {
@@ -183,7 +196,7 @@ func (m *FocusBoardModel) View() tea.View { //nolint:gocyclo
 		b.WriteString(emptyContent)
 		b.WriteString("\n\n")
 		b.WriteString(renderStatusMessages(m.statusMessage, m.err))
-		left := HelpStyle.Render("a add · tab switch · Esc close · ? help")
+		left := composeFullHeightFooterLeft("a add · tab switch · Esc close")
 		right := MutedStyle.Render("0 items")
 		b.WriteString(renderStatusBarFooter(left, right, m.width, m.AccentColor()))
 		return tea.NewView(b.String())
@@ -301,20 +314,25 @@ func (m *FocusBoardModel) View() tea.View { //nolint:gocyclo
 
 	b.WriteString(renderStatusMessages(m.statusMessage, m.err))
 
-	// Footer
+	// Footer — session 11 standardizes the steady-state Today/Next/Closed
+	// footers to "<top 3 contextual> · ? help · : cmd · ;; hub" so the
+	// escape hatches stay discoverable on full-height views. Transient input
+	// modes (add/edit/multiselect) keep their narrow guidance footers because
+	// the escape hatches are irrelevant while the user holds a half-finished
+	// edit.
 	var left string
 	if m.addMode || m.editMode {
 		left = HelpStyle.Render("enter save · Esc cancel")
 	} else if m.multiSelectMode {
 		left = HelpStyle.Render("x done · space toggle · A deselect")
 	} else if m.tabs.Active == boardTabClosed {
-		left = HelpStyle.Render("d reopen · enter open · D delete")
+		left = composeFullHeightFooterLeft("d reopen · enter open · D delete")
 	} else if m.tabs.Active == boardTabToday && completedToday == plannedTotal && plannedTotal > 0 {
-		left = HelpStyle.Render("w plan more · a add · Esc close")
+		left = composeFullHeightFooterLeft("w plan more · a add · Esc close")
 	} else if m.tabs.Active == boardTabToday {
-		left = HelpStyle.Render("x done · a add · enter open")
+		left = composeFullHeightFooterLeft("x done · a add · enter open")
 	} else {
-		left = HelpStyle.Render("w plan today · a add · enter open")
+		left = composeFullHeightFooterLeft("w plan today · a add · enter open")
 	}
 	var rightParts []string
 	if indicator := m.renderActiveFilterIndicator(); indicator != "" {

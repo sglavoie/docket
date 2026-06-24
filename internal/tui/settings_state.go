@@ -182,6 +182,12 @@ var (
 	// startViewValues maps cursor index to config string value.
 	startViewValues = []string{"dashboard", "focus-board", "cross-project-outliner", "all-tasks", "daily-review", "backlog", "priority", "due-dates"}
 
+	// defaultStartViewCursor is the cursor index in startViewValues whose value
+	// matches config.DefaultStartView. Computed in init() so the settings UI
+	// stays in sync if either side moves. Falls back to 0 when no match is
+	// found, which keeps the selector pointed at a real option.
+	defaultStartViewCursor int
+
 	// focusBoardModeOptions lists display labels for the focus board default mode selector.
 	focusBoardModeOptions = []string{"List", "Tunnel", "Zen"}
 
@@ -202,6 +208,13 @@ func init() {
 	}
 	settingsFieldCount = offset
 	settingsFields = buildSettingsFieldRegistry()
+
+	for i, v := range startViewValues {
+		if v == config.DefaultStartView {
+			defaultStartViewCursor = i
+			break
+		}
+	}
 }
 
 // tabForField returns which tab a given focusIndex belongs to.

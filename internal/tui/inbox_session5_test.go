@@ -41,9 +41,9 @@ func TestComputeGlobalAlertLinesAdvertisesGlobalShortcut(t *testing.T) {
 	}
 }
 
-// TestComputeGlobalAlertLinesAdvertisesPerProjectTriage verifies the alerts
-// panel adds a dedicated "Press O to triage <name>" CTA when the selected
-// project has inbox tasks. This is the session-5 selected-project affordance.
+// TestComputeGlobalAlertLinesAdvertisesPerProjectTriage verifies the selected-
+// project triage CTA is folded into the global triage line (session 9 alert
+// hierarchy) so users see the O shortcut without a competing second row.
 func TestComputeGlobalAlertLinesAdvertisesPerProjectTriage(t *testing.T) {
 	icons.SetUseEmoji(false)
 	t.Cleanup(func() { icons.SetUseEmoji(false) })
@@ -60,32 +60,25 @@ func TestComputeGlobalAlertLinesAdvertisesPerProjectTriage(t *testing.T) {
 
 	m := &DashboardModel{config: cfg, projects: cfg.Projects}
 	lines := m.computeGlobalAlertLines(project)
-	if len(lines) < 2 {
-		t.Fatalf("expected at least two alert lines (global + per-project), got %d: %v", len(lines), lines)
+	if len(lines) == 0 {
+		t.Fatalf("expected at least one alert line, got %v", lines)
 	}
 
-	var perProject string
-	for _, line := range lines {
-		plain := ansi.Strip(line)
-		if strings.Contains(plain, "Press O to triage") {
-			perProject = plain
-			break
-		}
+	first := ansi.Strip(lines[0])
+	if !strings.Contains(first, "3 to triage") {
+		t.Fatalf("expected global triage count in first line, got %q", first)
 	}
-	if perProject == "" {
-		t.Fatalf("expected per-project triage CTA, got lines: %v", lines)
+	if !strings.Contains(first, "O for Alpha") {
+		t.Fatalf("expected folded selected-project hint in first line, got %q", first)
 	}
-	if !strings.Contains(perProject, "Alpha") {
-		t.Fatalf("per-project CTA should name the project, got %q", perProject)
-	}
-	if !strings.Contains(perProject, "(3)") {
-		t.Fatalf("per-project CTA should include inbox count, got %q", perProject)
+	if !strings.Contains(first, "(3)") {
+		t.Fatalf("first line should include selected-project inbox count, got %q", first)
 	}
 }
 
-// TestComputeGlobalAlertLinesSkipsPerProjectTriageWhenEmpty verifies the per-
-// project CTA is omitted when the selected project has no inbox backlog, so
-// the alerts panel doesn't carry stale calls to action.
+// TestComputeGlobalAlertLinesSkipsPerProjectTriageWhenEmpty verifies the
+// folded selected-project hint is omitted when the selected project has no
+// inbox backlog, so the triage row doesn't carry a stale call to action.
 func TestComputeGlobalAlertLinesSkipsPerProjectTriageWhenEmpty(t *testing.T) {
 	cfg := testutil.NewTestConfig()
 	cfg.DataDir = t.TempDir()
@@ -95,8 +88,9 @@ func TestComputeGlobalAlertLinesSkipsPerProjectTriageWhenEmpty(t *testing.T) {
 	m := &DashboardModel{config: cfg, projects: cfg.Projects}
 	lines := m.computeGlobalAlertLines(project)
 	for _, line := range lines {
-		if strings.Contains(ansi.Strip(line), "Press O to triage") {
-			t.Fatalf("did not expect per-project CTA when inbox empty, got %q", ansi.Strip(line))
+		plain := ansi.Strip(line)
+		if strings.Contains(plain, "O for ") {
+			t.Fatalf("did not expect selected-project hint when inbox empty, got %q", plain)
 		}
 	}
 }

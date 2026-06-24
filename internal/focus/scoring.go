@@ -290,6 +290,14 @@ func countIncompleteDependents(task *models.Task, project *models.Project) int {
 	return count
 }
 
+// HasIncompleteDependencies reports whether task is gated by an incomplete
+// dependency, resolving cross-project references against the loaded project
+// slice. Missing dependencies are treated as incomplete so recommendation and
+// focus collection logic do not call a gated task actionable.
+func HasIncompleteDependencies(task *models.Task, project *models.Project, projects []*models.Project) bool {
+	return hasIncompleteDependencies(task, project, projects)
+}
+
 func hasIncompleteDependencies(task *models.Task, project *models.Project, projects []*models.Project) bool {
 	if task == nil || project == nil {
 		return false

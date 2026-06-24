@@ -19,21 +19,30 @@ type pipelineCounts struct {
 	completedTodayCount int // tasks completed today
 }
 
-// loadPipelineCounts aggregates counts from all active projects.
-func loadPipelineCounts(cfg *config.Config, queueIDs, dailyPlanIDs map[string]bool) pipelineCounts {
+// loadPipelineCounts aggregates counts from all active projects and returns
+// the loaded project slice so callers (e.g., the Next Action engine) can
+// reuse it without a second I/O pass.
+func loadPipelineCounts(cfg *config.Config, queueIDs, dailyPlanIDs map[string]bool) (pipelineCounts, []*models.Project) {
 	counts := pipelineCounts{
 		queueLen:     len(queueIDs),
 		dailyPlanLen: len(dailyPlanIDs),
 	}
 
+	if cfg == nil {
+		return counts, nil
+	}
+
 	today := time.Now()
 	startOfDay := time.Date(today.Year(), today.Month(), today.Day(), 0, 0, 0, 0, today.Location())
 
-	for _, project := range cfg.GetActiveProjects() {
+	active := cfg.GetActiveProjects()
+	loaded := make([]*models.Project, 0, len(active))
+	for _, project := range active {
 		if err := storage.LoadProject(project); err != nil {
 			logging.Warn("pipeline hub: failed to load project %s: %v", project.Name, err)
 			continue
 		}
+		loaded = append(loaded, project)
 		for _, task := range project.Tasks {
 			if !task.IsRoot() {
 				continue
@@ -45,7 +54,7 @@ func loadPipelineCounts(cfg *config.Config, queueIDs, dailyPlanIDs map[string]bo
 		}
 	}
 
-	return counts
+	return counts, loaded
 }
 
 func countInbox(task *models.Task) int {

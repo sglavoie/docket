@@ -351,7 +351,7 @@ func renderSuggestedTask(t *models.Task) string {
 	typeIcon := GetTypeBadge(string(t.Type), t.Type.Icon())
 	title := TaskTitleStyleFor(t, TaskTitleStyleOptions{}).
 		Render(truncateToVisualWidth(t.Title, 40))
-	prefix := DueSoonStyle.Render("▸ Suggested:")
+	prefix := DueSoonStyle.Render("★ Suggested:")
 	return fmt.Sprintf("%s %s %s", prefix, typeIcon, title)
 }
 
@@ -437,7 +437,7 @@ func (m *DashboardModel) renderPipelineCardContent(width int) string {
 		{"Triage", pc.inboxCount},
 		{"Plan", pc.queueLen},
 		{"Today", pc.dailyPlanLen},
-		{"Execute", pc.inProgressCount},
+		{"Active", pc.inProgressCount},
 		{"Review", pc.completedTodayCount},
 	}
 

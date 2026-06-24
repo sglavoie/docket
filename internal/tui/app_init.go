@@ -330,13 +330,24 @@ func (m *AppModel) Init() tea.Cmd {
 			return systemAppearanceCheckMsg{}
 		}))
 	}
-	if sv := m.config.GetStartView(); sv != "dashboard" {
-		vt := startViewTypeFromString(sv)
+	if vt, ok := resolveStartupNavigation(m.config.GetStartView()); ok {
 		cmds = append(cmds, func() tea.Msg {
 			return NavigateToViewMsg{ViewType: vt}
 		})
 	}
 	return tea.Batch(cmds...)
+}
+
+// resolveStartupNavigation decides whether AppModel.Init should push a
+// startup view onto the dashboard-rooted stack. It returns the destination
+// ViewType and true when navigation is required; "dashboard" (the only
+// surface that matches the initial stack) returns false so the user stays on
+// the dashboard without a redundant push.
+func resolveStartupNavigation(sv string) (ViewType, bool) {
+	if sv == "dashboard" {
+		return ViewDashboard, false
+	}
+	return startViewTypeFromString(sv), true
 }
 
 // startViewTypeFromString maps a start view config string to a ViewType.

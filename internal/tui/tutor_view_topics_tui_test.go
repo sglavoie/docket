@@ -284,11 +284,14 @@ func TestTutorDashboardTopicTeachesTriageProminenceAndEntryPoints(t *testing.T) 
 	required := []string{
 		"📥 N to triage",
 		"Triage",
-		"Inbox hotspots",
 		"i        Quick Capture",
 		"O        Open inbox triage",
 		"ctrl+i   Global Inbox Processor",
 		"T on the dashboard still opens View Trash",
+		// Session 12: dashboard topic must teach the cockpit-first mental model.
+		"tt opens on the Today cockpit by default",
+		"Next Action",
+		"Pipeline Hub",
 	}
 	for _, want := range required {
 		if !strings.Contains(topic.Content, want) {
@@ -296,16 +299,156 @@ func TestTutorDashboardTopicTeachesTriageProminenceAndEntryPoints(t *testing.T) 
 		}
 	}
 
-	// Session-7 stale-string assertions: the legacy per-project line label
-	// "Inbox backlog:" and the legacy pipeline stage label "Organize(" were
-	// removed from the dashboard chrome and must not reappear in tutor copy.
+	// Stale wording from earlier dashboard chrome iterations must not reappear.
+	// "Inbox backlog:" is the legacy per-project line label (session 7).
+	// "Organize(" is the legacy pipeline stage label (session 10 renamed it to Triage).
+	// "Inbox hotspots:" is the muted alerts row removed in session 9 — the tutor
+	// must not re-teach removed UI affordances.
 	stale := []string{
 		"Inbox backlog:",
 		"Organize(",
+		"Inbox hotspots:",
 	}
 	for _, notWant := range stale {
 		if strings.Contains(topic.Content, notWant) {
 			t.Fatalf("Dashboard at a glance topic still contains stale wording %q:\n%s", notWant, topic.Content)
+		}
+	}
+}
+
+func TestTutorGettingStartedPipelineTopicTeachesSixStageFlow(t *testing.T) {
+	topic := findTutorTopicByTitle(t, "The pipeline")
+
+	required := []string{
+		"six-stage flow",
+		"Capture → Triage → Plan → Work → Review → Support",
+		"ctrl+i  Capture",
+		";a      Triage",
+		";q      Plan",
+		";w      Work",
+		";r      Review",
+		";B      Support",
+		"Pipeline Hub",
+	}
+	for _, want := range required {
+		if !strings.Contains(topic.Content, want) {
+			t.Fatalf("The pipeline topic missing %q:\n%s", want, topic.Content)
+		}
+	}
+
+	// Pre-session-10 vocabulary must not survive in onboarding copy.
+	stale := []string{
+		"five-stage",
+		"Organize",
+		";f      Work",
+		"Capture → Organize",
+		"Focus Board (kanban)",
+	}
+	for _, notWant := range stale {
+		if strings.Contains(topic.Content, notWant) {
+			t.Fatalf("The pipeline topic still contains stale wording %q:\n%s", notWant, topic.Content)
+		}
+	}
+}
+
+func TestTutorGettingStartedDailyRhythmTeachesTodayDefaultAndHub(t *testing.T) {
+	topic := findTutorTopicByTitle(t, "Daily rhythm")
+
+	required := []string{
+		"tt opens on Today by default",
+		"Next Action",
+		";w returns to Today from anywhere",
+		"Pipeline Hub",
+		";;",
+		"Capture / Triage / Plan / Work / Review / Support",
+		"📥 N to triage",
+	}
+	for _, want := range required {
+		if !strings.Contains(topic.Content, want) {
+			t.Fatalf("Daily rhythm topic missing %q:\n%s", want, topic.Content)
+		}
+	}
+
+	// The Focus Board moniker and ;f shortcut were merged into Today (;w) and
+	// no longer exist in the chrome — onboarding must not advertise them.
+	stale := []string{
+		"stay in Focus Board",
+		";f opens",
+		"Focus Board (;f)",
+	}
+	for _, notWant := range stale {
+		if strings.Contains(topic.Content, notWant) {
+			t.Fatalf("Daily rhythm topic still contains stale wording %q:\n%s", notWant, topic.Content)
+		}
+	}
+}
+
+func TestTutorGettingStartedFirstTaskTeachesTodayAndHubLanding(t *testing.T) {
+	topic := findTutorTopicByTitle(t, "Your first task")
+
+	required := []string{
+		"tt opens on the Today cockpit by default",
+		"Next Action",
+		"Open Today (;w)",
+		";; to open the Pipeline Hub",
+	}
+	for _, want := range required {
+		if !strings.Contains(topic.Content, want) {
+			t.Fatalf("Your first task topic missing %q:\n%s", want, topic.Content)
+		}
+	}
+
+	stale := []string{
+		"Open Focus Board (;f)",
+	}
+	for _, notWant := range stale {
+		if strings.Contains(topic.Content, notWant) {
+			t.Fatalf("Your first task topic still contains stale wording %q:\n%s", notWant, topic.Content)
+		}
+	}
+}
+
+func TestTutorPipelineViewsTopicTeachesSixColumnHub(t *testing.T) {
+	topic := findTutorTUITopic(t, "Pipeline Views")
+
+	required := []string{
+		"Capture, Triage, Plan, Work,\nReview, Support",
+		"six-column overview",
+		"Next Action",
+		";; hub",
+		": cmd",
+		"? help",
+		"Triage:   ctrl+i inbox, ;a all tasks",
+		"Plan:     ;q backlog",
+		"Work:     ;w today",
+		"Support:  ;B blockers",
+	}
+	for _, want := range required {
+		if !strings.Contains(topic.Content, want) {
+			t.Fatalf("Pipeline Views topic missing %q:\n%s", want, topic.Content)
+		}
+	}
+
+	stale := []string{
+		"five-column",
+		"Organize",
+		"Execute:",
+	}
+	for _, notWant := range stale {
+		if strings.Contains(topic.Content, notWant) {
+			t.Fatalf("Pipeline Views topic still contains stale wording %q:\n%s", notWant, topic.Content)
+		}
+	}
+}
+
+func TestNoTutorTopicReferencesRemovedFocusBoardShortcut(t *testing.T) {
+	// Session 12 (and the redesign more broadly) folded the standalone Focus
+	// Board view into the Today cockpit at ;w. The ;f shortcut no longer
+	// exists. Tutor copy must not advertise it anywhere — a single regression
+	// here would resurrect the wrong mental model for new users.
+	for _, topic := range tutorTopics() {
+		if strings.Contains(topic.Content, ";f ") || strings.Contains(topic.Content, "(;f)") {
+			t.Fatalf("tutor topic %q still references removed ;f shortcut:\n%s", topic.Title, topic.Content)
 		}
 	}
 }

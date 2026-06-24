@@ -369,8 +369,13 @@ func kanbanRender(m *KanbanModel) string {
 	// Append detail pane (separator + info rows)
 	sb.WriteString(m.renderKanbanDetailPane())
 
-	// Footer help bar
-	left := HelpStyle.Render("h/l columns · j/k navigate · H/L move task · Enter open · Tab detail · ? help")
+	// Footer help bar — session 11 caps the contextual cluster at three
+	// kanban-specific shortcuts (column nav + cross-column move + open) and
+	// pins the standard escape-hatch cluster via composeFullHeightFooterLeft.
+	// j/k row nav and Tab detail are dropped from the always-visible cluster
+	// because they overlap universal navigation muscle memory and remain
+	// discoverable via ? help.
+	left := composeFullHeightFooterLeft("h/l columns · H/L move task · Enter open")
 	right := MutedStyle.Render(fmt.Sprintf("%d tasks", totalCards))
 	sb.WriteString(renderStatusBarFooter(left, right, m.width, m.AccentColor()))
 

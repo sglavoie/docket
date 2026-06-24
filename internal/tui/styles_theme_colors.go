@@ -69,7 +69,7 @@ func rebuildAccentColors() {
 	if activeThemeName == "light" {
 		AccentDashboard = lipgloss.Color("#1e40af")
 		AccentCapture = lipgloss.Color("#b91c1c")
-		AccentOrganize = lipgloss.Color("#0e7490")
+		AccentTriage = lipgloss.Color("#0e7490")
 		AccentPlan = lipgloss.Color("#15803d")
 		AccentWork = lipgloss.Color("#c2410c")
 		AccentExecute = lipgloss.Color("#0f766e")
@@ -79,7 +79,7 @@ func rebuildAccentColors() {
 	} else {
 		AccentDashboard = lipgloss.Color("#7aa2f7")
 		AccentCapture = lipgloss.Color("#f7768e")
-		AccentOrganize = lipgloss.Color("#7dcfff")
+		AccentTriage = lipgloss.Color("#7dcfff")
 		AccentPlan = lipgloss.Color("#9ece6a")
 		AccentWork = lipgloss.Color("#ff9e64")
 		AccentExecute = lipgloss.Color("#73daca")

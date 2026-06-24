@@ -157,7 +157,7 @@ func NewSettingsModel(cfg *config.Config, manager *config.Manager) *SettingsMode
 		inactivePresetName:       inactivePresetName,
 		inactiveThemeDraft:       themeToInactiveDraft(inactiveCfg),
 		activeHiddenDimmed:       themeHiddenDimmed(activeTheme),
-		startViewCursor:          settingsOptionCursor(startViewValues, cfg.GetStartView(), 0),
+		startViewCursor:          settingsOptionCursor(startViewValues, cfg.GetStartView(), defaultStartViewCursor),
 		taskFormCollapsed:        cfg.GetTaskFormCollapsed(),
 		focusBoardModeCursor:     settingsOptionCursor(focusBoardModeValues, cfg.GetFocusBoardDefaultMode(), 0),
 		dashboardLayoutCursor:    initDashboardLayoutCursor(cfg.GetDashboardBottomLayout()),
