@@ -33,7 +33,7 @@ func TestSearchTagOnlyMatchConsistency(t *testing.T) {
 
 	singleTaskTitles := make(map[string]bool)
 	for _, row := range singleM.rows {
-		if !row.IsSectionHeader && !row.IsSeparator && row.task != nil {
+		if row.isTaskRow() && row.task != nil {
 			singleTaskTitles[row.task.Title] = true
 		}
 	}
@@ -57,7 +57,7 @@ func TestSearchTagOnlyMatchConsistency(t *testing.T) {
 
 	crossTaskTitles := make(map[string]bool)
 	for _, row := range crossM.rows {
-		if !row.IsSectionHeader && !row.IsSeparator && row.task != nil {
+		if row.isTaskRow() && row.task != nil {
 			crossTaskTitles[row.task.Title] = true
 		}
 	}

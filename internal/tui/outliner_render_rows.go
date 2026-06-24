@@ -104,11 +104,13 @@ func (m *OutlinerModel) renderOutlinerSectionHeaderRow(row outlinerRow, selected
 }
 
 // renderOutlinerProjectHeaderRow renders a synthetic project sub-header row
-// that visually clusters tasks of the same project beneath a shared
-// cross-project section header in the All perspective. The header reuses the
-// per-project badge color and slug text so the inline `[slug]` badges on
-// individual task rows can be suppressed. Sub-headers are skipped by keyboard
-// navigation; the selected styling branches are kept defensive only.
+// that visually clusters adjacent tasks from the same project in cross-project
+// perspectives. In the All perspective these rows sit beneath shared section
+// headers; other project-grouped perspectives emit them directly above each
+// project's task group. The header reuses the per-project badge color and slug
+// text so the inline `[slug]` badges on individual task rows can be suppressed.
+// Sub-headers are skipped by keyboard navigation; the selected styling branches
+// are kept defensive only.
 func (m *OutlinerModel) renderOutlinerProjectHeaderRow(row outlinerRow, selected bool, rowWidth, rowIndex int) string {
 	projName := m.projectNameByID(row.ProjectID)
 	projSlug := m.projectSlugByID(row.ProjectID)
@@ -211,12 +213,13 @@ func (m *OutlinerModel) renderTaskProjectBadge(row outlinerRow) string {
 	if row.ProjectID == "" {
 		return ""
 	}
-	// Suppress the per-task `[slug]` badge in the cross-project All perspective:
-	// each task already appears beneath a project sub-header that carries the
-	// same colored badge, so repeating it on every task adds visual noise.
-	// Other cross-project perspectives (Active, Priority, …) keep the badge
-	// because they do not emit project sub-headers.
-	if m.project == nil && !m.isActiveCrossPriority() && m.currentPerspective().Name == "All" {
+	// Suppress the per-task `[slug]` badge in every normal cross-project
+	// perspective: each task already appears beneath a project sub-header that
+	// carries the same colored badge, so repeating it on every task adds
+	// visual noise. Cross-project Priority mode is the exception — it buckets
+	// tasks individually with no per-project visual grouping, so the inline
+	// badge remains the only project identity cue.
+	if m.project == nil && !m.isActiveCrossPriority() {
 		return ""
 	}
 

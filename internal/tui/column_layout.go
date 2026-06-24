@@ -42,8 +42,9 @@ func ComputeTreeColumnLayout(nodes []*TreeNode, columnConfig *ColumnConfig) *Col
 }
 
 // ComputeOutlinerColumnLayout computes a ColumnLayout by scanning a slice of
-// visible outliner rows. Section headers and separators are skipped. Returns
-// nil when no task rows are present.
+// visible outliner rows. Non-task rows (section headers, project sub-headers,
+// separators) are skipped via isTaskRow(). Returns nil when no task rows are
+// present.
 func ComputeOutlinerColumnLayout(rows []outlinerRow, columnConfig *ColumnConfig) *ColumnLayout {
 	if len(rows) == 0 {
 		return nil
@@ -51,7 +52,7 @@ func ComputeOutlinerColumnLayout(rows []outlinerRow, columnConfig *ColumnConfig)
 	cl := &ColumnLayout{}
 	hasRows := false
 	for _, row := range rows {
-		if row.IsSectionHeader || row.IsSeparator || row.task == nil {
+		if !row.isTaskRow() || row.task == nil {
 			continue
 		}
 		hasRows = true

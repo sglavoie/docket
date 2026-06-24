@@ -54,6 +54,13 @@ func TestCrossProjectRebuildRowsProjectIDInvariant(t *testing.T) {
 			if row.ProjectID != "" {
 				t.Errorf("row[%d] IsSectionHeader but has non-empty ProjectID %q", i, row.ProjectID)
 			}
+		case row.IsProjectHeader:
+			if row.ProjectID == "" {
+				t.Errorf("row[%d] IsProjectHeader but has empty ProjectID", i)
+			}
+			if row.task != nil {
+				t.Errorf("row[%d] IsProjectHeader but carries task payload %q", i, row.task.Title)
+			}
 		case row.IsSeparator:
 			if row.ProjectID != "" {
 				t.Errorf("row[%d] IsSeparator but has non-empty ProjectID %q", i, row.ProjectID)

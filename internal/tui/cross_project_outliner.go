@@ -516,7 +516,8 @@ func (m *OutlinerModel) crossMergedTaskSlice() []*models.Task {
 
 // crossStatusBarLabel returns the status bar label for cross-project mode,
 // formatted as 'Cross-Outliner · [context-name] · N tasks'.
-// N counts only task rows, excluding section headers and separators.
+// N counts only task rows, excluding section headers, project sub-headers,
+// and separators.
 func (m *OutlinerModel) crossStatusBarLabel() string {
 	ctxName := "All"
 	if m.config != nil {

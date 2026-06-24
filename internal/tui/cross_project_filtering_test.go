@@ -253,7 +253,7 @@ func TestCrossProjectPinnedTagTabsHideStaleGlobalPins(t *testing.T) {
 func collectCrossProjectTaskTitles(m *OutlinerModel) map[string]bool {
 	titles := make(map[string]bool)
 	for _, row := range m.rows {
-		if !row.IsSectionHeader && !row.IsSeparator && row.task != nil {
+		if row.isTaskRow() && row.task != nil {
 			titles[row.task.Title] = true
 		}
 	}

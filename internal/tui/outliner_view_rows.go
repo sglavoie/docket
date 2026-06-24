@@ -24,7 +24,7 @@ type outlinerRow struct {
 	SectionName     string // Section name for header rows
 	SectionCount    int    // Number of tasks in this section
 	CollapseKey     string // Key for collapsedSections map; "_xp:sectionName" sentinel in All-perspective cross-project mode (shared headers, no per-project prefix needed), empty in single-project mode
-	ProjectID       string // Project that owns this row; set on task rows, cross-project section headers, and project sub-headers
+	ProjectID       string // Project that owns task/project-header rows; empty for shared section headers
 	IsSeparator     bool   // True if this row is a visual separator between projects
 }
 

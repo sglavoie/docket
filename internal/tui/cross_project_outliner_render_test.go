@@ -350,12 +350,12 @@ func assertNotContains(t *testing.T, got, want, label string) {
 	}
 }
 
-// TestCrossProjectNonAllPerspectiveOmitsProjectSubHeaders verifies the
-// suppression contract for non-All cross-project perspectives: no synthetic
-// project sub-header rows are emitted, and every task row still carries the
-// inline `[slug]` project badge (which is suppressed only in the All
-// perspective where the sub-header carries the project identity).
-func TestCrossProjectNonAllPerspectiveOmitsProjectSubHeaders(t *testing.T) {
+// TestCrossProjectNonAllPerspectiveEmitsProjectSubHeaders verifies that
+// non-All cross-project perspectives emit one synthetic project sub-header
+// per visible project group (mirroring the All-perspective shape) and no
+// GTD section headers. Inline `[slug]` badge suppression on task rows is a
+// rendering concern covered separately.
+func TestCrossProjectNonAllPerspectiveEmitsProjectSubHeaders(t *testing.T) {
 	ApplyTheme(ThemeConfig{Name: ""})
 	t.Cleanup(func() { ApplyTheme(ThemeConfig{}) })
 
@@ -374,21 +374,34 @@ func TestCrossProjectNonAllPerspectiveOmitsProjectSubHeaders(t *testing.T) {
 	m.crossForceRebuild = true
 	m.crossProjectRebuildRows()
 
+	projectHeaderCount := 0
 	for i, row := range m.rows {
-		if row.IsProjectHeader {
-			t.Fatalf("row[%d] is IsProjectHeader; non-All perspective must not emit project sub-headers", i)
-		}
 		if row.IsSectionHeader {
 			t.Fatalf("row[%d] is IsSectionHeader; non-All perspective must not emit GTD section headers", i)
 		}
+		if row.IsSeparator {
+			t.Fatalf("row[%d] is IsSeparator; non-All perspective must use project headers instead of separators", i)
+		}
+		if row.IsProjectHeader {
+			projectHeaderCount++
+		}
+	}
+	if projectHeaderCount != 2 {
+		t.Fatalf("expected 2 project sub-headers (one per visible project), got %d", projectHeaderCount)
 	}
 
 	rendered := m.renderOutlinerTreeContent(width)
-	plain := ansi.Strip(rendered)
-	assertContains(t, plain, "[alpha]", "non-All perspective preserves inline alpha project badge")
-	assertContains(t, plain, "[beta]", "non-All perspective preserves inline beta project badge")
-	assertNotContains(t, rendered, renderedProjectHeaderBadge("Alpha Project", "alpha"), "non-All perspective must not render bold project sub-header badge")
-	assertNotContains(t, rendered, renderedProjectHeaderBadge("Beta Project", "beta"), "non-All perspective must not render bold project sub-header badge")
+	assertContains(t, rendered, renderedProjectHeaderBadge("Alpha Project", "alpha"), "non-All perspective renders bold project sub-header badge")
+	assertContains(t, rendered, renderedProjectHeaderBadge("Beta Project", "beta"), "non-All perspective renders bold project sub-header badge")
+
+	// The inline `[slug]` task-row badge must be suppressed in normal
+	// cross-project perspectives: project identity now lives on the bold
+	// project sub-header above each group, so repeating it on every task row
+	// would be visual noise.
+	alphaTaskLine := ansi.Strip(findRenderedLineContaining(t, rendered, "Alpha active item"))
+	assertNotContains(t, alphaTaskLine, "[alpha]", "non-All perspective suppresses inline alpha task badge in favor of project sub-header")
+	betaTaskLine := ansi.Strip(findRenderedLineContaining(t, rendered, "Beta active item"))
+	assertNotContains(t, betaTaskLine, "[beta]", "non-All perspective suppresses inline beta task badge in favor of project sub-header")
 }
 
 // TestCrossProjectPriorityModeOmitsProjectSubHeaders verifies that the

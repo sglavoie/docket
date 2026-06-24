@@ -30,7 +30,7 @@ func TestCrossHandleEnterKeyCollapseTogglesRows(t *testing.T) {
 	countTaskRows := func() int {
 		n := 0
 		for _, r := range m.rows {
-			if !r.IsSectionHeader && !r.IsSeparator && r.task != nil {
+			if r.isTaskRow() && r.task != nil {
 				n++
 			}
 		}

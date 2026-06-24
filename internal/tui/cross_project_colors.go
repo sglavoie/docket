@@ -26,8 +26,8 @@ var projectColorPaletteLight = [12]string{
 // Call site: renderCrossProjectContent (cross_project_outliner.go) calls
 // projectBadgeColor(projName) directly and builds the badge inline — it does
 // not delegate to RenderCrossProjectTaskLine. row.ProjectID is populated for
-// every task row during crossProjectRebuildRows() and left empty for
-// IsSectionHeader and IsSeparator rows.
+// every task row and project sub-header row during crossProjectRebuildRows()
+// and left empty for IsSectionHeader and IsSeparator rows.
 func projectBadgeColor(projectName string) string {
 	h := fnv.New32a()
 	_, _ = h.Write([]byte(projectName))

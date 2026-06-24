@@ -75,7 +75,7 @@ func crossPriorityFixture(t *testing.T) (m *OutlinerModel, alpha, beta *models.P
 
 	firstTaskRow = -1
 	for i, r := range m.rows {
-		if !r.IsSectionHeader && !r.IsSeparator && r.task != nil {
+		if r.isTaskRow() && r.task != nil {
 			firstTaskRow = i
 			break
 		}
@@ -105,7 +105,7 @@ func TestCrossPriorityEnterOnGroupHeaderTogglesCollapse(t *testing.T) {
 	countTaskRows := func() int {
 		n := 0
 		for _, r := range m.rows {
-			if !r.IsSectionHeader && !r.IsSeparator && r.task != nil {
+			if r.isTaskRow() && r.task != nil {
 				n++
 			}
 		}

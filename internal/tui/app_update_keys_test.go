@@ -441,7 +441,7 @@ func TestHandleGlobalKeyPress_CtrlOOpensTaskReferenceFromPrimaryViews(t *testing
 				outliner := NewOutlinerModel(project, app.config, app.configManager)
 				outliner.rebuildRows()
 				for i, row := range outliner.rows {
-					if !row.IsSectionHeader && !row.IsSeparator && row.task != nil {
+					if row.isTaskRow() && row.task != nil {
 						outliner.cursor = i
 						break
 					}

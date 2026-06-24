@@ -94,6 +94,7 @@ func TestCrossProjectRebuildRowsPerspectiveRouting(t *testing.T) {
 
 		sectionHeaderCount := 0
 		separatorCount := 0
+		projectHeaderCount := 0
 		for _, row := range m.rows {
 			if row.IsSectionHeader {
 				sectionHeaderCount++
@@ -101,10 +102,16 @@ func TestCrossProjectRebuildRowsPerspectiveRouting(t *testing.T) {
 			if row.IsSeparator {
 				separatorCount++
 			}
+			if row.IsProjectHeader {
+				projectHeaderCount++
+			}
 		}
 
-		if separatorCount == 0 {
-			t.Error("non-All perspective with two projects: expected at least one IsSeparator row")
+		if projectHeaderCount < 2 {
+			t.Errorf("non-All perspective with two projects: expected at least 2 IsProjectHeader rows, got %d", projectHeaderCount)
+		}
+		if separatorCount != 0 {
+			t.Errorf("non-All perspective: expected zero IsSeparator rows, got %d", separatorCount)
 		}
 		if sectionHeaderCount != 0 {
 			t.Errorf("non-All perspective: expected zero IsSectionHeader rows, got %d", sectionHeaderCount)
@@ -154,11 +161,11 @@ func TestCrossProjectGroupingByPerspective(t *testing.T) {
 		}
 	})
 
-	t.Run("non-All perspective produces project-grouped rows with IsSeparator", func(t *testing.T) {
+	t.Run("non-All perspective produces project-grouped rows with project headers", func(t *testing.T) {
 		m := newModel(PerspectiveAll + 1)
 		m.crossProjectRebuildRows()
 
-		var sectionHeaders, separators int
+		var sectionHeaders, separators, projectHeaders int
 		for _, row := range m.rows {
 			if row.IsSectionHeader {
 				sectionHeaders++
@@ -166,9 +173,15 @@ func TestCrossProjectGroupingByPerspective(t *testing.T) {
 			if row.IsSeparator {
 				separators++
 			}
+			if row.IsProjectHeader {
+				projectHeaders++
+			}
 		}
-		if separators == 0 {
-			t.Error("expected IsSeparator rows between project groups for non-All perspective, got none")
+		if projectHeaders < 2 {
+			t.Errorf("expected at least 2 IsProjectHeader rows for non-All perspective with two visible projects, got %d", projectHeaders)
+		}
+		if separators != 0 {
+			t.Errorf("expected no IsSeparator rows for non-All perspective, got %d", separators)
 		}
 		if sectionHeaders != 0 {
 			t.Errorf("expected no IsSectionHeader rows for non-All perspective, got %d", sectionHeaders)

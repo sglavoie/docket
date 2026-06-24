@@ -93,7 +93,7 @@ func TestBuildCrossProjectRowsMultiProjectMerging(t *testing.T) {
 	for _, row := range m.rows {
 		if row.IsSectionHeader {
 			headers = append(headers, row)
-		} else if !row.IsSeparator {
+		} else if row.isTaskRow() {
 			taskRows = append(taskRows, row)
 		}
 	}

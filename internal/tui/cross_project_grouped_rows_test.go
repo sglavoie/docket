@@ -28,7 +28,7 @@ func TestBuildProjectGroupedRowsIndependentSorting(t *testing.T) {
 
 	var ids []string
 	for _, row := range m.rows {
-		if !row.IsSeparator {
+		if row.isTaskRow() {
 			ids = append(ids, row.ProjectID)
 		}
 	}
@@ -87,14 +87,17 @@ func TestCrossProjectRebuildRowsSortsNonAllGroupsByProjectName(t *testing.T) {
 
 	var got []string
 	for _, row := range m.rows {
-		if row.IsSeparator {
+		switch {
+		case row.IsProjectHeader:
+			got = append(got, "H:"+row.ProjectID)
+		case row.IsSeparator:
 			got = append(got, "|")
-			continue
+		default:
+			got = append(got, row.ProjectID)
 		}
-		got = append(got, row.ProjectID)
 	}
 
-	want := []string{"proj-alpha", "|", "proj-beta"}
+	want := []string{"H:proj-alpha", "proj-alpha", "H:proj-beta", "proj-beta"}
 	if !slices.Equal(got, want) {
 		t.Fatalf("rendered project order: want %v, got %v", want, got)
 	}

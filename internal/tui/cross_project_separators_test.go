@@ -6,7 +6,7 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 )
 
-func TestBuildProjectGroupedRowsSeparatorPlacement(t *testing.T) {
+func TestBuildProjectGroupedRowsHeaderPlacement(t *testing.T) {
 	m := minimalOutliner()
 
 	groups := []projectTasksGroup{
@@ -18,23 +18,27 @@ func TestBuildProjectGroupedRowsSeparatorPlacement(t *testing.T) {
 	m.buildProjectGroupedRows(groups)
 
 	separatorCount := 0
+	projectHeaderCount := 0
 	for _, row := range m.rows {
 		if row.IsSeparator {
 			separatorCount++
 		}
+		if row.IsProjectHeader {
+			projectHeaderCount++
+		}
 	}
 
-	if separatorCount != 2 {
-		t.Errorf("expected 2 separators for 3 groups, got %d", separatorCount)
+	if separatorCount != 0 {
+		t.Errorf("expected 0 separators for 3 groups, got %d", separatorCount)
+	}
+	if projectHeaderCount != 3 {
+		t.Errorf("expected 3 project headers for 3 groups, got %d", projectHeaderCount)
 	}
 	if len(m.rows) == 0 {
 		t.Fatal("no rows produced")
 	}
-	if m.rows[0].IsSeparator {
-		t.Error("first row must not be a separator")
-	}
-	if m.rows[len(m.rows)-1].IsSeparator {
-		t.Error("last row must not be a separator")
+	if !m.rows[0].IsProjectHeader {
+		t.Error("first row must be a project header")
 	}
 }
 
@@ -48,14 +52,21 @@ func TestBuildProjectGroupedRowsSingleGroup(t *testing.T) {
 
 	m.buildProjectGroupedRows(groups)
 
+	projectHeaderCount := 0
 	for _, row := range m.rows {
 		if row.IsSeparator {
 			t.Error("single group must not produce any separator rows")
 		}
+		if row.IsProjectHeader {
+			projectHeaderCount++
+		}
+	}
+	if projectHeaderCount != 1 {
+		t.Errorf("expected exactly 1 project header for a single group, got %d", projectHeaderCount)
 	}
 }
 
-func TestSeparatorSkipLoop(t *testing.T) {
+func TestProjectHeaderSkipLoop(t *testing.T) {
 	m := minimalOutliner()
 
 	groups := []projectTasksGroup{
@@ -66,33 +77,37 @@ func TestSeparatorSkipLoop(t *testing.T) {
 	m.buildProjectGroupedRows(groups)
 
 	taskRowCount := 0
-	separatorCount := 0
+	projectHeaderCount := 0
 	for _, row := range m.rows {
 		switch {
-		case row.IsSeparator:
-			separatorCount++
+		case row.IsProjectHeader:
+			projectHeaderCount++
 			if row.task != nil {
-				t.Error("separator row must not carry a task")
+				t.Error("project header row must not carry a task")
 			}
 			if row.IsSectionHeader {
-				t.Error("separator row must not also be IsSectionHeader")
+				t.Error("project header row must not also be IsSectionHeader")
 			}
-		case !row.IsSectionHeader:
+			if row.IsSeparator {
+				t.Error("project header row must not also be IsSeparator")
+			}
+		case row.isTaskRow():
 			taskRowCount++
 		}
 	}
 
-	if separatorCount != 1 {
-		t.Errorf("expected 1 separator between 2 groups, got %d", separatorCount)
+	if projectHeaderCount != 2 {
+		t.Errorf("expected 2 project headers for 2 groups, got %d", projectHeaderCount)
 	}
 	if taskRowCount != 2 {
 		t.Errorf("expected 2 task rows, got %d", taskRowCount)
 	}
 }
 
-// TestSpaceOnSeparatorNoPanic verifies that pressing space in multi-select mode
-// does not panic when the cursor is on a separator row (which has a nil task).
-func TestSpaceOnSeparatorNoPanic(t *testing.T) {
+// TestSpaceOnProjectHeaderNoPanic verifies that the onHeader guard correctly
+// treats project header rows as non-task rows so the multi-select space prefix
+// cannot deref the nil task on a project header.
+func TestSpaceOnProjectHeaderNoPanic(t *testing.T) {
 	m := minimalOutliner()
 
 	groups := []projectTasksGroup{
@@ -102,43 +117,38 @@ func TestSpaceOnSeparatorNoPanic(t *testing.T) {
 
 	m.buildProjectGroupedRows(groups)
 
-	// Enter multi-select mode
 	m.multiSelectMode = true
 	m.selectedTasks = make(map[string]bool)
 
-	// Find the separator row
-	separatorIdx := -1
+	headerIdx := -1
 	for i, row := range m.rows {
-		if row.IsSeparator {
-			separatorIdx = i
+		if row.IsProjectHeader {
+			headerIdx = i
 			break
 		}
 	}
-	if separatorIdx < 0 {
-		t.Fatal("expected a separator row")
+	if headerIdx < 0 {
+		t.Fatal("expected a project header row")
 	}
 
-	// Move cursor to separator
-	m.cursor = separatorIdx
+	m.cursor = headerIdx
 
-	// This must not panic — separator has nil task
 	row := m.rows[m.cursor]
-	if row.IsSectionHeader || row.IsSeparator || row.task == nil {
-		// Expected: skip selection for non-task rows
-	} else {
-		t.Error("separator row should be skipped by the guard condition")
+	if row.task != nil {
+		t.Error("project header row should carry no task payload")
 	}
-
-	// Also verify the onHeader computation includes separators
-	onHeader := m.rows[m.cursor].IsSectionHeader || m.rows[m.cursor].IsSeparator
-	if !onHeader {
-		t.Error("onHeader should be true for separator rows to prevent prefix key activation")
+	if row.isTaskRow() {
+		t.Error("project header row should not be classified as a task row")
+	}
+	if row.isNavigable() {
+		t.Error("project header row should be non-navigable")
 	}
 }
 
-// TestDeleteOnSeparatorNoPanic verifies that the D (delete) key guard correctly
-// treats separator rows as non-task rows, preventing nil dereference on row.task.
-func TestDeleteOnSeparatorNoPanic(t *testing.T) {
+// TestDeleteOnProjectHeaderNoPanic verifies that delete-key guards relying on
+// isNavigable / isTaskRow correctly route around project header rows so D
+// cannot deref the nil task on a project header.
+func TestDeleteOnProjectHeaderNoPanic(t *testing.T) {
 	m := minimalOutliner()
 
 	groups := []projectTasksGroup{
@@ -148,22 +158,26 @@ func TestDeleteOnSeparatorNoPanic(t *testing.T) {
 
 	m.buildProjectGroupedRows(groups)
 
-	// Find separator
 	for i, row := range m.rows {
-		if row.IsSeparator {
+		if row.IsProjectHeader {
 			m.cursor = i
-			// The onHeader guard should prevent D from accessing row.task
-			onHeader := m.rows[m.cursor].IsSectionHeader || m.rows[m.cursor].IsSeparator
-			if !onHeader {
-				t.Error("onHeader must be true for separator rows")
+			cur := m.rows[m.cursor]
+			if cur.isTaskRow() {
+				t.Error("project header row must not be classified as a task row")
+			}
+			if cur.isNavigable() {
+				t.Error("project header row must be non-navigable")
+			}
+			if cur.task != nil {
+				t.Error("project header row must carry no task payload")
 			}
 			return
 		}
 	}
-	t.Fatal("expected a separator row")
+	t.Fatal("expected a project header row")
 }
 
-func TestSeparatorIsSeparatorNotSectionHeader(t *testing.T) {
+func TestProjectHeaderIsProjectHeaderNotSectionHeader(t *testing.T) {
 	m := minimalOutliner()
 
 	groups := []projectTasksGroup{
@@ -175,21 +189,24 @@ func TestSeparatorIsSeparatorNotSectionHeader(t *testing.T) {
 	m.buildProjectGroupedRows(groups)
 
 	for i, row := range m.rows {
-		if row.IsSeparator && row.IsSectionHeader {
-			t.Errorf("row[%d] is both IsSeparator and IsSectionHeader - must be mutually exclusive", i)
+		if row.IsProjectHeader && row.IsSectionHeader {
+			t.Errorf("row[%d] is both IsProjectHeader and IsSectionHeader - must be mutually exclusive", i)
 		}
-		if row.IsSeparator && row.task != nil {
-			t.Errorf("row[%d] is a separator but has a non-nil task", i)
+		if row.IsProjectHeader && row.IsSeparator {
+			t.Errorf("row[%d] is both IsProjectHeader and IsSeparator - must be mutually exclusive", i)
+		}
+		if row.IsProjectHeader && row.task != nil {
+			t.Errorf("row[%d] is a project header but has a non-nil task", i)
 		}
 	}
 
-	separatorCount := 0
+	projectHeaderCount := 0
 	for _, row := range m.rows {
-		if row.IsSeparator {
-			separatorCount++
+		if row.IsProjectHeader {
+			projectHeaderCount++
 		}
 	}
-	if separatorCount != 2 {
-		t.Errorf("expected 2 separators, got %d", separatorCount)
+	if projectHeaderCount != 3 {
+		t.Errorf("expected 3 project headers, got %d", projectHeaderCount)
 	}
 }

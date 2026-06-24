@@ -37,7 +37,7 @@ func dispatchOutlinerKeys(t *testing.T, m *OutlinerModel, keys ...rune) *Outline
 func countOutlinerTaskRows(rows []outlinerRow) int {
 	count := 0
 	for _, row := range rows {
-		if row.task != nil && !row.IsSectionHeader && !row.IsSeparator {
+		if row.isTaskRow() && row.task != nil {
 			count++
 		}
 	}
