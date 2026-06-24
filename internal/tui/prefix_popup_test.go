@@ -242,6 +242,14 @@ func TestRenderPrefixPopup_CategoryTitle(t *testing.T) {
 	}
 }
 
+func TestRenderPrefixCategoryTitle_SemicolonTTUsesWholeBoldTitle(t *testing.T) {
+	got := renderPrefixCategoryTitle(";", "tt", SuccessBoldStyle, NormalStyle)
+	want := NormalStyle.Bold(true).Render("tt")
+	if got != want {
+		t.Fatalf("semicolon tt title = %q, want %q", got, want)
+	}
+}
+
 func TestResolvePrefixCategoryHighlightSpan_DefaultUsesFirstRune(t *testing.T) {
 	start, end, ok := resolvePrefixCategoryHighlightSpan("m", "move")
 	if !ok {

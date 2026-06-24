@@ -230,6 +230,10 @@ func RenderPrefixPopupWithCategory(prefix, category string, hints PrefixHints, w
 }
 
 func renderPrefixCategoryTitle(prefix, category string, highlightedStyle, baseStyle lipgloss.Style) string {
+	if shouldRenderWholePrefixCategoryTitleBold(prefix, category) {
+		return baseStyle.Bold(true).Render(category)
+	}
+
 	start, end, ok := resolvePrefixCategoryHighlightSpan(prefix, category)
 	if !ok {
 		return baseStyle.Render(category)
@@ -238,6 +242,10 @@ func renderPrefixCategoryTitle(prefix, category string, highlightedStyle, baseSt
 	return baseStyle.Render(category[:start]) +
 		highlightedStyle.Render(category[start:end]) +
 		baseStyle.Render(category[end:])
+}
+
+func shouldRenderWholePrefixCategoryTitleBold(prefix, category string) bool {
+	return prefix == ";" && category == "tt"
 }
 
 func resolvePrefixCategoryHighlightSpan(prefix, category string) (int, int, bool) {
