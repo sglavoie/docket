@@ -92,13 +92,13 @@ func TestInboxProcessorBackendStrings(t *testing.T) {
 	if local.headerSubtitleExtra() != "" {
 		t.Errorf("local header subtitle extra should be empty, got %q", local.headerSubtitleExtra())
 	}
-	if !strings.Contains(global.headerSubtitleExtra(), "from 0 projects") {
+	if !strings.Contains(global.headerSubtitleExtra(), "across 0") {
 		t.Errorf("global header subtitle extra should reflect project count, got %q", global.headerSubtitleExtra())
 	}
 
 	global.projectCache["p1"] = &models.Project{ID: "p1", Name: "P1"}
 	global.projectCache["p2"] = &models.Project{ID: "p2", Name: "P2"}
-	if !strings.Contains(global.headerSubtitleExtra(), "from 2 projects") {
+	if !strings.Contains(global.headerSubtitleExtra(), "across 2") {
 		t.Errorf("global subtitle should track project cache size, got %q", global.headerSubtitleExtra())
 	}
 
@@ -115,28 +115,32 @@ func TestInboxProcessorBackendStrings(t *testing.T) {
 	}
 }
 
-// TestInboxProcessorAutoProcessHooksDifferByScope verifies the scope-driven
-// behavioral hooks documented in session-6.expand.md as the only permitted
-// per-backend divergence beyond strings: the global processor must mark
-// deleted/sectioned-away/completed tasks as processed so the queue moves on
-// without manual skip, while the local processor leaves them in the loop because
-// the user is still triaging their own project.
-func TestInboxProcessorAutoProcessHooksDifferByScope(t *testing.T) {
+// TestInboxProcessorAutoProcessHooksAreUnified verifies the session-4 contract
+// that local and global inbox processors treat "processed/triaged" the same
+// way: deleting, sectioning a task out of Inbox, or completing it must mark
+// the task processed in both backends. The previous divergence (local kept
+// transitioned tasks in the queue) confused power users because progress
+// counts and undo behavior depended on whether they entered the loop via the
+// project tree or the dashboard.
+func TestInboxProcessorAutoProcessHooksAreUnified(t *testing.T) {
 	local := &InboxProcessorModel{}
 	global := &GlobalInboxProcessorModel{}
 
-	if local.markDeletedProcessed() {
-		t.Error("local processor must not auto-mark deleted tasks processed")
+	if !local.markDeletedProcessed() {
+		t.Error("local processor must auto-mark deleted tasks processed")
 	}
 	if !global.markDeletedProcessed() {
 		t.Error("global processor must auto-mark deleted tasks processed")
 	}
 
-	if local.shouldProcessOnStatusChange(models.StatusDone) {
-		t.Error("local processor must not auto-process on status change")
+	if !local.shouldProcessOnStatusChange(models.StatusDone) {
+		t.Error("local processor must auto-process on completion")
 	}
 	if !global.shouldProcessOnStatusChange(models.StatusDone) {
 		t.Error("global processor must auto-process on completion")
+	}
+	if local.shouldProcessOnStatusChange(models.StatusTodo) {
+		t.Error("local processor must not auto-process on a non-terminal status change")
 	}
 	if global.shouldProcessOnStatusChange(models.StatusTodo) {
 		t.Error("global processor must not auto-process on a non-terminal status change")
@@ -147,11 +151,14 @@ func TestInboxProcessorAutoProcessHooksDifferByScope(t *testing.T) {
 	stayingTask := &models.Task{ID: "t-staying", Section: models.SectionInbox, Status: models.StatusTodo}
 	project.Tasks = []*models.Task{leavingTask, stayingTask}
 
-	if local.shouldProcessOnSectionChange(leavingTask, project) {
-		t.Error("local processor must not auto-process on section change")
+	if !local.shouldProcessOnSectionChange(leavingTask, project) {
+		t.Error("local processor must auto-process when a task leaves the inbox")
 	}
 	if !global.shouldProcessOnSectionChange(leavingTask, project) {
 		t.Error("global processor must auto-process when a task leaves the inbox")
+	}
+	if local.shouldProcessOnSectionChange(stayingTask, project) {
+		t.Error("local processor must keep tasks still in inbox in the queue")
 	}
 	if global.shouldProcessOnSectionChange(stayingTask, project) {
 		t.Error("global processor must keep tasks still in inbox in the queue")

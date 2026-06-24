@@ -295,8 +295,10 @@ func TestRenderInboxOperationsPanelShowsSnoozeZPrefix(t *testing.T) {
 }
 
 // TestRenderInboxOperationsPanelFramesRoutingQuestion verifies that the panel
-// reframes the inbox loop around "Where should this task go next?" and exposes
-// the routing prefix vocabulary defined in session 2 (m, d, z, ',', !, c).
+// reframes the inbox loop around "Where should this task go next?", chunks the
+// vocabulary into the four labeled groups (Route/Schedule/Resolve/Refine), and
+// surfaces the w: Today action in the Schedule row so power users can plan
+// today's work without leaving the triage loop.
 func TestRenderInboxOperationsPanelFramesRoutingQuestion(t *testing.T) {
 	rendered := ansi.Strip(renderInboxOperationsPanel())
 
@@ -306,6 +308,7 @@ func TestRenderInboxOperationsPanelFramesRoutingQuestion(t *testing.T) {
 
 	wantPrefixHints := []string{
 		"m*: Route",
+		"w: Today",
 		"d*: Schedule",
 		"z*: Snooze",
 		"D: Done",
@@ -318,6 +321,13 @@ func TestRenderInboxOperationsPanelFramesRoutingQuestion(t *testing.T) {
 	for _, hint := range wantPrefixHints {
 		if !strings.Contains(rendered, hint) {
 			t.Errorf("expected %q in operations panel, got:\n%s", hint, rendered)
+		}
+	}
+
+	wantGroupLabels := []string{"Route", "Schedule", "Resolve", "Refine"}
+	for _, label := range wantGroupLabels {
+		if !strings.Contains(rendered, label) {
+			t.Errorf("expected group label %q in operations panel, got:\n%s", label, rendered)
 		}
 	}
 

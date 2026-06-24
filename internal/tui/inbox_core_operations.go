@@ -39,18 +39,38 @@ func (c *inboxCore) undoLastAction() tea.Cmd {
 	action := c.processingHistory[len(c.processingHistory)-1]
 	c.processingHistory = c.processingHistory[:len(c.processingHistory)-1]
 
-	task, _ := c.currentTaskRef()
-	if task == nil || task.ID != action.taskID {
-		c.err = fmt.Errorf("can only undo actions on current task")
+	// Drop the action's task from processed/skipped first so the task
+	// re-enters the remaining queue regardless of whether a snapshot exists.
+	delete(c.processedIDs, action.taskID)
+	delete(c.skippedIDs, action.taskID)
+
+	// Refocus the cursor onto the restored task once the next rebuild lands
+	// (saves trigger rebuildTasks, which reorders the queue).
+	c.pendingFocusID = action.taskID
+
+	if action.prevSnapshot == nil {
+		// Skip undo: nothing to restore on disk. Realign now since no rebuild
+		// will fire and surface a clear status line.
+		c.realignCurrentIndex()
+		c.statusMessage = fmt.Sprintf("Undone: %s", action.actionType)
 		return nil
 	}
 
-	if action.prevSnapshot != nil {
-		restoreInboxSnapshot(task, action.prevSnapshot)
+	task, project := c.backend.findTaskByID(action.taskID, action.projectID)
+	if task == nil || project == nil {
+		// The action's task is no longer reachable (e.g., the project file
+		// was removed). The history pop already happened so a second u steps
+		// back further.
+		c.err = fmt.Errorf("cannot undo: task not found")
+		c.pendingFocusID = ""
+		return nil
 	}
+	restoreInboxSnapshot(task, action.prevSnapshot)
 
 	c.statusMessage = fmt.Sprintf("Undone: %s", action.actionType)
-	return c.backend.saveCmd()
+	// Save the action's project (not the current cursor's project — those may
+	// differ in the global processor after auto-advance).
+	return c.backend.saveProjectCmd(project)
 }
 
 func (c *inboxCore) setPriorityQuick(key string) tea.Cmd {
@@ -171,17 +191,19 @@ func (c *inboxCore) executeDelete() tea.Cmd {
 		return nil
 	}
 
+	saveCmd := c.backend.saveCmd()
 	c.backend.deleteFromData(task, project)
+	c.statusMessage = "Task deleted"
 
 	if c.backend.markDeletedProcessed() {
 		c.processedIDs[task.ID] = true
+		return tea.Batch(saveCmd, c.advanceToNext(true))
 	}
 
 	c.backend.rebuildTasks()
 	c.clampCurrentIndex()
-	c.statusMessage = "Task deleted"
 
-	return c.backend.saveCmd()
+	return saveCmd
 }
 
 // --- inboxOpsView implementation (used by inbox_operations_shared.go) ---

@@ -91,13 +91,19 @@ func (m *GlobalInboxProcessorModel) handleSavedMsg(msg tea.Msg) (bool, error) {
 }
 
 func (m *GlobalInboxProcessorModel) saveCmd() tea.Cmd {
-	task, project := m.currentTaskRef()
-	if task == nil {
+	_, project := m.currentTaskRef()
+	if project == nil {
 		return nil
 	}
-	p := project
+	return m.saveProjectCmd(project)
+}
+
+func (m *GlobalInboxProcessorModel) saveProjectCmd(project *models.Project) tea.Cmd {
+	if project == nil {
+		return nil
+	}
 	return func() tea.Msg {
-		if err := saveProjectSync(p); err != nil {
+		if err := saveProjectSync(project); err != nil {
 			return GlobalInboxProjectSavedMsg{Error: fmt.Errorf("save failed: %w", err)}
 		}
 		return GlobalInboxProjectSavedMsg{Error: nil}
@@ -142,10 +148,27 @@ func (m *GlobalInboxProcessorModel) shouldProcessOnStatusChange(newStatus models
 	return newStatus.IsComplete()
 }
 
+func (m *GlobalInboxProcessorModel) findTaskByID(taskID, projectID string) (*models.Task, *models.Project) {
+	if project, ok := m.projectCache[projectID]; ok && project != nil {
+		if t := project.GetTaskByID(taskID); t != nil {
+			return t, project
+		}
+	}
+	for _, project := range m.projectCache {
+		if project == nil {
+			continue
+		}
+		if t := project.GetTaskByID(taskID); t != nil {
+			return t, project
+		}
+	}
+	return nil, nil
+}
+
 func (m *GlobalInboxProcessorModel) showProjectInHeader() bool { return true }
-func (m *GlobalInboxProcessorModel) headerTitle() string       { return "Global Inbox Processing" }
+func (m *GlobalInboxProcessorModel) headerTitle() string       { return "Global Inbox" }
 func (m *GlobalInboxProcessorModel) headerSubtitleExtra() string {
-	return fmt.Sprintf(" from %d projects", len(m.projectCache))
+	return fmt.Sprintf(" across %d", len(m.projectCache))
 }
 func (m *GlobalInboxProcessorModel) emptyStateText() string {
 	return icons.Get("success") + " All inboxes are empty! All tasks have been triaged."

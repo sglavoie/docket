@@ -244,27 +244,44 @@ func renderInboxCurrentSettings(task *models.Task, cfg *config.Config) string {
 // renderInboxOperationsPanel renders the triage panel around the central
 // question "Where should this task go next?". Primary direct-key actions live
 // in the footer; this panel surfaces the routing/resolution/refinement prefix
-// vocabulary that answers the question.
+// vocabulary that answers the question, chunked into four groups (Route,
+// Schedule, Resolve, Refine) so power users see the intent column at a glance.
 func renderInboxOperationsPanel() string {
 	var b strings.Builder
 
-	b.WriteString(SubtitleStyle.Render("Where should this task go next?"))
+	// UnsetMarginBottom keeps the question's accent color but drops the trailing
+	// blank line that SubtitleStyle injects, so the four group rows can fit the
+	// 80x24 budget without the global inbox spilling past the height ceiling.
+	b.WriteString(SubtitleStyle.UnsetMarginBottom().Render("Where should this task go next?"))
 	b.WriteString("\n")
 
-	// 3x3 grid: row 1 = routing destinations, row 2 = resolutions, row 3 = refinements.
-	ops := []struct{ key, desc string }{
-		{"m*", "Route"}, {"d*", "Schedule"}, {"z*", "Snooze"},
-		{"D", "Done"}, {",*", "Status"}, {"!/1-5", "Priority"},
-		{"e", "Edit"}, {"T", "Tags"}, {"c*", "Linked"},
+	type op struct{ key, desc string }
+	groups := []struct {
+		label string
+		ops   []op
+	}{
+		{"Route", []op{{"m*", "Route"}, {"c*", "Linked"}}},
+		{"Schedule", []op{{"w", "Today"}, {"d*", "Schedule"}, {"z*", "Snooze"}}},
+		{"Resolve", []op{{"D", "Done"}, {",*", "Status"}}},
+		{"Refine", []op{{"e", "Edit"}, {"T", "Tags"}, {"!/1-5", "Priority"}}},
+	}
+
+	labelWidth := 0
+	for _, g := range groups {
+		if w := lipgloss.Width(g.label); w > labelWidth {
+			labelWidth = w
+		}
 	}
 
 	var lines []string
-	for i := 0; i < len(ops); i += 3 {
+	for _, g := range groups {
 		var parts []string
-		for j := i; j < i+3 && j < len(ops); j++ {
-			parts = append(parts, HelpKeyStyle.Render(ops[j].key)+MutedStyle.Render(": "+ops[j].desc))
+		for _, o := range g.ops {
+			parts = append(parts, HelpKeyStyle.Render(o.key)+MutedStyle.Render(": "+o.desc))
 		}
-		lines = append(lines, strings.Join(parts, "  "))
+		padding := strings.Repeat(" ", labelWidth-lipgloss.Width(g.label))
+		label := BoldStyle.Render(g.label) + padding
+		lines = append(lines, label+"  "+strings.Join(parts, "  "))
 	}
 	lines = append(lines, MutedStyle.Render("More: ")+
 		HelpKeyStyle.Render("t*")+MutedStyle.Render(" task ops · ")+

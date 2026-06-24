@@ -152,7 +152,7 @@ func (m *QuickCaptureModel) View() tea.View {
 	if m.isAutocompleteActive() {
 		helpText = "Tab: accept · ↑↓: navigate · Esc: dismiss"
 	} else {
-		helpText = "Enter: create · Ctrl+O: create & open · Ctrl+D: create & edit desc · ?: syntax · Esc: cancel"
+		helpText = "Enter: create · Ctrl+O: open · Ctrl+D: edit desc · ?: syntax · Esc: cancel"
 	}
 
 	var out strings.Builder

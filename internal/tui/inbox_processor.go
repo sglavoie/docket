@@ -73,7 +73,13 @@ func (m *InboxProcessorModel) handleSavedMsg(msg tea.Msg) (bool, error) {
 }
 
 func (m *InboxProcessorModel) saveCmd() tea.Cmd {
-	project := m.project
+	return m.saveProjectCmd(m.project)
+}
+
+func (m *InboxProcessorModel) saveProjectCmd(project *models.Project) tea.Cmd {
+	if project == nil {
+		project = m.project
+	}
 	return func() tea.Msg {
 		if err := saveProjectSync(project); err != nil {
 			return InboxProjectSavedMsg{Error: fmt.Errorf("save failed: %w", err)}
@@ -105,14 +111,26 @@ func (m *InboxProcessorModel) deleteFromData(task *models.Task, _ *models.Projec
 	}
 }
 
-func (m *InboxProcessorModel) markDeletedProcessed() bool { return false }
-func (m *InboxProcessorModel) shouldProcessOnSectionChange(_ *models.Task, _ *models.Project) bool {
-	return false
+func (m *InboxProcessorModel) markDeletedProcessed() bool { return true }
+
+func (m *InboxProcessorModel) shouldProcessOnSectionChange(task *models.Task, project *models.Project) bool {
+	current := project.GetTaskByID(task.ID)
+	return current != nil && willLeaveInbox(current)
 }
-func (m *InboxProcessorModel) shouldProcessOnStatusChange(_ models.TaskStatus) bool { return false }
+
+func (m *InboxProcessorModel) shouldProcessOnStatusChange(newStatus models.TaskStatus) bool {
+	return newStatus.IsComplete()
+}
+
+func (m *InboxProcessorModel) findTaskByID(taskID, _ string) (*models.Task, *models.Project) {
+	if t := m.project.GetTaskByID(taskID); t != nil {
+		return t, m.project
+	}
+	return nil, nil
+}
 
 func (m *InboxProcessorModel) showProjectInHeader() bool   { return false }
-func (m *InboxProcessorModel) headerTitle() string         { return "Inbox Processing" }
+func (m *InboxProcessorModel) headerTitle() string         { return "Inbox" }
 func (m *InboxProcessorModel) headerSubtitleExtra() string { return "" }
 func (m *InboxProcessorModel) emptyStateText() string {
 	return icons.Get("success") + " Inbox is empty! All tasks have been triaged."

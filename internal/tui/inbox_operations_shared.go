@@ -52,6 +52,16 @@ func inboxOpenDueDateInput(v inboxOpsView) tea.Cmd {
 	}
 }
 
+func inboxOpenSnoozeInput(v inboxOpsView) tea.Cmd {
+	task, project := v.getInboxTaskRef()
+	if task == nil {
+		return nil
+	}
+	return func() tea.Msg {
+		return SetSnoozeDateMsg{Task: task, Project: project}
+	}
+}
+
 func inboxOpenDependencySelector(v inboxOpsView) tea.Cmd {
 	task, project := v.getInboxTaskRef()
 	if task == nil {

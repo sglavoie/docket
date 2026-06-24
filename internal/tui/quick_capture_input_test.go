@@ -45,7 +45,7 @@ func TestRenderPreview_PreviewErrorShortCircuits(t *testing.T) {
 	}
 }
 
-func TestRenderPreview_TitleOnlyHidesEmptyGroups(t *testing.T) {
+func TestRenderPreview_TitleOnlyShowsDefaultInboxRoute(t *testing.T) {
 	q := makePreviewInput(t, &quickCaptureResult{
 		title:    "Fix login bug",
 		taskType: models.TaskTypeTask,
@@ -54,8 +54,8 @@ func TestRenderPreview_TitleOnlyHidesEmptyGroups(t *testing.T) {
 
 	plain := ansi.Strip(q.renderPreview())
 	lines := strings.Split(plain, "\n")
-	if len(lines) != 1 {
-		t.Fatalf("expected exactly one line for title-only preview, got %d:\n%s", len(lines), plain)
+	if len(lines) != 2 {
+		t.Fatalf("expected exactly two lines (Task + Route) for title-only preview, got %d:\n%s", len(lines), plain)
 	}
 	if !strings.HasPrefix(lines[0], "Task") {
 		t.Fatalf("expected Task group line, got %q", lines[0])
@@ -63,9 +63,69 @@ func TestRenderPreview_TitleOnlyHidesEmptyGroups(t *testing.T) {
 	if !strings.Contains(lines[0], "Fix login bug") {
 		t.Fatalf("expected title in Task line, got %q", lines[0])
 	}
-	for _, banned := range []string{"Route", "Schedule", "Metadata", "Aliases"} {
+	if !strings.HasPrefix(lines[1], "Route") {
+		t.Fatalf("expected Route group line, got %q", lines[1])
+	}
+	if !strings.Contains(lines[1], "Inbox (default)") {
+		t.Fatalf("expected Route line to show 'Inbox (default)', got %q", lines[1])
+	}
+	for _, banned := range []string{"Schedule", "Metadata", "Aliases"} {
 		if strings.Contains(plain, banned) {
 			t.Errorf("expected %s group to be hidden, got %q", banned, plain)
+		}
+	}
+}
+
+func TestRenderPreview_DefaultInboxRouteWithTargetProject(t *testing.T) {
+	q := makePreviewInput(t, &quickCaptureResult{
+		title:             "Capture for other team",
+		taskType:          models.TaskTypeTask,
+		priority:          3,
+		targetProjectName: "Web App",
+	}, "", 0)
+
+	plain := ansi.Strip(q.renderPreview())
+	var routeLine string
+	for _, line := range strings.Split(plain, "\n") {
+		if strings.HasPrefix(line, "Route") {
+			routeLine = line
+			break
+		}
+	}
+	if routeLine == "" {
+		t.Fatalf("expected Route group line, got:\n%s", plain)
+	}
+	for _, substr := range []string{"Inbox (default)", "Web App", "→"} {
+		if !strings.Contains(routeLine, substr) {
+			t.Errorf("expected substring %q in Route line, got %q", substr, routeLine)
+		}
+	}
+}
+
+func TestRenderPreview_DefaultInboxRouteWrapsAtNarrowWidth(t *testing.T) {
+	q := makePreviewInput(t, &quickCaptureResult{
+		title:             "Capture for the offsite tomorrow morning",
+		taskType:          models.TaskTypeTask,
+		priority:          3,
+		targetProjectName: "Q1 Planning Roadmap Initiative",
+	}, "", 32)
+
+	rendered := q.renderPreview()
+	for _, line := range strings.Split(rendered, "\n") {
+		stripped := ansi.Strip(line)
+		if w := lipgloss.Width(stripped); w > 32 {
+			t.Errorf("preview line exceeds width 32: %q (width=%d)", stripped, w)
+		}
+	}
+	plain := ansi.Strip(rendered)
+	if !strings.Contains(plain, "Inbox (default)") {
+		t.Fatalf("expected 'Inbox (default)' hint in narrow preview, got:\n%s", plain)
+	}
+	// The long project name wraps across continuation lines, so look for
+	// each word individually rather than the full contiguous string.
+	for _, tok := range []string{"Q1", "Planning", "Roadmap", "Initiative"} {
+		if !strings.Contains(plain, tok) {
+			t.Fatalf("expected target project token %q to appear in narrow preview, got:\n%s", tok, plain)
 		}
 	}
 }

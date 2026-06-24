@@ -75,7 +75,13 @@ func (m *DashboardModel) computeGlobalAlertLines(selectedProject *models.Project
 
 	var lines []string
 	if totalTriage > 0 {
-		lines = append(lines, DueSoonStyle.Render(fmt.Sprintf("%s %d to triage", icons.Get("inbox"), totalTriage)))
+		lines = append(lines, DueSoonStyle.Render(fmt.Sprintf("%s %d to triage · ctrl+i", icons.Get("inbox"), totalTriage)))
+	}
+	if selectedProject != nil {
+		if selectedInbox := countProjectInboxTasks(selectedProject); selectedInbox > 0 {
+			lines = append(lines, DueSoonStyle.Render(fmt.Sprintf("%s Press O to triage %s (%d)",
+				icons.Get("inbox"), selectedProject.Name, selectedInbox)))
+		}
 	}
 	if totalOverdue > 0 {
 		lines = append(lines, OverdueStyle.Render(fmt.Sprintf("%s %d overdue", icons.Get("overdue"), totalOverdue)))

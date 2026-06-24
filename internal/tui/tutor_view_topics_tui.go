@@ -81,12 +81,23 @@ memorizing chords:
   manage inbox task tags     (T)
   undo last triage action    (u)
   view task details          (enter)
+  plan today                 (w)
   route to section           (ctrl+s)
+  send to next               (mn)
   send to waiting            (ctrl+w)
   set inbox task due date    (dd)
+  set due date today         (dt)
+  snooze inbox task          (zd)
   create subtask from inbox  (cs)
   manage inbox dependencies  (bm)
-  delete inbox task          (tD)`,
+  delete inbox task          (tD)
+
+The palette's "Suggested" section is context-aware inside the
+inbox processors: it leads with the triage-momentum vocabulary
+("plan today", "send to next", "set due date today", "snooze
+inbox task") so a brand-new user lands on the close-message
+next actions (;w Today · ;q Backlog) without memorizing chords
+first.`,
 		},
 		{
 			Title:    "Dashboard at a glance",
@@ -265,15 +276,18 @@ Inbox Processor.
 
 # Operations Panel (Deeper Grammar)
 
-The operations panel groups the prefix vocabulary into three
+The operations panel groups the prefix vocabulary into four
 rows that answer the routing question from different angles:
 
-  Route     m* Route · d* Schedule · z* Snooze
-  Resolve   D Done · ,* Status · !/1-5 Priority
-  Refine    e Edit · T Tags · c* Linked
+  Route     m* Route · c* Linked
+  Schedule  w Today · d* Schedule · z* Snooze
+  Resolve   D Done · ,* Status
+  Refine    e Edit · T Tags · !/1-5 Priority
 
-A "More:" line at the bottom points to the deeper escape
-hatches: "t* task ops · ? help · : palette".
+The Schedule row promotes w (toggle today's plan) so a power
+user can pull the current inbox item into Today without leaving
+the triage loop. A "More:" line at the bottom points to the
+deeper escape hatches: "t* task ops · ? help · : palette".
 
 # How to Open
 
@@ -294,15 +308,32 @@ matches the same verbs as the in-app chrome:
   manage inbox task tags     (T)
   undo last triage action    (u)
   view task details          (enter)
+  plan today                 (w)
   route to section           (ctrl+s)
+  send to next               (mn)
   send to waiting            (ctrl+w)
   set inbox task due date    (dd)
+  set due date today         (dt)
+  snooze inbox task          (zd)
   create subtask from inbox  (cs)
   manage inbox dependencies  (bm)
   delete inbox task          (tD)
 
 The dashboard-only "triage inbox" command (Shortcut O) opens
 the per-project processor for the currently selected project.
+
+# Closing the Loop
+
+When the inbox empties the close message hands you the next
+moves verbatim:
+
+  Inbox clear! X triaged, Y skipped. Next: ;w Today · ;q Backlog
+  Inbox paused: Y skipped. Next: ;q Backlog
+
+The Global Inbox Processor uses the matching "Global inbox
+clear!" / "Global inbox paused:" prefixes. The ;w Today and
+;q Backlog hints route into the Pipeline Hub so the vocabulary
+stays consistent between triage and review.
 
 # Both Processors Share One Model
 

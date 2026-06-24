@@ -8,9 +8,9 @@ import (
 )
 
 func (c *inboxCore) renderHeader() string {
-	processed, skipped, remaining, total := c.getProgressStats()
-	subtitle := fmt.Sprintf("%d/%d tasks%s (%d processed, %d skipped, %d remaining)",
-		c.currentIndex+1, total, c.backend.headerSubtitleExtra(), processed, skipped, remaining)
+	processed, skipped, _, total := c.getProgressStats()
+	subtitle := fmt.Sprintf("%d/%d%s · %d done · %d skipped",
+		c.currentIndex+1, total, c.backend.headerSubtitleExtra(), processed, skipped)
 	title := renderFullscreenTitle(c.backend.headerTitle(), subtitle, c.AccentColor())
 
 	var percent float64

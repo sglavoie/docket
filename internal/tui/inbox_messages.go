@@ -27,3 +27,8 @@ type InboxTaskSkippedMsg struct {
 type InboxProjectSavedMsg struct {
 	Error error
 }
+
+// TogglePlanTodayFromPaletteMsg requests the daily-plan toggle for the
+// focused inbox task. The palette emits this after closing itself so the
+// AppModel can run toggleDailyPlan() against the underlying inbox view.
+type TogglePlanTodayFromPaletteMsg struct{}

@@ -28,11 +28,11 @@ func (m *AppModel) handleInboxMessages(msg tea.Msg) (bool, tea.Cmd) {
 		}
 		m.refreshProjectTree()
 		if msg.ProcessedCount > 0 {
-			m.setSuccessStatus(fmt.Sprintf("Inbox clear! %d triaged. Next: plan your day (;w)",
-				msg.ProcessedCount))
+			m.setSuccessStatus(fmt.Sprintf("Inbox clear! %d triaged, %d skipped. Next: ;w Today · ;q Backlog",
+				msg.ProcessedCount, msg.SkippedCount))
 			return true, tea.Batch(popCmd, defaultStatusTimeout())
 		} else if msg.SkippedCount > 0 {
-			m.setSuccessStatus(fmt.Sprintf("Inbox processing complete: %d skipped",
+			m.setSuccessStatus(fmt.Sprintf("Inbox paused: %d skipped. Next: ;q Backlog",
 				msg.SkippedCount))
 			return true, tea.Batch(popCmd, defaultStatusTimeout())
 		}
@@ -54,9 +54,13 @@ func (m *AppModel) handleInboxMessages(msg tea.Msg) (bool, tea.Cmd) {
 		if m.dashboard != nil {
 			m.dashboard.Refresh(m.config)
 		}
-		if msg.ProcessedCount > 0 || msg.SkippedCount > 0 {
-			m.setSuccessStatus(fmt.Sprintf("Global inbox processing complete: %d processed, %d skipped",
+		if msg.ProcessedCount > 0 {
+			m.setSuccessStatus(fmt.Sprintf("Global inbox clear! %d triaged, %d skipped. Next: ;w Today · ;q Backlog",
 				msg.ProcessedCount, msg.SkippedCount))
+			return true, tea.Batch(popCmd, defaultStatusTimeout())
+		} else if msg.SkippedCount > 0 {
+			m.setSuccessStatus(fmt.Sprintf("Global inbox paused: %d skipped. Next: ;q Backlog",
+				msg.SkippedCount))
 			return true, tea.Batch(popCmd, defaultStatusTimeout())
 		}
 		return true, popCmd
@@ -66,6 +70,14 @@ func (m *AppModel) handleInboxMessages(msg tea.Msg) (bool, tea.Cmd) {
 		if m.globalInboxProcessor != nil {
 			_, cmd := m.globalInboxProcessor.Update(msg)
 			return true, cmd
+		}
+		return true, nil
+
+	case TogglePlanTodayFromPaletteMsg:
+		// Palette emits this after closing itself so the underlying inbox view
+		// is at the top of the stack when toggleDailyPlan reads getTaskRef.
+		if cmd := m.toggleDailyPlan(); cmd != nil {
+			return true, m.batchWithFocusRefresh(cmd)
 		}
 		return true, nil
 	}

@@ -24,7 +24,8 @@ task into labeled groups so you can see exactly which sigil
 populates which field:
 
   Task        Task type + title (and any $status override)
-  Route       /section and → ProjectName (global capture)
+  Route       /section (defaults to Inbox) and → ProjectName
+              (global capture)
   Schedule    @due date and ~recurrence
   Metadata    !priority and #tags
   Aliases     Any long-form aliases you used (e.g. due:fri)
@@ -42,7 +43,8 @@ appear as an inline suffix on the title.
                 Alias: status:done
 
   Route group
-    /section    Section: /inbox /next /waiting /someday
+    /section    Section (defaults to Inbox if omitted):
+                /inbox /next /waiting /someday
                 Alias: sec:next
     %project    Target project (slug or name): %myproject
                 Alias: p:myproject  (omitted in global capture
@@ -67,14 +69,16 @@ appear as an inline suffix on the title.
 # Worked Examples
 
   Buy milk @tomorrow !2 #errand
-    Task: Buy milk · Schedule: tomorrow · Metadata: !2 #errand
+    Task: Buy milk · Route: Inbox (default)
+    Schedule: tomorrow · Metadata: !2 #errand
 
   ^bug Login spinner !1 #frontend @eod $start
     Task: bug "Login spinner" (status: in_progress)
-    Schedule: end of day · Metadata: !1 #frontend
+    Route: Inbox (default) · Schedule: end of day
+    Metadata: !1 #frontend
 
   Pair with Alex ~weekly /waiting
-    Task: Pair with Alex · Route: waiting
+    Task: Pair with Alex · Route: /waiting
     Schedule: weekly recurrence
 
 # Global Search Equivalents

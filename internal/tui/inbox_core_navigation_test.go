@@ -22,6 +22,7 @@ func (s *stubInboxBackend) closeMsg(processed, skipped int) tea.Msg {
 }
 func (s *stubInboxBackend) handleSavedMsg(tea.Msg) (bool, error)         { return false, nil }
 func (s *stubInboxBackend) saveCmd() tea.Cmd                             { return nil }
+func (s *stubInboxBackend) saveProjectCmd(*models.Project) tea.Cmd       { return nil }
 func (s *stubInboxBackend) reloadCmd() tea.Cmd                           { return nil }
 func (s *stubInboxBackend) rebuildTasks()                                {}
 func (s *stubInboxBackend) deleteFromData(*models.Task, *models.Project) {}
@@ -30,14 +31,22 @@ func (s *stubInboxBackend) shouldProcessOnSectionChange(*models.Task, *models.Pr
 	return false
 }
 func (s *stubInboxBackend) shouldProcessOnStatusChange(models.TaskStatus) bool { return false }
-func (s *stubInboxBackend) showProjectInHeader() bool                          { return false }
-func (s *stubInboxBackend) headerTitle() string                                { return "" }
-func (s *stubInboxBackend) headerSubtitleExtra() string                        { return "" }
-func (s *stubInboxBackend) emptyStateText() string                             { return "" }
-func (s *stubInboxBackend) emptyInboxText() string                             { return "" }
-func (s *stubInboxBackend) returnHint() string                                 { return "" }
-func (s *stubInboxBackend) viewType() ViewType                                 { return ViewInboxProcessor }
-func (s *stubInboxBackend) helpViewName() string                               { return "" }
+func (s *stubInboxBackend) findTaskByID(taskID, _ string) (*models.Task, *models.Project) {
+	for _, t := range s.tasks {
+		if t != nil && t.ID == taskID {
+			return t, &models.Project{ID: "p1"}
+		}
+	}
+	return nil, nil
+}
+func (s *stubInboxBackend) showProjectInHeader() bool   { return false }
+func (s *stubInboxBackend) headerTitle() string         { return "" }
+func (s *stubInboxBackend) headerSubtitleExtra() string { return "" }
+func (s *stubInboxBackend) emptyStateText() string      { return "" }
+func (s *stubInboxBackend) emptyInboxText() string      { return "" }
+func (s *stubInboxBackend) returnHint() string          { return "" }
+func (s *stubInboxBackend) viewType() ViewType          { return ViewInboxProcessor }
+func (s *stubInboxBackend) helpViewName() string        { return "" }
 
 // newTestInboxCore builds an inboxCore wired to the given stub, ready for
 // navigation tests without requiring a full config or model.

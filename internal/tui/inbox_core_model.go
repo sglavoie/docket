@@ -60,7 +60,7 @@ func (c *inboxCore) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return c.model, nil
 			}
 			c.backend.rebuildTasks()
-			c.clampCurrentIndex()
+			c.realignCurrentIndex()
 			return c.model, nil
 		}
 	}
@@ -88,7 +88,10 @@ func (c *inboxCore) View() tea.View {
 
 	b.WriteString("\n")
 	b.WriteString(renderInboxOperationsPanel())
-	b.WriteString("\n\n")
+	// Single newline instead of \n\n keeps the global inbox under the 80x24
+	// height ceiling. The footer already prefixes its own horizontal rule, so
+	// dropping the blank line does not hurt the visual separation.
+	b.WriteString("\n")
 	b.WriteString(renderInboxFooter(c.width))
 
 	if c.statusMessage != "" {

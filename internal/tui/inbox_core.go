@@ -24,6 +24,11 @@ type inboxBackend interface {
 
 	// Persistence
 	saveCmd() tea.Cmd
+	// saveProjectCmd saves the given project. Used by undo to persist
+	// changes to the action's project even when the cursor has auto-advanced
+	// onto a different project (global processor only). For the local
+	// processor, the parameter is the same project the cursor sits on.
+	saveProjectCmd(project *models.Project) tea.Cmd
 	reloadCmd() tea.Cmd
 	rebuildTasks()
 	deleteFromData(task *models.Task, project *models.Project)
@@ -32,6 +37,12 @@ type inboxBackend interface {
 	markDeletedProcessed() bool
 	shouldProcessOnSectionChange(task *models.Task, project *models.Project) bool
 	shouldProcessOnStatusChange(newStatus models.TaskStatus) bool
+
+	// findTaskByID locates a task by ID (and optional project ID hint) so undo
+	// can restore an action's task even after auto-advance has moved the cursor
+	// away. The projectID hint is authoritative for the global processor; the
+	// local processor ignores it because it only owns a single project.
+	findTaskByID(taskID, projectID string) (task *models.Task, project *models.Project)
 
 	// Rendering
 	showProjectInHeader() bool
@@ -57,6 +68,14 @@ type inboxCore struct {
 	processedIDs      map[string]bool
 	skippedIDs        map[string]bool
 	processingHistory []processingAction
+
+	// pendingFocusID, when non-empty, names the task the cursor should land on
+	// after the next rebuildTasks. advanceToNext sets it to the new current
+	// task's ID so a subsequent rebuild (triggered by InboxProjectSavedMsg)
+	// can re-anchor instead of letting clamp drift past the intended task.
+	// Undo also sets it so the restored task gets focus after its project is
+	// reloaded from disk.
+	pendingFocusID string
 
 	backend inboxBackend
 	model   tea.Model // pointer to the outer (embedding) model, for Update returns

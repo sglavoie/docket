@@ -68,7 +68,13 @@ func (m *CommandPaletteModel) injectFrequentItems() {
 
 // injectSuggestedItems appends a "Suggested" section after the Recent section.
 // Suggested items are commands applicable to the current view that have never been used
-// (not in recentPaletteSelections). Limited to 3 items, preferring action/filter categories.
+// (not in recentPaletteSelections). Limited to 3 items.
+//
+// For inbox processor views the suggestion list is a curated triage-vocabulary
+// ordering so a brand-new user lands on the actions Sessions 2-5 made the
+// "what should I do next?" answer (plan today, send to Next, due today, snooze)
+// before falling back to general action/filter priority. Other views keep the
+// generic category-priority ordering.
 func (m *CommandPaletteModel) injectSuggestedItems() {
 	usedIDs := make(map[string]bool, len(recentPaletteSelections))
 	for _, rs := range recentPaletteSelections {
@@ -77,42 +83,15 @@ func (m *CommandPaletteModel) injectSuggestedItems() {
 		}
 	}
 
-	priorityCategories := []CommandCategory{
-		CategoryFilters,
-		CategoryActions,
-		CategorySort,
-		CategoryStatus,
-		CategoryViews,
-	}
-
-	byCategory := make(map[CommandCategory][]PaletteItem)
-	for _, fi := range m.filteredItems {
-		if fi.Item.Category != ItemCategoryCommands || fi.Item.Command == nil {
-			continue
-		}
-		id := m.getItemID(fi.Item)
-		if usedIDs[id] {
-			continue
-		}
-		cat := fi.Item.Command.Category
-		byCategory[cat] = append(byCategory[cat], fi.Item)
-	}
-
 	const maxSuggested = 3
 	var suggested []filteredPaletteItem
-	for _, cat := range priorityCategories {
-		for _, item := range byCategory[cat] {
-			if len(suggested) >= maxSuggested {
-				break
-			}
-			suggested = append(suggested, filteredPaletteItem{
-				Item:        item,
-				IsSuggested: true,
-			})
-		}
-		if len(suggested) >= maxSuggested {
-			break
-		}
+
+	if m.currentView == ViewInboxProcessor || m.currentView == ViewGlobalInboxProcessor {
+		suggested = m.collectInboxSuggestedItems(usedIDs, maxSuggested)
+	}
+
+	if len(suggested) < maxSuggested {
+		suggested = append(suggested, m.collectCategorySuggestedItems(usedIDs, maxSuggested-len(suggested), suggested)...)
 	}
 
 	if len(suggested) == 0 {
@@ -128,4 +107,97 @@ func (m *CommandPaletteModel) injectSuggestedItems() {
 	result = append(result, suggested...)
 	result = append(result, m.filteredItems[splitIdx:]...)
 	m.filteredItems = result
+}
+
+// inboxSuggestedCommandOrder lists palette commands in the order they should
+// appear in the Suggested section while the user is inside an inbox processor.
+// It mirrors the triage-action vocabulary surfaced in the tutor's "Inbox
+// Processing" topic and the close-message hints from session 5.
+var inboxSuggestedCommandOrder = []string{
+	"plan today",
+	"send to next",
+	"set due date today",
+	"snooze inbox task",
+	"mark task done",
+	"edit inbox task",
+	"manage inbox task tags",
+}
+
+func (m *CommandPaletteModel) collectInboxSuggestedItems(usedIDs map[string]bool, maxSuggested int) []filteredPaletteItem {
+	byName := make(map[string]PaletteItem)
+	for _, fi := range m.filteredItems {
+		if fi.Item.Category != ItemCategoryCommands || fi.Item.Command == nil {
+			continue
+		}
+		id := m.getItemID(fi.Item)
+		if usedIDs[id] {
+			continue
+		}
+		byName[fi.Item.Command.Name] = fi.Item
+	}
+
+	suggested := make([]filteredPaletteItem, 0, maxSuggested)
+	for _, name := range inboxSuggestedCommandOrder {
+		if len(suggested) >= maxSuggested {
+			break
+		}
+		item, ok := byName[name]
+		if !ok {
+			continue
+		}
+		suggested = append(suggested, filteredPaletteItem{
+			Item:        item,
+			IsSuggested: true,
+		})
+	}
+	return suggested
+}
+
+func (m *CommandPaletteModel) collectCategorySuggestedItems(usedIDs map[string]bool, remaining int, alreadySuggested []filteredPaletteItem) []filteredPaletteItem {
+	if remaining <= 0 {
+		return nil
+	}
+
+	priorityCategories := []CommandCategory{
+		CategoryFilters,
+		CategoryActions,
+		CategorySort,
+		CategoryStatus,
+		CategoryViews,
+	}
+
+	alreadyIDs := make(map[string]bool, len(alreadySuggested))
+	for _, fi := range alreadySuggested {
+		alreadyIDs[m.getItemID(fi.Item)] = true
+	}
+
+	byCategory := make(map[CommandCategory][]PaletteItem)
+	for _, fi := range m.filteredItems {
+		if fi.Item.Category != ItemCategoryCommands || fi.Item.Command == nil {
+			continue
+		}
+		id := m.getItemID(fi.Item)
+		if usedIDs[id] || alreadyIDs[id] {
+			continue
+		}
+		cat := fi.Item.Command.Category
+		byCategory[cat] = append(byCategory[cat], fi.Item)
+	}
+
+	var suggested []filteredPaletteItem
+	for _, cat := range priorityCategories {
+		for _, item := range byCategory[cat] {
+			if len(suggested) >= remaining {
+				break
+			}
+			suggested = append(suggested, filteredPaletteItem{
+				Item:        item,
+				IsSuggested: true,
+			})
+		}
+		if len(suggested) >= remaining {
+			break
+		}
+	}
+	return suggested
 }

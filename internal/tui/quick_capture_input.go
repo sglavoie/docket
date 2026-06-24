@@ -248,19 +248,18 @@ func (q *quickCaptureInput) renderPreview() string {
 	groups = append(groups, previewGroup{label: "Task", chunks: taskChunks})
 
 	var routeChunks []string
-	if q.preview.section != "" {
-		if !models.IsGTDSection(q.preview.section) {
-			routeChunks = append(routeChunks, "/"+q.preview.section+" → Inbox")
-		} else {
-			routeChunks = append(routeChunks, "/"+q.preview.section)
-		}
+	switch {
+	case q.preview.section == "":
+		routeChunks = append(routeChunks, "Inbox (default)")
+	case !models.IsGTDSection(q.preview.section):
+		routeChunks = append(routeChunks, "/"+q.preview.section+" → Inbox")
+	default:
+		routeChunks = append(routeChunks, "/"+q.preview.section)
 	}
 	if q.preview.targetProjectName != "" {
 		routeChunks = append(routeChunks, "→ "+q.preview.targetProjectName)
 	}
-	if len(routeChunks) > 0 {
-		groups = append(groups, previewGroup{label: "Route", chunks: routeChunks})
-	}
+	groups = append(groups, previewGroup{label: "Route", chunks: routeChunks})
 
 	var scheduleChunks []string
 	if q.preview.dueDate != nil {
@@ -341,7 +340,7 @@ func (q *quickCaptureInput) renderSyntaxGuide() string {
 		{"@date", "Due date", "@tomorrow  @friday  @+3d · or: due:tomorrow  due:fri  due:3d"},
 		{"~recur", "Recurrence", "~daily  ~weekly  ~2w  ~monthly  · or: recur:weekly"},
 		{">parent", "Parent task", ">42  >Login  (short ID or title prefix)  · or: parent:42"},
-		{"/section", "Section", "/next  /inbox  /waiting  /someday  · or: sec:next"},
+		{"/section", "Section", "/next  /inbox  /waiting  /someday  · default → Inbox  · or: sec:next"},
 		{"$status", "Initial status", "$start  $blocked  $done  $review  · or: status:done"},
 	}
 	if !q.skipProjectSyntax {

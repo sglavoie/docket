@@ -452,6 +452,30 @@ func (m *AppModel) inboxProcessorCommands() []Command {
 			},
 		},
 		{
+			Name:        "send to next",
+			Description: "Route the current task to the Next (today) section",
+			Shortcut:    "mn",
+			Category:    CategoryActions,
+			Views:       bothViews,
+			Aliases:     []string{"plan for today", "schedule next", "move to next", "send to today", "triage next"},
+			Handler: func() tea.Msg {
+				return runInboxResultCmd(func(c *inboxCore) tea.Cmd {
+					return c.moveToSection(models.SectionNext)
+				})
+			},
+		},
+		{
+			Name:        "plan today",
+			Description: "Toggle the current task in today's focus plan",
+			Shortcut:    "w",
+			Category:    CategoryActions,
+			Views:       bothViews,
+			Aliases:     []string{"toggle daily plan", "add to today", "today plan", "focus today"},
+			Handler: func() tea.Msg {
+				return TogglePlanTodayFromPaletteMsg{}
+			},
+		},
+		{
 			Name:        "send to waiting",
 			Description: "Park the current task in the Waiting section",
 			Shortcut:    "ctrl+w",
@@ -473,6 +497,30 @@ func (m *AppModel) inboxProcessorCommands() []Command {
 			Aliases:     []string{"inbox due date", "due date", "deadline", "schedule task"},
 			Handler: func() tea.Msg {
 				return runInboxCmd(inboxOpenDueDateInput)
+			},
+		},
+		{
+			Name:        "set due date today",
+			Description: "Mark the current task as due today",
+			Shortcut:    "dt",
+			Category:    CategoryActions,
+			Views:       bothViews,
+			Aliases:     []string{"due today", "deadline today", "today deadline"},
+			Handler: func() tea.Msg {
+				return runInboxResultCmd(func(c *inboxCore) tea.Cmd {
+					return c.setQuickDueDate(0)
+				})
+			},
+		},
+		{
+			Name:        "snooze inbox task",
+			Description: "Snooze the current task until a future date",
+			Shortcut:    "zd",
+			Category:    CategoryActions,
+			Views:       bothViews,
+			Aliases:     []string{"snooze task", "defer until", "wake up date"},
+			Handler: func() tea.Msg {
+				return runInboxCmd(inboxOpenSnoozeInput)
 			},
 		},
 		// --- Refine (subtask, dependencies) ---
