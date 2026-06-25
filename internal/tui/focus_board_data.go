@@ -209,48 +209,6 @@ func (m *FocusBoardModel) scorePercent(r boardRow) float64 {
 	return scoring.ScorePercent(score, profile)
 }
 
-// rebuildTodayChildren strips auto-expanded children and re-expands with the current depth limit.
-func (m *FocusBoardModel) rebuildTodayChildren() {
-	var roots []boardRow
-	for _, r := range m.todayRows {
-		if r.TreePrefix == "" {
-			roots = append(roots, r)
-		}
-	}
-	m.todayRows = roots
-	m.expandTodayChildren()
-	m.applyFilter()
-	m.clampCursor()
-}
-
-// toggleFoldAtCursor toggles the fold state of the parent at or containing the
-// cursor. For a root row with children, the row itself is the parent. For a
-// child row, the immediate parent (Depth-1) is targeted. The toggle stores an
-// explicit override in parentOverrides that wins over childDepthLimit.
-func (m *FocusBoardModel) toggleFoldAtCursor() {
-	row := m.getRowAtCursor()
-	if row == nil || row.Task == nil {
-		return
-	}
-	var parentID string
-	var parentDepth int
-	if row.TreePrefix == "" {
-		if len(row.Task.Children) == 0 {
-			return
-		}
-		parentID = row.Task.ID
-		parentDepth = 0
-	} else {
-		parentID = row.ParentID
-		parentDepth = row.Depth - 1
-	}
-	if parentID == "" {
-		return
-	}
-	m.parentOverrides[parentID] = !m.isParentExpanded(parentID, parentDepth)
-	m.rebuildTodayChildren()
-}
-
 // expandTodayChildren inserts descendants of explicitly planned items into todayRows.
 func (m *FocusBoardModel) expandTodayChildren() {
 	seen := make(map[string]bool, len(m.todayRows))
@@ -302,29 +260,12 @@ func (m *FocusBoardModel) collectChildren(out *[]boardRow, parent *models.Task, 
 }
 
 // isParentExpanded reports whether a parent task at the given depth should
-// have its children rendered in the Today tab. Explicit per-parent overrides
-// in parentOverrides take precedence; otherwise the global childDepthLimit is
-// consulted (negative means unlimited).
-func (m *FocusBoardModel) isParentExpanded(id string, depth int) bool {
-	if v, ok := m.parentOverrides[id]; ok {
-		return v
-	}
+// have its children rendered in the Today tab.
+func (m *FocusBoardModel) isParentExpanded(_ string, depth int) bool {
 	if m.childDepthLimit < 0 {
 		return true
 	}
 	return depth < m.childDepthLimit
-}
-
-// parentRowIndices returns the indices of rows in m.filtered that are parent
-// tasks (TreePrefix == ""), used by n/N navigation to jump between parents.
-func (m *FocusBoardModel) parentRowIndices() []int {
-	var indices []int
-	for i, row := range m.filtered {
-		if row.TreePrefix == "" {
-			indices = append(indices, i)
-		}
-	}
-	return indices
 }
 
 // buildBoardTreePrefix builds a tree prefix with shorter horizontal lines

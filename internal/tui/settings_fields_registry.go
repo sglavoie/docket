@@ -103,13 +103,13 @@ func buildSettingsFieldRegistry() []settingsFieldMeta {
 	add(base+6, tabBehavior, 5, "General > Section Limits", "Review Limit", "review section limit", strconv.Itoa(config.DefaultSectionLimitReview))
 	// subTab 6: Startup
 	base = subTabFieldStart(tabBehavior, 6)
-	add(base+0, tabBehavior, 6, "General > Startup", "Start View", "startup start view dashboard focus", "Dashboard")
+	add(base+0, tabBehavior, 6, "General > Startup", "Start View", "startup start view today dashboard focus", "Today")
 	// subTab 7: Task Form
 	base = subTabFieldStart(tabBehavior, 7)
 	add(base+0, tabBehavior, 7, "General > Task Form", "Start Collapsed", "task form collapsed expand", "No")
-	// subTab 8: Focus Board
+	// subTab 8: Today
 	base = subTabFieldStart(tabBehavior, 8)
-	add(base+0, tabBehavior, 8, "General > Focus Board", "Default Mode", "focus board mode list tunnel zen", "List")
+	add(base+0, tabBehavior, 8, "General > Today", "Default Mode", "today mode focus board list tunnel zen", "List")
 	// subTab 9: Dashboard
 	base = subTabFieldStart(tabBehavior, 9)
 	add(base+0, tabBehavior, 9, "General > Dashboard", "Layout", "dashboard bottom layout horizontal vertical list only split", "Horizontal")

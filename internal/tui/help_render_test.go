@@ -146,6 +146,58 @@ func TestBuildIntentCategoriesReflectsHelpIntentOrder(t *testing.T) {
 	}
 }
 
+func TestFocusBoardHelpUsesPipelineIntentBuckets(t *testing.T) {
+	items := []HelpItem{
+		{Key: "a", Description: "Quick-add board item", Category: "Actions"},
+		{Key: "ctrl+i", Description: "Open Global Inbox Processor", Category: "Navigation"},
+		{Key: "p", Description: "Plan or set priority", Category: "Actions"},
+		{Key: ";R", Description: "Open Roadmap", Category: "Navigation"},
+		{Key: "x", Description: "Complete or dismiss item", Category: "Actions"},
+		{Key: ";r", Description: "Open Weekly Review", Category: "Navigation"},
+		{Key: ":", Description: "Command palette", Category: "Navigation"},
+	}
+
+	cases := []struct {
+		key  string
+		want string
+	}{
+		{"a", "Capture"},
+		{"ctrl+i", "Triage"},
+		{"p", "Plan"},
+		{";R", "Plan"},
+		{"x", "Work"},
+		{";r", "Review"},
+		{":", "Jump to View"},
+	}
+	for _, tc := range cases {
+		got := intentForItem(HelpItem{Key: tc.key, Category: "Actions"}, ViewFocusBoard)
+		if got != tc.want {
+			t.Errorf("intentForItem(%q, ViewFocusBoard) = %q, want %q", tc.key, got, tc.want)
+		}
+	}
+
+	m := NewHelpViewModel(items, ViewFocusBoard, "Today")
+	wantCategories := []string{"Capture", "Triage", "Plan", "Work", "Review", "Jump to View"}
+	if !slices.Equal(m.categories, wantCategories) {
+		t.Fatalf("Today first-level help tabs = %v, want %v", m.categories, wantCategories)
+	}
+
+	m.SetSize(120, 40)
+	out := m.renderByIntentContent()
+	lastIdx := -1
+	for _, header := range wantCategories {
+		idx := strings.Index(out, header)
+		if idx < 0 {
+			t.Fatalf("Today help missing pipeline header %q in:\n%s", header, out)
+		}
+		if idx <= lastIdx {
+			t.Fatalf("Today help header %q appears at byte %d, expected after previous header at %d:\n%s",
+				header, idx, lastIdx, out)
+		}
+		lastIdx = idx
+	}
+}
+
 // TestRenderByIntentContent_SectionOrderingAndPlacement renders the help view
 // and verifies that the intent-bucketed sections appear in the canonical order
 // with the primary triage actions in the leading "Triage" section. This is

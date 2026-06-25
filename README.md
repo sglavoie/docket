@@ -36,6 +36,7 @@ tt
 The product surface is intentionally documented in the app instead of in a long README.
 
 - Press `?` in most TUI views for contextual help.
+- `tt` opens on the Today cockpit by default; press `;w` to return to it.
 - Open the command palette with `:` and run `:tutor` for guided onboarding.
 - Use the `Ask AI` command from the TUI when you want precise answers while working.
 - Use `tt --help` and `tt <command> --help` for authoritative CLI usage.
@@ -59,8 +60,8 @@ tt ask "create a bug for the login issue" --apply
 ## Common Commands
 
 ```bash
-tt                              # Open the TUI
-tt dash                         # Show a dashboard in the CLI
+tt                              # Open the TUI on Today
+tt dash                         # Show a project dashboard in the CLI
 tt project list                 # List projects
 tt project show                 # Show current project details
 tt project archive old-project  # Hide a project from active workflows
@@ -96,13 +97,14 @@ partially changing project files.
 
 ## Project Archive And Recovery
 
-`tt project archive <slug-or-id>` hides a project from active dashboards, task
-lists, focus views, move targets, quick capture targets, and normal
+`tt project archive <slug-or-id>` hides a project from active task lists,
+focus views, move targets, quick capture targets, dashboard summaries, and normal
 cross-project task workflows. It does not delete the project or its files.
 
 Archived projects remain discoverable in project-level search surfaces with an
-`ARCHIVED` marker. In the TUI Dashboard, press `a` to show archived projects,
-select one, and press `u` to unarchive it after confirmation. The command
+`ARCHIVED` marker. The TUI Dashboard remains the project administration surface:
+press `a` to show archived projects, select one, and press `u` to unarchive
+it after confirmation. The command
 palette and project picker can also find archived projects by name, while their
 task rows stay excluded until the project is restored.
 

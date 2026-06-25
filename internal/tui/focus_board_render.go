@@ -64,10 +64,7 @@ func (m *FocusBoardModel) View() tea.View { //nolint:gocyclo
 	}
 
 	// Next Action strip — Today tab only, normal and list modes only. The
-	// strip is recomputed every render because the engine is deterministic
-	// (session-3 contract). stripHeight is deducted from contentHeight below
-	// so list rows do not spill into the footer.
-	stripHeight := 0
+	// strip is recomputed every render because the engine is deterministic.
 	if m.tabs.Active == boardTabToday && m.focusMode != focusModeTunnel {
 		rec := m.computeNextActionRecommendation()
 		strip := renderNextActionStrip(NextActionStripOpts{
@@ -79,26 +76,21 @@ func (m *FocusBoardModel) View() tea.View { //nolint:gocyclo
 		if strip != "" {
 			b.WriteString(strip)
 			b.WriteString("\n\n")
-			stripHeight = 2
 		}
 	}
 
 	// Search input
-	inputBlockHeight := 0
 	if m.searchActive {
 		b.WriteString("  / ")
 		b.WriteString(m.searchInput.View())
 		b.WriteString("\n")
-		inputBlockHeight++
 	}
 
 	// Quick-add input
-	addBlockHeight := 0
 	if m.addMode {
 		b.WriteString("  > ")
 		b.WriteString(m.addInput.View())
 		b.WriteString("\n")
-		addBlockHeight++
 
 		if m.isAutocompleteActive() {
 			b.WriteString(MutedStyle.Render("    Tab: accept · ↑↓: navigate · Esc: dismiss"))
@@ -106,13 +98,11 @@ func (m *FocusBoardModel) View() tea.View { //nolint:gocyclo
 			b.WriteString(MutedStyle.Render("    %project · !priority · #tag · @date · /section · $status · -s source · -u url"))
 		}
 		b.WriteString("\n")
-		addBlockHeight++
 
 		// Autocomplete dropdown
 		if m.isAutocompleteActive() {
 			dropdown := m.ac.RenderDropdown("    ")
 			b.WriteString(dropdown)
-			addBlockHeight += strings.Count(dropdown, "\n")
 		}
 
 		// Live preview of parsed prefixes/flags
@@ -154,24 +144,12 @@ func (m *FocusBoardModel) View() tea.View { //nolint:gocyclo
 				}
 				b.WriteString(HelpStyle.Render("    " + strings.Join(previewParts, " · ")))
 				b.WriteString("\n")
-				addBlockHeight++
 			}
 		}
 		b.WriteString("\n")
-		addBlockHeight++
 	}
 
-	// Calculate available height (tunnel mode has no tab bar: save 2 lines)
-	tabOverhead := 3 // tab bar(2) + status(1)
-	if m.focusMode == focusModeTunnel {
-		tabOverhead = 1 // status(1) only
-	}
-	contentHeight := fullscreenContentHeight(m.height, tabOverhead)
-	if m.addMode {
-		contentHeight -= addBlockHeight
-	}
-	contentHeight -= inputBlockHeight
-	contentHeight -= stripHeight
+	statusBlock := renderStatusMessages(m.statusMessage, m.err)
 
 	// Empty state
 	if len(m.filtered) == 0 {
@@ -195,22 +173,21 @@ func (m *FocusBoardModel) View() tea.View { //nolint:gocyclo
 		}
 		b.WriteString(emptyContent)
 		b.WriteString("\n\n")
-		b.WriteString(renderStatusMessages(m.statusMessage, m.err))
+		b.WriteString(statusBlock)
 		left := composeFullHeightFooterLeft("a add · tab switch · Esc close")
 		right := MutedStyle.Render("0 items")
 		b.WriteString(renderStatusBarFooter(left, right, m.width, m.AccentColor()))
 		return tea.NewView(b.String())
 	}
 
-	// Reserve one row for the selected-task metadata strip when a task is
-	// selected. Keeps layout stable as the selection moves.
-	var stripTask *models.Task
-	var stripProject *models.Project
-	if row := m.getRowAtCursor(); row != nil && row.Task != nil {
-		stripTask = row.Task
-		stripProject = row.Project
-		contentHeight = max(contentHeight-1, 1)
-	}
+	metadataStrip := m.renderSelectedTaskMetadataStrip()
+	footer := m.renderFocusBoardFooter(stats)
+	contentHeight := (focusBoardCockpitLayout{
+		topChrome:        b.String(),
+		selectedMetadata: metadataStrip,
+		statusMessages:   statusBlock,
+		footer:           footer,
+	}).listHeight(m.height)
 
 	// Render rows
 	var lines []string
@@ -289,81 +266,24 @@ func (m *FocusBoardModel) View() tea.View { //nolint:gocyclo
 		}
 	}
 
-	visibleLines, _, _ := persistentLineWindow(lines, m.cursor, contentHeight, &m.viewScrollOffset)
+	visibleLines := focusBoardVisibleListRows(lines, m.cursor, contentHeight, &m.viewScrollOffset)
 	contentStr := strings.Join(visibleLines, "\n")
 	if m.focusMode == focusModeList {
 		contentStr = TabContentBgStyle.Width(m.width).Render(contentStr)
 	}
 	b.WriteString(contentStr)
-	if stripTask != nil {
-		strip := renderTaskMetadataStrip(TaskMetadataStripOpts{
-			Task:    stripTask,
-			Project: stripProject,
-			Config:  m.config,
-			Width:   m.width,
-			AlreadyShown: TaskMetadataAlreadyShown{
-				Project:  true,
-				Priority: stripTask.Priority >= 1 && stripTask.Priority <= 2,
-				Due:      dueIsInlineHero(stripTask),
-			},
-		})
+	if metadataStrip != "" {
 		b.WriteString("\n")
-		b.WriteString(strip)
+		b.WriteString(metadataStrip)
 	}
 	b.WriteString("\n\n")
 
-	b.WriteString(renderStatusMessages(m.statusMessage, m.err))
+	b.WriteString(statusBlock)
 
-	// Footer — session 11 standardizes the steady-state Today/Next/Closed
-	// footers to "<top 3 contextual> · ? help · : cmd · ;; hub" so the
-	// escape hatches stay discoverable on full-height views. Transient input
-	// modes (add/edit/multiselect) keep their narrow guidance footers because
-	// the escape hatches are irrelevant while the user holds a half-finished
-	// edit.
-	var left string
-	if m.addMode || m.editMode {
-		left = HelpStyle.Render("enter save · Esc cancel")
-	} else if m.multiSelectMode {
-		left = HelpStyle.Render("x done · space toggle · A deselect")
-	} else if m.tabs.Active == boardTabClosed {
-		left = composeFullHeightFooterLeft("d reopen · enter open · D delete")
-	} else if m.tabs.Active == boardTabToday && completedToday == plannedTotal && plannedTotal > 0 {
-		left = composeFullHeightFooterLeft("w plan more · a add · Esc close")
-	} else if m.tabs.Active == boardTabToday {
-		left = composeFullHeightFooterLeft("x done · a add · enter open")
-	} else {
-		left = composeFullHeightFooterLeft("w plan today · a add · enter open")
-	}
-	var rightParts []string
-	if indicator := m.renderActiveFilterIndicator(); indicator != "" {
-		rightParts = append(rightParts, indicator)
-	}
-	if m.sort.Field != SortByDefault {
-		direction := "↑"
-		if !m.sort.Ascending {
-			direction = "↓"
-		}
-		rightParts = append(rightParts, fmt.Sprintf("Sort: %s %s", m.sort.Field.ShortString(), direction))
-	}
-	switch m.tabs.Active {
-	case boardTabClosed:
-		rightParts = append(rightParts, fmt.Sprintf("%d closed", len(m.closedRows)))
-	case boardTabToday:
-		rightParts = append(rightParts, fmt.Sprintf("%d/%d done", completedToday, plannedTotal))
-		if m.childDepthLimit >= 0 {
-			rightParts = append(rightParts, fmt.Sprintf("fold:%d", m.childDepthLimit))
-		}
-		if est := sumEstimatesForRows(m.filtered); est > 0 {
-			rightParts = append(rightParts, formatEstimateDays(est)+" est")
-		}
-	default:
-		rightParts = append(rightParts, fmt.Sprintf("%d/%d items", len(m.filtered), len(m.rows)))
-		if est := sumEstimatesForRows(m.filtered); est > 0 {
-			rightParts = append(rightParts, formatEstimateDays(est)+" est")
-		}
-	}
-	right := MutedStyle.Render(strings.Join(rightParts, " · "))
-	b.WriteString(renderStatusBarFooter(left, right, m.width, m.AccentColor()))
+	// Footer stays last in the cockpit hierarchy. Transient input modes
+	// (add/edit/multiselect) keep their narrow guidance footers because the
+	// escape hatches are irrelevant while the user holds a half-finished edit.
+	b.WriteString(footer)
 
 	return tea.NewView(b.String())
 }

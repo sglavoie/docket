@@ -32,7 +32,7 @@ const DefaultStartView = "focus-board"
 
 // GetStartView returns the configured start view string.
 // Returns DefaultStartView for invalid or missing values; explicit
-// "dashboard" (and the other recognised view ids) is still honoured.
+// "dashboard" (and the other recognized view ids) is still honored.
 func (c *Config) GetStartView() string {
 	switch c.StartView {
 	case "dashboard", "focus-board", "cross-project-outliner", "all-tasks",

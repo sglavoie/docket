@@ -23,7 +23,6 @@ func TestNotesCommands_CtrlNShowNotes(t *testing.T) {
 		ViewOutliner,
 		ViewTemporaryOutliner,
 		ViewCrossProjectOutliner,
-		ViewFocusBoard,
 		ViewAllTasks,
 		ViewDailyReview,
 		ViewWeeklyReview,

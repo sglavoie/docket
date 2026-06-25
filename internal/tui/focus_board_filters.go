@@ -24,20 +24,6 @@ func (m *FocusBoardModel) buildTagCmd() tea.Cmd {
 	)
 }
 
-// handleFocusBoardFilterPrefix handles the second key after pressing F (filter prefix).
-func (m *FocusBoardModel) handleFocusBoardFilterPrefix(key string) (tea.Model, tea.Cmd) {
-	if cmd, handled := handleFilterPrefixForView(m, key); handled {
-		return m, cmd
-	}
-	return m, nil
-}
-
-// handleFocusBoardFilterSubPrefix handles all filter sub-prefix keys.
-func (m *FocusBoardModel) handleFocusBoardFilterSubPrefix(prefix, key string) (tea.Model, tea.Cmd) {
-	handleFilterSubPrefixForView(m, prefix, key)
-	return m, nil
-}
-
 // HasActiveFilters returns true if any filter is currently active.
 func (m *FocusBoardModel) HasActiveFilters() bool {
 	return hasActiveCommonFilters(&m.filter) || m.searchQuery != ""

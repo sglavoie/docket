@@ -193,9 +193,9 @@ func (m *SettingsModel) renderBehaviorStartupSection() string {
 
 	b.WriteString(renderFormLabelWithWidth("Start view: ", labelWidth, m.focusIndex == base+0))
 	b.WriteString(renderEnumSelector(startViewOptions, m.startViewCursor, m.focusIndex == base+0, m.width-indent))
-	b.WriteString(renderDefaultHint(startViewOptions[m.startViewCursor], "Focus Board"))
+	b.WriteString(renderDefaultHint(startViewOptions[m.startViewCursor], "Today"))
 	b.WriteString("\n")
-	b.WriteString(renderFormFieldDesc("View shown when the application starts (default: Focus Board)", indent, m.focusIndex == base+0))
+	b.WriteString(renderFormFieldDesc("View shown when the application starts (default: Today cockpit)", indent, m.focusIndex == base+0))
 
 	return b.String()
 }
@@ -229,7 +229,7 @@ func (m *SettingsModel) renderBehaviorFocusBoardSection() string {
 	b.WriteString(renderEnumSelector(focusBoardModeOptions, m.focusBoardModeCursor, m.focusIndex == base+0, m.width-indent))
 	b.WriteString(renderDefaultHint(focusBoardModeOptions[m.focusBoardModeCursor], "List"))
 	b.WriteString("\n")
-	b.WriteString(renderFormFieldDesc("Starting focus mode when the Focus Board opens (List/Tunnel/Zen)", indent, m.focusIndex == base+0))
+	b.WriteString(renderFormFieldDesc("Starting focus mode when Today opens (List/Tunnel/Zen)", indent, m.focusIndex == base+0))
 
 	return b.String()
 }

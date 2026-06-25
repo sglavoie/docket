@@ -252,6 +252,62 @@ func TestRecommendInboxPreemptsHighPriorityActionable(t *testing.T) {
 	}
 }
 
+func TestRecommendBlockedPreemptsInboxAndHighPriorityActionable(t *testing.T) {
+	project := newEngineProject(t, "P")
+
+	highPri := newEngineTask(t, project, "P1 routine")
+	highPri.Priority = 1
+
+	inboxTask := newEngineTask(t, project, "New idea")
+	inboxTask.Section = models.SectionInbox
+
+	blocked := newEngineTask(t, project, "Blocked decision")
+	blocked.Status = models.StatusBlocked
+	blocked.Priority = 3
+
+	got := Recommend(RecommendationEngineInput{
+		Projects: []*models.Project{project},
+		Now:      engineNow,
+	})
+	if got.Kind != RecommendationKindReviewBlocked {
+		t.Fatalf("Kind = %v, want ReviewBlocked (blocked outranks inbox/P1)", got.Kind)
+	}
+	if got.Task != blocked {
+		t.Errorf("Task = %v, want blocked task", got.Task)
+	}
+	if !got.HasReason(ReasonBlocked) {
+		t.Errorf("Reasons = %v, want ReasonBlocked", got.Reasons)
+	}
+}
+
+func TestRecommendBlockedUrgencyBeatsPriorityTiebreak(t *testing.T) {
+	project := newEngineProject(t, "P")
+
+	lowPriorityOverdue := newEngineTask(t, project, "Low priority but overdue")
+	lowPriorityOverdue.Status = models.StatusBlocked
+	lowPriorityOverdue.Priority = 5
+	due := engineNow.Add(-24 * time.Hour)
+	lowPriorityOverdue.DueDate = &due
+
+	highPriorityBlocked := newEngineTask(t, project, "High priority blocked")
+	highPriorityBlocked.Status = models.StatusBlocked
+	highPriorityBlocked.Priority = 1
+
+	got := Recommend(RecommendationEngineInput{
+		Projects: []*models.Project{project},
+		Now:      engineNow,
+	})
+	if got.Kind != RecommendationKindReviewBlocked {
+		t.Fatalf("Kind = %v, want ReviewBlocked", got.Kind)
+	}
+	if got.Task != lowPriorityOverdue {
+		t.Errorf("Task = %v, want overdue blocked task before plain P1 blocked", got.Task)
+	}
+	if !got.HasReason(ReasonOverdue) {
+		t.Errorf("Reasons = %v, want ReasonOverdue", got.Reasons)
+	}
+}
+
 func TestRecommendPlanTodayWhenOnlyFallbackActionable(t *testing.T) {
 	project := newEngineProject(t, "P")
 	fallback := newEngineTask(t, project, "Routine task")
@@ -391,24 +447,80 @@ func TestRecommendStaleReasonAttached(t *testing.T) {
 		Projects: []*models.Project{project},
 		Now:      engineNow,
 	})
-	if got.Kind != RecommendationKindPlanToday {
-		t.Fatalf("Kind = %v, want PlanToday (stale isn't urgent enough alone)", got.Kind)
+	if got.Kind != RecommendationKindWorkOnTask {
+		t.Fatalf("Kind = %v, want WorkOnTask", got.Kind)
 	}
-	// Sanity-check the stale-detection path is wired by surfacing it via a
-	// secondary actionable that's high priority.
-	hot := newEngineTask(t, project, "Hot")
-	hot.Priority = 1
-	hot.UpdatedAt = stale.UpdatedAt
+	if got.Task != stale {
+		t.Fatalf("Task = %v, want stale task", got.Task)
+	}
+	if !got.HasReason(ReasonStale) {
+		t.Errorf("Reasons = %v, want stale reason", got.Reasons)
+	}
+}
 
-	got = Recommend(RecommendationEngineInput{
+func TestRecommendStaleBeatsRecentlyActiveWork(t *testing.T) {
+	project := newEngineProject(t, "P")
+	stale := newEngineTask(t, project, "Stale")
+	stale.Priority = 3
+	stale.UpdatedAt = engineNow.Add(-30 * 24 * time.Hour)
+
+	recent := newEngineTask(t, project, "Recent")
+	recent.Priority = 3
+	recent.UpdatedAt = engineNow.Add(-1 * time.Hour)
+
+	got := Recommend(RecommendationEngineInput{
 		Projects: []*models.Project{project},
 		Now:      engineNow,
 	})
-	if got.Task != hot {
-		t.Fatalf("Task = %v, want high-priority hot task", got.Task)
+	if got.Kind != RecommendationKindWorkOnTask {
+		t.Fatalf("Kind = %v, want WorkOnTask", got.Kind)
 	}
-	if !got.HasReason(ReasonStale) {
-		t.Errorf("Reasons = %v, want stale reason on the long-untouched P1 task", got.Reasons)
+	if got.Task != stale {
+		t.Errorf("Task = %v, want stale task before recently-active task", got.Task)
+	}
+}
+
+func TestRecommendRecentlyActiveMomentumSelected(t *testing.T) {
+	project := newEngineProject(t, "P")
+	routine := newEngineTask(t, project, "Routine")
+	routine.Priority = 3
+	routine.UpdatedAt = engineNow.Add(-10 * 24 * time.Hour)
+
+	recent := newEngineTask(t, project, "Recent")
+	recent.Priority = 3
+	recent.UpdatedAt = engineNow.Add(-2 * time.Hour)
+
+	got := Recommend(RecommendationEngineInput{
+		Projects: []*models.Project{project},
+		Now:      engineNow,
+	})
+	if got.Kind != RecommendationKindWorkOnTask {
+		t.Fatalf("Kind = %v, want WorkOnTask", got.Kind)
+	}
+	if got.Task != recent {
+		t.Errorf("Task = %v, want recently-active task", got.Task)
+	}
+	if !got.HasReason(ReasonRecentlyActive) {
+		t.Errorf("Reasons = %v, want ReasonRecentlyActive", got.Reasons)
+	}
+}
+
+func TestRecommendStaleTiebreakPrefersOldestUpdate(t *testing.T) {
+	project := newEngineProject(t, "P")
+	older := newEngineTask(t, project, "Older stale")
+	older.Priority = 3
+	older.UpdatedAt = engineNow.Add(-45 * 24 * time.Hour)
+
+	newer := newEngineTask(t, project, "Newer stale")
+	newer.Priority = 3
+	newer.UpdatedAt = engineNow.Add(-20 * 24 * time.Hour)
+
+	got := Recommend(RecommendationEngineInput{
+		Projects: []*models.Project{project},
+		Now:      engineNow,
+	})
+	if got.Task != older {
+		t.Errorf("Task = %v, want oldest stale task", got.Task)
 	}
 }
 

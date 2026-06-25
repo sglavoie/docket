@@ -45,6 +45,211 @@ func cockpitWorkOnTaskFixture(t *testing.T, title string) *FocusBoardModel {
 	return m
 }
 
+func cockpitRichPlannedFixture(t *testing.T, title string) (*FocusBoardModel, *models.Task) {
+	t.Helper()
+	project := cockpitProject(t, "Cockpit Hierarchy")
+	task := cockpitTask(t, project, title, models.StatusTodo, models.SectionNext)
+	task.Description = "Metadata should sit below the selected row."
+	task.Checklist = []models.ChecklistItem{
+		{Text: "draft", Done: true},
+		{Text: "ship", Done: false},
+	}
+	tomorrow := time.Now().AddDate(0, 0, 1)
+	task.DueDate = &tomorrow
+	row := cockpitBoardRow(task, project)
+
+	dailyPlanIDs := map[string]bool{task.ID: true}
+	openLoops := OpenLoops{TodayTotal: 1, HasTasks: true}
+	m := cockpitModel([]boardRow{row}, nil, nil, dailyPlanIDs, openLoops, boardTabToday)
+	m.cursor = 0
+	m.applyFilter()
+	return m, task
+}
+
+// TestFocusBoardCockpitHierarchyAcrossWidths locks the Session 3 visual order:
+// title/progress, Next Action strip, Today list row, selected metadata strip,
+// then footer. It exercises narrow, normal, and wide widths with a rich selected
+// task so the metadata strip is part of the layout budget.
+func TestFocusBoardCockpitHierarchyAcrossWidths(t *testing.T) {
+	const title = "Ship cockpit plan"
+	sizes := []baselineSize{
+		{"narrow", 48, 18},
+		{"normal", 100, 24},
+		{"wide", 160, 32},
+	}
+
+	for _, sz := range sizes {
+		t.Run(sz.label, func(t *testing.T) {
+			m, task := cockpitRichPlannedFixture(t, title)
+			m.SetSize(sz.width, sz.height)
+
+			rendered := m.View().Content
+			plain := ansi.Strip(rendered)
+			label := "cockpit hierarchy " + sz.label
+
+			assertRenderedLinesWithinVisualWidth(t, label, rendered, sz.width)
+			assertNoFooterContentOverlap(t, label, rendered, sz.height)
+
+			titleIdx := strings.Index(plain, "Today")
+			if titleIdx < 0 {
+				t.Fatalf("%s: title/progress band missing:\n%s", label, plain)
+			}
+			stripIdx := strings.Index(plain, "Next:")
+			if stripIdx < 0 {
+				t.Fatalf("%s: Next Action strip missing:\n%s", label, plain)
+			}
+			rowIdxRel := strings.Index(plain[stripIdx+len("Next:"):], "1.")
+			if rowIdxRel < 0 {
+				t.Fatalf("%s: Today list row missing below strip:\n%s", label, plain)
+			}
+			rowIdx := stripIdx + len("Next:") + rowIdxRel
+			metadataCue := ansi.Strip(renderDescriptionIndicator(task))
+			metadataIdx := strings.LastIndex(plain, metadataCue)
+			if metadataIdx < 0 {
+				t.Fatalf("%s: selected metadata strip missing cue %q:\n%s", label, metadataCue, plain)
+			}
+			footerIdx := strings.LastIndex(plain, "x done")
+			if footerIdx < 0 {
+				t.Fatalf("%s: footer hint missing:\n%s", label, plain)
+			}
+
+			if titleIdx >= stripIdx || stripIdx >= rowIdx || rowIdx >= metadataIdx || metadataIdx >= footerIdx {
+				t.Fatalf("%s: hierarchy order violated: title=%d strip=%d row=%d metadata=%d footer=%d\n%s",
+					label, titleIdx, stripIdx, rowIdx, metadataIdx, footerIdx, plain)
+			}
+		})
+	}
+}
+
+func TestFocusBoardCockpitLayoutCountsActualMetadataRows(t *testing.T) {
+	layout := focusBoardCockpitLayout{
+		topChrome: "title\nstrip\n\n",
+		footer:    "divider\nfooter",
+	}
+	withoutMetadata := layout.listHeight(12)
+	layout.selectedMetadata = "metadata"
+	withMetadata := layout.listHeight(12)
+
+	if withoutMetadata != withMetadata+1 {
+		t.Fatalf("metadata strip should reserve exactly one list row: without=%d with=%d", withoutMetadata, withMetadata)
+	}
+	layout.selectedMetadata = ""
+	if got := layout.listHeight(12); got != withoutMetadata {
+		t.Fatalf("empty metadata strip should not reserve a row: got=%d want=%d", got, withoutMetadata)
+	}
+}
+
+func TestTodayCockpitEscalationHintCountsAgainstListHeight(t *testing.T) {
+	project := cockpitProject(t, "Escalation QA")
+	task := cockpitTask(t, project, "Ship tight priority render", models.StatusTodo, models.SectionNext)
+	task.Priority = 3
+	dueSoon := time.Now().Add(24 * time.Hour)
+	task.DueDate = &dueSoon
+	row := cockpitBoardRow(task, project)
+	dailyPlanIDs := map[string]bool{task.ID: true}
+	m := cockpitModel([]boardRow{row}, nil, nil, dailyPlanIDs, OpenLoops{TodayTotal: 1, HasTasks: true}, boardTabToday)
+	m.SetSize(80, 10)
+
+	rendered := m.View().Content
+	plain := ansi.Strip(rendered)
+
+	assertRenderedLinesWithinVisualWidth(t, "today escalation compact height", rendered, 80)
+	assertNoFooterContentOverlap(t, "today escalation compact height", rendered, 10)
+	if !strings.Contains(plain, "Ship tight priority render") {
+		t.Fatalf("selected task row missing in compact render:\n%s", plain)
+	}
+	if strings.Contains(plain, "Due soon") {
+		t.Fatalf("secondary escalation hint should be clipped before the footer at height 10:\n%s", plain)
+	}
+	if !strings.Contains(plain, "x done") {
+		t.Fatalf("footer should remain visible in compact render:\n%s", plain)
+	}
+}
+
+func TestTodayCockpitCompactVisualStatesRespectWidthAndFooter(t *testing.T) {
+	unicodeProject := cockpitProject(t, "QA 界面")
+	unicodeTask := cockpitTask(t, unicodeProject, "Fix 宽度 regression ✅", models.StatusTodo, models.SectionNext)
+	unicodeTask.Description = "Metadata strip should stay inside compact width."
+	unicodeTask.Checklist = []models.ChecklistItem{
+		{Text: "audit", Done: true},
+		{Text: "ship", Done: false},
+	}
+	unicodeTask.Tags = []string{"国际化", "qa"}
+	unicodeTask.Priority = 2
+	tomorrow := time.Now().AddDate(0, 0, 1)
+	unicodeTask.DueDate = &tomorrow
+	unicodeRow := cockpitBoardRow(unicodeTask, unicodeProject)
+	unicodeModel := cockpitModel(
+		[]boardRow{unicodeRow},
+		nil,
+		nil,
+		map[string]bool{unicodeTask.ID: true},
+		OpenLoops{TodayTotal: 1, HasTasks: true},
+		boardTabToday,
+	)
+	unicodeModel.statusMessage = "Saved 修复"
+
+	doneProject := cockpitProject(t, "Done QA")
+	doneTask := cockpitTask(t, doneProject, "Wrap up cockpit QA", models.StatusDone, models.SectionCompleted)
+	doneRow := cockpitBoardRow(doneTask, doneProject)
+	doneModel := cockpitModel(
+		[]boardRow{doneRow},
+		nil,
+		nil,
+		map[string]bool{doneTask.ID: true},
+		OpenLoops{TodayTotal: 1, TodayDone: 1, HasTasks: true},
+		boardTabToday,
+	)
+
+	emptyModel := cockpitModel(nil, nil, nil, nil, OpenLoops{Inbox: 2, HasTasks: true}, boardTabToday)
+
+	cases := []struct {
+		name   string
+		model  *FocusBoardModel
+		width  int
+		height int
+		want   []string
+	}{
+		{
+			name:   "unicode metadata with status",
+			model:  unicodeModel,
+			width:  48,
+			height: 18,
+			want:   []string{"Fix", "Saved 修复", "x done"},
+		},
+		{
+			name:   "all done",
+			model:  doneModel,
+			width:  48,
+			height: 14,
+			want:   []string{"All done!", "p plan more", "1/1 done"},
+		},
+		{
+			name:   "empty inbox only",
+			model:  emptyModel,
+			width:  48,
+			height: 16,
+			want:   []string{"Triage inbox", "ctrl+i triage", "a add"},
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			tc.model.SetSize(tc.width, tc.height)
+			rendered := tc.model.View().Content
+			plain := ansi.Strip(rendered)
+
+			assertRenderedLinesWithinVisualWidth(t, "today compact "+tc.name, rendered, tc.width)
+			assertNoFooterContentOverlap(t, "today compact "+tc.name, rendered, tc.height)
+			for _, want := range tc.want {
+				if !strings.Contains(plain, want) {
+					t.Fatalf("compact render missing %q:\n%s", want, plain)
+				}
+			}
+		})
+	}
+}
+
 // TestTodayCockpitStripRendersAboveTaskList locks the positional contract:
 // when both the Next Action strip and a planned-today row are visible, the
 // strip line must appear before the task row. A regression that moves the
@@ -319,15 +524,15 @@ func TestTodayCockpitStripStaysOnEmptyState(t *testing.T) {
 
 // TestTodayCockpitWPlanShortcutHintStillPresent guards the footer-hint copy
 // for the steady-state Today tab. Even with the strip occupying the top of
-// the surface, the footer must continue to advertise `x done`, `a add`, and
-// `enter open` so muscle memory keeps working. The strip's own hint cluster
+// the surface, the footer must continue to advertise `x done`, `p priority`,
+// and `a add` so muscle memory keeps working. The strip's own hint cluster
 // is separate from this footer.
-func TestTodayCockpitWPlanShortcutHintStillPresent(t *testing.T) {
+func TestTodayCockpitActionShortcutHintsStillPresent(t *testing.T) {
 	const title = "Ship overdue invoice"
 	m := cockpitWorkOnTaskFixture(t, title)
 
 	plain := ansi.Strip(m.View().Content)
-	for _, want := range []string{"x done", "a add", "enter open"} {
+	for _, want := range []string{"x done", "p priority", "a add"} {
 		if !strings.Contains(plain, want) {
 			t.Fatalf("footer hint %q missing alongside strip: %s", want, plain)
 		}

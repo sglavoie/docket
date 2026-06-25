@@ -133,7 +133,7 @@ func TestKanbanDenseCardHeroDemotion(t *testing.T) {
 
 // TestKanbanDetailPaneSurfacesMovedFields ensures the detail pane carries the
 // indicators that were dropped from the compact card row. This is the kanban
-// analogue of the outliner / project-tree / focus-board metadata strip.
+// analog of the outliner / project-tree / focus-board metadata strip.
 func TestKanbanDetailPaneSurfacesMovedFields(t *testing.T) {
 	project := testutil.NewTestProject("p")
 	task := testutil.NewTestTask("Detail pane carries moved fields", models.TaskTypeTask)

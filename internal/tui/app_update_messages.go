@@ -247,8 +247,7 @@ func (m *AppModel) refreshTaskViewsAfterSave() []tea.Cmd {
 		}
 		if v := m.views.Get(ViewFocusBoard); v != nil {
 			if fb, ok := v.(*FocusBoardModel); ok {
-				fb.loadItems()
-				fb.clampCursor()
+				fb.refreshData()
 			}
 		}
 		if v := m.views.Get(ViewRecentActivity); v != nil {

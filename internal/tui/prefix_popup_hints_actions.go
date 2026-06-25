@@ -152,7 +152,7 @@ var (
 		{Key: "a", Description: "all tasks", Detail: "View all tasks across projects", Group: "Triage"},
 		{Key: "c", Description: "linked task", Detail: "Create or link a related task", Group: "Support"},
 		{Key: "d", Description: "daily review", Detail: "Open Daily Review", Group: "Plan"},
-		{Key: "w", Description: "today", Detail: "Daily execution board", Group: "Work"},
+		{Key: "w", Description: "today", Detail: "Today cockpit", Group: "Work"},
 		{Key: "i", Description: "quick capture", Detail: "Floating task capture overlay", Group: "Capture"},
 		{Key: "l", Description: "latest activity", Detail: "Recently modified tasks", Group: "Review"},
 		{Key: "m", Description: "metrics", Detail: "Completion rates and throughput", Group: "Review"},

@@ -34,7 +34,11 @@ var prefixGroupLabels = map[string]string{
 // (per-view) help. Buckets with no matching items in the current view are
 // skipped during rendering.
 var helpIntentOrder = []string{
+	"Capture",
 	"Triage",
+	"Plan",
+	"Work",
+	"Review",
 	"Route & Schedule",
 	"Resolve",
 	"Refine",
@@ -132,6 +136,11 @@ var helpNavigateKeys = map[string]bool{
 // it opens inbox triage, so it deserves the Triage label even though its raw
 // Category is generic.
 func intentForItem(item HelpItem, sourceView ViewType) string {
+	if sourceView == ViewFocusBoard {
+		if intent, ok := focusBoardPipelineIntentForItem(item.Key); ok {
+			return intent
+		}
+	}
 	if isInboxProcessorSourceView(sourceView) && helpPrimaryTriageKeys[item.Key] {
 		return "Triage"
 	}
@@ -158,6 +167,23 @@ func intentForItem(item HelpItem, sourceView ViewType) string {
 		return "Jump to View"
 	}
 	return "Other"
+}
+
+func focusBoardPipelineIntentForItem(key string) (string, bool) {
+	switch key {
+	case "a", ";i", ";I":
+		return "Capture", true
+	case "ctrl+i", ";a", ";o", ";k":
+		return "Triage", true
+	case "p", ";q", ";D", ";d", ";R":
+		return "Plan", true
+	case "enter", "x", "u", ";w":
+		return "Work", true
+	case ";r", ";m", ";l":
+		return "Review", true
+	default:
+		return "", false
+	}
 }
 
 // isInboxProcessorSourceView reports whether the help originates from one of

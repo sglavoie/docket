@@ -177,9 +177,9 @@ func BenchmarkCrossProjectRowBuilding(b *testing.B) {
 }
 
 // BenchmarkRecommend exercises the cockpit's recommendation engine on a
-// realistic cross-project payload. Today, Dashboard, and Pipeline Hub all
-// invoke Recommend on every render, so this is the guard for cross-project
-// loading cost called out in session 14. The benchmark seeds enough variety
+// realistic cross-project payload. Today and Pipeline Hub invoke Recommend on
+// every render, so this is the guard for cross-project loading cost called
+// out in session 14. The benchmark seeds enough variety
 // (inbox, planned-today, overdue, blocked, stale, recent) that no shortcut
 // path dominates the run.
 func BenchmarkRecommend(b *testing.B) {

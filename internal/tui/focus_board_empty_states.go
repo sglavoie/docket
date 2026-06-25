@@ -22,7 +22,7 @@ func (m *FocusBoardModel) renderTodayEmptyStateBody() string {
 			suffix = "tasks"
 		}
 		return SuccessStyle.Render(fmt.Sprintf("  Today cleared — %d %s done.", completed, suffix)) +
-			"\n\n" + HelpStyle.Render("  w plan more · a add · Esc close")
+			"\n\n" + HelpStyle.Render("  "+cockpitActionsHint(actionPlanMore(), actionQuickCapture(), actionCloseView()))
 	}
 
 	switch {
@@ -39,12 +39,12 @@ func (m *FocusBoardModel) renderTodayEmptyStateBody() string {
 		}
 		return renderEmptyState(
 			fmt.Sprintf("  %d %s waiting in your inbox.", n, suffix),
-			"  ;i triage · a add",
+			"  "+cockpitActionsHint(actionTriageInbox(), actionQuickCapture()),
 		)
 	default:
 		return renderEmptyState(
 			"  Plan today from your backlog.",
-			"  w plan · a add · ? help",
+			"  "+cockpitActionsHint(actionPlanToday(), actionQuickCapture(), actionShowHelp()),
 		)
 	}
 }

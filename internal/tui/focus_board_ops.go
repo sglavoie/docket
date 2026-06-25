@@ -1,7 +1,6 @@
 package tui
 
 import (
-	"fmt"
 	"os/exec"
 	"runtime"
 	"time"
@@ -12,8 +11,23 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 )
 
+type focusBoardReloadMode int
+
+const (
+	focusBoardReloadPreserveSelection focusBoardReloadMode = iota
+	focusBoardReloadNextActionable
+)
+
+type focusBoardReloadIntent struct {
+	valid  bool
+	mode   focusBoardReloadMode
+	taskID string
+	cursor int
+}
+
 // markDone marks the current task as done via the shared workflow pipeline.
 func (m *FocusBoardModel) markDone() (tea.Model, tea.Cmd) {
+	m.captureReloadIntent(focusBoardReloadNextActionable)
 	model, cmd := taskOpsChangeStatus(m, models.StatusDone)
 	m.setCompletionFlash()
 	m.zenAdvance()
@@ -22,6 +36,7 @@ func (m *FocusBoardModel) markDone() (tea.Model, tea.Cmd) {
 
 // dismiss cancels the current task via the shared workflow pipeline.
 func (m *FocusBoardModel) dismiss() (tea.Model, tea.Cmd) {
+	m.captureReloadIntent(focusBoardReloadNextActionable)
 	model, cmd := taskOpsChangeStatus(m, models.StatusCanceled)
 	m.setMutationFlash(statusMutationFlashBg(models.StatusCanceled))
 	m.zenAdvance()
@@ -33,18 +48,7 @@ func (m *FocusBoardModel) zenAdvance() {
 	if m.focusMode == focusModeList {
 		return
 	}
-	for i := m.cursor; i < len(m.filtered); i++ {
-		if m.filtered[i].Task != nil && !m.filtered[i].Task.Status.IsComplete() {
-			m.cursor = i
-			return
-		}
-	}
-	for i := 0; i < m.cursor && i < len(m.filtered); i++ {
-		if m.filtered[i].Task != nil && !m.filtered[i].Task.Status.IsComplete() {
-			m.cursor = i
-			return
-		}
-	}
+	m.advanceToNextActionableRow()
 }
 
 // handleEnter navigates to the task in its project.
@@ -74,34 +78,105 @@ func (m *FocusBoardModel) getTaskRef() (*models.Task, *models.Project) {
 }
 
 func (m *FocusBoardModel) getPersister() Persister           { return m.projectService }
+func (m *FocusBoardModel) getConfig() *config.Config         { return m.config }
 func (m *FocusBoardModel) getConfigManager() *config.Manager { return m.configManager }
 func (m *FocusBoardModel) reloadData() {
-	var taskID string
-	if row := m.getRowAtCursor(); row != nil && row.Task != nil {
-		taskID = row.Task.ID
-	}
+	intent := m.consumeReloadIntent(focusBoardReloadPreserveSelection)
 	m.loadItems()
-	if taskID != "" {
-		if idx := restoreCursorByID(taskID, m.filtered, func(r boardRow) string {
+	m.restoreCursorAfterReload(intent)
+}
+
+func (m *FocusBoardModel) refreshData() {
+	m.reloadData()
+	m.clampCursor()
+}
+
+func (m *FocusBoardModel) captureReloadIntent(mode focusBoardReloadMode) {
+	m.pendingReloadIntent = m.currentReloadIntent(mode)
+}
+
+func (m *FocusBoardModel) currentReloadIntent(mode focusBoardReloadMode) focusBoardReloadIntent {
+	intent := focusBoardReloadIntent{
+		valid:  true,
+		mode:   mode,
+		cursor: m.cursor,
+	}
+	if row := m.getRowAtCursor(); row != nil && row.Task != nil {
+		intent.taskID = row.Task.ID
+	}
+	return intent
+}
+
+func (m *FocusBoardModel) consumeReloadIntent(defaultMode focusBoardReloadMode) focusBoardReloadIntent {
+	if m.pendingReloadIntent.valid {
+		intent := m.pendingReloadIntent
+		m.pendingReloadIntent = focusBoardReloadIntent{}
+		return intent
+	}
+	return m.currentReloadIntent(defaultMode)
+}
+
+func (m *FocusBoardModel) restoreCursorAfterReload(intent focusBoardReloadIntent) {
+	if len(m.filtered) == 0 {
+		m.cursor = 0
+		return
+	}
+	if intent.mode == focusBoardReloadNextActionable {
+		if idx := m.nextActionableRowIndex(intent.cursor); idx >= 0 {
+			m.cursor = idx
+			return
+		}
+	}
+	if intent.taskID != "" {
+		if idx := restoreCursorByID(intent.taskID, m.filtered, func(r boardRow) string {
 			if r.Task != nil {
 				return r.Task.ID
 			}
 			return ""
 		}); idx >= 0 {
 			m.cursor = idx
+			return
 		}
 	}
+	m.cursor = intent.cursor
+	m.clampCursor()
 }
+
+func (m *FocusBoardModel) advanceToNextActionableRow() bool {
+	if idx := m.nextActionableRowIndex(m.cursor); idx >= 0 {
+		m.cursor = idx
+		return true
+	}
+	return false
+}
+
+func (m *FocusBoardModel) nextActionableRowIndex(start int) int {
+	if len(m.filtered) == 0 {
+		return -1
+	}
+	if start < 0 {
+		start = 0
+	}
+	if start >= len(m.filtered) {
+		start = len(m.filtered) - 1
+	}
+	for offset := 0; offset < len(m.filtered); offset++ {
+		idx := (start + offset) % len(m.filtered)
+		if m.isActionableFlowRow(m.filtered[idx]) {
+			return idx
+		}
+	}
+	return -1
+}
+
+func (m *FocusBoardModel) isActionableFlowRow(row boardRow) bool {
+	return row.Task != nil && !row.Task.Status.IsComplete()
+}
+
 func (m *FocusBoardModel) setErr(err error)     { m.statusMessage = err.Error() }
 func (m *FocusBoardModel) setStatus(msg string) { m.statusMessage = msg }
 func (m *FocusBoardModel) viewID() ViewType     { return ViewFocusBoard }
 func (m *FocusBoardModel) viewName() string     { return "Today" }
-
-func (m *FocusBoardModel) showDeleteConfirm(shortID int) {
-	if row := m.getRowAtCursor(); row != nil {
-		m.confirm.Show("delete", fmt.Sprintf("Delete task #%d?", shortID))
-	}
-}
 
 func (m *FocusBoardModel) ResetCursor() { m.cursor = 0 }
 

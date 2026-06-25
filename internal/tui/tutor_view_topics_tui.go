@@ -112,10 +112,12 @@ switching, or to triage a specific project's inbox.
 
 # Next Action Strip
 
-The dashboard renders the same Next Action strip used by
-Today and the Pipeline Hub. It surfaces the recommended
-next task or step (work, triage, plan) so you do not have
-to scan the project list to decide where to start.
+Dashboard no longer renders a daily Next Action strip.
+Use Today for the recommended next task or daily planning
+step, and use the Pipeline Hub for a staged cross-project
+overview. Dashboard stays focused on project selection,
+administration, archive recovery, and selected-project
+metadata.
 
 # Triage Prominence
 
@@ -428,11 +430,10 @@ between stage views.
 
 # Next Action Strip
 
-Today, Dashboard, and Pipeline Hub share the same Next Action
-strip at the top: one recommendation-unique message per render.
-The strip is the message; the footer beneath it carries the
-top contextual keys plus the escape-hatch cluster ";; hub ·
-: cmd · ? help".
+Today and Pipeline Hub share the Next Action strip at the top:
+one recommendation-unique message per render. The strip is the
+message; the footer beneath it carries the top contextual keys
+plus the escape-hatch cluster ";; hub · : cmd · ? help".
 
 # Shortcut Reference
 
@@ -461,8 +462,8 @@ Use ! followed by a number to set priority on the selected task:
 			Category: "TUI",
 			Content: `# Opening Quick Capture
 
-Press i in project views or ;i (or ctrl+i) from anywhere to
-open Quick Capture. The placeholder reads "Type a task title…"
+Press ;i from anywhere, or i in project views, to open Quick
+Capture. The placeholder reads "Type a task title…"
 — start with the title, then add sigils as you go. The footer
 hint shows "?: syntax · Esc: cancel"; press ? to toggle the
 full sigil reference on demand instead of crowding the prompt.

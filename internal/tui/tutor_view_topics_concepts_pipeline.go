@@ -51,7 +51,7 @@ and urgency.
 Your execution surface. Track today's commitments and dive
 into individual projects to move tasks forward.
 
-  ;w                    Today (daily execution board)
+  ;w                    Today cockpit
   Enter on a project    Open project tree, outliner, kanban
 
 # Review

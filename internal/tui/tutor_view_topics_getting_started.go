@@ -7,10 +7,11 @@ func tutorGettingStartedTopics() []TutorTopic {
 			Category: "Getting Started",
 			Content: `# Capturing Your First Task
 
-Press ctrl+i or ;i to open Quick Capture from any view. The
-placeholder reads "Type a task title…" — start with the title
-and add inline sigils as you go. Press ? inside Quick Capture
-to toggle the full syntax reference (footer hint: "?: syntax").
+Press ;i to open Quick Capture from any view, or i in a
+project view. The placeholder reads "Type a task title…" —
+start with the title and add inline sigils as you go. Press ?
+inside Quick Capture to toggle the full syntax reference
+(footer hint: "?: syntax").
 
 Quick Capture accepts natural-language input:
 
@@ -45,7 +46,7 @@ tt opens on the Today cockpit by default. The Next Action
 strip at the top tells you what to do next: capture, triage,
 or work the planned list.
 
-1. Capture a task with ctrl+i
+1. Capture a task with ;i
 2. Press ;; to open the Pipeline Hub, or O on the Dashboard,
    to triage the project's inbox (or ctrl+i to triage every
    project's inbox)
@@ -66,10 +67,11 @@ No task sneaks from Capture straight to Done.
 
 # Stage Shortcuts
 
-  ctrl+i  Capture   — Quick Capture overlay
+  ;i      Capture   — Quick Capture overlay
+  ctrl+i  Triage    — Global inbox processor
   ;a      Triage    — All Tasks inbox triage
   ;q      Plan      — Backlog (ranked focus queue)
-  ;w      Work      — Today (daily execution board)
+  ;w      Work      — Today cockpit
   ;r      Review    — Weekly Review
   ;B      Support   — Global blockers
 

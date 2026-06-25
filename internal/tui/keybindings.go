@@ -273,7 +273,6 @@ func taskReferenceViews() []ViewType {
 		ViewAllTasks,
 		ViewFocusView,
 		ViewProjectFocusView,
-		ViewFocusBoard,
 		ViewKanban,
 		ViewCrossProjectKanban,
 		ViewDailyReview,
@@ -306,6 +305,10 @@ func repeatableActionViews() []ViewType {
 		ViewTemporaryOutliner,
 		ViewCrossProjectOutliner,
 	}
+}
+
+func todayCockpitViews() []ViewType {
+	return []ViewType{ViewFocusBoard}
 }
 
 func clipboardBindings(views []ViewType) []Keybinding {
@@ -368,6 +371,7 @@ func (r *KeybindingRegistry) registerGlobalBindings() {
 		scopedAppBinding("ctrl+o", "Open task reference copy", "Task Operations", taskReferenceViews()),
 		scopedAppBinding("ctrl+n", "Open project Notes", "Notes", projectNotesHelpViews()),
 		scopedAppBinding(".", "Repeat last action", "Operations", repeatableActionViews()),
+		scopedAppBinding("u", "Undo last task action", "Operations", todayCockpitViews()),
 	)
 	r.add(clipboardBindings(taskReferenceViews())...)
 }

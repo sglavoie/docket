@@ -234,8 +234,9 @@ func (m *PipelineHubModel) workProjectEntryCmd(entry pipelineEntry) tea.Cmd {
 		return func() tea.Msg { return ShowOutlinerMsg{Project: p} }
 	case ViewKanban:
 		return func() tea.Msg { return ShowKanbanMsg{Project: p} }
+	default:
+		return nil
 	}
-	return nil
 }
 
 // pipelineEntryCmd returns a tea.Cmd that emits the message to open the given view.

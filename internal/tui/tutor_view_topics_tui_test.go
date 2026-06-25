@@ -97,6 +97,7 @@ func TestTutorQuickCaptureTopicTeachesCalmPlaceholderAndSyntaxGate(t *testing.T)
 	topic := findTutorTUITopic(t, "Quick Capture")
 
 	required := []string{
+		";i from anywhere",
 		`"Type a task title…"`,
 		"?: syntax",
 		"Task",
@@ -121,6 +122,7 @@ func TestTutorQuickCaptureTopicTeachesCalmPlaceholderAndSyntaxGate(t *testing.T)
 		"^type · !N/word",
 		"?: help",
 		"(via:",
+		"ctrl+i",
 	}
 	for _, notWant := range stale {
 		if strings.Contains(topic.Content, notWant) {
@@ -133,6 +135,7 @@ func TestTutorQuickCaptureGrammarTopicDocumentsGroupTaxonomy(t *testing.T) {
 	topic := findTutorTUITopic(t, "Quick Capture Grammar")
 
 	required := []string{
+		"Press ;i from any view",
 		`"Type a task title…"`,
 		"?: syntax",
 		"Task group",
@@ -153,6 +156,7 @@ func TestTutorQuickCaptureGrammarTopicDocumentsGroupTaxonomy(t *testing.T) {
 		"?: help",
 		"(via:",
 		"^type Task title !urgent",
+		"ctrl+i",
 	}
 	for _, notWant := range stale {
 		if strings.Contains(topic.Content, notWant) {
@@ -322,7 +326,8 @@ func TestTutorGettingStartedPipelineTopicTeachesSixStageFlow(t *testing.T) {
 	required := []string{
 		"six-stage flow",
 		"Capture → Triage → Plan → Work → Review → Support",
-		"ctrl+i  Capture",
+		";i      Capture",
+		"ctrl+i  Triage",
 		";a      Triage",
 		";q      Plan",
 		";w      Work",
@@ -341,6 +346,7 @@ func TestTutorGettingStartedPipelineTopicTeachesSixStageFlow(t *testing.T) {
 		"five-stage",
 		"Organize",
 		";f      Work",
+		"ctrl+i  Capture",
 		"Capture → Organize",
 		"Focus Board (kanban)",
 	}

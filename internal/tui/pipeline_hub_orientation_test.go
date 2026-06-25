@@ -125,7 +125,7 @@ func TestPipelineHubRecommendationStripFirstRun(t *testing.T) {
 
 // TestPipelineHubRecommendationStripWorkOnTask verifies the strip surfaces a
 // planned-today task fed through the same engine the cockpit uses. Confirms
-// the hub speaks the same Next Action language as Today and Dashboard.
+// the hub speaks the same Next Action language as Today.
 func TestPipelineHubRecommendationStripWorkOnTask(t *testing.T) {
 	cfg := testutil.NewTestConfig()
 	cfg.DataDir = t.TempDir()

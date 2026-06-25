@@ -74,6 +74,7 @@ func TestNextActionStripWorkOnTaskShowsTitleProjectAndReasons(t *testing.T) {
 // the unblock affordance in the hint cluster.
 func TestNextActionStripReviewBlockedSurfacesUnblockHint(t *testing.T) {
 	task := stripFixtureTask(t, "Wire SSO callback")
+	task.Status = models.StatusBlocked
 	project := stripFixtureProject(t, "Auth")
 
 	plain := renderStripPlain(t, NextActionStripOpts{
@@ -109,7 +110,7 @@ func TestNextActionStripTriageInboxCountsItems(t *testing.T) {
 		OpenLoops:   OpenLoops{HasTasks: true, Inbox: 4},
 	})
 
-	for _, want := range []string{"Triage inbox", "(4 items)", "inbox needs triage", ";i triage"} {
+	for _, want := range []string{"Triage inbox", "(4 items)", "inbox needs triage", "ctrl+i triage"} {
 		if !strings.Contains(plain, want) {
 			t.Fatalf("expected substring %q in strip, got %q", want, plain)
 		}
@@ -128,7 +129,7 @@ func TestNextActionStripTriageInboxFallsBackToOpenLoops(t *testing.T) {
 		OpenLoops:   OpenLoops{HasTasks: true, Inbox: 1},
 	})
 
-	for _, want := range []string{"Triage inbox", "(1 item)", ";i triage"} {
+	for _, want := range []string{"Triage inbox", "(1 item)", "ctrl+i triage"} {
 		if !strings.Contains(plain, want) {
 			t.Fatalf("expected substring %q in strip, got %q", want, plain)
 		}
@@ -149,7 +150,7 @@ func TestNextActionStripPlanTodaySuggestsPlanning(t *testing.T) {
 		OpenLoops:   OpenLoops{HasTasks: true},
 	})
 
-	for _, want := range []string{"Plan today's work", "w plan"} {
+	for _, want := range []string{"Plan today's work", "p plan"} {
 		if !strings.Contains(plain, want) {
 			t.Fatalf("expected substring %q in strip, got %q", want, plain)
 		}
@@ -209,9 +210,9 @@ func TestNextActionStripAllDoneCaughtUpCopy(t *testing.T) {
 		t.Fatalf("expected celebration title in strip, got %q", plain)
 	}
 	// Session 11: caught-up strip emits no hint cluster because the
-	// completed-Today footer already advertises `w plan more` and `a add` —
+	// completed-Today footer already advertises `p plan more` and `a add` —
 	// the strip is a banner, the footer is the canonical affordance.
-	for _, banned := range []string{"w plan more", "a add", "enter open"} {
+	for _, banned := range []string{"p plan more", "a add", "enter open"} {
 		if strings.Contains(plain, banned) {
 			t.Fatalf("caught-up strip should not duplicate footer-owned hint %q, got %q", banned, plain)
 		}
@@ -236,9 +237,9 @@ func TestNextActionStripDegradesUnderNarrowWidth(t *testing.T) {
 		HasProjects: true,
 	})
 	// Session 11: strip carries the recommendation-unique key only. For
-	// WorkOnTask that is `w plan today` (so the hint cannot collide with the
+	// WorkOnTask that is `p plan today` (so the hint cannot collide with the
 	// host footer's `enter open` / `x done` / `a add` cluster).
-	if !strings.Contains(wide, "w plan today") {
+	if !strings.Contains(wide, "p plan today") {
 		t.Fatalf("hints should be visible at width 140, got %q", wide)
 	}
 
@@ -252,7 +253,7 @@ func TestNextActionStripDegradesUnderNarrowWidth(t *testing.T) {
 		Width:       40,
 		HasProjects: true,
 	})
-	if strings.Contains(narrow, "w plan today") {
+	if strings.Contains(narrow, "p plan today") {
 		t.Fatalf("hints should be dropped at width 40, got %q", narrow)
 	}
 	if lipgloss.Width(narrow) > 40 {

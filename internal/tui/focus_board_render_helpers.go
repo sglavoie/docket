@@ -18,6 +18,13 @@ type focusBoardTodayStats struct {
 	plannedTotal   int
 }
 
+type focusBoardCockpitLayout struct {
+	topChrome        string
+	selectedMetadata string
+	statusMessages   string
+	footer           string
+}
+
 type focusBoardRowSegments struct {
 	queueIndicator  string
 	indent          string
@@ -28,6 +35,97 @@ type focusBoardRowSegments struct {
 	typeIcon        string
 	title           string
 	dueStr          string
+}
+
+const focusBoardFooterGapRows = 1
+
+func (l focusBoardCockpitLayout) listHeight(totalHeight int) int {
+	reserved := focusBoardRenderedRows(l.topChrome) +
+		focusBoardRenderedRows(l.selectedMetadata) +
+		focusBoardRenderedRows(l.statusMessages) +
+		focusBoardRenderedRows(l.footer) +
+		focusBoardFooterGapRows
+	return max(totalHeight-reserved, 1)
+}
+
+func focusBoardRenderedRows(block string) int {
+	if block == "" {
+		return 0
+	}
+	rows := strings.Count(block, "\n")
+	if !strings.HasSuffix(block, "\n") {
+		rows++
+	}
+	return rows
+}
+
+func focusBoardVisibleListRows(lines []string, cursorIdx, contentHeight int, scrollOffset *int) []string {
+	if contentHeight <= 0 || len(lines) == 0 {
+		if scrollOffset != nil {
+			*scrollOffset = 0
+		}
+		return nil
+	}
+	if scrollOffset == nil {
+		offset := 0
+		scrollOffset = &offset
+	}
+
+	cursorIdx = ClampCursor(cursorIdx, len(lines))
+	if *scrollOffset < 0 {
+		*scrollOffset = 0
+	}
+	if *scrollOffset >= len(lines) {
+		*scrollOffset = len(lines) - 1
+	}
+	if cursorIdx < *scrollOffset {
+		*scrollOffset = cursorIdx
+	}
+	for *scrollOffset < cursorIdx && focusBoardRowsBefore(lines, *scrollOffset, cursorIdx) >= contentHeight {
+		*scrollOffset++
+	}
+	for *scrollOffset > 0 &&
+		focusBoardRowsFrom(lines, *scrollOffset) < contentHeight &&
+		focusBoardRowsBefore(lines, *scrollOffset-1, cursorIdx) < contentHeight {
+		*scrollOffset--
+	}
+
+	return focusBoardTakeVisualRows(lines[*scrollOffset:], contentHeight)
+}
+
+func focusBoardRowsBefore(lines []string, startIdx, endIdx int) int {
+	startIdx = max(startIdx, 0)
+	endIdx = min(max(endIdx, 0), len(lines))
+	rows := 0
+	for _, line := range lines[startIdx:endIdx] {
+		rows += focusBoardRenderedRows(line)
+	}
+	return rows
+}
+
+func focusBoardRowsFrom(lines []string, startIdx int) int {
+	startIdx = max(startIdx, 0)
+	rows := 0
+	for _, line := range lines[startIdx:] {
+		rows += focusBoardRenderedRows(line)
+	}
+	return rows
+}
+
+func focusBoardTakeVisualRows(lines []string, maxRows int) []string {
+	if maxRows <= 0 {
+		return nil
+	}
+	visible := make([]string, 0, min(len(lines), maxRows))
+	for _, line := range lines {
+		for _, visualLine := range strings.Split(line, "\n") {
+			if len(visible) >= maxRows {
+				return visible
+			}
+			visible = append(visible, visualLine)
+		}
+	}
+	return visible
 }
 
 func (m *FocusBoardModel) todayStats() focusBoardTodayStats {
@@ -42,6 +140,83 @@ func (m *FocusBoardModel) todayStats() focusBoardTodayStats {
 		}
 	}
 	return stats
+}
+
+func (m *FocusBoardModel) renderSelectedTaskMetadataStrip() string {
+	row := m.getRowAtCursor()
+	if row == nil || row.Task == nil {
+		return ""
+	}
+	return renderTaskMetadataStrip(TaskMetadataStripOpts{
+		Task:    row.Task,
+		Project: row.Project,
+		Config:  m.config,
+		Width:   m.width,
+		AlreadyShown: TaskMetadataAlreadyShown{
+			Project:  true,
+			Priority: row.Task.Priority >= 1 && row.Task.Priority <= 2,
+			Due:      dueIsInlineHero(row.Task),
+		},
+	})
+}
+
+func (m *FocusBoardModel) renderFocusBoardFooter(stats focusBoardTodayStats) string {
+	var left string
+	if m.addMode || m.editMode {
+		left = HelpStyle.Render("enter save · Esc cancel")
+	} else if m.tabs.Active == boardTabClosed {
+		left = composeFullHeightFooterLeft("d reopen · enter open · D delete")
+	} else if m.tabs.Active == boardTabToday && stats.completedToday == stats.plannedTotal && stats.plannedTotal > 0 {
+		left = composeFullHeightFooterLeft(cockpitActionsHint(actionPlanMore(), actionQuickCapture(), actionCloseView()))
+	} else if m.tabs.Active == boardTabToday {
+		left = composeFullHeightFooterLeft(cockpitActionsHint(actionCompleteTask(), actionPrioritizeTask(), actionQuickCapture()))
+	} else {
+		action := actionPlanToday()
+		action.Label = "plan today"
+		left = composeFullHeightFooterLeft(cockpitActionsHint(action, actionQuickCapture(), actionOpenTask()))
+	}
+
+	var rightParts []string
+	if indicator := m.renderActiveFilterIndicator(); indicator != "" {
+		rightParts = append(rightParts, indicator)
+	}
+	if m.sort.Field != SortByDefault {
+		direction := "↑"
+		if !m.sort.Ascending {
+			direction = "↓"
+		}
+		rightParts = append(rightParts, fmt.Sprintf("Sort: %s %s", m.sort.Field.ShortString(), direction))
+	}
+	switch m.tabs.Active {
+	case boardTabClosed:
+		rightParts = append(rightParts, fmt.Sprintf("%d closed", len(m.closedRows)))
+	case boardTabToday:
+		rightParts = append(rightParts, fmt.Sprintf("%d/%d done", stats.completedToday, stats.plannedTotal))
+		if m.childDepthLimit >= 0 {
+			rightParts = append(rightParts, fmt.Sprintf("fold:%d", m.childDepthLimit))
+		}
+		if est := sumEstimatesForRows(m.filtered); est > 0 {
+			rightParts = append(rightParts, formatEstimateDays(est)+" est")
+		}
+	default:
+		rightParts = append(rightParts, fmt.Sprintf("%d/%d items", len(m.filtered), len(m.rows)))
+		if est := sumEstimatesForRows(m.filtered); est > 0 {
+			rightParts = append(rightParts, formatEstimateDays(est)+" est")
+		}
+	}
+	right := MutedStyle.Render(strings.Join(rightParts, " · "))
+	return renderStatusBarFooter(left, right, m.width, m.AccentColor())
+}
+
+func cockpitActionsHint(actions ...CockpitAction) string {
+	parts := make([]string, 0, len(actions))
+	for _, action := range actions {
+		if action.IsZero() {
+			continue
+		}
+		parts = append(parts, action.Hint())
+	}
+	return strings.Join(parts, " · ")
 }
 
 // renderRow renders a single board row line.
@@ -347,7 +522,7 @@ func (m *FocusBoardModel) renderZenMode() tea.View {
 			remaining++
 		}
 	}
-	hint := HelpStyle.Render(fmt.Sprintf("  x done · X dismiss · E edit · enter open · j/k nav · Esc exit  (%d remaining)", remaining))
+	hint := HelpStyle.Render(fmt.Sprintf("  x done · p priority · enter open · j/k nav · Esc exit  (%d remaining)", remaining))
 	b.WriteString("\n")
 	b.WriteString(hint)
 

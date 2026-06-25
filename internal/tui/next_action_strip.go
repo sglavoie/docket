@@ -78,7 +78,7 @@ func renderNextActionStrip(opts NextActionStripOpts) string {
 	title := stripTitleFor(resolved, opts)
 	project := stripProjectFor(resolved, opts.Action)
 	reasons := stripReasonsFor(resolved, opts.Action.Reasons)
-	hints := stripHintsFor(resolved)
+	hints := stripHintsFor(resolved, opts)
 
 	return assembleNextActionStripRow(opts.Width, glyph, title, project, reasons, hints, resolved)
 }
@@ -122,8 +122,9 @@ func stripGlyphFor(kind RecommendationKind, variant string) string {
 			return "✦"
 		}
 		return "✓"
+	default:
+		return "·"
 	}
-	return "·"
 }
 
 func stripTitleFor(c nextActionStripCopy, opts NextActionStripOpts) string {
@@ -152,8 +153,9 @@ func stripTitleFor(c nextActionStripCopy, opts NextActionStripOpts) string {
 		default:
 			return "All done"
 		}
+	default:
+		return ""
 	}
-	return ""
 }
 
 func safeTaskTitle(task *models.Task, fallback string) string {
@@ -180,8 +182,9 @@ func stripProjectFor(c nextActionStripCopy, action RecommendedAction) string {
 			return ""
 		}
 		return "[" + name + "]"
+	default:
+		return ""
 	}
-	return ""
 }
 
 // stripReasonsFor returns the comma-separated reason badges (already styled).
@@ -226,45 +229,42 @@ func styleReasonLabel(r RecommendationReason) string {
 // stripHintsFor returns the right-aligned key hint cluster for the kind. The
 // strings inside are styled with HelpStyle so the row reads as a help line
 // without overpowering the title.
-func stripHintsFor(c nextActionStripCopy) string {
-	hints := primaryHintsFor(c)
+func stripHintsFor(c nextActionStripCopy, opts NextActionStripOpts) string {
+	hints := primaryHintsFor(c, opts)
 	if len(hints) == 0 {
 		return ""
 	}
 	return HelpStyle.Render(strings.Join(hints, " · "))
 }
 
-// primaryHintsFor returns the strip's right-aligned key hint cluster. Session
-// 11 collapses each kind to a single recommendation-unique key so the strip
-// never repeats a hint already advertised by the host view's footer:
-//
-//   - `enter open`, `x done`, `a add` are footer-owned across Today/Hub.
-//   - The strip carries only the key that names the *recommendation action*
-//     (e.g., `u unblock` for ReviewBlocked, `;i triage` for TriageInbox).
-//   - AllDone (caught-up variant) emits no hint because the completed-Today
-//     footer already advertises `w plan more`; duplicating it inside the
-//     celebration banner would violate the one-canonical-home rule.
-//
-// Keeping the strip to one hint reinforces the "what should I do next?"
-// contract without duplicating the navigation footer.
-func primaryHintsFor(c nextActionStripCopy) []string {
+// primaryHintsFor returns the strip's right-aligned key hint cluster. It uses
+// the cockpit action model so the strip cannot advertise stale shortcuts after
+// the Today key grammar changes.
+func primaryHintsFor(c nextActionStripCopy, opts NextActionStripOpts) []string {
+	rec := BuildCockpitRecommendation(opts.Action, CockpitContext{
+		HasProjects: opts.HasProjects,
+		OpenLoops:   opts.OpenLoops,
+	})
 	switch c.kind {
 	case RecommendationKindWorkOnTask:
-		return []string{"w plan today"}
+		action := actionPlanToday()
+		action.Label = "plan today"
+		return []string{action.Hint()}
 	case RecommendationKindReviewBlocked:
-		return []string{"u unblock"}
+		return []string{rec.PrimaryAction.Hint()}
 	case RecommendationKindTriageInbox:
-		return []string{";i triage"}
+		return []string{rec.PrimaryAction.Hint()}
 	case RecommendationKindPlanToday:
-		return []string{"w plan"}
+		return []string{rec.PrimaryAction.Hint()}
 	case RecommendationKindAllDone:
 		if c.variant == stripVariantFirstRun {
-			return []string{"p new project"}
+			return []string{rec.PrimaryAction.Hint()}
 		}
 		// caught-up + default: footer carries the affordance.
 		return nil
+	default:
+		return nil
 	}
-	return nil
 }
 
 // assembleNextActionStripRow places glyph + title + project + reasons on the
@@ -342,8 +342,9 @@ func stripGlyphColorFor(c nextActionStripCopy) color.Color {
 			return ColorSuccess
 		}
 		return ColorAccent
+	default:
+		return ColorAccent
 	}
-	return ColorAccent
 }
 
 func stripTitleStyle() lipgloss.Style {

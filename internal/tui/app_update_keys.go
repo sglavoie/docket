@@ -231,6 +231,9 @@ func (m *AppModel) handleGlobalKeyPress(msg tea.KeyPressMsg) (bool, tea.Cmd) { /
 			return true, cmd
 		}
 	case "q":
+		if m.currentViewUsesTodaySimpleGrammar() {
+			break
+		}
 		if m.hasActiveTextInput() || m.hasActivePendingPrefix() || m.hasActiveConfirmDialog() {
 			break
 		}
@@ -239,6 +242,9 @@ func (m *AppModel) handleGlobalKeyPress(msg tea.KeyPressMsg) (bool, tea.Cmd) { /
 		}
 		return true, nil
 	case "w":
+		if m.currentViewUsesTodaySimpleGrammar() {
+			break
+		}
 		if m.hasActiveTextInput() || m.hasActivePendingPrefix() {
 			break
 		}
@@ -258,13 +264,22 @@ func (m *AppModel) handleGlobalKeyPress(msg tea.KeyPressMsg) (bool, tea.Cmd) { /
 			m.clearStatus()
 			return true, cb()
 		}
+		if cmd := m.handleFocusBoardUnblock(); cmd != nil {
+			return true, m.batchWithFocusRefresh(cmd)
+		}
 		if cmd := m.handleUndoToggle(); cmd != nil {
 			return true, cmd
 		}
 		if cmd := m.handleGlobalTaskUndo(); cmd != nil {
 			return true, cmd
 		}
+		if m.currentViewUsesTodaySimpleGrammar() {
+			return true, nil
+		}
 	case "ctrl+r":
+		if m.currentViewUsesTodaySimpleGrammar() {
+			break
+		}
 		if m.hasActiveTextInput() || m.hasActivePendingPrefix() || m.hasActiveConfirmDialog() {
 			break
 		}
@@ -307,6 +322,9 @@ func (m *AppModel) handleGlobalKeyPress(msg tea.KeyPressMsg) (bool, tea.Cmd) { /
 			return true, func() tea.Msg { return ShowGlobalSearchMsg{} }
 		}
 	case "ctrl+o":
+		if m.currentViewUsesTodaySimpleGrammar() {
+			break
+		}
 		if m.hasActiveTextInput() || m.hasActivePendingPrefix() || m.hasActiveConfirmDialog() || m.hasActiveMultiSelect() {
 			break
 		}
@@ -314,6 +332,9 @@ func (m *AppModel) handleGlobalKeyPress(msg tea.KeyPressMsg) (bool, tea.Cmd) { /
 			return true, cmd
 		}
 	case "ctrl+n":
+		if m.currentViewUsesTodaySimpleGrammar() {
+			break
+		}
 		if m.hasActiveTextInput() || m.hasActivePendingPrefix() || m.hasActiveConfirmDialog() || m.hasActiveMultiSelect() {
 			break
 		}
@@ -329,6 +350,9 @@ func (m *AppModel) handleGlobalKeyPress(msg tea.KeyPressMsg) (bool, tea.Cmd) { /
 			return true, func() tea.Msg { return ShowKeybindingExplorerMsg{} }
 		}
 	case "y", "Y", "ctrl+y":
+		if m.currentViewUsesTodaySimpleGrammar() {
+			break
+		}
 		if m.hasActiveTextInput() || m.hasActivePendingPrefix() || m.hasActiveConfirmDialog() {
 			break
 		}
@@ -336,6 +360,9 @@ func (m *AppModel) handleGlobalKeyPress(msg tea.KeyPressMsg) (bool, tea.Cmd) { /
 			return true, cmd
 		}
 	case "space":
+		if m.currentViewUsesTodaySimpleGrammar() {
+			break
+		}
 		if m.hasActiveTextInput() || m.hasActivePendingPrefix() {
 			break
 		}
@@ -362,6 +389,26 @@ func (m *AppModel) handleGlobalKeyPress(msg tea.KeyPressMsg) (bool, tea.Cmd) { /
 	}
 
 	return false, nil
+}
+
+func (m *AppModel) currentViewUsesTodaySimpleGrammar() bool {
+	return m.currentView() == ViewFocusBoard
+}
+
+func (m *AppModel) handleFocusBoardUnblock() tea.Cmd {
+	if m.currentView() != ViewFocusBoard {
+		return nil
+	}
+	focusBoard, ok := m.currentViewAsModel().(*FocusBoardModel)
+	if !ok {
+		return nil
+	}
+	action := focusBoard.resolveCockpitActionForKey("u")
+	if action.Command != CockpitCommandUnblockTask {
+		return nil
+	}
+	_, cmd := focusBoard.executeCockpitAction(action)
+	return cmd
 }
 
 func (m *AppModel) handleGlobalTaskUndo() tea.Cmd {

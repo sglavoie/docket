@@ -241,33 +241,6 @@ func (m *ProjectTreeModel) activeFilterParts() []string {
 	return parts
 }
 
-// renderChildrenInOtherSectionsBadge returns a badge showing how many children
-// are in sections hidden by the current view mode.
-func (m *ProjectTreeModel) renderChildrenInOtherSectionsBadge(task *models.Task) string {
-	hiddenSections := m.getHiddenSectionsForViewMode()
-	if len(hiddenSections) == 0 {
-		return ""
-	}
-
-	counts, ok := m.filterBar.GetChildrenInOtherSections()[task.ID]
-	if !ok || len(counts) == 0 {
-		return ""
-	}
-
-	var parts []string
-	for _, section := range hiddenSections {
-		if count, exists := counts[section]; exists && count > 0 {
-			parts = append(parts, fmt.Sprintf("+%d %s", count, section))
-		}
-	}
-
-	if len(parts) == 0 {
-		return ""
-	}
-
-	return ChildrenBadgeStyle.Render("[" + strings.Join(parts, ", ") + "]")
-}
-
 // GetPrefixPopupInfo returns prefix popup data for overlay rendering.
 func (m *ProjectTreeModel) GetPrefixPopupInfo() *PrefixPopupInfo {
 	if m.Dispatcher == nil || !m.Dispatcher.HasPendingPrefix() {

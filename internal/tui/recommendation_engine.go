@@ -46,10 +46,12 @@ type RecommendationEngineInput struct {
 //  1. Urgent actionable work (overdue, due today)
 //  2. Planned-today actionable work
 //  3. Carried-over planned work (planned for past date, still open)
-//  4. Blocked / inbox triage decisions (kind-level escalation)
-//  5. High-priority actionable work (priority 1 or 2)
-//  6. Stale active work (UpdatedAt older than StaleThreshold)
-//  7. Recently active / pinned fallbacks
+//  4. Blocked review decisions
+//  5. Inbox triage decisions
+//  6. High-priority actionable work (priority 1 or 2)
+//  7. Stale active work (UpdatedAt older than StaleThreshold)
+//  8. Recently active / momentum fallbacks
+//  9. Plain backlog -> PlanToday
 //
 // The selected RecommendationKind reflects what the cockpit should ask the
 // user to do next — work on a specific task (WorkOnTask / ReviewBlocked) or
@@ -223,26 +225,43 @@ func collectBlockedCandidates(projects []*models.Project, today time.Time, plann
 			}
 			cand := recommendCandidate{task: task, project: project}
 			reasons := []RecommendationReason{ReasonBlocked}
+			tier := tierFallback
 			key := planKey(task.ID, project.ID)
 			if task.DueDate != nil {
 				dueDay := util.StartOfDay(*task.DueDate)
 				switch {
 				case dueDay.Before(today):
 					reasons = append(reasons, ReasonOverdue)
+					if tier > tierOverdue {
+						tier = tierOverdue
+					}
 				case dueDay.Equal(today):
 					reasons = append(reasons, ReasonDueToday)
+					if tier > tierDueToday {
+						tier = tierDueToday
+					}
 				}
 			}
 			if plannedToday[key] {
 				reasons = append(reasons, ReasonPlannedToday)
+				if tier > tierPlannedToday {
+					tier = tierPlannedToday
+				}
 			}
 			if carriedOver[key] {
 				reasons = append(reasons, ReasonCarriedOver)
+				if tier > tierCarriedOver {
+					tier = tierCarriedOver
+				}
 			}
 			if task.Priority == 1 || task.Priority == 2 {
 				reasons = append(reasons, ReasonHighPriority)
+				if tier > tierHighPriority {
+					tier = tierHighPriority
+				}
 			}
 			cand.reasons = reasons
+			cand.tier = tier
 			blocked = append(blocked, cand)
 		}
 	}
@@ -265,6 +284,9 @@ func sortActionableCandidates(s []recommendCandidate) {
 			return aDue.Before(bDue)
 		}
 		if !a.task.UpdatedAt.Equal(b.task.UpdatedAt) {
+			if a.tier == tierStale && b.tier == tierStale {
+				return a.task.UpdatedAt.Before(b.task.UpdatedAt)
+			}
 			return a.task.UpdatedAt.After(b.task.UpdatedAt)
 		}
 		if a.task.ID != b.task.ID {
@@ -294,9 +316,17 @@ func sortInboxCandidates(s []recommendCandidate) {
 func sortBlockedCandidates(s []recommendCandidate) {
 	sort.SliceStable(s, func(i, j int) bool {
 		a, b := s[i], s[j]
+		if a.tier != b.tier {
+			return a.tier < b.tier
+		}
 		ap, bp := clampRecommendPriority(a.task.Priority), clampRecommendPriority(b.task.Priority)
 		if ap != bp {
 			return ap < bp
+		}
+		aDue := dueOrMax(a.task.DueDate)
+		bDue := dueOrMax(b.task.DueDate)
+		if !aDue.Equal(bDue) {
+			return aDue.Before(bDue)
 		}
 		if !a.task.UpdatedAt.Equal(b.task.UpdatedAt) {
 			return a.task.UpdatedAt.After(b.task.UpdatedAt)
@@ -321,14 +351,8 @@ func chooseRecommendationKind(actionable, inbox, blocked []recommendCandidate, n
 		return out
 	}
 
-	// No urgent/planned work: triage inbox preempts lower-tier work.
-	if len(inbox) > 0 {
-		out.Kind = RecommendationKindTriageInbox
-		out.Reasons = []RecommendationReason{ReasonInboxNeedsTriage}
-		return out
-	}
-
-	// No inbox either: surface a blocked task that needs unblocking.
+	// Blocked work is not actionable yet; review it before expanding the
+	// backlog or triaging non-urgent inbox items.
 	if len(blocked) > 0 {
 		top := blocked[0]
 		out.Kind = RecommendationKindReviewBlocked
@@ -338,8 +362,16 @@ func chooseRecommendationKind(actionable, inbox, blocked []recommendCandidate, n
 		return out
 	}
 
-	// Standalone high-priority work without blocking decisions → work on it.
-	if len(actionable) > 0 && actionable[0].tier == tierHighPriority {
+	// No urgent/planned/blocked work: triage inbox before lower-tier work.
+	if len(inbox) > 0 {
+		out.Kind = RecommendationKindTriageInbox
+		out.Reasons = []RecommendationReason{ReasonInboxNeedsTriage}
+		return out
+	}
+
+	// Standalone high-priority, stale, or recently-active work is concrete
+	// enough for a direct task recommendation.
+	if len(actionable) > 0 && actionable[0].tier <= tierRecentlyActive {
 		top := actionable[0]
 		out.Kind = RecommendationKindWorkOnTask
 		out.Task = top.task
@@ -348,8 +380,8 @@ func chooseRecommendationKind(actionable, inbox, blocked []recommendCandidate, n
 		return out
 	}
 
-	// Actionable tasks remain (stale / recently active / fallback) but nothing
-	// has been planned — invite the user to plan the day.
+	// Actionable tasks remain, but none carry a cockpit signal strong enough
+	// to choose one directly — invite the user to plan the day.
 	if len(actionable) > 0 {
 		out.Kind = RecommendationKindPlanToday
 		return out

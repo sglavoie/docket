@@ -34,7 +34,7 @@ func captureNextHint(taskCountBefore int) string {
 // Called when no tasks exist yet so beginners get an actionable prompt.
 func pipelineNextHintOnboarding(vt ViewType) string {
 	if vt == ViewAllTasks {
-		return "Next: capture a task (ctrl+i) or open Quick Capture (:)"
+		return "Next: capture a task (;i) or open Quick Capture (:)"
 	}
 	return ""
 }

@@ -144,31 +144,35 @@ func TestNextActionStripHintsDoNotDuplicateTodayFooter(t *testing.T) {
 	// (`w plan today · a add · enter open`) and Closed-tab footers are out
 	// of scope.
 	todayFootersByContext := map[string][]string{
-		"steady":    {"x done", "a add", "enter open"},
+		"steady":    {"x done", "p priority", "a add"},
 		"empty":     {"a add", "tab switch", "Esc close"},
-		"completed": {"w plan more", "a add", "Esc close"},
+		"completed": {"p plan more", "a add", "Esc close"},
 	}
 
+	project := cockpitProject(t, "Hierarchy")
+	blocked := cockpitTask(t, project, "Resolve blocker", models.StatusBlocked, models.SectionNext)
+
 	// Per-kind hint expectations. AllDone-caught-up intentionally emits no
-	// hint because the completed-Today footer already carries `w plan more`.
+	// hint because the completed-Today footer already carries `p plan more`.
 	cases := []struct {
 		name      string
 		copy      nextActionStripCopy
+		opts      NextActionStripOpts
 		wantHints int
 		// footerCtx names the footer variant the strip co-renders with for
 		// this kind/variant.
 		footerCtx string
 	}{
-		{"WorkOnTask", nextActionStripCopy{kind: RecommendationKindWorkOnTask}, 1, "steady"},
-		{"ReviewBlocked", nextActionStripCopy{kind: RecommendationKindReviewBlocked}, 1, "steady"},
-		{"TriageInbox-default", nextActionStripCopy{kind: RecommendationKindTriageInbox}, 1, "steady"},
-		{"TriageInbox-inbox-only", nextActionStripCopy{kind: RecommendationKindTriageInbox, variant: stripVariantInboxOnly}, 1, "empty"},
-		{"PlanToday", nextActionStripCopy{kind: RecommendationKindPlanToday}, 1, "empty"},
-		{"AllDone-first-run", nextActionStripCopy{kind: RecommendationKindAllDone, variant: stripVariantFirstRun}, 1, "empty"},
-		{"AllDone-caught-up", nextActionStripCopy{kind: RecommendationKindAllDone, variant: stripVariantCaughtUp}, 0, "completed"},
+		{"WorkOnTask", nextActionStripCopy{kind: RecommendationKindWorkOnTask}, NextActionStripOpts{Action: RecommendedAction{Kind: RecommendationKindWorkOnTask}, HasProjects: true}, 1, "steady"},
+		{"ReviewBlocked", nextActionStripCopy{kind: RecommendationKindReviewBlocked}, NextActionStripOpts{Action: RecommendedAction{Kind: RecommendationKindReviewBlocked, Task: blocked, Project: project}, HasProjects: true}, 1, "steady"},
+		{"TriageInbox-default", nextActionStripCopy{kind: RecommendationKindTriageInbox}, NextActionStripOpts{Action: RecommendedAction{Kind: RecommendationKindTriageInbox}, HasProjects: true}, 1, "steady"},
+		{"TriageInbox-inbox-only", nextActionStripCopy{kind: RecommendationKindTriageInbox, variant: stripVariantInboxOnly}, NextActionStripOpts{Action: RecommendedAction{Kind: RecommendationKindAllDone}, OpenLoops: OpenLoops{Inbox: 1, HasTasks: true}}, 1, "empty"},
+		{"PlanToday", nextActionStripCopy{kind: RecommendationKindPlanToday}, NextActionStripOpts{Action: RecommendedAction{Kind: RecommendationKindPlanToday}, HasProjects: true, OpenLoops: OpenLoops{HasTasks: true}}, 1, "empty"},
+		{"AllDone-first-run", nextActionStripCopy{kind: RecommendationKindAllDone, variant: stripVariantFirstRun}, NextActionStripOpts{Action: RecommendedAction{Kind: RecommendationKindAllDone}}, 1, "empty"},
+		{"AllDone-caught-up", nextActionStripCopy{kind: RecommendationKindAllDone, variant: stripVariantCaughtUp}, NextActionStripOpts{Action: RecommendedAction{Kind: RecommendationKindAllDone}, HasProjects: true, OpenLoops: OpenLoops{HasTasks: true, TodayTotal: 1, TodayDone: 1}}, 0, "completed"},
 	}
 	for _, tc := range cases {
-		hints := primaryHintsFor(tc.copy)
+		hints := primaryHintsFor(tc.copy, tc.opts)
 		if len(hints) != tc.wantHints {
 			t.Errorf("[%s] expected %d hint(s), got %d: %v", tc.name, tc.wantHints, len(hints), hints)
 		}
@@ -202,8 +206,8 @@ func TestTodayCompletedFooterAdvertisesPlanMore(t *testing.T) {
 	m.SetSize(120, 30)
 
 	plain := ansi.Strip(m.View().Content)
-	if !strings.Contains(plain, "w plan more") {
-		t.Fatalf("completed-today footer missing `w plan more` hint:\n%s", plain)
+	if !strings.Contains(plain, "p plan more") {
+		t.Fatalf("completed-today footer missing `p plan more` hint:\n%s", plain)
 	}
 	if !strings.Contains(plain, FooterEscapeHints) {
 		t.Fatalf("completed-today footer missing escape-hatch cluster:\n%s", plain)

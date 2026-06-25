@@ -53,7 +53,7 @@ var visualTabSubTabs = [][]visualSubTabRef{
 		{"Section Limits", tabBehavior, 5},
 		{"Startup", tabBehavior, 6},
 		{"Task Form", tabBehavior, 7},
-		{"Focus Board", tabBehavior, 8},
+		{"Today", tabBehavior, 8},
 		{"Dashboard", tabBehavior, 9},
 		{"Attachments", tabAttachments, 0},
 	},
@@ -120,7 +120,7 @@ var (
 		nil, // 0: General
 		{{"Palette Colors", 10}, {"Background & Cursor", 3}, {"Priorities", 5}}, // 1: Palette
 		nil, // 2: Review
-		{{"Recent Activity", 2}, {"Linked Tasks", 1}, {"Pinned Tasks", 1}, {"Recent Tasks", 1}, {"Popups", 1}, {"Section Limits", 7}, {"Startup", 1}, {"Task Form", 1}, {"Focus Board", 1}, {"Dashboard", 3}}, // 3: Behavior
+		{{"Recent Activity", 2}, {"Linked Tasks", 1}, {"Pinned Tasks", 1}, {"Recent Tasks", 1}, {"Popups", 1}, {"Section Limits", 7}, {"Startup", 1}, {"Task Form", 1}, {"Today", 1}, {"Dashboard", 3}}, // 3: Behavior
 		nil, // 4: Attachments
 		nil, // 5: Project Tree
 		{{"Sidebar", 2}, {"Section State", 7}, {"Column Visibility", 15}}, // 6: Outliner
@@ -177,7 +177,7 @@ var (
 	kanbanDetailHeightOptions = []string{"1", "2", "3", "4", "5"}
 
 	// startViewOptions lists display labels for the start view selector.
-	startViewOptions = []string{"Dashboard", "Focus Board", "Cross-Project Outliner", "All Tasks", "Daily Review", "Backlog", "Priority", "Due Dates"}
+	startViewOptions = []string{"Dashboard", "Today", "Cross-Project Outliner", "All Tasks", "Daily Review", "Backlog", "Priority", "Due Dates"}
 
 	// startViewValues maps cursor index to config string value.
 	startViewValues = []string{"dashboard", "focus-board", "cross-project-outliner", "all-tasks", "daily-review", "backlog", "priority", "due-dates"}
@@ -188,7 +188,7 @@ var (
 	// found, which keeps the selector pointed at a real option.
 	defaultStartViewCursor int
 
-	// focusBoardModeOptions lists display labels for the focus board default mode selector.
+	// focusBoardModeOptions lists display labels for the Today default mode selector.
 	focusBoardModeOptions = []string{"List", "Tunnel", "Zen"}
 
 	// focusBoardModeValues maps cursor index to config string value.

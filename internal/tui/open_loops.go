@@ -37,9 +37,9 @@ type openLoopsAware interface {
 }
 
 // ComputeOpenLoops counts the open loops across all loadable projects using the
-// same cross-scope loader Focus Board uses. dailyPlanIDs supplies the Today
-// scope (which tasks are planned for today) so the counter agrees with the
-// Focus Board Today tab regardless of completion status.
+// same cross-scope loader Today uses. dailyPlanIDs supplies the Today scope
+// (which tasks are planned for today) so the counter agrees with Today
+// regardless of completion status.
 func ComputeOpenLoops(cfg *config.Config, dailyPlanIDs map[string]bool) OpenLoops {
 	if cfg == nil {
 		return OpenLoops{}
@@ -50,7 +50,7 @@ func ComputeOpenLoops(cfg *config.Config, dailyPlanIDs map[string]bool) OpenLoop
 	for _, project := range projects {
 		for _, task := range project.Tasks {
 			out.HasTasks = true
-			// Today scope: include planned tasks regardless of completion (matches Focus Board).
+			// Today scope: include planned tasks regardless of completion (matches Today).
 			if dailyPlanIDs != nil && dailyPlanIDs[task.ID] {
 				out.TodayTotal++
 				if task.Status.IsComplete() {

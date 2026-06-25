@@ -124,7 +124,7 @@ func (c *Config) RemoveTaskRefs(taskIDs map[string]bool) int {
 	return removed
 }
 
-// GetFocusBoardDefaultMode returns the default focus mode for the Focus Board.
+// GetFocusBoardDefaultMode returns the default focus mode for Today.
 // Returns "list" if not set.
 func (c *Config) GetFocusBoardDefaultMode() string {
 	if c.FocusBoardDefaultMode == "" {
@@ -133,7 +133,7 @@ func (c *Config) GetFocusBoardDefaultMode() string {
 	return c.FocusBoardDefaultMode
 }
 
-// SetFocusBoardDefaultMode sets the default focus mode for the Focus Board.
+// SetFocusBoardDefaultMode sets the default focus mode for Today.
 func (c *Config) SetFocusBoardDefaultMode(mode string) {
 	c.FocusBoardDefaultMode = mode
 }

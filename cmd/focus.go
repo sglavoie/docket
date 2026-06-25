@@ -64,7 +64,7 @@ var focusTodayCmd = &cobra.Command{
 	Short: "Show tasks planned for today",
 	Long: `Show tasks that have been planned for today's work session.
 
-Tasks are added to the daily plan by pressing 'w' in any task view.
+Plan work from the Today cockpit or the command palette's Today commands.
 Unfinished tasks carry over automatically to the next day.
 
 Examples:

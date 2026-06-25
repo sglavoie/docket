@@ -148,19 +148,19 @@ type ShowTutorMsg struct{}
 type TutorDismissedMsg struct{}
 
 // =============================================================================
-// Focus Board Messages (Show/Close Pattern)
+// Today Messages (Show/Close Pattern)
 // =============================================================================
 
-// ShowFocusBoardMsg opens the focus board view.
+// ShowFocusBoardMsg opens the Today view.
 type ShowFocusBoardMsg struct{}
 
-// CloseFocusBoardMsg closes the focus board view.
+// CloseFocusBoardMsg closes the Today view.
 type CloseFocusBoardMsg struct{ PopToAnchorMsg }
 
-// FocusBoardRefreshMsg requests a refresh of the focus board data.
+// FocusBoardRefreshMsg requests a refresh of the Today data.
 type FocusBoardRefreshMsg struct{}
 
-// FocusBoardSelectMsg navigates to a task from focus board.
+// FocusBoardSelectMsg navigates to a task from Today.
 type FocusBoardSelectMsg struct {
 	Task    *models.Task
 	Project *models.Project

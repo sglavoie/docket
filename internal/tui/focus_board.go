@@ -1,7 +1,6 @@
 package tui
 
 import (
-	"fmt"
 	"image/color"
 
 	"charm.land/bubbles/v2/textinput"
@@ -57,26 +56,24 @@ type FocusBoardModel struct {
 	dailyPlan    *[]FocusTask // shared with AppModel for reordering
 
 	// Data
-	rows            []boardRow
-	allRows         []boardRow // all non-complete, non-snoozed tasks — used as tag pool for autocomplete and tag filter picker
-	nextRows        []boardRow
-	closedRows      []boardRow
-	todayRows       []boardRow
-	filtered        []boardRow
-	carriedOverIDs  map[string]bool
-	parentOverrides map[string]bool // per-parent fold override in Today tab: true=force expand, false=force collapse, absent=follow childDepthLimit
+	rows           []boardRow
+	allRows        []boardRow // all non-complete, non-snoozed tasks — used as tag pool for autocomplete and tag filter picker
+	nextRows       []boardRow
+	closedRows     []boardRow
+	todayRows      []boardRow
+	filtered       []boardRow
+	carriedOverIDs map[string]bool
 
 	// Tabs
 	tabs TabState
+
+	pendingReloadIntent focusBoardReloadIntent
 
 	// Sort
 	sort SortState
 
 	// Filter
 	FilterMixin
-
-	// Multi-select
-	MultiSelectState
 
 	// Quick-add input
 	addMode  bool
@@ -153,13 +150,11 @@ func NewFocusBoardModel(cfg *config.Config, manager *config.Manager, dailyPlan *
 		dailyPlan:         dailyPlan,
 		dailyPlanIDs:      dailyPlanIDs,
 		carriedOverIDs:    carriedOverIDs,
-		parentOverrides:   make(map[string]bool),
 		addInput:          ti,
 		editInput:         ei,
 		focusMode:         initialFocusMode,
 		childDepthLimit:   -1,
 		FilterMixin:       FilterMixin{filter: newFilterState()},
-		MultiSelectState:  MultiSelectState{selectedTasks: make(map[string]bool)},
 		sort:              NewSortState(),
 		tabs:              TabState{Names: focusBoardTabNames},
 		activePerspective: PerspectiveInactive,
@@ -178,20 +173,6 @@ func NewFocusBoardModel(cfg *config.Config, manager *config.Manager, dailyPlan *
 					return m, nil, true
 				}
 				return nil, nil, false
-			},
-		},
-		{
-			Active: func() bool { return m.focusMode > focusModeList },
-			Handle: func(key string) (tea.Model, tea.Cmd, bool) {
-				switch key {
-				case "tab", "shift+tab", "shift+left", "shift+right",
-					"/", "a", "v", "A",
-					"1", "2", "3", "4", "5", "0",
-					"n", "N", "r", "J", "K":
-					return m, nil, true // swallow non-zen keys
-				default:
-					return nil, nil, false // pass through to normal dispatch
-				}
 			},
 		},
 	}
@@ -229,8 +210,7 @@ func (m *FocusBoardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case FocusBoardRefreshMsg:
-		m.loadItems()
-		m.clampCursor()
+		m.refreshData()
 		return m, nil
 
 	case tea.KeyPressMsg:
@@ -293,10 +273,14 @@ func (m *FocusBoardModel) skipGroupHeaderBackward() {
 	}
 }
 
-// escSteps defines the Esc dismissal cascade: search → filters.
+// escSteps defines the Esc dismissal cascade: focus mode → search → filters.
 func (m *FocusBoardModel) escSteps() []EscStep {
 	return []EscStep{
-		MultiSelectEscStep(func() bool { return m.multiSelectMode }, m.toggleMultiSelectMode),
+		{Active: func() bool { return m.focusMode > focusModeList }, Clear: func() {
+			m.focusMode = focusModeList
+			m.resetViewScrollOffset()
+			m.setStatus("Focus mode cleared")
+		}},
 		{Active: func() bool { return m.SearchQuery() != "" }, Clear: func() {
 			m.ClearSearch()
 			m.applyFilter()
@@ -312,7 +296,7 @@ func (m *FocusBoardModel) escSteps() []EscStep {
 	}
 }
 
-// ShouldCaptureEsc returns true when add mode, edit mode, search, prefix, confirm, or filters are active.
+// ShouldCaptureEsc returns true when add mode, edit mode, focus mode, search, prefix, confirm, or filters are active.
 func (m *FocusBoardModel) ShouldCaptureEsc() bool {
 	return m.addMode || m.editMode || m.SearchShouldCaptureEsc() ||
 		m.DefaultShouldCaptureEsc() || AnyEscStepActive(m.escSteps())
@@ -330,9 +314,6 @@ func (m *FocusBoardModel) ActiveMode() (string, color.Color) {
 		return "ZEN", ColorPurple
 	case focusModeTunnel:
 		return "TUNNEL", ColorOrange
-	}
-	if m.multiSelectMode {
-		return fmt.Sprintf("MULTI-SELECT: %d", m.SelectedCount()), ColorWarning
 	}
 	if m.addMode {
 		return "ADD", ColorSuccess

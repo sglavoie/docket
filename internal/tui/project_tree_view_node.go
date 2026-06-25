@@ -174,58 +174,6 @@ func (m *ProjectTreeModel) renderNodeWithWidth(node *TreeNode, selected bool, in
 	return row
 }
 
-func (m *ProjectTreeModel) nodeOrgGroup(task *models.Task, node *TreeNode) string {
-	var parts []string
-	if node.IsContextNode || m.viewMode == ViewModeCompleted || m.viewMode == ViewModeAll {
-		sectionName := task.Section
-		if sectionName == "" {
-			sectionName = "Active"
-		}
-		effectiveSection := task.Section
-		if m.viewMode == ViewModeAll {
-			parts = append(parts, GetViewModeStyleForSection(effectiveSection).Render("@ "+sectionName))
-		} else {
-			parts = append(parts, SectionBadgeStyle.Render("@ "+sectionName))
-		}
-	}
-	if !node.IsContextNode && len(task.Children) > 0 {
-		if childBadge := m.renderChildrenInOtherSectionsBadge(task); childBadge != "" {
-			parts = append(parts, childBadge)
-		}
-	}
-	return JoinGroupParts(parts...)
-}
-
-func (m *ProjectTreeModel) nodeLifecycleGroup(task *models.Task) string {
-	var parts []string
-	if m.columnConfig.IsVisible(ColDueDate) {
-		if dueStr := formatDueDate(task, m.config.GetTimeFormat()); dueStr != "" {
-			parts = append(parts, dueStr)
-		}
-	}
-	if m.columnConfig.IsVisible(ColSnooze) && task.SnoozedUntil != nil {
-		parts = append(parts, MutedStyle.Render("zzz "+formatSnoozeDate(*task.SnoozedUntil)))
-	}
-	if m.columnConfig.IsVisible(ColRecurrence) && task.IsRecurring() {
-		recurStr := "↻"
-		if task.Recurrence.Streak > 0 {
-			recurStr = fmt.Sprintf("↻%d", task.Recurrence.Streak)
-		}
-		parts = append(parts, MutedStyle.Render(recurStr))
-	}
-	return JoinGroupParts(parts...)
-}
-
-func (m *ProjectTreeModel) nodeStructureGroup(task *models.Task) string {
-	var parts []string
-	if m.columnConfig.IsVisible(ColDependencies) && !m.sidebar.IsEnabled() {
-		if s := renderDependencyIndicators(task, m.project); s != "" {
-			parts = append(parts, s)
-		}
-	}
-	return JoinGroupParts(parts...)
-}
-
 func (m *ProjectTreeModel) nodeContentGroup(task *models.Task) string {
 	var parts []string
 	if m.columnConfig.IsVisible(ColComments) {

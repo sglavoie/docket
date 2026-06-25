@@ -33,6 +33,8 @@ func (m *DashboardModel) renderGlobalAlerts(_ int, selectedProject *models.Proje
 //
 // Per-project inbox counts are surfaced by the project row indicator, so the
 // alert panel no longer repeats them as a separate "Inbox hotspots" line.
+//
+//nolint:gocyclo // The branch count mirrors the dashboard's ordered alert tiers.
 func (m *DashboardModel) computeGlobalAlertLines(selectedProject *models.Project) []string {
 	var totalTriage, totalOverdue, totalDueToday, totalBlocked, totalBlockers int
 	var totalCompletedThisWeek, totalCompletedToday, todayPlannedCount int

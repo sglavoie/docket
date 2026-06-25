@@ -88,7 +88,6 @@ func (m *AppModel) clearBulkTaskSelectionsForRefs(refs []TaskProjectRef) {
 		ViewWeeklyReview,
 		ViewPriorityView,
 		ViewDueDateOverview,
-		ViewFocusBoard,
 		ViewKanban,
 		ViewCrossProjectKanban,
 		ViewOutliner,
@@ -116,8 +115,6 @@ func (m *AppModel) clearViewBulkTaskSelectionForRefs(vt ViewType, selectedIDs ma
 	case *PriorityViewModel:
 		clearMultiSelectStateForTaskIDs(&v.MultiSelectState, selectedIDs)
 	case *DueDateOverviewModel:
-		clearMultiSelectStateForTaskIDs(&v.MultiSelectState, selectedIDs)
-	case *FocusBoardModel:
 		clearMultiSelectStateForTaskIDs(&v.MultiSelectState, selectedIDs)
 	case *KanbanModel:
 		clearMultiSelectStateForTaskIDs(&v.MultiSelectState, selectedIDs)

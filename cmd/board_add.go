@@ -24,8 +24,8 @@ var (
 var boardAddCmd = &cobra.Command{
 	Use:     "add <title>",
 	Aliases: []string{"a", "new"},
-	Short:   "Add a new action to the focus board",
-	Long: `Add a new action item to the focus board.
+	Short:   "Add a new action board item",
+	Long: `Add a new action board item.
 
 Actions are stored as Action-type tasks. By default they go to the
 action inbox project; use --project to target a specific project.

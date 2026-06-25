@@ -6,8 +6,8 @@ func tutorTUIQuickCaptureGrammarTopic() TutorTopic {
 		Category: "TUI",
 		Content: `# Opening Quick Capture
 
-Press ctrl+i or ;i from any view to open the Quick Capture
-overlay. The placeholder reads "Type a task title…" — start
+Press ;i from any view to open the Quick Capture overlay. The
+placeholder reads "Type a task title…" — start
 typing the title, then add sigils as needed. Press ? to toggle
 the full syntax reference (the footer hint reads "?: syntax").
 

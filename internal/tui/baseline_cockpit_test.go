@@ -212,7 +212,7 @@ func TestBaselineCockpitInboxOnlyRendersAcrossSizes(t *testing.T) {
 			// strip with the triage keybinding so the user sees both the
 			// strip CTA and the long-form action hint.
 			assertCockpitContains(t, label, rendered, "4 items waiting in your inbox.")
-			assertCockpitContains(t, label, rendered, ";i triage")
+			assertCockpitContains(t, label, rendered, "ctrl+i triage")
 			assertNoFooterContentOverlap(t, label, rendered, sz.height)
 		})
 	}
@@ -268,7 +268,7 @@ func TestBaselineCockpitOverdueRendersAcrossSizes(t *testing.T) {
 // TestBaselineCockpitPlannedTodayRendersAcrossSizes covers the populated
 // Today tab with a small daily plan. Subtitle reads `N tasks · 0/N done`,
 // the openLoops pill shows `today 0/N`, and the footer offers the in-flight
-// triage shortcuts (`x done`, `a add`, `enter open`). Narrow is excluded
+// triage shortcuts (`x done`, `p priority`, `a add`). Narrow is excluded
 // because the row metadata strip + footer + title overflows 20 rows once at
 // least one row is present.
 func TestBaselineCockpitPlannedTodayRendersAcrossSizes(t *testing.T) {
@@ -297,8 +297,8 @@ func TestBaselineCockpitPlannedTodayRendersAcrossSizes(t *testing.T) {
 			assertPrimaryActionsVisible(t, label, rendered,
 				"Today",
 				"x done",
+				"p priority",
 				"a add",
-				"enter open",
 			)
 			assertCockpitContains(t, label, rendered, fmt.Sprintf("today 0/%d", len(plan)))
 			// The Today subtitle ends in `· 0/N done` regardless of how many
@@ -375,7 +375,7 @@ func TestBaselineCockpitBlockedRendersAcrossSizes(t *testing.T) {
 // TestBaselineCockpitTodayCompleteRendersAcrossSizes covers the celebratory
 // state when every planned-today task is done. The title becomes "Today ✓",
 // the subtitle reads "All done!", the openLoops pill collapses to
-// `today ✓`, and the footer offers `w plan more`. Session 6 (Today Empty
+// `today ✓`, and the footer offers `p plan more`. Session 6 (Today Empty
 // And Completion States) tightens the surrounding momentum copy; this
 // baseline locks the structural pieces that copy will sit inside.
 func TestBaselineCockpitTodayCompleteRendersAcrossSizes(t *testing.T) {
@@ -402,7 +402,7 @@ func TestBaselineCockpitTodayCompleteRendersAcrossSizes(t *testing.T) {
 			assertPrimaryActionsVisible(t, label, rendered,
 				"Today",
 				"All done!",
-				"w plan more",
+				"p plan more",
 			)
 			assertCockpitContains(t, label, rendered, "today ✓")
 			// Next Action strip caught-up variant — every actionable task is
@@ -428,12 +428,10 @@ func TestBaselineCockpitTodayCompleteRendersAcrossSizes(t *testing.T) {
 func TestBaselineCockpitManyProjectsRendersAcrossSizes(t *testing.T) {
 	for _, sz := range baselineSizes {
 		t.Run(sz.label, func(t *testing.T) {
-			projects := make([]*models.Project, 0, 8)
 			rows := make([]boardRow, 0, 8)
 			for i := 0; i < 8; i++ {
 				p := cockpitProject(t, fmt.Sprintf("Proj%02d", i+1))
 				task := cockpitTask(t, p, fmt.Sprintf("Next step %d", i+1), models.StatusTodo, models.SectionNext)
-				projects = append(projects, p)
 				rows = append(rows, cockpitBoardRow(task, p))
 			}
 
@@ -448,7 +446,7 @@ func TestBaselineCockpitManyProjectsRendersAcrossSizes(t *testing.T) {
 			assertPrimaryActionsVisible(t, label, rendered,
 				"Next step 1",
 				"Next step 8",
-				"w plan today",
+				"p plan today",
 			)
 			assertNoFooterContentOverlap(t, label, rendered, sz.height)
 		})

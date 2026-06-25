@@ -82,7 +82,7 @@ func StatusOrder(status models.TaskStatus) int {
 	}
 }
 
-// TodayStatusOrder ranks statuses by activeness for the Focus Board Today tab.
+// TodayStatusOrder ranks statuses by activeness for the Today tab.
 // In-progress first, review pushed below other active statuses, complete last.
 func TodayStatusOrder(status models.TaskStatus) int {
 	switch status {

@@ -86,7 +86,10 @@ func (m *CommandPaletteModel) injectSuggestedItems() {
 	const maxSuggested = 3
 	var suggested []filteredPaletteItem
 
-	if m.currentView == ViewInboxProcessor || m.currentView == ViewGlobalInboxProcessor {
+	switch {
+	case len(m.suggestedCommandOrder) > 0:
+		suggested = m.collectOrderedSuggestedItems(usedIDs, maxSuggested, m.suggestedCommandOrder)
+	case m.currentView == ViewInboxProcessor || m.currentView == ViewGlobalInboxProcessor:
 		suggested = m.collectInboxSuggestedItems(usedIDs, maxSuggested)
 	}
 
@@ -124,6 +127,10 @@ var inboxSuggestedCommandOrder = []string{
 }
 
 func (m *CommandPaletteModel) collectInboxSuggestedItems(usedIDs map[string]bool, maxSuggested int) []filteredPaletteItem {
+	return m.collectOrderedSuggestedItems(usedIDs, maxSuggested, inboxSuggestedCommandOrder)
+}
+
+func (m *CommandPaletteModel) collectOrderedSuggestedItems(usedIDs map[string]bool, maxSuggested int, commandOrder []string) []filteredPaletteItem {
 	byName := make(map[string]PaletteItem)
 	for _, fi := range m.filteredItems {
 		if fi.Item.Category != ItemCategoryCommands || fi.Item.Command == nil {
@@ -137,7 +144,7 @@ func (m *CommandPaletteModel) collectInboxSuggestedItems(usedIDs map[string]bool
 	}
 
 	suggested := make([]filteredPaletteItem, 0, maxSuggested)
-	for _, name := range inboxSuggestedCommandOrder {
+	for _, name := range commandOrder {
 		if len(suggested) >= maxSuggested {
 			break
 		}

@@ -3,6 +3,8 @@ package tui
 import (
 	"slices"
 	"testing"
+
+	tea "charm.land/bubbletea/v2"
 )
 
 func TestNewKeybindingRegistry(t *testing.T) {
@@ -166,6 +168,98 @@ func TestActualTaskViewHelpIncludesScopedAppBindings(t *testing.T) {
 	assertHasHelpItem(t, detailItems, ViewTaskDetail, "ctrl+n", "Open project Notes")
 	assertHasHelpItem(t, detailItems, ViewTaskDetail, "y", "Copy title")
 	assertLacksHelpItem(t, detailItems, ViewTaskDetail, "space", "Toggle task detail peek (toggles selection in multi-select)")
+}
+
+func TestFocusBoardSimpleKeyGrammarHandledKeysAndHelp(t *testing.T) {
+	m := &FocusBoardModel{}
+	keys := m.HandledKeys()
+
+	for _, key := range []string{
+		"a", "x", "p", "/", "?", "enter",
+		"tab", "shift+tab", "shift+left", "shift+right",
+		"j", "down", "k", "up", "G", "ctrl+u", "ctrl+d",
+	} {
+		if !slices.Contains(keys, key) {
+			t.Errorf("FocusBoard HandledKeys missing canonical key %q", key)
+		}
+	}
+
+	for _, key := range []string{
+		"q", "w", "X", "E", "v", "space", "A", "J", "K",
+		"ctrl+f", "ctrl+r", "ctrl+t", "r", "n", "N",
+		"g", "gg", "gp", "f", "fa", "fp", "F", "F#",
+		"1", "2", "3", "4", "5", "0", "P", "P0",
+		",", ",d", "!", "!1", "d", "z", "m", "c", "t", ".", "b",
+		"o", "D", "e", "*", "S", "O", "ctrl+b", "ctrl+.",
+	} {
+		if slices.Contains(keys, key) {
+			t.Errorf("FocusBoard HandledKeys should not preserve removed key %q", key)
+		}
+	}
+
+	items := m.GetHelpItems()
+	for _, want := range []HelpItem{
+		{Key: "a", Description: "Quick-add board item"},
+		{Key: "x", Description: "Complete or dismiss item"},
+		{Key: "p", Description: "Plan or set priority"},
+		{Key: "/", Description: "Search"},
+		{Key: "?", Description: "Toggle help"},
+		{Key: ":", Description: "Command palette"},
+		{Key: "esc", Description: "Back / close"},
+		{Key: "u", Description: "Undo last task action"},
+	} {
+		assertHasHelpItem(t, items, ViewFocusBoard, want.Key, want.Description)
+	}
+	for _, key := range []string{
+		"q", "w", "X", "E", "v", "space", "A", "J", "K",
+		"ctrl+f", "ctrl+r", "ctrl+t", "r", "n", "N",
+		"g", "gg", "gp", "f", "fa", "fp", "F", "F#",
+		"1", "2", "3", "4", "5", "0", "P", "P0",
+		",", ",d", "!", "!1", "d", "z", "m", "c", "t", ".", "b",
+		"o", "D", "e", "*", "S", "O", "ctrl+o", "ctrl+n", "ctrl+b", "ctrl+.",
+		"y", "Y", "ctrl+Y",
+	} {
+		for _, item := range items {
+			if item.Key == key {
+				t.Errorf("FocusBoard help should not advertise removed key %q: %+v", key, item)
+			}
+		}
+	}
+}
+
+func TestFocusBoardSimpleKeyGrammarRemovedAppAliasesFallThrough(t *testing.T) {
+	app, project := newTestAppModelWithProject()
+	view := &ctrlORecorderTaskRefView{task: project.Tasks[0], project: project}
+	app.views.Register(ViewFocusBoard, view)
+	app.viewStack = []ViewType{ViewDashboard, ViewFocusBoard}
+	app.focusQueueIDs = map[string]bool{}
+	app.dailyPlanIDs = map[string]bool{}
+
+	removed := []struct {
+		name string
+		key  tea.KeyPressMsg
+	}{
+		{"queue", syntheticKey('q')},
+		{"plan", syntheticKey('w')},
+		{"redo", syntheticCtrlKey('r')},
+		{"reference", syntheticCtrlKey('o')},
+		{"notes", syntheticCtrlKey('n')},
+		{"peek", syntheticSpecialKey(tea.KeySpace)},
+		{"copy title", syntheticKey('y')},
+		{"copy description", syntheticKey('Y')},
+		{"copy title and description", syntheticCtrlKey('y')},
+	}
+	for _, tc := range removed {
+		t.Run(tc.name, func(t *testing.T) {
+			if handled, _ := app.handleGlobalKeyPress(tc.key); handled {
+				t.Fatalf("FocusBoard should let removed app-level alias %q fall through", tc.key.String())
+			}
+		})
+	}
+
+	if handled, _ := app.handleGlobalKeyPress(syntheticKey('u')); !handled {
+		t.Fatal("FocusBoard should keep canonical app-level undo key u handled")
+	}
 }
 
 func TestGetGlobalBindings_IncludesHandledSemicolonShortcuts(t *testing.T) {

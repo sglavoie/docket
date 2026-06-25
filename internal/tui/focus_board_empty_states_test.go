@@ -74,7 +74,7 @@ func TestTodayEmptyStateInboxOnlyCopyPlural(t *testing.T) {
 	for _, want := range []string{
 		"Triage inbox",                   // strip
 		"3 items waiting in your inbox.", // body (plural)
-		";i triage",
+		"ctrl+i triage",
 		"a add",
 	} {
 		if !strings.Contains(plain, want) {
@@ -109,7 +109,7 @@ func TestTodayEmptyStateInboxOnlyCopySingular(t *testing.T) {
 }
 
 // TestTodayEmptyStateBacklogReadyCopy covers the case where tasks exist but
-// nothing is planned or in the inbox. The body steers the user toward `w plan`
+// nothing is planned or in the inbox. The body steers the user toward `p plan`
 // so they can move work from the backlog onto Today.
 func TestTodayEmptyStateBacklogReadyCopy(t *testing.T) {
 	project := cockpitProject(t, "Backlog")
@@ -122,7 +122,7 @@ func TestTodayEmptyStateBacklogReadyCopy(t *testing.T) {
 
 	for _, want := range []string{
 		"Plan today from your backlog.",
-		"w plan",
+		"p plan",
 		"a add",
 		"? help",
 	} {

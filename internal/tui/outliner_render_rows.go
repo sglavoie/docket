@@ -268,22 +268,6 @@ func (m *OutlinerModel) renderTaskIndicators(task *models.Task) string {
 	return " " + indicatorStr
 }
 
-func (m *OutlinerModel) renderTaskOrganizationGroup(task *models.Task, proj *models.Project) string {
-	var orgParts []string
-	if m.columnConfig.IsVisible(ColShortID) {
-		orgParts = append(orgParts, MutedStyle.Render(fmt.Sprintf("#%d", task.ShortID)))
-	}
-	if perspective := m.currentPerspective(); perspective.Name != "All" && m.project != nil {
-		sectionName := task.Section
-		if sectionName == "" {
-			sectionName = "Active"
-		}
-		effectiveSection := task.Section
-		orgParts = append(orgParts, GetViewModeStyleForSection(effectiveSection).Render("@ "+sectionName))
-	}
-	return JoinGroupParts(orgParts...)
-}
-
 func (m *OutlinerModel) renderTaskPrioritySegment(task *models.Task, colLayout *ColumnLayout) string {
 	if colLayout != nil && colLayout.HasPriority {
 		priorityBadge := ""
@@ -296,41 +280,6 @@ func (m *OutlinerModel) renderTaskPrioritySegment(task *models.Task, colLayout *
 		return renderPriorityBadge(task.Priority) + " "
 	}
 	return ""
-}
-
-func (m *OutlinerModel) renderTaskLifecycleGroup(task *models.Task) string {
-	var lifecycleParts []string
-	if m.columnConfig.IsVisible(ColDueDate) {
-		if dueStr := formatDueDate(task, m.config.GetTimeFormat()); dueStr != "" {
-			lifecycleParts = append(lifecycleParts, dueStr)
-		}
-	}
-	if m.columnConfig.IsVisible(ColSnooze) && task.SnoozedUntil != nil {
-		lifecycleParts = append(lifecycleParts, MutedStyle.Render("zzz "+formatSnoozeDate(*task.SnoozedUntil)))
-	}
-	if m.columnConfig.IsVisible(ColRecurrence) && task.IsRecurring() {
-		recurStr := "↻"
-		if task.Recurrence.Streak > 0 {
-			recurStr = fmt.Sprintf("↻%d", task.Recurrence.Streak)
-		}
-		lifecycleParts = append(lifecycleParts, MutedStyle.Render(recurStr))
-	}
-	return JoinGroupParts(lifecycleParts...)
-}
-
-func (m *OutlinerModel) renderTaskStructureGroup(task *models.Task, proj *models.Project) string {
-	var structureParts []string
-	if m.columnConfig.IsVisible(ColProgress) {
-		if frac := renderProgressFraction(task); frac != "" {
-			structureParts = append(structureParts, frac)
-		}
-	}
-	if m.columnConfig.IsVisible(ColDependencies) && !m.sidebar.IsEnabled() && proj != nil {
-		if indicators := renderDependencyIndicators(task, proj); indicators != "" {
-			structureParts = append(structureParts, indicators)
-		}
-	}
-	return JoinGroupParts(structureParts...)
 }
 
 func (m *OutlinerModel) renderTaskContentGroup(task *models.Task, proj *models.Project) string {

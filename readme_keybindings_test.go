@@ -67,6 +67,20 @@ func TestREADMECommandPaletteBindingStaysCurrent(t *testing.T) {
 	}
 }
 
+func TestREADMEDescribesTodayCockpitDefault(t *testing.T) {
+	content := readFileForContractTest(t, "README.md")
+
+	required := []string{
+		"`tt` opens on the Today cockpit by default",
+		"press `;w` to return to it",
+	}
+	for _, needle := range required {
+		if !strings.Contains(content, needle) {
+			t.Fatalf("README missing Today cockpit default text: %q", needle)
+		}
+	}
+}
+
 func TestREADMEUsesUppercaseVMultiSelectBinding(t *testing.T) {
 	content := readFileForContractTest(t, "README.md")
 
@@ -148,6 +162,10 @@ func TestCLIReferenceContractStaysCurrent(t *testing.T) {
 		"The project directory is moved to ~/.tt-data/.trash/ and can be restored later.",
 		"Projects can be specified by name, slug, or ID.",
 		"tt select my-project   # Select by name/slug directly",
+		"Manage focus board actions",
+		"Commands for managing focus board actions",
+		"Add a new action to the focus board",
+		"Tasks are added to the daily plan by pressing 'w'",
 	}
 
 	for _, needle := range forbidden {
@@ -172,6 +190,8 @@ func TestCLIReferenceContractStaysCurrent(t *testing.T) {
 		"The project directory is moved to ~/.tt/trash/ and can be restored later.",
 		"Projects can be specified by slug or ID.",
 		"tt select my-project   # Select by slug or ID directly",
+		"Manage action board items",
+		"Plan work from the Today cockpit",
 	}
 
 	for _, needle := range required {

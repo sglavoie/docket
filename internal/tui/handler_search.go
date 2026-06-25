@@ -29,6 +29,10 @@ func (m *AppModel) handleSearchMessages(msg tea.Msg) (bool, tea.Cmd) {
 			paletteProject = nil
 		}
 		palette := NewCommandPaletteModel(m.config, m.configManager, m.commandRegistry, currentView, paletteProject)
+		if currentView == ViewFocusBoard {
+			palette.suggestedCommandOrder = m.focusBoardSuggestedCommandOrder()
+			palette.filterItems()
+		}
 		// Apply pre-filter if specified (overrides last category)
 		if msg.PreFilter != "" {
 			palette.searchInput.SetValue(msg.PreFilter)

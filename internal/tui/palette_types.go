@@ -177,6 +177,9 @@ type CommandPaletteModel struct {
 	// Current view context for filtering commands
 	currentView ViewType
 
+	// Optional command names to lead the Suggested section for this palette open.
+	suggestedCommandOrder []string
+
 	// Current project for task filtering (nil = show tasks from all projects)
 	currentProject *models.Project
 
