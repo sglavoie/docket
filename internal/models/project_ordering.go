@@ -33,6 +33,9 @@ func (p *Project) MoveTaskUp(task *Task) error {
 		return nil
 	}
 
+	moved := p.Tasks[taskIdx]
+	displaced := p.Tasks[aboveIdx]
+
 	// Swap in the Tasks slice
 	p.Tasks[taskIdx], p.Tasks[aboveIdx] = p.Tasks[aboveIdx], p.Tasks[taskIdx]
 	// Touch both tasks' UpdatedAt: both moved, and the markdown round-trip
@@ -40,8 +43,9 @@ func (p *Project) MoveTaskUp(task *Task) error {
 	// the sibling with a stale timestamp despite its position changing
 	// (mirrors the fix applied to SwapTasks).
 	now := time.Now()
-	task.UpdatedAt = now
-	siblingAbove.UpdatedAt = now
+	moved.UpdatedAt = now
+	displaced.UpdatedAt = now
+	p.BuildTaskTree()
 
 	return nil
 }
@@ -77,6 +81,9 @@ func (p *Project) MoveTaskDown(task *Task) error {
 		return nil
 	}
 
+	moved := p.Tasks[taskIdx]
+	displaced := p.Tasks[belowIdx]
+
 	// Swap in the Tasks slice
 	p.Tasks[taskIdx], p.Tasks[belowIdx] = p.Tasks[belowIdx], p.Tasks[taskIdx]
 	// Touch both tasks' UpdatedAt: both moved, and the markdown round-trip
@@ -84,8 +91,9 @@ func (p *Project) MoveTaskDown(task *Task) error {
 	// the sibling with a stale timestamp despite its position changing
 	// (mirrors the fix applied to SwapTasks).
 	now := time.Now()
-	task.UpdatedAt = now
-	siblingBelow.UpdatedAt = now
+	moved.UpdatedAt = now
+	displaced.UpdatedAt = now
+	p.BuildTaskTree()
 
 	return nil
 }
@@ -131,15 +139,20 @@ func (p *Project) RelocateTaskToEndOfSection(taskID string, section string) {
 // task is known explicitly rather than being the immediate sibling.
 // Both tasks have UpdatedAt set so the markdown round-trip records the
 // reorder for each side (previously only task1 was touched, which left
-// task2 with a stale modification timestamp despite having moved).
+// task2 with a stale modification timestamp despite having moved). The task
+// tree is rebuilt after a successful swap so Parent.Children reflects the new
+// flat task order immediately.
 func (p *Project) SwapTasks(task1, task2 *Task) {
 	idx1 := p.findTaskIndex(task1)
 	idx2 := p.findTaskIndex(task2)
 	if idx1 == -1 || idx2 == -1 {
 		return
 	}
+	moved1 := p.Tasks[idx1]
+	moved2 := p.Tasks[idx2]
 	p.Tasks[idx1], p.Tasks[idx2] = p.Tasks[idx2], p.Tasks[idx1]
 	now := time.Now()
-	task1.UpdatedAt = now
-	task2.UpdatedAt = now
+	moved1.UpdatedAt = now
+	moved2.UpdatedAt = now
+	p.BuildTaskTree()
 }

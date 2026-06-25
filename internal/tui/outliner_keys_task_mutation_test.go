@@ -446,6 +446,94 @@ func findTaskRowInProject(m *OutlinerModel, projectID, taskID string) int {
 	return -1
 }
 
+func taskChildIDs(task *models.Task) []string {
+	if task == nil {
+		return nil
+	}
+	ids := make([]string, 0, len(task.Children))
+	for _, child := range task.Children {
+		ids = append(ids, child.ID)
+	}
+	return ids
+}
+
+func assertCursorOnProjectTask(t *testing.T, m *OutlinerModel, projectID, taskID string) {
+	t.Helper()
+	wantCursor := findTaskRowInProject(m, projectID, taskID)
+	if wantCursor < 0 {
+		t.Fatalf("could not locate project=%q task=%q row after rebuild", projectID, taskID)
+	}
+	if m.cursor != wantCursor {
+		gotPID := ""
+		gotTID := ""
+		if m.cursor >= 0 && m.cursor < len(m.rows) {
+			gotPID = m.rows[m.cursor].ProjectID
+			if m.rows[m.cursor].task != nil {
+				gotTID = m.rows[m.cursor].task.ID
+			}
+		}
+		t.Errorf("cursor = %d (project=%q task=%q), want %d (project=%q task=%q)",
+			m.cursor, gotPID, gotTID, wantCursor, projectID, taskID)
+	}
+}
+
+func buildCrossProjectNestedDuplicateIDFixture(t *testing.T) (m *OutlinerModel, projA, projB *models.Project) {
+	t.Helper()
+
+	newProject := func(projectID, name string) *models.Project {
+		epic := &models.Task{
+			ID:      "epic",
+			Title:   name + " epic",
+			Type:    models.TaskTypeEpic,
+			Section: models.SectionInbox,
+			Status:  models.StatusTodo,
+		}
+		story := &models.Task{
+			ID:       "story",
+			Title:    name + " story",
+			Type:     models.TaskTypeStory,
+			Section:  models.SectionInbox,
+			Status:   models.StatusTodo,
+			ParentID: &epic.ID,
+		}
+		shared := &models.Task{
+			ID:       "shared",
+			Title:    name + " shared child",
+			Type:     models.TaskTypeTask,
+			Section:  models.SectionInbox,
+			Status:   models.StatusTodo,
+			ParentID: &story.ID,
+		}
+		aux := &models.Task{
+			ID:       "aux",
+			Title:    name + " aux child",
+			Type:     models.TaskTypeBug,
+			Section:  models.SectionInbox,
+			Status:   models.StatusTodo,
+			ParentID: &story.ID,
+		}
+		project := &models.Project{
+			ID:    projectID,
+			Name:  name,
+			Tasks: []*models.Task{epic, story, shared, aux},
+		}
+		project.BuildTaskTree()
+		return project
+	}
+
+	projA = newProject("proj-A", "Alpha")
+	projB = newProject("proj-B", "Beta")
+
+	m = minimalOutliner()
+	m.project = nil
+	m.activePerspective = PerspectiveAll
+	m.loadedProjects = []*models.Project{projA, projB}
+	m.filterProjects = make(map[string]bool)
+	m.filter = NewFilterState()
+	m.rebuildRows()
+	return m, projA, projB
+}
+
 // TestOutlinerJ_CrossProjectCursorTracking_DuplicateTaskID: cursor on projB's
 // "shared". Pressing J swaps projB's [shared, aux] → [aux, shared]. After the
 // rebuild, the cursor must follow projB's "shared" — not jump to projA's
@@ -478,6 +566,68 @@ func TestOutlinerJ_CrossProjectCursorTracking_DuplicateTaskID(t *testing.T) {
 		t.Errorf("cursor = %d (project=%q task=%q), want %d (project=%q task=%q) — cursor must restore by (ProjectID, TaskID), not by TaskID alone",
 			m.cursor, gotPID, gotTID, wantCursor, projB.ID, "shared")
 	}
+}
+
+func TestOutlinerJ_CrossProjectNestedChildReordersAfterRebuild(t *testing.T) {
+	m, projA, projB := buildCrossProjectNestedDuplicateIDFixture(t)
+	m.cursor = findTaskRowInProject(m, projB.ID, "shared")
+	if m.cursor < 0 {
+		t.Fatal("setup: could not locate projB shared child row")
+	}
+
+	_, _, handled := m.handleTaskMutationKey("J", false)
+	if !handled {
+		t.Fatal("expected handled=true for cross-project nested J")
+	}
+
+	assertIDsEqual(t, "projA story.Children unchanged", taskChildIDs(projA.GetTaskByID("story")), []string{"shared", "aux"})
+	assertIDsEqual(t, "projB story.Children after J", taskChildIDs(projB.GetTaskByID("story")), []string{"aux", "shared"})
+	assertCursorOnProjectTask(t, m, projB.ID, "shared")
+}
+
+func TestOutlinerK_CrossProjectNestedChildReordersAfterRebuild(t *testing.T) {
+	m, projA, projB := buildCrossProjectNestedDuplicateIDFixture(t)
+	m.cursor = findTaskRowInProject(m, projB.ID, "aux")
+	if m.cursor < 0 {
+		t.Fatal("setup: could not locate projB aux child row")
+	}
+
+	_, _, handled := m.handleTaskMutationKey("K", false)
+	if !handled {
+		t.Fatal("expected handled=true for cross-project nested K")
+	}
+
+	assertIDsEqual(t, "projA story.Children unchanged", taskChildIDs(projA.GetTaskByID("story")), []string{"shared", "aux"})
+	assertIDsEqual(t, "projB story.Children after K", taskChildIDs(projB.GetTaskByID("story")), []string{"aux", "shared"})
+	assertCursorOnProjectTask(t, m, projB.ID, "aux")
+}
+
+func TestOutlinerMJ_CrossProjectNestedChildReordersAfterRebuild(t *testing.T) {
+	m, projA, projB := buildCrossProjectNestedDuplicateIDFixture(t)
+	m.cursor = findTaskRowInProject(m, projB.ID, "shared")
+	if m.cursor < 0 {
+		t.Fatal("setup: could not locate projB shared child row")
+	}
+
+	_, _ = m.moveTaskToPosition(m.rows[m.cursor].task, false /* toBottom */)
+
+	assertIDsEqual(t, "projA story.Children unchanged", taskChildIDs(projA.GetTaskByID("story")), []string{"shared", "aux"})
+	assertIDsEqual(t, "projB story.Children after mJ", taskChildIDs(projB.GetTaskByID("story")), []string{"aux", "shared"})
+	assertCursorOnProjectTask(t, m, projB.ID, "shared")
+}
+
+func TestOutlinerMK_CrossProjectNestedChildReordersAfterRebuild(t *testing.T) {
+	m, projA, projB := buildCrossProjectNestedDuplicateIDFixture(t)
+	m.cursor = findTaskRowInProject(m, projB.ID, "aux")
+	if m.cursor < 0 {
+		t.Fatal("setup: could not locate projB aux child row")
+	}
+
+	_, _ = m.moveTaskToPosition(m.rows[m.cursor].task, true /* toTop */)
+
+	assertIDsEqual(t, "projA story.Children unchanged", taskChildIDs(projA.GetTaskByID("story")), []string{"shared", "aux"})
+	assertIDsEqual(t, "projB story.Children after mK", taskChildIDs(projB.GetTaskByID("story")), []string{"aux", "shared"})
+	assertCursorOnProjectTask(t, m, projB.ID, "aux")
 }
 
 // TestOutlinerK_CrossProjectCursorTracking_DuplicateTaskID: cursor on projB's
