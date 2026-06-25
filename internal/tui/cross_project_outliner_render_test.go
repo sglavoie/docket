@@ -47,10 +47,13 @@ func TestCrossProjectOutlinerRenderDarkThemeVisualElements(t *testing.T) {
 	assertNotContains(t, selectedPlain, "[alpha]", "per-task project badge suppressed in cross-project All perspective")
 	assertContains(t, selectedPlain, "Selected child carries rendered metadata clearly", "selected title")
 	assertContains(t, selectedPlain, "#42", "selected short ID metadata")
-	assertContains(t, selectedPlain, "#ops #today", "selected tag metadata")
+	assertNotContains(t, selectedPlain, "#ops #today", "tag metadata moves out of dense row into the metadata strip")
 	if selectedLine == selectedPlain {
 		t.Fatalf("selected row has no ANSI styling applied: %q", selectedLine)
 	}
+
+	stripPlain := ansi.Strip(findRenderedLineContaining(t, rendered, "#ops #today"))
+	assertContains(t, stripPlain, "#ops #today", "selected metadata strip carries the moved tag metadata")
 
 	for i, line := range strings.Split(strings.TrimRight(rendered, "\n"), "\n") {
 		if got := lipgloss.Width(line); got > width {
@@ -78,7 +81,7 @@ func TestCrossProjectOutlinerRenderTreePrefixesFoldIndicatorsAndTruncation(t *te
 	assertContains(t, childPlain, connectorSpace+"└────", "leaf tree prefix substitute")
 	assertNotContains(t, childPlain, "[alpha]", "per-task project badge suppressed in cross-project All perspective")
 	assertContains(t, childPlain, "#42", "child short ID metadata")
-	assertContains(t, childPlain, "#ops #today", "child tag metadata")
+	assertNotContains(t, childPlain, "#ops #today", "dense rows no longer carry tag metadata inline")
 	assertContains(t, childPlain, "Selected child ca", "truncated child title prefix")
 	if strings.Contains(childPlain, selectedTask.Title) {
 		t.Fatalf("expected child title to be truncated at width %d, got full title in %q", rowWidth, childPlain)

@@ -304,7 +304,7 @@ func (m *FocusBoardModel) View() tea.View { //nolint:gocyclo
 			AlreadyShown: TaskMetadataAlreadyShown{
 				Project:  true,
 				Priority: stripTask.Priority >= 1 && stripTask.Priority <= 2,
-				Due:      stripTask.DueDate != nil,
+				Due:      dueIsInlineHero(stripTask),
 			},
 		})
 		b.WriteString("\n")

@@ -79,6 +79,16 @@ func (m *KanbanModel) renderKanbanDetailPane() string {
 	if !task.UpdatedAt.IsZero() {
 		metadataParts = append(metadataParts, MutedStyle.Render(formatRelativeTime(task.UpdatedAt)))
 	}
+	// Indicators dropped from compact cards (dense-row hierarchy) surface here.
+	if ind := renderChecklistIndicator(task); ind != "" {
+		metadataParts = append(metadataParts, ind)
+	}
+	if ind := renderDescriptionIndicator(task); ind != "" {
+		metadataParts = append(metadataParts, ind)
+	}
+	if ind := renderGitHubIssueIndicator(task); ind != "" {
+		metadataParts = append(metadataParts, ind)
+	}
 
 	var line2 string
 	if len(metadataParts) > 0 {

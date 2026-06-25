@@ -168,6 +168,9 @@ func renderBoardDueString(task *models.Task) string {
 	if task.DueDate == nil {
 		return ""
 	}
+	if !dueIsInlineHero(task) {
+		return ""
+	}
 	return FormatRelativeDue(task.DueDate, true)
 }
 
@@ -181,7 +184,7 @@ func (m *FocusBoardModel) renderBoardTitle(task *models.Task, isSelected bool, m
 
 func (m *FocusBoardModel) applyBoardHeroDemotion(task *models.Task, project *models.Project, segments *focusBoardRowSegments) {
 	hero := pickHeroAttribute(task, project)
-	if hero == HeroNone || task.Dimmed {
+	if hero == HeroNone {
 		return
 	}
 	if !statusIsHero(hero) {
@@ -198,17 +201,8 @@ func (m *FocusBoardModel) applyBoardHeroDemotion(task *models.Task, project *mod
 	}
 }
 
-func (m *FocusBoardModel) renderBoardTrailing(row boardRow, dueStr string) string {
-	task := row.Task
-	descBadge := ""
-	if m.config.IsDescriptionColumnVisible() {
-		descBadge = renderDescriptionIndicator(task)
-	}
-	return JoinIndicatorGroups(
-		renderChecklistBar(task, m.width),
-		dueStr,
-		descBadge,
-	)
+func (m *FocusBoardModel) renderBoardTrailing(_ boardRow, dueStr string) string {
+	return dueStr
 }
 
 func (m *FocusBoardModel) renderBoardEscalationHint(task *models.Task) string {

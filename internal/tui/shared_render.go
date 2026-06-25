@@ -296,7 +296,7 @@ func (tl TaskLine) prioritySegment(priorityBadge string) string {
 
 func (tl TaskLine) applyHeroDemotion(segments taskLineSegments) taskLineSegments {
 	hero := pickHeroAttribute(tl.Task, tl.Project)
-	if hero == HeroNone || tl.Task.Dimmed {
+	if hero == HeroNone {
 		return segments
 	}
 

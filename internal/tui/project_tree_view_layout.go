@@ -359,12 +359,16 @@ func (m *ProjectTreeModel) renderTreeContent(width int, focused bool) string { /
 		if m.columnConfig.ShouldShowPriority(selectedTaskForStrip.Priority) {
 			alreadyShown.Priority = true
 		}
+		if m.columnConfig.IsVisible(ColDueDate) && dueIsInlineHero(selectedTaskForStrip) {
+			alreadyShown.Due = true
+		}
 		strip := renderTaskMetadataStrip(TaskMetadataStripOpts{
 			Task:         selectedTaskForStrip,
 			Project:      m.project,
 			Config:       m.config,
 			Width:        stripInnerWidth,
 			AlreadyShown: alreadyShown,
+			ColumnConfig: m.columnConfig,
 		})
 		cardContent.WriteString("\n")
 		cardContent.WriteString(strip)

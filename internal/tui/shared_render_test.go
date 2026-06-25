@@ -347,6 +347,33 @@ func TestCrossProjectRowLongStageGroupedListConsistentWidth(t *testing.T) {
 	}
 }
 
+// TestTaskLineDimmedOverdueSkipsHeroDemotion locks in the Session-2 cleanup
+// of applyHeroDemotion: the helper used to special-case Dimmed rows even when
+// pickHeroAttribute already returned HeroNone for them. Removing the redundant
+// guard must not change behavior — a dimmed overdue task still skips demotion
+// because the policy short-circuits to HeroNone, and the rendered line must
+// match a non-overdue dimmed sibling exactly.
+func TestTaskLineDimmedOverdueSkipsHeroDemotion(t *testing.T) {
+	base := &models.Task{
+		Title:    "dim row",
+		Type:     models.TaskTypeTask,
+		Status:   models.StatusTodo,
+		Priority: 3,
+		Dimmed:   true,
+	}
+	yesterday := time.Now().Add(-48 * time.Hour)
+	overdue := *base
+	overdue.DueDate = &yesterday
+
+	baseLine := TaskLine{Task: base, MaxTitle: 40, ViewWidth: 80}.Render()
+	overdueLine := TaskLine{Task: &overdue, MaxTitle: 40, ViewWidth: 80}.Render()
+
+	if ansi.Strip(baseLine) != ansi.Strip(overdueLine) {
+		t.Fatalf("dimmed overdue row diverged from non-overdue baseline; demotion regression?\nbase=%q\noverdue=%q",
+			ansi.Strip(baseLine), ansi.Strip(overdueLine))
+	}
+}
+
 // TestTaskLinePrioritySegmentDemotionPreservesAlignment guards against a
 // regression where applyHeroDemotion stripped the alignment padding that
 // PadBadge inserted for a task whose own priority was hidden by

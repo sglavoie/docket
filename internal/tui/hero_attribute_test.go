@@ -10,6 +10,7 @@ import (
 func TestPickHeroAttribute(t *testing.T) {
 	pastDue := time.Now().Add(-48 * time.Hour)
 	futureDue := time.Now().Add(48 * time.Hour)
+	today := time.Now()
 
 	// A dependency task that is not complete; used to make HasIncompleteDependencies true.
 	depPending := &models.Task{ID: "dep-1", Status: models.StatusTodo}
@@ -27,7 +28,7 @@ func TestPickHeroAttribute(t *testing.T) {
 			want: HeroNone,
 		},
 		{
-			name: "overdue + P1 + blocked → HeroOverdue (precedence top)",
+			name: "overdue + P1 + blocked + due-today → HeroOverdue (precedence top)",
 			task: &models.Task{
 				ID:        "t-overdue-p1-blocked",
 				Status:    models.StatusTodo,
@@ -48,6 +49,38 @@ func TestPickHeroAttribute(t *testing.T) {
 			},
 			project: &models.Project{Tasks: []*models.Task{depPending}},
 			want:    HeroBlocked,
+		},
+		{
+			name: "explicit StatusBlocked + P1 → HeroBlocked",
+			task: &models.Task{
+				ID:       "t-status-blocked",
+				Status:   models.StatusBlocked,
+				Priority: 1,
+			},
+			project: &models.Project{},
+			want:    HeroBlocked,
+		},
+		{
+			name: "explicit StatusBlocked without deps still → HeroBlocked",
+			task: &models.Task{
+				ID:       "t-status-blocked-only",
+				Status:   models.StatusBlocked,
+				Priority: 3,
+			},
+			project: &models.Project{},
+			want:    HeroBlocked,
+		},
+		{
+			name:    "due today + P1 → HeroDueToday (beats P1)",
+			task:    &models.Task{ID: "t-due-today-p1", Status: models.StatusTodo, Priority: 1, DueDate: &today},
+			project: &models.Project{},
+			want:    HeroDueToday,
+		},
+		{
+			name:    "due today + review + P3 → HeroDueToday (beats review)",
+			task:    &models.Task{ID: "t-due-today-review", Status: models.StatusReview, Priority: 3, DueDate: &today},
+			project: &models.Project{},
+			want:    HeroDueToday,
 		},
 		{
 			name:    "P1 only → HeroP1",
@@ -85,10 +118,34 @@ func TestPickHeroAttribute(t *testing.T) {
 			want:    HeroP1,
 		},
 		{
-			name:    "done task is not overdue → HeroNone",
+			name:    "done P1 → HeroNone (completed is quiet)",
 			task:    &models.Task{ID: "t-done", Status: models.StatusDone, Priority: 1, DueDate: &pastDue},
 			project: &models.Project{},
-			want:    HeroP1, // priority still applies; done doesn't reset priority
+			want:    HeroNone,
+		},
+		{
+			name:    "canceled P1 overdue → HeroNone (canceled is quiet)",
+			task:    &models.Task{ID: "t-canceled", Status: models.StatusCanceled, Priority: 1, DueDate: &pastDue},
+			project: &models.Project{},
+			want:    HeroNone,
+		},
+		{
+			name:    "dimmed overdue P1 → HeroNone (dimmed is quiet)",
+			task:    &models.Task{ID: "t-dimmed", Status: models.StatusTodo, Priority: 1, DueDate: &pastDue, Dimmed: true},
+			project: &models.Project{},
+			want:    HeroNone,
+		},
+		{
+			name: "dimmed blocked → HeroNone (dimmed beats blocked)",
+			task: &models.Task{
+				ID:        "t-dimmed-blocked",
+				Status:    models.StatusBlocked,
+				Priority:  1,
+				DependsOn: []string{"dep-1"},
+				Dimmed:    true,
+			},
+			project: &models.Project{Tasks: []*models.Task{depPending}},
+			want:    HeroNone,
 		},
 	}
 
@@ -105,6 +162,24 @@ func TestPickHeroAttribute(t *testing.T) {
 func TestDemoteBadgeEmpty(t *testing.T) {
 	if got := demoteBadge(""); got != "" {
 		t.Errorf("demoteBadge(\"\") = %q, want \"\"", got)
+	}
+}
+
+func TestDueIsInlineHeroHonorsQuietStates(t *testing.T) {
+	today := time.Now()
+
+	open := &models.Task{ID: "open", Status: models.StatusTodo, DueDate: &today}
+	done := &models.Task{ID: "done", Status: models.StatusDone, DueDate: &today}
+	canceled := &models.Task{ID: "canceled", Status: models.StatusCanceled, DueDate: &today}
+	dimmed := &models.Task{ID: "dimmed", Status: models.StatusTodo, DueDate: &today, Dimmed: true}
+
+	if !dueIsInlineHero(open) {
+		t.Fatal("open due-today task should be eligible for inline due hero")
+	}
+	for _, task := range []*models.Task{done, canceled, dimmed} {
+		if dueIsInlineHero(task) {
+			t.Fatalf("%s task should not be eligible for inline due hero", task.Status)
+		}
 	}
 }
 

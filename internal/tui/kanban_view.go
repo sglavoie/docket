@@ -279,9 +279,11 @@ func kanbanRender(m *KanbanModel) string {
 			typeBadge := GetTypeBadge(string(card.Task.Type), card.Task.Type.Icon())
 
 			// Von Restorff: demote non-hero badges per card so a single attribute
-			// can read at full saturation.
+			// can read at full saturation. pickHeroAttribute already returns
+			// HeroNone for completed/dimmed rows (session 1), so no extra
+			// dimmed guard is needed.
 			hero := pickHeroAttribute(card.Task, card.Project)
-			if hero != HeroNone && !card.Task.Dimmed {
+			if hero != HeroNone {
 				if !statusIsHero(hero) {
 					statusBadge = demoteBadge(statusBadge)
 				}
@@ -303,50 +305,14 @@ func kanbanRender(m *KanbanModel) string {
 			}
 			selWidth := lipgloss.Width(selIndicator)
 
-			// Optional checklist indicator (compact "3/5" form), only on wide-enough cards.
-			const minCardWidthForChecklist = 18
-			checklistInd := ""
-			checklistWidth := 0
-			if colWidth >= minCardWidthForChecklist {
-				if ind := renderChecklistIndicatorCompact(card.Task); ind != "" {
-					checklistInd = " " + ind
-					checklistWidth = lipgloss.Width(checklistInd)
-				}
-			}
-
-			descInd := ""
-			descWidth := 0
-			if colWidth >= minCardWidthForChecklist &&
-				m.config.IsDescriptionColumnVisible() && len(card.Task.Description) > 0 {
-				descInd = " " + IconDescription()
-				descWidth = lipgloss.Width(descInd)
-			}
-
-			githubIssueInd := ""
-			githubIssueWidth := 0
-			if colWidth >= minCardWidthForChecklist {
-				if ind := renderGitHubIssueIndicator(card.Task); ind != "" {
-					githubIssueInd = " " + ind
-					githubIssueWidth = lipgloss.Width(githubIssueInd)
-				}
-			}
-
-			// Format: "[sel]typeBadge statusBadge title [issue][checklist][desc]"
+			// Dense-row hierarchy: cards keep only status/type/title inline.
+			// Secondary indicators (checklist, description, GitHub issue) live
+			// in the detail pane (kanban_detail_pane.go).
 			prefixWidth := selWidth + typeBadgeWidth + badgeWidth + 1
-			maxTitleWidth := colWidth - prefixWidth - githubIssueWidth - checklistWidth - descWidth
-			if maxTitleWidth < 0 {
-				githubIssueInd = ""
-				githubIssueWidth = 0
-				maxTitleWidth = colWidth - prefixWidth - checklistWidth - descWidth
-			}
-			if maxTitleWidth < 0 {
-				checklistInd = "" // not enough room; drop indicator
-				descInd = ""
-				maxTitleWidth = max(colWidth-prefixWidth, 0)
-			}
+			maxTitleWidth := max(colWidth-prefixWidth, 0)
 			title := TaskTitleStyleFor(card.Task, TaskTitleStyleOptions{}).
 				Render(truncateToVisualWidth(card.Task.Title, maxTitleWidth))
-			line := selIndicator + typeBadge + statusBadge + " " + title + githubIssueInd + checklistInd + descInd
+			line := selIndicator + typeBadge + statusBadge + " " + title
 
 			isFocused := i == m.activeCol && dr.taskIdx == col.Cursor
 			isFlash := m.flashCardID != "" && card.Task.ID == m.flashCardID

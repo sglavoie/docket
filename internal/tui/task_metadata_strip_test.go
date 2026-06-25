@@ -74,6 +74,23 @@ func TestTaskMetadataStripContainsCoreFields(t *testing.T) {
 	}
 }
 
+func TestTaskMetadataStripContainsSnooze(t *testing.T) {
+	task := newStripTestTask()
+	proj := newStripTestProject()
+	snoozedUntil := time.Now().AddDate(0, 0, 3)
+	task.SnoozedUntil = &snoozedUntil
+
+	got := renderTaskMetadataStrip(TaskMetadataStripOpts{
+		Task:    task,
+		Project: proj,
+	})
+	plain := ansi.Strip(got)
+
+	if !strings.Contains(plain, "zzz "+snoozedUntil.Format("Jan 2")) {
+		t.Errorf("expected strip to contain snooze metadata, got %q", plain)
+	}
+}
+
 func TestTaskMetadataStripRedundancyOmission(t *testing.T) {
 	task := newStripTestTask()
 	proj := newStripTestProject()
@@ -371,5 +388,89 @@ func TestMetadataStripJoinMixedGroups(t *testing.T) {
 func TestMetadataStripEmptyJoin(t *testing.T) {
 	if got := joinMetadataParts(nil); got != "" {
 		t.Errorf("empty parts must join to \"\", got %q", got)
+	}
+}
+
+// TestTaskMetadataStripColumnConfigGatesOptionalGroups asserts that an
+// explicit ColumnConfig drops every optional metadata column individually
+// while leaving project/section context (which is not column-gated) in place.
+func TestTaskMetadataStripColumnConfigGatesOptionalGroups(t *testing.T) {
+	task := newStripTestTask()
+	proj := newStripTestProject()
+	snoozedUntil := time.Now().AddDate(0, 0, 3)
+	task.SnoozedUntil = &snoozedUntil
+
+	toggles := map[string]bool{
+		ColPriority:     false,
+		ColDueDate:      false,
+		ColTags:         false,
+		ColScore:        false,
+		ColDependencies: false,
+		ColComments:     false,
+		ColAttachments:  false,
+		ColChecklist:    false,
+		ColProgress:     false,
+		ColRecurrence:   false,
+		ColSnooze:       false,
+		ColDecisions:    false,
+		ColDescription:  false,
+	}
+	cc := NewColumnConfig(toggles, nil, nil, "")
+
+	got := renderTaskMetadataStrip(TaskMetadataStripOpts{
+		Task:         task,
+		Project:      proj,
+		ColumnConfig: cc,
+	})
+	plain := ansi.Strip(got)
+
+	for _, banned := range []string{"P2", "backend", "infra", "Mon", "today", "tomorrow", "zzz"} {
+		if strings.Contains(plain, banned) {
+			t.Errorf("ColumnConfig should drop %q from strip, got %q", banned, plain)
+		}
+	}
+	// Project/section context survives because it is not column-gated.
+	if !strings.Contains(plain, "[Acme]") {
+		t.Errorf("expected project identity to survive when only optional columns are hidden, got %q", plain)
+	}
+	if !strings.Contains(plain, "Next") {
+		t.Errorf("expected section to survive when only optional columns are hidden, got %q", plain)
+	}
+}
+
+func TestTaskMetadataStripPriorityHiddenModeSuppressesPriority(t *testing.T) {
+	task := newStripTestTask()
+	task.Priority = 1
+	proj := newStripTestProject()
+	cc := NewColumnConfig(nil, nil, DefaultOutlinerColumns, PriorityModeHidden)
+
+	got := renderTaskMetadataStrip(TaskMetadataStripOpts{
+		Task:         task,
+		Project:      proj,
+		ColumnConfig: cc,
+	})
+	plain := ansi.Strip(got)
+
+	if strings.Contains(plain, "P1") {
+		t.Errorf("PriorityModeHidden must suppress priority in strip, got %q", plain)
+	}
+}
+
+// TestTaskMetadataStripColumnConfigPermissiveByDefault asserts that the
+// pre-Session-2 baseline (no ColumnConfig) still surfaces every available
+// metadata group so legacy callers are unaffected by the gating.
+func TestTaskMetadataStripColumnConfigPermissiveByDefault(t *testing.T) {
+	task := newStripTestTask()
+	proj := newStripTestProject()
+
+	baseline := ansi.Strip(renderTaskMetadataStrip(TaskMetadataStripOpts{Task: task, Project: proj}))
+	// A nil ColumnConfig must reproduce the legacy strip byte-for-byte.
+	gotNil := ansi.Strip(renderTaskMetadataStrip(TaskMetadataStripOpts{
+		Task:         task,
+		Project:      proj,
+		ColumnConfig: nil,
+	}))
+	if gotNil != baseline {
+		t.Errorf("nil ColumnConfig should match legacy baseline\nbaseline=%q\nwith-nil=%q", baseline, gotNil)
 	}
 }

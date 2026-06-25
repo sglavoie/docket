@@ -3,6 +3,7 @@ package tui
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"charm.land/lipgloss/v2"
 
@@ -33,6 +34,11 @@ type TaskMetadataStripOpts struct {
 	Config       *config.Config
 	Width        int // max visual width; <= 0 means unbounded
 	AlreadyShown TaskMetadataAlreadyShown
+
+	// ColumnConfig, when non-nil, gates optional strip parts through the
+	// caller's column-visibility resolution. A nil value preserves the
+	// pre-Session-2 behavior where every available indicator participates.
+	ColumnConfig *ColumnConfig
 }
 
 // metadataGroup labels a strip part for ordering and visual separation.
@@ -94,9 +100,10 @@ func renderTaskMetadataStrip(opts TaskMetadataStripOpts) string {
 }
 
 // buildMetadataParts collects strip fragments in display order, skipping any
-// field flagged as already shown by the row context.
+// field flagged as already shown by the row context. Optional column groups
+// are also gated through opts.ColumnConfig when non-nil so the strip honors
+// the same visibility resolution used by the column picker.
 func buildMetadataParts(opts TaskMetadataStripOpts) []metadataPart {
-	task := opts.Task
 	parts := make([]metadataPart, 0, 12)
 
 	parts = appendProjectSectionParts(parts, opts)
@@ -105,11 +112,38 @@ func buildMetadataParts(opts TaskMetadataStripOpts) []metadataPart {
 	parts = appendScorePart(parts, opts)
 	parts = appendProgressParts(parts, opts)
 	parts = appendDependencyPart(parts, opts)
-	parts = appendTagsPart(parts, task)
-	parts = appendContentParts(parts, task)
+	parts = appendTagsPart(parts, opts)
+	parts = appendContentParts(parts, opts)
 	parts = appendFooterParts(parts, opts)
 
 	return parts
+}
+
+// columnVisible reports whether the named optional column should participate
+// in the metadata strip. A nil ColumnConfig is treated as fully permissive so
+// existing callers that have not opted into column gating keep their behavior.
+func columnVisible(cc *ColumnConfig, col string) bool {
+	if cc == nil {
+		return true
+	}
+	return cc.IsVisible(col)
+}
+
+func priorityVisibleInStrip(cc *ColumnConfig, priority int) bool {
+	if priority < 1 || priority > 5 {
+		return false
+	}
+	if cc == nil {
+		return true
+	}
+	return cc.IsVisible(ColPriority) && cc.ShouldShowPriority(priority)
+}
+
+func formatSnoozeDate(snoozedUntil time.Time) string {
+	if snoozedUntil.Year() != time.Now().Year() {
+		return snoozedUntil.Format("Jan 2 '06")
+	}
+	return snoozedUntil.Format("Jan 2")
 }
 
 func appendProjectSectionParts(parts []metadataPart, opts TaskMetadataStripOpts) []metadataPart {
@@ -149,14 +183,14 @@ func appendStagePart(parts []metadataPart, opts TaskMetadataStripOpts) []metadat
 
 func appendLifecycleParts(parts []metadataPart, opts TaskMetadataStripOpts) []metadataPart {
 	task := opts.Task
-	if !opts.AlreadyShown.Priority && task.Priority >= 1 && task.Priority <= 5 {
+	if !opts.AlreadyShown.Priority && priorityVisibleInStrip(opts.ColumnConfig, task.Priority) {
 		parts = append(parts, metadataPart{
 			group:        metadataGroupLifecycle,
 			text:         renderPriorityBadge(task.Priority),
 			dropPriority: dropCritical,
 		})
 	}
-	if !opts.AlreadyShown.Due && task.DueDate != nil {
+	if !opts.AlreadyShown.Due && task.DueDate != nil && columnVisible(opts.ColumnConfig, ColDueDate) {
 		var dueStr string
 		if opts.Config != nil {
 			dueStr = FormatRelativeDueTask(task, true, opts.Config.GetTimeFormat())
@@ -171,7 +205,14 @@ func appendLifecycleParts(parts []metadataPart, opts TaskMetadataStripOpts) []me
 			})
 		}
 	}
-	if task.IsRecurring() {
+	if task.SnoozedUntil != nil && columnVisible(opts.ColumnConfig, ColSnooze) {
+		parts = append(parts, metadataPart{
+			group:        metadataGroupLifecycle,
+			text:         MutedStyle.Render("zzz " + formatSnoozeDate(*task.SnoozedUntil)),
+			dropPriority: dropMedium,
+		})
+	}
+	if task.IsRecurring() && columnVisible(opts.ColumnConfig, ColRecurrence) {
 		recurStr := "↻"
 		if task.Recurrence.Streak > 0 {
 			recurStr = fmt.Sprintf("↻%d", task.Recurrence.Streak)
@@ -186,7 +227,8 @@ func appendLifecycleParts(parts []metadataPart, opts TaskMetadataStripOpts) []me
 }
 
 func appendScorePart(parts []metadataPart, opts TaskMetadataStripOpts) []metadataPart {
-	if opts.AlreadyShown.Score || opts.Config == nil || opts.Project == nil {
+	if opts.AlreadyShown.Score || opts.Config == nil || opts.Project == nil ||
+		!columnVisible(opts.ColumnConfig, ColScore) {
 		return parts
 	}
 	profile := opts.Config.GetProjectScoringProfile(opts.Project.ID)
@@ -205,25 +247,29 @@ func appendScorePart(parts []metadataPart, opts TaskMetadataStripOpts) []metadat
 }
 
 func appendProgressParts(parts []metadataPart, opts TaskMetadataStripOpts) []metadataPart {
-	if progress := renderProgressFraction(opts.Task); progress != "" {
-		parts = append(parts, metadataPart{
-			group:        metadataGroupProgress,
-			text:         progress,
-			dropPriority: dropMedium,
-		})
+	if columnVisible(opts.ColumnConfig, ColProgress) {
+		if progress := renderProgressFraction(opts.Task); progress != "" {
+			parts = append(parts, metadataPart{
+				group:        metadataGroupProgress,
+				text:         progress,
+				dropPriority: dropMedium,
+			})
+		}
 	}
-	if checklist := renderChecklistIndicator(opts.Task); checklist != "" {
-		parts = append(parts, metadataPart{
-			group:        metadataGroupProgress,
-			text:         checklist,
-			dropPriority: dropMedium,
-		})
+	if columnVisible(opts.ColumnConfig, ColChecklist) {
+		if checklist := renderChecklistIndicator(opts.Task); checklist != "" {
+			parts = append(parts, metadataPart{
+				group:        metadataGroupProgress,
+				text:         checklist,
+				dropPriority: dropMedium,
+			})
+		}
 	}
 	return parts
 }
 
 func appendDependencyPart(parts []metadataPart, opts TaskMetadataStripOpts) []metadataPart {
-	if opts.Project == nil {
+	if opts.Project == nil || !columnVisible(opts.ColumnConfig, ColDependencies) {
 		return parts
 	}
 	deps := renderDependencyIndicators(opts.Task, opts.Project)
@@ -237,8 +283,11 @@ func appendDependencyPart(parts []metadataPart, opts TaskMetadataStripOpts) []me
 	})
 }
 
-func appendTagsPart(parts []metadataPart, task *models.Task) []metadataPart {
-	tags := renderTruncatedTags(task.Tags, 3, 12)
+func appendTagsPart(parts []metadataPart, opts TaskMetadataStripOpts) []metadataPart {
+	if !columnVisible(opts.ColumnConfig, ColTags) {
+		return parts
+	}
+	tags := renderTruncatedTags(opts.Task.Tags, 3, 12)
 	if tags == "" {
 		return parts
 	}
@@ -249,20 +298,28 @@ func appendTagsPart(parts []metadataPart, task *models.Task) []metadataPart {
 	})
 }
 
-func appendContentParts(parts []metadataPart, task *models.Task) []metadataPart {
-	for _, text := range []string{
-		renderDescriptionIndicator(task),
-		renderCommentIndicator(task),
-		renderDecisionIndicator(task),
-		renderAttachmentIndicator(task),
-		renderGitHubIssueIndicator(task),
-	} {
-		if text == "" {
+func appendContentParts(parts []metadataPart, opts TaskMetadataStripOpts) []metadataPart {
+	task := opts.Task
+	contentTexts := []struct {
+		text   string
+		column string
+	}{
+		{renderDescriptionIndicator(task), ColDescription},
+		{renderCommentIndicator(task), ColComments},
+		{renderDecisionIndicator(task), ColDecisions},
+		{renderAttachmentIndicator(task), ColAttachments},
+		{renderGitHubIssueIndicator(task), ""}, // no column toggle
+	}
+	for _, item := range contentTexts {
+		if item.text == "" {
+			continue
+		}
+		if item.column != "" && !columnVisible(opts.ColumnConfig, item.column) {
 			continue
 		}
 		parts = append(parts, metadataPart{
 			group:        metadataGroupContent,
-			text:         text,
+			text:         item.text,
 			dropPriority: dropLowest - 1,
 		})
 	}

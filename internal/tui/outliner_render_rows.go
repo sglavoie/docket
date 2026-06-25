@@ -3,7 +3,6 @@ package tui
 import (
 	"fmt"
 	"strings"
-	"time"
 
 	"charm.land/lipgloss/v2"
 
@@ -148,11 +147,13 @@ func (m *OutlinerModel) renderOutlinerTaskRow(row outlinerRow, selected bool, ro
 	}
 	titleStyle := m.renderTaskTitleStyle(task, selected)
 	prioritySegment := m.renderTaskPrioritySegment(task, colLayout)
-	indicators := m.renderTaskIndicators(task, proj)
+	indicators := m.renderTaskIndicators(task)
 
-	// Von Restorff: demote non-hero badges so the most urgent attribute stands out.
+	// Von Restorff: demote non-hero badges so the most urgent attribute stands
+	// out. pickHeroAttribute already returns HeroNone for completed/dimmed rows
+	// (session 1 contract), so no extra dimmed guard is needed here.
 	hero := pickHeroAttribute(task, proj)
-	if hero != HeroNone && !task.Dimmed {
+	if hero != HeroNone {
 		if !statusIsHero(hero) {
 			statusIcon = demoteBadge(statusIcon)
 		}
@@ -243,12 +244,24 @@ func (m *OutlinerModel) renderTaskTitleStyle(task *models.Task, selected bool) l
 	})
 }
 
-func (m *OutlinerModel) renderTaskIndicators(task *models.Task, proj *models.Project) string {
-	orgGroup := m.renderTaskOrganizationGroup(task, proj)
-	lifecycleGroup := m.renderTaskLifecycleGroup(task)
-	structureGroup := m.renderTaskStructureGroup(task, proj)
-	contentGroup := m.renderTaskContentGroup(task, proj)
-	indicatorStr := JoinIndicatorGroups(orgGroup, lifecycleGroup, structureGroup, contentGroup)
+// renderTaskIndicators returns the dense-row inline metadata. Per the dense-row
+// hierarchy, normal outliner rows keep only the primary scan anchors inline:
+// the short ID (so keyboard nav targets stay visible) and the overdue/due-today
+// text (the urgency hero for date-driven attention). Every other secondary
+// indicator — future due dates, snooze, recurrence, progress, dependencies,
+// score, tags, comments, description, attachments, checklist, decisions —
+// moves to the selected-task metadata strip rendered beneath the row.
+func (m *OutlinerModel) renderTaskIndicators(task *models.Task) string {
+	var parts []string
+	if m.columnConfig.IsVisible(ColShortID) {
+		parts = append(parts, MutedStyle.Render(fmt.Sprintf("#%d", task.ShortID)))
+	}
+	if m.columnConfig.IsVisible(ColDueDate) && dueIsInlineHero(task) {
+		if dueStr := formatDueDate(task, m.config.GetTimeFormat()); dueStr != "" {
+			parts = append(parts, dueStr)
+		}
+	}
+	indicatorStr := JoinGroupParts(parts...)
 	if indicatorStr == "" {
 		return ""
 	}
@@ -293,11 +306,7 @@ func (m *OutlinerModel) renderTaskLifecycleGroup(task *models.Task) string {
 		}
 	}
 	if m.columnConfig.IsVisible(ColSnooze) && task.SnoozedUntil != nil {
-		snoozeStr := task.SnoozedUntil.Format("Jan 2")
-		if task.SnoozedUntil.Year() != time.Now().Year() {
-			snoozeStr = task.SnoozedUntil.Format("Jan 2 '06")
-		}
-		lifecycleParts = append(lifecycleParts, MutedStyle.Render("zzz "+snoozeStr))
+		lifecycleParts = append(lifecycleParts, MutedStyle.Render("zzz "+formatSnoozeDate(*task.SnoozedUntil)))
 	}
 	if m.columnConfig.IsVisible(ColRecurrence) && task.IsRecurring() {
 		recurStr := "↻"

@@ -3,7 +3,6 @@ package tui
 import (
 	"fmt"
 	"strings"
-	"time"
 
 	"charm.land/lipgloss/v2"
 
@@ -110,29 +109,20 @@ func (m *ProjectTreeModel) renderNodeWithWidth(node *TreeNode, selected bool, in
 		Muted:          node.IsContextNode,
 		BulkSelected:   inSelection,
 	})
-	// Progress for parent tasks
-	progress := ""
-	if m.columnConfig.IsVisible(ColProgress) {
-		if frac := renderProgressFraction(task); frac != "" {
-			progress = " " + frac
+
+	// Dense-row hierarchy: keep only the urgency hero text (overdue/due-today)
+	// inline. Every other secondary indicator — section badge, future due,
+	// snooze, recurrence, progress, dependencies, score, tags, comments,
+	// description, attachments, checklist, decisions — moves to the selected
+	// metadata strip below the row.
+	indicators := ""
+	if m.columnConfig.IsVisible(ColDueDate) && dueIsInlineHero(task) {
+		if dueStr := formatDueDate(task, m.config.GetTimeFormat()); dueStr != "" {
+			indicators = " " + dueStr
 		}
 	}
 
-	// Build indicators in semantic groups for visual clustering
-	groups := [4]string{
-		m.nodeOrgGroup(task, node),
-		m.nodeLifecycleGroup(task),
-		m.nodeStructureGroup(task),
-		m.nodeContentGroup(task),
-	}
-
-	indicators := JoinIndicatorGroups(groups[:]...)
-	if indicators != "" {
-		indicators = " " + indicators
-	}
-
 	// Calculate available width for title, accounting for all other elements.
-	progressWidth := lipgloss.Width(progress)
 	var baseUsed int
 	if m.colLayout != nil {
 		// Fixed-width path: compute exact overhead from column layout.
@@ -146,22 +136,13 @@ func (m *ProjectTreeModel) renderNodeWithWidth(node *TreeNode, selected bool, in
 		if m.colLayout.HasShortID {
 			idW = m.colLayout.ShortIDWidth + 1
 		}
-		baseUsed = 3 + 2 + lipgloss.Width(checkbox) + lipgloss.Width(node.TreePrefix) + 2 + 1 + 1 + 1 + 1 + priorityW + idW + progressWidth
+		baseUsed = 3 + 2 + lipgloss.Width(checkbox) + lipgloss.Width(node.TreePrefix) + 2 + 1 + 1 + 1 + 1 + priorityW + idW
 	} else {
 		// Approximate path (pre-existing logic).
 		baseOverhead := 16
-		baseUsed = 3 + 2 + len(checkbox) + lipgloss.Width(node.TreePrefix) + len(expandIcon) + baseOverhead + progressWidth
+		baseUsed = 3 + 2 + len(checkbox) + lipgloss.Width(node.TreePrefix) + len(expandIcon) + baseOverhead
 	}
 	availableTitleWidth := maxWidth - baseUsed - lipgloss.Width(indicators)
-
-	// If title would be squeezed below 20 chars, progressively drop trailing groups
-	for drop := 1; drop < len(groups) && availableTitleWidth < 20; drop++ {
-		indicators = JoinIndicatorGroups(groups[:len(groups)-drop]...)
-		if indicators != "" {
-			indicators = " " + indicators
-		}
-		availableTitleWidth = maxWidth - baseUsed - lipgloss.Width(indicators)
-	}
 	availableTitleWidth = max(availableTitleWidth, 20)
 	truncatedTitle := truncateToVisualWidth(task.Title, availableTitleWidth)
 
@@ -181,8 +162,8 @@ func (m *ProjectTreeModel) renderNodeWithWidth(node *TreeNode, selected bool, in
 		title = titleStyle.Render(truncatedTitle)
 	}
 
-	content := fmt.Sprintf("%s%s%s%s%s %s %s%s%s%s%s",
-		queueIndicator, checkbox, indent, expandIcon, typeIcon, statusIcon, prioritySegment, idStr, title, progress, indicators)
+	content := fmt.Sprintf("%s%s%s%s%s %s %s%s%s%s",
+		queueIndicator, checkbox, indent, expandIcon, typeIcon, statusIcon, prioritySegment, idStr, title, indicators)
 	isDimmed := task.Dimmed && !node.IsContextNode
 	isOverdue := task.IsOverdue()
 	isBlocked := task.Status == models.StatusBlocked || m.project.HasIncompleteDependencies(task)
@@ -223,11 +204,7 @@ func (m *ProjectTreeModel) nodeLifecycleGroup(task *models.Task) string {
 		}
 	}
 	if m.columnConfig.IsVisible(ColSnooze) && task.SnoozedUntil != nil {
-		snoozeStr := task.SnoozedUntil.Format("Jan 2")
-		if task.SnoozedUntil.Year() != time.Now().Year() {
-			snoozeStr = task.SnoozedUntil.Format("Jan 2 '06")
-		}
-		parts = append(parts, MutedStyle.Render("zzz "+snoozeStr))
+		parts = append(parts, MutedStyle.Render("zzz "+formatSnoozeDate(*task.SnoozedUntil)))
 	}
 	if m.columnConfig.IsVisible(ColRecurrence) && task.IsRecurring() {
 		recurStr := "↻"

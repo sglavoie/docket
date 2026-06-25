@@ -74,12 +74,16 @@ func (m *OutlinerModel) renderOutlinerTreeContent(width int) string {
 			if m.columnConfig.ShouldShowPriority(stripTask.Priority) {
 				alreadyShown.Priority = true
 			}
+			if m.columnConfig.IsVisible(ColDueDate) && dueIsInlineHero(stripTask) {
+				alreadyShown.Due = true
+			}
 			strip = renderTaskMetadataStrip(TaskMetadataStripOpts{
 				Task:         stripTask,
 				Project:      m.resolveProjectForRow(m.rows[m.cursor]),
 				Config:       m.config,
 				Width:        width,
 				AlreadyShown: alreadyShown,
+				ColumnConfig: m.columnConfig,
 			})
 		}
 		b.WriteString("\n")
