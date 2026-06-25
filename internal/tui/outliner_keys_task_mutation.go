@@ -28,11 +28,13 @@ func (m *OutlinerModel) handleTaskMutationKey(key string, onHeader bool) (tea.Mo
 						return MoveBlockedMsg{Reason: "cannot move uncompleted task below completed task"}
 					}, true
 				}
+				projectID := proj.ID
+				taskID := task.ID
 				proj.SwapTasks(task, siblingBelow)
 				m.crossUndoCtx.Set("Move Down", task.Title)
-				m.crossUndoCtx.ProjectIDs = []string{proj.ID}
+				m.crossUndoCtx.ProjectIDs = []string{projectID}
 				m.rebuildRows()
-				m.moveCursorToTask(task.ID)
+				m.moveCursorToProjectTask(taskID, projectID)
 				return m, m.crossSaveProject(proj), true
 			}
 			return m, nil, true
@@ -76,11 +78,13 @@ func (m *OutlinerModel) handleTaskMutationKey(key string, onHeader bool) (tea.Mo
 						return MoveBlockedMsg{Reason: "cannot move completed task above uncompleted task"}
 					}, true
 				}
+				projectID := proj.ID
+				taskID := task.ID
 				proj.SwapTasks(task, siblingAbove)
 				m.crossUndoCtx.Set("Move Up", task.Title)
-				m.crossUndoCtx.ProjectIDs = []string{proj.ID}
+				m.crossUndoCtx.ProjectIDs = []string{projectID}
 				m.rebuildRows()
-				m.moveCursorToTask(task.ID)
+				m.moveCursorToProjectTask(taskID, projectID)
 				return m, m.crossSaveProject(proj), true
 			}
 			return m, nil, true

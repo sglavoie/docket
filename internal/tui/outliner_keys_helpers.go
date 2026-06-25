@@ -222,10 +222,12 @@ func (m *OutlinerModel) crossMoveTaskToPosition(task *models.Task, toTop bool) (
 	if !toTop {
 		label = "Move to Bottom"
 	}
+	projectID := proj.ID
+	taskID := task.ID
 	m.crossUndoCtx.Set(label, task.Title)
-	m.crossUndoCtx.ProjectIDs = []string{proj.ID}
+	m.crossUndoCtx.ProjectIDs = []string{projectID}
 	m.rebuildRows()
-	m.moveCursorToTask(task.ID)
+	m.moveCursorToProjectTask(taskID, projectID)
 	return m, m.crossSaveProject(proj)
 }
 

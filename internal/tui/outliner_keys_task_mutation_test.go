@@ -391,3 +391,193 @@ func TestOutlinerMoveTaskToPosition_CursorFollowsTask(t *testing.T) {
 		t.Errorf("cursor = %d, want %d (cursor must follow the moved task)", m.cursor, wantCursor)
 	}
 }
+
+// buildCrossProjectDuplicateIDFixture sets up cross-project outliner with two
+// projects, each holding a task with the same ID ("shared") plus a sibling
+// ("aux"), all in the Inbox section. Both projects are loaded; m.project is
+// nil; the perspective is "All". This proves cursor restoration after a
+// cross-project J/K/mJ/mK must match by both ProjectID and TaskID.
+func buildCrossProjectDuplicateIDFixture(t *testing.T) (m *OutlinerModel, projA, projB *models.Project) {
+	t.Helper()
+
+	projA = &models.Project{ID: "proj-A", Name: "Alpha"}
+	aShared := &models.Task{ID: "shared", Title: "A-shared", Section: models.SectionInbox, Status: models.StatusTodo}
+	aAux := &models.Task{ID: "aux", Title: "A-aux", Section: models.SectionInbox, Status: models.StatusTodo}
+	projA.Tasks = []*models.Task{aShared, aAux}
+	projA.BuildTaskTree()
+
+	projB = &models.Project{ID: "proj-B", Name: "Beta"}
+	bShared := &models.Task{ID: "shared", Title: "B-shared", Section: models.SectionInbox, Status: models.StatusTodo}
+	bAux := &models.Task{ID: "aux", Title: "B-aux", Section: models.SectionInbox, Status: models.StatusTodo}
+	projB.Tasks = []*models.Task{bShared, bAux}
+	projB.BuildTaskTree()
+
+	m = minimalOutliner()
+	m.project = nil // cross-project mode
+	m.activePerspective = PerspectiveAll
+	m.loadedProjects = []*models.Project{projA, projB}
+	m.filterProjects = make(map[string]bool)
+	m.filter = NewFilterState()
+	// Mimic the post-rebuild cross-project shape. The exact row count and
+	// ordering here only need to be consistent with what
+	// visibleSiblings()/handleTaskMutationKey see at the moment of the call;
+	// rebuildRows() rewrites m.rows after the swap.
+	m.rows = []outlinerRow{
+		{IsSectionHeader: true, SectionName: models.SectionInbox},
+		{IsProjectHeader: true, ProjectID: projA.ID},
+		{task: aShared, ProjectID: projA.ID},
+		{task: aAux, ProjectID: projA.ID},
+		{IsProjectHeader: true, ProjectID: projB.ID},
+		{task: bShared, ProjectID: projB.ID},
+		{task: bAux, ProjectID: projB.ID},
+	}
+	m.crossForceRebuild = true
+	return m, projA, projB
+}
+
+// findTaskRowInProject scans m.rows for a row whose task carries the given
+// task ID and ProjectID. Returns -1 when not found.
+func findTaskRowInProject(m *OutlinerModel, projectID, taskID string) int {
+	for i, r := range m.rows {
+		if r.task != nil && r.ProjectID == projectID && r.task.ID == taskID {
+			return i
+		}
+	}
+	return -1
+}
+
+// TestOutlinerJ_CrossProjectCursorTracking_DuplicateTaskID: cursor on projB's
+// "shared". Pressing J swaps projB's [shared, aux] → [aux, shared]. After the
+// rebuild, the cursor must follow projB's "shared" — not jump to projA's
+// "shared", which also matches a bare-ID lookup.
+func TestOutlinerJ_CrossProjectCursorTracking_DuplicateTaskID(t *testing.T) {
+	m, projA, projB := buildCrossProjectDuplicateIDFixture(t)
+	m.cursor = 5 // row for projB's "shared"
+
+	_, _, handled := m.handleTaskMutationKey("J", false)
+	if !handled {
+		t.Fatal("expected handled=true for cross-project J")
+	}
+
+	assertIDsEqual(t, "projA.Tasks unchanged", projectTaskIDs(projA), []string{"shared", "aux"})
+	assertIDsEqual(t, "projB.Tasks after J", projectTaskIDs(projB), []string{"aux", "shared"})
+
+	wantCursor := findTaskRowInProject(m, projB.ID, "shared")
+	if wantCursor < 0 {
+		t.Fatal("could not locate projB's shared row after rebuild")
+	}
+	if m.cursor != wantCursor {
+		gotPID := ""
+		gotTID := ""
+		if m.cursor >= 0 && m.cursor < len(m.rows) {
+			gotPID = m.rows[m.cursor].ProjectID
+			if m.rows[m.cursor].task != nil {
+				gotTID = m.rows[m.cursor].task.ID
+			}
+		}
+		t.Errorf("cursor = %d (project=%q task=%q), want %d (project=%q task=%q) — cursor must restore by (ProjectID, TaskID), not by TaskID alone",
+			m.cursor, gotPID, gotTID, wantCursor, projB.ID, "shared")
+	}
+}
+
+// TestOutlinerK_CrossProjectCursorTracking_DuplicateTaskID: cursor on projB's
+// "aux". Pressing K swaps projB's [shared, aux] → [aux, shared]. After
+// rebuild, cursor must follow projB's "aux", not jump to projA's "aux".
+func TestOutlinerK_CrossProjectCursorTracking_DuplicateTaskID(t *testing.T) {
+	m, projA, projB := buildCrossProjectDuplicateIDFixture(t)
+	m.cursor = 6 // row for projB's "aux"
+
+	_, _, handled := m.handleTaskMutationKey("K", false)
+	if !handled {
+		t.Fatal("expected handled=true for cross-project K")
+	}
+
+	assertIDsEqual(t, "projA.Tasks unchanged", projectTaskIDs(projA), []string{"shared", "aux"})
+	assertIDsEqual(t, "projB.Tasks after K", projectTaskIDs(projB), []string{"aux", "shared"})
+
+	wantCursor := findTaskRowInProject(m, projB.ID, "aux")
+	if wantCursor < 0 {
+		t.Fatal("could not locate projB's aux row after rebuild")
+	}
+	if m.cursor != wantCursor {
+		gotPID := ""
+		gotTID := ""
+		if m.cursor >= 0 && m.cursor < len(m.rows) {
+			gotPID = m.rows[m.cursor].ProjectID
+			if m.rows[m.cursor].task != nil {
+				gotTID = m.rows[m.cursor].task.ID
+			}
+		}
+		t.Errorf("cursor = %d (project=%q task=%q), want %d (project=%q task=%q) — cursor must restore by (ProjectID, TaskID), not by TaskID alone",
+			m.cursor, gotPID, gotTID, wantCursor, projB.ID, "aux")
+	}
+}
+
+// TestOutlinerMJ_CrossProjectCursorTracking_DuplicateTaskID: cursor on projB's
+// "shared". mJ (moveTaskToPosition toBottom=true → falls through to
+// crossMoveTaskToPosition) moves projB's "shared" past its visible siblings.
+// Cursor must follow projB's "shared", not projA's "shared".
+func TestOutlinerMJ_CrossProjectCursorTracking_DuplicateTaskID(t *testing.T) {
+	m, projA, projB := buildCrossProjectDuplicateIDFixture(t)
+	m.cursor = 5 // row for projB's "shared"
+
+	bShared := projB.GetTaskByID("shared")
+	if bShared == nil {
+		t.Fatal("setup: projB missing shared")
+	}
+	_, _ = m.moveTaskToPosition(bShared, false /* toBottom */)
+
+	assertIDsEqual(t, "projA.Tasks unchanged", projectTaskIDs(projA), []string{"shared", "aux"})
+	assertIDsEqual(t, "projB.Tasks after mJ", projectTaskIDs(projB), []string{"aux", "shared"})
+
+	wantCursor := findTaskRowInProject(m, projB.ID, "shared")
+	if wantCursor < 0 {
+		t.Fatal("could not locate projB's shared row after rebuild")
+	}
+	if m.cursor != wantCursor {
+		gotPID := ""
+		gotTID := ""
+		if m.cursor >= 0 && m.cursor < len(m.rows) {
+			gotPID = m.rows[m.cursor].ProjectID
+			if m.rows[m.cursor].task != nil {
+				gotTID = m.rows[m.cursor].task.ID
+			}
+		}
+		t.Errorf("cursor = %d (project=%q task=%q), want %d (project=%q task=%q) — cursor must restore by (ProjectID, TaskID), not by TaskID alone",
+			m.cursor, gotPID, gotTID, wantCursor, projB.ID, "shared")
+	}
+}
+
+// TestOutlinerMK_CrossProjectCursorTracking_DuplicateTaskID: cursor on projB's
+// "aux". mK (toTop=true) moves projB's "aux" past its visible siblings.
+// Cursor must follow projB's "aux", not projA's "aux".
+func TestOutlinerMK_CrossProjectCursorTracking_DuplicateTaskID(t *testing.T) {
+	m, projA, projB := buildCrossProjectDuplicateIDFixture(t)
+	m.cursor = 6 // row for projB's "aux"
+
+	bAux := projB.GetTaskByID("aux")
+	if bAux == nil {
+		t.Fatal("setup: projB missing aux")
+	}
+	_, _ = m.moveTaskToPosition(bAux, true /* toTop */)
+
+	assertIDsEqual(t, "projA.Tasks unchanged", projectTaskIDs(projA), []string{"shared", "aux"})
+	assertIDsEqual(t, "projB.Tasks after mK", projectTaskIDs(projB), []string{"aux", "shared"})
+
+	wantCursor := findTaskRowInProject(m, projB.ID, "aux")
+	if wantCursor < 0 {
+		t.Fatal("could not locate projB's aux row after rebuild")
+	}
+	if m.cursor != wantCursor {
+		gotPID := ""
+		gotTID := ""
+		if m.cursor >= 0 && m.cursor < len(m.rows) {
+			gotPID = m.rows[m.cursor].ProjectID
+			if m.rows[m.cursor].task != nil {
+				gotTID = m.rows[m.cursor].task.ID
+			}
+		}
+		t.Errorf("cursor = %d (project=%q task=%q), want %d (project=%q task=%q) — cursor must restore by (ProjectID, TaskID), not by TaskID alone",
+			m.cursor, gotPID, gotTID, wantCursor, projB.ID, "aux")
+	}
+}
