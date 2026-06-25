@@ -73,6 +73,11 @@ func TestGetForView_Dashboard(t *testing.T) {
 	if !foundEnter {
 		t.Error("Expected enter key in Dashboard keymap")
 	}
+	for _, key := range []string{"ctrl+u", "ctrl+d", "ctrl+b", "ctrl+f"} {
+		if !slices.Contains(keys, key) {
+			t.Errorf("Expected %s navigation key in Dashboard keymap", key)
+		}
+	}
 }
 
 func TestGetForView_KeybindingExplorerMetadata(t *testing.T) {

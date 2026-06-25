@@ -44,6 +44,54 @@ func (m *DashboardModel) renderDashboard(visible []*models.Project, chromeHeight
 	return m.renderDashboardHorizontal(visible, chromeHeight, panelMode)
 }
 
+func (m *DashboardModel) projectListPageSize() int {
+	if m == nil {
+		return 1
+	}
+	_, chromeHeight := m.renderFilterBar()
+	cardWidth, bottomHeight := m.projectListViewportInputs(chromeHeight)
+	narrowMode := cardWidth < DashboardNarrowModeWidth
+	return m.projectListMaxVisible(chromeHeight, bottomHeight, narrowMode)
+}
+
+func (m *DashboardModel) projectListViewportInputs(chromeHeight int) (cardWidth, bottomHeight int) {
+	cardWidth = max(m.width-2, MinCardWidth)
+	if m.config == nil {
+		return cardWidth, 0
+	}
+
+	layout := m.config.GetDashboardBottomLayout()
+	panelMode := m.config.GetInfoPanelMode()
+	if layout == config.DashboardLayoutListOnly || panelMode == config.InfoPanelOff || m.SearchQuery() != "" {
+		return cardWidth, 0
+	}
+
+	if layout == config.DashboardLayoutVertical && m.width >= DashboardInfoSectionWideMinWidth {
+		totalWidth := max(m.width-2, MinCardWidth)
+		pct := m.config.GetDashboardVerticalSplitPct()
+		listWidth := max(min(max(totalWidth*pct/100, TreeMinWidth), totalWidth-MinCardWidth), TreeMinWidth)
+		return listWidth, 0
+	}
+
+	pct := m.config.GetDashboardHorizontalSplitPct()
+	totalHeight := max(m.height-chromeHeight, 0)
+	paneHeight := max(totalHeight*(100-pct)/100, DashboardBottomPaneHeight)
+
+	selected := m.SelectedProject()
+	var infoContent string
+	switch panelMode {
+	case config.InfoPanelOff:
+	case config.InfoPanelInfoCards:
+		infoContent = m.renderInfoSection(cardWidth, paneHeight, selected)
+	case config.InfoPanelProjectSummary:
+		infoContent = m.renderProjectSummarySection(cardWidth, paneHeight, selected, false)
+	}
+	if infoContent == "" {
+		return cardWidth, 0
+	}
+	return cardWidth, lipgloss.Height(infoContent) + 1
+}
+
 // renderDashboardListOnly renders the project list at full width with no bottom info section.
 func (m *DashboardModel) renderDashboardListOnly(visible []*models.Project, chromeHeight int) string {
 	cardWidth := max(m.width-2, MinCardWidth)

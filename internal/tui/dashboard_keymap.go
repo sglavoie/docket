@@ -39,6 +39,30 @@ func (m *DashboardModel) buildKeyMap() *keymap.KeyMap {
 			_, cmd := handleListNavigation("G", &m.cursor, len(visible), m.height, &m.cursorFlash)
 			return m, cmd
 		}),
+		keymap.Bind("ctrl+u", "Page up", "Navigation", func() (tea.Model, tea.Cmd) {
+			visible := m.visibleProjects()
+			old := m.cursor
+			jumpCursor(&m.cursor, len(visible), -HalfPage(m.projectListPageSize()))
+			return m, flashIfJumped(old, m.cursor, &m.cursorFlash)
+		}),
+		keymap.Bind("ctrl+d", "Page down", "Navigation", func() (tea.Model, tea.Cmd) {
+			visible := m.visibleProjects()
+			old := m.cursor
+			jumpCursor(&m.cursor, len(visible), HalfPage(m.projectListPageSize()))
+			return m, flashIfJumped(old, m.cursor, &m.cursorFlash)
+		}),
+		keymap.Bind("ctrl+b", "Page back", "Navigation", func() (tea.Model, tea.Cmd) {
+			visible := m.visibleProjects()
+			old := m.cursor
+			jumpCursor(&m.cursor, len(visible), -m.projectListPageSize())
+			return m, flashIfJumped(old, m.cursor, &m.cursorFlash)
+		}),
+		keymap.Bind("ctrl+f", "Page forward", "Navigation", func() (tea.Model, tea.Cmd) {
+			visible := m.visibleProjects()
+			old := m.cursor
+			jumpCursor(&m.cursor, len(visible), m.projectListPageSize())
+			return m, flashIfJumped(old, m.cursor, &m.cursorFlash)
+		}),
 		keymap.Bind("/", "Search projects", "Navigation", func() (tea.Model, tea.Cmd) {
 			return m, m.ActivateSearch()
 		}),
