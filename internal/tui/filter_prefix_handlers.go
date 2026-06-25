@@ -388,7 +388,6 @@ func buildCommonFilterPrefixHints(f *CommonFilterState, includeDueDate, includeS
 		PrefixHint{Key: "S", Description: "score", Detail: scoreDetail, Active: f.ScoreMin > 0},
 		PrefixHint{Key: "h", Description: "dimmed", Detail: dimDetail, Active: f.HideDimmed},
 		PrefixHint{Key: "i", Description: "issues", Detail: issueDetail, Active: f.GitHubIssue},
-		PrefixHint{Key: "D", Description: "columns"},
 		PrefixHint{Key: "x", Description: "clear-all"},
 	)
 
@@ -408,28 +407,22 @@ func applyCommonFilterResult(result FilterPrefixResult, setPendingPrefix func(st
 	return result.TagCmd
 }
 
-// applyFilterSubPrefix handles a filter sub-prefix key press, including the
-// score filter custom-value special case. Returns true if the view should
-// keep processing (score input was activated), false otherwise.
-func applyFilterSubPrefix(prefix, key string, f *CommonFilterState, cfg *config.Config, setPendingPrefix func(string), enterScoreInput func(*float64), refreshView func()) bool {
-	if prefix == "FS" && key == "C" {
-		var custom *float64
-		if cfg != nil {
-			custom = cfg.ScoreFilterCustom
-		}
-		enterScoreInput(custom)
-		return true
-	}
+// applyFilterSubPrefix handles a filter sub-prefix key press for views whose
+// custom-score input is wired through keymap actions. Returns true when the
+// sub-prefix was handled (caller already refreshed via refreshView).
+func applyFilterSubPrefix(prefix, key string, f *CommonFilterState, cfg *config.Config, setPendingPrefix func(string), refreshView func()) bool {
 	if dispatchFilterSubPrefix(prefix, key, f, cfg, setPendingPrefix) {
 		refreshView()
+		return true
 	}
 	return false
 }
 
 // buildCommonFilterPrefixPopupHints returns the full PrefixHints map for the F prefix
 // and its sub-prefixes. Set includeDueDate and includeStatus to control which
-// categories are available.
-func buildCommonFilterPrefixPopupHints(f *CommonFilterState, cfg *config.Config, includeDueDate, includeStatus bool) PrefixHints {
+// categories are available; set supportsCustomScoreInput true only for views
+// that wire FS -> C to a score-input component (project tree and outliner today).
+func buildCommonFilterPrefixPopupHints(f *CommonFilterState, cfg *config.Config, includeDueDate, includeStatus, supportsCustomScoreInput bool) PrefixHints {
 	var stages []string
 	if cfg != nil {
 		stages = cfg.Stages
@@ -446,7 +439,7 @@ func buildCommonFilterPrefixPopupHints(f *CommonFilterState, cfg *config.Config,
 		"Faw": FilterAttrWorktypePrefixHints,
 		"Fao": FilterAttrScopePrefixHints,
 		"Fap": FilterAttrPointsPrefixHints,
-		"FS":  BuildFilterScorePrefixHints(cfg),
+		"FS":  BuildFilterScorePrefixHints(cfg, supportsCustomScoreInput),
 		"F.":  BuildFilterStagePrefixHints(stages, f.Stage),
 	}
 	if includeStatus {

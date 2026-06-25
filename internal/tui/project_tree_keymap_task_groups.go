@@ -417,13 +417,35 @@ func (b *projectTreeKeymapBuilder) filterEntries() []keymap.Entry {
 		ScoreKey: func(key string) keymap.Action {
 			return func() (tea.Model, tea.Cmd) { return m.handleFilterSubPrefix("FS", key) }
 		},
+		ScoreCustomInput: func() (tea.Model, tea.Cmd) {
+			var custom *float64
+			if m.config != nil {
+				custom = m.config.ScoreFilterCustom
+			}
+			m.scoreFilterInput.Enter(custom)
+			return m, nil
+		},
 		StageFilterKey: func(key string) keymap.Action {
 			return func() (tea.Model, tea.Cmd) { return m.handleFilterSubPrefix("F.", key) }
 		},
 		StageFilterNames: b.stages,
 	})
 	if len(entries) > 0 && entries[0].PrefixNode != nil {
-		entries[0].PrefixNode.Children = append(entries[0].PrefixNode.Children, savedFilterPrefixEntry(m))
+		entries[0].PrefixNode.Children = append(entries[0].PrefixNode.Children,
+			keymap.Bind("c", "Toggle completed filter", "Filters", func() (tea.Model, tea.Cmd) {
+				return m.handleFilterPrefix("c")
+			}),
+			keymap.Bind("@", "Filter by section", "Filters", func() (tea.Model, tea.Cmd) {
+				return m.handleFilterPrefix("@")
+			}),
+			keymap.Bind("r", "Toggle actionable filter", "Filters", func() (tea.Model, tea.Cmd) {
+				return m.handleFilterPrefix("r")
+			}),
+			keymap.Bind("D", "Choose visible columns", "Filters", func() (tea.Model, tea.Cmd) {
+				return m.handleFilterPrefix("D")
+			}),
+			savedFilterPrefixEntry(m),
+		)
 	}
 	return entries
 }

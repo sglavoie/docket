@@ -98,6 +98,10 @@ func (m *WeeklyReviewModel) loadData() { //nolint:gocyclo
 				wp.HighPriorityTodo++
 			}
 
+			if m.shouldSkipWeeklyReviewTask(task, project) {
+				continue
+			}
+
 			// Task-level sections
 			// Stale tasks (fall back to CreatedAt when UpdatedAt is zero)
 			effectiveUpdate := task.UpdatedAt
@@ -177,6 +181,16 @@ func (m *WeeklyReviewModel) loadData() { //nolint:gocyclo
 			m.reviewedSections[s] = true
 		}
 	}
+}
+
+func (m *WeeklyReviewModel) shouldSkipWeeklyReviewTask(task *models.Task, project *models.Project) bool {
+	if task == nil {
+		return true
+	}
+	if !hasActiveCommonFilters(&m.filter) {
+		return false
+	}
+	return !passesCommonFilters(task, &m.filter, project.ID, m.config)
 }
 
 // sortSections sorts each section by appropriate criteria.

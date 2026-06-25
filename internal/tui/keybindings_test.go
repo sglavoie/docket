@@ -183,6 +183,7 @@ func TestFocusBoardSimpleKeyGrammarHandledKeysAndHelp(t *testing.T) {
 		"a", "x", "p", "/", "?", "enter",
 		"tab", "shift+tab", "shift+left", "shift+right",
 		"j", "down", "k", "up", "G", "ctrl+u", "ctrl+d",
+		"F", "F#", "Fh", "Fp", "Fi", "Fx", "Ft", "Fs", "Fd", "Fa", "FS", "F.",
 	} {
 		if !slices.Contains(keys, key) {
 			t.Errorf("FocusBoard HandledKeys missing canonical key %q", key)
@@ -192,7 +193,7 @@ func TestFocusBoardSimpleKeyGrammarHandledKeysAndHelp(t *testing.T) {
 	for _, key := range []string{
 		"q", "w", "X", "E", "v", "space", "A", "J", "K",
 		"ctrl+f", "ctrl+r", "ctrl+t", "r", "n", "N",
-		"g", "gg", "gp", "f", "fa", "fp", "F", "F#",
+		"g", "gg", "gp", "f", "fa", "fp",
 		"1", "2", "3", "4", "5", "0", "P", "P0",
 		",", ",d", "!", "!1", "d", "z", "m", "c", "t", ".", "b",
 		"o", "D", "e", "*", "S", "O", "ctrl+b", "ctrl+.",
@@ -212,13 +213,14 @@ func TestFocusBoardSimpleKeyGrammarHandledKeysAndHelp(t *testing.T) {
 		{Key: ":", Description: "Command palette"},
 		{Key: "esc", Description: "Back / close"},
 		{Key: "u", Description: "Undo last task action"},
+		{Key: "Fh", Description: "Toggle hide-dimmed filter"},
 	} {
 		assertHasHelpItem(t, items, ViewFocusBoard, want.Key, want.Description)
 	}
 	for _, key := range []string{
 		"q", "w", "X", "E", "v", "space", "A", "J", "K",
 		"ctrl+f", "ctrl+r", "ctrl+t", "r", "n", "N",
-		"g", "gg", "gp", "f", "fa", "fp", "F", "F#",
+		"g", "gg", "gp", "f", "fa", "fp",
 		"1", "2", "3", "4", "5", "0", "P", "P0",
 		",", ",d", "!", "!1", "d", "z", "m", "c", "t", ".", "b",
 		"o", "D", "e", "*", "S", "O", "ctrl+o", "ctrl+n", "ctrl+b", "ctrl+.",

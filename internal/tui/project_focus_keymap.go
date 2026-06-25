@@ -101,6 +101,10 @@ func (m *ProjectFocusViewModel) buildKeyMap() *keymap.KeyMap {
 		ScoreKey: func(key string) keymap.Action {
 			return func() (tea.Model, tea.Cmd) { return m.handleFilterSubPrefix("FS", key) }
 		},
+		StageFilterKey: func(key string) keymap.Action {
+			return func() (tea.Model, tea.Cmd) { return m.handleFilterSubPrefix("F.", key) }
+		},
+		StageFilterNames: stages,
 	})...)
 
 	// --- View-specific direct bindings ---

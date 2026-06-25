@@ -327,6 +327,14 @@ func (b *outlinerKeymapBuilder) filterEntries() []keymap.Entry {
 				return m.handleOutlinerFilterSubKey("FS", key)
 			}
 		},
+		ScoreCustomInput: func() (tea.Model, tea.Cmd) {
+			var custom *float64
+			if m.config != nil {
+				custom = m.config.ScoreFilterCustom
+			}
+			m.scoreFilterInput.Enter(custom)
+			return m, nil
+		},
 		StageFilterKey: func(key string) keymap.Action {
 			return func() (tea.Model, tea.Cmd) {
 				return m.handleOutlinerFilterSubKey("F.", key)
@@ -335,7 +343,27 @@ func (b *outlinerKeymapBuilder) filterEntries() []keymap.Entry {
 		StageFilterNames: b.stages,
 	})
 	if len(entries) > 0 && entries[0].PrefixNode != nil {
-		entries[0].PrefixNode.Children = append(entries[0].PrefixNode.Children, savedFilterPrefixEntry(m))
+		extra := []keymap.Entry{
+			keymap.Bind("c", "Toggle completed filter", "Filters", func() (tea.Model, tea.Cmd) {
+				return m.handleFilterPrefix("c")
+			}),
+			keymap.Bind("@", "Filter by section", "Filters", func() (tea.Model, tea.Cmd) {
+				return m.handleFilterPrefix("@")
+			}),
+			keymap.Bind("r", "Toggle actionable filter", "Filters", func() (tea.Model, tea.Cmd) {
+				return m.handleFilterPrefix("r")
+			}),
+			keymap.Bind("D", "Choose visible columns", "Filters", func() (tea.Model, tea.Cmd) {
+				return m.handleFilterPrefix("D")
+			}),
+		}
+		if m.project == nil {
+			extra = append(extra, keymap.Bind("P", "Filter by projects", "Filters", func() (tea.Model, tea.Cmd) {
+				return m.handleFilterPrefix("P")
+			}))
+		}
+		extra = append(extra, savedFilterPrefixEntry(m))
+		entries[0].PrefixNode.Children = append(entries[0].PrefixNode.Children, extra...)
 	}
 	return entries
 }

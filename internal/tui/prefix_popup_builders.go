@@ -52,14 +52,16 @@ func overrideHintDetail(hints []PrefixHint, key, detail string) []PrefixHint {
 }
 
 // BuildFilterScorePrefixHints builds dynamic filter score hints showing the
-// current custom value from config. Used by project tree and outliner views.
-func BuildFilterScorePrefixHints(cfg *config.Config) []PrefixHint {
+// current custom value from config. The supportsCustomInput flag gates the
+// `C` (inline input) entry — views without a score-input component must pass
+// false so the popup never advertises a key their Update() will not handle.
+func BuildFilterScorePrefixHints(cfg *config.Config, supportsCustomInput bool) []PrefixHint {
 	customDetail := "(not set)"
 	if cfg != nil && cfg.ScoreFilterCustom != nil {
 		customDetail = fmt.Sprintf(">=%.0f", *cfg.ScoreFilterCustom)
 	}
 
-	return []PrefixHint{
+	hints := []PrefixHint{
 		{Key: "1", Description: ">=30"},
 		{Key: "2", Description: ">=60"},
 		{Key: "3", Description: ">=90"},
@@ -70,9 +72,12 @@ func BuildFilterScorePrefixHints(cfg *config.Config) []PrefixHint {
 		{Key: "8", Description: ">=240"},
 		{Key: "9", Description: ">=270"},
 		{Key: "c", Description: "custom", Detail: customDetail},
-		{Key: "C", Description: "set value", Detail: "inline input"},
-		{Key: "0", Description: "clear"},
 	}
+	if supportsCustomInput {
+		hints = append(hints, PrefixHint{Key: "C", Description: "set value", Detail: "inline input"})
+	}
+	hints = append(hints, PrefixHint{Key: "0", Description: "clear"})
+	return hints
 }
 
 // BuildStagePrefixHints builds dynamic stage hints for the "s" (stage) prefix.

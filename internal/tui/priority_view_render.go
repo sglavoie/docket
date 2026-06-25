@@ -38,7 +38,7 @@ func (m *PriorityViewModel) GetPrefixPopupInfo() *PrefixPopupInfo {
 		{Key: "p", Description: "preview", Detail: "Toggle inline preview"},
 	}
 	// Merge filter prefix hints (due date + status both included)
-	maps.Copy(hints, buildCommonFilterPrefixPopupHints(&m.filter, m.config, true, true))
+	maps.Copy(hints, buildCommonFilterPrefixPopupHints(&m.filter, m.config, true, true, false))
 	// Insert "r" (ready) hint into F hints before the last entry (clear-all)
 	if fHints, ok := hints["F"]; ok {
 		readyDetail := "off"

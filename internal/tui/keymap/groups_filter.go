@@ -11,7 +11,7 @@ type FilterDeps struct {
 
 	// TypeKey returns an Action for a Ft sub-key (e, s, t, b, i, 0).
 	TypeKey func(key string) Action
-	// StatusKey returns an Action for a Fs sub-key (t, s, r, S, b, d, x, 0).
+	// StatusKey returns an Action for a Fs sub-key (t, s, r, S, b, d, x, m, 0).
 	StatusKey func(key string) Action
 	// DueDateKey returns an Action for a Fd sub-key (o, t, w, n, 0).
 	// Nil disables the due-date sub-prefix.
@@ -26,6 +26,11 @@ type FilterDeps struct {
 	OpenAttrPicker Action
 	// ScoreKey returns an Action for a FS sub-key (1-9, c, 0).
 	ScoreKey func(key string) Action
+	// ScoreCustomInput opens the inline input for setting a new custom score
+	// threshold. Nil disables the FS -> C sub-key — views that cannot accept
+	// score input must leave this nil so the keymap, ? help, and popup never
+	// advertise an action the view does not handle.
+	ScoreCustomInput Action
 	// StageFilterKey returns an Action for a F. sub-key (0, 1-9, a-z).
 	// Nil disables the stage-filter sub-prefix.
 	StageFilterKey func(key string) Action
@@ -56,6 +61,7 @@ func FilterGroup(deps FilterDeps) []Entry {
 		Bind("b", "Filter: Blocked", cat, deps.StatusKey("b")),
 		Bind("d", "Filter: Done", cat, deps.StatusKey("d")),
 		Bind("x", "Filter: Canceled", cat, deps.StatusKey("x")),
+		Bind("m", "Filter: Maybe", cat, deps.StatusKey("m")),
 		Bind("0", "Clear status filter", cat, deps.StatusKey("0")),
 	}
 
@@ -86,6 +92,11 @@ func FilterGroup(deps FilterDeps) []Entry {
 		Bind("9", "Score ≥ 270", cat, deps.ScoreKey("9")),
 		Bind("c", "Score ≥ custom threshold", cat, deps.ScoreKey("c")),
 		Bind("0", "Clear score filter", cat, deps.ScoreKey("0")),
+	}
+	if deps.ScoreCustomInput != nil {
+		fsScoreChildren = append(fsScoreChildren,
+			Bind("C", "Set custom score threshold (inline input)", cat, deps.ScoreCustomInput),
+		)
 	}
 
 	// --- F. : stage filter (optional, dynamic) ---

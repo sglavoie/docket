@@ -70,13 +70,23 @@ func (m *ProjectFocusViewModel) activeSubTabFilter() string {
 	return m.subTabNames[m.subTab-1]
 }
 
-// filteredTasks returns tasks filtered by the active sub-tab.
+// filteredTasks returns tasks filtered by the active sub-tab and the shared
+// F-prefix filter state.
 func (m *ProjectFocusViewModel) filteredTasks() []*models.Task {
-	filter := m.activeSubTabFilter()
-	if filter == "" {
+	if !hasActiveCommonFilters(&m.filter) {
 		return m.tasks
 	}
-	return m.tasks
+	projectID := ""
+	if m.project != nil {
+		projectID = m.project.ID
+	}
+	out := make([]*models.Task, 0, len(m.tasks))
+	for _, t := range m.tasks {
+		if passesCommonFilters(t, &m.filter, projectID, m.cfg) {
+			out = append(out, t)
+		}
+	}
+	return out
 }
 
 // getTaskAtCursor returns the task at the current cursor position.

@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"maps"
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
@@ -60,14 +61,33 @@ func (m *FocusBoardModel) GetPrefixPopupInfo() *PrefixPopupInfo {
 		return nil
 	}
 	prefix := m.Dispatcher.PendingPrefix()
-	var hints []PrefixHint
-	for _, h := range m.Dispatcher.PrefixHints() {
-		hints = append(hints, PrefixHint{Key: h.Key, Description: h.Description})
+	hints := PrefixHints{}
+	maps.Copy(hints, buildCommonFilterPrefixPopupHints(&m.filter, m.config, true, true, false))
+	if _, ok := hints[prefix]; !ok {
+		fallback := make([]PrefixHint, 0, len(m.Dispatcher.PrefixHints()))
+		for _, h := range m.Dispatcher.PrefixHints() {
+			fallback = append(fallback, PrefixHint{Key: h.Key, Description: h.Description})
+		}
+		hints[prefix] = fallback
 	}
 	return &PrefixPopupInfo{
 		Prefix: prefix,
-		Hints:  PrefixHints{prefix: hints},
+		Hints:  hints,
 	}
+}
+
+// handleFilterPrefix handles the second key after pressing F (filter prefix).
+func (m *FocusBoardModel) handleFilterPrefix(key string) (tea.Model, tea.Cmd) {
+	if cmd, handled := handleFilterPrefixForView(m, key); handled {
+		return m, cmd
+	}
+	return m, nil
+}
+
+// handleFilterSubPrefix handles all filter sub-prefix keys (Ft, Fs, Fd, Fa, FS, F.).
+func (m *FocusBoardModel) handleFilterSubPrefix(prefix, key string) (tea.Model, tea.Cmd) {
+	handleFilterSubPrefixForView(m, prefix, key)
+	return m, nil
 }
 
 // matchesSearch returns true if the board row matches the search query.

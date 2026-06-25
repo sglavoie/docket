@@ -67,7 +67,7 @@ func (m *OutlinerModel) buildPrefixHints() PrefixHints {
 	hints["P"] = m.buildOutlinerPerspectiveHints(activePrefix)
 
 	// Add filter hints
-	maps.Copy(hints, buildCommonFilterPrefixPopupHints(&m.filter.CommonFilterState, m.config, true, true))
+	maps.Copy(hints, buildCommonFilterPrefixPopupHints(&m.filter.CommonFilterState, m.config, true, true, true))
 	m.addOutlinerFilterHints(hints)
 
 	// Add saved filter sub-prefix hints
@@ -146,6 +146,7 @@ func (m *OutlinerModel) addOutlinerFilterHints(hints PrefixHints) {
 		PrefixHint{Key: "c", Description: "completed", Detail: completedDetail, Active: m.activePerspective == PerspectiveCompleted},
 		PrefixHint{Key: "r", Description: "actionable", Detail: actionableDetail, Active: m.filter.Actionable},
 		PrefixHint{Key: "@", Description: "section", Detail: "selector"},
+		PrefixHint{Key: "D", Description: "columns"},
 		PrefixHint{Key: "v", Description: "saved filters"},
 	)
 	if m.project == nil {

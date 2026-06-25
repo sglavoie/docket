@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"maps"
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
@@ -304,13 +305,18 @@ func (m *FocusViewModel) GetPrefixPopupInfo() *PrefixPopupInfo {
 		return nil
 	}
 	prefix := m.Dispatcher.PendingPrefix()
-	var hints []PrefixHint
-	for _, h := range m.Dispatcher.PrefixHints() {
-		hints = append(hints, PrefixHint{Key: h.Key, Description: h.Description})
+	hints := PrefixHints{}
+	maps.Copy(hints, buildCommonFilterPrefixPopupHints(&m.filter, m.config, true, true, false))
+	if _, ok := hints[prefix]; !ok {
+		fallback := make([]PrefixHint, 0, len(m.Dispatcher.PrefixHints()))
+		for _, h := range m.Dispatcher.PrefixHints() {
+			fallback = append(fallback, PrefixHint{Key: h.Key, Description: h.Description})
+		}
+		hints[prefix] = fallback
 	}
 	return &PrefixPopupInfo{
 		Prefix: prefix,
-		Hints:  PrefixHints{prefix: hints},
+		Hints:  hints,
 	}
 }
 

@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"maps"
 	"strings"
 )
 
@@ -47,6 +48,7 @@ func (m *WeeklyReviewModel) GetPrefixPopupInfo() *PrefixPopupInfo {
 		{Key: "a", Description: "toggle", Detail: "Toggle section fold"},
 		{Key: "p", Description: "preview", Detail: "Toggle inline preview"},
 	}
+	maps.Copy(hints, buildCommonFilterPrefixPopupHints(&m.filter, m.config, true, true, false))
 	return &PrefixPopupInfo{
 		Prefix: m.pendingPrefix,
 		Hints:  hints,

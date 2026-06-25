@@ -339,7 +339,7 @@ func updateTagFilterAfterCatalogChange(tags map[string]bool, oldName, newName st
 func (m *AppModel) applyTagFilterToView(source ViewType, tags map[string]bool) {
 	// Views that implement commonFilterView can be handled generically.
 	standardViews := []ViewType{
-		ViewFocusView, ViewFocusBoard, ViewDueDateOverview,
+		ViewFocusView, ViewFocusBoard, ViewProjectFocusView, ViewDueDateOverview,
 		ViewDailyReview, ViewRecentActivity, ViewPriorityView,
 		ViewAllTasks, ViewKanban, ViewCrossProjectKanban,
 	}

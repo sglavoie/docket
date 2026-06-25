@@ -41,11 +41,17 @@ func (m *ProjectFocusViewModel) handleKeyMsg(msg tea.KeyPressMsg) (tea.Model, te
 	return m, nil
 }
 
-func (m *ProjectFocusViewModel) handleFilterPrefix(_ string) (tea.Model, tea.Cmd) {
+// handleFilterPrefix handles the second key after pressing F (filter prefix).
+func (m *ProjectFocusViewModel) handleFilterPrefix(key string) (tea.Model, tea.Cmd) {
+	if cmd, handled := handleFilterPrefixForView(m, key); handled {
+		return m, cmd
+	}
 	return m, nil
 }
 
-func (m *ProjectFocusViewModel) handleFilterSubPrefix(_, _ string) (tea.Model, tea.Cmd) {
+// handleFilterSubPrefix handles all filter sub-prefix keys (Ft, Fs, Fd, Fa, FS, F.).
+func (m *ProjectFocusViewModel) handleFilterSubPrefix(prefix, key string) (tea.Model, tea.Cmd) {
+	handleFilterSubPrefixForView(m, prefix, key)
 	return m, nil
 }
 

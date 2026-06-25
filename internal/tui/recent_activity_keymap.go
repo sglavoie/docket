@@ -98,6 +98,10 @@ func (m *RecentActivityModel) buildKeyMap() *keymap.KeyMap {
 	)
 
 	// Filter group: "F" prefix
+	var stages []string
+	if m.config != nil {
+		stages = m.config.Stages
+	}
 	entries = append(entries, keymap.FilterGroup(keymap.FilterDeps{
 		FilterByTags: func() (tea.Model, tea.Cmd) {
 			return m.handleRecentActivityFilterPrefix("#")
@@ -147,14 +151,16 @@ func (m *RecentActivityModel) buildKeyMap() *keymap.KeyMap {
 				return m.handleRecentActivityFilterSubPrefix("FS", key)
 			}
 		},
+		StageFilterKey: func(key string) keymap.Action {
+			return func() (tea.Model, tea.Cmd) {
+				return m.handleRecentActivityFilterSubPrefix("F.", key)
+			}
+		},
+		StageFilterNames: stages,
 	})...)
 
 	// Standard task action groups: Status, Priority, DueDate, Snooze, Move,
 	// LinkedTask, TaskPrefix, Stage, Blocker, CommonTaskAction.
-	var stages []string
-	if m.config != nil {
-		stages = m.config.Stages
-	}
 	hasItem := func() bool {
 		t, _ := m.getTaskRef()
 		return t != nil

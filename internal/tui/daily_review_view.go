@@ -170,8 +170,8 @@ func (m *DailyReviewModel) GetPrefixPopupInfo() *PrefixPopupInfo {
 		{Key: "a", Description: "toggle", Detail: "Toggle section fold"},
 		{Key: "p", Description: "preview", Detail: "Toggle inline preview"},
 	}
-	// Merge filter prefix hints (no DueDate or Status — sections group by these)
-	maps.Copy(hints, buildCommonFilterPrefixPopupHints(&m.filter, m.config, false, false))
+	// Merge filter prefix hints for all filter controls exposed by the keymap.
+	maps.Copy(hints, buildCommonFilterPrefixPopupHints(&m.filter, m.config, true, true, false))
 	return &PrefixPopupInfo{
 		Prefix: m.pendingPrefix,
 		Hints:  hints,

@@ -21,6 +21,7 @@ func newTestWeeklyReviewModel(cfg *config.Config) *WeeklyReviewModel {
 		reviewedSections:  make(map[WeeklyReviewSection]bool),
 		mutationCounts:    make(map[string]int),
 		tabs:              TabState{Names: weeklyReviewTabNames},
+		FilterMixin:       FilterMixin{filter: newFilterState()},
 	}
 }
 
@@ -225,6 +226,77 @@ func TestWeeklyReview_UpcomingWeekWindowIsSevenDays(t *testing.T) {
 	}
 	if foundOut {
 		t.Errorf("task due 7 days from today must not appear in 'Upcoming Week' (window should be 7 days, not 8); got titles=%v", titles)
+	}
+}
+
+func TestWeeklyReview_LoadDataAppliesCommonFiltersToTaskSections(t *testing.T) {
+	mockRepo := testutil.NewMockRepository()
+	oldRepo := storage.DefaultRepository
+	storage.DefaultRepository = mockRepo
+	defer func() { storage.DefaultRepository = oldRepo }()
+
+	now := time.Now()
+	today := util.StartOfDay(now)
+	oldUpdate := now.AddDate(0, 0, -30)
+	dueSoon := today.AddDate(0, 0, 3).Add(12 * time.Hour)
+
+	storedProject, err := models.NewProject("p1", "Filtered Weekly Review", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	storedProject.CreatedAt = oldUpdate
+
+	matching, err := models.NewTask("bug", 1, models.TaskTypeBug, "Matching bug")
+	if err != nil {
+		t.Fatal(err)
+	}
+	matching.Status = models.StatusTodo
+	matching.Priority = 1
+	matching.CreatedAt = oldUpdate
+	matching.UpdatedAt = oldUpdate
+	matching.DueDate = &dueSoon
+	matching.Recurrence = &models.RecurrencePattern{Interval: 1, Unit: models.RecurrenceWeekly}
+
+	filteredOut, err := models.NewTask("task", 2, models.TaskTypeTask, "Filtered out task")
+	if err != nil {
+		t.Fatal(err)
+	}
+	filteredOut.Status = models.StatusTodo
+	filteredOut.Priority = 1
+	filteredOut.CreatedAt = oldUpdate
+	filteredOut.UpdatedAt = oldUpdate
+	filteredOut.DueDate = &dueSoon
+	filteredOut.Recurrence = &models.RecurrencePattern{Interval: 1, Unit: models.RecurrenceWeekly}
+
+	storedProject.Tasks = []*models.Task{matching, filteredOut}
+	mockRepo.Projects[storedProject.ID] = storedProject
+
+	configProject := &models.Project{ID: storedProject.ID, Name: storedProject.Name}
+	cfg := &config.Config{Projects: []*models.Project{configProject}}
+	m := newTestWeeklyReviewModel(cfg)
+	m.filter.Type = models.TaskTypeBug
+	m.loadData()
+
+	assertSingleWeeklyTask := func(name string, tasks []WeeklyReviewTask) {
+		t.Helper()
+		if len(tasks) != 1 {
+			t.Fatalf("%s count = %d, want 1", name, len(tasks))
+		}
+		if tasks[0].Task.Title != "Matching bug" {
+			t.Fatalf("%s task = %q, want Matching bug", name, tasks[0].Task.Title)
+		}
+	}
+
+	assertSingleWeeklyTask("staleTasks", m.staleTasks)
+	assertSingleWeeklyTask("priorityMismatch", m.priorityMismatch)
+	assertSingleWeeklyTask("upcomingWeek", m.upcomingWeek)
+	assertSingleWeeklyTask("recurringOverview", m.recurringOverview)
+
+	if len(m.staleProjects) != 1 {
+		t.Fatalf("staleProjects count = %d, want 1", len(m.staleProjects))
+	}
+	if got := m.staleProjects[0].HighPriorityTodo; got != 2 {
+		t.Fatalf("project metrics should remain unfiltered: HighPriorityTodo = %d, want 2", got)
 	}
 }
 

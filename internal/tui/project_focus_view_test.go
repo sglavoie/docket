@@ -123,3 +123,143 @@ func TestProjectFocusViewModel_StagesPrefixSafe(t *testing.T) {
 		t.Errorf("expected 3 stages, got %d", len(stages))
 	}
 }
+
+func TestProjectFocusViewModel_SharedFilters_AffectVisibleTasks(t *testing.T) {
+	cfg := testutil.NewTestConfig()
+	cfg.Stages = []string{"todo", "doing", "done"}
+	project := testutil.NewTestProject("filter-shared")
+
+	plain := mustNewTestTask(project, "Plain task")
+	plain.Active = true
+	plain.Priority = 4
+	project.Tasks = append(project.Tasks, plain)
+
+	dimmed := mustNewTestTask(project, "Dimmed task")
+	dimmed.Active = true
+	dimmed.Dimmed = true
+	project.Tasks = append(project.Tasks, dimmed)
+
+	highPriority := mustNewTestTask(project, "High priority")
+	highPriority.Active = true
+	highPriority.Priority = 1
+	project.Tasks = append(project.Tasks, highPriority)
+
+	bug, err := models.NewTask("bug-id", project.NextShortID, models.TaskTypeBug, "Bug task")
+	if err != nil {
+		t.Fatalf("NewTask bug: %v", err)
+	}
+	project.NextShortID++
+	bug.Active = true
+	project.Tasks = append(project.Tasks, bug)
+
+	tagged := mustNewTestTask(project, "Tagged task")
+	tagged.Active = true
+	tagged.Tags = []string{"focus"}
+	project.Tasks = append(project.Tasks, tagged)
+
+	staged := mustNewTestTask(project, "Staged task")
+	staged.Active = true
+	staged.Stage = "doing"
+	project.Tasks = append(project.Tasks, staged)
+
+	project.BuildTaskTree()
+	m := NewProjectFocusViewModel(project, cfg)
+
+	if got := len(m.filteredTasks()); got != 6 {
+		t.Fatalf("baseline filteredTasks() = %d, want 6", got)
+	}
+
+	// Fh: hide dimmed.
+	m.filter.HideDimmed = true
+	if got := len(m.filteredTasks()); got != 5 {
+		t.Errorf("HideDimmed filteredTasks() = %d, want 5", got)
+	}
+	for _, task := range m.filteredTasks() {
+		if task.Dimmed {
+			t.Errorf("HideDimmed should hide dimmed task %q", task.Title)
+		}
+	}
+	clearCommonFilters(&m.filter)
+
+	// Fp: priority filter shows high-priority only (priority <= 2).
+	m.filter.Priority = 1
+	tasks := m.filteredTasks()
+	if len(tasks) != 1 || tasks[0].Title != "High priority" {
+		t.Errorf("Priority=1 filteredTasks() = %v, want only 'High priority'", taskTitles(tasks))
+	}
+	clearCommonFilters(&m.filter)
+
+	// Ft: type filter (bug).
+	m.filter.Type = models.TaskTypeBug
+	tasks = m.filteredTasks()
+	if len(tasks) != 1 || tasks[0].Title != "Bug task" {
+		t.Errorf("Type=bug filteredTasks() = %v, want only 'Bug task'", taskTitles(tasks))
+	}
+	clearCommonFilters(&m.filter)
+
+	// F#: tag filter.
+	m.filter.Tags = map[string]bool{"focus": true}
+	tasks = m.filteredTasks()
+	if len(tasks) != 1 || tasks[0].Title != "Tagged task" {
+		t.Errorf("Tags={focus} filteredTasks() = %v, want only 'Tagged task'", taskTitles(tasks))
+	}
+	clearCommonFilters(&m.filter)
+
+	// F.: stage filter.
+	m.filter.Stage = "doing"
+	tasks = m.filteredTasks()
+	if len(tasks) != 1 || tasks[0].Title != "Staged task" {
+		t.Errorf("Stage=doing filteredTasks() = %v, want only 'Staged task'", taskTitles(tasks))
+	}
+	clearCommonFilters(&m.filter)
+
+	// Fx (clear) returns the full set.
+	if got := len(m.filteredTasks()); got != 6 {
+		t.Errorf("after clear filteredTasks() = %d, want 6", got)
+	}
+}
+
+func TestProjectFocusViewModel_FilterHandlers_DispatchThroughKeymap(t *testing.T) {
+	cfg := testutil.NewTestConfig()
+	project := testutil.NewTestProject("filter-dispatch")
+
+	plain := mustNewTestTask(project, "Plain")
+	plain.Active = true
+	project.Tasks = append(project.Tasks, plain)
+
+	dimmed := mustNewTestTask(project, "Dimmed")
+	dimmed.Active = true
+	dimmed.Dimmed = true
+	project.Tasks = append(project.Tasks, dimmed)
+
+	project.BuildTaskTree()
+	m := NewProjectFocusViewModel(project, cfg)
+
+	if got := len(m.filteredTasks()); got != 2 {
+		t.Fatalf("baseline filteredTasks() = %d, want 2", got)
+	}
+
+	// Activate Fh through the same dispatch path used by Update().
+	if _, _ = m.handleFilterPrefix("h"); m.filter.HideDimmed != true {
+		t.Fatalf("handleFilterPrefix(\"h\") did not toggle HideDimmed; got %v", m.filter.HideDimmed)
+	}
+	if got := len(m.filteredTasks()); got != 1 {
+		t.Errorf("after Fh filteredTasks() = %d, want 1", got)
+	}
+
+	// Fx clears.
+	if _, _ = m.handleFilterPrefix("x"); m.filter.HideDimmed != false {
+		t.Errorf("handleFilterPrefix(\"x\") did not clear HideDimmed; got %v", m.filter.HideDimmed)
+	}
+	if got := len(m.filteredTasks()); got != 2 {
+		t.Errorf("after Fx filteredTasks() = %d, want 2", got)
+	}
+}
+
+func taskTitles(tasks []*models.Task) []string {
+	out := make([]string, len(tasks))
+	for i, t := range tasks {
+		out[i] = t.Title
+	}
+	return out
+}

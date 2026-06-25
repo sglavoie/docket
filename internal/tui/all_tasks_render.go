@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"maps"
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
@@ -252,13 +253,40 @@ func (m *AllTasksViewModel) GetPrefixPopupInfo() *PrefixPopupInfo {
 		return nil
 	}
 	prefix := m.Dispatcher.PendingPrefix()
-	var hints []PrefixHint
-	for _, h := range m.Dispatcher.PrefixHints() {
-		hints = append(hints, PrefixHint{Key: h.Key, Description: h.Description})
+	hints := PrefixHints{}
+	// includeDueDate=false because All Tasks renders `Fd` as a direct cycle
+	// binding (with its own hint inserted below) instead of a sub-prefix.
+	maps.Copy(hints, buildCommonFilterPrefixPopupHints(&m.filter, m.config, false, true, false))
+	if fHints, ok := hints["F"]; ok {
+		dueDetail := "(all)"
+		switch m.filter.DueDate {
+		case DueDateOverdue:
+			dueDetail = "overdue"
+		case DueDateToday:
+			dueDetail = "today"
+		case DueDateThisWeek:
+			dueDetail = "week"
+		case DueDateNone:
+			dueDetail = "no-date"
+		}
+		dueHint := PrefixHint{Key: "d", Description: "due-date (cycle)", Detail: dueDetail, Active: m.filter.DueDate != DueDateAll}
+		projectDetail := "(all)"
+		if len(m.projectFilter) > 0 {
+			projectDetail = fmt.Sprintf("%d projects", len(m.projectFilter))
+		}
+		projectHint := PrefixHint{Key: "P", Description: "projects", Detail: projectDetail, Active: len(m.projectFilter) > 0}
+		hints["F"] = append(fHints[:len(fHints)-1], dueHint, projectHint, fHints[len(fHints)-1])
+	}
+	if _, ok := hints[prefix]; !ok {
+		fallback := make([]PrefixHint, 0, len(m.Dispatcher.PrefixHints()))
+		for _, h := range m.Dispatcher.PrefixHints() {
+			fallback = append(fallback, PrefixHint{Key: h.Key, Description: h.Description})
+		}
+		hints[prefix] = fallback
 	}
 	return &PrefixPopupInfo{
 		Prefix: prefix,
-		Hints:  PrefixHints{prefix: hints},
+		Hints:  hints,
 	}
 }
 
