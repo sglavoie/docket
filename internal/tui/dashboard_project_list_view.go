@@ -11,6 +11,11 @@ import (
 	"github.com/sglavoie/tt/internal/storage"
 )
 
+// dashboardProjectIconGutterWidth is the number of spaces reserved after a
+// project status icon so unicode glyphs like project.wip (⋙) do not read too
+// tightly against the project title.
+const dashboardProjectIconGutterWidth = 2
+
 // renderProjectList renders the project list content for a card of the given width.
 // bottomHeight is reserved space below the card (only used in full-width mode).
 func (m *DashboardModel) renderProjectList(visible []*models.Project, chromeHeight, cardWidth, bottomHeight int) string { //nolint:gocyclo
@@ -73,7 +78,7 @@ func (m *DashboardModel) projectListColumnWidths(visible []*models.Project, show
 	iconColWidth := 0
 	for _, p := range visible {
 		if icon := p.StatusIconEmoji(); icon != "" {
-			iconColWidth = max(iconColWidth, lipgloss.Width(icon)+1)
+			iconColWidth = max(iconColWidth, lipgloss.Width(icon)+dashboardProjectIconGutterWidth)
 		}
 		if width := lipgloss.Width(p.Name); width > maxNameWidth {
 			maxNameWidth = width
@@ -212,7 +217,7 @@ func (m *DashboardModel) renderProjectRowName(p *models.Project, style lipgloss.
 	iconRendered := ""
 	if iconColWidth > 0 {
 		if emoji := p.StatusIconEmoji(); emoji != "" {
-			iconRendered = PadBadge(emoji+" ", iconColWidth)
+			iconRendered = PadBadge(emoji+strings.Repeat(" ", dashboardProjectIconGutterWidth), iconColWidth)
 		} else {
 			iconRendered = strings.Repeat(" ", iconColWidth)
 		}

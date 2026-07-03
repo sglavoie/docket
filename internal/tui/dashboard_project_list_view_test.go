@@ -63,6 +63,44 @@ func TestDashboardProjectIconColumnAlignsBlankIconRows(t *testing.T) {
 	}
 }
 
+// TestDashboardProjectIconColumnGutterWidth ensures a project status icon is
+// followed by exactly dashboardProjectIconGutterWidth visual cells before the
+// project title, in both unicode (⋙ for project.wip) and emoji (🚧) modes, and
+// that no-icon rows stay aligned with icon rows.
+func TestDashboardProjectIconColumnGutterWidth(t *testing.T) {
+	projects := []*models.Project{
+		{ID: "wip", Name: "trail", StatusIcon: "wip"},
+		{ID: "no-icon", Name: "No Icon"},
+	}
+	m := &DashboardModel{}
+
+	for _, useEmoji := range []bool{false, true} {
+		t.Run(map[bool]string{false: "unicode", true: "emoji"}[useEmoji], func(t *testing.T) {
+			icons.SetUseEmoji(useEmoji)
+			t.Cleanup(func() { icons.SetUseEmoji(false) })
+
+			icon := projects[0].StatusIconEmoji()
+			if icon == "" {
+				t.Fatalf("expected project.wip icon to be non-empty")
+			}
+
+			maxNameWidth, _, _, iconColWidth := m.projectListColumnWidths(projects, false, 3)
+			withIcon := ansi.Strip(m.renderProjectRowName(projects[0], NormalStyle, maxNameWidth, iconColWidth))
+			noIcon := ansi.Strip(m.renderProjectRowName(projects[1], NormalStyle, maxNameWidth, iconColWidth))
+
+			titleStart := titleStartColumn(t, withIcon, projects[0].Name)
+			gutter := titleStart - lipgloss.Width(icon)
+			if gutter != dashboardProjectIconGutterWidth {
+				t.Fatalf("icon %q gutter = %d, want %d (row %q)", icon, gutter, dashboardProjectIconGutterWidth, withIcon)
+			}
+
+			if noIconStart := titleStartColumn(t, noIcon, projects[1].Name); noIconStart != titleStart {
+				t.Fatalf("no-icon row misaligned: title starts at %d, icon row at %d", noIconStart, titleStart)
+			}
+		})
+	}
+}
+
 func titleStartColumn(t *testing.T, line, title string) int {
 	t.Helper()
 	idx := strings.Index(line, title)
