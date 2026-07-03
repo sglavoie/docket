@@ -1,6 +1,8 @@
 package tui
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -171,6 +173,53 @@ func TestTaskAttachmentsAddEmptyPath(t *testing.T) {
 	}
 	if model.err == nil {
 		t.Fatal("expected error for empty path")
+	}
+}
+
+func TestTaskAttachmentsAddNormalizesPastedPaths(t *testing.T) {
+	dir := t.TempDir()
+	realPath := filepath.Join(dir, "my file.txt")
+	if err := os.WriteFile(realPath, []byte("content"), 0o644); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+
+	tests := []struct {
+		name  string
+		input string
+	}{
+		{"escaped space", strings.ReplaceAll(realPath, " ", `\ `)},
+		{"quoted path", `"` + realPath + `"`},
+		{"raw unquoted path with spaces", realPath},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			project, err := models.NewProject("project-1", "Attachments Project", t.TempDir())
+			if err != nil {
+				t.Fatalf("NewProject: %v", err)
+			}
+
+			task, err := models.NewTask("task-1", 1, models.TaskTypeTask, "Test task")
+			if err != nil {
+				t.Fatalf("NewTask: %v", err)
+			}
+			project.Tasks = []*models.Task{task}
+
+			model := NewTaskAttachmentsModel(task, project, nil)
+			model.addMode = true
+			model.textInput.SetValue(tc.input)
+
+			cmd := model.addAttachment()
+			if cmd == nil {
+				t.Fatalf("expected non-nil command from addAttachment for input %q", tc.input)
+			}
+			if model.err != nil {
+				t.Fatalf("expected no error for input %q, got: %v", tc.input, model.err)
+			}
+			if model.addMode {
+				t.Fatal("expected addMode to be false after successful add")
+			}
+		})
 	}
 }
 

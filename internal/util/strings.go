@@ -1,6 +1,7 @@
 package util
 
 import (
+	"runtime"
 	"strings"
 	"unicode/utf8"
 )
@@ -77,6 +78,62 @@ func ShellTokenize(s string) []string {
 		tokens = append(tokens, cur.String())
 	}
 	return tokens
+}
+
+// NormalizePastedPathInput normalizes pasted shell-style single-path input into
+// a plain filesystem path. It collapses paths that a shell or file manager copied
+// with quoting ('…' or "…") or backslash-escaped spaces down to the underlying
+// path, using ShellTokenize to match quoted or shell-escaped single-token input.
+//
+// Ordinary unquoted input is returned unchanged: paths with spaces that tokenize
+// into multiple tokens are preserved verbatim, as are unquoted paths containing
+// stray quote characters (e.g. an apostrophe) that shell tokenization would
+// misinterpret. On Windows, unquoted backslashes are path separators rather than
+// shell escapes, so only quote-wrapped input is normalized there.
+func NormalizePastedPathInput(raw string) string {
+	trimmed := strings.TrimSpace(raw)
+	if trimmed == "" {
+		return trimmed
+	}
+	wrapped := isQuoteWrapped(trimmed)
+	if runtime.GOOS == "windows" && !wrapped {
+		// Don't treat ordinary unquoted backslashes as shell escapes on Windows.
+		return trimmed
+	}
+	if !wrapped && containsUnescapedQuote(trimmed) {
+		// Unquoted input with stray quote chars would be misread by the shell
+		// tokenizer, so preserve the original path unchanged.
+		return trimmed
+	}
+	if tokens := ShellTokenize(trimmed); len(tokens) == 1 && tokens[0] != "" {
+		return tokens[0]
+	}
+	return trimmed
+}
+
+// isQuoteWrapped reports whether s begins and ends with the same quote character.
+func isQuoteWrapped(s string) bool {
+	if len(s) < 2 {
+		return false
+	}
+	q := s[0]
+	return (q == '\'' || q == '"') && s[len(s)-1] == q
+}
+
+func containsUnescapedQuote(s string) bool {
+	for i := 0; i < len(s); i++ {
+		if s[i] != '\'' && s[i] != '"' {
+			continue
+		}
+		backslashes := 0
+		for j := i - 1; j >= 0 && s[j] == '\\'; j-- {
+			backslashes++
+		}
+		if backslashes%2 == 0 {
+			return true
+		}
+	}
+	return false
 }
 
 // Truncate truncates a string to maxLen runes, adding "..." if truncated.

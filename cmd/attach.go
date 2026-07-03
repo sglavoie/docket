@@ -11,6 +11,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/tterrors"
+	"github.com/sglavoie/tt/internal/util"
 )
 
 // validateAttachURL ensures the input looks like a real URL reference with an
@@ -127,13 +128,10 @@ func runAttach(cmd *cobra.Command, args []string) error { //nolint:gocyclo
 		return nil
 	}
 
-	// Handle file or code reference attachment
-	filePath := args[1]
-
-	// Strip surrounding single quotes (e.g. from drag-and-drop paths with spaces)
-	if len(filePath) >= 2 && filePath[0] == '\'' && filePath[len(filePath)-1] == '\'' {
-		filePath = filePath[1 : len(filePath)-1]
-	}
+	// Handle file or code reference attachment. Join any trailing args so a path
+	// pasted across multiple tokens survives, then normalize pasted shell-style
+	// input (quotes or backslash-escaped spaces) down to the underlying path.
+	filePath := util.NormalizePastedPathInput(strings.Join(args[1:], " "))
 
 	// Check if it's a code reference (file:line format)
 	codePath, lineNum, isCodeRef := storage.ParseCodeReference(filePath)

@@ -13,13 +13,11 @@ import (
 	"github.com/sglavoie/tt/internal/external"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/util"
 )
 
 func (m *TaskAttachmentsModel) addAttachment() tea.Cmd {
-	input := strings.TrimSpace(m.textInput.Value())
-	if len(input) >= 2 && input[0] == '\'' && input[len(input)-1] == '\'' {
-		input = input[1 : len(input)-1]
-	}
+	input := util.NormalizePastedPathInput(m.textInput.Value())
 	if input == "" {
 		m.err = fmt.Errorf("path/URL cannot be empty")
 		return nil

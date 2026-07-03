@@ -1,6 +1,9 @@
 package util
 
-import "testing"
+import (
+	"runtime"
+	"testing"
+)
 
 func TestShellTokenize(t *testing.T) {
 	cases := []struct {
@@ -21,6 +24,7 @@ func TestShellTokenize(t *testing.T) {
 		{`nvim -u "/tmp/my vimrc"`, []string{"nvim", "-u", "/tmp/my vimrc"}},
 		// Backslash outside quotes.
 		{`/path/with\ spaces/editor`, []string{"/path/with spaces/editor"}},
+		{`/tmp/O\'Reilly\ report.txt`, []string{"/tmp/O'Reilly report.txt"}},
 		{`path\`, []string{`path\`}},
 		{"foo\\\nbar", []string{"foobar"}},
 		{"cmd \\\n--flag", []string{"cmd", "--flag"}},
@@ -44,6 +48,55 @@ func TestShellTokenize(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestNormalizePastedPathInput(t *testing.T) {
+	cases := []struct {
+		name  string
+		input string
+		want  string
+	}{
+		// Quoted single paths are unwrapped.
+		{"single-quoted path with spaces", `'/path/with spaces/file.txt'`, "/path/with spaces/file.txt"},
+		{"double-quoted path with spaces", `"/path/with spaces/file.txt"`, "/path/with spaces/file.txt"},
+		{"quoted path trimmed of surrounding whitespace", `  '/path/with spaces/file.txt'  `, "/path/with spaces/file.txt"},
+		// Backslash-escaped spaces are unescaped.
+		{"escaped spaces", `/path/with\ spaces/file.txt`, "/path/with spaces/file.txt"},
+		{"escaped apostrophe and space", `/tmp/O\'Reilly\ report.txt`, "/tmp/O'Reilly report.txt"},
+		// Ordinary unquoted paths with spaces are preserved verbatim.
+		{"unquoted path with spaces", "/path/with spaces/file.txt", "/path/with spaces/file.txt"},
+		// Internal apostrophes are preserved (shell tokenizer would mangle them).
+		{"internal apostrophe", "/path/it's a/file.txt", "/path/it's a/file.txt"},
+		// Empty and whitespace-only input.
+		{"empty input", "", ""},
+		{"whitespace-only input", "   ", ""},
+		// Plain path with no special handling needed.
+		{"plain path", "/path/file.txt", "/path/file.txt"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := NormalizePastedPathInput(tc.input); got != tc.want {
+				t.Errorf("NormalizePastedPathInput(%q) = %q, want %q", tc.input, got, tc.want)
+			}
+		})
+	}
+}
+
+func TestNormalizePastedPathInputWindowsBackslashes(t *testing.T) {
+	// Unquoted Windows-style backslashes are path separators, not shell escapes.
+	// Gate the expectation on runtime.GOOS: on Windows the path is preserved
+	// verbatim, while elsewhere the shell tokenizer treats backslashes as escapes.
+	const input = `C:\Users\me\file.txt`
+	got := NormalizePastedPathInput(input)
+	if runtime.GOOS == "windows" {
+		if got != input {
+			t.Errorf("NormalizePastedPathInput(%q) = %q, want %q (preserved on Windows)", input, got, input)
+		}
+		return
+	}
+	if want := "C:Usersmefile.txt"; got != want {
+		t.Errorf("NormalizePastedPathInput(%q) = %q, want %q (escaped off Windows)", input, got, want)
 	}
 }
 
