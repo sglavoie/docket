@@ -127,3 +127,38 @@ func TestRenderCardFixedHeightTruncatesAndPreservesBottomBorder(t *testing.T) {
 		t.Fatalf("expected truncated fixed-height card to preserve bottom border:\n%s", rendered)
 	}
 }
+
+func TestRenderCardWrapsLongSeparatorRowsWithinOuterWidth(t *testing.T) {
+	content := strings.Join([]string{
+		"| Raw ingredients                                                     | Spoken output |",
+		"| ------------------------------------------------------------------- | ------------------------------------------------------------------------------ |",
+		"| `INTERESTRATE:IRSWAP:FIXEDFLOAT` + `EUR EURIBOR` + `5Y`             | \"five-year Euribor fixed-float swap\" |",
+	}, "\n")
+
+	const width = 64
+	rendered := ansi.Strip(renderCard("Description", content, width, DefaultCardConfig()))
+	lines := strings.Split(rendered, "\n")
+	if len(lines) < 3 {
+		t.Fatalf("expected card frame and body lines, got:\n%s", rendered)
+	}
+
+	for i, line := range lines {
+		if got := lipgloss.Width(line); got > width {
+			t.Fatalf("card line %d width = %d, want <= %d: %q\n\n%s", i, got, width, line, rendered)
+		}
+	}
+	if !strings.HasSuffix(lines[0], "╮") {
+		t.Fatalf("expected top border to close within width, got %q\n%s", lines[0], rendered)
+	}
+	if !strings.HasSuffix(lines[len(lines)-1], "╯") {
+		t.Fatalf("expected bottom border to close within width, got %q\n%s", lines[len(lines)-1], rendered)
+	}
+	for i, line := range lines[1 : len(lines)-1] {
+		if !strings.HasPrefix(line, "│") || !strings.HasSuffix(line, "│") {
+			t.Fatalf("expected body line %d to keep both side borders, got %q\n%s", i+1, line, rendered)
+		}
+	}
+	if !strings.Contains(rendered, "fixed-float") {
+		t.Fatalf("expected wrapped card content to be preserved, got:\n%s", rendered)
+	}
+}

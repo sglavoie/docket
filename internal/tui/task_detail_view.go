@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 
 	"github.com/sglavoie/tt/internal/icons"
 	"github.com/sglavoie/tt/internal/logging"
@@ -16,13 +17,21 @@ import (
 // maxContentWidth aliases the layout constant for local use.
 const maxContentWidth = MaxContentWidth
 
+// detailContentWidth returns the shared task-detail card width used by View,
+// section rendering, centering, and description markdown. It caps the model
+// width at maxContentWidth and keeps a safe positive lower bound so rendering
+// never receives a zero or negative width during early layout.
+func (m *TaskDetailModel) detailContentWidth() int {
+	return max(min(m.width, maxContentWidth), 1)
+}
+
 func (m *TaskDetailModel) View() tea.View {
 	if m.task == nil || m.project == nil {
 		return tea.NewView("No task selected")
 	}
 
 	// Determine content width (capped, centered if wider)
-	contentWidth := min(m.width, maxContentWidth)
+	contentWidth := m.detailContentWidth()
 	content := m.renderDetailContent(contentWidth)
 
 	// Title bar
@@ -41,7 +50,7 @@ func (m *TaskDetailModel) renderDetailContent(contentWidth int) string {
 	m.clampScroll()
 
 	visibleLines := m.visibleDetailLines(allLines)
-	return m.centerDetailLines(visibleLines)
+	return m.centerDetailLines(visibleLines, contentWidth)
 }
 
 func (m *TaskDetailModel) detailSections(contentWidth int) []string {
@@ -177,12 +186,12 @@ func (m *TaskDetailModel) visibleDetailLines(allLines []string) []string {
 	return visibleLines
 }
 
-func (m *TaskDetailModel) centerDetailLines(visibleLines []string) string {
-	if m.width <= maxContentWidth {
+func (m *TaskDetailModel) centerDetailLines(visibleLines []string, contentWidth int) string {
+	if m.width <= contentWidth {
 		return strings.Join(visibleLines, "\n")
 	}
 
-	padLeft := (m.width - maxContentWidth) / 2
+	padLeft := (m.width - contentWidth) / 2
 	if padLeft <= 0 {
 		return strings.Join(visibleLines, "\n")
 	}
@@ -198,7 +207,7 @@ func (m *TaskDetailModel) centerDetailLines(visibleLines []string) string {
 // renderDetailSectionDivider renders a labeled cluster divider line.
 func renderDetailSectionDivider(label string, width int) string {
 	prefix := "── " + label + " "
-	remaining := max(width-len(prefix), 0)
+	remaining := max(width-lipgloss.Width(prefix), 0)
 	return MutedStyle.Render(prefix + strings.Repeat("─", remaining))
 }
 
@@ -219,7 +228,7 @@ func renderHistoryClusterDivider(commentsN, decisionsN, attachmentsN int, expand
 		prefix += "(" + summary + ") "
 	}
 	prefix += hint + " "
-	remaining := max(width-len(prefix), 0)
+	remaining := max(width-lipgloss.Width(prefix), 0)
 	return MutedStyle.Render(prefix + strings.Repeat("─", remaining))
 }
 
@@ -441,7 +450,11 @@ func (m *TaskDetailModel) renderMarkdownDescription(contentWidth int) string {
 		return ""
 	}
 
-	innerWidth := max(contentWidth-CardBorderOverhead, 10)
+	// Derive the markdown body width from the active card style's horizontal
+	// frame (border + padding) so the description tracks renderCard's real
+	// inner width instead of a hardcoded overhead constant.
+	frame := DefaultCardConfig().Style.GetHorizontalFrameSize()
+	innerWidth := max(contentWidth-frame, 1)
 
 	// Return cached result if width and theme haven't changed
 	if m.renderedDesc != "" && m.renderedDescWidth == innerWidth && m.renderedDescTheme == activeThemeName {

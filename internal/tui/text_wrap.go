@@ -16,6 +16,13 @@ func wrapStyled(s string, width int) []string {
 	return strings.Split(ansi.Wrap(s, width, ""), "\n")
 }
 
+func hardWrapStyled(s string, width int) []string {
+	if width <= 0 || s == "" {
+		return []string{s}
+	}
+	return strings.Split(ansi.Hardwrap(s, width, true), "\n")
+}
+
 // wrapText wraps text to the specified width.
 func wrapText(text string, width int) []string {
 	if width <= 0 {

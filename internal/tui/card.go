@@ -222,7 +222,10 @@ func renderCard(title, content string, width int, config CardConfig) string {
 	// Apply border color to the style
 	style := config.Style.BorderForeground(borderColor)
 
-	// Render the content in a box with proper width handling
+	// Render the content in a box with proper width handling. Lipgloss can let
+	// explicit long lines expand a bordered block, so pre-wrap against the
+	// inner body width before drawing the frame.
+	content = boundToWidth(content, cardInnerWidth(style, width))
 	renderStyle := style.Width(max(width, 1))
 	rendered := renderStyle.Render(content)
 
@@ -251,12 +254,19 @@ func renderCard(title, content string, width int, config CardConfig) string {
 	}
 
 	// Replace the top border line with titled version
-	actualWidth := lipgloss.Width(lines[0])
+	actualWidth := max(width, 1)
+	if renderedWidth := lipgloss.Width(lines[0]); renderedWidth > 0 && renderedWidth < actualWidth {
+		actualWidth = renderedWidth
+	}
 	borderStyle := lipgloss.NewStyle().Foreground(borderColor)
 	titleText := titleStyle.Render(title)
 	lines[0] = renderTitledTopBorder(titleText, actualWidth, borderStyle)
 
 	return strings.Join(lines, "\n")
+}
+
+func cardInnerWidth(style lipgloss.Style, outerWidth int) int {
+	return max(outerWidth-style.GetHorizontalFrameSize(), 1)
 }
 
 func renderCardBlankLine(style lipgloss.Style) string {
