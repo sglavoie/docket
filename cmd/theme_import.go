@@ -18,7 +18,7 @@ var themeImportCmd = &cobra.Command{
 	Short: "Import a theme into config",
 	Long: `Import a named theme file and apply it to a theme slot.
 
-Bare names are resolved inside ~/.tt/themes/. Arguments containing a path
+Bare names are resolved inside the themes/ folder of your tt data directory. Arguments containing a path
 separator or ending in .json are treated as file paths.
 
 Use --into to override which slot the theme is applied to (default: the

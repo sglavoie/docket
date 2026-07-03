@@ -35,7 +35,7 @@ The `internal/models/` package defines the domain types: Project, Task, TaskType
 
 The `internal/storage/` package handles persistence. Tasks are stored in human-readable markdown files (`tasks.md` per project). The `parser.go` file parses markdown into Task structs using regex to extract metadata from HTML comments. The `markdown.go` file writes tasks back to markdown format.
 
-The `internal/config/` package manages the JSON config file at `~/.tt.json`. It stores project metadata, current project selection, and tool preferences (fzf, glow). The Config struct holds project references; actual task data lives in markdown files.
+The `internal/config/` package manages the JSON config file (`~/.tt/.tt.json` by default, or the `tt` folder in iCloud Drive when available). It stores project metadata, current project selection, and tool preferences (fzf, glow). The Config struct holds project references; actual task data lives in markdown files. Default data-root and config-path decisions route through the helpers in `internal/config/paths.go`.
 
 The `internal/tui/` package implements the BubbleTea interface. The `AppModel` in `app.go` manages a view stack for navigation. Each view (dashboard, project tree, task detail, project creator) is a separate model that receives delegated Update/View calls.
 

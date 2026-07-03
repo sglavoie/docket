@@ -38,27 +38,32 @@ func clampIntPtrRange(p *int, name string, min, max int) {
 // Manager handles configuration file operations.
 type Manager struct {
 	configPath string
+	// fromDefaultPath records whether this manager resolved its config path
+	// from the active default (no explicit --config override). Later
+	// first-run migration is gated on this so an explicit config path never
+	// triggers default-path migration.
+	fromDefaultPath bool
 }
 
-// NewManager creates a new configuration manager.
+// NewManager creates a new configuration manager. An empty customPath resolves
+// the config file through the central default-path resolver (iCloud Drive when
+// available, otherwise ~/.tt); a non-empty customPath is used verbatim and
+// disables default-path migration.
 func NewManager(customPath string) *Manager {
-	var configPath string
-
 	if customPath != "" {
-		configPath = customPath
-	} else {
-		homeDir, err := os.UserHomeDir()
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "warning: could not determine home directory, using .tt.json in current directory\n")
-			configPath = ".tt.json"
-		} else {
-			configPath = filepath.Join(homeDir, ".tt", ".tt.json")
-		}
+		return &Manager{configPath: customPath}
 	}
-
 	return &Manager{
-		configPath: configPath,
+		configPath:      DefaultConfigPath(),
+		fromDefaultPath: true,
 	}
+}
+
+// CreatedFromDefaultPath reports whether this manager resolved its config path
+// from the active default rather than an explicit --config override. First-run
+// migration must only run when this is true.
+func (m *Manager) CreatedFromDefaultPath() bool {
+	return m.fromDefaultPath
 }
 
 // recoverFromBackup attempts to restore a Config from the backup file when the
@@ -127,6 +132,13 @@ func resolveEditorDefault() string {
 
 // Load loads the configuration from file.
 func (m *Manager) Load() (*Config, error) { //nolint:gocyclo
+	// Activate first-run copy-then-switch migration before reading the config so
+	// a legacy ~/.tt default install is migrated into the active iCloud root and
+	// the migrated config is visible below. No-op unless every gate holds.
+	if err := m.maybeMigrateDefaultInstall(); err != nil {
+		return nil, fmt.Errorf("first-run data migration failed: %w", err)
+	}
+
 	if _, err := os.Stat(m.configPath); os.IsNotExist(err) {
 		cfg := NewConfig()
 		// Respect $EDITOR/$VISUAL and PATH availability instead of always
@@ -157,11 +169,7 @@ func (m *Manager) Load() (*Config, error) { //nolint:gocyclo
 
 	// Ensure defaults for missing fields
 	if config.DataDir == "" {
-		homeDir, err := os.UserHomeDir()
-		if err != nil {
-			return nil, fmt.Errorf("failed to determine home directory for data dir: %w", err)
-		}
-		config.DataDir = filepath.Join(homeDir, ".tt")
+		config.DataDir = ActiveDefaultDataDir()
 	}
 	if config.Editor == "" {
 		config.Editor = resolveEditorDefault()

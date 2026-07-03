@@ -22,11 +22,10 @@ const CurrentConfigVersion = 3
 
 // NewConfig creates a new configuration with default values.
 func NewConfig() *Config {
-	homeDir, _ := os.UserHomeDir()
 	defaultUndoDepth := DefaultUndoHistoryDepth
 	return &Config{
 		Version:           CurrentConfigVersion,
-		DataDir:           filepath.Join(homeDir, ".tt"),
+		DataDir:           ActiveDefaultDataDir(),
 		CurrentProject:    "",
 		Editor:            "code",
 		DefaultContext:    "personal",

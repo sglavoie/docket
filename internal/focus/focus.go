@@ -21,6 +21,14 @@ type FocusTask struct {
 // the input are skipped so callers can pass loosely-assembled slices without
 // pre-filtering them.
 func CollectActionableTasks(projects []*models.Project) []FocusTask {
+	return CollectActionableTasksAt(projects, time.Now())
+}
+
+// CollectActionableTasksAt is CollectActionableTasks with an explicit reference
+// time for the snooze check. Use this instead of CollectActionableTasks when the
+// reference time is not time.Now() (e.g., the recommendation engine's
+// deterministic clock), mirroring Task.IsSnoozed / Task.IsSnoozedAt.
+func CollectActionableTasksAt(projects []*models.Project, now time.Time) []FocusTask {
 	var tasks []FocusTask
 	for _, project := range projects {
 		if project == nil {
@@ -30,7 +38,7 @@ func CollectActionableTasks(projects []*models.Project) []FocusTask {
 			if task == nil {
 				continue
 			}
-			if task.Status.IsComplete() || task.Status == models.StatusBlocked || task.IsSnoozed() || hasIncompleteDependencies(task, project, projects) {
+			if task.Status.IsComplete() || task.Status == models.StatusBlocked || task.IsSnoozedAt(now) || hasIncompleteDependencies(task, project, projects) {
 				continue
 			}
 			tasks = append(tasks, FocusTask{Task: task, Project: project})

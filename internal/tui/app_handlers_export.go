@@ -3,7 +3,6 @@ package tui
 import (
 	"fmt"
 	"os"
-	"path/filepath"
 	"time"
 
 	tea "charm.land/bubbletea/v2"
@@ -30,7 +29,7 @@ func (m *AppModel) handleExportProjectMsg(msg ExportProjectMsg) tea.Cmd {
 		)
 	}
 
-	defaultPath := exportDefaultPath(p)
+	defaultPath := m.configManager.ExportPath(p.Slug)
 
 	// Repeat-press: copy path to clipboard if within 10s of last export.
 	if time.Since(m.lastExportAt) < 10*time.Second && m.lastExportPath == defaultPath {
@@ -49,7 +48,14 @@ func (m *AppModel) handleExportProjectMsg(msg ExportProjectMsg) tea.Cmd {
 		)
 	}
 
-	path, err := storage.ExportProjectMarkdown(p, "")
+	if err := os.MkdirAll(m.configManager.ExportsDir(), 0700); err != nil {
+		return tea.Batch(
+			func() tea.Msg { return StatusMsg(fmt.Sprintf("Export failed: %v", err)) },
+			defaultStatusTimeout(),
+		)
+	}
+
+	path, err := storage.ExportProjectMarkdown(p, defaultPath)
 	if err != nil {
 		return tea.Batch(
 			func() tea.Msg { return StatusMsg(fmt.Sprintf("Export failed: %v", err)) },
@@ -115,14 +121,4 @@ func (m *AppModel) crossOutlinerCursorProject() *models.Project {
 		}
 	}
 	return nil
-}
-
-// exportDefaultPath returns the expected default export path for a project.
-// Used for the repeat-press clipboard check (no I/O performed here).
-func exportDefaultPath(p *models.Project) string {
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		return ""
-	}
-	return filepath.Join(homeDir, ".tt", "exports", p.Slug+".md")
 }

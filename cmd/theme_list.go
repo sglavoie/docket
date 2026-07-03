@@ -13,7 +13,7 @@ import (
 var themeListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List saved themes",
-	Long: `List all theme files saved in ~/.tt/themes/.
+	Long: `List all theme files saved in the themes/ folder of your tt data directory.
 
 EXAMPLES
 

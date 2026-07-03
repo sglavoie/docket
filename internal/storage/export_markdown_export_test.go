@@ -49,6 +49,19 @@ func TestExportProjectMarkdown_EmptyNotesDir(t *testing.T) {
 	}
 }
 
+func TestExportProjectMarkdown_EmptyDestRejected(t *testing.T) {
+	tmp := t.TempDir()
+	p := &models.Project{Name: "Test", Slug: "test", Path: tmp}
+
+	_, err := ExportProjectMarkdown(p, "")
+	if err == nil {
+		t.Fatal("expected error for empty destination path, got nil")
+	}
+	if !strings.Contains(err.Error(), "destination") {
+		t.Errorf("expected destination-required error, got: %v", err)
+	}
+}
+
 func TestExportProjectMarkdown_PinnedOrdering(t *testing.T) {
 	tmp := t.TempDir()
 	notesDir := filepath.Join(tmp, "notes")

@@ -20,7 +20,7 @@ Use 'tt task comment list' to see comment indices.
 
 The editor can be configured via:
 - --editor flag
-- 'editor' field in ~/.tt/.tt.json
+- 'editor' field in the tt config file
 - EDITOR environment variable
 - Falls back to 'code' (VS Code)
 

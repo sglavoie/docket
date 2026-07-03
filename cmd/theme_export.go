@@ -16,10 +16,10 @@ var themeExportFile string
 var themeExportCmd = &cobra.Command{
 	Use:   "export <name>",
 	Short: "Export the current theme to a file",
-	Long: `Export a theme slot to a named theme file in ~/.tt/themes/.
+	Long: `Export a theme slot to a named theme file in the themes/ folder of your tt data directory.
 
 Use --slot to choose which slot to export (defaults to the active theme).
-Use --file to write to an arbitrary path instead of ~/.tt/themes/<name>.json.
+Use --file to write to an arbitrary path instead of the default themes/<name>.json.
 
 EXAMPLES
 
@@ -33,7 +33,7 @@ EXAMPLES
 func init() {
 	themeCmd.AddCommand(themeExportCmd)
 	themeExportCmd.Flags().StringVar(&themeExportSlot, "slot", "", `theme slot to export: "dark" or "light" (default: active theme)`)
-	themeExportCmd.Flags().StringVar(&themeExportFile, "file", "", "write to this path instead of ~/.tt/themes/<name>.json")
+	themeExportCmd.Flags().StringVar(&themeExportFile, "file", "", "write to this path instead of the default themes/<name>.json")
 }
 
 func runThemeExport(cmd *cobra.Command, args []string) error {

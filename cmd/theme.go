@@ -9,7 +9,7 @@ var themeCmd = &cobra.Command{
 	Short: "Manage named themes",
 	Long: `Commands for exporting, importing, listing, and resetting named themes.
 
-Themes are stored as portable JSON files in ~/.tt/themes/ and can be shared.
+Themes are stored as portable JSON files in the themes/ folder of your tt data directory and can be shared.
 
 EXAMPLES
 

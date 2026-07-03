@@ -75,7 +75,7 @@ func Recommend(input RecommendationEngineInput) RecommendedAction {
 	plannedToday, carriedOver := indexDailyPlan(input.DailyPlan, todayKey)
 
 	var actionable, inbox []recommendCandidate
-	for _, ft := range focus.CollectActionableTasks(input.Projects) {
+	for _, ft := range focus.CollectActionableTasksAt(input.Projects, now) {
 		if ft.Task == nil || ft.Project == nil {
 			continue
 		}
@@ -216,7 +216,7 @@ func collectBlockedCandidates(projects []*models.Project, today time.Time, plann
 			continue
 		}
 		for _, task := range project.Tasks {
-			if task == nil || task.Status.IsComplete() || task.IsSnoozed() {
+			if task == nil || task.Status.IsComplete() || task.IsSnoozedAt(today) {
 				continue
 			}
 			isBlocked := task.Status == models.StatusBlocked || focus.HasIncompleteDependencies(task, project, projects)

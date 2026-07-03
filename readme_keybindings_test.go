@@ -121,6 +121,8 @@ func TestREADMECLIContractStaysCurrent(t *testing.T) {
 	// but no longer has an exhaustive CLI reference.
 	required := []string{
 		"~/.tt/",
+		"iCloud Drive",
+		"never synced",
 		"tt task add",
 		"tt project",
 		"tt task archive list",
@@ -152,7 +154,11 @@ func TestCLIReferenceContractStaysCurrent(t *testing.T) {
 
 	forbidden := []string{
 		"config file path (default: ~/.tt.json)",
+		"config file path (default: ~/.tt/.tt.json)",
 		"'editor' field in ~/.tt.json",
+		"'editor' field in ~/.tt/.tt.json",
+		"The project directory is moved to ~/.tt/trash/ and can be restored later.",
+		"Export a project to a human-readable Markdown file in ~/.tt/exports/<slug>.md.",
 		"Usage: tt project archive [name|id] [flags]",
 		"Usage: tt project delete [name|id] [flags]",
 		"Usage: tt project open [name|id] [flags]",
@@ -175,8 +181,10 @@ func TestCLIReferenceContractStaysCurrent(t *testing.T) {
 	}
 
 	required := []string{
-		"config file path (default: ~/.tt/.tt.json)",
-		"'editor' field in ~/.tt/.tt.json",
+		"config file path (default: ~/.tt/.tt.json, or the iCloud Drive tt folder when available)",
+		"'editor' field in the tt config file",
+		"The project directory is moved to the trash/ folder in your tt data directory and can be restored later.",
+		"Export a project to a human-readable Markdown file in the exports/ folder of your tt data directory.",
 		"## tt task archive list",
 		"Usage: tt task archive show <id-or-prefix> [flags]",
 		"## tt task archive rebuild-index",
@@ -187,7 +195,6 @@ func TestCLIReferenceContractStaysCurrent(t *testing.T) {
 		"Usage: tt project pin <slug-or-id> [flags]",
 		"Usage: tt project show [slug-or-id] [flags]",
 		"Usage: tt project unarchive <slug-or-id> [flags]",
-		"The project directory is moved to ~/.tt/trash/ and can be restored later.",
 		"Projects can be specified by slug or ID.",
 		"tt select my-project   # Select by slug or ID directly",
 		"Manage action board items",

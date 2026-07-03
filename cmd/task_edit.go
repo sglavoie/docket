@@ -21,7 +21,7 @@ If no ID is specified, opens an interactive selector.
 
 The editor can be configured via:
 - --editor flag
-- 'editor' field in ~/.tt/.tt.json
+- 'editor' field in the tt config file
 - EDITOR environment variable
 - Falls back to 'code' (VS Code)
 

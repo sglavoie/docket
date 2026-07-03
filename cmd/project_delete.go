@@ -19,7 +19,7 @@ var projectDeleteCmd = &cobra.Command{
 	Short: "Delete a project",
 	Long: `Delete a project by moving it to the trash folder.
 
-The project directory is moved to ~/.tt/trash/ and can be restored later.
+The project directory is moved to the trash/ folder in your tt data directory and can be restored later.
 Use 'tt project restore <slug>' to restore a deleted project.
 
 Examples:

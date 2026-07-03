@@ -40,7 +40,7 @@ var Deps = Dependencies{
 	Repository: storage.DefaultRepository,
 }
 
-const defaultConfigPathDisplay = "~/.tt/.tt.json"
+const defaultConfigPathDisplay = "~/.tt/.tt.json, or the iCloud Drive tt folder when available"
 
 // TaskMsg formats a standard success message for task operations.
 // Format: "[project] Verb Type #id: title"

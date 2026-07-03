@@ -3,31 +3,22 @@ package storage
 import (
 	"fmt"
 	"os"
-	"path/filepath"
 	"strings"
 
 	"github.com/sglavoie/tt/internal/models"
 )
 
 // ExportProjectMarkdown writes a clean markdown export of p to destPath.
-// If destPath is "", it defaults to ~/.tt/exports/<slug>.md.
-// LoadProject is called first to ensure tasks are populated.
-// Returns the final absolute path written.
+// destPath must be non-empty; callers resolve default export locations through
+// config.Manager.ExportPath. LoadProject is called first to ensure tasks are
+// populated. Returns the final absolute path written.
 func ExportProjectMarkdown(p *models.Project, destPath string) (string, error) {
 	if err := LoadProject(p); err != nil {
 		return "", fmt.Errorf("load project: %w", err)
 	}
 
 	if destPath == "" {
-		homeDir, err := os.UserHomeDir()
-		if err != nil {
-			return "", fmt.Errorf("resolve home dir: %w", err)
-		}
-		dir := filepath.Join(homeDir, ".tt", "exports")
-		if err := os.MkdirAll(dir, 0700); err != nil {
-			return "", fmt.Errorf("create exports dir: %w", err)
-		}
-		destPath = filepath.Join(dir, p.Slug+".md")
+		return "", fmt.Errorf("export destination path is required")
 	}
 
 	data := WriteProjectMarkdownClean(p)

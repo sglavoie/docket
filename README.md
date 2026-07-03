@@ -1,6 +1,6 @@
 # tt - Terminal Tasks
 
-tt is a CLI-first project and task manager with a full-screen TUI built on Bubble Tea. It is aimed at terminal-heavy workflows and stores data in readable markdown under `~/.tt/`.
+tt is a CLI-first project and task manager with a full-screen TUI built on Bubble Tea. It is aimed at terminal-heavy workflows and stores data in readable markdown under its data directory — your iCloud Drive when available, otherwise `~/.tt/`.
 
 ## Installation
 
@@ -117,10 +117,16 @@ tt project unarchive <slug-or-id>
 
 ## Data Directory
 
-tt stores its data in `~/.tt/`.
+tt keeps its durable data under a single data directory. When iCloud Drive is
+available it defaults to the `tt` folder in iCloud Drive, so your tasks sync
+across machines; otherwise it uses the local `~/.tt/`. Passing `--config <path>`
+overrides this and disables the default-path migration. Existing local installs
+are migrated automatically (copy-then-switch), leaving the old `~/.tt/` as a
+backup. Logs and TUI lock files always stay machine-local under `~/.tt/` and are
+never synced.
 
 ```text
-~/.tt/
+<data dir>/            # ~/.tt/, or the tt folder in iCloud Drive when available
 ├── projects/
 ├── notes/
 ├── contexts/

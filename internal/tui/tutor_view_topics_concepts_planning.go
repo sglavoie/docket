@@ -37,7 +37,7 @@ Delete. The filter is removed from the config file.
 
 # Storage
 
-Saved filters are stored in the JSON config file (~/.tt.json) and
+Saved filters are stored in the tt config file (~/.tt/.tt.json, or iCloud Drive when available) and
 are available across all projects. Snapshot filters capture view mode,
 type/status/priority/tag/section/due-date/attribute/score filters,
 sort field and direction, and the active pinned tag tab. Criteria
