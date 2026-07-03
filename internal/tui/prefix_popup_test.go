@@ -3,6 +3,8 @@ package tui
 import (
 	"strings"
 	"testing"
+
+	"github.com/charmbracelet/x/ansi"
 )
 
 func TestRenderPrefixPopup_EmptyPrefix(t *testing.T) {
@@ -239,6 +241,39 @@ func TestRenderPrefixPopup_CategoryTitle(t *testing.T) {
 	// Should contain "status" category name
 	if !strings.Contains(result, "tatus") {
 		t.Errorf("expected result to contain category name 'status', got %q", result)
+	}
+}
+
+func TestRenderPrefixPopup_SemicolonUsesAvailableWidth(t *testing.T) {
+	terminalWidth := 72
+	result := RenderPrefixPopup(";", PrefixHints{";": SemicolonPrefixHints}, terminalWidth, 40)
+	if result == "" {
+		t.Fatal("expected semicolon prefix popup to render")
+	}
+
+	width := popupWidth(result)
+	if width <= terminalWidth/2 {
+		t.Fatalf("semicolon popup width = %d, want wider than half terminal width %d", width, terminalWidth/2)
+	}
+	if width > terminalWidth-2 {
+		t.Fatalf("semicolon popup width = %d, want <= available width %d", width, terminalWidth-2)
+	}
+
+	plain := ansi.Strip(result)
+	for _, row := range []struct {
+		description string
+		detail      string
+	}{
+		{"pipeline hub", "Overview of all pipeline stages"},
+		{"bulk capture", "Bulk task capture in a project"},
+		{"backlog", "Cross-project task suggestions"},
+		{"metrics", "Completion rates and throughput"},
+		{"roadmap", "Gantt chart and critical path"},
+		{"priority", "Change task priority globally"},
+		{"status update", "Change task status globally"},
+	} {
+		assertPopupLineContains(t, plain, row.description, row.detail)
+		assertPopupDoesNotContainStandaloneLine(t, plain, row.detail)
 	}
 }
 

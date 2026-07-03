@@ -205,7 +205,7 @@ func RenderPrefixPopupWithCategory(prefix, category string, hints PrefixHints, w
 	onePerLine := len(keyHints) <= maxAvailableHeight
 
 	minWidth := 25
-	maxWidth := width / 2
+	maxWidth := width - 2
 	if maxWidth < minWidth {
 		maxWidth = width - 4
 	}
