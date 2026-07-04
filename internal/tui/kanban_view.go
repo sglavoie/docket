@@ -7,6 +7,17 @@ import (
 	"charm.land/lipgloss/v2"
 )
 
+const kanbanMinColWidth = 25
+
+type kanbanColumnLayout struct {
+	startCol       int
+	endCol         int
+	numVisible     int
+	colWidth       int
+	leftHintWidth  int
+	rightHintWidth int
+}
+
 // joinWithActiveColBorders joins parts with sep, coloring separators adjacent
 // to activeVisIdx with the accent color to visually indicate the focused column.
 func joinWithActiveColBorders(parts []string, sep string, activeVisIdx int, accent lipgloss.Style) string {
@@ -22,6 +33,48 @@ func joinWithActiveColBorders(parts []string, sep string, activeVisIdx int, acce
 		sb.WriteString(part)
 	}
 	return sb.String()
+}
+
+func computeKanbanColumnLayout(width, numCols, scrollOff int) kanbanColumnLayout {
+	if width <= 0 || numCols <= 0 {
+		return kanbanColumnLayout{}
+	}
+
+	numVisible := min(numCols, max((width+1)/(kanbanMinColWidth+1), 1))
+	for {
+		startCol := scrollOff
+		if startCol+numVisible > numCols {
+			startCol = numCols - numVisible
+		}
+		if startCol < 0 {
+			startCol = 0
+		}
+		endCol := startCol + numVisible
+
+		leftHintWidth := 0
+		if startCol > 0 {
+			leftHintWidth = 1
+		}
+		rightHintWidth := 0
+		if endCol < numCols {
+			rightHintWidth = 1
+		}
+
+		availableWidth := max(width-leftHintWidth-rightHintWidth, 1)
+		maxVisible := min(numCols, max((availableWidth+1)/(kanbanMinColWidth+1), 1))
+		if maxVisible == numVisible {
+			colWidth := max((availableWidth-(numVisible-1))/numVisible, kanbanMinColWidth)
+			return kanbanColumnLayout{
+				startCol:       startCol,
+				endCol:         endCol,
+				numVisible:     numVisible,
+				colWidth:       colWidth,
+				leftHintWidth:  leftHintWidth,
+				rightHintWidth: rightHintWidth,
+			}
+		}
+		numVisible = maxVisible
+	}
 }
 
 // kanbanRender renders the full kanban view as a string.
@@ -95,27 +148,14 @@ func kanbanRender(m *KanbanModel) string {
 	}
 
 	// === Compute visible columns ===
-	const minColWidth = 25
 	const colSep = "│"
 	const divSep = "┼"
 
-	// Max columns that fit at minimum width: each col needs minColWidth + 1 (separator),
-	// except the last which needs no trailing separator.
-	maxVisible := max((m.width+1)/(minColWidth+1), 1)
-	numVisible := min(numCols, maxVisible)
-
-	// Clamp horizontal scroll offset.
-	startCol := m.colScrollOff
-	if startCol+numVisible > numCols {
-		startCol = numCols - numVisible
-	}
-	if startCol < 0 {
-		startCol = 0
-	}
-	endCol := startCol + numVisible
-
-	// Column width: divide remaining space equally after separators.
-	colWidth := max((m.width-(numVisible-1))/numVisible, minColWidth)
+	layout := computeKanbanColumnLayout(m.width, numCols, m.colScrollOff)
+	startCol := layout.startCol
+	endCol := layout.endCol
+	numVisible := layout.numVisible
+	colWidth := layout.colWidth
 
 	// === Height budget ===
 	// title(1) + blank(1) + header(1) + divider(1) + footer(2) = 6 fixed lines
@@ -133,19 +173,15 @@ func kanbanRender(m *KanbanModel) string {
 	sb.WriteString("\n")
 
 	// === Scroll hint runes (1 char each) ===
-	leftHintWidth := 0
-	rightHintWidth := 0
+	leftHintWidth := layout.leftHintWidth
 	leftHint := ""
 	rightHint := ""
-	if startCol > 0 {
+	if leftHintWidth > 0 {
 		leftHint = MutedStyle.Render(IconScrollLeft)
-		leftHintWidth = 1
 	}
-	if endCol < numCols {
+	if layout.rightHintWidth > 0 {
 		rightHint = MutedStyle.Render(IconScrollRight)
-		rightHintWidth = 1
 	}
-	_ = rightHintWidth // used indirectly via rightHint appending
 
 	// === Column headers ===
 	activeVisIdx := m.activeCol - startCol

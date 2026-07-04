@@ -156,6 +156,38 @@ func TestKanbanRender_NoScrollHints_WhenAllColumnsVisible(t *testing.T) {
 	}
 }
 
+func TestKanbanRender_ScrollHintsStayWithinTerminalWidth(t *testing.T) {
+	cols := make([]KanbanColumn, 7)
+	for i := range cols {
+		cols[i] = makeColN("column", 1)
+	}
+
+	tests := []struct {
+		name      string
+		activeCol int
+		scrollOff int
+	}{
+		{name: "right hint", activeCol: 0, scrollOff: 0},
+		{name: "left and right hints", activeCol: 3, scrollOff: 2},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			m := newRenderKanban(80, 24, cols)
+			m.activeCol = tt.activeCol
+			m.colScrollOff = tt.scrollOff
+
+			rendered := kanbanRender(m)
+			for i, line := range strings.Split(rendered, "\n") {
+				stripped := ansi.Strip(line)
+				if width := lipgloss.Width(stripped); width > m.width {
+					t.Fatalf("line %d exceeds terminal width %d: width=%d content=%q\n\n%s",
+						i+1, m.width, width, stripped, ansi.Strip(rendered))
+				}
+			}
+		})
+	}
+}
+
 // ── column width calculation ──────────────────────────────────────────────────
 
 func TestKanbanRender_NarrowTerminal_SingleColumnMode(t *testing.T) {

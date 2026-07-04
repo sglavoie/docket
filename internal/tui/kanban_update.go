@@ -160,9 +160,10 @@ func (m *KanbanModel) adjustHorizontalScroll() {
 		return
 	}
 
-	const minColWidth = 25
-	maxVisible := max((m.width+1)/(minColWidth+1), 1)
-	numVisible := min(numCols, maxVisible)
+	numVisible := computeKanbanColumnLayout(m.width, numCols, m.colScrollOff).numVisible
+	if numVisible < 1 {
+		numVisible = 1
+	}
 
 	// Active column scrolled past right edge.
 	if m.activeCol >= m.colScrollOff+numVisible {
