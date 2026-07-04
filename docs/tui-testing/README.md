@@ -144,6 +144,12 @@ The [`scenarios/`](scenarios/) directory holds committed, verified examples:
 | `baseline-layout.json`          | Assert no layout issues across baseline dashboard sizes. |
 | `settings-minimum-layout.json`  | Open Settings at `72x20` and assert no layout issues.    |
 | `metrics-minimum-layout.json`   | Open Metrics at `72x20` and assert no layout issues.     |
+| `task-template-creator-minimum-layout.json` | Open Task Template Creator at `72x20` and assert no layout issues. |
+| `project-creator-minimum-layout.json` | Open Project Creator at `72x20` and assert no layout issues. |
+| `project-editor-minimum-layout.json` | Open Project Editor at `72x20` and assert no layout issues. |
+| `workflow-rule-creator-minimum-layout.json` | Open Workflow Rule Creator at `72x20` and assert no layout issues. |
+| `inbox-processor-minimum-layout.json` | Open Inbox Processor at `72x20` and assert no layout issues. |
+| `global-inbox-processor-minimum-layout.json` | Open Global Inbox Processor at `72x20` and assert no layout issues. |
 
 Run any of them:
 

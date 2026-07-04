@@ -67,8 +67,8 @@ func NewProjectCreatorModel(cfg *config.Config, manager *config.Manager) *Projec
 func (m *ProjectCreatorModel) SetSize(width, height int) {
 	m.width = width
 	m.height = height
-	formFactory.ResizeTextInput(&m.nameInput, width)
-	formFactory.ResizeTextInput(&m.contextInput, width)
+	formFactory.ResizeTextInputWithReserve(&m.nameInput, width, FormLabelWidth)
+	formFactory.ResizeTextInputWithReserve(&m.contextInput, width, FormLabelWidth)
 }
 
 func (m *ProjectCreatorModel) SupportsHelpShortcut() bool { return false }

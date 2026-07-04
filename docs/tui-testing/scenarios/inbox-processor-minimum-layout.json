@@ -1,0 +1,10 @@
+{
+  "name": "inbox-processor-minimum-layout",
+  "fixture": "rich",
+  "size": "72x20",
+  "actions": [
+    { "type": "command", "label": "open Inbox Processor", "command": "triage inbox" },
+    { "type": "assert", "assert": "view", "value": "InboxProcessor" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

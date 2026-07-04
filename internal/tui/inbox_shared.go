@@ -292,6 +292,19 @@ func renderInboxOperationsPanel() string {
 	return DashboardCardStyle.Render(b.String() + content)
 }
 
+func renderInboxOperationsPanelCompact(width int) string {
+	parts := []string{
+		HelpKeyStyle.Render("m*") + MutedStyle.Render(": Route"),
+		HelpKeyStyle.Render("w") + MutedStyle.Render(": Today"),
+		HelpKeyStyle.Render("d*") + MutedStyle.Render(": Schedule"),
+		HelpKeyStyle.Render("D") + MutedStyle.Render(": Done"),
+		HelpKeyStyle.Render("T") + MutedStyle.Render(": Tags"),
+		HelpKeyStyle.Render("?") + MutedStyle.Render(": Help"),
+	}
+	line := MutedStyle.Render("Next: ") + strings.Join(parts, MutedStyle.Render(" · "))
+	return truncateToVisualWidth(line, width)
+}
+
 // renderInboxFooter renders the footer with the primary triage vocabulary —
 // the six single-tap actions shared by both inbox processors plus Esc.
 // Navigation and prefix subkeys are discoverable via ? (help) and : (palette).

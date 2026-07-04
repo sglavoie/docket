@@ -103,11 +103,13 @@ func (m *ProjectEditorModel) checkChanges() bool {
 
 // SetSize sets the view dimensions.
 func (m *ProjectEditorModel) SetSize(width, height int) {
+	const descriptionLabelReserve = 12
+
 	m.width = width
 	m.height = height
-	formFactory.ResizeTextInput(&m.nameInput, width)
-	formFactory.ResizeTextInput(&m.descriptionInput, width)
-	formFactory.ResizeTextInput(&m.contextInput, width)
+	formFactory.ResizeTextInputWithReserve(&m.nameInput, width, FormLabelWidth)
+	formFactory.ResizeTextInputWithReserve(&m.descriptionInput, width, descriptionLabelReserve)
+	formFactory.ResizeTextInputWithReserve(&m.contextInput, width, FormLabelWidth)
 }
 
 func (m *ProjectEditorModel) SupportsHelpShortcut() bool { return false }

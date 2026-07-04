@@ -267,6 +267,12 @@ func TestUITestScenarioMinimumHeightViewLayoutsNoOverflow(t *testing.T) {
 	}{
 		{"settings", "settings", "Settings"},
 		{"metrics dashboard", "metrics dashboard", "MetricsDashboard"},
+		{"task template creator", "create task template", "TaskTemplateCreator"},
+		{"project creator", "new project", "ProjectCreator"},
+		{"project editor", "rename project", "ProjectEditor"},
+		{"workflow rule creator", "new workflow rule", "WorkflowRuleCreator"},
+		{"inbox processor", "triage inbox", "InboxProcessor"},
+		{"global inbox processor", "global inbox processor", "GlobalInboxProcessor"},
 	}
 
 	for _, tt := range tests {

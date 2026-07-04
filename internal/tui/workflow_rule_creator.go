@@ -347,20 +347,29 @@ func (m *WorkflowRuleCreatorModel) makeTriggerFormState(t workflow.RuleTrigger, 
 
 // SetSize sets the view dimensions.
 func (m *WorkflowRuleCreatorModel) SetSize(width, height int) {
+	const (
+		workflowTopFieldReserve    = 10
+		workflowNestedFieldReserve = 15
+	)
+
 	m.width = width
 	m.height = height
-	formFactory.ResizeTextInput(&m.nameInput, width)
-	formFactory.ResizeTextInput(&m.priorityInput, width)
+	editorWidth := width
+	if width >= 81 {
+		editorWidth = width * 55 / 100
+	}
+	formFactory.ResizeTextInputWithReserve(&m.nameInput, editorWidth, workflowTopFieldReserve)
+	formFactory.ResizeTextInputWithReserve(&m.priorityInput, editorWidth, workflowTopFieldReserve)
 	for i := range m.triggers {
-		formFactory.ResizeTextInput(&m.triggers[i].valueInput, width)
+		formFactory.ResizeTextInputWithReserve(&m.triggers[i].valueInput, editorWidth, workflowNestedFieldReserve)
 	}
 	for i := range m.actions {
-		formFactory.ResizeTextInput(&m.actions[i].valueInput, width)
-		formFactory.ResizeTextInput(&m.actions[i].condValueInput, width)
+		formFactory.ResizeTextInputWithReserve(&m.actions[i].valueInput, editorWidth, workflowNestedFieldReserve)
+		formFactory.ResizeTextInputWithReserve(&m.actions[i].condValueInput, editorWidth, workflowNestedFieldReserve)
 	}
-	formFactory.ResizeTextInput(&m.scopeProjectsInput, width)
-	formFactory.ResizeTextInput(&m.scopeTypesInput, width)
-	formFactory.ResizeTextInput(&m.scopeSectionsInput, width)
+	formFactory.ResizeTextInputWithReserve(&m.scopeProjectsInput, editorWidth, workflowNestedFieldReserve)
+	formFactory.ResizeTextInputWithReserve(&m.scopeTypesInput, editorWidth, workflowNestedFieldReserve)
+	formFactory.ResizeTextInputWithReserve(&m.scopeSectionsInput, editorWidth, workflowNestedFieldReserve)
 }
 
 // Init initializes the model.

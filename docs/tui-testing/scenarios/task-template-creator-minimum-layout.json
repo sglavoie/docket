@@ -1,0 +1,10 @@
+{
+  "name": "task-template-creator-minimum-layout",
+  "fixture": "rich",
+  "size": "72x20",
+  "actions": [
+    { "type": "command", "label": "open Task Template Creator", "command": "create task template" },
+    { "type": "assert", "assert": "view", "value": "TaskTemplateCreator" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

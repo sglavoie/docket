@@ -34,6 +34,12 @@ const (
 
 var templateTabNames = []string{"Fields", "Checklist", "Subtasks"}
 
+const (
+	templateInlineLabelReserve = 13
+	templateDescIndentReserve  = 14
+	templateNestedInputReserve = 16
+)
+
 // TaskTemplateCreatorModel handles creating a new task template via TUI.
 type TaskTemplateCreatorModel struct {
 	config        *config.Config
@@ -217,15 +223,15 @@ func joinTags(tags []string) string {
 func (m *TaskTemplateCreatorModel) SetSize(width, height int) {
 	m.width = width
 	m.height = height
-	formFactory.ResizeTextInput(&m.nameInput, width)
-	formFactory.ResizeTextarea(&m.descInput, width)
-	formFactory.ResizeTextInput(&m.tagsInput, width)
-	formFactory.ResizeTextInput(&m.sectionInput, width)
+	formFactory.ResizeTextInputWithReserve(&m.nameInput, width, templateInlineLabelReserve)
+	formFactory.ResizeTextareaWithReserve(&m.descInput, width, templateDescIndentReserve)
+	formFactory.ResizeTextInputWithReserve(&m.tagsInput, width, templateInlineLabelReserve)
+	formFactory.ResizeTextInputWithReserve(&m.sectionInput, width, templateInlineLabelReserve)
 	for i := range m.checklist {
-		formFactory.ResizeTextInput(&m.checklist[i], width)
+		formFactory.ResizeTextInputWithReserve(&m.checklist[i], width, templateNestedInputReserve)
 	}
 	for i := range m.subtasks {
-		formFactory.ResizeTextInput(&m.subtasks[i].titleInput, width)
+		formFactory.ResizeTextInputWithReserve(&m.subtasks[i].titleInput, width, templateNestedInputReserve)
 	}
 }
 

@@ -87,7 +87,11 @@ func (c *inboxCore) View() tea.View {
 	}
 
 	b.WriteString("\n")
-	b.WriteString(renderInboxOperationsPanel())
+	if c.height <= minTerminalHeight {
+		b.WriteString(renderInboxOperationsPanelCompact(c.width))
+	} else {
+		b.WriteString(renderInboxOperationsPanel())
+	}
 	// Single newline instead of \n\n keeps the global inbox under the 80x24
 	// height ceiling. The footer already prefixes its own horizontal rule, so
 	// dropping the blank line does not hurt the visual separation.

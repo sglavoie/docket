@@ -1,0 +1,10 @@
+{
+  "name": "project-editor-minimum-layout",
+  "fixture": "rich",
+  "size": "72x20",
+  "actions": [
+    { "type": "command", "label": "open Project Editor", "command": "rename project" },
+    { "type": "assert", "assert": "view", "value": "ProjectEditor" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}
