@@ -19,7 +19,16 @@ const (
 	barCharBlocked = "─"
 	todayMarkerStr = IconTodayMarker
 	milestoneChar  = "◆"
+
+	minRoadmapGanttColWidth = 6
+	minRoadmapLabelWidth    = 12
 )
+
+type roadmapTimelineLayout struct {
+	labelWidth      int
+	chartWidth      int
+	annotationWidth int
+}
 
 // View implements tea.Model.
 func (m *RoadmapModel) View() tea.View {
@@ -60,12 +69,11 @@ func (m *RoadmapModel) View() tea.View {
 	footer := renderStatusBarFooter("", helpText, m.width, m.AccentColor())
 
 	contentHeight := max(fullscreenContentHeight(m.height, 2), 4)
-	chartWidth := max(m.width-m.labelWidth-lipgloss.Width(ganttSepRaw), 10)
 
 	var content string
 	switch m.activeTab {
 	case RoadmapTabTimeline:
-		content = m.renderTimelineTab(contentHeight, chartWidth)
+		content = m.renderTimelineTab(contentHeight, m.timelineLayout())
 	case RoadmapTabCriticalPath:
 		content = m.renderCriticalPathTab(contentHeight)
 	case RoadmapTabForecasts:
@@ -75,16 +83,72 @@ func (m *RoadmapModel) View() tea.View {
 	return tea.NewView(lipgloss.JoinVertical(lipgloss.Left, title, tabBar, content, footer))
 }
 
-// renderTimelineTab renders the Gantt chart split-pane layout.
-func (m *RoadmapModel) renderTimelineTab(height, chartWidth int) string {
-	totalCols := max(m.axis.TotalCols, 1)
-	const minGanttColWidth = 6
-	colWidth := max(minGanttColWidth, chartWidth/totalCols)
-	visibleCols := chartWidth / max(colWidth, 1)
+func (m *RoadmapModel) timelineLayout() roadmapTimelineLayout {
+	sepWidth := lipgloss.Width(ganttSepRaw)
+	annotationWidth := m.maxGanttAnnotationWidth()
+	baseLabelWidth := m.labelWidth
+	if baseLabelWidth <= 0 {
+		baseLabelWidth = 30
+	}
 
-	axisHeader := m.renderAxisHeader(chartWidth, colWidth, visibleCols)
+	available := max(m.width-sepWidth, 1)
+	labelWidth := min(baseLabelWidth, max(minRoadmapLabelWidth, available-minRoadmapGanttColWidth))
+	if labelWidth > available-1 {
+		labelWidth = max(available-1, 1)
+	}
+
+	remaining := max(available-labelWidth, 1)
+	if annotationWidth > 0 {
+		annotationWidth = min(annotationWidth, max(remaining-minRoadmapGanttColWidth, 0))
+	}
+	chartWidth := max(remaining-annotationWidth, 1)
+
+	return roadmapTimelineLayout{
+		labelWidth:      labelWidth,
+		chartWidth:      chartWidth,
+		annotationWidth: annotationWidth,
+	}
+}
+
+func (m *RoadmapModel) maxGanttAnnotationWidth() int {
+	maxWidth := 0
+	for _, row := range m.rows {
+		if w := lipgloss.Width(m.renderGanttAnnotation(row)); w > maxWidth {
+			maxWidth = w
+		}
+	}
+	return maxWidth
+}
+
+func roadmapGanttColumnMetrics(chartWidth, totalCols int) (colWidth, visibleCols int) {
+	if chartWidth <= 0 {
+		return 1, 1
+	}
+	if chartWidth < minRoadmapGanttColWidth {
+		return chartWidth, 1
+	}
+	colWidth = max(minRoadmapGanttColWidth, chartWidth/max(totalCols, 1))
+	visibleCols = max(chartWidth/max(colWidth, 1), 1)
+	return colWidth, visibleCols
+}
+
+func (m *RoadmapModel) boundRoadmapLines(lines []string) {
+	if m.width <= 0 {
+		return
+	}
+	for i, line := range lines {
+		lines[i] = truncateToVisualWidth(line, m.width)
+	}
+}
+
+// renderTimelineTab renders the Gantt chart split-pane layout.
+func (m *RoadmapModel) renderTimelineTab(height int, layout roadmapTimelineLayout) string {
+	totalCols := max(m.axis.TotalCols, 1)
+	colWidth, visibleCols := roadmapGanttColumnMetrics(layout.chartWidth, totalCols)
+
+	axisHeader := m.renderAxisHeader(layout.labelWidth, colWidth, visibleCols)
 	divider := MutedStyle.Render(
-		strings.Repeat("─", m.labelWidth) + "─┼─" + strings.Repeat("─", chartWidth))
+		strings.Repeat("─", layout.labelWidth) + "─┼─" + strings.Repeat("─", layout.chartWidth))
 
 	overhead := 2 // axis header + divider
 	contentRows := max(height-overhead, 1)
@@ -96,24 +160,26 @@ func (m *RoadmapModel) renderTimelineTab(height, chartWidth int) string {
 		lines = append(lines, renderEmptyState(
 			"No tasks to display",
 			"Add tasks with due dates or dependencies to see them here"))
+		m.boundRoadmapLines(lines)
 		return strings.Join(lines, "\n")
 	}
 
 	start, end := persistentIndexWindow(m.cursor, len(m.rows), contentRows, &m.scrollOff)
 	for i := start; i < end; i++ {
-		lines = append(lines, m.renderGanttRow(m.rows[i], colWidth, visibleCols, i == m.cursor))
+		lines = append(lines, m.renderGanttRow(m.rows[i], layout.labelWidth, layout.annotationWidth, colWidth, visibleCols, i == m.cursor))
 	}
 
 	if len(m.rows) > contentRows {
 		lines = append(lines, MutedStyle.Render(fmt.Sprintf("  row %d/%d", m.cursor+1, len(m.rows))))
 	}
 
+	m.boundRoadmapLines(lines)
 	return strings.Join(lines, "\n")
 }
 
 // renderAxisHeader renders the time axis label row above the Gantt bars.
-func (m *RoadmapModel) renderAxisHeader(chartWidth, colWidth, visibleCols int) string {
-	labelPad := strings.Repeat(" ", m.labelWidth)
+func (m *RoadmapModel) renderAxisHeader(labelWidth, colWidth, visibleCols int) string {
+	labelPad := strings.Repeat(" ", labelWidth)
 	sep := MutedStyle.Render(ganttSepRaw)
 
 	accentSt := lipgloss.NewStyle().Foreground(m.AccentColor()).Bold(true)
@@ -142,13 +208,14 @@ func (m *RoadmapModel) renderAxisHeader(chartWidth, colWidth, visibleCols int) s
 }
 
 // renderGanttRow renders one timeline row: label pane + separator + bar area.
-func (m *RoadmapModel) renderGanttRow(row TimelineRow, colWidth, visibleCols int, isCursor bool) string {
+func (m *RoadmapModel) renderGanttRow(row TimelineRow, labelWidth, annotationWidth, colWidth, visibleCols int, isCursor bool) string {
 	accentSt := lipgloss.NewStyle().Foreground(m.AccentColor()).Bold(true)
-	labelCell := truncateAndPad(m.ganttLabelText(row), m.labelWidth)
+	labelCell := truncateAndPad(m.ganttLabelText(row), labelWidth)
 	sep := MutedStyle.Render(ganttSepRaw)
-	fullLine := labelCell + sep + m.renderGanttBars(row, colWidth, visibleCols, accentSt) + m.renderGanttAnnotation(row)
+	annotation := truncateToVisualWidth(m.renderGanttAnnotation(row), annotationWidth)
+	fullLine := labelCell + sep + m.renderGanttBars(row, colWidth, visibleCols, accentSt) + annotation
 	if isCursor {
-		return SelectedLine(fullLine, 0)
+		return SelectedLine(fullLine, m.width)
 	}
 	return fullLine
 }

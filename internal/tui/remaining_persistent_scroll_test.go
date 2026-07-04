@@ -35,11 +35,18 @@ func TestRoadmapPersistentScrollKeepsWindowOnMoveUp(t *testing.T) {
 		{
 			name: "timeline",
 			model: &RoadmapModel{
+				BaseView:   BaseView{width: 83, height: 10},
 				activeTab:  RoadmapTabTimeline,
 				axis:       TimelineAxis{TotalCols: 10, Labels: []string{"0", "1", "2", "3", "4", "5", "6", "7", "8", "9"}},
 				labelWidth: 20,
 			},
-			view: func(m *RoadmapModel) { _ = m.renderTimelineTab(5, 60) },
+			view: func(m *RoadmapModel) {
+				_ = m.renderTimelineTab(5, roadmapTimelineLayout{
+					labelWidth:      20,
+					chartWidth:      60,
+					annotationWidth: 3,
+				})
+			},
 		},
 		{
 			name: "critical path",

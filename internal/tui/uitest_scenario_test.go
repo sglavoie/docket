@@ -209,6 +209,33 @@ func TestUITestScenarioRunFixtureGolden(t *testing.T) {
 	}
 }
 
+func TestUITestScenarioRoadmapLayoutNoOverflow(t *testing.T) {
+	raw := `{
+		"name": "rich roadmap layout",
+		"fixture": "rich",
+		"size": "100x35",
+		"actions": [
+			{"type": "command", "command": "roadmap"},
+			{"type": "assert", "assert": "view", "value": "Roadmap"},
+			{"type": "assert", "assert": "no_layout_issues"}
+		]
+	}`
+	sc, err := ParseScenario([]byte(raw))
+	if err != nil {
+		t.Fatalf("ParseScenario error: %v", err)
+	}
+
+	result, ws, err := RunScenarioFixture(sc, RunScenarioOptions{})
+	if err != nil {
+		t.Fatalf("RunScenarioFixture error: %v", err)
+	}
+	t.Cleanup(func() { _ = ws.Cleanup() })
+
+	if !result.OK {
+		t.Fatalf("roadmap layout should pass, got error: %+v", result.Error)
+	}
+}
+
 func TestUITestScenarioRunFixtureDefaults(t *testing.T) {
 	// No fixture or size in the scenario: RunScenarioFixture falls back to the
 	// package defaults (rich fixture at 100x30).

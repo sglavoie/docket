@@ -4,7 +4,6 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
-	"charm.land/lipgloss/v2"
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/logging"
@@ -371,10 +370,9 @@ func (m *RoadmapModel) scrollRoadmapHoriz(delta int) {
 }
 
 func (m *RoadmapModel) maxRoadmapHScrollOffset() int {
-	chartWidth := max(m.width-m.labelWidth-lipgloss.Width(ganttSepRaw), 10)
 	totalCols := max(m.axis.TotalCols, 1)
-	colWidth := max(6, chartWidth/totalCols)
-	visibleCols := chartWidth / colWidth
+	layout := m.timelineLayout()
+	_, visibleCols := roadmapGanttColumnMetrics(layout.chartWidth, totalCols)
 	return max(0, totalCols-visibleCols)
 }
 
