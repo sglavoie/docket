@@ -33,8 +33,10 @@ func (m *FocusViewModel) View() tea.View { //nolint:gocyclo
 		b.WriteString("\n")
 		b.WriteString(MutedStyle.Render("No actionable tasks found."))
 		b.WriteString("\n\n")
-		b.WriteString(HelpStyle.Render("Tasks appear here from all active projects (excluding completed, snoozed, and blocked)."))
-		b.WriteString("\n")
+		for _, line := range wrapText("Tasks appear here from all active projects (excluding completed, snoozed, and blocked).", m.width) {
+			b.WriteString(HelpStyle.Render(line))
+			b.WriteString("\n")
+		}
 		b.WriteString(HelpStyle.Render("Press Esc to return to dashboard."))
 		return tea.NewView(b.String())
 	}
