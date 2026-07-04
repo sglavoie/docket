@@ -32,7 +32,14 @@ func (m *WorkflowRuleCreatorModel) View() tea.View {
 	tabs := []string{"Triggers", "Actions", "Scope"}
 	tabBar := RenderTabBar(tabs, m.activeTab, m.width, 1)
 
-	availableHeight := max(m.height-7, 1)
+	// Help text with wrapping support
+	helpText := m.renderHelpText()
+
+	titleLine := renderFullscreenTitle(title, "")
+	preContentHeight := lipgloss.Height(titleLine) + lipgloss.Height(tabBar) + 1
+	footerHeight := 1 + lipgloss.Height(helpText)
+	const appStatusBarHeight = 2
+	availableHeight := max(m.height-preContentHeight-footerHeight-appStatusBarHeight, 1)
 
 	// Editor content with scrolling
 	editorContent := m.renderEditorPane()
@@ -57,8 +64,11 @@ func (m *WorkflowRuleCreatorModel) View() tea.View {
 			Height(paneHeight).
 			Render(m.renderPreviewPane(previewWidth))
 
-		// Full-height separator
-		separator := SeparatorStyle.Render(strings.Repeat("┃\n", paneHeight))
+		separatorLines := make([]string, paneHeight)
+		for i := range separatorLines {
+			separatorLines[i] = SeparatorStyle.Render("┃")
+		}
+		separator := strings.Join(separatorLines, "\n")
 
 		mainContent = lipgloss.JoinHorizontal(lipgloss.Top, editorPane, " ", separator, " ", previewPane)
 	} else {
@@ -66,11 +76,8 @@ func (m *WorkflowRuleCreatorModel) View() tea.View {
 		mainContent = editorContent
 	}
 
-	// Help text with wrapping support
-	helpText := m.renderHelpText()
-
 	var out strings.Builder
-	out.WriteString(renderFullscreenTitle(title, ""))
+	out.WriteString(titleLine)
 	out.WriteString("\n")
 	out.WriteString(tabBar)
 	out.WriteString("\n\n")

@@ -15,7 +15,12 @@ func (m *AppModel) renderStatusBar() string {
 
 	// Helper to render left-aligned message with spacer.
 	renderLeftAlignedMsg := func(msg string) string {
-		gap := max(m.width-lipgloss.Width(msg), 0)
+		width := m.width
+		if width <= 0 {
+			width = 80
+		}
+		msg = truncateToVisualWidth(msg, width)
+		gap := max(width-lipgloss.Width(msg), 0)
 		spacer := ThemeSpacer(gap)
 		return lipgloss.JoinHorizontal(lipgloss.Top, msg, spacer)
 	}
@@ -130,10 +135,34 @@ func (m *AppModel) renderStatusBar() string {
 	}
 
 	right := HelpStyle.Render(help)
-	gap := max(m.width-lipgloss.Width(left)-lipgloss.Width(right), 1)
+	left, right = fitStatusBarSegments(left, right, m.width)
+	gap := max(m.width-lipgloss.Width(left)-lipgloss.Width(right), 0)
 	spacer := ThemeSpacer(gap)
 
 	return separator + "\n" + lipgloss.JoinHorizontal(lipgloss.Top, left, spacer, right)
+}
+
+func fitStatusBarSegments(left, right string, width int) (string, string) {
+	if width <= 0 {
+		width = 80
+	}
+
+	leftWidth := lipgloss.Width(left)
+	rightWidth := lipgloss.Width(right)
+	minGap := 0
+	if leftWidth > 0 && rightWidth > 0 {
+		minGap = 1
+	}
+	if leftWidth+rightWidth+minGap > width {
+		availableLeft := max(width-rightWidth-minGap, 1)
+		left = truncateToVisualWidth(left, availableLeft)
+		leftWidth = lipgloss.Width(left)
+		if leftWidth+rightWidth+minGap > width {
+			right = truncateToVisualWidth(right, max(width-leftWidth-minGap, 1))
+		}
+	}
+
+	return left, right
 }
 
 // buildBreadcrumb constructs a compact "Dashboard > project > view" label from the view stack.
