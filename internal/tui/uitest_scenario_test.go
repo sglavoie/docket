@@ -362,6 +362,68 @@ func TestUITestScenarioMinimumTerminalEmptyStatesNoOverflow(t *testing.T) {
 	}
 }
 
+func TestUITestScenarioLongInlineInputsNoOverflow(t *testing.T) {
+	longValue := strings.Repeat("abcdefghijklmnopqrstuvwxyz", 4)
+	tests := []struct {
+		name    string
+		size    string
+		actions []UITestAction
+	}{
+		{
+			name: "today quick add",
+			size: "60x20",
+			actions: []UITestAction{
+				{Type: UITestActionCommand, Command: "today"},
+				{Type: UITestActionKey, Key: "a"},
+				{Type: UITestActionText, Text: longValue},
+				{Type: UITestActionAssert, Assert: "view", Value: "Today"},
+				{Type: UITestActionAssert, Assert: "no_layout_issues"},
+			},
+		},
+		{
+			name: "project creator slug preview",
+			size: "60x20",
+			actions: []UITestAction{
+				{Type: UITestActionCommand, Command: "new project"},
+				{Type: UITestActionText, Text: longValue},
+				{Type: UITestActionAssert, Assert: "view", Value: "ProjectCreator"},
+				{Type: UITestActionAssert, Assert: "no_layout_issues"},
+			},
+		},
+		{
+			name: "project editor changed slug preview",
+			size: "60x35",
+			actions: []UITestAction{
+				{Type: UITestActionCommand, Command: "rename project"},
+				{Type: UITestActionText, Text: longValue},
+				{Type: UITestActionAssert, Assert: "view", Value: "ProjectEditor"},
+				{Type: UITestActionAssert, Assert: "no_layout_issues"},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			sc := UITestScenario{
+				Name:    tt.name + " long input layout",
+				Fixture: "rich",
+				Size:    tt.size,
+				Actions: tt.actions,
+			}
+
+			result, ws, err := RunScenarioFixture(sc, RunScenarioOptions{})
+			if err != nil {
+				t.Fatalf("RunScenarioFixture error: %v", err)
+			}
+			t.Cleanup(func() { _ = ws.Cleanup() })
+
+			if !result.OK {
+				t.Fatalf("%s layout should pass, got error: %+v", tt.name, result.Error)
+			}
+		})
+	}
+}
+
 func TestUITestScenarioScoreProfilePresetPickerMinimumLayoutNoOverflow(t *testing.T) {
 	sc := UITestScenario{
 		Name:    "score profile preset picker minimum layout",

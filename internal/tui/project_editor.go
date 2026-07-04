@@ -327,12 +327,9 @@ func (m *ProjectEditorModel) View() tea.View {
 		slug := models.Slugify(name)
 		slugChanged := slug != models.Slugify(m.originalName)
 		if slugChanged {
-			b.WriteString(padding)
-			b.WriteString(MutedStyle.Render(fmt.Sprintf("Slug: %s ", slug)))
-			b.WriteString(InProgressStyle.Render("(will change)"))
+			b.WriteString(renderProjectSlugPreview(slug, m.width, padding, " (will change)"))
 		} else {
-			b.WriteString(padding)
-			b.WriteString(MutedStyle.Render(fmt.Sprintf("Slug: %s", slug)))
+			b.WriteString(renderProjectSlugPreview(slug, m.width, padding, ""))
 		}
 	}
 	b.WriteString("\n\n")

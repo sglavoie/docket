@@ -117,6 +117,8 @@ func (m *FocusBoardModel) resetViewScrollOffset() {
 // because the visible row budget may have changed.
 func (m *FocusBoardModel) SetSize(width, height int) {
 	m.BaseSearchableView.SetSize(width, height)
+	formFactory.ResizeTextInputWithReserve(&m.addInput, width, 4)
+	formFactory.ResizeTextInputWithReserve(&m.editInput, width, 4)
 	m.resetViewScrollOffset()
 }
 
@@ -189,9 +191,6 @@ func (m *FocusBoardModel) Init() tea.Cmd {
 func (m *FocusBoardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if handled, cmd := handleCommonUpdateMsg(msg, func(w, h int) {
 		m.SetSize(w, h)
-		inputWidth := max(w-8, 30)
-		m.addInput.SetWidth(inputWidth)
-		m.editInput.SetWidth(inputWidth)
 	}, m.loadItems, m.clampCursor, m.setStatus); handled {
 		return m, cmd
 	}

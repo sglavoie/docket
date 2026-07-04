@@ -262,7 +262,7 @@ func (m *ProjectCreatorModel) View() tea.View {
 	name := strings.TrimSpace(m.nameInput.Value())
 	if name != "" {
 		slug := models.Slugify(name)
-		b.WriteString(MutedStyle.Render(fmt.Sprintf("Slug: %s", slug)))
+		b.WriteString(renderProjectSlugPreview(slug, m.width, "", ""))
 	}
 
 	// Footer
@@ -284,3 +284,18 @@ func (m *ProjectCreatorModel) ShouldCaptureEsc() bool { return true }
 func (m *ProjectCreatorModel) IsFullHeight() bool     { return false }
 
 func (m *ProjectCreatorModel) StatusBarLabel() string { return "New Project" }
+
+func renderProjectSlugPreview(slug string, width int, indent, suffix string) string {
+	const prefix = "Slug: "
+
+	budget := width - len(indent) - len(prefix) - len(suffix)
+	if budget < 1 {
+		budget = 1
+	}
+
+	line := indent + MutedStyle.Render(prefix+truncateToVisualWidth(slug, budget))
+	if suffix != "" {
+		line += InProgressStyle.Render(suffix)
+	}
+	return line
+}
