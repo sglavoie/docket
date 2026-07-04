@@ -64,7 +64,7 @@ func (m *ScoreProfileManagerModel) View() tea.View {
 		}
 
 		if wideScreen && len(detailLines) > 0 {
-			lines = m.renderWithDetailPane(lines, detailLines)
+			lines = m.renderWithDetailPane(lines, detailLines, m.profileBodyLineBudget(lines))
 		}
 	}
 
@@ -114,9 +114,7 @@ func (m *ScoreProfileManagerModel) presetOptionLineBudget(usedLines int) int {
 		return 0
 	}
 
-	const appStatusBarHeight = 2
-	verticalChrome := OverlayBoxStyle.GetVerticalBorderSize() + OverlayBoxStyle.GetVerticalPadding()
-	contentBudget := max(m.height-appStatusBarHeight-verticalChrome, 1)
+	contentBudget := m.overlayContentLineBudget()
 
 	reservedAfterOptions := 2 // blank line + help line
 	if m.statusMessage != "" {
@@ -124,6 +122,29 @@ func (m *ScoreProfileManagerModel) presetOptionLineBudget(usedLines int) int {
 	}
 
 	return max(contentBudget-usedLines-reservedAfterOptions, 1)
+}
+
+func (m *ScoreProfileManagerModel) overlayContentLineBudget() int {
+	if m.height <= 0 {
+		return 0
+	}
+	verticalChrome := OverlayBoxStyle.GetVerticalBorderSize() + OverlayBoxStyle.GetVerticalPadding()
+	return max(m.height-verticalChrome, 1)
+}
+
+func (m *ScoreProfileManagerModel) profileBodyLineBudget(lines []string) int {
+	contentBudget := m.overlayContentLineBudget()
+	if contentBudget <= 0 {
+		return 0
+	}
+
+	headerRows := min(3, len(lines))
+	reservedAfterBody := 2 // blank line + help line
+	if m.statusMessage != "" {
+		reservedAfterBody += 2 // blank line + status line
+	}
+
+	return max(contentBudget-headerRows-reservedAfterBody, 1)
 }
 
 func (m *ScoreProfileManagerModel) renderPresetOptions(maxWidth, maxLines int) []string {
@@ -242,14 +263,19 @@ func wrapLine(text string, maxWidth int) []string {
 }
 
 // renderWithDetailPane merges the profile list (left) with detail pane (right).
-func (m *ScoreProfileManagerModel) renderWithDetailPane(leftLines, detailLines []string) []string {
+func (m *ScoreProfileManagerModel) renderWithDetailPane(leftLines, detailLines []string, maxBodyLines int) []string {
 	listStart := min(3, len(leftLines))
 	header := leftLines[:listStart]
 	listLines := leftLines[listStart:]
 
 	leftWidth := min(40, m.width/2)
 	rightWidth := m.detailPaneWidth()
-	maxLines := max(len(detailLines), len(listLines))
+	totalBodyLines := max(len(detailLines), len(listLines))
+	maxLines := totalBodyLines
+	if maxBodyLines > 0 {
+		maxLines = min(maxLines, maxBodyLines)
+	}
+	truncated := maxLines < totalBodyLines
 
 	var merged []string
 	merged = append(merged, header...)
@@ -259,11 +285,20 @@ func (m *ScoreProfileManagerModel) renderWithDetailPane(leftLines, detailLines [
 
 	for i := range maxLines {
 		left := ""
-		if i < len(listLines) {
-			left = listLines[i]
-		}
 		right := ""
-		if i < len(detailLines) {
+		if truncated && i == maxLines-1 {
+			if hidden := len(listLines) - i; hidden > 0 {
+				left = MutedStyle.Render(truncateToVisualWidth(fmt.Sprintf("... %d more", hidden), leftWidth))
+			}
+			if hidden := len(detailLines) - i; hidden > 0 {
+				right = MutedStyle.Render(truncateToVisualWidth(fmt.Sprintf("... %d more", hidden), rightWidth))
+			}
+		} else if i < len(listLines) {
+			left = listLines[i]
+			if i < len(detailLines) {
+				right = truncStyle.Render(detailLines[i])
+			}
+		} else if i < len(detailLines) {
 			right = truncStyle.Render(detailLines[i])
 		}
 
