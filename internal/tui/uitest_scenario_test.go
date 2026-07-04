@@ -412,6 +412,55 @@ func TestUITestScenarioScoreProfileDetailPaneBoundaryNoOverflow(t *testing.T) {
 	}
 }
 
+func TestUITestScenarioTodayQuickAddMinimumLayoutNoOverflow(t *testing.T) {
+	tests := []struct {
+		name    string
+		actions []UITestAction
+	}{
+		{
+			name: "syntax hint",
+			actions: []UITestAction{
+				{Type: UITestActionCommand, Command: "today"},
+				{Type: UITestActionCommand, Command: "today quick add"},
+			},
+		},
+		{
+			name: "metadata preview",
+			actions: []UITestAction{
+				{Type: UITestActionCommand, Command: "today"},
+				{Type: UITestActionCommand, Command: "today quick add"},
+				{Type: UITestActionText, Text: "New item !1 #reallylongtagname @tomorrow -s external -u https://example.com/very/long/path"},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			actions := append([]UITestAction{}, tt.actions...)
+			actions = append(actions,
+				UITestAction{Type: UITestActionAssert, Assert: "view", Value: "Today"},
+				UITestAction{Type: UITestActionAssert, Assert: "no_layout_issues"},
+			)
+			sc := UITestScenario{
+				Name:    "today quick add " + tt.name + " minimum layout",
+				Fixture: "rich",
+				Size:    "72x20",
+				Actions: actions,
+			}
+
+			result, ws, err := RunScenarioFixture(sc, RunScenarioOptions{})
+			if err != nil {
+				t.Fatalf("RunScenarioFixture error: %v", err)
+			}
+			t.Cleanup(func() { _ = ws.Cleanup() })
+
+			if !result.OK {
+				t.Fatalf("today quick add %s layout should pass, got error: %+v", tt.name, result.Error)
+			}
+		})
+	}
+}
+
 func TestUITestScenarioLongNoMatchSearchQueriesMinimumLayoutNoOverflow(t *testing.T) {
 	tests := []struct {
 		name    string

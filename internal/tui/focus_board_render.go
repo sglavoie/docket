@@ -93,9 +93,9 @@ func (m *FocusBoardModel) View() tea.View { //nolint:gocyclo
 		b.WriteString("\n")
 
 		if m.isAutocompleteActive() {
-			b.WriteString(MutedStyle.Render("    Tab: accept · ↑↓: navigate · Esc: dismiss"))
+			b.WriteString(renderFocusBoardIndentedWrappedLine("    ", "Tab: accept · ↑↓: navigate · Esc: dismiss", m.width, MutedStyle.Render))
 		} else {
-			b.WriteString(MutedStyle.Render("    %project · !priority · #tag · @date · /section · $status · -s source · -u url"))
+			b.WriteString(renderFocusBoardIndentedWrappedLine("    ", "%project · !priority · #tag · @date · /section · $status · -s source · -u url", m.width, MutedStyle.Render))
 		}
 		b.WriteString("\n")
 
@@ -142,7 +142,7 @@ func (m *FocusBoardModel) View() tea.View { //nolint:gocyclo
 				if result.url != "" {
 					previewParts = append(previewParts, "URL: "+result.url)
 				}
-				b.WriteString(HelpStyle.Render("    " + strings.Join(previewParts, " · ")))
+				b.WriteString(renderFocusBoardIndentedWrappedLine("    ", strings.Join(previewParts, " · "), m.width, HelpStyle.Render))
 				b.WriteString("\n")
 			}
 		}
@@ -286,4 +286,19 @@ func (m *FocusBoardModel) View() tea.View { //nolint:gocyclo
 	b.WriteString(footer)
 
 	return tea.NewView(b.String())
+}
+
+func renderFocusBoardIndentedWrappedLine(indent, text string, width int, style func(...string) string) string {
+	if width <= 0 {
+		return style(indent + text)
+	}
+	bodyWidth := width - len(indent)
+	if bodyWidth <= 0 {
+		return strings.Join(wrapStyled(style(indent+text), width), "\n")
+	}
+	wrapped := wrapStyled(style(text), bodyWidth)
+	for i := range wrapped {
+		wrapped[i] = indent + wrapped[i]
+	}
+	return strings.Join(wrapped, "\n")
 }
