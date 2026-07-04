@@ -73,9 +73,9 @@ const (
 	// FocusTitleMaxWidth is the maximum width for truncated titles in focus mode indicators.
 	FocusTitleMaxWidth = 40
 
-	// TitleFooterOverhead is the vertical space consumed by a title bar and
-	// a footer bar in fullscreen detail views.
-	TitleFooterOverhead = 2
+	// TitleFooterOverhead is the vertical space consumed by the task detail
+	// title line plus its two-line status-bar footer.
+	TitleFooterOverhead = 3
 
 	// TabbedViewChrome is the vertical chrome for views with a title, tab
 	// bar (with border), blank line, footer, and padding.

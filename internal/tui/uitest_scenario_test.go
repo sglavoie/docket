@@ -236,6 +236,34 @@ func TestUITestScenarioRoadmapLayoutNoOverflow(t *testing.T) {
 	}
 }
 
+func TestUITestScenarioTaskDetailFromGlobalInboxNoOverflow(t *testing.T) {
+	raw := `{
+		"name": "task detail from global inbox layout",
+		"fixture": "rich",
+		"size": "100x35",
+		"actions": [
+			{"type": "command", "command": "global inbox processor"},
+			{"type": "command", "command": "view task details"},
+			{"type": "assert", "assert": "view", "value": "TaskDetail"},
+			{"type": "assert", "assert": "no_layout_issues"}
+		]
+	}`
+	sc, err := ParseScenario([]byte(raw))
+	if err != nil {
+		t.Fatalf("ParseScenario error: %v", err)
+	}
+
+	result, ws, err := RunScenarioFixture(sc, RunScenarioOptions{})
+	if err != nil {
+		t.Fatalf("RunScenarioFixture error: %v", err)
+	}
+	t.Cleanup(func() { _ = ws.Cleanup() })
+
+	if !result.OK {
+		t.Fatalf("task detail layout should pass, got error: %+v", result.Error)
+	}
+}
+
 func TestUITestScenarioKeybindingExplorerMinimumHeightNoOverflow(t *testing.T) {
 	sc := UITestScenario{
 		Name:    "keybinding explorer minimum height",

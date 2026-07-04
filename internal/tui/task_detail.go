@@ -97,6 +97,9 @@ func (m *TaskDetailModel) ShouldCaptureEsc() bool {
 	return m.DefaultShouldCaptureEsc()
 }
 
+// IsFullHeight returns true because task detail renders its own footer.
+func (m *TaskDetailModel) IsFullHeight() bool { return true }
+
 // GetPrefixPopupInfo returns popup info when a prefix key is pending.
 func (m *TaskDetailModel) GetPrefixPopupInfo() *PrefixPopupInfo {
 	if m.pendingPrefix == "" {
