@@ -22,6 +22,7 @@ const (
 	rawSaveTUIMigration  = "legacy TUI mutation path explicitly allowed while undo coverage is audited; new callsites must use undo-aware save options"
 	rawSaveTUIRecorded   = "TUI path records undo before saving through a noncanonical helper"
 	rawSaveRestoreResult = "undo/redo restore result save; not a new user mutation"
+	rawSaveReviewFixture = "tui-test review-harness fixture save into an isolated throwaway temp workspace; never user-visible data, so undo tracking is out of scope"
 )
 
 var rawProjectSaveAllowlist = map[string]string{
@@ -117,6 +118,7 @@ var rawProjectSaveAllowlist = map[string]string{
 	"internal/tui/task_form_save.go:(*TaskFormModel).saveCreate:saveProjectSync(m.project)":                                              rawSaveTUIMigration,
 	"internal/tui/task_form_save.go:(*TaskFormModel).saveEdit:saveProjectSync(m.project)":                                                rawSaveTUIMigration,
 	"internal/tui/task_item_panel_shared.go:persistTaskItemMutation:saveProjectNoReload(project)":                                        rawSaveTUIMigration,
+	"internal/tui/uitest_fixtures.go:(*uitestWorkspace).addProject:storage.SaveProject(project)":                                         rawSaveReviewFixture,
 }
 
 func TestRawProjectSaveCallsitesAreAllowlisted(t *testing.T) {

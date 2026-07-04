@@ -1,0 +1,16 @@
+{
+  "name": "resize-stress",
+  "fixture": "rich",
+  "size": "100x35",
+  "actions": [
+    { "type": "resize", "width": 100, "height": 35 },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "resize", "label": "shrink below the comfortable minimum", "width": 60, "height": 20 },
+    { "type": "resize", "label": "grow very large", "width": 220, "height": 60 },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "resize", "label": "shrink again", "width": 80, "height": 24 },
+    { "type": "resize", "label": "settle at a comfortable size", "width": 120, "height": 40 },
+    { "type": "assert", "assert": "view", "value": "Dashboard" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

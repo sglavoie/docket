@@ -1,0 +1,14 @@
+{
+  "name": "navigate-outliner",
+  "fixture": "rich",
+  "size": "120x40",
+  "actions": [
+    { "type": "resize", "width": 120, "height": 40 },
+    { "type": "key", "label": "open global outliner (;o)", "key": ";" },
+    { "type": "key", "key": "o" },
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "key", "label": "move cursor down", "key": "down" },
+    { "type": "key", "key": "down" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

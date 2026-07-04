@@ -1,0 +1,14 @@
+{
+  "name": "baseline-layout",
+  "fixture": "rich",
+  "size": "100x35",
+  "actions": [
+    { "type": "resize", "width": 100, "height": 35 },
+    { "type": "assert", "assert": "view", "value": "Dashboard" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "resize", "width": 120, "height": 40 },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "resize", "width": 160, "height": 50 },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

@@ -175,3 +175,11 @@ go build ./...
 ```
 
 Start with `?`, then `:tutor`, and use `Ask AI` when you need targeted guidance.
+
+### TUI review harness
+
+`tt tui-test` is a hidden, repo-native surface for LLM-driven and automated review
+of the TUI. It drives the real app in-process against isolated fixture (or copied)
+data and returns normalized JSON observations. See
+[docs/tui-testing/README.md](docs/tui-testing/README.md) for fixtures, the scenario
+format, NDJSON session mode, observation fields, and safety guarantees.
