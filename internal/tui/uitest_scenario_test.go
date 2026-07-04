@@ -325,6 +325,57 @@ func TestUITestScenarioMinimumHeightViewLayoutsNoOverflow(t *testing.T) {
 	}
 }
 
+func TestUITestScenarioLongNoMatchSearchQueriesMinimumLayoutNoOverflow(t *testing.T) {
+	tests := []struct {
+		name    string
+		view    string
+		actions []UITestAction
+	}{
+		{
+			name: "command palette",
+			view: "CommandPalette",
+			actions: []UITestAction{
+				{Type: UITestActionKey, Key: ":"},
+				{Type: UITestActionText, Text: strings.Repeat("a", 56)},
+			},
+		},
+		{
+			name: "global search",
+			view: "GlobalSearch",
+			actions: []UITestAction{
+				{Type: UITestActionCommand, Command: "global search"},
+				{Type: UITestActionText, Text: strings.Repeat("a", 60)},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			actions := append([]UITestAction{}, tt.actions...)
+			actions = append(actions,
+				UITestAction{Type: UITestActionAssert, Assert: "view", Value: tt.view},
+				UITestAction{Type: UITestActionAssert, Assert: "no_layout_issues"},
+			)
+			sc := UITestScenario{
+				Name:    tt.name + " long no-match query minimum layout",
+				Fixture: "rich",
+				Size:    "72x20",
+				Actions: actions,
+			}
+
+			result, ws, err := RunScenarioFixture(sc, RunScenarioOptions{})
+			if err != nil {
+				t.Fatalf("RunScenarioFixture error: %v", err)
+			}
+			t.Cleanup(func() { _ = ws.Cleanup() })
+
+			if !result.OK {
+				t.Fatalf("%s layout should pass, got error: %+v", tt.name, result.Error)
+			}
+		})
+	}
+}
+
 func TestUITestScenarioRunFixtureDefaults(t *testing.T) {
 	// No fixture or size in the scenario: RunScenarioFixture falls back to the
 	// package defaults (rich fixture at 100x30).

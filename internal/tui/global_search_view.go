@@ -69,7 +69,8 @@ func (m *GlobalSearchModel) View() tea.View {
 			itemType = "notes"
 		}
 		if query != "" {
-			out.WriteString(MutedStyle.Render(fmt.Sprintf("No %s match \"%s\".", itemType, query)))
+			noMatch := truncateToVisualWidth(fmt.Sprintf("No %s match \"%s\".", itemType, query), m.Width())
+			out.WriteString(MutedStyle.Render(noMatch))
 		} else {
 			out.WriteString(MutedStyle.Render(fmt.Sprintf("No %s found.", itemType)))
 		}
