@@ -259,6 +259,30 @@ func TestUITestScenarioKeybindingExplorerMinimumHeightNoOverflow(t *testing.T) {
 	}
 }
 
+func TestUITestScenarioPipelineHubMinimumLayoutNoOverflow(t *testing.T) {
+	sc := UITestScenario{
+		Name:    "pipeline hub minimum layout",
+		Fixture: "rich",
+		Size:    "72x20",
+		Actions: []UITestAction{
+			{Type: UITestActionKey, Key: ";"},
+			{Type: UITestActionKey, Key: ";"},
+			{Type: UITestActionAssert, Assert: "view", Value: "PipelineHub"},
+			{Type: UITestActionAssert, Assert: "no_layout_issues"},
+		},
+	}
+
+	result, ws, err := RunScenarioFixture(sc, RunScenarioOptions{})
+	if err != nil {
+		t.Fatalf("RunScenarioFixture error: %v", err)
+	}
+	t.Cleanup(func() { _ = ws.Cleanup() })
+
+	if !result.OK {
+		t.Fatalf("pipeline hub layout should pass, got error: %+v", result.Error)
+	}
+}
+
 func TestUITestScenarioMinimumHeightViewLayoutsNoOverflow(t *testing.T) {
 	tests := []struct {
 		name    string

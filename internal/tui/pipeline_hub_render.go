@@ -36,7 +36,10 @@ func (m *PipelineHubModel) View() tea.View {
 	// Column layout
 	colCount := len(m.columns)
 	sepWidth := ansi.StringWidth(pipelineHubColSep) * (colCount - 1)
-	colWidth := max((m.width-sepWidth)/colCount, pipelineHubMinColWidth)
+	colWidth := max((m.width-sepWidth)/colCount, 1)
+	if m.width >= pipelineHubMinColWidth*colCount+sepWidth {
+		colWidth = max(colWidth, pipelineHubMinColWidth)
+	}
 
 	// Max entries across all columns (for row-count alignment)
 	maxEntries := 0

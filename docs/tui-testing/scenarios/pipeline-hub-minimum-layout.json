@@ -1,0 +1,11 @@
+{
+  "name": "pipeline-hub-minimum-layout",
+  "fixture": "rich",
+  "size": "72x20",
+  "actions": [
+    { "type": "key", "label": "open prefix menu (;)", "key": ";" },
+    { "type": "key", "label": "open Pipeline Hub (;)", "key": ";" },
+    { "type": "assert", "assert": "view", "value": "PipelineHub" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}
