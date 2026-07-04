@@ -34,7 +34,8 @@ func (m *NotesSearchModel) View() tea.View {
 		if query == "" {
 			b.WriteString(MutedStyle.Render("No notes found."))
 		} else {
-			b.WriteString(MutedStyle.Render(fmt.Sprintf("No notes match \"%s\".", query)))
+			noMatch := truncateToVisualWidth(fmt.Sprintf("No notes match \"%s\".", query), m.width)
+			b.WriteString(MutedStyle.Render(noMatch))
 		}
 		b.WriteString("\n")
 		b.WriteString(renderStatusBarFooter(HelpStyle.Render("Esc close"), "", m.width))

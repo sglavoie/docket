@@ -347,6 +347,16 @@ func TestUITestScenarioLongNoMatchSearchQueriesMinimumLayoutNoOverflow(t *testin
 				{Type: UITestActionText, Text: strings.Repeat("a", 60)},
 			},
 		},
+		{
+			name: "notes search",
+			view: "NotesSearch",
+			actions: []UITestAction{
+				{Type: UITestActionKey, Key: "enter"},
+				{Type: UITestActionKey, Key: "{"},
+				{Type: UITestActionKey, Key: "/"},
+				{Type: UITestActionText, Text: strings.Repeat("a", 72)},
+			},
+		},
 	}
 
 	for _, tt := range tests {
