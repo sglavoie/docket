@@ -55,23 +55,6 @@ func (m *SettingsModel) renderOutlinerColumnToggles(b *strings.Builder, toggles 
 	}
 }
 
-// settingsContentHeight returns the number of lines available for tab content,
-// accounting for the title, tab bar, blank line, and footer.
-func (m *SettingsModel) settingsContentHeight() int {
-	// Title (1) + tab bar with border (2) + blank line (1) + footer (1) + padding (1)
-	h := m.height - TabbedViewChrome
-	// Subtract rows the visual sub-tab bar consumes (may wrap to >1 row when
-	// labels overflow available width).
-	if names := visualSubTabNamesForVTab(m.visualTab); names != nil {
-		rows := max(wrappingTabBarRows(names, m.width-2), 1)
-		h -= rows
-	}
-	if h < 3 {
-		return 3
-	}
-	return h
-}
-
 // focusLineInContent returns the approximate line number within the rendered
 // tab content where the currently focused field appears. This drives auto-scroll.
 func (m *SettingsModel) focusLineInContent() int {
@@ -142,6 +125,98 @@ func (m *SettingsModel) focusLineInContent() int {
 	return 0
 }
 
+func (m *SettingsModel) settingsHeaderBlocks() []string {
+	blocks := []string{renderFullscreenTitle("Settings", "")}
+	visualSubNames := visualSubTabNamesForVTab(m.visualTab)
+	if visualSubNames != nil {
+		blocks = append(blocks,
+			renderTabBarWithOptionalSubTabs(settingsVisualTabNames, m.visualTab, visualSubNames, m.subTabRowFocused, m.width),
+			renderSubTabBarWithFocus(visualSubNames, m.visualSubTab, m.subTabRowFocused, m.width),
+		)
+	} else {
+		visualTabState := TabState{Names: settingsVisualTabNames, Active: m.visualTab}
+		blocks = append(blocks, visualTabState.RenderBar(m.width))
+	}
+	return append(blocks, "")
+}
+
+func (m *SettingsModel) settingsFooter(contentLines []string, visibleHeight, maxScroll int) string {
+	scrollHint := ""
+	if !m.searchActive && len(contentLines) > visibleHeight {
+		scrollHint = fmt.Sprintf(" (%d/%d)", m.scrollOffset+1, maxScroll+1)
+	}
+	helpPrefix := "/ search · "
+	if visualSubTabNamesForVTab(m.visualTab) != nil {
+		helpPrefix += "shift+↑/↓ sub-tabs · "
+	}
+	helpText := helpPrefix + "shift+←/→: tabs · Tab: fields · Space: toggle · Enter: save · Esc: cancel · ctrl+d: reset · ?: Help" + scrollHint
+	var left string
+	if m.searchStatusMsg != "" {
+		left = HelpStyle.Render(m.searchStatusMsg)
+	} else if m.searchActive {
+		left = HelpStyle.Render("↑/↓ navigate · Enter: jump · Esc: cancel")
+	} else {
+		if lipgloss.Width(helpText) > m.width-20 {
+			line1 := helpPrefix + "shift+←/→: tabs · Tab: fields · Space: toggle · Enter: save"
+			line2 := "ctrl+d: reset · Esc: cancel · ?: Help" + scrollHint
+			left = HelpStyle.Render(line1) + "\n" + HelpStyle.Render(line2)
+		} else {
+			left = HelpStyle.Render(helpText)
+		}
+	}
+	right := MutedStyle.Render("Settings")
+	return renderStatusBarFooter(left, right, m.width)
+}
+
+func fitBlockHeight(block string, height int) string {
+	if height <= 0 {
+		return ""
+	}
+	block = strings.TrimRight(block, "\n")
+	lines := []string{""}
+	if block != "" {
+		lines = strings.Split(block, "\n")
+	}
+	if len(lines) > height {
+		lines = lines[:height]
+	}
+	for len(lines) < height {
+		lines = append(lines, "")
+	}
+	return strings.Join(lines, "\n")
+}
+
+func (m *SettingsModel) settingsContentHeight(footer string) int {
+	for h := max(m.height, 1); h >= 1; h-- {
+		blocks := append(m.settingsHeaderBlocks(), fitBlockHeight("", h), footer)
+		if lipgloss.Height(lipgloss.JoinVertical(lipgloss.Left, blocks...)) <= m.height {
+			return h
+		}
+	}
+	return 1
+}
+
+func (m *SettingsModel) settingsVisibleContent(contentLines []string, visibleHeight, focusLine int) (string, int) {
+	if focusLine < m.scrollOffset {
+		m.scrollOffset = focusLine
+	}
+	if focusLine >= m.scrollOffset+visibleHeight {
+		m.scrollOffset = focusLine - visibleHeight + 1
+	}
+
+	maxScroll := max(len(contentLines)-visibleHeight, 0)
+	if m.scrollOffset > maxScroll {
+		m.scrollOffset = maxScroll
+	}
+	if m.scrollOffset < 0 {
+		m.scrollOffset = 0
+	}
+
+	end := min(m.scrollOffset+visibleHeight, len(contentLines))
+	visibleContent := strings.Join(contentLines[m.scrollOffset:end], "\n")
+	return fitBlockHeight(visibleContent, visibleHeight), maxScroll
+}
+
 func (m *SettingsModel) View() tea.View {
 	var content string
 	switch m.tabs.Active {
@@ -170,7 +245,6 @@ func (m *SettingsModel) View() tea.View {
 	}
 
 	contentLines := strings.Split(content, "\n")
-	visibleHeight := m.settingsContentHeight()
 
 	focusLine := -1
 	for i, line := range contentLines {
@@ -182,74 +256,23 @@ func (m *SettingsModel) View() tea.View {
 	if focusLine < 0 {
 		focusLine = m.focusLineInContent()
 	}
-	if focusLine < m.scrollOffset {
-		m.scrollOffset = focusLine
-	}
-	if focusLine >= m.scrollOffset+visibleHeight {
-		m.scrollOffset = focusLine - visibleHeight + 1
-	}
 
-	maxScroll := max(len(contentLines)-visibleHeight, 0)
-	if m.scrollOffset > maxScroll {
-		m.scrollOffset = maxScroll
-	}
-	if m.scrollOffset < 0 {
-		m.scrollOffset = 0
+	footer := m.settingsFooter(contentLines, 1, 0)
+	visibleHeight := m.settingsContentHeight(footer)
+	visibleContent, maxScroll := m.settingsVisibleContent(contentLines, visibleHeight, focusLine)
+	footer = m.settingsFooter(contentLines, visibleHeight, maxScroll)
+	if adjustedHeight := m.settingsContentHeight(footer); adjustedHeight != visibleHeight {
+		visibleHeight = adjustedHeight
+		visibleContent, maxScroll = m.settingsVisibleContent(contentLines, visibleHeight, focusLine)
+		footer = m.settingsFooter(contentLines, visibleHeight, maxScroll)
 	}
 
-	end := min(m.scrollOffset+visibleHeight, len(contentLines))
-	visibleContent := strings.Join(contentLines[m.scrollOffset:end], "\n")
-
-	var out strings.Builder
-	out.WriteString(renderFullscreenTitle("Settings", ""))
-	out.WriteString("\n")
-
-	visualSubNames := visualSubTabNamesForVTab(m.visualTab)
-	if visualSubNames != nil {
-		out.WriteString(renderTabBarWithOptionalSubTabs(settingsVisualTabNames, m.visualTab, visualSubNames, m.subTabRowFocused, m.width))
-		out.WriteString("\n")
-		out.WriteString(renderSubTabBarWithFocus(visualSubNames, m.visualSubTab, m.subTabRowFocused, m.width))
-		out.WriteString("\n\n")
-	} else {
-		visualTabState := TabState{Names: settingsVisualTabNames, Active: m.visualTab}
-		out.WriteString(visualTabState.RenderBar(m.width))
-		out.WriteString("\n\n")
-	}
-
+	body := visibleContent
 	if m.searchActive {
-		out.WriteString(m.renderSearchOverlay(visibleHeight))
-	} else {
-		out.WriteString(visibleContent)
+		body = fitBlockHeight(m.renderSearchOverlay(visibleHeight), visibleHeight)
 	}
-	out.WriteString("\n")
-
-	scrollHint := ""
-	if !m.searchActive && len(contentLines) > visibleHeight {
-		scrollHint = fmt.Sprintf(" (%d/%d)", m.scrollOffset+1, maxScroll+1)
-	}
-	helpPrefix := "/ search · "
-	if visualSubTabNamesForVTab(m.visualTab) != nil {
-		helpPrefix += "shift+↑/↓ sub-tabs · "
-	}
-	helpText := helpPrefix + "shift+←/→: tabs · Tab: fields · Space: toggle · Enter: save · Esc: cancel · ctrl+d: reset · ?: Help" + scrollHint
-	var left string
-	if m.searchStatusMsg != "" {
-		left = HelpStyle.Render(m.searchStatusMsg)
-	} else if m.searchActive {
-		left = HelpStyle.Render("↑/↓ navigate · Enter: jump · Esc: cancel")
-	} else {
-		if lipgloss.Width(helpText) > m.width-20 {
-			line1 := helpPrefix + "shift+←/→: tabs · Tab: fields · Space: toggle · Enter: save"
-			line2 := "ctrl+d: reset · Esc: cancel · ?: Help" + scrollHint
-			left = HelpStyle.Render(line1) + "\n" + HelpStyle.Render(line2)
-		} else {
-			left = HelpStyle.Render(helpText)
-		}
-	}
-	right := MutedStyle.Render("Settings")
-	out.WriteString(renderStatusBarFooter(left, right, m.width))
-
-	return tea.NewView(out.String())
+	blocks := append(m.settingsHeaderBlocks(), body, footer)
+	return tea.NewView(lipgloss.JoinVertical(lipgloss.Left, blocks...))
 }
 
 // renderSearchOverlay renders the search input and filtered results list.

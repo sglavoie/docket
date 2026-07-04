@@ -1,0 +1,10 @@
+{
+  "name": "settings-minimum-layout",
+  "fixture": "rich",
+  "size": "72x20",
+  "actions": [
+    { "type": "command", "label": "open Settings", "command": "settings" },
+    { "type": "assert", "assert": "view", "value": "Settings" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

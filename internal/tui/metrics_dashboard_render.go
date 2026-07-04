@@ -39,9 +39,7 @@ func (m *MetricsDashboardModel) View() tea.View {
 	helpText := HelpStyle.Render(strings.Join(helpParts, " · "))
 	footer := renderStatusBarFooter("", helpText, m.width, m.AccentColor())
 
-	contentHeight := max(
-		// tab bar(2)
-		fullscreenContentHeight(m.height, 2), 4)
+	contentHeight := metricsContentHeight(m.height, title, tabBar, footer)
 
 	var content string
 	switch m.activeTab {
@@ -56,8 +54,19 @@ func (m *MetricsDashboardModel) View() tea.View {
 	case MetricsTabBlocked:
 		content = m.renderBlockedTab(contentHeight)
 	}
+	content = fitBlockHeight(content, contentHeight)
 
 	return tea.NewView(lipgloss.JoinVertical(lipgloss.Left, title, tabBar, content, footer))
+}
+
+func metricsContentHeight(totalHeight int, title, tabBar, footer string) int {
+	for h := max(totalHeight, 1); h >= 1; h-- {
+		blocks := []string{title, tabBar, fitBlockHeight("", h), footer}
+		if lipgloss.Height(lipgloss.JoinVertical(lipgloss.Left, blocks...)) <= totalHeight {
+			return h
+		}
+	}
+	return 1
 }
 
 // renderSummaryTab renders a 2x2 card grid with mini charts.
@@ -66,6 +75,10 @@ func (m *MetricsDashboardModel) renderSummaryTab(height int) string {
 	contentWidth := m.width - 2
 
 	if narrow {
+		if height < 16 {
+			return m.renderCompactSummaryTab(height, contentWidth)
+		}
+
 		// Single column layout
 		cardWidth := contentWidth
 		cardHeight := max((height-2)/4, 4)
@@ -92,6 +105,24 @@ func (m *MetricsDashboardModel) renderSummaryTab(height int) string {
 		m.renderBlockedCard(cardWidth, cardHeight),
 	)
 	return lipgloss.JoinVertical(lipgloss.Left, topRow, bottomRow)
+}
+
+func (m *MetricsDashboardModel) renderCompactSummaryTab(height, width int) string {
+	c := m.metrics.Completion
+	cycle := m.metrics.CycleTime
+	t := m.metrics.Throughput
+	b := m.metrics.Blocked
+
+	lines := []string{
+		fmt.Sprintf("Completion  %.0f%% (%d/%d)", c.Rate*100, c.Completed, c.Total),
+		fmt.Sprintf("Cycle Time  Avg %s · Med %s · P90 %s", formatDuration(cycle.Average), formatDuration(cycle.Median), formatDuration(cycle.P90)),
+		fmt.Sprintf("Throughput  %d tasks · %.1f/day", t.Total, t.AvgPerDay),
+		fmt.Sprintf("Blocked     %d tasks", b.TaskCount),
+	}
+	for i, line := range lines {
+		lines[i] = truncateToVisualWidth(line, max(width, 1))
+	}
+	return fitBlockHeight(strings.Join(lines, "\n"), height)
 }
 
 func (m *MetricsDashboardModel) renderCompletionCard(width, height int) string {

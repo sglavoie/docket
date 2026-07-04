@@ -1,0 +1,10 @@
+{
+  "name": "metrics-minimum-layout",
+  "fixture": "rich",
+  "size": "72x20",
+  "actions": [
+    { "type": "command", "label": "open Metrics Dashboard", "command": "metrics dashboard" },
+    { "type": "assert", "assert": "view", "value": "MetricsDashboard" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

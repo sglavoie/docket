@@ -382,7 +382,7 @@ func boolPtr(b bool) *bool { return &b }
 
 func (m *SettingsModel) HasTextInput() bool     { return true }
 func (m *SettingsModel) ShouldCaptureEsc() bool { return true }
-func (m *SettingsModel) IsFullHeight() bool     { return false }
+func (m *SettingsModel) IsFullHeight() bool     { return true }
 func (m *SettingsModel) StatusBarLabel() string { return "Settings" }
 
 // HandledKeys returns all keys the Settings view's Update method can process.

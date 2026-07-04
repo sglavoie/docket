@@ -259,6 +259,42 @@ func TestUITestScenarioKeybindingExplorerMinimumHeightNoOverflow(t *testing.T) {
 	}
 }
 
+func TestUITestScenarioMinimumHeightViewLayoutsNoOverflow(t *testing.T) {
+	tests := []struct {
+		name    string
+		command string
+		view    string
+	}{
+		{"settings", "settings", "Settings"},
+		{"metrics dashboard", "metrics dashboard", "MetricsDashboard"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			sc := UITestScenario{
+				Name:    tt.name + " minimum height",
+				Fixture: "rich",
+				Size:    "72x20",
+				Actions: []UITestAction{
+					{Type: UITestActionCommand, Command: tt.command},
+					{Type: UITestActionAssert, Assert: "view", Value: tt.view},
+					{Type: UITestActionAssert, Assert: "no_layout_issues"},
+				},
+			}
+
+			result, ws, err := RunScenarioFixture(sc, RunScenarioOptions{})
+			if err != nil {
+				t.Fatalf("RunScenarioFixture error: %v", err)
+			}
+			t.Cleanup(func() { _ = ws.Cleanup() })
+
+			if !result.OK {
+				t.Fatalf("%s layout should pass, got error: %+v", tt.name, result.Error)
+			}
+		})
+	}
+}
+
 func TestUITestScenarioRunFixtureDefaults(t *testing.T) {
 	// No fixture or size in the scenario: RunScenarioFixture falls back to the
 	// package defaults (rich fixture at 100x30).

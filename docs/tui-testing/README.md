@@ -142,6 +142,8 @@ The [`scenarios/`](scenarios/) directory holds committed, verified examples:
 | `navigate-outliner.json`        | Open the global outliner (`;o`) and move the cursor.     |
 | `resize-stress.json`            | Resize through extremes and confirm a clean settle.      |
 | `baseline-layout.json`          | Assert no layout issues across baseline dashboard sizes. |
+| `settings-minimum-layout.json`  | Open Settings at `72x20` and assert no layout issues.    |
+| `metrics-minimum-layout.json`   | Open Metrics at `72x20` and assert no layout issues.     |
 
 Run any of them:
 
