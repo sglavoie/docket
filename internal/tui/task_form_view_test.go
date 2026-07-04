@@ -1,0 +1,79 @@
+package tui
+
+import (
+	"strings"
+	"testing"
+
+	"charm.land/lipgloss/v2"
+	"github.com/charmbracelet/x/ansi"
+)
+
+// TestTaskFormEditMinimumLayout is the regression guard for Finding 1: the
+// edit-form height guard (formMinHeight = 24) blocked the very common 80x24
+// terminal, where the form is allotted 80x22 (terminalHeight-2). The guard now
+// derives from the app floor (formMinHeight = minTerminalHeight - 2 = 18) and
+// the body is clamped to the available rows, so the form must actually render
+// (no "terminal too small" notice) and fit both width and height at:
+//   - the 80x24 terminal's allotted size, SetSize(80, 22)
+//   - the form's genuine floor, SetSize(formMinWidth, minTerminalHeight-2)
+//
+// The floor uses formMinWidth (68), not the app's minTerminalWidth (60): the
+// form body is fixed-width, so width genuinely cannot go below it and the
+// min-size notice still (correctly) appears below formMinWidth. Only the height
+// floor changed.
+func TestTaskFormEditMinimumLayout(t *testing.T) {
+	sizes := []struct {
+		w, h int
+	}{
+		{80, 22},
+		{formMinWidth, minTerminalHeight - 2},
+	}
+	for _, sz := range sizes {
+		m, cleanup := newSaveableEditForm(t)
+		m.SetSize(sz.w, sz.h)
+
+		rendered := m.View().Content
+		if strings.Contains(ansi.Strip(rendered), "Terminal too small") {
+			cleanup()
+			t.Fatalf("form should render (not show the min-size notice) at %dx%d:\n\n%s",
+				sz.w, sz.h, ansi.Strip(rendered))
+		}
+		assertFitsWithin(t, rendered, sz.w, sz.h)
+		cleanup()
+	}
+}
+
+// TestTaskFormEditFitsWidthWhenRendered verifies the primary width fix: when the
+// terminal is tall enough for the form to render (height >= formMinHeight) but
+// too narrow for the two-column help pane, the form falls back to a single
+// column instead of overflowing to width 95. Before the fix this rendered at
+// width 95 at any width >= 60.
+func TestTaskFormEditFitsWidthWhenRendered(t *testing.T) {
+	m, cleanup := newSaveableEditForm(t)
+	defer cleanup()
+	m.SetSize(72, 30)
+
+	rendered := m.View().Content
+	if strings.Contains(ansi.Strip(rendered), "Terminal too small") {
+		t.Fatalf("form should render (not show the min-size notice) at 72x30:\n\n%s",
+			ansi.Strip(rendered))
+	}
+	assertFitsWithin(t, rendered, 72, 30)
+}
+
+// assertFitsWithin fails if any rendered line exceeds width or the line count
+// exceeds height.
+func assertFitsWithin(t *testing.T, rendered string, width, height int) {
+	t.Helper()
+	lines := strings.Split(strings.TrimRight(rendered, "\n"), "\n")
+	if len(lines) > height {
+		t.Fatalf("render has %d lines, exceeds height %d:\n\n%s",
+			len(lines), height, ansi.Strip(rendered))
+	}
+	for _, line := range lines {
+		if w := lipgloss.Width(ansi.Strip(line)); w > width {
+			t.Fatalf("line exceeds width %d: %q (width=%d)\n\n%s",
+				width, ansi.Strip(line), w, ansi.Strip(rendered))
+		}
+	}
+}

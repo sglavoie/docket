@@ -38,6 +38,13 @@ func (m *OutlinerModel) renderOutlinerTreeContent(width int) string {
 	var b strings.Builder
 	m.writeOutlinerHeader(&b, width, perspectiveLabel, searchIndicator)
 
+	// The title row is budgeted as a single line by contentHeight(), but the
+	// multi-select badge / long filter suffix can push it past the render width
+	// and wrap under the enclosing Width() style (notably the narrow tree pane
+	// in split-pane mode). Reserve the extra wrapped rows so the viewport does
+	// not overflow terminal height.
+	titleExtra := wrappedLineCount(m.buildOutlinerTitleLine(width, perspectiveLabel, searchIndicator), width) - 1
+
 	// Reserve one row for the selected-task metadata strip whenever a row is
 	// selectable. The strip stays blank when the cursor sits on a section
 	// header or separator so layout does not jitter as the selection moves.
@@ -51,6 +58,9 @@ func (m *OutlinerModel) renderOutlinerTreeContent(width int) string {
 	}
 
 	extraFooter := 0
+	if titleExtra > 0 {
+		extraFooter += titleExtra
+	}
 	if stripReserved {
 		extraFooter++
 	}
@@ -61,7 +71,10 @@ func (m *OutlinerModel) renderOutlinerTreeContent(width int) string {
 		extraFooter += 2
 	}
 	if m.statusMessage != "" {
-		extraFooter += 2
+		// One blank separator line plus the status text's own wrapped height.
+		// A long status wraps to multiple lines at narrow widths, so reserving
+		// a fixed 2 lines under-counts and overflows terminal height.
+		extraFooter += 1 + max(wrappedLineCount(m.statusMessage, width), 1)
 	}
 
 	viewport := m.computeOutlinerViewport(width, extraFooter)
@@ -109,11 +122,20 @@ func (m *OutlinerModel) renderOutlinerTreeContent(width int) string {
 
 	if m.statusMessage != "" {
 		b.WriteString("\n")
-		b.WriteString(MutedStyle.Render(m.statusMessage))
+		b.WriteString(MutedStyle.Width(width).Render(m.statusMessage))
 		b.WriteString("\n")
 	}
 
 	return b.String()
+}
+
+// wrappedLineCount reports how many terminal rows s occupies once wrapped to
+// width. Returns 0 for an empty string or a non-positive width.
+func wrappedLineCount(s string, width int) int {
+	if s == "" || width <= 0 {
+		return 0
+	}
+	return lipgloss.Height(lipgloss.NewStyle().Width(width).Render(s))
 }
 
 func (m *OutlinerModel) buildPerspectiveLabel(perspective Perspective) string {
@@ -201,7 +223,11 @@ func (m *OutlinerModel) appendOpenLoopsCounter(line string, width int) string {
 	return line + strings.Repeat(" ", gap) + rendered
 }
 
-func (m *OutlinerModel) writeOutlinerHeader(b *strings.Builder, width int, perspectiveLabel, searchIndicator string) {
+// buildOutlinerTitleLine assembles the single title row (title, perspective
+// label, search indicator, optional multi-select badge, right-aligned
+// open-loops counter). Shared by writeOutlinerHeader and the height budget so
+// both measure the same line.
+func (m *OutlinerModel) buildOutlinerTitleLine(width int, perspectiveLabel, searchIndicator string) string {
 	var line strings.Builder
 	line.WriteString(m.renderOutlinerTitle(width))
 	line.WriteString(perspectiveLabel)
@@ -210,7 +236,11 @@ func (m *OutlinerModel) writeOutlinerHeader(b *strings.Builder, width int, persp
 		line.WriteString("  ")
 		line.WriteString(SelectionCountStyle.Render(fmt.Sprintf("[MULTI-SELECT: %d selected]", m.SelectedCount())))
 	}
-	b.WriteString(m.appendOpenLoopsCounter(line.String(), width))
+	return m.appendOpenLoopsCounter(line.String(), width)
+}
+
+func (m *OutlinerModel) writeOutlinerHeader(b *strings.Builder, width int, perspectiveLabel, searchIndicator string) {
+	b.WriteString(m.buildOutlinerTitleLine(width, perspectiveLabel, searchIndicator))
 	b.WriteString("\n")
 
 	if m.ac.IsActive() {

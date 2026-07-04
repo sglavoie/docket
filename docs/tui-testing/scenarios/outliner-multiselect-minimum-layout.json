@@ -1,0 +1,13 @@
+{
+  "name": "outliner-multiselect-minimum-layout",
+  "fixture": "rich",
+  "size": "72x20",
+  "actions": [
+    { "type": "resize", "width": 72, "height": 20 },
+    { "type": "key", "label": "open global outliner (;o)", "key": ";" },
+    { "type": "key", "key": "o" },
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "key", "label": "enter multi-select (v)", "key": "v" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

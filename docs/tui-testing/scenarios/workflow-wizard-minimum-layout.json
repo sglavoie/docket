@@ -1,0 +1,11 @@
+{
+  "name": "workflow-wizard-minimum-layout",
+  "fixture": "rich",
+  "size": "72x20",
+  "actions": [
+    { "type": "command", "label": "open Workflow Rules", "command": "workflow rules" },
+    { "type": "key", "key": "w" },
+    { "type": "assert", "assert": "view", "value": "WorkflowWizard" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

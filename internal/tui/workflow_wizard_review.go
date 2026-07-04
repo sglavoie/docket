@@ -178,7 +178,7 @@ func (m *WorkflowWizardModel) renderListStep(heading string, items []listItem, c
 
 	// Determine visible window
 	start := m.listScrollOff
-	end := min(start+wizardListMaxVisible, len(items))
+	end := min(start+m.visibleListRows(), len(items))
 
 	for i := start; i < end; i++ {
 		item := items[i]

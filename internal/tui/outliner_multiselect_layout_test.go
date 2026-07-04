@@ -1,0 +1,89 @@
+package tui
+
+import (
+	"fmt"
+	"strings"
+	"testing"
+
+	"charm.land/lipgloss/v2"
+	"github.com/charmbracelet/x/ansi"
+
+	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/tt/internal/models"
+)
+
+// TestOutlinerMultiSelectStatusFitsHeight guards Bug 3: entering multi-select
+// sets a long status line and appends a "[MULTI-SELECT: n selected]" badge to
+// the title. In a narrow tree pane both wrap to extra rows; the height budget
+// used to reserve a fixed 2 lines for the status and 1 line for the title, so
+// the wrapped rows pushed the render past the pane height. The tree content
+// must never render more rows than the pane height, and no rendered line may
+// exceed the render width.
+func TestOutlinerMultiSelectStatusFitsHeight(t *testing.T) {
+	ApplyTheme(ThemeConfig{Name: ""})
+	t.Cleanup(func() { ApplyTheme(ThemeConfig{}) })
+
+	cfg := config.NewConfig()
+	// Disable the Next section limit so a full viewport of rows does not emit a
+	// wrapping "over section limit" warning (orthogonal to the status/badge
+	// height accounting under test).
+	cfg.SectionLimitNext = intPtr(0)
+
+	// Enough task rows to fill the viewport so footer/header accounting matters.
+	tasks := make([]*models.Task, 0, 12)
+	for i := 0; i < 12; i++ {
+		tasks = append(tasks, renderFixtureTask(t,
+			fmt.Sprintf("row-%02d", i),
+			i+1,
+			models.TaskTypeTask,
+			fmt.Sprintf("Fill row %02d with a fairly long title", i),
+			models.StatusTodo,
+			3,
+			models.SectionNext))
+	}
+	project := renderFixtureProject(t, "proj-ms", "ms", "Multi Select", tasks)
+
+	m := NewOutlinerModel(project, cfg, nil)
+	// Terminal 72x20 leaves the sub-view 18 rows (2 rows go to the app status
+	// bar). Exercise the narrow split-pane tree width where the wrap bites.
+	const paneHeight = 18
+	m.SetSize(72, paneHeight)
+	m.rebuildRows()
+	m.multiSelectMode = true
+	m.setStatus("Multi-select: Space=toggle, a=all, A=deselect, D=delete, v/Esc=exit")
+
+	// 39 mirrors the ~55% tree pane width the split-pane layout allots at 72
+	// cols, which forces both the status line and the title badge to wrap.
+	const treeWidth = 39
+	rendered := m.renderOutlinerTreeContent(treeWidth)
+
+	// The status line must actually wrap here, otherwise the test would pass
+	// vacuously and not guard the regression.
+	if got := wrappedLineCount(m.statusMessage, treeWidth); got < 2 {
+		t.Fatalf("precondition: status did not wrap at width %d (got %d line(s)); test would not guard the bug", treeWidth, got)
+	}
+
+	// Measure the render as the enclosing split-pane style does: constrained to
+	// the tree width, so any over-wide line wraps into extra rows.
+	wrapped := lipgloss.NewStyle().Width(treeWidth).Render(rendered)
+	lines := strings.Split(strings.TrimRight(wrapped, "\n"), "\n")
+
+	if len(lines) > paneHeight {
+		t.Fatalf("multi-select tree content rendered %d lines, exceeds pane height %d:\n%s",
+			len(lines), paneHeight, ansi.Strip(wrapped))
+	}
+	for i, line := range lines {
+		if w := lipgloss.Width(line); w > treeWidth {
+			t.Fatalf("line %d exceeds tree width %d: width=%d stripped=%q", i, treeWidth, w, ansi.Strip(line))
+		}
+	}
+
+	// Multi-select must remain functional: the badge and status hints render.
+	plain := ansi.Strip(rendered)
+	if !strings.Contains(plain, "MULTI-SELECT") {
+		t.Errorf("multi-select badge missing from render:\n%s", plain)
+	}
+	if !strings.Contains(plain, "Space=toggle") {
+		t.Errorf("multi-select status hint missing from render:\n%s", plain)
+	}
+}

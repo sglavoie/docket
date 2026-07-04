@@ -24,6 +24,9 @@ func TestTaskForm_ScheduleTab_RendersLabels(t *testing.T) {
 
 func TestTaskForm_ScheduleTab_Due_ShowsPlaceholder_WhenEmpty(t *testing.T) {
 	m := newTestTaskForm()
+	// The contextual help pane is only shown two-column when the body, a gap,
+	// and the pane all fit within the terminal width; widen so it renders.
+	m.SetSize(100, 24)
 	m = navigateToScheduleField(m, 0)
 	view := m.View().Content
 	if !strings.Contains(view, "Ctrl+D") || !strings.Contains(view, "presets") {

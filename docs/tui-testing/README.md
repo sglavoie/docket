@@ -56,6 +56,20 @@ failed, `2` invalid CLI input or an unparseable/invalid scenario. On failure the
 result JSON still prints, carrying the failing action and the failure-point
 screen under `error`.
 
+When grepping the `--json` result for the pass flag, remember that
+`run --scenario --json` is **pretty-printed** (`json.MarshalIndent`), so it emits
+`"ok": true` with a **space after the colon**. A bare `grep -o '"ok":[a-z]*'`
+matches nothing against that output and silently reports a false "clean". Match
+`"ok": *true` (allowing the space) or parse the JSON instead:
+
+```bash
+tt tui-test run --scenario scenario.json --json | grep -o '"ok": *true'
+```
+
+(The compact `"ok":true` form — no space — belongs to the NDJSON interactive
+protocol under [Interactive session mode](#interactive-session-mode-ndjson),
+not to scenario runs.)
+
 ### Scenario format
 
 ```json
@@ -280,3 +294,20 @@ Both modes are read-only with respect to your real data:
   end to end in the test suite. `--config` and `--fixture` are mutually exclusive.
 
 Direct live writes to your real data directory are out of scope for v1.
+
+## Known layout issues
+
+These are real, reproducible layout defects the harness can surface but that the
+committed scenarios do **not** yet guard. They are tracked as follow-ups, not
+fixed.
+
+- **Cross-project outliner multi-select overflows at 60×20.** Entering
+  multi-select in the global outliner (`;o` → `v`) prefixes each row with a
+  `[ ]` checkbox. That extra width pushes the trailing `#ID` past the edge of the
+  ~33-column tree pane, so it wraps and the screen reports `height_overflow` at
+  60×20. The shipped scenario
+  `scenarios/outliner-multiselect-minimum-layout.json` only asserts
+  `no_layout_issues` at **72×20**, where the rows still fit — so this narrower
+  overflow is currently invisible to regression coverage. Repro: `;o` → `v` at
+  60×20. Root cause: the checkbox-prefix width forces `#ID` to wrap in the narrow
+  tree pane.

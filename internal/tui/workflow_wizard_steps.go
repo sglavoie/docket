@@ -7,7 +7,23 @@ import (
 	"github.com/sglavoie/tt/internal/workflow"
 )
 
-const wizardListMaxVisible = 16
+// wizardListChrome is the number of terminal lines the wizard reserves around
+// a list step (title/progress/heading/blanks/2 scroll hints/footer/breadcrumb).
+const wizardListChrome = 14
+
+// visibleListRows returns the number of list rows that fit in the current
+// terminal height, mirroring the height-derived window used by the sibling
+// field picker (workflow_field_picker.go). Falls back to a fixed window before
+// SetSize has run.
+func (m *WorkflowWizardModel) visibleListRows() int {
+	if m.height <= 0 {
+		return 16 // pre-SetSize default
+	}
+	if r := m.height - wizardListChrome; r > 3 {
+		return r
+	}
+	return 3
+}
 
 // handleStepKey dispatches key presses to the current step handler.
 func (m *WorkflowWizardModel) handleStepKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
@@ -157,8 +173,8 @@ func (m *WorkflowWizardModel) clampListScroll(cursor *int) {
 	if *cursor < m.listScrollOff {
 		m.listScrollOff = *cursor
 	}
-	if *cursor >= m.listScrollOff+wizardListMaxVisible {
-		m.listScrollOff = *cursor - wizardListMaxVisible + 1
+	if *cursor >= m.listScrollOff+m.visibleListRows() {
+		m.listScrollOff = *cursor - m.visibleListRows() + 1
 	}
 }
 

@@ -1,0 +1,12 @@
+{
+  "name": "task-form-edit-minimum-layout",
+  "fixture": "rich",
+  "size": "72x20",
+  "actions": [
+    { "type": "command", "label": "triage inbox", "command": "triage inbox" },
+    { "type": "key", "key": "enter" },
+    { "type": "key", "key": "e" },
+    { "type": "assert", "assert": "view", "value": "TaskForm" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}
