@@ -186,6 +186,17 @@ func fitBlockHeight(block string, height int) string {
 	return strings.Join(lines, "\n")
 }
 
+func fitBlockWidth(block string, width int) string {
+	if width <= 0 {
+		return block
+	}
+	lines := strings.Split(block, "\n")
+	for i, line := range lines {
+		lines[i] = truncateToVisualWidth(line, width)
+	}
+	return strings.Join(lines, "\n")
+}
+
 func (m *SettingsModel) settingsContentHeight(footer string) int {
 	for h := max(m.height, 1); h >= 1; h-- {
 		blocks := append(m.settingsHeaderBlocks(), fitBlockHeight("", h), footer)
@@ -271,7 +282,11 @@ func (m *SettingsModel) View() tea.View {
 	if m.searchActive {
 		body = fitBlockHeight(m.renderSearchOverlay(visibleHeight), visibleHeight)
 	}
-	blocks := append(m.settingsHeaderBlocks(), body, footer)
+	blocks := m.settingsHeaderBlocks()
+	for i, block := range blocks {
+		blocks[i] = fitBlockWidth(block, m.width)
+	}
+	blocks = append(blocks, fitBlockWidth(body, m.width), fitBlockWidth(footer, m.width))
 	return tea.NewView(lipgloss.JoinVertical(lipgloss.Left, blocks...))
 }
 
