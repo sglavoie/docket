@@ -7,8 +7,15 @@ import (
 )
 
 // renderFullWidth renders the outliner tree using the full terminal width.
+//
+// The content is wrapped in Width(m.width), mirroring the split-pane path's
+// Width(treeWidth) clamp: an over-wide header (long project name + perspective
+// breadcrumb + multi-select badge) then wraps to the next line — whose extra
+// height renderOutlinerTreeContent already reserves via titleExtra — instead of
+// overflowing terminal width. Task rows are pre-clamped to rowWidth, so they
+// never wrap here.
 func (m *OutlinerModel) renderFullWidth() string {
-	return m.renderOutlinerTreeContent(m.width)
+	return lipgloss.NewStyle().Width(m.width).Render(m.renderOutlinerTreeContent(m.width))
 }
 
 // renderWithSidebar renders the split-pane view with tree on left and sidebar on right.

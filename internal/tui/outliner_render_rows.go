@@ -184,6 +184,14 @@ func (m *OutlinerModel) renderOutlinerTaskRow(row outlinerRow, selected bool, ro
 		indicators,
 	)
 
+	// renderTaskTitle floors the title budget at 10 cols, so a deeply-nested row
+	// (long tree prefix + multi-select checkbox) can assemble wider than rowWidth.
+	// The row style below applies Width(rowWidth), which *wraps* an over-wide line
+	// to a second terminal row — but computeOutlinerViewport budgets one line per
+	// row, so the extra wrapped rows overflow terminal height. Clamp to rowWidth
+	// (ANSI-aware) so every row stays exactly one line.
+	line = truncateToVisualWidth(line, rowWidth)
+
 	line = m.applyTaskRowLineStyle(line, task, proj, selected, rowWidth, rowIndex)
 
 	if m.previewMode && rowIndex == m.cursor {

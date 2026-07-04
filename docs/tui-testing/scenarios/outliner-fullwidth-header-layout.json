@@ -1,0 +1,12 @@
+{
+  "name": "outliner-fullwidth-header-layout",
+  "fixture": "narrow",
+  "size": "60x20",
+  "actions": [
+    { "type": "resize", "width": 60, "height": 20 },
+    { "type": "key", "label": "open project outliner (enter)", "key": "enter" },
+    { "type": "assert", "assert": "view", "value": "Outliner" },
+    { "type": "command", "label": "disable sidebar (full-width header)", "command": "disable sidebar for all projects" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}
