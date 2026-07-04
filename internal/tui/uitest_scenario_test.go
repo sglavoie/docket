@@ -325,6 +325,30 @@ func TestUITestScenarioMinimumHeightViewLayoutsNoOverflow(t *testing.T) {
 	}
 }
 
+func TestUITestScenarioScoreProfilePresetPickerMinimumLayoutNoOverflow(t *testing.T) {
+	sc := UITestScenario{
+		Name:    "score profile preset picker minimum layout",
+		Fixture: "rich",
+		Size:    "72x20",
+		Actions: []UITestAction{
+			{Type: UITestActionCommand, Command: "scoring profiles"},
+			{Type: UITestActionKey, Key: "a"},
+			{Type: UITestActionAssert, Assert: "view", Value: "ScoreProfileManager"},
+			{Type: UITestActionAssert, Assert: "no_layout_issues"},
+		},
+	}
+
+	result, ws, err := RunScenarioFixture(sc, RunScenarioOptions{})
+	if err != nil {
+		t.Fatalf("RunScenarioFixture error: %v", err)
+	}
+	t.Cleanup(func() { _ = ws.Cleanup() })
+
+	if !result.OK {
+		t.Fatalf("score profile preset picker layout should pass, got error: %+v", result.Error)
+	}
+}
+
 func TestUITestScenarioLongNoMatchSearchQueriesMinimumLayoutNoOverflow(t *testing.T) {
 	tests := []struct {
 		name    string

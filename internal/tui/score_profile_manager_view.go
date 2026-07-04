@@ -36,9 +36,9 @@ func (m *ScoreProfileManagerModel) View() tea.View {
 	lines = append(lines, subtitleStyle.Render(fmt.Sprintf("Assigned to project: %s", assignedName)))
 	lines = append(lines, "")
 
-	if len(m.profiles) == 0 {
+	if len(m.profiles) == 0 && !m.pickingPreset {
 		lines = append(lines, MutedStyle.Render("No scoring profiles. Press 'a' to add a preset."))
-	} else {
+	} else if len(m.profiles) > 0 {
 		wideScreen := m.width >= 81
 		var detailLines []string
 
@@ -71,7 +71,10 @@ func (m *ScoreProfileManagerModel) View() tea.View {
 	if m.pickingPreset {
 		lines = append(lines, "")
 		lines = append(lines, titleStyle.Render("Select preset to add:"))
-		lines = append(lines, m.renderPresetOptions()...)
+		lines = append(lines, m.renderPresetOptions(
+			scoreProfileOverlayContentWidth(m.width),
+			m.presetOptionLineBudget(len(lines)),
+		)...)
 	}
 
 	if m.statusMessage != "" {
@@ -87,27 +90,76 @@ func (m *ScoreProfileManagerModel) View() tea.View {
 	}
 
 	content := strings.Join(lines, "\n")
-	box := OverlayBoxStyle.Render(content)
+	boxStyle := OverlayBoxStyle
+	if m.width > 0 {
+		boxStyle = boxStyle.MaxWidth(m.width)
+	}
+	box := boxStyle.Render(content)
 
 	return tea.NewView(lipgloss.Place(m.width, m.height,
 		lipgloss.Center, lipgloss.Center,
 		box))
 }
 
-func (m *ScoreProfileManagerModel) renderPresetOptions() []string {
+func scoreProfileOverlayContentWidth(width int) int {
+	if width <= 0 {
+		width = 80
+	}
+	chromeWidth := OverlayBoxStyle.GetHorizontalBorderSize() + OverlayBoxStyle.GetHorizontalPadding()
+	return max(width-chromeWidth, 1)
+}
+
+func (m *ScoreProfileManagerModel) presetOptionLineBudget(usedLines int) int {
+	if m.height <= 0 {
+		return 0
+	}
+
+	const appStatusBarHeight = 2
+	verticalChrome := OverlayBoxStyle.GetVerticalBorderSize() + OverlayBoxStyle.GetVerticalPadding()
+	contentBudget := max(m.height-appStatusBarHeight-verticalChrome, 1)
+
+	reservedAfterOptions := 2 // blank line + help line
+	if m.statusMessage != "" {
+		reservedAfterOptions += 2 // blank line + status line
+	}
+
+	return max(contentBudget-usedLines-reservedAfterOptions, 1)
+}
+
+func (m *ScoreProfileManagerModel) renderPresetOptions(maxWidth, maxLines int) []string {
+	lines := m.renderPresetOptionsWithUsage(maxWidth, true)
+	if maxLines <= 0 || len(lines) <= maxLines {
+		return lines
+	}
+	return m.renderPresetOptionsWithUsage(maxWidth, false)
+}
+
+func (m *ScoreProfileManagerModel) renderPresetOptionsWithUsage(maxWidth int, includeUsageHints bool) []string {
 	presets := scoring.PresetProfiles()
 	lines := make([]string, 0, len(m.presetOptions))
 
 	for _, name := range m.presetOptions {
-		desc := ""
 		if factory, ok := presets[name]; ok {
 			profile := factory()
-			desc = " - " + profile.Description
-			if profile.UsageHint != "" {
-				desc += "\n    " + profile.UsageHint
+			prefix := fmt.Sprintf("  %s", name)
+			descWidth := max(maxWidth-lipgloss.Width(prefix), 1)
+			descLines := wrapLine(" - "+profile.Description, descWidth)
+			if len(descLines) == 0 {
+				lines = append(lines, prefix)
+			} else {
+				lines = append(lines, prefix+MutedStyle.Render(descLines[0]))
+				for _, line := range descLines[1:] {
+					lines = append(lines, "    "+MutedStyle.Render(line))
+				}
 			}
+			if includeUsageHints && profile.UsageHint != "" {
+				for _, line := range wrapLine(profile.UsageHint, max(maxWidth-4, 1)) {
+					lines = append(lines, "    "+MutedStyle.Render(line))
+				}
+			}
+			continue
 		}
-		lines = append(lines, fmt.Sprintf("  %s%s", name, MutedStyle.Render(desc)))
+		lines = append(lines, fmt.Sprintf("  %s", name))
 	}
 
 	return lines
