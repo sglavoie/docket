@@ -82,7 +82,12 @@ func (m *TaskTemplatesModel) renderTemplatesList(paneHeight int) string {
 		if m.searchQuery != "" {
 			b.WriteString(MutedStyle.Render("No templates match your search. Press Esc to clear search."))
 		} else {
-			b.WriteString(MutedStyle.Render("No task templates configured. Use 'tt template init' to add defaults."))
+			for i, line := range wrapText("No task templates configured. Use 'tt template init' to add defaults.", m.listContentWidth()) {
+				if i > 0 {
+					b.WriteString("\n")
+				}
+				b.WriteString(MutedStyle.Render(line))
+			}
 		}
 		return b.String()
 	}

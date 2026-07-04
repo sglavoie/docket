@@ -80,11 +80,18 @@ func (m *WorkflowRulesModel) renderRulesList(paneHeight int) string {
 
 	if len(m.filteredRules) == 0 {
 		if m.searchQuery != "" {
-			b.WriteString(MutedStyle.Render("No rules match your search.\n\n"))
+			b.WriteString(MutedStyle.Render("No rules match your search."))
+			b.WriteString("\n\n")
 			b.WriteString(MutedStyle.Render("Press Esc to clear search."))
 		} else {
-			b.WriteString(MutedStyle.Render("No workflow rules configured.\n\n"))
-			b.WriteString(MutedStyle.Render("Use 'tt workflow add' to create rules."))
+			b.WriteString(MutedStyle.Render("No workflow rules configured."))
+			b.WriteString("\n\n")
+			for i, line := range wrapText("Use 'tt workflow add' to create rules.", m.listContentWidth()) {
+				if i > 0 {
+					b.WriteString("\n")
+				}
+				b.WriteString(MutedStyle.Render(line))
+			}
 		}
 		return b.String()
 	}

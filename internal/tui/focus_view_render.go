@@ -92,7 +92,9 @@ func (m *FocusViewModel) View() tea.View { //nolint:gocyclo
 	if len(lines) == 0 {
 		switch m.tabs.Active {
 		case focusTabQueue:
-			lines = append(lines, MutedStyle.Render("Queue is empty. Switch to Suggested tab and press a to add tasks."))
+			for _, line := range wrapText("Queue is empty. Switch to Suggested tab and press a to add tasks.", m.width) {
+				lines = append(lines, MutedStyle.Render(line))
+			}
 		case focusTabSuggested:
 			if m.HasActiveFilters() {
 				lines = append(lines, MutedStyle.Render(EmptyStateFiltered))
