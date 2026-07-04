@@ -419,8 +419,57 @@ func TestKeybindingExplorerResizeDoesNotOverflowHeight(t *testing.T) {
 	explorer.SetSize(120, 40)
 	explorer.SetSize(100, 35)
 
+	if explorer.compactTabs {
+		t.Fatal("keybinding explorer should keep full category tabs at 100x35")
+	}
+
 	_, issues := normalizeScreen(explorer.View().Content, 100, 35)
 	if len(issues) > 0 {
 		t.Fatalf("resized keybinding explorer reported layout issues: %+v", issues)
+	}
+}
+
+func TestKeybindingExplorerFullTabModeAtComfortableSize(t *testing.T) {
+	explorer := NewKeybindingExplorerModel()
+	explorer.SetSize(100, 35)
+
+	if explorer.compactTabs {
+		t.Fatal("keybinding explorer should render full tabs at 100x35")
+	}
+	if !strings.Contains(explorer.renderHelpTabBar(), "\n") {
+		t.Fatal("full tab mode should render the wrapping category tab bar")
+	}
+
+	out := explorer.View().Content
+	if !strings.Contains(out, "Blockers (b prefix)") {
+		t.Fatalf("full tab mode should render category tabs; got:\n%s", out)
+	}
+	if strings.Contains(out, "Category: All") {
+		t.Fatalf("full tab mode should not render the compact category summary; got:\n%s", out)
+	}
+
+	if _, issues := normalizeScreen(out, 100, 35); len(issues) > 0 {
+		t.Fatalf("full tab mode reported layout issues: %+v", issues)
+	}
+}
+
+func TestKeybindingExplorerCompactTabModeAtMinimumHeight(t *testing.T) {
+	explorer := NewKeybindingExplorerModel()
+	explorer.SetSize(72, 20)
+
+	if !explorer.compactTabs {
+		t.Fatal("keybinding explorer should collapse tabs at 72x20")
+	}
+	if strings.Contains(explorer.renderHelpTabBar(), "\n") {
+		t.Fatal("compact tab mode should render a one-line category summary")
+	}
+
+	out := explorer.View().Content
+	if !strings.Contains(out, "Category: All") {
+		t.Fatalf("compact tab mode should render category summary; got:\n%s", out)
+	}
+
+	if _, issues := normalizeScreen(out, 72, 20); len(issues) > 0 {
+		t.Fatalf("compact tab mode reported layout issues: %+v", issues)
 	}
 }

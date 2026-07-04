@@ -102,25 +102,30 @@ func (m *HelpViewModel) SetSize(width, height int) {
 	m.width = width
 	m.height = height
 
-	searchHeight := 0
-	if m.searchMode || m.searchQuery != "" {
-		searchHeight = 2
-	}
-	tabSearchHeight := 0
-	if m.tabSearchMode {
-		tabSearchHeight = 2
-	}
-	statusBarHeight := 3 // blank line + separator + bar
-	tabBarHeight := m.tabBarLines()
-
 	viewportWidth := m.innerWidth()
-	viewportHeight := height - tabBarHeight - searchHeight - tabSearchHeight - statusBarHeight
-
 	if viewportWidth < 1 {
 		viewportWidth = 1
 	}
-	if viewportHeight < 5 {
-		viewportHeight = 5
+
+	viewportHeight := 0
+	if m.isExplorer {
+		viewportHeight = m.explorerViewportHeight(height)
+	} else {
+		searchHeight := 0
+		if m.searchMode || m.searchQuery != "" {
+			searchHeight = 2
+		}
+		tabSearchHeight := 0
+		if m.tabSearchMode {
+			tabSearchHeight = 2
+		}
+		statusBarHeight := 3 // blank line + separator + bar
+		tabBarHeight := m.tabBarLines()
+
+		viewportHeight = height - tabBarHeight - searchHeight - tabSearchHeight - statusBarHeight
+		if viewportHeight < 5 {
+			viewportHeight = 5
+		}
 	}
 
 	if !m.ready {

@@ -236,6 +236,29 @@ func TestUITestScenarioRoadmapLayoutNoOverflow(t *testing.T) {
 	}
 }
 
+func TestUITestScenarioKeybindingExplorerMinimumHeightNoOverflow(t *testing.T) {
+	sc := UITestScenario{
+		Name:    "keybinding explorer minimum height",
+		Fixture: "rich",
+		Size:    "72x20",
+		Actions: []UITestAction{
+			{Type: UITestActionCommand, Command: "keybinding explorer"},
+			{Type: UITestActionAssert, Assert: "view", Value: "KeybindingExplorer"},
+			{Type: UITestActionAssert, Assert: "no_layout_issues"},
+		},
+	}
+
+	result, ws, err := RunScenarioFixture(sc, RunScenarioOptions{})
+	if err != nil {
+		t.Fatalf("RunScenarioFixture error: %v", err)
+	}
+	t.Cleanup(func() { _ = ws.Cleanup() })
+
+	if !result.OK {
+		t.Fatalf("keybinding explorer layout should pass, got error: %+v", result.Error)
+	}
+}
+
 func TestUITestScenarioRunFixtureDefaults(t *testing.T) {
 	// No fixture or size in the scenario: RunScenarioFixture falls back to the
 	// package defaults (rich fixture at 100x30).

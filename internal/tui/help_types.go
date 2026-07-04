@@ -49,4 +49,5 @@ type HelpViewModel struct {
 	byPrefixMode   bool     // True when grouping by prefix category (explorer only)
 	tabSearchMode  bool     // True when tab search input is active
 	tabSearchInput textinput.Model
+	compactTabs    bool // True when explorer category tabs collapse to a one-line summary
 }

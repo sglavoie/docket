@@ -30,6 +30,11 @@ var prefixGroupLabels = map[string]string{
 	"Filters":             "F",
 }
 
+const (
+	helpViewportMinHeight            = 5
+	explorerCompactViewportMinHeight = 1
+)
+
 // helpIntentOrder defines the display order of intent buckets in first-level
 // (per-view) help. Buckets with no matching items in the current view are
 // skipped during rendering.
@@ -528,20 +533,71 @@ func (m *HelpViewModel) tabBarLines() int {
 }
 
 func (m *HelpViewModel) renderHelpTabBar() string {
+	if m.isExplorer && m.compactTabs {
+		return m.renderCompactExplorerTabBar()
+	}
+	return m.renderFullHelpTabBar()
+}
+
+func (m *HelpViewModel) renderFullHelpTabBar() string {
 	tabNames := append([]string{"All"}, m.categories...)
 	return renderWrappingTabBar(tabNames, m.activeTab, m.innerWidth())
 }
 
-func (m *HelpViewModel) View() tea.View {
+func (m *HelpViewModel) renderCompactExplorerTabBar() string {
+	active := "All"
+	if m.activeTab > 0 && m.activeTab <= len(m.categories) {
+		active = m.categories[m.activeTab-1]
+	}
+	summary := fmt.Sprintf("Category: %s · %d categories", active, len(m.categories))
+	if m.byPrefixMode {
+		summary += " · by prefix"
+	} else {
+		summary += " · by category"
+	}
+
+	width := max(m.innerWidth(), 1)
+	summary = truncateToVisualWidth(summary, width)
+	line := HelpStyle.Render(summary)
+	if remaining := width - lipgloss.Width(line); remaining > 0 {
+		line += MutedStyle.Render(strings.Repeat("─", remaining))
+	}
+	return line
+}
+
+func (m *HelpViewModel) explorerViewportHeight(height int) int {
+	m.compactTabs = false
+	fullTabBar := m.renderHelpTabBar()
+	availableWithFullTabs := height - m.helpChromeHeight(fullTabBar)
+	if availableWithFullTabs < helpViewportMinHeight {
+		m.compactTabs = true
+	}
+
+	viewportHeight := height - m.helpChromeHeight(m.renderHelpTabBar())
+	minHeight := helpViewportMinHeight
+	if m.compactTabs {
+		minHeight = explorerCompactViewportMinHeight
+	}
+	if viewportHeight < minHeight {
+		viewportHeight = minHeight
+	}
+	return viewportHeight
+}
+
+func (m *HelpViewModel) helpChromeHeight(tabBar string) int {
+	header := m.renderHelpHeader(tabBar)
+	footer := "\n" + m.renderHelpFooter()
+	return strings.Count(header, "\n") + strings.Count(footer, "\n")
+}
+
+func (m *HelpViewModel) renderHelpHeader(tabBar string) string {
 	pad := " "
 	var b strings.Builder
 
-	// Tab bar
 	b.WriteString(pad)
-	b.WriteString(m.renderHelpTabBar())
+	b.WriteString(tabBar)
 	b.WriteString("\n")
 
-	// Tab search bar
 	if m.tabSearchMode {
 		b.WriteString(pad)
 		b.WriteString(SubtitleStyle.Render("Tab: "))
@@ -549,7 +605,6 @@ func (m *HelpViewModel) View() tea.View {
 		b.WriteString("\n\n")
 	}
 
-	// Search bar
 	if m.searchMode {
 		b.WriteString(pad)
 		b.WriteString(SubtitleStyle.Render("Filter: "))
@@ -563,20 +618,10 @@ func (m *HelpViewModel) View() tea.View {
 		b.WriteString("\n\n")
 	}
 
-	// Viewport with content
-	if m.ready {
-		for i, line := range strings.Split(m.viewport.View(), "\n") {
-			if i > 0 {
-				b.WriteString("\n")
-			}
-			b.WriteString(pad)
-			b.WriteString(line)
-		}
-	}
+	return b.String()
+}
 
-	// Status bar footer
-	b.WriteString("\n")
-
+func (m *HelpViewModel) renderHelpFooter() string {
 	title := fmt.Sprintf("Help - %s", m.viewName)
 	closeKey := "? close"
 	if m.isExplorer {
@@ -603,7 +648,28 @@ func (m *HelpViewModel) View() tea.View {
 	}
 	right := HelpStyle.Render(fmt.Sprintf("shift+←/→: tabs · \\ find tab · / filter · bksp clear · j/k scroll · %s%s%s", closeKey, explorerHints, scrollPercent))
 
-	b.WriteString(renderStatusBarFooter(left, right, m.width))
+	return renderStatusBarFooter(left, right, m.width)
+}
+
+func (m *HelpViewModel) View() tea.View {
+	var b strings.Builder
+
+	b.WriteString(m.renderHelpHeader(m.renderHelpTabBar()))
+
+	// Viewport with content
+	if m.ready {
+		for i, line := range strings.Split(m.viewport.View(), "\n") {
+			if i > 0 {
+				b.WriteString("\n")
+			}
+			b.WriteString(" ")
+			b.WriteString(line)
+		}
+	}
+
+	// Status bar footer
+	b.WriteString("\n")
+	b.WriteString(m.renderHelpFooter())
 
 	return tea.NewView(b.String())
 }
