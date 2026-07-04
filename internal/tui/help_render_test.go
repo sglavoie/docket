@@ -413,3 +413,14 @@ func TestHelpFooterAdvertisesExplorerAsFullReference(t *testing.T) {
 		t.Errorf("explorer footer should keep its category/prefix toggle hint 'p:'; got:\n%s", explorerOut)
 	}
 }
+
+func TestKeybindingExplorerResizeDoesNotOverflowHeight(t *testing.T) {
+	explorer := NewKeybindingExplorerModel()
+	explorer.SetSize(120, 40)
+	explorer.SetSize(100, 35)
+
+	_, issues := normalizeScreen(explorer.View().Content, 100, 35)
+	if len(issues) > 0 {
+		t.Fatalf("resized keybinding explorer reported layout issues: %+v", issues)
+	}
+}

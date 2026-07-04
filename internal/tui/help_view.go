@@ -114,7 +114,7 @@ func (m *HelpViewModel) SetSize(width, height int) {
 	tabBarHeight := m.tabBarLines()
 
 	viewportWidth := m.innerWidth()
-	viewportHeight := height - tabBarHeight - searchHeight - tabSearchHeight - statusBarHeight + 1
+	viewportHeight := height - tabBarHeight - searchHeight - tabSearchHeight - statusBarHeight
 
 	if viewportWidth < 1 {
 		viewportWidth = 1
