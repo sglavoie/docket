@@ -206,6 +206,13 @@ func (m *DashboardModel) renderInfoSectionCompact(width, paneHeight int, selecte
 	cards := m.buildActionableInfoCards(actionable, width, selected, scoringProfile, alertLines, recentTasks)
 	wide := m.width >= DashboardInfoSectionWideMinWidth && len(cards) > 1
 
+	// Inert cards render as one-line summary rows below the cards. In the
+	// stacked layout they add to the section height, so reserve their space
+	// out of the card budget to keep the whole section within paneHeight.
+	if !wide && len(inert) > 0 && cfg.Height > 0 {
+		cfg.Height = max(cfg.Height-len(inert), CardVerticalBorderOverhead)
+	}
+
 	var b strings.Builder
 	if len(cards) > 0 {
 		b.WriteString(renderDashboardCards(width, wide, cfg, cards))

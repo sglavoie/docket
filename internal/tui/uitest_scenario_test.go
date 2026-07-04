@@ -287,6 +287,41 @@ func TestUITestScenarioKeybindingExplorerMinimumHeightNoOverflow(t *testing.T) {
 	}
 }
 
+func TestUITestScenarioDashboardNarrowLayoutNoOverflow(t *testing.T) {
+	// Regression: at narrow widths (<100 cols) the dashboard stacks its info
+	// cards vertically. Each card used to be padded to the full section height,
+	// so N cards overflowed the terminal. Fixtures with 0 info cards (empty)
+	// never regressed, which is why the earlier regression set missed this.
+	fixtures := []string{"rich", "narrow", "alerts", "workflow"}
+	sizes := []string{"80x24", "72x20"}
+
+	for _, fixture := range fixtures {
+		for _, size := range sizes {
+			t.Run(fixture+"_"+size, func(t *testing.T) {
+				sc := UITestScenario{
+					Name:    "dashboard narrow layout " + fixture + " " + size,
+					Fixture: fixture,
+					Size:    size,
+					Actions: []UITestAction{
+						{Type: UITestActionAssert, Assert: "view", Value: "Dashboard"},
+						{Type: UITestActionAssert, Assert: "no_layout_issues"},
+					},
+				}
+
+				result, ws, err := RunScenarioFixture(sc, RunScenarioOptions{})
+				if err != nil {
+					t.Fatalf("RunScenarioFixture error: %v", err)
+				}
+				t.Cleanup(func() { _ = ws.Cleanup() })
+
+				if !result.OK {
+					t.Fatalf("dashboard %s at %s should pass, got error: %+v", fixture, size, result.Error)
+				}
+			})
+		}
+	}
+}
+
 func TestUITestScenarioPipelineHubMinimumLayoutNoOverflow(t *testing.T) {
 	sc := UITestScenario{
 		Name:    "pipeline hub minimum layout",

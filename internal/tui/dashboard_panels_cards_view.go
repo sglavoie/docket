@@ -30,9 +30,25 @@ func renderDashboardCards(width int, wide bool, cfg CardConfig, cards []dashboar
 		return lipgloss.JoinHorizontal(lipgloss.Top, rendered...)
 	}
 
+	// Stacked layout: cards are joined vertically, so their heights add up.
+	// cfg.Height is the budget for the whole section, not per card — divide it
+	// across the cards so the total stays within budget instead of rendering
+	// cfg.Height lines per card (which overflows narrow terminals).
 	var parts []string
-	for _, c := range cards {
-		parts = append(parts, renderCard(c.title, c.content, width, cfg))
+	for i, c := range cards {
+		cardCfg := cfg
+		if cfg.Height > 0 && len(cards) > 1 {
+			perCard := max(cfg.Height/len(cards), CardVerticalBorderOverhead+1)
+			cardCfg.Height = perCard
+			if i == 0 {
+				// Give any remainder to the first card so the heights sum to
+				// the budget (only when the floor did not already exceed it).
+				if remainder := cfg.Height - perCard*len(cards); remainder > 0 {
+					cardCfg.Height = perCard + remainder
+				}
+			}
+		}
+		parts = append(parts, renderCard(c.title, c.content, width, cardCfg))
 	}
 	return strings.Join(parts, "\n")
 }
