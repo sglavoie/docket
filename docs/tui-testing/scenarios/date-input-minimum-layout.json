@@ -1,0 +1,11 @@
+{
+  "name": "date-input-minimum-layout",
+  "fixture": "rich",
+  "size": "72x20",
+  "actions": [
+    { "type": "command", "label": "open Global Inbox Processor", "command": "global inbox processor" },
+    { "type": "command", "label": "open Set Due Date", "command": "set inbox task due date" },
+    { "type": "assert", "assert": "view", "value": "DateInput" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

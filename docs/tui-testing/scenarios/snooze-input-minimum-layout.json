@@ -1,0 +1,11 @@
+{
+  "name": "snooze-input-minimum-layout",
+  "fixture": "rich",
+  "size": "72x20",
+  "actions": [
+    { "type": "command", "label": "open Global Inbox Processor", "command": "global inbox processor" },
+    { "type": "command", "label": "open Snooze Task", "command": "snooze inbox task" },
+    { "type": "assert", "assert": "view", "value": "SnoozeInput" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

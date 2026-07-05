@@ -200,26 +200,33 @@ func (m *DateInputModel) View() tea.View {
 		b.WriteString("\n\n")
 	}
 
-	// Help text
-	help := BoxStyle.Render(
-		BoldStyle.Render("Accepted formats") + "\n" +
-			"  2024-01-15     Exact date (YYYY-MM-DD)\n" +
-			"  today          Today's date\n" +
-			"  tomorrow       Tomorrow's date\n" +
-			"  +3d            3 days from now\n" +
-			"  +1w            1 week from now\n" +
-			"  mon, tue, ...  Next occurrence of weekday\n" +
-			"  next mon       Next Monday (skips this week)\n" +
-			"  in 2 weeks     2 weeks from now\n" +
-			"  dec 15         Dec 15 (next year if past)\n" +
-			"  next year      1 year from today\n" +
-			"  in 3 years     3 years from today\n" +
-			"  none           Clear due date\n\n" +
-			BoldStyle.Render("Controls") + "\n" +
-			"  Enter          Save\n" +
-			"  Esc            Cancel",
-	)
-	b.WriteString(help)
+	// Help text. The box is clamped against the remaining terminal height so it
+	// degrades gracefully (collapsing to "… N more") instead of overflowing on
+	// short screens; the fixed-size render otherwise pushes past the terminal.
+	bodyLines := []string{
+		BoldStyle.Render("Accepted formats"),
+		"  2024-01-15     Exact date (YYYY-MM-DD)",
+		"  today          Today's date",
+		"  tomorrow       Tomorrow's date",
+		"  +3d            3 days from now",
+		"  +1w            1 week from now",
+		"  mon, tue, ...  Next occurrence of weekday",
+		"  next mon       Next Monday (skips this week)",
+		"  in 2 weeks     2 weeks from now",
+		"  dec 15         Dec 15 (next year if past)",
+		"  next year      1 year from today",
+		"  in 3 years     3 years from today",
+		"  none           Clear due date",
+		"",
+		BoldStyle.Render("Controls"),
+		"  Enter          Save",
+		"  Esc            Cancel",
+	}
+	if help := clampHelpBoxToHeight(bodyLines, m.height, b.String()); help != "" {
+		b.WriteString(help)
+	} else {
+		return tea.NewView(strings.TrimRight(b.String(), "\n"))
+	}
 
 	return tea.NewView(b.String())
 }

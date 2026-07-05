@@ -166,6 +166,8 @@ The [`scenarios/`](scenarios/) directory holds committed, verified examples:
 | `workflow-rule-creator-minimum-layout.json` | Open Workflow Rule Creator at `72x20` and assert no layout issues. |
 | `inbox-processor-minimum-layout.json` | Open Inbox Processor at `72x20` and assert no layout issues. |
 | `global-inbox-processor-minimum-layout.json` | Open Global Inbox Processor at `72x20` and assert no layout issues. |
+| `date-input-minimum-layout.json` | Open the Set Due Date input at `72x20` and assert no layout issues. |
+| `snooze-input-minimum-layout.json` | Open the Snooze Task input at `72x20` and assert no layout issues. |
 
 Run any of them:
 
