@@ -414,6 +414,7 @@ func (m *RoadmapModel) renderCriticalPathTab(height int) string {
 		lines = append(lines, MutedStyle.Render(fmt.Sprintf("  %d/%d  (j/k)", m.cursor+1, len(m.criticalPath.Path))))
 	}
 
+	m.boundRoadmapLines(lines)
 	return strings.Join(lines, "\n")
 }
 
@@ -487,5 +488,6 @@ func (m *RoadmapModel) renderForecastsTab(height int) string {
 		lines = append(lines, MutedStyle.Render(fmt.Sprintf("  %d/%d  (j/k)", m.cursor+1, len(forecastRows))))
 	}
 
+	m.boundRoadmapLines(lines)
 	return strings.Join(lines, "\n")
 }
