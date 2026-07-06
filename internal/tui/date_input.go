@@ -175,7 +175,11 @@ func dueDateChangedCmd(task *models.Task, project *models.Project, dueDate *time
 func (m *DateInputModel) View() tea.View {
 	var b strings.Builder
 
-	b.WriteString(renderFullscreenTitle(fmt.Sprintf("Set Due Date for #%d", m.task.ShortID), m.task.Title))
+	b.WriteString(renderTaskScopedFullscreenTitle(
+		fmt.Sprintf("Set Due Date for #%d  ", m.task.ShortID),
+		m.task,
+		"",
+		m.width))
 	b.WriteString("\n\n")
 
 	// Current due date

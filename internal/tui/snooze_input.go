@@ -156,7 +156,11 @@ func snoozeDateChangedCmd(task *models.Task, project *models.Project, snoozedUnt
 func (m *SnoozeInputModel) View() tea.View {
 	var b strings.Builder
 
-	b.WriteString(renderFullscreenTitle(fmt.Sprintf("Snooze Task #%d", m.task.ShortID), m.task.Title))
+	b.WriteString(renderTaskScopedFullscreenTitle(
+		fmt.Sprintf("Snooze Task #%d  ", m.task.ShortID),
+		m.task,
+		"",
+		m.width))
 	b.WriteString("\n\n")
 
 	// Current snooze date

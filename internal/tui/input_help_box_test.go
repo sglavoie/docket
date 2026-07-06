@@ -53,6 +53,40 @@ func TestSnoozeInputNoHeightOverflow(t *testing.T) {
 	}
 }
 
+func TestDateInputLongTaskTitleFitsMinimumWidth(t *testing.T) {
+	project := testutil.NewTestProjectWithTasks("Test Project")
+	task := &models.Task{
+		ID:      "date-title-overflow",
+		ShortID: 9,
+		Title:   "Investigate intermittent timeout when syncing very large project archives over slow connections",
+	}
+
+	m := NewDateInputModel(task, project, "")
+	m.SetSize(60, 20)
+
+	plain, issues := normalizeScreen(m.View().Content, 60, 20)
+	if len(issues) > 0 {
+		t.Fatalf("DateInput should fit 60x20 with a long task title, got %+v:\n%s", issues, plain)
+	}
+}
+
+func TestSnoozeInputLongTaskTitleFitsMinimumWidth(t *testing.T) {
+	project := testutil.NewTestProjectWithTasks("Test Project")
+	task := &models.Task{
+		ID:      "snooze-title-overflow",
+		ShortID: 10,
+		Title:   "Investigate intermittent timeout when syncing very large project archives over slow connections",
+	}
+
+	m := NewSnoozeInputModel(task, project)
+	m.SetSize(60, 20)
+
+	plain, issues := normalizeScreen(m.View().Content, 60, 20)
+	if len(issues) > 0 {
+		t.Fatalf("SnoozeInput should fit 60x20 with a long task title, got %+v:\n%s", issues, plain)
+	}
+}
+
 // TestRenderClampedHelpBox exercises the shared clamp helper directly: it keeps
 // the full body when it fits, collapses the overflow tail into a muted
 // "… N more", and omits the box when there is no room.

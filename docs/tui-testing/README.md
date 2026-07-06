@@ -175,6 +175,8 @@ The [`scenarios/`](scenarios/) directory holds committed, verified examples:
 | `global-inbox-processor-minimum-layout.json` | Open Global Inbox Processor at `72x20` and assert no layout issues. |
 | `date-input-minimum-layout.json` | Open the Set Due Date input at `72x20` and assert no layout issues. |
 | `snooze-input-minimum-layout.json` | Open the Snooze Task input at `72x20` and assert no layout issues. |
+| `kanban-date-input-long-title-minimum-layout.json` | Open Set Due Date from Kanban on a long-title task at `60x20`. |
+| `kanban-snooze-input-long-title-minimum-layout.json` | Open Snooze from Kanban on a long-title task at `60x20`. |
 
 Run any of them:
 
