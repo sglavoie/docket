@@ -18,17 +18,16 @@ func (m *AppModel) handleWindowSize(msg tea.WindowSizeMsg) {
 	m.height = msg.Height
 	m.tooNarrow = msg.Width < minTerminalWidth
 	m.tooShort = msg.Height < minTerminalHeight
+	// All views (including full-height ones) are sized to height-2, matching the
+	// open path: showView's full-height SetSize is immediately clobbered by
+	// ViewRegistry.Register re-applying the registry's stored height-2. Views
+	// self-pad their render to the terminal height, so the height-2 budget is
+	// what every render is tuned against. Previously this loop re-applied the
+	// full msg.Height to full-height views, diverging from the open path and
+	// overflowing views (Notes, Inbox Processor) that size against their budget
+	// rather than self-padding. Regression coverage: the *-resize-minimum-layout
+	// scenarios under docs/tui-testing/scenarios/ (run by TestExampleScenariosPass).
 	m.views.SetSize(msg.Width, msg.Height-2)
-	// Re-apply full terminal height for views that render their own footer
-	for _, vt := range m.views.Types() {
-		v := m.views.Get(vt)
-		if v == nil {
-			continue
-		}
-		if caps, ok := v.(ViewCapabilities); ok && caps.IsFullHeight() {
-			v.SetSize(msg.Width, msg.Height)
-		}
-	}
 	if m.projectCyclePreview != nil {
 		m.projectCyclePreview.SetSize(msg.Width, msg.Height-2)
 	}
