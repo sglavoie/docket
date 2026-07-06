@@ -47,7 +47,7 @@ func (m *WorkflowWizardModel) render() string {
 // renderProgress shows the selections made so far (fields chosen in previous steps).
 func (m *WorkflowWizardModel) renderProgress() string {
 	if m.step == wizStepTriggerType {
-		return MutedStyle.Render("Choose a trigger field to get started.") + "\n"
+		return fitStyledLineToWidth(MutedStyle.Render("Choose a trigger field to get started."), max(m.width, 1))
 	}
 
 	var parts []string
@@ -81,7 +81,7 @@ func (m *WorkflowWizardModel) renderProgress() string {
 		parts = append(parts, fmt.Sprintf("Action value: %s", lipgloss.NewStyle().Foreground(ColorSecondary).Render(val)))
 	}
 
-	return strings.Join(parts, "  ·  ") + "\n"
+	return fitStyledLineToWidth(strings.Join(parts, "  ·  "), max(m.width, 1))
 }
 
 // renderCurrentStep renders the content for the active step.
@@ -253,15 +253,16 @@ func (m *WorkflowWizardModel) renderNameReviewStep() string {
 	}
 
 	sb.WriteString(SubtitleStyle.Render("Rule preview:"))
-	sb.WriteString("\n\n")
-	fmt.Fprintf(&sb, "  When: %s\n", lipgloss.NewStyle().Foreground(ColorPrimary).Render(triggerStr))
-	fmt.Fprintf(&sb, "  Then: %s\n", lipgloss.NewStyle().Foreground(ColorSecondary).Render(actionStr))
 	sb.WriteString("\n")
+	whenLine := fmt.Sprintf("  When: %s", lipgloss.NewStyle().Foreground(ColorPrimary).Render(triggerStr))
+	thenLine := fmt.Sprintf("  Then: %s", lipgloss.NewStyle().Foreground(ColorSecondary).Render(actionStr))
+	sb.WriteString(fitStyledLineToWidth(whenLine, max(m.width, 1)))
+	sb.WriteString("\n")
+	sb.WriteString(fitStyledLineToWidth(thenLine, max(m.width, 1)))
+	sb.WriteString("\n\n")
 	sb.WriteString(SubtitleStyle.Render("Rule name:"))
-	sb.WriteString("\n\n")
+	sb.WriteString("\n")
 	sb.WriteString(m.nameInput.View())
-	sb.WriteString("\n\n")
-	sb.WriteString(MutedStyle.Render("Press Enter or Ctrl+S to save · Esc to go back"))
 	sb.WriteString("\n")
 
 	return sb.String()

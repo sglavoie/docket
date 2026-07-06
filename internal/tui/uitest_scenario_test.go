@@ -379,6 +379,36 @@ func TestUITestScenarioPipelineHubMinimumLayoutNoOverflow(t *testing.T) {
 	}
 }
 
+func TestUITestScenarioWorkflowWizardFinalReviewMinimumLayoutNoOverflow(t *testing.T) {
+	sc := UITestScenario{
+		Name:    "workflow wizard final review minimum layout",
+		Fixture: "rich",
+		Size:    "72x20",
+		Actions: []UITestAction{
+			{Type: UITestActionCommand, Command: "workflow rules"},
+			{Type: UITestActionKey, Key: "w"},
+			{Type: UITestActionKey, Key: "enter"},
+			{Type: UITestActionKey, Key: "enter"},
+			{Type: UITestActionText, Text: "done"},
+			{Type: UITestActionKey, Key: "enter"},
+			{Type: UITestActionKey, Key: "enter"},
+			{Type: UITestActionKey, Key: "enter"},
+			{Type: UITestActionAssert, Assert: "view", Value: "WorkflowWizard"},
+			{Type: UITestActionAssert, Assert: "no_layout_issues"},
+		},
+	}
+
+	result, ws, err := RunScenarioFixture(sc, RunScenarioOptions{})
+	if err != nil {
+		t.Fatalf("RunScenarioFixture error: %v", err)
+	}
+	t.Cleanup(func() { _ = ws.Cleanup() })
+
+	if !result.OK {
+		t.Fatalf("workflow wizard final review layout should pass, got error: %+v", result.Error)
+	}
+}
+
 func TestUITestScenarioMinimumHeightViewLayoutsNoOverflow(t *testing.T) {
 	tests := []struct {
 		name    string
