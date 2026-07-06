@@ -236,6 +236,39 @@ func TestUITestScenarioRoadmapLayoutNoOverflow(t *testing.T) {
 	}
 }
 
+func TestUITestScenarioRoadmapEmptyForecastsNoOverflow(t *testing.T) {
+	raw := `{
+		"name": "narrow roadmap empty forecasts layout",
+		"fixture": "narrow",
+		"size": "72x20",
+		"actions": [
+			{"type": "command", "command": "roadmap"},
+			{"type": "assert", "assert": "view", "value": "Roadmap"},
+			{"type": "assert", "assert": "no_layout_issues"},
+			{"type": "key", "key": "tab"},
+			{"type": "wait"},
+			{"type": "assert", "assert": "no_layout_issues"},
+			{"type": "key", "key": "tab"},
+			{"type": "wait"},
+			{"type": "assert", "assert": "no_layout_issues"}
+		]
+	}`
+	sc, err := ParseScenario([]byte(raw))
+	if err != nil {
+		t.Fatalf("ParseScenario error: %v", err)
+	}
+
+	result, ws, err := RunScenarioFixture(sc, RunScenarioOptions{})
+	if err != nil {
+		t.Fatalf("RunScenarioFixture error: %v", err)
+	}
+	t.Cleanup(func() { _ = ws.Cleanup() })
+
+	if !result.OK {
+		t.Fatalf("roadmap empty forecasts layout should pass, got error: %+v", result.Error)
+	}
+}
+
 func TestUITestScenarioTaskDetailFromGlobalInboxNoOverflow(t *testing.T) {
 	raw := `{
 		"name": "task detail from global inbox layout",

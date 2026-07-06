@@ -141,6 +141,12 @@ func (m *RoadmapModel) boundRoadmapLines(lines []string) {
 	}
 }
 
+func (m *RoadmapModel) renderBoundRoadmapEmptyState(msg, helpText string) string {
+	lines := strings.Split(renderEmptyState(msg, helpText), "\n")
+	m.boundRoadmapLines(lines)
+	return strings.Join(lines, "\n")
+}
+
 // renderTimelineTab renders the Gantt chart split-pane layout.
 func (m *RoadmapModel) renderTimelineTab(height int, layout roadmapTimelineLayout) string {
 	totalCols := max(m.axis.TotalCols, 1)
@@ -157,10 +163,9 @@ func (m *RoadmapModel) renderTimelineTab(height int, layout roadmapTimelineLayou
 	lines = append(lines, axisHeader, divider)
 
 	if len(m.rows) == 0 {
-		lines = append(lines, renderEmptyState(
+		lines = append(lines, m.renderBoundRoadmapEmptyState(
 			"No tasks to display",
 			"Add tasks with due dates or dependencies to see them here"))
-		m.boundRoadmapLines(lines)
 		return strings.Join(lines, "\n")
 	}
 
@@ -361,7 +366,7 @@ func (m *RoadmapModel) renderGanttAnnotation(row TimelineRow) string {
 // renderCriticalPathTab renders the critical path task list with slack.
 func (m *RoadmapModel) renderCriticalPathTab(height int) string {
 	if m.criticalPath == nil || len(m.criticalPath.Path) == 0 {
-		return renderEmptyState(
+		return m.renderBoundRoadmapEmptyState(
 			"No critical path computed",
 			"Critical path requires tasks with dependencies and velocity data")
 	}
@@ -423,7 +428,7 @@ func (m *RoadmapModel) renderForecastsTab(height int) string {
 	forecastRows := m.forecastRows()
 
 	if len(forecastRows) == 0 {
-		return renderEmptyState(
+		return m.renderBoundRoadmapEmptyState(
 			"No forecast data",
 			"Forecasts require epics or stories with child tasks and completed velocity data")
 	}
