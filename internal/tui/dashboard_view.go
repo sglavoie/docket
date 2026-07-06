@@ -29,12 +29,12 @@ func (m *DashboardModel) View() tea.View {
 // Horizontal stacks the project list on top of the bottom info section,
 // Vertical renders them side-by-side, and ListOnly hides the bottom section.
 // Vertical layout falls back to horizontal on narrow terminals; an active
-// search query or InfoPanelOff forces the list-only path regardless of layout.
+// search state or InfoPanelOff forces the list-only path regardless of layout.
 func (m *DashboardModel) renderDashboard(visible []*models.Project, chromeHeight int) string {
 	layout := m.config.GetDashboardBottomLayout()
 	panelMode := m.config.GetInfoPanelMode()
 
-	if layout == config.DashboardLayoutListOnly || panelMode == config.InfoPanelOff || m.SearchQuery() != "" {
+	if layout == config.DashboardLayoutListOnly || panelMode == config.InfoPanelOff || m.HasActiveSearch() {
 		return m.renderDashboardListOnly(visible, chromeHeight)
 	}
 
@@ -62,7 +62,7 @@ func (m *DashboardModel) projectListViewportInputs(chromeHeight int) (cardWidth,
 
 	layout := m.config.GetDashboardBottomLayout()
 	panelMode := m.config.GetInfoPanelMode()
-	if layout == config.DashboardLayoutListOnly || panelMode == config.InfoPanelOff || m.SearchQuery() != "" {
+	if layout == config.DashboardLayoutListOnly || panelMode == config.InfoPanelOff || m.HasActiveSearch() {
 		return cardWidth, 0
 	}
 

@@ -1,0 +1,10 @@
+{
+  "name": "dashboard-search-alerts-minimum-layout",
+  "fixture": "alerts",
+  "size": "60x20",
+  "actions": [
+    { "type": "command", "label": "activate Dashboard project search", "command": "search projects" },
+    { "type": "assert", "assert": "view", "value": "Dashboard" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

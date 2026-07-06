@@ -158,6 +158,7 @@ The [`scenarios/`](scenarios/) directory holds committed, verified examples:
 | `resize-stress.json`            | Resize through extremes and confirm a clean settle.      |
 | `focus-empty-minimum-layout.json` | Open the empty Backlog view at `72x20` and assert no layout issues. |
 | `baseline-layout.json`          | Assert no layout issues across baseline dashboard sizes. |
+| `dashboard-search-alerts-minimum-layout.json` | Activate Dashboard project search on the alert-heavy fixture at `60x20`. |
 | `settings-minimum-layout.json`  | Open Settings at `72x20` and assert no layout issues.    |
 | `pipeline-hub-minimum-layout.json` | Open Pipeline Hub at `72x20` and assert no layout issues. |
 | `metrics-minimum-layout.json`   | Open Metrics at `72x20` and assert no layout issues.     |

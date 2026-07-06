@@ -378,6 +378,29 @@ func TestUITestScenarioDashboardNarrowLayoutNoOverflow(t *testing.T) {
 	}
 }
 
+func TestUITestScenarioDashboardSearchAlertHeavyMinimumLayoutNoOverflow(t *testing.T) {
+	sc := UITestScenario{
+		Name:    "dashboard search alert-heavy minimum layout",
+		Fixture: "alerts",
+		Size:    "60x20",
+		Actions: []UITestAction{
+			{Type: UITestActionCommand, Command: "search projects"},
+			{Type: UITestActionAssert, Assert: "view", Value: "Dashboard"},
+			{Type: UITestActionAssert, Assert: "no_layout_issues"},
+		},
+	}
+
+	result, ws, err := RunScenarioFixture(sc, RunScenarioOptions{})
+	if err != nil {
+		t.Fatalf("RunScenarioFixture error: %v", err)
+	}
+	t.Cleanup(func() { _ = ws.Cleanup() })
+
+	if !result.OK {
+		t.Fatalf("dashboard search alert-heavy layout should pass, got error: %+v", result.Error)
+	}
+}
+
 func TestUITestScenarioPipelineHubMinimumLayoutNoOverflow(t *testing.T) {
 	sc := UITestScenario{
 		Name:    "pipeline hub minimum layout",
