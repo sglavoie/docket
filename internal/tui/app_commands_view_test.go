@@ -41,6 +41,37 @@ func TestViewCommands_AllTasks(t *testing.T) {
 	}
 }
 
+func TestViewCommands_DashboardSemicolonRoutes(t *testing.T) {
+	app := newTestAppModel()
+	registry := registerCommandGroupsForTest(t, app.viewCommands())
+	cmds := registry.GetForView(ViewDashboard)
+
+	tests := []struct {
+		name     string
+		shortcut string
+		wantMsg  any
+	}{
+		{"all tasks", ";a", ShowAllTasksMsg{}},
+		{"outliner", ";o", ShowGlobalOutlinerMsg{}},
+		{"kanban", ";k", ShowCrossProjectKanbanMsg{}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cmd := findCommand(cmds, tt.name)
+			if cmd == nil {
+				t.Fatalf("%q should be reachable from ViewDashboard", tt.name)
+			}
+			if cmd.Shortcut != tt.shortcut {
+				t.Fatalf("%q shortcut = %q, want %q", tt.name, cmd.Shortcut, tt.shortcut)
+			}
+			if got := cmd.Handler(); got != tt.wantMsg {
+				t.Fatalf("%q handler returned %T, want %T", tt.name, got, tt.wantMsg)
+			}
+		})
+	}
+}
+
 func TestViewCommands_DueDateOverview(t *testing.T) {
 	app := newTestAppModel()
 	cmds := app.viewCommands()

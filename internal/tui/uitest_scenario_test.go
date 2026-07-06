@@ -523,6 +523,43 @@ func TestUITestScenarioMinimumHeightViewLayoutsNoOverflow(t *testing.T) {
 	}
 }
 
+func TestUITestScenarioDashboardSemicolonRouteCommands(t *testing.T) {
+	tests := []struct {
+		name    string
+		command string
+		view    string
+	}{
+		{"all tasks", "all tasks", "AllTasks"},
+		{"outliner", "outliner", "CrossProjectOutliner"},
+		{"kanban", "kanban", "CrossProjectKanban"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			sc := UITestScenario{
+				Name:    tt.name + " dashboard command route",
+				Fixture: "rich",
+				Size:    "60x20",
+				Actions: []UITestAction{
+					{Type: UITestActionCommand, Command: tt.command},
+					{Type: UITestActionAssert, Assert: "view", Value: tt.view},
+					{Type: UITestActionAssert, Assert: "no_layout_issues"},
+				},
+			}
+
+			result, ws, err := RunScenarioFixture(sc, RunScenarioOptions{})
+			if err != nil {
+				t.Fatalf("RunScenarioFixture error: %v", err)
+			}
+			t.Cleanup(func() { _ = ws.Cleanup() })
+
+			if !result.OK {
+				t.Fatalf("%s dashboard command route should pass, got error: %+v", tt.name, result.Error)
+			}
+		})
+	}
+}
+
 func TestUITestScenarioMinimumTerminalEmptyStatesNoOverflow(t *testing.T) {
 	tests := []struct {
 		name    string

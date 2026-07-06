@@ -13,10 +13,32 @@ func (m *AppModel) viewCommands() []Command {
 			Description: "View all tasks across every project",
 			Shortcut:    ";a",
 			Category:    CategoryViews,
-			Views:       []ViewType{ViewProjectTree, ViewOutliner},
+			Views:       []ViewType{ViewDashboard, ViewProjectTree, ViewOutliner},
 			Aliases:     []string{"cross-project tasks", "every task"},
 			Handler: func() tea.Msg {
 				return ShowAllTasksMsg{}
+			},
+		},
+		{
+			Name:        "outliner",
+			Description: "Open the cross-project outliner",
+			Shortcut:    ";o",
+			Category:    CategoryViews,
+			Views:       []ViewType{ViewDashboard},
+			Aliases:     []string{"global outliner", "cross-project outliner", "all tasks outliner"},
+			Handler: func() tea.Msg {
+				return ShowGlobalOutlinerMsg{}
+			},
+		},
+		{
+			Name:        "kanban",
+			Description: "Open the cross-project kanban board",
+			Shortcut:    ";k",
+			Category:    CategoryViews,
+			Views:       []ViewType{ViewDashboard},
+			Aliases:     []string{"global kanban", "cross-project kanban", "board"},
+			Handler: func() tea.Msg {
+				return ShowCrossProjectKanbanMsg{}
 			},
 		},
 		{
