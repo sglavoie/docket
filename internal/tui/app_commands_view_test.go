@@ -313,6 +313,18 @@ func TestViewCommands_GlobalBlockers(t *testing.T) {
 	if _, ok := msg.(ShowGlobalBlockersMsg); !ok {
 		t.Errorf("expected ShowGlobalBlockersMsg, got %T", msg)
 	}
+	if !commandHasAlias(cmd, "all blockers") {
+		t.Errorf("expected global blockers aliases to include all blockers, got %v", cmd.Aliases)
+	}
+}
+
+func commandHasAlias(cmd *Command, want string) bool {
+	for _, alias := range cmd.Aliases {
+		if alias == want {
+			return true
+		}
+	}
+	return false
 }
 
 func TestViewCommands_MetricsDashboard(t *testing.T) {

@@ -152,6 +152,7 @@ The [`scenarios/`](scenarios/) directory holds committed, verified examples:
 | ------------------------------- | -------------------------------------------------------- |
 | `open-today.json`               | Open the Today cockpit (`;w`) and assert its view.       |
 | `command-palette-search.json`   | Open the command palette (`:`) and type a search query.  |
+| `command-palette-all-blockers.json` | Execute the `all blockers` palette alias and assert the global blockers view. |
 | `command-action-help.json`      | Invoke the `help` command by name (no palette) and assert its view. |
 | `navigate-outliner.json`        | Open the global outliner (`;o`) and move the cursor.     |
 | `resize-stress.json`            | Resize through extremes and confirm a clean settle.      |

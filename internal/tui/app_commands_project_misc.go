@@ -163,13 +163,19 @@ func (m *AppModel) otherCommands() []Command {
 		},
 		{
 			Name:        "blockers view",
-			Description: "Show blockers and blocked tasks",
+			Description: "Show blockers for the selected project",
 			Shortcut:    "b",
 			Category:    CategoryViews,
-			Views:       []ViewType{ViewProjectTree, ViewOutliner, ViewCrossProjectOutliner},
-			Aliases:     []string{"blockers", "blocked tasks"},
+			Views:       []ViewType{ViewDashboard, ViewProjectTree, ViewOutliner, ViewCrossProjectOutliner},
+			Aliases:     []string{"blockers", "blocked tasks", "project blockers"},
 			Handler: func() tea.Msg {
 				project := m.paletteCursorProject()
+				if m.nonPaletteOrigin() == ViewDashboard && m.dashboard != nil {
+					visible := m.dashboard.visibleProjects()
+					if CursorInBounds(m.dashboard.cursor, len(visible)) {
+						project = visible[m.dashboard.cursor]
+					}
+				}
 				if project == nil {
 					if m.nonPaletteOrigin() == ViewCrossProjectOutliner {
 						return StatusMsg(statusNoProjectUnderCursor)
@@ -177,17 +183,6 @@ func (m *AppModel) otherCommands() []Command {
 					return nil
 				}
 				return ShowBlockersMsg{Project: project}
-			},
-		},
-		{
-			Name:        "all blockers",
-			Description: "Show blockers across all projects",
-			Shortcut:    "b",
-			Category:    CategoryViews,
-			Views:       []ViewType{ViewDashboard},
-			Aliases:     []string{"blockers overview", "global blockers"},
-			Handler: func() tea.Msg {
-				return ShowBlockersMsg{}
 			},
 		},
 		{
