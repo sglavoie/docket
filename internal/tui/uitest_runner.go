@@ -118,9 +118,7 @@ func (d *UITestDriver) runAction(a UITestAction) error {
 		d.drain()
 	case UITestActionText:
 		for _, r := range a.Text {
-			if err := d.SendKey(string(r)); err != nil {
-				return err
-			}
+			d.dispatch(tea.KeyPressMsg{Code: r, Text: string(r)})
 			d.drain()
 		}
 	case UITestActionResize:

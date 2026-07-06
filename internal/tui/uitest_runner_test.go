@@ -72,14 +72,38 @@ func TestUITestActionUnknownType(t *testing.T) {
 	}
 }
 
-func TestUITestActionTextTypesEachRune(t *testing.T) {
+func TestUITestActionTextTypesLiteralRunes(t *testing.T) {
 	driver := NewUITestDriver(newUITestApp(), 100, 30)
-	// "ab" contains only printable runes parseUITestKey accepts, so this must
-	// not error even though the dashboard may ignore the keys.
-	sc := UITestScenario{Actions: []UITestAction{{Type: UITestActionText, Text: "ab"}}}
+	// Text actions are literal input, not key syntax; "+" must type a plus
+	// instead of being parsed as a modifier separator.
+	sc := UITestScenario{Actions: []UITestAction{{Type: UITestActionText, Text: "ab+"}}}
 
 	if _, err := driver.RunScenario(sc, ObserveOptions{}); err != nil {
 		t.Fatalf("RunScenario error: %v", err)
+	}
+}
+
+func TestUITestScenarioCommandPaletteFullReferenceShortcut(t *testing.T) {
+	sc := UITestScenario{
+		Name:    "command palette full reference shortcut",
+		Fixture: FixtureRich,
+		Size:    "100x30",
+		Actions: []UITestAction{
+			{Type: UITestActionKey, Key: ":"},
+			{Type: UITestActionKey, Key: `ctrl+\`},
+			{Type: UITestActionAssert, Assert: "view", Value: "KeybindingExplorer"},
+			{Type: UITestActionAssert, Assert: "no_layout_issues"},
+		},
+	}
+
+	result, ws, err := RunScenarioFixture(sc, RunScenarioOptions{})
+	if err != nil {
+		t.Fatalf("RunScenarioFixture error: %v", err)
+	}
+	t.Cleanup(func() { _ = ws.Cleanup() })
+
+	if !result.OK {
+		t.Fatalf("command palette full reference shortcut should pass, got error: %+v", result.Error)
 	}
 }
 

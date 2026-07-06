@@ -28,6 +28,11 @@ func (m *CommandPaletteModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case tea.KeyPressMsg:
+		if msg.String() == `ctrl+\` {
+			return m, func() tea.Msg {
+				return ShowKeybindingExplorerMsg{}
+			}
+		}
 		// Handle action mode separately
 		if m.actionMode {
 			return m.updateActionMode(msg)
