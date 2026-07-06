@@ -121,6 +121,8 @@ func (m *MessageLogViewModel) HandledKeys() []string {
 func (m *MessageLogViewModel) View() tea.View {
 	title := TitleStyle.Render("Message Log") + MutedStyle.Render(fmt.Sprintf("  (%d entries)", len(m.entries)))
 	hint := MutedStyle.Render("j/k scroll · g/G top/bottom · Esc close")
+	boxStyle := messageLogBoxStyle(m.width)
+	contentWidth := max((m.width-4)-boxStyle.GetHorizontalFrameSize(), 1)
 
 	visible := m.visibleLines()
 	var lines []string
@@ -133,9 +135,7 @@ func (m *MessageLogViewModel) View() tea.View {
 		}
 		end := min(start+visible, len(m.entries))
 		for _, e := range m.entries[start:end] {
-			ts := MutedStyle.Render("[" + e.Timestamp.Format("15:04:05") + "]")
-			msg := m.levelStyle(e.Level).Render(e.Message)
-			lines = append(lines, "  "+ts+" "+msg)
+			lines = append(lines, m.renderEntryLine(e, contentWidth))
 		}
 	}
 
@@ -152,14 +152,25 @@ func (m *MessageLogViewModel) View() tea.View {
 		hint,
 	)
 
-	box := lipgloss.NewStyle().
+	box := boxStyle.Render(inner)
+
+	return tea.NewView(lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, box))
+}
+
+func messageLogBoxStyle(width int) lipgloss.Style {
+	return lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
 		BorderForeground(ColorPrimary).
 		Padding(1, 2).
-		Width(m.width - 4).
-		Render(inner)
+		Width(max(width-4, 1))
+}
 
-	return tea.NewView(lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, box))
+func (m *MessageLogViewModel) renderEntryLine(e MessageLogEntry, width int) string {
+	ts := MutedStyle.Render("[" + e.Timestamp.Format("15:04:05") + "]")
+	prefix := "  " + ts + " "
+	msgWidth := max(width-lipgloss.Width(prefix), 0)
+	msg := m.levelStyle(e.Level).Render(truncateToVisualWidth(e.Message, msgWidth))
+	return fitStyledLineToWidth(prefix+msg, width)
 }
 
 func (m *MessageLogViewModel) SetSize(w, h int) {

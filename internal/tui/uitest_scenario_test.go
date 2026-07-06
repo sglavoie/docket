@@ -908,6 +908,30 @@ func TestUITestScenarioExportProjectStatusLayoutNoOverflow(t *testing.T) {
 	}
 }
 
+func TestUITestScenarioMessageLogExportProjectMinimumLayoutNoOverflow(t *testing.T) {
+	sc := UITestScenario{
+		Name:    "message log export project minimum layout",
+		Fixture: "rich",
+		Size:    "60x20",
+		Actions: []UITestAction{
+			{Type: UITestActionCommand, Command: "export project"},
+			{Type: UITestActionCommand, Command: "message log"},
+			{Type: UITestActionAssert, Assert: "view", Value: "MessageLog"},
+			{Type: UITestActionAssert, Assert: "no_layout_issues"},
+		},
+	}
+
+	result, ws, err := RunScenarioFixture(sc, RunScenarioOptions{})
+	if err != nil {
+		t.Fatalf("RunScenarioFixture error: %v", err)
+	}
+	t.Cleanup(func() { _ = ws.Cleanup() })
+
+	if !result.OK {
+		t.Fatalf("message log export project layout should pass, got error: %+v", result.Error)
+	}
+}
+
 func TestUITestScenarioWorkflowRuleCreatorWideLayoutsNoOverflow(t *testing.T) {
 	for _, size := range []string{"100x30", "100x35", "120x40"} {
 		t.Run(size, func(t *testing.T) {

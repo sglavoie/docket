@@ -106,3 +106,17 @@ func TestMessageLogScrollBottomKeepsViewportFilled(t *testing.T) {
 		})
 	}
 }
+
+func TestMessageLogLongEntryDoesNotOverflowMinimumLayout(t *testing.T) {
+	m := NewMessageLogViewModel([]MessageLogEntry{{
+		Timestamp: time.Now(),
+		Message:   "Exported to /var/folders/3_/q90n5d3n52jb_zk9h3rjgrf40000gn/T/tt-uitest-1234567890/exports/rich-project.md - Ctrl+E again to copy path",
+		Level:     MessageLogLevelSuccess,
+	}})
+	m.SetSize(60, 18)
+
+	plain, issues := normalizeScreen(m.View().Content, 60, 18)
+	if len(issues) > 0 {
+		t.Fatalf("long entry should fit minimum layout, issues: %+v\n%s", issues, plain)
+	}
+}

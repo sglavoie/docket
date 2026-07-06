@@ -1,0 +1,26 @@
+{
+  "name": "message-log-export-project-minimum-layout",
+  "fixture": "rich",
+  "size": "60x20",
+  "actions": [
+    {
+      "type": "command",
+      "label": "export project to create long status",
+      "command": "export project"
+    },
+    {
+      "type": "command",
+      "label": "open message log",
+      "command": "message log"
+    },
+    {
+      "type": "assert",
+      "assert": "view",
+      "value": "MessageLog"
+    },
+    {
+      "type": "assert",
+      "assert": "no_layout_issues"
+    }
+  ]
+}
