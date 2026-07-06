@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"fmt"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -101,6 +102,58 @@ func TestGlobalTagManagerViewShowsPinnedMarker(t *testing.T) {
 	}
 	if !strings.Contains(plain, "p pin") {
 		t.Fatalf("global tag manager footer missing pin key:\n%s", plain)
+	}
+}
+
+func TestGlobalTagManagerMinimumLayoutScrollsTagsNoOverflow(t *testing.T) {
+	project := newGlobalTagTestProject(t, "alpha", "Alpha")
+	for i := range 24 {
+		project.Tags = append(project.Tags, fmt.Sprintf("tag-%02d", i))
+	}
+	saveGlobalTagTestProject(t, project)
+
+	cfg := testutil.NewTestConfig()
+	cfg.Projects = []*models.Project{project}
+	manager := NewGlobalTagManagerModel(cfg)
+	manager.SetSize(72, 18)
+	manager.cursor = globalTagIndex(t, manager.tags, "tag-23")
+
+	plain, issues := normalizeScreen(manager.View().Content, 72, 18)
+	if len(issues) > 0 {
+		t.Fatalf("global tag manager should fit 72x18 view budget, got issues %+v:\n%s", issues, plain)
+	}
+	if !strings.Contains(plain, "tag-23") {
+		t.Fatalf("selected tag should remain visible after scroll:\n%s", plain)
+	}
+	if !strings.Contains(plain, "█") && !strings.Contains(plain, "░") {
+		t.Fatalf("overflowing tag list should render a scrollbar:\n%s", plain)
+	}
+}
+
+func TestGlobalTagManagerProjectPickerMinimumLayoutNoOverflow(t *testing.T) {
+	cfg := testutil.NewTestConfig()
+	for i := range 20 {
+		project := newGlobalTagTestProject(t, fmt.Sprintf("project-%02d", i), fmt.Sprintf("Project %02d", i))
+		project.Tags = []string{"shared"}
+		saveGlobalTagTestProject(t, project)
+		cfg.Projects = append(cfg.Projects, project)
+	}
+
+	manager := NewGlobalTagManagerModel(cfg)
+	manager.SetSize(72, 18)
+	manager.showProjectPicker = true
+	manager.selectedTag = "shared"
+	manager.projectCursor = 19
+
+	plain, issues := normalizeScreen(manager.View().Content, 72, 18)
+	if len(issues) > 0 {
+		t.Fatalf("global tag project picker should fit 72x18 view budget, got issues %+v:\n%s", issues, plain)
+	}
+	if !strings.Contains(plain, "Project 19") {
+		t.Fatalf("selected project should remain visible after scroll:\n%s", plain)
+	}
+	if !strings.Contains(plain, "█") && !strings.Contains(plain, "░") {
+		t.Fatalf("overflowing project list should render a scrollbar:\n%s", plain)
 	}
 }
 
