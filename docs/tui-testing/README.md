@@ -168,6 +168,7 @@ The [`scenarios/`](scenarios/) directory holds committed, verified examples:
 | `task-template-creator-minimum-layout.json` | Open Task Template Creator at `72x20` and assert no layout issues. |
 | `project-creator-minimum-layout.json` | Open Project Creator at `72x20` and assert no layout issues. |
 | `project-editor-minimum-layout.json` | Open Project Editor at `72x20` and assert no layout issues. |
+| `recent-tasks-empty-status.json` | Open Recent Tasks with no visits and assert the empty-state status. |
 | `workflow-rule-creator-minimum-layout.json` | Open Workflow Rule Creator at `72x20` and assert no layout issues. |
 | `inbox-processor-minimum-layout.json` | Open Inbox Processor at `72x20` and assert no layout issues. |
 | `global-inbox-processor-minimum-layout.json` | Open Global Inbox Processor at `72x20` and assert no layout issues. |

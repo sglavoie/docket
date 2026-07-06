@@ -1,0 +1,17 @@
+{
+  "name": "recent-tasks-empty-status",
+  "fixture": "rich",
+  "size": "100x35",
+  "actions": [
+    {
+      "type": "command",
+      "label": "open Recent Tasks with no visits",
+      "command": "recent tasks"
+    },
+    {
+      "type": "assert",
+      "assert": "status_contains",
+      "value": "No recent tasks"
+    }
+  ]
+}

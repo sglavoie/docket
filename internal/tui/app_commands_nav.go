@@ -70,7 +70,9 @@ func (m *AppModel) navCommands() []Command {
 			Category:    CategoryNavigation,
 			Aliases:     []string{"quick switch", "task switcher", "recent visits"},
 			Handler: func() tea.Msg {
-				m.openQuickSwitch()
+				if cmd := m.toggleQuickSwitch(); cmd != nil {
+					return PaletteCommandResultMsg{Cmd: cmd}
+				}
 				return nil
 			},
 		},
