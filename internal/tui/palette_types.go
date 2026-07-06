@@ -232,6 +232,10 @@ type CommandPaletteModel struct {
 	searchHistory      []string // Copy of history from config
 	searchHistoryIndex int      // -1 = not browsing history, 0+ = index in history
 
+	// suppressCategoryPersistence prevents constructor-time filtering from
+	// clearing or rewriting persisted category state before the user acts.
+	suppressCategoryPersistence bool
+
 	// Pinned commands - set of pinned command names for quick lookup
 	pinnedCommands map[string]bool
 

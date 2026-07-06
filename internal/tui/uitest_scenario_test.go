@@ -209,6 +209,32 @@ func TestUITestScenarioRunFixtureGolden(t *testing.T) {
 	}
 }
 
+func TestUITestScenarioCommandPaletteSearchStartsBlankWithPersistedCategory(t *testing.T) {
+	driver, ws, err := NewFixtureDriver(FixtureRich, 100, 35)
+	if err != nil {
+		t.Fatalf("NewFixtureDriver: %v", err)
+	}
+	t.Cleanup(func() { _ = ws.Cleanup() })
+
+	driver.App().config.SetLastPaletteCategory(":sv ")
+
+	sc := UITestScenario{
+		Name: "command palette search ignores persisted category",
+		Actions: []UITestAction{
+			{Type: UITestActionKey, Key: ":"},
+			{Type: UITestActionText, Text: "all blockers"},
+			{Type: UITestActionKey, Key: "enter"},
+			{Type: UITestActionAssert, Assert: "view", Value: "GlobalBlockers"},
+			{Type: UITestActionAssert, Assert: "no_layout_issues"},
+		},
+	}
+
+	result := driver.RunScenarioResult(sc, RunScenarioOptions{})
+	if !result.OK {
+		t.Fatalf("command palette search should not inherit persisted category, got error: %+v", result.Error)
+	}
+}
+
 func TestUITestScenarioRoadmapLayoutNoOverflow(t *testing.T) {
 	raw := `{
 		"name": "rich roadmap layout",

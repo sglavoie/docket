@@ -262,7 +262,7 @@ func (m *CommandPaletteModel) filterByTaskID(taskID int) {
 // persistCategoryFilter saves the category filter to config when a category prefix is used.
 // Only persists complete prefixes (e.g., ":task " not ":ta").
 func (m *CommandPaletteModel) persistCategoryFilter(query string, categoryFilter ItemCategory) {
-	if m.configManager == nil {
+	if m.configManager == nil || m.suppressCategoryPersistence {
 		return
 	}
 

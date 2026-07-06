@@ -35,32 +35,28 @@ func NewCommandPaletteModel(cfg *config.Config, manager *config.Manager, registr
 	}
 
 	m := &CommandPaletteModel{
-		config:             cfg,
-		configManager:      manager,
-		registry:           registry,
-		currentView:        currentView,
-		currentProject:     currentProject,
-		searchInput:        searchInput,
-		cursor:             0,
-		scrollAnchor:       -1,
-		showTips:           true,
-		categoryCursors:    make(map[ItemCategory]int),
-		searchHistory:      cfg.GetPaletteSearchHistory(),
-		searchHistoryIndex: -1,
-		pinnedCommands:     pinnedSet,
-		selectedTasks:      make(map[string]bool),
-	}
-
-	// Pre-fill with last category filter if set
-	if lastCat := cfg.GetLastPaletteCategory(); lastCat != "" {
-		m.searchInput.SetValue(lastCat)
-		m.showTips = false
+		config:                      cfg,
+		configManager:               manager,
+		registry:                    registry,
+		currentView:                 currentView,
+		currentProject:              currentProject,
+		searchInput:                 searchInput,
+		cursor:                      0,
+		scrollAnchor:                -1,
+		showTips:                    true,
+		categoryCursors:             make(map[ItemCategory]int),
+		searchHistory:               cfg.GetPaletteSearchHistory(),
+		searchHistoryIndex:          -1,
+		suppressCategoryPersistence: true,
+		pinnedCommands:              pinnedSet,
+		selectedTasks:               make(map[string]bool),
 	}
 
 	// Load all searchable items (lazy loading on palette open per design decision)
 	m.allItems = m.loadAllItems()
 	// Start with all items visible, sorted by category (no search filter, no highlights)
 	m.filterItems()
+	m.suppressCategoryPersistence = false
 	return m
 }
 
