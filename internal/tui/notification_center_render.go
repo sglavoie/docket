@@ -37,8 +37,12 @@ func (m *NotificationCenterModel) View() tea.View {
 		return tea.NewView(b.String())
 	}
 
-	// Calculate available content height (title=1, blank=1, footer=1, padding=1)
-	contentHeight := max(m.height-4, 3)
+	// NotificationCenter is app-framed: it renders its own title/footer, then
+	// AppModel appends the global two-line status bar. Keep the alert window
+	// inside that combined chrome budget so alert-heavy snapshots scroll instead
+	// of pushing the app status bar past short terminals.
+	const notificationCenterChromeHeight = 5 // title + blank + own footer + line boundary
+	contentHeight := max(m.height-notificationCenterChromeHeight-appStatusBarHeight, 3)
 
 	// Prefix overhead: cursor/space (2) + severity dot (2) = 4 visible chars
 	const prefixWidth = 4

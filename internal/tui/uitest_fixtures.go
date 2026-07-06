@@ -375,6 +375,18 @@ func buildAlertsFixture(w *uitestWorkspace) error {
 	if err != nil {
 		return err
 	}
+	_, err = w.addProject("Alert Backlog", func(p *models.Project) {
+		stale := time.Now().Add(-21 * 24 * time.Hour)
+		for i := 0; i < 5; i++ {
+			task := newFixtureTask(p, models.TaskTypeTask, fmt.Sprintf("Untriaged alert backlog item %d", i+1))
+			task.SetSection(models.SectionInbox)
+			task.CreatedAt = stale
+			task.UpdatedAt = stale
+		}
+	})
+	if err != nil {
+		return err
+	}
 	w.Config.CurrentProject = project.ID
 	return nil
 }

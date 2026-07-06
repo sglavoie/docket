@@ -320,6 +320,29 @@ func TestUITestScenarioKeybindingExplorerMinimumHeightNoOverflow(t *testing.T) {
 	}
 }
 
+func TestUITestScenarioNotificationCenterAlertHeavyMinimumLayoutNoOverflow(t *testing.T) {
+	sc := UITestScenario{
+		Name:    "notification center alert-heavy minimum layout",
+		Fixture: "alerts",
+		Size:    "72x20",
+		Actions: []UITestAction{
+			{Type: UITestActionCommand, Command: "notifications"},
+			{Type: UITestActionAssert, Assert: "view", Value: "NotificationCenter"},
+			{Type: UITestActionAssert, Assert: "no_layout_issues"},
+		},
+	}
+
+	result, ws, err := RunScenarioFixture(sc, RunScenarioOptions{})
+	if err != nil {
+		t.Fatalf("RunScenarioFixture error: %v", err)
+	}
+	t.Cleanup(func() { _ = ws.Cleanup() })
+
+	if !result.OK {
+		t.Fatalf("notification center layout should pass, got error: %+v", result.Error)
+	}
+}
+
 func TestUITestScenarioDashboardNarrowLayoutNoOverflow(t *testing.T) {
 	// Regression: at narrow widths (<100 cols) the dashboard stacks its info
 	// cards vertically. Each card used to be padded to the full section height,

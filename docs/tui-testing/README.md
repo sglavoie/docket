@@ -161,6 +161,7 @@ The [`scenarios/`](scenarios/) directory holds committed, verified examples:
 | `settings-minimum-layout.json`  | Open Settings at `72x20` and assert no layout issues.    |
 | `pipeline-hub-minimum-layout.json` | Open Pipeline Hub at `72x20` and assert no layout issues. |
 | `metrics-minimum-layout.json`   | Open Metrics at `72x20` and assert no layout issues.     |
+| `notifications-minimum-layout.json` | Open the alert-heavy Notification Center at `72x20` and assert no layout issues. |
 | `task-template-creator-minimum-layout.json` | Open Task Template Creator at `72x20` and assert no layout issues. |
 | `project-creator-minimum-layout.json` | Open Project Creator at `72x20` and assert no layout issues. |
 | `project-editor-minimum-layout.json` | Open Project Editor at `72x20` and assert no layout issues. |

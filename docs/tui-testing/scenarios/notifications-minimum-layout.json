@@ -1,0 +1,10 @@
+{
+  "name": "notifications-minimum-layout",
+  "fixture": "alerts",
+  "size": "72x20",
+  "actions": [
+    { "type": "command", "label": "open Notification Center", "command": "notifications" },
+    { "type": "assert", "assert": "view", "value": "NotificationCenter" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}
