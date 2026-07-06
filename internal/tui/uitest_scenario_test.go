@@ -782,6 +782,31 @@ func TestUITestScenarioLongNoMatchSearchQueriesMinimumLayoutNoOverflow(t *testin
 	}
 }
 
+func TestUITestScenarioCommandPaletteTaskActionModeLongTitleNoOverflow(t *testing.T) {
+	sc := UITestScenario{
+		Name:    "command palette task action mode long title layout",
+		Fixture: "narrow",
+		Size:    "72x20",
+		Actions: []UITestAction{
+			{Type: UITestActionKey, Key: ":"},
+			{Type: UITestActionText, Text: ":task "},
+			{Type: UITestActionKey, Key: "tab"},
+			{Type: UITestActionAssert, Assert: "view", Value: "CommandPalette"},
+			{Type: UITestActionAssert, Assert: "no_layout_issues"},
+		},
+	}
+
+	result, ws, err := RunScenarioFixture(sc, RunScenarioOptions{})
+	if err != nil {
+		t.Fatalf("RunScenarioFixture error: %v", err)
+	}
+	t.Cleanup(func() { _ = ws.Cleanup() })
+
+	if !result.OK {
+		t.Fatalf("command palette task action mode layout should pass, got error: %+v", result.Error)
+	}
+}
+
 func TestUITestScenarioTaskSubviewLongTitleLayoutsNoOverflow(t *testing.T) {
 	views := []struct {
 		name    string

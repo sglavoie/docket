@@ -22,6 +22,7 @@ func (m *CommandPaletteModel) View() tea.View {
 		if m.actionItem.Description != "" {
 			itemDesc = fmt.Sprintf("%s · %s", m.actionItem.Name, m.actionItem.Description)
 		}
+		itemDesc = truncateToVisualWidth(itemDesc, m.width)
 		content.WriteString(MutedStyle.Render(itemDesc))
 		content.WriteString("\n\n")
 	} else {
