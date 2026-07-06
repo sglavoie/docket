@@ -62,6 +62,41 @@ func TestCrossProjectOutlinerRenderDarkThemeVisualElements(t *testing.T) {
 	}
 }
 
+func TestCrossProjectOutlinerViewMultiSelectTitleFitsNarrowWidth(t *testing.T) {
+	ApplyTheme(ThemeConfig{Name: ""})
+	t.Cleanup(func() { ApplyTheme(ThemeConfig{}) })
+
+	cfg := config.NewConfig()
+	m := NewOutlinerModel(nil, cfg, nil)
+	const width = 72
+	m.SetSize(width, 20)
+	m.sidebar.SetEnabled(false)
+
+	projects := make([]*models.Project, 0, 34)
+	for i := 0; i < 34; i++ {
+		task := renderFixtureTask(t, fmt.Sprintf("task-%02d", i), i+1, models.TaskTypeTask,
+			fmt.Sprintf("Cross-project task %02d with enough title text to render rows", i),
+			models.StatusTodo, 3, models.SectionNext)
+		project := renderFixtureProject(t, fmt.Sprintf("proj-%02d", i), fmt.Sprintf("project-%02d", i),
+			fmt.Sprintf("Project %02d", i), []*models.Task{task})
+		projects = append(projects, project)
+	}
+	m.loadedProjects = projects
+	m.crossProjectRebuildRows()
+	m.multiSelectMode = true
+
+	rendered := m.View().Content
+	plain := ansi.Strip(rendered)
+	if !strings.Contains(plain, "Cross-project Outliner (34 projects)") || !strings.Contains(plain, "[MULTI-SELECT: 0 selected]") {
+		t.Fatalf("test setup did not render aggregate multi-select title pressure:\n%s", plain)
+	}
+	for i, line := range strings.Split(strings.TrimRight(rendered, "\n"), "\n") {
+		if got := lipgloss.Width(line); got > width {
+			t.Fatalf("rendered line %d exceeds width %d: width=%d stripped=%q", i, width, got, ansi.Strip(line))
+		}
+	}
+}
+
 func TestCrossProjectOutlinerRenderTreePrefixesFoldIndicatorsAndTruncation(t *testing.T) {
 	ApplyTheme(ThemeConfig{Name: ""})
 	t.Cleanup(func() { ApplyTheme(ThemeConfig{}) })

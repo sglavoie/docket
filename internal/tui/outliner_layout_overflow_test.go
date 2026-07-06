@@ -2,6 +2,8 @@ package tui
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -117,6 +119,44 @@ func TestOutlinerFullWidthHeaderFitsWidth(t *testing.T) {
 	for i, line := range lines {
 		if w := lipgloss.Width(line); w > width {
 			t.Fatalf("full-width line %d exceeds width %d: width=%d stripped=%q", i, width, w, ansi.Strip(line))
+		}
+	}
+}
+
+func TestOutlinerFullWidthContextNotesHeaderFitsWidth(t *testing.T) {
+	ApplyTheme(ThemeConfig{Name: ""})
+	t.Cleanup(func() { ApplyTheme(ThemeConfig{}) })
+
+	cfg := config.NewConfig()
+
+	parent := renderFixtureTask(t, "story", 1, models.TaskTypeStory,
+		"focus on shipping new pipeline with same set of permissions", models.StatusInProgress, 1, "")
+	child := renderFixtureTask(t, "task", 2, models.TaskTypeTask,
+		"Resume session to handle migration to Cloud Functions", models.StatusTodo, 3, "")
+	child.ParentID = &parent.ID
+	project := renderFixtureProject(t, "proj-real-title", "data-pipelines", "Data pipelines", []*models.Task{parent, child})
+	project.Context = "tradition"
+	notesDir := filepath.Join(project.Path, "notes")
+	if err := os.MkdirAll(notesDir, 0o755); err != nil {
+		t.Fatalf("create notes dir: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(notesDir, "note.md"), []byte("# Note\n"), 0o600); err != nil {
+		t.Fatalf("write note: %v", err)
+	}
+
+	m := NewOutlinerModel(project, cfg, nil)
+	const width = 60
+	m.SetSize(width, 20)
+	m.rebuildRows()
+
+	rendered := m.renderFullWidth()
+	plain := ansi.Strip(rendered)
+	if !strings.Contains(plain, "Data pipelines - Tasks [tradition]") || !strings.Contains(plain, "Notes") {
+		t.Fatalf("test setup did not render context+notes title pressure:\n%s", plain)
+	}
+	for i, line := range strings.Split(strings.TrimRight(rendered, "\n"), "\n") {
+		if w := lipgloss.Width(line); w > width {
+			t.Fatalf("full-width context+notes line %d exceeds width %d: width=%d stripped=%q", i, width, w, ansi.Strip(line))
 		}
 	}
 }

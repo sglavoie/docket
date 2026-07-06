@@ -14,7 +14,7 @@ func (m *OutlinerModel) View() tea.View {
 		if m.sidebar.IsEnabled() {
 			return tea.NewView(m.renderWithSidebar())
 		}
-		return tea.NewView(m.renderOutlinerTreeContent(m.width))
+		return tea.NewView(m.renderFullWidth())
 	}
 
 	// Rebuild flat row list with perspective filter and clamp cursor.
