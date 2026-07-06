@@ -269,6 +269,23 @@ func TestBasePickerSelectedIDs(t *testing.T) {
 	}
 }
 
+func TestBasePickerRenderInBoxFitsTitleHeaderToWidth(t *testing.T) {
+	items := []testItem{{id: "1", text: "Alpha"}}
+	picker := NewBasePicker(items, PickerConfig{
+		EmptyMessage:   "No items",
+		NoMatchMessage: "No matches",
+	})
+	picker.SetSize(60, 20)
+
+	rendered := picker.RenderInBox("Filter by Attribute", MutedStyle.Render("/ search · Enter select · x clear · Esc cancel"), 5)
+	_, issues := normalizeScreen(rendered, 60, 20)
+	for _, issue := range issues {
+		if issue.Kind == "width_overflow" {
+			t.Fatalf("RenderInBox title/header overflowed width: %+v\n%s", issue, rendered)
+		}
+	}
+}
+
 func TestPluralize(t *testing.T) {
 	tests := []struct {
 		count    int

@@ -1,0 +1,12 @@
+{
+  "name": "attr-filter-picker-minimum-layout",
+  "fixture": "rich",
+  "size": "60x20",
+  "actions": [
+    { "type": "key", "label": "open project outliner", "key": "enter" },
+    { "type": "key", "label": "open filter prefix", "key": "F" },
+    { "type": "key", "label": "open attribute filter picker", "key": "a" },
+    { "type": "assert", "assert": "view", "value": "AttrFilterPicker" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

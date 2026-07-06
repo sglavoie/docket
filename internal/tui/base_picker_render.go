@@ -128,7 +128,11 @@ func (p *BasePicker[T]) RenderInBox(titleContent, headerContent string, maxVisib
 	var b strings.Builder
 
 	// Title
-	b.WriteString(renderFullscreenTitle(titleContent, headerContent))
+	title := renderFullscreenTitle(titleContent, headerContent)
+	if p.Width() > 0 {
+		title = fitStyledLineToWidth(title, p.Width())
+	}
+	b.WriteString(title)
 	b.WriteString("\n\n")
 
 	// Search bar
