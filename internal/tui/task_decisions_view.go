@@ -15,11 +15,11 @@ func (m *TaskDecisionsModel) View() tea.View {
 	}
 
 	var b strings.Builder
-	b.WriteString(renderFullscreenTitle(
-		fmt.Sprintf("Decisions · #%d: %s",
-			m.task.ShortID,
-			TaskTitleStyleFor(m.task, TaskTitleStyleOptions{}).Render(m.task.Title)),
+	b.WriteString(renderTaskScopedFullscreenTitle(
+		fmt.Sprintf("Decisions · #%d: ", m.task.ShortID),
+		m.task,
 		"",
+		m.Width(),
 		m.AccentColor()))
 	b.WriteString("\n\n")
 

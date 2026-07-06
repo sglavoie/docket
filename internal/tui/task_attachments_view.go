@@ -5,7 +5,6 @@ import (
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
-	"charm.land/lipgloss/v2"
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
@@ -17,11 +16,11 @@ func (m *TaskAttachmentsModel) View() tea.View { //nolint:gocyclo
 	}
 
 	var b strings.Builder
-	b.WriteString(renderFullscreenTitle(
-		fmt.Sprintf("Attachments for #%d: %s",
-			m.task.ShortID,
-			TaskTitleStyleFor(m.task, TaskTitleStyleOptions{}).Render(m.task.Title)),
+	b.WriteString(renderTaskScopedFullscreenTitle(
+		fmt.Sprintf("Attachments for #%d: ", m.task.ShortID),
+		m.task,
 		fmt.Sprintf("%d attachment(s)", len(m.task.Attachments)),
+		m.Width(),
 		m.AccentColor()))
 	b.WriteString("\n\n")
 
@@ -174,16 +173,13 @@ func (m *TaskAttachmentsModel) renderHelp(b *strings.Builder) {
 	}
 	helpParts = append(helpParts, "?: help", "Esc: close")
 
-	helpText := strings.Join(helpParts, " · ")
-	if lipgloss.Width(helpText) > m.Width()-2 {
-		mid := len(helpParts) / 2
-		line1 := strings.Join(helpParts[:mid], " · ")
-		line2 := strings.Join(helpParts[mid:], " · ")
-		b.WriteString(renderStatusBarFooter(HelpStyle.Render(line1), "", m.Width(), m.AccentColor()))
-		b.WriteString("\n")
-		b.WriteString(HelpStyle.Render(line2))
+	helpLines := strings.Split(renderWrappingHelpLine(strings.Join(helpParts, " · "), m.Width()), "\n")
+	if len(helpLines) == 0 {
 		return
 	}
-
-	b.WriteString(renderStatusBarFooter(HelpStyle.Render(helpText), "", m.Width(), m.AccentColor()))
+	b.WriteString(renderStatusBarFooter(HelpStyle.Render(helpLines[0]), "", m.Width(), m.AccentColor()))
+	for _, line := range helpLines[1:] {
+		b.WriteString("\n")
+		b.WriteString(fitStyledLineToWidth(HelpStyle.Render(line), m.Width()))
+	}
 }

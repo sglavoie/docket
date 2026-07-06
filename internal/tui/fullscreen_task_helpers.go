@@ -33,6 +33,25 @@ func renderFullscreenTitleContent(titleContent, subtitle string) string {
 	return t
 }
 
+func renderTaskScopedFullscreenTitle(prefix string, task *models.Task, subtitle string, width int, accent ...color.Color) string {
+	titleStyle := fullscreenTitleStyle(accent...)
+	if task == nil {
+		return fitStyledLineToWidth(renderFullscreenTitleContent(titleStyle.Render(prefix), subtitle), width)
+	}
+	if width <= 0 {
+		titleContent := titleStyle.Render(prefix) + TaskTitleStyleFor(task, TaskTitleStyleOptions{}).Render(task.Title)
+		return renderFullscreenTitleContent(titleContent, subtitle)
+	}
+
+	taskTitleWidth := width - lipgloss.Width(titleStyle.Render(prefix))
+	if subtitle != "" {
+		taskTitleWidth -= lipgloss.Width("  " + MutedStyle.Render(subtitle))
+	}
+	taskTitle := truncateToVisualWidth(task.Title, max(taskTitleWidth, 0))
+	titleContent := titleStyle.Render(prefix) + TaskTitleStyleFor(task, TaskTitleStyleOptions{}).Render(taskTitle)
+	return fitStyledLineToWidth(renderFullscreenTitleContent(titleContent, subtitle), width)
+}
+
 func renderFullscreenTitleContentWithCounter(titleContent, subtitle, counter string, width int) string {
 	return appendFullscreenTitleCounter(renderFullscreenTitleContent(titleContent, subtitle), counter, width)
 }

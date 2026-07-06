@@ -680,6 +680,48 @@ func TestUITestScenarioLongNoMatchSearchQueriesMinimumLayoutNoOverflow(t *testin
 	}
 }
 
+func TestUITestScenarioTaskSubviewLongTitleLayoutsNoOverflow(t *testing.T) {
+	views := []struct {
+		name    string
+		command string
+		view    string
+	}{
+		{"attachments", "task attachments", "TaskAttachments"},
+		{"comments", "task comments", "TaskComments"},
+		{"decisions", "manage decisions", "TaskDecisions"},
+		{"activity", "task activity", "TaskActivity"},
+	}
+
+	for _, size := range []string{"100x35", "72x20", "60x20"} {
+		for _, tt := range views {
+			t.Run(size+"_"+tt.name, func(t *testing.T) {
+				sc := UITestScenario{
+					Name:    "task subview long title layout",
+					Fixture: "narrow",
+					Size:    size,
+					Actions: []UITestAction{
+						{Type: UITestActionKey, Key: "enter"},
+						{Type: UITestActionKey, Key: "down"},
+						{Type: UITestActionCommand, Command: tt.command},
+						{Type: UITestActionAssert, Assert: "view", Value: tt.view},
+						{Type: UITestActionAssert, Assert: "no_layout_issues"},
+					},
+				}
+
+				result, ws, err := RunScenarioFixture(sc, RunScenarioOptions{})
+				if err != nil {
+					t.Fatalf("RunScenarioFixture error: %v", err)
+				}
+				t.Cleanup(func() { _ = ws.Cleanup() })
+
+				if !result.OK {
+					t.Fatalf("%s at %s should pass, got error: %+v", tt.name, size, result.Error)
+				}
+			})
+		}
+	}
+}
+
 func TestUITestScenarioExportProjectStatusLayoutNoOverflow(t *testing.T) {
 	sc := UITestScenario{
 		Name:    "export project status layout",

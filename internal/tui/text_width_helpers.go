@@ -20,6 +20,13 @@ func truncateToVisualWidth(text string, width int) string {
 	return ansi.Truncate(text, width-1, "") + "…"
 }
 
+func fitStyledLineToWidth(line string, width int) string {
+	if width <= 0 || lipgloss.Width(line) <= width {
+		return line
+	}
+	return ansi.Truncate(line, width, "")
+}
+
 func leftPadToWidth(text string, width int) string {
 	visualWidth := lipgloss.Width(text)
 	if visualWidth >= width {

@@ -137,17 +137,22 @@ func (m *TaskActivityModel) View() tea.View {
 		sortDir = "oldest first"
 	}
 	subtitle := fmt.Sprintf("%d entries (%s)", len(entries), sortDir)
-	titleContent := fullscreenTitleStyle(m.AccentColor()).Render(fmt.Sprintf("Activity Log for #%d: ", m.task.ShortID)) +
-		TaskTitleStyleFor(m.task, TaskTitleStyleOptions{}).Render(m.task.Title)
-	b.WriteString(renderFullscreenTitleContent(titleContent, subtitle))
+	b.WriteString(renderTaskScopedFullscreenTitle(
+		fmt.Sprintf("Activity Log for #%d: ", m.task.ShortID),
+		m.task,
+		subtitle,
+		m.Width(),
+		m.AccentColor()))
 	b.WriteString("\n")
 
 	b.WriteString(m.renderTabBar())
 	b.WriteString("\n\n")
 
 	if len(entries) == 0 {
-		b.WriteString(MutedStyle.Render("No activity recorded yet. Activity is logged as you work on this task."))
-		b.WriteString("\n")
+		for _, line := range wrapText("No activity recorded yet. Activity is logged as you work on this task.", m.Width()) {
+			b.WriteString(MutedStyle.Render(line))
+			b.WriteString("\n")
+		}
 	} else {
 		headerLines := 5
 		availableHeight := m.Height() - headerLines

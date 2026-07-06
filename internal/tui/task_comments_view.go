@@ -15,11 +15,11 @@ func (m *TaskCommentsModel) View() tea.View {
 	}
 
 	var b strings.Builder
-	b.WriteString(renderFullscreenTitle(
-		fmt.Sprintf("Comments · #%d: %s",
-			m.task.ShortID,
-			TaskTitleStyleFor(m.task, TaskTitleStyleOptions{}).Render(m.task.Title)),
+	b.WriteString(renderTaskScopedFullscreenTitle(
+		fmt.Sprintf("Comments · #%d: ", m.task.ShortID),
+		m.task,
 		"",
+		m.Width(),
 		m.AccentColor()))
 	b.WriteString("\n\n")
 
