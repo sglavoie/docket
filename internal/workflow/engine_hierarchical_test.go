@@ -295,6 +295,129 @@ func TestEvaluateRulesWithContext_HierarchicalTrigger(t *testing.T) {
 	}
 }
 
+func TestEvaluateRulesWithContext_AllChildrenDoneDoesNotRecompleteReopenedParent(t *testing.T) {
+	tests := []struct {
+		name string
+		rule WorkflowRule
+	}{
+		{
+			name: "flat triggers",
+			rule: WorkflowRule{
+				ID:      "rule-flat",
+				Name:    "Auto Complete Story",
+				Enabled: true,
+				Triggers: []RuleTrigger{
+					{Field: FieldType, Operation: OpEquals, Value: "story"},
+					{Field: FieldAllChildrenDone, Operation: OpEquals, Value: "true"},
+				},
+				TriggerLogic: LogicAnd,
+				Actions:      []RuleAction{{ActionType: ActionSetStatus, Value: "done"}},
+			},
+		},
+		{
+			name: "nested trigger group",
+			rule: WorkflowRule{
+				ID:      "rule-group",
+				Name:    "Grouped Auto Complete Story",
+				Enabled: true,
+				TriggerGroup: &TriggerGroup{
+					Logic:    LogicAnd,
+					Triggers: []RuleTrigger{{Field: FieldType, Operation: OpEquals, Value: "story"}},
+					Groups: []TriggerGroup{
+						{
+							Logic:    LogicAnd,
+							Triggers: []RuleTrigger{{Field: FieldAllChildrenDone, Operation: OpEquals, Value: "true"}},
+						},
+					},
+				},
+				Actions: []RuleAction{{ActionType: ActionSetStatus, Value: "done"}},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			child1 := &models.Task{ID: "c1", Status: models.StatusDone, Type: models.TaskTypeTask}
+			child2 := &models.Task{ID: "c2", Status: models.StatusDone, Type: models.TaskTypeTask}
+			story := &models.Task{
+				ID:       "story",
+				Status:   models.StatusTodo,
+				Type:     models.TaskTypeStory,
+				Children: []*models.Task{child1, child2},
+			}
+			child1.Parent = story
+			child2.Parent = story
+
+			evalCtx := &EvaluationContext{
+				Changes:  []TaskChangeContext{{Task: story, Previous: &models.Task{ID: "story", Status: models.StatusDone}}},
+				AllTasks: []*models.Task{story, child1, child2},
+				TaskMap:  map[string]*models.Task{"story": story, "c1": child1, "c2": child2},
+			}
+
+			result := EvaluateRulesWithContext(evalCtx, []WorkflowRule{tt.rule})
+
+			if story.Status != models.StatusTodo {
+				t.Errorf("expected reopened story to remain todo, got %s", story.Status)
+			}
+			if len(result.ModifiedTasks) != 0 {
+				t.Errorf("expected no workflow modifications, got %d", len(result.ModifiedTasks))
+			}
+			if result.RuleTriggerCounts[tt.rule.ID] != 0 {
+				t.Errorf("expected rule trigger count 0, got %d", result.RuleTriggerCounts[tt.rule.ID])
+			}
+		})
+	}
+}
+
+func TestEvaluateRulesWithContext_ReopenedRuleCanStillSetCompleteStatus(t *testing.T) {
+	child := &models.Task{ID: "child", Status: models.StatusDone, Type: models.TaskTypeTask}
+	task := &models.Task{
+		ID:       "task",
+		Status:   models.StatusTodo,
+		Type:     models.TaskTypeStory,
+		Children: []*models.Task{child},
+	}
+	child.Parent = task
+	evalCtx := &EvaluationContext{
+		Changes:  []TaskChangeContext{{Task: task, Previous: &models.Task{ID: "task", Status: models.StatusDone}}},
+		AllTasks: []*models.Task{task, child},
+		TaskMap:  map[string]*models.Task{"task": task, "child": child},
+	}
+	autoCompleteRule := WorkflowRule{
+		ID:      "rule-auto-complete",
+		Name:    "Auto Complete Story",
+		Enabled: true,
+		Triggers: []RuleTrigger{
+			{Field: FieldType, Operation: OpEquals, Value: "story"},
+			{Field: FieldAllChildrenDone, Operation: OpEquals, Value: "true"},
+		},
+		TriggerLogic: LogicAnd,
+		Actions:      []RuleAction{{ActionType: ActionSetStatus, Value: "done"}},
+	}
+	reopenedRule := WorkflowRule{
+		ID:      "rule-reopened",
+		Name:    "Explicit Reopen Override",
+		Enabled: true,
+		Trigger: RuleTrigger{Field: FieldReopened, Operation: OpEquals, Value: "true"},
+		Actions: []RuleAction{{ActionType: ActionSetStatus, Value: "done"}},
+	}
+
+	result := EvaluateRulesWithContext(evalCtx, []WorkflowRule{autoCompleteRule, reopenedRule})
+
+	if task.Status != models.StatusDone {
+		t.Errorf("expected explicit reopened rule to set status done, got %s", task.Status)
+	}
+	if len(result.ModifiedTasks) != 1 || result.ModifiedTasks[0] != task {
+		t.Errorf("expected task to be recorded as modified once, got %d", len(result.ModifiedTasks))
+	}
+	if result.RuleTriggerCounts[autoCompleteRule.ID] != 0 {
+		t.Errorf("expected auto-complete rule trigger count 0, got %d", result.RuleTriggerCounts[autoCompleteRule.ID])
+	}
+	if result.RuleTriggerCounts[reopenedRule.ID] != 1 {
+		t.Errorf("expected reopened rule trigger count 1, got %d", result.RuleTriggerCounts[reopenedRule.ID])
+	}
+}
+
 func TestMatchesRule_TriggerGroupWithHierarchicalTrigger_NilEvalCtx(t *testing.T) {
 	// Regression: matchesRule passes nil evalCtx to matchesTriggerGroup.
 	// If TriggerGroup contains hierarchical triggers like FieldIsBlocked or

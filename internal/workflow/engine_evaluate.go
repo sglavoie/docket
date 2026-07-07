@@ -113,6 +113,9 @@ func evaluateRulesWithContextRecursive(evalCtx *EvaluationContext, rules []Workf
 				if action.Condition != nil && !matchesTriggerWithContext(task, prev, *action.Condition, evalCtx) {
 					continue
 				}
+				if shouldSkipAllChildrenDoneRecomplete(task, prev, rule, action) {
+					continue
+				}
 				field := getFieldFromAction(action.ActionType)
 				if field != "" {
 					fieldSetters[field] = append(fieldSetters[field], fieldSetter{
@@ -213,6 +216,9 @@ func evaluateRulesWithContextRecursive(evalCtx *EvaluationContext, rules []Workf
 						continue
 					}
 				}
+				if shouldSkipAllChildrenDoneRecomplete(task, prev, rule, action) {
+					continue
+				}
 				if applyActionWithContext(task, action, evalCtx, result) {
 					modified = true
 					ruleApplied = true
@@ -248,6 +254,40 @@ func evaluateRulesWithContextRecursive(evalCtx *EvaluationContext, rules []Workf
 // Used to deduplicate ModifiedTasks during recursive rule evaluation.
 func containsTask(tasks []*models.Task, t *models.Task) bool {
 	return slices.Contains(tasks, t)
+}
+
+func shouldSkipAllChildrenDoneRecomplete(task, prev *models.Task, rule WorkflowRule, action RuleAction) bool {
+	if task == nil || prev == nil {
+		return false
+	}
+	if !prev.Status.IsComplete() || task.Status.IsComplete() {
+		return false
+	}
+	if action.ActionType != ActionSetStatus {
+		return false
+	}
+	target := models.TaskStatus(action.Value)
+	if !target.IsValid() || !target.IsComplete() {
+		return false
+	}
+	return triggerGroupContainsField(rule.GetTriggerGroup(), FieldAllChildrenDone)
+}
+
+func triggerGroupContainsField(group *TriggerGroup, field TriggerField) bool {
+	if group == nil {
+		return false
+	}
+	for _, trigger := range group.Triggers {
+		if trigger.Field == field {
+			return true
+		}
+	}
+	for i := range group.Groups {
+		if triggerGroupContainsField(&group.Groups[i], field) {
+			return true
+		}
+	}
+	return false
 }
 
 func getFieldFromAction(actionType ActionType) string {
